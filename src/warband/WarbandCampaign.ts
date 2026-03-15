@@ -54,6 +54,22 @@ const REINFORCEMENT_INTERVAL = 18000; // ~5 minutes, cities spawn new defenders
 const CITY_MAX_GARRISON = 40;
 const UPKEEP_PER_TIER: Record<number, number> = { 1: 2, 2: 4, 3: 7, 4: 12, 5: 18 };
 
+// Fog of war
+const FOG_CELL_SIZE = 10; // each fog cell covers 10x10 px
+const FOG_GRID_W = Math.ceil(MAP_W / FOG_CELL_SIZE);
+const FOG_GRID_H = Math.ceil(MAP_H / FOG_CELL_SIZE);
+const SCOUT_RADIUS = 80; // player scouting radius in px
+const CITY_SCOUT_RADIUS = 60; // allied city reveal radius
+
+// Caravans & wandering NPCs
+const CARAVAN_COUNT = 4;
+const CARAVAN_SPEED = 0.6;
+const WANDERING_NPC_COUNT = 3;
+
+// Campaign events
+const EVENT_CHECK_INTERVAL = 7; // check for events every N days
+const EVENT_MIN_DAY = 5; // earliest day for random events
+
 // Hero progression
 const HERO_MAX_LEVEL = 20;
 const HERO_XP_PER_LEVEL = 150; // level N requires N * 150 XP
@@ -807,6 +823,44 @@ interface SpecialLocation {
   reward: { gold: number; unitId?: string; unitCount?: number };
 }
 
+// Merchant caravan
+interface CampaignCaravan {
+  id: string;
+  x: number; y: number;
+  targetCityId: string;
+  originCityId: string;
+  speed: number;
+  goods: { name: string; cost: number }[];
+}
+
+// Wandering NPC
+type WanderingNPCType = "hermit" | "messenger" | "refugee";
+interface CampaignWanderingNPC {
+  id: string;
+  x: number; y: number;
+  type: WanderingNPCType;
+  name: string;
+  interacted: boolean;
+  targetX: number; targetY: number;
+  speed: number;
+  spawnDay: number;
+}
+
+// Campaign event
+type CampaignEventType = "bandit_raid" | "merchant_festival" | "plague" | "deserters" | "alliance_offer";
+interface CampaignEvent {
+  id: string;
+  type: CampaignEventType;
+  name: string;
+  description: string;
+  targetCityId?: string;
+  mapX?: number; mapY?: number;
+  startDay: number;
+  duration: number; // days
+  active: boolean;
+  data?: Record<string, unknown>;
+}
+
 interface CampaignParty {
   id: string;
   name: string;
@@ -820,6 +874,7 @@ interface CampaignParty {
   isPlayer: boolean;
   speed: number;
   homeCity?: string;
+  retreatPenaltyUntilTick?: number; // retreat speed penalty
 }
 
 interface CampaignState {
@@ -843,6 +898,16 @@ interface CampaignState {
   heroXp: number;
   heroPerks: HeroPerkId[];
   factionRelations: Map<string, Map<string, number>>; // relation score between factions (-100 hostile to +100 allied)
+  // Fog of war
+  fogRevealed: Set<number>; // set of (cellY * FOG_GRID_W + cellX) indices
+  // Caravans & wandering NPCs
+  caravans: CampaignCaravan[];
+  wanderingNPCs: CampaignWanderingNPC[];
+  // Campaign events
+  events: CampaignEvent[];
+  lastEventDay: number;
+  // Battle preview state
+  battlePreviewEnemy: CampaignParty | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -1061,6 +1126,97 @@ function _generateRovingBands(cities: CampaignCity[], factions: RaceDef[]): Camp
 }
 
 // ---------------------------------------------------------------------------
+// Caravan & NPC generation
+// ---------------------------------------------------------------------------
+
+function _generateCaravans(cities: CampaignCity[]): CampaignCaravan[] {
+  const caravans: CampaignCaravan[] = [];
+  if (cities.length < 2) return caravans;
+  for (let i = 0; i < CARAVAN_COUNT; i++) {
+    const origin = cities[Math.floor(Math.random() * cities.length)];
+    let target: CampaignCity;
+    do {
+      target = cities[Math.floor(Math.random() * cities.length)];
+    } while (target.id === origin.id);
+    const goodsList = [
+      { name: "Grain", cost: 30 }, { name: "Iron", cost: 60 }, { name: "Cloth", cost: 40 },
+      { name: "Wine", cost: 50 }, { name: "Salt", cost: 35 }, { name: "Spices", cost: 80 },
+      { name: "Lumber", cost: 25 }, { name: "Horses", cost: 120 },
+    ];
+    // Pick 2-4 random goods
+    const shuffled = [...goodsList].sort(() => Math.random() - 0.5);
+    const goods = shuffled.slice(0, 2 + Math.floor(Math.random() * 3));
+    caravans.push({
+      id: `caravan_${i}`,
+      x: origin.x + (Math.random() - 0.5) * 20,
+      y: origin.y + (Math.random() - 0.5) * 20,
+      targetCityId: target.id,
+      originCityId: origin.id,
+      speed: CARAVAN_SPEED * (0.8 + Math.random() * 0.4),
+      goods,
+    });
+  }
+  return caravans;
+}
+
+const WANDERING_NPC_NAMES: Record<WanderingNPCType, string[]> = {
+  hermit: ["Old Sage", "Forest Hermit", "Mountain Seer"],
+  messenger: ["Royal Courier", "Swift Messenger", "Herald"],
+  refugee: ["Displaced Farmer", "War Refugee", "Wandering Peasant"],
+};
+
+function _generateWanderingNPCs(day: number): CampaignWanderingNPC[] {
+  const npcs: CampaignWanderingNPC[] = [];
+  const types: WanderingNPCType[] = ["hermit", "messenger", "refugee"];
+  for (let i = 0; i < WANDERING_NPC_COUNT; i++) {
+    const type = types[i % types.length];
+    const names = WANDERING_NPC_NAMES[type];
+    const x = 80 + Math.random() * (MAP_W - 160);
+    const y = 80 + Math.random() * (MAP_H - 160);
+    npcs.push({
+      id: `npc_${i}`,
+      x, y,
+      type,
+      name: names[Math.floor(Math.random() * names.length)],
+      interacted: false,
+      targetX: 80 + Math.random() * (MAP_W - 160),
+      targetY: 80 + Math.random() * (MAP_H - 160),
+      speed: 0.3 + Math.random() * 0.3,
+      spawnDay: day,
+    });
+  }
+  return npcs;
+}
+
+/** Reveal fog cells within a radius around a point. */
+function _revealFog(fogSet: Set<number>, cx: number, cy: number, radius: number): void {
+  const cellR = Math.ceil(radius / FOG_CELL_SIZE);
+  const centerCX = Math.floor(cx / FOG_CELL_SIZE);
+  const centerCY = Math.floor(cy / FOG_CELL_SIZE);
+  for (let dy = -cellR; dy <= cellR; dy++) {
+    for (let dx = -cellR; dx <= cellR; dx++) {
+      const gx = centerCX + dx;
+      const gy = centerCY + dy;
+      if (gx < 0 || gx >= FOG_GRID_W || gy < 0 || gy >= FOG_GRID_H) continue;
+      const worldX = gx * FOG_CELL_SIZE + FOG_CELL_SIZE / 2;
+      const worldY = gy * FOG_CELL_SIZE + FOG_CELL_SIZE / 2;
+      if (Math.hypot(worldX - cx, worldY - cy) <= radius) {
+        fogSet.add(gy * FOG_GRID_W + gx);
+      }
+    }
+  }
+}
+
+/** Estimate difficulty based on army strength comparison. */
+function _estimateDifficulty(playerTotal: number, enemyTotal: number): { label: string; color: string } {
+  const ratio = enemyTotal / Math.max(1, playerTotal);
+  if (ratio < 0.5) return { label: "Easy", color: "#44cc44" };
+  if (ratio < 1.0) return { label: "Medium", color: "#cccc44" };
+  if (ratio < 1.5) return { label: "Hard", color: "#cc8844" };
+  return { label: "Deadly", color: "#cc4444" };
+}
+
+// ---------------------------------------------------------------------------
 // WarbandCampaign main class
 // ---------------------------------------------------------------------------
 
@@ -1131,6 +1287,12 @@ export class WarbandCampaign {
   private _wheelHandler: ((e: WheelEvent) => void) | null = null;
   private _escHandler: ((e: KeyboardEvent) => void) | null = null;
   private _perkModal: HTMLDivElement | null = null;
+  private _battlePreviewPanel: HTMLDivElement | null = null;
+  private _caravanPanel: HTMLDivElement | null = null;
+  private _npcPanel: HTMLDivElement | null = null;
+  private _eventPopup: HTMLDivElement | null = null;
+  private _eventPopupTimeout: ReturnType<typeof setTimeout> | null = null;
+  private _fogCanvas: HTMLCanvasElement | null = null;
 
   async boot(playerFaction: string): Promise<void> {
     // Hide PixiJS
@@ -1201,6 +1363,12 @@ export class WarbandCampaign {
       heroXp: 0,
       heroPerks: [],
       factionRelations: new Map(),
+      fogRevealed: new Set<number>(),
+      caravans: _generateCaravans(cities),
+      wanderingNPCs: _generateWanderingNPCs(1),
+      events: [],
+      lastEventDay: 0,
+      battlePreviewEnemy: null,
     };
 
     // Initialize faction relations
@@ -1218,6 +1386,14 @@ export class WarbandCampaign {
         }
       }
       this._state.factionRelations.set(a, innerMap);
+    }
+
+    // Reveal initial fog around player and allied cities
+    _revealFog(this._state.fogRevealed, px, py, SCOUT_RADIUS);
+    for (const c of cities) {
+      if (c.factionId === playerFaction) {
+        _revealFog(this._state.fogRevealed, c.x, c.y, CITY_SCOUT_RADIUS);
+      }
     }
 
     // Center camera on player
@@ -1789,6 +1965,20 @@ export class WarbandCampaign {
         } else if (this._locationPanel) {
           this._removeLocationPanel();
           if (this._state) this._state.paused = false;
+        } else if (this._battlePreviewPanel) {
+          // Treat escape on battle preview as retreat
+          this._removeBattlePreview();
+          if (this._state) {
+            this._state.battlePreviewEnemy = null;
+            this._state.paused = false;
+            this._state.playerParty.retreatPenaltyUntilTick = this._state.tick + 300;
+          }
+        } else if (this._caravanPanel) {
+          this._removeCaravanPanel();
+          if (this._state) this._state.paused = false;
+        } else if (this._npcPanel) {
+          this._removeNPCPanel();
+          if (this._state) this._state.paused = false;
         } else if (this._state) {
           this._state.paused = !this._state.paused;
           this._updateTopBar();
@@ -1852,6 +2042,53 @@ export class WarbandCampaign {
         if (Math.hypot(loc.x - mx, loc.y - my) < 12) {
           this._showLocationPanel(loc);
           return;
+        }
+      }
+
+      // Check caravan clicks
+      for (const caravan of this._state.caravans) {
+        if (Math.hypot(caravan.x - mx, caravan.y - my) < 12) {
+          const caravanDist = Math.hypot(caravan.x - this._state.playerParty.x, caravan.y - this._state.playerParty.y);
+          if (caravanDist < 60) {
+            this._showCaravanPanel(caravan);
+            return;
+          }
+        }
+      }
+
+      // Check wandering NPC clicks
+      for (const npc of this._state.wanderingNPCs) {
+        if (npc.interacted) continue;
+        if (Math.hypot(npc.x - mx, npc.y - my) < 10) {
+          const npcDist = Math.hypot(npc.x - this._state.playerParty.x, npc.y - this._state.playerParty.y);
+          if (npcDist < 60) {
+            this._showNPCPanel(npc);
+            return;
+          }
+        }
+      }
+
+      // Check event location clicks (deserters events)
+      for (const evt of this._state.events) {
+        if (!evt.active || evt.type !== "deserters" || !evt.mapX || !evt.mapY) continue;
+        if (Math.hypot(evt.mapX - mx, evt.mapY - my) < 15) {
+          const evtDist = Math.hypot(evt.mapX - this._state.playerParty.x, evt.mapY - this._state.playerParty.y);
+          if (evtDist < 60) {
+            // Recruit free deserters
+            const pool = CAMPAIGN_UNITS.filter(u => u.tier <= 2);
+            const unit = pool[Math.floor(Math.random() * pool.length)];
+            const count = 2 + Math.floor(Math.random() * 4);
+            const existing = this._state.playerParty.army.find(a => a.unitId === unit.id && a.xp === 0);
+            if (existing) {
+              existing.count += count;
+            } else {
+              this._state.playerParty.army.push({ unitId: unit.id, count, xp: 0 });
+            }
+            this._state.playerParty.armyTotal += count;
+            this._addLog(`Recruited ${count} ${unit.name} from the deserters!`);
+            evt.active = false;
+            return;
+          }
         }
       }
 
@@ -2040,13 +2277,39 @@ export class WarbandCampaign {
     // Move player toward target
     this._moveParty(s.playerParty);
 
+    // Reveal fog of war around player
+    _revealFog(s.fogRevealed, s.playerParty.x, s.playerParty.y, SCOUT_RADIUS);
+    // Reveal fog around allied cities
+    for (const c of s.cities) {
+      if (c.factionId === s.playerFaction) {
+        _revealFog(s.fogRevealed, c.x, c.y, CITY_SCOUT_RADIUS);
+      }
+    }
+
     // Move AI parties
     for (const party of s.parties) {
       this._updateAIParty(party);
       this._moveParty(party);
     }
 
+    // Move caravans
+    this._updateCaravans();
+
+    // Move wandering NPCs
+    this._updateWanderingNPCs();
+
+    // Check for campaign events
+    this._checkCampaignEvents();
+
+    // Expire old events
+    for (const evt of s.events) {
+      if (evt.active && s.day >= evt.startDay + evt.duration) {
+        evt.active = false;
+      }
+    }
+
     // Check collisions (player vs enemy parties) — respect diplomacy
+    // Instead of auto-engaging, show battle preview when in range
     for (const party of s.parties) {
       if (party.factionId === s.playerFaction) continue;
       const relStatus = this._getRelationStatus(party.factionId, s.playerFaction);
@@ -2063,7 +2326,12 @@ export class WarbandCampaign {
             return;
           }
         }
-        this._startPartyBattle(party);
+        // Show battle preview instead of auto-engaging
+        if (!s.battlePreviewEnemy) {
+          s.battlePreviewEnemy = party;
+          s.paused = true;
+          this._showBattlePreview(party);
+        }
         return;
       }
     }
@@ -2128,6 +2396,10 @@ export class WarbandCampaign {
     if (party.isPlayer && this._state) {
       const swiftCount = this._getPerkCount("swift");
       if (swiftCount > 0) speed *= (1 + swiftCount * 0.15);
+      // Retreat speed penalty
+      if (party.retreatPenaltyUntilTick && this._state.tick < party.retreatPenaltyUntilTick) {
+        speed *= 0.5;
+      }
     }
     party.x += (dx / dist) * speed;
     party.y += (dy / dist) * speed;
@@ -2358,6 +2630,77 @@ export class WarbandCampaign {
           ctx.lineTo(hx + 3.5, hy - 1.5);
           ctx.closePath();
           ctx.fill();
+        }
+      }
+
+      // ---- City interior details ----
+      if (sizeTier >= 1) {
+        // Market square (colored tile area) for trading cities
+        const cityHash = city.id.charCodeAt(city.id.length - 1) % 3;
+        if (cityHash === 0 || sizeTier >= 2) {
+          const mqX = city.x - 6 * sc;
+          const mqY = city.y + 1 * sc;
+          ctx.fillStyle = `rgba(${Math.min(255, cr * 0.4 + 100)},${Math.min(255, cg * 0.4 + 80)},${Math.min(255, cb * 0.3 + 40)},0.4)`;
+          ctx.fillRect(mqX, mqY, 8 * sc, 5 * sc);
+          // Market stall dots
+          ctx.fillStyle = "rgba(180,140,60,0.5)";
+          for (let mi = 0; mi < 3; mi++) {
+            ctx.fillRect(mqX + 1 + mi * 2.5 * sc, mqY + 1, 1.5 * sc, 1.5 * sc);
+          }
+        }
+
+        // Barracks / training grounds (weapon rack icons) for military cities
+        if (cityHash === 1 || sizeTier >= 2) {
+          const bx = city.x + 5 * sc;
+          const by = city.y - 2 * sc;
+          // Weapon rack: vertical line with diagonal lines
+          ctx.strokeStyle = `rgba(${cr},${cg},${cb},0.5)`;
+          ctx.lineWidth = 0.8;
+          ctx.beginPath();
+          ctx.moveTo(bx, by); ctx.lineTo(bx, by + 5 * sc);
+          ctx.moveTo(bx - 1.5, by + 1); ctx.lineTo(bx + 1.5, by - 1);
+          ctx.moveTo(bx - 1.5, by + 3); ctx.lineTo(bx + 1.5, by + 1);
+          ctx.stroke();
+        }
+
+        // Church/cathedral (cross/spire) for all cities
+        const chX = city.x + 0.5 * sc;
+        const chY = city.y - 3 * sc;
+        ctx.fillStyle = `rgba(200,190,170,0.6)`;
+        ctx.fillRect(chX - 0.5, chY - 3, 1, 4);
+        ctx.fillRect(chX - 1.5, chY - 2, 3, 0.8);
+
+        // Smoke from chimneys (animated wisps)
+        const smokeCount = sizeTier >= 2 ? 3 : sizeTier >= 1 ? 2 : 1;
+        for (let si = 0; si < smokeCount; si++) {
+          const sAngle = (si / smokeCount) * Math.PI * 2 + 1.2;
+          const sDist = 8 * sc;
+          const sBaseX = city.x + Math.cos(sAngle) * sDist * 0.6;
+          const sBaseY = city.y + Math.sin(sAngle) * sDist * 0.4 - 4 * sc;
+          for (let sp = 0; sp < 3; sp++) {
+            const sOffset = (t * 0.8 + si * 1.3 + sp * 0.5) % 3;
+            const sAlpha = Math.max(0, 0.25 - sOffset * 0.08);
+            const sSize = 1 + sOffset * 0.6;
+            ctx.fillStyle = `rgba(140,140,140,${sAlpha})`;
+            ctx.beginPath();
+            ctx.arc(sBaseX + Math.sin(t * 1.2 + si + sp) * 1.5, sBaseY - sOffset * 4, sSize, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
+        // Tiny animated figures moving inside city walls
+        if (sizeTier >= 1) {
+          const figCount = sizeTier >= 2 ? 5 : 3;
+          for (let fi = 0; fi < figCount; fi++) {
+            const fAngle = (t * 0.15 + fi * (Math.PI * 2 / figCount)) % (Math.PI * 2);
+            const fDist = 6 * sc + Math.sin(fAngle * 3 + fi) * 3 * sc;
+            const figX = city.x + Math.cos(fAngle) * fDist * 0.5;
+            const figY = city.y + Math.sin(fAngle) * fDist * 0.35;
+            ctx.fillStyle = `rgba(${cr},${cg},${cb},0.45)`;
+            ctx.beginPath();
+            ctx.arc(figX, figY, 0.8, 0, Math.PI * 2);
+            ctx.fill();
+          }
         }
       }
 
@@ -2671,6 +3014,11 @@ export class WarbandCampaign {
 
     // ---- Roving parties -----------------------
     for (const party of s.parties) {
+      // Hide enemy parties in unexplored fog
+      const partyCell = Math.floor(party.y / FOG_CELL_SIZE) * FOG_GRID_W + Math.floor(party.x / FOG_CELL_SIZE);
+      const isAlliedParty = party.factionId === s.playerFaction;
+      if (!isAlliedParty && !s.fogRevealed.has(partyCell)) continue;
+
       const color = _factionHex(party.factionId);
       const [cr, cg, cb] = _factionRGB(party.factionId);
       const isAllied = party.factionId === s.playerFaction;
@@ -2998,6 +3346,103 @@ export class WarbandCampaign {
       ctx.stroke();
     }
 
+    // ---- Caravans ---------------------------------
+    for (const caravan of s.caravans) {
+      // Only draw if in revealed fog
+      const caravanCell = Math.floor(caravan.y / FOG_CELL_SIZE) * FOG_GRID_W + Math.floor(caravan.x / FOG_CELL_SIZE);
+      if (!s.fogRevealed.has(caravanCell)) continue;
+
+      // Horse (small brown oval)
+      ctx.fillStyle = "rgba(120,80,40,0.8)";
+      ctx.beginPath();
+      ctx.ellipse(caravan.x - 6, caravan.y, 3, 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Horse head
+      ctx.fillStyle = "rgba(100,65,30,0.8)";
+      ctx.beginPath();
+      ctx.ellipse(caravan.x - 9, caravan.y - 1.5, 1.5, 1, -0.3, 0, Math.PI * 2);
+      ctx.fill();
+      // Wagon body
+      ctx.fillStyle = "rgba(140,110,60,0.85)";
+      ctx.fillRect(caravan.x - 4, caravan.y - 3, 10, 5);
+      // Wagon cover (arched canvas)
+      ctx.fillStyle = "rgba(200,190,160,0.7)";
+      ctx.beginPath();
+      ctx.arc(caravan.x + 1, caravan.y - 3, 5, Math.PI, 0);
+      ctx.fill();
+      // Wheels
+      ctx.strokeStyle = "rgba(80,60,30,0.8)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(caravan.x - 2, caravan.y + 2.5, 2, 0, Math.PI * 2);
+      ctx.arc(caravan.x + 4, caravan.y + 2.5, 2, 0, Math.PI * 2);
+      ctx.stroke();
+      // Label
+      ctx.fillStyle = "rgba(180,160,100,0.6)";
+      ctx.font = "7px 'Segoe UI', sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("Caravan", caravan.x, caravan.y + 10);
+    }
+
+    // ---- Wandering NPCs ---------------------------
+    for (const npc of s.wanderingNPCs) {
+      if (npc.interacted) continue;
+      const npcCell = Math.floor(npc.y / FOG_CELL_SIZE) * FOG_GRID_W + Math.floor(npc.x / FOG_CELL_SIZE);
+      if (!s.fogRevealed.has(npcCell)) continue;
+
+      // NPC dot with type-specific color
+      const npcColor = npc.type === "hermit" ? "#66aacc" : npc.type === "messenger" ? "#ccaa44" : "#cc8866";
+      const npcIcon = npc.type === "hermit" ? "?" : npc.type === "messenger" ? "!" : "+";
+      // Glow
+      ctx.fillStyle = `rgba(${npc.type === "hermit" ? "100,170,200" : npc.type === "messenger" ? "200,170,70" : "200,130,100"},${0.15 + Math.sin(t * 3 + npc.x) * 0.08})`;
+      ctx.beginPath();
+      ctx.arc(npc.x, npc.y, 8, 0, Math.PI * 2);
+      ctx.fill();
+      // Body
+      ctx.fillStyle = npcColor;
+      ctx.beginPath();
+      ctx.arc(npc.x, npc.y, 3, 0, Math.PI * 2);
+      ctx.fill();
+      // Icon
+      ctx.fillStyle = "#fff";
+      ctx.font = "bold 7px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(npcIcon, npc.x, npc.y + 2.5);
+      // Name
+      ctx.fillStyle = npcColor;
+      ctx.font = "7px 'Segoe UI', sans-serif";
+      ctx.fillText(npc.name, npc.x, npc.y + 12);
+    }
+
+    // ---- Event markers on map ----------------------
+    for (const evt of s.events) {
+      if (!evt.active) continue;
+      let evtX = evt.mapX ?? 0;
+      let evtY = evt.mapY ?? 0;
+      if (evt.targetCityId) {
+        const eCity = s.cities.find(c => c.id === evt.targetCityId);
+        if (eCity) { evtX = eCity.x; evtY = eCity.y; }
+      }
+      if (evtX === 0 && evtY === 0) continue;
+
+      // Pulsing event icon
+      const evtPulse = 0.5 + Math.sin(t * 4 + evtX) * 0.3;
+      const evtColor = evt.type === "bandit_raid" ? "rgba(200,50,50," : evt.type === "merchant_festival" ? "rgba(50,200,50," : evt.type === "plague" ? "rgba(150,50,150," : evt.type === "deserters" ? "rgba(100,150,200," : "rgba(200,180,50,";
+      ctx.fillStyle = evtColor + (evtPulse * 0.3) + ")";
+      ctx.beginPath();
+      ctx.arc(evtX, evtY - 35, 10 + Math.sin(t * 3) * 2, 0, Math.PI * 2);
+      ctx.fill();
+      // Event icon letter
+      const evtLetter = evt.type === "bandit_raid" ? "!" : evt.type === "merchant_festival" ? "$" : evt.type === "plague" ? "X" : evt.type === "deserters" ? "+" : "A";
+      ctx.fillStyle = "#fff";
+      ctx.font = "bold 10px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(evtLetter, evtX, evtY - 32);
+    }
+
+    // ---- Fog of war overlay -----------------------
+    this._drawFogOfWar(ctx);
+
     // ---- Map border (decorative) ---------------
     ctx.strokeStyle = "rgba(80,65,40,0.6)";
     ctx.lineWidth = 4;
@@ -3121,6 +3566,31 @@ export class WarbandCampaign {
       ctx.beginPath();
       ctx.arc(mx + party.x * scaleX, my + party.y * scaleY, 1.8, 0, Math.PI * 2);
       ctx.fill();
+    }
+
+    // Caravans on minimap (small brown dots)
+    for (const caravan of s.caravans) {
+      ctx.fillStyle = "#aa8844";
+      ctx.beginPath();
+      ctx.arc(mx + caravan.x * scaleX, my + caravan.y * scaleY, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Event markers on minimap
+    for (const evt of s.events) {
+      if (!evt.active) continue;
+      let evtMX = evt.mapX;
+      let evtMY = evt.mapY;
+      if (evt.targetCityId) {
+        const ec = s.cities.find(c => c.id === evt.targetCityId);
+        if (ec) { evtMX = ec.x; evtMY = ec.y; }
+      }
+      if (evtMX && evtMY) {
+        ctx.fillStyle = evt.type === "bandit_raid" ? "#cc4444" : evt.type === "merchant_festival" ? "#44cc44" : evt.type === "plague" ? "#aa44aa" : "#6688cc";
+        ctx.beginPath();
+        ctx.arc(mx + evtMX * scaleX, my + evtMY * scaleY, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
 
     // Player on minimap (pulsing)
@@ -3837,6 +4307,534 @@ export class WarbandCampaign {
   }
 
   // ---------------------------------------------------------------------------
+  // Fog of war drawing
+  // ---------------------------------------------------------------------------
+
+  private _drawFogOfWar(ctx: CanvasRenderingContext2D): void {
+    if (!this._state) return;
+    const fog = this._state.fogRevealed;
+
+    // Use an offscreen canvas for fog, cached
+    if (!this._fogCanvas) {
+      this._fogCanvas = document.createElement("canvas");
+      this._fogCanvas.width = MAP_W;
+      this._fogCanvas.height = MAP_H;
+    }
+    const fogCtx = this._fogCanvas.getContext("2d")!;
+    fogCtx.clearRect(0, 0, MAP_W, MAP_H);
+
+    // Fill everything dark, then clear revealed cells
+    fogCtx.fillStyle = "rgba(8,6,3,0.75)";
+    fogCtx.fillRect(0, 0, MAP_W, MAP_H);
+    fogCtx.globalCompositeOperation = "destination-out";
+
+    for (const idx of fog) {
+      const cellX = idx % FOG_GRID_W;
+      const cellY = Math.floor(idx / FOG_GRID_W);
+      // Use a soft circle for smooth edges
+      const cx = cellX * FOG_CELL_SIZE + FOG_CELL_SIZE / 2;
+      const cy = cellY * FOG_CELL_SIZE + FOG_CELL_SIZE / 2;
+      const grad = fogCtx.createRadialGradient(cx, cy, 0, cx, cy, FOG_CELL_SIZE);
+      grad.addColorStop(0, "rgba(0,0,0,1)");
+      grad.addColorStop(1, "rgba(0,0,0,0.5)");
+      fogCtx.fillStyle = grad;
+      fogCtx.fillRect(cellX * FOG_CELL_SIZE, cellY * FOG_CELL_SIZE, FOG_CELL_SIZE, FOG_CELL_SIZE);
+    }
+
+    fogCtx.globalCompositeOperation = "source-over";
+    ctx.drawImage(this._fogCanvas, 0, 0);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Battle preview panel
+  // ---------------------------------------------------------------------------
+
+  private _showBattlePreview(enemy: CampaignParty): void {
+    if (!this._state) return;
+    this._removeBattlePreview();
+    this._setCanvasPointerEvents(false);
+
+    const factionDef = CAMPAIGN_FACTIONS.find(f => f.id === enemy.factionId);
+    const factionColor = factionDef ? `#${factionDef.accentColor.toString(16).padStart(6, "0")}` : "#888";
+    const diff = _estimateDifficulty(this._state.playerParty.armyTotal, enemy.armyTotal);
+
+    // Build enemy composition display
+    const compHTML = enemy.army.map(a => {
+      const uDef = CAMPAIGN_UNITS.find(u => u.id === a.unitId);
+      return `<span style="margin-right:8px;color:#ccc">${uDef?.name ?? a.unitId} x${a.count}</span>`;
+    }).join("");
+
+    this._battlePreviewPanel = document.createElement("div");
+    this._battlePreviewPanel.style.cssText = `
+      position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+      width:440px;max-height:60vh;overflow-y:auto;
+      background:rgba(15,12,8,0.97);border:2px solid ${factionColor};border-radius:10px;
+      padding:24px;z-index:10;
+    `;
+
+    this._battlePreviewPanel.innerHTML = `
+      <div style="margin-bottom:12px">
+        <h3 style="color:#cc4444;margin:0;font-size:20px">ENEMY APPROACHING!</h3>
+        <div style="color:${factionColor};font-size:13px;margin-top:4px">${enemy.name} (${factionDef?.name ?? enemy.factionId})</div>
+      </div>
+      <div style="margin-bottom:12px;border:1px solid #332211;border-radius:6px;padding:10px;background:rgba(30,25,15,0.5)">
+        <div style="color:#998877;font-size:11px;margin-bottom:6px">ENEMY COMPOSITION (${enemy.armyTotal} units)</div>
+        <div style="font-size:12px;line-height:1.6">${compHTML}</div>
+      </div>
+      <div style="margin-bottom:16px;display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <span style="color:#998877;font-size:12px">Your army: </span>
+          <span style="color:#ddeebb;font-size:13px;font-weight:bold">${this._state.playerParty.armyTotal} units</span>
+        </div>
+        <div style="padding:4px 12px;border-radius:4px;border:1px solid ${diff.color};color:${diff.color};font-size:13px;font-weight:bold;background:rgba(0,0,0,0.3)">
+          ${diff.label}
+        </div>
+      </div>
+      <div style="display:flex;gap:12px">
+        <button id="camp-preview-fight" style="
+          flex:1;padding:12px;font-size:15px;font-weight:bold;
+          border:2px solid #cc4444;border-radius:6px;
+          background:rgba(204,68,68,0.2);color:#ff6666;
+          cursor:pointer;font-family:inherit;
+        ">Fight!</button>
+        <button id="camp-preview-retreat" style="
+          flex:1;padding:12px;font-size:15px;font-weight:bold;
+          border:2px solid #888;border-radius:6px;
+          background:rgba(80,80,80,0.2);color:#aaa;
+          cursor:pointer;font-family:inherit;
+        ">Retreat</button>
+      </div>
+      <div style="color:#776655;font-size:10px;margin-top:8px;text-align:center">
+        Retreating incurs a speed penalty for 5 seconds.
+      </div>
+    `;
+
+    this._container!.appendChild(this._battlePreviewPanel);
+
+    document.getElementById("camp-preview-fight")?.addEventListener("click", () => {
+      const enemyRef = this._state?.battlePreviewEnemy;
+      this._removeBattlePreview();
+      if (this._state) this._state.battlePreviewEnemy = null;
+      if (enemyRef) this._startPartyBattle(enemyRef);
+    });
+
+    document.getElementById("camp-preview-retreat")?.addEventListener("click", () => {
+      this._removeBattlePreview();
+      if (this._state) {
+        this._state.battlePreviewEnemy = null;
+        this._state.paused = false;
+        // Apply retreat speed penalty (5 seconds * 60 fps = 300 ticks)
+        this._state.playerParty.retreatPenaltyUntilTick = this._state.tick + 300;
+        // Move player away from enemy
+        const enemy = this._state.parties.find(p =>
+          p.factionId !== this._state!.playerFaction &&
+          Math.hypot(p.x - this._state!.playerParty.x, p.y - this._state!.playerParty.y) < 60,
+        );
+        if (enemy) {
+          const angle = Math.atan2(this._state.playerParty.y - enemy.y, this._state.playerParty.x - enemy.x);
+          this._state.playerParty.targetX = Math.max(20, Math.min(MAP_W - 20, this._state.playerParty.x + Math.cos(angle) * 120));
+          this._state.playerParty.targetY = Math.max(20, Math.min(MAP_H - 20, this._state.playerParty.y + Math.sin(angle) * 120));
+        }
+        this._addLog("You retreated from the enemy. Speed penalty applied.");
+      }
+    });
+  }
+
+  private _removeBattlePreview(): void {
+    if (this._battlePreviewPanel?.parentNode) {
+      this._battlePreviewPanel.parentNode.removeChild(this._battlePreviewPanel);
+      this._battlePreviewPanel = null;
+    }
+    this._setCanvasPointerEvents(true);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Caravans
+  // ---------------------------------------------------------------------------
+
+  private _updateCaravans(): void {
+    if (!this._state) return;
+    for (const caravan of this._state.caravans) {
+      const target = this._state.cities.find(c => c.id === caravan.targetCityId);
+      if (!target) continue;
+      const dx = target.x - caravan.x;
+      const dy = target.y - caravan.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist < 15) {
+        // Arrived, pick new destination
+        caravan.originCityId = caravan.targetCityId;
+        let newTarget: CampaignCity;
+        do {
+          newTarget = this._state.cities[Math.floor(Math.random() * this._state.cities.length)];
+        } while (newTarget.id === caravan.targetCityId && this._state.cities.length > 1);
+        caravan.targetCityId = newTarget.id;
+      } else {
+        caravan.x += (dx / dist) * caravan.speed;
+        caravan.y += (dy / dist) * caravan.speed;
+      }
+    }
+  }
+
+  private _showCaravanPanel(caravan: CampaignCaravan): void {
+    if (!this._state) return;
+    this._removeCaravanPanel();
+    this._state.paused = true;
+    this._setCanvasPointerEvents(false);
+
+    this._caravanPanel = document.createElement("div");
+    this._caravanPanel.style.cssText = `
+      position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+      width:380px;max-height:60vh;overflow-y:auto;
+      background:rgba(15,12,8,0.97);border:2px solid #aa8844;border-radius:10px;
+      padding:20px;z-index:10;
+    `;
+
+    const goodsHTML = caravan.goods.map(g =>
+      `<div style="display:flex;justify-content:space-between;padding:4px 8px;margin-bottom:3px;background:rgba(30,25,15,0.6);border-radius:4px;border:1px solid #332211">
+        <span style="color:#ccc">${g.name}</span>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span style="color:#aa8833;font-size:11px">${g.cost}g</span>
+          <button class="camp-buy-good" data-name="${g.name}" data-cost="${g.cost}" style="
+            padding:2px 8px;font-size:10px;border:1px solid ${this._state!.gold >= g.cost ? "#daa520" : "#444"};
+            border-radius:3px;background:${this._state!.gold >= g.cost ? "rgba(218,165,32,0.2)" : "rgba(20,15,10,0.6)"};
+            color:${this._state!.gold >= g.cost ? "#daa520" : "#555"};cursor:${this._state!.gold >= g.cost ? "pointer" : "not-allowed"};
+            font-family:inherit;
+          " ${this._state!.gold >= g.cost ? "" : "disabled"}>Buy</button>
+        </div>
+      </div>`,
+    ).join("");
+
+    this._caravanPanel.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <h3 style="color:#aa8844;margin:0">Merchant Caravan</h3>
+        <button id="camp-close-caravan" style="
+          padding:4px 12px;font-size:14px;border:1px solid #555;border-radius:4px;
+          background:rgba(30,25,15,0.6);color:#888;cursor:pointer;font-family:inherit;
+        ">X</button>
+      </div>
+      <div style="color:#998877;font-size:12px;margin-bottom:8px">A traveling merchant with goods to trade.</div>
+      <div style="margin-bottom:12px">
+        <div style="color:#daa520;font-size:12px;margin-bottom:6px">TRADE GOODS</div>
+        ${goodsHTML}
+      </div>
+      <button id="camp-rob-caravan" style="
+        margin-top:8px;padding:8px 16px;font-size:12px;font-weight:bold;
+        border:2px solid #cc4444;border-radius:6px;
+        background:rgba(204,68,68,0.15);color:#cc6666;
+        cursor:pointer;font-family:inherit;width:100%;
+      ">Rob Caravan (lose reputation)</button>
+    `;
+
+    this._container!.appendChild(this._caravanPanel);
+
+    document.getElementById("camp-close-caravan")?.addEventListener("click", () => {
+      this._removeCaravanPanel();
+      if (this._state) this._state.paused = false;
+    });
+
+    // Buy buttons
+    this._caravanPanel.querySelectorAll(".camp-buy-good").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const cost = parseInt((btn as HTMLElement).dataset.cost ?? "0");
+        const name = (btn as HTMLElement).dataset.name ?? "goods";
+        if (this._state && this._state.gold >= cost) {
+          this._state.gold -= cost;
+          this._addLog(`Bought ${name} from caravan for ${cost}g.`);
+          // Goods give a small bonus (gold value, treated as trade profit next day)
+          this._state.gold += Math.floor(cost * 0.3);
+          this._addLog(`Sold ${name} for a profit of ${Math.floor(cost * 0.3)}g.`);
+          this._showCaravanPanel(caravan); // refresh
+        }
+      });
+    });
+
+    document.getElementById("camp-rob-caravan")?.addEventListener("click", () => {
+      if (!this._state) return;
+      const totalGoods = caravan.goods.reduce((s, g) => s + g.cost, 0);
+      this._state.gold += totalGoods;
+      this._addLog(`Robbed caravan for ${totalGoods}g! Your reputation suffers.`);
+      // Lose reputation with all factions
+      for (const [fId] of this._state.factionRelations) {
+        if (fId !== this._state.playerFaction) {
+          this._modRelation(this._state.playerFaction, fId, -15);
+        }
+      }
+      // Remove caravan
+      this._state.caravans = this._state.caravans.filter(c => c.id !== caravan.id);
+      this._removeCaravanPanel();
+      this._state.paused = false;
+    });
+  }
+
+  private _removeCaravanPanel(): void {
+    if (this._caravanPanel?.parentNode) {
+      this._caravanPanel.parentNode.removeChild(this._caravanPanel);
+      this._caravanPanel = null;
+    }
+    this._setCanvasPointerEvents(true);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Wandering NPCs
+  // ---------------------------------------------------------------------------
+
+  private _updateWanderingNPCs(): void {
+    if (!this._state) return;
+    // Move NPCs toward their targets
+    for (const npc of this._state.wanderingNPCs) {
+      if (npc.interacted) continue;
+      const dx = npc.targetX - npc.x;
+      const dy = npc.targetY - npc.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist < 5) {
+        npc.targetX = 80 + Math.random() * (MAP_W - 160);
+        npc.targetY = 80 + Math.random() * (MAP_H - 160);
+      } else {
+        npc.x += (dx / dist) * npc.speed;
+        npc.y += (dy / dist) * npc.speed;
+      }
+    }
+    // Respawn NPCs after 20 days
+    const activeNPCs = this._state.wanderingNPCs.filter(n => !n.interacted);
+    if (activeNPCs.length === 0 && this._state.day > 5) {
+      this._state.wanderingNPCs = _generateWanderingNPCs(this._state.day);
+    }
+  }
+
+  private _showNPCPanel(npc: CampaignWanderingNPC): void {
+    if (!this._state) return;
+    this._removeNPCPanel();
+    this._state.paused = true;
+    this._setCanvasPointerEvents(false);
+
+    const typeColor = npc.type === "hermit" ? "#66aacc" : npc.type === "messenger" ? "#ccaa44" : "#cc8866";
+    let interactText = "";
+    let interactBtnLabel = "";
+
+    if (npc.type === "hermit") {
+      interactText = "The hermit offers to reveal enemy positions on the map for a brief time.";
+      interactBtnLabel = "Accept Intel";
+    } else if (npc.type === "messenger") {
+      interactText = "A messenger carries a quest from a distant lord. Accepting may bring gold.";
+      interactBtnLabel = "Accept Quest";
+    } else {
+      interactText = "A war refugee begs to join your warband. They can fight if given a chance.";
+      interactBtnLabel = "Recruit Refugee";
+    }
+
+    this._npcPanel = document.createElement("div");
+    this._npcPanel.style.cssText = `
+      position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+      width:380px;max-height:60vh;overflow-y:auto;
+      background:rgba(15,12,8,0.97);border:2px solid ${typeColor};border-radius:10px;
+      padding:20px;z-index:10;
+    `;
+
+    this._npcPanel.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <h3 style="color:${typeColor};margin:0">${npc.name}</h3>
+        <button id="camp-close-npc" style="
+          padding:4px 12px;font-size:14px;border:1px solid #555;border-radius:4px;
+          background:rgba(30,25,15,0.6);color:#888;cursor:pointer;font-family:inherit;
+        ">X</button>
+      </div>
+      <div style="color:#998877;font-size:12px;margin-bottom:6px;text-transform:capitalize">${npc.type}</div>
+      <div style="color:#ccc;font-size:12px;margin-bottom:16px">${interactText}</div>
+      <button id="camp-npc-interact" style="
+        padding:10px 20px;font-size:13px;font-weight:bold;
+        border:2px solid ${typeColor};border-radius:6px;
+        background:rgba(${npc.type === "hermit" ? "100,170,200" : npc.type === "messenger" ? "200,170,70" : "200,130,100"},0.15);
+        color:${typeColor};cursor:pointer;font-family:inherit;width:100%;
+      ">${interactBtnLabel}</button>
+    `;
+
+    this._container!.appendChild(this._npcPanel);
+
+    document.getElementById("camp-close-npc")?.addEventListener("click", () => {
+      this._removeNPCPanel();
+      if (this._state) this._state.paused = false;
+    });
+
+    document.getElementById("camp-npc-interact")?.addEventListener("click", () => {
+      if (!this._state) return;
+      npc.interacted = true;
+
+      if (npc.type === "hermit") {
+        // Reveal all enemy party positions briefly (reveal fog around them)
+        for (const party of this._state.parties) {
+          if (party.factionId !== this._state.playerFaction) {
+            _revealFog(this._state.fogRevealed, party.x, party.y, 60);
+          }
+        }
+        this._addLog("The hermit revealed enemy positions on your map!");
+      } else if (npc.type === "messenger") {
+        // Give gold quest reward
+        const reward = 200 + Math.floor(Math.random() * 300);
+        this._state.gold += reward;
+        this._addLog(`The messenger delivered a reward of ${reward}g!`);
+      } else {
+        // Recruit a free unit
+        const freeUnit = CAMPAIGN_UNITS[Math.floor(Math.random() * 5)]; // tier 1-2
+        const existing = this._state.playerParty.army.find(a => a.unitId === freeUnit.id && a.xp === 0);
+        if (existing) {
+          existing.count++;
+        } else {
+          this._state.playerParty.army.push({ unitId: freeUnit.id, count: 1, xp: 0 });
+        }
+        this._state.playerParty.armyTotal++;
+        this._addLog(`Recruited a ${freeUnit.name} from the refugee!`);
+      }
+
+      this._removeNPCPanel();
+      this._state.paused = false;
+    });
+  }
+
+  private _removeNPCPanel(): void {
+    if (this._npcPanel?.parentNode) {
+      this._npcPanel.parentNode.removeChild(this._npcPanel);
+      this._npcPanel = null;
+    }
+    this._setCanvasPointerEvents(true);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Campaign events
+  // ---------------------------------------------------------------------------
+
+  private _checkCampaignEvents(): void {
+    if (!this._state) return;
+    const s = this._state;
+    if (s.day < EVENT_MIN_DAY) return;
+    if (s.tick % DAY_TICKS !== 0) return; // only check at day boundaries
+    if (s.day - s.lastEventDay < EVENT_CHECK_INTERVAL) return;
+    if (Math.random() > 0.6) return; // 60% chance each eligible day
+
+    s.lastEventDay = s.day;
+    const eventTypes: CampaignEventType[] = ["bandit_raid", "merchant_festival", "plague", "deserters", "alliance_offer"];
+    const type = eventTypes[Math.floor(Math.random() * eventTypes.length)];
+    const evtId = `evt_${s.day}_${Math.random().toString(36).slice(2, 6)}`;
+
+    let evt: CampaignEvent | null = null;
+
+    if (type === "bandit_raid") {
+      // Pick a random village's linked city
+      const villages = s.villages.filter(v => v.factionId !== s.playerFaction || Math.random() < 0.3);
+      if (villages.length > 0) {
+        const village = villages[Math.floor(Math.random() * villages.length)];
+        evt = {
+          id: evtId, type, name: "Bandit Raid",
+          description: `Bandits are raiding ${village.name}! Intervene to gain reputation.`,
+          mapX: village.x, mapY: village.y,
+          startDay: s.day, duration: 3, active: true,
+          data: { villageId: village.id },
+        };
+        this._addLog(`EVENT: Bandits are raiding ${village.name}!`);
+      }
+    } else if (type === "merchant_festival") {
+      const playerCities = s.cities.filter(c => c.factionId === s.playerFaction);
+      const city = playerCities.length > 0 ? playerCities[Math.floor(Math.random() * playerCities.length)]
+        : s.cities[Math.floor(Math.random() * s.cities.length)];
+      evt = {
+        id: evtId, type, name: "Merchant Festival",
+        description: `${city.name} is holding a merchant festival! Recruitment costs halved for 3 days.`,
+        targetCityId: city.id,
+        startDay: s.day, duration: 3, active: true,
+      };
+      this._addLog(`EVENT: Merchant Festival at ${city.name}! Recruitment discounted for 3 days.`);
+    } else if (type === "plague") {
+      const city = s.cities[Math.floor(Math.random() * s.cities.length)];
+      evt = {
+        id: evtId, type, name: "Plague",
+        description: `A plague has struck ${city.name}! Garrison losing troops over 5 days.`,
+        targetCityId: city.id,
+        startDay: s.day, duration: 5, active: true,
+      };
+      // Immediately lose some garrison
+      const loss = Math.ceil(city.garrisonTotal * 0.2);
+      let remaining = loss;
+      for (const slot of city.garrison) {
+        const lose = Math.min(slot.count, Math.ceil(remaining * slot.count / Math.max(1, city.garrisonTotal)));
+        slot.count -= lose;
+        remaining -= lose;
+      }
+      city.garrison = city.garrison.filter(g => g.count > 0);
+      city.garrisonTotal = city.garrison.reduce((sum, g) => sum + g.count, 0);
+      this._addLog(`EVENT: Plague strikes ${city.name}! Garrison lost ${loss} troops.`);
+    } else if (type === "deserters") {
+      const x = 80 + Math.random() * (MAP_W - 160);
+      const y = 80 + Math.random() * (MAP_H - 160);
+      evt = {
+        id: evtId, type, name: "Deserters Spotted",
+        description: "A group of deserters has been spotted. They can be recruited for free!",
+        mapX: x, mapY: y,
+        startDay: s.day, duration: 5, active: true,
+      };
+      // Add a special location-like marker (we'll handle via event interaction)
+      this._addLog("EVENT: Deserters spotted on the map! Move nearby to recruit them.");
+    } else if (type === "alliance_offer") {
+      const hostileFactions = this._getNonPlayerFactions().filter(fId =>
+        this._getRelationStatus(s.playerFaction, fId) === "hostile" ||
+        this._getRelationStatus(s.playerFaction, fId) === "neutral",
+      );
+      if (hostileFactions.length > 0) {
+        const fId = hostileFactions[Math.floor(Math.random() * hostileFactions.length)];
+        const fDef = CAMPAIGN_FACTIONS.find(f => f.id === fId);
+        evt = {
+          id: evtId, type, name: "Alliance Offer",
+          description: `${fDef?.name ?? fId} proposes an alliance with your faction!`,
+          startDay: s.day, duration: 5, active: true,
+          data: { factionId: fId },
+        };
+        this._addLog(`EVENT: ${fDef?.name ?? fId} proposes an alliance!`);
+        // Auto-improve relations slightly
+        this._modRelation(s.playerFaction, fId, 25);
+      }
+    }
+
+    if (evt) {
+      s.events.push(evt);
+      this._showEventPopup(evt);
+    }
+  }
+
+  private _showEventPopup(evt: CampaignEvent): void {
+    this._removeEventPopup();
+
+    this._eventPopup = document.createElement("div");
+    const popupColor = evt.type === "bandit_raid" ? "#cc4444" : evt.type === "merchant_festival" ? "#44cc44" : evt.type === "plague" ? "#aa44aa" : evt.type === "deserters" ? "#6688cc" : "#ccaa44";
+    this._eventPopup.style.cssText = `
+      position:absolute;top:60px;left:50%;transform:translateX(-50%);
+      padding:14px 24px;border:2px solid ${popupColor};border-radius:8px;
+      background:rgba(15,12,8,0.95);z-index:15;
+      font-family:'Segoe UI',sans-serif;color:#e0d5c0;
+      max-width:400px;text-align:center;
+      animation: fadeInDown 0.3s ease;
+    `;
+    this._eventPopup.innerHTML = `
+      <div style="color:${popupColor};font-weight:bold;font-size:14px;margin-bottom:4px">${evt.name}</div>
+      <div style="font-size:12px;color:#aa9977">${evt.description}</div>
+    `;
+    this._container?.appendChild(this._eventPopup);
+
+    // Auto-remove after 4 seconds
+    this._eventPopupTimeout = setTimeout(() => {
+      this._removeEventPopup();
+    }, 4000);
+  }
+
+  private _removeEventPopup(): void {
+    if (this._eventPopupTimeout) {
+      clearTimeout(this._eventPopupTimeout);
+      this._eventPopupTimeout = null;
+    }
+    if (this._eventPopup?.parentNode) {
+      this._eventPopup.parentNode.removeChild(this._eventPopup);
+      this._eventPopup = null;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // Helpers
   // ---------------------------------------------------------------------------
 
@@ -4318,6 +5316,10 @@ export class WarbandCampaign {
     this._removePartyPanel();
     this._removeVillagePanel();
     this._removeLocationPanel();
+    this._removeBattlePreview();
+    this._removeCaravanPanel();
+    this._removeNPCPanel();
+    this._removeEventPopup();
 
     if (this._container?.parentNode) {
       this._container.parentNode.removeChild(this._container);

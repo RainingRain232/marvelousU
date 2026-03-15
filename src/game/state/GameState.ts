@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import {
-  TileType,
+  TileType, RoomType,
   KNIGHT_DEFS,
   GameBalance, getFloorParams,
 } from "../config/GameConfig";
@@ -47,6 +47,8 @@ export interface PlayerState {
   isMoving: boolean;
   attackCooldown: number;      // ms remaining
   abilityCooldownMs: number;   // ms remaining for animation
+  confusionTimer: number;      // seconds remaining of reversed controls
+  stunTimer: number;           // seconds remaining of stun (from shield bash etc)
 }
 
 export interface InventoryItem {
@@ -82,6 +84,40 @@ export interface EnemyInstance {
   facing: Direction;
   pathTarget: GridPos | null;
   bossPhase: number;
+  // AI timers
+  aiAbilityCooldown: number;   // cooldown for special AI abilities (seconds)
+  aiSummonCooldown: number;    // cooldown for summoner rally/spawn (seconds)
+  aiRallyCooldown: number;     // cooldown for rally buff (seconds)
+  aiHealCooldown: number;      // cooldown for mage heal (seconds)
+  // Boss phase tracking
+  bossPhaseTransitioned: boolean[];  // track which phase transitions already triggered
+  bossArmorReduction: number;  // damage reduction multiplier (e.g., 0.5 for 50% reduction)
+  bossEnraged: boolean;        // enrage flag
+  bossShieldThrown: boolean;   // Black Knight shield throw tracking
+  bossChallengeTimer: number;  // Green Knight challenge mode timer
+  // Summoner damage buff
+  rallyDamageBuff: number;     // multiplicative bonus from rally (e.g., 0.2 = +20%)
+  rallyBuffTimer: number;      // seconds remaining
+}
+
+export interface Projectile {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  damage: number;
+  color: number;
+  ownerId: number;          // enemy id that fired it
+  lifetime: number;         // seconds remaining
+  maxRange: number;         // max distance in pixels
+  distTraveled: number;     // distance traveled so far
+}
+
+export interface PoisonTrail {
+  col: number;
+  row: number;
+  timer: number;            // seconds remaining
+  damage: number;           // damage per second
 }
 
 export interface TreasureChest {
@@ -91,18 +127,38 @@ export interface TreasureChest {
   item: ItemDef;
 }
 
+export interface RoomInfo {
+  x: number; y: number; w: number; h: number;
+  type: RoomType;
+}
+
+export interface ReanimationEntry {
+  def: EnemyDef;
+  x: number;
+  y: number;
+  timer: number;
+}
+
 export interface FloorState {
   floorNum: number;
   params: FloorParams;
   tiles: TileType[][];       // [row][col]
   width: number;
   height: number;
-  rooms: { x: number; y: number; w: number; h: number }[];
+  rooms: RoomInfo[];
   enemies: EnemyInstance[];
   treasures: TreasureChest[];
   stairsPos: GridPos;
   entrancePos: GridPos;
   explored: boolean[][];      // fog of war
+  // Environmental mechanics
+  reanimationQueue: ReanimationEntry[];
+  darknessTimer: number;       // for Abyssal Halls
+  burningTrails: { col: number; row: number; timer: number }[];
+  // Enemy projectile system
+  projectiles: Projectile[];
+  // Poison trails from Questing Beast
+  poisonTrails: PoisonTrail[];
 }
 
 export enum GamePhase {
@@ -116,6 +172,7 @@ export enum GamePhase {
   VICTORY = "victory",
   PAUSED = "paused",
   INVENTORY = "inventory",
+  SHOP = "shop",
 }
 
 export interface GrailGameState {
@@ -135,6 +192,13 @@ export interface GrailGameState {
   startTime: number;
   // Meta-progression (persisted to localStorage)
   unlockedKnights: string[];
+  // Shop state
+  shopScrollIndex: number;
+  shopSellMode: boolean;
+  // Ability VFX
+  activeAbilityVfx: { knightId: string; timer: number; x: number; y: number } | null;
+  // Ice slide
+  iceSlideDir: { dx: number; dy: number } | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -159,6 +223,10 @@ export function createGrailGameState(): GrailGameState {
     totalGold: 0,
     startTime: Date.now(),
     unlockedKnights: loadUnlockedKnights(),
+    shopScrollIndex: 0,
+    shopSellMode: false,
+    activeAbilityVfx: null,
+    iceSlideDir: null,
   };
 }
 
@@ -186,6 +254,8 @@ export function createPlayerState(knight: KnightDef): PlayerState {
     isMoving: false,
     attackCooldown: 0,
     abilityCooldownMs: 0,
+    confusionTimer: 0,
+    stunTimer: 0,
   };
 }
 
@@ -202,6 +272,11 @@ function createEmptyFloor(): FloorState {
     stairsPos: { col: 0, row: 0 },
     entrancePos: { col: 0, row: 0 },
     explored: [],
+    reanimationQueue: [],
+    darknessTimer: 0,
+    burningTrails: [],
+    projectiles: [],
+    poisonTrails: [],
   };
 }
 

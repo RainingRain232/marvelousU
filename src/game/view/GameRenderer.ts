@@ -6,7 +6,7 @@
 
 import { Container, Graphics } from "pixi.js";
 import {
-  TileType, GameBalance, FLOOR_THEMES, EnemyCategory,
+  TileType, GameBalance, FLOOR_THEMES, EnemyCategory, RoomType,
 } from "../config/GameConfig";
 import { Direction } from "../state/GameState";
 import type {
@@ -52,6 +52,9 @@ export class GameRenderer {
   pendingAbilityFx: { x: number; y: number; t: number; radius: number; color: number }[] = [];
   pendingStatusFx: { x: number; y: number; id: string; t: number }[] = [];
   ambientParticles: { x: number; y: number; vx: number; vy: number; life: number; maxLife: number; size: number; color: number; alpha: number }[] = [];
+
+  // Boss phase flash
+  pendingBossFlash: { color: number; t: number } | null = null;
 
   shakeIntensity = 0;
   shakeDuration = 0;
@@ -104,10 +107,15 @@ export class GameRenderer {
 
     this._drawTiles(floor);
     this._drawDecorations(floor);
+    this._drawPoisonTrails(state);
     this._drawLighting(floor, player, sw, sh);
     this._drawEntities(state);
+    this._drawProjectiles(state);
     this._drawFog(floor, sw, sh);
     this._drawFX(sw, sh);
+    this._drawBossFlash(sw, sh);
+    this._drawConfusionOverlay(state, sw, sh);
+    this._drawAbilityVFX(state);
     this._drawVignette(sw, sh);
   }
 
@@ -153,7 +161,63 @@ export class GameRenderer {
           case TileType.ENTRANCE:
             this._drawEntranceTile(g, px, py, r, c);
             break;
+          case TileType.SHOP:
+            this._drawShopTile(g, px, py, theme.floorColor, r, c);
+            break;
+          case TileType.VINE:
+            this._drawVineTile(g, px, py, theme.floorColor, r, c);
+            break;
+          case TileType.ICE:
+            this._drawIceTile(g, px, py, r, c);
+            break;
+          case TileType.LAVA:
+            this._drawLavaTile(g, px, py, r, c);
+            break;
+          case TileType.ILLUSION:
+            this._drawIllusionTile(g, px, py, theme.floorColor, r, c);
+            break;
+          case TileType.SHRINE:
+            this._drawShrineTile(g, px, py, theme.floorColor, r, c);
+            break;
         }
+      }
+    }
+
+    // Draw burning trails
+    for (const trail of floor.burningTrails) {
+      if (trail.row >= 0 && trail.row < floor.height && trail.col >= 0 && trail.col < floor.width) {
+        if (floor.explored[trail.row][trail.col]) {
+          const bpx = trail.col * TS;
+          const bpy = trail.row * TS;
+          const flicker = 0.3 + 0.2 * Math.sin(_globalTime * 6 + trail.col + trail.row);
+          g.rect(bpx, bpy, TS, TS).fill({ color: 0xff4400, alpha: flicker * 0.3 });
+          g.rect(bpx + 4, bpy + 4, TS - 8, TS - 8).fill({ color: 0xff8800, alpha: flicker * 0.2 });
+        }
+      }
+    }
+
+    // Draw room type visual cues (borders/glows for special rooms)
+    for (const room of floor.rooms) {
+      if (room.type === RoomType.NORMAL) continue;
+      const rc = Math.floor(room.x + room.w / 2);
+      const rr = Math.floor(room.y + room.h / 2);
+      if (rr < 0 || rr >= floor.height || rc < 0 || rc >= floor.width) continue;
+      if (!floor.explored[rr][rc]) continue;
+
+      const rpx = room.x * TS;
+      const rpy = room.y * TS;
+      const rpw = room.w * TS;
+      const rph = room.h * TS;
+      const pulse = 0.3 + 0.2 * Math.sin(_globalTime * 2);
+
+      if (room.type === RoomType.SHRINE) {
+        g.rect(rpx, rpy, rpw, rph).stroke({ color: 0x88ffaa, width: 1, alpha: pulse * 0.4 });
+      } else if (room.type === RoomType.CHAMPION_ARENA) {
+        g.rect(rpx, rpy, rpw, rph).stroke({ color: 0xff4444, width: 1.5, alpha: pulse * 0.5 });
+      } else if (room.type === RoomType.TREASURE_VAULT) {
+        g.rect(rpx, rpy, rpw, rph).stroke({ color: 0xffd700, width: 1, alpha: pulse * 0.4 });
+      } else if (room.type === RoomType.SECRET) {
+        g.rect(rpx, rpy, rpw, rph).stroke({ color: 0x8844ff, width: 1, alpha: pulse * 0.3 });
       }
     }
   }
@@ -393,6 +457,114 @@ export class GameRenderer {
     g.circle(px + TS / 2, py + TS / 2, 8).fill({ color: 0x44ff66, alpha: 0.08 + pulse * 0.06 });
   }
 
+  // --- Shop: merchant stall tile ---
+  private _drawShopTile(g: Graphics, px: number, py: number, floorColor: number, r: number, c: number): void {
+    this._drawFloorTile(g, px, py, floorColor, r, c);
+    // Stall base
+    g.rect(px + 2, py + 6, TS - 4, TS - 8).fill({ color: 0x7a5230 });
+    g.rect(px + 2, py + 6, TS - 4, 3).fill({ color: 0x8a6240 }); // counter top
+    // Awning
+    g.rect(px, py, TS, 6).fill({ color: 0xcc4444 });
+    g.rect(px, py + 5, TS, 1).fill({ color: 0xaa3333 });
+    // Merchant head
+    g.circle(px + TS / 2, py + 12, 4).fill({ color: 0xddbb88 });
+    // Merchant hat
+    g.rect(px + TS / 2 - 5, py + 7, 10, 3).fill({ color: 0x664422 });
+    g.rect(px + TS / 2 - 3, py + 4, 6, 4).fill({ color: 0x664422 });
+    // Gold coins on counter
+    const pulse = 0.6 + 0.3 * Math.sin(_globalTime * 3);
+    g.circle(px + 8, py + 20, 2).fill({ color: 0xffd700, alpha: pulse });
+    g.circle(px + 14, py + 19, 2).fill({ color: 0xffd700, alpha: pulse });
+    g.circle(px + 20, py + 20, 2).fill({ color: 0xffd700, alpha: pulse });
+    // Glow
+    g.circle(px + TS / 2, py + TS / 2, 14).fill({ color: 0xffd700, alpha: 0.06 + pulse * 0.04 });
+  }
+
+  // --- Vine tile (Enchanted Forest) ---
+  private _drawVineTile(g: Graphics, px: number, py: number, floorColor: number, r: number, c: number): void {
+    this._drawFloorTile(g, px, py, floorColor, r, c);
+    const h = tileHash(r, c, 77);
+    // Green vine overlay
+    g.rect(px, py, TS, TS).fill({ color: 0x225511, alpha: 0.25 });
+    // Vine strands
+    for (let i = 0; i < 3; i++) {
+      const vx = px + 4 + (h * 100 + i * 10) % 20;
+      const vy = py + 2;
+      const wave = Math.sin(_globalTime * 2 + i + c) * 2;
+      g.moveTo(vx, vy).lineTo(vx + wave, vy + TS / 2).lineTo(vx - wave, vy + TS)
+        .stroke({ color: 0x337722, width: 1.5, alpha: 0.6 });
+    }
+    // Thorns
+    g.circle(px + 10, py + 12, 1.5).fill({ color: 0x553311, alpha: 0.7 });
+    g.circle(px + 22, py + 20, 1.5).fill({ color: 0x553311, alpha: 0.7 });
+    // Danger pulse
+    const pulse = Math.sin(_globalTime * 4) * 0.05 + 0.05;
+    g.rect(px, py, TS, TS).fill({ color: 0x44ff00, alpha: pulse });
+  }
+
+  // --- Ice tile (Frozen Depths) ---
+  private _drawIceTile(g: Graphics, px: number, py: number, _r: number, _c: number): void {
+    // Ice base
+    g.rect(px, py, TS, TS).fill({ color: 0x88bbdd });
+    // Shimmer
+    const shimmer = 0.6 + 0.2 * Math.sin(_globalTime * 3 + px * 0.1);
+    g.rect(px + 2, py + 2, TS - 4, TS - 4).fill({ color: 0xaaddff, alpha: shimmer * 0.4 });
+    // Frost patterns
+    g.moveTo(px + 4, py + TS / 2).lineTo(px + TS / 2, py + 4).stroke({ color: 0xcceeFF, width: 0.5, alpha: 0.5 });
+    g.moveTo(px + TS - 4, py + TS / 2).lineTo(px + TS / 2, py + TS - 4).stroke({ color: 0xcceeFF, width: 0.5, alpha: 0.5 });
+    // Highlight streak
+    g.rect(px + 6, py + 4, 8, 2).fill({ color: 0xffffff, alpha: 0.3 });
+  }
+
+  // --- Lava tile (Volcanic Tunnels) ---
+  private _drawLavaTile(g: Graphics, px: number, py: number, _r: number, _c: number): void {
+    // Lava base
+    g.rect(px, py, TS, TS).fill({ color: 0xaa2200 });
+    // Bubbling animation
+    const bubble = Math.sin(_globalTime * 4 + px * 0.2) * 0.3 + 0.7;
+    g.rect(px + 2, py + 2, TS - 4, TS - 4).fill({ color: 0xff4400, alpha: bubble * 0.6 });
+    g.rect(px + 6, py + 6, TS - 12, TS - 12).fill({ color: 0xff8800, alpha: bubble * 0.4 });
+    // Bright spots
+    const b1 = Math.sin(_globalTime * 6 + py * 0.3) * 0.3 + 0.5;
+    g.circle(px + 10, py + 10, 3).fill({ color: 0xffcc00, alpha: b1 * 0.5 });
+    g.circle(px + 22, py + 18, 2.5).fill({ color: 0xffaa00, alpha: b1 * 0.4 });
+    // Heat haze glow
+    g.rect(px, py, TS, TS).fill({ color: 0xff6600, alpha: 0.1 });
+  }
+
+  // --- Illusion tile (Faerie Hollows) ---
+  private _drawIllusionTile(g: Graphics, px: number, py: number, floorColor: number, r: number, c: number): void {
+    this._drawFloorTile(g, px, py, floorColor, r, c);
+    // Shimmer overlay that shifts
+    const shift = Math.sin(_globalTime * 2 + r * 3 + c * 7) * 0.15 + 0.15;
+    g.rect(px, py, TS, TS).fill({ color: 0x8844ff, alpha: shift });
+    // Sparkle dots
+    for (let i = 0; i < 3; i++) {
+      const sx = px + 4 + ((Math.sin(_globalTime * 3 + i * 2 + c) + 1) * 0.5) * (TS - 8);
+      const sy = py + 4 + ((Math.cos(_globalTime * 2 + i * 3 + r) + 1) * 0.5) * (TS - 8);
+      g.circle(sx, sy, 1).fill({ color: 0xffffff, alpha: 0.3 + Math.sin(_globalTime * 5 + i) * 0.2 });
+    }
+  }
+
+  // --- Shrine tile ---
+  private _drawShrineTile(g: Graphics, px: number, py: number, floorColor: number, r: number, c: number): void {
+    this._drawFloorTile(g, px, py, floorColor, r, c);
+    // Altar base
+    g.rect(px + 6, py + 14, TS - 12, TS - 16).fill({ color: 0x888888 });
+    g.rect(px + 4, py + 12, TS - 8, 3).fill({ color: 0x999999 }); // altar top
+    // Glowing orb
+    const pulse = 0.4 + 0.3 * Math.sin(_globalTime * 2.5);
+    g.circle(px + TS / 2, py + 10, 5).fill({ color: 0x88ffaa, alpha: pulse });
+    g.circle(px + TS / 2, py + 10, 8).fill({ color: 0x88ffaa, alpha: pulse * 0.2 });
+    // Light rays
+    for (let i = 0; i < 4; i++) {
+      const angle = (i / 4) * Math.PI * 2 + _globalTime * 0.5;
+      const rx = px + TS / 2 + Math.cos(angle) * 10;
+      const ry = py + 10 + Math.sin(angle) * 10;
+      g.circle(rx, ry, 1).fill({ color: 0xaaffcc, alpha: pulse * 0.5 });
+    }
+  }
+
   // -------------------------------------------------------------------------
   // DECORATIONS — torches, pillars, moss, puddles, blood, cobwebs, rubble
   // -------------------------------------------------------------------------
@@ -587,8 +759,10 @@ export class GameRenderer {
         const dy = py - player.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
 
-        // Player light radius (~6 tiles)
-        const lightRadius = TS * 6;
+        // Player light radius (~6 tiles, shrinks in Abyssal Halls)
+        const baseRadius = 6;
+        const darknessReduction = floor.darknessTimer ? Math.min(3.5, floor.darknessTimer * 0.03) : 0;
+        const lightRadius = TS * Math.max(2, baseRadius - darknessReduction);
         let lightAmount = Math.max(0, 1 - dist / lightRadius);
         lightAmount = lightAmount * lightAmount; // Quadratic falloff
 
@@ -862,11 +1036,31 @@ export class GameRenderer {
     // Shadow
     g.ellipse(ex, ey + size + 2, size * 0.8, size * 0.25).fill({ color: 0x000000, alpha: 0.3 });
 
-    // Boss aura
+    // Boss aura (changes with phase)
     if (isBoss) {
       const auraPulse = 0.3 + 0.2 * Math.sin(_globalTime * 2);
-      g.circle(ex, ey, size + 8).fill({ color: color, alpha: 0.05 + auraPulse * 0.04 });
-      g.circle(ex, ey, size + 4).fill({ color: color, alpha: 0.08 + auraPulse * 0.06 });
+      let auraColor = color;
+      let auraIntensity = 1;
+      if (enemy.bossEnraged) {
+        auraColor = 0xff2200;
+        auraIntensity = 1.5;
+      } else if (enemy.bossPhase >= 2) {
+        auraColor = 0xff4400;
+        auraIntensity = 1.3;
+      } else if (enemy.bossPhase >= 1) {
+        auraColor = lighten(color, 0.2);
+        auraIntensity = 1.15;
+      }
+      g.circle(ex, ey, size + 8).fill({ color: auraColor, alpha: (0.05 + auraPulse * 0.04) * auraIntensity });
+      g.circle(ex, ey, size + 4).fill({ color: auraColor, alpha: (0.08 + auraPulse * 0.06) * auraIntensity });
+      // Rally buff indicator
+      if (enemy.rallyDamageBuff > 0) {
+        g.circle(ex, ey, size + 6).stroke({ color: 0xff8800, width: 1, alpha: 0.4 + 0.2 * Math.sin(_globalTime * 4) });
+      }
+    }
+    // Rally buff for non-bosses
+    if (!isBoss && enemy.rallyDamageBuff > 0) {
+      g.circle(ex, ey, size + 4).stroke({ color: 0xff8800, width: 1, alpha: 0.3 + 0.15 * Math.sin(_globalTime * 4) });
     }
 
     switch (cat) {
@@ -1673,6 +1867,192 @@ export class GameRenderer {
   }
 
   // -------------------------------------------------------------------------
+  // ABILITY VFX — per-knight visual effects
+  // -------------------------------------------------------------------------
+  private _drawAbilityVFX(state: GrailGameState): void {
+    const vfx = state.activeAbilityVfx;
+    if (!vfx) return;
+
+    const g = this._fxGfx;
+    const t = vfx.timer;
+    const progress = 1 - t / 0.8;
+    const alpha = Math.max(0, 1 - progress * progress);
+    const px = state.player.x;
+    const py = state.player.y;
+
+    switch (vfx.knightId) {
+      case "arthur": {
+        // Sovereign Strike: Golden Excalibur glow radiating outward, stun shown as frozen aura
+        const radius = 20 + progress * 40;
+        g.circle(px, py, radius).fill({ color: 0xffd700, alpha: alpha * 0.15 });
+        g.circle(px, py, radius * 0.7).fill({ color: 0xffee88, alpha: alpha * 0.2 });
+        // Excalibur slash arcs
+        for (let i = 0; i < 6; i++) {
+          const angle = (i / 6) * Math.PI * 2 + _globalTime * 3;
+          const rx = px + Math.cos(angle) * radius * 0.8;
+          const ry = py + Math.sin(angle) * radius * 0.8;
+          g.circle(rx, ry, 3 * (1 - progress)).fill({ color: 0xffd700, alpha: alpha * 0.6 });
+        }
+        // Stun aura (frozen blue rings on hit enemies)
+        if (progress > 0.3 && progress < 0.8) {
+          g.circle(px, py, radius * 1.1).stroke({ color: 0x88ccff, width: 2, alpha: alpha * 0.4 });
+        }
+        break;
+      }
+      case "lancelot": {
+        // Lake's Fury: Multi-slash with water droplet trails
+        for (let i = 0; i < 5; i++) {
+          const slashPhase = (progress * 5 + i) % 1;
+          const angle = (i / 5) * Math.PI * 0.6 - Math.PI * 0.3 + Math.sin(_globalTime * 10) * 0.2;
+          const dist = 15 + slashPhase * 25;
+          const facing = state.player.facing;
+          const baseAngle = facing === Direction.UP ? -Math.PI / 2 : facing === Direction.DOWN ? Math.PI / 2 :
+            facing === Direction.LEFT ? Math.PI : 0;
+          const sx = px + Math.cos(baseAngle + angle) * dist;
+          const sy = py + Math.sin(baseAngle + angle) * dist;
+          // Slash line
+          g.moveTo(px, py).lineTo(sx, sy).stroke({ color: 0x4488ff, width: 2, alpha: alpha * 0.5 * (1 - slashPhase) });
+          // Water droplet
+          g.circle(sx, sy, 2 * (1 - slashPhase)).fill({ color: 0x66aaff, alpha: alpha * 0.6 });
+        }
+        break;
+      }
+      case "gawain": {
+        // Solar Might: Intensifying golden aura
+        const auraSize = 15 + progress * 30;
+        const intensity = 0.5 + progress * 0.5;
+        g.circle(px, py, auraSize).fill({ color: 0xffcc00, alpha: alpha * 0.1 * intensity });
+        g.circle(px, py, auraSize * 0.7).fill({ color: 0xffdd44, alpha: alpha * 0.15 * intensity });
+        g.circle(px, py, auraSize * 0.4).fill({ color: 0xffee88, alpha: alpha * 0.2 * intensity });
+        // Sun rays
+        for (let i = 0; i < 8; i++) {
+          const angle = (i / 8) * Math.PI * 2 + _globalTime * 1.5;
+          const innerR = auraSize * 0.3;
+          const outerR = auraSize;
+          g.moveTo(px + Math.cos(angle) * innerR, py + Math.sin(angle) * innerR)
+            .lineTo(px + Math.cos(angle) * outerR, py + Math.sin(angle) * outerR)
+            .stroke({ color: 0xffdd44, width: 1.5, alpha: alpha * 0.3 * intensity });
+        }
+        break;
+      }
+      case "percival": {
+        // Grail's Blessing: Radiant white light heal, sparkle purge effect
+        const healRadius = 20 + progress * 25;
+        g.circle(px, py, healRadius).fill({ color: 0xffffff, alpha: alpha * 0.12 });
+        g.circle(px, py, healRadius * 0.6).fill({ color: 0xeeeeff, alpha: alpha * 0.18 });
+        // Rising sparkles
+        for (let i = 0; i < 10; i++) {
+          const sx = px + (Math.sin(_globalTime * 4 + i * 1.7) * healRadius * 0.7);
+          const sy = py - progress * 30 - i * 3;
+          const sparkAlpha = alpha * (0.3 + 0.2 * Math.sin(_globalTime * 8 + i));
+          g.circle(sx, sy, 1.5).fill({ color: 0xffffff, alpha: sparkAlpha });
+        }
+        // Purge effect (dark particles flying outward)
+        if (progress > 0.2) {
+          for (let i = 0; i < 6; i++) {
+            const angle = (i / 6) * Math.PI * 2;
+            const dist = (progress - 0.2) * 50;
+            g.circle(px + Math.cos(angle) * dist, py + Math.sin(angle) * dist, 2 * (1 - progress))
+              .fill({ color: 0x8844aa, alpha: alpha * 0.3 });
+          }
+        }
+        break;
+      }
+      case "galahad": {
+        // Divine Shield: Visible shield bubble that shatters on hit
+        const shieldRadius = 18 - progress * 3;
+        const shieldAlpha = alpha * 0.35;
+        g.circle(px, py, shieldRadius).stroke({ color: 0xffd700, width: 3, alpha: shieldAlpha });
+        g.circle(px, py, shieldRadius - 2).stroke({ color: 0xffffaa, width: 1.5, alpha: shieldAlpha * 0.7 });
+        // Hexagonal facets
+        for (let i = 0; i < 6; i++) {
+          const angle = (i / 6) * Math.PI * 2 + _globalTime;
+          const nx = px + Math.cos(angle) * shieldRadius;
+          const ny = py + Math.sin(angle) * shieldRadius;
+          g.circle(nx, ny, 2).fill({ color: 0xffffff, alpha: shieldAlpha * 0.5 });
+        }
+        // Shatter effect at end
+        if (progress > 0.7) {
+          const shatterP = (progress - 0.7) / 0.3;
+          for (let i = 0; i < 8; i++) {
+            const angle = (i / 8) * Math.PI * 2 + i * 0.5;
+            const dist = shieldRadius + shatterP * 20;
+            g.rect(px + Math.cos(angle) * dist - 1.5, py + Math.sin(angle) * dist - 1.5, 3, 3)
+              .fill({ color: 0xffd700, alpha: (1 - shatterP) * 0.6 });
+          }
+        }
+        break;
+      }
+      case "tristan": {
+        // Heartseeker: Fast stab motion, poison drip on target
+        const facing = state.player.facing;
+        const bAngle = facing === Direction.UP ? -Math.PI / 2 : facing === Direction.DOWN ? Math.PI / 2 :
+          facing === Direction.LEFT ? Math.PI : 0;
+        const stabDist = 10 + progress * 30;
+        const tipX = px + Math.cos(bAngle) * stabDist;
+        const tipY = py + Math.sin(bAngle) * stabDist;
+        // Stab line
+        g.moveTo(px, py).lineTo(tipX, tipY).stroke({ color: 0xff4466, width: 2, alpha: alpha * 0.7 });
+        // Tip flash
+        g.circle(tipX, tipY, 4 * (1 - progress)).fill({ color: 0xff6688, alpha: alpha * 0.8 });
+        // Poison drips trailing
+        for (let i = 0; i < 4; i++) {
+          const dripProgress = (progress + i * 0.15) % 1;
+          const dx = tipX + (Math.random() - 0.5) * 6;
+          const dy = tipY + dripProgress * 15;
+          g.circle(dx, dy, 1.5).fill({ color: 0x44ff44, alpha: alpha * 0.4 * (1 - dripProgress) });
+        }
+        break;
+      }
+      case "kay": {
+        // Burning Hands: Fire cone eruption, targets ignite
+        const facing = state.player.facing;
+        const bAngle = facing === Direction.UP ? -Math.PI / 2 : facing === Direction.DOWN ? Math.PI / 2 :
+          facing === Direction.LEFT ? Math.PI : 0;
+        const coneLen = 20 + progress * 50;
+        const coneSpread = 0.6;
+        // Fire cone particles
+        for (let i = 0; i < 15; i++) {
+          const pAngle = bAngle + (Math.random() - 0.5) * coneSpread;
+          const dist = Math.random() * coneLen;
+          const fx = px + Math.cos(pAngle) * dist;
+          const fy = py + Math.sin(pAngle) * dist;
+          const fireColor = Math.random() > 0.5 ? 0xff6622 : 0xff8844;
+          const pSize = 2 + Math.random() * 3 * (1 - progress);
+          g.circle(fx, fy, pSize).fill({ color: fireColor, alpha: alpha * (0.3 + Math.random() * 0.3) });
+        }
+        // Cone outline
+        const leftX = px + Math.cos(bAngle - coneSpread) * coneLen;
+        const leftY = py + Math.sin(bAngle - coneSpread) * coneLen;
+        const rightX = px + Math.cos(bAngle + coneSpread) * coneLen;
+        const rightY = py + Math.sin(bAngle + coneSpread) * coneLen;
+        g.moveTo(px, py).lineTo(leftX, leftY).lineTo(rightX, rightY).closePath()
+          .fill({ color: 0xff4400, alpha: alpha * 0.08 });
+        break;
+      }
+      case "bedivere": {
+        // Last Stand: Red glow, counterattack flash
+        const glowRadius = 14 + Math.sin(_globalTime * 8) * 4;
+        g.circle(px, py, glowRadius).fill({ color: 0xff2222, alpha: alpha * 0.2 });
+        g.circle(px, py, glowRadius * 0.6).fill({ color: 0xff4444, alpha: alpha * 0.15 });
+        // Counter flash (white burst)
+        if (progress > 0.3 && progress < 0.6) {
+          const flashAlpha = (1 - Math.abs(progress - 0.45) / 0.15) * alpha;
+          g.circle(px, py, 30).fill({ color: 0xffffff, alpha: flashAlpha * 0.25 });
+          // Slash marks
+          for (let i = 0; i < 4; i++) {
+            const angle = (i / 4) * Math.PI * 2 + _globalTime * 2;
+            const sx = px + Math.cos(angle) * 20;
+            const sy = py + Math.sin(angle) * 20;
+            g.moveTo(px, py).lineTo(sx, sy).stroke({ color: 0xff4444, width: 2, alpha: flashAlpha * 0.6 });
+          }
+        }
+        break;
+      }
+    }
+  }
+
+  // -------------------------------------------------------------------------
   // VIGNETTE — darkened screen edges
   // -------------------------------------------------------------------------
   private _drawVignette(sw: number, sh: number): void {
@@ -1711,6 +2091,90 @@ export class GameRenderer {
   }
 
   // -------------------------------------------------------------------------
+  // PROJECTILES — colored circles with trails
+  // -------------------------------------------------------------------------
+  private _drawProjectiles(state: GrailGameState): void {
+    const g = this._entityGfx;
+    for (const proj of state.floor.projectiles) {
+      // Trail (3 fading circles behind the projectile)
+      const speed = Math.sqrt(proj.vx * proj.vx + proj.vy * proj.vy);
+      if (speed > 0) {
+        const nx = proj.vx / speed;
+        const ny = proj.vy / speed;
+        for (let i = 1; i <= 3; i++) {
+          const tx = proj.x - nx * i * 4;
+          const ty = proj.y - ny * i * 4;
+          const trailAlpha = 0.4 - i * 0.1;
+          const trailSize = 3 - i * 0.5;
+          g.circle(tx, ty, trailSize).fill({ color: proj.color, alpha: trailAlpha });
+        }
+      }
+      // Main projectile
+      g.circle(proj.x, proj.y, 4).fill({ color: proj.color, alpha: 0.9 });
+      // Bright center
+      g.circle(proj.x, proj.y, 2).fill({ color: lighten(proj.color, 0.4), alpha: 1.0 });
+      // Glow
+      g.circle(proj.x, proj.y, 7).fill({ color: proj.color, alpha: 0.15 });
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // POISON TRAILS — green bubbling ground tiles
+  // -------------------------------------------------------------------------
+  private _drawPoisonTrails(state: GrailGameState): void {
+    const g = this._decorGfx;
+    for (const trail of state.floor.poisonTrails) {
+      const px = trail.col * TS;
+      const py = trail.row * TS;
+      const fadeAlpha = Math.min(1, trail.timer / 2) * 0.35;
+      // Green toxic puddle
+      g.rect(px + 2, py + 2, TS - 4, TS - 4).fill({ color: 0x22aa22, alpha: fadeAlpha });
+      // Bubbles
+      const bubble1 = Math.sin(_globalTime * 4 + trail.col * 3) * 0.5 + 0.5;
+      const bubble2 = Math.cos(_globalTime * 3 + trail.row * 5) * 0.5 + 0.5;
+      g.circle(px + 8 + bubble1 * 16, py + 10 + bubble2 * 12, 2).fill({ color: 0x44ff44, alpha: fadeAlpha * 0.8 });
+      g.circle(px + 20 - bubble2 * 10, py + 6 + bubble1 * 18, 1.5).fill({ color: 0x66ff66, alpha: fadeAlpha * 0.6 });
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // BOSS PHASE FLASH — full screen color flash on boss phase transition
+  // -------------------------------------------------------------------------
+  private _drawBossFlash(sw: number, sh: number): void {
+    if (!this.pendingBossFlash) return;
+    const flash = this.pendingBossFlash;
+    flash.t -= 0.016;
+    if (flash.t <= 0) {
+      this.pendingBossFlash = null;
+      return;
+    }
+    const alpha = flash.t / 0.6 * 0.3;
+    const g = this._fxGfx;
+    // Draw flash in screen space
+    g.rect(this.camX, this.camY, sw, sh).fill({ color: flash.color, alpha });
+  }
+
+  // -------------------------------------------------------------------------
+  // CONFUSION OVERLAY — swirling effect when player is confused
+  // -------------------------------------------------------------------------
+  private _drawConfusionOverlay(state: GrailGameState, sw: number, sh: number): void {
+    if (state.player.confusionTimer <= 0) return;
+    const g = this._fxGfx;
+    const alpha = Math.min(0.15, state.player.confusionTimer * 0.1);
+    // Purple overlay
+    g.rect(this.camX, this.camY, sw, sh).fill({ color: 0x8800ff, alpha });
+    // Swirling stars around player
+    const px = state.player.x;
+    const py = state.player.y;
+    for (let i = 0; i < 5; i++) {
+      const angle = _globalTime * 3 + (i * Math.PI * 2) / 5;
+      const sx = px + Math.cos(angle) * 20;
+      const sy = py - 10 + Math.sin(angle) * 8;
+      g.circle(sx, sy, 2).fill({ color: 0xff88ff, alpha: 0.6 });
+    }
+  }
+
+  // -------------------------------------------------------------------------
   // Shake
   // -------------------------------------------------------------------------
   shake(intensity: number, duration: number): void {
@@ -1745,6 +2209,7 @@ export class GameRenderer {
     this.pendingLoots.length = 0;
     this.pendingAttackFx.length = 0;
     this.pendingAbilityFx.length = 0;
+    this.pendingBossFlash = null;
     this.pendingStatusFx.length = 0;
     this.ambientParticles.length = 0;
   }

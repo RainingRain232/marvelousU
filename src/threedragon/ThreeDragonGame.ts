@@ -7,7 +7,7 @@
 
 import { audioManager } from "@audio/AudioManager";
 import { createThreeDragonState } from "./state/ThreeDragonState";
-import type { ThreeDragonState } from "./state/ThreeDragonState";
+import type { ThreeDragonState, TDUpgradeId } from "./state/ThreeDragonState";
 import { TDBalance, TD_MAPS, TD_MAP_BY_ID, TD_SKILL_CONFIGS } from "./config/ThreeDragonConfig";
 import { ThreeDragonInputSystem } from "./systems/ThreeDragonInputSystem";
 import { ThreeDragonWaveSystem } from "./systems/ThreeDragonWaveSystem";
@@ -222,6 +222,19 @@ export class ThreeDragonGame {
       this._renderer.addScreenFlash(0x44ff88, 0.2);
     });
 
+    // Synergy popup callback
+    ThreeDragonCombatSystem.setSynergyPopupCallback((text, color, x, y, z) => {
+      const screen = this._renderer.projectToScreen({ x, y, z }, this._state.screenW, this._state.screenH);
+      if (screen.visible) {
+        this._hud.showSynergyPopup(screen.x, screen.y, text, color);
+      }
+    });
+
+    // Upgrade selection callback
+    this._hud.setUpgradeCallback((upgradeId) => {
+      this._applyUpgrade(upgradeId);
+    });
+
     // Music
     audioManager.switchTrack("battle");
 
@@ -285,20 +298,19 @@ export class ThreeDragonGame {
         ThreeDragonWaveSystem.update(this._state, simDt);
         ThreeDragonCombatSystem.update(this._state, simDt);
 
-        // Detect wave completion for level-up rewards
+        // Detect wave completion — upgrade choices are now handled in wave system
         if (this._state.betweenWaves && !this._wasBetweenWaves && this._state.wave > 0) {
-          // Grant scaling bonuses per wave completed
-          const p = this._state.player;
-          p.maxHp += 5;
-          p.hp = Math.min(p.maxHp, p.hp + 10);
-          p.maxMana += 3;
-          p.mana = Math.min(p.maxMana, p.mana + 15);
-          p.manaRegen += 0.3;
-
-          // Show notification
-          this._hud.showNotification(`Level Up! +5 HP, +3 Mana`, "#44ff88");
+          // Check if upgrade choices should be shown
+          if (this._state.upgradeChoicesActive) {
+            this._hud.showUpgradeMenu(this._state);
+          }
         }
         this._wasBetweenWaves = this._state.betweenWaves;
+
+        // Show modifier announcements
+        if (this._state.modifierAnnounceTimer > 0) {
+          this._state.modifierAnnounceTimer -= DT;
+        }
       }
     }
 
@@ -354,6 +366,48 @@ export class ThreeDragonGame {
   private _shake(magnitude: number, duration: number): void {
     this._shakeMag = Math.max(this._shakeMag, magnitude);
     this._shakeTimer = Math.max(this._shakeTimer, duration);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Upgrade application
+  // ---------------------------------------------------------------------------
+
+  private _applyUpgrade(upgradeId: TDUpgradeId): void {
+    const p = this._state.player;
+    const us = this._state.upgradeState;
+    us.upgrades.push(upgradeId);
+
+    switch (upgradeId) {
+      case "max_hp":
+        p.maxHp += 15;
+        p.hp = Math.min(p.maxHp, p.hp + 15);
+        break;
+      case "max_mana":
+        p.maxMana += 20;
+        p.mana = Math.min(p.maxMana, p.mana + 20);
+        break;
+      case "damage":
+        us.damageMult *= 1.1;
+        break;
+      case "mana_regen":
+        p.manaRegen += 1;
+        break;
+      case "crit_chance":
+        us.critChanceBonus += 0.05;
+        break;
+      case "move_speed":
+        us.moveSpeedMult *= 1.1;
+        break;
+      case "cooldown_reduction":
+        us.cooldownReduction += 0.15;
+        break;
+    }
+
+    this._state.upgradeChoicesActive = false;
+    this._state.paused = false;
+    this._hud.hideUpgradeMenu();
+    this._hud.showNotification(`Upgrade: ${upgradeId.replace(/_/g, " ").toUpperCase()}!`, "#ffd700");
+    this._renderer.addScreenFlash(0xffd700, 0.2);
   }
 
   // ---------------------------------------------------------------------------
@@ -711,6 +765,7 @@ export class ThreeDragonGame {
     ThreeDragonCombatSystem.setDamageNumberCallback(null);
     ThreeDragonCombatSystem.setSkillUnlockCallback(null);
     ThreeDragonCombatSystem.setLevelUpCallback(null);
+    ThreeDragonCombatSystem.setSynergyPopupCallback(null);
     ThreeDragonWaveSystem.reset();
 
     if (this._rafId !== null) {

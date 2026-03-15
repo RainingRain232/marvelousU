@@ -8,7 +8,7 @@
 import { Container, Graphics, Text, TextStyle } from "pixi.js";
 import {
   GameBalance, TileType, FLOOR_THEMES, QUEST_GENRE_DEFS, KNIGHT_DEFS,
-  ItemType, ItemRarity,
+  ItemType, ItemRarity, SHOP_ITEMS,
 } from "../config/GameConfig";
 
 import { GamePhase } from "../state/GameState";
@@ -149,6 +149,9 @@ export class GameHUD {
 
     if (state.phase === GamePhase.INVENTORY) {
       this._drawInventoryScreen(state, sw, sh);
+    }
+    if (state.phase === GamePhase.SHOP) {
+      this._drawShopScreen(state, sw, sh);
     }
     if (state.phase === GamePhase.PAUSED) {
       this._drawPaused(sw, sh);
@@ -838,6 +841,12 @@ export class GameHUD {
         else if (tile === TileType.ENTRANCE) color = 0x22aa22;
         else if (tile === TileType.TREASURE) color = 0xccaa44;
         else if (tile === TileType.TRAP) color = 0x664422;
+        else if (tile === TileType.SHOP) color = 0xffaa22;
+        else if (tile === TileType.VINE) color = 0x337722;
+        else if (tile === TileType.ICE) color = 0x88bbdd;
+        else if (tile === TileType.LAVA) color = 0xff4400;
+        else if (tile === TileType.ILLUSION) color = 0x8844ff;
+        else if (tile === TileType.SHRINE) color = 0x88ffaa;
         else color = 0x5a5440;
 
         const px = mx + c * scaleX;
@@ -1021,7 +1030,7 @@ export class GameHUD {
     // Key hints bar
     this._drawPanel((sw - 480) / 2, sh - 10, 480, 14, 0x0a0805, 0.5, 3);
     this._addText(
-      "[I] Inventory    [E] Interact    [Q] Ability    [WASD] Move    [SPACE] Attack",
+      "[I] Inventory    [E] Interact/Shop    [Q] Ability    [WASD] Move    [SPACE] Attack",
       sw / 2, sh - 4, 8, 0x665544, true,
     );
   }
@@ -1143,6 +1152,121 @@ export class GameHUD {
       }
       ey += 36;
     }
+  }
+
+  // =========================================================================
+  //  SHOP SCREEN — buy/sell interface
+  // =========================================================================
+
+  private _drawShopScreen(state: GrailGameState, sw: number, sh: number): void {
+    const g = this._gfx;
+    const p = state.player;
+
+    // Dark overlay
+    g.rect(0, 0, sw, sh).fill({ color: 0x000000, alpha: 0.8 });
+
+    // Central parchment panel
+    const panelW = Math.min(600, sw - 60);
+    const panelH = Math.min(460, sh - 80);
+    const px = (sw - panelW) / 2;
+    const py = (sh - panelH) / 2;
+
+    this._drawParchmentBG(px, py, panelW, panelH);
+    this._drawOrnateFrame(px, py, panelW, panelH, GOLD_COLOR, 2, 8);
+
+    // Title
+    this._addText("MERCHANT'S WARES", sw / 2, py + 28, 22, 0x3a2a15, true);
+    this._drawOrnamentDivider(px + 30, py + 48, panelW - 60, GOLD_DARK);
+
+    // Gold display
+    this._drawCoinIcon(px + 40, py + 64, 16);
+    this._addText(`Gold: ${p.gold}`, px + 56, py + 58, 14, GOLD_COLOR);
+
+    // Tab indicator
+    const buyColor = !state.shopSellMode ? 0xffd700 : 0x887766;
+    const sellColor = state.shopSellMode ? 0xffd700 : 0x887766;
+    this._addText("[TAB] to switch mode", sw / 2, py + 60, 10, 0x7a6a50, true);
+    this._addText("BUY", px + panelW / 2 - 40, py + 76, 14, buyColor, true);
+    this._addText("SELL", px + panelW / 2 + 40, py + 76, 14, sellColor, true);
+    // Underline active
+    if (!state.shopSellMode) {
+      g.rect(px + panelW / 2 - 55, py + 86, 30, 2).fill({ color: GOLD_COLOR, alpha: 0.8 });
+    } else {
+      g.rect(px + panelW / 2 + 25, py + 86, 30, 2).fill({ color: GOLD_COLOR, alpha: 0.8 });
+    }
+
+    this._drawOrnamentDivider(px + 30, py + 92, panelW - 60, GOLD_DARK);
+
+    let iy = py + 106;
+
+    if (!state.shopSellMode) {
+      // BUY mode
+      for (let i = 0; i < SHOP_ITEMS.length && i < 9; i++) {
+        const item = SHOP_ITEMS[i];
+        const canAfford = p.gold >= item.cost;
+        const textColor = canAfford ? 0x3a2a15 : 0x995544;
+        const costColor = canAfford ? GOLD_COLOR : 0x884422;
+
+        // Row background
+        const rowBg = canAfford ? 0x000000 : 0x220000;
+        g.roundRect(px + 24, iy - 3, panelW - 48, 28, 3).fill({ color: rowBg, alpha: 0.08 });
+
+        // Key hint
+        g.roundRect(px + 28, iy, 20, 18, 2).fill({ color: canAfford ? GOLD_COLOR : 0x666655, alpha: 0.2 });
+        this._addText(`${i + 1}`, px + 38, iy + 9, 10, textColor, true);
+
+        // Item name
+        this._addText(item.name, px + 56, iy, 12, textColor);
+        // Description
+        this._addText(item.desc, px + 56, iy + 14, 9, 0x7a6a50);
+        // Cost
+        this._drawCoinIcon(px + panelW - 80, iy + 8, 12);
+        this._addText(`${item.cost}`, px + panelW - 65, iy + 3, 11, costColor);
+
+        iy += 32;
+      }
+    } else {
+      // SELL mode
+      if (p.inventory.length === 0) {
+        this._addText("Nothing to sell.", sw / 2, py + 140, 14, 0x8a7a60, true);
+      }
+
+      for (let i = 0; i < p.inventory.length && i < 9; i++) {
+        const inv = p.inventory[i];
+        const baseValues: Record<string, number> = {
+          common: 10, uncommon: 30, rare: 70, legendary: 150,
+        };
+        const baseVal = baseValues[inv.def.rarity] || 10;
+        const sellPrice = Math.floor(baseVal * 0.7);
+
+        const rarityColor = GameBalance.RARITY_COLORS[inv.def.rarity as keyof typeof GameBalance.RARITY_COLORS] ?? 0xaaaaaa;
+
+        g.roundRect(px + 24, iy - 3, panelW - 48, 28, 3).fill({ color: 0x000000, alpha: 0.08 });
+
+        // Key hint
+        g.roundRect(px + 28, iy, 20, 18, 2).fill({ color: rarityColor, alpha: 0.2 });
+        this._addText(`${i + 1}`, px + 38, iy + 9, 10, 0x3a2a15, true);
+
+        // Item icon
+        this._drawItemIcon(px + 58, iy + 9, 16, inv.def.type, inv.def.color);
+
+        // Item name
+        this._addText(
+          `${inv.def.name}${inv.quantity > 1 ? ` x${inv.quantity}` : ""}`,
+          px + 72, iy, 12, rarityColor,
+        );
+        this._addText(inv.def.desc, px + 72, iy + 14, 9, 0x7a6a50);
+
+        // Sell price
+        this._drawCoinIcon(px + panelW - 80, iy + 8, 12);
+        this._addText(`${sellPrice}`, px + panelW - 65, iy + 3, 11, GOLD_COLOR);
+
+        iy += 32;
+      }
+    }
+
+    // Footer
+    this._addText("Press ESC or E to close", sw / 2, py + panelH - 18, 11, 0x7a6a50, true);
   }
 
   // =========================================================================

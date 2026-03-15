@@ -2,11 +2,15 @@
 // 3Dragon mode — wave spawning system
 // ---------------------------------------------------------------------------
 
-import type { ThreeDragonState, TDEnemy } from "../state/ThreeDragonState";
+import type { ThreeDragonState, TDEnemy, TDWaveModifierId } from "../state/ThreeDragonState";
 import { TDEnemyType, TDEnemyPattern } from "../state/ThreeDragonState";
-import { TDBalance, TD_ENEMY_TEMPLATES, TD_WAVE_ENEMY_POOL, TD_BOSS_ORDER } from "../config/ThreeDragonConfig";
+import { TDBalance, TD_ENEMY_TEMPLATES, TD_WAVE_ENEMY_POOL, TD_BOSS_ORDER, TD_WAVE_MODIFIERS, TD_UPGRADE_POOL } from "../config/ThreeDragonConfig";
 
 let _spawnAccumulator = 0;
+
+function _createDefaultStatusEffects() {
+  return { frozen: 0, burning: 0, wet: 0, stunned: 0 };
+}
 
 export const ThreeDragonWaveSystem = {
   reset(): void {
@@ -15,6 +19,9 @@ export const ThreeDragonWaveSystem = {
 
   update(state: ThreeDragonState, dt: number): void {
     if (state.gameOver || state.victory) return;
+
+    // Don't progress if upgrade selection is active
+    if (state.upgradeChoicesActive) return;
 
     if (state.betweenWaves) {
       state.betweenWaveTimer -= dt;
@@ -61,6 +68,36 @@ export const ThreeDragonWaveSystem = {
   },
 };
 
+function _rollModifiers(wave: number): TDWaveModifierId[] {
+  const mods: TDWaveModifierId[] = [];
+  // Higher chance of modifiers on later waves
+  // Wave 1-3: no modifiers; Wave 4-8: 0-1; Wave 9+: 0-2
+  const maxMods = wave < 4 ? 0 : wave < 9 ? 1 : 2;
+  const chance = Math.min(0.7, 0.1 + wave * 0.04);
+
+  for (let i = 0; i < maxMods; i++) {
+    if (Math.random() < chance) {
+      const available = TD_WAVE_MODIFIERS.filter(m => !mods.includes(m.id));
+      if (available.length > 0) {
+        const picked = available[Math.floor(Math.random() * available.length)];
+        mods.push(picked.id);
+      }
+    }
+  }
+  return mods;
+}
+
+function _rollUpgradeChoices(): import("../state/ThreeDragonState").TDUpgradeChoice[] {
+  const pool = [...TD_UPGRADE_POOL];
+  const choices: import("../state/ThreeDragonState").TDUpgradeChoice[] = [];
+  for (let i = 0; i < 3 && pool.length > 0; i++) {
+    const idx = Math.floor(Math.random() * pool.length);
+    choices.push(pool[idx]);
+    pool.splice(idx, 1);
+  }
+  return choices;
+}
+
 function _startWave(state: ThreeDragonState): void {
   const isBossWave = state.wave % state.bossWaveInterval === 0;
   state.bossActive = isBossWave;
@@ -71,7 +108,16 @@ function _startWave(state: ThreeDragonState): void {
   state.waveDuration = TDBalance.WAVE_DURATION_BASE + state.wave * TDBalance.WAVE_DURATION_GROWTH;
   state.waveEnemiesTotal = TDBalance.ENEMY_COUNT_BASE + state.wave * TDBalance.ENEMY_COUNT_GROWTH;
 
-  const isSwarmWave = !isBossWave && state.wave % 3 === 0;
+  // Roll wave modifiers
+  state.activeModifiers = _rollModifiers(state.wave);
+  state.modifierAnnounceTimer = state.activeModifiers.length > 0 ? 3 : 0;
+
+  // Apply "multiplied" modifier
+  if (state.activeModifiers.includes("multiplied")) {
+    state.waveEnemiesTotal = Math.floor(state.waveEnemiesTotal * 2);
+  }
+
+  const isSwarmWave = !isBossWave && state.wave % 3 === 0 && !state.activeModifiers.includes("multiplied");
   if (isSwarmWave) {
     state.waveEnemiesTotal = Math.floor(state.waveEnemiesTotal * 2);
   }
@@ -94,6 +140,16 @@ function _endWave(state: ThreeDragonState): void {
 
   state.player.hp = Math.min(state.player.maxHp, state.player.hp + 20);
   state.player.mana = Math.min(state.player.maxMana, state.player.mana + 35);
+
+  // Clear modifiers for between-wave period
+  state.activeModifiers = [];
+
+  // Present upgrade choices (replaces old auto-stat growth)
+  if (state.wave > 0 && state.wave < state.totalWaves) {
+    state.upgradeChoices = _rollUpgradeChoices();
+    state.upgradeChoicesActive = true;
+    state.paused = true; // pause game during selection
+  }
 }
 
 function _getEnemyPool(wave: number): TDEnemyType[] {
@@ -109,10 +165,15 @@ function _spawnEnemy(state: ThreeDragonState): void {
 
   const hpScale = 1 + state.wave * TDBalance.ENEMY_HP_SCALE;
 
+  // Aerial modifier: force all enemies to sky type
+  const isAerial = state.activeModifiers.includes("aerial");
+  const isGround = isAerial ? false : template.isGround;
+  const pattern = isAerial && template.isGround ? TDEnemyPattern.HOVER : template.pattern;
+
   let x: number, y: number, z: number;
   let vx = 0, vy = 0, vz = 0;
 
-  if (template.isGround) {
+  if (isGround) {
     x = (Math.random() - 0.5) * 40;
     y = 0;
     z = state.worldZ - 80 - Math.random() * 30;
@@ -135,13 +196,20 @@ function _spawnEnemy(state: ThreeDragonState): void {
     }
   }
 
+  let hp = Math.floor(template.hp * hpScale);
+
+  // Multiplied modifier: half HP
+  if (state.activeModifiers.includes("multiplied")) {
+    hp = Math.floor(hp * 0.5);
+  }
+
   const enemy: TDEnemy = {
     id: state.nextId++,
     type: template.type,
     position: { x, y, z },
     velocity: { x: vx, y: vy, z: vz },
-    hp: Math.floor(template.hp * hpScale),
-    maxHp: Math.floor(template.hp * hpScale),
+    hp,
+    maxHp: hp,
     alive: true,
     isBoss: false,
     isElite: false,
@@ -153,7 +221,7 @@ function _spawnEnemy(state: ThreeDragonState): void {
     slowTimer: 0,
     size: template.size,
     scoreValue: template.scoreValue,
-    pattern: template.pattern,
+    pattern,
     patternTimer: Math.random() * Math.PI * 2,
     patternParam: 0,
     fireRate: template.fireRate,
@@ -161,6 +229,7 @@ function _spawnEnemy(state: ThreeDragonState): void {
     glowColor: template.glowColor,
     rotationY: 0,
     rotationSpeed: (Math.random() - 0.5) * 2,
+    statusEffects: _createDefaultStatusEffects(),
   };
 
   // Swarm wave: halve HP
@@ -214,6 +283,7 @@ function _spawnBoss(state: ThreeDragonState, type: TDEnemyType): void {
     glowColor: template.glowColor,
     rotationY: 0,
     rotationSpeed: 0.5,
+    statusEffects: _createDefaultStatusEffects(),
   };
 
   state.enemies.push(boss);

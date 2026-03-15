@@ -82,6 +82,9 @@ export class ThreeDragonRenderer {
   // Wildlife silhouettes
   private _wildlifeGroup = new THREE.Group();
 
+  // Hazard meshes
+  private _hazardMeshes = new Map<number, THREE.Group>();
+
   // Reusable geometries
   private _sphereGeo!: THREE.SphereGeometry;
   private _boxGeo!: THREE.BoxGeometry;
@@ -2704,6 +2707,9 @@ export class ThreeDragonRenderer {
     // Update power-ups
     this._updatePowerUpMeshes(state, dt, time);
 
+    // Update hazards
+    this._updateHazardMeshes(state, dt, time);
+
     // Update screen flashes
     this._updateScreenFlashes(dt);
 
@@ -4297,6 +4303,126 @@ export class ThreeDragonRenderer {
   }
 
   // ---------------------------------------------------------------------------
+  // Hazard rendering
+  // ---------------------------------------------------------------------------
+
+  private _updateHazardMeshes(state: import("../state/ThreeDragonState").ThreeDragonState, dt: number, time: number): void {
+    const activeIds = new Set<number>();
+
+    for (const h of state.hazards) {
+      activeIds.add(h.id);
+      let group = this._hazardMeshes.get(h.id);
+
+      if (!group) {
+        group = new THREE.Group();
+        // Create visual based on hazard type
+        const colors: Record<string, number> = {
+          lava_geyser: 0xff4400,
+          blizzard_wind: 0xaaddff,
+          crystal_shard: 0xaa44ff,
+          lightning_strike: 0xffff44,
+          water_spout: 0x44aaff,
+          leaf_tornado: 0xcc8833,
+        };
+        const color = colors[h.type] ?? 0xffffff;
+        const mat = new THREE.MeshBasicMaterial({
+          color,
+          transparent: true,
+          opacity: 0.6,
+          depthWrite: false,
+        });
+
+        if (h.type === "lava_geyser" || h.type === "water_spout") {
+          // Column of particles — use a cylinder-ish shape
+          const cyl = new THREE.Mesh(
+            new THREE.CylinderGeometry(h.radius * 0.3, h.radius * 0.8, 8, 8),
+            mat,
+          );
+          group.add(cyl);
+        } else if (h.type === "lightning_strike") {
+          // Warning circle on ground + bolt
+          const ring = new THREE.Mesh(
+            new THREE.RingGeometry(h.radius * 0.8, h.radius, 16),
+            mat,
+          );
+          ring.rotation.x = -Math.PI / 2;
+          group.add(ring);
+        } else if (h.type === "crystal_shard") {
+          // Falling shard
+          const shard = new THREE.Mesh(
+            new THREE.ConeGeometry(1, 4, 4),
+            mat,
+          );
+          shard.rotation.x = Math.PI; // point down
+          group.add(shard);
+        } else if (h.type === "leaf_tornado" || h.type === "blizzard_wind") {
+          // Swirling particles — use sphere as proxy
+          const sphere = new THREE.Mesh(this._sphereGeo, mat);
+          sphere.scale.set(h.radius, h.radius * 2, h.radius);
+          group.add(sphere);
+        }
+
+        this._scene.add(group);
+        this._hazardMeshes.set(h.id, group);
+      }
+
+      // Update position and appearance
+      group.position.set(h.position.x, h.position.y, h.position.z);
+      group.visible = true;
+
+      // Animate based on phase
+      if (h.phase === "warning") {
+        // Pulsing warning indicator
+        const pulse = 0.3 + Math.sin(time * 8) * 0.2;
+        group.children.forEach(c => {
+          if ((c as THREE.Mesh).material) {
+            ((c as THREE.Mesh).material as THREE.MeshBasicMaterial).opacity = pulse;
+          }
+        });
+        const warningScale = 0.5 + (1 - h.timer / h.warningDuration) * 0.5;
+        group.scale.setScalar(warningScale);
+      } else if (h.phase === "active") {
+        group.children.forEach(c => {
+          if ((c as THREE.Mesh).material) {
+            ((c as THREE.Mesh).material as THREE.MeshBasicMaterial).opacity = 0.7;
+          }
+        });
+        group.scale.setScalar(1);
+        // Rotate tornado/wind effects
+        if (h.type === "leaf_tornado") {
+          group.rotation.y += dt * 5;
+        }
+      } else {
+        // Fading
+        const fade = h.timer / 0.5;
+        group.children.forEach(c => {
+          if ((c as THREE.Mesh).material) {
+            ((c as THREE.Mesh).material as THREE.MeshBasicMaterial).opacity = fade * 0.5;
+          }
+        });
+      }
+    }
+
+    // Remove old hazard meshes
+    for (const [id, group] of this._hazardMeshes) {
+      if (!activeIds.has(id)) {
+        group.traverse(child => {
+          if ((child as THREE.Mesh).geometry && (child as THREE.Mesh).geometry !== this._sphereGeo) {
+            (child as THREE.Mesh).geometry.dispose();
+          }
+          if ((child as THREE.Mesh).material) {
+            const mat = (child as THREE.Mesh).material;
+            if (Array.isArray(mat)) mat.forEach(m => m.dispose());
+            else (mat as THREE.Material).dispose();
+          }
+        });
+        this._scene.remove(group);
+        this._hazardMeshes.delete(id);
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // Resize
   // ---------------------------------------------------------------------------
 
@@ -4396,6 +4522,22 @@ export class ThreeDragonRenderer {
       hr.mesh.geometry.dispose();
     }
     this._hitRings = [];
+
+    // Remove hazard meshes
+    for (const [, group] of this._hazardMeshes) {
+      this._scene.remove(group);
+      group.traverse(child => {
+        if ((child as THREE.Mesh).geometry && (child as THREE.Mesh).geometry !== this._sphereGeo) {
+          (child as THREE.Mesh).geometry.dispose();
+        }
+        if ((child as THREE.Mesh).material) {
+          const mat = (child as THREE.Mesh).material;
+          if (Array.isArray(mat)) mat.forEach(m => m.dispose());
+          else (mat as THREE.Material).dispose();
+        }
+      });
+    }
+    this._hazardMeshes.clear();
 
     // Remove power-up meshes
     for (const [, group] of this._powerUpMeshes) {

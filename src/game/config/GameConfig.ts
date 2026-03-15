@@ -252,10 +252,13 @@ export enum EnemyCategory {
   BOSS = "boss",
 }
 
+export type AIType = "melee" | "ranged" | "tank" | "mage" | "summoner";
+
 export interface EnemyDef {
   id: string;
   name: string;
   category: EnemyCategory;
+  aiType: AIType;
   color: number;
   hp: number;
   attack: number;
@@ -272,140 +275,158 @@ export interface EnemyDef {
 export const ENEMY_DEFS: Record<string, EnemyDef> = {
   // --- Bandits ---
   bandit_thug: {
-    id: "bandit_thug", name: "Bandit Thug", category: EnemyCategory.BANDIT,
+    id: "bandit_thug", name: "Bandit Thug", category: EnemyCategory.BANDIT, aiType: "melee",
     color: 0x886644, hp: 30, attack: 8, defense: 4, speed: 2, xpReward: 10, goldReward: 5,
   },
   bandit_archer: {
-    id: "bandit_archer", name: "Bandit Archer", category: EnemyCategory.BANDIT,
+    id: "bandit_archer", name: "Bandit Archer", category: EnemyCategory.BANDIT, aiType: "ranged",
     color: 0x667744, hp: 22, attack: 12, defense: 2, speed: 3, xpReward: 12, goldReward: 7,
     abilities: ["ranged_shot"],
   },
   bandit_chief: {
-    id: "bandit_chief", name: "Bandit Chief", category: EnemyCategory.BANDIT,
+    id: "bandit_chief", name: "Bandit Chief", category: EnemyCategory.BANDIT, aiType: "summoner",
     color: 0xaa7744, hp: 60, attack: 14, defense: 8, speed: 2, xpReward: 25, goldReward: 15,
     abilities: ["rally"],
   },
   // --- Undead ---
   skeleton: {
-    id: "skeleton", name: "Skeleton Warrior", category: EnemyCategory.UNDEAD,
+    id: "skeleton", name: "Skeleton Warrior", category: EnemyCategory.UNDEAD, aiType: "melee",
     color: 0xccccaa, hp: 25, attack: 10, defense: 6, speed: 1, xpReward: 12, goldReward: 4,
   },
   wraith: {
-    id: "wraith", name: "Wraith", category: EnemyCategory.UNDEAD,
+    id: "wraith", name: "Wraith", category: EnemyCategory.UNDEAD, aiType: "ranged",
     color: 0x6644aa, hp: 35, attack: 16, defense: 2, speed: 3, xpReward: 18, goldReward: 8,
     abilities: ["life_drain"],
   },
   revenant_knight: {
-    id: "revenant_knight", name: "Revenant Knight", category: EnemyCategory.UNDEAD,
+    id: "revenant_knight", name: "Revenant Knight", category: EnemyCategory.UNDEAD, aiType: "tank",
     color: 0x445566, hp: 70, attack: 18, defense: 12, speed: 2, xpReward: 30, goldReward: 12,
     abilities: ["shield_bash"],
   },
   // --- Beasts ---
   dire_wolf: {
-    id: "dire_wolf", name: "Dire Wolf", category: EnemyCategory.BEAST,
+    id: "dire_wolf", name: "Dire Wolf", category: EnemyCategory.BEAST, aiType: "melee",
     color: 0x666666, hp: 40, attack: 14, defense: 4, speed: 4, xpReward: 15, goldReward: 6,
     abilities: ["lunge"],
   },
   wyvern: {
-    id: "wyvern", name: "Wyvern", category: EnemyCategory.BEAST,
+    id: "wyvern", name: "Wyvern", category: EnemyCategory.BEAST, aiType: "ranged",
     color: 0x448844, hp: 55, attack: 16, defense: 8, speed: 3, xpReward: 22, goldReward: 10,
     abilities: ["fire_breath"],
   },
   giant_spider: {
-    id: "giant_spider", name: "Giant Spider", category: EnemyCategory.BEAST,
+    id: "giant_spider", name: "Giant Spider", category: EnemyCategory.BEAST, aiType: "melee",
     color: 0x332222, hp: 30, attack: 12, defense: 3, speed: 4, xpReward: 14, goldReward: 5,
     abilities: ["web"],
   },
   // --- Fae ---
   pixie: {
-    id: "pixie", name: "Mischievous Pixie", category: EnemyCategory.FAE,
+    id: "pixie", name: "Mischievous Pixie", category: EnemyCategory.FAE, aiType: "mage",
     color: 0x88ffaa, hp: 15, attack: 6, defense: 1, speed: 5, xpReward: 8, goldReward: 8,
     abilities: ["confuse"],
   },
   fae_knight: {
-    id: "fae_knight", name: "Fae Knight", category: EnemyCategory.FAE,
+    id: "fae_knight", name: "Fae Knight", category: EnemyCategory.FAE, aiType: "mage",
     color: 0x44ddaa, hp: 50, attack: 18, defense: 10, speed: 3, xpReward: 25, goldReward: 12,
     abilities: ["glamour"],
   },
   troll: {
-    id: "troll", name: "Bridge Troll", category: EnemyCategory.BEAST,
+    id: "troll", name: "Bridge Troll", category: EnemyCategory.BEAST, aiType: "tank",
     color: 0x556633, hp: 80, attack: 20, defense: 14, speed: 1, xpReward: 28, goldReward: 15,
     abilities: ["regenerate"],
   },
   // --- Knights ---
   rogue_knight: {
-    id: "rogue_knight", name: "Rogue Knight", category: EnemyCategory.KNIGHT,
+    id: "rogue_knight", name: "Rogue Knight", category: EnemyCategory.KNIGHT, aiType: "tank",
     color: 0x884444, hp: 60, attack: 16, defense: 14, speed: 2, xpReward: 22, goldReward: 10,
     abilities: ["shield_bash"],
   },
   saxon_warrior: {
-    id: "saxon_warrior", name: "Saxon Warrior", category: EnemyCategory.KNIGHT,
+    id: "saxon_warrior", name: "Saxon Warrior", category: EnemyCategory.KNIGHT, aiType: "melee",
     color: 0x998866, hp: 50, attack: 14, defense: 10, speed: 2, xpReward: 18, goldReward: 8,
   },
   // --- Elementals ---
   fire_elemental: {
-    id: "fire_elemental", name: "Fire Elemental", category: EnemyCategory.ELEMENTAL,
+    id: "fire_elemental", name: "Fire Elemental", category: EnemyCategory.ELEMENTAL, aiType: "mage",
     color: 0xff4400, hp: 45, attack: 20, defense: 4, speed: 2, xpReward: 20, goldReward: 10,
     abilities: ["fire_aura"],
   },
   ice_wraith: {
-    id: "ice_wraith", name: "Ice Wraith", category: EnemyCategory.ELEMENTAL,
+    id: "ice_wraith", name: "Ice Wraith", category: EnemyCategory.ELEMENTAL, aiType: "mage",
     color: 0x88ccff, hp: 40, attack: 16, defense: 6, speed: 3, xpReward: 18, goldReward: 9,
     abilities: ["freeze"],
   },
 
+  // --- Weak Minions (summoned) ---
+  skeleton_minion: {
+    id: "skeleton_minion", name: "Skeleton Minion", category: EnemyCategory.UNDEAD, aiType: "melee",
+    color: 0xbbbb99, hp: 15, attack: 6, defense: 2, speed: 2, xpReward: 5, goldReward: 2,
+  },
+  fae_pixie_minion: {
+    id: "fae_pixie_minion", name: "Fae Pixie", category: EnemyCategory.FAE, aiType: "melee",
+    color: 0x66cc88, hp: 10, attack: 4, defense: 1, speed: 4, xpReward: 3, goldReward: 1,
+  },
+  bandit_minion: {
+    id: "bandit_minion", name: "Bandit Lackey", category: EnemyCategory.BANDIT, aiType: "melee",
+    color: 0x775533, hp: 18, attack: 6, defense: 3, speed: 2, xpReward: 4, goldReward: 2,
+  },
+  beast_copy: {
+    id: "beast_copy", name: "Lesser Beast", category: EnemyCategory.BEAST, aiType: "melee",
+    color: 0x999900, hp: 80, attack: 14, defense: 8, speed: 3, xpReward: 40, goldReward: 20,
+  },
+
   // --- BOSSES ---
   mordred: {
-    id: "mordred", name: "Mordred, the Treacherous", category: EnemyCategory.BOSS,
+    id: "mordred", name: "Mordred, the Treacherous", category: EnemyCategory.BOSS, aiType: "melee",
     color: 0x440000, hp: 300, attack: 28, defense: 18, speed: 3, xpReward: 200, goldReward: 100,
     abilities: ["dark_strike", "summon_undead", "backstab"],
     isBoss: true, bossPhases: 3,
     lore: "Arthur's bastard son, consumed by hatred and ambition.",
   },
   morgan_le_fay: {
-    id: "morgan_le_fay", name: "Morgan le Fay", category: EnemyCategory.BOSS,
+    id: "morgan_le_fay", name: "Morgan le Fay", category: EnemyCategory.BOSS, aiType: "mage",
     color: 0x8800aa, hp: 250, attack: 32, defense: 12, speed: 2, xpReward: 200, goldReward: 100,
     abilities: ["dark_magic", "illusion", "heal_self"],
     isBoss: true, bossPhases: 3,
     lore: "Arthur's half-sister, a sorceress of terrifying power.",
   },
   green_knight: {
-    id: "green_knight", name: "The Green Knight", category: EnemyCategory.BOSS,
+    id: "green_knight", name: "The Green Knight", category: EnemyCategory.BOSS, aiType: "tank",
     color: 0x00aa00, hp: 350, attack: 22, defense: 22, speed: 2, xpReward: 180, goldReward: 80,
     abilities: ["regenerate", "challenge", "decapitate"],
     isBoss: true, bossPhases: 2,
     lore: "An unkillable champion of the old magic, testing the virtue of knights.",
   },
   questing_beast: {
-    id: "questing_beast", name: "The Questing Beast", category: EnemyCategory.BOSS,
+    id: "questing_beast", name: "The Questing Beast", category: EnemyCategory.BOSS, aiType: "melee",
     color: 0xaaaa00, hp: 280, attack: 24, defense: 16, speed: 4, xpReward: 170, goldReward: 90,
     abilities: ["serpent_strike", "howl", "trample"],
     isBoss: true, bossPhases: 2,
     lore: "A chimeric horror: serpent head, leopard body, lion haunches, deer feet.",
   },
   black_knight: {
-    id: "black_knight", name: "The Black Knight", category: EnemyCategory.BOSS,
+    id: "black_knight", name: "The Black Knight", category: EnemyCategory.BOSS, aiType: "tank",
     color: 0x222222, hp: 400, attack: 30, defense: 24, speed: 1, xpReward: 220, goldReward: 120,
     abilities: ["unyielding", "dark_cleave", "fear_aura"],
     isBoss: true, bossPhases: 3,
     lore: "'Tis but a scratch.' An unstoppable armored menace.",
   },
   king_rience: {
-    id: "king_rience", name: "King Rience", category: EnemyCategory.BOSS,
+    id: "king_rience", name: "King Rience", category: EnemyCategory.BOSS, aiType: "summoner",
     color: 0xcc6600, hp: 320, attack: 26, defense: 20, speed: 2, xpReward: 190, goldReward: 95,
     abilities: ["war_cry", "shield_wall", "execute"],
     isBoss: true, bossPhases: 2,
     lore: "A rival king who collects the beards of conquered monarchs.",
   },
   saxon_warlord: {
-    id: "saxon_warlord", name: "Saxon Warlord", category: EnemyCategory.BOSS,
+    id: "saxon_warlord", name: "Saxon Warlord", category: EnemyCategory.BOSS, aiType: "summoner",
     color: 0x886644, hp: 340, attack: 24, defense: 22, speed: 2, xpReward: 200, goldReward: 100,
     abilities: ["berserker_rage", "shield_wall", "rally"],
     isBoss: true, bossPhases: 2,
     lore: "Leader of the Saxon invasion, sworn to destroy Camelot.",
   },
   oberon: {
-    id: "oberon", name: "Oberon, King of Faerie", category: EnemyCategory.BOSS,
+    id: "oberon", name: "Oberon, King of Faerie", category: EnemyCategory.BOSS, aiType: "mage",
     color: 0x00ffaa, hp: 260, attack: 30, defense: 14, speed: 4, xpReward: 210, goldReward: 110,
     abilities: ["fae_storm", "glamour", "summon_fae", "time_warp"],
     isBoss: true, bossPhases: 3,
@@ -654,7 +675,51 @@ export enum TileType {
   TRAP = 5,
   TREASURE = 6,
   ENTRANCE = 7,
+  SHOP = 8,
+  VINE = 9,
+  ICE = 10,
+  LAVA = 11,
+  ILLUSION = 12,
+  SHRINE = 13,
 }
+
+// ---------------------------------------------------------------------------
+// Room Type Variants
+// ---------------------------------------------------------------------------
+
+export enum RoomType {
+  NORMAL = "normal",
+  SHRINE = "shrine",
+  CHAMPION_ARENA = "champion_arena",
+  TREASURE_VAULT = "treasure_vault",
+  SECRET = "secret",
+}
+
+// ---------------------------------------------------------------------------
+// Shop Definitions
+// ---------------------------------------------------------------------------
+
+export interface ShopItem {
+  id: string;
+  name: string;
+  cost: number;
+  desc: string;
+  type: "heal" | "stat_atk" | "stat_def" | "gear";
+  itemId?: string;     // for gear items, references ITEM_DEFS
+  statBonus?: number;
+}
+
+export const SHOP_ITEMS: ShopItem[] = [
+  { id: "shop_heal", name: "Full Heal", cost: 20, desc: "Fully restore HP", type: "heal" },
+  { id: "shop_atk_potion", name: "Strength Potion", cost: 50, desc: "+2 ATK (permanent)", type: "stat_atk", statBonus: 2 },
+  { id: "shop_def_potion", name: "Iron Tonic", cost: 40, desc: "+1 DEF (permanent)", type: "stat_def", statBonus: 1 },
+  { id: "shop_fine_sword", name: "Fine Longsword", cost: 60, desc: "A well-forged blade", type: "gear", itemId: "fine_longsword" },
+  { id: "shop_chainmail", name: "Chainmail", cost: 55, desc: "Interlocking rings of steel", type: "gear", itemId: "chainmail" },
+  { id: "shop_health_pot", name: "Health Potion", cost: 15, desc: "Restores 30 HP", type: "gear", itemId: "health_potion" },
+  { id: "shop_enchanted", name: "Enchanted Blade", cost: 120, desc: "Glows with faint arcane light", type: "gear", itemId: "enchanted_blade" },
+  { id: "shop_plate", name: "Plate of Valor", cost: 140, desc: "Heavy plate that inspires courage", type: "gear", itemId: "plate_of_valor" },
+  { id: "shop_elixir", name: "Strength Elixir", cost: 30, desc: "Temp ATK boost", type: "gear", itemId: "strength_elixir" },
+];
 
 // Floor theme colors per progress tier
 export const FLOOR_THEMES: { wallColor: number; floorColor: number; name: string }[] = [

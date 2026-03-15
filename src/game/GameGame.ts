@@ -12,6 +12,7 @@ import { audioManager } from "@audio/AudioManager";
 
 import {
   GameBalance, QUEST_GENRE_DEFS, KNIGHT_DEFS, TileType, getFloorParams,
+  SHOP_ITEMS, ITEM_DEFS,
 } from "./config/GameConfig";
 
 
@@ -101,6 +102,14 @@ export class GameGame {
       this._renderer.pendingLoots.push({ x, y, text: item.name, color: item.color, t: 1.0 });
       this._hud.showNotification(`Found: ${item.name}`, item.color);
     });
+    GameCombatSystem.setBossPhaseFlashCallback((_bossId, phase, color) => {
+      this._renderer.shake(12, 0.4);
+      this._renderer.pendingBossFlash = { color, t: 0.6 };
+      this._hud.showNotification(`Boss Phase ${phase}!`, color, 2);
+    });
+    GameCombatSystem.setSpawnCallback((_enemy) => {
+      // Visual spawn effect handled by renderer detecting new enemies
+    });
 
     // Start game loop
     this._tickerCb = (ticker: Ticker) => {
@@ -138,6 +147,10 @@ export class GameGame {
 
       case GamePhase.INVENTORY:
         this._handleInventory();
+        break;
+
+      case GamePhase.SHOP:
+        this._handleShop();
         break;
 
       case GamePhase.PAUSED:
@@ -277,13 +290,34 @@ export class GameGame {
     this._renderer.camOffsetX = this._camOffsetX;
     this._renderer.camOffsetY = this._camOffsetY;
 
-    // Movement (WASD)
-    const speed = GameBalance.PLAYER_MOVE_SPEED * dt;
+    // Movement (WASD) with ice slide and frozen slow
+    const themeFloor = Math.min(state.currentFloor, 7);
+    const onIce = (() => {
+      const c = Math.floor(p.x / GameBalance.TILE_SIZE);
+      const r = Math.floor(p.y / GameBalance.TILE_SIZE);
+      return c >= 0 && c < floor.width && r >= 0 && r < floor.height &&
+        floor.tiles[r][c] === TileType.ICE;
+    })();
+    const frozenSlow = (themeFloor === 3 || themeFloor === 7) && onIce ? 0.5 : 1.0;
+    const speed = GameBalance.PLAYER_MOVE_SPEED * dt * frozenSlow;
     let dx = 0, dy = 0;
-    if (_isDown("KeyW")) { dy = -1; p.facing = Direction.UP; }
-    if (_isDown("KeyS")) { dy = 1; p.facing = Direction.DOWN; }
-    if (_isDown("KeyA")) { dx = -1; p.facing = Direction.LEFT; }
-    if (_isDown("KeyD")) { dx = 1; p.facing = Direction.RIGHT; }
+
+    // Ice slide: continue in previous direction
+    if (state.iceSlideDir && onIce) {
+      dx = state.iceSlideDir.dx;
+      dy = state.iceSlideDir.dy;
+    }
+
+    // Confusion: reverse controls; Stun: no movement
+    const confused = p.confusionTimer > 0;
+    const stunned = p.stunTimer > 0;
+
+    if (!stunned) {
+      if (_isDown("KeyW")) { dy = confused ? 1 : -1; p.facing = confused ? Direction.DOWN : Direction.UP; state.iceSlideDir = null; }
+      if (_isDown("KeyS")) { dy = confused ? -1 : 1; p.facing = confused ? Direction.UP : Direction.DOWN; state.iceSlideDir = null; }
+      if (_isDown("KeyA")) { dx = confused ? 1 : -1; p.facing = confused ? Direction.RIGHT : Direction.LEFT; state.iceSlideDir = null; }
+      if (_isDown("KeyD")) { dx = confused ? -1 : 1; p.facing = confused ? Direction.LEFT : Direction.RIGHT; state.iceSlideDir = null; }
+    }
 
     if (dx !== 0 || dy !== 0) {
       // Normalize diagonal
@@ -335,10 +369,18 @@ export class GameGame {
 
     // Ability (Q)
     if (_justPressed("KeyQ")) {
+      if (p.abilityCooldown <= 0) {
+        state.activeAbilityVfx = {
+          knightId: p.knightDef.id,
+          timer: 0.8,
+          x: p.x,
+          y: p.y,
+        };
+      }
       GameCombatSystem.playerAbility(state);
     }
 
-    // Interact (E) — treasure and stairs
+    // Interact (E) — treasure, stairs, shop, shrine
     if (_justPressed("KeyE")) {
       const pc = Math.floor(p.x / GameBalance.TILE_SIZE);
       const pr = Math.floor(p.y / GameBalance.TILE_SIZE);
@@ -348,10 +390,24 @@ export class GameGame {
         GameCombatSystem.pickupTreasure(state, pc, pr);
       }
 
+      // Shop
+      if (GameCombatSystem.checkShop(state)) {
+        state.prevPhase = state.phase;
+        state.shopScrollIndex = 0;
+        state.shopSellMode = false;
+        state.phase = GamePhase.SHOP;
+        return;
+      }
+
+      // Shrine
+      if (GameCombatSystem.checkShrine(state)) {
+        const buffDesc = GameCombatSystem.activateShrine(state);
+        this._hud.showNotification(`Shrine Blessing: ${buffDesc}`, 0x88ffaa, 3);
+      }
+
       // Stairs
       if (GameCombatSystem.checkStairs(state)) {
         if (state.currentFloor >= state.totalFloors - 1) {
-          // Victory!
           state.phase = GamePhase.VICTORY;
           this._handleVictoryUnlocks();
         } else {
@@ -385,6 +441,23 @@ export class GameGame {
     // Traps
     GameCombatSystem.checkTraps(state);
 
+    // Environmental hazards
+    GameCombatSystem.checkEnvironmentalHazards(state, dt);
+
+    // Reanimation processing (Crimson Crypts)
+    GameCombatSystem.processReanimations(state, dt);
+
+    // Ability VFX timer
+    if (state.activeAbilityVfx) {
+      state.activeAbilityVfx.timer -= dt;
+      if (state.activeAbilityVfx.timer <= 0) {
+        state.activeAbilityVfx = null;
+      }
+    }
+
+    // Abyssal Halls: reduce visibility radius over time
+    // (handled by renderer based on floor.darknessTimer)
+
     // Check death
     if (p.hp <= 0) {
       state.phase = GamePhase.GAME_OVER;
@@ -413,6 +486,88 @@ export class GameGame {
             GameCombatSystem.useItem(this._state, i);
           } else {
             GameCombatSystem.equipItem(this._state, i);
+          }
+        }
+      }
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Shop
+  // -------------------------------------------------------------------------
+  private _handleShop(): void {
+    if (_justPressed("Escape") || _justPressed("KeyE")) {
+      this._state.phase = this._state.prevPhase;
+      return;
+    }
+
+    // Tab to toggle buy/sell mode
+    if (_justPressed("Tab")) {
+      this._state.shopSellMode = !this._state.shopSellMode;
+    }
+
+    const state = this._state;
+    const p = state.player;
+
+    if (state.shopSellMode) {
+      // Sell mode: number keys to sell inventory items
+      for (let i = 0; i < 9; i++) {
+        if (_justPressed(`Digit${i + 1}`)) {
+          if (i < p.inventory.length) {
+            const inv = p.inventory[i];
+            // Calculate sell price (70% of a base value determined by rarity)
+            const baseValues: Record<string, number> = {
+              common: 10, uncommon: 30, rare: 70, legendary: 150,
+            };
+            const baseVal = baseValues[inv.def.rarity] || 10;
+            const sellPrice = Math.floor(baseVal * 0.7);
+            p.gold += sellPrice;
+            state.totalGold += sellPrice;
+            inv.quantity--;
+            if (inv.quantity <= 0) {
+              p.inventory.splice(i, 1);
+            }
+            this._hud.showNotification(`Sold for ${sellPrice}g`, 0xffd700);
+          }
+        }
+      }
+    } else {
+      // Buy mode: number keys to buy shop items
+      for (let i = 0; i < 9; i++) {
+        if (_justPressed(`Digit${i + 1}`)) {
+          if (i < SHOP_ITEMS.length) {
+            const shopItem = SHOP_ITEMS[i];
+            if (p.gold >= shopItem.cost) {
+              p.gold -= shopItem.cost;
+              if (shopItem.type === "heal") {
+                p.hp = p.maxHp;
+                this._hud.showNotification("Fully healed!", 0x44ff44);
+              } else if (shopItem.type === "stat_atk") {
+                p.attack += shopItem.statBonus ?? 2;
+                this._hud.showNotification(`+${shopItem.statBonus} ATK!`, 0xff8844);
+              } else if (shopItem.type === "stat_def") {
+                p.defense += shopItem.statBonus ?? 1;
+                this._hud.showNotification(`+${shopItem.statBonus} DEF!`, 0x4488ff);
+              } else if (shopItem.type === "gear" && shopItem.itemId) {
+                const itemDef = ITEM_DEFS[shopItem.itemId];
+                if (itemDef) {
+                  if (p.inventory.length < GameBalance.MAX_INVENTORY_SIZE) {
+                    const existing = p.inventory.find(inv => inv.def.id === itemDef.id);
+                    if (existing && itemDef.type === "consumable") {
+                      existing.quantity++;
+                    } else {
+                      p.inventory.push({ def: itemDef, quantity: 1 });
+                    }
+                    this._hud.showNotification(`Bought: ${itemDef.name}`, itemDef.color);
+                  } else {
+                    this._hud.showNotification("Inventory full!", 0xff4444);
+                    p.gold += shopItem.cost; // refund
+                  }
+                }
+              }
+            } else {
+              this._hud.showNotification("Not enough gold!", 0xff4444);
+            }
           }
         }
       }

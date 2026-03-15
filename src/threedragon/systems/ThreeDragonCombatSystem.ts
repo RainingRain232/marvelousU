@@ -2,9 +2,9 @@
 // 3Dragon mode — combat system (projectiles, collisions, skills)
 // ---------------------------------------------------------------------------
 
-import type { ThreeDragonState, TDProjectile, TDEnemy, TDExplosion, TDPowerUp, Vec3 } from "../state/ThreeDragonState";
-import { TDSkillId, TDEnemyPattern } from "../state/ThreeDragonState";
-import { TDBalance, TD_SKILL_CONFIGS, TD_SKILL_UNLOCK_ORDER } from "../config/ThreeDragonConfig";
+import type { ThreeDragonState, TDProjectile, TDEnemy, TDExplosion, TDPowerUp, Vec3, TDHazard, TDBossMechanicState, TDHazardType, TDPlayer } from "../state/ThreeDragonState";
+import { TDSkillId, TDEnemyPattern, TDEnemyType } from "../state/ThreeDragonState";
+import { TDBalance, TD_SKILL_CONFIGS, TD_SKILL_UNLOCK_ORDER, TD_MAP_BY_ID, TD_PHYSICAL_SKILLS, TD_LIGHTNING_SKILLS, TD_FIRE_SKILLS, TD_SYNERGIES } from "../config/ThreeDragonConfig";
 
 // Callbacks for FX
 let _onExplosion: ((x: number, y: number, z: number, radius: number, color: number) => void) | null = null;
@@ -17,6 +17,7 @@ let _onPowerUpCollect: ((x: number, y: number, z: number, type: "health" | "mana
 let _onDamageNumber: ((x: number, y: number, z: number, damage: number, isCrit: boolean, isElite: boolean) => void) | null = null;
 let _onSkillUnlock: ((skillId: TDSkillId, skillName: string) => void) | null = null;
 let _onLevelUp: ((level: number) => void) | null = null;
+let _onSynergyPopup: ((text: string, color: string, x: number, y: number, z: number) => void) | null = null;
 
 export const ThreeDragonCombatSystem = {
   setExplosionCallback(cb: typeof _onExplosion): void { _onExplosion = cb; },
@@ -29,12 +30,14 @@ export const ThreeDragonCombatSystem = {
   setDamageNumberCallback(cb: typeof _onDamageNumber): void { _onDamageNumber = cb; },
   setSkillUnlockCallback(cb: typeof _onSkillUnlock): void { _onSkillUnlock = cb; },
   setLevelUpCallback(cb: typeof _onLevelUp): void { _onLevelUp = cb; },
+  setSynergyPopupCallback(cb: typeof _onSynergyPopup): void { _onSynergyPopup = cb; },
 
   update(state: ThreeDragonState, dt: number): void {
     _updateSkillCooldowns(state, dt);
     _handleSkillActivation(state, dt);
     _updatePlayerProjectiles(state, dt);
     _updateEnemyBehavior(state, dt);
+    _updateBossMechanics(state, dt);
     _updateEnemyProjectiles(state, dt);
     _updateExplosions(state, dt);
     _checkPlayerCollisions(state);
@@ -43,6 +46,9 @@ export const ThreeDragonCombatSystem = {
     _updateInvincibility(state, dt);
     _updateShield(state, dt);
     _updatePowerUps(state, dt);
+    _updateHazards(state, dt);
+    _updateStatusEffects(state, dt);
+    _updateSynergyPopups(state, dt);
     _cleanupDead(state);
   },
 };
@@ -61,13 +67,88 @@ function _dist3sq(a: Vec3, b: Vec3): number {
   return dx * dx + dy * dy + dz * dz;
 }
 
+function _createDefaultStatusEffects() {
+  return { frozen: 0, burning: 0, wet: 0, stunned: 0 };
+}
+
+function _createDefaultBossMechanics(): TDBossMechanicState {
+  return {
+    fireBreathActive: false,
+    fireBreathTimer: 0,
+    fireBreathAngle: 0,
+    fireBreathCooldown: 5,
+    lightningZones: [],
+    lightningZoneCooldown: 4,
+    shadowCloneIds: [],
+    shadowCloneCooldown: 8,
+    hydraHeads: [],
+    hydraInitialized: false,
+    voidTeleportTimer: 5,
+    voidTeleportCooldown: 5,
+    voidInvincible: false,
+    voidInvincibleTimer: 0,
+    voidZones: [],
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Status effects update
+// ---------------------------------------------------------------------------
+
+function _updateStatusEffects(state: ThreeDragonState, dt: number): void {
+  for (const e of state.enemies) {
+    if (!e.alive) continue;
+    if (!e.statusEffects) e.statusEffects = _createDefaultStatusEffects();
+    const se = e.statusEffects;
+    if (se.frozen > 0) se.frozen -= dt;
+    if (se.burning > 0) {
+      se.burning -= dt;
+      // Burning does damage over time
+      if (Math.random() < dt * 2) {
+        e.hp -= 3;
+        e.hitTimer = 0.05;
+      }
+    }
+    if (se.wet > 0) se.wet -= dt;
+    if (se.stunned > 0) {
+      se.stunned -= dt;
+      e.slowFactor = 0;
+      e.slowTimer = Math.max(e.slowTimer, se.stunned);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Synergy popups
+// ---------------------------------------------------------------------------
+
+function _updateSynergyPopups(state: ThreeDragonState, dt: number): void {
+  state.synergyPopups = state.synergyPopups.filter(p => {
+    p.timer -= dt;
+    return p.timer > 0;
+  });
+}
+
+function _triggerSynergy(state: ThreeDragonState, synergyId: string, x: number, y: number, z: number): void {
+  const syn = TD_SYNERGIES[synergyId];
+  if (!syn) return;
+  state.synergyPopups.push({
+    text: syn.name,
+    color: syn.color,
+    position: { x, y, z },
+    timer: 1.5,
+  });
+  _onSynergyPopup?.(syn.name, syn.color, x, y, z);
+}
+
 // ---------------------------------------------------------------------------
 // Skill cooldowns & activation
 // ---------------------------------------------------------------------------
 
 function _updateSkillCooldowns(state: ThreeDragonState, dt: number): void {
+  const cdr = state.upgradeState.cooldownReduction;
   for (const skill of state.skills) {
-    if (skill.cooldown > 0) skill.cooldown -= dt;
+    if (skill.cooldown > 0) skill.cooldown -= dt * (1 + cdr);
     if (skill.activeTimer > 0) skill.activeTimer -= dt;
     if (skill.activeTimer <= 0) skill.active = false;
   }
@@ -165,6 +246,7 @@ function _activateSkill(state: ThreeDragonState, id: TDSkillId, skill: import(".
       break;
     case TDSkillId.WING_GUST:
       _wingGust(state);
+      state.lastWingGustTime = state.gameTime;
       break;
     case TDSkillId.HEALING_FLAME:
       skill.active = true;
@@ -317,7 +399,7 @@ function _thunderStrike(state: ThreeDragonState): void {
   for (const e of state.enemies) {
     if (!e.alive) continue;
     if (_dist3(e.position, { x: cx, y: cy, z: cz }) < radius + e.size * 2) {
-      _damageEnemy(state, e, cfg.damage);
+      _damageEnemy(state, e, cfg.damage, TDSkillId.THUNDERSTORM);
     }
   }
 
@@ -333,9 +415,12 @@ function _frostNova(state: ThreeDragonState): void {
   for (const e of state.enemies) {
     if (!e.alive) continue;
     if (_dist3(e.position, p.position) < radius) {
-      _damageEnemy(state, e, cfg.damage);
+      _damageEnemy(state, e, cfg.damage, TDSkillId.FROST_NOVA);
       e.slowFactor = 0.3;
       e.slowTimer = 3;
+      // Apply frozen status
+      if (!e.statusEffects) e.statusEffects = _createDefaultStatusEffects();
+      e.statusEffects.frozen = 3;
     }
   }
 
@@ -385,7 +470,10 @@ function _fireBreathTick(state: ThreeDragonState): void {
     // Cone check: enemy must be ahead (negative z) and within angle
     const angle = Math.abs(Math.atan2(dx, -dz));
     if (angle < coneAngle) {
-      _damageEnemy(state, e, cfg.damage * 0.4);
+      _damageEnemy(state, e, cfg.damage * 0.4, TDSkillId.FIRE_BREATH);
+      // Apply burning status
+      if (!e.statusEffects) e.statusEffects = _createDefaultStatusEffects();
+      e.statusEffects.burning = 2;
     }
   }
   // Visual
@@ -407,9 +495,12 @@ function _iceStormTick(state: ThreeDragonState): void {
   for (const e of state.enemies) {
     if (!e.alive) continue;
     if (_dist3(e.position, { x: cx, y: cy, z: cz }) < radius) {
-      _damageEnemy(state, e, cfg.damage * 0.3);
+      _damageEnemy(state, e, cfg.damage * 0.3, TDSkillId.ICE_STORM);
       e.slowFactor = 0.3;
       e.slowTimer = Math.max(e.slowTimer, 1.5);
+      // Apply frozen status
+      if (!e.statusEffects) e.statusEffects = _createDefaultStatusEffects();
+      e.statusEffects.frozen = Math.max(e.statusEffects.frozen, 1.5);
     }
   }
   _onExplosion?.(cx, cy, cz, 4, cfg.color);
@@ -431,7 +522,7 @@ function _lightningBolt(state: ThreeDragonState): void {
     }
   }
   if (nearest) {
-    _damageEnemy(state, nearest, cfg.damage);
+    _damageEnemy(state, nearest, cfg.damage, TDSkillId.LIGHTNING_BOLT);
     _onLightningStrike?.(nearest.position.x, nearest.position.y, nearest.position.z);
     _onExplosion?.(nearest.position.x, nearest.position.y, nearest.position.z, 4, cfg.color);
   } else {
@@ -446,15 +537,27 @@ function _dragonRoar(state: ThreeDragonState): void {
   const cfg = TD_SKILL_CONFIGS[TDSkillId.DRAGON_ROAR];
   const radius = 22;
 
+  // Resonance synergy: if Wing Gust was used within 2s, double stun duration
+  const timeSinceGust = state.gameTime - state.lastWingGustTime;
+  const resonanceActive = timeSinceGust <= 2;
+  const stunDuration = resonanceActive ? cfg.duration * 2 : cfg.duration;
+
   for (const e of state.enemies) {
     if (!e.alive) continue;
     if (_dist3(e.position, p.position) < radius) {
-      _damageEnemy(state, e, cfg.damage);
+      _damageEnemy(state, e, cfg.damage, TDSkillId.DRAGON_ROAR);
       // Stun = full slow for duration
       e.slowFactor = 0;
-      e.slowTimer = Math.max(e.slowTimer, cfg.duration);
+      e.slowTimer = Math.max(e.slowTimer, stunDuration);
+      if (!e.statusEffects) e.statusEffects = _createDefaultStatusEffects();
+      e.statusEffects.stunned = Math.max(e.statusEffects.stunned, stunDuration);
     }
   }
+
+  if (resonanceActive) {
+    _triggerSynergy(state, "resonance", p.position.x, p.position.y + 2, p.position.z);
+  }
+
   _onExplosion?.(p.position.x, p.position.y, p.position.z, radius, cfg.color);
 }
 
@@ -467,7 +570,7 @@ function _wingGust(state: ThreeDragonState): void {
     if (!e.alive) continue;
     const d = _dist3(e.position, p.position);
     if (d < radius && d > 0.5) {
-      _damageEnemy(state, e, cfg.damage);
+      _damageEnemy(state, e, cfg.damage, TDSkillId.WING_GUST);
       // Push enemies away
       const dx = e.position.x - p.position.x;
       const dy = e.position.y - p.position.y;
@@ -486,6 +589,7 @@ function _startShadowDive(state: ThreeDragonState, cfg: import("../config/ThreeD
   p.shadowDiveActive = true;
   p.shadowDiveTimer = cfg.duration;
   p.invincTimer = cfg.duration + 0.2; // invincible during shadow dive
+  state.shadowDiveAttackedDuringInvuln = false;
   _onExplosion?.(p.position.x, p.position.y, p.position.z, 5, cfg.color);
 }
 
@@ -498,7 +602,7 @@ function _endShadowDive(state: ThreeDragonState): void {
   for (const e of state.enemies) {
     if (!e.alive) continue;
     if (_dist3(e.position, p.position) < radius) {
-      _damageEnemy(state, e, cfg.damage);
+      _damageEnemy(state, e, cfg.damage, TDSkillId.SHADOW_DIVE);
     }
   }
   _onExplosion?.(p.position.x, p.position.y, p.position.z, radius, cfg.color);
@@ -526,7 +630,7 @@ function _chainLightning(state: ThreeDragonState): void {
     }
     if (!nearest) break;
     hit.add(nearest.id);
-    _damageEnemy(state, nearest, cfg.damage);
+    _damageEnemy(state, nearest, cfg.damage, TDSkillId.CHAIN_LIGHTNING);
     _onLightningStrike?.(nearest.position.x, nearest.position.y, nearest.position.z);
     current = { ...nearest.position };
   }
@@ -615,10 +719,19 @@ function _updatePlayerProjectiles(state: ThreeDragonState, dt: number): void {
     // Collision with enemies
     for (const enemy of state.enemies) {
       if (!enemy.alive || proj.hitEnemies.has(enemy.id)) continue;
+      // Void Emperor invincibility check
+      if (enemy.bossMechanics?.voidInvincible) continue;
       const hitDist = proj.radius + enemy.size * 1.5;
       if (_dist3sq(proj.position, enemy.position) < hitDist * hitDist) {
         proj.hitEnemies.add(enemy.id);
-        _damageEnemy(state, enemy, proj.damage);
+        _damageEnemy(state, enemy, proj.damage, proj.skillId);
+
+        // Shadow Strike synergy: attacking during Shadow Dive invulnerability
+        if (state.player.shadowDiveActive && !state.shadowDiveAttackedDuringInvuln) {
+          state.shadowDiveAttackedDuringInvuln = true;
+          _triggerSynergy(state, "shadow_strike", enemy.position.x, enemy.position.y + 2, enemy.position.z);
+        }
+
         if (proj.pierce <= 0) {
           proj.lifetime = -1;
           break;
@@ -647,11 +760,18 @@ function _updatePlayerProjectiles(state: ThreeDragonState, dt: number): void {
 function _updateEnemyBehavior(state: ThreeDragonState, dt: number): void {
   const pPos = state.player.position;
 
+  // Apply haste modifier
+  const hasteActive = state.activeModifiers.includes("haste");
+  const hasteMult = hasteActive ? 1.5 : 1.0;
+
   for (const e of state.enemies) {
     if (!e.alive) {
       e.deathTimer -= dt;
       continue;
     }
+
+    // Ensure statusEffects exist
+    if (!e.statusEffects) e.statusEffects = _createDefaultStatusEffects();
 
     if (e.slowTimer > 0) {
       e.slowTimer -= dt;
@@ -662,7 +782,7 @@ function _updateEnemyBehavior(state: ThreeDragonState, dt: number): void {
     e.patternTimer += dt;
     e.rotationY += e.rotationSpeed * dt;
 
-    const sf = e.slowFactor;
+    const sf = e.slowFactor * hasteMult;
 
     switch (e.pattern) {
       case TDEnemyPattern.STRAIGHT:
@@ -728,7 +848,7 @@ function _updateEnemyBehavior(state: ThreeDragonState, dt: number): void {
         break;
     }
 
-    if (e.isBoss) {
+    if (e.isBoss && !e.isShadowClone) {
       const hpPct = e.hp / e.maxHp;
       // Phase 2: below 50% HP — faster attacks, more aggressive
       if (hpPct < 0.5 && e.bossPhase < 1) {
@@ -805,9 +925,28 @@ function _updateBoss(state: ThreeDragonState, boss: TDEnemy, dt: number): void {
   boss.attackTimer -= dt;
   if (boss.attackTimer <= 0) {
     boss.attackTimer = boss.fireRate;
+
+    // Shadow clones chase but don't do special attack patterns
+    if (boss.isShadowClone) {
+      // Simple aimed shot
+      const dx = pPos.x - boss.position.x;
+      const dy = pPos.y - boss.position.y;
+      const dz = pPos.z - boss.position.z;
+      const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+      if (dist > 0) {
+        _spawnEnemyProjectile3D(state, boss, {
+          x: (dx / dist) * 20,
+          y: (dy / dist) * 20,
+          z: (dz / dist) * 20,
+        }, boss.glowColor);
+      }
+      return;
+    }
+
+    const attackPhase = boss.bossPhase;
     boss.bossPhase = (boss.bossPhase + 1) % 4;
 
-    switch (boss.bossPhase) {
+    switch (attackPhase) {
       case 0: // Spread shot
         for (let i = -3; i <= 3; i++) {
           const angle = i * 0.25;
@@ -855,6 +994,277 @@ function _updateBoss(state: ThreeDragonState, boss: TDEnemy, dt: number): void {
           }
         }
         break;
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Boss-specific mechanics
+// ---------------------------------------------------------------------------
+
+function _updateBossMechanics(state: ThreeDragonState, dt: number): void {
+  for (const boss of state.enemies) {
+    if (!boss.alive || !boss.isBoss || boss.isShadowClone) continue;
+    if (!boss.bossMechanics) boss.bossMechanics = _createDefaultBossMechanics();
+    const bm = boss.bossMechanics;
+    const pPos = state.player.position;
+
+    switch (boss.type) {
+      // ----- Ancient Dragon: Fire breath attack -----
+      case TDEnemyType.BOSS_ANCIENT_DRAGON: {
+        bm.fireBreathCooldown -= dt;
+        if (bm.fireBreathActive) {
+          bm.fireBreathTimer -= dt;
+          // Damage player if in cone
+          const dx = pPos.x - boss.position.x;
+          const dz = pPos.z - boss.position.z;
+          const distXZ = Math.sqrt(dx * dx + dz * dz);
+          const angleToPlayer = Math.atan2(dx, dz);
+          const angleDiff = Math.abs(angleToPlayer - bm.fireBreathAngle);
+          if (distXZ < 20 && angleDiff < 0.5) {
+            // Player is in cone — damage if not invincible
+            if (state.player.invincTimer <= 0 && !state.player.shieldActive) {
+              state.player.hp -= 12 * dt;
+              if (Math.random() < dt * 3) _onPlayerHit?.();
+              if (state.player.hp <= 0) { state.player.hp = 0; state.gameOver = true; }
+            }
+          }
+          // Also damage enemies in the cone
+          for (const e of state.enemies) {
+            if (!e.alive || e.id === boss.id || e.isBoss) continue;
+            const edx = e.position.x - boss.position.x;
+            const edz = e.position.z - boss.position.z;
+            const eDist = Math.sqrt(edx * edx + edz * edz);
+            const eAngle = Math.atan2(edx, edz);
+            if (eDist < 20 && Math.abs(eAngle - bm.fireBreathAngle) < 0.5) {
+              e.hp -= 5 * dt;
+              if (e.hp <= 0) { e.alive = false; e.deathTimer = 0.5; }
+            }
+          }
+          // Visual: fire particles
+          if (Math.random() < dt * 10) {
+            _onExplosion?.(
+              boss.position.x + Math.sin(bm.fireBreathAngle) * (5 + Math.random() * 15),
+              boss.position.y + (Math.random() - 0.5) * 4,
+              boss.position.z + Math.cos(bm.fireBreathAngle) * (5 + Math.random() * 15),
+              3, 0xff4400,
+            );
+          }
+          if (bm.fireBreathTimer <= 0) bm.fireBreathActive = false;
+        } else if (bm.fireBreathCooldown <= 0) {
+          bm.fireBreathActive = true;
+          bm.fireBreathTimer = 2;
+          bm.fireBreathCooldown = 6;
+          // Aim toward player
+          bm.fireBreathAngle = Math.atan2(pPos.x - boss.position.x, pPos.z - boss.position.z);
+        }
+        break;
+      }
+
+      // ----- Storm Colossus: Lightning zones -----
+      case TDEnemyType.BOSS_STORM_COLOSSUS: {
+        bm.lightningZoneCooldown -= dt;
+        // Update existing zones
+        bm.lightningZones = bm.lightningZones.filter(zone => {
+          zone.timer -= dt;
+          // Damage player and enemies in zone
+          const zonePos = zone.position;
+          if (_dist3(pPos, zonePos) < zone.radius) {
+            if (state.player.invincTimer <= 0 && !state.player.shieldActive) {
+              state.player.hp -= 8 * dt;
+              if (Math.random() < dt * 2) _onPlayerHit?.();
+              if (state.player.hp <= 0) { state.player.hp = 0; state.gameOver = true; }
+            }
+          }
+          for (const e of state.enemies) {
+            if (!e.alive || e.id === boss.id || e.isBoss) continue;
+            if (_dist3(e.position, zonePos) < zone.radius) {
+              e.hp -= 5 * dt;
+              if (e.hp <= 0) { e.alive = false; e.deathTimer = 0.5; }
+            }
+          }
+          return zone.timer > 0;
+        });
+        // Spawn new zones
+        if (bm.lightningZoneCooldown <= 0) {
+          bm.lightningZoneCooldown = 4;
+          for (let i = 0; i < 3; i++) {
+            bm.lightningZones.push({
+              position: {
+                x: pPos.x + (Math.random() - 0.5) * 20,
+                y: pPos.y + (Math.random() - 0.5) * 6,
+                z: pPos.z - 10 - Math.random() * 20,
+              },
+              timer: 3,
+              radius: 5,
+            });
+          }
+          // Visual per zone
+          for (const zone of bm.lightningZones) {
+            _onLightningStrike?.(zone.position.x, zone.position.y, zone.position.z);
+          }
+        }
+        break;
+      }
+
+      // ----- Death Knight: Shadow clones -----
+      case TDEnemyType.BOSS_DEATH_KNIGHT: {
+        bm.shadowCloneCooldown -= dt;
+        // Clean up dead clone references
+        bm.shadowCloneIds = bm.shadowCloneIds.filter(id => {
+          const clone = state.enemies.find(e => e.id === id);
+          return clone && clone.alive;
+        });
+        if (bm.shadowCloneCooldown <= 0 && bm.shadowCloneIds.length < 2) {
+          bm.shadowCloneCooldown = 10;
+          const clonesToSpawn = 2 - bm.shadowCloneIds.length;
+          for (let i = 0; i < clonesToSpawn; i++) {
+            const clone: TDEnemy = {
+              id: state.nextId++,
+              type: TDEnemyType.BOSS_DEATH_KNIGHT,
+              position: {
+                x: boss.position.x + (Math.random() - 0.5) * 10,
+                y: boss.position.y + (Math.random() - 0.5) * 4,
+                z: boss.position.z + (Math.random() - 0.5) * 6,
+              },
+              velocity: { x: 0, y: 0, z: 4 },
+              hp: Math.floor(boss.maxHp * 0.3),
+              maxHp: Math.floor(boss.maxHp * 0.3),
+              alive: true,
+              isBoss: true,
+              isElite: false,
+              bossPhase: 0,
+              attackTimer: 2,
+              hitTimer: 0,
+              deathTimer: 0,
+              slowFactor: 1,
+              slowTimer: 0,
+              size: boss.size * 0.7,
+              scoreValue: 200,
+              pattern: TDEnemyPattern.BOSS_PATTERN,
+              patternTimer: Math.random() * Math.PI * 2,
+              patternParam: 0,
+              fireRate: boss.fireRate * 2,
+              color: 0x220044,
+              glowColor: 0x6600aa,
+              rotationY: 0,
+              rotationSpeed: 1,
+              statusEffects: _createDefaultStatusEffects(),
+              isShadowClone: true,
+              parentBossId: boss.id,
+            };
+            state.enemies.push(clone);
+            bm.shadowCloneIds.push(clone.id);
+            _onExplosion?.(clone.position.x, clone.position.y, clone.position.z, 4, 0x9900ff);
+          }
+        }
+        break;
+      }
+
+      // ----- Celestial Hydra: 3 heads with independent attacks -----
+      case TDEnemyType.BOSS_CELESTIAL_HYDRA: {
+        if (!bm.hydraInitialized) {
+          bm.hydraInitialized = true;
+          const headHp = Math.floor(boss.maxHp / 3);
+          bm.hydraHeads = [
+            { alive: true, hp: headHp, maxHp: headHp, attackTimer: 1.5, pattern: 0 }, // spread
+            { alive: true, hp: headHp, maxHp: headHp, attackTimer: 2.0, pattern: 1 }, // aimed
+            { alive: true, hp: headHp, maxHp: headHp, attackTimer: 2.5, pattern: 2 }, // ring
+          ];
+        }
+        // Each head fires independently
+        for (let h = 0; h < bm.hydraHeads.length; h++) {
+          const head = bm.hydraHeads[h];
+          if (!head.alive) continue;
+          head.attackTimer -= dt;
+          if (head.attackTimer <= 0) {
+            head.attackTimer = 1.5 + Math.random();
+            const headOffset = (h - 1) * 4;
+            const headPos: Vec3 = {
+              x: boss.position.x + headOffset,
+              y: boss.position.y + 2,
+              z: boss.position.z,
+            };
+            const fakeBoss = { ...boss, position: headPos };
+            switch (head.pattern) {
+              case 0: // Spread
+                for (let i = -2; i <= 2; i++) {
+                  const angle = i * 0.3;
+                  _spawnEnemyProjectile3D(state, fakeBoss,
+                    { x: Math.sin(angle) * 15, y: 0, z: 25 }, 0x44ffaa);
+                }
+                break;
+              case 1: // Aimed
+                {
+                  const adx = pPos.x - headPos.x;
+                  const ady = pPos.y - headPos.y;
+                  const adz = pPos.z - headPos.z;
+                  const adist = Math.sqrt(adx * adx + ady * ady + adz * adz);
+                  if (adist > 0) {
+                    _spawnEnemyProjectile3D(state, fakeBoss, {
+                      x: (adx / adist) * 25,
+                      y: (ady / adist) * 25,
+                      z: (adz / adist) * 25,
+                    }, 0x44ffaa);
+                  }
+                }
+                break;
+              case 2: // Ring
+                for (let i = 0; i < 8; i++) {
+                  const a = (i / 8) * Math.PI * 2;
+                  _spawnEnemyProjectile3D(state, fakeBoss,
+                    { x: Math.cos(a) * 10, y: Math.sin(a) * 10, z: 6 }, 0x44ffaa);
+                }
+                break;
+            }
+          }
+        }
+        break;
+      }
+
+      // ----- Void Emperor: Teleport + void zones -----
+      case TDEnemyType.BOSS_VOID_EMPEROR: {
+        bm.voidTeleportTimer -= dt;
+        // Invincible timer during teleport
+        if (bm.voidInvincible) {
+          bm.voidInvincibleTimer -= dt;
+          if (bm.voidInvincibleTimer <= 0) {
+            bm.voidInvincible = false;
+          }
+        }
+        // Update void zones
+        bm.voidZones = bm.voidZones.filter(vz => {
+          vz.timer -= dt;
+          // Damage player in zone
+          if (_dist3(pPos, vz.position) < vz.radius) {
+            if (state.player.invincTimer <= 0 && !state.player.shieldActive) {
+              state.player.hp -= 10 * dt;
+              if (Math.random() < dt * 2) _onPlayerHit?.();
+              if (state.player.hp <= 0) { state.player.hp = 0; state.gameOver = true; }
+            }
+          }
+          return vz.timer > 0;
+        });
+        // Teleport
+        if (bm.voidTeleportTimer <= 0) {
+          bm.voidTeleportTimer = 5;
+          // Leave void zone at old position
+          bm.voidZones.push({
+            position: { ...boss.position },
+            timer: 5,
+            radius: 6,
+          });
+          _onExplosion?.(boss.position.x, boss.position.y, boss.position.z, 6, 0xff00ff);
+          // Teleport to random position
+          boss.position.x = (Math.random() - 0.5) * 30;
+          boss.position.y = 6 + Math.random() * 12;
+          boss.position.z = pPos.z - 20 - Math.random() * 15;
+          bm.voidInvincible = true;
+          bm.voidInvincibleTimer = 0.8;
+          _onExplosion?.(boss.position.x, boss.position.y, boss.position.z, 6, 0xff00ff);
+        }
+        break;
+      }
     }
   }
 }
@@ -937,7 +1347,17 @@ function _checkPlayerCollisions(state: ThreeDragonState): void {
   for (const proj of state.projectiles) {
     if (proj.isPlayerOwned) continue;
     if (_dist3sq(proj.position, p.position) < (hitR + proj.radius) * (hitR + proj.radius)) {
-      p.hp -= proj.damage;
+      let dmg = proj.damage;
+      // Vampiric modifier: enemies heal
+      if (state.activeModifiers.includes("vampiric")) {
+        // Find the source — just heal all bosses a bit
+        for (const e of state.enemies) {
+          if (e.alive && e.isBoss) {
+            e.hp = Math.min(e.maxHp, e.hp + Math.floor(dmg * 0.1));
+          }
+        }
+      }
+      p.hp -= dmg;
       proj.lifetime = -1;
       p.invincTimer = TDBalance.PLAYER_INVINCIBILITY;
       p.comboCount = 0;
@@ -980,9 +1400,10 @@ function _updateExplosions(state: ThreeDragonState, dt: number): void {
 
     for (const e of state.enemies) {
       if (!e.alive || ex.hitEnemies.has(e.id)) continue;
+      if (e.bossMechanics?.voidInvincible) continue;
       if (_dist3sq(e.position, ex.position) < (ex.radius + e.size * 1.5) * (ex.radius + e.size * 1.5)) {
         ex.hitEnemies.add(e.id);
-        _damageEnemy(state, e, ex.damage);
+        _damageEnemy(state, e, ex.damage, TDSkillId.METEOR_SHOWER);
       }
     }
   }
@@ -991,17 +1412,224 @@ function _updateExplosions(state: ThreeDragonState, dt: number): void {
 }
 
 // ---------------------------------------------------------------------------
+// Hazards
+// ---------------------------------------------------------------------------
+
+function _updateHazards(state: ThreeDragonState, dt: number): void {
+  if (state.betweenWaves) return;
+
+  const mapCfg = TD_MAP_BY_ID[state.mapId];
+  if (!mapCfg?.hazards) return;
+
+  const p = state.player;
+
+  // Spawn timers
+  for (const hCfg of mapCfg.hazards) {
+    const key = hCfg.type;
+    if (!state.hazardSpawnTimers[key]) state.hazardSpawnTimers[key] = hCfg.interval * Math.random();
+    state.hazardSpawnTimers[key] -= dt;
+
+    if (state.hazardSpawnTimers[key] <= 0) {
+      state.hazardSpawnTimers[key] = hCfg.interval;
+      _spawnHazard(state, hCfg, p);
+    }
+  }
+
+  // Update existing hazards
+  state.hazards = state.hazards.filter(h => {
+    h.timer -= dt;
+
+    if (h.phase === "warning") {
+      if (h.timer <= 0) {
+        h.phase = "active";
+        h.timer = h.duration;
+        h.hitEntities = new Set();
+      }
+      return true;
+    }
+
+    if (h.phase === "active") {
+      // Special: leaf tornado and blizzard move
+      if (h.type === "leaf_tornado") {
+        h.position.x += h.velocity.x * dt;
+        h.position.z += h.velocity.z * dt;
+        // Push player sideways if caught
+        if (_dist3(p.position, h.position) < h.radius) {
+          p.position.x += h.velocity.x * 0.5 * dt;
+        }
+      }
+      if (h.type === "blizzard_wind") {
+        // Push player sideways
+        p.position.x += h.velocity.x * dt;
+      }
+      if (h.type === "water_spout" && _dist3(p.position, h.position) < h.radius) {
+        p.position.y += 8 * dt; // push upward
+      }
+
+      // Damage on contact (only once per active period for most hazards)
+      if (h.damage > 0) {
+        // Player
+        if (!h.hitEntities.has(-1) && _dist3(p.position, h.position) < h.radius) {
+          if (p.invincTimer <= 0 && !p.shieldActive) {
+            p.hp -= h.damage;
+            h.hitEntities.add(-1);
+            _onPlayerHit?.();
+            if (p.hp <= 0) { p.hp = 0; state.gameOver = true; }
+          }
+        }
+        // Enemies (hazards damage enemies too!)
+        for (const e of state.enemies) {
+          if (!e.alive || h.hitEntities.has(e.id)) continue;
+          if (_dist3(e.position, h.position) < h.radius + e.size) {
+            e.hp -= h.damage;
+            h.hitEntities.add(e.id);
+            e.hitTimer = 0.1;
+            if (e.hp <= 0) {
+              e.alive = false;
+              e.deathTimer = 0.5;
+              _onEnemyDeath?.(e.position.x, e.position.y, e.position.z, e.size, e.color, e.glowColor, e.isBoss);
+            }
+          }
+        }
+      }
+
+      if (h.timer <= 0) {
+        h.phase = "fading";
+        h.timer = 0.5;
+      }
+      return true;
+    }
+
+    // Fading
+    return h.timer > 0;
+  });
+}
+
+function _spawnHazard(
+  state: ThreeDragonState,
+  hCfg: { type: TDHazardType; interval: number; damage: number; radius: number; warningDuration: number; activeDuration: number },
+  p: TDPlayer,
+): void {
+  const basePos: Vec3 = {
+    x: p.position.x + (Math.random() - 0.5) * 30,
+    y: p.position.y + (Math.random() - 0.5) * 8,
+    z: p.position.z - 10 - Math.random() * 30,
+  };
+
+  let vel: Vec3 = { x: 0, y: 0, z: 0 };
+
+  switch (hCfg.type) {
+    case "lava_geyser":
+      basePos.y = 0; // ground level
+      break;
+    case "blizzard_wind":
+      vel = { x: (Math.random() < 0.5 ? -12 : 12), y: 0, z: 0 };
+      break;
+    case "crystal_shard":
+      basePos.y = p.position.y + 15; // falls from above
+      vel = { x: 0, y: -20, z: 0 };
+      break;
+    case "lightning_strike":
+      // random ground position near player
+      break;
+    case "water_spout":
+      basePos.y = 0;
+      break;
+    case "leaf_tornado":
+      basePos.x = (Math.random() < 0.5 ? -30 : 30);
+      vel = { x: basePos.x > 0 ? -8 : 8, y: 0, z: -3 };
+      break;
+  }
+
+  const hazard: TDHazard = {
+    id: state.nextId++,
+    type: hCfg.type,
+    position: basePos,
+    velocity: vel,
+    timer: hCfg.warningDuration > 0 ? hCfg.warningDuration : hCfg.activeDuration,
+    phase: hCfg.warningDuration > 0 ? "warning" : "active",
+    radius: hCfg.radius,
+    damage: hCfg.damage,
+    duration: hCfg.activeDuration,
+    warningDuration: hCfg.warningDuration,
+    hitEntities: new Set(),
+  };
+  state.hazards.push(hazard);
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-function _damageEnemy(state: ThreeDragonState, enemy: TDEnemy, damage: number): void {
-  const isCrit = Math.random() < 0.15;
-  const finalDmg = isCrit ? Math.floor(damage * 1.8) : damage;
+function _damageEnemy(state: ThreeDragonState, enemy: TDEnemy, damage: number, skillId?: TDSkillId | null): void {
+  // Void Emperor invincibility
+  if (enemy.bossMechanics?.voidInvincible) return;
+
+  // Apply upgrade damage multiplier
+  let finalDmg = damage * state.upgradeState.damageMult;
+
+  // Shadow Strike synergy: 2x damage during Shadow Dive
+  if (state.player.shadowDiveActive && skillId) {
+    finalDmg *= 2;
+    // Only trigger popup once
+    if (!state.shadowDiveAttackedDuringInvuln) {
+      state.shadowDiveAttackedDuringInvuln = true;
+      _triggerSynergy(state, "shadow_strike", enemy.position.x, enemy.position.y + 2, enemy.position.z);
+    }
+  }
+
+  // Ensure statusEffects
+  if (!enemy.statusEffects) enemy.statusEffects = _createDefaultStatusEffects();
+  const se = enemy.statusEffects;
+
+  // Synergy checks
+  if (skillId) {
+    // Shatter: frozen enemies take +50% from physical attacks
+    if (se.frozen > 0 && TD_PHYSICAL_SKILLS.includes(skillId)) {
+      finalDmg *= 1.5;
+      _triggerSynergy(state, "shatter", enemy.position.x, enemy.position.y + 2, enemy.position.z);
+    }
+
+    // Conductor: lightning skills deal +30% to wet/frozen enemies
+    if ((se.frozen > 0 || se.wet > 0) && TD_LIGHTNING_SKILLS.includes(skillId)) {
+      finalDmg *= 1.3;
+      _triggerSynergy(state, "conductor", enemy.position.x, enemy.position.y + 2, enemy.position.z);
+    }
+
+    // Ignite: fire on frozen enemies = steam explosion
+    if (se.frozen > 0 && TD_FIRE_SKILLS.includes(skillId)) {
+      se.frozen = 0; // Thaw
+      // Steam explosion AoE
+      const steamRadius = 8;
+      const steamDmg = finalDmg * 0.5;
+      for (const other of state.enemies) {
+        if (!other.alive || other.id === enemy.id) continue;
+        if (_dist3(other.position, enemy.position) < steamRadius) {
+          other.hp -= steamDmg;
+          other.hitTimer = 0.1;
+          _onHit?.(other.position.x, other.position.y, other.position.z, steamDmg, false);
+        }
+      }
+      _onExplosion?.(enemy.position.x, enemy.position.y, enemy.position.z, steamRadius, 0xcccccc);
+      _triggerSynergy(state, "ignite", enemy.position.x, enemy.position.y + 2, enemy.position.z);
+    }
+  }
+
+  // Armored modifier: enemies take 40% less damage
+  if (state.activeModifiers.includes("armored")) {
+    finalDmg *= 0.6;
+  }
+
+  const critChance = 0.15 + state.upgradeState.critChanceBonus;
+  const isCrit = Math.random() < critChance;
+  if (isCrit) finalDmg = Math.floor(finalDmg * 1.8);
+  else finalDmg = Math.floor(finalDmg);
+
   enemy.hp -= finalDmg;
   enemy.hitTimer = 0.1;
 
   _onHit?.(enemy.position.x, enemy.position.y, enemy.position.z, finalDmg, isCrit);
-  _onDamageNumber?.(enemy.position.x, enemy.position.y + enemy.size, enemy.position.z, finalDmg, isCrit, (enemy as any).isElite ?? false);
+  _onDamageNumber?.(enemy.position.x, enemy.position.y + enemy.size, enemy.position.z, finalDmg, isCrit, enemy.isElite);
 
   state.player.comboCount++;
   state.player.comboTimer = TDBalance.COMBO_TIMEOUT;
@@ -1013,6 +1641,33 @@ function _damageEnemy(state: ThreeDragonState, enemy: TDEnemy, damage: number): 
     state.player.score += Math.floor(enemy.scoreValue * comboMult);
     _onExplosion?.(enemy.position.x, enemy.position.y, enemy.position.z, enemy.size * 3, enemy.glowColor);
 
+    // Death Knight shadow clone: killing a clone damages the boss
+    if (enemy.isShadowClone && enemy.parentBossId) {
+      const parentBoss = state.enemies.find(e => e.id === enemy.parentBossId && e.alive);
+      if (parentBoss) {
+        const cloneDmg = Math.floor(parentBoss.maxHp * 0.05);
+        parentBoss.hp -= cloneDmg;
+        parentBoss.hitTimer = 0.2;
+        _onHit?.(parentBoss.position.x, parentBoss.position.y, parentBoss.position.z, cloneDmg, true);
+        _onDamageNumber?.(parentBoss.position.x, parentBoss.position.y + parentBoss.size, parentBoss.position.z, cloneDmg, true, false);
+      }
+    }
+
+    // Explosive modifier: enemies explode on death
+    if (state.activeModifiers.includes("explosive") && !enemy.isBoss) {
+      const explRadius = 5;
+      const explDmg = 10;
+      // Damage player
+      if (_dist3(state.player.position, enemy.position) < explRadius) {
+        if (state.player.invincTimer <= 0 && !state.player.shieldActive) {
+          state.player.hp -= explDmg;
+          _onPlayerHit?.();
+          if (state.player.hp <= 0) { state.player.hp = 0; state.gameOver = true; }
+        }
+      }
+      _onExplosion?.(enemy.position.x, enemy.position.y, enemy.position.z, explRadius, 0xff4400);
+    }
+
     // Enemy death callback
     _onEnemyDeath?.(enemy.position.x, enemy.position.y, enemy.position.z, enemy.size, enemy.color, enemy.glowColor, enemy.isBoss);
 
@@ -1021,7 +1676,7 @@ function _damageEnemy(state: ThreeDragonState, enemy: TDEnemy, damage: number): 
     _grantXP(state, xpAmount);
 
     // Boss kill: callback + slow-mo
-    if (enemy.isBoss) {
+    if (enemy.isBoss && !enemy.isShadowClone) {
       _onBossKill?.(enemy.position.x, enemy.position.y, enemy.position.z, enemy.size, enemy.color, enemy.glowColor);
       state.slowMoTimer = 1.5;
       state.slowMoFactor = 0.2;

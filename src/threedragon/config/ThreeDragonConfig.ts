@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import { TDEnemyType, TDSkillId, TDEnemyPattern } from "../state/ThreeDragonState";
+import type { TDHazardType, TDWaveModifierId, TDWaveModifier, TDUpgradeChoice } from "../state/ThreeDragonState";
 
 // ---------------------------------------------------------------------------
 // Balance
@@ -289,6 +290,16 @@ export interface TDMapConfig {
   mountainHeightMin?: number;   // min peak height (default 15)
   mountainHeightMax?: number;   // max peak height (default 60)
   mountainSpreadX?: number;     // how far out to the sides (default 100)
+
+  // Environmental hazards for this map
+  hazards?: {
+    type: TDHazardType;
+    interval: number;       // seconds between spawns
+    damage: number;
+    radius: number;
+    warningDuration: number;
+    activeDuration: number;
+  }[];
 }
 
 export const TD_MAPS: TDMapConfig[] = [
@@ -344,6 +355,7 @@ export const TD_MAPS: TDMapConfig[] = [
     cloudMidColors: [0x99aabb, 0xaabbcc, 0x8899aa, 0xbbaa99],
     cloudHighlightColor: 0xffeedd,
     cloudCount: 55,
+    // No special hazards for enchanted valley (base map)
   },
 
   // -------------------------------------------------------------------------
@@ -398,6 +410,9 @@ export const TD_MAPS: TDMapConfig[] = [
     cloudMidColors: [0x8899aa, 0x99aabb, 0x7788999, 0xaabbcc],
     cloudHighlightColor: 0xeef4ff,
     cloudCount: 65,
+    hazards: [
+      { type: "blizzard_wind", interval: 5, damage: 0, radius: 100, warningDuration: 0.5, activeDuration: 2 },
+    ],
   },
 
   // -------------------------------------------------------------------------
@@ -452,6 +467,9 @@ export const TD_MAPS: TDMapConfig[] = [
     cloudMidColors: [0x442222, 0x553322, 0x332211, 0x443322],
     cloudHighlightColor: 0xff6633,
     cloudCount: 40,
+    hazards: [
+      { type: "lava_geyser", interval: 3, damage: 15, radius: 4, warningDuration: 1, activeDuration: 1.5 },
+    ],
   },
 
   // -------------------------------------------------------------------------
@@ -506,6 +524,9 @@ export const TD_MAPS: TDMapConfig[] = [
     cloudMidColors: [0x553377, 0x664488, 0x443366, 0x775599],
     cloudHighlightColor: 0xcc88ff,
     cloudCount: 35,
+    hazards: [
+      { type: "crystal_shard", interval: 4, damage: 12, radius: 3, warningDuration: 1.2, activeDuration: 0.5 },
+    ],
   },
 
   // -------------------------------------------------------------------------
@@ -614,6 +635,9 @@ export const TD_MAPS: TDMapConfig[] = [
     cloudMidColors: [0x99bbcc, 0xaaccdd, 0x88aabb, 0xbbddee],
     cloudHighlightColor: 0xfff8ee,
     cloudCount: 40,
+    hazards: [
+      { type: "water_spout", interval: 4, damage: 8, radius: 3.5, warningDuration: 0.8, activeDuration: 1.5 },
+    ],
 
     mountainCount: 18,
     mountainHeightMin: 8,
@@ -673,6 +697,9 @@ export const TD_MAPS: TDMapConfig[] = [
     cloudMidColors: [0x3a4455, 0x445566, 0x334050, 0x556070],
     cloudHighlightColor: 0x8899aa,
     cloudCount: 80,
+    hazards: [
+      { type: "lightning_strike", interval: 2, damage: 18, radius: 4.5, warningDuration: 0.7, activeDuration: 0.3 },
+    ],
 
     mountainCount: 75,
     mountainHeightMin: 20,
@@ -732,6 +759,9 @@ export const TD_MAPS: TDMapConfig[] = [
     cloudMidColors: [0x887766, 0x998877, 0x776655, 0xaa9977],
     cloudHighlightColor: 0xffcc88,
     cloudCount: 50,
+    hazards: [
+      { type: "leaf_tornado", interval: 6, damage: 5, radius: 5, warningDuration: 0, activeDuration: 5 },
+    ],
 
     mountainCount: 35,
     mountainHeightMin: 10,
@@ -915,3 +945,71 @@ export const TD_SKILL_CONFIGS: Record<TDSkillId, TDSkillConfig> = {
     key: "3",
   },
 };
+
+// ---------------------------------------------------------------------------
+// Synergy definitions
+// ---------------------------------------------------------------------------
+
+export interface TDSynergyDef {
+  id: string;
+  name: string;
+  color: string;
+  description: string;
+}
+
+export const TD_SYNERGIES: Record<string, TDSynergyDef> = {
+  shatter: { id: "shatter", name: "SHATTER!", color: "#88ddff", description: "Frozen enemies take +50% physical damage" },
+  conductor: { id: "conductor", name: "CONDUCTOR!", color: "#ffff44", description: "Lightning deals +30% to wet/frozen enemies" },
+  ignite: { id: "ignite", name: "IGNITE!", color: "#ff6600", description: "Fire on frozen enemies causes steam explosion" },
+  resonance: { id: "resonance", name: "RESONANCE!", color: "#ff8844", description: "Dragon Roar after Wing Gust doubles stun" },
+  shadow_strike: { id: "shadow_strike", name: "SHADOW STRIKE!", color: "#aa00ff", description: "Attacks during Shadow Dive deal 2x damage" },
+};
+
+// Physical skill IDs (for Shatter synergy)
+export const TD_PHYSICAL_SKILLS: TDSkillId[] = [
+  TDSkillId.ARCANE_BOLT,
+  TDSkillId.CELESTIAL_LANCE,
+];
+
+// Lightning skill IDs (for Conductor synergy)
+export const TD_LIGHTNING_SKILLS: TDSkillId[] = [
+  TDSkillId.LIGHTNING_BOLT,
+  TDSkillId.CHAIN_LIGHTNING,
+  TDSkillId.THUNDERSTORM,
+];
+
+// Fire skill IDs (for Ignite synergy)
+export const TD_FIRE_SKILLS: TDSkillId[] = [
+  TDSkillId.FIRE_BREATH,
+  TDSkillId.METEOR_SHOWER,
+];
+
+// ---------------------------------------------------------------------------
+// Wave modifier definitions
+// ---------------------------------------------------------------------------
+
+export const TD_WAVE_MODIFIERS: TDWaveModifier[] = [
+  { id: "armored", name: "Armored", description: "Enemies take 40% less damage", icon: "\u{1F6E1}", color: "#aabbcc" },
+  { id: "haste", name: "Haste", description: "Enemies move 50% faster", icon: "\u{26A1}", color: "#ffcc44" },
+  { id: "multiplied", name: "Multiplied", description: "2x enemies, half HP each", icon: "\u{2716}", color: "#ff88aa" },
+  { id: "aerial", name: "Aerial", description: "All enemies become sky type", icon: "\u{1F985}", color: "#88ccff" },
+  { id: "vampiric", name: "Vampiric", description: "Enemies heal 10% of damage dealt", icon: "\u{1FA78}", color: "#cc44aa" },
+  { id: "explosive", name: "Explosive", description: "Enemies explode on death", icon: "\u{1F4A5}", color: "#ff6622" },
+];
+
+export const TD_WAVE_MODIFIER_BY_ID: Record<TDWaveModifierId, TDWaveModifier> = {} as Record<TDWaveModifierId, TDWaveModifier>;
+for (const m of TD_WAVE_MODIFIERS) (TD_WAVE_MODIFIER_BY_ID as Record<string, TDWaveModifier>)[m.id] = m;
+
+// ---------------------------------------------------------------------------
+// Upgrade definitions (between-wave choices)
+// ---------------------------------------------------------------------------
+
+export const TD_UPGRADE_POOL: TDUpgradeChoice[] = [
+  { id: "max_hp", name: "+15 Max HP", description: "Increases maximum health by 15", icon: "\u{2764}", color: "#ff4444" },
+  { id: "max_mana", name: "+20 Max Mana", description: "Increases maximum mana by 20", icon: "\u{1F4A7}", color: "#4488ff" },
+  { id: "damage", name: "+10% Damage", description: "All damage increased by 10%", icon: "\u{2694}", color: "#ff8844" },
+  { id: "mana_regen", name: "+1 Mana/s", description: "Mana regeneration +1 per second", icon: "\u{2728}", color: "#88aaff" },
+  { id: "crit_chance", name: "+5% Crit", description: "Critical hit chance +5%", icon: "\u{1F4AB}", color: "#ffdd44" },
+  { id: "move_speed", name: "+10% Speed", description: "Movement speed increased by 10%", icon: "\u{1F3C3}", color: "#44ff88" },
+  { id: "cooldown_reduction", name: "-15% Cooldowns", description: "All skill cooldowns reduced by 15%", icon: "\u{23F1}", color: "#cc88ff" },
+];

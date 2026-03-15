@@ -105,7 +105,8 @@ export const ThreeDragonInputSystem = {
     }
 
     const boostMult = p.boostActive ? 2.0 : 1.0;
-    const speed = TDBalance.PLAYER_SPEED * boostMult;
+    const speedMult = state.upgradeState?.moveSpeedMult ?? 1;
+    const speed = TDBalance.PLAYER_SPEED * boostMult * speedMult;
 
     let dx = 0, dy = 0;
     if (inp.left) dx -= 1;

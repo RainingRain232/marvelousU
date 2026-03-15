@@ -45,6 +45,115 @@ export interface Vec3 {
 }
 
 // ---------------------------------------------------------------------------
+// Status effects on enemies
+// ---------------------------------------------------------------------------
+
+export interface TDStatusEffects {
+  frozen: number;       // remaining duration
+  burning: number;
+  wet: number;
+  stunned: number;
+}
+
+// ---------------------------------------------------------------------------
+// Environmental hazards
+// ---------------------------------------------------------------------------
+
+export type TDHazardType = "lava_geyser" | "blizzard_wind" | "crystal_shard" | "lightning_strike" | "water_spout" | "leaf_tornado";
+
+export interface TDHazard {
+  id: number;
+  type: TDHazardType;
+  position: Vec3;
+  velocity: Vec3;
+  timer: number;        // time until activation / current lifetime
+  phase: "warning" | "active" | "fading";
+  radius: number;
+  damage: number;
+  duration: number;     // total active phase duration
+  warningDuration: number;
+  hitEntities: Set<number>; // avoid multi-hit per hazard pulse
+}
+
+// ---------------------------------------------------------------------------
+// Wave modifiers
+// ---------------------------------------------------------------------------
+
+export type TDWaveModifierId = "armored" | "haste" | "multiplied" | "aerial" | "vampiric" | "explosive";
+
+export interface TDWaveModifier {
+  id: TDWaveModifierId;
+  name: string;
+  description: string;
+  icon: string;
+  color: string;
+}
+
+// ---------------------------------------------------------------------------
+// Between-wave upgrades
+// ---------------------------------------------------------------------------
+
+export type TDUpgradeId = "max_hp" | "max_mana" | "damage" | "mana_regen" | "crit_chance" | "move_speed" | "cooldown_reduction";
+
+export interface TDUpgradeChoice {
+  id: TDUpgradeId;
+  name: string;
+  description: string;
+  icon: string;
+  color: string;
+}
+
+export interface TDUpgradeState {
+  damageMult: number;
+  critChanceBonus: number;
+  moveSpeedMult: number;
+  cooldownReduction: number;
+  upgrades: TDUpgradeId[];     // history of picked upgrades
+}
+
+// ---------------------------------------------------------------------------
+// Boss mechanic state
+// ---------------------------------------------------------------------------
+
+export interface TDBossMechanicState {
+  // Ancient Dragon fire breath
+  fireBreathActive: boolean;
+  fireBreathTimer: number;
+  fireBreathAngle: number;    // direction of cone
+  fireBreathCooldown: number;
+
+  // Storm Colossus lightning zones
+  lightningZones: { position: Vec3; timer: number; radius: number }[];
+  lightningZoneCooldown: number;
+
+  // Death Knight shadow clones
+  shadowCloneIds: number[];
+  shadowCloneCooldown: number;
+
+  // Celestial Hydra heads
+  hydraHeads: { alive: boolean; hp: number; maxHp: number; attackTimer: number; pattern: number }[];
+  hydraInitialized: boolean;
+
+  // Void Emperor teleport
+  voidTeleportTimer: number;
+  voidTeleportCooldown: number;
+  voidInvincible: boolean;
+  voidInvincibleTimer: number;
+  voidZones: { position: Vec3; timer: number; radius: number }[];
+}
+
+// ---------------------------------------------------------------------------
+// Synergy popup
+// ---------------------------------------------------------------------------
+
+export interface TDSynergyPopup {
+  text: string;
+  color: string;
+  position: Vec3;
+  timer: number;
+}
+
+// ---------------------------------------------------------------------------
 // Entities
 // ---------------------------------------------------------------------------
 
@@ -105,6 +214,13 @@ export interface TDEnemy {
   // 3D specific
   rotationY: number;
   rotationSpeed: number;
+  // Status effects
+  statusEffects: TDStatusEffects;
+  // Boss-specific mechanic state (only for bosses)
+  bossMechanics?: TDBossMechanicState;
+  // Shadow clone flag for Death Knight clones
+  isShadowClone?: boolean;
+  parentBossId?: number;
 }
 
 export enum TDEnemyType {
@@ -262,6 +378,29 @@ export interface ThreeDragonState {
   nextId: number;
   screenW: number;
   screenH: number;
+
+  // --- New systems ---
+
+  // Environmental hazards
+  hazards: TDHazard[];
+  hazardSpawnTimers: Record<string, number>;
+
+  // Wave modifiers
+  activeModifiers: TDWaveModifierId[];
+  modifierAnnounceTimer: number;
+
+  // Between-wave upgrade system
+  upgradeState: TDUpgradeState;
+  upgradeChoicesActive: boolean;
+  upgradeChoices: TDUpgradeChoice[];
+
+  // Synergy popups
+  synergyPopups: TDSynergyPopup[];
+
+  // Wing Gust timestamp for Resonance synergy
+  lastWingGustTime: number;
+  // Shadow Dive attack flag for Shadow Strike synergy
+  shadowDiveAttackedDuringInvuln: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -365,5 +504,27 @@ export function createThreeDragonState(screenW: number, screenH: number, mapId =
     nextId: 1,
     screenW,
     screenH,
+
+    // --- New systems ---
+    hazards: [],
+    hazardSpawnTimers: {},
+
+    activeModifiers: [],
+    modifierAnnounceTimer: 0,
+
+    upgradeState: {
+      damageMult: 1,
+      critChanceBonus: 0,
+      moveSpeedMult: 1,
+      cooldownReduction: 0,
+      upgrades: [],
+    },
+    upgradeChoicesActive: false,
+    upgradeChoices: [],
+
+    synergyPopups: [],
+
+    lastWingGustTime: -10,
+    shadowDiveAttackedDuringInvuln: false,
   };
 }

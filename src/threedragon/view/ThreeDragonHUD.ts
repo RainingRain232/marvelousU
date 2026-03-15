@@ -2,9 +2,9 @@
 // 3Dragon mode — HUD overlay (HTML-based for clean overlay on Three.js)
 // ---------------------------------------------------------------------------
 
-import type { ThreeDragonState } from "../state/ThreeDragonState";
+import type { ThreeDragonState, TDUpgradeId } from "../state/ThreeDragonState";
 import { TDSkillId } from "../state/ThreeDragonState";
-import { TD_SKILL_CONFIGS, TD_SKILL_UNLOCK_ORDER } from "../config/ThreeDragonConfig";
+import { TD_SKILL_CONFIGS, TD_SKILL_UNLOCK_ORDER, TD_WAVE_MODIFIER_BY_ID } from "../config/ThreeDragonConfig";
 
 // ---------------------------------------------------------------------------
 // ThreeDragonHUD
@@ -53,6 +53,17 @@ export class ThreeDragonHUD {
   private _skillEquipVisible = false;
   private _lastEquippedSkills: TDSkillId[] = [];
   private _onEquipSkill: ((slot: number, skillId: TDSkillId) => void) | null = null;
+  // Upgrade system
+  private _upgradeOverlay!: HTMLDivElement;
+  private _onUpgrade: ((upgradeId: TDUpgradeId) => void) | null = null;
+  // Synergy popups
+  private _synergyPopups: { el: HTMLDivElement; timer: number }[] = [];
+  // Modifier display
+  private _modifierBar!: HTMLDivElement;
+  // Modifier announcement
+  private _modifierAnnounce!: HTMLDivElement;
+  private _modifierAnnounceTimer = 0;
+  private _lastModifiers: string[] = [];
 
   build(_sw: number, _sh: number): void {
     // Inject keyframe animations
@@ -487,6 +498,37 @@ export class ThreeDragonHUD {
       font-family: 'Cinzel', Georgia, serif;
     `;
     this._root.appendChild(this._skillEquipOverlay);
+
+    // Upgrade selection overlay
+    this._upgradeOverlay = document.createElement("div");
+    this._upgradeOverlay.style.cssText = `
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.8); display: none;
+      justify-content: center; align-items: center; flex-direction: column;
+      z-index: 50; pointer-events: auto; backdrop-filter: blur(6px);
+      font-family: 'Cinzel', Georgia, serif;
+    `;
+    this._root.appendChild(this._upgradeOverlay);
+
+    // Modifier display bar (top-right)
+    this._modifierBar = document.createElement("div");
+    this._modifierBar.style.cssText = `
+      position: absolute; top: 10px; right: 10px;
+      display: flex; gap: 6px; flex-direction: column; align-items: flex-end;
+      pointer-events: none; z-index: 12;
+    `;
+    this._root.appendChild(this._modifierBar);
+
+    // Modifier announcement (center screen)
+    this._modifierAnnounce = document.createElement("div");
+    this._modifierAnnounce.style.cssText = `
+      position: absolute; top: 30%; left: 50%; transform: translateX(-50%);
+      font-size: 22px; font-weight: bold; color: #ffcc44;
+      text-shadow: 0 0 15px rgba(255,200,68,0.6), 2px 2px 4px rgba(0,0,0,0.8);
+      pointer-events: none; z-index: 14; opacity: 0; text-align: center;
+      letter-spacing: 2px; text-transform: uppercase; white-space: pre-line;
+    `;
+    this._root.appendChild(this._modifierAnnounce);
 
     document.body.appendChild(this._root);
   }
@@ -975,6 +1017,9 @@ export class ThreeDragonHUD {
         this._notification.style.opacity = "0";
       }
     }
+
+    // Wave modifiers and synergy popups
+    this._updateModifierDisplay(state, dt);
   }
 
   showDamageNumber(screenX: number, screenY: number, damage: number, isCrit: boolean, isElite: boolean): void {
@@ -1329,6 +1374,184 @@ export class ThreeDragonHUD {
     this._notifTimer = 2.5;
   }
 
+  // -------------------------------------------------------------------------
+  // Synergy Popups
+  // -------------------------------------------------------------------------
+
+  showSynergyPopup(screenX: number, screenY: number, text: string, color: string): void {
+    const el = document.createElement("div");
+    el.style.cssText = `
+      position: absolute; left: ${screenX}px; top: ${screenY - 30}px;
+      font-size: 20px; font-weight: 900; color: ${color};
+      text-shadow: 0 0 12px ${color}, 0 0 4px rgba(0,0,0,0.8),
+        -2px -2px 0 rgba(0,0,0,0.9), 2px 2px 0 rgba(0,0,0,0.9);
+      pointer-events: none; z-index: 16;
+      font-family: 'Impact', 'Arial Black', sans-serif;
+      letter-spacing: 2px; transform: translateX(-50%) scale(1.5);
+      will-change: transform, opacity, top;
+    `;
+    el.textContent = text;
+    this._root.appendChild(el);
+    this._synergyPopups.push({ el, timer: 1.5 });
+  }
+
+  // -------------------------------------------------------------------------
+  // Upgrade Menu
+  // -------------------------------------------------------------------------
+
+  setUpgradeCallback(cb: (upgradeId: TDUpgradeId) => void): void {
+    this._onUpgrade = cb;
+  }
+
+  showUpgradeMenu(state: ThreeDragonState): void {
+    this._upgradeOverlay.style.display = "flex";
+    this._upgradeOverlay.innerHTML = "";
+
+    const container = document.createElement("div");
+    container.style.cssText = `
+      display: flex; flex-direction: column; align-items: center;
+      max-width: 700px; width: 90%;
+    `;
+
+    const title = document.createElement("div");
+    title.style.cssText = `
+      font-size: 32px; color: #ffd700; font-weight: bold; letter-spacing: 4px;
+      text-shadow: 0 0 20px rgba(255,215,0,0.5), 2px 2px 4px rgba(0,0,0,0.8);
+      margin-bottom: 8px; text-transform: uppercase;
+    `;
+    title.textContent = "Choose an Upgrade";
+    container.appendChild(title);
+
+    const subtitle = document.createElement("div");
+    subtitle.style.cssText = `
+      font-size: 12px; color: #8899aa; letter-spacing: 2px; margin-bottom: 30px;
+    `;
+    subtitle.textContent = `Wave ${state.wave} Complete`;
+    container.appendChild(subtitle);
+
+    const cardsRow = document.createElement("div");
+    cardsRow.style.cssText = `display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;`;
+
+    for (const choice of state.upgradeChoices) {
+      const card = document.createElement("div");
+      card.style.cssText = `
+        width: 180px; padding: 24px 16px; border-radius: 12px;
+        border: 2px solid ${choice.color}44;
+        background: linear-gradient(180deg, rgba(20,20,40,0.95) 0%, rgba(10,10,25,0.98) 100%);
+        cursor: pointer; transition: all 0.25s; text-align: center;
+        pointer-events: auto;
+      `;
+      card.addEventListener("mouseenter", () => {
+        card.style.borderColor = choice.color;
+        card.style.boxShadow = `0 0 20px ${choice.color}44`;
+        card.style.transform = "translateY(-4px) scale(1.03)";
+      });
+      card.addEventListener("mouseleave", () => {
+        card.style.borderColor = `${choice.color}44`;
+        card.style.boxShadow = "none";
+        card.style.transform = "none";
+      });
+
+      const icon = document.createElement("div");
+      icon.style.cssText = `font-size: 36px; margin-bottom: 12px;`;
+      icon.textContent = choice.icon;
+      card.appendChild(icon);
+
+      const nameEl = document.createElement("div");
+      nameEl.style.cssText = `
+        font-size: 16px; font-weight: bold; color: ${choice.color};
+        margin-bottom: 8px; letter-spacing: 1px;
+      `;
+      nameEl.textContent = choice.name;
+      card.appendChild(nameEl);
+
+      const descEl = document.createElement("div");
+      descEl.style.cssText = `font-size: 11px; color: #8899aa; line-height: 1.4;`;
+      descEl.textContent = choice.description;
+      card.appendChild(descEl);
+
+      card.addEventListener("click", () => {
+        this._onUpgrade?.(choice.id);
+      });
+
+      cardsRow.appendChild(card);
+    }
+
+    container.appendChild(cardsRow);
+    this._upgradeOverlay.appendChild(container);
+  }
+
+  hideUpgradeMenu(): void {
+    this._upgradeOverlay.style.display = "none";
+  }
+
+  // -------------------------------------------------------------------------
+  // Wave Modifier Display
+  // -------------------------------------------------------------------------
+
+  private _updateModifierDisplay(state: ThreeDragonState, dt: number): void {
+    const mods = state.activeModifiers;
+    const modsKey = mods.join(",");
+    const lastKey = this._lastModifiers.join(",");
+
+    if (modsKey !== lastKey) {
+      this._lastModifiers = [...mods];
+      this._modifierBar.innerHTML = "";
+
+      if (mods.length > 0) {
+        // Show announcement
+        const lines = mods.map(id => {
+          const m = TD_WAVE_MODIFIER_BY_ID[id];
+          return m ? `${m.icon} ${m.name}: ${m.description}` : "";
+        }).filter(Boolean);
+        this._modifierAnnounce.textContent = `WAVE MODIFIERS\n${lines.join("\n")}`;
+        this._modifierAnnounce.style.opacity = "1";
+        this._modifierAnnounceTimer = 3;
+      }
+
+      for (const id of mods) {
+        const m = TD_WAVE_MODIFIER_BY_ID[id];
+        if (!m) continue;
+        const badge = document.createElement("div");
+        badge.style.cssText = `
+          padding: 4px 10px; border-radius: 6px;
+          background: rgba(0,0,0,0.6); border: 1px solid ${m.color}66;
+          color: ${m.color}; font-size: 10px; font-weight: bold;
+          letter-spacing: 1px; text-transform: uppercase;
+          text-shadow: 0 0 6px ${m.color}44;
+        `;
+        badge.textContent = `${m.icon} ${m.name}`;
+        this._modifierBar.appendChild(badge);
+      }
+    }
+
+    // Fade modifier announcement
+    if (this._modifierAnnounceTimer > 0) {
+      this._modifierAnnounceTimer -= dt;
+      this._modifierAnnounce.style.opacity = `${Math.min(1, this._modifierAnnounceTimer)}`;
+      if (this._modifierAnnounceTimer <= 0) {
+        this._modifierAnnounce.style.opacity = "0";
+      }
+    }
+
+    // Update synergy popups
+    this._synergyPopups = this._synergyPopups.filter(sp => {
+      sp.timer -= dt;
+      if (sp.timer <= 0) {
+        if (sp.el.parentNode) sp.el.parentNode.removeChild(sp.el);
+        return false;
+      }
+      const progress = 1 - sp.timer / 1.5;
+      const yOffset = progress * 60;
+      const currentTop = parseFloat(sp.el.style.top) || 0;
+      sp.el.style.top = `${currentTop - yOffset * dt * 2}px`;
+      const scale = progress < 0.1 ? 1.5 - progress * 5 : 1;
+      sp.el.style.transform = `translateX(-50%) scale(${scale})`;
+      sp.el.style.opacity = `${sp.timer > 0.3 ? 1 : sp.timer / 0.3}`;
+      return true;
+    });
+  }
+
   cleanup(): void {
     for (const dn of this._dmgNumbers) {
       if (dn.el.parentNode) dn.el.parentNode.removeChild(dn.el);
@@ -1338,6 +1561,11 @@ export class ThreeDragonHUD {
       if (ind.parentNode) ind.parentNode.removeChild(ind);
     }
     this._edgeIndicators = [];
+    for (const sp of this._synergyPopups) {
+      if (sp.el.parentNode) sp.el.parentNode.removeChild(sp.el);
+    }
+    this._synergyPopups = [];
+    this._lastModifiers = [];
     if (this._root.parentNode) {
       this._root.parentNode.removeChild(this._root);
     }

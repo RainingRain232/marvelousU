@@ -4,12 +4,12 @@
 // ---------------------------------------------------------------------------
 
 import {
-  TileType, ENEMY_DEFS, ENEMY_POOLS, ITEM_DEFS, LOOT_TABLES,
+  TileType, RoomType, ENEMY_DEFS, ENEMY_POOLS, ITEM_DEFS, LOOT_TABLES,
   GameBalance,
 } from "../config/GameConfig";
 import type { FloorParams, EnemyDef, ItemDef, QuestGenreDef } from "../config/GameConfig";
 import type {
-  FloorState, EnemyInstance, TreasureChest, GridPos, Direction,
+  FloorState, EnemyInstance, TreasureChest, GridPos, Direction, RoomInfo,
 } from "../state/GameState";
 
 // ---------------------------------------------------------------------------
@@ -24,21 +24,65 @@ export function generateFloor(
 ): FloorState {
   const { width, height } = params;
   const tiles = createGrid(width, height);
-  const rooms: { x: number; y: number; w: number; h: number }[] = [];
+  const rawRooms: { x: number; y: number; w: number; h: number }[] = [];
 
   // Place rooms via random attempts
   const attempts = (params.roomCountMax + params.roomCountMin) * 8;
   const targetRooms = randInt(params.roomCountMin, params.roomCountMax);
 
-  for (let i = 0; i < attempts && rooms.length < targetRooms; i++) {
+  for (let i = 0; i < attempts && rawRooms.length < targetRooms; i++) {
     const rw = randInt(params.roomSizeMin, params.roomSizeMax);
     const rh = randInt(params.roomSizeMin, params.roomSizeMax);
     const rx = randInt(1, width - rw - 1);
     const ry = randInt(1, height - rh - 1);
 
-    if (!overlapsAny(rx, ry, rw, rh, rooms, 2)) {
+    if (!overlapsAny(rx, ry, rw, rh, rawRooms, 2)) {
       carveRoom(tiles, rx, ry, rw, rh);
-      rooms.push({ x: rx, y: ry, w: rw, h: rh });
+      rawRooms.push({ x: rx, y: ry, w: rw, h: rh });
+    }
+  }
+
+  // Assign room types
+  const rooms: RoomInfo[] = rawRooms.map((r, idx) => {
+    let type = RoomType.NORMAL;
+    if (idx === 0 || idx === rawRooms.length - 1) {
+      type = RoomType.NORMAL; // entrance/stairs rooms stay normal
+    } else if (idx === 1 && rawRooms.length > 3) {
+      // Second room: shrine
+      type = RoomType.SHRINE;
+    } else if (idx === rawRooms.length - 2 && rawRooms.length > 4) {
+      // Second-to-last: champion arena
+      type = RoomType.CHAMPION_ARENA;
+    } else if (idx === 2 && rawRooms.length > 5) {
+      // Third room: treasure vault
+      type = RoomType.TREASURE_VAULT;
+    }
+    return { ...r, type };
+  });
+
+  // Secret room (30% chance per floor)
+  if (Math.random() < 0.3 && rooms.length > 2) {
+    const secretW = randInt(4, 6);
+    const secretH = randInt(4, 6);
+    for (let att = 0; att < 20; att++) {
+      const sx = randInt(1, width - secretW - 1);
+      const sy = randInt(1, height - secretH - 1);
+      if (!overlapsAny(sx, sy, secretW, secretH, rawRooms, 2)) {
+        carveRoom(tiles, sx, sy, secretW, secretH);
+        rooms.push({ x: sx, y: sy, w: secretW, h: secretH, type: RoomType.SECRET });
+        // Connect secret room to nearest room with a hidden corridor
+        let nearest = rooms[1];
+        let bestDist = Infinity;
+        for (let ri = 0; ri < rooms.length - 1; ri++) {
+          const rc = roomCenter(rooms[ri]);
+          const sc = { col: sx + Math.floor(secretW / 2), row: sy + Math.floor(secretH / 2) };
+          const d = Math.abs(rc.col - sc.col) + Math.abs(rc.row - sc.row);
+          if (d < bestDist) { bestDist = d; nearest = rooms[ri]; }
+        }
+        const sc = { col: sx + Math.floor(secretW / 2), row: sy + Math.floor(secretH / 2) };
+        carveCorridor(tiles, sc.col, sc.row, roomCenter(nearest).col, roomCenter(nearest).row);
+        break;
+      }
     }
   }
 
@@ -55,19 +99,43 @@ export function generateFloor(
     carveCorridor(tiles, a.col, a.row, b.col, b.row);
   }
 
-  // Place entrance (first room) and stairs (last room)
+  // Place entrance (first room) and stairs (last non-secret room)
   const entranceRoom = rooms[0];
-  const stairsRoom = rooms[rooms.length - 1];
+  // Find last normal/champion room for stairs
+  let stairsRoomIdx = rooms.length - 1;
+  for (let i = rooms.length - 1; i >= 0; i--) {
+    if (rooms[i].type !== RoomType.SECRET) { stairsRoomIdx = i; break; }
+  }
+  const stairsRoom = rooms[stairsRoomIdx];
   const entrancePos: GridPos = roomCenter(entranceRoom);
   const stairsPos: GridPos = roomCenter(stairsRoom);
   tiles[entrancePos.row][entrancePos.col] = TileType.ENTRANCE;
   tiles[stairsPos.row][stairsPos.col] = TileType.STAIRS_DOWN;
 
+  // Place shop tile on even floors (2, 4, 6, 8 = floorNum 1, 3, 5, 7)
+  const isShopFloor = (floorNum + 1) % 2 === 0; // floors 2,4,6,8 (0-indexed: 1,3,5,7)
+  if (isShopFloor && entranceRoom.w >= 3 && entranceRoom.h >= 3) {
+    const shopC = entranceRoom.x + 1;
+    const shopR = entranceRoom.y + 1;
+    if (tiles[shopR][shopC] === TileType.FLOOR) {
+      tiles[shopR][shopC] = TileType.SHOP;
+    }
+  }
+
+  // Place shrine tiles in shrine rooms
+  for (const room of rooms) {
+    if (room.type === RoomType.SHRINE) {
+      const center = roomCenter(room);
+      if (tiles[center.row][center.col] === TileType.FLOOR) {
+        tiles[center.row][center.col] = TileType.SHRINE;
+      }
+    }
+  }
+
   // Place traps in corridors
   for (let r = 0; r < height; r++) {
     for (let c = 0; c < width; c++) {
       if (tiles[r][c] === TileType.CORRIDOR && Math.random() < params.trapChance) {
-        // Don't put traps adjacent to entrance/stairs
         if (Math.abs(r - entrancePos.row) + Math.abs(c - entrancePos.col) > 3 &&
             Math.abs(r - stairsPos.row) + Math.abs(c - stairsPos.col) > 3) {
           tiles[r][c] = TileType.TRAP;
@@ -76,20 +144,29 @@ export function generateFloor(
     }
   }
 
+  // ---- Per-floor environmental hazard tiles ----
+  placeEnvironmentalTiles(tiles, rooms, floorNum, width, height, entrancePos, stairsPos);
+
   // Place treasures in rooms
   const treasures: TreasureChest[] = [];
   const difficulty = getDifficulty(floorNum, params);
-  for (let ri = 1; ri < rooms.length - 1; ri++) {
-    if (Math.random() < params.treasureChance) {
-      const room = rooms[ri];
-      const tc = room.x + randInt(1, room.w - 2);
-      const tr = room.y + randInt(1, room.h - 2);
+  for (let ri = 1; ri < rooms.length; ri++) {
+    const room = rooms[ri];
+    if (ri === stairsRoomIdx) continue; // skip stairs room
+
+    const isVault = room.type === RoomType.TREASURE_VAULT;
+    const isSecret = room.type === RoomType.SECRET;
+    const chance = isVault || isSecret ? 1.0 : params.treasureChance;
+
+    if (Math.random() < chance) {
+      const tc = room.x + randInt(1, Math.max(1, room.w - 2));
+      const tr = room.y + randInt(1, Math.max(1, room.h - 2));
       if (tiles[tr][tc] === TileType.FLOOR) {
         tiles[tr][tc] = TileType.TREASURE;
-        treasures.push({
-          col: tc, row: tr, opened: false,
-          item: rollLoot(difficulty),
-        });
+        // Secret and champion rooms get guaranteed rare+ loot
+        const loot = (isSecret || room.type === RoomType.CHAMPION_ARENA)
+          ? rollLoot("hard") : rollLoot(difficulty);
+        treasures.push({ col: tc, row: tr, opened: false, item: loot });
       }
     }
   }
@@ -101,9 +178,12 @@ export function generateFloor(
   const pool = getEnemyPool(difficulty, genre);
 
   for (let i = 0; i < enemyCount; i++) {
-    const room = rooms[randInt(1, rooms.length - 1)]; // skip entrance room
-    const ec = room.x + randInt(1, room.w - 2);
-    const er = room.y + randInt(1, room.h - 2);
+    // Pick a room (skip entrance and shrine rooms)
+    const candidates = rooms.filter((r, idx) => idx > 0 && r.type !== RoomType.SHRINE);
+    if (candidates.length === 0) continue;
+    const room = candidates[randInt(0, candidates.length - 1)];
+    const ec = room.x + randInt(1, Math.max(1, room.w - 2));
+    const er = room.y + randInt(1, Math.max(1, room.h - 2));
     if (tiles[er][ec] === TileType.FLOOR) {
       const defId = pool[randInt(0, pool.length - 1)];
       const def = ENEMY_DEFS[defId];
@@ -113,18 +193,56 @@ export function generateFloor(
     }
   }
 
+  // Champion arena: spawn single powerful elite
+  for (const room of rooms) {
+    if (room.type === RoomType.CHAMPION_ARENA) {
+      const hardPool = ENEMY_POOLS["hard"] || [];
+      if (hardPool.length > 0) {
+        const eliteDefId = hardPool[randInt(0, hardPool.length - 1)];
+        const eliteDef = ENEMY_DEFS[eliteDefId];
+        if (eliteDef) {
+          const center = roomCenter(room);
+          // Buffed elite (1.5x stats)
+          const buffedDef: EnemyDef = {
+            ...eliteDef,
+            name: `Champion ${eliteDef.name}`,
+            hp: Math.floor(eliteDef.hp * 1.5),
+            attack: Math.floor(eliteDef.attack * 1.3),
+            defense: Math.floor(eliteDef.defense * 1.3),
+            xpReward: Math.floor(eliteDef.xpReward * 2),
+            goldReward: Math.floor(eliteDef.goldReward * 2),
+          };
+          enemies.push(createEnemy(eid++, buffedDef, center.col, center.row));
+        }
+      }
+    }
+  }
+
+  // Treasure vault: extra enemies
+  for (const room of rooms) {
+    if (room.type === RoomType.TREASURE_VAULT) {
+      for (let i = 0; i < 3; i++) {
+        const ec = room.x + randInt(1, Math.max(1, room.w - 2));
+        const er = room.y + randInt(1, Math.max(1, room.h - 2));
+        if (tiles[er][ec] === TileType.FLOOR) {
+          const defId = pool[randInt(0, pool.length - 1)];
+          const def = ENEMY_DEFS[defId];
+          if (def) enemies.push(createEnemy(eid++, def, ec, er));
+        }
+      }
+    }
+  }
+
   // Spawn boss if applicable
   if (params.hasBoss && genre.bossPool.length > 0) {
     const bossId = genre.bossPool[randInt(0, genre.bossPool.length - 1)];
     const bossDef = ENEMY_DEFS[bossId];
     if (bossDef) {
-      // Place boss in the stairs room
       const bc = stairsRoom.x + Math.floor(stairsRoom.w / 2);
       const br = stairsRoom.y + Math.floor(stairsRoom.h / 2);
       if (br !== stairsPos.row || bc !== stairsPos.col) {
         enemies.push(createEnemy(eid++, bossDef, bc, br));
       } else {
-        // Offset by 1
         enemies.push(createEnemy(eid++, bossDef, bc + 1, br));
       }
     }
@@ -148,7 +266,55 @@ export function generateFloor(
     stairsPos,
     entrancePos,
     explored,
+    reanimationQueue: [],
+    darknessTimer: 0,
+    burningTrails: [],
+    projectiles: [],
+    poisonTrails: [],
   };
+}
+
+// ---------------------------------------------------------------------------
+// Environmental tile placement per floor theme
+// ---------------------------------------------------------------------------
+
+function placeEnvironmentalTiles(
+  tiles: TileType[][], rooms: RoomInfo[], floorNum: number,
+  width: number, height: number,
+  entrancePos: GridPos, stairsPos: GridPos,
+): void {
+  const themeFloor = Math.min(floorNum, 7);
+  const isFinal = themeFloor === 7;
+  const intensity = isFinal ? 0.4 : 1.0; // reduced on final floor
+
+  for (let r = 0; r < height; r++) {
+    for (let c = 0; c < width; c++) {
+      if (tiles[r][c] !== TileType.FLOOR) continue;
+      // Don't place near entrance/stairs
+      if (Math.abs(r - entrancePos.row) + Math.abs(c - entrancePos.col) <= 3) continue;
+      if (Math.abs(r - stairsPos.row) + Math.abs(c - stairsPos.col) <= 3) continue;
+      // Don't place in shrine rooms
+      const inShrine = rooms.some(rm =>
+        rm.type === RoomType.SHRINE && c >= rm.x && c < rm.x + rm.w && r >= rm.y && r < rm.y + rm.h);
+      if (inShrine) continue;
+
+      const roll = Math.random();
+
+      if ((themeFloor === 1 || isFinal) && roll < 0.06 * intensity) {
+        // Enchanted Forest: vine tiles
+        tiles[r][c] = TileType.VINE;
+      } else if ((themeFloor === 3 || isFinal) && roll < 0.08 * intensity) {
+        // Frozen Depths: ice tiles
+        tiles[r][c] = TileType.ICE;
+      } else if ((themeFloor === 4 || isFinal) && roll < 0.04 * intensity) {
+        // Volcanic Tunnels: lava tiles
+        tiles[r][c] = TileType.LAVA;
+      } else if ((themeFloor === 5 || isFinal) && roll < 0.03 * intensity) {
+        // Faerie Hollows: illusion tiles
+        tiles[r][c] = TileType.ILLUSION;
+      }
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -255,6 +421,17 @@ function createEnemy(id: number, def: EnemyDef, col: number, row: number): Enemy
     facing: 2 as Direction, // DOWN
     pathTarget: null,
     bossPhase: 0,
+    aiAbilityCooldown: 2 + Math.random() * 2,
+    aiSummonCooldown: 8 + Math.random() * 4,
+    aiRallyCooldown: 6 + Math.random() * 3,
+    aiHealCooldown: 3 + Math.random() * 2,
+    bossPhaseTransitioned: [],
+    bossArmorReduction: def.id === "black_knight" ? 0.5 : 0,
+    bossEnraged: false,
+    bossShieldThrown: false,
+    bossChallengeTimer: 0,
+    rallyDamageBuff: 0,
+    rallyBuffTimer: 0,
   };
 }
 
