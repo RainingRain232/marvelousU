@@ -1293,6 +1293,8 @@ export class WarbandCampaign {
   private _eventPopup: HTMLDivElement | null = null;
   private _eventPopupTimeout: ReturnType<typeof setTimeout> | null = null;
   private _fogCanvas: HTMLCanvasElement | null = null;
+  private _pauseMenuContainer: HTMLDivElement | null = null;
+  private _campaignPauseMenuContainer: HTMLDivElement | null = null;
 
   async boot(playerFaction: string): Promise<void> {
     // Hide PixiJS
@@ -1396,9 +1398,12 @@ export class WarbandCampaign {
       }
     }
 
+    // Set initial zoom to fill viewport
+    this._zoom = Math.max(window.innerWidth / MAP_W, window.innerHeight / MAP_H);
+
     // Center camera on player
-    this._camX = px - window.innerWidth / 2;
-    this._camY = py - window.innerHeight / 2;
+    this._camX = px - window.innerWidth / (2 * this._zoom);
+    this._camY = py - window.innerHeight / (2 * this._zoom);
 
     this._createUI();
     this._bindInputs();
@@ -2060,9 +2065,16 @@ export class WarbandCampaign {
         } else if (this._npcPanel) {
           this._removeNPCPanel();
           if (this._state) this._state.paused = false;
+        } else if (this._campaignPauseMenuContainer) {
+          if (this._state) this._state.paused = false;
+          this._hideCampaignPauseMenu();
+          this._updateTopBar();
         } else if (this._state) {
           this._state.paused = !this._state.paused;
           this._updateTopBar();
+          if (this._state.paused) {
+            this._showCampaignPauseMenu();
+          }
         }
       }
       if (e.code === "Space") {
@@ -2199,7 +2211,8 @@ export class WarbandCampaign {
     };
     this._wheelHandler = (e: WheelEvent) => {
       const oldZoom = this._zoom;
-      this._zoom = Math.max(0.4, Math.min(3.0, this._zoom - e.deltaY * 0.001));
+      const minZoom = Math.max(window.innerWidth / MAP_W, window.innerHeight / MAP_H);
+      this._zoom = Math.max(minZoom, Math.min(3.0, this._zoom - e.deltaY * 0.001));
       // Zoom toward mouse position
       if (this._canvas) {
         const rect = this._canvas.getBoundingClientRect();
@@ -2569,6 +2582,16 @@ export class WarbandCampaign {
     const s = this._state;
     this._animTime += 0.016;
     const t = this._animTime;
+
+    // Ensure zoom is high enough to fill the entire viewport (no background visible)
+    const minZoom = Math.max(w / MAP_W, h / MAP_H);
+    if (this._zoom < minZoom) this._zoom = minZoom;
+
+    // Clamp camera so the map edges don't reveal background
+    const viewW = w / this._zoom;
+    const viewH = h / this._zoom;
+    this._camX = Math.max(0, Math.min(MAP_W - viewW, this._camX));
+    this._camY = Math.max(0, Math.min(MAP_H - viewH, this._camY));
 
     ctx.save();
     ctx.scale(this._zoom, this._zoom);
@@ -3866,11 +3889,16 @@ export class WarbandCampaign {
       this._battleCameraController,
     );
 
-    // ESC handler for battle
+    // ESC handler for battle (also shows pause menu)
     this._escHandler = (e: KeyboardEvent) => {
       if (e.code === "Escape" && this._battleState) {
         if (this._battleState.phase === WarbandPhase.BATTLE) {
           this._battleState.paused = !this._battleState.paused;
+          if (this._battleState.paused) {
+            this._showPauseMenu();
+          } else {
+            this._hidePauseMenu();
+          }
         }
       }
     };
@@ -4182,10 +4210,23 @@ export class WarbandCampaign {
       cursor:pointer;font-family:inherit;margin-top:10px;
       pointer-events:auto;
     `;
-    btn.addEventListener("click", () => {
+    btn.addEventListener("mouseenter", () => {
+      btn.style.background = "rgba(218,165,32,0.35)";
+    });
+    btn.addEventListener("mouseleave", () => {
+      btn.style.background = "rgba(218,165,32,0.15)";
+    });
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      e.preventDefault();
       this._processBattleOutcome(won, playerSurvivors, loot);
     });
     this._battleResultsContainer.appendChild(btn);
+
+    // Block any pointer-lock re-acquisition from clicks on the results overlay
+    this._battleResultsContainer.addEventListener("mousedown", (e) => {
+      e.stopPropagation();
+    });
 
     const container = document.getElementById("pixi-container");
     if (container) container.appendChild(this._battleResultsContainer);
@@ -4364,8 +4405,151 @@ export class WarbandCampaign {
     this._state.paused = false;
   }
 
+  // ---------------------------------------------------------------------------
+  // Pause menu (ESC during battle or campaign)
+  // ---------------------------------------------------------------------------
+
+  private _showPauseMenu(): void {
+    if (this._pauseMenuContainer) return;
+    if (document.pointerLockElement) document.exitPointerLock();
+
+    this._pauseMenuContainer = document.createElement("div");
+    this._pauseMenuContainer.style.cssText = `
+      position:absolute;top:0;left:0;width:100%;height:100%;z-index:90;
+      background:rgba(10,8,5,0.85);display:flex;flex-direction:column;
+      align-items:center;justify-content:center;font-family:'Segoe UI',sans-serif;color:#e0d5c0;
+      pointer-events:auto;
+    `;
+    this._pauseMenuContainer.addEventListener("mousedown", (e) => e.stopPropagation());
+
+    this._pauseMenuContainer.innerHTML = `
+      <h1 style="font-size:36px;color:#daa520;text-shadow:0 0 12px rgba(218,165,32,0.4);margin-bottom:24px;">PAUSED</h1>
+      <div style="background:rgba(30,24,16,0.9);border:2px solid #5a4020;border-radius:8px;padding:28px 36px;max-width:480px;width:90%;">
+        <h2 style="font-size:18px;color:#daa520;margin:0 0 14px 0;border-bottom:1px solid #5a4020;padding-bottom:8px;">Controls</h2>
+        <div style="font-size:13px;line-height:1.8;color:#aa9977;">
+          <div><span style="color:#e0d5c0;font-weight:bold;">WASD</span> - Move</div>
+          <div><span style="color:#e0d5c0;font-weight:bold;">Arrow Keys</span> - Attack (hold to windup, release to swing)</div>
+          <div><span style="color:#e0d5c0;font-weight:bold;">Right Mouse</span> - Block</div>
+          <div><span style="color:#e0d5c0;font-weight:bold;">F</span> - Loot fallen enemies</div>
+          <div><span style="color:#e0d5c0;font-weight:bold;">B</span> - Mount / Dismount horse</div>
+          <div><span style="color:#e0d5c0;font-weight:bold;">V</span> - Toggle 1st / 3rd person camera</div>
+          <div><span style="color:#e0d5c0;font-weight:bold;">C</span> - Free orbit camera</div>
+          <div><span style="color:#e0d5c0;font-weight:bold;">Shift</span> - Sprint</div>
+          <div><span style="color:#e0d5c0;font-weight:bold;">Space</span> - Jump</div>
+          <div><span style="color:#e0d5c0;font-weight:bold;">1-5</span> - Formation commands</div>
+          <div><span style="color:#e0d5c0;font-weight:bold;">6-0</span> - Troop orders</div>
+        </div>
+        <h2 style="font-size:18px;color:#daa520;margin:18px 0 10px 0;border-bottom:1px solid #5a4020;padding-bottom:8px;">Hints</h2>
+        <div style="font-size:13px;line-height:1.8;color:#aa9977;">
+          <div>- Match your block direction to the enemy's attack to parry.</div>
+          <div>- Overhead swings deal extra damage but are slower.</div>
+          <div>- Mounted units deal charge damage at speed.</div>
+          <div>- Stay near the map edge to build up your flee timer.</div>
+          <div>- Loot fallen enemies for better equipment.</div>
+        </div>
+      </div>
+      <div style="margin-top:20px;font-size:13px;color:#665533;">Press ESC to resume</div>
+    `;
+
+    const resumeBtn = document.createElement("button");
+    resumeBtn.textContent = "Resume";
+    resumeBtn.style.cssText = `
+      margin-top:16px;padding:10px 36px;font-size:16px;font-weight:bold;
+      border:2px solid #daa520;border-radius:6px;
+      background:rgba(218,165,32,0.15);color:#daa520;
+      cursor:pointer;font-family:inherit;pointer-events:auto;
+    `;
+    resumeBtn.addEventListener("mouseenter", () => { resumeBtn.style.background = "rgba(218,165,32,0.35)"; });
+    resumeBtn.addEventListener("mouseleave", () => { resumeBtn.style.background = "rgba(218,165,32,0.15)"; });
+    resumeBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (this._battleState) {
+        this._battleState.paused = false;
+      }
+      this._hidePauseMenu();
+    });
+    this._pauseMenuContainer.appendChild(resumeBtn);
+
+    const container = document.getElementById("pixi-container");
+    if (container) container.appendChild(this._pauseMenuContainer);
+  }
+
+  private _hidePauseMenu(): void {
+    if (this._pauseMenuContainer?.parentNode) {
+      this._pauseMenuContainer.parentNode.removeChild(this._pauseMenuContainer);
+    }
+    this._pauseMenuContainer = null;
+  }
+
+  private _showCampaignPauseMenu(): void {
+    if (this._campaignPauseMenuContainer) return;
+
+    this._campaignPauseMenuContainer = document.createElement("div");
+    this._campaignPauseMenuContainer.style.cssText = `
+      position:absolute;top:0;left:0;width:100%;height:100%;z-index:90;
+      background:rgba(10,8,5,0.85);display:flex;flex-direction:column;
+      align-items:center;justify-content:center;font-family:'Segoe UI',sans-serif;color:#e0d5c0;
+      pointer-events:auto;
+    `;
+    this._campaignPauseMenuContainer.addEventListener("mousedown", (e) => e.stopPropagation());
+
+    this._campaignPauseMenuContainer.innerHTML = `
+      <h1 style="font-size:36px;color:#daa520;text-shadow:0 0 12px rgba(218,165,32,0.4);margin-bottom:24px;">PAUSED</h1>
+      <div style="background:rgba(30,24,16,0.9);border:2px solid #5a4020;border-radius:8px;padding:28px 36px;max-width:480px;width:90%;">
+        <h2 style="font-size:18px;color:#daa520;margin:0 0 14px 0;border-bottom:1px solid #5a4020;padding-bottom:8px;">Campaign Controls</h2>
+        <div style="font-size:13px;line-height:1.8;color:#aa9977;">
+          <div><span style="color:#e0d5c0;font-weight:bold;">Left Click</span> - Move party / Select city</div>
+          <div><span style="color:#e0d5c0;font-weight:bold;">Right Drag</span> - Pan camera</div>
+          <div><span style="color:#e0d5c0;font-weight:bold;">Scroll Wheel</span> - Zoom in/out</div>
+          <div><span style="color:#e0d5c0;font-weight:bold;">Space</span> - Pause / Unpause time</div>
+          <div><span style="color:#e0d5c0;font-weight:bold;">D</span> - Diplomacy panel</div>
+          <div><span style="color:#e0d5c0;font-weight:bold;">ESC</span> - Close panels / Pause</div>
+        </div>
+        <h2 style="font-size:18px;color:#daa520;margin:18px 0 10px 0;border-bottom:1px solid #5a4020;padding-bottom:8px;">Tips</h2>
+        <div style="font-size:13px;line-height:1.8;color:#aa9977;">
+          <div>- Visit cities to hire troops and trade.</div>
+          <div>- Keep an eye on unit upkeep costs.</div>
+          <div>- Explore special locations for rewards.</div>
+          <div>- Build diplomacy to avoid multi-front wars.</div>
+          <div>- Units gain XP after battles and can be promoted.</div>
+        </div>
+      </div>
+      <div style="margin-top:20px;font-size:13px;color:#665533;">Press ESC to resume</div>
+    `;
+
+    const resumeBtn = document.createElement("button");
+    resumeBtn.textContent = "Resume";
+    resumeBtn.style.cssText = `
+      margin-top:16px;padding:10px 36px;font-size:16px;font-weight:bold;
+      border:2px solid #daa520;border-radius:6px;
+      background:rgba(218,165,32,0.15);color:#daa520;
+      cursor:pointer;font-family:inherit;pointer-events:auto;
+    `;
+    resumeBtn.addEventListener("mouseenter", () => { resumeBtn.style.background = "rgba(218,165,32,0.35)"; });
+    resumeBtn.addEventListener("mouseleave", () => { resumeBtn.style.background = "rgba(218,165,32,0.15)"; });
+    resumeBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (this._state) this._state.paused = false;
+      this._hideCampaignPauseMenu();
+      this._updateTopBar();
+    });
+    this._campaignPauseMenuContainer.appendChild(resumeBtn);
+
+    if (this._container) this._container.appendChild(this._campaignPauseMenuContainer);
+  }
+
+  private _hideCampaignPauseMenu(): void {
+    if (this._campaignPauseMenuContainer?.parentNode) {
+      this._campaignPauseMenuContainer.parentNode.removeChild(this._campaignPauseMenuContainer);
+    }
+    this._campaignPauseMenuContainer = null;
+  }
+
   private _cleanupBattle(): void {
     cancelAnimationFrame(this._battleRafId);
+
+    // Remove pause menu if open
+    this._hidePauseMenu();
 
     // Remove results
     if (this._battleResultsContainer?.parentNode) {

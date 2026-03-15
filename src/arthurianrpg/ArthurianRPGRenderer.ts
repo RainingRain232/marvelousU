@@ -20,8 +20,9 @@ const TERRAIN_SIZE = 512;
 const TERRAIN_SEGMENTS = 256;
 const WATER_LEVEL = 1.5;
 const SKY_RADIUS = 1000;
-const MAX_PARTICLES = 5000;
+const MAX_PARTICLES = 8000;
 const TORCH_FLICKER_SPEED = 8;
+const GOD_RAY_SAMPLES = 60;
 
 // ---------------------------------------------------------------------------
 // Color grading + vignette shader
@@ -31,7 +32,10 @@ const ColorGradingShader = {
   uniforms: {
     tDiffuse: { value: null as THREE.Texture | null },
     warmth: { value: 0.15 },
-    vignetteStrength: { value: 0.5 },
+    vignetteStrength: { value: 0.55 },
+    timeOfDay: { value: 0.5 },
+    filmGrain: { value: 0.03 },
+    chromaticAberration: { value: 0.002 },
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -44,23 +48,129 @@ const ColorGradingShader = {
     uniform sampler2D tDiffuse;
     uniform float warmth;
     uniform float vignetteStrength;
+    uniform float timeOfDay;
+    uniform float filmGrain;
+    uniform float chromaticAberration;
+    varying vec2 vUv;
+
+    // Film grain noise
+    float hash(vec2 p) {
+      vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+      p3 += dot(p3, p3.yzx + 33.33);
+      return fract((p3.x + p3.y) * p3.z);
+    }
+
+    // Filmic tonemapping (ACES approximation)
+    vec3 acesFilm(vec3 x) {
+      float a = 2.51;
+      float b = 0.03;
+      float c = 2.43;
+      float d = 0.59;
+      float e = 0.14;
+      return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
+    }
+
+    void main() {
+      // Chromatic aberration at edges for cinematic lens feel
+      vec2 center = vUv - 0.5;
+      float edgeDist = length(center);
+      float caAmount = chromaticAberration * edgeDist;
+      vec4 col;
+      col.r = texture2D(tDiffuse, vUv + center * caAmount).r;
+      col.g = texture2D(tDiffuse, vUv).g;
+      col.b = texture2D(tDiffuse, vUv - center * caAmount).b;
+      col.a = 1.0;
+
+      // Dynamic warmth based on time of day
+      float dayFactor = smoothstep(0.2, 0.35, timeOfDay) - smoothstep(0.7, 0.85, timeOfDay);
+      float sunsetFactor = smoothstep(0.2, 0.3, timeOfDay) * (1.0 - smoothstep(0.3, 0.4, timeOfDay))
+                         + smoothstep(0.65, 0.75, timeOfDay) * (1.0 - smoothstep(0.75, 0.85, timeOfDay));
+      float dynamicWarmth = warmth * (1.0 + sunsetFactor * 2.0);
+
+      // Warm medieval tones with time-adaptive color shift
+      col.r += dynamicWarmth * 0.5;
+      col.g += dynamicWarmth * 0.25;
+      col.b -= dynamicWarmth * 0.12;
+
+      // Night: cool blue shift
+      float nightFactor = 1.0 - dayFactor;
+      col.r -= nightFactor * 0.04;
+      col.b += nightFactor * 0.06;
+
+      // S-curve contrast enhancement (more cinematic)
+      col.rgb = (col.rgb - 0.5) * 1.12 + 0.5;
+
+      // Subtle color split: lift shadows warm, push highlights cool
+      float lum = dot(col.rgb, vec3(0.299, 0.587, 0.114));
+      vec3 shadows = vec3(0.05, 0.03, 0.0); // warm shadow tint
+      vec3 highlights = vec3(-0.01, 0.0, 0.03); // cool highlight tint
+      col.rgb += mix(shadows, highlights, smoothstep(0.0, 1.0, lum));
+
+      // Cinematic desaturation with luma-aware preservation
+      col.rgb = mix(vec3(lum), col.rgb, 0.88 + dayFactor * 0.07);
+
+      // Vignette (multi-layered for more natural falloff)
+      float dist = length(center);
+      float vignette = 1.0 - vignetteStrength * smoothstep(0.2, 0.95, dist);
+      vignette *= 1.0 - 0.15 * smoothstep(0.5, 1.0, dist * dist); // extra soft outer ring
+      col.rgb *= vignette;
+
+      // Film grain for analog texture
+      float grain = (hash(vUv * 1000.0 + fract(timeOfDay * 100.0)) - 0.5) * filmGrain;
+      col.rgb += grain;
+
+      // Final clamp
+      col.rgb = clamp(col.rgb, 0.0, 1.0);
+
+      gl_FragColor = col;
+    }
+  `,
+};
+
+// ---------------------------------------------------------------------------
+// God rays (light scattering) shader
+// ---------------------------------------------------------------------------
+
+const GodRaysShader = {
+  uniforms: {
+    tDiffuse: { value: null as THREE.Texture | null },
+    lightPosition: { value: new THREE.Vector2(0.5, 0.5) },
+    exposure: { value: 0.3 },
+    decay: { value: 0.96 },
+    density: { value: 0.8 },
+    weight: { value: 0.4 },
+    samples: { value: GOD_RAY_SAMPLES },
+  },
+  vertexShader: /* glsl */ `
     varying vec2 vUv;
     void main() {
-      vec4 col = texture2D(tDiffuse, vUv);
-      // warm medieval tones with subtle contrast boost
-      col.r += warmth * 0.6;
-      col.g += warmth * 0.3;
-      col.b -= warmth * 0.15;
-      // Slight contrast enhancement
-      col.rgb = (col.rgb - 0.5) * 1.08 + 0.5;
-      // Subtle desaturation for cinematic feel
-      float lum = dot(col.rgb, vec3(0.299, 0.587, 0.114));
-      col.rgb = mix(vec3(lum), col.rgb, 0.92);
-      // vignette (smoother, more cinematic)
-      vec2 c = vUv - 0.5;
-      float dist = length(c);
-      col.rgb *= 1.0 - vignetteStrength * smoothstep(0.25, 0.9, dist);
-      gl_FragColor = col;
+      vUv = uv;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: /* glsl */ `
+    uniform sampler2D tDiffuse;
+    uniform vec2 lightPosition;
+    uniform float exposure;
+    uniform float decay;
+    uniform float density;
+    uniform float weight;
+    uniform int samples;
+    varying vec2 vUv;
+    void main() {
+      vec2 texCoord = vUv;
+      vec2 deltaTextCoord = (texCoord - lightPosition) * density / float(samples);
+      vec4 color = texture2D(tDiffuse, texCoord);
+      float illuminationDecay = 1.0;
+      vec4 godRayColor = vec4(0.0);
+      for (int i = 0; i < 60; i++) {
+        texCoord -= deltaTextCoord;
+        vec4 sampleColor = texture2D(tDiffuse, texCoord);
+        sampleColor *= illuminationDecay * weight;
+        godRayColor += sampleColor;
+        illuminationDecay *= decay;
+      }
+      gl_FragColor = color + godRayColor * exposure;
     }
   `,
 };
@@ -347,94 +457,222 @@ function applyProceduralAnimation(
 
 function buildCharacterMesh(look: ClassAppearance, scale = 1.0): THREE.Group {
   const group = new THREE.Group();
-  const mat = (color: number) =>
-    new THREE.MeshStandardMaterial({ color, roughness: 0.7, metalness: 0.3 });
+  const mat = (color: number, rough = 0.65, metal = 0.35) =>
+    new THREE.MeshStandardMaterial({
+      color,
+      roughness: rough,
+      metalness: metal,
+      envMapIntensity: 0.6,
+    });
+  const armorMat = (color: number) =>
+    new THREE.MeshStandardMaterial({
+      color,
+      roughness: 0.35,
+      metalness: 0.7,
+      envMapIntensity: 1.2,
+    });
+  const skinMat = () =>
+    new THREE.MeshStandardMaterial({
+      color: 0xddbb99,
+      roughness: 0.85,
+      metalness: 0.05,
+    });
 
-  // torso
-  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.4, 0.2), mat(look.bodyColor));
+  // torso – higher poly for smoother look
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.4, 0.2, 2, 2, 2), armorMat(look.bodyColor));
   torso.position.y = 1.3;
   torso.castShadow = true;
+  torso.receiveShadow = true;
   group.add(torso);
 
-  // waist
-  const waist = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.15, 0.18), mat(look.bodyColor));
+  // chest detail plate (layered armor feel)
+  const chestPlate = new THREE.Mesh(
+    new THREE.BoxGeometry(0.28, 0.25, 0.04),
+    armorMat(look.accentColor),
+  );
+  chestPlate.position.set(0, 1.35, 0.11);
+  chestPlate.castShadow = true;
+  group.add(chestPlate);
+
+  // waist with belt
+  const waist = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.15, 0.18, 2, 1, 2), mat(look.bodyColor));
   waist.position.y = 1.0;
   waist.castShadow = true;
+  waist.receiveShadow = true;
   group.add(waist);
+  const belt = new THREE.Mesh(
+    new THREE.BoxGeometry(0.32, 0.04, 0.2),
+    new THREE.MeshStandardMaterial({ color: 0x553311, roughness: 0.8, metalness: 0.15 }),
+  );
+  belt.position.y = 1.07;
+  group.add(belt);
+  const buckle = new THREE.Mesh(
+    new THREE.BoxGeometry(0.04, 0.04, 0.03),
+    new THREE.MeshStandardMaterial({ color: 0xccaa44, roughness: 0.3, metalness: 0.85 }),
+  );
+  buckle.position.set(0, 1.07, 0.11);
+  group.add(buckle);
 
-  // head
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 8), mat(0xddbb99));
+  // head – higher poly sphere
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.1, 16, 16), skinMat());
   head.position.y = 1.7;
   head.castShadow = true;
+  head.receiveShadow = true;
   group.add(head);
 
-  // eyes
-  const eyeMat = new THREE.MeshStandardMaterial({ color: 0x223344, emissive: 0x112233, emissiveIntensity: 0.3 });
+  // eyes with realistic shading
+  const eyeWhiteMat = new THREE.MeshStandardMaterial({ color: 0xeeeedd, roughness: 0.5, metalness: 0.0 });
+  const irisMat = new THREE.MeshStandardMaterial({ color: 0x334466, emissive: 0x112233, emissiveIntensity: 0.4, roughness: 0.3 });
   for (const side of [-1, 1]) {
-    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.015, 6, 6), eyeMat);
-    eye.position.set(side * 0.035, 1.72, 0.08);
-    group.add(eye);
+    const eyeWhite = new THREE.Mesh(new THREE.SphereGeometry(0.018, 8, 8), eyeWhiteMat);
+    eyeWhite.position.set(side * 0.035, 1.72, 0.08);
+    group.add(eyeWhite);
+    const iris = new THREE.Mesh(new THREE.SphereGeometry(0.01, 8, 8), irisMat);
+    iris.position.set(side * 0.035, 1.72, 0.094);
+    group.add(iris);
   }
 
-  // helm
+  // helm – higher poly, metallic finish
   if (look.helmShape !== "none") {
     let helmGeo: THREE.BufferGeometry;
-    if (look.helmShape === "round") helmGeo = new THREE.SphereGeometry(0.12, 8, 8);
-    else if (look.helmShape === "pointed") helmGeo = new THREE.ConeGeometry(0.1, 0.2, 8);
-    else helmGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.08, 8);
-    const helm = new THREE.Mesh(helmGeo, mat(look.accentColor));
+    if (look.helmShape === "round") helmGeo = new THREE.SphereGeometry(0.12, 16, 16);
+    else if (look.helmShape === "pointed") helmGeo = new THREE.ConeGeometry(0.1, 0.2, 12);
+    else helmGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.08, 12);
+    const helm = new THREE.Mesh(helmGeo, armorMat(look.accentColor));
     helm.position.y = look.helmShape === "pointed" ? 1.82 : 1.75;
     helm.castShadow = true;
+    helm.receiveShadow = true;
     group.add(helm);
+    // visor slit for round helms
+    if (look.helmShape === "round") {
+      const visor = new THREE.Mesh(
+        new THREE.BoxGeometry(0.1, 0.015, 0.03),
+        new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.2, metalness: 0.9 }),
+      );
+      visor.position.set(0, 1.74, 0.11);
+      group.add(visor);
+    }
   }
 
-  // arms
+  // arms – higher poly with pauldrons
   for (const side of [-1, 1]) {
-    const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.25, 6), mat(look.bodyColor));
+    // pauldron (shoulder armor)
+    const pauldron = new THREE.Mesh(
+      new THREE.SphereGeometry(0.06, 10, 10, 0, Math.PI * 2, 0, Math.PI / 2),
+      armorMat(look.accentColor),
+    );
+    pauldron.position.set(side * 0.24, 1.48, 0);
+    pauldron.castShadow = true;
+    group.add(pauldron);
+
+    const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.25, 10), mat(look.bodyColor));
     upper.position.set(side * 0.24, 1.35, 0);
     upper.castShadow = true;
+    upper.receiveShadow = true;
     group.add(upper);
 
-    const lower = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.22, 6), mat(look.accentColor));
+    const lower = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.22, 10), armorMat(look.accentColor));
     lower.position.set(side * 0.24, 1.1, 0);
     lower.castShadow = true;
+    lower.receiveShadow = true;
     group.add(lower);
 
-    // hand
-    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.035, 6, 6), mat(0xddbb99));
+    // hand with glove
+    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.035, 10, 10), skinMat());
     hand.position.set(side * 0.24, 0.97, 0);
     group.add(hand);
+    // gauntlet cuff
+    const cuff = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.04, 0.038, 0.04, 8),
+      armorMat(look.accentColor),
+    );
+    cuff.position.set(side * 0.24, 0.99, 0);
+    group.add(cuff);
   }
 
-  // legs
+  // legs – higher poly with knee guards
   for (const side of [-1, 1]) {
-    const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.045, 0.3, 6), mat(look.bodyColor));
+    const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.045, 0.3, 10), mat(look.bodyColor));
     upper.position.set(side * 0.09, 0.78, 0);
     upper.castShadow = true;
+    upper.receiveShadow = true;
     group.add(upper);
 
-    const lower = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.28, 6), mat(look.accentColor));
+    // knee guard
+    const kneeGuard = new THREE.Mesh(
+      new THREE.SphereGeometry(0.035, 8, 8, 0, Math.PI * 2, 0, Math.PI / 2),
+      armorMat(look.accentColor),
+    );
+    kneeGuard.position.set(side * 0.09, 0.65, 0.03);
+    kneeGuard.rotation.x = -Math.PI / 4;
+    group.add(kneeGuard);
+
+    const lower = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.28, 10), armorMat(look.accentColor));
     lower.position.set(side * 0.09, 0.5, 0);
     lower.castShadow = true;
+    lower.receiveShadow = true;
     group.add(lower);
 
-    // boot
-    const boot = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.06, 0.14), mat(0x443322));
+    // boot – more detailed with sole
+    const boot = new THREE.Mesh(
+      new THREE.BoxGeometry(0.08, 0.06, 0.14, 2, 1, 2),
+      new THREE.MeshStandardMaterial({ color: 0x3a2a1a, roughness: 0.9, metalness: 0.05 }),
+    );
     boot.position.set(side * 0.09, 0.33, 0.02);
+    boot.castShadow = true;
     group.add(boot);
+    // boot sole
+    const sole = new THREE.Mesh(
+      new THREE.BoxGeometry(0.085, 0.02, 0.15),
+      new THREE.MeshStandardMaterial({ color: 0x221100, roughness: 0.95 }),
+    );
+    sole.position.set(side * 0.09, 0.29, 0.02);
+    group.add(sole);
   }
 
   // weapon accessories
   if (look.hasStaff) {
-    const staff = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, 1.4, 6), mat(0x664422));
+    const staff = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.015, 0.022, 1.4, 8),
+      new THREE.MeshStandardMaterial({ color: 0x5a3818, roughness: 0.85, metalness: 0.05 }),
+    );
     staff.position.set(0.3, 1.1, 0);
+    staff.castShadow = true;
     group.add(staff);
+    // staff head ornament
+    const staffHead = new THREE.Mesh(
+      new THREE.TorusGeometry(0.04, 0.008, 8, 12),
+      new THREE.MeshStandardMaterial({ color: 0x886633, roughness: 0.4, metalness: 0.6 }),
+    );
+    staffHead.position.set(0.3, 1.8, 0);
+    group.add(staffHead);
+    // glowing orb with brighter emission
     const orb = new THREE.Mesh(
-      new THREE.SphereGeometry(0.06, 8, 8),
-      new THREE.MeshStandardMaterial({ color: 0x88aaff, emissive: 0x4466ff, emissiveIntensity: 0.8 }),
+      new THREE.SphereGeometry(0.055, 16, 16),
+      new THREE.MeshStandardMaterial({
+        color: 0x88aaff,
+        emissive: 0x4466ff,
+        emissiveIntensity: 1.8,
+        transparent: true,
+        opacity: 0.9,
+        roughness: 0.1,
+        metalness: 0.1,
+      }),
     );
     orb.position.set(0.3, 1.82, 0);
     group.add(orb);
+    // orb glow halo
+    const halo = new THREE.Mesh(
+      new THREE.SphereGeometry(0.08, 12, 12),
+      new THREE.MeshBasicMaterial({
+        color: 0x6688ff,
+        transparent: true,
+        opacity: 0.15,
+        side: THREE.DoubleSide,
+      }),
+    );
+    halo.position.set(0.3, 1.82, 0);
+    group.add(halo);
   }
   if (look.hasBow) {
     const bowCurve = new THREE.TorusGeometry(0.3, 0.012, 6, 12, Math.PI);
@@ -452,14 +690,28 @@ function buildCharacterMesh(look: ClassAppearance, scale = 1.0): THREE.Group {
     }
   }
 
-  // cape
+  // cape – more detailed with cloth-like material
   if (look.capeColor !== null) {
     const cape = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.3, 0.5),
-      new THREE.MeshStandardMaterial({ color: look.capeColor, side: THREE.DoubleSide }),
+      new THREE.PlaneGeometry(0.32, 0.55, 6, 8),
+      new THREE.MeshStandardMaterial({
+        color: look.capeColor,
+        side: THREE.DoubleSide,
+        roughness: 0.9,
+        metalness: 0.02,
+      }),
     );
-    cape.position.set(0, 1.2, -0.12);
+    cape.position.set(0, 1.2, -0.13);
+    cape.castShadow = true;
+    cape.receiveShadow = true;
     group.add(cape);
+    // cape clasp
+    const clasp = new THREE.Mesh(
+      new THREE.SphereGeometry(0.02, 8, 8),
+      new THREE.MeshStandardMaterial({ color: 0xccaa44, roughness: 0.25, metalness: 0.9 }),
+    );
+    clasp.position.set(0, 1.47, -0.1);
+    group.add(clasp);
   }
 
   group.scale.setScalar(scale);
@@ -472,9 +724,17 @@ function buildCharacterMesh(look: ClassAppearance, scale = 1.0): THREE.Group {
 
 function buildEnemyMesh(look: EnemyAppearance): THREE.Group {
   const g = new THREE.Group();
-  const mat = (c: number) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.8, metalness: 0.2 });
+  const mat = (c: number) => new THREE.MeshStandardMaterial({
+    color: c,
+    roughness: 0.75,
+    metalness: 0.15,
+    envMapIntensity: 0.5,
+  });
   const eyeMat = new THREE.MeshStandardMaterial({
-    color: look.eyeColor, emissive: look.eyeColor, emissiveIntensity: 1.0,
+    color: look.eyeColor,
+    emissive: look.eyeColor,
+    emissiveIntensity: 1.5,
+    roughness: 0.1,
   });
 
   if (look.shape === "humanoid") {
@@ -694,11 +954,14 @@ function buildTerrain(): { mesh: THREE.Mesh; getHeight: (x: number, z: number) =
 
   const mat = new THREE.MeshStandardMaterial({
     vertexColors: true,
-    roughness: 0.85,
-    metalness: 0.05,
+    roughness: 0.82,
+    metalness: 0.04,
+    envMapIntensity: 0.4,
+    flatShading: false,
   });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.receiveShadow = true;
+  mesh.castShadow = true;
 
   const getHeight = (wx: number, wz: number): number => {
     return heightAt(wx, wz);
@@ -712,21 +975,22 @@ function buildTerrain(): { mesh: THREE.Mesh; getHeight: (x: number, z: number) =
 // ---------------------------------------------------------------------------
 
 function buildWater(): THREE.Mesh {
-  const geo = new THREE.PlaneGeometry(TERRAIN_SIZE, TERRAIN_SIZE, 96, 96);
+  const geo = new THREE.PlaneGeometry(TERRAIN_SIZE, TERRAIN_SIZE, 128, 128);
   geo.rotateX(-Math.PI / 2);
   const mat = new THREE.MeshStandardMaterial({
-    color: 0x1a6699,
+    color: 0x1a7099,
     transparent: true,
-    opacity: 0.72,
-    roughness: 0.02,
-    metalness: 0.6,
+    opacity: 0.68,
+    roughness: 0.01,
+    metalness: 0.7,
     side: THREE.DoubleSide,
-    envMapIntensity: 1.5,
-    emissive: 0x061828,
-    emissiveIntensity: 0.15,
+    envMapIntensity: 2.0,
+    emissive: 0x081a30,
+    emissiveIntensity: 0.2,
   });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.position.y = WATER_LEVEL;
+  mesh.receiveShadow = true;
   return mesh;
 }
 
@@ -735,12 +999,18 @@ function animateWater(mesh: THREE.Mesh, time: number): void {
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i);
     const z = pos.getZ(i);
+    // Multi-octave wave simulation for more realistic water
     const y = Math.sin(x * 0.05 + time * 1.5) * 0.2 +
               Math.sin(z * 0.07 + time * 1.2) * 0.15 +
-              Math.sin((x + z) * 0.03 + time * 0.8) * 0.3;
+              Math.sin((x + z) * 0.03 + time * 0.8) * 0.3 +
+              Math.sin(x * 0.12 + z * 0.08 + time * 2.2) * 0.08 + // higher frequency ripple
+              Math.sin(x * 0.18 - z * 0.15 + time * 3.0) * 0.04 + // fine detail
+              Math.cos(x * 0.025 - time * 0.5) * Math.sin(z * 0.03 + time * 0.7) * 0.2; // broad swell
     pos.setY(i, y);
   }
   pos.needsUpdate = true;
+  // Recompute normals for proper lighting on waves
+  mesh.geometry.computeVertexNormals();
 }
 
 // ---------------------------------------------------------------------------
@@ -838,9 +1108,18 @@ function buildGrassPatch(): THREE.Group {
 
 function buildCamelotCastle(): THREE.Group {
   const g = new THREE.Group();
-  const stone = new THREE.MeshStandardMaterial({ color: 0x999988, roughness: 0.9, metalness: 0.1 });
-  const roof = new THREE.MeshStandardMaterial({ color: 0x663333, roughness: 0.8 });
-  const dark = new THREE.MeshStandardMaterial({ color: 0x666655, roughness: 0.95 });
+  const stone = new THREE.MeshStandardMaterial({
+    color: 0x9a9888, roughness: 0.88, metalness: 0.08, envMapIntensity: 0.3,
+  });
+  const roof = new THREE.MeshStandardMaterial({
+    color: 0x5a2828, roughness: 0.78, metalness: 0.05,
+  });
+  const dark = new THREE.MeshStandardMaterial({
+    color: 0x626252, roughness: 0.92, metalness: 0.06,
+  });
+  const goldTrim = new THREE.MeshStandardMaterial({
+    color: 0xccaa33, roughness: 0.3, metalness: 0.85, emissive: 0x332200, emissiveIntensity: 0.1,
+  });
   const addMesh = (geo: THREE.BufferGeometry, mat: THREE.Material, x: number, y: number, z: number, ry = 0, shadow = true) => {
     const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.rotation.y = ry;
     m.castShadow = shadow; m.receiveShadow = shadow; g.add(m); return m;
@@ -861,23 +1140,67 @@ function buildCamelotCastle(): THREE.Group {
   for (const [wx, wy, wz, wl, wr] of [[0,5,-6,16,0],[0,5,6,16,0],[-8,5,0,12,Math.PI/2],[8,5,0,12,Math.PI/2]] as number[][]) {
     addMesh(new THREE.BoxGeometry(wl, 8, 0.8), dark, wx, wy, wz, wr);
   }
-  // gate
-  addMesh(new THREE.BoxGeometry(2.5, 3.5, 1), new THREE.MeshStandardMaterial({ color: 0x442200, roughness: 0.9 }), 0, 1.75, -6.2);
+  // gate with iron portcullis look
+  addMesh(new THREE.BoxGeometry(2.5, 3.5, 1), new THREE.MeshStandardMaterial({
+    color: 0x3a1a08, roughness: 0.85, metalness: 0.1,
+  }), 0, 1.75, -6.2);
+  // gate arch
+  addMesh(new THREE.TorusGeometry(1.3, 0.3, 6, 8, Math.PI), stone, 0, 3.5, -6.2);
+  // banners on front towers
+  for (const sx of [-1, 1]) {
+    const banner = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.8, 2.5, 1, 4),
+      new THREE.MeshStandardMaterial({
+        color: 0xcc2222, side: THREE.DoubleSide, roughness: 0.9, metalness: 0.02,
+      }),
+    );
+    banner.position.set(sx * 8, 7, sx * -6 + (sx > 0 ? 1.8 : -1.8));
+    banner.castShadow = true;
+    g.add(banner);
+  }
+  // gold trim on main hall
+  addMesh(new THREE.BoxGeometry(12.2, 0.15, 8.2), goldTrim, 0, 6.02, 0, 0, false);
   return g;
 }
 
 function buildVillageHouse(seed: number): THREE.Group {
   const g = new THREE.Group();
   const r = seededRandom(seed), w = 2 + r * 2, h = 2 + r * 1.5, d = 2 + r * 1.5;
+  const wallColor = 0xaa9977 + ((seed * 77) & 0x111111);
   const walls = new THREE.Mesh(new THREE.BoxGeometry(w, h, d),
-    new THREE.MeshStandardMaterial({ color: 0xaa9977 + ((seed * 77) & 0x111111), roughness: 0.9 }));
+    new THREE.MeshStandardMaterial({ color: wallColor, roughness: 0.88, metalness: 0.04, envMapIntensity: 0.2 }));
   walls.position.y = h / 2; walls.castShadow = true; walls.receiveShadow = true; g.add(walls);
-  const roof = new THREE.Mesh(new THREE.ConeGeometry(Math.max(w, d) * 0.75, 1.5, 4),
-    new THREE.MeshStandardMaterial({ color: 0x553322, roughness: 0.85 }));
-  roof.position.y = h + 0.75; roof.rotation.y = Math.PI / 4; g.add(roof);
+  // Half-timber beams
+  const beamMat = new THREE.MeshStandardMaterial({ color: 0x3a2210, roughness: 0.92 });
+  for (let i = 0; i < 3; i++) {
+    const beam = new THREE.Mesh(new THREE.BoxGeometry(w + 0.05, 0.06, d + 0.05), beamMat);
+    beam.position.y = h * (0.3 + i * 0.3); g.add(beam);
+  }
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(Math.max(w, d) * 0.78, 1.6, 4),
+    new THREE.MeshStandardMaterial({ color: 0x4a2818, roughness: 0.82, metalness: 0.03 }));
+  roof.position.y = h + 0.8; roof.rotation.y = Math.PI / 4; roof.castShadow = true; g.add(roof);
+  // Door with frame
+  const doorFrame = new THREE.Mesh(new THREE.BoxGeometry(0.72, 1.3, 0.06),
+    new THREE.MeshStandardMaterial({ color: 0x3a1a08, roughness: 0.9 }));
+  doorFrame.position.set(0, 0.65, d / 2 + 0.02); g.add(doorFrame);
   const door = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 1.2),
-    new THREE.MeshStandardMaterial({ color: 0x442200, side: THREE.DoubleSide }));
-  door.position.set(0, 0.6, d / 2 + 0.01); g.add(door);
+    new THREE.MeshStandardMaterial({ color: 0x5a3018, side: THREE.DoubleSide, roughness: 0.85 }));
+  door.position.set(0, 0.6, d / 2 + 0.04); g.add(door);
+  // Window with glow
+  const windowMat = new THREE.MeshStandardMaterial({
+    color: 0xffcc66, emissive: 0xffaa33, emissiveIntensity: 0.4,
+    transparent: true, opacity: 0.7, roughness: 0.1,
+  });
+  for (const sx of [-1, 1]) {
+    const win = new THREE.Mesh(new THREE.PlaneGeometry(0.35, 0.35), windowMat);
+    win.position.set(sx * (w * 0.3), h * 0.55, d / 2 + 0.02); g.add(win);
+  }
+  // Chimney
+  const chimney = new THREE.Mesh(
+    new THREE.BoxGeometry(0.3, 1.2, 0.3),
+    new THREE.MeshStandardMaterial({ color: 0x665544, roughness: 0.9 }),
+  );
+  chimney.position.set(w * 0.25, h + 1.0, 0); chimney.castShadow = true; g.add(chimney);
   return g;
 }
 
@@ -897,14 +1220,39 @@ function buildRuin(): THREE.Group {
 
 function buildShrine(): THREE.Group {
   const g = new THREE.Group();
-  const mat = new THREE.MeshStandardMaterial({ color: 0xbbbbaa, roughness: 0.7, metalness: 0.2 });
-  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.8, 0.5, 8), mat);
-  base.position.y = 0.25; g.add(base);
-  const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 1.5, 6), mat);
-  pillar.position.y = 1.25; g.add(pillar);
-  const crystal = new THREE.Mesh(new THREE.OctahedronGeometry(0.2, 0),
-    new THREE.MeshStandardMaterial({ color: 0x66ccff, emissive: 0x2288ff, emissiveIntensity: 1.5, transparent: true, opacity: 0.85 }));
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0xbbbbaa, roughness: 0.7, metalness: 0.2, envMapIntensity: 0.5,
+  });
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.8, 0.5, 12), mat);
+  base.position.y = 0.25; base.castShadow = true; base.receiveShadow = true; g.add(base);
+  // Carved runes on base
+  for (let i = 0; i < 6; i++) {
+    const runeAngle = (i / 6) * Math.PI * 2;
+    const rune = new THREE.Mesh(
+      new THREE.BoxGeometry(0.08, 0.15, 0.01),
+      new THREE.MeshStandardMaterial({ color: 0x4488cc, emissive: 0x2266aa, emissiveIntensity: 0.8 }),
+    );
+    rune.position.set(Math.cos(runeAngle) * 0.72, 0.25, Math.sin(runeAngle) * 0.72);
+    rune.rotation.y = -runeAngle;
+    g.add(rune);
+  }
+  const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.18, 1.5, 8), mat);
+  pillar.position.y = 1.25; pillar.castShadow = true; g.add(pillar);
+  const crystal = new THREE.Mesh(new THREE.OctahedronGeometry(0.2, 1),
+    new THREE.MeshStandardMaterial({
+      color: 0x66ccff, emissive: 0x3399ff, emissiveIntensity: 2.5,
+      transparent: true, opacity: 0.8, roughness: 0.05, metalness: 0.1,
+    }));
   crystal.position.y = 2.2; g.add(crystal);
+  // Crystal glow halo
+  const glow = new THREE.Mesh(
+    new THREE.SphereGeometry(0.35, 12, 12),
+    new THREE.MeshBasicMaterial({ color: 0x4488ff, transparent: true, opacity: 0.08, side: THREE.DoubleSide }),
+  );
+  glow.position.y = 2.2; g.add(glow);
+  // Point light from crystal
+  const shrineLight = new THREE.PointLight(0x4488ff, 1.5, 10);
+  shrineLight.position.y = 2.2; g.add(shrineLight);
   return g;
 }
 
@@ -950,31 +1298,65 @@ function buildSkyDome(): { dome: THREE.Mesh; stars: THREE.Points; update: (time:
       uniform vec3 sunDir;
       uniform float timeOfDay;
       varying vec3 vWorldPos;
+
+      // Simple Mie phase function for atmospheric haze
+      float miePhase(float cosTheta, float g) {
+        float g2 = g * g;
+        return (1.0 - g2) / pow(1.0 + g2 - 2.0 * g * cosTheta, 1.5) * 0.25;
+      }
+
       void main() {
         vec3 dir = normalize(vWorldPos);
         float y = dir.y * 0.5 + 0.5;
-        // day sky
-        vec3 dayTop = vec3(0.3, 0.5, 0.9);
-        vec3 dayBot = vec3(0.6, 0.75, 1.0);
-        vec3 dayCol = mix(dayBot, dayTop, y);
-        // night sky
-        vec3 nightTop = vec3(0.02, 0.02, 0.08);
-        vec3 nightBot = vec3(0.05, 0.03, 0.1);
-        vec3 nightCol = mix(nightBot, nightTop, y);
-        // sunrise/sunset
-        vec3 sunsetCol = vec3(1.0, 0.4, 0.15);
-        float sunsetFactor = smoothstep(0.0, 0.15, y) * (1.0 - smoothstep(0.15, 0.4, y));
+
+        // day sky with Rayleigh-like gradient
+        vec3 dayZenith = vec3(0.22, 0.42, 0.88);
+        vec3 dayHorizon = vec3(0.55, 0.72, 0.95);
+        vec3 dayCol = mix(dayHorizon, dayZenith, pow(y, 0.6));
+
+        // night sky with deep blue/purple tones
+        vec3 nightZenith = vec3(0.01, 0.01, 0.06);
+        vec3 nightHorizon = vec3(0.04, 0.02, 0.09);
+        vec3 nightCol = mix(nightHorizon, nightZenith, pow(y, 0.5));
+
+        // aurora-like subtle green at night horizon
+        float auroraFactor = smoothstep(0.3, 0.5, y) * (1.0 - smoothstep(0.5, 0.7, y));
+        nightCol += vec3(0.0, 0.02, 0.01) * auroraFactor;
+
+        // multi-color sunrise/sunset (orange -> pink -> purple gradient)
+        vec3 sunsetLow = vec3(1.0, 0.35, 0.1);
+        vec3 sunsetMid = vec3(0.95, 0.45, 0.35);
+        vec3 sunsetHigh = vec3(0.6, 0.3, 0.5);
+        float lowBand = smoothstep(0.0, 0.12, y) * (1.0 - smoothstep(0.12, 0.25, y));
+        float midBand = smoothstep(0.12, 0.25, y) * (1.0 - smoothstep(0.25, 0.4, y));
+        float highBand = smoothstep(0.25, 0.4, y) * (1.0 - smoothstep(0.4, 0.55, y));
+        vec3 sunsetCol = sunsetLow * lowBand + sunsetMid * midBand + sunsetHigh * highBand;
+
         // blend based on time
         float dayFactor = smoothstep(0.2, 0.35, timeOfDay) - smoothstep(0.7, 0.85, timeOfDay);
         vec3 col = mix(nightCol, dayCol, dayFactor);
+
         // add sunset glow during transitions
         float transitionFactor = smoothstep(0.2, 0.3, timeOfDay) * (1.0 - smoothstep(0.3, 0.4, timeOfDay))
                                + smoothstep(0.65, 0.75, timeOfDay) * (1.0 - smoothstep(0.75, 0.85, timeOfDay));
-        col = mix(col, sunsetCol, transitionFactor * sunsetFactor * 0.8);
-        // sun disc
+        col = mix(col, col + sunsetCol, transitionFactor * 0.85);
+
+        // sun disc with realistic falloff
         float sunDot = max(dot(dir, normalize(sunDir)), 0.0);
-        col += vec3(1.0, 0.95, 0.8) * pow(sunDot, 256.0) * dayFactor;
-        col += vec3(1.0, 0.7, 0.3) * pow(sunDot, 8.0) * 0.15 * dayFactor;
+        col += vec3(1.0, 0.97, 0.85) * pow(sunDot, 512.0) * dayFactor * 1.5; // bright core
+        col += vec3(1.0, 0.85, 0.55) * pow(sunDot, 64.0) * 0.2 * dayFactor; // inner halo
+        col += vec3(1.0, 0.6, 0.25) * pow(sunDot, 8.0) * 0.12 * dayFactor; // outer glow
+
+        // Atmospheric Mie scattering near sun during golden hour
+        float mie = miePhase(sunDot, 0.76);
+        col += vec3(1.0, 0.8, 0.5) * mie * transitionFactor * 0.25;
+
+        // Moon glow at night
+        float moonDot = max(dot(dir, normalize(-sunDir)), 0.0);
+        float nightness = 1.0 - dayFactor;
+        col += vec3(0.6, 0.65, 0.8) * pow(moonDot, 256.0) * nightness * 0.8;
+        col += vec3(0.3, 0.35, 0.5) * pow(moonDot, 16.0) * nightness * 0.1;
+
         gl_FragColor = vec4(col, 1.0);
       }
     `,
@@ -983,9 +1365,11 @@ function buildSkyDome(): { dome: THREE.Mesh; stars: THREE.Points; update: (time:
   });
   const dome = new THREE.Mesh(skyGeo, skyMat);
 
-  // stars
-  const starCount = 1500;
+  // stars – more numerous with varied brightness via vertex colors
+  const starCount = 3000;
   const starPos = new Float32Array(starCount * 3);
+  const starColors = new Float32Array(starCount * 3);
+  const starSizes = new Float32Array(starCount);
   for (let i = 0; i < starCount; i++) {
     const theta = Math.random() * Math.PI * 2;
     const phi = Math.acos(Math.random()); // upper hemisphere bias
@@ -993,10 +1377,30 @@ function buildSkyDome(): { dome: THREE.Mesh; stars: THREE.Points; update: (time:
     starPos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
     starPos[i * 3 + 1] = r * Math.cos(phi);
     starPos[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
+    // Varied star colors: white, blueish, yellowish, reddish
+    const colorRoll = Math.random();
+    if (colorRoll < 0.6) {
+      starColors[i * 3] = 0.95 + Math.random() * 0.05;
+      starColors[i * 3 + 1] = 0.95 + Math.random() * 0.05;
+      starColors[i * 3 + 2] = 1.0;
+    } else if (colorRoll < 0.8) {
+      starColors[i * 3] = 0.7; starColors[i * 3 + 1] = 0.8; starColors[i * 3 + 2] = 1.0;
+    } else if (colorRoll < 0.92) {
+      starColors[i * 3] = 1.0; starColors[i * 3 + 1] = 0.95; starColors[i * 3 + 2] = 0.7;
+    } else {
+      starColors[i * 3] = 1.0; starColors[i * 3 + 1] = 0.7; starColors[i * 3 + 2] = 0.6;
+    }
+    // Varied star sizes for depth
+    starSizes[i] = 0.8 + Math.random() * 2.0;
   }
   const starGeo = new THREE.BufferGeometry();
   starGeo.setAttribute("position", new THREE.BufferAttribute(starPos, 3));
-  const starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 1.5, sizeAttenuation: false });
+  starGeo.setAttribute("color", new THREE.BufferAttribute(starColors, 3));
+  const starMat = new THREE.PointsMaterial({
+    size: 1.8,
+    sizeAttenuation: false,
+    vertexColors: true,
+  });
   const stars = new THREE.Points(starGeo, starMat);
 
   const update = (worldTimeHours: number) => {
@@ -1027,30 +1431,46 @@ function buildSkyDome(): { dome: THREE.Mesh; stars: THREE.Points; update: (time:
 
 function buildClouds(): THREE.Group {
   const g = new THREE.Group();
-  const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.45, roughness: 1, metalness: 0 });
-  const matDark = new THREE.MeshStandardMaterial({ color: 0xddddee, transparent: true, opacity: 0.3, roughness: 1, metalness: 0 });
-  for (let i = 0; i < 30; i++) {
+  // Volumetric-style clouds with varied density layers
+  const matBright = new THREE.MeshStandardMaterial({
+    color: 0xfcfcfc, transparent: true, opacity: 0.5, roughness: 1, metalness: 0,
+    emissive: 0x222222, emissiveIntensity: 0.1,
+  });
+  const matMid = new THREE.MeshStandardMaterial({
+    color: 0xeeeef4, transparent: true, opacity: 0.38, roughness: 1, metalness: 0,
+  });
+  const matDark = new THREE.MeshStandardMaterial({
+    color: 0xccccdd, transparent: true, opacity: 0.28, roughness: 1, metalness: 0,
+  });
+  const matUnderbelly = new THREE.MeshStandardMaterial({
+    color: 0x999aaa, transparent: true, opacity: 0.22, roughness: 1, metalness: 0,
+  });
+
+  for (let i = 0; i < 40; i++) {
     const cloud = new THREE.Group();
-    const puffCount = 4 + Math.floor(Math.random() * 5);
-    const isThick = Math.random() > 0.6;
+    const puffCount = 5 + Math.floor(Math.random() * 7);
+    const isThick = Math.random() > 0.5;
+    const isMassive = Math.random() > 0.85;
     for (let j = 0; j < puffCount; j++) {
-      const pSize = 6 + Math.random() * (isThick ? 18 : 12);
+      const pSize = (isMassive ? 12 : 6) + Math.random() * (isThick ? 20 : 14);
+      const layerMat = j === 0 ? matBright : j < puffCount / 2 ? matMid : (j < puffCount * 0.75 ? matDark : matUnderbelly);
       const p = new THREE.Mesh(
-        new THREE.SphereGeometry(pSize, 8, 6),
-        isThick ? matDark : mat,
+        new THREE.SphereGeometry(pSize, 10, 8),
+        layerMat,
       );
       p.position.set(
-        (Math.random() - 0.5) * 25,
-        (Math.random() - 0.5) * (isThick ? 6 : 3),
-        (Math.random() - 0.5) * 12,
+        (Math.random() - 0.5) * 30,
+        (Math.random() - 0.5) * (isThick ? 7 : 4) - (j >= puffCount * 0.75 ? 3 : 0),
+        (Math.random() - 0.5) * 15,
       );
-      p.scale.y = 0.3 + Math.random() * 0.15;
+      p.scale.y = 0.25 + Math.random() * 0.2;
+      p.scale.x = 1.0 + Math.random() * 0.3;
       cloud.add(p);
     }
     cloud.position.set(
-      (Math.random() - 0.5) * TERRAIN_SIZE * 0.8,
-      70 + Math.random() * 40,
-      (Math.random() - 0.5) * TERRAIN_SIZE * 0.8,
+      (Math.random() - 0.5) * TERRAIN_SIZE * 0.85,
+      65 + Math.random() * 50,
+      (Math.random() - 0.5) * TERRAIN_SIZE * 0.85,
     );
     g.add(cloud);
   }
@@ -1166,15 +1586,37 @@ class ParticlePool {
 // ---------------------------------------------------------------------------
 
 function emitFireball(pool: ParticlePool, origin: THREE.Vector3, dir: THREE.Vector3): void {
-  for (let i = 0; i < 30; i++) {
+  // Inner core (bright white-yellow)
+  for (let i = 0; i < 10; i++) {
     const spread = v3(
-      (Math.random() - 0.5) * 2,
-      (Math.random() - 0.5) * 2 + 1,
-      (Math.random() - 0.5) * 2,
+      (Math.random() - 0.5) * 0.8,
+      (Math.random() - 0.5) * 0.8 + 0.5,
+      (Math.random() - 0.5) * 0.8,
     );
-    const vel = dir.clone().multiplyScalar(8).add(spread);
-    const c = new THREE.Color().setHSL(0.05 + Math.random() * 0.05, 1, 0.5 + Math.random() * 0.3);
-    pool.emit(origin.clone(), vel, c, 0.5 + Math.random() * 0.5, 0.3 + Math.random() * 0.2);
+    const vel = dir.clone().multiplyScalar(10).add(spread);
+    const c = new THREE.Color().setHSL(0.12 + Math.random() * 0.03, 1, 0.7 + Math.random() * 0.25);
+    pool.emit(origin.clone(), vel, c, 0.3 + Math.random() * 0.3, 0.35 + Math.random() * 0.15);
+  }
+  // Outer flame (orange-red)
+  for (let i = 0; i < 25; i++) {
+    const spread = v3(
+      (Math.random() - 0.5) * 2.5,
+      (Math.random() - 0.5) * 2.5 + 1,
+      (Math.random() - 0.5) * 2.5,
+    );
+    const vel = dir.clone().multiplyScalar(7).add(spread);
+    const c = new THREE.Color().setHSL(0.03 + Math.random() * 0.06, 1, 0.4 + Math.random() * 0.3);
+    pool.emit(origin.clone(), vel, c, 0.5 + Math.random() * 0.6, 0.25 + Math.random() * 0.2);
+  }
+  // Trailing smoke
+  for (let i = 0; i < 8; i++) {
+    const spread = v3(
+      (Math.random() - 0.5) * 1.5,
+      Math.random() * 1.5,
+      (Math.random() - 0.5) * 1.5,
+    );
+    const vel = dir.clone().multiplyScalar(3).add(spread);
+    pool.emit(origin.clone(), vel, new THREE.Color(0.25, 0.2, 0.15), 0.8 + Math.random() * 0.5, 0.3);
   }
 }
 
@@ -1190,12 +1632,28 @@ function emitLightning(pool: ParticlePool, from: THREE.Vector3, to: THREE.Vector
   const dir = to.clone().sub(from);
   const len = dir.length();
   dir.normalize();
-  for (let i = 0; i < 40; i++) {
+  // Main bolt (bright white-blue core)
+  for (let i = 0; i < 50; i++) {
     const t = Math.random();
     const pos = from.clone().addScaledVector(dir, t * len);
-    pos.add(v3((Math.random() - 0.5) * 0.5, (Math.random() - 0.5) * 0.5, (Math.random() - 0.5) * 0.5));
-    const vel = v3((Math.random() - 0.5) * 1, Math.random() * 0.5, (Math.random() - 0.5) * 1);
-    pool.emit(pos, vel, new THREE.Color(0.7, 0.7, 1), 0.2 + Math.random() * 0.15, 0.1);
+    // Jagged bolt path
+    const jitter = Math.sin(t * 20) * 0.3 + Math.cos(t * 13) * 0.2;
+    pos.add(v3((Math.random() - 0.5) * 0.3 + jitter, (Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3));
+    const vel = v3((Math.random() - 0.5) * 0.8, Math.random() * 0.4, (Math.random() - 0.5) * 0.8);
+    const c = new THREE.Color().setHSL(0.65 + Math.random() * 0.05, 0.5, 0.85 + Math.random() * 0.15);
+    pool.emit(pos, vel, c, 0.15 + Math.random() * 0.1, 0.12);
+  }
+  // Branch sparks
+  for (let i = 0; i < 20; i++) {
+    const t = Math.random();
+    const pos = from.clone().addScaledVector(dir, t * len);
+    const branchDir = v3((Math.random() - 0.5) * 4, (Math.random() - 0.5) * 3, (Math.random() - 0.5) * 4);
+    pool.emit(pos, branchDir, new THREE.Color(0.5, 0.6, 1.0), 0.1 + Math.random() * 0.08, 0.06);
+  }
+  // Impact glow at target
+  for (let i = 0; i < 12; i++) {
+    const vel = v3((Math.random() - 0.5) * 3, Math.random() * 2, (Math.random() - 0.5) * 3);
+    pool.emit(to.clone(), vel, new THREE.Color(0.8, 0.85, 1.0), 0.3, 0.15);
   }
 }
 
@@ -1274,21 +1732,60 @@ function emitFallingLeaves(pool: ParticlePool, center: THREE.Vector3): void {
 }
 
 function emitFireflies(pool: ParticlePool, center: THREE.Vector3): void {
+  // More numerous, varied colors (golden to green)
+  for (let i = 0; i < 2; i++) {
+    const pos = center.clone().add(v3(
+      (Math.random() - 0.5) * 20,
+      0.3 + Math.random() * 2.5,
+      (Math.random() - 0.5) * 20,
+    ));
+    const vel = v3(
+      (Math.random() - 0.5) * 0.6,
+      (Math.random() - 0.5) * 0.4,
+      (Math.random() - 0.5) * 0.6,
+    );
+    const hue = 0.2 + Math.random() * 0.15; // yellow-green range
+    const c = new THREE.Color().setHSL(hue, 0.9, 0.55 + Math.random() * 0.3);
+    pool.emit(pos, vel, c, 2.5 + Math.random() * 3, 0.06 + Math.random() * 0.06);
+  }
+}
+
+function emitDustMotes(pool: ParticlePool, center: THREE.Vector3): void {
   const pos = center.clone().add(v3(
-    (Math.random() - 0.5) * 15,
-    0.5 + Math.random() * 2,
-    (Math.random() - 0.5) * 15,
+    (Math.random() - 0.5) * 10,
+    0.5 + Math.random() * 3,
+    (Math.random() - 0.5) * 10,
   ));
-  const vel = v3((Math.random() - 0.5) * 0.5, (Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.5);
-  pool.emit(pos, vel, new THREE.Color(0.6, 1, 0.2), 2 + Math.random() * 2, 0.08);
+  const vel = v3((Math.random() - 0.5) * 0.3, Math.random() * 0.15, (Math.random() - 0.5) * 0.3);
+  pool.emit(pos, vel, new THREE.Color(0.8, 0.75, 0.6), 3 + Math.random() * 2, 0.04);
 }
 
 function emitTorchFire(pool: ParticlePool, pos: THREE.Vector3): void {
+  // Fire core (bright yellow-white)
+  for (let i = 0; i < 2; i++) {
+    const p = pos.clone().add(v3((Math.random() - 0.5) * 0.05, 0, (Math.random() - 0.5) * 0.05));
+    const vel = v3((Math.random() - 0.5) * 0.15, 1.8 + Math.random() * 0.5, (Math.random() - 0.5) * 0.15);
+    const c = new THREE.Color().setHSL(0.12 + Math.random() * 0.02, 1, 0.7 + Math.random() * 0.2);
+    pool.emit(p, vel, c, 0.3 + Math.random() * 0.2, 0.15);
+  }
+  // Fire outer (orange-red)
   for (let i = 0; i < 3; i++) {
-    const p = pos.clone().add(v3((Math.random() - 0.5) * 0.1, 0, (Math.random() - 0.5) * 0.1));
-    const vel = v3((Math.random() - 0.5) * 0.3, 1.5 + Math.random(), (Math.random() - 0.5) * 0.3);
-    const c = new THREE.Color().setHSL(0.05 + Math.random() * 0.04, 1, 0.5 + Math.random() * 0.2);
-    pool.emit(p, vel, c, 0.4 + Math.random() * 0.3, 0.12);
+    const p = pos.clone().add(v3((Math.random() - 0.5) * 0.12, 0, (Math.random() - 0.5) * 0.12));
+    const vel = v3((Math.random() - 0.5) * 0.35, 1.2 + Math.random() * 0.8, (Math.random() - 0.5) * 0.35);
+    const c = new THREE.Color().setHSL(0.04 + Math.random() * 0.04, 1, 0.45 + Math.random() * 0.2);
+    pool.emit(p, vel, c, 0.45 + Math.random() * 0.35, 0.12);
+  }
+  // Embers / sparks (occasional)
+  if (Math.random() < 0.3) {
+    const p = pos.clone().add(v3((Math.random() - 0.5) * 0.08, 0.1, (Math.random() - 0.5) * 0.08));
+    const vel = v3((Math.random() - 0.5) * 1.5, 2.5 + Math.random() * 2, (Math.random() - 0.5) * 1.5);
+    pool.emit(p, vel, new THREE.Color(1, 0.6, 0.1), 0.8 + Math.random() * 0.5, 0.03);
+  }
+  // Smoke (dark, rises slowly)
+  if (Math.random() < 0.15) {
+    const p = pos.clone().add(v3((Math.random() - 0.5) * 0.1, 0.3, (Math.random() - 0.5) * 0.1));
+    const vel = v3((Math.random() - 0.5) * 0.4, 0.8 + Math.random() * 0.5, (Math.random() - 0.5) * 0.4);
+    pool.emit(p, vel, new THREE.Color(0.2, 0.18, 0.15), 1.5 + Math.random(), 0.2);
   }
 }
 
@@ -1384,6 +1881,7 @@ export class ArthurianRPGRenderer {
   // Post-processing
   private bloomPass!: UnrealBloomPass;
   private colorGradingPass!: ShaderPass;
+  private godRaysPass!: ShaderPass;
 
   // ---------------------------------------------------------------------------
   // Build
@@ -1392,22 +1890,38 @@ export class ArthurianRPGRenderer {
   build(canvas: HTMLCanvasElement): void {
     this.canvas = canvas;
 
-    // Renderer
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    // Renderer – high quality settings
+    this.renderer = new THREE.WebGLRenderer({
+      canvas,
+      antialias: true,
+      powerPreference: "high-performance",
+    });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.setSize(canvas.clientWidth, canvas.clientHeight);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.0;
+    this.renderer.toneMappingExposure = 1.05;
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
 
     // Scene
     this.scene = new THREE.Scene();
-    this.fog = new THREE.FogExp2(0x88aacc, 0.003);
+    this.fog = new THREE.FogExp2(0x88aacc, 0.0028);
     this.scene.fog = this.fog;
 
-    // Camera
-    this.camera = new THREE.PerspectiveCamera(65, canvas.clientWidth / canvas.clientHeight, 0.1, 1200);
+    // Environment map for reflections (procedural)
+    const pmremGenerator = new THREE.PMREMGenerator(this.renderer);
+    pmremGenerator.compileEquirectangularShader();
+    const envScene = new THREE.Scene();
+    envScene.background = new THREE.Color(0x88aacc);
+    const envLight = new THREE.HemisphereLight(0x88aacc, 0x445522, 1.0);
+    envScene.add(envLight);
+    const envRT = pmremGenerator.fromScene(envScene, 0.04);
+    this.scene.environment = envRT.texture;
+    pmremGenerator.dispose();
+
+    // Camera – slightly narrower FOV for cinematic feel
+    this.camera = new THREE.PerspectiveCamera(60, canvas.clientWidth / canvas.clientHeight, 0.1, 1400);
     this.camera.position.set(0, 5, 10);
 
     // Lighting
@@ -1444,42 +1958,69 @@ export class ArthurianRPGRenderer {
   // ---------------------------------------------------------------------------
 
   private setupLighting(): void {
-    // Sun
-    this.sunLight = new THREE.DirectionalLight(0xffe8c0, 1.5);
+    // Sun – higher quality shadows
+    this.sunLight = new THREE.DirectionalLight(0xffe8c0, 1.6);
     this.sunLight.position.set(50, 80, 30);
     this.sunLight.castShadow = true;
     this.sunLight.shadow.mapSize.set(4096, 4096);
     this.sunLight.shadow.camera.near = 0.5;
-    this.sunLight.shadow.camera.far = 250;
-    this.sunLight.shadow.camera.left = -80;
-    this.sunLight.shadow.camera.right = 80;
-    this.sunLight.shadow.camera.top = 80;
-    this.sunLight.shadow.camera.bottom = -80;
-    this.sunLight.shadow.bias = -0.0005;
-    this.sunLight.shadow.normalBias = 0.02;
+    this.sunLight.shadow.camera.far = 300;
+    this.sunLight.shadow.camera.left = -100;
+    this.sunLight.shadow.camera.right = 100;
+    this.sunLight.shadow.camera.top = 100;
+    this.sunLight.shadow.camera.bottom = -100;
+    this.sunLight.shadow.bias = -0.0004;
+    this.sunLight.shadow.normalBias = 0.025;
+    this.sunLight.shadow.radius = 2; // softer shadow edges
     this.scene.add(this.sunLight);
+    this.scene.add(this.sunLight.target);
 
-    // Moon
-    this.moonLight = new THREE.DirectionalLight(0x8899cc, 0.2);
+    // Moon – slightly stronger for better night visibility
+    this.moonLight = new THREE.DirectionalLight(0x7788bb, 0.25);
     this.moonLight.position.set(-30, 50, -20);
+    this.moonLight.castShadow = true;
+    this.moonLight.shadow.mapSize.set(1024, 1024);
+    this.moonLight.shadow.camera.near = 0.5;
+    this.moonLight.shadow.camera.far = 200;
+    this.moonLight.shadow.camera.left = -60;
+    this.moonLight.shadow.camera.right = 60;
+    this.moonLight.shadow.camera.top = 60;
+    this.moonLight.shadow.camera.bottom = -60;
+    this.moonLight.shadow.bias = -0.001;
     this.scene.add(this.moonLight);
 
-    // Ambient
-    this.ambientLight = new THREE.AmbientLight(0x334466, 0.3);
+    // Hemisphere light for more realistic ambient (sky blue from above, earth brown from below)
+    const hemiLight = new THREE.HemisphereLight(0x88aacc, 0x445522, 0.25);
+    this.scene.add(hemiLight);
+
+    // Ambient – softer base
+    this.ambientLight = new THREE.AmbientLight(0x334466, 0.2);
     this.scene.add(this.ambientLight);
 
-    // Torches / campfires at key locations
+    // Torches / campfires at key locations – more warm light sources
     const torchPositions = [
-      v3(5, 2.5, -2), v3(-5, 2.5, -2), // castle entrance
-      v3(50, 2, 30), v3(52, 2, 30),     // village area
-      v3(-30, 3, -40),                   // ruins
+      v3(5, 2.5, -2), v3(-5, 2.5, -2),   // castle entrance
+      v3(8, 2.5, 0), v3(-8, 2.5, 0),     // castle courtyard
+      v3(50, 2, 30), v3(52, 2, 30),       // village area
+      v3(45, 2, 28), v3(60, 2, 35),       // more village lights
+      v3(-30, 3, -40),                     // ruins
+      v3(-50, 3, -20),                     // cave entrance
     ];
     for (const pos of torchPositions) {
-      const light = new THREE.PointLight(0xff8833, 1.5, 15);
+      const light = new THREE.PointLight(0xff8833, 1.8, 18);
       light.position.copy(pos);
-      light.castShadow = false; // performance: only sun casts shadows
+      light.castShadow = false; // performance
       this.scene.add(light);
       this.torchLights.push(light);
+
+      // Add a small mesh for the torch holder
+      const torchPole = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.02, 0.025, 0.8, 6),
+        new THREE.MeshStandardMaterial({ color: 0x553311, roughness: 0.9 }),
+      );
+      torchPole.position.copy(pos).add(v3(0, -0.4, 0));
+      torchPole.castShadow = true;
+      this.scene.add(torchPole);
     }
   }
 
@@ -1556,16 +2097,24 @@ export class ArthurianRPGRenderer {
     this.composer = new EffectComposer(this.renderer);
     this.composer.addPass(new RenderPass(this.scene, this.camera));
 
-    // Bloom for magical glow
+    // Bloom for magical glow – tuned for cinematic quality
     this.bloomPass = new UnrealBloomPass(
       new THREE.Vector2(this.canvas.clientWidth, this.canvas.clientHeight),
-      0.65,  // strength (increased for magical glow)
-      0.4,   // radius (wider bloom spread)
-      0.7,   // threshold (catch more bright areas)
+      0.55,  // strength
+      0.5,   // radius (wider bloom spread for softer glow)
+      0.65,  // threshold (catch bright emissives)
     );
     this.composer.addPass(this.bloomPass);
 
-    // Color grading + vignette
+    // God rays (volumetric light scattering)
+    this.godRaysPass = new ShaderPass(GodRaysShader);
+    this.godRaysPass.uniforms.exposure.value = 0.12;
+    this.godRaysPass.uniforms.decay.value = 0.97;
+    this.godRaysPass.uniforms.density.value = 0.7;
+    this.godRaysPass.uniforms.weight.value = 0.3;
+    this.composer.addPass(this.godRaysPass);
+
+    // Color grading + vignette + film grain
     this.colorGradingPass = new ShaderPass(ColorGradingShader);
     this.composer.addPass(this.colorGradingPass);
   }
@@ -1615,6 +2164,10 @@ export class ArthurianRPGRenderer {
       }
       // falling leaves in forest areas
       emitFallingLeaves(this.particles, playerPos);
+      // dust motes in sunlight during daytime
+      if (state.worldTime > 8 && state.worldTime < 18) {
+        emitDustMotes(this.particles, playerPos);
+      }
       // determine weather by terrain height
       const pH = this.terrain.getHeight(playerPos.x, playerPos.z);
       if (pH > 14) {
@@ -1645,14 +2198,32 @@ export class ArthurianRPGRenderer {
     // --- Camera ---
     this.updateCamera(state, dt);
 
-    // --- Fog density based on forest proximity ---
+    // --- Dynamic fog density based on environment ---
     const pPos = stateToV3(state.player.combatant.position);
     const playerH = this.terrain.getHeight(pPos.x, pPos.z);
+    // Dense forest fog
     if (playerH > 3 && playerH < 10) {
-      this.fog.density = lerp(this.fog.density, 0.008, dt * 2); // denser in forests
-    } else {
-      this.fog.density = lerp(this.fog.density, 0.003, dt * 2);
+      this.fog.density = lerp(this.fog.density, 0.009, dt * 1.5);
     }
+    // Near water: misty
+    else if (playerH < WATER_LEVEL + 1.5) {
+      this.fog.density = lerp(this.fog.density, 0.007, dt * 1.5);
+    }
+    // Mountain: thin, clear air
+    else if (playerH > 12) {
+      this.fog.density = lerp(this.fog.density, 0.0015, dt * 2);
+    }
+    // Default open terrain
+    else {
+      this.fog.density = lerp(this.fog.density, 0.0028, dt * 2);
+    }
+    // Time-of-day fog: denser at dawn/dusk
+    const timeT = state.worldTime / 24;
+    const dawnDusk = Math.max(
+      Math.exp(-Math.pow((timeT - 0.25) * 10, 2)),
+      Math.exp(-Math.pow((timeT - 0.75) * 10, 2)),
+    );
+    this.fog.density += dawnDusk * 0.003;
 
     // --- Render ---
     this.composer.render();
@@ -1716,8 +2287,30 @@ export class ArthurianRPGRenderer {
     // Renderer background matches fog
     this.renderer.setClearColor(this.fog.color, 1);
 
-    // Tone mapping exposure
-    this.renderer.toneMappingExposure = lerp(0.4, 1.1, dayness);
+    // Tone mapping exposure – wider dynamic range
+    this.renderer.toneMappingExposure = lerp(0.35, 1.15, dayness);
+
+    // Update post-processing uniforms for time-of-day
+    if (this.colorGradingPass) {
+      this.colorGradingPass.uniforms.timeOfDay.value = t;
+      // Increase vignette at night for moody atmosphere
+      this.colorGradingPass.uniforms.vignetteStrength.value = lerp(0.65, 0.5, dayness);
+      // More film grain at night
+      this.colorGradingPass.uniforms.filmGrain.value = lerp(0.05, 0.025, dayness);
+    }
+
+    // God rays: project sun position to screen space
+    if (this.godRaysPass) {
+      const sunWorldPos = this.sunLight.position.clone();
+      const sunScreenPos = sunWorldPos.project(this.camera);
+      this.godRaysPass.uniforms.lightPosition.value.set(
+        sunScreenPos.x * 0.5 + 0.5,
+        sunScreenPos.y * 0.5 + 0.5,
+      );
+      // Only show god rays when sun is visible and in front of camera
+      const sunVisible = sunY > 0.05 && sunScreenPos.z < 1;
+      this.godRaysPass.uniforms.exposure.value = sunVisible ? lerp(0.0, 0.15, dayness) : 0.0;
+    }
   }
 
   // ---------------------------------------------------------------------------

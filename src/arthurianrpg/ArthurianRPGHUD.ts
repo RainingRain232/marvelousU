@@ -14,19 +14,24 @@ import type { InventorySlot, QuickSlot, ItemDef } from "./ArthurianRPGInventory"
 // Constants & style tokens
 // ---------------------------------------------------------------------------
 
-const PARCHMENT = "#f5e6c8";
-const PARCHMENT_DARK = "#c9a96e";
-const INK = "#3b2716";
-const GOLD = "#d4a017";
+const PARCHMENT = "#f0dfc0";
+const PARCHMENT_DARK = "#b89855";
+const INK = "#2a1a0e";
+const GOLD = "#d4a520";
 const BLOOD_RED = "#8b0000";
-const MANA_BLUE = "#2266aa";
-const STAMINA_GREEN = "#3a7d44";
-const HEALTH_RED = "#b22222";
+const MANA_BLUE = "#2266bb";
+const STAMINA_GREEN = "#3a8044";
+const HEALTH_RED = "#c42222";
 
 const FONT_MAIN = "'Palatino Linotype', 'Book Antiqua', Palatino, serif";
 const FONT_TITLE = "'Georgia', serif";
-const BORDER_ORNATE = `2px solid ${PARCHMENT_DARK}`;
-const SHADOW = "0 2px 8px rgba(0,0,0,0.6)";
+const BORDER_ORNATE = `1px solid ${PARCHMENT_DARK}`;
+const SHADOW = "0 2px 12px rgba(0,0,0,0.7)";
+const GLASS_BG = "rgba(10, 8, 5, 0.55)";
+const GLASS_BORDER = "1px solid rgba(180, 155, 100, 0.35)";
+const GLASS_BACKDROP = "blur(8px)";
+const GLOW_GOLD = "0 0 8px rgba(212, 165, 32, 0.4)";
+const INNER_SHADOW = "inset 0 1px 3px rgba(0,0,0,0.3)";
 
 const BAR_FADE_DELAY = 4000; // ms before full bars fade
 
@@ -278,18 +283,20 @@ export class ArthurianRPGHUD {
     const makeBar = (color: string, width: string): { bar: HTMLElement; fill: HTMLElement } => {
       const bar = el("div", {
         width,
-        height: "12px",
-        background: "rgba(0,0,0,0.5)",
-        borderRadius: "6px",
-        border: `1px solid ${PARCHMENT_DARK}`,
+        height: "10px",
+        background: "rgba(0,0,0,0.6)",
+        borderRadius: "5px",
+        border: GLASS_BORDER,
         overflow: "hidden",
+        boxShadow: `${INNER_SHADOW}, 0 1px 6px rgba(0,0,0,0.4)`,
       }, this.barContainer);
       const fill = el("div", {
         width: "100%",
         height: "100%",
-        background: color,
-        borderRadius: "6px",
-        transition: "width 0.3s",
+        background: `linear-gradient(180deg, ${color} 0%, ${color}cc 50%, ${color}88 100%)`,
+        borderRadius: "5px",
+        transition: "width 0.35s ease-out",
+        boxShadow: `0 0 6px ${color}66`,
       }, bar);
       return { bar, fill };
     };
@@ -316,11 +323,13 @@ export class ArthurianRPGHUD {
       left: "50%",
       transform: "translateX(-50%)",
       width: "500px",
-      height: "30px",
-      background: "rgba(0,0,0,0.4)",
+      height: "28px",
+      background: GLASS_BG,
       borderRadius: "4px",
-      border: BORDER_ORNATE,
+      border: GLASS_BORDER,
       overflow: "hidden",
+      boxShadow: `${INNER_SHADOW}, ${GLOW_GOLD}`,
+      backdropFilter: GLASS_BACKDROP,
     }, this.root);
 
     this.compassStrip = el("div", {
@@ -423,8 +432,8 @@ export class ArthurianRPGHUD {
       const slot = el("div", {
         width: "48px",
         height: "48px",
-        background: `rgba(0,0,0,0.5)`,
-        border: BORDER_ORNATE,
+        background: GLASS_BG,
+        border: GLASS_BORDER,
         borderRadius: "6px",
         display: "flex",
         alignItems: "center",
@@ -433,6 +442,9 @@ export class ArthurianRPGHUD {
         position: "relative",
         fontSize: "20px",
         color: PARCHMENT,
+        boxShadow: INNER_SHADOW,
+        backdropFilter: GLASS_BACKDROP,
+        transition: "border-color 0.2s, box-shadow 0.2s",
       }, this.quickBarContainer);
 
       // Hotkey label
@@ -459,11 +471,11 @@ export class ArthurianRPGHUD {
       top: "50%",
       left: "50%",
       transform: "translate(-50%, -50%)",
-      width: "4px",
-      height: "4px",
+      width: "3px",
+      height: "3px",
       borderRadius: "50%",
-      background: "rgba(255,255,255,0.7)",
-      boxShadow: "0 0 4px rgba(255,255,255,0.5)",
+      background: "rgba(255,255,255,0.65)",
+      boxShadow: `0 0 3px rgba(255,255,255,0.4), ${GLOW_GOLD}`,
     }, this.root);
   }
 
@@ -595,16 +607,20 @@ export class ArthurianRPGHUD {
       top: "30%",
       left: "50%",
       transform: "translateX(-50%)",
-      padding: "20px 60px",
-      background: `linear-gradient(180deg, rgba(0,0,0,0.8), rgba(20,15,5,0.9))`,
-      border: `3px solid ${GOLD}`,
-      borderRadius: "8px",
+      padding: "24px 70px",
+      background: `linear-gradient(180deg, rgba(0,0,0,0.85), rgba(15,12,5,0.92))`,
+      border: `2px solid ${GOLD}`,
+      borderRadius: "6px",
       color: GOLD,
-      fontSize: "28px",
+      fontSize: "30px",
       fontFamily: FONT_TITLE,
       textAlign: "center",
       display: "none",
-      boxShadow: `0 0 30px rgba(212,160,23,0.4)`,
+      boxShadow: `0 0 40px rgba(212,165,32,0.35), inset 0 0 20px rgba(212,165,32,0.08)`,
+      letterSpacing: "3px",
+      textTransform: "uppercase",
+      textShadow: `0 0 15px rgba(212,165,32,0.5)`,
+      backdropFilter: GLASS_BACKDROP,
     }, this.root);
   }
 
@@ -617,12 +633,14 @@ export class ArthurianRPGHUD {
       left: "0",
       width: "100%",
       height: "33%",
-      background: `linear-gradient(0deg, rgba(40,30,20,0.95), rgba(40,30,20,0.8))`,
-      borderTop: `3px solid ${PARCHMENT_DARK}`,
+      background: `linear-gradient(0deg, rgba(15,12,8,0.95), rgba(25,20,12,0.85))`,
+      borderTop: `2px solid rgba(180,155,100,0.5)`,
       display: "none",
       pointerEvents: "auto",
       padding: "20px",
       boxSizing: "border-box",
+      backdropFilter: GLASS_BACKDROP,
+      boxShadow: "0 -4px 20px rgba(0,0,0,0.5)",
     }, this.root);
 
     const inner = el("div", {
@@ -955,7 +973,7 @@ export class ArthurianRPGHUD {
       left: "0",
       width: "100%",
       height: "100%",
-      background: "rgba(0,0,0,0.85)",
+      background: "radial-gradient(ellipse at center, rgba(40,0,0,0.9) 0%, rgba(0,0,0,0.95) 70%)",
       display: "none",
       pointerEvents: "auto",
       zIndex: "3000",
@@ -966,27 +984,48 @@ export class ArthurianRPGHUD {
 
     const text = el("div", {
       color: BLOOD_RED,
-      fontSize: "48px",
+      fontSize: "52px",
       fontFamily: FONT_TITLE,
-      textShadow: "0 0 20px rgba(139,0,0,0.6)",
-      marginBottom: "30px",
+      textShadow: "0 0 30px rgba(139,0,0,0.7), 0 0 60px rgba(139,0,0,0.3)",
+      marginBottom: "10px",
+      letterSpacing: "4px",
+      textTransform: "uppercase",
     }, this.deathScreen);
     text.textContent = "You Have Fallen";
 
+    const subtext = el("div", {
+      color: "rgba(200,180,150,0.5)",
+      fontSize: "16px",
+      fontFamily: FONT_MAIN,
+      fontStyle: "italic",
+      marginBottom: "40px",
+    }, this.deathScreen);
+    subtext.textContent = "The darkness claims another soul...";
+
     const btn = el("button", {
-      padding: "14px 40px",
+      padding: "14px 50px",
       background: "none",
-      border: `2px solid ${BLOOD_RED}`,
+      border: `1px solid rgba(139,0,0,0.6)`,
       color: PARCHMENT,
-      fontSize: "20px",
+      fontSize: "18px",
       fontFamily: FONT_TITLE,
       cursor: "pointer",
-      borderRadius: "6px",
-      transition: "background 0.3s",
+      borderRadius: "4px",
+      transition: "all 0.3s",
+      letterSpacing: "2px",
+      textTransform: "uppercase",
     }, this.deathScreen);
     btn.textContent = "Reload Last Save";
-    btn.addEventListener("mouseenter", () => { btn.style.background = "rgba(139,0,0,0.3)"; });
-    btn.addEventListener("mouseleave", () => { btn.style.background = "none"; });
+    btn.addEventListener("mouseenter", () => {
+      btn.style.background = "rgba(139,0,0,0.25)";
+      btn.style.borderColor = "rgba(139,0,0,0.9)";
+      btn.style.boxShadow = "0 0 15px rgba(139,0,0,0.3)";
+    });
+    btn.addEventListener("mouseleave", () => {
+      btn.style.background = "none";
+      btn.style.borderColor = "rgba(139,0,0,0.6)";
+      btn.style.boxShadow = "none";
+    });
     btn.addEventListener("click", () => {
       this.hideDeathScreen();
       this.callbacks.onRespawn();

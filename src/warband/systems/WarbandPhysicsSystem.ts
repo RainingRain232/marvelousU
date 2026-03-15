@@ -26,13 +26,20 @@ export class WarbandPhysicsSystem {
       fighter.position.y += fighter.velocity.y * dt;
       fighter.position.z += fighter.velocity.z * dt;
 
+      // Ground collision (terrain-following)
+      const groundY = getTerrainHeight(fighter.position.x, fighter.position.z);
+
+      // If fighter is above ground and not moving downward, clear onGround so gravity kicks in
+      if (fighter.onGround && fighter.position.y > groundY + 0.05) {
+        fighter.onGround = false;
+      }
+
       // Gravity
       if (!fighter.onGround) {
         fighter.velocity.y += WB.GRAVITY * dt;
       }
 
-      // Ground collision (terrain-following)
-      const groundY = getTerrainHeight(fighter.position.x, fighter.position.z);
+      // Snap to ground when at or below terrain height
       if (fighter.position.y <= groundY) {
         fighter.position.y = groundY;
         fighter.velocity.y = 0;

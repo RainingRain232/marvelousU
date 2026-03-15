@@ -13,14 +13,15 @@ import { RPGBalance } from "@rpg/config/RPGBalanceConfig";
 // Colours
 // ---------------------------------------------------------------------------
 
-const PANEL_COLOR = 0x12122a;
-const BORDER_COLOR = 0x4444aa;
+const PANEL_COLOR = 0x10102a;
+const BORDER_COLOR = 0x5555cc;
 const TITLE_COLOR = 0xffdd44;
-const OPTION_COLOR = 0xeeeeff;
+const OPTION_COLOR = 0xddddf8;
 const SELECTED_COLOR = 0xffcc00;
+const SELECTED_BG = 0x222255;
 const DIM_COLOR = 0x666688;
 const SUCCESS_COLOR = 0x44cc44;
-const SLOT_BG = 0x181830;
+const SLOT_BG = 0x161630;
 const SLOT_BORDER = 0x3333aa;
 const SLOT_EMPTY_COLOR = 0x444466;
 
@@ -129,40 +130,76 @@ export class PauseMenuView {
 
   private _drawPauseMenu(W: number, H: number): void {
     const panelW = Math.min(320, W - 40);
-    const panelH = 420;
+    const panelH = 440;
     const panelX = (W - panelW) / 2;
     const panelY = (H - panelH) / 2;
 
     const panel = new Graphics();
-    panel.roundRect(panelX, panelY, panelW, panelH, 8);
+    panel.roundRect(panelX, panelY, panelW, panelH, 10);
     panel.fill({ color: PANEL_COLOR, alpha: 0.96 });
     panel.stroke({ color: BORDER_COLOR, width: 2 });
     this.container.addChild(panel);
 
+    // Decorative top accent line
+    const accent = new Graphics();
+    accent.roundRect(panelX + 20, panelY + 6, panelW - 40, 2, 1);
+    accent.fill({ color: TITLE_COLOR, alpha: 0.3 });
+    this.container.addChild(accent);
+
     const title = new Text({
       text: t("rpg.paused"),
-      style: { fontFamily: "monospace", fontSize: 22, fill: TITLE_COLOR, fontWeight: "bold" },
+      style: { fontFamily: "monospace", fontSize: 22, fill: TITLE_COLOR, fontWeight: "bold", letterSpacing: 3 },
     });
     title.anchor.set(0.5, 0);
     title.position.set(W / 2, panelY + 18);
     this.container.addChild(title);
 
     const startY = panelY + 62;
-    const spacing = 40;
+    const spacing = 42;
+    const btnW = panelW - 60;
+    const btnH = 34;
 
     for (let i = 0; i < this._menuOptions.length; i++) {
       const selected = i === this._selectedIndex;
+      const by = startY + i * spacing;
+
+      // Button background
+      const btnBg = new Graphics();
+      btnBg.roundRect(W / 2 - btnW / 2, by - 2, btnW, btnH, 5);
+      if (selected) {
+        btnBg.fill({ color: SELECTED_BG, alpha: 0.85 });
+        btnBg.stroke({ color: SELECTED_COLOR, width: 2 });
+      } else {
+        btnBg.fill({ color: 0x141430, alpha: 0.5 });
+        btnBg.stroke({ color: BORDER_COLOR, width: 1, alpha: 0.3 });
+      }
+      this.container.addChild(btnBg);
+
+      // Mouse interactivity
+      btnBg.eventMode = "static";
+      btnBg.cursor = "pointer";
+      const idx = i;
+      btnBg.on("pointerover", () => {
+        if (this._mode === "menu") { this._selectedIndex = idx; this._draw(); }
+      });
+      btnBg.on("pointertap", () => {
+        if (this._mode === "menu") {
+          this._selectedIndex = idx;
+          this._activatePauseOption();
+        }
+      });
+
       const text = new Text({
-        text: `${selected ? "> " : "  "}${this._menuOptions[i]}`,
+        text: this._menuOptions[i],
         style: {
           fontFamily: "monospace",
-          fontSize: 16,
+          fontSize: 15,
           fill: selected ? SELECTED_COLOR : OPTION_COLOR,
           fontWeight: selected ? "bold" : "normal",
         },
       });
-      text.anchor.set(0.5, 0);
-      text.position.set(W / 2, startY + i * spacing);
+      text.anchor.set(0.5, 0.5);
+      text.position.set(W / 2, by + btnH / 2 - 2);
       this.container.addChild(text);
     }
 
@@ -738,6 +775,45 @@ export class PauseMenuView {
     window.addEventListener("keydown", this._onKeyDown, true);
   }
 
+  private _activatePauseOption(): void {
+    switch (this._selectedIndex) {
+      case 0: this.onResume?.(); break;
+      case 1:
+        this._mode = "inventory";
+        this._invMemberIndex = 0;
+        this._selectedIndex = 0;
+        this._draw();
+        break;
+      case 2:
+        this._mode = "save";
+        this._selectedIndex = 0;
+        this._saveMessage = "";
+        this._draw();
+        break;
+      case 3:
+        this._mode = "formation";
+        this._selectedIndex = 0;
+        this._draw();
+        break;
+      case 4:
+        this._mode = "help";
+        this._draw();
+        break;
+      case 5: this.onOptions?.(); break;
+      case 6:
+        this._mode = "cheats";
+        this._selectedIndex = 0;
+        this._cheatMessage = "";
+        this._draw();
+        break;
+      case 7:
+        this._mode = "confirm_quit";
+        this._selectedIndex = 1; // Default to No
+        this._draw();
+        break;
+    }
+  }
+
   private _handleMenuInput(e: KeyboardEvent): void {
     if (e.code === "ArrowUp") {
       this._selectedIndex = (this._selectedIndex - 1 + this._menuOptions.length) % this._menuOptions.length;
@@ -746,42 +822,7 @@ export class PauseMenuView {
       this._selectedIndex = (this._selectedIndex + 1) % this._menuOptions.length;
       this._draw();
     } else if (e.code === "Enter" || e.code === "Space") {
-      switch (this._selectedIndex) {
-        case 0: this.onResume?.(); break;
-        case 1:
-          this._mode = "inventory";
-          this._invMemberIndex = 0;
-          this._selectedIndex = 0;
-          this._draw();
-          break;
-        case 2:
-          this._mode = "save";
-          this._selectedIndex = 0;
-          this._saveMessage = "";
-          this._draw();
-          break;
-        case 3:
-          this._mode = "formation";
-          this._selectedIndex = 0;
-          this._draw();
-          break;
-        case 4:
-          this._mode = "help";
-          this._draw();
-          break;
-        case 5: this.onOptions?.(); break;
-        case 6:
-          this._mode = "cheats";
-          this._selectedIndex = 0;
-          this._cheatMessage = "";
-          this._draw();
-          break;
-        case 7:
-          this._mode = "confirm_quit";
-          this._selectedIndex = 1; // Default to No
-          this._draw();
-          break;
-      }
+      this._activatePauseOption();
     } else if (e.code === "Escape") {
       this.onResume?.();
     }

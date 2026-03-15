@@ -10,13 +10,13 @@ import longswordUrl from "@/img/longsword.png";
 // Layout
 // ---------------------------------------------------------------------------
 
-const PANEL_COLOR = 0x1a1a2e;
-const BORDER_COLOR = 0x4444aa;
+const PANEL_COLOR = 0x12122e;
+const BORDER_COLOR = 0x5555cc;
 const GOLD_COLOR = 0xffd700;
 const XP_COLOR = 0x88bbff;
 const LOOT_COLOR = 0x88ff88;
 const LEVEL_UP_COLOR = 0xffaa00;
-const TEXT_COLOR = 0xcccccc;
+const TEXT_COLOR = 0xd0d0dd;
 
 // ---------------------------------------------------------------------------
 // BattleResultsView
@@ -257,13 +257,30 @@ export class BattleResultsView {
       this.container.addChild(defeatMsg);
     }
 
-    // Continue prompt
+    // Continue button (clickable)
+    const contBtnW = 200;
+    const contBtnH = 30;
+    const contBtnX = W / 2 - contBtnW / 2;
+    const contBtnY = panelY + panelH - 42;
+
+    const contBg = new Graphics();
+    contBg.roundRect(contBtnX, contBtnY, contBtnW, contBtnH, 5);
+    contBg.fill({ color: 0x222244, alpha: 0.8 });
+    contBg.stroke({ color: 0x5555cc, width: 1 });
+    this.container.addChild(contBg);
+
+    contBg.eventMode = "static";
+    contBg.cursor = "pointer";
+    contBg.on("pointertap", () => this.onDismiss?.());
+    contBg.on("pointerover", () => { contBg.tint = 0xccccff; });
+    contBg.on("pointerout", () => { contBg.tint = 0xffffff; });
+
     const continueText = new Text({
-      text: "Press Enter to continue",
-      style: { fontFamily: "monospace", fontSize: 12, fill: 0x888888 },
+      text: "Continue (Enter)",
+      style: { fontFamily: "monospace", fontSize: 12, fill: 0xaaaacc, fontWeight: "bold" },
     });
-    continueText.anchor.set(0.5, 0);
-    continueText.position.set(W / 2, panelY + panelH - 35);
+    continueText.anchor.set(0.5, 0.5);
+    continueText.position.set(W / 2, contBtnY + contBtnH / 2);
     this.container.addChild(continueText);
   }
 

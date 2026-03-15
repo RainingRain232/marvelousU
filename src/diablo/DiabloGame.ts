@@ -3890,6 +3890,26 @@ export class DiabloGame {
         this._state.aoeEffects.push(aoe);
         // Immediate damage tick for melee AOE
         this._tickAOEDamage(aoe);
+        // Visual burst for melee AoE skills
+        if (skillId === SkillId.WHIRLWIND) {
+          this._renderer.shakeCamera(0.2, 0.3);
+          this._renderer.spawnParticles(ParticleType.DUST, p.x, 0, p.z, 10, this._state.particles);
+          this._renderer.spawnParticles(ParticleType.SPARK, p.x, 0.5, p.z, 6, this._state.particles);
+        } else if (skillId === SkillId.ICE_NOVA) {
+          this._renderer.shakeCamera(0.25, 0.35);
+          this._renderer.spawnParticles(ParticleType.ICE, p.x, 0.5, p.z, 15, this._state.particles);
+          this._renderer.spawnParticles(ParticleType.ICE, p.x, 1.0, p.z, 8, this._state.particles);
+        } else if (skillId === SkillId.GROUND_SLAM) {
+          this._renderer.shakeCamera(0.35, 0.5);
+          this._renderer.spawnParticles(ParticleType.DUST, p.x, 0, p.z, 15, this._state.particles);
+          this._renderer.spawnParticles(ParticleType.SPARK, p.x, 0.3, p.z, 8, this._state.particles);
+        } else if (skillId === SkillId.BLADE_FURY) {
+          this._renderer.shakeCamera(0.15, 0.25);
+          this._renderer.spawnParticles(ParticleType.SPARK, p.x, 1.0, p.z, 10, this._state.particles);
+        } else if (skillId === SkillId.SHIELD_BASH) {
+          this._renderer.shakeCamera(0.2, 0.2);
+          this._renderer.spawnParticles(ParticleType.SPARK, p.x, 1.0, p.z, 6, this._state.particles);
+        }
         // Branch effect: LIFE_STEAL_AOE — heal 15% of damage dealt
         if (branchMods.bonusEffects.has('LIFE_STEAL_AOE')) {
           const healAmt = Math.round(modDmg * 0.15);
@@ -3926,6 +3946,12 @@ export class DiabloGame {
           statusEffect: modStatus,
         };
         this._state.aoeEffects.push(aoe);
+        // Massive meteor impact visuals
+        this._renderer.shakeCamera(0.6, 0.8);
+        this._renderer.spawnParticles(ParticleType.FIRE, worldMouse.x, 0.5, worldMouse.z, 25, this._state.particles);
+        this._renderer.spawnParticles(ParticleType.FIRE, worldMouse.x, 1.5, worldMouse.z, 15, this._state.particles);
+        this._renderer.spawnParticles(ParticleType.DUST, worldMouse.x, 0, worldMouse.z, 12, this._state.particles);
+        this._renderer.spawnParticles(ParticleType.SPARK, worldMouse.x, 1.0, worldMouse.z, 10, this._state.particles);
         break;
       }
 
@@ -4112,8 +4138,23 @@ export class DiabloGame {
           this._addFloatingText(p.x, p.y + 3.5, p.z, `+${manaGain} Mana +${hpGain} HP`, "#4488ff");
         }
         if (skillId === SkillId.EARTHQUAKE) {
-          this._renderer.shakeCamera(0.5, 0.8);
-          this._renderer.spawnParticles(ParticleType.DUST, p.x, 0, p.z, 20, this._state.particles);
+          this._renderer.shakeCamera(0.7, 1.0);
+          this._renderer.spawnParticles(ParticleType.DUST, p.x, 0, p.z, 25, this._state.particles);
+          this._renderer.spawnParticles(ParticleType.DUST, p.x + 2, 0, p.z + 2, 10, this._state.particles);
+          this._renderer.spawnParticles(ParticleType.DUST, p.x - 2, 0, p.z - 2, 10, this._state.particles);
+          this._renderer.spawnParticles(ParticleType.SPARK, p.x, 0.3, p.z, 8, this._state.particles);
+        }
+        if (skillId === SkillId.FROST_BARRIER) {
+          this._renderer.shakeCamera(0.2, 0.3);
+          this._renderer.spawnParticles(ParticleType.ICE, p.x, 0.5, p.z, 12, this._state.particles);
+        }
+        if (skillId === SkillId.TIME_WARP) {
+          this._renderer.shakeCamera(0.15, 0.25);
+          this._renderer.spawnParticles(ParticleType.SPARK, p.x, 1.0, p.z, 10, this._state.particles);
+        }
+        if (skillId === SkillId.INTIMIDATING_ROAR) {
+          this._renderer.shakeCamera(0.3, 0.4);
+          this._renderer.spawnParticles(ParticleType.DUST, p.x, 0.5, p.z, 8, this._state.particles);
         }
         break;
       }
@@ -4419,7 +4460,23 @@ export class DiabloGame {
           this._addFloatingText(enemy.x, enemy.y + 2, enemy.z, `${Math.round(finalDmg)}`, "#ff8844");
 
           this._spawnHitParticles(enemy, aoe.damageType);
-          this._renderer.shakeCamera(0.1, 0.15);
+          // Spawn extra AoE impact particles based on damage type
+          switch (aoe.damageType) {
+            case DamageType.FIRE:
+              this._renderer.spawnParticles(ParticleType.FIRE, enemy.x, enemy.y + 0.5, enemy.z, 4 + Math.floor(Math.random() * 3), this._state.particles);
+              break;
+            case DamageType.ICE:
+              this._renderer.spawnParticles(ParticleType.ICE, enemy.x, enemy.y + 0.5, enemy.z, 4 + Math.floor(Math.random() * 3), this._state.particles);
+              break;
+            case DamageType.LIGHTNING:
+              this._renderer.spawnParticles(ParticleType.LIGHTNING, enemy.x, enemy.y + 0.5, enemy.z, 3 + Math.floor(Math.random() * 3), this._state.particles);
+              this._renderer.spawnParticles(ParticleType.SPARK, enemy.x, enemy.y + 1, enemy.z, 2, this._state.particles);
+              break;
+            case DamageType.POISON:
+              this._renderer.spawnParticles(ParticleType.POISON, enemy.x, enemy.y + 0.3, enemy.z, 3 + Math.floor(Math.random() * 2), this._state.particles);
+              break;
+          }
+          this._renderer.shakeCamera(0.15, 0.2);
 
           if (aoe.statusEffect) {
             const existing = enemy.statusEffects.find((e) => e.effect === aoe.statusEffect);

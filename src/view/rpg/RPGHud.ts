@@ -9,19 +9,19 @@ import type { RPGState } from "@rpg/state/RPGState";
 // Layout
 // ---------------------------------------------------------------------------
 
-const HUD_BG = 0x0e0e1a;
-const HUD_BORDER = 0x333355;
-const HP_GREEN = 0x44aa44;
-const HP_YELLOW = 0xaaaa44;
-const HP_RED = 0xaa4444;
-const MP_BLUE = 0x4466cc;
+const HUD_BG = 0x0a0a18;
+const HUD_BORDER = 0x444477;
+const HP_GREEN = 0x44bb44;
+const HP_YELLOW = 0xbbbb44;
+const HP_RED = 0xbb4444;
+const MP_BLUE = 0x4477dd;
 const GOLD_COLOR = 0xffd700;
-const BAR_W = 60;
-const BAR_H = 6;
+const BAR_W = 62;
+const BAR_H = 7;
 const MP_BAR_H = 4;
-const MEMBER_HEIGHT = 40;
-const HUD_PAD = 8;
-const HUD_W = 180;
+const MEMBER_HEIGHT = 42;
+const HUD_PAD = 10;
+const HUD_W = 185;
 
 const ACHIEVEMENT_BG = 0xdaa520;
 const ACHIEVEMENT_TEXT_COLOR = 0x1a1a00;
@@ -225,10 +225,16 @@ export class RPGHud {
 
     // Background
     const bg = new Graphics();
-    bg.roundRect(x, y, HUD_W, hudH, 6);
-    bg.fill({ color: HUD_BG, alpha: 0.85 });
-    bg.stroke({ color: HUD_BORDER, width: 1 });
+    bg.roundRect(x, y, HUD_W, hudH, 8);
+    bg.fill({ color: HUD_BG, alpha: 0.88 });
+    bg.stroke({ color: HUD_BORDER, width: 1.5 });
     this.container.addChild(bg);
+
+    // Top accent line
+    const topAccent = new Graphics();
+    topAccent.roundRect(x + 8, y + 4, HUD_W - 16, 1.5, 1);
+    topAccent.fill({ color: GOLD_COLOR, alpha: 0.25 });
+    this.container.addChild(topAccent);
 
     // ----- Weather / Time of Day -----
     const timeOfDay = this.rpg.timeOfDay;

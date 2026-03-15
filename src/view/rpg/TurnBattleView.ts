@@ -488,10 +488,13 @@ export class TurnBattleView {
       const barX = -HP_BAR_WIDTH / 2;
       const barY = 14;
 
-      hpBar.rect(barX, barY, HP_BAR_WIDTH, HP_BAR_HEIGHT);
-      hpBar.fill({ color: 0x333333 });
-      hpBar.rect(barX, barY, HP_BAR_WIDTH * hpRatio, HP_BAR_HEIGHT);
-      hpBar.fill({ color: hpRatio > 0.5 ? 0x44aa44 : hpRatio > 0.25 ? 0xaaaa44 : 0xaa4444 });
+      hpBar.roundRect(barX, barY, HP_BAR_WIDTH, HP_BAR_HEIGHT, 3);
+      hpBar.fill({ color: 0x222233 });
+      hpBar.stroke({ color: 0x444466, width: 0.5 });
+      if (hpRatio > 0) {
+        hpBar.roundRect(barX, barY, HP_BAR_WIDTH * hpRatio, HP_BAR_HEIGHT, 3);
+        hpBar.fill({ color: hpRatio > 0.5 ? 0x44bb44 : hpRatio > 0.25 ? 0xbbbb44 : 0xbb4444 });
+      }
       entry.barsContainer.addChild(hpBar);
 
       // HP text
@@ -507,10 +510,12 @@ export class TurnBattleView {
       if (entry.isParty) {
         const mpBarY = barY + HP_BAR_HEIGHT + 14;
         const mpRatio = c.maxMp > 0 ? Math.max(0, c.mp / c.maxMp) : 0;
-        hpBar.rect(barX, mpBarY, HP_BAR_WIDTH, MP_BAR_HEIGHT);
-        hpBar.fill({ color: 0x222233 });
-        hpBar.rect(barX, mpBarY, HP_BAR_WIDTH * mpRatio, MP_BAR_HEIGHT);
-        hpBar.fill({ color: 0x4444cc });
+        hpBar.roundRect(barX, mpBarY, HP_BAR_WIDTH, MP_BAR_HEIGHT, 2);
+        hpBar.fill({ color: 0x1a1a33 });
+        if (mpRatio > 0) {
+          hpBar.roundRect(barX, mpBarY, HP_BAR_WIDTH * mpRatio, MP_BAR_HEIGHT, 2);
+          hpBar.fill({ color: 0x4466dd });
+        }
 
         const mpText = new Text({
           text: `MP ${Math.max(0, Math.ceil(c.mp))}/${c.maxMp}`,
@@ -550,7 +555,7 @@ export class TurnBattleView {
         entry.sprite.tint = 0xffffff;
       }
 
-      // Target selection highlight
+      // Target selection highlight + clickable targets
       if (this.battleState.phase === TurnBattlePhase.SELECT_TARGET) {
         const targetC = this._selectableTargets[this._targetIndex];
         if (targetC && targetC.id === c.id) {
@@ -558,6 +563,26 @@ export class TurnBattleView {
           ring.circle(0, -10, 44);
           ring.stroke({ color: 0xffcc00, width: 3, alpha: 0.8 });
           entry.barsContainer.addChild(ring);
+        }
+
+        // Make all selectable targets clickable
+        const targetIdx = this._selectableTargets.findIndex(t => t.id === c.id);
+        if (targetIdx >= 0) {
+          const hitArea = new Graphics();
+          hitArea.rect(-SPRITE_DISPLAY_SIZE / 2, -SPRITE_DISPLAY_SIZE, SPRITE_DISPLAY_SIZE, SPRITE_DISPLAY_SIZE + 40);
+          hitArea.fill({ color: 0xffffff, alpha: 0.001 });
+          hitArea.eventMode = "static";
+          hitArea.cursor = "pointer";
+          const ti = targetIdx;
+          hitArea.on("pointertap", () => {
+            this._targetIndex = ti;
+            this.onTargetSelected?.(this._selectableTargets[ti].id);
+          });
+          hitArea.on("pointerover", () => {
+            this._targetIndex = ti;
+            this._updateBars();
+          });
+          entry.barsContainer.addChild(hitArea);
         }
       }
 
@@ -796,9 +821,9 @@ export class TurnBattleView {
 
     // Background
     const bg = new Graphics();
-    bg.roundRect(barX - 4, barY - 4, maxShow * (slotW + gap) + 4, slotH + 8, 4);
-    bg.fill({ color: 0x0e0e1a, alpha: 0.8 });
-    bg.stroke({ color: 0x333355, width: 1 });
+    bg.roundRect(barX - 4, barY - 4, maxShow * (slotW + gap) + 4, slotH + 8, 6);
+    bg.fill({ color: 0x0a0a18, alpha: 0.85 });
+    bg.stroke({ color: 0x444477, width: 1 });
     this.turnOrderContainer.addChild(bg);
 
     for (let i = 0; i < maxShow; i++) {
@@ -888,10 +913,11 @@ export class TurnBattleView {
     const menuW = 160;
 
     // Menu background
+    const itemH = 30;
     const bg = new Graphics();
-    bg.roundRect(menuX - 10, menuY - 10, menuW, menuEntries * 28 + 20, 6);
-    bg.fill({ color: 0x1a1a3e, alpha: 0.9 });
-    bg.stroke({ color: 0x4444aa, width: 1 });
+    bg.roundRect(menuX - 10, menuY - 10, menuW, menuEntries * itemH + 20, 8);
+    bg.fill({ color: 0x10102e, alpha: 0.92 });
+    bg.stroke({ color: 0x5555cc, width: 2 });
     this.menuContainer.addChild(bg);
 
     for (let i = 0; i < menuEntries; i++) {
@@ -917,13 +943,41 @@ export class TurnBattleView {
         label = "Help";
       }
 
-      let defaultColor = 0xcccccc;
+      let defaultColor = 0xccccdd;
       if (disabled) defaultColor = 0x555555;
-      else if (i >= actions.length) defaultColor = 0x888888; // Help
+      else if (i >= actions.length) defaultColor = 0x888899; // Help
       else if (actions[i] === TurnBattleAction.LIMIT_BREAK) defaultColor = 0xFF8800;
 
+      // Row highlight for selected
+      if (isSelected && !disabled) {
+        const hlBg = new Graphics();
+        hlBg.roundRect(menuX - 6, menuY + i * itemH - 2, menuW - 8, itemH - 4, 4);
+        hlBg.fill({ color: 0x222255, alpha: 0.8 });
+        hlBg.stroke({ color: 0xffcc00, width: 1, alpha: 0.6 });
+        this.menuContainer.addChild(hlBg);
+      }
+
+      // Clickable hit area
+      if (!disabled) {
+        const hitArea = new Graphics();
+        hitArea.rect(menuX - 8, menuY + i * itemH - 2, menuW - 4, itemH - 2);
+        hitArea.fill({ color: 0xffffff, alpha: 0.001 });
+        hitArea.eventMode = "static";
+        hitArea.cursor = "pointer";
+        const idx = i;
+        hitArea.on("pointerover", () => {
+          this._selectedMenuIndex = idx;
+          this._drawMenu();
+        });
+        hitArea.on("pointertap", () => {
+          this._selectedMenuIndex = idx;
+          this._handleMenuClick(actions);
+        });
+        this.menuContainer.addChild(hitArea);
+      }
+
       const text = new Text({
-        text: `${isSelected ? ">" : " "} ${label}`,
+        text: `${isSelected ? "\u25B6" : " "} ${label}`,
         style: {
           fontFamily: "monospace",
           fontSize: 14,
@@ -931,7 +985,7 @@ export class TurnBattleView {
           fontWeight: isSelected ? "bold" : "normal",
         },
       });
-      text.position.set(menuX, menuY + i * 28);
+      text.position.set(menuX, menuY + i * itemH);
       this.menuContainer.addChild(text);
       this._menuTexts.push(text);
     }
@@ -956,14 +1010,14 @@ export class TurnBattleView {
         const tipX = menuX + menuW + 4;
         const tipY = menuY - 10;
         const tipBg = new Graphics();
-        tipBg.roundRect(tipX, tipY, 190, 50, 4);
-        tipBg.fill({ color: 0x1a1a3e, alpha: 0.92 });
-        tipBg.stroke({ color: 0x4444aa, width: 1 });
+        tipBg.roundRect(tipX, tipY, 200, 54, 6);
+        tipBg.fill({ color: 0x10102e, alpha: 0.95 });
+        tipBg.stroke({ color: 0x5555cc, width: 1 });
         this.menuContainer.addChild(tipBg);
 
         const tipLabel = new Text({
           text: tooltipText,
-          style: { fontFamily: "monospace", fontSize: 10, fill: 0xcccccc, wordWrap: true, wordWrapWidth: 180, lineHeight: 14 },
+          style: { fontFamily: "monospace", fontSize: 10, fill: 0xccccdd, wordWrap: true, wordWrapWidth: 188, lineHeight: 14 },
         });
         tipLabel.position.set(tipX + 6, tipY + 6);
         this.menuContainer.addChild(tipLabel);
@@ -976,13 +1030,14 @@ export class TurnBattleView {
 
     const menuX = 30;
     const menuY = this.vm.screenHeight - 200;
-    const itemH = Math.max(consumables.length, 1) * 24 + 40;
+    const rowH = 26;
+    const itemH = Math.max(consumables.length, 1) * rowH + 40;
 
     // Panel background
     const bg = new Graphics();
-    bg.roundRect(menuX - 10, menuY - 10, 260, itemH, 6);
-    bg.fill({ color: 0x1a1a3e, alpha: 0.9 });
-    bg.stroke({ color: 0x4444aa, width: 1 });
+    bg.roundRect(menuX - 10, menuY - 10, 270, itemH, 8);
+    bg.fill({ color: 0x10102e, alpha: 0.92 });
+    bg.stroke({ color: 0x5555cc, width: 2 });
     this.menuContainer.addChild(bg);
 
     // Header
@@ -992,6 +1047,19 @@ export class TurnBattleView {
     });
     header.position.set(menuX, menuY);
     this.menuContainer.addChild(header);
+
+    // Back button (Esc)
+    const backBtn = new Graphics();
+    backBtn.roundRect(menuX + 200, menuY - 4, 48, 20, 4);
+    backBtn.fill({ color: 0x332222, alpha: 0.7 });
+    backBtn.stroke({ color: 0x885555, width: 1 });
+    backBtn.eventMode = "static";
+    backBtn.cursor = "pointer";
+    backBtn.on("pointertap", () => { this._itemPickMode = false; this._drawMenu(); });
+    this.menuContainer.addChild(backBtn);
+    const backLabel = new Text({ text: "Back", style: { fontFamily: "monospace", fontSize: 9, fill: 0xcc8888 } });
+    backLabel.position.set(menuX + 210, menuY - 1);
+    this.menuContainer.addChild(backLabel);
 
     if (consumables.length === 0) {
       const empty = new Text({
@@ -1007,17 +1075,39 @@ export class TurnBattleView {
       const { item, quantity } = consumables[i];
       const isSelected = i === this._itemPickIndex;
       const statsStr = _formatItemStats(item);
+      const iy = menuY + 20 + i * rowH;
+
+      // Clickable row
+      const hitArea = new Graphics();
+      hitArea.rect(menuX - 4, iy - 2, 258, rowH - 2);
+      hitArea.fill({ color: 0xffffff, alpha: 0.001 });
+      hitArea.eventMode = "static";
+      hitArea.cursor = "pointer";
+      const idx = i;
+      hitArea.on("pointerover", () => { this._itemPickIndex = idx; this._drawMenu(); });
+      hitArea.on("pointertap", () => {
+        this._itemPickMode = false;
+        this.onItemSelected?.(consumables[idx].item.id);
+      });
+      this.menuContainer.addChild(hitArea);
+
+      if (isSelected) {
+        const hl = new Graphics();
+        hl.roundRect(menuX - 4, iy - 2, 258, rowH - 4, 3);
+        hl.fill({ color: 0x222255, alpha: 0.7 });
+        this.menuContainer.addChild(hl);
+      }
 
       const text = new Text({
-        text: `${isSelected ? ">" : " "} ${item.name} x${quantity}  ${statsStr}`,
+        text: `${isSelected ? "\u25B6" : " "} ${item.name} x${quantity}  ${statsStr}`,
         style: {
           fontFamily: "monospace",
           fontSize: 12,
-          fill: isSelected ? 0xffcc00 : 0xcccccc,
+          fill: isSelected ? 0xffcc00 : 0xccccdd,
           fontWeight: isSelected ? "bold" : "normal",
         },
       });
-      text.position.set(menuX, menuY + 20 + i * 24);
+      text.position.set(menuX, iy);
       this.menuContainer.addChild(text);
       this._menuTexts.push(text);
     }
@@ -1030,13 +1120,14 @@ export class TurnBattleView {
 
     const menuX = 30;
     const menuY = this.vm.screenHeight - 200;
+    const rowH = 26;
     const rows = Math.max(spells.length, 1);
-    const panelH = rows * 24 + 40;
+    const panelH = rows * rowH + 40;
 
     const bg = new Graphics();
-    bg.roundRect(menuX - 10, menuY - 10, 300, panelH, 6);
-    bg.fill({ color: 0x1a1a3e, alpha: 0.9 });
-    bg.stroke({ color: 0x4444aa, width: 1 });
+    bg.roundRect(menuX - 10, menuY - 10, 310, panelH, 8);
+    bg.fill({ color: 0x10102e, alpha: 0.92 });
+    bg.stroke({ color: 0x5555cc, width: 2 });
     this.menuContainer.addChild(bg);
 
     const header = new Text({
@@ -1045,6 +1136,19 @@ export class TurnBattleView {
     });
     header.position.set(menuX, menuY);
     this.menuContainer.addChild(header);
+
+    // Back button
+    const backBtn = new Graphics();
+    backBtn.roundRect(menuX + 240, menuY - 4, 48, 20, 4);
+    backBtn.fill({ color: 0x332222, alpha: 0.7 });
+    backBtn.stroke({ color: 0x885555, width: 1 });
+    backBtn.eventMode = "static";
+    backBtn.cursor = "pointer";
+    backBtn.on("pointertap", () => { this._spellPickMode = false; this._drawMenu(); });
+    this.menuContainer.addChild(backBtn);
+    const backLabel = new Text({ text: "Back", style: { fontFamily: "monospace", fontSize: 9, fill: 0xcc8888 } });
+    backLabel.position.set(menuX + 250, menuY - 1);
+    this.menuContainer.addChild(backLabel);
 
     if (spells.length === 0) {
       const empty = new Text({
@@ -1056,17 +1160,41 @@ export class TurnBattleView {
       return;
     }
 
-    const spellPanelW = 300;
+    const spellPanelW = 310;
     for (let i = 0; i < spells.length; i++) {
       const spellId = spells[i];
       const isSelected = i === this._spellPickIndex;
       const name = getSpellName(spellId);
       const cost = getSpellMpCost(spellId);
-      const canCast = canCastSpell(this.battleState, currentId!, spellId);
-      const color = !canCast ? 0x555555 : (isSelected ? 0xffcc00 : 0xcccccc);
+      const canCast_ = canCastSpell(this.battleState, currentId!, spellId);
+      const color = !canCast_ ? 0x555555 : (isSelected ? 0xffcc00 : 0xccccdd);
+      const sy = menuY + 20 + i * rowH;
+
+      // Clickable row
+      if (canCast_) {
+        const hitArea = new Graphics();
+        hitArea.rect(menuX - 4, sy - 2, 298, rowH - 2);
+        hitArea.fill({ color: 0xffffff, alpha: 0.001 });
+        hitArea.eventMode = "static";
+        hitArea.cursor = "pointer";
+        const idx = i;
+        hitArea.on("pointerover", () => { this._spellPickIndex = idx; this._drawMenu(); });
+        hitArea.on("pointertap", () => {
+          this._spellPickMode = false;
+          this.onSpellSelected?.(spells[idx]);
+        });
+        this.menuContainer.addChild(hitArea);
+      }
+
+      if (isSelected && canCast_) {
+        const hl = new Graphics();
+        hl.roundRect(menuX - 4, sy - 2, 298, rowH - 4, 3);
+        hl.fill({ color: 0x222255, alpha: 0.7 });
+        this.menuContainer.addChild(hl);
+      }
 
       const text = new Text({
-        text: `${isSelected ? ">" : " "} ${name}  (${cost} MP)`,
+        text: `${isSelected ? "\u25B6" : " "} ${name}  (${cost} MP)`,
         style: {
           fontFamily: "monospace",
           fontSize: 12,
@@ -1074,7 +1202,7 @@ export class TurnBattleView {
           fontWeight: isSelected ? "bold" : "normal",
         },
       });
-      text.position.set(menuX, menuY + 20 + i * 24);
+      text.position.set(menuX, sy);
       this.menuContainer.addChild(text);
       this._menuTexts.push(text);
     }
@@ -1087,14 +1215,14 @@ export class TurnBattleView {
         const tipX = menuX + spellPanelW + 4;
         const tipY = menuY - 10;
         const tipBg = new Graphics();
-        tipBg.roundRect(tipX, tipY, 190, 50, 4);
-        tipBg.fill({ color: 0x1a1a3e, alpha: 0.92 });
-        tipBg.stroke({ color: 0x4444aa, width: 1 });
+        tipBg.roundRect(tipX, tipY, 190, 50, 5);
+        tipBg.fill({ color: 0x10102e, alpha: 0.95 });
+        tipBg.stroke({ color: 0x5555cc, width: 1 });
         this.menuContainer.addChild(tipBg);
 
         const tipLabel = new Text({
           text: desc,
-          style: { fontFamily: "monospace", fontSize: 10, fill: 0xcccccc, wordWrap: true, wordWrapWidth: 180, lineHeight: 14 },
+          style: { fontFamily: "monospace", fontSize: 10, fill: 0xccccdd, wordWrap: true, wordWrapWidth: 180, lineHeight: 14 },
         });
         tipLabel.position.set(tipX + 6, tipY + 6);
         this.menuContainer.addChild(tipLabel);
@@ -1120,8 +1248,9 @@ export class TurnBattleView {
 
     // Background panel
     const bg = new Graphics();
-    bg.roundRect(logX - 6, logY - 4, 312, maxVisible * 16 + 8, 4);
-    bg.fill({ color: 0x0a0a14, alpha: 0.7 });
+    bg.roundRect(logX - 6, logY - 4, 312, maxVisible * 16 + 8, 6);
+    bg.fill({ color: 0x0a0a18, alpha: 0.8 });
+    bg.stroke({ color: 0x333366, width: 1, alpha: 0.5 });
     this.logContainer.addChild(bg);
 
     for (let i = 0; i < visible.length; i++) {
@@ -1181,6 +1310,44 @@ export class TurnBattleView {
     }
     actions.push(TurnBattleAction.FLEE);
     return actions;
+  }
+
+  /** Handle mouse click on a menu item (mirrors keyboard Enter logic). */
+  private _handleMenuClick(actions: TurnBattleAction[]): void {
+    if (this.battleState.phase !== TurnBattlePhase.SELECT_ACTION) return;
+
+    // Help entry is after the action list
+    if (this._selectedMenuIndex >= actions.length) {
+      this.onHelpRequested?.();
+      return;
+    }
+    const selectedAction = actions[this._selectedMenuIndex];
+    if (selectedAction === TurnBattleAction.ITEM) {
+      const consumables = this._rpg.inventory.items.filter(s => s.item.type === "consumable");
+      if (consumables.length === 0) {
+        this.battleState.log.push("No items to use!");
+        this._updateLog();
+      } else {
+        this._itemPickMode = true;
+        this._itemPickIndex = 0;
+        this._drawMenu();
+      }
+    } else if (selectedAction === TurnBattleAction.ABILITY) {
+      const cid = this.battleState.turnOrder[this.battleState.currentTurnIndex];
+      const cur = this.battleState.combatants.find(c => c.id === cid);
+      if (cur && cur.knownSpells && cur.knownSpells.length > 0) {
+        this._spellPickMode = true;
+        this._spellPickIndex = 0;
+        this._drawMenu();
+      } else if (!canUseAbility(this.battleState, cid!)) {
+        this.battleState.log.push(`${cur?.name ?? "Unit"} doesn't have enough MP!`);
+        this._updateLog();
+      } else {
+        this.onActionSelected?.(selectedAction);
+      }
+    } else {
+      this.onActionSelected?.(selectedAction);
+    }
   }
 
   private _setupInput(): void {

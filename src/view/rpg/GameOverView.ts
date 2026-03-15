@@ -107,10 +107,36 @@ export class GameOverView {
     this.container.addChild(msg);
 
     // Options
+    const optBtnW = 200;
+    const optBtnH = 32;
     for (let i = 0; i < this._options.length; i++) {
       const selected = i === this._selectedIndex;
+      const oy = panelY + 128 + i * 38;
+
+      // Button background
+      const btnBg = new Graphics();
+      btnBg.roundRect(W / 2 - optBtnW / 2, oy, optBtnW, optBtnH, 5);
+      if (selected) {
+        btnBg.fill({ color: 0x222200, alpha: 0.8 });
+        btnBg.stroke({ color: OPTION_COLOR, width: 2 });
+      } else {
+        btnBg.fill({ color: 0x1a1a2a, alpha: 0.6 });
+        btnBg.stroke({ color: BORDER_COLOR, width: 1, alpha: 0.4 });
+      }
+      this.container.addChild(btnBg);
+
+      // Mouse interactivity
+      btnBg.eventMode = "static";
+      btnBg.cursor = "pointer";
+      const idx = i;
+      btnBg.on("pointerover", () => { this._selectedIndex = idx; this._draw(); });
+      btnBg.on("pointertap", () => {
+        if (idx === 0) this.onRestart?.();
+        else this.onMainMenu?.();
+      });
+
       const optText = new Text({
-        text: `${selected ? "> " : "  "}${this._options[i]}`,
+        text: this._options[i],
         style: {
           fontFamily: "monospace",
           fontSize: 14,
@@ -118,8 +144,8 @@ export class GameOverView {
           fontWeight: selected ? "bold" : "normal",
         },
       });
-      optText.anchor.set(0.5, 0);
-      optText.position.set(W / 2, panelY + 130 + i * 28);
+      optText.anchor.set(0.5, 0.5);
+      optText.position.set(W / 2, oy + optBtnH / 2);
       this.container.addChild(optText);
     }
 

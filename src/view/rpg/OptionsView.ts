@@ -7,11 +7,11 @@ import { t } from "@/i18n/i18n";
 // Colours
 // ---------------------------------------------------------------------------
 
-const BG_COLOR = 0x0a0a18;
-const PANEL_COLOR = 0x12122a;
-const BORDER_COLOR = 0x4444aa;
+const BG_COLOR = 0x080816;
+const PANEL_COLOR = 0x10102a;
+const BORDER_COLOR = 0x5555cc;
 const TITLE_COLOR = 0xffdd44;
-const OPTION_COLOR = 0xeeeeff;
+const OPTION_COLOR = 0xddddf8;
 const SELECTED_COLOR = 0xffcc00;
 const DIM_COLOR = 0x666688;
 const VALUE_COLOR = 0x88ccff;
@@ -163,10 +163,26 @@ export class OptionsView {
       // Highlight bar
       if (selected) {
         const hlGfx = new Graphics();
-        hlGfx.roundRect(panelX + 10, y - 4, panelW - 20, rowH - 8, 4);
-        hlGfx.fill({ color: 0x222244, alpha: 0.8 });
+        hlGfx.roundRect(panelX + 10, y - 4, panelW - 20, rowH - 8, 5);
+        hlGfx.fill({ color: 0x222255, alpha: 0.8 });
+        hlGfx.stroke({ color: SELECTED_COLOR, width: 1, alpha: 0.4 });
         this.container.addChild(hlGfx);
       }
+
+      // Clickable row
+      const rowHit = new Graphics();
+      rowHit.rect(panelX + 10, y - 4, panelW - 20, rowH - 8);
+      rowHit.fill({ color: 0xffffff, alpha: 0.001 });
+      rowHit.eventMode = "static";
+      rowHit.cursor = "pointer";
+      const rowIdx = i;
+      rowHit.on("pointerover", () => { this._selectedIndex = rowIdx; this._draw(); });
+      rowHit.on("pointertap", () => {
+        this._selectedIndex = rowIdx;
+        this._adjustValue(1);
+        this._draw();
+      });
+      this.container.addChild(rowHit);
 
       // Label
       const labelText = new Text({
@@ -225,13 +241,40 @@ export class OptionsView {
       }
     }
 
+    // Close button
+    const closeBtnW = 100;
+    const closeBtnH = 28;
+    const closeX = W / 2 - closeBtnW / 2;
+    const closeY = panelY + panelH - 58;
+    const closeBtn = new Graphics();
+    closeBtn.roundRect(closeX, closeY, closeBtnW, closeBtnH, 5);
+    closeBtn.fill({ color: 0x222244, alpha: 0.8 });
+    closeBtn.stroke({ color: 0x5555cc, width: 1 });
+    closeBtn.eventMode = "static";
+    closeBtn.cursor = "pointer";
+    closeBtn.on("pointertap", () => {
+      saveOptions(this._options);
+      this.onOptionsChanged?.(this._options);
+      this.onClose?.();
+    });
+    closeBtn.on("pointerover", () => { closeBtn.tint = 0xccccff; });
+    closeBtn.on("pointerout", () => { closeBtn.tint = 0xffffff; });
+    this.container.addChild(closeBtn);
+    const closeBtnLabel = new Text({
+      text: "Close",
+      style: { fontFamily: "monospace", fontSize: 12, fill: 0xaaaacc, fontWeight: "bold" },
+    });
+    closeBtnLabel.anchor.set(0.5, 0.5);
+    closeBtnLabel.position.set(W / 2, closeY + closeBtnH / 2);
+    this.container.addChild(closeBtnLabel);
+
     // Footer
     const footer = new Text({
       text: t("rpg.options_nav"),
       style: { fontFamily: "monospace", fontSize: 10, fill: DIM_COLOR },
     });
     footer.anchor.set(0.5, 0);
-    footer.position.set(W / 2, panelY + panelH - 28);
+    footer.position.set(W / 2, panelY + panelH - 24);
     this.container.addChild(footer);
   }
 

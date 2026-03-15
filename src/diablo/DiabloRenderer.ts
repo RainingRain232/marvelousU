@@ -11634,15 +11634,26 @@ export class DiabloRenderer {
       // Status effect visuals
       this._applyStatusTint(mesh, enemy.statusEffects);
 
-      // Boss enrage glow
+      // Boss enrage glow — dramatic multi-frequency pulsing with scale throb
       if (enemy.bossEnraged) {
-        const pulse = 0.5 + Math.sin(this._time * 6) * 0.5;
+        const slowPulse = Math.sin(this._time * 3) * 0.3;
+        const fastPulse = Math.sin(this._time * 8) * 0.2;
+        const flicker = Math.sin(this._time * 20) * 0.1;
+        const totalPulse = 0.6 + slowPulse + fastPulse + flicker;
         mesh.traverse((child) => {
           if (child instanceof THREE.Mesh && child.material instanceof THREE.MeshStandardMaterial) {
-            child.material.emissive.setHex(0xff0000);
-            child.material.emissiveIntensity = 0.5 + pulse * 0.8;
+            if (!child.name.startsWith('status_fx_')) {
+              // Alternate between deep red and bright orange-red
+              const redShift = Math.sin(this._time * 4) > 0 ? 0xff2200 : 0xff0000;
+              child.material.emissive.setHex(redShift);
+              child.material.emissiveIntensity = 0.5 + totalPulse * 1.0;
+            }
           }
         });
+        // Boss scale throb when enraged
+        const enrageBaseScale = enemy.scale || 1;
+        const enrageScale = enrageBaseScale * (1.0 + Math.sin(this._time * 5) * 0.03);
+        mesh.scale.setScalar(enrageScale);
       }
 
       // Boss shield sphere
@@ -11747,30 +11758,49 @@ export class DiabloRenderer {
     group: THREE.Group,
     effects: { effect: StatusEffect; duration: number; source: string }[]
   ): void {
+    // Clean up old status effect decorations when no effects
     if (effects.length === 0) {
+      // Remove status-effect children that were added dynamically
+      const toRemove: THREE.Object3D[] = [];
+      group.traverse((child) => {
+        if (child.name && child.name.startsWith('status_fx_')) {
+          toRemove.push(child);
+        }
+      });
+      for (const obj of toRemove) {
+        obj.parent?.remove(obj);
+      }
       return;
     }
 
     let tintColor: number | null = null;
     let emissiveColor: number | null = null;
+    let hasBurning = false;
+    let hasFrozen = false;
+    let hasShocked = false;
+    let hasPoisoned = false;
 
     for (const fx of effects) {
       switch (fx.effect) {
         case StatusEffect.BURNING:
           tintColor = 0xff4400;
           emissiveColor = 0xff2200;
+          hasBurning = true;
           break;
         case StatusEffect.FROZEN:
           tintColor = 0x88ccff;
           emissiveColor = 0x4488cc;
+          hasFrozen = true;
           break;
         case StatusEffect.SHOCKED:
           tintColor = 0xffff44;
           emissiveColor = 0xaaaa00;
+          hasShocked = true;
           break;
         case StatusEffect.POISONED:
           tintColor = 0x44ff44;
           emissiveColor = 0x22aa22;
+          hasPoisoned = true;
           break;
         case StatusEffect.SLOWED:
           tintColor = 0x8888ff;
@@ -11791,14 +11821,364 @@ export class DiabloRenderer {
       }
     }
 
+    const t = this._time;
+
     if (tintColor !== null && emissiveColor !== null) {
-      const pulse = Math.sin(this._time * 6) * 0.3 + 0.5;
+      const pulse = Math.sin(t * 6) * 0.3 + 0.5;
       group.traverse((child) => {
         if (child instanceof THREE.Mesh && child.material instanceof THREE.MeshStandardMaterial) {
-          child.material.emissive.setHex(emissiveColor!);
-          child.material.emissiveIntensity = pulse;
+          if (!child.name.startsWith('status_fx_')) {
+            child.material.emissive.setHex(emissiveColor!);
+            child.material.emissiveIntensity = pulse;
+          }
         }
       });
+    }
+
+    // ── BURNING: Fire particles orbiting around the unit, rising flames, orange point light ──
+    if (hasBurning) {
+      let fireLight = group.getObjectByName('status_fx_fire_light') as THREE.PointLight | undefined;
+      if (!fireLight) {
+        fireLight = new THREE.PointLight(0xff6600, 3.0, 6);
+        fireLight.name = 'status_fx_fire_light';
+        fireLight.position.set(0, 1.2, 0);
+        group.add(fireLight);
+
+        // Orbiting fire embers (6 small flame meshes)
+        for (let i = 0; i < 6; i++) {
+          const ember = new THREE.Mesh(
+            new THREE.SphereGeometry(0.06 + Math.random() * 0.04, 4, 3),
+            new THREE.MeshStandardMaterial({
+              color: 0xff6600, emissive: 0xff4400, emissiveIntensity: 3.0,
+              transparent: true, opacity: 0.8,
+            })
+          );
+          ember.name = 'status_fx_fire_ember';
+          ember.userData.orbitAngle = (i / 6) * Math.PI * 2;
+          ember.userData.orbitSpeed = 3.0 + Math.random() * 2.0;
+          ember.userData.orbitRadius = 0.5 + Math.random() * 0.3;
+          ember.userData.heightOffset = 0.3 + Math.random() * 1.2;
+          group.add(ember);
+        }
+
+        // Rising flame cones (3 larger flames)
+        for (let i = 0; i < 3; i++) {
+          const flame = new THREE.Mesh(
+            new THREE.ConeGeometry(0.1, 0.4 + Math.random() * 0.3, 5),
+            new THREE.MeshStandardMaterial({
+              color: 0xff8800, emissive: 0xff4400, emissiveIntensity: 2.5,
+              transparent: true, opacity: 0.7,
+            })
+          );
+          flame.name = 'status_fx_fire_flame';
+          flame.userData.flameOffset = (i / 3) * Math.PI * 2;
+          flame.userData.flameRadius = 0.2 + Math.random() * 0.15;
+          group.add(flame);
+        }
+
+        // Hot glow overlay sphere
+        const heatGlow = new THREE.Mesh(
+          new THREE.SphereGeometry(0.9, 8, 6),
+          new THREE.MeshStandardMaterial({
+            color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 1.5,
+            transparent: true, opacity: 0.12, side: THREE.DoubleSide,
+          })
+        );
+        heatGlow.name = 'status_fx_fire_glow';
+        heatGlow.position.y = 0.8;
+        group.add(heatGlow);
+      }
+
+      // Animate fire effects
+      fireLight.intensity = 2.5 + Math.sin(t * 12) * 1.0 + Math.sin(t * 7.3) * 0.5;
+      fireLight.color.setHex(Math.random() > 0.7 ? 0xff8800 : 0xff4400);
+
+      group.traverse((child) => {
+        if (child.name === 'status_fx_fire_ember') {
+          const angle = child.userData.orbitAngle + t * child.userData.orbitSpeed;
+          const r = child.userData.orbitRadius;
+          child.position.set(
+            Math.cos(angle) * r,
+            child.userData.heightOffset + Math.sin(t * 5 + angle) * 0.2,
+            Math.sin(angle) * r
+          );
+          const s = 0.6 + Math.sin(t * 10 + angle * 3) * 0.4;
+          child.scale.setScalar(s);
+          const emberMat = (child as THREE.Mesh).material;
+          if (emberMat instanceof THREE.MeshStandardMaterial) {
+            emberMat.opacity = 0.5 + Math.sin(t * 8 + angle) * 0.3;
+          }
+        } else if (child.name === 'status_fx_fire_flame') {
+          const angle = child.userData.flameOffset + t * 1.5;
+          const r = child.userData.flameRadius;
+          child.position.set(
+            Math.cos(angle) * r,
+            0.3 + Math.sin(t * 6 + angle * 2) * 0.15,
+            Math.sin(angle) * r
+          );
+          child.scale.y = 0.7 + Math.sin(t * 10 + angle * 4) * 0.4;
+          child.scale.x = 0.8 + Math.sin(t * 7 + angle) * 0.2;
+          child.rotation.z = Math.sin(t * 4 + angle) * 0.3;
+        } else if (child.name === 'status_fx_fire_glow') {
+          const glowPulse = 0.08 + Math.sin(t * 5) * 0.06;
+          const glowMat = (child as THREE.Mesh).material;
+          if (glowMat instanceof THREE.MeshStandardMaterial) {
+            glowMat.opacity = glowPulse;
+            glowMat.emissiveIntensity = 1.0 + Math.sin(t * 8) * 0.8;
+          }
+          child.scale.setScalar(0.9 + Math.sin(t * 4) * 0.15);
+        }
+      });
+    }
+
+    // ── FROZEN: Ice crystals, frost overlay, blue-white point light, frozen shell ──
+    if (hasFrozen) {
+      let iceLight = group.getObjectByName('status_fx_ice_light') as THREE.PointLight | undefined;
+      if (!iceLight) {
+        iceLight = new THREE.PointLight(0x66ccff, 2.5, 5);
+        iceLight.name = 'status_fx_ice_light';
+        iceLight.position.set(0, 1.2, 0);
+        group.add(iceLight);
+
+        // Ice crystal spikes (5 jutting outward)
+        for (let i = 0; i < 5; i++) {
+          const crystal = new THREE.Mesh(
+            new THREE.OctahedronGeometry(0.08 + Math.random() * 0.06, 0),
+            new THREE.MeshStandardMaterial({
+              color: 0xccefff, emissive: 0x88ccff, emissiveIntensity: 1.5,
+              transparent: true, opacity: 0.8, metalness: 0.4, roughness: 0.1,
+            })
+          );
+          crystal.name = 'status_fx_ice_crystal';
+          const angle = (i / 5) * Math.PI * 2 + Math.random() * 0.4;
+          crystal.userData.crystalAngle = angle;
+          crystal.userData.crystalDist = 0.35 + Math.random() * 0.2;
+          crystal.userData.crystalHeight = 0.3 + Math.random() * 1.0;
+          crystal.scale.set(0.8, 1.8 + Math.random() * 0.8, 0.8);
+          crystal.rotation.set(
+            (Math.random() - 0.5) * 0.5,
+            angle,
+            (Math.random() - 0.5) * 0.8
+          );
+          group.add(crystal);
+        }
+
+        // Frost shell overlay (translucent icy sphere around body)
+        const frostShell = new THREE.Mesh(
+          new THREE.IcosahedronGeometry(0.85, 1),
+          new THREE.MeshStandardMaterial({
+            color: 0xaaddff, emissive: 0x4488cc, emissiveIntensity: 0.8,
+            transparent: true, opacity: 0.18, side: THREE.DoubleSide,
+            metalness: 0.3, roughness: 0.2,
+          })
+        );
+        frostShell.name = 'status_fx_ice_shell';
+        frostShell.position.y = 0.8;
+        group.add(frostShell);
+
+        // Floating frost motes (tiny snowflake-like particles)
+        for (let i = 0; i < 8; i++) {
+          const mote = new THREE.Mesh(
+            new THREE.SphereGeometry(0.025 + Math.random() * 0.02, 3, 3),
+            new THREE.MeshStandardMaterial({
+              color: 0xffffff, emissive: 0xaaddff, emissiveIntensity: 2.0,
+              transparent: true, opacity: 0.7,
+            })
+          );
+          mote.name = 'status_fx_ice_mote';
+          mote.userData.moteAngle = Math.random() * Math.PI * 2;
+          mote.userData.moteSpeed = 0.8 + Math.random() * 1.2;
+          mote.userData.moteRadius = 0.5 + Math.random() * 0.4;
+          mote.userData.moteHeight = 0.2 + Math.random() * 1.5;
+          mote.userData.motePhase = Math.random() * Math.PI * 2;
+          group.add(mote);
+        }
+
+        // Ground frost ring
+        const frostRing = new THREE.Mesh(
+          new THREE.TorusGeometry(0.7, 0.04, 6, 16),
+          new THREE.MeshStandardMaterial({
+            color: 0xaaddff, emissive: 0x66aadd, emissiveIntensity: 1.5,
+            transparent: true, opacity: 0.5,
+          })
+        );
+        frostRing.name = 'status_fx_ice_ring';
+        frostRing.rotation.x = -Math.PI / 2;
+        frostRing.position.y = 0.05;
+        group.add(frostRing);
+      }
+
+      // Animate frozen effects
+      iceLight.intensity = 2.0 + Math.sin(t * 3) * 0.5;
+
+      group.traverse((child) => {
+        if (child.name === 'status_fx_ice_crystal') {
+          const a = child.userData.crystalAngle;
+          const d = child.userData.crystalDist;
+          child.position.set(
+            Math.cos(a) * d,
+            child.userData.crystalHeight,
+            Math.sin(a) * d
+          );
+          // Gentle shimmer
+          const crystalMat = (child as THREE.Mesh).material;
+          if (crystalMat instanceof THREE.MeshStandardMaterial) {
+            crystalMat.emissiveIntensity = 1.2 + Math.sin(t * 4 + a * 3) * 0.5;
+          }
+        } else if (child.name === 'status_fx_ice_shell') {
+          child.rotation.y = t * 0.5;
+          child.rotation.x = Math.sin(t * 0.3) * 0.1;
+          const shellMat = (child as THREE.Mesh).material;
+          if (shellMat instanceof THREE.MeshStandardMaterial) {
+            shellMat.opacity = 0.12 + Math.sin(t * 2) * 0.06;
+          }
+        } else if (child.name === 'status_fx_ice_mote') {
+          const angle = child.userData.moteAngle + t * child.userData.moteSpeed;
+          const r = child.userData.moteRadius;
+          child.position.set(
+            Math.cos(angle) * r,
+            child.userData.moteHeight + Math.sin(t * 2 + child.userData.motePhase) * 0.15,
+            Math.sin(angle) * r
+          );
+          const moteMat = (child as THREE.Mesh).material;
+          if (moteMat instanceof THREE.MeshStandardMaterial) {
+            moteMat.opacity = 0.4 + Math.sin(t * 5 + child.userData.motePhase) * 0.3;
+          }
+        } else if (child.name === 'status_fx_ice_ring') {
+          const ringPulse = 0.7 + Math.sin(t * 3) * 0.15;
+          child.scale.setScalar(ringPulse);
+          const ringMat = (child as THREE.Mesh).material;
+          if (ringMat instanceof THREE.MeshStandardMaterial) {
+            ringMat.opacity = 0.3 + Math.sin(t * 4) * 0.15;
+          }
+        }
+      });
+    }
+
+    // ── SHOCKED: Electric arcs flashing around the unit ──
+    if (hasShocked) {
+      let sparkLight = group.getObjectByName('status_fx_spark_light') as THREE.PointLight | undefined;
+      if (!sparkLight) {
+        sparkLight = new THREE.PointLight(0xffff44, 2.0, 4);
+        sparkLight.name = 'status_fx_spark_light';
+        sparkLight.position.set(0, 1.0, 0);
+        group.add(sparkLight);
+
+        // Electric arc segments
+        for (let i = 0; i < 4; i++) {
+          const arcMat = new THREE.MeshStandardMaterial({
+            color: 0xffffff, emissive: 0xffffaa, emissiveIntensity: 4.0,
+            transparent: true, opacity: 0.8,
+          });
+          const arc = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.015, 0.015, 0.5 + Math.random() * 0.3, 3),
+            arcMat
+          );
+          arc.name = 'status_fx_spark_arc';
+          arc.userData.arcIdx = i;
+          group.add(arc);
+        }
+      }
+
+      sparkLight.intensity = Math.random() > 0.3 ? (2.0 + Math.random() * 2.0) : 0.5;
+
+      group.traverse((child) => {
+        if (child.name === 'status_fx_spark_arc') {
+          child.visible = Math.random() > 0.3;
+          const angle = Math.random() * Math.PI * 2;
+          child.position.set(
+            Math.cos(angle) * 0.3,
+            0.3 + Math.random() * 1.2,
+            Math.sin(angle) * 0.3
+          );
+          child.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+        }
+      });
+    }
+
+    // ── POISONED: Dripping green bubbles and toxic mist ──
+    if (hasPoisoned) {
+      let poisonLight = group.getObjectByName('status_fx_poison_light') as THREE.PointLight | undefined;
+      if (!poisonLight) {
+        poisonLight = new THREE.PointLight(0x44ff44, 1.5, 4);
+        poisonLight.name = 'status_fx_poison_light';
+        poisonLight.position.set(0, 1.0, 0);
+        group.add(poisonLight);
+
+        // Toxic mist sphere
+        const mist = new THREE.Mesh(
+          new THREE.SphereGeometry(0.7, 6, 5),
+          new THREE.MeshStandardMaterial({
+            color: 0x44ff44, emissive: 0x22aa22, emissiveIntensity: 0.8,
+            transparent: true, opacity: 0.1, side: THREE.DoubleSide,
+          })
+        );
+        mist.name = 'status_fx_poison_mist';
+        mist.position.y = 0.7;
+        group.add(mist);
+
+        // Rising poison bubbles
+        for (let i = 0; i < 4; i++) {
+          const bubble = new THREE.Mesh(
+            new THREE.SphereGeometry(0.04 + Math.random() * 0.03, 5, 4),
+            new THREE.MeshStandardMaterial({
+              color: 0x66ff44, emissive: 0x44cc22, emissiveIntensity: 2.0,
+              transparent: true, opacity: 0.6,
+            })
+          );
+          bubble.name = 'status_fx_poison_bubble';
+          bubble.userData.bubblePhase = Math.random() * Math.PI * 2;
+          bubble.userData.bubbleX = (Math.random() - 0.5) * 0.6;
+          bubble.userData.bubbleZ = (Math.random() - 0.5) * 0.6;
+          group.add(bubble);
+        }
+      }
+
+      poisonLight.intensity = 1.2 + Math.sin(t * 4) * 0.5;
+
+      group.traverse((child) => {
+        if (child.name === 'status_fx_poison_mist') {
+          child.scale.setScalar(0.9 + Math.sin(t * 2) * 0.15);
+          const mistMat = (child as THREE.Mesh).material;
+          if (mistMat instanceof THREE.MeshStandardMaterial) {
+            mistMat.opacity = 0.08 + Math.sin(t * 3) * 0.04;
+          }
+        } else if (child.name === 'status_fx_poison_bubble') {
+          const phase = child.userData.bubblePhase;
+          const rise = ((t * 0.8 + phase) % 2.0);
+          child.position.set(
+            child.userData.bubbleX + Math.sin(t * 2 + phase) * 0.05,
+            rise * 0.8,
+            child.userData.bubbleZ + Math.cos(t * 2 + phase) * 0.05
+          );
+          const bubbleMat = (child as THREE.Mesh).material;
+          if (bubbleMat instanceof THREE.MeshStandardMaterial) {
+            bubbleMat.opacity = Math.max(0, 0.6 - rise * 0.3);
+          }
+        }
+      });
+    }
+
+    // Clean up status effects that are no longer active
+    if (!hasBurning) {
+      const fireToRemove: THREE.Object3D[] = [];
+      group.traverse((c) => { if (c.name.startsWith('status_fx_fire_')) fireToRemove.push(c); });
+      for (const obj of fireToRemove) obj.parent?.remove(obj);
+    }
+    if (!hasFrozen) {
+      const iceToRemove: THREE.Object3D[] = [];
+      group.traverse((c) => { if (c.name.startsWith('status_fx_ice_')) iceToRemove.push(c); });
+      for (const obj of iceToRemove) obj.parent?.remove(obj);
+    }
+    if (!hasShocked) {
+      const sparkToRemove: THREE.Object3D[] = [];
+      group.traverse((c) => { if (c.name.startsWith('status_fx_spark_')) sparkToRemove.push(c); });
+      for (const obj of sparkToRemove) obj.parent?.remove(obj);
+    }
+    if (!hasPoisoned) {
+      const poisonToRemove: THREE.Object3D[] = [];
+      group.traverse((c) => { if (c.name.startsWith('status_fx_poison_')) poisonToRemove.push(c); });
+      for (const obj of poisonToRemove) obj.parent?.remove(obj);
     }
   }
 
@@ -12809,17 +13189,35 @@ export class DiabloRenderer {
         mesh.rotation.y += 0.06;
         mesh.traverse((child: THREE.Object3D) => {
           if (child.name === 'enemy_flame') {
-            const s = 0.7 + Math.sin(t * 14 + child.position.x * 8) * 0.4;
+            // Multi-frequency flickering for more realistic fire
+            const s = 0.5 + Math.sin(t * 14 + child.position.x * 8) * 0.35
+              + Math.sin(t * 22 + child.position.z * 6) * 0.15;
             child.scale.setScalar(s);
-            child.rotation.x += (Math.random() - 0.5) * 0.1;
+            child.scale.y = s * (1.0 + Math.sin(t * 18 + child.position.x * 4) * 0.3);
+            child.rotation.x += (Math.random() - 0.5) * 0.15;
+            child.rotation.z = Math.sin(t * 8 + child.position.x * 3) * 0.2;
+            // Vertical dancing movement
+            child.position.y += Math.sin(t * 10 + child.position.x * 5) * 0.003;
+            if ((child as THREE.Mesh).material instanceof THREE.MeshStandardMaterial) {
+              ((child as THREE.Mesh).material as THREE.MeshStandardMaterial).emissiveIntensity = 2.0 + Math.sin(t * 12) * 1.0;
+              ((child as THREE.Mesh).material as THREE.MeshStandardMaterial).opacity = 0.5 + Math.sin(t * 15 + child.position.z * 4) * 0.2;
+            }
           }
         });
       } else if (st === 'ENEMY_ICE') {
         mesh.rotation.y += 0.025;
         mesh.traverse((child: THREE.Object3D) => {
           if (child.name === 'enemy_ice_shard') {
-            child.rotation.y += 0.015;
-            child.rotation.x += 0.01;
+            child.rotation.y += 0.02;
+            child.rotation.x += 0.012;
+            // Shimmering glow effect
+            if ((child as THREE.Mesh).material instanceof THREE.MeshStandardMaterial) {
+              ((child as THREE.Mesh).material as THREE.MeshStandardMaterial).emissiveIntensity = 1.2 + Math.sin(t * 5 + child.position.x * 4) * 0.6;
+              ((child as THREE.Mesh).material as THREE.MeshStandardMaterial).opacity = 0.6 + Math.sin(t * 3 + child.position.z * 3) * 0.15;
+            }
+            // Subtle scale breathing
+            const crystalPulse = 1.0 + Math.sin(t * 4 + child.position.y * 3) * 0.08;
+            child.scale.y = 1.0 * crystalPulse;
           }
         });
       } else if (st === 'ENEMY_LIGHTNING') {
@@ -12842,9 +13240,22 @@ export class DiabloRenderer {
         mesh.rotation.y += 0.03;
         mesh.traverse((child: THREE.Object3D) => {
           if (child.name === 'enemy_poison_drip') {
-            child.position.y -= 0.006;
+            child.position.y -= 0.007;
+            // Drips sway as they fall
+            child.position.x += Math.sin(t * 6 + child.position.y * 4) * 0.001;
             if ((child as THREE.Mesh).material instanceof THREE.MeshStandardMaterial) {
-              ((child as THREE.Mesh).material as THREE.MeshStandardMaterial).opacity = Math.max(0.1, ((child as THREE.Mesh).material as THREE.MeshStandardMaterial).opacity - 0.002);
+              ((child as THREE.Mesh).material as THREE.MeshStandardMaterial).opacity = Math.max(0.08, ((child as THREE.Mesh).material as THREE.MeshStandardMaterial).opacity - 0.002);
+              ((child as THREE.Mesh).material as THREE.MeshStandardMaterial).emissiveIntensity = 1.0 + Math.sin(t * 8) * 0.5;
+            }
+            // Growing drip size as it falls
+            const dripScale = 1.0 + Math.max(0, -child.position.y) * 0.3;
+            child.scale.setScalar(Math.min(1.5, dripScale));
+          } else if (child.name === 'poison_blob') {
+            // Blobs pulse and breathe
+            const blobPulse = 1.0 + Math.sin(t * 5 + child.position.x * 4) * 0.15;
+            child.scale.setScalar(blobPulse);
+            if ((child as THREE.Mesh).material instanceof THREE.MeshStandardMaterial) {
+              ((child as THREE.Mesh).material as THREE.MeshStandardMaterial).emissiveIntensity = 1.0 + Math.sin(t * 6 + child.position.z * 3) * 0.5;
             }
           }
         });
@@ -12852,14 +13263,28 @@ export class DiabloRenderer {
         mesh.rotation.y += 0.04;
         mesh.traverse((child: THREE.Object3D) => {
           if (child.name === 'enemy_vortex_ring') {
-            child.rotation.x += 0.06;
-            child.rotation.z += 0.04;
+            child.rotation.x += 0.07;
+            child.rotation.z += 0.05;
+            // Pulsing scale for vortex rings
+            const vortexPulse = 1.0 + Math.sin(t * 6) * 0.12;
+            child.scale.setScalar(vortexPulse);
+            if ((child as THREE.Mesh).material instanceof THREE.MeshStandardMaterial) {
+              ((child as THREE.Mesh).material as THREE.MeshStandardMaterial).emissiveIntensity = 0.5 + Math.sin(t * 4) * 0.3;
+              ((child as THREE.Mesh).material as THREE.MeshStandardMaterial).opacity = 0.3 + Math.sin(t * 8) * 0.1;
+            }
           } else if (child.name === 'enemy_shadow_mote') {
-            const ma = t * 4 + child.position.z * 6;
+            // More complex orbital path with varying speed
+            const ma = t * 4.5 + child.position.z * 6;
             const md = 0.1;
-            child.position.x = Math.cos(ma) * md * 7;
-            child.position.z = Math.sin(ma) * md * 7;
-            child.position.y = Math.sin(ma * 1.5) * md * 3;
+            const orbitExpand = 1.0 + Math.sin(t * 2) * 0.3;
+            child.position.x = Math.cos(ma) * md * 7 * orbitExpand;
+            child.position.z = Math.sin(ma) * md * 7 * orbitExpand;
+            child.position.y = Math.sin(ma * 1.5) * md * 4;
+            // Flickering visibility and glow
+            if ((child as THREE.Mesh).material instanceof THREE.MeshStandardMaterial) {
+              ((child as THREE.Mesh).material as THREE.MeshStandardMaterial).opacity = 0.3 + Math.sin(t * 10 + ma) * 0.2;
+              ((child as THREE.Mesh).material as THREE.MeshStandardMaterial).emissiveIntensity = 0.6 + Math.sin(t * 7 + ma * 2) * 0.4;
+            }
           }
         });
       } else if (st === 'ENEMY_RED') {
@@ -12867,10 +13292,21 @@ export class DiabloRenderer {
         mesh.traverse((child: THREE.Object3D) => {
           if (child.name === 'enemy_red_aura') {
             if ((child as THREE.Mesh).material instanceof THREE.MeshStandardMaterial) {
-              ((child as THREE.Mesh).material as THREE.MeshStandardMaterial).opacity = 0.15 + Math.sin(t * 8) * 0.08;
+              // Multi-layered pulsing: slow breathing + fast flicker
+              const slowPulse = Math.sin(t * 3) * 0.06;
+              const fastPulse = Math.sin(t * 10) * 0.04;
+              const microFlicker = Math.sin(t * 25) * 0.02;
+              ((child as THREE.Mesh).material as THREE.MeshStandardMaterial).opacity = 0.18 + slowPulse + fastPulse + microFlicker;
+              ((child as THREE.Mesh).material as THREE.MeshStandardMaterial).emissiveIntensity = 0.6 + Math.sin(t * 5) * 0.4;
+              // Scale-pulsing glow
+              const scaleBreath = 1.0 + Math.sin(t * 2.5) * 0.08;
+              child.scale.setScalar(scaleBreath);
             }
           } else if (child.name === 'enemy_spike') {
-            child.rotation.y += 0.03;
+            child.rotation.y += 0.04;
+            // Spikes pulse outward
+            const spikeScale = 1.0 + Math.sin(t * 6 + child.position.x * 5) * 0.15;
+            child.scale.y = spikeScale;
           }
         });
       } else {
@@ -12967,11 +13403,11 @@ export class DiabloRenderer {
       if (!grp) {
         grp = new THREE.Group();
 
-        // Outer glowing ring
-        const ringGeo = new THREE.TorusGeometry(aoe.radius, 0.12, 8, 32);
+        // Outer glowing ring — thicker and more dramatic
+        const ringGeo = new THREE.TorusGeometry(aoe.radius, 0.18, 10, 48);
         const ringMat = new THREE.MeshStandardMaterial({
-          color, emissive: color, emissiveIntensity: 2.0,
-          transparent: true, opacity: 0.8,
+          color, emissive: color, emissiveIntensity: 2.5,
+          transparent: true, opacity: 0.85,
         });
         const ring = new THREE.Mesh(ringGeo, ringMat);
         ring.rotation.x = -Math.PI / 2;
@@ -12979,10 +13415,10 @@ export class DiabloRenderer {
         grp.add(ring);
 
         // Inner filled disc (subtle ground effect)
-        const discGeo = new THREE.CircleGeometry(aoe.radius, 32);
+        const discGeo = new THREE.CircleGeometry(aoe.radius, 48);
         const discMat = new THREE.MeshStandardMaterial({
-          color: innerColor, emissive: color, emissiveIntensity: 0.8,
-          transparent: true, opacity: 0.15, side: THREE.DoubleSide,
+          color: innerColor, emissive: color, emissiveIntensity: 1.0,
+          transparent: true, opacity: 0.2, side: THREE.DoubleSide,
         });
         const disc = new THREE.Mesh(discGeo, discMat);
         disc.rotation.x = -Math.PI / 2;
@@ -12991,10 +13427,10 @@ export class DiabloRenderer {
         grp.add(disc);
 
         // Secondary pulsing ring (smaller, brighter)
-        const innerRingGeo = new THREE.TorusGeometry(aoe.radius * 0.6, 0.06, 6, 24);
+        const innerRingGeo = new THREE.TorusGeometry(aoe.radius * 0.6, 0.08, 8, 32);
         const innerRingMat = new THREE.MeshStandardMaterial({
-          color: innerColor, emissive: innerColor, emissiveIntensity: 2.5,
-          transparent: true, opacity: 0.5,
+          color: innerColor, emissive: innerColor, emissiveIntensity: 3.0,
+          transparent: true, opacity: 0.6,
         });
         const innerRing = new THREE.Mesh(innerRingGeo, innerRingMat);
         innerRing.rotation.x = -Math.PI / 2;
@@ -13002,75 +13438,217 @@ export class DiabloRenderer {
         innerRing.name = 'aoe_inner_ring';
         grp.add(innerRing);
 
+        // Expanding shockwave ring (fast-expanding, fading outer ring)
+        const shockGeo = new THREE.TorusGeometry(aoe.radius * 0.3, 0.04, 6, 32);
+        const shockMat = new THREE.MeshStandardMaterial({
+          color: 0xffffff, emissive: innerColor, emissiveIntensity: 4.0,
+          transparent: true, opacity: 0.7,
+        });
+        const shockRing = new THREE.Mesh(shockGeo, shockMat);
+        shockRing.rotation.x = -Math.PI / 2;
+        shockRing.position.y = 0.08;
+        shockRing.name = 'aoe_shockwave';
+        grp.add(shockRing);
+
+        // Vertical energy column at center
+        const columnGeo = new THREE.CylinderGeometry(aoe.radius * 0.08, aoe.radius * 0.15, 3.0, 8);
+        const columnMat = new THREE.MeshStandardMaterial({
+          color: innerColor, emissive: color, emissiveIntensity: 2.5,
+          transparent: true, opacity: 0.25,
+        });
+        const column = new THREE.Mesh(columnGeo, columnMat);
+        column.position.y = 1.5;
+        column.name = 'aoe_column';
+        grp.add(column);
+
+        // Orbiting energy motes around the circumference
+        for (let i = 0; i < 6; i++) {
+          const mote = new THREE.Mesh(
+            new THREE.SphereGeometry(0.08 + Math.random() * 0.06, 5, 4),
+            new THREE.MeshStandardMaterial({
+              color: innerColor, emissive: color, emissiveIntensity: 3.0,
+              transparent: true, opacity: 0.7,
+            })
+          );
+          mote.name = 'aoe_mote';
+          mote.userData.moteAngle = (i / 6) * Math.PI * 2;
+          mote.userData.moteSpeed = 2.5 + Math.random() * 1.5;
+          mote.userData.moteHeight = 0.2 + Math.random() * 0.6;
+          grp.add(mote);
+        }
+
         // Type-specific effects
         if (aoe.damageType === 'FIRE') {
-          // Rising flame pillars around the ring
-          for (let i = 0; i < 8; i++) {
-            const angle = (i / 8) * Math.PI * 2;
+          // Rising flame pillars around the ring (more, taller)
+          for (let i = 0; i < 12; i++) {
+            const angle = (i / 12) * Math.PI * 2;
+            const flameDist = aoe.radius * (0.5 + Math.random() * 0.4);
             const flame = new THREE.Mesh(
-              new THREE.ConeGeometry(0.15, 0.8 + Math.random() * 0.5, 5),
-              new THREE.MeshStandardMaterial({ color: 0xff6600, emissive: 0xff4400, emissiveIntensity: 2.5, transparent: true, opacity: 0.6 })
+              new THREE.ConeGeometry(0.18 + Math.random() * 0.1, 1.0 + Math.random() * 0.8, 5),
+              new THREE.MeshStandardMaterial({ color: 0xff6600, emissive: 0xff4400, emissiveIntensity: 3.0, transparent: true, opacity: 0.7 })
             );
-            flame.position.set(Math.cos(angle) * aoe.radius * 0.8, 0.4, Math.sin(angle) * aoe.radius * 0.8);
+            flame.position.set(Math.cos(angle) * flameDist, 0.5, Math.sin(angle) * flameDist);
             flame.name = 'aoe_flame';
+            flame.userData.flameAngle = angle;
+            flame.userData.flameDist = flameDist;
             grp.add(flame);
           }
-        } else if (aoe.damageType === 'ICE') {
-          // Ice crystals jutting from ground
-          for (let i = 0; i < 6; i++) {
-            const angle = (i / 6) * Math.PI * 2 + Math.random() * 0.3;
-            const crystal = new THREE.Mesh(
-              new THREE.OctahedronGeometry(0.15 + Math.random() * 0.1, 0),
-              new THREE.MeshStandardMaterial({ color: 0xccefff, emissive: 0x66ccff, emissiveIntensity: 1.8, transparent: true, opacity: 0.7, metalness: 0.3, roughness: 0.1 })
+          // Inner fire vortex (swirling embers)
+          for (let i = 0; i < 8; i++) {
+            const ember = new THREE.Mesh(
+              new THREE.SphereGeometry(0.05 + Math.random() * 0.04, 4, 3),
+              new THREE.MeshStandardMaterial({ color: 0xffaa00, emissive: 0xff6600, emissiveIntensity: 4.0, transparent: true, opacity: 0.8 })
             );
-            crystal.scale.set(0.6, 1.5, 0.6);
-            crystal.position.set(Math.cos(angle) * aoe.radius * 0.6, 0.25, Math.sin(angle) * aoe.radius * 0.6);
-            crystal.rotation.set(Math.random() * 0.3, Math.random() * Math.PI, Math.random() * 0.3);
+            ember.name = 'aoe_fire_ember';
+            ember.userData.emberAngle = (i / 8) * Math.PI * 2;
+            ember.userData.emberDist = aoe.radius * (0.2 + Math.random() * 0.5);
+            ember.userData.emberSpeed = 4.0 + Math.random() * 3.0;
+            ember.userData.emberHeight = 0.2 + Math.random() * 1.5;
+            grp.add(ember);
+          }
+          // Heat distortion sphere
+          const heatSphere = new THREE.Mesh(
+            new THREE.SphereGeometry(aoe.radius * 0.8, 10, 8),
+            new THREE.MeshStandardMaterial({ color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 0.8, transparent: true, opacity: 0.06, side: THREE.DoubleSide })
+          );
+          heatSphere.position.y = 0.5;
+          heatSphere.name = 'aoe_heat_sphere';
+          grp.add(heatSphere);
+        } else if (aoe.damageType === 'ICE') {
+          // Ice crystals jutting from ground (more, varied sizes)
+          for (let i = 0; i < 10; i++) {
+            const angle = (i / 10) * Math.PI * 2 + Math.random() * 0.3;
+            const crystalSize = 0.12 + Math.random() * 0.15;
+            const crystal = new THREE.Mesh(
+              new THREE.OctahedronGeometry(crystalSize, 0),
+              new THREE.MeshStandardMaterial({ color: 0xccefff, emissive: 0x66ccff, emissiveIntensity: 2.0, transparent: true, opacity: 0.75, metalness: 0.4, roughness: 0.05 })
+            );
+            crystal.scale.set(0.5, 1.8 + Math.random() * 1.2, 0.5);
+            const crystalDist = aoe.radius * (0.3 + Math.random() * 0.5);
+            crystal.position.set(Math.cos(angle) * crystalDist, 0.3, Math.sin(angle) * crystalDist);
+            crystal.rotation.set(Math.random() * 0.4, Math.random() * Math.PI, Math.random() * 0.4);
             crystal.name = 'aoe_crystal';
+            crystal.userData.crystalPhase = Math.random() * Math.PI * 2;
             grp.add(crystal);
           }
+          // Frost mist ground layer
+          const frostMist = new THREE.Mesh(
+            new THREE.CylinderGeometry(aoe.radius * 0.9, aoe.radius, 0.3, 16),
+            new THREE.MeshStandardMaterial({ color: 0xaaddff, emissive: 0x4488cc, emissiveIntensity: 0.6, transparent: true, opacity: 0.12, side: THREE.DoubleSide })
+          );
+          frostMist.position.y = 0.15;
+          frostMist.name = 'aoe_frost_mist';
+          grp.add(frostMist);
+          // Floating ice shards (smaller, spinning)
+          for (let i = 0; i < 6; i++) {
+            const shard = new THREE.Mesh(
+              new THREE.OctahedronGeometry(0.05 + Math.random() * 0.04, 0),
+              new THREE.MeshStandardMaterial({ color: 0xeeffff, emissive: 0x88ccff, emissiveIntensity: 2.5, transparent: true, opacity: 0.6 })
+            );
+            shard.name = 'aoe_ice_shard';
+            shard.userData.shardAngle = Math.random() * Math.PI * 2;
+            shard.userData.shardDist = aoe.radius * (0.2 + Math.random() * 0.6);
+            shard.userData.shardSpeed = 1.5 + Math.random() * 2.0;
+            shard.userData.shardHeight = 0.5 + Math.random() * 1.0;
+            grp.add(shard);
+          }
         } else if (aoe.damageType === 'LIGHTNING') {
-          // Electric arcs across the area
-          for (let i = 0; i < 4; i++) {
+          // Electric arcs across the area (more, with varying thickness)
+          for (let i = 0; i < 6; i++) {
             const a1 = Math.random() * Math.PI * 2;
-            const a2 = a1 + Math.PI * (0.5 + Math.random());
-            const r1 = aoe.radius * (0.3 + Math.random() * 0.6);
-            const r2 = aoe.radius * (0.3 + Math.random() * 0.6);
+            const a2 = a1 + Math.PI * (0.4 + Math.random());
+            const r1 = aoe.radius * (0.2 + Math.random() * 0.7);
+            const r2 = aoe.radius * (0.2 + Math.random() * 0.7);
             const arcPts: THREE.Vector3[] = [];
-            const segs = 5;
+            const segs = 6;
             for (let s = 0; s <= segs; s++) {
               const t = s / segs;
-              const x = Math.cos(a1) * r1 * (1 - t) + Math.cos(a2) * r2 * t + (Math.random() - 0.5) * 0.3;
-              const z = Math.sin(a1) * r1 * (1 - t) + Math.sin(a2) * r2 * t + (Math.random() - 0.5) * 0.3;
-              arcPts.push(new THREE.Vector3(x, 0.1 + Math.random() * 0.2, z));
+              const x = Math.cos(a1) * r1 * (1 - t) + Math.cos(a2) * r2 * t + (Math.random() - 0.5) * 0.4;
+              const z = Math.sin(a1) * r1 * (1 - t) + Math.sin(a2) * r2 * t + (Math.random() - 0.5) * 0.4;
+              arcPts.push(new THREE.Vector3(x, 0.1 + Math.random() * 0.3, z));
             }
             const arcCurve = new THREE.CatmullRomCurve3(arcPts);
-            const arcGeo = new THREE.TubeGeometry(arcCurve, 8, 0.03, 4, false);
-            const arcMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffaa, emissiveIntensity: 4.0, transparent: true, opacity: 0.7 });
+            const arcThickness = 0.02 + Math.random() * 0.03;
+            const arcGeo = new THREE.TubeGeometry(arcCurve, 10, arcThickness, 4, false);
+            const arcMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffaa, emissiveIntensity: 5.0, transparent: true, opacity: 0.8 });
             const arc = new THREE.Mesh(arcGeo, arcMat);
             arc.name = 'aoe_lightning_arc';
             grp.add(arc);
           }
+          // Central lightning strike column
+          const strikeGeo = new THREE.CylinderGeometry(0.05, 0.15, 4.0, 6);
+          const strikeMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffcc, emissiveIntensity: 6.0, transparent: true, opacity: 0.6 });
+          const strike = new THREE.Mesh(strikeGeo, strikeMat);
+          strike.position.y = 2.0;
+          strike.name = 'aoe_lightning_strike';
+          grp.add(strike);
+          // Spark spheres scattered in the zone
+          for (let i = 0; i < 5; i++) {
+            const spark = new THREE.Mesh(
+              new THREE.SphereGeometry(0.06, 4, 3),
+              new THREE.MeshStandardMaterial({ color: 0xffffaa, emissive: 0xffff44, emissiveIntensity: 5.0, transparent: true, opacity: 0.8 })
+            );
+            spark.name = 'aoe_spark_mote';
+            spark.userData.sparkAngle = Math.random() * Math.PI * 2;
+            spark.userData.sparkDist = Math.random() * aoe.radius * 0.8;
+            grp.add(spark);
+          }
         } else if (aoe.damageType === 'POISON') {
-          // Bubbling poison pools
-          for (let i = 0; i < 6; i++) {
+          // Bubbling poison pools (more, varied)
+          for (let i = 0; i < 10; i++) {
             const bubble = new THREE.Mesh(
-              new THREE.SphereGeometry(0.08 + Math.random() * 0.08, 6, 5),
-              new THREE.MeshStandardMaterial({ color: 0x44ff44, emissive: 0x22aa22, emissiveIntensity: 1.5, transparent: true, opacity: 0.5 })
+              new THREE.SphereGeometry(0.06 + Math.random() * 0.1, 6, 5),
+              new THREE.MeshStandardMaterial({ color: 0x44ff44, emissive: 0x22aa22, emissiveIntensity: 1.8, transparent: true, opacity: 0.55 })
             );
             const ba = Math.random() * Math.PI * 2;
-            const bd = Math.random() * aoe.radius * 0.7;
+            const bd = Math.random() * aoe.radius * 0.8;
             bubble.position.set(Math.cos(ba) * bd, 0.08, Math.sin(ba) * bd);
             bubble.name = 'aoe_bubble';
+            bubble.userData.bubblePhase = Math.random() * Math.PI * 2;
             grp.add(bubble);
+          }
+          // Toxic gas cloud
+          const gasCloud = new THREE.Mesh(
+            new THREE.SphereGeometry(aoe.radius * 0.6, 8, 6),
+            new THREE.MeshStandardMaterial({ color: 0x44ff44, emissive: 0x22aa22, emissiveIntensity: 0.5, transparent: true, opacity: 0.08, side: THREE.DoubleSide })
+          );
+          gasCloud.position.y = 0.4;
+          gasCloud.name = 'aoe_gas_cloud';
+          grp.add(gasCloud);
+        } else if (aoe.damageType === 'ARCANE') {
+          // Arcane rune circle on the ground
+          const runeRing = new THREE.Mesh(
+            new THREE.TorusGeometry(aoe.radius * 0.45, 0.04, 6, 20),
+            new THREE.MeshStandardMaterial({ color: 0xdd88ff, emissive: 0xaa44ff, emissiveIntensity: 3.0, transparent: true, opacity: 0.6 })
+          );
+          runeRing.rotation.x = -Math.PI / 2;
+          runeRing.position.y = 0.03;
+          runeRing.name = 'aoe_arcane_rune';
+          grp.add(runeRing);
+          // Arcane orbiting motes
+          for (let i = 0; i < 6; i++) {
+            const arcaneMote = new THREE.Mesh(
+              new THREE.OctahedronGeometry(0.07, 0),
+              new THREE.MeshStandardMaterial({ color: 0xdd88ff, emissive: 0xaa44ff, emissiveIntensity: 3.5, transparent: true, opacity: 0.7 })
+            );
+            arcaneMote.name = 'aoe_arcane_mote';
+            arcaneMote.userData.arcMoteAngle = (i / 6) * Math.PI * 2;
+            arcaneMote.userData.arcMoteSpeed = 3.0 + Math.random() * 2.0;
+            grp.add(arcaneMote);
           }
         }
 
-        // AOE light
-        const aoeLight = new THREE.PointLight(color, 2, aoe.radius * 3);
-        aoeLight.position.y = 0.5;
+        // AOE light — brighter, with wider range
+        const aoeLight = new THREE.PointLight(color, 3.5, aoe.radius * 4);
+        aoeLight.position.y = 1.0;
         aoeLight.name = 'aoe_light';
         grp.add(aoeLight);
+
+        // Secondary color accent light
+        const accentLight = new THREE.PointLight(innerColor, 1.5, aoe.radius * 2);
+        accentLight.position.y = 0.3;
+        accentLight.name = 'aoe_accent_light';
+        grp.add(accentLight);
 
         this._scene.add(grp);
         this._aoeMeshes.set(aoe.id, grp);
@@ -13081,38 +13659,151 @@ export class DiabloRenderer {
       // Animate based on timer
       const progress = aoe.timer / aoe.duration;
       const fadeOut = Math.max(0, 1.0 - progress);
-      const pulse = 0.9 + Math.sin(this._time * 8) * 0.1;
+      const pulse = 0.85 + Math.sin(this._time * 8) * 0.15;
+      const fastPulse = 0.8 + Math.sin(this._time * 14) * 0.2;
 
       grp.traverse((child: THREE.Object3D) => {
         if (child.name === 'aoe_ring') {
-          const ringScale = 0.5 + progress * 0.5;
+          const ringScale = 0.4 + progress * 0.6;
           child.scale.setScalar(ringScale * pulse);
           if ((child as THREE.Mesh).material instanceof THREE.MeshStandardMaterial) {
-            ((child as THREE.Mesh).material as THREE.MeshStandardMaterial).opacity = Math.max(0, 0.8 * fadeOut);
+            ((child as THREE.Mesh).material as THREE.MeshStandardMaterial).opacity = Math.max(0, 0.85 * fadeOut);
+            ((child as THREE.Mesh).material as THREE.MeshStandardMaterial).emissiveIntensity = 2.0 + Math.sin(this._time * 6) * 1.0;
           }
         } else if (child.name === 'aoe_disc') {
           if ((child as THREE.Mesh).material instanceof THREE.MeshStandardMaterial) {
-            ((child as THREE.Mesh).material as THREE.MeshStandardMaterial).opacity = Math.max(0, 0.15 * fadeOut);
+            ((child as THREE.Mesh).material as THREE.MeshStandardMaterial).opacity = Math.max(0, 0.2 * fadeOut * pulse);
+            ((child as THREE.Mesh).material as THREE.MeshStandardMaterial).emissiveIntensity = 0.8 + Math.sin(this._time * 10) * 0.4;
           }
         } else if (child.name === 'aoe_inner_ring') {
-          child.rotation.z = this._time * 2;
+          child.rotation.z = this._time * 3;
+          const innerPulse = 0.8 + Math.sin(this._time * 12) * 0.2;
+          child.scale.setScalar(innerPulse);
           if ((child as THREE.Mesh).material instanceof THREE.MeshStandardMaterial) {
-            ((child as THREE.Mesh).material as THREE.MeshStandardMaterial).opacity = Math.max(0, 0.5 * fadeOut * pulse);
+            ((child as THREE.Mesh).material as THREE.MeshStandardMaterial).opacity = Math.max(0, 0.6 * fadeOut * pulse);
+          }
+        } else if (child.name === 'aoe_shockwave') {
+          // Expand rapidly at the start, then fade
+          const shockProgress = Math.min(1.0, progress * 4.0);
+          const shockScale = 0.3 + shockProgress * 3.5;
+          child.scale.setScalar(shockScale);
+          if ((child as THREE.Mesh).material instanceof THREE.MeshStandardMaterial) {
+            ((child as THREE.Mesh).material as THREE.MeshStandardMaterial).opacity = Math.max(0, 0.7 * (1.0 - shockProgress));
+          }
+        } else if (child.name === 'aoe_column') {
+          const colScale = 0.8 + Math.sin(this._time * 6) * 0.3;
+          child.scale.set(colScale, 0.6 + fadeOut * 0.6, colScale);
+          if ((child as THREE.Mesh).material instanceof THREE.MeshStandardMaterial) {
+            ((child as THREE.Mesh).material as THREE.MeshStandardMaterial).opacity = Math.max(0, 0.25 * fadeOut);
+          }
+        } else if (child.name === 'aoe_mote') {
+          const angle = child.userData.moteAngle + this._time * child.userData.moteSpeed;
+          const r = aoe.radius * 0.85;
+          child.position.set(
+            Math.cos(angle) * r,
+            child.userData.moteHeight + Math.sin(this._time * 4 + angle) * 0.2,
+            Math.sin(angle) * r
+          );
+          if ((child as THREE.Mesh).material instanceof THREE.MeshStandardMaterial) {
+            ((child as THREE.Mesh).material as THREE.MeshStandardMaterial).opacity = 0.5 + Math.sin(this._time * 8 + angle) * 0.3;
           }
         } else if (child.name === 'aoe_flame') {
-          const fScale = 0.6 + Math.sin(this._time * 10 + child.position.x * 5) * 0.4;
-          child.scale.y = fScale;
-          child.position.y = 0.3 + Math.sin(this._time * 8 + child.position.z * 3) * 0.15;
+          const fScale = 0.5 + Math.sin(this._time * 12 + (child.userData.flameAngle || 0) * 5) * 0.5;
+          child.scale.y = fScale * fadeOut;
+          child.scale.x = 0.8 + Math.sin(this._time * 8 + (child.userData.flameAngle || 0)) * 0.3;
+          child.position.y = 0.3 + Math.sin(this._time * 10 + (child.userData.flameAngle || 0) * 3) * 0.25;
+          child.rotation.z = Math.sin(this._time * 5 + (child.userData.flameAngle || 0)) * 0.2;
+        } else if (child.name === 'aoe_fire_ember') {
+          const angle = child.userData.emberAngle + this._time * child.userData.emberSpeed;
+          const r = child.userData.emberDist;
+          child.position.set(
+            Math.cos(angle) * r,
+            child.userData.emberHeight + Math.sin(this._time * 6 + angle) * 0.3,
+            Math.sin(angle) * r
+          );
+          const es = 0.6 + Math.sin(this._time * 10 + angle * 2) * 0.4;
+          child.scale.setScalar(es);
+        } else if (child.name === 'aoe_heat_sphere') {
+          child.scale.setScalar(0.9 + Math.sin(this._time * 4) * 0.15);
+          if ((child as THREE.Mesh).material instanceof THREE.MeshStandardMaterial) {
+            ((child as THREE.Mesh).material as THREE.MeshStandardMaterial).opacity = Math.max(0, 0.06 * fadeOut);
+          }
         } else if (child.name === 'aoe_crystal') {
-          child.rotation.y += 0.01;
+          child.rotation.y += 0.015;
+          const shimmer = 1.5 + Math.sin(this._time * 5 + (child.userData.crystalPhase || 0)) * 0.8;
+          if ((child as THREE.Mesh).material instanceof THREE.MeshStandardMaterial) {
+            ((child as THREE.Mesh).material as THREE.MeshStandardMaterial).emissiveIntensity = shimmer;
+            ((child as THREE.Mesh).material as THREE.MeshStandardMaterial).opacity = Math.max(0, 0.75 * fadeOut);
+          }
+        } else if (child.name === 'aoe_frost_mist') {
+          child.scale.setScalar(0.95 + Math.sin(this._time * 2) * 0.1);
+          child.rotation.y = this._time * 0.3;
+          if ((child as THREE.Mesh).material instanceof THREE.MeshStandardMaterial) {
+            ((child as THREE.Mesh).material as THREE.MeshStandardMaterial).opacity = Math.max(0, 0.12 * fadeOut);
+          }
+        } else if (child.name === 'aoe_ice_shard') {
+          const angle = child.userData.shardAngle + this._time * child.userData.shardSpeed;
+          child.position.set(
+            Math.cos(angle) * child.userData.shardDist,
+            child.userData.shardHeight + Math.sin(this._time * 3 + angle) * 0.15,
+            Math.sin(angle) * child.userData.shardDist
+          );
+          child.rotation.y += 0.06;
+          child.rotation.x += 0.04;
         } else if (child.name === 'aoe_lightning_arc') {
-          child.visible = Math.random() > 0.2; // flicker
+          child.visible = Math.random() > 0.15;
+          if ((child as THREE.Mesh).material instanceof THREE.MeshStandardMaterial) {
+            ((child as THREE.Mesh).material as THREE.MeshStandardMaterial).emissiveIntensity = 3.0 + Math.random() * 4.0;
+          }
+        } else if (child.name === 'aoe_lightning_strike') {
+          child.visible = Math.random() > 0.4;
+          child.scale.x = 0.5 + Math.random() * 1.0;
+          child.scale.z = 0.5 + Math.random() * 1.0;
+          if ((child as THREE.Mesh).material instanceof THREE.MeshStandardMaterial) {
+            ((child as THREE.Mesh).material as THREE.MeshStandardMaterial).opacity = Math.max(0, (0.4 + Math.random() * 0.3) * fadeOut);
+          }
+        } else if (child.name === 'aoe_spark_mote') {
+          child.visible = Math.random() > 0.3;
+          child.position.set(
+            Math.cos(child.userData.sparkAngle + Math.random() * 0.5) * child.userData.sparkDist,
+            0.1 + Math.random() * 0.5,
+            Math.sin(child.userData.sparkAngle + Math.random() * 0.5) * child.userData.sparkDist
+          );
         } else if (child.name === 'aoe_bubble') {
-          child.position.y = 0.08 + Math.abs(Math.sin(this._time * 4 + child.position.x * 10)) * 0.2;
-          const bs = 0.8 + Math.sin(this._time * 6 + child.position.z * 8) * 0.3;
+          const bPhase = child.userData.bubblePhase || 0;
+          child.position.y = 0.08 + Math.abs(Math.sin(this._time * 4 + bPhase)) * 0.3;
+          const bs = 0.7 + Math.sin(this._time * 6 + bPhase) * 0.4;
           child.scale.setScalar(bs);
+          if ((child as THREE.Mesh).material instanceof THREE.MeshStandardMaterial) {
+            ((child as THREE.Mesh).material as THREE.MeshStandardMaterial).opacity = Math.max(0, 0.55 * fadeOut);
+          }
+        } else if (child.name === 'aoe_gas_cloud') {
+          child.scale.setScalar(0.9 + Math.sin(this._time * 2) * 0.2);
+          child.rotation.y = this._time * 0.5;
+          if ((child as THREE.Mesh).material instanceof THREE.MeshStandardMaterial) {
+            ((child as THREE.Mesh).material as THREE.MeshStandardMaterial).opacity = Math.max(0, 0.08 * fadeOut);
+          }
+        } else if (child.name === 'aoe_arcane_rune') {
+          child.rotation.z = this._time * 1.5;
+          const runeScale = 0.9 + Math.sin(this._time * 4) * 0.15;
+          child.scale.setScalar(runeScale);
+          if ((child as THREE.Mesh).material instanceof THREE.MeshStandardMaterial) {
+            ((child as THREE.Mesh).material as THREE.MeshStandardMaterial).opacity = Math.max(0, 0.6 * fadeOut * fastPulse);
+          }
+        } else if (child.name === 'aoe_arcane_mote') {
+          const angle = child.userData.arcMoteAngle + this._time * child.userData.arcMoteSpeed;
+          const r = aoe.radius * 0.5;
+          child.position.set(
+            Math.cos(angle) * r,
+            0.5 + Math.sin(this._time * 5 + angle * 2) * 0.3,
+            Math.sin(angle) * r
+          );
+          child.rotation.y += 0.08;
+          child.rotation.x += 0.05;
         } else if (child.name === 'aoe_light') {
-          (child as THREE.PointLight).intensity = 2 * fadeOut * pulse;
+          (child as THREE.PointLight).intensity = 3.5 * fadeOut * pulse;
+        } else if (child.name === 'aoe_accent_light') {
+          (child as THREE.PointLight).intensity = 1.5 * fadeOut * fastPulse;
         }
       });
     }
