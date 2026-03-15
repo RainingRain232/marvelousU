@@ -672,6 +672,8 @@ export enum GameMode {
   MAGE_WARS = "mage_wars",
   WARBAND_CAMPAIGN = "warband_campaign",
   GAME = "game",
+  GRAIL_BALL = "grail_ball",
+  GRAIL_MANAGER = "grail_manager",
 }
 
 // ---------------------------------------------------------------------------

@@ -146,11 +146,11 @@ const MAP_BUILDINGS: MapBuilding[] = [
   { id: "docks", x: 850, y: 750, w: 160, h: 70, label: "River Docks", mode: GameMode.WORLD, type: "docks" },
   { id: "training", x: 1000, y: 300, w: 140, h: 110, label: "Training Grounds", mode: GameMode.ROGUELIKE, type: "training" },
   { id: "church", x: 300, y: 400, w: 100, h: 150, label: "Cathedral", mode: null, type: "church" },
-  { id: "stable", x: 750, y: 580, w: 130, h: 90, label: "Royal Stables", mode: null, type: "stable" },
+  { id: "grail_pitch", x: 750, y: 580, w: 140, h: 100, label: "Grail Ball Arena", mode: GameMode.GRAIL_BALL, type: "colosseum" },
   { id: "prison", x: 270, y: 560, w: 110, h: 90, label: "The Dungeon", mode: null, type: "prison" },
   { id: "forge", x: 660, y: 340, w: 100, h: 80, label: "Blacksmith's Forge", mode: null, type: "forge" },
   { id: "observatory", x: 100, y: 280, w: 80, h: 80, label: "Observatory — 3Dragon", mode: GameMode.THREE_DRAGON, type: "tower" },
-  { id: "garden", x: 420, y: 340, w: 90, h: 70, label: "Royal Gardens", mode: null, type: "garden" },
+  { id: "guild_hall", x: 420, y: 340, w: 100, h: 80, label: "Manager's Guild", mode: GameMode.GRAIL_MANAGER, type: "library" },
   { id: "harbor", x: 1050, y: 700, w: 100, h: 80, label: "Harbor Master", mode: null, type: "harbor" },
   { id: "farm", x: 80, y: 600, w: 120, h: 90, label: "Farmstead", mode: null, type: "farm" },
   { id: "tourney", x: 100, y: 380, w: 150, h: 120, label: "Tournament Grounds", mode: GameMode.WARBAND, type: "training" },
@@ -843,6 +843,8 @@ export class CamelotHubScreen {
       [GameMode.WARBAND]: "Warband",
       [GameMode.DRAGOON]: "Panzer Dragoon",
       [GameMode.THREE_DRAGON]: "3Dragon",
+      [GameMode.GRAIL_BALL]: "Grail Ball",
+      [GameMode.GRAIL_MANAGER]: "Grail Ball Manager",
     };
     return labels[mode] || mode;
   }

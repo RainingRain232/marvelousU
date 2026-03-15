@@ -25,10 +25,25 @@ function tileHash(r: number, c: number, seed: number = 0): number {
   return (h >>> 0) / 4294967296; // 0..1
 }
 
+
+/** Blend two colors by ratio t (0..1) */
+function blendColor(a: number, b: number, t: number): number {
+  const ar = (a >> 16) & 0xff, ag = (a >> 8) & 0xff, ab = a & 0xff;
+  const br = (b >> 16) & 0xff, bg = (b >> 8) & 0xff, bb = b & 0xff;
+  const r = Math.round(ar + (br - ar) * t);
+  const gc = Math.round(ag + (bg - ag) * t);
+  const bl = Math.round(ab + (bb - ab) * t);
+  return (r << 16) | (gc << 8) | bl;
+}
+
 // ---------------------------------------------------------------------------
 // Global animation clock
 // ---------------------------------------------------------------------------
 let _globalTime = 0;
+
+// Camera breathing state
+let _camBreathPhase = 0;
+let _camSwayPhase = 0;
 
 // ---------------------------------------------------------------------------
 // GameRenderer
@@ -53,8 +68,19 @@ export class GameRenderer {
   pendingStatusFx: { x: number; y: number; id: string; t: number }[] = [];
   ambientParticles: { x: number; y: number; vx: number; vy: number; life: number; maxLife: number; size: number; color: number; alpha: number }[] = [];
 
+  // Torch spark particles
+  torchSparks: { x: number; y: number; vx: number; vy: number; life: number; size: number; color: number }[] = [];
+  // Floor fog wisps
+  floorFogWisps: { x: number; y: number; vx: number; phase: number; width: number; alpha: number; life: number }[] = [];
+  // Dust motes in light beams
+  dustMotes: { x: number; y: number; vx: number; vy: number; size: number; alpha: number; life: number; maxLife: number }[] = [];
+
   // Boss phase flash
   pendingBossFlash: { color: number; t: number } | null = null;
+
+  // Lightning flash state (for dark areas)
+  private _lightningTimer = 0;
+  private _lightningAlpha = 0;
 
   shakeIntensity = 0;
   shakeDuration = 0;
@@ -86,6 +112,12 @@ export class GameRenderer {
     const floor = state.floor;
     const player = state.player;
 
+    // Camera breathing / subtle sway (cinematic feel)
+    _camBreathPhase += 0.016 * 0.6;
+    _camSwayPhase += 0.016 * 0.35;
+    const breathX = Math.sin(_camBreathPhase * 1.1) * 0.8 + Math.sin(_camSwayPhase * 2.7) * 0.4;
+    const breathY = Math.cos(_camBreathPhase * 0.9) * 0.6 + Math.cos(_camSwayPhase * 1.9) * 0.3;
+
     // Camera follow (with arrow-key offset)
     const targetCamX = player.x - sw / 2 + this.camOffsetX;
     const targetCamY = player.y - sh / 2 + this.camOffsetY;
@@ -99,11 +131,20 @@ export class GameRenderer {
       shakeOy = (Math.random() - 0.5) * this.shakeIntensity;
     }
 
-    this.worldLayer.x = -this.camX + shakeOx;
-    this.worldLayer.y = -this.camY + shakeOy;
+    this.worldLayer.x = -this.camX + shakeOx + breathX;
+    this.worldLayer.y = -this.camY + shakeOy + breathY;
 
     // Spawn ambient particles
     this._spawnAmbientParticles(floor, sw, sh);
+
+    // Spawn floor fog wisps
+    this._spawnFloorFog(floor, sw, sh);
+
+    // Spawn dust motes in light beams
+    this._spawnDustMotes(floor, player, sw, sh);
+
+    // Random lightning flashes in dark areas
+    this._updateLightning(floor);
 
     this._drawTiles(floor);
     this._drawDecorations(floor);
@@ -117,6 +158,7 @@ export class GameRenderer {
     this._drawBossFlash(sw, sh);
     this._drawConfusionOverlay(state, sw, sh);
     this._drawAbilityVFX(state);
+    this._drawLightningFlash(sw, sh);
     this._drawVignette(sw, sh);
   }
 
@@ -223,69 +265,164 @@ export class GameRenderer {
     }
   }
 
-  // --- Wall: stone blocks with mortar lines and top highlight ---
+  // --- Wall: stone blocks with mortar lines, weathering, moss, cracks, AO ---
   private _drawWallTile(g: Graphics, px: number, py: number, wallColor: number, r: number, c: number): void {
     // Base wall
     g.rect(px, py, TS, TS).fill({ color: wallColor });
 
-    // Stone block pattern — 2 rows of bricks, offset
+    // Stone block pattern — 2 rows of bricks, offset, each block has individual shade
     const mortar = darken(wallColor, 0.25);
+    const mortarDark = darken(wallColor, 0.35);
     const blockH = TS / 2;
     for (let row = 0; row < 2; row++) {
       const by = py + row * blockH;
       const offset = row % 2 === 0 ? 0 : TS / 3;
-      // Horizontal mortar line
-      g.rect(px, by, TS, 1).fill({ color: mortar });
-      // Vertical mortar lines
+      // Horizontal mortar line with depth
+      g.rect(px, by, TS, 1.5).fill({ color: mortarDark });
+      g.rect(px, by + 1, TS, 0.5).fill({ color: mortar, alpha: 0.5 }); // mortar highlight
+
+      // Vertical mortar lines with individual stone shading
+      let prevBx = 0;
       for (let bx = offset; bx < TS; bx += TS / 2) {
-        g.rect(px + bx, by, 1, blockH).fill({ color: mortar });
+        g.rect(px + bx, by, 1.5, blockH).fill({ color: mortarDark });
+        // Per-stone shade variation
+        const stoneHash = tileHash(r * 10 + row, c * 10 + Math.floor(bx / 10), 123);
+        const stoneShade = stoneHash > 0.5
+          ? lighten(wallColor, stoneHash * 0.06)
+          : darken(wallColor, (1 - stoneHash) * 0.06);
+        const sw2 = (bx > prevBx ? bx - prevBx - 2 : TS / 2 - 2);
+        if (sw2 > 2) {
+          g.rect(px + prevBx + 1, by + 1, sw2, blockH - 2).fill({ color: stoneShade, alpha: 0.3 });
+        }
+        prevBx = bx;
       }
     }
 
-    // Random stone variation
+    // Random stone variation and weathering
     const h = tileHash(r, c, 1);
-    if (h > 0.7) {
+    const h2 = tileHash(r, c, 101);
+    const h3 = tileHash(r, c, 201);
+
+    // Pitting/erosion marks
+    if (h > 0.6) {
       const cx = px + (h * 20) % TS;
       const cy = py + (h * 30) % TS;
-      g.circle(cx, cy, 2).fill({ color: darken(wallColor, 0.15), alpha: 0.5 });
+      g.circle(cx, cy, 1.5 + h * 1.5).fill({ color: darken(wallColor, 0.15), alpha: 0.4 });
+    }
+    if (h > 0.8) {
+      const cx2 = px + (h * 50) % (TS - 4) + 2;
+      const cy2 = py + (h * 70) % (TS - 4) + 2;
+      g.circle(cx2, cy2, 1).fill({ color: darken(wallColor, 0.2), alpha: 0.3 });
     }
 
-    // Top edge highlight (3D look)
-    g.rect(px, py, TS, 2).fill({ color: lighten(wallColor, 0.3) });
+    // Cracks in stone (weathered look)
+    if (h2 > 0.82) {
+      const crackColor = darken(wallColor, 0.3);
+      const sx = px + 4 + (h2 * 100 % 16);
+      const sy = py + 3 + (h2 * 200 % 16);
+      g.moveTo(sx, sy).lineTo(sx + 5, sy + 3).lineTo(sx + 7, sy + 8)
+        .stroke({ color: crackColor, width: 0.6, alpha: 0.5 });
+      // Crack shadow (offset gives depth)
+      g.moveTo(sx + 0.5, sy + 0.5).lineTo(sx + 5.5, sy + 3.5)
+        .stroke({ color: darken(wallColor, 0.4), width: 0.3, alpha: 0.3 });
+    }
+
+    // Moss growth on wall face (greenish patches near moisture)
+    if (h3 > 0.88) {
+      const mossColor = blendColor(wallColor, 0x335522, 0.5);
+      const mx = px + (h3 * 60 % 20) + 4;
+      const my = py + TS - 6 - (h3 * 40 % 6);
+      g.circle(mx, my, 2.5).fill({ color: mossColor, alpha: 0.35 });
+      g.circle(mx + 3, my - 1, 1.8).fill({ color: lighten(mossColor, 0.05), alpha: 0.25 });
+      g.circle(mx - 1, my + 1, 1.5).fill({ color: darken(mossColor, 0.05), alpha: 0.2 });
+    }
+
+    // Water stain streaks (mineral deposits)
+    if (h > 0.92) {
+      const stainColor = darken(wallColor, 0.08);
+      const stx = px + (h * 120 % 20) + 4;
+      g.moveTo(stx, py + 2).lineTo(stx + 1, py + TS)
+        .stroke({ color: stainColor, width: 1.5, alpha: 0.2 });
+    }
+
+    // Top edge highlight (3D look) - more pronounced
+    g.rect(px, py, TS, 2.5).fill({ color: lighten(wallColor, 0.3) });
+    g.rect(px, py, TS, 1).fill({ color: lighten(wallColor, 0.15), alpha: 0.3 }); // extra bright top pixel
     // Bottom shadow
-    g.rect(px, py + TS - 2, TS, 2).fill({ color: darken(wallColor, 0.3) });
+    g.rect(px, py + TS - 2.5, TS, 2.5).fill({ color: darken(wallColor, 0.3) });
     // Left highlight
-    g.rect(px, py, 1, TS).fill({ color: lighten(wallColor, 0.15) });
+    g.rect(px, py, 1.5, TS).fill({ color: lighten(wallColor, 0.15) });
     // Right shadow
-    g.rect(px + TS - 1, py, 1, TS).fill({ color: darken(wallColor, 0.2) });
+    g.rect(px + TS - 1.5, py, 1.5, TS).fill({ color: darken(wallColor, 0.22) });
+
+    // Ambient occlusion at base — darker shadow where wall meets floor
+    g.rect(px, py + TS - 1, TS, 1).fill({ color: 0x000000, alpha: 0.15 });
   }
 
-  // --- Floor: stone tile pattern with cracks ---
+  // --- Floor: stone tile pattern with cracks, wear marks, subtle color variation ---
   private _drawFloorTile(g: Graphics, px: number, py: number, floorColor: number, r: number, c: number): void {
-    // Checkerboard base
-    const shade = (r + c) % 2 === 0 ? lighten(floorColor, 0.04) : floorColor;
+    // Checkerboard base with subtle noise variation
+    const h0 = tileHash(r, c, 0);
+    const variation = h0 * 0.04 - 0.02; // +/- 2% brightness
+    let shade = (r + c) % 2 === 0 ? lighten(floorColor, 0.04 + variation) : (variation > 0 ? lighten(floorColor, variation) : darken(floorColor, -variation));
     g.rect(px, py, TS, TS).fill({ color: shade });
 
-    // Tile border grooves
-    g.rect(px, py, TS, 1).fill({ color: darken(floorColor, 0.15) });
-    g.rect(px, py, 1, TS).fill({ color: darken(floorColor, 0.15) });
+    // Tile border grooves with inner highlight (beveled tile look)
+    const grooveColor = darken(floorColor, 0.15);
+    const grooveLight = lighten(floorColor, 0.06);
+    g.rect(px, py, TS, 1.2).fill({ color: grooveColor });
+    g.rect(px, py, 1.2, TS).fill({ color: grooveColor });
+    // Bottom-right inner highlight (beveled)
+    g.rect(px + 1.2, py + TS - 1, TS - 1.2, 1).fill({ color: grooveLight, alpha: 0.15 });
+    g.rect(px + TS - 1, py + 1.2, 1, TS - 1.2).fill({ color: grooveLight, alpha: 0.15 });
 
-    // Random cracks
+    // Wear marks from foot traffic (subtle lighter spots)
+    const hWear = tileHash(r, c, 55);
+    if (hWear > 0.6 && hWear < 0.75) {
+      const wx = px + TS * 0.3 + hWear * 8;
+      const wy = py + TS * 0.3 + hWear * 6;
+      g.ellipse(wx, wy, 4, 3).fill({ color: lighten(floorColor, 0.03), alpha: 0.3 });
+    }
+
+    // Small stone chips / debris
+    const hChip = tileHash(r, c, 66);
+    if (hChip > 0.85) {
+      g.circle(px + hChip * 22 + 4, py + hChip * 18 + 4, 0.8).fill({ color: darken(floorColor, 0.1), alpha: 0.4 });
+      g.circle(px + hChip * 14 + 8, py + hChip * 24 + 2, 0.6).fill({ color: darken(floorColor, 0.08), alpha: 0.3 });
+    }
+
+    // Random cracks — more varied and natural
     const h = tileHash(r, c, 7);
-    if (h > 0.75) {
-      const crackColor = darken(floorColor, 0.2);
+    if (h > 0.72) {
+      const crackColor = darken(floorColor, 0.22);
+      const crackShadow = darken(floorColor, 0.3);
       const sx = px + (h * 100 % 20) + 4;
       const sy = py + (h * 200 % 20) + 4;
-      // Crack as a few small line segments
-      g.rect(sx, sy, 6, 1).fill({ color: crackColor, alpha: 0.6 });
-      g.rect(sx + 5, sy, 1, 5).fill({ color: crackColor, alpha: 0.5 });
+      // Main crack with branching
+      g.moveTo(sx, sy).lineTo(sx + 4, sy + 2).lineTo(sx + 7, sy + 1)
+        .stroke({ color: crackColor, width: 0.7, alpha: 0.55 });
+      // Shadow line gives depth
+      g.moveTo(sx + 0.3, sy + 0.5).lineTo(sx + 4.3, sy + 2.5)
+        .stroke({ color: crackShadow, width: 0.3, alpha: 0.25 });
+      // Branch
+      if (h > 0.82) {
+        g.moveTo(sx + 4, sy + 2).lineTo(sx + 5, sy + 6)
+          .stroke({ color: crackColor, width: 0.5, alpha: 0.4 });
+      }
     }
     if (h > 0.88) {
-      // Extra crack
+      // Extra crack (diagonal)
       const sx2 = px + 14 + (h * 50 % 10);
       const sy2 = py + 10 + (h * 80 % 12);
-      g.rect(sx2, sy2, 1, 8).fill({ color: darken(floorColor, 0.18), alpha: 0.5 });
-      g.rect(sx2 - 2, sy2 + 7, 5, 1).fill({ color: darken(floorColor, 0.18), alpha: 0.4 });
+      g.moveTo(sx2, sy2).lineTo(sx2 + 1, sy2 + 6).lineTo(sx2 - 2, sy2 + 8)
+        .stroke({ color: darken(floorColor, 0.2), width: 0.6, alpha: 0.45 });
+    }
+
+    // Occasional tiny lichen/mineral spots
+    const hLichen = tileHash(r, c, 77);
+    if (hLichen > 0.93) {
+      const lColor = blendColor(floorColor, 0x556644, 0.3);
+      g.circle(px + hLichen * 20 + 4, py + hLichen * 16 + 6, 1.2).fill({ color: lColor, alpha: 0.25 });
     }
   }
 
@@ -517,20 +654,59 @@ export class GameRenderer {
     g.rect(px + 6, py + 4, 8, 2).fill({ color: 0xffffff, alpha: 0.3 });
   }
 
-  // --- Lava tile (Volcanic Tunnels) ---
+  // --- Lava tile (Volcanic Tunnels) with heat shimmer ---
   private _drawLavaTile(g: Graphics, px: number, py: number, _r: number, _c: number): void {
-    // Lava base
-    g.rect(px, py, TS, TS).fill({ color: 0xaa2200 });
-    // Bubbling animation
+    // Lava base — dark crusty edges, bright molten center
+    g.rect(px, py, TS, TS).fill({ color: 0x881100 });
+    // Molten layer
     const bubble = Math.sin(_globalTime * 4 + px * 0.2) * 0.3 + 0.7;
-    g.rect(px + 2, py + 2, TS - 4, TS - 4).fill({ color: 0xff4400, alpha: bubble * 0.6 });
-    g.rect(px + 6, py + 6, TS - 12, TS - 12).fill({ color: 0xff8800, alpha: bubble * 0.4 });
-    // Bright spots
+    const bubble2 = Math.cos(_globalTime * 3 + py * 0.15) * 0.25 + 0.65;
+    g.rect(px + 1, py + 1, TS - 2, TS - 2).fill({ color: 0xcc2200, alpha: bubble * 0.7 });
+    g.rect(px + 3, py + 3, TS - 6, TS - 6).fill({ color: 0xff4400, alpha: bubble * 0.6 });
+    g.rect(px + 6, py + 6, TS - 12, TS - 12).fill({ color: 0xff7700, alpha: bubble2 * 0.5 });
+
+    // Cooling crust patches (dark floating rock fragments)
+    const h = tileHash(_r, _c, 88);
+    if (h > 0.4) {
+      const crustX = px + (h * 100 % 16) + 4;
+      const crustY = py + (h * 200 % 16) + 4;
+      const crustDrift = Math.sin(_globalTime * 0.5 + h * 10) * 1.5;
+      g.ellipse(crustX + crustDrift, crustY, 3 + h * 3, 2 + h * 2)
+        .fill({ color: 0x441100, alpha: 0.5 + h * 0.2 });
+      // Glowing crack in crust
+      g.ellipse(crustX + crustDrift, crustY, 1.5, 0.5)
+        .fill({ color: 0xff8800, alpha: 0.4 });
+    }
+
+    // Bright molten veins
     const b1 = Math.sin(_globalTime * 6 + py * 0.3) * 0.3 + 0.5;
-    g.circle(px + 10, py + 10, 3).fill({ color: 0xffcc00, alpha: b1 * 0.5 });
-    g.circle(px + 22, py + 18, 2.5).fill({ color: 0xffaa00, alpha: b1 * 0.4 });
+    g.circle(px + 10, py + 10, 3.5).fill({ color: 0xffcc00, alpha: b1 * 0.5 });
+    g.circle(px + 10, py + 10, 2).fill({ color: 0xffee44, alpha: b1 * 0.3 });
+    g.circle(px + 22, py + 18, 3).fill({ color: 0xffaa00, alpha: b1 * 0.4 });
+    g.circle(px + 22, py + 18, 1.5).fill({ color: 0xffdd33, alpha: b1 * 0.25 });
+
+    // Bubbles popping
+    for (let i = 0; i < 2; i++) {
+      const bubT = (_globalTime * 1.5 + i * 0.7 + px * 0.01) % 1.5;
+      if (bubT < 0.8) {
+        const bubX = px + 8 + i * 12 + Math.sin(_globalTime + i * 3) * 3;
+        const bubY = py + 12 + i * 4;
+        const bubR = 1.5 + (1 - bubT / 0.8) * 1.5;
+        g.circle(bubX, bubY, bubR).stroke({ color: 0xff8800, width: 0.5, alpha: 0.4 * (1 - bubT / 0.8) });
+      }
+    }
+
+    // Heat shimmer effect above (wavy distortion suggestion)
+    const shimmerPhase = _globalTime * 3 + px * 0.1;
+    for (let i = 0; i < 3; i++) {
+      const shimX = px + 4 + i * 8 + Math.sin(shimmerPhase + i * 1.5) * 2;
+      const shimY = py - 2 - i * 2;
+      const shimAlpha = 0.04 - i * 0.01;
+      g.ellipse(shimX, shimY, 4, 1.5).fill({ color: 0xff6600, alpha: shimAlpha });
+    }
+
     // Heat haze glow
-    g.rect(px, py, TS, TS).fill({ color: 0xff6600, alpha: 0.1 });
+    g.rect(px, py, TS, TS).fill({ color: 0xff6600, alpha: 0.08 + bubble * 0.04 });
   }
 
   // --- Illusion tile (Faerie Hollows) ---
@@ -547,22 +723,62 @@ export class GameRenderer {
     }
   }
 
-  // --- Shrine tile ---
+  // --- Shrine tile with volumetric light shafts ---
   private _drawShrineTile(g: Graphics, px: number, py: number, floorColor: number, r: number, c: number): void {
     this._drawFloorTile(g, px, py, floorColor, r, c);
-    // Altar base
-    g.rect(px + 6, py + 14, TS - 12, TS - 16).fill({ color: 0x888888 });
+
+    // Sacred floor circle (etched pattern)
+    const cx = px + TS / 2;
+    const cy = py + TS / 2;
+    g.circle(cx, cy, TS * 0.42).stroke({ color: 0x88aa88, width: 0.6, alpha: 0.2 });
+
+    // Altar base with carved detail
+    g.rect(px + 5, py + 14, TS - 10, TS - 16).fill({ color: 0x777777 });
+    g.rect(px + 5, py + 14, TS - 10, 1).fill({ color: 0x999999, alpha: 0.4 }); // edge highlight
     g.rect(px + 4, py + 12, TS - 8, 3).fill({ color: 0x999999 }); // altar top
-    // Glowing orb
+    g.rect(px + 4, py + 12, TS - 8, 1).fill({ color: 0xaaaaaa, alpha: 0.3 }); // altar top highlight
+    // Carved runes on altar sides
+    for (let i = 0; i < 3; i++) {
+      const runeX = px + 8 + i * 6;
+      const runeGlow = 0.15 + 0.1 * Math.sin(_globalTime * 3 + i);
+      g.rect(runeX, py + 17, 2, 3).fill({ color: 0x88ffaa, alpha: runeGlow });
+    }
+
+    // Volumetric light shaft from above (divine light beam)
     const pulse = 0.4 + 0.3 * Math.sin(_globalTime * 2.5);
-    g.circle(px + TS / 2, py + 10, 5).fill({ color: 0x88ffaa, alpha: pulse });
-    g.circle(px + TS / 2, py + 10, 8).fill({ color: 0x88ffaa, alpha: pulse * 0.2 });
-    // Light rays
-    for (let i = 0; i < 4; i++) {
-      const angle = (i / 4) * Math.PI * 2 + _globalTime * 0.5;
-      const rx = px + TS / 2 + Math.cos(angle) * 10;
-      const ry = py + 10 + Math.sin(angle) * 10;
-      g.circle(rx, ry, 1).fill({ color: 0xaaffcc, alpha: pulse * 0.5 });
+    const shaftAlpha = pulse * 0.12;
+    // Light shaft — widening cone from above
+    g.moveTo(cx - 3, py - 4).lineTo(cx - 8, py + TS + 4).lineTo(cx + 8, py + TS + 4).lineTo(cx + 3, py - 4)
+      .closePath().fill({ color: 0xaaffcc, alpha: shaftAlpha });
+    // Inner bright shaft
+    g.moveTo(cx - 1.5, py - 2).lineTo(cx - 4, py + TS + 2).lineTo(cx + 4, py + TS + 2).lineTo(cx + 1.5, py - 2)
+      .closePath().fill({ color: 0xccffdd, alpha: shaftAlpha * 0.7 });
+
+    // Glowing orb (layered for depth)
+    g.circle(cx, py + 10, 9).fill({ color: 0x88ffaa, alpha: pulse * 0.12 });
+    g.circle(cx, py + 10, 6).fill({ color: 0x88ffaa, alpha: pulse * 0.2 });
+    g.circle(cx, py + 10, 4).fill({ color: 0xaaffcc, alpha: pulse * 0.6 });
+    g.circle(cx, py + 10, 2.5).fill({ color: 0xccffdd, alpha: pulse * 0.8 });
+    g.circle(cx - 0.5, py + 9, 1).fill({ color: 0xffffff, alpha: pulse * 0.5 }); // specular
+
+    // Orbiting light motes
+    for (let i = 0; i < 6; i++) {
+      const angle = (i / 6) * Math.PI * 2 + _globalTime * 0.5;
+      const orbitR = 8 + Math.sin(_globalTime * 1.5 + i) * 2;
+      const rx = cx + Math.cos(angle) * orbitR;
+      const ry = py + 10 + Math.sin(angle) * orbitR * 0.6; // elliptical orbit
+      const moteAlpha = pulse * (0.3 + 0.2 * Math.sin(angle * 3));
+      g.circle(rx, ry, 0.8).fill({ color: 0xccffee, alpha: moteAlpha });
+    }
+
+    // Rising sparkle particles in the light beam
+    for (let i = 0; i < 3; i++) {
+      const sparkT = (_globalTime * 0.8 + i * 0.7) % 2;
+      const sparkY = py + TS - sparkT * TS * 1.2;
+      const sparkX = cx + Math.sin(_globalTime * 2 + i * 1.5) * 4;
+      if (sparkY > py && sparkY < py + TS) {
+        g.circle(sparkX, sparkY, 0.6).fill({ color: 0xffffff, alpha: 0.25 * (1 - sparkT / 2) });
+      }
     }
   }
 
@@ -624,6 +840,30 @@ export class GameRenderer {
               this._drawCobweb(g, px, py, h);
             }
           }
+
+          // Dripping water from ceiling (near walls)
+          if (h > 0.38 && h < 0.41) {
+            const hasWallAbove = r > 0 && floor.tiles[r - 1][c] === TileType.WALL;
+            if (hasWallAbove) {
+              this._drawDrip(g, px, py, h);
+            }
+          }
+
+          // Spider silk hanging strands
+          if (h > 0.33 && h < 0.35) {
+            const hasWallAbove = r > 0 && floor.tiles[r - 1][c] === TileType.WALL;
+            if (hasWallAbove) {
+              this._drawSpiderSilk(g, px, py, h);
+            }
+          }
+        }
+
+        // Glowing runes on special walls (near shrines/magic rooms)
+        if (tile === TileType.WALL && h > 0.96) {
+          const nearShrine = this._hasAdjacentTileType(floor, r, c, TileType.SHRINE);
+          if (nearShrine) {
+            this._drawGlowingRune(g, px, py, 0x88ffaa, r, c);
+          }
         }
 
         // Pillars in room corners (floor tiles at room edges)
@@ -635,21 +875,67 @@ export class GameRenderer {
   }
 
   private _drawTorch(g: Graphics, tx: number, ty: number): void {
-    // Bracket
-    g.rect(tx - 1, ty - 6, 2, 6).fill({ color: 0x666666 });
+    // Wall mount plate (iron)
+    g.rect(tx - 3, ty - 3, 6, 3).fill({ color: 0x555555 });
+    g.rect(tx - 3, ty - 3, 6, 0.8).fill({ color: 0x777777, alpha: 0.4 }); // mount highlight
+    // Bracket with slight curve detail
+    g.rect(tx - 1.2, ty - 7, 2.4, 7).fill({ color: 0x555555 });
+    g.rect(tx - 0.5, ty - 7, 1, 6).fill({ color: 0x666666, alpha: 0.4 }); // bracket highlight
+    // Cup/holder at top
+    g.moveTo(tx - 3, ty - 6).lineTo(tx - 2, ty - 8).lineTo(tx + 2, ty - 8).lineTo(tx + 3, ty - 6)
+      .closePath().fill({ color: 0x555555 });
 
-    // Flame (animated)
+    // Flame (animated with multi-layered variation)
     const flicker = Math.sin(_globalTime * 8 + tx) * 0.3 + 0.7;
     const flicker2 = Math.cos(_globalTime * 12 + ty) * 0.2;
+    const flicker3 = Math.sin(_globalTime * 15 + tx * 0.7) * 0.15;
+    const windBias = Math.sin(_globalTime * 2 + tx * 0.3) * 0.8; // slow wind effect
 
-    // Outer glow
-    g.circle(tx, ty - 8, 8).fill({ color: 0xff6600, alpha: 0.08 * flicker });
-    g.circle(tx, ty - 8, 5).fill({ color: 0xff8800, alpha: 0.12 * flicker });
+    // Warm light pool on ground below
+    g.ellipse(tx, ty + 12, 14, 4).fill({ color: 0xff6600, alpha: 0.04 * flicker });
 
-    // Flame body
-    g.ellipse(tx + flicker2, ty - 9, 2.5, 4).fill({ color: 0xff6622, alpha: 0.9 });
-    g.ellipse(tx + flicker2 * 0.5, ty - 10, 1.5, 3).fill({ color: 0xffaa44, alpha: 0.95 });
-    g.ellipse(tx, ty - 10.5, 0.8, 1.5).fill({ color: 0xffee88, alpha: 1.0 });
+    // Outer glow (larger, warmer)
+    g.circle(tx + windBias, ty - 9, 10).fill({ color: 0xff4400, alpha: 0.06 * flicker });
+    g.circle(tx + windBias, ty - 9, 7).fill({ color: 0xff6600, alpha: 0.1 * flicker });
+    g.circle(tx + windBias * 0.5, ty - 9, 5).fill({ color: 0xff8800, alpha: 0.14 * flicker });
+
+    // Flame body (layered for realistic fire look)
+    // Outer flame
+    g.moveTo(tx - 2.5 + windBias, ty - 6)
+      .lineTo(tx + flicker2 + windBias * 0.7, ty - 14 - flicker3 * 4)
+      .lineTo(tx + 2.5 + windBias, ty - 6)
+      .closePath().fill({ color: 0xff5511, alpha: 0.85 });
+    // Mid flame
+    g.moveTo(tx - 1.5 + windBias * 0.5, ty - 7)
+      .lineTo(tx + flicker2 * 0.5 + windBias * 0.4, ty - 13 - flicker3 * 2)
+      .lineTo(tx + 1.5 + windBias * 0.5, ty - 7)
+      .closePath().fill({ color: 0xff8833, alpha: 0.9 });
+    // Inner flame (bright)
+    g.moveTo(tx - 0.8 + windBias * 0.3, ty - 7.5)
+      .lineTo(tx + windBias * 0.2, ty - 12)
+      .lineTo(tx + 0.8 + windBias * 0.3, ty - 7.5)
+      .closePath().fill({ color: 0xffcc66, alpha: 0.95 });
+    // White-hot core
+    g.ellipse(tx + windBias * 0.1, ty - 8.5, 0.6, 1.2).fill({ color: 0xffeeaa, alpha: 1.0 });
+
+    // Smoke wisps above flame
+    for (let i = 0; i < 2; i++) {
+      const smokeT = (_globalTime * 1.2 + i * 0.6 + tx * 0.01) % 2;
+      const smokeY = ty - 14 - smokeT * 12;
+      const smokeX = tx + windBias * (1 + smokeT) + Math.sin(_globalTime * 2 + i) * 2;
+      const smokeAlpha = Math.max(0, 0.06 * (1 - smokeT / 2));
+      g.circle(smokeX, smokeY, 1.5 + smokeT * 1.5).fill({ color: 0x444444, alpha: smokeAlpha });
+    }
+
+    // Spark particles (flying upward from flame)
+    for (let i = 0; i < 3; i++) {
+      const sparkT = (_globalTime * 2.5 + i * 0.8 + tx * 0.02) % 1.5;
+      const sparkY = ty - 12 - sparkT * 18;
+      const sparkX = tx + Math.sin(_globalTime * 5 + i * 2.3 + tx) * (3 + sparkT * 4) + windBias;
+      const sparkAlpha = Math.max(0, 0.6 * (1 - sparkT / 1.5));
+      const sparkColor = i % 2 === 0 ? 0xffaa22 : 0xff6600;
+      g.circle(sparkX, sparkY, 0.5 + (1 - sparkT / 1.5) * 0.4).fill({ color: sparkColor, alpha: sparkAlpha });
+    }
   }
 
   private _drawMoss(g: Graphics, px: number, py: number, h: number): void {
@@ -686,14 +972,98 @@ export class GameRenderer {
   }
 
   private _drawCobweb(g: Graphics, px: number, py: number, _h: number): void {
-    // Simple cobweb in top-left corner
-    const alpha = 0.2;
+    // Detailed cobweb in top-left corner with swaying strands
+    const sway = Math.sin(_globalTime * 1.5 + px * 0.1) * 0.8;
+    const alpha = 0.22;
     const col = 0xcccccc;
-    g.moveTo(px, py).lineTo(px + 10, py + 10).stroke({ color: col, width: 0.5, alpha });
-    g.moveTo(px, py + 5).lineTo(px + 8, py + 8).stroke({ color: col, width: 0.5, alpha: alpha * 0.8 });
-    g.moveTo(px + 5, py).lineTo(px + 8, py + 8).stroke({ color: col, width: 0.5, alpha: alpha * 0.8 });
-    // Cross strand
-    g.moveTo(px + 2, py + 4).lineTo(px + 7, py + 3).stroke({ color: col, width: 0.5, alpha: alpha * 0.6 });
+    // Main radial strands
+    g.moveTo(px, py).lineTo(px + 10 + sway, py + 10).stroke({ color: col, width: 0.5, alpha });
+    g.moveTo(px, py + 5).lineTo(px + 8 + sway * 0.7, py + 8).stroke({ color: col, width: 0.5, alpha: alpha * 0.8 });
+    g.moveTo(px + 5, py).lineTo(px + 8 + sway * 0.5, py + 8).stroke({ color: col, width: 0.5, alpha: alpha * 0.8 });
+    g.moveTo(px, py + 8).lineTo(px + 6 + sway * 0.6, py + 10).stroke({ color: col, width: 0.4, alpha: alpha * 0.6 });
+    // Cross strands (concentric arcs)
+    g.moveTo(px + 2, py + 4).lineTo(px + 5 + sway * 0.3, py + 3).lineTo(px + 7, py + 5)
+      .stroke({ color: col, width: 0.4, alpha: alpha * 0.5 });
+    g.moveTo(px + 4, py + 7).lineTo(px + 7 + sway * 0.4, py + 6).lineTo(px + 9, py + 8)
+      .stroke({ color: col, width: 0.3, alpha: alpha * 0.4 });
+    // Dew drop on web (sparkling)
+    const dewAlpha = 0.2 + 0.1 * Math.sin(_globalTime * 3 + px);
+    g.circle(px + 6 + sway * 0.5, py + 6, 0.7).fill({ color: 0xaaddff, alpha: dewAlpha });
+  }
+
+  /** Draw dripping water effect from ceiling */
+  private _drawDrip(g: Graphics, px: number, py: number, h: number): void {
+    const dripSpeed = 1.8 + h * 0.8;
+    const dripPhase = (_globalTime * dripSpeed + h * 10) % 2.5;
+    const dripX = px + (h * 300 % 24) + 4;
+
+    if (dripPhase < 1.8) {
+      // Falling droplet
+      const dripY = py + dripPhase * (TS * 0.8);
+      const dropSize = 0.8 + (1 - dripPhase / 1.8) * 0.5;
+      g.circle(dripX, dripY, dropSize).fill({ color: 0x5588aa, alpha: 0.35 });
+      // Tiny trail above
+      g.circle(dripX, dripY - 2, 0.3).fill({ color: 0x6699bb, alpha: 0.15 });
+    } else {
+      // Splash ring at bottom
+      const splashT = (dripPhase - 1.8) / 0.7;
+      const splashR = 2 + splashT * 4;
+      const splashAlpha = Math.max(0, 0.2 * (1 - splashT));
+      g.circle(dripX, py + TS - 2, splashR).stroke({ color: 0x6699bb, width: 0.5, alpha: splashAlpha });
+    }
+
+    // Wet spot on ceiling where drip originates
+    g.circle(dripX, py + 1, 1.5).fill({ color: 0x445566, alpha: 0.2 });
+  }
+
+  /** Draw spider silk strands that sway */
+  private _drawSpiderSilk(g: Graphics, px: number, py: number, h: number): void {
+    const sway = Math.sin(_globalTime * 1.2 + h * 20) * 3;
+    const sway2 = Math.sin(_globalTime * 0.8 + h * 30) * 2;
+    const sx = px + (h * 200 % 20) + 6;
+    const alpha = 0.12 + 0.04 * Math.sin(_globalTime * 2 + h * 10);
+
+    // Hanging silk strand
+    g.moveTo(sx, py).lineTo(sx + sway * 0.3, py + TS * 0.4).lineTo(sx + sway, py + TS * 0.8)
+      .stroke({ color: 0xcccccc, width: 0.4, alpha });
+    // Second strand
+    g.moveTo(sx + 6, py + 2).lineTo(sx + 6 + sway2 * 0.3, py + TS * 0.5).lineTo(sx + 6 + sway2, py + TS * 0.7)
+      .stroke({ color: 0xcccccc, width: 0.3, alpha: alpha * 0.7 });
+  }
+
+  /** Draw glowing runes on special walls */
+  private _drawGlowingRune(g: Graphics, px: number, py: number, color: number, r: number, c: number): void {
+    const pulse = 0.3 + 0.2 * Math.sin(_globalTime * 2.5 + r + c * 3);
+    const cx = px + TS / 2;
+    const cy = py + TS / 2;
+    const h = tileHash(r, c, 333);
+
+    // Rune glow aura
+    g.circle(cx, cy, 8).fill({ color, alpha: pulse * 0.1 });
+    g.circle(cx, cy, 5).fill({ color, alpha: pulse * 0.15 });
+
+    // Rune shape (randomized from hash)
+    const runeType = Math.floor(h * 4);
+    const s = 4;
+    if (runeType === 0) {
+      // Cross rune
+      g.rect(cx - 0.5, cy - s, 1, s * 2).fill({ color, alpha: pulse * 0.7 });
+      g.rect(cx - s * 0.6, cy - 0.5, s * 1.2, 1).fill({ color, alpha: pulse * 0.7 });
+    } else if (runeType === 1) {
+      // Triangle rune
+      g.moveTo(cx, cy - s).lineTo(cx - s * 0.8, cy + s * 0.6).lineTo(cx + s * 0.8, cy + s * 0.6)
+        .closePath().stroke({ color, width: 0.8, alpha: pulse * 0.6 });
+    } else if (runeType === 2) {
+      // Circle rune
+      g.circle(cx, cy, s * 0.6).stroke({ color, width: 0.8, alpha: pulse * 0.6 });
+      g.circle(cx, cy, 1).fill({ color, alpha: pulse * 0.8 });
+    } else {
+      // Zigzag rune
+      g.moveTo(cx - s, cy - s * 0.5).lineTo(cx, cy).lineTo(cx - s, cy + s * 0.5)
+        .stroke({ color, width: 0.8, alpha: pulse * 0.6 });
+      g.moveTo(cx, cy - s * 0.5).lineTo(cx + s, cy).lineTo(cx, cy + s * 0.5)
+        .stroke({ color, width: 0.8, alpha: pulse * 0.6 });
+    }
   }
 
   private _drawPillar(g: Graphics, px: number, py: number, wallColor: number): void {
@@ -715,6 +1085,17 @@ export class GameRenderer {
       const nr = r + dr, nc = c + dc;
       if (nr >= 0 && nr < floor.height && nc >= 0 && nc < floor.width) {
         if (floor.tiles[nr][nc] === TileType.WALL) return true;
+      }
+    }
+    return false;
+  }
+
+  private _hasAdjacentTileType(floor: FloorState, r: number, c: number, tileType: number): boolean {
+    const dirs = [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [-1, 1], [1, -1], [1, 1]];
+    for (const [dr, dc] of dirs) {
+      const nr = r + dr, nc = c + dc;
+      if (nr >= 0 && nr < floor.height && nc >= 0 && nc < floor.width) {
+        if (floor.tiles[nr][nc] === tileType) return true;
       }
     }
     return false;
@@ -769,8 +1150,9 @@ export class GameRenderer {
         let lightAmount = Math.max(0, 1 - dist / lightRadius);
         lightAmount = lightAmount * lightAmount; // Quadratic falloff
 
-        // Torch contributions
+        // Torch contributions — warm orange tinted light
         let torchLight = 0;
+        let torchWarmth = 0; // warm tint amount
         // Check nearby tiles for torches
         for (let tr = r - 3; tr <= r + 3; tr++) {
           for (let tc = c - 3; tc <= c + 3; tc++) {
@@ -782,9 +1164,43 @@ export class GameRenderer {
                 const tdx = px - (tc * TS + TS / 2);
                 const tdy = py - (tr * TS + TS);
                 const tdist = Math.sqrt(tdx * tdx + tdy * tdy);
-                const flicker = 0.8 + 0.2 * Math.sin(_globalTime * 6 + tc * 3 + tr * 7);
-                torchLight += Math.max(0, 1 - tdist / (TS * 3.5)) * flicker * 0.4;
+                // Multi-frequency flicker for more natural fire look
+                const flicker = 0.75 + 0.15 * Math.sin(_globalTime * 6 + tc * 3 + tr * 7)
+                  + 0.1 * Math.sin(_globalTime * 11 + tc * 7 + tr * 3);
+                const contribution = Math.max(0, 1 - tdist / (TS * 3.8)) * flicker * 0.45;
+                torchLight += contribution;
+                torchWarmth += contribution * 0.6;
               }
+            }
+          }
+        }
+
+        // Lava glow — red/orange light bleeding from lava tiles
+        let lavaGlow = 0;
+        for (let lr = r - 2; lr <= r + 2; lr++) {
+          for (let lc = c - 2; lc <= c + 2; lc++) {
+            if (lr < 0 || lr >= floor.height || lc < 0 || lc >= floor.width) continue;
+            if (floor.tiles[lr][lc] === TileType.LAVA) {
+              const ldx = px - (lc * TS + TS / 2);
+              const ldy = py - (lr * TS + TS / 2);
+              const ldist = Math.sqrt(ldx * ldx + ldy * ldy);
+              const lFlicker = 0.8 + 0.2 * Math.sin(_globalTime * 4 + lc * 2 + lr * 5);
+              lavaGlow += Math.max(0, 1 - ldist / (TS * 2.5)) * lFlicker * 0.35;
+            }
+          }
+        }
+
+        // Magic/shrine glow — blue/purple light from shrines
+        let magicGlow = 0;
+        for (let sr = r - 2; sr <= r + 2; sr++) {
+          for (let sc = c - 2; sc <= c + 2; sc++) {
+            if (sr < 0 || sr >= floor.height || sc < 0 || sc >= floor.width) continue;
+            if (floor.tiles[sr][sc] === TileType.SHRINE) {
+              const sdx = px - (sc * TS + TS / 2);
+              const sdy = py - (sr * TS + TS / 2);
+              const sdist = Math.sqrt(sdx * sdx + sdy * sdy);
+              const sPulse = 0.7 + 0.3 * Math.sin(_globalTime * 2 + sc);
+              magicGlow += Math.max(0, 1 - sdist / (TS * 2.5)) * sPulse * 0.3;
             }
           }
         }
@@ -795,11 +1211,25 @@ export class GameRenderer {
           treasureGlow = 0.1;
         }
 
-        const totalLight = Math.min(1, lightAmount + torchLight + treasureGlow);
+        const totalLight = Math.min(1, lightAmount + torchLight + treasureGlow + lavaGlow + magicGlow);
         const darknessAlpha = darkAlpha * (1 - totalLight);
 
         if (darknessAlpha > 0.01) {
           g.rect(c * TS, r * TS, TS, TS).fill({ color: 0x000011, alpha: darknessAlpha });
+        }
+
+        // Colored light overlays (additive-style tinting)
+        // Warm torch light tint (orange)
+        if (torchWarmth > 0.05) {
+          g.rect(c * TS, r * TS, TS, TS).fill({ color: 0xff8833, alpha: Math.min(0.08, torchWarmth * 0.08) });
+        }
+        // Lava red tint
+        if (lavaGlow > 0.05) {
+          g.rect(c * TS, r * TS, TS, TS).fill({ color: 0xff2200, alpha: Math.min(0.1, lavaGlow * 0.1) });
+        }
+        // Magic blue/green tint
+        if (magicGlow > 0.05) {
+          g.rect(c * TS, r * TS, TS, TS).fill({ color: 0x66ffaa, alpha: Math.min(0.08, magicGlow * 0.08) });
         }
       }
     }
@@ -863,30 +1293,58 @@ export class GameRenderer {
     g.ellipse(px, py + 11, 9, 3.5).fill({ color: 0x000000, alpha: 0.4 });
     g.ellipse(px, py + 11, 6, 2).fill({ color: 0x000000, alpha: 0.15 });
 
-    // Cape/cloak (behind body, flowing with movement and wind)
-    const capeWave = Math.sin(_globalTime * 3) * 1.5;
-    const capeWave2 = Math.sin(_globalTime * 4.3 + 1) * 1;
+    // Cape/cloak (behind body, flowing with movement and wind — multi-segment)
+    const windStrength = player.isMoving ? 2.5 : 1.2;
+    const capeWave = Math.sin(_globalTime * 3) * windStrength;
+    const capeWave2 = Math.sin(_globalTime * 4.3 + 1) * (windStrength * 0.7);
+    const capeWave3 = Math.sin(_globalTime * 5.7 + 2) * (windStrength * 0.5);
     const capeColor = darken(bodyColor, 0.35);
     const capeHighlight = darken(bodyColor, 0.2);
+    const capeShadow = darken(bodyColor, 0.5);
     if (facing === Direction.UP || facing === Direction.LEFT || facing === Direction.RIGHT) {
-      // Outer cape
+      // Cape shadow (gives depth)
+      g.moveTo(px - 5.5, py - 2 - bobY)
+        .lineTo(px + 5.5, py - 2 - bobY)
+        .lineTo(px + 5.5 + capeWave * 1.1, py + 11)
+        .lineTo(px + 2.5 + capeWave2, py + 13)
+        .lineTo(px - 2.5 + capeWave, py + 13)
+        .lineTo(px - 5.5 + capeWave2 * 0.8, py + 11)
+        .closePath()
+        .fill({ color: capeShadow, alpha: 0.4 });
+      // Outer cape (main fabric)
       g.moveTo(px - 6, py - 3 - bobY)
         .lineTo(px + 6, py - 3 - bobY)
         .lineTo(px + 5 + capeWave, py + 10)
-        .lineTo(px + 2 + capeWave2, py + 12)
-        .lineTo(px - 2 + capeWave, py + 12)
-        .lineTo(px - 5 + capeWave2, py + 10)
+        .lineTo(px + 3 + capeWave2, py + 11.5)
+        .lineTo(px + 1 + capeWave3, py + 12)
+        .lineTo(px - 1 + capeWave, py + 12)
+        .lineTo(px - 3 + capeWave2, py + 11.5)
+        .lineTo(px - 5 + capeWave3, py + 10)
         .closePath()
-        .fill({ color: capeColor, alpha: 0.75 });
-      // Cape inner fold
+        .fill({ color: capeColor, alpha: 0.78 });
+      // Cape inner fold (lighter central fold line)
       g.moveTo(px - 2, py - 1 - bobY)
         .lineTo(px + 2, py - 1 - bobY)
-        .lineTo(px + 1 + capeWave * 0.5, py + 9)
-        .lineTo(px - 1 + capeWave2 * 0.5, py + 9)
+        .lineTo(px + 1.5 + capeWave * 0.5, py + 9)
+        .lineTo(px - 1.5 + capeWave2 * 0.5, py + 9)
         .closePath()
-        .fill({ color: capeHighlight, alpha: 0.25 });
-      // Cape clasp
-      g.circle(px, py - 3 - bobY, 1.5).fill({ color: 0xddaa33, alpha: 0.8 });
+        .fill({ color: capeHighlight, alpha: 0.2 });
+      // Side fold shadows (fabric draping)
+      g.moveTo(px - 4, py + 0 - bobY)
+        .lineTo(px - 5 + capeWave * 0.3, py + 8)
+        .stroke({ color: capeShadow, width: 0.6, alpha: 0.25 });
+      g.moveTo(px + 4, py + 0 - bobY)
+        .lineTo(px + 5 + capeWave * 0.3, py + 8)
+        .stroke({ color: capeShadow, width: 0.6, alpha: 0.25 });
+      // Cape clasp (ornate, golden)
+      g.circle(px, py - 3 - bobY, 2).fill({ color: 0xddaa33, alpha: 0.85 });
+      g.circle(px, py - 3 - bobY, 1.2).fill({ color: 0xeebb44, alpha: 0.5 }); // clasp gem highlight
+      // Cape edge fraying (subtle detail)
+      for (let i = 0; i < 3; i++) {
+        const edgeX = px - 3 + i * 3 + capeWave * (0.3 + i * 0.1);
+        g.circle(edgeX, py + 12.5 + Math.sin(_globalTime * 2 + i) * 0.5, 0.4)
+          .fill({ color: capeColor, alpha: 0.3 });
+      }
     }
 
     // Legs with armor detail
@@ -1013,6 +1471,27 @@ export class GameRenderer {
       g.rect(wx - 1, wy - 6, 2, 1).fill({ color: 0xeeeedd, alpha: 0.5 }); // blade tip highlight
       g.rect(wx - 3, wy + 1, 6, 2).fill({ color: 0x886622 });
       g.rect(wx - 1, wy + 3, 2, 3).fill({ color: 0x553311 });
+    }
+
+    // Shield on back (visible when facing up or side, shows a small round shield)
+    if (facing === Direction.UP || facing === Direction.LEFT || facing === Direction.RIGHT) {
+      const shieldOffX = facing === Direction.LEFT ? 4 : facing === Direction.RIGHT ? -4 : -6;
+      const shieldY = py - 2 - bobY - breathe;
+      const shieldX = px + shieldOffX;
+      const shieldColor = player.equippedArmor ? darken(player.equippedArmor.color, 0.1) : 0x886644;
+      const shieldHighlight = lighten(shieldColor, 0.2);
+      // Shield body (small round shield)
+      g.circle(shieldX, shieldY, 5).fill({ color: shieldColor, alpha: 0.7 });
+      g.circle(shieldX, shieldY, 4).stroke({ color: shieldHighlight, width: 0.5, alpha: 0.35 });
+      // Shield boss (central bump)
+      g.circle(shieldX, shieldY, 1.8).fill({ color: shieldHighlight, alpha: 0.5 });
+      g.circle(shieldX, shieldY, 0.8).fill({ color: 0xeedd88, alpha: 0.3 });
+      // Shield edge rivets
+      for (let r = 0; r < 4; r++) {
+        const ra = (r / 4) * Math.PI * 2;
+        g.circle(shieldX + Math.cos(ra) * 4, shieldY + Math.sin(ra) * 4, 0.5)
+          .fill({ color: 0xbbaa66, alpha: 0.4 });
+      }
     }
 
     // HP bar with gradient and border
@@ -1465,26 +1944,93 @@ export class GameRenderer {
     }
 
     if (!isGhost) {
-      // Skeleton: visible ribcage and spine
-      // Spine
-      g.rect(x - 0.5 + sway * 0.5, y - 4 * sc, 1, 8 * sc).fill({ color: 0xccccaa, alpha: ghostAlpha * 0.6 });
-      // Ribs (curved)
-      for (let i = 0; i < 4; i++) {
-        const ribY = y - 2.5 * sc + i * 2.2 * sc;
-        const ribW = 3 - Math.abs(i - 1.5) * 0.5;
-        g.moveTo(x + sway * 0.5, ribY).lineTo(x - ribW * sc + sway * 0.5, ribY + 1)
-          .stroke({ color: 0xccccaa, width: 0.8, alpha: ghostAlpha * 0.5 });
-        g.moveTo(x + sway * 0.5, ribY).lineTo(x + ribW * sc + sway * 0.5, ribY + 1)
-          .stroke({ color: 0xccccaa, width: 0.8, alpha: ghostAlpha * 0.5 });
+      // Skeleton: highly visible ribcage, spine, and bone structure
+      const boneColor = 0xddddbb;
+      const boneHighlight = 0xeeeedd;
+      const boneShadow = 0xaaaaaa;
+      const boneAlpha = ghostAlpha * 0.75;
+      // Spine (thicker, with vertebrae)
+      g.rect(x - 0.7 + sway * 0.5, y - 4 * sc, 1.4, 9 * sc).fill({ color: boneColor, alpha: boneAlpha });
+      // Vertebrae bumps
+      for (let v = 0; v < 5; v++) {
+        const vY = y - 3.5 * sc + v * 2 * sc;
+        g.circle(x + sway * 0.5, vY, 1.2).fill({ color: boneHighlight, alpha: boneAlpha * 0.5 });
       }
-      // Arm bones
-      g.moveTo(x - 4 * sc + sway * 0.5, y - 3 * sc).lineTo(x - 6 * sc + sway, y + 2 * sc)
-        .stroke({ color: 0xccccaa, width: 1, alpha: ghostAlpha * 0.5 });
-      g.moveTo(x + 4 * sc + sway * 0.5, y - 3 * sc).lineTo(x + 6 * sc + sway, y + 2 * sc)
-        .stroke({ color: 0xccccaa, width: 1, alpha: ghostAlpha * 0.5 });
-      // Bony hands
-      g.circle(x - 6 * sc + sway, y + 2.5 * sc, 1.2).fill({ color: 0xbbbb99, alpha: ghostAlpha * 0.5 });
-      g.circle(x + 6 * sc + sway, y + 2.5 * sc, 1.2).fill({ color: 0xbbbb99, alpha: ghostAlpha * 0.5 });
+      // Ribs (more prominent, curved with thickness)
+      for (let i = 0; i < 4; i++) {
+        const ribY = y - 2.5 * sc + i * 2 * sc;
+        const ribW = 3.2 - Math.abs(i - 1.5) * 0.4;
+        // Left ribs
+        g.moveTo(x + sway * 0.5, ribY)
+          .lineTo(x - ribW * sc + sway * 0.5, ribY + 0.5)
+          .lineTo(x - ribW * sc + sway * 0.5, ribY + 1.5)
+          .lineTo(x + sway * 0.5, ribY + 1)
+          .closePath().fill({ color: boneColor, alpha: boneAlpha * 0.7 });
+        // Right ribs
+        g.moveTo(x + sway * 0.5, ribY)
+          .lineTo(x + ribW * sc + sway * 0.5, ribY + 0.5)
+          .lineTo(x + ribW * sc + sway * 0.5, ribY + 1.5)
+          .lineTo(x + sway * 0.5, ribY + 1)
+          .closePath().fill({ color: boneColor, alpha: boneAlpha * 0.7 });
+        // Rib highlight
+        g.moveTo(x + sway * 0.5, ribY)
+          .lineTo(x - ribW * sc * 0.7 + sway * 0.5, ribY + 0.3)
+          .stroke({ color: boneHighlight, width: 0.4, alpha: boneAlpha * 0.3 });
+        g.moveTo(x + sway * 0.5, ribY)
+          .lineTo(x + ribW * sc * 0.7 + sway * 0.5, ribY + 0.3)
+          .stroke({ color: boneHighlight, width: 0.4, alpha: boneAlpha * 0.3 });
+      }
+      // Pelvis (hip bones)
+      g.moveTo(x - 3 * sc + sway * 0.5, y + 4 * sc)
+        .lineTo(x + sway * 0.5, y + 5.5 * sc)
+        .lineTo(x + 3 * sc + sway * 0.5, y + 4 * sc)
+        .stroke({ color: boneColor, width: 1.2, alpha: boneAlpha * 0.6 });
+      // Arm bones (upper arm + forearm with joint)
+      // Left arm
+      const lArmEndX = x - 5.5 * sc + sway;
+      const lArmEndY = y + 0 * sc;
+      g.moveTo(x - 4 * sc + sway * 0.5, y - 3 * sc).lineTo(lArmEndX, lArmEndY)
+        .stroke({ color: boneColor, width: 1.3, alpha: boneAlpha });
+      g.moveTo(lArmEndX, lArmEndY).lineTo(x - 6.5 * sc + sway, y + 3 * sc)
+        .stroke({ color: boneColor, width: 1.1, alpha: boneAlpha });
+      g.circle(lArmEndX, lArmEndY, 1).fill({ color: boneShadow, alpha: boneAlpha * 0.5 }); // elbow joint
+      // Right arm
+      const rArmEndX = x + 5.5 * sc + sway;
+      const rArmEndY = y + 0 * sc;
+      g.moveTo(x + 4 * sc + sway * 0.5, y - 3 * sc).lineTo(rArmEndX, rArmEndY)
+        .stroke({ color: boneColor, width: 1.3, alpha: boneAlpha });
+      g.moveTo(rArmEndX, rArmEndY).lineTo(x + 6.5 * sc + sway, y + 3 * sc)
+        .stroke({ color: boneColor, width: 1.1, alpha: boneAlpha });
+      g.circle(rArmEndX, rArmEndY, 1).fill({ color: boneShadow, alpha: boneAlpha * 0.5 }); // elbow joint
+      // Bony hands (finger bones visible)
+      const lhX = x - 6.5 * sc + sway;
+      const rhX = x + 6.5 * sc + sway;
+      const hY = y + 3 * sc;
+      g.circle(lhX, hY, 1.4).fill({ color: boneColor, alpha: boneAlpha });
+      g.circle(rhX, hY, 1.4).fill({ color: boneColor, alpha: boneAlpha });
+      // Finger bones (3 per hand)
+      for (let f = -1; f <= 1; f++) {
+        g.moveTo(lhX, hY).lineTo(lhX + f * 1.2, hY + 2).stroke({ color: boneColor, width: 0.5, alpha: boneAlpha * 0.5 });
+        g.moveTo(rhX, hY).lineTo(rhX + f * 1.2, hY + 2).stroke({ color: boneColor, width: 0.5, alpha: boneAlpha * 0.5 });
+      }
+      // Shoulder blades (clavicle)
+      g.moveTo(x + sway * 0.5, y - 4 * sc).lineTo(x - 4 * sc + sway * 0.5, y - 3 * sc)
+        .stroke({ color: boneColor, width: 1, alpha: boneAlpha * 0.6 });
+      g.moveTo(x + sway * 0.5, y - 4 * sc).lineTo(x + 4 * sc + sway * 0.5, y - 3 * sc)
+        .stroke({ color: boneColor, width: 1, alpha: boneAlpha * 0.6 });
+    } else {
+      // Ghost/wraith: extra transparency effects and ethereal tendrils
+      // Transparent ghostly shimmer through the body
+      g.ellipse(x + sway * 0.5, y - 2 * sc, 3 * sc, 5 * sc)
+        .fill({ color: lighten(color, 0.3), alpha: ghostAlpha * 0.12 });
+      // Ethereal energy swirls
+      for (let i = 0; i < 3; i++) {
+        const swirlAngle = _globalTime * 2 + i * 2.1;
+        const swirlR = 4 * sc;
+        const sx = x + Math.cos(swirlAngle) * swirlR + sway * 0.5;
+        const sy = y + Math.sin(swirlAngle) * swirlR * 0.5;
+        g.circle(sx, sy, 1.5).fill({ color: lighten(color, 0.2), alpha: ghostAlpha * 0.15 });
+      }
     }
 
     // Skull (detailed)
@@ -1586,11 +2132,28 @@ export class GameRenderer {
       // Tail tip lighter
       g.circle(x - 11.5 * sc, y - 3.5 * sc + tailWave, 1.5 * sc).fill({ color: lighten(color, 0.1), alpha: 0.5 });
 
-      // Fur texture lines on body
-      for (let i = 0; i < 4; i++) {
-        const fx = x - 3 * sc + i * 3 * sc;
-        const fy = y - 2 * sc + breathe;
-        g.moveTo(fx, fy).lineTo(fx + 1, fy + 2 * sc).stroke({ color: darken(color, 0.08), width: 0.5, alpha: 0.4 });
+      // Fur texture (dense short strokes across body for fluffy look)
+      for (let i = 0; i < 8; i++) {
+        const fx = x - 5 * sc + i * 1.8 * sc;
+        const fy = y - 2 * sc + breathe + (i % 2) * 1;
+        const furLen = 1.5 + (i % 3) * 0.5;
+        const furAngle = -0.3 + (i % 2) * 0.6;
+        g.moveTo(fx, fy).lineTo(fx + Math.cos(furAngle) * furLen, fy + Math.sin(furAngle) * furLen * sc)
+          .stroke({ color: darken(color, 0.06 + (i % 3) * 0.02), width: 0.6, alpha: 0.4 });
+      }
+      // Mane/ruff around neck
+      for (let i = 0; i < 5; i++) {
+        const ruffAngle = -0.8 + i * 0.4;
+        const ruffX = x + 4 * sc + Math.cos(ruffAngle) * 3 * sc;
+        const ruffY = y - 1 * sc + breathe + Math.sin(ruffAngle) * 2 * sc;
+        g.moveTo(ruffX, ruffY).lineTo(ruffX + Math.cos(ruffAngle) * 2, ruffY + Math.sin(ruffAngle) * 2)
+          .stroke({ color: lighten(color, 0.05), width: 0.8, alpha: 0.35 });
+      }
+      // Drool drops when snarling (subtle)
+      const droolPhase = (_globalTime * 2) % 2;
+      if (droolPhase < 1) {
+        g.circle(x + 10 * sc, y + 1 * sc + breathe + droolPhase * 4, 0.4)
+          .fill({ color: 0x88aacc, alpha: 0.3 * (1 - droolPhase) });
       }
 
     } else if (id.includes("spider")) {
@@ -2528,25 +3091,62 @@ export class GameRenderer {
       const alpha = Math.max(0, 1 - progress * progress);
       const radius = ab.radius * (0.5 + progress * 0.5);
 
-      // Magic circle
-      g.circle(ab.x, ab.y, radius).stroke({ color: ab.color, width: 2, alpha });
-      g.circle(ab.x, ab.y, radius * 0.6).stroke({ color: lighten(ab.color, 0.3), width: 1, alpha: alpha * 0.6 });
-
-      // Inner rune-like marks
-      for (let r = 0; r < 6; r++) {
-        const angle = (r / 6) * Math.PI * 2 + _globalTime * 2;
-        const rx = ab.x + Math.cos(angle) * radius * 0.4;
-        const ry = ab.y + Math.sin(angle) * radius * 0.4;
-        g.rect(rx - 1, ry - 1, 2, 2).fill({ color: ab.color, alpha: alpha * 0.5 });
+      // Initial flash
+      if (progress < 0.15) {
+        const flashA = (0.15 - progress) / 0.15;
+        g.circle(ab.x, ab.y, radius * 0.3).fill({ color: 0xffffff, alpha: flashA * 0.3 });
       }
 
-      // Particle burst
-      for (let p = 0; p < 8; p++) {
-        const angle = (p / 8) * Math.PI * 2;
-        const dist = radius * progress;
-        const px = ab.x + Math.cos(angle) * dist;
-        const py = ab.y + Math.sin(angle) * dist;
-        g.circle(px, py, 1.5 * (1 - progress)).fill({ color: lighten(ab.color, 0.5), alpha: alpha * 0.7 });
+      // Outer glow halo
+      g.circle(ab.x, ab.y, radius * 1.2).fill({ color: ab.color, alpha: alpha * 0.04 });
+
+      // Magic circles (double ring)
+      g.circle(ab.x, ab.y, radius).stroke({ color: ab.color, width: 2.5, alpha });
+      g.circle(ab.x, ab.y, radius * 0.7).stroke({ color: lighten(ab.color, 0.3), width: 1.5, alpha: alpha * 0.6 });
+      g.circle(ab.x, ab.y, radius * 0.4).stroke({ color: lighten(ab.color, 0.5), width: 0.8, alpha: alpha * 0.3 });
+
+      // Rotating rune glyphs (more detailed)
+      for (let r = 0; r < 8; r++) {
+        const angle = (r / 8) * Math.PI * 2 + _globalTime * 2;
+        const runeR = radius * (r % 2 === 0 ? 0.45 : 0.8);
+        const rx = ab.x + Math.cos(angle) * runeR;
+        const ry = ab.y + Math.sin(angle) * runeR;
+        // Varied rune shapes
+        if (r % 3 === 0) {
+          g.rect(rx - 1.5, ry - 1.5, 3, 3).fill({ color: ab.color, alpha: alpha * 0.5 });
+        } else if (r % 3 === 1) {
+          g.circle(rx, ry, 1.5).fill({ color: lighten(ab.color, 0.2), alpha: alpha * 0.4 });
+        } else {
+          // Diamond shape
+          g.moveTo(rx, ry - 2).lineTo(rx + 1.5, ry).lineTo(rx, ry + 2).lineTo(rx - 1.5, ry).closePath()
+            .fill({ color: ab.color, alpha: alpha * 0.45 });
+        }
+      }
+
+      // Arcane lines connecting runes (magical geometry)
+      for (let r = 0; r < 6; r++) {
+        const angle1 = (r / 6) * Math.PI * 2 + _globalTime * 1.5;
+        const angle2 = ((r + 2) / 6) * Math.PI * 2 + _globalTime * 1.5;
+        const r1 = radius * 0.45;
+        g.moveTo(ab.x + Math.cos(angle1) * r1, ab.y + Math.sin(angle1) * r1)
+          .lineTo(ab.x + Math.cos(angle2) * r1, ab.y + Math.sin(angle2) * r1)
+          .stroke({ color: ab.color, width: 0.5, alpha: alpha * 0.2 });
+      }
+
+      // Particle burst (more particles, varied sizes)
+      for (let p = 0; p < 12; p++) {
+        const angle = (p / 12) * Math.PI * 2 + p * 0.3;
+        const dist = radius * progress * (0.7 + (p % 3) * 0.15);
+        const ppx = ab.x + Math.cos(angle) * dist;
+        const ppy = ab.y + Math.sin(angle) * dist;
+        const pSize = (1 + (p % 3) * 0.5) * (1 - progress);
+        g.circle(ppx, ppy, pSize).fill({ color: lighten(ab.color, 0.5), alpha: alpha * 0.6 });
+        // Particle trail
+        const trailDist = dist - 5;
+        if (trailDist > 0) {
+          g.circle(ab.x + Math.cos(angle) * trailDist, ab.y + Math.sin(angle) * trailDist, pSize * 0.5)
+            .fill({ color: ab.color, alpha: alpha * 0.25 });
+        }
       }
 
       if (ab.t <= 0) this.pendingAbilityFx.splice(i, 1);
@@ -2572,10 +3172,30 @@ export class GameRenderer {
       // Main circle
       g.circle(hit.x + xDrift, hit.y - yOff, size).fill({ color, alpha });
 
-      // Crit burst
+      // Crit burst with spark shower
       if (hit.isCrit && hit.t > 0.5) {
         const burstAlpha = (hit.t - 0.5) * 3;
         drawStar(g, hit.x + xDrift, hit.y - yOff, 4, size + 3, size - 1).fill({ color: 0xffff88, alpha: burstAlpha * 0.4 });
+        // Spark shower effect
+        for (let s = 0; s < 6; s++) {
+          const sparkAngle = (s / 6) * Math.PI * 2 + _globalTime * 4;
+          const sparkDist = (0.8 - hit.t) * 25 + s * 3;
+          const sparkX = hit.x + Math.cos(sparkAngle) * sparkDist;
+          const sparkY = hit.y - yOff + Math.sin(sparkAngle) * sparkDist * 0.6 + (0.8 - hit.t) * (0.8 - hit.t) * 20;
+          g.circle(sparkX, sparkY, 0.8).fill({ color: 0xffdd44, alpha: burstAlpha * 0.5 });
+        }
+      }
+
+      // Impact sparks (fly outward from hit point)
+      if (hit.t > 0.55) {
+        const sparkProgress = 1 - (hit.t - 0.55) / 0.25;
+        for (let s = 0; s < 4; s++) {
+          const angle = (s / 4) * Math.PI * 2 + hit.drift * 3;
+          const dist = sparkProgress * 15;
+          const sx = hit.x + Math.cos(angle) * dist;
+          const sy = hit.y + Math.sin(angle) * dist;
+          g.circle(sx, sy, 0.6 * (1 - sparkProgress)).fill({ color: 0xffaa44, alpha: (1 - sparkProgress) * 0.5 });
+        }
       }
 
       if (hit.t <= 0) this.pendingHits.splice(i, 1);
@@ -2855,6 +3475,27 @@ export class GameRenderer {
       const fadeAlpha = p.alpha * (lifeRatio < 0.3 ? lifeRatio / 0.3 : lifeRatio > 0.8 ? (1 - lifeRatio) / 0.2 : 1);
       g.circle(p.x, p.y, p.size).fill({ color: p.color, alpha: fadeAlpha });
     }
+
+    // Floor fog wisps
+    for (const f of this.floorFogWisps) {
+      const lifeRatio = f.life / 8; // approx max life
+      const fadeAlpha = f.alpha * Math.min(1, lifeRatio < 0.3 ? lifeRatio / 0.3 : 1) * Math.min(1, f.life / 1.5);
+      const waveY = Math.sin(f.phase) * 2;
+      g.ellipse(f.x, f.y + waveY, f.width, 3 + Math.sin(f.phase * 0.7) * 1.5)
+        .fill({ color: 0x889999, alpha: fadeAlpha });
+      // Slightly brighter core
+      g.ellipse(f.x, f.y + waveY, f.width * 0.5, 2)
+        .fill({ color: 0x99aabb, alpha: fadeAlpha * 0.5 });
+    }
+
+    // Dust motes in light beams
+    for (const m of this.dustMotes) {
+      const lifeRatio = m.life / m.maxLife;
+      const fadeAlpha = m.alpha * (lifeRatio < 0.2 ? lifeRatio / 0.2 : lifeRatio > 0.8 ? (1 - lifeRatio) / 0.2 : 1);
+      // Twinkling effect
+      const twinkle = 0.7 + 0.3 * Math.sin(_globalTime * 8 + m.x * 0.5);
+      g.circle(m.x, m.y, m.size).fill({ color: 0xddddcc, alpha: fadeAlpha * twinkle });
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -2891,103 +3532,264 @@ export class GameRenderer {
 
     switch (vfx.knightId) {
       case "arthur": {
-        // Sovereign Strike: Golden Excalibur glow radiating outward, stun shown as frozen aura
-        const radius = 20 + progress * 40;
-        g.circle(px, py, radius).fill({ color: 0xffd700, alpha: alpha * 0.15 });
-        g.circle(px, py, radius * 0.7).fill({ color: 0xffee88, alpha: alpha * 0.2 });
-        // Excalibur slash arcs
-        for (let i = 0; i < 6; i++) {
-          const angle = (i / 6) * Math.PI * 2 + _globalTime * 3;
-          const rx = px + Math.cos(angle) * radius * 0.8;
-          const ry = py + Math.sin(angle) * radius * 0.8;
-          g.circle(rx, ry, 3 * (1 - progress)).fill({ color: 0xffd700, alpha: alpha * 0.6 });
+        // Sovereign Strike: Golden Excalibur glow with holy light beams
+        const radius = 20 + progress * 45;
+        // Screen-wide golden flash at start
+        if (progress < 0.15) {
+          const flashA = (0.15 - progress) / 0.15;
+          g.rect(px - 300, py - 300, 600, 600).fill({ color: 0xffd700, alpha: flashA * 0.12 });
         }
-        // Stun aura (frozen blue rings on hit enemies)
+        // Multi-layered golden aura
+        g.circle(px, py, radius * 1.2).fill({ color: 0xffd700, alpha: alpha * 0.06 });
+        g.circle(px, py, radius).fill({ color: 0xffd700, alpha: alpha * 0.12 });
+        g.circle(px, py, radius * 0.6).fill({ color: 0xffee88, alpha: alpha * 0.2 });
+        g.circle(px, py, radius * 0.3).fill({ color: 0xffffff, alpha: alpha * 0.15 });
+        // Holy light beams (radiating outward like a sunburst)
+        for (let i = 0; i < 12; i++) {
+          const angle = (i / 12) * Math.PI * 2 + _globalTime * 2;
+          const beamLen = radius * (0.8 + 0.3 * Math.sin(_globalTime * 5 + i * 0.7));
+          const bx1 = px + Math.cos(angle) * radius * 0.2;
+          const by1 = py + Math.sin(angle) * radius * 0.2;
+          const bx2 = px + Math.cos(angle) * beamLen;
+          const by2 = py + Math.sin(angle) * beamLen;
+          g.moveTo(bx1, by1).lineTo(bx2, by2)
+            .stroke({ color: 0xffd700, width: 2 - progress * 1.5, alpha: alpha * 0.35 });
+          // Beam tip sparkle
+          g.circle(bx2, by2, 2 * (1 - progress)).fill({ color: 0xffffcc, alpha: alpha * 0.5 });
+        }
+        // Excalibur sword silhouette (golden cross shape)
+        if (progress < 0.5) {
+          const swordAlpha = alpha * (1 - progress * 2) * 0.4;
+          g.rect(px - 1.5, py - 18, 3, 36).fill({ color: 0xffd700, alpha: swordAlpha });
+          g.rect(px - 8, py - 4, 16, 3).fill({ color: 0xffd700, alpha: swordAlpha });
+          // Sword glow
+          g.rect(px - 3, py - 20, 6, 40).fill({ color: 0xffee88, alpha: swordAlpha * 0.3 });
+        }
+        // Orbiting golden motes
+        for (let i = 0; i < 8; i++) {
+          const angle = (i / 8) * Math.PI * 2 + _globalTime * 4;
+          const dist = radius * (0.5 + progress * 0.5);
+          const mx = px + Math.cos(angle) * dist;
+          const my = py + Math.sin(angle) * dist;
+          g.circle(mx, my, 2.5 * (1 - progress)).fill({ color: 0xffd700, alpha: alpha * 0.6 });
+          // Trail behind each mote
+          const trailAngle = angle - 0.4;
+          g.circle(px + Math.cos(trailAngle) * dist, py + Math.sin(trailAngle) * dist, 1.5 * (1 - progress))
+            .fill({ color: 0xffee88, alpha: alpha * 0.3 });
+        }
+        // Stun aura (frozen blue rings pulsing on hit enemies)
         if (progress > 0.3 && progress < 0.8) {
-          g.circle(px, py, radius * 1.1).stroke({ color: 0x88ccff, width: 2, alpha: alpha * 0.4 });
+          const stunPulse = 0.4 + 0.2 * Math.sin(_globalTime * 6);
+          g.circle(px, py, radius * 1.1).stroke({ color: 0x88ccff, width: 2.5, alpha: alpha * stunPulse });
+          g.circle(px, py, radius * 1.05).stroke({ color: 0xaaddff, width: 1, alpha: alpha * stunPulse * 0.5 });
         }
         break;
       }
       case "lancelot": {
-        // Lake's Fury: Multi-slash with water droplet trails
+        // Lake's Fury: Multi-slash arcs with water splashes and blade trails
+        const facing = state.player.facing;
+        const baseAngle = facing === Direction.UP ? -Math.PI / 2 : facing === Direction.DOWN ? Math.PI / 2 :
+          facing === Direction.LEFT ? Math.PI : 0;
+        // Water splash burst at origin
+        if (progress < 0.25) {
+          const splashA = (0.25 - progress) / 0.25;
+          g.circle(px, py, 10 + progress * 20).fill({ color: 0x4488ff, alpha: splashA * alpha * 0.15 });
+          // Water droplets spraying out
+          for (let d = 0; d < 8; d++) {
+            const dropAngle = (d / 8) * Math.PI * 2;
+            const dropDist = progress * 40 * (0.5 + (d % 3) * 0.2);
+            const dx = px + Math.cos(dropAngle) * dropDist;
+            const dy = py + Math.sin(dropAngle) * dropDist - progress * 8;
+            g.circle(dx, dy, 1.2 * (1 - progress * 4)).fill({ color: 0x88ccff, alpha: splashA * alpha * 0.4 });
+          }
+        }
+        // Multi-slash arcs (wide sweeping blade trails)
         for (let i = 0; i < 5; i++) {
           const slashPhase = (progress * 5 + i) % 1;
-          const angle = (i / 5) * Math.PI * 0.6 - Math.PI * 0.3 + Math.sin(_globalTime * 10) * 0.2;
-          const dist = 15 + slashPhase * 25;
-          const facing = state.player.facing;
-          const baseAngle = facing === Direction.UP ? -Math.PI / 2 : facing === Direction.DOWN ? Math.PI / 2 :
-            facing === Direction.LEFT ? Math.PI : 0;
+          const angle = (i / 5) * Math.PI * 0.7 - Math.PI * 0.35 + Math.sin(_globalTime * 10) * 0.15;
+          const dist = 15 + slashPhase * 30;
           const sx = px + Math.cos(baseAngle + angle) * dist;
           const sy = py + Math.sin(baseAngle + angle) * dist;
-          // Slash line
-          g.moveTo(px, py).lineTo(sx, sy).stroke({ color: 0x4488ff, width: 2, alpha: alpha * 0.5 * (1 - slashPhase) });
-          // Water droplet
-          g.circle(sx, sy, 2 * (1 - slashPhase)).fill({ color: 0x66aaff, alpha: alpha * 0.6 });
+          // Blade trail (curved arc)
+          const trailAlpha = alpha * 0.5 * (1 - slashPhase);
+          g.moveTo(px, py).lineTo(sx, sy).stroke({ color: 0x4488ff, width: 2.5, alpha: trailAlpha });
+          // Blade glow trail (wider, softer)
+          g.moveTo(px, py).lineTo(sx, sy).stroke({ color: 0x88bbff, width: 4, alpha: trailAlpha * 0.3 });
+          // Slash tip (water-infused sparkle)
+          g.circle(sx, sy, 3 * (1 - slashPhase)).fill({ color: 0x66aaff, alpha: alpha * 0.6 });
+          g.circle(sx, sy, 5 * (1 - slashPhase)).fill({ color: 0x4488ff, alpha: alpha * 0.2 });
+          // Water droplet trail along slash line
+          for (let d = 0; d < 3; d++) {
+            const td = 0.3 + d * 0.2;
+            const tx = px + Math.cos(baseAngle + angle) * dist * td;
+            const ty = py + Math.sin(baseAngle + angle) * dist * td;
+            g.circle(tx, ty + (1 - slashPhase) * 3, 1).fill({ color: 0x88ccff, alpha: trailAlpha * 0.5 });
+          }
+        }
+        // Surrounding water mist
+        for (let i = 0; i < 6; i++) {
+          const mistAngle = baseAngle + (i / 5 - 0.5) * 1.2;
+          const mistDist = 10 + progress * 20 + Math.sin(_globalTime * 3 + i) * 5;
+          const mx = px + Math.cos(mistAngle) * mistDist;
+          const my = py + Math.sin(mistAngle) * mistDist;
+          g.circle(mx, my, 4 * (1 - progress * 0.5)).fill({ color: 0x4488ff, alpha: alpha * 0.06 });
         }
         break;
       }
       case "gawain": {
-        // Solar Might: Intensifying golden aura
-        const auraSize = 15 + progress * 30;
+        // Solar Might: Blazing sun aura with corona and solar flares
+        const auraSize = 18 + progress * 35;
         const intensity = 0.5 + progress * 0.5;
+        // Outermost corona glow
+        g.circle(px, py, auraSize * 1.4).fill({ color: 0xff8800, alpha: alpha * 0.03 * intensity });
+        g.circle(px, py, auraSize * 1.1).fill({ color: 0xffcc00, alpha: alpha * 0.06 * intensity });
+        // Multi-layered aura
         g.circle(px, py, auraSize).fill({ color: 0xffcc00, alpha: alpha * 0.1 * intensity });
         g.circle(px, py, auraSize * 0.7).fill({ color: 0xffdd44, alpha: alpha * 0.15 * intensity });
         g.circle(px, py, auraSize * 0.4).fill({ color: 0xffee88, alpha: alpha * 0.2 * intensity });
-        // Sun rays
-        for (let i = 0; i < 8; i++) {
-          const angle = (i / 8) * Math.PI * 2 + _globalTime * 1.5;
-          const innerR = auraSize * 0.3;
-          const outerR = auraSize;
+        g.circle(px, py, auraSize * 0.2).fill({ color: 0xffffff, alpha: alpha * 0.12 * intensity });
+        // Sun rays (more numerous, alternating lengths)
+        for (let i = 0; i < 12; i++) {
+          const angle = (i / 12) * Math.PI * 2 + _globalTime * 1.5;
+          const innerR = auraSize * 0.25;
+          const outerR = auraSize * (i % 2 === 0 ? 1.1 : 0.85);
+          const rayWidth = i % 2 === 0 ? 2 : 1.2;
           g.moveTo(px + Math.cos(angle) * innerR, py + Math.sin(angle) * innerR)
             .lineTo(px + Math.cos(angle) * outerR, py + Math.sin(angle) * outerR)
-            .stroke({ color: 0xffdd44, width: 1.5, alpha: alpha * 0.3 * intensity });
+            .stroke({ color: 0xffdd44, width: rayWidth, alpha: alpha * 0.3 * intensity });
+          // Ray tip glow
+          if (i % 2 === 0) {
+            g.circle(px + Math.cos(angle) * outerR, py + Math.sin(angle) * outerR, 2)
+              .fill({ color: 0xffee88, alpha: alpha * 0.3 * intensity });
+          }
         }
+        // Solar flares (animated arcs)
+        for (let i = 0; i < 3; i++) {
+          const flareAngle = _globalTime * 2 + i * 2.1;
+          const flareR = auraSize * (0.7 + 0.3 * Math.sin(_globalTime * 3 + i));
+          const fx = px + Math.cos(flareAngle) * flareR;
+          const fy = py + Math.sin(flareAngle) * flareR;
+          g.circle(fx, fy, 3 * (1 - progress * 0.5)).fill({ color: 0xff8800, alpha: alpha * 0.2 * intensity });
+          // Flare trail
+          const tfx = px + Math.cos(flareAngle - 0.3) * flareR * 0.9;
+          const tfy = py + Math.sin(flareAngle - 0.3) * flareR * 0.9;
+          g.circle(tfx, tfy, 2 * (1 - progress * 0.5)).fill({ color: 0xffaa33, alpha: alpha * 0.12 * intensity });
+        }
+        // Heat distortion rings (pulsing outward)
+        const heatPhase = (_globalTime * 2) % 1;
+        g.circle(px, py, auraSize * heatPhase).stroke({ color: 0xffcc00, width: 0.8, alpha: alpha * (1 - heatPhase) * 0.15 });
         break;
       }
       case "percival": {
-        // Grail's Blessing: Radiant white light heal, sparkle purge effect
-        const healRadius = 20 + progress * 25;
-        g.circle(px, py, healRadius).fill({ color: 0xffffff, alpha: alpha * 0.12 });
-        g.circle(px, py, healRadius * 0.6).fill({ color: 0xeeeeff, alpha: alpha * 0.18 });
-        // Rising sparkles
-        for (let i = 0; i < 10; i++) {
-          const sx = px + (Math.sin(_globalTime * 4 + i * 1.7) * healRadius * 0.7);
-          const sy = py - progress * 30 - i * 3;
-          const sparkAlpha = alpha * (0.3 + 0.2 * Math.sin(_globalTime * 8 + i));
-          g.circle(sx, sy, 1.5).fill({ color: 0xffffff, alpha: sparkAlpha });
+        // Grail's Blessing: Radiant holy light column with ascending sparkles
+        const healRadius = 22 + progress * 28;
+        // Vertical holy light column (wide beam from above)
+        const colW = 20 - progress * 8;
+        const colH = 80;
+        g.rect(px - colW / 2, py - colH, colW, colH + 10).fill({ color: 0xffffff, alpha: alpha * 0.06 });
+        g.rect(px - colW * 0.35, py - colH, colW * 0.7, colH + 10).fill({ color: 0xeeeeff, alpha: alpha * 0.1 });
+        g.rect(px - colW * 0.15, py - colH, colW * 0.3, colH + 10).fill({ color: 0xffffff, alpha: alpha * 0.08 });
+        // Ground impact glow
+        g.ellipse(px, py + 4, healRadius, healRadius * 0.3).fill({ color: 0xeeeeff, alpha: alpha * 0.15 });
+        // Multi-layered heal aura
+        g.circle(px, py, healRadius * 1.1).fill({ color: 0xeeeeff, alpha: alpha * 0.05 });
+        g.circle(px, py, healRadius).fill({ color: 0xffffff, alpha: alpha * 0.1 });
+        g.circle(px, py, healRadius * 0.6).fill({ color: 0xeeeeff, alpha: alpha * 0.15 });
+        // Healing cross symbol
+        if (progress < 0.6) {
+          const crossAlpha = alpha * (1 - progress / 0.6) * 0.2;
+          g.rect(px - 1.5, py - 10, 3, 20).fill({ color: 0xffffff, alpha: crossAlpha });
+          g.rect(px - 7, py - 1.5, 14, 3).fill({ color: 0xffffff, alpha: crossAlpha });
         }
-        // Purge effect (dark particles flying outward)
+        // Rising sparkles (more numerous, with varied sizes)
+        for (let i = 0; i < 16; i++) {
+          const sx = px + Math.sin(_globalTime * 4 + i * 1.3) * healRadius * 0.8;
+          const sy = py - progress * 40 - i * 2.5 + Math.sin(_globalTime * 6 + i) * 3;
+          const sparkAlpha = alpha * (0.25 + 0.2 * Math.sin(_globalTime * 8 + i));
+          const sparkSize = 1 + (i % 3) * 0.5;
+          g.circle(sx, sy, sparkSize).fill({ color: 0xffffff, alpha: sparkAlpha });
+          // Sparkle twinkle (small highlight)
+          if (i % 3 === 0) {
+            g.circle(sx, sy, sparkSize * 1.8).fill({ color: 0xffffff, alpha: sparkAlpha * 0.3 });
+          }
+        }
+        // Orbiting light motes (angelic halo effect)
+        for (let i = 0; i < 6; i++) {
+          const haloAngle = (i / 6) * Math.PI * 2 + _globalTime * 3;
+          const haloR = healRadius * 0.7;
+          const hx = px + Math.cos(haloAngle) * haloR;
+          const hy = py - 8 + Math.sin(haloAngle) * haloR * 0.3; // flattened ellipse = halo
+          g.circle(hx, hy, 1.8).fill({ color: 0xffffdd, alpha: alpha * 0.5 });
+        }
+        // Purge effect (dark energy expelled outward with trails)
         if (progress > 0.2) {
-          for (let i = 0; i < 6; i++) {
-            const angle = (i / 6) * Math.PI * 2;
-            const dist = (progress - 0.2) * 50;
-            g.circle(px + Math.cos(angle) * dist, py + Math.sin(angle) * dist, 2 * (1 - progress))
+          for (let i = 0; i < 8; i++) {
+            const angle = (i / 8) * Math.PI * 2 + i * 0.3;
+            const dist = (progress - 0.2) * 55;
+            const purgeX = px + Math.cos(angle) * dist;
+            const purgeY = py + Math.sin(angle) * dist;
+            g.circle(purgeX, purgeY, 2.5 * (1 - progress))
               .fill({ color: 0x8844aa, alpha: alpha * 0.3 });
+            // Trail
+            const trailDist = dist - 8;
+            if (trailDist > 0) {
+              g.circle(px + Math.cos(angle) * trailDist, py + Math.sin(angle) * trailDist, 1.5 * (1 - progress))
+                .fill({ color: 0x6633aa, alpha: alpha * 0.15 });
+            }
           }
         }
         break;
       }
       case "galahad": {
-        // Divine Shield: Visible shield bubble that shatters on hit
-        const shieldRadius = 18 - progress * 3;
+        // Divine Shield: Golden hexagonal force field with energy facets
+        const shieldRadius = 20 - progress * 3;
         const shieldAlpha = alpha * 0.35;
+        // Outer glow
+        g.circle(px, py, shieldRadius + 4).fill({ color: 0xffd700, alpha: shieldAlpha * 0.15 });
+        // Main shield rings
         g.circle(px, py, shieldRadius).stroke({ color: 0xffd700, width: 3, alpha: shieldAlpha });
         g.circle(px, py, shieldRadius - 2).stroke({ color: 0xffffaa, width: 1.5, alpha: shieldAlpha * 0.7 });
-        // Hexagonal facets
+        g.circle(px, py, shieldRadius + 1).stroke({ color: 0xffd700, width: 0.5, alpha: shieldAlpha * 0.3 });
+        // Hexagonal facet grid (energy lattice)
         for (let i = 0; i < 6; i++) {
-          const angle = (i / 6) * Math.PI * 2 + _globalTime;
+          const angle = (i / 6) * Math.PI * 2 + _globalTime * 0.8;
+          const nextAngle = ((i + 1) / 6) * Math.PI * 2 + _globalTime * 0.8;
           const nx = px + Math.cos(angle) * shieldRadius;
           const ny = py + Math.sin(angle) * shieldRadius;
-          g.circle(nx, ny, 2).fill({ color: 0xffffff, alpha: shieldAlpha * 0.5 });
+          const nnx = px + Math.cos(nextAngle) * shieldRadius;
+          const nny = py + Math.sin(nextAngle) * shieldRadius;
+          // Facet line
+          g.moveTo(nx, ny).lineTo(nnx, nny).stroke({ color: 0xffd700, width: 1, alpha: shieldAlpha * 0.4 });
+          // Inner spokes to center
+          g.moveTo(px, py).lineTo(nx, ny).stroke({ color: 0xffee88, width: 0.5, alpha: shieldAlpha * 0.2 });
+          // Vertex glow
+          const vertexPulse = 0.5 + 0.3 * Math.sin(_globalTime * 4 + i);
+          g.circle(nx, ny, 2.5).fill({ color: 0xffffff, alpha: shieldAlpha * vertexPulse });
+          g.circle(nx, ny, 4).fill({ color: 0xffd700, alpha: shieldAlpha * vertexPulse * 0.3 });
         }
-        // Shatter effect at end
+        // Energy ripple effect (pulsing ring)
+        const ripplePhase = (_globalTime * 3) % 1;
+        g.circle(px, py, shieldRadius * ripplePhase).stroke({
+          color: 0xffd700, width: 1, alpha: shieldAlpha * (1 - ripplePhase) * 0.5,
+        });
+        // Shield fill (subtle golden tint)
+        g.circle(px, py, shieldRadius - 3).fill({ color: 0xffd700, alpha: shieldAlpha * 0.05 });
+        // Shatter effect at end (more dramatic with sparks)
         if (progress > 0.7) {
           const shatterP = (progress - 0.7) / 0.3;
-          for (let i = 0; i < 8; i++) {
-            const angle = (i / 8) * Math.PI * 2 + i * 0.5;
-            const dist = shieldRadius + shatterP * 20;
-            g.rect(px + Math.cos(angle) * dist - 1.5, py + Math.sin(angle) * dist - 1.5, 3, 3)
-              .fill({ color: 0xffd700, alpha: (1 - shatterP) * 0.6 });
+          // Central flash
+          if (shatterP < 0.3) {
+            g.circle(px, py, shieldRadius * (1 - shatterP)).fill({ color: 0xffffff, alpha: (0.3 - shatterP) * 0.5 });
+          }
+          for (let i = 0; i < 12; i++) {
+            const angle = (i / 12) * Math.PI * 2 + i * 0.4;
+            const dist = shieldRadius + shatterP * 25;
+            const fragSize = 2 + (i % 3);
+            g.rect(px + Math.cos(angle) * dist - fragSize / 2, py + Math.sin(angle) * dist - fragSize / 2, fragSize, fragSize * 0.6)
+              .fill({ color: i % 2 === 0 ? 0xffd700 : 0xffee88, alpha: (1 - shatterP) * 0.6 });
+            // Shard sparkle
+            g.circle(px + Math.cos(angle) * dist, py + Math.sin(angle) * dist, 1)
+              .fill({ color: 0xffffff, alpha: (1 - shatterP) * 0.4 });
           }
         }
         break;
@@ -3014,47 +3816,108 @@ export class GameRenderer {
         break;
       }
       case "kay": {
-        // Burning Hands: Fire cone eruption, targets ignite
+        // Burning Hands: Fire cone eruption with swirling flame spirals
         const facing = state.player.facing;
         const bAngle = facing === Direction.UP ? -Math.PI / 2 : facing === Direction.DOWN ? Math.PI / 2 :
           facing === Direction.LEFT ? Math.PI : 0;
-        const coneLen = 20 + progress * 50;
-        const coneSpread = 0.6;
-        // Fire cone particles
-        for (let i = 0; i < 15; i++) {
-          const pAngle = bAngle + (Math.random() - 0.5) * coneSpread;
-          const dist = Math.random() * coneLen;
-          const fx = px + Math.cos(pAngle) * dist;
-          const fy = py + Math.sin(pAngle) * dist;
-          const fireColor = Math.random() > 0.5 ? 0xff6622 : 0xff8844;
-          const pSize = 2 + Math.random() * 3 * (1 - progress);
-          g.circle(fx, fy, pSize).fill({ color: fireColor, alpha: alpha * (0.3 + Math.random() * 0.3) });
+        const coneLen = 25 + progress * 55;
+        const coneSpread = 0.65;
+        // Source burst flash
+        if (progress < 0.2) {
+          const burstA = (0.2 - progress) / 0.2;
+          g.circle(px, py, 12).fill({ color: 0xff8800, alpha: burstA * alpha * 0.4 });
         }
-        // Cone outline
+        // Cone heat glow (wider, softer)
+        const leftX2 = px + Math.cos(bAngle - coneSpread * 1.3) * coneLen * 1.1;
+        const leftY2 = py + Math.sin(bAngle - coneSpread * 1.3) * coneLen * 1.1;
+        const rightX2 = px + Math.cos(bAngle + coneSpread * 1.3) * coneLen * 1.1;
+        const rightY2 = py + Math.sin(bAngle + coneSpread * 1.3) * coneLen * 1.1;
+        g.moveTo(px, py).lineTo(leftX2, leftY2).lineTo(rightX2, rightY2).closePath()
+          .fill({ color: 0xff2200, alpha: alpha * 0.04 });
+        // Main cone fill
         const leftX = px + Math.cos(bAngle - coneSpread) * coneLen;
         const leftY = py + Math.sin(bAngle - coneSpread) * coneLen;
         const rightX = px + Math.cos(bAngle + coneSpread) * coneLen;
         const rightY = py + Math.sin(bAngle + coneSpread) * coneLen;
         g.moveTo(px, py).lineTo(leftX, leftY).lineTo(rightX, rightY).closePath()
-          .fill({ color: 0xff4400, alpha: alpha * 0.08 });
+          .fill({ color: 0xff4400, alpha: alpha * 0.1 });
+        // Swirling fire spiral particles
+        for (let i = 0; i < 20; i++) {
+          const spiralAngle = bAngle + Math.sin(_globalTime * 8 + i * 0.9) * coneSpread * 0.8;
+          const dist = (i / 20) * coneLen + Math.sin(_globalTime * 6 + i * 1.5) * 5;
+          const fx = px + Math.cos(spiralAngle) * dist;
+          const fy = py + Math.sin(spiralAngle) * dist;
+          const pSize = (2.5 + (i % 3) * 1.5) * (1 - progress * 0.7);
+          const fireColor = i % 4 === 0 ? 0xff4400 : i % 4 === 1 ? 0xff6622 : i % 4 === 2 ? 0xff8844 : 0xffaa66;
+          g.circle(fx, fy, pSize).fill({ color: fireColor, alpha: alpha * (0.3 + 0.3 * Math.sin(_globalTime * 10 + i)) });
+        }
+        // Fire swirl vortex lines (spiraling outward)
+        for (let i = 0; i < 3; i++) {
+          const swirlPhase = _globalTime * 6 + i * 2.1;
+          for (let s = 0; s < 6; s++) {
+            const sd = (s / 6) * coneLen * 0.8;
+            const sAngle = bAngle + Math.sin(swirlPhase + sd * 0.05) * coneSpread * 0.6;
+            const sx = px + Math.cos(sAngle) * sd;
+            const sy = py + Math.sin(sAngle) * sd;
+            const snx = px + Math.cos(sAngle + 0.1) * (sd + 5);
+            const sny = py + Math.sin(sAngle + 0.1) * (sd + 5);
+            g.moveTo(sx, sy).lineTo(snx, sny)
+              .stroke({ color: 0xff6600, width: 1.5 * (1 - progress), alpha: alpha * 0.25 });
+          }
+        }
+        // Smoke wisps rising from the cone edge
+        for (let i = 0; i < 4; i++) {
+          const smokeAngle = bAngle + (i / 3 - 0.5) * coneSpread;
+          const sd = coneLen * (0.6 + i * 0.1);
+          const smokeX = px + Math.cos(smokeAngle) * sd + Math.sin(_globalTime * 2 + i) * 3;
+          const smokeY = py + Math.sin(smokeAngle) * sd - progress * 10;
+          g.circle(smokeX, smokeY, 3 + progress * 2).fill({ color: 0x333333, alpha: alpha * 0.12 * (1 - progress) });
+        }
         break;
       }
       case "bedivere": {
-        // Last Stand: Red glow, counterattack flash
-        const glowRadius = 14 + Math.sin(_globalTime * 8) * 4;
-        g.circle(px, py, glowRadius).fill({ color: 0xff2222, alpha: alpha * 0.2 });
+        // Last Stand: Crimson rage aura with berserker fury slashes
+        const glowRadius = 16 + Math.sin(_globalTime * 8) * 5;
+        // Pulsating red rage aura (multi-layered)
+        g.circle(px, py, glowRadius * 1.3).fill({ color: 0xff0000, alpha: alpha * 0.05 });
+        g.circle(px, py, glowRadius).fill({ color: 0xff2222, alpha: alpha * 0.15 });
         g.circle(px, py, glowRadius * 0.6).fill({ color: 0xff4444, alpha: alpha * 0.15 });
-        // Counter flash (white burst)
+        // Heartbeat pulse ring
+        const heartbeat = Math.abs(Math.sin(_globalTime * 6));
+        g.circle(px, py, glowRadius * heartbeat).stroke({ color: 0xff0000, width: 1.5, alpha: alpha * heartbeat * 0.3 });
+        // Blood-red energy veins radiating outward
+        for (let i = 0; i < 6; i++) {
+          const veinAngle = (i / 6) * Math.PI * 2 + _globalTime * 0.5;
+          const veinLen = glowRadius * (0.5 + 0.5 * Math.sin(_globalTime * 4 + i * 1.1));
+          g.moveTo(px, py)
+            .lineTo(px + Math.cos(veinAngle) * veinLen, py + Math.sin(veinAngle) * veinLen)
+            .stroke({ color: 0xff2222, width: 1, alpha: alpha * 0.2 });
+        }
+        // Counter-attack flash (more dramatic white-red burst)
         if (progress > 0.3 && progress < 0.6) {
           const flashAlpha = (1 - Math.abs(progress - 0.45) / 0.15) * alpha;
-          g.circle(px, py, 30).fill({ color: 0xffffff, alpha: flashAlpha * 0.25 });
-          // Slash marks
-          for (let i = 0; i < 4; i++) {
-            const angle = (i / 4) * Math.PI * 2 + _globalTime * 2;
-            const sx = px + Math.cos(angle) * 20;
-            const sy = py + Math.sin(angle) * 20;
-            g.moveTo(px, py).lineTo(sx, sy).stroke({ color: 0xff4444, width: 2, alpha: flashAlpha * 0.6 });
+          // Central white flash
+          g.circle(px, py, 35).fill({ color: 0xffffff, alpha: flashAlpha * 0.2 });
+          g.circle(px, py, 20).fill({ color: 0xffcccc, alpha: flashAlpha * 0.15 });
+          // Fury slash marks (X-pattern)
+          for (let i = 0; i < 6; i++) {
+            const angle = (i / 6) * Math.PI * 2 + _globalTime * 3;
+            const slashLen = 25 + Math.sin(_globalTime * 8 + i) * 5;
+            const sx = px + Math.cos(angle) * slashLen;
+            const sy = py + Math.sin(angle) * slashLen;
+            g.moveTo(px, py).lineTo(sx, sy).stroke({ color: 0xff3333, width: 2.5, alpha: flashAlpha * 0.5 });
+            // Slash glow
+            g.moveTo(px, py).lineTo(sx, sy).stroke({ color: 0xff8888, width: 4, alpha: flashAlpha * 0.15 });
+            // Slash tip spark
+            g.circle(sx, sy, 2 * (1 - progress)).fill({ color: 0xffaa44, alpha: flashAlpha * 0.4 });
           }
+        }
+        // Rising red embers around player
+        for (let i = 0; i < 4; i++) {
+          const emberT = (_globalTime * 2 + i * 0.5) % 1;
+          const emberX = px + Math.sin(_globalTime * 3 + i * 2) * 8;
+          const emberY = py + 5 - emberT * 25;
+          g.circle(emberX, emberY, 1 * (1 - emberT)).fill({ color: 0xff4422, alpha: alpha * 0.3 * (1 - emberT) });
         }
         break;
       }
@@ -3072,31 +3935,37 @@ export class GameRenderer {
     g.x = this.camX;
     g.y = this.camY;
 
-    // Edge darkening bars
-    const edgeSize = 60;
+    // Edge darkening bars — multi-layered for smoother falloff
+    const edgeSize = 70;
     const alpha = 0.25;
 
-    // Top edge
-    g.rect(0, 0, sw, edgeSize).fill({ color: 0x000000, alpha: alpha * 0.6 });
-    g.rect(0, 0, sw, edgeSize / 2).fill({ color: 0x000000, alpha: alpha * 0.3 });
+    // Three-layer gradient top/bottom
+    for (let layer = 0; layer < 3; layer++) {
+      const layerSize = edgeSize * (1 - layer * 0.3);
+      const layerAlpha = alpha * (0.5 - layer * 0.12);
+      g.rect(0, 0, sw, layerSize).fill({ color: 0x000000, alpha: layerAlpha });
+      g.rect(0, sh - layerSize, sw, layerSize).fill({ color: 0x000000, alpha: layerAlpha });
+    }
 
-    // Bottom edge
-    g.rect(0, sh - edgeSize, sw, edgeSize).fill({ color: 0x000000, alpha: alpha * 0.6 });
-    g.rect(0, sh - edgeSize / 2, sw, edgeSize / 2).fill({ color: 0x000000, alpha: alpha * 0.3 });
+    // Three-layer gradient left/right
+    for (let layer = 0; layer < 3; layer++) {
+      const layerSize = edgeSize * (1 - layer * 0.3);
+      const layerAlpha = alpha * (0.4 - layer * 0.1);
+      g.rect(0, 0, layerSize, sh).fill({ color: 0x000000, alpha: layerAlpha });
+      g.rect(sw - layerSize, 0, layerSize, sh).fill({ color: 0x000000, alpha: layerAlpha });
+    }
 
-    // Left edge
-    g.rect(0, 0, edgeSize, sh).fill({ color: 0x000000, alpha: alpha * 0.5 });
-    g.rect(0, 0, edgeSize / 2, sh).fill({ color: 0x000000, alpha: alpha * 0.25 });
+    // Corners (extra dark, rounded feel)
+    const cornerR = edgeSize * 1.2;
+    g.rect(0, 0, cornerR, cornerR).fill({ color: 0x000000, alpha: alpha * 0.35 });
+    g.rect(sw - cornerR, 0, cornerR, cornerR).fill({ color: 0x000000, alpha: alpha * 0.35 });
+    g.rect(0, sh - cornerR, cornerR, cornerR).fill({ color: 0x000000, alpha: alpha * 0.35 });
+    g.rect(sw - cornerR, sh - cornerR, cornerR, cornerR).fill({ color: 0x000000, alpha: alpha * 0.35 });
 
-    // Right edge
-    g.rect(sw - edgeSize, 0, edgeSize, sh).fill({ color: 0x000000, alpha: alpha * 0.5 });
-    g.rect(sw - edgeSize / 2, 0, edgeSize / 2, sh).fill({ color: 0x000000, alpha: alpha * 0.25 });
-
-    // Corners (extra dark)
-    g.rect(0, 0, edgeSize, edgeSize).fill({ color: 0x000000, alpha: alpha * 0.3 });
-    g.rect(sw - edgeSize, 0, edgeSize, edgeSize).fill({ color: 0x000000, alpha: alpha * 0.3 });
-    g.rect(0, sh - edgeSize, edgeSize, edgeSize).fill({ color: 0x000000, alpha: alpha * 0.3 });
-    g.rect(sw - edgeSize, sh - edgeSize, edgeSize, edgeSize).fill({ color: 0x000000, alpha: alpha * 0.3 });
+    // Subtle breathing pulse on vignette edges
+    const breathPulse = 0.02 * Math.sin(_globalTime * 1.5);
+    g.rect(0, 0, sw, edgeSize * 0.5).fill({ color: 0x000000, alpha: breathPulse });
+    g.rect(0, sh - edgeSize * 0.5, sw, edgeSize * 0.5).fill({ color: 0x000000, alpha: breathPulse });
   }
 
   // -------------------------------------------------------------------------
@@ -3218,6 +4087,96 @@ export class GameRenderer {
   }
 
   // -------------------------------------------------------------------------
+  // ATMOSPHERIC EFFECTS — floor fog, dust motes, lightning
+  // -------------------------------------------------------------------------
+
+  /** Spawn rolling fog wisps along floor */
+  private _spawnFloorFog(floor: FloorState, sw: number, sh: number): void {
+    if (this.floorFogWisps.length < 12 && Math.random() < 0.06) {
+      const x = this.camX + Math.random() * sw;
+      const y = this.camY + Math.random() * sh;
+      const tileR = Math.floor(y / TS);
+      const tileC = Math.floor(x / TS);
+      if (tileR >= 0 && tileR < floor.height && tileC >= 0 && tileC < floor.width && floor.explored[tileR]?.[tileC]) {
+        const tile = floor.tiles[tileR][tileC];
+        if (tile !== TileType.WALL && tile !== TileType.LAVA) {
+          this.floorFogWisps.push({
+            x, y: tileR * TS + TS - 3 + Math.random() * 4,
+            vx: (Math.random() - 0.5) * 8,
+            phase: Math.random() * Math.PI * 2,
+            width: 15 + Math.random() * 20,
+            alpha: 0.04 + Math.random() * 0.04,
+            life: 4 + Math.random() * 4,
+          });
+        }
+      }
+    }
+    // Update fog wisps
+    for (let i = this.floorFogWisps.length - 1; i >= 0; i--) {
+      const f = this.floorFogWisps[i];
+      f.x += f.vx * 0.016;
+      f.phase += 0.016 * 1.5;
+      f.life -= 0.016;
+      if (f.life <= 0) this.floorFogWisps.splice(i, 1);
+    }
+  }
+
+  /** Spawn dust motes floating in light beams near torches */
+  private _spawnDustMotes(_floor: FloorState, player: PlayerState, sw: number, sh: number): void {
+    if (this.dustMotes.length < 20 && Math.random() < 0.08) {
+      // Spawn near player or near torches
+      const baseX = player.x + (Math.random() - 0.5) * sw * 0.6;
+      const baseY = player.y + (Math.random() - 0.5) * sh * 0.6;
+      const life = 3 + Math.random() * 4;
+      this.dustMotes.push({
+        x: baseX, y: baseY,
+        vx: (Math.random() - 0.5) * 3,
+        vy: (Math.random() - 0.5) * 2 - 1, // gentle upward drift
+        size: 0.5 + Math.random() * 1.2,
+        alpha: 0.06 + Math.random() * 0.08,
+        life, maxLife: life,
+      });
+    }
+    for (let i = this.dustMotes.length - 1; i >= 0; i--) {
+      const m = this.dustMotes[i];
+      m.x += m.vx * 0.016;
+      m.y += m.vy * 0.016;
+      // Gentle brownian motion
+      m.vx += (Math.random() - 0.5) * 0.3;
+      m.vy += (Math.random() - 0.5) * 0.2;
+      m.life -= 0.016;
+      if (m.life <= 0) this.dustMotes.splice(i, 1);
+    }
+  }
+
+  /** Update lightning flash timer for dark themed areas */
+  private _updateLightning(floor: FloorState): void {
+    const themeIdx = Math.min(floor.floorNum, FLOOR_THEMES.length - 1);
+    const themeName = FLOOR_THEMES[themeIdx].name.toLowerCase();
+    const isDarkTheme = themeName.includes("crypt") || themeName.includes("abyssal") || themeName.includes("hall");
+
+    if (isDarkTheme) {
+      this._lightningTimer -= 0.016;
+      if (this._lightningTimer <= 0) {
+        this._lightningTimer = 8 + Math.random() * 15; // next flash in 8-23 seconds
+        this._lightningAlpha = 0.12 + Math.random() * 0.08;
+      }
+      // Decay flash
+      if (this._lightningAlpha > 0) {
+        this._lightningAlpha *= 0.85;
+        if (this._lightningAlpha < 0.005) this._lightningAlpha = 0;
+      }
+    }
+  }
+
+  /** Draw lightning flash overlay */
+  private _drawLightningFlash(sw: number, sh: number): void {
+    if (this._lightningAlpha <= 0) return;
+    const g = this._fxGfx;
+    g.rect(this.camX, this.camY, sw, sh).fill({ color: 0xccccff, alpha: this._lightningAlpha });
+  }
+
+  // -------------------------------------------------------------------------
   // Shake
   // -------------------------------------------------------------------------
   shake(intensity: number, duration: number): void {
@@ -3255,6 +4214,11 @@ export class GameRenderer {
     this.pendingBossFlash = null;
     this.pendingStatusFx.length = 0;
     this.ambientParticles.length = 0;
+    this.torchSparks.length = 0;
+    this.floorFogWisps.length = 0;
+    this.dustMotes.length = 0;
+    this._lightningAlpha = 0;
+    this._lightningTimer = 10;
   }
 }
 

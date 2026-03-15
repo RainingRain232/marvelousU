@@ -130,6 +130,8 @@ import { MedievalGTA3DGame } from "./medievalgta3d/MedievalGTA3DGame";
 import { DiabloGame } from "./diablo/DiabloGame";
 import { MageWarsGame } from "./magewars/MageWarsGame";
 import { GameGame } from "./game/GameGame";
+import { GrailBallGame } from "./grailball/GrailBallGame";
+import { GrailManagerGame } from "./grailmanager/GrailManagerGame";
 import { camelotHubScreen } from "@view/ui/CamelotHubScreen";
 
 // World mode imports
@@ -319,6 +321,8 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     [GameMode.MAGE_WARS]: 18,
     [GameMode.WARBAND_CAMPAIGN]: 19,
     [GameMode.GAME]: 20,
+    [GameMode.GRAIL_BALL]: 21,
+    [GameMode.GRAIL_MANAGER]: 22,
   };
   // Modes that need the setup screen (not skipSetup)
   const NEEDS_SETUP = new Set([GameMode.STANDARD, GameMode.DEATHMATCH, GameMode.BATTLEFIELD, GameMode.ROGUELIKE, GameMode.WAVE]);
@@ -428,6 +432,16 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     if (menuScreen.selectedGameMode === GameMode.GAME) {
       menuScreen.hide();
       _bootGameGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.GRAIL_BALL) {
+      menuScreen.hide();
+      _bootGrailBallGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.GRAIL_MANAGER) {
+      menuScreen.hide();
+      _bootGrailManagerGame();
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.WORLD) {
@@ -2696,6 +2710,54 @@ async function _bootGameGame(): Promise<void> {
     if (_gameGame) {
       _gameGame.destroy();
       _gameGame = null;
+    }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("gameExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Grail Ball mode boot
+// ---------------------------------------------------------------------------
+
+let _grailBallGame: GrailBallGame | null = null;
+
+async function _bootGrailBallGame(): Promise<void> {
+  if (_grailBallGame) {
+    _grailBallGame.destroy();
+    _grailBallGame = null;
+  }
+  _grailBallGame = new GrailBallGame();
+  await _grailBallGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("grailballExit", _onExit);
+    if (_grailBallGame) {
+      _grailBallGame.destroy();
+      _grailBallGame = null;
+    }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("grailballExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Grail Ball Manager mode boot
+// ---------------------------------------------------------------------------
+
+let _grailManagerGame: GrailManagerGame | null = null;
+
+async function _bootGrailManagerGame(): Promise<void> {
+  if (_grailManagerGame) {
+    _grailManagerGame.destroy();
+    _grailManagerGame = null;
+  }
+  _grailManagerGame = new GrailManagerGame();
+  await _grailManagerGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("gameExit", _onExit);
+    if (_grailManagerGame) {
+      _grailManagerGame.destroy();
+      _grailManagerGame = null;
     }
     menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
