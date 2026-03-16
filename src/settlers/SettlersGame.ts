@@ -362,9 +362,68 @@ export class SettlersGame {
       return;
     }
 
-    placeBuilding(state, state.selectedBuildingType, tileX, tileZ, "p0");
+    const building = placeBuilding(state, state.selectedBuildingType, tileX, tileZ, "p0");
     // Territory recalc is handled by the dirty flag set in placeBuilding
     playBuildSound();
+
+    // Auto-connect building flag to nearest existing flag in road network
+    if (building) {
+      this._autoConnectBuilding(state, building, "p0");
+    }
+  }
+
+  /** Auto-connect a newly placed building's flag to the nearest reachable flag */
+  private _autoConnectBuilding(
+    state: SettlersState,
+    building: import("./state/SettlersBuilding").SettlersBuilding,
+    owner: string,
+  ): void {
+    const buildingFlag = state.flags.get(building.flagId);
+    if (!buildingFlag) return;
+    if (buildingFlag.connectedRoads.length > 0) return; // already connected
+
+    // Find nearest flag that belongs to us (prefer flags with existing roads)
+    let bestFlag: import("./state/SettlersRoad").SettlersFlag | null = null;
+    let bestDist = Infinity;
+
+    for (const [, flag] of state.flags) {
+      if (flag.id === buildingFlag.id) continue;
+      if (flag.owner !== owner) continue;
+
+      const dx = flag.tileX - buildingFlag.tileX;
+      const dz = flag.tileZ - buildingFlag.tileZ;
+      const dist = Math.abs(dx) + Math.abs(dz);
+
+      // Prefer flags with road connections (part of network), and shorter distance
+      const penalty = flag.connectedRoads.length > 0 ? 0 : 100;
+      const score = dist + penalty;
+
+      if (score < bestDist && dist < 20) {
+        bestDist = score;
+        bestFlag = flag;
+      }
+    }
+
+    if (!bestFlag) return;
+
+    // Build straight-line path from building flag to target flag
+    const path: { x: number; z: number }[] = [];
+    let cx = buildingFlag.tileX;
+    let cz = buildingFlag.tileZ;
+    path.push({ x: cx, z: cz });
+
+    while (cx !== bestFlag.tileX || cz !== bestFlag.tileZ) {
+      const dx = bestFlag.tileX - cx;
+      const dz = bestFlag.tileZ - cz;
+      if (Math.abs(dx) > Math.abs(dz)) {
+        cx += dx > 0 ? 1 : -1;
+      } else {
+        cz += dz > 0 ? 1 : -1;
+      }
+      path.push({ x: cx, z: cz });
+    }
+
+    createRoad(state, buildingFlag.id, bestFlag.id, path, owner);
   }
 
   private _handleRoadClick(tileX: number, tileZ: number): void {

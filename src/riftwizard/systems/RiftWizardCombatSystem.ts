@@ -21,7 +21,7 @@ import { spawnRiftPortals } from "./RiftWizardLevelGenerator";
 // ---------------------------------------------------------------------------
 
 export function tileDistance(a: GridPos, b: GridPos): number {
-  return Math.abs(a.col - b.col) + Math.abs(a.row - b.row);
+  return Math.max(Math.abs(a.col - b.col), Math.abs(a.row - b.row));
 }
 
 export function chebyshevDistance(a: GridPos, b: GridPos): number {

@@ -2427,7 +2427,7 @@ export class SettlersRenderer {
     for (const p of path) {
       const wx = (p.x + 0.5) * SB.TILE_SIZE;
       const wz = (p.z + 0.5) * SB.TILE_SIZE;
-      const wy = getHeightAt(state.map, wx, wz) + 0.03;
+      const wy = getHeightAt(state.map, wx, wz) + 0.12;
       points.push(new THREE.Vector3(wx, wy, wz));
     }
 
@@ -2493,10 +2493,14 @@ export class SettlersRenderer {
     const mat = new THREE.MeshStandardMaterial({
       vertexColors: true,
       roughness: 0.95,
+      polygonOffset: true,
+      polygonOffsetFactor: -1,
+      polygonOffsetUnits: -1,
     });
 
     const mesh = new THREE.Mesh(geo, mat);
     mesh.receiveShadow = true;
+    mesh.renderOrder = 1;
     return mesh;
   }
 
@@ -2563,9 +2567,12 @@ export class SettlersRenderer {
         const bob = Math.abs(Math.sin(walkPhase)) * 0.03;
         mesh.position.y = carrier.position.y + bob;
         // Torso lean forward while walking
-        mesh.children[0].rotation.x = 0.08;
-        // Body sway (slight tilt side to side, synced to stride)
-        mesh.children[0].rotation.z = Math.sin(walkPhase * 0.5) * 0.04;
+        const bodyNode = mesh.getObjectByName("body");
+        if (bodyNode) {
+          bodyNode.rotation.x = 0.08;
+          // Body sway (slight tilt side to side, synced to stride)
+          bodyNode.rotation.z = Math.sin(walkPhase * 0.5) * 0.04;
+        }
         // Head slight counter-bob
         if (headGroup) {
           headGroup.rotation.x = Math.sin(walkPhase * 2) * 0.02;
@@ -2577,8 +2584,8 @@ export class SettlersRenderer {
         if (rightLeg) rightLeg.rotation.x = 0;
         if (leftArm) leftArm.rotation.x = 0;
         if (rightArm) rightArm.rotation.x = 0;
-        mesh.children[0].rotation.x = 0;
-        mesh.children[0].rotation.z = 0;
+        const bodyIdle = mesh.getObjectByName("body");
+        if (bodyIdle) { bodyIdle.rotation.x = 0; bodyIdle.rotation.z = 0; }
         if (headGroup) { headGroup.rotation.x = 0; headGroup.rotation.z = 0; }
         // Subtle idle breathing bob
         mesh.position.y = carrier.position.y + Math.sin(t * 2) * 0.005;
@@ -2604,220 +2611,319 @@ export class SettlersRenderer {
     const playerColor = this._getPlayerColor(owner, state);
     const h = SB.CARRIER_HEIGHT;
 
+    // --- Materials ---
     const tunicMat = new THREE.MeshStandardMaterial({ color: playerColor, roughness: 0.8 });
     const tunicDkMat = new THREE.MeshStandardMaterial({
-      color: new THREE.Color(playerColor).multiplyScalar(0.7).getHex(), roughness: 0.85,
+      color: new THREE.Color(playerColor).multiplyScalar(0.65).getHex(), roughness: 0.85,
+    });
+    const tunicLtMat = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(playerColor).lerp(new THREE.Color(0xffffff), 0.2).getHex(), roughness: 0.8,
     });
     const skinMat = new THREE.MeshStandardMaterial({ color: 0xf0ccaa, roughness: 0.7 });
     const skinShadow = new THREE.MeshStandardMaterial({ color: 0xd4a880, roughness: 0.75 });
     const pantMat = new THREE.MeshStandardMaterial({ color: 0x6a5a3a, roughness: 0.85 });
     const bootMat = new THREE.MeshStandardMaterial({ color: 0x4a2e16, roughness: 0.9 });
     const beltMat = new THREE.MeshStandardMaterial({ color: 0x4a2e16, roughness: 0.85 });
+    const metalMat = new THREE.MeshStandardMaterial({ color: 0xb8960c, metalness: 0.6, roughness: 0.4 });
+    const hairMat = new THREE.MeshStandardMaterial({ color: 0x5c3a1e, roughness: 0.9 });
 
-    // === TORSO (tapered – broader shoulders, narrower waist) ===
-    const torsoGeo = new THREE.BoxGeometry(h * 0.42, h * 0.32, h * 0.22);
+    // --- Body pivot (first child, used for lean/sway) ---
+    const body = new THREE.Group();
+    body.name = "body";
+    g.add(body);
+
+    // === TORSO (tapered cylinder for more realistic shape) ===
+    const torsoGeo = new THREE.CylinderGeometry(h * 0.16, h * 0.19, h * 0.3, 8);
     const torso = new THREE.Mesh(torsoGeo, tunicMat);
     torso.position.y = h * 0.55;
-    g.add(torso);
+    body.add(torso);
+
+    // Chest detail – lighter fabric panel
+    const chestPanel = new THREE.Mesh(this._boxGeo, tunicLtMat);
+    chestPanel.scale.set(h * 0.18, h * 0.12, h * 0.01);
+    chestPanel.position.set(0, h * 0.6, h * 0.13);
+    body.add(chestPanel);
 
     // Tunic skirt (flares out below waist)
-    const skirt = new THREE.Mesh(this._boxGeo, tunicMat);
-    skirt.scale.set(h * 0.44, h * 0.1, h * 0.24);
+    const skirtGeo = new THREE.CylinderGeometry(h * 0.19, h * 0.22, h * 0.1, 8);
+    const skirt = new THREE.Mesh(skirtGeo, tunicMat);
     skirt.position.y = h * 0.38;
-    g.add(skirt);
+    body.add(skirt);
 
     // Belt
-    const belt = new THREE.Mesh(this._boxGeo, beltMat);
-    belt.scale.set(h * 0.44, h * 0.03, h * 0.24);
+    const beltGeo = new THREE.CylinderGeometry(h * 0.195, h * 0.195, h * 0.035, 10);
+    const belt = new THREE.Mesh(beltGeo, beltMat);
     belt.position.y = h * 0.42;
-    g.add(belt);
+    body.add(belt);
     // Belt buckle
-    const buckle = new THREE.Mesh(this._boxGeo, new THREE.MeshStandardMaterial({ color: 0xb8960c, metalness: 0.5 }));
-    buckle.scale.set(h * 0.04, h * 0.035, h * 0.02);
-    buckle.position.set(0, h * 0.42, h * 0.13);
-    g.add(buckle);
+    const buckle = new THREE.Mesh(this._boxGeo, metalMat);
+    buckle.scale.set(h * 0.045, h * 0.04, h * 0.02);
+    buckle.position.set(0, h * 0.42, h * 0.17);
+    body.add(buckle);
+    // Belt pouch (small side pouch)
+    const pouch = new THREE.Mesh(this._boxGeo, new THREE.MeshStandardMaterial({ color: 0x8b6b3a, roughness: 0.85 }));
+    pouch.scale.set(h * 0.06, h * 0.06, h * 0.05);
+    pouch.position.set(h * 0.17, h * 0.4, h * 0.04);
+    body.add(pouch);
 
-    // Collar / neckline detail
+    // Collar / neckline – V-shape
     const collar = new THREE.Mesh(this._boxGeo, tunicDkMat);
-    collar.scale.set(h * 0.18, h * 0.03, h * 0.18);
-    collar.position.y = h * 0.72;
-    g.add(collar);
+    collar.scale.set(h * 0.16, h * 0.035, h * 0.2);
+    collar.position.y = h * 0.71;
+    body.add(collar);
 
     // === NECK ===
-    const neck = new THREE.Mesh(this._cylGeo, skinMat);
-    neck.scale.set(0.35, h * 0.06, 0.35);
-    neck.position.y = h * 0.76;
-    g.add(neck);
+    const neckGeo = new THREE.CylinderGeometry(h * 0.055, h * 0.06, h * 0.06, 6);
+    const neck = new THREE.Mesh(neckGeo, skinMat);
+    neck.position.y = h * 0.74;
+    body.add(neck);
 
     // === HEAD GROUP (grouped for animation) ===
     const headGroup = new THREE.Group();
     headGroup.name = "headGroup";
-    headGroup.position.y = h * 0.88; // pivot at neck
+    headGroup.position.y = h * 0.86;
 
-    const head = new THREE.Mesh(this._sphereGeo, skinMat);
-    head.scale.set(1.4, 1.5, 1.3);
+    // Head (slightly elongated sphere)
+    const headGeo = new THREE.SphereGeometry(h * 0.09, 10, 8);
+    const head = new THREE.Mesh(headGeo, skinMat);
+    head.scale.set(1.0, 1.1, 0.95);
     headGroup.add(head);
 
-    // Chin
-    const chin = new THREE.Mesh(this._sphereGeo, skinShadow);
-    chin.scale.set(0.6, 0.4, 0.5);
-    chin.position.set(0, -h * 0.06, h * 0.02);
-    headGroup.add(chin);
+    // Hair (back of head)
+    const hairGeo = new THREE.SphereGeometry(h * 0.085, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.6);
+    const hair = new THREE.Mesh(hairGeo, hairMat);
+    hair.position.set(0, h * 0.02, -h * 0.01);
+    hair.rotation.x = -0.3;
+    headGroup.add(hair);
 
-    // Eyes (small dark dots)
+    // Ears
     for (let side = -1; side <= 1; side += 2) {
-      const eye = new THREE.Mesh(this._sphereGeo, new THREE.MeshBasicMaterial({ color: 0x332211 }));
-      eye.scale.set(0.2, 0.2, 0.15);
-      eye.position.set(side * h * 0.06, h * 0.02, h * 0.04);
-      headGroup.add(eye);
-      // White of eye
-      const eyeW = new THREE.Mesh(this._sphereGeo, new THREE.MeshBasicMaterial({ color: 0xffffff }));
-      eyeW.scale.set(0.28, 0.22, 0.12);
-      eyeW.position.set(side * h * 0.06, h * 0.02, h * 0.035);
-      headGroup.add(eyeW);
+      const earGeo = new THREE.SphereGeometry(h * 0.02, 5, 4);
+      const ear = new THREE.Mesh(earGeo, skinShadow);
+      ear.position.set(side * h * 0.085, -h * 0.01, 0);
+      ear.scale.set(0.6, 1.0, 0.8);
+      headGroup.add(ear);
     }
 
-    // Nose
-    const nose = new THREE.Mesh(this._sphereGeo, skinShadow);
-    nose.scale.set(0.2, 0.25, 0.2);
-    nose.position.set(0, -h * 0.01, h * 0.06);
+    // Eyes (iris + pupil + white)
+    for (let side = -1; side <= 1; side += 2) {
+      // Eye white
+      const eyeW = new THREE.Mesh(
+        new THREE.SphereGeometry(h * 0.022, 6, 4),
+        new THREE.MeshBasicMaterial({ color: 0xf8f4f0 }),
+      );
+      eyeW.position.set(side * h * 0.04, h * 0.01, h * 0.065);
+      eyeW.scale.set(1.2, 0.8, 0.5);
+      headGroup.add(eyeW);
+      // Iris
+      const iris = new THREE.Mesh(
+        new THREE.SphereGeometry(h * 0.012, 5, 4),
+        new THREE.MeshBasicMaterial({ color: 0x4477aa }),
+      );
+      iris.position.set(side * h * 0.04, h * 0.01, h * 0.075);
+      headGroup.add(iris);
+      // Pupil
+      const pupil = new THREE.Mesh(
+        new THREE.SphereGeometry(h * 0.006, 4, 3),
+        new THREE.MeshBasicMaterial({ color: 0x111111 }),
+      );
+      pupil.position.set(side * h * 0.04, h * 0.01, h * 0.08);
+      headGroup.add(pupil);
+      // Eyebrow (small box above eye)
+      const brow = new THREE.Mesh(this._boxGeo, hairMat);
+      brow.scale.set(h * 0.035, h * 0.008, h * 0.01);
+      brow.position.set(side * h * 0.04, h * 0.035, h * 0.06);
+      brow.rotation.z = side * -0.15;
+      headGroup.add(brow);
+    }
+
+    // Nose (small wedge)
+    const noseGeo = new THREE.ConeGeometry(h * 0.015, h * 0.03, 4);
+    const nose = new THREE.Mesh(noseGeo, skinShadow);
+    nose.position.set(0, -h * 0.005, h * 0.085);
+    nose.rotation.x = Math.PI * 0.5;
     headGroup.add(nose);
 
-    // === HAT (floppy wide-brim peasant hat) ===
-    const hatMat = new THREE.MeshStandardMaterial({ color: 0x664422, roughness: 0.9 });
-    // Hat crown
-    const hatCrown = new THREE.Mesh(new THREE.CylinderGeometry(h * 0.12, h * 0.14, h * 0.1, 8), hatMat);
-    hatCrown.position.y = h * 0.1;
-    headGroup.add(hatCrown);
-    // Hat brim
-    const brimGeo = new THREE.CylinderGeometry(h * 0.25, h * 0.26, h * 0.02, 10);
+    // Mouth (thin line)
+    const mouth = new THREE.Mesh(this._boxGeo, new THREE.MeshBasicMaterial({ color: 0xb87860 }));
+    mouth.scale.set(h * 0.03, h * 0.005, h * 0.005);
+    mouth.position.set(0, -h * 0.03, h * 0.075);
+    headGroup.add(mouth);
+
+    // === HAT (straw-style wide-brim peasant hat) ===
+    const hatMat = new THREE.MeshStandardMaterial({ color: 0x8b7640, roughness: 0.95 });
+    const hatDkMat = new THREE.MeshStandardMaterial({ color: 0x6b5630, roughness: 0.9 });
+    // Crown (tapered cylinder)
+    const crownGeo = new THREE.CylinderGeometry(h * 0.07, h * 0.09, h * 0.08, 10);
+    const crown = new THREE.Mesh(crownGeo, hatMat);
+    crown.position.y = h * 0.12;
+    headGroup.add(crown);
+    // Crown dent (indent on top)
+    const dentGeo = new THREE.CylinderGeometry(h * 0.04, h * 0.06, h * 0.02, 8);
+    const dent = new THREE.Mesh(dentGeo, hatDkMat);
+    dent.position.y = h * 0.155;
+    headGroup.add(dent);
+    // Brim (wide disc, slightly droopy)
+    const brimGeo = new THREE.CylinderGeometry(h * 0.17, h * 0.18, h * 0.015, 14);
     const brim = new THREE.Mesh(brimGeo, hatMat);
-    brim.position.y = h * 0.06;
+    brim.position.y = h * 0.08;
+    brim.rotation.x = 0.05; // slight forward droop
     headGroup.add(brim);
-    // Hat band
-    const bandGeo = new THREE.TorusGeometry(h * 0.13, h * 0.012, 4, 10);
-    const band = new THREE.Mesh(bandGeo, new THREE.MeshStandardMaterial({ color: 0x8b6914, roughness: 0.85 }));
-    band.position.y = h * 0.08;
+    // Hat band (ribbon)
+    const bandGeo = new THREE.TorusGeometry(h * 0.085, h * 0.01, 4, 12);
+    const band = new THREE.Mesh(bandGeo, new THREE.MeshStandardMaterial({ color: 0xcc4444, roughness: 0.8 }));
+    band.position.y = h * 0.1;
     band.rotation.x = Math.PI * 0.5;
     headGroup.add(band);
 
-    g.add(headGroup);
+    body.add(headGroup);
 
-    // === SHOULDERS ===
+    // === SHOULDERS (round pads) ===
     for (let side = -1; side <= 1; side += 2) {
-      const shoulder = new THREE.Mesh(this._sphereGeo, tunicMat);
-      shoulder.scale.set(0.65, 0.5, 0.55);
-      shoulder.position.set(side * h * 0.24, h * 0.68, 0);
-      g.add(shoulder);
+      const shoulderGeo = new THREE.SphereGeometry(h * 0.06, 6, 5);
+      const shoulder = new THREE.Mesh(shoulderGeo, tunicMat);
+      shoulder.position.set(side * h * 0.19, h * 0.68, 0);
+      shoulder.scale.set(1.0, 0.7, 0.9);
+      body.add(shoulder);
     }
 
-    // === ARMS (grouped for animation – upper arm + forearm + hand) ===
+    // === ARMS (grouped for animation – upper arm + forearm + hand + fingers) ===
     for (let side = -1; side <= 1; side += 2) {
       const armGroup = new THREE.Group();
       armGroup.name = side === -1 ? "leftArm" : "rightArm";
-      armGroup.position.set(side * h * 0.24, h * 0.68, 0); // pivot at shoulder
-      // Upper arm (tunic sleeve)
-      const upperArm = new THREE.Mesh(this._cylGeo, tunicMat);
-      upperArm.scale.set(0.35, h * 0.18, 0.35);
-      upperArm.position.set(side * h * 0.06, -h * 0.1, 0);
-      upperArm.rotation.z = side * 0.2;
+      armGroup.position.set(side * h * 0.22, h * 0.66, 0);
+      // Upper arm (sleeve)
+      const uaGeo = new THREE.CylinderGeometry(h * 0.045, h * 0.05, h * 0.16, 6);
+      const upperArm = new THREE.Mesh(uaGeo, tunicMat);
+      upperArm.position.y = -h * 0.08;
+      upperArm.rotation.z = side * 0.12;
       armGroup.add(upperArm);
+      // Sleeve cuff
+      const cuffGeo = new THREE.CylinderGeometry(h * 0.048, h * 0.045, h * 0.02, 6);
+      const cuff = new THREE.Mesh(cuffGeo, tunicDkMat);
+      cuff.position.y = -h * 0.16;
+      armGroup.add(cuff);
       // Forearm (skin)
-      const forearm = new THREE.Mesh(this._cylGeo, skinMat);
-      forearm.scale.set(0.28, h * 0.16, 0.28);
-      forearm.position.set(side * h * 0.1, -h * 0.26, 0);
-      forearm.rotation.z = side * 0.15;
+      const faGeo = new THREE.CylinderGeometry(h * 0.032, h * 0.04, h * 0.14, 6);
+      const forearm = new THREE.Mesh(faGeo, skinMat);
+      forearm.position.y = -h * 0.24;
+      forearm.rotation.z = side * 0.08;
       armGroup.add(forearm);
-      // Hand
-      const hand = new THREE.Mesh(this._sphereGeo, skinMat);
-      hand.scale.set(0.35, 0.3, 0.3);
-      hand.position.set(side * h * 0.12, -h * 0.34, 0);
+      // Wrist
+      const wristGeo = new THREE.SphereGeometry(h * 0.025, 5, 4);
+      const wrist = new THREE.Mesh(wristGeo, skinMat);
+      wrist.position.y = -h * 0.31;
+      armGroup.add(wrist);
+      // Hand (mitten shape)
+      const handGeo = new THREE.BoxGeometry(h * 0.04, h * 0.05, h * 0.03);
+      const hand = new THREE.Mesh(handGeo, skinMat);
+      hand.position.y = -h * 0.34;
       armGroup.add(hand);
-      g.add(armGroup);
+      // Thumb
+      const thumbGeo = new THREE.SphereGeometry(h * 0.012, 4, 3);
+      const thumb = new THREE.Mesh(thumbGeo, skinMat);
+      thumb.position.set(side * h * 0.025, -h * 0.33, h * 0.01);
+      armGroup.add(thumb);
+      body.add(armGroup);
     }
 
-    // === LEGS (thigh + shin + boot) ===
-    const legMat = pantMat;
+    // === LEGS (thigh + knee + shin + boot – grouped for animation) ===
+    for (let side = -1; side <= 1; side += 2) {
+      const legGroup = new THREE.Group();
+      legGroup.name = side === -1 ? "leftLeg" : "rightLeg";
+      legGroup.position.set(side * h * 0.08, h * 0.32, 0);
+      // Thigh
+      const thighGeo = new THREE.CylinderGeometry(h * 0.055, h * 0.05, h * 0.16, 6);
+      const thigh = new THREE.Mesh(thighGeo, pantMat);
+      thigh.position.y = -h * 0.04;
+      legGroup.add(thigh);
+      // Knee joint
+      const kneeGeo = new THREE.SphereGeometry(h * 0.04, 5, 4);
+      const knee = new THREE.Mesh(kneeGeo, pantMat);
+      knee.position.y = -h * 0.12;
+      legGroup.add(knee);
+      // Shin
+      const shinGeo = new THREE.CylinderGeometry(h * 0.04, h * 0.045, h * 0.14, 6);
+      const shin = new THREE.Mesh(shinGeo, pantMat);
+      shin.position.y = -h * 0.2;
+      legGroup.add(shin);
+      // Boot (taller, shaped)
+      const bootGeo = new THREE.BoxGeometry(h * 0.07, h * 0.1, h * 0.1);
+      const boot = new THREE.Mesh(bootGeo, bootMat);
+      boot.position.set(0, -h * 0.3, h * 0.01);
+      legGroup.add(boot);
+      // Boot sole
+      const soleGeo = new THREE.BoxGeometry(h * 0.075, h * 0.015, h * 0.11);
+      const sole = new THREE.Mesh(soleGeo, new THREE.MeshStandardMaterial({ color: 0x2a1a0a, roughness: 0.95 }));
+      sole.position.set(0, -h * 0.35, h * 0.01);
+      legGroup.add(sole);
+      // Boot cuff (folded leather top)
+      const bootCuffGeo = new THREE.CylinderGeometry(h * 0.048, h * 0.05, h * 0.02, 6);
+      const bootCuff = new THREE.Mesh(bootCuffGeo, new THREE.MeshStandardMaterial({ color: 0x5a3a1a, roughness: 0.9 }));
+      bootCuff.position.y = -h * 0.24;
+      legGroup.add(bootCuff);
+      body.add(legGroup);
+    }
 
-    // Left leg assembly
-    const leftLeg = new THREE.Group();
-    leftLeg.name = "leftLeg";
-    const lThigh = new THREE.Mesh(this._cylGeo, legMat);
-    lThigh.scale.set(0.4, h * 0.18, 0.4);
-    lThigh.position.y = h * 0.09;
-    leftLeg.add(lThigh);
-    const lShin = new THREE.Mesh(this._cylGeo, legMat);
-    lShin.scale.set(0.32, h * 0.14, 0.32);
-    lShin.position.y = -h * 0.05;
-    leftLeg.add(lShin);
-    // Boot
-    const lBoot = new THREE.Mesh(this._boxGeo, bootMat);
-    lBoot.scale.set(h * 0.08, h * 0.08, h * 0.14);
-    lBoot.position.set(0, -h * 0.12, h * 0.02);
-    leftLeg.add(lBoot);
-    // Boot cuff
-    const lCuff = new THREE.Mesh(this._cylGeo, bootMat);
-    lCuff.scale.set(0.38, h * 0.025, 0.38);
-    lCuff.position.y = -h * 0.02;
-    leftLeg.add(lCuff);
-    leftLeg.position.set(-h * 0.1, h * 0.22, 0);
-    g.add(leftLeg);
-
-    // Right leg assembly
-    const rightLeg = new THREE.Group();
-    rightLeg.name = "rightLeg";
-    const rThigh = new THREE.Mesh(this._cylGeo, legMat);
-    rThigh.scale.set(0.4, h * 0.18, 0.4);
-    rThigh.position.y = h * 0.09;
-    rightLeg.add(rThigh);
-    const rShin = new THREE.Mesh(this._cylGeo, legMat);
-    rShin.scale.set(0.32, h * 0.14, 0.32);
-    rShin.position.y = -h * 0.05;
-    rightLeg.add(rShin);
-    const rBoot = new THREE.Mesh(this._boxGeo, bootMat);
-    rBoot.scale.set(h * 0.08, h * 0.08, h * 0.14);
-    rBoot.position.set(0, -h * 0.12, h * 0.02);
-    rightLeg.add(rBoot);
-    const rCuff = new THREE.Mesh(this._cylGeo, bootMat);
-    rCuff.scale.set(0.38, h * 0.025, 0.38);
-    rCuff.position.y = -h * 0.02;
-    rightLeg.add(rCuff);
-    rightLeg.position.set(h * 0.1, h * 0.22, 0);
-    g.add(rightLeg);
-
-    // === BACKPACK (satchel for carrying goods) ===
-    const packMat = new THREE.MeshStandardMaterial({ color: 0xa08040, roughness: 0.85 });
-    const pack = new THREE.Mesh(this._boxGeo, packMat);
-    pack.scale.set(h * 0.3, h * 0.22, h * 0.12);
-    pack.position.set(0, h * 0.55, -h * 0.17);
-    g.add(pack);
-    // Pack straps
-    const strapMat = new THREE.MeshStandardMaterial({ color: 0x5c3a1e, roughness: 0.85 });
+    // === BACKPACK (wooden frame pack with bundle) ===
+    const packFrameMat = new THREE.MeshStandardMaterial({ color: 0x7a5a30, roughness: 0.9 });
+    const packBundleMat = new THREE.MeshStandardMaterial({ color: 0xc0a060, roughness: 0.85 });
+    // Wooden frame (two vertical rails + cross bar)
+    for (let side = -1; side <= 1; side += 2) {
+      const rail = new THREE.Mesh(this._boxGeo, packFrameMat);
+      rail.scale.set(h * 0.015, h * 0.28, h * 0.015);
+      rail.position.set(side * h * 0.1, h * 0.55, -h * 0.17);
+      body.add(rail);
+    }
+    // Cross bars
+    for (const yOff of [0.44, 0.62]) {
+      const crossBar = new THREE.Mesh(this._boxGeo, packFrameMat);
+      crossBar.scale.set(h * 0.2, h * 0.015, h * 0.015);
+      crossBar.position.set(0, h * yOff, -h * 0.17);
+      body.add(crossBar);
+    }
+    // Bundle (wrapped cloth/sack)
+    const bundleGeo = new THREE.SphereGeometry(h * 0.1, 7, 6);
+    const bundle = new THREE.Mesh(bundleGeo, packBundleMat);
+    bundle.position.set(0, h * 0.55, -h * 0.2);
+    bundle.scale.set(0.9, 1.1, 0.7);
+    body.add(bundle);
+    // Bundle tie (rope)
+    const ropeGeo = new THREE.TorusGeometry(h * 0.08, h * 0.005, 4, 8);
+    const rope = new THREE.Mesh(ropeGeo, new THREE.MeshStandardMaterial({ color: 0x8b7748, roughness: 0.9 }));
+    rope.position.set(0, h * 0.55, -h * 0.16);
+    rope.rotation.y = Math.PI * 0.5;
+    body.add(rope);
+    // Shoulder straps (visible from front)
+    const strapMat = new THREE.MeshStandardMaterial({ color: 0x6a4a20, roughness: 0.85 });
     for (let side = -1; side <= 1; side += 2) {
       const strap = new THREE.Mesh(this._boxGeo, strapMat);
-      strap.scale.set(h * 0.025, h * 0.28, h * 0.015);
-      strap.position.set(side * h * 0.08, h * 0.58, -h * 0.06);
-      strap.rotation.x = -0.15;
-      g.add(strap);
+      strap.scale.set(h * 0.025, h * 0.3, h * 0.015);
+      strap.position.set(side * h * 0.08, h * 0.58, -h * 0.04);
+      strap.rotation.x = -0.2;
+      body.add(strap);
     }
-    // Pack flap
-    const flap = new THREE.Mesh(this._boxGeo, new THREE.MeshStandardMaterial({
-      color: 0x8b6b3a, roughness: 0.85,
-    }));
-    flap.scale.set(h * 0.28, h * 0.06, h * 0.08);
-    flap.position.set(0, h * 0.67, -h * 0.18);
-    flap.rotation.x = 0.2;
-    g.add(flap);
 
-    // === CARGO (resource being carried, hidden by default) ===
+    // === CARGO (resource being carried – on top of pack, hidden by default) ===
     const cargoMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
     const cargo = new THREE.Mesh(this._boxGeo, cargoMat);
     cargo.name = "cargo";
-    cargo.scale.set(h * 0.2, h * 0.15, h * 0.15);
-    cargo.position.set(0, h * 0.75, -h * 0.22);
+    cargo.scale.set(h * 0.18, h * 0.12, h * 0.12);
+    cargo.position.set(0, h * 0.72, -h * 0.2);
     cargo.visible = false;
-    g.add(cargo);
+    body.add(cargo);
 
+    // === SHADOW (simple circle on ground) ===
+    const shadowGeo = new THREE.CircleGeometry(h * 0.15, 8);
+    const shadowMat = new THREE.MeshBasicMaterial({
+      color: 0x000000, transparent: true, opacity: 0.2, depthWrite: false,
+    });
+    const shadow = new THREE.Mesh(shadowGeo, shadowMat);
+    shadow.rotation.x = -Math.PI * 0.5;
+    shadow.position.y = -h * 0.35;
+    g.add(shadow);
+
+    g.castShadow = true;
     return g;
   }
 

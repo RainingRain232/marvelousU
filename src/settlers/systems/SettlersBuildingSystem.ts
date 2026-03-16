@@ -173,7 +173,7 @@ export function updateConstruction(state: SettlersState, dt: number): void {
     const allDelivered = building.constructionNeeds.every((n) => n.amount <= 0);
     if (allDelivered) {
       // Advance construction progress
-      building.constructionProgress += dt * 0.2; // ~5 seconds to build
+      building.constructionProgress += dt * 0.5; // ~2 seconds to build
       if (building.constructionProgress >= 1) {
         building.constructionProgress = 1;
         building.active = true;
