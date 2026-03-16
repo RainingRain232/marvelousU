@@ -93,6 +93,14 @@ export class ArthurianRPGGame {
   // Weather
   private _weatherTimer = 0;
   private _weatherModifiers: WeatherModifiers = getWeatherModifiers("clear");
+  // Visual effects
+  private _floatingDmg: { text: string; x: number; y: number; t: number; color: string; crit: boolean }[] = [];
+  private _weaponBob = 0;
+  private _hitFlashTimer = 0;
+  private _screenShakeTimer = 0;
+  private _screenShakeIntensity = 0;
+  private _rainDrops: { x: number; y: number; speed: number; len: number }[] = [];
+  private _snowFlakes: { x: number; y: number; speed: number; drift: number; size: number }[] = [];
   // Handlers
   private _kd: ((e: KeyboardEvent) => void) | null = null;
   private _ku: ((e: KeyboardEvent) => void) | null = null;
@@ -302,6 +310,11 @@ export class ArthurianRPGGame {
     }
     // Notifications
     for (let i = this._notifs.length - 1; i >= 0; i--) { this._notifs[i].t -= dt; if (this._notifs[i].t <= 0) this._notifs.splice(i, 1); }
+    // Visual effects timers
+    for (let i = this._floatingDmg.length - 1; i >= 0; i--) { this._floatingDmg[i].t -= dt; this._floatingDmg[i].y -= 40 * dt; if (this._floatingDmg[i].t <= 0) this._floatingDmg.splice(i, 1); }
+    if (this._hitFlashTimer > 0) this._hitFlashTimer -= dt;
+    if (this._screenShakeTimer > 0) this._screenShakeTimer -= dt;
+    this._weaponBob += dt * (this._input.sprint ? 12 : this._input.forward || this._input.back || this._input.left || this._input.right ? 7 : 1.5);
     // -- Audio: ambient + footsteps --
     const _pp = this._state.player.combatant.position;
     rpgAudio.updateAmbient(dt, this._state.world.weather, this._state.worldTime, _pp);
@@ -388,6 +401,8 @@ export class ArthurianRPGGame {
       let dmg = Math.max(1, Math.floor(d.physicalDamage * (1 + cb.comboCount * 0.1) * (crit ? d.critMultiplier : 1)));
       best.hp -= dmg; cb.inCombat = true; cb.targetId = best.id;
       rpgAudio.playHitImpact(crit); this._notify(crit ? `CRITICAL! ${dmg} damage` : `${dmg} damage`);
+      // Floating damage number
+      this._spawnDmgNumber(`${dmg}`, best, crit ? "#ff4444" : "#ffffff", crit);
       if (best.hp <= 0) { best.state = EnemyBehavior.Dead; this._killEnemy(best); }
     }
   }
@@ -432,6 +447,7 @@ export class ArthurianRPGGame {
             let dmg = Math.floor(5 + e.level * 2 + Math.random() * 5);
             if (this._state.player.combat.blockActive) { dmg = Math.floor(dmg * (1 - calculateDerivedStats(this._state.player).blockEfficiency)); rpgAudio.playBlock(); this._notify(`Blocked! ${dmg} dmg`); }
             this._state.player.combatant.hp -= dmg;
+            this._hitFlashTimer = 0.3; this._screenShakeTimer = 0.15; this._screenShakeIntensity = dmg > 20 ? 8 : 4;
             if (this._state.player.combatant.hp <= 0) { this._state.player.combatant.hp = 0; this._phase = ArthurianPhase.DEAD; rpgAudio.playDeath(); this._notify("You have fallen..."); }
           }
         }
@@ -815,12 +831,152 @@ export class ArthurianRPGGame {
     this._movementSystem = new ArthurianRPGMovementSystem(this._terrainProvider);
   }
 
+  private _drawWeapon(ctx: CanvasRenderingContext2D, W: number, H: number): void {
+    if (!this._state) return;
+    const cls = CLASS_LIST[this._classIdx];
+    const isMoving = this._input.forward || this._input.back || this._input.left || this._input.right;
+    const bobX = Math.sin(this._weaponBob) * (isMoving ? 8 : 2);
+    const bobY = Math.abs(Math.cos(this._weaponBob)) * (isMoving ? 12 : 3);
+    const attackAnim = this._state.player.combat.cooldowns["attack"] ? Math.max(0, this._state.player.combat.cooldowns["attack"]) / 0.5 : 0;
+    const swingOff = attackAnim > 0 ? Math.sin(attackAnim * Math.PI) * 40 : 0;
+    const baseX = W * 0.65 + bobX;
+    const baseY = H * 0.6 + bobY - swingOff;
+
+    ctx.save();
+    ctx.translate(baseX, baseY);
+    ctx.rotate(attackAnim > 0 ? -attackAnim * 0.8 : 0);
+
+    if (cls === ArthurianClass.KNIGHT || cls === ArthurianClass.PALADIN) {
+      // Sword
+      // Hand/gauntlet
+      ctx.fillStyle = cls === ArthurianClass.PALADIN ? "#b89940" : "#777";
+      ctx.beginPath(); ctx.ellipse(0, 30, 18, 22, 0.15, 0, Math.PI*2); ctx.fill();
+      // Grip
+      ctx.fillStyle = "#442200";
+      ctx.fillRect(-4, -40, 8, 70);
+      // Cross guard
+      ctx.fillStyle = cls === ArthurianClass.PALADIN ? "#c9a84c" : "#888";
+      ctx.fillRect(-18, -42, 36, 6);
+      // Blade
+      const bladeGrad = ctx.createLinearGradient(0, -42, 0, -160);
+      bladeGrad.addColorStop(0, "#aab");
+      bladeGrad.addColorStop(0.5, "#dde");
+      bladeGrad.addColorStop(1, "#ccd");
+      ctx.fillStyle = bladeGrad;
+      ctx.beginPath();
+      ctx.moveTo(-8, -42);
+      ctx.lineTo(8, -42);
+      ctx.lineTo(3, -155);
+      ctx.lineTo(0, -165);
+      ctx.lineTo(-3, -155);
+      ctx.closePath(); ctx.fill();
+      // Blade highlight
+      ctx.fillStyle = "rgba(255,255,255,0.15)";
+      ctx.fillRect(-1, -150, 3, 108);
+    } else if (cls === ArthurianClass.MAGE || cls === ArthurianClass.DRUID) {
+      // Staff
+      ctx.fillStyle = cls === ArthurianClass.DRUID ? "#3a5522" : "#4a3a6a";
+      ctx.beginPath(); ctx.ellipse(0, 35, 16, 20, 0.1, 0, Math.PI*2); ctx.fill();
+      // Staff shaft
+      ctx.fillStyle = "#553322";
+      ctx.fillRect(-4, -130, 8, 165);
+      // Staff head orb
+      const orbColor = cls === ArthurianClass.MAGE ? "rgba(100,120,255,0.8)" : "rgba(80,200,100,0.8)";
+      ctx.shadowColor = cls === ArthurianClass.MAGE ? "rgba(100,120,255,0.6)" : "rgba(80,200,100,0.6)";
+      ctx.shadowBlur = 15;
+      ctx.fillStyle = orbColor;
+      ctx.beginPath(); ctx.arc(0, -138, 10, 0, Math.PI*2); ctx.fill();
+      ctx.shadowBlur = 0;
+      // Glow particles around orb
+      const pt = Date.now() * 0.003;
+      for (let i = 0; i < 4; i++) {
+        const px = Math.cos(pt + i * 1.57) * 14;
+        const py = -138 + Math.sin(pt + i * 1.57) * 14;
+        ctx.fillStyle = cls === ArthurianClass.MAGE ? "rgba(150,160,255,0.4)" : "rgba(120,255,150,0.4)";
+        ctx.beginPath(); ctx.arc(px, py, 2, 0, Math.PI*2); ctx.fill();
+      }
+    } else if (cls === ArthurianClass.RANGER) {
+      // Bow (held vertically, not modifying the 3D renderer's bow orientation)
+      ctx.fillStyle = "#556633";
+      ctx.beginPath(); ctx.ellipse(0, 30, 15, 18, 0.1, 0, Math.PI*2); ctx.fill();
+      // Bow limb
+      ctx.strokeStyle = "#664422";
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(0, -100);
+      ctx.quadraticCurveTo(-25, -50, -20, 0);
+      ctx.quadraticCurveTo(-25, 50, 0, 80);
+      ctx.stroke();
+      // String
+      ctx.strokeStyle = "#ccc";
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(0, -100); ctx.lineTo(0, 80); ctx.stroke();
+      // Arrow
+      ctx.fillStyle = "#886644";
+      ctx.fillRect(-2, -110, 4, 120);
+      // Arrowhead
+      ctx.fillStyle = "#aaa";
+      ctx.beginPath();
+      ctx.moveTo(0, -118); ctx.lineTo(-4, -108); ctx.lineTo(4, -108);
+      ctx.closePath(); ctx.fill();
+    } else if (cls === ArthurianClass.ROGUE) {
+      // Dagger
+      ctx.fillStyle = "#222";
+      ctx.beginPath(); ctx.ellipse(0, 25, 14, 18, 0.15, 0, Math.PI*2); ctx.fill();
+      // Handle
+      ctx.fillStyle = "#333";
+      ctx.fillRect(-3, -15, 6, 40);
+      // Guard
+      ctx.fillStyle = "#666";
+      ctx.fillRect(-10, -17, 20, 4);
+      // Blade
+      ctx.fillStyle = "#bbc";
+      ctx.beginPath();
+      ctx.moveTo(-5, -17); ctx.lineTo(5, -17);
+      ctx.lineTo(2, -75); ctx.lineTo(0, -80); ctx.lineTo(-2, -75);
+      ctx.closePath(); ctx.fill();
+      // Second dagger (off-hand, slightly behind)
+      ctx.globalAlpha = 0.6;
+      ctx.translate(-W * 0.25, 15);
+      ctx.fillStyle = "#222";
+      ctx.beginPath(); ctx.ellipse(0, 25, 13, 17, -0.15, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = "#333"; ctx.fillRect(-3, -15, 6, 40);
+      ctx.fillStyle = "#666"; ctx.fillRect(-10, -17, 20, 4);
+      ctx.fillStyle = "#bbc";
+      ctx.beginPath();
+      ctx.moveTo(-5, -17); ctx.lineTo(5, -17);
+      ctx.lineTo(2, -70); ctx.lineTo(0, -75); ctx.lineTo(-2, -70);
+      ctx.closePath(); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+    ctx.restore();
+  }
+
+  private _spawnDmgNumber(text: string, enemy: EnemyInstance, color: string, crit: boolean): void {
+    if (!this._state || !this._canvas) return;
+    const W = this._canvas.width, H = this._canvas.height;
+    const pp = this._state.player.combatant.position;
+    const dx = enemy.pos.x - pp.x, dz = enemy.pos.z - pp.z, dist = Math.sqrt(dx*dx+dz*dz);
+    const ang = Math.atan2(dx, dz) - this._yaw;
+    const horizon = H * 0.52;
+    const sx = W/2 + Math.sin(ang) * (W*0.3) / (dist*0.1+1);
+    const sy = horizon + 30 / (dist*0.15+1) - 30;
+    this._floatingDmg.push({ text, x: sx + (Math.random()-0.5)*20, y: sy, t: 1.2, color, crit });
+  }
+
   private _rPlay(ctx: CanvasRenderingContext2D, W: number, H: number): void {
     if (!this._state) return;
     const p = this._state.player, c = p.combatant, w = this._state.world;
     const t = this._state.worldTime;
     const pp = c.position;
     const horizon = H * 0.52;
+
+    // ============ SCREEN SHAKE ============
+    ctx.save();
+    if (this._screenShakeTimer > 0) {
+      const si = this._screenShakeIntensity * (this._screenShakeTimer / 0.15);
+      ctx.translate((Math.random()-0.5)*si*2, (Math.random()-0.5)*si*2);
+    }
 
     // ============ SKY with gradient layers ============
     const isDay = t >= 6 && t < 20;
@@ -930,6 +1086,14 @@ export class ArthurianRPGGame {
     ctx.lineTo(W, horizon); ctx.closePath(); ctx.fill();
     ctx.restore();
 
+    // ============ ATMOSPHERIC HAZE between mountains and ground ============
+    const hazeGrad = ctx.createLinearGradient(0, horizon - 30, 0, horizon + 15);
+    const hazeAlpha = isDay ? 0.15 : 0.08;
+    hazeGrad.addColorStop(0, "rgba(0,0,0,0)");
+    hazeGrad.addColorStop(0.4, `rgba(${isDay ? "160,180,200" : "40,50,70"},${hazeAlpha})`);
+    hazeGrad.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = hazeGrad; ctx.fillRect(0, horizon - 30, W, 45);
+
     // ============ GROUND with perspective lines and region color ============
     const regionColor = REGIONS[w.currentRegion]?.color ?? "#3a5a3a";
     // Parse region color for gradient
@@ -979,6 +1143,30 @@ export class ArthurianRPGGame {
     }
     ctx.restore();
 
+    // ============ WATER PATCHES / PONDS ============
+    ctx.save();
+    for (let i = 0; i < 4; i++) {
+      const wx = this._srand(i * 113 + 1000) * W;
+      const wDepth = 0.15 + this._srand(i * 79 + 1100) * 0.4;
+      const wy = horizon + wDepth * wDepth * (H - horizon) * 0.7 + 15;
+      const ww = (20 + this._srand(i * 67 + 1200) * 40) * (1 - wDepth * 0.5);
+      const wh = ww * 0.25;
+      // Water reflection
+      const waterGrad = ctx.createRadialGradient(wx, wy, 0, wx, wy, ww);
+      waterGrad.addColorStop(0, isDay ? `rgba(60,130,180,${0.35 - wDepth*0.1})` : `rgba(20,40,70,${0.3 - wDepth*0.1})`);
+      waterGrad.addColorStop(0.7, isDay ? `rgba(40,100,150,${0.25 - wDepth*0.05})` : `rgba(15,30,55,${0.2})`);
+      waterGrad.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = waterGrad;
+      ctx.beginPath(); ctx.ellipse(wx, wy, ww, wh, 0, 0, Math.PI*2); ctx.fill();
+      // Shimmer highlights
+      if (isDay) {
+        const shimmer = Math.sin(Date.now() * 0.002 + i * 3) * 0.5 + 0.5;
+        ctx.fillStyle = `rgba(255,255,255,${shimmer * 0.12})`;
+        ctx.beginPath(); ctx.ellipse(wx - ww*0.2, wy - wh*0.2, ww*0.3, wh*0.2, 0, 0, Math.PI*2); ctx.fill();
+      }
+    }
+    ctx.restore();
+
     // ============ TREES in the distance ============
     for (let i = 0; i < 25; i++) {
       const treeAngle = (this._srand(i * 97) - 0.5) * 2.5;
@@ -1009,7 +1197,7 @@ export class ArthurianRPGGame {
       }
     }
 
-    // ============ ENEMIES ============
+    // ============ ENEMIES (humanoid silhouettes) ============
     for (const e of w.enemies) {
       if (e.hp <= 0) continue;
       const dx = e.pos.x - pp.x, dz = e.pos.z - pp.z, dist = Math.sqrt(dx*dx+dz*dz);
@@ -1018,33 +1206,139 @@ export class ArthurianRPGGame {
       const sx = W/2 + Math.sin(ang) * (W*0.3) / (dist*0.1+1);
       const sy = horizon + 30 / (dist*0.15+1);
       const sz = Math.max(8, 45 / (dist*0.2+1));
+      const isBeast = /wolf|spider|boar|bear|dragon|troll|giant/i.test(e.defId);
+      const isUndead = /skeleton|wraith|undead|spectral/i.test(e.defId);
+      // Idle animation bob
+      const bob = Math.sin(Date.now() * 0.003 + e.pos.x) * sz * 0.03;
       // Shadow
-      ctx.fillStyle = "rgba(0,0,0,0.15)";
-      ctx.beginPath(); ctx.ellipse(sx, sy + sz * 0.8, sz * 0.7, sz * 0.2, 0, 0, Math.PI*2); ctx.fill();
-      // Body with gradient
-      const enemyGrad = ctx.createRadialGradient(sx - sz*0.2, sy - sz*0.2, 0, sx, sy, sz);
-      const eCol = e.state === EnemyBehavior.Attack ? [255,60,60] : e.state === EnemyBehavior.Chase ? [255,170,0] : [170,100,100];
-      enemyGrad.addColorStop(0, `rgb(${Math.min(255,eCol[0]+40)},${Math.min(255,eCol[1]+40)},${Math.min(255,eCol[2]+40)})`);
-      enemyGrad.addColorStop(1, `rgb(${eCol[0]>>1},${eCol[1]>>1},${eCol[2]>>1})`);
-      ctx.fillStyle = enemyGrad;
-      ctx.beginPath(); ctx.arc(sx, sy, sz, 0, Math.PI*2); ctx.fill();
-      // Eyes
-      ctx.fillStyle = e.state === EnemyBehavior.Attack ? "#ff0" : "#ffa";
-      const eyeOff = sz * 0.25;
-      ctx.beginPath(); ctx.arc(sx - eyeOff, sy - eyeOff * 0.5, sz * 0.08, 0, Math.PI*2); ctx.fill();
-      ctx.beginPath(); ctx.arc(sx + eyeOff, sy - eyeOff * 0.5, sz * 0.08, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = "rgba(0,0,0,0.2)";
+      ctx.beginPath(); ctx.ellipse(sx, sy + sz * 0.9, sz * 0.6, sz * 0.15, 0, 0, Math.PI*2); ctx.fill();
+      // Color based on state and type
+      const eCol = e.state === EnemyBehavior.Attack ? [200,50,40] : e.state === EnemyBehavior.Chase ? [180,130,40] : isUndead ? [100,140,120] : isBeast ? [120,90,60] : [140,110,100];
+      if (isBeast) {
+        // Quadruped beast silhouette
+        const bodyGrad = ctx.createLinearGradient(sx, sy - sz*0.3, sx, sy + sz*0.5);
+        bodyGrad.addColorStop(0, `rgb(${Math.min(255,eCol[0]+30)},${Math.min(255,eCol[1]+30)},${Math.min(255,eCol[2]+20)})`);
+        bodyGrad.addColorStop(1, `rgb(${eCol[0]>>1},${eCol[1]>>1},${eCol[2]>>1})`);
+        ctx.fillStyle = bodyGrad;
+        // Body oval
+        ctx.beginPath(); ctx.ellipse(sx, sy - sz*0.1 + bob, sz*0.7, sz*0.35, 0, 0, Math.PI*2); ctx.fill();
+        // Head
+        ctx.beginPath(); ctx.ellipse(sx - sz*0.55, sy - sz*0.25 + bob, sz*0.25, sz*0.2, -0.3, 0, Math.PI*2); ctx.fill();
+        // Legs
+        ctx.fillStyle = `rgb(${eCol[0]-20},${eCol[1]-20},${eCol[2]-15})`;
+        const legAnim = Math.sin(Date.now() * 0.008 + e.pos.x) * sz * 0.08;
+        ctx.fillRect(sx - sz*0.35, sy + sz*0.15, sz*0.08, sz*0.35 + legAnim);
+        ctx.fillRect(sx - sz*0.15, sy + sz*0.15, sz*0.08, sz*0.35 - legAnim);
+        ctx.fillRect(sx + sz*0.15, sy + sz*0.15, sz*0.08, sz*0.35 + legAnim);
+        ctx.fillRect(sx + sz*0.35, sy + sz*0.15, sz*0.08, sz*0.35 - legAnim);
+        // Eyes
+        ctx.fillStyle = e.state === EnemyBehavior.Attack ? "#ff2200" : "#ffcc00";
+        ctx.beginPath(); ctx.arc(sx - sz*0.65, sy - sz*0.3 + bob, sz*0.06, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(sx - sz*0.52, sy - sz*0.3 + bob, sz*0.06, 0, Math.PI*2); ctx.fill();
+      } else {
+        // Humanoid silhouette
+        const bodyGrad = ctx.createLinearGradient(sx, sy - sz, sx, sy + sz*0.5);
+        bodyGrad.addColorStop(0, `rgb(${Math.min(255,eCol[0]+40)},${Math.min(255,eCol[1]+40)},${Math.min(255,eCol[2]+30)})`);
+        bodyGrad.addColorStop(1, `rgb(${eCol[0]>>1},${eCol[1]>>1},${eCol[2]>>1})`);
+        ctx.fillStyle = bodyGrad;
+        // Head
+        ctx.beginPath(); ctx.arc(sx, sy - sz*0.65 + bob, sz*0.2, 0, Math.PI*2); ctx.fill();
+        // Neck
+        ctx.fillRect(sx - sz*0.06, sy - sz*0.48 + bob, sz*0.12, sz*0.1);
+        // Torso (trapezoid)
+        ctx.beginPath();
+        ctx.moveTo(sx - sz*0.25, sy - sz*0.4 + bob);
+        ctx.lineTo(sx + sz*0.25, sy - sz*0.4 + bob);
+        ctx.lineTo(sx + sz*0.2, sy + sz*0.15 + bob);
+        ctx.lineTo(sx - sz*0.2, sy + sz*0.15 + bob);
+        ctx.closePath(); ctx.fill();
+        // Arms
+        const armSwing = e.state === EnemyBehavior.Attack ? Math.sin(Date.now() * 0.015) * sz * 0.15 : 0;
+        ctx.fillRect(sx - sz*0.35, sy - sz*0.38 + bob, sz*0.1, sz*0.4);
+        ctx.fillRect(sx + sz*0.25, sy - sz*0.38 + bob + armSwing, sz*0.1, sz*0.4);
+        // Legs
+        const legStep = (e.state === EnemyBehavior.Chase || e.state === EnemyBehavior.Flee) ? Math.sin(Date.now() * 0.01 + e.pos.x) * sz * 0.1 : 0;
+        ctx.fillRect(sx - sz*0.15, sy + sz*0.12 + bob, sz*0.12, sz*0.45 + legStep);
+        ctx.fillRect(sx + sz*0.05, sy + sz*0.12 + bob, sz*0.12, sz*0.45 - legStep);
+        // Eyes
+        ctx.fillStyle = isUndead ? "#44ffaa" : e.state === EnemyBehavior.Attack ? "#ff2200" : "#ffdd88";
+        ctx.beginPath(); ctx.arc(sx - sz*0.08, sy - sz*0.68 + bob, sz*0.045, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(sx + sz*0.08, sy - sz*0.68 + bob, sz*0.045, 0, Math.PI*2); ctx.fill();
+        // Weapon silhouette (right hand)
+        if (e.state === EnemyBehavior.Attack || e.state === EnemyBehavior.Chase) {
+          ctx.strokeStyle = `rgba(${eCol[0]+60},${eCol[1]+40},${eCol[2]+20},0.7)`;
+          ctx.lineWidth = Math.max(1, sz * 0.04);
+          ctx.beginPath();
+          ctx.moveTo(sx + sz*0.3, sy - sz*0.15 + bob + armSwing);
+          ctx.lineTo(sx + sz*0.5, sy - sz*0.45 + bob + armSwing);
+          ctx.stroke();
+        }
+      }
+      // Undead glow effect
+      if (isUndead) {
+        ctx.shadowColor = "rgba(80,255,160,0.4)"; ctx.shadowBlur = 10;
+        ctx.fillStyle = "rgba(80,255,160,0.05)";
+        ctx.beginPath(); ctx.arc(sx, sy - sz*0.2 + bob, sz*0.8, 0, Math.PI*2); ctx.fill();
+        ctx.shadowBlur = 0;
+      }
       // Health bar with border
-      const barW = sz * 2, barH = 4, barY = sy - sz - 10;
-      ctx.fillStyle = "#0008"; ctx.fillRect(sx - barW/2 - 1, barY - 1, barW + 2, barH + 2);
-      ctx.fillStyle = "#400"; ctx.fillRect(sx - barW/2, barY, barW, barH);
+      const barW = sz * 2, barH = 4, barY2 = sy - sz - 16;
+      ctx.fillStyle = "#0008"; ctx.fillRect(sx - barW/2 - 1, barY2 - 1, barW + 2, barH + 2);
+      ctx.fillStyle = "#400"; ctx.fillRect(sx - barW/2, barY2, barW, barH);
       const hpRatio = e.hp / e.maxHp;
       ctx.fillStyle = hpRatio > 0.5 ? "#2c2" : hpRatio > 0.25 ? "#cc2" : "#f33";
-      ctx.fillRect(sx - barW/2, barY, barW * hpRatio, barH);
+      ctx.fillRect(sx - barW/2, barY2, barW * hpRatio, barH);
       // Name label with shadow
       ctx.fillStyle = "#0006"; ctx.font = `${Math.max(9, 11 * (sz/15))|0}px monospace`; ctx.textAlign = "center";
-      ctx.fillText(`${e.defId.replace(/_/g," ")} Lv${e.level}`, sx+1, barY - 3);
+      ctx.fillText(`${e.defId.replace(/_/g," ")} Lv${e.level}`, sx+1, barY2 - 3);
       ctx.fillStyle = "#ddd";
-      ctx.fillText(`${e.defId.replace(/_/g," ")} Lv${e.level}`, sx, barY - 4);
+      ctx.fillText(`${e.defId.replace(/_/g," ")} Lv${e.level}`, sx, barY2 - 4);
+    }
+
+    // ============ NPCs IN WORLD ============
+    for (const n of w.npcs) {
+      const ndx = n.pos.x - pp.x, ndz = n.pos.z - pp.z, ndist = Math.sqrt(ndx*ndx+ndz*ndz);
+      if (ndist > 35 || ndist < 0.5) continue;
+      const nang = Math.atan2(ndx, ndz) - this._yaw;
+      const nsx = W/2 + Math.sin(nang) * (W*0.3) / (ndist*0.1+1);
+      const nsy = horizon + 30 / (ndist*0.15+1);
+      const nsz = Math.max(6, 35 / (ndist*0.2+1));
+      const nbob = Math.sin(Date.now() * 0.002 + n.pos.x * 3) * nsz * 0.02;
+      // Shadow
+      ctx.fillStyle = "rgba(0,0,0,0.15)";
+      ctx.beginPath(); ctx.ellipse(nsx, nsy + nsz * 0.85, nsz * 0.4, nsz * 0.12, 0, 0, Math.PI*2); ctx.fill();
+      // Determine NPC color by role
+      const npcColors: Record<string, [number,number,number]> = {
+        merchant: [140,120,80], guard: [100,100,120], innkeeper: [130,100,70],
+        villager: [110,100,90], noble: [120,90,140], priest: [180,170,150],
+      };
+      const nc = npcColors[n.role] ?? [110,100,90];
+      const nGrad = ctx.createLinearGradient(nsx, nsy - nsz, nsx, nsy + nsz*0.3);
+      nGrad.addColorStop(0, `rgb(${nc[0]+30},${nc[1]+30},${nc[2]+20})`);
+      nGrad.addColorStop(1, `rgb(${nc[0]-20},${nc[1]-20},${nc[2]-15})`);
+      ctx.fillStyle = nGrad;
+      // Head
+      ctx.beginPath(); ctx.arc(nsx, nsy - nsz*0.6 + nbob, nsz*0.17, 0, Math.PI*2); ctx.fill();
+      // Torso
+      ctx.beginPath();
+      ctx.moveTo(nsx - nsz*0.2, nsy - nsz*0.35 + nbob);
+      ctx.lineTo(nsx + nsz*0.2, nsy - nsz*0.35 + nbob);
+      ctx.lineTo(nsx + nsz*0.17, nsy + nsz*0.1 + nbob);
+      ctx.lineTo(nsx - nsz*0.17, nsy + nsz*0.1 + nbob);
+      ctx.closePath(); ctx.fill();
+      // Legs
+      ctx.fillRect(nsx - nsz*0.12, nsy + nsz*0.08 + nbob, nsz*0.1, nsz*0.4);
+      ctx.fillRect(nsx + nsz*0.02, nsy + nsz*0.08 + nbob, nsz*0.1, nsz*0.4);
+      // Friendly marker (green diamond above head)
+      ctx.fillStyle = "#33dd55";
+      ctx.save(); ctx.translate(nsx, nsy - nsz*0.85 + nbob); ctx.rotate(Math.PI/4);
+      ctx.fillRect(-3, -3, 6, 6); ctx.restore();
+      // Name
+      if (ndist < 12) {
+        ctx.fillStyle = "#33dd55"; ctx.font = `${Math.max(8, 10*(nsz/12))|0}px serif`; ctx.textAlign = "center";
+        ctx.fillText(n.name, nsx, nsy - nsz*0.95 + nbob);
+      }
     }
 
     // ============ ATMOSPHERIC PARTICLES ============
@@ -1088,11 +1382,184 @@ export class ArthurianRPGGame {
       ctx.beginPath(); ctx.arc(cx, cy, 1.5, 0, Math.PI*2); ctx.fill();
     }
 
+    // ============ WEATHER EFFECTS ============
+    const weather = w.weather;
+    if (weather === "rain" || weather === "storm") {
+      // Initialize rain drops if needed
+      while (this._rainDrops.length < (weather === "storm" ? 250 : 120)) {
+        this._rainDrops.push({ x: Math.random() * W, y: Math.random() * H, speed: 600 + Math.random() * 400, len: 8 + Math.random() * 12 });
+      }
+      this._rainDrops.length = weather === "storm" ? 250 : 120;
+      ctx.save();
+      const rainAlpha = weather === "storm" ? 0.4 : 0.25;
+      ctx.strokeStyle = `rgba(180,200,230,${rainAlpha})`;
+      ctx.lineWidth = 1;
+      for (const drop of this._rainDrops) {
+        drop.y += drop.speed * this.DT;
+        drop.x -= 30 * this.DT; // wind drift
+        if (drop.y > H) { drop.y = -drop.len; drop.x = Math.random() * W; }
+        if (drop.x < 0) drop.x = W;
+        ctx.beginPath(); ctx.moveTo(drop.x, drop.y); ctx.lineTo(drop.x - 2, drop.y + drop.len); ctx.stroke();
+      }
+      // Puddle splashes at bottom
+      ctx.fillStyle = `rgba(180,210,240,${rainAlpha * 0.3})`;
+      for (let i = 0; i < 15; i++) {
+        const splashX = (this._srand(i * 31 + Date.now() * 0.001 | 0) * W);
+        const splashY = horizon + (H - horizon) * 0.3 + this._srand(i * 47) * (H - horizon) * 0.5;
+        const splashR = 2 + this._srand(i * 23) * 4;
+        ctx.beginPath(); ctx.ellipse(splashX, splashY, splashR, splashR * 0.3, 0, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.restore();
+      // Dark overlay for storms
+      if (weather === "storm") {
+        ctx.fillStyle = "rgba(20,20,40,0.15)"; ctx.fillRect(0, 0, W, H);
+        // Lightning flash
+        if (Math.random() < 0.002) {
+          ctx.fillStyle = "rgba(220,230,255,0.3)"; ctx.fillRect(0, 0, W, H);
+        }
+      }
+    } else if (weather === "snow") {
+      while (this._snowFlakes.length < 150) {
+        this._snowFlakes.push({ x: Math.random() * W, y: Math.random() * H, speed: 30 + Math.random() * 50, drift: (Math.random() - 0.5) * 40, size: 1.5 + Math.random() * 3 });
+      }
+      this._snowFlakes.length = 150;
+      ctx.save();
+      ctx.fillStyle = "rgba(240,245,255,0.7)";
+      for (const flake of this._snowFlakes) {
+        flake.y += flake.speed * this.DT;
+        flake.x += flake.drift * this.DT + Math.sin(Date.now() * 0.001 + flake.x * 0.01) * 0.5;
+        if (flake.y > H) { flake.y = -5; flake.x = Math.random() * W; }
+        if (flake.x < 0) flake.x = W; if (flake.x > W) flake.x = 0;
+        ctx.globalAlpha = 0.4 + 0.6 * (flake.y / H);
+        ctx.beginPath(); ctx.arc(flake.x, flake.y, flake.size, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      // Light snow ground accumulation
+      ctx.fillStyle = "rgba(230,235,240,0.08)";
+      ctx.fillRect(0, horizon, W, H - horizon);
+      ctx.restore();
+    } else if (weather === "fog") {
+      // Dense fog layers
+      ctx.save();
+      for (let i = 0; i < 5; i++) {
+        const fogY = horizon - 20 + i * (H - horizon + 20) * 0.22;
+        const fogGrad = ctx.createLinearGradient(0, fogY - 30, 0, fogY + 50);
+        fogGrad.addColorStop(0, "rgba(180,190,200,0)");
+        fogGrad.addColorStop(0.5, `rgba(180,190,200,${0.12 + i * 0.04})`);
+        fogGrad.addColorStop(1, "rgba(180,190,200,0)");
+        ctx.fillStyle = fogGrad; ctx.fillRect(0, fogY - 30, W, 80);
+      }
+      // Overall fog tint
+      ctx.fillStyle = "rgba(180,190,200,0.2)"; ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+    } else if (weather === "overcast") {
+      ctx.fillStyle = "rgba(60,65,80,0.08)"; ctx.fillRect(0, 0, W, H);
+    }
+
+    // ============ LIGHT SHAFTS (daytime clear/overcast) ============
+    if (isDay && (weather === "clear" || weather === "overcast")) {
+      const sunProgress = (t - 6) / 14;
+      const shaftAlpha = Math.min(0.06, Math.sin(sunProgress * Math.PI) * 0.08);
+      if (shaftAlpha > 0.01) {
+        const shaftX = W * 0.15 + sunProgress * W * 0.7;
+        ctx.save();
+        ctx.globalAlpha = shaftAlpha;
+        const shaftGrad = ctx.createLinearGradient(shaftX, 0, shaftX + W * 0.1, H);
+        shaftGrad.addColorStop(0, "rgba(255,240,180,0.8)");
+        shaftGrad.addColorStop(0.5, "rgba(255,220,150,0.3)");
+        shaftGrad.addColorStop(1, "rgba(255,200,100,0)");
+        ctx.fillStyle = shaftGrad;
+        ctx.beginPath();
+        ctx.moveTo(shaftX - 15, 0);
+        ctx.lineTo(shaftX + 25, 0);
+        ctx.lineTo(shaftX + W * 0.15, H);
+        ctx.lineTo(shaftX - W * 0.05, H);
+        ctx.closePath(); ctx.fill();
+        // Second shaft
+        ctx.beginPath();
+        ctx.moveTo(shaftX + 60, 0);
+        ctx.lineTo(shaftX + 90, 0);
+        ctx.lineTo(shaftX + W * 0.2, H);
+        ctx.lineTo(shaftX + W * 0.08, H);
+        ctx.closePath(); ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    // ============ AMBIENT WILDLIFE (birds, butterflies) ============
+    if (isDay && weather !== "storm" && weather !== "rain") {
+      ctx.save();
+      const birdTime = Date.now() * 0.001;
+      // Birds circling in the sky
+      for (let i = 0; i < 5; i++) {
+        const bx = W * 0.2 + this._srand(i * 97 + 400) * W * 0.6 + Math.sin(birdTime * 0.3 + i * 2) * 40;
+        const by = horizon * 0.15 + this._srand(i * 71 + 500) * horizon * 0.3 + Math.sin(birdTime * 0.5 + i * 3) * 15;
+        const wingSpan = 4 + this._srand(i * 53) * 3;
+        const wingFlap = Math.sin(birdTime * 6 + i * 4) * wingSpan * 0.5;
+        ctx.strokeStyle = `rgba(30,30,30,${0.3 + this._srand(i*11)*0.2})`;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(bx - wingSpan, by + wingFlap);
+        ctx.quadraticCurveTo(bx - wingSpan * 0.3, by - wingFlap * 0.5, bx, by);
+        ctx.quadraticCurveTo(bx + wingSpan * 0.3, by - wingFlap * 0.5, bx + wingSpan, by + wingFlap);
+        ctx.stroke();
+      }
+      // Butterflies near ground (spring/warm regions)
+      if (w.currentRegion === "camelot" || w.currentRegion === "avalon") {
+        for (let i = 0; i < 3; i++) {
+          const bfx = W * 0.3 + this._srand(i * 83 + 900) * W * 0.4 + Math.sin(birdTime * 1.5 + i * 5) * 25;
+          const bfy = horizon + 30 + this._srand(i * 61 + 950) * 80 + Math.sin(birdTime * 2 + i * 3) * 12;
+          const wingF = Math.abs(Math.sin(birdTime * 8 + i * 6));
+          const bfColors = ["rgba(255,180,60,0.5)", "rgba(120,180,255,0.5)", "rgba(255,100,150,0.5)"];
+          ctx.fillStyle = bfColors[i % 3];
+          ctx.beginPath(); ctx.ellipse(bfx - 3, bfy, 3 * wingF, 2, -0.3, 0, Math.PI*2); ctx.fill();
+          ctx.beginPath(); ctx.ellipse(bfx + 3, bfy, 3 * wingF, 2, 0.3, 0, Math.PI*2); ctx.fill();
+          ctx.fillStyle = "rgba(60,40,20,0.5)";
+          ctx.fillRect(bfx - 0.5, bfy - 2, 1, 4);
+        }
+      }
+      ctx.restore();
+    }
+
     // ============ VIGNETTE OVERLAY ============
     const vigGrad = ctx.createRadialGradient(W/2, H/2, Math.min(W,H)*0.3, W/2, H/2, Math.max(W,H)*0.7);
     vigGrad.addColorStop(0, "rgba(0,0,0,0)");
     vigGrad.addColorStop(1, `rgba(0,0,0,${isDay ? 0.25 : 0.45})`);
     ctx.fillStyle = vigGrad; ctx.fillRect(0, 0, W, H);
+
+    // ============ FLOATING DAMAGE NUMBERS ============
+    for (const fd of this._floatingDmg) {
+      const alpha = Math.min(1, fd.t / 0.3);
+      const fontSize = fd.crit ? 22 : 16;
+      ctx.font = `bold ${fontSize}px monospace`;
+      ctx.textAlign = "center";
+      // Outline
+      ctx.fillStyle = `rgba(0,0,0,${alpha * 0.6})`;
+      ctx.fillText(fd.text, fd.x + 1, fd.y + 1);
+      // Main text
+      ctx.fillStyle = fd.color.startsWith("rgba") ? fd.color : fd.color;
+      ctx.globalAlpha = alpha;
+      if (fd.crit) { ctx.shadowColor = "#ff0000"; ctx.shadowBlur = 8; }
+      ctx.fillText(fd.text, fd.x, fd.y);
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = 1;
+    }
+
+    // ============ FIRST-PERSON WEAPON VIEW ============
+    this._drawWeapon(ctx, W, H);
+
+    // ============ HIT FLASH (red overlay when damaged) ============
+    if (this._hitFlashTimer > 0) {
+      const flashAlpha = this._hitFlashTimer / 0.3 * 0.3;
+      const flashGrad = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, Math.max(W, H) * 0.5);
+      flashGrad.addColorStop(0, "rgba(180,0,0,0)");
+      flashGrad.addColorStop(0.5, `rgba(180,0,0,${flashAlpha * 0.3})`);
+      flashGrad.addColorStop(1, `rgba(180,0,0,${flashAlpha})`);
+      ctx.fillStyle = flashGrad; ctx.fillRect(0, 0, W, H);
+    }
+
+    // Close screen shake ctx.save()
+    ctx.restore();
 
     // ============ HUD: BARS (Skyrim-style, bottom center) ============
     const barCenterX = W / 2;
