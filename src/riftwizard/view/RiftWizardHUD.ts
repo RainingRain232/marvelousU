@@ -9,6 +9,16 @@ import { RWPhase, RWTileType } from "../state/RiftWizardState";
 import { SPELL_DEFS } from "../config/RiftWizardSpellDefs";
 import { SCHOOL_COLORS } from "../config/RiftWizardShrineDefs";
 import { ENEMY_DEFS } from "../config/RiftWizardEnemyDefs";
+import {
+  getAvailableSpells,
+  getAvailableUpgrades,
+  getEffectiveSpellCost,
+  getEffectiveUpgradeCost,
+  learnSpell,
+  buyUpgrade,
+} from "../systems/RiftWizardProgressionSystem";
+
+export type PauseSubMenu = "main" | "controls" | "instructions" | "spells" | "buy" | "abilities";
 
 // ---------------------------------------------------------------------------
 // Styles
@@ -185,6 +195,15 @@ export class RiftWizardHUD {
   private _pauseBg = new Graphics();
   private _pauseTexts: Text[] = [];
   private _pauseButtons: { gfx: Graphics; text: Text; hitArea: { x: number; y: number; w: number; h: number }; action: () => void }[] = [];
+
+  /** Current sub-menu within pause screen */
+  pauseSubMenu: PauseSubMenu = "main";
+  /** Selected index within buy sub-menu spell/upgrade list */
+  private _buySelectedIndex = 0;
+  /** Whether viewing upgrades for a spell (buy sub-menu) */
+  private _buyViewingUpgrades = false;
+  /** Which owned spell is selected for upgrade viewing */
+  private _buyUpgradeSpellIndex = 0;
 
   onPauseResume: (() => void) | null = null;
   onPauseRestart: (() => void) | null = null;
@@ -870,9 +889,33 @@ export class RiftWizardHUD {
     this._pauseBg.rect(0, 0, screenWidth, screenHeight);
     this._pauseBg.fill({ color: 0x000000, alpha: 0.7 });
 
-    // Panel dimensions
-    const panelW = 380;
-    const panelH = 520;
+    switch (this.pauseSubMenu) {
+      case "main":
+        this._drawPauseMain(state, screenWidth, screenHeight);
+        break;
+      case "controls":
+        this._drawPauseControls(state, screenWidth, screenHeight);
+        break;
+      case "instructions":
+        this._drawPauseInstructions(state, screenWidth, screenHeight);
+        break;
+      case "spells":
+        this._drawPauseSpells(state, screenWidth, screenHeight);
+        break;
+      case "buy":
+        this._drawPauseBuy(state, screenWidth, screenHeight);
+        break;
+      case "abilities":
+        this._drawPauseAbilities(state, screenWidth, screenHeight);
+        break;
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Pause sub-menu: Main hub
+  // -------------------------------------------------------------------------
+
+  private _drawPausePanel(screenWidth: number, screenHeight: number, panelW: number, panelH: number): { panelX: number; panelY: number } {
     const panelX = Math.floor((screenWidth - panelW) / 2);
     const panelY = Math.floor((screenHeight - panelH) / 2);
 
@@ -900,11 +943,12 @@ export class RiftWizardHUD {
       this._pauseBg.stroke({ color: 0x6666cc, width: 1.5, alpha: 0.6 });
     }
 
-    let yOff = panelY + 16;
+    return { panelX, panelY };
+  }
 
-    // Title: "PAUSED"
+  private _addPauseTitle(panelX: number, panelW: number, y: number, text: string): number {
     const title = new Text({
-      text: "PAUSED",
+      text,
       style: new TextStyle({
         fontFamily: "monospace",
         fontSize: 24,
@@ -915,67 +959,120 @@ export class RiftWizardHUD {
     });
     title.x = panelX + panelW / 2;
     title.anchor.set(0.5, 0);
-    title.y = yOff;
+    title.y = y;
     this._pauseContainer.addChild(title);
     this._pauseTexts.push(title);
-    yOff += 36;
 
-    // Decorative line under title
-    this._pauseBg.moveTo(panelX + 30, yOff);
-    this._pauseBg.lineTo(panelX + panelW - 30, yOff);
+    const lineY = y + 36;
+    this._pauseBg.moveTo(panelX + 30, lineY);
+    this._pauseBg.lineTo(panelX + panelW - 30, lineY);
     this._pauseBg.stroke({ color: 0x4444aa, width: 1, alpha: 0.6 });
-    yOff += 12;
+    return lineY + 12;
+  }
 
-    // --- Resume button ---
+  private _addPauseDivider(panelX: number, panelW: number, y: number): number {
+    this._pauseBg.moveTo(panelX + 20, y);
+    this._pauseBg.lineTo(panelX + panelW - 20, y);
+    this._pauseBg.stroke({ color: 0x333355, width: 1, alpha: 0.4 });
+    return y + 12;
+  }
+
+  private _drawPauseMain(_state: RiftWizardState, screenWidth: number, screenHeight: number): void {
+    const panelW = 340;
+    const panelH = 420;
+    const { panelX, panelY } = this._drawPausePanel(screenWidth, screenHeight, panelW, panelH);
+
+    let yOff = this._addPauseTitle(panelX, panelW, panelY + 16, "PAUSED");
+
+    // Resume
     this._addPauseButton(panelX, yOff, panelW, "Resume", 0x228844, () => {
       if (this.onPauseResume) this.onPauseResume();
     });
+    yOff += 40;
+
+    yOff = this._addPauseDivider(panelX, panelW, yOff);
+
+    // Controls
+    this._addPauseButton(panelX, yOff, panelW, "Controls", 0x445588, () => {
+      this.pauseSubMenu = "controls";
+    });
     yOff += 36;
 
-    // Decorative line
-    this._pauseBg.moveTo(panelX + 20, yOff);
-    this._pauseBg.lineTo(panelX + panelW - 20, yOff);
-    this._pauseBg.stroke({ color: 0x333355, width: 1, alpha: 0.4 });
-    yOff += 12;
-
-    // --- Controls section ---
-    const controlsHeader = new Text({
-      text: "Controls",
-      style: new TextStyle({
-        fontFamily: "monospace",
-        fontSize: 14,
-        fill: 0xccccff,
-        fontWeight: "bold",
-      }),
+    // Instructions
+    this._addPauseButton(panelX, yOff, panelW, "Instructions", 0x555588, () => {
+      this.pauseSubMenu = "instructions";
     });
-    controlsHeader.x = panelX + 16;
-    controlsHeader.y = yOff;
-    this._pauseContainer.addChild(controlsHeader);
-    this._pauseTexts.push(controlsHeader);
-    yOff += 20;
+    yOff += 36;
 
-    const controls = [
-      ["Arrow Keys / WASD", "Move"],
-      ["1-9", "Cast spell"],
+    // Spells
+    this._addPauseButton(panelX, yOff, panelW, "Spells", 0x664488, () => {
+      this.pauseSubMenu = "spells";
+    });
+    yOff += 36;
+
+    // Buy Spells
+    this._addPauseButton(panelX, yOff, panelW, "Buy Spells / Upgrades", 0x886644, () => {
+      this.pauseSubMenu = "buy";
+      this._buySelectedIndex = 0;
+      this._buyViewingUpgrades = false;
+    });
+    yOff += 36;
+
+    // Abilities
+    this._addPauseButton(panelX, yOff, panelW, "Abilities", 0x448866, () => {
+      this.pauseSubMenu = "abilities";
+    });
+    yOff += 40;
+
+    yOff = this._addPauseDivider(panelX, panelW, yOff);
+
+    // Restart
+    this._addPauseButton(panelX, yOff, panelW, "Restart Run", 0x886622, () => {
+      if (this.onPauseRestart) this.onPauseRestart();
+    });
+    yOff += 32;
+
+    // Exit
+    this._addPauseButton(panelX, yOff, panelW, "Exit to Menu", 0x882222, () => {
+      if (this.onPauseExit) this.onPauseExit();
+    });
+  }
+
+  // -------------------------------------------------------------------------
+  // Pause sub-menu: Controls
+  // -------------------------------------------------------------------------
+
+  private _drawPauseControls(_state: RiftWizardState, screenWidth: number, screenHeight: number): void {
+    const panelW = 400;
+    const panelH = 340;
+    const { panelX, panelY } = this._drawPausePanel(screenWidth, screenHeight, panelW, panelH);
+
+    let yOff = this._addPauseTitle(panelX, panelW, panelY + 16, "CONTROLS");
+
+    const controls: [string, string][] = [
+      ["Arrow Keys / WASD", "Move wizard"],
+      ["1-9", "Select & cast spell"],
       ["Enter / Space", "Confirm target / Pass turn"],
-      ["Escape", "Pause menu"],
+      ["Escape", "Open menu / Back"],
       ["E", "Interact (shrine/portal/item)"],
       ["P", "Use health potion"],
       ["C", "Use charge scroll"],
       ["Z / U", "Undo last move"],
-      ["?", "Toggle help overlay"],
+      ["?", "Toggle quick-help overlay"],
     ];
 
     for (const [key, desc] of controls) {
+      // Key badge
       const keyText = new Text({
         text: key,
         style: new TextStyle({
           fontFamily: "monospace",
-          fontSize: 10,
+          fontSize: 11,
           fill: 0xffcc44,
+          fontWeight: "bold",
         }),
       });
-      keyText.x = panelX + 20;
+      keyText.x = panelX + 24;
       keyText.y = yOff;
       this._pauseContainer.addChild(keyText);
       this._pauseTexts.push(keyText);
@@ -984,94 +1081,628 @@ export class RiftWizardHUD {
         text: desc,
         style: new TextStyle({
           fontFamily: "monospace",
-          fontSize: 10,
+          fontSize: 11,
           fill: 0x9999bb,
         }),
       });
-      descText.x = panelX + 180;
+      descText.x = panelX + 200;
       descText.y = yOff;
       this._pauseContainer.addChild(descText);
       this._pauseTexts.push(descText);
-      yOff += 15;
+      yOff += 18;
+    }
+
+    yOff += 12;
+    this._addPauseButton(panelX, yOff, panelW, "Back", 0x444466, () => {
+      this.pauseSubMenu = "main";
+    });
+  }
+
+  // -------------------------------------------------------------------------
+  // Pause sub-menu: Instructions
+  // -------------------------------------------------------------------------
+
+  private _drawPauseInstructions(_state: RiftWizardState, screenWidth: number, screenHeight: number): void {
+    const panelW = 420;
+    const panelH = 400;
+    const { panelX, panelY } = this._drawPausePanel(screenWidth, screenHeight, panelW, panelH);
+
+    let yOff = this._addPauseTitle(panelX, panelW, panelY + 16, "HOW TO PLAY");
+
+    const sections: { header: string; lines: string[] }[] = [
+      {
+        header: "Goal",
+        lines: [
+          "Navigate 25 dungeon levels. Defeat all enemies",
+          "on each floor to open the rift portal and advance.",
+        ],
+      },
+      {
+        header: "Combat",
+        lines: [
+          "Press 1-9 to select a spell, then move the cursor",
+          "with arrows/WASD and press Enter to cast.",
+          "Space or Enter with no spell passes your turn.",
+        ],
+      },
+      {
+        header: "Exploration",
+        lines: [
+          "Shrines grant permanent buffs to matching spells.",
+          "Spell circles reduce the cost of same-school spells.",
+          "Pick up potions (P) and scrolls (C) on the ground.",
+        ],
+      },
+      {
+        header: "Progression",
+        lines: [
+          "Earn SP by clearing levels. Spend SP at the spell",
+          "shop (between levels) or from the Buy menu here.",
+          "Upgrade your spells for more damage, range, or AoE.",
+        ],
+      },
+    ];
+
+    for (const section of sections) {
+      const hdr = new Text({
+        text: section.header,
+        style: new TextStyle({
+          fontFamily: "monospace",
+          fontSize: 13,
+          fill: 0xccccff,
+          fontWeight: "bold",
+        }),
+      });
+      hdr.x = panelX + 20;
+      hdr.y = yOff;
+      this._pauseContainer.addChild(hdr);
+      this._pauseTexts.push(hdr);
+      yOff += 18;
+
+      for (const line of section.lines) {
+        const lt = new Text({
+          text: line,
+          style: new TextStyle({
+            fontFamily: "monospace",
+            fontSize: 10,
+            fill: 0x8888aa,
+          }),
+        });
+        lt.x = panelX + 24;
+        lt.y = yOff;
+        this._pauseContainer.addChild(lt);
+        this._pauseTexts.push(lt);
+        yOff += 14;
+      }
+      yOff += 8;
+    }
+
+    yOff += 4;
+    this._addPauseButton(panelX, yOff, panelW, "Back", 0x444466, () => {
+      this.pauseSubMenu = "main";
+    });
+  }
+
+  // -------------------------------------------------------------------------
+  // Pause sub-menu: Spells (view current loadout)
+  // -------------------------------------------------------------------------
+
+  private _drawPauseSpells(state: RiftWizardState, screenWidth: number, screenHeight: number): void {
+    const panelW = 440;
+    const maxSpellRows = Math.max(state.spells.length, 1);
+    const panelH = Math.min(screenHeight - 40, 120 + maxSpellRows * 52);
+    const { panelX, panelY } = this._drawPausePanel(screenWidth, screenHeight, panelW, panelH);
+
+    let yOff = this._addPauseTitle(panelX, panelW, panelY + 16, "YOUR SPELLS");
+
+    if (state.spells.length === 0) {
+      const noSpells = new Text({
+        text: "No spells learned yet.",
+        style: new TextStyle({ fontFamily: "monospace", fontSize: 12, fill: 0x666688 }),
+      });
+      noSpells.x = panelX + 20;
+      noSpells.y = yOff;
+      this._pauseContainer.addChild(noSpells);
+      this._pauseTexts.push(noSpells);
+      yOff += 24;
+    } else {
+      for (let i = 0; i < state.spells.length; i++) {
+        const spell = state.spells[i];
+        const def = SPELL_DEFS[spell.defId];
+        if (!def) continue;
+
+        const schoolColor = SCHOOL_COLORS[spell.school] ?? 0x666666;
+        const isEmpty = spell.charges <= 0;
+
+        // Spell slot background
+        this._pauseBg.rect(panelX + 14, yOff - 2, panelW - 28, 46);
+        this._pauseBg.fill({ color: 0x111122, alpha: 0.6 });
+        // School accent
+        this._pauseBg.rect(panelX + 14, yOff - 2, 4, 46);
+        this._pauseBg.fill({ color: schoolColor, alpha: isEmpty ? 0.3 : 0.8 });
+
+        // Hotkey
+        const hotkey = new Text({
+          text: `[${i + 1}]`,
+          style: new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: 0xffcc44, fontWeight: "bold" }),
+        });
+        hotkey.x = panelX + 24;
+        hotkey.y = yOff;
+        this._pauseContainer.addChild(hotkey);
+        this._pauseTexts.push(hotkey);
+
+        // Spell name
+        const nameT = new Text({
+          text: def.name,
+          style: new TextStyle({ fontFamily: "monospace", fontSize: 12, fill: schoolColor, fontWeight: "bold" }),
+        });
+        nameT.x = panelX + 56;
+        nameT.y = yOff;
+        this._pauseContainer.addChild(nameT);
+        this._pauseTexts.push(nameT);
+
+        // Stats line
+        const statsStr = `Dmg: ${spell.damage}  Range: ${spell.range}  AoE: ${spell.aoeRadius}  Charges: ${spell.charges}/${spell.maxCharges}`;
+        const statsT = new Text({
+          text: statsStr,
+          style: new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: isEmpty ? 0x555566 : 0x9999bb }),
+        });
+        statsT.x = panelX + 56;
+        statsT.y = yOff + 16;
+        this._pauseContainer.addChild(statsT);
+        this._pauseTexts.push(statsT);
+
+        // Description
+        const descT = new Text({
+          text: def.description,
+          style: new TextStyle({ fontFamily: "monospace", fontSize: 9, fill: 0x666688 }),
+        });
+        descT.x = panelX + 56;
+        descT.y = yOff + 30;
+        this._pauseContainer.addChild(descT);
+        this._pauseTexts.push(descT);
+
+        // School icon
+        drawSchoolIcon(this._pauseBg, spell.school, panelX + panelW - 30, yOff + 18, 8, schoolColor, 0.6);
+
+        yOff += 52;
+      }
     }
 
     yOff += 8;
-
-    // Decorative line
-    this._pauseBg.moveTo(panelX + 20, yOff);
-    this._pauseBg.lineTo(panelX + panelW - 20, yOff);
-    this._pauseBg.stroke({ color: 0x333355, width: 1, alpha: 0.4 });
-    yOff += 12;
-
-    // --- How to Play section ---
-    const howToHeader = new Text({
-      text: "How to Play",
-      style: new TextStyle({
-        fontFamily: "monospace",
-        fontSize: 14,
-        fill: 0xccccff,
-        fontWeight: "bold",
-      }),
+    this._addPauseButton(panelX, yOff, panelW, "Back", 0x444466, () => {
+      this.pauseSubMenu = "main";
     });
-    howToHeader.x = panelX + 16;
-    howToHeader.y = yOff;
-    this._pauseContainer.addChild(howToHeader);
-    this._pauseTexts.push(howToHeader);
-    yOff += 20;
+  }
 
-    const howToLines = [
-      "Navigate dungeon floors, defeat all enemies",
-      "to open the rift portal.",
-      "",
-      "Cast spells by pressing 1-9, then move",
-      "cursor to target and press Enter.",
-      "",
-      "Collect spell circles for discounts,",
-      "shrines for buffs.",
-      "",
-      "Reach the rift portal to advance and",
-      "buy new spells.",
-      "",
-      "Beat all 25 levels to win!",
-    ];
+  // -------------------------------------------------------------------------
+  // Pause sub-menu: Buy Spells / Upgrades
+  // -------------------------------------------------------------------------
 
-    for (const line of howToLines) {
-      if (line === "") {
-        yOff += 4;
-        continue;
+  handleBuyKey(state: RiftWizardState, key: string): void {
+    if (this._buyViewingUpgrades) {
+      const spell = state.spells[this._buyUpgradeSpellIndex];
+      if (!spell) { this._buyViewingUpgrades = false; return; }
+      const upgrades = getAvailableUpgrades(spell);
+
+      if (key === "ArrowUp" || key === "w") {
+        this._buySelectedIndex = Math.max(0, this._buySelectedIndex - 1);
+      } else if (key === "ArrowDown" || key === "s") {
+        this._buySelectedIndex = Math.min(upgrades.length - 1, this._buySelectedIndex);
+      } else if (key === "Enter" || key === " ") {
+        const upg = upgrades[this._buySelectedIndex];
+        if (upg) {
+          buyUpgrade(state, this._buyUpgradeSpellIndex, upg.id);
+        }
+      } else if (key === "Escape" || key === "Backspace") {
+        this._buyViewingUpgrades = false;
+        this._buySelectedIndex = 0;
       }
-      const lineText = new Text({
-        text: line,
-        style: new TextStyle({
-          fontFamily: "monospace",
-          fontSize: 10,
-          fill: 0x8888aa,
-        }),
+    } else {
+      const available = getAvailableSpells(state);
+      const totalItems = available.length + state.spells.length; // spells to buy + owned spells for upgrades
+
+      if (key === "ArrowUp" || key === "w") {
+        this._buySelectedIndex = Math.max(0, this._buySelectedIndex - 1);
+      } else if (key === "ArrowDown" || key === "s") {
+        this._buySelectedIndex = Math.min(totalItems - 1, this._buySelectedIndex);
+      } else if (key === "Enter" || key === " ") {
+        if (this._buySelectedIndex < available.length) {
+          // Buy new spell
+          const def = available[this._buySelectedIndex];
+          learnSpell(state, def.id);
+        } else {
+          // View upgrades for owned spell
+          const ownedIdx = this._buySelectedIndex - available.length;
+          if (ownedIdx >= 0 && ownedIdx < state.spells.length) {
+            this._buyUpgradeSpellIndex = ownedIdx;
+            this._buyViewingUpgrades = true;
+            this._buySelectedIndex = 0;
+          }
+        }
+      }
+    }
+  }
+
+  private _drawPauseBuy(state: RiftWizardState, screenWidth: number, screenHeight: number): void {
+    const panelW = 460;
+    const panelH = Math.min(screenHeight - 40, 520);
+    const { panelX, panelY } = this._drawPausePanel(screenWidth, screenHeight, panelW, panelH);
+
+    let yOff = this._addPauseTitle(panelX, panelW, panelY + 16, "BUY SPELLS");
+
+    // SP display
+    const spT = new Text({
+      text: `Skill Points: ${state.skillPoints}`,
+      style: new TextStyle({ fontFamily: "monospace", fontSize: 14, fill: 0xffcc44, fontWeight: "bold" }),
+    });
+    spT.x = panelX + panelW / 2;
+    spT.anchor.set(0.5, 0);
+    spT.y = yOff;
+    this._pauseContainer.addChild(spT);
+    this._pauseTexts.push(spT);
+    yOff += 22;
+
+    yOff = this._addPauseDivider(panelX, panelW, yOff);
+
+    if (this._buyViewingUpgrades) {
+      // Show upgrades for a specific owned spell
+      const spell = state.spells[this._buyUpgradeSpellIndex];
+      if (spell) {
+        const def = SPELL_DEFS[spell.defId];
+        const schoolColor = SCHOOL_COLORS[spell.school] ?? 0x666666;
+
+        const spellHeader = new Text({
+          text: `Upgrades for: ${def?.name ?? spell.defId}`,
+          style: new TextStyle({ fontFamily: "monospace", fontSize: 13, fill: schoolColor, fontWeight: "bold" }),
+        });
+        spellHeader.x = panelX + 20;
+        spellHeader.y = yOff;
+        this._pauseContainer.addChild(spellHeader);
+        this._pauseTexts.push(spellHeader);
+        yOff += 20;
+
+        const upgrades = getAvailableUpgrades(spell);
+        if (upgrades.length === 0) {
+          const noUpg = new Text({
+            text: "All upgrades purchased!",
+            style: new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: 0x44cc44 }),
+          });
+          noUpg.x = panelX + 24;
+          noUpg.y = yOff;
+          this._pauseContainer.addChild(noUpg);
+          this._pauseTexts.push(noUpg);
+          yOff += 20;
+        } else {
+          for (let i = 0; i < upgrades.length; i++) {
+            const upg = upgrades[i];
+            const cost = getEffectiveUpgradeCost(state, spell, upg);
+            const canAfford = state.skillPoints >= cost;
+            const isSelected = this._buySelectedIndex === i;
+
+            // Selection highlight
+            if (isSelected) {
+              this._pauseBg.rect(panelX + 14, yOff - 2, panelW - 28, 34);
+              this._pauseBg.fill({ color: 0x222244, alpha: 0.8 });
+              this._pauseBg.rect(panelX + 14, yOff - 2, panelW - 28, 34);
+              this._pauseBg.stroke({ color: 0x6666cc, width: 1 });
+            }
+
+            const nameT = new Text({
+              text: `${upg.name}`,
+              style: new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: canAfford ? 0xddddff : 0x666677, fontWeight: isSelected ? "bold" : "normal" }),
+            });
+            nameT.x = panelX + 24;
+            nameT.y = yOff;
+            this._pauseContainer.addChild(nameT);
+            this._pauseTexts.push(nameT);
+
+            const costT = new Text({
+              text: `${cost} SP`,
+              style: new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: canAfford ? 0xffcc44 : 0x884422 }),
+            });
+            costT.x = panelX + panelW - 60;
+            costT.y = yOff;
+            this._pauseContainer.addChild(costT);
+            this._pauseTexts.push(costT);
+
+            const descT = new Text({
+              text: upg.description,
+              style: new TextStyle({ fontFamily: "monospace", fontSize: 9, fill: 0x777799 }),
+            });
+            descT.x = panelX + 24;
+            descT.y = yOff + 15;
+            this._pauseContainer.addChild(descT);
+            this._pauseTexts.push(descT);
+
+            yOff += 38;
+          }
+        }
+
+        yOff += 8;
+        // Hint
+        const hint = new Text({
+          text: "[Enter] Buy  [Esc] Back to list",
+          style: new TextStyle({ fontFamily: "monospace", fontSize: 9, fill: 0x555577 }),
+        });
+        hint.x = panelX + panelW / 2;
+        hint.anchor.set(0.5, 0);
+        hint.y = yOff;
+        this._pauseContainer.addChild(hint);
+        this._pauseTexts.push(hint);
+      }
+    } else {
+      // Main buy list: available spells + owned spells (for upgrade access)
+      const available = getAvailableSpells(state);
+
+      if (available.length > 0) {
+        const secH = new Text({
+          text: "New Spells",
+          style: new TextStyle({ fontFamily: "monospace", fontSize: 12, fill: 0xccccff, fontWeight: "bold" }),
+        });
+        secH.x = panelX + 20;
+        secH.y = yOff;
+        this._pauseContainer.addChild(secH);
+        this._pauseTexts.push(secH);
+        yOff += 18;
+
+        const maxVisible = Math.min(available.length, 8);
+        for (let i = 0; i < maxVisible; i++) {
+          const def = available[i];
+          const cost = getEffectiveSpellCost(state, def);
+          const canAfford = state.skillPoints >= cost;
+          const isSelected = this._buySelectedIndex === i;
+          const schoolColor = SCHOOL_COLORS[def.school] ?? 0x666666;
+
+          if (isSelected) {
+            this._pauseBg.rect(panelX + 14, yOff - 2, panelW - 28, 30);
+            this._pauseBg.fill({ color: 0x222244, alpha: 0.8 });
+            this._pauseBg.rect(panelX + 14, yOff - 2, panelW - 28, 30);
+            this._pauseBg.stroke({ color: schoolColor, width: 1 });
+          }
+
+          // School accent
+          this._pauseBg.rect(panelX + 14, yOff - 2, 3, 30);
+          this._pauseBg.fill({ color: schoolColor, alpha: 0.7 });
+
+          const nameT = new Text({
+            text: def.name,
+            style: new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: canAfford ? schoolColor : 0x555566, fontWeight: isSelected ? "bold" : "normal" }),
+          });
+          nameT.x = panelX + 24;
+          nameT.y = yOff;
+          this._pauseContainer.addChild(nameT);
+          this._pauseTexts.push(nameT);
+
+          const costT = new Text({
+            text: `${cost} SP`,
+            style: new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: canAfford ? 0xffcc44 : 0x884422 }),
+          });
+          costT.x = panelX + panelW - 60;
+          costT.y = yOff;
+          this._pauseContainer.addChild(costT);
+          this._pauseTexts.push(costT);
+
+          const descT = new Text({
+            text: `${def.description.substring(0, 50)}`,
+            style: new TextStyle({ fontFamily: "monospace", fontSize: 9, fill: 0x666688 }),
+          });
+          descT.x = panelX + 24;
+          descT.y = yOff + 14;
+          this._pauseContainer.addChild(descT);
+          this._pauseTexts.push(descT);
+
+          yOff += 34;
+        }
+      }
+
+      // Owned spells section (click to view upgrades)
+      if (state.spells.length > 0) {
+        yOff = this._addPauseDivider(panelX, panelW, yOff + 4);
+
+        const ownH = new Text({
+          text: "Upgrade Owned Spells",
+          style: new TextStyle({ fontFamily: "monospace", fontSize: 12, fill: 0xccccff, fontWeight: "bold" }),
+        });
+        ownH.x = panelX + 20;
+        ownH.y = yOff;
+        this._pauseContainer.addChild(ownH);
+        this._pauseTexts.push(ownH);
+        yOff += 18;
+
+        for (let i = 0; i < state.spells.length; i++) {
+          const spell = state.spells[i];
+          const def = SPELL_DEFS[spell.defId];
+          if (!def) continue;
+          const listIdx = available.length + i;
+          const isSelected = this._buySelectedIndex === listIdx;
+          const schoolColor = SCHOOL_COLORS[spell.school] ?? 0x666666;
+          const upgCount = getAvailableUpgrades(spell).length;
+
+          if (isSelected) {
+            this._pauseBg.rect(panelX + 14, yOff - 2, panelW - 28, 22);
+            this._pauseBg.fill({ color: 0x222244, alpha: 0.8 });
+            this._pauseBg.rect(panelX + 14, yOff - 2, panelW - 28, 22);
+            this._pauseBg.stroke({ color: schoolColor, width: 1 });
+          }
+
+          this._pauseBg.rect(panelX + 14, yOff - 2, 3, 22);
+          this._pauseBg.fill({ color: schoolColor, alpha: 0.7 });
+
+          const nameT = new Text({
+            text: `${def.name}`,
+            style: new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: schoolColor, fontWeight: isSelected ? "bold" : "normal" }),
+          });
+          nameT.x = panelX + 24;
+          nameT.y = yOff;
+          this._pauseContainer.addChild(nameT);
+          this._pauseTexts.push(nameT);
+
+          const upgT = new Text({
+            text: upgCount > 0 ? `${upgCount} upgrades` : "fully upgraded",
+            style: new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: upgCount > 0 ? 0x888899 : 0x44cc44 }),
+          });
+          upgT.x = panelX + panelW - 100;
+          upgT.y = yOff;
+          this._pauseContainer.addChild(upgT);
+          this._pauseTexts.push(upgT);
+
+          yOff += 26;
+        }
+      }
+
+      yOff += 8;
+      const hint = new Text({
+        text: "[Up/Down] Navigate  [Enter] Buy/View Upgrades",
+        style: new TextStyle({ fontFamily: "monospace", fontSize: 9, fill: 0x555577 }),
       });
-      lineText.x = panelX + 20;
-      lineText.y = yOff;
-      this._pauseContainer.addChild(lineText);
-      this._pauseTexts.push(lineText);
-      yOff += 14;
+      hint.x = panelX + panelW / 2;
+      hint.anchor.set(0.5, 0);
+      hint.y = yOff;
+      this._pauseContainer.addChild(hint);
+      this._pauseTexts.push(hint);
     }
 
-    yOff += 12;
-
-    // Decorative line
-    this._pauseBg.moveTo(panelX + 20, yOff);
-    this._pauseBg.lineTo(panelX + panelW - 20, yOff);
-    this._pauseBg.stroke({ color: 0x333355, width: 1, alpha: 0.4 });
-    yOff += 12;
-
-    // --- Restart Run button ---
-    this._addPauseButton(panelX, yOff, panelW, "Restart Run", 0x886622, () => {
-      if (this.onPauseRestart) this.onPauseRestart();
+    // Back button at bottom
+    const backY = panelY + panelH - 40;
+    this._addPauseButton(panelX, backY, panelW, "Back", 0x444466, () => {
+      this.pauseSubMenu = "main";
     });
-    yOff += 32;
+  }
 
-    // --- Exit to Menu button ---
-    this._addPauseButton(panelX, yOff, panelW, "Exit to Menu", 0x882222, () => {
-      if (this.onPauseExit) this.onPauseExit();
+  // -------------------------------------------------------------------------
+  // Pause sub-menu: Abilities (wizard stats, status effects, shrine bonuses)
+  // -------------------------------------------------------------------------
+
+  private _drawPauseAbilities(state: RiftWizardState, screenWidth: number, screenHeight: number): void {
+    const panelW = 400;
+    const panelH = 380;
+    const { panelX, panelY } = this._drawPausePanel(screenWidth, screenHeight, panelW, panelH);
+
+    let yOff = this._addPauseTitle(panelX, panelW, panelY + 16, "ABILITIES");
+
+    // Wizard stats
+    const statsHeader = new Text({
+      text: "Wizard Stats",
+      style: new TextStyle({ fontFamily: "monospace", fontSize: 13, fill: 0xccccff, fontWeight: "bold" }),
+    });
+    statsHeader.x = panelX + 20;
+    statsHeader.y = yOff;
+    this._pauseContainer.addChild(statsHeader);
+    this._pauseTexts.push(statsHeader);
+    yOff += 20;
+
+    const stats: [string, string][] = [
+      ["HP", `${state.wizard.hp} / ${state.wizard.maxHp}`],
+      ["Shields", `${state.wizard.shields}`],
+      ["Spells Known", `${state.spells.length}`],
+      ["Skill Points", `${state.skillPoints}`],
+      ["Total SP Earned", `${state.totalSPEarned}`],
+      ["Current Level", `${state.currentLevel + 1} / 25`],
+      ["Turn", `${state.turnNumber}`],
+    ];
+
+    for (const [label, value] of stats) {
+      const labelT = new Text({
+        text: label,
+        style: new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: 0x8888aa }),
+      });
+      labelT.x = panelX + 28;
+      labelT.y = yOff;
+      this._pauseContainer.addChild(labelT);
+      this._pauseTexts.push(labelT);
+
+      const valT = new Text({
+        text: value,
+        style: new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: 0xddddee }),
+      });
+      valT.x = panelX + 200;
+      valT.y = yOff;
+      this._pauseContainer.addChild(valT);
+      this._pauseTexts.push(valT);
+
+      yOff += 17;
+    }
+
+    yOff += 8;
+    yOff = this._addPauseDivider(panelX, panelW, yOff);
+
+    // Status effects
+    const statusHeader = new Text({
+      text: "Status Effects",
+      style: new TextStyle({ fontFamily: "monospace", fontSize: 13, fill: 0xccccff, fontWeight: "bold" }),
+    });
+    statusHeader.x = panelX + 20;
+    statusHeader.y = yOff;
+    this._pauseContainer.addChild(statusHeader);
+    this._pauseTexts.push(statusHeader);
+    yOff += 20;
+
+    if (state.wizard.statusEffects.length === 0) {
+      const noFx = new Text({
+        text: "None active",
+        style: new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: 0x666688 }),
+      });
+      noFx.x = panelX + 28;
+      noFx.y = yOff;
+      this._pauseContainer.addChild(noFx);
+      this._pauseTexts.push(noFx);
+      yOff += 17;
+    } else {
+      for (const fx of state.wizard.statusEffects) {
+        const fxColor =
+          fx.type === "shield" ? 0x44ddff :
+          fx.type === "burn" ? 0xff6633 :
+          fx.type === "poison" ? 0x44cc44 :
+          fx.type === "freeze" ? 0x88ccff :
+          fx.type === "stun" ? 0xffff44 :
+          fx.type === "slow" ? 0xaa88cc : 0xaaaaaa;
+
+        const fxT = new Text({
+          text: `${fx.type.toUpperCase()}  (${fx.turnsRemaining} turns, x${fx.magnitude})`,
+          style: new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: fxColor }),
+        });
+        fxT.x = panelX + 28;
+        fxT.y = yOff;
+        this._pauseContainer.addChild(fxT);
+        this._pauseTexts.push(fxT);
+        yOff += 17;
+      }
+    }
+
+    yOff += 8;
+    yOff = this._addPauseDivider(panelX, panelW, yOff);
+
+    // Consumables
+    const consHeader = new Text({
+      text: "Consumables",
+      style: new TextStyle({ fontFamily: "monospace", fontSize: 13, fill: 0xccccff, fontWeight: "bold" }),
+    });
+    consHeader.x = panelX + 20;
+    consHeader.y = yOff;
+    this._pauseContainer.addChild(consHeader);
+    this._pauseTexts.push(consHeader);
+    yOff += 20;
+
+    for (const cons of state.consumables) {
+      const label = cons.type === "health_potion" ? "Health Potion [P]" :
+        cons.type === "charge_scroll" ? "Charge Scroll [C]" :
+        cons.type === "shield_scroll" ? "Shield Scroll" : cons.type;
+      const consT = new Text({
+        text: `${label}: ${cons.quantity}`,
+        style: new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: cons.quantity > 0 ? 0xddddee : 0x555566 }),
+      });
+      consT.x = panelX + 28;
+      consT.y = yOff;
+      this._pauseContainer.addChild(consT);
+      this._pauseTexts.push(consT);
+      yOff += 17;
+    }
+
+    // Back button
+    const backY = panelY + panelH - 40;
+    this._addPauseButton(panelX, backY, panelW, "Back", 0x444466, () => {
+      this.pauseSubMenu = "main";
     });
   }
 

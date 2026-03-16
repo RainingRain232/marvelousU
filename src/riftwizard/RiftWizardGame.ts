@@ -102,6 +102,7 @@ export class RiftWizardGame {
     this._hud.build();
     this._hud.onPauseResume = () => {
       this._state.phase = RWPhase.PLAYING;
+      this._hud.pauseSubMenu = "main";
     };
     this._hud.onPauseRestart = () => {
       this.destroy();
@@ -185,10 +186,26 @@ export class RiftWizardGame {
 
   private _handlePaused(): void {
     if (consumeJustPressed("Escape")) {
+      // If in a sub-menu, go back to main pause menu
+      if (this._hud.pauseSubMenu !== "main") {
+        this._hud.pauseSubMenu = "main";
+        return;
+      }
+      // Otherwise resume the game
       this._state.phase = RWPhase.PLAYING;
       return;
     }
-    // HUD buttons handle Resume / Restart / Exit via callbacks
+
+    // Delegate keyboard to buy sub-menu if active
+    if (this._hud.pauseSubMenu === "buy") {
+      for (const key of Object.keys(_justPressed)) {
+        if (_justPressed[key]) {
+          this._hud.handleBuyKey(this._state, key);
+        }
+      }
+    }
+
+    // HUD buttons handle Resume / Restart / Exit / sub-menu nav via callbacks
   }
 
   private _handlePlaying(): void {
@@ -197,6 +214,7 @@ export class RiftWizardGame {
     // Escape opens the pause menu
     if (consumeJustPressed("Escape")) {
       state.phase = RWPhase.PAUSED;
+      this._hud.pauseSubMenu = "main";
       return;
     }
 
