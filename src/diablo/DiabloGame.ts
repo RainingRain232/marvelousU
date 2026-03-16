@@ -441,6 +441,11 @@ export class DiabloGame {
   private _chestsOpened: number = 0;
   private _goldEarnedTotal: number = 0;
 
+  // Safe zone (enemy-free spawn area)
+  private _safeZoneX: number = 0;
+  private _safeZoneZ: number = 0;
+  private _safeZoneRadius: number = 20;
+
   // Hit freeze & slow motion
   private _hitFreezeTimer: number = 0;
   private _slowMotionTimer: number = 0;
@@ -1420,6 +1425,10 @@ export class DiabloGame {
     this._state.player.x = spawnX;
     this._state.player.y = getTerrainHeight(spawnX, spawnZ);
     this._state.player.z = spawnZ;
+    // Mark spawn location as enemy-free safe zone
+    this._safeZoneX = spawnX;
+    this._safeZoneZ = spawnZ;
+    this._safeZoneRadius = 20;
     this._revealAroundPlayer(spawnX, spawnZ);
     this._state.player.hp = this._state.player.maxHp;
     this._state.player.mana = this._state.player.maxMana;
