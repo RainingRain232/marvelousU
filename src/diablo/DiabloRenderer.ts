@@ -142,10 +142,10 @@ export class DiabloRenderer {
     this._floatTextSprites = new Map();
     this._torchLights = [];
 
-    this._sphereGeo = new THREE.SphereGeometry(1, 24, 20);
+    this._sphereGeo = new THREE.SphereGeometry(1, 36, 30);
     this._boxGeo = new THREE.BoxGeometry(1, 1, 1);
-    this._cylGeo = new THREE.CylinderGeometry(1, 1, 1, 20);
-    this._coneGeo = new THREE.ConeGeometry(1, 2, 20);
+    this._cylGeo = new THREE.CylinderGeometry(1, 1, 1, 30);
+    this._coneGeo = new THREE.ConeGeometry(1, 2, 30);
 
     this._envGroup = new THREE.Group();
     this._scene.add(this._envGroup);
@@ -175,7 +175,7 @@ export class DiabloRenderer {
     this._groundPlane.receiveShadow = true;
     this._scene.add(this._groundPlane);
 
-    const particleGeo = new THREE.SphereGeometry(1, 10, 8);
+    const particleGeo = new THREE.SphereGeometry(1, 17, 16);
     this._particleMat = new THREE.MeshStandardMaterial({
       color: 0xffffff,
       emissive: 0xffffff,
@@ -373,7 +373,7 @@ export class DiabloRenderer {
       const tType = treeTypes[Math.floor(Math.random() * treeTypes.length)];
       const trunkH = tType === 'pine' ? 2.5 + Math.random() * 3.5 : tType === 'willow' ? 2.0 + Math.random() * 2.0 : 1.5 + Math.random() * 2.5;
       const trunkR = tType === 'oak' ? 0.2 + Math.random() * 0.2 : tType === 'birch' ? 0.08 + Math.random() * 0.08 : 0.15 + Math.random() * 0.15;
-      const trunkGeo = new THREE.CylinderGeometry(trunkR, trunkR * 1.3, trunkH, 16);
+      const trunkGeo = new THREE.CylinderGeometry(trunkR, trunkR * 1.3, trunkH, 27);
       const barkBases: Record<string, number> = { oak: 0x5c3a1e, pine: 0x4a2a0e, birch: 0xccbbaa, willow: 0x6a4a2a };
       const barkColor = (barkBases[tType] || 0x5c3a1e) + Math.floor(Math.random() * 0x111100);
       const trunkMat = new THREE.MeshStandardMaterial({ color: barkColor, roughness: 0.92, metalness: 0.02 });
@@ -386,7 +386,7 @@ export class DiabloRenderer {
       const barkRingCount = 2 + Math.floor(Math.random() * 3);
       for (let br = 0; br < barkRingCount; br++) {
         const ringY = 0.4 + (br / barkRingCount) * trunkH * 0.6;
-        const ringGeo = new THREE.TorusGeometry(trunkR * 1.15, trunkR * 0.2, 14, 16);
+        const ringGeo = new THREE.TorusGeometry(trunkR * 1.15, trunkR * 0.2, 23, 27);
         const ring = new THREE.Mesh(ringGeo, trunkMat);
         ring.position.y = ringY;
         ring.rotation.x = Math.PI / 2;
@@ -395,7 +395,7 @@ export class DiabloRenderer {
 
       // Bark knots (wood detail bumps)
       for (let k = 0; k < Math.floor(Math.random() * 3); k++) {
-        const knotGeo = new THREE.SphereGeometry(trunkR * 0.3, 12, 10);
+        const knotGeo = new THREE.SphereGeometry(trunkR * 0.3, 20, 17);
         const knot = new THREE.Mesh(knotGeo, new THREE.MeshStandardMaterial({ color: barkColor - 0x111100, roughness: 0.95 }));
         const kAng = Math.random() * Math.PI * 2;
         knot.position.set(Math.cos(kAng) * trunkR * 0.9, 0.5 + Math.random() * trunkH * 0.6, Math.sin(kAng) * trunkR * 0.9);
@@ -408,7 +408,7 @@ export class DiabloRenderer {
       for (let r = 0; r < rootCount; r++) {
         const rootAngle = (r / rootCount) * Math.PI * 2 + Math.random() * 0.5;
         const rootLen = 0.3 + Math.random() * 0.5;
-        const rootGeo = new THREE.CylinderGeometry(trunkR * 0.3, trunkR * 0.12, rootLen, 12);
+        const rootGeo = new THREE.CylinderGeometry(trunkR * 0.3, trunkR * 0.12, rootLen, 20);
         const root = new THREE.Mesh(rootGeo, trunkMat);
         root.position.set(Math.cos(rootAngle) * trunkR * 0.8, rootLen * 0.2, Math.sin(rootAngle) * trunkR * 0.8);
         root.rotation.z = Math.cos(rootAngle) * 0.8;
@@ -421,7 +421,7 @@ export class DiabloRenderer {
         for (let br = 0; br < 2 + Math.floor(Math.random() * 3); br++) {
           const brAng = Math.random() * Math.PI * 2;
           const brLen = 0.8 + Math.random() * 1.2;
-          const branch = new THREE.Mesh(new THREE.CylinderGeometry(trunkR * 0.2, trunkR * 0.35, brLen, 12), trunkMat);
+          const branch = new THREE.Mesh(new THREE.CylinderGeometry(trunkR * 0.2, trunkR * 0.35, brLen, 20), trunkMat);
           branch.position.set(Math.cos(brAng) * trunkR * 0.5, trunkH * 0.5 + Math.random() * trunkH * 0.4, Math.sin(brAng) * trunkR * 0.5);
           branch.rotation.z = (Math.random() - 0.5) * 1.2 + (brAng > Math.PI ? 0.5 : -0.5);
           branch.rotation.y = brAng;
@@ -434,7 +434,7 @@ export class DiabloRenderer {
         const pineGreen = 0x1a5a1a + Math.floor(Math.random() * 0x113300);
         for (let li = 0; li < 5; li++) {
           const layerR = (1.8 - li * 0.3) * (0.8 + Math.random() * 0.2);
-          const layerGeo = new THREE.ConeGeometry(layerR, 1.2 - li * 0.1, 16);
+          const layerGeo = new THREE.ConeGeometry(layerR, 1.2 - li * 0.1, 27);
           const layer = new THREE.Mesh(layerGeo, new THREE.MeshStandardMaterial({ color: pineGreen + li * 0x050500, roughness: 0.85 }));
           layer.position.y = trunkH * 0.3 + li * 0.9;
           layer.castShadow = true;
@@ -444,7 +444,7 @@ export class DiabloRenderer {
         const birchGreen = 0x55aa44 + Math.floor(Math.random() * 0x224400);
         for (let li = 0; li < 2; li++) {
           const layerR = 0.8 + Math.random() * 0.6;
-          const layer = new THREE.Mesh(new THREE.SphereGeometry(layerR, 14, 12),
+          const layer = new THREE.Mesh(new THREE.SphereGeometry(layerR, 23, 20),
             new THREE.MeshStandardMaterial({ color: birchGreen + li * 0x112200, roughness: 0.75, transparent: true, opacity: 0.85 }));
           layer.position.y = trunkH + 0.5 + li * 0.8;
           layer.castShadow = true;
@@ -452,7 +452,7 @@ export class DiabloRenderer {
         }
       } else if (tType === 'willow') {
         const willowGreen = 0x3a8a3a + Math.floor(Math.random() * 0x224400);
-        const willowCrown = new THREE.Mesh(new THREE.SphereGeometry(1.5 + Math.random() * 0.5, 14, 12),
+        const willowCrown = new THREE.Mesh(new THREE.SphereGeometry(1.5 + Math.random() * 0.5, 23, 20),
           new THREE.MeshStandardMaterial({ color: willowGreen, roughness: 0.8 }));
         willowCrown.position.y = trunkH + 0.8;
         willowCrown.castShadow = true;
@@ -478,14 +478,14 @@ export class DiabloRenderer {
         const crownH = 2.0 + Math.random() * 2.0;
         for (let li = 0; li < 4; li++) {
           const lc = layerCfgs[li];
-          const layerGeo = new THREE.ConeGeometry(crownR * lc.rM, crownH * lc.hM, 16);
+          const layerGeo = new THREE.ConeGeometry(crownR * lc.rM, crownH * lc.hM, 27);
           const layer = new THREE.Mesh(layerGeo, new THREE.MeshStandardMaterial({ color: leafCols[li], roughness: 0.8 }));
           layer.position.y = trunkH + crownH * 0.3 + lc.yO;
           layer.castShadow = true;
           tree.add(layer);
         }
         // Sphere cap
-        const capMesh = new THREE.Mesh(new THREE.SphereGeometry(crownR * 0.4, 14, 12),
+        const capMesh = new THREE.Mesh(new THREE.SphereGeometry(crownR * 0.4, 23, 20),
           new THREE.MeshStandardMaterial({ color: baseGreenShade + 0x112200, roughness: 0.75 }));
         capMesh.position.y = trunkH + crownH * 0.3 + 1.5;
         capMesh.castShadow = true;
@@ -497,7 +497,7 @@ export class DiabloRenderer {
       for (let bs = 0; bs < 3; bs++) {
         const stubAng = Math.random() * Math.PI * 2;
         const stubLen = 0.15 + Math.random() * 0.2;
-        const stubGeo = new THREE.CylinderGeometry(trunkR * 0.08, trunkR * 0.15, stubLen, 16);
+        const stubGeo = new THREE.CylinderGeometry(trunkR * 0.08, trunkR * 0.15, stubLen, 27);
         const stub = new THREE.Mesh(stubGeo, trunkMat);
         stub.position.set(
           Math.cos(stubAng) * trunkR * 0.95,
@@ -511,7 +511,7 @@ export class DiabloRenderer {
 
       // Ground shadow circle under tree
       const shadowR = tType === 'pine' ? 1.8 : tType === 'oak' ? 2.2 : 1.5;
-      const shadowGeo = new THREE.CircleGeometry(shadowR + Math.random() * 0.5, 24);
+      const shadowGeo = new THREE.CircleGeometry(shadowR + Math.random() * 0.5, 36);
       const shadowMat = new THREE.MeshStandardMaterial({ color: 0x111a11, transparent: true, opacity: 0.18, roughness: 1.0, side: THREE.DoubleSide });
       const shadow = new THREE.Mesh(shadowGeo, shadowMat);
       shadow.rotation.x = -Math.PI / 2;
@@ -527,7 +527,7 @@ export class DiabloRenderer {
     for (let i = 0; i < 55; i++) {
       const rockGrp = new THREE.Group();
       const rSize = 0.1 + Math.random() * 0.35;
-      const rockGeo = i % 3 === 0 ? new THREE.IcosahedronGeometry(rSize, 1) : new THREE.DodecahedronGeometry(rSize, 1);
+      const rockGeo = i % 3 === 0 ? new THREE.IcosahedronGeometry(rSize, 2) : new THREE.DodecahedronGeometry(rSize, 2);
       const greyBrown = [0x666655, 0x777766, 0x888877, 0x5a5a4a][i % 4] + Math.floor(Math.random() * 0x111100);
       const rockMat = new THREE.MeshStandardMaterial({ color: greyBrown, roughness: 0.95, metalness: 0.05 });
       const rock = new THREE.Mesh(rockGeo, rockMat);
@@ -535,7 +535,7 @@ export class DiabloRenderer {
       rock.castShadow = true;
       rockGrp.add(rock);
       if (Math.random() > 0.4) {
-        const mossGeo = new THREE.SphereGeometry(rSize * 0.5, 10, 8);
+        const mossGeo = new THREE.SphereGeometry(rSize * 0.5, 17, 16);
         const moss = new THREE.Mesh(mossGeo, new THREE.MeshStandardMaterial({ color: 0x3a6a2a + Math.floor(Math.random() * 0x112200), roughness: 1.0 }));
         moss.scale.y = 0.3;
         moss.position.y = rSize * 0.3;
@@ -566,7 +566,7 @@ export class DiabloRenderer {
       const tuft = new THREE.Group();
       const bladeCount = 4 + Math.floor(Math.random() * 4);
       for (let j = 0; j < bladeCount; j++) {
-        const grassGeo = new THREE.ConeGeometry(0.05 + Math.random() * 0.05, 0.25 + Math.random() * 0.25, 10);
+        const grassGeo = new THREE.ConeGeometry(0.05 + Math.random() * 0.05, 0.25 + Math.random() * 0.25, 17);
         const blade = new THREE.Mesh(grassGeo, new THREE.MeshStandardMaterial({ color: grassGreens[j % grassGreens.length], roughness: 0.9 }));
         blade.position.set((Math.random() - 0.5) * 0.25, 0.15, (Math.random() - 0.5) * 0.25);
         blade.rotation.z = (Math.random() - 0.5) * 0.5;
@@ -585,21 +585,21 @@ export class DiabloRenderer {
       const logLen = 2.0 + Math.random() * 3.0;
       const logR = 0.12 + Math.random() * 0.15;
       const logColor = [0x4a3520, 0x3a2510, 0x5a4530][i % 3];
-      const logGeo = new THREE.CylinderGeometry(logR * 0.9, logR * 1.15, logLen, 16);
+      const logGeo = new THREE.CylinderGeometry(logR * 0.9, logR * 1.15, logLen, 27);
       const logMat = new THREE.MeshStandardMaterial({ color: logColor, roughness: 0.95 });
       const logMesh = new THREE.Mesh(logGeo, logMat);
       logMesh.rotation.z = Math.PI / 2;
       logMesh.position.y = logR;
       logGrp.add(logMesh);
       // Cross-section ring at end
-      const endRing = new THREE.Mesh(new THREE.RingGeometry(0, logR * 0.9, 8),
+      const endRing = new THREE.Mesh(new THREE.RingGeometry(0, logR * 0.9, 16),
         new THREE.MeshStandardMaterial({ color: 0x8a7560, roughness: 0.8, side: THREE.DoubleSide }));
       endRing.rotation.y = Math.PI / 2;
       endRing.position.set(logLen * 0.5, logR, 0);
       logGrp.add(endRing);
       // Moss patches
       for (let m = 0; m < 4; m++) {
-        const mossPatch = new THREE.Mesh(new THREE.SphereGeometry(0.06 + Math.random() * 0.04, 10, 8),
+        const mossPatch = new THREE.Mesh(new THREE.SphereGeometry(0.06 + Math.random() * 0.04, 17, 16),
           new THREE.MeshStandardMaterial({ color: 0x3a7733 + Math.floor(Math.random() * 0x112200), roughness: 1.0 }));
         mossPatch.scale.y = 0.3;
         mossPatch.position.set((Math.random() - 0.5) * logLen * 0.7, logR * 1.4, (Math.random() - 0.5) * 0.1);
@@ -609,7 +609,7 @@ export class DiabloRenderer {
       for (let br = 0; br < 2; br++) {
         const ringPos = (Math.random() - 0.5) * logLen * 0.6;
         const barkRing = new THREE.Mesh(
-          new THREE.TorusGeometry(logR * 1.05, logR * 0.12, 12, 16),
+          new THREE.TorusGeometry(logR * 1.05, logR * 0.12, 20, 27),
           logMat
         );
         barkRing.position.set(ringPos, logR, 0);
@@ -619,7 +619,7 @@ export class DiabloRenderer {
       // Shelf fungus
       if (Math.random() > 0.4) {
         for (let sf = 0; sf < 2; sf++) {
-          const fungus = new THREE.Mesh(new THREE.SphereGeometry(0.06 + Math.random() * 0.04, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2),
+          const fungus = new THREE.Mesh(new THREE.SphereGeometry(0.06 + Math.random() * 0.04, 20, 16, 0, Math.PI * 2, 0, Math.PI / 2),
             new THREE.MeshStandardMaterial({ color: 0xaa8855, roughness: 0.7 }));
           fungus.scale.y = 0.3;
           fungus.position.set((Math.random() - 0.5) * logLen * 0.5, logR * 0.7, logR * (Math.random() > 0.5 ? 1 : -1));
@@ -638,20 +638,20 @@ export class DiabloRenderer {
     for (let i = 0; i < 28; i++) {
       const mush = new THREE.Group();
       const stemH = 0.1 + Math.random() * 0.15;
-      const stemGeo = new THREE.CylinderGeometry(0.03, 0.04, stemH, 14);
+      const stemGeo = new THREE.CylinderGeometry(0.03, 0.04, stemH, 23);
       const stem = new THREE.Mesh(stemGeo, new THREE.MeshStandardMaterial({ color: 0xeeeecc, roughness: 0.8 }));
       stem.position.y = stemH / 2;
       mush.add(stem);
       const capR = 0.06 + Math.random() * 0.08;
       const capColor = mushCapColors[Math.floor(Math.random() * mushCapColors.length)];
-      const capGeo = new THREE.SphereGeometry(capR, 32, 14, 0, Math.PI * 2, 0, Math.PI / 2);
+      const capGeo = new THREE.SphereGeometry(capR, 44, 23, 0, Math.PI * 2, 0, Math.PI / 2);
       const cap = new THREE.Mesh(capGeo, new THREE.MeshStandardMaterial({ color: capColor, roughness: 0.6 }));
       cap.position.y = stemH;
       mush.add(cap);
       // Spots on red/orange caps
       if (capColor === 0xcc3333 || capColor === 0xdd8844) {
         for (let sp = 0; sp < 4; sp++) {
-          const spot = new THREE.Mesh(new THREE.CircleGeometry(0.01, 10),
+          const spot = new THREE.Mesh(new THREE.CircleGeometry(0.01, 17),
             new THREE.MeshStandardMaterial({ color: 0xeeeedd, roughness: 0.5, side: THREE.DoubleSide }));
           const spAng = Math.random() * Math.PI * 2;
           spot.position.set(Math.cos(spAng) * capR * 0.5, stemH + capR * 0.3, Math.sin(spAng) * capR * 0.5);
@@ -681,7 +681,7 @@ export class DiabloRenderer {
       this._envGroup.add(streamSeg);
       // Riverbed stones
       for (let rs = 0; rs < 3; rs++) {
-        const rStone = new THREE.Mesh(new THREE.SphereGeometry(0.04 + Math.random() * 0.06, 10, 8),
+        const rStone = new THREE.Mesh(new THREE.SphereGeometry(0.04 + Math.random() * 0.06, 17, 16),
           new THREE.MeshStandardMaterial({ color: 0x777788, roughness: 0.7 }));
         rStone.scale.y = 0.4;
         rStone.position.set(sx + (Math.random() - 0.5) * segW * 0.8, getTerrainHeight(sx, sz) + 0.01, sz + (Math.random() - 0.5) * 1.5);
@@ -690,7 +690,7 @@ export class DiabloRenderer {
     }
     // Stream sparkle highlights
     for (let sp = 0; sp < 10; sp++) {
-      const sparkle = new THREE.Mesh(new THREE.CircleGeometry(0.06, 10),
+      const sparkle = new THREE.Mesh(new THREE.CircleGeometry(0.06, 17),
         new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xaaddff, emissiveIntensity: 0.5, transparent: true, opacity: 0.3, side: THREE.DoubleSide }));
       sparkle.rotation.x = -Math.PI / 2;
       const spSz = -d * 0.35 + Math.random() * d * 0.7;
@@ -705,7 +705,7 @@ export class DiabloRenderer {
       const patch = new THREE.Group();
       const count = 3 + Math.floor(Math.random() * 4);
       for (let j = 0; j < count; j++) {
-        const stemGeo = new THREE.CylinderGeometry(0.008, 0.01, 0.22 + Math.random() * 0.15, 10);
+        const stemGeo = new THREE.CylinderGeometry(0.008, 0.01, 0.22 + Math.random() * 0.15, 17);
         const fStem = new THREE.Mesh(stemGeo, new THREE.MeshStandardMaterial({ color: 0x33aa22, roughness: 0.8 }));
         const fsx = (Math.random() - 0.5) * 0.4;
         const fsz = (Math.random() - 0.5) * 0.4;
@@ -716,7 +716,7 @@ export class DiabloRenderer {
         // Petals in a ring
         const petalCount = 4 + Math.floor(Math.random() * 3);
         for (let p = 0; p < petalCount; p++) {
-          const petal = new THREE.Mesh(new THREE.SphereGeometry(0.02, 10, 8),
+          const petal = new THREE.Mesh(new THREE.SphereGeometry(0.02, 17, 16),
             new THREE.MeshStandardMaterial({ color: fColor, roughness: 0.5, emissive: fColor, emissiveIntensity: 0.05 }));
           const pAng = (p / petalCount) * Math.PI * 2;
           petal.scale.set(1.2, 0.5, 1);
@@ -724,7 +724,7 @@ export class DiabloRenderer {
           patch.add(petal);
         }
         // Pistil center
-        const pistil = new THREE.Mesh(new THREE.SphereGeometry(0.01, 10, 8),
+        const pistil = new THREE.Mesh(new THREE.SphereGeometry(0.01, 17, 16),
           new THREE.MeshStandardMaterial({ color: 0xffff44, roughness: 0.4 }));
         pistil.position.set(fsx, 0.27, fsz);
         patch.add(pistil);
@@ -739,7 +739,7 @@ export class DiabloRenderer {
     for (let i = 0; i < 14; i++) {
       const boulderGroup = new THREE.Group();
       const bRadius = 0.25 + Math.random() * 0.35;
-      const boulderGeo = new THREE.SphereGeometry(bRadius, 14, 12);
+      const boulderGeo = new THREE.SphereGeometry(bRadius, 23, 20);
       const boulderColor = [0x777766, 0x888877, 0x666655, 0x7a7a6a][i % 4];
       const boulderMat = new THREE.MeshStandardMaterial({ color: boulderColor, roughness: 0.95, metalness: 0.05 });
       const boulder = new THREE.Mesh(boulderGeo, boulderMat);
@@ -750,7 +750,7 @@ export class DiabloRenderer {
       // Multiple moss patches
       const mossCount = 1 + Math.floor(Math.random() * 3);
       for (let m = 0; m < mossCount; m++) {
-        const mossGeo = new THREE.SphereGeometry(bRadius * (0.2 + Math.random() * 0.2), 12, 10);
+        const mossGeo = new THREE.SphereGeometry(bRadius * (0.2 + Math.random() * 0.2), 20, 17);
         const moss = new THREE.Mesh(mossGeo, new THREE.MeshStandardMaterial({ color: 0x3a6a2a + Math.floor(Math.random() * 0x112200), roughness: 1.0 }));
         moss.scale.y = 0.3;
         const mAng = Math.random() * Math.PI * 2;
@@ -759,7 +759,7 @@ export class DiabloRenderer {
       }
       // Lichen patches
       if (Math.random() > 0.5) {
-        const lichen = new THREE.Mesh(new THREE.CircleGeometry(bRadius * 0.3, 12),
+        const lichen = new THREE.Mesh(new THREE.CircleGeometry(bRadius * 0.3, 20),
           new THREE.MeshStandardMaterial({ color: 0xbbaa66, roughness: 0.9, side: THREE.DoubleSide }));
         lichen.position.set(0, bRadius * 0.4, bRadius * 0.3);
         lichen.lookAt(new THREE.Vector3(0, bRadius, bRadius));
@@ -769,7 +769,7 @@ export class DiabloRenderer {
       for (let pb = 0; pb < 3; pb++) {
         const pebbleAng = Math.random() * Math.PI * 2;
         const pebbleDist = bRadius * 0.9 + Math.random() * 0.15;
-        const pebbleGeo = new THREE.IcosahedronGeometry(0.04 + Math.random() * 0.03, 1);
+        const pebbleGeo = new THREE.IcosahedronGeometry(0.04 + Math.random() * 0.03, 2);
         const pebble = new THREE.Mesh(pebbleGeo, boulderMat);
         pebble.position.set(Math.cos(pebbleAng) * pebbleDist, 0.02, Math.sin(pebbleAng) * pebbleDist);
         pebble.scale.y = 0.5 + Math.random() * 0.3;
@@ -785,7 +785,7 @@ export class DiabloRenderer {
     for (let i = 0; i < 5; i++) {
       const bonesGroup = new THREE.Group();
       for (let b = 0; b < 4; b++) {
-        const abGeo = new THREE.CylinderGeometry(0.02, 0.025, 0.3 + Math.random() * 0.2, 12);
+        const abGeo = new THREE.CylinderGeometry(0.02, 0.025, 0.3 + Math.random() * 0.2, 20);
         const abMat = new THREE.MeshStandardMaterial({ color: 0xddddcc, roughness: 0.9 });
         const ab = new THREE.Mesh(abGeo, abMat);
         ab.position.set((Math.random() - 0.5) * 0.5, 0.04, (Math.random() - 0.5) * 0.5);
@@ -808,7 +808,7 @@ export class DiabloRenderer {
     this._envGroup.add(wBridge);
     for (let side = -1; side <= 1; side += 2) {
       for (let pi = 0; pi < 2; pi++) {
-        const railGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.5, 12);
+        const railGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.5, 20);
         const railMat = new THREE.MeshStandardMaterial({ color: 0x6b4226, roughness: 0.9 });
         const rail = new THREE.Mesh(railGeo, railMat);
         rail.position.set(hw * 0.4 + (pi === 0 ? -1.2 : 1.2), 0.4, side * 0.65);
@@ -820,7 +820,7 @@ export class DiabloRenderer {
     for (let i = 0; i < 3; i++) {
       const campfire = new THREE.Group();
       for (let s = 0; s < 7; s++) {
-        const stoneGeo = new THREE.SphereGeometry(0.1, 12, 10);
+        const stoneGeo = new THREE.SphereGeometry(0.1, 20, 17);
         const stoneMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.95 });
         const stone = new THREE.Mesh(stoneGeo, stoneMat);
         const ang = (s / 7) * Math.PI * 2;
@@ -833,7 +833,7 @@ export class DiabloRenderer {
       charred.rotation.x = -Math.PI / 2;
       charred.position.y = 0.01;
       campfire.add(charred);
-      const hLogGeo = new THREE.CylinderGeometry(0.06, 0.07, 0.5, 14);
+      const hLogGeo = new THREE.CylinderGeometry(0.06, 0.07, 0.5, 23);
       const hLogMat = new THREE.MeshStandardMaterial({ color: 0x2a1a0a, roughness: 0.95 });
       const hLog = new THREE.Mesh(hLogGeo, hLogMat);
       hLog.rotation.z = Math.PI / 2;
@@ -847,12 +847,12 @@ export class DiabloRenderer {
 
     // Beehives (2)
     for (let i = 0; i < 2; i++) {
-      const hiveGeo = new THREE.SphereGeometry(0.3, 16, 14);
+      const hiveGeo = new THREE.SphereGeometry(0.3, 27, 23);
       const hiveMat = new THREE.MeshStandardMaterial({ color: 0xaa8833, roughness: 0.8 });
       const hive = new THREE.Mesh(hiveGeo, hiveMat);
       hive.position.set((Math.random() - 0.5) * w * 0.6, 3.0 + Math.random(), (Math.random() - 0.5) * d * 0.6);
       this._envGroup.add(hive);
-      const holeGeo = new THREE.CircleGeometry(0.06, 14);
+      const holeGeo = new THREE.CircleGeometry(0.06, 23);
       const holeMat = new THREE.MeshStandardMaterial({ color: 0x111100, side: THREE.DoubleSide });
       const hole = new THREE.Mesh(holeGeo, holeMat);
       hole.position.set(hive.position.x, hive.position.y - 0.1, hive.position.z + 0.29);
@@ -894,7 +894,7 @@ export class DiabloRenderer {
     for (let i = 0; i < 12; i++) {
       const shaftR = 0.15 + Math.random() * 0.35;
       const shaftH = 12 + Math.random() * 6;
-      const shaftGeo = new THREE.CylinderGeometry(shaftR * 0.6, shaftR, shaftH, 16);
+      const shaftGeo = new THREE.CylinderGeometry(shaftR * 0.6, shaftR, shaftH, 27);
       const shaftMat = new THREE.MeshStandardMaterial({
         color: 0xffffdd, transparent: true,
         opacity: 0.02 + Math.random() * 0.02,
@@ -905,7 +905,7 @@ export class DiabloRenderer {
       this._envGroup.add(shaft);
       // Dust motes in shaft
       for (let dm = 0; dm < 4; dm++) {
-        const mote = new THREE.Mesh(new THREE.SphereGeometry(0.01, 8, 4),
+        const mote = new THREE.Mesh(new THREE.SphereGeometry(0.01, 16, 8),
           new THREE.MeshStandardMaterial({ color: 0xffffee, emissive: 0xffffcc, emissiveIntensity: 0.8, transparent: true, opacity: 0.3 }));
         mote.position.set(shaft.position.x + (Math.random() - 0.5) * shaftR, Math.random() * shaftH * 0.6 + 1, shaft.position.z + (Math.random() - 0.5) * shaftR);
         this._envGroup.add(mote);
@@ -926,19 +926,19 @@ export class DiabloRenderer {
       const body = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.3, 0.2), deerMat);
       body.position.y = 0.5;
       deerGrp.add(body);
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.1, 14, 12), deerMat);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.1, 23, 20), deerMat);
       head.position.set(0.35, 0.7, 0);
       deerGrp.add(head);
       for (const lz of [-0.07, 0.07]) {
         for (const lx of [-0.15, 0.15]) {
-          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.35, 10), deerMat);
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.35, 17), deerMat);
           leg.position.set(lx, 0.2, lz);
           deerGrp.add(leg);
         }
       }
       // Antlers
       for (const ax of [-0.04, 0.04]) {
-        const antler = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.01, 0.25, 10), deerMat);
+        const antler = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.01, 0.25, 17), deerMat);
         antler.position.set(0.35 + ax, 0.85, 0);
         antler.rotation.z = ax < 0 ? 0.4 : -0.4;
         deerGrp.add(antler);
@@ -955,12 +955,12 @@ export class DiabloRenderer {
     const berryMat = new THREE.MeshStandardMaterial({ color: 0xcc2244, roughness: 0.5, emissive: 0x440011, emissiveIntensity: 0.1 });
     for (let i = 0; i < 12; i++) {
       const bushGrp = new THREE.Group();
-      const bush = new THREE.Mesh(new THREE.SphereGeometry(0.4 + Math.random() * 0.3, 14, 12), bushMat);
+      const bush = new THREE.Mesh(new THREE.SphereGeometry(0.4 + Math.random() * 0.3, 23, 20), bushMat);
       bush.scale.y = 0.6;
       bush.position.y = 0.2;
       bushGrp.add(bush);
       for (let b = 0; b < 5; b++) {
-        const berry = new THREE.Mesh(new THREE.SphereGeometry(0.03, 10, 8), berryMat);
+        const berry = new THREE.Mesh(new THREE.SphereGeometry(0.03, 17, 16), berryMat);
         const bAngle = Math.random() * Math.PI * 2;
         berry.position.set(Math.cos(bAngle) * 0.3, 0.25 + Math.random() * 0.15, Math.sin(bAngle) * 0.3);
         bushGrp.add(berry);
@@ -970,7 +970,7 @@ export class DiabloRenderer {
         const lcAng = Math.random() * Math.PI * 2;
         const lcR = 0.25 + Math.random() * 0.15;
         const leafCluster = new THREE.Mesh(
-          new THREE.SphereGeometry(0.08 + Math.random() * 0.05, 24, 16),
+          new THREE.SphereGeometry(0.08 + Math.random() * 0.05, 36, 27),
           new THREE.MeshStandardMaterial({ color: 0x2a6a2a + Math.floor(Math.random() * 0x112200), roughness: 0.85 })
         );
         leafCluster.position.set(Math.cos(lcAng) * lcR, 0.22 + Math.random() * 0.12, Math.sin(lcAng) * lcR);
@@ -990,14 +990,14 @@ export class DiabloRenderer {
       const numShrooms = 3 + Math.floor(Math.random() * 3);
       for (let m = 0; m < numShrooms; m++) {
         const stemH = 0.1 + Math.random() * 0.15;
-        const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, stemH, 12),
+        const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, stemH, 20),
           new THREE.MeshStandardMaterial({ color: 0xddddcc, roughness: 0.8 }));
         const mx = (Math.random() - 0.5) * 0.3;
         const mz = (Math.random() - 0.5) * 0.3;
         stem.position.set(mx, stemH / 2, mz);
         toadGrp.add(stem);
         const capColor = toadColors[Math.floor(Math.random() * toadColors.length)];
-        const cap = new THREE.Mesh(new THREE.SphereGeometry(0.04 + Math.random() * 0.03, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2),
+        const cap = new THREE.Mesh(new THREE.SphereGeometry(0.04 + Math.random() * 0.03, 23, 17, 0, Math.PI * 2, 0, Math.PI / 2),
           new THREE.MeshStandardMaterial({ color: capColor, roughness: 0.6 }));
         cap.position.set(mx, stemH, mz);
         toadGrp.add(cap);
@@ -1011,7 +1011,7 @@ export class DiabloRenderer {
     // Old wooden signpost (2)
     for (let i = 0; i < 2; i++) {
       const signGrp = new THREE.Group();
-      const postGeo = new THREE.CylinderGeometry(0.04, 0.05, 2.0, 12);
+      const postGeo = new THREE.CylinderGeometry(0.04, 0.05, 2.0, 20);
       const postMat = new THREE.MeshStandardMaterial({ color: 0x6b4226, roughness: 0.9 });
       const post = new THREE.Mesh(postGeo, postMat);
       post.position.y = 1.0;
@@ -1053,11 +1053,11 @@ export class DiabloRenderer {
     // Hollow tree stump (3)
     for (let i = 0; i < 3; i++) {
       const stumpGrp = new THREE.Group();
-      const stump = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.35, 0.5, 16),
+      const stump = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.35, 0.5, 27),
         new THREE.MeshStandardMaterial({ color: 0x5c3a1e, roughness: 0.9 }));
       stump.position.y = 0.25;
       stumpGrp.add(stump);
-      const hollow = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.1, 16),
+      const hollow = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.1, 27),
         new THREE.MeshStandardMaterial({ color: 0x1a0a00, roughness: 1.0 }));
       hollow.position.y = 0.5;
       stumpGrp.add(hollow);
@@ -1071,7 +1071,7 @@ export class DiabloRenderer {
     const fireflyColors = [0xddff44, 0xccee33, 0xeeff66, 0xbbdd22];
     for (let i = 0; i < 35; i++) {
       const ffColor = fireflyColors[Math.floor(Math.random() * fireflyColors.length)];
-      const fly = new THREE.Mesh(new THREE.SphereGeometry(0.015 + Math.random() * 0.01, 10, 8),
+      const fly = new THREE.Mesh(new THREE.SphereGeometry(0.015 + Math.random() * 0.01, 17, 16),
         new THREE.MeshStandardMaterial({ color: ffColor, emissive: ffColor, emissiveIntensity: 1.0 + Math.random() * 0.8 }));
       fly.position.set(
         (Math.random() - 0.5) * w * 0.8,
@@ -1086,14 +1086,14 @@ export class DiabloRenderer {
       const logGrp = new THREE.Group();
       const logLen = 1.5 + Math.random() * 2.0;
       const logR = 0.08 + Math.random() * 0.06;
-      const logMesh = new THREE.Mesh(new THREE.CylinderGeometry(logR, logR * 1.1, logLen, 14),
+      const logMesh = new THREE.Mesh(new THREE.CylinderGeometry(logR, logR * 1.1, logLen, 23),
         new THREE.MeshStandardMaterial({ color: 0x4a2a10, roughness: 0.95 }));
       logMesh.rotation.z = Math.PI / 2;
       logMesh.position.y = logR;
       logGrp.add(logMesh);
       // Moss patches on log
       for (let m = 0; m < 3; m++) {
-        const mossPatch = new THREE.Mesh(new THREE.SphereGeometry(0.06, 20, 8),
+        const mossPatch = new THREE.Mesh(new THREE.SphereGeometry(0.06, 30, 16),
           new THREE.MeshStandardMaterial({ color: 0x447733, roughness: 1.0 }));
         mossPatch.scale.y = 0.4;
         mossPatch.position.set((Math.random() - 0.5) * logLen * 0.6, logR * 1.5, (Math.random() - 0.5) * 0.1);
@@ -1110,12 +1110,12 @@ export class DiabloRenderer {
     const woodFlowerColors = [0xffee55, 0xff88cc, 0xaa66ff, 0x66ccff, 0xff6644];
     for (let i = 0; i < 25; i++) {
       const flGrp = new THREE.Group();
-      const stemMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.01, 0.15, 10),
+      const stemMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.01, 0.15, 17),
         new THREE.MeshStandardMaterial({ color: 0x447733, roughness: 0.9 }));
       stemMesh.position.y = 0.075;
       flGrp.add(stemMesh);
       const petalColor = woodFlowerColors[Math.floor(Math.random() * woodFlowerColors.length)];
-      const petalMesh = new THREE.Mesh(new THREE.SphereGeometry(0.03, 24, 10),
+      const petalMesh = new THREE.Mesh(new THREE.SphereGeometry(0.03, 36, 17),
         new THREE.MeshStandardMaterial({ color: petalColor, roughness: 0.5, emissive: petalColor, emissiveIntensity: 0.1 }));
       petalMesh.scale.y = 0.5;
       petalMesh.position.y = 0.16;
@@ -1129,7 +1129,7 @@ export class DiabloRenderer {
     // Hanging vines from trees (10) - thin green strands
     for (let i = 0; i < 10; i++) {
       const vineLen = 1.0 + Math.random() * 1.5;
-      const vine = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.015, vineLen, 10),
+      const vine = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.015, vineLen, 17),
         new THREE.MeshStandardMaterial({ color: 0x338833, roughness: 0.9 }));
       vine.position.set(
         (Math.random() - 0.5) * w * 0.7,
@@ -1142,13 +1142,13 @@ export class DiabloRenderer {
     // Owl nests in trees (3)
     for (let i = 0; i < 3; i++) {
       const nestGrp = new THREE.Group();
-      const nestBase = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.04, 12, 16),
+      const nestBase = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.04, 20, 27),
         new THREE.MeshStandardMaterial({ color: 0x6b4226, roughness: 0.95 }));
       nestBase.rotation.x = Math.PI / 2;
       nestGrp.add(nestBase);
       // Tiny eggs
       for (let e = 0; e < 2; e++) {
-        const egg = new THREE.Mesh(new THREE.SphereGeometry(0.025, 12, 10),
+        const egg = new THREE.Mesh(new THREE.SphereGeometry(0.025, 20, 17),
           new THREE.MeshStandardMaterial({ color: 0xeeeedd, roughness: 0.7 }));
         egg.scale.y = 1.3;
         egg.position.set((e - 0.5) * 0.05, 0.02, 0);
@@ -1162,7 +1162,7 @@ export class DiabloRenderer {
     const leafColors = [0x886622, 0x995533, 0xaa7744, 0x664411, 0x553300, 0xbb8844, 0x775522];
     for (let i = 0; i < 30; i++) {
       const leafR = 0.15 + Math.random() * 0.3;
-      const leafGeo = Math.random() > 0.5 ? new THREE.CircleGeometry(leafR, 12) : new THREE.PlaneGeometry(leafR * 1.5, leafR);
+      const leafGeo = Math.random() > 0.5 ? new THREE.CircleGeometry(leafR, 20) : new THREE.PlaneGeometry(leafR * 1.5, leafR);
       const leafPile = new THREE.Mesh(leafGeo,
         new THREE.MeshStandardMaterial({ color: leafColors[Math.floor(Math.random() * leafColors.length)], roughness: 1.0, side: THREE.DoubleSide }));
       leafPile.rotation.x = -Math.PI / 2 + (Math.random() - 0.5) * 0.1;
@@ -1177,7 +1177,7 @@ export class DiabloRenderer {
     const mossPatchColors = [0x3a6a2a, 0x2a5a1a, 0x4a7a3a, 0x336633];
     for (let i = 0; i < 25; i++) {
       const mossR = 0.3 + Math.random() * 0.6;
-      const mossPatch = new THREE.Mesh(new THREE.CircleGeometry(mossR, 14),
+      const mossPatch = new THREE.Mesh(new THREE.CircleGeometry(mossR, 23),
         new THREE.MeshStandardMaterial({ color: mossPatchColors[i % mossPatchColors.length], roughness: 1.0, side: THREE.DoubleSide }));
       mossPatch.rotation.x = -Math.PI / 2;
       const mpX = (Math.random() - 0.5) * w * 0.9;
@@ -1193,12 +1193,12 @@ export class DiabloRenderer {
       const numFlowers = 8 + Math.floor(Math.random() * 8);
       for (let f = 0; f < numFlowers; f++) {
         const fColor = meadowColors[Math.floor(Math.random() * meadowColors.length)];
-        const flower = new THREE.Mesh(new THREE.SphereGeometry(0.02 + Math.random() * 0.015, 10, 8),
+        const flower = new THREE.Mesh(new THREE.SphereGeometry(0.02 + Math.random() * 0.015, 17, 16),
           new THREE.MeshStandardMaterial({ color: fColor, roughness: 0.5, emissive: fColor, emissiveIntensity: 0.05 }));
         flower.scale.y = 0.5;
         flower.position.set((Math.random() - 0.5) * 0.8, 0.15 + Math.random() * 0.08, (Math.random() - 0.5) * 0.8);
         meadowGrp.add(flower);
-        const fStem = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.005, 0.12, 8),
+        const fStem = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.005, 0.12, 16),
           new THREE.MeshStandardMaterial({ color: 0x447733, roughness: 0.9 }));
         fStem.position.set(flower.position.x, 0.06, flower.position.z);
         meadowGrp.add(fStem);
@@ -1230,20 +1230,20 @@ export class DiabloRenderer {
     for (let i = 0; i < 4; i++) {
       const rabbitGrp = new THREE.Group();
       const rabbitMat = new THREE.MeshStandardMaterial({ color: 0x887766, roughness: 0.8 });
-      const rbBody = new THREE.Mesh(new THREE.SphereGeometry(0.08, 12, 10), rabbitMat);
+      const rbBody = new THREE.Mesh(new THREE.SphereGeometry(0.08, 20, 17), rabbitMat);
       rbBody.scale.set(1.3, 0.9, 1);
       rbBody.position.y = 0.1;
       rabbitGrp.add(rbBody);
-      const rbHead = new THREE.Mesh(new THREE.SphereGeometry(0.05, 12, 10), rabbitMat);
+      const rbHead = new THREE.Mesh(new THREE.SphereGeometry(0.05, 20, 17), rabbitMat);
       rbHead.position.set(0.1, 0.15, 0);
       rabbitGrp.add(rbHead);
       for (const ez of [-0.02, 0.02]) {
-        const ear = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.012, 0.08, 10), rabbitMat);
+        const ear = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.012, 0.08, 17), rabbitMat);
         ear.position.set(0.08, 0.22, ez);
         ear.rotation.z = 0.2;
         rabbitGrp.add(ear);
       }
-      const rbTail = new THREE.Mesh(new THREE.SphereGeometry(0.025, 10, 8),
+      const rbTail = new THREE.Mesh(new THREE.SphereGeometry(0.025, 17, 16),
         new THREE.MeshStandardMaterial({ color: 0xddddcc, roughness: 0.8 }));
       rbTail.position.set(-0.1, 0.1, 0);
       rabbitGrp.add(rbTail);
@@ -1269,7 +1269,7 @@ export class DiabloRenderer {
       const building = new THREE.Group();
       const bh = 3 + Math.random() * 3;
       const br = 1.2 + Math.random() * 0.8;
-      const baseGeo = new THREE.CylinderGeometry(br, br * 1.1, bh, 16);
+      const baseGeo = new THREE.CylinderGeometry(br, br * 1.1, bh, 27);
       const baseMat = new THREE.MeshStandardMaterial({ color: 0xccccbb, roughness: 0.6, metalness: 0.1 });
       const base = new THREE.Mesh(baseGeo, baseMat);
       base.position.y = bh / 2;
@@ -1278,7 +1278,7 @@ export class DiabloRenderer {
 
       // Decorative trim bands around building
       for (let tb = 0; tb < 2; tb++) {
-        const trimBand = new THREE.Mesh(new THREE.TorusGeometry(br * 1.02, 0.04, 10, 24),
+        const trimBand = new THREE.Mesh(new THREE.TorusGeometry(br * 1.02, 0.04, 17, 36),
           new THREE.MeshStandardMaterial({ color: 0xaabbcc, metalness: 0.4, roughness: 0.3 }));
         trimBand.rotation.x = Math.PI / 2;
         trimBand.position.y = bh * 0.3 + tb * bh * 0.4;
@@ -1286,7 +1286,7 @@ export class DiabloRenderer {
       }
 
       const roofH = 2.0 + Math.random();
-      const roofGeo = new THREE.ConeGeometry(br * 1.3, roofH, 16);
+      const roofGeo = new THREE.ConeGeometry(br * 1.3, roofH, 27);
       const roofMat = new THREE.MeshStandardMaterial({ color: 0x336699, roughness: 0.4, metalness: 0.3 });
       const roof = new THREE.Mesh(roofGeo, roofMat);
       roof.position.y = bh + roofH / 2;
@@ -1294,7 +1294,7 @@ export class DiabloRenderer {
       building.add(roof);
 
       // Roof spire finial
-      const spire = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.5, 10),
+      const spire = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.5, 17),
         new THREE.MeshStandardMaterial({ color: 0xddddee, metalness: 0.6, roughness: 0.2, emissive: 0x4488ff, emissiveIntensity: 0.3 }));
       spire.position.y = bh + roofH + 0.2;
       building.add(spire);
@@ -1315,7 +1315,7 @@ export class DiabloRenderer {
         win.lookAt(building.position.x, win.position.y, building.position.z);
         building.add(win);
         // Window arch top
-        const winArch = new THREE.Mesh(new THREE.SphereGeometry(0.15, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), winMat);
+        const winArch = new THREE.Mesh(new THREE.SphereGeometry(0.15, 20, 16, 0, Math.PI * 2, 0, Math.PI / 2), winMat);
         winArch.position.copy(win.position);
         winArch.position.y += 0.25;
         winArch.scale.y = 0.5;
@@ -1345,13 +1345,13 @@ export class DiabloRenderer {
     for (let i = 0; i < 18; i++) {
       const lantern = new THREE.Group();
       const postMat = new THREE.MeshStandardMaterial({ color: 0x999999, metalness: 0.6, roughness: 0.3 });
-      const postGeo = new THREE.CylinderGeometry(0.05, 0.07, 2.5, 14);
+      const postGeo = new THREE.CylinderGeometry(0.05, 0.07, 2.5, 23);
       const post = new THREE.Mesh(postGeo, postMat);
       post.position.y = 1.25;
       lantern.add(post);
 
       // Ornate bracket at top
-      const bracket = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.02, 20, 16, Math.PI),
+      const bracket = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.02, 30, 27, Math.PI),
         new THREE.MeshStandardMaterial({ color: 0xaaaaaa, metalness: 0.6, roughness: 0.2 }));
       bracket.position.y = 2.45;
       bracket.rotation.z = Math.PI;
@@ -1359,7 +1359,7 @@ export class DiabloRenderer {
 
       // Hanging crystal with filigree cage
       const crystalColor = [0x66ccff, 0x88aaff, 0x44ddff][i % 3];
-      const crystalGeo = i % 2 === 0 ? new THREE.IcosahedronGeometry(0.18, 1) : new THREE.OctahedronGeometry(0.18, 1);
+      const crystalGeo = i % 2 === 0 ? new THREE.IcosahedronGeometry(0.18, 2) : new THREE.OctahedronGeometry(0.18, 2);
       const crystalMat = new THREE.MeshStandardMaterial({
         color: crystalColor, emissive: crystalColor, emissiveIntensity: 1.2,
         transparent: true, opacity: 0.85,
@@ -1370,7 +1370,7 @@ export class DiabloRenderer {
 
       // Cage wires around crystal
       for (let cw = 0; cw < 4; cw++) {
-        const wire = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.4, 8), postMat);
+        const wire = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.4, 16), postMat);
         const cwAng = (cw / 4) * Math.PI * 2;
         wire.position.set(Math.cos(cwAng) * 0.12, 2.6, Math.sin(cwAng) * 0.12);
         lantern.add(wire);
@@ -1392,7 +1392,7 @@ export class DiabloRenderer {
       const spireGrp = new THREE.Group();
       const spireColor = spireColors[i % spireColors.length];
       const mainH = 3 + Math.random() * 4;
-      const mainSpire = new THREE.Mesh(new THREE.ConeGeometry(0.3 + Math.random() * 0.2, mainH, 12),
+      const mainSpire = new THREE.Mesh(new THREE.ConeGeometry(0.3 + Math.random() * 0.2, mainH, 20),
         new THREE.MeshStandardMaterial({ color: spireColor, emissive: spireColor, emissiveIntensity: 0.4, transparent: true, opacity: 0.7, metalness: 0.3, roughness: 0.1 }));
       mainSpire.position.y = mainH / 2;
       mainSpire.castShadow = true;
@@ -1401,7 +1401,7 @@ export class DiabloRenderer {
       for (let sc = 0; sc < 3; sc++) {
         const scH = 1 + Math.random() * 1.5;
         const scAng = (sc / 3) * Math.PI * 2 + Math.random() * 0.5;
-        const satCrystal = new THREE.Mesh(new THREE.ConeGeometry(0.1 + Math.random() * 0.1, scH, 10),
+        const satCrystal = new THREE.Mesh(new THREE.ConeGeometry(0.1 + Math.random() * 0.1, scH, 17),
           new THREE.MeshStandardMaterial({ color: spireColor, emissive: spireColor, emissiveIntensity: 0.3, transparent: true, opacity: 0.6, roughness: 0.1, metalness: 0.3 }));
         satCrystal.position.set(Math.cos(scAng) * 0.4, scH / 2, Math.sin(scAng) * 0.4);
         satCrystal.rotation.z = (Math.random() - 0.5) * 0.3;
@@ -1421,7 +1421,7 @@ export class DiabloRenderer {
     for (let i = 0; i < 25; i++) {
       const tree = new THREE.Group();
       const trunkH = 4 + Math.random() * 3;
-      const trunkGeo = new THREE.CylinderGeometry(0.3, 0.45, trunkH, 16);
+      const trunkGeo = new THREE.CylinderGeometry(0.3, 0.45, trunkH, 27);
       const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5c4a3e, roughness: 0.9 });
       const trunk = new THREE.Mesh(trunkGeo, trunkMat);
       trunk.position.y = trunkH / 2;
@@ -1430,14 +1430,14 @@ export class DiabloRenderer {
 
       // Multi-layered canopy
       const crownR = 2.0 + Math.random();
-      const crownGeo = new THREE.SphereGeometry(crownR, 32, 14);
+      const crownGeo = new THREE.SphereGeometry(crownR, 44, 23);
       const crownMat = new THREE.MeshStandardMaterial({ color: 0x2a6a3a, roughness: 0.8 });
       const crown = new THREE.Mesh(crownGeo, crownMat);
       crown.position.y = trunkH + 1.0;
       crown.castShadow = true;
       tree.add(crown);
       // Second canopy layer
-      const crown2 = new THREE.Mesh(new THREE.SphereGeometry(crownR * 0.7, 14, 12),
+      const crown2 = new THREE.Mesh(new THREE.SphereGeometry(crownR * 0.7, 23, 20),
         new THREE.MeshStandardMaterial({ color: 0x3a7a4a, roughness: 0.75 }));
       crown2.position.set((Math.random() - 0.5) * 0.5, trunkH + 1.8, (Math.random() - 0.5) * 0.5);
       crown2.castShadow = true;
@@ -1459,7 +1459,7 @@ export class DiabloRenderer {
       for (let r = 0; r < 3; r++) {
         const rootAng = (r / 3) * Math.PI * 2 + Math.random() * 0.5;
         const rootLen = 0.5 + Math.random() * 0.6;
-        const root = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.03, rootLen, 12), trunkMat);
+        const root = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.03, rootLen, 20), trunkMat);
         root.position.set(Math.cos(rootAng) * 0.3, rootLen * 0.2, Math.sin(rootAng) * 0.3);
         root.rotation.z = Math.cos(rootAng) * 0.7;
         root.rotation.x = Math.sin(rootAng) * 0.7;
@@ -1496,7 +1496,7 @@ export class DiabloRenderer {
     // Railings
     for (let side = -1; side <= 1; side += 2) {
       for (let pi = 0; pi < 5; pi++) {
-        const pillarGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.8, 14);
+        const pillarGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.8, 23);
         const pillar = new THREE.Mesh(pillarGeo, bridgeMat);
         pillar.position.set(5 + side * 0.9, 0.9, -5 - 3 + pi * 1.5);
         this._envGroup.add(pillar);
@@ -1507,7 +1507,7 @@ export class DiabloRenderer {
     for (let i = 0; i < 8; i++) {
       const ruin = new THREE.Group();
       const pH = 2 + Math.random() * 3;
-      const pilGeo = new THREE.CylinderGeometry(0.35, 0.4, pH, 16);
+      const pilGeo = new THREE.CylinderGeometry(0.35, 0.4, pH, 27);
       const pilMat = new THREE.MeshStandardMaterial({ color: 0x999988, roughness: 0.8 });
       const pil = new THREE.Mesh(pilGeo, pilMat);
       pil.position.y = pH / 2;
@@ -1515,7 +1515,7 @@ export class DiabloRenderer {
 
       // Moss patches
       for (let m = 0; m < 3; m++) {
-        const mossGeo = new THREE.SphereGeometry(0.15, 24, 10);
+        const mossGeo = new THREE.SphereGeometry(0.15, 36, 17);
         const mossMat = new THREE.MeshStandardMaterial({ color: 0x336633, roughness: 1.0 });
         const moss = new THREE.Mesh(mossGeo, mossMat);
         moss.position.set(
@@ -1538,11 +1538,11 @@ export class DiabloRenderer {
       const runeGrp = new THREE.Group();
       const runeR = 0.8 + Math.random() * 1.2;
       // Outer ring
-      const outerRing = new THREE.Mesh(new THREE.RingGeometry(runeR - 0.05, runeR, 8), elRuneMat);
+      const outerRing = new THREE.Mesh(new THREE.RingGeometry(runeR - 0.05, runeR, 16), elRuneMat);
       outerRing.rotation.x = -Math.PI / 2;
       runeGrp.add(outerRing);
       // Inner symbol (star pattern)
-      const innerRing = new THREE.Mesh(new THREE.RingGeometry(runeR * 0.3, runeR * 0.4, 6), elRuneMat);
+      const innerRing = new THREE.Mesh(new THREE.RingGeometry(runeR * 0.3, runeR * 0.4, 12), elRuneMat);
       innerRing.rotation.x = -Math.PI / 2;
       innerRing.rotation.z = Math.PI / 6;
       innerRing.position.y = 0.01;
@@ -1568,13 +1568,13 @@ export class DiabloRenderer {
       const flowerGroup = new THREE.Group();
       const fCount = 2 + Math.floor(Math.random() * 3);
       for (let j = 0; j < fCount; j++) {
-        const fStemGeo = new THREE.CylinderGeometry(0.01, 0.01, 0.25, 10);
+        const fStemGeo = new THREE.CylinderGeometry(0.01, 0.01, 0.25, 17);
         const fStemMat = new THREE.MeshStandardMaterial({ color: 0x33aa44, roughness: 0.8 });
         const fStem = new THREE.Mesh(fStemGeo, fStemMat);
         fStem.position.set((Math.random() - 0.5) * 0.3, 0.125, (Math.random() - 0.5) * 0.3);
         flowerGroup.add(fStem);
         const gc = gardenColors[Math.floor(Math.random() * gardenColors.length)];
-        const glowGeo = new THREE.SphereGeometry(0.05, 14, 12);
+        const glowGeo = new THREE.SphereGeometry(0.05, 23, 20);
         const glowMat = new THREE.MeshStandardMaterial({ color: gc, emissive: gc, emissiveIntensity: 0.8, roughness: 0.3 });
         const glow = new THREE.Mesh(glowGeo, glowMat);
         glow.position.set(fStem.position.x, 0.27, fStem.position.z);
@@ -1590,21 +1590,21 @@ export class DiabloRenderer {
     for (let i = 0; i < 4; i++) {
       const archGroup = new THREE.Group();
       for (let side = -1; side <= 1; side += 2) {
-        const pillarGeo = new THREE.CylinderGeometry(0.15, 0.15, 3.5, 16);
+        const pillarGeo = new THREE.CylinderGeometry(0.15, 0.15, 3.5, 27);
         const pillarMat = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 0.7 });
         const pillar = new THREE.Mesh(pillarGeo, pillarMat);
         pillar.position.set(side * 1.2, 1.75, 0);
         pillar.castShadow = true;
         archGroup.add(pillar);
       }
-      const archGeo = new THREE.TorusGeometry(1.2, 0.12, 16, 24, Math.PI);
+      const archGeo = new THREE.TorusGeometry(1.2, 0.12, 27, 36, Math.PI);
       const archMat = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 0.7 });
       const arch = new THREE.Mesh(archGeo, archMat);
       arch.position.y = 3.5;
       arch.rotation.z = Math.PI;
       archGroup.add(arch);
       for (let iv = 0; iv < 12; iv++) {
-        const ivyGeo = new THREE.SphereGeometry(0.08 + Math.random() * 0.05, 12, 10);
+        const ivyGeo = new THREE.SphereGeometry(0.08 + Math.random() * 0.05, 20, 17);
         const ivyMat = new THREE.MeshStandardMaterial({ color: 0x336633, roughness: 0.9 });
         const ivy = new THREE.Mesh(ivyGeo, ivyMat);
         const ivAng = Math.random() * Math.PI;
@@ -1620,19 +1620,19 @@ export class DiabloRenderer {
 
     // Fountain - central feature
     const fountainGroup = new THREE.Group();
-    const basinGeo = new THREE.TorusGeometry(1.5, 0.2, 16, 36);
+    const basinGeo = new THREE.TorusGeometry(1.5, 0.2, 27, 46);
     const basinMat = new THREE.MeshStandardMaterial({ color: 0x999999, roughness: 0.6, metalness: 0.2 });
     const basin = new THREE.Mesh(basinGeo, basinMat);
     basin.rotation.x = -Math.PI / 2;
     basin.position.y = 0.3;
     fountainGroup.add(basin);
-    const waterGeo = new THREE.CircleGeometry(1.3, 32);
+    const waterGeo = new THREE.CircleGeometry(1.3, 44);
     const waterMat = new THREE.MeshStandardMaterial({ color: 0x4488cc, transparent: true, opacity: 0.5, roughness: 0.1, metalness: 0.3 });
     const waterSurf = new THREE.Mesh(waterGeo, waterMat);
     waterSurf.rotation.x = -Math.PI / 2;
     waterSurf.position.y = 0.25;
     fountainGroup.add(waterSurf);
-    const jetGeo = new THREE.CylinderGeometry(0.04, 0.04, 2.0, 14);
+    const jetGeo = new THREE.CylinderGeometry(0.04, 0.04, 2.0, 23);
     const jetMat = new THREE.MeshStandardMaterial({ color: 0x88ccff, emissive: 0x4488ff, emissiveIntensity: 0.6, transparent: true, opacity: 0.5 });
     const jet = new THREE.Mesh(jetGeo, jetMat);
     jet.position.y = 1.3;
@@ -1648,16 +1648,16 @@ export class DiabloRenderer {
       const pedestal = new THREE.Mesh(pedGeo, pedMat);
       pedestal.position.y = 0.25;
       statueGroup.add(pedestal);
-      const stBodyGeo = new THREE.CylinderGeometry(0.15, 0.2, 1.2, 16);
+      const stBodyGeo = new THREE.CylinderGeometry(0.15, 0.2, 1.2, 27);
       const stMat = new THREE.MeshStandardMaterial({ color: 0x999999, emissive: 0x112244, emissiveIntensity: 0.3, roughness: 0.5 });
       const stBody = new THREE.Mesh(stBodyGeo, stMat);
       stBody.position.y = 1.1;
       statueGroup.add(stBody);
-      const stHeadGeo = new THREE.SphereGeometry(0.14, 16, 14);
+      const stHeadGeo = new THREE.SphereGeometry(0.14, 27, 23);
       const stHead = new THREE.Mesh(stHeadGeo, stMat);
       stHead.position.y = 1.85;
       statueGroup.add(stHead);
-      const stArmGeo = new THREE.ConeGeometry(0.06, 0.5, 12);
+      const stArmGeo = new THREE.ConeGeometry(0.06, 0.5, 20);
       const stArm = new THREE.Mesh(stArmGeo, stMat);
       stArm.position.set(0.3, 1.5, 0.1);
       stArm.rotation.z = -0.8;
@@ -1673,13 +1673,13 @@ export class DiabloRenderer {
     for (let i = 0; i < 14; i++) {
       const cc = crystalColors[i % crystalColors.length];
       const fcGrp = new THREE.Group();
-      const fcGeo = i % 3 === 0 ? new THREE.IcosahedronGeometry(0.2, 1) : i % 3 === 1 ? new THREE.OctahedronGeometry(0.2, 1) : new THREE.TetrahedronGeometry(0.2, 1);
+      const fcGeo = i % 3 === 0 ? new THREE.IcosahedronGeometry(0.2, 2) : i % 3 === 1 ? new THREE.OctahedronGeometry(0.2, 2) : new THREE.TetrahedronGeometry(0.2, 2);
       const fcMat = new THREE.MeshStandardMaterial({ color: cc, emissive: cc, emissiveIntensity: 1.2, transparent: true, opacity: 0.8, roughness: 0.1, metalness: 0.5 });
       const fc = new THREE.Mesh(fcGeo, fcMat);
       fcGrp.add(fc);
       // Orbiting smaller shards
       for (let sh = 0; sh < 3; sh++) {
-        const shardGeo = new THREE.OctahedronGeometry(0.05 + Math.random() * 0.04, 1);
+        const shardGeo = new THREE.OctahedronGeometry(0.05 + Math.random() * 0.04, 2);
         const shard = new THREE.Mesh(shardGeo, new THREE.MeshStandardMaterial({ color: cc, emissive: cc, emissiveIntensity: 0.8, transparent: true, opacity: 0.6 }));
         const shAng = (sh / 3) * Math.PI * 2;
         shard.position.set(Math.cos(shAng) * 0.35, Math.sin(sh) * 0.15, Math.sin(shAng) * 0.35);
@@ -1687,7 +1687,7 @@ export class DiabloRenderer {
       }
       // Sparkle trail below
       for (let sp = 0; sp < 3; sp++) {
-        const sparkle = new THREE.Mesh(new THREE.SphereGeometry(0.02, 8, 4),
+        const sparkle = new THREE.Mesh(new THREE.SphereGeometry(0.02, 16, 8),
           new THREE.MeshStandardMaterial({ color: cc, emissive: cc, emissiveIntensity: 1.5, transparent: true, opacity: 0.3 - sp * 0.08 }));
         sparkle.position.y = -0.2 - sp * 0.15;
         sparkle.position.x = (Math.random() - 0.5) * 0.1;
@@ -1703,13 +1703,13 @@ export class DiabloRenderer {
     // Mushroom circle (fairy ring)
     const fairyRingGroup = new THREE.Group();
     for (let m = 0; m < 12; m++) {
-      const mStemGeo = new THREE.CylinderGeometry(0.03, 0.04, 0.15, 14);
+      const mStemGeo = new THREE.CylinderGeometry(0.03, 0.04, 0.15, 23);
       const mStemMat = new THREE.MeshStandardMaterial({ color: 0xaaddcc, emissive: 0x225544, emissiveIntensity: 0.5 });
       const mStem = new THREE.Mesh(mStemGeo, mStemMat);
       const mAng = (m / 12) * Math.PI * 2;
       mStem.position.set(Math.cos(mAng) * 1.5, 0.075, Math.sin(mAng) * 1.5);
       fairyRingGroup.add(mStem);
-      const mCapGeo = new THREE.SphereGeometry(0.08, 14, 12, 0, Math.PI * 2, 0, Math.PI / 2);
+      const mCapGeo = new THREE.SphereGeometry(0.08, 23, 20, 0, Math.PI * 2, 0, Math.PI / 2);
       const mCapMat = new THREE.MeshStandardMaterial({ color: 0x44ddaa, emissive: 0x22aa77, emissiveIntensity: 0.8 });
       const mCap = new THREE.Mesh(mCapGeo, mCapMat);
       mCap.position.set(Math.cos(mAng) * 1.5, 0.15, Math.sin(mAng) * 1.5);
@@ -1762,7 +1762,7 @@ export class DiabloRenderer {
       const dirX = (Math.random() - 0.5) * 0.8;
       const dirZ = (Math.random() - 0.5) * 0.8;
       for (let s = 0; s < 8; s++) {
-        const ssGeo = new THREE.CylinderGeometry(0.2 + Math.random() * 0.1, 0.22 + Math.random() * 0.1, 0.06, 14);
+        const ssGeo = new THREE.CylinderGeometry(0.2 + Math.random() * 0.1, 0.22 + Math.random() * 0.1, 0.06, 23);
         const ssMat = new THREE.MeshStandardMaterial({ color: 0x888877, roughness: 0.85 });
         const ss = new THREE.Mesh(ssGeo, ssMat);
         const ssX = startX + dirX * s * 1.2;
@@ -1804,7 +1804,7 @@ export class DiabloRenderer {
     // Elven banners (4)
     for (let i = 0; i < 4; i++) {
       const bannerGroup = new THREE.Group();
-      const poleGeo = new THREE.CylinderGeometry(0.03, 0.03, 4.0, 14);
+      const poleGeo = new THREE.CylinderGeometry(0.03, 0.03, 4.0, 23);
       const poleMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.4, roughness: 0.5 });
       const pole = new THREE.Mesh(poleGeo, poleMat);
       pole.position.y = 2.0;
@@ -1822,12 +1822,12 @@ export class DiabloRenderer {
 
     // Moonwell / enchanted pool (1)
     const moonwellGrp = new THREE.Group();
-    const mwRim = new THREE.Mesh(new THREE.TorusGeometry(2, 0.3, 16, 32),
+    const mwRim = new THREE.Mesh(new THREE.TorusGeometry(2, 0.3, 27, 44),
       new THREE.MeshStandardMaterial({ color: 0xccccdd, roughness: 0.4, metalness: 0.3 }));
     mwRim.rotation.x = -Math.PI / 2;
     mwRim.position.y = 0.2;
     moonwellGrp.add(mwRim);
-    const mwWater = new THREE.Mesh(new THREE.CircleGeometry(1.8, 32),
+    const mwWater = new THREE.Mesh(new THREE.CircleGeometry(1.8, 44),
       new THREE.MeshStandardMaterial({ color: 0x4488ff, emissive: 0x2244aa, emissiveIntensity: 0.6, transparent: true, opacity: 0.7 }));
     mwWater.rotation.x = -Math.PI / 2;
     mwWater.position.y = 0.1;
@@ -1854,13 +1854,13 @@ export class DiabloRenderer {
       const vineGrp = new THREE.Group();
       const vineLen = 1.5 + Math.random() * 2;
       for (let v = 0; v < 6; v++) {
-        const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.012, vineLen / 6, 10), vineGlowMat);
+        const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.012, vineLen / 6, 17), vineGlowMat);
         seg.position.y = 3 - v * (vineLen / 6);
         seg.position.x = Math.sin(v * 0.5) * 0.1;
         vineGrp.add(seg);
       }
       // Glowing bud at end
-      const bud = new THREE.Mesh(new THREE.SphereGeometry(0.04, 24, 10),
+      const bud = new THREE.Mesh(new THREE.SphereGeometry(0.04, 36, 17),
         new THREE.MeshStandardMaterial({ color: 0x88ffbb, emissive: 0x44dd88, emissiveIntensity: 1.5 }));
       bud.position.y = 3 - vineLen;
       vineGrp.add(bud);
@@ -1873,16 +1873,16 @@ export class DiabloRenderer {
     const gazPillarMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.4, metalness: 0.2 });
     for (let p = 0; p < 6; p++) {
       const gazAng = (p / 6) * Math.PI * 2;
-      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 3, 14), gazPillarMat);
+      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 3, 23), gazPillarMat);
       pillar.position.set(Math.cos(gazAng) * 2, 1.5, Math.sin(gazAng) * 2);
       pillar.castShadow = true;
       gazGrp.add(pillar);
     }
-    const gazRoof = new THREE.Mesh(new THREE.ConeGeometry(2.5, 1.5, 14),
+    const gazRoof = new THREE.Mesh(new THREE.ConeGeometry(2.5, 1.5, 23),
       new THREE.MeshStandardMaterial({ color: 0x4466aa, roughness: 0.5, transparent: true, opacity: 0.7 }));
     gazRoof.position.y = 3.75;
     gazGrp.add(gazRoof);
-    const gazFloor = new THREE.Mesh(new THREE.CircleGeometry(2.2, 24),
+    const gazFloor = new THREE.Mesh(new THREE.CircleGeometry(2.2, 36),
       new THREE.MeshStandardMaterial({ color: 0xaabbcc, roughness: 0.5 }));
     gazFloor.rotation.x = -Math.PI / 2;
     gazFloor.position.y = 0.02;
@@ -1895,7 +1895,7 @@ export class DiabloRenderer {
       const pixieColor = [0xffdd44, 0xff88dd, 0x44ddff, 0xaaffaa, 0xddaaff][i % 5];
       const pixieEmissive = [0xaa8822, 0xaa4488, 0x2288aa, 0x55aa55, 0x8855aa][i % 5];
       const pixieGrp = new THREE.Group();
-      const pixie = new THREE.Mesh(new THREE.SphereGeometry(0.03, 10, 8),
+      const pixie = new THREE.Mesh(new THREE.SphereGeometry(0.03, 17, 16),
         new THREE.MeshStandardMaterial({
           color: pixieColor, emissive: pixieEmissive,
           emissiveIntensity: 1.2, transparent: true, opacity: 0.7,
@@ -1911,7 +1911,7 @@ export class DiabloRenderer {
       }
       // Sparkle trail
       for (let t = 0; t < 3; t++) {
-        const trail = new THREE.Mesh(new THREE.SphereGeometry(0.01, 8, 4),
+        const trail = new THREE.Mesh(new THREE.SphereGeometry(0.01, 16, 8),
           new THREE.MeshStandardMaterial({ color: pixieColor, emissive: pixieEmissive, emissiveIntensity: 0.8, transparent: true, opacity: 0.3 - t * 0.08 }));
         trail.position.set((Math.random() - 0.5) * 0.1, -t * 0.08, (Math.random() - 0.5) * 0.1);
         pixieGrp.add(trail);
@@ -1937,7 +1937,7 @@ export class DiabloRenderer {
     // Floating magical particles (25) - ambient sparkles
     for (let i = 0; i < 25; i++) {
       const sparkColor = [0x88ccff, 0xaaddff, 0x66bbee, 0xccddff][i % 4];
-      const sparkle = new THREE.Mesh(new THREE.SphereGeometry(0.015, 8, 4),
+      const sparkle = new THREE.Mesh(new THREE.SphereGeometry(0.015, 16, 8),
         new THREE.MeshStandardMaterial({ color: sparkColor, emissive: sparkColor, emissiveIntensity: 1.0, transparent: true, opacity: 0.4 }));
       sparkle.position.set(
         (Math.random() - 0.5) * w * 0.8,
@@ -1954,7 +1954,7 @@ export class DiabloRenderer {
       const numRoots = 3 + Math.floor(Math.random() * 3);
       for (let r = 0; r < numRoots; r++) {
         const rootLen = 1 + Math.random() * 2;
-        const root = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.12, rootLen, 12), rootMat);
+        const root = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.12, rootLen, 20), rootMat);
         root.rotation.z = Math.PI / 2 - 0.3;
         root.rotation.y = (r / numRoots) * Math.PI * 2;
         root.position.y = 0.1;
@@ -1968,10 +1968,10 @@ export class DiabloRenderer {
     for (let i = 0; i < 4; i++) {
       const chimeGrp = new THREE.Group();
       const chimeMat = new THREE.MeshStandardMaterial({ color: 0xccccdd, metalness: 0.6, roughness: 0.2 });
-      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.01, 10, 16), chimeMat);
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.01, 17, 27), chimeMat);
       chimeGrp.add(ring);
       for (let c = 0; c < 5; c++) {
-        const chime = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.15 + c * 0.03, 10), chimeMat);
+        const chime = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.15 + c * 0.03, 17), chimeMat);
         chime.position.set((c - 2) * 0.05, -0.12, 0);
         chimeGrp.add(chime);
       }
@@ -2000,16 +2000,16 @@ export class DiabloRenderer {
       const pilH = 4 + Math.random() * 3;
       const pilR = 0.35 + Math.random() * 0.15;
       const pilMat = new THREE.MeshStandardMaterial({ color: 0x444450, roughness: 0.7, metalness: 0.1 });
-      const pil = new THREE.Mesh(new THREE.CylinderGeometry(pilR * 0.9, pilR, pilH, 16), pilMat);
+      const pil = new THREE.Mesh(new THREE.CylinderGeometry(pilR * 0.9, pilR, pilH, 27), pilMat);
       pil.position.y = pilH / 2;
       pil.castShadow = true;
       pilGrp.add(pil);
       // Capital
-      const capM = new THREE.Mesh(new THREE.CylinderGeometry(pilR * 1.3, pilR * 0.9, 0.3, 16), pilMat);
+      const capM = new THREE.Mesh(new THREE.CylinderGeometry(pilR * 1.3, pilR * 0.9, 0.3, 27), pilMat);
       capM.position.y = pilH;
       pilGrp.add(capM);
       // Base
-      const baseM = new THREE.Mesh(new THREE.CylinderGeometry(pilR, pilR * 1.3, 0.3, 16), pilMat);
+      const baseM = new THREE.Mesh(new THREE.CylinderGeometry(pilR, pilR * 1.3, 0.3, 27), pilMat);
       baseM.position.y = 0.15;
       pilGrp.add(baseM);
       // Crack detail
@@ -2085,11 +2085,11 @@ export class DiabloRenderer {
     for (let i = 0; i < 6; i++) {
       const poolGrp = new THREE.Group();
       const poolR = 0.3 + Math.random() * 0.4;
-      const pool = new THREE.Mesh(new THREE.CircleGeometry(poolR, 16),
+      const pool = new THREE.Mesh(new THREE.CircleGeometry(poolR, 27),
         new THREE.MeshStandardMaterial({ color: 0x223344, transparent: true, opacity: 0.4, roughness: 0.1, metalness: 0.3, side: THREE.DoubleSide }));
       pool.rotation.x = -Math.PI / 2;
       poolGrp.add(pool);
-      const droplet = new THREE.Mesh(new THREE.SphereGeometry(0.03, 10, 8),
+      const droplet = new THREE.Mesh(new THREE.SphereGeometry(0.03, 17, 16),
         new THREE.MeshStandardMaterial({ color: 0x335566, transparent: true, opacity: 0.5, roughness: 0.1 }));
       droplet.position.y = 0.3 + Math.random() * 1.0;
       poolGrp.add(droplet);
@@ -2104,7 +2104,7 @@ export class DiabloRenderer {
       const pile = new THREE.Group();
       const skullCount = 3 + Math.floor(Math.random() * 5);
       for (let s = 0; s < skullCount; s++) {
-        const skullGeo = new THREE.SphereGeometry(0.12 + Math.random() * 0.08, 14, 12);
+        const skullGeo = new THREE.SphereGeometry(0.12 + Math.random() * 0.08, 23, 20);
         const skullMat = new THREE.MeshStandardMaterial({ color: 0xccccaa, roughness: 0.8 });
         const skull = new THREE.Mesh(skullGeo, skullMat);
         skull.position.set(
@@ -2123,7 +2123,7 @@ export class DiabloRenderer {
     // Glowing rune circles (12)
     for (let i = 0; i < 12; i++) {
       const runeColor = Math.random() > 0.5 ? 0x44ff44 : 0x9944ff;
-      const torusGeo = new THREE.TorusGeometry(1.0 + Math.random() * 0.5, 0.05, 16, 32);
+      const torusGeo = new THREE.TorusGeometry(1.0 + Math.random() * 0.5, 0.05, 27, 44);
       const torusMat = new THREE.MeshStandardMaterial({
         color: runeColor,
         emissive: runeColor,
@@ -2141,7 +2141,7 @@ export class DiabloRenderer {
     for (let i = 0; i < 15; i++) {
       const bonePile = new THREE.Group();
       for (let b = 0; b < 6; b++) {
-        const boneGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.5 + Math.random() * 0.3, 12);
+        const boneGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.5 + Math.random() * 0.3, 20);
         const boneMat = new THREE.MeshStandardMaterial({ color: 0xddddbb, roughness: 0.9 });
         const bone = new THREE.Mesh(boneGeo, boneMat);
         bone.position.set(
@@ -2155,7 +2155,7 @@ export class DiabloRenderer {
       }
       // Extra bone fragments scattered around the pile
       for (let f = 0; f < 3; f++) {
-        const fragGeo = new THREE.CylinderGeometry(0.012, 0.018, 0.15 + Math.random() * 0.12, 16);
+        const fragGeo = new THREE.CylinderGeometry(0.012, 0.018, 0.15 + Math.random() * 0.12, 27);
         const fragMat = new THREE.MeshStandardMaterial({ color: 0xccccaa, roughness: 0.9 });
         const frag = new THREE.Mesh(fragGeo, fragMat);
         frag.position.set(
@@ -2202,13 +2202,13 @@ export class DiabloRenderer {
     // Torch brackets with flickering point lights (14)
     for (let i = 0; i < 14; i++) {
       const torch = new THREE.Group();
-      const bracketGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.6, 14);
+      const bracketGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.6, 23);
       const bracketMat = new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.5 });
       const bracket = new THREE.Mesh(bracketGeo, bracketMat);
       bracket.position.y = 2.0;
       torch.add(bracket);
 
-      const flameGeo = new THREE.SphereGeometry(0.12, 21, 12);
+      const flameGeo = new THREE.SphereGeometry(0.12, 31, 20);
       const flameMat = new THREE.MeshStandardMaterial({
         color: 0xff6600,
         emissive: 0xff4400,
@@ -2229,7 +2229,7 @@ export class DiabloRenderer {
 
       // Soot marks around the torch bracket
       for (let sm = 0; sm < 2; sm++) {
-        const sootGeo = new THREE.CircleGeometry(0.08 + Math.random() * 0.06, 16);
+        const sootGeo = new THREE.CircleGeometry(0.08 + Math.random() * 0.06, 27);
         const sootMat = new THREE.MeshStandardMaterial({ color: 0x111111, transparent: true, opacity: 0.3, roughness: 1.0, side: THREE.DoubleSide });
         const soot = new THREE.Mesh(sootGeo, sootMat);
         soot.position.set(
@@ -2259,7 +2259,7 @@ export class DiabloRenderer {
       imDoor.rotation.y = 0.4;
       imGroup.add(imDoor);
       for (let sp = 0; sp < 5; sp++) {
-        const spikeGeo = new THREE.ConeGeometry(0.03, 0.15, 10);
+        const spikeGeo = new THREE.ConeGeometry(0.03, 0.15, 17);
         const spikeMat = new THREE.MeshStandardMaterial({ color: 0x777788, metalness: 0.7, roughness: 0.3 });
         const spike = new THREE.Mesh(spikeGeo, spikeMat);
         spike.position.set((Math.random() - 0.5) * 0.5, 0.5 + sp * 0.3, -0.25);
@@ -2280,7 +2280,7 @@ export class DiabloRenderer {
       const segments = 4 + Math.floor(Math.random() * 4);
       const segH = chainLen / segments;
       for (let s = 0; s < segments; s++) {
-        const linkGeo = new THREE.CylinderGeometry(0.03, 0.03, segH * 0.7, 12);
+        const linkGeo = new THREE.CylinderGeometry(0.03, 0.03, segH * 0.7, 20);
         const linkMat = new THREE.MeshStandardMaterial({ color: 0x666677, metalness: 0.6, roughness: 0.4 });
         const link = new THREE.Mesh(linkGeo, linkMat);
         link.position.y = 6 - s * segH;
@@ -2297,7 +2297,7 @@ export class DiabloRenderer {
       const ratGroup = new THREE.Group();
       const ratCount = 3 + Math.floor(Math.random() * 2);
       for (let r = 0; r < ratCount; r++) {
-        const ratGeo = new THREE.SphereGeometry(0.06, 14, 12);
+        const ratGeo = new THREE.SphereGeometry(0.06, 23, 20);
         const ratMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.9 });
         const rat = new THREE.Mesh(ratGeo, ratMat);
         rat.scale.set(1, 0.6, 1.4);
@@ -2313,7 +2313,7 @@ export class DiabloRenderer {
     // Blood pools (6)
     for (let i = 0; i < 6; i++) {
       const bpRadius = 0.5 + Math.random();
-      const bpGeo = new THREE.CircleGeometry(bpRadius, 24);
+      const bpGeo = new THREE.CircleGeometry(bpRadius, 36);
       const bpMat = new THREE.MeshStandardMaterial({ color: 0x880000, transparent: true, opacity: 0.3, roughness: 0.8 });
       const bp = new THREE.Mesh(bpGeo, bpMat);
       bp.rotation.x = -Math.PI / 2;
@@ -2324,7 +2324,7 @@ export class DiabloRenderer {
       const bpDripGroup = new THREE.Group();
       bpDripGroup.position.copy(bp.position);
       for (let dr = 0; dr < 3; dr++) {
-        const dripGeo = new THREE.SphereGeometry(0.025 + Math.random() * 0.015, 24, 16);
+        const dripGeo = new THREE.SphereGeometry(0.025 + Math.random() * 0.015, 36, 27);
         const dripMat = new THREE.MeshStandardMaterial({ color: 0x880000, transparent: true, opacity: 0.4, roughness: 0.8 });
         const drip = new THREE.Mesh(dripGeo, dripMat);
         drip.position.set(
@@ -2341,20 +2341,20 @@ export class DiabloRenderer {
     // Skeleton remains (8) - decorative
     for (let i = 0; i < 8; i++) {
       const skelGroup = new THREE.Group();
-      const skullGeo = new THREE.SphereGeometry(0.1, 14, 12);
+      const skullGeo = new THREE.SphereGeometry(0.1, 23, 20);
       const skelMat = new THREE.MeshStandardMaterial({ color: 0xddddcc, roughness: 0.8 });
       const sk = new THREE.Mesh(skullGeo, skelMat);
       sk.position.set(0, 0.1, 0);
       skelGroup.add(sk);
       for (let rb = 0; rb < 4; rb++) {
-        const ribGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.3, 12);
+        const ribGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.3, 20);
         const rib = new THREE.Mesh(ribGeo, skelMat);
         rib.position.set(0.15, 0.04, -0.15 - rb * 0.08);
         rib.rotation.z = Math.PI / 2;
         skelGroup.add(rib);
       }
       for (let bn = 0; bn < 3; bn++) {
-        const bnGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.2 + Math.random() * 0.15, 12);
+        const bnGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.2 + Math.random() * 0.15, 20);
         const bnM = new THREE.Mesh(bnGeo, skelMat);
         bnM.position.set((Math.random() - 0.5) * 0.4, 0.03, (Math.random() - 0.5) * 0.4);
         bnM.rotation.z = Math.random() * Math.PI;
@@ -2387,18 +2387,18 @@ export class DiabloRenderer {
     // Braziers (4)
     for (let i = 0; i < 4; i++) {
       const brazierGroup = new THREE.Group();
-      const pedGeo = new THREE.CylinderGeometry(0.15, 0.2, 1.0, 16);
+      const pedGeo = new THREE.CylinderGeometry(0.15, 0.2, 1.0, 27);
       const pedMat = new THREE.MeshStandardMaterial({ color: 0x555566, metalness: 0.5, roughness: 0.4 });
       const ped = new THREE.Mesh(pedGeo, pedMat);
       ped.position.y = 0.5;
       brazierGroup.add(ped);
-      const bowlGeo = new THREE.SphereGeometry(0.3, 16, 14, 0, Math.PI * 2, 0, Math.PI / 2);
+      const bowlGeo = new THREE.SphereGeometry(0.3, 27, 23, 0, Math.PI * 2, 0, Math.PI / 2);
       const bowlMat = new THREE.MeshStandardMaterial({ color: 0x555566, metalness: 0.5, roughness: 0.4, side: THREE.DoubleSide });
       const bowl = new THREE.Mesh(bowlGeo, bowlMat);
       bowl.rotation.x = Math.PI;
       bowl.position.y = 1.0;
       brazierGroup.add(bowl);
-      const emberGeo = new THREE.SphereGeometry(0.15, 14, 12);
+      const emberGeo = new THREE.SphereGeometry(0.15, 23, 20);
       const emberMat = new THREE.MeshStandardMaterial({ color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 2.0 });
       const ember = new THREE.Mesh(emberGeo, emberMat);
       ember.position.y = 1.1;
@@ -2407,7 +2407,7 @@ export class DiabloRenderer {
       const bz = (Math.random() - 0.5) * d * 0.7;
       // Soot marks on the ground around the brazier
       for (let sm = 0; sm < 2; sm++) {
-        const bSootGeo = new THREE.CircleGeometry(0.12 + Math.random() * 0.08, 16);
+        const bSootGeo = new THREE.CircleGeometry(0.12 + Math.random() * 0.08, 27);
         const bSootMat = new THREE.MeshStandardMaterial({ color: 0x111111, transparent: true, opacity: 0.25, roughness: 1.0, side: THREE.DoubleSide });
         const bSoot = new THREE.Mesh(bSootGeo, bSootMat);
         bSoot.rotation.x = -Math.PI / 2;
@@ -2466,12 +2466,12 @@ export class DiabloRenderer {
     altar.castShadow = true;
     altarGroup.add(altar);
     for (let c = 0; c < 4; c++) {
-      const candleGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.2, 12);
+      const candleGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.2, 20);
       const candleMat = new THREE.MeshStandardMaterial({ color: 0xdddd88, roughness: 0.8 });
       const candle = new THREE.Mesh(candleGeo, candleMat);
       candle.position.set(-0.6 + c * 0.4, 1.1, 0);
       altarGroup.add(candle);
-      const cfGeo = new THREE.SphereGeometry(0.03, 12, 10);
+      const cfGeo = new THREE.SphereGeometry(0.03, 20, 17);
       const cfMat = new THREE.MeshStandardMaterial({ color: 0xffaa22, emissive: 0xff8800, emissiveIntensity: 2.0 });
       const cf = new THREE.Mesh(cfGeo, cfMat);
       cf.position.set(-0.6 + c * 0.4, 1.22, 0);
@@ -2489,14 +2489,14 @@ export class DiabloRenderer {
     for (let i = 0; i < 3; i++) {
       const caGroup = new THREE.Group();
       for (let side = -1; side <= 1; side += 2) {
-        const cPilGeo = new THREE.CylinderGeometry(0.25, 0.3, 3.5, 16);
+        const cPilGeo = new THREE.CylinderGeometry(0.25, 0.3, 3.5, 27);
         const cPilMat = new THREE.MeshStandardMaterial({ color: 0x444450, roughness: 0.8 });
         const cPil = new THREE.Mesh(cPilGeo, cPilMat);
         cPil.position.set(side * 1.5, 1.75, 0);
         cPil.castShadow = true;
         caGroup.add(cPil);
       }
-      const caArchGeo = new THREE.TorusGeometry(1.5, 0.15, 16, 16, Math.PI * 0.6);
+      const caArchGeo = new THREE.TorusGeometry(1.5, 0.15, 27, 27, Math.PI * 0.6);
       const caArchMat = new THREE.MeshStandardMaterial({ color: 0x444450, roughness: 0.8 });
       const caArch = new THREE.Mesh(caArchGeo, caArchMat);
       caArch.position.y = 3.5;
@@ -2520,14 +2520,14 @@ export class DiabloRenderer {
     // Dungeon grate/drain (4)
     for (let i = 0; i < 4; i++) {
       const grateGroup = new THREE.Group();
-      const holeGeo = new THREE.CircleGeometry(0.4, 20);
+      const holeGeo = new THREE.CircleGeometry(0.4, 30);
       const holeMat = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 1.0 });
       const grateHole = new THREE.Mesh(holeGeo, holeMat);
       grateHole.rotation.x = -Math.PI / 2;
       grateHole.position.y = 0.01;
       grateGroup.add(grateHole);
       for (let b = 0; b < 4; b++) {
-        const barGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.8, 12);
+        const barGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.8, 20);
         const barMat = new THREE.MeshStandardMaterial({ color: 0x555566, metalness: 0.5, roughness: 0.4 });
         const bar = new THREE.Mesh(barGeo, barMat);
         bar.rotation.x = Math.PI / 2;
@@ -2543,12 +2543,12 @@ export class DiabloRenderer {
     // Poison gas vents (3)
     for (let i = 0; i < 3; i++) {
       const ventGroup = new THREE.Group();
-      const ventGeo = new THREE.CylinderGeometry(0.15, 0.15, 0.05, 16);
+      const ventGeo = new THREE.CylinderGeometry(0.15, 0.15, 0.05, 27);
       const ventMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 1.0 });
       const vent = new THREE.Mesh(ventGeo, ventMat);
       vent.position.y = 0.025;
       ventGroup.add(vent);
-      const gasGeo = new THREE.SphereGeometry(0.4, 32, 14);
+      const gasGeo = new THREE.SphereGeometry(0.4, 44, 23);
       const gasMat = new THREE.MeshStandardMaterial({ color: 0x44ff44, emissive: 0x22aa22, emissiveIntensity: 0.5, transparent: true, opacity: 0.15 });
       const gas = new THREE.Mesh(gasGeo, gasMat);
       gas.position.y = 0.5;
@@ -2564,19 +2564,19 @@ export class DiabloRenderer {
       const cageGroup = new THREE.Group();
       const cBarMat = new THREE.MeshStandardMaterial({ color: 0x555566, metalness: 0.5, roughness: 0.4 });
       for (let side = 0; side < 8; side++) {
-        const cBarGeo = new THREE.CylinderGeometry(0.02, 0.02, 2.0, 12);
+        const cBarGeo = new THREE.CylinderGeometry(0.02, 0.02, 2.0, 20);
         const cBar = new THREE.Mesh(cBarGeo, cBarMat);
         const cbAng = (side / 8) * Math.PI * 2;
         cBar.position.set(Math.cos(cbAng) * 0.5, 1.0, Math.sin(cbAng) * 0.5);
         cageGroup.add(cBar);
       }
-      const cTopGeo = new THREE.CircleGeometry(0.5, 16);
+      const cTopGeo = new THREE.CircleGeometry(0.5, 27);
       const cTop = new THREE.Mesh(cTopGeo, cBarMat);
       cTop.rotation.x = -Math.PI / 2;
       cTop.position.y = 2.0;
       cageGroup.add(cTop);
       for (let bn = 0; bn < 3; bn++) {
-        const cBoneGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.2 + Math.random() * 0.1, 12);
+        const cBoneGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.2 + Math.random() * 0.1, 20);
         const cBoneMat = new THREE.MeshStandardMaterial({ color: 0xddddcc, roughness: 0.8 });
         const cBone = new THREE.Mesh(cBoneGeo, cBoneMat);
         cBone.position.set((Math.random() - 0.5) * 0.3, 0.05, (Math.random() - 0.5) * 0.3);
@@ -2585,7 +2585,7 @@ export class DiabloRenderer {
       }
       // Cage door hinges
       for (let h = 0; h < 2; h++) {
-        const hingeGeo = new THREE.CylinderGeometry(0.025, 0.025, 0.12, 16);
+        const hingeGeo = new THREE.CylinderGeometry(0.025, 0.025, 0.12, 27);
         const hingeMat = new THREE.MeshStandardMaterial({ color: 0x444455, metalness: 0.6, roughness: 0.4 });
         const hinge = new THREE.Mesh(hingeGeo, hingeMat);
         hinge.position.set(0.5, 0.5 + h * 1.0, 0);
@@ -2601,7 +2601,7 @@ export class DiabloRenderer {
     // Additional wall-mounted torches at varying heights (6)
     for (let i = 0; i < 6; i++) {
       const wtGroup = new THREE.Group();
-      const wtBracketGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.4, 12);
+      const wtBracketGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.4, 20);
       const isExtinguished = i < 2;
       const wtBracketMat = new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.5, roughness: 0.5 });
       const wtBracket = new THREE.Mesh(wtBracketGeo, wtBracketMat);
@@ -2610,7 +2610,7 @@ export class DiabloRenderer {
       wtBracket.rotation.z = Math.PI / 4;
       wtGroup.add(wtBracket);
       if (!isExtinguished) {
-        const wtFlameGeo = new THREE.SphereGeometry(0.08, 12, 10);
+        const wtFlameGeo = new THREE.SphereGeometry(0.08, 20, 17);
         const wtFlameMat = new THREE.MeshStandardMaterial({ color: 0xff6600, emissive: 0xff4400, emissiveIntensity: 2.0 });
         const wtFlame = new THREE.Mesh(wtFlameGeo, wtFlameMat);
         wtFlame.position.y = wallY + 0.25;
@@ -2623,7 +2623,7 @@ export class DiabloRenderer {
         this._scene.add(wtLight);
         this._torchLights.push(wtLight);
       } else {
-        const wtCharGeo = new THREE.SphereGeometry(0.06, 12, 10);
+        const wtCharGeo = new THREE.SphereGeometry(0.06, 20, 17);
         const wtCharMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 1.0 });
         const wtChar = new THREE.Mesh(wtCharGeo, wtCharMat);
         wtChar.position.y = wallY + 0.2;
@@ -2634,7 +2634,7 @@ export class DiabloRenderer {
       }
       // Soot marks around wall-mounted torch brackets
       for (let ws = 0; ws < 2; ws++) {
-        const wtSootGeo = new THREE.CircleGeometry(0.06 + Math.random() * 0.04, 16);
+        const wtSootGeo = new THREE.CircleGeometry(0.06 + Math.random() * 0.04, 27);
         const wtSootMat = new THREE.MeshStandardMaterial({ color: 0x111111, transparent: true, opacity: 0.3, roughness: 1.0, side: THREE.DoubleSide });
         const wtSoot = new THREE.Mesh(wtSootGeo, wtSootMat);
         wtSoot.position.set(
@@ -2656,7 +2656,7 @@ export class DiabloRenderer {
     for (let i = 0; i < 14; i++) {
       const wispGrp = new THREE.Group();
       for (let s = 0; s < 5; s++) {
-        const wisp = new THREE.Mesh(new THREE.SphereGeometry(0.06 - s * 0.008, 12, 10), wispGhostMat);
+        const wisp = new THREE.Mesh(new THREE.SphereGeometry(0.06 - s * 0.008, 20, 17), wispGhostMat);
         wisp.position.set(s * 0.3, 1.5 + Math.sin(s) * 0.3, s * 0.1);
         wispGrp.add(wisp);
       }
@@ -2676,23 +2676,23 @@ export class DiabloRenderer {
       ped.position.y = 0.3;
       statGrp.add(ped);
       // Broken torso
-      const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 0.8, 14), brokenStatMat);
+      const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 0.8, 23), brokenStatMat);
       torso.position.y = 1.0;
       statGrp.add(torso);
       // One arm
-      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 0.5, 12), brokenStatMat);
+      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 0.5, 20), brokenStatMat);
       arm.position.set(0.25, 1.1, 0);
       arm.rotation.z = -0.6;
       statGrp.add(arm);
       // Rubble around base
       for (let r = 0; r < 4; r++) {
-        const rub = new THREE.Mesh(new THREE.DodecahedronGeometry(0.08 + Math.random() * 0.08, 1), brokenStatMat);
+        const rub = new THREE.Mesh(new THREE.DodecahedronGeometry(0.08 + Math.random() * 0.08, 2), brokenStatMat);
         rub.position.set((Math.random() - 0.5) * 0.8, 0.05, (Math.random() - 0.5) * 0.8);
         statGrp.add(rub);
       }
       // Extra crumbling stone debris around the broken statue
       for (let cd = 0; cd < 3; cd++) {
-        const debrisGeo = new THREE.DodecahedronGeometry(0.04 + Math.random() * 0.05, 1);
+        const debrisGeo = new THREE.DodecahedronGeometry(0.04 + Math.random() * 0.05, 2);
         const debris = new THREE.Mesh(debrisGeo, brokenStatMat);
         debris.position.set(
           (Math.random() - 0.5) * 1.2,
@@ -2726,14 +2726,14 @@ export class DiabloRenderer {
       entrance.position.set(0, 1, -0.1);
       cryptGrp.add(entrance);
       // Skull above entrance
-      const skull = new THREE.Mesh(new THREE.SphereGeometry(0.12, 14, 12),
+      const skull = new THREE.Mesh(new THREE.SphereGeometry(0.12, 23, 20),
         new THREE.MeshStandardMaterial({ color: 0xddddcc, roughness: 0.7 }));
       skull.position.set(0, 2.35, 0.1);
       skull.scale.set(1, 0.8, 0.8);
       cryptGrp.add(skull);
       // Crumbling stone debris around the crypt entrance
       for (let cd = 0; cd < 3; cd++) {
-        const cDebrisGeo = new THREE.DodecahedronGeometry(0.06 + Math.random() * 0.06, 1);
+        const cDebrisGeo = new THREE.DodecahedronGeometry(0.06 + Math.random() * 0.06, 2);
         const cDebris = new THREE.Mesh(cDebrisGeo, cryptMat);
         cDebris.position.set(
           (Math.random() - 0.5) * 1.6,
@@ -2769,7 +2769,7 @@ export class DiabloRenderer {
       tombstone.rotation.z = (Math.random() - 0.5) * 0.2;
       tombGrp.add(tombstone);
       // Rounded top
-      const topRound = new THREE.Mesh(new THREE.SphereGeometry(0.2, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2), tombMat);
+      const topRound = new THREE.Mesh(new THREE.SphereGeometry(0.2, 23, 17, 0, Math.PI * 2, 0, Math.PI / 2), tombMat);
       topRound.position.y = tombH;
       topRound.scale.x = 1;
       tombGrp.add(topRound);
@@ -2783,11 +2783,11 @@ export class DiabloRenderer {
       color: 0xcc2222, emissive: 0x881111, emissiveIntensity: 0.5,
       transparent: true, opacity: 0.3, side: THREE.DoubleSide,
     });
-    const pentaRing = new THREE.Mesh(new THREE.RingGeometry(2.5, 2.7, 5), pentaMat);
+    const pentaRing = new THREE.Mesh(new THREE.RingGeometry(2.5, 2.7, 10), pentaMat);
     pentaRing.rotation.x = -Math.PI / 2;
     pentaRing.position.set(w * 0.2, 0.03, d * 0.2);
     this._envGroup.add(pentaRing);
-    const pentaInner = new THREE.Mesh(new THREE.RingGeometry(1.8, 2.0, 5), pentaMat);
+    const pentaInner = new THREE.Mesh(new THREE.RingGeometry(1.8, 2.0, 10), pentaMat);
     pentaInner.rotation.x = -Math.PI / 2;
     pentaInner.rotation.z = Math.PI / 5;
     pentaInner.position.set(w * 0.2, 0.04, d * 0.2);
@@ -2930,14 +2930,14 @@ export class DiabloRenderer {
       [-6, 5], [6, 5], [-6, -5], [6, -5]
     ];
     for (const [tx, tz] of towerPositions) {
-      const towerGeo = new THREE.CylinderGeometry(2, 2, 18, 24);
+      const towerGeo = new THREE.CylinderGeometry(2, 2, 18, 36);
       const tower = new THREE.Mesh(towerGeo, stoneMat);
       tower.position.set(tx, 15, tz);
       tower.castShadow = true;
       castleGroup.add(tower);
 
       // Cone roof
-      const roofGeo = new THREE.ConeGeometry(2.5, 4, 24);
+      const roofGeo = new THREE.ConeGeometry(2.5, 4, 36);
       const roofMat = new THREE.MeshStandardMaterial({ color: 0x334466, roughness: 0.6 });
       const roof = new THREE.Mesh(roofGeo, roofMat);
       roof.position.set(tx, 20, tz);
@@ -2991,7 +2991,7 @@ export class DiabloRenderer {
 
     // Portcullis bars
     for (let pb = 0; pb < 7; pb++) {
-      const barGeo = new THREE.CylinderGeometry(0.04, 0.04, 5.5, 14);
+      const barGeo = new THREE.CylinderGeometry(0.04, 0.04, 5.5, 23);
       const barMat = new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.7, roughness: 0.3 });
       const bar = new THREE.Mesh(barGeo, barMat);
       bar.position.set(-1.5 + pb * 0.5, 3, 6.5);
@@ -2999,7 +2999,7 @@ export class DiabloRenderer {
     }
     // Horizontal portcullis bars
     for (let hb = 0; hb < 5; hb++) {
-      const hBarGeo = new THREE.CylinderGeometry(0.03, 0.03, 3.5, 14);
+      const hBarGeo = new THREE.CylinderGeometry(0.03, 0.03, 3.5, 23);
       const hBarMat = new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.7, roughness: 0.3 });
       const hBar = new THREE.Mesh(hBarGeo, hBarMat);
       hBar.rotation.z = Math.PI / 2;
@@ -3048,12 +3048,12 @@ export class DiabloRenderer {
       [-hw, -hd], [hw, -hd], [-hw, hd], [hw, hd]
     ];
     for (const [wtx, wtz] of wallTowerPositions) {
-      const wtGeo = new THREE.CylinderGeometry(1.5, 1.5, 6, 20);
+      const wtGeo = new THREE.CylinderGeometry(1.5, 1.5, 6, 30);
       const wt = new THREE.Mesh(wtGeo, wallMat);
       wt.position.set(wtx, 8, wtz);
       wt.castShadow = true;
       this._envGroup.add(wt);
-      const wtRoofGeo = new THREE.ConeGeometry(1.8, 2, 20);
+      const wtRoofGeo = new THREE.ConeGeometry(1.8, 2, 30);
       const wtRoofMat = new THREE.MeshStandardMaterial({ color: 0x334466, roughness: 0.6 });
       const wtRoof = new THREE.Mesh(wtRoofGeo, wtRoofMat);
       wtRoof.position.set(wtx, 7, wtz);
@@ -3070,7 +3070,7 @@ export class DiabloRenderer {
       // Wall tower foundation stones
       const wtFoundMat = new THREE.MeshStandardMaterial({ color: 0x777777, roughness: 0.9 });
       for (let wtfi = 0; wtfi < 4; wtfi++) {
-        const wtFStoneGeo = new THREE.DodecahedronGeometry(0.13, 0);
+        const wtFStoneGeo = new THREE.DodecahedronGeometry(0.13, 1);
         const wtFStone = new THREE.Mesh(wtFStoneGeo, wtFoundMat);
         const wtfAngle = (wtfi / 4) * Math.PI * 2;
         wtFStone.position.set(wtx + Math.cos(wtfAngle) * 1.55, 5.1, wtz + Math.sin(wtfAngle) * 1.55);
@@ -3080,12 +3080,12 @@ export class DiabloRenderer {
 
     // Gatehouse towers (south side)
     for (const gSide of [-3, 3]) {
-      const ghTowerGeo = new THREE.CylinderGeometry(1.5, 1.5, 7, 20);
+      const ghTowerGeo = new THREE.CylinderGeometry(1.5, 1.5, 7, 30);
       const ghTower = new THREE.Mesh(ghTowerGeo, wallMat);
       ghTower.position.set(gSide, 3.5, hd);
       ghTower.castShadow = true;
       this._envGroup.add(ghTower);
-      const ghRoofGeo = new THREE.ConeGeometry(1.8, 2.5, 20);
+      const ghRoofGeo = new THREE.ConeGeometry(1.8, 2.5, 30);
       const ghRoofMat = new THREE.MeshStandardMaterial({ color: 0x334466, roughness: 0.6 });
       const ghRoof = new THREE.Mesh(ghRoofGeo, ghRoofMat);
       ghRoof.position.set(gSide, 8, hd);
@@ -3101,7 +3101,7 @@ export class DiabloRenderer {
       // Gatehouse foundation stones
       const ghFoundMat = new THREE.MeshStandardMaterial({ color: 0x777777, roughness: 0.9 });
       for (let gfi = 0; gfi < 4; gfi++) {
-        const ghFStoneGeo = new THREE.DodecahedronGeometry(0.15, 0);
+        const ghFStoneGeo = new THREE.DodecahedronGeometry(0.15, 1);
         const ghFStone = new THREE.Mesh(ghFStoneGeo, ghFoundMat);
         const gfAngle = (gfi / 4) * Math.PI * 2;
         ghFStone.position.set(gSide + Math.cos(gfAngle) * 1.5, 0.12, hd + Math.sin(gfAngle) * 1.5);
@@ -3123,7 +3123,7 @@ export class DiabloRenderer {
       // 4 poles
       for (let px = -1; px <= 1; px += 2) {
         for (let pz = -1; pz <= 1; pz += 2) {
-          const poleGeo = new THREE.CylinderGeometry(0.05, 0.05, 2.5, 14);
+          const poleGeo = new THREE.CylinderGeometry(0.05, 0.05, 2.5, 23);
           const poleMat = new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.8 });
           const pole = new THREE.Mesh(poleGeo, poleMat);
           pole.position.set(px * 0.8, 1.25, pz * 0.6);
@@ -3164,21 +3164,21 @@ export class DiabloRenderer {
 
     // Central well
     const wellGroup = new THREE.Group();
-    const wellBaseGeo = new THREE.CylinderGeometry(1.5, 1.5, 0.8, 32);
+    const wellBaseGeo = new THREE.CylinderGeometry(1.5, 1.5, 0.8, 44);
     const wellBaseMat = new THREE.MeshStandardMaterial({ color: 0x777777, roughness: 0.85 });
     const wellBase = new THREE.Mesh(wellBaseGeo, wellBaseMat);
     wellBase.position.y = 0.4;
     wellBase.castShadow = true;
     wellGroup.add(wellBase);
     // Inner dark water
-    const wellWaterGeo = new THREE.CylinderGeometry(1.2, 1.2, 0.1, 32);
+    const wellWaterGeo = new THREE.CylinderGeometry(1.2, 1.2, 0.1, 44);
     const wellWaterMat = new THREE.MeshStandardMaterial({ color: 0x224466, roughness: 0.3, transparent: true, opacity: 0.7 });
     const wellWater = new THREE.Mesh(wellWaterGeo, wellWaterMat);
     wellWater.position.y = 0.75;
     wellGroup.add(wellWater);
     // Two upright posts
     for (const sx of [-0.6, 0.6]) {
-      const postGeo = new THREE.CylinderGeometry(0.06, 0.06, 2.5, 14);
+      const postGeo = new THREE.CylinderGeometry(0.06, 0.06, 2.5, 23);
       const postMat = new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.8 });
       const post = new THREE.Mesh(postGeo, postMat);
       post.position.set(sx, 1.65, 0);
@@ -3186,20 +3186,20 @@ export class DiabloRenderer {
       wellGroup.add(post);
     }
     // Cross beam
-    const beamGeo = new THREE.CylinderGeometry(0.05, 0.05, 1.4, 14);
+    const beamGeo = new THREE.CylinderGeometry(0.05, 0.05, 1.4, 23);
     const beamMat = new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.8 });
     const beam = new THREE.Mesh(beamGeo, beamMat);
     beam.rotation.z = Math.PI / 2;
     beam.position.set(0, 2.9, 0);
     wellGroup.add(beam);
     // Bucket
-    const bucketGeo = new THREE.CylinderGeometry(0.1, 0.08, 0.15, 16);
+    const bucketGeo = new THREE.CylinderGeometry(0.1, 0.08, 0.15, 27);
     const bucketMat = new THREE.MeshStandardMaterial({ color: 0x8B6914, roughness: 0.7 });
     const bucket = new THREE.Mesh(bucketGeo, bucketMat);
     bucket.position.set(0, 2.2, 0);
     wellGroup.add(bucket);
     // Rope
-    const ropeGeo = new THREE.CylinderGeometry(0.01, 0.01, 0.7, 10);
+    const ropeGeo = new THREE.CylinderGeometry(0.01, 0.01, 0.7, 17);
     const ropeMat = new THREE.MeshStandardMaterial({ color: 0xaa9966, roughness: 0.9 });
     const rope = new THREE.Mesh(ropeGeo, ropeMat);
     rope.position.set(0, 2.55, 0);
@@ -3207,21 +3207,21 @@ export class DiabloRenderer {
     // Well foundation stones around base
     const wellFoundMat = new THREE.MeshStandardMaterial({ color: 0x666655, roughness: 0.9 });
     for (let wfi = 0; wfi < 8; wfi++) {
-      const wfStoneGeo = new THREE.DodecahedronGeometry(0.1, 0);
+      const wfStoneGeo = new THREE.DodecahedronGeometry(0.1, 1);
       const wfStone = new THREE.Mesh(wfStoneGeo, wellFoundMat);
       const wfAngle = (wfi / 8) * Math.PI * 2;
       wfStone.position.set(Math.cos(wfAngle) * 1.6, 0.08, Math.sin(wfAngle) * 1.6);
       wellGroup.add(wfStone);
     }
     // Well roof ridge beam
-    const wellRidgeGeo = new THREE.CylinderGeometry(0.03, 0.03, 1.4, 16);
+    const wellRidgeGeo = new THREE.CylinderGeometry(0.03, 0.03, 1.4, 27);
     const wellRidgeMat = new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.8 });
     const wellRidge = new THREE.Mesh(wellRidgeGeo, wellRidgeMat);
     wellRidge.rotation.z = Math.PI / 2;
     wellRidge.position.set(0, 3.0, 0);
     wellGroup.add(wellRidge);
     // Well capstone trim on top edge
-    const wellCapGeo = new THREE.CylinderGeometry(1.55, 1.55, 0.06, 32);
+    const wellCapGeo = new THREE.CylinderGeometry(1.55, 1.55, 0.06, 44);
     const wellCapMat = new THREE.MeshStandardMaterial({ color: 0x666666, roughness: 0.85 });
     const wellCap = new THREE.Mesh(wellCapGeo, wellCapMat);
     wellCap.position.y = 0.83;
@@ -3337,12 +3337,12 @@ export class DiabloRenderer {
 
       // Door frame
       const doorFrameMat = new THREE.MeshStandardMaterial({ color: 0x443322, roughness: 0.85 });
-      const doorLintelGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.7, 16);
+      const doorLintelGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.7, 27);
       const doorLintel = new THREE.Mesh(doorLintelGeo, doorFrameMat);
       doorLintel.rotation.z = Math.PI / 2;
       doorLintel.position.set(0, 1.22, bd / 2 + 0.05);
       buildGroup.add(doorLintel);
-      const doorPostLGeo = new THREE.CylinderGeometry(0.03, 0.03, 1.2, 16);
+      const doorPostLGeo = new THREE.CylinderGeometry(0.03, 0.03, 1.2, 27);
       const doorPostL = new THREE.Mesh(doorPostLGeo, doorFrameMat);
       doorPostL.position.set(-0.32, 0.6, bd / 2 + 0.05);
       buildGroup.add(doorPostL);
@@ -3353,7 +3353,7 @@ export class DiabloRenderer {
       // Foundation stones at base
       const foundationMat = new THREE.MeshStandardMaterial({ color: 0x666655, roughness: 0.9 });
       for (let fi = 0; fi < 6; fi++) {
-        const fStoneGeo = new THREE.DodecahedronGeometry(0.12, 0);
+        const fStoneGeo = new THREE.DodecahedronGeometry(0.12, 1);
         const fStone = new THREE.Mesh(fStoneGeo, foundationMat);
         const fAngle = (fi / 6) * Math.PI * 2;
         fStone.position.set(
@@ -3366,7 +3366,7 @@ export class DiabloRenderer {
 
       // Roof ridge (thin cylinder along the peak)
       const ridgeMat = new THREE.MeshStandardMaterial({ color: roofColor, roughness: 0.7 });
-      const ridgeGeo = new THREE.CylinderGeometry(0.04, 0.04, roofW, 16);
+      const ridgeGeo = new THREE.CylinderGeometry(0.04, 0.04, roofW, 27);
       const ridge = new THREE.Mesh(ridgeGeo, ridgeMat);
       ridge.rotation.z = Math.PI / 2;
       ridge.position.set(0, bh + roofH, 0);
@@ -3389,14 +3389,14 @@ export class DiabloRenderer {
 
       // Chimney (every other building)
       if (bi % 2 === 0) {
-        const chimGeo = new THREE.CylinderGeometry(0.15, 0.18, 1.5, 14);
+        const chimGeo = new THREE.CylinderGeometry(0.15, 0.18, 1.5, 23);
         const chimMat = new THREE.MeshStandardMaterial({ color: 0x665544, roughness: 0.9 });
         const chim = new THREE.Mesh(chimGeo, chimMat);
         chim.position.set(bw * 0.25, bh + 1.0, -bd * 0.2);
         chim.castShadow = true;
         buildGroup.add(chim);
         // Smoke puff
-        const smokeGeo = new THREE.SphereGeometry(0.2, 14, 12);
+        const smokeGeo = new THREE.SphereGeometry(0.2, 23, 20);
         const smokeMat = new THREE.MeshStandardMaterial({ color: 0x888888, transparent: true, opacity: 0.25, roughness: 1.0 });
         const smoke = new THREE.Mesh(smokeGeo, smokeMat);
         smoke.position.set(bw * 0.25, bh + 1.9, -bd * 0.2);
@@ -3423,7 +3423,7 @@ export class DiabloRenderer {
     tavernRoof.rotation.x = 0.1;
     tavernGroup.add(tavernRoof);
     // Hanging sign bracket
-    const bracketGeo = new THREE.CylinderGeometry(0.03, 0.03, 1.0, 12);
+    const bracketGeo = new THREE.CylinderGeometry(0.03, 0.03, 1.0, 20);
     const bracketMat = new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.6, roughness: 0.3 });
     const bracket = new THREE.Mesh(bracketGeo, bracketMat);
     bracket.rotation.z = Math.PI / 2;
@@ -3454,7 +3454,7 @@ export class DiabloRenderer {
     this._scene.add(tavernLight);
     this._torchLights.push(tavernLight);
     // Tavern door frame
-    const tvDoorLintelGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.9, 16);
+    const tvDoorLintelGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.9, 27);
     const tvDoorFrameMat = new THREE.MeshStandardMaterial({ color: 0x443322, roughness: 0.85 });
     const tvDoorLintel = new THREE.Mesh(tvDoorLintelGeo, tvDoorFrameMat);
     tvDoorLintel.rotation.z = Math.PI / 2;
@@ -3463,7 +3463,7 @@ export class DiabloRenderer {
     // Tavern foundation stones
     const tvFoundMat = new THREE.MeshStandardMaterial({ color: 0x666655, roughness: 0.9 });
     for (let tfi = 0; tfi < 8; tfi++) {
-      const tvFStoneGeo = new THREE.DodecahedronGeometry(0.15, 0);
+      const tvFStoneGeo = new THREE.DodecahedronGeometry(0.15, 1);
       const tvFStone = new THREE.Mesh(tvFStoneGeo, tvFoundMat);
       tvFStone.position.set(-2.2 + tfi * 0.65, 0.12, 2.05);
       tavernGroup.add(tvFStone);
@@ -3501,7 +3501,7 @@ export class DiabloRenderer {
     chapel.castShadow = true;
     chapelGroup.add(chapel);
     // Pointed roof
-    const chapelRoofGeo = new THREE.ConeGeometry(3.5, 3, 10);
+    const chapelRoofGeo = new THREE.ConeGeometry(3.5, 3, 17);
     const chapelRoofMat = new THREE.MeshStandardMaterial({ color: 0x334466, roughness: 0.6 });
     const chapelRoof = new THREE.Mesh(chapelRoofGeo, chapelRoofMat);
     chapelRoof.position.y = 7.5;
@@ -3510,11 +3510,11 @@ export class DiabloRenderer {
     chapelGroup.add(chapelRoof);
     // Cross on top (thin cylinders forming +)
     const crossMat = new THREE.MeshStandardMaterial({ color: 0xddaa22, metalness: 0.6, roughness: 0.3 });
-    const crossVGeo = new THREE.CylinderGeometry(0.04, 0.04, 1.5, 14);
+    const crossVGeo = new THREE.CylinderGeometry(0.04, 0.04, 1.5, 23);
     const crossV = new THREE.Mesh(crossVGeo, crossMat);
     crossV.position.set(0, 9.75, 0);
     chapelGroup.add(crossV);
-    const crossHGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.8, 14);
+    const crossHGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.8, 23);
     const crossH = new THREE.Mesh(crossHGeo, crossMat);
     crossH.rotation.z = Math.PI / 2;
     crossH.position.set(0, 10.2, 0);
@@ -3526,7 +3526,7 @@ export class DiabloRenderer {
     sgWin.position.set(0, 4, 2.53);
     chapelGroup.add(sgWin);
     // Chapel door frame (arched lintel)
-    const chDoorLintelGeo = new THREE.CylinderGeometry(0.05, 0.05, 1.0, 16);
+    const chDoorLintelGeo = new THREE.CylinderGeometry(0.05, 0.05, 1.0, 27);
     const chDoorFrameMat = new THREE.MeshStandardMaterial({ color: 0x999999, roughness: 0.8 });
     const chDoorLintel = new THREE.Mesh(chDoorLintelGeo, chDoorFrameMat);
     chDoorLintel.rotation.z = Math.PI / 2;
@@ -3535,7 +3535,7 @@ export class DiabloRenderer {
     // Chapel foundation stones
     const chFoundMat = new THREE.MeshStandardMaterial({ color: 0x888877, roughness: 0.9 });
     for (let cfi = 0; cfi < 8; cfi++) {
-      const chFStoneGeo = new THREE.DodecahedronGeometry(0.14, 0);
+      const chFStoneGeo = new THREE.DodecahedronGeometry(0.14, 1);
       const chFStone = new THREE.Mesh(chFStoneGeo, chFoundMat);
       const cfAngle = (cfi / 8) * Math.PI * 2;
       chFStone.position.set(
@@ -3557,12 +3557,12 @@ export class DiabloRenderer {
     }
     // Chapel window frame around stained glass
     const chWinFrameMat = new THREE.MeshStandardMaterial({ color: 0x999999, roughness: 0.8 });
-    const chWfTopGeo = new THREE.CylinderGeometry(0.04, 0.04, 1.3, 16);
+    const chWfTopGeo = new THREE.CylinderGeometry(0.04, 0.04, 1.3, 27);
     const chWfTop = new THREE.Mesh(chWfTopGeo, chWinFrameMat);
     chWfTop.rotation.z = Math.PI / 2;
     chWfTop.position.set(0, 5.05, 2.55);
     chapelGroup.add(chWfTop);
-    const chWfBotGeo = new THREE.CylinderGeometry(0.04, 0.04, 1.3, 16);
+    const chWfBotGeo = new THREE.CylinderGeometry(0.04, 0.04, 1.3, 27);
     const chWfBot = new THREE.Mesh(chWfBotGeo, chWinFrameMat);
     chWfBot.rotation.z = Math.PI / 2;
     chWfBot.position.set(0, 2.95, 2.55);
@@ -3583,7 +3583,7 @@ export class DiabloRenderer {
     forgeGroup.add(shedRoof);
     // Shed poles
     for (const [fpx, fpz] of [[-1.8, -1.3], [1.8, -1.3], [-1.8, 1.3], [1.8, 1.3]]) {
-      const fpGeo = new THREE.CylinderGeometry(0.06, 0.06, 2.8, 14);
+      const fpGeo = new THREE.CylinderGeometry(0.06, 0.06, 2.8, 23);
       const fpMat = new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.8 });
       const fp = new THREE.Mesh(fpGeo, fpMat);
       fp.position.set(fpx, 1.4, fpz);
@@ -3606,7 +3606,7 @@ export class DiabloRenderer {
     const forgeFire = new THREE.Mesh(forgeFireGeo, forgeFireMat);
     forgeFire.position.set(-1.2, 0.3, 0);
     forgeGroup.add(forgeFire);
-    const emberGeo = new THREE.SphereGeometry(0.3, 16, 14);
+    const emberGeo = new THREE.SphereGeometry(0.3, 27, 23);
     const emberMat = new THREE.MeshStandardMaterial({ color: 0xff4400, emissive: 0xff3300, emissiveIntensity: 2.0 });
     const forgeEmber = new THREE.Mesh(emberGeo, emberMat);
     forgeEmber.position.set(-1.2, 0.7, 0);
@@ -3648,7 +3648,7 @@ export class DiabloRenderer {
     for (const vdef of VENDOR_DEFS) {
       const vendorMarker = new THREE.Group();
       // Tall post
-      const vPostGeo = new THREE.CylinderGeometry(0.06, 0.06, 3, 14);
+      const vPostGeo = new THREE.CylinderGeometry(0.06, 0.06, 3, 23);
       const vPostMat = new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.8 });
       const vPost = new THREE.Mesh(vPostGeo, vPostMat);
       vPost.position.y = 1.5;
@@ -3662,7 +3662,7 @@ export class DiabloRenderer {
       vendorMarker.add(vSign);
       // Emissive sphere on top
       const vColor = vendorTypeColors[vdef.type] || 0xffffff;
-      const vSphereGeo = new THREE.SphereGeometry(0.2, 16, 14);
+      const vSphereGeo = new THREE.SphereGeometry(0.2, 27, 23);
       const vSphereMat = new THREE.MeshStandardMaterial({ color: vColor, emissive: vColor, emissiveIntensity: 1.0 });
       const vSphere = new THREE.Mesh(vSphereGeo, vSphereMat);
       vSphere.position.set(0, 3.2, 0);
@@ -3685,7 +3685,7 @@ export class DiabloRenderer {
     const hayMat = new THREE.MeshStandardMaterial({ color: 0xccaa44, roughness: 0.9 });
     const hayPositions = [[-10, 2], [-11, 3], [10, -2], [11, -3], [5, 12], [-5, -12]];
     for (const [hx, hz] of hayPositions) {
-      const hayGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.8, 20);
+      const hayGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.8, 30);
       const hay = new THREE.Mesh(hayGeo, hayMat);
       hay.position.set(hx, 0.4, hz);
       hay.rotation.z = Math.PI / 2;
@@ -3697,7 +3697,7 @@ export class DiabloRenderer {
     // Barrels (10)
     const barrelMat = new THREE.MeshStandardMaterial({ color: 0x8B5A2B, roughness: 0.8 });
     for (let bri = 0; bri < 10; bri++) {
-      const barrelGeo = new THREE.CylinderGeometry(0.25, 0.22, 0.6, 16);
+      const barrelGeo = new THREE.CylinderGeometry(0.25, 0.22, 0.6, 27);
       const barrel = new THREE.Mesh(barrelGeo, barrelMat);
       const bAngle = (bri / 10) * Math.PI * 2;
       const bRadius = 13 + (bri % 3);
@@ -3709,7 +3709,7 @@ export class DiabloRenderer {
       barrel.castShadow = true;
       this._envGroup.add(barrel);
       // Band on barrel
-      const bandGeo = new THREE.CylinderGeometry(0.27, 0.27, 0.04, 16);
+      const bandGeo = new THREE.CylinderGeometry(0.27, 0.27, 0.04, 27);
       const bandMtl = new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.5, roughness: 0.4 });
       const band = new THREE.Mesh(bandGeo, bandMtl);
       band.position.copy(barrel.position);
@@ -3717,7 +3717,7 @@ export class DiabloRenderer {
       this._envGroup.add(band);
       // Extra torus rings on barrel
       for (const ringY of [-0.1, 0.15]) {
-        const ringGeo = new THREE.TorusGeometry(0.255, 0.012, 16, 24);
+        const ringGeo = new THREE.TorusGeometry(0.255, 0.012, 27, 36);
         const ring = new THREE.Mesh(ringGeo, bandMtl);
         ring.position.copy(barrel.position);
         ring.position.y += ringY;
@@ -3725,7 +3725,7 @@ export class DiabloRenderer {
         this._envGroup.add(ring);
       }
       // Shadow disc under barrel
-      const bShadowGeo = new THREE.CircleGeometry(0.32, 24);
+      const bShadowGeo = new THREE.CircleGeometry(0.32, 36);
       const bShadowMat = new THREE.MeshStandardMaterial({ color: 0x111111, transparent: true, opacity: 0.3, depthWrite: false });
       const bShadow = new THREE.Mesh(bShadowGeo, bShadowMat);
       bShadow.rotation.x = -Math.PI / 2;
@@ -3745,7 +3745,7 @@ export class DiabloRenderer {
       cartGroup.add(plat);
       // Wheels
       for (const [wx, wz] of [[-0.7, -0.5], [-0.7, 0.5], [0.7, -0.5], [0.7, 0.5]]) {
-        const wheelGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.08, 20);
+        const wheelGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.08, 30);
         const wheelMat = new THREE.MeshStandardMaterial({ color: 0x553311, roughness: 0.8 });
         const wheel = new THREE.Mesh(wheelGeo, wheelMat);
         wheel.rotation.x = Math.PI / 2;
@@ -3753,7 +3753,7 @@ export class DiabloRenderer {
         cartGroup.add(wheel);
       }
       // Handle
-      const handleGeo = new THREE.CylinderGeometry(0.03, 0.03, 1.5, 12);
+      const handleGeo = new THREE.CylinderGeometry(0.03, 0.03, 1.5, 20);
       const handleMat = new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.8 });
       const handle = new THREE.Mesh(handleGeo, handleMat);
       handle.rotation.z = Math.PI / 3;
@@ -3763,7 +3763,7 @@ export class DiabloRenderer {
       const braceMat = new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.8 });
       for (const [bx1, bz1, bx2, bz2] of [[-0.7, -0.5, 0.7, 0.5], [-0.7, 0.5, 0.7, -0.5]]) {
         const braceLen = Math.sqrt((bx2 - bx1) ** 2 + (bz2 - bz1) ** 2);
-        const braceGeo = new THREE.CylinderGeometry(0.015, 0.015, braceLen, 16);
+        const braceGeo = new THREE.CylinderGeometry(0.015, 0.015, braceLen, 27);
         const brace = new THREE.Mesh(braceGeo, braceMat);
         brace.position.set((bx1 + bx2) / 2, 0.44, (bz1 + bz2) / 2);
         brace.rotation.z = Math.PI / 2;
@@ -3771,7 +3771,7 @@ export class DiabloRenderer {
         cartGroup.add(brace);
       }
       // Shadow disc under cart
-      const cShadowGeo = new THREE.CircleGeometry(1.1, 24);
+      const cShadowGeo = new THREE.CircleGeometry(1.1, 36);
       const cShadowMat = new THREE.MeshStandardMaterial({ color: 0x111111, transparent: true, opacity: 0.25, depthWrite: false });
       const cShadow = new THREE.Mesh(cShadowGeo, cShadowMat);
       cShadow.rotation.x = -Math.PI / 2;
@@ -3787,7 +3787,7 @@ export class DiabloRenderer {
     for (let ti = 0; ti < 8; ti++) {
       const treeGroup = new THREE.Group();
       const trunkH = 1.0 + Math.random() * 0.8;
-      const trunkGeo = new THREE.CylinderGeometry(0.08, 0.12, trunkH, 14);
+      const trunkGeo = new THREE.CylinderGeometry(0.08, 0.12, trunkH, 23);
       const trunkMat = new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.9 });
       const trunk = new THREE.Mesh(trunkGeo, trunkMat);
       trunk.position.y = trunkH / 2;
@@ -3795,7 +3795,7 @@ export class DiabloRenderer {
       treeGroup.add(trunk);
       // Small sphere crown
       const crownR = 0.5 + Math.random() * 0.4;
-      const crownGeo = new THREE.SphereGeometry(crownR, 32, 14);
+      const crownGeo = new THREE.SphereGeometry(crownR, 44, 23);
       const crownMat = new THREE.MeshStandardMaterial({ color: treeGreens[ti % treeGreens.length], roughness: 0.8 });
       const crown = new THREE.Mesh(crownGeo, crownMat);
       crown.position.y = trunkH + crownR * 0.6;
@@ -3804,7 +3804,7 @@ export class DiabloRenderer {
       // Extra leaf clusters
       for (let lci = 0; lci < 3; lci++) {
         const lcR = crownR * (0.35 + Math.random() * 0.2);
-        const lcGeo = new THREE.SphereGeometry(lcR, 24, 16);
+        const lcGeo = new THREE.SphereGeometry(lcR, 36, 27);
         const lc = new THREE.Mesh(lcGeo, crownMat);
         const lcAngle = (lci / 3) * Math.PI * 2 + Math.random() * 0.5;
         lc.position.set(
@@ -3816,7 +3816,7 @@ export class DiabloRenderer {
         treeGroup.add(lc);
       }
       // Shadow disc under tree
-      const tShadowGeo = new THREE.CircleGeometry(crownR * 1.2, 24);
+      const tShadowGeo = new THREE.CircleGeometry(crownR * 1.2, 36);
       const tShadowMat = new THREE.MeshStandardMaterial({ color: 0x111111, transparent: true, opacity: 0.25, depthWrite: false });
       const tShadow = new THREE.Mesh(tShadowGeo, tShadowMat);
       tShadow.rotation.x = -Math.PI / 2;
@@ -3843,7 +3843,7 @@ export class DiabloRenderer {
       fboxGroup.add(fbox);
       // Flowers (small spheres)
       for (let ff = 0; ff < 4; ff++) {
-        const flGeo = new THREE.SphereGeometry(0.06, 12, 10);
+        const flGeo = new THREE.SphereGeometry(0.06, 20, 17);
         const flMat = new THREE.MeshStandardMaterial({ color: flowerColors[fi], roughness: 0.6 });
         const fl = new THREE.Mesh(flGeo, flMat);
         fl.position.set(-0.15 + ff * 0.1, 0.12, 0);
@@ -3860,14 +3860,14 @@ export class DiabloRenderer {
     for (const [lx, lz] of lampPositions) {
       const lampGroup = new THREE.Group();
       // Pole
-      const lampPoleGeo = new THREE.CylinderGeometry(0.04, 0.06, 3.5, 14);
+      const lampPoleGeo = new THREE.CylinderGeometry(0.04, 0.06, 3.5, 23);
       const lampPoleMat = new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.5, roughness: 0.4 });
       const lampPole = new THREE.Mesh(lampPoleGeo, lampPoleMat);
       lampPole.position.y = 1.75;
       lampPole.castShadow = true;
       lampGroup.add(lampPole);
       // Light sphere
-      const lampSphGeo = new THREE.SphereGeometry(0.15, 16, 14);
+      const lampSphGeo = new THREE.SphereGeometry(0.15, 27, 23);
       const lampSphMat = new THREE.MeshStandardMaterial({ color: 0xffeeaa, emissive: 0xffcc66, emissiveIntensity: 1.0 });
       const lampSph = new THREE.Mesh(lampSphGeo, lampSphMat);
       lampSph.position.y = 3.6;
@@ -3878,7 +3878,7 @@ export class DiabloRenderer {
       this._scene.add(lampLight);
       this._torchLights.push(lampLight);
       // Shadow disc under lamp post
-      const lpShadowGeo = new THREE.CircleGeometry(0.4, 24);
+      const lpShadowGeo = new THREE.CircleGeometry(0.4, 36);
       const lpShadowMat = new THREE.MeshStandardMaterial({ color: 0x111111, transparent: true, opacity: 0.25, depthWrite: false });
       const lpShadow = new THREE.Mesh(lpShadowGeo, lpShadowMat);
       lpShadow.rotation.x = -Math.PI / 2;
@@ -3892,7 +3892,7 @@ export class DiabloRenderer {
     const flagPositions: [number, number, number][] = [[-12, -15, 0xcc2222], [12, -15, 0x2244cc], [-12, 12, 0xcc2222], [12, 12, 0x2244cc]];
     for (const [fx, fz, fColor] of flagPositions) {
       const flagGroup = new THREE.Group();
-      const fpGeo = new THREE.CylinderGeometry(0.04, 0.04, 5, 14);
+      const fpGeo = new THREE.CylinderGeometry(0.04, 0.04, 5, 23);
       const fpMat = new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.8 });
       const fpole = new THREE.Mesh(fpGeo, fpMat);
       fpole.position.y = 2.5;
@@ -3958,7 +3958,7 @@ export class DiabloRenderer {
 
     // Additional small rocks / cobblestones scattered (15)
     for (let ri = 0; ri < 15; ri++) {
-      const rockGeo = new THREE.DodecahedronGeometry(0.15 + Math.random() * 0.15, 1);
+      const rockGeo = new THREE.DodecahedronGeometry(0.15 + Math.random() * 0.15, 2);
       const rockMat = new THREE.MeshStandardMaterial({ color: 0x888877, roughness: 0.95 });
       const rock = new THREE.Mesh(rockGeo, rockMat);
       rock.position.set(
@@ -3972,7 +3972,7 @@ export class DiabloRenderer {
 
     // Sacks of grain near market (4) - small burlap-colored, not sandy
     for (let si = 0; si < 4; si++) {
-      const sackGeo = new THREE.SphereGeometry(0.12, 14, 12);
+      const sackGeo = new THREE.SphereGeometry(0.12, 23, 20);
       const sackMat = new THREE.MeshStandardMaterial({ color: 0x7a6530, roughness: 0.95 });
       const sack = new THREE.Mesh(sackGeo, sackMat);
       sack.scale.set(1, 0.8, 0.8);
@@ -3999,12 +3999,12 @@ export class DiabloRenderer {
     // Potted plants near chapel (4)
     for (let pi = 0; pi < 4; pi++) {
       const potGroup = new THREE.Group();
-      const potGeo = new THREE.CylinderGeometry(0.15, 0.12, 0.25, 16);
+      const potGeo = new THREE.CylinderGeometry(0.15, 0.12, 0.25, 27);
       const potMat = new THREE.MeshStandardMaterial({ color: 0xaa6633, roughness: 0.8 });
       const pot = new THREE.Mesh(potGeo, potMat);
       pot.position.y = 0.125;
       potGroup.add(pot);
-      const plantGeo = new THREE.SphereGeometry(0.2, 21, 12);
+      const plantGeo = new THREE.SphereGeometry(0.2, 31, 20);
       const plantMat = new THREE.MeshStandardMaterial({ color: 0x44aa33, roughness: 0.8 });
       const plant = new THREE.Mesh(plantGeo, plantMat);
       plant.position.y = 0.35;
@@ -4016,7 +4016,7 @@ export class DiabloRenderer {
     // Hanging lanterns on building overhangs (6)
     for (let li = 0; li < 6; li++) {
       const lanternGroup = new THREE.Group();
-      const chainGeo = new THREE.CylinderGeometry(0.01, 0.01, 0.4, 10);
+      const chainGeo = new THREE.CylinderGeometry(0.01, 0.01, 0.4, 17);
       const chainMat = new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.6, roughness: 0.3 });
       const chain = new THREE.Mesh(chainGeo, chainMat);
       chain.position.y = 2.8;
@@ -4036,7 +4036,7 @@ export class DiabloRenderer {
 
     // Well-worn path stones (cobblestone details, 20)
     for (let pi = 0; pi < 20; pi++) {
-      const csGeo = new THREE.CylinderGeometry(0.2 + Math.random() * 0.15, 0.2 + Math.random() * 0.15, 0.03, 14);
+      const csGeo = new THREE.CylinderGeometry(0.2 + Math.random() * 0.15, 0.2 + Math.random() * 0.15, 0.03, 23);
       const csMat = new THREE.MeshStandardMaterial({ color: 0x776655 + Math.floor(Math.random() * 0x111111), roughness: 0.95 });
       const cs = new THREE.Mesh(csGeo, csMat);
       cs.position.set(
@@ -4050,7 +4050,7 @@ export class DiabloRenderer {
     // Clotheslines between buildings (3)
     for (let cli = 0; cli < 3; cli++) {
       const clGroup = new THREE.Group();
-      const clRopeGeo = new THREE.CylinderGeometry(0.008, 0.008, 4, 10);
+      const clRopeGeo = new THREE.CylinderGeometry(0.008, 0.008, 4, 17);
       const clRopeMat = new THREE.MeshStandardMaterial({ color: 0xaa9966, roughness: 0.9 });
       const clRope = new THREE.Mesh(clRopeGeo, clRopeMat);
       clRope.rotation.z = Math.PI / 2;
@@ -4074,7 +4074,7 @@ export class DiabloRenderer {
     for (let lpi = 0; lpi < 4; lpi++) {
       const logPile = new THREE.Group();
       for (let lo = 0; lo < 5; lo++) {
-        const logGeo = new THREE.CylinderGeometry(0.08, 0.08, 1.0, 14);
+        const logGeo = new THREE.CylinderGeometry(0.08, 0.08, 1.0, 23);
         const logMat = new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.9 });
         const log = new THREE.Mesh(logGeo, logMat);
         log.rotation.z = Math.PI / 2;
@@ -4088,16 +4088,16 @@ export class DiabloRenderer {
 
     // Bird bath / fountain near chapel (1)
     const fountainGroup = new THREE.Group();
-    const fPedGeo = new THREE.CylinderGeometry(0.2, 0.3, 1.0, 16);
+    const fPedGeo = new THREE.CylinderGeometry(0.2, 0.3, 1.0, 27);
     const fPedMat = new THREE.MeshStandardMaterial({ color: 0x999999, roughness: 0.75 });
     const fPed = new THREE.Mesh(fPedGeo, fPedMat);
     fPed.position.y = 0.5;
     fountainGroup.add(fPed);
-    const fBowlGeo = new THREE.CylinderGeometry(0.6, 0.4, 0.25, 24);
+    const fBowlGeo = new THREE.CylinderGeometry(0.6, 0.4, 0.25, 36);
     const fBowl = new THREE.Mesh(fBowlGeo, fPedMat);
     fBowl.position.y = 1.12;
     fountainGroup.add(fBowl);
-    const fWaterGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.05, 24);
+    const fWaterGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.05, 36);
     const fWaterMat = new THREE.MeshStandardMaterial({ color: 0x3388aa, transparent: true, opacity: 0.5, roughness: 0.2 });
     const fWater = new THREE.Mesh(fWaterGeo, fWaterMat);
     fWater.position.y = 1.22;
@@ -4107,7 +4107,7 @@ export class DiabloRenderer {
 
     // Notice board near center (1)
     const boardGroup = new THREE.Group();
-    const boardPostGeo = new THREE.CylinderGeometry(0.06, 0.06, 2, 14);
+    const boardPostGeo = new THREE.CylinderGeometry(0.06, 0.06, 2, 23);
     const boardPostMat = new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.8 });
     for (const bpx of [-0.4, 0.4]) {
       const bp = new THREE.Mesh(boardPostGeo, boardPostMat);
@@ -4159,7 +4159,7 @@ export class DiabloRenderer {
     // Bridge chains
     const chainMtl = new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.7, roughness: 0.3 });
     for (const cx of [-1.6, 1.6]) {
-      const ch = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 3.5, 10), chainMtl);
+      const ch = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 3.5, 17), chainMtl);
       ch.rotation.x = Math.PI * 0.35;
       ch.position.set(cx, 4, -24);
       this._envGroup.add(ch);
@@ -4183,7 +4183,7 @@ export class DiabloRenderer {
     }
     // Topiary spheres in gardens
     for (const [tx, tz] of [[-8.5, -15], [-10, -15], [15, 1], [15, 4]] as [number, number][]) {
-      const topiary = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 14), hedgeMat);
+      const topiary = new THREE.Mesh(new THREE.SphereGeometry(0.5, 27, 23), hedgeMat);
       topiary.position.set(tx, 0.7, tz);
       topiary.castShadow = true;
       this._envGroup.add(topiary);
@@ -4192,8 +4192,8 @@ export class DiabloRenderer {
     const gardenFlowerColors = [0xff6688, 0xffdd44, 0xaa44ff, 0xff4444, 0x44aaff, 0xffaacc];
     for (let gf = 0; gf < 12; gf++) {
       const gfMat = new THREE.MeshStandardMaterial({ color: gardenFlowerColors[gf % gardenFlowerColors.length], roughness: 0.6 });
-      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.3, 10), new THREE.MeshStandardMaterial({ color: 0x338822 }));
-      const bloom = new THREE.Mesh(new THREE.SphereGeometry(0.06, 24, 10), gfMat);
+      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.3, 17), new THREE.MeshStandardMaterial({ color: 0x338822 }));
+      const bloom = new THREE.Mesh(new THREE.SphereGeometry(0.06, 36, 17), gfMat);
       const fGroup = new THREE.Group();
       stem.position.y = 0.15;
       bloom.position.y = 0.33;
@@ -4219,7 +4219,7 @@ export class DiabloRenderer {
       gs.position.y = 0.35;
       gsGroup.add(gs);
       // Rounded top
-      const gsTop = new THREE.Mesh(new THREE.SphereGeometry(0.15, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2), gravestoneMat);
+      const gsTop = new THREE.Mesh(new THREE.SphereGeometry(0.15, 23, 17, 0, Math.PI * 2, 0, Math.PI / 2), gravestoneMat);
       gsTop.position.y = 0.65 + (gi % 3) * 0.1;
       gsGroup.add(gsTop);
       // Small cross on some
@@ -4238,16 +4238,16 @@ export class DiabloRenderer {
     // Iron fence around graveyard
     const fenceMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.6, roughness: 0.4 });
     for (let fi = 0; fi < 12; fi++) {
-      const fenceBar = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 1.0, 10), fenceMat);
+      const fenceBar = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 1.0, 17), fenceMat);
       fenceBar.position.set(-10.5 + fi * 0.5, 0.5, -23.5);
       this._envGroup.add(fenceBar);
       // Finial on fence post
-      const finialGeo = new THREE.ConeGeometry(0.025, 0.06, 16);
+      const finialGeo = new THREE.ConeGeometry(0.025, 0.06, 27);
       const finial = new THREE.Mesh(finialGeo, fenceMat);
       finial.position.set(-10.5 + fi * 0.5, 1.03, -23.5);
       this._envGroup.add(finial);
     }
-    const fenceRail = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 6, 10), fenceMat);
+    const fenceRail = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 6, 17), fenceMat);
     fenceRail.rotation.z = Math.PI / 2;
     fenceRail.position.set(-8, 0.8, -23.5);
     this._envGroup.add(fenceRail);
@@ -4258,33 +4258,33 @@ export class DiabloRenderer {
     // Practice dummies
     for (let di = 0; di < 3; di++) {
       const dummyGroup = new THREE.Group();
-      const dPole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 2.0, 14),
+      const dPole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 2.0, 23),
         new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.85 }));
       dPole.position.y = 1.0;
       dummyGroup.add(dPole);
       // Cross arm
-      const dArm = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.0, 12),
+      const dArm = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.0, 20),
         new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.85 }));
       dArm.rotation.z = Math.PI / 2;
       dArm.position.y = 1.6;
       dummyGroup.add(dArm);
       // Straw body
-      const dBody = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.15, 0.6, 16),
+      const dBody = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.15, 0.6, 27),
         new THREE.MeshStandardMaterial({ color: 0xccaa44, roughness: 0.9 }));
       dBody.position.y = 1.3;
       dummyGroup.add(dBody);
       // Straw head
-      const dHead = new THREE.Mesh(new THREE.SphereGeometry(0.15, 21, 12),
+      const dHead = new THREE.Mesh(new THREE.SphereGeometry(0.15, 31, 20),
         new THREE.MeshStandardMaterial({ color: 0xccaa44, roughness: 0.9 }));
       dHead.position.y = 1.85;
       dummyGroup.add(dHead);
       // Shield target on some
       if (di === 1) {
-        const shield = new THREE.Mesh(new THREE.CircleGeometry(0.25, 16),
+        const shield = new THREE.Mesh(new THREE.CircleGeometry(0.25, 27),
           new THREE.MeshStandardMaterial({ color: 0xcc3333, roughness: 0.6, side: THREE.DoubleSide }));
         shield.position.set(0, 1.3, 0.2);
         dummyGroup.add(shield);
-        const innerRing = new THREE.Mesh(new THREE.RingGeometry(0.08, 0.12, 8),
+        const innerRing = new THREE.Mesh(new THREE.RingGeometry(0.08, 0.12, 16),
           new THREE.MeshStandardMaterial({ color: 0xffffff, side: THREE.DoubleSide }));
         innerRing.position.set(0, 1.3, 0.21);
         dummyGroup.add(innerRing);
@@ -4302,7 +4302,7 @@ export class DiabloRenderer {
       // Target rings
       const ringColors = [0xcc2222, 0xffffff, 0xcc2222, 0xffcc00];
       for (let ri = 0; ri < 4; ri++) {
-        const ring = new THREE.Mesh(new THREE.RingGeometry(0.1 + ri * 0.1, 0.2 + ri * 0.1, 16),
+        const ring = new THREE.Mesh(new THREE.RingGeometry(0.1 + ri * 0.1, 0.2 + ri * 0.1, 27),
           new THREE.MeshStandardMaterial({ color: ringColors[ri], side: THREE.DoubleSide }));
         ring.rotation.y = Math.PI / 2;
         ring.position.set(0.05, 0.9, 0);
@@ -4310,7 +4310,7 @@ export class DiabloRenderer {
       }
       // Support legs
       for (const lz of [-0.4, 0.4]) {
-        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.4, 12),
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.4, 20),
           new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.85 }));
         leg.rotation.x = (lz > 0 ? -1 : 1) * 0.2;
         leg.position.set(-0.2, 0.6, lz);
@@ -4362,7 +4362,7 @@ export class DiabloRenderer {
         horseGroup.add(hLeg);
       }
       // Tail
-      const hTail = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.06, 0.6, 12),
+      const hTail = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.06, 0.6, 20),
         new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.9 }));
       hTail.position.set(-0.9, 1.1, 0);
       hTail.rotation.z = 0.6;
@@ -4386,17 +4386,17 @@ export class DiabloRenderer {
     // Chickens (5) near market
     for (let ci = 0; ci < 5; ci++) {
       const chickenGroup = new THREE.Group();
-      const cBody = new THREE.Mesh(new THREE.SphereGeometry(0.12, 14, 12),
+      const cBody = new THREE.Mesh(new THREE.SphereGeometry(0.12, 23, 20),
         new THREE.MeshStandardMaterial({ color: 0xddccaa, roughness: 0.85 }));
       cBody.position.y = 0.18;
       cBody.scale.set(1, 0.8, 1.2);
       chickenGroup.add(cBody);
-      const cHead = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 10),
+      const cHead = new THREE.Mesh(new THREE.SphereGeometry(0.06, 20, 17),
         new THREE.MeshStandardMaterial({ color: 0xddccaa, roughness: 0.85 }));
       cHead.position.set(0.1, 0.28, 0);
       chickenGroup.add(cHead);
       // Beak
-      const beak = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.04, 10),
+      const beak = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.04, 17),
         new THREE.MeshStandardMaterial({ color: 0xddaa22 }));
       beak.rotation.z = -Math.PI / 2;
       beak.position.set(0.17, 0.28, 0);
@@ -4421,19 +4421,19 @@ export class DiabloRenderer {
       new THREE.MeshStandardMaterial({ color: 0xdd8833, roughness: 0.8 }));
     catBody.position.y = 0.08;
     catGroup.add(catBody);
-    const catHead = new THREE.Mesh(new THREE.SphereGeometry(0.09, 14, 12),
+    const catHead = new THREE.Mesh(new THREE.SphereGeometry(0.09, 23, 20),
       new THREE.MeshStandardMaterial({ color: 0xdd8833, roughness: 0.8 }));
     catHead.position.set(0.18, 0.13, 0);
     catGroup.add(catHead);
     // Ears
     for (const ez of [-0.04, 0.04]) {
-      const ear = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.05, 10),
+      const ear = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.05, 17),
         new THREE.MeshStandardMaterial({ color: 0xdd8833 }));
       ear.position.set(0.2, 0.22, ez);
       catGroup.add(ear);
     }
     // Tail
-    const catTail = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.01, 0.35, 32),
+    const catTail = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.01, 0.35, 44),
       new THREE.MeshStandardMaterial({ color: 0xdd8833 }));
     catTail.rotation.z = 0.5;
     catTail.position.set(-0.25, 0.15, 0);
@@ -4521,7 +4521,7 @@ export class DiabloRenderer {
     // ═══════════════════════════════════════════════
     const puddleMat = new THREE.MeshStandardMaterial({ color: 0x556677, transparent: true, opacity: 0.35, roughness: 0.05, metalness: 0.3 });
     for (let pi = 0; pi < 6; pi++) {
-      const puddle = new THREE.Mesh(new THREE.CircleGeometry(0.3 + Math.random() * 0.5, 48), puddleMat);
+      const puddle = new THREE.Mesh(new THREE.CircleGeometry(0.3 + Math.random() * 0.5, 62), puddleMat);
       puddle.rotation.x = -Math.PI / 2;
       puddle.position.set(
         (Math.random() - 0.5) * 20,
@@ -4538,11 +4538,11 @@ export class DiabloRenderer {
     for (let vi = 0; vi < 6; vi++) {
       const [vx, vz] = buildingPositions[vi * 3];
       const vGroup = new THREE.Group();
-      const vPole = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.0, 32), vaneMat);
+      const vPole = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.0, 44), vaneMat);
       vPole.position.y = 0.5;
       vGroup.add(vPole);
       // Arrow
-      const vArrow = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.3, 48), vaneMat);
+      const vArrow = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.3, 62), vaneMat);
       vArrow.rotation.z = Math.PI / 2;
       vArrow.position.set(0.15, 1.0, 0);
       vGroup.add(vArrow);
@@ -4552,11 +4552,11 @@ export class DiabloRenderer {
       vTail.position.set(-0.15, 1.0, 0);
       vGroup.add(vTail);
       // N-S-E-W indicator bars
-      const nsBar = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.3, 32), vaneMat);
+      const nsBar = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.3, 44), vaneMat);
       nsBar.rotation.z = Math.PI / 2;
       nsBar.position.y = 0.85;
       vGroup.add(nsBar);
-      const ewBar = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.3, 32), vaneMat);
+      const ewBar = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.3, 44), vaneMat);
       ewBar.rotation.x = Math.PI / 2;
       ewBar.position.y = 0.85;
       vGroup.add(ewBar);
@@ -4583,7 +4583,7 @@ export class DiabloRenderer {
       archGroup.add(pillarR);
       // Arch top (half torus)
       const archTop = new THREE.Mesh(
-        new THREE.TorusGeometry(2, 0.3, 32, 48, Math.PI),
+        new THREE.TorusGeometry(2, 0.3, 44, 62, Math.PI),
         archStoneMat
       );
       archTop.position.set(0, 4, 0);
@@ -4617,11 +4617,11 @@ export class DiabloRenderer {
     // Guard torches on walls (4)
     for (const [gtx, gtz] of [[-hw * 0.5, -hd], [hw * 0.5, -hd], [-hw, 0], [hw, 0]] as [number, number][]) {
       const torchGroup = new THREE.Group();
-      const tStick = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.8, 32),
+      const tStick = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.8, 44),
         new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.85 }));
       tStick.position.y = 0.4;
       torchGroup.add(tStick);
-      const tFlame = new THREE.Mesh(new THREE.SphereGeometry(0.08, 62, 32),
+      const tFlame = new THREE.Mesh(new THREE.SphereGeometry(0.08, 80, 44),
         new THREE.MeshStandardMaterial({ color: 0xff8800, emissive: 0xff6600, emissiveIntensity: 2.0 }));
       tFlame.position.y = 0.85;
       torchGroup.add(tFlame);
@@ -4648,7 +4648,7 @@ export class DiabloRenderer {
       awGroup.add(aw);
       // Support rods
       for (const rx of [-0.5, 0.5]) {
-        const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.8, 32),
+        const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.8, 44),
           new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.5, roughness: 0.4 }));
         rod.rotation.x = -0.5;
         rod.position.set(rx, 1.6, awd / 2 + 0.2);
@@ -4672,7 +4672,7 @@ export class DiabloRenderer {
       goodsGroup.add(gCrate);
       // Small spheres as goods (fruit/vegetables)
       for (let gs = 0; gs < 4; gs++) {
-        const good = new THREE.Mesh(new THREE.SphereGeometry(0.04, 32, 24),
+        const good = new THREE.Mesh(new THREE.SphereGeometry(0.04, 44, 36),
           new THREE.MeshStandardMaterial({ color: goodColors[(gi + gs) % goodColors.length], roughness: 0.6 }));
         good.position.set(-0.08 + gs * 0.06, 0.28, (Math.random() - 0.5) * 0.1);
         goodsGroup.add(good);
@@ -4712,7 +4712,7 @@ export class DiabloRenderer {
     // ═══════════════════════════════════════════════
     for (let ss = 0; ss < 8; ss++) {
       const stepStone = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.25 + Math.random() * 0.1, 0.25, 0.04, 32),
+        new THREE.CylinderGeometry(0.25 + Math.random() * 0.1, 0.25, 0.04, 44),
         new THREE.MeshStandardMaterial({ color: 0x887766, roughness: 0.9 })
       );
       stepStone.position.set(-3 + (Math.random() - 0.5) * 0.3, 0.02, -10 - ss * 1.3);
@@ -4727,7 +4727,7 @@ export class DiabloRenderer {
       const [scx, scz, scw] = buildingPositions[sci * 2];
       const scH = 3 + ((sci * 2 * 7 + 3) % 5) * 0.4;
       for (let sp = 0; sp < 3; sp++) {
-        const puff = new THREE.Mesh(new THREE.SphereGeometry(0.15 + sp * 0.08, 48, 32), smokeMat2);
+        const puff = new THREE.Mesh(new THREE.SphereGeometry(0.15 + sp * 0.08, 62, 44), smokeMat2);
         puff.position.set(scx + scw * 0.25, scH + 1.8 + sp * 0.4, scz);
         puff.scale.set(1 + sp * 0.3, 1 + sp * 0.2, 1 + sp * 0.3);
         this._envGroup.add(puff);
@@ -4736,7 +4736,7 @@ export class DiabloRenderer {
 
     // Cobblestone path details (12) - small dark circles on ground
     for (let i = 0; i < 12; i++) {
-      const cobble = new THREE.Mesh(new THREE.CircleGeometry(0.8 + Math.random() * 0.5, 48),
+      const cobble = new THREE.Mesh(new THREE.CircleGeometry(0.8 + Math.random() * 0.5, 62),
         new THREE.MeshStandardMaterial({ color: 0x555544, roughness: 1.0, side: THREE.DoubleSide }));
       cobble.rotation.x = -Math.PI / 2;
       cobble.position.set((Math.random() - 0.5) * w * 0.4, 0.02, (Math.random() - 0.5) * d * 0.4);
@@ -4747,7 +4747,7 @@ export class DiabloRenderer {
     const bannerColors = [0xcc2222, 0x2244aa, 0xddaa22, 0x228833, 0x8833aa, 0xcc6622];
     for (let i = 0; i < 6; i++) {
       const bannerGrp = new THREE.Group();
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.2, 32),
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.2, 44),
         new THREE.MeshStandardMaterial({ color: 0x8B6914, roughness: 0.9 }));
       pole.position.y = 0.6;
       bannerGrp.add(pole);
@@ -4763,7 +4763,7 @@ export class DiabloRenderer {
 
     // Puddles (5) - flat reflective circles
     for (let i = 0; i < 5; i++) {
-      const puddle = new THREE.Mesh(new THREE.CircleGeometry(0.3 + Math.random() * 0.4, 48),
+      const puddle = new THREE.Mesh(new THREE.CircleGeometry(0.3 + Math.random() * 0.4, 62),
         new THREE.MeshStandardMaterial({ color: 0x445566, roughness: 0.1, metalness: 0.8, side: THREE.DoubleSide }));
       puddle.rotation.x = -Math.PI / 2;
       puddle.position.set((Math.random() - 0.5) * w * 0.5, 0.01, (Math.random() - 0.5) * d * 0.5);
@@ -4773,16 +4773,16 @@ export class DiabloRenderer {
     // Chickens wandering (4)
     for (let i = 0; i < 4; i++) {
       const chickenGrp = new THREE.Group();
-      const cBody = new THREE.Mesh(new THREE.SphereGeometry(0.08, 48, 32),
+      const cBody = new THREE.Mesh(new THREE.SphereGeometry(0.08, 62, 44),
         new THREE.MeshStandardMaterial({ color: 0xddddcc, roughness: 0.8 }));
       cBody.scale.set(1.2, 1, 0.8);
       cBody.position.y = 0.12;
       chickenGrp.add(cBody);
-      const cHead = new THREE.Mesh(new THREE.SphereGeometry(0.04, 32, 24),
+      const cHead = new THREE.Mesh(new THREE.SphereGeometry(0.04, 44, 36),
         new THREE.MeshStandardMaterial({ color: 0xddddcc, roughness: 0.8 }));
       cHead.position.set(0.08, 0.2, 0);
       chickenGrp.add(cHead);
-      const comb = new THREE.Mesh(new THREE.SphereGeometry(0.02, 32, 24),
+      const comb = new THREE.Mesh(new THREE.SphereGeometry(0.02, 44, 36),
         new THREE.MeshStandardMaterial({ color: 0xcc2222, roughness: 0.6 }));
       comb.position.set(0.08, 0.25, 0);
       chickenGrp.add(comb);
@@ -4793,13 +4793,13 @@ export class DiabloRenderer {
 
     // Wooden barrels (6) - near tavern area
     for (let i = 0; i < 6; i++) {
-      const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.4, 32),
+      const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.4, 44),
         new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.85 }));
       barrel.position.set(8 + (i % 3) * 0.5, 0.2, -5 + Math.floor(i / 3) * 0.5);
       barrel.castShadow = true;
       this._envGroup.add(barrel);
       // Metal band
-      const band = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.01, 32, 48),
+      const band = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.01, 44, 62),
         new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.7, roughness: 0.4 }));
       band.position.copy(barrel.position);
       band.position.y += 0.05;
@@ -4813,7 +4813,7 @@ export class DiabloRenderer {
       const lFrame = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.12, 0.08),
         new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.6, roughness: 0.5 }));
       lanternGrp.add(lFrame);
-      const lGlow = new THREE.Mesh(new THREE.SphereGeometry(0.04, 32, 24),
+      const lGlow = new THREE.Mesh(new THREE.SphereGeometry(0.04, 44, 36),
         new THREE.MeshStandardMaterial({ color: 0xffaa44, emissive: 0xff8822, emissiveIntensity: 1.0 }));
       lanternGrp.add(lGlow);
       const lAngle = (i / 8) * Math.PI * 2;
@@ -4825,24 +4825,24 @@ export class DiabloRenderer {
     const fountainGrp = new THREE.Group();
     // Base pool
     const fPoolR = 3;
-    const fPoolBase = new THREE.Mesh(new THREE.CylinderGeometry(fPoolR, fPoolR + 0.3, 0.5, 32), new THREE.MeshStandardMaterial({ color: 0x999999, roughness: 0.75 }));
+    const fPoolBase = new THREE.Mesh(new THREE.CylinderGeometry(fPoolR, fPoolR + 0.3, 0.5, 44), new THREE.MeshStandardMaterial({ color: 0x999999, roughness: 0.75 }));
     fPoolBase.position.y = 0.25; fountainGrp.add(fPoolBase);
     // Water surface
-    const fWater2 = new THREE.Mesh(new THREE.CylinderGeometry(fPoolR - 0.15, fPoolR - 0.15, 0.05, 32), new THREE.MeshStandardMaterial({ color: 0x3399bb, transparent: true, opacity: 0.5, roughness: 0.1 }));
+    const fWater2 = new THREE.Mesh(new THREE.CylinderGeometry(fPoolR - 0.15, fPoolR - 0.15, 0.05, 44), new THREE.MeshStandardMaterial({ color: 0x3399bb, transparent: true, opacity: 0.5, roughness: 0.1 }));
     fWater2.position.y = 0.48; fountainGrp.add(fWater2);
     // Central column
-    const fCol = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.35, 2.5, 32), new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 0.7 }));
+    const fCol = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.35, 2.5, 44), new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 0.7 }));
     fCol.position.y = 1.75; fountainGrp.add(fCol);
     // Top bowl
-    const fBowl2 = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.5, 0.3, 32), new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 0.7 }));
+    const fBowl2 = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.5, 0.3, 44), new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 0.7 }));
     fBowl2.position.y = 3.15; fountainGrp.add(fBowl2);
     // Water spout (small sphere at top)
-    const spout = new THREE.Mesh(new THREE.SphereGeometry(0.15, 62, 32), new THREE.MeshStandardMaterial({ color: 0x55bbdd, emissive: 0x2288aa, emissiveIntensity: 0.3, transparent: true, opacity: 0.6 }));
+    const spout = new THREE.Mesh(new THREE.SphereGeometry(0.15, 80, 44), new THREE.MeshStandardMaterial({ color: 0x55bbdd, emissive: 0x2288aa, emissiveIntensity: 0.3, transparent: true, opacity: 0.6 }));
     spout.position.y = 3.45; fountainGrp.add(spout);
     // Water streams (cylinders going down)
     for (let ws = 0; ws < 4; ws++) {
       const wAngle = (ws / 4) * Math.PI * 2;
-      const stream = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.04, 1.5, 32), new THREE.MeshStandardMaterial({ color: 0x44aacc, transparent: true, opacity: 0.3 }));
+      const stream = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.04, 1.5, 44), new THREE.MeshStandardMaterial({ color: 0x44aacc, transparent: true, opacity: 0.3 }));
       stream.position.set(Math.cos(wAngle) * 0.4, 2.0, Math.sin(wAngle) * 0.4);
       stream.rotation.z = (Math.random() - 0.5) * 0.3; fountainGrp.add(stream);
     }
@@ -4860,13 +4860,13 @@ export class DiabloRenderer {
       table.position.y = 0.9; stall.add(table);
       // Legs
       for (const [lx, lz] of [[-0.9, -0.5], [0.9, -0.5], [-0.9, 0.5], [0.9, 0.5]]) {
-        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.9, 32), new THREE.MeshStandardMaterial({ color: 0x8B6914, roughness: 0.8 }));
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.9, 44), new THREE.MeshStandardMaterial({ color: 0x8B6914, roughness: 0.8 }));
         leg.position.set(lx, 0.45, lz); stall.add(leg);
       }
       // Produce (various fruits/vegetables)
       const produceColors = [0xff3333, 0xff8800, 0xffdd00, 0x33aa33, 0x8844aa, 0xdd6633];
       for (let p = 0; p < 8; p++) {
-        const produce = new THREE.Mesh(new THREE.SphereGeometry(0.04 + Math.random() * 0.03, 32, 24), new THREE.MeshStandardMaterial({ color: produceColors[p % produceColors.length], roughness: 0.6 }));
+        const produce = new THREE.Mesh(new THREE.SphereGeometry(0.04 + Math.random() * 0.03, 44, 36), new THREE.MeshStandardMaterial({ color: produceColors[p % produceColors.length], roughness: 0.6 }));
         produce.position.set(-0.6 + (p % 4) * 0.35, 0.98, -0.3 + Math.floor(p / 4) * 0.4); stall.add(produce);
       }
       // Fabric draped over back
@@ -4880,16 +4880,16 @@ export class DiabloRenderer {
     for (let i = 0; i < 12; i++) {
       const lantern = new THREE.Group();
       // Chain
-      const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.5, 32), new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.6, roughness: 0.4 }));
+      const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.5, 44), new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.6, roughness: 0.4 }));
       chain.position.y = 3.25; lantern.add(chain);
       // Lantern body (octagonal)
-      const lBody = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.18, 32), new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.5, roughness: 0.5 }));
+      const lBody = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.18, 44), new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.5, roughness: 0.5 }));
       lBody.position.y = 2.9; lantern.add(lBody);
       // Glass panels (emissive)
-      const glass = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.085, 0.14, 32), new THREE.MeshStandardMaterial({ color: 0xffcc44, emissive: 0xffaa22, emissiveIntensity: 0.8, transparent: true, opacity: 0.7 }));
+      const glass = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.085, 0.14, 44), new THREE.MeshStandardMaterial({ color: 0xffcc44, emissive: 0xffaa22, emissiveIntensity: 0.8, transparent: true, opacity: 0.7 }));
       glass.position.y = 2.9; lantern.add(glass);
       // Top cap
-      const cap = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.08, 32), new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.6 }));
+      const cap = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.08, 44), new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.6 }));
       cap.position.y = 3.0; lantern.add(cap);
       const lx = (Math.random() - 0.5) * w * 0.6; const lz = (Math.random() - 0.5) * d * 0.6;
       lantern.position.set(lx, 0, lz); this._envGroup.add(lantern);
@@ -4906,10 +4906,10 @@ export class DiabloRenderer {
       dirt.position.y = 0.08; fb.add(dirt);
       // Flowers (varied shapes)
       for (let f = 0; f < 5; f++) {
-        const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.12 + Math.random() * 0.08, 32), new THREE.MeshStandardMaterial({ color: 0x338822 }));
+        const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.12 + Math.random() * 0.08, 44), new THREE.MeshStandardMaterial({ color: 0x338822 }));
         const stemH = 0.12 + Math.random() * 0.08;
         stem.position.set(-0.2 + f * 0.1, 0.12 + stemH / 2, 0); fb.add(stem);
-        const bloom = new THREE.Mesh(new THREE.SphereGeometry(0.025 + Math.random() * 0.015, 32, 24), new THREE.MeshStandardMaterial({ color: flowerTypes[(i + f) % flowerTypes.length], roughness: 0.5 }));
+        const bloom = new THREE.Mesh(new THREE.SphereGeometry(0.025 + Math.random() * 0.015, 44, 36), new THREE.MeshStandardMaterial({ color: flowerTypes[(i + f) % flowerTypes.length], roughness: 0.5 }));
         bloom.position.set(-0.2 + f * 0.1, 0.12 + stemH + 0.02, 0); fb.add(bloom);
       }
       const fbAngle = (i / 12) * Math.PI * 2;
@@ -4951,7 +4951,7 @@ export class DiabloRenderer {
       const body = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.6, 0.2), clothMat2);
       body.position.y = 0.9; npc.add(body);
       // Head
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.1, 48, 32), skinMat);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.1, 62, 44), skinMat);
       head.position.y = 1.35; npc.add(head);
       // Legs
       for (const lx of [-0.08, 0.08]) {
@@ -4964,7 +4964,7 @@ export class DiabloRenderer {
         arm.position.set(ax, 0.85, 0); arm.rotation.z = ax > 0 ? -0.15 : 0.15; npc.add(arm);
       }
       // Hair
-      const hair = new THREE.Mesh(new THREE.SphereGeometry(0.11, 48, 32, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: [0x443322, 0x887744, 0x222222, 0xaa7733][i % 4], roughness: 0.9 }));
+      const hair = new THREE.Mesh(new THREE.SphereGeometry(0.11, 62, 44, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: [0x443322, 0x887744, 0x222222, 0xaa7733][i % 4], roughness: 0.9 }));
       hair.position.y = 1.4; npc.add(hair);
       const nx = (Math.random() - 0.5) * w * 0.5; const nz = (Math.random() - 0.5) * d * 0.5;
       npc.position.set(nx, 0, nz); npc.rotation.y = Math.random() * Math.PI * 2; this._envGroup.add(npc);
@@ -4978,11 +4978,11 @@ export class DiabloRenderer {
       cartBody.position.y = 0.7; cart.add(cartBody);
       // Wheels
       for (const [wx, wz] of [[-0.6, -0.5], [-0.6, 0.5], [0.6, -0.5], [0.6, 0.5]]) {
-        const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.06, 32), new THREE.MeshStandardMaterial({ color: 0x553311, roughness: 0.8 }));
+        const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.06, 44), new THREE.MeshStandardMaterial({ color: 0x553311, roughness: 0.8 }));
         wheel.rotation.x = Math.PI / 2; wheel.position.set(wx, 0.25, wz); cart.add(wheel);
         // Wheel spokes
         for (let sp = 0; sp < 4; sp++) {
-          const spoke = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.4, 32), new THREE.MeshStandardMaterial({ color: 0x553311 }));
+          const spoke = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.4, 44), new THREE.MeshStandardMaterial({ color: 0x553311 }));
           spoke.rotation.z = (sp / 4) * Math.PI; spoke.position.set(wx, 0.25, wz + 0.03);
           spoke.rotation.x = Math.PI / 2; cart.add(spoke);
         }
@@ -4993,7 +4993,7 @@ export class DiabloRenderer {
         good.position.set(-0.4 + g * 0.3, 1.1, (Math.random() - 0.5) * 0.4); cart.add(good);
       }
       // Handle
-      const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1.2, 32), new THREE.MeshStandardMaterial({ color: 0x6B4226 }));
+      const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1.2, 44), new THREE.MeshStandardMaterial({ color: 0x6B4226 }));
       handle.rotation.z = Math.PI / 3; handle.position.set(-1.1, 0.9, 0); cart.add(handle);
       // Fabric cover
       const cover = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.1), new THREE.MeshStandardMaterial({ color: [0xcc3333, 0x3366cc, 0x33aa55][i], roughness: 0.7, side: THREE.DoubleSide }));
@@ -5008,7 +5008,7 @@ export class DiabloRenderer {
       const count = 3 + Math.floor(Math.random() * 4);
       for (let c = 0; c < count; c++) {
         const cr = 0.08 + Math.random() * 0.12;
-        const stone = new THREE.Mesh(new THREE.DodecahedronGeometry(cr, 2), new THREE.MeshStandardMaterial({ color: 0x887766 + Math.floor(Math.random() * 0x111111), roughness: 0.95 }));
+        const stone = new THREE.Mesh(new THREE.DodecahedronGeometry(cr, 3), new THREE.MeshStandardMaterial({ color: 0x887766 + Math.floor(Math.random() * 0x111111), roughness: 0.95 }));
         stone.scale.y = 0.3; stone.position.set((Math.random() - 0.5) * 0.5, 0.02, (Math.random() - 0.5) * 0.5);
         cobbleGrp.add(stone);
       }
@@ -5023,7 +5023,7 @@ export class DiabloRenderer {
     stableRoof.position.set(0, 2.8, 0); stableRoof.rotation.z = 0.08; stableGrp.add(stableRoof);
     // Support posts
     for (const [px, pz] of [[-2.5, -1.5], [2.5, -1.5], [-2.5, 1.5], [2.5, 1.5]]) {
-      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 2.8, 32), new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.85 }));
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 2.8, 44), new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.85 }));
       post.position.set(px, 1.4, pz); stableGrp.add(post);
     }
     // Hay on ground
@@ -5032,7 +5032,7 @@ export class DiabloRenderer {
       hay.position.set(-2 + h * 0.8, 0.05, (Math.random() - 0.5) * 2); stableGrp.add(hay);
     }
     // Hitching post
-    const hitch = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 4, 32), new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.85 }));
+    const hitch = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 4, 44), new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.85 }));
     hitch.rotation.z = Math.PI / 2; hitch.position.set(0, 2, 2); stableGrp.add(hitch);
     // Stable light
     const stableLight = new THREE.PointLight(0xffaa44, 0.4, 8);
@@ -5076,14 +5076,14 @@ export class DiabloRenderer {
       this._torchLights.push(lavaLight);
       // Heat shimmer particles near lava river
       for (let h = 0; h < 3; h++) {
-        const shimmer = new THREE.Mesh(new THREE.SphereGeometry(0.04 + Math.random() * 0.03, 24, 24),
+        const shimmer = new THREE.Mesh(new THREE.SphereGeometry(0.04 + Math.random() * 0.03, 36, 36),
           new THREE.MeshStandardMaterial({ color: 0xff8844, emissive: 0xff6622, emissiveIntensity: 0.6, transparent: true, opacity: 0.15 }));
         shimmer.position.set(rvX + (Math.random() - 0.5) * riverW, getTerrainHeight(rvX, rvZ, 1.6) + 0.4 + Math.random() * 0.8, rvZ + (Math.random() - 0.5) * 2);
         this._envGroup.add(shimmer);
       }
       // Ground crack lines near lava river
       for (let cr = 0; cr < 2; cr++) {
-        const crackLine = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 1.5 + Math.random() * 2, 24),
+        const crackLine = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 1.5 + Math.random() * 2, 36),
           new THREE.MeshStandardMaterial({ color: 0xff3300, emissive: 0xff2200, emissiveIntensity: 0.5, transparent: true, opacity: 0.4 }));
         crackLine.rotation.z = Math.PI / 2;
         crackLine.rotation.y = Math.random() * Math.PI;
@@ -5098,7 +5098,7 @@ export class DiabloRenderer {
     for (let i = 0; i < 80; i++) {
       const mat = Math.random() < 0.3 ? obsidianMat : rockMat;
       const rSize = 0.3 + Math.random() * 1.5;
-      const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(rSize, 2), mat);
+      const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(rSize, 3), mat);
       const vrX = (Math.random() - 0.5) * w * 0.9;
       const vrZ = (Math.random() - 0.5) * d * 0.9;
       rock.position.set(vrX, getTerrainHeight(vrX, vrZ, 1.6) + rSize * 0.3, vrZ);
@@ -5112,7 +5112,7 @@ export class DiabloRenderer {
     for (let i = 0; i < 28; i++) {
       const pH = 2 + Math.random() * 5;
       const pR = 0.3 + Math.random() * 0.5;
-      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(pR * 0.6, pR, pH, 32), pillarMat);
+      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(pR * 0.6, pR, pH, 44), pillarMat);
       pillar.position.set(
         (Math.random() - 0.5) * w * 0.85,
         pH / 2,
@@ -5128,7 +5128,7 @@ export class DiabloRenderer {
       transparent: true, opacity: 0.7,
     });
     for (let i = 0; i < 60; i++) {
-      const ember = new THREE.Mesh(new THREE.SphereGeometry(0.05 + Math.random() * 0.1, 32, 24), emberMat);
+      const ember = new THREE.Mesh(new THREE.SphereGeometry(0.05 + Math.random() * 0.1, 44, 36), emberMat);
       ember.position.set(
         (Math.random() - 0.5) * w * 0.8,
         0.1 + Math.random() * 0.3,
@@ -5142,7 +5142,7 @@ export class DiabloRenderer {
       transparent: true, opacity: 0.5,
     });
     for (let i = 0; i < 30; i++) {
-      const fEmber = new THREE.Mesh(new THREE.SphereGeometry(0.02 + Math.random() * 0.03, 32, 24), floatEmberMat);
+      const fEmber = new THREE.Mesh(new THREE.SphereGeometry(0.02 + Math.random() * 0.03, 44, 36), floatEmberMat);
       fEmber.position.set(
         (Math.random() - 0.5) * w * 0.7,
         0.5 + Math.random() * 4,
@@ -5179,11 +5179,11 @@ export class DiabloRenderer {
     });
     for (let i = 0; i < 16; i++) {
       const ventGroup = new THREE.Group();
-      const ventHole = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 0.2, 32), rockMat);
+      const ventHole = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 0.2, 44), rockMat);
       ventGroup.add(ventHole);
       // Rim rocks around vent
       for (let r = 0; r < 5; r++) {
-        const rimRock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.15 + Math.random() * 0.1, 3), rockMat);
+        const rimRock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.15 + Math.random() * 0.1, 4), rockMat);
         const rimAng = (r / 5) * Math.PI * 2;
         rimRock.position.set(Math.cos(rimAng) * 0.45, 0.1, Math.sin(rimAng) * 0.45);
         rimRock.scale.y = 0.5;
@@ -5191,7 +5191,7 @@ export class DiabloRenderer {
       }
       // Steam puffs (more layers)
       for (let s = 0; s < 5; s++) {
-        const puff = new THREE.Mesh(new THREE.SphereGeometry(0.2 + s * 0.12, 48, 32), smokeMat);
+        const puff = new THREE.Mesh(new THREE.SphereGeometry(0.2 + s * 0.12, 62, 44), smokeMat);
         puff.position.y = 0.5 + s * 0.5;
         puff.scale.set(1 + s * 0.3, 1, 1 + s * 0.3);
         ventGroup.add(puff);
@@ -5217,13 +5217,13 @@ export class DiabloRenderer {
     for (let i = 0; i < 15; i++) {
       const boneGroup = new THREE.Group();
       for (let b = 0; b < 5; b++) {
-        const bone = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.03, 0.3 + Math.random() * 0.2, 32), boneMat);
+        const bone = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.03, 0.3 + Math.random() * 0.2, 44), boneMat);
         bone.position.set((Math.random() - 0.5) * 0.3, 0.05, (Math.random() - 0.5) * 0.3);
         bone.rotation.set(Math.random(), Math.random(), Math.random());
         boneGroup.add(bone);
       }
       // Ash deposit beneath bone pile
-      const boneAsh = new THREE.Mesh(new THREE.CircleGeometry(0.25 + Math.random() * 0.2, 24),
+      const boneAsh = new THREE.Mesh(new THREE.CircleGeometry(0.25 + Math.random() * 0.2, 36),
         new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 1.0, transparent: true, opacity: 0.4 }));
       boneAsh.rotation.x = -Math.PI / 2;
       boneAsh.position.y = 0.01;
@@ -5240,7 +5240,7 @@ export class DiabloRenderer {
     });
     for (let i = 0; i < 30; i++) {
       const crack = new THREE.Mesh(
-        new THREE.RingGeometry(0.3, 0.8 + Math.random() * 0.5, 6),
+        new THREE.RingGeometry(0.3, 0.8 + Math.random() * 0.5, 12),
         crackMat
       );
       crack.rotation.x = -Math.PI / 2;
@@ -5257,7 +5257,7 @@ export class DiabloRenderer {
     for (let i = 0; i < 22; i++) {
       const treeGrp = new THREE.Group();
       const trunkH = 2 + Math.random() * 3;
-      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.15, trunkH, 32), charredMat);
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.15, trunkH, 44), charredMat);
       trunk.position.y = trunkH / 2;
       trunk.castShadow = true;
       treeGrp.add(trunk);
@@ -5265,7 +5265,7 @@ export class DiabloRenderer {
       const numBranches = 2 + Math.floor(Math.random() * 3);
       for (let b = 0; b < numBranches; b++) {
         const branchLen = 0.5 + Math.random() * 1.0;
-        const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.04, branchLen, 32), charredMat);
+        const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.04, branchLen, 44), charredMat);
         const branchY = trunkH * 0.5 + Math.random() * trunkH * 0.4;
         const branchAngle = Math.random() * Math.PI * 2;
         branch.position.set(Math.cos(branchAngle) * 0.1, branchY, Math.sin(branchAngle) * 0.1);
@@ -5275,7 +5275,7 @@ export class DiabloRenderer {
       }
       // Ash deposits around base of charred tree
       for (let ad = 0; ad < 2; ad++) {
-        const ashDeposit = new THREE.Mesh(new THREE.CircleGeometry(0.3 + Math.random() * 0.4, 24),
+        const ashDeposit = new THREE.Mesh(new THREE.CircleGeometry(0.3 + Math.random() * 0.4, 36),
           new THREE.MeshStandardMaterial({ color: 0x2a2a2a, roughness: 1.0, transparent: true, opacity: 0.45 }));
         ashDeposit.rotation.x = -Math.PI / 2;
         ashDeposit.position.set((Math.random() - 0.5) * 0.6, 0.01, (Math.random() - 0.5) * 0.6);
@@ -5283,7 +5283,7 @@ export class DiabloRenderer {
       }
       // Floating ember sparks rising from charred tree
       for (let te = 0; te < 2; te++) {
-        const treeEmber = new THREE.Mesh(new THREE.SphereGeometry(0.02 + Math.random() * 0.015, 24, 24),
+        const treeEmber = new THREE.Mesh(new THREE.SphereGeometry(0.02 + Math.random() * 0.015, 36, 36),
           new THREE.MeshStandardMaterial({ color: 0xff6600, emissive: 0xff3300, emissiveIntensity: 1.2, transparent: true, opacity: 0.5 }));
         treeEmber.position.set((Math.random() - 0.5) * 0.3, trunkH * 0.6 + Math.random() * trunkH * 0.3, (Math.random() - 0.5) * 0.3);
         treeGrp.add(treeEmber);
@@ -5304,18 +5304,18 @@ export class DiabloRenderer {
       const poolGrp = new THREE.Group();
       const poolR = 1.5 + Math.random() * 2;
       // Rim
-      const rim = new THREE.Mesh(new THREE.TorusGeometry(poolR, 0.3, 32, 48), lavaRimMat);
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(poolR, 0.3, 44, 62), lavaRimMat);
       rim.rotation.x = -Math.PI / 2;
       rim.position.y = 0.1;
       poolGrp.add(rim);
       // Lava surface
-      const pool = new THREE.Mesh(new THREE.CircleGeometry(poolR - 0.1, 48), lavaPoolMat);
+      const pool = new THREE.Mesh(new THREE.CircleGeometry(poolR - 0.1, 62), lavaPoolMat);
       pool.rotation.x = -Math.PI / 2;
       pool.position.y = 0.08;
       poolGrp.add(pool);
       // Bubbles
       for (let b = 0; b < 4; b++) {
-        const bubble = new THREE.Mesh(new THREE.SphereGeometry(0.08 + Math.random() * 0.1, 48, 32),
+        const bubble = new THREE.Mesh(new THREE.SphereGeometry(0.08 + Math.random() * 0.1, 62, 44),
           new THREE.MeshStandardMaterial({ color: 0xff7700, emissive: 0xff4400, emissiveIntensity: 1.5, transparent: true, opacity: 0.6 }));
         const bAngle = Math.random() * Math.PI * 2;
         const bR = Math.random() * (poolR - 0.5);
@@ -5329,7 +5329,7 @@ export class DiabloRenderer {
       this._torchLights.push(poolLight);
       // Heat shimmer particles above lava pool
       for (let hs = 0; hs < 3; hs++) {
-        const poolShimmer = new THREE.Mesh(new THREE.SphereGeometry(0.05 + Math.random() * 0.04, 24, 24),
+        const poolShimmer = new THREE.Mesh(new THREE.SphereGeometry(0.05 + Math.random() * 0.04, 36, 36),
           new THREE.MeshStandardMaterial({ color: 0xff9944, emissive: 0xff6622, emissiveIntensity: 0.7, transparent: true, opacity: 0.12 }));
         const shimAngle = Math.random() * Math.PI * 2;
         const shimR = Math.random() * (poolR - 0.3);
@@ -5338,7 +5338,7 @@ export class DiabloRenderer {
       }
       // Ground crack lines radiating from pool edge
       for (let pc = 0; pc < 2; pc++) {
-        const poolCrack = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, poolR * 0.8 + Math.random() * 1.0, 24),
+        const poolCrack = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, poolR * 0.8 + Math.random() * 1.0, 36),
           new THREE.MeshStandardMaterial({ color: 0xff3300, emissive: 0xff2200, emissiveIntensity: 0.4, transparent: true, opacity: 0.35 }));
         poolCrack.rotation.z = Math.PI / 2;
         const pcAngle = Math.random() * Math.PI * 2;
@@ -5355,12 +5355,12 @@ export class DiabloRenderer {
     // Volcanic caldera (center-ish) - large terrain feature
     const calderaGrp = new THREE.Group();
     const calderaR = 6;
-    const calderaRim = new THREE.Mesh(new THREE.TorusGeometry(calderaR, 1.5, 32, 48), rockMat);
+    const calderaRim = new THREE.Mesh(new THREE.TorusGeometry(calderaR, 1.5, 44, 62), rockMat);
     calderaRim.rotation.x = -Math.PI / 2;
     calderaRim.position.y = 0.5;
     calderaGrp.add(calderaRim);
     // Inner lava
-    const calderaLava = new THREE.Mesh(new THREE.CircleGeometry(calderaR - 1, 48), lavaPoolMat);
+    const calderaLava = new THREE.Mesh(new THREE.CircleGeometry(calderaR - 1, 62), lavaPoolMat);
     calderaLava.rotation.x = -Math.PI / 2;
     calderaLava.position.y = -0.2;
     calderaGrp.add(calderaLava);
@@ -5375,7 +5375,7 @@ export class DiabloRenderer {
     const obsidianShardMat = new THREE.MeshStandardMaterial({ color: 0x0a0a15, roughness: 0.1, metalness: 0.7 });
     for (let i = 0; i < 30; i++) {
       const shardH = 0.5 + Math.random() * 2;
-      const shard = new THREE.Mesh(new THREE.ConeGeometry(0.08 + Math.random() * 0.12, shardH, 32), obsidianShardMat);
+      const shard = new THREE.Mesh(new THREE.ConeGeometry(0.08 + Math.random() * 0.12, shardH, 44), obsidianShardMat);
       shard.position.set(
         (Math.random() - 0.5) * w * 0.85,
         shardH / 2,
@@ -5387,7 +5387,7 @@ export class DiabloRenderer {
       this._envGroup.add(shard);
       // Obsidian fragment chips scattered at base
       for (let oc = 0; oc < 2; oc++) {
-        const chip = new THREE.Mesh(new THREE.OctahedronGeometry(0.04 + Math.random() * 0.05, 1),
+        const chip = new THREE.Mesh(new THREE.OctahedronGeometry(0.04 + Math.random() * 0.05, 2),
           obsidianShardMat);
         chip.position.set(
           shard.position.x + (Math.random() - 0.5) * 0.4,
@@ -5402,7 +5402,7 @@ export class DiabloRenderer {
     // Ash drifts (ground cover patches) (15)
     const ashMat = new THREE.MeshStandardMaterial({ color: 0x3a3a3a, roughness: 1.0, transparent: true, opacity: 0.5 });
     for (let i = 0; i < 15; i++) {
-      const ash = new THREE.Mesh(new THREE.CircleGeometry(1 + Math.random() * 2, 48), ashMat);
+      const ash = new THREE.Mesh(new THREE.CircleGeometry(1 + Math.random() * 2, 62), ashMat);
       ash.rotation.x = -Math.PI / 2;
       ash.position.set(
         (Math.random() - 0.5) * w * 0.9,
@@ -5422,12 +5422,12 @@ export class DiabloRenderer {
       sTorso.position.y = 0.3;
       statGrp.add(sTorso);
       // Head
-      const sHead = new THREE.Mesh(new THREE.SphereGeometry(0.3, 48, 32), demonStoneMat);
+      const sHead = new THREE.Mesh(new THREE.SphereGeometry(0.3, 62, 44), demonStoneMat);
       sHead.position.set(0.8, 0.2, 0);
       statGrp.add(sHead);
       // Horns
       for (const hx of [-0.15, 0.15]) {
-        const horn = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.3, 32), demonStoneMat);
+        const horn = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.3, 44), demonStoneMat);
         horn.position.set(0.8 + hx, 0.5, 0);
         horn.rotation.z = hx < 0 ? 0.3 : -0.3;
         statGrp.add(horn);
@@ -5444,7 +5444,7 @@ export class DiabloRenderer {
     // Fire geysers (8) - tall erupting columns
     for (let i = 0; i < 8; i++) {
       const geyserGrp = new THREE.Group();
-      const geyserBase = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.6, 0.3, 32),
+      const geyserBase = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.6, 0.3, 44),
         new THREE.MeshStandardMaterial({ color: 0x2a1a0a, roughness: 0.9 }));
       geyserBase.position.y = 0.15;
       geyserGrp.add(geyserBase);
@@ -5454,7 +5454,7 @@ export class DiabloRenderer {
         transparent: true, opacity: 0.5,
       });
       const fireH = 2 + Math.random() * 3;
-      const fire = new THREE.Mesh(new THREE.ConeGeometry(0.3, fireH, 32), fireMat);
+      const fire = new THREE.Mesh(new THREE.ConeGeometry(0.3, fireH, 44), fireMat);
       fire.position.y = fireH / 2 + 0.3;
       geyserGrp.add(fire);
       const gLight = new THREE.PointLight(0xff4400, 3, 15);
@@ -5463,7 +5463,7 @@ export class DiabloRenderer {
       this._torchLights.push(gLight);
       // Rising ember particles from geyser
       for (let em = 0; em < 3; em++) {
-        const gEmber = new THREE.Mesh(new THREE.SphereGeometry(0.03 + Math.random() * 0.02, 24, 24),
+        const gEmber = new THREE.Mesh(new THREE.SphereGeometry(0.03 + Math.random() * 0.02, 36, 36),
           new THREE.MeshStandardMaterial({ color: 0xff8822, emissive: 0xff4400, emissiveIntensity: 1.8, transparent: true, opacity: 0.6 }));
         gEmber.position.set((Math.random() - 0.5) * 0.5, fireH * 0.3 + Math.random() * fireH * 0.6, (Math.random() - 0.5) * 0.5);
         geyserGrp.add(gEmber);
@@ -5475,7 +5475,7 @@ export class DiabloRenderer {
     // Scorched earth patches (15)
     for (let i = 0; i < 15; i++) {
       const scorchR = 1 + Math.random() * 2;
-      const scorch = new THREE.Mesh(new THREE.CircleGeometry(scorchR, 48),
+      const scorch = new THREE.Mesh(new THREE.CircleGeometry(scorchR, 62),
         new THREE.MeshStandardMaterial({ color: 0x0a0500, roughness: 1.0, transparent: true, opacity: 0.7 }));
       scorch.rotation.x = -Math.PI / 2;
       scorch.position.set((Math.random() - 0.5) * w * 0.85, 0.02, (Math.random() - 0.5) * d * 0.85);
@@ -5488,7 +5488,7 @@ export class DiabloRenderer {
       const numRocks = 3 + Math.floor(Math.random() * 3);
       for (let r = 0; r < numRocks; r++) {
         const rSize = 0.5 + Math.random() * 0.8;
-        const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(rSize, 2),
+        const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(rSize, 3),
           new THREE.MeshStandardMaterial({ color: 0x2a1a0a, roughness: 0.9 }));
         rock.position.set((Math.random() - 0.5) * 1.5, r * 0.8, (Math.random() - 0.5) * 1.5);
         rock.rotation.set(Math.random(), Math.random(), Math.random());
@@ -5511,10 +5511,10 @@ export class DiabloRenderer {
         color: 0xff2200, emissive: 0xcc1100, emissiveIntensity: 0.6,
         transparent: true, opacity: 0.3, side: THREE.DoubleSide,
       });
-      const outerRing = new THREE.Mesh(new THREE.RingGeometry(1.8, 2.0, 8), circMat);
+      const outerRing = new THREE.Mesh(new THREE.RingGeometry(1.8, 2.0, 16), circMat);
       outerRing.rotation.x = -Math.PI / 2;
       circGrp.add(outerRing);
-      const innerRing = new THREE.Mesh(new THREE.RingGeometry(1.2, 1.35, 5), circMat);
+      const innerRing = new THREE.Mesh(new THREE.RingGeometry(1.2, 1.35, 10), circMat);
       innerRing.rotation.x = -Math.PI / 2;
       innerRing.rotation.z = Math.PI / 5;
       innerRing.position.y = 0.01;
@@ -5540,7 +5540,7 @@ export class DiabloRenderer {
     for (let i = 0; i < 8; i++) {
       const coolGrp = new THREE.Group();
       const coolR = 0.5 + Math.random() * 1.0;
-      const coolRock = new THREE.Mesh(new THREE.DodecahedronGeometry(coolR, 3),
+      const coolRock = new THREE.Mesh(new THREE.DodecahedronGeometry(coolR, 4),
         new THREE.MeshStandardMaterial({ color: 0x1a0a00, roughness: 0.95 }));
       coolRock.scale.y = 0.3;
       coolGrp.add(coolRock);
@@ -5563,11 +5563,11 @@ export class DiabloRenderer {
     const charBoneMat = new THREE.MeshStandardMaterial({ color: 0x444433, roughness: 0.9 });
     for (let i = 0; i < 6; i++) {
       const skelGrp = new THREE.Group();
-      const skull = new THREE.Mesh(new THREE.SphereGeometry(0.1, 48, 32), charBoneMat);
+      const skull = new THREE.Mesh(new THREE.SphereGeometry(0.1, 62, 44), charBoneMat);
       skull.position.y = 0.08;
       skelGrp.add(skull);
       for (let b = 0; b < 5; b++) {
-        const bone = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, 0.25 + Math.random() * 0.15, 32), charBoneMat);
+        const bone = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, 0.25 + Math.random() * 0.15, 44), charBoneMat);
         bone.position.set((Math.random() - 0.5) * 0.4, 0.03, (Math.random() - 0.5) * 0.4);
         bone.rotation.z = Math.random() * Math.PI;
         bone.rotation.y = Math.random() * Math.PI;
@@ -5611,7 +5611,7 @@ export class DiabloRenderer {
     for (let i = 0; i < 30; i++) {
       const islandGroup = new THREE.Group();
       const iSize = 1 + Math.random() * 3;
-      const island = new THREE.Mesh(new THREE.DodecahedronGeometry(iSize, 3), stoneMat);
+      const island = new THREE.Mesh(new THREE.DodecahedronGeometry(iSize, 4), stoneMat);
       island.scale.y = 0.4;
       island.castShadow = true;
       islandGroup.add(island);
@@ -5622,7 +5622,7 @@ export class DiabloRenderer {
           transparent: true, opacity: 0.8,
         });
         const cH = 0.5 + Math.random() * 1.0;
-        const crystal = new THREE.Mesh(new THREE.ConeGeometry(0.15, cH, 32), crystalMat);
+        const crystal = new THREE.Mesh(new THREE.ConeGeometry(0.15, cH, 44), crystalMat);
         crystal.position.y = iSize * 0.3;
         islandGroup.add(crystal);
       }
@@ -5640,7 +5640,7 @@ export class DiabloRenderer {
       const fChainGrp = new THREE.Group();
       const chainSegs = 6 + Math.floor(Math.random() * 6);
       for (let c = 0; c < chainSegs; c++) {
-        const link = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.015, 32, 48), fChainMat);
+        const link = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.015, 44, 62), fChainMat);
         link.position.set(0, 0, c * 0.15);
         link.rotation.y = c % 2 === 0 ? 0 : Math.PI / 2;
         fChainGrp.add(link);
@@ -5661,7 +5661,7 @@ export class DiabloRenderer {
       const numFrags = 3 + Math.floor(Math.random() * 4);
       for (let f = 0; f < numFrags; f++) {
         const fragColor = fragColors[Math.floor(Math.random() * fragColors.length)];
-        const frag = new THREE.Mesh(new THREE.OctahedronGeometry(0.05 + Math.random() * 0.08, 2),
+        const frag = new THREE.Mesh(new THREE.OctahedronGeometry(0.05 + Math.random() * 0.08, 3),
           new THREE.MeshStandardMaterial({ color: fragColor, emissive: fragColor, emissiveIntensity: 0.5, transparent: true, opacity: 0.7, roughness: 0.1 }));
         frag.position.set((Math.random() - 0.5) * 0.5, Math.random() * 0.3, (Math.random() - 0.5) * 0.5);
         frag.rotation.set(Math.random(), Math.random(), Math.random());
@@ -5709,7 +5709,7 @@ export class DiabloRenderer {
       const numBlobs = 2 + Math.floor(Math.random() * 3);
       for (let b = 0; b < numBlobs; b++) {
         const blobR = 0.3 + Math.random() * 0.5;
-        const blob = new THREE.Mesh(new THREE.IcosahedronGeometry(blobR, 3), darkMat);
+        const blob = new THREE.Mesh(new THREE.IcosahedronGeometry(blobR, 4), darkMat);
         blob.scale.set(1 + Math.random() * 0.5, 0.5 + Math.random() * 0.5, 1 + Math.random() * 0.5);
         blob.position.set((Math.random() - 0.5) * 1, b * 0.5, (Math.random() - 0.5) * 1);
         darkGrp.add(blob);
@@ -5727,7 +5727,7 @@ export class DiabloRenderer {
       const debrisGrp = new THREE.Group();
       const numChunks = 3 + Math.floor(Math.random() * 4);
       for (let c = 0; c < numChunks; c++) {
-        const chunk = new THREE.Mesh(new THREE.DodecahedronGeometry(0.1 + Math.random() * 0.15, 2),
+        const chunk = new THREE.Mesh(new THREE.DodecahedronGeometry(0.1 + Math.random() * 0.15, 3),
           new THREE.MeshStandardMaterial({ color: 0x2a2a3a, roughness: 0.8 }));
         const cAng = (c / numChunks) * Math.PI * 2;
         const cR = 0.3 + Math.random() * 0.4;
@@ -5778,7 +5778,7 @@ export class DiabloRenderer {
       const spireGroup = new THREE.Group();
       const sH = 3 + Math.random() * 8;
       const sR = 0.2 + Math.random() * 0.4;
-      const spire = new THREE.Mesh(new THREE.ConeGeometry(sR, sH, 32), spireMat);
+      const spire = new THREE.Mesh(new THREE.ConeGeometry(sR, sH, 44), spireMat);
       spire.position.y = sH / 2;
       spire.rotation.z = (Math.random() - 0.5) * 0.3;
       spire.rotation.x = (Math.random() - 0.5) * 0.3;
@@ -5797,7 +5797,7 @@ export class DiabloRenderer {
     });
     for (let i = 0; i < 20; i++) {
       const rune = new THREE.Mesh(
-        new THREE.RingGeometry(0.4, 0.6 + Math.random() * 0.3, 8),
+        new THREE.RingGeometry(0.4, 0.6 + Math.random() * 0.3, 16),
         runeMat
       );
       rune.rotation.x = -Math.PI / 2;
@@ -5812,12 +5812,12 @@ export class DiabloRenderer {
     for (let i = 0; i < 12; i++) {
       const pillarGroup = new THREE.Group();
       const pH = 2 + Math.random() * 4;
-      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, pH, 32), pillarMat);
+      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, pH, 44), pillarMat);
       pillar.position.y = pH / 2;
       pillar.castShadow = true;
       pillarGroup.add(pillar);
       // Broken top
-      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.3, 0.3, 32), pillarMat);
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.3, 0.3, 44), pillarMat);
       cap.position.y = pH;
       pillarGroup.add(cap);
       const piX = (Math.random() - 0.5) * w * 0.8;
@@ -5833,7 +5833,7 @@ export class DiabloRenderer {
       const chainGroup = new THREE.Group();
       const links = 8 + Math.floor(Math.random() * 8);
       for (let c = 0; c < links; c++) {
-        const link = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.015, 32, 48), chainMat);
+        const link = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.015, 44, 62), chainMat);
         link.position.y = -c * 0.12;
         link.rotation.y = c % 2 === 0 ? 0 : Math.PI / 2;
         chainGroup.add(link);
@@ -5852,7 +5852,7 @@ export class DiabloRenderer {
       transparent: true, opacity: 0.5,
     });
     for (let i = 0; i < 15; i++) {
-      const orb = new THREE.Mesh(new THREE.SphereGeometry(0.2 + Math.random() * 0.3, 48, 32), orbMat);
+      const orb = new THREE.Mesh(new THREE.SphereGeometry(0.2 + Math.random() * 0.3, 62, 44), orbMat);
       orb.position.set(
         (Math.random() - 0.5) * w * 0.8,
         2 + Math.random() * 4,
@@ -5890,7 +5890,7 @@ export class DiabloRenderer {
       let tx = 0, ty = 0, tz = 0;
       for (let s = 0; s < segs; s++) {
         const segR = 0.12 - (s / segs) * 0.08;
-        const seg = new THREE.Mesh(new THREE.SphereGeometry(segR, 48, 32), tentacleMat);
+        const seg = new THREE.Mesh(new THREE.SphereGeometry(segR, 62, 44), tentacleMat);
         ty += 0.25;
         tx += Math.sin(baseAngle + s * 0.4) * 0.15;
         tz += Math.cos(baseAngle + s * 0.4) * 0.15;
@@ -5908,13 +5908,13 @@ export class DiabloRenderer {
       const portalGrp = new THREE.Group();
       const portalR = 1.5 + Math.random() * 1;
       const portalTorus = new THREE.Mesh(
-        new THREE.TorusGeometry(portalR, 0.15, 32, 48),
+        new THREE.TorusGeometry(portalR, 0.15, 44, 62),
         new THREE.MeshStandardMaterial({ color: 0x6622ff, emissive: 0x4400cc, emissiveIntensity: 1.0, metalness: 0.3, roughness: 0.4 })
       );
       portalGrp.add(portalTorus);
       // Swirling center
       const portalCenter = new THREE.Mesh(
-        new THREE.CircleGeometry(portalR - 0.2, 48),
+        new THREE.CircleGeometry(portalR - 0.2, 62),
         new THREE.MeshStandardMaterial({
           color: 0x3311aa, emissive: 0x2200cc, emissiveIntensity: 0.8,
           transparent: true, opacity: 0.4, side: THREE.DoubleSide,
@@ -5923,7 +5923,7 @@ export class DiabloRenderer {
       portalGrp.add(portalCenter);
       // Inner ring
       const innerRing = new THREE.Mesh(
-        new THREE.TorusGeometry(portalR * 0.6, 0.06, 32, 48),
+        new THREE.TorusGeometry(portalR * 0.6, 0.06, 44, 62),
         new THREE.MeshStandardMaterial({ color: 0xaa66ff, emissive: 0x8844cc, emissiveIntensity: 0.6 })
       );
       portalGrp.add(innerRing);
@@ -5958,7 +5958,7 @@ export class DiabloRenderer {
     altarGrp.add(obelisk);
     // Obelisk top - pyramid
     const obeliskTop = new THREE.Mesh(
-      new THREE.ConeGeometry(0.35, 0.6, 32),
+      new THREE.ConeGeometry(0.35, 0.6, 44),
       new THREE.MeshStandardMaterial({ color: 0x6622ff, emissive: 0x4400cc, emissiveIntensity: 1.5 })
     );
     obeliskTop.position.y = 3.9;
@@ -5967,7 +5967,7 @@ export class DiabloRenderer {
     // Rune circles around altar
     for (let r = 0; r < 3; r++) {
       const runeRing = new THREE.Mesh(
-        new THREE.RingGeometry(1.8 + r * 0.8, 2 + r * 0.8, 12),
+        new THREE.RingGeometry(1.8 + r * 0.8, 2 + r * 0.8, 20),
         new THREE.MeshStandardMaterial({ color: 0xaa44ff, emissive: 0x6622cc, emissiveIntensity: 0.6, transparent: true, opacity: 0.3, side: THREE.DoubleSide })
       );
       runeRing.rotation.x = -Math.PI / 2;
@@ -5988,7 +5988,7 @@ export class DiabloRenderer {
       transparent: true, opacity: 0.3,
     });
     for (let i = 0; i < 30; i++) {
-      const wisp = new THREE.Mesh(new THREE.SphereGeometry(0.08 + Math.random() * 0.06, 32, 24), wispMat);
+      const wisp = new THREE.Mesh(new THREE.SphereGeometry(0.08 + Math.random() * 0.06, 44, 36), wispMat);
       wisp.position.set(
         (Math.random() - 0.5) * w * 0.85,
         1 + Math.random() * 5,
@@ -5997,7 +5997,7 @@ export class DiabloRenderer {
       this._envGroup.add(wisp);
       // Wisp trail
       const trail = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.02, 0.005, 0.3, 32),
+        new THREE.CylinderGeometry(0.02, 0.005, 0.3, 44),
         new THREE.MeshStandardMaterial({ color: 0x8899ff, emissive: 0x6677cc, emissiveIntensity: 0.8, transparent: true, opacity: 0.2 })
       );
       trail.position.copy(wisp.position);
@@ -6050,7 +6050,7 @@ export class DiabloRenderer {
       const branches = 3 + Math.floor(Math.random() * 4);
       for (let b = 0; b < branches; b++) {
         const bH = 0.5 + Math.random() * 1.5;
-        const branch = new THREE.Mesh(new THREE.ConeGeometry(0.06 + Math.random() * 0.08, bH, 32), coralMat);
+        const branch = new THREE.Mesh(new THREE.ConeGeometry(0.06 + Math.random() * 0.08, bH, 44), coralMat);
         branch.position.set((Math.random() - 0.5) * 0.3, bH / 2, (Math.random() - 0.5) * 0.3);
         branch.rotation.z = (Math.random() - 0.5) * 0.6;
         branch.rotation.x = (Math.random() - 0.5) * 0.6;
@@ -6069,12 +6069,12 @@ export class DiabloRenderer {
       const archGrp = new THREE.Group();
       const archMat = new THREE.MeshStandardMaterial({ color: 0x2a2a3a, roughness: 0.8 });
       for (const side of [-1, 1]) {
-        const archPillar = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.5, 5, 32), archMat);
+        const archPillar = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.5, 5, 44), archMat);
         archPillar.position.set(side * 2, 2.5, 0);
         archPillar.castShadow = true;
         archGrp.add(archPillar);
       }
-      const archTop = new THREE.Mesh(new THREE.TorusGeometry(2, 0.3, 32, 48, Math.PI), archMat);
+      const archTop = new THREE.Mesh(new THREE.TorusGeometry(2, 0.3, 44, 62, Math.PI), archMat);
       archTop.position.y = 5;
       archTop.rotation.z = Math.PI;
       archGrp.add(archTop);
@@ -6091,10 +6091,10 @@ export class DiabloRenderer {
     // Abyssal eye formations (5) - watching from the void
     for (let i = 0; i < 5; i++) {
       const eyeGrp = new THREE.Group();
-      const eyeWhite = new THREE.Mesh(new THREE.SphereGeometry(0.3, 48, 32),
+      const eyeWhite = new THREE.Mesh(new THREE.SphereGeometry(0.3, 62, 44),
         new THREE.MeshStandardMaterial({ color: 0x331155, emissive: 0x220044, emissiveIntensity: 0.5, roughness: 0.3 }));
       eyeGrp.add(eyeWhite);
-      const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.12, 48, 32),
+      const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.12, 62, 44),
         new THREE.MeshStandardMaterial({ color: 0xff00ff, emissive: 0xcc00cc, emissiveIntensity: 2.0 }));
       pupil.position.z = 0.22;
       eyeGrp.add(pupil);
@@ -6110,7 +6110,7 @@ export class DiabloRenderer {
     // Fractured ground platforms (8)
     for (let i = 0; i < 8; i++) {
       const platSize = 2 + Math.random() * 3;
-      const plat = new THREE.Mesh(new THREE.DodecahedronGeometry(platSize, 2),
+      const plat = new THREE.Mesh(new THREE.DodecahedronGeometry(platSize, 3),
         new THREE.MeshStandardMaterial({ color: 0x1a1a2e, roughness: 0.8 }));
       plat.scale.y = 0.15;
       plat.position.set(
@@ -6133,7 +6133,7 @@ export class DiabloRenderer {
       let bx = 0, by = 0;
       for (let s = 0; s < 8; s++) {
         const segLen = 0.5 + Math.random() * 0.8;
-        const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, segLen, 32), boltMat);
+        const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, segLen, 44), boltMat);
         bx += (Math.random() - 0.5) * 0.6;
         by += segLen * 0.8;
         seg.position.set(bx, by, 0);
@@ -6170,13 +6170,13 @@ export class DiabloRenderer {
     for (let i = 0; i < 45; i++) {
       const pileGroup = new THREE.Group();
       const pileSize = 0.3 + Math.random() * 0.8;
-      const pile = new THREE.Mesh(new THREE.SphereGeometry(pileSize, 48, 32), goldMat);
+      const pile = new THREE.Mesh(new THREE.SphereGeometry(pileSize, 62, 44), goldMat);
       pile.scale.y = 0.4;
       pile.position.y = pileSize * 0.2;
       pileGroup.add(pile);
       // Individual coins scattered
       for (let c = 0; c < 8; c++) {
-        const coin = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.01, 32), goldMat);
+        const coin = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.01, 44), goldMat);
         coin.position.set(
           (Math.random() - 0.5) * pileSize,
           0.02,
@@ -6197,12 +6197,12 @@ export class DiabloRenderer {
       const colGroup = new THREE.Group();
       const cH = 8 + Math.random() * 6;
       const cR = 0.5 + Math.random() * 0.8;
-      const col = new THREE.Mesh(new THREE.CylinderGeometry(cR * 0.8, cR, cH, 32), cavernMat);
+      const col = new THREE.Mesh(new THREE.CylinderGeometry(cR * 0.8, cR, cH, 44), cavernMat);
       col.position.y = cH / 2;
       col.castShadow = true;
       colGroup.add(col);
       // Capital on top
-      const capGeo = new THREE.CylinderGeometry(cR * 1.2, cR * 0.8, 0.5, 32);
+      const capGeo = new THREE.CylinderGeometry(cR * 1.2, cR * 0.8, 0.5, 44);
       const cap = new THREE.Mesh(capGeo, cavernMat);
       cap.position.y = cH;
       colGroup.add(cap);
@@ -6216,7 +6216,7 @@ export class DiabloRenderer {
     const eggColors = [0xcc4422, 0x22cc44, 0x4422cc, 0xcccc22, 0xcc22cc];
     for (let i = 0; i < 14; i++) {
       const egg = new THREE.Mesh(
-        new THREE.SphereGeometry(0.25, 48, 32),
+        new THREE.SphereGeometry(0.25, 62, 44),
         new THREE.MeshStandardMaterial({
           color: eggColors[i % eggColors.length], roughness: 0.4, metalness: 0.3,
           emissive: eggColors[i % eggColors.length], emissiveIntensity: 0.15,
@@ -6234,7 +6234,7 @@ export class DiabloRenderer {
     const stalMat = new THREE.MeshStandardMaterial({ color: 0x554433, roughness: 0.9 });
     for (let i = 0; i < 40; i++) {
       const sH = 1 + Math.random() * 3;
-      const stal = new THREE.Mesh(new THREE.ConeGeometry(0.15 + Math.random() * 0.2, sH, 32), stalMat);
+      const stal = new THREE.Mesh(new THREE.ConeGeometry(0.15 + Math.random() * 0.2, sH, 44), stalMat);
       stal.rotation.z = Math.PI; // point downward
       stal.position.set(
         (Math.random() - 0.5) * w * 0.9,
@@ -6247,7 +6247,7 @@ export class DiabloRenderer {
     // Stalagmites (floor) (35)
     for (let i = 0; i < 35; i++) {
       const sH = 0.5 + Math.random() * 2;
-      const stalag = new THREE.Mesh(new THREE.ConeGeometry(0.15 + Math.random() * 0.25, sH, 32), stalMat);
+      const stalag = new THREE.Mesh(new THREE.ConeGeometry(0.15 + Math.random() * 0.25, sH, 44), stalMat);
       stalag.position.set(
         (Math.random() - 0.5) * w * 0.9,
         sH / 2,
@@ -6261,10 +6261,10 @@ export class DiabloRenderer {
     const brazierMat = new THREE.MeshStandardMaterial({ color: 0x555544, metalness: 0.5, roughness: 0.4 });
     for (let i = 0; i < 12; i++) {
       const bGroup = new THREE.Group();
-      const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.2, 0.4, 32), brazierMat);
+      const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.2, 0.4, 44), brazierMat);
       bowl.position.y = 1.2;
       bGroup.add(bowl);
-      const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 1.2, 32), brazierMat);
+      const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 1.2, 44), brazierMat);
       stand.position.y = 0.6;
       bGroup.add(stand);
       // Fire
@@ -6272,7 +6272,7 @@ export class DiabloRenderer {
         color: 0xff6600, emissive: 0xff4400, emissiveIntensity: 1.5,
         transparent: true, opacity: 0.8,
       });
-      const fire = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.5, 32), fireMat);
+      const fire = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.5, 44), fireMat);
       fire.position.y = 1.6;
       bGroup.add(fire);
 
@@ -6291,7 +6291,7 @@ export class DiabloRenderer {
     const skullMat = new THREE.MeshStandardMaterial({ color: 0xccbb99, roughness: 0.7 });
     for (let i = 0; i < 6; i++) {
       const skullGroup = new THREE.Group();
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.8, 48, 32), skullMat);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.8, 62, 44), skullMat);
       head.scale.set(1.5, 0.8, 1);
       skullGroup.add(head);
       // Snout
@@ -6300,7 +6300,7 @@ export class DiabloRenderer {
       skullGroup.add(snout);
       // Horns
       for (const hx of [-0.4, 0.4]) {
-        const horn = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.6, 32), skullMat);
+        const horn = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.6, 44), skullMat);
         horn.position.set(hx, 0.5, -0.2);
         horn.rotation.z = hx < 0 ? 0.4 : -0.4;
         skullGroup.add(horn);
@@ -6308,7 +6308,7 @@ export class DiabloRenderer {
       // Eye sockets (dark)
       const eyeMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
       for (const ex of [-0.25, 0.25]) {
-        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.12, 48, 32), eyeMat);
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.12, 62, 44), eyeMat);
         eye.position.set(ex, 0.15, 0.55);
         skullGroup.add(eye);
       }
@@ -6361,7 +6361,7 @@ export class DiabloRenderer {
       chestBase.position.y = 0.15;
       chestBase.castShadow = true;
       chestGrp.add(chestBase);
-      const chestLid = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.62, 32, 2, false, 0, Math.PI), chestWoodMat);
+      const chestLid = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.62, 44, 2, false, 0, Math.PI), chestWoodMat);
       chestLid.rotation.z = Math.PI / 2;
       chestLid.position.y = 0.3;
       chestGrp.add(chestLid);
@@ -6390,7 +6390,7 @@ export class DiabloRenderer {
       for (let g = 0; g < numGems; g++) {
         const gColor = gemColors[Math.floor(Math.random() * gemColors.length)];
         const gem = new THREE.Mesh(
-          new THREE.OctahedronGeometry(0.06 + Math.random() * 0.1, 2),
+          new THREE.OctahedronGeometry(0.06 + Math.random() * 0.1, 3),
           new THREE.MeshStandardMaterial({ color: gColor, emissive: gColor, emissiveIntensity: 0.3, metalness: 0.3, roughness: 0.2 })
         );
         gem.position.set((Math.random() - 0.5) * 0.4, Math.random() * 0.15, (Math.random() - 0.5) * 0.4);
@@ -6410,7 +6410,7 @@ export class DiabloRenderer {
     for (let i = 0; i < 8; i++) {
       const rpGrp = new THREE.Group();
       const rpH = 5 + Math.random() * 4;
-      const rpCol = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.6, rpH, 32), runePillarMat);
+      const rpCol = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.6, rpH, 44), runePillarMat);
       rpCol.position.y = rpH / 2;
       rpCol.castShadow = true;
       rpGrp.add(rpCol);
@@ -6438,13 +6438,13 @@ export class DiabloRenderer {
       const chainGrp = new THREE.Group();
       const numLinks = 6 + Math.floor(Math.random() * 6);
       for (let c = 0; c < numLinks; c++) {
-        const link = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.012, 32, 48), dsChainMat);
+        const link = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.012, 44, 62), dsChainMat);
         link.position.y = -c * 0.1;
         link.rotation.y = c % 2 === 0 ? 0 : Math.PI / 2;
         chainGrp.add(link);
       }
       // Shackle at bottom
-      const shackle = new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.015, 32, 48, Math.PI), dsChainMat);
+      const shackle = new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.015, 44, 62, Math.PI), dsChainMat);
       shackle.position.y = -numLinks * 0.1 - 0.05;
       shackle.rotation.x = Math.PI;
       chainGrp.add(shackle);
@@ -6475,12 +6475,12 @@ export class DiabloRenderer {
     for (let i = 0; i < 10; i++) {
       const armorGrp = new THREE.Group();
       // Shield
-      const shield = new THREE.Mesh(new THREE.CircleGeometry(0.25, 48), armorMat);
+      const shield = new THREE.Mesh(new THREE.CircleGeometry(0.25, 62), armorMat);
       shield.rotation.x = -0.8;
       shield.position.y = 0.1;
       armorGrp.add(shield);
       // Helmet
-      const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.12, 48, 32), armorMat);
+      const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.12, 62, 44), armorMat);
       helmet.scale.y = 0.7;
       helmet.position.set(0.2, 0.08, 0.15);
       armorGrp.add(helmet);
@@ -6495,17 +6495,17 @@ export class DiabloRenderer {
     const moundGrp = new THREE.Group();
     const moundMat = new THREE.MeshStandardMaterial({ color: 0x443322, roughness: 0.85 });
     // Large body (elongated sphere)
-    const dragonBody = new THREE.Mesh(new THREE.SphereGeometry(3, 48, 32), moundMat);
+    const dragonBody = new THREE.Mesh(new THREE.SphereGeometry(3, 62, 44), moundMat);
     dragonBody.scale.set(2, 0.6, 1);
     dragonBody.position.y = 1.2;
     moundGrp.add(dragonBody);
     // Neck
-    const dragonNeck = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 1, 3, 32), moundMat);
+    const dragonNeck = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 1, 3, 44), moundMat);
     dragonNeck.position.set(4, 1.5, 0);
     dragonNeck.rotation.z = Math.PI / 3;
     moundGrp.add(dragonNeck);
     // Head
-    const dragonHead = new THREE.Mesh(new THREE.SphereGeometry(0.8, 48, 32), moundMat);
+    const dragonHead = new THREE.Mesh(new THREE.SphereGeometry(0.8, 62, 44), moundMat);
     dragonHead.scale.set(1.5, 0.7, 1);
     dragonHead.position.set(5.5, 2.5, 0);
     moundGrp.add(dragonHead);
@@ -6515,14 +6515,14 @@ export class DiabloRenderer {
     moundGrp.add(dragonSnout);
     // Horns
     for (const hz of [-0.3, 0.3]) {
-      const horn = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.8, 32), cavernMat);
+      const horn = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.8, 44), cavernMat);
       horn.position.set(5.3, 3.2, hz);
       horn.rotation.z = hz < 0 ? 0.3 : -0.3;
       moundGrp.add(horn);
     }
     // Tail
     for (let t = 0; t < 8; t++) {
-      const tailSeg = new THREE.Mesh(new THREE.SphereGeometry(0.8 - t * 0.08, 48, 32), moundMat);
+      const tailSeg = new THREE.Mesh(new THREE.SphereGeometry(0.8 - t * 0.08, 62, 44), moundMat);
       tailSeg.position.set(-3 - t * 1, 0.6 - t * 0.05, Math.sin(t * 0.4) * 0.8);
       moundGrp.add(tailSeg);
     }
@@ -6537,7 +6537,7 @@ export class DiabloRenderer {
     }
     // Sleeping smoke from nostrils
     for (let s = 0; s < 3; s++) {
-      const smoke = new THREE.Mesh(new THREE.SphereGeometry(0.15 + s * 0.1, 48, 32),
+      const smoke = new THREE.Mesh(new THREE.SphereGeometry(0.15 + s * 0.1, 62, 44),
         new THREE.MeshStandardMaterial({ color: 0x444444, transparent: true, opacity: 0.15 - s * 0.04 }));
       smoke.position.set(7.2 + s * 0.3, 2.5 + s * 0.3, 0);
       moundGrp.add(smoke);
@@ -6549,17 +6549,17 @@ export class DiabloRenderer {
     const gobletMat = new THREE.MeshStandardMaterial({ color: 0xddaa22, metalness: 0.7, roughness: 0.2 });
     for (let i = 0; i < 15; i++) {
       const gobGrp = new THREE.Group();
-      const gobBase = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.03, 32), gobletMat);
+      const gobBase = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.03, 44), gobletMat);
       gobGrp.add(gobBase);
-      const gobStem = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, 0.12, 32), gobletMat);
+      const gobStem = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, 0.12, 44), gobletMat);
       gobStem.position.y = 0.06;
       gobGrp.add(gobStem);
-      const gobCup = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.03, 0.06, 32), gobletMat);
+      const gobCup = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.03, 0.06, 44), gobletMat);
       gobCup.position.y = 0.15;
       gobGrp.add(gobCup);
       // Gem on goblet
       const gemColor = [0xff2244, 0x2244ff, 0x22ff44][i % 3];
-      const gobGem = new THREE.Mesh(new THREE.OctahedronGeometry(0.015, 2),
+      const gobGem = new THREE.Mesh(new THREE.OctahedronGeometry(0.015, 3),
         new THREE.MeshStandardMaterial({ color: gemColor, emissive: gemColor, emissiveIntensity: 0.4 }));
       gobGem.position.set(0.05, 0.15, 0);
       gobGrp.add(gobGem);
@@ -6595,7 +6595,7 @@ export class DiabloRenderer {
       const numStal = 5 + Math.floor(Math.random() * 5);
       for (let s = 0; s < numStal; s++) {
         const sH = 0.5 + Math.random() * 2;
-        const stal = new THREE.Mesh(new THREE.ConeGeometry(0.1 + Math.random() * 0.15, sH, 32), stalMat);
+        const stal = new THREE.Mesh(new THREE.ConeGeometry(0.1 + Math.random() * 0.15, sH, 44), stalMat);
         stal.rotation.z = Math.PI;
         stal.position.set((Math.random() - 0.5) * 2, 0, (Math.random() - 0.5) * 2);
         clustGrp.add(stal);
@@ -6633,23 +6633,23 @@ export class DiabloRenderer {
       ped.castShadow = true;
       statGrp.add(ped);
       // Body
-      const body = new THREE.Mesh(new THREE.SphereGeometry(0.6, 48, 32), statMat);
+      const body = new THREE.Mesh(new THREE.SphereGeometry(0.6, 62, 44), statMat);
       body.scale.set(1.2, 0.8, 1);
       body.position.y = 1.5;
       statGrp.add(body);
       // Neck
-      const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.25, 0.8, 32), statMat);
+      const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.25, 0.8, 44), statMat);
       neck.position.set(0.4, 2.0, 0);
       neck.rotation.z = -0.4;
       statGrp.add(neck);
       // Head
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.25, 48, 32), statMat);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.25, 62, 44), statMat);
       head.scale.set(1.4, 0.8, 1);
       head.position.set(0.7, 2.4, 0);
       statGrp.add(head);
       // Horns
       for (const hz of [-0.12, 0.12]) {
-        const horn = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.35, 32), statMat);
+        const horn = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.35, 44), statMat);
         horn.position.set(0.6, 2.7, hz);
         horn.rotation.z = hz < 0 ? 0.3 : -0.3;
         statGrp.add(horn);
@@ -6665,7 +6665,7 @@ export class DiabloRenderer {
       }
       // Glowing eyes
       for (const ex of [-0.06, 0.06]) {
-        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.04, 32, 24),
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.04, 44, 36),
           new THREE.MeshStandardMaterial({ color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 1.5 }));
         eye.position.set(0.85, 2.5, ex);
         statGrp.add(eye);
@@ -6680,7 +6680,7 @@ export class DiabloRenderer {
     // Dragon scales scattered on floor (20)
     const scaleMat = new THREE.MeshStandardMaterial({ color: 0x443322, roughness: 0.5, metalness: 0.4 });
     for (let i = 0; i < 20; i++) {
-      const scale = new THREE.Mesh(new THREE.CircleGeometry(0.08 + Math.random() * 0.06, 48), scaleMat);
+      const scale = new THREE.Mesh(new THREE.CircleGeometry(0.08 + Math.random() * 0.06, 62), scaleMat);
       scale.rotation.x = -Math.PI / 2 + (Math.random() - 0.5) * 0.3;
       scale.rotation.z = Math.random() * Math.PI * 2;
       const scX = (Math.random() - 0.5) * w * 0.8;
@@ -6726,19 +6726,19 @@ export class DiabloRenderer {
     for (let i = 0; i < 4; i++) {
       const lpGrp = new THREE.Group();
       const lpR = 1.0 + Math.random() * 1.5;
-      const lpRim = new THREE.Mesh(new THREE.TorusGeometry(lpR, 0.25, 32, 48),
+      const lpRim = new THREE.Mesh(new THREE.TorusGeometry(lpR, 0.25, 44, 62),
         new THREE.MeshStandardMaterial({ color: 0x2a1a0a, roughness: 0.9 }));
       lpRim.rotation.x = -Math.PI / 2;
       lpRim.position.y = 0.1;
       lpGrp.add(lpRim);
-      const lpSurf = new THREE.Mesh(new THREE.CircleGeometry(lpR - 0.1, 48),
+      const lpSurf = new THREE.Mesh(new THREE.CircleGeometry(lpR - 0.1, 62),
         new THREE.MeshStandardMaterial({ color: 0xff5500, emissive: 0xff3300, emissiveIntensity: 1.0, roughness: 0.2 }));
       lpSurf.rotation.x = -Math.PI / 2;
       lpSurf.position.y = 0.06;
       lpGrp.add(lpSurf);
       // Bubbles
       for (let b = 0; b < 3; b++) {
-        const bubble = new THREE.Mesh(new THREE.SphereGeometry(0.06 + Math.random() * 0.08, 32, 24),
+        const bubble = new THREE.Mesh(new THREE.SphereGeometry(0.06 + Math.random() * 0.08, 44, 36),
           new THREE.MeshStandardMaterial({ color: 0xff7700, emissive: 0xff4400, emissiveIntensity: 1.5, transparent: true, opacity: 0.6 }));
         const bAng = Math.random() * Math.PI * 2;
         bubble.position.set(Math.cos(bAng) * (lpR - 0.5) * Math.random(), 0.12, Math.sin(bAng) * (lpR - 0.5) * Math.random());
@@ -6757,14 +6757,14 @@ export class DiabloRenderer {
     // Flame braziers (extra 6 floor-standing)
     for (let i = 0; i < 6; i++) {
       const fbGrp = new THREE.Group();
-      const fbBase = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.3, 0.15, 32),
+      const fbBase = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.3, 0.15, 44),
         new THREE.MeshStandardMaterial({ color: 0x555544, metalness: 0.5, roughness: 0.4 }));
       fbGrp.add(fbBase);
-      const fbBowl = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.15, 0.1, 32),
+      const fbBowl = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.15, 0.1, 44),
         new THREE.MeshStandardMaterial({ color: 0x555544, metalness: 0.5, roughness: 0.4 }));
       fbBowl.position.y = 0.12;
       fbGrp.add(fbBowl);
-      const fbFire = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.4, 32),
+      const fbFire = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.4, 44),
         new THREE.MeshStandardMaterial({ color: 0xff6600, emissive: 0xff4400, emissiveIntensity: 2.0, transparent: true, opacity: 0.7 }));
       fbFire.position.y = 0.35;
       fbGrp.add(fbFire);
@@ -6782,19 +6782,19 @@ export class DiabloRenderer {
     for (let i = 0; i < 8; i++) {
       const crownGrp = new THREE.Group();
       const crownMat = new THREE.MeshStandardMaterial({ color: 0xddaa22, metalness: 0.8, roughness: 0.2 });
-      const crownRing = new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.015, 32, 48), crownMat);
+      const crownRing = new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.015, 44, 62), crownMat);
       crownRing.rotation.x = -Math.PI / 2 + (Math.random() - 0.5) * 0.5;
       crownGrp.add(crownRing);
       // Crown points
       for (let p = 0; p < 5; p++) {
-        const point = new THREE.Mesh(new THREE.ConeGeometry(0.01, 0.04, 32), crownMat);
+        const point = new THREE.Mesh(new THREE.ConeGeometry(0.01, 0.04, 44), crownMat);
         const pAng = (p / 5) * Math.PI * 2;
         point.position.set(Math.cos(pAng) * 0.08, 0.02, Math.sin(pAng) * 0.08);
         crownGrp.add(point);
       }
       // Gem on crown
       const crGemColor = [0xff2244, 0x2244ff, 0x22ff44][i % 3];
-      const crGem = new THREE.Mesh(new THREE.OctahedronGeometry(0.015, 2),
+      const crGem = new THREE.Mesh(new THREE.OctahedronGeometry(0.015, 3),
         new THREE.MeshStandardMaterial({ color: crGemColor, emissive: crGemColor, emissiveIntensity: 0.5 }));
       crGem.position.y = 0.03;
       crownGrp.add(crGem);
@@ -6834,7 +6834,7 @@ export class DiabloRenderer {
         const robeMat = new THREE.MeshStandardMaterial({ color: robeColor, roughness: 0.7 });
 
         // Head
-        const headGeo = new THREE.SphereGeometry(0.16, 48, 32);
+        const headGeo = new THREE.SphereGeometry(0.16, 62, 44);
         const head = new THREE.Mesh(headGeo, skinMat);
         head.position.y = 1.42;
         head.castShadow = true;
@@ -6843,18 +6843,18 @@ export class DiabloRenderer {
         // Eyes
         const eyeMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.3 });
         for (const ex of [-0.055, 0.055]) {
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 32, 24), eyeMat);
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 44, 36), eyeMat);
           eye.position.set(ex, 1.45, 0.14);
           mesh.add(eye);
         }
         // Nose
-        const nose = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.05, 32), skinMat);
+        const nose = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.05, 44), skinMat);
         nose.position.set(0, 1.41, 0.16);
         nose.rotation.x = -Math.PI / 2;
         mesh.add(nose);
 
         // Neck
-        const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.1, 32), skinMat);
+        const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.1, 44), skinMat);
         neck.position.y = 1.24;
         mesh.add(neck);
 
@@ -6878,7 +6878,7 @@ export class DiabloRenderer {
 
         // Legs
         for (const lx of [-0.08, 0.08]) {
-          const legGeo = new THREE.CylinderGeometry(0.06, 0.055, 0.55, 32);
+          const legGeo = new THREE.CylinderGeometry(0.06, 0.055, 0.55, 44);
           const leg = new THREE.Mesh(legGeo, robeMat);
           leg.position.set(lx, 0.4, 0);
           leg.castShadow = true;
@@ -6893,26 +6893,26 @@ export class DiabloRenderer {
         // Arms with hands
         for (const side of [-1, 1]) {
           // Upper arm
-          const upperArmGeo = new THREE.CylinderGeometry(0.05, 0.045, 0.3, 32);
+          const upperArmGeo = new THREE.CylinderGeometry(0.05, 0.045, 0.3, 44);
           const upperArm = new THREE.Mesh(upperArmGeo, robeMat);
           upperArm.position.set(side * 0.24, 1.05, 0);
           upperArm.rotation.z = side * 0.2;
           mesh.add(upperArm);
           // Forearm
-          const forearmGeo = new THREE.CylinderGeometry(0.04, 0.035, 0.25, 32);
+          const forearmGeo = new THREE.CylinderGeometry(0.04, 0.035, 0.25, 44);
           const forearm = new THREE.Mesh(forearmGeo, skinMat);
           forearm.position.set(side * 0.3, 0.82, 0.05);
           forearm.rotation.z = side * 0.15;
           mesh.add(forearm);
           // Hand
-          const hand = new THREE.Mesh(new THREE.SphereGeometry(0.04, 32, 24), skinMat);
+          const hand = new THREE.Mesh(new THREE.SphereGeometry(0.04, 44, 36), skinMat);
           hand.position.set(side * 0.32, 0.7, 0.06);
           mesh.add(hand);
         }
 
         // Shoulders
         for (const side of [-1, 1]) {
-          const shoulder = new THREE.Mesh(new THREE.SphereGeometry(0.07, 48, 32), robeMat);
+          const shoulder = new THREE.Mesh(new THREE.SphereGeometry(0.07, 62, 44), robeMat);
           shoulder.position.set(side * 0.22, 1.18, 0);
           mesh.add(shoulder);
         }
@@ -6920,30 +6920,30 @@ export class DiabloRenderer {
         // Type-specific details
         if (vendor.type === VendorType.ARCANIST) {
           // Wizard hat
-          const hatBrimGeo = new THREE.CylinderGeometry(0.22, 0.22, 0.03, 32);
+          const hatBrimGeo = new THREE.CylinderGeometry(0.22, 0.22, 0.03, 44);
           const hatMat = new THREE.MeshStandardMaterial({ color: 0x4411aa, roughness: 0.6 });
           const hatBrim = new THREE.Mesh(hatBrimGeo, hatMat);
           hatBrim.position.y = 1.56;
           mesh.add(hatBrim);
-          const hatCone = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.4, 32), hatMat);
+          const hatCone = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.4, 44), hatMat);
           hatCone.position.y = 1.78;
           mesh.add(hatCone);
           // Star on hat
-          const star = new THREE.Mesh(new THREE.SphereGeometry(0.03, 32, 24),
+          const star = new THREE.Mesh(new THREE.SphereGeometry(0.03, 44, 36),
             new THREE.MeshStandardMaterial({ color: 0xffdd00, emissive: 0xffdd00, emissiveIntensity: 0.6 }));
           star.position.set(0, 1.96, 0.05);
           mesh.add(star);
           // Staff in hand
-          const staff = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 1.4, 32),
+          const staff = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 1.4, 44),
             new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.8 }));
           staff.position.set(-0.34, 0.8, 0.06);
           mesh.add(staff);
-          const staffOrb = new THREE.Mesh(new THREE.SphereGeometry(0.06, 32, 24),
+          const staffOrb = new THREE.Mesh(new THREE.SphereGeometry(0.06, 44, 36),
             new THREE.MeshStandardMaterial({ color: 0x8844ff, emissive: 0x6622cc, emissiveIntensity: 0.8 }));
           staffOrb.position.set(-0.34, 1.52, 0.06);
           mesh.add(staffOrb);
           // Beard
-          const beard = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.2, 32), new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 0.9 }));
+          const beard = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.2, 44), new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 0.9 }));
           beard.position.set(0, 1.28, 0.1);
           beard.rotation.x = 0.2;
           mesh.add(beard);
@@ -6954,7 +6954,7 @@ export class DiabloRenderer {
           apron.position.set(0, 0.82, 0.13);
           mesh.add(apron);
           // Hammer in hand
-          const hammerHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.4, 32),
+          const hammerHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.4, 44),
             new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.8 }));
           hammerHandle.position.set(0.34, 0.75, 0.06);
           hammerHandle.rotation.z = -0.3;
@@ -6965,12 +6965,12 @@ export class DiabloRenderer {
           mesh.add(hammerHead);
           // Muscular arms (slightly bigger shoulders)
           for (const side of [-1, 1]) {
-            const bigShoulder = new THREE.Mesh(new THREE.SphereGeometry(0.08, 48, 32), robeMat);
+            const bigShoulder = new THREE.Mesh(new THREE.SphereGeometry(0.08, 62, 44), robeMat);
             bigShoulder.position.set(side * 0.23, 1.18, 0);
             mesh.add(bigShoulder);
           }
           // Short hair
-          const hair = new THREE.Mesh(new THREE.SphereGeometry(0.14, 48, 32),
+          const hair = new THREE.Mesh(new THREE.SphereGeometry(0.14, 62, 44),
             new THREE.MeshStandardMaterial({ color: 0x332211, roughness: 0.9 }));
           hair.position.y = 1.48;
           hair.scale.set(1, 0.6, 1);
@@ -6978,17 +6978,17 @@ export class DiabloRenderer {
         } else if (vendor.type === VendorType.JEWELER) {
           // Elegant hat (beret)
           const beretMat = new THREE.MeshStandardMaterial({ color: 0x224488, roughness: 0.5 });
-          const beret = new THREE.Mesh(new THREE.SphereGeometry(0.14, 48, 32), beretMat);
+          const beret = new THREE.Mesh(new THREE.SphereGeometry(0.14, 62, 44), beretMat);
           beret.position.y = 1.55;
           beret.scale.y = 0.4;
           mesh.add(beret);
           // Monocle
-          const monocle = new THREE.Mesh(new THREE.RingGeometry(0.025, 0.035, 8),
+          const monocle = new THREE.Mesh(new THREE.RingGeometry(0.025, 0.035, 16),
             new THREE.MeshStandardMaterial({ color: 0xdddddd, metalness: 0.8, roughness: 0.1, side: THREE.DoubleSide }));
           monocle.position.set(0.06, 1.46, 0.16);
           mesh.add(monocle);
           // Gem in hand
-          const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.04, 2),
+          const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.04, 3),
             new THREE.MeshStandardMaterial({ color: 0x44ddff, emissive: 0x2288aa, emissiveIntensity: 0.5 }));
           gem.position.set(0.32, 0.75, 0.08);
           mesh.add(gem);
@@ -7000,37 +7000,37 @@ export class DiabloRenderer {
         } else if (vendor.type === VendorType.ALCHEMIST) {
           // Hood
           const hoodMat = new THREE.MeshStandardMaterial({ color: 0x226633, roughness: 0.7 });
-          const hood = new THREE.Mesh(new THREE.SphereGeometry(0.18, 48, 32), hoodMat);
+          const hood = new THREE.Mesh(new THREE.SphereGeometry(0.18, 62, 44), hoodMat);
           hood.position.y = 1.48;
           hood.scale.set(1, 0.8, 1.1);
           mesh.add(hood);
           // Potion bottle in hand
-          const bottleGeo = new THREE.CylinderGeometry(0.025, 0.03, 0.12, 32);
+          const bottleGeo = new THREE.CylinderGeometry(0.025, 0.03, 0.12, 44);
           const bottleMat = new THREE.MeshStandardMaterial({ color: 0x44ff44, emissive: 0x22aa22, emissiveIntensity: 0.4, transparent: true, opacity: 0.7 });
           const bottle = new THREE.Mesh(bottleGeo, bottleMat);
           bottle.position.set(-0.32, 0.75, 0.06);
           mesh.add(bottle);
-          const bottleNeck = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.02, 0.05, 32), bottleMat);
+          const bottleNeck = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.02, 0.05, 44), bottleMat);
           bottleNeck.position.set(-0.32, 0.83, 0.06);
           mesh.add(bottleNeck);
           // Goggles on forehead
           const goggleMat = new THREE.MeshStandardMaterial({ color: 0x886644, roughness: 0.5 });
           for (const ex of [-0.05, 0.05]) {
-            const goggle = new THREE.Mesh(new THREE.TorusGeometry(0.03, 0.008, 32, 48), goggleMat);
+            const goggle = new THREE.Mesh(new THREE.TorusGeometry(0.03, 0.008, 44, 62), goggleMat);
             goggle.position.set(ex, 1.5, 0.14);
             mesh.add(goggle);
           }
         } else if (vendor.type === VendorType.GENERAL_MERCHANT) {
           // Wide-brim hat
           const hatMat = new THREE.MeshStandardMaterial({ color: 0x886644, roughness: 0.7 });
-          const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.03, 32), hatMat);
+          const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.03, 44), hatMat);
           brim.position.y = 1.56;
           mesh.add(brim);
-          const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.15, 32), hatMat);
+          const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.15, 44), hatMat);
           crown.position.y = 1.64;
           mesh.add(crown);
           // Sack over shoulder
-          const sack = new THREE.Mesh(new THREE.SphereGeometry(0.15, 62, 32),
+          const sack = new THREE.Mesh(new THREE.SphereGeometry(0.15, 80, 44),
             new THREE.MeshStandardMaterial({ color: 0xaa9966, roughness: 0.9 }));
           sack.position.set(-0.2, 1.25, -0.1);
           sack.scale.y = 1.3;
@@ -7132,7 +7132,7 @@ export class DiabloRenderer {
     const accentMat = new THREE.MeshStandardMaterial({ color: colors.accent, roughness: 0.5, metalness: 0.2 });
 
     // Head
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.14 * scale, 48, 32), skinMat);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.14 * scale, 62, 44), skinMat);
     head.position.y = 1.38 * scale;
     head.castShadow = true;
     mesh.add(head);
@@ -7140,25 +7140,25 @@ export class DiabloRenderer {
     // Eyes
     const eyeMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
     for (const ex of [-0.04, 0.04]) {
-      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.02 * scale, 32, 24), eyeMat);
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.02 * scale, 44, 36), eyeMat);
       eye.position.set(ex * scale, 1.41 * scale, 0.12 * scale);
       mesh.add(eye);
     }
 
     // Hair
-    const hair = new THREE.Mesh(new THREE.SphereGeometry(0.13 * scale, 48, 32), hairMat);
+    const hair = new THREE.Mesh(new THREE.SphereGeometry(0.13 * scale, 62, 44), hairMat);
     hair.position.y = 1.44 * scale;
     hair.scale.set(1, role === 'maiden' ? 1.0 : 0.6, 1);
     mesh.add(hair);
     // Long hair for maiden
     if (role === 'maiden') {
-      const longHair = new THREE.Mesh(new THREE.CylinderGeometry(0.08 * scale, 0.05 * scale, 0.3 * scale, 32), hairMat);
+      const longHair = new THREE.Mesh(new THREE.CylinderGeometry(0.08 * scale, 0.05 * scale, 0.3 * scale, 44), hairMat);
       longHair.position.set(0, 1.22 * scale, -0.06 * scale);
       mesh.add(longHair);
     }
 
     // Neck
-    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.05 * scale, 0.06 * scale, 0.08 * scale, 32), skinMat);
+    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.05 * scale, 0.06 * scale, 0.08 * scale, 44), skinMat);
     neck.position.y = 1.22 * scale;
     mesh.add(neck);
 
@@ -7179,7 +7179,7 @@ export class DiabloRenderer {
       legGroup.name = name;
       legGroup.position.set((side as number) * 0.07 * scale, 0.42 * scale, 0);
 
-      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.05 * scale, 0.045 * scale, 0.42 * scale, 32), robeMat);
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.05 * scale, 0.045 * scale, 0.42 * scale, 44), robeMat);
       leg.position.y = -0.21 * scale;
       leg.castShadow = true;
       legGroup.add(leg);
@@ -7200,16 +7200,16 @@ export class DiabloRenderer {
       armGroup.position.set((side as number) * 0.2 * scale, 1.1 * scale, 0);
 
       // Shoulder
-      const shoulder = new THREE.Mesh(new THREE.SphereGeometry(0.055 * scale, 32, 24), robeMat);
+      const shoulder = new THREE.Mesh(new THREE.SphereGeometry(0.055 * scale, 44, 36), robeMat);
       armGroup.add(shoulder);
 
       // Arm
-      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.04 * scale, 0.035 * scale, 0.3 * scale, 32), robeMat);
+      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.04 * scale, 0.035 * scale, 0.3 * scale, 44), robeMat);
       arm.position.y = -0.18 * scale;
       armGroup.add(arm);
 
       // Hand
-      const hand = new THREE.Mesh(new THREE.SphereGeometry(0.03 * scale, 48, 24), skinMat);
+      const hand = new THREE.Mesh(new THREE.SphereGeometry(0.03 * scale, 62, 36), skinMat);
       hand.position.y = -0.35 * scale;
       armGroup.add(hand);
 
@@ -7220,23 +7220,23 @@ export class DiabloRenderer {
     if (role === 'guard') {
       // Helmet
       const helmetMat = new THREE.MeshStandardMaterial({ color: 0x666677, metalness: 0.6, roughness: 0.3 });
-      const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.15, 48, 32), helmetMat);
+      const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.15, 62, 44), helmetMat);
       helmet.position.y = 1.44;
       helmet.scale.set(1, 0.7, 1);
       mesh.add(helmet);
       // Spear
-      const spear = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 1.6, 32),
+      const spear = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 1.6, 44),
         new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.8 }));
       spear.position.set(-0.24, 0.9, 0.05);
       mesh.add(spear);
-      const spearTip = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.1, 32),
+      const spearTip = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.1, 44),
         new THREE.MeshStandardMaterial({ color: 0x888899, metalness: 0.7, roughness: 0.2 }));
       spearTip.position.set(-0.24, 1.75, 0.05);
       mesh.add(spearTip);
     } else if (role === 'noble') {
       // Crown/circlet
       const crownMat = new THREE.MeshStandardMaterial({ color: 0xddaa33, metalness: 0.7, roughness: 0.2 });
-      const crown = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.015, 32, 48), crownMat);
+      const crown = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.015, 44, 62), crownMat);
       crown.position.y = 1.48;
       crown.rotation.x = Math.PI / 2;
       mesh.add(crown);
@@ -7248,7 +7248,7 @@ export class DiabloRenderer {
     } else if (role === 'monk') {
       // Hood
       const hoodMat = new THREE.MeshStandardMaterial({ color: 0x776644, roughness: 0.8 });
-      const hood = new THREE.Mesh(new THREE.SphereGeometry(0.16, 48, 32), hoodMat);
+      const hood = new THREE.Mesh(new THREE.SphereGeometry(0.16, 62, 44), hoodMat);
       hood.position.y = 1.42;
       hood.scale.set(1, 0.8, 1.1);
       mesh.add(hood);
@@ -7260,30 +7260,30 @@ export class DiabloRenderer {
     } else if (role === 'bard') {
       // Feathered cap
       const capMat = new THREE.MeshStandardMaterial({ color: 0xcc3333, roughness: 0.6 });
-      const cap = new THREE.Mesh(new THREE.SphereGeometry(0.12, 48, 32), capMat);
+      const cap = new THREE.Mesh(new THREE.SphereGeometry(0.12, 62, 44), capMat);
       cap.position.y = 1.48;
       cap.scale.y = 0.5;
       mesh.add(cap);
       // Feather
-      const feather = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.12, 32),
+      const feather = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.12, 44),
         new THREE.MeshStandardMaterial({ color: 0xdddd44, roughness: 0.5 }));
       feather.position.set(0.08, 1.55, 0);
       feather.rotation.z = -0.4;
       mesh.add(feather);
       // Lute
-      const lute = new THREE.Mesh(new THREE.SphereGeometry(0.06, 32, 24),
+      const lute = new THREE.Mesh(new THREE.SphereGeometry(0.06, 44, 36),
         new THREE.MeshStandardMaterial({ color: 0xAA7744, roughness: 0.6 }));
       lute.position.set(-0.2, 0.75, 0.1);
       lute.scale.set(1, 1.3, 0.5);
       mesh.add(lute);
     } else if (role === 'maiden') {
       // Flower in hair
-      const flower = new THREE.Mesh(new THREE.SphereGeometry(0.03, 32, 24),
+      const flower = new THREE.Mesh(new THREE.SphereGeometry(0.03, 44, 36),
         new THREE.MeshStandardMaterial({ color: 0xff6688, emissive: 0xff3355, emissiveIntensity: 0.2 }));
       flower.position.set(0.1, 1.5, 0.05);
       mesh.add(flower);
       // Basket
-      const basket = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.08, 32),
+      const basket = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.08, 44),
         new THREE.MeshStandardMaterial({ color: 0xBB9955, roughness: 0.8 }));
       basket.position.set(0.22, 0.68, 0.06);
       mesh.add(basket);
@@ -7308,14 +7308,14 @@ export class DiabloRenderer {
     const skinDarkMat = new THREE.MeshStandardMaterial({ color: 0xb8925a, roughness: 0.7 });
 
     // Head
-    const headGeo = new THREE.SphereGeometry(0.18, 48, 32);
+    const headGeo = new THREE.SphereGeometry(0.18, 62, 44);
     const head = new THREE.Mesh(headGeo, skinMat);
     head.position.y = 1.6;
     head.castShadow = true;
     this._playerGroup.add(head);
 
     // Nose (small cone)
-    const noseGeo = new THREE.ConeGeometry(0.03, 0.06, 32);
+    const noseGeo = new THREE.ConeGeometry(0.03, 0.06, 44);
     const nose = new THREE.Mesh(noseGeo, skinMat);
     nose.position.set(0, 1.58, 0.17);
     nose.rotation.x = -Math.PI / 2;
@@ -7339,19 +7339,19 @@ export class DiabloRenderer {
     const eyeWhiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 });
     const pupilMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.5 });
     for (let side = -1; side <= 1; side += 2) {
-      const eyeGeo = new THREE.SphereGeometry(0.04, 32, 24);
+      const eyeGeo = new THREE.SphereGeometry(0.04, 44, 36);
       const eye = new THREE.Mesh(eyeGeo, eyeWhiteMat);
       eye.position.set(side * 0.06, 1.62, 0.15);
       this._playerGroup.add(eye);
 
-      const pupilGeo = new THREE.SphereGeometry(0.02, 32, 24);
+      const pupilGeo = new THREE.SphereGeometry(0.02, 44, 36);
       const pupil = new THREE.Mesh(pupilGeo, pupilMat);
       pupil.position.set(side * 0.06, 1.62, 0.185);
       this._playerGroup.add(pupil);
     }
 
     // Neck (cylinder connecting head to torso)
-    const neckGeo = new THREE.CylinderGeometry(0.06, 0.08, 0.12, 32);
+    const neckGeo = new THREE.CylinderGeometry(0.06, 0.08, 0.12, 44);
     const neck = new THREE.Mesh(neckGeo, skinMat);
     neck.position.y = 1.46;
     this._playerGroup.add(neck);
@@ -7419,27 +7419,27 @@ export class DiabloRenderer {
       legGroup.position.set(side * 0.12, 0.9, 0);  // pivot at hip
 
       // Thigh
-      const thighGeo = new THREE.CylinderGeometry(0.08, 0.09, 0.4, 32);
+      const thighGeo = new THREE.CylinderGeometry(0.08, 0.09, 0.4, 44);
       const thigh = new THREE.Mesh(thighGeo, legMat);
       thigh.position.y = -0.17;
       thigh.castShadow = true;
       legGroup.add(thigh);
 
       // Knee joint
-      const kneeGeo = new THREE.SphereGeometry(0.055, 48, 24);
+      const kneeGeo = new THREE.SphereGeometry(0.055, 62, 36);
       const knee = new THREE.Mesh(kneeGeo, legMat);
       knee.position.y = -0.37;
       legGroup.add(knee);
 
       // Shin
-      const shinGeo = new THREE.CylinderGeometry(0.07, 0.08, 0.4, 32);
+      const shinGeo = new THREE.CylinderGeometry(0.07, 0.08, 0.4, 44);
       const shin = new THREE.Mesh(shinGeo, legMat);
       shin.position.y = -0.57;
       shin.castShadow = true;
       legGroup.add(shin);
 
       // Ankle joint
-      const ankleGeo = new THREE.SphereGeometry(0.045, 48, 24);
+      const ankleGeo = new THREE.SphereGeometry(0.045, 62, 36);
       const ankle = new THREE.Mesh(ankleGeo, legMat);
       ankle.position.y = -0.77;
       legGroup.add(ankle);
@@ -7468,12 +7468,12 @@ export class DiabloRenderer {
     this._leftArmGroup = leftArmGroup;
 
     for (const armGroup of [rightArmGroup, leftArmGroup]) {
-      const upperGeo = new THREE.CylinderGeometry(0.06, 0.07, 0.3, 32);
+      const upperGeo = new THREE.CylinderGeometry(0.06, 0.07, 0.3, 44);
       const upper = new THREE.Mesh(upperGeo, skinMat);
       upper.position.y = -0.15;
       armGroup.add(upper);
 
-      const foreGeo = new THREE.CylinderGeometry(0.05, 0.06, 0.3, 32);
+      const foreGeo = new THREE.CylinderGeometry(0.05, 0.06, 0.3, 44);
       const fore = new THREE.Mesh(foreGeo, skinMat);
       fore.position.y = -0.45;
       armGroup.add(fore);
@@ -7511,20 +7511,20 @@ export class DiabloRenderer {
         // Layered shoulder pauldrons
         for (let side = -1; side <= 1; side += 2) {
           // Main sphere
-          const pauldronGeo = new THREE.SphereGeometry(0.14, 48, 32);
+          const pauldronGeo = new THREE.SphereGeometry(0.14, 62, 44);
           const pauldron = new THREE.Mesh(pauldronGeo, pauldronMat);
           pauldron.position.set(side * 0.35, 1.42, 0);
           pauldron.castShadow = true;
           this._playerGroup.add(pauldron);
 
           // Spike on top (cone pointing up)
-          const spikeGeo = new THREE.ConeGeometry(0.04, 0.12, 32);
+          const spikeGeo = new THREE.ConeGeometry(0.04, 0.12, 44);
           const spike = new THREE.Mesh(spikeGeo, pauldronMat);
           spike.position.set(side * 0.35, 1.58, 0);
           this._playerGroup.add(spike);
 
           // Decorative rim (torus around base)
-          const rimGeo = new THREE.TorusGeometry(0.13, 0.02, 32, 48);
+          const rimGeo = new THREE.TorusGeometry(0.13, 0.02, 44, 62);
           const rim = new THREE.Mesh(rimGeo, pauldronMat);
           rim.position.set(side * 0.35, 1.38, 0);
           rim.rotation.x = Math.PI / 2;
@@ -7549,7 +7549,7 @@ export class DiabloRenderer {
 
         // Arm bracers (thin cylinders around forearms)
         for (const armGroup of [rightArmGroup, leftArmGroup]) {
-          const bracerGeo = new THREE.CylinderGeometry(0.065, 0.07, 0.12, 32);
+          const bracerGeo = new THREE.CylinderGeometry(0.065, 0.07, 0.12, 44);
           const bracer = new THREE.Mesh(bracerGeo, pauldronMat);
           bracer.position.y = -0.42;
           armGroup.add(bracer);
@@ -7557,7 +7557,7 @@ export class DiabloRenderer {
 
         // Helmet: half sphere on top + nose guard + cheek guards
         const helmetMat = new THREE.MeshStandardMaterial({ color: 0x777788, metalness: 0.8, roughness: 0.2 });
-        const helmetGeo = new THREE.SphereGeometry(0.2, 48, 32, 0, Math.PI * 2, 0, Math.PI / 2);
+        const helmetGeo = new THREE.SphereGeometry(0.2, 62, 44, 0, Math.PI * 2, 0, Math.PI / 2);
         const helmet = new THREE.Mesh(helmetGeo, helmetMat);
         helmet.position.y = 1.62;
         this._playerGroup.add(helmet);
@@ -7605,13 +7605,13 @@ export class DiabloRenderer {
         swordGroup.add(guard);
 
         // Leather-wrapped grip
-        const gripGeo = new THREE.CylinderGeometry(0.025, 0.025, 0.1, 32);
+        const gripGeo = new THREE.CylinderGeometry(0.025, 0.025, 0.1, 44);
         const gripMat = new THREE.MeshStandardMaterial({ color: 0x4a2a10, roughness: 0.9 });
         const grip = new THREE.Mesh(gripGeo, gripMat);
         grip.position.y = 0.0;
         swordGroup.add(grip);
 
-        const pommelGeo = new THREE.SphereGeometry(0.04, 48, 24);
+        const pommelGeo = new THREE.SphereGeometry(0.04, 62, 36);
         const pommelMat = new THREE.MeshStandardMaterial({ color: 0x886633, metalness: 0.5 });
         const pommel = new THREE.Mesh(pommelGeo, pommelMat);
         pommel.position.y = 0.06;
@@ -7622,7 +7622,7 @@ export class DiabloRenderer {
         this._weaponMesh = blade;
 
         // Shield
-        const shieldGeo = new THREE.CircleGeometry(0.25, 48);
+        const shieldGeo = new THREE.CircleGeometry(0.25, 62);
         const shieldMat = new THREE.MeshStandardMaterial({
           color: 0x666688,
           metalness: 0.6,
@@ -7636,7 +7636,7 @@ export class DiabloRenderer {
         leftArmGroup.add(shield);
 
         // Shield boss (center sphere)
-        const bossGeo = new THREE.SphereGeometry(0.06, 32, 24);
+        const bossGeo = new THREE.SphereGeometry(0.06, 44, 36);
         const bossMat = new THREE.MeshStandardMaterial({ color: 0x888899, metalness: 0.8, roughness: 0.2 });
         const shieldBoss = new THREE.Mesh(bossGeo, bossMat);
         shieldBoss.position.set(0, -0.4, 0.13);
@@ -7646,7 +7646,7 @@ export class DiabloRenderer {
         const rivetMat = new THREE.MeshStandardMaterial({ color: 0x999999, metalness: 0.9, roughness: 0.1 });
         for (let ri = 0; ri < 4; ri++) {
           const riAngle = (ri / 4) * Math.PI * 2;
-          const rivetGeo = new THREE.SphereGeometry(0.02, 32, 24);
+          const rivetGeo = new THREE.SphereGeometry(0.02, 44, 36);
           const rivet = new THREE.Mesh(rivetGeo, rivetMat);
           rivet.position.set(Math.cos(riAngle) * 0.2, -0.4 + Math.sin(riAngle) * 0.2, 0.12);
           leftArmGroup.add(rivet);
@@ -7657,7 +7657,7 @@ export class DiabloRenderer {
       case DiabloClass.MAGE: {
         // Robe cone from waist
         const robeMat = new THREE.MeshStandardMaterial({ color: 0x1a0a3a, roughness: 0.9 });
-        const robeGeo = new THREE.ConeGeometry(0.4, 0.8, 32);
+        const robeGeo = new THREE.ConeGeometry(0.4, 0.8, 44);
         const robe = new THREE.Mesh(robeGeo, robeMat);
         robe.position.y = 0.5;
         this._playerGroup.add(robe);
@@ -7671,7 +7671,7 @@ export class DiabloRenderer {
         // Sleeve cones around upper arms
         const sleeveMat = new THREE.MeshStandardMaterial({ color: 0x1a0a3a, roughness: 0.85 });
         for (const armGrp of [rightArmGroup, leftArmGroup]) {
-          const sleeveGeo = new THREE.ConeGeometry(0.1, 0.25, 32);
+          const sleeveGeo = new THREE.ConeGeometry(0.1, 0.25, 44);
           const sleeve = new THREE.Mesh(sleeveGeo, sleeveMat);
           sleeve.position.y = -0.1;
           sleeve.rotation.x = Math.PI;
@@ -7690,7 +7690,7 @@ export class DiabloRenderer {
           transparent: true, opacity: 0.8,
         });
         for (let r = 0; r < 3; r++) {
-          const runeGeo = new THREE.CircleGeometry(0.03, 48);
+          const runeGeo = new THREE.CircleGeometry(0.03, 62);
           const runeM = new THREE.Mesh(runeGeo, runeMat);
           runeM.position.set(0, 1.15 - r * 0.12, 0.16);
           this._playerGroup.add(runeM);
@@ -7698,7 +7698,7 @@ export class DiabloRenderer {
 
         // Beard (small cone under chin, grey/white)
         const beardMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.9 });
-        const beardGeo = new THREE.ConeGeometry(0.06, 0.12, 32);
+        const beardGeo = new THREE.ConeGeometry(0.06, 0.12, 44);
         const beard = new THREE.Mesh(beardGeo, beardMat);
         beard.position.set(0, 1.44, 0.1);
         beard.rotation.x = Math.PI;
@@ -7713,19 +7713,19 @@ export class DiabloRenderer {
 
         // Pointed hat
         const hatMat = new THREE.MeshStandardMaterial({ color: 0x1a0a3a, roughness: 0.8 });
-        const hatGeo = new THREE.ConeGeometry(0.2, 0.4, 32);
+        const hatGeo = new THREE.ConeGeometry(0.2, 0.4, 44);
         const hat = new THREE.Mesh(hatGeo, hatMat);
         hat.position.y = 1.9;
         this._playerGroup.add(hat);
 
-        const brimGeo = new THREE.CylinderGeometry(0.25, 0.25, 0.03, 32);
+        const brimGeo = new THREE.CylinderGeometry(0.25, 0.25, 0.03, 44);
         const brim = new THREE.Mesh(brimGeo, hatMat);
         brim.position.y = 1.72;
         this._playerGroup.add(brim);
 
         // Staff with glowing orb
         const staffGroup = new THREE.Group();
-        const staffGeo = new THREE.CylinderGeometry(0.03, 0.03, 1.8, 32);
+        const staffGeo = new THREE.CylinderGeometry(0.03, 0.03, 1.8, 44);
         const staffMat = new THREE.MeshStandardMaterial({ color: 0x553311, roughness: 0.9 });
         const staff = new THREE.Mesh(staffGeo, staffMat);
         staff.position.y = -0.5;
@@ -7733,7 +7733,7 @@ export class DiabloRenderer {
 
         // Staff rings (3 thin torus rings along the shaft)
         for (let ri = 0; ri < 3; ri++) {
-          const sRingGeo = new THREE.TorusGeometry(0.045, 0.008, 32, 48);
+          const sRingGeo = new THREE.TorusGeometry(0.045, 0.008, 44, 62);
           const sRingMat = new THREE.MeshStandardMaterial({ color: 0x886644, metalness: 0.5, roughness: 0.3 });
           const sRing = new THREE.Mesh(sRingGeo, sRingMat);
           sRing.position.y = -0.15 + ri * 0.4;
@@ -7741,7 +7741,7 @@ export class DiabloRenderer {
           staffGroup.add(sRing);
         }
 
-        const orbGeo = new THREE.SphereGeometry(0.1, 48, 32);
+        const orbGeo = new THREE.SphereGeometry(0.1, 62, 44);
         const orbMat = new THREE.MeshStandardMaterial({
           color: 0x8844ff, emissive: 0x6622cc, emissiveIntensity: 1.5,
           transparent: true, opacity: 0.9,
@@ -7757,7 +7757,7 @@ export class DiabloRenderer {
         });
         for (let ci = 0; ci < 3; ci++) {
           const cAngle = (ci / 3) * Math.PI * 2;
-          const crystalGeo = new THREE.IcosahedronGeometry(0.03, 2);
+          const crystalGeo = new THREE.IcosahedronGeometry(0.03, 3);
           const crystal = new THREE.Mesh(crystalGeo, crystalMat);
           crystal.position.set(
             Math.cos(cAngle) * 0.16,
@@ -7775,7 +7775,7 @@ export class DiabloRenderer {
 
       case DiabloClass.RANGER: {
         // Hood
-        const hoodGeo = new THREE.ConeGeometry(0.2, 0.25, 32);
+        const hoodGeo = new THREE.ConeGeometry(0.2, 0.25, 44);
         const hoodMat = new THREE.MeshStandardMaterial({ color: 0x4a3020, roughness: 0.9 });
         const hood = new THREE.Mesh(hoodGeo, hoodMat);
         hood.position.set(0, 1.72, -0.05);
@@ -7798,7 +7798,7 @@ export class DiabloRenderer {
         // Arm guards / leather bracers
         const bracerMat = new THREE.MeshStandardMaterial({ color: 0x5a3216, roughness: 0.85 });
         for (const armGrp of [rightArmGroup, leftArmGroup]) {
-          const bracerGeo = new THREE.CylinderGeometry(0.062, 0.068, 0.14, 32);
+          const bracerGeo = new THREE.CylinderGeometry(0.062, 0.068, 0.14, 44);
           const bracer = new THREE.Mesh(bracerGeo, bracerMat);
           bracer.position.y = -0.42;
           armGrp.add(bracer);
@@ -7813,7 +7813,7 @@ export class DiabloRenderer {
         }
 
         // Bandolier (thin cylinder diagonal across chest + pouches)
-        const bandolierGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.55, 32);
+        const bandolierGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.55, 44);
         const bandolierMat = new THREE.MeshStandardMaterial({ color: 0x5a3216, roughness: 0.85 });
         const bandolier = new THREE.Mesh(bandolierGeo, bandolierMat);
         bandolier.position.set(0, 1.2, 0.16);
@@ -7829,7 +7829,7 @@ export class DiabloRenderer {
         }
 
         // Bow (torus segment)
-        const bowGeo = new THREE.TorusGeometry(0.4, 0.02, 32, 48, Math.PI);
+        const bowGeo = new THREE.TorusGeometry(0.4, 0.02, 44, 62, Math.PI);
         const bowMat = new THREE.MeshStandardMaterial({ color: 0x553311, roughness: 0.8 });
         const bow = new THREE.Mesh(bowGeo, bowMat);
         bow.position.y = -0.3;
@@ -7837,7 +7837,7 @@ export class DiabloRenderer {
         leftArmGroup.add(bow);
 
         // Bowstring
-        const stringGeo = new THREE.CylinderGeometry(0.005, 0.005, 0.8, 32);
+        const stringGeo = new THREE.CylinderGeometry(0.005, 0.005, 0.8, 44);
         const stringMat = new THREE.MeshStandardMaterial({ color: 0xccccaa });
         const bowString = new THREE.Mesh(stringGeo, stringMat);
         bowString.position.y = -0.3;
@@ -7855,14 +7855,14 @@ export class DiabloRenderer {
         const arrowHeadMat = new THREE.MeshStandardMaterial({ color: 0xaaaacc, metalness: 0.7, roughness: 0.2 });
         const featherMat = new THREE.MeshStandardMaterial({ color: 0xddddcc, roughness: 0.9 });
         for (let a = 0; a < 6; a++) {
-          const arrowGeo = new THREE.CylinderGeometry(0.01, 0.01, 0.55, 32);
+          const arrowGeo = new THREE.CylinderGeometry(0.01, 0.01, 0.55, 44);
           const arrow = new THREE.Mesh(arrowGeo, arrowMat);
           const ax = 0.15 + (a - 2.5) * 0.02;
           arrow.position.set(ax, 1.35, -0.2);
           this._playerGroup.add(arrow);
 
           // Arrowhead tip (tiny cone, metallic)
-          const tipGeo = new THREE.ConeGeometry(0.018, 0.05, 32);
+          const tipGeo = new THREE.ConeGeometry(0.018, 0.05, 44);
           const tip = new THREE.Mesh(tipGeo, arrowHeadMat);
           tip.position.set(ax, 1.63, -0.2);
           this._playerGroup.add(tip);
@@ -7913,7 +7913,7 @@ export class DiabloRenderer {
           group.add(fur);
         }
 
-        const snoutGeo = new THREE.ConeGeometry(0.1, 0.3, 32);
+        const snoutGeo = new THREE.ConeGeometry(0.1, 0.3, 44);
         const snout = new THREE.Mesh(snoutGeo, bodyMat);
         snout.rotation.x = -Math.PI / 2;
         snout.position.set(0, 0.55, 0.6);
@@ -7922,7 +7922,7 @@ export class DiabloRenderer {
         // Teeth (two tiny white cones pointing down from snout)
         const toothMat = new THREE.MeshStandardMaterial({ color: 0xeeeeee, roughness: 0.5 });
         for (let side = -1; side <= 1; side += 2) {
-          const toothGeo = new THREE.ConeGeometry(0.015, 0.06, 32);
+          const toothGeo = new THREE.ConeGeometry(0.015, 0.06, 44);
           const tooth = new THREE.Mesh(toothGeo, toothMat);
           tooth.position.set(side * 0.04, 0.48, 0.72);
           tooth.rotation.x = Math.PI;
@@ -7930,7 +7930,7 @@ export class DiabloRenderer {
         }
 
         for (let side = -1; side <= 1; side += 2) {
-          const earGeo = new THREE.ConeGeometry(0.06, 0.15, 32);
+          const earGeo = new THREE.ConeGeometry(0.06, 0.15, 44);
           const ear = new THREE.Mesh(earGeo, bodyMat);
           ear.position.set(side * 0.12, 0.75, 0.35);
           group.add(ear);
@@ -7939,14 +7939,14 @@ export class DiabloRenderer {
         // Glowing eyes
         const wolfEyeMat = new THREE.MeshStandardMaterial({ color: 0x99ff44, emissive: 0x99ff44, emissiveIntensity: 1.0 });
         for (let side = -1; side <= 1; side += 2) {
-          const wolfEye = new THREE.Mesh(new THREE.SphereGeometry(0.03, 32, 24), wolfEyeMat);
+          const wolfEye = new THREE.Mesh(new THREE.SphereGeometry(0.03, 44, 36), wolfEyeMat);
           wolfEye.position.set(side * 0.1, 0.62, 0.5);
           group.add(wolfEye);
         }
 
         // Bushy tail (multiple overlapping cylinders)
         for (let ti = 0; ti < 3; ti++) {
-          const tailSegGeo = new THREE.CylinderGeometry(0.04 - ti * 0.008, 0.035 - ti * 0.008, 0.35, 32);
+          const tailSegGeo = new THREE.CylinderGeometry(0.04 - ti * 0.008, 0.035 - ti * 0.008, 0.35, 44);
           const tailSeg = new THREE.Mesh(tailSegGeo, bodyMat);
           tailSeg.position.set((Math.random() - 0.5) * 0.04, 0.6 + ti * 0.04, -0.55 - ti * 0.08);
           tailSeg.rotation.x = -0.6 - ti * 0.15;
@@ -7956,7 +7956,7 @@ export class DiabloRenderer {
         // Legs with paws
         for (let lx = -1; lx <= 1; lx += 2) {
           for (let lz = -1; lz <= 1; lz += 2) {
-            const legGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.35, 32);
+            const legGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.35, 44);
             const leg = new THREE.Mesh(legGeo, bodyMat);
             leg.position.set(lx * 0.2, 0.18, lz * 0.3);
             group.add(leg);
@@ -7980,12 +7980,12 @@ export class DiabloRenderer {
         group.add(torso);
         // Head
         const headMat = new THREE.MeshStandardMaterial({ color: 0xdeb887, roughness: 0.7 });
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 48, 32), headMat);
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 62, 44), headMat);
         head.position.y = 1.5;
         group.add(head);
 
         // Leather cap (half sphere on head, brown)
-        const capGeo = new THREE.SphereGeometry(0.16, 48, 32, 0, Math.PI * 2, 0, Math.PI / 2);
+        const capGeo = new THREE.SphereGeometry(0.16, 62, 44, 0, Math.PI * 2, 0, Math.PI / 2);
         const capMat = new THREE.MeshStandardMaterial({ color: 0x5a3216, roughness: 0.85 });
         const cap = new THREE.Mesh(capGeo, capMat);
         cap.position.y = 1.52;
@@ -8015,7 +8015,7 @@ export class DiabloRenderer {
         // Legs with boot detail
         const bootMat = new THREE.MeshStandardMaterial({ color: 0x4a2a10, roughness: 0.9 });
         for (let side = -1; side <= 1; side += 2) {
-          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.7, 32), mat);
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.7, 44), mat);
           leg.position.set(side * 0.1, 0.5, 0);
           group.add(leg);
           // Boots (slightly different colored)
@@ -8025,7 +8025,7 @@ export class DiabloRenderer {
         }
         // Arms
         for (let side = -1; side <= 1; side += 2) {
-          const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.5, 32), headMat);
+          const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.5, 44), headMat);
           arm.position.set(side * 0.28, 1.1, 0);
           group.add(arm);
         }
@@ -8037,7 +8037,7 @@ export class DiabloRenderer {
         group.add(dagger);
 
         // Second weapon: small buckler on other arm
-        const bucklerGeo = new THREE.CircleGeometry(0.12, 48);
+        const bucklerGeo = new THREE.CircleGeometry(0.12, 62);
         const bucklerMat = new THREE.MeshStandardMaterial({ color: 0x666655, metalness: 0.4, roughness: 0.5, side: THREE.DoubleSide });
         const buckler = new THREE.Mesh(bucklerGeo, bucklerMat);
         buckler.position.set(-0.35, 0.95, 0.08);
@@ -8054,24 +8054,24 @@ export class DiabloRenderer {
 
       case EnemyType.BEAR: {
         const mat = new THREE.MeshStandardMaterial({ color: 0x4a3020, roughness: 0.85 });
-        const body = new THREE.Mesh(new THREE.SphereGeometry(0.7, 48, 32), mat);
+        const body = new THREE.Mesh(new THREE.SphereGeometry(0.7, 62, 44), mat);
         body.position.y = 0.9;
         body.scale.set(1, 0.85, 1.2);
         body.castShadow = true;
         group.add(body);
 
         // Thick neck (cylinder connecting head to body)
-        const neckGeo = new THREE.CylinderGeometry(0.25, 0.3, 0.3, 32);
+        const neckGeo = new THREE.CylinderGeometry(0.25, 0.3, 0.3, 44);
         const neckMesh = new THREE.Mesh(neckGeo, mat);
         neckMesh.position.set(0, 1.15, 0.5);
         neckMesh.rotation.x = -0.4;
         group.add(neckMesh);
 
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.35, 48, 32), mat);
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.35, 62, 44), mat);
         head.position.set(0, 1.3, 0.7);
         group.add(head);
 
-        const snout = new THREE.Mesh(new THREE.SphereGeometry(0.15, 48, 32), mat);
+        const snout = new THREE.Mesh(new THREE.SphereGeometry(0.15, 62, 44), mat);
         snout.position.set(0, 1.2, 1.05);
         group.add(snout);
 
@@ -8085,7 +8085,7 @@ export class DiabloRenderer {
         // Fur ridge (row of small cones along spine)
         const ridgeMat = new THREE.MeshStandardMaterial({ color: 0x3a2010, roughness: 0.9 });
         for (let ri = 0; ri < 6; ri++) {
-          const ridgeGeo = new THREE.ConeGeometry(0.04, 0.08, 32);
+          const ridgeGeo = new THREE.ConeGeometry(0.04, 0.08, 44);
           const ridge = new THREE.Mesh(ridgeGeo, ridgeMat);
           ridge.position.set(0, 1.5 - ri * 0.05, 0.1 + ri * 0.1);
           group.add(ridge);
@@ -8102,14 +8102,14 @@ export class DiabloRenderer {
         }
 
         for (let side = -1; side <= 1; side += 2) {
-          const ear = new THREE.Mesh(new THREE.SphereGeometry(0.08, 48, 32), mat);
+          const ear = new THREE.Mesh(new THREE.SphereGeometry(0.08, 62, 44), mat);
           ear.position.set(side * 0.25, 1.55, 0.6);
           group.add(ear);
         }
 
         for (let lx = -1; lx <= 1; lx += 2) {
           for (let lz = -1; lz <= 1; lz += 2) {
-            const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.13, 0.5, 32), mat);
+            const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.13, 0.5, 44), mat);
             leg.position.set(lx * 0.35, 0.25, lz * 0.5);
             group.add(leg);
 
@@ -8117,7 +8117,7 @@ export class DiabloRenderer {
             if (lz === 1) {
               const clawMat = new THREE.MeshStandardMaterial({ color: 0xeeeeee, roughness: 0.5 });
               for (let cl = -1; cl <= 1; cl++) {
-                const clawGeo = new THREE.ConeGeometry(0.02, 0.08, 32);
+                const clawGeo = new THREE.ConeGeometry(0.02, 0.08, 44);
                 const claw = new THREE.Mesh(clawGeo, clawMat);
                 claw.position.set(lx * 0.35 + cl * 0.04, 0.02, lz * 0.5 + 0.12);
                 claw.rotation.x = -Math.PI / 2;
@@ -8131,19 +8131,19 @@ export class DiabloRenderer {
 
       case EnemyType.FOREST_SPIDER: {
         const spiderMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.7 });
-        const bodyGeo = new THREE.SphereGeometry(0.25, 48, 32);
+        const bodyGeo = new THREE.SphereGeometry(0.25, 62, 44);
         const spiderBody = new THREE.Mesh(bodyGeo, spiderMat);
         spiderBody.position.y = 0.5;
         spiderBody.castShadow = true;
         group.add(spiderBody);
 
-        const abdomen = new THREE.Mesh(new THREE.SphereGeometry(0.35, 48, 32), spiderMat);
+        const abdomen = new THREE.Mesh(new THREE.SphereGeometry(0.35, 62, 44), spiderMat);
         abdomen.position.set(0, 0.45, -0.45);
         group.add(abdomen);
 
         // Mandibles (2 small cones at front, pointing down/forward)
         for (let side = -1; side <= 1; side += 2) {
-          const mandibleGeo = new THREE.ConeGeometry(0.025, 0.12, 32);
+          const mandibleGeo = new THREE.ConeGeometry(0.025, 0.12, 44);
           const mandible = new THREE.Mesh(mandibleGeo, spiderMat);
           mandible.position.set(side * 0.06, 0.42, 0.28);
           mandible.rotation.x = -0.4;
@@ -8152,7 +8152,7 @@ export class DiabloRenderer {
 
         // Hair/bristles on body and abdomen
         for (let bi = 0; bi < 10; bi++) {
-          const bristleGeo = new THREE.ConeGeometry(0.01, 0.06, 32);
+          const bristleGeo = new THREE.ConeGeometry(0.01, 0.06, 44);
           const bristle = new THREE.Mesh(bristleGeo, spiderMat);
           if (bi < 5) {
             bristle.position.set((Math.random() - 0.5) * 0.2, 0.55 + Math.random() * 0.1, (Math.random() - 0.5) * 0.2);
@@ -8163,7 +8163,7 @@ export class DiabloRenderer {
         }
 
         // Web spinner (tiny sphere at back of abdomen)
-        const spinnerGeo = new THREE.SphereGeometry(0.04, 32, 24);
+        const spinnerGeo = new THREE.SphereGeometry(0.04, 44, 36);
         const spinner = new THREE.Mesh(spinnerGeo, spiderMat);
         spinner.position.set(0, 0.38, -0.8);
         group.add(spinner);
@@ -8171,7 +8171,7 @@ export class DiabloRenderer {
         // Pattern on abdomen (colored markings)
         const markingMat = new THREE.MeshStandardMaterial({ color: 0xff4422, roughness: 0.7 });
         for (let mi = 0; mi < 3; mi++) {
-          const markGeo = new THREE.SphereGeometry(0.04, 32, 24);
+          const markGeo = new THREE.SphereGeometry(0.04, 44, 36);
           const mark = new THREE.Mesh(markGeo, markingMat);
           mark.position.set(0, 0.55 - mi * 0.06, -0.45 + 0.34);
           group.add(mark);
@@ -8185,7 +8185,7 @@ export class DiabloRenderer {
           [-0.04, 0.57, 0.23], [0.04, 0.57, 0.23],
         ];
         for (const ep of eyePositions) {
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 32, 24), eyeMat);
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 44, 36), eyeMat);
           eye.position.set(ep[0], ep[1], ep[2]);
           group.add(eye);
         }
@@ -8193,7 +8193,7 @@ export class DiabloRenderer {
         // 8 legs with joint spheres at bend points
         for (let i = 0; i < 8; i++) {
           const angle = (i / 8) * Math.PI * 2;
-          const legGeo = new THREE.CylinderGeometry(0.02, 0.015, 0.7, 32);
+          const legGeo = new THREE.CylinderGeometry(0.02, 0.015, 0.7, 44);
           const leg = new THREE.Mesh(legGeo, spiderMat);
           leg.position.set(
             Math.cos(angle) * 0.35,
@@ -8205,7 +8205,7 @@ export class DiabloRenderer {
           group.add(leg);
 
           // Leg joint (small sphere at bend point)
-          const jointGeo = new THREE.SphereGeometry(0.025, 32, 24);
+          const jointGeo = new THREE.SphereGeometry(0.025, 44, 36);
           const joint = new THREE.Mesh(jointGeo, spiderMat);
           joint.position.set(
             Math.cos(angle) * 0.5,
@@ -8219,21 +8219,21 @@ export class DiabloRenderer {
 
       case EnemyType.TREANT: {
         const barkMat = new THREE.MeshStandardMaterial({ color: 0x5a3a1a, roughness: 0.95 });
-        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.7, 2.5, 32), barkMat);
+        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.7, 2.5, 44), barkMat);
         trunk.position.y = 1.25;
         trunk.castShadow = true;
         group.add(trunk);
 
         // Branches as arms
         for (let side = -1; side <= 1; side += 2) {
-          const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.15, 1.2, 32), barkMat);
+          const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.15, 1.2, 44), barkMat);
           branch.position.set(side * 0.7, 2.0, 0);
           branch.rotation.z = side * 0.8;
           group.add(branch);
 
           // Sub-branches
           for (let j = 0; j < 3; j++) {
-            const subBranch = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.05, 0.5, 32), barkMat);
+            const subBranch = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.05, 0.5, 44), barkMat);
             subBranch.position.set(side * (0.9 + j * 0.15), 2.2 + j * 0.2, (Math.random() - 0.5) * 0.3);
             subBranch.rotation.z = side * (1.0 + j * 0.2);
             group.add(subBranch);
@@ -8242,7 +8242,7 @@ export class DiabloRenderer {
 
         // Leaf crown
         const leafMat = new THREE.MeshStandardMaterial({ color: 0x2a6a22, roughness: 0.8 });
-        const crown = new THREE.Mesh(new THREE.SphereGeometry(1.2, 48, 32), leafMat);
+        const crown = new THREE.Mesh(new THREE.SphereGeometry(1.2, 62, 44), leafMat);
         crown.position.y = 3.2;
         crown.castShadow = true;
         group.add(crown);
@@ -8250,7 +8250,7 @@ export class DiabloRenderer {
         // Face (eyes)
         const eyeMat = new THREE.MeshStandardMaterial({ color: 0xffaa00, emissive: 0xaa6600, emissiveIntensity: 0.5 });
         for (let side = -1; side <= 1; side += 2) {
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.08, 48, 32), eyeMat);
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.08, 62, 44), eyeMat);
           eye.position.set(side * 0.2, 2.2, 0.45);
           group.add(eye);
         }
@@ -8267,7 +8267,7 @@ export class DiabloRenderer {
         // Moss patches (small green spheres on trunk)
         const mossMat2 = new THREE.MeshStandardMaterial({ color: 0x336622, roughness: 1.0 });
         for (let mi = 0; mi < 5; mi++) {
-          const mossGeo2 = new THREE.SphereGeometry(0.1, 48, 32);
+          const mossGeo2 = new THREE.SphereGeometry(0.1, 62, 44);
           const moss2 = new THREE.Mesh(mossGeo2, mossMat2);
           moss2.position.set((Math.random() - 0.5) * 0.6, 0.5 + Math.random() * 2.0, (Math.random() - 0.5) * 0.6);
           group.add(moss2);
@@ -8281,7 +8281,7 @@ export class DiabloRenderer {
         group.add(nest);
         const eggMat = new THREE.MeshStandardMaterial({ color: 0xeeeedd, roughness: 0.6 });
         for (let ei = 0; ei < 3; ei++) {
-          const eggGeo = new THREE.SphereGeometry(0.03, 32, 24);
+          const eggGeo = new THREE.SphereGeometry(0.03, 44, 36);
           const egg = new THREE.Mesh(eggGeo, eggMat);
           egg.position.set(0.55 + ei * 0.05, 2.55, 0.18 + (Math.random() - 0.5) * 0.1);
           group.add(egg);
@@ -8290,7 +8290,7 @@ export class DiabloRenderer {
         // Roots visible at base (thick cylinders spreading from base)
         for (let ri = 0; ri < 4; ri++) {
           const rootAngle = (ri / 4) * Math.PI * 2 + 0.3;
-          const rootGeo = new THREE.CylinderGeometry(0.08, 0.12, 1.0, 32);
+          const rootGeo = new THREE.CylinderGeometry(0.08, 0.12, 1.0, 44);
           const root = new THREE.Mesh(rootGeo, barkMat);
           root.position.set(Math.cos(rootAngle) * 0.6, 0.05, Math.sin(rootAngle) * 0.6);
           root.rotation.z = Math.cos(rootAngle) * 1.2;
@@ -8310,7 +8310,7 @@ export class DiabloRenderer {
         // Hanging vines (thin green cylinders from branches)
         const vineMat = new THREE.MeshStandardMaterial({ color: 0x337722, roughness: 0.9 });
         for (let vi = 0; vi < 4; vi++) {
-          const vineGeo = new THREE.CylinderGeometry(0.015, 0.01, 1.0 + Math.random() * 0.5, 32);
+          const vineGeo = new THREE.CylinderGeometry(0.015, 0.01, 1.0 + Math.random() * 0.5, 44);
           const vine = new THREE.Mesh(vineGeo, vineMat);
           vine.position.set((Math.random() - 0.5) * 1.5, 2.5, (Math.random() - 0.5) * 1.0);
           group.add(vine);
@@ -8318,7 +8318,7 @@ export class DiabloRenderer {
 
         // More leaf clusters (additional smaller spheres in crown)
         for (let li = 0; li < 4; li++) {
-          const leafClusterGeo = new THREE.SphereGeometry(0.5 + Math.random() * 0.3, 48, 32);
+          const leafClusterGeo = new THREE.SphereGeometry(0.5 + Math.random() * 0.3, 62, 44);
           const leafCluster = new THREE.Mesh(leafClusterGeo, leafMat);
           leafCluster.position.set(
             (Math.random() - 0.5) * 1.5,
@@ -8330,7 +8330,7 @@ export class DiabloRenderer {
 
         // Leg trunks
         for (let side = -1; side <= 1; side += 2) {
-          const legTrunk = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 0.8, 32), barkMat);
+          const legTrunk = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 0.8, 44), barkMat);
           legTrunk.position.set(side * 0.3, 0.2, 0);
           group.add(legTrunk);
         }
@@ -8346,13 +8346,13 @@ export class DiabloRenderer {
         torso.castShadow = true;
         group.add(torso);
 
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.14, 48, 32), skinMat);
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.14, 62, 44), skinMat);
         head.position.y = 1.55;
         group.add(head);
 
         // Pointed ears
         for (let side = -1; side <= 1; side += 2) {
-          const ear = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.15, 32), skinMat);
+          const ear = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.15, 44), skinMat);
           ear.position.set(side * 0.16, 1.58, 0);
           ear.rotation.z = side * 0.5;
           group.add(ear);
@@ -8361,21 +8361,21 @@ export class DiabloRenderer {
         // Red emissive eyes
         const eyeMat = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 2.0 });
         for (let side = -1; side <= 1; side += 2) {
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 32, 24), eyeMat);
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 44, 36), eyeMat);
           eye.position.set(side * 0.055, 1.57, 0.12);
           group.add(eye);
         }
 
         // Legs
         for (let side = -1; side <= 1; side += 2) {
-          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.7, 32), darkPurple);
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.7, 44), darkPurple);
           leg.position.set(side * 0.08, 0.5, 0);
           group.add(leg);
         }
 
         // Arms
         for (let side = -1; side <= 1; side += 2) {
-          const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.04, 0.5, 32), skinMat);
+          const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.04, 0.5, 44), skinMat);
           arm.position.set(side * 0.22, 1.15, 0);
           group.add(arm);
 
@@ -8391,13 +8391,13 @@ export class DiabloRenderer {
         }
 
         // Dark crown/tiara (thin torus on head with spike)
-        const tiaraGeo = new THREE.TorusGeometry(0.15, 0.015, 32, 48);
+        const tiaraGeo = new THREE.TorusGeometry(0.15, 0.015, 44, 62);
         const tiaraMat = new THREE.MeshStandardMaterial({ color: 0x222233, metalness: 0.7, roughness: 0.3 });
         const tiara = new THREE.Mesh(tiaraGeo, tiaraMat);
         tiara.position.y = 1.65;
         tiara.rotation.x = Math.PI / 2;
         group.add(tiara);
-        const tiaraSpikeGeo = new THREE.ConeGeometry(0.02, 0.1, 32);
+        const tiaraSpikeGeo = new THREE.ConeGeometry(0.02, 0.1, 44);
         const tiaraSpike = new THREE.Mesh(tiaraSpikeGeo, tiaraMat);
         tiaraSpike.position.set(0, 1.72, 0.12);
         group.add(tiaraSpike);
@@ -8426,7 +8426,7 @@ export class DiabloRenderer {
           color: 0x1a0a2a, transparent: true, opacity: 0.3, roughness: 0.5,
         });
         for (let wi = 0; wi < 3; wi++) {
-          const wispGeo = new THREE.SphereGeometry(0.08, 48, 32);
+          const wispGeo = new THREE.SphereGeometry(0.08, 62, 44);
           const wisp = new THREE.Mesh(wispGeo, wispMat);
           wisp.position.set(
             (Math.random() - 0.5) * 0.6,
@@ -8448,35 +8448,35 @@ export class DiabloRenderer {
         group.add(torso);
 
         // Cloak
-        const cloak = new THREE.Mesh(new THREE.ConeGeometry(0.35, 0.8, 32), cloakMat);
+        const cloak = new THREE.Mesh(new THREE.ConeGeometry(0.35, 0.8, 44), cloakMat);
         cloak.position.set(0, 0.9, -0.1);
         group.add(cloak);
 
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.14, 48, 32), skinMat);
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.14, 62, 44), skinMat);
         head.position.y = 1.55;
         group.add(head);
 
         // Hood
-        const hood = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.22, 32), cloakMat);
+        const hood = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.22, 44), cloakMat);
         hood.position.y = 1.68;
         group.add(hood);
 
         // Legs
         for (let side = -1; side <= 1; side += 2) {
-          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.7, 32), cloakMat);
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.7, 44), cloakMat);
           leg.position.set(side * 0.09, 0.5, 0);
           group.add(leg);
         }
 
         // Arms
         for (let side = -1; side <= 1; side += 2) {
-          const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.04, 0.5, 32), skinMat);
+          const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.04, 0.5, 44), skinMat);
           arm.position.set(side * 0.25, 1.15, 0);
           group.add(arm);
         }
 
         // Dark bow (black with purple glow)
-        const bowGeo = new THREE.TorusGeometry(0.35, 0.02, 32, 48, Math.PI);
+        const bowGeo = new THREE.TorusGeometry(0.35, 0.02, 44, 62, Math.PI);
         const bowMat = new THREE.MeshStandardMaterial({
           color: 0x111122, emissive: 0x4422aa, emissiveIntensity: 0.5, roughness: 0.6,
         });
@@ -8493,11 +8493,11 @@ export class DiabloRenderer {
         group.add(drQuiver);
         const purpleTipMat = new THREE.MeshStandardMaterial({ color: 0x8844ff, emissive: 0x6622cc, emissiveIntensity: 1.0 });
         for (let da = 0; da < 4; da++) {
-          const daGeo = new THREE.CylinderGeometry(0.008, 0.008, 0.45, 32);
+          const daGeo = new THREE.CylinderGeometry(0.008, 0.008, 0.45, 44);
           const daArrow = new THREE.Mesh(daGeo, cloakMat);
           daArrow.position.set(0.12 + (da - 1.5) * 0.018, 1.3, -0.15);
           group.add(daArrow);
-          const daTipGeo = new THREE.ConeGeometry(0.015, 0.04, 32);
+          const daTipGeo = new THREE.ConeGeometry(0.015, 0.04, 44);
           const daTip = new THREE.Mesh(daTipGeo, purpleTipMat);
           daTip.position.set(0.12 + (da - 1.5) * 0.018, 1.54, -0.15);
           group.add(daTip);
@@ -8511,7 +8511,7 @@ export class DiabloRenderer {
         group.add(veil);
 
         // Shadow trail hint (translucent dark cone trailing behind)
-        const trailGeo = new THREE.ConeGeometry(0.2, 0.6, 32);
+        const trailGeo = new THREE.ConeGeometry(0.2, 0.6, 44);
         const trailMat = new THREE.MeshStandardMaterial({
           color: 0x1a0a2a, transparent: true, opacity: 0.2, roughness: 0.5,
         });
@@ -8533,7 +8533,7 @@ export class DiabloRenderer {
         const radii = [0.6, 0.5, 0.45, 0.35, 0.3];
         const yOffsets = [0.7, 1.2, 1.6, 2.0, 2.3];
         for (let i = 0; i < radii.length; i++) {
-          const sphere = new THREE.Mesh(new THREE.SphereGeometry(radii[i], 48, 32), shadowMat);
+          const sphere = new THREE.Mesh(new THREE.SphereGeometry(radii[i], 62, 44), shadowMat);
           sphere.position.y = yOffsets[i];
           sphere.position.x = (Math.random() - 0.5) * 0.2;
           sphere.position.z = (Math.random() - 0.5) * 0.2;
@@ -8544,7 +8544,7 @@ export class DiabloRenderer {
         const extraRadii = [0.25, 0.2, 0.4, 0.15, 0.3];
         const extraYOff = [0.4, 0.9, 1.4, 2.4, 2.6];
         for (let ei = 0; ei < extraRadii.length; ei++) {
-          const eSphere = new THREE.Mesh(new THREE.SphereGeometry(extraRadii[ei], 48, 32), shadowMat);
+          const eSphere = new THREE.Mesh(new THREE.SphereGeometry(extraRadii[ei], 62, 44), shadowMat);
           eSphere.position.set((Math.random() - 0.5) * 0.3, extraYOff[ei], (Math.random() - 0.5) * 0.3);
           group.add(eSphere);
         }
@@ -8552,7 +8552,7 @@ export class DiabloRenderer {
         // Purple eyes
         const eyeMat = new THREE.MeshStandardMaterial({ color: 0xaa44ff, emissive: 0x8822dd, emissiveIntensity: 2.0 });
         for (let side = -1; side <= 1; side += 2) {
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.08, 48, 32), eyeMat);
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.08, 62, 44), eyeMat);
           eye.position.set(side * 0.15, 2.0, 0.3);
           group.add(eye);
         }
@@ -8569,7 +8569,7 @@ export class DiabloRenderer {
           color: 0x6622aa, emissive: 0x4411aa, emissiveIntensity: 2.0,
           transparent: true, opacity: 0.6,
         });
-        const coreGeo = new THREE.SphereGeometry(0.2, 48, 32);
+        const coreGeo = new THREE.SphereGeometry(0.2, 62, 44);
         const core = new THREE.Mesh(coreGeo, coreMat);
         core.position.y = 1.3;
         group.add(core);
@@ -8577,7 +8577,7 @@ export class DiabloRenderer {
         // Tendrils (thin cylinders extending from body mass)
         for (let ti = 0; ti < 5; ti++) {
           const tAngle = (ti / 5) * Math.PI * 2;
-          const tendrilGeo = new THREE.CylinderGeometry(0.03, 0.01, 1.0, 32);
+          const tendrilGeo = new THREE.CylinderGeometry(0.03, 0.01, 1.0, 44);
           const tendril = new THREE.Mesh(tendrilGeo, shadowMat);
           tendril.position.set(Math.cos(tAngle) * 0.4, 1.0, Math.sin(tAngle) * 0.4);
           tendril.rotation.z = Math.cos(tAngle) * 0.8;
@@ -8597,7 +8597,7 @@ export class DiabloRenderer {
         }
 
         // Ground shadow (dark transparent circle below)
-        const gShadowGeo = new THREE.CircleGeometry(1.0, 48);
+        const gShadowGeo = new THREE.CircleGeometry(1.0, 62);
         const gShadowMat = new THREE.MeshStandardMaterial({
           color: 0x0a0510, transparent: true, opacity: 0.3, roughness: 1.0,
         });
@@ -8611,26 +8611,26 @@ export class DiabloRenderer {
       case EnemyType.SKELETON_WARRIOR: {
         const boneMat = new THREE.MeshStandardMaterial({ color: 0xe8e0d0, roughness: 0.7 });
         // Skull
-        const skull = new THREE.Mesh(new THREE.SphereGeometry(0.16, 48, 32), boneMat);
+        const skull = new THREE.Mesh(new THREE.SphereGeometry(0.16, 62, 44), boneMat);
         skull.position.y = 1.55;
         group.add(skull);
 
         // Eye sockets
         const socketMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
         for (let side = -1; side <= 1; side += 2) {
-          const socket = new THREE.Mesh(new THREE.SphereGeometry(0.04, 32, 24), socketMat);
+          const socket = new THREE.Mesh(new THREE.SphereGeometry(0.04, 44, 36), socketMat);
           socket.position.set(side * 0.06, 1.57, 0.13);
           group.add(socket);
         }
 
         // Spine
-        const spine = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.5, 32), boneMat);
+        const spine = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.5, 44), boneMat);
         spine.position.y = 1.15;
         group.add(spine);
 
         // Ribs (thin torus rings)
         for (let r = 0; r < 4; r++) {
-          const ribGeo = new THREE.TorusGeometry(0.15 - r * 0.015, 0.015, 48, 48, Math.PI);
+          const ribGeo = new THREE.TorusGeometry(0.15 - r * 0.015, 0.015, 62, 62, Math.PI);
           const rib = new THREE.Mesh(ribGeo, boneMat);
           rib.position.y = 1.3 - r * 0.08;
           rib.rotation.y = Math.PI;
@@ -8644,20 +8644,20 @@ export class DiabloRenderer {
 
         // Arms
         for (let side = -1; side <= 1; side += 2) {
-          const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.35, 32), boneMat);
+          const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.35, 44), boneMat);
           upperArm.position.set(side * 0.22, 1.2, 0);
           group.add(upperArm);
-          const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.3, 32), boneMat);
+          const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.3, 44), boneMat);
           forearm.position.set(side * 0.25, 0.9, 0);
           group.add(forearm);
         }
 
         // Legs
         for (let side = -1; side <= 1; side += 2) {
-          const femur = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.4, 32), boneMat);
+          const femur = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.4, 44), boneMat);
           femur.position.set(side * 0.08, 0.6, 0);
           group.add(femur);
-          const tibia = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.4, 32), boneMat);
+          const tibia = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.4, 44), boneMat);
           tibia.position.set(side * 0.08, 0.2, 0);
           group.add(tibia);
         }
@@ -8672,7 +8672,7 @@ export class DiabloRenderer {
         // Finger bones (tiny cylinders at hands)
         for (let side = -1; side <= 1; side += 2) {
           for (let fb = 0; fb < 3; fb++) {
-            const fingerBoneGeo = new THREE.CylinderGeometry(0.008, 0.008, 0.08, 32);
+            const fingerBoneGeo = new THREE.CylinderGeometry(0.008, 0.008, 0.08, 44);
             const fingerBone = new THREE.Mesh(fingerBoneGeo, boneMat);
             fingerBone.position.set(side * 0.25 + (fb - 1) * 0.02, 0.72, 0);
             group.add(fingerBone);
@@ -8681,7 +8681,7 @@ export class DiabloRenderer {
 
         // Spine (column of small spheres connecting head to pelvis)
         for (let sv = 0; sv < 5; sv++) {
-          const vertebraGeo = new THREE.SphereGeometry(0.03, 32, 24);
+          const vertebraGeo = new THREE.SphereGeometry(0.03, 44, 36);
           const vertebra = new THREE.Mesh(vertebraGeo, boneMat);
           vertebra.position.set(0, 0.9 + sv * 0.1, -0.05);
           group.add(vertebra);
@@ -8703,7 +8703,7 @@ export class DiabloRenderer {
         group.add(swordBlade);
 
         // Broken shield (half circle geometry)
-        const brokenShieldGeo = new THREE.CircleGeometry(0.15, 32, 0, Math.PI);
+        const brokenShieldGeo = new THREE.CircleGeometry(0.15, 44, 0, Math.PI);
         const brokenShieldMat = new THREE.MeshStandardMaterial({ color: 0x665544, roughness: 0.8, side: THREE.DoubleSide });
         const brokenShield = new THREE.Mesh(brokenShieldGeo, brokenShieldMat);
         brokenShield.position.set(-0.3, 0.9, 0.08);
@@ -8716,7 +8716,7 @@ export class DiabloRenderer {
         const clothMat = new THREE.MeshStandardMaterial({ color: 0x444433, roughness: 0.95 });
 
         // Head
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.16, 48, 32), zombieSkin);
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.16, 62, 44), zombieSkin);
         head.position.set(0.05, 1.4, 0.08);
         group.add(head);
 
@@ -8742,7 +8742,7 @@ export class DiabloRenderer {
 
         // Arms (one hanging lower)
         for (let side = -1; side <= 1; side += 2) {
-          const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.05, 0.6, 32), zombieSkin);
+          const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.05, 0.6, 44), zombieSkin);
           arm.position.set(side * 0.25, side === 1 ? 0.85 : 0.95, 0.1);
           arm.rotation.z = side * 0.15;
           arm.rotation.x = side === 1 ? 0.5 : 0;
@@ -8752,7 +8752,7 @@ export class DiabloRenderer {
         // Exposed flesh (small red/pink spheres on body - wounds)
         const woundMat = new THREE.MeshStandardMaterial({ color: 0xaa3344, roughness: 0.8 });
         for (let wi = 0; wi < 4; wi++) {
-          const woundGeo = new THREE.SphereGeometry(0.04, 32, 24);
+          const woundGeo = new THREE.SphereGeometry(0.04, 44, 36);
           const wound = new THREE.Mesh(woundGeo, woundMat);
           wound.position.set(
             (Math.random() - 0.5) * 0.3,
@@ -8786,7 +8786,7 @@ export class DiabloRenderer {
         }
 
         // Hunched back (additional sphere on upper back)
-        const hunchGeo = new THREE.SphereGeometry(0.12, 48, 32);
+        const hunchGeo = new THREE.SphereGeometry(0.12, 62, 44);
         const hunch = new THREE.Mesh(hunchGeo, zombieSkin);
         hunch.position.set(0, 1.2, -0.1);
         group.add(hunch);
@@ -8801,7 +8801,7 @@ export class DiabloRenderer {
         // Legs (one shorter/angled differently for dragging foot)
         for (let side = -1; side <= 1; side += 2) {
           const legLen = side === 1 ? 0.55 : 0.65;
-          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, legLen, 32), clothMat);
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, legLen, 44), clothMat);
           leg.position.set(side * 0.1, side === 1 ? 0.35 : 0.4, 0);
           if (side === 1) leg.rotation.x = 0.15;
           group.add(leg);
@@ -8814,7 +8814,7 @@ export class DiabloRenderer {
         const skinMat = new THREE.MeshStandardMaterial({ color: 0x998877, roughness: 0.6 });
 
         // Robe body (tall cone)
-        const robe = new THREE.Mesh(new THREE.ConeGeometry(0.5, 1.5, 32), robeMat);
+        const robe = new THREE.Mesh(new THREE.ConeGeometry(0.5, 1.5, 44), robeMat);
         robe.position.y = 0.75;
         robe.castShadow = true;
         group.add(robe);
@@ -8825,32 +8825,32 @@ export class DiabloRenderer {
         group.add(torso);
 
         // Head
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 48, 32), skinMat);
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 62, 44), skinMat);
         head.position.y = 1.65;
         group.add(head);
 
         // Hood
-        const hood = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.25, 32), robeMat);
+        const hood = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.25, 44), robeMat);
         hood.position.y = 1.78;
         group.add(hood);
 
         // Purple eyes
         const eyeMat = new THREE.MeshStandardMaterial({ color: 0xaa44ff, emissive: 0x8822dd, emissiveIntensity: 2.0 });
         for (let side = -1; side <= 1; side += 2) {
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.03, 32, 24), eyeMat);
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.03, 44, 36), eyeMat);
           eye.position.set(side * 0.055, 1.67, 0.12);
           group.add(eye);
         }
 
         // Arms
         for (let side = -1; side <= 1; side += 2) {
-          const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.04, 0.5, 32), robeMat);
+          const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.04, 0.5, 44), robeMat);
           arm.position.set(side * 0.25, 1.15, 0);
           group.add(arm);
         }
 
         // Skull staff
-        const staffGeo = new THREE.CylinderGeometry(0.03, 0.04, 1.8, 32);
+        const staffGeo = new THREE.CylinderGeometry(0.03, 0.04, 1.8, 44);
         const staffMat = new THREE.MeshStandardMaterial({ color: 0x3a2a1a, roughness: 0.9 });
         const staff = new THREE.Mesh(staffGeo, staffMat);
         staff.position.set(0.3, 1.0, 0);
@@ -8858,12 +8858,12 @@ export class DiabloRenderer {
 
         // Ornate staff skull with green emissive eyes
         const staffSkullMat = new THREE.MeshStandardMaterial({ color: 0xe8e0d0, roughness: 0.7 });
-        const staffSkull = new THREE.Mesh(new THREE.SphereGeometry(0.1, 48, 32), staffSkullMat);
+        const staffSkull = new THREE.Mesh(new THREE.SphereGeometry(0.1, 62, 44), staffSkullMat);
         staffSkull.position.set(0.3, 1.95, 0);
         group.add(staffSkull);
         const skullEyeMat = new THREE.MeshStandardMaterial({ color: 0x44ff44, emissive: 0x22cc22, emissiveIntensity: 2.0 });
         for (let side = -1; side <= 1; side += 2) {
-          const skullEye = new THREE.Mesh(new THREE.SphereGeometry(0.02, 32, 24), skullEyeMat);
+          const skullEye = new THREE.Mesh(new THREE.SphereGeometry(0.02, 44, 36), skullEyeMat);
           skullEye.position.set(0.3 + side * 0.04, 1.97, 0.08);
           group.add(skullEye);
         }
@@ -8874,7 +8874,7 @@ export class DiabloRenderer {
           transparent: true, opacity: 0.5,
         });
         for (let fo = 0; fo < 2; fo++) {
-          const foGeo = new THREE.SphereGeometry(0.06, 48, 32);
+          const foGeo = new THREE.SphereGeometry(0.06, 62, 44);
           const floatOrb = new THREE.Mesh(foGeo, floatOrbMat);
           const foAngle = (fo / 2) * Math.PI * 2;
           floatOrb.position.set(
@@ -8895,7 +8895,7 @@ export class DiabloRenderer {
         // Skeletal hands (thin cylinders for fingers visible from sleeves)
         for (let side = -1; side <= 1; side += 2) {
           for (let nf = 0; nf < 3; nf++) {
-            const nfGeo = new THREE.CylinderGeometry(0.008, 0.008, 0.08, 32);
+            const nfGeo = new THREE.CylinderGeometry(0.008, 0.008, 0.08, 44);
             const nfMat = new THREE.MeshStandardMaterial({ color: 0xe8e0d0, roughness: 0.7 });
             const nfMesh = new THREE.Mesh(nfGeo, nfMat);
             nfMesh.position.set(side * 0.25 + (nf - 1) * 0.015, 0.85, 0);
@@ -8904,7 +8904,7 @@ export class DiabloRenderer {
         }
 
         // Runic circle at feet (torus with emissive green material)
-        const runicGeo = new THREE.TorusGeometry(0.6, 0.02, 32, 48);
+        const runicGeo = new THREE.TorusGeometry(0.6, 0.02, 44, 62);
         const runicMat = new THREE.MeshStandardMaterial({
           color: 0x44ff44, emissive: 0x22aa22, emissiveIntensity: 1.5,
         });
@@ -8933,7 +8933,7 @@ export class DiabloRenderer {
           { r: 0.4, y: 2.5, x: 0, z: 0 },
         ];
         for (const part of bodyParts) {
-          const geo = new THREE.SphereGeometry(part.r, 48, 32);
+          const geo = new THREE.SphereGeometry(part.r, 62, 44);
           const mesh = new THREE.Mesh(geo, boneMat);
           mesh.position.set(part.x, part.y, part.z);
           mesh.castShadow = true;
@@ -8941,36 +8941,36 @@ export class DiabloRenderer {
         }
 
         // Head skull
-        const skull = new THREE.Mesh(new THREE.SphereGeometry(0.3, 48, 32), boneMat);
+        const skull = new THREE.Mesh(new THREE.SphereGeometry(0.3, 62, 44), boneMat);
         skull.position.y = 3.0;
         group.add(skull);
 
         // Eye sockets
         const socketMat = new THREE.MeshStandardMaterial({ color: 0x440000, emissive: 0x330000, emissiveIntensity: 1.0 });
         for (let side = -1; side <= 1; side += 2) {
-          const socket = new THREE.Mesh(new THREE.SphereGeometry(0.06, 48, 32), socketMat);
+          const socket = new THREE.Mesh(new THREE.SphereGeometry(0.06, 62, 44), socketMat);
           socket.position.set(side * 0.12, 3.05, 0.25);
           group.add(socket);
         }
 
         // Arms
         for (let side = -1; side <= 1; side += 2) {
-          const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.18, 0.8, 32), boneMat);
+          const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.18, 0.8, 44), boneMat);
           upperArm.position.set(side * 1.0, 2.0, 0);
           upperArm.rotation.z = side * 0.5;
           group.add(upperArm);
-          const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, 0.7, 32), boneMat);
+          const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, 0.7, 44), boneMat);
           forearm.position.set(side * 1.4, 1.4, 0);
           group.add(forearm);
           // Fist
-          const fist = new THREE.Mesh(new THREE.SphereGeometry(0.2, 48, 32), boneMat);
+          const fist = new THREE.Mesh(new THREE.SphereGeometry(0.2, 62, 44), boneMat);
           fist.position.set(side * 1.5, 0.9, 0);
           group.add(fist);
         }
 
         // Central ribcage structure (curved cylinders forming ribs)
         for (let rb = 0; rb < 4; rb++) {
-          const ribGeo2 = new THREE.TorusGeometry(0.4 - rb * 0.03, 0.03, 32, 48, Math.PI);
+          const ribGeo2 = new THREE.TorusGeometry(0.4 - rb * 0.03, 0.03, 44, 62, Math.PI);
           const rib2 = new THREE.Mesh(ribGeo2, boneMat);
           rib2.position.set(0, 1.8 - rb * 0.15, 0);
           rib2.rotation.y = Math.PI;
@@ -8978,11 +8978,11 @@ export class DiabloRenderer {
         }
 
         // Massive bone club arm (one arm much larger)
-        const clubGeo = new THREE.CylinderGeometry(0.2, 0.3, 1.0, 32);
+        const clubGeo = new THREE.CylinderGeometry(0.2, 0.3, 1.0, 44);
         const club = new THREE.Mesh(clubGeo, boneMat);
         club.position.set(1.5, 0.9, 0);
         group.add(club);
-        const clubEndGeo = new THREE.SphereGeometry(0.35, 48, 32);
+        const clubEndGeo = new THREE.SphereGeometry(0.35, 62, 44);
         const clubEnd = new THREE.Mesh(clubEndGeo, boneMat);
         clubEnd.position.set(1.5, 0.35, 0);
         group.add(clubEnd);
@@ -8997,7 +8997,7 @@ export class DiabloRenderer {
           [0.4, 0.7, 0], [-0.4, 0.7, 0],
         ];
         for (const jp of jointPositions) {
-          const jGeo = new THREE.SphereGeometry(0.08, 48, 32);
+          const jGeo = new THREE.SphereGeometry(0.08, 62, 44);
           const jMesh = new THREE.Mesh(jGeo, jointGlowMat);
           jMesh.position.set(jp[0], jp[1], jp[2]);
           group.add(jMesh);
@@ -9020,9 +9020,9 @@ export class DiabloRenderer {
           if (bvType === 0) {
             bvMesh = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.3, 0.1), boneMat);
           } else if (bvType === 1) {
-            bvMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.35, 32), boneMat);
+            bvMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.35, 44), boneMat);
           } else {
-            bvMesh = new THREE.Mesh(new THREE.SphereGeometry(0.12, 62, 32), boneMat);
+            bvMesh = new THREE.Mesh(new THREE.SphereGeometry(0.12, 80, 44), boneMat);
           }
           bvMesh.position.set(
             (Math.random() - 0.5) * 0.8,
@@ -9035,7 +9035,7 @@ export class DiabloRenderer {
 
         // Legs
         for (let side = -1; side <= 1; side += 2) {
-          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 0.8, 32), boneMat);
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 0.8, 44), boneMat);
           leg.position.set(side * 0.4, 0.3, 0);
           group.add(leg);
         }
@@ -9053,12 +9053,12 @@ export class DiabloRenderer {
         });
 
         // Floating cone robe (no legs)
-        const robe = new THREE.Mesh(new THREE.ConeGeometry(0.6, 1.8, 32), wraithMat);
+        const robe = new THREE.Mesh(new THREE.ConeGeometry(0.6, 1.8, 44), wraithMat);
         robe.position.y = 1.2;
         group.add(robe);
 
         // Head
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 48, 32), wraithMat);
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 62, 44), wraithMat);
         head.position.y = 2.2;
         group.add(head);
 
@@ -9069,14 +9069,14 @@ export class DiabloRenderer {
           emissiveIntensity: 3.0,
         });
         for (let side = -1; side <= 1; side += 2) {
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.04, 32, 24), eyeMat);
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.04, 44, 36), eyeMat);
           eye.position.set(side * 0.07, 2.22, 0.15);
           group.add(eye);
         }
 
         // Ethereal arms
         for (let side = -1; side <= 1; side += 2) {
-          const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.02, 0.8, 32), wraithMat);
+          const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.02, 0.8, 44), wraithMat);
           arm.position.set(side * 0.5, 1.8, 0);
           arm.rotation.z = side * 0.6;
           group.add(arm);
@@ -9085,7 +9085,7 @@ export class DiabloRenderer {
         // Spectral chains (thin cylinders hanging from wrists)
         for (let side = -1; side <= 1; side += 2) {
           for (let ch = 0; ch < 3; ch++) {
-            const chainGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.15, 32);
+            const chainGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.15, 44);
             const chain = new THREE.Mesh(chainGeo, wraithMat);
             chain.position.set(side * 0.55, 1.5 - ch * 0.12, 0);
             group.add(chain);
@@ -9093,7 +9093,7 @@ export class DiabloRenderer {
         }
 
         // Crown remnant (thin torus with broken spike)
-        const crownGeo = new THREE.TorusGeometry(0.2, 0.015, 32, 48);
+        const crownGeo = new THREE.TorusGeometry(0.2, 0.015, 44, 62);
         const crownMat2 = new THREE.MeshStandardMaterial({
           color: 0x4466aa, emissive: 0x2244aa, emissiveIntensity: 0.8,
           transparent: true, opacity: 0.6,
@@ -9102,7 +9102,7 @@ export class DiabloRenderer {
         crownMesh.position.y = 2.35;
         crownMesh.rotation.x = Math.PI / 2;
         group.add(crownMesh);
-        const crownSpikeGeo = new THREE.ConeGeometry(0.02, 0.1, 32);
+        const crownSpikeGeo = new THREE.ConeGeometry(0.02, 0.1, 44);
         const crownSpike = new THREE.Mesh(crownSpikeGeo, crownMat2);
         crownSpike.position.set(0, 2.42, 0.15);
         group.add(crownSpike);
@@ -9122,7 +9122,7 @@ export class DiabloRenderer {
           color: 0x6688cc, emissive: 0x4466aa, emissiveIntensity: 0.3,
           transparent: true, opacity: 0.3,
         });
-        const noseGhostGeo = new THREE.ConeGeometry(0.02, 0.05, 32);
+        const noseGhostGeo = new THREE.ConeGeometry(0.02, 0.05, 44);
         const noseGhost = new THREE.Mesh(noseGhostGeo, faceMat);
         noseGhost.position.set(0, 2.18, 0.16);
         noseGhost.rotation.x = -Math.PI / 2;
@@ -9133,7 +9133,7 @@ export class DiabloRenderer {
           color: 0x44ccff, emissive: 0x44ccff, emissiveIntensity: 2.0,
         });
         for (let so = 0; so < 3; so++) {
-          const soulGeo = new THREE.SphereGeometry(0.03, 32, 24);
+          const soulGeo = new THREE.SphereGeometry(0.03, 44, 36);
           const soul = new THREE.Mesh(soulGeo, soulMat);
           const soAngle = (so / 3) * Math.PI * 2;
           soul.position.set(
@@ -9159,7 +9159,7 @@ export class DiabloRenderer {
         }
 
         // Floating glow underneath
-        const glowGeo = new THREE.SphereGeometry(0.3, 48, 32);
+        const glowGeo = new THREE.SphereGeometry(0.3, 62, 44);
         const glowMat = new THREE.MeshStandardMaterial({
           color: 0x2244aa,
           emissive: 0x1122aa,
@@ -9200,12 +9200,12 @@ export class DiabloRenderer {
         const teethMat = new THREE.MeshStandardMaterial({ color: 0xeeeecc });
         for (let t = 0; t < 8; t++) {
           // Top teeth
-          const toothTop = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.07, 32), teethMat);
+          const toothTop = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.07, 44), teethMat);
           toothTop.position.set(-0.35 + t * 0.1, 0.5, 0.31);
           toothTop.rotation.x = Math.PI;
           group.add(toothTop);
           // Bottom teeth
-          const toothBot = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.06, 32), teethMat);
+          const toothBot = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.06, 44), teethMat);
           toothBot.position.set(-0.35 + t * 0.1, 0.5, 0.31);
           group.add(toothBot);
         }
@@ -9221,11 +9221,11 @@ export class DiabloRenderer {
         // Eyes on stalks (2 spheres on thin cylinders poking up from lid)
         const mimicEyeMat = new THREE.MeshStandardMaterial({ color: 0xffff44, emissive: 0xaaaa00, emissiveIntensity: 1.0 });
         for (let side = -1; side <= 1; side += 2) {
-          const stalkGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.2, 32);
+          const stalkGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.2, 44);
           const stalk = new THREE.Mesh(stalkGeo, chestMat);
           stalk.position.set(side * 0.2, 0.7, 0.15);
           group.add(stalk);
-          const eyeStalkGeo = new THREE.SphereGeometry(0.04, 32, 24);
+          const eyeStalkGeo = new THREE.SphereGeometry(0.04, 44, 36);
           const eyeStalk = new THREE.Mesh(eyeStalkGeo, mimicEyeMat);
           eyeStalk.position.set(side * 0.2, 0.82, 0.15);
           group.add(eyeStalk);
@@ -9234,7 +9234,7 @@ export class DiabloRenderer {
         // Stubby legs (4 small cylinders under the base)
         for (let lx = -1; lx <= 1; lx += 2) {
           for (let lz = -1; lz <= 1; lz += 2) {
-            const stubGeo = new THREE.CylinderGeometry(0.06, 0.07, 0.12, 32);
+            const stubGeo = new THREE.CylinderGeometry(0.06, 0.07, 0.12, 44);
             const stub = new THREE.Mesh(stubGeo, chestMat);
             stub.position.set(lx * 0.25, 0.06, lz * 0.18);
             group.add(stub);
@@ -9242,7 +9242,7 @@ export class DiabloRenderer {
         }
 
         // Chain detail (thin cylinder loop on the side)
-        const chainLoopGeo = new THREE.TorusGeometry(0.08, 0.015, 32, 48);
+        const chainLoopGeo = new THREE.TorusGeometry(0.08, 0.015, 44, 62);
         const chainLoopMat = new THREE.MeshStandardMaterial({ color: 0x666666, metalness: 0.7, roughness: 0.3 });
         const chainLoop = new THREE.Mesh(chainLoopGeo, chainLoopMat);
         chainLoop.position.set(0.42, 0.3, 0);
@@ -9254,16 +9254,16 @@ export class DiabloRenderer {
       // ── Volcanic Wastes enemies ──
       case EnemyType.FIRE_IMP: {
         const bodyMat = new THREE.MeshStandardMaterial({ color: 0xcc3300, emissive: 0x661100, emissiveIntensity: 0.3, roughness: 0.6 });
-        const body = new THREE.Mesh(new THREE.SphereGeometry(0.3, 48, 32), bodyMat);
+        const body = new THREE.Mesh(new THREE.SphereGeometry(0.3, 62, 44), bodyMat);
         body.position.y = 0.5;
         body.castShadow = true;
         group.add(body);
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 48, 32), bodyMat);
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 62, 44), bodyMat);
         head.position.y = 0.85;
         group.add(head);
         // Horns
         for (const hx of [-0.1, 0.1]) {
-          const horn = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.15, 32), new THREE.MeshStandardMaterial({ color: 0x222222 }));
+          const horn = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.15, 44), new THREE.MeshStandardMaterial({ color: 0x222222 }));
           horn.position.set(hx, 1.05, 0);
           horn.rotation.z = hx < 0 ? 0.3 : -0.3;
           group.add(horn);
@@ -9271,13 +9271,13 @@ export class DiabloRenderer {
         // Glowing eyes
         const eyeMat = new THREE.MeshStandardMaterial({ color: 0xffff00, emissive: 0xffaa00, emissiveIntensity: 2.0 });
         for (const ex of [-0.06, 0.06]) {
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.03, 32, 24), eyeMat);
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.03, 44, 36), eyeMat);
           eye.position.set(ex, 0.9, 0.17);
           group.add(eye);
         }
         // Legs
         for (const lx of [-0.12, 0.12]) {
-          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.35, 32), bodyMat);
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.35, 44), bodyMat);
           leg.position.set(lx, 0.17, 0);
           group.add(leg);
         }
@@ -9286,11 +9286,11 @@ export class DiabloRenderer {
       case EnemyType.LAVA_ELEMENTAL: {
         const lavaMat = new THREE.MeshStandardMaterial({ color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 0.5, roughness: 0.4 });
         const rockMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.9 });
-        const torso = new THREE.Mesh(new THREE.DodecahedronGeometry(0.5, 2), rockMat);
+        const torso = new THREE.Mesh(new THREE.DodecahedronGeometry(0.5, 3), rockMat);
         torso.position.y = 0.8;
         torso.castShadow = true;
         group.add(torso);
-        const head = new THREE.Mesh(new THREE.DodecahedronGeometry(0.3, 2), rockMat);
+        const head = new THREE.Mesh(new THREE.DodecahedronGeometry(0.3, 3), rockMat);
         head.position.y = 1.4;
         group.add(head);
         // Lava cracks (emissive stripes)
@@ -9301,7 +9301,7 @@ export class DiabloRenderer {
         }
         // Arms
         for (const ax of [-0.5, 0.5]) {
-          const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.5, 32), rockMat);
+          const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.5, 44), rockMat);
           arm.position.set(ax, 0.7, 0);
           arm.rotation.z = ax < 0 ? 0.4 : -0.4;
           group.add(arm);
@@ -9324,7 +9324,7 @@ export class DiabloRenderer {
         group.add(visor);
         // Legs
         for (const lx of [-0.12, 0.12]) {
-          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.6, 32), armorMat);
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.6, 44), armorMat);
           leg.position.set(lx, 0.3, 0);
           group.add(leg);
         }
@@ -9338,21 +9338,21 @@ export class DiabloRenderer {
         const serpMat = new THREE.MeshStandardMaterial({ color: 0x882200, emissive: 0x441100, emissiveIntensity: 0.3, roughness: 0.5 });
         // Snake-like body segments
         for (let s = 0; s < 6; s++) {
-          const seg = new THREE.Mesh(new THREE.SphereGeometry(0.15 - s * 0.01, 48, 32), serpMat);
+          const seg = new THREE.Mesh(new THREE.SphereGeometry(0.15 - s * 0.01, 62, 44), serpMat);
           seg.position.set(Math.sin(s * 0.8) * 0.2, 0.2 + Math.sin(s * 0.5) * 0.15, -s * 0.25);
           seg.castShadow = true;
           group.add(seg);
         }
         // Head
         const headMat = new THREE.MeshStandardMaterial({ color: 0xcc3300, emissive: 0x661100, emissiveIntensity: 0.4 });
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 48, 32), headMat);
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 62, 44), headMat);
         head.scale.set(1, 0.7, 1.3);
         head.position.set(0, 0.3, 0.15);
         group.add(head);
         // Eyes
         const eyeMat = new THREE.MeshStandardMaterial({ color: 0xffff00, emissive: 0xffaa00, emissiveIntensity: 1.5 });
         for (const ex of [-0.06, 0.06]) {
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.03, 32, 24), eyeMat);
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.03, 44, 36), eyeMat);
           eye.position.set(ex, 0.35, 0.3);
           group.add(eye);
         }
@@ -9365,12 +9365,12 @@ export class DiabloRenderer {
         torso.position.y = 1.5;
         torso.castShadow = true;
         group.add(torso);
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.4, 48, 32), rockMat);
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.4, 62, 44), rockMat);
         head.position.y = 2.3;
         group.add(head);
         // Lava eyes
         for (const ex of [-0.15, 0.15]) {
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.08, 48, 32), lavaMat);
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.08, 62, 44), lavaMat);
           eye.position.set(ex, 2.35, 0.35);
           group.add(eye);
         }
@@ -9379,13 +9379,13 @@ export class DiabloRenderer {
           const arm = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.9, 0.25), rockMat);
           arm.position.set(ax, 1.2, 0);
           group.add(arm);
-          const fist = new THREE.Mesh(new THREE.SphereGeometry(0.2, 48, 32), lavaMat);
+          const fist = new THREE.Mesh(new THREE.SphereGeometry(0.2, 62, 44), lavaMat);
           fist.position.set(ax, 0.65, 0);
           group.add(fist);
         }
         // Legs
         for (const lx of [-0.3, 0.3]) {
-          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.18, 0.8, 32), rockMat);
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.18, 0.8, 44), rockMat);
           leg.position.set(lx, 0.4, 0);
           group.add(leg);
         }
@@ -9405,22 +9405,22 @@ export class DiabloRenderer {
         body.position.y = 0.6;
         body.castShadow = true;
         group.add(body);
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 64, 44), voidMat);
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 83, 57), voidMat);
         head.position.y = 1.0;
         group.add(head);
         // Glowing purple eyes
         const eyeMat = new THREE.MeshStandardMaterial({ color: 0xaa44ff, emissive: 0x8822cc, emissiveIntensity: 2.0 });
         for (const ex of [-0.06, 0.06]) {
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.03, 44, 36), eyeMat);
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.03, 57, 46), eyeMat);
           eye.position.set(ex, 1.03, 0.15);
           group.add(eye);
         }
         // Long limbs
         for (const lx of [-0.2, 0.2]) {
-          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.5, 46), voidMat);
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.5, 59), voidMat);
           leg.position.set(lx, 0.25, 0);
           group.add(leg);
-          const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.45, 46), voidMat);
+          const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.45, 59), voidMat);
           arm.position.set(lx * 1.5, 0.75, 0);
           arm.rotation.z = lx < 0 ? 0.5 : -0.5;
           group.add(arm);
@@ -9431,23 +9431,23 @@ export class DiabloRenderer {
         const shadowMat = new THREE.MeshStandardMaterial({ color: 0x1a0033, emissive: 0x0a0015, emissiveIntensity: 0.2, roughness: 0.7 });
         const robeMat = new THREE.MeshStandardMaterial({ color: 0x110022, roughness: 0.8 });
         // Floating robed figure
-        const robe = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.8, 46), robeMat);
+        const robe = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.8, 59), robeMat);
         robe.position.y = 0.6;
         robe.castShadow = true;
         group.add(robe);
-        const hood = new THREE.Mesh(new THREE.SphereGeometry(0.18, 64, 44), shadowMat);
+        const hood = new THREE.Mesh(new THREE.SphereGeometry(0.18, 83, 57), shadowMat);
         hood.position.y = 1.1;
         group.add(hood);
         // Glowing hands
         const handMat = new THREE.MeshStandardMaterial({ color: 0x8844ff, emissive: 0x6622cc, emissiveIntensity: 1.5 });
         for (const hx of [-0.3, 0.3]) {
-          const hand = new THREE.Mesh(new THREE.SphereGeometry(0.06, 64, 44), handMat);
+          const hand = new THREE.Mesh(new THREE.SphereGeometry(0.06, 83, 57), handMat);
           hand.position.set(hx, 0.8, 0.15);
           group.add(hand);
         }
         // Shadow tendrils
         for (let t = 0; t < 4; t++) {
-          const tendril = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.025, 0.4, 46), shadowMat);
+          const tendril = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.025, 0.4, 59), shadowMat);
           tendril.position.set((Math.random() - 0.5) * 0.3, 0.2, (Math.random() - 0.5) * 0.3);
           tendril.rotation.set(Math.random() * 0.5, 0, Math.random() * 0.5);
           group.add(tendril);
@@ -9456,7 +9456,7 @@ export class DiabloRenderer {
       }
       case EnemyType.ABYSSAL_HORROR: {
         const horrorMat = new THREE.MeshStandardMaterial({ color: 0x1a0a2e, emissive: 0x0a0015, emissiveIntensity: 0.2, roughness: 0.6 });
-        const body = new THREE.Mesh(new THREE.SphereGeometry(0.5, 64, 44), horrorMat);
+        const body = new THREE.Mesh(new THREE.SphereGeometry(0.5, 83, 57), horrorMat);
         body.position.y = 0.8;
         body.scale.set(1.2, 0.8, 1);
         body.castShadow = true;
@@ -9464,7 +9464,7 @@ export class DiabloRenderer {
         // Multiple eyes
         const eyeMat = new THREE.MeshStandardMaterial({ color: 0xcc44ff, emissive: 0xaa22dd, emissiveIntensity: 1.5 });
         for (let i = 0; i < 5; i++) {
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.04, 44, 36), eyeMat);
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.04, 57, 46), eyeMat);
           eye.position.set((Math.random() - 0.5) * 0.4, 0.7 + Math.random() * 0.3, 0.4);
           group.add(eye);
         }
@@ -9472,7 +9472,7 @@ export class DiabloRenderer {
         for (let t = 0; t < 6; t++) {
           const tentMat = new THREE.MeshStandardMaterial({ color: 0x2a1a3e, roughness: 0.7 });
           const angle = (t / 6) * Math.PI * 2;
-          const tent = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 0.6, 46), tentMat);
+          const tent = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 0.6, 59), tentMat);
           tent.position.set(Math.cos(angle) * 0.4, 0.3, Math.sin(angle) * 0.4);
           tent.rotation.set(Math.random() * 0.5, 0, Math.cos(angle) * 0.8);
           group.add(tent);
@@ -9485,17 +9485,17 @@ export class DiabloRenderer {
         body.position.y = 0.8;
         body.castShadow = true;
         group.add(body);
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 64, 44), riftMat);
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 83, 57), riftMat);
         head.position.y = 1.2;
         group.add(head);
         // Phase effect - translucent aura
         const auraMat = new THREE.MeshStandardMaterial({ color: 0x6622ff, emissive: 0x4400cc, emissiveIntensity: 0.5, transparent: true, opacity: 0.3 });
-        const aura = new THREE.Mesh(new THREE.SphereGeometry(0.5, 64, 44), auraMat);
+        const aura = new THREE.Mesh(new THREE.SphereGeometry(0.5, 83, 57), auraMat);
         aura.position.y = 0.8;
         group.add(aura);
         // Legs
         for (const lx of [-0.1, 0.1]) {
-          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.5, 46), riftMat);
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.5, 59), riftMat);
           leg.position.set(lx, 0.25, 0);
           group.add(leg);
         }
@@ -9508,30 +9508,30 @@ export class DiabloRenderer {
         torso.position.y = 1.5;
         torso.castShadow = true;
         group.add(torso);
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.35, 64, 44), lordMat);
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.35, 83, 57), lordMat);
         head.position.y = 2.2;
         group.add(head);
         // Crown of void energy
         const crownMat = new THREE.MeshStandardMaterial({ color: 0xaa66ff, emissive: 0x8844cc, emissiveIntensity: 1.5 });
         for (let c = 0; c < 5; c++) {
-          const spike = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.3, 46), crownMat);
+          const spike = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.3, 59), crownMat);
           const a = (c / 5) * Math.PI * 2;
           spike.position.set(Math.cos(a) * 0.25, 2.55, Math.sin(a) * 0.25);
           group.add(spike);
         }
         // Arms with void orbs
         for (const ax of [-0.6, 0.6]) {
-          const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.7, 46), lordMat);
+          const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.7, 59), lordMat);
           arm.position.set(ax, 1.3, 0);
           arm.rotation.z = ax < 0 ? 0.4 : -0.4;
           group.add(arm);
-          const orb = new THREE.Mesh(new THREE.SphereGeometry(0.12, 64, 44), voidMat);
+          const orb = new THREE.Mesh(new THREE.SphereGeometry(0.12, 83, 57), voidMat);
           orb.position.set(ax * 1.3, 1.0, 0);
           group.add(orb);
         }
         // Legs
         for (const lx of [-0.2, 0.2]) {
-          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.8, 46), lordMat);
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.8, 59), lordMat);
           leg.position.set(lx, 0.5, 0);
           group.add(leg);
         }
@@ -9546,7 +9546,7 @@ export class DiabloRenderer {
         torso.position.y = 0.9;
         torso.castShadow = true;
         group.add(torso);
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 64, 44), scaleMat);
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 83, 57), scaleMat);
         head.scale.set(1, 0.9, 1.2);
         head.position.y = 1.35;
         group.add(head);
@@ -9557,22 +9557,22 @@ export class DiabloRenderer {
         // Eyes
         const eyeMat = new THREE.MeshStandardMaterial({ color: 0xffaa00, emissive: 0xcc8800, emissiveIntensity: 1.0 });
         for (const ex of [-0.07, 0.07]) {
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 44, 36), eyeMat);
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 57, 46), eyeMat);
           eye.position.set(ex, 1.38, 0.16);
           group.add(eye);
         }
         // Legs & Arms
         for (const lx of [-0.12, 0.12]) {
-          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.5, 46), scaleMat);
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.5, 59), scaleMat);
           leg.position.set(lx, 0.3, 0);
           group.add(leg);
         }
         // Weapon (halberd)
         const weapMat = new THREE.MeshStandardMaterial({ color: 0x666666, metalness: 0.7, roughness: 0.3 });
-        const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.0, 46), weapMat);
+        const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.0, 59), weapMat);
         shaft.position.set(0.3, 0.9, 0);
         group.add(shaft);
-        const blade = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.2, 46), weapMat);
+        const blade = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.2, 59), weapMat);
         blade.position.set(0.3, 1.45, 0);
         group.add(blade);
         break;
@@ -9582,18 +9582,18 @@ export class DiabloRenderer {
         const scaleMat = new THREE.MeshStandardMaterial({ color: 0x556633, roughness: 0.6 });
         const fireMat = new THREE.MeshStandardMaterial({ color: 0xff6600, emissive: 0xff4400, emissiveIntensity: 1.0 });
         // Robed body
-        const robe = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.9, 46), robeMat);
+        const robe = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.9, 59), robeMat);
         robe.position.y = 0.5;
         robe.castShadow = true;
         group.add(robe);
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 64, 44), scaleMat);
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 83, 57), scaleMat);
         head.position.y = 1.1;
         group.add(head);
         // Staff with flame
-        const staff = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 1.2, 46), new THREE.MeshStandardMaterial({ color: 0x553311 }));
+        const staff = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 1.2, 59), new THREE.MeshStandardMaterial({ color: 0x553311 }));
         staff.position.set(0.25, 0.7, 0);
         group.add(staff);
-        const flame = new THREE.Mesh(new THREE.SphereGeometry(0.08, 64, 44), fireMat);
+        const flame = new THREE.Mesh(new THREE.SphereGeometry(0.08, 83, 57), fireMat);
         flame.position.set(0.25, 1.35, 0);
         group.add(flame);
         break;
@@ -9604,7 +9604,7 @@ export class DiabloRenderer {
         body.position.y = 0.6;
         body.castShadow = true;
         group.add(body);
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.25, 64, 44), scaleMat);
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.25, 83, 57), scaleMat);
         head.scale.set(1, 0.8, 1.4);
         head.position.set(0, 0.9, 0.3);
         group.add(head);
@@ -9619,12 +9619,12 @@ export class DiabloRenderer {
         }
         // Legs
         for (const [lx, lz] of [[-0.2, 0.2], [0.2, 0.2], [-0.2, -0.3], [0.2, -0.3]]) {
-          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.4, 46), scaleMat);
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.4, 59), scaleMat);
           leg.position.set(lx, 0.2, lz);
           group.add(leg);
         }
         // Tail
-        const tail = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.6, 46), scaleMat);
+        const tail = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.6, 59), scaleMat);
         tail.position.set(0, 0.5, -0.7);
         tail.rotation.x = -0.5;
         group.add(tail);
@@ -9632,12 +9632,12 @@ export class DiabloRenderer {
       }
       case EnemyType.DRAGON_WHELP: {
         const whelpMat = new THREE.MeshStandardMaterial({ color: 0xcc5533, emissive: 0x441100, emissiveIntensity: 0.2, roughness: 0.5 });
-        const body = new THREE.Mesh(new THREE.SphereGeometry(0.25, 64, 44), whelpMat);
+        const body = new THREE.Mesh(new THREE.SphereGeometry(0.25, 83, 57), whelpMat);
         body.position.y = 0.5;
         body.scale.set(1, 0.8, 1.2);
         body.castShadow = true;
         group.add(body);
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 64, 44), whelpMat);
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 83, 57), whelpMat);
         head.position.set(0, 0.7, 0.15);
         group.add(head);
         // Small wings
@@ -9651,7 +9651,7 @@ export class DiabloRenderer {
         // Fire eyes
         const eyeMat = new THREE.MeshStandardMaterial({ color: 0xff8800, emissive: 0xcc6600, emissiveIntensity: 1.5 });
         for (const ex of [-0.05, 0.05]) {
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 44, 36), eyeMat);
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 57, 46), eyeMat);
           eye.position.set(ex, 0.73, 0.26);
           group.add(eye);
         }
@@ -9666,7 +9666,7 @@ export class DiabloRenderer {
         body.castShadow = true;
         group.add(body);
         // Neck and head
-        const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 0.8, 46), dragonMat);
+        const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 0.8, 59), dragonMat);
         neck.position.set(0, 1.5, 0.6);
         neck.rotation.x = -0.5;
         group.add(neck);
@@ -9675,7 +9675,7 @@ export class DiabloRenderer {
         group.add(head);
         // Horns
         for (const hx of [-0.15, 0.15]) {
-          const horn = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.4, 46), new THREE.MeshStandardMaterial({ color: 0x222211 }));
+          const horn = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.4, 59), new THREE.MeshStandardMaterial({ color: 0x222211 }));
           horn.position.set(hx, 2.1, 0.85);
           horn.rotation.z = hx < 0 ? 0.3 : -0.3;
           group.add(horn);
@@ -9683,7 +9683,7 @@ export class DiabloRenderer {
         // Fire eyes
         const eyeMat = new THREE.MeshStandardMaterial({ color: 0xff6600, emissive: 0xff4400, emissiveIntensity: 2.0 });
         for (const ex of [-0.1, 0.1]) {
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.05, 64, 44), eyeMat);
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.05, 83, 57), eyeMat);
           eye.position.set(ex, 1.85, 1.25);
           group.add(eye);
         }
@@ -9698,17 +9698,17 @@ export class DiabloRenderer {
         }
         // Legs
         for (const [lx, lz] of [[-0.4, 0.4], [0.4, 0.4], [-0.4, -0.5], [0.4, -0.5]]) {
-          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, 0.7, 46), dragonMat);
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, 0.7, 59), dragonMat);
           leg.position.set(lx, 0.35, lz);
           group.add(leg);
         }
         // Tail
-        const tail = new THREE.Mesh(new THREE.ConeGeometry(0.15, 1.2, 46), dragonMat);
+        const tail = new THREE.Mesh(new THREE.ConeGeometry(0.15, 1.2, 59), dragonMat);
         tail.position.set(0, 0.8, -1.3);
         tail.rotation.x = -0.3;
         group.add(tail);
         // Fire breath glow
-        const breathGlow = new THREE.Mesh(new THREE.SphereGeometry(0.15, 64, 44), fireMat);
+        const breathGlow = new THREE.Mesh(new THREE.SphereGeometry(0.15, 83, 57), fireMat);
         breathGlow.position.set(0, 1.75, 1.3);
         group.add(breathGlow);
         break;
@@ -9720,7 +9720,7 @@ export class DiabloRenderer {
         const underMat = new THREE.MeshStandardMaterial({ color: 0xa09070, roughness: 0.6 });
         const clawMat = new THREE.MeshStandardMaterial({ color: 0x6b5335, roughness: 0.5, metalness: 0.2 });
         // Main carapace (flattened, segmented)
-        const scBody = new THREE.Mesh(new THREE.SphereGeometry(0.35, 64, 44), shellMat);
+        const scBody = new THREE.Mesh(new THREE.SphereGeometry(0.35, 83, 57), shellMat);
         scBody.scale.set(1.3, 0.45, 1.6);
         scBody.position.y = 0.28;
         scBody.castShadow = true;
@@ -9732,21 +9732,21 @@ export class DiabloRenderer {
           group.add(ridge);
         }
         // Underbelly
-        const belly = new THREE.Mesh(new THREE.SphereGeometry(0.3, 64, 44), underMat);
+        const belly = new THREE.Mesh(new THREE.SphereGeometry(0.3, 83, 57), underMat);
         belly.scale.set(1.1, 0.3, 1.4);
         belly.position.y = 0.18;
         group.add(belly);
         // Tail — 7 articulated segments curving up and over
         for (let s = 0; s < 7; s++) {
           const r = 0.1 - s * 0.008;
-          const seg = new THREE.Mesh(new THREE.SphereGeometry(r, 64, 44), shellMat);
+          const seg = new THREE.Mesh(new THREE.SphereGeometry(r, 83, 57), shellMat);
           const t = s / 6;
           seg.position.set(0, 0.35 + t * t * 1.2, -0.4 - t * 0.6 + t * t * 0.4);
           seg.castShadow = true;
           group.add(seg);
           // Joint ring between segments
           if (s > 0) {
-            const joint = new THREE.Mesh(new THREE.TorusGeometry(r * 0.7, 0.008, 51, 76), underMat);
+            const joint = new THREE.Mesh(new THREE.TorusGeometry(r * 0.7, 0.008, 66, 98), underMat);
             joint.rotation.x = Math.PI / 2;
             joint.position.copy(seg.position);
             group.add(joint);
@@ -9754,30 +9754,30 @@ export class DiabloRenderer {
         }
         // Stinger (curved, venomous)
         const stingerMat = new THREE.MeshStandardMaterial({ color: 0x220000, emissive: 0x661100, emissiveIntensity: 0.8 });
-        const stinger = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.18, 46), stingerMat);
+        const stinger = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.18, 59), stingerMat);
         stinger.position.set(0, 1.55, -0.35);
         stinger.rotation.x = 0.6;
         group.add(stinger);
         // Venom droplet
         const venomMat = new THREE.MeshStandardMaterial({ color: 0x44ff22, emissive: 0x22aa00, emissiveIntensity: 1.2, transparent: true, opacity: 0.7 });
-        const venom = new THREE.Mesh(new THREE.SphereGeometry(0.02, 44, 36), venomMat);
+        const venom = new THREE.Mesh(new THREE.SphereGeometry(0.02, 57, 46), venomMat);
         venom.position.set(0, 1.44, -0.28);
         group.add(venom);
         // Pedipalps / Claws (articulated pincers)
         for (const side of [-1, 1]) {
           // Upper arm
-          const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.3, 46), clawMat);
+          const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.3, 59), clawMat);
           upperArm.position.set(side * 0.3, 0.28, 0.35);
           upperArm.rotation.z = side * 0.5;
           upperArm.castShadow = true;
           group.add(upperArm);
           // Forearm
-          const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.04, 0.25, 46), clawMat);
+          const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.04, 0.25, 59), clawMat);
           forearm.position.set(side * 0.48, 0.25, 0.48);
           forearm.rotation.z = side * 0.3;
           group.add(forearm);
           // Claw base
-          const clawBase = new THREE.Mesh(new THREE.SphereGeometry(0.06, 64, 44), clawMat);
+          const clawBase = new THREE.Mesh(new THREE.SphereGeometry(0.06, 83, 57), clawMat);
           clawBase.scale.set(1, 0.6, 1.2);
           clawBase.position.set(side * 0.58, 0.25, 0.58);
           group.add(clawBase);
@@ -9796,21 +9796,21 @@ export class DiabloRenderer {
         const scEyeMat = new THREE.MeshStandardMaterial({ color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 2.0 });
         const eyePositions = [[-0.06, 0.42, 0.42], [0.06, 0.42, 0.42], [-0.04, 0.44, 0.38], [0.04, 0.44, 0.38]];
         for (const ep of eyePositions) {
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 44, 36), scEyeMat);
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 57, 46), scEyeMat);
           eye.position.set(ep[0], ep[1], ep[2]);
           group.add(eye);
         }
         // 8 segmented legs with knee joints
         for (let i = 0; i < 4; i++) {
           for (const side of [-1, 1]) {
-            const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 0.2, 46), shellMat);
+            const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 0.2, 59), shellMat);
             upper.position.set(side * (0.32 + i * 0.04), 0.22, 0.15 - i * 0.18);
             upper.rotation.z = side * 0.7;
             group.add(upper);
-            const knee = new THREE.Mesh(new THREE.SphereGeometry(0.025, 44, 36), shellMat);
+            const knee = new THREE.Mesh(new THREE.SphereGeometry(0.025, 57, 46), shellMat);
             knee.position.set(side * (0.42 + i * 0.04), 0.12, 0.15 - i * 0.18);
             group.add(knee);
-            const lower = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, 0.15, 46), shellMat);
+            const lower = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, 0.15, 59), shellMat);
             lower.position.set(side * (0.46 + i * 0.04), 0.06, 0.15 - i * 0.18);
             lower.rotation.z = side * 0.2;
             group.add(lower);
@@ -9837,11 +9837,11 @@ export class DiabloRenderer {
         robeFront.rotation.x = 0.1;
         group.add(robeFront);
         // Robe skirt flowing down
-        const robeSkirt = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.35, 46), robesMat);
+        const robeSkirt = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.35, 59), robesMat);
         robeSkirt.position.y = 0.58;
         group.add(robeSkirt);
         // Belt with buckle
-        const belt = new THREE.Mesh(new THREE.TorusGeometry(0.21, 0.02, 51, 76), leatherMat);
+        const belt = new THREE.Mesh(new THREE.TorusGeometry(0.21, 0.02, 66, 98), leatherMat);
         belt.rotation.x = Math.PI / 2;
         belt.position.y = 0.72;
         group.add(belt);
@@ -9850,7 +9850,7 @@ export class DiabloRenderer {
         group.add(buckle);
         // Shoulder wraps
         for (const sx of [-0.22, 0.22]) {
-          const wrap = new THREE.Mesh(new THREE.SphereGeometry(0.08, 64, 44), robeTrimMat);
+          const wrap = new THREE.Mesh(new THREE.SphereGeometry(0.08, 83, 57), robeTrimMat);
           wrap.scale.set(1, 0.6, 1);
           wrap.position.set(sx, 1.15, 0);
           group.add(wrap);
@@ -9860,23 +9860,23 @@ export class DiabloRenderer {
         scarf.position.set(0, 1.22, 0.02);
         group.add(scarf);
         // Head
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.14, 64, 44), skinMat);
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.14, 83, 57), skinMat);
         head.position.y = 1.35;
         group.add(head);
         // Turban with folds
-        const turbanBase = new THREE.Mesh(new THREE.SphereGeometry(0.16, 64, 44), new THREE.MeshStandardMaterial({ color: 0xccaa55, roughness: 0.7 }));
+        const turbanBase = new THREE.Mesh(new THREE.SphereGeometry(0.16, 83, 57), new THREE.MeshStandardMaterial({ color: 0xccaa55, roughness: 0.7 }));
         turbanBase.scale.set(1, 0.65, 1);
         turbanBase.position.y = 1.45;
         group.add(turbanBase);
         // Turban fold wraps
         for (let t = 0; t < 3; t++) {
-          const fold = new THREE.Mesh(new THREE.TorusGeometry(0.14 - t * 0.015, 0.018, 51, 76), new THREE.MeshStandardMaterial({ color: 0xbbaa44, roughness: 0.6 }));
+          const fold = new THREE.Mesh(new THREE.TorusGeometry(0.14 - t * 0.015, 0.018, 66, 98), new THREE.MeshStandardMaterial({ color: 0xbbaa44, roughness: 0.6 }));
           fold.rotation.x = Math.PI / 2 + t * 0.15;
           fold.position.y = 1.42 + t * 0.04;
           group.add(fold);
         }
         // Turban jewel
-        const jewel = new THREE.Mesh(new THREE.OctahedronGeometry(0.025, 3), new THREE.MeshStandardMaterial({ color: 0xff2222, emissive: 0xaa0000, emissiveIntensity: 0.5 }));
+        const jewel = new THREE.Mesh(new THREE.OctahedronGeometry(0.025, 4), new THREE.MeshStandardMaterial({ color: 0xff2222, emissive: 0xaa0000, emissiveIntensity: 0.5 }));
         jewel.position.set(0, 1.45, 0.16);
         group.add(jewel);
         // Shemagh tail draping down back
@@ -9888,16 +9888,16 @@ export class DiabloRenderer {
         const dbEyeMat = new THREE.MeshStandardMaterial({ color: 0x332200 });
         const linerMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
         for (const ex of [-0.05, 0.05]) {
-          const liner = new THREE.Mesh(new THREE.SphereGeometry(0.028, 44, 36), linerMat);
+          const liner = new THREE.Mesh(new THREE.SphereGeometry(0.028, 57, 46), linerMat);
           liner.position.set(ex, 1.37, 0.12);
           liner.scale.set(1.2, 0.6, 0.5);
           group.add(liner);
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.018, 44, 36), dbEyeMat);
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.018, 57, 46), dbEyeMat);
           eye.position.set(ex, 1.37, 0.13);
           group.add(eye);
         }
         // Nose
-        const nose = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.05, 46), skinMat);
+        const nose = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.05, 59), skinMat);
         nose.position.set(0, 1.34, 0.14);
         nose.rotation.x = -0.3;
         group.add(nose);
@@ -9908,7 +9908,7 @@ export class DiabloRenderer {
         blade.rotation.z = -0.2;
         group.add(blade);
         // Blade curve tip
-        const bladeTip = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.1, 46), metalMat);
+        const bladeTip = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.1, 59), metalMat);
         bladeTip.position.set(0.26, 1.08, 0);
         bladeTip.rotation.z = -0.5;
         group.add(bladeTip);
@@ -9922,31 +9922,31 @@ export class DiabloRenderer {
         guard.position.set(0.32, 0.62, 0);
         group.add(guard);
         // Hilt wrap
-        const hilt = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.018, 0.1, 46), leatherMat);
+        const hilt = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.018, 0.1, 59), leatherMat);
         hilt.position.set(0.33, 0.55, 0);
         group.add(hilt);
         // Pommel
-        const pommel = new THREE.Mesh(new THREE.SphereGeometry(0.02, 44, 36), goldTrimMat);
+        const pommel = new THREE.Mesh(new THREE.SphereGeometry(0.02, 57, 46), goldTrimMat);
         pommel.position.set(0.34, 0.49, 0);
         group.add(pommel);
         // Arms
         for (const ax of [-0.22, 0.22]) {
-          const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.05, 0.25, 46), robesMat);
+          const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.05, 0.25, 59), robesMat);
           upperArm.position.set(ax, 1.02, 0);
           upperArm.rotation.z = ax < 0 ? 0.15 : -0.15;
           group.add(upperArm);
-          const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.045, 0.22, 46), skinMat);
+          const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.045, 0.22, 59), skinMat);
           forearm.position.set(ax * 1.15, 0.82, 0);
           forearm.rotation.z = ax < 0 ? 0.2 : -0.2;
           group.add(forearm);
           // Leather bracer
-          const bracer = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.05, 0.08, 46), leatherMat);
+          const bracer = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.05, 0.08, 59), leatherMat);
           bracer.position.set(ax * 1.1, 0.88, 0);
           group.add(bracer);
         }
         // Legs with sandals
         for (const lx of [-0.1, 0.1]) {
-          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.06, 0.45, 46), robesMat);
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.06, 0.45, 59), robesMat);
           leg.position.set(lx, 0.35, 0);
           group.add(leg);
           // Sandal
@@ -9954,7 +9954,7 @@ export class DiabloRenderer {
           sandal.position.set(lx, 0.1, 0.02);
           group.add(sandal);
           // Sandal strap
-          const strap = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.008, 51, 76), leatherMat);
+          const strap = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.008, 66, 98), leatherMat);
           strap.rotation.x = Math.PI / 2;
           strap.position.set(lx, 0.14, 0.02);
           group.add(strap);
@@ -9975,20 +9975,20 @@ export class DiabloRenderer {
         // Body segments emerging from ground with ridged plating
         for (let s = 0; s < 8; s++) {
           const radius = 0.28 - s * 0.015;
-          const seg = new THREE.Mesh(new THREE.SphereGeometry(radius, 64, 44), s % 2 === 0 ? wurmMat : wurmDarkMat);
+          const seg = new THREE.Mesh(new THREE.SphereGeometry(radius, 83, 57), s % 2 === 0 ? wurmMat : wurmDarkMat);
           seg.scale.set(1, 0.7, 1);
           seg.position.set(Math.sin(s * 0.6) * 0.35, 0.15 + s * 0.22, -s * 0.18);
           seg.castShadow = true;
           group.add(seg);
           // Segment ridge ring
-          const ridge = new THREE.Mesh(new THREE.TorusGeometry(radius * 0.95, 0.015, 51, 76), wurmDarkMat);
+          const ridge = new THREE.Mesh(new THREE.TorusGeometry(radius * 0.95, 0.015, 66, 98), wurmDarkMat);
           ridge.rotation.y = Math.PI / 2;
           ridge.position.copy(seg.position);
           group.add(ridge);
           // Small spines on each segment
           for (let sp = 0; sp < 3; sp++) {
             const ang = (sp / 3) * Math.PI - Math.PI / 2;
-            const spine = new THREE.Mesh(new THREE.ConeGeometry(0.012, 0.06, 46), wurmDarkMat);
+            const spine = new THREE.Mesh(new THREE.ConeGeometry(0.012, 0.06, 59), wurmDarkMat);
             spine.position.set(
               seg.position.x + Math.cos(ang) * radius * 0.8,
               seg.position.y + 0.05,
@@ -10007,7 +10007,7 @@ export class DiabloRenderer {
           group.add(debris);
         }
         // Head (larger, armored)
-        const wHead = new THREE.Mesh(new THREE.SphereGeometry(0.32, 64, 44), wurmMat);
+        const wHead = new THREE.Mesh(new THREE.SphereGeometry(0.32, 83, 57), wurmMat);
         wHead.scale.set(1, 1.1, 0.9);
         wHead.position.set(Math.sin(7.5 * 0.6) * 0.35, 1.85, -0.1);
         group.add(wHead);
@@ -10018,10 +10018,10 @@ export class DiabloRenderer {
           group.add(plate);
         }
         // Open maw with depth
-        const mawOuter = new THREE.Mesh(new THREE.RingGeometry(0.08, 0.25, 8), innerMat);
+        const mawOuter = new THREE.Mesh(new THREE.RingGeometry(0.08, 0.25, 16), innerMat);
         mawOuter.position.set(wHead.position.x, wHead.position.y + 0.05, wHead.position.z + 0.3);
         group.add(mawOuter);
-        const mawInner = new THREE.Mesh(new THREE.CircleGeometry(0.1, 62), new THREE.MeshStandardMaterial({ color: 0x441111, roughness: 0.9 }));
+        const mawInner = new THREE.Mesh(new THREE.CircleGeometry(0.1, 80), new THREE.MeshStandardMaterial({ color: 0x441111, roughness: 0.9 }));
         mawInner.position.set(wHead.position.x, wHead.position.y + 0.05, wHead.position.z + 0.25);
         group.add(mawInner);
         // Multiple rings of teeth (outer ring large, inner ring small)
@@ -10031,7 +10031,7 @@ export class DiabloRenderer {
           const teethH = ring === 0 ? 0.1 : 0.06;
           for (let t = 0; t < teethCount; t++) {
             const ang = (t / teethCount) * Math.PI * 2;
-            const tooth = new THREE.Mesh(new THREE.ConeGeometry(0.018 - ring * 0.005, teethH, 46), toothMat);
+            const tooth = new THREE.Mesh(new THREE.ConeGeometry(0.018 - ring * 0.005, teethH, 59), toothMat);
             tooth.position.set(
               wHead.position.x + Math.cos(ang) * teethR,
               wHead.position.y + 0.05 + Math.sin(ang) * teethR,
@@ -10043,7 +10043,7 @@ export class DiabloRenderer {
         }
         // Dripping slime from maw
         for (let sl = 0; sl < 3; sl++) {
-          const drip = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.003, 0.1 + sl * 0.04, 46), slimeMat);
+          const drip = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.003, 0.1 + sl * 0.04, 59), slimeMat);
           drip.position.set(
             wHead.position.x + (sl - 1) * 0.06,
             wHead.position.y - 0.1 - sl * 0.03,
@@ -10054,7 +10054,7 @@ export class DiabloRenderer {
         // Sensory tendrils around mouth
         for (let ten = 0; ten < 4; ten++) {
           const ang = (ten / 4) * Math.PI * 2;
-          const tendril = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.003, 0.18, 46), wurmMat);
+          const tendril = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.003, 0.18, 59), wurmMat);
           tendril.position.set(
             wHead.position.x + Math.cos(ang) * 0.26,
             wHead.position.y + Math.sin(ang) * 0.26,
@@ -10074,17 +10074,17 @@ export class DiabloRenderer {
         const boneMat = new THREE.MeshStandardMaterial({ color: 0xccbbaa, transparent: true, opacity: 0.7, roughness: 0.5 });
         // Swirling sand vortex base
         for (let v = 0; v < 4; v++) {
-          const vortex = new THREE.Mesh(new THREE.TorusGeometry(0.25 + v * 0.06, 0.03, 51, 76), wraithDarkMat);
+          const vortex = new THREE.Mesh(new THREE.TorusGeometry(0.25 + v * 0.06, 0.03, 66, 98), wraithDarkMat);
           vortex.rotation.x = Math.PI / 2;
           vortex.rotation.z = v * 0.4;
           vortex.position.y = 0.15 + v * 0.12;
           group.add(vortex);
         }
         // Ghostly body (layered flowing form)
-        const dwBodyOuter = new THREE.Mesh(new THREE.ConeGeometry(0.38, 1.1, 46), wraithDarkMat);
+        const dwBodyOuter = new THREE.Mesh(new THREE.ConeGeometry(0.38, 1.1, 59), wraithDarkMat);
         dwBodyOuter.position.y = 0.65;
         group.add(dwBodyOuter);
-        const dwBodyInner = new THREE.Mesh(new THREE.ConeGeometry(0.3, 1.0, 46), wraithMat);
+        const dwBodyInner = new THREE.Mesh(new THREE.ConeGeometry(0.3, 1.0, 59), wraithMat);
         dwBodyInner.position.y = 0.7;
         dwBodyInner.castShadow = true;
         group.add(dwBodyInner);
@@ -10099,35 +10099,35 @@ export class DiabloRenderer {
         }
         // Skeletal ribcage visible through translucent body
         for (let r = 0; r < 3; r++) {
-          const rib = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.01, 51, 76, Math.PI), boneMat);
+          const rib = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.01, 66, 98, Math.PI), boneMat);
           rib.position.set(0, 0.85 + r * 0.12, 0.08);
           group.add(rib);
         }
         // Spine
-        const spine = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.012, 0.5, 46), boneMat);
+        const spine = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.012, 0.5, 59), boneMat);
         spine.position.set(0, 0.95, -0.05);
         group.add(spine);
         // Head with hollow features
-        const dwHead = new THREE.Mesh(new THREE.SphereGeometry(0.18, 64, 44), wraithMat);
+        const dwHead = new THREE.Mesh(new THREE.SphereGeometry(0.18, 83, 57), wraithMat);
         dwHead.position.y = 1.38;
         group.add(dwHead);
         // Skull underneath
-        const skull = new THREE.Mesh(new THREE.SphereGeometry(0.14, 64, 44), boneMat);
+        const skull = new THREE.Mesh(new THREE.SphereGeometry(0.14, 83, 57), boneMat);
         skull.position.y = 1.36;
         group.add(skull);
         // Eye sockets (dark hollows)
         const socketMat = new THREE.MeshStandardMaterial({ color: 0x221100 });
         for (const ex of [-0.06, 0.06]) {
-          const socket = new THREE.Mesh(new THREE.SphereGeometry(0.04, 44, 36), socketMat);
+          const socket = new THREE.Mesh(new THREE.SphereGeometry(0.04, 57, 46), socketMat);
           socket.position.set(ex, 1.39, 0.12);
           socket.scale.z = 0.5;
           group.add(socket);
           // Glowing ember eyes
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.03, 44, 36), glowMat);
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.03, 57, 46), glowMat);
           eye.position.set(ex, 1.39, 0.14);
           group.add(eye);
           // Eye trail wisps
-          const trail = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.003, 0.12, 46), glowMat);
+          const trail = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.003, 0.12, 59), glowMat);
           trail.position.set(ex + (ex > 0 ? 0.03 : -0.03), 1.42, 0.13);
           trail.rotation.z = ex > 0 ? -0.5 : 0.5;
           group.add(trail);
@@ -10139,14 +10139,14 @@ export class DiabloRenderer {
         group.add(jaw);
         // Ghostly arms reaching outward
         for (const ax of [-0.3, 0.3]) {
-          const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.02, 0.4, 46), wraithMat);
+          const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.02, 0.4, 59), wraithMat);
           arm.position.set(ax, 1.1, 0.1);
           arm.rotation.z = ax < 0 ? 0.6 : -0.6;
           arm.rotation.x = -0.3;
           group.add(arm);
           // Skeletal hand with fingers
           for (let f = 0; f < 3; f++) {
-            const finger = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.004, 0.08, 46), boneMat);
+            const finger = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.004, 0.08, 59), boneMat);
             finger.position.set(ax * 1.5 + (f - 1) * 0.02, 0.92, 0.15);
             finger.rotation.x = -0.4;
             group.add(finger);
@@ -10155,7 +10155,7 @@ export class DiabloRenderer {
         // Orbiting sand wisps (larger, more varied)
         for (let w = 0; w < 10; w++) {
           const size = 0.02 + Math.random() * 0.04;
-          const wisp = new THREE.Mesh(new THREE.SphereGeometry(size, 64, 44), new THREE.MeshStandardMaterial({
+          const wisp = new THREE.Mesh(new THREE.SphereGeometry(size, 83, 57), new THREE.MeshStandardMaterial({
             color: 0xd4b896, transparent: true, opacity: 0.25 + Math.random() * 0.25
           }));
           const ang = (w / 10) * Math.PI * 2;
@@ -10165,7 +10165,7 @@ export class DiabloRenderer {
         }
         // Sand dust cloud at base
         for (let dc = 0; dc < 5; dc++) {
-          const cloud = new THREE.Mesh(new THREE.SphereGeometry(0.06 + dc * 0.02, 64, 44), new THREE.MeshStandardMaterial({
+          const cloud = new THREE.Mesh(new THREE.SphereGeometry(0.06 + dc * 0.02, 83, 57), new THREE.MeshStandardMaterial({
             color: 0xc8a870, transparent: true, opacity: 0.2
           }));
           const ang = (dc / 5) * Math.PI * 2;
@@ -10202,7 +10202,7 @@ export class DiabloRenderer {
           group.add(crack);
         }
         // Head (rough-hewn boulder)
-        const sgHead = new THREE.Mesh(new THREE.DodecahedronGeometry(0.28, 3), sandMat);
+        const sgHead = new THREE.Mesh(new THREE.DodecahedronGeometry(0.28, 4), sandMat);
         sgHead.scale.set(0.9, 0.8, 0.85);
         sgHead.position.y = 2.0;
         group.add(sgHead);
@@ -10212,10 +10212,10 @@ export class DiabloRenderer {
         group.add(brow);
         // Crystal eyes (glowing octahedrons with glow halo)
         for (const ex of [-0.1, 0.1]) {
-          const eyeGlow = new THREE.Mesh(new THREE.SphereGeometry(0.06, 64, 44), crystalBrightMat);
+          const eyeGlow = new THREE.Mesh(new THREE.SphereGeometry(0.06, 83, 57), crystalBrightMat);
           eyeGlow.position.set(ex, 2.02, 0.22);
           group.add(eyeGlow);
-          const eye = new THREE.Mesh(new THREE.OctahedronGeometry(0.05, 3), crystalMat);
+          const eye = new THREE.Mesh(new THREE.OctahedronGeometry(0.05, 4), crystalMat);
           eye.position.set(ex, 2.02, 0.24);
           group.add(eye);
         }
@@ -10225,11 +10225,11 @@ export class DiabloRenderer {
         group.add(jaw);
         // Shoulder boulders
         for (const sx of [-0.5, 0.5]) {
-          const shoulder = new THREE.Mesh(new THREE.DodecahedronGeometry(0.18, 3), sandMat);
+          const shoulder = new THREE.Mesh(new THREE.DodecahedronGeometry(0.18, 4), sandMat);
           shoulder.position.set(sx, 1.7, 0);
           group.add(shoulder);
           // Small crystal shard on shoulder
-          const shard = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.12, 46), crystalMat);
+          const shard = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.12, 59), crystalMat);
           shard.position.set(sx * 0.9, 1.85, 0);
           shard.rotation.z = sx > 0 ? -0.3 : 0.3;
           group.add(shard);
@@ -10242,7 +10242,7 @@ export class DiabloRenderer {
           upperArm.rotation.z = ax < 0 ? 0.25 : -0.25;
           group.add(upperArm);
           // Elbow joint (glowing energy)
-          const elbow = new THREE.Mesh(new THREE.SphereGeometry(0.08, 64, 44), crystalBrightMat);
+          const elbow = new THREE.Mesh(new THREE.SphereGeometry(0.08, 83, 57), crystalBrightMat);
           elbow.position.set(ax * 1.1, 1.1, 0);
           group.add(elbow);
           // Forearm
@@ -10251,12 +10251,12 @@ export class DiabloRenderer {
           forearm.rotation.z = ax < 0 ? 0.15 : -0.15;
           group.add(forearm);
           // Massive fist with knuckle detail
-          const fist = new THREE.Mesh(new THREE.DodecahedronGeometry(0.16, 3), sandMat);
+          const fist = new THREE.Mesh(new THREE.DodecahedronGeometry(0.16, 4), sandMat);
           fist.position.set(ax * 1.25, 0.6, 0);
           group.add(fist);
           // Knuckle ridges
           for (let k = 0; k < 3; k++) {
-            const knuckle = new THREE.Mesh(new THREE.SphereGeometry(0.04, 44, 36), sandDarkMat);
+            const knuckle = new THREE.Mesh(new THREE.SphereGeometry(0.04, 57, 46), sandDarkMat);
             knuckle.position.set(ax * 1.25 + (k - 1) * 0.06, 0.65, 0.12);
             group.add(knuckle);
           }
@@ -10266,7 +10266,7 @@ export class DiabloRenderer {
           const upperLeg = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.3, 0.16), sandMat);
           upperLeg.position.set(lx, 0.62, 0);
           group.add(upperLeg);
-          const knee = new THREE.Mesh(new THREE.SphereGeometry(0.09, 64, 44), crackedMat);
+          const knee = new THREE.Mesh(new THREE.SphereGeometry(0.09, 83, 57), crackedMat);
           knee.position.set(lx, 0.45, 0.04);
           group.add(knee);
           const lowerLeg = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.28, 0.18), sandDarkMat);
@@ -10279,14 +10279,14 @@ export class DiabloRenderer {
         }
         // Embedded crystals on back
         for (let bc = 0; bc < 3; bc++) {
-          const crystal = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.18, 46), crystalMat);
+          const crystal = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.18, 59), crystalMat);
           crystal.position.set((bc - 1) * 0.18, 1.5 + bc * 0.1, -0.3);
           crystal.rotation.x = 0.4;
           group.add(crystal);
         }
         // Falling sand particles
         for (let fp = 0; fp < 4; fp++) {
-          const particle = new THREE.Mesh(new THREE.SphereGeometry(0.015, 44, 36), new THREE.MeshStandardMaterial({ color: 0xc8a870, transparent: true, opacity: 0.4 }));
+          const particle = new THREE.Mesh(new THREE.SphereGeometry(0.015, 57, 46), new THREE.MeshStandardMaterial({ color: 0xc8a870, transparent: true, opacity: 0.4 }));
           particle.position.set((Math.random() - 0.5) * 0.6, 0.3 + Math.random() * 0.8, (Math.random() - 0.5) * 0.4);
           group.add(particle);
         }
@@ -10301,7 +10301,7 @@ export class DiabloRenderer {
         const tuskMat = new THREE.MeshStandardMaterial({ color: 0xeeeecc, roughness: 0.3, metalness: 0.1 });
         const noseMat = new THREE.MeshStandardMaterial({ color: 0xcc8888, roughness: 0.6 });
         // Barrel-shaped body with muscle definition
-        const wbBody = new THREE.Mesh(new THREE.SphereGeometry(0.4, 64, 44), furMat);
+        const wbBody = new THREE.Mesh(new THREE.SphereGeometry(0.4, 83, 57), furMat);
         wbBody.scale.set(0.85, 0.72, 1.35);
         wbBody.position.y = 0.47;
         wbBody.castShadow = true;
@@ -10312,45 +10312,45 @@ export class DiabloRenderer {
         group.add(spineRidge);
         // Bristle tufts along back
         for (let b = 0; b < 6; b++) {
-          const bristle = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.08, 46), furDarkMat);
+          const bristle = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.08, 59), furDarkMat);
           bristle.position.set((Math.random() - 0.5) * 0.08, 0.73, -0.2 + b * 0.12);
           bristle.rotation.x = -0.2;
           group.add(bristle);
         }
         // Muscular shoulder hump
-        const hump = new THREE.Mesh(new THREE.SphereGeometry(0.18, 64, 44), furMat);
+        const hump = new THREE.Mesh(new THREE.SphereGeometry(0.18, 83, 57), furMat);
         hump.position.set(0, 0.62, 0.2);
         group.add(hump);
         // Head with broader shape
-        const wbHead = new THREE.Mesh(new THREE.SphereGeometry(0.2, 64, 44), furMat);
+        const wbHead = new THREE.Mesh(new THREE.SphereGeometry(0.2, 83, 57), furMat);
         wbHead.scale.set(1, 0.85, 1.15);
         wbHead.position.set(0, 0.5, 0.52);
         group.add(wbHead);
         // Brow ridges (heavy)
         for (const bx of [-0.08, 0.08]) {
-          const browR = new THREE.Mesh(new THREE.SphereGeometry(0.05, 64, 44), furDarkMat);
+          const browR = new THREE.Mesh(new THREE.SphereGeometry(0.05, 83, 57), furDarkMat);
           browR.scale.set(1.2, 0.5, 1);
           browR.position.set(bx, 0.57, 0.58);
           group.add(browR);
         }
         // Snout with nostrils
-        const snout = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 0.14, 46), noseMat);
+        const snout = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 0.14, 59), noseMat);
         snout.rotation.x = Math.PI / 2;
         snout.position.set(0, 0.45, 0.7);
         group.add(snout);
         // Nostril holes
         for (const nx of [-0.03, 0.03]) {
-          const nostril = new THREE.Mesh(new THREE.SphereGeometry(0.018, 44, 36), new THREE.MeshStandardMaterial({ color: 0x331111 }));
+          const nostril = new THREE.Mesh(new THREE.SphereGeometry(0.018, 57, 46), new THREE.MeshStandardMaterial({ color: 0x331111 }));
           nostril.position.set(nx, 0.45, 0.78);
           group.add(nostril);
         }
         // Curved tusks with thickness variation
         for (const tx of [-0.09, 0.09]) {
-          const tuskBase = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 0.06, 46), tuskMat);
+          const tuskBase = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 0.06, 59), tuskMat);
           tuskBase.position.set(tx, 0.42, 0.72);
           tuskBase.rotation.x = -0.2;
           group.add(tuskBase);
-          const tuskTip = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.1, 46), tuskMat);
+          const tuskTip = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.1, 59), tuskMat);
           tuskTip.position.set(tx * 1.1, 0.38, 0.76);
           tuskTip.rotation.x = -0.6;
           tuskTip.rotation.z = tx > 0 ? -0.25 : 0.25;
@@ -10359,17 +10359,17 @@ export class DiabloRenderer {
         // Eyes (angry red with dark surround)
         const wbEyeMat = new THREE.MeshStandardMaterial({ color: 0xff2200, emissive: 0xff0000, emissiveIntensity: 1.2 });
         for (const ex of [-0.1, 0.1]) {
-          const eyeSocket = new THREE.Mesh(new THREE.SphereGeometry(0.035, 44, 36), furDarkMat);
+          const eyeSocket = new THREE.Mesh(new THREE.SphereGeometry(0.035, 57, 46), furDarkMat);
           eyeSocket.position.set(ex, 0.55, 0.56);
           eyeSocket.scale.z = 0.5;
           group.add(eyeSocket);
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 44, 36), wbEyeMat);
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 57, 46), wbEyeMat);
           eye.position.set(ex, 0.55, 0.58);
           group.add(eye);
         }
         // Ears (small, pointed)
         for (const ex of [-0.12, 0.12]) {
-          const ear = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.07, 46), furMat);
+          const ear = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.07, 59), furMat);
           ear.position.set(ex, 0.64, 0.42);
           ear.rotation.x = -0.3;
           ear.rotation.z = ex > 0 ? -0.3 : 0.3;
@@ -10378,25 +10378,25 @@ export class DiabloRenderer {
         // Legs with joints and hooves
         for (let i = 0; i < 2; i++) {
           for (const side of [-1, 1]) {
-            const upperLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.04, 0.15, 46), furMat);
+            const upperLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.04, 0.15, 59), furMat);
             upperLeg.position.set(side * 0.2, 0.28, i * 0.42 - 0.1);
             group.add(upperLeg);
-            const lowerLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.04, 0.15, 46), furLightMat);
+            const lowerLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.04, 0.15, 59), furLightMat);
             lowerLeg.position.set(side * 0.2, 0.13, i * 0.42 - 0.1);
             group.add(lowerLeg);
             // Hoof
-            const hoof = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.045, 0.04, 46), new THREE.MeshStandardMaterial({ color: 0x222222 }));
+            const hoof = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.045, 0.04, 59), new THREE.MeshStandardMaterial({ color: 0x222222 }));
             hoof.position.set(side * 0.2, 0.04, i * 0.42 - 0.1);
             group.add(hoof);
           }
         }
         // Short curly tail
-        const tail = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.012, 51, 76, Math.PI * 1.5), furMat);
+        const tail = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.012, 66, 98, Math.PI * 1.5), furMat);
         tail.position.set(0, 0.5, -0.4);
         tail.rotation.y = Math.PI / 2;
         group.add(tail);
         // Belly lighter fur patch
-        const belly = new THREE.Mesh(new THREE.SphereGeometry(0.15, 64, 44), furLightMat);
+        const belly = new THREE.Mesh(new THREE.SphereGeometry(0.15, 83, 57), furLightMat);
         belly.scale.set(1.2, 0.5, 1.5);
         belly.position.set(0, 0.3, 0.05);
         group.add(belly);
@@ -10430,32 +10430,32 @@ export class DiabloRenderer {
         strap2.rotation.z = -0.3;
         group.add(strap2);
         // Fur collar
-        const collar = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.04, 51, 76), furTrimMat);
+        const collar = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.04, 66, 98), furTrimMat);
         collar.rotation.x = Math.PI / 2;
         collar.position.y = 1.22;
         group.add(collar);
         // Shoulder pads with bone spikes
         for (const sx of [-0.26, 0.26]) {
-          const pad = new THREE.Mesh(new THREE.SphereGeometry(0.08, 64, 44), leatherDarkMat);
+          const pad = new THREE.Mesh(new THREE.SphereGeometry(0.08, 83, 57), leatherDarkMat);
           pad.scale.set(1.3, 0.6, 1);
           pad.position.set(sx, 1.18, 0);
           group.add(pad);
-          const boneSpike = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.08, 46), new THREE.MeshStandardMaterial({ color: 0xddccaa }));
+          const boneSpike = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.08, 59), new THREE.MeshStandardMaterial({ color: 0xddccaa }));
           boneSpike.position.set(sx * 1.15, 1.24, 0);
           boneSpike.rotation.z = sx > 0 ? -0.6 : 0.6;
           group.add(boneSpike);
         }
         // Head
-        const prHead = new THREE.Mesh(new THREE.SphereGeometry(0.14, 64, 44), skinMat);
+        const prHead = new THREE.Mesh(new THREE.SphereGeometry(0.14, 83, 57), skinMat);
         prHead.position.y = 1.42;
         group.add(prHead);
         // War braids (hanging from sides)
         for (const bx of [-0.12, 0.12]) {
-          const braid = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.012, 0.15, 46), new THREE.MeshStandardMaterial({ color: 0x222211 }));
+          const braid = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.012, 0.15, 59), new THREE.MeshStandardMaterial({ color: 0x222211 }));
           braid.position.set(bx, 1.32, -0.05);
           group.add(braid);
           // Braid bead
-          const bead = new THREE.Mesh(new THREE.SphereGeometry(0.012, 44, 36), metalMat);
+          const bead = new THREE.Mesh(new THREE.SphereGeometry(0.012, 57, 46), metalMat);
           bead.position.set(bx, 1.24, -0.05);
           group.add(bead);
         }
@@ -10472,32 +10472,32 @@ export class DiabloRenderer {
         group.add(chinPaint);
         // Fierce eyes
         for (const ex of [-0.045, 0.045]) {
-          const eyeWhite = new THREE.Mesh(new THREE.SphereGeometry(0.022, 44, 36), new THREE.MeshStandardMaterial({ color: 0xeeeeee }));
+          const eyeWhite = new THREE.Mesh(new THREE.SphereGeometry(0.022, 57, 46), new THREE.MeshStandardMaterial({ color: 0xeeeeee }));
           eyeWhite.position.set(ex, 1.43, 0.12);
           eyeWhite.scale.z = 0.5;
           group.add(eyeWhite);
-          const iris = new THREE.Mesh(new THREE.SphereGeometry(0.015, 44, 36), new THREE.MeshStandardMaterial({ color: 0xffcc00, emissive: 0xffaa00, emissiveIntensity: 1.0 }));
+          const iris = new THREE.Mesh(new THREE.SphereGeometry(0.015, 57, 46), new THREE.MeshStandardMaterial({ color: 0xffcc00, emissive: 0xffaa00, emissiveIntensity: 1.0 }));
           iris.position.set(ex, 1.43, 0.135);
           group.add(iris);
         }
         // Nose
-        const prNose = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.04, 46), skinMat);
+        const prNose = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.04, 59), skinMat);
         prNose.position.set(0, 1.39, 0.14);
         prNose.rotation.x = -0.2;
         group.add(prNose);
         // Spear (detailed with wrapped grip and feathers)
-        const spearShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.02, 1.3, 46), woodMat);
+        const spearShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.02, 1.3, 59), woodMat);
         spearShaft.position.set(0.3, 0.95, 0);
         group.add(spearShaft);
         // Spear grip wrap
         for (let w = 0; w < 4; w++) {
-          const wrap = new THREE.Mesh(new THREE.TorusGeometry(0.022, 0.005, 51, 76), leatherDarkMat);
+          const wrap = new THREE.Mesh(new THREE.TorusGeometry(0.022, 0.005, 66, 98), leatherDarkMat);
           wrap.rotation.x = Math.PI / 2;
           wrap.position.set(0.3, 0.6 + w * 0.08, 0);
           group.add(wrap);
         }
         // Spear head (leaf-shaped)
-        const spearHead = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.18, 46), metalMat);
+        const spearHead = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.18, 59), metalMat);
         spearHead.position.set(0.3, 1.65, 0);
         group.add(spearHead);
         // Feathers on spear
@@ -10509,25 +10509,25 @@ export class DiabloRenderer {
         }
         // Arms
         for (const ax of [-0.24, 0.24]) {
-          const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.05, 0.22, 46), skinMat);
+          const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.05, 0.22, 59), skinMat);
           upperArm.position.set(ax, 1.05, 0);
           upperArm.rotation.z = ax < 0 ? 0.15 : -0.15;
           group.add(upperArm);
-          const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.045, 0.2, 46), skinMat);
+          const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.045, 0.2, 59), skinMat);
           forearm.position.set(ax * 1.1, 0.86, 0);
           group.add(forearm);
           // Arm wraps
-          const armWrap = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.05, 0.06, 46), leatherDarkMat);
+          const armWrap = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.05, 0.06, 59), leatherDarkMat);
           armWrap.position.set(ax * 1.05, 0.92, 0);
           group.add(armWrap);
         }
         // Legs with wraps
         for (const lx of [-0.1, 0.1]) {
-          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.06, 0.45, 46), leatherMat);
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.06, 0.45, 59), leatherMat);
           leg.position.set(lx, 0.37, 0);
           group.add(leg);
           // Knee wrap
-          const kWrap = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.06, 0.06, 46), leatherDarkMat);
+          const kWrap = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.06, 0.06, 59), leatherDarkMat);
           kWrap.position.set(lx, 0.48, 0);
           group.add(kWrap);
           // Foot wraps / moccasins
@@ -10536,7 +10536,7 @@ export class DiabloRenderer {
           group.add(moccasin);
         }
         // Belt with trophy pouch
-        const prBelt = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.02, 51, 76), leatherDarkMat);
+        const prBelt = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.02, 66, 98), leatherDarkMat);
         prBelt.rotation.x = Math.PI / 2;
         prBelt.position.y = 0.73;
         group.add(prBelt);
@@ -10555,13 +10555,13 @@ export class DiabloRenderer {
         const beakMat = new THREE.MeshStandardMaterial({ color: 0xddaa33, roughness: 0.4 });
         const talonMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.3, metalness: 0.2 });
         // Streamlined body
-        const hawkBody = new THREE.Mesh(new THREE.SphereGeometry(0.3, 64, 44), featherMat);
+        const hawkBody = new THREE.Mesh(new THREE.SphereGeometry(0.3, 83, 57), featherMat);
         hawkBody.scale.set(0.78, 0.68, 1.25);
         hawkBody.position.y = 1.2;
         hawkBody.castShadow = true;
         group.add(hawkBody);
         // Breast feather pattern (lighter v-shape)
-        const breast = new THREE.Mesh(new THREE.SphereGeometry(0.18, 64, 44), featherLightMat);
+        const breast = new THREE.Mesh(new THREE.SphereGeometry(0.18, 83, 57), featherLightMat);
         breast.scale.set(0.8, 0.6, 0.9);
         breast.position.set(0, 1.12, 0.2);
         group.add(breast);
@@ -10573,7 +10573,7 @@ export class DiabloRenderer {
           group.add(backF);
         }
         // Head with crest
-        const hawkHead = new THREE.Mesh(new THREE.SphereGeometry(0.14, 64, 44), featherMat);
+        const hawkHead = new THREE.Mesh(new THREE.SphereGeometry(0.14, 83, 57), featherMat);
         hawkHead.scale.set(1, 0.95, 1.1);
         hawkHead.position.set(0, 1.52, 0.28);
         group.add(hawkHead);
@@ -10592,26 +10592,26 @@ export class DiabloRenderer {
           group.add(brow);
         }
         // Beak (upper and lower)
-        const upperBeak = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.14, 46), beakMat);
+        const upperBeak = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.14, 59), beakMat);
         upperBeak.rotation.x = -Math.PI / 2;
         upperBeak.position.set(0, 1.50, 0.42);
         group.add(upperBeak);
-        const lowerBeak = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.08, 46), beakMat);
+        const lowerBeak = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.08, 59), beakMat);
         lowerBeak.rotation.x = -Math.PI / 2 + 0.15;
         lowerBeak.position.set(0, 1.47, 0.4);
         group.add(lowerBeak);
         // Beak hook at tip
-        const beakHook = new THREE.Mesh(new THREE.SphereGeometry(0.015, 44, 36), beakMat);
+        const beakHook = new THREE.Mesh(new THREE.SphereGeometry(0.015, 57, 46), beakMat);
         beakHook.position.set(0, 1.48, 0.49);
         group.add(beakHook);
         // Fierce eyes with golden iris
         const hawkEyeMat = new THREE.MeshStandardMaterial({ color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 1.5 });
         for (const ex of [-0.06, 0.06]) {
-          const eyeBase = new THREE.Mesh(new THREE.SphereGeometry(0.028, 44, 36), new THREE.MeshStandardMaterial({ color: 0xffdd44 }));
+          const eyeBase = new THREE.Mesh(new THREE.SphereGeometry(0.028, 57, 46), new THREE.MeshStandardMaterial({ color: 0xffdd44 }));
           eyeBase.position.set(ex, 1.53, 0.35);
           eyeBase.scale.z = 0.5;
           group.add(eyeBase);
-          const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.015, 44, 36), hawkEyeMat);
+          const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.015, 57, 46), hawkEyeMat);
           pupil.position.set(ex, 1.53, 0.37);
           group.add(pupil);
         }
@@ -10653,29 +10653,29 @@ export class DiabloRenderer {
         // Legs with scales and talons
         for (const tx of [-0.1, 0.1]) {
           // Feathered thigh
-          const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.04, 0.15, 46), featherMat);
+          const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.04, 0.15, 59), featherMat);
           thigh.position.set(tx, 1.02, 0.1);
           group.add(thigh);
           // Scaled tarsus
-          const tarsus = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.2, 46), beakMat);
+          const tarsus = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.2, 59), beakMat);
           tarsus.position.set(tx, 0.88, 0.12);
           group.add(tarsus);
           // Scale rings on tarsus
           for (let sr = 0; sr < 3; sr++) {
-            const scaleRing = new THREE.Mesh(new THREE.TorusGeometry(0.028, 0.004, 51, 76), beakMat);
+            const scaleRing = new THREE.Mesh(new THREE.TorusGeometry(0.028, 0.004, 66, 98), beakMat);
             scaleRing.rotation.x = Math.PI / 2;
             scaleRing.position.set(tx, 0.82 + sr * 0.05, 0.12);
             group.add(scaleRing);
           }
           // Talons (3 front + 1 back)
           for (let tc = 0; tc < 3; tc++) {
-            const talon = new THREE.Mesh(new THREE.ConeGeometry(0.012, 0.08, 46), talonMat);
+            const talon = new THREE.Mesh(new THREE.ConeGeometry(0.012, 0.08, 59), talonMat);
             talon.position.set(tx + (tc - 1) * 0.025, 0.74, 0.14 + tc * 0.01);
             talon.rotation.x = Math.PI * 0.85;
             group.add(talon);
           }
           // Rear talon
-          const rearTalon = new THREE.Mesh(new THREE.ConeGeometry(0.01, 0.06, 46), talonMat);
+          const rearTalon = new THREE.Mesh(new THREE.ConeGeometry(0.01, 0.06, 59), talonMat);
           rearTalon.position.set(tx, 0.76, 0.08);
           rearTalon.rotation.x = Math.PI * 1.15;
           group.add(rearTalon);
@@ -10691,26 +10691,26 @@ export class DiabloRenderer {
         const hornDarkMat = new THREE.MeshStandardMaterial({ color: 0x666644, roughness: 0.5 });
         const hoofMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.7 });
         // Massive body (rounded, muscular)
-        const biBody = new THREE.Mesh(new THREE.SphereGeometry(0.55, 64, 44), bisonMat);
+        const biBody = new THREE.Mesh(new THREE.SphereGeometry(0.55, 83, 57), bisonMat);
         biBody.scale.set(0.85, 0.65, 1.1);
         biBody.position.y = 0.82;
         biBody.castShadow = true;
         group.add(biBody);
         // Ribcage bulge on sides
         for (const sx of [-1, 1]) {
-          const ribs = new THREE.Mesh(new THREE.SphereGeometry(0.25, 64, 44), bisonMat);
+          const ribs = new THREE.Mesh(new THREE.SphereGeometry(0.25, 83, 57), bisonMat);
           ribs.scale.set(0.4, 0.6, 1.0);
           ribs.position.set(sx * 0.35, 0.75, -0.05);
           group.add(ribs);
         }
         // Massive shoulder hump with matted fur
-        const hump = new THREE.Mesh(new THREE.SphereGeometry(0.38, 64, 44), bisonDarkMat);
+        const hump = new THREE.Mesh(new THREE.SphereGeometry(0.38, 83, 57), bisonDarkMat);
         hump.scale.set(1, 0.9, 0.85);
         hump.position.set(0, 1.25, 0.15);
         group.add(hump);
         // Fur tufts on hump
         for (let ft = 0; ft < 8; ft++) {
-          const tuft = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.08, 46), bisonDarkMat);
+          const tuft = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.08, 59), bisonDarkMat);
           const ang = (ft / 8) * Math.PI * 2;
           tuft.position.set(Math.sin(ang) * 0.2, 1.4 + Math.random() * 0.1, 0.15 + Math.cos(ang) * 0.15);
           tuft.rotation.set(Math.random() * 0.5, 0, Math.random() * 0.5 - 0.25);
@@ -10718,24 +10718,24 @@ export class DiabloRenderer {
         }
         // Shaggy beard/chest fur
         for (let bf = 0; bf < 5; bf++) {
-          const beard = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.12, 46), bisonDarkMat);
+          const beard = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.12, 59), bisonDarkMat);
           beard.position.set((bf - 2) * 0.06, 0.65, 0.5 + Math.random() * 0.1);
           beard.rotation.x = 0.3;
           group.add(beard);
         }
         // Head (broad, lowered)
-        const biHead = new THREE.Mesh(new THREE.SphereGeometry(0.28, 64, 44), bisonMat);
+        const biHead = new THREE.Mesh(new THREE.SphereGeometry(0.28, 83, 57), bisonMat);
         biHead.scale.set(1.05, 0.78, 0.95);
         biHead.position.set(0, 0.78, 0.72);
         group.add(biHead);
         // Broad nose/muzzle
-        const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.12, 64, 44), bisonLightMat);
+        const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.12, 83, 57), bisonLightMat);
         muzzle.scale.set(1.2, 0.7, 1);
         muzzle.position.set(0, 0.7, 0.9);
         group.add(muzzle);
         // Nostrils (flared)
         for (const nx of [-0.05, 0.05]) {
-          const nostril = new THREE.Mesh(new THREE.SphereGeometry(0.025, 44, 36), new THREE.MeshStandardMaterial({ color: 0x331111 }));
+          const nostril = new THREE.Mesh(new THREE.SphereGeometry(0.025, 57, 46), new THREE.MeshStandardMaterial({ color: 0x331111 }));
           nostril.scale.z = 0.5;
           nostril.position.set(nx, 0.68, 0.98);
           group.add(nostril);
@@ -10743,23 +10743,23 @@ export class DiabloRenderer {
         // Horns (curved, multi-segment)
         for (const hx of [-0.22, 0.22]) {
           // Horn base (thick)
-          const hornBase = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.12, 46), hornDarkMat);
+          const hornBase = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.12, 59), hornDarkMat);
           hornBase.position.set(hx, 0.92, 0.7);
           hornBase.rotation.z = hx > 0 ? -0.4 : 0.4;
           group.add(hornBase);
           // Horn mid (curving outward)
-          const hornMid = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.05, 0.15, 46), hornMat);
+          const hornMid = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.05, 0.15, 59), hornMat);
           hornMid.position.set(hx * 1.3, 0.98, 0.72);
           hornMid.rotation.z = hx > 0 ? -0.8 : 0.8;
           group.add(hornMid);
           // Horn tip (curving upward)
-          const hornTip = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.12, 46), hornMat);
+          const hornTip = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.12, 59), hornMat);
           hornTip.position.set(hx * 1.5, 1.08, 0.74);
           hornTip.rotation.z = hx > 0 ? -1.2 : 1.2;
           group.add(hornTip);
           // Horn ridges
           for (let hr = 0; hr < 2; hr++) {
-            const ridge = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.006, 51, 76), hornDarkMat);
+            const ridge = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.006, 66, 98), hornDarkMat);
             ridge.rotation.x = Math.PI / 2;
             ridge.position.set(hx * (1.1 + hr * 0.15), 0.94 + hr * 0.04, 0.71);
             group.add(ridge);
@@ -10768,11 +10768,11 @@ export class DiabloRenderer {
         // Eyes (deep-set, fierce)
         const biEyeMat = new THREE.MeshStandardMaterial({ color: 0xff4400, emissive: 0xcc2200, emissiveIntensity: 1.0 });
         for (const ex of [-0.12, 0.12]) {
-          const eyeSocket = new THREE.Mesh(new THREE.SphereGeometry(0.04, 44, 36), bisonDarkMat);
+          const eyeSocket = new THREE.Mesh(new THREE.SphereGeometry(0.04, 57, 46), bisonDarkMat);
           eyeSocket.scale.z = 0.5;
           eyeSocket.position.set(ex, 0.82, 0.86);
           group.add(eyeSocket);
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.03, 44, 36), biEyeMat);
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.03, 57, 46), biEyeMat);
           eye.position.set(ex, 0.82, 0.89);
           group.add(eye);
         }
@@ -10786,17 +10786,17 @@ export class DiabloRenderer {
         // Legs (thick, muscular with joints)
         for (let i = 0; i < 2; i++) {
           for (const side of [-1, 1]) {
-            const upperLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.08, 0.25, 46), bisonMat);
+            const upperLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.08, 0.25, 59), bisonMat);
             upperLeg.position.set(side * 0.32, 0.5, i * 0.72 - 0.15);
             group.add(upperLeg);
-            const knee = new THREE.Mesh(new THREE.SphereGeometry(0.07, 64, 44), bisonMat);
+            const knee = new THREE.Mesh(new THREE.SphereGeometry(0.07, 83, 57), bisonMat);
             knee.position.set(side * 0.32, 0.38, i * 0.72 - 0.15);
             group.add(knee);
-            const lowerLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.22, 46), bisonLightMat);
+            const lowerLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.22, 59), bisonLightMat);
             lowerLeg.position.set(side * 0.32, 0.22, i * 0.72 - 0.15);
             group.add(lowerLeg);
             // Hoof
-            const hoof = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.05, 46), hoofMat);
+            const hoof = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.05, 59), hoofMat);
             hoof.position.set(side * 0.32, 0.08, i * 0.72 - 0.15);
             group.add(hoof);
             // Hoof split detail
@@ -10806,11 +10806,11 @@ export class DiabloRenderer {
           }
         }
         // Tail (long with tuft)
-        const tailBase = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 0.35, 46), bisonMat);
+        const tailBase = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 0.35, 59), bisonMat);
         tailBase.position.set(0, 0.75, -0.55);
         tailBase.rotation.x = 0.4;
         group.add(tailBase);
-        const tailTuft = new THREE.Mesh(new THREE.SphereGeometry(0.04, 44, 36), bisonDarkMat);
+        const tailTuft = new THREE.Mesh(new THREE.SphereGeometry(0.04, 57, 46), bisonDarkMat);
         tailTuft.scale.y = 1.5;
         tailTuft.position.set(0, 0.58, -0.7);
         group.add(tailTuft);
@@ -10827,14 +10827,14 @@ export class DiabloRenderer {
         const hoofMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.6 });
         const woodMat = new THREE.MeshStandardMaterial({ color: 0x664422, roughness: 0.7 });
         // Horse body (muscular, rounded)
-        const hBody = new THREE.Mesh(new THREE.SphereGeometry(0.45, 64, 44), horseMat);
+        const hBody = new THREE.Mesh(new THREE.SphereGeometry(0.45, 83, 57), horseMat);
         hBody.scale.set(0.7, 0.55, 1.4);
         hBody.position.y = 0.68;
         hBody.castShadow = true;
         group.add(hBody);
         // Horse barrel (side bulge)
         for (const sx of [-1, 1]) {
-          const barrel = new THREE.Mesh(new THREE.SphereGeometry(0.2, 64, 44), horseMat);
+          const barrel = new THREE.Mesh(new THREE.SphereGeometry(0.2, 83, 57), horseMat);
           barrel.scale.set(0.5, 0.5, 1);
           barrel.position.set(sx * 0.25, 0.6, 0);
           group.add(barrel);
@@ -10850,23 +10850,23 @@ export class DiabloRenderer {
           group.add(trim);
         }
         // Horse neck (muscular transition)
-        const hNeck = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 0.35, 46), horseMat);
+        const hNeck = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 0.35, 59), horseMat);
         hNeck.position.set(0, 0.9, 0.45);
         hNeck.rotation.x = -0.5;
         group.add(hNeck);
         // Horse head
-        const hHead = new THREE.Mesh(new THREE.SphereGeometry(0.12, 64, 44), horseMat);
+        const hHead = new THREE.Mesh(new THREE.SphereGeometry(0.12, 83, 57), horseMat);
         hHead.scale.set(0.8, 0.7, 1.3);
         hHead.position.set(0, 0.85, 0.7);
         group.add(hHead);
         // Horse muzzle
-        const hMuzzle = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.1, 46), horseMat);
+        const hMuzzle = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.1, 59), horseMat);
         hMuzzle.rotation.x = Math.PI / 2;
         hMuzzle.position.set(0, 0.82, 0.82);
         group.add(hMuzzle);
         // Horse ears
         for (const ex of [-0.06, 0.06]) {
-          const ear = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.06, 46), horseMat);
+          const ear = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.06, 59), horseMat);
           ear.position.set(ex, 0.98, 0.65);
           group.add(ear);
         }
@@ -10882,79 +10882,79 @@ export class DiabloRenderer {
         hTorso.position.set(0, 1.28, 0.25);
         group.add(hTorso);
         // Chest plate detail
-        const chestEmblem = new THREE.Mesh(new THREE.OctahedronGeometry(0.06, 3), armorTrimMat);
+        const chestEmblem = new THREE.Mesh(new THREE.OctahedronGeometry(0.06, 4), armorTrimMat);
         chestEmblem.position.set(0, 1.3, 0.4);
         chestEmblem.scale.z = 0.3;
         group.add(chestEmblem);
         // Chain mail under armor (visible at waist)
-        const chainSkirt = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.24, 0.1, 46), chainMat);
+        const chainSkirt = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.24, 0.1, 59), chainMat);
         chainSkirt.position.set(0, 0.98, 0.25);
         group.add(chainSkirt);
         // Shoulder pauldrons
         for (const sx of [-0.28, 0.28]) {
-          const pauldron = new THREE.Mesh(new THREE.SphereGeometry(0.1, 64, 44), armorMat);
+          const pauldron = new THREE.Mesh(new THREE.SphereGeometry(0.1, 83, 57), armorMat);
           pauldron.scale.set(1.3, 0.7, 1);
           pauldron.position.set(sx, 1.52, 0.25);
           group.add(pauldron);
           // Pauldron spike
-          const spike = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.08, 46), armorTrimMat);
+          const spike = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.08, 59), armorTrimMat);
           spike.position.set(sx * 1.2, 1.58, 0.25);
           spike.rotation.z = sx > 0 ? -0.6 : 0.6;
           group.add(spike);
           // Pauldron edge trim
-          const pTrim = new THREE.Mesh(new THREE.TorusGeometry(0.09, 0.012, 51, 76, Math.PI), armorTrimMat);
+          const pTrim = new THREE.Mesh(new THREE.TorusGeometry(0.09, 0.012, 66, 98, Math.PI), armorTrimMat);
           pTrim.position.set(sx, 1.48, 0.25);
           pTrim.rotation.y = sx > 0 ? Math.PI / 2 : -Math.PI / 2;
           group.add(pTrim);
         }
         // Arms
         for (const ax of [-0.28, 0.28]) {
-          const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.055, 0.25, 46), skinMat);
+          const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.055, 0.25, 59), skinMat);
           upperArm.position.set(ax, 1.35, 0.25);
           upperArm.rotation.z = ax < 0 ? 0.2 : -0.2;
           group.add(upperArm);
-          const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.05, 0.22, 46), skinMat);
+          const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.05, 0.22, 59), skinMat);
           forearm.position.set(ax * 1.15, 1.15, 0.25);
           group.add(forearm);
           // Bracer
-          const bracer = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.05, 0.08, 46), armorMat);
+          const bracer = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.05, 0.08, 59), armorMat);
           bracer.position.set(ax * 1.1, 1.2, 0.25);
           group.add(bracer);
         }
         // Head
-        const cHead = new THREE.Mesh(new THREE.SphereGeometry(0.16, 64, 44), skinMat);
+        const cHead = new THREE.Mesh(new THREE.SphereGeometry(0.16, 83, 57), skinMat);
         cHead.position.set(0, 1.72, 0.25);
         group.add(cHead);
         // War crown/helm (detailed)
-        const helmBase = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.17, 0.1, 46), armorMat);
+        const helmBase = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.17, 0.1, 59), armorMat);
         helmBase.position.set(0, 1.82, 0.25);
         group.add(helmBase);
         // Crown spikes
         for (let cs = 0; cs < 5; cs++) {
           const ang = (cs / 5) * Math.PI * 2;
-          const spike = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.08, 46), armorTrimMat);
+          const spike = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.08, 59), armorTrimMat);
           spike.position.set(Math.sin(ang) * 0.13, 1.9, 0.25 + Math.cos(ang) * 0.13);
           group.add(spike);
         }
         // Facial features
         const cEyeMat = new THREE.MeshStandardMaterial({ color: 0xff6600, emissive: 0xff4400, emissiveIntensity: 1.2 });
         for (const ex of [-0.055, 0.055]) {
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.022, 44, 36), cEyeMat);
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.022, 57, 46), cEyeMat);
           eye.position.set(ex, 1.73, 0.4);
           group.add(eye);
         }
         // Beard
-        const beard = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.12, 46), horseDarkMat);
+        const beard = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.12, 59), horseDarkMat);
         beard.position.set(0, 1.6, 0.35);
         beard.rotation.x = 0.2;
         group.add(beard);
         // Great axe (detailed)
-        const axeShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.022, 1.1, 46), woodMat);
+        const axeShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.022, 1.1, 59), woodMat);
         axeShaft.position.set(0.38, 1.25, 0.25);
         group.add(axeShaft);
         // Shaft grip wraps
         for (let gw = 0; gw < 3; gw++) {
-          const grip = new THREE.Mesh(new THREE.TorusGeometry(0.024, 0.005, 51, 76), new THREE.MeshStandardMaterial({ color: 0x443322 }));
+          const grip = new THREE.Mesh(new THREE.TorusGeometry(0.024, 0.005, 66, 98), new THREE.MeshStandardMaterial({ color: 0x443322 }));
           grip.rotation.x = Math.PI / 2;
           grip.position.set(0.38, 0.85 + gw * 0.1, 0.25);
           group.add(grip);
@@ -10965,38 +10965,38 @@ export class DiabloRenderer {
           axeBlade.position.set(0.38 + side * 0.08, 1.82, 0.25);
           group.add(axeBlade);
           // Blade edge curve
-          const edgeCurve = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.07, 0.2, 46), chainMat);
+          const edgeCurve = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.07, 0.2, 59), chainMat);
           edgeCurve.position.set(0.38 + side * 0.15, 1.82, 0.25);
           group.add(edgeCurve);
         }
         // Axe pommel
-        const axePommel = new THREE.Mesh(new THREE.SphereGeometry(0.025, 44, 36), armorTrimMat);
+        const axePommel = new THREE.Mesh(new THREE.SphereGeometry(0.025, 57, 46), armorTrimMat);
         axePommel.position.set(0.38, 0.68, 0.25);
         group.add(axePommel);
         // Horse legs (muscular with joints and hooves)
         for (let i = 0; i < 2; i++) {
           for (const side of [-1, 1]) {
-            const upperLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.055, 0.2, 46), horseMat);
+            const upperLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.055, 0.2, 59), horseMat);
             upperLeg.position.set(side * 0.24, 0.42, i * 0.82 - 0.22);
             group.add(upperLeg);
-            const lowerLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.22, 46), horseMat);
+            const lowerLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.22, 59), horseMat);
             lowerLeg.position.set(side * 0.24, 0.2, i * 0.82 - 0.22);
             group.add(lowerLeg);
-            const fetlock = new THREE.Mesh(new THREE.SphereGeometry(0.04, 44, 36), horseDarkMat);
+            const fetlock = new THREE.Mesh(new THREE.SphereGeometry(0.04, 57, 46), horseDarkMat);
             fetlock.position.set(side * 0.24, 0.1, i * 0.82 - 0.22);
             group.add(fetlock);
-            const hoof = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.04, 46), hoofMat);
+            const hoof = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.04, 59), hoofMat);
             hoof.position.set(side * 0.24, 0.03, i * 0.82 - 0.22);
             group.add(hoof);
           }
         }
         // Horse tail (flowing)
-        const tailBase = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.02, 0.3, 46), horseDarkMat);
+        const tailBase = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.02, 0.3, 59), horseDarkMat);
         tailBase.position.set(0, 0.6, -0.6);
         tailBase.rotation.x = 0.5;
         group.add(tailBase);
         for (let tt = 0; tt < 4; tt++) {
-          const strand = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.005, 0.2, 46), horseDarkMat);
+          const strand = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.005, 0.2, 59), horseDarkMat);
           strand.position.set((tt - 1.5) * 0.015, 0.42, -0.72);
           strand.rotation.x = 0.3 + tt * 0.05;
           group.add(strand);
@@ -11019,17 +11019,17 @@ export class DiabloRenderer {
         wTorso.castShadow = true;
         group.add(wTorso);
         // Emaciated belly (sunken)
-        const belly = new THREE.Mesh(new THREE.SphereGeometry(0.18, 64, 44), darkSkinMat);
+        const belly = new THREE.Mesh(new THREE.SphereGeometry(0.18, 83, 57), darkSkinMat);
         belly.scale.set(1, 1.2, 0.6);
         belly.position.set(0, 1.1, 0.05);
         group.add(belly);
         // Rib cage (detailed individual ribs)
         for (let r = 0; r < 5; r++) {
-          const rib = new THREE.Mesh(new THREE.TorusGeometry(0.14, 0.015, 51, 76, Math.PI), boneMat);
+          const rib = new THREE.Mesh(new THREE.TorusGeometry(0.14, 0.015, 66, 98, Math.PI), boneMat);
           rib.position.set(0, 1.0 + r * 0.13, 0.12);
           group.add(rib);
           // Rib connecting to spine
-          const ribBack = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.012, 0.08, 46), boneDarkMat);
+          const ribBack = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.012, 0.08, 59), boneDarkMat);
           ribBack.position.set(0, 1.0 + r * 0.13, -0.08);
           ribBack.rotation.x = Math.PI / 2;
           group.add(ribBack);
@@ -11040,13 +11040,13 @@ export class DiabloRenderer {
           vert.position.set(0, 0.9 + v * 0.15, -0.12);
           group.add(vert);
           // Spinous process
-          const proc = new THREE.Mesh(new THREE.ConeGeometry(0.01, 0.04, 46), boneDarkMat);
+          const proc = new THREE.Mesh(new THREE.ConeGeometry(0.01, 0.04, 59), boneDarkMat);
           proc.position.set(0, 0.92 + v * 0.15, -0.16);
           proc.rotation.x = 0.3;
           group.add(proc);
         }
         // Skull head (deer skull shape)
-        const skull = new THREE.Mesh(new THREE.SphereGeometry(0.18, 64, 44), boneMat);
+        const skull = new THREE.Mesh(new THREE.SphereGeometry(0.18, 83, 57), boneMat);
         skull.scale.set(0.9, 1.2, 1);
         skull.position.y = 2.02;
         group.add(skull);
@@ -11068,13 +11068,13 @@ export class DiabloRenderer {
         group.add(lowerJaw);
         // Individual teeth
         for (let t = 0; t < 4; t++) {
-          const tooth = new THREE.Mesh(new THREE.ConeGeometry(0.008, 0.04, 46), boneMat);
+          const tooth = new THREE.Mesh(new THREE.ConeGeometry(0.008, 0.04, 59), boneMat);
           tooth.position.set((t - 1.5) * 0.025, 1.88, 0.28);
           group.add(tooth);
         }
         // Blood stains around mouth
         for (let bs = 0; bs < 3; bs++) {
-          const stain = new THREE.Mesh(new THREE.SphereGeometry(0.015, 44, 36), bloodMat);
+          const stain = new THREE.Mesh(new THREE.SphereGeometry(0.015, 57, 46), bloodMat);
           stain.position.set((Math.random() - 0.5) * 0.08, 1.86 + Math.random() * 0.04, 0.27);
           stain.scale.set(1.5, 0.5, 0.5);
           group.add(stain);
@@ -11082,29 +11082,29 @@ export class DiabloRenderer {
         // Massive branching antlers
         for (const ax of [-0.15, 0.15]) {
           // Main antler trunk
-          const antlerMain = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.035, 0.5, 46), boneMat);
+          const antlerMain = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.035, 0.5, 59), boneMat);
           antlerMain.position.set(ax, 2.3, 0);
           antlerMain.rotation.z = ax > 0 ? -0.25 : 0.25;
           group.add(antlerMain);
           // First branch
-          const branch1 = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.02, 0.25, 46), boneMat);
+          const branch1 = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.02, 0.25, 59), boneMat);
           branch1.position.set(ax * 1.3, 2.35, 0.08);
           branch1.rotation.z = ax > 0 ? -0.6 : 0.6;
           branch1.rotation.x = -0.3;
           group.add(branch1);
           // Second branch
-          const branch2 = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.018, 0.2, 46), boneDarkMat);
+          const branch2 = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.018, 0.2, 59), boneDarkMat);
           branch2.position.set(ax * 1.1, 2.5, -0.06);
           branch2.rotation.z = ax > 0 ? -0.9 : 0.9;
           group.add(branch2);
           // Third branch (highest)
-          const branch3 = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.015, 0.18, 46), boneMat);
+          const branch3 = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.015, 0.18, 59), boneMat);
           branch3.position.set(ax * 0.9, 2.6, 0);
           branch3.rotation.z = ax > 0 ? -0.4 : 0.4;
           group.add(branch3);
           // Tine tips
           for (let tn = 0; tn < 2; tn++) {
-            const tine = new THREE.Mesh(new THREE.ConeGeometry(0.008, 0.1, 46), boneMat);
+            const tine = new THREE.Mesh(new THREE.ConeGeometry(0.008, 0.1, 59), boneMat);
             tine.position.set(ax * (1.4 + tn * 0.2), 2.5 + tn * 0.12, tn * 0.06);
             tine.rotation.z = ax > 0 ? -0.5 : 0.5;
             group.add(tine);
@@ -11112,30 +11112,30 @@ export class DiabloRenderer {
         }
         // Green glowing eyes (intense with trail)
         for (const ex of [-0.065, 0.065]) {
-          const eyeGlow = new THREE.Mesh(new THREE.SphereGeometry(0.04, 44, 36), glowDimMat);
+          const eyeGlow = new THREE.Mesh(new THREE.SphereGeometry(0.04, 57, 46), glowDimMat);
           eyeGlow.position.set(ex, 2.05, 0.14);
           group.add(eyeGlow);
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.03, 44, 36), glowMat);
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.03, 57, 46), glowMat);
           eye.position.set(ex, 2.05, 0.16);
           group.add(eye);
           // Green wisp trail from eye
-          const trail = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.003, 0.1, 46), glowDimMat);
+          const trail = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.003, 0.1, 59), glowDimMat);
           trail.position.set(ex * 1.2, 2.1, 0.12);
           trail.rotation.z = ex > 0 ? -0.5 : 0.5;
           group.add(trail);
         }
         // Long emaciated arms
         for (const ax of [-0.35, 0.35]) {
-          const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.05, 0.45, 46), darkMat);
+          const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.05, 0.45, 59), darkMat);
           upperArm.position.set(ax, 1.35, 0);
           upperArm.rotation.z = ax < 0 ? 0.15 : -0.15;
           group.add(upperArm);
           // Elbow bone protrusion
-          const elbow = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.06, 46), boneMat);
+          const elbow = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.06, 59), boneMat);
           elbow.position.set(ax * 1.1, 1.1, -0.05);
           elbow.rotation.z = ax > 0 ? 0.5 : -0.5;
           group.add(elbow);
-          const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.04, 0.45, 46), darkSkinMat);
+          const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.04, 0.45, 59), darkSkinMat);
           forearm.position.set(ax * 1.2, 0.85, 0.05);
           forearm.rotation.z = ax < 0 ? 0.25 : -0.25;
           group.add(forearm);
@@ -11145,7 +11145,7 @@ export class DiabloRenderer {
           group.add(hand);
           // Long claws (5 per hand)
           for (let c = 0; c < 4; c++) {
-            const claw = new THREE.Mesh(new THREE.ConeGeometry(0.01, 0.14, 46), boneMat);
+            const claw = new THREE.Mesh(new THREE.ConeGeometry(0.01, 0.14, 59), boneMat);
             claw.position.set(ax * 1.35 + (c - 1.5) * 0.02, 0.52, 0.1);
             claw.rotation.x = 0.35;
             group.add(claw);
@@ -11153,14 +11153,14 @@ export class DiabloRenderer {
         }
         // Digitigrade legs (bent backward at knee)
         for (const lx of [-0.12, 0.12]) {
-          const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.045, 0.35, 46), darkMat);
+          const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.045, 0.35, 59), darkMat);
           thigh.position.set(lx, 0.7, 0.05);
           thigh.rotation.x = 0.2;
           group.add(thigh);
-          const knee = new THREE.Mesh(new THREE.SphereGeometry(0.04, 44, 36), darkSkinMat);
+          const knee = new THREE.Mesh(new THREE.SphereGeometry(0.04, 57, 46), darkSkinMat);
           knee.position.set(lx, 0.52, 0.1);
           group.add(knee);
-          const shin = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.04, 0.35, 46), darkSkinMat);
+          const shin = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.04, 0.35, 59), darkSkinMat);
           shin.position.set(lx, 0.32, -0.02);
           shin.rotation.x = -0.3;
           group.add(shin);
@@ -11175,7 +11175,7 @@ export class DiabloRenderer {
         }
         // Icy frost particles around body
         for (let fp = 0; fp < 6; fp++) {
-          const frost = new THREE.Mesh(new THREE.OctahedronGeometry(0.02, 3), new THREE.MeshStandardMaterial({
+          const frost = new THREE.Mesh(new THREE.OctahedronGeometry(0.02, 4), new THREE.MeshStandardMaterial({
             color: 0x88ffaa, emissive: 0x44cc66, emissiveIntensity: 0.5, transparent: true, opacity: 0.5
           }));
           frost.position.set((Math.random() - 0.5) * 0.6, 0.5 + Math.random() * 1.5, (Math.random() - 0.5) * 0.4);
@@ -11191,10 +11191,10 @@ export class DiabloRenderer {
         const runeGlowMat = new THREE.MeshStandardMaterial({ color: 0xcc88ff, emissive: 0xaa44ff, emissiveIntensity: 1.5 });
         const hairMat = new THREE.MeshStandardMaterial({ color: 0x8866cc, transparent: true, opacity: 0.6, roughness: 0.2 });
         // Flowing ghostly dress base (layered)
-        const bqDressOuter = new THREE.Mesh(new THREE.ConeGeometry(0.45, 1.3, 46), ghostDarkMat);
+        const bqDressOuter = new THREE.Mesh(new THREE.ConeGeometry(0.45, 1.3, 59), ghostDarkMat);
         bqDressOuter.position.y = 0.65;
         group.add(bqDressOuter);
-        const bqDress = new THREE.Mesh(new THREE.ConeGeometry(0.38, 1.35, 46), ghostMat);
+        const bqDress = new THREE.Mesh(new THREE.ConeGeometry(0.38, 1.35, 59), ghostMat);
         bqDress.position.y = 0.7;
         bqDress.castShadow = true;
         group.add(bqDress);
@@ -11208,69 +11208,69 @@ export class DiabloRenderer {
           group.add(tatter);
         }
         // Floating rune circle at base
-        const runeCircle = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.015, 51, 76), runeGlowMat);
+        const runeCircle = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.015, 66, 98), runeGlowMat);
         runeCircle.rotation.x = Math.PI / 2;
         runeCircle.position.y = 0.1;
         group.add(runeCircle);
         // Rune symbols on circle
         for (let rs = 0; rs < 6; rs++) {
           const ang = (rs / 6) * Math.PI * 2;
-          const rune = new THREE.Mesh(new THREE.OctahedronGeometry(0.02, 3), runeGlowMat);
+          const rune = new THREE.Mesh(new THREE.OctahedronGeometry(0.02, 4), runeGlowMat);
           rune.position.set(Math.sin(ang) * 0.5, 0.1, Math.cos(ang) * 0.5);
           group.add(rune);
         }
         // Upper torso (elegant form)
-        const bqTorso = new THREE.Mesh(new THREE.SphereGeometry(0.22, 64, 44), ghostMat);
+        const bqTorso = new THREE.Mesh(new THREE.SphereGeometry(0.22, 83, 57), ghostMat);
         bqTorso.scale.set(1, 1.1, 0.8);
         bqTorso.position.y = 1.52;
         group.add(bqTorso);
         // Necklace/collar
-        const collar = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.015, 51, 76), crownMat);
+        const collar = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.015, 66, 98), crownMat);
         collar.rotation.x = Math.PI / 2;
         collar.position.y = 1.62;
         group.add(collar);
         // Pendant
-        const pendant = new THREE.Mesh(new THREE.OctahedronGeometry(0.03, 3), new THREE.MeshStandardMaterial({ color: 0xff44ff, emissive: 0xcc00cc, emissiveIntensity: 1.5 }));
+        const pendant = new THREE.Mesh(new THREE.OctahedronGeometry(0.03, 4), new THREE.MeshStandardMaterial({ color: 0xff44ff, emissive: 0xcc00cc, emissiveIntensity: 1.5 }));
         pendant.position.set(0, 1.55, 0.16);
         group.add(pendant);
         // Elegant arms reaching outward
         for (const ax of [-0.3, 0.3]) {
-          const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.3, 46), ghostMat);
+          const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.3, 59), ghostMat);
           upperArm.position.set(ax, 1.45, 0.05);
           upperArm.rotation.z = ax < 0 ? 0.5 : -0.5;
           group.add(upperArm);
-          const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.28, 46), ghostMat);
+          const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.28, 59), ghostMat);
           forearm.position.set(ax * 1.5, 1.28, 0.1);
           forearm.rotation.z = ax < 0 ? 0.7 : -0.7;
           group.add(forearm);
           // Elegant pointed fingers
           for (let f = 0; f < 4; f++) {
-            const finger = new THREE.Mesh(new THREE.ConeGeometry(0.006, 0.08, 46), ghostMat);
+            const finger = new THREE.Mesh(new THREE.ConeGeometry(0.006, 0.08, 59), ghostMat);
             finger.position.set(ax * 1.7 + (f - 1.5) * 0.015, 1.12 + f * 0.01, 0.12);
             finger.rotation.x = 0.2;
             group.add(finger);
           }
           // Bracelet
-          const bracelet = new THREE.Mesh(new THREE.TorusGeometry(0.035, 0.008, 51, 76), crownMat);
+          const bracelet = new THREE.Mesh(new THREE.TorusGeometry(0.035, 0.008, 66, 98), crownMat);
           bracelet.rotation.x = Math.PI / 2;
           bracelet.position.set(ax * 1.4, 1.32, 0.08);
           group.add(bracelet);
         }
         // Head (elven features)
-        const bqHead = new THREE.Mesh(new THREE.SphereGeometry(0.16, 64, 44), ghostMat);
+        const bqHead = new THREE.Mesh(new THREE.SphereGeometry(0.16, 83, 57), ghostMat);
         bqHead.scale.set(1, 1.05, 0.95);
         bqHead.position.y = 1.88;
         group.add(bqHead);
         // Pointed elven ears
         for (const ex of [-0.14, 0.14]) {
-          const ear = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.1, 46), ghostMat);
+          const ear = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.1, 59), ghostMat);
           ear.position.set(ex, 1.9, 0.02);
           ear.rotation.z = ex > 0 ? -0.8 : 0.8;
           group.add(ear);
         }
         // Flowing spectral hair
         for (let h = 0; h < 8; h++) {
-          const strand = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.006, 0.3 + h * 0.04, 46), hairMat);
+          const strand = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.006, 0.3 + h * 0.04, 59), hairMat);
           const ang = (h / 8) * Math.PI + Math.PI / 2;
           strand.position.set(Math.sin(ang) * 0.12, 1.72 - h * 0.02, -0.05 + Math.cos(ang) * 0.08);
           strand.rotation.x = 0.3;
@@ -11278,39 +11278,39 @@ export class DiabloRenderer {
           group.add(strand);
         }
         // Crown (ornate, elven style)
-        const crownBase = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.02, 51, 76), crownMat);
+        const crownBase = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.02, 66, 98), crownMat);
         crownBase.rotation.x = Math.PI / 2;
         crownBase.position.y = 1.98;
         group.add(crownBase);
         for (let i = 0; i < 5; i++) {
-          const spike = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.14 + (i === 2 ? 0.06 : 0), 16), crownMat);
+          const spike = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.14 + (i === 2 ? 0.06 : 0), 27), crownMat);
           const ang = (i / 5) * Math.PI * 2;
           spike.position.set(Math.sin(ang) * 0.14, 2.06, Math.cos(ang) * 0.14);
           group.add(spike);
         }
         // Crown center gem
-        const centerGem = new THREE.Mesh(new THREE.OctahedronGeometry(0.025, 3), new THREE.MeshStandardMaterial({ color: 0xff66ff, emissive: 0xff22ff, emissiveIntensity: 2.0 }));
+        const centerGem = new THREE.Mesh(new THREE.OctahedronGeometry(0.025, 4), new THREE.MeshStandardMaterial({ color: 0xff66ff, emissive: 0xff22ff, emissiveIntensity: 2.0 }));
         centerGem.position.set(0, 2.0, 0.14);
         group.add(centerGem);
         // Glowing eyes (intense magenta)
         const bqEyeMat = new THREE.MeshStandardMaterial({ color: 0xff44ff, emissive: 0xff00ff, emissiveIntensity: 2.0 });
         for (const ex of [-0.055, 0.055]) {
-          const eyeGlow = new THREE.Mesh(new THREE.SphereGeometry(0.035, 44, 36), new THREE.MeshStandardMaterial({ color: 0xcc44cc, emissive: 0xaa22aa, emissiveIntensity: 1.0, transparent: true, opacity: 0.5 }));
+          const eyeGlow = new THREE.Mesh(new THREE.SphereGeometry(0.035, 57, 46), new THREE.MeshStandardMaterial({ color: 0xcc44cc, emissive: 0xaa22aa, emissiveIntensity: 1.0, transparent: true, opacity: 0.5 }));
           eyeGlow.position.set(ex, 1.89, 0.12);
           group.add(eyeGlow);
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 44, 36), bqEyeMat);
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 57, 46), bqEyeMat);
           eye.position.set(ex, 1.89, 0.14);
           group.add(eye);
         }
         // Mouth (slightly open, spectral scream)
-        const mouth = new THREE.Mesh(new THREE.SphereGeometry(0.03, 44, 36), new THREE.MeshStandardMaterial({ color: 0x220033, emissive: 0x110022, emissiveIntensity: 0.5 }));
+        const mouth = new THREE.Mesh(new THREE.SphereGeometry(0.03, 57, 46), new THREE.MeshStandardMaterial({ color: 0x220033, emissive: 0x110022, emissiveIntensity: 0.5 }));
         mouth.scale.set(1.2, 0.5, 0.5);
         mouth.position.set(0, 1.82, 0.14);
         group.add(mouth);
         // Orbiting soul wisps
         for (let sw = 0; sw < 5; sw++) {
           const ang = (sw / 5) * Math.PI * 2;
-          const wisp = new THREE.Mesh(new THREE.SphereGeometry(0.025, 44, 36), new THREE.MeshStandardMaterial({
+          const wisp = new THREE.Mesh(new THREE.SphereGeometry(0.025, 57, 46), new THREE.MeshStandardMaterial({
             color: 0xaa88ff, emissive: 0x6644cc, emissiveIntensity: 1.0, transparent: true, opacity: 0.5
           }));
           wisp.position.set(Math.sin(ang) * 0.55, 0.8 + sw * 0.25, Math.cos(ang) * 0.55);
@@ -11336,18 +11336,18 @@ export class DiabloRenderer {
         chestPlate.position.set(0, 1.22, 0.18);
         group.add(chestPlate);
         // Skull emblem on chest
-        const emblemSkull = new THREE.Mesh(new THREE.SphereGeometry(0.06, 64, 44), boneMat);
+        const emblemSkull = new THREE.Mesh(new THREE.SphereGeometry(0.06, 83, 57), boneMat);
         emblemSkull.scale.set(1, 1.2, 0.5);
         emblemSkull.position.set(0, 1.3, 0.22);
         group.add(emblemSkull);
         // Emblem eye sockets
         for (const ex of [-0.02, 0.02]) {
-          const embEye = new THREE.Mesh(new THREE.SphereGeometry(0.012, 44, 36), dkGlowMat);
+          const embEye = new THREE.Mesh(new THREE.SphereGeometry(0.012, 57, 46), dkGlowMat);
           embEye.position.set(ex, 1.32, 0.24);
           group.add(embEye);
         }
         // Gorget (neck armor)
-        const gorget = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 0.1, 46), dkArmorMat);
+        const gorget = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 0.1, 59), dkArmorMat);
         gorget.position.y = 1.62;
         group.add(gorget);
         // Tasset (waist armor plates)
@@ -11359,7 +11359,7 @@ export class DiabloRenderer {
           group.add(tasset);
         }
         // Chain mail skirt
-        const chainSkirt = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.28, 0.12, 46), chainMat);
+        const chainSkirt = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.28, 0.12, 59), chainMat);
         chainSkirt.position.y = 0.83;
         group.add(chainSkirt);
         // Massive pauldrons with spikes
@@ -11367,13 +11367,13 @@ export class DiabloRenderer {
           const padBase = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.1, 0.2), dkArmorMat);
           padBase.position.set(sx, 1.65, 0);
           group.add(padBase);
-          const padTop = new THREE.Mesh(new THREE.SphereGeometry(0.1, 64, 44), dkArmorDarkMat);
+          const padTop = new THREE.Mesh(new THREE.SphereGeometry(0.1, 83, 57), dkArmorDarkMat);
           padTop.scale.set(1.3, 0.6, 1);
           padTop.position.set(sx, 1.7, 0);
           group.add(padTop);
           // Pauldron spikes
           for (let sp = 0; sp < 2; sp++) {
-            const spike = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.1, 46), dkArmorMat);
+            const spike = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.1, 59), dkArmorMat);
             spike.position.set(sx * 1.15, 1.72 + sp * 0.05, (sp - 0.5) * 0.08);
             spike.rotation.z = sx > 0 ? -0.5 : 0.5;
             group.add(spike);
@@ -11384,10 +11384,10 @@ export class DiabloRenderer {
           group.add(padRune);
         }
         // Helmet (great helm style)
-        const dkHelm = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.2, 0.25, 46), dkArmorMat);
+        const dkHelm = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.2, 0.25, 59), dkArmorMat);
         dkHelm.position.y = 1.82;
         group.add(dkHelm);
-        const helmTop = new THREE.Mesh(new THREE.SphereGeometry(0.18, 82, 44), dkArmorDarkMat);
+        const helmTop = new THREE.Mesh(new THREE.SphereGeometry(0.18, 106, 57), dkArmorDarkMat);
         helmTop.scale.y = 0.5;
         helmTop.position.y = 1.95;
         group.add(helmTop);
@@ -11397,7 +11397,7 @@ export class DiabloRenderer {
         group.add(dkVisor);
         // Breath holes
         for (let bh = 0; bh < 3; bh++) {
-          const hole = new THREE.Mesh(new THREE.CircleGeometry(0.008, 62), dkGlowDimMat);
+          const hole = new THREE.Mesh(new THREE.CircleGeometry(0.008, 80), dkGlowDimMat);
           hole.position.set(-0.03 + bh * 0.03, 1.75, 0.2);
           group.add(hole);
         }
@@ -11407,15 +11407,15 @@ export class DiabloRenderer {
         group.add(crest);
         // Arms (armored)
         for (const ax of [-0.32, 0.32]) {
-          const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.28, 46), dkArmorMat);
+          const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.28, 59), dkArmorMat);
           upperArm.position.set(ax, 1.42, 0);
           upperArm.rotation.z = ax < 0 ? 0.15 : -0.15;
           group.add(upperArm);
           // Elbow cop
-          const elbowCop = new THREE.Mesh(new THREE.SphereGeometry(0.06, 64, 44), dkArmorDarkMat);
+          const elbowCop = new THREE.Mesh(new THREE.SphereGeometry(0.06, 83, 57), dkArmorDarkMat);
           elbowCop.position.set(ax * 1.05, 1.25, 0);
           group.add(elbowCop);
-          const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.25, 46), dkArmorMat);
+          const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.25, 59), dkArmorMat);
           forearm.position.set(ax * 1.1, 1.08, 0);
           group.add(forearm);
           // Gauntlet
@@ -11424,7 +11424,7 @@ export class DiabloRenderer {
           group.add(gauntlet);
         }
         // Runic greatsword
-        const gsHilt = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.018, 0.2, 46), new THREE.MeshStandardMaterial({ color: 0x333344 }));
+        const gsHilt = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.018, 0.2, 59), new THREE.MeshStandardMaterial({ color: 0x333344 }));
         gsHilt.position.set(0.42, 0.55, 0);
         group.add(gsHilt);
         const gsGuard = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.03, 0.04), dkArmorMat);
@@ -11440,18 +11440,18 @@ export class DiabloRenderer {
           group.add(runeLine);
         }
         // Blade tip
-        const gsTip = new THREE.Mesh(new THREE.ConeGeometry(0.028, 0.08, 46), dkArmorDarkMat);
+        const gsTip = new THREE.Mesh(new THREE.ConeGeometry(0.028, 0.08, 59), dkArmorDarkMat);
         gsTip.position.set(0.42, 1.82, 0);
         group.add(gsTip);
         // Armored legs
         for (const lx of [-0.13, 0.13]) {
-          const cuisses = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.075, 0.3, 46), dkArmorMat);
+          const cuisses = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.075, 0.3, 59), dkArmorMat);
           cuisses.position.set(lx, 0.6, 0);
           group.add(cuisses);
-          const kneeCop = new THREE.Mesh(new THREE.SphereGeometry(0.06, 64, 44), dkArmorDarkMat);
+          const kneeCop = new THREE.Mesh(new THREE.SphereGeometry(0.06, 83, 57), dkArmorDarkMat);
           kneeCop.position.set(lx, 0.43, 0.03);
           group.add(kneeCop);
-          const greaves = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.28, 46), dkArmorMat);
+          const greaves = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.28, 59), dkArmorMat);
           greaves.position.set(lx, 0.27, 0);
           group.add(greaves);
           const sabaton = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.05, 0.14), dkArmorDarkMat);
@@ -11460,7 +11460,7 @@ export class DiabloRenderer {
         }
         // Green necromantic aura wisps
         for (let aw = 0; aw < 4; aw++) {
-          const wisp = new THREE.Mesh(new THREE.SphereGeometry(0.03, 44, 36), new THREE.MeshStandardMaterial({
+          const wisp = new THREE.Mesh(new THREE.SphereGeometry(0.03, 57, 46), new THREE.MeshStandardMaterial({
             color: 0x44ffaa, emissive: 0x22cc88, emissiveIntensity: 1.0, transparent: true, opacity: 0.4
           }));
           const ang = (aw / 4) * Math.PI * 2;
@@ -11504,21 +11504,21 @@ export class DiabloRenderer {
         const coreCrack = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.4, 0.04), titanLavaBright);
         coreCrack.position.set(0, 1.9, 0.38);
         group.add(coreCrack);
-        const coreGlow = new THREE.Mesh(new THREE.SphereGeometry(0.12, 64, 44), magmaMat);
+        const coreGlow = new THREE.Mesh(new THREE.SphereGeometry(0.12, 83, 57), magmaMat);
         coreGlow.position.set(0, 1.9, 0.35);
         group.add(coreGlow);
         // Head (craggy boulder with volcanic vents)
-        const ttHead = new THREE.Mesh(new THREE.DodecahedronGeometry(0.42, 4), titanRock);
+        const ttHead = new THREE.Mesh(new THREE.DodecahedronGeometry(0.42, 5), titanRock);
         ttHead.position.y = 2.95;
         group.add(ttHead);
         // Volcanic vents on head (smoking)
         for (let vt = 0; vt < 3; vt++) {
-          const vent = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 0.08, 46), titanRockLight);
+          const vent = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 0.08, 59), titanRockLight);
           const ang = (vt / 3) * Math.PI - Math.PI / 3;
           vent.position.set(Math.sin(ang) * 0.3, 3.2, Math.cos(ang) * 0.2);
           group.add(vent);
           // Smoke/ember from vent
-          const ember = new THREE.Mesh(new THREE.SphereGeometry(0.03, 44, 36), magmaMat);
+          const ember = new THREE.Mesh(new THREE.SphereGeometry(0.03, 57, 46), magmaMat);
           ember.position.set(Math.sin(ang) * 0.3, 3.3 + vt * 0.05, Math.cos(ang) * 0.2);
           group.add(ember);
         }
@@ -11527,45 +11527,45 @@ export class DiabloRenderer {
         mouth.position.set(0, 2.85, 0.4);
         group.add(mouth);
         // Lava drip from mouth
-        const drip = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.008, 0.12, 46), titanLava);
+        const drip = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.008, 0.12, 59), titanLava);
         drip.position.set(0.05, 2.78, 0.42);
         group.add(drip);
         // Lava eyes (intense)
         for (const ex of [-0.14, 0.14]) {
-          const eyeSocket = new THREE.Mesh(new THREE.SphereGeometry(0.1, 64, 44), new THREE.MeshStandardMaterial({ color: 0x111111 }));
+          const eyeSocket = new THREE.Mesh(new THREE.SphereGeometry(0.1, 83, 57), new THREE.MeshStandardMaterial({ color: 0x111111 }));
           eyeSocket.position.set(ex, 2.98, 0.35);
           eyeSocket.scale.z = 0.5;
           group.add(eyeSocket);
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.08, 64, 44), titanLavaBright);
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.08, 83, 57), titanLavaBright);
           eye.position.set(ex, 2.98, 0.38);
           group.add(eye);
         }
         // Shoulder boulders with lava seams
         for (const sx of [-0.7, 0.7]) {
-          const boulder = new THREE.Mesh(new THREE.DodecahedronGeometry(0.25, 3), titanRock);
+          const boulder = new THREE.Mesh(new THREE.DodecahedronGeometry(0.25, 4), titanRock);
           boulder.position.set(sx, 2.55, 0);
           group.add(boulder);
-          const seam = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.02, 51, 76), titanLava);
+          const seam = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.02, 66, 98), titanLava);
           seam.position.set(sx, 2.55, 0);
           seam.rotation.set(Math.random(), Math.random(), 0);
           group.add(seam);
         }
         // Arms (massive, rocky with lava joints)
         for (const ax of [-0.8, 0.8]) {
-          const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 0.55, 46), titanRock);
+          const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 0.55, 59), titanRock);
           upperArm.position.set(ax, 2.1, 0);
           upperArm.rotation.z = ax < 0 ? 0.25 : -0.25;
           group.add(upperArm);
           // Elbow lava joint
-          const elbowJoint = new THREE.Mesh(new THREE.SphereGeometry(0.14, 64, 44), titanLava);
+          const elbowJoint = new THREE.Mesh(new THREE.SphereGeometry(0.14, 83, 57), titanLava);
           elbowJoint.position.set(ax * 1.15, 1.75, 0);
           group.add(elbowJoint);
-          const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.18, 0.5, 46), titanRock);
+          const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.18, 0.5, 59), titanRock);
           forearm.position.set(ax * 1.2, 1.4, 0);
           forearm.rotation.z = ax < 0 ? 0.15 : -0.15;
           group.add(forearm);
           // Massive fist
-          const fist = new THREE.Mesh(new THREE.DodecahedronGeometry(0.18, 3), titanRock);
+          const fist = new THREE.Mesh(new THREE.DodecahedronGeometry(0.18, 4), titanRock);
           fist.position.set(ax * 1.3, 1.05, 0);
           group.add(fist);
           // Lava knuckle cracks
@@ -11577,13 +11577,13 @@ export class DiabloRenderer {
         }
         // Legs (pillar-like with lava knee joints)
         for (const lx of [-0.3, 0.3]) {
-          const upperLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.18, 0.45, 46), titanRock);
+          const upperLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.18, 0.45, 59), titanRock);
           upperLeg.position.set(lx, 0.9, 0);
           group.add(upperLeg);
-          const knee = new THREE.Mesh(new THREE.SphereGeometry(0.15, 64, 44), titanLava);
+          const knee = new THREE.Mesh(new THREE.SphereGeometry(0.15, 83, 57), titanLava);
           knee.position.set(lx, 0.65, 0.05);
           group.add(knee);
-          const lowerLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.22, 0.45, 46), titanRock);
+          const lowerLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.22, 0.45, 59), titanRock);
           lowerLeg.position.set(lx, 0.35, 0);
           group.add(lowerLeg);
           // Massive foot
@@ -11592,7 +11592,7 @@ export class DiabloRenderer {
           group.add(foot);
         }
         // Ground lava pool around feet
-        const lavaPool = new THREE.Mesh(new THREE.CircleGeometry(0.6, 62), new THREE.MeshStandardMaterial({
+        const lavaPool = new THREE.Mesh(new THREE.CircleGeometry(0.6, 80), new THREE.MeshStandardMaterial({
           color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 0.6, transparent: true, opacity: 0.4
         }));
         lavaPool.rotation.x = -Math.PI / 2;
@@ -11600,7 +11600,7 @@ export class DiabloRenderer {
         group.add(lavaPool);
         // Floating ember particles
         for (let em = 0; em < 8; em++) {
-          const ember = new THREE.Mesh(new THREE.SphereGeometry(0.015 + Math.random() * 0.015, 64, 44), titanLavaBright);
+          const ember = new THREE.Mesh(new THREE.SphereGeometry(0.015 + Math.random() * 0.015, 83, 57), titanLavaBright);
           ember.position.set(
             (Math.random() - 0.5) * 1.2,
             0.5 + Math.random() * 2.5,
@@ -11618,44 +11618,44 @@ export class DiabloRenderer {
         const voidGlowDim = new THREE.MeshStandardMaterial({ color: 0x7722cc, emissive: 0x5511aa, emissiveIntensity: 1.0, transparent: true, opacity: 0.6 });
         const riftMat = new THREE.MeshStandardMaterial({ color: 0xcc66ff, emissive: 0xaa44ff, emissiveIntensity: 1.5, transparent: true, opacity: 0.5 });
         // Rift tear portal beneath (ground effect)
-        const riftPortal = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.04, 51, 76), riftMat);
+        const riftPortal = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.04, 66, 98), riftMat);
         riftPortal.rotation.x = Math.PI / 2;
         riftPortal.position.y = 0.1;
         group.add(riftPortal);
-        const riftInner = new THREE.Mesh(new THREE.CircleGeometry(0.55, 62), new THREE.MeshStandardMaterial({
+        const riftInner = new THREE.Mesh(new THREE.CircleGeometry(0.55, 80), new THREE.MeshStandardMaterial({
           color: 0x220044, emissive: 0x110022, emissiveIntensity: 0.5, transparent: true, opacity: 0.4
         }));
         riftInner.rotation.x = -Math.PI / 2;
         riftInner.position.y = 0.08;
         group.add(riftInner);
         // Floating dark crystalline body (multi-layered)
-        const veBodyOuter = new THREE.Mesh(new THREE.OctahedronGeometry(0.55, 4), voidMat);
+        const veBodyOuter = new THREE.Mesh(new THREE.OctahedronGeometry(0.55, 5), voidMat);
         veBodyOuter.position.y = 1.55;
         veBodyOuter.castShadow = true;
         group.add(veBodyOuter);
-        const veBodyInner = new THREE.Mesh(new THREE.OctahedronGeometry(0.4, 3), voidDarkMat);
+        const veBodyInner = new THREE.Mesh(new THREE.OctahedronGeometry(0.4, 4), voidDarkMat);
         veBodyInner.position.y = 1.55;
         veBodyInner.rotation.y = Math.PI / 4;
         group.add(veBodyInner);
         // Void energy core
-        const voidCore = new THREE.Mesh(new THREE.SphereGeometry(0.15, 64, 44), voidGlow);
+        const voidCore = new THREE.Mesh(new THREE.SphereGeometry(0.15, 83, 57), voidGlow);
         voidCore.position.y = 1.55;
         group.add(voidCore);
         // Energy lines radiating from core
         for (let el = 0; el < 6; el++) {
           const ang = (el / 6) * Math.PI * 2;
-          const line = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.003, 0.4, 46), voidGlowDim);
+          const line = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.003, 0.4, 59), voidGlowDim);
           line.position.set(Math.sin(ang) * 0.2, 1.55, Math.cos(ang) * 0.2);
           line.rotation.z = Math.sin(ang) * Math.PI / 2;
           line.rotation.x = Math.cos(ang) * Math.PI / 2;
           group.add(line);
         }
         // Crown of void energy (ornate rings)
-        const crownOuter = new THREE.Mesh(new THREE.TorusGeometry(0.38, 0.03, 51, 76), voidGlow);
+        const crownOuter = new THREE.Mesh(new THREE.TorusGeometry(0.38, 0.03, 66, 98), voidGlow);
         crownOuter.rotation.x = Math.PI / 2;
         crownOuter.position.y = 2.25;
         group.add(crownOuter);
-        const crownInner = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.02, 51, 76), voidGlowDim);
+        const crownInner = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.02, 66, 98), voidGlowDim);
         crownInner.rotation.x = Math.PI / 2;
         crownInner.rotation.z = Math.PI / 6;
         crownInner.position.y = 2.22;
@@ -11663,16 +11663,16 @@ export class DiabloRenderer {
         // Crown spires
         for (let cs = 0; cs < 6; cs++) {
           const ang = (cs / 6) * Math.PI * 2;
-          const spire = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.15, 46), voidGlow);
+          const spire = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.15, 59), voidGlow);
           spire.position.set(Math.sin(ang) * 0.35, 2.35, Math.cos(ang) * 0.35);
           group.add(spire);
         }
         // Central all-seeing eye
-        const eyeSocket = new THREE.Mesh(new THREE.SphereGeometry(0.12, 64, 44), voidDarkMat);
+        const eyeSocket = new THREE.Mesh(new THREE.SphereGeometry(0.12, 83, 57), voidDarkMat);
         eyeSocket.position.set(0, 1.75, 0.38);
         eyeSocket.scale.z = 0.5;
         group.add(eyeSocket);
-        const veEye = new THREE.Mesh(new THREE.SphereGeometry(0.1, 64, 44), voidGlow);
+        const veEye = new THREE.Mesh(new THREE.SphereGeometry(0.1, 83, 57), voidGlow);
         veEye.position.set(0, 1.75, 0.42);
         group.add(veEye);
         // Slit pupil
@@ -11682,17 +11682,17 @@ export class DiabloRenderer {
         // Spectral arms (manifesting from void)
         for (const ax of [-0.5, 0.5]) {
           // Upper arm (dissolving into particles)
-          const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.07, 0.4, 46), voidMat);
+          const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.07, 0.4, 59), voidMat);
           upperArm.position.set(ax, 1.55, 0.1);
           upperArm.rotation.z = ax < 0 ? 0.6 : -0.6;
           group.add(upperArm);
-          const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.05, 0.35, 46), voidDarkMat);
+          const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.05, 0.35, 59), voidDarkMat);
           forearm.position.set(ax * 1.4, 1.3, 0.15);
           forearm.rotation.z = ax < 0 ? 0.8 : -0.8;
           group.add(forearm);
           // Void claw hand
           for (let f = 0; f < 3; f++) {
-            const finger = new THREE.Mesh(new THREE.ConeGeometry(0.01, 0.12, 46), voidGlowDim);
+            const finger = new THREE.Mesh(new THREE.ConeGeometry(0.01, 0.12, 59), voidGlowDim);
             finger.position.set(ax * 1.6 + (f - 1) * 0.02, 1.1, 0.18);
             finger.rotation.x = 0.2;
             group.add(finger);
@@ -11713,30 +11713,30 @@ export class DiabloRenderer {
         for (let i = 0; i < 6; i++) {
           const ang = (i / 6) * Math.PI * 2;
           const r = 0.65 + Math.sin(i * 1.5) * 0.1;
-          const orb = new THREE.Mesh(new THREE.SphereGeometry(0.06, 64, 44), voidGlow);
+          const orb = new THREE.Mesh(new THREE.SphereGeometry(0.06, 83, 57), voidGlow);
           orb.position.set(Math.sin(ang) * r, 1.1 + Math.sin(ang * 2) * 0.35, Math.cos(ang) * r);
           group.add(orb);
           // Orbit trail
-          const trail = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.02, 0.12, 46), voidGlowDim);
+          const trail = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.02, 0.12, 59), voidGlowDim);
           trail.position.set(Math.sin(ang) * (r - 0.1), orb.position.y + 0.08, Math.cos(ang) * (r - 0.1));
           group.add(trail);
         }
         // Void tendrils (thicker, more organic)
         for (let t = 0; t < 6; t++) {
           const ang = (t / 6) * Math.PI * 2;
-          const tendril = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.008, 0.9, 46), voidMat);
+          const tendril = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.008, 0.9, 59), voidMat);
           tendril.position.set(Math.sin(ang) * 0.35, 0.7, Math.cos(ang) * 0.35);
           tendril.rotation.z = Math.sin(ang) * 0.5;
           tendril.rotation.x = Math.cos(ang) * 0.3;
           group.add(tendril);
           // Tendril tip glow
-          const tipGlow = new THREE.Mesh(new THREE.SphereGeometry(0.02, 44, 36), voidGlowDim);
+          const tipGlow = new THREE.Mesh(new THREE.SphereGeometry(0.02, 57, 46), voidGlowDim);
           tipGlow.position.set(Math.sin(ang) * 0.35, 0.25, Math.cos(ang) * 0.35);
           group.add(tipGlow);
         }
         // Void particle field
         for (let vp = 0; vp < 8; vp++) {
-          const particle = new THREE.Mesh(new THREE.OctahedronGeometry(0.015, 3), new THREE.MeshStandardMaterial({
+          const particle = new THREE.Mesh(new THREE.OctahedronGeometry(0.015, 4), new THREE.MeshStandardMaterial({
             color: 0x8844cc, emissive: 0x6622aa, emissiveIntensity: 0.8, transparent: true, opacity: 0.4
           }));
           particle.position.set(
@@ -11757,7 +11757,7 @@ export class DiabloRenderer {
         const purpleGlowDim = new THREE.MeshStandardMaterial({ color: 0x6633cc, emissive: 0x4411aa, emissiveIntensity: 0.8, transparent: true, opacity: 0.6 });
         const clawMat = new THREE.MeshStandardMaterial({ color: 0x222233, metalness: 0.3, roughness: 0.3 });
         // Massive dragon body (rounded, muscular)
-        const swBody = new THREE.Mesh(new THREE.SphereGeometry(0.65, 64, 44), shadowMat);
+        const swBody = new THREE.Mesh(new THREE.SphereGeometry(0.65, 83, 57), shadowMat);
         swBody.scale.set(0.8, 0.6, 1.6);
         swBody.position.y = 1.2;
         swBody.castShadow = true;
@@ -11770,18 +11770,18 @@ export class DiabloRenderer {
         }
         // Dorsal spines along back
         for (let ds = 0; ds < 8; ds++) {
-          const spine = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.1 + Math.sin(ds * 0.5) * 0.04, 16), shadowDarkMat);
+          const spine = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.1 + Math.sin(ds * 0.5) * 0.04, 27), shadowDarkMat);
           spine.position.set(0, 1.5 + Math.sin(ds * 0.4) * 0.05, -0.6 + ds * 0.2);
           group.add(spine);
         }
         // Neck (segmented, muscular)
         for (let ns = 0; ns < 4; ns++) {
-          const neckSeg = new THREE.Mesh(new THREE.CylinderGeometry(0.18 - ns * 0.02, 0.2 - ns * 0.015, 0.2, 46), shadowMat);
+          const neckSeg = new THREE.Mesh(new THREE.CylinderGeometry(0.18 - ns * 0.02, 0.2 - ns * 0.015, 0.2, 59), shadowMat);
           neckSeg.position.set(0, 1.55 + ns * 0.18, 0.7 + ns * 0.15);
           neckSeg.rotation.x = -0.45;
           group.add(neckSeg);
           // Neck scale ring
-          const neckRing = new THREE.Mesh(new THREE.TorusGeometry(0.19 - ns * 0.02, 0.01, 51, 76), scaleMat);
+          const neckRing = new THREE.Mesh(new THREE.TorusGeometry(0.19 - ns * 0.02, 0.01, 66, 98), scaleMat);
           neckRing.rotation.x = Math.PI / 2;
           neckRing.position.set(0, 1.52 + ns * 0.18, 0.7 + ns * 0.15);
           group.add(neckRing);
@@ -11801,19 +11801,19 @@ export class DiabloRenderer {
         group.add(lowerJaw);
         // Fangs
         for (let f = 0; f < 4; f++) {
-          const fang = new THREE.Mesh(new THREE.ConeGeometry(0.012, 0.08, 46), new THREE.MeshStandardMaterial({ color: 0xccccdd }));
+          const fang = new THREE.Mesh(new THREE.ConeGeometry(0.012, 0.08, 59), new THREE.MeshStandardMaterial({ color: 0xccccdd }));
           fang.position.set((f - 1.5) * 0.06, 2.14, 1.42);
           fang.rotation.x = Math.PI;
           group.add(fang);
         }
         // Dragon horns (swept back)
         for (const hx of [-0.15, 0.15]) {
-          const hornBase = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.15, 46), scaleMat);
+          const hornBase = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.15, 59), scaleMat);
           hornBase.position.set(hx, 2.35, 1.1);
           hornBase.rotation.x = 0.6;
           hornBase.rotation.z = hx > 0 ? -0.2 : 0.2;
           group.add(hornBase);
-          const hornTip = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.2, 46), purpleGlowDim);
+          const hornTip = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.2, 59), purpleGlowDim);
           hornTip.position.set(hx * 1.1, 2.38, 0.95);
           hornTip.rotation.x = 0.8;
           group.add(hornTip);
@@ -11826,11 +11826,11 @@ export class DiabloRenderer {
         }
         // Purple glowing eyes
         for (const ex of [-0.09, 0.09]) {
-          const eyeSocket = new THREE.Mesh(new THREE.SphereGeometry(0.055, 64, 44), new THREE.MeshStandardMaterial({ color: 0x050505 }));
+          const eyeSocket = new THREE.Mesh(new THREE.SphereGeometry(0.055, 83, 57), new THREE.MeshStandardMaterial({ color: 0x050505 }));
           eyeSocket.position.set(ex, 2.28, 1.42);
           eyeSocket.scale.z = 0.5;
           group.add(eyeSocket);
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.045, 64, 44), purpleGlow);
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.045, 83, 57), purpleGlow);
           eye.position.set(ex, 2.28, 1.45);
           group.add(eye);
           // Slit pupil
@@ -11841,12 +11841,12 @@ export class DiabloRenderer {
         // Wings (multi-segment membrane)
         for (const wx of [-1, 1]) {
           // Wing arm bone
-          const wingArm = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.03, 0.8, 46), shadowMat);
+          const wingArm = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.03, 0.8, 59), shadowMat);
           wingArm.position.set(wx * 0.6, 1.5, 0.2);
           wingArm.rotation.z = wx * 0.3;
           group.add(wingArm);
           // Wing forearm
-          const wingFore = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.035, 0.6, 46), shadowMat);
+          const wingFore = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.035, 0.6, 59), shadowMat);
           wingFore.position.set(wx * 1.0, 1.45, -0.1);
           wingFore.rotation.z = wx * 0.5;
           group.add(wingFore);
@@ -11861,20 +11861,20 @@ export class DiabloRenderer {
           group.add(membrane2);
           // Wing finger bones
           for (let wf = 0; wf < 3; wf++) {
-            const finger = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.015, 0.35, 46), scaleMat);
+            const finger = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.015, 0.35, 59), scaleMat);
             finger.position.set(wx * (0.8 + wf * 0.15), 1.42, -0.2 + wf * 0.2);
             finger.rotation.z = wx * (0.3 + wf * 0.1);
             group.add(finger);
           }
           // Wing claw at joint
-          const wingClaw = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.06, 46), clawMat);
+          const wingClaw = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.06, 59), clawMat);
           wingClaw.position.set(wx * 0.45, 1.55, 0.5);
           wingClaw.rotation.z = wx * -0.5;
           group.add(wingClaw);
         }
         // Tail (segmented with spade tip)
         for (let ts = 0; ts < 6; ts++) {
-          const tailSeg = new THREE.Mesh(new THREE.CylinderGeometry(0.1 - ts * 0.015, 0.12 - ts * 0.015, 0.25, 46), shadowMat);
+          const tailSeg = new THREE.Mesh(new THREE.CylinderGeometry(0.1 - ts * 0.015, 0.12 - ts * 0.015, 0.25, 59), shadowMat);
           tailSeg.position.set(Math.sin(ts * 0.3) * 0.1, 1.0 - ts * 0.05, -0.8 - ts * 0.22);
           tailSeg.rotation.x = -0.2 + ts * 0.03;
           group.add(tailSeg);
@@ -11885,22 +11885,22 @@ export class DiabloRenderer {
         tailSpade.rotation.x = -0.3;
         group.add(tailSpade);
         // Tail spade point
-        const spadePoint = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.15, 46), shadowMat);
+        const spadePoint = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.15, 59), shadowMat);
         spadePoint.position.set(0, 0.68, -2.25);
         spadePoint.rotation.x = Math.PI / 2;
         group.add(spadePoint);
         // Legs with claws
         for (let li = 0; li < 2; li++) {
           for (const side of [-1, 1]) {
-            const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.08, 0.35, 46), shadowMat);
+            const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.08, 0.35, 59), shadowMat);
             thigh.position.set(side * 0.35, 0.8, li * 1.0 - 0.3);
             group.add(thigh);
-            const shin = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.35, 46), shadowMat);
+            const shin = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.35, 59), shadowMat);
             shin.position.set(side * 0.35, 0.45, li * 1.0 - 0.3);
             group.add(shin);
             // Dragon claws (3 toes)
             for (let cl = 0; cl < 3; cl++) {
-              const claw = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.08, 46), clawMat);
+              const claw = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.08, 59), clawMat);
               claw.position.set(side * 0.35 + (cl - 1) * 0.04, 0.24, li * 1.0 - 0.26);
               claw.rotation.x = Math.PI * 0.9;
               group.add(claw);
@@ -11908,15 +11908,15 @@ export class DiabloRenderer {
           }
         }
         // Shadow breath gathering in maw
-        const breathCore = new THREE.Mesh(new THREE.SphereGeometry(0.12, 64, 44), purpleGlow);
+        const breathCore = new THREE.Mesh(new THREE.SphereGeometry(0.12, 83, 57), purpleGlow);
         breathCore.position.set(0, 2.18, 1.52);
         group.add(breathCore);
-        const breathAura = new THREE.Mesh(new THREE.SphereGeometry(0.18, 64, 44), purpleGlowDim);
+        const breathAura = new THREE.Mesh(new THREE.SphereGeometry(0.18, 83, 57), purpleGlowDim);
         breathAura.position.set(0, 2.18, 1.5);
         group.add(breathAura);
         // Shadow wisps around body
         for (let sw = 0; sw < 6; sw++) {
-          const wisp = new THREE.Mesh(new THREE.SphereGeometry(0.03, 44, 36), purpleGlowDim);
+          const wisp = new THREE.Mesh(new THREE.SphereGeometry(0.03, 57, 46), purpleGlowDim);
           wisp.position.set(
             (Math.random() - 0.5) * 1.5,
             0.8 + Math.random() * 1.0,
@@ -11936,17 +11936,17 @@ export class DiabloRenderer {
         const gemMat = new THREE.MeshStandardMaterial({ color: 0xff4444, emissive: 0xcc0000, emissiveIntensity: 0.8 });
         // Sandstorm vortex base (multiple spinning rings)
         for (let vr = 0; vr < 6; vr++) {
-          const vortexRing = new THREE.Mesh(new THREE.TorusGeometry(0.35 + vr * 0.08, 0.025, 51, 76), djinnDarkMat);
+          const vortexRing = new THREE.Mesh(new THREE.TorusGeometry(0.35 + vr * 0.08, 0.025, 66, 98), djinnDarkMat);
           vortexRing.rotation.x = Math.PI / 2;
           vortexRing.rotation.z = vr * 0.5;
           vortexRing.position.y = 0.1 + vr * 0.1;
           group.add(vortexRing);
         }
         // Swirling sand tornado body (layered cones)
-        const djBodyOuter = new THREE.Mesh(new THREE.ConeGeometry(0.55, 1.1, 46), djinnDarkMat);
+        const djBodyOuter = new THREE.Mesh(new THREE.ConeGeometry(0.55, 1.1, 59), djinnDarkMat);
         djBodyOuter.position.y = 0.6;
         group.add(djBodyOuter);
-        const djBodyInner = new THREE.Mesh(new THREE.ConeGeometry(0.42, 1.2, 46), djinnMat);
+        const djBodyInner = new THREE.Mesh(new THREE.ConeGeometry(0.42, 1.2, 59), djinnMat);
         djBodyInner.position.y = 0.65;
         djBodyInner.castShadow = true;
         group.add(djBodyInner);
@@ -11954,18 +11954,18 @@ export class DiabloRenderer {
         for (let ss = 0; ss < 12; ss++) {
           const ang = (ss / 12) * Math.PI * 2;
           const r = 0.25 + ss * 0.04;
-          const stream = new THREE.Mesh(new THREE.SphereGeometry(0.04, 44, 36), djinnMat);
+          const stream = new THREE.Mesh(new THREE.SphereGeometry(0.04, 57, 46), djinnMat);
           stream.position.set(Math.sin(ang) * r, 0.2 + ss * 0.13, Math.cos(ang) * r);
           stream.scale.set(1.5, 0.5, 1.5);
           group.add(stream);
         }
         // Upper body (muscular, semi-transparent)
-        const djTorso = new THREE.Mesh(new THREE.SphereGeometry(0.28, 64, 44), djinnMat);
+        const djTorso = new THREE.Mesh(new THREE.SphereGeometry(0.28, 83, 57), djinnMat);
         djTorso.scale.set(1, 1.1, 0.85);
         djTorso.position.y = 1.52;
         group.add(djTorso);
         // Golden chest harness
-        const harness = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.015, 51, 76), goldMat);
+        const harness = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.015, 66, 98), goldMat);
         harness.rotation.x = Math.PI / 2;
         harness.position.y = 1.55;
         group.add(harness);
@@ -11977,71 +11977,71 @@ export class DiabloRenderer {
           group.add(strap);
         }
         // Central amulet gem
-        const amulet = new THREE.Mesh(new THREE.OctahedronGeometry(0.04, 3), gemMat);
+        const amulet = new THREE.Mesh(new THREE.OctahedronGeometry(0.04, 4), gemMat);
         amulet.position.set(0, 1.52, 0.22);
         group.add(amulet);
         // Muscular arms (semi-transparent with golden bracers)
         for (const ax of [-0.35, 0.35]) {
-          const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.3, 46), djinnMat);
+          const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.3, 59), djinnMat);
           upperArm.position.set(ax, 1.42, 0.05);
           upperArm.rotation.z = ax < 0 ? 0.35 : -0.35;
           group.add(upperArm);
           // Golden armband
-          const armband = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.012, 51, 76), goldMat);
+          const armband = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.012, 66, 98), goldMat);
           armband.rotation.x = Math.PI / 2;
           armband.position.set(ax * 1.05, 1.45, 0.05);
           group.add(armband);
-          const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.28, 46), djinnMat);
+          const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.28, 59), djinnMat);
           forearm.position.set(ax * 1.2, 1.22, 0.1);
           forearm.rotation.z = ax < 0 ? 0.5 : -0.5;
           group.add(forearm);
           // Golden bracer
-          const bracer = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.065, 0.08, 46), goldMat);
+          const bracer = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.065, 0.08, 59), goldMat);
           bracer.position.set(ax * 1.15, 1.28, 0.08);
           group.add(bracer);
           // Hands with pointed fingers
           for (let f = 0; f < 4; f++) {
-            const finger = new THREE.Mesh(new THREE.ConeGeometry(0.008, 0.08, 46), djinnMat);
+            const finger = new THREE.Mesh(new THREE.ConeGeometry(0.008, 0.08, 59), djinnMat);
             finger.position.set(ax * 1.35 + (f - 1.5) * 0.015, 1.08, 0.12);
             finger.rotation.x = 0.2;
             group.add(finger);
           }
         }
         // Head (regal, with turban-like crown)
-        const djHead = new THREE.Mesh(new THREE.SphereGeometry(0.18, 64, 44), djinnMat);
+        const djHead = new THREE.Mesh(new THREE.SphereGeometry(0.18, 83, 57), djinnMat);
         djHead.position.y = 1.92;
         group.add(djHead);
         // Ornate turban/crown
-        const turbanBase = new THREE.Mesh(new THREE.SphereGeometry(0.2, 64, 44), djinnDarkMat);
+        const turbanBase = new THREE.Mesh(new THREE.SphereGeometry(0.2, 83, 57), djinnDarkMat);
         turbanBase.scale.y = 0.6;
         turbanBase.position.y = 2.02;
         group.add(turbanBase);
         // Turban jewel
-        const turbanJewel = new THREE.Mesh(new THREE.OctahedronGeometry(0.035, 3), gemMat);
+        const turbanJewel = new THREE.Mesh(new THREE.OctahedronGeometry(0.035, 4), gemMat);
         turbanJewel.position.set(0, 2.02, 0.18);
         group.add(turbanJewel);
         // Turban feather/plume
-        const plume = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.15, 46), djinnGlow);
+        const plume = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.15, 59), djinnGlow);
         plume.position.set(0, 2.15, 0.12);
         group.add(plume);
         // Pointed beard
-        const beard = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.15, 46), djinnDarkMat);
+        const beard = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.15, 59), djinnDarkMat);
         beard.position.set(0, 1.78, 0.12);
         beard.rotation.x = 0.2;
         group.add(beard);
         // Glowing eyes (intense golden)
         for (const ex of [-0.065, 0.065]) {
-          const eyeGlow = new THREE.Mesh(new THREE.SphereGeometry(0.035, 44, 36), djinnGlowDim);
+          const eyeGlow = new THREE.Mesh(new THREE.SphereGeometry(0.035, 57, 46), djinnGlowDim);
           eyeGlow.position.set(ex, 1.95, 0.14);
           group.add(eyeGlow);
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.03, 44, 36), djinnGlow);
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.03, 57, 46), djinnGlow);
           eye.position.set(ex, 1.95, 0.16);
           group.add(eye);
         }
         // Floating golden relics orbiting
         for (let rl = 0; rl < 4; rl++) {
           const ang = (rl / 4) * Math.PI * 2;
-          const relic = new THREE.Mesh(new THREE.OctahedronGeometry(0.04, 3), goldMat);
+          const relic = new THREE.Mesh(new THREE.OctahedronGeometry(0.04, 4), goldMat);
           relic.position.set(Math.sin(ang) * 0.6, 1.3 + Math.sin(ang * 2) * 0.3, Math.cos(ang) * 0.6);
           relic.rotation.set(ang, ang * 0.5, 0);
           group.add(relic);
@@ -12072,14 +12072,14 @@ export class DiabloRenderer {
         const furMat = new THREE.MeshStandardMaterial({ color: 0x3a2515, roughness: 0.9 });
         const gemMat = new THREE.MeshStandardMaterial({ color: 0xff2200, emissive: 0xcc0000, emissiveIntensity: 1.0 });
         // Massive beast body (muscular)
-        const skBody = new THREE.Mesh(new THREE.SphereGeometry(0.6, 64, 44), skMat);
+        const skBody = new THREE.Mesh(new THREE.SphereGeometry(0.6, 83, 57), skMat);
         skBody.scale.set(0.85, 0.6, 1.4);
         skBody.position.y = 0.92;
         skBody.castShadow = true;
         group.add(skBody);
         // Barrel sides
         for (const sx of [-1, 1]) {
-          const barrel = new THREE.Mesh(new THREE.SphereGeometry(0.28, 64, 44), skMat);
+          const barrel = new THREE.Mesh(new THREE.SphereGeometry(0.28, 83, 57), skMat);
           barrel.scale.set(0.5, 0.55, 1.1);
           barrel.position.set(sx * 0.32, 0.82, 0);
           group.add(barrel);
@@ -12096,7 +12096,7 @@ export class DiabloRenderer {
         }
         // Armor chain links (decorative)
         for (let ch = 0; ch < 4; ch++) {
-          const chain = new THREE.Mesh(new THREE.TorusGeometry(0.03, 0.008, 51, 76), goldMat);
+          const chain = new THREE.Mesh(new THREE.TorusGeometry(0.03, 0.008, 66, 98), goldMat);
           chain.position.set(0.35, 1.08, -0.3 + ch * 0.25);
           chain.rotation.y = Math.PI / 2;
           group.add(chain);
@@ -12107,7 +12107,7 @@ export class DiabloRenderer {
         group.add(skTorso);
         // Chest muscle definition
         for (const cx of [-0.1, 0.1]) {
-          const pec = new THREE.Mesh(new THREE.SphereGeometry(0.1, 64, 44), goldDarkMat);
+          const pec = new THREE.Mesh(new THREE.SphereGeometry(0.1, 83, 57), goldDarkMat);
           pec.scale.set(1.2, 0.8, 0.5);
           pec.position.set(cx, 1.78, 0.5);
           group.add(pec);
@@ -12118,33 +12118,33 @@ export class DiabloRenderer {
         group.add(bellyPlate);
         // Massive shoulder pauldrons
         for (const sx of [-0.35, 0.35]) {
-          const padBase = new THREE.Mesh(new THREE.SphereGeometry(0.12, 64, 44), goldMat);
+          const padBase = new THREE.Mesh(new THREE.SphereGeometry(0.12, 83, 57), goldMat);
           padBase.scale.set(1.3, 0.7, 1.1);
           padBase.position.set(sx, 2.05, 0.35);
           group.add(padBase);
           // Pauldron spikes (3 each)
           for (let sp = 0; sp < 3; sp++) {
-            const spike = new THREE.Mesh(new THREE.ConeGeometry(0.018, 0.1, 46), goldMat);
+            const spike = new THREE.Mesh(new THREE.ConeGeometry(0.018, 0.1, 59), goldMat);
             spike.position.set(sx * (1.1 + sp * 0.05), 2.1 + sp * 0.03, 0.35 + (sp - 1) * 0.06);
             spike.rotation.z = sx > 0 ? -0.5 - sp * 0.1 : 0.5 + sp * 0.1;
             group.add(spike);
           }
           // Pauldron gem
-          const padGem = new THREE.Mesh(new THREE.OctahedronGeometry(0.025, 3), gemMat);
+          const padGem = new THREE.Mesh(new THREE.OctahedronGeometry(0.025, 4), gemMat);
           padGem.position.set(sx * 0.95, 2.05, 0.45);
           group.add(padGem);
         }
         // Arms
         for (const ax of [-0.35, 0.35]) {
-          const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.28, 46), skinMat);
+          const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.28, 59), skinMat);
           upperArm.position.set(ax, 1.82, 0.35);
           upperArm.rotation.z = ax < 0 ? 0.2 : -0.2;
           group.add(upperArm);
           // Golden bracer
-          const bracer = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.065, 0.08, 46), goldMat);
+          const bracer = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.065, 0.08, 59), goldMat);
           bracer.position.set(ax * 1.05, 1.72, 0.35);
           group.add(bracer);
-          const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.06, 0.25, 46), skinMat);
+          const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.06, 0.25, 59), skinMat);
           forearm.position.set(ax * 1.1, 1.58, 0.35);
           group.add(forearm);
           // Gauntlet
@@ -12153,22 +12153,22 @@ export class DiabloRenderer {
           group.add(gauntlet);
         }
         // Head (fierce, bull-like with crown)
-        const skHead = new THREE.Mesh(new THREE.SphereGeometry(0.2, 64, 44), skMat);
+        const skHead = new THREE.Mesh(new THREE.SphereGeometry(0.2, 83, 57), skMat);
         skHead.scale.set(1, 0.95, 0.95);
         skHead.position.set(0, 2.22, 0.35);
         group.add(skHead);
         // Bull muzzle
-        const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.1, 64, 44), skMat);
+        const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.1, 83, 57), skMat);
         muzzle.scale.set(1.1, 0.7, 1);
         muzzle.position.set(0, 2.15, 0.52);
         group.add(muzzle);
         // Nostrils (flared with steam)
         for (const nx of [-0.04, 0.04]) {
-          const nostril = new THREE.Mesh(new THREE.SphereGeometry(0.02, 44, 36), new THREE.MeshStandardMaterial({ color: 0x331111 }));
+          const nostril = new THREE.Mesh(new THREE.SphereGeometry(0.02, 57, 46), new THREE.MeshStandardMaterial({ color: 0x331111 }));
           nostril.position.set(nx, 2.14, 0.6);
           group.add(nostril);
           // Steam
-          const steam = new THREE.Mesh(new THREE.SphereGeometry(0.015, 44, 36), new THREE.MeshStandardMaterial({
+          const steam = new THREE.Mesh(new THREE.SphereGeometry(0.015, 57, 46), new THREE.MeshStandardMaterial({
             color: 0xcccccc, transparent: true, opacity: 0.2
           }));
           steam.position.set(nx, 2.12, 0.65);
@@ -12176,25 +12176,25 @@ export class DiabloRenderer {
         }
         // Massive bull horns
         for (const hx of [-0.18, 0.18]) {
-          const hornBase = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.12, 46), new THREE.MeshStandardMaterial({ color: 0x666644 }));
+          const hornBase = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.12, 59), new THREE.MeshStandardMaterial({ color: 0x666644 }));
           hornBase.position.set(hx, 2.32, 0.3);
           hornBase.rotation.z = hx > 0 ? -0.5 : 0.5;
           group.add(hornBase);
-          const hornMid = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.15, 46), new THREE.MeshStandardMaterial({ color: 0x777755 }));
+          const hornMid = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.15, 59), new THREE.MeshStandardMaterial({ color: 0x777755 }));
           hornMid.position.set(hx * 1.5, 2.36, 0.28);
           hornMid.rotation.z = hx > 0 ? -0.9 : 0.9;
           group.add(hornMid);
-          const hornTip = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.12, 46), goldMat);
+          const hornTip = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.12, 59), goldMat);
           hornTip.position.set(hx * 1.8, 2.38, 0.3);
           hornTip.rotation.z = hx > 0 ? -1.2 : 1.2;
           group.add(hornTip);
         }
         // Grand golden crown
-        const skCrown = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.19, 0.12, 46), goldMat);
+        const skCrown = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.19, 0.12, 59), goldMat);
         skCrown.position.set(0, 2.38, 0.35);
         group.add(skCrown);
         // Crown filigree band
-        const crownBand = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.012, 51, 76), goldMat);
+        const crownBand = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.012, 66, 98), goldMat);
         crownBand.rotation.x = Math.PI / 2;
         crownBand.position.set(0, 2.35, 0.35);
         group.add(crownBand);
@@ -12202,11 +12202,11 @@ export class DiabloRenderer {
         for (let i = 0; i < 7; i++) {
           const ang = (i / 7) * Math.PI * 2;
           const isMain = i % 2 === 0;
-          const spike = new THREE.Mesh(new THREE.ConeGeometry(isMain ? 0.022 : 0.015, isMain ? 0.12 : 0.08, 46), goldMat);
+          const spike = new THREE.Mesh(new THREE.ConeGeometry(isMain ? 0.022 : 0.015, isMain ? 0.12 : 0.08, 59), goldMat);
           spike.position.set(Math.sin(ang) * 0.15, 2.47, 0.35 + Math.cos(ang) * 0.15);
           group.add(spike);
           if (isMain) {
-            const gem = new THREE.Mesh(new THREE.SphereGeometry(0.012, 44, 36), gemMat);
+            const gem = new THREE.Mesh(new THREE.SphereGeometry(0.012, 57, 46), gemMat);
             gem.position.set(Math.sin(ang) * 0.15, 2.44, 0.35 + Math.cos(ang) * 0.15);
             group.add(gem);
           }
@@ -12214,31 +12214,31 @@ export class DiabloRenderer {
         // Fierce glowing eyes
         const skEyeMat = new THREE.MeshStandardMaterial({ color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 2.0 });
         for (const ex of [-0.065, 0.065]) {
-          const eyeGlow = new THREE.Mesh(new THREE.SphereGeometry(0.035, 44, 36), new THREE.MeshStandardMaterial({
+          const eyeGlow = new THREE.Mesh(new THREE.SphereGeometry(0.035, 57, 46), new THREE.MeshStandardMaterial({
             color: 0xff6622, emissive: 0xff3300, emissiveIntensity: 1.0, transparent: true, opacity: 0.5
           }));
           eyeGlow.position.set(ex, 2.24, 0.48);
           group.add(eyeGlow);
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.028, 44, 36), skEyeMat);
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.028, 57, 46), skEyeMat);
           eye.position.set(ex, 2.24, 0.5);
           group.add(eye);
         }
         // Beard (braided)
-        const beardMain = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.02, 0.15, 46), skDarkMat);
+        const beardMain = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.02, 0.15, 59), skDarkMat);
         beardMain.position.set(0, 2.05, 0.48);
         beardMain.rotation.x = 0.2;
         group.add(beardMain);
         // Beard bead
-        const beardBead = new THREE.Mesh(new THREE.SphereGeometry(0.015, 44, 36), goldMat);
+        const beardBead = new THREE.Mesh(new THREE.SphereGeometry(0.015, 57, 46), goldMat);
         beardBead.position.set(0, 1.97, 0.5);
         group.add(beardBead);
         // War hammer (massive, ornate)
-        const hamShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.03, 1.4, 46), new THREE.MeshStandardMaterial({ color: 0x664422, roughness: 0.7 }));
+        const hamShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.03, 1.4, 59), new THREE.MeshStandardMaterial({ color: 0x664422, roughness: 0.7 }));
         hamShaft.position.set(0.48, 1.55, 0.35);
         group.add(hamShaft);
         // Shaft grip wraps
         for (let gw = 0; gw < 4; gw++) {
-          const grip = new THREE.Mesh(new THREE.TorusGeometry(0.032, 0.006, 51, 76), new THREE.MeshStandardMaterial({ color: 0x553311 }));
+          const grip = new THREE.Mesh(new THREE.TorusGeometry(0.032, 0.006, 66, 98), new THREE.MeshStandardMaterial({ color: 0x553311 }));
           grip.rotation.x = Math.PI / 2;
           grip.position.set(0.48, 1.0 + gw * 0.1, 0.35);
           group.add(grip);
@@ -12260,54 +12260,54 @@ export class DiabloRenderer {
         hamRune.position.set(0.48, 2.25, 0.35);
         group.add(hamRune);
         // Hammer pommel
-        const hamPommel = new THREE.Mesh(new THREE.SphereGeometry(0.03, 44, 36), goldMat);
+        const hamPommel = new THREE.Mesh(new THREE.SphereGeometry(0.03, 57, 46), goldMat);
         hamPommel.position.set(0.48, 0.82, 0.35);
         group.add(hamPommel);
         // Beast legs (powerful, muscular with hooves)
         for (let i = 0; i < 2; i++) {
           for (const side of [-1, 1]) {
-            const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.08, 0.28, 46), skMat);
+            const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.08, 0.28, 59), skMat);
             thigh.position.set(side * 0.36, 0.6, i * 1.02 - 0.3);
             group.add(thigh);
-            const knee = new THREE.Mesh(new THREE.SphereGeometry(0.07, 64, 44), skDarkMat);
+            const knee = new THREE.Mesh(new THREE.SphereGeometry(0.07, 83, 57), skDarkMat);
             knee.position.set(side * 0.36, 0.44, i * 1.02 - 0.3);
             group.add(knee);
-            const shin = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.25, 46), skMat);
+            const shin = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.25, 59), skMat);
             shin.position.set(side * 0.36, 0.28, i * 1.02 - 0.3);
             group.add(shin);
             // Fetlock fur tuft
-            const fetlock = new THREE.Mesh(new THREE.SphereGeometry(0.06, 64, 44), furMat);
+            const fetlock = new THREE.Mesh(new THREE.SphereGeometry(0.06, 83, 57), furMat);
             fetlock.scale.y = 1.3;
             fetlock.position.set(side * 0.36, 0.14, i * 1.02 - 0.3);
             group.add(fetlock);
             // Golden hoof
-            const hoof = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.04, 46), hoofMat);
+            const hoof = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.04, 59), hoofMat);
             hoof.position.set(side * 0.36, 0.04, i * 1.02 - 0.3);
             group.add(hoof);
             // Golden hoof band
-            const hoofBand = new THREE.Mesh(new THREE.TorusGeometry(0.065, 0.008, 51, 76), goldMat);
+            const hoofBand = new THREE.Mesh(new THREE.TorusGeometry(0.065, 0.008, 66, 98), goldMat);
             hoofBand.rotation.x = Math.PI / 2;
             hoofBand.position.set(side * 0.36, 0.08, i * 1.02 - 0.3);
             group.add(hoofBand);
           }
         }
         // Flowing tail with golden ring
-        const tailBase = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.025, 0.35, 46), skDarkMat);
+        const tailBase = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.025, 0.35, 59), skDarkMat);
         tailBase.position.set(0, 0.78, -0.7);
         tailBase.rotation.x = 0.5;
         group.add(tailBase);
-        const tailRing = new THREE.Mesh(new THREE.TorusGeometry(0.03, 0.008, 51, 76), goldMat);
+        const tailRing = new THREE.Mesh(new THREE.TorusGeometry(0.03, 0.008, 66, 98), goldMat);
         tailRing.position.set(0, 0.65, -0.8);
         group.add(tailRing);
         for (let tt = 0; tt < 5; tt++) {
-          const strand = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.005, 0.2, 46), skDarkMat);
+          const strand = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.005, 0.2, 59), skDarkMat);
           strand.position.set((tt - 2) * 0.015, 0.5, -0.88);
           strand.rotation.x = 0.3 + tt * 0.04;
           group.add(strand);
         }
         // Dust cloud at hooves
         for (let dc = 0; dc < 6; dc++) {
-          const dust = new THREE.Mesh(new THREE.SphereGeometry(0.04, 44, 36), new THREE.MeshStandardMaterial({
+          const dust = new THREE.Mesh(new THREE.SphereGeometry(0.04, 57, 46), new THREE.MeshStandardMaterial({
             color: 0x998866, transparent: true, opacity: 0.2
           }));
           dust.position.set(
@@ -12433,7 +12433,7 @@ export class DiabloRenderer {
         if (isBoss) {
           // --- Large imposing boss with detailed anatomy ---
           // Muscular torso with layered geometry
-          const torso = new THREE.Mesh(new THREE.SphereGeometry(0.5, 64, 44), bodyMat);
+          const torso = new THREE.Mesh(new THREE.SphereGeometry(0.5, 83, 57), bodyMat);
           torso.scale.set(1.0, 1.3, 0.75);
           torso.position.y = 1.2;
           torso.castShadow = true;
@@ -12441,7 +12441,7 @@ export class DiabloRenderer {
 
           // Ribcage/chest definition plates
           for (let r = 0; r < 4; r++) {
-            const ribGeo = new THREE.TorusGeometry(0.35 - r * 0.03, 0.018, 51, 76, Math.PI);
+            const ribGeo = new THREE.TorusGeometry(0.35 - r * 0.03, 0.018, 66, 98, Math.PI);
             const rib = new THREE.Mesh(ribGeo, skinMat);
             rib.position.set(0, 1.35 - r * 0.08, 0.02);
             rib.rotation.y = Math.PI;
@@ -12449,14 +12449,14 @@ export class DiabloRenderer {
           }
 
           // Abdomen
-          const abdomen = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.32, 0.25, 46), bodyMat);
+          const abdomen = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.32, 0.25, 59), bodyMat);
           abdomen.position.y = 0.88;
           abdomen.castShadow = true;
           group.add(abdomen);
 
           // Shoulder guards with layered plates
           for (const sx of [-0.45, 0.45]) {
-            const pad = new THREE.Mesh(new THREE.SphereGeometry(0.2, 82, 44), armorMat);
+            const pad = new THREE.Mesh(new THREE.SphereGeometry(0.2, 106, 57), armorMat);
             pad.scale.set(1.3, 0.7, 1.1);
             pad.position.set(sx, 1.6, 0);
             pad.castShadow = true;
@@ -12470,7 +12470,7 @@ export class DiabloRenderer {
             }
             // Shoulder spikes with tapered tips
             for (let sp = 0; sp < 3; sp++) {
-              const spike = new THREE.Mesh(new THREE.ConeGeometry(0.035 - sp * 0.005, 0.2 - sp * 0.03, 46), accentMat);
+              const spike = new THREE.Mesh(new THREE.ConeGeometry(0.035 - sp * 0.005, 0.2 - sp * 0.03, 59), accentMat);
               spike.position.set(sx * (1.1 + sp * 0.08), 1.72 + sp * 0.04, (sp - 1) * 0.08);
               spike.rotation.z = sx > 0 ? -0.6 : 0.6;
               spike.castShadow = true;
@@ -12479,12 +12479,12 @@ export class DiabloRenderer {
           }
 
           // Neck muscles
-          const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.18, 0.2, 46), bodyMat);
+          const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.18, 0.2, 59), bodyMat);
           neck.position.set(0, 1.75, 0);
           group.add(neck);
 
           // Head with jaw
-          const head = new THREE.Mesh(new THREE.SphereGeometry(0.24, 64, 44), bodyMat);
+          const head = new THREE.Mesh(new THREE.SphereGeometry(0.24, 83, 57), bodyMat);
           head.position.set(0, 1.95, 0);
           head.castShadow = true;
           group.add(head);
@@ -12499,14 +12499,14 @@ export class DiabloRenderer {
 
           // Crown/horns with ridges
           for (const hx of [-0.15, 0.15]) {
-            const horn = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.3, 46), accentMat);
+            const horn = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.3, 59), accentMat);
             horn.position.set(hx, 2.2, 0);
             horn.rotation.z = hx > 0 ? -0.3 : 0.3;
             horn.castShadow = true;
             group.add(horn);
             // Horn ridges
             for (let hr = 0; hr < 4; hr++) {
-              const ridge = new THREE.Mesh(new THREE.TorusGeometry(0.04 - hr * 0.006, 0.006, 51, 76), accentMat);
+              const ridge = new THREE.Mesh(new THREE.TorusGeometry(0.04 - hr * 0.006, 0.006, 66, 98), accentMat);
               ridge.position.set(hx + (hx > 0 ? -1 : 1) * hr * 0.015, 2.08 + hr * 0.06, 0);
               ridge.rotation.x = Math.PI / 2;
               group.add(ridge);
@@ -12515,10 +12515,10 @@ export class DiabloRenderer {
 
           // Eyes with inner glow
           for (const ex of [-0.08, 0.08]) {
-            const eyeSocket = new THREE.Mesh(new THREE.SphereGeometry(0.05, 28, 24), new THREE.MeshPhysicalMaterial({ color: 0x000000, roughness: 0.9 }));
+            const eyeSocket = new THREE.Mesh(new THREE.SphereGeometry(0.05, 39, 36), new THREE.MeshPhysicalMaterial({ color: 0x000000, roughness: 0.9 }));
             eyeSocket.position.set(ex, 1.97, 0.16);
             group.add(eyeSocket);
-            const eye = new THREE.Mesh(new THREE.SphereGeometry(0.04, 28, 24), eyeMat);
+            const eye = new THREE.Mesh(new THREE.SphereGeometry(0.04, 39, 36), eyeMat);
             eye.position.set(ex, 1.97, 0.19);
             group.add(eye);
             // Pupil slit
@@ -12530,33 +12530,33 @@ export class DiabloRenderer {
           // Muscular arms with forearm wraps
           for (const ax of [-0.5, 0.5]) {
             // Upper arm
-            const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.35, 28), bodyMat);
+            const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.35, 39), bodyMat);
             upperArm.position.set(ax, 1.35, 0);
             upperArm.rotation.z = ax > 0 ? -0.2 : 0.2;
             upperArm.castShadow = true;
             group.add(upperArm);
             // Elbow joint
-            const elbow = new THREE.Mesh(new THREE.SphereGeometry(0.07, 24, 20), skinMat);
+            const elbow = new THREE.Mesh(new THREE.SphereGeometry(0.07, 36, 30), skinMat);
             elbow.position.set(ax * 1.05, 1.15, 0);
             group.add(elbow);
             // Forearm
-            const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.3, 28), bodyMat);
+            const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.3, 39), bodyMat);
             forearm.position.set(ax * 1.1, 0.95, 0);
             forearm.rotation.z = ax > 0 ? -0.1 : 0.1;
             group.add(forearm);
             // Forearm wraps
             for (let w = 0; w < 3; w++) {
-              const wrap = new THREE.Mesh(new THREE.TorusGeometry(0.065, 0.008, 16, 25), accentMat);
+              const wrap = new THREE.Mesh(new THREE.TorusGeometry(0.065, 0.008, 27, 35), accentMat);
               wrap.position.set(ax * 1.1, 0.85 + w * 0.06, 0);
               wrap.rotation.x = Math.PI / 2;
               group.add(wrap);
             }
             // Fists with knuckle detail
-            const fist = new THREE.Mesh(new THREE.SphereGeometry(0.09, 28, 24), skinMat);
+            const fist = new THREE.Mesh(new THREE.SphereGeometry(0.09, 39, 36), skinMat);
             fist.position.set(ax * 1.15, 0.78, 0);
             group.add(fist);
             for (let k = 0; k < 4; k++) {
-              const knuckle = new THREE.Mesh(new THREE.SphereGeometry(0.02, 16, 16), skinMat);
+              const knuckle = new THREE.Mesh(new THREE.SphereGeometry(0.02, 27, 27), skinMat);
               knuckle.position.set(ax * 1.15 + (k - 1.5) * 0.025, 0.78, 0.07);
               group.add(knuckle);
             }
@@ -12564,17 +12564,17 @@ export class DiabloRenderer {
 
           // Legs with knee guards
           for (const lx of [-0.2, 0.2]) {
-            const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.35, 28), bodyMat);
+            const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.35, 39), bodyMat);
             thigh.position.set(lx, 0.58, 0);
             thigh.castShadow = true;
             group.add(thigh);
             // Knee guard
-            const knee = new THREE.Mesh(new THREE.SphereGeometry(0.08, 24, 20), armorMat);
+            const knee = new THREE.Mesh(new THREE.SphereGeometry(0.08, 36, 30), armorMat);
             knee.position.set(lx, 0.42, 0.06);
             knee.scale.set(0.8, 1, 0.6);
             group.add(knee);
             // Shin
-            const shin = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 0.3, 28), bodyMat);
+            const shin = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 0.3, 39), bodyMat);
             shin.position.set(lx, 0.25, 0);
             group.add(shin);
             // Armored boot
@@ -12583,34 +12583,34 @@ export class DiabloRenderer {
             boot.castShadow = true;
             group.add(boot);
             // Boot toe guard
-            const toeGuard = new THREE.Mesh(new THREE.SphereGeometry(0.05, 24, 16, 0, Math.PI), armorMat);
+            const toeGuard = new THREE.Mesh(new THREE.SphereGeometry(0.05, 36, 27, 0, Math.PI), armorMat);
             toeGuard.position.set(lx, 0.08, 0.14);
             toeGuard.rotation.x = -Math.PI / 2;
             group.add(toeGuard);
           }
 
           // Belt with skull buckle
-          const belt = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.025, 22, 51), armorMat);
+          const belt = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.025, 33, 66), armorMat);
           belt.rotation.x = Math.PI / 2;
           belt.position.y = 0.88;
           group.add(belt);
-          const buckle = new THREE.Mesh(new THREE.OctahedronGeometry(0.05, 1), eyeMat);
+          const buckle = new THREE.Mesh(new THREE.OctahedronGeometry(0.05, 2), eyeMat);
           buckle.position.set(0, 0.88, 0.32);
           group.add(buckle);
 
           // Back spines
           for (let s = 0; s < 5; s++) {
-            const spine = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.12 + s * 0.02, 20), accentMat);
+            const spine = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.12 + s * 0.02, 30), accentMat);
             spine.position.set(0, 1.0 + s * 0.15, -0.28);
             spine.rotation.x = 0.4;
             group.add(spine);
           }
 
           // Aura glow (layered for depth)
-          const aura = new THREE.Mesh(new THREE.SphereGeometry(0.9, 36, 28), emissiveMat);
+          const aura = new THREE.Mesh(new THREE.SphereGeometry(0.9, 46, 39), emissiveMat);
           aura.position.y = 1.2;
           group.add(aura);
-          const innerAura = new THREE.Mesh(new THREE.SphereGeometry(0.6, 32, 24), new THREE.MeshPhysicalMaterial({
+          const innerAura = new THREE.Mesh(new THREE.SphereGeometry(0.6, 44, 36), new THREE.MeshPhysicalMaterial({
             color: eyeColor, emissive: eyeColor, emissiveIntensity: 0.3,
             transparent: true, opacity: 0.15, transmission: 0.6,
           }));
@@ -12624,7 +12624,7 @@ export class DiabloRenderer {
         } else {
           // --- Standard enemy with improved anatomy ---
           // Torso with subtle chest shape
-          const body = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.16, 0.48, 28), bodyMat);
+          const body = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.16, 0.48, 39), bodyMat);
           body.position.y = 0.72;
           body.castShadow = true;
           group.add(body);
@@ -12634,12 +12634,12 @@ export class DiabloRenderer {
           group.add(chestPlate);
 
           // Neck
-          const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 0.08, 24), skinMat);
+          const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 0.08, 36), skinMat);
           neck.position.y = 0.98;
           group.add(neck);
 
           // Head with features
-          const head = new THREE.Mesh(new THREE.SphereGeometry(0.13, 48, 28), skinMat);
+          const head = new THREE.Mesh(new THREE.SphereGeometry(0.13, 62, 39), skinMat);
           head.position.y = 1.12;
           head.castShadow = true;
           group.add(head);
@@ -12650,49 +12650,49 @@ export class DiabloRenderer {
 
           // Eyes with sockets
           for (const ex of [-0.04, 0.04]) {
-            const socket = new THREE.Mesh(new THREE.SphereGeometry(0.03, 24, 20), new THREE.MeshPhysicalMaterial({ color: 0x111111, roughness: 0.9 }));
+            const socket = new THREE.Mesh(new THREE.SphereGeometry(0.03, 36, 30), new THREE.MeshPhysicalMaterial({ color: 0x111111, roughness: 0.9 }));
             socket.position.set(ex, 1.14, 0.09);
             group.add(socket);
-            const eye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 24, 20), eyeMat);
+            const eye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 36, 30), eyeMat);
             eye.position.set(ex, 1.14, 0.11);
             group.add(eye);
           }
 
           // Nose hint
-          const nose = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.04, 16), skinMat);
+          const nose = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.04, 27), skinMat);
           nose.position.set(0, 1.1, 0.13);
           nose.rotation.x = -0.3;
           group.add(nose);
 
           // Arms with elbows
           for (const ax of [-0.2, 0.2]) {
-            const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.04, 0.2, 24), bodyMat);
+            const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.04, 0.2, 36), bodyMat);
             upperArm.position.set(ax, 0.82, 0);
             upperArm.rotation.z = ax > 0 ? -0.15 : 0.15;
             upperArm.castShadow = true;
             group.add(upperArm);
-            const elbow = new THREE.Mesh(new THREE.SphereGeometry(0.035, 20, 16), skinMat);
+            const elbow = new THREE.Mesh(new THREE.SphereGeometry(0.035, 30, 27), skinMat);
             elbow.position.set(ax * 1.1, 0.7, 0);
             group.add(elbow);
-            const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.035, 0.18, 24), skinMat);
+            const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.035, 0.18, 36), skinMat);
             forearm.position.set(ax * 1.1, 0.58, 0);
             group.add(forearm);
             // Hand
-            const hand = new THREE.Mesh(new THREE.SphereGeometry(0.03, 20, 16), skinMat);
+            const hand = new THREE.Mesh(new THREE.SphereGeometry(0.03, 30, 27), skinMat);
             hand.position.set(ax * 1.1, 0.48, 0);
             group.add(hand);
           }
 
           // Legs with knees and boots
           for (const lx of [-0.07, 0.07]) {
-            const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.055, 0.2, 24), bodyMat);
+            const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.055, 0.2, 36), bodyMat);
             thigh.position.set(lx, 0.38, 0);
             thigh.castShadow = true;
             group.add(thigh);
-            const knee = new THREE.Mesh(new THREE.SphereGeometry(0.04, 20, 16), accentMat);
+            const knee = new THREE.Mesh(new THREE.SphereGeometry(0.04, 30, 27), accentMat);
             knee.position.set(lx, 0.28, 0.02);
             group.add(knee);
-            const shin = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.18, 24), bodyMat);
+            const shin = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.18, 36), bodyMat);
             shin.position.set(lx, 0.16, 0);
             group.add(shin);
             const boot = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.05, 0.12), accentMat);
@@ -12704,16 +12704,16 @@ export class DiabloRenderer {
           // Weapon indicator based on behavior
           if (def.behavior === EnemyBehavior.RANGED || (def.attackRange && def.attackRange > 5)) {
             // Detailed staff/wand
-            const staff = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.018, 0.65, 24), new THREE.MeshPhysicalMaterial({
+            const staff = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.018, 0.65, 36), new THREE.MeshPhysicalMaterial({
               color: 0x553322, roughness: 0.85, metalness: 0.0,
             }));
             staff.position.set(0.22, 0.72, 0);
             group.add(staff);
-            const staffOrb = new THREE.Mesh(new THREE.SphereGeometry(0.045, 28, 24), eyeMat);
+            const staffOrb = new THREE.Mesh(new THREE.SphereGeometry(0.045, 39, 36), eyeMat);
             staffOrb.position.set(0.22, 1.06, 0);
             group.add(staffOrb);
             // Orb glow
-            const orbGlow = new THREE.Mesh(new THREE.SphereGeometry(0.065, 24, 20), new THREE.MeshPhysicalMaterial({
+            const orbGlow = new THREE.Mesh(new THREE.SphereGeometry(0.065, 36, 30), new THREE.MeshPhysicalMaterial({
               color: eyeColor, emissive: eyeColor, emissiveIntensity: 0.4,
               transparent: true, opacity: 0.2, transmission: 0.5,
             }));
@@ -12721,7 +12721,7 @@ export class DiabloRenderer {
             group.add(orbGlow);
             // Staff wrappings
             for (let sw = 0; sw < 2; sw++) {
-              const wrap = new THREE.Mesh(new THREE.TorusGeometry(0.018, 0.004, 16, 25), accentMat);
+              const wrap = new THREE.Mesh(new THREE.TorusGeometry(0.018, 0.004, 27, 35), accentMat);
               wrap.position.set(0.22, 0.5 + sw * 0.15, 0);
               wrap.rotation.x = Math.PI / 2;
               group.add(wrap);
@@ -12731,10 +12731,10 @@ export class DiabloRenderer {
             const shield = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.22, 0.17), armorMat);
             shield.position.set(-0.24, 0.72, 0.05);
             group.add(shield);
-            const emblem = new THREE.Mesh(new THREE.CircleGeometry(0.04, 28), eyeMat);
+            const emblem = new THREE.Mesh(new THREE.CircleGeometry(0.04, 39), eyeMat);
             emblem.position.set(-0.265, 0.72, 0.14);
             group.add(emblem);
-            const shieldRim = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.008, 16, 38), armorMat);
+            const shieldRim = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.008, 27, 49), armorMat);
             shieldRim.position.set(-0.265, 0.72, 0.14);
             group.add(shieldRim);
             // Sword with guard and pommel
@@ -12744,16 +12744,16 @@ export class DiabloRenderer {
             const guard = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.02, 0.03), armorMat);
             guard.position.set(0.24, 0.6, 0);
             group.add(guard);
-            const pommel = new THREE.Mesh(new THREE.SphereGeometry(0.02, 20, 16), accentMat);
+            const pommel = new THREE.Mesh(new THREE.SphereGeometry(0.02, 30, 27), accentMat);
             pommel.position.set(0.24, 0.56, 0);
             group.add(pommel);
           } else if (def.behavior === EnemyBehavior.HEALER) {
             // Glowing orb hands with energy tendrils
             for (const hx of [-0.22, 0.22]) {
-              const healOrb = new THREE.Mesh(new THREE.SphereGeometry(0.045, 28, 24), emissiveMat);
+              const healOrb = new THREE.Mesh(new THREE.SphereGeometry(0.045, 39, 36), emissiveMat);
               healOrb.position.set(hx, 0.48, 0);
               group.add(healOrb);
-              const healGlow = new THREE.Mesh(new THREE.SphereGeometry(0.07, 24, 20), new THREE.MeshPhysicalMaterial({
+              const healGlow = new THREE.Mesh(new THREE.SphereGeometry(0.07, 36, 30), new THREE.MeshPhysicalMaterial({
                 color: emissiveColor, emissive: emissiveColor, emissiveIntensity: 0.5,
                 transparent: true, opacity: 0.15, transmission: 0.6,
               }));
@@ -12761,7 +12761,7 @@ export class DiabloRenderer {
               group.add(healGlow);
             }
             // Healer circlet
-            const circlet = new THREE.Mesh(new THREE.TorusGeometry(0.14, 0.01, 16, 38), eyeMat);
+            const circlet = new THREE.Mesh(new THREE.TorusGeometry(0.14, 0.01, 27, 49), eyeMat);
             circlet.position.y = 1.22;
             circlet.rotation.x = Math.PI / 2;
             group.add(circlet);
@@ -12772,7 +12772,7 @@ export class DiabloRenderer {
             }));
             blade.position.set(0.24, 0.72, 0);
             group.add(blade);
-            const hilt = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.08, 24), new THREE.MeshPhysicalMaterial({
+            const hilt = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.08, 36), new THREE.MeshPhysicalMaterial({
               color: 0x553322, roughness: 0.8,
             }));
             hilt.position.set(0.24, 0.55, 0);
@@ -12783,7 +12783,7 @@ export class DiabloRenderer {
           }
 
           // Accent belt/waist with buckle
-          const belt = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.02, 22, 38), accentMat);
+          const belt = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.02, 33, 49), accentMat);
           belt.rotation.x = Math.PI / 2;
           belt.position.y = 0.52;
           group.add(belt);
@@ -12805,7 +12805,7 @@ export class DiabloRenderer {
     // Boss ring
     const def = ENEMY_DEFS[type];
     if (def.isBoss) {
-      const ringGeo = new THREE.TorusGeometry(1.2 * scale, 0.05, 25, 51);
+      const ringGeo = new THREE.TorusGeometry(1.2 * scale, 0.05, 35, 66);
       const ringMat = new THREE.MeshStandardMaterial({
         color: 0xff4400,
         emissive: 0xff2200,
@@ -12825,7 +12825,7 @@ export class DiabloRenderer {
     const color = RARITY_COLORS[rarity];
 
     // Floating octahedron
-    const octGeo = new THREE.OctahedronGeometry(0.2, 2);
+    const octGeo = new THREE.OctahedronGeometry(0.2, 3);
     const octMat = new THREE.MeshStandardMaterial({
       color: color,
       emissive: color,
@@ -12844,7 +12844,7 @@ export class DiabloRenderer {
       rarity === ItemRarity.MYTHIC ||
       rarity === ItemRarity.DIVINE
     ) {
-      const beamGeo = new THREE.CylinderGeometry(0.05, 0.05, 8, 24);
+      const beamGeo = new THREE.CylinderGeometry(0.05, 0.05, 8, 36);
       const beamMat = new THREE.MeshStandardMaterial({
         color: color,
         emissive: color,
@@ -12916,7 +12916,7 @@ export class DiabloRenderer {
     group.add(bandR);
 
     // Half-cylinder lid (arched top)
-    const lidGeo = new THREE.CylinderGeometry(0.38, 0.38, 1.02, 34, 2, false, 0, Math.PI);
+    const lidGeo = new THREE.CylinderGeometry(0.38, 0.38, 1.02, 44, 2, false, 0, Math.PI);
     const lid = new THREE.Mesh(lidGeo, woodMat);
     lid.rotation.z = Math.PI / 2;
     lid.position.y = 0.5;
@@ -12941,7 +12941,7 @@ export class DiabloRenderer {
 
     // Hinges on back
     for (let hx = -0.3; hx <= 0.3; hx += 0.6) {
-      const hinge = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.06, 24), hingeMat);
+      const hinge = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.06, 36), hingeMat);
       hinge.rotation.x = Math.PI / 2;
       hinge.position.set(hx, 0.5, -0.34);
       group.add(hinge);
@@ -12952,13 +12952,13 @@ export class DiabloRenderer {
     lockPlate.position.set(0, 0.42, 0.34);
     group.add(lockPlate);
     // Keyhole
-    const keyhole = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.02, 24), new THREE.MeshStandardMaterial({ color: 0x111111 }));
+    const keyhole = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.02, 36), new THREE.MeshStandardMaterial({ color: 0x111111 }));
     keyhole.rotation.x = Math.PI / 2;
     keyhole.position.set(0, 0.41, 0.36);
     group.add(keyhole);
 
     // Rarity-colored gem on front center
-    const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.04, 1), new THREE.MeshStandardMaterial({ color: rarityColor, emissive: rarityColor, emissiveIntensity: 0.4 }));
+    const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.04, 2), new THREE.MeshStandardMaterial({ color: rarityColor, emissive: rarityColor, emissiveIntensity: 0.4 }));
     gem.position.set(0, 0.46, 0.36);
     group.add(gem);
 
@@ -13251,7 +13251,7 @@ export class DiabloRenderer {
         // Multi-layered divine shield effect
         const shieldGroup = new THREE.Group();
         // Inner golden aura
-        const innerGeo = new THREE.SphereGeometry(1.2, 44, 36);
+        const innerGeo = new THREE.SphereGeometry(1.2, 57, 46);
         const innerMat = new THREE.MeshStandardMaterial({
           color: 0xffd700, emissive: 0xffaa00, emissiveIntensity: 2.5,
           transparent: true, opacity: 0.15, side: THREE.DoubleSide,
@@ -13260,7 +13260,7 @@ export class DiabloRenderer {
         innerMesh.name = 'invuln_inner';
         shieldGroup.add(innerMesh);
         // Outer holy shield with wireframe
-        const outerGeo = new THREE.IcosahedronGeometry(1.8, 3);
+        const outerGeo = new THREE.IcosahedronGeometry(1.8, 4);
         const outerMat = new THREE.MeshStandardMaterial({
           color: 0xffeedd, emissive: 0xffcc44, emissiveIntensity: 1.8,
           wireframe: true, transparent: true, opacity: 0.4,
@@ -13269,7 +13269,7 @@ export class DiabloRenderer {
         outerMesh.name = 'invuln_outer';
         shieldGroup.add(outerMesh);
         // Holy light column
-        const pillarGeo = new THREE.CylinderGeometry(0.3, 0.8, 6, 28, 2, true);
+        const pillarGeo = new THREE.CylinderGeometry(0.3, 0.8, 6, 39, 2, true);
         const pillarMat = new THREE.MeshStandardMaterial({
           color: 0xfff8e0, emissive: 0xffdd66, emissiveIntensity: 2.0,
           transparent: true, opacity: 0.12, side: THREE.DoubleSide,
@@ -13568,7 +13568,7 @@ export class DiabloRenderer {
       if (enemy.bossShieldTimer && enemy.bossShieldTimer > 0) {
         let shieldMesh = this._shieldMeshes.get(enemy.id + "_boss");
         if (!shieldMesh) {
-          const sGeo = new THREE.SphereGeometry(enemy.scale * 1.8, 44, 36);
+          const sGeo = new THREE.SphereGeometry(enemy.scale * 1.8, 57, 46);
           const sMat = new THREE.MeshStandardMaterial({
             color: 0x4488ff,
             emissive: 0x2244aa,
@@ -13596,7 +13596,7 @@ export class DiabloRenderer {
       if (enemy.shieldActive) {
         let shieldMesh = this._shieldMeshes.get(enemy.id + "_shield");
         if (!shieldMesh) {
-          const sGeo = new THREE.SphereGeometry(enemy.scale * 1.5, 36, 32);
+          const sGeo = new THREE.SphereGeometry(enemy.scale * 1.5, 46, 44);
           const sMat = new THREE.MeshStandardMaterial({
             color: 0x88aaff,
             emissive: 0x4466cc,
@@ -13755,7 +13755,7 @@ export class DiabloRenderer {
         // Orbiting fire embers (6 small flame meshes)
         for (let i = 0; i < 6; i++) {
           const ember = new THREE.Mesh(
-            new THREE.SphereGeometry(0.06 + Math.random() * 0.04, 16, 16),
+            new THREE.SphereGeometry(0.06 + Math.random() * 0.04, 27, 27),
             new THREE.MeshStandardMaterial({
               color: 0xff6600, emissive: 0xff4400, emissiveIntensity: 3.0,
               transparent: true, opacity: 0.8,
@@ -13772,7 +13772,7 @@ export class DiabloRenderer {
         // Rising flame cones (3 larger flames)
         for (let i = 0; i < 3; i++) {
           const flame = new THREE.Mesh(
-            new THREE.ConeGeometry(0.1, 0.4 + Math.random() * 0.3, 20),
+            new THREE.ConeGeometry(0.1, 0.4 + Math.random() * 0.3, 30),
             new THREE.MeshStandardMaterial({
               color: 0xff8800, emissive: 0xff4400, emissiveIntensity: 2.5,
               transparent: true, opacity: 0.7,
@@ -13786,7 +13786,7 @@ export class DiabloRenderer {
 
         // Hot glow overlay sphere
         const heatGlow = new THREE.Mesh(
-          new THREE.SphereGeometry(0.9, 28, 24),
+          new THREE.SphereGeometry(0.9, 39, 36),
           new THREE.MeshStandardMaterial({
             color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 1.5,
             transparent: true, opacity: 0.12, side: THREE.DoubleSide,
@@ -13851,7 +13851,7 @@ export class DiabloRenderer {
         // Ice crystal spikes (5 jutting outward)
         for (let i = 0; i < 5; i++) {
           const crystal = new THREE.Mesh(
-            new THREE.OctahedronGeometry(0.08 + Math.random() * 0.06, 2),
+            new THREE.OctahedronGeometry(0.08 + Math.random() * 0.06, 3),
             new THREE.MeshStandardMaterial({
               color: 0xccefff, emissive: 0x88ccff, emissiveIntensity: 1.5,
               transparent: true, opacity: 0.8, metalness: 0.4, roughness: 0.1,
@@ -13873,7 +13873,7 @@ export class DiabloRenderer {
 
         // Frost shell overlay (translucent icy sphere around body)
         const frostShell = new THREE.Mesh(
-          new THREE.IcosahedronGeometry(0.85, 3),
+          new THREE.IcosahedronGeometry(0.85, 4),
           new THREE.MeshStandardMaterial({
             color: 0xaaddff, emissive: 0x4488cc, emissiveIntensity: 0.8,
             transparent: true, opacity: 0.18, side: THREE.DoubleSide,
@@ -13887,7 +13887,7 @@ export class DiabloRenderer {
         // Floating frost motes (tiny snowflake-like particles)
         for (let i = 0; i < 8; i++) {
           const mote = new THREE.Mesh(
-            new THREE.SphereGeometry(0.025 + Math.random() * 0.02, 16, 16),
+            new THREE.SphereGeometry(0.025 + Math.random() * 0.02, 27, 27),
             new THREE.MeshStandardMaterial({
               color: 0xffffff, emissive: 0xaaddff, emissiveIntensity: 2.0,
               transparent: true, opacity: 0.7,
@@ -13904,7 +13904,7 @@ export class DiabloRenderer {
 
         // Ground frost ring
         const frostRing = new THREE.Mesh(
-          new THREE.TorusGeometry(0.7, 0.04, 22, 51),
+          new THREE.TorusGeometry(0.7, 0.04, 33, 66),
           new THREE.MeshStandardMaterial({
             color: 0xaaddff, emissive: 0x66aadd, emissiveIntensity: 1.5,
             transparent: true, opacity: 0.5,
@@ -13979,7 +13979,7 @@ export class DiabloRenderer {
             transparent: true, opacity: 0.8,
           });
           const arc = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.015, 0.015, 0.5 + Math.random() * 0.3, 16),
+            new THREE.CylinderGeometry(0.015, 0.015, 0.5 + Math.random() * 0.3, 27),
             arcMat
           );
           arc.name = 'status_fx_spark_arc';
@@ -14015,7 +14015,7 @@ export class DiabloRenderer {
 
         // Toxic mist sphere
         const mist = new THREE.Mesh(
-          new THREE.SphereGeometry(0.7, 24, 20),
+          new THREE.SphereGeometry(0.7, 36, 30),
           new THREE.MeshStandardMaterial({
             color: 0x44ff44, emissive: 0x22aa22, emissiveIntensity: 0.8,
             transparent: true, opacity: 0.1, side: THREE.DoubleSide,
@@ -14028,7 +14028,7 @@ export class DiabloRenderer {
         // Rising poison bubbles
         for (let i = 0; i < 4; i++) {
           const bubble = new THREE.Mesh(
-            new THREE.SphereGeometry(0.04 + Math.random() * 0.03, 20, 16),
+            new THREE.SphereGeometry(0.04 + Math.random() * 0.03, 30, 27),
             new THREE.MeshStandardMaterial({
               color: 0x66ff44, emissive: 0x44cc22, emissiveIntensity: 2.0,
               transparent: true, opacity: 0.6,
@@ -14096,14 +14096,14 @@ export class DiabloRenderer {
     this._fpWeapon = new THREE.Group();
 
     // Sword/weapon handle
-    const handleGeo = new THREE.CylinderGeometry(0.015, 0.02, 0.18, 24);
+    const handleGeo = new THREE.CylinderGeometry(0.015, 0.02, 0.18, 36);
     const handleMat = new THREE.MeshStandardMaterial({ color: 0x5a3520, roughness: 0.7 });
     const handle = new THREE.Mesh(handleGeo, handleMat);
     handle.position.y = -0.09;
     this._fpWeapon.add(handle);
 
     // Grip wrapping
-    const gripGeo = new THREE.TorusGeometry(0.02, 0.004, 10, 16);
+    const gripGeo = new THREE.TorusGeometry(0.02, 0.004, 17, 27);
     const gripMat = new THREE.MeshStandardMaterial({ color: 0x3a2510, roughness: 0.4 });
     for (let i = 0; i < 4; i++) {
       const grip = new THREE.Mesh(gripGeo, gripMat);
@@ -14133,13 +14133,13 @@ export class DiabloRenderer {
     this._fpWeapon.add(edge);
 
     // Blade tip
-    const tipGeo = new THREE.ConeGeometry(0.014, 0.04, 10);
+    const tipGeo = new THREE.ConeGeometry(0.014, 0.04, 17);
     const tip = new THREE.Mesh(tipGeo, bladeMat);
     tip.position.y = 0.33;
     this._fpWeapon.add(tip);
 
     // Pommel gem
-    const gemGeo = new THREE.SphereGeometry(0.01, 14, 14);
+    const gemGeo = new THREE.SphereGeometry(0.01, 23, 23);
     const gemMat = new THREE.MeshBasicMaterial({ color: 0xff4444 });
     const gem = new THREE.Mesh(gemGeo, gemMat);
     gem.position.y = -0.19;
@@ -14183,18 +14183,18 @@ export class DiabloRenderer {
           if (dt === DamageType.FIRE || enemySeed === 0) {
             // Fire variant: blazing orb with flame wisps
             const fireCore = new THREE.Mesh(
-              new THREE.SphereGeometry(r * 0.5, 20, 16),
+              new THREE.SphereGeometry(r * 0.5, 30, 27),
               new THREE.MeshStandardMaterial({ color: 0xff6622, emissive: 0xff4400, emissiveIntensity: 2.5 })
             );
             group.add(fireCore);
             const fireOuter = new THREE.Mesh(
-              new THREE.SphereGeometry(r * 0.9, 16, 14),
+              new THREE.SphereGeometry(r * 0.9, 27, 23),
               new THREE.MeshStandardMaterial({ color: 0xff2200, emissive: 0xcc1100, emissiveIntensity: 0.8, transparent: true, opacity: 0.25, side: THREE.DoubleSide })
             );
             group.add(fireOuter);
             for (let i = 0; i < 5; i++) {
               const wisp = new THREE.Mesh(
-                new THREE.ConeGeometry(r * 0.12, r * 0.5, 10),
+                new THREE.ConeGeometry(r * 0.12, r * 0.5, 17),
                 new THREE.MeshStandardMaterial({ color: i % 2 === 0 ? 0xffaa22 : 0xff4400, emissive: i % 2 === 0 ? 0xff8800 : 0xcc2200, emissiveIntensity: 2.0, transparent: true, opacity: 0.7 })
               );
               const a = (i / 5) * Math.PI * 2;
@@ -14209,19 +14209,19 @@ export class DiabloRenderer {
           } else if (dt === DamageType.ICE || enemySeed === 1) {
             // Ice variant: frozen shard cluster
             const iceCrystal = new THREE.Mesh(
-              new THREE.OctahedronGeometry(r * 0.5, 1),
+              new THREE.OctahedronGeometry(r * 0.5, 2),
               new THREE.MeshStandardMaterial({ color: 0xaaddff, emissive: 0x6699ff, emissiveIntensity: 2.0, metalness: 0.3, roughness: 0.1 })
             );
             iceCrystal.scale.set(1, 1.4, 1);
             group.add(iceCrystal);
             const iceAura = new THREE.Mesh(
-              new THREE.SphereGeometry(r * 1.0, 16, 14),
+              new THREE.SphereGeometry(r * 1.0, 27, 23),
               new THREE.MeshStandardMaterial({ color: 0x88ccff, emissive: 0x4488cc, emissiveIntensity: 0.4, transparent: true, opacity: 0.15, side: THREE.DoubleSide })
             );
             group.add(iceAura);
             for (let i = 0; i < 4; i++) {
               const shard = new THREE.Mesh(
-                new THREE.OctahedronGeometry(r * 0.15, 1),
+                new THREE.OctahedronGeometry(r * 0.15, 2),
                 new THREE.MeshStandardMaterial({ color: 0xddeeff, emissive: 0x88aaff, emissiveIntensity: 1.5, transparent: true, opacity: 0.8 })
               );
               const sa = (i / 4) * Math.PI * 2;
@@ -14235,18 +14235,18 @@ export class DiabloRenderer {
           } else if (dt === DamageType.LIGHTNING || enemySeed === 2) {
             // Lightning variant: crackling electric orb
             const lCore = new THREE.Mesh(
-              new THREE.SphereGeometry(r * 0.35, 16, 14),
+              new THREE.SphereGeometry(r * 0.35, 27, 23),
               new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xeeeeff, emissiveIntensity: 4.0 })
             );
             group.add(lCore);
             const lShell = new THREE.Mesh(
-              new THREE.SphereGeometry(r * 0.8, 16, 14),
+              new THREE.SphereGeometry(r * 0.8, 27, 23),
               new THREE.MeshStandardMaterial({ color: 0x8888ff, emissive: 0x6666ff, emissiveIntensity: 0.6, transparent: true, opacity: 0.2, side: THREE.DoubleSide })
             );
             group.add(lShell);
             for (let i = 0; i < 4; i++) {
               const spark = new THREE.Mesh(
-                new THREE.SphereGeometry(r * 0.06, 10, 8),
+                new THREE.SphereGeometry(r * 0.06, 17, 16),
                 new THREE.MeshStandardMaterial({ color: 0xaaaaff, emissive: 0x8888ff, emissiveIntensity: 5.0 })
               );
               const sa = (i / 4) * Math.PI * 2;
@@ -14259,18 +14259,18 @@ export class DiabloRenderer {
           } else if (dt === DamageType.POISON || enemySeed === 3) {
             // Poison variant: toxic glob with dripping trails
             const pCore = new THREE.Mesh(
-              new THREE.SphereGeometry(r * 0.55, 16, 14),
+              new THREE.SphereGeometry(r * 0.55, 27, 23),
               new THREE.MeshStandardMaterial({ color: 0x44cc22, emissive: 0x22aa00, emissiveIntensity: 2.0 })
             );
             group.add(pCore);
             const pOuter = new THREE.Mesh(
-              new THREE.SphereGeometry(r * 0.85, 16, 14),
+              new THREE.SphereGeometry(r * 0.85, 27, 23),
               new THREE.MeshStandardMaterial({ color: 0x33aa11, emissive: 0x118800, emissiveIntensity: 0.5, transparent: true, opacity: 0.2, side: THREE.DoubleSide })
             );
             group.add(pOuter);
             for (let i = 0; i < 3; i++) {
               const blob = new THREE.Mesh(
-                new THREE.SphereGeometry(r * (0.12 + Math.random() * 0.08), 12, 10),
+                new THREE.SphereGeometry(r * (0.12 + Math.random() * 0.08), 20, 17),
                 new THREE.MeshStandardMaterial({ color: 0x88ff44, emissive: 0x66cc22, emissiveIntensity: 1.5, transparent: true, opacity: 0.6 })
               );
               blob.position.set((Math.random() - 0.5) * r * 0.6, -r * 0.3 - Math.random() * r * 0.3, (Math.random() - 0.5) * r * 0.6);
@@ -14282,24 +14282,24 @@ export class DiabloRenderer {
           } else if (dt === DamageType.SHADOW || dt === DamageType.ARCANE || enemySeed === 4) {
             // Shadow/arcane variant: dark swirling vortex
             const sCore = new THREE.Mesh(
-              new THREE.SphereGeometry(r * 0.4, 16, 14),
+              new THREE.SphereGeometry(r * 0.4, 27, 23),
               new THREE.MeshStandardMaterial({ color: 0x6622cc, emissive: 0x4411aa, emissiveIntensity: 2.5 })
             );
             group.add(sCore);
             const sVortex = new THREE.Mesh(
-              new THREE.TorusGeometry(r * 0.6, r * 0.08, 14, 24),
+              new THREE.TorusGeometry(r * 0.6, r * 0.08, 23, 36),
               new THREE.MeshStandardMaterial({ color: 0x8844dd, emissive: 0x6622bb, emissiveIntensity: 1.8, transparent: true, opacity: 0.6 })
             );
             sVortex.name = 'enemy_vortex_ring';
             group.add(sVortex);
             const sOuter = new THREE.Mesh(
-              new THREE.SphereGeometry(r * 1.0, 16, 14),
+              new THREE.SphereGeometry(r * 1.0, 27, 23),
               new THREE.MeshStandardMaterial({ color: 0x220044, emissive: 0x110022, emissiveIntensity: 0.3, transparent: true, opacity: 0.15, side: THREE.DoubleSide })
             );
             group.add(sOuter);
             for (let i = 0; i < 4; i++) {
               const mote = new THREE.Mesh(
-                new THREE.SphereGeometry(r * 0.05, 10, 8),
+                new THREE.SphereGeometry(r * 0.05, 17, 16),
                 new THREE.MeshStandardMaterial({ color: 0xbb66ff, emissive: 0x9944dd, emissiveIntensity: 3.0 })
               );
               const ma = (i / 4) * Math.PI * 2;
@@ -14312,19 +14312,19 @@ export class DiabloRenderer {
           } else {
             // Default red variant: classic red core with spikes and pulsing aura
             const core = new THREE.Mesh(
-              new THREE.SphereGeometry(r * 0.5, 20, 16),
+              new THREE.SphereGeometry(r * 0.5, 30, 27),
               new THREE.MeshStandardMaterial({ color: 0xff2222, emissive: 0xcc0000, emissiveIntensity: 2.0 })
             );
             group.add(core);
             const redAura = new THREE.Mesh(
-              new THREE.SphereGeometry(r * 0.9, 16, 14),
+              new THREE.SphereGeometry(r * 0.9, 27, 23),
               new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xaa0000, emissiveIntensity: 0.5, transparent: true, opacity: 0.2, side: THREE.DoubleSide })
             );
             redAura.name = 'enemy_red_aura';
             group.add(redAura);
             for (let i = 0; i < 4; i++) {
               const spike = new THREE.Mesh(
-                new THREE.ConeGeometry(r * 0.12, r * 0.4, 10),
+                new THREE.ConeGeometry(r * 0.12, r * 0.4, 17),
                 new THREE.MeshStandardMaterial({ color: 0xaa0000, emissive: 0x880000, emissiveIntensity: 1.5 })
               );
               const angle = (i / 4) * Math.PI * 2;
@@ -14343,19 +14343,19 @@ export class DiabloRenderer {
               // ── FIREBALL — Blazing inferno sphere with layered flames, embers, smoke ──
               // Inner white-hot core
               const hotCore = new THREE.Mesh(
-                new THREE.SphereGeometry(r * 0.35, 24, 20),
+                new THREE.SphereGeometry(r * 0.35, 36, 30),
                 new THREE.MeshStandardMaterial({ color: 0xffffcc, emissive: 0xffffaa, emissiveIntensity: 4.0 })
               );
               group.add(hotCore);
               // Main fire core (orange)
               const fireCore = new THREE.Mesh(
-                new THREE.SphereGeometry(r * 0.7, 21, 24),
+                new THREE.SphereGeometry(r * 0.7, 31, 36),
                 new THREE.MeshStandardMaterial({ color: 0xff6600, emissive: 0xff4400, emissiveIntensity: 3.0 })
               );
               group.add(fireCore);
               // Outer heat distortion shell
               const heatShell = new THREE.Mesh(
-                new THREE.SphereGeometry(r * 1.5, 24, 20),
+                new THREE.SphereGeometry(r * 1.5, 36, 30),
                 new THREE.MeshStandardMaterial({ color: 0xff2200, emissive: 0xff1100, emissiveIntensity: 0.6, transparent: true, opacity: 0.15, side: THREE.DoubleSide })
               );
               group.add(heatShell);
@@ -14363,7 +14363,7 @@ export class DiabloRenderer {
               for (let i = 0; i < 8; i++) {
                 const flameLen = r * (0.6 + Math.random() * 0.5);
                 const flame = new THREE.Mesh(
-                  new THREE.ConeGeometry(r * 0.18, flameLen, 12),
+                  new THREE.ConeGeometry(r * 0.18, flameLen, 20),
                   new THREE.MeshStandardMaterial({
                     color: i % 3 === 0 ? 0xffcc00 : (i % 3 === 1 ? 0xff6600 : 0xff2200),
                     emissive: i % 3 === 0 ? 0xffaa00 : (i % 3 === 1 ? 0xff4400 : 0xcc0000),
@@ -14386,7 +14386,7 @@ export class DiabloRenderer {
               // Smoke wisps — dark translucent trailing spheres
               for (let i = 0; i < 4; i++) {
                 const smoke = new THREE.Mesh(
-                  new THREE.SphereGeometry(r * (0.2 + Math.random() * 0.2), 14, 12),
+                  new THREE.SphereGeometry(r * (0.2 + Math.random() * 0.2), 23, 20),
                   new THREE.MeshStandardMaterial({ color: 0x222222, emissive: 0x111111, emissiveIntensity: 0.2, transparent: true, opacity: 0.25 })
                 );
                 smoke.position.set(
@@ -14400,7 +14400,7 @@ export class DiabloRenderer {
               // Ember particles — tiny bright dots orbiting
               for (let i = 0; i < 6; i++) {
                 const ember = new THREE.Mesh(
-                  new THREE.SphereGeometry(r * 0.06, 10, 8),
+                  new THREE.SphereGeometry(r * 0.06, 17, 16),
                   new THREE.MeshStandardMaterial({ color: 0xffdd44, emissive: 0xffcc00, emissiveIntensity: 4.0 })
                 );
                 const ea = (i / 6) * Math.PI * 2;
@@ -14419,7 +14419,7 @@ export class DiabloRenderer {
               // ── ICE NOVA — Crystalline shard cluster with frost aura ──
               // Central crystal — elongated octahedron
               const crystal = new THREE.Mesh(
-                new THREE.OctahedronGeometry(r * 0.6, 1),
+                new THREE.OctahedronGeometry(r * 0.6, 2),
                 new THREE.MeshStandardMaterial({
                   color: 0xccefff, emissive: 0x66ccff, emissiveIntensity: 2.0,
                   metalness: 0.3, roughness: 0.1,
@@ -14429,14 +14429,14 @@ export class DiabloRenderer {
               group.add(crystal);
               // Inner glow core
               const iceGlow = new THREE.Mesh(
-                new THREE.SphereGeometry(r * 0.3, 16, 14),
+                new THREE.SphereGeometry(r * 0.3, 27, 23),
                 new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xaaeeff, emissiveIntensity: 3.0 })
               );
               group.add(iceGlow);
               // Orbiting ice shards — 6 sharp crystals at various angles
               for (let i = 0; i < 6; i++) {
                 const shard = new THREE.Mesh(
-                  new THREE.OctahedronGeometry(r * (0.15 + Math.random() * 0.15), 1),
+                  new THREE.OctahedronGeometry(r * (0.15 + Math.random() * 0.15), 2),
                   new THREE.MeshStandardMaterial({
                     color: 0xddeeff, emissive: 0x88bbff, emissiveIntensity: 1.5,
                     transparent: true, opacity: 0.8, metalness: 0.4, roughness: 0.05,
@@ -14453,7 +14453,7 @@ export class DiabloRenderer {
               // Frost particle ring — tiny translucent specs
               for (let i = 0; i < 10; i++) {
                 const frost = new THREE.Mesh(
-                  new THREE.SphereGeometry(r * 0.04, 10, 8),
+                  new THREE.SphereGeometry(r * 0.04, 17, 16),
                   new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xccddff, emissiveIntensity: 2.0, transparent: true, opacity: 0.6 })
                 );
                 const fa = Math.random() * Math.PI * 2;
@@ -14464,7 +14464,7 @@ export class DiabloRenderer {
               }
               // Outer frost aura
               const frostAura = new THREE.Mesh(
-                new THREE.SphereGeometry(r * 1.4, 20, 16),
+                new THREE.SphereGeometry(r * 1.4, 30, 27),
                 new THREE.MeshStandardMaterial({ color: 0x88ccff, emissive: 0x4488cc, emissiveIntensity: 0.5, transparent: true, opacity: 0.12, side: THREE.DoubleSide })
               );
               group.add(frostAura);
@@ -14478,7 +14478,7 @@ export class DiabloRenderer {
               // ── LIGHTNING BOLT — Actual jagged bolt geometry with bright core and forks ──
               // Bright electric core
               const boltCore = new THREE.Mesh(
-                new THREE.SphereGeometry(r * 0.35, 16, 14),
+                new THREE.SphereGeometry(r * 0.35, 27, 23),
                 new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xeeeeff, emissiveIntensity: 5.0 })
               );
               group.add(boltCore);
@@ -14540,7 +14540,7 @@ export class DiabloRenderer {
               // Electric sparks at tip and along bolt
               for (let i = 0; i < 8; i++) {
                 const spark = new THREE.Mesh(
-                  new THREE.SphereGeometry(r * 0.05, 10, 8),
+                  new THREE.SphereGeometry(r * 0.05, 17, 16),
                   new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xddddff, emissiveIntensity: 5.0 })
                 );
                 const si = Math.floor(Math.random() * boltPoints.length);
@@ -14559,13 +14559,13 @@ export class DiabloRenderer {
               // ── CHAIN LIGHTNING — Multiple arcing bolts emanating from a crackling orb ──
               // Central crackling energy orb
               const chainCore = new THREE.Mesh(
-                new THREE.SphereGeometry(r * 0.4, 20, 16),
+                new THREE.SphereGeometry(r * 0.4, 30, 27),
                 new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xccddff, emissiveIntensity: 5.0 })
               );
               group.add(chainCore);
               // Electric shell
               const chainShell = new THREE.Mesh(
-                new THREE.IcosahedronGeometry(r * 0.6, 2),
+                new THREE.IcosahedronGeometry(r * 0.6, 3),
                 new THREE.MeshStandardMaterial({
                   color: 0x88aaff, emissive: 0x6688ff, emissiveIntensity: 2.0,
                   wireframe: true,
@@ -14604,7 +14604,7 @@ export class DiabloRenderer {
                 group.add(arcMesh);
                 // Spark at end of each arc
                 const endSpark = new THREE.Mesh(
-                  new THREE.SphereGeometry(r * 0.12, 14, 10),
+                  new THREE.SphereGeometry(r * 0.12, 23, 17),
                   new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xbbccff, emissiveIntensity: 4.0 })
                 );
                 endSpark.position.copy(arcPts[arcPts.length - 1]);
@@ -14613,7 +14613,7 @@ export class DiabloRenderer {
               }
               // Outer crackling field
               const crackleField = new THREE.Mesh(
-                new THREE.SphereGeometry(r * 1.8, 16, 14),
+                new THREE.SphereGeometry(r * 1.8, 27, 23),
                 new THREE.MeshStandardMaterial({ color: 0x6688ff, emissive: 0x4466cc, emissiveIntensity: 0.4, transparent: true, opacity: 0.1, side: THREE.DoubleSide })
               );
               group.add(crackleField);
@@ -14666,14 +14666,14 @@ export class DiabloRenderer {
               // ── POISON ARROW — Venomous arrow with toxic dripping trail ──
               // Arrow shaft
               const pShaft = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.025, 0.025, r * 3.5, 14),
+                new THREE.CylinderGeometry(0.025, 0.025, r * 3.5, 23),
                 new THREE.MeshStandardMaterial({ color: 0x5a4a1a, emissive: 0x221100, emissiveIntensity: 0.2 })
               );
               pShaft.rotation.z = Math.PI / 2;
               group.add(pShaft);
               // Poison-coated head — green glowing cone
               const pHead = new THREE.Mesh(
-                new THREE.ConeGeometry(r * 0.3, r * 0.5, 10),
+                new THREE.ConeGeometry(r * 0.3, r * 0.5, 17),
                 new THREE.MeshStandardMaterial({ color: 0x44ff44, emissive: 0x22cc22, emissiveIntensity: 2.5, metalness: 0.6, roughness: 0.2 })
               );
               pHead.rotation.z = -Math.PI / 2;
@@ -14692,7 +14692,7 @@ export class DiabloRenderer {
               // Dripping poison blobs — trailing below and behind
               for (let i = 0; i < 5; i++) {
                 const blob = new THREE.Mesh(
-                  new THREE.SphereGeometry(r * (0.06 + Math.random() * 0.08), 12, 10),
+                  new THREE.SphereGeometry(r * (0.06 + Math.random() * 0.08), 20, 17),
                   new THREE.MeshStandardMaterial({
                     color: 0x33dd33, emissive: 0x22aa22, emissiveIntensity: 1.5,
                     transparent: true, opacity: 0.5 + Math.random() * 0.3,
@@ -14708,7 +14708,7 @@ export class DiabloRenderer {
               }
               // Toxic mist aura around head
               const toxicMist = new THREE.Mesh(
-                new THREE.SphereGeometry(r * 0.8, 16, 14),
+                new THREE.SphereGeometry(r * 0.8, 27, 23),
                 new THREE.MeshStandardMaterial({ color: 0x44ff44, emissive: 0x22aa22, emissiveIntensity: 0.6, transparent: true, opacity: 0.15 })
               );
               toxicMist.position.x = r * 1.0;
@@ -14726,14 +14726,14 @@ export class DiabloRenderer {
               const isPiercing = proj.skillId === SkillId.PIERCING_SHOT;
               // Arrow shaft — longer, sleeker
               const aShaft = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.02, 0.025, r * 4, 14),
+                new THREE.CylinderGeometry(0.02, 0.025, r * 4, 23),
                 new THREE.MeshStandardMaterial({ color: 0x8b6914, emissive: 0x442200, emissiveIntensity: 0.3 })
               );
               aShaft.rotation.z = Math.PI / 2;
               group.add(aShaft);
               // Arrowhead — metallic, sharp
               const aHead = new THREE.Mesh(
-                new THREE.ConeGeometry(r * 0.25, r * 0.5, 10),
+                new THREE.ConeGeometry(r * 0.25, r * 0.5, 17),
                 new THREE.MeshStandardMaterial({
                   color: isPiercing ? 0xddddff : 0xbbbbbb,
                   emissive: isPiercing ? 0x8888ff : 0x444444,
@@ -14772,7 +14772,7 @@ export class DiabloRenderer {
               if (isPiercing) {
                 // Piercing glow at tip
                 const pierceGlow = new THREE.Mesh(
-                  new THREE.SphereGeometry(r * 0.3, 14, 10),
+                  new THREE.SphereGeometry(r * 0.3, 23, 17),
                   new THREE.MeshStandardMaterial({ color: 0xaaaaff, emissive: 0x8888ff, emissiveIntensity: 2.5, transparent: true, opacity: 0.4 })
                 );
                 pierceGlow.position.x = r * 2.5;
@@ -14788,20 +14788,20 @@ export class DiabloRenderer {
               // ── ARCANE MISSILES — Swirling purple energy with runic ring and star sparkles ──
               // Core arcane orb
               const arcCore = new THREE.Mesh(
-                new THREE.SphereGeometry(r * 0.5, 20, 16),
+                new THREE.SphereGeometry(r * 0.5, 30, 27),
                 new THREE.MeshStandardMaterial({ color: 0xcc66ff, emissive: 0xaa44ee, emissiveIntensity: 3.0 })
               );
               group.add(arcCore);
               // Inner white flash
               const arcFlash = new THREE.Mesh(
-                new THREE.SphereGeometry(r * 0.2, 14, 12),
+                new THREE.SphereGeometry(r * 0.2, 23, 20),
                 new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xeeddff, emissiveIntensity: 4.0 })
               );
               group.add(arcFlash);
               // Arcane rings — 2 perpendicular tori
               for (let i = 0; i < 2; i++) {
                 const arcRing = new THREE.Mesh(
-                  new THREE.TorusGeometry(r * 0.75, r * 0.04, 16, 36),
+                  new THREE.TorusGeometry(r * 0.75, r * 0.04, 27, 46),
                   new THREE.MeshStandardMaterial({ color: 0xdd88ff, emissive: 0xbb66ee, emissiveIntensity: 2.5 })
                 );
                 if (i === 0) arcRing.rotation.x = Math.PI / 2;
@@ -14812,7 +14812,7 @@ export class DiabloRenderer {
               // Orbiting sparkle motes
               for (let i = 0; i < 6; i++) {
                 const mote = new THREE.Mesh(
-                  new THREE.OctahedronGeometry(r * 0.07, 1),
+                  new THREE.OctahedronGeometry(r * 0.07, 2),
                   new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xeeddff, emissiveIntensity: 3.5 })
                 );
                 const ma = (i / 6) * Math.PI * 2;
@@ -14824,7 +14824,7 @@ export class DiabloRenderer {
               // Purple trail wisps
               for (let i = 0; i < 3; i++) {
                 const trail = new THREE.Mesh(
-                  new THREE.SphereGeometry(r * (0.1 + i * 0.05), 12, 10),
+                  new THREE.SphereGeometry(r * (0.1 + i * 0.05), 20, 17),
                   new THREE.MeshStandardMaterial({ color: 0x8833cc, emissive: 0x6622aa, emissiveIntensity: 1.5, transparent: true, opacity: 0.3 - i * 0.08 })
                 );
                 trail.position.x = -r * (0.5 + i * 0.6);
@@ -14840,14 +14840,14 @@ export class DiabloRenderer {
               // ── FIRE VOLLEY — Flaming arrow with blazing trail ──
               // Arrow shaft
               const fvShaft = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.025, 0.025, r * 3.5, 14),
+                new THREE.CylinderGeometry(0.025, 0.025, r * 3.5, 23),
                 new THREE.MeshStandardMaterial({ color: 0x5a3a0a, emissive: 0x331100, emissiveIntensity: 0.3 })
               );
               fvShaft.rotation.z = Math.PI / 2;
               group.add(fvShaft);
               // Fiery arrowhead
               const fvHead = new THREE.Mesh(
-                new THREE.ConeGeometry(r * 0.3, r * 0.5, 10),
+                new THREE.ConeGeometry(r * 0.3, r * 0.5, 17),
                 new THREE.MeshStandardMaterial({ color: 0xff6600, emissive: 0xff4400, emissiveIntensity: 3.0 })
               );
               fvHead.rotation.z = -Math.PI / 2;
@@ -14856,7 +14856,7 @@ export class DiabloRenderer {
               // Flame wrapping the tip
               for (let i = 0; i < 4; i++) {
                 const tipFlame = new THREE.Mesh(
-                  new THREE.ConeGeometry(r * 0.15, r * 0.4, 10),
+                  new THREE.ConeGeometry(r * 0.15, r * 0.4, 17),
                   new THREE.MeshStandardMaterial({
                     color: i % 2 === 0 ? 0xffaa00 : 0xff4400,
                     emissive: i % 2 === 0 ? 0xff8800 : 0xcc2200,
@@ -14872,7 +14872,7 @@ export class DiabloRenderer {
               // Fire trail — elongated cones behind
               for (let i = 0; i < 4; i++) {
                 const fireTrail = new THREE.Mesh(
-                  new THREE.ConeGeometry(r * (0.08 + i * 0.03), r * (0.5 + i * 0.15), 12),
+                  new THREE.ConeGeometry(r * (0.08 + i * 0.03), r * (0.5 + i * 0.15), 20),
                   new THREE.MeshStandardMaterial({
                     color: 0xff4400, emissive: 0xcc2200, emissiveIntensity: 1.5 - i * 0.3,
                     transparent: true, opacity: 0.4 - i * 0.08,
@@ -14893,17 +14893,17 @@ export class DiabloRenderer {
             default: {
               // ── DEFAULT PLAYER PROJECTILE — Glowing energy ball with ring ──
               const defCore = new THREE.Mesh(
-                new THREE.SphereGeometry(r * 0.6, 20, 16),
+                new THREE.SphereGeometry(r * 0.6, 30, 27),
                 new THREE.MeshStandardMaterial({ color: 0xffaa00, emissive: 0xff8800, emissiveIntensity: 2.5 })
               );
               group.add(defCore);
               const defGlow = new THREE.Mesh(
-                new THREE.SphereGeometry(r * 1.0, 16, 14),
+                new THREE.SphereGeometry(r * 1.0, 27, 23),
                 new THREE.MeshStandardMaterial({ color: 0xff6600, emissive: 0xff4400, emissiveIntensity: 0.6, transparent: true, opacity: 0.2 })
               );
               group.add(defGlow);
               const defRing = new THREE.Mesh(
-                new THREE.TorusGeometry(r * 0.7, r * 0.04, 14, 32),
+                new THREE.TorusGeometry(r * 0.7, r * 0.04, 23, 44),
                 new THREE.MeshStandardMaterial({ color: 0xffcc44, emissive: 0xffaa00, emissiveIntensity: 1.5 })
               );
               defRing.name = 'default_ring';
@@ -14915,7 +14915,7 @@ export class DiabloRenderer {
         } else {
           // No skillId, default
           const core = new THREE.Mesh(
-            new THREE.SphereGeometry(r * 0.7, 16, 14),
+            new THREE.SphereGeometry(r * 0.7, 27, 23),
             new THREE.MeshStandardMaterial({ color: 0xffaa00, emissive: 0xff6600, emissiveIntensity: 1.5 })
           );
           group.add(core);
@@ -15312,7 +15312,7 @@ export class DiabloRenderer {
         grp = new THREE.Group();
 
         // Outer glowing ring — thicker and more dramatic
-        const ringGeo = new THREE.TorusGeometry(aoe.radius, 0.18, 20, 62);
+        const ringGeo = new THREE.TorusGeometry(aoe.radius, 0.18, 30, 80);
         const ringMat = new THREE.MeshStandardMaterial({
           color, emissive: color, emissiveIntensity: 2.5,
           transparent: true, opacity: 0.85,
@@ -15323,7 +15323,7 @@ export class DiabloRenderer {
         grp.add(ring);
 
         // Inner filled disc (subtle ground effect)
-        const discGeo = new THREE.CircleGeometry(aoe.radius, 62);
+        const discGeo = new THREE.CircleGeometry(aoe.radius, 80);
         const discMat = new THREE.MeshStandardMaterial({
           color: innerColor, emissive: color, emissiveIntensity: 1.0,
           transparent: true, opacity: 0.2, side: THREE.DoubleSide,
@@ -15335,7 +15335,7 @@ export class DiabloRenderer {
         grp.add(disc);
 
         // Secondary pulsing ring (smaller, brighter)
-        const innerRingGeo = new THREE.TorusGeometry(aoe.radius * 0.6, 0.08, 16, 48);
+        const innerRingGeo = new THREE.TorusGeometry(aoe.radius * 0.6, 0.08, 27, 62);
         const innerRingMat = new THREE.MeshStandardMaterial({
           color: innerColor, emissive: innerColor, emissiveIntensity: 3.0,
           transparent: true, opacity: 0.6,
@@ -15347,7 +15347,7 @@ export class DiabloRenderer {
         grp.add(innerRing);
 
         // Expanding shockwave ring (fast-expanding, fading outer ring)
-        const shockGeo = new THREE.TorusGeometry(aoe.radius * 0.3, 0.04, 14, 48);
+        const shockGeo = new THREE.TorusGeometry(aoe.radius * 0.3, 0.04, 23, 62);
         const shockMat = new THREE.MeshStandardMaterial({
           color: 0xffffff, emissive: innerColor, emissiveIntensity: 4.0,
           transparent: true, opacity: 0.7,
@@ -15359,7 +15359,7 @@ export class DiabloRenderer {
         grp.add(shockRing);
 
         // Vertical energy column at center
-        const columnGeo = new THREE.CylinderGeometry(aoe.radius * 0.08, aoe.radius * 0.15, 3.0, 16);
+        const columnGeo = new THREE.CylinderGeometry(aoe.radius * 0.08, aoe.radius * 0.15, 3.0, 27);
         const columnMat = new THREE.MeshStandardMaterial({
           color: innerColor, emissive: color, emissiveIntensity: 2.5,
           transparent: true, opacity: 0.25,
@@ -15372,7 +15372,7 @@ export class DiabloRenderer {
         // Orbiting energy motes around the circumference
         for (let i = 0; i < 6; i++) {
           const mote = new THREE.Mesh(
-            new THREE.SphereGeometry(0.08 + Math.random() * 0.06, 12, 10),
+            new THREE.SphereGeometry(0.08 + Math.random() * 0.06, 20, 17),
             new THREE.MeshStandardMaterial({
               color: innerColor, emissive: color, emissiveIntensity: 3.0,
               transparent: true, opacity: 0.7,
@@ -15392,7 +15392,7 @@ export class DiabloRenderer {
             const angle = (i / 12) * Math.PI * 2;
             const flameDist = aoe.radius * (0.5 + Math.random() * 0.4);
             const flame = new THREE.Mesh(
-              new THREE.ConeGeometry(0.18 + Math.random() * 0.1, 1.0 + Math.random() * 0.8, 12),
+              new THREE.ConeGeometry(0.18 + Math.random() * 0.1, 1.0 + Math.random() * 0.8, 20),
               new THREE.MeshStandardMaterial({ color: 0xff6600, emissive: 0xff4400, emissiveIntensity: 3.0, transparent: true, opacity: 0.7 })
             );
             flame.position.set(Math.cos(angle) * flameDist, 0.5, Math.sin(angle) * flameDist);
@@ -15404,7 +15404,7 @@ export class DiabloRenderer {
           // Inner fire vortex (swirling embers)
           for (let i = 0; i < 8; i++) {
             const ember = new THREE.Mesh(
-              new THREE.SphereGeometry(0.05 + Math.random() * 0.04, 10, 8),
+              new THREE.SphereGeometry(0.05 + Math.random() * 0.04, 17, 16),
               new THREE.MeshStandardMaterial({ color: 0xffaa00, emissive: 0xff6600, emissiveIntensity: 4.0, transparent: true, opacity: 0.8 })
             );
             ember.name = 'aoe_fire_ember';
@@ -15416,7 +15416,7 @@ export class DiabloRenderer {
           }
           // Heat distortion sphere
           const heatSphere = new THREE.Mesh(
-            new THREE.SphereGeometry(aoe.radius * 0.8, 20, 16),
+            new THREE.SphereGeometry(aoe.radius * 0.8, 30, 27),
             new THREE.MeshStandardMaterial({ color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 0.8, transparent: true, opacity: 0.06, side: THREE.DoubleSide })
           );
           heatSphere.position.y = 0.5;
@@ -15428,7 +15428,7 @@ export class DiabloRenderer {
             const angle = (i / 10) * Math.PI * 2 + Math.random() * 0.3;
             const crystalSize = 0.12 + Math.random() * 0.15;
             const crystal = new THREE.Mesh(
-              new THREE.OctahedronGeometry(crystalSize, 1),
+              new THREE.OctahedronGeometry(crystalSize, 2),
               new THREE.MeshStandardMaterial({ color: 0xccefff, emissive: 0x66ccff, emissiveIntensity: 2.0, transparent: true, opacity: 0.75, metalness: 0.4, roughness: 0.05 })
             );
             crystal.scale.set(0.5, 1.8 + Math.random() * 1.2, 0.5);
@@ -15441,7 +15441,7 @@ export class DiabloRenderer {
           }
           // Frost mist ground layer
           const frostMist = new THREE.Mesh(
-            new THREE.CylinderGeometry(aoe.radius * 0.9, aoe.radius, 0.3, 32),
+            new THREE.CylinderGeometry(aoe.radius * 0.9, aoe.radius, 0.3, 44),
             new THREE.MeshStandardMaterial({ color: 0xaaddff, emissive: 0x4488cc, emissiveIntensity: 0.6, transparent: true, opacity: 0.12, side: THREE.DoubleSide })
           );
           frostMist.position.y = 0.15;
@@ -15450,7 +15450,7 @@ export class DiabloRenderer {
           // Floating ice shards (smaller, spinning)
           for (let i = 0; i < 6; i++) {
             const shard = new THREE.Mesh(
-              new THREE.OctahedronGeometry(0.05 + Math.random() * 0.04, 1),
+              new THREE.OctahedronGeometry(0.05 + Math.random() * 0.04, 2),
               new THREE.MeshStandardMaterial({ color: 0xeeffff, emissive: 0x88ccff, emissiveIntensity: 2.5, transparent: true, opacity: 0.6 })
             );
             shard.name = 'aoe_ice_shard';
@@ -15484,7 +15484,7 @@ export class DiabloRenderer {
             grp.add(arc);
           }
           // Central lightning strike column
-          const strikeGeo = new THREE.CylinderGeometry(0.05, 0.15, 4.0, 14);
+          const strikeGeo = new THREE.CylinderGeometry(0.05, 0.15, 4.0, 23);
           const strikeMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffcc, emissiveIntensity: 6.0, transparent: true, opacity: 0.6 });
           const strike = new THREE.Mesh(strikeGeo, strikeMat);
           strike.position.y = 2.0;
@@ -15493,7 +15493,7 @@ export class DiabloRenderer {
           // Spark spheres scattered in the zone
           for (let i = 0; i < 5; i++) {
             const spark = new THREE.Mesh(
-              new THREE.SphereGeometry(0.06, 10, 8),
+              new THREE.SphereGeometry(0.06, 17, 16),
               new THREE.MeshStandardMaterial({ color: 0xffffaa, emissive: 0xffff44, emissiveIntensity: 5.0, transparent: true, opacity: 0.8 })
             );
             spark.name = 'aoe_spark_mote';
@@ -15505,7 +15505,7 @@ export class DiabloRenderer {
           // Bubbling poison pools (more, varied)
           for (let i = 0; i < 10; i++) {
             const bubble = new THREE.Mesh(
-              new THREE.SphereGeometry(0.06 + Math.random() * 0.1, 14, 12),
+              new THREE.SphereGeometry(0.06 + Math.random() * 0.1, 23, 20),
               new THREE.MeshStandardMaterial({ color: 0x44ff44, emissive: 0x22aa22, emissiveIntensity: 1.8, transparent: true, opacity: 0.55 })
             );
             const ba = Math.random() * Math.PI * 2;
@@ -15517,7 +15517,7 @@ export class DiabloRenderer {
           }
           // Toxic gas cloud
           const gasCloud = new THREE.Mesh(
-            new THREE.SphereGeometry(aoe.radius * 0.6, 16, 14),
+            new THREE.SphereGeometry(aoe.radius * 0.6, 27, 23),
             new THREE.MeshStandardMaterial({ color: 0x44ff44, emissive: 0x22aa22, emissiveIntensity: 0.5, transparent: true, opacity: 0.08, side: THREE.DoubleSide })
           );
           gasCloud.position.y = 0.4;
@@ -15526,7 +15526,7 @@ export class DiabloRenderer {
         } else if (aoe.damageType === 'ARCANE') {
           // Arcane rune circle on the ground
           const runeRing = new THREE.Mesh(
-            new THREE.TorusGeometry(aoe.radius * 0.45, 0.04, 14, 36),
+            new THREE.TorusGeometry(aoe.radius * 0.45, 0.04, 23, 46),
             new THREE.MeshStandardMaterial({ color: 0xdd88ff, emissive: 0xaa44ff, emissiveIntensity: 3.0, transparent: true, opacity: 0.6 })
           );
           runeRing.rotation.x = -Math.PI / 2;
@@ -15536,7 +15536,7 @@ export class DiabloRenderer {
           // Arcane orbiting motes
           for (let i = 0; i < 6; i++) {
             const arcaneMote = new THREE.Mesh(
-              new THREE.OctahedronGeometry(0.07, 1),
+              new THREE.OctahedronGeometry(0.07, 2),
               new THREE.MeshStandardMaterial({ color: 0xdd88ff, emissive: 0xaa44ff, emissiveIntensity: 3.5, transparent: true, opacity: 0.7 })
             );
             arcaneMote.name = 'aoe_arcane_mote';
@@ -15980,7 +15980,7 @@ export class DiabloRenderer {
       const sx = 10 + Math.random() * 22;
       const sy = 0.3 + Math.random() * 0.8;
       const sz = 10 + Math.random() * 22;
-      const geo = new THREE.SphereGeometry(1, 24, 16);
+      const geo = new THREE.SphereGeometry(1, 36, 27);
       geo.scale(sx, sy, sz);
       const dune = new THREE.Mesh(geo, i % 3 === 0 ? darkSandMat : sandMat);
       dune.position.set(
@@ -15995,30 +15995,30 @@ export class DiabloRenderer {
     for (let i = 0; i < 40; i++) {
       const cactus = new THREE.Group();
       const h = 1.5 + Math.random() * 3;
-      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.3, h, 14), cactusMat);
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.3, h, 23), cactusMat);
       trunk.position.y = h / 2;
       cactus.add(trunk);
       // Arms
       if (Math.random() > 0.4) {
         const armH = 0.8 + Math.random() * 1.2;
-        const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.18, armH, 12), cactusMat);
+        const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.18, armH, 20), cactusMat);
         arm.position.set(0.4, h * 0.5 + armH * 0.3, 0);
         arm.rotation.z = -0.6;
         cactus.add(arm);
-        const armUp = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, armH * 0.7, 12), cactusMat);
+        const armUp = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, armH * 0.7, 20), cactusMat);
         armUp.position.set(0.65, h * 0.5 + armH * 0.6, 0);
         cactus.add(armUp);
       }
       if (Math.random() > 0.5) {
         const armH = 0.6 + Math.random();
-        const arm2 = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, armH, 12), cactusMat);
+        const arm2 = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, armH, 20), cactusMat);
         arm2.position.set(-0.35, h * 0.4, 0);
         arm2.rotation.z = 0.7;
         cactus.add(arm2);
       }
       // Flower on top
       if (Math.random() > 0.6) {
-        const flower = new THREE.Mesh(new THREE.SphereGeometry(0.2, 14, 14), cactusFlowerMat);
+        const flower = new THREE.Mesh(new THREE.SphereGeometry(0.2, 23, 23), cactusFlowerMat);
         flower.position.y = h + 0.1;
         cactus.add(flower);
       }
@@ -16037,7 +16037,7 @@ export class DiabloRenderer {
       const pillarCount = 3 + Math.floor(Math.random() * 5);
       for (let p = 0; p < pillarCount; p++) {
         const ph = 2 + Math.random() * 4;
-        const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.5, ph, 16), ruinMat);
+        const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.5, ph, 27), ruinMat);
         pillar.position.set(
           (Math.random() - 0.5) * 8,
           ph / 2,
@@ -16048,7 +16048,7 @@ export class DiabloRenderer {
         ruin.add(pillar);
         // Broken top cap
         if (Math.random() > 0.5) {
-          const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.5, 0.3, 16), ruinMat);
+          const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.5, 0.3, 27), ruinMat);
           cap.position.set(pillar.position.x, ph + 0.15, pillar.position.z);
           ruin.add(cap);
         }
@@ -16085,13 +16085,13 @@ export class DiabloRenderer {
 
     // ── Oasis (water pool with palm trees) ──
     const oasisX = -hw * 0.3, oasisZ = -hd * 0.3;
-    const oasisPool = new THREE.Mesh(new THREE.CircleGeometry(8, 32), oasisWaterMat);
+    const oasisPool = new THREE.Mesh(new THREE.CircleGeometry(8, 44), oasisWaterMat);
     oasisPool.rotation.x = -Math.PI / 2;
     oasisPool.position.set(oasisX, getTerrainHeight(oasisX, oasisZ, 1.4) + 0.05, oasisZ);
     this._scene.add(oasisPool);
     // Green ring around oasis
     const grassRing = new THREE.Mesh(
-      new THREE.RingGeometry(7, 10, 24),
+      new THREE.RingGeometry(7, 10, 36),
       new THREE.MeshStandardMaterial({ color: 0x558833, roughness: 0.8 }),
     );
     grassRing.rotation.x = -Math.PI / 2;
@@ -16102,7 +16102,7 @@ export class DiabloRenderer {
       const angle = (i / 8) * Math.PI * 2;
       const palm = new THREE.Group();
       const trunkH = 4 + Math.random() * 3;
-      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.25, trunkH, 14), palmTrunkMat);
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.25, trunkH, 23), palmTrunkMat);
       trunk.position.y = trunkH / 2;
       trunk.rotation.x = (Math.random() - 0.5) * 0.2;
       trunk.rotation.z = (Math.random() - 0.5) * 0.2;
@@ -16118,7 +16118,7 @@ export class DiabloRenderer {
       }
       // Coconuts
       if (Math.random() > 0.5) {
-        const coconut = new THREE.Mesh(new THREE.SphereGeometry(0.15, 14, 14), new THREE.MeshStandardMaterial({ color: 0x885522 }));
+        const coconut = new THREE.Mesh(new THREE.SphereGeometry(0.15, 23, 23), new THREE.MeshStandardMaterial({ color: 0x885522 }));
         coconut.position.y = trunkH - 0.2;
         palm.add(coconut);
       }
@@ -16132,14 +16132,14 @@ export class DiabloRenderer {
     for (let i = 0; i < 25; i++) {
       const bone = new THREE.Group();
       const boneLen = 0.5 + Math.random() * 1.5;
-      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, boneLen, 10), boneMat);
+      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, boneLen, 17), boneMat);
       shaft.rotation.z = Math.PI / 2;
       shaft.position.y = 0.1;
       bone.add(shaft);
-      const end1 = new THREE.Mesh(new THREE.SphereGeometry(0.08, 20, 10), boneMat);
+      const end1 = new THREE.Mesh(new THREE.SphereGeometry(0.08, 30, 17), boneMat);
       end1.position.set(boneLen / 2, 0.1, 0);
       bone.add(end1);
-      const end2 = new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 10), boneMat);
+      const end2 = new THREE.Mesh(new THREE.SphereGeometry(0.08, 17, 17), boneMat);
       end2.position.set(-boneLen / 2, 0.1, 0);
       bone.add(end2);
       const bnX2 = (Math.random() - 0.5) * w * 0.8;
@@ -16150,7 +16150,7 @@ export class DiabloRenderer {
     }
     // Skulls
     for (let i = 0; i < 12; i++) {
-      const skull = new THREE.Mesh(new THREE.SphereGeometry(0.2, 14, 14), boneMat);
+      const skull = new THREE.Mesh(new THREE.SphereGeometry(0.2, 23, 23), boneMat);
       skull.scale.set(1, 0.8, 1.1);
       skull.position.set(
         (Math.random() - 0.5) * w * 0.8,
@@ -16165,12 +16165,12 @@ export class DiabloRenderer {
     // Tents
     for (let t = 0; t < 3; t++) {
       const tent = new THREE.Group();
-      const tShape = new THREE.ConeGeometry(2.5, 3, 10);
+      const tShape = new THREE.ConeGeometry(2.5, 3, 17);
       const tMesh = new THREE.Mesh(tShape, tentMat);
       tMesh.position.y = 1.5;
       tent.add(tMesh);
       // Pole
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 3.5, 10), new THREE.MeshStandardMaterial({ color: 0x664422 }));
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 3.5, 17), new THREE.MeshStandardMaterial({ color: 0x664422 }));
       pole.position.y = 1.75;
       tent.add(pole);
       const tentX = campX + (t - 1) * 6;
@@ -16179,7 +16179,7 @@ export class DiabloRenderer {
       this._scene.add(tent);
     }
     // Fire pit
-    const pitRing = new THREE.Mesh(new THREE.TorusGeometry(1, 0.25, 14, 24), stoneMat);
+    const pitRing = new THREE.Mesh(new THREE.TorusGeometry(1, 0.25, 23, 36), stoneMat);
     pitRing.rotation.x = Math.PI / 2;
     pitRing.position.set(campX, 0.25, campZ);
     this._scene.add(pitRing);
@@ -16191,7 +16191,7 @@ export class DiabloRenderer {
     for (let f = 0; f < 2; f++) {
       const flagGroup = new THREE.Group();
       const poleH = 5;
-      const fPole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, poleH, 10), new THREE.MeshStandardMaterial({ color: 0x664422 }));
+      const fPole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, poleH, 17), new THREE.MeshStandardMaterial({ color: 0x664422 }));
       fPole.position.y = poleH / 2;
       flagGroup.add(fPole);
       const flag = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 0.8), flagMat);
@@ -16209,7 +16209,7 @@ export class DiabloRenderer {
       for (let r = 0; r < count; r++) {
         const rh = 1 + Math.random() * 3;
         const rock = new THREE.Mesh(
-          new THREE.DodecahedronGeometry(rh, 1),
+          new THREE.DodecahedronGeometry(rh, 2),
           stoneMat,
         );
         rock.scale.set(0.8 + Math.random() * 0.5, 0.6 + Math.random() * 0.8, 0.8 + Math.random() * 0.5);
@@ -16226,7 +16226,7 @@ export class DiabloRenderer {
     // ── Quicksand patches (dark circles) ──
     const qsMat = new THREE.MeshStandardMaterial({ color: 0x997744, roughness: 1.0, transparent: true, opacity: 0.6 });
     for (let i = 0; i < 6; i++) {
-      const qs = new THREE.Mesh(new THREE.CircleGeometry(2 + Math.random() * 3, 32), qsMat);
+      const qs = new THREE.Mesh(new THREE.CircleGeometry(2 + Math.random() * 3, 44), qsMat);
       qs.rotation.x = -Math.PI / 2;
       qs.position.set(
         (Math.random() - 0.5) * w * 0.7,
@@ -16256,7 +16256,7 @@ export class DiabloRenderer {
     // ── Dry tumbleweed bushes ──
     const dryBushMat = new THREE.MeshStandardMaterial({ color: 0x997744, roughness: 0.9 });
     for (let i = 0; i < 20; i++) {
-      const bush = new THREE.Mesh(new THREE.SphereGeometry(0.3 + Math.random() * 0.4, 12, 10), dryBushMat);
+      const bush = new THREE.Mesh(new THREE.SphereGeometry(0.3 + Math.random() * 0.4, 20, 17), dryBushMat);
       bush.scale.y = 0.6;
       bush.position.set(
         (Math.random() - 0.5) * w * 0.8,
@@ -16287,23 +16287,23 @@ export class DiabloRenderer {
     for (let i = 0; i < 5; i++) {
       const perch = new THREE.Group();
       const stumpH = 2 + Math.random() * 2;
-      const stump = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.2, stumpH, 12), deadWoodMat);
+      const stump = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.2, stumpH, 20), deadWoodMat);
       stump.position.y = stumpH / 2;
       perch.add(stump);
       // Dead branches
       for (let b = 0; b < 3; b++) {
-        const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.05, 0.8, 10), deadWoodMat);
+        const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.05, 0.8, 17), deadWoodMat);
         branch.position.set((Math.random() - 0.5) * 0.3, stumpH * 0.5 + b * 0.4, 0);
         branch.rotation.z = (Math.random() - 0.5) * 1.2;
         perch.add(branch);
       }
       // Vulture silhouette on top (simple)
       if (Math.random() > 0.4) {
-        const vBody = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 10), new THREE.MeshStandardMaterial({ color: 0x222222 }));
+        const vBody = new THREE.Mesh(new THREE.SphereGeometry(0.12, 20, 17), new THREE.MeshStandardMaterial({ color: 0x222222 }));
         vBody.scale.set(0.8, 0.7, 1.2);
         vBody.position.y = stumpH + 0.1;
         perch.add(vBody);
-        const vHead = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8), new THREE.MeshStandardMaterial({ color: 0xcc4444 }));
+        const vHead = new THREE.Mesh(new THREE.SphereGeometry(0.06, 17, 16), new THREE.MeshStandardMaterial({ color: 0xcc4444 }));
         vHead.position.set(0, stumpH + 0.2, 0.12);
         perch.add(vHead);
       }
@@ -16325,7 +16325,7 @@ export class DiabloRenderer {
       }
       // Intact base of urn sometimes
       if (Math.random() > 0.5) {
-        const urnBase = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 0.2, 14), potteryMat);
+        const urnBase = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 0.2, 23), potteryMat);
         urnBase.position.y = 0.1;
         shardGroup.add(urnBase);
       }
@@ -16338,7 +16338,7 @@ export class DiabloRenderer {
     // ── Scorpion burrow holes ──
     const burrowMat = new THREE.MeshStandardMaterial({ color: 0x664422, roughness: 1.0 });
     for (let i = 0; i < 10; i++) {
-      const burrow = new THREE.Mesh(new THREE.CircleGeometry(0.15 + Math.random() * 0.1, 14), burrowMat);
+      const burrow = new THREE.Mesh(new THREE.CircleGeometry(0.15 + Math.random() * 0.1, 23), burrowMat);
       burrow.rotation.x = -Math.PI / 2;
       burrow.position.set(
         (Math.random() - 0.5) * w * 0.8,
@@ -16347,7 +16347,7 @@ export class DiabloRenderer {
       );
       this._scene.add(burrow);
       // Sand mound around burrow
-      const mound = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 10), sandMat);
+      const mound = new THREE.Mesh(new THREE.SphereGeometry(0.2, 20, 17), sandMat);
       mound.scale.y = 0.2;
       mound.position.copy(burrow.position);
       mound.position.y = 0.03;
@@ -16363,13 +16363,13 @@ export class DiabloRenderer {
     wBed.rotation.z = 0.2;
     wagonGroup.add(wBed);
     // Broken wheel
-    const wWheel = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.06, 10, 16), bleachedMat);
+    const wWheel = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.06, 17, 27), bleachedMat);
     wWheel.position.set(1, 0.4, 0.7);
     wWheel.rotation.x = Math.PI / 2;
     wWheel.rotation.z = 0.3;
     wagonGroup.add(wWheel);
     // Wheel on ground
-    const wWheel2 = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.06, 10, 16), bleachedMat);
+    const wWheel2 = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.06, 17, 27), bleachedMat);
     wWheel2.rotation.x = Math.PI / 2;
     wWheel2.position.set(-0.8, 0.06, -0.5);
     wagonGroup.add(wWheel2);
@@ -16389,7 +16389,7 @@ export class DiabloRenderer {
       const cluster = new THREE.Group();
       const count = 3 + Math.floor(Math.random() * 3);
       for (let c = 0; c < count; c++) {
-        const crystal = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.2 + Math.random() * 0.15, 10), crystalMat);
+        const crystal = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.2 + Math.random() * 0.15, 17), crystalMat);
         crystal.position.set((Math.random() - 0.5) * 0.2, 0.08, (Math.random() - 0.5) * 0.2);
         crystal.rotation.z = (Math.random() - 0.5) * 0.5;
         cluster.add(crystal);
@@ -16429,16 +16429,16 @@ export class DiabloRenderer {
       const mainW = 15 + Math.random() * 25;
       const mainH = 1.2 + Math.random() * 2.5;
       const mainD = 8 + Math.random() * 15;
-      const mainDune = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 20), duneCrestMat);
+      const mainDune = new THREE.Mesh(new THREE.SphereGeometry(1, 44, 30), duneCrestMat);
       mainDune.scale.set(mainW, mainH, mainD);
       duneGroup.add(mainDune);
       // Secondary crest ridge
-      const ridge = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 14), duneCrestMat);
+      const ridge = new THREE.Mesh(new THREE.SphereGeometry(1, 36, 23), duneCrestMat);
       ridge.scale.set(mainW * 0.8, mainH * 0.4, mainD * 0.3);
       ridge.position.set(mainW * 0.1, mainH * 0.6, -mainD * 0.15);
       duneGroup.add(ridge);
       // Wind shadow (darker side)
-      const shadow = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 14), duneValleyMat);
+      const shadow = new THREE.Mesh(new THREE.SphereGeometry(1, 30, 23), duneValleyMat);
       shadow.scale.set(mainW * 0.6, mainH * 0.3, mainD * 0.5);
       shadow.position.set(-mainW * 0.2, mainH * 0.1, mainD * 0.2);
       duneGroup.add(shadow);
@@ -16465,17 +16465,17 @@ export class DiabloRenderer {
         for (let row = 0; row < 2; row++) {
           if (Math.random() > 0.2) {
             const colH = 3 + Math.random() * 2.5;
-            const column = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.45, colH, 20), inscribedMat);
+            const column = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.45, colH, 30), inscribedMat);
             column.position.set(-5 + col * 2, colH / 2 + 0.5, -3.5 + row * 7);
             column.rotation.x = (Math.random() - 0.5) * 0.08;
             column.rotation.z = (Math.random() - 0.5) * 0.08;
             temple.add(column);
             // Column capital
-            const capital = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.4, 0.25, 16), inscribedMat);
+            const capital = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.4, 0.25, 27), inscribedMat);
             capital.position.set(column.position.x, colH + 0.5, column.position.z);
             temple.add(capital);
             // Column base
-            const colBase = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.55, 0.2, 16), inscribedMat);
+            const colBase = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.55, 0.2, 27), inscribedMat);
             colBase.position.set(column.position.x, 0.6, column.position.z);
             temple.add(colBase);
           }
@@ -16493,7 +16493,7 @@ export class DiabloRenderer {
       archLintel.position.set(0, archPillarH + 0.5, 5);
       temple.add(archLintel);
       // Triangular pediment
-      const pediment = new THREE.Mesh(new THREE.ConeGeometry(3.5, 1.5, 8), inscribedMat);
+      const pediment = new THREE.Mesh(new THREE.ConeGeometry(3.5, 1.5, 16), inscribedMat);
       pediment.position.set(0, archPillarH + 1.8, 5);
       pediment.rotation.y = Math.PI / 6;
       temple.add(pediment);
@@ -16552,17 +16552,17 @@ export class DiabloRenderer {
       const aH = 3 + Math.random() * 3;
       const aW = 3 + Math.random() * 4;
       // Left pillar
-      const lPillar = new THREE.Mesh(new THREE.DodecahedronGeometry(1.2, 1), bleachedRockMat);
+      const lPillar = new THREE.Mesh(new THREE.DodecahedronGeometry(1.2, 2), bleachedRockMat);
       lPillar.scale.set(0.6, aH / 2, 0.6);
       lPillar.position.set(-aW / 2, aH / 2, 0);
       archGroup.add(lPillar);
       // Right pillar
-      const rPillar = new THREE.Mesh(new THREE.DodecahedronGeometry(1.2, 1), bleachedRockMat);
+      const rPillar = new THREE.Mesh(new THREE.DodecahedronGeometry(1.2, 2), bleachedRockMat);
       rPillar.scale.set(0.6, aH / 2, 0.6);
       rPillar.position.set(aW / 2, aH / 2, 0);
       archGroup.add(rPillar);
       // Arch span (natural rock bridge)
-      const span = new THREE.Mesh(new THREE.DodecahedronGeometry(aW / 2, 1), bleachedRockMat);
+      const span = new THREE.Mesh(new THREE.DodecahedronGeometry(aW / 2, 2), bleachedRockMat);
       span.scale.set(1, 0.25, 0.4);
       span.position.set(0, aH, 0);
       archGroup.add(span);
@@ -16594,7 +16594,7 @@ export class DiabloRenderer {
       const patchGroup = new THREE.Group();
       const patchR = 2 + Math.random() * 3;
       // Base cracked ground
-      const base = new THREE.Mesh(new THREE.CircleGeometry(patchR, 16), crackedMat);
+      const base = new THREE.Mesh(new THREE.CircleGeometry(patchR, 27), crackedMat);
       base.rotation.x = -Math.PI / 2;
       base.position.y = 0.02;
       patchGroup.add(base);
@@ -16617,31 +16617,31 @@ export class DiabloRenderer {
     for (let i = 0; i < 4; i++) {
       const camelSkel = new THREE.Group();
       // Spine
-      const spine = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.06, 2.5, 10), boneMat);
+      const spine = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.06, 2.5, 17), boneMat);
       spine.rotation.z = Math.PI / 2;
       spine.position.y = 0.6;
       camelSkel.add(spine);
       // Ribs
       for (let r = 0; r < 6; r++) {
-        const rib = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.02, 20, 14, Math.PI), boneMat);
+        const rib = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.02, 30, 23, Math.PI), boneMat);
         rib.position.set(-0.8 + r * 0.3, 0.5, 0);
         rib.rotation.y = Math.PI / 2;
         camelSkel.add(rib);
       }
       // Skull
-      const camelSkull = new THREE.Mesh(new THREE.SphereGeometry(0.2, 14, 12), boneMat);
+      const camelSkull = new THREE.Mesh(new THREE.SphereGeometry(0.2, 23, 20), boneMat);
       camelSkull.scale.set(0.7, 0.8, 1.5);
       camelSkull.position.set(1.5, 0.5, 0);
       camelSkel.add(camelSkull);
       // Leg bones
       for (let l = 0; l < 4; l++) {
-        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.8, 8), boneMat);
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.8, 16), boneMat);
         leg.position.set(-0.5 + (l > 1 ? 1.2 : 0), 0.15, l % 2 === 0 ? 0.3 : -0.3);
         leg.rotation.z = (Math.random() - 0.5) * 0.5;
         camelSkel.add(leg);
       }
       // Hump bone ridge
-      const hump = new THREE.Mesh(new THREE.SphereGeometry(0.15, 12, 10), boneMat);
+      const hump = new THREE.Mesh(new THREE.SphereGeometry(0.15, 20, 17), boneMat);
       hump.scale.set(1, 1.5, 1);
       hump.position.set(0, 0.85, 0);
       camelSkel.add(hump);
@@ -16667,26 +16667,26 @@ export class DiabloRenderer {
     // ── Large scattered skulls (giant creature remains) ──
     for (let i = 0; i < 3; i++) {
       const giantSkull = new THREE.Group();
-      const skullMesh = new THREE.Mesh(new THREE.SphereGeometry(1.2, 16, 14), boneMat);
+      const skullMesh = new THREE.Mesh(new THREE.SphereGeometry(1.2, 27, 23), boneMat);
       skullMesh.scale.set(1, 0.7, 1.3);
       skullMesh.position.y = 0.5;
       giantSkull.add(skullMesh);
       // Eye sockets
       const eyeMat = new THREE.MeshStandardMaterial({ color: 0x332211, roughness: 1.0 });
-      const eye1 = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 12), eyeMat);
+      const eye1 = new THREE.Mesh(new THREE.SphereGeometry(0.2, 20, 20), eyeMat);
       eye1.position.set(-0.35, 0.7, 1.1);
       giantSkull.add(eye1);
-      const eye2 = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 12), eyeMat);
+      const eye2 = new THREE.Mesh(new THREE.SphereGeometry(0.2, 20, 20), eyeMat);
       eye2.position.set(0.35, 0.7, 1.1);
       giantSkull.add(eye2);
       // Jaw
-      const jaw = new THREE.Mesh(new THREE.SphereGeometry(0.8, 14, 10, 0, Math.PI * 2, Math.PI / 2), boneMat);
+      const jaw = new THREE.Mesh(new THREE.SphereGeometry(0.8, 23, 17, 0, Math.PI * 2, Math.PI / 2), boneMat);
       jaw.scale.set(0.9, 0.4, 1.1);
       jaw.position.set(0, 0.1, 0.3);
       giantSkull.add(jaw);
       // Teeth
       for (let t = 0; t < 6; t++) {
-        const tooth = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.2, 8), boneMat);
+        const tooth = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.2, 16), boneMat);
         tooth.position.set(-0.3 + t * 0.12, 0.2, 1.0);
         tooth.rotation.x = Math.PI;
         giantSkull.add(tooth);
@@ -16723,7 +16723,7 @@ export class DiabloRenderer {
     // ── Scattered ancient coins and artifacts ──
     const goldMat = new THREE.MeshStandardMaterial({ color: 0xddaa33, roughness: 0.3, metalness: 0.7 });
     for (let i = 0; i < 20; i++) {
-      const coin = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.01, 14), goldMat);
+      const coin = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.01, 23), goldMat);
       coin.rotation.x = -Math.PI / 2 + (Math.random() - 0.5) * 0.3;
       const coX = (Math.random() - 0.5) * w * 0.7;
       const coZ = (Math.random() - 0.5) * d * 0.7;
@@ -16733,12 +16733,12 @@ export class DiabloRenderer {
 
     // ── Second oasis pool (smaller, distant) ──
     const oasis2X = hw * 0.4, oasis2Z = hd * 0.35;
-    const oasis2Pool = new THREE.Mesh(new THREE.CircleGeometry(4, 27), oasisWaterMat);
+    const oasis2Pool = new THREE.Mesh(new THREE.CircleGeometry(4, 37), oasisWaterMat);
     oasis2Pool.rotation.x = -Math.PI / 2;
     oasis2Pool.position.set(oasis2X, getTerrainHeight(oasis2X, oasis2Z, 1.4) + 0.04, oasis2Z);
     this._scene.add(oasis2Pool);
     const grassRing2 = new THREE.Mesh(
-      new THREE.RingGeometry(3.5, 5, 16),
+      new THREE.RingGeometry(3.5, 5, 27),
       new THREE.MeshStandardMaterial({ color: 0x558833, roughness: 0.8 }),
     );
     grassRing2.rotation.x = -Math.PI / 2;
@@ -16749,7 +16749,7 @@ export class DiabloRenderer {
       const angle2 = (i / 5) * Math.PI * 2;
       const palm2 = new THREE.Group();
       const trunkH2 = 3.5 + Math.random() * 2.5;
-      const trunk2 = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.2, trunkH2, 14), palmTrunkMat);
+      const trunk2 = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.2, trunkH2, 23), palmTrunkMat);
       trunk2.position.y = trunkH2 / 2;
       trunk2.rotation.x = (Math.random() - 0.5) * 0.15;
       trunk2.rotation.z = (Math.random() - 0.5) * 0.15;
@@ -16773,16 +16773,16 @@ export class DiabloRenderer {
     for (let i = 0; i < 3; i++) {
       const statue = new THREE.Group();
       // Torso emerging from sand
-      const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.8, 2, 16), statueMat);
+      const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.8, 2, 27), statueMat);
       torso.position.y = 0.5;
       torso.rotation.z = (Math.random() - 0.5) * 0.2;
       statue.add(torso);
       // Head
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.45, 21, 14), statueMat);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.45, 31, 23), statueMat);
       head.position.set(0, 1.8, 0);
       statue.add(head);
       // Extended arm
-      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, 1.5, 12), statueMat);
+      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, 1.5, 20), statueMat);
       arm.position.set(0.8, 1.2, 0);
       arm.rotation.z = -0.8;
       statue.add(arm);
@@ -16826,7 +16826,7 @@ export class DiabloRenderer {
       const sy = 0.3 + Math.random() * 0.7;
       const sz = 10 + Math.random() * 18;
       const hill = new THREE.Mesh(
-        new THREE.SphereGeometry(1, 24, 16),
+        new THREE.SphereGeometry(1, 36, 27),
         i % 2 === 0 ? grassDarkMat : grassLightMat,
       );
       hill.scale.set(sx, sy, sz);
@@ -16842,7 +16842,7 @@ export class DiabloRenderer {
     for (let i = 0; i < 80; i++) {
       const color = flowerColors[Math.floor(Math.random() * flowerColors.length)];
       const flower = new THREE.Mesh(
-        new THREE.SphereGeometry(0.12 + Math.random() * 0.15, 12, 12),
+        new THREE.SphereGeometry(0.12 + Math.random() * 0.15, 20, 20),
         new THREE.MeshStandardMaterial({ color, roughness: 0.4 }),
       );
       flower.position.set(
@@ -16853,7 +16853,7 @@ export class DiabloRenderer {
       this._scene.add(flower);
       // Stem
       const stem = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.015, 0.02, 0.2, 8),
+        new THREE.CylinderGeometry(0.015, 0.02, 0.2, 16),
         new THREE.MeshStandardMaterial({ color: 0x337722 }),
       );
       stem.position.set(flower.position.x, 0.05, flower.position.z);
@@ -16864,14 +16864,14 @@ export class DiabloRenderer {
     for (let i = 0; i < 30; i++) {
       const tree = new THREE.Group();
       const trunkH = 3 + Math.random() * 3;
-      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.35, trunkH, 14), woodMat);
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.35, trunkH, 23), woodMat);
       trunk.position.y = trunkH / 2;
       tree.add(trunk);
       // Canopy (multiple spheres)
       const canopyR = 1.5 + Math.random() * 2;
       for (let c = 0; c < 3; c++) {
         const canopy = new THREE.Mesh(
-          new THREE.SphereGeometry(canopyR * (0.7 + Math.random() * 0.4), 32, 14),
+          new THREE.SphereGeometry(canopyR * (0.7 + Math.random() * 0.4), 44, 23),
           leafMat,
         );
         canopy.position.set(
@@ -16917,14 +16917,14 @@ export class DiabloRenderer {
     rail2.position.set(bridgeX, 1.8, bridgeZ + 1.4);
     this._scene.add(rail2);
     // Arched support
-    const archSupport = new THREE.Mesh(new THREE.TorusGeometry(1.2, 0.25, 14, 16, Math.PI), stoneMat);
+    const archSupport = new THREE.Mesh(new THREE.TorusGeometry(1.2, 0.25, 23, 27, Math.PI), stoneMat);
     archSupport.rotation.y = Math.PI / 2;
     archSupport.position.set(bridgeX, 0.2, bridgeZ);
     this._scene.add(archSupport);
 
     // ── Hay bales ──
     for (let i = 0; i < 15; i++) {
-      const hay = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.8, 16), hayMat);
+      const hay = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.8, 27), hayMat);
       hay.rotation.x = Math.PI / 2;
       const hayX = (Math.random() - 0.5) * w * 0.7;
       const hayZ = (Math.random() - 0.5) * d * 0.7;
@@ -16939,7 +16939,7 @@ export class DiabloRenderer {
     const hutWalls = new THREE.Mesh(new THREE.BoxGeometry(4, 3, 4), new THREE.MeshStandardMaterial({ color: 0xbb9966, roughness: 0.8 }));
     hutWalls.position.set(farmX, 1.5, farmZ);
     this._scene.add(hutWalls);
-    const hutRoof = new THREE.Mesh(new THREE.ConeGeometry(3.5, 2, 10), roofMat);
+    const hutRoof = new THREE.Mesh(new THREE.ConeGeometry(3.5, 2, 17), roofMat);
     hutRoof.position.set(farmX, 4, farmZ);
     hutRoof.rotation.y = Math.PI / 4;
     this._scene.add(hutRoof);
@@ -16977,7 +16977,7 @@ export class DiabloRenderer {
       const cnt = 1 + Math.floor(Math.random() * 3);
       for (let r = 0; r < cnt; r++) {
         const rh = 0.6 + Math.random() * 2;
-        const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(rh, 1), stoneMat);
+        const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(rh, 2), stoneMat);
         rock.scale.set(0.7 + Math.random() * 0.6, 0.5 + Math.random() * 0.5, 0.7 + Math.random() * 0.6);
         rock.position.set((Math.random() - 0.5) * 2, rh * 0.3, (Math.random() - 0.5) * 2);
         rockGroup.add(rock);
@@ -17006,10 +17006,10 @@ export class DiabloRenderer {
 
     // ── Windmill ──
     const wmX = -hw * 0.35, wmZ = hd * 0.3;
-    const wmBase = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 2, 6, 16), new THREE.MeshStandardMaterial({ color: 0xccbb99, roughness: 0.7 }));
+    const wmBase = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 2, 6, 27), new THREE.MeshStandardMaterial({ color: 0xccbb99, roughness: 0.7 }));
     wmBase.position.set(wmX, 8, wmZ);
     this._scene.add(wmBase);
-    const wmRoof = new THREE.Mesh(new THREE.ConeGeometry(2, 2, 16), new THREE.MeshStandardMaterial({ color: 0x885533, roughness: 0.8 }));
+    const wmRoof = new THREE.Mesh(new THREE.ConeGeometry(2, 2, 27), new THREE.MeshStandardMaterial({ color: 0x885533, roughness: 0.8 }));
     wmRoof.position.set(wmX, 7, wmZ);
     this._scene.add(wmRoof);
     // Blades
@@ -17026,7 +17026,7 @@ export class DiabloRenderer {
 
     // ── Campfire in open field ──
     const cfX = hw * 0.1, cfZ = hd * 0.2;
-    const fireRing = new THREE.Mesh(new THREE.TorusGeometry(0.8, 0.2, 14, 20), stoneMat);
+    const fireRing = new THREE.Mesh(new THREE.TorusGeometry(0.8, 0.2, 23, 30), stoneMat);
     fireRing.rotation.x = Math.PI / 2;
     fireRing.position.set(cfX, 0.2, cfZ);
     this._scene.add(fireRing);
@@ -17036,7 +17036,7 @@ export class DiabloRenderer {
     // Log seats
     for (let i = 0; i < 3; i++) {
       const logAngle = (i / 3) * Math.PI * 2 + 0.3;
-      const log = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 1.8, 14), woodMat);
+      const log = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 1.8, 23), woodMat);
       log.rotation.z = Math.PI / 2;
       log.position.set(
         cfX + Math.cos(logAngle) * 2.5,
@@ -17097,11 +17097,11 @@ export class DiabloRenderer {
     for (let i = 0; i < 35; i++) {
       const daisy = new THREE.Group();
       const stemH = 0.25 + Math.random() * 0.15;
-      const dStem = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.015, stemH, 8), stemMat);
+      const dStem = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.015, stemH, 16), stemMat);
       dStem.position.y = stemH / 2;
       daisy.add(dStem);
       // Center
-      const center = new THREE.Mesh(new THREE.SphereGeometry(0.04, 24, 10), daisyCenterMat);
+      const center = new THREE.Mesh(new THREE.SphereGeometry(0.04, 36, 17), daisyCenterMat);
       center.position.y = stemH + 0.02;
       daisy.add(center);
       // Petals
@@ -17122,14 +17122,14 @@ export class DiabloRenderer {
     for (let i = 0; i < 30; i++) {
       const poppy = new THREE.Group();
       const stemH = 0.3 + Math.random() * 0.2;
-      const pStem = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.012, stemH, 8), stemMat);
+      const pStem = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.012, stemH, 16), stemMat);
       pStem.position.y = stemH / 2;
       poppy.add(pStem);
-      const poppyHead = new THREE.Mesh(new THREE.SphereGeometry(0.06, 21, 10, 0, Math.PI * 2, 0, Math.PI / 2), poppyMat);
+      const poppyHead = new THREE.Mesh(new THREE.SphereGeometry(0.06, 31, 17, 0, Math.PI * 2, 0, Math.PI / 2), poppyMat);
       poppyHead.position.y = stemH;
       poppy.add(poppyHead);
       // Dark center
-      const pCenter = new THREE.Mesh(new THREE.SphereGeometry(0.02, 10, 8), new THREE.MeshStandardMaterial({ color: 0x111111 }));
+      const pCenter = new THREE.Mesh(new THREE.SphereGeometry(0.02, 17, 16), new THREE.MeshStandardMaterial({ color: 0x111111 }));
       pCenter.position.y = stemH + 0.04;
       poppy.add(pCenter);
       const ppX = (Math.random() - 0.5) * w * 0.85;
@@ -17141,11 +17141,11 @@ export class DiabloRenderer {
     for (let i = 0; i < 25; i++) {
       const bell = new THREE.Group();
       const bStemH = 0.2 + Math.random() * 0.15;
-      const bStem = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.012, bStemH, 8), stemMat);
+      const bStem = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.012, bStemH, 16), stemMat);
       bStem.position.y = bStemH / 2;
       bell.add(bStem);
       const bellMat = i % 2 === 0 ? bluebellMat : lavenderMat;
-      const bellHead = new THREE.Mesh(new THREE.SphereGeometry(0.04, 24, 8), bellMat);
+      const bellHead = new THREE.Mesh(new THREE.SphereGeometry(0.04, 36, 16), bellMat);
       bellHead.scale.y = 1.3;
       bellHead.position.y = bStemH;
       bell.add(bellHead);
@@ -17161,11 +17161,11 @@ export class DiabloRenderer {
     for (let i = 0; i < 18; i++) {
       const mossRock = new THREE.Group();
       const rockR = 0.5 + Math.random() * 1.5;
-      const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(rockR, 1), mossBoulderMat);
+      const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(rockR, 2), mossBoulderMat);
       rock.scale.set(0.8 + Math.random() * 0.4, 0.6 + Math.random() * 0.4, 0.8 + Math.random() * 0.4);
       mossRock.add(rock);
       // Moss on top and sides
-      const moss1 = new THREE.Mesh(new THREE.SphereGeometry(rockR * 0.6, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2), mossPatchMat);
+      const moss1 = new THREE.Mesh(new THREE.SphereGeometry(rockR * 0.6, 23, 17, 0, Math.PI * 2, 0, Math.PI / 2), mossPatchMat);
       moss1.position.y = rockR * 0.35;
       mossRock.add(moss1);
       // Side moss patches
@@ -17198,7 +17198,7 @@ export class DiabloRenderer {
       rWing.rotation.z = -0.4;
       butterfly.add(rWing);
       // Body
-      const bBody = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.06, 8), new THREE.MeshStandardMaterial({ color: 0x222222 }));
+      const bBody = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.06, 16), new THREE.MeshStandardMaterial({ color: 0x222222 }));
       bBody.rotation.z = Math.PI / 2;
       butterfly.add(bBody);
       const bfX = (Math.random() - 0.5) * w * 0.8;
@@ -17228,7 +17228,7 @@ export class DiabloRenderer {
       // Stream bank pebbles
       for (let p = 0; p < 15; p++) {
         const pebble = new THREE.Mesh(
-          new THREE.SphereGeometry(0.05 + Math.random() * 0.08, 10, 8),
+          new THREE.SphereGeometry(0.05 + Math.random() * 0.08, 17, 16),
           new THREE.MeshStandardMaterial({ color: 0x998877, roughness: 0.9 }),
         );
         pebble.scale.y = 0.4;
@@ -17273,13 +17273,13 @@ export class DiabloRenderer {
       const stack = new THREE.Group();
       // Bottom row
       for (let r = 0; r < 2; r++) {
-        const hay1 = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.8, 16), hayMat);
+        const hay1 = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.8, 27), hayMat);
         hay1.rotation.x = Math.PI / 2;
         hay1.position.set(r * 1.1, 0.5, 0);
         stack.add(hay1);
       }
       // Top hay
-      const hayTop = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.8, 16), hayMat);
+      const hayTop = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.8, 27), hayMat);
       hayTop.rotation.x = Math.PI / 2;
       hayTop.position.set(0.55, 1.4, 0);
       stack.add(hayTop);
@@ -17292,10 +17292,10 @@ export class DiabloRenderer {
 
     // ── Second windmill ──
     const wm2X = hw * 0.4, wm2Z = -hd * 0.45;
-    const wm2Base = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.8, 5, 16), new THREE.MeshStandardMaterial({ color: 0xccbb99, roughness: 0.7 }));
+    const wm2Base = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.8, 5, 27), new THREE.MeshStandardMaterial({ color: 0xccbb99, roughness: 0.7 }));
     wm2Base.position.set(wm2X, 2.5, wm2Z);
     this._scene.add(wm2Base);
-    const wm2Roof = new THREE.Mesh(new THREE.ConeGeometry(1.6, 1.5, 16), new THREE.MeshStandardMaterial({ color: 0x885533, roughness: 0.8 }));
+    const wm2Roof = new THREE.Mesh(new THREE.ConeGeometry(1.6, 1.5, 27), new THREE.MeshStandardMaterial({ color: 0x885533, roughness: 0.8 }));
     wm2Roof.position.set(wm2X, 6, wm2Z);
     this._scene.add(wm2Roof);
     // Blades
@@ -17320,17 +17320,17 @@ export class DiabloRenderer {
     for (let i = 0; i < 8; i++) {
       const nest = new THREE.Group();
       // Nest base (flattened torus)
-      const nestBase = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.04, 12, 16), twigMat);
+      const nestBase = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.04, 20, 27), twigMat);
       nestBase.rotation.x = Math.PI / 2;
       nest.add(nestBase);
       // Inner cup
-      const cup = new THREE.Mesh(new THREE.SphereGeometry(0.1, 12, 8, 0, Math.PI * 2, Math.PI / 2), twigMat);
+      const cup = new THREE.Mesh(new THREE.SphereGeometry(0.1, 20, 16, 0, Math.PI * 2, Math.PI / 2), twigMat);
       cup.position.y = -0.02;
       cup.rotation.x = Math.PI;
       nest.add(cup);
       // Eggs
       for (let e = 0; e < 2 + Math.floor(Math.random() * 2); e++) {
-        const egg = new THREE.Mesh(new THREE.SphereGeometry(0.025, 10, 8), eggMat);
+        const egg = new THREE.Mesh(new THREE.SphereGeometry(0.025, 17, 16), eggMat);
         egg.scale.y = 1.3;
         egg.position.set((Math.random() - 0.5) * 0.06, 0.02, (Math.random() - 0.5) * 0.06);
         nest.add(egg);
@@ -17344,7 +17344,7 @@ export class DiabloRenderer {
     // ── Rolling hills with wildflower meadow patches ──
     const meadowMat = new THREE.MeshStandardMaterial({ color: 0x55aa33, roughness: 0.85 });
     for (let i = 0; i < 15; i++) {
-      const meadow = new THREE.Mesh(new THREE.CircleGeometry(3 + Math.random() * 4, 20), meadowMat);
+      const meadow = new THREE.Mesh(new THREE.CircleGeometry(3 + Math.random() * 4, 30), meadowMat);
       meadow.rotation.x = -Math.PI / 2;
       const mX = (Math.random() - 0.5) * w * 0.8;
       const mZ = (Math.random() - 0.5) * d * 0.8;
@@ -17354,7 +17354,7 @@ export class DiabloRenderer {
       for (let f = 0; f < 10; f++) {
         const fColor = flowerColors[Math.floor(Math.random() * flowerColors.length)];
         const tinyFlower = new THREE.Mesh(
-          new THREE.SphereGeometry(0.04 + Math.random() * 0.04, 10, 8),
+          new THREE.SphereGeometry(0.04 + Math.random() * 0.04, 17, 16),
           new THREE.MeshStandardMaterial({ color: fColor, roughness: 0.3 }),
         );
         const fAngle = Math.random() * Math.PI * 2;
@@ -17390,14 +17390,14 @@ export class DiabloRenderer {
     cartGroup.add(cSide2);
     // Wheels
     for (let w2 = 0; w2 < 2; w2++) {
-      const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.04, 12, 16), new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.6, metalness: 0.5 }));
+      const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.04, 20, 27), new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.6, metalness: 0.5 }));
       wheel.position.set(w2 === 0 ? -0.8 : 0.8, 0.3, 0.7);
       wheel.rotation.x = Math.PI / 2;
       cartGroup.add(wheel);
     }
     // Barrels in cart
     for (let b = 0; b < 2; b++) {
-      const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.5, 16), woodMat);
+      const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.5, 27), woodMat);
       barrel.position.set(-0.4 + b * 0.8, 0.95, 0);
       cartGroup.add(barrel);
     }
@@ -17407,22 +17407,22 @@ export class DiabloRenderer {
 
     // ── Scarecrow ──
     const scarecrow = new THREE.Group();
-    const scPole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 3, 10), woodMat);
+    const scPole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 3, 17), woodMat);
     scPole.position.y = 1.5;
     scarecrow.add(scPole);
-    const scArm = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 4, 10), woodMat);
+    const scArm = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 4, 17), woodMat);
     scArm.rotation.z = Math.PI / 2;
     scArm.position.y = 2.3;
     scarecrow.add(scArm);
     // Head (sack)
-    const scHead = new THREE.Mesh(new THREE.SphereGeometry(0.2, 14, 12), hayMat);
+    const scHead = new THREE.Mesh(new THREE.SphereGeometry(0.2, 23, 20), hayMat);
     scHead.position.y = 3.2;
     scarecrow.add(scHead);
     // Hat
-    const scHat = new THREE.Mesh(new THREE.ConeGeometry(0.25, 0.3, 14), new THREE.MeshStandardMaterial({ color: 0x553311, roughness: 0.9 }));
+    const scHat = new THREE.Mesh(new THREE.ConeGeometry(0.25, 0.3, 23), new THREE.MeshStandardMaterial({ color: 0x553311, roughness: 0.9 }));
     scHat.position.y = 3.5;
     scarecrow.add(scHat);
-    const scHatBrim = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.03, 16), new THREE.MeshStandardMaterial({ color: 0x553311, roughness: 0.9 }));
+    const scHatBrim = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.03, 27), new THREE.MeshStandardMaterial({ color: 0x553311, roughness: 0.9 }));
     scHatBrim.position.y = 3.35;
     scarecrow.add(scHatBrim);
     scarecrow.position.set(farmX - 6, getTerrainHeight(farmX - 6, farmZ + 5, 1.4), farmZ + 5);
@@ -17462,7 +17462,7 @@ export class DiabloRenderer {
       const tree = new THREE.Group();
       const trunkH = 3 + Math.random() * 4;
       const trunk = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.08 + Math.random() * 0.12, 0.15 + Math.random() * 0.15, trunkH, 12),
+        new THREE.CylinderGeometry(0.08 + Math.random() * 0.12, 0.15 + Math.random() * 0.15, trunkH, 20),
         deadWoodMat,
       );
       trunk.position.y = trunkH / 2;
@@ -17474,7 +17474,7 @@ export class DiabloRenderer {
       for (let b = 0; b < branchCount; b++) {
         const branchLen = 1 + Math.random() * 2;
         const branch = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.02, 0.06, branchLen, 10),
+          new THREE.CylinderGeometry(0.02, 0.06, branchLen, 17),
           deadWoodMat,
         );
         const brY = trunkH * (0.5 + Math.random() * 0.4);
@@ -17513,7 +17513,7 @@ export class DiabloRenderer {
     for (let i = 0; i < 18; i++) {
       const poolR = 2 + Math.random() * 5;
       const pool = new THREE.Mesh(
-        new THREE.CircleGeometry(poolR, 24),
+        new THREE.CircleGeometry(poolR, 36),
         waterMat,
       );
       pool.rotation.x = -Math.PI / 2;
@@ -17529,7 +17529,7 @@ export class DiabloRenderer {
     for (let i = 0; i < 35; i++) {
       const lilyR = 0.15 + Math.random() * 0.2;
       const lily = new THREE.Mesh(
-        new THREE.CircleGeometry(lilyR, 16),
+        new THREE.CircleGeometry(lilyR, 27),
         lilyMat,
       );
       lily.rotation.x = -Math.PI / 2;
@@ -17546,7 +17546,7 @@ export class DiabloRenderer {
       const willow = new THREE.Group();
       const trunkH = 4 + Math.random() * 2;
       const trunk = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.2, 0.35, trunkH, 14),
+        new THREE.CylinderGeometry(0.2, 0.35, trunkH, 23),
         darkBarkMat,
       );
       trunk.position.y = trunkH / 2;
@@ -17556,7 +17556,7 @@ export class DiabloRenderer {
       for (let b = 0; b < droopCount; b++) {
         const droopLen = 2 + Math.random() * 3;
         const droop = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.01, 0.015, droopLen, 8),
+          new THREE.CylinderGeometry(0.01, 0.015, droopLen, 16),
           new THREE.MeshStandardMaterial({ color: 0x557733, roughness: 0.7 }),
         );
         const angle = (b / droopCount) * Math.PI * 2;
@@ -17586,13 +17586,13 @@ export class DiabloRenderer {
         const capR = 0.08 + Math.random() * 0.15;
         const stemH = 0.1 + Math.random() * 0.25;
         const stem = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.02, 0.03, stemH, 10),
+          new THREE.CylinderGeometry(0.02, 0.03, stemH, 17),
           new THREE.MeshStandardMaterial({ color: 0xccccaa, roughness: 0.7 }),
         );
         stem.position.set((Math.random() - 0.5) * 0.3, stemH / 2, (Math.random() - 0.5) * 0.3);
         cluster.add(stem);
         const cap = new THREE.Mesh(
-          new THREE.SphereGeometry(capR, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2),
+          new THREE.SphereGeometry(capR, 23, 17, 0, Math.PI * 2, 0, Math.PI / 2),
           new THREE.MeshStandardMaterial({ color: glowColor, emissive: glowColor, emissiveIntensity: 0.8, roughness: 0.3 }),
         );
         cap.position.set(stem.position.x, stemH, stem.position.z);
@@ -17613,13 +17613,13 @@ export class DiabloRenderer {
       const reed = new THREE.Group();
       const reedH = 1 + Math.random() * 1.5;
       const stem = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.015, 0.02, reedH, 8),
+        new THREE.CylinderGeometry(0.015, 0.02, reedH, 16),
         new THREE.MeshStandardMaterial({ color: 0x558833 }),
       );
       stem.position.y = reedH / 2;
       reed.add(stem);
       const head = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.04, 0.04, 0.2, 12),
+        new THREE.CylinderGeometry(0.04, 0.04, 0.2, 20),
         cattailMat,
       );
       head.position.y = reedH;
@@ -17644,16 +17644,16 @@ export class DiabloRenderer {
         bridge.add(plank);
       }
       // Support posts
-      const post1 = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.8, 10), plankMat);
+      const post1 = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.8, 17), plankMat);
       post1.position.set(-0.8, 0, -plankCount * 0.25);
       bridge.add(post1);
-      const post2 = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.8, 10), plankMat);
+      const post2 = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.8, 17), plankMat);
       post2.position.set(-0.8, 0, plankCount * 0.25);
       bridge.add(post2);
-      const post3 = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.8, 10), plankMat);
+      const post3 = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.8, 17), plankMat);
       post3.position.set(0.8, 0, -plankCount * 0.25);
       bridge.add(post3);
-      const post4 = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.8, 10), plankMat);
+      const post4 = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.8, 17), plankMat);
       post4.position.set(0.8, 0, plankCount * 0.25);
       bridge.add(post4);
       const bx = (Math.random() - 0.5) * w * 0.6;
@@ -17668,14 +17668,14 @@ export class DiabloRenderer {
       const rockGroup = new THREE.Group();
       const rh = 0.4 + Math.random() * 1.2;
       const rock = new THREE.Mesh(
-        new THREE.DodecahedronGeometry(rh, 1),
+        new THREE.DodecahedronGeometry(rh, 2),
         stoneMat,
       );
       rock.scale.set(0.8 + Math.random() * 0.4, 0.5 + Math.random() * 0.4, 0.8 + Math.random() * 0.4);
       rockGroup.add(rock);
       // Moss patches on top
       const mossPatch = new THREE.Mesh(
-        new THREE.SphereGeometry(rh * 0.7, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2),
+        new THREE.SphereGeometry(rh * 0.7, 23, 17, 0, Math.PI * 2, 0, Math.PI / 2),
         mossCoverMat,
       );
       mossPatch.position.y = rh * 0.3;
@@ -17708,7 +17708,7 @@ export class DiabloRenderer {
       const archW = 1.5 + Math.random() * 2;
       // Left leg
       const leftLeg = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.08, 0.12, archH, 12),
+        new THREE.CylinderGeometry(0.08, 0.12, archH, 20),
         rootMat,
       );
       leftLeg.position.set(-archW / 2, archH / 2, 0);
@@ -17716,7 +17716,7 @@ export class DiabloRenderer {
       arch.add(leftLeg);
       // Right leg
       const rightLeg = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.08, 0.12, archH, 12),
+        new THREE.CylinderGeometry(0.08, 0.12, archH, 20),
         rootMat,
       );
       rightLeg.position.set(archW / 2, archH / 2, 0);
@@ -17724,7 +17724,7 @@ export class DiabloRenderer {
       arch.add(rightLeg);
       // Top span
       const topSpan = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.06, 0.1, archW * 1.2, 12),
+        new THREE.CylinderGeometry(0.06, 0.1, archW * 1.2, 20),
         rootMat,
       );
       topSpan.rotation.z = Math.PI / 2;
@@ -17764,7 +17764,7 @@ export class DiabloRenderer {
     // ── Fireflies (glowing spheres with PointLights) ──
     for (let i = 0; i < 14; i++) {
       const fly = new THREE.Mesh(
-        new THREE.SphereGeometry(0.03, 10, 10),
+        new THREE.SphereGeometry(0.03, 17, 17),
         new THREE.MeshStandardMaterial({ color: 0xeeff66, emissive: 0xddff44, emissiveIntensity: 1.0 }),
       );
       const fx = (Math.random() - 0.5) * w * 0.8;
@@ -17827,7 +17827,7 @@ export class DiabloRenderer {
       const mudGroup = new THREE.Group();
       const mudR = 1 + Math.random() * 2;
       const mudPool = new THREE.Mesh(
-        new THREE.CircleGeometry(mudR, 20),
+        new THREE.CircleGeometry(mudR, 30),
         new THREE.MeshStandardMaterial({ color: 0x3a2a15, roughness: 1.0 }),
       );
       mudPool.rotation.x = -Math.PI / 2;
@@ -17837,7 +17837,7 @@ export class DiabloRenderer {
       const bubbleCount = 4 + Math.floor(Math.random() * 5);
       for (let b = 0; b < bubbleCount; b++) {
         const bubble = new THREE.Mesh(
-          new THREE.SphereGeometry(0.04 + Math.random() * 0.06, 10, 10),
+          new THREE.SphereGeometry(0.04 + Math.random() * 0.06, 17, 17),
           mudMat,
         );
         const bAngle = Math.random() * Math.PI * 2;
@@ -17862,20 +17862,20 @@ export class DiabloRenderer {
       const wispColor = wispColors[Math.floor(Math.random() * wispColors.length)];
       // Core orb
       const wispCore = new THREE.Mesh(
-        new THREE.SphereGeometry(0.06 + Math.random() * 0.04, 14, 12),
+        new THREE.SphereGeometry(0.06 + Math.random() * 0.04, 23, 20),
         new THREE.MeshStandardMaterial({ color: wispColor, emissive: wispColor, emissiveIntensity: 1.2, transparent: true, opacity: 0.8 }),
       );
       wispGroup.add(wispCore);
       // Outer glow halo
       const halo = new THREE.Mesh(
-        new THREE.SphereGeometry(0.15 + Math.random() * 0.1, 14, 12),
+        new THREE.SphereGeometry(0.15 + Math.random() * 0.1, 23, 20),
         new THREE.MeshStandardMaterial({ color: wispColor, emissive: wispColor, emissiveIntensity: 0.3, transparent: true, opacity: 0.15, depthWrite: false }),
       );
       wispGroup.add(halo);
       // Trailing wisps (small fading orbs)
       for (let t = 0; t < 3; t++) {
         const trail = new THREE.Mesh(
-          new THREE.SphereGeometry(0.02 + Math.random() * 0.02, 10, 8),
+          new THREE.SphereGeometry(0.02 + Math.random() * 0.02, 17, 16),
           new THREE.MeshStandardMaterial({ color: wispColor, emissive: wispColor, emissiveIntensity: 0.5, transparent: true, opacity: 0.3 }),
         );
         trail.position.set((Math.random() - 0.5) * 0.3, -(t + 1) * 0.12, (Math.random() - 0.5) * 0.3);
@@ -17913,7 +17913,7 @@ export class DiabloRenderer {
       }
       // Support stilts
       for (let s = 0; s < 5; s++) {
-        const stilt = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 0.8, 10), rotPlankMat);
+        const stilt = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 0.8, 17), rotPlankMat);
         stilt.position.set(s % 2 === 0 ? -0.85 : 0.85, -0.1, -plankCount * 0.2 + s * plankCount * 0.1);
         stilt.rotation.z = (Math.random() - 0.5) * 0.1;
         walkway.add(stilt);
@@ -17921,7 +17921,7 @@ export class DiabloRenderer {
       // Handrail (partial, broken)
       for (let h = 0; h < 3; h++) {
         if (Math.random() > 0.4) {
-          const railPost = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.6, 8), rotPlankMat);
+          const railPost = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.6, 16), rotPlankMat);
           railPost.position.set(-0.9, 0.55, -plankCount * 0.15 + h * plankCount * 0.15);
           walkway.add(railPost);
         }
@@ -17939,13 +17939,13 @@ export class DiabloRenderer {
       const reedCount = 3 + Math.floor(Math.random() * 5);
       for (let r = 0; r < reedCount; r++) {
         const reedH = 0.8 + Math.random() * 1.8;
-        const rStem = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.018, reedH, 8), new THREE.MeshStandardMaterial({ color: 0x558833 }));
+        const rStem = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.018, reedH, 16), new THREE.MeshStandardMaterial({ color: 0x558833 }));
         rStem.position.set((Math.random() - 0.5) * 0.3, reedH / 2, (Math.random() - 0.5) * 0.3);
         rStem.rotation.z = (Math.random() - 0.5) * 0.1;
         reedCluster.add(rStem);
         // Cattail head (brown fuzzy top)
         if (Math.random() > 0.5) {
-          const rHead = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.18, 12), cattailMat);
+          const rHead = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.18, 20), cattailMat);
           rHead.position.set(rStem.position.x, reedH, rStem.position.z);
           reedCluster.add(rHead);
         }
@@ -17962,26 +17962,26 @@ export class DiabloRenderer {
       const skelBoneMat = new THREE.MeshStandardMaterial({ color: 0xbbaa88, roughness: 0.8 });
       // Ribcage poking out
       for (let r = 0; r < 4; r++) {
-        const rib = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.015, 10, 14, Math.PI * 0.7), skelBoneMat);
+        const rib = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.015, 17, 23, Math.PI * 0.7), skelBoneMat);
         rib.position.set(r * 0.12, 0.1 + r * 0.02, 0);
         rib.rotation.y = Math.PI / 2;
         remains.add(rib);
       }
       // Skull partially visible
       if (Math.random() > 0.4) {
-        const skull = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 10), skelBoneMat);
+        const skull = new THREE.Mesh(new THREE.SphereGeometry(0.12, 20, 17), skelBoneMat);
         skull.scale.set(1, 0.75, 1.1);
         skull.position.set(-0.2, 0.08, 0);
         remains.add(skull);
       }
       // Arm bone reaching up
-      const armBone = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 0.5, 8), skelBoneMat);
+      const armBone = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 0.5, 16), skelBoneMat);
       armBone.position.set(0.2, 0.2, 0.1);
       armBone.rotation.z = -0.5;
       remains.add(armBone);
       // Hand bones
       for (let f = 0; f < 3; f++) {
-        const finger = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.008, 0.1, 8), skelBoneMat);
+        const finger = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.008, 0.1, 16), skelBoneMat);
         finger.position.set(0.35, 0.4, -0.05 + f * 0.05);
         finger.rotation.z = -0.3 + f * 0.15;
         remains.add(finger);
@@ -18000,7 +18000,7 @@ export class DiabloRenderer {
       for (let r = 0; r < rootCount; r++) {
         const rootH = 0.8 + Math.random() * 1.5;
         const root = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.03, 0.08, rootH, 10),
+          new THREE.CylinderGeometry(0.03, 0.08, rootH, 17),
           rootMat,
         );
         const rAngle = (r / rootCount) * Math.PI * 2;
@@ -18011,7 +18011,7 @@ export class DiabloRenderer {
         mangrove.add(root);
         // Sub-roots
         if (Math.random() > 0.5) {
-          const subRoot = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.04, rootH * 0.5, 8), rootMat);
+          const subRoot = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.04, rootH * 0.5, 16), rootMat);
           subRoot.position.set(Math.cos(rAngle) * (rDist + 0.3), rootH * 0.15, Math.sin(rAngle) * (rDist + 0.3));
           subRoot.rotation.z = Math.cos(rAngle) * 0.6;
           subRoot.rotation.x = Math.sin(rAngle) * 0.6;
@@ -18020,7 +18020,7 @@ export class DiabloRenderer {
       }
       // Central trunk rising from roots
       const mTrunkH = 2 + Math.random() * 2;
-      const mTrunk = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.15, mTrunkH, 12), darkBarkMat);
+      const mTrunk = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.15, mTrunkH, 20), darkBarkMat);
       mTrunk.position.y = mTrunkH / 2 + 0.5;
       mangrove.add(mTrunk);
       const mgx = (Math.random() - 0.5) * w * 0.8;
@@ -18032,7 +18032,7 @@ export class DiabloRenderer {
     // ── Additional fireflies (more, with varying heights) ──
     for (let i = 0; i < 25; i++) {
       const ff = new THREE.Mesh(
-        new THREE.SphereGeometry(0.02, 8, 8),
+        new THREE.SphereGeometry(0.02, 16, 16),
         new THREE.MeshStandardMaterial({ color: 0xeeff66, emissive: 0xddff44, emissiveIntensity: 1.2 }),
       );
       const ffx = (Math.random() - 0.5) * w * 0.85;
@@ -18052,7 +18052,7 @@ export class DiabloRenderer {
       const mudPot = new THREE.Group();
       const potR = 2 + Math.random() * 2.5;
       const potPool = new THREE.Mesh(
-        new THREE.CircleGeometry(potR, 24),
+        new THREE.CircleGeometry(potR, 36),
         new THREE.MeshStandardMaterial({ color: 0x332210, roughness: 1.0 }),
       );
       potPool.rotation.x = -Math.PI / 2;
@@ -18061,7 +18061,7 @@ export class DiabloRenderer {
       // Large bubbles
       for (let b = 0; b < 8; b++) {
         const bubble = new THREE.Mesh(
-          new THREE.SphereGeometry(0.06 + Math.random() * 0.1, 12, 10),
+          new THREE.SphereGeometry(0.06 + Math.random() * 0.1, 20, 17),
           mudMat,
         );
         const bAng = Math.random() * Math.PI * 2;
@@ -18091,7 +18091,7 @@ export class DiabloRenderer {
       const padCount = 4 + Math.floor(Math.random() * 6);
       for (let p = 0; p < padCount; p++) {
         const padR = 0.12 + Math.random() * 0.18;
-        const pad = new THREE.Mesh(new THREE.CircleGeometry(padR, 16), lilyMat);
+        const pad = new THREE.Mesh(new THREE.CircleGeometry(padR, 27), lilyMat);
         pad.rotation.x = -Math.PI / 2;
         const pAng = Math.random() * Math.PI * 2;
         const pDist = Math.random() * 1.5;
@@ -18102,7 +18102,7 @@ export class DiabloRenderer {
           const petalColors = [0xffaacc, 0xffffff, 0xffddee];
           const petalColor = petalColors[Math.floor(Math.random() * 3)];
           const lilyFlower = new THREE.Mesh(
-            new THREE.SphereGeometry(0.04, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2),
+            new THREE.SphereGeometry(0.04, 20, 16, 0, Math.PI * 2, 0, Math.PI / 2),
             new THREE.MeshStandardMaterial({ color: petalColor, roughness: 0.3 }),
           );
           lilyFlower.position.set(pad.position.x, 0.075, pad.position.z);
@@ -18153,13 +18153,13 @@ export class DiabloRenderer {
       const fallenLog = new THREE.Group();
       const logLen = 3 + Math.random() * 5;
       const logR = 0.12 + Math.random() * 0.15;
-      const log = new THREE.Mesh(new THREE.CylinderGeometry(logR, logR * 1.2, logLen, 14), deadWoodMat);
+      const log = new THREE.Mesh(new THREE.CylinderGeometry(logR, logR * 1.2, logLen, 23), deadWoodMat);
       log.rotation.z = Math.PI / 2;
       log.position.y = logR + 0.05;
       fallenLog.add(log);
       // Moss on log
       const logMoss = new THREE.Mesh(
-        new THREE.CylinderGeometry(logR * 0.9, logR * 1.1, logLen * 0.6, 12),
+        new THREE.CylinderGeometry(logR * 0.9, logR * 1.1, logLen * 0.6, 20),
         mossCoverMat,
       );
       logMoss.rotation.z = Math.PI / 2;
@@ -18169,7 +18169,7 @@ export class DiabloRenderer {
       // Shelf fungi on log
       for (let f = 0; f < 3; f++) {
         const fungus = new THREE.Mesh(
-          new THREE.SphereGeometry(0.06, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2),
+          new THREE.SphereGeometry(0.06, 20, 16, 0, Math.PI * 2, 0, Math.PI / 2),
           new THREE.MeshStandardMaterial({ color: 0x887744, roughness: 0.7 }),
         );
         fungus.position.set(-logLen * 0.2 + f * logLen * 0.2, logR * 1.2, logR * 0.5);
@@ -18253,7 +18253,7 @@ export class DiabloRenderer {
         const cH = 0.5 + Math.random() * 3;
         const cR = 0.1 + Math.random() * 0.4;
         const crystal = new THREE.Mesh(
-          new THREE.ConeGeometry(cR, cH, 12),
+          new THREE.ConeGeometry(cR, cH, 20),
           crystMat,
         );
         crystal.position.set(
@@ -18283,7 +18283,7 @@ export class DiabloRenderer {
       const stalH = 1 + Math.random() * 3;
       const stalR = 0.15 + Math.random() * 0.3;
       const stalactite = new THREE.Mesh(
-        new THREE.ConeGeometry(stalR, stalH, 12),
+        new THREE.ConeGeometry(stalR, stalH, 20),
         darkStoneMat,
       );
       stalactite.rotation.x = Math.PI; // Inverted
@@ -18300,7 +18300,7 @@ export class DiabloRenderer {
       const stagH = 0.5 + Math.random() * 2.5;
       const stagR = 0.15 + Math.random() * 0.4;
       const stalagmite = new THREE.Mesh(
-        new THREE.ConeGeometry(stagR, stagH, 12),
+        new THREE.ConeGeometry(stagR, stagH, 20),
         caveStoneMat,
       );
       const stX = (Math.random() - 0.5) * w * 0.85;
@@ -18314,7 +18314,7 @@ export class DiabloRenderer {
       const poolR = 1.5 + Math.random() * 3;
       const poolColor = Math.random() > 0.5 ? 0x4466cc : 0x7744aa;
       const pool = new THREE.Mesh(
-        new THREE.CircleGeometry(poolR, 24),
+        new THREE.CircleGeometry(poolR, 36),
         new THREE.MeshStandardMaterial({ color: poolColor, roughness: 0.1, metalness: 0.2, transparent: true, opacity: 0.55, depthWrite: false }),
       );
       pool.rotation.x = -Math.PI / 2;
@@ -18333,7 +18333,7 @@ export class DiabloRenderer {
       const pillarH = 10 + Math.random() * 4;
       const pillarR = 0.5 + Math.random() * 1;
       const pillar = new THREE.Mesh(
-        new THREE.CylinderGeometry(pillarR * 0.7, pillarR, pillarH, 16),
+        new THREE.CylinderGeometry(pillarR * 0.7, pillarR, pillarH, 27),
         darkStoneMat,
       );
       const piX = (Math.random() - 0.5) * w * 0.8;
@@ -18347,7 +18347,7 @@ export class DiabloRenderer {
     for (let i = 0; i < 22; i++) {
       const gemColor = gemColors[Math.floor(Math.random() * gemColors.length)];
       const gem = new THREE.Mesh(
-        new THREE.SphereGeometry(0.06 + Math.random() * 0.08, 14, 10),
+        new THREE.SphereGeometry(0.06 + Math.random() * 0.08, 23, 17),
         new THREE.MeshStandardMaterial({ color: gemColor, emissive: gemColor, emissiveIntensity: 0.4, metalness: 0.5, roughness: 0.1 }),
       );
       const gx = (Math.random() - 0.5) * w * 0.85;
@@ -18399,7 +18399,7 @@ export class DiabloRenderer {
     for (let i = 0; i < 8; i++) {
       const dripH = 3 + Math.random() * 5;
       const drip = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.015, 0.015, dripH, 8),
+        new THREE.CylinderGeometry(0.015, 0.015, dripH, 16),
         dripMat,
       );
       drip.position.set(
@@ -18466,7 +18466,7 @@ export class DiabloRenderer {
       const batCount = 3 + Math.floor(Math.random() * 6);
       for (let b = 0; b < batCount; b++) {
         const bat = new THREE.Mesh(
-          new THREE.SphereGeometry(0.05 + Math.random() * 0.04, 10, 8),
+          new THREE.SphereGeometry(0.05 + Math.random() * 0.04, 17, 16),
           batMat,
         );
         bat.position.set(
@@ -18491,7 +18491,7 @@ export class DiabloRenderer {
       for (let b = 0; b < cnt; b++) {
         const bR = 0.3 + Math.random() * 0.8;
         const boulder = new THREE.Mesh(
-          new THREE.DodecahedronGeometry(bR, 1),
+          new THREE.DodecahedronGeometry(bR, 2),
           darkStoneMat,
         );
         boulder.scale.set(0.7 + Math.random() * 0.6, 0.5 + Math.random() * 0.5, 0.7 + Math.random() * 0.6);
@@ -18521,7 +18521,7 @@ export class DiabloRenderer {
       for (let s = 0; s < shardCount; s++) {
         const sH = 1 + Math.random() * 5;
         const sR = 0.15 + Math.random() * 0.6;
-        const shard = new THREE.Mesh(new THREE.ConeGeometry(sR, sH, 14), megaCrystMat);
+        const shard = new THREE.Mesh(new THREE.ConeGeometry(sR, sH, 23), megaCrystMat);
         shard.position.set(
           (Math.random() - 0.5) * 3,
           sH / 2,
@@ -18558,14 +18558,14 @@ export class DiabloRenderer {
         const mCapR = 0.08 + Math.random() * 0.2;
         // Stem
         const mStem = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.025, 0.035, mStemH, 12),
+          new THREE.CylinderGeometry(0.025, 0.035, mStemH, 20),
           new THREE.MeshStandardMaterial({ color: 0xbbbbaa, emissive: mushColor.glow, emissiveIntensity: 0.15, roughness: 0.6 }),
         );
         mStem.position.set((Math.random() - 0.5) * 0.5, mStemH / 2, (Math.random() - 0.5) * 0.5);
         mushGroup.add(mStem);
         // Cap
         const mCap = new THREE.Mesh(
-          new THREE.SphereGeometry(mCapR, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2),
+          new THREE.SphereGeometry(mCapR, 27, 20, 0, Math.PI * 2, 0, Math.PI / 2),
           new THREE.MeshStandardMaterial({
             color: mushColor.cap,
             emissive: mushColor.glow,
@@ -18579,7 +18579,7 @@ export class DiabloRenderer {
         mushGroup.add(mCap);
         // Gills under cap (ring)
         const gills = new THREE.Mesh(
-          new THREE.RingGeometry(mCapR * 0.3, mCapR * 0.9, 8),
+          new THREE.RingGeometry(mCapR * 0.3, mCapR * 0.9, 16),
           new THREE.MeshStandardMaterial({ color: mushColor.glow, emissive: mushColor.glow, emissiveIntensity: 0.5, side: THREE.DoubleSide }),
         );
         gills.rotation.x = Math.PI / 2;
@@ -18603,7 +18603,7 @@ export class DiabloRenderer {
       const geodeR = 1 + Math.random() * 1.5;
       // Outer rock shell (half sphere)
       const outerShell = new THREE.Mesh(
-        new THREE.SphereGeometry(geodeR, 16, 14, 0, Math.PI * 2, 0, Math.PI / 2),
+        new THREE.SphereGeometry(geodeR, 27, 23, 0, Math.PI * 2, 0, Math.PI / 2),
         darkStoneMat,
       );
       outerShell.rotation.x = Math.PI;
@@ -18612,7 +18612,7 @@ export class DiabloRenderer {
       // Inner crystal lining
       const geodeCrystColor = crystalColors[Math.floor(Math.random() * crystalColors.length)];
       const innerShell = new THREE.Mesh(
-        new THREE.SphereGeometry(geodeR * 0.85, 16, 14, 0, Math.PI * 2, 0, Math.PI / 2),
+        new THREE.SphereGeometry(geodeR * 0.85, 27, 23, 0, Math.PI * 2, 0, Math.PI / 2),
         new THREE.MeshStandardMaterial({
           color: geodeCrystColor.color,
           emissive: geodeCrystColor.emissive,
@@ -18628,7 +18628,7 @@ export class DiabloRenderer {
       // Mini crystals inside geode
       for (let c = 0; c < 6; c++) {
         const miniCryst = new THREE.Mesh(
-          new THREE.ConeGeometry(0.08, 0.3 + Math.random() * 0.3, 10),
+          new THREE.ConeGeometry(0.08, 0.3 + Math.random() * 0.3, 17),
           new THREE.MeshStandardMaterial({
             color: geodeCrystColor.color,
             emissive: geodeCrystColor.emissive,
@@ -18676,7 +18676,7 @@ export class DiabloRenderer {
       const dripPool = new THREE.Group();
       const poolR = 0.5 + Math.random() * 1;
       const pool = new THREE.Mesh(
-        new THREE.CircleGeometry(poolR, 20),
+        new THREE.CircleGeometry(poolR, 30),
         new THREE.MeshStandardMaterial({ color: 0x4466aa, roughness: 0.05, metalness: 0.3, transparent: true, opacity: 0.5 }),
       );
       pool.rotation.x = -Math.PI / 2;
@@ -18685,7 +18685,7 @@ export class DiabloRenderer {
       // Ripple rings
       for (let r = 0; r < 3; r++) {
         const ripple = new THREE.Mesh(
-          new THREE.RingGeometry(poolR * (0.3 + r * 0.2), poolR * (0.35 + r * 0.2), 12),
+          new THREE.RingGeometry(poolR * (0.3 + r * 0.2), poolR * (0.35 + r * 0.2), 20),
           new THREE.MeshStandardMaterial({ color: 0x6688cc, transparent: true, opacity: 0.2, side: THREE.DoubleSide, depthWrite: false }),
         );
         ripple.rotation.x = -Math.PI / 2;
@@ -18694,7 +18694,7 @@ export class DiabloRenderer {
       }
       // Drip line from above
       const dripLine = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.01, 0.01, 4 + Math.random() * 4, 8),
+        new THREE.CylinderGeometry(0.01, 0.01, 4 + Math.random() * 4, 16),
         dripMat,
       );
       dripLine.position.y = 4;
@@ -18718,7 +18718,7 @@ export class DiabloRenderer {
       this._scene.add(refLight);
       // Visible light source (tiny crystal)
       const refCrystal = new THREE.Mesh(
-        new THREE.OctahedronGeometry(0.08, 1),
+        new THREE.OctahedronGeometry(0.08, 2),
         new THREE.MeshStandardMaterial({ color: refColor, emissive: refColor, emissiveIntensity: 1.0, transparent: true, opacity: 0.8 }),
       );
       refCrystal.position.copy(refLight.position);
@@ -18745,10 +18745,10 @@ export class DiabloRenderer {
       detailedBridge.add(deck);
       // Crystal railings (pillars along edges)
       for (let p = 0; p < Math.floor(bLen / 1.5); p++) {
-        const pillar1 = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.6, 10), bridgeMat);
+        const pillar1 = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.6, 17), bridgeMat);
         pillar1.position.set(-1.1, 0.4, -bLen / 2 + p * 1.5 + 0.75);
         detailedBridge.add(pillar1);
-        const pillar2 = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.6, 10), bridgeMat);
+        const pillar2 = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.6, 17), bridgeMat);
         pillar2.position.set(1.1, 0.4, -bLen / 2 + p * 1.5 + 0.75);
         detailedBridge.add(pillar2);
       }
@@ -18791,7 +18791,7 @@ export class DiabloRenderer {
         // River bank rocks
         for (let rb = 0; rb < 2; rb++) {
           const bankRock = new THREE.Mesh(
-            new THREE.DodecahedronGeometry(0.3 + Math.random() * 0.3, 1),
+            new THREE.DodecahedronGeometry(0.3 + Math.random() * 0.3, 2),
             darkStoneMat,
           );
           bankRock.position.set(rx + (rb === 0 ? -segW / 2 - 0.3 : segW / 2 + 0.3), 0.15, rz - 3);
@@ -18812,7 +18812,7 @@ export class DiabloRenderer {
       const chanClr = crystalColors[Math.floor(Math.random() * crystalColors.length)];
       // Central chain/stalk
       const stalk = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.03, 0.03, 2, 8),
+        new THREE.CylinderGeometry(0.03, 0.03, 2, 16),
         darkStoneMat,
       );
       stalk.position.y = 1;
@@ -18822,7 +18822,7 @@ export class DiabloRenderer {
       for (let r = 0; r < ringCount; r++) {
         const rAngle = (r / ringCount) * Math.PI * 2;
         const hangCryst = new THREE.Mesh(
-          new THREE.ConeGeometry(0.1, 0.5 + Math.random() * 0.5, 10),
+          new THREE.ConeGeometry(0.1, 0.5 + Math.random() * 0.5, 17),
           new THREE.MeshStandardMaterial({
             color: chanClr.color,
             emissive: chanClr.emissive,
@@ -18857,7 +18857,7 @@ export class DiabloRenderer {
       for (let s = 0; s < 12; s++) {
         const segAngle = s * 0.5;
         const segDist = 0.05 + s * 0.03;
-        const fossilSeg = new THREE.Mesh(new THREE.SphereGeometry(0.03 + s * 0.005, 10, 8), fossilMat);
+        const fossilSeg = new THREE.Mesh(new THREE.SphereGeometry(0.03 + s * 0.005, 17, 16), fossilMat);
         fossilSeg.position.set(Math.cos(segAngle) * segDist, 0.01, Math.sin(segAngle) * segDist);
         fossil.add(fossilSeg);
       }
@@ -18926,7 +18926,7 @@ export class DiabloRenderer {
       const sy = 0.4 + Math.random() * 0.8;
       const sz = 3 + Math.random() * 8;
       const drift = new THREE.Mesh(
-        new THREE.SphereGeometry(1, 20, 14),
+        new THREE.SphereGeometry(1, 30, 23),
         snowMat,
       );
       drift.scale.set(sx, sy, sz);
@@ -18941,14 +18941,14 @@ export class DiabloRenderer {
       const tree = new THREE.Group();
       const trunkH = 3 + Math.random() * 3;
       const trunk = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.1, 0.2, trunkH, 12),
+        new THREE.CylinderGeometry(0.1, 0.2, trunkH, 20),
         frozenWoodMat,
       );
       trunk.position.y = trunkH / 2;
       tree.add(trunk);
       // Ice coating on trunk
       const iceCoat = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.15, 0.25, trunkH * 0.7, 12),
+        new THREE.CylinderGeometry(0.15, 0.25, trunkH * 0.7, 20),
         new THREE.MeshStandardMaterial({ color: 0xaaddee, roughness: 0.1, metalness: 0.3, transparent: true, opacity: 0.3 }),
       );
       iceCoat.position.y = trunkH * 0.4;
@@ -18957,7 +18957,7 @@ export class DiabloRenderer {
       for (let b = 0; b < 3 + Math.floor(Math.random() * 3); b++) {
         const brLen = 1 + Math.random() * 1.5;
         const branch = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.02, 0.05, brLen, 8),
+          new THREE.CylinderGeometry(0.02, 0.05, brLen, 16),
           frozenWoodMat,
         );
         const bAngle = Math.random() * Math.PI * 2;
@@ -18980,7 +18980,7 @@ export class DiabloRenderer {
     for (let i = 0; i < 12; i++) {
       const lakeR = 4 + Math.random() * 8;
       const lake = new THREE.Mesh(
-        new THREE.CircleGeometry(lakeR, 32),
+        new THREE.CircleGeometry(lakeR, 44),
         new THREE.MeshStandardMaterial({ color: 0xaaccee, roughness: 0.05, metalness: 0.5, transparent: true, opacity: 0.8 }),
       );
       lake.rotation.x = -Math.PI / 2;
@@ -19022,14 +19022,14 @@ export class DiabloRenderer {
       const rGroup = new THREE.Group();
       const rH = 0.5 + Math.random() * 1.5;
       const rock = new THREE.Mesh(
-        new THREE.DodecahedronGeometry(rH, 1),
+        new THREE.DodecahedronGeometry(rH, 2),
         rockMat,
       );
       rock.scale.set(0.8 + Math.random() * 0.4, 0.5 + Math.random() * 0.5, 0.8 + Math.random() * 0.4);
       rGroup.add(rock);
       // Snow cap on top
       const cap = new THREE.Mesh(
-        new THREE.SphereGeometry(rH * 0.7, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2),
+        new THREE.SphereGeometry(rH * 0.7, 23, 17, 0, Math.PI * 2, 0, Math.PI / 2),
         snowMat,
       );
       cap.position.y = rH * 0.35;
@@ -19044,7 +19044,7 @@ export class DiabloRenderer {
     for (let i = 0; i < 14; i++) {
       const spikeH = 2 + Math.random() * 4;
       const spike = new THREE.Mesh(
-        new THREE.ConeGeometry(0.15 + Math.random() * 0.2, spikeH, 12),
+        new THREE.ConeGeometry(0.15 + Math.random() * 0.2, spikeH, 20),
         iceMat,
       );
       const spX = (Math.random() - 0.5) * w * 0.85;
@@ -19058,7 +19058,7 @@ export class DiabloRenderer {
       const camp = new THREE.Group();
       // Torn tent
       const tent = new THREE.Mesh(
-        new THREE.ConeGeometry(1.5, 2, 10),
+        new THREE.ConeGeometry(1.5, 2, 17),
         tentMat,
       );
       tent.position.y = 1;
@@ -19066,7 +19066,7 @@ export class DiabloRenderer {
       camp.add(tent);
       // Cold fire pit
       const pitRing = new THREE.Mesh(
-        new THREE.TorusGeometry(0.5, 0.12, 12, 16),
+        new THREE.TorusGeometry(0.5, 0.12, 20, 27),
         rockMat,
       );
       pitRing.rotation.x = Math.PI / 2;
@@ -19075,7 +19075,7 @@ export class DiabloRenderer {
       // Charred logs
       for (let l = 0; l < 3; l++) {
         const log = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.06, 0.06, 0.6, 10),
+          new THREE.CylinderGeometry(0.06, 0.06, 0.6, 17),
           new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 1.0 }),
         );
         log.position.set(2 + (Math.random() - 0.5) * 0.4, 0.06, (Math.random() - 0.5) * 0.4);
@@ -19111,7 +19111,7 @@ export class DiabloRenderer {
       }
       // Skull
       const skull = new THREE.Mesh(
-        new THREE.SphereGeometry(0.12, 12, 10),
+        new THREE.SphereGeometry(0.12, 20, 17),
         boneMat,
       );
       skull.scale.set(1, 0.8, 1.2);
@@ -19151,7 +19151,7 @@ export class DiabloRenderer {
     // ── Snow particles (floating) ──
     for (let i = 0; i < 18; i++) {
       const snowflake = new THREE.Mesh(
-        new THREE.SphereGeometry(0.03 + Math.random() * 0.04, 8, 8),
+        new THREE.SphereGeometry(0.03 + Math.random() * 0.04, 16, 16),
         snowMat,
       );
       snowflake.position.set(
@@ -19166,7 +19166,7 @@ export class DiabloRenderer {
     for (let i = 0; i < 12; i++) {
       const frostR = 1 + Math.random() * 2;
       const frost = new THREE.Mesh(
-        new THREE.CircleGeometry(frostR, 14),
+        new THREE.CircleGeometry(frostR, 23),
         frostMat,
       );
       frost.rotation.x = -Math.PI / 2;
@@ -19196,7 +19196,7 @@ export class DiabloRenderer {
       const pine = new THREE.Group();
       const trunkH = 2 + Math.random() * 2;
       const trunk = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.1, 0.18, trunkH, 12),
+        new THREE.CylinderGeometry(0.1, 0.18, trunkH, 20),
         frozenWoodMat,
       );
       trunk.position.y = trunkH / 2;
@@ -19206,14 +19206,14 @@ export class DiabloRenderer {
         const layerR = 1.5 - layer * 0.4;
         const layerY = trunkH * 0.4 + layer * 1.2;
         const foliage = new THREE.Mesh(
-          new THREE.ConeGeometry(layerR, 1.2, 14),
+          new THREE.ConeGeometry(layerR, 1.2, 23),
           snowPineMat,
         );
         foliage.position.y = layerY;
         pine.add(foliage);
         // Snow cap
         const snowCap = new THREE.Mesh(
-          new THREE.ConeGeometry(layerR * 0.9, 0.3, 14),
+          new THREE.ConeGeometry(layerR * 0.9, 0.3, 23),
           snowMat,
         );
         snowCap.position.y = layerY + 0.5;
@@ -19231,7 +19231,7 @@ export class DiabloRenderer {
       const icN = 3 + Math.floor(Math.random() * 6);
       for (let c = 0; c < icN; c++) {
         const icH2 = 0.3 + Math.random() * 1.5;
-        const icMesh = new THREE.Mesh(new THREE.ConeGeometry(0.03 + Math.random() * 0.05, icH2, 10), iceMat);
+        const icMesh = new THREE.Mesh(new THREE.ConeGeometry(0.03 + Math.random() * 0.05, icH2, 17), iceMat);
         icMesh.rotation.x = Math.PI;
         icMesh.position.set((Math.random() - 0.5) * 1, 0, (Math.random() - 0.5) * 1);
         icGrp.add(icMesh);
@@ -19244,10 +19244,10 @@ export class DiabloRenderer {
     for (let i = 0; i < 15; i++) {
       const ddGrp = new THREE.Group();
       const dW = 5 + Math.random() * 10, dH = 0.8 + Math.random() * 1.8, dD = 4 + Math.random() * 8;
-      const dMain = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 16), snowMat);
+      const dMain = new THREE.Mesh(new THREE.SphereGeometry(1, 36, 27), snowMat);
       dMain.scale.set(dW, dH, dD);
       ddGrp.add(dMain);
-      const ovhng = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 14), snowMat);
+      const ovhng = new THREE.Mesh(new THREE.SphereGeometry(1, 27, 23), snowMat);
       ovhng.scale.set(dW * 0.5, dH * 0.3, dD * 0.4);
       ovhng.position.set(dW * 0.3, dH * 0.7, 0);
       ddGrp.add(ovhng);
@@ -19261,21 +19261,21 @@ export class DiabloRenderer {
     for (let i = 0; i < 12; i++) {
       const frzT = new THREE.Group();
       const frzH = 3 + Math.random() * 4;
-      const frzTrk = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.25, frzH, 14), frozenWoodMat);
+      const frzTrk = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.25, frzH, 23), frozenWoodMat);
       frzTrk.position.y = frzH / 2;
       frzT.add(frzTrk);
-      const icShell = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.32, frzH * 0.85, 14),
+      const icShell = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.32, frzH * 0.85, 23),
         new THREE.MeshStandardMaterial({ color: 0xaaddee, roughness: 0.05, metalness: 0.4, transparent: true, opacity: 0.35 }));
       icShell.position.y = frzH * 0.45;
       frzT.add(icShell);
       for (let b = 0; b < 4 + Math.floor(Math.random() * 3); b++) {
         const bLen = 1.2 + Math.random() * 2, bAng = Math.random() * Math.PI * 2;
-        const brch = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.06, bLen, 8), frozenWoodMat);
+        const brch = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.06, bLen, 16), frozenWoodMat);
         brch.position.set(Math.cos(bAng) * bLen * 0.3, frzH * (0.4 + Math.random() * 0.4), Math.sin(bAng) * bLen * 0.3);
         brch.rotation.z = Math.cos(bAng) * 0.8; brch.rotation.x = Math.sin(bAng) * 0.8;
         frzT.add(brch);
         for (let j = 0; j < 2; j++) {
-          const bIc = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.2 + Math.random() * 0.3, 8), iceMat);
+          const bIc = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.2 + Math.random() * 0.3, 16), iceMat);
           bIc.rotation.x = Math.PI;
           bIc.position.set(Math.cos(bAng) * (bLen * 0.3 + j * 0.3), frzH * (0.35 + Math.random() * 0.3), Math.sin(bAng) * (bLen * 0.3 + j * 0.3));
           frzT.add(bIc);
@@ -19317,7 +19317,7 @@ export class DiabloRenderer {
     for (let i = 0; i < 18; i++) {
       const fpGrp = new THREE.Group();
       const fpR = 1.5 + Math.random() * 2.5;
-      const fpBase = new THREE.Mesh(new THREE.CircleGeometry(fpR, 16), frostMat);
+      const fpBase = new THREE.Mesh(new THREE.CircleGeometry(fpR, 27), frostMat);
       fpBase.rotation.x = -Math.PI / 2; fpBase.position.y = 0.02; fpGrp.add(fpBase);
       for (let b = 0; b < 6; b++) {
         const bAngle = (b / 6) * Math.PI * 2;
@@ -19343,16 +19343,16 @@ export class DiabloRenderer {
       const iceEncasement = new THREE.Mesh(new THREE.BoxGeometry(3, 2, 4),
         new THREE.MeshStandardMaterial({ color: 0x99ccee, roughness: 0.05, metalness: 0.4, transparent: true, opacity: 0.25 }));
       iceEncasement.position.y = 1; skelGrp.add(iceEncasement);
-      const skelSpine = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.06, 3, 10), boneMat);
+      const skelSpine = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.06, 3, 17), boneMat);
       skelSpine.rotation.z = Math.PI / 2; skelSpine.position.y = 1; skelGrp.add(skelSpine);
       for (let r = 0; r < 5; r++) {
-        const skelRib = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.02, 20, 14, Math.PI), boneMat);
+        const skelRib = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.02, 30, 23, Math.PI), boneMat);
         skelRib.position.set(-1 + r * 0.4, 0.8, 0); skelRib.rotation.y = Math.PI / 2; skelGrp.add(skelRib);
       }
-      const skelSkull = new THREE.Mesh(new THREE.SphereGeometry(0.4, 14, 12), boneMat);
+      const skelSkull = new THREE.Mesh(new THREE.SphereGeometry(0.4, 23, 20), boneMat);
       skelSkull.scale.set(0.8, 0.7, 1.3); skelSkull.position.set(1.8, 1.2, 0); skelGrp.add(skelSkull);
       for (let t = 0; t < 2; t++) {
-        const tuskMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.06, 1, 10), boneMat);
+        const tuskMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.06, 1, 17), boneMat);
         tuskMesh.position.set(2.1, 0.8, t === 0 ? 0.3 : -0.3);
         tuskMesh.rotation.z = 0.8; tuskMesh.rotation.x = t === 0 ? 0.3 : -0.3; skelGrp.add(tuskMesh);
       }
@@ -19369,16 +19369,16 @@ export class DiabloRenderer {
       const curtain = new THREE.Mesh(new THREE.PlaneGeometry(fallW, fallH), frozenFallMat);
       curtain.position.y = fallH / 2; fallGrp.add(curtain);
       for (let b = 0; b < 4; b++) {
-        const bulge = new THREE.Mesh(new THREE.SphereGeometry(0.3 + Math.random() * 0.5, 14, 10),
+        const bulge = new THREE.Mesh(new THREE.SphereGeometry(0.3 + Math.random() * 0.5, 23, 17),
           new THREE.MeshStandardMaterial({ color: 0xbbddff, roughness: 0.08, metalness: 0.3, transparent: true, opacity: 0.5 }));
         bulge.scale.set(1, 0.5 + Math.random(), 0.3);
         bulge.position.set((Math.random() - 0.5) * fallW * 0.6, fallH * Math.random(), 0.15); fallGrp.add(bulge);
       }
       for (let j = 0; j < 6; j++) {
-        const fallIcicle = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.5 + Math.random() * 0.5, 8), iceMat);
+        const fallIcicle = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.5 + Math.random() * 0.5, 16), iceMat);
         fallIcicle.rotation.x = Math.PI; fallIcicle.position.set(-fallW / 2 + j * fallW / 5, -0.3, 0.1); fallGrp.add(fallIcicle);
       }
-      const basePool = new THREE.Mesh(new THREE.CircleGeometry(fallW * 0.6, 20),
+      const basePool = new THREE.Mesh(new THREE.CircleGeometry(fallW * 0.6, 30),
         new THREE.MeshStandardMaterial({ color: 0xaaccee, roughness: 0.05, metalness: 0.5, transparent: true, opacity: 0.7 }));
       basePool.rotation.x = -Math.PI / 2; basePool.position.set(0, 0.02, 0.8); fallGrp.add(basePool);
       const fallX = (Math.random() - 0.5) * w * 0.65, fallZ = (Math.random() - 0.5) * d * 0.65;
@@ -19399,7 +19399,7 @@ export class DiabloRenderer {
       caveBack.position.set(0, caveH / 2, -2); caveGrp.add(caveBack);
       const caveGlow = new THREE.PointLight(0x88bbff, 0.5, 8); caveGlow.position.set(0, caveH * 0.5, -1); caveGrp.add(caveGlow);
       for (let j = 0; j < 5; j++) {
-        const caveIcicle = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.6 + Math.random() * 0.8, 8), iceMat);
+        const caveIcicle = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.6 + Math.random() * 0.8, 16), iceMat);
         caveIcicle.rotation.x = Math.PI; caveIcicle.position.set(-caveW / 2 + j * caveW / 4, caveH - 0.1, 2); caveGrp.add(caveIcicle);
       }
       const caveX = (Math.random() - 0.5) * w * 0.6, caveZ = (Math.random() - 0.5) * d * 0.6;
@@ -19410,7 +19410,7 @@ export class DiabloRenderer {
 
     // ── More snow particles ──
     for (let i = 0; i < 50; i++) {
-      const snowParticle = new THREE.Mesh(new THREE.SphereGeometry(0.02 + Math.random() * 0.03, 8, 8), snowMat);
+      const snowParticle = new THREE.Mesh(new THREE.SphereGeometry(0.02 + Math.random() * 0.03, 16, 16), snowMat);
       snowParticle.position.set((Math.random() - 0.5) * w * 0.9, 0.5 + Math.random() * 8, (Math.random() - 0.5) * d * 0.9);
       this._scene.add(snowParticle);
     }
@@ -19419,7 +19419,7 @@ export class DiabloRenderer {
     for (let i = 0; i < 4; i++) {
       const pondGrp = new THREE.Group();
       const pondRadius = 4 + Math.random() * 5;
-      const pondSurf = new THREE.Mesh(new THREE.CircleGeometry(pondRadius, 32),
+      const pondSurf = new THREE.Mesh(new THREE.CircleGeometry(pondRadius, 44),
         new THREE.MeshStandardMaterial({ color: 0xaaccee, roughness: 0.02, metalness: 0.6, transparent: true, opacity: 0.85 }));
       pondSurf.rotation.x = -Math.PI / 2; pondSurf.position.y = 0.01; pondGrp.add(pondSurf);
       const crackMtl = new THREE.MeshStandardMaterial({ color: 0xddeeff, roughness: 0.1, transparent: true, opacity: 0.6 });
@@ -19429,7 +19429,7 @@ export class DiabloRenderer {
         crMesh.rotation.y = Math.random() * Math.PI;
         crMesh.position.set((Math.random() - 0.5) * pondRadius * 0.6, 0.015, (Math.random() - 0.5) * pondRadius * 0.6); pondGrp.add(crMesh);
       }
-      const snowRim = new THREE.Mesh(new THREE.RingGeometry(pondRadius - 0.3, pondRadius + 0.5, 14), snowMat);
+      const snowRim = new THREE.Mesh(new THREE.RingGeometry(pondRadius - 0.3, pondRadius + 0.5, 23), snowMat);
       snowRim.rotation.x = -Math.PI / 2; snowRim.position.y = 0.03; pondGrp.add(snowRim);
       const pondX = (Math.random() - 0.5) * w * 0.65, pondZ = (Math.random() - 0.5) * d * 0.65;
       pondGrp.position.set(pondX, getTerrainHeight(pondX, pondZ, 1.4), pondZ);
@@ -19492,7 +19492,7 @@ export class DiabloRenderer {
       arch.add(archBlock);
       // Peaked top
       const peak = new THREE.Mesh(
-        new THREE.ConeGeometry(archSpan * 0.4, 1.5, 10),
+        new THREE.ConeGeometry(archSpan * 0.4, 1.5, 17),
         darkStoneMat,
       );
       peak.position.y = pillarH + 1;
@@ -19565,11 +19565,11 @@ export class DiabloRenderer {
       const candelabra = new THREE.Group();
       const baseH = 1.5 + Math.random() * 1;
       // Main pole
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, baseH, 12), ironMat);
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, baseH, 20), ironMat);
       pole.position.y = baseH / 2;
       candelabra.add(pole);
       // Base
-      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.3, 0.1, 14), ironMat);
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.3, 0.1, 23), ironMat);
       base.position.y = 0.05;
       candelabra.add(base);
       // Arms and candles
@@ -19577,7 +19577,7 @@ export class DiabloRenderer {
       for (let a = 0; a < armCount; a++) {
         const armAngle = (a / armCount) * Math.PI * 2;
         const armLen = 0.3 + Math.random() * 0.2;
-        const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, armLen, 8), ironMat);
+        const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, armLen, 16), ironMat);
         arm.rotation.z = Math.PI / 2;
         arm.position.set(Math.cos(armAngle) * armLen * 0.5, baseH, Math.sin(armAngle) * armLen * 0.5);
         candelabra.add(arm);
@@ -19645,7 +19645,7 @@ export class DiabloRenderer {
       altar.add(slab);
       // Candles on altar
       for (let c = 0; c < 4; c++) {
-        const candle = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.3, 10), new THREE.MeshStandardMaterial({ color: 0xeeeecc }));
+        const candle = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.3, 17), new THREE.MeshStandardMaterial({ color: 0xeeeecc }));
         candle.position.set(-1 + c * 0.6, 0.75, 0);
         altar.add(candle);
       }
@@ -19664,7 +19664,7 @@ export class DiabloRenderer {
     for (let i = 0; i < 12; i++) {
       const chainH = 3 + Math.random() * 5;
       const chain = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.02, 0.02, chainH, 8),
+        new THREE.CylinderGeometry(0.02, 0.02, chainH, 16),
         ironMat,
       );
       chain.position.set(
@@ -19692,7 +19692,7 @@ export class DiabloRenderer {
       } else {
         // Skull
         const skull = new THREE.Mesh(
-          new THREE.SphereGeometry(0.1, 12, 10),
+          new THREE.SphereGeometry(0.1, 20, 17),
           boneMat,
         );
         skull.scale.set(1, 0.85, 1.1);
@@ -19714,7 +19714,7 @@ export class DiabloRenderer {
       this._torchLights.push(scLight);
       // Flame visual
       const flame = new THREE.Mesh(
-        new THREE.SphereGeometry(0.08, 10, 10),
+        new THREE.SphereGeometry(0.08, 17, 17),
         new THREE.MeshStandardMaterial({ color: 0xbb55ff, emissive: 0xaa44ff, emissiveIntensity: 1.0 }),
       );
       flame.position.set(0, 0.25, 0.1);
@@ -19749,14 +19749,14 @@ export class DiabloRenderer {
       const towerH = 8 + Math.random() * 4;
       const towerR = 1 + Math.random() * 0.5;
       const towerBody = new THREE.Mesh(
-        new THREE.CylinderGeometry(towerR * 0.8, towerR, towerH, 14),
+        new THREE.CylinderGeometry(towerR * 0.8, towerR, towerH, 23),
         darkStoneMat,
       );
       towerBody.position.y = towerH / 2;
       tower.add(towerBody);
       // Bell
       const bell = new THREE.Mesh(
-        new THREE.SphereGeometry(0.4, 21, 10),
+        new THREE.SphereGeometry(0.4, 31, 17),
         ironMat,
       );
       bell.scale.y = 0.7;
@@ -19764,7 +19764,7 @@ export class DiabloRenderer {
       tower.add(bell);
       // Roof
       const towerRoof = new THREE.Mesh(
-        new THREE.ConeGeometry(towerR * 1.1, 2, 14),
+        new THREE.ConeGeometry(towerR * 1.1, 2, 23),
         darkStoneMat,
       );
       towerRoof.position.y = towerH + 1;
@@ -19809,7 +19809,7 @@ export class DiabloRenderer {
     // ── Ghostly wisps ──
     for (let i = 0; i < 6; i++) {
       const wisp = new THREE.Mesh(
-        new THREE.SphereGeometry(0.15 + Math.random() * 0.1, 14, 10),
+        new THREE.SphereGeometry(0.15 + Math.random() * 0.1, 23, 17),
         new THREE.MeshStandardMaterial({
           color: 0x88aaff,
           emissive: 0x6688dd,
@@ -19860,7 +19860,7 @@ export class DiabloRenderer {
         const pH = 2 + Math.random() * 4;
         const pR = 0.06 + Math.random() * 0.08;
         const pipe = new THREE.Mesh(
-          new THREE.CylinderGeometry(pR, pR, pH, 14),
+          new THREE.CylinderGeometry(pR, pR, pH, 23),
           pipeMat,
         );
         pipe.position.set(p * 0.25 - pipeCount * 0.125, pH / 2, 0);
@@ -19886,13 +19886,13 @@ export class DiabloRenderer {
       for (let p = 0; p < rowPipes; p++) {
         const pHeight = 2 + (rowPipes - p) * 0.3 + Math.random() * 0.5;
         const pRadius = 0.04 + (rowPipes - p) * 0.005;
-        const gPipe = new THREE.Mesh(new THREE.CylinderGeometry(pRadius, pRadius, pHeight, 14), pipeMat);
+        const gPipe = new THREE.Mesh(new THREE.CylinderGeometry(pRadius, pRadius, pHeight, 23), pipeMat);
         gPipe.position.set(-2.5 + p * (5 / rowPipes), pHeight / 2 + 1.5 + row * 2, -0.1 + row * 0.15);
         grandOrgan.add(gPipe);
       }
     }
     // Ornamental top
-    const organCrown = new THREE.Mesh(new THREE.ConeGeometry(1, 1.5, 10), darkStoneMat);
+    const organCrown = new THREE.Mesh(new THREE.ConeGeometry(1, 1.5, 17), darkStoneMat);
     organCrown.position.set(0, 8.5, 0);
     organCrown.rotation.y = Math.PI / 4;
     grandOrgan.add(organCrown);
@@ -19905,7 +19905,7 @@ export class DiabloRenderer {
       const roseWindow = new THREE.Group();
       const rwR = 2 + Math.random() * 1.5;
       // Outer frame
-      const frame = new THREE.Mesh(new THREE.TorusGeometry(rwR, 0.15, 14, 32), darkStoneMat);
+      const frame = new THREE.Mesh(new THREE.TorusGeometry(rwR, 0.15, 23, 44), darkStoneMat);
       roseWindow.add(frame);
       // Inner spokes
       for (let s = 0; s < 8; s++) {
@@ -19919,7 +19919,7 @@ export class DiabloRenderer {
         const pAngle = (p / 8) * Math.PI * 2 + Math.PI / 8;
         const glassClr = stainedGlassColors[p % stainedGlassColors.length];
         const pane = new THREE.Mesh(
-          new THREE.CircleGeometry(rwR * 0.4, 10),
+          new THREE.CircleGeometry(rwR * 0.4, 17),
           new THREE.MeshStandardMaterial({ color: glassClr, emissive: glassClr, emissiveIntensity: 0.5, transparent: true, opacity: 0.45, side: THREE.DoubleSide }),
         );
         pane.position.set(Math.cos(pAngle) * rwR * 0.5, Math.sin(pAngle) * rwR * 0.5, 0);
@@ -19977,11 +19977,11 @@ export class DiabloRenderer {
     for (let i = 0; i < 18; i++) {
       const floatCandle = new THREE.Group();
       const candleH = 0.2 + Math.random() * 0.15;
-      const candle = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, candleH, 10),
+      const candle = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, candleH, 17),
         new THREE.MeshStandardMaterial({ color: 0xeeeecc, roughness: 0.6 }));
       floatCandle.add(candle);
       // Flame
-      const flame = new THREE.Mesh(new THREE.SphereGeometry(0.03, 20, 8),
+      const flame = new THREE.Mesh(new THREE.SphereGeometry(0.03, 30, 16),
         new THREE.MeshStandardMaterial({ color: 0xffaa33, emissive: 0xffaa33, emissiveIntensity: 1.2 }));
       flame.position.y = candleH / 2 + 0.02;
       flame.scale.y = 1.5;
@@ -20005,15 +20005,15 @@ export class DiabloRenderer {
       gBody.position.y = 0.25;
       gargoyle.add(gBody);
       // Head
-      const gHead = new THREE.Mesh(new THREE.SphereGeometry(0.2, 14, 12), darkStoneMat);
+      const gHead = new THREE.Mesh(new THREE.SphereGeometry(0.2, 23, 20), darkStoneMat);
       gHead.position.set(0, 0.6, 0.35);
       gargoyle.add(gHead);
       // Horns
-      const horn1 = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.2, 8), darkStoneMat);
+      const horn1 = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.2, 16), darkStoneMat);
       horn1.position.set(-0.12, 0.8, 0.35);
       horn1.rotation.z = 0.3;
       gargoyle.add(horn1);
-      const horn2 = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.2, 8), darkStoneMat);
+      const horn2 = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.2, 16), darkStoneMat);
       horn2.position.set(0.12, 0.8, 0.35);
       horn2.rotation.z = -0.3;
       gargoyle.add(horn2);
@@ -20029,11 +20029,11 @@ export class DiabloRenderer {
       wing2.rotation.y = -0.5;
       gargoyle.add(wing2);
       // Glowing eyes
-      const eye1 = new THREE.Mesh(new THREE.SphereGeometry(0.025, 8, 8),
+      const eye1 = new THREE.Mesh(new THREE.SphereGeometry(0.025, 16, 16),
         new THREE.MeshStandardMaterial({ color: 0xff2222, emissive: 0xff0000, emissiveIntensity: 1.0 }));
       eye1.position.set(-0.07, 0.62, 0.5);
       gargoyle.add(eye1);
-      const eye2 = new THREE.Mesh(new THREE.SphereGeometry(0.025, 8, 8),
+      const eye2 = new THREE.Mesh(new THREE.SphereGeometry(0.025, 16, 16),
         new THREE.MeshStandardMaterial({ color: 0xff2222, emissive: 0xff0000, emissiveIntensity: 1.0 }));
       eye2.position.set(0.07, 0.62, 0.5);
       gargoyle.add(eye2);
@@ -20049,12 +20049,12 @@ export class DiabloRenderer {
     for (let i = 0; i < 10; i++) {
       const ivyPillar = new THREE.Group();
       const pillarH = 4 + Math.random() * 5;
-      const pillarBody = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.5, pillarH, 16), lightStoneMat);
+      const pillarBody = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.5, pillarH, 27), lightStoneMat);
       pillarBody.position.y = pillarH / 2;
       pillarBody.rotation.z = (Math.random() - 0.5) * 0.1;
       ivyPillar.add(pillarBody);
       // Crumbled top
-      const crumble = new THREE.Mesh(new THREE.DodecahedronGeometry(0.4, 1), lightStoneMat);
+      const crumble = new THREE.Mesh(new THREE.DodecahedronGeometry(0.4, 2), lightStoneMat);
       crumble.position.y = pillarH;
       crumble.scale.y = 0.5;
       ivyPillar.add(crumble);
@@ -20080,7 +20080,7 @@ export class DiabloRenderer {
       }
       // Fallen stone debris at base
       for (let d2 = 0; d2 < 3; d2++) {
-        const debris2 = new THREE.Mesh(new THREE.DodecahedronGeometry(0.15 + Math.random() * 0.1, 1), lightStoneMat);
+        const debris2 = new THREE.Mesh(new THREE.DodecahedronGeometry(0.15 + Math.random() * 0.1, 2), lightStoneMat);
         debris2.position.set((Math.random() - 0.5) * 1, 0.1, (Math.random() - 0.5) * 1);
         ivyPillar.add(debris2);
       }
@@ -20094,11 +20094,11 @@ export class DiabloRenderer {
     for (let i = 0; i < 5; i++) {
       const chandelier = new THREE.Group();
       // Chain
-      const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 3 + Math.random() * 2, 8), ironMat);
+      const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 3 + Math.random() * 2, 16), ironMat);
       chain.position.y = 2;
       chandelier.add(chain);
       // Ring frame
-      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.8, 0.04, 12, 24), ironMat);
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.8, 0.04, 20, 36), ironMat);
       ring.rotation.x = Math.PI / 2;
       ring.rotation.z = (Math.random() - 0.5) * 0.3;
       chandelier.add(ring);
@@ -20106,12 +20106,12 @@ export class DiabloRenderer {
       for (let c = 0; c < 6; c++) {
         if (Math.random() > 0.3) {
           const cAngle = (c / 6) * Math.PI * 2;
-          const holder = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.15, 8), ironMat);
+          const holder = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.15, 16), ironMat);
           holder.position.set(Math.cos(cAngle) * 0.8, -0.1, Math.sin(cAngle) * 0.8);
           chandelier.add(holder);
           // Candle stub
           if (Math.random() > 0.4) {
-            const stub = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 0.08, 10),
+            const stub = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 0.08, 17),
               new THREE.MeshStandardMaterial({ color: 0xeeeecc }));
             stub.position.set(Math.cos(cAngle) * 0.8, -0.02, Math.sin(cAngle) * 0.8);
             chandelier.add(stub);
@@ -20141,12 +20141,12 @@ export class DiabloRenderer {
         const roundBase = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.8, 0.12), lightStoneMat);
         roundBase.position.y = 0.4;
         tombGroup.add(roundBase);
-        const roundTop = new THREE.Mesh(new THREE.SphereGeometry(0.3, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2), lightStoneMat);
+        const roundTop = new THREE.Mesh(new THREE.SphereGeometry(0.3, 23, 17, 0, Math.PI * 2, 0, Math.PI / 2), lightStoneMat);
         roundTop.position.y = 0.8;
         tombGroup.add(roundTop);
       } else {
         // Obelisk
-        const obelisk = new THREE.Mesh(new THREE.ConeGeometry(0.2, 1.5, 10), lightStoneMat);
+        const obelisk = new THREE.Mesh(new THREE.ConeGeometry(0.2, 1.5, 17), lightStoneMat);
         obelisk.position.y = 0.75;
         tombGroup.add(obelisk);
         const oBase = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.15, 0.5), lightStoneMat);
@@ -20165,12 +20165,12 @@ export class DiabloRenderer {
     for (let i = 0; i < 10; i++) {
       const wispGrp = new THREE.Group();
       const wispClr = Math.random() > 0.5 ? 0x88aaff : 0xaa88ff;
-      const wispCore = new THREE.Mesh(new THREE.SphereGeometry(0.1 + Math.random() * 0.08, 14, 10),
+      const wispCore = new THREE.Mesh(new THREE.SphereGeometry(0.1 + Math.random() * 0.08, 23, 17),
         new THREE.MeshStandardMaterial({ color: wispClr, emissive: wispClr, emissiveIntensity: 0.9, transparent: true, opacity: 0.4 }));
       wispGrp.add(wispCore);
       // Trail
       for (let t = 0; t < 4; t++) {
-        const trail = new THREE.Mesh(new THREE.SphereGeometry(0.04 - t * 0.008, 10, 8),
+        const trail = new THREE.Mesh(new THREE.SphereGeometry(0.04 - t * 0.008, 17, 16),
           new THREE.MeshStandardMaterial({ color: wispClr, emissive: wispClr, emissiveIntensity: 0.4, transparent: true, opacity: 0.2 - t * 0.04, depthWrite: false }));
         trail.position.set((Math.random() - 0.5) * 0.3, -(t + 1) * 0.15, (Math.random() - 0.5) * 0.3);
         wispGrp.add(trail);
@@ -20193,7 +20193,7 @@ export class DiabloRenderer {
       scLight.position.set(0, 0.35, 0.12);
       sc.add(scLight);
       this._torchLights.push(scLight);
-      const scFlame = new THREE.Mesh(new THREE.SphereGeometry(0.1, 12, 10),
+      const scFlame = new THREE.Mesh(new THREE.SphereGeometry(0.1, 20, 17),
         new THREE.MeshStandardMaterial({ color: 0xbb55ff, emissive: 0xaa44ff, emissiveIntensity: 1.0 }));
       scFlame.position.set(0, 0.3, 0.12);
       scFlame.scale.y = 1.3;
@@ -20208,13 +20208,13 @@ export class DiabloRenderer {
       const mosaic = new THREE.Group();
       const mR = 2 + Math.random() * 2;
       // Center medallion
-      const medallion = new THREE.Mesh(new THREE.CircleGeometry(mR, 16),
+      const medallion = new THREE.Mesh(new THREE.CircleGeometry(mR, 27),
         new THREE.MeshStandardMaterial({ color: mosaicColors[i % 4], roughness: 0.8 }));
       medallion.rotation.x = -Math.PI / 2;
       medallion.position.y = 0.015;
       mosaic.add(medallion);
       // Border ring
-      const border = new THREE.Mesh(new THREE.RingGeometry(mR - 0.1, mR + 0.1, 10),
+      const border = new THREE.Mesh(new THREE.RingGeometry(mR - 0.1, mR + 0.1, 17),
         new THREE.MeshStandardMaterial({ color: 0x777788, roughness: 0.7 }));
       border.rotation.x = -Math.PI / 2;
       border.position.y = 0.02;
@@ -20269,7 +20269,7 @@ export class DiabloRenderer {
       const tree = new THREE.Group();
       const trunkH = 3 + Math.random() * 5;
       const trunk = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.1 + Math.random() * 0.15, 0.2 + Math.random() * 0.2, trunkH, 12),
+        new THREE.CylinderGeometry(0.1 + Math.random() * 0.15, 0.2 + Math.random() * 0.2, trunkH, 20),
         darkBarkMat,
       );
       trunk.position.y = trunkH / 2;
@@ -20280,7 +20280,7 @@ export class DiabloRenderer {
       const thornCount = 4 + Math.floor(Math.random() * 6);
       for (let t = 0; t < thornCount; t++) {
         const thorn = new THREE.Mesh(
-          new THREE.ConeGeometry(0.03, 0.15 + Math.random() * 0.1, 8),
+          new THREE.ConeGeometry(0.03, 0.15 + Math.random() * 0.1, 16),
           thornMat,
         );
         const tAngle = Math.random() * Math.PI * 2;
@@ -20299,7 +20299,7 @@ export class DiabloRenderer {
       for (let b = 0; b < branchCount; b++) {
         const brLen = 1 + Math.random() * 2;
         const branch = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.02, 0.06, brLen, 10),
+          new THREE.CylinderGeometry(0.02, 0.06, brLen, 17),
           darkBarkMat,
         );
         const bAngle = Math.random() * Math.PI * 2;
@@ -20314,7 +20314,7 @@ export class DiabloRenderer {
         // Thorns on branches
         if (Math.random() > 0.5) {
           const brThorn = new THREE.Mesh(
-            new THREE.ConeGeometry(0.02, 0.1, 8),
+            new THREE.ConeGeometry(0.02, 0.1, 16),
             thornMat,
           );
           brThorn.position.set(
@@ -20337,7 +20337,7 @@ export class DiabloRenderer {
       const bush = new THREE.Group();
       const bushR = 0.3 + Math.random() * 0.5;
       const body = new THREE.Mesh(
-        new THREE.SphereGeometry(bushR, 14, 12),
+        new THREE.SphereGeometry(bushR, 23, 20),
         bushMat,
       );
       bush.add(body);
@@ -20345,7 +20345,7 @@ export class DiabloRenderer {
       const spikeCount = 6 + Math.floor(Math.random() * 6);
       for (let s = 0; s < spikeCount; s++) {
         const spike = new THREE.Mesh(
-          new THREE.ConeGeometry(0.03, 0.2 + Math.random() * 0.15, 8),
+          new THREE.ConeGeometry(0.03, 0.2 + Math.random() * 0.15, 16),
           thornMat,
         );
         const sAngle1 = Math.random() * Math.PI * 2;
@@ -20369,14 +20369,14 @@ export class DiabloRenderer {
       const mush = new THREE.Group();
       const stemH = 0.15 + Math.random() * 0.25;
       const stem = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.03, 0.04, stemH, 10),
+        new THREE.CylinderGeometry(0.03, 0.04, stemH, 17),
         new THREE.MeshStandardMaterial({ color: 0xccccaa, roughness: 0.7 }),
       );
       stem.position.y = stemH / 2;
       mush.add(stem);
       const capR = 0.1 + Math.random() * 0.15;
       const cap = new THREE.Mesh(
-        new THREE.SphereGeometry(capR, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2),
+        new THREE.SphereGeometry(capR, 23, 17, 0, Math.PI * 2, 0, Math.PI / 2),
         poisonCapMat,
       );
       cap.position.y = stemH;
@@ -20393,7 +20393,7 @@ export class DiabloRenderer {
       const logLen = 2 + Math.random() * 4;
       const logR = 0.15 + Math.random() * 0.2;
       const log = new THREE.Mesh(
-        new THREE.CylinderGeometry(logR, logR * 1.1, logLen, 14),
+        new THREE.CylinderGeometry(logR, logR * 1.1, logLen, 23),
         logMat,
       );
       log.rotation.z = Math.PI / 2;
@@ -20403,7 +20403,7 @@ export class DiabloRenderer {
       const fungusCount = 2 + Math.floor(Math.random() * 4);
       for (let f = 0; f < fungusCount; f++) {
         const fungus = new THREE.Mesh(
-          new THREE.SphereGeometry(0.06 + Math.random() * 0.06, 20, 8, 0, Math.PI * 2, 0, Math.PI / 2),
+          new THREE.SphereGeometry(0.06 + Math.random() * 0.06, 30, 16, 0, Math.PI * 2, 0, Math.PI / 2),
           fungusMat,
         );
         fungus.position.set(
@@ -20424,7 +20424,7 @@ export class DiabloRenderer {
     for (let i = 0; i < 10; i++) {
       const poolR = 1.5 + Math.random() * 3;
       const pool = new THREE.Mesh(
-        new THREE.CircleGeometry(poolR, 20),
+        new THREE.CircleGeometry(poolR, 30),
         blightMat,
       );
       pool.rotation.x = -Math.PI / 2;
@@ -20456,7 +20456,7 @@ export class DiabloRenderer {
       const cocoon = new THREE.Group();
       const cocoonR = 0.15 + Math.random() * 0.15;
       const body = new THREE.Mesh(
-        new THREE.SphereGeometry(cocoonR, 14, 12),
+        new THREE.SphereGeometry(cocoonR, 23, 20),
         webMat,
       );
       body.scale.y = 1.3;
@@ -20464,7 +20464,7 @@ export class DiabloRenderer {
       // Web strands
       for (let s = 0; s < 3; s++) {
         const strand = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.005, 0.005, 0.5 + Math.random() * 1, 4),
+          new THREE.CylinderGeometry(0.005, 0.005, 0.5 + Math.random() * 1, 8),
           webMat,
         );
         strand.position.y = cocoonR + 0.3;
@@ -20482,14 +20482,14 @@ export class DiabloRenderer {
       const totem = new THREE.Group();
       const totemH = 1.5 + Math.random() * 2;
       const pole = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.1, 0.15, totemH, 12),
+        new THREE.CylinderGeometry(0.1, 0.15, totemH, 20),
         totemMat,
       );
       pole.position.y = totemH / 2;
       totem.add(pole);
       // Skull on top
       const skull = new THREE.Mesh(
-        new THREE.SphereGeometry(0.15, 24, 10),
+        new THREE.SphereGeometry(0.15, 36, 17),
         new THREE.MeshStandardMaterial({ color: 0xccbbaa, roughness: 0.7 }),
       );
       skull.scale.set(1, 0.85, 1.1);
@@ -20517,7 +20517,7 @@ export class DiabloRenderer {
         const t = s / (segments - 1);
         const segLen = spanLen / segments;
         const seg = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.06, 0.08, segLen * 1.2, 10),
+          new THREE.CylinderGeometry(0.06, 0.08, segLen * 1.2, 17),
           rootMat,
         );
         const angle = t * Math.PI;
@@ -20540,7 +20540,7 @@ export class DiabloRenderer {
     for (let i = 0; i < 22; i++) {
       const sporeR = 0.3 + Math.random() * 0.6;
       const spore = new THREE.Mesh(
-        new THREE.SphereGeometry(sporeR, 14, 10),
+        new THREE.SphereGeometry(sporeR, 23, 17),
         sporeMat,
       );
       spore.position.set(
@@ -20563,7 +20563,7 @@ export class DiabloRenderer {
       animal.add(body);
       // Head
       const head = new THREE.Mesh(
-        new THREE.SphereGeometry(0.1, 10, 8),
+        new THREE.SphereGeometry(0.1, 17, 16),
         greyMat,
       );
       head.position.set(0, 0.25, 0.3);
@@ -20571,7 +20571,7 @@ export class DiabloRenderer {
       // Legs
       for (let l = 0; l < 4; l++) {
         const leg = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.02, 0.02, 0.15, 8),
+          new THREE.CylinderGeometry(0.02, 0.02, 0.15, 16),
           greyMat,
         );
         leg.position.set(
@@ -20595,7 +20595,7 @@ export class DiabloRenderer {
       for (let r = 0; r < rootCount; r++) {
         const rootLen = 1 + Math.random() * 2;
         const root = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.03, 0.06, rootLen, 10),
+          new THREE.CylinderGeometry(0.03, 0.06, rootLen, 17),
           rootMat,
         );
         root.rotation.z = Math.PI / 2 + (Math.random() - 0.5) * 0.5;
@@ -20617,7 +20617,7 @@ export class DiabloRenderer {
     for (let i = 0; i < 6; i++) {
       const nodeR = 0.2 + Math.random() * 0.3;
       const node = new THREE.Mesh(
-        new THREE.SphereGeometry(nodeR, 16, 14),
+        new THREE.SphereGeometry(nodeR, 27, 23),
         corruptionMat,
       );
       const nx = (Math.random() - 0.5) * w * 0.7;
@@ -20637,7 +20637,7 @@ export class DiabloRenderer {
       for (let s = 0; s < stemCount; s++) {
         const stemH = 0.2 + Math.random() * 0.3;
         const stem = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.01, 0.015, stemH, 8),
+          new THREE.CylinderGeometry(0.01, 0.015, stemH, 16),
           deadFlowerMat,
         );
         stem.position.set(
@@ -20649,7 +20649,7 @@ export class DiabloRenderer {
         flowerGroup.add(stem);
         // Dead head
         const head = new THREE.Mesh(
-          new THREE.SphereGeometry(0.03, 8, 8),
+          new THREE.SphereGeometry(0.03, 16, 16),
           new THREE.MeshStandardMaterial({ color: 0x666655, roughness: 1.0 }),
         );
         head.position.set(stem.position.x, stemH, stem.position.z);
@@ -20673,16 +20673,16 @@ export class DiabloRenderer {
       shelterBack.rotation.x = -0.3;
       camp.add(shelterBack);
       // Support sticks
-      const stick1 = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.8, 8), logMat);
+      const stick1 = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.8, 16), logMat);
       stick1.position.set(-0.8, 0.9, 0);
       stick1.rotation.z = 0.2;
       camp.add(stick1);
-      const stick2 = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.8, 8), logMat);
+      const stick2 = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.8, 16), logMat);
       stick2.position.set(0.8, 0.9, 0);
       stick2.rotation.z = -0.2;
       camp.add(stick2);
       // Cold fire ring
-      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.08, 10, 14), greyMat);
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.08, 17, 23), greyMat);
       ring.rotation.x = Math.PI / 2;
       ring.position.set(0, 0.08, 1);
       camp.add(ring);
@@ -20701,7 +20701,7 @@ export class DiabloRenderer {
       const strands = 6 + Math.floor(Math.random() * 4);
       for (let s = 0; s < strands; s++) {
         const angle = (s / strands) * Math.PI * 2;
-        const strand = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, webR, 4), webStrandMat);
+        const strand = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, webR, 8), webStrandMat);
         strand.position.set(Math.cos(angle) * webR * 0.5, 0, Math.sin(angle) * webR * 0.5);
         strand.rotation.z = Math.PI / 2; strand.rotation.y = angle;
         webGrp.add(strand);
@@ -20710,7 +20710,7 @@ export class DiabloRenderer {
         const wr = new THREE.Mesh(new THREE.TorusGeometry(webR * (0.3 + r * 0.25), 0.003, 3, strands), webStrandMat);
         webGrp.add(wr);
       }
-      if (Math.random() > 0.6) webGrp.add(new THREE.Mesh(new THREE.SphereGeometry(0.03, 10, 8), new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 })));
+      if (Math.random() > 0.6) webGrp.add(new THREE.Mesh(new THREE.SphereGeometry(0.03, 17, 16), new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 })));
       webGrp.position.set((Math.random() - 0.5) * w * 0.8, 1.5 + Math.random() * 4, (Math.random() - 0.5) * d * 0.8);
       webGrp.rotation.set(Math.random() * 0.5, Math.random() * Math.PI, Math.random() * 0.5);
       this._scene.add(webGrp);
@@ -20722,16 +20722,16 @@ export class DiabloRenderer {
     for (let i = 0; i < 14; i++) {
       const cpGrp = new THREE.Group();
       const cpStemH = 0.3 + Math.random() * 0.5;
-      cpGrp.add(new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.05, cpStemH, 12), new THREE.MeshStandardMaterial({ color: 0x446622 })));
+      cpGrp.add(new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.05, cpStemH, 20), new THREE.MeshStandardMaterial({ color: 0x446622 })));
       (cpGrp.children[0] as THREE.Mesh).position.y = cpStemH / 2;
       const jR = 0.08 + Math.random() * 0.06;
-      const tJ = new THREE.Mesh(new THREE.SphereGeometry(jR, 21, 10, 0, Math.PI * 2, 0, Math.PI / 2), carnMouthMat);
+      const tJ = new THREE.Mesh(new THREE.SphereGeometry(jR, 31, 17, 0, Math.PI * 2, 0, Math.PI / 2), carnMouthMat);
       tJ.position.y = cpStemH + jR * 0.2; tJ.rotation.x = -0.3; cpGrp.add(tJ);
-      const bJ = new THREE.Mesh(new THREE.SphereGeometry(jR, 14, 10, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), carnBodyMat);
+      const bJ = new THREE.Mesh(new THREE.SphereGeometry(jR, 23, 17, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), carnBodyMat);
       bJ.position.y = cpStemH - jR * 0.1; cpGrp.add(bJ);
       for (let t = 0; t < 5; t++) {
         const ta = (t / 5) * Math.PI;
-        const tth = new THREE.Mesh(new THREE.ConeGeometry(0.008, 0.03, 8), new THREE.MeshStandardMaterial({ color: 0xeeddcc }));
+        const tth = new THREE.Mesh(new THREE.ConeGeometry(0.008, 0.03, 16), new THREE.MeshStandardMaterial({ color: 0xeeddcc }));
         tth.position.set(Math.cos(ta) * jR * 0.7, cpStemH + 0.01, Math.sin(ta) * jR * 0.7); cpGrp.add(tth);
       }
       const cpx2 = (Math.random() - 0.5) * w * 0.8; const cpz2 = (Math.random() - 0.5) * d * 0.8;
@@ -20744,10 +20744,10 @@ export class DiabloRenderer {
       let vOff = 0;
       for (let s = 0; s < vSegs; s++) {
         const sH = vLen / vSegs;
-        const vs = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, sH, 10), vineMat);
+        const vs = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, sH, 17), vineMat);
         vs.position.set((Math.random() - 0.5) * 0.15, vOff + sH / 2, 0); vs.rotation.z = (Math.random() - 0.5) * 0.3; vc.add(vs);
         vOff += sH * 0.85;
-        if (Math.random() > 0.4) { const vt = new THREE.Mesh(new THREE.ConeGeometry(0.01, 0.06, 8), thornMat); vt.position.set(vs.position.x + 0.03, vOff - sH * 0.3, 0); vt.rotation.z = Math.PI / 2; vc.add(vt); }
+        if (Math.random() > 0.4) { const vt = new THREE.Mesh(new THREE.ConeGeometry(0.01, 0.06, 16), thornMat); vt.position.set(vs.position.x + 0.03, vOff - sH * 0.3, 0); vt.rotation.z = Math.PI / 2; vc.add(vt); }
         if (Math.random() > 0.5) { const lf = new THREE.Mesh(new THREE.PlaneGeometry(0.06, 0.04), vineMat); lf.position.set(vs.position.x - 0.04, vOff - sH * 0.5, 0); lf.rotation.z = Math.random() * Math.PI; vc.add(lf); }
       }
       const vcx = (Math.random() - 0.5) * w * 0.85; const vcz = (Math.random() - 0.5) * d * 0.85;
@@ -20759,10 +20759,10 @@ export class DiabloRenderer {
     for (let i = 0; i < 18; i++) {
       const bc = new THREE.Group();
       for (let b = 0; b < 3 + Math.floor(Math.random() * 5); b++) {
-        const by = new THREE.Mesh(new THREE.SphereGeometry(0.02 + Math.random() * 0.015, 12, 10), berryMat);
+        const by = new THREE.Mesh(new THREE.SphereGeometry(0.02 + Math.random() * 0.015, 20, 17), berryMat);
         by.position.set((Math.random() - 0.5) * 0.08, (Math.random() - 0.5) * 0.06, (Math.random() - 0.5) * 0.08); bc.add(by);
       }
-      bc.add(new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.01, 0.15, 8), darkBarkMat));
+      bc.add(new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.01, 0.15, 16), darkBarkMat));
       (bc.children[bc.children.length - 1] as THREE.Mesh).position.y = 0.08;
       const bx2 = (Math.random() - 0.5) * w * 0.85; const bz2 = (Math.random() - 0.5) * d * 0.85;
       bc.position.set(bx2, getTerrainHeight(bx2, bz2, 1.0) + 0.5 + Math.random() * 2.5, bz2); this._scene.add(bc);
@@ -20771,10 +20771,10 @@ export class DiabloRenderer {
     // ── Fallen/broken branches scattered on ground ──
     for (let i = 0; i < 30; i++) {
       const bg = new THREE.Group(); const ml = 0.4 + Math.random() * 1.2;
-      const mbr = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.04, ml, 10), darkBarkMat);
+      const mbr = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.04, ml, 17), darkBarkMat);
       mbr.rotation.z = Math.PI / 2; mbr.position.y = 0.03; bg.add(mbr);
       for (let s = 0; s < 1 + Math.floor(Math.random() * 3); s++) {
-        const sb = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.015, 0.15 + Math.random() * 0.3, 8), darkBarkMat);
+        const sb = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.015, 0.15 + Math.random() * 0.3, 16), darkBarkMat);
         sb.position.set((Math.random() - 0.5) * ml * 0.6, 0.05, (Math.random() - 0.5) * 0.1); sb.rotation.z = (Math.random() - 0.5) * 1.5; bg.add(sb);
       }
       const fbx = (Math.random() - 0.5) * w * 0.9; const fbz = (Math.random() - 0.5) * d * 0.9;
@@ -20789,8 +20789,8 @@ export class DiabloRenderer {
       for (let m = 0; m < mCt; m++) {
         const ma = (m / mCt) * Math.PI * 2; const mg = new THREE.Group();
         const sh = 0.08 + Math.random() * 0.12;
-        const mst = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, sh, 10), fStemMat); mst.position.y = sh / 2; mg.add(mst);
-        const mcap = new THREE.Mesh(new THREE.SphereGeometry(0.03 + Math.random() * 0.04, 24, 8, 0, Math.PI * 2, 0, Math.PI / 2), fCapMat); mcap.position.y = sh; mg.add(mcap);
+        const mst = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, sh, 17), fStemMat); mst.position.y = sh / 2; mg.add(mst);
+        const mcap = new THREE.Mesh(new THREE.SphereGeometry(0.03 + Math.random() * 0.04, 36, 16, 0, Math.PI * 2, 0, Math.PI / 2), fCapMat); mcap.position.y = sh; mg.add(mcap);
         mg.position.set(Math.cos(ma) * rrR, 0, Math.sin(ma) * rrR); rg.add(mg);
       }
       const rl = new THREE.PointLight(0x44ff44, 0.15, 3); rl.position.y = 0.1; rg.add(rl); this._torchLights.push(rl);
@@ -20817,12 +20817,12 @@ export class DiabloRenderer {
     for (let i = 0; i < 6; i++) {
       const sk = new THREE.Group();
       for (let r = 0; r < 5; r++) {
-        const rib = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.008, 10, 16, Math.PI), skelBoneMat);
+        const rib = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.008, 17, 27, Math.PI), skelBoneMat);
         rib.position.set(0, 0.12, -0.12 + r * 0.06); rib.rotation.y = Math.PI / 2; sk.add(rib);
       }
-      const sp = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.35, 10), skelBoneMat);
+      const sp = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.35, 17), skelBoneMat);
       sp.rotation.x = Math.PI / 2; sp.position.set(0, 0.12, 0); sk.add(sp);
-      const skl = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 10), new THREE.MeshStandardMaterial({ color: 0xddccbb, roughness: 0.7 }));
+      const skl = new THREE.Mesh(new THREE.SphereGeometry(0.06, 20, 17), new THREE.MeshStandardMaterial({ color: 0xddccbb, roughness: 0.7 }));
       skl.position.set(0, 0.1, 0.22); skl.scale.set(1, 0.8, 1.2); sk.add(skl);
       const skx = (Math.random() - 0.5) * w * 0.75; const skz = (Math.random() - 0.5) * d * 0.75;
       sk.position.set(skx, getTerrainHeight(skx, skz, 1.0), skz); sk.rotation.y = Math.random() * Math.PI * 2; this._scene.add(sk);
@@ -20833,7 +20833,7 @@ export class DiabloRenderer {
       const ffL = new THREE.PointLight(0x33ff33, 0.15, 3);
       ffL.position.set((Math.random() - 0.5) * w * 0.8, 0.5 + Math.random() * 2, (Math.random() - 0.5) * d * 0.8);
       this._scene.add(ffL); this._torchLights.push(ffL);
-      const ffS = new THREE.Mesh(new THREE.SphereGeometry(0.015, 10, 8), new THREE.MeshStandardMaterial({ color: 0x88ff88, emissive: 0x44ff44, emissiveIntensity: 1.0 }));
+      const ffS = new THREE.Mesh(new THREE.SphereGeometry(0.015, 17, 16), new THREE.MeshStandardMaterial({ color: 0x88ff88, emissive: 0x44ff44, emissiveIntensity: 1.0 }));
       ffS.position.copy(ffL.position); this._scene.add(ffS);
     }
 
@@ -20842,7 +20842,7 @@ export class DiabloRenderer {
       const rs = new THREE.Group(); const rc = 3 + Math.floor(Math.random() * 4);
       for (let r = 0; r < rc; r++) {
         const ra = (r / rc) * Math.PI * 2 + Math.random() * 0.5; const rl2 = 0.5 + Math.random() * 1.2;
-        const rt = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.05, rl2, 10), rootMat);
+        const rt = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.05, rl2, 17), rootMat);
         rt.position.set(Math.cos(ra) * rl2 * 0.3, 0.05, Math.sin(ra) * rl2 * 0.3);
         rt.rotation.z = Math.PI / 2 - 0.3; rt.rotation.y = ra; rs.add(rt);
       }
@@ -20891,7 +20891,7 @@ export class DiabloRenderer {
         tooth.rotation.z = angle;
         gear.add(tooth);
       }
-      const hub = new THREE.Mesh(new THREE.CylinderGeometry(gearR * 0.2, gearR * 0.2, gearR * 0.15, 16), darkMetalMat);
+      const hub = new THREE.Mesh(new THREE.CylinderGeometry(gearR * 0.2, gearR * 0.2, gearR * 0.15, 27), darkMetalMat);
       hub.rotation.x = Math.PI / 2;
       gear.add(hub);
       const gX = (Math.random() - 0.5) * w * 0.85;
@@ -20906,18 +20906,18 @@ export class DiabloRenderer {
       const pipe = new THREE.Group();
       const pipeLen = 4 + Math.random() * 10;
       const pipeR = 0.15 + Math.random() * 0.2;
-      const body = new THREE.Mesh(new THREE.CylinderGeometry(pipeR, pipeR, pipeLen, 16), copperMat);
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(pipeR, pipeR, pipeLen, 27), copperMat);
       if (i % 2 === 0) body.rotation.z = Math.PI / 2;
       pipe.add(body);
-      const joint1 = new THREE.Mesh(new THREE.CylinderGeometry(pipeR * 1.3, pipeR * 1.3, 0.2, 16), darkMetalMat);
+      const joint1 = new THREE.Mesh(new THREE.CylinderGeometry(pipeR * 1.3, pipeR * 1.3, 0.2, 27), darkMetalMat);
       joint1.position.y = pipeLen / 2;
       pipe.add(joint1);
-      const joint2 = new THREE.Mesh(new THREE.CylinderGeometry(pipeR * 1.3, pipeR * 1.3, 0.2, 16), darkMetalMat);
+      const joint2 = new THREE.Mesh(new THREE.CylinderGeometry(pipeR * 1.3, pipeR * 1.3, 0.2, 27), darkMetalMat);
       joint2.position.y = -pipeLen / 2;
       pipe.add(joint2);
       if (i % 3 === 0) {
         for (let s = 0; s < 3; s++) {
-          const steam = new THREE.Mesh(new THREE.SphereGeometry(0.2 + Math.random() * 0.3, 21, 14), steamMat);
+          const steam = new THREE.Mesh(new THREE.SphereGeometry(0.2 + Math.random() * 0.3, 31, 23), steamMat);
           steam.position.set((Math.random() - 0.5) * 0.5, (Math.random() - 0.5) * pipeLen * 0.5, pipeR + 0.3);
           pipe.add(steam);
         }
@@ -20949,7 +20949,7 @@ export class DiabloRenderer {
 
     // ── Scattered bolts and screws (25) ──
     for (let i = 0; i < 25; i++) {
-      const bolt = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.15, 14), ironMat);
+      const bolt = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.15, 23), ironMat);
       const bX = (Math.random() - 0.5) * w * 0.8;
       const bZ = (Math.random() - 0.5) * d * 0.8;
       bolt.position.set(bX, getTerrainHeight(bX, bZ, 0.4) + 0.08, bZ);
@@ -20964,7 +20964,7 @@ export class DiabloRenderer {
       const belt = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.1, beltLen), darkMetalMat);
       conveyor.add(belt);
       for (let r = 0; r < Math.floor(beltLen / 0.8); r++) {
-        const roller = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 1.6, 14), ironMat);
+        const roller = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 1.6, 23), ironMat);
         roller.rotation.z = Math.PI / 2;
         roller.position.set(0, -0.15, -beltLen / 2 + r * 0.8 + 0.4);
         conveyor.add(roller);
@@ -20991,10 +20991,10 @@ export class DiabloRenderer {
       const piston = new THREE.Group();
       const housing = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 1), darkMetalMat);
       piston.add(housing);
-      const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 2.5, 16), copperMat);
+      const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 2.5, 27), copperMat);
       rod.position.y = 2.2;
       piston.add(rod);
-      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.2, 16), bronzeMat);
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.2, 27), bronzeMat);
       cap.position.y = 3.45;
       piston.add(cap);
       const piX = (Math.random() - 0.5) * w * 0.65;
@@ -21005,7 +21005,7 @@ export class DiabloRenderer {
 
     // ── Oil puddles (12) ──
     for (let i = 0; i < 12; i++) {
-      const puddle = new THREE.Mesh(new THREE.CircleGeometry(0.5 + Math.random() * 1.2, 24), oilMat);
+      const puddle = new THREE.Mesh(new THREE.CircleGeometry(0.5 + Math.random() * 1.2, 36), oilMat);
       puddle.rotation.x = -Math.PI / 2;
       const oX = (Math.random() - 0.5) * w * 0.75;
       const oZ = (Math.random() - 0.5) * d * 0.75;
@@ -21027,7 +21027,7 @@ export class DiabloRenderer {
         }
       }
       for (let t = 0; t < 3; t++) {
-        const tool = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.5 + Math.random() * 0.3, 10), ironMat);
+        const tool = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.5 + Math.random() * 0.3, 17), ironMat);
         tool.rotation.z = Math.PI / 2;
         tool.position.set((Math.random() - 0.5) * 1.4, 1.12, (Math.random() - 0.5) * 0.6);
         bench.add(tool);
@@ -21044,7 +21044,7 @@ export class DiabloRenderer {
       const chain = new THREE.Group();
       const linkCount = 4 + Math.floor(Math.random() * 5);
       for (let l = 0; l < linkCount; l++) {
-        const link = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.04, 14, 16), ironMat);
+        const link = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.04, 23, 27), ironMat);
         link.position.y = l * 0.25;
         link.rotation.x = l % 2 === 0 ? 0 : Math.PI / 2;
         chain.add(link);
@@ -21061,7 +21061,7 @@ export class DiabloRenderer {
       const opening = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.5, 0.1), new THREE.MeshStandardMaterial({ color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 0.8 }));
       opening.position.set(0, -0.3, 1.51);
       furnace.add(opening);
-      const chimney = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.5, 2, 16), darkMetalMat);
+      const chimney = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.5, 2, 27), darkMetalMat);
       chimney.position.y = 2.5;
       furnace.add(chimney);
       const fLight = new THREE.PointLight(0xff3300, 2.0, 24);
@@ -21076,7 +21076,7 @@ export class DiabloRenderer {
 
     // ── Metal barrels/containers (14) ──
     for (let i = 0; i < 14; i++) {
-      const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 1.0, 20), i % 3 === 0 ? copperMat : darkMetalMat);
+      const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 1.0, 30), i % 3 === 0 ? copperMat : darkMetalMat);
       const baX = (Math.random() - 0.5) * w * 0.75;
       const baZ = (Math.random() - 0.5) * d * 0.75;
       barrel.position.set(baX, getTerrainHeight(baX, baZ, 0.4) + 0.5, baZ);
@@ -21094,10 +21094,10 @@ export class DiabloRenderer {
       trolley.position.set(trolleyOff, -0.25, 0);
       crane.add(trolley);
       const cableLen = 2 + Math.random() * 2;
-      const cable = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, cableLen, 10), ironMat);
+      const cable = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, cableLen, 17), ironMat);
       cable.position.set(trolleyOff, -0.25 - cableLen / 2, 0);
       crane.add(cable);
-      const hook = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.03, 10, 16, Math.PI * 1.5), ironMat);
+      const hook = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.03, 17, 27, Math.PI * 1.5), ironMat);
       hook.position.set(trolleyOff, -0.25 - cableLen - 0.1, 0);
       crane.add(hook);
       crane.position.set((Math.random() - 0.5) * w * 0.6, 5 + Math.random() * 2, (Math.random() - 0.5) * d * 0.6);
@@ -21112,7 +21112,7 @@ export class DiabloRenderer {
       rack.add(frame);
       for (let t = 0; t < 4 + Math.floor(Math.random() * 3); t++) {
         const toolH = 0.6 + Math.random() * 0.8;
-        const tl = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, toolH, 10), ironMat);
+        const tl = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, toolH, 17), ironMat);
         tl.position.set(-0.7 + t * 0.35, (Math.random() - 0.5) * 1.2, 0.08);
         tl.rotation.z = (Math.random() - 0.5) * 0.3;
         rack.add(tl);
@@ -21130,11 +21130,11 @@ export class DiabloRenderer {
       const torso = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.8, 0.4), bronzeMat);
       torso.rotation.set(Math.random() * 0.5, 0, Math.random() * Math.PI * 0.5);
       parts.add(torso);
-      const limb = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.06, 0.6, 14), copperMat);
+      const limb = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.06, 0.6, 23), copperMat);
       limb.position.set(0.5, 0, (Math.random() - 0.5) * 0.5);
       limb.rotation.z = Math.random() * Math.PI;
       parts.add(limb);
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 14, 14), brassMat);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 23, 23), brassMat);
       head.position.set((Math.random() - 0.5) * 0.8, 0.1, (Math.random() - 0.5) * 0.5);
       parts.add(head);
       const aX = (Math.random() - 0.5) * w * 0.7;
@@ -21146,11 +21146,11 @@ export class DiabloRenderer {
     // ── Pressure gauges (6) ──
     for (let i = 0; i < 6; i++) {
       const gauge = new THREE.Group();
-      const face = new THREE.Mesh(new THREE.CircleGeometry(0.25, 32), new THREE.MeshStandardMaterial({ color: 0xeeeecc, roughness: 0.3 }));
+      const face = new THREE.Mesh(new THREE.CircleGeometry(0.25, 44), new THREE.MeshStandardMaterial({ color: 0xeeeecc, roughness: 0.3 }));
       gauge.add(face);
-      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.03, 14, 32), brassMat);
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.03, 23, 44), brassMat);
       gauge.add(rim);
-      const needle = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.2, 10), new THREE.MeshStandardMaterial({ color: 0xff0000 }));
+      const needle = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.2, 17), new THREE.MeshStandardMaterial({ color: 0xff0000 }));
       needle.position.set(0, 0.05, 0.02);
       needle.rotation.z = Math.random() * Math.PI - Math.PI / 2;
       gauge.add(needle);
@@ -21165,11 +21165,11 @@ export class DiabloRenderer {
       panel.add(board);
       const btnMats = [redBtnMat, greenBtnMat, yellowBtnMat];
       for (let b = 0; b < 6; b++) {
-        const btn = new THREE.Mesh(new THREE.SphereGeometry(0.05, 14, 14), btnMats[b % 3]);
+        const btn = new THREE.Mesh(new THREE.SphereGeometry(0.05, 23, 23), btnMats[b % 3]);
         btn.position.set(-0.5 + (b % 3) * 0.5, 0.15 - Math.floor(b / 3) * 0.3, 0.09);
         panel.add(btn);
       }
-      const lever = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.3, 10), ironMat);
+      const lever = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.3, 17), ironMat);
       lever.position.set(0.5, 0.1, 0.1);
       lever.rotation.x = -0.4;
       panel.add(lever);
@@ -21184,11 +21184,11 @@ export class DiabloRenderer {
     for (let i = 0; i < 12; i++) {
       const gearAsm = new THREE.Group();
       const gR1 = 1.5 + Math.random() * 2; const gR2 = 0.8 + Math.random() * 1;
-      const g1 = new THREE.Mesh(new THREE.TorusGeometry(gR1, gR1 * 0.12, 14, 32), bronzeMat);
+      const g1 = new THREE.Mesh(new THREE.TorusGeometry(gR1, gR1 * 0.12, 23, 44), bronzeMat);
       g1.rotation.x = 0.3 + Math.random() * 0.5; gearAsm.add(g1);
-      const g2 = new THREE.Mesh(new THREE.TorusGeometry(gR2, gR2 * 0.12, 14, 24), brassMat);
+      const g2 = new THREE.Mesh(new THREE.TorusGeometry(gR2, gR2 * 0.12, 23, 36), brassMat);
       g2.rotation.y = 0.8; g2.position.set(gR1 * 0.8, 0.3, 0); gearAsm.add(g2);
-      const axle = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.8, 14), darkMetalMat);
+      const axle = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.8, 23), darkMetalMat);
       axle.rotation.x = Math.PI / 2; gearAsm.add(axle);
       gearAsm.position.set((Math.random() - 0.5) * w * 0.7, 1 + Math.random() * 5, (Math.random() - 0.5) * d * 0.7);
       this._scene.add(gearAsm);
@@ -21217,13 +21217,13 @@ export class DiabloRenderer {
     // ── Steam vents ──
     for (let i = 0; i < 15; i++) {
       const vent = new THREE.Group();
-      const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 0.5, 16), darkMetalMat);
+      const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 0.5, 27), darkMetalMat);
       vent.add(pipe);
-      const grate = new THREE.Mesh(new THREE.CircleGeometry(0.15, 32), new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.7, roughness: 0.3, side: THREE.DoubleSide }));
+      const grate = new THREE.Mesh(new THREE.CircleGeometry(0.15, 44), new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.7, roughness: 0.3, side: THREE.DoubleSide }));
       grate.rotation.x = -Math.PI / 2; grate.position.y = 0.26; vent.add(grate);
       // Steam puffs
       for (let s = 0; s < 3; s++) {
-        const puff = new THREE.Mesh(new THREE.SphereGeometry(0.12 + s * 0.08, 14, 12), steamMat);
+        const puff = new THREE.Mesh(new THREE.SphereGeometry(0.12 + s * 0.08, 23, 20), steamMat);
         puff.position.set((Math.random() - 0.5) * 0.2, 0.4 + s * 0.3, (Math.random() - 0.5) * 0.2);
         puff.scale.set(1 + s * 0.3, 1, 1 + s * 0.3); vent.add(puff);
       }
@@ -21238,14 +21238,14 @@ export class DiabloRenderer {
       let px = 0; let py = 0; let pz = 0;
       for (let s = 0; s < segs; s++) {
         const pLen = 2 + Math.random() * 4; const pR = 0.08 + Math.random() * 0.1;
-        const seg = new THREE.Mesh(new THREE.CylinderGeometry(pR, pR, pLen, 14), copperMat);
+        const seg = new THREE.Mesh(new THREE.CylinderGeometry(pR, pR, pLen, 23), copperMat);
         const dir = s % 3;
         if (dir === 0) { seg.position.set(px + pLen / 2, py, pz); seg.rotation.z = Math.PI / 2; px += pLen; }
         else if (dir === 1) { seg.position.set(px, py + pLen / 2, pz); py += pLen; }
         else { seg.position.set(px, py, pz + pLen / 2); seg.rotation.x = Math.PI / 2; pz += pLen; }
         pipeNet.add(seg);
         // Elbow joint
-        const elbow = new THREE.Mesh(new THREE.SphereGeometry(pR * 1.5, 14, 14), darkMetalMat);
+        const elbow = new THREE.Mesh(new THREE.SphereGeometry(pR * 1.5, 23, 23), darkMetalMat);
         elbow.position.set(px, py, pz); pipeNet.add(elbow);
       }
       pipeNet.position.set((Math.random() - 0.5) * w * 0.6, 0.5 + Math.random() * 2, (Math.random() - 0.5) * d * 0.6);
@@ -21256,13 +21256,13 @@ export class DiabloRenderer {
     for (let i = 0; i < 10; i++) {
       const pg = new THREE.Group();
       const faceR = 0.2 + Math.random() * 0.15;
-      const face = new THREE.Mesh(new THREE.CircleGeometry(faceR, 32), new THREE.MeshStandardMaterial({ color: 0xeeeecc, roughness: 0.3 }));
+      const face = new THREE.Mesh(new THREE.CircleGeometry(faceR, 44), new THREE.MeshStandardMaterial({ color: 0xeeeecc, roughness: 0.3 }));
       pg.add(face);
-      const rim = new THREE.Mesh(new THREE.TorusGeometry(faceR, 0.02, 14, 32), brassMat); pg.add(rim);
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(faceR, 0.02, 23, 44), brassMat); pg.add(rim);
       const needle = new THREE.Mesh(new THREE.BoxGeometry(0.008, faceR * 0.8, 0.002), new THREE.MeshStandardMaterial({ color: 0xff0000 }));
       needle.position.z = 0.01; needle.rotation.z = Math.random() * Math.PI - Math.PI / 2; pg.add(needle);
       // Pipe connection
-      const conn = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.3, 14), copperMat);
+      const conn = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.3, 23), copperMat);
       conn.position.y = -faceR - 0.15; pg.add(conn);
       pg.position.set((Math.random() - 0.5) * w * 0.65, 1.5 + Math.random() * 3, (Math.random() - 0.5) * d * 0.65);
       pg.rotation.y = Math.random() * Math.PI; this._scene.add(pg);
@@ -21273,7 +21273,7 @@ export class DiabloRenderer {
       const anvil = new THREE.Group();
       const base = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.4, 0.3), ironMat); anvil.add(base);
       const top = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.12, 0.35), ironMat); top.position.y = 0.26; anvil.add(top);
-      const horn = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.3, 14), ironMat);
+      const horn = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.3, 23), ironMat);
       horn.rotation.z = Math.PI / 2; horn.position.set(0.5, 0.2, 0); anvil.add(horn);
       const ax = (Math.random() - 0.5) * w * 0.7; const az = (Math.random() - 0.5) * d * 0.7;
       anvil.position.set(ax, getTerrainHeight(ax, az, 0.4) + 0.2, az); this._scene.add(anvil);
@@ -21286,12 +21286,12 @@ export class DiabloRenderer {
       const bundle = new THREE.Group();
       const wLen = 3 + Math.random() * 5;
       for (let w2 = 0; w2 < 3; w2++) {
-        const wire = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, wLen, 10), wireMat);
+        const wire = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, wLen, 17), wireMat);
         wire.position.set((w2 - 1) * 0.03, 0, 0); bundle.add(wire);
       }
       // Spark points
       for (let sp = 0; sp < 2; sp++) {
-        const spark = new THREE.Mesh(new THREE.SphereGeometry(0.02, 10, 8), sparkMat);
+        const spark = new THREE.Mesh(new THREE.SphereGeometry(0.02, 17, 16), sparkMat);
         spark.position.set(0, (Math.random() - 0.5) * wLen * 0.6, 0); bundle.add(spark);
         const spL = new THREE.PointLight(0xffaa00, 0.3, 2);
         spL.position.copy(spark.position); bundle.add(spL); this._torchLights.push(spL);
@@ -21305,9 +21305,9 @@ export class DiabloRenderer {
     for (let i = 0; i < 5; i++) {
       const clock = new THREE.Group();
       const clockR = 1.5 + Math.random() * 1.5;
-      const face = new THREE.Mesh(new THREE.CircleGeometry(clockR, 32), new THREE.MeshStandardMaterial({ color: 0xeeddcc, roughness: 0.3 }));
+      const face = new THREE.Mesh(new THREE.CircleGeometry(clockR, 44), new THREE.MeshStandardMaterial({ color: 0xeeddcc, roughness: 0.3 }));
       clock.add(face);
-      const rim = new THREE.Mesh(new THREE.TorusGeometry(clockR, 0.08, 16, 32), brassMat); clock.add(rim);
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(clockR, 0.08, 27, 44), brassMat); clock.add(rim);
       // Hour markers
       for (let h = 0; h < 12; h++) {
         const ha = (h / 12) * Math.PI * 2;
@@ -21321,7 +21321,7 @@ export class DiabloRenderer {
       const minHand = new THREE.Mesh(new THREE.BoxGeometry(0.02, clockR * 0.7, 0.02), darkMetalMat);
       minHand.position.set(0, clockR * 0.35, 0.04); minHand.rotation.z = Math.random() * Math.PI * 2; clock.add(minHand);
       // Center hub
-      clock.add(new THREE.Mesh(new THREE.SphereGeometry(0.06, 16, 14), bronzeMat));
+      clock.add(new THREE.Mesh(new THREE.SphereGeometry(0.06, 27, 23), bronzeMat));
       clock.position.set((Math.random() - 0.5) * w * 0.5, 3 + Math.random() * 4, (Math.random() - 0.5) * d * 0.5);
       clock.rotation.y = Math.random() * Math.PI; this._scene.add(clock);
     }
@@ -21340,13 +21340,13 @@ export class DiabloRenderer {
         rail.position.set(rx, 0.4, 0); cw.add(rail);
         // Rail posts
         for (let p = 0; p < Math.floor(cwLen / 2); p++) {
-          const post = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.8, 10), ironMat);
+          const post = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.8, 17), ironMat);
           post.position.set(rx, 0.4, -cwLen / 2 + p * 2 + 1); cw.add(post);
         }
       }
       // Support columns
       for (const sz of [-cwLen / 2 + 1, cwLen / 2 - 1]) {
-        const col = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 3, 14), darkMetalMat);
+        const col = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 3, 23), darkMetalMat);
         col.position.set(0, -1.5, sz); cw.add(col);
       }
       cw.position.set((Math.random() - 0.5) * w * 0.5, 3 + Math.random() * 3, (Math.random() - 0.5) * d * 0.5);
@@ -21419,19 +21419,19 @@ export class DiabloRenderer {
     // ── Blood fountains/pools (12+) ──
     for (let i = 0; i < 14; i++) {
       const pool = new THREE.Group();
-      const basin = new THREE.Mesh(new THREE.CircleGeometry(1 + Math.random() * 1.5, 32), bloodMat);
+      const basin = new THREE.Mesh(new THREE.CircleGeometry(1 + Math.random() * 1.5, 44), bloodMat);
       basin.rotation.x = -Math.PI / 2;
       basin.position.y = 0.03;
       pool.add(basin);
-      const rim = new THREE.Mesh(new THREE.TorusGeometry(1 + Math.random() * 1.5, 0.15, 14, 32), darkStoneMat);
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(1 + Math.random() * 1.5, 0.15, 23, 44), darkStoneMat);
       rim.rotation.x = Math.PI / 2;
       rim.position.y = 0.15;
       pool.add(rim);
       if (i % 3 === 0) {
-        const spout = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.15, 1.5, 16), darkStoneMat);
+        const spout = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.15, 1.5, 27), darkStoneMat);
         spout.position.y = 0.75;
         pool.add(spout);
-        const spoutTop = new THREE.Mesh(new THREE.SphereGeometry(0.2, 21, 14), redStoneMat);
+        const spoutTop = new THREE.Mesh(new THREE.SphereGeometry(0.2, 31, 23), redStoneMat);
         spoutTop.position.y = 1.5;
         pool.add(spoutTop);
       }
@@ -21453,13 +21453,13 @@ export class DiabloRenderer {
       // Bars
       for (let b = 0; b < 8; b++) {
         const angle = (b / 8) * Math.PI * 2;
-        const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, cageH, 10), ironMat);
+        const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, cageH, 17), ironMat);
         bar.position.set(Math.cos(angle) * cageW * 0.45, cageH / 2, Math.sin(angle) * cageW * 0.45);
         cage.add(bar);
       }
       // Skeleton skull in some
       if (i % 3 === 0) {
-        const skull = new THREE.Mesh(new THREE.SphereGeometry(0.12, 14, 14), boneMat);
+        const skull = new THREE.Mesh(new THREE.SphereGeometry(0.12, 23, 23), boneMat);
         skull.position.set(0, 0.3, 0);
         cage.add(skull);
         const jaw = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.05, 0.08), boneMat);
@@ -21479,30 +21479,30 @@ export class DiabloRenderer {
         // Rack
         const base = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.2, 3), woodMat);
         device.add(base);
-        const post1 = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1.5, 14), woodMat);
+        const post1 = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1.5, 23), woodMat);
         post1.position.set(0, 0.85, -1.2);
         device.add(post1);
-        const post2 = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1.5, 14), woodMat);
+        const post2 = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1.5, 23), woodMat);
         post2.position.set(0, 0.85, 1.2);
         device.add(post2);
       } else if (i % 3 === 1) {
         // Wheel
-        const wheel = new THREE.Mesh(new THREE.TorusGeometry(1, 0.08, 14, 32), woodMat);
+        const wheel = new THREE.Mesh(new THREE.TorusGeometry(1, 0.08, 23, 44), woodMat);
         device.add(wheel);
         const spoke1 = new THREE.Mesh(new THREE.BoxGeometry(2, 0.06, 0.06), woodMat);
         device.add(spoke1);
         const spoke2 = new THREE.Mesh(new THREE.BoxGeometry(0.06, 2, 0.06), woodMat);
         device.add(spoke2);
-        const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.15, 2, 14), woodMat);
+        const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.15, 2, 23), woodMat);
         stand.position.y = -1.5;
         device.add(stand);
       } else {
         // Chain post
-        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 8, 14), ironMat);
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 8, 23), ironMat);
         post.position.y = 1.5;
         device.add(post);
         for (let c = 0; c < 4; c++) {
-          const link = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.025, 10, 16), chainMat);
+          const link = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.025, 17, 27), chainMat);
           link.position.set(0.2, 2.5 - c * 0.2, 0);
           link.rotation.x = c % 2 === 0 ? 0 : Math.PI / 2;
           device.add(link);
@@ -21518,7 +21518,7 @@ export class DiabloRenderer {
     // ── Wall-mounted torches (15+) ──
     for (let i = 0; i < 18; i++) {
       const torch = new THREE.Group();
-      const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.6, 14), ironMat);
+      const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.6, 23), ironMat);
       torch.add(handle);
       const bracket = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.06, 0.06), ironMat);
       bracket.position.set(-0.15, -0.2, 0);
@@ -21538,7 +21538,7 @@ export class DiabloRenderer {
       const garg = new THREE.Group();
       const body = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.8, 0.5), darkStoneMat);
       garg.add(body);
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.25, 14, 14), darkStoneMat);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.25, 23, 23), darkStoneMat);
       head.position.set(0, 0.5, 0.2);
       garg.add(head);
       const wing1 = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.5, 0.05), darkStoneMat);
@@ -21573,7 +21573,7 @@ export class DiabloRenderer {
 
     // ── Floor bloodstains (25+) ──
     for (let i = 0; i < 28; i++) {
-      const stain = new THREE.Mesh(new THREE.CircleGeometry(0.3 + Math.random() * 1.5, 20), bloodStainMat);
+      const stain = new THREE.Mesh(new THREE.CircleGeometry(0.3 + Math.random() * 1.5, 30), bloodStainMat);
       stain.rotation.x = -Math.PI / 2;
       const sX = (Math.random() - 0.5) * w * 0.8;
       const sZ = (Math.random() - 0.5) * d * 0.8;
@@ -21585,12 +21585,12 @@ export class DiabloRenderer {
     for (let i = 0; i < 10; i++) {
       const chandelier = new THREE.Group();
       const ringR = 0.8 + Math.random() * 0.5;
-      const chanRing = new THREE.Mesh(new THREE.TorusGeometry(ringR, 0.04, 14, 24), ironMat);
+      const chanRing = new THREE.Mesh(new THREE.TorusGeometry(ringR, 0.04, 23, 36), ironMat);
       chanRing.rotation.x = Math.PI / 2;
       chandelier.add(chanRing);
       for (let c = 0; c < 6; c++) {
         const angle = (c / 6) * Math.PI * 2;
-        const candle = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.2, 10), candleMat);
+        const candle = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.2, 17), candleMat);
         candle.position.set(Math.cos(angle) * ringR, -0.1, Math.sin(angle) * ringR);
         chandelier.add(candle);
       }
@@ -21598,7 +21598,7 @@ export class DiabloRenderer {
       cLight.position.y = 0.2;
       chandelier.add(cLight);
       this._torchLights.push(cLight);
-      const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 2 + Math.random() * 2, 10), chainMat);
+      const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 2 + Math.random() * 2, 17), chainMat);
       chain.position.y = 1.5;
       chandelier.add(chain);
       chandelier.position.set((Math.random() - 0.5) * w * 0.6, 5 + Math.random() * 3, (Math.random() - 0.5) * d * 0.6);
@@ -21654,7 +21654,7 @@ export class DiabloRenderer {
     for (let i = 0; i < 12; i++) {
       const towerH = 3 + Math.random() * 6;
       const towerR = 0.8 + Math.random() * 1.2;
-      const tower = new THREE.Mesh(new THREE.CylinderGeometry(towerR * 0.8, towerR, towerH, 16), darkStoneMat);
+      const tower = new THREE.Mesh(new THREE.CylinderGeometry(towerR * 0.8, towerR, towerH, 27), darkStoneMat);
       const twX = (Math.random() - 0.5) * w * 0.8;
       const twZ = (Math.random() - 0.5) * d * 0.8;
       tower.position.set(twX, towerH / 2, twZ);
@@ -21666,7 +21666,7 @@ export class DiabloRenderer {
     // ── Scattered bones (15+) ──
     for (let i = 0; i < 18; i++) {
       const bone = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.03, 0.04, 0.4 + Math.random() * 0.3, 12),
+        new THREE.CylinderGeometry(0.03, 0.04, 0.4 + Math.random() * 0.3, 20),
         boneMat,
       );
       const boX = (Math.random() - 0.5) * w * 0.8;
@@ -21695,7 +21695,7 @@ export class DiabloRenderer {
       const count = 3 + Math.floor(Math.random() * 4);
       for (let c = 0; c < count; c++) {
         const h = 0.2 + Math.random() * 0.4;
-        const candle = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, h, 12), candleMat);
+        const candle = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, h, 20), candleMat);
         candle.position.set((Math.random() - 0.5) * 0.3, h / 2, (Math.random() - 0.5) * 0.3);
         cluster.add(candle);
       }
@@ -21723,12 +21723,12 @@ export class DiabloRenderer {
       gate.add(lintel);
       // Portcullis bars
       for (let b = 0; b < 6; b++) {
-        const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 4.5, 10), ironMat);
+        const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 4.5, 17), ironMat);
         bar.position.set(-1.5 + b * 0.6, 2.5, 0);
         gate.add(bar);
       }
       for (let b = 0; b < 3; b++) {
-        const hbar = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 3.5, 10), ironMat);
+        const hbar = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 3.5, 17), ironMat);
         hbar.rotation.z = Math.PI / 2;
         hbar.position.set(0, 1 + b * 1.5, 0);
         gate.add(hbar);
@@ -21745,11 +21745,11 @@ export class DiabloRenderer {
     for (let i = 0; i < 16; i++) {
       const crystal = new THREE.Group();
       const cH = 0.8 + Math.random() * 2;
-      const main = new THREE.Mesh(new THREE.ConeGeometry(0.2 + Math.random() * 0.3, cH, 12), redCrystalMat);
+      const main = new THREE.Mesh(new THREE.ConeGeometry(0.2 + Math.random() * 0.3, cH, 20), redCrystalMat);
       main.position.y = cH / 2; crystal.add(main);
       for (let s = 0; s < 2; s++) {
         const subH = cH * (0.3 + Math.random() * 0.3);
-        const sub = new THREE.Mesh(new THREE.ConeGeometry(0.1 + Math.random() * 0.1, subH, 10), redCrystalMat);
+        const sub = new THREE.Mesh(new THREE.ConeGeometry(0.1 + Math.random() * 0.1, subH, 17), redCrystalMat);
         sub.position.set((Math.random() - 0.5) * 0.5, subH / 2, (Math.random() - 0.5) * 0.5);
         sub.rotation.x = (Math.random() - 0.5) * 0.3; sub.rotation.z = (Math.random() - 0.5) * 0.3;
         crystal.add(sub);
@@ -21765,7 +21765,7 @@ export class DiabloRenderer {
     for (let i = 0; i < 12; i++) {
       const bp = new THREE.Group();
       const poleH = 4 + Math.random() * 4;
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, poleH, 14), ironMat);
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, poleH, 23), ironMat);
       pole.position.y = poleH / 2; bp.add(pole);
       // Tattered flag (multiple segments for torn look)
       for (let f = 0; f < 3; f++) {
@@ -21776,7 +21776,7 @@ export class DiabloRenderer {
         flag.rotation.y = (Math.random() - 0.5) * 0.2; bp.add(flag);
       }
       // Finial
-      const finial = new THREE.Mesh(new THREE.SphereGeometry(0.08, 14, 14), ironMat);
+      const finial = new THREE.Mesh(new THREE.SphereGeometry(0.08, 23, 23), ironMat);
       finial.position.y = poleH + 0.08; bp.add(finial);
       const bpx = (Math.random() - 0.5) * w * 0.7; const bpz = (Math.random() - 0.5) * d * 0.7;
       bp.position.set(bpx, getTerrainHeight(bpx, bpz, 0.6), bpz); this._scene.add(bp);
@@ -21785,7 +21785,7 @@ export class DiabloRenderer {
     // ── Blood pools ──
     const bloodPoolMat = new THREE.MeshStandardMaterial({ color: 0x660011, emissive: 0x220008, emissiveIntensity: 0.2, roughness: 0.15, transparent: true, opacity: 0.75 });
     for (let i = 0; i < 14; i++) {
-      const pool = new THREE.Mesh(new THREE.CircleGeometry(0.5 + Math.random() * 2, 24), bloodPoolMat);
+      const pool = new THREE.Mesh(new THREE.CircleGeometry(0.5 + Math.random() * 2, 36), bloodPoolMat);
       pool.rotation.x = -Math.PI / 2;
       const bpx2 = (Math.random() - 0.5) * w * 0.8; const bpz2 = (Math.random() - 0.5) * d * 0.8;
       pool.position.set(bpx2, getTerrainHeight(bpx2, bpz2, 0.6) + 0.02, bpz2); this._scene.add(pool);
@@ -21800,11 +21800,11 @@ export class DiabloRenderer {
       // Gargoyle body
       const gBody = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.6, 0.4), darkStoneMat);
       gBody.position.set(0, 0.4, 0.15); perch.add(gBody);
-      const gHead = new THREE.Mesh(new THREE.SphereGeometry(0.2, 14, 12), darkStoneMat);
+      const gHead = new THREE.Mesh(new THREE.SphereGeometry(0.2, 23, 20), darkStoneMat);
       gHead.position.set(0, 0.75, 0.35); perch.add(gHead);
       // Horns
       for (const hx of [-0.1, 0.1]) {
-        const horn = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.15, 10), darkStoneMat);
+        const horn = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.15, 17), darkStoneMat);
         horn.position.set(hx, 0.9, 0.3); horn.rotation.x = -0.3; perch.add(horn);
       }
       // Wings
@@ -21814,7 +21814,7 @@ export class DiabloRenderer {
       }
       // Glowing eyes
       for (const ex of [-0.06, 0.06]) {
-        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.02, 10, 10), new THREE.MeshStandardMaterial({ color: 0xff2200, emissive: 0xff0000, emissiveIntensity: 1.5 }));
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.02, 17, 17), new THREE.MeshStandardMaterial({ color: 0xff2200, emissive: 0xff0000, emissiveIntensity: 1.5 }));
         eye.position.set(ex, 0.78, 0.5); perch.add(eye);
       }
       perch.position.set((Math.random() - 0.5) * w * 0.7, 5 + Math.random() * 5, (Math.random() - 0.5) * d * 0.7);
@@ -21842,18 +21842,18 @@ export class DiabloRenderer {
       // Vertical bars
       const barCount = Math.floor(gW / 0.3);
       for (let b = 0; b < barCount; b++) {
-        const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, gH, 10), ironMat);
+        const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, gH, 17), ironMat);
         bar.position.set(-gW / 2 + b * (gW / barCount) + 0.15, 0, 0.08); gate.add(bar);
       }
       // Horizontal bars
       for (let h = 0; h < 3; h++) {
-        const hBar = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, gW, 10), ironMat);
+        const hBar = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, gW, 17), ironMat);
         hBar.rotation.z = Math.PI / 2;
         hBar.position.set(0, -gH / 2 + h * gH / 2 + 0.3, 0.08); gate.add(hBar);
       }
       // Spikes on top
       for (let s = 0; s < barCount; s++) {
-        const spike = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.15, 10), ironMat);
+        const spike = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.15, 17), ironMat);
         spike.position.set(-gW / 2 + s * (gW / barCount) + 0.15, gH / 2 + 0.28, 0.08); gate.add(spike);
       }
       const gx = (Math.random() - 0.5) * w * 0.6; const gz = (Math.random() - 0.5) * d * 0.6;
@@ -21873,17 +21873,17 @@ export class DiabloRenderer {
           blade.position.set(wx, rackH * 0.6, 0.05); wr.add(blade);
           const guard = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.03, 0.03), ironMat);
           guard.position.set(wx, rackH * 0.3, 0.05); wr.add(guard);
-          const hilt = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.2, 10), woodMat);
+          const hilt = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.2, 17), woodMat);
           hilt.position.set(wx, rackH * 0.2, 0.05); wr.add(hilt);
         } else if (w2 % 3 === 1) { // Axe
-          const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.8, 10), woodMat);
+          const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.8, 17), woodMat);
           handle.position.set(wx, rackH * 0.5, 0.05); wr.add(handle);
           const head = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.15, 0.03), ironMat);
           head.position.set(wx + 0.08, rackH * 0.8, 0.05); wr.add(head);
         } else { // Mace
-          const mHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.6, 10), woodMat);
+          const mHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.6, 17), woodMat);
           mHandle.position.set(wx, rackH * 0.4, 0.05); wr.add(mHandle);
-          const mHead = new THREE.Mesh(new THREE.SphereGeometry(0.08, 14, 14), ironMat);
+          const mHead = new THREE.Mesh(new THREE.SphereGeometry(0.08, 23, 23), ironMat);
           mHead.position.set(wx, rackH * 0.75, 0.05); wr.add(mHead);
         }
       }
@@ -21903,7 +21903,7 @@ export class DiabloRenderer {
         door.position.set(0, 1, 0.42); door.rotation.y = 0.3; td.add(door);
         // Spikes inside
         for (let s = 0; s < 6; s++) {
-          const spike = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.12, 8), ironMat);
+          const spike = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.12, 16), ironMat);
           spike.position.set((Math.random() - 0.5) * 0.3, 0.5 + s * 0.25, 0.35);
           spike.rotation.x = Math.PI / 2; td.add(spike);
         }
@@ -21912,12 +21912,12 @@ export class DiabloRenderer {
         frame.position.y = 1.2; td.add(frame);
         // Holes
         for (let h = 0; h < 3; h++) {
-          const hole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.16, 16), new THREE.MeshStandardMaterial({ color: 0x111111 }));
+          const hole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.16, 27), new THREE.MeshStandardMaterial({ color: 0x111111 }));
           hole.position.set(-0.4 + h * 0.4, 1.2, 0); hole.rotation.x = Math.PI / 2; td.add(hole);
         }
         // Support posts
         for (const px of [-0.6, 0.6]) {
-          const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 1.3, 12), woodMat);
+          const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 1.3, 20), woodMat);
           post.position.set(px, 0.65, 0); td.add(post);
         }
       }
@@ -21957,7 +21957,7 @@ export class DiabloRenderer {
       const spireH = 3 + Math.random() * 8;
       const spireR = 0.5 + Math.random() * 1.5;
       if (i % 2 === 0) {
-        const cone = new THREE.Mesh(new THREE.ConeGeometry(spireR, spireH, 5 + Math.floor(Math.random() * 3)), greyRockMat);
+        const cone = new THREE.Mesh(new THREE.ConeGeometry(spireR, spireH, 10 + Math.floor(Math.random() * 3)), greyRockMat);
         cone.position.y = spireH / 2;
         spire.add(cone);
       } else {
@@ -21987,10 +21987,10 @@ export class DiabloRenderer {
     for (let i = 0; i < 12; i++) {
       const rod = new THREE.Group();
       const rodH = 5 + Math.random() * 6;
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.08, rodH, 14), metalMat);
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.08, rodH, 23), metalMat);
       pole.position.y = rodH / 2;
       rod.add(pole);
-      const tip = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.4, 20), metalMat);
+      const tip = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.4, 30), metalMat);
       tip.position.y = rodH + 0.2;
       rod.add(tip);
       const rLight = new THREE.PointLight(0x4488ff, 1.5, 12);
@@ -22006,7 +22006,7 @@ export class DiabloRenderer {
     // ── Loose boulders (20+) ──
     for (let i = 0; i < 24; i++) {
       const boulderR = 0.4 + Math.random() * 1.5;
-      const boulder = new THREE.Mesh(new THREE.DodecahedronGeometry(boulderR, 1), greyRockMat);
+      const boulder = new THREE.Mesh(new THREE.DodecahedronGeometry(boulderR, 2), greyRockMat);
       boulder.scale.set(0.8 + Math.random() * 0.4, 0.6 + Math.random() * 0.4, 0.8 + Math.random() * 0.4);
       const bX = (Math.random() - 0.5) * w * 0.85;
       const bZ = (Math.random() - 0.5) * d * 0.85;
@@ -22042,13 +22042,13 @@ export class DiabloRenderer {
     for (let i = 0; i < 7; i++) {
       const nest = new THREE.Group();
       for (let s = 0; s < 8; s++) {
-        const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.6 + Math.random() * 0.4, 10), nestMat);
+        const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.6 + Math.random() * 0.4, 17), nestMat);
         stick.rotation.set(Math.random() * 0.3, Math.random() * Math.PI, Math.PI / 2);
         stick.position.set((Math.random() - 0.5) * 0.4, 0, (Math.random() - 0.5) * 0.4);
         nest.add(stick);
       }
       for (let e = 0; e < 2 + Math.floor(Math.random() * 2); e++) {
-        const egg = new THREE.Mesh(new THREE.SphereGeometry(0.06, 14, 14), snowMat);
+        const egg = new THREE.Mesh(new THREE.SphereGeometry(0.06, 23, 23), snowMat);
         egg.position.set((Math.random() - 0.5) * 0.2, 0.08, (Math.random() - 0.5) * 0.2);
         egg.scale.y = 1.3;
         nest.add(egg);
@@ -22064,7 +22064,7 @@ export class DiabloRenderer {
       const pillar = new THREE.Group();
       const pillarH = 2 + Math.random() * 4;
       const pillarR = 0.3 + Math.random() * 0.4;
-      const col = new THREE.Mesh(new THREE.CylinderGeometry(pillarR * 0.8, pillarR, pillarH, 16), greyRockMat);
+      const col = new THREE.Mesh(new THREE.CylinderGeometry(pillarR * 0.8, pillarR, pillarH, 27), greyRockMat);
       col.position.y = pillarH / 2;
       pillar.add(col);
       // Erosion cutouts
@@ -22084,10 +22084,10 @@ export class DiabloRenderer {
       const shrine = new THREE.Group();
       const altar = new THREE.Mesh(new THREE.BoxGeometry(2, 0.6, 1.5), greyRockMat);
       shrine.add(altar);
-      const pillarL = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 2.5, 14), greyRockMat);
+      const pillarL = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 2.5, 23), greyRockMat);
       pillarL.position.set(-1.2, 1.25, 0);
       shrine.add(pillarL);
-      const pillarR = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.25, 1.8, 14), greyRockMat);
+      const pillarR = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.25, 1.8, 23), greyRockMat);
       pillarR.position.set(1.2, 0.9, 0);
       shrine.add(pillarR);
       const brokenLintel = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.3, 0.5), greyRockMat);
@@ -22103,7 +22103,7 @@ export class DiabloRenderer {
 
     // ── Snow patches (15+) ──
     for (let i = 0; i < 18; i++) {
-      const snow = new THREE.Mesh(new THREE.CircleGeometry(0.5 + Math.random() * 2, 20), snowMat);
+      const snow = new THREE.Mesh(new THREE.CircleGeometry(0.5 + Math.random() * 2, 30), snowMat);
       snow.rotation.x = -Math.PI / 2;
       const snX = (Math.random() - 0.5) * w * 0.85;
       const snZ = (Math.random() - 0.5) * d * 0.85;
@@ -22122,11 +22122,11 @@ export class DiabloRenderer {
         plank.rotation.x = (Math.random() - 0.5) * 0.1;
         bridge.add(plank);
       }
-      const chain1 = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, bridgeLen, 10), chainMat);
+      const chain1 = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, bridgeLen, 17), chainMat);
       chain1.rotation.x = Math.PI / 2;
       chain1.position.set(-0.6, 0.4, 0);
       bridge.add(chain1);
-      const chain2 = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, bridgeLen, 10), chainMat);
+      const chain2 = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, bridgeLen, 17), chainMat);
       chain2.rotation.x = Math.PI / 2;
       chain2.position.set(0.6, 0.4, 0);
       bridge.add(chain2);
@@ -22163,7 +22163,7 @@ export class DiabloRenderer {
     for (let i = 0; i < 12; i++) {
       const remains = new THREE.Group();
       for (let b = 0; b < 3 + Math.floor(Math.random() * 3); b++) {
-        const bone = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.03, 0.2 + Math.random() * 0.2, 10), snowMat);
+        const bone = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.03, 0.2 + Math.random() * 0.2, 17), snowMat);
         bone.position.set((Math.random() - 0.5) * 0.4, 0.03, (Math.random() - 0.5) * 0.4);
         bone.rotation.set(Math.random() * Math.PI, 0, Math.random() * Math.PI);
         remains.add(bone);
@@ -22177,10 +22177,10 @@ export class DiabloRenderer {
     // ── Telescope/observation platforms (5+) ──
     for (let i = 0; i < 6; i++) {
       const obs = new THREE.Group();
-      const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.12, 1.5, 14), metalMat);
+      const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.12, 1.5, 23), metalMat);
       stand.position.y = 0.75;
       obs.add(stand);
-      const scope = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.04, 0.8, 16), metalMat);
+      const scope = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.04, 0.8, 27), metalMat);
       scope.position.set(0, 1.5, 0.2);
       scope.rotation.x = -0.3;
       obs.add(scope);
@@ -22195,7 +22195,7 @@ export class DiabloRenderer {
     // ── Storm cloud wisps (8+) ──
     for (let i = 0; i < 10; i++) {
       const cloud = new THREE.Mesh(
-        new THREE.SphereGeometry(2 + Math.random() * 3, 16, 14),
+        new THREE.SphereGeometry(2 + Math.random() * 3, 27, 23),
         cloudMat,
       );
       cloud.scale.set(1.5 + Math.random(), 0.4 + Math.random() * 0.3, 1 + Math.random() * 0.5);
@@ -22232,11 +22232,11 @@ export class DiabloRenderer {
       const peak = new THREE.Group();
       const pH = 6 + Math.random() * 10;
       const pR = 2 + Math.random() * 3;
-      const rock = new THREE.Mesh(new THREE.ConeGeometry(pR, pH, 14), darkRockMat);
+      const rock = new THREE.Mesh(new THREE.ConeGeometry(pR, pH, 23), darkRockMat);
       rock.position.y = pH / 2; peak.add(rock);
       // Snow cap
       const snowH = pH * 0.3;
-      const snowCap = new THREE.Mesh(new THREE.ConeGeometry(pR * 0.5, snowH, 14), snowMat);
+      const snowCap = new THREE.Mesh(new THREE.ConeGeometry(pR * 0.5, snowH, 23), snowMat);
       snowCap.position.y = pH - snowH / 2; peak.add(snowCap);
       // Ridges
       for (let r = 0; r < 3; r++) {
@@ -22252,12 +22252,12 @@ export class DiabloRenderer {
     for (let i = 0; i < 15; i++) {
       const tree = new THREE.Group();
       const tH = 1.5 + Math.random() * 2.5;
-      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.1, tH, 12), woodMat);
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.1, tH, 20), woodMat);
       trunk.position.y = tH / 2; trunk.rotation.z = 0.2 + Math.random() * 0.3; tree.add(trunk);
       // Sparse wind-swept branches (all leaning one way)
       for (let b = 0; b < 3 + Math.floor(Math.random() * 3); b++) {
         const bLen = 0.3 + Math.random() * 0.8;
-        const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.03, bLen, 10), woodMat);
+        const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.03, bLen, 17), woodMat);
         branch.position.set(0.2 + Math.random() * 0.3, tH * (0.4 + b * 0.15), 0);
         branch.rotation.z = -0.8 - Math.random() * 0.5; tree.add(branch);
       }
@@ -22271,7 +22271,7 @@ export class DiabloRenderer {
       const cloudCount = 3 + Math.floor(Math.random() * 3);
       for (let c = 0; c < cloudCount; c++) {
         const cR = 1 + Math.random() * 2;
-        const cPart = new THREE.Mesh(new THREE.SphereGeometry(cR, 14, 12), cloudMat);
+        const cPart = new THREE.Mesh(new THREE.SphereGeometry(cR, 23, 20), cloudMat);
         cPart.position.set((Math.random() - 0.5) * 3, (Math.random() - 0.5) * 0.5, (Math.random() - 0.5) * 2);
         cPart.scale.set(1.5, 0.5, 1); cloudGrp.add(cPart);
       }
@@ -22285,7 +22285,7 @@ export class DiabloRenderer {
       const rockCount = 2 + Math.floor(Math.random() * 3);
       for (let r = 0; r < rockCount; r++) {
         const rR = 0.3 + Math.random() * 0.8;
-        const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(rR, 1), r % 2 === 0 ? greyRockMat : darkRockMat);
+        const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(rR, 2), r % 2 === 0 ? greyRockMat : darkRockMat);
         rock.scale.set(1 + Math.random() * 0.5, 0.7 + Math.random() * 0.5, 1 + Math.random() * 0.5);
         rock.position.set((Math.random() - 0.5) * 1.5, rR * 0.3, (Math.random() - 0.5) * 1.5);
         rock.rotation.y = Math.random() * Math.PI; outcrop.add(rock);
@@ -22298,20 +22298,20 @@ export class DiabloRenderer {
     for (let i = 0; i < 8; i++) {
       const totem = new THREE.Group();
       const tH = 1.5 + Math.random() * 1.5;
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.08, tH, 12), woodMat);
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.08, tH, 20), woodMat);
       pole.position.y = tH / 2; totem.add(pole);
       // Skull
-      const skull = new THREE.Mesh(new THREE.SphereGeometry(0.12, 24, 10), snowMat);
+      const skull = new THREE.Mesh(new THREE.SphereGeometry(0.12, 36, 17), snowMat);
       skull.position.y = tH + 0.1; skull.scale.set(0.8, 1, 1.2); totem.add(skull);
       // Horns
       for (const hx of [-0.12, 0.12]) {
-        const horn = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.2, 10), new THREE.MeshStandardMaterial({ color: 0xbbaa88, roughness: 0.7 }));
+        const horn = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.2, 17), new THREE.MeshStandardMaterial({ color: 0xbbaa88, roughness: 0.7 }));
         horn.position.set(hx, tH + 0.2, -0.05);
         horn.rotation.z = hx > 0 ? -0.4 : 0.4; horn.rotation.x = -0.2; totem.add(horn);
       }
       // Eye sockets
       for (const ex of [-0.04, 0.04]) {
-        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.02, 10, 8), new THREE.MeshStandardMaterial({ color: 0x111111 }));
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.02, 17, 16), new THREE.MeshStandardMaterial({ color: 0x111111 }));
         eye.position.set(ex, tH + 0.12, 0.1); totem.add(eye);
       }
       // Hanging feathers/trinkets
@@ -22328,18 +22328,18 @@ export class DiabloRenderer {
     for (let i = 0; i < 6; i++) {
       const wv = new THREE.Group();
       const wvH = 2 + Math.random() * 2;
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, wvH, 12), metalMat);
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, wvH, 20), metalMat);
       pole.position.y = wvH / 2; wv.add(pole);
       // Arrow
-      const arrow = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.25, 20), metalMat);
+      const arrow = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.25, 30), metalMat);
       arrow.rotation.z = Math.PI / 2; arrow.position.set(0.15, wvH, 0); wv.add(arrow);
       // Tail
       const tail = new THREE.Mesh(new THREE.PlaneGeometry(0.15, 0.1), new THREE.MeshStandardMaterial({ color: 0x888899, metalness: 0.5, side: THREE.DoubleSide }));
       tail.position.set(-0.15, wvH, 0); wv.add(tail);
       // Cross bars (N/S/E/W)
-      const nsBar = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.25, 8), metalMat);
+      const nsBar = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.25, 16), metalMat);
       nsBar.rotation.z = Math.PI / 2; nsBar.position.y = wvH - 0.15; wv.add(nsBar);
-      const ewBar = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.25, 8), metalMat);
+      const ewBar = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.25, 16), metalMat);
       ewBar.rotation.x = Math.PI / 2; ewBar.position.y = wvH - 0.15; wv.add(ewBar);
       const wvx = (Math.random() - 0.5) * w * 0.7; const wvz = (Math.random() - 0.5) * d * 0.7;
       wv.position.set(wvx, getTerrainHeight(wvx, wvz, 2.0) + 3 + Math.random() * 4, wvz);
@@ -22362,7 +22362,7 @@ export class DiabloRenderer {
       const bLen = 8 + Math.random() * 6;
       // Stone arch
       const archR = bLen / 2;
-      const arch = new THREE.Mesh(new THREE.TorusGeometry(archR, 0.4, 14, 24, Math.PI), greyRockMat);
+      const arch = new THREE.Mesh(new THREE.TorusGeometry(archR, 0.4, 23, 36, Math.PI), greyRockMat);
       arch.rotation.x = Math.PI / 2; arch.rotation.z = Math.PI; arch.position.y = -archR * 0.3; bridge.add(arch);
       // Walking surface
       const surface = new THREE.Mesh(new THREE.BoxGeometry(2, 0.3, bLen), greyRockMat);
@@ -22405,7 +22405,7 @@ export class DiabloRenderer {
     // ── Floating rock fragments (25+) ──
     for (let i = 0; i < 28; i++) {
       const fragR = 0.5 + Math.random() * 2;
-      const frag = new THREE.Mesh(new THREE.DodecahedronGeometry(fragR, 1), voidMat);
+      const frag = new THREE.Mesh(new THREE.DodecahedronGeometry(fragR, 2), voidMat);
       frag.scale.set(0.6 + Math.random() * 0.8, 0.5 + Math.random() * 0.6, 0.6 + Math.random() * 0.8);
       frag.position.set(
         (Math.random() - 0.5) * w * 0.85,
@@ -22441,10 +22441,10 @@ export class DiabloRenderer {
     for (let i = 0; i < 24; i++) {
       const eyeGroup = new THREE.Group();
       const eyeMat = i % 3 === 0 ? eyeRedMat : eyeYellowMat;
-      const eye1 = new THREE.Mesh(new THREE.SphereGeometry(0.06 + Math.random() * 0.04, 14, 14), eyeMat);
+      const eye1 = new THREE.Mesh(new THREE.SphereGeometry(0.06 + Math.random() * 0.04, 23, 23), eyeMat);
       eye1.position.set(-0.08, 0, 0);
       eyeGroup.add(eye1);
-      const eye2 = new THREE.Mesh(new THREE.SphereGeometry(0.06 + Math.random() * 0.04, 14, 14), eyeMat);
+      const eye2 = new THREE.Mesh(new THREE.SphereGeometry(0.06 + Math.random() * 0.04, 23, 23), eyeMat);
       eye2.position.set(0.08, 0, 0);
       eyeGroup.add(eye2);
       eyeGroup.position.set(
@@ -22460,9 +22460,9 @@ export class DiabloRenderer {
     for (let i = 0; i < 12; i++) {
       const portal = new THREE.Group();
       const portalR = 1 + Math.random() * 1.5;
-      const ring = new THREE.Mesh(new THREE.TorusGeometry(portalR, 0.12, 16, 36), purpleMat);
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(portalR, 0.12, 27, 46), purpleMat);
       portal.add(ring);
-      const center = new THREE.Mesh(new THREE.CircleGeometry(portalR * 0.85, 32), portalMat);
+      const center = new THREE.Mesh(new THREE.CircleGeometry(portalR * 0.85, 44), portalMat);
       portal.add(center);
       const pLight = new THREE.PointLight(0x6600aa, 0.8, 8);
       portal.add(pLight);
@@ -22495,9 +22495,9 @@ export class DiabloRenderer {
     for (let i = 0; i < 10; i++) {
       const soul = new THREE.Group();
       const cageR = 0.5 + Math.random() * 0.8;
-      const cage = new THREE.Mesh(new THREE.SphereGeometry(cageR, 14, 10), new THREE.MeshStandardMaterial({ color: 0x442266, wireframe: true }));
+      const cage = new THREE.Mesh(new THREE.SphereGeometry(cageR, 23, 17), new THREE.MeshStandardMaterial({ color: 0x442266, wireframe: true }));
       soul.add(cage);
-      const innerGlow = new THREE.Mesh(new THREE.SphereGeometry(cageR * 0.3, 14, 14), new THREE.MeshStandardMaterial({ color: 0x8844ff, emissive: 0x6633cc, emissiveIntensity: 0.8, transparent: true, opacity: 0.5 }));
+      const innerGlow = new THREE.Mesh(new THREE.SphereGeometry(cageR * 0.3, 23, 23), new THREE.MeshStandardMaterial({ color: 0x8844ff, emissive: 0x6633cc, emissiveIntensity: 0.8, transparent: true, opacity: 0.5 }));
       soul.add(innerGlow);
       const sLight = new THREE.PointLight(0x8844ff, 0.5, 5);
       soul.add(sLight);
@@ -22514,14 +22514,14 @@ export class DiabloRenderer {
     for (let i = 0; i < 18; i++) {
       const tree = new THREE.Group();
       const trunkH = 2 + Math.random() * 4;
-      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.2, trunkH, 12), blackMat);
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.2, trunkH, 20), blackMat);
       trunk.position.y = trunkH / 2;
       trunk.rotation.x = (Math.random() - 0.5) * 0.2;
       trunk.rotation.z = (Math.random() - 0.5) * 0.2;
       tree.add(trunk);
       for (let b = 0; b < 3 + Math.floor(Math.random() * 3); b++) {
         const branchH = 0.5 + Math.random() * 1.5;
-        const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.05, branchH, 10), blackMat);
+        const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.05, branchH, 17), blackMat);
         branch.position.set(
           (Math.random() - 0.5) * 0.4,
           trunkH * 0.4 + Math.random() * trunkH * 0.5,
@@ -22540,7 +22540,7 @@ export class DiabloRenderer {
     for (let i = 0; i < 8; i++) {
       const pool = new THREE.Group();
       const poolR = 1.5 + Math.random() * 2;
-      const surface = new THREE.Mesh(new THREE.CircleGeometry(poolR, 32), new THREE.MeshStandardMaterial({ color: 0x330044, emissive: 0x220033, emissiveIntensity: 0.4, transparent: true, opacity: 0.7 }));
+      const surface = new THREE.Mesh(new THREE.CircleGeometry(poolR, 44), new THREE.MeshStandardMaterial({ color: 0x330044, emissive: 0x220033, emissiveIntensity: 0.4, transparent: true, opacity: 0.7 }));
       surface.rotation.x = -Math.PI / 2;
       surface.position.y = 0.02;
       pool.add(surface);
@@ -22564,7 +22564,7 @@ export class DiabloRenderer {
       ];
       const oc = orbColors[i % 3];
       const orb = new THREE.Mesh(
-        new THREE.SphereGeometry(orbR, 16, 16),
+        new THREE.SphereGeometry(orbR, 27, 27),
         new THREE.MeshStandardMaterial({ color: oc.c, emissive: oc.e, emissiveIntensity: 0.8, transparent: true, opacity: 0.7 }),
       );
       orb.position.set(
@@ -22612,10 +22612,10 @@ export class DiabloRenderer {
       const totem = new THREE.Group();
       const base = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.3, 0.6), voidMat);
       totem.add(base);
-      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.25, 2, 14), darkPurpleMat);
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.25, 2, 23), darkPurpleMat);
       body.position.y = 1.15;
       totem.add(body);
-      const skull = new THREE.Mesh(new THREE.SphereGeometry(0.2, 21, 14), voidMat);
+      const skull = new THREE.Mesh(new THREE.SphereGeometry(0.2, 31, 23), voidMat);
       skull.position.y = 2.3;
       totem.add(skull);
       const totemLight = new THREE.PointLight(0x440066, 0.5, 4);
@@ -22631,7 +22631,7 @@ export class DiabloRenderer {
     // ── Whispering stones (12+) ──
     for (let i = 0; i < 14; i++) {
       const stone = new THREE.Mesh(
-        new THREE.SphereGeometry(0.3 + Math.random() * 0.5, 12, 10),
+        new THREE.SphereGeometry(0.3 + Math.random() * 0.5, 20, 17),
         new THREE.MeshStandardMaterial({ color: 0x332244, emissive: 0x220033, emissiveIntensity: 0.3, roughness: 0.8 }),
       );
       stone.scale.set(0.8 + Math.random() * 0.4, 0.7 + Math.random() * 0.6, 0.8 + Math.random() * 0.4);
@@ -22685,20 +22685,20 @@ export class DiabloRenderer {
       for (let s = 0; s < segs; s++) {
         const sH = 0.5 + Math.random() * 0.8;
         const sR = Math.max(0.015, 0.1 - s * 0.008);
-        const seg = new THREE.Mesh(new THREE.CylinderGeometry(sR * 0.7, sR, sH, 12), darkPurpleMat);
+        const seg = new THREE.Mesh(new THREE.CylinderGeometry(sR * 0.7, sR, sH, 20), darkPurpleMat);
         seg.position.set((Math.random() - 0.5) * 0.4, ty + sH / 2, (Math.random() - 0.5) * 0.4);
         seg.rotation.x = (Math.random() - 0.5) * 0.4; seg.rotation.z = (Math.random() - 0.5) * 0.4;
         tendril.add(seg);
         ty += sH * 0.7;
         // Small barbs
         if (Math.random() > 0.6) {
-          const barb = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.08, 8), purpleMat);
+          const barb = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.08, 16), purpleMat);
           barb.position.set(seg.position.x + 0.05, ty - sH * 0.3, seg.position.z);
           barb.rotation.z = Math.PI / 2 + (Math.random() - 0.5); tendril.add(barb);
         }
       }
       // Glow tip
-      const tipGlow = new THREE.Mesh(new THREE.SphereGeometry(0.03, 10, 8), new THREE.MeshStandardMaterial({ color: 0x8800ff, emissive: 0x6600cc, emissiveIntensity: 1.0 }));
+      const tipGlow = new THREE.Mesh(new THREE.SphereGeometry(0.03, 17, 16), new THREE.MeshStandardMaterial({ color: 0x8800ff, emissive: 0x6600cc, emissiveIntensity: 1.0 }));
       tipGlow.position.y = ty; tendril.add(tipGlow);
       const vtx = (Math.random() - 0.5) * w * 0.8; const vtz = (Math.random() - 0.5) * d * 0.8;
       tendril.position.set(vtx, getTerrainHeight(vtx, vtz, 0.8), vtz); this._scene.add(tendril);
@@ -22708,11 +22708,11 @@ export class DiabloRenderer {
     for (let i = 0; i < 20; i++) {
       const frag = new THREE.Group();
       const fragR = 0.3 + Math.random() * 0.8;
-      const shard = new THREE.Mesh(new THREE.TetrahedronGeometry(fragR, 1), blackMat);
+      const shard = new THREE.Mesh(new THREE.TetrahedronGeometry(fragR, 2), blackMat);
       shard.scale.set(0.8 + Math.random() * 0.4, 1.2 + Math.random() * 0.5, 0.8 + Math.random() * 0.4);
       frag.add(shard);
       // Dark aura
-      const aura = new THREE.Mesh(new THREE.SphereGeometry(fragR * 1.3, 14, 10), new THREE.MeshStandardMaterial({ color: 0x220033, transparent: true, opacity: 0.15, depthWrite: false }));
+      const aura = new THREE.Mesh(new THREE.SphereGeometry(fragR * 1.3, 23, 17), new THREE.MeshStandardMaterial({ color: 0x220033, transparent: true, opacity: 0.15, depthWrite: false }));
       frag.add(aura);
       frag.position.set((Math.random() - 0.5) * w * 0.85, 2 + Math.random() * 8, (Math.random() - 0.5) * d * 0.85);
       frag.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
@@ -22740,11 +22740,11 @@ export class DiabloRenderer {
     for (let i = 0; i < 10; i++) {
       const pool = new THREE.Group();
       const pR = 1 + Math.random() * 2;
-      const surface = new THREE.Mesh(new THREE.CircleGeometry(pR, 32), new THREE.MeshStandardMaterial({ color: 0x110022, emissive: 0x0a0011, emissiveIntensity: 0.3, transparent: true, opacity: 0.8 }));
+      const surface = new THREE.Mesh(new THREE.CircleGeometry(pR, 44), new THREE.MeshStandardMaterial({ color: 0x110022, emissive: 0x0a0011, emissiveIntensity: 0.3, transparent: true, opacity: 0.8 }));
       surface.rotation.x = -Math.PI / 2; surface.position.y = 0.02; pool.add(surface);
       // Concentric ripple rings
       for (let r = 0; r < 3; r++) {
-        const ring = new THREE.Mesh(new THREE.TorusGeometry(pR * (0.3 + r * 0.25), 0.01, 10, 32), new THREE.MeshStandardMaterial({ color: 0x330055, emissive: 0x220044, emissiveIntensity: 0.4, transparent: true, opacity: 0.3 }));
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(pR * (0.3 + r * 0.25), 0.01, 17, 44), new THREE.MeshStandardMaterial({ color: 0x330055, emissive: 0x220044, emissiveIntensity: 0.4, transparent: true, opacity: 0.3 }));
         ring.rotation.x = Math.PI / 2; ring.position.y = 0.03; pool.add(ring);
       }
       const pLight = new THREE.PointLight(0x440066, 0.4, 4);
@@ -22758,10 +22758,10 @@ export class DiabloRenderer {
     for (let i = 0; i < 10; i++) {
       const ghost = new THREE.Group();
       // Body (elongated sphere)
-      const body = new THREE.Mesh(new THREE.SphereGeometry(0.3 + Math.random() * 0.2, 14, 12), ghostMat);
+      const body = new THREE.Mesh(new THREE.SphereGeometry(0.3 + Math.random() * 0.2, 23, 20), ghostMat);
       body.scale.set(0.7, 1.5, 0.7); body.position.y = 0.5; ghost.add(body);
       // Head
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 14, 12), ghostMat);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 23, 20), ghostMat);
       head.position.y = 1.2; ghost.add(head);
       // Trailing wisps
       for (let w2 = 0; w2 < 3; w2++) {
@@ -22771,7 +22771,7 @@ export class DiabloRenderer {
       }
       // Eye dots
       for (const ex of [-0.05, 0.05]) {
-        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.02, 10, 8), new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 1.0 }));
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.02, 17, 16), new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 1.0 }));
         eye.position.set(ex, 1.22, 0.12); ghost.add(eye);
       }
       ghost.position.set((Math.random() - 0.5) * w * 0.7, 0.5 + Math.random() * 3, (Math.random() - 0.5) * d * 0.7);
@@ -22783,10 +22783,10 @@ export class DiabloRenderer {
     for (let i = 0; i < 12; i++) {
       const crystal = new THREE.Group();
       const cH = 1 + Math.random() * 3;
-      const main = new THREE.Mesh(new THREE.ConeGeometry(0.15 + Math.random() * 0.2, cH, 12), corruptCrystalMat);
+      const main = new THREE.Mesh(new THREE.ConeGeometry(0.15 + Math.random() * 0.2, cH, 20), corruptCrystalMat);
       main.position.y = cH / 2; crystal.add(main);
       for (let s = 0; s < 3; s++) {
-        const sub = new THREE.Mesh(new THREE.ConeGeometry(0.08 + Math.random() * 0.08, cH * (0.3 + Math.random() * 0.3), 10), corruptCrystalMat);
+        const sub = new THREE.Mesh(new THREE.ConeGeometry(0.08 + Math.random() * 0.08, cH * (0.3 + Math.random() * 0.3), 17), corruptCrystalMat);
         sub.position.set((Math.random() - 0.5) * 0.4, cH * 0.2 + Math.random() * cH * 0.3, (Math.random() - 0.5) * 0.4);
         sub.rotation.x = (Math.random() - 0.5) * 0.5; sub.rotation.z = (Math.random() - 0.5) * 0.5;
         crystal.add(sub);
@@ -22801,16 +22801,16 @@ export class DiabloRenderer {
     for (let i = 0; i < 8; i++) {
       const conduit = new THREE.Group();
       const cLen = 4 + Math.random() * 6;
-      const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, cLen, 14), new THREE.MeshStandardMaterial({ color: 0x220033, roughness: 0.5, metalness: 0.3 }));
+      const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, cLen, 23), new THREE.MeshStandardMaterial({ color: 0x220033, roughness: 0.5, metalness: 0.3 }));
       conduit.add(pipe);
       // Energy pulses along conduit
       for (let p = 0; p < 4; p++) {
-        const pulse = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.02, 10, 16), new THREE.MeshStandardMaterial({ color: 0x8800ff, emissive: 0x6600cc, emissiveIntensity: 0.8 }));
+        const pulse = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.02, 17, 27), new THREE.MeshStandardMaterial({ color: 0x8800ff, emissive: 0x6600cc, emissiveIntensity: 0.8 }));
         pulse.position.y = (p / 3 - 0.5) * cLen * 0.8; conduit.add(pulse);
       }
       // End nodes
       for (const ey of [-cLen / 2, cLen / 2]) {
-        const node = new THREE.Mesh(new THREE.SphereGeometry(0.12, 14, 14), purpleMat);
+        const node = new THREE.Mesh(new THREE.SphereGeometry(0.12, 23, 23), purpleMat);
         node.position.y = ey; conduit.add(node);
       }
       conduit.position.set((Math.random() - 0.5) * w * 0.6, 2 + Math.random() * 5, (Math.random() - 0.5) * d * 0.6);
@@ -22822,14 +22822,14 @@ export class DiabloRenderer {
     for (let i = 0; i < 8; i++) {
       const brazier = new THREE.Group();
       // Bowl
-      const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.3, 0.3, 16), voidMat);
+      const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.3, 0.3, 27), voidMat);
       bowl.position.y = 1.3; brazier.add(bowl);
       // Stand
-      const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.15, 1.3, 14), voidMat);
+      const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.15, 1.3, 23), voidMat);
       stand.position.y = 0.65; brazier.add(stand);
       // Shadow flames (dark purple/black transparent cones)
       for (let f = 0; f < 4; f++) {
-        const flame = new THREE.Mesh(new THREE.ConeGeometry(0.15 + Math.random() * 0.1, 0.5 + Math.random() * 0.3, 24), new THREE.MeshStandardMaterial({ color: 0x6600aa, emissive: 0x4400aa, emissiveIntensity: 0.8, transparent: true, opacity: 0.5, depthWrite: false }));
+        const flame = new THREE.Mesh(new THREE.ConeGeometry(0.15 + Math.random() * 0.1, 0.5 + Math.random() * 0.3, 36), new THREE.MeshStandardMaterial({ color: 0x6600aa, emissive: 0x4400aa, emissiveIntensity: 0.8, transparent: true, opacity: 0.5, depthWrite: false }));
         flame.position.set((Math.random() - 0.5) * 0.15, 1.6 + f * 0.1, (Math.random() - 0.5) * 0.15); brazier.add(flame);
       }
       const bLight = new THREE.PointLight(0x6600aa, 0.8, 6);
@@ -22871,7 +22871,7 @@ export class DiabloRenderer {
       const crystal = new THREE.Group();
       const cH = 1.5 + Math.random() * 4;
       const cR = 0.3 + Math.random() * 0.8;
-      const shard = new THREE.Mesh(new THREE.ConeGeometry(cR, cH, 5 + Math.floor(Math.random() * 3)), i % 2 === 0 ? crystalPurpleMat : crystalBlueMat);
+      const shard = new THREE.Mesh(new THREE.ConeGeometry(cR, cH, 10 + Math.floor(Math.random() * 3)), i % 2 === 0 ? crystalPurpleMat : crystalBlueMat);
       shard.position.y = cH / 2;
       crystal.add(shard);
       const cLight = new THREE.PointLight(i % 2 === 0 ? 0x6600cc : 0x2244cc, 1.0 + Math.random() * 0.8, 10 + Math.random() * 5);
@@ -22881,7 +22881,7 @@ export class DiabloRenderer {
       // Secondary smaller shards
       for (let s = 0; s < 2; s++) {
         const subH = cH * (0.3 + Math.random() * 0.3);
-        const sub = new THREE.Mesh(new THREE.ConeGeometry(cR * 0.4, subH, 10), i % 2 === 0 ? crystalPurpleMat : crystalBlueMat);
+        const sub = new THREE.Mesh(new THREE.ConeGeometry(cR * 0.4, subH, 17), i % 2 === 0 ? crystalPurpleMat : crystalBlueMat);
         sub.position.set((Math.random() - 0.5) * cR * 2, subH / 2, (Math.random() - 0.5) * cR * 2);
         sub.rotation.x = (Math.random() - 0.5) * 0.4;
         sub.rotation.z = (Math.random() - 0.5) * 0.4;
@@ -22900,7 +22900,7 @@ export class DiabloRenderer {
       const iH = 0.5 + Math.random() * 1;
       const iD = 2 + Math.random() * 4;
       if (i % 3 === 0) {
-        const base = new THREE.Mesh(new THREE.SphereGeometry(iW / 2, 14, 10), voidBlackMat);
+        const base = new THREE.Mesh(new THREE.SphereGeometry(iW / 2, 23, 17), voidBlackMat);
         base.scale.set(1, iH / iW, iD / iW);
         island.add(base);
       } else {
@@ -22920,7 +22920,7 @@ export class DiabloRenderer {
     for (let i = 0; i < 18; i++) {
       const runeCircle = new THREE.Group();
       const rcR = 1 + Math.random() * 2;
-      const ring = new THREE.Mesh(new THREE.TorusGeometry(rcR, 0.06, 14, 36), runeMat);
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(rcR, 0.06, 23, 46), runeMat);
       ring.rotation.x = Math.PI / 2;
       runeCircle.add(ring);
       // Rune symbols as small glowing planes
@@ -22940,7 +22940,7 @@ export class DiabloRenderer {
     // ── Energy conduits (12+) ──
     for (let i = 0; i < 14; i++) {
       const condLen = 4 + Math.random() * 8;
-      const conduit = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, condLen, 14), conduitMat);
+      const conduit = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, condLen, 23), conduitMat);
       conduit.position.set(
         (Math.random() - 0.5) * w * 0.7,
         1 + Math.random() * 5,
@@ -22958,7 +22958,7 @@ export class DiabloRenderer {
       torso.position.y = 4;
       titan.add(torso);
       // Head
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.9, 14, 14), stoneMat);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.9, 23, 23), stoneMat);
       head.position.y = 6.5;
       titan.add(head);
       // Arms
@@ -22979,7 +22979,7 @@ export class DiabloRenderer {
       titan.add(legR);
       // Chains
       for (let c = 0; c < 4; c++) {
-        const chainLink = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.06, 10, 16), chainMat);
+        const chainLink = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.06, 17, 27), chainMat);
         chainLink.position.set(
           (c < 2 ? -1 : 1) * (1.5 + Math.random()),
           3 + c * 1.2,
@@ -23019,7 +23019,7 @@ export class DiabloRenderer {
         const segH = 0.6 + Math.random() * 0.8;
         const topR = Math.max(0.02, 0.15 - s * 0.015);
         const botR = Math.max(0.03, 0.18 - s * 0.015);
-        const seg = new THREE.Mesh(new THREE.CylinderGeometry(topR, botR, segH, 12), tentacleMat);
+        const seg = new THREE.Mesh(new THREE.CylinderGeometry(topR, botR, segH, 20), tentacleMat);
         seg.position.set((Math.random() - 0.5) * 0.2, ty + segH / 2, (Math.random() - 0.5) * 0.2);
         seg.rotation.x = (Math.random() - 0.5) * 0.3;
         seg.rotation.z = (Math.random() - 0.5) * 0.3;
@@ -23059,7 +23059,7 @@ export class DiabloRenderer {
     // ── Starfield particles (20+) ──
     for (let i = 0; i < 25; i++) {
       const star = new THREE.Mesh(
-        new THREE.SphereGeometry(0.03 + Math.random() * 0.05, 10, 10),
+        new THREE.SphereGeometry(0.03 + Math.random() * 0.05, 17, 17),
         starMat,
       );
       star.position.set(
@@ -23074,10 +23074,10 @@ export class DiabloRenderer {
     for (let i = 0; i < 10; i++) {
       const well = new THREE.Group();
       const wellR = 1.5 + Math.random() * 2;
-      const disc = new THREE.Mesh(new THREE.CircleGeometry(wellR, 32), wellMat);
+      const disc = new THREE.Mesh(new THREE.CircleGeometry(wellR, 44), wellMat);
       disc.rotation.x = -Math.PI / 2;
       well.add(disc);
-      const distortRing = new THREE.Mesh(new THREE.TorusGeometry(wellR * 0.7, 0.04, 14, 32), new THREE.MeshStandardMaterial({ color: 0x3322aa, emissive: 0x2211aa, emissiveIntensity: 0.5, transparent: true, opacity: 0.4 }));
+      const distortRing = new THREE.Mesh(new THREE.TorusGeometry(wellR * 0.7, 0.04, 23, 44), new THREE.MeshStandardMaterial({ color: 0x3322aa, emissive: 0x2211aa, emissiveIntensity: 0.5, transparent: true, opacity: 0.4 }));
       distortRing.rotation.x = Math.PI / 2;
       distortRing.position.y = 0.05;
       well.add(distortRing);
@@ -23093,7 +23093,7 @@ export class DiabloRenderer {
       const wTorso = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1, 0.4), stoneMat);
       wTorso.position.y = 1.3;
       warrior.add(wTorso);
-      const wHead = new THREE.Mesh(new THREE.SphereGeometry(0.2, 14, 14), stoneMat);
+      const wHead = new THREE.Mesh(new THREE.SphereGeometry(0.2, 23, 23), stoneMat);
       wHead.position.y = 2;
       warrior.add(wHead);
       const wArmL = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.8, 0.15), stoneMat);
@@ -23127,12 +23127,12 @@ export class DiabloRenderer {
     for (let i = 0; i < 5; i++) {
       const godEye = new THREE.Group();
       const eyeR = 1.5 + Math.random() * 2;
-      const eyeball = new THREE.Mesh(new THREE.SphereGeometry(eyeR, 24, 20), new THREE.MeshStandardMaterial({ color: 0xaa0000, emissive: 0xff0000, emissiveIntensity: 0.6, roughness: 0.3 }));
+      const eyeball = new THREE.Mesh(new THREE.SphereGeometry(eyeR, 36, 30), new THREE.MeshStandardMaterial({ color: 0xaa0000, emissive: 0xff0000, emissiveIntensity: 0.6, roughness: 0.3 }));
       godEye.add(eyeball);
-      const pupil = new THREE.Mesh(new THREE.SphereGeometry(eyeR * 0.4, 16, 16), new THREE.MeshStandardMaterial({ color: 0x000000, roughness: 0.1 }));
+      const pupil = new THREE.Mesh(new THREE.SphereGeometry(eyeR * 0.4, 27, 27), new THREE.MeshStandardMaterial({ color: 0x000000, roughness: 0.1 }));
       pupil.position.z = eyeR * 0.7;
       godEye.add(pupil);
-      const iris = new THREE.Mesh(new THREE.TorusGeometry(eyeR * 0.35, eyeR * 0.08, 14, 24), new THREE.MeshStandardMaterial({ color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 0.5 }));
+      const iris = new THREE.Mesh(new THREE.TorusGeometry(eyeR * 0.35, eyeR * 0.08, 23, 36), new THREE.MeshStandardMaterial({ color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 0.5 }));
       iris.position.z = eyeR * 0.65;
       godEye.add(iris);
       const eLight = new THREE.PointLight(0xff2200, 1.5, 15);
@@ -23152,7 +23152,7 @@ export class DiabloRenderer {
     for (let i = 0; i < 14; i++) {
       const spireH = 2 + Math.random() * 5;
       const spire = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.08, 0.2 + Math.random() * 0.15, spireH, 14),
+        new THREE.CylinderGeometry(0.08, 0.2 + Math.random() * 0.15, spireH, 23),
         boneMat,
       );
       const bsX = (Math.random() - 0.5) * w * 0.8;
@@ -23166,15 +23166,15 @@ export class DiabloRenderer {
     // ── Chaos fountains (4+) ──
     for (let i = 0; i < 5; i++) {
       const fountain = new THREE.Group();
-      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.2, 0.5, 16), voidBlackMat);
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.2, 0.5, 27), voidBlackMat);
       fountain.add(base);
-      const cone = new THREE.Mesh(new THREE.ConeGeometry(0.5, 4, 14), conduitMat);
+      const cone = new THREE.Mesh(new THREE.ConeGeometry(0.5, 4, 23), conduitMat);
       cone.position.y = 1.5;
       cone.rotation.z = Math.PI; // pointing up = reverse gravity feel
       fountain.add(cone);
       // Upward particles
       for (let p = 0; p < 6; p++) {
-        const particle = new THREE.Mesh(new THREE.SphereGeometry(0.06 + Math.random() * 0.06, 10, 10), conduitMat);
+        const particle = new THREE.Mesh(new THREE.SphereGeometry(0.06 + Math.random() * 0.06, 17, 17), conduitMat);
         particle.position.set(
           (Math.random() - 0.5) * 0.8,
           1.5 + Math.random() * 3,
@@ -23198,7 +23198,7 @@ export class DiabloRenderer {
       const linkCount = 5 + Math.floor(Math.random() * 5);
       const linkR = 0.3 + Math.random() * 0.4;
       for (let l = 0; l < linkCount; l++) {
-        const link = new THREE.Mesh(new THREE.TorusGeometry(linkR, linkR * 0.2, 12, 16), chainMat);
+        const link = new THREE.Mesh(new THREE.TorusGeometry(linkR, linkR * 0.2, 20, 27), chainMat);
         link.position.set(l * linkR * 1.5, 0, 0);
         link.rotation.y = l % 2 === 0 ? 0 : Math.PI / 2;
         voidChain.add(link);
@@ -23222,7 +23222,7 @@ export class DiabloRenderer {
       // Floating pyramid
       const pyrH = 3 + Math.random() * 4;
       const pyrR = 1.5 + Math.random() * 2;
-      const pyr = new THREE.Mesh(new THREE.ConeGeometry(pyrR, pyrH, 10), voidBlackMat);
+      const pyr = new THREE.Mesh(new THREE.ConeGeometry(pyrR, pyrH, 17), voidBlackMat);
       pyr.position.y = pyrH / 2; cosmic.add(pyr);
       // Glowing runes on surface
       for (let r = 0; r < 4; r++) {
@@ -23232,7 +23232,7 @@ export class DiabloRenderer {
         rune.lookAt(0, pyrH * 0.4, 0); cosmic.add(rune);
       }
       // Orbiting ring
-      const orbit = new THREE.Mesh(new THREE.TorusGeometry(pyrR * 1.3, 0.05, 14, 32), conduitMat);
+      const orbit = new THREE.Mesh(new THREE.TorusGeometry(pyrR * 1.3, 0.05, 23, 44), conduitMat);
       orbit.rotation.x = Math.PI / 2 + (Math.random() - 0.5) * 0.3;
       orbit.position.y = pyrH * 0.5; cosmic.add(orbit);
       const csLight = new THREE.PointLight(0x4422cc, 0.8, 10);
@@ -23250,14 +23250,14 @@ export class DiabloRenderer {
         const sH = 0.5 + Math.random() * 0.6;
         const topR = Math.max(0.02, 0.2 - s * 0.02);
         const botR = Math.max(0.03, 0.25 - s * 0.02);
-        const seg = new THREE.Mesh(new THREE.CylinderGeometry(topR, botR, sH, 14), tentacleMat);
+        const seg = new THREE.Mesh(new THREE.CylinderGeometry(topR, botR, sH, 23), tentacleMat);
         const dx = (Math.random() - 0.5) * 0.3; const dz = (Math.random() - 0.5) * 0.3;
         seg.position.set(tx2 + dx, ty + sH / 2, tz2 + dz);
         seg.rotation.x = (Math.random() - 0.5) * 0.4; seg.rotation.z = (Math.random() - 0.5) * 0.4;
         tent.add(seg); tx2 += dx * 0.5; tz2 += dz * 0.5; ty += sH * 0.7;
         // Suckers
         if (Math.random() > 0.5) {
-          const sucker = new THREE.Mesh(new THREE.CircleGeometry(topR * 0.6, 14), new THREE.MeshStandardMaterial({ color: 0x2a1a2a, roughness: 0.6, side: THREE.DoubleSide }));
+          const sucker = new THREE.Mesh(new THREE.CircleGeometry(topR * 0.6, 23), new THREE.MeshStandardMaterial({ color: 0x2a1a2a, roughness: 0.6, side: THREE.DoubleSide }));
           sucker.position.set(tx2 + botR, ty - sH * 0.3, tz2);
           sucker.rotation.y = Math.PI / 2; tent.add(sucker);
         }
@@ -23271,18 +23271,18 @@ export class DiabloRenderer {
       const eye = new THREE.Group();
       const eR = 0.8 + Math.random() * 1.2;
       // Outer ring (eyelid)
-      const lid = new THREE.Mesh(new THREE.TorusGeometry(eR, eR * 0.15, 14, 32), new THREE.MeshStandardMaterial({ color: 0x1a1a2a, roughness: 0.7 }));
+      const lid = new THREE.Mesh(new THREE.TorusGeometry(eR, eR * 0.15, 23, 44), new THREE.MeshStandardMaterial({ color: 0x1a1a2a, roughness: 0.7 }));
       eye.add(lid);
       // Iris
-      const iris = new THREE.Mesh(new THREE.CircleGeometry(eR * 0.7, 32), new THREE.MeshStandardMaterial({ color: 0xaa4400, emissive: 0x882200, emissiveIntensity: 0.5 }));
+      const iris = new THREE.Mesh(new THREE.CircleGeometry(eR * 0.7, 44), new THREE.MeshStandardMaterial({ color: 0xaa4400, emissive: 0x882200, emissiveIntensity: 0.5 }));
       eye.add(iris);
       // Pupil
-      const pupil = new THREE.Mesh(new THREE.CircleGeometry(eR * 0.3, 24), new THREE.MeshStandardMaterial({ color: 0x000000 }));
+      const pupil = new THREE.Mesh(new THREE.CircleGeometry(eR * 0.3, 36), new THREE.MeshStandardMaterial({ color: 0x000000 }));
       pupil.position.z = 0.01; eye.add(pupil);
       // Veins
       for (let v = 0; v < 5; v++) {
         const va = Math.random() * Math.PI * 2;
-        const vein = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, eR * 0.5, 8), new THREE.MeshStandardMaterial({ color: 0xcc2200, roughness: 0.5 }));
+        const vein = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, eR * 0.5, 16), new THREE.MeshStandardMaterial({ color: 0xcc2200, roughness: 0.5 }));
         vein.position.set(Math.cos(va) * eR * 0.5, Math.sin(va) * eR * 0.5, 0.01);
         vein.rotation.z = va + Math.PI / 2; eye.add(vein);
       }
@@ -23306,7 +23306,7 @@ export class DiabloRenderer {
       }
       // Energy leaking from tear
       for (let e = 0; e < 2; e++) {
-        const leak = new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 8), new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xeeeeff, emissiveIntensity: 1.0, transparent: true, opacity: 0.4 }));
+        const leak = new THREE.Mesh(new THREE.SphereGeometry(0.08, 17, 16), new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xeeeeff, emissiveIntensity: 1.0, transparent: true, opacity: 0.4 }));
         leak.position.set((Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * tH * 0.5, 0.1); tear.add(leak);
       }
       tear.position.set((Math.random() - 0.5) * w * 0.7, 2 + Math.random() * 6, (Math.random() - 0.5) * d * 0.7);
@@ -23321,7 +23321,7 @@ export class DiabloRenderer {
       const symbol = new THREE.Mesh(new THREE.PlaneGeometry(runeSize, runeSize), runeMat);
       rune.add(symbol);
       // Aura ring
-      const aura = new THREE.Mesh(new THREE.TorusGeometry(runeSize * 0.8, 0.01, 10, 24), runeMat);
+      const aura = new THREE.Mesh(new THREE.TorusGeometry(runeSize * 0.8, 0.01, 17, 36), runeMat);
       rune.add(aura);
       rune.position.set((Math.random() - 0.5) * w * 0.8, 1 + Math.random() * 8, (Math.random() - 0.5) * d * 0.8);
       rune.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
@@ -23333,11 +23333,11 @@ export class DiabloRenderer {
     for (let i = 0; i < 8; i++) {
       const ooze = new THREE.Group();
       const oR = 1 + Math.random() * 2.5;
-      const surface = new THREE.Mesh(new THREE.CircleGeometry(oR, 24), oozeMat);
+      const surface = new THREE.Mesh(new THREE.CircleGeometry(oR, 36), oozeMat);
       surface.rotation.x = -Math.PI / 2; surface.position.y = 0.02; ooze.add(surface);
       // Bubbles
       for (let b = 0; b < 4; b++) {
-        const bubble = new THREE.Mesh(new THREE.SphereGeometry(0.05 + Math.random() * 0.05, 12, 10), new THREE.MeshStandardMaterial({ color: 0x224422, transparent: true, opacity: 0.4 }));
+        const bubble = new THREE.Mesh(new THREE.SphereGeometry(0.05 + Math.random() * 0.05, 20, 17), new THREE.MeshStandardMaterial({ color: 0x224422, transparent: true, opacity: 0.4 }));
         bubble.position.set((Math.random() - 0.5) * oR, 0.04 + Math.random() * 0.08, (Math.random() - 0.5) * oR);
         ooze.add(bubble);
       }
@@ -23350,12 +23350,12 @@ export class DiabloRenderer {
       const bone = new THREE.Group();
       // Giant femur
       const boneLen = 4 + Math.random() * 6;
-      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, boneLen, 16), boneMat);
+      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, boneLen, 27), boneMat);
       shaft.rotation.z = Math.PI / 2 + (Math.random() - 0.5) * 0.3;
       shaft.position.y = 0.5; bone.add(shaft);
       // Knobs on ends
       for (const ex of [-boneLen / 2, boneLen / 2]) {
-        const knob = new THREE.Mesh(new THREE.SphereGeometry(0.5, 21, 14), boneMat);
+        const knob = new THREE.Mesh(new THREE.SphereGeometry(0.5, 31, 23), boneMat);
         knob.position.set(ex, 0.5, 0); bone.add(knob);
       }
       const bnx = (Math.random() - 0.5) * w * 0.7; const bnz = (Math.random() - 0.5) * d * 0.7;
@@ -23368,15 +23368,15 @@ export class DiabloRenderer {
       const rift = new THREE.Group();
       const riftR = 1.5 + Math.random() * 2;
       // Outer ring (unstable)
-      const ring = new THREE.Mesh(new THREE.TorusGeometry(riftR, 0.1, 14, 36), conduitMat);
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(riftR, 0.1, 23, 46), conduitMat);
       rift.add(ring);
       // Inner void
-      const inner = new THREE.Mesh(new THREE.CircleGeometry(riftR * 0.8, 32), new THREE.MeshStandardMaterial({ color: 0x000005, emissive: 0x110022, emissiveIntensity: 0.3, transparent: true, opacity: 0.9 }));
+      const inner = new THREE.Mesh(new THREE.CircleGeometry(riftR * 0.8, 44), new THREE.MeshStandardMaterial({ color: 0x000005, emissive: 0x110022, emissiveIntensity: 0.3, transparent: true, opacity: 0.9 }));
       rift.add(inner);
       // Energy arcs
       for (let a = 0; a < 6; a++) {
         const arcAngle = (a / 6) * Math.PI * 2;
-        const arc = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, riftR * 0.6, 8), conduitMat);
+        const arc = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, riftR * 0.6, 16), conduitMat);
         arc.position.set(Math.cos(arcAngle) * riftR * 0.4, Math.sin(arcAngle) * riftR * 0.4, 0.05);
         arc.rotation.z = arcAngle + Math.PI / 2; rift.add(arc);
       }
@@ -23393,10 +23393,10 @@ export class DiabloRenderer {
       const symGrp = new THREE.Group();
       const symR = 1.5 + Math.random() * 2;
       // Outer circle
-      const circle = new THREE.Mesh(new THREE.TorusGeometry(symR, 0.03, 10, 36), eldritchMat);
+      const circle = new THREE.Mesh(new THREE.TorusGeometry(symR, 0.03, 17, 46), eldritchMat);
       circle.rotation.x = Math.PI / 2; symGrp.add(circle);
       // Inner circle
-      const inner = new THREE.Mesh(new THREE.TorusGeometry(symR * 0.6, 0.02, 10, 32), eldritchMat);
+      const inner = new THREE.Mesh(new THREE.TorusGeometry(symR * 0.6, 0.02, 17, 44), eldritchMat);
       inner.rotation.x = Math.PI / 2; symGrp.add(inner);
       // Connecting lines (pentagram-like)
       for (let l = 0; l < 5; l++) {
@@ -23437,7 +23437,7 @@ export class DiabloRenderer {
     for (let i = 0; i < 50; i++) {
       const tree = new THREE.Group();
       const h = 3 + Math.random() * 5;
-      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.22, h, 14), silverBarkMat);
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.22, h, 23), silverBarkMat);
       trunk.position.y = h / 2; trunk.castShadow = true; tree.add(trunk);
       for (let p = 0; p < 3; p++) {
         const patch = new THREE.Mesh(new THREE.PlaneGeometry(0.1, 0.3 + Math.random() * 0.4), glowMat);
@@ -23446,12 +23446,12 @@ export class DiabloRenderer {
         patch.rotation.y = angle; tree.add(patch);
       }
       for (let c = 0; c < 3 + Math.floor(Math.random() * 2); c++) {
-        const canopy = new THREE.Mesh(new THREE.SphereGeometry(1.0 + Math.random() * 0.8, 14, 12), leafMat);
+        const canopy = new THREE.Mesh(new THREE.SphereGeometry(1.0 + Math.random() * 0.8, 23, 20), leafMat);
         canopy.position.set((Math.random()-0.5)*1.0, h + (Math.random()-0.5)*0.6, (Math.random()-0.5)*1.0);
         canopy.castShadow = true; tree.add(canopy);
       }
       for (let r = 0; r < 2; r++) {
-        const root = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.06, 1.0 + Math.random() * 0.8, 10), silverBarkMat);
+        const root = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.06, 1.0 + Math.random() * 0.8, 17), silverBarkMat);
         const ra = Math.random() * Math.PI * 2;
         root.position.set(Math.cos(ra) * 0.4, 0.1, Math.sin(ra) * 0.4);
         root.rotation.z = 0.8 + Math.random() * 0.4; root.rotation.y = ra; tree.add(root);
@@ -23464,12 +23464,12 @@ export class DiabloRenderer {
     for (let i = 0; i < 8; i++) {
       const willow = new THREE.Group();
       const wh = 5 + Math.random() * 3;
-      const wtrunk = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.3, wh, 14), silverBarkMat);
+      const wtrunk = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.3, wh, 23), silverBarkMat);
       wtrunk.position.y = wh / 2; wtrunk.castShadow = true; willow.add(wtrunk);
       for (let b = 0; b < 12; b++) {
         const bAngle = (b / 12) * Math.PI * 2;
         for (let s = 0; s < 6; s++) {
-          const strand = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.012, 0.6, 8), willowLeafMat);
+          const strand = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.012, 0.6, 16), willowLeafMat);
           strand.position.set(Math.cos(bAngle) * (0.8 + s * 0.3), wh - s * 0.45, Math.sin(bAngle) * (0.8 + s * 0.3));
           strand.rotation.z = 0.1 * s; willow.add(strand);
         }
@@ -23482,15 +23482,15 @@ export class DiabloRenderer {
     for (let i = 0; i < 35; i++) {
       const flower = new THREE.Group();
       const stemH = 0.2 + Math.random() * 0.3;
-      const fstem = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.015, stemH, 10), new THREE.MeshStandardMaterial({ color: 0x446644 }));
+      const fstem = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.015, stemH, 17), new THREE.MeshStandardMaterial({ color: 0x446644 }));
       fstem.position.y = stemH / 2; flower.add(fstem);
       for (let p = 0; p < 5; p++) {
-        const petal = new THREE.Mesh(new THREE.SphereGeometry(0.06, 20, 8), moonflowerMat);
+        const petal = new THREE.Mesh(new THREE.SphereGeometry(0.06, 30, 16), moonflowerMat);
         const pa = (p / 5) * Math.PI * 2;
         petal.position.set(Math.cos(pa) * 0.06, stemH + 0.02, Math.sin(pa) * 0.06);
         petal.scale.set(1, 0.4, 1); flower.add(petal);
       }
-      const center = new THREE.Mesh(new THREE.SphereGeometry(0.03, 10, 8), glowMat);
+      const center = new THREE.Mesh(new THREE.SphereGeometry(0.03, 17, 16), glowMat);
       center.position.y = stemH + 0.03; flower.add(center);
       const fx = (Math.random()-0.5)*w*0.8, fz = (Math.random()-0.5)*d*0.8;
       flower.position.set(fx, getTerrainHeight(fx, fz, 1.2), fz);
@@ -23500,11 +23500,11 @@ export class DiabloRenderer {
     for (let i = 0; i < 12; i++) {
       const beamH = 8 + Math.random() * 5;
       const beamR = 0.4 + Math.random() * 0.6;
-      const beam = new THREE.Mesh(new THREE.CylinderGeometry(beamR * 0.3, beamR, beamH, 16),
+      const beam = new THREE.Mesh(new THREE.CylinderGeometry(beamR * 0.3, beamR, beamH, 27),
         new THREE.MeshStandardMaterial({ color: 0xaabbdd, emissive: 0x667799, emissiveIntensity: 0.4, transparent: true, opacity: 0.08 }));
       const bx = (Math.random()-0.5)*w*0.7, bz = (Math.random()-0.5)*d*0.7;
       beam.position.set(bx, beamH / 2 + 1, bz); this._scene.add(beam);
-      const spot = new THREE.Mesh(new THREE.CircleGeometry(beamR, 20), new THREE.MeshStandardMaterial({ color: 0x99aacc, emissive: 0x556688, emissiveIntensity: 0.5, transparent: true, opacity: 0.25 }));
+      const spot = new THREE.Mesh(new THREE.CircleGeometry(beamR, 30), new THREE.MeshStandardMaterial({ color: 0x99aacc, emissive: 0x556688, emissiveIntensity: 0.5, transparent: true, opacity: 0.25 }));
       spot.rotation.x = -Math.PI / 2;
       spot.position.set(bx, getTerrainHeight(bx, bz, 1.2) + 0.02, bz); this._scene.add(spot);
     }
@@ -23516,9 +23516,9 @@ export class DiabloRenderer {
       for (let m = 0; m < mushCount; m++) {
         const mush = new THREE.Group();
         const mAngle = (m / mushCount) * Math.PI * 2;
-        const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.035, 0.12 + Math.random() * 0.08, 10), new THREE.MeshStandardMaterial({ color: 0x887788 }));
+        const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.035, 0.12 + Math.random() * 0.08, 17), new THREE.MeshStandardMaterial({ color: 0x887788 }));
         stem.position.y = 0.06; mush.add(stem);
-        const cap = new THREE.Mesh(new THREE.SphereGeometry(0.06 + Math.random() * 0.04, 24, 10), glowMat);
+        const cap = new THREE.Mesh(new THREE.SphereGeometry(0.06 + Math.random() * 0.04, 36, 17), glowMat);
         cap.scale.y = 0.5; cap.position.y = 0.14; mush.add(cap);
         const mmx = ringX + Math.cos(mAngle) * ringR, mmz = ringZ + Math.sin(mAngle) * ringR;
         mush.position.set(mmx, getTerrainHeight(mmx, mmz, 1.2), mmz); this._scene.add(mush);
@@ -23527,9 +23527,9 @@ export class DiabloRenderer {
     // Scattered mushrooms
     for (let i = 0; i < 25; i++) {
       const mush = new THREE.Group();
-      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.15, 10), new THREE.MeshStandardMaterial({ color: 0x887788 }));
+      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.15, 17), new THREE.MeshStandardMaterial({ color: 0x887788 }));
       stem.position.y = 0.075; mush.add(stem);
-      const cap = new THREE.Mesh(new THREE.SphereGeometry(0.08, 24, 10), glowMat);
+      const cap = new THREE.Mesh(new THREE.SphereGeometry(0.08, 36, 17), glowMat);
       cap.scale.y = 0.5; cap.position.y = 0.17; mush.add(cap);
       const mx = (Math.random()-0.5)*w*0.8, mz = (Math.random()-0.5)*d*0.8;
       mush.position.set(mx, getTerrainHeight(mx, mz, 1.2), mz); this._scene.add(mush);
@@ -23537,16 +23537,16 @@ export class DiabloRenderer {
     // Crystal clear ponds
     for (let i = 0; i < 5; i++) {
       const pondR = 1.5 + Math.random() * 2.5;
-      const pond = new THREE.Mesh(new THREE.CircleGeometry(pondR, 32), waterMat);
+      const pond = new THREE.Mesh(new THREE.CircleGeometry(pondR, 44), waterMat);
       pond.rotation.x = -Math.PI / 2;
       const px = (Math.random()-0.5)*w*0.5, pz = (Math.random()-0.5)*d*0.5;
       pond.position.set(px, getTerrainHeight(px, pz, 1.2) - 0.05, pz); this._scene.add(pond);
-      const shimmer = new THREE.Mesh(new THREE.CircleGeometry(pondR * 0.3, 16), new THREE.MeshStandardMaterial({ color: 0xddeeff, emissive: 0xaabbdd, emissiveIntensity: 0.6, transparent: true, opacity: 0.3 }));
+      const shimmer = new THREE.Mesh(new THREE.CircleGeometry(pondR * 0.3, 27), new THREE.MeshStandardMaterial({ color: 0xddeeff, emissive: 0xaabbdd, emissiveIntensity: 0.6, transparent: true, opacity: 0.3 }));
       shimmer.rotation.x = -Math.PI / 2;
       shimmer.position.set(px + (Math.random()-0.5)*pondR*0.4, getTerrainHeight(px, pz, 1.2) - 0.04, pz + (Math.random()-0.5)*pondR*0.4);
       this._scene.add(shimmer);
       for (let l = 0; l < 3; l++) {
-        const lily = new THREE.Mesh(new THREE.CircleGeometry(0.15 + Math.random() * 0.1, 16), new THREE.MeshStandardMaterial({ color: 0x336644, roughness: 0.6 }));
+        const lily = new THREE.Mesh(new THREE.CircleGeometry(0.15 + Math.random() * 0.1, 27), new THREE.MeshStandardMaterial({ color: 0x336644, roughness: 0.6 }));
         lily.rotation.x = -Math.PI / 2;
         lily.position.set(px + (Math.random()-0.5)*pondR, getTerrainHeight(px, pz, 1.2) - 0.03, pz + (Math.random()-0.5)*pondR);
         this._scene.add(lily);
@@ -23555,10 +23555,10 @@ export class DiabloRenderer {
     // Owl nests in trees
     for (let i = 0; i < 6; i++) {
       const nest = new THREE.Group();
-      const nestBase = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.3, 0.1, 16), new THREE.MeshStandardMaterial({ color: 0x5a4a3a, roughness: 0.9 }));
+      const nestBase = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.3, 0.1, 27), new THREE.MeshStandardMaterial({ color: 0x5a4a3a, roughness: 0.9 }));
       nest.add(nestBase);
       for (let e = 0; e < 2; e++) {
-        const egg = new THREE.Mesh(new THREE.SphereGeometry(0.035, 20, 8), new THREE.MeshStandardMaterial({ color: 0xeeeedd }));
+        const egg = new THREE.Mesh(new THREE.SphereGeometry(0.035, 30, 16), new THREE.MeshStandardMaterial({ color: 0xeeeedd }));
         egg.scale.y = 1.3; egg.position.set((Math.random()-0.5)*0.12, 0.06, (Math.random()-0.5)*0.12); nest.add(egg);
       }
       const nx = (Math.random()-0.5)*w*0.6, nz = (Math.random()-0.5)*d*0.6;
@@ -23566,14 +23566,14 @@ export class DiabloRenderer {
     }
     // Silver moss patches
     for (let i = 0; i < 40; i++) {
-      const moss = new THREE.Mesh(new THREE.CircleGeometry(0.2 + Math.random() * 0.4, 14), mossMat);
+      const moss = new THREE.Mesh(new THREE.CircleGeometry(0.2 + Math.random() * 0.4, 23), mossMat);
       moss.rotation.x = -Math.PI / 2;
       const mx = (Math.random()-0.5)*w*0.85, mz = (Math.random()-0.5)*d*0.85;
       moss.position.set(mx, getTerrainHeight(mx, mz, 1.2) + 0.01, mz); this._scene.add(moss);
     }
     // Moonlit stones
     for (let i = 0; i < 25; i++) {
-      const stone = new THREE.Mesh(new THREE.DodecahedronGeometry(0.3+Math.random()*0.5, 1), moonMat);
+      const stone = new THREE.Mesh(new THREE.DodecahedronGeometry(0.3+Math.random()*0.5, 2), moonMat);
       const sx = (Math.random()-0.5)*w*0.7, sz = (Math.random()-0.5)*d*0.7;
       stone.position.set(sx, getTerrainHeight(sx, sz, 1.2)+0.15, sz);
       stone.rotation.set(Math.random(), Math.random(), Math.random());
@@ -23583,10 +23583,10 @@ export class DiabloRenderer {
     for (let i = 0; i < 10; i++) {
       const log = new THREE.Group();
       const logLen = 1.5 + Math.random() * 3;
-      const logMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, logLen, 14), silverBarkMat);
+      const logMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, logLen, 23), silverBarkMat);
       logMesh.rotation.z = Math.PI / 2; logMesh.position.y = 0.12; log.add(logMesh);
       for (let m = 0; m < 3; m++) {
-        const mPatch = new THREE.Mesh(new THREE.SphereGeometry(0.08, 20, 8), mossMat);
+        const mPatch = new THREE.Mesh(new THREE.SphereGeometry(0.08, 30, 16), mossMat);
         mPatch.position.set((Math.random()-0.5)*logLen*0.6, 0.2, (Math.random()-0.5)*0.1);
         mPatch.scale.y = 0.4; log.add(mPatch);
       }
@@ -23597,7 +23597,7 @@ export class DiabloRenderer {
     // Fireflies with glow spheres
     for (let i = 0; i < 12; i++) {
       const flyGroup = new THREE.Group();
-      flyGroup.add(new THREE.Mesh(new THREE.SphereGeometry(0.02, 10, 8), new THREE.MeshStandardMaterial({ color: 0xccffcc, emissive: 0x88ff88, emissiveIntensity: 2.0 })));
+      flyGroup.add(new THREE.Mesh(new THREE.SphereGeometry(0.02, 17, 16), new THREE.MeshStandardMaterial({ color: 0xccffcc, emissive: 0x88ff88, emissiveIntensity: 2.0 })));
       const fly = new THREE.PointLight(0x88ccaa, 0.4, 6);
       flyGroup.add(fly);
       flyGroup.position.set((Math.random()-0.5)*w*0.7, 0.5+Math.random()*4, (Math.random()-0.5)*d*0.7);
@@ -23605,7 +23605,7 @@ export class DiabloRenderer {
     }
     // Flower patches
     for (let i = 0; i < 30; i++) {
-      const fl = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8), new THREE.MeshStandardMaterial({ color: [0xcc88ff, 0x88aaff, 0xffffff][i%3], emissive: 0x4444aa, emissiveIntensity: 0.3 }));
+      const fl = new THREE.Mesh(new THREE.SphereGeometry(0.06, 17, 16), new THREE.MeshStandardMaterial({ color: [0xcc88ff, 0x88aaff, 0xffffff][i%3], emissive: 0x4444aa, emissiveIntensity: 0.3 }));
       const fx = (Math.random()-0.5)*w*0.8, fz = (Math.random()-0.5)*d*0.8;
       fl.position.set(fx, getTerrainHeight(fx, fz, 1.2)+0.08, fz); this._scene.add(fl);
     }
@@ -23621,7 +23621,7 @@ export class DiabloRenderer {
     }
     // Ground mist
     for (let i = 0; i < 15; i++) {
-      const mist = new THREE.Mesh(new THREE.CircleGeometry(1.5 + Math.random() * 2.5, 16),
+      const mist = new THREE.Mesh(new THREE.CircleGeometry(1.5 + Math.random() * 2.5, 27),
         new THREE.MeshStandardMaterial({ color: 0x8899cc, emissive: 0x334466, emissiveIntensity: 0.2, transparent: true, opacity: 0.06 }));
       mist.rotation.x = -Math.PI / 2;
       const mx = (Math.random()-0.5)*w*0.7, mz = (Math.random()-0.5)*d*0.7;
@@ -23655,13 +23655,13 @@ export class DiabloRenderer {
       const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.6 });
       for (let b = 0; b < 3 + Math.floor(Math.random()*4); b++) {
         const bH = 0.5 + Math.random() * 1.2;
-        const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.08, bH, 12), mat);
+        const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.08, bH, 20), mat);
         branch.position.set((Math.random()-0.5)*0.5, bH*0.4+Math.random()*0.3, (Math.random()-0.5)*0.5);
         branch.rotation.set((Math.random()-0.5)*0.6, 0, (Math.random()-0.5)*0.6);
         branch.castShadow = true; coral.add(branch);
         // Sub-branches on larger corals
         if (Math.random() > 0.5) {
-          const sub = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.03, bH*0.5, 10), mat);
+          const sub = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.03, bH*0.5, 17), mat);
           sub.position.set((Math.random()-0.5)*0.15, bH*0.3, (Math.random()-0.5)*0.15);
           sub.rotation.set((Math.random()-0.5)*0.8, 0, (Math.random()-0.5)*0.8);
           branch.add(sub);
@@ -23672,7 +23672,7 @@ export class DiabloRenderer {
     }
     // Brain corals (round, textured)
     for (let i = 0; i < 12; i++) {
-      const brain = new THREE.Mesh(new THREE.SphereGeometry(0.3+Math.random()*0.5, 16, 14),
+      const brain = new THREE.Mesh(new THREE.SphereGeometry(0.3+Math.random()*0.5, 27, 23),
         new THREE.MeshStandardMaterial({ color: coralColors[i%coralColors.length], roughness: 0.8 }));
       brain.scale.y = 0.6;
       const bx = (Math.random()-0.5)*w*0.7, bz = (Math.random()-0.5)*d*0.7;
@@ -23681,13 +23681,13 @@ export class DiabloRenderer {
     // Sea anemones (clusters of tentacle-like cylinders)
     for (let i = 0; i < 20; i++) {
       const anemone = new THREE.Group();
-      const aBase = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 0.1, 16),
+      const aBase = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 0.1, 27),
         new THREE.MeshStandardMaterial({ color: 0xaa3366, roughness: 0.5 }));
       anemone.add(aBase);
       const tentCount = 8 + Math.floor(Math.random()*6);
       const aColor = [0xff66aa, 0xaa44ff, 0xff8844, 0x44ccaa][i%4];
       for (let t = 0; t < tentCount; t++) {
-        const tent = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.015, 0.2+Math.random()*0.15, 10),
+        const tent = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.015, 0.2+Math.random()*0.15, 17),
           new THREE.MeshStandardMaterial({ color: aColor, emissive: aColor, emissiveIntensity: 0.2 }));
         const tA = (t / tentCount) * Math.PI * 2;
         tent.position.set(Math.cos(tA)*0.1, 0.12, Math.sin(tA)*0.1);
@@ -23702,7 +23702,7 @@ export class DiabloRenderer {
       const kelp = new THREE.Group();
       const kh = 2+Math.random()*5;
       for (let s = 0; s < 7; s++) {
-        const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.035, kh/7, 10), kelpMat);
+        const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.035, kh/7, 17), kelpMat);
         seg.position.y = s * kh/7; seg.rotation.z = Math.sin(s*0.8)*0.15; kelp.add(seg);
         if (s > 1 && Math.random() > 0.4) {
           const blade = new THREE.Mesh(new THREE.PlaneGeometry(0.15, 0.3), new THREE.MeshStandardMaterial({ color: 0x338844, side: THREE.DoubleSide, transparent: true, opacity: 0.7 }));
@@ -23714,7 +23714,7 @@ export class DiabloRenderer {
     }
     // Sea fans (flat fan-shaped coral)
     for (let i = 0; i < 15; i++) {
-      const fan = new THREE.Mesh(new THREE.CircleGeometry(0.4+Math.random()*0.6, 16),
+      const fan = new THREE.Mesh(new THREE.CircleGeometry(0.4+Math.random()*0.6, 27),
         new THREE.MeshStandardMaterial({ color: [0xff4488, 0xcc66ff, 0xff8844][i%3], side: THREE.DoubleSide, transparent: true, opacity: 0.7 }));
       const fx = (Math.random()-0.5)*w*0.7, fz = (Math.random()-0.5)*d*0.7;
       fan.position.set(fx, getTerrainHeight(fx, fz, 0.8)+0.4+Math.random()*0.5, fz);
@@ -23727,7 +23727,7 @@ export class DiabloRenderer {
       hull.position.y = 0.4; hull.castShadow = true; ship.add(hull);
       const keel = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.15, 0.3), shipWoodMat);
       keel.position.y = -0.2; ship.add(keel);
-      const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 3, 12), shipWoodMat);
+      const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 3, 20), shipWoodMat);
       mast.position.set(0, 1.8, 0); mast.rotation.z = 0.3; ship.add(mast);
       // Broken planks
       for (let p = 0; p < 4; p++) {
@@ -23755,7 +23755,7 @@ export class DiabloRenderer {
     }
     // Sea shells
     for (let i = 0; i < 25; i++) {
-      const shell = new THREE.Mesh(new THREE.SphereGeometry(0.06+Math.random()*0.08, 14, 10), shellMat);
+      const shell = new THREE.Mesh(new THREE.SphereGeometry(0.06+Math.random()*0.08, 23, 17), shellMat);
       shell.scale.y = 0.4;
       const shx = (Math.random()-0.5)*w*0.8, shz = (Math.random()-0.5)*d*0.8;
       shell.position.set(shx, getTerrainHeight(shx, shz, 0.8)+0.03, shz); this._scene.add(shell);
@@ -23764,7 +23764,7 @@ export class DiabloRenderer {
     for (let i = 0; i < 8; i++) {
       const bcX = (Math.random()-0.5)*w*0.6, bcZ = (Math.random()-0.5)*d*0.6;
       for (let b = 0; b < 8; b++) {
-        const bubble = new THREE.Mesh(new THREE.SphereGeometry(0.02+Math.random()*0.04, 12, 10), bubbleMat);
+        const bubble = new THREE.Mesh(new THREE.SphereGeometry(0.02+Math.random()*0.04, 20, 17), bubbleMat);
         bubble.position.set(bcX+(Math.random()-0.5)*0.2, getTerrainHeight(bcX, bcZ, 0.8)+0.3+b*0.5+Math.random()*0.3, bcZ+(Math.random()-0.5)*0.2);
         this._scene.add(bubble);
       }
@@ -23773,11 +23773,11 @@ export class DiabloRenderer {
     for (let i = 0; i < 10; i++) {
       const jelly = new THREE.Group();
       const jellyColor = [0x44ffcc, 0xff44aa, 0x8844ff, 0x44aaff][i%4];
-      const bell = new THREE.Mesh(new THREE.SphereGeometry(0.2+Math.random()*0.15, 14, 12),
+      const bell = new THREE.Mesh(new THREE.SphereGeometry(0.2+Math.random()*0.15, 23, 20),
         new THREE.MeshStandardMaterial({ color: jellyColor, emissive: jellyColor, emissiveIntensity: 0.6, transparent: true, opacity: 0.4 }));
       bell.scale.y = 0.6; jelly.add(bell);
       for (let t = 0; t < 6; t++) {
-        const tentacle = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.01, 0.4+Math.random()*0.3, 8),
+        const tentacle = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.01, 0.4+Math.random()*0.3, 16),
           new THREE.MeshStandardMaterial({ color: jellyColor, emissive: jellyColor, emissiveIntensity: 0.3, transparent: true, opacity: 0.3 }));
         tentacle.position.set((Math.random()-0.5)*0.15, -0.25-Math.random()*0.15, (Math.random()-0.5)*0.15);
         jelly.add(tentacle);
@@ -23789,21 +23789,21 @@ export class DiabloRenderer {
     }
     // Sandy patches on ocean floor
     for (let i = 0; i < 20; i++) {
-      const sand = new THREE.Mesh(new THREE.CircleGeometry(0.5+Math.random()*1.5, 16), sandMat);
+      const sand = new THREE.Mesh(new THREE.CircleGeometry(0.5+Math.random()*1.5, 27), sandMat);
       sand.rotation.x = -Math.PI / 2;
       const sx = (Math.random()-0.5)*w*0.8, sz = (Math.random()-0.5)*d*0.8;
       sand.position.set(sx, getTerrainHeight(sx, sz, 0.8)+0.01, sz); this._scene.add(sand);
     }
     // Sea floor rocks
     for (let i = 0; i < 20; i++) {
-      const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.4+Math.random()*0.6, 1), new THREE.MeshStandardMaterial({ color: 0x334455, roughness: 0.9 }));
+      const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.4+Math.random()*0.6, 2), new THREE.MeshStandardMaterial({ color: 0x334455, roughness: 0.9 }));
       const rx = (Math.random()-0.5)*w*0.8, rz = (Math.random()-0.5)*d*0.8;
       rock.position.set(rx, getTerrainHeight(rx, rz, 0.8)+0.1, rz);
       rock.rotation.set(Math.random(), Math.random(), Math.random()); this._scene.add(rock);
     }
     // Underwater light rays
     for (let i = 0; i < 6; i++) {
-      const ray = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.8, 10, 14),
+      const ray = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.8, 10, 23),
         new THREE.MeshStandardMaterial({ color: 0x44aacc, emissive: 0x226688, emissiveIntensity: 0.3, transparent: true, opacity: 0.04 }));
       ray.position.set((Math.random()-0.5)*w*0.5, 5, (Math.random()-0.5)*d*0.5);
       ray.rotation.z = (Math.random()-0.5)*0.3; this._scene.add(ray);
@@ -23868,17 +23868,17 @@ export class DiabloRenderer {
       const top = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.06, 0.8), woodMat);
       top.position.y = 0.75; desk.add(top);
       for (const lx of [-0.5, 0.5]) { for (const lz of [-0.3, 0.3]) {
-        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.72, 10), woodMat);
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.72, 17), woodMat);
         leg.position.set(lx, 0.36, lz); desk.add(leg);
       }}
       // Candle with holder
-      const holder = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.03, 14), ironMat);
+      const holder = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.03, 23), ironMat);
       holder.position.set(0.35, 0.79, 0.2); desk.add(holder);
-      const candle = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, 0.15, 10), candleMat);
+      const candle = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, 0.15, 17), candleMat);
       candle.position.set(0.35, 0.87, 0.2); desk.add(candle);
       const flame = new THREE.PointLight(0xff8833, 0.5, 5);
       flame.position.set(0.35, 0.98, 0.2); desk.add(flame); this._torchLights.push(flame);
-      const flameVis = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.04, 10),
+      const flameVis = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.04, 17),
         new THREE.MeshStandardMaterial({ color: 0xffaa33, emissive: 0xff8800, emissiveIntensity: 2.0 }));
       flameVis.position.set(0.35, 0.96, 0.2); desk.add(flameVis);
       // Open book on desk
@@ -23887,7 +23887,7 @@ export class DiabloRenderer {
       const pages = new THREE.Mesh(new THREE.PlaneGeometry(0.25, 0.22), parchmentMat);
       pages.rotation.x = -Math.PI/2; pages.position.set(-0.1, 0.8, 0); desk.add(pages);
       // Quill pen
-      const quill = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.005, 0.2, 8), new THREE.MeshStandardMaterial({ color: 0x443322 }));
+      const quill = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.005, 0.2, 16), new THREE.MeshStandardMaterial({ color: 0x443322 }));
       quill.position.set(0.15, 0.8, -0.1); quill.rotation.z = 0.3; desk.add(quill);
       // Chair
       const chair = new THREE.Group();
@@ -23896,7 +23896,7 @@ export class DiabloRenderer {
       const backrest = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.5, 0.04), woodMat);
       backrest.position.set(0, 0.7, -0.18); chair.add(backrest);
       for (const clx of [-0.15, 0.15]) { for (const clz of [-0.15, 0.15]) {
-        const cleg = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.43, 10), woodMat);
+        const cleg = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.43, 17), woodMat);
         cleg.position.set(clx, 0.22, clz); chair.add(cleg);
       }}
       chair.position.set(0, 0, 0.5); desk.add(chair);
@@ -23911,7 +23911,7 @@ export class DiabloRenderer {
         new THREE.MeshStandardMaterial({ color: [0x882244, 0x224488, 0x448822][i%3], emissive: 0x222244, emissiveIntensity: 0.3 }));
       tome.add(tomeBody);
       // Glow aura around tome
-      const aura = new THREE.Mesh(new THREE.SphereGeometry(0.2, 14, 12), magicMat);
+      const aura = new THREE.Mesh(new THREE.SphereGeometry(0.2, 23, 20), magicMat);
       aura.scale.y = 0.3; tome.add(aura);
       const sparkle = new THREE.PointLight([0x4466ff, 0xff6644, 0x44ff66][i%3], 0.3, 4);
       sparkle.position.y = 0.1; tome.add(sparkle); this._torchLights.push(sparkle);
@@ -23923,7 +23923,7 @@ export class DiabloRenderer {
     for (let i = 0; i < 30; i++) {
       const item = Math.random() > 0.5;
       if (item) {
-        const scroll = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.25+Math.random()*0.15, 14), parchmentMat);
+        const scroll = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.25+Math.random()*0.15, 23), parchmentMat);
         scroll.rotation.z = Math.PI / 2;
         const scx = (Math.random()-0.5)*w*0.7, scz = (Math.random()-0.5)*d*0.7;
         scroll.position.set(scx, getTerrainHeight(scx, scz, 0.4)+0.03, scz);
@@ -23938,7 +23938,7 @@ export class DiabloRenderer {
     }
     // Ink spills on floor
     for (let i = 0; i < 10; i++) {
-      const spill = new THREE.Mesh(new THREE.CircleGeometry(0.1+Math.random()*0.15, 14), inkMat);
+      const spill = new THREE.Mesh(new THREE.CircleGeometry(0.1+Math.random()*0.15, 23), inkMat);
       spill.rotation.x = -Math.PI/2;
       const ix = (Math.random()-0.5)*w*0.6, iz = (Math.random()-0.5)*d*0.6;
       spill.position.set(ix, getTerrainHeight(ix, iz, 0.4)+0.01, iz); this._scene.add(spill);
@@ -23948,11 +23948,11 @@ export class DiabloRenderer {
       const ladder = new THREE.Group();
       const ladH = 2.5+Math.random()*2;
       for (const lside of [-0.15, 0.15]) {
-        const rail = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, ladH, 10), woodMat);
+        const rail = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, ladH, 17), woodMat);
         rail.position.x = lside; ladder.add(rail);
       }
       for (let rung = 0; rung < Math.floor(ladH/0.35); rung++) {
-        const r = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.3, 10), woodMat);
+        const r = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.3, 17), woodMat);
         r.rotation.z = Math.PI/2; r.position.y = -ladH/2+rung*0.35+0.2; ladder.add(r);
       }
       const lx = (Math.random()-0.5)*w*0.7, lz = (Math.random()-0.5)*d*0.7;
@@ -23963,14 +23963,14 @@ export class DiabloRenderer {
     // Globe on a stand
     for (let i = 0; i < 3; i++) {
       const globeGroup = new THREE.Group();
-      const gStand = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.08, 0.8, 14), woodMat);
+      const gStand = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.08, 0.8, 23), woodMat);
       gStand.position.y = 0.4; globeGroup.add(gStand);
-      const gBase = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.18, 0.05, 16), woodMat);
+      const gBase = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.18, 0.05, 27), woodMat);
       globeGroup.add(gBase);
-      const globe = new THREE.Mesh(new THREE.SphereGeometry(0.15, 36, 16),
+      const globe = new THREE.Mesh(new THREE.SphereGeometry(0.15, 46, 27),
         new THREE.MeshStandardMaterial({ color: 0x446688, roughness: 0.4, metalness: 0.2 }));
       globe.position.y = 0.95; globeGroup.add(globe);
-      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.008, 10, 32), ironMat);
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.008, 17, 44), ironMat);
       ring.position.y = 0.95; ring.rotation.x = 0.3; globeGroup.add(ring);
       const gx = (Math.random()-0.5)*w*0.4, gz = (Math.random()-0.5)*d*0.4;
       globeGroup.position.set(gx, getTerrainHeight(gx, gz, 0.4), gz); this._scene.add(globeGroup);
@@ -23979,7 +23979,7 @@ export class DiabloRenderer {
     for (let i = 0; i < 2; i++) {
       const astro = new THREE.Group();
       for (let r = 0; r < 3; r++) {
-        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.12+r*0.05, 0.005, 10, 32), ironMat);
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.12+r*0.05, 0.005, 17, 44), ironMat);
         ring.rotation.x = r*0.5; ring.rotation.y = r*0.7; astro.add(ring);
       }
       const ax = (Math.random()-0.5)*w*0.3, az = (Math.random()-0.5)*d*0.3;
@@ -23987,30 +23987,30 @@ export class DiabloRenderer {
     }
     // Magic circles on floor
     for (let i = 0; i < 4; i++) {
-      const circle = new THREE.Mesh(new THREE.TorusGeometry(1.2+Math.random()*0.8, 0.02, 10, 36), magicMat);
+      const circle = new THREE.Mesh(new THREE.TorusGeometry(1.2+Math.random()*0.8, 0.02, 17, 46), magicMat);
       circle.rotation.x = -Math.PI/2;
       const cx = (Math.random()-0.5)*w*0.4, cz = (Math.random()-0.5)*d*0.4;
       circle.position.set(cx, getTerrainHeight(cx, cz, 0.4)+0.02, cz); this._scene.add(circle);
       // Inner symbols
-      const inner = new THREE.Mesh(new THREE.TorusGeometry(0.5+Math.random()*0.3, 0.015, 10, 24), magicMat);
+      const inner = new THREE.Mesh(new THREE.TorusGeometry(0.5+Math.random()*0.3, 0.015, 17, 36), magicMat);
       inner.rotation.x = -Math.PI/2;
       inner.position.set(cx, getTerrainHeight(cx, cz, 0.4)+0.025, cz); this._scene.add(inner);
     }
     // Stone pillars with ornate capitals
     for (let i = 0; i < 14; i++) {
       const pillar = new THREE.Group();
-      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.35, 5, 16), stonePillarMat);
+      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.35, 5, 27), stonePillarMat);
       col.position.y = 2.5; col.castShadow = true; pillar.add(col);
-      const capital = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.3, 0.2, 16), stonePillarMat);
+      const capital = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.3, 0.2, 27), stonePillarMat);
       capital.position.y = 5.1; pillar.add(capital);
-      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.45, 0.2, 16), stonePillarMat);
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.45, 0.2, 27), stonePillarMat);
       base.position.y = 0.1; pillar.add(base);
       const px = (Math.random()-0.5)*w*0.75, pz = (Math.random()-0.5)*d*0.75;
       pillar.position.set(px, getTerrainHeight(px, pz, 0.4), pz); this._scene.add(pillar);
     }
     // Dust particles (tiny floating specks)
     for (let i = 0; i < 40; i++) {
-      const dust = new THREE.Mesh(new THREE.SphereGeometry(0.008+Math.random()*0.008, 8, 4),
+      const dust = new THREE.Mesh(new THREE.SphereGeometry(0.008+Math.random()*0.008, 16, 8),
         new THREE.MeshStandardMaterial({ color: 0xddccaa, emissive: 0x886644, emissiveIntensity: 0.3 }));
       dust.position.set((Math.random()-0.5)*w*0.6, 0.5+Math.random()*4, (Math.random()-0.5)*d*0.6);
       this._scene.add(dust);
@@ -24041,16 +24041,16 @@ export class DiabloRenderer {
     // Jade pillars with ornate capitals
     for (let i = 0; i < 18; i++) {
       const pillar = new THREE.Group();
-      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.3, 4, 16), jadeMat);
+      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.3, 4, 27), jadeMat);
       col.position.y = 2; col.castShadow = true; pillar.add(col);
       const cap = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.15, 0.8), jadeMat);
       cap.position.y = 4.1; pillar.add(cap);
-      const capOrn = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.25, 0.1, 16), goldMat);
+      const capOrn = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.25, 0.1, 27), goldMat);
       capOrn.position.y = 4.0; pillar.add(capOrn);
       const base = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.15, 0.7), stoneMat);
       base.position.y = 0.08; pillar.add(base);
       for (let v = 0; v < 3; v++) {
-        const vine = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 1.5, 10), vineMat);
+        const vine = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 1.5, 17), vineMat);
         vine.position.set(Math.sin(v*2.1)*0.28, 1+v*1.0, Math.cos(v*2.1)*0.28);
         vine.rotation.z = 0.3; pillar.add(vine);
       }
@@ -24062,12 +24062,12 @@ export class DiabloRenderer {
       const pagoda = new THREE.Group();
       for (let tier = 0; tier < 3; tier++) {
         const roofSize = 2.5 - tier * 0.6;
-        const roof = new THREE.Mesh(new THREE.ConeGeometry(roofSize, 0.4, 10), redWoodMat);
+        const roof = new THREE.Mesh(new THREE.ConeGeometry(roofSize, 0.4, 17), redWoodMat);
         roof.position.y = tier * 1.8 + 1.5; roof.rotation.y = Math.PI/4; pagoda.add(roof);
         const walls = new THREE.Mesh(new THREE.BoxGeometry(roofSize*0.7, 1.4, roofSize*0.7), stoneMat);
         walls.position.y = tier * 1.8 + 0.7; pagoda.add(walls);
       }
-      const finial = new THREE.Mesh(new THREE.SphereGeometry(0.1, 14, 12), goldMat);
+      const finial = new THREE.Mesh(new THREE.SphereGeometry(0.1, 23, 20), goldMat);
       finial.position.y = 6; pagoda.add(finial);
       const pgx = (Math.random()-0.5)*w*0.5, pgz = (Math.random()-0.5)*d*0.5;
       pagoda.position.set(pgx, getTerrainHeight(pgx, pgz, 1.0), pgz); this._scene.add(pagoda);
@@ -24075,15 +24075,15 @@ export class DiabloRenderer {
     // Jade statues with dragon carvings
     for (let i = 0; i < 8; i++) {
       const statue = new THREE.Group();
-      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 1.5, 14), jadeMat);
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 1.5, 23), jadeMat);
       body.position.y = 0.75; statue.add(body);
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 21, 12), jadeMat);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 31, 20), jadeMat);
       head.position.y = 1.6; statue.add(head);
       const base = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.2, 0.8), stoneMat);
       base.position.y = 0.1; statue.add(base);
       // Arms
       for (const ax of [-0.25, 0.25]) {
-        const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.6, 10), jadeMat);
+        const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.6, 17), jadeMat);
         arm.position.set(ax, 1.0, 0.15); arm.rotation.z = ax > 0 ? -0.5 : 0.5; statue.add(arm);
       }
       const stx = (Math.random()-0.5)*w*0.6, stz = (Math.random()-0.5)*d*0.6;
@@ -24093,11 +24093,11 @@ export class DiabloRenderer {
     for (let i = 0; i < 5; i++) {
       const dragon = new THREE.Group();
       for (let s = 0; s < 8; s++) {
-        const seg = new THREE.Mesh(new THREE.SphereGeometry(0.12-s*0.01, 12, 10), jadeMat);
+        const seg = new THREE.Mesh(new THREE.SphereGeometry(0.12-s*0.01, 20, 17), jadeMat);
         seg.position.set(Math.sin(s*0.8)*0.5, 0.8+s*0.15, Math.cos(s*0.8)*0.5);
         dragon.add(seg);
       }
-      const dHead = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.25, 12), jadeMat);
+      const dHead = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.25, 20), jadeMat);
       dHead.position.set(Math.sin(6.4)*0.5, 2.0, Math.cos(6.4)*0.5);
       dHead.rotation.z = 0.5; dragon.add(dHead);
       const dx = (Math.random()-0.5)*w*0.5, dz = (Math.random()-0.5)*d*0.5;
@@ -24106,15 +24106,15 @@ export class DiabloRenderer {
     // Incense burners with smoke
     for (let i = 0; i < 8; i++) {
       const burner = new THREE.Group();
-      const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.08, 0.15, 16), goldMat);
+      const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.08, 0.15, 27), goldMat);
       bowl.position.y = 0.6; burner.add(bowl);
-      const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.05, 0.55, 14), goldMat);
+      const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.05, 0.55, 23), goldMat);
       stand.position.y = 0.3; burner.add(stand);
-      const bBase = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.05, 16), goldMat);
+      const bBase = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.05, 27), goldMat);
       burner.add(bBase);
       // Smoke wisps
       for (let s = 0; s < 4; s++) {
-        const smoke = new THREE.Mesh(new THREE.SphereGeometry(0.08+s*0.04, 24, 10), smokeMat);
+        const smoke = new THREE.Mesh(new THREE.SphereGeometry(0.08+s*0.04, 36, 17), smokeMat);
         smoke.position.set((Math.random()-0.5)*0.1, 0.75+s*0.3, (Math.random()-0.5)*0.1); burner.add(smoke);
       }
       const incLight = new THREE.PointLight(0xff6633, 0.15, 3);
@@ -24134,13 +24134,13 @@ export class DiabloRenderer {
     // Gong
     for (let i = 0; i < 2; i++) {
       const gongGroup = new THREE.Group();
-      const gFrame1 = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2, 10), redWoodMat);
+      const gFrame1 = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2, 17), redWoodMat);
       gFrame1.position.set(-0.6, 2, 0); gongGroup.add(gFrame1);
-      const gFrame2 = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2, 10), redWoodMat);
+      const gFrame2 = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2, 17), redWoodMat);
       gFrame2.position.set(0.6, 2, 0); gongGroup.add(gFrame2);
-      const gBar = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.3, 10), redWoodMat);
+      const gBar = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.3, 17), redWoodMat);
       gBar.rotation.z = Math.PI/2; gBar.position.y = 1.8; gongGroup.add(gBar);
-      const gDisc = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.03, 32), goldMat);
+      const gDisc = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.03, 44), goldMat);
       gDisc.position.y = 1.2; gongGroup.add(gDisc);
       const gx = (Math.random()-0.5)*w*0.3, gz = (Math.random()-0.5)*d*0.3;
       gongGroup.position.set(gx, getTerrainHeight(gx, gz, 1.0), gz);
@@ -24149,16 +24149,16 @@ export class DiabloRenderer {
     // Koi pond
     for (let i = 0; i < 3; i++) {
       const pondR = 1.5+Math.random()*2;
-      const pond = new THREE.Mesh(new THREE.CircleGeometry(pondR, 21), waterMat);
+      const pond = new THREE.Mesh(new THREE.CircleGeometry(pondR, 31), waterMat);
       pond.rotation.x = -Math.PI/2;
       const kx = (Math.random()-0.5)*w*0.4, kz = (Math.random()-0.5)*d*0.4;
       pond.position.set(kx, getTerrainHeight(kx, kz, 1.0)-0.05, kz); this._scene.add(pond);
-      const border = new THREE.Mesh(new THREE.TorusGeometry(pondR, 0.08, 10, 36), stoneMat);
+      const border = new THREE.Mesh(new THREE.TorusGeometry(pondR, 0.08, 17, 46), stoneMat);
       border.rotation.x = -Math.PI/2;
       border.position.set(kx, getTerrainHeight(kx, kz, 1.0)+0.02, kz); this._scene.add(border);
       // Koi fish (simple colored ovals)
       for (let f = 0; f < 3; f++) {
-        const fish = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 10),
+        const fish = new THREE.Mesh(new THREE.SphereGeometry(0.06, 20, 17),
           new THREE.MeshStandardMaterial({ color: [0xff6633, 0xffffff, 0xff4444][f%3] }));
         fish.scale.set(1, 0.4, 2);
         fish.position.set(kx+(Math.random()-0.5)*pondR*0.6, getTerrainHeight(kx, kz, 1.0)-0.03, kz+(Math.random()-0.5)*pondR*0.6);
@@ -24169,24 +24169,24 @@ export class DiabloRenderer {
     for (let i = 0; i < 12; i++) {
       const tree = new THREE.Group();
       const h = 3+Math.random()*3;
-      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.14, h, 14), new THREE.MeshStandardMaterial({ color: 0x5a3a2a }));
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.14, h, 23), new THREE.MeshStandardMaterial({ color: 0x5a3a2a }));
       trunk.position.y = h/2; trunk.castShadow = true; tree.add(trunk);
       // Branches with blossoms
       for (let b = 0; b < 5; b++) {
         const bLen = 0.8+Math.random()*1.2;
-        const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.04, bLen, 10), new THREE.MeshStandardMaterial({ color: 0x5a3a2a }));
+        const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.04, bLen, 17), new THREE.MeshStandardMaterial({ color: 0x5a3a2a }));
         const bAngle = (b/5)*Math.PI*2;
         branch.position.set(Math.cos(bAngle)*0.3, h*0.6+b*0.15, Math.sin(bAngle)*0.3);
         branch.rotation.z = 0.5+Math.random()*0.3; branch.rotation.y = bAngle; tree.add(branch);
         for (let bl = 0; bl < 4; bl++) {
-          const blossom = new THREE.Mesh(new THREE.SphereGeometry(0.04+Math.random()*0.03, 10, 8), blossomMat);
+          const blossom = new THREE.Mesh(new THREE.SphereGeometry(0.04+Math.random()*0.03, 17, 16), blossomMat);
           blossom.position.set(Math.cos(bAngle)*(0.5+bl*0.25), h*0.6+b*0.15+0.1, Math.sin(bAngle)*(0.5+bl*0.25));
           tree.add(blossom);
         }
       }
       // Fallen petals
       for (let p = 0; p < 3; p++) {
-        const petal = new THREE.Mesh(new THREE.CircleGeometry(0.02, 10), blossomMat);
+        const petal = new THREE.Mesh(new THREE.CircleGeometry(0.02, 17), blossomMat);
         petal.rotation.x = -Math.PI/2;
         petal.position.set((Math.random()-0.5)*1.5, 0.01, (Math.random()-0.5)*1.5); tree.add(petal);
       }
@@ -24197,10 +24197,10 @@ export class DiabloRenderer {
     for (let i = 0; i < 20; i++) {
       const tree = new THREE.Group();
       const h = 4+Math.random()*3;
-      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.15, h, 14), new THREE.MeshStandardMaterial({ color: 0x6a4a2a }));
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.15, h, 23), new THREE.MeshStandardMaterial({ color: 0x6a4a2a }));
       trunk.position.y = h/2; tree.add(trunk);
       for (let l = 0; l < 5; l++) {
-        const leaf = new THREE.Mesh(new THREE.ConeGeometry(0.8+Math.random()*0.5, 0.3, 24), vineMat);
+        const leaf = new THREE.Mesh(new THREE.ConeGeometry(0.8+Math.random()*0.5, 0.3, 36), vineMat);
         leaf.position.set((Math.random()-0.5)*0.5, h-0.2, (Math.random()-0.5)*0.5);
         leaf.rotation.set(0.3+Math.random()*0.5, l*1.3, 0); tree.add(leaf);
       }
@@ -24212,11 +24212,11 @@ export class DiabloRenderer {
       const lantern = new THREE.Group();
       const lBase = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.08, 0.25), stoneMat);
       lantern.add(lBase);
-      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 1.0, 10), stoneMat);
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 1.0, 17), stoneMat);
       post.position.y = 0.55; lantern.add(post);
       const housing = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.2), stoneMat);
       housing.position.y = 1.1; lantern.add(housing);
-      const top = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.3, 10), stoneMat);
+      const top = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.3, 17), stoneMat);
       top.position.y = 1.35; lantern.add(top);
       const light = new THREE.PointLight(0xffaa44, 0.4, 6);
       light.position.y = 1.1; lantern.add(light); this._torchLights.push(light);
@@ -24225,7 +24225,7 @@ export class DiabloRenderer {
     }
     // Stepping stones (paths)
     for (let i = 0; i < 20; i++) {
-      const step = new THREE.Mesh(new THREE.CylinderGeometry(0.2+Math.random()*0.1, 0.25+Math.random()*0.1, 0.08, 14), stoneMat);
+      const step = new THREE.Mesh(new THREE.CylinderGeometry(0.2+Math.random()*0.1, 0.25+Math.random()*0.1, 0.08, 23), stoneMat);
       const sx = (Math.random()-0.5)*w*0.6, sz = (Math.random()-0.5)*d*0.6;
       step.position.set(sx, getTerrainHeight(sx, sz, 1.0)+0.02, sz); this._scene.add(step);
     }
@@ -24259,7 +24259,7 @@ export class DiabloRenderer {
       blade.position.y = 0.3; sword.add(blade);
       const guard = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.03, 0.03), metalMat);
       guard.position.y = 0.05; sword.add(guard);
-      const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.15, 10), leatherMat);
+      const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.15, 17), leatherMat);
       grip.position.y = -0.08; sword.add(grip);
       const wx = (Math.random()-0.5)*w*0.85, wz = (Math.random()-0.5)*d*0.85;
       sword.position.set(wx, getTerrainHeight(wx, wz, 1.0), wz);
@@ -24268,7 +24268,7 @@ export class DiabloRenderer {
     }
     // Embedded shields
     for (let i = 0; i < 15; i++) {
-      const shield = new THREE.Mesh(new THREE.CircleGeometry(0.2+Math.random()*0.15, 14),
+      const shield = new THREE.Mesh(new THREE.CircleGeometry(0.2+Math.random()*0.15, 23),
         new THREE.MeshStandardMaterial({ color: [0x884422, 0x444466, 0x446644][i%3], metalness: 0.3, roughness: 0.6, side: THREE.DoubleSide }));
       const sx = (Math.random()-0.5)*w*0.8, sz = (Math.random()-0.5)*d*0.8;
       shield.position.set(sx, getTerrainHeight(sx, sz, 1.0)+0.1+Math.random()*0.2, sz);
@@ -24283,7 +24283,7 @@ export class DiabloRenderer {
       const arm = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 3), woodMat);
       arm.position.set(0, 0.8, 0.5); arm.rotation.x = 0.4+Math.random()*0.3; catapult.add(arm);
       for (const side of [-0.5, 0.5]) {
-        const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.06, 14, 24), woodMat);
+        const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.06, 23, 36), woodMat);
         wheel.rotation.y = Math.PI/2; wheel.position.set(side, 0.4, -0.4); catapult.add(wheel);
       }
       // Broken crossbeam
@@ -24318,17 +24318,17 @@ export class DiabloRenderer {
     // Craters with scorched rims
     for (let i = 0; i < 12; i++) {
       const craterR = 1+Math.random()*2;
-      const crater = new THREE.Mesh(new THREE.SphereGeometry(craterR, 16, 14), ashMat);
+      const crater = new THREE.Mesh(new THREE.SphereGeometry(craterR, 27, 23), ashMat);
       crater.scale.y = 0.15;
       const crx = (Math.random()-0.5)*w*0.8, crz = (Math.random()-0.5)*d*0.8;
       crater.position.set(crx, getTerrainHeight(crx, crz, 1.0)-0.1, crz); this._scene.add(crater);
-      const rim = new THREE.Mesh(new THREE.TorusGeometry(craterR, 0.08, 10, 24), scorchMat);
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(craterR, 0.08, 17, 36), scorchMat);
       rim.rotation.x = -Math.PI/2;
       rim.position.set(crx, getTerrainHeight(crx, crz, 1.0)+0.01, crz); this._scene.add(rim);
     }
     // Scorched earth patches
     for (let i = 0; i < 20; i++) {
-      const scorch = new THREE.Mesh(new THREE.CircleGeometry(0.5+Math.random()*1.5, 14), scorchMat);
+      const scorch = new THREE.Mesh(new THREE.CircleGeometry(0.5+Math.random()*1.5, 23), scorchMat);
       scorch.rotation.x = -Math.PI/2;
       const sx = (Math.random()-0.5)*w*0.8, sz = (Math.random()-0.5)*d*0.8;
       scorch.position.set(sx, getTerrainHeight(sx, sz, 1.0)+0.01, sz); this._scene.add(scorch);
@@ -24337,13 +24337,13 @@ export class DiabloRenderer {
     for (let i = 0; i < 8; i++) {
       const barricade = new THREE.Group();
       for (let l = 0; l < 3; l++) {
-        const log = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 1.5+Math.random(), 12), woodMat);
+        const log = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 1.5+Math.random(), 20), woodMat);
         log.rotation.z = Math.PI/2; log.position.y = 0.15+l*0.2;
         log.position.x = (Math.random()-0.5)*0.3; barricade.add(log);
       }
       // Stakes
       for (let s = 0; s < 2; s++) {
-        const stake = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.06, 1.0, 10), woodMat);
+        const stake = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.06, 1.0, 17), woodMat);
         stake.position.set(-0.5+s*1.0, 0.5, 0); barricade.add(stake);
       }
       const bx = (Math.random()-0.5)*w*0.7, bz = (Math.random()-0.5)*d*0.7;
@@ -24354,13 +24354,13 @@ export class DiabloRenderer {
     for (let i = 0; i < 20; i++) {
       const bones = new THREE.Group();
       for (let b = 0; b < 5+Math.floor(Math.random()*4); b++) {
-        const bone = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.03, 0.3, 10), boneMat);
+        const bone = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.03, 0.3, 17), boneMat);
         bone.position.set((Math.random()-0.5)*0.4, 0.05, (Math.random()-0.5)*0.4);
         bone.rotation.set(Math.random(), Math.random(), Math.random()); bones.add(bone);
       }
       // Skull
       if (Math.random() > 0.5) {
-        const skull = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 10), boneMat);
+        const skull = new THREE.Mesh(new THREE.SphereGeometry(0.06, 20, 17), boneMat);
         skull.position.set((Math.random()-0.5)*0.2, 0.08, (Math.random()-0.5)*0.2); bones.add(skull);
       }
       const bx = (Math.random()-0.5)*w*0.8, bz = (Math.random()-0.5)*d*0.8;
@@ -24369,9 +24369,9 @@ export class DiabloRenderer {
     // Fallen warriors (simple geometry)
     for (let i = 0; i < 6; i++) {
       const body = new THREE.Group();
-      const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, 0.8, 12), metalMat);
+      const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, 0.8, 20), metalMat);
       torso.rotation.z = Math.PI/2; torso.position.y = 0.1; body.add(torso);
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.08, 24, 10), boneMat);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.08, 36, 17), boneMat);
       head.position.set(0.45, 0.1, 0); body.add(head);
       const fx = (Math.random()-0.5)*w*0.7, fz = (Math.random()-0.5)*d*0.7;
       body.position.set(fx, getTerrainHeight(fx, fz, 1.0), fz);
@@ -24381,7 +24381,7 @@ export class DiabloRenderer {
     for (let i = 0; i < 8; i++) {
       const smokeCol = new THREE.Group();
       for (let s = 0; s < 6; s++) {
-        const puff = new THREE.Mesh(new THREE.SphereGeometry(0.3+s*0.15, 12, 10), smokeMat);
+        const puff = new THREE.Mesh(new THREE.SphereGeometry(0.3+s*0.15, 20, 17), smokeMat);
         puff.position.y = 0.5+s*0.8; smokeCol.add(puff);
       }
       const sx = (Math.random()-0.5)*w*0.7, sz = (Math.random()-0.5)*d*0.7;
@@ -24393,11 +24393,11 @@ export class DiabloRenderer {
       const fx = (Math.random()-0.5)*w*0.6, fz = (Math.random()-0.5)*d*0.6;
       fire.position.set(fx, getTerrainHeight(fx, fz, 1.0)+0.5, fz);
       this._scene.add(fire); this._torchLights.push(fire);
-      const embers = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 10), emberMat);
+      const embers = new THREE.Mesh(new THREE.SphereGeometry(0.2, 20, 17), emberMat);
       embers.position.copy(fire.position); embers.position.y -= 0.3; this._scene.add(embers);
       // Charred logs around fire
       for (let l = 0; l < 3; l++) {
-        const cLog = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.5, 10), scorchMat);
+        const cLog = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.5, 17), scorchMat);
         cLog.rotation.z = Math.PI/2;
         cLog.position.set(fx+(Math.random()-0.5)*0.4, getTerrainHeight(fx, fz, 1.0)+0.05, fz+(Math.random()-0.5)*0.4);
         cLog.rotation.y = Math.random()*Math.PI; this._scene.add(cLog);
@@ -24406,7 +24406,7 @@ export class DiabloRenderer {
     // Tattered banners
     for (let i = 0; i < 12; i++) {
       const banner = new THREE.Group();
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 3, 10), woodMat);
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 3, 17), woodMat);
       pole.position.y = 1.5; banner.add(pole);
       const cloth = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.8),
         new THREE.MeshStandardMaterial({ color: [0x882222, 0x222288, 0x228822, 0x888822][i%4], side: THREE.DoubleSide, roughness: 0.8 }));
@@ -24453,30 +24453,30 @@ export class DiabloRenderer {
       const mush = new THREE.Group();
       const h = 2+Math.random()*5;
       const stemR = 0.15+Math.random()*0.15;
-      const stem = new THREE.Mesh(new THREE.CylinderGeometry(stemR*0.7, stemR, h, 14), stemMat);
+      const stem = new THREE.Mesh(new THREE.CylinderGeometry(stemR*0.7, stemR, h, 23), stemMat);
       stem.position.y = h/2; stem.castShadow = true; mush.add(stem);
       // Texture bumps on stem
       for (let b = 0; b < 3; b++) {
-        const bump = new THREE.Mesh(new THREE.SphereGeometry(stemR*0.4, 20, 8), stemMat);
+        const bump = new THREE.Mesh(new THREE.SphereGeometry(stemR*0.4, 30, 16), stemMat);
         const bA = Math.random()*Math.PI*2;
         bump.position.set(Math.cos(bA)*stemR*0.9, h*0.2+b*h*0.25, Math.sin(bA)*stemR*0.9);
         bump.scale.set(1, 0.6, 1); mush.add(bump);
       }
       const capR = 0.5+Math.random()*1.8;
       const capColor = mushCapColors[i % mushCapColors.length];
-      const cap = new THREE.Mesh(new THREE.SphereGeometry(capR, 16, 14),
+      const cap = new THREE.Mesh(new THREE.SphereGeometry(capR, 27, 23),
         new THREE.MeshStandardMaterial({ color: capColor, roughness: 0.4 }));
       cap.scale.y = 0.35; cap.position.y = h; mush.add(cap);
       // Spots on cap
       for (let s = 0; s < 4; s++) {
-        const spot = new THREE.Mesh(new THREE.CircleGeometry(capR*0.08, 12),
+        const spot = new THREE.Mesh(new THREE.CircleGeometry(capR*0.08, 20),
           new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5 }));
         const sA = Math.random()*Math.PI*2;
         spot.position.set(Math.cos(sA)*capR*0.5, h+0.12, Math.sin(sA)*capR*0.5);
         spot.rotation.x = -Math.PI/2; mush.add(spot);
       }
       // Gills underneath cap
-      const gills = new THREE.Mesh(new THREE.CylinderGeometry(capR*0.8, capR*0.3, 0.1, 24),
+      const gills = new THREE.Mesh(new THREE.CylinderGeometry(capR*0.8, capR*0.3, 0.1, 36),
         new THREE.MeshStandardMaterial({ color: 0xddccbb, roughness: 0.6 }));
       gills.position.y = h-0.08; mush.add(gills);
       const mx = (Math.random()-0.5)*w*0.85, mz = (Math.random()-0.5)*d*0.85;
@@ -24489,9 +24489,9 @@ export class DiabloRenderer {
       for (let c = 0; c < count; c++) {
         const tiny = new THREE.Group();
         const tH = 0.08+Math.random()*0.12;
-        const tStem = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.015, tH, 8), stemMat);
+        const tStem = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.015, tH, 16), stemMat);
         tStem.position.y = tH/2; tiny.add(tStem);
-        const tCap = new THREE.Mesh(new THREE.SphereGeometry(0.03+Math.random()*0.02, 20, 8), glowFungMat);
+        const tCap = new THREE.Mesh(new THREE.SphereGeometry(0.03+Math.random()*0.02, 30, 16), glowFungMat);
         tCap.scale.y = 0.5; tCap.position.y = tH; tiny.add(tCap);
         tiny.position.set((Math.random()-0.5)*0.15, 0, (Math.random()-0.5)*0.15);
         cluster.add(tiny);
@@ -24503,11 +24503,11 @@ export class DiabloRenderer {
     for (let i = 0; i < 4; i++) {
       const bridge = new THREE.Group();
       const bLen = 3+Math.random()*3;
-      const bStem1 = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 2, 14), stemMat);
+      const bStem1 = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 2, 23), stemMat);
       bStem1.position.set(-bLen/2, 2, 0); bridge.add(bStem1);
-      const bStem2 = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 2, 14), stemMat);
+      const bStem2 = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 2, 23), stemMat);
       bStem2.position.set(bLen/2, 2, 0); bridge.add(bStem2);
-      const bCap = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.25, bLen, 14), stemMat);
+      const bCap = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.25, bLen, 23), stemMat);
       bCap.rotation.z = Math.PI/2; bCap.position.y = 2.2; bridge.add(bCap);
       const bx = (Math.random()-0.5)*w*0.5, bz = (Math.random()-0.5)*d*0.5;
       bridge.position.set(bx, getTerrainHeight(bx, bz, 0.6), bz);
@@ -24517,7 +24517,7 @@ export class DiabloRenderer {
     for (let i = 0; i < 20; i++) {
       const cloud = new THREE.Group();
       for (let s = 0; s < 3+Math.floor(Math.random()*3); s++) {
-        const spore = new THREE.Mesh(new THREE.SphereGeometry(0.15+Math.random()*0.25, 12, 10), sporeMat);
+        const spore = new THREE.Mesh(new THREE.SphereGeometry(0.15+Math.random()*0.25, 20, 17), sporeMat);
         spore.position.set((Math.random()-0.5)*0.5, (Math.random()-0.5)*0.3, (Math.random()-0.5)*0.5);
         cloud.add(spore);
       }
@@ -24526,7 +24526,7 @@ export class DiabloRenderer {
     }
     // Fungal growths on walls (vertical shelf fungi)
     for (let i = 0; i < 25; i++) {
-      const shelf = new THREE.Mesh(new THREE.SphereGeometry(0.15+Math.random()*0.2, 12, 10),
+      const shelf = new THREE.Mesh(new THREE.SphereGeometry(0.15+Math.random()*0.2, 20, 17),
         new THREE.MeshStandardMaterial({ color: mushCapColors[i%mushCapColors.length], roughness: 0.5 }));
       shelf.scale.set(1, 0.3, 1);
       const sx = (Math.random()-0.5)*w*0.8, sz = (Math.random()-0.5)*d*0.8;
@@ -24536,20 +24536,20 @@ export class DiabloRenderer {
     // Acid pools
     for (let i = 0; i < 5; i++) {
       const acidR = 0.8+Math.random()*1.5;
-      const acid = new THREE.Mesh(new THREE.CircleGeometry(acidR, 20), acidMat);
+      const acid = new THREE.Mesh(new THREE.CircleGeometry(acidR, 30), acidMat);
       acid.rotation.x = -Math.PI/2;
       const ax = (Math.random()-0.5)*w*0.5, az = (Math.random()-0.5)*d*0.5;
       acid.position.set(ax, getTerrainHeight(ax, az, 0.6)+0.02, az); this._scene.add(acid);
       // Bubbling
       for (let b = 0; b < 3; b++) {
-        const bubble = new THREE.Mesh(new THREE.SphereGeometry(0.03+Math.random()*0.03, 10, 8), acidMat);
+        const bubble = new THREE.Mesh(new THREE.SphereGeometry(0.03+Math.random()*0.03, 17, 16), acidMat);
         bubble.position.set(ax+(Math.random()-0.5)*acidR, getTerrainHeight(ax, az, 0.6)+0.06, az+(Math.random()-0.5)*acidR);
         this._scene.add(bubble);
       }
     }
     // Bioluminescent pools
     for (let i = 0; i < 6; i++) {
-      const pool = new THREE.Mesh(new THREE.CircleGeometry(1+Math.random()*2, 24),
+      const pool = new THREE.Mesh(new THREE.CircleGeometry(1+Math.random()*2, 36),
         new THREE.MeshStandardMaterial({ color: 0x44ff88, emissive: 0x22aa44, emissiveIntensity: 0.8, transparent: true, opacity: 0.5 }));
       pool.rotation.x = -Math.PI/2;
       const px = (Math.random()-0.5)*w*0.6, pz = (Math.random()-0.5)*d*0.6;
@@ -24560,14 +24560,14 @@ export class DiabloRenderer {
     }
     // Mycelium network on ground
     for (let i = 0; i < 35; i++) {
-      const web = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.01, 1+Math.random()*2, 8), myceliumMat);
+      const web = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.01, 1+Math.random()*2, 16), myceliumMat);
       const wx = (Math.random()-0.5)*w*0.8, wz = (Math.random()-0.5)*d*0.8;
       web.position.set(wx, getTerrainHeight(wx, wz, 0.6)+0.02, wz);
       web.rotation.x = Math.PI/2; web.rotation.y = Math.random()*Math.PI; this._scene.add(web);
     }
     // Hanging mycelium strands (aerial)
     for (let i = 0; i < 20; i++) {
-      const strand = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.01, 1.5+Math.random()*3, 8), myceliumMat);
+      const strand = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.01, 1.5+Math.random()*3, 16), myceliumMat);
       strand.position.set((Math.random()-0.5)*w*0.7, 2+Math.random()*3, (Math.random()-0.5)*d*0.7);
       strand.rotation.set(Math.random()*0.3, Math.random(), Math.random()*0.3); this._scene.add(strand);
     }
@@ -24577,10 +24577,10 @@ export class DiabloRenderer {
       for (let m = 0; m < 6+Math.floor(Math.random()*4); m++) {
         const mush = new THREE.Group();
         const h = 0.3+Math.random()*1.0;
-        const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, h, 10), stemMat);
+        const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, h, 17), stemMat);
         stem.position.y = h/2; mush.add(stem);
         const capR = 0.1+Math.random()*0.2;
-        const cap = new THREE.Mesh(new THREE.SphereGeometry(capR, 24, 10),
+        const cap = new THREE.Mesh(new THREE.SphereGeometry(capR, 36, 17),
           new THREE.MeshStandardMaterial({ color: mushCapColors[Math.floor(Math.random()*mushCapColors.length)], roughness: 0.4 }));
         cap.scale.y = 0.4; cap.position.y = h; mush.add(cap);
         const mmx = colX+(Math.random()-0.5)*1.5, mmz = colZ+(Math.random()-0.5)*1.5;
@@ -24634,7 +24634,7 @@ export class DiabloRenderer {
       const crystalCount = 3+Math.floor(Math.random()*4);
       for (let c = 0; c < crystalCount; c++) {
         const cH = 0.5+Math.random()*2;
-        const crystal = new THREE.Mesh(new THREE.ConeGeometry(0.08+Math.random()*0.12, cH, 12), crystalMat);
+        const crystal = new THREE.Mesh(new THREE.ConeGeometry(0.08+Math.random()*0.12, cH, 20), crystalMat);
         crystal.position.set((Math.random()-0.5)*0.4, cH/2, (Math.random()-0.5)*0.4);
         crystal.rotation.z = (Math.random()-0.5)*0.3; cluster.add(crystal);
       }
@@ -24646,10 +24646,10 @@ export class DiabloRenderer {
       const sconce = new THREE.Group();
       const bracket = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.4, 0.1), darkIronMat);
       bracket.position.y = 1.5; sconce.add(bracket);
-      const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.08, 0.1, 14), darkIronMat);
+      const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.08, 0.1, 23), darkIronMat);
       bowl.position.y = 1.75; sconce.add(bowl);
       // Purple/shadow flame
-      const flame = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.25, 24), shadowFlameMat);
+      const flame = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.25, 36), shadowFlameMat);
       flame.position.y = 1.95; sconce.add(flame);
       const fLight = new THREE.PointLight(0x6622cc, 0.6, 7);
       fLight.position.y = 2.0; sconce.add(fLight); this._torchLights.push(fLight);
@@ -24663,12 +24663,12 @@ export class DiabloRenderer {
       for (const gx of [-1.2, 1.2]) {
         const post = new THREE.Mesh(new THREE.BoxGeometry(0.2, 4, 0.2), darkIronMat);
         post.position.set(gx, 2, 0); post.castShadow = true; gate.add(post);
-        const finial = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.3, 10), darkIronMat);
+        const finial = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.3, 17), darkIronMat);
         finial.position.set(gx, 4.15, 0); gate.add(finial);
       }
       // Bars
       for (let b = 0; b < 6; b++) {
-        const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 3.5, 10), darkIronMat);
+        const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 3.5, 17), darkIronMat);
         bar.position.set(-0.9+b*0.36, 1.75, 0); gate.add(bar);
       }
       // Top arch bar
@@ -24681,7 +24681,7 @@ export class DiabloRenderer {
     // Obsidian spikes
     for (let i = 0; i < 25; i++) {
       const spikeH = 0.5+Math.random()*2;
-      const spike = new THREE.Mesh(new THREE.ConeGeometry(0.06+Math.random()*0.1, spikeH, 10), obsidianMat);
+      const spike = new THREE.Mesh(new THREE.ConeGeometry(0.06+Math.random()*0.1, spikeH, 17), obsidianMat);
       const sx = (Math.random()-0.5)*w*0.85, sz = (Math.random()-0.5)*d*0.85;
       spike.position.set(sx, getTerrainHeight(sx, sz, 0.5)+spikeH/2, sz);
       spike.rotation.z = (Math.random()-0.5)*0.2; spike.castShadow = true; this._scene.add(spike);
@@ -24689,7 +24689,7 @@ export class DiabloRenderer {
     // Dark pools
     for (let i = 0; i < 5; i++) {
       const poolR = 1+Math.random()*2;
-      const pool = new THREE.Mesh(new THREE.CircleGeometry(poolR, 24), darkPoolMat);
+      const pool = new THREE.Mesh(new THREE.CircleGeometry(poolR, 36), darkPoolMat);
       pool.rotation.x = -Math.PI/2;
       const px = (Math.random()-0.5)*w*0.5, pz = (Math.random()-0.5)*d*0.5;
       pool.position.set(px, getTerrainHeight(px, pz, 0.5)+0.02, pz); this._scene.add(pool);
@@ -24699,13 +24699,13 @@ export class DiabloRenderer {
       const statue = new THREE.Group();
       const sBase = new THREE.Mesh(new THREE.BoxGeometry(1, 0.3, 1), obsidianMat);
       sBase.position.y = 0.15; statue.add(sBase);
-      const sBody = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 2, 14), obsidianMat);
+      const sBody = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 2, 23), obsidianMat);
       sBody.position.y = 1.3; sBody.castShadow = true; statue.add(sBody);
-      const sHead = new THREE.Mesh(new THREE.SphereGeometry(0.2, 21, 12), obsidianMat);
+      const sHead = new THREE.Mesh(new THREE.SphereGeometry(0.2, 31, 20), obsidianMat);
       sHead.position.y = 2.5; statue.add(sHead);
       // Glowing eyes
       for (const ex of [-0.08, 0.08]) {
-        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.02, 10, 8),
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.02, 17, 16),
           new THREE.MeshStandardMaterial({ color: 0xff2200, emissive: 0xff2200, emissiveIntensity: 2.0 }));
         eye.position.set(ex, 2.53, 0.17); statue.add(eye);
       }
@@ -24714,7 +24714,7 @@ export class DiabloRenderer {
     }
     // Volcanic glass shards scattered on ground
     for (let i = 0; i < 30; i++) {
-      const shard = new THREE.Mesh(new THREE.ConeGeometry(0.03+Math.random()*0.05, 0.1+Math.random()*0.15, 8),
+      const shard = new THREE.Mesh(new THREE.ConeGeometry(0.03+Math.random()*0.05, 0.1+Math.random()*0.15, 16),
         new THREE.MeshStandardMaterial({ color: 0x111118, roughness: 0.1, metalness: 0.6 }));
       const shx = (Math.random()-0.5)*w*0.8, shz = (Math.random()-0.5)*d*0.8;
       shard.position.set(shx, getTerrainHeight(shx, shz, 0.5)+0.03, shz);
@@ -24733,7 +24733,7 @@ export class DiabloRenderer {
     }
     // Dark pillars
     for (let i = 0; i < 12; i++) {
-      const pil = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 5+Math.random()*3, 14), obsidianMat);
+      const pil = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 5+Math.random()*3, 23), obsidianMat);
       const px = (Math.random()-0.5)*w*0.7, pz = (Math.random()-0.5)*d*0.7;
       pil.position.set(px, getTerrainHeight(px, pz, 0.5)+pil.geometry.parameters.height/2, pz);
       pil.castShadow = true; this._scene.add(pil);
@@ -24764,7 +24764,7 @@ export class DiabloRenderer {
     for (let i = 0; i < 18; i++) {
       const col = new THREE.Group();
       const colH = 2+Math.random()*4;
-      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.3, colH, 16), marbleMat);
+      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.3, colH, 27), marbleMat);
       shaft.castShadow = true; col.add(shaft);
       // Fluted grooves
       for (let g = 0; g < 6; g++) {
@@ -24772,9 +24772,9 @@ export class DiabloRenderer {
         const gA = (g/6)*Math.PI*2;
         groove.position.set(Math.cos(gA)*0.28, 0, Math.sin(gA)*0.28); col.add(groove);
       }
-      const capital = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.25, 0.2, 16), marbleMat);
+      const capital = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.25, 0.2, 27), marbleMat);
       capital.position.y = colH/2+0.1; col.add(capital);
-      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.4, 0.15, 16), marbleMat);
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.4, 0.15, 27), marbleMat);
       base.position.y = -colH/2-0.08; col.add(base);
       const isFloating = Math.random() > 0.4;
       if (isFloating) {
@@ -24797,7 +24797,7 @@ export class DiabloRenderer {
     for (let i = 0; i < 8; i++) {
       const beamH = 10+Math.random()*5;
       const beamR = 0.3+Math.random()*0.5;
-      const beam = new THREE.Mesh(new THREE.CylinderGeometry(beamR*0.2, beamR, beamH, 14), goldLightMat);
+      const beam = new THREE.Mesh(new THREE.CylinderGeometry(beamR*0.2, beamR, beamH, 23), goldLightMat);
       const bx = (Math.random()-0.5)*w*0.5, bz = (Math.random()-0.5)*d*0.5;
       beam.position.set(bx, beamH/2, bz); this._scene.add(beam);
       const gLight = new THREE.PointLight(0xffddaa, 0.4, 8);
@@ -24814,7 +24814,7 @@ export class DiabloRenderer {
       border.position.z = -0.01; mural.add(border);
       // Stars on mural
       for (let s = 0; s < 5; s++) {
-        const mStar = new THREE.Mesh(new THREE.SphereGeometry(0.04, 10, 8), starMat);
+        const mStar = new THREE.Mesh(new THREE.SphereGeometry(0.04, 17, 16), starMat);
         mStar.position.set((Math.random()-0.5)*2.5, (Math.random()-0.5)*1.5, 0.02); mural.add(mStar);
       }
       mural.position.set((Math.random()-0.5)*w*0.6, 3+Math.random()*3, (Math.random()-0.5)*d*0.6);
@@ -24823,21 +24823,21 @@ export class DiabloRenderer {
     // Star map patterns on floor
     for (let i = 0; i < 5; i++) {
       const mapR = 2+Math.random()*2;
-      const starMap = new THREE.Mesh(new THREE.CircleGeometry(mapR, 32),
+      const starMap = new THREE.Mesh(new THREE.CircleGeometry(mapR, 44),
         new THREE.MeshStandardMaterial({ color: 0x2a2a4a, roughness: 0.7 }));
       starMap.rotation.x = -Math.PI/2;
       const mx = (Math.random()-0.5)*w*0.4, mz = (Math.random()-0.5)*d*0.4;
       starMap.position.set(mx, getTerrainHeight(mx, mz, 0.8)+0.02, mz); this._scene.add(starMap);
       // Constellation dots
       for (let c = 0; c < 8; c++) {
-        const dot = new THREE.Mesh(new THREE.SphereGeometry(0.03, 10, 8), starMat);
+        const dot = new THREE.Mesh(new THREE.SphereGeometry(0.03, 17, 16), starMat);
         const cA = Math.random()*Math.PI*2, cR = Math.random()*mapR*0.8;
         dot.position.set(mx+Math.cos(cA)*cR, getTerrainHeight(mx, mz, 0.8)+0.04, mz+Math.sin(cA)*cR);
         this._scene.add(dot);
       }
       // Connecting lines
       for (let l = 0; l < 4; l++) {
-        const line = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 1+Math.random()*1.5, 8), arcaneMat);
+        const line = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 1+Math.random()*1.5, 16), arcaneMat);
         line.rotation.x = Math.PI/2;
         line.position.set(mx+(Math.random()-0.5)*mapR, getTerrainHeight(mx, mz, 0.8)+0.035, mz+(Math.random()-0.5)*mapR);
         line.rotation.y = Math.random()*Math.PI; this._scene.add(line);
@@ -24845,7 +24845,7 @@ export class DiabloRenderer {
     }
     // Broken halos
     for (let i = 0; i < 8; i++) {
-      const halo = new THREE.Mesh(new THREE.TorusGeometry(0.3+Math.random()*0.2, 0.02, 10, 24),
+      const halo = new THREE.Mesh(new THREE.TorusGeometry(0.3+Math.random()*0.2, 0.02, 17, 36),
         new THREE.MeshStandardMaterial({ color: 0xffddaa, emissive: 0xffaa44, emissiveIntensity: 0.6, metalness: 0.4 }));
       halo.position.set((Math.random()-0.5)*w*0.7, 1+Math.random()*5, (Math.random()-0.5)*d*0.7);
       halo.rotation.set(Math.random()*0.5, Math.random(), Math.random()*0.5); this._scene.add(halo);
@@ -24860,7 +24860,7 @@ export class DiabloRenderer {
     // Divine symbol markers
     for (let i = 0; i < 6; i++) {
       const symbol = new THREE.Group();
-      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.02, 10, 24), divineMat);
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.02, 17, 36), divineMat);
       symbol.add(ring);
       const cross1 = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.5, 0.03), divineMat);
       symbol.add(cross1);
@@ -24872,11 +24872,11 @@ export class DiabloRenderer {
     // Holy water fonts
     for (let i = 0; i < 4; i++) {
       const font = new THREE.Group();
-      const pedestal = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 0.8, 14), marbleMat);
+      const pedestal = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 0.8, 23), marbleMat);
       pedestal.position.y = 0.4; font.add(pedestal);
-      const basin = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.2, 0.15, 16), marbleMat);
+      const basin = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.2, 0.15, 27), marbleMat);
       basin.position.y = 0.85; font.add(basin);
-      const water = new THREE.Mesh(new THREE.CircleGeometry(0.25, 32), holyWaterMat);
+      const water = new THREE.Mesh(new THREE.CircleGeometry(0.25, 44), holyWaterMat);
       water.rotation.x = -Math.PI/2; water.position.y = 0.9; font.add(water);
       const fLight = new THREE.PointLight(0x88aaff, 0.3, 4);
       fLight.position.y = 1.0; font.add(fLight);
@@ -24886,11 +24886,11 @@ export class DiabloRenderer {
     // Angelic statues
     for (let i = 0; i < 5; i++) {
       const angel = new THREE.Group();
-      const aBase = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.5, 0.3, 16), marbleMat);
+      const aBase = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.5, 0.3, 27), marbleMat);
       aBase.position.y = 0.15; angel.add(aBase);
-      const aBody = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.25, 1.8, 14), divineMat);
+      const aBody = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.25, 1.8, 23), divineMat);
       aBody.position.y = 1.2; aBody.castShadow = true; angel.add(aBody);
-      const aHead = new THREE.Mesh(new THREE.SphereGeometry(0.12, 21, 12), divineMat);
+      const aHead = new THREE.Mesh(new THREE.SphereGeometry(0.12, 31, 20), divineMat);
       aHead.position.y = 2.2; angel.add(aHead);
       // Wings
       for (const wx of [-0.3, 0.3]) {
@@ -24903,13 +24903,13 @@ export class DiabloRenderer {
     }
     // Star wisps
     for (let i = 0; i < 40; i++) {
-      const wisp = new THREE.Mesh(new THREE.SphereGeometry(0.03+Math.random()*0.08, 12, 10), starMat);
+      const wisp = new THREE.Mesh(new THREE.SphereGeometry(0.03+Math.random()*0.08, 20, 17), starMat);
       wisp.position.set((Math.random()-0.5)*w*0.8, Math.random()*8, (Math.random()-0.5)*d*0.8);
       this._scene.add(wisp);
     }
     // Arcane circles on ground
     for (let i = 0; i < 6; i++) {
-      const circle = new THREE.Mesh(new THREE.TorusGeometry(1.5+Math.random(), 0.03, 10, 32), arcaneMat);
+      const circle = new THREE.Mesh(new THREE.TorusGeometry(1.5+Math.random(), 0.03, 17, 44), arcaneMat);
       circle.rotation.x = -Math.PI/2;
       const ax = (Math.random()-0.5)*w*0.5, az = (Math.random()-0.5)*d*0.5;
       circle.position.set(ax, getTerrainHeight(ax, az, 0.8)+0.05, az); this._scene.add(circle);
@@ -24956,12 +24956,12 @@ export class DiabloRenderer {
       }
       // Skull decorations on top
       for (let s = 0; s < 5; s++) {
-        const skull = new THREE.Mesh(new THREE.SphereGeometry(0.15, 12, 10), skullMat);
+        const skull = new THREE.Mesh(new THREE.SphereGeometry(0.15, 20, 17), skullMat);
         skull.position.set(-1+s*0.5, 5.7, -0.75); throne.add(skull);
       }
       // Horn-like spires
       for (const hx of [-0.8, 0.8]) {
-        const spire = new THREE.Mesh(new THREE.ConeGeometry(0.15, 2, 12), demonMat);
+        const spire = new THREE.Mesh(new THREE.ConeGeometry(0.15, 2, 20), demonMat);
         spire.position.set(hx, 6.5, -0.75); spire.rotation.z = hx > 0 ? -0.15 : 0.15; throne.add(spire);
       }
       // Steps
@@ -24978,19 +24978,19 @@ export class DiabloRenderer {
       const chain = new THREE.Group();
       const chainLen = 2+Math.random()*5;
       for (let l = 0; l < Math.floor(chainLen/0.2); l++) {
-        const link = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.015, 10, 14), chainMat);
+        const link = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.015, 17, 23), chainMat);
         link.position.y = -l*0.15;
         link.rotation.y = l%2===0 ? 0 : Math.PI/2; chain.add(link);
       }
       // Hook at bottom
-      const hook = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.15, 10), chainMat);
+      const hook = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.15, 17), chainMat);
       hook.position.y = -chainLen+0.1; hook.rotation.z = Math.PI; chain.add(hook);
       chain.position.set((Math.random()-0.5)*w*0.7, 6+Math.random()*3, (Math.random()-0.5)*d*0.7);
       this._scene.add(chain);
     }
     // Lava moat (ring around center)
     const moatR = Math.min(w, d) * 0.2;
-    const moat = new THREE.Mesh(new THREE.TorusGeometry(moatR, 1.5, 10, 32), fireMat);
+    const moat = new THREE.Mesh(new THREE.TorusGeometry(moatR, 1.5, 17, 44), fireMat);
     moat.rotation.x = -Math.PI/2;
     moat.position.y = getTerrainHeight(0, 0, 0.6)+0.03; this._scene.add(moat);
     const moatLight = new THREE.PointLight(0xff4400, 1.0, moatR*2);
@@ -24999,13 +24999,13 @@ export class DiabloRenderer {
     // Fire pillars
     for (let i = 0; i < 14; i++) {
       const pil = new THREE.Group();
-      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 5, 14), demonMat);
+      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 5, 23), demonMat);
       col.position.y = 2.5; col.castShadow = true; pil.add(col);
       const fire = new THREE.PointLight(0xff2200, 0.6, 14);
       fire.position.y = 5.2; pil.add(fire); this._torchLights.push(fire);
-      const flame = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.5, 12), fireMat);
+      const flame = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.5, 20), fireMat);
       flame.position.y = 5.3; pil.add(flame);
-      const flame2 = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.35, 10), fireMat);
+      const flame2 = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.35, 17), fireMat);
       flame2.position.set(0.05, 5.5, 0); pil.add(flame2);
       const px = (Math.random()-0.5)*w*0.75, pz = (Math.random()-0.5)*d*0.75;
       pil.position.set(px, getTerrainHeight(px, pz, 0.6), pz); this._scene.add(pil);
@@ -25015,17 +25015,17 @@ export class DiabloRenderer {
       const cage = new THREE.Group();
       // Vertical bars
       for (let b = 0; b < 8; b++) {
-        const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 1.5, 10), cageMat);
+        const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 1.5, 17), cageMat);
         const bA = (b/8)*Math.PI*2;
         bar.position.set(Math.cos(bA)*0.25, 0, Math.sin(bA)*0.25); cage.add(bar);
       }
       // Top and bottom rings
       for (const ry of [-0.75, 0.75]) {
-        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.02, 10, 16), cageMat);
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.02, 17, 27), cageMat);
         ring.position.y = ry; cage.add(ring);
       }
       // Ghostly glow inside
-      const soul = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 10),
+      const soul = new THREE.Mesh(new THREE.SphereGeometry(0.12, 20, 17),
         new THREE.MeshStandardMaterial({ color: 0x44ff88, emissive: 0x22cc44, emissiveIntensity: 1.0, transparent: true, opacity: 0.3 }));
       cage.add(soul);
       const cx = (Math.random()-0.5)*w*0.6, cz = (Math.random()-0.5)*d*0.6;
@@ -25042,15 +25042,15 @@ export class DiabloRenderer {
     // Hellfire braziers (larger, ornate)
     for (let i = 0; i < 8; i++) {
       const brazier = new THREE.Group();
-      const bStand = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.12, 1.2, 14), chainMat);
+      const bStand = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.12, 1.2, 23), chainMat);
       bStand.position.y = 0.6; brazier.add(bStand);
-      const bBowl = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.2, 0.25, 16), chainMat);
+      const bBowl = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.2, 0.25, 27), chainMat);
       bBowl.position.y = 1.25; brazier.add(bBowl);
-      const bBase = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 0.1, 16), chainMat);
+      const bBase = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 0.1, 27), chainMat);
       brazier.add(bBase);
-      const bFlame1 = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.4, 24), fireMat);
+      const bFlame1 = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.4, 36), fireMat);
       bFlame1.position.y = 1.55; brazier.add(bFlame1);
-      const bFlame2 = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.3, 10), fireMat);
+      const bFlame2 = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.3, 17), fireMat);
       bFlame2.position.set(0.05, 1.65, 0.03); brazier.add(bFlame2);
       const bLight = new THREE.PointLight(0xff4400, 0.7, 8);
       bLight.position.y = 1.6; brazier.add(bLight); this._torchLights.push(bLight);
@@ -25062,7 +25062,7 @@ export class DiabloRenderer {
       const pile = new THREE.Group();
       const count = 4+Math.floor(Math.random()*6);
       for (let s = 0; s < count; s++) {
-        const skull = new THREE.Mesh(new THREE.SphereGeometry(0.06+Math.random()*0.04, 12, 10), skullMat);
+        const skull = new THREE.Mesh(new THREE.SphereGeometry(0.06+Math.random()*0.04, 20, 17), skullMat);
         skull.position.set((Math.random()-0.5)*0.3, Math.random()*0.15, (Math.random()-0.5)*0.3); pile.add(skull);
       }
       const px = (Math.random()-0.5)*w*0.75, pz = (Math.random()-0.5)*d*0.75;
@@ -25072,7 +25072,7 @@ export class DiabloRenderer {
     for (let i = 0; i < 15; i++) {
       const pile = new THREE.Group();
       for (let b = 0; b < 6; b++) {
-        const bone = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.03, 0.3+Math.random()*0.2, 10), boneMat);
+        const bone = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.03, 0.3+Math.random()*0.2, 17), boneMat);
         bone.position.set((Math.random()-0.5)*0.5, 0.05, (Math.random()-0.5)*0.5);
         bone.rotation.set(Math.random(), Math.random(), Math.random()); pile.add(bone);
       }
@@ -25084,17 +25084,17 @@ export class DiabloRenderer {
       const statue = new THREE.Group();
       const sBase = new THREE.Mesh(new THREE.BoxGeometry(1, 0.3, 1), demonMat);
       sBase.position.y = 0.15; statue.add(sBase);
-      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 2.5, 14), demonMat);
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 2.5, 23), demonMat);
       body.position.y = 1.5; body.castShadow = true; statue.add(body);
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.25, 21, 12), demonMat);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.25, 31, 20), demonMat);
       head.position.y = 2.95; statue.add(head);
       for (const hx of [-0.2, 0.2]) {
-        const horn = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.5, 10), demonMat);
+        const horn = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.5, 17), demonMat);
         horn.position.set(hx, 3.3, 0); horn.rotation.z = hx > 0 ? -0.3 : 0.3; statue.add(horn);
       }
       // Glowing eyes
       for (const ex of [-0.08, 0.08]) {
-        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 10, 8),
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 17, 16),
           new THREE.MeshStandardMaterial({ color: 0xff2200, emissive: 0xff0000, emissiveIntensity: 3.0 }));
         eye.position.set(ex, 3.0, 0.2); statue.add(eye);
       }
@@ -25109,7 +25109,7 @@ export class DiabloRenderer {
     }
     // Lava pools (additional)
     for (let i = 0; i < 6; i++) {
-      const pool = new THREE.Mesh(new THREE.CircleGeometry(0.8+Math.random()*1.5, 20), fireMat);
+      const pool = new THREE.Mesh(new THREE.CircleGeometry(0.8+Math.random()*1.5, 30), fireMat);
       pool.rotation.x = -Math.PI/2;
       const px = (Math.random()-0.5)*w*0.6, pz = (Math.random()-0.5)*d*0.6;
       pool.position.set(px, getTerrainHeight(px, pz, 0.6)+0.02, pz); this._scene.add(pool);
@@ -25142,18 +25142,18 @@ export class DiabloRenderer {
     for (let i = 0; i < 20; i++) {
       const asteroid = new THREE.Group();
       const mainR = 0.5+Math.random()*2;
-      const main = new THREE.Mesh(new THREE.DodecahedronGeometry(mainR, 2), asteroidMat);
+      const main = new THREE.Mesh(new THREE.DodecahedronGeometry(mainR, 3), asteroidMat);
       main.scale.set(1, 0.6+Math.random()*0.4, 1); asteroid.add(main);
       // Surface details
       for (let d = 0; d < 3; d++) {
-        const bump = new THREE.Mesh(new THREE.DodecahedronGeometry(mainR*0.3, 1), asteroidMat);
+        const bump = new THREE.Mesh(new THREE.DodecahedronGeometry(mainR*0.3, 2), asteroidMat);
         const bA = Math.random()*Math.PI*2, bE = Math.random()*Math.PI;
         bump.position.set(Math.cos(bA)*Math.sin(bE)*mainR*0.7, Math.cos(bE)*mainR*0.5, Math.sin(bA)*Math.sin(bE)*mainR*0.7);
         asteroid.add(bump);
       }
       // Some have glowing veins
       if (Math.random() > 0.5) {
-        const vein = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, mainR*1.2, 8),
+        const vein = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, mainR*1.2, 16),
           new THREE.MeshStandardMaterial({ color: 0x8844ff, emissive: 0x6622dd, emissiveIntensity: 1.0 }));
         vein.rotation.set(Math.random(), Math.random(), Math.random()); asteroid.add(vein);
       }
@@ -25170,14 +25170,14 @@ export class DiabloRenderer {
     for (let i = 0; i < 8; i++) {
       const clusterX = (Math.random()-0.5)*w*0.6, clusterY = 2+Math.random()*6, clusterZ = (Math.random()-0.5)*d*0.6;
       for (let s = 0; s < 12; s++) {
-        const star = new THREE.Mesh(new THREE.SphereGeometry(0.015+Math.random()*0.03, 10, 8), starMat);
+        const star = new THREE.Mesh(new THREE.SphereGeometry(0.015+Math.random()*0.03, 17, 16), starMat);
         star.position.set(clusterX+(Math.random()-0.5)*2, clusterY+(Math.random()-0.5)*2, clusterZ+(Math.random()-0.5)*2);
         this._scene.add(star);
       }
     }
     // Scattered individual stars
     for (let i = 0; i < 50; i++) {
-      const star = new THREE.Mesh(new THREE.SphereGeometry(0.02+Math.random()*0.04, 10, 8), starMat);
+      const star = new THREE.Mesh(new THREE.SphereGeometry(0.02+Math.random()*0.04, 17, 16), starMat);
       star.position.set((Math.random()-0.5)*w, Math.random()*10, (Math.random()-0.5)*d); this._scene.add(star);
     }
     // Nebula effects (large colored transparent planes at angles)
@@ -25194,7 +25194,7 @@ export class DiabloRenderer {
       const trail = new THREE.Group();
       const trailLen = 5+Math.random()*10;
       for (let p = 0; p < 15; p++) {
-        const particle = new THREE.Mesh(new THREE.SphereGeometry(0.02+Math.random()*0.03, 8, 4), cosmicDustMat);
+        const particle = new THREE.Mesh(new THREE.SphereGeometry(0.02+Math.random()*0.03, 16, 8), cosmicDustMat);
         particle.position.set(p*trailLen/15+(Math.random()-0.5)*0.3, (Math.random()-0.5)*0.3, (Math.random()-0.5)*0.3);
         trail.add(particle);
       }
@@ -25205,12 +25205,12 @@ export class DiabloRenderer {
     for (let i = 0; i < 4; i++) {
       const gate = new THREE.Group();
       const outerR = 1.5+Math.random()*1;
-      const outer = new THREE.Mesh(new THREE.TorusGeometry(outerR, 0.08, 14, 36), riftMat);
+      const outer = new THREE.Mesh(new THREE.TorusGeometry(outerR, 0.08, 23, 46), riftMat);
       gate.add(outer);
-      const inner = new THREE.Mesh(new THREE.TorusGeometry(outerR*0.7, 0.05, 14, 32), riftMat);
+      const inner = new THREE.Mesh(new THREE.TorusGeometry(outerR*0.7, 0.05, 23, 44), riftMat);
       inner.rotation.z = 0.3; gate.add(inner);
       // Portal fill
-      const fill = new THREE.Mesh(new THREE.CircleGeometry(outerR*0.65, 24),
+      const fill = new THREE.Mesh(new THREE.CircleGeometry(outerR*0.65, 36),
         new THREE.MeshStandardMaterial({ color: 0x4422aa, emissive: 0x3311aa, emissiveIntensity: 0.8, transparent: true, opacity: 0.15, side: THREE.DoubleSide }));
       gate.add(fill);
       const gLight = new THREE.PointLight(0xcc44ff, 0.6, 10);
@@ -25222,11 +25222,11 @@ export class DiabloRenderer {
     for (let i = 0; i < 10; i++) {
       const crystal = new THREE.Group();
       const cH = 1+Math.random()*3;
-      const main = new THREE.Mesh(new THREE.ConeGeometry(0.15+Math.random()*0.15, cH, 12), crystalVoidMat);
+      const main = new THREE.Mesh(new THREE.ConeGeometry(0.15+Math.random()*0.15, cH, 20), crystalVoidMat);
       crystal.add(main);
       // Smaller crystals branching off
       for (let b = 0; b < 2; b++) {
-        const branch = new THREE.Mesh(new THREE.ConeGeometry(0.06+Math.random()*0.06, cH*0.5, 10), crystalVoidMat);
+        const branch = new THREE.Mesh(new THREE.ConeGeometry(0.06+Math.random()*0.06, cH*0.5, 17), crystalVoidMat);
         branch.position.set((Math.random()-0.5)*0.3, (Math.random()-0.5)*cH*0.3, (Math.random()-0.5)*0.3);
         branch.rotation.set(Math.random()*0.5, Math.random(), Math.random()*0.5); crystal.add(branch);
       }
@@ -25236,17 +25236,17 @@ export class DiabloRenderer {
     // Void creatures (simple tentacled forms)
     for (let i = 0; i < 5; i++) {
       const creature = new THREE.Group();
-      const cBody = new THREE.Mesh(new THREE.SphereGeometry(0.3+Math.random()*0.2, 14, 12),
+      const cBody = new THREE.Mesh(new THREE.SphereGeometry(0.3+Math.random()*0.2, 23, 20),
         new THREE.MeshStandardMaterial({ color: 0x220044, emissive: 0x330055, emissiveIntensity: 0.3, transparent: true, opacity: 0.5 }));
       creature.add(cBody);
       // Eye
-      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.08, 12, 10),
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.08, 20, 17),
         new THREE.MeshStandardMaterial({ color: 0xcc44ff, emissive: 0xaa22ee, emissiveIntensity: 2.0 }));
       eye.position.z = 0.25; creature.add(eye);
       // Tentacles
       for (let t = 0; t < 5; t++) {
         const tentLen = 0.5+Math.random()*0.5;
-        const tent = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.04, tentLen, 10),
+        const tent = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.04, tentLen, 17),
           new THREE.MeshStandardMaterial({ color: 0x330066, emissive: 0x220044, emissiveIntensity: 0.2 }));
         const tA = (t/5)*Math.PI*2;
         tent.position.set(Math.cos(tA)*0.2, -0.3, Math.sin(tA)*0.2);
@@ -25257,13 +25257,13 @@ export class DiabloRenderer {
     }
     // Energy streams
     for (let i = 0; i < 10; i++) {
-      const stream = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 5+Math.random()*8, 10), cosmicDustMat);
+      const stream = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 5+Math.random()*8, 17), cosmicDustMat);
       stream.position.set((Math.random()-0.5)*w*0.6, 8, (Math.random()-0.5)*d*0.6);
       stream.rotation.set(Math.random()*0.5, 0, Math.random()*0.5); this._scene.add(stream);
     }
     // Void rifts (additional)
     for (let i = 0; i < 4; i++) {
-      const rift = new THREE.Mesh(new THREE.TorusGeometry(0.8+Math.random()*1, 0.04, 14, 21), riftMat);
+      const rift = new THREE.Mesh(new THREE.TorusGeometry(0.8+Math.random()*1, 0.04, 23, 31), riftMat);
       rift.position.set((Math.random()-0.5)*w*0.6, 1+Math.random()*6, (Math.random()-0.5)*d*0.6);
       rift.rotation.set(Math.random(), Math.random(), Math.random()); this._scene.add(rift);
       const rLight = new THREE.PointLight(0xcc44ff, 0.4, 6);
@@ -25302,19 +25302,19 @@ export class DiabloRenderer {
       const pillarH = 3 + Math.random() * 5;
       const broken = Math.random() > 0.4;
       const actualH = broken ? pillarH * (0.3 + Math.random() * 0.5) : pillarH;
-      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.45, actualH, 16), stoneMat);
+      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.45, actualH, 27), stoneMat);
       const px = Math.sin(angle) * radius, pz = Math.cos(angle) * radius;
       pillar.position.set(px, getTerrainHeight(px, pz, 1.0) + actualH / 2, pz);
       pillar.castShadow = true; this._scene.add(pillar);
-      const pBase = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.55, 0.3, 16), darkStoneMat);
+      const pBase = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.55, 0.3, 27), darkStoneMat);
       pBase.position.set(px, getTerrainHeight(px, pz, 1.0) + 0.15, pz); this._scene.add(pBase);
       if (!broken) {
-        const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.3, 0.3, 16), darkStoneMat);
+        const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.3, 0.3, 27), darkStoneMat);
         cap.position.set(px, getTerrainHeight(px, pz, 1.0) + actualH - 0.15, pz); this._scene.add(cap);
       }
       if (broken) {
         for (let r = 0; r < 3 + Math.floor(Math.random() * 4); r++) {
-          const rubble = new THREE.Mesh(new THREE.DodecahedronGeometry(0.15 + Math.random() * 0.35, 1), stoneMat);
+          const rubble = new THREE.Mesh(new THREE.DodecahedronGeometry(0.15 + Math.random() * 0.35, 2), stoneMat);
           rubble.position.set(px + (Math.random() - 0.5) * 2, getTerrainHeight(px, pz, 1.0) + 0.1, pz + (Math.random() - 0.5) * 2);
           rubble.rotation.set(Math.random(), Math.random(), Math.random()); this._scene.add(rubble);
         }
@@ -25330,11 +25330,11 @@ export class DiabloRenderer {
     }
 
     // Arena floor with marking rings
-    const arenaFloor = new THREE.Mesh(new THREE.CircleGeometry(w * 0.25, 48), sandMat);
+    const arenaFloor = new THREE.Mesh(new THREE.CircleGeometry(w * 0.25, 62), sandMat);
     arenaFloor.rotation.x = -Math.PI / 2; arenaFloor.position.y = 0.02; this._scene.add(arenaFloor);
-    const innerRing = new THREE.Mesh(new THREE.TorusGeometry(w * 0.2, 0.08, 10, 48), darkStoneMat);
+    const innerRing = new THREE.Mesh(new THREE.TorusGeometry(w * 0.2, 0.08, 17, 62), darkStoneMat);
     innerRing.rotation.x = -Math.PI / 2; innerRing.position.y = 0.04; this._scene.add(innerRing);
-    const outerRing = new THREE.Mesh(new THREE.TorusGeometry(w * 0.25, 0.15, 10, 48), stoneMat);
+    const outerRing = new THREE.Mesh(new THREE.TorusGeometry(w * 0.25, 0.15, 17, 62), stoneMat);
     outerRing.rotation.x = -Math.PI / 2; outerRing.position.y = 0.06; this._scene.add(outerRing);
 
     // Spectator stands - broken tier blocks with stone seats
@@ -25359,11 +25359,11 @@ export class DiabloRenderer {
     // Gladiator shields with boss and rim
     for (let i = 0; i < 12; i++) {
       const shield = new THREE.Group();
-      const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.04, 16), bronzeMat);
+      const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.04, 27), bronzeMat);
       disc.rotation.x = Math.PI / 2; shield.add(disc);
-      const boss = new THREE.Mesh(new THREE.SphereGeometry(0.08, 21, 10), ironMat);
+      const boss = new THREE.Mesh(new THREE.SphereGeometry(0.08, 31, 17), ironMat);
       boss.position.z = 0.03; shield.add(boss);
-      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.025, 10, 24), ironMat); shield.add(rim);
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.025, 17, 36), ironMat); shield.add(rim);
       const sx = (Math.random() - 0.5) * w * 0.4, sz = (Math.random() - 0.5) * d * 0.4;
       shield.position.set(sx, getTerrainHeight(sx, sz, 1.0) + 0.05, sz);
       shield.rotation.set((Math.random() - 0.5) * 1.5, Math.random() * Math.PI, (Math.random() - 0.5) * 0.5);
@@ -25377,7 +25377,7 @@ export class DiabloRenderer {
       blade.position.y = 0.35; sword.add(blade);
       const guard = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.03, 0.03), bronzeMat);
       guard.position.y = 0.05; sword.add(guard);
-      const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.15, 10), leatherMat);
+      const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.15, 17), leatherMat);
       grip.position.y = -0.05; sword.add(grip);
       const wx = (Math.random() - 0.5) * w * 0.4, wz = (Math.random() - 0.5) * d * 0.4;
       sword.position.set(wx, getTerrainHeight(wx, wz, 1.0) + 0.1, wz);
@@ -25388,7 +25388,7 @@ export class DiabloRenderer {
     // Gladiator helmets with crests
     for (let i = 0; i < 8; i++) {
       const helmet = new THREE.Group();
-      const dome = new THREE.Mesh(new THREE.SphereGeometry(0.15, 16, 14, 0, Math.PI * 2, 0, Math.PI * 0.6), bronzeMat);
+      const dome = new THREE.Mesh(new THREE.SphereGeometry(0.15, 27, 23, 0, Math.PI * 2, 0, Math.PI * 0.6), bronzeMat);
       helmet.add(dome);
       const visor = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.08, 0.18), ironMat);
       visor.position.set(0, -0.05, 0.08); helmet.add(visor);
@@ -25403,13 +25403,13 @@ export class DiabloRenderer {
     // Fallen pillars on ground with drum fragments
     for (let i = 0; i < 6; i++) {
       const fallenH = 3 + Math.random() * 3;
-      const fallen = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.4, fallenH, 16), stoneMat);
+      const fallen = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.4, fallenH, 27), stoneMat);
       const fx = (Math.random() - 0.5) * w * 0.35, fz = (Math.random() - 0.5) * d * 0.35;
       fallen.position.set(fx, getTerrainHeight(fx, fz, 1.0) + 0.35, fz);
       fallen.rotation.z = Math.PI / 2 + (Math.random() - 0.5) * 0.3;
       fallen.rotation.y = Math.random() * Math.PI; fallen.castShadow = true; this._scene.add(fallen);
       for (let f = 0; f < 2; f++) {
-        const drum = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.5, 16), stoneMat);
+        const drum = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.5, 27), stoneMat);
         drum.position.set(fx + (Math.random() - 0.5) * 2, getTerrainHeight(fx, fz, 1.0) + 0.25, fz + (Math.random() - 0.5) * 2);
         this._scene.add(drum);
       }
@@ -25427,7 +25427,7 @@ export class DiabloRenderer {
       lintel.position.set(0, 4, 0); gate.add(lintel);
       for (let b = 0; b < 6; b++) {
         const barH = 3 + (Math.random() > 0.5 ? 0 : -Math.random() * 1.5);
-        const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, barH, 10), ironMat);
+        const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, barH, 17), ironMat);
         bar.position.set(-0.9 + b * 0.36, barH / 2, 0);
         bar.rotation.z = (Math.random() - 0.5) * 0.15; gate.add(bar);
       }
@@ -25442,14 +25442,14 @@ export class DiabloRenderer {
       const frame = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.6, 2), woodMat);
       frame.position.y = 0.5; chariot.add(frame);
       for (const side of [-1, 1]) {
-        const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.06, 14, 24), ironMat);
+        const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.06, 23, 36), ironMat);
         wheel.rotation.y = Math.PI / 2; wheel.position.set(side * 0.8, 0.5, 0); chariot.add(wheel);
         for (let sp = 0; sp < 4; sp++) {
-          const spoke = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.9, 8), woodMat);
+          const spoke = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.9, 16), woodMat);
           spoke.rotation.z = (sp / 4) * Math.PI; spoke.position.set(side * 0.8, 0.5, 0); chariot.add(spoke);
         }
       }
-      const yoke = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.5, 10), woodMat);
+      const yoke = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.5, 17), woodMat);
       yoke.rotation.x = Math.PI / 2; yoke.position.set(0, 0.5, 1.8); chariot.add(yoke);
       const cx = (Math.random() - 0.5) * w * 0.3, cz = (Math.random() - 0.5) * d * 0.3;
       chariot.position.set(cx, getTerrainHeight(cx, cz, 1.0), cz);
@@ -25459,13 +25459,13 @@ export class DiabloRenderer {
 
     // Victory podium with laurel wreath
     const podium = new THREE.Group();
-    const podBase = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.8, 0.5, 16), darkStoneMat);
+    const podBase = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.8, 0.5, 27), darkStoneMat);
     podBase.position.y = 0.25; podium.add(podBase);
-    const podMid = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.3, 0.5, 16), stoneMat);
+    const podMid = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.3, 0.5, 27), stoneMat);
     podMid.position.y = 0.75; podium.add(podMid);
-    const podTop = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.9, 0.3, 16), stoneMat);
+    const podTop = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.9, 0.3, 27), stoneMat);
     podTop.position.y = 1.15; podium.add(podTop);
-    const wreath = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.04, 20, 24), new THREE.MeshStandardMaterial({ color: 0x668844 }));
+    const wreath = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.04, 30, 36), new THREE.MeshStandardMaterial({ color: 0x668844 }));
     wreath.rotation.x = -Math.PI / 2; wreath.position.y = 1.32; podium.add(wreath);
     podium.position.set(w * 0.05, getTerrainHeight(w * 0.05, d * 0.05, 1.0), d * 0.05);
     this._scene.add(podium);
@@ -25474,7 +25474,7 @@ export class DiabloRenderer {
     for (let i = 0; i < 12; i++) {
       const chain = new THREE.Group();
       for (let link = 0; link < 4 + Math.floor(Math.random() * 5); link++) {
-        const cl = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.015, 10, 14), chainMat);
+        const cl = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.015, 17, 23), chainMat);
         cl.position.y = link * 0.1; cl.rotation.x = link % 2 === 0 ? 0 : Math.PI / 2; chain.add(cl);
       }
       const cx = (Math.random() - 0.5) * w * 0.5, cz = (Math.random() - 0.5) * d * 0.5;
@@ -25487,9 +25487,9 @@ export class DiabloRenderer {
       const tAngle = (i / 12) * Math.PI * 2, tRadius = Math.min(w, d) * 0.42;
       const bracket = new THREE.Group();
       const bArm = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.5), ironMat); bracket.add(bArm);
-      const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.08, 0.15, 14), ironMat);
+      const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.08, 0.15, 23), ironMat);
       cup.position.z = 0.25; cup.rotation.x = Math.PI / 2; bracket.add(cup);
-      const flame = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.2, 24), torchFireMat);
+      const flame = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.2, 36), torchFireMat);
       flame.position.set(0, 0.08, 0.25); bracket.add(flame);
       const bx = Math.sin(tAngle) * tRadius, bz = Math.cos(tAngle) * tRadius;
       bracket.position.set(bx, getTerrainHeight(bx, bz, 1.0) + 2.5, bz);
@@ -25506,13 +25506,13 @@ export class DiabloRenderer {
 
     // Bloodstains with splatter trails
     for (let i = 0; i < 20; i++) {
-      const stain = new THREE.Mesh(new THREE.CircleGeometry(0.2 + Math.random() * 0.6, 16), bloodMat);
+      const stain = new THREE.Mesh(new THREE.CircleGeometry(0.2 + Math.random() * 0.6, 27), bloodMat);
       stain.rotation.x = -Math.PI / 2;
       const sx = (Math.random() - 0.5) * w * 0.35, sz = (Math.random() - 0.5) * d * 0.35;
       stain.position.set(sx, getTerrainHeight(sx, sz, 1.0) + 0.01, sz); this._scene.add(stain);
       if (Math.random() > 0.5) {
         for (let sp = 0; sp < 3; sp++) {
-          const splat = new THREE.Mesh(new THREE.CircleGeometry(0.05 + Math.random() * 0.1, 12), bloodMat);
+          const splat = new THREE.Mesh(new THREE.CircleGeometry(0.05 + Math.random() * 0.1, 20), bloodMat);
           splat.rotation.x = -Math.PI / 2;
           splat.position.set(sx + (Math.random() - 0.5), getTerrainHeight(sx, sz, 1.0) + 0.01, sz + (Math.random() - 0.5));
           this._scene.add(splat);
@@ -25523,12 +25523,12 @@ export class DiabloRenderer {
     // Detailed champion statues
     for (let i = 0; i < 8; i++) {
       const statue = new THREE.Group();
-      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.28, 1.5, 16), stoneMat);
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.28, 1.5, 27), stoneMat);
       body.position.y = 0.95; body.castShadow = true; statue.add(body);
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.16, 32, 14), stoneMat);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.16, 44, 23), stoneMat);
       head.position.y = 1.8; statue.add(head);
       for (const ax of [-0.22, 0.22]) {
-        const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.8, 10), stoneMat);
+        const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.8, 17), stoneMat);
         arm.position.set(ax, 1.1, 0); arm.rotation.z = ax > 0 ? -0.4 : 0.4; statue.add(arm);
       }
       const sBlade = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.8, 0.01), ironMat);
@@ -25544,7 +25544,7 @@ export class DiabloRenderer {
 
     // Sand mounds and drag marks
     for (let i = 0; i < 10; i++) {
-      const mound = new THREE.Mesh(new THREE.SphereGeometry(0.4 + Math.random() * 0.5, 14, 10), sandMat);
+      const mound = new THREE.Mesh(new THREE.SphereGeometry(0.4 + Math.random() * 0.5, 23, 17), sandMat);
       mound.scale.y = 0.3;
       const mx = (Math.random() - 0.5) * w * 0.3, mz = (Math.random() - 0.5) * d * 0.3;
       mound.position.set(mx, getTerrainHeight(mx, mz, 1.0) + 0.05, mz); this._scene.add(mound);
@@ -25559,9 +25559,9 @@ export class DiabloRenderer {
     // Spectator skeletons
     for (let i = 0; i < 6; i++) {
       const skel = new THREE.Group();
-      const ribcage = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.4, 14), new THREE.MeshStandardMaterial({ color: 0xccbbaa }));
+      const ribcage = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.4, 23), new THREE.MeshStandardMaterial({ color: 0xccbbaa }));
       ribcage.position.y = 0.3; skel.add(ribcage);
-      const skull = new THREE.Mesh(new THREE.SphereGeometry(0.08, 21, 12), new THREE.MeshStandardMaterial({ color: 0xddccbb }));
+      const skull = new THREE.Mesh(new THREE.SphereGeometry(0.08, 31, 20), new THREE.MeshStandardMaterial({ color: 0xddccbb }));
       skull.position.y = 0.55; skel.add(skull);
       const skAngle = Math.random() * Math.PI * 2, skR = w * 0.32 + Math.random() * 3;
       skel.position.set(Math.sin(skAngle) * skR, getTerrainHeight(Math.sin(skAngle) * skR, Math.cos(skAngle) * skR, 1.0) + 0.5, Math.cos(skAngle) * skR);
@@ -25578,7 +25578,7 @@ export class DiabloRenderer {
       this._scene.add(crate);
     }
     for (let i = 0; i < 6; i++) {
-      const rope = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.03, 10, 20), leatherMat);
+      const rope = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.03, 17, 30), leatherMat);
       rope.rotation.x = -Math.PI / 2;
       const rx = (Math.random() - 0.5) * w * 0.35, rz = (Math.random() - 0.5) * d * 0.35;
       rope.position.set(rx, getTerrainHeight(rx, rz, 1.0) + 0.04, rz); this._scene.add(rope);
@@ -25609,10 +25609,10 @@ export class DiabloRenderer {
     for (let i = 0; i < 40; i++) {
       const tree = new THREE.Group();
       const h = 2 + Math.random() * 4;
-      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.12 + Math.random() * 0.08, 0.2 + Math.random() * 0.1, h, 16), stoneMat);
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.12 + Math.random() * 0.08, 0.2 + Math.random() * 0.1, h, 27), stoneMat);
       trunk.position.y = h / 2; trunk.castShadow = true; tree.add(trunk);
       for (let r = 0; r < 3; r++) {
-        const root = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.06, 0.8 + Math.random() * 0.6, 10), darkStoneMat);
+        const root = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.06, 0.8 + Math.random() * 0.6, 17), darkStoneMat);
         const rootAngle = (r / 3) * Math.PI * 2 + Math.random() * 0.5;
         root.position.set(Math.sin(rootAngle) * 0.2, 0.15, Math.cos(rootAngle) * 0.2);
         root.rotation.z = (Math.random() > 0.5 ? 1 : -1) * (0.6 + Math.random() * 0.4);
@@ -25620,18 +25620,18 @@ export class DiabloRenderer {
       }
       for (let b = 0; b < 4 + Math.floor(Math.random() * 3); b++) {
         const bLen = 0.8 + Math.random() * 1.2;
-        const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.06, bLen, 10), stoneMat);
+        const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.06, bLen, 17), stoneMat);
         branch.position.set((Math.random() - 0.5) * 0.3, h * 0.4 + b * 0.35, (Math.random() - 0.5) * 0.3);
         branch.rotation.z = (Math.random() - 0.5) * 1.2;
         branch.rotation.x = (Math.random() - 0.5) * 0.5; tree.add(branch);
         if (Math.random() > 0.5) {
-          const sub = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.03, 0.4 + Math.random() * 0.3, 8), stoneMat);
+          const sub = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.03, 0.4 + Math.random() * 0.3, 16), stoneMat);
           sub.position.copy(branch.position); sub.position.y += 0.2;
           sub.rotation.z = branch.rotation.z + (Math.random() - 0.5) * 0.8; tree.add(sub);
         }
       }
       if (Math.random() > 0.5) {
-        const canopy = new THREE.Mesh(new THREE.SphereGeometry(0.6 + Math.random() * 0.5, 21, 12), darkStoneMat);
+        const canopy = new THREE.Mesh(new THREE.SphereGeometry(0.6 + Math.random() * 0.5, 31, 20), darkStoneMat);
         canopy.scale.y = 0.4; canopy.position.y = h + 0.2; tree.add(canopy);
       }
       const tx = (Math.random() - 0.5) * w * 0.85, tz = (Math.random() - 0.5) * d * 0.85;
@@ -25641,22 +25641,22 @@ export class DiabloRenderer {
     // Petrified people with legs, arms in varied poses
     for (let i = 0; i < 20; i++) {
       const statue = new THREE.Group();
-      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.14, 0.8, 14), stoneMat);
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.14, 0.8, 23), stoneMat);
       body.position.y = 0.55; statue.add(body);
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.1, 21, 12), stoneMat);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.1, 31, 20), stoneMat);
       head.position.y = 1.05; statue.add(head);
       for (const lx of [-0.06, 0.06]) {
-        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.5, 10), stoneMat);
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.5, 17), stoneMat);
         leg.position.set(lx, 0.1, 0); statue.add(leg);
       }
       for (const ax of [-0.15, 0.15]) {
-        const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.5, 10), stoneMat);
+        const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.5, 17), stoneMat);
         arm.position.set(ax, 0.7, 0);
         arm.rotation.z = ax > 0 ? -0.3 - Math.random() * 0.8 : 0.3 + Math.random() * 0.8;
         arm.rotation.x = (Math.random() - 0.5) * 0.6; statue.add(arm);
       }
       if (Math.random() > 0.6) {
-        const obj = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8), darkStoneMat);
+        const obj = new THREE.Mesh(new THREE.SphereGeometry(0.06, 17, 16), darkStoneMat);
         obj.position.set(0.25, 0.9, 0.1); statue.add(obj);
       }
       const sx = (Math.random() - 0.5) * w * 0.75, sz = (Math.random() - 0.5) * d * 0.75;
@@ -25668,22 +25668,22 @@ export class DiabloRenderer {
     for (let i = 0; i < 12; i++) {
       const animal = new THREE.Group();
       if (Math.random() > 0.5) {
-        const deerBody = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.6, 12), stoneMat);
+        const deerBody = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.6, 20), stoneMat);
         deerBody.rotation.z = Math.PI / 2; deerBody.position.y = 0.35; animal.add(deerBody);
-        const deerHead = new THREE.Mesh(new THREE.SphereGeometry(0.07, 24, 10), stoneMat);
+        const deerHead = new THREE.Mesh(new THREE.SphereGeometry(0.07, 36, 17), stoneMat);
         deerHead.position.set(0.35, 0.45, 0); animal.add(deerHead);
         for (let l = 0; l < 4; l++) {
-          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, 0.3, 8), stoneMat);
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, 0.3, 16), stoneMat);
           leg.position.set((l < 2 ? 0.15 : -0.15), 0.1, l % 2 === 0 ? 0.06 : -0.06); animal.add(leg);
         }
         for (const side of [-1, 1]) {
-          const antler = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.015, 0.2, 8), stoneMat);
+          const antler = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.015, 0.2, 16), stoneMat);
           antler.position.set(0.35, 0.55, side * 0.05); antler.rotation.z = side * -0.4; animal.add(antler);
         }
       } else {
-        const birdBody = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 10), stoneMat);
+        const birdBody = new THREE.Mesh(new THREE.SphereGeometry(0.06, 20, 17), stoneMat);
         birdBody.scale.x = 1.5; birdBody.position.y = 0.12; animal.add(birdBody);
-        const beak = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.06, 8), stoneMat);
+        const beak = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.06, 16), stoneMat);
         beak.position.set(0.1, 0.14, 0); beak.rotation.z = -Math.PI / 2; animal.add(beak);
         for (const side of [-1, 1]) {
           const wing = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.01, 0.06), stoneMat);
@@ -25698,10 +25698,10 @@ export class DiabloRenderer {
     // Calcified rose bushes with thorns
     for (let i = 0; i < 30; i++) {
       const bush = new THREE.Group();
-      const core = new THREE.Mesh(new THREE.SphereGeometry(0.3 + Math.random() * 0.3, 14, 12), darkStoneMat);
+      const core = new THREE.Mesh(new THREE.SphereGeometry(0.3 + Math.random() * 0.3, 23, 20), darkStoneMat);
       core.scale.y = 0.7; core.position.y = 0.15; bush.add(core);
       for (let t = 0; t < 3 + Math.floor(Math.random() * 3); t++) {
-        const thorn = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.02, 0.3 + Math.random() * 0.2, 8), stoneMat);
+        const thorn = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.02, 0.3 + Math.random() * 0.2, 16), stoneMat);
         thorn.position.set((Math.random() - 0.5) * 0.3, 0.2 + Math.random() * 0.2, (Math.random() - 0.5) * 0.3);
         thorn.rotation.set(Math.random() - 0.5, 0, Math.random() - 0.5); bush.add(thorn);
       }
@@ -25712,15 +25712,15 @@ export class DiabloRenderer {
     // Fossilized fountains with frozen spouts and decorative lips
     for (let i = 0; i < 6; i++) {
       const fountain = new THREE.Group();
-      const outerBasin = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.0, 0.3, 20), darkStoneMat);
+      const outerBasin = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.0, 0.3, 30), darkStoneMat);
       outerBasin.position.y = 0.15; fountain.add(outerBasin);
-      const innerBasin = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 0.8, 0.4, 20), stoneMat);
+      const innerBasin = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 0.8, 0.4, 30), stoneMat);
       innerBasin.position.y = 0.3; fountain.add(innerBasin);
-      const center = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.15, 1.2, 14), stoneMat);
+      const center = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.15, 1.2, 23), stoneMat);
       center.position.y = 0.8; fountain.add(center);
-      const spout = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.4, 21), new THREE.MeshStandardMaterial({ color: 0x999999, roughness: 0.5 }));
+      const spout = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.4, 31), new THREE.MeshStandardMaterial({ color: 0x999999, roughness: 0.5 }));
       spout.position.y = 1.5; fountain.add(spout);
-      const lip = new THREE.Mesh(new THREE.TorusGeometry(1.2, 0.06, 10, 32), stoneMat);
+      const lip = new THREE.Mesh(new THREE.TorusGeometry(1.2, 0.06, 17, 44), stoneMat);
       lip.rotation.x = -Math.PI / 2; lip.position.y = 0.32; fountain.add(lip);
       const fx = (Math.random() - 0.5) * w * 0.5, fz = (Math.random() - 0.5) * d * 0.5;
       fountain.position.set(fx, getTerrainHeight(fx, fz, 1.0), fz); this._scene.add(fountain);
@@ -25731,7 +25731,7 @@ export class DiabloRenderer {
       const cluster = new THREE.Group();
       for (let c = 0; c < 3 + Math.floor(Math.random() * 4); c++) {
         const crystH = 0.3 + Math.random() * 0.6;
-        const crystal = new THREE.Mesh(new THREE.ConeGeometry(0.04 + Math.random() * 0.06, crystH, 12), crystalMat);
+        const crystal = new THREE.Mesh(new THREE.ConeGeometry(0.04 + Math.random() * 0.06, crystH, 20), crystalMat);
         crystal.position.set((Math.random() - 0.5) * 0.2, crystH / 2, (Math.random() - 0.5) * 0.2);
         crystal.rotation.set((Math.random() - 0.5) * 0.3, 0, (Math.random() - 0.5) * 0.3); cluster.add(crystal);
       }
@@ -25748,7 +25748,7 @@ export class DiabloRenderer {
 
     // Moss patches
     for (let i = 0; i < 30; i++) {
-      const moss = new THREE.Mesh(new THREE.CircleGeometry(0.4 + Math.random() * 1.2, 16), mossMat);
+      const moss = new THREE.Mesh(new THREE.CircleGeometry(0.4 + Math.random() * 1.2, 27), mossMat);
       moss.rotation.x = -Math.PI / 2;
       const mx = (Math.random() - 0.5) * w * 0.8, mz = (Math.random() - 0.5) * d * 0.8;
       moss.position.set(mx, getTerrainHeight(mx, mz, 1.0) + 0.02, mz); this._scene.add(moss);
@@ -25756,7 +25756,7 @@ export class DiabloRenderer {
 
     // Lichen on surfaces
     for (let i = 0; i < 15; i++) {
-      const lichen = new THREE.Mesh(new THREE.CircleGeometry(0.15 + Math.random() * 0.2, 14), lichMat);
+      const lichen = new THREE.Mesh(new THREE.CircleGeometry(0.15 + Math.random() * 0.2, 23), lichMat);
       lichen.rotation.x = -Math.PI / 2 + (Math.random() - 0.5) * 0.5;
       const lx = (Math.random() - 0.5) * w * 0.8, lz = (Math.random() - 0.5) * d * 0.8;
       lichen.position.set(lx, getTerrainHeight(lx, lz, 1.0) + 0.3 + Math.random() * 1.5, lz);
@@ -25829,7 +25829,7 @@ export class DiabloRenderer {
       wall.position.set(wx, getTerrainHeight(wx, wz, 0.6) + wall.geometry.parameters.height / 2, wz);
       wall.rotation.y = Math.random() * Math.PI; wall.castShadow = true; this._scene.add(wall);
       for (let b = 0; b < 5 + Math.floor(Math.random() * 4); b++) {
-        const barnacle = new THREE.Mesh(new THREE.SphereGeometry(0.04 + Math.random() * 0.08, 10, 8), barnacleMat);
+        const barnacle = new THREE.Mesh(new THREE.SphereGeometry(0.04 + Math.random() * 0.08, 17, 16), barnacleMat);
         barnacle.position.set(wx + (Math.random() - 0.5) * 0.8, getTerrainHeight(wx, wz, 0.6) + Math.random() * 2, wz + (Math.random() - 0.5) * 0.8);
         this._scene.add(barnacle);
       }
@@ -25845,12 +25845,12 @@ export class DiabloRenderer {
       const cColors = [0xcc6655, 0xcc8844, 0xff7766, 0xaa5577];
       const cMat = new THREE.MeshStandardMaterial({ color: cColors[i % 4], roughness: 0.7 });
       for (let b = 0; b < 3 + Math.floor(Math.random() * 4); b++) {
-        const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.06 + Math.random() * 0.04, 0.5 + Math.random() * 0.8, 10), cMat);
+        const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.06 + Math.random() * 0.04, 0.5 + Math.random() * 0.8, 17), cMat);
         branch.position.set((Math.random() - 0.5) * 0.3, 0.2 + b * 0.15, (Math.random() - 0.5) * 0.3);
         branch.rotation.set((Math.random() - 0.5) * 0.6, 0, (Math.random() - 0.5) * 0.6); coral.add(branch);
         // Sub-branches
         if (Math.random() > 0.4) {
-          const sub = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.03, 0.3, 8), cMat);
+          const sub = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.03, 0.3, 16), cMat);
           sub.position.copy(branch.position); sub.position.y += 0.15;
           sub.rotation.z = branch.rotation.z + (Math.random() - 0.5) * 0.8; coral.add(sub);
         }
@@ -25864,7 +25864,7 @@ export class DiabloRenderer {
       const kelp = new THREE.Group();
       const kh = 2 + Math.random() * 4;
       for (let s = 0; s < 6; s++) {
-        const strand = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.025, kh / 6, 8), kelpMat);
+        const strand = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.025, kh / 6, 16), kelpMat);
         strand.position.y = s * kh / 6; strand.rotation.z = Math.sin(s * 0.7) * 0.2;
         strand.rotation.x = Math.cos(s * 0.5) * 0.1; kelp.add(strand);
       }
@@ -25882,7 +25882,7 @@ export class DiabloRenderer {
     for (let i = 0; i < 8; i++) {
       const school = new THREE.Group();
       for (let f = 0; f < 6 + Math.floor(Math.random() * 8); f++) {
-        const fish = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.1, 8), new THREE.MeshStandardMaterial({ color: 0x88aacc, metalness: 0.3 }));
+        const fish = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.1, 16), new THREE.MeshStandardMaterial({ color: 0x88aacc, metalness: 0.3 }));
         fish.rotation.z = -Math.PI / 2;
         fish.position.set((Math.random() - 0.5) * 1.5, (Math.random() - 0.5) * 0.8, (Math.random() - 0.5) * 1.5);
         school.add(fish);
@@ -25893,7 +25893,7 @@ export class DiabloRenderer {
 
     // Bubbles rising (small spheres)
     for (let i = 0; i < 25; i++) {
-      const bubble = new THREE.Mesh(new THREE.SphereGeometry(0.02 + Math.random() * 0.04, 14, 10),
+      const bubble = new THREE.Mesh(new THREE.SphereGeometry(0.02 + Math.random() * 0.04, 23, 17),
         new THREE.MeshStandardMaterial({ color: 0xaaddff, transparent: true, opacity: 0.3 }));
       bubble.position.set((Math.random() - 0.5) * w * 0.6, Math.random() * 4, (Math.random() - 0.5) * d * 0.6);
       this._scene.add(bubble);
@@ -25910,7 +25910,7 @@ export class DiabloRenderer {
       clasp.position.set(0, 0.25, 0.18); chest.add(clasp);
       // Coins spilling out
       for (let c = 0; c < 4; c++) {
-        const coin = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.01, 14), treasureMat);
+        const coin = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.01, 23), treasureMat);
         coin.position.set((Math.random() - 0.5) * 0.4, 0.02, (Math.random() - 0.5) * 0.3);
         coin.rotation.x = Math.random(); chest.add(coin);
       }
@@ -25930,7 +25930,7 @@ export class DiabloRenderer {
 
     // Underwater light rays (tall translucent columns from above)
     for (let i = 0; i < 6; i++) {
-      const ray = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.8, 8, 10),
+      const ray = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.8, 8, 17),
         new THREE.MeshStandardMaterial({ color: 0x88ccee, transparent: true, opacity: 0.08, emissive: 0x44aacc, emissiveIntensity: 0.3 }));
       ray.position.set((Math.random() - 0.5) * w * 0.5, 4, (Math.random() - 0.5) * d * 0.5);
       this._scene.add(ray);
@@ -25938,7 +25938,7 @@ export class DiabloRenderer {
 
     // Bioluminescent algae patches
     for (let i = 0; i < 15; i++) {
-      const algae = new THREE.Mesh(new THREE.CircleGeometry(0.5 + Math.random(), 16), bioMat);
+      const algae = new THREE.Mesh(new THREE.CircleGeometry(0.5 + Math.random(), 27), bioMat);
       algae.rotation.x = -Math.PI / 2;
       const ax = (Math.random() - 0.5) * w * 0.7, az = (Math.random() - 0.5) * d * 0.7;
       algae.position.set(ax, 0.16, az); this._scene.add(algae);
@@ -25953,13 +25953,13 @@ export class DiabloRenderer {
 
     // Sunken columns (tilted, covered)
     for (let i = 0; i < 14; i++) {
-      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 3, 14), stoneMat);
+      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 3, 23), stoneMat);
       const cx = (Math.random() - 0.5) * w * 0.7, cz = (Math.random() - 0.5) * d * 0.7;
       col.position.set(cx, getTerrainHeight(cx, cz, 0.6) + 1.5, cz);
       col.rotation.z = (Math.random() - 0.5) * 0.4; col.castShadow = true; this._scene.add(col);
       // Coral on columns
       if (Math.random() > 0.4) {
-        const colCoral = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), coralMat);
+        const colCoral = new THREE.Mesh(new THREE.SphereGeometry(0.12, 17, 16), coralMat);
         colCoral.position.set(cx + 0.2, getTerrainHeight(cx, cz, 0.6) + 1 + Math.random(), cz);
         this._scene.add(colCoral);
       }
@@ -25967,7 +25967,7 @@ export class DiabloRenderer {
 
     // Shells on the seabed
     for (let i = 0; i < 15; i++) {
-      const shell = new THREE.Mesh(new THREE.SphereGeometry(0.06 + Math.random() * 0.06, 14, 10, 0, Math.PI), shellMat);
+      const shell = new THREE.Mesh(new THREE.SphereGeometry(0.06 + Math.random() * 0.06, 23, 17, 0, Math.PI), shellMat);
       const shx = (Math.random() - 0.5) * w * 0.7, shz = (Math.random() - 0.5) * d * 0.7;
       shell.position.set(shx, getTerrainHeight(shx, shz, 0.6) + 0.03, shz);
       shell.rotation.set(Math.random(), Math.random(), Math.random()); this._scene.add(shell);
@@ -26018,21 +26018,21 @@ export class DiabloRenderer {
       const fossil = new THREE.Group();
       // Ribcage
       for (let r = 0; r < 6; r++) {
-        const rib = new THREE.Mesh(new THREE.TorusGeometry(0.8 + Math.random() * 0.4, 0.06, 10, 16, Math.PI), boneMat);
+        const rib = new THREE.Mesh(new THREE.TorusGeometry(0.8 + Math.random() * 0.4, 0.06, 17, 27, Math.PI), boneMat);
         rib.position.set(0, 0, r * 0.3 - 0.9);
         rib.rotation.y = Math.PI / 2; fossil.add(rib);
       }
       // Spine
-      const spine = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 2.5, 10), boneMat);
+      const spine = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 2.5, 17), boneMat);
       spine.rotation.x = Math.PI / 2; fossil.add(spine);
       // Skull
-      const skull = new THREE.Mesh(new THREE.SphereGeometry(0.3, 21, 12), boneMat);
+      const skull = new THREE.Mesh(new THREE.SphereGeometry(0.3, 31, 20), boneMat);
       skull.scale.x = 1.5; skull.position.set(0, 0, -1.5); fossil.add(skull);
       const jaw = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.08, 0.4), boneMat);
       jaw.position.set(0, -0.15, -1.6); fossil.add(jaw);
       // Teeth
       for (let t = 0; t < 5; t++) {
-        const tooth = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.1, 8), boneMat);
+        const tooth = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.1, 16), boneMat);
         tooth.position.set((t - 2) * 0.08, -0.2, -1.7); tooth.rotation.x = Math.PI; fossil.add(tooth);
       }
       const fx = (Math.random() - 0.5) * w * 0.6, fz = (Math.random() - 0.5) * d * 0.6;
@@ -26042,7 +26042,7 @@ export class DiabloRenderer {
 
     // Scorched ground patches
     for (let i = 0; i < 20; i++) {
-      const scorch = new THREE.Mesh(new THREE.CircleGeometry(1 + Math.random() * 2, 16), scorchedMat);
+      const scorch = new THREE.Mesh(new THREE.CircleGeometry(1 + Math.random() * 2, 27), scorchedMat);
       scorch.rotation.x = -Math.PI / 2;
       const sx = (Math.random() - 0.5) * w * 0.7, sz = (Math.random() - 0.5) * d * 0.7;
       scorch.position.set(sx, getTerrainHeight(sx, sz, 1.4) + 0.02, sz); this._scene.add(scorch);
@@ -26051,20 +26051,20 @@ export class DiabloRenderer {
     // Dragon nests with more eggs, feathers, and bones
     for (let i = 0; i < 6; i++) {
       const nest = new THREE.Group();
-      const rim = new THREE.Mesh(new THREE.TorusGeometry(1.4, 0.35, 12, 24), nestMat);
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(1.4, 0.35, 20, 36), nestMat);
       rim.rotation.x = -Math.PI / 2; nest.add(rim);
       // Nest bedding (rough texture)
-      const bed = new THREE.Mesh(new THREE.CircleGeometry(1.2, 16), new THREE.MeshStandardMaterial({ color: 0x332211, roughness: 1.0 }));
+      const bed = new THREE.Mesh(new THREE.CircleGeometry(1.2, 27), new THREE.MeshStandardMaterial({ color: 0x332211, roughness: 1.0 }));
       bed.rotation.x = -Math.PI / 2; bed.position.y = 0.05; nest.add(bed);
       // Eggs with glow
       for (let e = 0; e < 3 + Math.floor(Math.random() * 3); e++) {
-        const egg = new THREE.Mesh(new THREE.SphereGeometry(0.15 + Math.random() * 0.05, 14, 12), eggMat);
+        const egg = new THREE.Mesh(new THREE.SphereGeometry(0.15 + Math.random() * 0.05, 23, 20), eggMat);
         egg.scale.y = 1.3;
         egg.position.set((Math.random() - 0.5) * 0.8, 0.18, (Math.random() - 0.5) * 0.8); nest.add(egg);
       }
       // Scattered scales
       for (let s = 0; s < 4; s++) {
-        const scale = new THREE.Mesh(new THREE.CircleGeometry(0.04, 10), new THREE.MeshStandardMaterial({ color: 0x884422, metalness: 0.4 }));
+        const scale = new THREE.Mesh(new THREE.CircleGeometry(0.04, 17), new THREE.MeshStandardMaterial({ color: 0x884422, metalness: 0.4 }));
         scale.position.set((Math.random() - 0.5) * 1.5, 0.02, (Math.random() - 0.5) * 1.5);
         scale.rotation.x = -Math.PI / 2; nest.add(scale);
       }
@@ -26102,11 +26102,11 @@ export class DiabloRenderer {
     // Wind-carved rock formations (hoodoos)
     for (let i = 0; i < 10; i++) {
       const hoodoo = new THREE.Group();
-      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.8, 1.5, 14), rockMat);
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.8, 1.5, 23), rockMat);
       base.position.y = 0.75; hoodoo.add(base);
-      const mid = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 2, 14), rockMat);
+      const mid = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 2, 23), rockMat);
       mid.position.y = 2; hoodoo.add(mid);
-      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.3, 0.5, 14), darkRockMat);
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.3, 0.5, 23), darkRockMat);
       cap.position.y = 2.75; hoodoo.add(cap);
       const hx = (Math.random() - 0.5) * w * 0.7, hz = (Math.random() - 0.5) * d * 0.7;
       hoodoo.position.set(hx, getTerrainHeight(hx, hz, 1.4), hz); this._scene.add(hoodoo);
@@ -26115,9 +26115,9 @@ export class DiabloRenderer {
     // Cave openings (dark recesses in walls)
     for (let i = 0; i < 5; i++) {
       const cave = new THREE.Group();
-      const arch = new THREE.Mesh(new THREE.TorusGeometry(1.2, 0.3, 10, 16, Math.PI), darkRockMat);
+      const arch = new THREE.Mesh(new THREE.TorusGeometry(1.2, 0.3, 17, 27, Math.PI), darkRockMat);
       arch.position.y = 1.2; cave.add(arch);
-      const darkness = new THREE.Mesh(new THREE.CircleGeometry(1.0, 16), new THREE.MeshStandardMaterial({ color: 0x000000 }));
+      const darkness = new THREE.Mesh(new THREE.CircleGeometry(1.0, 27), new THREE.MeshStandardMaterial({ color: 0x000000 }));
       darkness.position.y = 0.6; cave.add(darkness);
       const cvx = (Math.random() - 0.5) * w * 0.7, cvz = (Math.random() - 0.5) * d * 0.7;
       cave.position.set(cvx, getTerrainHeight(cvx, cvz, 1.4), cvz);
@@ -26127,7 +26127,7 @@ export class DiabloRenderer {
     // Stalactite formations
     for (let i = 0; i < 12; i++) {
       const stalH = 1 + Math.random() * 2;
-      const stal = new THREE.Mesh(new THREE.ConeGeometry(0.1 + Math.random() * 0.15, stalH, 12), rockMat);
+      const stal = new THREE.Mesh(new THREE.ConeGeometry(0.1 + Math.random() * 0.15, stalH, 20), rockMat);
       stal.rotation.x = Math.PI;
       const stx = (Math.random() - 0.5) * w * 0.6, stz = (Math.random() - 0.5) * d * 0.6;
       stal.position.set(stx, getTerrainHeight(stx, stz, 1.4) + 6 + Math.random() * 2, stz);
@@ -26138,13 +26138,13 @@ export class DiabloRenderer {
     for (let i = 0; i < 15; i++) {
       const bones = new THREE.Group();
       for (let b = 0; b < 6 + Math.floor(Math.random() * 4); b++) {
-        const bone = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.035, 0.3 + Math.random() * 0.4, 10), boneMat);
+        const bone = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.035, 0.3 + Math.random() * 0.4, 17), boneMat);
         bone.position.set((Math.random() - 0.5) * 0.5, 0.05, (Math.random() - 0.5) * 0.5);
         bone.rotation.set(Math.random(), Math.random(), Math.random()); bones.add(bone);
       }
       // Skulls in bone piles
       if (Math.random() > 0.5) {
-        const boneSkull = new THREE.Mesh(new THREE.SphereGeometry(0.08, 12, 10), boneMat);
+        const boneSkull = new THREE.Mesh(new THREE.SphereGeometry(0.08, 20, 17), boneMat);
         boneSkull.position.set((Math.random() - 0.5) * 0.3, 0.1, (Math.random() - 0.5) * 0.3); bones.add(boneSkull);
       }
       const bx = (Math.random() - 0.5) * w * 0.7, bz = (Math.random() - 0.5) * d * 0.7;
@@ -26153,7 +26153,7 @@ export class DiabloRenderer {
 
     // Obsidian shards
     for (let i = 0; i < 10; i++) {
-      const shard = new THREE.Mesh(new THREE.ConeGeometry(0.08 + Math.random() * 0.1, 0.5 + Math.random() * 0.5, 10), obsidianMat);
+      const shard = new THREE.Mesh(new THREE.ConeGeometry(0.08 + Math.random() * 0.1, 0.5 + Math.random() * 0.5, 17), obsidianMat);
       const shx = (Math.random() - 0.5) * w * 0.6, shz = (Math.random() - 0.5) * d * 0.6;
       shard.position.set(shx, getTerrainHeight(shx, shz, 1.4) + 0.2, shz);
       shard.rotation.set((Math.random() - 0.5) * 0.3, Math.random(), (Math.random() - 0.5) * 0.3);
@@ -26196,7 +26196,7 @@ export class DiabloRenderer {
 
     // Arched ceiling sections
     for (let i = 0; i < 8; i++) {
-      const arch = new THREE.Mesh(new THREE.TorusGeometry(2 + Math.random(), 0.3, 10, 16, Math.PI), brickMat);
+      const arch = new THREE.Mesh(new THREE.TorusGeometry(2 + Math.random(), 0.3, 17, 27, Math.PI), brickMat);
       const ax = (Math.random() - 0.5) * w * 0.6, az = (Math.random() - 0.5) * d * 0.6;
       arch.position.set(ax, getTerrainHeight(ax, az, 0.4) + 3, az);
       arch.rotation.y = Math.random() * Math.PI; this._scene.add(arch);
@@ -26236,7 +26236,7 @@ export class DiabloRenderer {
     // Rat nests (clumps of debris)
     for (let i = 0; i < 8; i++) {
       const ratNest = new THREE.Group();
-      const nestBase = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 10), new THREE.MeshStandardMaterial({ color: 0x332211, roughness: 1.0 }));
+      const nestBase = new THREE.Mesh(new THREE.SphereGeometry(0.3, 20, 17), new THREE.MeshStandardMaterial({ color: 0x332211, roughness: 1.0 }));
       nestBase.scale.y = 0.4; ratNest.add(nestBase);
       for (let d = 0; d < 5; d++) {
         const debris = new THREE.Mesh(new THREE.BoxGeometry(0.05 + Math.random() * 0.08, 0.02, 0.15 + Math.random() * 0.1), woodMat);
@@ -26249,19 +26249,19 @@ export class DiabloRenderer {
 
     // Dripping pipes (more varied, with drip meshes)
     for (let i = 0; i < 20; i++) {
-      const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.12 + Math.random() * 0.08, 0.12 + Math.random() * 0.08, 3 + Math.random() * 4, 14), Math.random() > 0.5 ? pipeMat : rustPipeMat);
+      const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.12 + Math.random() * 0.08, 0.12 + Math.random() * 0.08, 3 + Math.random() * 4, 23), Math.random() > 0.5 ? pipeMat : rustPipeMat);
       const px = (Math.random() - 0.5) * w * 0.7, pz = (Math.random() - 0.5) * d * 0.7;
       pipe.position.set(px, getTerrainHeight(px, pz, 0.4) + 1, pz);
       pipe.rotation.set((Math.random() - 0.5) * 0.5, Math.random(), (Math.random() - 0.5) * 0.5);
       this._scene.add(pipe);
       // Drip at pipe end
       if (Math.random() > 0.5) {
-        const drip = new THREE.Mesh(new THREE.SphereGeometry(0.03, 10, 8), slimeMat);
+        const drip = new THREE.Mesh(new THREE.SphereGeometry(0.03, 17, 16), slimeMat);
         drip.position.set(px, getTerrainHeight(px, pz, 0.4) + 0.5, pz); this._scene.add(drip);
       }
       // Pipe joints
       if (Math.random() > 0.5) {
-        const joint = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.1, 14), pipeMat);
+        const joint = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.1, 23), pipeMat);
         joint.position.set(px, getTerrainHeight(px, pz, 0.4) + 1.5, pz); this._scene.add(joint);
       }
     }
@@ -26269,15 +26269,15 @@ export class DiabloRenderer {
     // Mushroom growths (glowing)
     for (let i = 0; i < 15; i++) {
       const mush = new THREE.Group();
-      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.05, 0.15 + Math.random() * 0.2, 10), mushroomMat);
+      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.05, 0.15 + Math.random() * 0.2, 17), mushroomMat);
       stem.position.y = 0.1; mush.add(stem);
-      const cap = new THREE.Mesh(new THREE.SphereGeometry(0.08 + Math.random() * 0.06, 21, 10, 0, Math.PI * 2, 0, Math.PI * 0.5), mushroomCapMat);
+      const cap = new THREE.Mesh(new THREE.SphereGeometry(0.08 + Math.random() * 0.06, 31, 17, 0, Math.PI * 2, 0, Math.PI * 0.5), mushroomCapMat);
       cap.position.y = 0.2 + Math.random() * 0.1; mush.add(cap);
       // Cluster - add 2-3 smaller mushrooms
       for (let m = 0; m < 2; m++) {
-        const sm = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.03, 0.08 + Math.random() * 0.1, 8), mushroomMat);
+        const sm = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.03, 0.08 + Math.random() * 0.1, 16), mushroomMat);
         sm.position.set((Math.random() - 0.5) * 0.1, 0.05, (Math.random() - 0.5) * 0.1); mush.add(sm);
-        const sc = new THREE.Mesh(new THREE.SphereGeometry(0.04 + Math.random() * 0.03, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.5), mushroomCapMat);
+        const sc = new THREE.Mesh(new THREE.SphereGeometry(0.04 + Math.random() * 0.03, 20, 16, 0, Math.PI * 2, 0, Math.PI * 0.5), mushroomCapMat);
         sc.position.set(sm.position.x, sm.position.y + 0.06, sm.position.z); mush.add(sc);
       }
       const mx = (Math.random() - 0.5) * w * 0.8, mz = (Math.random() - 0.5) * d * 0.8;
@@ -26293,7 +26293,7 @@ export class DiabloRenderer {
         rail.position.set(side, ladH / 2, 0); ladder.add(rail);
       }
       for (let r = 0; r < Math.floor(ladH / 0.3); r++) {
-        const rung = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.4, 10), rustPipeMat);
+        const rung = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.4, 17), rustPipeMat);
         rung.rotation.z = Math.PI / 2; rung.position.y = 0.2 + r * 0.3; ladder.add(rung);
       }
       const lx = (Math.random() - 0.5) * w * 0.6, lz = (Math.random() - 0.5) * d * 0.6;
@@ -26304,11 +26304,11 @@ export class DiabloRenderer {
     // Broken barrels
     for (let i = 0; i < 8; i++) {
       const barrel = new THREE.Group();
-      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.22, 0.6, 16), woodMat);
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.22, 0.6, 27), woodMat);
       body.position.y = 0.3; barrel.add(body);
-      const bandT = new THREE.Mesh(new THREE.TorusGeometry(0.26, 0.015, 20, 20), grateMat);
+      const bandT = new THREE.Mesh(new THREE.TorusGeometry(0.26, 0.015, 30, 30), grateMat);
       bandT.position.y = 0.5; barrel.add(bandT);
-      const bandB = new THREE.Mesh(new THREE.TorusGeometry(0.23, 0.015, 10, 20), grateMat);
+      const bandB = new THREE.Mesh(new THREE.TorusGeometry(0.23, 0.015, 17, 30), grateMat);
       bandB.position.y = 0.1; barrel.add(bandB);
       const barx = (Math.random() - 0.5) * w * 0.6, barz = (Math.random() - 0.5) * d * 0.6;
       barrel.position.set(barx, getTerrainHeight(barx, barz, 0.4), barz);
@@ -26319,12 +26319,12 @@ export class DiabloRenderer {
     // Plague doctor masks on ground
     for (let i = 0; i < 4; i++) {
       const mask = new THREE.Group();
-      const face = new THREE.Mesh(new THREE.SphereGeometry(0.12, 14, 12, 0, Math.PI), maskMat);
+      const face = new THREE.Mesh(new THREE.SphereGeometry(0.12, 23, 20, 0, Math.PI), maskMat);
       mask.add(face);
-      const beak = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.2, 10), maskMat);
+      const beak = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.2, 17), maskMat);
       beak.rotation.x = -Math.PI / 2; beak.position.z = 0.12; mask.add(beak);
       for (const side of [-1, 1]) {
-        const eyeHole = new THREE.Mesh(new THREE.CircleGeometry(0.03, 14), new THREE.MeshStandardMaterial({ color: 0x000000 }));
+        const eyeHole = new THREE.Mesh(new THREE.CircleGeometry(0.03, 23), new THREE.MeshStandardMaterial({ color: 0x000000 }));
         eyeHole.position.set(side * 0.05, 0.03, 0.11); mask.add(eyeHole);
       }
       const mkx = (Math.random() - 0.5) * w * 0.5, mkz = (Math.random() - 0.5) * d * 0.5;
@@ -26335,9 +26335,9 @@ export class DiabloRenderer {
     // Toxic gas vents
     for (let i = 0; i < 6; i++) {
       const vent = new THREE.Group();
-      const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 0.3, 14), pipeMat);
+      const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 0.3, 23), pipeMat);
       pipe.position.y = 0.15; vent.add(pipe);
-      const gasCloud = new THREE.Mesh(new THREE.SphereGeometry(0.6 + Math.random() * 0.5, 21, 10), gasMat);
+      const gasCloud = new THREE.Mesh(new THREE.SphereGeometry(0.6 + Math.random() * 0.5, 31, 17), gasMat);
       gasCloud.scale.y = 0.5; gasCloud.position.y = 0.5; vent.add(gasCloud);
       const vx = (Math.random() - 0.5) * w * 0.6, vz = (Math.random() - 0.5) * d * 0.6;
       vent.position.set(vx, getTerrainHeight(vx, vz, 0.4), vz); this._scene.add(vent);
@@ -26345,7 +26345,7 @@ export class DiabloRenderer {
 
     // Slime patches
     for (let i = 0; i < 20; i++) {
-      const slime = new THREE.Mesh(new THREE.CircleGeometry(0.5 + Math.random(), 16), slimeMat);
+      const slime = new THREE.Mesh(new THREE.CircleGeometry(0.5 + Math.random(), 27), slimeMat);
       slime.rotation.x = -Math.PI / 2;
       const sx = (Math.random() - 0.5) * w * 0.8, sz = (Math.random() - 0.5) * d * 0.8;
       slime.position.set(sx, getTerrainHeight(sx, sz, 0.4) + 0.02, sz); this._scene.add(slime);
@@ -26384,12 +26384,12 @@ export class DiabloRenderer {
     // Floating platforms at various heights
     for (let i = 0; i < 12; i++) {
       const platform = new THREE.Group();
-      const top = new THREE.Mesh(new THREE.CylinderGeometry(1.5 + Math.random() * 2, 1.8 + Math.random() * 2, 0.4, 16), stoneMat);
+      const top = new THREE.Mesh(new THREE.CylinderGeometry(1.5 + Math.random() * 2, 1.8 + Math.random() * 2, 0.4, 27), stoneMat);
       top.castShadow = true; platform.add(top);
-      const underside = new THREE.Mesh(new THREE.ConeGeometry(1.2, 1.5, 14), stoneMat);
+      const underside = new THREE.Mesh(new THREE.ConeGeometry(1.2, 1.5, 23), stoneMat);
       underside.position.y = -0.9; underside.rotation.x = Math.PI; platform.add(underside);
       // Rune markings on top
-      const runeCircle = new THREE.Mesh(new THREE.TorusGeometry(1.0, 0.02, 10, 32), runeMat);
+      const runeCircle = new THREE.Mesh(new THREE.TorusGeometry(1.0, 0.02, 17, 44), runeMat);
       runeCircle.rotation.x = -Math.PI / 2; runeCircle.position.y = 0.21; platform.add(runeCircle);
       const px = (Math.random() - 0.5) * w * 0.7, pz = (Math.random() - 0.5) * d * 0.7;
       platform.position.set(px, getTerrainHeight(px, pz, 0.6) + 0.5 + Math.random() * 3, pz);
@@ -26416,7 +26416,7 @@ export class DiabloRenderer {
       waterfall.position.set(wfx, getTerrainHeight(wfx, wfz, 0.6) + 3, wfz);
       waterfall.rotation.y = Math.random() * Math.PI; this._scene.add(waterfall);
       // Splash pool at base
-      const splash = new THREE.Mesh(new THREE.CircleGeometry(0.6, 16), lightBridgeMat);
+      const splash = new THREE.Mesh(new THREE.CircleGeometry(0.6, 27), lightBridgeMat);
       splash.rotation.x = -Math.PI / 2;
       splash.position.set(wfx, getTerrainHeight(wfx, wfz, 0.6) + 0.03, wfz); this._scene.add(splash);
     }
@@ -26427,11 +26427,11 @@ export class DiabloRenderer {
       const base = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.4, 1.2), stoneMat);
       base.position.y = 0.2; cAltar.add(base);
       for (let c = 0; c < 4; c++) {
-        const crystal = new THREE.Mesh(new THREE.ConeGeometry(0.08 + Math.random() * 0.06, 0.5 + Math.random() * 0.4, 12), crystalAltarMat);
+        const crystal = new THREE.Mesh(new THREE.ConeGeometry(0.08 + Math.random() * 0.06, 0.5 + Math.random() * 0.4, 20), crystalAltarMat);
         const cAngle = (c / 4) * Math.PI * 2;
         crystal.position.set(Math.sin(cAngle) * 0.4, 0.6, Math.cos(cAngle) * 0.4); cAltar.add(crystal);
       }
-      const centerCryst = new THREE.Mesh(new THREE.OctahedronGeometry(0.15, 1), runeMat);
+      const centerCryst = new THREE.Mesh(new THREE.OctahedronGeometry(0.15, 2), runeMat);
       centerCryst.position.y = 0.8; cAltar.add(centerCryst);
       const cax = (Math.random() - 0.5) * w * 0.5, caz = (Math.random() - 0.5) * d * 0.5;
       cAltar.position.set(cax, getTerrainHeight(cax, caz, 0.6), caz); this._scene.add(cAltar);
@@ -26439,7 +26439,7 @@ export class DiabloRenderer {
 
     // Spirit orbs (floating glowing spheres)
     for (let i = 0; i < 20; i++) {
-      const orb = new THREE.Mesh(new THREE.SphereGeometry(0.08 + Math.random() * 0.1, 16, 14), spiritMat);
+      const orb = new THREE.Mesh(new THREE.SphereGeometry(0.08 + Math.random() * 0.1, 27, 23), spiritMat);
       orb.position.set((Math.random() - 0.5) * w * 0.7, 1 + Math.random() * 5, (Math.random() - 0.5) * d * 0.7);
       this._scene.add(orb);
     }
@@ -26454,7 +26454,7 @@ export class DiabloRenderer {
 
     // Phasing pillars
     for (let i = 0; i < 16; i++) {
-      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 3 + Math.random() * 3, 14), etherealMat);
+      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 3 + Math.random() * 3, 23), etherealMat);
       const ppx = (Math.random() - 0.5) * w * 0.8, ppz = (Math.random() - 0.5) * d * 0.8;
       pillar.position.set(ppx, getTerrainHeight(ppx, ppz, 0.6) + pillar.geometry.parameters.height / 2, ppz);
       pillar.castShadow = true; this._scene.add(pillar);
@@ -26462,7 +26462,7 @@ export class DiabloRenderer {
 
     // Prismatic light effects (rainbow-ish cones)
     for (let i = 0; i < 6; i++) {
-      const prism = new THREE.Mesh(new THREE.ConeGeometry(0.8, 4, 10), prismaticMat);
+      const prism = new THREE.Mesh(new THREE.ConeGeometry(0.8, 4, 17), prismaticMat);
       prism.position.set((Math.random() - 0.5) * w * 0.4, 4, (Math.random() - 0.5) * d * 0.4);
       this._scene.add(prism);
     }
@@ -26471,7 +26471,7 @@ export class DiabloRenderer {
     for (let i = 0; i < 6; i++) {
       const medCircle = new THREE.Group();
       for (let r = 0; r < 3; r++) {
-        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.5 + r * 0.4, 0.02, 10, 36), runeMat);
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.5 + r * 0.4, 0.02, 17, 46), runeMat);
         ring.rotation.x = -Math.PI / 2; medCircle.add(ring);
       }
       const mcx = (Math.random() - 0.5) * w * 0.5, mcz = (Math.random() - 0.5) * d * 0.5;
@@ -26481,10 +26481,10 @@ export class DiabloRenderer {
     // Wind chimes (hanging metallic elements)
     for (let i = 0; i < 8; i++) {
       const chime = new THREE.Group();
-      const hanger = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.5, 8), chimeMat);
+      const hanger = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.5, 16), chimeMat);
       chime.add(hanger);
       for (let c = 0; c < 4; c++) {
-        const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.2 + Math.random() * 0.3, 10), chimeMat);
+        const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.2 + Math.random() * 0.3, 17), chimeMat);
         tube.position.set((Math.random() - 0.5) * 0.15, -0.3 - Math.random() * 0.2, (Math.random() - 0.5) * 0.15);
         chime.add(tube);
       }
@@ -26505,7 +26505,7 @@ export class DiabloRenderer {
 
     // Floating runes
     for (let i = 0; i < 15; i++) {
-      const rune = new THREE.Mesh(new THREE.OctahedronGeometry(0.15 + Math.random() * 0.1, 1), runeMat);
+      const rune = new THREE.Mesh(new THREE.OctahedronGeometry(0.15 + Math.random() * 0.1, 2), runeMat);
       rune.position.set((Math.random() - 0.5) * w * 0.7, 1 + Math.random() * 4, (Math.random() - 0.5) * d * 0.7);
       this._scene.add(rune);
     }
@@ -26519,7 +26519,7 @@ export class DiabloRenderer {
 
     // Ethereal mist patches
     for (let i = 0; i < 12; i++) {
-      const mist = new THREE.Mesh(new THREE.SphereGeometry(1 + Math.random() * 2, 14, 12), new THREE.MeshStandardMaterial({ color: 0x6666aa, transparent: true, opacity: 0.15 }));
+      const mist = new THREE.Mesh(new THREE.SphereGeometry(1 + Math.random() * 2, 23, 20), new THREE.MeshStandardMaterial({ color: 0x6666aa, transparent: true, opacity: 0.15 }));
       mist.scale.y = 0.3;
       mist.position.set((Math.random() - 0.5) * w * 0.7, 0.5, (Math.random() - 0.5) * d * 0.7);
       this._scene.add(mist);
@@ -26531,7 +26531,7 @@ export class DiabloRenderer {
     altarBase.position.y = 0.25; altar.add(altarBase);
     const altarStep = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.2, 2.5), stoneMat);
     altarStep.position.y = 0.1; altar.add(altarStep);
-    const altarOrb = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 14), new THREE.MeshStandardMaterial({ color: 0xaaccff, emissive: 0x6688ff, emissiveIntensity: 2.0 }));
+    const altarOrb = new THREE.Mesh(new THREE.SphereGeometry(0.3, 27, 23), new THREE.MeshStandardMaterial({ color: 0xaaccff, emissive: 0x6688ff, emissiveIntensity: 2.0 }));
     altarOrb.position.y = 0.8; altar.add(altarOrb);
     const altarLight = new THREE.PointLight(0x8888ff, 1.0, 12);
     altarLight.position.y = 1.0; altar.add(altarLight); this._torchLights.push(altarLight);
@@ -26566,14 +26566,14 @@ export class DiabloRenderer {
       const bW = 2 + Math.random() * 3, bH = 1 + Math.random() * 2, bD = 2 + Math.random() * 3;
       const body = new THREE.Mesh(new THREE.BoxGeometry(bW, bH, bD), rustMat);
       body.position.y = bH / 2; body.castShadow = true; hulk.add(body);
-      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 2 + Math.random() * 2, 14), metalMat);
+      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 2 + Math.random() * 2, 23), metalMat);
       arm.position.set(0.5, bH + 0.5, 0); arm.rotation.z = (Math.random() - 0.5) * 0.8; hulk.add(arm);
       for (const side of [-1, 1]) {
-        const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.15, 14, 20), metalMat);
+        const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.15, 23, 30), metalMat);
         wheel.rotation.y = Math.PI / 2; wheel.position.set(side * bW * 0.4, 0.5, 0); hulk.add(wheel);
       }
       // Exhaust pipe
-      const exhaust = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.8, 10), rustMat);
+      const exhaust = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.8, 17), rustMat);
       exhaust.position.set(-bW * 0.3, bH + 0.3, -bD * 0.3); hulk.add(exhaust);
       // Viewport/window
       const viewport = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 0.02), glassMat);
@@ -26591,7 +26591,7 @@ export class DiabloRenderer {
       const rHead = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.4), metalMat);
       rHead.position.y = 1.2; robot.add(rHead);
       // One eye (broken, dim glow)
-      const eye = new THREE.Mesh(new THREE.CircleGeometry(0.06, 14), new THREE.MeshStandardMaterial({ color: 0xff4422, emissive: 0xaa2200, emissiveIntensity: 0.5 }));
+      const eye = new THREE.Mesh(new THREE.CircleGeometry(0.06, 23), new THREE.MeshStandardMaterial({ color: 0xff4422, emissive: 0xaa2200, emissiveIntensity: 0.5 }));
       eye.position.set(0.08, 1.25, 0.21); robot.add(eye);
       // Arms (one missing)
       const rArm = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.7, 0.2), rustMat);
@@ -26603,7 +26603,7 @@ export class DiabloRenderer {
       }
       // Wires dangling
       for (let w2 = 0; w2 < 3; w2++) {
-        const wire = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.3 + Math.random() * 0.3, 8), cableMat);
+        const wire = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.3 + Math.random() * 0.3, 16), cableMat);
         wire.position.set((Math.random() - 0.5) * 0.4, 0.8, (Math.random() - 0.5) * 0.3);
         wire.rotation.z = (Math.random() - 0.5) * 0.8; robot.add(wire);
       }
@@ -26628,23 +26628,23 @@ export class DiabloRenderer {
     // Oxidized pipes running along ground
     for (let i = 0; i < 12; i++) {
       const pipeLen = 3 + Math.random() * 6;
-      const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, pipeLen, 14), corrodedMat);
+      const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, pipeLen, 23), corrodedMat);
       const px = (Math.random() - 0.5) * w * 0.7, pz = (Math.random() - 0.5) * d * 0.7;
       pipe.position.set(px, getTerrainHeight(px, pz, 1.0) + 0.12, pz);
       pipe.rotation.z = Math.PI / 2; pipe.rotation.y = Math.random() * Math.PI; this._scene.add(pipe);
       // Pipe joints
-      const joint = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.1, 14), metalMat);
+      const joint = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.1, 23), metalMat);
       joint.position.copy(pipe.position); this._scene.add(joint);
     }
 
     // Corroded tanks
     for (let i = 0; i < 5; i++) {
       const tank = new THREE.Group();
-      const tankBody = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 4, 16), rustMat);
+      const tankBody = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 4, 27), rustMat);
       tankBody.rotation.z = Math.PI / 2; tankBody.position.y = 0.8; tank.add(tankBody);
       // End caps
       for (const side of [-1, 1]) {
-        const cap = new THREE.Mesh(new THREE.SphereGeometry(0.8, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2), rustMat);
+        const cap = new THREE.Mesh(new THREE.SphereGeometry(0.8, 23, 17, 0, Math.PI * 2, 0, Math.PI / 2), rustMat);
         cap.rotation.z = side * Math.PI / 2; cap.position.set(side * 1, 0.8, 0); tank.add(cap);
       }
       // Support legs
@@ -26661,7 +26661,7 @@ export class DiabloRenderer {
 
     // Smokestacks (broken)
     for (let i = 0; i < 8; i++) {
-      const stack = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 4 + Math.random() * 4, 14), rustMat);
+      const stack = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 4 + Math.random() * 4, 23), rustMat);
       const sx = (Math.random() - 0.5) * w * 0.7, sz = (Math.random() - 0.5) * d * 0.7;
       stack.position.set(sx, getTerrainHeight(sx, sz, 1.0) + stack.geometry.parameters.height / 2, sz);
       stack.rotation.z = (Math.random() - 0.5) * 0.2; stack.castShadow = true; this._scene.add(stack);
@@ -26687,7 +26687,7 @@ export class DiabloRenderer {
       const cable = new THREE.Group();
       const segments = 3 + Math.floor(Math.random() * 4);
       for (let s = 0; s < segments; s++) {
-        const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.5, 8), cableMat);
+        const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.5, 16), cableMat);
         seg.position.y = -s * 0.45; seg.rotation.z = Math.sin(s * 1.2) * 0.3; cable.add(seg);
       }
       cable.position.set((Math.random() - 0.5) * w * 0.6, 2 + Math.random() * 3, (Math.random() - 0.5) * d * 0.6);
@@ -26713,7 +26713,7 @@ export class DiabloRenderer {
 
     // Oil puddles
     for (let i = 0; i < 15; i++) {
-      const oil = new THREE.Mesh(new THREE.CircleGeometry(0.5 + Math.random() * 1.5, 16), oilMat);
+      const oil = new THREE.Mesh(new THREE.CircleGeometry(0.5 + Math.random() * 1.5, 27), oilMat);
       oil.rotation.x = -Math.PI / 2;
       const ox = (Math.random() - 0.5) * w * 0.7, oz = (Math.random() - 0.5) * d * 0.7;
       oil.position.set(ox, getTerrainHeight(ox, oz, 1.0) + 0.02, oz); this._scene.add(oil);
@@ -26752,9 +26752,9 @@ export class DiabloRenderer {
 
     // Central corrupted throne (more elaborate)
     const throne = new THREE.Group();
-    const dais = new THREE.Mesh(new THREE.CylinderGeometry(3, 3.5, 0.5, 16), corruptMat);
+    const dais = new THREE.Mesh(new THREE.CylinderGeometry(3, 3.5, 0.5, 27), corruptMat);
     dais.position.y = 0.25; throne.add(dais);
-    const daisStep = new THREE.Mesh(new THREE.CylinderGeometry(3.5, 10, 0.3, 16), corruptMat);
+    const daisStep = new THREE.Mesh(new THREE.CylinderGeometry(3.5, 10, 0.3, 27), corruptMat);
     daisStep.position.y = 0.1; throne.add(daisStep);
     const seat = new THREE.Mesh(new THREE.BoxGeometry(2, 1.5, 1.5), throneMat);
     seat.position.y = 1.25; throne.add(seat);
@@ -26764,20 +26764,20 @@ export class DiabloRenderer {
       const armrest = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.8, 1.2), throneMat);
       armrest.position.set(ax, 1.9, -0.15); throne.add(armrest);
       // Skull on armrest ends
-      const armSkull = new THREE.Mesh(new THREE.SphereGeometry(0.1, 14, 12), new THREE.MeshStandardMaterial({ color: 0xccbbaa }));
+      const armSkull = new THREE.Mesh(new THREE.SphereGeometry(0.1, 23, 20), new THREE.MeshStandardMaterial({ color: 0xccbbaa }));
       armSkull.position.set(ax, 2.1, 0.4); throne.add(armSkull);
     }
     // Corrupted crown
-    const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 0.3, 16), goldMat);
+    const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 0.3, 27), goldMat);
     crown.position.set(0, 4.9, -0.6); throne.add(crown);
     for (let s = 0; s < 7; s++) {
-      const spike = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.25, 10), goldMat);
+      const spike = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.25, 17), goldMat);
       spike.position.set(Math.sin(s / 7 * Math.PI * 2) * 0.3, 5.15, -0.6 + Math.cos(s / 7 * Math.PI * 2) * 0.3);
       throne.add(spike);
     }
     // Dark vines climbing the throne
     for (let v = 0; v < 6; v++) {
-      const vine = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.03, 2 + Math.random() * 2, 8), vineMat);
+      const vine = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.03, 2 + Math.random() * 2, 16), vineMat);
       vine.position.set((Math.random() - 0.5) * 1, 2 + Math.random(), -0.5);
       vine.rotation.set((Math.random() - 0.5) * 0.3, 0, (Math.random() - 0.5) * 0.5); throne.add(vine);
     }
@@ -26796,11 +26796,11 @@ export class DiabloRenderer {
     // Diseased vegetation growing through cracks
     for (let i = 0; i < 25; i++) {
       const plant = new THREE.Group();
-      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.04, 0.5 + Math.random() * 0.8, 8), vineMat);
+      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.04, 0.5 + Math.random() * 0.8, 16), vineMat);
       stem.position.y = 0.3; plant.add(stem);
       // Sickly leaves
       for (let l = 0; l < 2 + Math.floor(Math.random() * 3); l++) {
-        const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.06 + Math.random() * 0.04, 20, 8), rotMat);
+        const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.06 + Math.random() * 0.04, 30, 16), rotMat);
         leaf.scale.y = 0.3; leaf.scale.x = 1.5;
         leaf.position.set((Math.random() - 0.5) * 0.15, 0.2 + l * 0.15, (Math.random() - 0.5) * 0.15);
         plant.add(leaf);
@@ -26811,7 +26811,7 @@ export class DiabloRenderer {
 
     // Dark vines on walls and floor
     for (let i = 0; i < 35; i++) {
-      const tendril = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.06, 1 + Math.random() * 3, 10), vineMat);
+      const tendril = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.06, 1 + Math.random() * 3, 17), vineMat);
       const tx = (Math.random() - 0.5) * w * 0.8, tz = (Math.random() - 0.5) * d * 0.8;
       tendril.position.set(tx, getTerrainHeight(tx, tz, 0.5) + 0.5 + Math.random(), tz);
       tendril.rotation.set((Math.random() - 0.5) * 0.5, 0, (Math.random() - 0.5) * 0.5);
@@ -26820,13 +26820,13 @@ export class DiabloRenderer {
 
     // Toxic pools (more varied sizes, with bubbles)
     for (let i = 0; i < 12; i++) {
-      const puddle = new THREE.Mesh(new THREE.CircleGeometry(0.5 + Math.random() * 1.5, 16), toxicMat);
+      const puddle = new THREE.Mesh(new THREE.CircleGeometry(0.5 + Math.random() * 1.5, 27), toxicMat);
       puddle.rotation.x = -Math.PI / 2;
       const rx = (Math.random() - 0.5) * w * 0.6, rz = (Math.random() - 0.5) * d * 0.6;
       puddle.position.set(rx, getTerrainHeight(rx, rz, 0.5) + 0.02, rz); this._scene.add(puddle);
       // Bubbles on surface
       for (let b = 0; b < 3; b++) {
-        const bubble = new THREE.Mesh(new THREE.SphereGeometry(0.03 + Math.random() * 0.03, 10, 8),
+        const bubble = new THREE.Mesh(new THREE.SphereGeometry(0.03 + Math.random() * 0.03, 17, 16),
           new THREE.MeshStandardMaterial({ color: 0x668822, transparent: true, opacity: 0.4 }));
         bubble.position.set(rx + (Math.random() - 0.5) * 0.5, getTerrainHeight(rx, rz, 0.5) + 0.04, rz + (Math.random() - 0.5) * 0.5);
         this._scene.add(bubble);
@@ -26838,7 +26838,7 @@ export class DiabloRenderer {
       const crystCluster = new THREE.Group();
       for (let c = 0; c < 2 + Math.floor(Math.random() * 3); c++) {
         const cH = 0.4 + Math.random() * 0.6;
-        const cryst = new THREE.Mesh(new THREE.ConeGeometry(0.06 + Math.random() * 0.05, cH, 12), corruptCrystalMat);
+        const cryst = new THREE.Mesh(new THREE.ConeGeometry(0.06 + Math.random() * 0.05, cH, 20), corruptCrystalMat);
         cryst.position.set((Math.random() - 0.5) * 0.2, cH / 2, (Math.random() - 0.5) * 0.2);
         cryst.rotation.set((Math.random() - 0.5) * 0.2, 0, (Math.random() - 0.5) * 0.2); crystCluster.add(cryst);
       }
@@ -26856,13 +26856,13 @@ export class DiabloRenderer {
 
     // Corrupted pillars (withered, leaning)
     for (let i = 0; i < 16; i++) {
-      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.35, 4, 14), corruptMat);
+      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.35, 4, 23), corruptMat);
       const ppx = (Math.random() - 0.5) * w * 0.7, ppz = (Math.random() - 0.5) * d * 0.7;
       pillar.position.set(ppx, getTerrainHeight(ppx, ppz, 0.5) + 2, ppz);
       pillar.rotation.z = (Math.random() - 0.5) * 0.15; pillar.castShadow = true; this._scene.add(pillar);
       // Vine wrapping on some
       if (Math.random() > 0.5) {
-        const wrapVine = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.02, 8, 16, Math.PI * 1.5), vineMat);
+        const wrapVine = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.02, 16, 27, Math.PI * 1.5), vineMat);
         wrapVine.position.set(ppx, getTerrainHeight(ppx, ppz, 0.5) + 1 + Math.random() * 2, ppz);
         this._scene.add(wrapVine);
       }
@@ -26876,7 +26876,7 @@ export class DiabloRenderer {
       const cback = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.6, 0.08), throneMat);
       cback.position.set(0, 0.6, -0.21); chair.add(cback);
       // Moss/rot on chair
-      const chairMoss = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), rotMat);
+      const chairMoss = new THREE.Mesh(new THREE.SphereGeometry(0.12, 17, 16), rotMat);
       chairMoss.scale.y = 0.3; chairMoss.position.set(0, 0.52, 0); chair.add(chairMoss);
       const cx = (Math.random() - 0.5) * w * 0.5, cz = (Math.random() - 0.5) * d * 0.5;
       chair.position.set(cx, getTerrainHeight(cx, cz, 0.5), cz);
@@ -26886,9 +26886,9 @@ export class DiabloRenderer {
     // Plague rats (small shapes)
     for (let i = 0; i < 10; i++) {
       const rat = new THREE.Group();
-      const ratBody = new THREE.Mesh(new THREE.SphereGeometry(0.04, 10, 8), new THREE.MeshStandardMaterial({ color: 0x333322 }));
+      const ratBody = new THREE.Mesh(new THREE.SphereGeometry(0.04, 17, 16), new THREE.MeshStandardMaterial({ color: 0x333322 }));
       ratBody.scale.x = 1.5; rat.add(ratBody);
-      const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.008, 0.12, 8), new THREE.MeshStandardMaterial({ color: 0x443333 }));
+      const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.008, 0.12, 16), new THREE.MeshStandardMaterial({ color: 0x443333 }));
       tail.position.set(-0.06, 0, 0); tail.rotation.z = Math.PI / 4; rat.add(tail);
       const ratx = (Math.random() - 0.5) * w * 0.6, ratz = (Math.random() - 0.5) * d * 0.6;
       rat.position.set(ratx, getTerrainHeight(ratx, ratz, 0.5) + 0.04, ratz);
@@ -26906,7 +26906,7 @@ export class DiabloRenderer {
     for (let i = 0; i < 4; i++) {
       const skulls = new THREE.Group();
       for (let s = 0; s < 5 + Math.floor(Math.random() * 5); s++) {
-        const sk = new THREE.Mesh(new THREE.SphereGeometry(0.06 + Math.random() * 0.03, 12, 10), new THREE.MeshStandardMaterial({ color: 0xccbbaa }));
+        const sk = new THREE.Mesh(new THREE.SphereGeometry(0.06 + Math.random() * 0.03, 20, 17), new THREE.MeshStandardMaterial({ color: 0xccbbaa }));
         sk.position.set((Math.random() - 0.5) * 0.4, Math.random() * 0.15, (Math.random() - 0.5) * 0.4); skulls.add(sk);
       }
       const skx = (Math.random() - 0.5) * w * 0.2, skz = (Math.random() - 0.5) * d * 0.2;
@@ -26954,9 +26954,9 @@ export class DiabloRenderer {
     // Clock faces on walls (more detailed with numerals)
     for (let i = 0; i < 12; i++) {
       const clock = new THREE.Group();
-      const face = new THREE.Mesh(new THREE.CircleGeometry(0.6, 32), new THREE.MeshStandardMaterial({ color: 0xeeddcc }));
+      const face = new THREE.Mesh(new THREE.CircleGeometry(0.6, 44), new THREE.MeshStandardMaterial({ color: 0xeeddcc }));
       clock.add(face);
-      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.05, 10, 36), clockMat); clock.add(rim);
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.05, 17, 46), clockMat); clock.add(rim);
       // Hour markers
       for (let h = 0; h < 12; h++) {
         const marker = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.08, 0.01), handMat);
@@ -26970,7 +26970,7 @@ export class DiabloRenderer {
       const minute = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.4, 0.02), handMat);
       minute.position.y = 0.2; minute.rotation.z = Math.random() * Math.PI * 2; clock.add(minute);
       // Center pin
-      const pin = new THREE.Mesh(new THREE.SphereGeometry(0.03, 10, 8), clockMat);
+      const pin = new THREE.Mesh(new THREE.SphereGeometry(0.03, 17, 16), clockMat);
       pin.position.z = 0.02; clock.add(pin);
       clock.position.set((Math.random() - 0.5) * w * 0.6, 1.5 + Math.random() * 2, (Math.random() - 0.5) * d * 0.6);
       clock.rotation.y = Math.random() * Math.PI; this._scene.add(clock);
@@ -26979,10 +26979,10 @@ export class DiabloRenderer {
     // Temporal rifts (glowing portal rings with inner glow)
     for (let i = 0; i < 10; i++) {
       const rift = new THREE.Group();
-      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.8 + Math.random() * 0.5, 0.05, 14, 36), timeMat);
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.8 + Math.random() * 0.5, 0.05, 23, 46), timeMat);
       rift.add(ring);
       // Inner portal glow
-      const inner = new THREE.Mesh(new THREE.CircleGeometry(0.7 + Math.random() * 0.4, 24),
+      const inner = new THREE.Mesh(new THREE.CircleGeometry(0.7 + Math.random() * 0.4, 36),
         new THREE.MeshStandardMaterial({ color: 0x4488ff, emissive: 0x2266dd, emissiveIntensity: 1.5, transparent: true, opacity: 0.2 }));
       rift.add(inner);
       rift.position.set((Math.random() - 0.5) * w * 0.6, 1 + Math.random() * 3, (Math.random() - 0.5) * d * 0.6);
@@ -27002,25 +27002,25 @@ export class DiabloRenderer {
     for (let i = 0; i < 8; i++) {
       const hg = new THREE.Group();
       // Frame
-      const frameTop = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.04, 14), clockMat);
+      const frameTop = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.04, 23), clockMat);
       frameTop.position.y = 0.8; hg.add(frameTop);
-      const frameBot = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.04, 14), clockMat);
+      const frameBot = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.04, 23), clockMat);
       frameBot.position.y = -0.4; hg.add(frameBot);
       // Posts
       for (let p = 0; p < 3; p++) {
-        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.2, 8), clockMat);
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.2, 16), clockMat);
         const pAngle = (p / 3) * Math.PI * 2;
         post.position.set(Math.sin(pAngle) * 0.3, 0.2, Math.cos(pAngle) * 0.3); hg.add(post);
       }
       // Glass bulbs
-      const topBulb = new THREE.Mesh(new THREE.SphereGeometry(0.25, 14, 12), new THREE.MeshStandardMaterial({ color: 0xddddcc, transparent: true, opacity: 0.4 }));
+      const topBulb = new THREE.Mesh(new THREE.SphereGeometry(0.25, 23, 20), new THREE.MeshStandardMaterial({ color: 0xddddcc, transparent: true, opacity: 0.4 }));
       topBulb.scale.y = 1.3; topBulb.position.y = 0.5; hg.add(topBulb);
-      const botBulb = new THREE.Mesh(new THREE.SphereGeometry(0.25, 14, 12), new THREE.MeshStandardMaterial({ color: 0xddddcc, transparent: true, opacity: 0.4 }));
+      const botBulb = new THREE.Mesh(new THREE.SphereGeometry(0.25, 23, 20), new THREE.MeshStandardMaterial({ color: 0xddddcc, transparent: true, opacity: 0.4 }));
       botBulb.scale.y = 1.3; botBulb.position.y = -0.1; hg.add(botBulb);
       // Sand inside
-      const sand = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.2, 14), sandMat);
+      const sand = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.2, 23), sandMat);
       sand.position.y = -0.25; hg.add(sand);
-      const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.15, 10), clockMat);
+      const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.15, 17), clockMat);
       neck.position.y = 0.2; hg.add(neck);
       const hx = (Math.random() - 0.5) * w * 0.5, hz = (Math.random() - 0.5) * d * 0.5;
       hg.position.set(hx, getTerrainHeight(hx, hz, 0.5) + 1.5, hz); this._scene.add(hg);
@@ -27030,13 +27030,13 @@ export class DiabloRenderer {
     for (let i = 0; i < 8; i++) {
       const frozen = new THREE.Group();
       // Frozen aura
-      const aura = new THREE.Mesh(new THREE.SphereGeometry(0.4, 14, 12), frozenMat);
+      const aura = new THREE.Mesh(new THREE.SphereGeometry(0.4, 23, 20), frozenMat);
       frozen.add(aura);
       // Object inside (random shape)
       const shapes = [
         new THREE.BoxGeometry(0.2, 0.2, 0.2),
-        new THREE.SphereGeometry(0.12, 12, 10),
-        new THREE.CylinderGeometry(0.05, 0.05, 0.3, 10),
+        new THREE.SphereGeometry(0.12, 20, 17),
+        new THREE.CylinderGeometry(0.05, 0.05, 0.3, 17),
       ];
       const inner = new THREE.Mesh(shapes[i % 3], new THREE.MeshStandardMaterial({ color: 0x887766 }));
       frozen.add(inner);
@@ -27052,7 +27052,7 @@ export class DiabloRenderer {
       const glass = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.8, 0.02), mirrorMat);
       glass.position.z = 0.05; mirror.add(glass);
       // Ornate top
-      const ornate = new THREE.Mesh(new THREE.SphereGeometry(0.15, 14, 10), clockMat);
+      const ornate = new THREE.Mesh(new THREE.SphereGeometry(0.15, 23, 17), clockMat);
       ornate.position.y = 1.1; mirror.add(ornate);
       const mrx = (Math.random() - 0.5) * w * 0.5, mrz = (Math.random() - 0.5) * d * 0.5;
       mirror.position.set(mrx, getTerrainHeight(mrx, mrz, 0.5) + 1.2, mrz);
@@ -27070,9 +27070,9 @@ export class DiabloRenderer {
     // Pendulum elements (hanging from ceiling)
     for (let i = 0; i < 5; i++) {
       const pend = new THREE.Group();
-      const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 2 + Math.random(), 8), clockMat);
+      const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 2 + Math.random(), 16), clockMat);
       pend.add(rod);
-      const bob = new THREE.Mesh(new THREE.SphereGeometry(0.12, 21, 12), clockMat);
+      const bob = new THREE.Mesh(new THREE.SphereGeometry(0.12, 31, 20), clockMat);
       bob.position.y = -1.2; pend.add(bob);
       pend.position.set((Math.random() - 0.5) * w * 0.4, 4 + Math.random(), (Math.random() - 0.5) * d * 0.4);
       pend.rotation.z = (Math.random() - 0.5) * 0.4; this._scene.add(pend);
@@ -27080,7 +27080,7 @@ export class DiabloRenderer {
 
     // Floor clock tile pattern
     for (let i = 0; i < 15; i++) {
-      const tile = new THREE.Mesh(new THREE.CircleGeometry(0.8 + Math.random() * 0.5, 24), new THREE.MeshStandardMaterial({ color: 0x334466, roughness: 0.6 }));
+      const tile = new THREE.Mesh(new THREE.CircleGeometry(0.8 + Math.random() * 0.5, 36), new THREE.MeshStandardMaterial({ color: 0x334466, roughness: 0.6 }));
       tile.rotation.x = -Math.PI / 2;
       const tlx = (Math.random() - 0.5) * w * 0.5, tlz = (Math.random() - 0.5) * d * 0.5;
       tile.position.set(tlx, getTerrainHeight(tlx, tlz, 0.5) + 0.02, tlz); this._scene.add(tile);
@@ -27116,7 +27116,7 @@ export class DiabloRenderer {
       let lastR = 0.15 + Math.random() * 0.12;
       for (let s = 0; s < segments; s++) {
         const r = lastR * (0.82 + Math.random() * 0.12);
-        const seg = new THREE.Mesh(new THREE.CylinderGeometry(r, lastR, 0.6, 14), tentacleMat);
+        const seg = new THREE.Mesh(new THREE.CylinderGeometry(r, lastR, 0.6, 23), tentacleMat);
         seg.position.y = s * 0.55;
         seg.rotation.z = Math.sin(s * 0.7) * 0.18;
         seg.rotation.x = Math.cos(s * 0.5) * 0.18; tentacle.add(seg); lastR = r;
@@ -27124,7 +27124,7 @@ export class DiabloRenderer {
       // Suction cups on some
       if (Math.random() > 0.5) {
         for (let sc = 0; sc < 4; sc++) {
-          const sucker = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.01, 16, 14), organicMat);
+          const sucker = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.01, 27, 23), organicMat);
           sucker.position.set(0.1, sc * 1.2 + 0.5, 0); tentacle.add(sucker);
         }
       }
@@ -27138,19 +27138,19 @@ export class DiabloRenderer {
     for (let i = 0; i < 12; i++) {
       const eye = new THREE.Group();
       const eyeSize = 0.3 + Math.random() * 0.4;
-      const eyeball = new THREE.Mesh(new THREE.SphereGeometry(eyeSize, 16, 14),
+      const eyeball = new THREE.Mesh(new THREE.SphereGeometry(eyeSize, 27, 23),
         new THREE.MeshStandardMaterial({ color: [0xaa0066, 0x880088, 0xcc4400][i % 3], emissive: 0x660033, emissiveIntensity: 0.5 }));
       eye.add(eyeball);
-      const pupil = new THREE.Mesh(new THREE.SphereGeometry(eyeSize * 0.35, 14, 12), new THREE.MeshStandardMaterial({ color: 0x000000 }));
+      const pupil = new THREE.Mesh(new THREE.SphereGeometry(eyeSize * 0.35, 23, 20), new THREE.MeshStandardMaterial({ color: 0x000000 }));
       pupil.position.z = eyeSize * 0.7; eye.add(pupil);
-      const iris = new THREE.Mesh(new THREE.TorusGeometry(eyeSize * 0.3, 0.03, 10, 16), eyeMat);
+      const iris = new THREE.Mesh(new THREE.TorusGeometry(eyeSize * 0.3, 0.03, 17, 27), eyeMat);
       iris.position.z = eyeSize * 0.65; eye.add(iris);
       // Eyelid
-      const lid = new THREE.Mesh(new THREE.SphereGeometry(eyeSize * 1.05, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.3), organicMat);
+      const lid = new THREE.Mesh(new THREE.SphereGeometry(eyeSize * 1.05, 23, 17, 0, Math.PI * 2, 0, Math.PI * 0.3), organicMat);
       lid.position.y = eyeSize * 0.2; eye.add(lid);
       // Veins radiating from eye
       for (let v = 0; v < 3; v++) {
-        const vein = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.02, eyeSize, 8), organicMat);
+        const vein = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.02, eyeSize, 16), organicMat);
         const vAngle = (v / 3) * Math.PI * 2 + Math.random();
         vein.position.set(Math.sin(vAngle) * eyeSize * 0.8, Math.cos(vAngle) * eyeSize * 0.8, 0);
         vein.rotation.z = vAngle; eye.add(vein);
@@ -27170,11 +27170,11 @@ export class DiabloRenderer {
       const wallW = wallBase.geometry.parameters.width;
       const wallH = wallBase.geometry.parameters.height;
       for (let e = 0; e < 8 + Math.floor(Math.random() * 6); e++) {
-        const smallEye = new THREE.Mesh(new THREE.SphereGeometry(0.06 + Math.random() * 0.04, 12, 10),
+        const smallEye = new THREE.Mesh(new THREE.SphereGeometry(0.06 + Math.random() * 0.04, 20, 17),
           new THREE.MeshStandardMaterial({ color: 0xaa0066, emissive: 0x440022, emissiveIntensity: 0.5 }));
         smallEye.position.set((Math.random() - 0.5) * wallW * 0.8, (Math.random() - 0.5) * wallH * 0.8, 0.16);
         eyeWall.add(smallEye);
-        const smallPupil = new THREE.Mesh(new THREE.SphereGeometry(0.025, 10, 8), new THREE.MeshStandardMaterial({ color: 0x000000 }));
+        const smallPupil = new THREE.Mesh(new THREE.SphereGeometry(0.025, 17, 16), new THREE.MeshStandardMaterial({ color: 0x000000 }));
         smallPupil.position.copy(smallEye.position); smallPupil.position.z += 0.04; eyeWall.add(smallPupil);
       }
       const ewx = (Math.random() - 0.5) * w * 0.6, ewz = (Math.random() - 0.5) * d * 0.6;
@@ -27186,11 +27186,11 @@ export class DiabloRenderer {
     for (let i = 0; i < 10; i++) {
       const alienCol = new THREE.Group();
       const colH = 3 + Math.random() * 4;
-      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, colH, 12), alienStoneMat);
+      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, colH, 20), alienStoneMat);
       col.position.y = colH / 2; alienCol.add(col);
       // Twisted ring decorations
       for (let r = 0; r < 3; r++) {
-        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.45, 0.04, 16, 14), eldritchMat);
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.45, 0.04, 27, 23), eldritchMat);
         ring.position.y = 1 + r * 1.2;
         ring.rotation.set(Math.random() * 0.5, Math.random(), Math.random() * 0.5); alienCol.add(ring);
       }
@@ -27215,12 +27215,12 @@ export class DiabloRenderer {
     // Reality-warping portals (larger, with distortion rings)
     for (let i = 0; i < 6; i++) {
       const portal = new THREE.Group();
-      const outerRing = new THREE.Mesh(new THREE.TorusGeometry(1 + Math.random(), 0.08, 14, 36), eyeMat);
+      const outerRing = new THREE.Mesh(new THREE.TorusGeometry(1 + Math.random(), 0.08, 23, 46), eyeMat);
       portal.add(outerRing);
-      const innerRing = new THREE.Mesh(new THREE.TorusGeometry(0.7 + Math.random() * 0.5, 0.04, 10, 32), madnessMat);
+      const innerRing = new THREE.Mesh(new THREE.TorusGeometry(0.7 + Math.random() * 0.5, 0.04, 17, 44), madnessMat);
       portal.add(innerRing);
       // Void center
-      const voidCenter = new THREE.Mesh(new THREE.CircleGeometry(0.6 + Math.random() * 0.4, 24),
+      const voidCenter = new THREE.Mesh(new THREE.CircleGeometry(0.6 + Math.random() * 0.4, 36),
         new THREE.MeshStandardMaterial({ color: 0x110022, emissive: 0x220044, emissiveIntensity: 0.5 }));
       portal.add(voidCenter);
       portal.position.set((Math.random() - 0.5) * w * 0.4, 2 + Math.random() * 3, (Math.random() - 0.5) * d * 0.4);
@@ -27230,24 +27230,24 @@ export class DiabloRenderer {
     // Cosmic horror statues
     for (let i = 0; i < 4; i++) {
       const statue = new THREE.Group();
-      const stBody = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 2, 14), alienStoneMat);
+      const stBody = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 2, 23), alienStoneMat);
       stBody.position.y = 1; statue.add(stBody);
       // Multiple heads/faces
       for (let h = 0; h < 3; h++) {
-        const face = new THREE.Mesh(new THREE.SphereGeometry(0.18, 21, 12), alienStoneMat);
+        const face = new THREE.Mesh(new THREE.SphereGeometry(0.18, 31, 20), alienStoneMat);
         const hAngle = (h / 3) * Math.PI * 2;
         face.position.set(Math.sin(hAngle) * 0.15, 2.1, Math.cos(hAngle) * 0.15); statue.add(face);
       }
       // Tentacle arms
       for (let a = 0; a < 4; a++) {
-        const tArm = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.06, 1 + Math.random() * 0.5, 10), tentacleMat);
+        const tArm = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.06, 1 + Math.random() * 0.5, 17), tentacleMat);
         tArm.position.set((a < 2 ? -1 : 1) * 0.3, 1.3, (a % 2 === 0 ? -1 : 1) * 0.15);
         tArm.rotation.z = (a < 2 ? 1 : -1) * (0.5 + Math.random() * 0.5); statue.add(tArm);
       }
       // Base with runes
-      const stBase = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.7, 0.3, 16), alienStoneMat);
+      const stBase = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.7, 0.3, 27), alienStoneMat);
       stBase.position.y = 0.15; statue.add(stBase);
-      const baseRune = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.02, 16, 16), runeMat);
+      const baseRune = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.02, 27, 27), runeMat);
       baseRune.rotation.x = -Math.PI / 2; baseRune.position.y = 0.31; statue.add(baseRune);
       const stx = (Math.random() - 0.5) * w * 0.5, stz = (Math.random() - 0.5) * d * 0.5;
       statue.position.set(stx, getTerrainHeight(stx, stz, 0.5), stz);
@@ -27258,7 +27258,7 @@ export class DiabloRenderer {
     for (let i = 0; i < 15; i++) {
       const tendril = new THREE.Group();
       for (let s = 0; s < 4 + Math.floor(Math.random() * 3); s++) {
-        const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.03, 0.8, 8), voidMat);
+        const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.03, 0.8, 16), voidMat);
         seg.position.y = s * 0.7; seg.rotation.z = Math.sin(s * 0.8) * 0.2;
         seg.rotation.x = Math.cos(s * 0.6) * 0.2; tendril.add(seg);
       }
@@ -27269,7 +27269,7 @@ export class DiabloRenderer {
     // Madness-inducing runes (glowing symbols on ground)
     for (let i = 0; i < 12; i++) {
       const runeGroup = new THREE.Group();
-      const circle = new THREE.Mesh(new THREE.TorusGeometry(0.4 + Math.random() * 0.3, 0.02, 8, 20), runeMat);
+      const circle = new THREE.Mesh(new THREE.TorusGeometry(0.4 + Math.random() * 0.3, 0.02, 16, 30), runeMat);
       circle.rotation.x = -Math.PI / 2; runeGroup.add(circle);
       // Inner symbols (star pattern)
       for (let p = 0; p < 5; p++) {
@@ -27282,7 +27282,7 @@ export class DiabloRenderer {
 
     // Pulsing organic walls (breathing membrane look)
     for (let i = 0; i < 8; i++) {
-      const orgWall = new THREE.Mesh(new THREE.SphereGeometry(1.5 + Math.random() * 2, 14, 12), organicMat);
+      const orgWall = new THREE.Mesh(new THREE.SphereGeometry(1.5 + Math.random() * 2, 23, 20), organicMat);
       orgWall.scale.z = 0.15;
       const owx = (Math.random() - 0.5) * w * 0.7, owz = (Math.random() - 0.5) * d * 0.7;
       orgWall.position.set(owx, getTerrainHeight(owx, owz, 0.5) + 1.5, owz);
@@ -27291,7 +27291,7 @@ export class DiabloRenderer {
 
     // Madness pools
     for (let i = 0; i < 8; i++) {
-      const pool = new THREE.Mesh(new THREE.CircleGeometry(1 + Math.random() * 2, 20), madnessMat);
+      const pool = new THREE.Mesh(new THREE.CircleGeometry(1 + Math.random() * 2, 30), madnessMat);
       pool.rotation.x = -Math.PI / 2;
       const px = (Math.random() - 0.5) * w * 0.5, pz = (Math.random() - 0.5) * d * 0.5;
       pool.position.set(px, getTerrainHeight(px, pz, 0.5) + 0.02, pz); this._scene.add(pool);
@@ -27299,7 +27299,7 @@ export class DiabloRenderer {
 
     // Psychic energy streams
     for (let i = 0; i < 12; i++) {
-      const stream = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 4 + Math.random() * 6, 8), madnessMat);
+      const stream = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 4 + Math.random() * 6, 16), madnessMat);
       stream.position.set((Math.random() - 0.5) * w * 0.6, 8, (Math.random() - 0.5) * d * 0.6);
       stream.rotation.set(Math.random() * 0.5, 0, Math.random() * 0.5); this._scene.add(stream);
     }
