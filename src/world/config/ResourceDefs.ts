@@ -6,7 +6,11 @@ import { TerrainType } from "@world/config/TerrainDefs";
 // Resources
 // ---------------------------------------------------------------------------
 
-export type ResourceType = "iron" | "horses" | "gems" | "marble" | "wheat" | "game";
+export type ResourceType = "iron" | "horses" | "gems" | "marble" | "wheat" | "game" | "wine" | "silk";
+
+// Luxury resources — provide happiness and gold bonuses to cities
+export type LuxuryResourceType = "wine" | "silk" | "gems";
+export const LUXURY_RESOURCE_TYPES: LuxuryResourceType[] = ["wine", "silk", "gems"];
 
 export interface ResourceDef {
   type: ResourceType;
@@ -78,6 +82,24 @@ export const RESOURCE_DEFINITIONS: Record<ResourceType, ResourceDef> = {
     productionBonus: 0,
     validTerrain: [TerrainType.FOREST, TerrainType.SWAMP],
     color: 0x88aa44,
+  },
+  wine: {
+    type: "wine",
+    label: "Wine",
+    goldBonus: 2,
+    foodBonus: 1,
+    productionBonus: 0,
+    validTerrain: [TerrainType.PLAINS, TerrainType.HILLS, TerrainType.GRASSLAND],
+    color: 0x993366,
+  },
+  silk: {
+    type: "silk",
+    label: "Silk",
+    goldBonus: 3,
+    foodBonus: 0,
+    productionBonus: 0,
+    validTerrain: [TerrainType.FOREST, TerrainType.PLAINS],
+    color: 0xddaaee,
   },
 };
 

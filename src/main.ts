@@ -7036,6 +7036,12 @@ async function _bootGame(
 
   const state = createGameState(mapSize.width, mapSize.height, 0, gameMode, effectivePlayerCount);
 
+  // Deathmatch: apply mode-specific initial timers
+  if (gameMode === GameMode.DEATHMATCH) {
+    state.phaseTimer = BalanceConfig.DEATHMATCH_PREP_DURATION;
+    state.eventTimer = BalanceConfig.DEATHMATCH_RANDOM_EVENT_INTERVAL;
+  }
+
   const aiStartGold = Math.floor(startGold * getDifficultySettings().aiStartGoldMultiplier);
 
   if (effectivePlayerCount <= 2) {
@@ -7079,8 +7085,9 @@ async function _bootGame(
     gameMode === GameMode.BATTLEFIELD ||
     (gameMode === GameMode.CAMPAIGN && scenarioType === "battlefield");
 
-  if (!isBattlefieldSetup) {
-    // Standard, deathmatch, roguelike, standard-campaign all have towns/neutral buildings
+  if (!isBattlefieldSetup && gameMode !== GameMode.DEATHMATCH) {
+    // Standard, roguelike, standard-campaign have towns/neutral buildings
+    // Deathmatch skips neutral buildings entirely for a faster, purer combat mode
     _spawnTowns(state, mapSize.width, mapSize.height);
     _spawnNeutralExtras(state, mapSize.width, mapSize.height, mapSize.label);
   }
@@ -7088,6 +7095,8 @@ async function _bootGame(
   if (isBattlefieldSetup) {
     // Remove castles and all other player buildings — no structures on the field
     _removeCastlesAndBuildings(state);
+    // Place map obstacles (walls and rivers) on the battlefield
+    placeBattlefieldObstacles(state.battlefield);
     // Spawn starting units
     if (_worldBattleRosters) {
       const midY = Math.floor(mapSize.height / 2);

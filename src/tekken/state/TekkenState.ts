@@ -32,6 +32,9 @@ export interface JuggleState {
   gravityScale: number;
   wallSplatActive: boolean;
   wallSplatTimer: number;
+  isWallSplatted: boolean;
+  wallSplatFrames: number;
+  currentLaunchGravity: number;
 }
 
 export interface TekkenMoveDef {
@@ -50,6 +53,7 @@ export interface TekkenMoveDef {
   chipDamage: number;
   isLauncher: boolean;
   launchHeight: number;
+  launchGravity: number;
   isScrew: boolean;
   isBound: boolean;
   isHoming: boolean;
@@ -72,6 +76,16 @@ export interface TekkenMoveEntry {
   move: TekkenMoveDef;
 }
 
+export interface TekkenAIProfile {
+  aggression: number;       // 0-1: how aggressively the AI approaches and attacks
+  throwFrequency: number;   // 0-1: how often the AI attempts throws
+  whiffPunishRate: number;  // 0-1: how reliably the AI punishes whiffed moves
+  pressureStyle: number;    // 0-1: how much the AI pressures on offense (vs spacing)
+  defensiveness: number;    // 0-1: how often the AI blocks/retreats preemptively
+  pokeFrequency: number;    // 0-1: how often the AI uses safe pokes at range
+  launcherFrequency: number; // 0-1: how often the AI goes for risky launchers
+}
+
 export interface TekkenCharacterDef {
   id: string;
   name: string;
@@ -87,6 +101,7 @@ export interface TekkenCharacterDef {
   walkSpeed: number;
   dashSpeed: number;
   backdashDist: number;
+  aiProfile?: TekkenAIProfile;
 }
 
 export interface CameraState {
@@ -182,7 +197,7 @@ export function createDefaultInput(): TekkenInputState {
 }
 
 export function createDefaultJuggle(): JuggleState {
-  return { isAirborne: false, velocity: { x: 0, y: 0, z: 0 }, hitCount: 0, screwUsed: false, boundUsed: false, gravityScale: 1, wallSplatActive: false, wallSplatTimer: 0 };
+  return { isAirborne: false, velocity: { x: 0, y: 0, z: 0 }, hitCount: 0, screwUsed: false, boundUsed: false, gravityScale: 1, wallSplatActive: false, wallSplatTimer: 0, isWallSplatted: false, wallSplatFrames: 0, currentLaunchGravity: 0 };
 }
 
 export function createFighter(characterId: string, x: number, facingRight: boolean): TekkenFighter {

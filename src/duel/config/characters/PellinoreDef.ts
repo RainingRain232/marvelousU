@@ -122,6 +122,10 @@ export const PELLINORE_DEF: DuelCharacterDef = {
   jumpVelocity: -17,
   jumpForwardSpeed: 4.5,
   weight: 1.2,
+  uniqueMechanic: {
+    name: "beastRage",
+    description: "Taking damage builds Rage; at full Rage, attacks gain armor and extra knockback",
+  },
 
   normals: {
     // Q — Light high: slow axe jab, still hits hard

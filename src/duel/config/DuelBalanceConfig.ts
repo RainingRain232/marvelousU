@@ -16,8 +16,21 @@ export const DuelBalance = {
   STAGE_MARGIN: 60, // left/right wall margin from screen edge
 
   // Combo
-  COMBO_DAMAGE_SCALING: 0.9,
+  COMBO_DAMAGE_SCALING: 0.85,
   MIN_DAMAGE_SCALING: 0.3,
+
+  // Counter-hit
+  COUNTER_HIT_DAMAGE_MULT: 1.2,
+  COUNTER_HIT_EXTRA_HITSTUN: 3,
+
+  // Tech roll
+  TECH_ROLL_WINDOW: 10,         // frames after knockdown where tech input is accepted
+  TECH_ROLL_DISTANCE: 80,       // pixels to roll
+  TECH_ROLL_RECOVERY: 12,       // faster recovery frames after tech roll (vs normal 40 knockdown + 20 getup)
+
+  // Wave mode difficulty scaling
+  WAVE_HP_SCALING: 0.10,        // +10% enemy HP per wave
+  WAVE_DMG_SCALING: 0.05,       // +5% enemy damage per wave
 
   // Blocking
   CHIP_DAMAGE_MULT: 0.2,

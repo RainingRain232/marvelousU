@@ -59,6 +59,8 @@ export interface SurvivorWeaponDef {
   // Evolution
   evolutionId?: SurvivorEvolutionId;
   evolutionPassive?: SurvivorPassiveId;
+  // Evolution hint — displayed in UI to guide the player
+  evolutionHint?: string;
 }
 
 export interface SurvivorPassiveDef {
@@ -112,6 +114,7 @@ export const WEAPON_DEFS: Record<SurvivorWeaponId, SurvivorWeaponDef> = {
     areaPerLevel: 0.3,
     evolutionId: SurvivorEvolutionId.INFERNO_STORM,
     evolutionPassive: SurvivorPassiveId.SPELL_TOME,
+    evolutionHint: "Max level + Spell Tome → Inferno Storm. Fire magic amplified by arcane knowledge.",
   },
   [SurvivorWeaponId.ARROW_VOLLEY]: {
     id: SurvivorWeaponId.ARROW_VOLLEY,
@@ -131,6 +134,7 @@ export const WEAPON_DEFS: Record<SurvivorWeaponId, SurvivorWeaponDef> = {
     areaPerLevel: 0,
     evolutionId: SurvivorEvolutionId.ARROW_HURRICANE,
     evolutionPassive: SurvivorPassiveId.WAR_DRUM,
+    evolutionHint: "Max level + War Drum → Arrow Hurricane. Faster attack speed unleashes a storm of arrows.",
   },
   [SurvivorWeaponId.LIGHTNING_CHAIN]: {
     id: SurvivorWeaponId.LIGHTNING_CHAIN,
@@ -150,6 +154,7 @@ export const WEAPON_DEFS: Record<SurvivorWeaponId, SurvivorWeaponDef> = {
     areaPerLevel: 0.5,
     evolutionId: SurvivorEvolutionId.THUNDER_GOD,
     evolutionPassive: SurvivorPassiveId.LUCKY_COIN,
+    evolutionHint: "Max level + Lucky Coin → Thunder God. Luck channels lightning into a devastating storm.",
   },
   [SurvivorWeaponId.ICE_NOVA]: {
     id: SurvivorWeaponId.ICE_NOVA,
@@ -167,6 +172,9 @@ export const WEAPON_DEFS: Record<SurvivorWeaponId, SurvivorWeaponDef> = {
     cooldownPerLevel: 0.3,
     countPerLevel: 0,
     areaPerLevel: 0.5,
+    evolutionId: SurvivorEvolutionId.ABSOLUTE_ZERO,
+    evolutionPassive: SurvivorPassiveId.SWIFT_BOOTS,
+    evolutionHint: "Max level + Swift Boots → Absolute Zero. Speed creates a shockwave that shatters frozen foes.",
   },
   [SurvivorWeaponId.HOLY_CIRCLE]: {
     id: SurvivorWeaponId.HOLY_CIRCLE,
@@ -186,6 +194,7 @@ export const WEAPON_DEFS: Record<SurvivorWeaponId, SurvivorWeaponDef> = {
     areaPerLevel: 0.3,
     evolutionId: SurvivorEvolutionId.DIVINE_JUDGMENT,
     evolutionPassive: SurvivorPassiveId.CHALICE,
+    evolutionHint: "Max level + Chalice → Divine Judgment. Holy power sustained by regeneration becomes divine wrath.",
   },
   [SurvivorWeaponId.CATAPULT_STRIKE]: {
     id: SurvivorWeaponId.CATAPULT_STRIKE,
@@ -205,6 +214,7 @@ export const WEAPON_DEFS: Record<SurvivorWeaponId, SurvivorWeaponDef> = {
     areaPerLevel: 0.3,
     evolutionId: SurvivorEvolutionId.METEOR_BARRAGE,
     evolutionPassive: SurvivorPassiveId.CROWN,
+    evolutionHint: "Max level + Crown → Meteor Barrage. Royal authority commands the heavens to rain fire.",
   },
   [SurvivorWeaponId.SPINNING_BLADE]: {
     id: SurvivorWeaponId.SPINNING_BLADE,
@@ -224,6 +234,7 @@ export const WEAPON_DEFS: Record<SurvivorWeaponId, SurvivorWeaponDef> = {
     areaPerLevel: 0.15,
     evolutionId: SurvivorEvolutionId.DEATH_SPIRAL,
     evolutionPassive: SurvivorPassiveId.PLATE_ARMOR,
+    evolutionHint: "Max level + Plate Armor → Death Spiral. Heavy armor keeps the blades spinning endlessly.",
   },
   [SurvivorWeaponId.WARP_FIELD]: {
     id: SurvivorWeaponId.WARP_FIELD,
@@ -243,6 +254,7 @@ export const WEAPON_DEFS: Record<SurvivorWeaponId, SurvivorWeaponDef> = {
     areaPerLevel: 0.4,
     evolutionId: SurvivorEvolutionId.VOID_RIFT,
     evolutionPassive: SurvivorPassiveId.MAGNET,
+    evolutionHint: "Max level + Magnet → Void Rift. Magnetic pull tears open a rift that devours all.",
   },
   [SurvivorWeaponId.RUNE_CIRCLE]: {
     id: SurvivorWeaponId.RUNE_CIRCLE,
@@ -262,6 +274,7 @@ export const WEAPON_DEFS: Record<SurvivorWeaponId, SurvivorWeaponDef> = {
     areaPerLevel: 0.2,
     evolutionId: SurvivorEvolutionId.ARCANE_CATACLYSM,
     evolutionPassive: SurvivorPassiveId.SWIFT_BOOTS,
+    evolutionHint: "Max level + Swift Boots → Arcane Cataclysm. Speed channels rune energy into explosive force.",
   },
   [SurvivorWeaponId.SOUL_DRAIN]: {
     id: SurvivorWeaponId.SOUL_DRAIN,
@@ -281,6 +294,7 @@ export const WEAPON_DEFS: Record<SurvivorWeaponId, SurvivorWeaponDef> = {
     areaPerLevel: 0.5,
     evolutionId: SurvivorEvolutionId.SOUL_REAPER,
     evolutionPassive: SurvivorPassiveId.CHALICE,
+    evolutionHint: "Max level + Chalice → Soul Reaper. Regeneration fuels the soul drain into a life-devouring aura.",
   },
 };
 

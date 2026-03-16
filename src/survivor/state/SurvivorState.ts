@@ -29,6 +29,8 @@ export interface SurvivorPassiveState {
   level: number; // 1-based
 }
 
+export type AiBehavior = "direct" | "flanking" | "retreating" | "circling" | "pack" | "ambush";
+
 export interface SurvivorEnemy {
   id: number;
   type: UnitType;
@@ -51,10 +53,18 @@ export interface SurvivorEnemy {
   chargeTimer: number; // remaining charge duration
   chargeDirX: number;
   chargeDirY: number;
+  // Shielded elite state
+  shieldHp: number; // absorbs damage before health is reduced
   // Death boss flag
   isDeathBoss: boolean;
   // Display name (Arthurian themed for bosses/elites)
   displayName: string | null;
+  // AI behavior type
+  aiBehavior: AiBehavior;
+  // Ambush state: hidden until player is close
+  ambushRevealed: boolean;
+  // Preferred attack range (used by circling/retreating AI)
+  preferredRange: number;
 }
 
 export interface SurvivorGem {

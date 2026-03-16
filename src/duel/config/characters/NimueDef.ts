@@ -122,6 +122,10 @@ export const NIMUE_DEF: DuelCharacterDef = {
   jumpVelocity: -20,
   jumpForwardSpeed: 5.5,
   weight: 0.82,
+  uniqueMechanic: {
+    name: "tidalFlow",
+    description: "Alternating high and low specials builds Flow stacks that boost speed and damage",
+  },
 
   normals: {
     // Q — Light high: quick water whip snap

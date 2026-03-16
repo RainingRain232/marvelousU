@@ -44,6 +44,11 @@ export interface DuelMoveDef {
 
 // ---- Character definition --------------------------------------------------
 
+export interface DuelUniqueMechanic {
+  name: string;
+  description: string;
+}
+
 export interface DuelCharacterDef {
   id: string;
   name: string;
@@ -60,6 +65,7 @@ export interface DuelCharacterDef {
   specials: Record<string, DuelMoveDef>;
   zeals: Record<string, DuelMoveDef>;
   grab: DuelMoveDef;
+  uniqueMechanic?: DuelUniqueMechanic;
 }
 
 // ---- Input buffer ----------------------------------------------------------
@@ -130,6 +136,12 @@ export interface DuelFighter {
   invincibleFrames: number;
   dashFrames: number; // remaining frames in a dash (0 = not dashing)
   zealGauge: number; // 0–100 ultimate meter
+  stance: "standing" | "crouching"; // height-based defense stance
+  // Tech roll (knockdown recovery)
+  knockdownFrame: number;       // frame counter since knockdown started
+  techRollDirection: -1 | 0 | 1; // -1 = left, 0 = none, 1 = right
+  techRolled: boolean;          // whether tech roll was executed this knockdown
+  waveDamageMultiplier: number; // wave mode: scales attack damage per wave
   // Input (raw key state)
   input: {
     left: boolean;
@@ -192,6 +204,12 @@ export interface DuelState {
   waveEnemyIndex: number;      // which enemy we're currently fighting
   waveDefeated: number;        // total enemies defeated across all waves
   waveSpawnTimer: number;      // countdown frames before next enemy spawns
+  // Wave mode meta-progression
+  waveProgress: {
+    totalWavesCleared: number;
+    bestWaveReached: number;
+    totalKOs: number;
+  };
 }
 
 // ---- Factory ---------------------------------------------------------------
@@ -227,6 +245,11 @@ export function createFighter(
     invincibleFrames: 0,
     dashFrames: 0,
     zealGauge: 0,
+    stance: "standing",
+    knockdownFrame: 0,
+    techRollDirection: 0,
+    techRolled: false,
+    waveDamageMultiplier: 1.0,
     input: {
       left: false,
       right: false,
@@ -296,5 +319,10 @@ export function createDuelState(
     waveEnemyIndex: 0,
     waveDefeated: 0,
     waveSpawnTimer: 0,
+    waveProgress: {
+      totalWavesCleared: 0,
+      bestWaveReached: 1,
+      totalKOs: 0,
+    },
   };
 }

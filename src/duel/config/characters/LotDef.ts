@@ -123,6 +123,10 @@ export const LOT_DEF: DuelCharacterDef = {
   jumpVelocity: -18,
   jumpForwardSpeed: 5.5,
   weight: 1.05,
+  uniqueMechanic: {
+    name: "deathCurse",
+    description: "Hits apply a curse that deals damage over time; stacks up to 3 times",
+  },
 
   normals: {
     // Q — Light high: heavy greatsword jab, slow but wide reach

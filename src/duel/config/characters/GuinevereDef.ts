@@ -123,6 +123,10 @@ export const GUINEVERE_DEF: DuelCharacterDef = {
   jumpVelocity: -20,
   jumpForwardSpeed: 6,
   weight: 0.95,
+  uniqueMechanic: {
+    name: "royalGuard",
+    description: "Perfect blocks (blocking in the first 3 frames) give a free counter attack",
+  },
 
   normals: {
     // Q -- Light high: quick blessed jab (faster than Arthur)

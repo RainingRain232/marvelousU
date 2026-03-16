@@ -122,6 +122,10 @@ export const GALAHAD_DEF: DuelCharacterDef = {
   jumpVelocity: -19,
   jumpForwardSpeed: 5.5,
   weight: 1.05,
+  uniqueMechanic: {
+    name: "holyZeal",
+    description: "Combo counter increases damage; longer combos deal progressively more",
+  },
 
   normals: {
     // Q — Light high: quick radiant jab (good blockstun for a light)

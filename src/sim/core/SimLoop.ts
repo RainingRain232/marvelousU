@@ -13,7 +13,8 @@
 
 import { BalanceConfig } from "@sim/config/BalanceConfig";
 import type { GameState } from "@sim/state/GameState";
-import { UnitType, BuildingType, BuildingState, UnitState } from "@/types";
+import { UnitType, BuildingType, BuildingState, UnitState, GamePhase, GameMode } from "@/types";
+import { isInsideShrinkBoundary } from "@sim/state/BattlefieldState";
 import { SpawnSystem } from "@sim/systems/SpawnSystem";
 import { AbilitySystem } from "@sim/systems/AbilitySystem";
 import { MovementSystem } from "@sim/systems/MovementSystem";
@@ -26,6 +27,7 @@ import { EconomySystem } from "@sim/systems/EconomySystem";
 import { UnitBehaviorSystem } from "@sim/systems/UnitBehaviorSystem";
 import { RandomEventSystem } from "@sim/systems/RandomEventSystem";
 import { RegenSystem } from "@sim/systems/RegenSystem";
+import { EscalationSystem } from "@sim/systems/EscalationSystem";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -58,7 +60,30 @@ export function simTick(state: GameState): void {
   ProjectileSystem.update(state, DT);
   BuildingSystem.update(state, DT);
   AISystem.update(state, DT);
-  
+  EscalationSystem.update(state, DT);
+
+  // Battlefield shrink damage — units outside the shrink boundary take DPS
+  if (
+    state.gameMode === GameMode.BATTLEFIELD &&
+    state.phase === GamePhase.BATTLE &&
+    state.battlefield.shrinkBoundary.inset > 0
+  ) {
+    const shrinkDamage = BalanceConfig.BATTLEFIELD_SHRINK_DPS * DT;
+    for (const unit of state.units.values()) {
+      if (unit.state === UnitState.DIE) continue;
+      const tileX = Math.floor(unit.position.x);
+      const tileY = Math.floor(unit.position.y);
+      if (!isInsideShrinkBoundary(state.battlefield, tileX, tileY)) {
+        unit.hp -= shrinkDamage;
+        if (unit.hp <= 0) {
+          unit.hp = 0;
+          unit.state = UnitState.DIE;
+          unit.deathTimer = BalanceConfig.UNIT_DEATH_LINGER;
+        }
+      }
+    }
+  }
+
   // Settler / Engineer construction behavior — override movement toward ghost building
   for (const unit of state.units.values()) {
     if (

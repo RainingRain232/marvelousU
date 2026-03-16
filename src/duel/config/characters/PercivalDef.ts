@@ -122,6 +122,10 @@ export const PERCIVAL_DEF: DuelCharacterDef = {
   jumpVelocity: -20,
   jumpForwardSpeed: 6,
   weight: 0.95,
+  uniqueMechanic: {
+    name: "grailSeeker",
+    description: "Landing specials fills a Grail meter; at full, next special heals Percival",
+  },
 
   normals: {
     // Q — Light high: quick crusader jab

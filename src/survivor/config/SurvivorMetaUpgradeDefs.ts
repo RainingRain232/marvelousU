@@ -67,4 +67,112 @@ export const META_UPGRADES: SurvivorMetaUpgrade[] = [
     stat: "goldMult",
     valuePerLevel: 0.10,
   },
+  {
+    id: "luck",
+    name: "Fortune",
+    description: "+2% crit chance per level",
+    maxLevel: 5,
+    costPerLevel: [150, 300, 500, 800, 1200],
+    stat: "critChance",
+    valuePerLevel: 0.02,
+  },
+  {
+    id: "regen",
+    name: "Resilience",
+    description: "+0.5 HP/sec regen per level",
+    maxLevel: 5,
+    costPerLevel: [100, 200, 350, 600, 1000],
+    stat: "regen",
+    valuePerLevel: 0.5,
+  },
+];
+
+// ---------------------------------------------------------------------------
+// Achievement definitions — unlock rewards for milestones
+// ---------------------------------------------------------------------------
+
+export interface SurvivorAchievement {
+  id: string;
+  name: string;
+  description: string;
+  condition: AchievementCondition;
+  reward: AchievementReward;
+}
+
+export type AchievementCondition =
+  | { type: "total_kills"; threshold: number }
+  | { type: "total_gold"; threshold: number }
+  | { type: "survive_minutes"; threshold: number }
+  | { type: "win_count"; threshold: number }
+  | { type: "reach_level"; threshold: number };
+
+export type AchievementReward =
+  | { type: "unlock_character"; characterId: string }
+  | { type: "unlock_weapon"; weaponId: string }
+  | { type: "gold_bonus"; amount: number };
+
+export const ACHIEVEMENTS: SurvivorAchievement[] = [
+  {
+    id: "first_blood",
+    name: "First Blood",
+    description: "Defeat 100 enemies total across all runs",
+    condition: { type: "total_kills", threshold: 100 },
+    reward: { type: "gold_bonus", amount: 200 },
+  },
+  {
+    id: "slayer",
+    name: "Slayer",
+    description: "Defeat 1,000 enemies total",
+    condition: { type: "total_kills", threshold: 1000 },
+    reward: { type: "unlock_character", characterId: "dark_knight" },
+  },
+  {
+    id: "massacre",
+    name: "Massacre",
+    description: "Defeat 10,000 enemies total",
+    condition: { type: "total_kills", threshold: 10000 },
+    reward: { type: "gold_bonus", amount: 2000 },
+  },
+  {
+    id: "survivor",
+    name: "Survivor",
+    description: "Survive for 15 minutes in a single run",
+    condition: { type: "survive_minutes", threshold: 15 },
+    reward: { type: "unlock_weapon", weaponId: "warp_field" },
+  },
+  {
+    id: "endurance",
+    name: "Endurance",
+    description: "Survive for 25 minutes in a single run",
+    condition: { type: "survive_minutes", threshold: 25 },
+    reward: { type: "unlock_weapon", weaponId: "soul_drain" },
+  },
+  {
+    id: "champion",
+    name: "Champion",
+    description: "Win a run (defeat the Death boss)",
+    condition: { type: "win_count", threshold: 1 },
+    reward: { type: "unlock_character", characterId: "paladin" },
+  },
+  {
+    id: "veteran",
+    name: "Veteran",
+    description: "Win 5 runs",
+    condition: { type: "win_count", threshold: 5 },
+    reward: { type: "gold_bonus", amount: 5000 },
+  },
+  {
+    id: "high_roller",
+    name: "High Roller",
+    description: "Earn 5,000 total gold across all runs",
+    condition: { type: "total_gold", threshold: 5000 },
+    reward: { type: "gold_bonus", amount: 1000 },
+  },
+  {
+    id: "scholar",
+    name: "Scholar",
+    description: "Reach level 30 in a single run",
+    condition: { type: "reach_level", threshold: 30 },
+    reward: { type: "unlock_weapon", weaponId: "rune_circle" },
+  },
 ];

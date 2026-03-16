@@ -193,6 +193,16 @@ export const NPC_DEFINITIONS: Record<GTANPCType, NPCDef> = {
       'You picked the wrong day to travel alone.',
     ],
   },
+  bounty_hunter: {
+    hp: 130, damage: 20, speed: 150, alertRadius: 9999, aggroRadius: 9999,
+    attackCooldown: 1.0, behavior: 'wander', isHostile: true, isGuard: false, colorVariants: 4,
+    dialogLines: [
+      'Your bounty is mine!',
+      'The Crown pays well for your head.',
+      'You cannot run forever.',
+      'Justice will be served!',
+    ],
+  },
 };
 
 // ─── Helpers ────────────────────────────────────────────────────────────────

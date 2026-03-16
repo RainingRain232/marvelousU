@@ -72,6 +72,8 @@ export interface TurnBattleState {
   lootReward: RPGItem[];
   log: string[];
   battleContext?: { biome?: string; dungeonFloor?: number; dungeonName?: string };
+  /** Current weather during this battle (affects spell damage). */
+  weather?: "clear" | "rain" | "snow" | "fog";
   /** Current number of player-side summoned units. */
   playerSummonCount: number;
   /** Current number of enemy-side summoned units. */

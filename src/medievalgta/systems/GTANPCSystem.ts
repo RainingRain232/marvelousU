@@ -1,6 +1,7 @@
 // GTANPCSystem.ts – Pure NPC AI logic, no PixiJS imports
-import type { MedievalGTAState, GTANPC, GTABuilding, GTAVec2 } from '../state/MedievalGTAState';
-import { GTAConfig } from '../config/MedievalGTAConfig';
+import type { MedievalGTAState, GTANPC, GTABuilding, GTAVec2, GTANPCType } from '../state/MedievalGTAState';
+import { GTAConfig, FACTION_DEFINITIONS, getFactionTierLabel } from '../config/MedievalGTAConfig';
+import type { GTAFactionId } from '../config/MedievalGTAConfig';
 import { NPC_DEFINITIONS } from '../config/NPCDefs';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -73,6 +74,100 @@ function pickWanderTarget(homePos: GTAVec2, worldW: number, worldH: number): GTA
   };
 }
 
+// ─── Faction / Reputation Helpers ────────────────────────────────────────────
+
+/** Find which faction an NPC type belongs to (if any). */
+export function getNPCFaction(npcType: GTANPCType): GTAFactionId | null {
+  for (const [factionId, def] of Object.entries(FACTION_DEFINITIONS)) {
+    if (def.memberTypes.includes(npcType)) {
+      return factionId as GTAFactionId;
+    }
+  }
+  return null;
+}
+
+/** Get the player's reputation with a given NPC's faction. Returns 0 if no faction. */
+function getPlayerRepWithNPC(state: MedievalGTAState, npc: GTANPC): number {
+  const faction = getNPCFaction(npc.type);
+  if (!faction) return 0;
+  return state.player.reputation[faction] ?? 0;
+}
+
+/** Check if player's rep makes this NPC hostile (rep <= -50). */
+function isFactionHostile(state: MedievalGTAState, npc: GTANPC): boolean {
+  return getPlayerRepWithNPC(state, npc) <= -50;
+}
+
+/** Check if player's rep makes this NPC friendly (rep >= 50). */
+function isFactionFriendly(state: MedievalGTAState, npc: GTANPC): boolean {
+  return getPlayerRepWithNPC(state, npc) >= 50;
+}
+
+/** Get a faction-specific dialog line based on reputation. */
+export function getFactionDialogLine(state: MedievalGTAState, npc: GTANPC): string | null {
+  const faction = getNPCFaction(npc.type);
+  if (!faction) return null;
+  const rep = state.player.reputation[faction];
+  const tierLabel = getFactionTierLabel(faction, rep);
+
+  if (rep >= 80) {
+    return `Welcome, ${tierLabel}! It is an honor.`;
+  } else if (rep >= 50) {
+    return `Well met, ${tierLabel}. You are a friend to us.`;
+  } else if (rep >= 20) {
+    return `Greetings, ${tierLabel}. We see your efforts.`;
+  } else if (rep <= -50) {
+    return `You dare show your face here, ${tierLabel}?!`;
+  } else if (rep <= -20) {
+    return `I have heard about you, ${tierLabel}. Watch yourself.`;
+  }
+  return null;
+}
+
+/** Bounty hunter AI: actively hunt the player. */
+function _updateBountyHunterAI(
+  state: MedievalGTAState,
+  npc: GTANPC,
+  _dt: number,
+  speed: number,
+  distToPlayer: number,
+): void {
+  const p = state.player;
+
+  // If player's wanted dropped to 0, bounty hunter leaves
+  if (p.wantedLevel <= 0) {
+    npc.behavior = 'wander';
+    npc.chaseTimer = 0;
+    return;
+  }
+
+  if (npc.behavior === 'ambush') {
+    // Ambush: wait until player is close, then attack
+    if (distToPlayer < 200) {
+      npc.behavior = 'hunt_player';
+    }
+    // Stay put while ambushing
+    npc.vel.x *= 0.3;
+    npc.vel.y *= 0.3;
+    return;
+  }
+
+  // hunt_player / chase_player / attack_player
+  if (distToPlayer <= 55) {
+    // In melee range, attack
+    npc.behavior = 'attack_player';
+    npc.vel.x *= 0.5;
+    npc.vel.y *= 0.5;
+    if (npc.attackTimer <= 0) {
+      _meleeHitPlayer(state, npc);
+    }
+  } else {
+    // Chase the player
+    npc.behavior = 'hunt_player';
+    _moveToward(npc, p.pos.x, p.pos.y, speed * 1.1);
+  }
+}
+
 // ─── Main export ─────────────────────────────────────────────────────────────
 
 export function updateNPCs(state: MedievalGTAState, dt: number): void {
@@ -101,29 +196,65 @@ export function updateNPCs(state: MedievalGTAState, dt: number): void {
 
     const distToPlayer = dist(npc.pos.x, npc.pos.y, p.pos.x, p.pos.y);
 
-    // ── 2. Guard AI ──────────────────────────────────────────────────────────
-    if (npc.type === 'guard' || npc.type === 'army_soldier') {
+    // ── 2. Bounty Hunter AI ──────────────────────────────────────────────────
+    if (npc.type === 'bounty_hunter') {
+      _updateBountyHunterAI(state, npc, dt, baseSpeed, distToPlayer);
+    }
+    // ── 3. Guard AI ──────────────────────────────────────────────────────────
+    else if (npc.type === 'guard' || npc.type === 'army_soldier') {
+      // Faction reputation: hostile crown rep makes guards aggro even at low wanted
+      if (isFactionHostile(state, npc) && distToPlayer < npc.alertRadius) {
+        if (npc.behavior !== 'chase_player' && npc.behavior !== 'attack_player') {
+          npc.behavior = 'chase_player';
+          npc.chaseTimer = 20;
+        }
+      }
       _updateGuardAI(state, npc, dt, baseSpeed, wl, distToPlayer);
     }
-    // ── 3. Knight AI ────────────────────────────────────────────────────────
+    // ── 4. Knight AI ────────────────────────────────────────────────────────
     else if (npc.type === 'knight') {
+      // Knights also respond to hostile faction rep
+      if (isFactionHostile(state, npc) && distToPlayer < npc.alertRadius) {
+        if (npc.behavior !== 'chase_player' && npc.behavior !== 'attack_player') {
+          npc.behavior = 'chase_player';
+          npc.chaseTimer = 25;
+        }
+      }
       _updateKnightAI(state, npc, dt, baseSpeed, wl, distToPlayer);
     }
-    // ── 4. Archer AI ────────────────────────────────────────────────────────
+    // ── 5. Archer AI ────────────────────────────────────────────────────────
     else if (npc.type === 'archer_guard') {
       _updateArcherAI(state, npc, dt, baseSpeed, wl, distToPlayer);
     }
-    // ── 5. Criminal / Bandit AI ─────────────────────────────────────────────
+    // ── 6. Criminal / Bandit AI ─────────────────────────────────────────────
     else if (npc.type === 'criminal' || npc.type === 'bandit') {
+      // Thieves guild reputation: friendly criminals won't attack
+      if (isFactionFriendly(state, npc) && npc.behavior === 'chase_player') {
+        npc.behavior = 'wander';
+        npc.chaseTimer = 0;
+      }
       _updateCriminalAI(state, npc, dt, baseSpeed, wl, distToPlayer);
     }
-    // ── 6. Civilian reactions ───────────────────────────────────────────────
+    // ── 7. Civilian reactions ───────────────────────────────────────────────
     else if (npc.type === 'civilian_m' || npc.type === 'civilian_f') {
       _updateCivilianAI(state, npc, dt, baseSpeed, wl, distToPlayer);
     }
-    // ── 7. Remaining (merchant, blacksmith, etc.) use their default behavior ─
+    // ── 8. Merchant / other NPCs with faction-based behavior ────────────────
     else {
-      _updateDefaultAI(state, npc, dt, baseSpeed);
+      // Hostile faction NPCs flee from the player
+      if (isFactionHostile(state, npc) && distToPlayer < 200) {
+        npc.behavior = 'flee';
+        const dir = normalize(npc.pos.x - p.pos.x, npc.pos.y - p.pos.y);
+        npc.vel.x += dir.x * GTAConfig.NPC_FLEE_SPEED * dt * 6;
+        npc.vel.y += dir.y * GTAConfig.NPC_FLEE_SPEED * dt * 6;
+        const spd = Math.sqrt(npc.vel.x ** 2 + npc.vel.y ** 2);
+        if (spd > GTAConfig.NPC_FLEE_SPEED) {
+          npc.vel.x = (npc.vel.x / spd) * GTAConfig.NPC_FLEE_SPEED;
+          npc.vel.y = (npc.vel.y / spd) * GTAConfig.NPC_FLEE_SPEED;
+        }
+      } else {
+        _updateDefaultAI(state, npc, dt, baseSpeed);
+      }
     }
 
     // ── Velocity application + friction ─────────────────────────────────────

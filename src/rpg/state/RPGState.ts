@@ -49,8 +49,10 @@ export interface PartyMember {
   speed: number;
   range: number;
   abilityTypes: AbilityType[];
-  /** Spells learned through the spell learning system (UpgradeType keys). */
+  /** Spells learned through the spell learning system (UpgradeType keys). Unlimited capacity. */
   knownSpells: UpgradeType[];
+  /** Spells currently equipped for use in battle (limited by class). */
+  equippedSpells: UpgradeType[];
   equipment: EquipmentSlots;
   statusEffects: StatusEffect[];
   /** Mastery points earned after max level */

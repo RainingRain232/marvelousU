@@ -7,9 +7,9 @@
 import { Ticker } from "pixi.js";
 import { viewManager } from "@view/ViewManager";
 import { audioManager } from "@audio/AudioManager";
-import { createDragoonState, DragoonClassId } from "./state/DragoonState";
-import type { DragoonState } from "./state/DragoonState";
-import { DragoonBalance, CLASS_DEFINITIONS, SUBCLASS_DEFINITIONS, SKILL_CONFIGS } from "./config/DragoonConfig";
+import { createDragoonState, DragoonClassId, DragoonDifficulty, DIFFICULTY_MODIFIERS, saveMetaProgression, DragonSkinId } from "./state/DragoonState";
+import type { DragoonState, LeaderboardEntry } from "./state/DragoonState";
+import { DragoonBalance, CLASS_DEFINITIONS, SUBCLASS_DEFINITIONS, SKILL_CONFIGS, getSubclassSkillTree } from "./config/DragoonConfig";
 import { DragoonInputSystem } from "./systems/DragoonInputSystem";
 import { DragoonWaveSystem } from "./systems/DragoonWaveSystem";
 import { DragoonCombatSystem } from "./systems/DragoonCombatSystem";
@@ -27,6 +27,7 @@ export class DragoonGame {
   private _state!: DragoonState;
   private _tickerCb: ((ticker: Ticker) => void) | null = null;
   private _simAccumulator = 0;
+  private _selectedDifficulty: DragoonDifficulty = DragoonDifficulty.NORMAL;
 
   // View delegates
   private _renderer = new DragoonRenderer();
@@ -44,7 +45,7 @@ export class DragoonGame {
     const sw = viewManager.screenWidth;
     const sh = viewManager.screenHeight;
 
-    this._state = createDragoonState(sw, sh);
+    this._state = createDragoonState(sw, sh, this._selectedDifficulty);
 
     // Renderer
     this._renderer.init(sw, sh);
@@ -200,22 +201,80 @@ export class DragoonGame {
 
     state.subclassId = subclassId;
     state.subclassChoiceActive = false;
-    state.subclassUnlocked = true;
+    state.subclassSelected = true;
     state.paused = false;
 
-    // Replace skills at index 4 and 5 (array indices 4 and 5, which are skills[3] and skills[4] in 0-based)
-    const skill4Cfg = SKILL_CONFIGS[subDef.replaceSkill4];
-    const skill5Cfg = SKILL_CONFIGS[subDef.replaceSkill5];
+    // Build the skill tree for the chosen subclass
+    state.subclassSkillTree = getSubclassSkillTree(subclassId);
 
-    state.skills[4] = { id: subDef.replaceSkill4, cooldown: 0, maxCooldown: skill4Cfg.cooldown, active: false, activeTimer: 0 };
-    state.skills[5] = { id: subDef.replaceSkill5, cooldown: 0, maxCooldown: skill5Cfg.cooldown, active: false, activeTimer: 0 };
+    // Apply the first subclass point (level 5 node) immediately
+    this._applySubclassPoint(state);
 
     this._hud.hideSubclassChoice();
 
     const sw = viewManager.screenWidth;
     const sh = viewManager.screenHeight;
-    this._hud.showNotification(`${subDef.name} unlocked!`, subDef.color, sw, sh);
+    this._hud.showNotification(`${subDef.name} path chosen!`, subDef.color, sw, sh);
     this._fx.screenFlash(subDef.color, 0.3);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Subclass Skill Tree — apply next available node
+  // ---------------------------------------------------------------------------
+
+  private _applySubclassPoint(state: DragoonState): void {
+    const tree = state.subclassSkillTree;
+    if (!tree.length) return;
+
+    // Find the next locked node whose level requirement is met
+    for (const node of tree) {
+      if (!node.unlocked && state.player.level >= node.level) {
+        node.unlocked = true;
+        state.subclassPoints++;
+
+        // Apply stat bonuses
+        if (node.statBonus) {
+          if (node.statBonus.hp) {
+            state.player.maxHp += node.statBonus.hp;
+            state.player.hp = Math.min(state.player.maxHp, state.player.hp + node.statBonus.hp);
+          }
+          if (node.statBonus.mana) {
+            state.player.maxMana += node.statBonus.mana;
+            state.player.mana = Math.min(state.player.maxMana, state.player.mana + node.statBonus.mana);
+          }
+          if (node.statBonus.damage) {
+            state.player.damageMultiplier += node.statBonus.damage / 100;
+          }
+          if (node.statBonus.speed) {
+            state.player.speedMultiplier += node.statBonus.speed / 100;
+          }
+        }
+
+        // Grant skill if this node provides one
+        if (node.skillId) {
+          const subDef = state.subclassId ? SUBCLASS_DEFINITIONS[state.subclassId] : null;
+          if (subDef) {
+            const skillCfg = SKILL_CONFIGS[node.skillId];
+            // Replace skill slot 4 or 5 depending on which subclass skill this is
+            if (node.skillId === subDef.replaceSkill4) {
+              state.skills[4] = { id: node.skillId, cooldown: 0, maxCooldown: skillCfg.cooldown, active: false, activeTimer: 0 };
+            } else if (node.skillId === subDef.replaceSkill5) {
+              state.skills[5] = { id: node.skillId, cooldown: 0, maxCooldown: skillCfg.cooldown, active: false, activeTimer: 0 };
+            }
+          }
+        }
+
+        // Mark fully unlocked once all 4 nodes are done
+        if (tree.every(n => n.unlocked)) {
+          state.subclassUnlocked = true;
+        }
+
+        const sw = viewManager.screenWidth;
+        const sh = viewManager.screenHeight;
+        this._hud.showNotification(`${node.name}: ${node.description}`, 0xffcc44, sw, sh);
+        break; // Only apply one node per call
+      }
+    }
   }
 
   // ---------------------------------------------------------------------------

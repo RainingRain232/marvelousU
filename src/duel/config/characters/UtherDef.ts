@@ -122,6 +122,10 @@ export const UTHER_DEF: DuelCharacterDef = {
   jumpVelocity: -18,
   jumpForwardSpeed: 5,
   weight: 1.0,
+  uniqueMechanic: {
+    name: "dragonBlood",
+    description: "Pendragon bloodline grants fire-infused attacks after landing 3 consecutive hits",
+  },
 
   normals: {
     // Q — Light high: quick crossbow stock jab

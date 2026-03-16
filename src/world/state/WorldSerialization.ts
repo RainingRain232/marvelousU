@@ -12,6 +12,8 @@ import type { NeutralBuilding } from "@world/state/NeutralBuilding";
 import type { PendingBattle } from "@world/state/WorldState";
 import type { RaceId } from "@sim/config/RaceDefs";
 import type { LeaderId } from "@sim/config/LeaderDefs";
+import { getAlliedNeutralCities, clearNeutralAlliances } from "@world/systems/NeutralCitySystem";
+import { clearStaleTileData } from "@world/systems/FogOfWarSystem";
 
 // ---------------------------------------------------------------------------
 // Storage key
@@ -71,6 +73,8 @@ interface SerializedWorldState {
   swordClaimed: boolean;
   fakeSwordHexes: { q: number; r: number }[];
   nextEntityId: number;
+  /** Allied neutral cities: cityId → allied player id. */
+  alliedNeutralCities?: Record<string, string>;
 }
 
 // ---------------------------------------------------------------------------

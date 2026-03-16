@@ -8,9 +8,15 @@ import { createTurnBattleState } from "@rpg/state/TurnBattleState";
 import type { PartyMember, RPGState, RPGItem, StatusEffect } from "@rpg/state/RPGState";
 import { ENCOUNTER_DEFS } from "@rpg/config/EncounterDefs";
 import type { EnemyDef } from "@rpg/config/EncounterDefs";
-import { RPGBalance } from "@rpg/config/RPGBalanceConfig";
+import { RPGBalance, getWeatherModifiers } from "@rpg/config/RPGBalanceConfig";
 import { RPG_SPELL_DEFS, type RPGSpellDef } from "@rpg/config/RPGSpellDefs";
-import { isCaster, spellPicksOnLevelUp, getSpellChoices } from "@rpg/systems/SpellLearningSystem";
+import { isCaster, spellPicksOnLevelUp, getSpellChoices, maxEquippedSpells } from "@rpg/systems/SpellLearningSystem";
+import {
+  getComboChance,
+  pickComboAttack,
+  getAffinityDialogue,
+  AFFINITY_DIALOGUE_MILESTONES,
+} from "@rpg/config/AffinityDefs";
 import { getBlessingAtkMultiplier, getBlessingDefMultiplier } from "@rpg/systems/LeaderEncounterSystem";
 import { getUnitElement, getElementEffectiveness, getEffectivenessText } from "@rpg/config/ElementDefs";
 import { getLimitBreak, LIMIT_GAUGE_MAX } from "@rpg/config/LimitBreakDefs";
@@ -132,7 +138,7 @@ function _partyToCombatant(member: PartyMember, position: number, line: 1 | 2): 
     position,
     isDefending: false,
     line,
-    knownSpells: [...(member.knownSpells ?? [])],
+    knownSpells: [...(member.equippedSpells ?? member.knownSpells ?? [])],
     isSummoned: false,
     // New combat depth fields
     element: getUnitElement(member.unitType),
@@ -379,6 +385,8 @@ export function executeAction(
   switch (action) {
     case TurnBattleAction.ATTACK:
       _executeAttack(battle, attacker, targetId);
+      // Check for affinity combo attack after normal attack
+      tryComboAttack(battle, attacker, rpg);
       break;
     case TurnBattleAction.ABILITY:
       if (spellId) {
@@ -504,6 +512,75 @@ function _tryCounterAttack(
 
   if (attacker.hp <= 0) {
     battle.log.push(`${attacker.name} is defeated!`);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Combo attacks (affinity system)
+// ---------------------------------------------------------------------------
+
+/**
+ * After a party member attacks, check if a combo attack triggers with another
+ * front-line party member who has high affinity. Requires both members on line 1.
+ */
+export function tryComboAttack(
+  battle: TurnBattleState,
+  attacker: TurnBattleCombatant,
+  rpg: RPGState,
+): void {
+  if (!attacker.isPartyMember) return;
+  if (attacker.line !== 1) return;
+
+  // Find another front-line living party member with >= 5 affinity
+  const partners = battle.combatants.filter(
+    c => c.isPartyMember && c.hp > 0 && c.id !== attacker.id && c.line === 1,
+  );
+
+  for (const partner of partners) {
+    const affScore = rpg.affinity[attacker.id]?.[partner.id] ?? 0;
+    const chance = getComboChance(affScore);
+    if (chance <= 0) continue;
+
+    // Roll for combo (deterministic seed based on round + ids)
+    const comboSeed = battle.round * 1000 + attacker.id.length * 31 + partner.id.length * 17;
+    const roll = ((comboSeed * 2654435761) >>> 0) / 4294967296;
+    if (roll >= chance) continue;
+
+    // Combo triggered! Pick an attack from the pool
+    const combo = pickComboAttack(comboSeed + affScore);
+    const combinedAtk = attacker.atk + partner.atk;
+    const comboDamage = Math.max(1, Math.floor(combinedAtk * combo.damageMult));
+
+    // Find enemy targets
+    const enemies = battle.combatants.filter(c => !c.isPartyMember && c.hp > 0);
+    if (enemies.length === 0) return;
+
+    const targets = combo.hitsAll ? enemies : [enemies[0]];
+
+    for (const target of targets) {
+      const dmg = Math.max(1, comboDamage - Math.floor(target.def * 0.5));
+      target.hp = Math.max(0, target.hp - dmg);
+
+      // Apply status effect if defined
+      if (combo.statusEffect) {
+        target.statusEffects.push({
+          type: combo.statusEffect.type,
+          duration: combo.statusEffect.duration,
+          magnitude: combo.statusEffect.magnitude,
+        });
+      }
+
+      battle.log.push(
+        `COMBO! ${attacker.name} & ${partner.name} use ${combo.name} on ${target.name} for ${dmg} damage!`,
+      );
+
+      if (target.hp <= 0) {
+        battle.log.push(`${target.name} is defeated!`);
+      }
+    }
+
+    // Only one combo per attack
+    return;
   }
 }
 
@@ -1502,6 +1579,7 @@ export function applyVictoryRewards(
   }
 
   // Affinity: for each pair of living party members, increment affinity by 1
+  // and check for milestone dialogue
   for (let i = 0; i < aliveParty.length; i++) {
     for (let j = i + 1; j < aliveParty.length; j++) {
       const a = aliveParty[i];
@@ -1510,8 +1588,26 @@ export function applyVictoryRewards(
       if (!rpg.affinity[a.id]) rpg.affinity[a.id] = {};
       if (!rpg.affinity[b.id]) rpg.affinity[b.id] = {};
 
-      rpg.affinity[a.id][b.id] = (rpg.affinity[a.id][b.id] ?? 0) + 1;
-      rpg.affinity[b.id][a.id] = (rpg.affinity[b.id][a.id] ?? 0) + 1;
+      const prevScore = rpg.affinity[a.id][b.id] ?? 0;
+      const newScore = prevScore + 1;
+      rpg.affinity[a.id][b.id] = newScore;
+      rpg.affinity[b.id][a.id] = newScore;
+
+      // Check if we just crossed a milestone
+      for (const milestone of AFFINITY_DIALOGUE_MILESTONES) {
+        if (prevScore < milestone && newScore >= milestone) {
+          const dialogue = getAffinityDialogue(milestone, a.name, b.name, rpg.gameTime + i * 7 + j);
+          if (dialogue) {
+            EventBus.emit("rpgAffinityMilestone", {
+              memberAId: a.id,
+              memberBId: b.id,
+              affinityLevel: newScore,
+              milestone,
+              dialogue,
+            });
+          }
+        }
+      }
     }
   }
 

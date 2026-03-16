@@ -123,6 +123,10 @@ export const BEDIVERE_DEF: DuelCharacterDef = {
   jumpVelocity: -17,
   jumpForwardSpeed: 4.5,
   weight: 1.15,
+  uniqueMechanic: {
+    name: "ironWall",
+    description: "Consecutive blocks reduce chip damage to zero and grant armor on next attack",
+  },
 
   normals: {
     // Q — Light high: quick shield jab — short range, high blockstun

@@ -3,7 +3,7 @@
 // and emits a "randomEvent" event so the view can display a banner.
 
 import type { GameState } from "@sim/state/GameState";
-import { GamePhase, UnitType, NEUTRAL_PLAYER } from "@/types";
+import { GamePhase, GameMode, UnitType, NEUTRAL_PLAYER } from "@/types";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
 import { EventBus } from "@sim/core/EventBus";
 import { createUnit } from "@sim/entities/Unit";
@@ -584,8 +584,10 @@ export const RandomEventSystem = {
     state.eventTimer -= dt;
     if (state.eventTimer > 0) return;
 
-    // Reset timer for the next event
-    state.eventTimer = BalanceConfig.RANDOM_EVENT_INTERVAL;
+    // Reset timer for the next event (deathmatch uses shorter interval)
+    state.eventTimer = state.gameMode === GameMode.DEATHMATCH
+      ? BalanceConfig.DEATHMATCH_RANDOM_EVENT_INTERVAL
+      : BalanceConfig.RANDOM_EVENT_INTERVAL;
 
     // Use scenario-specific events if available, otherwise default pool
     const pool = (state.campaignScenario !== null && SCENARIO_EVENTS[state.campaignScenario])

@@ -10,6 +10,13 @@ import { UnitType, BuildingType } from "@/types";
 
 export type LeaderId = string;
 
+/** Unique passive ability for 4X world mode. */
+export interface LeaderAbility {
+  id: string;
+  name: string;
+  description: string;
+}
+
 export interface LeaderDef {
   id: LeaderId;
   name: string;
@@ -20,6 +27,8 @@ export interface LeaderDef {
   bonusLabel: string;
   /** Structured bonus data consumed by the game systems. */
   bonus: LeaderBonus;
+  /** Unique passive ability for world mode (4X). */
+  leaderAbility?: LeaderAbility;
 }
 
 /** Discriminated union of all bonus types. */
@@ -51,6 +60,11 @@ export const LEADER_DEFINITIONS: LeaderDef[] = [
     flavor: "Crowned by destiny and bound by the oath of Camelot, Arthur drew the sword from the stone when no other hand could move it. He forged a fractured land into a single kingdom through courage, justice, and an unbreakable will. Knights rallied to his banner not for gold or glory, but because Arthur embodied a dream — that honour could rule where tyranny once reigned. Even now, legends whisper that he sleeps beneath the hollow hills, waiting for the hour of Britain's greatest need.",
     bonusLabel: "Stables units start at Level 2.",
     bonus: { type: "unit_start_level", unitSource: "stables", level: 2 },
+    leaderAbility: {
+      id: "round_table",
+      name: "Round Table",
+      description: "Allied neutral cities within 3 hexes of your cities grant +2 gold/turn each.",
+    },
   },
   {
     id: "merlin",
@@ -59,6 +73,11 @@ export const LEADER_DEFINITIONS: LeaderDef[] = [
     flavor: "Born of mortal woman and otherworldly spirit, Merlin walked between worlds before Arthur ever drew breath. It was Merlin who set the sword in the stone, who raised Camelot's walls with whispered words, and who saw the future in the flames — though he could never change it. His counsel shaped kings and toppled pretenders, yet for all his foresight he could not escape the fate that love wove for him. They say his voice still echoes in the deep places of the earth, guiding those wise enough to listen.",
     bonusLabel: "Mages start at Level 1. A Storm Mage spawns near your castle at battle start.",
     bonus: { type: "unit_start_level_building", building: BuildingType.MAGE_TOWER, level: 1 },
+    leaderAbility: {
+      id: "arcane_supremacy",
+      name: "Arcane Supremacy",
+      description: "Mana income from all sources is increased by 25%.",
+    },
   },
   {
     id: "guinevere",
@@ -67,6 +86,11 @@ export const LEADER_DEFINITIONS: LeaderDef[] = [
     flavor: "The fairest queen to grace the throne of Camelot, Guinevere's beauty was matched only by her fierce resolve. She held court when Arthur rode to war, dispensing justice with a wisdom that silenced even the most quarrelsome lords. Her presence on the ramparts rallied defenders who might otherwise have broken, and her voice carried the authority of the crown itself.",
     bonusLabel: "All units have +20% attack.",
     bonus: { type: "unit_atk_multiplier", multiplier: 1.2 },
+    leaderAbility: {
+      id: "diplomacy",
+      name: "Diplomacy",
+      description: "Peace proposals are 50% more likely to succeed. Neutral city tribute costs are halved.",
+    },
   },
   {
     id: "lancelot",
@@ -75,6 +99,11 @@ export const LEADER_DEFINITIONS: LeaderDef[] = [
     flavor: "Raised by the Lady of the Lake in a realm beneath the waters, Lancelot emerged as the most fearsome warrior the Round Table ever knew. No knight could match his blade, no fortress could withstand his siege. His lance shattered shields like kindling, and armies that saw his banner approaching often surrendered before the first charge.",
     bonusLabel: "Siege units spawn 30% faster.",
     bonus: { type: "spawn_speed_multiplier", multiplier: 0.7 },
+    leaderAbility: {
+      id: "champions_challenge",
+      name: "Champion's Challenge",
+      description: "Armies deal +20% damage in field battles.",
+    },
   },
   {
     id: "morgan",
@@ -83,6 +112,11 @@ export const LEADER_DEFINITIONS: LeaderDef[] = [
     flavor: "Half-sister to the king and mistress of the old magics, Morgan le Fay learned her craft in the hidden places of Avalon where the veil between worlds grows thin. She commands illusion and enchantment with a subtlety that makes even Merlin wary. Wealth flows to her through arcane bargains, and her coffers are never empty.",
     bonusLabel: "Start with +300 bonus gold.",
     bonus: { type: "gold_bonus", amount: 300 },
+    leaderAbility: {
+      id: "dark_corruption",
+      name: "Dark Corruption",
+      description: "Conquered cities spread corruption to adjacent hexes, reducing their yields.",
+    },
   },
   {
     id: "gawain",
@@ -91,6 +125,11 @@ export const LEADER_DEFINITIONS: LeaderDef[] = [
     flavor: "Nephew to Arthur and champion of the common folk, Gawain's strength waxes with the sun — at noon he fights with the fury of three men. He accepted the Green Knight's challenge when no other dared, and walked into certain death with a smile. His resilience is legendary; wounds that would fell lesser warriors barely slow his stride.",
     bonusLabel: "All units have +15% HP.",
     bonus: { type: "unit_hp_multiplier", multiplier: 1.15 },
+    leaderAbility: {
+      id: "solar_strength",
+      name: "Solar Strength",
+      description: "Armies on plains and grassland tiles deal +15% bonus damage.",
+    },
   },
   {
     id: "galahad",
@@ -99,6 +138,11 @@ export const LEADER_DEFINITIONS: LeaderDef[] = [
     flavor: "Son of Lancelot yet untouched by his father's sins, Galahad alone proved worthy to sit in the Siege Perilous — the seat at the Round Table that destroyed all who were unworthy. His purity of heart opened doors that strength could not, and divine providence blessed every venture he undertook with abundance and prosperity.",
     bonusLabel: "Gold income is +25% higher.",
     bonus: { type: "income_multiplier", multiplier: 1.25 },
+    leaderAbility: {
+      id: "divine_providence",
+      name: "Divine Providence",
+      description: "Cities gain +1 food and +1 gold per turn for every completed building.",
+    },
   },
   {
     id: "percival",
@@ -107,6 +151,11 @@ export const LEADER_DEFINITIONS: LeaderDef[] = [
     flavor: "A simple boy raised in the Welsh wilderness, Percival came to Camelot knowing nothing of knighthood — and left as one of the three who beheld the Holy Grail. His innocence was his shield, his earnestness his sword. He builds and fortifies with the same honest dedication he brought to his sacred quest.",
     bonusLabel: "Buildings cost 15% less gold.",
     bonus: { type: "building_cost_reduction", multiplier: 0.85 },
+    leaderAbility: {
+      id: "grail_seeker",
+      name: "Grail Seeker",
+      description: "Armies gain +1 movement point when moving through unexplored territory.",
+    },
   },
   {
     id: "tristan",
@@ -115,6 +164,11 @@ export const LEADER_DEFINITIONS: LeaderDef[] = [
     flavor: "The finest swordsman of Cornwall, Tristan's blade sang with a melancholy that belied its lethality. He won kingdoms through single combat and claimed contested ground with a swiftness that left his enemies reeling. Where others laid siege, Tristan simply walked in and planted his standard before the defenders could react.",
     bonusLabel: "Neutral buildings are captured 40% faster.",
     bonus: { type: "capture_speed_multiplier", multiplier: 0.6 },
+    leaderAbility: {
+      id: "swift_conquest",
+      name: "Swift Conquest",
+      description: "Conquered cities do not lose population when captured.",
+    },
   },
   {
     id: "nimue",
@@ -123,6 +177,11 @@ export const LEADER_DEFINITIONS: LeaderDef[] = [
     flavor: "Guardian of the sacred waters and keeper of Excalibur, Nimue wields power older than any mortal kingdom. It was she who gave Arthur the sword that made him invincible, and she who raised Lancelot beneath enchanted waves. Her blessing wards castle walls with ancient magic, making them far harder to breach.",
     bonusLabel: "Base starts with +500 extra health.",
     bonus: { type: "base_health_bonus", amount: 500 },
+    leaderAbility: {
+      id: "lake_blessing",
+      name: "Lake's Blessing",
+      description: "Cities adjacent to water tiles gain +2 mana/turn and +1 food/turn.",
+    },
   },
   {
     id: "kay",
@@ -131,6 +190,11 @@ export const LEADER_DEFINITIONS: LeaderDef[] = [
     flavor: "Arthur's foster-brother and the steward who kept Camelot running while its knights rode to glory. Kay managed the treasury, supplied the armies, and negotiated with merchants so shrewdly that every coin stretched further under his watch. He may lack the romance of a questing knight, but without Kay there would be no kingdom to quest for.",
     bonusLabel: "All units cost 10% less gold.",
     bonus: { type: "unit_cost_reduction", multiplier: 0.9 },
+    leaderAbility: {
+      id: "efficient_steward",
+      name: "Efficient Steward",
+      description: "Army maintenance costs are reduced by 25%.",
+    },
   },
   {
     id: "bedivere",
@@ -139,6 +203,11 @@ export const LEADER_DEFINITIONS: LeaderDef[] = [
     flavor: "The first knight to swear fealty to Arthur and the last to stand beside him at Camlann, Bedivere's loyalty never wavered through decades of war and treachery. He lost a hand in battle yet fought on, and his endurance in the shield wall became the stuff of legend. Where Bedivere stands, the line does not break.",
     bonusLabel: "All units have +25% HP.",
     bonus: { type: "unit_hp_multiplier", multiplier: 1.25 },
+    leaderAbility: {
+      id: "unbreakable_line",
+      name: "Unbreakable Line",
+      description: "Garrison armies in cities have +30% effective HP in siege defense.",
+    },
   },
   {
     id: "elaine",
@@ -155,6 +224,11 @@ export const LEADER_DEFINITIONS: LeaderDef[] = [
     flavor: "Arthur's illegitimate son, born of treachery and raised in shadow, Mordred craved the throne with a hunger that consumed all other feeling. His warriors fight with a frenzied speed born of desperation and ambition, striking before their foes can mount a defence. At Camlann he proved that even the greatest kingdom can fall to one who fights without scruple.",
     bonusLabel: "All units have +15% attack speed.",
     bonus: { type: "unit_atk_multiplier", multiplier: 1.15 },
+    leaderAbility: {
+      id: "treachery",
+      name: "Treachery",
+      description: "Can break peace treaties without penalty. Gains 200 gold from conquering allied cities.",
+    },
   },
   {
     id: "igraine",

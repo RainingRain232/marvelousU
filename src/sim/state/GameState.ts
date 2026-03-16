@@ -1,5 +1,5 @@
 // Central simulation state — single source of truth
-import { GamePhase, GameMode } from "@/types";
+import { GamePhase, GameMode, CampaignDifficulty } from "@/types";
 import type { PlayerId, Vec2 } from "@/types";
 import type { LeaderId } from "@sim/config/LeaderDefs";
 import type { RaceId } from "@sim/config/RaceDefs";
@@ -30,6 +30,24 @@ export interface GameState {
   winnerId: string | null; // PlayerId of the winner set during RESOLVE, null otherwise
   /** For ROGUELIKE: building type IDs that are disabled this round (50% random subset). */
   roguelikeDisabledBuildings: string[];
+  /** For ROGUELIKE: building types that are cursed this round (cost +50%). */
+  roguelikeCursedBuildings: string[];
+  /** For ROGUELIKE: current round number (increments each RESOLVE→PREP transition). */
+  roguelikeRound: number;
+  /** For ROGUELIKE: active wave event for this round, null if none. */
+  roguelikeActiveEvent: string | null;
+  /** For ROGUELIKE: champion buff — strongest unit ID and remaining rounds. */
+  roguelikeChampionBuff: { unitType: string; remainingRounds: number } | null;
+  /** For CAMPAIGN: difficulty tier selected for this session. */
+  campaignDifficulty: CampaignDifficulty;
+  /** For CAMPAIGN: elapsed battle time in seconds (used for achievement checking). */
+  campaignBattleTime: number;
+  /** For CAMPAIGN: number of player buildings destroyed this session (achievement tracking). */
+  campaignBuildingsLost: number;
+  /** For CAMPAIGN: number of player units lost this session (achievement tracking). */
+  campaignUnitsLost: number;
+  /** For CAMPAIGN: achievement IDs earned this session. */
+  campaignAchievementsEarned: string[];
   /** The leader chosen by P1 for this session. null = no leader. */
   p1LeaderId: LeaderId | null;
   /** The race chosen by P1 for this session. null = no race (uses generic units). */
@@ -58,6 +76,20 @@ export interface GameState {
 
   // Rally flags — per-player flag position set via the Flag upgrade ability
   rallyFlags: Map<PlayerId, Vec2>;
+
+  // Escalation (stalemate prevention)
+  /** Total accumulated battle time in seconds across all rounds. */
+  totalBattleTime: number;
+  /** Countdown to next escalation neutral spawn (seconds). */
+  escalationSpawnTimer: number;
+  /** Whether escalation is currently active (totalBattleTime >= threshold). */
+  escalationActive: boolean;
+
+  // Deathmatch — sudden death
+  /** Whether sudden death is active (bases take escalating damage). */
+  suddenDeathActive: boolean;
+  /** Current DPS being dealt to both bases during sudden death. */
+  suddenDeathDps: number;
 
   // World
   battlefield: BattlefieldState;
@@ -90,6 +122,15 @@ export function createGameState(
     eventTimer: BalanceConfig.RANDOM_EVENT_INTERVAL,
     winnerId: null,
     roguelikeDisabledBuildings: [],
+    roguelikeCursedBuildings: [],
+    roguelikeRound: 0,
+    roguelikeActiveEvent: null,
+    roguelikeChampionBuff: null,
+    campaignDifficulty: CampaignDifficulty.NORMAL,
+    campaignBattleTime: 0,
+    campaignBuildingsLost: 0,
+    campaignUnitsLost: 0,
+    campaignAchievementsEarned: [],
     p1LeaderId: null,
     p1RaceId: null,
     campaignScenario: null,
@@ -104,6 +145,11 @@ export function createGameState(
     alliances: new Set(),
     priorityTargets: new Map(),
     rallyFlags: new Map(),
+    totalBattleTime: 0,
+    escalationSpawnTimer: 0,
+    escalationActive: false,
+    suddenDeathActive: false,
+    suddenDeathDps: 0,
     battlefield: createBattlefieldState(width, height, playerCount),
   };
 }
@@ -156,8 +202,12 @@ export function isAlly(state: GameState, a: PlayerId, b: PlayerId): boolean {
   return state.alliances.has(allianceKey(a, b));
 }
 
-/** Set two players as allied. */
+/** Set two players as allied. Blocked in DEATHMATCH mode. */
 export function setAlliance(state: GameState, a: PlayerId, b: PlayerId): void {
+  // Alliances are disabled in Deathmatch mode
+  if (state.gameMode === GameMode.DEATHMATCH && BalanceConfig.DEATHMATCH_ALLIANCES_DISABLED) {
+    return;
+  }
   if (a !== b) state.alliances.add(allianceKey(a, b));
 }
 

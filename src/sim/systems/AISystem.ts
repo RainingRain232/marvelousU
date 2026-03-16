@@ -20,7 +20,7 @@ import type { GameState } from "@sim/state/GameState";
 import { isEnemy, isAlly } from "@sim/state/GameState";
 import type { Unit } from "@sim/entities/Unit";
 import type { Building } from "@sim/entities/Building";
-import { UnitState, UnitType, BuildingState } from "@/types";
+import { UnitState, UnitType, BuildingState, AIPersonality } from "@/types";
 import { distanceSq } from "@sim/utils/math";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
@@ -41,6 +41,49 @@ const AGGRO_RANGE_SQ = BalanceConfig.AGGRO_RANGE * BalanceConfig.AGGRO_RANGE;
 /** Tiles — how far homeguard units patrol from their origin. */
 const HOMEGUARD_PATROL_RANGE = 5;
 const HOMEGUARD_PATROL_RANGE_SQ = HOMEGUARD_PATROL_RANGE * HOMEGUARD_PATROL_RANGE;
+
+// ---------------------------------------------------------------------------
+// Personality helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns the AI personality for a given unit's owner. Falls back to BALANCED
+ * if the player state does not exist or if the player is not AI-controlled.
+ */
+function _getPersonality(state: GameState, owner: string): AIPersonality {
+  const player = state.players.get(owner);
+  if (!player || !player.isAI) return AIPersonality.BALANCED;
+  return player.aiPersonality;
+}
+
+/**
+ * Returns the effective aggro range squared, adjusted for personality.
+ * AGGRESSIVE units scan further for enemies to pick fights earlier.
+ */
+function _effectiveAggroRangeSq(personality: AIPersonality): number {
+  if (personality === AIPersonality.AGGRESSIVE) {
+    const r = BalanceConfig.AGGRO_RANGE + BalanceConfig.AI_AGGRESSIVE_AGGRO_RANGE_BONUS;
+    return r * r;
+  }
+  return AGGRO_RANGE_SQ;
+}
+
+/**
+ * Returns the effective building aggro range squared, adjusted for personality.
+ * AGGRESSIVE units detect buildings from further away to destroy them sooner.
+ * DEFENSIVE units ignore enemy buildings unless very close.
+ */
+function _effectiveBuildingAggroRangeSq(personality: AIPersonality): number {
+  if (personality === AIPersonality.AGGRESSIVE) {
+    const r = BUILDING_AGGRO_RANGE + 3;
+    return r * r;
+  }
+  if (personality === AIPersonality.DEFENSIVE) {
+    const r = BUILDING_AGGRO_RANGE - 2;
+    return Math.max(4, r * r);
+  }
+  return BUILDING_AGGRO_RANGE_SQ;
+}
 
 // ---------------------------------------------------------------------------
 // Main system
@@ -109,6 +152,7 @@ function _handleIdle(state: GameState, unit: Unit): void {
   }
 
   const def = UNIT_DEFINITIONS[unit.type];
+  const personality = _getPersonality(state, unit.owner);
   let goal: { x: number; y: number } | null;
 
   if (def.isHealer) {
@@ -116,7 +160,7 @@ function _handleIdle(state: GameState, unit: Unit): void {
   } else if (unit.homeguard) {
     goal = _homeguardGoal(state, unit);
   } else {
-    goal = _rallyFlagGoal(state, unit) ?? _enemyBaseGoal(state, unit);
+    goal = _personalityGoal(state, unit, personality);
   }
   if (!goal) return;
 
@@ -195,11 +239,18 @@ function _handleMove(state: GameState, unit: Unit): void {
     return;
   }
 
-  // Try to divert toward a nearby enemy building.
-  const nearbyBuilding = _findNearbyEnemyBuilding(state, unit);
-  if (nearbyBuilding) {
-    _divertToBuilding(state, unit, nearbyBuilding);
-    return;
+  const personality = _getPersonality(state, unit.owner);
+
+  // DEFENSIVE personality: skip building diversion if close to own base
+  // (stay near base to defend). ECONOMY personality also skips diversion
+  // in favor of capturing neutral buildings.
+  if (personality !== AIPersonality.ECONOMY) {
+    // Try to divert toward a nearby enemy building.
+    const nearbyBuilding = _findNearbyEnemyBuilding(state, unit, personality);
+    if (nearbyBuilding) {
+      _divertToBuilding(state, unit, nearbyBuilding);
+      return;
+    }
   }
 
   // Otherwise ensure we're still heading somewhere. If path is
@@ -209,7 +260,7 @@ function _handleMove(state: GameState, unit: Unit): void {
     if (unit.homeguard) {
       goal = _homeguardGoal(state, unit);
     } else {
-      goal = _rallyFlagGoal(state, unit) ?? _enemyBaseGoal(state, unit);
+      goal = _personalityGoal(state, unit, personality);
     }
     if (goal) startMoving(state, unit, goal);
   }
@@ -224,6 +275,8 @@ function _handleAttack(state: GameState, unit: Unit): void {
   if (!unit.targetId) return; // CombatSystem will transition to MOVE if needed
 
   const def = UNIT_DEFINITIONS[unit.type];
+  const personality = _getPersonality(state, unit.owner);
+  const aggroRangeSq = _effectiveAggroRangeSq(personality);
 
   if (def.isHealer) {
     // Healers target friendly units — validate accordingly
@@ -232,7 +285,7 @@ function _handleAttack(state: GameState, unit: Unit): void {
       currentTarget &&
       currentTarget.state !== UnitState.DIE &&
       isAlly(state, currentTarget.owner, unit.owner) &&
-      distanceSq(unit.position, currentTarget.position) <= AGGRO_RANGE_SQ
+      distanceSq(unit.position, currentTarget.position) <= aggroRangeSq
     ) {
       return;
     }
@@ -257,13 +310,13 @@ function _handleAttack(state: GameState, unit: Unit): void {
     return;
   }
 
-  // Check if current unit target is still valid
+  // Check if current unit target is still valid (personality-adjusted aggro range)
   const currentTarget = state.units.get(unit.targetId);
   if (
     currentTarget &&
     currentTarget.state !== UnitState.DIE &&
     isEnemy(state, unit.owner, currentTarget.owner) &&
-    distanceSq(unit.position, currentTarget.position) <= AGGRO_RANGE_SQ
+    distanceSq(unit.position, currentTarget.position) <= aggroRangeSq
   ) {
     return; // Target still valid — CombatSystem handles it
   }
@@ -277,15 +330,17 @@ function _handleAttack(state: GameState, unit: Unit): void {
 // ---------------------------------------------------------------------------
 
 /**
- * Find the nearest active enemy building within BUILDING_AGGRO_RANGE.
+ * Find the nearest active enemy building within aggro range (personality-adjusted).
  * Ignores the unit's own-side buildings.
  */
 function _findNearbyEnemyBuilding(
   state: GameState,
   unit: Unit,
+  personality: AIPersonality = AIPersonality.BALANCED,
 ): Building | null {
+  const personalityRangeSq = _effectiveBuildingAggroRangeSq(personality);
   // Long-range siege units can spot buildings at their full attack range.
-  const rangeSq = Math.max(BUILDING_AGGRO_RANGE_SQ, unit.range * unit.range);
+  const rangeSq = Math.max(personalityRangeSq, unit.range * unit.range);
   let nearest: Building | null = null;
   let nearestDsq = rangeSq + 1;
 
@@ -474,6 +529,126 @@ function _rallyFlagGoal(
   const flag = state.rallyFlags.get(unit.owner);
   if (!flag) return null;
   return { x: flag.x, y: flag.y };
+}
+
+// ---------------------------------------------------------------------------
+// Personality-driven goal selection
+// ---------------------------------------------------------------------------
+
+/**
+ * Selects the goal for a unit based on its owner's AI personality.
+ *
+ * - AGGRESSIVE: Always pushes toward the enemy base. Ignores rally flag.
+ * - DEFENSIVE: Stays near own base until enemies approach, then engages.
+ *              Uses a wider patrol area around own base.
+ * - ECONOMY: Prioritises capturing neutral buildings. Falls back to
+ *            the enemy base when none are available.
+ * - BALANCED: Default behavior — rally flag > enemy base.
+ */
+function _personalityGoal(
+  state: GameState,
+  unit: Unit,
+  personality: AIPersonality,
+): { x: number; y: number } | null {
+  switch (personality) {
+    case AIPersonality.AGGRESSIVE:
+      return _aggressiveGoal(state, unit);
+    case AIPersonality.DEFENSIVE:
+      return _defensiveGoal(state, unit);
+    case AIPersonality.ECONOMY:
+      return _economyGoal(state, unit);
+    case AIPersonality.BALANCED:
+    default:
+      return _rallyFlagGoal(state, unit) ?? _enemyBaseGoal(state, unit);
+  }
+}
+
+/**
+ * AGGRESSIVE: Skip rally flag, always march straight to the enemy base.
+ * Aggressive AI pushes early and hard.
+ */
+function _aggressiveGoal(
+  state: GameState,
+  unit: Unit,
+): { x: number; y: number } | null {
+  // Aggressive AI ignores rally flags — always pushes toward enemy base.
+  return _enemyBaseGoal(state, unit);
+}
+
+/**
+ * DEFENSIVE: Stay near own base. Only push when enemies are detected
+ * within the defensive patrol range around the unit's own base.
+ * If no enemies are near, patrol near own base buildings.
+ */
+function _defensiveGoal(
+  state: GameState,
+  unit: Unit,
+): { x: number; y: number } | null {
+  const defRange = BalanceConfig.AI_DEFENSIVE_PATROL_RANGE;
+  const defRangeSq = defRange * defRange;
+
+  // Find own base position
+  const ownBase = [...state.bases.values()].find((b) => b.owner === unit.owner);
+  if (!ownBase) return _enemyBaseGoal(state, unit);
+
+  const basePos = {
+    x: ownBase.position.x + ownBase.spawnOffset.x,
+    y: ownBase.position.y + ownBase.spawnOffset.y,
+  };
+
+  // Check if any enemy units are near our base — if so, engage them
+  for (const candidate of state.units.values()) {
+    if (candidate.owner === unit.owner) continue;
+    if (candidate.state === UnitState.DIE) continue;
+    if (!isEnemy(state, unit.owner, candidate.owner)) continue;
+
+    if (distanceSq(basePos, candidate.position) <= defRangeSq) {
+      // Enemy near base — march toward them
+      return { ...candidate.position };
+    }
+  }
+
+  // No enemies near base — patrol near own base with random offset
+  const offsetX = (Math.random() - 0.5) * 6;
+  const offsetY = (Math.random() - 0.5) * 6;
+  return {
+    x: basePos.x + offsetX,
+    y: basePos.y + offsetY,
+  };
+}
+
+/**
+ * ECONOMY: Prioritise capturing neutral buildings within range.
+ * Falls back to rally flag → enemy base when no neutrals remain.
+ */
+function _economyGoal(
+  state: GameState,
+  unit: Unit,
+): { x: number; y: number } | null {
+  const captureRange = BalanceConfig.AI_ECONOMY_CAPTURE_PRIORITY_RANGE;
+  const captureRangeSq = captureRange * captureRange;
+
+  // Find nearest uncaptured neutral building within priority range
+  let nearestNeutral: Building | null = null;
+  let nearestDsq = captureRangeSq + 1;
+
+  for (const building of state.buildings.values()) {
+    if (building.owner !== null) continue; // already captured
+    if (building.state !== BuildingState.ACTIVE) continue;
+
+    const dsq = distanceSq(unit.position, building.position);
+    if (dsq <= captureRangeSq && dsq < nearestDsq) {
+      nearestNeutral = building;
+      nearestDsq = dsq;
+    }
+  }
+
+  if (nearestNeutral) {
+    return { ...nearestNeutral.position };
+  }
+
+  // No neutrals left — fall back to default behavior
+  return _rallyFlagGoal(state, unit) ?? _enemyBaseGoal(state, unit);
 }
 
 /**

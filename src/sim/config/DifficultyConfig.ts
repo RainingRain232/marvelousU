@@ -3,6 +3,8 @@
 // Affects AI gold income multiplier and decision speed.
 // Selected from the menu before starting a game.
 
+import { CampaignDifficulty } from "@/types";
+
 export enum Difficulty {
   EASY = "easy",
   NORMAL = "normal",
@@ -60,4 +62,65 @@ export function getDifficulty(): Difficulty {
 
 export function getDifficultySettings(): DifficultySettings {
   return DIFFICULTY_SETTINGS[_currentDifficulty];
+}
+
+// ---------------------------------------------------------------------------
+// Campaign difficulty tier system
+// ---------------------------------------------------------------------------
+
+export interface CampaignDifficultyModifiers {
+  /** Multiplier for AI gold income (1.0 = normal). */
+  aiGoldMultiplier: number;
+  /** Bonus HP multiplier for AI units (0 = no bonus, 0.15 = +15%). */
+  aiUnitHpBonus: number;
+  /** Bonus ATK multiplier for AI units (0 = no bonus, 0.15 = +15%). */
+  aiUnitAtkBonus: number;
+  /** Cooldown rate multiplier for AI abilities (1.0 = normal, 1.2 = 20% faster). */
+  aiAbilityCooldownRate: number;
+  /** PREP phase duration override in seconds (0 = use default). */
+  prepDurationOverride: number;
+  /** Label for display. */
+  label: string;
+}
+
+export const CAMPAIGN_DIFFICULTY_MODIFIERS: Record<CampaignDifficulty, CampaignDifficultyModifiers> = {
+  [CampaignDifficulty.NORMAL]: {
+    aiGoldMultiplier: 1.0,
+    aiUnitHpBonus: 0,
+    aiUnitAtkBonus: 0,
+    aiAbilityCooldownRate: 1.0,
+    prepDurationOverride: 0,
+    label: "NORMAL",
+  },
+  [CampaignDifficulty.HARD]: {
+    aiGoldMultiplier: 1.3,
+    aiUnitHpBonus: 0.15,
+    aiUnitAtkBonus: 0,
+    aiAbilityCooldownRate: 1.2,
+    prepDurationOverride: 0,
+    label: "HARD",
+  },
+  [CampaignDifficulty.NIGHTMARE]: {
+    aiGoldMultiplier: 1.6,
+    aiUnitHpBonus: 0.30,
+    aiUnitAtkBonus: 0.15,
+    aiAbilityCooldownRate: 1.4,
+    prepDurationOverride: 20,
+    label: "NIGHTMARE",
+  },
+};
+
+/** Current campaign difficulty tier. Set before starting a campaign game. */
+let _currentCampaignDifficulty = CampaignDifficulty.NORMAL;
+
+export function setCampaignDifficulty(d: CampaignDifficulty): void {
+  _currentCampaignDifficulty = d;
+}
+
+export function getCampaignDifficulty(): CampaignDifficulty {
+  return _currentCampaignDifficulty;
+}
+
+export function getCampaignDifficultyModifiers(): CampaignDifficultyModifiers {
+  return CAMPAIGN_DIFFICULTY_MODIFIERS[_currentCampaignDifficulty];
 }

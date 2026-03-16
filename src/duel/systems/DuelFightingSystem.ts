@@ -158,6 +158,25 @@ function _updateFighter(
 
     case DuelFighterState.KNOCKDOWN:
       fighter.stateTimer--;
+      fighter.knockdownFrame++;
+
+      // Tech roll: accept directional input during tech window
+      if (
+        !fighter.techRolled &&
+        fighter.knockdownFrame <= DuelBalance.TECH_ROLL_WINDOW
+      ) {
+        if (input.left || input.right) {
+          fighter.techRolled = true;
+          fighter.techRollDirection = input.right ? 1 : -1;
+          // Apply tech roll: move in direction and recover faster
+          fighter.position.x += fighter.techRollDirection * DuelBalance.TECH_ROLL_DISTANCE;
+          fighter.state = DuelFighterState.GET_UP;
+          fighter.stateTimer = DuelBalance.TECH_ROLL_RECOVERY;
+          fighter.invincibleFrames = DuelBalance.TECH_ROLL_RECOVERY;
+          return;
+        }
+      }
+
       if (fighter.stateTimer <= 0) {
         fighter.state = DuelFighterState.GET_UP;
         fighter.stateTimer = 20;
@@ -244,6 +263,7 @@ function _updateFighter(
   // Movement (back = walk back, blocking is resolved on hit)
   if (input.down) {
     fighter.state = DuelFighterState.CROUCH_IDLE;
+    fighter.stance = "crouching";
   } else if (input.up && fighter.grounded) {
     // Jump
     fighter.grounded = false;
@@ -268,6 +288,7 @@ function _updateFighter(
     fighter.position.x += dir * charDef.backWalkSpeed;
   } else {
     fighter.state = DuelFighterState.IDLE;
+    fighter.stance = "standing";
   }
 }
 
@@ -516,11 +537,18 @@ function _hitboxOverlaps(
   const hbLeft = dir > 0 ? hbX : hbX - hbW;
   const hbTop = hbY;
 
-  // Defender hurtbox
+  // Defender hurtbox — crouching reduces height by 40%
   const isCrouching =
+    defender.stance === "crouching" ||
     defender.state === DuelFighterState.CROUCH ||
     defender.state === DuelFighterState.CROUCH_IDLE ||
     defender.state === DuelFighterState.BLOCK_CROUCH;
+
+  // High attacks whiff against crouching defenders
+  if (isCrouching && move.height === AttackHeight.HIGH) {
+    return false;
+  }
+
   const hurtH = isCrouching ? DuelBalance.CROUCH_HURTBOX_H : DuelBalance.STAND_HURTBOX_H;
   const hurtW = DuelBalance.STAND_HURTBOX_W;
   const dLeft = defender.position.x - hurtW / 2;
@@ -560,18 +588,27 @@ function _resolveHit(
     const dir = attacker.facingRight ? 1 : -1;
     defender.position.x += dir * DuelBalance.PUSH_BACK_SPEED * 3;
   } else {
+    // Counter-hit detection: opponent is in attack startup frames
+    const isCounterHit = _isCounterHit(defender);
+
     // Hit!
     const scaling = attacker.comboDamageScaling;
-    const damage = Math.max(1, Math.round(move.damage * scaling));
+    const counterMult = isCounterHit ? DuelBalance.COUNTER_HIT_DAMAGE_MULT : 1;
+    const waveMult = attacker.waveDamageMultiplier;
+    const damage = Math.max(1, Math.round(move.damage * scaling * counterMult * waveMult));
     defender.hp -= damage;
 
     if (move.isLauncher) {
       defender.state = DuelFighterState.KNOCKDOWN;
       defender.stateTimer = 40;
+      defender.knockdownFrame = 0;
+      defender.techRolled = false;
+      defender.techRollDirection = 0;
     } else {
       defender.state = DuelFighterState.HIT_STUN;
       defender.stateTimer = 0;
-      defender.hitstunFrames = move.hitstun;
+      const extraHistun = isCounterHit ? DuelBalance.COUNTER_HIT_EXTRA_HITSTUN : 0;
+      defender.hitstunFrames = move.hitstun + extraHistun;
     }
     defender.currentMove = null;
     defender.moveFrame = 0;
@@ -633,6 +670,23 @@ function _isBlocking(defender: DuelFighter, move: DuelMoveDef): boolean {
   }
 
   return false;
+}
+
+/** Check if a fighter is in attack startup (vulnerable to counter-hit). */
+function _isCounterHit(defender: DuelFighter): boolean {
+  if (defender.state !== DuelFighterState.ATTACK) return false;
+  if (!defender.currentMove) return false;
+
+  const defCharDef = DUEL_CHARACTERS[defender.characterId];
+  const defMove =
+    defCharDef.normals[defender.currentMove] ??
+    defCharDef.specials[defender.currentMove] ??
+    defCharDef.zeals[defender.currentMove];
+
+  if (!defMove) return false;
+
+  // Counter-hit: defender is still in startup frames of their attack
+  return defender.moveFrame < defMove.startup;
 }
 
 // ---- Utility ---------------------------------------------------------------
@@ -717,5 +771,9 @@ function _resetFighter(
   fighter.grounded = true;
   fighter.invincibleFrames = 0;
   fighter.dashFrames = 0;
+  fighter.stance = "standing";
+  fighter.knockdownFrame = 0;
+  fighter.techRollDirection = 0;
+  fighter.techRolled = false;
   fighter.inputBuffer = [];
 }
