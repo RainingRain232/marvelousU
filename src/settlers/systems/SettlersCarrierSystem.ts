@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import { SB } from "../config/SettlersBalance";
+import { BUILDING_DEFS } from "../config/SettlersBuildingDefs";
 import { getHeightAt } from "../state/SettlersMap";
 import type { SettlersState } from "../state/SettlersState";
 import type { SettlersCarrier } from "../state/SettlersUnit";
@@ -77,7 +78,7 @@ function _arriveAtFlag(
     if (flag.buildingId === carrier.carryTargetBuildingId) {
       const building = state.buildings.get(flag.buildingId);
       if (building) {
-        _deliverToBuilding(building, carrier.carrying);
+        _deliverToBuilding(state, building, carrier.carrying);
         // Play delivery sound only for player-owned buildings (avoid audio spam)
         if (building.owner === "p0" && Math.random() < 0.3) {
           playResourceDelivered();
@@ -116,6 +117,7 @@ function _arriveAtFlag(
 }
 
 function _deliverToBuilding(
+  state: SettlersState,
   building: import("../state/SettlersBuilding").SettlersBuilding,
   resourceType: import("../config/SettlersResourceDefs").ResourceType,
 ): void {
@@ -126,6 +128,16 @@ function _deliverToBuilding(
       need.amount--;
       return;
     }
+  }
+
+  // HQ/storehouse: put resources back into player storage
+  const def = BUILDING_DEFS[building.type];
+  if (def.type === "headquarters" || def.type === "storehouse") {
+    const player = state.players.get(building.owner);
+    if (player) {
+      player.storage.set(resourceType, (player.storage.get(resourceType) || 0) + 1);
+    }
+    return;
   }
 
   // Production input
