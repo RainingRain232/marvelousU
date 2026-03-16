@@ -81,6 +81,100 @@ export interface TerrainProvider {
 }
 
 // ---------------------------------------------------------------------------
+// HeightmapTerrainProvider – wires the 3D renderer's terrain to this interface
+// ---------------------------------------------------------------------------
+
+/** Small epsilon for finite-difference normal computation. */
+const NORMAL_EPSILON = 0.5;
+
+/** Maximum walkable slope expressed as cos(angle). Steeper = blocked. */
+const BLOCKED_SLOPE_LIMIT = 0.45;
+
+/**
+ * Concrete TerrainProvider backed by the renderer's heightmap.
+ *
+ * Constructor takes three callbacks so this module stays decoupled from
+ * ArthurianRPGRenderer (the game orchestrator wires them together).
+ *
+ *  - `heightFn`    – renderer.getTerrainHeight(x, z)
+ *  - `terrainSize` – renderer.getTerrainSize()          (side length)
+ *  - `waterLevel`  – renderer.getWaterLevel()
+ */
+export class HeightmapTerrainProvider implements TerrainProvider {
+  constructor(
+    private readonly heightFn: (x: number, z: number) => number,
+    private readonly terrainSize: number,
+    private readonly waterLevel: number,
+  ) {}
+
+  // ---- TerrainProvider implementation -----------------------------------
+
+  getHeight(x: number, z: number): number {
+    return this.heightFn(x, z);
+  }
+
+  getNormal(x: number, z: number): { nx: number; ny: number; nz: number } {
+    // Central-difference approximation of the surface normal.
+    const e = NORMAL_EPSILON;
+    const hL = this.heightFn(x - e, z);
+    const hR = this.heightFn(x + e, z);
+    const hD = this.heightFn(x, z - e);
+    const hU = this.heightFn(x, z + e);
+
+    // Tangent vectors along X and Z, then cross product.
+    // T_x = (2e, hR - hL, 0),  T_z = (0, hU - hD, 2e)
+    // N = T_z x T_x = (-(hR-hL)*2e, (2e)*(2e), -(hU-hD)*2e)
+    // Simplified (factor out 2e):
+    let nx = -(hR - hL);
+    let ny = 2 * e;
+    let nz = -(hU - hD);
+
+    const len = Math.sqrt(nx * nx + ny * ny + nz * nz);
+    if (len > 0) { nx /= len; ny /= len; nz /= len; }
+    return { nx, ny, nz };
+  }
+
+  getTerrainType(x: number, z: number): TerrainType {
+    const h = this.heightFn(x, z);
+
+    // Under / at water level -> Water
+    if (h <= this.waterLevel + 0.5) return TerrainType.Water;
+
+    // Beach / sand band just above water
+    if (h < 3.5) return TerrainType.Sand;
+
+    // Low grassy areas
+    if (h < 6) return TerrainType.Grass;
+
+    // Forest / dirt band
+    if (h < 9) return TerrainType.Dirt;
+
+    // Rocky highlands
+    if (h < 14) return TerrainType.Stone;
+
+    // Mountain snow caps
+    return TerrainType.Snow;
+  }
+
+  isBlocked(x: number, z: number, _radius?: number): boolean {
+    const halfSize = this.terrainSize / 2;
+
+    // Out of terrain bounds
+    if (x < -halfSize || x > halfSize || z < -halfSize || z > halfSize) {
+      return true;
+    }
+
+    // Steep slope check
+    const normal = this.getNormal(x, z);
+    if (normal.ny < BLOCKED_SLOPE_LIMIT) {
+      return true;
+    }
+
+    return false;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Horse state
 // ---------------------------------------------------------------------------
 

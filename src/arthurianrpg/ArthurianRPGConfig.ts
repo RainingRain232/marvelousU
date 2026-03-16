@@ -19,6 +19,19 @@ export enum ElementalType {
   Lightning = "Lightning",
   Holy = "Holy",
   Dark = "Dark",
+  Nature = "Nature",
+  Arcane = "Arcane",
+}
+
+// ---------------------------------------------------------------------------
+// Magic schools
+// ---------------------------------------------------------------------------
+
+export enum MagicSchool {
+  Destruction = "Destruction",
+  Restoration = "Restoration",
+  Conjuration = "Conjuration",
+  Nature = "Nature",
 }
 
 // ---------------------------------------------------------------------------
@@ -339,6 +352,7 @@ export const CHARACTER_CLASS_DEFS: CharacterClassDef[] = [
       herbalism: 20,
       alchemy: 15,
       illusion: 10,
+      nature: 15,
     },
     startingEquipmentIds: [
       "oaken_staff",
@@ -382,6 +396,7 @@ export const SKILL_DEFS: SkillDef[] = [
   { id: "enchanting", name: "Enchanting", category: SkillCategory.Magic, description: "Imbuing weapons and armor with magical properties.", governingAttribute: "intelligence", maxLevel: 100 },
   { id: "alchemy", name: "Alchemy", category: SkillCategory.Magic, description: "Brewing potions, poisons, and transmuting materials.", governingAttribute: "wisdom", maxLevel: 100 },
   { id: "illusion", name: "Illusion", category: SkillCategory.Magic, description: "Spells of deception, calm, fear, and invisibility.", governingAttribute: "wisdom", maxLevel: 100 },
+  { id: "nature", name: "Nature Magic", category: SkillCategory.Magic, description: "Primal druidic magic commanding plants, beasts, and the earth itself.", governingAttribute: "wisdom", maxLevel: 100 },
 
   // --- Stealth ---
   { id: "sneak", name: "Sneak", category: SkillCategory.Stealth, description: "Moving unseen and unheard past enemies and traps.", governingAttribute: "dexterity", maxLevel: 100 },

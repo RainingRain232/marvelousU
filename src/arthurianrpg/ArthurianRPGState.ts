@@ -298,6 +298,8 @@ export interface EnemyInstance {
 // NPC instance (world)
 // ---------------------------------------------------------------------------
 
+export type NPCRole = "merchant" | "guard" | "innkeeper" | "villager" | "noble" | "priest";
+
 export interface NPCInstance {
   id: string;
   defId: string;
@@ -311,6 +313,12 @@ export interface NPCInstance {
   faction: string;
   disposition: number;
   isEssential: boolean;
+  role: NPCRole;
+  homePos: Vec3;
+  workPos: Vec3;
+  tavernPos: Vec3;
+  currentActivity: "sleeping" | "working" | "eating" | "wandering" | "patrolling" | "idle";
+  isShopOpen: boolean;
 }
 
 export interface NPCScheduleEntry {
@@ -424,6 +432,87 @@ export interface PlayerState {
 }
 
 // ---------------------------------------------------------------------------
+// Dungeon types
+// ---------------------------------------------------------------------------
+
+export interface DungeonRoom {
+  id: number;
+  x: number;       // top-left tile x
+  y: number;       // top-left tile y
+  w: number;       // width in tiles
+  h: number;       // height in tiles
+  centerX: number; // world center x
+  centerY: number; // world center y (mapped to z in 3D)
+  isBossRoom: boolean;
+  isEntrance: boolean;
+  cleared: boolean;
+}
+
+export interface DungeonCorridor {
+  fromRoom: number;
+  toRoom: number;
+  tiles: { x: number; y: number }[];
+}
+
+export interface DungeonChest {
+  id: string;
+  tileX: number;
+  tileY: number;
+  opened: boolean;
+  loot: { defId: string; name: string; quantity: number; quality: ItemQualityTier; weight: number }[];
+}
+
+export interface DungeonDoor {
+  id: string;
+  tileX: number;
+  tileY: number;
+  isLocked: boolean;
+  isOpen: boolean;
+  connectsRooms: [number, number];
+}
+
+export interface DungeonSpawnPoint {
+  id: string;
+  tileX: number;
+  tileY: number;
+  roomId: number;
+  enemyType: string;
+  level: number;
+  spawned: boolean;
+}
+
+export interface DungeonEntrance {
+  regionId: string;
+  worldPos: Vec3;
+  dungeonName: string;
+  difficulty: number; // 1-10
+  dungeonSeed: number;
+}
+
+export interface DungeonState {
+  active: boolean;
+  seed: number;
+  regionId: string;
+  dungeonName: string;
+  difficulty: number;
+  tileMap: number[][]; // 0=wall, 1=floor, 2=door, 3=chest, 4=entrance, 5=boss_floor
+  rooms: DungeonRoom[];
+  corridors: DungeonCorridor[];
+  chests: DungeonChest[];
+  doors: DungeonDoor[];
+  spawnPoints: DungeonSpawnPoint[];
+  enemies: EnemyInstance[];
+  playerTileX: number;
+  playerTileY: number;
+  tileSize: number; // world units per tile
+  entranceRoomId: number;
+  bossRoomId: number;
+  bossDefeated: boolean;
+  returnPos: Vec3; // where player returns to on exit
+  returnRegion: string;
+}
+
+// ---------------------------------------------------------------------------
 // World state
 // ---------------------------------------------------------------------------
 
@@ -438,6 +527,149 @@ export interface WorldState {
   droppedItems: DroppedItem[];
   activeTriggers: string[];
   ambientDanger: number; // 0-1, affects spawn rates
+  dungeonEntrances: DungeonEntrance[];
+  dungeon: DungeonState | null;
+}
+
+// ---------------------------------------------------------------------------
+// Weather gameplay modifiers
+// ---------------------------------------------------------------------------
+
+export interface WeatherModifiers {
+  fireDamageMult: number;
+  lightningDamageMult: number;
+  iceDamageMult: number;
+  movementSpeedMult: number;
+  detectionRangeMult: number;
+  stealthEffectivenessMult: number;
+  staminaDrainMult: number;
+  lightningStrikeChance: number; // per-second probability
+}
+
+const WEATHER_MODIFIERS: Record<WorldState["weather"], WeatherModifiers> = {
+  clear: {
+    fireDamageMult: 1.0, lightningDamageMult: 1.0, iceDamageMult: 1.0,
+    movementSpeedMult: 1.0, detectionRangeMult: 1.0, stealthEffectivenessMult: 1.0,
+    staminaDrainMult: 1.0, lightningStrikeChance: 0,
+  },
+  overcast: {
+    fireDamageMult: 1.0, lightningDamageMult: 1.0, iceDamageMult: 1.0,
+    movementSpeedMult: 1.0, detectionRangeMult: 0.95, stealthEffectivenessMult: 1.05,
+    staminaDrainMult: 1.0, lightningStrikeChance: 0,
+  },
+  rain: {
+    fireDamageMult: 0.8, lightningDamageMult: 1.2, iceDamageMult: 1.0,
+    movementSpeedMult: 0.9, detectionRangeMult: 0.85, stealthEffectivenessMult: 1.0,
+    staminaDrainMult: 1.0, lightningStrikeChance: 0,
+  },
+  storm: {
+    fireDamageMult: 0.6, lightningDamageMult: 1.4, iceDamageMult: 1.0,
+    movementSpeedMult: 0.8, detectionRangeMult: 0.7, stealthEffectivenessMult: 1.0,
+    staminaDrainMult: 1.0, lightningStrikeChance: 0.002,
+  },
+  snow: {
+    fireDamageMult: 1.0, lightningDamageMult: 1.0, iceDamageMult: 1.2,
+    movementSpeedMult: 0.85, detectionRangeMult: 1.0, stealthEffectivenessMult: 1.0,
+    staminaDrainMult: 1.3, lightningStrikeChance: 0,
+  },
+  fog: {
+    fireDamageMult: 1.0, lightningDamageMult: 1.0, iceDamageMult: 1.0,
+    movementSpeedMult: 1.0, detectionRangeMult: 0.5, stealthEffectivenessMult: 1.3,
+    staminaDrainMult: 1.0, lightningStrikeChance: 0,
+  },
+};
+
+/** Returns the current weather gameplay modifiers based on world weather state. */
+export function getWeatherModifiers(weather: WorldState["weather"]): WeatherModifiers {
+  return WEATHER_MODIFIERS[weather];
+}
+
+// ---------------------------------------------------------------------------
+// NPC daily schedule helpers
+// ---------------------------------------------------------------------------
+
+/** Default schedule templates keyed by NPC role. */
+export function getDefaultScheduleForRole(role: NPCRole, homePos: Vec3, workPos: Vec3, tavernPos: Vec3): NPCScheduleEntry[] {
+  switch (role) {
+    case "merchant":
+      return [
+        { hour: 6,  location: homePos,   activity: "idle" },    // wake up
+        { hour: 8,  location: workPos,   activity: "work" },    // open shop
+        { hour: 12, location: tavernPos, activity: "eat" },     // lunch at tavern
+        { hour: 14, location: workPos,   activity: "work" },    // afternoon shift
+        { hour: 18, location: tavernPos, activity: "eat" },     // dinner wander
+        { hour: 22, location: homePos,   activity: "sleep" },   // sleep
+      ];
+    case "guard":
+      // Guards patrol 24/7 with shift changes at 6, 14, 22
+      return [
+        { hour: 0,  location: workPos,   activity: "patrol" },
+        { hour: 6,  location: homePos,   activity: "sleep" },   // day-shift guard sleeps 6-14
+        { hour: 14, location: workPos,   activity: "patrol" },
+        { hour: 22, location: workPos,   activity: "patrol" },  // night shift
+      ];
+    case "innkeeper":
+      // Innkeepers stay at the tavern almost all day
+      return [
+        { hour: 6,  location: tavernPos, activity: "work" },
+        { hour: 23, location: tavernPos, activity: "work" },    // stays very late
+        { hour: 0,  location: tavernPos, activity: "idle" },    // brief rest
+      ];
+    case "villager":
+    case "noble":
+    case "priest":
+    default:
+      return [
+        { hour: 6,  location: homePos,   activity: "idle" },
+        { hour: 8,  location: workPos,   activity: "work" },
+        { hour: 12, location: tavernPos, activity: "eat" },
+        { hour: 14, location: workPos,   activity: "work" },
+        { hour: 18, location: homePos,   activity: "walk" },    // evening wander near home
+        { hour: 22, location: homePos,   activity: "sleep" },
+      ];
+  }
+}
+
+/**
+ * Determine the current activity and target position for an NPC given the world hour.
+ * Returns the activity string and the location the NPC should move toward.
+ */
+export function resolveNPCActivity(
+  npc: NPCInstance,
+  worldHour: number,
+): { activity: NPCInstance["currentActivity"]; targetPos: Vec3; isShopOpen: boolean } {
+  const schedule = npc.schedule;
+  if (schedule.length === 0) {
+    return { activity: "idle", targetPos: npc.pos, isShopOpen: false };
+  }
+
+  // Find the most recent schedule entry at or before worldHour
+  let best: NPCScheduleEntry = schedule[0];
+  for (const entry of schedule) {
+    if (entry.hour <= worldHour) {
+      best = entry;
+    }
+  }
+  // If no entry matched (worldHour < first entry), wrap to last entry of previous day
+  if (worldHour < schedule[0].hour) {
+    best = schedule[schedule.length - 1];
+  }
+
+  const activityMap: Record<NPCScheduleEntry["activity"], NPCInstance["currentActivity"]> = {
+    idle: "idle",
+    walk: "wandering",
+    work: "working",
+    sleep: "sleeping",
+    eat: "eating",
+    patrol: "patrolling",
+  };
+
+  const activity = activityMap[best.activity] ?? "idle";
+
+  // Shop is only open when a merchant is working
+  const isShopOpen = npc.role === "merchant" && best.activity === "work";
+
+  return { activity, targetPos: best.location, isShopOpen };
 }
 
 // ---------------------------------------------------------------------------
@@ -515,6 +747,15 @@ function createDefaultWorldState(): WorldState {
     droppedItems: [],
     activeTriggers: [],
     ambientDanger: 0,
+    dungeonEntrances: [
+      { regionId: "camelot",           worldPos: { x: 20, y: 0, z: -20 },    dungeonName: "Camelot Catacombs",       difficulty: 1, dungeonSeed: 1001 },
+      { regionId: "darkwood",          worldPos: { x: -130, y: 0, z: -10 },  dungeonName: "Dark Wood Caverns",       difficulty: 3, dungeonSeed: 2002 },
+      { regionId: "saxon_camp",        worldPos: { x: 140, y: 0, z: 20 },    dungeonName: "Saxon War Tunnels",       difficulty: 5, dungeonSeed: 3003 },
+      { regionId: "avalon",            worldPos: { x: -20, y: 0, z: -140 },  dungeonName: "Mist-Shrouded Depths",    difficulty: 6, dungeonSeed: 4004 },
+      { regionId: "mordred_fortress",  worldPos: { x: 30, y: 0, z: 140 },    dungeonName: "Mordred's Dungeon",       difficulty: 8, dungeonSeed: 5005 },
+      { regionId: "grail_temple",      worldPos: { x: 230, y: 0, z: 230 },   dungeonName: "Temple Undercrypt",       difficulty: 10, dungeonSeed: 6006 },
+    ],
+    dungeon: null,
   };
 }
 

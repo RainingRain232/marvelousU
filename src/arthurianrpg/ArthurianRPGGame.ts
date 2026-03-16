@@ -5,10 +5,20 @@ import type { Ticker } from "pixi.js";
 import { viewManager } from "../view/ViewManager";
 import { ArthurianPhase, ArthurianClass } from "../types";
 import { RPG_CONFIG } from "./ArthurianRPGConfig";
-import { createDefaultState, saveGame, loadGame, addXP, addItem, calculateDerivedStats } from "./ArthurianRPGState";
-import type { ArthurianRPGState, Vec3, EnemyInstance } from "./ArthurianRPGState";
-import { EnemyBehavior, ItemQualityTier } from "./ArthurianRPGConfig";
+import { createDefaultState, saveGame, loadGame, addXP, addItem, calculateDerivedStats, getWeatherModifiers, resolveNPCActivity } from "./ArthurianRPGState";
+import type { ArthurianRPGState, Vec3, EnemyInstance, DungeonState, DungeonRoom, DungeonCorridor, DungeonChest, DungeonDoor, DungeonSpawnPoint, DungeonEntrance, WeatherModifiers } from "./ArthurianRPGState";
+import { EnemyBehavior, ItemQualityTier, TerrainType } from "./ArthurianRPGConfig";
+import { ArthurianRPGMovementSystem, HeightmapTerrainProvider } from "./ArthurianRPGMovement";
+import type { MovementInput } from "./ArthurianRPGMovement";
 
+import { ArthurianRPGDialogueSystem, QuestObjectiveType } from "./ArthurianRPGDialogue";
+import { CompanionCombatAIManager } from "./ArthurianRPGCompanionAI";
+import { registerAllContent, QUEST_NPCS, ALL_QUESTS } from "./ArthurianRPGQuests";
+import type { QuestNPCDef } from "./ArthurianRPGQuests";
+import { createCraftingUIState, handleCraftingKey, renderCraftingScreen, updateCraftingUI } from "./ArthurianRPGCrafting";
+import type { CraftingUIState } from "./ArthurianRPGCrafting";
+
+import { rpgAudio } from "./ArthurianRPGAudio";
 // -- Region data --
 interface RegionDef { id: string; name: string; enemyTypes: string[]; minLevel: number; maxLevel: number; spawnCap: number; color: string }
 const REGIONS: Record<string, RegionDef> = {
@@ -58,7 +68,10 @@ export class ArthurianRPGGame {
   private _nameEdit = false;
   // Camera
   private _yaw = 0; private _pitch = 0.3;
-  // Gameplay
+  // Movement system wired via HeightmapTerrainProvider (queries renderer's terrain heightmap)
+  private _terrainProvider: HeightmapTerrainProvider | null = null;
+  private _movementSystem: ArthurianRPGMovementSystem | null = null;
+  // Gameplay (legacy fallbacks kept for non-3D paths)
   private _velY = 0; private _grounded = true;
   private _spawnT = 0;
   private _interactId: string | null = null;
@@ -66,6 +79,20 @@ export class ArthurianRPGGame {
   private _shop: ShopState | null = null;
   private _notifs: { text: string; t: number }[] = [];
   private _invCur = 0; private _charTab = 0; private _helpSel = 0;
+  // Crafting
+  private _craftUI: CraftingUIState = createCraftingUIState();
+  // Quest & Dialogue system
+  private _dialogueSystem: ArthurianRPGDialogueSystem | null = null;
+  private _questNPCs: QuestNPCDef[] = [];
+  // Companion combat AI
+  private _companionAI = new CompanionCombatAIManager();
+  // Dungeon
+  private _dungeonInteractId: string | null = null; // "chest_X", "door_X", "exit", "entrance_X"
+  private _dungeonYaw = 0; private _dungeonPitch = 0;
+  private _prePausePhase: ArthurianPhase = ArthurianPhase.PLAYING; // tracks PLAYING vs DUNGEON for menu returns
+  // Weather
+  private _weatherTimer = 0;
+  private _weatherModifiers: WeatherModifiers = getWeatherModifiers("clear");
   // Handlers
   private _kd: ((e: KeyboardEvent) => void) | null = null;
   private _ku: ((e: KeyboardEvent) => void) | null = null;
@@ -83,12 +110,14 @@ export class ArthurianRPGGame {
     this._ctx = this._canvas.getContext("2d")!;
     window.addEventListener("resize", this._onResize);
     this._setupInput();
+    this._initTerrainAndMovement();
     this._hasSave = loadGame() !== null;
     this._tickerCb = (ticker: Ticker) => {
       this._simAcc += Math.min(ticker.deltaMS / 1000, 0.1);
       while (this._simAcc >= this.DT) { this._simAcc -= this.DT; this._sim(this.DT); }
       this._render();
     };
+    rpgAudio.init();
     viewManager.app.ticker.add(this._tickerCb);
   }
 
@@ -101,7 +130,8 @@ export class ArthurianRPGGame {
     if (this._mm) window.removeEventListener("mousemove", this._mm);
     window.removeEventListener("resize", this._onResize);
     if (this._canvas) { this._canvas.remove(); this._canvas = null; this._ctx = null; }
-    this._state = null; this._dlg = null; this._shop = null;
+    rpgAudio.destroy(); this._state = null; this._dlg = null; this._shop = null;
+    this._terrainProvider = null; this._movementSystem = null;
   }
   private _onResize = () => { if (this._canvas) { this._canvas.width = window.innerWidth; this._canvas.height = window.innerHeight; } };
 
@@ -109,7 +139,7 @@ export class ArthurianRPGGame {
   private _setupInput(): void {
     this._kd = (e) => this._keyDown(e);
     this._ku = (e) => this._keyUp(e);
-    this._md = (e) => { if (e.button === 0) this._input.attack = true; if (e.button === 2) this._input.block = true; if (this._phase === ArthurianPhase.PLAYING && this._canvas) this._canvas.requestPointerLock(); };
+    this._md = (e) => { rpgAudio.resume(); if (e.button === 0) this._input.attack = true; if (e.button === 2) this._input.block = true; if (this._phase === ArthurianPhase.PLAYING && this._canvas) this._canvas.requestPointerLock(); };
     this._mu = (e) => { if (e.button === 0) this._input.attack = false; if (e.button === 2) this._input.block = false; };
     this._mm = (e) => { this._input.mouseDX += e.movementX; this._input.mouseDY += e.movementY; };
     window.addEventListener("keydown", this._kd); window.addEventListener("keyup", this._ku);
@@ -158,20 +188,21 @@ export class ArthurianRPGGame {
       if (e.code === "Enter") this._newGame();
       if (e.code === "Escape") this._phase = P.MAIN_MENU;
     } else if (this._phase === P.PLAYING) {
-      if (e.code === "Tab") { this._phase = P.INVENTORY; this._invCur = 0; e.preventDefault(); }
-      if (e.code === "KeyC") this._phase = P.CHARACTER_SHEET;
-      if (e.code === "KeyM") this._phase = P.MAP;
-      if (e.code === "Escape") { this._phase = P.HELP; this._helpSel = 0; document.exitPointerLock(); }
+      if (e.code === "Tab") { rpgAudio.playMenuToggle(true); this._prePausePhase = P.PLAYING; this._phase = P.INVENTORY; this._invCur = 0; e.preventDefault(); }
+      if (e.code === "KeyC") { rpgAudio.playMenuToggle(true); this._prePausePhase = P.PLAYING; this._phase = P.CHARACTER_SHEET; }
+      if (e.code === "KeyM") { rpgAudio.playMenuToggle(true); this._phase = P.MAP; }
+      if (e.code === "Escape") { this._prePausePhase = P.PLAYING; this._phase = P.HELP; this._helpSel = 0; document.exitPointerLock(); }
       if (e.code === "F5") { e.preventDefault(); this._quickSave(); }
       if (e.code === "F9") { e.preventDefault(); this._loadSave(); }
       if (e.code === "KeyF") this._toggleCam();
+      if (e.code === "KeyK") { this._craftUI = createCraftingUIState(); this._phase = P.CRAFTING; document.exitPointerLock(); }
     } else if (this._phase === P.HELP) {
-      if (e.code === "Escape") this._phase = P.PLAYING;
+      if (e.code === "Escape") this._phase = this._prePausePhase;
       if (e.code === "ArrowUp" || e.code === "KeyW") this._helpSel = Math.max(0, this._helpSel - 1);
       if (e.code === "ArrowDown" || e.code === "KeyS") this._helpSel = Math.min(2, this._helpSel + 1);
       if (e.code === "Enter" || e.code === "Space") {
-        if (this._helpSel === 0) this._phase = P.PLAYING;
-        else if (this._helpSel === 1) { this._quickSave(); this._phase = P.PLAYING; }
+        if (this._helpSel === 0) this._phase = this._prePausePhase;
+        else if (this._helpSel === 1) { this._quickSave(); this._phase = this._prePausePhase; }
         else if (this._helpSel === 2) this._exit();
       }
     } else if (this._phase === P.INVENTORY) {
@@ -179,17 +210,38 @@ export class ArthurianRPGGame {
       const n = this._state.player.inventory.items.length;
       if (e.code === "ArrowUp") this._invCur = Math.max(0, this._invCur - 1);
       if (e.code === "ArrowDown") this._invCur = Math.min(n - 1, this._invCur);
-      if (e.code === "Tab" || e.code === "Escape") this._phase = P.PLAYING;
+      if (e.code === "Tab" || e.code === "Escape") { rpgAudio.playMenuToggle(false); this._phase = this._prePausePhase; }
     } else if (this._phase === P.CHARACTER_SHEET) {
       if (e.code === "ArrowLeft") this._charTab = Math.max(0, this._charTab - 1);
       if (e.code === "ArrowRight") this._charTab = Math.min(2, this._charTab + 1);
-      if (e.code === "KeyC" || e.code === "Escape") this._phase = P.PLAYING;
+      if (e.code === "KeyC" || e.code === "Escape") { rpgAudio.playMenuToggle(false); this._phase = this._prePausePhase; }
     } else if (this._phase === P.MAP) {
-      if (e.code === "KeyM" || e.code === "Escape") this._phase = P.PLAYING;
+      if (e.code === "KeyM" || e.code === "Escape") { rpgAudio.playMenuToggle(false); this._phase = P.PLAYING; }
     } else if (this._phase === P.DIALOGUE && this._dlg) {
       if (e.code === "Enter" || e.code === "Space") {
         if (this._dlg.lineIdx < this._dlg.lines.length - 1) this._dlg.lineIdx++;
-        else if (this._dlg.choices.length > 0) { if (this._dlg.choices[this._dlg.choiceIdx].action === "exit") { this._dlg = null; this._phase = P.PLAYING; } else { this._dlg.lines = ["Perhaps another time..."]; this._dlg.lineIdx = 0; this._dlg.choices = []; } }
+        else if (this._dlg.choices.length > 0) {
+          const chosenAction = this._dlg.choices[this._dlg.choiceIdx].action;
+          if (chosenAction === "exit") {
+            if (this._dialogueSystem?.walker.isActive) this._dialogueSystem.endDialogue();
+            this._dlg = null; this._phase = P.PLAYING;
+          } else if (chosenAction.startsWith("dlg_choice_") && this._dialogueSystem?.walker.isActive) {
+            const choiceIdx = parseInt(chosenAction.replace("dlg_choice_", ""), 10);
+            const playerSkills: Record<string, number> = this._state?.player.combatant.attributes ? { ...this._state.player.combatant.attributes } as Record<string, number> : { strength: 10, dexterity: 10, constitution: 10, intelligence: 10, wisdom: 10, charisma: 10, perception: 10 };
+            const result = this._dialogueSystem.selectChoice(choiceIdx, playerSkills);
+            if (result.skillCheckPassed === false) this._notify("Skill check failed!");
+            if (result.node) {
+              const nextChoices = this._dialogueSystem.walker.getAvailableChoices(this._dialogueSystem);
+              const dlgChoices = nextChoices.map((c: any, i: number) => ({ text: c.text, action: "dlg_choice_" + i }));
+              if (dlgChoices.length === 0) dlgChoices.push({ text: "Farewell", action: "exit" });
+              this._dlg = { npcName: result.node.speaker, lines: [result.node.text], lineIdx: 0, choices: dlgChoices, choiceIdx: 0 };
+            } else {
+              this._dlg = null; this._phase = P.PLAYING;
+            }
+          } else {
+            this._dlg.lines = ["Perhaps another time..."]; this._dlg.lineIdx = 0; this._dlg.choices = [];
+          }
+        }
         else { this._dlg = null; this._phase = P.PLAYING; }
       }
       if (e.code === "ArrowUp" && this._dlg?.choices.length) this._dlg.choiceIdx = Math.max(0, this._dlg.choiceIdx - 1);
@@ -197,35 +249,67 @@ export class ArthurianRPGGame {
     } else if (this._phase === P.SHOP && this._shop && this._state) {
       if (e.code === "ArrowUp") this._shop.selIdx = Math.max(0, this._shop.selIdx - 1);
       if (e.code === "ArrowDown") this._shop.selIdx = Math.min(this._shop.items.length - 1, this._shop.selIdx + 1);
-      if (e.code === "Enter") { const it = this._shop.items[this._shop.selIdx]; if (it && this._state.player.gold >= it.price) { this._state.player.gold -= it.price; addItem(this._state.player, it.id, 1, it.name, it.weight, ItemQualityTier.Common); this._notify(`Purchased ${it.name}`); } else { this._notify("Not enough gold!"); } }
-      if (e.code === "Escape") { this._shop = null; this._phase = P.PLAYING; }
+      if (e.code === "Enter") { const it = this._shop.items[this._shop.selIdx]; if (it && this._state.player.gold >= it.price) { this._state.player.gold -= it.price; addItem(this._state.player, it.id, 1, it.name, it.weight, ItemQualityTier.Common); rpgAudio.playGoldReceived(); this._notify(`Purchased ${it.name}`); } else { this._notify("Not enough gold!"); } }
+      if (e.code === "Escape") { rpgAudio.playMenuToggle(false); this._shop = null; this._phase = P.PLAYING; }
+    } else if (this._phase === P.DUNGEON) {
+      if (e.code === "Tab") { this._prePausePhase = P.DUNGEON; this._phase = P.INVENTORY; this._invCur = 0; e.preventDefault(); }
+      if (e.code === "KeyC") { this._prePausePhase = P.DUNGEON; this._phase = P.CHARACTER_SHEET; }
+      if (e.code === "Escape") { this._prePausePhase = P.DUNGEON; this._phase = P.HELP; this._helpSel = 0; document.exitPointerLock(); }
+      if (e.code === "F5") { e.preventDefault(); this._quickSave(); }
     } else if (this._phase === P.DEAD) {
       if (e.code === "Enter" || e.code === "Space") this._respawn();
+    } else if (this._phase === P.CRAFTING) {
+      if (!this._state) return;
+      const craftResult = handleCraftingKey(e, this._craftUI, this._state.player);
+      if (craftResult.close) this._phase = P.PLAYING;
+      if (craftResult.notification) this._notify(craftResult.notification);
     }
   }
 
   // ---- Sim ----
   private _sim(dt: number): void {
-    if (!this._state || this._phase !== ArthurianPhase.PLAYING) { this._input.interact = false; this._input.mouseDX = 0; this._input.mouseDY = 0; return; }
+    if (!this._state || (this._phase !== ArthurianPhase.PLAYING && this._phase !== ArthurianPhase.DUNGEON)) { this._input.interact = false; this._input.mouseDX = 0; this._input.mouseDY = 0; return; }
     this._state.deltaTime = dt;
     // Day/night
     this._state.worldTime += dt / RPG_CONFIG.realSecondsPerGameHour;
     if (this._state.worldTime >= 24) { this._state.worldTime -= 24; this._state.world.dayCount++; }
     this._state.world.timeOfDay = this._state.worldTime;
-    // Movement
-    this._move(dt);
-    // Combat
-    this._combat(dt);
-    // Enemy AI
-    this._ai(dt);
-    // Regen
-    this._regen(dt);
-    // Spawning
-    this._spawn(dt);
-    // Interaction
-    this._interact();
+
+    // Weather updates
+    this._updateWeather(dt);
+    // NPC daily schedules
+    this._updateNPCSchedules(dt);
+
+    if (this._phase === ArthurianPhase.DUNGEON) {
+      this._dungeonSim(dt);
+    } else {
+      // Movement
+      this._move(dt);
+      // Combat
+      this._combat(dt);
+      // Enemy AI
+      this._ai(dt);
+      // Regen
+      this._regen(dt);
+      // Spawning
+      this._spawn(dt);
+      // Companion combat AI
+      this._updateCompanionCombatAI(dt);
+      // Interaction
+      this._interact();
+      // Lightning strikes (storm weather)
+      this._processLightningStrikes(dt);
+    }
     // Notifications
     for (let i = this._notifs.length - 1; i >= 0; i--) { this._notifs[i].t -= dt; if (this._notifs[i].t <= 0) this._notifs.splice(i, 1); }
+    // -- Audio: ambient + footsteps --
+    const _pp = this._state.player.combatant.position;
+    rpgAudio.updateAmbient(dt, this._state.world.weather, this._state.worldTime, _pp);
+    const _isMoving = this._input.forward || this._input.back || this._input.left || this._input.right;
+    const _spd = this._input.sprint ? 9 : 5;
+    const _terrH = Math.sin(_pp.x*0.008)*Math.cos(_pp.z*0.008)*18;
+    const _tt = _terrH <= 2 ? TerrainType.Water : _terrH < 4 ? TerrainType.Sand : _terrH < 6 ? TerrainType.Grass : _terrH < 9 ? TerrainType.Dirt : TerrainType.Stone;
+    rpgAudio.updateFootsteps(dt, _isMoving, _spd, _tt);
     this._input.interact = false; this._input.mouseDX = 0; this._input.mouseDY = 0;
   }
 
@@ -233,18 +317,40 @@ export class ArthurianRPGGame {
     if (!this._state) return;
     const p = this._state.player, c = p.combatant, pos = c.position;
     const d = calculateDerivedStats(p);
-    let spd = d.moveSpeed;
-    if (this._input.sprint && c.stamina > 5) { spd *= 1.6; c.stamina -= 15 * dt; if (c.stamina < 0) c.stamina = 0; }
     this._yaw -= this._input.mouseDX * 0.002;
     this._pitch = Math.max(-1.2, Math.min(1.2, this._pitch - this._input.mouseDY * 0.002));
-    const sin = Math.sin(this._yaw), cos = Math.cos(this._yaw);
-    let dx = 0, dz = 0;
-    if (this._input.forward) { dx -= sin; dz -= cos; } if (this._input.back) { dx += sin; dz += cos; }
-    if (this._input.left) { dx -= cos; dz += sin; } if (this._input.right) { dx += cos; dz -= sin; }
-    const len = Math.sqrt(dx * dx + dz * dz);
-    if (len > 0.001) { pos.x += (dx / len) * spd * dt; pos.z += (dz / len) * spd * dt; }
-    if (this._input.jump && this._grounded && c.stamina > 10) { this._velY = 8; this._grounded = false; c.stamina -= 10; }
-    if (!this._grounded) { this._velY -= 20 * dt; pos.y += this._velY * dt; if (pos.y <= 0) { pos.y = 0; this._grounded = true; this._velY = 0; } }
+    // --- Path A: Full physics via ArthurianRPGMovementSystem + real heightmap ---
+    if (this._movementSystem) {
+      const ms = this._movementSystem;
+      ms.setYaw(this._yaw);
+      ms.setPosition(pos.x, pos.y, pos.z);
+      const moveInput: MovementInput = {
+        forward: (this._input.forward ? -1 : 0) + (this._input.back ? 1 : 0),
+        right:   (this._input.right  ? 1 : 0) + (this._input.left ? -1 : 0),
+        jump: this._input.jump, sprint: this._input.sprint,
+        crouch: false, dodgeRoll: false, mount: false,
+      };
+      const result = ms.update(moveInput, c.stamina, dt);
+      c.stamina = Math.max(0, c.stamina - result.staminaCost);
+      const np = ms.getPosition();
+      pos.x = np.x; pos.y = np.y; pos.z = np.z;
+      this._grounded = ms.getIsOnGround();
+    // --- Path B: Legacy flat-ground fallback (2-D canvas renderer) ---
+    } else {
+      let spd = d.moveSpeed * this._weatherModifiers.movementSpeedMult;
+      const staminaDrain = 15 * this._weatherModifiers.staminaDrainMult;
+      if (this._input.sprint && c.stamina > 5) { spd *= 1.6; c.stamina -= staminaDrain * dt; if (c.stamina < 0) c.stamina = 0; }
+      const sin = Math.sin(this._yaw), cos = Math.cos(this._yaw);
+      let dx = 0, dz = 0;
+      if (this._input.forward) { dx -= sin; dz -= cos; } if (this._input.back) { dx += sin; dz += cos; }
+      if (this._input.left) { dx -= cos; dz += sin; } if (this._input.right) { dx += cos; dz -= sin; }
+      const len = Math.sqrt(dx * dx + dz * dz);
+      if (len > 0.001) { pos.x += (dx / len) * spd * dt; pos.z += (dz / len) * spd * dt; }
+      if (this._input.jump && this._grounded && c.stamina > 10) { this._velY = 8; this._grounded = false; c.stamina -= 10; }
+      if (!this._grounded) { this._velY -= 20 * dt; pos.y += this._velY * dt; }
+      const groundY = this._terrH(pos.x, pos.z);
+      if (pos.y <= groundY) { pos.y = groundY; this._grounded = true; this._velY = 0; }
+    }
     c.isBlocking = this._input.block; p.combat.blockActive = this._input.block;
     // Region check
     let nr = p.currentRegion;
@@ -253,8 +359,11 @@ export class ArthurianRPGGame {
     else if (pos.z > 100) nr = "mordred_fortress"; else nr = "camelot";
     if (nr !== p.currentRegion) {
       p.currentRegion = nr; this._state.world.currentRegion = nr; this._state.world.enemies = [];
-      this._notify(`Entering ${REGIONS[nr]?.name ?? nr}`);
+      rpgAudio.playRegionEnter(); this._notify(`Entering ${REGIONS[nr]?.name ?? nr}`);
       if (!p.discoveredLocations.includes(nr)) { p.discoveredLocations.push(nr); p.unlockedFastTravel.push(nr); addXP(p, 25); this._notify("New location discovered!"); }
+      // Spawn quest NPCs and check region objectives
+      this._spawnQuestNPCs(nr);
+      this._checkRegionQuestObjectives(nr);
     }
   }
 
@@ -271,24 +380,24 @@ export class ArthurianRPGGame {
     if (!this._state) return;
     const p = this._state.player, d = calculateDerivedStats(p), cb = p.combat;
     if (p.combatant.stamina < 10) return;
-    p.combatant.stamina -= 10; cb.cooldowns["attack"] = 0.5; cb.comboCount++; cb.comboTimer = 2.0;
+    rpgAudio.playSwordSwing(); p.combatant.stamina -= 10; cb.cooldowns["attack"] = 0.5; cb.comboCount++; cb.comboTimer = 2.0;
     let best: EnemyInstance | null = null, bestD = 3.0;
     for (const e of this._state.world.enemies) { if (e.hp <= 0) continue; const dist = this._d3(p.combatant.position, e.pos); if (dist < bestD) { best = e; bestD = dist; } }
     if (best) {
       const crit = Math.random() < d.critChance;
       let dmg = Math.max(1, Math.floor(d.physicalDamage * (1 + cb.comboCount * 0.1) * (crit ? d.critMultiplier : 1)));
       best.hp -= dmg; cb.inCombat = true; cb.targetId = best.id;
-      this._notify(crit ? `CRITICAL! ${dmg} damage` : `${dmg} damage`);
+      rpgAudio.playHitImpact(crit); this._notify(crit ? `CRITICAL! ${dmg} damage` : `${dmg} damage`);
       if (best.hp <= 0) { best.state = EnemyBehavior.Dead; this._killEnemy(best); }
     }
   }
 
   private _killEnemy(e: EnemyInstance): void {
     if (!this._state) return;
-    const xp = 20 + e.level * 10; addXP(this._state.player, xp); this._notify(`Enemy slain! +${xp} XP`);
-    if (Math.random() < 0.4) { const g = Math.floor(5 + Math.random() * e.level * 3); this._state.player.gold += g; this._notify(`+${g} gold`); }
-    if (Math.random() < 0.2) { addItem(this._state.player, "health_potion", 1, "Health Potion", 0.5, ItemQualityTier.Common); this._notify("Found: Health Potion"); }
-    for (const q of this._state.player.activeQuests) for (const o of q.objectives) if (o.type === "kill" && o.targetId === e.defId && !o.completed) { o.currentCount++; if (o.currentCount >= o.requiredCount) o.completed = true; }
+    const _lvBefore = this._state.player.combatant.level; const xp = 20 + e.level * 10; addXP(this._state.player, xp); if (this._state.player.combatant.level > _lvBefore) rpgAudio.playLevelUp(); this._notify(`Enemy slain! +${xp} XP`);
+    if (Math.random() < 0.4) { const g = Math.floor(5 + Math.random() * e.level * 3); this._state.player.gold += g; rpgAudio.playGoldReceived(); this._notify(`+${g} gold`); }
+    if (Math.random() < 0.2) { addItem(this._state.player, "health_potion", 1, "Health Potion", 0.5, ItemQualityTier.Common); rpgAudio.playItemPickup(); this._notify("Found: Health Potion"); }
+    for (const q of this._state.player.activeQuests) for (const o of q.objectives) if (o.type === "kill" && o.targetId === e.defId && !o.completed) { o.currentCount++; if (o.currentCount >= o.requiredCount) o.completed = true; rpgAudio.playQuestComplete(); }
   }
 
   private _ai(dt: number): void {
@@ -298,8 +407,9 @@ export class ArthurianRPGGame {
       if (e.hp <= 0) continue;
       const dist = this._d3(pp, e.pos);
       const ar = e.aiState.attackRange ?? 2.5;
+      const detectionRange = 15 * this._weatherModifiers.detectionRangeMult;
       if (e.state === EnemyBehavior.Idle || e.state === EnemyBehavior.Patrol) {
-        if (dist < 15) { e.state = EnemyBehavior.Chase; e.target = "player"; }
+        if (dist < detectionRange) { e.state = EnemyBehavior.Chase; e.target = "player"; }
         if (e.state === EnemyBehavior.Patrol && e.patrolPath.length > 0) {
           const t = e.patrolPath[e.patrolIndex], dx = t.x - e.pos.x, dz = t.z - e.pos.z, pd = Math.sqrt(dx*dx+dz*dz);
           if (pd < 1) e.patrolIndex = (e.patrolIndex + 1) % e.patrolPath.length;
@@ -307,8 +417,8 @@ export class ArthurianRPGGame {
         }
       } else if (e.state === EnemyBehavior.Alert) {
         e.alertLevel += dt * 0.5;
-        if (dist < 10 || e.alertLevel >= 1) { e.state = EnemyBehavior.Chase; e.target = "player"; }
-        if (dist > 20) e.state = EnemyBehavior.Idle;
+        if (dist < (10 * this._weatherModifiers.detectionRangeMult) || e.alertLevel >= 1) { e.state = EnemyBehavior.Chase; e.target = "player"; }
+        if (dist > (20 * this._weatherModifiers.detectionRangeMult)) e.state = EnemyBehavior.Idle;
       } else if (e.state === EnemyBehavior.Chase) {
         if (dist > 25) { e.state = EnemyBehavior.Idle; e.target = null; }
         else if (dist < ar) e.state = EnemyBehavior.Attack;
@@ -320,9 +430,9 @@ export class ArthurianRPGGame {
           if (!this._state.player.combat.cooldowns[key]) {
             this._state.player.combat.cooldowns[key] = e.aiState.attackDelay ?? 1.2;
             let dmg = Math.floor(5 + e.level * 2 + Math.random() * 5);
-            if (this._state.player.combat.blockActive) { dmg = Math.floor(dmg * (1 - calculateDerivedStats(this._state.player).blockEfficiency)); this._notify(`Blocked! ${dmg} dmg`); }
+            if (this._state.player.combat.blockActive) { dmg = Math.floor(dmg * (1 - calculateDerivedStats(this._state.player).blockEfficiency)); rpgAudio.playBlock(); this._notify(`Blocked! ${dmg} dmg`); }
             this._state.player.combatant.hp -= dmg;
-            if (this._state.player.combatant.hp <= 0) { this._state.player.combatant.hp = 0; this._phase = ArthurianPhase.DEAD; this._notify("You have fallen..."); }
+            if (this._state.player.combatant.hp <= 0) { this._state.player.combatant.hp = 0; this._phase = ArthurianPhase.DEAD; rpgAudio.playDeath(); this._notify("You have fallen..."); }
           }
         }
         if (e.hp / e.maxHp < (e.aiState.fleeThreshold ?? 0.1)) e.state = EnemyBehavior.Flee;
@@ -369,17 +479,251 @@ export class ArthurianRPGGame {
     this._interactId = null; let best = 4.0;
     for (const n of this._state.world.npcs) { const d = this._d3(pp, n.pos); if (d < best) { best = d; this._interactId = n.id; } }
     for (const o of this._state.world.interactables) { const d = this._d3(pp, o.pos); if (d < best) { best = d; this._interactId = o.id; } }
+    // Dungeon entrances
+    for (const de of this._state.world.dungeonEntrances) {
+      if (de.regionId !== this._state.player.currentRegion) continue;
+      const d = this._d3(pp, de.worldPos);
+      if (d < best) { best = d; this._interactId = `dungeon_entrance_${de.regionId}`; }
+    }
     if (this._input.interact && this._interactId) {
+      // Dungeon entrance interaction
+      if (this._interactId.startsWith("dungeon_entrance_")) {
+        const regionId = this._interactId.replace("dungeon_entrance_", "");
+        const entrance = this._state.world.dungeonEntrances.find(e => e.regionId === regionId);
+        if (entrance) { this._enterDungeon(entrance); return; }
+      }
       const npc = this._state.world.npcs.find(n => n.id === this._interactId);
       if (npc) {
-        this._dlg = { npcName: npc.name, lines: [`Greetings, traveler. I am ${npc.name}.`, "These are troubled times in Camelot.", "May the Grail guide your path."], lineIdx: 0, choices: [{ text: "Tell me about the Holy Grail", action: "info" }, { text: "Any work for me?", action: "quest" }, { text: "Farewell", action: "exit" }], choiceIdx: 0 };
-        this._phase = ArthurianPhase.DIALOGUE;
+        // Check if NPC is sleeping - cannot interact
+        if (npc.currentActivity === "sleeping") {
+          this._notify(`${npc.name} is sleeping.`);
+        } else if (npc.role === "merchant" && !npc.isShopOpen) {
+          // Merchant is not at their shop during off-hours
+          this._dlg = { npcName: npc.name, lines: [`My shop is closed right now. Come back during working hours (8-12, 14-18).`], lineIdx: 0, choices: [{ text: "Farewell", action: "exit" }], choiceIdx: 0 };
+          this._phase = ArthurianPhase.DIALOGUE;
+        } else {
+          // Check if this NPC has a quest dialogue tree
+          const questNpc = this._questNPCs.find(qn => qn.id === npc.id);
+          if (questNpc && this._dialogueSystem) {
+            const node = this._dialogueSystem.beginDialogue(questNpc.dialogueTreeId);
+            if (node) {
+              const availChoices = this._dialogueSystem.walker.getAvailableChoices(this._dialogueSystem);
+              const dlgChoices = availChoices.map((c, i) => ({ text: c.text, action: `dlg_choice_${i}` }));
+              if (dlgChoices.length === 0) dlgChoices.push({ text: "Farewell", action: "exit" });
+              this._dlg = { npcName: node.speaker, lines: [node.text], lineIdx: 0, choices: dlgChoices, choiceIdx: 0 };
+              this._phase = ArthurianPhase.DIALOGUE;
+            } else {
+              // Fallback generic dialogue
+              this._dlg = { npcName: npc.name, lines: [`Greetings, traveler. I am ${npc.name}.`, "May the Grail guide your path."], lineIdx: 0, choices: [{ text: "Farewell", action: "exit" }], choiceIdx: 0 };
+              this._phase = ArthurianPhase.DIALOGUE;
+            }
+          } else {
+            const choices: { text: string; action: string }[] = [{ text: "Tell me about the Holy Grail", action: "info" }, { text: "Any work for me?", action: "quest" }, { text: "Farewell", action: "exit" }];
+            if (npc.role === "merchant" && npc.isShopOpen) {
+              choices.splice(0, 0, { text: "Show me your wares", action: "shop" });
+            }
+            this._dlg = { npcName: npc.name, lines: [`Greetings, traveler. I am ${npc.name}.`, "These are troubled times in Camelot.", "May the Grail guide your path."], lineIdx: 0, choices, choiceIdx: 0 };
+            this._phase = ArthurianPhase.DIALOGUE;
+          }
+        }
+      }
+    }
+  }
+
+  // ---- Weather system ----
+  private _updateWeather(dt: number): void {
+    if (!this._state) return;
+    this._weatherTimer += dt;
+    // Update weather modifiers every tick from current weather state
+    this._weatherModifiers = getWeatherModifiers(this._state.world.weather);
+    // Transition weather every ~5 real minutes (300s) for variety
+    if (this._weatherTimer >= 300) {
+      this._weatherTimer = 0;
+      const hour = this._state.worldTime;
+      const region = this._state.world.currentRegion;
+      const roll = Math.random();
+      // Weather probabilities vary by time and region
+      const isNight = hour < 6 || hour >= 22;
+      const isMountain = region === "grail_temple" || region === "mordred_fortress";
+      const isForest = region === "darkwood";
+      if (isMountain) {
+        // Mountains: more snow and storms
+        if (roll < 0.3) this._state.world.weather = "snow";
+        else if (roll < 0.5) this._state.world.weather = "storm";
+        else if (roll < 0.7) this._state.world.weather = "fog";
+        else if (roll < 0.85) this._state.world.weather = "overcast";
+        else this._state.world.weather = "clear";
+      } else if (isForest) {
+        // Forests: more fog and rain
+        if (roll < 0.25) this._state.world.weather = "fog";
+        else if (roll < 0.45) this._state.world.weather = "rain";
+        else if (roll < 0.55) this._state.world.weather = "storm";
+        else if (roll < 0.75) this._state.world.weather = "overcast";
+        else this._state.world.weather = "clear";
+      } else {
+        // Default regions
+        if (roll < 0.1) this._state.world.weather = "storm";
+        else if (roll < 0.25) this._state.world.weather = "rain";
+        else if (roll < 0.35) this._state.world.weather = isNight ? "fog" : "overcast";
+        else if (roll < 0.45) this._state.world.weather = "overcast";
+        else this._state.world.weather = "clear";
+      }
+      this._notify(`Weather: ${this._state.world.weather}`);
+    }
+  }
+
+  // ---- NPC daily schedules ----
+  private _updateNPCSchedules(_dt: number): void {
+    if (!this._state) return;
+    const hour = this._state.worldTime;
+    const isNight = hour >= 22 || hour < 6;
+    for (const npc of this._state.world.npcs) {
+      const resolved = resolveNPCActivity(npc, hour);
+      npc.currentActivity = resolved.activity;
+      npc.isShopOpen = resolved.isShopOpen;
+
+      // Move NPC toward their scheduled location
+      const target = resolved.targetPos;
+      const dx = target.x - npc.pos.x;
+      const dz = target.z - npc.pos.z;
+      const dist = Math.sqrt(dx * dx + dz * dz);
+      if (dist > 0.5) {
+        const speed = npc.role === "guard" ? 3.0 : 2.0;
+        const step = speed * _dt;
+        if (dist <= step) {
+          npc.pos.x = target.x;
+          npc.pos.z = target.z;
+        } else {
+          npc.pos.x += (dx / dist) * step;
+          npc.pos.z += (dz / dist) * step;
+        }
+      }
+
+      // Guards: increase patrol count at night (spawn extra guards are handled by _spawn already,
+      // but we make existing guards more alert at night)
+      if (npc.role === "guard" && isNight && npc.currentActivity === "patrolling") {
+        // Guards move faster at night to cover more ground
+        // (already handled by patrol speed above being 3.0)
+      }
+    }
+  }
+
+  // ---- Lightning strikes (storm weather) ----
+  private _processLightningStrikes(dt: number): void {
+    if (!this._state) return;
+    if (this._weatherModifiers.lightningStrikeChance <= 0) return;
+    // Check for lightning strike this tick
+    if (Math.random() < this._weatherModifiers.lightningStrikeChance * dt * 60) {
+      const pp = this._state.player.combatant.position;
+      // Strike near player (within 30 units)
+      const angle = Math.random() * Math.PI * 2;
+      const dist = 5 + Math.random() * 25;
+      const strikeX = pp.x + Math.cos(angle) * dist;
+      const strikeZ = pp.z + Math.sin(angle) * dist;
+      // Damage player if very close (within 3 units)
+      const playerDist = Math.sqrt((strikeX - pp.x) ** 2 + (strikeZ - pp.z) ** 2);
+      if (playerDist < 3) {
+        const dmg = Math.floor(15 + Math.random() * 25);
+        this._state.player.combatant.hp -= dmg;
+        this._notify(`Lightning strike! ${dmg} damage!`);
+        if (this._state.player.combatant.hp <= 0) {
+          this._state.player.combatant.hp = 0;
+          this._phase = ArthurianPhase.DEAD;
+          this._notify("Struck down by lightning...");
+        }
+      } else if (playerDist < 10) {
+        this._notify("Lightning strikes nearby!");
+      }
+      // Damage enemies near the strike
+      for (const e of this._state.world.enemies) {
+        if (e.hp <= 0) continue;
+        const eDist = Math.sqrt((strikeX - e.pos.x) ** 2 + (strikeZ - e.pos.z) ** 2);
+        if (eDist < 3) {
+          const dmg = Math.floor(20 + Math.random() * 30);
+          e.hp -= dmg;
+          if (e.hp <= 0) { e.state = EnemyBehavior.Dead; this._killEnemy(e); }
+        }
+      }
+    }
+  }
+
+  // ---- Quest NPC spawning ----
+  private _spawnQuestNPCs(region: string): void {
+    if (!this._state) return;
+    const regionNPCs = this._questNPCs.filter(n => n.region === region);
+    for (const npcDef of regionNPCs) {
+      if (this._state.world.npcs.some(n => n.id === npcDef.id)) continue;
+      const npcPos = { ...npcDef.position };
+      this._state.world.npcs.push({
+        id: npcDef.id, defId: npcDef.id, name: npcDef.name,
+        pos: npcPos, rotation: 0,
+        dialogueState: npcDef.dialogueTreeId, shopInventory: [],
+        questIds: npcDef.questIds, schedule: [],
+        faction: npcDef.faction, disposition: 50, isEssential: true,
+        role: "villager", homePos: { ...npcPos }, workPos: { ...npcPos },
+        tavernPos: { x: npcPos.x + 10, y: 0, z: npcPos.z + 10 },
+        currentActivity: "idle", isShopOpen: false,
+      });
+    }
+  }
+
+  // ---- Companion combat AI update ----
+  private _updateCompanionCombatAI(dt: number): void {
+    if (!this._state) return;
+    const player = this._state.player;
+    const aliveEnemies = this._state.enemies.filter(e => e.hp > 0);
+    const results = this._companionAI.updateAll(
+      player.companions, player.combatant, aliveEnemies, player.combat.targetId, dt,
+    );
+    for (const result of results) {
+      if (result.action.type === "callout") {
+        this._notify(result.action.message);
+      }
+    }
+    // Check for enemies downed by companions
+    for (const e of this._state.world.enemies) {
+      if (e.hp <= 0 && e.state !== EnemyBehavior.Dead) {
+        e.state = EnemyBehavior.Dead;
+        this._killEnemy(e);
+      }
+    }
+  }
+
+  // ---- Quest objective region-enter tracking ----
+  private _checkRegionQuestObjectives(region: string): void {
+    if (!this._state || !this._dialogueSystem) return;
+    for (const q of this._state.player.activeQuests) {
+      for (const obj of q.objectives) {
+        if (obj.type === "explore" && obj.targetId === region && !obj.completed) {
+          obj.currentCount = 1; obj.completed = true;
+          this._notify(`Objective complete: ${obj.description}`);
+        }
+      }
+    }
+    for (const questDef of ALL_QUESTS) {
+      for (const obj of questDef.objectives) {
+        if (obj.type === QuestObjectiveType.GoTo && obj.targetId === region) {
+          this._dialogueSystem.quests.updateObjective(questDef.id, obj.id, 1);
+        }
       }
     }
   }
 
   // ---- Actions ----
-  private _newGame(): void { this._state = createDefaultState(CLASS_LIST[this._classIdx], this._playerName || "Sir Galahad"); this._phase = ArthurianPhase.PLAYING; this._notify("Your quest for the Holy Grail begins..."); }
+  private _newGame(): void {
+    this._state = createDefaultState(CLASS_LIST[this._classIdx], this._playerName || "Sir Galahad");
+    this._dialogueSystem = new ArthurianRPGDialogueSystem();
+    registerAllContent(this._dialogueSystem);
+    this._questNPCs = [...QUEST_NPCS];
+    this._spawnQuestNPCs("camelot");
+    this._companionAI.clear();
+    for (const comp of this._state.player.companions) {
+      this._companionAI.addCompanion(comp.npcId, comp.combatRole);
+    }
+    this._phase = ArthurianPhase.PLAYING;
+    this._notify("Your quest for the Holy Grail begins...");
+    this._notify("A vision of the Grail fills your mind. Seek Aldric the Sage.");
+  }
   private _quickSave(): void { if (this._state && saveGame(this._state)) { this._hasSave = true; this._notify("Game saved"); } else this._notify("Save failed!"); }
   private _loadSave(): void { const s = loadGame(); if (s) { this._state = s; this._phase = ArthurianPhase.PLAYING; this._notify("Game loaded"); } else this._notify("No save found"); }
   private _toggleCam(): void { if (this._state) { this._state.player.cameraMode = this._state.player.cameraMode === "first_person" ? "third_person" : "first_person"; this._notify(`Camera: ${this._state.player.cameraMode.replace("_", " ")}`); } }
@@ -405,7 +749,9 @@ export class ArthurianRPGGame {
     else if (this._phase === P.DIALOGUE) this._rDlg(ctx, W, H);
     else if (this._phase === P.SHOP) this._rShop(ctx, W, H);
     else if (this._phase === P.HELP) this._rHelp(ctx, W, H);
+    else if (this._phase === P.DUNGEON) this._rDungeon(ctx, W, H);
     else if (this._phase === P.DEAD) this._rDead(ctx, W, H);
+    else if (this._phase === P.CRAFTING) { if (this._state) { updateCraftingUI(this._craftUI, this.DT); renderCraftingScreen(ctx, W, H, this._craftUI, this._state.player); } }
   }
 
   private _rMenu(ctx: CanvasRenderingContext2D, W: number, H: number): void {
@@ -438,9 +784,35 @@ export class ArthurianRPGGame {
 
   // ---- Seeded random for deterministic decoration placement ----
   private _srand(s: number): number { let h = (s * 374761393 + 668265263) | 0; h = (h ^ (h >> 13)) * 1274126177; return ((h ^ (h >> 16)) >>> 0) / 4294967296; }
-  // ---- Terrain height function (matches renderer) ----
+  // ---- Terrain height: delegates to HeightmapTerrainProvider if available ----
   private _terrH(x: number, z: number): number {
+    if (this._terrainProvider) return this._terrainProvider.getHeight(x, z);
+    // Fallback (matches renderer's heightAt for the first four octaves)
     return Math.sin(x*0.008)*Math.cos(z*0.008)*18 + Math.sin(x*0.025+1.3)*Math.cos(z*0.02-0.7)*6 + Math.sin(x*0.06)*Math.sin(z*0.06)*2 + Math.sin(x*0.15+0.5)*Math.cos(z*0.12-0.3)*0.8;
+  }
+
+  /**
+   * Initialise the movement system backed by the renderer's terrain heightmap.
+   * Uses the same layered sine-wave height function as ArthurianRPGRenderer's
+   * buildTerrain() so physics matches the visual mesh exactly.
+   */
+  private _initTerrainAndMovement(): void {
+    // Height function identical to ArthurianRPGRenderer.buildTerrain -> heightAt
+    const heightAt = (x: number, z: number): number => {
+      const s1 = Math.sin(x * 0.008) * Math.cos(z * 0.008) * 18;
+      const s2 = Math.sin(x * 0.025 + 1.3) * Math.cos(z * 0.02 - 0.7) * 6;
+      const s3 = Math.sin(x * 0.06) * Math.sin(z * 0.06) * 2;
+      const s4 = Math.sin(x * 0.15 + 0.5) * Math.cos(z * 0.12 - 0.3) * 0.8;
+      const s5 = Math.sin(x * 0.3 + 2.1) * Math.cos(z * 0.28 - 1.1) * 0.3;
+      const s6 = Math.sin(x * 0.5 + 0.8) * Math.sin(z * 0.45 + 0.4) * 0.12;
+      return s1 + s2 + s3 + s4 + s5 + s6;
+    };
+    // Constants matching ArthurianRPGRenderer
+    const TERRAIN_SIZE = 512;
+    const WATER_LEVEL = 1.5;
+
+    this._terrainProvider = new HeightmapTerrainProvider(heightAt, TERRAIN_SIZE, WATER_LEVEL);
+    this._movementSystem = new ArthurianRPGMovementSystem(this._terrainProvider);
   }
 
   private _rPlay(ctx: CanvasRenderingContext2D, W: number, H: number): void {
@@ -755,6 +1127,14 @@ export class ArthurianRPGGame {
     ctx.fillText(regionName, 16, 26);
     ctx.fillStyle = "#bbb"; ctx.font = "12px monospace"; ctx.textAlign = "right";
     ctx.fillText(`Day ${w.dayCount}  ${String(hr).padStart(2,"0")}:${String(mn).padStart(2,"0")}`, 240, 26);
+    // Weather indicator below region/time
+    if (w.weather !== "clear") {
+      const weatherLabels: Record<string, string> = { rain: "Rain", storm: "Storm", snow: "Snow", fog: "Fog", overcast: "Overcast" };
+      ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.fillRect(8, 40, 240, 20);
+      ctx.strokeStyle = "rgba(201,168,76,0.2)"; ctx.lineWidth = 1; ctx.strokeRect(8, 40, 240, 20);
+      ctx.fillStyle = "#8a9ab0"; ctx.font = "11px 'Palatino Linotype', serif"; ctx.textAlign = "left";
+      ctx.fillText(`Weather: ${weatherLabels[w.weather] ?? w.weather}`, 16, 55);
+    }
 
     // ============ COMPASS (top center, improved) ============
     const compY = 28, compR = 22;
@@ -783,15 +1163,38 @@ export class ArthurianRPGGame {
     // ============ MINIMAP (top right) ============
     this._rMinimap(ctx, W, H, pp);
 
+    // ============ DUNGEON ENTRANCE MARKERS ============
+    for (const de of w.dungeonEntrances) {
+      if (de.regionId !== w.currentRegion) continue;
+      const ddx = de.worldPos.x - pp.x, ddz = de.worldPos.z - pp.z, ddist = Math.sqrt(ddx*ddx+ddz*ddz);
+      if (ddist > 40 || ddist < 0.5) continue;
+      const dang = Math.atan2(ddx, ddz) - this._yaw;
+      const dsx = W/2 + Math.sin(dang) * (W*0.3) / (ddist*0.1+1);
+      const dsy = horizon + 30 / (ddist*0.15+1);
+      const dsz = Math.max(8, 35 / (ddist*0.2+1));
+      // Stone archway
+      ctx.fillStyle = "#555"; ctx.fillRect(dsx - dsz*0.5, dsy - dsz*0.8, dsz*0.15, dsz*0.8);
+      ctx.fillRect(dsx + dsz*0.35, dsy - dsz*0.8, dsz*0.15, dsz*0.8);
+      ctx.fillStyle = "#666"; ctx.beginPath(); ctx.arc(dsx, dsy - dsz*0.65, dsz*0.42, Math.PI, 0); ctx.fill();
+      // Dark entrance
+      ctx.fillStyle = "#111"; ctx.beginPath(); ctx.arc(dsx, dsy - dsz*0.4, dsz*0.28, Math.PI, 0); ctx.fill();
+      ctx.fillRect(dsx - dsz*0.28, dsy - dsz*0.4, dsz*0.56, dsz*0.4);
+      // Label
+      ctx.fillStyle = "#c9a84c"; ctx.font = `${Math.max(8, 10 * (dsz/15))|0}px serif`; ctx.textAlign = "center";
+      ctx.fillText(de.dungeonName, dsx, dsy - dsz*0.9 - 4);
+    }
+
     // ============ INTERACTION PROMPT ============
     if (this._interactId) {
+      const isDungeonEntrance = this._interactId.startsWith("dungeon_entrance_");
+      const promptLabel = isDungeonEntrance ? "[E] Enter Dungeon" : "[E] Interact";
       ctx.fillStyle = "rgba(0,0,0,0.5)";
-      const promptW = 140, promptH = 28;
+      const promptW = isDungeonEntrance ? 180 : 140, promptH = 28;
       ctx.fillRect(W/2 - promptW/2, H*0.65 - promptH/2, promptW, promptH);
       ctx.strokeStyle = "rgba(201,168,76,0.6)"; ctx.lineWidth = 1;
       ctx.strokeRect(W/2 - promptW/2, H*0.65 - promptH/2, promptW, promptH);
       ctx.fillStyle = "#c9a84c"; ctx.font = "bold 16px 'Palatino Linotype', serif"; ctx.textAlign = "center";
-      ctx.fillText("[E] Interact", W/2, H*0.65 + 5);
+      ctx.fillText(promptLabel, W/2, H*0.65 + 5);
     }
 
     // ============ COMBO ============
@@ -817,7 +1220,7 @@ export class ArthurianRPGGame {
 
     // ============ CONTROLS HINT (subtle) ============
     ctx.fillStyle = "rgba(180,170,150,0.25)"; ctx.font = "10px monospace"; ctx.textAlign = "left";
-    ctx.fillText("Esc: Menu  |  WASD: Move  |  LMB: Attack  |  RMB: Block  |  Tab: Inventory  |  M: Map", 12, H - 4);
+    ctx.fillText("Esc: Menu  |  WASD: Move  |  LMB: Attack  |  RMB: Block  |  Tab: Inventory  |  M: Map  |  K: Crafting", 12, H - 4);
   }
 
   // ---- Fancy bar with gradient and border ----
@@ -1033,6 +1436,7 @@ export class ArthurianRPGGame {
       ["Tab", "Open / close Inventory"],
       ["C", "Open / close Character Sheet"],
       ["M", "Open / close Map"],
+      ["K", "Open / close Crafting"],
       ["F", "Toggle first / third person camera"],
       ["F5", "Quick Save"],
       ["F9", "Quick Load"],
@@ -1149,5 +1553,426 @@ export class ArthurianRPGGame {
     ctx.fillStyle = "#c33"; ctx.font = "bold 64px serif"; ctx.textAlign = "center"; ctx.fillText("YOU HAVE FALLEN", W/2, H*0.35);
     ctx.fillStyle = "#aaa"; ctx.font = "22px serif"; ctx.fillText("The quest continues...", W/2, H*0.45);
     ctx.fillStyle = "#888"; ctx.font = "18px serif"; ctx.fillText("Press Enter to respawn at Camelot", W/2, H*0.6);
+  }
+
+  // =========================================================================
+  // DUNGEON SYSTEM - Procedural BSP generation, simulation, and rendering
+  // =========================================================================
+
+  private _dungeonRng(seed: number, i: number): number {
+    let h = ((seed + i) * 374761393 + 668265263) | 0;
+    h = (h ^ (h >> 13)) * 1274126177;
+    h = (h ^ (h >> 16)) >>> 0;
+    return h / 4294967296;
+  }
+
+  private _generateDungeon(entrance: DungeonEntrance): DungeonState {
+    const seed = entrance.dungeonSeed;
+    const TILE_SIZE = 3;
+    const MAP_W = 48, MAP_H = 48;
+    const tileMap: number[][] = [];
+    for (let y = 0; y < MAP_H; y++) { tileMap.push(new Array(MAP_W).fill(0)); }
+
+    interface BSPNode { x: number; y: number; w: number; h: number; left?: BSPNode; right?: BSPNode; room?: { x: number; y: number; w: number; h: number } }
+    const MIN_ROOM = 5, MAX_ROOM = 10, MIN_PARTITION = 12;
+    let rngIdx = 0;
+    const rng = () => this._dungeonRng(seed, rngIdx++);
+
+    const splitNode = (node: BSPNode, depth: number): void => {
+      if (depth > 4 || (node.w < MIN_PARTITION * 2 && node.h < MIN_PARTITION * 2)) return;
+      const splitH = node.w > node.h ? false : node.h > node.w ? true : rng() > 0.5;
+      if (splitH && node.h >= MIN_PARTITION * 2) {
+        const sp = Math.floor(MIN_PARTITION + rng() * (node.h - MIN_PARTITION * 2));
+        node.left = { x: node.x, y: node.y, w: node.w, h: sp };
+        node.right = { x: node.x, y: node.y + sp, w: node.w, h: node.h - sp };
+      } else if (!splitH && node.w >= MIN_PARTITION * 2) {
+        const sp = Math.floor(MIN_PARTITION + rng() * (node.w - MIN_PARTITION * 2));
+        node.left = { x: node.x, y: node.y, w: sp, h: node.h };
+        node.right = { x: node.x + sp, y: node.y, w: node.w - sp, h: node.h };
+      } else return;
+      splitNode(node.left, depth + 1);
+      splitNode(node.right, depth + 1);
+    };
+
+    const root: BSPNode = { x: 1, y: 1, w: MAP_W - 2, h: MAP_H - 2 };
+    splitNode(root, 0);
+
+    const rooms: DungeonRoom[] = [];
+    let rmId = 0;
+    const createRooms = (node: BSPNode): void => {
+      if (node.left || node.right) { if (node.left) createRooms(node.left); if (node.right) createRooms(node.right); return; }
+      const rw = MIN_ROOM + Math.floor(rng() * Math.min(MAX_ROOM - MIN_ROOM, node.w - 4));
+      const rh = MIN_ROOM + Math.floor(rng() * Math.min(MAX_ROOM - MIN_ROOM, node.h - 4));
+      const rx = node.x + 1 + Math.floor(rng() * Math.max(0, node.w - rw - 2));
+      const ry = node.y + 1 + Math.floor(rng() * Math.max(0, node.h - rh - 2));
+      node.room = { x: rx, y: ry, w: rw, h: rh };
+      rooms.push({ id: rmId++, x: rx, y: ry, w: rw, h: rh, centerX: rx + Math.floor(rw / 2), centerY: ry + Math.floor(rh / 2), isBossRoom: false, isEntrance: false, cleared: false });
+      for (let ty = ry; ty < ry + rh; ty++) for (let tx = rx; tx < rx + rw; tx++) { if (ty >= 0 && ty < MAP_H && tx >= 0 && tx < MAP_W) tileMap[ty][tx] = 1; }
+    };
+    createRooms(root);
+    if (rooms.length > 0) rooms[0].isEntrance = true;
+    if (rooms.length > 1) rooms[rooms.length - 1].isBossRoom = true;
+    else if (rooms.length === 1) rooms[0].isBossRoom = true;
+
+    const corridors: DungeonCorridor[] = [];
+    const connectRooms = (node: BSPNode): void => {
+      if (!node.left || !node.right) return;
+      connectRooms(node.left); connectRooms(node.right);
+      const findRoom = (n: BSPNode): { x: number; y: number; w: number; h: number } | null => { if (n.room) return n.room; if (n.left) { const r = findRoom(n.left); if (r) return r; } if (n.right) { const r = findRoom(n.right); if (r) return r; } return null; };
+      const r1 = findRoom(node.left), r2 = findRoom(node.right);
+      if (!r1 || !r2) return;
+      const c1x = r1.x + Math.floor(r1.w / 2), c1y = r1.y + Math.floor(r1.h / 2);
+      const c2x = r2.x + Math.floor(r2.w / 2), c2y = r2.y + Math.floor(r2.h / 2);
+      const tiles: { x: number; y: number }[] = [];
+      const fromIdx = rooms.findIndex(r => r.x === r1.x && r.y === r1.y && r.w === r1.w);
+      const toIdx = rooms.findIndex(r => r.x === r2.x && r.y === r2.y && r.w === r2.w);
+      let cx = c1x, cy = c1y;
+      while (cx !== c2x) { if (cy >= 0 && cy < MAP_H && cx >= 0 && cx < MAP_W) { tileMap[cy][cx] = tileMap[cy][cx] || 1; tiles.push({ x: cx, y: cy }); } cx += cx < c2x ? 1 : -1; }
+      while (cy !== c2y) { if (cy >= 0 && cy < MAP_H && cx >= 0 && cx < MAP_W) { tileMap[cy][cx] = tileMap[cy][cx] || 1; tiles.push({ x: cx, y: cy }); } cy += cy < c2y ? 1 : -1; }
+      corridors.push({ fromRoom: fromIdx >= 0 ? fromIdx : 0, toRoom: toIdx >= 0 ? toIdx : 0, tiles });
+    };
+    connectRooms(root);
+
+    const doors: DungeonDoor[] = [];
+    for (const corr of corridors) { if (corr.tiles.length > 2) { const dt = corr.tiles[1]; if (dt && tileMap[dt.y]?.[dt.x] === 1) { doors.push({ id: `door_${doors.length}`, tileX: dt.x, tileY: dt.y, isLocked: false, isOpen: true, connectsRooms: [corr.fromRoom, corr.toRoom] }); tileMap[dt.y][dt.x] = 2; } } }
+
+    const LOOT_TABLES: { defId: string; name: string; weight: number; quality: ItemQualityTier }[][] = [
+      [{ defId: "health_potion", name: "Health Potion", weight: 0.5, quality: ItemQualityTier.Common }, { defId: "iron_dagger", name: "Iron Dagger", weight: 2, quality: ItemQualityTier.Common }, { defId: "leather_scraps", name: "Leather Scraps", weight: 1, quality: ItemQualityTier.Common }],
+      [{ defId: "health_potion", name: "Health Potion", weight: 0.5, quality: ItemQualityTier.Common }, { defId: "steel_sword", name: "Steel Sword", weight: 4, quality: ItemQualityTier.Uncommon }, { defId: "chainmail_piece", name: "Chainmail Piece", weight: 5, quality: ItemQualityTier.Uncommon }, { defId: "mana_potion", name: "Mana Potion", weight: 0.5, quality: ItemQualityTier.Uncommon }],
+      [{ defId: "greater_health_potion", name: "Greater Health Potion", weight: 0.5, quality: ItemQualityTier.Rare }, { defId: "enchanted_blade", name: "Enchanted Blade", weight: 4, quality: ItemQualityTier.Rare }, { defId: "plate_gauntlets", name: "Plate Gauntlets", weight: 3, quality: ItemQualityTier.Rare }, { defId: "arcane_tome", name: "Arcane Tome", weight: 1.5, quality: ItemQualityTier.Epic }],
+    ];
+    const lootTier = entrance.difficulty <= 3 ? 0 : entrance.difficulty <= 7 ? 1 : 2;
+
+    const chests: DungeonChest[] = [];
+    for (const room of rooms) {
+      if (room.isEntrance) continue;
+      const numChests = room.isBossRoom ? 2 : (rng() > 0.5 ? 1 : 0);
+      for (let ci = 0; ci < numChests; ci++) {
+        const chX = room.x + 1 + Math.floor(rng() * Math.max(1, room.w - 2));
+        const chY = room.y + 1 + Math.floor(rng() * Math.max(1, room.h - 2));
+        if (tileMap[chY]?.[chX] !== 1 && tileMap[chY]?.[chX] !== 5) continue;
+        const loot: DungeonChest["loot"] = [];
+        const numItems = 1 + Math.floor(rng() * 3);
+        const table = LOOT_TABLES[lootTier];
+        for (let li = 0; li < numItems; li++) { const item = table[Math.floor(rng() * table.length)]; loot.push({ defId: item.defId, name: item.name, quantity: 1, quality: item.quality, weight: item.weight }); }
+        const gold = Math.floor(10 + rng() * entrance.difficulty * 15);
+        loot.push({ defId: "gold_coins", name: `${gold} Gold`, quantity: gold, quality: ItemQualityTier.Common, weight: 0 });
+        chests.push({ id: `chest_${chests.length}`, tileX: chX, tileY: chY, opened: false, loot });
+        tileMap[chY][chX] = 3;
+      }
+    }
+
+    const spawnPoints: DungeonSpawnPoint[] = [];
+    const region = REGIONS[entrance.regionId];
+    for (const room of rooms) {
+      if (room.isEntrance) continue;
+      const numEnemies = room.isBossRoom ? 1 : Math.min(3, 1 + Math.floor(rng() * (entrance.difficulty / 3)));
+      for (let ei = 0; ei < numEnemies; ei++) {
+        const ex = room.x + 1 + Math.floor(rng() * Math.max(1, room.w - 2));
+        const ey = room.y + 1 + Math.floor(rng() * Math.max(1, room.h - 2));
+        if (tileMap[ey]?.[ex] === 0) continue;
+        const enemyType = room.isBossRoom ? `dungeon_boss_${entrance.regionId}` : (region ? region.enemyTypes[Math.floor(rng() * region.enemyTypes.length)] : "bandit");
+        const level = room.isBossRoom ? (region ? region.maxLevel + Math.floor(entrance.difficulty * 2) : entrance.difficulty * 5) : (region ? region.minLevel + Math.floor(rng() * (region.maxLevel - region.minLevel)) : entrance.difficulty * 3);
+        spawnPoints.push({ id: `spawn_${spawnPoints.length}`, tileX: ex, tileY: ey, roomId: room.id, enemyType, level, spawned: false });
+      }
+    }
+
+    const entranceRoom = rooms.find(r => r.isEntrance) ?? rooms[0];
+    tileMap[entranceRoom.centerY][entranceRoom.centerX] = 4;
+    const bossRoom = rooms.find(r => r.isBossRoom);
+    if (bossRoom) { for (let ty = bossRoom.y; ty < bossRoom.y + bossRoom.h; ty++) for (let tx = bossRoom.x; tx < bossRoom.x + bossRoom.w; tx++) { if (tileMap[ty]?.[tx] === 1) tileMap[ty][tx] = 5; } }
+
+    return {
+      active: true, seed, regionId: entrance.regionId, dungeonName: entrance.dungeonName, difficulty: entrance.difficulty,
+      tileMap, rooms, corridors, chests, doors, spawnPoints, enemies: [],
+      playerTileX: entranceRoom.centerX, playerTileY: entranceRoom.centerY, tileSize: TILE_SIZE,
+      entranceRoomId: entranceRoom.id, bossRoomId: bossRoom?.id ?? 0, bossDefeated: false,
+      returnPos: { ...this._state!.player.combatant.position }, returnRegion: this._state!.player.currentRegion,
+    };
+  }
+
+  private _enterDungeon(entrance: DungeonEntrance): void {
+    if (!this._state) return;
+    const dungeon = this._generateDungeon(entrance);
+    this._state.world.dungeon = dungeon;
+    this._state.player.combatant.position = { x: dungeon.playerTileX * dungeon.tileSize, y: 0, z: dungeon.playerTileY * dungeon.tileSize };
+    this._dungeonYaw = 0; this._dungeonPitch = 0;
+    this._phase = ArthurianPhase.DUNGEON;
+    this._notify(`Entering ${entrance.dungeonName}...`);
+    this._dungeonSpawnEnemies(dungeon);
+  }
+
+  private _exitDungeon(): void {
+    if (!this._state || !this._state.world.dungeon) return;
+    const dg = this._state.world.dungeon;
+    this._state.player.combatant.position = { ...dg.returnPos };
+    this._state.player.currentRegion = dg.returnRegion;
+    this._state.world.currentRegion = dg.returnRegion;
+    this._state.world.dungeon = null;
+    this._state.world.enemies = [];
+    this._phase = ArthurianPhase.PLAYING;
+    this._notify("Returned to the surface.");
+  }
+
+  private _dungeonSpawnEnemies(dg: DungeonState): void {
+    for (const sp of dg.spawnPoints) {
+      if (sp.spawned) continue;
+      sp.spawned = true;
+      const wx = sp.tileX * dg.tileSize, wz = sp.tileY * dg.tileSize;
+      const hp = sp.enemyType.startsWith("dungeon_boss") ? 200 + sp.level * 25 : 30 + sp.level * 10;
+      const id = `de_${sp.id}_${Date.now()}`;
+      dg.enemies.push({
+        id, defId: sp.enemyType, pos: { x: wx, y: 0, z: wz }, rotation: Math.random() * 6.28,
+        hp, maxHp: hp, state: EnemyBehavior.Idle,
+        aiState: { attackRange: 2.5, heavyAttackChance: sp.enemyType.startsWith("dungeon_boss") ? 0.4 : 0.2, blockChance: 0.15, fleeThreshold: sp.enemyType.startsWith("dungeon_boss") ? 0 : 0.15, attackDelay: sp.enemyType.startsWith("dungeon_boss") ? 1.5 : 1 + Math.random() * 0.5 },
+        target: null, alertLevel: 0, patrolPath: [{ x: wx + 3, y: 0, z: wz }, { x: wx, y: 0, z: wz + 3 }], patrolIndex: 0, lootTable: "dungeon", level: sp.level, respawnTime: 9999,
+        combatant: { id, name: sp.enemyType.replace(/_/g, " "), hp, maxHp: hp, mp: 0, maxMp: 0, stamina: 50, maxStamina: 50, position: { x: wx, y: 0, z: wz }, isBlocking: false, attributes: { strength: 10 + sp.level, dexterity: 8 + sp.level, constitution: 10 + sp.level, intelligence: 6, wisdom: 6, charisma: 5, perception: 8 }, skills: {}, perks: [], equipment: { mainHand: null, offHand: null, head: null, chest: null, legs: null, feet: null, ring1: null, ring2: null, amulet: null, cloak: null }, level: sp.level, xp: 0, xpToNext: 999, activeEffects: [] },
+      });
+    }
+  }
+
+  private _dungeonSim(dt: number): void {
+    if (!this._state || !this._state.world.dungeon) return;
+    const dg = this._state.world.dungeon;
+    const p = this._state.player, c = p.combatant, pos = c.position;
+    const ts = dg.tileSize;
+    this._dungeonYaw -= this._input.mouseDX * 0.002;
+    this._dungeonPitch = Math.max(-1.2, Math.min(1.2, this._dungeonPitch - this._input.mouseDY * 0.002));
+    const d = calculateDerivedStats(p);
+    let spd = d.moveSpeed;
+    if (this._input.sprint && c.stamina > 5) { spd *= 1.4; c.stamina -= 12 * dt; if (c.stamina < 0) c.stamina = 0; }
+    const sin = Math.sin(this._dungeonYaw), cos = Math.cos(this._dungeonYaw);
+    let mvdx = 0, mvdz = 0;
+    if (this._input.forward) { mvdx -= sin; mvdz -= cos; } if (this._input.back) { mvdx += sin; mvdz += cos; }
+    if (this._input.left) { mvdx -= cos; mvdz += sin; } if (this._input.right) { mvdx += cos; mvdz -= sin; }
+    const len = Math.sqrt(mvdx * mvdx + mvdz * mvdz);
+    if (len > 0.001) {
+      const nx = pos.x + (mvdx / len) * spd * dt, nz = pos.z + (mvdz / len) * spd * dt;
+      const margin = 0.3;
+      const canWalk = (wx: number, wz: number) => { const tx = Math.floor(wx / ts), ty = Math.floor(wz / ts); if (tx < 0 || ty < 0 || ty >= dg.tileMap.length || tx >= dg.tileMap[0].length) return false; return dg.tileMap[ty][tx] !== 0; };
+      if (canWalk(nx - margin, nz - margin) && canWalk(nx + margin, nz - margin) && canWalk(nx - margin, nz + margin) && canWalk(nx + margin, nz + margin)) { pos.x = nx; pos.z = nz; }
+      else { if (canWalk(nx - margin, pos.z - margin) && canWalk(nx + margin, pos.z - margin) && canWalk(nx - margin, pos.z + margin) && canWalk(nx + margin, pos.z + margin)) { pos.x = nx; } else if (canWalk(pos.x - margin, nz - margin) && canWalk(pos.x + margin, nz - margin) && canWalk(pos.x - margin, nz + margin) && canWalk(pos.x + margin, nz + margin)) { pos.z = nz; } }
+    }
+    pos.y = 0; c.isBlocking = this._input.block; p.combat.blockActive = this._input.block;
+    dg.playerTileX = Math.floor(pos.x / ts); dg.playerTileY = Math.floor(pos.z / ts);
+
+    const cb = p.combat;
+    for (const k of Object.keys(cb.cooldowns)) { cb.cooldowns[k] -= dt; if (cb.cooldowns[k] <= 0) delete cb.cooldowns[k]; }
+    if (cb.comboTimer > 0) { cb.comboTimer -= dt; if (cb.comboTimer <= 0) cb.comboCount = 0; }
+    if (cb.staggerBuildup > 0) { cb.staggerBuildup -= 5 * dt; if (cb.staggerBuildup < 0) cb.staggerBuildup = 0; }
+    if (this._input.attack && !cb.cooldowns["attack"]) this._dungeonAttack(dg);
+
+    for (const e of dg.enemies) {
+      if (e.hp <= 0) continue;
+      const dist = this._d3(pos, e.pos); const ar = e.aiState.attackRange ?? 2.5;
+      if (e.state === EnemyBehavior.Idle || e.state === EnemyBehavior.Patrol) {
+        if (dist < 12) { e.state = EnemyBehavior.Chase; e.target = "player"; }
+        else if (e.state === EnemyBehavior.Patrol && e.patrolPath.length > 0) { const t = e.patrolPath[e.patrolIndex], edx = t.x - e.pos.x, edz = t.z - e.pos.z, pd = Math.sqrt(edx*edx+edz*edz); if (pd < 1) e.patrolIndex = (e.patrolIndex + 1) % e.patrolPath.length; else { e.pos.x += (edx/pd)*2*dt; e.pos.z += (edz/pd)*2*dt; } }
+      } else if (e.state === EnemyBehavior.Chase) {
+        if (dist > 20) { e.state = EnemyBehavior.Idle; e.target = null; } else if (dist < ar) e.state = EnemyBehavior.Attack;
+        else { const edx = pos.x - e.pos.x, edz = pos.z - e.pos.z, cd = Math.sqrt(edx*edx+edz*edz); if (cd > 0.1) { e.pos.x += (edx/cd)*3.5*dt; e.pos.z += (edz/cd)*3.5*dt; } }
+      } else if (e.state === EnemyBehavior.Attack) {
+        if (dist > ar * 1.5) e.state = EnemyBehavior.Chase;
+        else { const key = `eatk_${e.id}`; if (!cb.cooldowns[key]) { cb.cooldowns[key] = e.aiState.attackDelay ?? 1.2; let dmg = Math.floor(5 + e.level * 2 + Math.random() * 5); if (e.defId.startsWith("dungeon_boss")) dmg = Math.floor(dmg * 1.5); if (cb.blockActive) { dmg = Math.floor(dmg * (1 - d.blockEfficiency)); this._notify(`Blocked! ${dmg} dmg`); } c.hp -= dmg; if (c.hp <= 0) { c.hp = 0; this._phase = ArthurianPhase.DEAD; this._state.world.dungeon = null; this._notify("You have fallen in the dungeon..."); } } }
+        if (e.hp / e.maxHp < (e.aiState.fleeThreshold ?? 0.1)) e.state = EnemyBehavior.Flee;
+      } else if (e.state === EnemyBehavior.Flee) { const fx = e.pos.x - pos.x, fz = e.pos.z - pos.z, fd = Math.sqrt(fx*fx+fz*fz); if (fd > 0.1) { e.pos.x += (fx/fd)*4*dt; e.pos.z += (fz/fd)*4*dt; } if (dist > 25) e.state = EnemyBehavior.Idle; }
+    }
+
+    c.stamina = Math.min(c.maxStamina, c.stamina + RPG_CONFIG.staminaRegenRate * (cb.inCombat ? 0.5 : 1) * dt);
+    c.mp = Math.min(c.maxMp, c.mp + RPG_CONFIG.manaRegenRate * dt);
+    if (cb.inCombat && !dg.enemies.some(e => e.hp > 0 && this._d3(c.position, e.pos) < 15)) cb.inCombat = false;
+
+    this._dungeonInteractId = null; let bestDist = 4.0;
+    for (const ch of dg.chests) { if (ch.opened) continue; const cd = this._d3(pos, { x: ch.tileX * ts + ts / 2, y: 0, z: ch.tileY * ts + ts / 2 }); if (cd < bestDist) { bestDist = cd; this._dungeonInteractId = ch.id; } }
+    const eRoom = dg.rooms.find(r => r.isEntrance);
+    if (eRoom) { const ed = this._d3(pos, { x: eRoom.centerX * ts, y: 0, z: eRoom.centerY * ts }); if (ed < bestDist) { bestDist = ed; this._dungeonInteractId = "dungeon_exit"; } }
+
+    if (this._input.interact && this._dungeonInteractId) {
+      if (this._dungeonInteractId === "dungeon_exit") { this._exitDungeon(); }
+      else if (this._dungeonInteractId.startsWith("chest_")) {
+        const chest = dg.chests.find(ch => ch.id === this._dungeonInteractId);
+        if (chest && !chest.opened) { chest.opened = true; for (const item of chest.loot) { if (item.defId === "gold_coins") { this._state.player.gold += item.quantity; this._notify(`+${item.quantity} gold`); } else { addItem(this._state.player, item.defId, item.quantity, item.name, item.weight, item.quality); this._notify(`Found: ${item.name}`); } } }
+      }
+    }
+
+    if (!dg.bossDefeated && dg.enemies.some(e => e.defId.startsWith("dungeon_boss")) && !dg.enemies.some(e => e.defId.startsWith("dungeon_boss") && e.hp > 0)) {
+      dg.bossDefeated = true; this._notify("BOSS DEFEATED! The dungeon is cleared!");
+      const xpReward = 100 + dg.difficulty * 50; addXP(this._state.player, xpReward); this._notify(`+${xpReward} XP`);
+    }
+  }
+
+  private _dungeonAttack(dg: DungeonState): void {
+    if (!this._state) return;
+    const p = this._state.player, d = calculateDerivedStats(p), cb = p.combat;
+    if (p.combatant.stamina < 10) return;
+    p.combatant.stamina -= 10; cb.cooldowns["attack"] = 0.5; cb.comboCount++; cb.comboTimer = 2.0;
+    let best: EnemyInstance | null = null, bestD = 3.0;
+    for (const e of dg.enemies) { if (e.hp <= 0) continue; const dist = this._d3(p.combatant.position, e.pos); if (dist < bestD) { best = e; bestD = dist; } }
+    if (best) {
+      const crit = Math.random() < d.critChance;
+      const dmg = Math.max(1, Math.floor(d.physicalDamage * (1 + cb.comboCount * 0.1) * (crit ? d.critMultiplier : 1)));
+      best.hp -= dmg; cb.inCombat = true; cb.targetId = best.id;
+      this._notify(crit ? `CRITICAL! ${dmg} damage` : `${dmg} damage`);
+      if (best.hp <= 0) { best.state = EnemyBehavior.Dead; this._killEnemy(best); }
+    }
+  }
+
+  private _rDungeon(ctx: CanvasRenderingContext2D, W: number, H: number): void {
+    if (!this._state || !this._state.world.dungeon) return;
+    const dg = this._state.world.dungeon;
+    const p = this._state.player, c = p.combatant, pos = c.position;
+    const ts = dg.tileSize;
+
+    ctx.fillStyle = "#1a1510"; ctx.fillRect(0, 0, W, H / 2);
+    const floorGrad = ctx.createLinearGradient(0, H / 2, 0, H);
+    floorGrad.addColorStop(0, "#2a2218"); floorGrad.addColorStop(1, "#1a1510");
+    ctx.fillStyle = floorGrad; ctx.fillRect(0, H / 2, W, H / 2);
+
+    const fov = Math.PI / 3, numRays = Math.min(W, 400), rayStep = fov / numRays, maxDist = 20, wallHF = H * 0.8;
+    let wR: number, wG: number, wB: number;
+    if (dg.regionId === "mordred_fortress") { wR = 50; wG = 30; wB = 50; }
+    else if (dg.regionId === "grail_temple") { wR = 80; wG = 70; wB = 40; }
+    else if (dg.regionId === "avalon") { wR = 40; wG = 60; wB = 80; }
+    else if (dg.regionId === "saxon_camp") { wR = 70; wG = 55; wB = 35; }
+    else if (dg.regionId === "darkwood") { wR = 35; wG = 45; wB = 30; }
+    else { wR = 60; wG = 55; wB = 50; }
+
+    for (let i = 0; i < numRays; i++) {
+      const rayAngle = this._dungeonYaw - fov / 2 + i * rayStep;
+      const rdx = -Math.sin(rayAngle), rdz = -Math.cos(rayAngle);
+      const stp = 0.05;
+      let dist = 0, hitTile = -1, hitSide = 0, rx = pos.x, rz = pos.z;
+      for (let s = 0; s < maxDist; s += stp) {
+        rx += rdx * stp; rz += rdz * stp;
+        const tx = Math.floor(rx / ts), tz = Math.floor(rz / ts);
+        if (tx < 0 || tz < 0 || tz >= dg.tileMap.length || tx >= dg.tileMap[0].length) { dist = s; hitTile = 0; break; }
+        if (dg.tileMap[tz][tx] === 0) { dist = s; hitTile = 0; const prevTx = Math.floor((rx - rdx * stp) / ts); hitSide = prevTx !== tx ? 0 : 1; break; }
+        dist = s;
+      }
+      if (hitTile !== 0) continue;
+      const corrDist = dist * Math.cos(i * rayStep - fov / 2);
+      const wallH = Math.min(H, wallHF / (corrDist + 0.1));
+      const wallTop = (H - wallH) / 2;
+      const colW = Math.ceil(W / numRays) + 1, colX = Math.floor(i * W / numRays);
+      const shade = Math.max(0, 1 - corrDist / maxDist);
+      const sideShade = hitSide === 0 ? 0.7 : 1.0;
+      ctx.fillStyle = `rgb(${Math.floor(wR * shade * sideShade)},${Math.floor(wG * shade * sideShade)},${Math.floor(wB * shade * sideShade)})`;
+      ctx.fillRect(colX, wallTop, colW, wallH);
+      if (shade > 0.3) { ctx.strokeStyle = `rgba(0,0,0,${0.1 * shade})`; ctx.lineWidth = 1; const brickH = wallH / 8; for (let row = 0; row < 8; row++) { const by = wallTop + row * brickH; ctx.beginPath(); ctx.moveTo(colX, by); ctx.lineTo(colX + colW, by); ctx.stroke(); } }
+    }
+
+    type DSprite = { type: string; x: number; z: number; dist: number; data: unknown };
+    const sprites: DSprite[] = [];
+    for (const e of dg.enemies) { if (e.hp <= 0) continue; const dist = this._d3(pos, e.pos); if (dist < 18) sprites.push({ type: "enemy", x: e.pos.x, z: e.pos.z, dist, data: e }); }
+    for (const ch of dg.chests) { if (ch.opened) continue; const cx = ch.tileX * ts + ts / 2, cz = ch.tileY * ts + ts / 2; const dist = this._d3(pos, { x: cx, y: 0, z: cz }); if (dist < 15) sprites.push({ type: "chest", x: cx, z: cz, dist, data: ch }); }
+    const eRoom = dg.rooms.find(r => r.isEntrance);
+    if (eRoom) { const ex = eRoom.centerX * ts, ez = eRoom.centerY * ts; const dist = this._d3(pos, { x: ex, y: 0, z: ez }); if (dist < 15) sprites.push({ type: "exit", x: ex, z: ez, dist, data: null }); }
+    sprites.sort((a, b) => b.dist - a.dist);
+
+    for (const sp of sprites) {
+      const sdx = sp.x - pos.x, sdz = sp.z - pos.z;
+      let ang = Math.atan2(sdx, -sdz) - this._dungeonYaw;
+      while (ang > Math.PI) ang -= Math.PI * 2; while (ang < -Math.PI) ang += Math.PI * 2;
+      if (Math.abs(ang) > Math.PI / 2.5) continue;
+      const screenX = W / 2 + (ang / (Math.PI / 3)) * W;
+      const scale = Math.max(0.05, 1 / (sp.dist * 0.25 + 0.5));
+      const sprH = 60 * scale, sprW = 40 * scale, screenY = H / 2 + sprH * 0.1;
+
+      if (sp.type === "enemy") {
+        const e = sp.data as EnemyInstance; const isBoss = e.defId.startsWith("dungeon_boss");
+        ctx.fillStyle = "rgba(0,0,0,0.2)"; ctx.beginPath(); ctx.ellipse(screenX, screenY + sprH * 0.4, sprW * 0.7, sprH * 0.1, 0, 0, Math.PI * 2); ctx.fill();
+        const eCol = e.state === EnemyBehavior.Attack ? (isBoss ? [200,40,200] : [255,60,60]) : e.state === EnemyBehavior.Chase ? [255,170,0] : (isBoss ? [160,60,180] : [170,100,100]);
+        const eGrad = ctx.createRadialGradient(screenX, screenY - sprH * 0.2, 0, screenX, screenY, sprH * 0.5);
+        eGrad.addColorStop(0, `rgb(${Math.min(255,eCol[0]+40)},${Math.min(255,eCol[1]+40)},${Math.min(255,eCol[2]+40)})`);
+        eGrad.addColorStop(1, `rgb(${eCol[0]>>1},${eCol[1]>>1},${eCol[2]>>1})`);
+        ctx.fillStyle = eGrad; ctx.beginPath(); ctx.arc(screenX, screenY - sprH * 0.1, sprH * 0.4, 0, Math.PI * 2); ctx.fill();
+        if (isBoss) { ctx.fillStyle = "#c9a84c"; const crY = screenY - sprH * 0.5; ctx.beginPath(); ctx.moveTo(screenX - sprW * 0.3, crY); ctx.lineTo(screenX - sprW * 0.2, crY - sprH * 0.15); ctx.lineTo(screenX, crY - sprH * 0.05); ctx.lineTo(screenX + sprW * 0.2, crY - sprH * 0.15); ctx.lineTo(screenX + sprW * 0.3, crY); ctx.closePath(); ctx.fill(); }
+        ctx.fillStyle = e.state === EnemyBehavior.Attack ? "#ff0" : "#ffa"; const eyeOff = sprH * 0.12;
+        ctx.beginPath(); ctx.arc(screenX - eyeOff, screenY - sprH * 0.2, sprH * 0.04, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(screenX + eyeOff, screenY - sprH * 0.2, sprH * 0.04, 0, Math.PI * 2); ctx.fill();
+        const barW = sprW * 2, barH = 3 * scale + 2, barY = screenY - sprH * 0.55;
+        ctx.fillStyle = "#0008"; ctx.fillRect(screenX - barW / 2 - 1, barY - 1, barW + 2, barH + 2);
+        ctx.fillStyle = "#400"; ctx.fillRect(screenX - barW / 2, barY, barW, barH);
+        const hpR = e.hp / e.maxHp; ctx.fillStyle = hpR > 0.5 ? "#2c2" : hpR > 0.25 ? "#cc2" : "#f33";
+        ctx.fillRect(screenX - barW / 2, barY, barW * hpR, barH);
+        ctx.fillStyle = isBoss ? "#c9a84c" : "#ddd"; ctx.font = `${Math.max(8, 10 * scale + 2) | 0}px monospace`; ctx.textAlign = "center";
+        ctx.fillText(`${isBoss ? "BOSS: " : ""}${e.defId.replace(/_/g, " ")} Lv${e.level}`, screenX, barY - 3);
+      } else if (sp.type === "chest") {
+        ctx.fillStyle = "#8B6914"; const cw = sprW * 0.8, ch = sprH * 0.4;
+        ctx.fillRect(screenX - cw / 2, screenY - ch / 2, cw, ch);
+        ctx.strokeStyle = "#c9a84c"; ctx.lineWidth = Math.max(1, 2 * scale); ctx.strokeRect(screenX - cw / 2, screenY - ch / 2, cw, ch);
+        ctx.fillStyle = "#c9a84c"; ctx.fillRect(screenX - cw * 0.1, screenY - ch * 0.15, cw * 0.2, ch * 0.3);
+      } else if (sp.type === "exit") {
+        ctx.fillStyle = "rgba(100,200,255,0.6)"; const ew = sprW * 0.5;
+        for (let si = 0; si < 3; si++) ctx.fillRect(screenX - ew / 2, screenY - si * sprH * 0.12 - sprH * 0.1, ew, sprH * 0.08);
+        ctx.fillStyle = "#adf"; ctx.font = `${Math.max(8, 10 * scale) | 0}px serif`; ctx.textAlign = "center"; ctx.fillText("EXIT", screenX, screenY - sprH * 0.4);
+      }
+    }
+
+    const vigGrad = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.2, W / 2, H / 2, Math.max(W, H) * 0.6);
+    vigGrad.addColorStop(0, "rgba(0,0,0,0)"); vigGrad.addColorStop(1, "rgba(0,0,0,0.6)");
+    ctx.fillStyle = vigGrad; ctx.fillRect(0, 0, W, H);
+
+    const barCX = W / 2, barY0 = H - 70;
+    this._fancyBar(ctx, barCX - 150, barY0, 300, 16, c.hp, c.maxHp, "#b22222", "#3a0808", `HP: ${Math.ceil(c.hp)} / ${c.maxHp}`);
+    this._fancyBar(ctx, barCX - 125, barY0 + 22, 250, 12, c.mp, c.maxMp, "#2266aa", "#081830", `MP: ${Math.ceil(c.mp)}`);
+    this._fancyBar(ctx, barCX - 125, barY0 + 38, 250, 12, c.stamina, c.maxStamina, "#3a7d44", "#0a2010", `STA: ${Math.ceil(c.stamina)}`);
+    ctx.fillStyle = "rgba(0,0,0,0.4)"; ctx.fillRect(8, 6, 280, 32);
+    ctx.strokeStyle = "rgba(201,168,76,0.3)"; ctx.lineWidth = 1; ctx.strokeRect(8, 6, 280, 32);
+    ctx.fillStyle = "#c9a84c"; ctx.font = "bold 14px 'Palatino Linotype', serif"; ctx.textAlign = "left"; ctx.fillText(dg.dungeonName, 16, 26);
+    ctx.fillStyle = "#bbb"; ctx.font = "12px monospace"; ctx.textAlign = "right"; ctx.fillText(`Difficulty: ${dg.difficulty}`, 280, 26);
+    if (dg.bossDefeated) { ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.fillRect(8, 42, 160, 22); ctx.fillStyle = "#4c4"; ctx.font = "bold 12px serif"; ctx.textAlign = "left"; ctx.fillText("BOSS DEFEATED", 16, 58); }
+
+    const mmSize = 150, mmR = mmSize / 2, mmX = W - mmSize - 15, mmY = 15, mmCX = mmX + mmR, mmCY = mmY + mmR;
+    ctx.save(); ctx.beginPath(); ctx.arc(mmCX, mmCY, mmR, 0, Math.PI * 2); ctx.clip();
+    ctx.fillStyle = "rgba(10,8,5,0.9)"; ctx.fillRect(mmX, mmY, mmSize, mmSize);
+    const mmScale = 2.5;
+    for (let ty = 0; ty < dg.tileMap.length; ty++) for (let tx = 0; tx < dg.tileMap[0].length; tx++) {
+      const tile = dg.tileMap[ty][tx]; if (tile === 0) continue;
+      const ddx = (tx - dg.playerTileX) * mmScale, ddy = (ty - dg.playerTileY) * mmScale;
+      if (ddx * ddx + ddy * ddy > mmR * mmR) continue;
+      ctx.fillStyle = tile === 5 ? "rgba(120,40,40,0.7)" : tile === 4 ? "rgba(100,200,255,0.7)" : tile === 3 ? "rgba(200,170,60,0.8)" : tile === 2 ? "rgba(140,100,60,0.6)" : "rgba(80,70,50,0.6)";
+      ctx.fillRect(mmCX + ddx - mmScale / 2, mmCY + ddy - mmScale / 2, mmScale, mmScale);
+    }
+    ctx.fillStyle = "#ff3333";
+    for (const e of dg.enemies) { if (e.hp <= 0) continue; const etx = Math.floor(e.pos.x / ts), ety = Math.floor(e.pos.z / ts); const ddx = (etx - dg.playerTileX) * mmScale, ddy = (ety - dg.playerTileY) * mmScale; if (ddx * ddx + ddy * ddy > mmR * mmR) continue; ctx.beginPath(); ctx.arc(mmCX + ddx, mmCY + ddy, 2, 0, Math.PI * 2); ctx.fill(); }
+    ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.moveTo(mmCX, mmCY - 4); ctx.lineTo(mmCX - 3, mmCY + 3); ctx.lineTo(mmCX + 3, mmCY + 3); ctx.closePath(); ctx.fill();
+    ctx.restore();
+    ctx.strokeStyle = "rgba(201,168,76,0.6)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(mmCX, mmCY, mmR, 0, Math.PI * 2); ctx.stroke();
+
+    const chx = W / 2, chy = H / 2;
+    ctx.strokeStyle = this._dungeonInteractId ? "rgba(201,168,76,0.9)" : "rgba(255,255,255,0.6)"; ctx.lineWidth = this._dungeonInteractId ? 2 : 1;
+    ctx.beginPath(); ctx.moveTo(chx - 12, chy); ctx.lineTo(chx - 4, chy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(chx + 4, chy); ctx.lineTo(chx + 12, chy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(chx, chy - 12); ctx.lineTo(chx, chy - 4); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(chx, chy + 4); ctx.lineTo(chx, chy + 12); ctx.stroke();
+    if (this._dungeonInteractId) { ctx.beginPath(); ctx.arc(chx, chy, 14, 0, Math.PI * 2); ctx.stroke(); }
+
+    if (this._dungeonInteractId) {
+      const label = this._dungeonInteractId === "dungeon_exit" ? "[E] Exit Dungeon" : this._dungeonInteractId.startsWith("chest_") ? "[E] Open Chest" : "[E] Interact";
+      ctx.fillStyle = "rgba(0,0,0,0.5)"; const promptW = 160, promptH = 28;
+      ctx.fillRect(W / 2 - promptW / 2, H * 0.65 - promptH / 2, promptW, promptH);
+      ctx.strokeStyle = "rgba(201,168,76,0.6)"; ctx.lineWidth = 1; ctx.strokeRect(W / 2 - promptW / 2, H * 0.65 - promptH / 2, promptW, promptH);
+      ctx.fillStyle = "#c9a84c"; ctx.font = "bold 16px 'Palatino Linotype', serif"; ctx.textAlign = "center"; ctx.fillText(label, W / 2, H * 0.65 + 5);
+    }
+
+    if (p.combat.inCombat && p.combat.comboCount > 1) {
+      ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.fillRect(W / 2 - 50, H * 0.13, 100, 28);
+      ctx.fillStyle = "#ffdd44"; ctx.font = "bold 20px monospace"; ctx.textAlign = "center";
+      ctx.shadowColor = "rgba(255,220,0,0.6)"; ctx.shadowBlur = 8;
+      ctx.fillText(`Combo x${p.combat.comboCount}`, W / 2, H * 0.15 + 14); ctx.shadowBlur = 0;
+    }
+
+    ctx.textAlign = "center";
+    for (let i = 0; i < this._notifs.length; i++) {
+      const alpha = Math.min(1, this._notifs[i].t);
+      ctx.fillStyle = `rgba(0,0,0,${alpha * 0.3})`; const nw = ctx.measureText(this._notifs[i].text).width + 20;
+      ctx.fillRect(W / 2 - nw / 2, H * 0.38 + i * 24 - 12, nw, 20);
+      ctx.fillStyle = `rgba(201,168,76,${alpha})`; ctx.font = "15px 'Palatino Linotype', serif";
+      ctx.fillText(this._notifs[i].text, W / 2, H * 0.38 + i * 24 + 2);
+    }
+
+    ctx.fillStyle = "rgba(180,170,150,0.25)"; ctx.font = "10px monospace"; ctx.textAlign = "left";
+    ctx.fillText("WASD: Move | LMB: Attack | RMB: Block | E: Interact/Exit | Tab: Inventory | Esc: Menu", 12, H - 4);
   }
 }

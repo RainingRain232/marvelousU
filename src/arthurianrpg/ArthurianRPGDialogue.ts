@@ -505,6 +505,31 @@ export class LoreSystem {
 // Master Dialogue System (composes all sub-systems)
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Inventory bridge – allows the dialogue system to interact with inventory
+// ---------------------------------------------------------------------------
+
+export interface DialogueInventoryBridge {
+  /** Check if player has at least one of the given item */
+  hasItem(itemId: string): boolean;
+  /** Add item(s) to player inventory. Returns true on success. */
+  addItem(itemId: string, count: number): boolean;
+  /** Remove item(s) from player inventory. Returns true on success. */
+  removeItem(itemId: string, count: number): boolean;
+  /** Get current gold */
+  getGold(): number;
+  /** Add gold */
+  addGold(amount: number): void;
+  /** Remove gold. Returns true on success (false if insufficient). */
+  removeGold(amount: number): boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Notification callback for UI feedback on item / gold changes
+// ---------------------------------------------------------------------------
+
+export type DialogueNotifyFn = (message: string) => void;
+
 export class ArthurianRPGDialogueSystem implements DialogueStateProvider {
   readonly walker = new DialogueWalker();
   readonly quests = new QuestManager();
@@ -515,6 +540,26 @@ export class ArthurianRPGDialogueSystem implements DialogueStateProvider {
   private dialogueTrees: Map<string, DialogueTree> = new Map();
   private flags: Map<string, boolean> = new Map();
   private companionRecruits: Set<string> = new Set();
+
+  /** Bridge to the player inventory system – must be set by the orchestrator */
+  private inventoryBridge: DialogueInventoryBridge | null = null;
+
+  /** Optional notification callback for UI feedback */
+  private notifyFn: DialogueNotifyFn | null = null;
+
+  /** Connect the inventory bridge so dialogue actions can modify inventory */
+  setInventoryBridge(bridge: DialogueInventoryBridge): void {
+    this.inventoryBridge = bridge;
+  }
+
+  /** Set a notification callback for UI feedback (e.g. "Received Iron Sword x1") */
+  setNotifyFn(fn: DialogueNotifyFn): void {
+    this.notifyFn = fn;
+  }
+
+  private notify(message: string): void {
+    if (this.notifyFn) this.notifyFn(message);
+  }
 
   // Registration ----------------------------------------------------------
 
@@ -571,8 +616,54 @@ export class ArthurianRPGDialogueSystem implements DialogueStateProvider {
       case "addLoreEntry":
         this.lore.discover(action.loreId);
         break;
-      // giveItem, removeItem, giveGold, removeGold, openShop
-      // are handled by the orchestrator that has access to inventory
+
+      // Inventory actions – delegated to inventory bridge
+      case "giveItem": {
+        if (this.inventoryBridge) {
+          const success = this.inventoryBridge.addItem(action.itemId, action.count);
+          if (success) {
+            this.notify(`Received ${action.itemId} x${action.count}`);
+          } else {
+            this.notify("Inventory full – could not receive item!");
+          }
+        }
+        break;
+      }
+      case "removeItem": {
+        if (this.inventoryBridge) {
+          const success = this.inventoryBridge.removeItem(action.itemId, action.count);
+          if (success) {
+            this.notify(`Gave away ${action.itemId} x${action.count}`);
+          } else {
+            this.notify("You don't have the required item.");
+          }
+        }
+        break;
+      }
+      case "giveGold": {
+        if (this.inventoryBridge) {
+          this.inventoryBridge.addGold(action.amount);
+          this.notify(`Received ${action.amount} gold`);
+        }
+        break;
+      }
+      case "removeGold": {
+        if (this.inventoryBridge) {
+          const success = this.inventoryBridge.removeGold(action.amount);
+          if (success) {
+            this.notify(`Paid ${action.amount} gold`);
+          } else {
+            this.notify("Not enough gold!");
+          }
+        }
+        break;
+      }
+      case "openShop":
+        // openShop is still handled by the orchestrator since it needs to
+        // switch the game phase to SHOP mode – emit a notification for now
+        this.notify(`Opening shop: ${action.shopId}`);
+        break;
+
       default:
         break;
     }
@@ -588,8 +679,12 @@ export class ArthurianRPGDialogueSystem implements DialogueStateProvider {
     return this.reputation.getReputation(factionId);
   }
 
-  hasItem(_itemId: string): boolean {
-    // Delegated to inventory system by orchestrator; stub returns true
+  hasItem(itemId: string): boolean {
+    if (this.inventoryBridge) {
+      return this.inventoryBridge.hasItem(itemId);
+    }
+    // Fallback: if no inventory bridge is connected, assume item is present
+    // so dialogue choices requiring items are not silently hidden
     return true;
   }
 

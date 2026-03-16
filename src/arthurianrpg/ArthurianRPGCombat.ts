@@ -17,12 +17,16 @@ import type {
   DamageInstance,
   HitResult,
   ComboState,
+  WeatherModifiers,
 } from "./ArthurianRPGState";
 
 import {
   ElementalType,
   CombatActionType,
+  MagicSchool,
 } from "./ArthurianRPGConfig";
+
+import { getWeatherModifiers } from "./ArthurianRPGState";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -52,12 +56,14 @@ export const BOSS_PHASE_HP_THRESHOLDS = [0.75, 0.5, 0.25]; // transition at 75/5
 // ---------------------------------------------------------------------------
 
 const ELEMENTAL_MATRIX: Record<ElementalType, Partial<Record<ElementalType, number>>> = {
-  [ElementalType.Fire]: { [ElementalType.Ice]: 1.5, [ElementalType.Dark]: 1.25 },
-  [ElementalType.Ice]: { [ElementalType.Lightning]: 1.5, [ElementalType.Fire]: 0.75 },
+  [ElementalType.Fire]: { [ElementalType.Ice]: 1.5, [ElementalType.Dark]: 1.25, [ElementalType.Nature]: 1.5 },
+  [ElementalType.Ice]: { [ElementalType.Lightning]: 1.5, [ElementalType.Fire]: 0.75, [ElementalType.Nature]: 0.75 },
   [ElementalType.Lightning]: { [ElementalType.Fire]: 1.5, [ElementalType.Ice]: 0.75 },
   [ElementalType.Holy]: { [ElementalType.Dark]: 2.0 },
-  [ElementalType.Dark]: { [ElementalType.Holy]: 2.0, [ElementalType.Physical]: 1.1 },
+  [ElementalType.Dark]: { [ElementalType.Holy]: 2.0, [ElementalType.Physical]: 1.1, [ElementalType.Nature]: 1.25 },
   [ElementalType.Physical]: {},
+  [ElementalType.Nature]: { [ElementalType.Ice]: 1.25, [ElementalType.Fire]: 0.75, [ElementalType.Dark]: 1.25 },
+  [ElementalType.Arcane]: { [ElementalType.Physical]: 1.25 },
 };
 
 // ---------------------------------------------------------------------------
@@ -74,11 +80,25 @@ const ELEMENTAL_MATRIX: Record<ElementalType, Partial<Record<ElementalType, numb
  *   elemental   = raw * elementalEffectiveness
  *   afterArmor  = elemental * (1 - armorMitigation)
  */
+/**
+ * Returns the weather-based damage multiplier for the given element.
+ * Fire, Lightning, and Ice are affected by weather conditions.
+ */
+function getWeatherElementMult(element: ElementalType, weatherMods: WeatherModifiers): number {
+  switch (element) {
+    case ElementalType.Fire: return weatherMods.fireDamageMult;
+    case ElementalType.Lightning: return weatherMods.lightningDamageMult;
+    case ElementalType.Ice: return weatherMods.iceDamageMult;
+    default: return 1.0;
+  }
+}
+
 function calculateDamage(
   attacker: CombatantState,
   defender: CombatantState,
   action: CombatAction,
   combo: ComboState,
+  weatherMods?: WeatherModifiers,
 ): DamageInstance {
   const weapon = attacker.equipment.mainHand;
   const weaponDamage = weapon ? weapon.baseDamage : 5; // unarmed fallback
@@ -109,10 +129,14 @@ function calculateDamage(
     raw *= 1.75;
   }
 
+  // Weather-based elemental damage modifier
+  const wMods = weatherMods ?? getWeatherModifiers("clear");
+  const weatherEleMult = getWeatherElementMult(element, wMods);
+
   // Elemental effectiveness
   const defElement = defender.primaryElement ?? ElementalType.Physical;
   const eleMult = ELEMENTAL_MATRIX[element]?.[defElement] ?? 1.0;
-  const elemental = raw * eleMult;
+  const elemental = raw * eleMult * weatherEleMult;
 
   // Armor mitigation: reduction = armor / (armor + 100)
   const armor = computeTotalArmor(defender);
@@ -135,8 +159,16 @@ function calculateDamage(
 
 function getRelevantAttribute(c: CombatantState, action: CombatAction): number {
   switch (action.type) {
-    case CombatActionType.SpellCast:
+    case CombatActionType.SpellCast: {
+      // Restoration and Nature scale with wisdom; Destruction and Conjuration with intelligence
+      const spell = action.spellId
+        ? SPELL_BOOK.find((s) => s.id === action.spellId)
+        : null;
+      if (spell && (spell.school === MagicSchool.Restoration || spell.school === MagicSchool.Nature)) {
+        return c.attributes.wisdom;
+      }
       return c.attributes.intelligence;
+    }
     case CombatActionType.HeavyAttack:
       return c.attributes.strength;
     default:
@@ -144,10 +176,28 @@ function getRelevantAttribute(c: CombatantState, action: CombatAction): number {
   }
 }
 
+function getSkillKeyForSchool(school: MagicSchool): string {
+  switch (school) {
+    case MagicSchool.Destruction:
+      return "destruction";
+    case MagicSchool.Restoration:
+      return "restoration";
+    case MagicSchool.Conjuration:
+      return "conjuration";
+    case MagicSchool.Nature:
+      return "nature";
+  }
+}
+
 function getSkillKeyForAction(action: CombatAction): string {
   switch (action.type) {
-    case CombatActionType.SpellCast:
-      return "destruction";
+    case CombatActionType.SpellCast: {
+      // Look up the spell to determine its school
+      const spell = action.spellId
+        ? SPELL_BOOK.find((s) => s.id === action.spellId)
+        : null;
+      return spell ? getSkillKeyForSchool(spell.school) : "destruction";
+    }
     case CombatActionType.HeavyAttack:
       return "twoHanded";
     default:
@@ -371,25 +421,50 @@ export class HealingHandler {
 export interface SpellDef {
   id: string;
   name: string;
+  school: MagicSchool;
   manaCost: number;
   castTime: number; // multiplier on SPELL_CAST_BASE_TIME
-  damage: number;
+  damage: number; // negative = heal
   element: ElementalType;
   cooldown: number;
+  range: number; // max cast range in units (0 = self)
   areaRadius: number; // 0 = single target
+  requiredSkillLevel: number; // minimum skill level in the spell's school
+  description: string;
   effect?: Partial<ActiveEffect>;
 }
 
 const SPELL_BOOK: SpellDef[] = [
+  // =========================================================================
+  // DESTRUCTION (12 spells)
+  // =========================================================================
+  {
+    id: "firebolt",
+    name: "Firebolt",
+    school: MagicSchool.Destruction,
+    manaCost: 15,
+    castTime: 0.5,
+    damage: 25,
+    element: ElementalType.Fire,
+    cooldown: 1.5,
+    range: 30,
+    areaRadius: 0,
+    requiredSkillLevel: 0,
+    description: "A quick bolt of fire that scorches a single target. The first spell any apprentice learns.",
+  },
   {
     id: "fireball",
     name: "Fireball",
-    manaCost: 30,
+    school: MagicSchool.Destruction,
+    manaCost: 35,
     castTime: 1.0,
     damage: 50,
     element: ElementalType.Fire,
     cooldown: 3.0,
+    range: 25,
     areaRadius: 3,
+    requiredSkillLevel: 15,
+    description: "A blazing sphere that explodes on impact, engulfing nearby foes in flame.",
     effect: {
       id: "burn",
       name: "Burning",
@@ -400,54 +475,737 @@ const SPELL_BOOK: SpellDef[] = [
     },
   },
   {
-    id: "frost_spike",
-    name: "Frost Spike",
+    id: "fire_wall",
+    name: "Fire Wall",
+    school: MagicSchool.Destruction,
+    manaCost: 50,
+    castTime: 1.2,
+    damage: 20,
+    element: ElementalType.Fire,
+    cooldown: 10.0,
+    range: 20,
+    areaRadius: 6,
+    requiredSkillLevel: 40,
+    description: "Conjures a roaring wall of flame that persists on the ground, burning any who pass through.",
+    effect: {
+      id: "fire_wall_burn",
+      name: "Searing Ground",
+      duration: 8,
+      tickInterval: 1,
+      damagePerTick: 15,
+      elapsed: 0,
+    },
+  },
+  {
+    id: "ice_spike",
+    name: "Ice Spike",
+    school: MagicSchool.Destruction,
     manaCost: 20,
     castTime: 0.6,
-    damage: 35,
+    damage: 30,
     element: ElementalType.Ice,
     cooldown: 2.0,
+    range: 28,
     areaRadius: 0,
+    requiredSkillLevel: 5,
+    description: "Hurls a jagged shard of ice that pierces a single enemy, slowing their movement.",
+    effect: {
+      id: "chill",
+      name: "Chilled",
+      duration: 3,
+      tickInterval: 0,
+      elapsed: 0,
+      statModifiers: { dexterity: -4 },
+    },
+  },
+  {
+    id: "frost_nova",
+    name: "Frost Nova",
+    school: MagicSchool.Destruction,
+    manaCost: 40,
+    castTime: 0.8,
+    damage: 35,
+    element: ElementalType.Ice,
+    cooldown: 8.0,
+    range: 0,
+    areaRadius: 5,
+    requiredSkillLevel: 25,
+    description: "A burst of freezing energy radiates outward from the caster, chilling all nearby enemies.",
+    effect: {
+      id: "deep_freeze",
+      name: "Frozen",
+      duration: 2,
+      tickInterval: 0,
+      elapsed: 0,
+      statModifiers: { dexterity: -8 },
+    },
+  },
+  {
+    id: "blizzard",
+    name: "Blizzard",
+    school: MagicSchool.Destruction,
+    manaCost: 70,
+    castTime: 1.8,
+    damage: 20,
+    element: ElementalType.Ice,
+    cooldown: 15.0,
+    range: 25,
+    areaRadius: 8,
+    requiredSkillLevel: 60,
+    description: "Calls down a howling blizzard over a wide area, pelting foes with ice and slowing them to a crawl.",
+    effect: {
+      id: "blizzard_dot",
+      name: "Frostbitten",
+      duration: 6,
+      tickInterval: 1,
+      damagePerTick: 12,
+      elapsed: 0,
+      statModifiers: { dexterity: -6 },
+    },
   },
   {
     id: "lightning_bolt",
     name: "Lightning Bolt",
-    manaCost: 40,
-    castTime: 0.8,
-    damage: 60,
-    element: ElementalType.Lightning,
-    cooldown: 4.0,
-    areaRadius: 0,
-  },
-  {
-    id: "holy_smite",
-    name: "Holy Smite",
-    manaCost: 50,
-    castTime: 1.2,
-    damage: 70,
-    element: ElementalType.Holy,
-    cooldown: 6.0,
-    areaRadius: 2,
-  },
-  {
-    id: "shadow_bolt",
-    name: "Shadow Bolt",
-    manaCost: 25,
+    school: MagicSchool.Destruction,
+    manaCost: 30,
     castTime: 0.7,
     damage: 45,
-    element: ElementalType.Dark,
-    cooldown: 2.5,
+    element: ElementalType.Lightning,
+    cooldown: 3.0,
+    range: 35,
     areaRadius: 0,
+    requiredSkillLevel: 10,
+    description: "A crackling bolt of lightning that strikes a single target with searing electric force.",
   },
   {
-    id: "healing_light",
-    name: "Healing Light",
+    id: "chain_lightning",
+    name: "Chain Lightning",
+    school: MagicSchool.Destruction,
+    manaCost: 55,
+    castTime: 1.0,
+    damage: 40,
+    element: ElementalType.Lightning,
+    cooldown: 6.0,
+    range: 30,
+    areaRadius: 4,
+    requiredSkillLevel: 35,
+    description: "Lightning arcs from the primary target to up to three nearby enemies, shocking each in turn.",
+  },
+  {
+    id: "thunderstorm",
+    name: "Thunderstorm",
+    school: MagicSchool.Destruction,
+    manaCost: 80,
+    castTime: 2.0,
+    damage: 30,
+    element: ElementalType.Lightning,
+    cooldown: 18.0,
+    range: 20,
+    areaRadius: 10,
+    requiredSkillLevel: 65,
+    description: "Summons a raging electrical storm overhead that randomly strikes enemies in a massive area.",
+    effect: {
+      id: "thunderstorm_dot",
+      name: "Electrified",
+      duration: 6,
+      tickInterval: 1.5,
+      damagePerTick: 18,
+      elapsed: 0,
+    },
+  },
+  {
+    id: "arcane_missile",
+    name: "Arcane Missile",
+    school: MagicSchool.Destruction,
+    manaCost: 25,
+    castTime: 0.4,
+    damage: 35,
+    element: ElementalType.Arcane,
+    cooldown: 2.0,
+    range: 32,
+    areaRadius: 0,
+    requiredSkillLevel: 10,
+    description: "Launches a seeking bolt of pure arcane energy that never misses its mark.",
+  },
+  {
+    id: "meteor",
+    name: "Meteor",
+    school: MagicSchool.Destruction,
+    manaCost: 100,
+    castTime: 2.5,
+    damage: 120,
+    element: ElementalType.Fire,
+    cooldown: 25.0,
+    range: 30,
+    areaRadius: 7,
+    requiredSkillLevel: 75,
+    description: "Calls down a massive flaming rock from the heavens. Devastates everything in the impact zone.",
+    effect: {
+      id: "meteor_burn",
+      name: "Scorched Earth",
+      duration: 5,
+      tickInterval: 1,
+      damagePerTick: 20,
+      elapsed: 0,
+    },
+  },
+  {
+    id: "disintegrate",
+    name: "Disintegrate",
+    school: MagicSchool.Destruction,
+    manaCost: 90,
+    castTime: 2.0,
+    damage: 150,
+    element: ElementalType.Arcane,
+    cooldown: 20.0,
+    range: 20,
+    areaRadius: 0,
+    requiredSkillLevel: 85,
+    description: "A focused beam of pure destructive energy that unravels the target at a fundamental level.",
+  },
+
+  // =========================================================================
+  // RESTORATION (10 spells)
+  // =========================================================================
+  {
+    id: "healing_touch",
+    name: "Healing Touch",
+    school: MagicSchool.Restoration,
+    manaCost: 20,
+    castTime: 0.8,
+    damage: -40,
+    element: ElementalType.Holy,
+    cooldown: 3.0,
+    range: 0,
+    areaRadius: 0,
+    requiredSkillLevel: 0,
+    description: "Channels holy energy through the caster's hands, mending minor wounds on touch.",
+  },
+  {
+    id: "healing_aura",
+    name: "Healing Aura",
+    school: MagicSchool.Restoration,
     manaCost: 35,
-    castTime: 1.4,
-    damage: -60, // negative = heal
+    castTime: 1.0,
+    damage: -15,
+    element: ElementalType.Holy,
+    cooldown: 6.0,
+    range: 0,
+    areaRadius: 5,
+    requiredSkillLevel: 15,
+    description: "Radiates a warm aura of restorative light, slowly healing all nearby allies.",
+    effect: {
+      id: "healing_aura_hot",
+      name: "Rejuvenating Aura",
+      duration: 8,
+      tickInterval: 2,
+      healPerTick: 12,
+      elapsed: 0,
+    },
+  },
+  {
+    id: "greater_heal",
+    name: "Greater Heal",
+    school: MagicSchool.Restoration,
+    manaCost: 55,
+    castTime: 1.6,
+    damage: -100,
     element: ElementalType.Holy,
     cooldown: 8.0,
+    range: 15,
     areaRadius: 0,
+    requiredSkillLevel: 30,
+    description: "A powerful healing spell that mends even grievous injuries with a surge of divine power.",
+  },
+  {
+    id: "regeneration",
+    name: "Regeneration",
+    school: MagicSchool.Restoration,
+    manaCost: 30,
+    castTime: 0.6,
+    damage: 0,
+    element: ElementalType.Holy,
+    cooldown: 12.0,
+    range: 10,
+    areaRadius: 0,
+    requiredSkillLevel: 20,
+    description: "Blesses the target with accelerated healing, restoring health over time.",
+    effect: {
+      id: "regen_hot",
+      name: "Regenerating",
+      duration: 12,
+      tickInterval: 2,
+      healPerTick: 15,
+      elapsed: 0,
+    },
+  },
+  {
+    id: "cure_poison",
+    name: "Cure Poison",
+    school: MagicSchool.Restoration,
+    manaCost: 25,
+    castTime: 0.8,
+    damage: -20,
+    element: ElementalType.Holy,
+    cooldown: 5.0,
+    range: 10,
+    areaRadius: 0,
+    requiredSkillLevel: 10,
+    description: "Purges toxins from the target's body and restores a small amount of health.",
+  },
+  {
+    id: "ward_shield",
+    name: "Ward Shield",
+    school: MagicSchool.Restoration,
+    manaCost: 40,
+    castTime: 0.5,
+    damage: 0,
+    element: ElementalType.Holy,
+    cooldown: 10.0,
+    range: 0,
+    areaRadius: 0,
+    requiredSkillLevel: 25,
+    description: "Erects a shimmering ward that absorbs incoming spell damage for a short duration.",
+    effect: {
+      id: "ward_active",
+      name: "Warded",
+      duration: 6,
+      tickInterval: 0,
+      elapsed: 0,
+      statModifiers: { constitution: 10 },
+    },
+  },
+  {
+    id: "turn_undead",
+    name: "Turn Undead",
+    school: MagicSchool.Restoration,
+    manaCost: 35,
+    castTime: 1.0,
+    damage: 60,
+    element: ElementalType.Holy,
+    cooldown: 8.0,
+    range: 15,
+    areaRadius: 4,
+    requiredSkillLevel: 30,
+    description: "Unleashes a blast of holy radiance that sends undead creatures fleeing in terror and sears their flesh.",
+  },
+  {
+    id: "circle_of_protection",
+    name: "Circle of Protection",
+    school: MagicSchool.Restoration,
+    manaCost: 60,
+    castTime: 1.5,
+    damage: 0,
+    element: ElementalType.Holy,
+    cooldown: 20.0,
+    range: 0,
+    areaRadius: 6,
+    requiredSkillLevel: 50,
+    description: "Inscribes a glowing circle on the ground that bolsters the defenses of all allies standing within.",
+    effect: {
+      id: "circle_buff",
+      name: "Protected",
+      duration: 10,
+      tickInterval: 0,
+      elapsed: 0,
+      statModifiers: { constitution: 8, wisdom: 4 },
+    },
+  },
+  {
+    id: "resurrection",
+    name: "Resurrection",
+    school: MagicSchool.Restoration,
+    manaCost: 120,
+    castTime: 3.0,
+    damage: -200,
+    element: ElementalType.Holy,
+    cooldown: 60.0,
+    range: 5,
+    areaRadius: 0,
+    requiredSkillLevel: 75,
+    description: "Calls upon the divine to restore a fallen companion to life with a portion of their health.",
+  },
+  {
+    id: "divine_light",
+    name: "Divine Light",
+    school: MagicSchool.Restoration,
+    manaCost: 80,
+    castTime: 2.0,
+    damage: -80,
+    element: ElementalType.Holy,
+    cooldown: 15.0,
+    range: 0,
+    areaRadius: 8,
+    requiredSkillLevel: 60,
+    description: "A brilliant column of light descends from the heavens, healing allies and scorching undead in a wide area.",
+  },
+
+  // =========================================================================
+  // CONJURATION (10 spells)
+  // =========================================================================
+  {
+    id: "summon_familiar",
+    name: "Summon Familiar",
+    school: MagicSchool.Conjuration,
+    manaCost: 25,
+    castTime: 1.2,
+    damage: 0,
+    element: ElementalType.Arcane,
+    cooldown: 30.0,
+    range: 5,
+    areaRadius: 0,
+    requiredSkillLevel: 0,
+    description: "Summons a spectral wolf familiar that fights alongside the caster for 60 seconds.",
+    effect: {
+      id: "summon_familiar_active",
+      name: "Familiar Active",
+      duration: 60,
+      tickInterval: 0,
+      elapsed: 0,
+    },
+  },
+  {
+    id: "summon_skeleton",
+    name: "Summon Skeleton",
+    school: MagicSchool.Conjuration,
+    manaCost: 35,
+    castTime: 1.5,
+    damage: 0,
+    element: ElementalType.Dark,
+    cooldown: 35.0,
+    range: 5,
+    areaRadius: 0,
+    requiredSkillLevel: 15,
+    description: "Raises a skeletal warrior from the earth to serve as a melee combatant for 90 seconds.",
+    effect: {
+      id: "summon_skeleton_active",
+      name: "Skeleton Active",
+      duration: 90,
+      tickInterval: 0,
+      elapsed: 0,
+    },
+  },
+  {
+    id: "summon_atronach",
+    name: "Summon Atronach",
+    school: MagicSchool.Conjuration,
+    manaCost: 60,
+    castTime: 2.0,
+    damage: 0,
+    element: ElementalType.Fire,
+    cooldown: 45.0,
+    range: 5,
+    areaRadius: 0,
+    requiredSkillLevel: 40,
+    description: "Conjures a flame atronach, a powerful elemental that hurls fireballs at enemies for 120 seconds.",
+    effect: {
+      id: "summon_atronach_active",
+      name: "Atronach Active",
+      duration: 120,
+      tickInterval: 0,
+      elapsed: 0,
+    },
+  },
+  {
+    id: "bound_sword",
+    name: "Bound Sword",
+    school: MagicSchool.Conjuration,
+    manaCost: 30,
+    castTime: 0.8,
+    damage: 0,
+    element: ElementalType.Arcane,
+    cooldown: 5.0,
+    range: 0,
+    areaRadius: 0,
+    requiredSkillLevel: 10,
+    description: "Conjures a weightless blade of pure magical energy in the caster's hand. Lasts 120 seconds.",
+    effect: {
+      id: "bound_sword_active",
+      name: "Bound Sword",
+      duration: 120,
+      tickInterval: 0,
+      elapsed: 0,
+      statModifiers: { strength: 6 },
+    },
+  },
+  {
+    id: "bound_bow",
+    name: "Bound Bow",
+    school: MagicSchool.Conjuration,
+    manaCost: 35,
+    castTime: 1.0,
+    damage: 0,
+    element: ElementalType.Arcane,
+    cooldown: 5.0,
+    range: 0,
+    areaRadius: 0,
+    requiredSkillLevel: 20,
+    description: "Manifests an ethereal bow with limitless spectral arrows. Lasts 120 seconds.",
+    effect: {
+      id: "bound_bow_active",
+      name: "Bound Bow",
+      duration: 120,
+      tickInterval: 0,
+      elapsed: 0,
+      statModifiers: { dexterity: 6 },
+    },
+  },
+  {
+    id: "soul_trap",
+    name: "Soul Trap",
+    school: MagicSchool.Conjuration,
+    manaCost: 25,
+    castTime: 0.6,
+    damage: 15,
+    element: ElementalType.Dark,
+    cooldown: 4.0,
+    range: 25,
+    areaRadius: 0,
+    requiredSkillLevel: 15,
+    description: "Marks a target; if slain within the duration, its soul is captured in an empty soul gem.",
+    effect: {
+      id: "soul_trap_mark",
+      name: "Soul Trapped",
+      duration: 30,
+      tickInterval: 0,
+      elapsed: 0,
+    },
+  },
+  {
+    id: "banish_daedra",
+    name: "Banish Daedra",
+    school: MagicSchool.Conjuration,
+    manaCost: 50,
+    castTime: 1.2,
+    damage: 80,
+    element: ElementalType.Holy,
+    cooldown: 12.0,
+    range: 20,
+    areaRadius: 0,
+    requiredSkillLevel: 45,
+    description: "Sends a conjured or daedric creature back to the plane from which it came, dealing massive damage.",
+  },
+  {
+    id: "conjure_wall",
+    name: "Conjure Wall",
+    school: MagicSchool.Conjuration,
+    manaCost: 40,
+    castTime: 1.0,
+    damage: 0,
+    element: ElementalType.Arcane,
+    cooldown: 15.0,
+    range: 15,
+    areaRadius: 5,
+    requiredSkillLevel: 30,
+    description: "Raises a translucent barrier of solidified magic that blocks projectiles and slows enemies passing through.",
+    effect: {
+      id: "conjure_wall_active",
+      name: "Arcane Wall",
+      duration: 10,
+      tickInterval: 0,
+      elapsed: 0,
+    },
+  },
+  {
+    id: "summon_champion",
+    name: "Summon Champion",
+    school: MagicSchool.Conjuration,
+    manaCost: 90,
+    castTime: 2.5,
+    damage: 0,
+    element: ElementalType.Arcane,
+    cooldown: 60.0,
+    range: 5,
+    areaRadius: 0,
+    requiredSkillLevel: 65,
+    description: "Conjures a spectral knight of the Round Table to fight by your side for 180 seconds.",
+    effect: {
+      id: "summon_champion_active",
+      name: "Champion Active",
+      duration: 180,
+      tickInterval: 0,
+      elapsed: 0,
+    },
+  },
+  {
+    id: "portal",
+    name: "Portal",
+    school: MagicSchool.Conjuration,
+    manaCost: 80,
+    castTime: 3.0,
+    damage: 0,
+    element: ElementalType.Arcane,
+    cooldown: 120.0,
+    range: 5,
+    areaRadius: 2,
+    requiredSkillLevel: 80,
+    description: "Tears open a shimmering rift in space, allowing instant travel to a previously visited location.",
+  },
+
+  // =========================================================================
+  // NATURE / DRUID (8 spells)
+  // =========================================================================
+  {
+    id: "entangle",
+    name: "Entangle",
+    school: MagicSchool.Nature,
+    manaCost: 25,
+    castTime: 0.8,
+    damage: 10,
+    element: ElementalType.Nature,
+    cooldown: 6.0,
+    range: 20,
+    areaRadius: 4,
+    requiredSkillLevel: 0,
+    description: "Thorny vines erupt from the ground, rooting enemies in place and dealing minor damage over time.",
+    effect: {
+      id: "entangle_root",
+      name: "Entangled",
+      duration: 4,
+      tickInterval: 1,
+      damagePerTick: 5,
+      elapsed: 0,
+      statModifiers: { dexterity: -10 },
+    },
+  },
+  {
+    id: "thorn_whip",
+    name: "Thorn Whip",
+    school: MagicSchool.Nature,
+    manaCost: 15,
+    castTime: 0.5,
+    damage: 28,
+    element: ElementalType.Nature,
+    cooldown: 2.0,
+    range: 15,
+    areaRadius: 0,
+    requiredSkillLevel: 5,
+    description: "Lashes out with a vine covered in razor-sharp thorns, pulling the target closer to the caster.",
+  },
+  {
+    id: "natures_grasp",
+    name: "Nature's Grasp",
+    school: MagicSchool.Nature,
+    manaCost: 35,
+    castTime: 1.0,
+    damage: 20,
+    element: ElementalType.Nature,
+    cooldown: 8.0,
+    range: 18,
+    areaRadius: 3,
+    requiredSkillLevel: 20,
+    description: "Massive roots burst upward, crushing enemies caught in the area and briefly immobilizing them.",
+    effect: {
+      id: "nature_grasp_hold",
+      name: "Grasped",
+      duration: 3,
+      tickInterval: 1,
+      damagePerTick: 8,
+      elapsed: 0,
+      statModifiers: { dexterity: -12 },
+    },
+  },
+  {
+    id: "wild_shape",
+    name: "Wild Shape",
+    school: MagicSchool.Nature,
+    manaCost: 50,
+    castTime: 1.5,
+    damage: 0,
+    element: ElementalType.Nature,
+    cooldown: 30.0,
+    range: 0,
+    areaRadius: 0,
+    requiredSkillLevel: 35,
+    description: "The caster transforms into a fearsome bear, gaining increased health, armor, and melee damage.",
+    effect: {
+      id: "wild_shape_bear",
+      name: "Bear Form",
+      duration: 30,
+      tickInterval: 0,
+      elapsed: 0,
+      statModifiers: { strength: 8, constitution: 10, dexterity: -4 },
+    },
+  },
+  {
+    id: "summon_beast",
+    name: "Summon Beast",
+    school: MagicSchool.Nature,
+    manaCost: 40,
+    castTime: 1.5,
+    damage: 0,
+    element: ElementalType.Nature,
+    cooldown: 35.0,
+    range: 5,
+    areaRadius: 0,
+    requiredSkillLevel: 25,
+    description: "Calls a great forest beast to aid the caster in battle for 90 seconds.",
+    effect: {
+      id: "summon_beast_active",
+      name: "Beast Companion",
+      duration: 90,
+      tickInterval: 0,
+      elapsed: 0,
+    },
+  },
+  {
+    id: "regrowth",
+    name: "Regrowth",
+    school: MagicSchool.Nature,
+    manaCost: 30,
+    castTime: 0.8,
+    damage: -25,
+    element: ElementalType.Nature,
+    cooldown: 5.0,
+    range: 10,
+    areaRadius: 0,
+    requiredSkillLevel: 10,
+    description: "Infuses the target with primal life energy, restoring health immediately and over time.",
+    effect: {
+      id: "regrowth_hot",
+      name: "Regrowing",
+      duration: 8,
+      tickInterval: 2,
+      healPerTick: 10,
+      elapsed: 0,
+    },
+  },
+  {
+    id: "earthquake",
+    name: "Earthquake",
+    school: MagicSchool.Nature,
+    manaCost: 75,
+    castTime: 2.0,
+    damage: 60,
+    element: ElementalType.Nature,
+    cooldown: 20.0,
+    range: 0,
+    areaRadius: 10,
+    requiredSkillLevel: 55,
+    description: "The earth itself heaves and cracks, dealing heavy damage and staggering all enemies in a huge radius.",
+  },
+  {
+    id: "storm_call",
+    name: "Storm Call",
+    school: MagicSchool.Nature,
+    manaCost: 90,
+    castTime: 2.5,
+    damage: 45,
+    element: ElementalType.Lightning,
+    cooldown: 25.0,
+    range: 0,
+    areaRadius: 12,
+    requiredSkillLevel: 70,
+    description: "Invokes the fury of the sky, calling down a relentless barrage of wind, rain, and lightning across the battlefield.",
+    effect: {
+      id: "storm_call_dot",
+      name: "Stormswept",
+      duration: 6,
+      tickInterval: 1.5,
+      damagePerTick: 15,
+      elapsed: 0,
+      statModifiers: { dexterity: -4, perception: -4 },
+    },
   },
 ];
 
@@ -461,12 +1219,45 @@ export class SpellCaster {
     return SPELL_BOOK;
   }
 
-  beginCast(spellId: string, mana: number): SpellDef | null {
+  /** Returns all spells belonging to a specific magic school. */
+  getSpellsBySchool(school: MagicSchool): SpellDef[] {
+    return SPELL_BOOK.filter((s) => s.school === school);
+  }
+
+  /** Returns all spells the caster qualifies for based on their skill levels. */
+  getAvailableSpells(skills: Record<string, number>): SpellDef[] {
+    return SPELL_BOOK.filter((spell) => {
+      const skillKey = getSkillKeyForSchool(spell.school);
+      const skillLevel = skills[skillKey] ?? 0;
+      return skillLevel >= spell.requiredSkillLevel;
+    });
+  }
+
+  /**
+   * Attempt to begin casting a spell.
+   * @param spellId     Unique identifier of the spell.
+   * @param mana        Caster's current mana pool.
+   * @param casterSkills  Caster's skill levels (optional – when provided the
+   *                      required skill level for the spell's school is enforced).
+   */
+  beginCast(
+    spellId: string,
+    mana: number,
+    casterSkills?: Record<string, number>,
+  ): SpellDef | null {
     const spell = SPELL_BOOK.find((s) => s.id === spellId);
     if (!spell) return null;
     if (mana < spell.manaCost) return null;
     const cd = this.cooldowns.get(spellId) ?? 0;
     if (cd > 0) return null;
+
+    // Enforce school skill-level requirement
+    if (casterSkills) {
+      const skillKey = getSkillKeyForSchool(spell.school);
+      const skillLevel = casterSkills[skillKey] ?? 0;
+      if (skillLevel < spell.requiredSkillLevel) return null;
+    }
+
     this.castingSpell = spell;
     this.castProgress = 0;
     this.isCasting = true;
@@ -694,7 +1485,7 @@ export class CompanionCombatAI {
     // Heal player if low
     if (player.hp / player.maxHp < 0.5 && self.mp >= 35 && this.healCooldown <= 0) {
       this.healCooldown = 8;
-      return { type: CombatActionType.SpellCast, spellId: "healing_light", target: player };
+      return { type: CombatActionType.SpellCast, spellId: "healing_touch", target: player };
     }
     // Stay near player
     const dx = player.position.x - self.position.x;

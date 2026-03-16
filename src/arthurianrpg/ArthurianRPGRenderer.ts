@@ -340,19 +340,104 @@ function buildHumanoidSkeleton(): THREE.Skeleton {
 
 interface AnimState {
   phase: number;
-  action: "idle" | "walk" | "run" | "attack" | "cast" | "dodge" | "death" | "block";
+  action: "idle" | "walk" | "run" | "attack" | "cast" | "dodge" | "death" | "block" | "hit";
   blendFactor: number;
+  /** Previous action for crossfade blending */
+  prevAction: "idle" | "walk" | "run" | "attack" | "cast" | "dodge" | "death" | "block" | "hit";
+  /** Blend transition timer (0 = fully transitioned, > 0 = blending from prevAction) */
+  blendTimer: number;
+  /** Movement speed scalar (used to sync walk/run cycle to actual velocity) */
+  moveSpeed: number;
 }
 
-function applyProceduralAnimation(
-  skeleton: THREE.Skeleton,
-  anim: AnimState,
-  _dt: number,
-): void {
-  const bones = skeleton.bones;
-  const boneMap = new Map<string, THREE.Bone>();
-  for (const b of bones) boneMap.set(b.name, b);
+// ---------------------------------------------------------------------------
+// Animation blending crossfade duration
+// ---------------------------------------------------------------------------
 
+const ANIM_BLEND_DURATION = 0.2; // 0.2s crossfade between states
+
+// ---------------------------------------------------------------------------
+// LOD animation thresholds
+// ---------------------------------------------------------------------------
+
+const LOD_FULL_SKELETAL = 20;       // < 20m: full skeletal animation
+const LOD_SIMPLIFIED = 50;          // 20-50m: simplified (fewer bones)
+// > 50m: static pose (AnimLOD.Static) – no animation applied
+
+enum AnimLOD {
+  Full,
+  Simplified,
+  Static,
+}
+
+function getAnimLOD(distanceToCamera: number): AnimLOD {
+  if (distanceToCamera < LOD_FULL_SKELETAL) return AnimLOD.Full;
+  if (distanceToCamera < LOD_SIMPLIFIED) return AnimLOD.Simplified;
+  return AnimLOD.Static;
+}
+
+/**
+ * Transition animation state. Call this when the desired action changes.
+ * Handles crossfade blending setup.
+ */
+function transitionAnimState(
+  anim: AnimState,
+  newAction: AnimState["action"],
+): void {
+  if (anim.action === newAction) return;
+  anim.prevAction = anim.action;
+  anim.action = newAction;
+  anim.blendTimer = ANIM_BLEND_DURATION;
+  // Reset phase for one-shot animations
+  if (newAction === "attack" || newAction === "hit" || newAction === "death") {
+    anim.phase = 0;
+  }
+}
+
+/**
+ * Store bone rotations/positions as a snapshot for blending.
+ */
+interface BonePose {
+  posY: number;
+  rotX: number;
+  rotY: number;
+  rotZ: number;
+}
+
+function captureBonePose(bone: THREE.Bone | undefined): BonePose {
+  if (!bone) return { posY: 0, rotX: 0, rotY: 0, rotZ: 0 };
+  return {
+    posY: bone.position.y,
+    rotX: bone.rotation.x,
+    rotY: bone.rotation.y,
+    rotZ: bone.rotation.z,
+  };
+}
+
+function applyBonePoseBlend(
+  bone: THREE.Bone | undefined,
+  poseA: BonePose,
+  poseB: BonePose,
+  t: number,
+): void {
+  if (!bone) return;
+  bone.position.y = poseA.posY + (poseB.posY - poseA.posY) * t;
+  bone.rotation.x = poseA.rotX + (poseB.rotX - poseA.rotX) * t;
+  bone.rotation.y = poseA.rotY + (poseB.rotY - poseA.rotY) * t;
+  bone.rotation.z = poseA.rotZ + (poseB.rotZ - poseA.rotZ) * t;
+}
+
+/**
+ * Apply a single animation pose to the skeleton for the given action.
+ * Separated from blending logic so it can be called for both current and previous action.
+ */
+function applyPoseForAction(
+  boneMap: Map<string, THREE.Bone>,
+  action: AnimState["action"],
+  phase: number,
+  moveSpeed: number,
+  _lod: AnimLOD,
+): void {
   const hips = boneMap.get("Hips");
   const spine = boneMap.get("Spine");
   const chest = boneMap.get("Chest");
@@ -365,35 +450,61 @@ function applyProceduralAnimation(
   const rUpperLeg = boneMap.get("R_UpperLeg");
   const lLowerLeg = boneMap.get("L_LowerLeg");
   const rLowerLeg = boneMap.get("R_LowerLeg");
+  const lFoot = boneMap.get("L_Foot");
+  const rFoot = boneMap.get("R_Foot");
 
-  const p = anim.phase;
+  const p = phase;
 
-  switch (anim.action) {
+  switch (action) {
     case "idle": {
+      // Subtle breathing cycle + gentle sway
       const breathe = Math.sin(p * 1.5) * 0.015;
+      const sway = Math.sin(p * 0.5) * 0.01;
       if (spine) spine.rotation.x = breathe;
       if (chest) chest.rotation.x = breathe * 0.5;
+      if (head) head.rotation.x = Math.sin(p * 0.7) * 0.008;
       if (lUpperArm) lUpperArm.rotation.z = -0.08 + Math.sin(p * 0.8) * 0.02;
       if (rUpperArm) rUpperArm.rotation.z = 0.08 - Math.sin(p * 0.8) * 0.02;
-      // slight weight shift
-      if (hips) hips.rotation.z = Math.sin(p * 0.5) * 0.01;
+      if (lForearm) lForearm.rotation.x = -0.05 + Math.sin(p * 0.6) * 0.01;
+      if (rForearm) rForearm.rotation.x = -0.05 - Math.sin(p * 0.6) * 0.01;
+      // Weight shift side to side
+      if (hips) {
+        hips.position.y = 0.95;
+        hips.rotation.z = sway;
+        hips.rotation.x = 0;
+        hips.rotation.y = 0;
+      }
+      // Legs at rest with micro-adjustment
+      if (lUpperLeg) lUpperLeg.rotation.x = Math.sin(p * 0.3) * 0.005;
+      if (rUpperLeg) rUpperLeg.rotation.x = -Math.sin(p * 0.3) * 0.005;
+      if (lLowerLeg) lLowerLeg.rotation.x = 0;
+      if (rLowerLeg) rLowerLeg.rotation.x = 0;
       break;
     }
     case "walk": {
+      // Leg/arm swing synced to movement speed
+      const speedFactor = Math.max(0.5, Math.min(2, moveSpeed / 4));
+      const cycleRate = 4 * speedFactor;
       const stride = 0.4;
-      const legSwing = Math.sin(p * 4) * stride;
-      const armSwing = Math.sin(p * 4) * stride * 0.5;
+      const legSwing = Math.sin(p * cycleRate) * stride;
+      const armSwing = Math.sin(p * cycleRate) * stride * 0.5;
       if (lUpperLeg) lUpperLeg.rotation.x = legSwing;
       if (rUpperLeg) rUpperLeg.rotation.x = -legSwing;
       if (lLowerLeg) lLowerLeg.rotation.x = Math.max(0, -legSwing) * 0.6;
       if (rLowerLeg) rLowerLeg.rotation.x = Math.max(0, legSwing) * 0.6;
+      // Foot roll
+      if (lFoot) lFoot.rotation.x = Math.sin(p * cycleRate + 0.5) * 0.1;
+      if (rFoot) rFoot.rotation.x = Math.sin(p * cycleRate + 0.5 + Math.PI) * 0.1;
       if (lUpperArm) lUpperArm.rotation.x = -armSwing;
       if (rUpperArm) rUpperArm.rotation.x = armSwing;
       if (hips) {
-        hips.position.y = 0.95 + Math.abs(Math.sin(p * 4)) * 0.03;
-        hips.rotation.y = Math.sin(p * 4) * 0.03;
+        hips.position.y = 0.95 + Math.abs(Math.sin(p * cycleRate)) * 0.03;
+        hips.rotation.y = Math.sin(p * cycleRate) * 0.03;
+        hips.rotation.x = 0;
+        hips.rotation.z = 0;
       }
       if (spine) spine.rotation.x = 0.03;
+      if (chest) chest.rotation.x = 0;
       break;
     }
     case "run": {
@@ -411,22 +522,35 @@ function applyProceduralAnimation(
       if (hips) {
         hips.position.y = 0.95 + Math.abs(Math.sin(p * speed)) * 0.06;
         hips.rotation.z = Math.sin(p * speed) * 0.04;
+        hips.rotation.x = 0;
+        hips.rotation.y = 0;
       }
       if (spine) spine.rotation.x = 0.12;
       break;
     }
     case "attack": {
+      // Three-phase weapon swing: wind-up, strike, follow-through
       const t = (p % 1.0);
-      const windUp = Math.min(t * 3, 1);
-      const swing = Math.max(0, Math.min((t - 0.33) * 4, 1));
+      const windUp = Math.min(t * 3, 1);                          // 0-0.33s
+      const strike = Math.max(0, Math.min((t - 0.33) * 4, 1));    // 0.33-0.58s
+      const followThrough = Math.max(0, Math.min((t - 0.58) * 3, 1)); // 0.58-0.91s
       if (rUpperArm) {
-        rUpperArm.rotation.x = -1.8 * windUp + 2.5 * swing;
-        rUpperArm.rotation.z = 0.5 * windUp - 0.3 * swing;
+        rUpperArm.rotation.x = -1.8 * windUp + 2.5 * strike + 0.3 * followThrough;
+        rUpperArm.rotation.z = 0.5 * windUp - 0.3 * strike - 0.1 * followThrough;
       }
-      if (rForearm) rForearm.rotation.x = -0.5 * windUp;
-      if (spine) spine.rotation.y = -0.3 * windUp + 0.5 * swing;
-      if (chest) chest.rotation.y = -0.15 * windUp + 0.25 * swing;
-      if (hips) hips.rotation.y = -0.1 * windUp + 0.15 * swing;
+      if (rForearm) rForearm.rotation.x = -0.5 * windUp + 0.2 * followThrough;
+      if (spine) {
+        spine.rotation.y = -0.3 * windUp + 0.5 * strike - 0.1 * followThrough;
+        spine.rotation.x = -0.05 * windUp + 0.08 * strike;
+      }
+      if (chest) chest.rotation.y = -0.15 * windUp + 0.25 * strike - 0.05 * followThrough;
+      if (hips) {
+        hips.rotation.y = -0.1 * windUp + 0.15 * strike - 0.03 * followThrough;
+        hips.position.y = 0.95 - 0.03 * strike;
+      }
+      // Lunge forward slightly
+      if (lUpperLeg) lUpperLeg.rotation.x = 0.15 * strike;
+      if (rUpperLeg) rUpperLeg.rotation.x = -0.1 * strike;
       break;
     }
     case "cast": {
@@ -450,23 +574,126 @@ function applyProceduralAnimation(
       break;
     }
     case "block": {
+      // Shield raise pose – defensive stance
       if (lUpperArm) { lUpperArm.rotation.x = -1.2; lUpperArm.rotation.z = 0.4; }
       if (lForearm) lForearm.rotation.x = -0.6;
+      if (rUpperArm) { rUpperArm.rotation.x = -0.3; rUpperArm.rotation.z = 0.1; }
       if (spine) spine.rotation.x = -0.05;
-      if (hips) hips.position.y = 0.9;
+      if (chest) chest.rotation.x = -0.03;
+      if (hips) {
+        hips.position.y = 0.9;
+        hips.rotation.x = 0;
+      }
+      // Slightly bent knees
+      if (lUpperLeg) lUpperLeg.rotation.x = 0.1;
+      if (rUpperLeg) rUpperLeg.rotation.x = 0.1;
+      if (lLowerLeg) lLowerLeg.rotation.x = -0.15;
+      if (rLowerLeg) rLowerLeg.rotation.x = -0.15;
+      break;
+    }
+    case "hit": {
+      // Stagger animation with recovery
+      const t = Math.min(p * 2, 1); // 0.5s total
+      const stagger = t < 0.4 ? t / 0.4 : 1 - (t - 0.4) / 0.6; // quick stagger, slow recovery
+      if (hips) {
+        hips.position.y = 0.95 - 0.12 * stagger;
+        hips.rotation.x = -0.15 * stagger;
+      }
+      if (spine) spine.rotation.x = -0.25 * stagger;
+      if (chest) chest.rotation.x = -0.1 * stagger;
+      if (head) head.rotation.x = 0.2 * stagger;
+      // Arms fly back
+      if (lUpperArm) lUpperArm.rotation.z = -0.5 * stagger;
+      if (rUpperArm) rUpperArm.rotation.z = 0.5 * stagger;
+      // Step back
+      if (lUpperLeg) lUpperLeg.rotation.x = -0.2 * stagger;
+      if (rUpperLeg) rUpperLeg.rotation.x = 0.15 * stagger;
       break;
     }
     case "death": {
+      // Multi-phase collapse sequence
       const t = Math.min(p * 0.5, 1);
+      const phase1 = Math.min(t * 2, 1); // knees buckle
+      const phase2 = Math.max(0, Math.min((t - 0.3) * 2, 1)); // torso falls
+      const phase3 = Math.max(0, Math.min((t - 0.6) * 2.5, 1)); // full collapse
       if (hips) {
-        hips.position.y = 0.95 - 0.7 * t;
-        hips.rotation.x = 1.2 * t;
+        hips.position.y = 0.95 - 0.3 * phase1 - 0.4 * phase2 - 0.2 * phase3;
+        hips.rotation.x = 0.4 * phase1 + 0.5 * phase2 + 0.3 * phase3;
+        hips.rotation.z = 0.2 * phase3;
       }
-      if (spine) spine.rotation.x = 0.4 * t;
-      if (lUpperArm) lUpperArm.rotation.z = -1.2 * t;
-      if (rUpperArm) rUpperArm.rotation.z = 1.2 * t;
+      if (spine) spine.rotation.x = 0.2 * phase1 + 0.2 * phase2;
+      if (chest) chest.rotation.x = 0.15 * phase2;
+      if (head) head.rotation.x = 0.3 * phase2 + 0.2 * phase3;
+      if (lUpperArm) lUpperArm.rotation.z = -0.5 * phase1 - 0.7 * phase3;
+      if (rUpperArm) rUpperArm.rotation.z = 0.5 * phase1 + 0.7 * phase3;
+      // Knees buckle
+      if (lUpperLeg) lUpperLeg.rotation.x = 0.8 * phase1;
+      if (rUpperLeg) rUpperLeg.rotation.x = 0.6 * phase1;
+      if (lLowerLeg) lLowerLeg.rotation.x = -1.0 * phase1;
+      if (rLowerLeg) rLowerLeg.rotation.x = -0.8 * phase1;
       break;
     }
+  }
+}
+
+function applyProceduralAnimation(
+  skeleton: THREE.Skeleton,
+  anim: AnimState,
+  dt: number,
+  distanceToCamera: number = 0,
+): void {
+  const lod = getAnimLOD(distanceToCamera);
+
+  // Static LOD: no animation at all
+  if (lod === AnimLOD.Static) return;
+
+  const bones = skeleton.bones;
+  const boneMap = new Map<string, THREE.Bone>();
+  for (const b of bones) boneMap.set(b.name, b);
+
+  // Update blend timer
+  if (anim.blendTimer > 0) {
+    anim.blendTimer = Math.max(0, anim.blendTimer - dt);
+  }
+
+  const blendT = anim.blendTimer > 0
+    ? 1 - (anim.blendTimer / ANIM_BLEND_DURATION)
+    : 1;
+
+  // If blending, we need to compute both poses and interpolate
+  if (blendT < 1 && lod === AnimLOD.Full) {
+    // Capture bone keys to blend
+    const blendBones = ["Hips", "Spine", "Chest", "Head",
+      "L_UpperArm", "R_UpperArm", "L_Forearm", "R_Forearm",
+      "L_UpperLeg", "R_UpperLeg", "L_LowerLeg", "R_LowerLeg",
+      "L_Foot", "R_Foot"];
+
+    // Apply previous action pose
+    applyPoseForAction(boneMap, anim.prevAction, anim.phase, anim.moveSpeed, lod);
+    const prevPoses = new Map<string, BonePose>();
+    for (const name of blendBones) {
+      prevPoses.set(name, captureBonePose(boneMap.get(name)));
+    }
+
+    // Apply current action pose
+    applyPoseForAction(boneMap, anim.action, anim.phase, anim.moveSpeed, lod);
+    const currPoses = new Map<string, BonePose>();
+    for (const name of blendBones) {
+      currPoses.set(name, captureBonePose(boneMap.get(name)));
+    }
+
+    // Smoothstep for smoother crossfade
+    const smoothT = blendT * blendT * (3 - 2 * blendT);
+
+    // Blend between the two
+    for (const name of blendBones) {
+      const prev = prevPoses.get(name)!;
+      const curr = currPoses.get(name)!;
+      applyBonePoseBlend(boneMap.get(name), prev, curr, smoothT);
+    }
+  } else {
+    // No blending needed or simplified LOD
+    applyPoseForAction(boneMap, anim.action, anim.phase, anim.moveSpeed, lod);
   }
 }
 
@@ -2891,9 +3118,18 @@ export class ArthurianRPGRenderer {
   // Entities
   private playerMesh: THREE.Group | null = null;
   private playerSkeleton: THREE.Skeleton | null = null;
-  private playerAnim: AnimState = { phase: 0, action: "idle", blendFactor: 1 };
+  private playerAnim: AnimState = {
+    phase: 0, action: "idle", blendFactor: 1,
+    prevAction: "idle", blendTimer: 0, moveSpeed: 0,
+  };
+  private playerPrevPos = new THREE.Vector3();
+  private playerLastHp = -1;
   private enemyMeshes = new Map<string, THREE.Group>();
   private enemyHealthBars = new Map<string, THREE.Group>();
+  private enemySkeletons = new Map<string, THREE.Skeleton>();
+  private enemyAnims = new Map<string, AnimState>();
+  private enemyPrevPos = new Map<string, THREE.Vector3>();
+  private enemyPrevHp = new Map<string, number>();
   private companionMeshes = new Map<string, THREE.Group>();
 
   // Particles
@@ -3354,23 +3590,54 @@ export class ArthurianRPGRenderer {
       this.playerMesh = buildCharacterMesh(look);
       this.playerSkeleton = buildHumanoidSkeleton();
       this.scene.add(this.playerMesh);
+      this.playerPrevPos.copy(pos);
+      this.playerLastHp = pc.hp;
     }
 
     this.playerMesh.position.copy(pos);
 
-    // Determine animation
+    // Compute movement velocity for animation detection
+    const dx = pos.x - this.playerPrevPos.x;
+    const dz = pos.z - this.playerPrevPos.z;
+    const moveDistSq = dx * dx + dz * dz;
+    const moveSpeed = dt > 0 ? Math.sqrt(moveDistSq) / dt : 0;
+    this.playerPrevPos.copy(pos);
+    this.playerAnim.moveSpeed = moveSpeed;
+
+    // Detect HP loss for hit reaction
+    const tookDamage = this.playerLastHp > 0 && pc.hp < this.playerLastHp;
+    this.playerLastHp = pc.hp;
+
+    // Determine desired animation state with proper transitions
+    let desiredAction: AnimState["action"] = "idle";
     if (pc.hp <= 0) {
-      this.playerAnim.action = "death";
+      desiredAction = "death";
+    } else if (tookDamage && this.playerAnim.action !== "death") {
+      desiredAction = "hit";
     } else if (pc.isBlocking) {
-      this.playerAnim.action = "block";
-    } else {
-      // approximate movement detection from position changes
-      this.playerAnim.action = "idle";
+      desiredAction = "block";
+    } else if (state.player.combat.cooldowns["attack"] !== undefined && state.player.combat.cooldowns["attack"] > 0.2) {
+      desiredAction = "attack";
+    } else if (moveSpeed > 5) {
+      desiredAction = "run";
+    } else if (moveSpeed > 0.5) {
+      desiredAction = "walk";
     }
+
+    // Handle hit reaction: after 0.5s, recover to previous state
+    if (this.playerAnim.action === "hit" && this.playerAnim.phase > 0.5) {
+      desiredAction = moveSpeed > 0.5 ? "walk" : "idle";
+    }
+
+    // Transition with crossfade blending
+    transitionAnimState(this.playerAnim, desiredAction);
+
     this.playerAnim.phase += dt;
 
     if (this.playerSkeleton) {
-      applyProceduralAnimation(this.playerSkeleton, this.playerAnim, dt);
+      // LOD: compute distance from camera to player
+      const camDist = this.camera.position.distanceTo(pos);
+      applyProceduralAnimation(this.playerSkeleton, this.playerAnim, dt, camDist);
     }
 
     // Spell/combat particle triggers based on state
@@ -3395,7 +3662,7 @@ export class ArthurianRPGRenderer {
   // Enemy update
   // ---------------------------------------------------------------------------
 
-  private updateEnemies(state: ArthurianRPGState, _dt: number): void {
+  private updateEnemies(state: ArthurianRPGState, dt: number): void {
     const alive = new Set<string>();
 
     for (const enemy of state.enemies) {
@@ -3411,6 +3678,19 @@ export class ArthurianRPGRenderer {
         mesh.name = `enemy_${enemy.id}`;
         this.scene.add(mesh);
         this.enemyMeshes.set(enemy.id, mesh);
+
+        // Build skeleton for humanoid-shaped enemies
+        if (look.shape === "humanoid" || look.shape === "armored" || look.shape === "boss_humanoid") {
+          const skeleton = buildHumanoidSkeleton();
+          this.enemySkeletons.set(enemy.id, skeleton);
+          this.enemyAnims.set(enemy.id, {
+            phase: 0, action: "idle", blendFactor: 1,
+            prevAction: "idle", blendTimer: 0, moveSpeed: 0,
+          });
+        }
+
+        this.enemyPrevPos.set(enemy.id, pos.clone());
+        this.enemyPrevHp.set(enemy.id, enemy.hp);
 
         // health bar
         const hb = buildHealthBar();
@@ -3429,9 +3709,53 @@ export class ArthurianRPGRenderer {
         mesh.rotation.y = Math.atan2(lookDir.x, lookDir.z);
       }
 
-      // idle bob
-      if (enemy.hp > 0) {
-        mesh.position.y += Math.sin(this.totalTime * 2 + enemy.id.charCodeAt(0)) * 0.03;
+      // Compute distance to camera for LOD
+      const camDist = this.camera.position.distanceTo(pos);
+
+      // Animate enemy with skeletal animation if available
+      const skeleton = this.enemySkeletons.get(enemy.id);
+      const anim = this.enemyAnims.get(enemy.id);
+      if (skeleton && anim) {
+        // Movement detection
+        const prevP = this.enemyPrevPos.get(enemy.id)!;
+        const edx = pos.x - prevP.x;
+        const edz = pos.z - prevP.z;
+        const eMoveSpeed = dt > 0 ? Math.sqrt(edx * edx + edz * edz) / dt : 0;
+        prevP.copy(pos);
+        anim.moveSpeed = eMoveSpeed;
+
+        // Damage detection
+        const prevHp = this.enemyPrevHp.get(enemy.id) ?? enemy.hp;
+        const tookDamage = prevHp > 0 && enemy.hp < prevHp;
+        this.enemyPrevHp.set(enemy.id, enemy.hp);
+
+        // Determine animation
+        let desiredAction: AnimState["action"] = "idle";
+        if (enemy.hp <= 0) {
+          desiredAction = "death";
+        } else if (tookDamage && anim.action !== "death") {
+          desiredAction = "hit";
+        } else if (enemy.isBlocking) {
+          desiredAction = "block";
+        } else if (eMoveSpeed > 2) {
+          desiredAction = "walk";
+        } else if (eMoveSpeed > 0.3) {
+          desiredAction = "walk";
+        }
+
+        // Hit recovery
+        if (anim.action === "hit" && anim.phase > 0.5) {
+          desiredAction = eMoveSpeed > 0.3 ? "walk" : "idle";
+        }
+
+        transitionAnimState(anim, desiredAction);
+        anim.phase += dt;
+        applyProceduralAnimation(skeleton, anim, dt, camDist);
+      } else {
+        // Fallback: simple idle bob for non-skeletal enemies
+        if (enemy.hp > 0) {
+          mesh.position.y += Math.sin(this.totalTime * 2 + enemy.id.charCodeAt(0)) * 0.03;
+        }
       }
 
       // health bar
@@ -3447,6 +3771,10 @@ export class ArthurianRPGRenderer {
       if (!alive.has(id)) {
         this.scene.remove(mesh);
         this.enemyMeshes.delete(id);
+        this.enemySkeletons.delete(id);
+        this.enemyAnims.delete(id);
+        this.enemyPrevPos.delete(id);
+        this.enemyPrevHp.delete(id);
         const hb = this.enemyHealthBars.get(id);
         if (hb) {
           this.scene.remove(hb);
@@ -3679,7 +4007,10 @@ export class ArthurianRPGRenderer {
       if (obj instanceof THREE.Points) { obj.geometry.dispose(); (obj.material as THREE.Material).dispose(); }
     });
     this.composer.dispose(); this.renderer.dispose();
-    this.enemyMeshes.clear(); this.enemyHealthBars.clear(); this.companionMeshes.clear();
+    this.enemyMeshes.clear(); this.enemyHealthBars.clear();
+    this.enemySkeletons.clear(); this.enemyAnims.clear();
+    this.enemyPrevPos.clear(); this.enemyPrevHp.clear();
+    this.companionMeshes.clear();
     this.playerMesh = null; this.playerSkeleton = null;
   }
 
@@ -3689,5 +4020,20 @@ export class ArthurianRPGRenderer {
 
   getCanvas(): HTMLCanvasElement {
     return this.canvas;
+  }
+
+  /** Expose terrain height for external systems (movement, AI, etc.). */
+  getTerrainHeight(x: number, z: number): number {
+    return this.terrain.getHeight(x, z);
+  }
+
+  /** Return the world-space size of the terrain (square, centered at origin). */
+  getTerrainSize(): number {
+    return TERRAIN_SIZE;
+  }
+
+  /** Return the water surface Y level. */
+  getWaterLevel(): number {
+    return WATER_LEVEL;
   }
 }

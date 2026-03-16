@@ -3,6 +3,7 @@
 // ============================================================================
 
 import { ElementalType } from "./ArthurianRPGConfig";
+import type { WeatherModifiers } from "./ArthurianRPGState";
 
 // ---------------------------------------------------------------------------
 // Enums
@@ -24,6 +25,8 @@ export enum NPCRoutineState {
   WANDERING = "WANDERING",
   GOING_HOME = "GOING_HOME",
   AT_SHOP = "AT_SHOP",
+  EATING = "EATING",
+  PATROLLING = "PATROLLING",
 }
 
 export enum WildlifeType {
@@ -147,15 +150,20 @@ export function detectPlayer(
   playerZ: number,
   playerStealthSkill: number,
   playerDetectionMult: number, // from crouching etc.
+  weatherMods?: WeatherModifiers,
 ): "sight" | "hearing" | null {
   const dx = playerX - enemy.position.x;
   const dz = playerZ - enemy.position.z;
   const dist = Math.sqrt(dx * dx + dz * dz);
 
-  // Effective ranges adjusted by player stealth
-  const stealthFactor = Math.max(0.2, 1 - playerStealthSkill * 0.01) * playerDetectionMult;
-  const effSight = enemy.detection.sightRange * stealthFactor;
-  const effHearing = enemy.detection.hearingRange * stealthFactor;
+  // Weather modifiers for detection and stealth
+  const weatherDetectionMult = weatherMods?.detectionRangeMult ?? 1.0;
+  const weatherStealthMult = weatherMods?.stealthEffectivenessMult ?? 1.0;
+
+  // Effective ranges adjusted by player stealth and weather
+  const stealthFactor = Math.max(0.2, 1 - playerStealthSkill * 0.01 * weatherStealthMult) * playerDetectionMult;
+  const effSight = enemy.detection.sightRange * stealthFactor * weatherDetectionMult;
+  const effHearing = enemy.detection.hearingRange * stealthFactor * weatherDetectionMult;
 
   // Sight cone
   if (dist <= effSight) {
@@ -199,6 +207,7 @@ export class EnemyAIAgent {
     playerDetectionMult: number,
     groupAlerted: boolean,
     dt: number,
+    weatherMods?: WeatherModifiers,
   ): EnemyAIAction {
     if (this.def.hp <= 0) {
       this.state = AIBehaviorState.DEAD;
@@ -209,7 +218,7 @@ export class EnemyAIAgent {
 
     const detection = detectPlayer(
       this.def, playerPos.x, playerPos.y, playerPos.z,
-      playerStealth, playerDetectionMult,
+      playerStealth, playerDetectionMult, weatherMods,
     );
 
     const dx = playerPos.x - this.def.position.x;
@@ -847,6 +856,7 @@ export class ArthurianRPGAISystem {
     playerDetectionMult: number,
     worldHour: number,
     dt: number,
+    weatherMods?: WeatherModifiers,
   ): AIFrameResult {
     const result: AIFrameResult = {
       enemyActions: [],
@@ -861,7 +871,7 @@ export class ArthurianRPGAISystem {
       const action = agent.update(
         playerPos, playerStealth, playerDetectionMult,
         this.groupManager.isGroupAlerted(agent.def.groupId),
-        dt,
+        dt, weatherMods,
       );
       if (action.type === "alert" && action.callForHelp && agent.def.groupId) {
         this.groupManager.alertGroup(agent.def.groupId);
