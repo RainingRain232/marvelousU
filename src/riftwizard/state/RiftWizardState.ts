@@ -15,6 +15,7 @@ export enum RWPhase {
   LEVEL_TRANSITION = "level_transition",
   VICTORY = "victory",
   GAME_OVER = "game_over",
+  PAUSED = "paused",
 }
 
 export enum RWTileType {

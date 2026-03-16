@@ -13,6 +13,7 @@ import { RWBalance } from "../config/RiftWizardConfig";
 import { SPELL_DEFS } from "../config/RiftWizardSpellDefs";
 import {
   tileDistance,
+  chebyshevDistance,
   hasLineOfSight,
   applyDamageToWizard,
   applyDamageToEnemy,
@@ -146,25 +147,37 @@ function findPath(
 // AI behaviors
 // ---------------------------------------------------------------------------
 
+/** Check adjacency using Chebyshev distance (includes diagonals). */
+function isAdjacentToWizard(enemy: RWEnemyInstance, wizPos: GridPos): boolean {
+  return chebyshevDistance({ col: enemy.col, row: enemy.row }, wizPos) <= 1;
+}
+
+/** Perform a melee attack on the wizard. */
+function performMeleeAttack(
+  state: RiftWizardState,
+  enemy: RWEnemyInstance,
+): void {
+  applyDamageToWizard(state, enemy.damage);
+  state.animationQueue.push({
+    type: RWAnimationType.MELEE_HIT,
+    fromCol: enemy.col,
+    fromRow: enemy.row,
+    toCol: state.wizard.col,
+    toRow: state.wizard.row,
+    amount: enemy.damage,
+    duration: RWBalance.MELEE_ANIM_DURATION,
+  });
+}
+
 function meleeAI(
   state: RiftWizardState,
   enemy: RWEnemyInstance,
 ): void {
   const wizPos: GridPos = { col: state.wizard.col, row: state.wizard.row };
-  const dist = tileDistance({ col: enemy.col, row: enemy.row }, wizPos);
 
-  // Adjacent to wizard? Attack!
-  if (dist <= 1) {
-    applyDamageToWizard(state, enemy.damage);
-    state.animationQueue.push({
-      type: RWAnimationType.MELEE_HIT,
-      fromCol: enemy.col,
-      fromRow: enemy.row,
-      toCol: state.wizard.col,
-      toRow: state.wizard.row,
-      amount: enemy.damage,
-      duration: RWBalance.MELEE_ANIM_DURATION,
-    });
+  // Adjacent to wizard (cardinal or diagonal)? Attack!
+  if (isAdjacentToWizard(enemy, wizPos)) {
+    performMeleeAttack(state, enemy);
     return;
   }
 
@@ -179,6 +192,27 @@ function rangedAI(
   const wizPos: GridPos = { col: state.wizard.col, row: state.wizard.row };
   const dist = tileDistance({ col: enemy.col, row: enemy.row }, wizPos);
   const enemyPos: GridPos = { col: enemy.col, row: enemy.row };
+
+  // Adjacent to wizard? Melee attack as fallback
+  if (isAdjacentToWizard(enemy, wizPos)) {
+    // Still try ranged first if in range and has LOS
+    if (dist <= enemy.range && hasLineOfSight(state, enemyPos, wizPos)) {
+      applyDamageToWizard(state, enemy.damage);
+      state.animationQueue.push({
+        type: RWAnimationType.ENEMY_SPELL,
+        fromCol: enemy.col,
+        fromRow: enemy.row,
+        toCol: state.wizard.col,
+        toRow: state.wizard.row,
+        amount: enemy.damage,
+        duration: RWBalance.SPELL_ANIM_DURATION,
+      });
+      return;
+    }
+    // Melee fallback when adjacent
+    performMeleeAttack(state, enemy);
+    return;
+  }
 
   // In range and has LOS? Shoot!
   if (dist <= enemy.range && hasLineOfSight(state, enemyPos, wizPos)) {
@@ -195,7 +229,7 @@ function rangedAI(
     return;
   }
 
-  // Too close? Try to back away
+  // Too close? Try to back away (only when NOT adjacent — adjacent is handled above)
   if (dist <= 2) {
     const awayCol = enemy.col + (enemy.col - state.wizard.col > 0 ? 1 : -1);
     const awayRow = enemy.row + (enemy.row - state.wizard.row > 0 ? 1 : -1);
@@ -261,6 +295,12 @@ function casterAI(
     return;
   }
 
+  // Melee fallback when adjacent (all abilities on cooldown or out of ranged range)
+  if (isAdjacentToWizard(enemy, wizPos)) {
+    performMeleeAttack(state, enemy);
+    return;
+  }
+
   // Move towards
   moveTowards(state, enemy, wizPos);
 }
@@ -311,18 +351,9 @@ function bossAI(
     }
   }
 
-  // Melee if adjacent
-  if (dist <= 1) {
-    applyDamageToWizard(state, enemy.damage);
-    state.animationQueue.push({
-      type: RWAnimationType.MELEE_HIT,
-      fromCol: enemy.col,
-      fromRow: enemy.row,
-      toCol: state.wizard.col,
-      toRow: state.wizard.row,
-      amount: enemy.damage,
-      duration: RWBalance.MELEE_ANIM_DURATION,
-    });
+  // Melee if adjacent (cardinal or diagonal)
+  if (isAdjacentToWizard(enemy, wizPos)) {
+    performMeleeAttack(state, enemy);
     return;
   }
 

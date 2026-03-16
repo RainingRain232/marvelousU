@@ -100,6 +100,16 @@ export class RiftWizardGame {
 
     // Init HUD
     this._hud.build();
+    this._hud.onPauseResume = () => {
+      this._state.phase = RWPhase.PLAYING;
+    };
+    this._hud.onPauseRestart = () => {
+      this.destroy();
+      this.boot();
+    };
+    this._hud.onPauseExit = () => {
+      window.dispatchEvent(new Event("riftwizardExit"));
+    };
     viewManager.addToLayer("ui", this._hud.container);
 
     // Init spell shop UI
@@ -151,6 +161,9 @@ export class RiftWizardGame {
       case RWPhase.PLAYING:
         this._handlePlaying();
         break;
+      case RWPhase.PAUSED:
+        this._handlePaused();
+        break;
       case RWPhase.TARGETING:
         this._handleTargeting();
         break;
@@ -170,8 +183,23 @@ export class RiftWizardGame {
   // Phase handlers
   // -------------------------------------------------------------------------
 
+  private _handlePaused(): void {
+    if (consumeJustPressed("Escape")) {
+      this._state.phase = RWPhase.PLAYING;
+      return;
+    }
+    // HUD buttons handle Resume / Restart / Exit via callbacks
+  }
+
   private _handlePlaying(): void {
     const state = this._state;
+
+    // Escape opens the pause menu
+    if (consumeJustPressed("Escape")) {
+      state.phase = RWPhase.PAUSED;
+      return;
+    }
+
     if (!state.isPlayerTurn) return;
 
     // Undo last action (only before enemies move)

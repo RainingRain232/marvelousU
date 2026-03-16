@@ -180,6 +180,16 @@ export class RiftWizardHUD {
   private _showKeyRef = false;
   private _keyRefTexts: Text[] = [];
 
+  // Pause menu
+  private _pauseContainer = new Container();
+  private _pauseBg = new Graphics();
+  private _pauseTexts: Text[] = [];
+  private _pauseButtons: { gfx: Graphics; text: Text; hitArea: { x: number; y: number; w: number; h: number }; action: () => void }[] = [];
+
+  onPauseResume: (() => void) | null = null;
+  onPauseRestart: (() => void) | null = null;
+  onPauseExit: (() => void) | null = null;
+
   constructor() {
     this._infoText = new Text({ text: "", style: INFO_STYLE });
     this._levelText = new Text({ text: "", style: HEADER_STYLE });
@@ -214,6 +224,11 @@ export class RiftWizardHUD {
     this.container.addChild(this._msgText);
     this.container.addChild(this._consumableText);
     this.container.addChild(this._tooltipText);
+
+    // Pause menu overlay (hidden by default)
+    this._pauseContainer.visible = false;
+    this._pauseContainer.addChild(this._pauseBg);
+    this.container.addChild(this._pauseContainer);
   }
 
   update(state: RiftWizardState, screenWidth: number, screenHeight: number): void {
@@ -771,6 +786,9 @@ export class RiftWizardHUD {
       }
     }
 
+    // --- Pause menu overlay ---
+    this._updatePauseMenu(state, screenWidth, screenHeight);
+
     // Keyboard reference overlay
     // Remove old key ref texts
     for (const t of this._keyRefTexts) {
@@ -824,6 +842,284 @@ export class RiftWizardHUD {
         this._keyRefTexts.push(txt);
       }
     }
+  }
+
+  private _updatePauseMenu(state: RiftWizardState, screenWidth: number, screenHeight: number): void {
+    // Clean up previous pause texts and buttons
+    for (const t of this._pauseTexts) {
+      this._pauseContainer.removeChild(t);
+      t.destroy();
+    }
+    this._pauseTexts = [];
+    for (const btn of this._pauseButtons) {
+      this._pauseContainer.removeChild(btn.gfx);
+      this._pauseContainer.removeChild(btn.text);
+      btn.gfx.destroy();
+      btn.text.destroy();
+    }
+    this._pauseButtons = [];
+
+    if (state.phase !== RWPhase.PAUSED) {
+      this._pauseContainer.visible = false;
+      return;
+    }
+    this._pauseContainer.visible = true;
+
+    // Semi-transparent dark overlay covering full screen
+    this._pauseBg.clear();
+    this._pauseBg.rect(0, 0, screenWidth, screenHeight);
+    this._pauseBg.fill({ color: 0x000000, alpha: 0.7 });
+
+    // Panel dimensions
+    const panelW = 380;
+    const panelH = 520;
+    const panelX = Math.floor((screenWidth - panelW) / 2);
+    const panelY = Math.floor((screenHeight - panelH) / 2);
+
+    // Panel background
+    this._pauseBg.rect(panelX, panelY, panelW, panelH);
+    this._pauseBg.fill({ color: 0x0a0a18, alpha: 0.95 });
+    // Double border
+    this._pauseBg.rect(panelX, panelY, panelW, panelH);
+    this._pauseBg.stroke({ color: 0x4444aa, width: 2 });
+    this._pauseBg.rect(panelX + 3, panelY + 3, panelW - 6, panelH - 6);
+    this._pauseBg.stroke({ color: 0x333366, width: 1, alpha: 0.6 });
+
+    // Corner ornaments
+    const cornerSize = 8;
+    for (const [cx, cy] of [
+      [panelX, panelY],
+      [panelX + panelW, panelY],
+      [panelX, panelY + panelH],
+      [panelX + panelW, panelY + panelH],
+    ]) {
+      const dx = cx === panelX ? 1 : -1;
+      const dy = cy === panelY ? 1 : -1;
+      this._pauseBg.moveTo(cx, cy + dy * cornerSize);
+      this._pauseBg.lineTo(cx + dx * cornerSize, cy);
+      this._pauseBg.stroke({ color: 0x6666cc, width: 1.5, alpha: 0.6 });
+    }
+
+    let yOff = panelY + 16;
+
+    // Title: "PAUSED"
+    const title = new Text({
+      text: "PAUSED",
+      style: new TextStyle({
+        fontFamily: "monospace",
+        fontSize: 24,
+        fill: 0xffffff,
+        fontWeight: "bold",
+        stroke: { color: 0x000000, width: 3 },
+      }),
+    });
+    title.x = panelX + panelW / 2;
+    title.anchor.set(0.5, 0);
+    title.y = yOff;
+    this._pauseContainer.addChild(title);
+    this._pauseTexts.push(title);
+    yOff += 36;
+
+    // Decorative line under title
+    this._pauseBg.moveTo(panelX + 30, yOff);
+    this._pauseBg.lineTo(panelX + panelW - 30, yOff);
+    this._pauseBg.stroke({ color: 0x4444aa, width: 1, alpha: 0.6 });
+    yOff += 12;
+
+    // --- Resume button ---
+    this._addPauseButton(panelX, yOff, panelW, "Resume", 0x228844, () => {
+      if (this.onPauseResume) this.onPauseResume();
+    });
+    yOff += 36;
+
+    // Decorative line
+    this._pauseBg.moveTo(panelX + 20, yOff);
+    this._pauseBg.lineTo(panelX + panelW - 20, yOff);
+    this._pauseBg.stroke({ color: 0x333355, width: 1, alpha: 0.4 });
+    yOff += 12;
+
+    // --- Controls section ---
+    const controlsHeader = new Text({
+      text: "Controls",
+      style: new TextStyle({
+        fontFamily: "monospace",
+        fontSize: 14,
+        fill: 0xccccff,
+        fontWeight: "bold",
+      }),
+    });
+    controlsHeader.x = panelX + 16;
+    controlsHeader.y = yOff;
+    this._pauseContainer.addChild(controlsHeader);
+    this._pauseTexts.push(controlsHeader);
+    yOff += 20;
+
+    const controls = [
+      ["Arrow Keys / WASD", "Move"],
+      ["1-9", "Cast spell"],
+      ["Enter / Space", "Confirm target / Pass turn"],
+      ["Escape", "Pause menu"],
+      ["E", "Interact (shrine/portal/item)"],
+      ["P", "Use health potion"],
+      ["C", "Use charge scroll"],
+      ["Z / U", "Undo last move"],
+      ["?", "Toggle help overlay"],
+    ];
+
+    for (const [key, desc] of controls) {
+      const keyText = new Text({
+        text: key,
+        style: new TextStyle({
+          fontFamily: "monospace",
+          fontSize: 10,
+          fill: 0xffcc44,
+        }),
+      });
+      keyText.x = panelX + 20;
+      keyText.y = yOff;
+      this._pauseContainer.addChild(keyText);
+      this._pauseTexts.push(keyText);
+
+      const descText = new Text({
+        text: desc,
+        style: new TextStyle({
+          fontFamily: "monospace",
+          fontSize: 10,
+          fill: 0x9999bb,
+        }),
+      });
+      descText.x = panelX + 180;
+      descText.y = yOff;
+      this._pauseContainer.addChild(descText);
+      this._pauseTexts.push(descText);
+      yOff += 15;
+    }
+
+    yOff += 8;
+
+    // Decorative line
+    this._pauseBg.moveTo(panelX + 20, yOff);
+    this._pauseBg.lineTo(panelX + panelW - 20, yOff);
+    this._pauseBg.stroke({ color: 0x333355, width: 1, alpha: 0.4 });
+    yOff += 12;
+
+    // --- How to Play section ---
+    const howToHeader = new Text({
+      text: "How to Play",
+      style: new TextStyle({
+        fontFamily: "monospace",
+        fontSize: 14,
+        fill: 0xccccff,
+        fontWeight: "bold",
+      }),
+    });
+    howToHeader.x = panelX + 16;
+    howToHeader.y = yOff;
+    this._pauseContainer.addChild(howToHeader);
+    this._pauseTexts.push(howToHeader);
+    yOff += 20;
+
+    const howToLines = [
+      "Navigate dungeon floors, defeat all enemies",
+      "to open the rift portal.",
+      "",
+      "Cast spells by pressing 1-9, then move",
+      "cursor to target and press Enter.",
+      "",
+      "Collect spell circles for discounts,",
+      "shrines for buffs.",
+      "",
+      "Reach the rift portal to advance and",
+      "buy new spells.",
+      "",
+      "Beat all 25 levels to win!",
+    ];
+
+    for (const line of howToLines) {
+      if (line === "") {
+        yOff += 4;
+        continue;
+      }
+      const lineText = new Text({
+        text: line,
+        style: new TextStyle({
+          fontFamily: "monospace",
+          fontSize: 10,
+          fill: 0x8888aa,
+        }),
+      });
+      lineText.x = panelX + 20;
+      lineText.y = yOff;
+      this._pauseContainer.addChild(lineText);
+      this._pauseTexts.push(lineText);
+      yOff += 14;
+    }
+
+    yOff += 12;
+
+    // Decorative line
+    this._pauseBg.moveTo(panelX + 20, yOff);
+    this._pauseBg.lineTo(panelX + panelW - 20, yOff);
+    this._pauseBg.stroke({ color: 0x333355, width: 1, alpha: 0.4 });
+    yOff += 12;
+
+    // --- Restart Run button ---
+    this._addPauseButton(panelX, yOff, panelW, "Restart Run", 0x886622, () => {
+      if (this.onPauseRestart) this.onPauseRestart();
+    });
+    yOff += 32;
+
+    // --- Exit to Menu button ---
+    this._addPauseButton(panelX, yOff, panelW, "Exit to Menu", 0x882222, () => {
+      if (this.onPauseExit) this.onPauseExit();
+    });
+  }
+
+  private _addPauseButton(
+    panelX: number,
+    y: number,
+    panelW: number,
+    label: string,
+    color: number,
+    action: () => void,
+  ): void {
+    const btnW = 200;
+    const btnH = 26;
+    const btnX = panelX + Math.floor((panelW - btnW) / 2);
+
+    const gfx = new Graphics();
+    // Button background
+    gfx.rect(btnX, y, btnW, btnH);
+    gfx.fill({ color, alpha: 0.3 });
+    // Button border
+    gfx.rect(btnX, y, btnW, btnH);
+    gfx.stroke({ color, width: 1.5, alpha: 0.7 });
+    // Highlight top edge
+    gfx.moveTo(btnX + 1, y + 1);
+    gfx.lineTo(btnX + btnW - 1, y + 1);
+    gfx.stroke({ color: 0xffffff, width: 0.5, alpha: 0.15 });
+
+    gfx.eventMode = "static";
+    gfx.cursor = "pointer";
+    gfx.hitArea = { contains: (x: number, yy: number) => x >= btnX && x <= btnX + btnW && yy >= y && yy <= y + btnH };
+    gfx.on("pointerdown", () => action());
+
+    const text = new Text({
+      text: label,
+      style: new TextStyle({
+        fontFamily: "monospace",
+        fontSize: 13,
+        fill: 0xffffff,
+        fontWeight: "bold",
+      }),
+    });
+    text.x = btnX + btnW / 2;
+    text.y = y + btnH / 2;
+    text.anchor.set(0.5, 0.5);
+
+    this._pauseContainer.addChild(gfx);
+    this._pauseContainer.addChild(text);
+    this._pauseButtons.push({ gfx, text, hitArea: { x: btnX, y, w: btnW, h: btnH }, action });
   }
 
   private _updateSpellBar(
@@ -1015,6 +1311,15 @@ export class RiftWizardHUD {
       t.destroy();
     }
     this._keyRefTexts = [];
+    for (const t of this._pauseTexts) {
+      t.destroy();
+    }
+    this._pauseTexts = [];
+    for (const btn of this._pauseButtons) {
+      btn.gfx.destroy();
+      btn.text.destroy();
+    }
+    this._pauseButtons = [];
     this._infoText.destroy();
     this._levelText.destroy();
     this._spText.destroy();
@@ -1025,6 +1330,8 @@ export class RiftWizardHUD {
     this._bg.destroy();
     this._hpBar.destroy();
     this._spellBar.destroy();
+    this._pauseBg.destroy();
+    this._pauseContainer.removeChildren();
     this.container.removeChildren();
   }
 }

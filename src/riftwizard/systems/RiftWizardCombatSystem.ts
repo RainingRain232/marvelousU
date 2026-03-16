@@ -24,7 +24,7 @@ export function tileDistance(a: GridPos, b: GridPos): number {
   return Math.abs(a.col - b.col) + Math.abs(a.row - b.row);
 }
 
-function chebyshevDistance(a: GridPos, b: GridPos): number {
+export function chebyshevDistance(a: GridPos, b: GridPos): number {
   return Math.max(Math.abs(a.col - b.col), Math.abs(a.row - b.row));
 }
 
