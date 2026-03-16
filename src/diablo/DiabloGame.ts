@@ -43,6 +43,66 @@ const RARITY_CSS: Record<ItemRarity, string> = {
   [ItemRarity.DIVINE]: "#ffd700",
 };
 
+// Rarity glow box-shadow effects (stronger for higher rarities)
+const RARITY_GLOW: Record<ItemRarity, string> = {
+  [ItemRarity.COMMON]: "none",
+  [ItemRarity.UNCOMMON]: "0 0 4px #44ff44",
+  [ItemRarity.RARE]: "0 0 6px #4488ff",
+  [ItemRarity.EPIC]: "0 0 8px #aa44ff, 0 0 3px #aa44ff inset",
+  [ItemRarity.LEGENDARY]: "0 0 10px #ff8800, 0 0 5px #ff8800 inset",
+  [ItemRarity.MYTHIC]: "0 0 12px #ff2222, 0 0 6px #ff2222 inset",
+  [ItemRarity.DIVINE]: "0 0 14px #ffd700, 0 0 7px #ffd700 inset",
+};
+
+// Border width by rarity
+const RARITY_BORDER: Record<ItemRarity, number> = {
+  [ItemRarity.COMMON]: 1,
+  [ItemRarity.UNCOMMON]: 1,
+  [ItemRarity.RARE]: 2,
+  [ItemRarity.EPIC]: 2,
+  [ItemRarity.LEGENDARY]: 3,
+  [ItemRarity.MYTHIC]: 3,
+  [ItemRarity.DIVINE]: 3,
+};
+
+// Rarity tier number (for stars display)
+const RARITY_TIER: Record<ItemRarity, number> = {
+  [ItemRarity.COMMON]: 1,
+  [ItemRarity.UNCOMMON]: 2,
+  [ItemRarity.RARE]: 3,
+  [ItemRarity.EPIC]: 4,
+  [ItemRarity.LEGENDARY]: 5,
+  [ItemRarity.MYTHIC]: 6,
+  [ItemRarity.DIVINE]: 7,
+};
+
+// Background tint RGBA (low opacity rarity color)
+const RARITY_BG: Record<ItemRarity, string> = {
+  [ItemRarity.COMMON]: "rgba(204,204,204,0.06)",
+  [ItemRarity.UNCOMMON]: "rgba(68,255,68,0.10)",
+  [ItemRarity.RARE]: "rgba(68,136,255,0.10)",
+  [ItemRarity.EPIC]: "rgba(170,68,255,0.12)",
+  [ItemRarity.LEGENDARY]: "rgba(255,136,0,0.13)",
+  [ItemRarity.MYTHIC]: "rgba(255,34,34,0.14)",
+  [ItemRarity.DIVINE]: "rgba(255,215,0,0.15)",
+};
+
+// Rarity badge symbol (corner indicator)
+const RARITY_BADGE: Record<ItemRarity, string> = {
+  [ItemRarity.COMMON]: "",
+  [ItemRarity.UNCOMMON]: "\u25C6",
+  [ItemRarity.RARE]: "\u25C6",
+  [ItemRarity.EPIC]: "\u25C6",
+  [ItemRarity.LEGENDARY]: "\u2726",
+  [ItemRarity.MYTHIC]: "\u2726",
+  [ItemRarity.DIVINE]: "\u2726",
+};
+
+// Whether this rarity gets the pulse animation class
+function rarityNeedsAnim(r: ItemRarity): boolean {
+  return r === ItemRarity.LEGENDARY || r === ItemRarity.MYTHIC || r === ItemRarity.DIVINE;
+}
+
 // Map any item slot string to a canonical equip key (handles config items that may
 // use non-enum string values like "MAIN_HAND", "HEAD", "CHEST", etc.)
 function resolveEquipKey(slot: string): keyof DiabloEquipment | null {
@@ -522,7 +582,7 @@ export class DiabloGame {
         this._fullmapCanvas.style.display = this._fullmapVisible ? "block" : "none";
       } else if (e.code === "Space") {
         this._doDodgeRoll();
-      } else if (e.code === "KeyP") {
+      } else if (e.code === "KeyP" || e.code === "KeyL") {
         this._toggleLantern();
       } else if (e.code === "KeyK") {
         this._phaseBeforeOverlay = DiabloPhase.PLAYING;
@@ -530,6 +590,10 @@ export class DiabloGame {
         this._showSkillSwapMenu();
       } else if (e.code === "KeyF") {
         this._openNearestChest();
+      } else if (e.code === "KeyC") {
+        this._phaseBeforeOverlay = DiabloPhase.PLAYING;
+        this._state.phase = DiabloPhase.INVENTORY;
+        this._showCharacterOverview();
       } else if (e.code === "KeyV") {
         this._firstPerson = !this._firstPerson;
         this._renderer.firstPerson = this._firstPerson;
@@ -542,7 +606,7 @@ export class DiabloGame {
         }
       }
     } else if (this._state.phase === DiabloPhase.INVENTORY) {
-      if (e.code === "Escape" || e.code === "KeyI" || e.code === "KeyT") {
+      if (e.code === "Escape" || e.code === "KeyI" || e.code === "KeyT" || e.code === "KeyC") {
         this._closeOverlay();
       } else if (e.code === "KeyS") {
         this._showStash();
@@ -1207,11 +1271,23 @@ export class DiabloGame {
         this._state.exploredGrid[x][z] = false;
       }
     }
-    this._revealAroundPlayer(0, 0);
+    // Spawn player near a random corner of the map (with padding)
+    const cornerPadX = gridW * 0.12;
+    const cornerPadZ = gridD * 0.12;
+    const corners = [
+      { x: cornerPadX, z: cornerPadZ },
+      { x: gridW - cornerPadX, z: cornerPadZ },
+      { x: cornerPadX, z: gridD - cornerPadZ },
+      { x: gridW - cornerPadX, z: gridD - cornerPadZ },
+    ];
+    const corner = corners[Math.floor(Math.random() * corners.length)];
+    const spawnX = corner.x + (Math.random() * 2 - 1);
+    const spawnZ = corner.z + (Math.random() * 2 - 1);
 
-    this._state.player.x = 0;
-    this._state.player.y = getTerrainHeight(0, 0);
-    this._state.player.z = 0;
+    this._state.player.x = spawnX;
+    this._state.player.y = getTerrainHeight(spawnX, spawnZ);
+    this._state.player.z = spawnZ;
+    this._revealAroundPlayer(spawnX, spawnZ);
     this._state.player.hp = this._state.player.maxHp;
     this._state.player.mana = this._state.player.maxMana;
 
@@ -1219,6 +1295,15 @@ export class DiabloGame {
     this._renderer.buildPlayer(this._state.player.class);
     this._renderer.applyTimeOfDay(this._state.timeOfDay, mapId);
     this._renderer.applyWeather(this._state.weather);
+
+    // Auto-enable lantern on map entry if one is equipped
+    if (this._state.player.equipment.lantern) {
+      const lanternCfg = LANTERN_CONFIGS[this._state.player.equipment.lantern.name];
+      if (lanternCfg) {
+        this._state.player.lanternOn = true;
+        this._renderer.setPlayerLantern(true, lanternCfg.intensity, lanternCfg.distance, lanternCfg.color);
+      }
+    }
 
     if (mapId === DiabloMapId.CAMELOT) {
       // Camelot is a safe hub: no enemies or chests, spawn vendors instead
@@ -1277,6 +1362,32 @@ export class DiabloGame {
   private _showInventory(): void {
     const p = this._state.player;
 
+    // Inject rarity pulse animation styles (once)
+    if (!document.getElementById("inv-rarity-anim-style")) {
+      const styleEl = document.createElement("style");
+      styleEl.id = "inv-rarity-anim-style";
+      styleEl.textContent = `
+        @keyframes inv-glow-legendary {
+          0%, 100% { box-shadow: 0 0 10px #ff8800, 0 0 5px #ff8800 inset; }
+          50% { box-shadow: 0 0 16px #ff8800, 0 0 8px #ff8800 inset, 0 0 24px rgba(255,136,0,0.3); }
+        }
+        @keyframes inv-glow-mythic {
+          0%, 100% { box-shadow: 0 0 12px #ff2222, 0 0 6px #ff2222 inset; }
+          50% { box-shadow: 0 0 18px #ff2222, 0 0 9px #ff2222 inset, 0 0 28px rgba(255,34,34,0.3); }
+        }
+        @keyframes inv-glow-divine {
+          0%, 100% { box-shadow: 0 0 14px #ffd700, 0 0 7px #ffd700 inset; }
+          50% { box-shadow: 0 0 20px #ffd700, 0 0 10px #ffd700 inset, 0 0 32px rgba(255,215,0,0.35); }
+        }
+        .inv-anim-legendary { animation: inv-glow-legendary 2s ease-in-out infinite; }
+        .inv-anim-mythic    { animation: inv-glow-mythic 1.8s ease-in-out infinite; }
+        .inv-anim-divine    { animation: inv-glow-divine 2.2s ease-in-out infinite; }
+        .equip-slot:hover, .inv-slot:hover { filter: brightness(1.25); transform: scale(1.04); }
+        .equip-slot, .inv-slot { transition: filter 0.15s, transform 0.15s, box-shadow 0.3s; }
+      `;
+      document.head.appendChild(styleEl);
+    }
+
     const slotDefs: { key: keyof DiabloEquipment; label: string; gridArea: string }[] = [
       { key: "helmet", label: "Helmet", gridArea: "1/2/2/3" },
       { key: "weapon", label: "Weapon", gridArea: "2/1/3/2" },
@@ -1286,21 +1397,36 @@ export class DiabloGame {
       { key: "legs", label: "Legs", gridArea: "3/2/4/3" },
       { key: "accessory2", label: "Accessory 2", gridArea: "3/3/4/4" },
       { key: "feet", label: "Feet", gridArea: "4/2/5/3" },
-      { key: "lantern", label: "Lantern [P]", gridArea: "4/3/5/4" },
+      { key: "lantern", label: "Lantern [L/P]", gridArea: "4/3/5/4" },
     ];
+
+    const animClass = (r: ItemRarity) => {
+      if (r === ItemRarity.LEGENDARY) return "inv-anim-legendary";
+      if (r === ItemRarity.MYTHIC) return "inv-anim-mythic";
+      if (r === ItemRarity.DIVINE) return "inv-anim-divine";
+      return "";
+    };
 
     let equipHtml = "";
     for (const sd of slotDefs) {
       const item = p.equipment[sd.key];
       const borderColor = item ? RARITY_CSS[item.rarity] : "#555";
+      const borderW = item ? RARITY_BORDER[item.rarity] : 1;
+      const glow = item ? RARITY_GLOW[item.rarity] : "none";
+      const bg = item ? RARITY_BG[item.rarity] : "rgba(15,10,5,0.9)";
+      const anim = item && rarityNeedsAnim(item.rarity) ? animClass(item.rarity) : "";
+      const badge = item && RARITY_BADGE[item.rarity]
+        ? `<div style="position:absolute;top:2px;right:3px;font-size:9px;color:${RARITY_CSS[item.rarity]};text-shadow:0 0 4px ${RARITY_CSS[item.rarity]};line-height:1;">${RARITY_BADGE[item.rarity]}</div>`
+        : "";
       const content = item
-        ? `<div style="font-size:28px;">${item.icon}</div><div style="font-size:10px;color:${RARITY_CSS[item.rarity]};margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:64px;">${item.name}</div>`
-        : `<div style="font-size:11px;color:#666;">${sd.label}</div>`;
+        ? `<div style="font-size:28px;">${item.icon}</div><div style="font-size:10px;color:${RARITY_CSS[item.rarity]};margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:68px;text-shadow:0 0 6px ${RARITY_CSS[item.rarity]}40;">${item.name}</div>${badge}`
+        : `<div style="font-size:11px;color:#555;">${sd.label}</div>`;
       equipHtml += `
-        <div class="equip-slot" data-equip-key="${sd.key}" style="
-          grid-area:${sd.gridArea};width:70px;height:70px;background:rgba(15,10,5,0.9);
-          border:2px solid ${borderColor};border-radius:6px;display:flex;flex-direction:column;
+        <div class="equip-slot ${anim}" data-equip-key="${sd.key}" style="
+          grid-area:${sd.gridArea};width:74px;height:74px;background:${bg};
+          border:${borderW}px solid ${borderColor};border-radius:6px;display:flex;flex-direction:column;
           align-items:center;justify-content:center;cursor:pointer;pointer-events:auto;
+          position:relative;box-shadow:${glow};
         ">${content}</div>`;
     }
 
@@ -1309,21 +1435,28 @@ export class DiabloGame {
       const slot = p.inventory[i];
       const item = slot.item;
       const borderColor = item ? RARITY_CSS[item.rarity] : "#3a3a3a";
+      const borderW = item ? RARITY_BORDER[item.rarity] : 1;
+      const glow = item ? RARITY_GLOW[item.rarity] : "none";
+      const bg = item ? RARITY_BG[item.rarity] : "rgba(15,10,5,0.85)";
+      const anim = item && rarityNeedsAnim(item.rarity) ? animClass(item.rarity) : "";
+      const badge = item && RARITY_BADGE[item.rarity]
+        ? `<div style="position:absolute;top:1px;right:2px;font-size:8px;color:${RARITY_CSS[item.rarity]};text-shadow:0 0 4px ${RARITY_CSS[item.rarity]};line-height:1;">${RARITY_BADGE[item.rarity]}</div>`
+        : "";
       const content = item
-        ? `<div style="font-size:24px;">${item.icon}</div>`
+        ? `<div style="font-size:24px;">${item.icon}</div>${badge}`
         : "";
       invHtml += `
-        <div class="inv-slot" data-inv-idx="${i}" style="
-          width:60px;height:60px;background:rgba(15,10,5,0.85);border:1px solid ${borderColor};
+        <div class="inv-slot ${anim}" data-inv-idx="${i}" style="
+          width:62px;height:62px;background:${bg};border:${borderW}px solid ${borderColor};
           border-radius:4px;display:flex;align-items:center;justify-content:center;
-          cursor:pointer;pointer-events:auto;position:relative;
+          cursor:pointer;pointer-events:auto;position:relative;box-shadow:${glow};
         ">${content}</div>`;
     }
 
     // Player stats
     const stats = this._getEffectiveStats();
     const statsHtml = `
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;font-size:12px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px 14px;font-size:12px;">
         <div style="color:#e88;">STR: ${stats.strength}</div>
         <div style="color:#8e8;">DEX: ${stats.dexterity}</div>
         <div style="color:#88e;">INT: ${stats.intelligence}</div>
@@ -1337,49 +1470,71 @@ export class DiabloGame {
 
     this._menuEl.innerHTML = `
       <div style="
-        width:100%;height:100%;background:rgba(0,0,0,0.88);display:flex;flex-direction:column;
+        width:100%;height:100%;background:rgba(0,0,0,0.90);display:flex;flex-direction:column;
         align-items:center;justify-content:center;color:#fff;pointer-events:auto;
       ">
-        <h2 style="color:#c8a84e;font-size:32px;letter-spacing:3px;margin-bottom:20px;font-family:'Georgia',serif;">
-          INVENTORY
-        </h2>
+        <!-- Title with ornamental borders -->
+        <div style="text-align:center;margin-bottom:18px;">
+          <div style="color:#5a4a2a;font-size:11px;letter-spacing:8px;margin-bottom:4px;">\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550</div>
+          <h2 style="color:#c8a84e;font-size:32px;letter-spacing:5px;margin:0;font-family:'Georgia',serif;
+            text-shadow:0 0 16px rgba(200,168,78,0.35), 0 2px 4px rgba(0,0,0,0.6);">
+            INVENTORY
+          </h2>
+          <div style="color:#5a4a2a;font-size:11px;letter-spacing:8px;margin-top:4px;">\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550</div>
+        </div>
         <div style="display:flex;gap:40px;align-items:flex-start;">
           <!-- Equipment -->
           <div>
-            <div style="color:#888;font-size:13px;margin-bottom:8px;text-align:center;">Equipment</div>
-            <div style="display:grid;grid-template-columns:70px 70px 70px;grid-template-rows:70px 70px 70px 70px;gap:6px;">
+            <div style="color:#a08850;font-size:13px;margin-bottom:8px;text-align:center;letter-spacing:2px;
+              text-transform:uppercase;border-bottom:1px solid #3a3020;padding-bottom:5px;">Equipment</div>
+            <div style="display:grid;grid-template-columns:74px 74px 74px;grid-template-rows:74px 74px 74px 74px;gap:6px;">
               ${equipHtml}
             </div>
           </div>
+          <!-- Vertical section divider -->
+          <div style="width:1px;background:linear-gradient(to bottom,transparent,#5a4a2a,#5a4a2a,transparent);align-self:stretch;margin:20px 0;"></div>
           <!-- Inventory Grid -->
           <div>
-            <div style="color:#888;font-size:13px;margin-bottom:8px;text-align:center;">Backpack</div>
-            <div style="display:grid;grid-template-columns:repeat(8,60px);grid-template-rows:repeat(5,60px);gap:4px;">
+            <div style="color:#a08850;font-size:13px;margin-bottom:8px;text-align:center;letter-spacing:2px;
+              text-transform:uppercase;border-bottom:1px solid #3a3020;padding-bottom:5px;">Backpack</div>
+            <div style="display:grid;grid-template-columns:repeat(8,62px);grid-template-rows:repeat(5,62px);gap:4px;">
               ${invHtml}
             </div>
           </div>
         </div>
-        <!-- Bottom bar -->
-        <div style="margin-top:20px;display:flex;gap:30px;align-items:center;">
-          <div style="font-size:16px;color:#ffd700;">\uD83E\uDE99 ${p.gold}</div>
-          <div style="font-size:14px;color:#88ccff;">Materials: ${p.salvageMaterials}</div>
-          <div style="background:rgba(20,15,10,0.9);border:1px solid #5a4a2a;border-radius:8px;padding:12px;">
+        <!-- Horizontal section divider -->
+        <div style="width:70%;height:1px;background:linear-gradient(to right,transparent,#5a4a2a,transparent);margin:16px 0 12px;"></div>
+        <!-- Bottom bar: gold, materials, stats -->
+        <div style="display:flex;gap:30px;align-items:center;">
+          <div style="display:flex;align-items:center;gap:6px;background:rgba(50,40,10,0.5);border:1px solid #5a4a2a;border-radius:6px;padding:8px 16px;">
+            <span style="font-size:18px;">\uD83E\uDE99</span>
+            <span style="font-size:16px;color:#ffd700;font-weight:bold;">${p.gold}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;background:rgba(10,30,50,0.4);border:1px solid #3a5a7a;border-radius:6px;padding:8px 16px;">
+            <span style="font-size:14px;color:#88ccff;">\u2699 Materials:</span>
+            <span style="font-size:15px;color:#aaddff;font-weight:bold;">${p.salvageMaterials}</span>
+          </div>
+          <div style="background:rgba(20,15,10,0.9);border:1px solid #5a4a2a;border-radius:8px;padding:12px 16px;">
             ${statsHtml}
           </div>
         </div>
         <div style="margin-top:12px;display:flex;gap:16px;align-items:center;">
           <button id="inv-stash-btn" style="
             padding:10px 24px;font-size:15px;letter-spacing:2px;font-weight:bold;
-            background:rgba(40,30,15,0.9);border:2px solid #5a4a2a;border-radius:8px;color:#c8a84e;
+            background:linear-gradient(180deg,rgba(50,40,20,0.95),rgba(30,22,10,0.95));
+            border:2px solid #5a4a2a;border-radius:8px;color:#c8a84e;
             cursor:pointer;transition:all 0.2s;font-family:'Georgia',serif;pointer-events:auto;
+            text-shadow:0 1px 3px rgba(0,0,0,0.5);
           ">STASH</button>
           <div style="color:#888;font-size:12px;">Press <span style="display:inline-block;background:rgba(60,50,30,0.8);border:1px solid #888;border-radius:4px;padding:2px 10px;font-family:monospace;color:#fff;">S</span> to open Shared Stash</div>
         </div>
-        <div style="margin-top:10px;color:#888;font-size:12px;">Press I or Escape to close</div>
+        <div style="margin-top:10px;color:#666;font-size:12px;">Press <span style="color:#aaa;">I</span> or <span style="color:#aaa;">Escape</span> to close</div>
         <!-- Tooltip container -->
         <div id="inv-tooltip" style="
-          display:none;position:fixed;z-index:100;background:rgba(10,5,2,0.96);border:2px solid #5a4a2a;
-          border-radius:8px;padding:14px;max-width:280px;pointer-events:none;color:#ccc;font-size:13px;
+          display:none;position:fixed;z-index:100;background:rgba(8,4,2,0.97);
+          border:1px solid #5a4a2a;border-radius:8px;padding:0;max-width:300px;
+          pointer-events:none;color:#ccc;font-size:13px;overflow:hidden;
+          box-shadow:0 4px 20px rgba(0,0,0,0.7);
         "></div>
       </div>`;
 
@@ -1485,33 +1640,52 @@ export class DiabloGame {
     for (const k of Object.keys(stats)) {
       if (stats[k] && stats[k] !== 0) {
         const label = statLabels[k] || k;
-        statsLines += `<div style="color:#8f8;">+${stats[k]} ${label}</div>`;
+        const val = stats[k];
+        const clr = val > 0 ? "#8f8" : "#f88";
+        const sgn = val > 0 ? "+" : "";
+        statsLines += `<div style="color:${clr};font-size:12px;padding:1px 0;">${sgn}${val} ${label}</div>`;
       }
     }
 
     let legendaryLine = "";
     if (item.legendaryAbility) {
-      legendaryLine = `<div style="color:#ff8800;margin-top:6px;font-style:italic;">${item.legendaryAbility}</div>`;
+      legendaryLine = `<div style="color:#ff8800;margin-top:6px;font-style:italic;border-left:2px solid #ff880060;padding-left:6px;">${item.legendaryAbility}</div>`;
     }
     let setLine = "";
     if ((item as any).setName) {
-      setLine = `<div style="color:#44ff44;margin-top:4px;">Set: ${(item as any).setName}</div>`;
+      setLine = `<div style="color:#44ff44;margin-top:4px;font-size:12px;">Set: ${(item as any).setName}</div>`;
     }
 
+    const stars = "\u2605".repeat(RARITY_TIER[item.rarity]);
+
     tooltip.innerHTML = `
-      <div style="border-bottom:2px solid ${rarityColor};padding-bottom:6px;margin-bottom:6px;">
-        <div style="color:${rarityColor};font-size:15px;font-weight:bold;">${item.name}</div>
-        <div style="color:${rarityColor};font-size:11px;">${rarityName}</div>
+      <!-- Rarity color top bar -->
+      <div style="height:4px;background:${rarityColor};"></div>
+      <!-- Content area with subtle rarity gradient background -->
+      <div style="padding:14px 16px;background:linear-gradient(180deg, ${RARITY_BG[item.rarity]} 0%, rgba(8,4,2,0) 40%);">
+        <!-- Item name & rarity header -->
+        <div style="border-bottom:1px solid rgba(90,74,42,0.5);padding-bottom:8px;margin-bottom:8px;">
+          <div style="color:${rarityColor};font-size:16px;font-weight:bold;text-shadow:0 0 8px ${rarityColor}40;">${item.icon} ${item.name}</div>
+          <div style="color:${rarityColor};font-size:11px;margin-top:3px;letter-spacing:1px;">
+            <span style="font-size:10px;">${stars}</span> ${rarityName}
+          </div>
+        </div>
+        <!-- Slot/type -->
+        <div style="color:#888;font-size:11px;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">${item.slot || item.type}</div>
+        <!-- Separator -->
+        <div style="height:1px;background:linear-gradient(to right,transparent,#5a4a2a60,transparent);margin:4px 0 6px;"></div>
+        <!-- Stats -->
+        ${statsLines}
+        ${legendaryLine}
+        ${setLine}
+        <!-- Separator before description -->
+        <div style="height:1px;background:linear-gradient(to right,transparent,#5a4a2a60,transparent);margin:8px 0 6px;"></div>
+        <div style="color:#777;font-size:11px;font-style:italic;line-height:1.4;">${item.description}</div>
       </div>
-      <div style="color:#888;font-size:11px;margin-bottom:4px;">${item.slot || item.type}</div>
-      ${statsLines}
-      ${legendaryLine}
-      ${setLine}
-      <div style="color:#666;font-size:11px;margin-top:6px;font-style:italic;">${item.description}</div>
     `;
     tooltip.style.display = "block";
-    tooltip.style.left = Math.min(ev.clientX + 16, window.innerWidth - 300) + "px";
-    tooltip.style.top = Math.min(ev.clientY + 16, window.innerHeight - 200) + "px";
+    tooltip.style.left = Math.min(ev.clientX + 16, window.innerWidth - 320) + "px";
+    tooltip.style.top = Math.min(ev.clientY + 16, window.innerHeight - 250) + "px";
   }
 
   private _hideItemTooltip(): void {
@@ -1759,6 +1933,7 @@ export class DiabloGame {
           ${row("T", "Open Talent Tree")}
           ${row("K", "Swap Skills Menu")}
           ${row("J", "Quest Journal")}
+          ${row("L / P", "Toggle Lantern")}
           ${row("M", "Toggle Fullscreen Map")}
           ${row("ESC", "Pause Menu")}
 
@@ -2219,6 +2394,7 @@ export class DiabloGame {
         ">
           <h1 style="color:#c8a84e;font-size:36px;letter-spacing:4px;margin:0 0 10px 0;text-align:center;
             font-family:'Georgia',serif;text-shadow:0 0 15px rgba(200,168,78,0.4);">CHARACTER OVERVIEW</h1>
+          <div style="text-align:center;color:#888;font-size:12px;margin-bottom:6px;">Press C or Escape to close</div>
           ${sec1}${sec2}${sec3}${sec4}${sec5}${sec6}
           <div style="text-align:center;margin-top:30px;display:flex;gap:16px;justify-content:center;">
             <button id="diablo-char-skilltree" style="
@@ -6357,8 +6533,19 @@ export class DiabloGame {
       this._isDead = false;
       this._deathOverlay.style.display = "none";
       const p = this._state.player;
-      p.x = 0;
-      p.z = 0;
+      // Respawn near a random corner of the map
+      const rMapCfg = MAP_CONFIGS[this._state.currentMap];
+      const rPadX = rMapCfg.width * 0.12;
+      const rPadZ = rMapCfg.depth * 0.12;
+      const rCorners = [
+        { x: rPadX, z: rPadZ },
+        { x: rMapCfg.width - rPadX, z: rPadZ },
+        { x: rPadX, z: rMapCfg.depth - rPadZ },
+        { x: rMapCfg.width - rPadX, z: rMapCfg.depth - rPadZ },
+      ];
+      const rCorner = rCorners[Math.floor(Math.random() * rCorners.length)];
+      p.x = rCorner.x + (Math.random() * 2 - 1);
+      p.z = rCorner.z + (Math.random() * 2 - 1);
       p.hp = Math.floor(p.maxHp * 0.5);
       p.mana = Math.floor(p.maxMana * 0.5);
       p.invulnTimer = 3.0;
@@ -6953,10 +7140,10 @@ export class DiabloGame {
     const cfg = LANTERN_CONFIGS[p.equipment.lantern.name];
     if (p.lanternOn && cfg) {
       this._renderer.setPlayerLantern(true, cfg.intensity, cfg.distance, cfg.color);
-      this._addFloatingText(p.x, p.y + 2, p.z, "Lantern lit", "#ffcc44");
+      this._addFloatingText(p.x, p.y + 2, p.z, "Lantern ON", "#ffcc44");
     } else {
       this._renderer.setPlayerLantern(false);
-      this._addFloatingText(p.x, p.y + 2, p.z, "Lantern doused", "#888888");
+      this._addFloatingText(p.x, p.y + 2, p.z, "Lantern OFF", "#888888");
       p.lanternOn = false;
     }
   }

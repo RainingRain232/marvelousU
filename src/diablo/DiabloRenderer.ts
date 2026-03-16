@@ -216,15 +216,112 @@ export class DiabloRenderer {
     (geo.attributes.color as THREE.BufferAttribute).needsUpdate = true;
   }
 
+  /** Recursively dispose all geometries and materials on an Object3D and its descendants. */
+  private _disposeObject3D(obj: THREE.Object3D): void {
+    obj.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        if (child.geometry) child.geometry.dispose();
+        if (child.material) {
+          if (Array.isArray(child.material)) {
+            for (const mat of child.material) {
+              if (mat.map) mat.map.dispose();
+              mat.dispose();
+            }
+          } else {
+            if ((child.material as THREE.MeshStandardMaterial).map) {
+              (child.material as THREE.MeshStandardMaterial).map!.dispose();
+            }
+            (child.material as THREE.Material).dispose();
+          }
+        }
+      }
+      if (child instanceof THREE.Sprite) {
+        if (child.material) {
+          if (child.material.map) child.material.map.dispose();
+          child.material.dispose();
+        }
+      }
+      if (child instanceof THREE.Line) {
+        if ((child as any).geometry) (child as any).geometry.dispose();
+        if ((child as any).material) {
+          if (Array.isArray((child as any).material)) {
+            for (const m of (child as any).material) m.dispose();
+          } else {
+            (child as any).material.dispose();
+          }
+        }
+      }
+    });
+  }
+
   buildMap(mapId: DiabloMapId): void {
+    // Build a set of persistent objects that must survive map transitions
+    const persistent = new Set<THREE.Object3D>();
+    persistent.add(this._ambientLight);
+    persistent.add(this._hemiLight);
+    persistent.add(this._dirLight);
+    persistent.add(this._envGroup);
+    persistent.add(this._playerGroup);
+    persistent.add(this._groundPlane);
+    persistent.add(this._camera);
+    for (const mesh of this._particleMeshPool) {
+      persistent.add(mesh);
+    }
+    // Keep gameplay entity meshes (enemies, loot, projectiles, etc.) — they are
+    // managed by their own sync methods, not by buildMap.
+    for (const [, m] of this._enemyMeshes) persistent.add(m);
+    for (const [, m] of this._projectileMeshes) persistent.add(m);
+    for (const [, m] of this._lootMeshes) persistent.add(m);
+    for (const [, m] of this._chestMeshes) persistent.add(m);
+    for (const [, m] of this._aoeMeshes) persistent.add(m);
+    for (const [, m] of this._vendorMeshes) persistent.add(m);
+    for (const [, m] of this._townfolkMeshes) persistent.add(m);
+    for (const [, m] of this._floatTextSprites) persistent.add(m);
+    for (const [, m] of this._shieldMeshes) persistent.add(m);
+    for (const [, m] of this._healBeams) persistent.add(m);
+    if (this._aimLine) persistent.add(this._aimLine);
+    if (this._invulnMesh) persistent.add(this._invulnMesh);
+
+    // 1. Dispose and remove all children from _envGroup
     while (this._envGroup.children.length > 0) {
       const child = this._envGroup.children[0];
+      this._disposeObject3D(child);
       this._envGroup.remove(child);
     }
+
+    // 2. Remove torch lights tracked in _torchLights
     for (const tl of this._torchLights) {
       this._scene.remove(tl);
+      tl.dispose();
     }
     this._torchLights = [];
+
+    // 3. Remove ALL non-persistent objects from the scene (catches objects
+    //    added directly to _scene by map builders instead of _envGroup)
+    const toRemove: THREE.Object3D[] = [];
+    for (const child of this._scene.children) {
+      if (!persistent.has(child)) {
+        toRemove.push(child);
+      }
+    }
+    for (const obj of toRemove) {
+      this._disposeObject3D(obj);
+      this._scene.remove(obj);
+    }
+
+    // 4. Reset fog (each map sets its own)
+    this._scene.fog = null;
+
+    // 5. Reset lighting to default init() values so per-map overrides don't leak
+    this._ambientLight.color.setHex(0x404060);
+    this._ambientLight.intensity = 0.6;
+    this._hemiLight.color.setHex(0x8888cc);
+    this._hemiLight.groundColor.setHex(0x443322);
+    this._hemiLight.intensity = 0.5;
+    this._dirLight.color.setHex(0xffeedd);
+    this._dirLight.intensity = 1.2;
+    this._dirLight.position.set(15, 25, 10);
+
     this._currentMap = mapId;
 
     this._rngSeed = Date.now();
@@ -2143,27 +2240,129 @@ export class DiabloRenderer {
       this._envGroup.add(topRail);
     }
 
-    // Ruins with moss (8 pillars)
+    // Ruins with moss (8 pillars) - detailed fluted columns with capitals, bases, damage
     for (let i = 0; i < 8; i++) {
       const ruin = new THREE.Group();
       const pH = 2 + Math.random() * 3;
-      const pilGeo = new THREE.CylinderGeometry(0.35, 0.4, pH, 27);
+      const pilR = 0.35;
+      const pilRBot = 0.4;
       const pilMat = new THREE.MeshStandardMaterial({ color: 0x999988, roughness: 0.8 });
+      const pilMatDark = new THREE.MeshStandardMaterial({ color: 0x888877, roughness: 0.85 });
+      const isBroken = i % 3 === 0;
+      const tiltAngle = isBroken ? (Math.random() * 0.3 + 0.1) * (Math.random() > 0.5 ? 1 : -1) : 0;
+
+      // Base plinth
+      const plinth = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.25, 1.0), pilMat);
+      plinth.position.y = 0.125;
+      ruin.add(plinth);
+      const plinthTop = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.1, 0.9), pilMatDark);
+      plinthTop.position.y = 0.3;
+      ruin.add(plinthTop);
+
+      // Main column body
+      const pilGeo = new THREE.CylinderGeometry(pilR, pilRBot, pH, 27);
       const pil = new THREE.Mesh(pilGeo, pilMat);
-      pil.position.y = pH / 2;
+      pil.position.y = 0.35 + pH / 2;
+      if (isBroken) pil.rotation.z = tiltAngle;
       ruin.add(pil);
 
-      // Moss patches
-      for (let m = 0; m < 3; m++) {
-        const mossGeo = new THREE.SphereGeometry(0.15, 36, 17);
-        const mossMat = new THREE.MeshStandardMaterial({ color: 0x336633, roughness: 1.0 });
-        const moss = new THREE.Mesh(mossGeo, mossMat);
-        moss.position.set(
-          (Math.random() - 0.5) * 0.4,
-          Math.random() * pH,
-          (Math.random() - 0.5) * 0.4
+      // Fluted grooves (vertical strips along column surface)
+      const numFlutes = 10;
+      for (let f = 0; f < numFlutes; f++) {
+        const fluteAng = (f / numFlutes) * Math.PI * 2;
+        const fluteGeo = new THREE.BoxGeometry(0.04, pH * 0.9, 0.06);
+        const flute = new THREE.Mesh(fluteGeo, pilMatDark);
+        const fluteR = pilR * 0.95;
+        flute.position.set(
+          Math.cos(fluteAng) * fluteR,
+          0.35 + pH / 2,
+          Math.sin(fluteAng) * fluteR
         );
+        flute.rotation.y = -fluteAng;
+        if (isBroken) flute.rotation.z = tiltAngle;
+        ruin.add(flute);
+      }
+
+      // Capital (top piece with scroll detail)
+      if (!isBroken || Math.random() > 0.5) {
+        const capY = 0.35 + pH;
+        const capitalBase = new THREE.Mesh(new THREE.CylinderGeometry(0.5, pilR, 0.2, 27), pilMat);
+        capitalBase.position.y = capY + 0.1;
+        if (isBroken) capitalBase.rotation.z = tiltAngle;
+        ruin.add(capitalBase);
+        const capitalTop = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.12, 0.9), pilMat);
+        capitalTop.position.y = capY + 0.26;
+        if (isBroken) capitalTop.rotation.z = tiltAngle;
+        ruin.add(capitalTop);
+        // Scroll/volute decorations on capital
+        for (const vs of [-1, 1]) {
+          const volute = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.03, 8, 12, Math.PI * 1.5), pilMatDark);
+          volute.position.set(vs * 0.35, capY + 0.15, 0);
+          volute.rotation.y = vs * Math.PI / 2;
+          ruin.add(volute);
+        }
+      }
+
+      // Damage - missing chunks from top edge
+      for (let d = 0; d < 2 + Math.floor(Math.random() * 3); d++) {
+        const chunkAng = Math.random() * Math.PI * 2;
+        const chunkGeo = new THREE.BoxGeometry(0.12 + Math.random() * 0.1, 0.15 + Math.random() * 0.2, 0.12);
+        const chunk = new THREE.Mesh(chunkGeo, pilMatDark);
+        chunk.position.set(
+          Math.cos(chunkAng) * pilR * 0.6,
+          0.35 + pH - 0.1 + Math.random() * 0.2,
+          Math.sin(chunkAng) * pilR * 0.6
+        );
+        chunk.rotation.set(Math.random() * 0.5, Math.random(), Math.random() * 0.5);
+        ruin.add(chunk);
+      }
+
+      // Debris at base (scattered dodecahedrons)
+      for (let db = 0; db < 4 + Math.floor(Math.random() * 4); db++) {
+        const debrisSize = 0.05 + Math.random() * 0.12;
+        const debris = new THREE.Mesh(new THREE.DodecahedronGeometry(debrisSize, 1), pilMat);
+        const debrisAng = Math.random() * Math.PI * 2;
+        const debrisDist = 0.5 + Math.random() * 0.8;
+        debris.position.set(
+          Math.cos(debrisAng) * debrisDist,
+          debrisSize * 0.5,
+          Math.sin(debrisAng) * debrisDist
+        );
+        debris.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
+        ruin.add(debris);
+      }
+
+      // Moss patches - varied sizes
+      const mossMat = new THREE.MeshStandardMaterial({ color: 0x336633, roughness: 1.0 });
+      const mossMatLight = new THREE.MeshStandardMaterial({ color: 0x448844, roughness: 0.95 });
+      for (let m = 0; m < 5 + Math.floor(Math.random() * 4); m++) {
+        const mossSize = 0.06 + Math.random() * 0.18;
+        const mossGeo = new THREE.SphereGeometry(mossSize, 8, 6);
+        const moss = new THREE.Mesh(mossGeo, Math.random() > 0.5 ? mossMat : mossMatLight);
+        const mossAng = Math.random() * Math.PI * 2;
+        moss.position.set(
+          Math.cos(mossAng) * pilR * (0.8 + Math.random() * 0.3),
+          0.35 + Math.random() * pH,
+          Math.sin(mossAng) * pilR * (0.8 + Math.random() * 0.3)
+        );
+        moss.scale.set(1, 0.5 + Math.random() * 0.5, 1);
         ruin.add(moss);
+      }
+
+      // Hanging vine strips (PlaneGeometry)
+      const vineMat = new THREE.MeshStandardMaterial({ color: 0x2a5a2a, roughness: 0.9, side: THREE.DoubleSide });
+      for (let v = 0; v < 2 + Math.floor(Math.random() * 3); v++) {
+        const vineH = 0.4 + Math.random() * 0.8;
+        const vine = new THREE.Mesh(new THREE.PlaneGeometry(0.06, vineH), vineMat);
+        const vineAng = Math.random() * Math.PI * 2;
+        vine.position.set(
+          Math.cos(vineAng) * pilR * 1.05,
+          0.35 + pH * 0.5 + Math.random() * pH * 0.3,
+          Math.sin(vineAng) * pilR * 1.05
+        );
+        vine.rotation.y = vineAng;
+        vine.rotation.z = (Math.random() - 0.5) * 0.3;
+        ruin.add(vine);
       }
 
       const ruinX = -15 + (Math.random() - 0.5) * 10;
@@ -2226,31 +2425,127 @@ export class DiabloRenderer {
       this._envGroup.add(flowerGroup);
     }
 
-    // Vine-covered archways (4)
+    // Vine-covered archways (4) - detailed with carved stone, keystone, runes, realistic ivy
     for (let i = 0; i < 4; i++) {
       const archGroup = new THREE.Group();
+      const pillarMat = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 0.7 });
+      const pillarMatWeathered = new THREE.MeshStandardMaterial({ color: 0x999999, roughness: 0.85 });
+      const pillarMatDark = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.8 });
+
       for (let side = -1; side <= 1; side += 2) {
-        const pillarGeo = new THREE.CylinderGeometry(0.15, 0.15, 3.5, 27);
-        const pillarMat = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 0.7 });
+        // Main pillar body
+        const pillarGeo = new THREE.CylinderGeometry(0.15, 0.17, 3.5, 27);
         const pillar = new THREE.Mesh(pillarGeo, pillarMat);
         pillar.position.set(side * 1.2, 1.75, 0);
         pillar.castShadow = true;
         archGroup.add(pillar);
+
+        // Horizontal ring bands on pillars (carved stone detail)
+        for (let rb = 0; rb < 4; rb++) {
+          const ringY = 0.5 + rb * 0.9;
+          const ring = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.02, 8, 18), pillarMatDark);
+          ring.position.set(side * 1.2, ringY, 0);
+          ring.rotation.x = Math.PI / 2;
+          archGroup.add(ring);
+        }
+
+        // Carved rune/pattern insets on pillars (small recessed boxes)
+        for (let rn = 0; rn < 3; rn++) {
+          const runeY = 0.8 + rn * 1.0;
+          const runeInset = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.12, 0.04), pillarMatDark);
+          runeInset.position.set(side * 1.2, runeY, 0.16);
+          archGroup.add(runeInset);
+          // Inner glyph detail
+          const glyphLine = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.08, 0.01),
+            new THREE.MeshStandardMaterial({ color: 0x777777, roughness: 0.6 }));
+          glyphLine.position.set(side * 1.2, runeY, 0.17);
+          archGroup.add(glyphLine);
+        }
+
+        // Pillar base (wider foot)
+        const pillarBase = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.15, 0.4), pillarMat);
+        pillarBase.position.set(side * 1.2, 0.075, 0);
+        archGroup.add(pillarBase);
+
+        // Pillar capital (wider top)
+        const pillarCap = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.12, 0.38), pillarMat);
+        pillarCap.position.set(side * 1.2, 3.5, 0);
+        archGroup.add(pillarCap);
       }
+
+      // Main arch (torus)
       const archGeo = new THREE.TorusGeometry(1.2, 0.12, 27, 36, Math.PI);
-      const archMat = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 0.7 });
-      const arch = new THREE.Mesh(archGeo, archMat);
+      const arch = new THREE.Mesh(archGeo, pillarMat);
       arch.position.y = 3.5;
       arch.rotation.z = Math.PI;
       archGroup.add(arch);
-      for (let iv = 0; iv < 12; iv++) {
-        const ivyGeo = new THREE.SphereGeometry(0.08 + Math.random() * 0.05, 20, 17);
-        const ivyMat = new THREE.MeshStandardMaterial({ color: 0x336633, roughness: 0.9 });
-        const ivy = new THREE.Mesh(ivyGeo, ivyMat);
+
+      // Keystone at arch top (protruding center stone)
+      const keystone = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.3, 0.2), pillarMatWeathered);
+      keystone.position.set(0, 3.5 + 1.2, 0);
+      archGroup.add(keystone);
+      // Keystone decorative face
+      const keystoneFace = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.2, 0.05), pillarMatDark);
+      keystoneFace.position.set(0, 3.5 + 1.2, 0.12);
+      archGroup.add(keystoneFace);
+
+      // Realistic ivy with individual leaf pieces trailing down
+      const ivyLeafMat = new THREE.MeshStandardMaterial({ color: 0x336633, roughness: 0.9, side: THREE.DoubleSide });
+      const ivyLeafMatLight = new THREE.MeshStandardMaterial({ color: 0x448844, roughness: 0.85, side: THREE.DoubleSide });
+      // Ivy cluster blobs along the arch
+      for (let iv = 0; iv < 10; iv++) {
         const ivAng = Math.random() * Math.PI;
-        ivy.position.set(Math.cos(ivAng) * 1.2, 3.5 - Math.sin(ivAng) * 1.2 * (Math.random() > 0.5 ? 1 : 0.5), (Math.random() - 0.5) * 0.3);
-        archGroup.add(ivy);
+        const ivX = Math.cos(ivAng) * 1.2;
+        const ivY = 3.5 - Math.sin(ivAng) * 1.2;
+        const ivyBlob = new THREE.Mesh(new THREE.SphereGeometry(0.06 + Math.random() * 0.05, 6, 5),
+          Math.random() > 0.5 ? ivyLeafMat : ivyLeafMatLight);
+        ivyBlob.position.set(ivX, ivY, (Math.random() - 0.5) * 0.2);
+        archGroup.add(ivyBlob);
       }
+      // Trailing vine strips with leaf planes
+      for (let tv = 0; tv < 6; tv++) {
+        const trailAng = Math.random() * Math.PI;
+        const trailX = Math.cos(trailAng) * 1.2;
+        const trailYTop = 3.5 - Math.sin(trailAng) * 1.2;
+        const vineLen = 0.5 + Math.random() * 1.5;
+        // Vine stem
+        const vineStem = new THREE.Mesh(new THREE.PlaneGeometry(0.03, vineLen),
+          new THREE.MeshStandardMaterial({ color: 0x2a4a2a, roughness: 0.9, side: THREE.DoubleSide }));
+        vineStem.position.set(trailX, trailYTop - vineLen / 2, 0.13);
+        archGroup.add(vineStem);
+        // Individual leaves along the vine
+        for (let lf = 0; lf < 3 + Math.floor(Math.random() * 4); lf++) {
+          const leafY = trailYTop - (lf / 5) * vineLen;
+          const leaf = new THREE.Mesh(new THREE.PlaneGeometry(0.08, 0.06), ivyLeafMat);
+          leaf.position.set(trailX + (Math.random() - 0.5) * 0.1, leafY, 0.14);
+          leaf.rotation.z = (Math.random() - 0.5) * 0.8;
+          archGroup.add(leaf);
+        }
+      }
+
+      // Fallen stones / rubble at base
+      for (let rb = 0; rb < 5 + Math.floor(Math.random() * 4); rb++) {
+        const rubSize = 0.06 + Math.random() * 0.12;
+        const rubble = new THREE.Mesh(new THREE.DodecahedronGeometry(rubSize, 1), pillarMatWeathered);
+        rubble.position.set(
+          (Math.random() - 0.5) * 2.4,
+          rubSize * 0.4,
+          (Math.random() - 0.5) * 0.8
+        );
+        rubble.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
+        archGroup.add(rubble);
+      }
+
+      // Weathering color variation patches on arch
+      for (let wp = 0; wp < 4; wp++) {
+        const wpAng = Math.random() * Math.PI;
+        const weatherPatch = new THREE.Mesh(new THREE.SphereGeometry(0.08, 5, 4),
+          new THREE.MeshStandardMaterial({ color: 0x777766, roughness: 0.95 }));
+        weatherPatch.position.set(Math.cos(wpAng) * 1.2, 3.5 - Math.sin(wpAng) * 1.2, (Math.random() - 0.5) * 0.15);
+        weatherPatch.scale.set(1.5, 0.5, 1);
+        archGroup.add(weatherPatch);
+      }
+
       const archX = (Math.random() - 0.5) * w * 0.6;
       const archZ = (Math.random() - 0.5) * d * 0.6;
       archGroup.position.set(archX, getTerrainHeight(archX, archZ), archZ);
@@ -2740,17 +3035,78 @@ export class DiabloRenderer {
         perchBracket.position.set(gargX, gargY - 0.08, 0.32);
         wallGrp.add(perchBracket);
       }
-      // Crumbling edges - randomly offset small boxes along wall top
-      for (let ce = 0; ce < 3 + Math.floor(Math.random() * 3); ce++) {
-        const crumble = new THREE.Mesh(new THREE.BoxGeometry(0.1 + Math.random() * 0.1, 0.08 + Math.random() * 0.06, 0.12),
-          new THREE.MeshStandardMaterial({ color: 0x2a2a34, roughness: 0.9 }));
-        crumble.position.set(
+      // Crumbling edges - varied size blocks, dust piles, exposed brick, hanging pieces
+      const crumbleMat = new THREE.MeshStandardMaterial({ color: 0x2a2a34, roughness: 0.9 });
+      const crumbleMatLight = new THREE.MeshStandardMaterial({ color: 0x353540, roughness: 0.85 });
+      // Larger fallen blocks at wall top
+      for (let ce = 0; ce < 2 + Math.floor(Math.random() * 2); ce++) {
+        const bigBlock = new THREE.Mesh(new THREE.BoxGeometry(0.18 + Math.random() * 0.15, 0.12 + Math.random() * 0.1, 0.14),
+          crumbleMat);
+        bigBlock.position.set(
           (Math.random() - 0.5) * wallW * 0.9,
-          wallH + (Math.random() - 0.5) * 0.15,
+          wallH + (Math.random() - 0.5) * 0.1,
           (Math.random() - 0.5) * 0.3
         );
-        crumble.rotation.set(Math.random() * 0.3, Math.random() * 0.3, Math.random() * 0.3);
-        wallGrp.add(crumble);
+        bigBlock.rotation.set(Math.random() * 0.3, Math.random() * 0.3, Math.random() * 0.3);
+        wallGrp.add(bigBlock);
+      }
+      // Smaller debris pieces scattered on top and falling
+      for (let sd = 0; sd < 4 + Math.floor(Math.random() * 4); sd++) {
+        const smallDebris = new THREE.Mesh(new THREE.BoxGeometry(0.06 + Math.random() * 0.06, 0.04 + Math.random() * 0.04, 0.06),
+          crumbleMatLight);
+        smallDebris.position.set(
+          (Math.random() - 0.5) * wallW * 0.9,
+          wallH + (Math.random() - 0.5) * 0.2,
+          (Math.random() - 0.5) * 0.35
+        );
+        smallDebris.rotation.set(Math.random() * 0.5, Math.random() * 0.5, Math.random() * 0.5);
+        wallGrp.add(smallDebris);
+      }
+      // Pieces still partially attached (angled, hanging from wall top)
+      for (let ha = 0; ha < 1 + Math.floor(Math.random() * 2); ha++) {
+        const hangBlock = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.15, 0.12), crumbleMat);
+        hangBlock.position.set(
+          (Math.random() - 0.5) * wallW * 0.8,
+          wallH - 0.05,
+          0.28 + Math.random() * 0.1
+        );
+        hangBlock.rotation.z = 0.3 + Math.random() * 0.4;
+        hangBlock.rotation.x = Math.random() * 0.3;
+        wallGrp.add(hangBlock);
+      }
+      // Fallen blocks at base of wall
+      for (let fb = 0; fb < 3 + Math.floor(Math.random() * 3); fb++) {
+        const fallenSize = 0.06 + Math.random() * 0.12;
+        const fallen = new THREE.Mesh(new THREE.BoxGeometry(fallenSize * 1.3, fallenSize, fallenSize), crumbleMat);
+        fallen.position.set(
+          (Math.random() - 0.5) * wallW * 0.6,
+          fallenSize * 0.4,
+          0.3 + Math.random() * 0.5
+        );
+        fallen.rotation.set(Math.random() * 0.5, Math.random() * Math.PI, Math.random() * 0.3);
+        wallGrp.add(fallen);
+      }
+      // Dust pile effect (flattened semi-transparent sphere at base)
+      for (let dp = 0; dp < 2; dp++) {
+        const dustPile = new THREE.Mesh(new THREE.SphereGeometry(0.15 + Math.random() * 0.1, 8, 6),
+          new THREE.MeshStandardMaterial({ color: 0x444450, roughness: 1.0, transparent: true, opacity: 0.35 }));
+        dustPile.position.set(
+          (Math.random() - 0.5) * wallW * 0.5,
+          0.03,
+          0.3 + Math.random() * 0.3
+        );
+        dustPile.scale.set(1.5, 0.2, 1.0);
+        wallGrp.add(dustPile);
+      }
+      // Exposed brick pattern on the crumble face
+      for (let eb = 0; eb < 3 + Math.floor(Math.random() * 3); eb++) {
+        const expBrick = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.05, 0.04), crumbleMatLight);
+        expBrick.position.set(
+          (Math.random() - 0.5) * wallW * 0.4,
+          wallH - 0.1 - Math.random() * 0.2,
+          0.27
+        );
+        wallGrp.add(expBrick);
       }
       const wx = (Math.random() - 0.5) * w * 0.7;
       const wz = (Math.random() - 0.5) * d * 0.7;
@@ -3451,41 +3807,166 @@ export class DiabloRenderer {
       this._envGroup.add(wispGrp);
     }
 
-    // Broken statues (4)
+    // Broken statues (4) - detailed with anatomical torso, drapery, weapon fragments, broken head
     const brokenStatMat = new THREE.MeshStandardMaterial({ color: 0x444450, roughness: 0.7 });
+    const brokenStatMatDark = new THREE.MeshStandardMaterial({ color: 0x333340, roughness: 0.8 });
+    const brokenStatMatLight = new THREE.MeshStandardMaterial({ color: 0x555560, roughness: 0.65 });
+    const statMossMat = new THREE.MeshStandardMaterial({ color: 0x334433, roughness: 1.0 });
     for (let i = 0; i < 4; i++) {
       const statGrp = new THREE.Group();
-      // Pedestal
-      const ped = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.6, 0.8), brokenStatMat);
-      ped.position.y = 0.3;
+
+      // Pedestal - carved with edges and inscribed face
+      const ped = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.5, 0.9), brokenStatMat);
+      ped.position.y = 0.25;
       statGrp.add(ped);
-      // Broken torso
-      const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 0.8, 23), brokenStatMat);
-      torso.position.y = 1.0;
+      // Pedestal top molding
+      const pedTop = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.08, 1.0), brokenStatMatLight);
+      pedTop.position.y = 0.54;
+      statGrp.add(pedTop);
+      // Pedestal bottom molding
+      const pedBot = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.1, 1.0), brokenStatMatLight);
+      pedBot.position.y = 0.05;
+      statGrp.add(pedBot);
+      // Carved edge detail on pedestal sides
+      for (let pe = 0; pe < 4; pe++) {
+        const edgeAng = (pe / 4) * Math.PI * 2;
+        const pedEdge = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.06, 0.03), brokenStatMatDark);
+        pedEdge.position.set(Math.cos(edgeAng) * 0.46, 0.35, Math.sin(edgeAng) * 0.46);
+        pedEdge.rotation.y = edgeAng;
+        statGrp.add(pedEdge);
+      }
+      // Inscribed face on pedestal front (recessed plane)
+      const inscribedFace = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.25),
+        new THREE.MeshStandardMaterial({ color: 0x3a3a45, roughness: 0.9 }));
+      inscribedFace.position.set(0, 0.3, 0.46);
+      statGrp.add(inscribedFace);
+
+      // Torso with anatomical detail
+      const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.22, 0.85, 23), brokenStatMat);
+      torso.position.y = 1.05;
       statGrp.add(torso);
-      // One arm
+      // Shoulders (sphere geometry)
+      for (const ss of [-1, 1]) {
+        const shoulder = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), brokenStatMat);
+        shoulder.position.set(ss * 0.22, 1.4, 0);
+        shoulder.scale.set(1.2, 0.8, 0.9);
+        statGrp.add(shoulder);
+      }
+      // Neck stump
+      const neckStump = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.12, 12), brokenStatMatDark);
+      neckStump.position.y = 1.54;
+      statGrp.add(neckStump);
+
+      // Partial leg stump on pedestal
+      const legStump = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.2, 14), brokenStatMat);
+      legStump.position.set(0.15, 0.72, 0);
+      statGrp.add(legStump);
+
+      // Carved drapery/robe folds on torso (overlapping thin box ridges)
+      for (let dr = 0; dr < 5; dr++) {
+        const drapeY = 0.7 + dr * 0.14;
+        const drapeAng = dr * 0.3;
+        const drape = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.04, 0.04), brokenStatMatLight);
+        drape.position.set(Math.sin(drapeAng) * 0.08, drapeY, 0.18);
+        drape.rotation.z = (Math.random() - 0.5) * 0.2;
+        statGrp.add(drape);
+      }
+      // Back drapery folds
+      for (let dr = 0; dr < 3; dr++) {
+        const drapeY = 0.75 + dr * 0.18;
+        const drape = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.03, 0.04), brokenStatMatLight);
+        drape.position.set(0, drapeY, -0.18);
+        drape.rotation.z = (Math.random() - 0.5) * 0.15;
+        statGrp.add(drape);
+      }
+
+      // Broken arm with weapon fragment
       const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 0.5, 20), brokenStatMat);
-      arm.position.set(0.25, 1.1, 0);
+      arm.position.set(0.28, 1.15, 0);
       arm.rotation.z = -0.6;
       statGrp.add(arm);
-      // Rubble around base
-      for (let r = 0; r < 4; r++) {
-        const rub = new THREE.Mesh(new THREE.DodecahedronGeometry(0.08 + Math.random() * 0.08, 2), brokenStatMat);
-        rub.position.set((Math.random() - 0.5) * 0.8, 0.05, (Math.random() - 0.5) * 0.8);
+      // Hand/fist at end of arm
+      const fist = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), brokenStatMat);
+      fist.position.set(0.5, 0.95, 0);
+      statGrp.add(fist);
+      // Weapon fragment - sword hilt or staff piece
+      if (i % 2 === 0) {
+        // Sword hilt
+        const hiltGuard = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.03, 0.03), brokenStatMatDark);
+        hiltGuard.position.set(0.55, 0.93, 0);
+        hiltGuard.rotation.z = -0.6;
+        statGrp.add(hiltGuard);
+        const hiltGrip = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.15, 8), brokenStatMatDark);
+        hiltGrip.position.set(0.6, 0.88, 0);
+        hiltGrip.rotation.z = -0.6;
+        statGrp.add(hiltGrip);
+      } else {
+        // Staff piece
+        const staff = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.35, 8), brokenStatMatDark);
+        staff.position.set(0.55, 0.88, 0);
+        staff.rotation.z = -0.5;
+        statGrp.add(staff);
+      }
+
+      // Broken head piece nearby (sphere with flat cut)
+      const headDist = 0.6 + Math.random() * 0.5;
+      const headAng = Math.random() * Math.PI * 2;
+      const brokenHead = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.7), brokenStatMat);
+      brokenHead.position.set(
+        Math.cos(headAng) * headDist,
+        0.1,
+        Math.sin(headAng) * headDist
+      );
+      brokenHead.rotation.x = Math.PI * 0.6;
+      brokenHead.rotation.z = Math.random() * Math.PI;
+      statGrp.add(brokenHead);
+      // Flat cut face on head
+      const headCut = new THREE.Mesh(new THREE.CircleGeometry(0.1, 8), brokenStatMatDark);
+      headCut.position.set(
+        Math.cos(headAng) * headDist,
+        0.12,
+        Math.sin(headAng) * headDist
+      );
+      headCut.rotation.x = -Math.PI / 2;
+      statGrp.add(headCut);
+
+      // Rubble around base - varied sizes
+      for (let r = 0; r < 6 + Math.floor(Math.random() * 4); r++) {
+        const rubSize = 0.04 + Math.random() * 0.14;
+        const rub = new THREE.Mesh(new THREE.DodecahedronGeometry(rubSize, 2), brokenStatMat);
+        const rubAng = Math.random() * Math.PI * 2;
+        const rubDist = 0.4 + Math.random() * 0.8;
+        rub.position.set(Math.cos(rubAng) * rubDist, rubSize * 0.4, Math.sin(rubAng) * rubDist);
+        rub.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
         statGrp.add(rub);
       }
-      // Extra crumbling stone debris around the broken statue
-      for (let cd = 0; cd < 3; cd++) {
-        const debrisGeo = new THREE.DodecahedronGeometry(0.04 + Math.random() * 0.05, 2);
+
+      // Extra crumbling stone debris
+      for (let cd = 0; cd < 5; cd++) {
+        const debrisGeo = new THREE.DodecahedronGeometry(0.03 + Math.random() * 0.05, 1);
         const debris = new THREE.Mesh(debrisGeo, brokenStatMat);
         debris.position.set(
-          (Math.random() - 0.5) * 1.2,
+          (Math.random() - 0.5) * 1.4,
           0.02 + Math.random() * 0.03,
-          (Math.random() - 0.5) * 1.2
+          (Math.random() - 0.5) * 1.4
         );
         debris.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
         statGrp.add(debris);
       }
+
+      // Moss/lichen in crevices
+      for (let ml = 0; ml < 4 + Math.floor(Math.random() * 3); ml++) {
+        const lichenSize = 0.04 + Math.random() * 0.08;
+        const lichen = new THREE.Mesh(new THREE.SphereGeometry(lichenSize, 6, 5), statMossMat);
+        lichen.position.set(
+          (Math.random() - 0.5) * 0.3,
+          0.6 + Math.random() * 0.8,
+          (Math.random() > 0.5 ? 1 : -1) * (0.15 + Math.random() * 0.05)
+        );
+        lichen.scale.y = 0.4;
+        statGrp.add(lichen);
+      }
+
       statGrp.position.set((Math.random() - 0.5) * w * 0.6, 0, (Math.random() - 0.5) * d * 0.6);
       this._envGroup.add(statGrp);
     }
@@ -4841,22 +5322,99 @@ export class DiabloRenderer {
       this._envGroup.add(treeGroup);
     }
 
-    // Flower boxes (8) - near buildings
+    // Flower boxes (8) - near buildings (detailed)
     const flowerColors = [0xff4466, 0xff88aa, 0xffdd44, 0xff6633, 0xaa44ff, 0x44aaff, 0xff44aa, 0xffaa44];
     for (let fi = 0; fi < 8; fi++) {
       const fboxGroup = new THREE.Group();
-      const fboxGeo = new THREE.BoxGeometry(0.5, 0.15, 0.2);
-      const fboxMat = new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.8 });
-      const fbox = new THREE.Mesh(fboxGeo, fboxMat);
+      const woodMat = new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.8 });
+      const darkWoodMat = new THREE.MeshStandardMaterial({ color: 0x5A3520, roughness: 0.85 });
+
+      // Main box shell
+      const fbox = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.15, 0.2), woodMat);
       fboxGroup.add(fbox);
-      // Flowers (small spheres)
-      for (let ff = 0; ff < 4; ff++) {
-        const flGeo = new THREE.SphereGeometry(0.06, 20, 17);
-        const flMat = new THREE.MeshStandardMaterial({ color: flowerColors[fi], roughness: 0.6 });
-        const fl = new THREE.Mesh(flGeo, flMat);
-        fl.position.set(-0.15 + ff * 0.1, 0.12, 0);
-        fboxGroup.add(fl);
+
+      // Wooden plank strips on front/back
+      for (let ps = 0; ps < 5; ps++) {
+        const plank = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.15, 0.005), darkWoodMat);
+        plank.position.set(-0.2 + ps * 0.1, 0, 0.101);
+        fboxGroup.add(plank);
+        const plankBack = plank.clone();
+        plankBack.position.z = -0.101;
+        fboxGroup.add(plankBack);
       }
+      // Side plank strips
+      for (let ps = 0; ps < 2; ps++) {
+        const sidePlank = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.15, 0.09), darkWoodMat);
+        sidePlank.position.set(ps === 0 ? -0.251 : 0.251, 0, -0.05 + ps * 0.1);
+        fboxGroup.add(sidePlank);
+      }
+      // Corner posts
+      for (const cx of [-0.24, 0.24]) {
+        for (const cz of [-0.09, 0.09]) {
+          const cornerPost = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.17, 0.025), darkWoodMat);
+          cornerPost.position.set(cx, 0, cz);
+          fboxGroup.add(cornerPost);
+        }
+      }
+
+      // Soil visible inside
+      const soil = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.04, 0.16),
+        new THREE.MeshStandardMaterial({ color: 0x3B2510, roughness: 0.95 }));
+      soil.position.y = 0.06;
+      fboxGroup.add(soil);
+
+      // Flowers with stems and varied petals
+      const petalColors = [flowerColors[fi], flowerColors[(fi + 3) % 8], flowerColors[(fi + 5) % 8]];
+      for (let ff = 0; ff < 5; ff++) {
+        const stemH = 0.08 + Math.random() * 0.06;
+        const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, stemH, 8),
+          new THREE.MeshStandardMaterial({ color: 0x2d7a1e, roughness: 0.8 }));
+        const fx = -0.18 + ff * 0.09 + (Math.random() - 0.5) * 0.03;
+        const fz = (Math.random() - 0.5) * 0.08;
+        stem.position.set(fx, 0.08 + stemH / 2, fz);
+        fboxGroup.add(stem);
+
+        // Flower center
+        const flCenter = new THREE.Mesh(new THREE.SphereGeometry(0.02, 12, 10),
+          new THREE.MeshStandardMaterial({ color: 0xffee44, roughness: 0.6 }));
+        flCenter.position.set(fx, 0.08 + stemH + 0.02, fz);
+        fboxGroup.add(flCenter);
+        // Petals around center
+        const flColor = petalColors[ff % petalColors.length];
+        for (let p = 0; p < 5; p++) {
+          const petalGeo = new THREE.SphereGeometry(0.022, 8, 6);
+          petalGeo.scale(1, 0.5, 1);
+          const petal = new THREE.Mesh(petalGeo, new THREE.MeshStandardMaterial({ color: flColor, roughness: 0.5 }));
+          const pa = (p / 5) * Math.PI * 2;
+          petal.position.set(fx + Math.cos(pa) * 0.03, 0.08 + stemH + 0.02, fz + Math.sin(pa) * 0.03);
+          fboxGroup.add(petal);
+        }
+
+        // Leaf on stem
+        if (ff % 2 === 0) {
+          const leaf = new THREE.Mesh(new THREE.PlaneGeometry(0.04, 0.02),
+            new THREE.MeshStandardMaterial({ color: 0x3a8a2a, roughness: 0.7, side: THREE.DoubleSide }));
+          leaf.position.set(fx + 0.025, 0.08 + stemH * 0.5, fz);
+          leaf.rotation.z = -0.4;
+          leaf.rotation.y = Math.random() * Math.PI;
+          fboxGroup.add(leaf);
+        }
+      }
+
+      // Trailing vines on front
+      for (let vi = 0; vi < 3; vi++) {
+        const vine = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.06 + vi * 0.02, 6),
+          new THREE.MeshStandardMaterial({ color: 0x2d6b1e, roughness: 0.8 }));
+        vine.position.set(-0.12 + vi * 0.12, -0.04 - vi * 0.015, 0.1);
+        vine.rotation.z = (Math.random() - 0.5) * 0.3;
+        fboxGroup.add(vine);
+        const vLeaf = new THREE.Mesh(new THREE.PlaneGeometry(0.02, 0.015),
+          new THREE.MeshStandardMaterial({ color: 0x3a8a2a, roughness: 0.7, side: THREE.DoubleSide }));
+        vLeaf.position.set(vine.position.x + 0.015, vine.position.y - 0.02, 0.1);
+        vLeaf.rotation.z = 0.5;
+        fboxGroup.add(vLeaf);
+      }
+
       const fbi = fi < buildingPositions.length ? fi : 0;
       const [fbx, fbz] = buildingPositions[fbi];
       fboxGroup.position.set(fbx, 1.5, fbz + 1.8);
@@ -4915,53 +5473,182 @@ export class DiabloRenderer {
       this._envGroup.add(flagGroup);
     }
 
-    // Horse troughs (2)
+    // Horse troughs (2) - detailed wooden plank construction
     const troughPositions: [number, number][] = [[-7, -8], [8, 8]];
     for (const [tx, tz] of troughPositions) {
       const troughGroup = new THREE.Group();
-      // Basin
-      const basinGeo = new THREE.BoxGeometry(1.5, 0.4, 0.5);
-      const basinMat = new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.85 });
-      const basin = new THREE.Mesh(basinGeo, basinMat);
-      basin.position.y = 0.4;
-      troughGroup.add(basin);
-      // Water plane
-      const waterGeo = new THREE.BoxGeometry(1.3, 0.02, 0.35);
-      const waterMat = new THREE.MeshStandardMaterial({ color: 0x3388aa, transparent: true, opacity: 0.5, roughness: 0.2 });
-      const water = new THREE.Mesh(waterGeo, waterMat);
-      water.position.y = 0.58;
-      troughGroup.add(water);
-      // Legs
+      const woodDark = new THREE.MeshStandardMaterial({ color: 0x5A3520, roughness: 0.9 });
+      const woodMid = new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.85 });
+      const woodLight = new THREE.MeshStandardMaterial({ color: 0x7B5236, roughness: 0.85 });
+      const woodMats = [woodDark, woodMid, woodLight];
+      // Bottom planks (3 planks side by side)
+      for (let pi = 0; pi < 3; pi++) {
+        const plankGeo = new THREE.BoxGeometry(1.4, 0.04, 0.14);
+        const plank = new THREE.Mesh(plankGeo, woodMats[pi % 3]);
+        plank.position.set(0, 0.22, -0.15 + pi * 0.15);
+        troughGroup.add(plank);
+      }
+      // Side planks (long sides - 2 planks high each side)
+      for (const sz of [-0.24, 0.24]) {
+        for (let row = 0; row < 2; row++) {
+          const sidePlankGeo = new THREE.BoxGeometry(1.5, 0.18, 0.04);
+          const sidePlank = new THREE.Mesh(sidePlankGeo, woodMats[(row + (sz > 0 ? 1 : 0)) % 3]);
+          sidePlank.position.set(0, 0.31 + row * 0.18, sz);
+          troughGroup.add(sidePlank);
+        }
+      }
+      // End planks (short sides)
+      for (const ex of [-0.73, 0.73]) {
+        for (let row = 0; row < 2; row++) {
+          const endPlankGeo = new THREE.BoxGeometry(0.04, 0.18, 0.44);
+          const endPlank = new THREE.Mesh(endPlankGeo, woodMats[row % 3]);
+          endPlank.position.set(ex, 0.31 + row * 0.18, 0);
+          troughGroup.add(endPlank);
+        }
+      }
+      // Metal band hoops (3 around the trough)
+      const bandMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.4, metalness: 0.7 });
+      for (const bx of [-0.5, 0, 0.5]) {
+        // Front band strip
+        const bandFront = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.04, 0.02), bandMat);
+        bandFront.position.set(bx, 0.42, -0.26); troughGroup.add(bandFront);
+        // Back band strip
+        const bandBack = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.04, 0.02), bandMat);
+        bandBack.position.set(bx, 0.42, 0.26); troughGroup.add(bandBack);
+        // Bottom band strip
+        const bandBot = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.02, 0.5), bandMat);
+        bandBot.position.set(bx, 0.21, 0); troughGroup.add(bandBot);
+      }
+      // Metal rivet heads on bands
+      const rivetMat = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.3, metalness: 0.8 });
+      for (const bx of [-0.5, 0, 0.5]) {
+        for (const rz of [-0.26, 0.26]) {
+          const rivet = new THREE.Mesh(new THREE.SphereGeometry(0.012, 6, 6), rivetMat);
+          rivet.position.set(bx, 0.44, rz); troughGroup.add(rivet);
+        }
+      }
+      // Legs - sturdier cross-braced
       for (const lsx of [-0.55, 0.55]) {
-        const legGeo = new THREE.BoxGeometry(0.08, 0.2, 0.5);
-        const legMat = new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.8 });
-        const leg = new THREE.Mesh(legGeo, legMat);
-        leg.position.set(lsx, 0.1, 0);
-        troughGroup.add(leg);
+        const legGeo = new THREE.BoxGeometry(0.1, 0.2, 0.08);
+        const legFront = new THREE.Mesh(legGeo, woodDark);
+        legFront.position.set(lsx, 0.1, -0.18); troughGroup.add(legFront);
+        const legBack = new THREE.Mesh(legGeo, woodDark);
+        legBack.position.set(lsx, 0.1, 0.18); troughGroup.add(legBack);
+        // Cross brace
+        const braceGeo = new THREE.BoxGeometry(0.04, 0.04, 0.36);
+        const brace = new THREE.Mesh(braceGeo, woodMid);
+        brace.position.set(lsx, 0.1, 0); troughGroup.add(brace);
+      }
+      // Water with slight transparency and color variation
+      const waterGeo = new THREE.BoxGeometry(1.3, 0.06, 0.35);
+      const waterMat = new THREE.MeshStandardMaterial({ color: 0x2277aa, transparent: true, opacity: 0.45, roughness: 0.1, metalness: 0.1 });
+      const water = new THREE.Mesh(waterGeo, waterMat);
+      water.position.y = 0.55; troughGroup.add(water);
+      // Water surface highlight ripples (small flat discs)
+      for (let ri = 0; ri < 4; ri++) {
+        const rippleGeo = new THREE.CylinderGeometry(0.06 + Math.random() * 0.04, 0.06 + Math.random() * 0.04, 0.005, 12);
+        const rippleMat = new THREE.MeshStandardMaterial({ color: 0x55aacc, transparent: true, opacity: 0.3, roughness: 0.05 });
+        const ripple = new THREE.Mesh(rippleGeo, rippleMat);
+        ripple.position.set(-0.3 + Math.random() * 0.6, 0.585, -0.08 + Math.random() * 0.16);
+        troughGroup.add(ripple);
+      }
+      // Moss patches on outside
+      const mossMat = new THREE.MeshStandardMaterial({ color: 0x3a6b2a, roughness: 0.95 });
+      for (let mi = 0; mi < 3; mi++) {
+        const mossGeo = new THREE.SphereGeometry(0.04 + Math.random() * 0.03, 6, 6);
+        const moss = new THREE.Mesh(mossGeo, mossMat);
+        moss.scale.y = 0.3;
+        moss.position.set(-0.5 + Math.random() * 1.0, 0.25 + Math.random() * 0.1, (Math.random() > 0.5 ? 0.25 : -0.25));
+        troughGroup.add(moss);
       }
       troughGroup.position.set(tx, 0, tz);
       this._envGroup.add(troughGroup);
     }
 
-    // Stone benches (4)
+    // Stone benches (4) - detailed with beveled edges, scroll legs, moss
     const benchPositions: [number, number, number][] = [[-3, 4, 0], [3, 4, 0], [-3, -4, Math.PI], [3, -4, Math.PI]];
     for (const [bx, bz, bRot] of benchPositions) {
-      const benchGeo = new THREE.BoxGeometry(1.5, 0.3, 0.5);
-      const benchMat = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.85 });
-      const bench = new THREE.Mesh(benchGeo, benchMat);
-      bench.position.set(bx, 0.15, bz);
-      bench.rotation.y = bRot;
-      bench.castShadow = true;
-      this._envGroup.add(bench);
-      // Bench legs
+      const benchGroup = new THREE.Group();
+      const stoneDark = new THREE.MeshStandardMaterial({ color: 0x777777, roughness: 0.9 });
+      const stoneMid = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.85 });
+      const stoneLight = new THREE.MeshStandardMaterial({ color: 0x999999, roughness: 0.85 });
+      // Main seat slab
+      const seatGeo = new THREE.BoxGeometry(1.5, 0.12, 0.5);
+      const seat = new THREE.Mesh(seatGeo, stoneMid);
+      seat.position.y = 0.42; seat.castShadow = true; benchGroup.add(seat);
+      // Beveled front edge (rounded cylinder)
+      const bevelFrontGeo = new THREE.CylinderGeometry(0.06, 0.06, 1.5, 8);
+      const bevelFront = new THREE.Mesh(bevelFrontGeo, stoneLight);
+      bevelFront.rotation.z = Math.PI / 2;
+      bevelFront.position.set(0, 0.42, 0.25); benchGroup.add(bevelFront);
+      // Beveled back edge
+      const bevelBack = new THREE.Mesh(bevelFrontGeo.clone(), stoneLight);
+      bevelBack.rotation.z = Math.PI / 2;
+      bevelBack.position.set(0, 0.42, -0.25); benchGroup.add(bevelBack);
+      // Carved scroll-end legs (2)
       for (const blx of [-0.55, 0.55]) {
-        const blGeo = new THREE.BoxGeometry(0.12, 0.3, 0.5);
-        const blMat = new THREE.MeshStandardMaterial({ color: 0x777777, roughness: 0.85 });
-        const bl = new THREE.Mesh(blGeo, blMat);
-        bl.position.set(bx + blx, 0.15, bz);
-        bl.rotation.y = bRot;
-        this._envGroup.add(bl);
+        // Main leg block
+        const legGeo = new THREE.BoxGeometry(0.14, 0.36, 0.5);
+        const leg = new THREE.Mesh(legGeo, stoneDark);
+        leg.position.set(blx, 0.18, 0); benchGroup.add(leg);
+        // Carved arch cutout (decorative inset on each leg)
+        const archGeo = new THREE.BoxGeometry(0.04, 0.15, 0.25);
+        const archInset = new THREE.Mesh(archGeo, stoneLight);
+        archInset.position.set(blx, 0.15, 0); benchGroup.add(archInset);
+        // Scroll top (small cylinder roll at top of each leg)
+        const scrollGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.14, 8);
+        const scrollTop = new THREE.Mesh(scrollGeo, stoneMid);
+        scrollTop.rotation.x = Math.PI / 2;
+        scrollTop.position.set(blx, 0.36, 0.22); benchGroup.add(scrollTop);
+        const scrollTop2 = new THREE.Mesh(scrollGeo.clone(), stoneMid);
+        scrollTop2.rotation.x = Math.PI / 2;
+        scrollTop2.position.set(blx, 0.36, -0.22); benchGroup.add(scrollTop2);
+        // Scroll bottom curls
+        const curlGeo = new THREE.TorusGeometry(0.04, 0.015, 6, 8, Math.PI);
+        const curlMat = new THREE.MeshStandardMaterial({ color: 0x777777, roughness: 0.85 });
+        const curlFront = new THREE.Mesh(curlGeo, curlMat);
+        curlFront.position.set(blx, 0.04, 0.22); curlFront.rotation.y = Math.PI / 2;
+        benchGroup.add(curlFront);
+        const curlBack = new THREE.Mesh(curlGeo.clone(), curlMat);
+        curlBack.position.set(blx, 0.04, -0.22); curlBack.rotation.y = Math.PI / 2;
+        benchGroup.add(curlBack);
       }
+      // Weathering - chipped edge details
+      for (let wi = 0; wi < 3; wi++) {
+        const chipGeo = new THREE.BoxGeometry(0.06, 0.03, 0.03);
+        const chipMat = new THREE.MeshStandardMaterial({ color: 0x666666, roughness: 0.95 });
+        const chip = new THREE.Mesh(chipGeo, chipMat);
+        chip.position.set(-0.5 + Math.random() * 1.0, 0.47, 0.24);
+        benchGroup.add(chip);
+      }
+      // Moss / lichen patches
+      const benchMossMat = new THREE.MeshStandardMaterial({ color: 0x4a7a3a, roughness: 0.95 });
+      for (let mi = 0; mi < 4; mi++) {
+        const mossGeo = new THREE.SphereGeometry(0.03 + Math.random() * 0.02, 6, 5);
+        const moss = new THREE.Mesh(mossGeo, benchMossMat);
+        moss.scale.y = 0.25;
+        if (Math.random() > 0.5) {
+          moss.position.set(
+            (Math.random() > 0.5 ? -0.55 : 0.55) + (Math.random() - 0.5) * 0.05,
+            0.05 + Math.random() * 0.2,
+            (Math.random() - 0.5) * 0.4
+          );
+        } else {
+          moss.position.set(-0.6 + Math.random() * 1.2, 0.47, (Math.random() > 0.5 ? 0.24 : -0.24));
+        }
+        benchGroup.add(moss);
+      }
+      // Stone color variation streaks on seat
+      for (let si = 0; si < 2; si++) {
+        const streakGeo = new THREE.BoxGeometry(0.3 + Math.random() * 0.4, 0.005, 0.08);
+        const streakMat = new THREE.MeshStandardMaterial({ color: 0x7a7a7a, roughness: 0.9 });
+        const streak = new THREE.Mesh(streakGeo, streakMat);
+        streak.position.set(-0.3 + Math.random() * 0.6, 0.485, -0.15 + Math.random() * 0.3);
+        benchGroup.add(streak);
+      }
+      benchGroup.position.set(bx, 0, bz);
+      benchGroup.rotation.y = bRot;
+      this._envGroup.add(benchGroup);
     }
 
     // Additional small rocks / cobblestones scattered (15)
@@ -4978,45 +5665,249 @@ export class DiabloRenderer {
       this._envGroup.add(rock);
     }
 
-    // Sacks of grain near market (4) - small burlap-colored, not sandy
+    // Sacks of grain near market (4) - detailed burlap sacks with ties and spilled grain
     for (let si = 0; si < 4; si++) {
-      const sackGeo = new THREE.SphereGeometry(0.12, 23, 20);
-      const sackMat = new THREE.MeshStandardMaterial({ color: 0x7a6530, roughness: 0.95 });
-      const sack = new THREE.Mesh(sackGeo, sackMat);
-      sack.scale.set(1, 0.8, 0.8);
-      sack.position.set(
+      const sackGroup = new THREE.Group();
+      const burlap1 = new THREE.MeshStandardMaterial({ color: 0x7a6530, roughness: 0.95 });
+      const burlap2 = new THREE.MeshStandardMaterial({ color: 0x6d5a28, roughness: 0.95 });
+      const burlap3 = new THREE.MeshStandardMaterial({ color: 0x85703a, roughness: 0.95 });
+      const burlapMats = [burlap1, burlap2, burlap3];
+      // Main sack body
+      const bodyGeo = new THREE.SphereGeometry(0.12, 12, 10);
+      const body = new THREE.Mesh(bodyGeo, burlapMats[si % 3]);
+      body.scale.set(1, 0.8, 0.8);
+      body.castShadow = true; sackGroup.add(body);
+      // Fabric folds / wrinkle bumps
+      for (let fi = 0; fi < 5; fi++) {
+        const foldGeo = new THREE.SphereGeometry(0.025 + Math.random() * 0.015, 6, 5);
+        const fold = new THREE.Mesh(foldGeo, burlapMats[(si + fi) % 3]);
+        const angle = (fi / 5) * Math.PI * 2;
+        fold.position.set(
+          Math.cos(angle) * 0.1,
+          -0.02 + Math.random() * 0.06,
+          Math.sin(angle) * 0.08
+        );
+        fold.scale.y = 0.5;
+        sackGroup.add(fold);
+      }
+      // Tied-off top (cone shape)
+      const tieTopGeo = new THREE.ConeGeometry(0.04, 0.08, 6);
+      const tieTop = new THREE.Mesh(tieTopGeo, burlap1);
+      tieTop.position.y = 0.1; sackGroup.add(tieTop);
+      // Rope ring around tie
+      const ropeRingGeo = new THREE.TorusGeometry(0.035, 0.008, 6, 10);
+      const ropeMat = new THREE.MeshStandardMaterial({ color: 0x8B7355, roughness: 0.9 });
+      const ropeRing = new THREE.Mesh(ropeRingGeo, ropeMat);
+      ropeRing.position.y = 0.07; ropeRing.rotation.x = Math.PI / 2;
+      sackGroup.add(ropeRing);
+      // Rope binding around middle
+      const midRopeGeo = new THREE.TorusGeometry(0.1, 0.006, 6, 12);
+      const midRope = new THREE.Mesh(midRopeGeo, ropeMat);
+      midRope.position.y = 0.0; midRope.rotation.x = Math.PI / 2;
+      sackGroup.add(midRope);
+      // Fabric patch detail (on some sacks)
+      if (si % 2 === 0) {
+        const patchGeo = new THREE.BoxGeometry(0.04, 0.04, 0.005);
+        const patchMat = new THREE.MeshStandardMaterial({ color: 0x5a4a20, roughness: 0.95 });
+        const patch = new THREE.Mesh(patchGeo, patchMat);
+        patch.position.set(0.1, 0.0, 0.06);
+        sackGroup.add(patch);
+      }
+      // Spilled grain on the ground (tiny spheres)
+      for (let gi = 0; gi < 6; gi++) {
+        const grainGeo = new THREE.SphereGeometry(0.008, 4, 4);
+        const grainMat = new THREE.MeshStandardMaterial({ color: 0xccaa44, roughness: 0.8 });
+        const grain = new THREE.Mesh(grainGeo, grainMat);
+        grain.position.set(
+          (Math.random() - 0.5) * 0.25,
+          -0.09,
+          (Math.random() - 0.5) * 0.2
+        );
+        sackGroup.add(grain);
+      }
+      sackGroup.position.set(
         -6 + si * 0.4 + (Math.random() - 0.5) * 0.2,
         0.1,
         7 + (Math.random() - 0.5) * 0.3
       );
-      sack.castShadow = true;
-      this._envGroup.add(sack);
+      this._envGroup.add(sackGroup);
     }
 
-    // Wooden crates near blacksmith (5)
+    // Wooden crates near blacksmith (5) - detailed with planks, nails, reinforcements
     for (let ci = 0; ci < 5; ci++) {
-      const crateGeo = new THREE.BoxGeometry(0.4 + Math.random() * 0.2, 0.4 + Math.random() * 0.2, 0.4 + Math.random() * 0.2);
-      const crateMat = new THREE.MeshStandardMaterial({ color: 0x8B6914, roughness: 0.8 });
-      const crate = new THREE.Mesh(crateGeo, crateMat);
-      crate.position.set(-13 + ci * 0.6, 0.25, -8 + (Math.random() - 0.5));
-      crate.rotation.y = Math.random() * 0.5;
-      crate.castShadow = true;
-      this._envGroup.add(crate);
+      const crateGroup = new THREE.Group();
+      const cSize = 0.4 + Math.random() * 0.2;
+      const hSize = cSize / 2;
+      const plankDark = new THREE.MeshStandardMaterial({ color: 0x7a5a10, roughness: 0.85 });
+      const plankMid = new THREE.MeshStandardMaterial({ color: 0x8B6914, roughness: 0.8 });
+      const plankLight = new THREE.MeshStandardMaterial({ color: 0x9B7924, roughness: 0.8 });
+      const plankMats = [plankDark, plankMid, plankLight];
+      // Warp factor for damaged look on some crates
+      const warpX = ci === 2 ? 1.04 : 1.0;
+      const warpZ = ci === 4 ? 0.97 : 1.0;
+      // Face planks - front and back (3 horizontal planks per face)
+      for (const fz of [-hSize, hSize]) {
+        for (let pi = 0; pi < 3; pi++) {
+          const plankH = cSize / 3;
+          const plankGeo = new THREE.BoxGeometry(cSize * 0.95, plankH * 0.9, 0.02);
+          const plank = new THREE.Mesh(plankGeo, plankMats[pi % 3]);
+          plank.position.set(0, -hSize + plankH * 0.5 + pi * plankH, fz);
+          crateGroup.add(plank);
+        }
+      }
+      // Face planks - left and right (3 horizontal planks per face)
+      for (const fx of [-hSize, hSize]) {
+        for (let pi = 0; pi < 3; pi++) {
+          const plankH = cSize / 3;
+          const plankGeo = new THREE.BoxGeometry(0.02, plankH * 0.9, cSize * 0.95);
+          const plank = new THREE.Mesh(plankGeo, plankMats[(pi + 1) % 3]);
+          plank.position.set(fx, -hSize + plankH * 0.5 + pi * plankH, 0);
+          crateGroup.add(plank);
+        }
+      }
+      // Top planks (3 planks across)
+      for (let pi = 0; pi < 3; pi++) {
+        const topPlankGeo = new THREE.BoxGeometry(cSize * 0.3, 0.02, cSize * 0.95);
+        const topPlank = new THREE.Mesh(topPlankGeo, plankMats[pi % 3]);
+        topPlank.position.set(-cSize * 0.3 + pi * cSize * 0.3, hSize, 0);
+        crateGroup.add(topPlank);
+      }
+      // Bottom planks
+      const botGeo = new THREE.BoxGeometry(cSize * 0.95, 0.02, cSize * 0.95);
+      const bot = new THREE.Mesh(botGeo, plankDark);
+      bot.position.y = -hSize; crateGroup.add(bot);
+      // Corner reinforcement brackets (dark metal strips on 4 vertical edges)
+      const bracketMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.4, metalness: 0.6 });
+      for (const bx of [-hSize, hSize]) {
+        for (const bz of [-hSize, hSize]) {
+          const bracketGeo = new THREE.BoxGeometry(0.03, cSize * 0.6, 0.03);
+          const bracket = new THREE.Mesh(bracketGeo, bracketMat);
+          bracket.position.set(bx, 0, bz);
+          crateGroup.add(bracket);
+        }
+      }
+      // Nail heads on corners (tiny spheres)
+      const nailMat = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.3, metalness: 0.8 });
+      for (const nx of [-hSize, hSize]) {
+        for (const nz of [-hSize, hSize]) {
+          for (const ny of [-hSize * 0.5, hSize * 0.5]) {
+            const nail = new THREE.Mesh(new THREE.SphereGeometry(0.01, 4, 4), nailMat);
+            nail.position.set(nx * 1.01, ny, nz * 1.01);
+            crateGroup.add(nail);
+          }
+        }
+      }
+      // Lid slightly ajar on one crate
+      if (ci === 1) {
+        const lidGeo = new THREE.BoxGeometry(cSize * 0.95, 0.025, cSize * 0.95);
+        const lid = new THREE.Mesh(lidGeo, plankLight);
+        lid.position.set(0.02, hSize + 0.02, 0.03);
+        lid.rotation.z = 0.08; lid.rotation.x = 0.05;
+        crateGroup.add(lid);
+      }
+      crateGroup.scale.set(warpX, 1, warpZ);
+      crateGroup.position.set(-13 + ci * 0.6, 0.25, -8 + (Math.random() - 0.5));
+      crateGroup.rotation.y = Math.random() * 0.5;
+      crateGroup.castShadow = true;
+      this._envGroup.add(crateGroup);
     }
 
-    // Potted plants near chapel (4)
+    // Potted plants near chapel (4) - detailed
     for (let pi = 0; pi < 4; pi++) {
       const potGroup = new THREE.Group();
-      const potGeo = new THREE.CylinderGeometry(0.15, 0.12, 0.25, 27);
       const potMat = new THREE.MeshStandardMaterial({ color: 0xaa6633, roughness: 0.8 });
-      const pot = new THREE.Mesh(potGeo, potMat);
+      const potDarkMat = new THREE.MeshStandardMaterial({ color: 0x8a5228, roughness: 0.85 });
+
+      // Main pot body
+      const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.12, 0.25, 27), potMat);
       pot.position.y = 0.125;
       potGroup.add(pot);
-      const plantGeo = new THREE.SphereGeometry(0.2, 31, 20);
-      const plantMat = new THREE.MeshStandardMaterial({ color: 0x44aa33, roughness: 0.8 });
-      const plant = new THREE.Mesh(plantGeo, plantMat);
-      plant.position.y = 0.35;
-      potGroup.add(plant);
+
+      // Rim detail (torus ring at top)
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.155, 0.015, 10, 24),
+        new THREE.MeshStandardMaterial({ color: 0xbb7744, roughness: 0.7 }));
+      rim.rotation.x = Math.PI / 2;
+      rim.position.y = 0.25;
+      potGroup.add(rim);
+
+      // Decorative band around pot middle
+      const band = new THREE.Mesh(new THREE.TorusGeometry(0.14, 0.008, 8, 24), potDarkMat);
+      band.rotation.x = Math.PI / 2;
+      band.position.y = 0.15;
+      potGroup.add(band);
+      // Second thin band
+      const band2 = new THREE.Mesh(new THREE.TorusGeometry(0.135, 0.006, 8, 24), potDarkMat);
+      band2.rotation.x = Math.PI / 2;
+      band2.position.y = 0.1;
+      potGroup.add(band2);
+
+      // Base plate / saucer
+      const saucer = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.17, 0.02, 24), potDarkMat);
+      saucer.position.y = 0.01;
+      potGroup.add(saucer);
+
+      // Drainage hole indicators (dark circles at bottom)
+      for (let dh = 0; dh < 3; dh++) {
+        const hole = new THREE.Mesh(new THREE.CircleGeometry(0.012, 8),
+          new THREE.MeshStandardMaterial({ color: 0x2a1808, roughness: 0.95, side: THREE.DoubleSide }));
+        const ha = (dh / 3) * Math.PI * 2;
+        hole.rotation.x = Math.PI / 2;
+        hole.position.set(Math.cos(ha) * 0.06, 0.005, Math.sin(ha) * 0.06);
+        potGroup.add(hole);
+      }
+
+      // Visible soil
+      const soil = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.03, 20),
+        new THREE.MeshStandardMaterial({ color: 0x3B2510, roughness: 0.95 }));
+      soil.position.y = 0.24;
+      potGroup.add(soil);
+
+      // Multiple leaves (PlaneGeometry, varied angles)
+      const leafMat = new THREE.MeshStandardMaterial({ color: 0x44aa33, roughness: 0.8, side: THREE.DoubleSide });
+      const darkLeafMat = new THREE.MeshStandardMaterial({ color: 0x337a25, roughness: 0.8, side: THREE.DoubleSide });
+      for (let li = 0; li < 8; li++) {
+        const la = (li / 8) * Math.PI * 2 + (Math.random() - 0.5) * 0.3;
+        const lh = 0.3 + Math.random() * 0.12;
+        const lSize = 0.06 + Math.random() * 0.04;
+        const leaf = new THREE.Mesh(new THREE.PlaneGeometry(lSize, lSize * 1.8),
+          li % 2 === 0 ? leafMat : darkLeafMat);
+        leaf.position.set(Math.cos(la) * 0.08, lh, Math.sin(la) * 0.08);
+        leaf.rotation.y = la;
+        leaf.rotation.x = -0.3 - Math.random() * 0.3;
+        potGroup.add(leaf);
+      }
+
+      // A few flowers with petals on some plants
+      if (pi % 2 === 0) {
+        const fColors = [0xff6688, 0xffaa44, 0xff44aa];
+        for (let fl = 0; fl < 3; fl++) {
+          const flAngle = (fl / 3) * Math.PI * 2 + 0.5;
+          const flStem = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.12, 6),
+            new THREE.MeshStandardMaterial({ color: 0x2d7a1e, roughness: 0.8 }));
+          flStem.position.set(Math.cos(flAngle) * 0.06, 0.32, Math.sin(flAngle) * 0.06);
+          potGroup.add(flStem);
+          // Flower center
+          const fc = new THREE.Mesh(new THREE.SphereGeometry(0.015, 10, 8),
+            new THREE.MeshStandardMaterial({ color: 0xffee44, roughness: 0.5 }));
+          fc.position.set(Math.cos(flAngle) * 0.06, 0.39, Math.sin(flAngle) * 0.06);
+          potGroup.add(fc);
+          // Petals
+          for (let pe = 0; pe < 4; pe++) {
+            const peAngle = (pe / 4) * Math.PI * 2;
+            const peGeo = new THREE.SphereGeometry(0.015, 6, 5);
+            peGeo.scale(1, 0.4, 1);
+            const petal = new THREE.Mesh(peGeo,
+              new THREE.MeshStandardMaterial({ color: fColors[fl % fColors.length], roughness: 0.5 }));
+            petal.position.set(
+              Math.cos(flAngle) * 0.06 + Math.cos(peAngle) * 0.02,
+              0.39,
+              Math.sin(flAngle) * 0.06 + Math.sin(peAngle) * 0.02
+            );
+            potGroup.add(petal);
+          }
+        }
+      }
+
       potGroup.position.set(-6 + pi * 0.8, 0, -18);
       this._envGroup.add(potGroup);
     }
@@ -5156,33 +6047,74 @@ export class DiabloRenderer {
       moatSide.receiveShadow = true;
       this._envGroup.add(moatSide);
     }
-    // Drawbridge planks (south of castle gate)
-    const bridgeMat = new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.85 });
-    for (let bp = 0; bp < 6; bp++) {
-      const plank = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.08, 0.4), bridgeMat);
-      plank.position.set(0, 0.08, -24.5 + bp * 0.5);
-      plank.castShadow = true;
-      this._envGroup.add(plank);
+    // Drawbridge planks (south of castle gate) - individual plank construction
+    const bridgeGrp = new THREE.Group();
+    const bridgePlankColors = [0x6B4226, 0x634020, 0x5B3A1C, 0x6E4528, 0x584018, 0x6B4226, 0x604222, 0x6B4226];
+    // Individual planks with gaps between them
+    for (let bp = 0; bp < 8; bp++) {
+      const plankColor = bridgePlankColors[bp % bridgePlankColors.length];
+      // Center-worn darker color where walked on
+      const isCenter = bp >= 2 && bp <= 5;
+      const plankMat = new THREE.MeshStandardMaterial({
+        color: isCenter ? plankColor - 0x111111 : plankColor, roughness: isCenter ? 0.9 : 0.85
+      });
+      const plank = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.07, 0.3), plankMat);
+      plank.position.set(0, 0.08, -24.7 + bp * 0.38);
+      plank.castShadow = true; bridgeGrp.add(plank);
+      // Nail heads on each plank (4 per plank)
+      for (const [nx, nz] of [[-1.3, -0.1], [-1.3, 0.1], [1.3, -0.1], [1.3, 0.1]]) {
+        const nail = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.015, 6),
+          new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.7, roughness: 0.3 }));
+        nail.position.set(nx, 0.125, -24.7 + bp * 0.38 + nz); bridgeGrp.add(nail);
+      }
     }
-    // Bridge chains
+    // Metal hinges at castle end (2 large hinges)
+    const hingeMat = new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.7, roughness: 0.3 });
+    for (const hx of [-1.0, 1.0]) {
+      const hingePlate = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.04, 0.15), hingeMat);
+      hingePlate.position.set(hx, 0.1, -24.8); bridgeGrp.add(hingePlate);
+      const hingePin = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.18, 8), hingeMat);
+      hingePin.rotation.z = Math.PI / 2;
+      hingePin.position.set(hx, 0.1, -24.9); bridgeGrp.add(hingePin);
+      for (let hk = 0; hk < 3; hk++) {
+        const knuckle = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.04, 8), hingeMat);
+        knuckle.rotation.z = Math.PI / 2;
+        knuckle.position.set(hx - 0.06 + hk * 0.06, 0.1, -24.9); bridgeGrp.add(knuckle);
+      }
+    }
+    // Side support beams running lengthwise under planks
+    for (const bx of [-1.4, 1.4]) {
+      const supportBeam = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.06, 3.2),
+        new THREE.MeshStandardMaterial({ color: 0x5B3A1C, roughness: 0.85 }));
+      supportBeam.position.set(bx, 0.03, -23.6); bridgeGrp.add(supportBeam);
+    }
+    this._envGroup.add(bridgeGrp);
+    // Bridge chains with torus links
     const chainMtl = new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.7, roughness: 0.3 });
     for (const cx of [-1.6, 1.6]) {
-      const ch = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 3.5, 17), chainMtl);
+      const ch = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 3.5, 8), chainMtl);
       ch.rotation.x = Math.PI * 0.35;
       ch.position.set(cx, 4, -24);
       this._envGroup.add(ch);
-      // Chain link detail - small torus rings along chain length
-      for (let cl = 0; cl < 6; cl++) {
-        const chainLink = new THREE.Mesh(new THREE.TorusGeometry(0.035, 0.008, 8, 10), chainMtl);
-        const clT = cl / 5;
-        chainLink.position.set(cx, 2 + clT * 3, -24 + clT * 1.2);
+      // Chain link detail - torus rings along chain length
+      for (let cl = 0; cl < 10; cl++) {
+        const chainLink = new THREE.Mesh(new THREE.TorusGeometry(0.03, 0.007, 6, 8), chainMtl);
+        const clT = cl / 9;
+        chainLink.position.set(cx, 1.8 + clT * 3.5, -24 + clT * 1.4);
         chainLink.rotation.x = cl % 2 === 0 ? 0 : Math.PI / 2;
+        chainLink.rotation.y = (Math.random() - 0.5) * 0.15;
         this._envGroup.add(chainLink);
       }
-      // Chain mount bracket on wall
-      const chainBracket = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.08), chainMtl);
+      // Chain mount bracket on wall (with bolts)
+      const chainBracket = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 0.1), chainMtl);
       chainBracket.position.set(cx, 5.5, -24.5);
       this._envGroup.add(chainBracket);
+      for (const [bbx, bby] of [[0.05, 0.05], [-0.05, 0.05], [0.05, -0.05], [-0.05, -0.05]]) {
+        const bolt = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.04, 6), chainMtl);
+        bolt.rotation.x = Math.PI / 2;
+        bolt.position.set(cx + bbx, 5.5 + bby, -24.46);
+        this._envGroup.add(bolt);
+      }
     }
 
     // ═══════════════════════════════════════════════
@@ -5275,81 +6207,381 @@ export class DiabloRenderer {
     // ═══════════════════════════════════════════════
     // TRAINING GROUNDS (southeast, x=15, z=-15)
     // ═══════════════════════════════════════════════
-    // Practice dummies
+    // Practice dummies (detailed)
     for (let di = 0; di < 3; di++) {
       const dummyGroup = new THREE.Group();
-      const dPole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 2.0, 23),
-        new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.85 }));
+      const dWoodMat = new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.85 });
+      const dStrawMat = new THREE.MeshStandardMaterial({ color: 0xccaa44, roughness: 0.9 });
+      const dStrawDarkMat = new THREE.MeshStandardMaterial({ color: 0xb89930, roughness: 0.92 });
+
+      // Wooden base plate
+      const dBasePlate = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.32, 0.06, 20), dWoodMat);
+      dBasePlate.position.y = 0.03;
+      dummyGroup.add(dBasePlate);
+
+      // Main pole
+      const dPole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 2.0, 23), dWoodMat);
       dPole.position.y = 1.0;
       dummyGroup.add(dPole);
+
       // Cross arm
-      const dArm = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.0, 20),
-        new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.85 }));
+      const dArm = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.0, 20), dWoodMat);
       dArm.rotation.z = Math.PI / 2;
       dArm.position.y = 1.6;
       dummyGroup.add(dArm);
-      // Straw body
-      const dBody = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.15, 0.6, 27),
-        new THREE.MeshStandardMaterial({ color: 0xccaa44, roughness: 0.9 }));
+
+      // Straw body (main)
+      const dBody = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.15, 0.6, 27), dStrawMat);
       dBody.position.y = 1.3;
       dummyGroup.add(dBody);
-      // Straw head
-      const dHead = new THREE.Mesh(new THREE.SphereGeometry(0.15, 31, 20),
-        new THREE.MeshStandardMaterial({ color: 0xccaa44, roughness: 0.9 }));
+
+      // Visible straw bundles on body
+      for (let sb = 0; sb < 6; sb++) {
+        const bAngle = (sb / 6) * Math.PI * 2;
+        const bundle = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.03, 0.55, 8),
+          sb % 2 === 0 ? dStrawMat : dStrawDarkMat);
+        bundle.position.set(Math.cos(bAngle) * 0.15, 1.3, Math.sin(bAngle) * 0.15);
+        dummyGroup.add(bundle);
+      }
+
+      // Rope bindings around body (3 bands)
+      const dRopeMat = new THREE.MeshStandardMaterial({ color: 0x8B7355, roughness: 0.9 });
+      for (const ry of [1.15, 1.3, 1.45]) {
+        const ropeRing = new THREE.Mesh(new THREE.TorusGeometry(0.19, 0.012, 8, 20), dRopeMat);
+        ropeRing.rotation.x = Math.PI / 2;
+        ropeRing.position.y = ry;
+        dummyGroup.add(ropeRing);
+      }
+
+      // Leather patches on body
+      const dLeatherMat = new THREE.MeshStandardMaterial({ color: 0x5C4033, roughness: 0.75 });
+      for (let lp = 0; lp < 2; lp++) {
+        const patch = new THREE.Mesh(new THREE.PlaneGeometry(0.1, 0.08), dLeatherMat);
+        patch.position.set(lp === 0 ? 0.19 : -0.17, 1.25 + lp * 0.15, lp === 0 ? 0.05 : -0.08);
+        patch.rotation.y = lp * 1.5;
+        dummyGroup.add(patch);
+      }
+
+      // Arm stubs made of straw (on cross arm ends)
+      for (const ax of [-0.45, 0.45]) {
+        const armStub = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.04, 0.15, 12), dStrawMat);
+        armStub.position.set(ax, 1.55, 0);
+        dummyGroup.add(armStub);
+        // Straw wisps at arm ends
+        for (let w = 0; w < 3; w++) {
+          const wisp = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.003, 0.08, 6), dStrawDarkMat);
+          wisp.position.set(ax + (Math.random() - 0.5) * 0.04, 1.48, (Math.random() - 0.5) * 0.04);
+          wisp.rotation.z = (Math.random() - 0.5) * 0.6;
+          dummyGroup.add(wisp);
+        }
+      }
+
+      // Straw head (sack)
+      const dSackMat = new THREE.MeshStandardMaterial({ color: 0xc4a44a, roughness: 0.9 });
+      const dHead = new THREE.Mesh(new THREE.SphereGeometry(0.15, 31, 20), dSackMat);
       dHead.position.y = 1.85;
       dummyGroup.add(dHead);
-      // Shield target on some
-      if (di === 1) {
-        const shield = new THREE.Mesh(new THREE.CircleGeometry(0.25, 27),
-          new THREE.MeshStandardMaterial({ color: 0xcc3333, roughness: 0.6, side: THREE.DoubleSide }));
-        shield.position.set(0, 1.3, 0.2);
-        dummyGroup.add(shield);
-        const innerRing = new THREE.Mesh(new THREE.RingGeometry(0.08, 0.12, 16),
-          new THREE.MeshStandardMaterial({ color: 0xffffff, side: THREE.DoubleSide }));
-        innerRing.position.set(0, 1.3, 0.21);
-        dummyGroup.add(innerRing);
+
+      // Rough face drawn on head sack
+      const dFaceMat = new THREE.MeshStandardMaterial({ color: 0x3a2a10, roughness: 0.9, side: THREE.DoubleSide });
+      // Eyes
+      for (const ex of [-0.045, 0.045]) {
+        const eye = new THREE.Mesh(new THREE.CircleGeometry(0.02, 8), dFaceMat);
+        eye.position.set(ex, 1.88, 0.145);
+        dummyGroup.add(eye);
       }
+      // Mouth
+      const dMouth = new THREE.Mesh(new THREE.PlaneGeometry(0.06, 0.01), dFaceMat);
+      dMouth.position.set(0, 1.82, 0.147);
+      dummyGroup.add(dMouth);
+
+      // Straw wisps from head top
+      for (let sw = 0; sw < 4; sw++) {
+        const headWisp = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.002, 0.08, 6), dStrawDarkMat);
+        headWisp.position.set((Math.random() - 0.5) * 0.06, 2.0, (Math.random() - 0.5) * 0.06);
+        headWisp.rotation.x = (Math.random() - 0.5) * 0.5;
+        headWisp.rotation.z = (Math.random() - 0.5) * 0.5;
+        dummyGroup.add(headWisp);
+      }
+
+      // Wear marks / cut lines from training
+      const dCutMat = new THREE.MeshStandardMaterial({ color: 0x3a2a10, roughness: 0.95, side: THREE.DoubleSide });
+      for (let cm = 0; cm < 3; cm++) {
+        const cut = new THREE.Mesh(new THREE.PlaneGeometry(0.12, 0.008), dCutMat);
+        const cAngle = Math.random() * Math.PI * 2;
+        cut.position.set(Math.cos(cAngle) * 0.18, 1.15 + cm * 0.12, Math.sin(cAngle) * 0.18);
+        cut.rotation.y = cAngle + Math.PI / 2;
+        cut.rotation.z = (Math.random() - 0.5) * 0.6;
+        dummyGroup.add(cut);
+      }
+
+      // Shield target on middle dummy (more detailed)
+      if (di === 1) {
+        // Shield base (wooden round)
+        const dShieldWood = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.03, 24),
+          new THREE.MeshStandardMaterial({ color: 0x8B6914, roughness: 0.7 }));
+        dShieldWood.rotation.x = Math.PI / 2;
+        dShieldWood.position.set(0, 1.3, 0.19);
+        dummyGroup.add(dShieldWood);
+        // Painted rings on shield
+        const sRingColors = [0xcc3333, 0xffffff, 0x3344aa, 0xcc3333];
+        for (let sr = 0; sr < 4; sr++) {
+          const sRing = new THREE.Mesh(new THREE.RingGeometry(0.04 + sr * 0.05, 0.08 + sr * 0.05, 20),
+            new THREE.MeshStandardMaterial({ color: sRingColors[sr], side: THREE.DoubleSide }));
+          sRing.position.set(0, 1.3, 0.206);
+          dummyGroup.add(sRing);
+        }
+        // Shield boss (center metal bump)
+        const dBoss = new THREE.Mesh(new THREE.SphereGeometry(0.035, 12, 10),
+          new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.6, roughness: 0.3 }));
+        dBoss.position.set(0, 1.3, 0.22);
+        dummyGroup.add(dBoss);
+        // Shield rim (metal edge)
+        const dShieldRim = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.012, 8, 24),
+          new THREE.MeshStandardMaterial({ color: 0x777777, metalness: 0.5, roughness: 0.4 }));
+        dShieldRim.position.set(0, 1.3, 0.2);
+        dummyGroup.add(dShieldRim);
+      }
+
       dummyGroup.position.set(14 + di * 1.5, 0, -15);
+      dummyGroup.castShadow = true;
       this._envGroup.add(dummyGroup);
     }
-    // Archery targets
+
+    // Archery targets (detailed)
     for (let ai = 0; ai < 2; ai++) {
       const targetGroup = new THREE.Group();
-      const backboard = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.2, 1.2),
-        new THREE.MeshStandardMaterial({ color: 0xccaa44, roughness: 0.9 }));
-      backboard.position.y = 0.9;
-      targetGroup.add(backboard);
-      // Target rings
-      const ringColors = [0xcc2222, 0xffffff, 0xcc2222, 0xffcc00];
-      for (let ri = 0; ri < 4; ri++) {
-        const ring = new THREE.Mesh(new THREE.RingGeometry(0.1 + ri * 0.1, 0.2 + ri * 0.1, 27),
-          new THREE.MeshStandardMaterial({ color: ringColors[ri], side: THREE.DoubleSide }));
+      const tWoodMat = new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.85 });
+      const tHayMat = new THREE.MeshStandardMaterial({ color: 0xccaa44, roughness: 0.9 });
+
+      // Thick straw target body (cylindrical with hay look)
+      const targetBody = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.15, 32), tHayMat);
+      targetBody.rotation.z = Math.PI / 2;
+      targetBody.position.set(0, 0.9, 0);
+      targetGroup.add(targetBody);
+
+      // Straw construction detail (visible bundles around edge)
+      for (let sb = 0; sb < 12; sb++) {
+        const bAngle = (sb / 12) * Math.PI * 2;
+        const strawBundle = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.16, 8),
+          new THREE.MeshStandardMaterial({ color: sb % 2 === 0 ? 0xbbaa3a : 0xccaa44, roughness: 0.92 }));
+        strawBundle.rotation.z = Math.PI / 2;
+        strawBundle.position.set(0, 0.9 + Math.cos(bAngle) * 0.5, Math.sin(bAngle) * 0.5);
+        targetGroup.add(strawBundle);
+      }
+
+      // Concentric target rings (proper bullseye colors)
+      const tRingDefs: [number, number, number][] = [
+        [0, 0.06, 0xcc2222],    // Red bullseye center
+        [0.06, 0.12, 0xffffff], // White
+        [0.12, 0.2, 0x2244aa],  // Blue
+        [0.2, 0.32, 0x222222],  // Black
+        [0.32, 0.48, 0xffffff], // White outer
+      ];
+      for (const [rInner, rOuter, rColor] of tRingDefs) {
+        const ring = new THREE.Mesh(new THREE.RingGeometry(rInner, rOuter, 32),
+          new THREE.MeshStandardMaterial({ color: rColor, side: THREE.DoubleSide, roughness: 0.7 }));
         ring.rotation.y = Math.PI / 2;
-        ring.position.set(0.05, 0.9, 0);
+        ring.position.set(0.08, 0.9, 0);
         targetGroup.add(ring);
       }
-      // Support legs
+
+      // Arrows stuck in the target
+      const tArrowMat = new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.8 });
+      const tArrowTipMat = new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.7, roughness: 0.3 });
+      const tArrowPositions: [number, number, number][] = [
+        [0.02, 0.95, 0.08],
+        [-0.03, 0.82, -0.12],
+        [0.01, 1.05, 0.05],
+      ];
+      for (const [aax, aay, aaz] of tArrowPositions) {
+        // Arrow shaft
+        const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.4, 8), tArrowMat);
+        shaft.rotation.z = Math.PI / 2;
+        shaft.position.set(aax + 0.25, aay, aaz);
+        targetGroup.add(shaft);
+        // Arrow tip (cone)
+        const tip = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.04, 8), tArrowTipMat);
+        tip.rotation.z = -Math.PI / 2;
+        tip.position.set(aax + 0.06, aay, aaz);
+        targetGroup.add(tip);
+        // Arrow fletching
+        for (let f = 0; f < 3; f++) {
+          const fletch = new THREE.Mesh(new THREE.PlaneGeometry(0.06, 0.015),
+            new THREE.MeshStandardMaterial({ color: 0xcc4444, roughness: 0.6, side: THREE.DoubleSide }));
+          fletch.rotation.y = (f / 3) * Math.PI;
+          fletch.rotation.z = Math.PI / 2;
+          fletch.position.set(aax + 0.42, aay, aaz);
+          targetGroup.add(fletch);
+        }
+      }
+
+      // Wooden frame / easel legs with cross-bracing
       for (const lz of [-0.4, 0.4]) {
-        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.4, 20),
-          new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.85 }));
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.5, 12), tWoodMat);
         leg.rotation.x = (lz > 0 ? -1 : 1) * 0.2;
-        leg.position.set(-0.2, 0.6, lz);
+        leg.position.set(-0.2, 0.65, lz);
+        leg.castShadow = true;
         targetGroup.add(leg);
       }
+      // Back support leg
+      const tBackLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 1.6, 12), tWoodMat);
+      tBackLeg.rotation.x = 0.35;
+      tBackLeg.position.set(-0.45, 0.6, 0);
+      targetGroup.add(tBackLeg);
+      // Cross brace between front legs
+      const tCrossBrace = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.8, 10), tWoodMat);
+      tCrossBrace.position.set(-0.2, 0.35, 0);
+      targetGroup.add(tCrossBrace);
+      // Top rail connecting legs
+      const tTopRail = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.85, 10), tWoodMat);
+      tTopRail.position.set(-0.1, 1.35, 0);
+      targetGroup.add(tTopRail);
+
+      // Ground wear marks beneath
+      const tGroundWear = new THREE.Mesh(new THREE.CircleGeometry(0.6, 16),
+        new THREE.MeshStandardMaterial({ color: 0x554433, roughness: 0.95, side: THREE.DoubleSide }));
+      tGroundWear.rotation.x = -Math.PI / 2;
+      tGroundWear.position.set(0, 0.01, 0);
+      targetGroup.add(tGroundWear);
+
       targetGroup.position.set(18, 0, -13 + ai * 3);
       targetGroup.rotation.y = -Math.PI / 2;
       this._envGroup.add(targetGroup);
     }
-    // Weapon racks at training ground
-    const tRack = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.2, 2), new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.85 }));
-    tRack.position.set(13, 0.6, -16);
-    this._envGroup.add(tRack);
-    for (let tw = 0; tw < 4; tw++) {
-      const tWeapon = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.9, 0.04),
-        new THREE.MeshStandardMaterial({ color: 0xaaaacc, metalness: 0.7, roughness: 0.2 }));
-      tWeapon.position.set(13.05, 0.7, -16.7 + tw * 0.45);
-      tWeapon.rotation.z = 0.08;
-      this._envGroup.add(tWeapon);
+
+    // Weapon racks at training ground (detailed)
+    {
+      const rackGroup = new THREE.Group();
+      const rWoodMat = new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.85 });
+      const rDarkWoodMat = new THREE.MeshStandardMaterial({ color: 0x5A3520, roughness: 0.9 });
+      const rMetalMat = new THREE.MeshStandardMaterial({ color: 0x888899, metalness: 0.7, roughness: 0.3 });
+      const rSteelMat = new THREE.MeshStandardMaterial({ color: 0xaaaacc, metalness: 0.7, roughness: 0.2 });
+
+      // Vertical frame posts (left and right)
+      for (const pz of [-0.9, 0.9]) {
+        const rPost = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 1.4, 12), rWoodMat);
+        rPost.position.set(0, 0.7, pz);
+        rackGroup.add(rPost);
+        // Post cap
+        const rCap = new THREE.Mesh(new THREE.SphereGeometry(0.055, 10, 8), rDarkWoodMat);
+        rCap.position.set(0, 1.4, pz);
+        rackGroup.add(rCap);
+      }
+
+      // Top rail (horizontal)
+      const rTopRail = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 1.8, 12), rWoodMat);
+      rTopRail.rotation.x = Math.PI / 2;
+      rTopRail.position.set(0, 1.2, 0);
+      rackGroup.add(rTopRail);
+
+      // Bottom rail
+      const rBotRail = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.8, 12), rWoodMat);
+      rBotRail.rotation.x = Math.PI / 2;
+      rBotRail.position.set(0, 0.2, 0);
+      rackGroup.add(rBotRail);
+
+      // Carved notches on top rail (V-shaped holders)
+      for (let ni = 0; ni < 5; ni++) {
+        const nz = -0.7 + ni * 0.35;
+        for (const nx of [-0.03, 0.03]) {
+          const notch = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.08, 0.015), rDarkWoodMat);
+          notch.position.set(nx, 1.25, nz);
+          notch.rotation.z = nx < 0 ? 0.3 : -0.3;
+          rackGroup.add(notch);
+        }
+      }
+
+      // Metal brackets at joints
+      for (const bz of [-0.9, 0.9]) {
+        for (const by of [0.2, 1.2]) {
+          const bracket = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.06, 0.06), rMetalMat);
+          bracket.position.set(0, by, bz);
+          rackGroup.add(bracket);
+          const bolt = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.02, 8), rMetalMat);
+          bolt.rotation.z = Math.PI / 2;
+          bolt.position.set(0.04, by, bz);
+          rackGroup.add(bolt);
+        }
+      }
+
+      // Wood grain detail lines on posts
+      for (const pz of [-0.9, 0.9]) {
+        for (let gl = 0; gl < 3; gl++) {
+          const grain = new THREE.Mesh(new THREE.PlaneGeometry(0.003, 0.8),
+            new THREE.MeshStandardMaterial({ color: 0x5A3520, roughness: 0.9, side: THREE.DoubleSide }));
+          const ga = (gl / 3) * Math.PI * 2;
+          grain.position.set(Math.cos(ga) * 0.05, 0.7, pz + Math.sin(ga) * 0.05);
+          grain.rotation.y = ga;
+          rackGroup.add(grain);
+        }
+      }
+
+      // Weapon 1: Sword (blade + guard + handle + pommel)
+      const rSword1Blade = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.7, 0.04), rSteelMat);
+      rSword1Blade.position.set(0.04, 0.75, -0.7);
+      rSword1Blade.rotation.z = 0.08;
+      rackGroup.add(rSword1Blade);
+      const rSword1Guard = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.02, 0.12), rMetalMat);
+      rSword1Guard.position.set(0.04, 0.38, -0.7);
+      rackGroup.add(rSword1Guard);
+      const rSword1Handle = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.15, 8),
+        new THREE.MeshStandardMaterial({ color: 0x5C4033, roughness: 0.8 }));
+      rSword1Handle.position.set(0.04, 0.27, -0.7);
+      rackGroup.add(rSword1Handle);
+      const rSword1Pommel = new THREE.Mesh(new THREE.SphereGeometry(0.02, 8, 6), rMetalMat);
+      rSword1Pommel.position.set(0.04, 0.19, -0.7);
+      rackGroup.add(rSword1Pommel);
+
+      // Weapon 2: Broader sword
+      const rSword2Blade = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.65, 0.055), rSteelMat);
+      rSword2Blade.position.set(0.04, 0.73, -0.35);
+      rSword2Blade.rotation.z = 0.06;
+      rackGroup.add(rSword2Blade);
+      const rSword2Guard = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.025, 0.14), rMetalMat);
+      rSword2Guard.position.set(0.04, 0.38, -0.35);
+      rackGroup.add(rSword2Guard);
+      const rSword2Handle = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.15, 8),
+        new THREE.MeshStandardMaterial({ color: 0x3a2a18, roughness: 0.8 }));
+      rSword2Handle.position.set(0.04, 0.27, -0.35);
+      rackGroup.add(rSword2Handle);
+
+      // Weapon 3: Spear (long shaft + tip)
+      const rSpearShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 1.6, 10), rWoodMat);
+      rSpearShaft.position.set(0.04, 0.8, 0.0);
+      rackGroup.add(rSpearShaft);
+      const rSpearTip = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.1, 8), rSteelMat);
+      rSpearTip.position.set(0.04, 1.65, 0.0);
+      rackGroup.add(rSpearTip);
+
+      // Weapon 4: Another spear (darker wood)
+      const rSpear2Shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 1.5, 10), rDarkWoodMat);
+      rSpear2Shaft.position.set(0.04, 0.75, 0.35);
+      rackGroup.add(rSpear2Shaft);
+      const rSpear2Tip = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.12, 8), rSteelMat);
+      rSpear2Tip.position.set(0.04, 1.56, 0.35);
+      rackGroup.add(rSpear2Tip);
+
+      // Weapon 5: Mace (shaft + spiked head)
+      const rMaceShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.7, 10),
+        new THREE.MeshStandardMaterial({ color: 0x5C4033, roughness: 0.8 }));
+      rMaceShaft.position.set(0.04, 0.55, 0.7);
+      rackGroup.add(rMaceShaft);
+      const rMaceHead = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 10),
+        new THREE.MeshStandardMaterial({ color: 0x666677, metalness: 0.6, roughness: 0.3 }));
+      rMaceHead.position.set(0.04, 0.93, 0.7);
+      rackGroup.add(rMaceHead);
+      // Mace flanges
+      for (let mf = 0; mf < 4; mf++) {
+        const flange = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.04, 0.08), rMetalMat);
+        const mAngle = (mf / 4) * Math.PI * 2;
+        flange.position.set(0.04 + Math.cos(mAngle) * 0.04, 0.93, 0.7 + Math.sin(mAngle) * 0.04);
+        flange.rotation.y = mAngle;
+        rackGroup.add(flange);
+      }
+
+      rackGroup.position.set(13, 0, -16);
+      this._envGroup.add(rackGroup);
     }
 
     // ═══════════════════════════════════════════════
@@ -6067,22 +7299,168 @@ export class DiabloRenderer {
 
     // ── Stable area ──
     const stableGrp = new THREE.Group();
-    // Stable structure
-    const stableRoof = new THREE.Mesh(new THREE.BoxGeometry(6, 0.15, 4), new THREE.MeshStandardMaterial({ color: 0x664422, roughness: 0.8 }));
-    stableRoof.position.set(0, 2.8, 0); stableRoof.rotation.z = 0.08; stableGrp.add(stableRoof);
-    // Support posts
+    const stableWoodMat = new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.85 });
+    const stableWoodDarkMat = new THREE.MeshStandardMaterial({ color: 0x553318, roughness: 0.9 });
+    // Support posts with wider bases
     for (const [px, pz] of [[-2.5, -1.5], [2.5, -1.5], [-2.5, 1.5], [2.5, 1.5]]) {
-      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 2.8, 44), new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.85 }));
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.14, 2.8, 8), stableWoodMat);
       post.position.set(px, 1.4, pz); stableGrp.add(post);
+      // Post base plate
+      const postBase = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.06, 0.35), stableWoodDarkMat);
+      postBase.position.set(px, 0.03, pz); stableGrp.add(postBase);
     }
-    // Hay on ground
-    for (let h = 0; h < 6; h++) {
-      const hay = new THREE.Mesh(new THREE.BoxGeometry(0.6 + Math.random() * 0.4, 0.1, 0.4 + Math.random() * 0.3), new THREE.MeshStandardMaterial({ color: 0xccaa44, roughness: 0.95 }));
-      hay.position.set(-2 + h * 0.8, 0.05, (Math.random() - 0.5) * 2); stableGrp.add(hay);
+    // Roof made of overlapping wooden planks (thatch style)
+    for (let rp = 0; rp < 8; rp++) {
+      const plankW = 0.9 + Math.random() * 0.2;
+      const roofPlank = new THREE.Mesh(new THREE.PlaneGeometry(plankW, 4.2),
+        new THREE.MeshStandardMaterial({ color: 0x664422 + Math.floor(Math.random() * 0x111100), roughness: 0.85, side: THREE.DoubleSide }));
+      roofPlank.position.set(-2.8 + rp * 0.78, 2.82 + Math.random() * 0.02, 0);
+      roofPlank.rotation.x = Math.PI / 2; roofPlank.rotation.z = 0.08;
+      stableGrp.add(roofPlank);
+    }
+    // Roof edge trim
+    const roofEdgeFront = new THREE.Mesh(new THREE.BoxGeometry(6.2, 0.08, 0.12), stableWoodDarkMat);
+    roofEdgeFront.position.set(0, 2.75, 2.05); roofEdgeFront.rotation.z = 0.08; stableGrp.add(roofEdgeFront);
+    const roofEdgeBack = new THREE.Mesh(new THREE.BoxGeometry(6.2, 0.08, 0.12), stableWoodDarkMat);
+    roofEdgeBack.position.set(0, 2.75, -2.05); roofEdgeBack.rotation.z = 0.08; stableGrp.add(roofEdgeBack);
+    // Visible roof beams/rafters underneath
+    for (let rb = 0; rb < 4; rb++) {
+      const rafter = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.12, 4), stableWoodDarkMat);
+      rafter.position.set(-2.2 + rb * 1.5, 2.7, 0); rafter.rotation.z = 0.08; stableGrp.add(rafter);
+    }
+    // Main ridge beam
+    const ridgeBeam = new THREE.Mesh(new THREE.BoxGeometry(6, 0.1, 0.1), stableWoodDarkMat);
+    ridgeBeam.position.set(0, 2.72, 0); ridgeBeam.rotation.z = 0.08; stableGrp.add(ridgeBeam);
+    // Stall dividers (2 inside)
+    for (const dz of [-0.5, 0.5]) {
+      const divider = new THREE.Mesh(new THREE.BoxGeometry(4.5, 1.4, 0.06), stableWoodMat);
+      divider.position.set(0, 0.7, dz); stableGrp.add(divider);
+      const divRail = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 4.5, 8), stableWoodDarkMat);
+      divRail.rotation.z = Math.PI / 2; divRail.position.set(0, 1.42, dz); stableGrp.add(divRail);
+    }
+    // Feeding trough
+    const troughOuter = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.35, 0.5), stableWoodDarkMat);
+    troughOuter.position.set(-1.2, 0.5, -1.0); stableGrp.add(troughOuter);
+    const troughInner = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.25, 0.35),
+      new THREE.MeshStandardMaterial({ color: 0x443322, roughness: 0.9 }));
+    troughInner.position.set(-1.2, 0.56, -1.0); stableGrp.add(troughInner);
+    const troughHay = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.1, 0.3),
+      new THREE.MeshStandardMaterial({ color: 0xccaa44, roughness: 0.95 }));
+    troughHay.position.set(-1.2, 0.65, -1.0); stableGrp.add(troughHay);
+    for (const tx of [-1.8, -0.6]) {
+      const tLeg = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.5, 0.08), stableWoodDarkMat);
+      tLeg.position.set(tx, 0.25, -1.0); stableGrp.add(tLeg);
+    }
+    // Hay bales and loose hay on ground (detailed)
+    for (let h = 0; h < 8; h++) {
+      const hayGroup = new THREE.Group();
+      const hayDark = new THREE.MeshStandardMaterial({ color: 0xb89930, roughness: 0.95 });
+      const hayMid = new THREE.MeshStandardMaterial({ color: 0xccaa44, roughness: 0.95 });
+      const hayLight = new THREE.MeshStandardMaterial({ color: 0xddbb55, roughness: 0.95 });
+      const hayMats = [hayDark, hayMid, hayLight];
+      if (h < 4) {
+        // Round bales (cylinder on side)
+        const baleGeo = new THREE.CylinderGeometry(0.18, 0.18, 0.3, 10);
+        const bale = new THREE.Mesh(baleGeo, hayMats[h % 3]);
+        bale.rotation.z = Math.PI / 2;
+        bale.castShadow = true; hayGroup.add(bale);
+        // Twine wrapping (2 bands around the bale)
+        const twineMat = new THREE.MeshStandardMaterial({ color: 0x8B7355, roughness: 0.85 });
+        for (const tw of [-0.08, 0.08]) {
+          const twineGeo = new THREE.TorusGeometry(0.18, 0.007, 6, 14);
+          const twine = new THREE.Mesh(twineGeo, twineMat);
+          twine.rotation.y = Math.PI / 2;
+          twine.position.x = tw; hayGroup.add(twine);
+        }
+        // Straw pieces sticking out (thin cylinders)
+        for (let si = 0; si < 8; si++) {
+          const strawGeo = new THREE.CylinderGeometry(0.004, 0.002, 0.07 + Math.random() * 0.05, 3);
+          const straw = new THREE.Mesh(strawGeo, hayMats[si % 3]);
+          const angle = Math.random() * Math.PI * 2;
+          straw.position.set(
+            (Math.random() - 0.5) * 0.25,
+            Math.cos(angle) * 0.18,
+            Math.sin(angle) * 0.18
+          );
+          straw.rotation.set(Math.random() * 0.8, 0, Math.random() * 0.8);
+          hayGroup.add(straw);
+        }
+      } else {
+        // Rectangular bales with rounded edges
+        const rectGeo = new THREE.BoxGeometry(0.45, 0.12, 0.3);
+        const rect = new THREE.Mesh(rectGeo, hayMats[h % 3]);
+        rect.castShadow = true; hayGroup.add(rect);
+        // Rounded edge pieces on long edges
+        for (const ez of [-0.15, 0.15]) {
+          const edgeGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.45, 6);
+          const edge = new THREE.Mesh(edgeGeo, hayMats[(h + 1) % 3]);
+          edge.rotation.z = Math.PI / 2;
+          edge.position.set(0, 0.06, ez); hayGroup.add(edge);
+        }
+        // Twine binding (2 bands)
+        const twineMat = new THREE.MeshStandardMaterial({ color: 0x8B7355, roughness: 0.85 });
+        for (const tx of [-0.1, 0.1]) {
+          const bandV = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.13, 0.31), twineMat);
+          bandV.position.set(tx, 0, 0); hayGroup.add(bandV);
+          const bandT = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.008, 0.31), twineMat);
+          bandT.position.set(tx, 0.061, 0); hayGroup.add(bandT);
+        }
+        // Straw pieces sticking out
+        for (let si = 0; si < 6; si++) {
+          const strawGeo = new THREE.CylinderGeometry(0.004, 0.002, 0.05 + Math.random() * 0.04, 3);
+          const straw = new THREE.Mesh(strawGeo, hayMats[si % 3]);
+          straw.position.set(
+            (Math.random() - 0.5) * 0.4,
+            0.06,
+            (Math.random() - 0.5) * 0.25
+          );
+          straw.rotation.set(Math.random() * 0.5 - 0.25, 0, Math.random() * 0.5 - 0.25);
+          hayGroup.add(straw);
+        }
+      }
+      // Scattered loose hay on the ground around each bale
+      for (let li = 0; li < 5; li++) {
+        const looseGeo = new THREE.CylinderGeometry(0.003, 0.001, 0.04 + Math.random() * 0.03, 3);
+        const loose = new THREE.Mesh(looseGeo, hayMats[li % 3]);
+        loose.position.set(
+          (Math.random() - 0.5) * 0.5,
+          -0.03,
+          (Math.random() - 0.5) * 0.4
+        );
+        loose.rotation.set(Math.PI / 2 + Math.random() * 0.3, 0, Math.random() * Math.PI);
+        hayGroup.add(loose);
+      }
+      // Color variation - subtle random tint per group
+      hayGroup.position.set(-2 + h * 0.65, 0.12, (Math.random() - 0.5) * 2.5);
+      hayGroup.rotation.y = Math.random() * 0.3;
+      stableGrp.add(hayGroup);
     }
     // Hitching post
-    const hitch = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 4, 44), new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.85 }));
+    const hitch = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 4, 8), stableWoodMat);
     hitch.rotation.z = Math.PI / 2; hitch.position.set(0, 2, 2); stableGrp.add(hitch);
+    // Horseshoes hanging on posts
+    for (const [hsx, hsz] of [[-2.5, 1.5], [2.5, 1.5]]) {
+      const horseshoe = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.015, 6, 12, Math.PI * 1.3),
+        new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.6, roughness: 0.4 }));
+      horseshoe.position.set(hsx, 1.8 + Math.random() * 0.3, hsz - 0.12);
+      horseshoe.rotation.z = Math.PI; stableGrp.add(horseshoe);
+    }
+    // Saddle on rail
+    const saddleBase = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.08, 0.5),
+      new THREE.MeshStandardMaterial({ color: 0x553322, roughness: 0.7 }));
+    saddleBase.position.set(1.0, 2.08, 2.0); stableGrp.add(saddleBase);
+    const saddlePommel = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8),
+      new THREE.MeshStandardMaterial({ color: 0x553322, roughness: 0.7 }));
+    saddlePommel.position.set(1.0, 2.18, 1.78); stableGrp.add(saddlePommel);
+    const saddleCantle = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.12, 0.06),
+      new THREE.MeshStandardMaterial({ color: 0x553322, roughness: 0.7 }));
+    saddleCantle.position.set(1.0, 2.16, 2.24); stableGrp.add(saddleCantle);
+    // Bucket near entrance
+    const stableBucketMat = new THREE.MeshStandardMaterial({ color: 0x666655, metalness: 0.3, roughness: 0.6 });
+    const stableBucket = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.12, 0.25, 8), stableBucketMat);
+    stableBucket.position.set(2.8, 0.125, 1.2); stableGrp.add(stableBucket);
+    const stableBucketHandle = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.01, 6, 12, Math.PI), stableBucketMat);
+    stableBucketHandle.position.set(2.8, 0.3, 1.2); stableGrp.add(stableBucketHandle);
     // Stable light
     const stableLight = new THREE.PointLight(0xffaa44, 0.4, 8);
     stableLight.position.set(15, 2.5, 8); this._scene.add(stableLight); this._torchLights.push(stableLight);
@@ -6090,30 +7468,109 @@ export class DiabloRenderer {
 
     // ── Market fruit/vegetable stalls (4) ──
     const stallWoodMat = new THREE.MeshStandardMaterial({ color: 0x8B6914, roughness: 0.8 });
+    const stallWoodDarkMat2 = new THREE.MeshStandardMaterial({ color: 0x6B4A0A, roughness: 0.85 });
     const stallAwningColors = [0xcc3333, 0x3366cc, 0x33aa55, 0xcc9933];
+    // Faded/worn versions of awning colors
+    const stallAwningFaded = [0x993333, 0x2a5599, 0x2a8844, 0x997733];
     for (let i = 0; i < 4; i++) {
       const stall = new THREE.Group();
-      // Open-front box structure
-      const stallBack = new THREE.Mesh(new THREE.BoxGeometry(2.5, 2, 0.15), stallWoodMat);
-      stallBack.position.set(0, 1, -0.6); stall.add(stallBack);
-      for (const sx of [-1.2, 1.2]) {
-        const sidePost = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2, 8), stallWoodMat);
-        sidePost.position.set(sx, 1, 0); stall.add(sidePost);
+      // Wooden frame - four corner posts
+      for (const [cpx, cpz] of [[-1.2, -0.6], [1.2, -0.6], [-1.2, 0.6], [1.2, 0.6]]) {
+        const cornerPost = new THREE.Mesh(new THREE.BoxGeometry(0.08, 2.3, 0.08), stallWoodMat);
+        cornerPost.position.set(cpx, 1.15, cpz); stall.add(cornerPost);
       }
-      // Awning angled plane roof
-      const awning = new THREE.Mesh(new THREE.PlaneGeometry(2.8, 1.5),
-        new THREE.MeshStandardMaterial({ color: stallAwningColors[i], roughness: 0.7, side: THREE.DoubleSide }));
-      awning.position.set(0, 2.2, 0.2); awning.rotation.x = -0.4; stall.add(awning);
-      // Table box display
-      const table = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.08, 0.8), stallWoodMat);
-      table.position.set(0, 0.85, 0.2); stall.add(table);
-      // Colorful sphere produce
+      // Top beams connecting posts (front-back)
+      for (const bx of [-1.2, 1.2]) {
+        const topBeam = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 1.2), stallWoodDarkMat2);
+        topBeam.position.set(bx, 2.28, 0); stall.add(topBeam);
+      }
+      // Top beams connecting posts (left-right)
+      for (const bz of [-0.6, 0.6]) {
+        const sideBeam = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.06, 0.06), stallWoodDarkMat2);
+        sideBeam.position.set(0, 2.28, bz); stall.add(sideBeam);
+      }
+      // Back wall with plank construction
+      for (let bk = 0; bk < 5; bk++) {
+        const backPlank = new THREE.Mesh(new THREE.BoxGeometry(0.5, 2, 0.05),
+          new THREE.MeshStandardMaterial({ color: 0x8B6914 + Math.floor(Math.random() * 0x111100), roughness: 0.8 }));
+        backPlank.position.set(-1.0 + bk * 0.5, 1, -0.6); stall.add(backPlank);
+      }
+      // Awning - main fabric with draping folds (multiple angled planes)
+      const awningColor = stallAwningColors[i];
+      const awningFaded = stallAwningFaded[i];
+      const awningMain = new THREE.Mesh(new THREE.PlaneGeometry(2.8, 1.2),
+        new THREE.MeshStandardMaterial({ color: awningFaded, roughness: 0.75, side: THREE.DoubleSide }));
+      awningMain.position.set(0, 2.25, 0.15); awningMain.rotation.x = -0.35; stall.add(awningMain);
+      // Front drape fold
+      const awningDrape = new THREE.Mesh(new THREE.PlaneGeometry(2.8, 0.35),
+        new THREE.MeshStandardMaterial({ color: awningColor, roughness: 0.7, side: THREE.DoubleSide }));
+      awningDrape.position.set(0, 1.95, 0.65); awningDrape.rotation.x = -0.8; stall.add(awningDrape);
+      // Side drapes (scalloped edges)
+      for (const sdx of [-1.35, 1.35]) {
+        const sideDrape = new THREE.Mesh(new THREE.PlaneGeometry(0.15, 0.5),
+          new THREE.MeshStandardMaterial({ color: awningColor, roughness: 0.7, side: THREE.DoubleSide }));
+        sideDrape.position.set(sdx, 2.0, 0.2); sideDrape.rotation.x = -0.35; stall.add(sideDrape);
+      }
+      // Rope ties holding the awning (4 corners)
+      for (const [rx, rz] of [[-1.2, 0.5], [1.2, 0.5]]) {
+        const rope = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.4, 6),
+          new THREE.MeshStandardMaterial({ color: 0x887766, roughness: 0.9 }));
+        rope.position.set(rx, 2.1, rz); rope.rotation.z = 0.3 * Math.sign(rx); stall.add(rope);
+      }
+      // Table with visible plank construction
+      const tableFrame = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.04, 0.06), stallWoodDarkMat2);
+      tableFrame.position.set(0, 0.82, -0.1); stall.add(tableFrame);
+      const tableFrameF = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.04, 0.06), stallWoodDarkMat2);
+      tableFrameF.position.set(0, 0.82, 0.5); stall.add(tableFrameF);
+      // Individual table planks with slight color variation
+      for (let tp = 0; tp < 5; tp++) {
+        const tPlank = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.04, 0.15),
+          new THREE.MeshStandardMaterial({ color: 0x8B6914 + Math.floor(Math.random() * 0x0a0a00), roughness: 0.8 }));
+        tPlank.position.set(0, 0.86, -0.06 + tp * 0.15); stall.add(tPlank);
+      }
+      // Table legs
+      for (const [lx, lz] of [[-1.0, -0.05], [1.0, -0.05], [-1.0, 0.45], [1.0, 0.45]]) {
+        const leg = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.84, 0.06), stallWoodMat);
+        leg.position.set(lx, 0.42, lz); stall.add(leg);
+      }
+      // Varied produce: fruits (spheres), cheese blocks, bread loaves
       const produceColors = [0xff3333, 0xff8800, 0x44aa44, 0xffff33, 0xaa3300];
-      for (let p = 0; p < 6; p++) {
+      // Sphere fruits
+      for (let p = 0; p < 5; p++) {
         const fruit = new THREE.Mesh(new THREE.SphereGeometry(0.06 + Math.random() * 0.04, 8, 8),
           new THREE.MeshStandardMaterial({ color: produceColors[p % produceColors.length], roughness: 0.6 }));
-        fruit.position.set(-0.7 + p * 0.28, 0.95, 0.1 + (Math.random() - 0.5) * 0.3); stall.add(fruit);
+        fruit.position.set(-0.7 + p * 0.25, 0.95, 0.05 + (Math.random() - 0.5) * 0.2); stall.add(fruit);
       }
+      // Cheese blocks (BoxGeometry, yellow)
+      for (let cb = 0; cb < 2; cb++) {
+        const cheese = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.08, 0.1),
+          new THREE.MeshStandardMaterial({ color: 0xddcc44, roughness: 0.5 }));
+        cheese.position.set(0.5 + cb * 0.18, 0.93, 0.25 + (Math.random() - 0.5) * 0.15);
+        cheese.rotation.y = Math.random() * 0.3; stall.add(cheese);
+      }
+      // Bread loaves (CylinderGeometry, brown)
+      for (let bl = 0; bl < 2; bl++) {
+        const bread = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.18, 8),
+          new THREE.MeshStandardMaterial({ color: 0xBB8833, roughness: 0.7 }));
+        bread.rotation.z = Math.PI / 2;
+        bread.position.set(-0.3 + bl * 0.25, 0.93, 0.35); stall.add(bread);
+      }
+      // Hanging items from awning frame (sausages/dried herbs)
+      for (let hi = 0; hi < 3; hi++) {
+        const hangStr = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.3, 6),
+          new THREE.MeshStandardMaterial({ color: 0x887766, roughness: 0.9 }));
+        hangStr.position.set(-0.6 + hi * 0.6, 2.1, 0.0); stall.add(hangStr);
+        const hangItem = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.015, 0.15, 6),
+          new THREE.MeshStandardMaterial({ color: [0x993322, 0x336633, 0x884422][hi], roughness: 0.7 }));
+        hangItem.position.set(-0.6 + hi * 0.6, 1.88, 0.0); stall.add(hangItem);
+      }
+      // Price sign (small PlaneGeometry on side post)
+      const priceSign = new THREE.Mesh(new THREE.PlaneGeometry(0.25, 0.18),
+        new THREE.MeshStandardMaterial({ color: 0xddccaa, roughness: 0.6, side: THREE.DoubleSide }));
+      priceSign.position.set(1.25, 1.3, 0.6); priceSign.rotation.y = 0.1; stall.add(priceSign);
+      // Sign border
+      const signBorder = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.02, 0.02), stallWoodDarkMat2);
+      signBorder.position.set(1.25, 1.39, 0.6); stall.add(signBorder);
       const stx = -12 + i * 7 + (Math.random() - 0.5) * 2; const stz = -10 + (Math.random() - 0.5) * 4;
       stall.position.set(stx, 0, stz); stall.rotation.y = (Math.random() - 0.5) * 0.4; this._envGroup.add(stall);
     }
@@ -6493,21 +7950,138 @@ export class DiabloRenderer {
       this._envGroup.add(fEmber);
     }
 
-    // Ruined structures (8)
+    // Ruined structures (8) - brick construction, collapsed sections, scorch marks, openings
     const ruinMat = new THREE.MeshStandardMaterial({ color: 0x443322, roughness: 0.9 });
+    const ruinMatDark = new THREE.MeshStandardMaterial({ color: 0x332211, roughness: 0.95 });
+    const ruinMatScorched = new THREE.MeshStandardMaterial({ color: 0x1a1008, roughness: 1.0 });
+    const ruinMatInner = new THREE.MeshStandardMaterial({ color: 0x554433, roughness: 0.85 });
     for (let i = 0; i < 8; i++) {
       const ruinGroup = new THREE.Group();
       const wallH = 1.5 + Math.random() * 3;
-      const wall = new THREE.Mesh(new THREE.BoxGeometry(2 + Math.random() * 2, wallH, 0.3), ruinMat);
+      const wallW = 2 + Math.random() * 2;
+
+      // Main wall body (slightly recessed to allow brick overlay)
+      const wall = new THREE.Mesh(new THREE.BoxGeometry(wallW, wallH, 0.25), ruinMat);
       wall.position.y = wallH / 2;
       wall.castShadow = true;
       ruinGroup.add(wall);
-      // Broken top edge
-      const breakGeo = new THREE.BoxGeometry(0.6, 0.4, 0.35);
-      const breakMesh = new THREE.Mesh(breakGeo, ruinMat);
-      breakMesh.position.set(0.5, wallH + 0.1, 0);
-      breakMesh.rotation.z = 0.3;
-      ruinGroup.add(breakMesh);
+
+      // Individual stone block construction (brick rows with mortar gaps)
+      const brickH = 0.12;
+      const brickW = 0.25;
+      const brickMat = new THREE.MeshStandardMaterial({ color: 0x4a3828, roughness: 0.9 });
+      const mortarMat = new THREE.MeshStandardMaterial({ color: 0x3a3020, roughness: 1.0 });
+      const numRows = Math.floor(wallH / (brickH + 0.02));
+      for (let row = 0; row < Math.min(numRows, 12); row++) {
+        const rowY = row * (brickH + 0.02) + brickH / 2;
+        const offset = row % 2 === 0 ? 0 : brickW / 2;
+        const numBricks = Math.floor(wallW / (brickW + 0.02));
+        for (let b = 0; b < numBricks; b++) {
+          // Skip some bricks randomly for weathered look
+          if (Math.random() < 0.15) continue;
+          const bx = -wallW / 2 + offset + b * (brickW + 0.02) + brickW / 2;
+          if (bx > wallW / 2 - brickW / 2) continue;
+          const brick = new THREE.Mesh(new THREE.BoxGeometry(brickW, brickH, 0.04), brickMat);
+          brick.position.set(bx, rowY, 0.15);
+          ruinGroup.add(brick);
+        }
+      }
+
+      // Partially collapsed section (one side shorter)
+      const collapseX = (Math.random() > 0.5 ? 1 : -1) * wallW * 0.3;
+      const collapseH = wallH * (0.3 + Math.random() * 0.3);
+      // Jagged top edge pieces
+      for (let jt = 0; jt < 3 + Math.floor(Math.random() * 3); jt++) {
+        const jagW = 0.15 + Math.random() * 0.2;
+        const jagH = 0.1 + Math.random() * 0.25;
+        const jag = new THREE.Mesh(new THREE.BoxGeometry(jagW, jagH, 0.3), ruinMat);
+        jag.position.set(
+          collapseX + (Math.random() - 0.5) * wallW * 0.3,
+          wallH + (Math.random() - 0.5) * 0.2,
+          0
+        );
+        jag.rotation.z = (Math.random() - 0.5) * 0.4;
+        ruinGroup.add(jag);
+      }
+
+      // Fallen blocks scattered below the collapsed section
+      for (let fb = 0; fb < 4 + Math.floor(Math.random() * 4); fb++) {
+        const fbSize = 0.08 + Math.random() * 0.15;
+        const fallenBlock = new THREE.Mesh(new THREE.BoxGeometry(fbSize * 1.5, fbSize, fbSize), ruinMat);
+        fallenBlock.position.set(
+          collapseX + (Math.random() - 0.5) * 1.5,
+          fbSize / 2,
+          0.3 + Math.random() * 0.8
+        );
+        fallenBlock.rotation.set(Math.random() * 0.5, Math.random() * Math.PI, Math.random() * 0.3);
+        ruinGroup.add(fallenBlock);
+      }
+
+      // Charred/scorched marks (darker material patches on wall)
+      for (let sc = 0; sc < 2 + Math.floor(Math.random() * 3); sc++) {
+        const scorchW = 0.3 + Math.random() * 0.5;
+        const scorchH = 0.3 + Math.random() * 0.6;
+        const scorch = new THREE.Mesh(new THREE.PlaneGeometry(scorchW, scorchH), ruinMatScorched);
+        scorch.position.set(
+          (Math.random() - 0.5) * wallW * 0.7,
+          0.3 + Math.random() * (wallH - 0.6),
+          0.16
+        );
+        scorch.rotation.z = (Math.random() - 0.5) * 0.3;
+        ruinGroup.add(scorch);
+      }
+
+      // Window/doorway openings (dark recessed gaps)
+      if (wallH > 2.5 && wallW > 2.5) {
+        const openingMat = new THREE.MeshStandardMaterial({ color: 0x0a0805, roughness: 1.0 });
+        if (Math.random() > 0.5) {
+          // Window opening
+          const winW = 0.4 + Math.random() * 0.3;
+          const winH = 0.5 + Math.random() * 0.3;
+          const window2 = new THREE.Mesh(new THREE.PlaneGeometry(winW, winH), openingMat);
+          window2.position.set((Math.random() - 0.5) * wallW * 0.4, wallH * 0.65, 0.14);
+          ruinGroup.add(window2);
+          // Window frame (thin boxes)
+          const frameMat = ruinMatDark;
+          for (const fs of [-1, 1]) {
+            const vFrame = new THREE.Mesh(new THREE.BoxGeometry(0.05, winH + 0.06, 0.06), frameMat);
+            vFrame.position.set(window2.position.x + fs * (winW / 2 + 0.025), window2.position.y, 0.16);
+            ruinGroup.add(vFrame);
+          }
+          const hFrameTop = new THREE.Mesh(new THREE.BoxGeometry(winW + 0.1, 0.06, 0.06), frameMat);
+          hFrameTop.position.set(window2.position.x, window2.position.y + winH / 2 + 0.03, 0.16);
+          ruinGroup.add(hFrameTop);
+        } else {
+          // Doorway opening
+          const doorW = 0.6 + Math.random() * 0.3;
+          const doorH = 1.2 + Math.random() * 0.5;
+          const door = new THREE.Mesh(new THREE.PlaneGeometry(doorW, doorH), openingMat);
+          door.position.set((Math.random() - 0.5) * wallW * 0.3, doorH / 2, 0.14);
+          ruinGroup.add(door);
+        }
+      }
+
+      // Exposed inner wall texture (different color on broken edges)
+      const innerEdge = new THREE.Mesh(new THREE.BoxGeometry(0.2, wallH * 0.3, 0.28), ruinMatInner);
+      innerEdge.position.set(wallW / 2 - 0.05, wallH * 0.7, 0);
+      ruinGroup.add(innerEdge);
+      const innerEdge2 = new THREE.Mesh(new THREE.BoxGeometry(0.15, wallH * 0.25, 0.28), ruinMatInner);
+      innerEdge2.position.set(-wallW / 2 + 0.05, wallH * 0.8, 0);
+      ruinGroup.add(innerEdge2);
+
+      // Rubble pile at base (multiple DodecahedronGeometry)
+      for (let rp = 0; rp < 6 + Math.floor(Math.random() * 5); rp++) {
+        const rpSize = 0.05 + Math.random() * 0.12;
+        const rubble = new THREE.Mesh(new THREE.DodecahedronGeometry(rpSize, 1), ruinMat);
+        rubble.position.set(
+          (Math.random() - 0.5) * wallW * 0.8,
+          rpSize * 0.4,
+          0.2 + Math.random() * 0.6
+        );
+        rubble.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
+        ruinGroup.add(rubble);
+      }
+
       const ruX = (Math.random() - 0.5) * w * 0.7;
       const ruZ = (Math.random() - 0.5) * d * 0.7;
       ruinGroup.position.set(ruX, getTerrainHeight(ruX, ruZ, 1.6), ruZ);
@@ -7352,34 +8926,176 @@ export class DiabloRenderer {
       this._envGroup.add(rune);
     }
 
-    // Shattered pillars (12)
+    // Shattered pillars (12) - fractured tops, visible core, cracks, fallen fragments, glowing runes
     const pillarMat = new THREE.MeshStandardMaterial({ color: 0x333344, roughness: 0.8 });
+    const pillarMatCore = new THREE.MeshStandardMaterial({ color: 0x4a4a5a, roughness: 0.6 });
+    const pillarCrackMat = new THREE.MeshStandardMaterial({ color: 0x111122, roughness: 1.0 });
+    const pillarRuneGlowMat = new THREE.MeshStandardMaterial({
+      color: 0x8844ff, emissive: 0x6622cc, emissiveIntensity: 1.2,
+      transparent: true, opacity: 0.7, side: THREE.DoubleSide,
+    });
     for (let i = 0; i < 12; i++) {
       const pillarGroup = new THREE.Group();
       const pH = 2 + Math.random() * 4;
-      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, pH, 44), pillarMat);
+      const pilR = 0.3;
+      const pilRBot = 0.4;
+
+      // Main pillar body
+      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(pilR, pilRBot, pH, 44), pillarMat);
       pillar.position.y = pH / 2;
       pillar.castShadow = true;
       pillarGroup.add(pillar);
-      // Broken top
-      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.3, 0.3, 44), pillarMat);
-      cap.position.y = pH;
-      pillarGroup.add(cap);
-      // Corrupted rune stones with carved symbol detail (inset boxes on pillars)
+
+      // Fractured top with jagged edges (multiple cone/box pieces at angles)
+      for (let jg = 0; jg < 4 + Math.floor(Math.random() * 3); jg++) {
+        const jagAng = (jg / 6) * Math.PI * 2 + Math.random() * 0.5;
+        const jagH = 0.15 + Math.random() * 0.25;
+        const jagR = 0.05 + Math.random() * 0.1;
+        const jag = new THREE.Mesh(new THREE.ConeGeometry(jagR, jagH, 6), pillarMat);
+        jag.position.set(
+          Math.cos(jagAng) * pilR * 0.5,
+          pH + jagH * 0.3,
+          Math.sin(jagAng) * pilR * 0.5
+        );
+        jag.rotation.set(
+          (Math.random() - 0.5) * 0.6,
+          Math.random() * Math.PI,
+          (Math.random() - 0.5) * 0.8
+        );
+        pillarGroup.add(jag);
+      }
+      // Jagged box fragments at top
+      for (let jb = 0; jb < 2 + Math.floor(Math.random() * 2); jb++) {
+        const jagBox = new THREE.Mesh(
+          new THREE.BoxGeometry(0.08 + Math.random() * 0.1, 0.12 + Math.random() * 0.15, 0.06),
+          pillarMat
+        );
+        const jbAng = Math.random() * Math.PI * 2;
+        jagBox.position.set(
+          Math.cos(jbAng) * pilR * 0.4,
+          pH + 0.05 + Math.random() * 0.1,
+          Math.sin(jbAng) * pilR * 0.4
+        );
+        jagBox.rotation.set(Math.random() * 0.8, Math.random(), Math.random() * 0.5);
+        pillarGroup.add(jagBox);
+      }
+
+      // Visible internal structure (different colored core)
+      const core = new THREE.Mesh(new THREE.CylinderGeometry(pilR * 0.4, pilR * 0.4, 0.3, 12), pillarMatCore);
+      core.position.y = pH + 0.05;
+      pillarGroup.add(core);
+
+      // Cracks running down the surface (thin dark lines)
+      for (let cr = 0; cr < 3 + Math.floor(Math.random() * 3); cr++) {
+        const crackAng = Math.random() * Math.PI * 2;
+        const crackH = pH * (0.2 + Math.random() * 0.5);
+        const crackY = pH * 0.3 + Math.random() * pH * 0.4;
+        const crack = new THREE.Mesh(new THREE.PlaneGeometry(0.02, crackH), pillarCrackMat);
+        crack.position.set(
+          Math.cos(crackAng) * (pilR + 0.01),
+          crackY,
+          Math.sin(crackAng) * (pilR + 0.01)
+        );
+        crack.rotation.y = -crackAng + Math.PI / 2;
+        crack.rotation.z = (Math.random() - 0.5) * 0.15;
+        pillarGroup.add(crack);
+        // Branching crack
+        if (Math.random() > 0.5) {
+          const branchCrack = new THREE.Mesh(new THREE.PlaneGeometry(0.015, crackH * 0.3), pillarCrackMat);
+          branchCrack.position.set(
+            Math.cos(crackAng + 0.1) * (pilR + 0.01),
+            crackY + crackH * 0.2,
+            Math.sin(crackAng + 0.1) * (pilR + 0.01)
+          );
+          branchCrack.rotation.y = -crackAng + Math.PI / 2;
+          branchCrack.rotation.z = 0.4;
+          pillarGroup.add(branchCrack);
+        }
+      }
+
+      // Fallen pillar fragments nearby (cylinder sections on their side)
+      if (Math.random() > 0.4) {
+        const fragLen = 0.5 + Math.random() * 1.0;
+        const fragR = pilR * (0.6 + Math.random() * 0.3);
+        const frag = new THREE.Mesh(new THREE.CylinderGeometry(fragR, fragR * 1.1, fragLen, 16), pillarMat);
+        const fragAng = Math.random() * Math.PI * 2;
+        const fragDist = 0.8 + Math.random() * 1.0;
+        frag.position.set(
+          Math.cos(fragAng) * fragDist,
+          fragR * 0.8,
+          Math.sin(fragAng) * fragDist
+        );
+        frag.rotation.z = Math.PI / 2;
+        frag.rotation.y = fragAng;
+        pillarGroup.add(frag);
+        // Broken end of fragment
+        const fragEnd = new THREE.Mesh(new THREE.CircleGeometry(fragR, 10), pillarMatCore);
+        fragEnd.position.set(
+          Math.cos(fragAng) * (fragDist + fragLen / 2),
+          fragR * 0.8,
+          Math.sin(fragAng) * (fragDist + fragLen / 2)
+        );
+        fragEnd.rotation.y = fragAng + Math.PI / 2;
+        pillarGroup.add(fragEnd);
+      }
+
+      // Glowing rune inscriptions (emissive planes wrapping around)
       for (let rs = 0; rs < 3; rs++) {
         const runeStoneAng = (rs / 3) * Math.PI * 2 + Math.random() * 0.5;
         const runeStoneY = pH * 0.2 + rs * (pH * 0.25);
+        // Rune plate backing
         const runePlate = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.18, 0.04),
           new THREE.MeshStandardMaterial({ color: 0x222233, roughness: 0.6 }));
         runePlate.position.set(Math.cos(runeStoneAng) * 0.38, runeStoneY, Math.sin(runeStoneAng) * 0.38);
         runePlate.lookAt(new THREE.Vector3(0, runeStoneY, 0));
         pillarGroup.add(runePlate);
+        // Glowing carved inset
         const carvedInset = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.02),
           new THREE.MeshStandardMaterial({ color: 0x6622ff, emissive: 0x4400cc, emissiveIntensity: 0.8 }));
         carvedInset.position.set(Math.cos(runeStoneAng) * 0.4, runeStoneY, Math.sin(runeStoneAng) * 0.4);
         carvedInset.lookAt(new THREE.Vector3(0, runeStoneY, 0));
         pillarGroup.add(carvedInset);
       }
+
+      // Glowing rune bands wrapping around pillar
+      for (let rb = 0; rb < 2; rb++) {
+        const bandY = pH * 0.15 + rb * pH * 0.4;
+        const band = new THREE.Mesh(new THREE.TorusGeometry(pilR + 0.02, 0.015, 6, 24), pillarRuneGlowMat);
+        band.position.y = bandY;
+        band.rotation.x = Math.PI / 2;
+        pillarGroup.add(band);
+      }
+
+      // Base cracking with radiating fracture lines
+      const baseCrackMat = new THREE.MeshStandardMaterial({ color: 0x111122, roughness: 1.0, side: THREE.DoubleSide });
+      for (let fc = 0; fc < 5 + Math.floor(Math.random() * 3); fc++) {
+        const fracAng = (fc / 7) * Math.PI * 2 + Math.random() * 0.3;
+        const fracLen = 0.4 + Math.random() * 0.6;
+        const fracLine = new THREE.Mesh(new THREE.PlaneGeometry(fracLen, 0.02), baseCrackMat);
+        fracLine.position.set(
+          Math.cos(fracAng) * fracLen * 0.5,
+          0.01,
+          Math.sin(fracAng) * fracLen * 0.5
+        );
+        fracLine.rotation.x = -Math.PI / 2;
+        fracLine.rotation.z = -fracAng;
+        pillarGroup.add(fracLine);
+      }
+
+      // Small debris around base
+      for (let db = 0; db < 4 + Math.floor(Math.random() * 3); db++) {
+        const dbSize = 0.04 + Math.random() * 0.08;
+        const debris2 = new THREE.Mesh(new THREE.DodecahedronGeometry(dbSize, 1), pillarMat);
+        const dbAng = Math.random() * Math.PI * 2;
+        debris2.position.set(
+          Math.cos(dbAng) * (0.5 + Math.random() * 0.5),
+          dbSize * 0.4,
+          Math.sin(dbAng) * (0.5 + Math.random() * 0.5)
+        );
+        debris2.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
+        pillarGroup.add(debris2);
+      }
+
       const piX = (Math.random() - 0.5) * w * 0.8;
       const piZ = (Math.random() - 0.5) * d * 0.8;
       pillarGroup.position.set(piX, getTerrainHeight(piX, piZ, 0.5), piZ);
@@ -15783,7 +17499,7 @@ export class DiabloRenderer {
       const bounce = Math.abs(Math.sin(this._walkCycle * 2)) * 0.03;
       if (this._leftLegGroup) this._leftLegGroup.rotation.x = swing;
       if (this._rightLegGroup) this._rightLegGroup.rotation.x = -swing;
-      if (this._leftArmGroup && !state.player.isAttacking) this._leftArmGroup.rotation.x = -swing * 0.6;
+      if (this._leftArmGroup && !state.player.isAttacking && !(state.player.activeSkillAnimTimer > 0)) this._leftArmGroup.rotation.x = -swing * 0.6;
       // Subtle body bob
       this._playerGroup.position.y = state.player.y + bounce;
     } else {
@@ -15794,8 +17510,111 @@ export class DiabloRenderer {
       this._playerGroup.position.y = state.player.y;
     }
 
+    // Skill casting animation — takes priority over basic melee attack
+    if (state.player.activeSkillAnimTimer > 0 && this._weaponArmGroup) {
+      const t = state.player.activeSkillAnimTimer / 0.5; // 1.0 = just started, 0.0 = done
+      const pClass = state.player.class;
+
+      if (pClass === DiabloClass.WARRIOR) {
+        // Warrior: powerful overhead slash — raise high then slam down
+        if (t > 0.65) {
+          // Phase 1: Wind-up — raise sword overhead and lean back
+          const rise = 1.0 - (t - 0.65) / 0.35; // 0 to 1
+          this._weaponArmGroup.rotation.x = -2.4 * rise;
+          this._weaponArmGroup.rotation.z = -0.15 * rise;
+          if (this._playerGroup) this._playerGroup.rotation.x = -0.18 * rise;
+          if (this._leftArmGroup) this._leftArmGroup.rotation.x = -0.3 * rise;
+        } else if (t > 0.3) {
+          // Phase 2: Slam down — fast powerful downward strike
+          const slam = 1.0 - (t - 0.3) / 0.35; // 0 to 1
+          this._weaponArmGroup.rotation.x = -2.4 + slam * 4.2; // -2.4 to +1.8
+          this._weaponArmGroup.rotation.z = -0.15 + slam * 0.4;
+          if (this._playerGroup) this._playerGroup.rotation.x = -0.18 + slam * 0.38;
+          if (this._leftArmGroup) this._leftArmGroup.rotation.x = -0.3 + slam * 0.6;
+        } else {
+          // Phase 3: Recovery — ease back from slam
+          const recover = 1.0 - t / 0.3; // 0 to 1
+          this._weaponArmGroup.rotation.x = 1.8 * (1.0 - recover);
+          this._weaponArmGroup.rotation.z = 0.25 * (1.0 - recover);
+          if (this._playerGroup) this._playerGroup.rotation.x = 0.2 * (1.0 - recover);
+          if (this._leftArmGroup) this._leftArmGroup.rotation.x = 0.3 * (1.0 - recover);
+        }
+        // Body twist for weight
+        if (this._playerGroup) {
+          this._playerGroup.rotation.z = Math.sin(t * Math.PI * 1.5) * 0.1;
+        }
+
+      } else if (pClass === DiabloClass.MAGE) {
+        // Mage: thrust staff forward to channel, hold, then pull back
+        if (t > 0.6) {
+          // Phase 1: Thrust staff forward
+          const thrust = 1.0 - (t - 0.6) / 0.4; // 0 to 1
+          this._weaponArmGroup.rotation.x = 1.6 * thrust;
+          this._weaponArmGroup.rotation.z = 0.2 * thrust;
+          if (this._playerGroup) this._playerGroup.rotation.x = 0.12 * thrust;
+          if (this._leftArmGroup) this._leftArmGroup.rotation.x = 1.2 * thrust; // both hands forward
+        } else if (t > 0.2) {
+          // Phase 2: Hold staff extended — channeling energy, slight pulsing
+          const pulse = Math.sin((1.0 - (t - 0.2) / 0.4) * Math.PI * 3) * 0.08;
+          this._weaponArmGroup.rotation.x = 1.6 + pulse;
+          this._weaponArmGroup.rotation.z = 0.2;
+          if (this._playerGroup) this._playerGroup.rotation.x = 0.12;
+          if (this._leftArmGroup) this._leftArmGroup.rotation.x = 1.2 + pulse;
+        } else {
+          // Phase 3: Pull back and release
+          const release = 1.0 - t / 0.2; // 0 to 1
+          this._weaponArmGroup.rotation.x = 1.6 * (1.0 - release);
+          this._weaponArmGroup.rotation.z = 0.2 * (1.0 - release);
+          if (this._playerGroup) this._playerGroup.rotation.x = 0.12 * (1.0 - release);
+          if (this._leftArmGroup) this._leftArmGroup.rotation.x = 1.2 * (1.0 - release);
+        }
+        // Staff glow effect — boost emissive on weapon mesh during cast
+        if (this._weaponMesh && (this._weaponMesh.material as THREE.MeshStandardMaterial).emissiveIntensity !== undefined) {
+          const glowT = Math.sin(t * Math.PI); // peaks in the middle of the cast
+          (this._weaponMesh.material as THREE.MeshStandardMaterial).emissiveIntensity = 1.0 + glowT * 3.0;
+        }
+
+      } else if (pClass === DiabloClass.RANGER) {
+        // Ranger: draw bow back, hold at full draw, then release
+        if (t > 0.6) {
+          // Phase 1: Raise bow arm and draw string back
+          const draw = 1.0 - (t - 0.6) / 0.4; // 0 to 1
+          this._weaponArmGroup.rotation.x = 0.8 * draw; // bow arm extends forward
+          this._weaponArmGroup.rotation.z = -0.3 * draw;
+          if (this._leftArmGroup) {
+            this._leftArmGroup.rotation.x = -1.4 * draw; // pull string back
+            this._leftArmGroup.rotation.z = 0.2 * draw;
+          }
+          if (this._playerGroup) this._playerGroup.rotation.x = -0.08 * draw;
+        } else if (t > 0.25) {
+          // Phase 2: Hold at full draw — slight tension tremor
+          const tremor = Math.sin((1.0 - (t - 0.25) / 0.35) * Math.PI * 6) * 0.03;
+          this._weaponArmGroup.rotation.x = 0.8 + tremor;
+          this._weaponArmGroup.rotation.z = -0.3;
+          if (this._leftArmGroup) {
+            this._leftArmGroup.rotation.x = -1.4 + tremor;
+            this._leftArmGroup.rotation.z = 0.2;
+          }
+          if (this._playerGroup) this._playerGroup.rotation.x = -0.08;
+        } else {
+          // Phase 3: Release — snap string hand forward, bow arm recoils
+          const release = 1.0 - t / 0.25; // 0 to 1
+          this._weaponArmGroup.rotation.x = 0.8 * (1.0 - release * 0.5);
+          this._weaponArmGroup.rotation.z = -0.3 * (1.0 - release);
+          if (this._leftArmGroup) {
+            this._leftArmGroup.rotation.x = -1.4 + release * 1.8; // snap forward past neutral
+            this._leftArmGroup.rotation.z = 0.2 * (1.0 - release);
+          }
+          if (this._playerGroup) this._playerGroup.rotation.x = -0.08 * (1.0 - release);
+        }
+      }
+
+      // Brace legs during skill cast
+      if (this._leftLegGroup) this._leftLegGroup.rotation.x = 0.12;
+      if (this._rightLegGroup) this._rightLegGroup.rotation.x = -0.18;
+
     // Attack animation: multi-phase weapon swing with body involvement
-    if (state.player.isAttacking && this._weaponArmGroup) {
+    } else if (state.player.isAttacking && this._weaponArmGroup) {
       const t = state.player.attackTimer; // counts down from ~1.0
 
       // Phase 1: Wind-up (t > 0.6) - pull weapon arm back
@@ -15835,11 +17654,20 @@ export class DiabloRenderer {
       if (this._rightLegGroup) this._rightLegGroup.rotation.x = -0.2;
 
     } else if (this._weaponArmGroup) {
+      // Reset weapon arm when idle
       this._weaponArmGroup.rotation.x *= 0.82;
       this._weaponArmGroup.rotation.z *= 0.82;
       if (this._playerGroup) {
         this._playerGroup.rotation.x *= 0.85;
         this._playerGroup.rotation.z *= 0.9;
+      }
+      // Fade out staff glow for mage when not casting
+      if (this._weaponMesh && state.player.class === DiabloClass.MAGE &&
+          (this._weaponMesh.material as THREE.MeshStandardMaterial).emissiveIntensity !== undefined) {
+        const mat = this._weaponMesh.material as THREE.MeshStandardMaterial;
+        if (mat.emissiveIntensity > 1.0) {
+          mat.emissiveIntensity = Math.max(1.0, mat.emissiveIntensity - dt * 8.0);
+        }
       }
     }
 
@@ -36006,28 +37834,95 @@ export class DiabloRenderer {
     for (let i = 0; i < 4; i++) {
       const mineCart = new THREE.Group();
       const cartMat = new THREE.MeshStandardMaterial({ color: 0x665544, metalness: 0.3, roughness: 0.7 });
-      // Cart body (box)
-      const cartBody = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.35, 0.45), cartMat);
-      cartBody.position.y = 0.35; mineCart.add(cartBody);
-      // Wheels (small cylinders)
+      const rustMat2 = new THREE.MeshStandardMaterial({ color: 0x774433, metalness: 0.2, roughness: 0.8 });
+      const rivetMat = new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.6, roughness: 0.4 });
+      // Cart body - main box with tapered sides
+      const cartBottom = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.04, 0.4), cartMat);
+      cartBottom.position.set(0, 0.2, 0); mineCart.add(cartBottom);
+      // Cart side panels (4 sides, slightly angled outward at top)
+      const cartFront = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.3, 0.04), cartMat);
+      cartFront.position.set(0, 0.37, -0.22); mineCart.add(cartFront);
+      const cartBack = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.3, 0.04), cartMat);
+      cartBack.position.set(0, 0.37, 0.22); mineCart.add(cartBack);
+      const cartLeft = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.3, 0.44), cartMat);
+      cartLeft.position.set(-0.28, 0.37, 0); mineCart.add(cartLeft);
+      const cartRight = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.3, 0.44), cartMat);
+      cartRight.position.set(0.28, 0.37, 0); mineCart.add(cartRight);
+      // Rust patches (slightly different color overlays)
+      const rustPatch1 = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.12, 0.045), rustMat2);
+      rustPatch1.position.set(0.1, 0.35, -0.225); mineCart.add(rustPatch1);
+      const rustPatch2 = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.1, 0.045), rustMat2);
+      rustPatch2.position.set(-0.15, 0.3, 0.225); mineCart.add(rustPatch2);
+      // Reinforced corners (small angle brackets)
+      for (const [rcx, rcz] of [[-0.26, -0.2], [0.26, -0.2], [-0.26, 0.2], [0.26, 0.2]]) {
+        const corner = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.15, 0.06), rivetMat);
+        corner.position.set(rcx, 0.28, rcz); mineCart.add(corner);
+      }
+      // Rivet heads along top edges
+      for (let rv = 0; rv < 5; rv++) {
+        const rivetF = new THREE.Mesh(new THREE.SphereGeometry(0.008, 6, 6), rivetMat);
+        rivetF.position.set(-0.22 + rv * 0.11, 0.52, -0.23); mineCart.add(rivetF);
+        const rivetB = new THREE.Mesh(new THREE.SphereGeometry(0.008, 6, 6), rivetMat);
+        rivetB.position.set(-0.22 + rv * 0.11, 0.52, 0.23); mineCart.add(rivetB);
+      }
+      for (let rv = 0; rv < 3; rv++) {
+        const rivetL = new THREE.Mesh(new THREE.SphereGeometry(0.008, 6, 6), rivetMat);
+        rivetL.position.set(-0.29, 0.52, -0.12 + rv * 0.12); mineCart.add(rivetL);
+        const rivetR = new THREE.Mesh(new THREE.SphereGeometry(0.008, 6, 6), rivetMat);
+        rivetR.position.set(0.29, 0.52, -0.12 + rv * 0.12); mineCart.add(rivetR);
+      }
+      // Ore/rock chunks inside the cart
+      for (let ore = 0; ore < 4 + Math.floor(Math.random() * 3); ore++) {
+        const oreSize = 0.03 + Math.random() * 0.04;
+        const oreChunk = new THREE.Mesh(new THREE.DodecahedronGeometry(oreSize, 0),
+          new THREE.MeshStandardMaterial({ color: [0x887766, 0x998877, 0x776655, 0xaa8866][ore % 4], roughness: 0.85 }));
+        oreChunk.position.set((Math.random() - 0.5) * 0.35, 0.52 + Math.random() * 0.06, (Math.random() - 0.5) * 0.25);
+        oreChunk.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
+        mineCart.add(oreChunk);
+      }
+      // Handle bar at one end
+      const handleBar = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.35, 8),
+        new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.5, roughness: 0.4 }));
+      handleBar.rotation.z = Math.PI / 2; handleBar.position.set(0, 0.45, 0.3); mineCart.add(handleBar);
+      // Handle supports
+      for (const hsx of [-0.12, 0.12]) {
+        const hSupport = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.12, 6),
+          new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.5, roughness: 0.4 }));
+        hSupport.position.set(hsx, 0.39, 0.28); mineCart.add(hSupport);
+      }
+      // Metal wheel axles visible
+      for (const ax of [-0.25, 0.25]) {
+        const axle = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.45, 8), rivetMat);
+        axle.rotation.x = Math.PI / 2; axle.position.set(ax, 0.08, 0); mineCart.add(axle);
+      }
+      // Wheels (small cylinders with hub detail)
       for (const wx2 of [-0.25, 0.25]) {
-        for (const wz2 of [-0.18, 0.18]) {
+        for (const wz2 of [-0.2, 0.2]) {
           const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.04, 12), rockMat);
           wheel.rotation.x = Math.PI / 2;
           wheel.position.set(wx2, 0.08, wz2); mineCart.add(wheel);
+          // Wheel hub
+          const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.05, 8), rivetMat);
+          hub.rotation.x = Math.PI / 2;
+          hub.position.set(wx2, 0.08, wz2); mineCart.add(hub);
         }
       }
-      // Rail tracks (thin boxes)
+      // Rail tracks (thin boxes with proper rail profile)
       const trackLen2 = 3 + Math.random() * 3;
       for (const side of [-0.18, 0.18]) {
-        const rail = new THREE.Mesh(new THREE.BoxGeometry(trackLen2, 0.03, 0.03), rockMat);
+        const rail = new THREE.Mesh(new THREE.BoxGeometry(trackLen2, 0.03, 0.025), rockMat);
         rail.position.set(0, 0.015, side); mineCart.add(rail);
+        // Rail top (T-profile)
+        const railTop = new THREE.Mesh(new THREE.BoxGeometry(trackLen2, 0.008, 0.04), rockMat);
+        railTop.position.set(0, 0.03, side); mineCart.add(railTop);
       }
-      // Cross ties
-      for (let t = 0; t < Math.floor(trackLen2 / 0.4); t++) {
-        const tie = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.02, 0.45),
-          new THREE.MeshStandardMaterial({ color: 0x443322, roughness: 0.9 }));
-        tie.position.set(-trackLen2 / 2 + t * 0.4, 0.01, 0); mineCart.add(tie);
+      // Cross ties with proper spacing and wood grain color variation
+      const tieCount = Math.floor(trackLen2 / 0.35);
+      for (let t = 0; t < tieCount; t++) {
+        const tieColor = 0x443322 + Math.floor(Math.random() * 0x0a0a0a);
+        const tie = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.025, 0.48),
+          new THREE.MeshStandardMaterial({ color: tieColor, roughness: 0.9 }));
+        tie.position.set(-trackLen2 / 2 + t * 0.35, 0.01, 0); mineCart.add(tie);
       }
       const mcx = (Math.random() - 0.5) * w * 0.5, mcz = (Math.random() - 0.5) * d * 0.5;
       mineCart.position.set(mcx, getTerrainHeight(mcx, mcz, 1.4), mcz);
