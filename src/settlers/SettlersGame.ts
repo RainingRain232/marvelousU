@@ -388,7 +388,12 @@ export class SettlersGame {
         drawing.path = [{ x: tileX, z: tileZ }];
       }
     } else {
-      // Continue or finish road
+      // Continue or finish road – reject tiles occupied by buildings
+      const tileOccupied = state.map.occupied[tileZ * state.map.width + tileX];
+      if (tileOccupied && !clickedFlag) {
+        // Tile is part of a building footprint – skip it (flags on edges are OK)
+        return;
+      }
       drawing.path.push({ x: tileX, z: tileZ });
 
       if (clickedFlag && clickedFlag !== drawing.startFlagId) {

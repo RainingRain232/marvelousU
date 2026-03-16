@@ -2520,46 +2520,68 @@ export class SettlersRenderer {
       }
       mesh.position.set(carrier.position.x, carrier.position.y, carrier.position.z);
 
-      // Face movement direction
+      // Face movement direction based on actual travel direction
       const road = state.roads.get(carrier.roadId);
       if (road && road.path.length >= 2) {
         const p = carrier.pathProgress;
-        const idx = Math.floor(p * (road.path.length - 1));
-        const next = Math.min(idx + 1, road.path.length - 1);
+        const segCount = road.path.length - 1;
+        let idx: number, next: number;
+        if (carrier.direction === 1) {
+          idx = Math.min(Math.floor(p * segCount), segCount - 1);
+          next = idx + 1;
+        } else {
+          idx = Math.min(Math.ceil(p * segCount), segCount);
+          next = Math.max(idx - 1, 0);
+        }
         if (idx !== next) {
           const dx = road.path[next].x - road.path[idx].x;
           const dz = road.path[next].z - road.path[idx].z;
           if (dx !== 0 || dz !== 0) {
-            mesh.rotation.y = Math.atan2(dx, dz) * (carrier.direction === 1 ? 1 : -1);
+            mesh.rotation.y = Math.atan2(dx, dz);
           }
         }
       }
 
-      // Animate walking: legs, body bob, and arm swing
+      // Animate walking: legs, arms, body bob, head bob
       const leftLeg = mesh.getObjectByName("leftLeg") as THREE.Object3D | undefined;
       const rightLeg = mesh.getObjectByName("rightLeg") as THREE.Object3D | undefined;
+      const leftArm = mesh.getObjectByName("leftArm") as THREE.Object3D | undefined;
+      const rightArm = mesh.getObjectByName("rightArm") as THREE.Object3D | undefined;
+      const headGroup = mesh.getObjectByName("headGroup") as THREE.Object3D | undefined;
       const isMoving = carrier.pathProgress > 0.01 && carrier.pathProgress < 0.99;
       const walkPhase = t * 8 + carrier.pathProgress * 20;
 
       if (isMoving) {
-        // Leg swing
-        if (leftLeg) leftLeg.rotation.x = Math.sin(walkPhase) * 0.45;
-        if (rightLeg) rightLeg.rotation.x = Math.sin(walkPhase + Math.PI) * 0.45;
-        // Body bob (vertical bounce)
-        const bob = Math.abs(Math.sin(walkPhase)) * 0.02;
+        const legSwing = Math.sin(walkPhase) * 0.5;
+        // Leg swing (opposite legs)
+        if (leftLeg) leftLeg.rotation.x = legSwing;
+        if (rightLeg) rightLeg.rotation.x = -legSwing;
+        // Arm counter-swing (arms oppose legs for natural gait)
+        if (leftArm) leftArm.rotation.x = -legSwing * 0.6;
+        if (rightArm) rightArm.rotation.x = legSwing * 0.6;
+        // Body bob (vertical bounce – two bounces per stride)
+        const bob = Math.abs(Math.sin(walkPhase)) * 0.03;
         mesh.position.y = carrier.position.y + bob;
-        // Torso slight lean forward while walking
-        mesh.children[0].rotation.x = 0.05;
-        // Body sway (slight tilt side to side)
-        mesh.children[0].rotation.z = Math.sin(walkPhase * 0.5) * 0.03;
+        // Torso lean forward while walking
+        mesh.children[0].rotation.x = 0.08;
+        // Body sway (slight tilt side to side, synced to stride)
+        mesh.children[0].rotation.z = Math.sin(walkPhase * 0.5) * 0.04;
+        // Head slight counter-bob
+        if (headGroup) {
+          headGroup.rotation.x = Math.sin(walkPhase * 2) * 0.02;
+          headGroup.rotation.z = Math.sin(walkPhase * 0.5) * -0.02;
+        }
       } else {
         // Idle breathing animation
         if (leftLeg) leftLeg.rotation.x = 0;
         if (rightLeg) rightLeg.rotation.x = 0;
+        if (leftArm) leftArm.rotation.x = 0;
+        if (rightArm) rightArm.rotation.x = 0;
         mesh.children[0].rotation.x = 0;
         mesh.children[0].rotation.z = 0;
-        // Subtle idle sway
-        mesh.position.y = carrier.position.y + Math.sin(t * 2) * 0.003;
+        if (headGroup) { headGroup.rotation.x = 0; headGroup.rotation.z = 0; }
+        // Subtle idle breathing bob
+        mesh.position.y = carrier.position.y + Math.sin(t * 2) * 0.005;
       }
 
       // Show/hide carried resource
@@ -2627,54 +2649,59 @@ export class SettlersRenderer {
     neck.position.y = h * 0.76;
     g.add(neck);
 
-    // === HEAD (more detailed) ===
+    // === HEAD GROUP (grouped for animation) ===
+    const headGroup = new THREE.Group();
+    headGroup.name = "headGroup";
+    headGroup.position.y = h * 0.88; // pivot at neck
+
     const head = new THREE.Mesh(this._sphereGeo, skinMat);
     head.scale.set(1.4, 1.5, 1.3);
-    head.position.y = h * 0.88;
-    g.add(head);
+    headGroup.add(head);
 
     // Chin
     const chin = new THREE.Mesh(this._sphereGeo, skinShadow);
     chin.scale.set(0.6, 0.4, 0.5);
-    chin.position.set(0, h * 0.82, h * 0.02);
-    g.add(chin);
+    chin.position.set(0, -h * 0.06, h * 0.02);
+    headGroup.add(chin);
 
     // Eyes (small dark dots)
     for (let side = -1; side <= 1; side += 2) {
       const eye = new THREE.Mesh(this._sphereGeo, new THREE.MeshBasicMaterial({ color: 0x332211 }));
       eye.scale.set(0.2, 0.2, 0.15);
-      eye.position.set(side * h * 0.06, h * 0.9, h * 0.04);
-      g.add(eye);
+      eye.position.set(side * h * 0.06, h * 0.02, h * 0.04);
+      headGroup.add(eye);
       // White of eye
       const eyeW = new THREE.Mesh(this._sphereGeo, new THREE.MeshBasicMaterial({ color: 0xffffff }));
       eyeW.scale.set(0.28, 0.22, 0.12);
-      eyeW.position.set(side * h * 0.06, h * 0.9, h * 0.035);
-      g.add(eyeW);
+      eyeW.position.set(side * h * 0.06, h * 0.02, h * 0.035);
+      headGroup.add(eyeW);
     }
 
     // Nose
     const nose = new THREE.Mesh(this._sphereGeo, skinShadow);
     nose.scale.set(0.2, 0.25, 0.2);
-    nose.position.set(0, h * 0.87, h * 0.06);
-    g.add(nose);
+    nose.position.set(0, -h * 0.01, h * 0.06);
+    headGroup.add(nose);
 
     // === HAT (floppy wide-brim peasant hat) ===
-    // Hat crown
     const hatMat = new THREE.MeshStandardMaterial({ color: 0x664422, roughness: 0.9 });
+    // Hat crown
     const hatCrown = new THREE.Mesh(new THREE.CylinderGeometry(h * 0.12, h * 0.14, h * 0.1, 8), hatMat);
-    hatCrown.position.y = h * 0.98;
-    g.add(hatCrown);
+    hatCrown.position.y = h * 0.1;
+    headGroup.add(hatCrown);
     // Hat brim
     const brimGeo = new THREE.CylinderGeometry(h * 0.25, h * 0.26, h * 0.02, 10);
     const brim = new THREE.Mesh(brimGeo, hatMat);
-    brim.position.y = h * 0.94;
-    g.add(brim);
+    brim.position.y = h * 0.06;
+    headGroup.add(brim);
     // Hat band
     const bandGeo = new THREE.TorusGeometry(h * 0.13, h * 0.012, 4, 10);
     const band = new THREE.Mesh(bandGeo, new THREE.MeshStandardMaterial({ color: 0x8b6914, roughness: 0.85 }));
-    band.position.y = h * 0.96;
+    band.position.y = h * 0.08;
     band.rotation.x = Math.PI * 0.5;
-    g.add(band);
+    headGroup.add(band);
+
+    g.add(headGroup);
 
     // === SHOULDERS ===
     for (let side = -1; side <= 1; side += 2) {
@@ -2684,25 +2711,29 @@ export class SettlersRenderer {
       g.add(shoulder);
     }
 
-    // === ARMS (upper arm + forearm + hand) ===
+    // === ARMS (grouped for animation – upper arm + forearm + hand) ===
     for (let side = -1; side <= 1; side += 2) {
+      const armGroup = new THREE.Group();
+      armGroup.name = side === -1 ? "leftArm" : "rightArm";
+      armGroup.position.set(side * h * 0.24, h * 0.68, 0); // pivot at shoulder
       // Upper arm (tunic sleeve)
       const upperArm = new THREE.Mesh(this._cylGeo, tunicMat);
       upperArm.scale.set(0.35, h * 0.18, 0.35);
-      upperArm.position.set(side * h * 0.3, h * 0.58, 0);
+      upperArm.position.set(side * h * 0.06, -h * 0.1, 0);
       upperArm.rotation.z = side * 0.2;
-      g.add(upperArm);
+      armGroup.add(upperArm);
       // Forearm (skin)
       const forearm = new THREE.Mesh(this._cylGeo, skinMat);
       forearm.scale.set(0.28, h * 0.16, 0.28);
-      forearm.position.set(side * h * 0.34, h * 0.42, 0);
+      forearm.position.set(side * h * 0.1, -h * 0.26, 0);
       forearm.rotation.z = side * 0.15;
-      g.add(forearm);
+      armGroup.add(forearm);
       // Hand
       const hand = new THREE.Mesh(this._sphereGeo, skinMat);
       hand.scale.set(0.35, 0.3, 0.3);
-      hand.position.set(side * h * 0.36, h * 0.34, 0);
-      g.add(hand);
+      hand.position.set(side * h * 0.12, -h * 0.34, 0);
+      armGroup.add(hand);
+      g.add(armGroup);
     }
 
     // === LEGS (thigh + shin + boot) ===

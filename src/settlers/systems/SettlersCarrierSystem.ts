@@ -42,8 +42,8 @@ export function updateCarriers(state: SettlersState, dt: number): void {
     }
 
     // Interpolate world position along path
-    const t = carrier.direction === 1 ? carrier.pathProgress : 1 - carrier.pathProgress;
-    const exactIdx = t * (path.length - 1);
+    // pathProgress 0=flagA, 1=flagB regardless of direction
+    const exactIdx = carrier.pathProgress * (path.length - 1);
     const idx0 = Math.floor(exactIdx);
     const idx1 = Math.min(idx0 + 1, path.length - 1);
     const frac = exactIdx - idx0;
