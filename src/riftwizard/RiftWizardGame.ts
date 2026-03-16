@@ -141,6 +141,12 @@ export class RiftWizardGame {
       return;
     }
 
+    // Help toggle — works from any phase
+    if (consumeJustPressed("?")) {
+      this._hud.toggleKeyReference();
+      return;
+    }
+
     switch (state.phase) {
       case RWPhase.PLAYING:
         this._handlePlaying();

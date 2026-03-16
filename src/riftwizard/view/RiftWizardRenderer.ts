@@ -121,6 +121,9 @@ export class RiftWizardRenderer {
   private _tileCacheDirty = true;
   private _cachedLevelId = -1;
 
+  // Persistent ground decals
+  private _groundDecals: { col: number; row: number; type: string; color: number; age: number; maxAge: number }[] = [];
+
   // Screen shake
   private _shakeAmount = 0;
   private _shakeDecay = 0;
@@ -153,12 +156,17 @@ export class RiftWizardRenderer {
     this._dmgNumbers = [];
     this._activeAnims = [];
     this._particles = [];
+    this._groundDecals = [];
     this._time = 0;
     this._tileCacheDirty = true;
     this._cachedLevelId = -1;
     this._wizardSprite = null;
     this._enemySprites.clear();
     this._summonSprites.clear();
+  }
+
+  addGroundDecal(col: number, row: number, type: string, color: number, duration: number = 5): void {
+    this._groundDecals.push({ col, row, type, color, age: 0, maxAge: duration });
   }
 
   /** Returns true if animations are still playing. */
@@ -243,6 +251,26 @@ export class RiftWizardRenderer {
         // Central portal ring
         this._fxGfx.circle(cx, cy, r * 0.5);
         this._fxGfx.stroke({ color: 0xaa44ff, width: 2, alpha: this._transitionAlpha * 0.6 });
+      }
+    }
+
+    // Boss level atmospheric effect
+    if (state.currentLevel !== undefined) {
+      const bossLevels = [4, 9, 14, 19, 24];
+      if (bossLevels.includes(state.currentLevel)) {
+        // Subtle red/purple vignette on boss levels
+        const vignetteAlpha = 0.03 + 0.01 * Math.sin(this._time * 2);
+        // Top vignette
+        this._fxGfx.rect(-this.worldLayer.x, -this.worldLayer.y, screenWidth, 40);
+        this._fxGfx.fill({ color: 0x440000, alpha: vignetteAlpha });
+        // Bottom vignette
+        this._fxGfx.rect(-this.worldLayer.x, -this.worldLayer.y + screenHeight - 40, screenWidth, 40);
+        this._fxGfx.fill({ color: 0x440000, alpha: vignetteAlpha });
+        // Side vignettes
+        this._fxGfx.rect(-this.worldLayer.x, -this.worldLayer.y, 30, screenHeight);
+        this._fxGfx.fill({ color: 0x440000, alpha: vignetteAlpha * 0.7 });
+        this._fxGfx.rect(-this.worldLayer.x + screenWidth - 30, -this.worldLayer.y, 30, screenHeight);
+        this._fxGfx.fill({ color: 0x440000, alpha: vignetteAlpha * 0.7 });
       }
     }
   }
@@ -843,10 +871,16 @@ export class RiftWizardRenderer {
   private _drawAmbientEffects(state: RiftWizardState, dt: number): void {
     this._ambientGfx.clear();
 
+    // Calculate visible tile range for culling
+    const visMinCol = Math.max(0, Math.floor(-this.worldLayer.x / TS) - 1);
+    const visMaxCol = Math.min(state.level.width, Math.ceil((-this.worldLayer.x + 1000) / TS) + 1);
+    const visMinRow = Math.max(0, Math.floor(-this.worldLayer.y / TS) - 1);
+    const visMaxRow = Math.min(state.level.height, Math.ceil((-this.worldLayer.y + 700) / TS) + 1);
+
     // Spawn ambient particles from lava tiles
     if (Math.random() < dt * 8) {
-      for (let row = 0; row < state.level.height; row++) {
-        for (let col = 0; col < state.level.width; col++) {
+      for (let row = visMinRow; row < visMaxRow; row++) {
+        for (let col = visMinCol; col < visMaxCol; col++) {
           const tile = state.level.tiles[row][col];
           if (tile === RWTileType.LAVA && Math.random() < 0.02) {
             this._particles.push({
@@ -875,8 +909,8 @@ export class RiftWizardRenderer {
     }
 
     // --- 2. Floor dust motes & 4. Torch effects & 5. Chasm mist ---
-    for (let row = 0; row < state.level.height; row++) {
-      for (let col = 0; col < state.level.width; col++) {
+    for (let row = visMinRow; row < visMaxRow; row++) {
+      for (let col = visMinCol; col < visMaxCol; col++) {
         const tile = state.level.tiles[row][col];
 
         // Floor dust motes
@@ -1114,6 +1148,50 @@ export class RiftWizardRenderer {
         }
       }
     }
+
+    // Persistent ground decals
+    for (let i = this._groundDecals.length - 1; i >= 0; i--) {
+      const decal = this._groundDecals[i];
+      decal.age += dt;
+      if (decal.age >= decal.maxAge) {
+        this._groundDecals.splice(i, 1);
+        continue;
+      }
+      const fadeAlpha = 1 - (decal.age / decal.maxAge);
+      const dx = decal.col * TS;
+      const dy = decal.row * TS;
+
+      if (decal.type === "scorch") {
+        // Scorch mark: dark irregular shape
+        this._ambientGfx.circle(dx + TS / 2, dy + TS / 2, TS * 0.35);
+        this._ambientGfx.fill({ color: 0x1a0a00, alpha: fadeAlpha * 0.15 });
+        // Soot streaks
+        for (let s = 0; s < 4; s++) {
+          const angle = s * Math.PI / 2 + 0.3;
+          this._ambientGfx.moveTo(dx + TS / 2, dy + TS / 2);
+          this._ambientGfx.lineTo(dx + TS / 2 + Math.cos(angle) * TS * 0.3, dy + TS / 2 + Math.sin(angle) * TS * 0.3);
+          this._ambientGfx.stroke({ color: 0x221100, width: 1, alpha: fadeAlpha * 0.1 });
+        }
+      } else if (decal.type === "ice_patch") {
+        // Ice patch: blue transparent overlay
+        this._ambientGfx.rect(dx + 3, dy + 3, TS - 6, TS - 6);
+        this._ambientGfx.fill({ color: 0x44aaff, alpha: fadeAlpha * 0.08 });
+        this._ambientGfx.rect(dx + 3, dy + 3, TS - 6, TS - 6);
+        this._ambientGfx.stroke({ color: 0x88ccff, width: 0.5, alpha: fadeAlpha * 0.12 });
+      } else if (decal.type === "crack") {
+        // Ground crack from earthquake
+        this._ambientGfx.moveTo(dx + 3, dy + TS / 2);
+        this._ambientGfx.lineTo(dx + TS / 2, dy + 5);
+        this._ambientGfx.lineTo(dx + TS - 3, dy + TS / 2 + 3);
+        this._ambientGfx.stroke({ color: 0x443322, width: 1, alpha: fadeAlpha * 0.12 });
+      } else if (decal.type === "blood") {
+        // Small blood splatter
+        this._ambientGfx.circle(dx + TS / 2 - 2, dy + TS / 2 + 2, 3);
+        this._ambientGfx.fill({ color: 0x660000, alpha: fadeAlpha * 0.1 });
+        this._ambientGfx.circle(dx + TS / 2 + 3, dy + TS / 2 - 1, 2);
+        this._ambientGfx.fill({ color: 0x550000, alpha: fadeAlpha * 0.08 });
+      }
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -1152,27 +1230,101 @@ export class RiftWizardRenderer {
       }
     }
 
-    // Draw spawners with pulsing glow
+    // Draw spawners with tower/obelisk shape
     for (const spawner of state.level.spawners) {
       if (!spawner.alive) continue;
       const sx = spawner.col * TS;
       const sy = spawner.row * TS;
+      const cx = sx + TS / 2;
       const pulse = 0.5 + 0.3 * Math.sin(this._time * 2);
-      // Glow
-      this._entityGfx.circle(sx + TS / 2, sy + TS / 2, TS * 0.5);
-      this._entityGfx.fill({ color: SPAWNER_COLOR, alpha: 0.15 * pulse });
-      // Body
-      this._entityGfx.rect(sx + 3, sy + 3, TS - 6, TS - 6);
-      this._entityGfx.fill(SPAWNER_COLOR);
-      // Top ornament
-      this._entityGfx.moveTo(sx + TS / 2, sy);
-      this._entityGfx.lineTo(sx + TS / 2 + 5, sy + 6);
-      this._entityGfx.lineTo(sx + TS / 2 - 5, sy + 6);
-      this._entityGfx.closePath();
-      this._entityGfx.fill(0xcc8844);
-      // Border
-      this._entityGfx.rect(sx + 3, sy + 3, TS - 6, TS - 6);
-      this._entityGfx.stroke({ color: 0xaa7733, width: 1 });
+      const g = this._entityGfx;
+
+      // Outer glow
+      g.circle(cx, sy + TS / 2, TS * 0.55);
+      g.fill({ color: SPAWNER_COLOR, alpha: 0.12 * pulse });
+
+      // Base - wide trapezoid at the bottom
+      const baseTop = sy + TS - 6;
+      const baseBot = sy + TS - 1;
+      g.moveTo(sx + 2, baseBot);
+      g.lineTo(sx + TS - 2, baseBot);
+      g.lineTo(sx + TS - 5, baseTop);
+      g.lineTo(sx + 5, baseTop);
+      g.closePath();
+      g.fill(0x7a5522);
+
+      // Tower body - narrower rect above the base
+      const towerLeft = sx + 6;
+      const towerRight = sx + TS - 6;
+      const towerTop = sy + 5;
+      const towerBot = baseTop;
+      g.rect(towerLeft, towerTop, towerRight - towerLeft, towerBot - towerTop);
+      g.fill(SPAWNER_COLOR);
+      g.rect(towerLeft, towerTop, towerRight - towerLeft, towerBot - towerTop);
+      g.stroke({ color: 0xaa7733, width: 1 });
+
+      // Horizontal line textures on tower body (2-3 lines)
+      const towerH = towerBot - towerTop;
+      for (let li = 1; li <= 3; li++) {
+        const ly = towerTop + (towerH * li) / 4;
+        g.moveTo(towerLeft + 1, ly);
+        g.lineTo(towerRight - 1, ly);
+        g.stroke({ color: 0x7a5522, width: 1, alpha: 0.6 });
+      }
+
+      // Battlements - alternating small rects on top
+      const crenW = 3;
+      const crenH = 3;
+      for (let bx = towerLeft; bx < towerRight; bx += crenW * 2) {
+        g.rect(bx, towerTop - crenH, crenW, crenH);
+        g.fill(SPAWNER_COLOR);
+        g.rect(bx, towerTop - crenH, crenW, crenH);
+        g.stroke({ color: 0xaa7733, width: 0.5 });
+      }
+
+      // Glowing window - small bright rect in middle of tower, pulsing
+      const winW = 4;
+      const winH = 4;
+      const winX = cx - winW / 2;
+      const winY = towerTop + towerH * 0.3;
+      g.rect(winX, winY, winW, winH);
+      g.fill({ color: 0xffdd44, alpha: 0.5 + 0.4 * pulse });
+      g.rect(winX, winY, winW, winH);
+      g.stroke({ color: 0xffaa00, width: 0.5, alpha: 0.8 });
+
+      // Dark doorway - small dark arch at the bottom center
+      const doorW = 5;
+      const doorH = 5;
+      const doorX = cx - doorW / 2;
+      const doorY = towerBot - doorH;
+      g.rect(doorX, doorY, doorW, doorH);
+      g.fill({ color: 0x111111, alpha: 0.9 });
+      // Arch top
+      g.circle(cx, doorY, doorW / 2);
+      g.fill({ color: 0x111111, alpha: 0.9 });
+
+      // Rune glow - 2-3 school-colored rune shapes on tower sides that pulse
+      const runeColor = 0xcc8844;
+      const runePulse = 0.4 + 0.6 * Math.sin(this._time * 3);
+      // Left rune
+      g.circle(towerLeft + 3, towerTop + towerH * 0.55, 1.5);
+      g.fill({ color: runeColor, alpha: runePulse });
+      // Right rune
+      g.circle(towerRight - 3, towerTop + towerH * 0.55, 1.5);
+      g.fill({ color: runeColor, alpha: runePulse });
+      // Center rune (below window)
+      g.circle(cx, winY + winH + 4, 1.5);
+      g.fill({ color: runeColor, alpha: runePulse * 0.8 });
+
+      // Spawn indicator - when HP < 50%, pulsing warning rings
+      if (spawner.hp < spawner.maxHp * 0.5) {
+        const warnPulse = 0.3 + 0.7 * Math.abs(Math.sin(this._time * 4));
+        g.circle(cx, sy + TS / 2, TS * 0.45);
+        g.stroke({ color: 0xff4444, width: 1.5, alpha: 0.3 * warnPulse });
+        g.circle(cx, sy + TS / 2, TS * 0.6);
+        g.stroke({ color: 0xff4444, width: 1, alpha: 0.15 * warnPulse });
+      }
+
       // HP bar
       this._drawHpBar(sx, sy - 5, spawner.hp, spawner.maxHp);
     }
@@ -2255,6 +2407,27 @@ export class RiftWizardRenderer {
     const tc = state.targetCursor;
     const spellColor = SCHOOL_COLORS[spell.school] ?? 0xff4444;
 
+    // Danger zone highlighting - show tiles enemies can attack
+    for (const enemy of state.level.enemies) {
+      if (!enemy.alive) continue;
+      const attackRange = enemy.range ?? 1;
+      // Only highlight if wizard is potentially in danger
+      const distToWiz = Math.abs(enemy.col - state.wizard.col) + Math.abs(enemy.row - state.wizard.row);
+      if (distToWiz <= attackRange + 3) { // Only nearby threats
+        // Highlight enemy's attack range tiles
+        for (let dr = -attackRange; dr <= attackRange; dr++) {
+          for (let dc = -attackRange; dc <= attackRange; dc++) {
+            if (Math.abs(dr) + Math.abs(dc) > attackRange) continue;
+            const tr = enemy.row + dr;
+            const tc2 = enemy.col + dc;
+            if (tr < 0 || tc2 < 0 || tr >= state.level.height || tc2 >= state.level.width) continue;
+            this._cursorGfx.rect(tc2 * TS + 1, tr * TS + 1, TS - 2, TS - 2);
+            this._cursorGfx.fill({ color: 0xff0000, alpha: 0.03 });
+          }
+        }
+      }
+    }
+
     // Draw range indicator (subtle)
     const wizPos = { col: state.wizard.col, row: state.wizard.row };
     for (let row = 0; row < state.level.height; row++) {
@@ -2278,6 +2451,61 @@ export class RiftWizardRenderer {
           this._cursorGfx.fill({ color: spellColor, alpha: 0.2 });
           this._cursorGfx.rect(hx + 1, hy + 1, TS - 2, TS - 2);
           this._cursorGfx.stroke({ color: spellColor, width: 1, alpha: 0.3 });
+        }
+      }
+    }
+
+    // Damage preview on enemies in AoE
+    if (spell.aoeRadius > 0) {
+      for (const enemy of state.level.enemies) {
+        if (!enemy.alive) continue;
+        const dist = Math.abs(enemy.col - tc.col) + Math.abs(enemy.row - tc.row);
+        if (dist <= spell.aoeRadius) {
+          // Ghost damage number
+          const previewX = enemy.col * TS + TS / 2;
+          const previewY = enemy.row * TS - 8;
+          this._cursorGfx.circle(previewX, previewY, 8);
+          this._cursorGfx.fill({ color: 0x000000, alpha: 0.5 });
+          // Draw damage amount as simple tally marks (small lines)
+          const dmg = spell.damage;
+          const digits = dmg.toString();
+          // Draw each digit as a pattern of small dots
+          for (let d = 0; d < digits.length; d++) {
+            const digit = parseInt(digits[d]);
+            const dx = previewX - (digits.length * 3) + d * 6;
+            // Simple dot pattern for the digit
+            for (let dot = 0; dot < Math.min(digit, 5); dot++) {
+              this._cursorGfx.circle(dx + dot * 1.5, previewY - 1, 0.8);
+              this._cursorGfx.fill({ color: spellColor, alpha: 0.7 });
+            }
+            if (digit > 5) {
+              for (let dot = 0; dot < digit - 5; dot++) {
+                this._cursorGfx.circle(dx + dot * 1.5, previewY + 2, 0.8);
+                this._cursorGfx.fill({ color: spellColor, alpha: 0.7 });
+              }
+            }
+          }
+        }
+      }
+    } else {
+      // Single target preview
+      for (const enemy of state.level.enemies) {
+        if (!enemy.alive) continue;
+        if (enemy.col === tc.col && enemy.row === tc.row) {
+          const previewX = enemy.col * TS + TS / 2;
+          const previewY = enemy.row * TS - 10;
+          // Damage indicator circle
+          this._cursorGfx.circle(previewX, previewY, 8);
+          this._cursorGfx.fill({ color: 0x000000, alpha: 0.5 });
+          this._cursorGfx.circle(previewX, previewY, 6);
+          this._cursorGfx.stroke({ color: spellColor, width: 1, alpha: 0.6 });
+          // Crosshair on target
+          this._cursorGfx.moveTo(previewX - 4, previewY);
+          this._cursorGfx.lineTo(previewX + 4, previewY);
+          this._cursorGfx.stroke({ color: spellColor, width: 1, alpha: 0.8 });
+          this._cursorGfx.moveTo(previewX, previewY - 4);
+          this._cursorGfx.lineTo(previewX, previewY + 4);
+          this._cursorGfx.stroke({ color: spellColor, width: 1, alpha: 0.8 });
         }
       }
     }
@@ -2334,6 +2562,23 @@ export class RiftWizardRenderer {
         } else if (event.type === RWAnimationType.DEATH) {
           this._shakeAmount = Math.max(this._shakeAmount, 2);
           this._shakeDecay = 0.25;
+        }
+        // Add appropriate ground decals based on animation type
+        if (event.type === RWAnimationType.FIREBALL) {
+          this.addGroundDecal(event.toCol, event.toRow, "scorch", 0x331100);
+        } else if (event.type === RWAnimationType.ICE_BALL || event.type === RWAnimationType.FROST_BREATH) {
+          this.addGroundDecal(event.toCol, event.toRow, "ice_patch", 0x44aaff);
+        } else if (event.type === RWAnimationType.EARTHQUAKE) {
+          // Add cracks around the epicenter
+          for (let dr = -1; dr <= 1; dr++) {
+            for (let dc = -1; dc <= 1; dc++) {
+              if (Math.random() < 0.5) {
+                this.addGroundDecal(event.fromCol + dc, event.fromRow + dr, "crack", 0x443322, 8);
+              }
+            }
+          }
+        } else if (event.type === RWAnimationType.DEATH) {
+          this.addGroundDecal(event.fromCol, event.fromRow, "blood", 0x660000, 6);
         }
       }
     }
@@ -2904,57 +3149,86 @@ export class RiftWizardRenderer {
       }
 
       case RWAnimationType.DEATH: {
-        // Entity dissolving
-        this._fxGfx.circle(fromX, fromY, TS * 0.35 * alpha);
-        this._fxGfx.fill({ color: 0xff0000, alpha: alpha * 0.4 });
-        // Skull silhouette that appears and fades
-        const skullAlpha = alpha * Math.min(1, t * 4) * 0.6;
-        const skullY = fromY - 4;
-        // Skull head (circle)
-        this._fxGfx.circle(fromX, skullY, 6);
-        this._fxGfx.fill({ color: 0xdddddd, alpha: skullAlpha });
-        // Triangle jaw
-        this._fxGfx.moveTo(fromX - 4, skullY + 4);
-        this._fxGfx.lineTo(fromX + 4, skullY + 4);
-        this._fxGfx.lineTo(fromX, skullY + 9);
-        this._fxGfx.closePath();
-        this._fxGfx.fill({ color: 0xcccccc, alpha: skullAlpha });
-        // Dark eye sockets (two small rects)
-        this._fxGfx.rect(fromX - 3.5, skullY - 2, 2.5, 2.5);
-        this._fxGfx.fill({ color: 0x220000, alpha: skullAlpha });
-        this._fxGfx.rect(fromX + 1, skullY - 2, 2.5, 2.5);
-        this._fxGfx.fill({ color: 0x220000, alpha: skullAlpha });
-        // Bone fragment particles (elongated rects) flying outward
-        if (t < 0.5) {
-          for (let j = 0; j < 2; j++) {
+        const fx = fromX;
+        const fy = fromY;
+
+        // Phase 1: Flash and collapse (t < 0.3)
+        if (t < 0.3) {
+          const flashT = t / 0.3;
+          // White flash that fades
+          this._fxGfx.circle(fx, fy, TS * 0.5 * (1 - flashT * 0.5));
+          this._fxGfx.fill({ color: 0xffffff, alpha: (1 - flashT) * 0.6 });
+          // Collapsing silhouette
+          this._fxGfx.circle(fx, fy, TS * 0.35 * (1 - flashT * 0.3));
+          this._fxGfx.fill({ color: 0xff2222, alpha: alpha * 0.5 });
+        }
+
+        // Phase 2: Disintegration (t 0.3-0.7)
+        if (t >= 0.3 && t < 0.7) {
+          const disT = (t - 0.3) / 0.4;
+          // Shrinking core
+          this._fxGfx.circle(fx, fy, TS * 0.25 * (1 - disT));
+          this._fxGfx.fill({ color: 0xcc0000, alpha: alpha * 0.4 });
+          // Skull silhouette fading
+          // Head
+          this._fxGfx.circle(fx, fy - 3, 5 * (1 - disT));
+          this._fxGfx.fill({ color: 0xdddddd, alpha: alpha * 0.3 });
+          // Eyes
+          this._fxGfx.rect(fx - 3, fy - 5, 2, 2);
+          this._fxGfx.fill({ color: 0x000000, alpha: alpha * 0.4 });
+          this._fxGfx.rect(fx + 1, fy - 5, 2, 2);
+          this._fxGfx.fill({ color: 0x000000, alpha: alpha * 0.4 });
+          // Jaw
+          this._fxGfx.moveTo(fx - 3, fy);
+          this._fxGfx.lineTo(fx, fy + 4 * (1 - disT));
+          this._fxGfx.lineTo(fx + 3, fy);
+          this._fxGfx.closePath();
+          this._fxGfx.fill({ color: 0xcccccc, alpha: alpha * 0.2 });
+        }
+
+        // Phase 3: Final dissolution particles (t 0.7-1.0)
+        // Bone fragment particles throughout
+        if (t < 0.6) {
+          for (let j = 0; j < 3; j++) {
             const angle = Math.random() * Math.PI * 2;
+            const speed = 20 + Math.random() * 30;
+            // Bone fragments (elongated rects via small particles)
             this._particles.push({
-              x: fromX, y: fromY,
-              vx: Math.cos(angle) * 25,
-              vy: Math.sin(angle) * 25 - 10,
-              life: 0.3 + Math.random() * 0.3,
-              maxLife: 0.6,
-              color: Math.random() > 0.5 ? 0xff2222 : 0x882222,
-              size: 1.5 + Math.random(),
+              x: fx + (Math.random() - 0.5) * 10,
+              y: fy + (Math.random() - 0.5) * 10,
+              vx: Math.cos(angle) * speed,
+              vy: Math.sin(angle) * speed - 15,
+              life: 0.4 + Math.random() * 0.4,
+              maxLife: 0.8,
+              color: Math.random() > 0.5 ? 0xff2222 : (Math.random() > 0.5 ? 0xcccccc : 0x882222),
+              size: 1.5 + Math.random() * 1.5,
             });
           }
-          // Additional bone fragment particles (small elongated rects drawn as thin lines)
-          for (let j = 0; j < 2; j++) {
-            const boneAngle = Math.random() * Math.PI * 2;
-            const boneSpeed = 20 + Math.random() * 30;
-            const boneDist = t * boneSpeed * 2;
-            const bx = fromX + Math.cos(boneAngle) * boneDist;
-            const by = fromY + Math.sin(boneAngle) * boneDist;
-            const boneRot = Math.random() * Math.PI;
-            const boneLen = 3 + Math.random() * 3;
-            // Draw bone as an elongated rect
-            this._fxGfx.rect(
-              bx - Math.cos(boneRot) * boneLen * 0.5,
-              by - Math.sin(boneRot) * boneLen * 0.5,
-              boneLen, 1.5
-            );
-            this._fxGfx.fill({ color: 0xddccaa, alpha: alpha * 0.7 });
-          }
+        }
+
+        // Smoke ring expanding outward
+        const smokeR = t * TS * 0.8;
+        this._fxGfx.circle(fx, fy, smokeR);
+        this._fxGfx.stroke({ color: 0x444444, width: 1.5, alpha: alpha * 0.2 });
+
+        break;
+      }
+
+      default: {
+        // Generic arcane flash for unrecognized animation types (extensibility)
+        const flashRadius = TS * 0.4 * (1 - t);
+        this._fxGfx.circle(fromX, fromY, flashRadius);
+        this._fxGfx.fill({ color: 0xaa44ff, alpha: alpha * 0.5 });
+        // Arcane sparkle ring
+        for (let sp = 0; sp < 6; sp++) {
+          const spAngle = (sp / 6) * Math.PI * 2 + this._time * 4;
+          const spDist = flashRadius * 1.3;
+          this._fxGfx.circle(
+            fromX + Math.cos(spAngle) * spDist,
+            fromY + Math.sin(spAngle) * spDist,
+            1.5,
+          );
+          this._fxGfx.fill({ color: 0xcc88ff, alpha: alpha * 0.4 });
         }
         break;
       }

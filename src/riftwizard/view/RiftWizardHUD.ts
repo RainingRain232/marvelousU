@@ -177,6 +177,8 @@ export class RiftWizardHUD {
   private _tooltipText: Text;
   private _logLines: string[] = [];
   private _logTexts: Text[] = [];
+  private _showKeyRef = false;
+  private _keyRefTexts: Text[] = [];
 
   constructor() {
     this._infoText = new Text({ text: "", style: INFO_STYLE });
@@ -186,6 +188,10 @@ export class RiftWizardHUD {
     this._msgText = new Text({ text: "", style: MSG_STYLE });
     this._consumableText = new Text({ text: "", style: LABEL_STYLE });
     this._tooltipText = new Text({ text: "", style: STAT_VALUE_STYLE });
+  }
+
+  toggleKeyReference(): void {
+    this._showKeyRef = !this._showKeyRef;
   }
 
   addLog(msg: string): void {
@@ -435,6 +441,37 @@ export class RiftWizardHUD {
     // --- Right section: Spell bar ---
     this._updateSpellBar(state, screenWidth, hudY);
 
+    // Threat direction arrows for nearby enemies
+    if (state.phase === RWPhase.PLAYING) {
+      for (const enemy of state.level.enemies) {
+        if (!enemy.alive) continue;
+        const attackRange = enemy.range ?? 1;
+        const dist = Math.abs(enemy.col - state.wizard.col) + Math.abs(enemy.row - state.wizard.row);
+        if (dist <= attackRange + 2 && dist > 0) {
+          // Calculate direction from wizard to enemy
+          const dx = enemy.col - state.wizard.col;
+          const dy = enemy.row - state.wizard.row;
+          const angle = Math.atan2(dy, dx);
+          // Place arrow at screen edge in that direction
+          const arrowDist = 50;
+          const arrowX = Math.floor(screenWidth / 2) + Math.cos(angle) * arrowDist;
+          const arrowY = Math.floor((screenHeight - 90) / 2) + Math.sin(angle) * arrowDist;
+          // Clamp to screen edges
+          const clampedX = Math.max(20, Math.min(screenWidth - 20, arrowX));
+          const clampedY = Math.max(20, Math.min(screenHeight - 110, arrowY));
+          // Arrow polygon pointing toward enemy
+          const arrowSize = dist <= attackRange ? 8 : 5;
+          const arrowColor = dist <= attackRange ? 0xff4444 : 0xffaa44;
+          const arrowAlpha = dist <= attackRange ? 0.5 : 0.25;
+          this._bg.moveTo(clampedX + Math.cos(angle) * arrowSize, clampedY + Math.sin(angle) * arrowSize);
+          this._bg.lineTo(clampedX + Math.cos(angle + 2.5) * arrowSize * 0.6, clampedY + Math.sin(angle + 2.5) * arrowSize * 0.6);
+          this._bg.lineTo(clampedX + Math.cos(angle - 2.5) * arrowSize * 0.6, clampedY + Math.sin(angle - 2.5) * arrowSize * 0.6);
+          this._bg.closePath();
+          this._bg.fill({ color: arrowColor, alpha: arrowAlpha });
+        }
+      }
+    }
+
     // --- Center message ---
     this._msgText.text = "";
     if (state.phase === RWPhase.VICTORY) {
@@ -446,6 +483,45 @@ export class RiftWizardHUD {
         fontWeight: "bold",
         stroke: { color: 0x000000, width: 4 },
       });
+      // Victory visual effects
+      // Golden particle rain effect (deterministic, based on position)
+      for (let i = 0; i < 30; i++) {
+        const px = (i * 37 + Math.floor(Date.now() / 50) * (i % 3 + 1)) % screenWidth;
+        const py = (i * 53 + Math.floor(Date.now() / 30) * 2) % (screenHeight - 100);
+        this._bg.star(px, py, 4, 3, 1.5);
+        this._bg.fill({ color: i % 3 === 0 ? 0xffdd44 : 0xffffaa, alpha: 0.3 + (i % 5) * 0.1 });
+      }
+      // Trophy silhouette in center
+      const trophyX = Math.floor(screenWidth / 2);
+      const trophyY = Math.floor(screenHeight / 2) - 30;
+      // Cup body
+      this._bg.moveTo(trophyX - 25, trophyY - 15);
+      this._bg.lineTo(trophyX - 20, trophyY + 15);
+      this._bg.lineTo(trophyX + 20, trophyY + 15);
+      this._bg.lineTo(trophyX + 25, trophyY - 15);
+      this._bg.closePath();
+      this._bg.fill({ color: 0xffcc44, alpha: 0.15 });
+      this._bg.stroke({ color: 0xffdd66, width: 2, alpha: 0.3 });
+      // Cup handles
+      this._bg.moveTo(trophyX - 25, trophyY - 10);
+      this._bg.lineTo(trophyX - 32, trophyY - 5);
+      this._bg.lineTo(trophyX - 30, trophyY + 5);
+      this._bg.lineTo(trophyX - 22, trophyY + 8);
+      this._bg.stroke({ color: 0xffdd66, width: 1.5, alpha: 0.25 });
+      this._bg.moveTo(trophyX + 25, trophyY - 10);
+      this._bg.lineTo(trophyX + 32, trophyY - 5);
+      this._bg.lineTo(trophyX + 30, trophyY + 5);
+      this._bg.lineTo(trophyX + 22, trophyY + 8);
+      this._bg.stroke({ color: 0xffdd66, width: 1.5, alpha: 0.25 });
+      // Base
+      this._bg.rect(trophyX - 15, trophyY + 15, 30, 5);
+      this._bg.fill({ color: 0xffcc44, alpha: 0.12 });
+      this._bg.rect(trophyX - 20, trophyY + 20, 40, 4);
+      this._bg.fill({ color: 0xffcc44, alpha: 0.1 });
+      // Glow ring
+      const glowPulse = 0.5 + 0.3 * Math.sin(Date.now() / 300);
+      this._bg.circle(trophyX, trophyY, 45);
+      this._bg.stroke({ color: 0xffdd44, width: 2, alpha: glowPulse * 0.2 });
     } else if (state.phase === RWPhase.GAME_OVER) {
       this._msgText.text = "GAME OVER — [R] Restart  [Esc] Exit";
       this._msgText.style = new TextStyle({
@@ -455,6 +531,45 @@ export class RiftWizardHUD {
         fontWeight: "bold",
         stroke: { color: 0x000000, width: 4 },
       });
+      // Game over visual effects
+      // Screen crack lines radiating from center
+      const crackX = Math.floor(screenWidth / 2);
+      const crackY = Math.floor(screenHeight / 2);
+      for (let i = 0; i < 8; i++) {
+        const angle = (i * Math.PI / 4) + 0.2;
+        const len = 80 + (i * 17) % 60;
+        // Main crack
+        this._bg.moveTo(crackX, crackY);
+        const midX = crackX + Math.cos(angle) * len * 0.5 + ((i * 7) % 10 - 5);
+        const midY = crackY + Math.sin(angle) * len * 0.5 + ((i * 11) % 10 - 5);
+        this._bg.lineTo(midX, midY);
+        this._bg.lineTo(crackX + Math.cos(angle) * len, crackY + Math.sin(angle) * len);
+        this._bg.stroke({ color: 0xff2222, width: 2, alpha: 0.15 });
+        // Branch cracks
+        const branchAngle = angle + ((i % 2 === 0) ? 0.5 : -0.5);
+        this._bg.moveTo(midX, midY);
+        this._bg.lineTo(midX + Math.cos(branchAngle) * 30, midY + Math.sin(branchAngle) * 30);
+        this._bg.stroke({ color: 0xcc0000, width: 1, alpha: 0.1 });
+      }
+      // Red vignette
+      this._bg.rect(0, 0, screenWidth, 50);
+      this._bg.fill({ color: 0x330000, alpha: 0.3 });
+      this._bg.rect(0, screenHeight - 140, screenWidth, 50);
+      this._bg.fill({ color: 0x330000, alpha: 0.3 });
+      // Skull in center (below text)
+      const skullY = crackY + 20;
+      this._bg.circle(crackX, skullY, 18);
+      this._bg.stroke({ color: 0xff2222, width: 1.5, alpha: 0.12 });
+      // Eye sockets
+      this._bg.circle(crackX - 6, skullY - 4, 4);
+      this._bg.fill({ color: 0x220000, alpha: 0.15 });
+      this._bg.circle(crackX + 6, skullY - 4, 4);
+      this._bg.fill({ color: 0x220000, alpha: 0.15 });
+      // Jaw
+      this._bg.moveTo(crackX - 10, skullY + 6);
+      this._bg.lineTo(crackX, skullY + 14);
+      this._bg.lineTo(crackX + 10, skullY + 6);
+      this._bg.stroke({ color: 0xff2222, width: 1, alpha: 0.1 });
     } else if (state.level.cleared && state.currentLevel < 24) {
       this._msgText.text = "Level Cleared! Walk to a rift portal.";
       this._msgText.style = new TextStyle({
@@ -655,6 +770,60 @@ export class RiftWizardHUD {
         this._logTexts.push(logText);
       }
     }
+
+    // Keyboard reference overlay
+    // Remove old key ref texts
+    for (const t of this._keyRefTexts) {
+      this.container.removeChild(t);
+      t.destroy();
+    }
+    this._keyRefTexts = [];
+
+    if (this._showKeyRef) {
+      const refW = 240;
+      const refH = 200;
+      const refX = Math.floor((screenWidth - refW) / 2);
+      const refY = Math.floor((screenHeight - refH) / 2) - 40;
+
+      // Background
+      this._bg.rect(refX, refY, refW, refH);
+      this._bg.fill({ color: 0x0a0a18, alpha: 0.95 });
+      this._bg.rect(refX, refY, refW, refH);
+      this._bg.stroke({ color: 0x4444aa, width: 2 });
+
+      const keys = [
+        "KEYBOARD REFERENCE",
+        "",
+        "Arrow Keys / WASD  Move",
+        "1-9                Cast spell",
+        "Enter              Confirm target",
+        "Escape             Cancel / Exit",
+        "Tab                Spell shop tabs",
+        "Space              Buy spell/upgrade",
+        "P                  Use potion",
+        "C                  Use scroll",
+        "Z / U              Undo last move",
+        "R                  Restart (game over)",
+        "?                  Toggle this help",
+      ];
+
+      for (let i = 0; i < keys.length; i++) {
+        const isHeader = i === 0;
+        const txt = new Text({
+          text: keys[i],
+          style: new TextStyle({
+            fontFamily: "monospace",
+            fontSize: isHeader ? 13 : 10,
+            fill: isHeader ? 0xffffff : 0xaaaacc,
+            fontWeight: isHeader ? "bold" : "normal",
+          }),
+        });
+        txt.x = refX + 12;
+        txt.y = refY + 8 + i * 14;
+        this.container.addChild(txt);
+        this._keyRefTexts.push(txt);
+      }
+    }
   }
 
   private _updateSpellBar(
@@ -842,6 +1011,10 @@ export class RiftWizardHUD {
       t.destroy();
     }
     this._logTexts = [];
+    for (const t of this._keyRefTexts) {
+      t.destroy();
+    }
+    this._keyRefTexts = [];
     this._infoText.destroy();
     this._levelText.destroy();
     this._spText.destroy();
