@@ -1,5 +1,6 @@
 import type { RPGState } from "@rpg/state/RPGState";
 import type { Vec2 } from "@/types";
+import { createCraftingDiscoveryState } from "@rpg/systems/CraftingDiscoverySystem";
 
 /** Create a New Game+ state from a completed game. */
 export function createNewGamePlus(oldState: RPGState, startPosition: Vec2): RPGState {
@@ -63,6 +64,12 @@ export function createNewGamePlus(oldState: RPGState, startPosition: Vec2): RPGS
     arenaFightsLeft: 3,
     randomEncounterRate: oldState.randomEncounterRate,
     roamingEncounterRate: oldState.roamingEncounterRate,
+    // Crafting Discovery: carry over discovered recipes
+    craftingDiscovery: {
+      ...createCraftingDiscoveryState(),
+      discoveredRecipes: new Set(oldState.craftingDiscovery.discoveredRecipes),
+      knownRecipes: new Set(oldState.craftingDiscovery.knownRecipes),
+    },
   };
 }
 

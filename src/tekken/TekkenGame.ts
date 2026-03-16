@@ -19,6 +19,10 @@ import { TekkenAISystem } from "./systems/TekkenAISystem";
 import { TekkenAudioManager } from "./audio/TekkenAudioManager";
 import { TEKKEN_CHARACTERS } from "./config/TekkenCharacterDefs";
 import { TEKKEN_ARENAS } from "./config/TekkenArenaDefs";
+import { TekkenStageTransitionSystem } from "./systems/TekkenStageTransitionSystem";
+import { TekkenComboChallengeSystem } from "./systems/TekkenComboChallengeSystem";
+import { applyMatchResult, createRankedProfile, type TekkenRankedProfile } from "./config/TekkenRankedConfig";
+import { getStoryEnding } from "./config/TekkenStoryEndings";
 // StageHazard type used indirectly via TekkenState
 
 export class TekkenGame {
@@ -40,6 +44,15 @@ export class TekkenGame {
   private _comboSystem!: TekkenComboSystem;
   private _physicsSystem!: TekkenPhysicsSystem;
   private _aiSystem!: TekkenAISystem;
+
+  // Stage transitions
+  private _stageTransitionSystem!: TekkenStageTransitionSystem;
+
+  // Combo challenges
+  private _comboChallengeSystem!: TekkenComboChallengeSystem;
+
+  // Ranked profile (persists across matches in session)
+  private _rankedProfile: TekkenRankedProfile | null = null;
 
   // Audio
   private _audio!: TekkenAudioManager;
@@ -831,6 +844,22 @@ export class TekkenGame {
     this._aiSystem = new TekkenAISystem();
     this._aiSystem.setDifficultyLevel(this._selectedDifficulty);
 
+    // Stage transition system
+    this._stageTransitionSystem = new TekkenStageTransitionSystem();
+    this._stageTransitionSystem.init(arenaId);
+
+    // Combo challenge system
+    this._comboChallengeSystem = new TekkenComboChallengeSystem();
+
+    // Ranked profile (carry over from session or create new)
+    if (gameMode === "ranked") {
+      if (!this._rankedProfile) {
+        const { createRankedProfile } = require("./config/TekkenRankedConfig") as typeof import("./config/TekkenRankedConfig");
+        this._rankedProfile = createRankedProfile();
+      }
+      this._state.rankedProfile = this._rankedProfile;
+    }
+
     // Training mode setup
     if (gameMode === "training") {
       this._state.trainingMode.aiEnabled = true;
@@ -1158,6 +1187,26 @@ export class TekkenGame {
       }
     }
 
+    // Stage transition system: check wall impacts when fighters hit stage boundaries
+    if (this._stageTransitionSystem.state.transitionDef && !this._stageTransitionSystem.state.hasTransitioned) {
+      for (let i = 0; i < 2; i++) {
+        const f = s.fighters[i];
+        if (f.hitstunFrames > 0 && Math.abs(f.position.x) >= TB.STAGE_HALF_WIDTH - 0.3) {
+          const knockbackForce = Math.abs(f.velocity.x);
+          if (knockbackForce > TB.WALL_BREAK_KNOCKBACK_THRESHOLD) {
+            this._stageTransitionSystem.checkWallImpact(f, knockbackForce, 0, s, this._fxManager);
+          }
+        }
+      }
+      this._stageTransitionSystem.update(s);
+    }
+
+    // Combo challenge system: update during training mode
+    if (s.gameMode === "training" && this._comboChallengeSystem.state.activeChallenge) {
+      this._comboChallengeSystem.update(s.fighters[0]);
+      this._hud.updateComboChallengeOverlay(this._comboChallengeSystem.state);
+    }
+
     // Stage hazard checks
     this._updateStageHazards(s);
 
@@ -1427,6 +1476,7 @@ export class TekkenGame {
     if (p1Wins >= TB.ROUNDS_TO_WIN) {
       s.announcement = "PLAYER 1 WINS!";
       s.announcementTimer = 180;
+      this._onMatchEnd(s, 0);
       this._sm.transition(TekkenPhase.MATCH_END);
       s.phase = TekkenPhase.MATCH_END;
       return;
@@ -1434,6 +1484,7 @@ export class TekkenGame {
     if (p2Wins >= TB.ROUNDS_TO_WIN) {
       s.announcement = "PLAYER 2 WINS!";
       s.announcementTimer = 180;
+      this._onMatchEnd(s, 1);
       this._sm.transition(TekkenPhase.MATCH_END);
       s.phase = TekkenPhase.MATCH_END;
       return;
@@ -1488,6 +1539,50 @@ export class TekkenGame {
   }
 
   // ---- Move Lookup ----
+
+  /** Called when a match ends. Handles ranked progression, arcade progression, and story endings. */
+  private _onMatchEnd(s: TekkenState, winnerIdx: number): void {
+    const playerWon = winnerIdx === 0;
+
+    // Ranked progression
+    if (s.gameMode === "ranked" && this._rankedProfile) {
+      const opponentRating = 500 + s.difficulty * 300; // Scale opponent rating by difficulty
+      const result = applyMatchResult(
+        this._rankedProfile,
+        s.fighters[0].characterId,
+        s.fighters[1].characterId,
+        playerWon,
+        opponentRating,
+      );
+      this._rankedProfile = result.profile;
+      s.rankedProfile = result.profile;
+
+      // Show rank transition announcement
+      if (result.rankTransition) {
+        const rt = result.rankTransition;
+        if (rt.promoted) {
+          s.announcement = `PROMOTED TO ${rt.newRank.name.toUpperCase()}!`;
+        } else if (rt.demoted) {
+          s.announcement = `DEMOTED TO ${rt.newRank.name.toUpperCase()}`;
+        }
+        s.announcementTimer = 240;
+      }
+    }
+
+    // Arcade progression
+    if (s.gameMode === "arcade" && playerWon) {
+      s.arcadeState.opponentsDefeated++;
+      if (s.arcadeState.opponentsDefeated >= s.arcadeState.totalOpponents && !s.arcadeState.endingShown) {
+        s.arcadeState.endingShown = true;
+        // The story ending will be shown when the match end screen appears
+        const ending = getStoryEnding(s.fighters[0].characterId);
+        if (ending) {
+          s.announcement = ending.title;
+          s.announcementTimer = 300; // 5 seconds for story title
+        }
+      }
+    }
+  }
 
   private _getActiveMoveDefForFighter(fighter: { characterId: string; currentMove: string | null }): TekkenMoveDef | null {
     if (!fighter.currentMove) return null;

@@ -6,6 +6,19 @@ import type { TekkenFXManager } from "../view/TekkenFXManager";
 
 export class TekkenFightingSystem {
   update(state: TekkenState, fxManager: TekkenFXManager): void {
+    // Update training mode overlay phase tracking
+    if (state.gameMode === "training") {
+      const p1 = state.fighters[0];
+      if (p1.state === TekkenFighterState.ATTACK && p1.currentMove) {
+        const moveDef = this._getMoveDef(p1);
+        if (moveDef) {
+          this._updateTrainingFrameData(p1, moveDef, state);
+        }
+      } else {
+        state.trainingMode.overlayMovePhase = "none";
+      }
+    }
+
     for (let i = 0; i < 2; i++) {
       const fighter = state.fighters[i];
       const opponent = state.fighters[1 - i];
@@ -164,7 +177,8 @@ export class TekkenFightingSystem {
     const charDef = TEKKEN_CHARACTERS.find(c => c.id === fighter.characterId);
     if (!charDef) return;
 
-    // Check rage art - only usable when rageActive is true
+    // Check rage art - only usable when rageActive is true (below 25% HP)
+    // Rage arts have power crush armor during startup and deal cinematic damage
     if (input.rage && fighter.rageActive && !fighter.rageArtUsed) {
       fighter.state = TekkenFighterState.ATTACK;
       fighter.currentMove = charDef.rageArt.id;
@@ -174,6 +188,8 @@ export class TekkenFightingSystem {
       fighter.counterHitWindow = true;
       fighter.rageArtUsed = true;
       fighter.rageActive = false; // Consume rage on use
+      // Grant armor frames during rage art startup (power crush)
+      fighter.invincibleFrames = TB.RAGE_ART_ARMOR_FRAMES;
       return;
     }
 
@@ -332,6 +348,11 @@ export class TekkenFightingSystem {
     defender.velocity.x = TB.BLOCK_PUSHBACK * pushDir;
     attacker.velocity.x = TB.BLOCK_PUSHBACK * 0.3 * -pushDir;
 
+    // Update training mode frame advantage on block
+    if (state.gameMode === "training") {
+      state.trainingMode.frameAdvantage = moveDef.onBlock;
+    }
+
     // VFX: small block spark
     const hitX = (attacker.position.x + defender.position.x) / 2;
     const hitY = moveDef.hitbox.y;
@@ -462,6 +483,11 @@ export class TekkenFightingSystem {
                                          TB.CAMERA_SHAKE_LIGHT;
     }
 
+    // Update training mode frame advantage on hit
+    if (state.gameMode === "training") {
+      state.trainingMode.frameAdvantage = isCounterHit ? moveDef.onCounterHit : moveDef.onHit;
+    }
+
     // Cancel attacker's current attack state if interrupted
     if (defender.state === TekkenFighterState.ATTACK) {
       defender.currentMove = null;
@@ -488,6 +514,39 @@ export class TekkenFightingSystem {
 
     if (isCounterHit) {
       fxManager.spawnCounterFlash();
+    }
+  }
+
+  /** Update training mode frame data overlay when a move is executed */
+  private _updateTrainingFrameData(fighter: TekkenFighter, moveDef: TekkenMoveDef, state: TekkenState): void {
+    if (state.gameMode !== "training") return;
+    const tm = state.trainingMode;
+
+    tm.lastMoveName = moveDef.name;
+    tm.lastMoveStartup = moveDef.startup;
+    tm.lastMoveActive = moveDef.active;
+    tm.lastMoveRecovery = moveDef.recovery;
+    tm.lastHitbox = { ...moveDef.hitbox };
+    tm.lastMoveHeight = moveDef.height;
+    tm.lastOnBlock = moveDef.onBlock;
+    tm.lastOnHit = moveDef.onHit;
+
+    // Update overlay phase tracking
+    tm.overlayMovePhase = fighter.movePhase;
+    tm.overlayPhaseFrame = fighter.moveFrame;
+    switch (fighter.movePhase) {
+      case "startup":  tm.overlayPhaseTotal = moveDef.startup; break;
+      case "active":   tm.overlayPhaseTotal = moveDef.active; break;
+      case "recovery": tm.overlayPhaseTotal = moveDef.recovery; break;
+      default:         tm.overlayPhaseTotal = 0; break;
+    }
+
+    // Track best combo
+    if (fighter.comboCount > tm.bestComboCount) {
+      tm.bestComboCount = fighter.comboCount;
+    }
+    if (fighter.comboDamage > tm.bestComboDamage) {
+      tm.bestComboDamage = fighter.comboDamage;
     }
   }
 

@@ -15,7 +15,13 @@ import {
   ECTOR_MOVES,
 } from "./TekkenMoveDefs";
 
-function rageArt(id: string, name: string, damage: number): TekkenMoveDef {
+/**
+ * Create a rage art move definition.
+ * Rage arts are cinematic super moves activated when below 25% HP.
+ * They have power crush armor, high damage, and wall splat properties.
+ * Each character has a unique rage art name and can have custom damage.
+ */
+function rageArt(id: string, name: string, damage: number, opts: Partial<TekkenMoveDef> = {}): TekkenMoveDef {
   return {
     id,
     name,
@@ -35,14 +41,15 @@ function rageArt(id: string, name: string, damage: number): TekkenMoveDef {
     launchGravity: 0,
     isScrew: false,
     isBound: false,
-    isHoming: false,
-    isPowerCrush: true,
+    isHoming: true, // Rage arts track the opponent
+    isPowerCrush: true, // Armor through attacks during startup
     hasHighCrush: false,
     hasLowCrush: false,
-    knockback: 1.0,
+    knockback: 1.2,
     wallSplat: true,
-    hitbox: { x: 0.3, y: 0.9, z: 0, w: 0.6, h: 0.4, d: 0.5 },
-    advanceDistance: 0.3,
+    hitbox: { x: 0.3, y: 0.9, z: 0, w: 0.7, h: 0.5, d: 0.5 },
+    advanceDistance: 0.4,
+    ...opts,
   };
 }
 

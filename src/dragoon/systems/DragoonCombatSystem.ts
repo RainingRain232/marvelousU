@@ -1683,6 +1683,13 @@ function _checkPlayerCollisions(state: DragoonState): void {
       p.hp -= dmg;
       p.invincTimer = DragoonBalance.PLAYER_INVINCIBILITY;
       p.comboCount = 0;
+      state.runStats.damageTaken += dmg;
+      // Score attack: track damage for perfect wave and apply miss penalty
+      if (state.scoreAttack.enabled) {
+        state.scoreAttack.currentWaveDamageTaken = true;
+        state.scoreAttack.chainMultiplier = Math.max(1, state.scoreAttack.chainMultiplier - ScoreAttackBalance.MISS_PENALTY);
+        state.scoreAttack.consecutiveHits = 0;
+      }
       _onPlayerHit?.();
       if (p.hp <= 0) {
         p.hp = 0;
@@ -1705,6 +1712,12 @@ function _checkPlayerCollisions(state: DragoonState): void {
       p.hp -= contactDmg;
       p.invincTimer = DragoonBalance.PLAYER_INVINCIBILITY;
       p.comboCount = 0;
+      state.runStats.damageTaken += contactDmg;
+      if (state.scoreAttack.enabled) {
+        state.scoreAttack.currentWaveDamageTaken = true;
+        state.scoreAttack.chainMultiplier = Math.max(1, state.scoreAttack.chainMultiplier - ScoreAttackBalance.MISS_PENALTY);
+        state.scoreAttack.consecutiveHits = 0;
+      }
       _onPlayerHit?.();
       if (p.hp <= 0) {
         p.hp = 0;
@@ -1916,17 +1929,43 @@ function _damageEnemy(state: DragoonState, enemy: DragoonEnemy, damage: number):
   state.player.comboCount++;
   state.player.comboTimer = DragoonBalance.COMBO_TIMEOUT;
 
+  // Score attack: track consecutive hits
+  if (state.scoreAttack.enabled) {
+    state.scoreAttack.consecutiveHits++;
+    state.scoreAttack.chainMultiplier = Math.min(
+      ScoreAttackBalance.CHAIN_MAX,
+      state.scoreAttack.chainMultiplier + ScoreAttackBalance.CHAIN_INCREMENT,
+    );
+    state.scoreAttack.chainDecayTimer = ScoreAttackBalance.CHAIN_GRACE_PERIOD;
+    if (state.scoreAttack.chainMultiplier > state.scoreAttack.maxChainMultiplier) {
+      state.scoreAttack.maxChainMultiplier = state.scoreAttack.chainMultiplier;
+    }
+  }
+
   if (enemy.hp <= 0) {
     enemy.alive = false;
     enemy.deathTimer = 0.5;
     const comboMult = 1 + state.player.comboCount * DragoonBalance.COMBO_SCORE_MULT;
-    const scoreGain = Math.floor(enemy.scoreValue * comboMult * state.player.scoreMultiplier);
+    // Apply score attack chain multiplier and path score bonus
+    const chainMult = state.scoreAttack.enabled ? state.scoreAttack.chainMultiplier : 1;
+    const pathScoreMult = state.branchState.pathScoreMult;
+    const scoreGain = Math.floor(enemy.scoreValue * comboMult * state.player.scoreMultiplier * chainMult * pathScoreMult);
     state.player.score += scoreGain;
+    if (state.scoreAttack.enabled) {
+      state.scoreAttack.totalBonusScore += Math.floor(scoreGain * (chainMult - 1));
+    }
     _onExplosion?.(enemy.position.x, enemy.position.y, enemy.size * 25, enemy.glowColor);
     _spawnPickup(state, enemy.position.x, enemy.position.y);
 
     // Grant XP
     _grantXP(state, enemy.scoreValue);
+
+    // Dragon evolution: grant evolution points on kill
+    state.evolutionState.evolutionPoints += Math.floor(enemy.scoreValue * DragoonBalance.EVOLUTION_POINTS_PER_KILL);
+
+    // Track stats
+    state.runStats.enemiesKilled++;
+    if (enemy.isBoss) state.runStats.bossesDefeated++;
 
     // Soul Harvest chain explosion
     if (state.player.soulHarvestTimer > 0) {
@@ -1974,4 +2013,173 @@ function _updateInvincibility(state: DragoonState, dt: number): void {
 
 function _cleanupDead(state: DragoonState): void {
   state.enemies = state.enemies.filter(e => e.alive || e.deathTimer > 0);
+  // Clean up fully collapsed destructibles that have scrolled offscreen
+  state.destructibles = state.destructibles.filter(d => {
+    if (d.destroyed && d.collapseTimer <= 0) return false;
+    // Remove if too far left of camera
+    if (d.position.x + d.width < state.cameraX - 100) return false;
+    return true;
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Environmental Destruction
+// ---------------------------------------------------------------------------
+
+function _updateDestructibles(state: DragoonState, dt: number): void {
+  for (const d of state.destructibles) {
+    if (d.hitTimer > 0) d.hitTimer -= dt;
+
+    // Collapse animation
+    if (d.destroyed && d.collapseTimer > 0) {
+      d.collapseTimer -= dt;
+
+      // Deal area damage to enemies when collapse finishes (at the midpoint for visual sync)
+      if (d.collapseTimer <= d.collapseDuration * 0.5 && d.collapseTimer + dt > d.collapseDuration * 0.5) {
+        _dealDestructibleAreaDamage(state, d);
+      }
+      continue;
+    }
+
+    if (d.destroyed) continue;
+
+    // Check player projectile hits against this destructible
+    for (const proj of state.projectiles) {
+      if (!proj.isPlayerOwned) continue;
+      if (proj.lifetime <= 0) continue;
+
+      const dx = proj.position.x - (d.position.x + d.width * 0.5);
+      const dy = proj.position.y - (d.position.y - d.height * 0.5);
+      if (Math.abs(dx) < d.width * 0.5 + proj.radius && Math.abs(dy) < d.height * 0.5 + proj.radius) {
+        d.hp -= proj.damage;
+        d.hitTimer = 0.1;
+        _onHit?.(d.position.x + d.width * 0.5, d.position.y - d.height * 0.5, proj.damage, false);
+
+        if (proj.pierce <= 0) {
+          proj.lifetime = 0;
+        } else {
+          proj.pierce--;
+        }
+
+        if (d.hp <= 0) {
+          _destroyDestructible(state, d);
+          break;
+        }
+      }
+    }
+
+    // Also check explosion damage against destructibles
+    for (const exp of state.explosions) {
+      if (exp.timer >= exp.maxTimer) continue;
+      const dx = (d.position.x + d.width * 0.5) - exp.position.x;
+      const dy = (d.position.y - d.height * 0.5) - exp.position.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < exp.radius + d.width * 0.5) {
+        d.hp -= exp.damage * 0.5; // Explosions deal reduced damage to structures
+        d.hitTimer = 0.1;
+        if (d.hp <= 0) {
+          _destroyDestructible(state, d);
+        }
+      }
+    }
+  }
+}
+
+function _destroyDestructible(state: DragoonState, d: DragoonDestructible): void {
+  d.destroyed = true;
+  d.collapseTimer = d.collapseDuration;
+  d.hp = 0;
+
+  // Score
+  const chainMult = state.scoreAttack.enabled ? state.scoreAttack.chainMultiplier : 1;
+  const pathScoreMult = state.branchState.pathScoreMult;
+  const scoreGain = Math.floor(d.scoreValue * state.player.scoreMultiplier * chainMult * pathScoreMult);
+  state.player.score += scoreGain;
+
+  // Notify FX system
+  _onDestructibleCollapse?.(
+    d.position.x + d.width * 0.5,
+    d.position.y - d.height * 0.5,
+    d.areaDamageRadius,
+    d.color,
+    d.debrisCount,
+  );
+  _onExplosion?.(d.position.x + d.width * 0.5, d.position.y - d.height * 0.5, d.areaDamageRadius, d.color);
+}
+
+function _dealDestructibleAreaDamage(state: DragoonState, d: DragoonDestructible): void {
+  const cx = d.position.x + d.width * 0.5;
+  const cy = d.position.y;
+  const r = d.areaDamageRadius;
+
+  for (const enemy of state.enemies) {
+    if (!enemy.alive || enemy.isAllied) continue;
+    const dx = enemy.position.x - cx;
+    const dy = enemy.position.y - cy;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < r + enemy.size * 15) {
+      _damageEnemy(state, enemy, d.areaDamage);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Dragon Evolution
+// ---------------------------------------------------------------------------
+
+function _updateDragonEvolution(state: DragoonState, dt: number): void {
+  const evo = state.evolutionState;
+
+  // Update transition timer
+  if (evo.transitionTimer > 0) {
+    evo.transitionTimer -= dt;
+  }
+
+  // Check if player has reached the next evolution threshold
+  const nextStageIdx = evo.stageIndex + 1;
+  if (nextStageIdx < DRAGON_EVOLUTION_STAGES.length) {
+    const nextStage = DRAGON_EVOLUTION_STAGES[nextStageIdx];
+    if (evo.evolutionPoints >= nextStage.upgradeThreshold) {
+      // Evolve!
+      evo.stageIndex = nextStageIdx;
+      evo.currentStage = nextStage.stage;
+      evo.transitionTimer = DragoonBalance.EVOLUTION_TRANSITION_DURATION;
+
+      // Apply stat bonuses (relative to base — these are multiplicative)
+      const prevStage = DRAGON_EVOLUTION_STAGES[nextStageIdx - 1];
+      const hpGain = (nextStage.statBonus.hpMult - prevStage.statBonus.hpMult) * 100;
+      if (hpGain > 0) {
+        state.player.maxHp += Math.floor(hpGain);
+        state.player.hp = Math.min(state.player.maxHp, state.player.hp + Math.floor(hpGain));
+      }
+
+      _onEvolution?.(nextStage.stage, nextStage.name);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Score Attack Mode — chain multiplier decay
+// ---------------------------------------------------------------------------
+
+function _updateScoreAttackChain(state: DragoonState, dt: number): void {
+  if (!state.scoreAttack.enabled) return;
+
+  const sa = state.scoreAttack;
+
+  // Decay the grace period timer
+  if (sa.chainDecayTimer > 0) {
+    sa.chainDecayTimer -= dt;
+  } else {
+    // Chain is decaying
+    if (sa.chainMultiplier > 1) {
+      sa.chainMultiplier -= sa.chainDecayRate * dt;
+      if (sa.chainMultiplier < 1) sa.chainMultiplier = 1;
+    }
+  }
+
+  // Track highest combo in run stats
+  if (state.player.comboCount > state.runStats.highestCombo) {
+    state.runStats.highestCombo = state.player.comboCount;
+  }
 }

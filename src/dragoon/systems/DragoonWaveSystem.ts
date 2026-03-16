@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import type { DragoonState, DragoonEnemy, DragoonDestructible } from "../state/DragoonState";
-import { DragoonEnemyType, EnemyPattern, DestructibleType } from "../state/DragoonState";
+import { DragoonEnemyType, EnemyPattern } from "../state/DragoonState";
 import {
   DragoonBalance, ENEMY_TEMPLATES, WAVE_ENEMY_POOL, BOSS_ORDER,
   FORK_POINTS, DESTRUCTIBLE_TEMPLATES, DESTRUCTIBLE_POOL,

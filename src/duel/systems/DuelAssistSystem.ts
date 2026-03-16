@@ -5,7 +5,7 @@
 import { DuelFighterState } from "../../types";
 import { DuelBalance } from "../config/DuelBalanceConfig";
 import { DUEL_CHARACTERS } from "../config/DuelCharacterDefs";
-import type { DuelFighter, DuelMoveDef, DuelState, Hitbox } from "../state/DuelState";
+import type { DuelFighter, DuelMoveDef, DuelState } from "../state/DuelState";
 
 // ---- Assist constants -------------------------------------------------------
 
@@ -90,10 +90,8 @@ export const DuelAssistSystem = {
     ) return false;
 
     // Spawn the assist
-    const opponent = state.fighters[playerIdx === 0 ? 1 : 0];
     const enterFromRight = fighter.position.x > state.stageLeft + (state.stageRight - state.stageLeft) / 2;
     const startX = enterFromRight ? state.stageRight + 80 : state.stageLeft - 80;
-    const targetX = fighter.position.x + (fighter.facingRight ? -60 : 60);
 
     assist.activeAssists[playerIdx] = {
       characterId: assistChar.characterId,
@@ -194,7 +192,7 @@ function _assistHitboxOverlaps(
   active: DuelActiveAssist,
   defender: DuelFighter,
   move: DuelMoveDef,
-  state: DuelState,
+  _state: DuelState,
 ): boolean {
   if (defender.invincibleFrames > 0) return false;
   if (

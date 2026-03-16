@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import { SurvivorBalance } from "../config/SurvivorBalanceConfig";
+import { SurvivorChallengeSystem } from "./SurvivorChallengeSystem";
 import type { SurvivorState } from "../state/SurvivorState";
 
 function distSq(ax: number, ay: number, bx: number, by: number): number {
@@ -73,7 +74,9 @@ export const SurvivorPickupSystem = {
             state.gold += chest.value;
             break;
           case "heal":
-            state.player.hp = state.player.maxHp;
+            if (!SurvivorChallengeSystem.isHealingDisabled(state)) {
+              state.player.hp = state.player.maxHp;
+            }
             break;
           case "bomb":
             // Kill all enemies on screen (within 20 tile radius)

@@ -848,22 +848,50 @@ export class DiabloGame {
       },
     ];
 
+    const classColors: Record<string, string> = {
+      WARRIOR: "#e85030", MAGE: "#5080ff", RANGER: "#40cc40",
+      PALADIN: "#ffd740", NECROMANCER: "#b050e0", ASSASSIN: "#cc40cc",
+    };
+    const maxStat = 30;
     let cardsHtml = "";
     for (const c of classes) {
+      const cc = classColors[c.name] || "#c8a84e";
+      const statBar = (label: string, val: number, color: string) => {
+        const pct = Math.round((val / maxStat) * 100);
+        return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">
+          <span style="color:${color};font-size:11px;width:28px;text-align:right;font-weight:bold;">${label}</span>
+          <div style="flex:1;height:8px;background:rgba(0,0,0,0.5);border-radius:4px;border:1px solid #3a3020;overflow:hidden;">
+            <div style="width:${pct}%;height:100%;background:linear-gradient(90deg,${color},${color}aa);border-radius:4px;box-shadow:0 0 4px ${color}80;"></div>
+          </div>
+          <span style="color:#ddd;font-size:11px;width:20px;">${val}</span>
+        </div>`;
+      };
       cardsHtml += `
         <div class="diablo-class-card" data-class="${c.cls}" style="
-          width:220px;background:rgba(20,15,10,0.95);border:2px solid #5a4a2a;
-          border-radius:12px;padding:30px;cursor:pointer;text-align:center;
-          transition:border-color 0.3s,box-shadow 0.3s;
+          width:220px;background:rgba(20,15,10,0.95);
+          border:3px solid #5a4a2a;border-top-color:#8a7a4a;border-left-color:#7a6a3a;
+          border-right-color:#3a2a1a;border-bottom-color:#2a1a0a;
+          border-radius:12px;padding:28px 24px;cursor:pointer;text-align:center;
+          transition:border-color 0.3s,box-shadow 0.3s;position:relative;
+          background-image:repeating-linear-gradient(45deg,transparent,transparent 8px,rgba(200,168,78,0.015) 8px,rgba(200,168,78,0.015) 16px);
         ">
-          <div style="font-size:64px;margin-bottom:12px;">${c.icon}</div>
-          <div style="font-size:24px;color:#c8a84e;font-weight:bold;letter-spacing:2px;margin-bottom:12px;">${c.name}</div>
-          <p style="color:#aaa;font-size:14px;line-height:1.5;margin-bottom:16px;">${c.desc}</p>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:13px;">
-            <div style="color:#e88;text-align:left;">STR: <span style="color:#fff;">${c.str}</span></div>
-            <div style="color:#8e8;text-align:left;">DEX: <span style="color:#fff;">${c.dex}</span></div>
-            <div style="color:#88e;text-align:left;">INT: <span style="color:#fff;">${c.int}</span></div>
-            <div style="color:#ee8;text-align:left;">VIT: <span style="color:#fff;">${c.vit}</span></div>
+          <!-- Corner rivets -->
+          <div style="position:absolute;top:6px;left:6px;width:8px;height:8px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#ffd740,#8a6a20);box-shadow:0 1px 2px rgba(0,0,0,0.6);"></div>
+          <div style="position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#ffd740,#8a6a20);box-shadow:0 1px 2px rgba(0,0,0,0.6);"></div>
+          <div style="position:absolute;bottom:6px;left:6px;width:8px;height:8px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#ffd740,#8a6a20);box-shadow:0 1px 2px rgba(0,0,0,0.6);"></div>
+          <div style="position:absolute;bottom:6px;right:6px;width:8px;height:8px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#ffd740,#8a6a20);box-shadow:0 1px 2px rgba(0,0,0,0.6);"></div>
+          <!-- Glowing rune circle behind icon -->
+          <div style="position:relative;display:inline-block;margin-bottom:12px;">
+            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:90px;height:90px;border-radius:50%;background:radial-gradient(circle,${cc}30 0%,${cc}10 40%,transparent 70%);border:1px solid ${cc}30;box-shadow:0 0 20px ${cc}20;"></div>
+            <div style="font-size:64px;position:relative;z-index:1;filter:drop-shadow(0 0 8px ${cc}60);">${c.icon}</div>
+          </div>
+          <div style="font-size:24px;color:#c8a84e;font-weight:bold;letter-spacing:2px;margin-bottom:12px;text-shadow:0 0 10px rgba(200,168,78,0.3);">${c.name}</div>
+          <p style="color:#aaa;font-size:13px;line-height:1.5;margin-bottom:16px;">${c.desc}</p>
+          <div style="padding:0 4px;">
+            ${statBar("STR", c.str, "#e88")}
+            ${statBar("DEX", c.dex, "#8e8")}
+            ${statBar("INT", c.int, "#88e")}
+            ${statBar("VIT", c.vit, "#ee8")}
           </div>
         </div>`;
     }
@@ -912,15 +940,58 @@ export class DiabloGame {
       : "";
 
     this._menuEl.innerHTML = `
+      <style>
+        @keyframes cs-flame-flicker {
+          0%, 100% { text-shadow: 0 0 8px #ff6600, 0 0 16px #ff4400, 0 -4px 12px #ff8800; transform: scaleY(1); }
+          25% { text-shadow: 0 0 12px #ff8800, 0 0 20px #ff6600, 0 -6px 16px #ffaa00; transform: scaleY(1.08); }
+          50% { text-shadow: 0 0 6px #ff4400, 0 0 14px #ff2200, 0 -3px 10px #ff6600; transform: scaleY(0.95); }
+          75% { text-shadow: 0 0 10px #ff6600, 0 0 18px #ff4400, 0 -5px 14px #ff8800; transform: scaleY(1.05); }
+        }
+        @keyframes cs-title-glow {
+          0%, 100% { text-shadow: 0 0 20px rgba(200,168,78,0.5), 0 2px 4px rgba(0,0,0,0.8); }
+          50% { text-shadow: 0 0 30px rgba(200,168,78,0.7), 0 0 60px rgba(200,168,78,0.2), 0 2px 4px rgba(0,0,0,0.8); }
+        }
+      </style>
       <div style="
         width:100%;height:100%;background:rgba(0,0,0,0.92);display:flex;flex-direction:column;
-        align-items:center;justify-content:center;color:#fff;
+        align-items:center;justify-content:center;color:#fff;position:relative;overflow:hidden;
       ">
-        <h1 style="
-          color:#c8a84e;font-size:48px;letter-spacing:4px;margin-bottom:50px;
-          text-shadow:0 0 20px rgba(200,168,78,0.5),0 2px 4px rgba(0,0,0,0.8);
-          font-family:'Georgia',serif;
-        ">CHOOSE YOUR CLASS</h1>
+        <!-- Ornate gothic page border -->
+        <div style="position:absolute;inset:8px;border:2px solid #5a4a2a;border-radius:4px;pointer-events:none;
+          box-shadow:inset 0 0 30px rgba(0,0,0,0.5),0 0 1px #3a2a1a;"></div>
+        <div style="position:absolute;inset:12px;border:1px solid #3a2a1a;border-radius:2px;pointer-events:none;"></div>
+        <!-- Corner ornaments -->
+        <div style="position:absolute;top:14px;left:14px;color:#5a4a2a;font-size:20px;">&#9670;</div>
+        <div style="position:absolute;top:14px;right:14px;color:#5a4a2a;font-size:20px;">&#9670;</div>
+        <div style="position:absolute;bottom:14px;left:14px;color:#5a4a2a;font-size:20px;">&#9670;</div>
+        <div style="position:absolute;bottom:14px;right:14px;color:#5a4a2a;font-size:20px;">&#9670;</div>
+
+        <!-- Title with flame braziers -->
+        <div style="display:flex;align-items:center;gap:24px;margin-bottom:8px;">
+          <div style="font-size:32px;animation:cs-flame-flicker 0.6s ease-in-out infinite;color:#ff6600;">&#x1F525;</div>
+          <div style="text-align:center;">
+            <h1 style="
+              color:#c8a84e;font-size:48px;letter-spacing:4px;margin:0;
+              animation:cs-title-glow 3s ease-in-out infinite;
+              font-family:'Georgia',serif;
+            ">CHOOSE YOUR CLASS</h1>
+            <div style="color:#8a7a4a;font-size:14px;letter-spacing:6px;margin-top:6px;font-family:'Georgia',serif;
+              text-shadow:0 0 10px rgba(200,168,78,0.2);">&#10038; Choose Your Champion &#10038;</div>
+          </div>
+          <div style="font-size:32px;animation:cs-flame-flicker 0.6s ease-in-out infinite 0.3s;color:#ff6600;">&#x1F525;</div>
+        </div>
+
+        <!-- Decorative divider -->
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+          <div style="width:80px;height:1px;background:linear-gradient(to right,transparent,#5a4a2a);"></div>
+          <span style="color:#c8a84e;font-size:14px;">&#9884;</span>
+          <div style="width:40px;height:1px;background:#5a4a2a;"></div>
+          <span style="color:#c8a84e;font-size:10px;">&#9830;</span>
+          <div style="width:40px;height:1px;background:#5a4a2a;"></div>
+          <span style="color:#c8a84e;font-size:14px;">&#9884;</span>
+          <div style="width:80px;height:1px;background:linear-gradient(to left,transparent,#5a4a2a);"></div>
+        </div>
+
         <div style="display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap;justify-content:center;">
           <span style="color:#888;font-size:14px;align-self:center;margin-right:8px;font-family:'Georgia',serif;">DIFFICULTY:</span>
           ${diffHtml}
@@ -1634,71 +1705,115 @@ export class DiabloGame {
 
     this._menuEl.innerHTML = `
       <div style="
-        width:100%;height:100%;background:rgba(0,0,0,0.90);display:flex;flex-direction:column;
-        align-items:center;justify-content:center;color:#fff;pointer-events:auto;
+        width:100%;height:100%;
+        background:rgba(0,0,0,0.90);
+        background-image:radial-gradient(ellipse at center,rgba(40,30,15,0.15) 0%,transparent 70%);
+        display:flex;flex-direction:column;
+        align-items:center;justify-content:center;color:#fff;pointer-events:auto;position:relative;
       ">
-        <!-- Title with ornamental borders -->
-        <div style="text-align:center;margin-bottom:18px;">
-          <div style="color:#5a4a2a;font-size:11px;letter-spacing:8px;margin-bottom:4px;">\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550</div>
-          <h2 style="color:#c8a84e;font-size:32px;letter-spacing:5px;margin:0;font-family:'Georgia',serif;
-            text-shadow:0 0 16px rgba(200,168,78,0.35), 0 2px 4px rgba(0,0,0,0.6);">
-            INVENTORY
-          </h2>
-          <div style="color:#5a4a2a;font-size:11px;letter-spacing:8px;margin-top:4px;">\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550</div>
-        </div>
-        <div style="display:flex;gap:40px;align-items:flex-start;">
-          <!-- Equipment -->
-          <div>
-            <div style="color:#a08850;font-size:13px;margin-bottom:8px;text-align:center;letter-spacing:2px;
-              text-transform:uppercase;border-bottom:1px solid #3a3020;padding-bottom:5px;">Equipment</div>
-            <div style="display:grid;grid-template-columns:74px 74px 74px;grid-template-rows:74px 74px 74px 74px;gap:6px;">
-              ${equipHtml}
+        <!-- Parchment-style inner panel -->
+        <div style="position:relative;padding:24px 36px;
+          background:linear-gradient(180deg,rgba(30,24,14,0.95) 0%,rgba(20,16,8,0.98) 100%);
+          border:2px solid #5a4a2a;border-radius:8px;
+          box-shadow:inset 0 0 60px rgba(0,0,0,0.3),0 0 30px rgba(0,0,0,0.5);">
+          <!-- Inner decorative border -->
+          <div style="position:absolute;inset:4px;border:1px solid #3a2a1a;border-radius:6px;pointer-events:none;"></div>
+
+          <!-- Title with ornamental flourishes -->
+          <div style="text-align:center;margin-bottom:18px;">
+            <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:6px;">
+              <div style="width:60px;height:1px;background:linear-gradient(to right,transparent,#c8a84e);"></div>
+              <span style="color:#c8a84e;font-size:10px;">\u2726</span>
+              <span style="color:#5a4a2a;font-size:14px;">\u269C</span>
+              <span style="color:#c8a84e;font-size:10px;">\u2726</span>
+              <div style="width:60px;height:1px;background:linear-gradient(to left,transparent,#c8a84e);"></div>
+            </div>
+            <h2 style="color:#c8a84e;font-size:32px;letter-spacing:5px;margin:0;font-family:'Georgia',serif;
+              text-shadow:0 0 16px rgba(200,168,78,0.35), 0 2px 4px rgba(0,0,0,0.6);">
+              INVENTORY
+            </h2>
+            <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-top:6px;">
+              <div style="width:60px;height:1px;background:linear-gradient(to right,transparent,#c8a84e);"></div>
+              <span style="color:#c8a84e;font-size:10px;">\u2726</span>
+              <span style="color:#5a4a2a;font-size:14px;">\u269C</span>
+              <span style="color:#c8a84e;font-size:10px;">\u2726</span>
+              <div style="width:60px;height:1px;background:linear-gradient(to left,transparent,#c8a84e);"></div>
             </div>
           </div>
-          <!-- Vertical section divider -->
-          <div style="width:1px;background:linear-gradient(to bottom,transparent,#5a4a2a,#5a4a2a,transparent);align-self:stretch;margin:20px 0;"></div>
-          <!-- Inventory Grid -->
-          <div>
-            <div style="color:#a08850;font-size:13px;margin-bottom:8px;text-align:center;letter-spacing:2px;
-              text-transform:uppercase;border-bottom:1px solid #3a3020;padding-bottom:5px;">Backpack</div>
-            <div style="display:grid;grid-template-columns:repeat(8,62px);grid-template-rows:repeat(5,62px);gap:4px;">
-              ${invHtml}
+          <div style="display:flex;gap:40px;align-items:flex-start;">
+            <!-- Equipment -->
+            <div>
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;justify-content:center;">
+                <div style="width:30px;height:1px;background:linear-gradient(to right,transparent,#5a4a2a);"></div>
+                <span style="color:#a08850;font-size:13px;letter-spacing:2px;text-transform:uppercase;">Equipment</span>
+                <div style="width:30px;height:1px;background:linear-gradient(to left,transparent,#5a4a2a);"></div>
+              </div>
+              <div style="display:grid;grid-template-columns:74px 74px 74px;grid-template-rows:74px 74px 74px 74px;gap:6px;">
+                ${equipHtml}
+              </div>
+              <!-- Gold filigree connection line -->
+              <div style="width:100%;height:1px;background:linear-gradient(to right,transparent,#5a4a2a40,transparent);margin-top:8px;"></div>
+            </div>
+            <!-- Vertical section divider with ornament -->
+            <div style="display:flex;flex-direction:column;align-items:center;align-self:stretch;margin:20px 0;gap:0;">
+              <div style="color:#5a4a2a;font-size:10px;">\u25C6</div>
+              <div style="flex:1;width:1px;background:linear-gradient(to bottom,#5a4a2a,#5a4a2a);"></div>
+              <div style="color:#c8a84e;font-size:12px;">\u25C6</div>
+              <div style="flex:1;width:1px;background:linear-gradient(to bottom,#5a4a2a,#5a4a2a);"></div>
+              <div style="color:#5a4a2a;font-size:10px;">\u25C6</div>
+            </div>
+            <!-- Inventory Grid -->
+            <div>
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;justify-content:center;">
+                <div style="width:30px;height:1px;background:linear-gradient(to right,transparent,#5a4a2a);"></div>
+                <span style="color:#a08850;font-size:13px;letter-spacing:2px;text-transform:uppercase;">Backpack</span>
+                <div style="width:30px;height:1px;background:linear-gradient(to left,transparent,#5a4a2a);"></div>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(8,62px);grid-template-rows:repeat(5,62px);gap:4px;">
+                ${invHtml}
+              </div>
             </div>
           </div>
-        </div>
-        <!-- Horizontal section divider -->
-        <div style="width:70%;height:1px;background:linear-gradient(to right,transparent,#5a4a2a,transparent);margin:16px 0 12px;"></div>
-        <!-- Bottom bar: gold, materials, stats -->
-        <div style="display:flex;gap:30px;align-items:center;">
-          <div style="display:flex;align-items:center;gap:6px;background:rgba(50,40,10,0.5);border:1px solid #5a4a2a;border-radius:6px;padding:8px 16px;">
-            <span style="font-size:18px;">\uD83E\uDE99</span>
-            <span style="font-size:16px;color:#ffd700;font-weight:bold;">${p.gold}</span>
+          <!-- Horizontal section divider with diamond ornaments -->
+          <div style="display:flex;align-items:center;gap:8px;margin:16px auto 12px;width:70%;justify-content:center;">
+            <div style="flex:1;height:1px;background:linear-gradient(to right,transparent,#5a4a2a);"></div>
+            <span style="color:#5a4a2a;font-size:8px;">\u25C6</span>
+            <span style="color:#c8a84e;font-size:10px;">\u25C6</span>
+            <span style="color:#5a4a2a;font-size:8px;">\u25C6</span>
+            <div style="flex:1;height:1px;background:linear-gradient(to left,transparent,#5a4a2a);"></div>
           </div>
-          <div style="display:flex;align-items:center;gap:6px;background:rgba(10,30,50,0.4);border:1px solid #3a5a7a;border-radius:6px;padding:8px 16px;">
-            <span style="font-size:14px;color:#88ccff;">\u2699 Materials:</span>
-            <span style="font-size:15px;color:#aaddff;font-weight:bold;">${p.salvageMaterials}</span>
+          <!-- Bottom bar: gold, materials, stats -->
+          <div style="display:flex;gap:30px;align-items:center;justify-content:center;">
+            <div style="display:flex;align-items:center;gap:6px;background:rgba(50,40,10,0.5);border:1px solid #5a4a2a;border-radius:6px;padding:8px 16px;">
+              <span style="font-size:18px;">\uD83E\uDE99</span>
+              <span style="font-size:16px;color:#ffd700;font-weight:bold;">${p.gold}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;background:rgba(10,30,50,0.4);border:1px solid #3a5a7a;border-radius:6px;padding:8px 16px;">
+              <span style="font-size:14px;color:#88ccff;">\u2699 Materials:</span>
+              <span style="font-size:15px;color:#aaddff;font-weight:bold;">${p.salvageMaterials}</span>
+            </div>
+            <div style="background:rgba(20,15,10,0.9);border:1px solid #5a4a2a;border-radius:8px;padding:12px 16px;">
+              ${statsHtml}
+            </div>
           </div>
-          <div style="background:rgba(20,15,10,0.9);border:1px solid #5a4a2a;border-radius:8px;padding:12px 16px;">
-            ${statsHtml}
+          <div style="margin-top:12px;display:flex;gap:16px;align-items:center;justify-content:center;">
+            <button id="inv-stash-btn" style="
+              padding:10px 24px;font-size:15px;letter-spacing:2px;font-weight:bold;
+              background:linear-gradient(180deg,rgba(50,40,20,0.95),rgba(30,22,10,0.95));
+              border:2px solid #5a4a2a;border-radius:8px;color:#c8a84e;
+              cursor:pointer;transition:all 0.2s;font-family:'Georgia',serif;pointer-events:auto;
+              text-shadow:0 1px 3px rgba(0,0,0,0.5);
+            ">STASH</button>
+            <div style="color:#888;font-size:12px;">Press <span style="display:inline-block;background:rgba(60,50,30,0.8);border:1px solid #888;border-radius:4px;padding:2px 10px;font-family:monospace;color:#fff;">S</span> to open Shared Stash</div>
           </div>
+          <div style="margin-top:10px;color:#666;font-size:12px;text-align:center;">Press <span style="color:#aaa;">I</span> or <span style="color:#aaa;">Escape</span> to close</div>
         </div>
-        <div style="margin-top:12px;display:flex;gap:16px;align-items:center;">
-          <button id="inv-stash-btn" style="
-            padding:10px 24px;font-size:15px;letter-spacing:2px;font-weight:bold;
-            background:linear-gradient(180deg,rgba(50,40,20,0.95),rgba(30,22,10,0.95));
-            border:2px solid #5a4a2a;border-radius:8px;color:#c8a84e;
-            cursor:pointer;transition:all 0.2s;font-family:'Georgia',serif;pointer-events:auto;
-            text-shadow:0 1px 3px rgba(0,0,0,0.5);
-          ">STASH</button>
-          <div style="color:#888;font-size:12px;">Press <span style="display:inline-block;background:rgba(60,50,30,0.8);border:1px solid #888;border-radius:4px;padding:2px 10px;font-family:monospace;color:#fff;">S</span> to open Shared Stash</div>
-        </div>
-        <div style="margin-top:10px;color:#666;font-size:12px;">Press <span style="color:#aaa;">I</span> or <span style="color:#aaa;">Escape</span> to close</div>
         <!-- Tooltip container -->
         <div id="inv-tooltip" style="
           display:none;position:fixed;z-index:100;background:rgba(8,4,2,0.97);
-          border:1px solid #5a4a2a;border-radius:8px;padding:0;max-width:300px;
+          border:2px solid #5a4a2a;border-radius:8px;padding:0;max-width:300px;
           pointer-events:none;color:#ccc;font-size:13px;overflow:hidden;
-          box-shadow:0 4px 20px rgba(0,0,0,0.7);
+          box-shadow:0 4px 20px rgba(0,0,0,0.7),0 0 1px #c8a84e;
         "></div>
       </div>`;
 
@@ -1865,10 +1980,18 @@ export class DiabloGame {
     const stars = "\u2605".repeat(RARITY_TIER[item.rarity]);
 
     tooltip.innerHTML = `
+      <!-- Ornate border with rarity glow -->
+      <div style="position:absolute;inset:-1px;border:2px solid ${rarityColor}60;border-radius:9px;pointer-events:none;
+        box-shadow:0 0 12px ${rarityColor}30,inset 0 0 12px ${rarityColor}10;"></div>
+      <!-- Corner decorations -->
+      <div style="position:absolute;top:2px;left:2px;color:${rarityColor};font-size:7px;opacity:0.6;">&#9670;</div>
+      <div style="position:absolute;top:2px;right:2px;color:${rarityColor};font-size:7px;opacity:0.6;">&#9670;</div>
+      <div style="position:absolute;bottom:2px;left:2px;color:${rarityColor};font-size:7px;opacity:0.6;">&#9670;</div>
+      <div style="position:absolute;bottom:2px;right:2px;color:${rarityColor};font-size:7px;opacity:0.6;">&#9670;</div>
       <!-- Rarity color top bar -->
-      <div style="height:4px;background:${rarityColor};"></div>
+      <div style="height:4px;background:linear-gradient(90deg,transparent,${rarityColor},transparent);"></div>
       <!-- Content area with subtle rarity gradient background -->
-      <div style="padding:14px 16px;background:linear-gradient(180deg, ${RARITY_BG[item.rarity]} 0%, rgba(8,4,2,0) 40%);">
+      <div style="padding:14px 16px;background:linear-gradient(180deg, ${RARITY_BG[item.rarity]} 0%, rgba(8,4,2,0) 40%);position:relative;">
         <!-- Item name & rarity header -->
         <div style="border-bottom:1px solid rgba(90,74,42,0.5);padding-bottom:8px;margin-bottom:8px;">
           <div style="color:${rarityColor};font-size:16px;font-weight:bold;text-shadow:0 0 8px ${rarityColor}40;">${item.icon} ${item.name}</div>
@@ -1878,18 +2001,28 @@ export class DiabloGame {
         </div>
         <!-- Slot/type -->
         <div style="color:#888;font-size:11px;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">${item.slot || item.type}</div>
-        <!-- Separator -->
-        <div style="height:1px;background:linear-gradient(to right,transparent,#5a4a2a60,transparent);margin:4px 0 6px;"></div>
+        <!-- Separator with diamond ornaments -->
+        <div style="display:flex;align-items:center;gap:6px;margin:4px 0 6px;">
+          <div style="flex:1;height:1px;background:linear-gradient(to right,transparent,#5a4a2a60);"></div>
+          <span style="color:#5a4a2a;font-size:6px;">&#9670;</span>
+          <div style="flex:1;height:1px;background:linear-gradient(to left,transparent,#5a4a2a60);"></div>
+        </div>
         <!-- Stats -->
         ${statsLines}
         ${comparisonLines}
         ${lanternLines}
         ${legendaryLine}
         ${setLine}
-        <!-- Separator before description -->
-        <div style="height:1px;background:linear-gradient(to right,transparent,#5a4a2a60,transparent);margin:8px 0 6px;"></div>
+        <!-- Separator with diamond ornaments before description -->
+        <div style="display:flex;align-items:center;gap:6px;margin:8px 0 6px;">
+          <div style="flex:1;height:1px;background:linear-gradient(to right,transparent,#5a4a2a60);"></div>
+          <span style="color:#5a4a2a;font-size:6px;">&#9670;</span>
+          <div style="flex:1;height:1px;background:linear-gradient(to left,transparent,#5a4a2a60);"></div>
+        </div>
         <div style="color:#777;font-size:11px;font-style:italic;line-height:1.4;">${item.description}</div>
       </div>
+      <!-- Rarity color bottom bar -->
+      <div style="height:2px;background:linear-gradient(90deg,transparent,${rarityColor}40,transparent);"></div>
     `;
     tooltip.style.display = "block";
     tooltip.style.left = Math.min(ev.clientX + 16, window.innerWidth - 320) + "px";
@@ -1928,28 +2061,73 @@ export class DiabloGame {
       : "";
 
     this._menuEl.innerHTML = `
+      <style>
+        @keyframes pause-candle {
+          0%, 100% { opacity:0.7; text-shadow: 0 0 6px #ff8800, 0 -3px 8px #ff6600; }
+          33% { opacity:1; text-shadow: 0 0 10px #ffaa00, 0 -5px 12px #ff8800; }
+          66% { opacity:0.85; text-shadow: 0 0 8px #ff6600, 0 -4px 10px #ff4400; }
+        }
+        @keyframes pause-glow-spread {
+          0% { box-shadow: 0 0 0px rgba(200,168,78,0); }
+          100% { box-shadow: 0 0 20px rgba(200,168,78,0.4); }
+        }
+      </style>
       <div style="
         width:100%;height:100%;background:rgba(0,0,0,0.8);display:flex;flex-direction:column;
-        align-items:center;justify-content:center;color:#fff;
+        align-items:center;justify-content:center;color:#fff;position:relative;
       ">
-        <h1 style="color:#c8a84e;font-size:48px;letter-spacing:6px;margin-bottom:40px;
-          font-family:'Georgia',serif;text-shadow:0 0 20px rgba(200,168,78,0.4);">PAUSED</h1>
-        <button id="diablo-resume-btn" style="${btnBase}">RESUME</button>
-        <button id="diablo-controls-btn" style="${btnBase}">CONTROLS</button>
-        <button id="diablo-inventory-btn" style="${btnBase}">INVENTORY</button>
-        <button id="diablo-character-btn" style="${btnBase}">CHARACTER</button>
-        <button id="diablo-skilltree-btn" style="${btnBase}">SKILL TREE</button>
-        <button id="diablo-skillswap-btn" style="${btnBase}">SWAP SKILLS</button>
-        <button id="diablo-stash-btn" style="${btnBase}">STASH</button>
-        <button id="diablo-collection-btn" style="${btnBase}">COLLECTION</button>
-        <button id="diablo-save-btn" style="${saveBtn}">SAVE GAME</button>
-        ${loadBtnHtml}
-        <button id="diablo-charselect-btn" style="${btnBase}">CHARACTER SELECT</button>
-        <button id="diablo-exit-btn" style="${exitBtn}">EXIT</button>
-        <div style="margin-top:24px;color:#888;font-size:12px;letter-spacing:1px;
-          font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
-          text-shadow:0 1px 3px rgba(0,0,0,0.6);">
-          Press <span style="color:#c8a84e;">V</span> to toggle First Person view
+        <!-- Decorative stone frame around button column -->
+        <div style="position:relative;display:flex;flex-direction:column;align-items:center;
+          padding:30px 60px 24px;border:2px solid #5a4a2a;border-radius:8px;
+          background:rgba(10,8,4,0.6);
+          box-shadow:inset 0 0 40px rgba(0,0,0,0.4),0 0 2px #3a2a1a;">
+          <!-- Inner border -->
+          <div style="position:absolute;inset:4px;border:1px solid #3a2a1a;border-radius:6px;pointer-events:none;"></div>
+
+          <!-- Vertical chain decorations -->
+          <div style="position:absolute;left:-20px;top:40px;bottom:40px;width:12px;display:flex;flex-direction:column;align-items:center;gap:2px;overflow:hidden;">
+            ${Array.from({length:20}).map(() => '<div style="width:8px;height:12px;border:2px solid #5a4a2a;border-radius:3px;"></div>').join("")}
+          </div>
+          <div style="position:absolute;right:-20px;top:40px;bottom:40px;width:12px;display:flex;flex-direction:column;align-items:center;gap:2px;overflow:hidden;">
+            ${Array.from({length:20}).map(() => '<div style="width:8px;height:12px;border:2px solid #5a4a2a;border-radius:3px;"></div>').join("")}
+          </div>
+
+          <!-- Flickering candles on sides -->
+          <div style="position:absolute;left:-36px;top:20px;font-size:20px;animation:pause-candle 0.8s ease-in-out infinite;">&#x1F56F;</div>
+          <div style="position:absolute;right:-36px;top:20px;font-size:20px;animation:pause-candle 0.8s ease-in-out infinite 0.4s;">&#x1F56F;</div>
+
+          <!-- Skull decoration above title -->
+          <div style="font-size:28px;margin-bottom:4px;filter:drop-shadow(0 0 6px rgba(200,168,78,0.3));">&#9760;</div>
+
+          <h1 style="color:#c8a84e;font-size:48px;letter-spacing:6px;margin-bottom:6px;
+            font-family:'Georgia',serif;text-shadow:0 0 20px rgba(200,168,78,0.4);">PAUSED</h1>
+
+          <!-- Decorative divider under title -->
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px;">
+            <div style="width:60px;height:1px;background:linear-gradient(to right,transparent,#5a4a2a);"></div>
+            <span style="color:#5a4a2a;font-size:12px;">&#9884;</span>
+            <span style="color:#c8a84e;font-size:8px;">&#9830;</span>
+            <span style="color:#5a4a2a;font-size:12px;">&#9884;</span>
+            <div style="width:60px;height:1px;background:linear-gradient(to left,transparent,#5a4a2a);"></div>
+          </div>
+
+          <button id="diablo-resume-btn" style="${btnBase}">&#9876; RESUME</button>
+          <button id="diablo-controls-btn" style="${btnBase}">&#9881; CONTROLS</button>
+          <button id="diablo-inventory-btn" style="${btnBase}">&#9878; INVENTORY</button>
+          <button id="diablo-character-btn" style="${btnBase}">&#10022; CHARACTER</button>
+          <button id="diablo-skilltree-btn" style="${btnBase}">&#10040; SKILL TREE</button>
+          <button id="diablo-skillswap-btn" style="${btnBase}">&#8644; SWAP SKILLS</button>
+          <button id="diablo-stash-btn" style="${btnBase}">&#9878; STASH</button>
+          <button id="diablo-collection-btn" style="${btnBase}">&#10070; COLLECTION</button>
+          <button id="diablo-save-btn" style="${saveBtn}">&#10004; SAVE GAME</button>
+          ${loadBtnHtml}
+          <button id="diablo-charselect-btn" style="${btnBase}">&#9733; CHARACTER SELECT</button>
+          <button id="diablo-exit-btn" style="${exitBtn}">&#10008; EXIT</button>
+          <div style="margin-top:24px;color:#888;font-size:12px;letter-spacing:1px;
+            font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
+            text-shadow:0 1px 3px rgba(0,0,0,0.6);">
+            Press <span style="color:#c8a84e;">V</span> to toggle First Person view
+          </div>
         </div>
       </div>`;
 
@@ -3125,6 +3303,40 @@ export class DiabloGame {
   private _buildHUD(): void {
     this._hud.innerHTML = "";
 
+    // Inject CSS keyframe animations for HUD effects
+    const hudStyleEl = document.createElement("style");
+    hudStyleEl.textContent = `
+      @keyframes hud-blood-drip {
+        0%, 100% { opacity:0.6; transform:translateX(-50%) scaleY(1); }
+        50% { opacity:1; transform:translateX(-50%) scaleY(1.5); }
+      }
+      @keyframes hud-arcane-particles {
+        0% { box-shadow:0 0 4px 2px rgba(100,100,255,0.6), 8px -6px 3px 1px rgba(120,80,255,0.4), -6px -8px 2px 1px rgba(80,120,255,0.5); }
+        33% { box-shadow:-4px -10px 4px 2px rgba(120,80,255,0.5), 6px 4px 3px 1px rgba(80,120,255,0.6), 10px -4px 2px 1px rgba(100,100,255,0.4); }
+        66% { box-shadow:6px -4px 4px 2px rgba(80,120,255,0.4), -8px 2px 3px 1px rgba(100,100,255,0.6), 2px -12px 2px 1px rgba(120,80,255,0.5); }
+        100% { box-shadow:0 0 4px 2px rgba(100,100,255,0.6), 8px -6px 3px 1px rgba(120,80,255,0.4), -6px -8px 2px 1px rgba(80,120,255,0.5); }
+      }
+      @keyframes hud-xp-pulse {
+        0%, 100% { box-shadow:0 0 10px rgba(255,215,0,0.5), inset 0 1px 0 rgba(255,255,255,0.2); }
+        50% { box-shadow:0 0 20px rgba(255,215,0,0.9), 0 0 40px rgba(255,215,0,0.4), inset 0 1px 0 rgba(255,255,255,0.3); }
+      }
+      @keyframes hud-torch-flicker {
+        0%, 100% { opacity:0.85; transform:scaleX(1) scaleY(1); }
+        25% { opacity:1; transform:scaleX(1.05) scaleY(1.1); }
+        50% { opacity:0.75; transform:scaleX(0.95) scaleY(0.95); }
+        75% { opacity:0.95; transform:scaleX(1.02) scaleY(1.05); }
+      }
+      @keyframes hud-torch-glow {
+        0%, 100% { box-shadow:0 0 15px 8px rgba(255,140,20,0.3), 0 0 30px 12px rgba(255,100,0,0.15); }
+        50% { box-shadow:0 0 20px 12px rgba(255,140,20,0.45), 0 0 40px 16px rgba(255,100,0,0.2); }
+      }
+      @keyframes hud-compass-spin {
+        0% { transform:translate(-50%,-50%) rotate(0deg); }
+        100% { transform:translate(-50%,-50%) rotate(360deg); }
+      }
+    `;
+    this._hud.appendChild(hudStyleEl);
+
     // Health orb - bottom left (ornate)
     this._hpOrbWrap = document.createElement("div");
     const hpOrbWrap = this._hpOrbWrap;
@@ -3214,6 +3426,66 @@ export class DiabloGame {
     hpOrbWrap.appendChild(hpRingInner);
     hpOrbWrap.appendChild(hpOrb);
     hpOrbWrap.appendChild(hpSkull);
+
+    // === HP Orb enhancements ===
+    // Second outer ring (dark metal, behind existing gold ring)
+    const hpRingOuter2 = document.createElement("div");
+    hpRingOuter2.style.cssText = `
+      position:absolute;width:144px;height:144px;border-radius:50%;
+      border:4px solid transparent;
+      background:conic-gradient(from 0deg, #3a2a10, #5a4420, #3a2a10, #2a1a08, #3a2a10) border-box;
+      -webkit-mask:linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite:xor;mask-composite:exclude;
+      pointer-events:none;z-index:-1;
+    `;
+    hpOrbWrap.appendChild(hpRingOuter2);
+
+    // Tick marks (8 radial lines around the ring)
+    for (let t = 0; t < 8; t++) {
+      const tick = document.createElement("div");
+      tick.style.cssText = `
+        position:absolute;width:2px;height:10px;
+        background:linear-gradient(180deg, #c8a84e, rgba(139,105,20,0.3));
+        top:50%;left:50%;transform-origin:0 0;
+        transform:rotate(${t * 45}deg) translate(-1px, -72px);
+        pointer-events:none;z-index:6;
+      `;
+      hpOrbWrap.appendChild(tick);
+    }
+
+    // Animated blood drip at top of orb
+    const hpBloodDrip = document.createElement("div");
+    hpBloodDrip.style.cssText = `
+      position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:7;
+      width:6px;height:12px;border-radius:50% 50% 50% 50% / 30% 30% 70% 70%;
+      background:radial-gradient(circle at 40% 30%, rgba(220,40,40,0.9), rgba(140,10,10,0.7));
+      animation:hud-blood-drip 2s ease-in-out infinite;
+      pointer-events:none;
+    `;
+    hpOrbWrap.appendChild(hpBloodDrip);
+
+    // Chain link decoration connecting to skill bar
+    const hpChain = document.createElement("div");
+    hpChain.style.cssText = `
+      position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);z-index:6;
+      width:8px;height:20px;pointer-events:none;
+      background:repeating-linear-gradient(180deg, #8b6914 0px, #c8a84e 2px, #8b6914 4px, transparent 4px, transparent 6px);
+      border-radius:2px;
+      filter:drop-shadow(0 1px 2px rgba(0,0,0,0.6));
+    `;
+    hpOrbWrap.appendChild(hpChain);
+
+    // Bottom ornament (fleur-de-lis)
+    const hpBottomOrnament = document.createElement("div");
+    hpBottomOrnament.style.cssText = `
+      position:absolute;bottom:-10px;left:50%;transform:translateX(-50%);z-index:8;
+      font-size:16px;color:#c8a84e;pointer-events:none;
+      filter:drop-shadow(0 1px 3px rgba(0,0,0,0.8));
+      text-shadow:0 0 6px rgba(200,168,78,0.4);
+    `;
+    hpBottomOrnament.textContent = "\u269C";
+    hpOrbWrap.appendChild(hpBottomOrnament);
+
     this._hud.appendChild(hpOrbWrap);
 
     // Mana orb - bottom right (ornate)
@@ -3305,6 +3577,66 @@ export class DiabloGame {
     mpOrbWrap.appendChild(mpRingInner);
     mpOrbWrap.appendChild(mpOrb);
     mpOrbWrap.appendChild(mpRune);
+
+    // === MP Orb enhancements ===
+    // Second outer ring (silver metal, behind existing ring)
+    const mpRingOuter2 = document.createElement("div");
+    mpRingOuter2.style.cssText = `
+      position:absolute;width:144px;height:144px;border-radius:50%;
+      border:4px solid transparent;
+      background:conic-gradient(from 0deg, #2a2a3a, #3a3a5a, #2a2a3a, #1a1a28, #2a2a3a) border-box;
+      -webkit-mask:linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite:xor;mask-composite:exclude;
+      pointer-events:none;z-index:-1;
+    `;
+    mpOrbWrap.appendChild(mpRingOuter2);
+
+    // Tick marks (8 radial lines)
+    for (let t = 0; t < 8; t++) {
+      const tick = document.createElement("div");
+      tick.style.cssText = `
+        position:absolute;width:2px;height:10px;
+        background:linear-gradient(180deg, #7a8ac8, rgba(74,90,139,0.3));
+        top:50%;left:50%;transform-origin:0 0;
+        transform:rotate(${t * 45}deg) translate(-1px, -72px);
+        pointer-events:none;z-index:6;
+      `;
+      mpOrbWrap.appendChild(tick);
+    }
+
+    // Arcane energy particles effect
+    const mpArcaneParticles = document.createElement("div");
+    mpArcaneParticles.style.cssText = `
+      position:absolute;top:6px;left:50%;transform:translateX(-50%);z-index:7;
+      width:4px;height:4px;border-radius:50%;
+      background:rgba(120,100,255,0.8);
+      animation:hud-arcane-particles 3s ease-in-out infinite;
+      pointer-events:none;
+    `;
+    mpOrbWrap.appendChild(mpArcaneParticles);
+
+    // Chain link decoration connecting to skill bar
+    const mpChain = document.createElement("div");
+    mpChain.style.cssText = `
+      position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);z-index:6;
+      width:8px;height:20px;pointer-events:none;
+      background:repeating-linear-gradient(180deg, #4a5a8b 0px, #7a8ac8 2px, #4a5a8b 4px, transparent 4px, transparent 6px);
+      border-radius:2px;
+      filter:drop-shadow(0 1px 2px rgba(0,0,0,0.6));
+    `;
+    mpOrbWrap.appendChild(mpChain);
+
+    // Bottom rune ornament
+    const mpBottomOrnament = document.createElement("div");
+    mpBottomOrnament.style.cssText = `
+      position:absolute;bottom:-10px;left:50%;transform:translateX(-50%);z-index:8;
+      font-size:16px;color:#7a8ac8;pointer-events:none;
+      filter:drop-shadow(0 1px 3px rgba(0,0,0,0.8));
+      text-shadow:0 0 6px rgba(100,120,200,0.4);
+    `;
+    mpBottomOrnament.textContent = "\u25C6";
+    mpOrbWrap.appendChild(mpBottomOrnament);
+
     this._hud.appendChild(mpOrbWrap);
 
     // Skill bar - bottom center (ornate stone bar)
@@ -3324,17 +3656,50 @@ export class DiabloGame {
       font-size:20px;color:#c8a84e;filter:drop-shadow(0 0 4px rgba(200,168,78,0.4));
       pointer-events:none;
     `;
-    skillCapL.textContent = "\u2740";
+    skillCapL.textContent = "\uD83D\uDDFF";
     skillBarBg.appendChild(skillCapL);
-    // Right end-cap ornament
+    // Right end-cap ornament (gargoyle)
     const skillCapR = document.createElement("div");
     skillCapR.style.cssText = `
-      position:absolute;right:-10px;top:50%;transform:translateY(-50%);
+      position:absolute;right:-14px;top:50%;transform:translateY(-50%) scaleX(-1);
       font-size:20px;color:#c8a84e;filter:drop-shadow(0 0 4px rgba(200,168,78,0.4));
       pointer-events:none;
     `;
-    skillCapR.textContent = "\u2740";
+    skillCapR.textContent = "\uD83D\uDDFF";
     skillBarBg.appendChild(skillCapR);
+
+    // Top decorative border strip (gothic repeating pattern via box-shadow)
+    const skillTopBorder = document.createElement("div");
+    skillTopBorder.style.cssText = `
+      position:absolute;top:-6px;left:10px;right:10px;height:4px;pointer-events:none;
+      background:linear-gradient(90deg, transparent, #c8a84e, #e8d07a, #c8a84e, transparent);
+      box-shadow:0 -2px 0 rgba(139,105,20,0.4),
+        -20px -4px 0 1px rgba(200,168,78,0.15), 0px -4px 0 1px rgba(200,168,78,0.2), 20px -4px 0 1px rgba(200,168,78,0.15),
+        -40px -4px 0 1px rgba(200,168,78,0.1), 40px -4px 0 1px rgba(200,168,78,0.1);
+      z-index:10;
+    `;
+    skillBarBg.appendChild(skillTopBorder);
+
+    // Bottom shadow/depth strip for 3D beveled effect
+    const skillBottomStrip = document.createElement("div");
+    skillBottomStrip.style.cssText = `
+      position:absolute;bottom:-4px;left:4px;right:4px;height:4px;pointer-events:none;
+      background:linear-gradient(180deg, rgba(0,0,0,0.4), rgba(0,0,0,0.1));
+      border-radius:0 0 8px 8px;z-index:10;
+    `;
+    skillBarBg.appendChild(skillBottomStrip);
+
+    // Runic inscription strip below skill bar
+    const runicStrip = document.createElement("div");
+    runicStrip.style.cssText = `
+      position:absolute;bottom:-16px;left:20px;right:20px;height:12px;pointer-events:none;
+      text-align:center;font-size:8px;letter-spacing:3px;
+      color:rgba(200,168,78,0.35);z-index:10;
+      font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
+      text-shadow:0 0 4px rgba(200,168,78,0.15);
+    `;
+    runicStrip.textContent = "\u16A0 \u16B1 \u16C1 \u16A2 \u16B3 \u16C7 \u16A8 \u16B7 \u16C9 \u16AA";
+    skillBarBg.appendChild(runicStrip);
 
     this._skillSlots = [];
     this._skillCooldownOverlays = [];
@@ -3384,42 +3749,88 @@ export class DiabloGame {
       iconEl.style.cssText = "font-size:26px;z-index:1;";
       iconEl.className = "skill-icon";
 
+      // Inner bevel highlight (raised stone look)
+      const innerBevel = document.createElement("div");
+      innerBevel.style.cssText = `
+        position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:5;
+        border-radius:6px;
+        border-top:1px solid rgba(200,180,120,0.25);
+        border-left:1px solid rgba(200,180,120,0.2);
+        border-bottom:1px solid rgba(0,0,0,0.5);
+        border-right:1px solid rgba(0,0,0,0.4);
+      `;
+
       slot.appendChild(cdOverlay);
       slot.appendChild(iconEl);
       slot.appendChild(cdText);
       slot.appendChild(keyLabel);
       slot.appendChild(cornerDeco);
+      slot.appendChild(innerBevel);
       slotWrap.appendChild(slot);
+
+      // Divider line between slots (not after last one)
+      if (i < 5) {
+        const divider = document.createElement("div");
+        divider.style.cssText = `
+          position:absolute;right:-4px;top:4px;bottom:4px;width:2px;pointer-events:none;z-index:6;
+          background:linear-gradient(180deg, transparent, #c8a84e, #e8d07a, #c8a84e, transparent);
+          box-shadow:0 0 4px rgba(200,168,78,0.3);
+        `;
+        slotWrap.appendChild(divider);
+      }
+
       skillBarBg.appendChild(slotWrap);
       this._skillSlots.push(slot);
       this._skillCooldownOverlays.push(cdOverlay);
     }
     this._hud.appendChild(skillBarBg);
 
-    // XP bar - very bottom (ornate)
+    // XP bar - very bottom (ornate, enhanced)
     const xpContainer = document.createElement("div");
     xpContainer.style.cssText = `
-      position:absolute;bottom:0;left:0;width:100%;height:12px;
+      position:absolute;bottom:0;left:0;width:100%;height:18px;
       background:linear-gradient(180deg, rgba(30,22,8,0.95), rgba(15,10,3,0.95));
       border-top:2px solid rgba(200,168,78,0.4);
       box-shadow:inset 0 1px 3px rgba(0,0,0,0.5);
     `;
-    // Left end-cap
+    // Gothic-style repeating peaks border on top
+    const xpGothicBorder = document.createElement("div");
+    xpGothicBorder.style.cssText = `
+      position:absolute;top:-6px;left:0;right:0;height:4px;pointer-events:none;z-index:4;
+      background:repeating-linear-gradient(90deg,
+        transparent 0px, transparent 8px,
+        rgba(200,168,78,0.3) 8px, rgba(200,168,78,0.3) 10px,
+        transparent 10px, transparent 18px);
+    `;
+    xpContainer.appendChild(xpGothicBorder);
+    // Filigree left end-cap (wider ornamental)
     const xpCapL = document.createElement("div");
     xpCapL.style.cssText = `
-      position:absolute;left:4px;top:50%;transform:translateY(-50%);z-index:3;
-      font-size:10px;color:#c8a84e;pointer-events:none;
+      position:absolute;left:2px;top:50%;transform:translateY(-50%);z-index:3;
+      font-size:14px;color:#c8a84e;pointer-events:none;
+      filter:drop-shadow(0 0 3px rgba(200,168,78,0.4));
     `;
-    xpCapL.textContent = "\u25C0";
+    xpCapL.textContent = "\u2761\u25C0";
     xpContainer.appendChild(xpCapL);
-    // Right end-cap
+    // Filigree right end-cap
     const xpCapR = document.createElement("div");
     xpCapR.style.cssText = `
-      position:absolute;right:4px;top:50%;transform:translateY(-50%);z-index:3;
-      font-size:10px;color:#c8a84e;pointer-events:none;
+      position:absolute;right:2px;top:50%;transform:translateY(-50%);z-index:3;
+      font-size:14px;color:#c8a84e;pointer-events:none;
+      filter:drop-shadow(0 0 3px rgba(200,168,78,0.4));
     `;
-    xpCapR.textContent = "\u25B6";
+    xpCapR.textContent = "\u25B6\u2761";
     xpContainer.appendChild(xpCapR);
+    // Segment marks every 10%
+    for (let s = 1; s < 10; s++) {
+      const seg = document.createElement("div");
+      seg.style.cssText = `
+        position:absolute;left:${s * 10}%;top:2px;bottom:2px;width:1px;z-index:2;
+        background:linear-gradient(180deg, rgba(200,168,78,0.5), rgba(200,168,78,0.15));
+        pointer-events:none;
+      `;
+      xpContainer.appendChild(seg);
+    }
     this._xpBar = document.createElement("div");
     this._xpBar.style.cssText = `
       height:100%;width:0%;
@@ -3432,7 +3843,7 @@ export class DiabloGame {
     this._xpLevelText = document.createElement("div");
     this._xpLevelText.style.cssText = `
       position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:3;
-      font-size:9px;color:#e8d07a;font-weight:bold;pointer-events:none;
+      font-size:10px;color:#e8d07a;font-weight:bold;pointer-events:none;
       text-shadow:0 0 4px rgba(0,0,0,0.9), 0 1px 2px rgba(0,0,0,0.8);
       font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
       letter-spacing:1px;
@@ -3440,15 +3851,16 @@ export class DiabloGame {
     xpContainer.appendChild(this._xpLevelText);
     this._hud.appendChild(xpContainer);
 
-    // Top right info (parchment panel)
+    // Top right info (parchment panel, enhanced)
     const topRight = document.createElement("div");
     topRight.style.cssText = `
       position:absolute;top:16px;right:20px;text-align:right;
       background:linear-gradient(180deg, rgba(35,28,15,0.9), rgba(20,15,8,0.92), rgba(30,24,12,0.9));
       border:2px solid #7a6a3a;border-radius:8px;
-      padding:10px 14px;min-width:160px;
+      padding:14px 18px;min-width:160px;
       box-shadow:0 4px 12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(200,168,78,0.15),
-        inset 0 -1px 0 rgba(0,0,0,0.3), 0 0 1px rgba(200,168,78,0.2);
+        inset 0 -1px 0 rgba(0,0,0,0.3), 0 0 1px rgba(200,168,78,0.2),
+        inset 0 0 0 1px rgba(200,168,78,0.08), 0 0 0 1px rgba(0,0,0,0.3);
     `;
     // Top ornament for the panel
     const panelOrnament = document.createElement("div");
@@ -3479,8 +3891,58 @@ export class DiabloGame {
       text-shadow:0 1px 2px rgba(0,0,0,0.6);
     `;
     topRight.appendChild(this._goldText);
+
+    // Separator between gold and level
+    const sep1 = document.createElement("div");
+    sep1.style.cssText = `
+      width:100%;height:1px;margin:4px 0;pointer-events:none;
+      background:linear-gradient(90deg, transparent, rgba(200,168,78,0.4), rgba(200,168,78,0.6), rgba(200,168,78,0.4), transparent);
+    `;
+    topRight.appendChild(sep1);
+
     topRight.appendChild(this._levelText);
+
+    // Separator between level and kills
+    const sep2 = document.createElement("div");
+    sep2.style.cssText = `
+      width:100%;height:1px;margin:4px 0;pointer-events:none;
+      background:linear-gradient(90deg, transparent, rgba(200,168,78,0.3), rgba(200,168,78,0.5), rgba(200,168,78,0.3), transparent);
+    `;
+    topRight.appendChild(sep2);
+
     topRight.appendChild(this._killText);
+
+    // Corner metal brackets (L-shaped gold corners)
+    const bracketPositions = [
+      { top: "3px", left: "3px", borderSides: "border-top:2px solid #c8a84e;border-left:2px solid #c8a84e;" },
+      { top: "3px", right: "3px", borderSides: "border-top:2px solid #c8a84e;border-right:2px solid #c8a84e;" },
+      { bottom: "3px", left: "3px", borderSides: "border-bottom:2px solid #c8a84e;border-left:2px solid #c8a84e;" },
+      { bottom: "3px", right: "3px", borderSides: "border-bottom:2px solid #c8a84e;border-right:2px solid #c8a84e;" },
+    ];
+    for (const bp of bracketPositions) {
+      const bracket = document.createElement("div");
+      let bStyle = `position:absolute;width:12px;height:12px;pointer-events:none;z-index:5;${bp.borderSides}`;
+      if (bp.top) bStyle += `top:${bp.top};`;
+      if (bp.bottom) bStyle += `bottom:${bp.bottom};`;
+      if (bp.left) bStyle += `left:${bp.left};`;
+      if (bp.right) bStyle += `right:${bp.right};`;
+      bracket.style.cssText = bStyle;
+      topRight.appendChild(bracket);
+    }
+
+    // Wax seal decoration at the bottom
+    const waxSeal = document.createElement("div");
+    waxSeal.style.cssText = `
+      position:absolute;bottom:-12px;left:50%;transform:translateX(-50%);z-index:6;
+      width:24px;height:24px;border-radius:50%;pointer-events:none;
+      background:radial-gradient(circle at 40% 35%, #cc3333, #8b1a1a, #5a0a0a);
+      box-shadow:0 1px 4px rgba(0,0,0,0.6), inset 0 1px 2px rgba(255,100,100,0.3);
+      display:flex;align-items:center;justify-content:center;
+      font-size:12px;color:rgba(180,40,40,0.8);text-shadow:0 0 2px rgba(0,0,0,0.4);
+    `;
+    waxSeal.textContent = "\u2605";
+    topRight.appendChild(waxSeal);
+
     this._hud.appendChild(topRight);
 
     // Minimap canvas — top-left corner (ornate frame)
@@ -3508,41 +3970,92 @@ export class DiabloGame {
       box-shadow:inset 0 0 6px rgba(0,0,0,0.5);
     `;
     minimapWrap.appendChild(mmInner);
-    // Corner decorations
+    // Corner rivets (small gold circles)
     const mmCorners = [
-      { top: "-4px", left: "-4px" },
-      { top: "-4px", right: "-4px" },
-      { bottom: "-4px", left: "-4px" },
-      { bottom: "-4px", right: "-4px" },
+      { top: "-5px", left: "-5px" },
+      { top: "-5px", right: "-5px" },
+      { bottom: "-5px", left: "-5px" },
+      { bottom: "-5px", right: "-5px" },
     ];
     for (const pos of mmCorners) {
       const c = document.createElement("div");
-      let cStyle = `position:absolute;font-size:12px;color:#c8a84e;z-index:3;pointer-events:none;
-        filter:drop-shadow(0 0 3px rgba(200,168,78,0.4));`;
+      let cStyle = `position:absolute;width:10px;height:10px;border-radius:50%;z-index:3;pointer-events:none;
+        background:radial-gradient(circle at 35% 35%, #e8d07a, #c8a84e, #8b6914);
+        box-shadow:0 1px 3px rgba(0,0,0,0.6), inset 0 1px 1px rgba(255,255,200,0.3);`;
       if (pos.top) cStyle += `top:${pos.top};`;
       if (pos.bottom) cStyle += `bottom:${pos.bottom};`;
       if (pos.left) cStyle += `left:${pos.left};`;
       if (pos.right) cStyle += `right:${pos.right};`;
       c.style.cssText = cStyle;
-      c.textContent = "\u2726";
       minimapWrap.appendChild(c);
     }
-    // Compass rose indicator (N at top center)
-    const compass = document.createElement("div");
-    compass.style.cssText = `
-      position:absolute;top:-2px;left:50%;transform:translateX(-50%);z-index:4;
-      font-size:11px;color:#e8d07a;font-weight:bold;pointer-events:none;
-      text-shadow:0 0 4px rgba(0,0,0,0.9), 0 0 8px rgba(200,168,78,0.3);
-      font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
+
+    // Chain/rope edge effect around minimap frame
+    const mmChainEdge = document.createElement("div");
+    mmChainEdge.style.cssText = `
+      position:absolute;width:222px;height:222px;border-radius:6px;pointer-events:none;z-index:1;
+      top:50%;left:50%;transform:translate(-50%,-50%);
+      box-shadow:
+        inset 3px 0 0 -1px rgba(139,105,20,0.25), inset -3px 0 0 -1px rgba(139,105,20,0.25),
+        inset 0 3px 0 -1px rgba(139,105,20,0.25), inset 0 -3px 0 -1px rgba(139,105,20,0.25),
+        3px 0 0 -1px rgba(139,105,20,0.15), -3px 0 0 -1px rgba(139,105,20,0.15),
+        0 3px 0 -1px rgba(139,105,20,0.15), 0 -3px 0 -1px rgba(139,105,20,0.15);
     `;
-    compass.textContent = "N";
-    minimapWrap.appendChild(compass);
+    minimapWrap.appendChild(mmChainEdge);
+
+    // 4 compass point labels (N, S, E, W)
+    const compassLabels = [
+      { label: "N", top: "-2px", left: "50%", extra: "transform:translateX(-50%);" },
+      { label: "S", bottom: "-2px", left: "50%", extra: "transform:translateX(-50%);" },
+      { label: "E", right: "-1px", top: "50%", extra: "transform:translateY(-50%);" },
+      { label: "W", left: "1px", top: "50%", extra: "transform:translateY(-50%);" },
+    ];
+    for (const cl of compassLabels) {
+      const lbl = document.createElement("div");
+      let lStyle = `position:absolute;z-index:4;font-size:11px;color:#e8d07a;font-weight:bold;pointer-events:none;
+        text-shadow:0 0 4px rgba(0,0,0,0.9), 0 0 8px rgba(200,168,78,0.3);
+        font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;`;
+      if (cl.top) lStyle += `top:${cl.top};`;
+      if (cl.bottom) lStyle += `bottom:${cl.bottom};`;
+      if (cl.left) lStyle += `left:${cl.left};`;
+      if (cl.right) lStyle += `right:${cl.right};`;
+      if (cl.extra) lStyle += cl.extra;
+      lbl.style.cssText = lStyle;
+      lbl.textContent = cl.label;
+      minimapWrap.appendChild(lbl);
+    }
+
+    // Rotating compass needle overlay
+    const compassNeedle = document.createElement("div");
+    compassNeedle.style.cssText = `
+      position:absolute;top:50%;left:50%;z-index:5;pointer-events:none;
+      width:2px;height:20px;
+      background:linear-gradient(180deg, #cc2222 0%, #cc2222 50%, #cccccc 50%, #cccccc 100%);
+      transform-origin:center center;
+      animation:hud-compass-spin 30s linear infinite;
+      transform:translate(-50%,-50%) rotate(0deg);
+      opacity:0.6;
+    `;
+    minimapWrap.appendChild(compassNeedle);
+
+    // Parchment texture background behind the map canvas
+    const mmParchment = document.createElement("div");
+    mmParchment.style.cssText = `
+      position:absolute;width:204px;height:204px;border-radius:3px;pointer-events:none;z-index:0;
+      background:
+        radial-gradient(ellipse at 20% 20%, rgba(180,160,120,0.08), transparent 50%),
+        radial-gradient(ellipse at 80% 80%, rgba(160,140,100,0.06), transparent 50%),
+        radial-gradient(ellipse at 50% 50%, rgba(140,120,80,0.04), transparent 70%),
+        linear-gradient(180deg, rgba(120,100,60,0.05), rgba(80,60,30,0.08));
+    `;
+    minimapWrap.appendChild(mmParchment);
+
     this._minimapCanvas = document.createElement("canvas");
     this._minimapCanvas.width = 200;
     this._minimapCanvas.height = 200;
     this._minimapCanvas.style.cssText = `
       width:200px;height:200px;border-radius:3px;background:rgba(0,0,0,0.6);
-      box-shadow:inset 0 0 10px rgba(0,0,0,0.4);
+      box-shadow:inset 0 0 10px rgba(0,0,0,0.4);z-index:1;position:relative;
     `;
     this._minimapCtx = this._minimapCanvas.getContext("2d")!;
     minimapWrap.appendChild(this._minimapCanvas);
@@ -3584,7 +4097,7 @@ export class DiabloGame {
     `;
     this._hud.appendChild(this._weatherText);
 
-    // Potion bar (ad1a2850) - ornate
+    // Potion bar (ad1a2850) - ornate, enhanced with flask shapes
     const potionBarBg = document.createElement("div");
     potionBarBg.style.cssText = `
       position:absolute;bottom:22px;left:50%;transform:translateX(250px);display:flex;gap:5px;
@@ -3593,22 +4106,60 @@ export class DiabloGame {
       box-shadow:0 3px 10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(100,180,78,0.12),
         0 0 1px rgba(100,180,78,0.2);
     `;
+
+    // Wooden rack background (horizontal wood grain lines)
+    const woodenRack = document.createElement("div");
+    woodenRack.style.cssText = `
+      position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;
+      border-radius:6px;overflow:hidden;
+      background:repeating-linear-gradient(0deg,
+        transparent 0px, transparent 6px,
+        rgba(90,60,20,0.08) 6px, rgba(90,60,20,0.08) 7px,
+        transparent 7px, transparent 13px,
+        rgba(70,45,15,0.06) 13px, rgba(70,45,15,0.06) 14px);
+    `;
+    potionBarBg.appendChild(woodenRack);
+
     this._potionHudSlots = [];
     const potionLabels = ["F1", "F2", "F3", "F4"];
+    const potionColors = [
+      "rgba(200,40,40,0.5)", "rgba(60,60,220,0.5)", "rgba(40,180,40,0.5)", "rgba(200,180,40,0.5)"
+    ];
     for (let i = 0; i < 4; i++) {
       const slot = document.createElement("div");
       slot.style.cssText = `
-        width:54px;height:54px;background:linear-gradient(180deg, rgba(20,28,15,0.95), rgba(8,14,4,0.97));
-        border:2px solid #6a8a4a;border-radius:6px;display:flex;flex-direction:column;
+        width:54px;height:64px;background:linear-gradient(180deg, rgba(20,28,15,0.95), rgba(8,14,4,0.97));
+        border:2px solid #6a8a4a;display:flex;flex-direction:column;
         align-items:center;justify-content:center;position:relative;overflow:hidden;
         box-shadow:inset 0 1px 0 rgba(100,180,78,0.2), inset 0 -1px 0 rgba(0,0,0,0.3),
           0 2px 6px rgba(0,0,0,0.4), inset 0 0 15px rgba(80,160,60,0.03);
+        clip-path:polygon(25% 0%, 75% 0%, 80% 8%, 80% 12%, 100% 20%, 100% 100%, 0% 100%, 0% 20%, 20% 12%, 20% 8%);
       `;
+
+      // Cork/stopper decoration at top
+      const cork = document.createElement("div");
+      cork.style.cssText = `
+        position:absolute;top:0px;left:50%;transform:translateX(-50%);z-index:4;
+        width:20px;height:6px;pointer-events:none;
+        background:linear-gradient(180deg, #8b7355, #6b5335, #8b7355);
+        border-radius:2px 2px 0 0;
+        box-shadow:0 1px 2px rgba(0,0,0,0.4);
+      `;
+      slot.appendChild(cork);
+
+      // Liquid level indicator (colored fill from bottom)
+      const liquidLevel = document.createElement("div");
+      liquidLevel.style.cssText = `
+        position:absolute;bottom:0;left:0;width:100%;height:60%;z-index:0;
+        background:linear-gradient(0deg, ${potionColors[i]}, transparent);
+        pointer-events:none;transition:height 0.3s;
+      `;
+      slot.appendChild(liquidLevel);
+
       // Frame corners
       const potCorner = document.createElement("div");
       potCorner.style.cssText = `
         position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:3;
-        border-radius:6px;
         box-shadow:inset 2px 2px 0 rgba(100,180,78,0.1), inset -2px -2px 0 rgba(100,180,78,0.08);
       `;
       const keyLabel = document.createElement("div");

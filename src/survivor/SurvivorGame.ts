@@ -16,6 +16,10 @@ import { SurvivorPickupSystem } from "./systems/SurvivorPickupSystem";
 import { generateUpgradeChoices, applyUpgrade } from "./systems/SurvivorLevelSystem";
 import { SurvivorHazardSystem } from "./systems/SurvivorHazardSystem";
 import { SurvivorLandmarkSystem } from "./systems/SurvivorLandmarkSystem";
+import { SurvivorBiomeSystem } from "./systems/SurvivorBiomeSystem";
+import { SurvivorFusionSystem } from "./systems/SurvivorFusionSystem";
+import { SurvivorCoopSystem } from "./systems/SurvivorCoopSystem";
+import { SurvivorPrestigeSystem } from "./systems/SurvivorPrestigeSystem";
 import { audioManager } from "@audio/AudioManager";
 import { TerrainType } from "@/types";
 import { ObstacleType } from "@sim/state/BattlefieldState";
@@ -183,10 +187,19 @@ export class SurvivorGame {
     // Level-up & arcana callbacks
     this._levelUpUI.setUpgradeCallback((choice) => {
       const prevSynergies = [...this._state.activeSynergies];
+      const prevFusions = [...this._state.activeFusions];
       applyUpgrade(this._state, choice);
       for (const syn of this._state.activeSynergies) {
         if (!prevSynergies.includes(syn)) {
           this._hud.showNotification(`Synergy: ${syn}!`, 0xff8844, sw, sh);
+        }
+      }
+      for (const fus of this._state.activeFusions) {
+        if (!prevFusions.includes(fus)) {
+          const fusDef = SurvivorFusionSystem.getFusion(fus);
+          if (fusDef) {
+            this._hud.showNotification(`Fusion: ${fusDef.name}!`, fusDef.color, sw, sh);
+          }
         }
       }
       viewManager.removeFromLayer("ui", this._levelUpUI.levelUpOverlay);
@@ -221,6 +234,21 @@ export class SurvivorGame {
       const px = worldX * 64; // TS
       const py = worldY * 64;
       this._renderer.showSpeechBubble(dialogue, px, py, 4.5);
+    });
+
+    // Biome system
+    SurvivorBiomeSystem.setTransitionCallback((biome) => {
+      this._hud.showNotification(`Biome: ${biome.name}`, biome.color, sw, sh);
+    });
+
+    // Fusion system
+    SurvivorFusionSystem.setActivatedCallback((fusion) => {
+      this._hud.showNotification(`Fusion: ${fusion.name}!`, fusion.color, sw, sh);
+    });
+
+    // Prestige system
+    SurvivorPrestigeSystem.setPrestigeCallback((newLevel) => {
+      this._hud.showNotification(`Prestige ${newLevel}!`, 0xffd700, sw, sh);
     });
 
     // Minimap
@@ -299,10 +327,13 @@ export class SurvivorGame {
         this._state.gameTime += DT;
         SurvivorInputSystem.update(this._state, DT);
         SurvivorLandmarkSystem.update(this._state, DT);
+        SurvivorBiomeSystem.update(this._state, DT);
         SurvivorWaveSystem.update(this._state, DT);
         SurvivorCombatSystem.update(this._state, DT);
         SurvivorPickupSystem.update(this._state, DT);
         SurvivorHazardSystem.update(this._state, DT);
+        SurvivorFusionSystem.update(this._state, DT);
+        SurvivorCoopSystem.update(this._state, DT);
       }
     }
 
@@ -384,6 +415,9 @@ export class SurvivorGame {
     SurvivorPickupSystem.setArcanaCallback(null);
     SurvivorHazardSystem.setEventCallback(null);
     SurvivorLandmarkSystem.cleanup();
+    SurvivorBiomeSystem.cleanup();
+    SurvivorFusionSystem.cleanup();
+    SurvivorPrestigeSystem.cleanup();
     if (this._tickerCb) {
       viewManager.app.ticker.remove(this._tickerCb);
       this._tickerCb = null;

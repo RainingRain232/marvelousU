@@ -15,6 +15,18 @@ import { DuelAISystem } from "./systems/DuelAISystem";
 import { duelAudio } from "./systems/DuelAudioSystem";
 import { createDuelState } from "./state/DuelState";
 import type { DuelInputResult, DuelState, DuelGameMode } from "./state/DuelState";
+import { DuelAssistSystem, createAssistState } from "./systems/DuelAssistSystem";
+import type { DuelAssistCharacter } from "./systems/DuelAssistSystem";
+import {
+  detectDramaticFinisher,
+  updateDramaticFinisher,
+} from "./systems/DuelDramaticFinisher";
+import {
+  DuelComboChallengeSystem,
+  createComboChallengeState,
+} from "./systems/DuelComboChallengeSystem";
+import { DUEL_CHARACTER_ENDINGS } from "./config/DuelCharacterEndings";
+import { calculateRPChange } from "./config/DuelRankedConfig";
 
 import { DuelMenuView } from "../view/duel/DuelMenuView";
 import type { DuelMenuChoice } from "../view/duel/DuelMenuView";
@@ -64,6 +76,17 @@ export class DuelGame {
   // Wave mode
   private _waveEnemies: string[] = [];
 
+  // Arcade mode opponent list
+  private _arcadeOpponents: string[] = [];
+  private _arcadeIndex = 0;
+
+  // Assist character selections
+  private _assistP1: DuelAssistCharacter | null = null;
+  private _assistP2: DuelAssistCharacter | null = null;
+
+  // Assist key handler
+  private _assistKeyHandler: ((e: KeyboardEvent) => void) | null = null;
+
   async boot(): Promise<void> {
     viewManager.clearWorld();
 
@@ -110,6 +133,10 @@ export class DuelGame {
         break;
       case "TRAINING":
         this._gameMode = "training";
+        this._showCharacterSelect();
+        break;
+      case "COMBO CHALLENGE":
+        this._gameMode = "combo_challenge";
         this._showCharacterSelect();
         break;
       case "CONTROLS":
@@ -173,6 +200,13 @@ export class DuelGame {
 
     const isAI = this._gameMode !== "vs_mode";
 
+    // Arcade mode: generate opponent list
+    if (this._gameMode === "arcade" && this._arcadeOpponents.length === 0) {
+      const available = DUEL_CHARACTER_IDS.filter((id) => id !== p1Id);
+      this._arcadeOpponents = [...available].sort(() => Math.random() - 0.5).slice(0, 8);
+      this._arcadeIndex = 0;
+    }
+
     // Wave mode: generate wave and override P2 to first enemy with 20% HP
     let actualP2Id = p2Id;
     let p2Hp = p2Def.maxHp;
@@ -193,6 +227,25 @@ export class DuelGame {
       sw, sh,
       this._gameMode,
     );
+
+    // Assist system setup
+    if (this._assistP1 || this._assistP2) {
+      this._state.assistState = createAssistState();
+      if (this._assistP1) this._state.assistState.characters[0] = this._assistP1;
+      if (this._assistP2) this._state.assistState.characters[1] = this._assistP2;
+    }
+
+    // Combo challenge setup
+    if (this._gameMode === "combo_challenge") {
+      this._state.comboChallengeState = createComboChallengeState(p1Id);
+      this._state.comboChallengeState.active = true;
+    }
+
+    // Arcade mode progress
+    if (this._gameMode === "arcade") {
+      this._state.arcadeProgress = this._arcadeIndex;
+      this._state.arcadeTotal = this._arcadeOpponents.length;
+    }
 
     // Wave mode: set up wave state
     if (this._gameMode === "wave") {
@@ -254,11 +307,15 @@ export class DuelGame {
     // Setup pause key (ESC)
     this._setupPauseKey();
 
+    // Setup assist key handler
+    this._setupAssistKey();
+
     // Training mode setup
-    if (this._state.gameMode === "training") {
+    if (this._state.gameMode === "training" || this._state.gameMode === "combo_challenge") {
       this._setupTrainingControls();
       duelAudio.playRoundStart();
-      this._announce("TRAINING", 60);
+      const label = this._state.gameMode === "combo_challenge" ? "COMBO CHALLENGE" : "TRAINING";
+      this._announce(label, 60);
       setTimeout(() => {
         this._announce("FIGHT!", 40);
       }, 1000);
@@ -334,9 +391,13 @@ export class DuelGame {
   }
 
   private _setupTrainingControls(): void {
-    // F1-F4 to switch dummy mode, F5 to reset positions
+    // F1-F4 to switch dummy mode, F5 to reset positions, F6 frame data, F7 hitboxes
+    // F8/F9 for combo challenge navigation
     this._trainingKeyHandler = (e: KeyboardEvent) => {
-      if (!this._state || this._state.gameMode !== "training") return;
+      if (!this._state) return;
+      const isTraining = this._state.gameMode === "training" || this._state.gameMode === "combo_challenge";
+      if (!isTraining) return;
+
       switch (e.code) {
         case "F1":
           this._state.trainingDummyMode = "stand";
@@ -375,12 +436,68 @@ export class DuelGame {
           p2.state = DuelFighterState.IDLE;
           p2.hp = p2.maxHp;
           this._state.projectiles = [];
+          // Reset combo challenge progress too
+          if (this._state.comboChallengeState) {
+            DuelComboChallengeSystem.resetChallenge(this._state.comboChallengeState);
+          }
           this._announce("RESET", 40);
           break;
         }
+        case "F6":
+          // Toggle frame data overlay
+          this._state.trainingShowFrameData = !this._state.trainingShowFrameData;
+          this._announce(
+            this._state.trainingShowFrameData ? "FRAME DATA: ON" : "FRAME DATA: OFF",
+            40,
+          );
+          break;
+        case "F7":
+          // Toggle hitbox overlay
+          this._state.trainingShowHitboxes = !this._state.trainingShowHitboxes;
+          this._announce(
+            this._state.trainingShowHitboxes ? "HITBOXES: ON" : "HITBOXES: OFF",
+            40,
+          );
+          break;
+        case "F8":
+          // Next combo challenge
+          if (this._state.comboChallengeState) {
+            if (DuelComboChallengeSystem.nextChallenge(this._state.comboChallengeState)) {
+              this._announce("NEXT CHALLENGE", 40);
+            }
+          }
+          break;
+        case "F9":
+          // Previous combo challenge
+          if (this._state.comboChallengeState) {
+            if (DuelComboChallengeSystem.prevChallenge(this._state.comboChallengeState)) {
+              this._announce("PREV CHALLENGE", 40);
+            }
+          }
+          break;
       }
     };
     window.addEventListener("keydown", this._trainingKeyHandler);
+  }
+
+  private _setupAssistKey(): void {
+    this._assistKeyHandler = (e: KeyboardEvent) => {
+      if (!this._state) return;
+      if (this._state.phase !== DuelPhase.FIGHTING) return;
+      if (!this._state.assistState) return;
+
+      // P1 assist: Tab key
+      if (e.code === "Tab") {
+        e.preventDefault();
+        DuelAssistSystem.callAssist(this._state, 0);
+      }
+      // P2 assist: Backslash key (if vs_mode)
+      if (e.code === "Backslash" && this._state.gameMode === "vs_mode") {
+        e.preventDefault();
+        DuelAssistSystem.callAssist(this._state, 1);
+      }
+    };
+    window.addEventListener("keydown", this._assistKeyHandler);
   }
 
   // ---- Game loop -----------------------------------------------------------
@@ -423,7 +540,7 @@ export class DuelGame {
 
   private _simulateFrame(): void {
     if (!this._state) return;
-    const isTraining = this._state.gameMode === "training";
+    const isTraining = this._state.gameMode === "training" || this._state.gameMode === "combo_challenge";
 
     // Process P1 input
     const p1Input = DuelInputSystem.update(this._state);
@@ -446,6 +563,35 @@ export class DuelGame {
     // Simulate one fighting frame
     DuelFightingSystem.update(this._state, p1Input, p2Input);
     DuelProjectileSystem.update(this._state);
+
+    // Assist system update
+    if (this._state.assistState) {
+      DuelAssistSystem.update(this._state);
+    }
+
+    // Dramatic finisher update
+    if (this._state.dramaticFinisher?.active) {
+      const done = updateDramaticFinisher(this._state.dramaticFinisher);
+      if (done) {
+        this._state.dramaticFinisher = null;
+      }
+    }
+
+    // Combo challenge tracking: detect when P1 starts a new move
+    if (this._state.comboChallengeState?.active) {
+      const p1 = this._state.fighters[0];
+      if (p1.currentMove && p1.moveFrame === 0) {
+        const result = DuelComboChallengeSystem.onMoveExecuted(
+          this._state.comboChallengeState,
+          p1.currentMove,
+          this._state.frameCount,
+        );
+        if (result.status === "complete") {
+          this._announce("COMBO COMPLETE!", 90);
+          duelAudio.playKO();
+        }
+      }
+    }
 
     this._state.frameCount++;
 
@@ -487,7 +633,7 @@ export class DuelGame {
       this._prevBlockstun[i] = f.blockstunFrames;
     }
 
-    // Training mode: auto-regen dummy HP after combo drops, and never end round
+    // Training / combo challenge mode: auto-regen dummy HP after combo drops, and never end round
     if (isTraining) {
       const dummy = this._state.fighters[1];
       const player = this._state.fighters[0];
@@ -546,6 +692,14 @@ export class DuelGame {
   private _endRound(winner: 0 | 1): void {
     if (!this._state) return;
 
+    const loser: 0 | 1 = winner === 0 ? 1 : 0;
+
+    // Check for dramatic finisher (super-move KO)
+    const finisher = detectDramaticFinisher(this._state, winner, loser);
+    if (finisher) {
+      this._state.dramaticFinisher = finisher;
+    }
+
     this._state.round.winnerId = winner;
     this._state.roundResults.push(winner);
     this._state.phase = DuelPhase.ROUND_END;
@@ -553,7 +707,7 @@ export class DuelGame {
 
     // Set victory/defeat states
     this._state.fighters[winner].state = DuelFighterState.VICTORY;
-    this._state.fighters[winner === 0 ? 1 : 0].state = DuelFighterState.DEFEAT;
+    this._state.fighters[loser].state = DuelFighterState.DEFEAT;
 
     // Wave mode: special handling
     if (this._state.gameMode === "wave") {
@@ -570,15 +724,30 @@ export class DuelGame {
       // Match over
       const matchWinner = p1Wins >= winsNeeded ? 0 : 1;
       const winnerName = DUEL_CHARACTERS[this._state.fighters[matchWinner].characterId].name;
+
+      // Update ranked progression
+      this._updateRankedProgression(matchWinner === 0);
+
+      const dramaticDelay = finisher ? 3000 : 0;
+
       duelAudio.playKO();
-      this._announce(`${winnerName.toUpperCase()} WINS!`, 180);
+      if (finisher) {
+        this._announce(finisher.finisherText, 180);
+      } else {
+        this._announce(`${winnerName.toUpperCase()} WINS!`, 180);
+      }
 
       setTimeout(() => {
-        this._endMatch();
-      }, 3000);
+        // Arcade mode: advance to next opponent or show ending
+        if (this._state?.gameMode === "arcade" && matchWinner === 0) {
+          this._handleArcadeVictory();
+        } else {
+          this._endMatch();
+        }
+      }, 3000 + dramaticDelay);
     } else {
       // Next round
-      const ko = this._state.fighters[winner === 0 ? 1 : 0].hp <= 0;
+      const ko = this._state.fighters[loser].hp <= 0;
       duelAudio.playKO();
       this._announce(ko ? "K.O.!" : "TIME!", 90);
 
@@ -782,7 +951,109 @@ export class DuelGame {
     }, 800);
   }
 
+  // ---- Arcade mode -----------------------------------------------------------
+
+  private _handleArcadeVictory(): void {
+    if (!this._state) return;
+
+    this._arcadeIndex++;
+
+    if (this._arcadeIndex >= this._arcadeOpponents.length) {
+      // Arcade complete! Show character ending
+      this._showCharacterEnding();
+      return;
+    }
+
+    // Next arcade opponent
+    const nextP2Id = this._arcadeOpponents[this._arcadeIndex];
+    const nextP2Def = DUEL_CHARACTERS[nextP2Id];
+    this._announce(`NEXT: ${nextP2Def.name.toUpperCase()}`, 90);
+
+    setTimeout(() => {
+      if (!this._state) return;
+      // Keep P1, swap P2
+      this._matchP2Id = nextP2Id;
+      this._cleanup();
+      this._startMatch(this._matchP1Id, nextP2Id, this._matchArenaId);
+    }, 2000);
+  }
+
+  private _showCharacterEnding(): void {
+    if (!this._state) return;
+
+    const p1Id = this._state.fighters[0].characterId;
+    const ending = DUEL_CHARACTER_ENDINGS[p1Id];
+    if (!ending) {
+      this._endMatch();
+      return;
+    }
+
+    // Show ending text sequentially using announcements
+    let lineIndex = 0;
+    const showNextLine = () => {
+      if (!this._state) return;
+
+      if (lineIndex === 0) {
+        this._announce(ending.title.toUpperCase(), 120);
+        lineIndex++;
+        setTimeout(showNextLine, 2500);
+        return;
+      }
+
+      const textIdx = lineIndex - 1;
+      if (textIdx < ending.lines.length) {
+        this._announce(ending.lines[textIdx], 150);
+        lineIndex++;
+        setTimeout(showNextLine, 3500);
+      } else {
+        // Epilogue
+        this._announce(ending.epilogue, 180);
+        setTimeout(() => {
+          this._endMatch();
+        }, 4000);
+      }
+    };
+
+    showNextLine();
+  }
+
+  // ---- Ranked progression ---------------------------------------------------
+
+  private _updateRankedProgression(playerWon: boolean): void {
+    if (!this._state) return;
+
+    const ranked = this._state.rankedState;
+    const opponentRP = 100 + Math.floor(Math.random() * 400); // simulate opponent RP
+    const rpChange = calculateRPChange(ranked.rp, opponentRP, playerWon);
+
+    ranked.rp = Math.max(0, ranked.rp + rpChange);
+
+    if (playerWon) {
+      ranked.wins++;
+      ranked.winStreak++;
+      ranked.bestWinStreak = Math.max(ranked.bestWinStreak, ranked.winStreak);
+    } else {
+      ranked.losses++;
+      ranked.winStreak = 0;
+    }
+
+    const p2Id = this._state.fighters[1].characterId;
+    ranked.matchHistory.push({
+      opponentCharId: p2Id,
+      won: playerWon,
+      rpChange,
+      timestamp: Date.now(),
+    });
+
+    // Keep history manageable
+    if (ranked.matchHistory.length > 50) {
+      ranked.matchHistory = ranked.matchHistory.slice(-50);
+    }
+  }
+
   private _endMatch(): void {
+    this._arcadeOpponents = [];
+    this._arcadeIndex = 0;
     this._cleanup();
     this._stateMachine.transition(DuelPhase.CHAR_SELECT);
     this._showMainMenu();
@@ -808,6 +1079,11 @@ export class DuelGame {
     if (this._pauseKeyHandler) {
       window.removeEventListener("keydown", this._pauseKeyHandler);
       this._pauseKeyHandler = null;
+    }
+
+    if (this._assistKeyHandler) {
+      window.removeEventListener("keydown", this._assistKeyHandler);
+      this._assistKeyHandler = null;
     }
 
     this._pauseMenu.hide();

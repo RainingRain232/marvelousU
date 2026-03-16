@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import { SurvivorBalance } from "../config/SurvivorBalanceConfig";
-import type { SurvivorState, SurvivorCoopPlayer } from "../state/SurvivorState";
+import type { SurvivorState } from "../state/SurvivorState";
 
 // ---------------------------------------------------------------------------
 // Helpers

@@ -2,10 +2,8 @@
 // Duel mode – dramatic finishers (cinematic KO when finishing with a super)
 // ---------------------------------------------------------------------------
 
-import { DuelFighterState } from "../../types";
-import { DuelBalance } from "../config/DuelBalanceConfig";
 import { DUEL_CHARACTERS } from "../config/DuelCharacterDefs";
-import type { DuelFighter, DuelState } from "../state/DuelState";
+import type { DuelState } from "../state/DuelState";
 
 // ---- Constants --------------------------------------------------------------
 
@@ -64,8 +62,6 @@ export function detectDramaticFinisher(
 
   const isZealMove = charDef.zeals[attacker.currentMove] !== undefined;
   if (!isZealMove) return null;
-
-  const zealDef = charDef.zeals[attacker.currentMove];
 
   // Build finisher state
   const finisherName = _getFinisherName(attacker.characterId, attacker.currentMove);

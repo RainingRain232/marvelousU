@@ -65,6 +65,18 @@ export function generateFloor(
     } else if (idx === rawRooms.length - 3 && rawRooms.length > 7 && Math.random() < 0.25) {
       // Companion encounter room (25% chance)
       type = RoomType.COMPANION;
+    } else if (rawRooms.length > 5) {
+      // --- New room types for variety ---
+      const roll = Math.random();
+      if (roll < 0.12) {
+        type = RoomType.TRAP_GAUNTLET;
+      } else if (roll < 0.22) {
+        type = RoomType.MERCHANT;
+      } else if (roll < 0.30) {
+        type = RoomType.LIBRARY;
+      } else if (roll < 0.38) {
+        type = RoomType.FOUNTAIN;
+      }
     }
     return { ...r, type };
   });
@@ -139,12 +151,72 @@ export function generateFloor(
     }
   }
 
+  // Pre-declare treasures and difficulty (used by multiple room-type sections below)
+  const treasures: TreasureChest[] = [];
+  const difficulty = getDifficulty(floorNum, params);
+
   // Place shrine tiles in shrine rooms
   for (const room of rooms) {
     if (room.type === RoomType.SHRINE) {
       const center = roomCenter(room);
       if (tiles[center.row][center.col] === TileType.FLOOR) {
         tiles[center.row][center.col] = TileType.SHRINE;
+      }
+    }
+  }
+
+  // Place tiles for new room types: trap gauntlet, merchant, library, fountain
+  for (const room of rooms) {
+    const center = roomCenter(room);
+
+    if (room.type === RoomType.TRAP_GAUNTLET) {
+      // Fill room with trap tiles (dense trap layout)
+      for (let r = room.y + 1; r < room.y + room.h - 1; r++) {
+        for (let c = room.x + 1; c < room.x + room.w - 1; c++) {
+          if (tiles[r][c] === TileType.FLOOR && Math.random() < 0.35) {
+            tiles[r][c] = TileType.TRAP;
+          }
+        }
+      }
+      // Place a treasure at the far end as reward
+      const rewardC = room.x + room.w - 2;
+      const rewardR = room.y + Math.floor(room.h / 2);
+      if (tiles[rewardR][rewardC] === TileType.FLOOR || tiles[rewardR][rewardC] === TileType.TRAP) {
+        tiles[rewardR][rewardC] = TileType.TREASURE;
+        const loot = rollLoot("hard");
+        treasures.push({ col: rewardC, row: rewardR, opened: false, item: loot });
+      }
+    }
+
+    if (room.type === RoomType.MERCHANT) {
+      // Place a merchant stall tile at the room center
+      if (tiles[center.row][center.col] === TileType.FLOOR) {
+        tiles[center.row][center.col] = TileType.MERCHANT_STALL;
+      }
+    }
+
+    if (room.type === RoomType.LIBRARY) {
+      // Place bookshelves along the walls and a treasure (scroll/knowledge reward)
+      for (let c = room.x + 1; c < room.x + room.w - 1; c++) {
+        if (tiles[room.y + 1][c] === TileType.FLOOR && Math.random() < 0.6) {
+          tiles[room.y + 1][c] = TileType.BOOKSHELF;
+        }
+        if (tiles[room.y + room.h - 2][c] === TileType.FLOOR && Math.random() < 0.6) {
+          tiles[room.y + room.h - 2][c] = TileType.BOOKSHELF;
+        }
+      }
+      // Knowledge reward at center
+      if (tiles[center.row][center.col] === TileType.FLOOR) {
+        tiles[center.row][center.col] = TileType.TREASURE;
+        const loot = rollLoot(difficulty);
+        treasures.push({ col: center.col, row: center.row, opened: false, item: loot });
+      }
+    }
+
+    if (room.type === RoomType.FOUNTAIN) {
+      // Place a healing fountain tile at center
+      if (tiles[center.row][center.col] === TileType.FLOOR) {
+        tiles[center.row][center.col] = TileType.FOUNTAIN;
       }
     }
   }
@@ -165,8 +237,6 @@ export function generateFloor(
   placeEnvironmentalTiles(tiles, rooms, floorNum, width, height, entrancePos, stairsPos);
 
   // Place treasures in rooms
-  const treasures: TreasureChest[] = [];
-  const difficulty = getDifficulty(floorNum, params);
   for (let ri = 1; ri < rooms.length; ri++) {
     const room = rooms[ri];
     if (ri === stairsRoomIdx) continue; // skip stairs room

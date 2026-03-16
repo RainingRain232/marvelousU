@@ -6,8 +6,6 @@ import {
 } from "../../types";
 import type { TekkenRankedProfile } from "../config/TekkenRankedConfig";
 import type { TekkenSkinSlot } from "../config/TekkenCustomization";
-import type { ComboChallengeState } from "../systems/TekkenComboChallengeSystem";
-import type { StageTransitionState } from "../systems/TekkenStageTransitionSystem";
 
 export interface TekkenInputState {
   left: boolean;
@@ -179,6 +177,23 @@ export interface TrainingModeState {
   lastMoveActive: number;
   lastMoveRecovery: number;
   frameAdvantage: number;
+  /** Frame data overlay: show startup/active/recovery visualization */
+  showFrameDataOverlay: boolean;
+  /** Current move phase frame counter for overlay display */
+  overlayMovePhase: "startup" | "active" | "recovery" | "none";
+  overlayPhaseFrame: number;
+  overlayPhaseTotal: number;
+  /** Hitbox dimensions of the last move (for overlay) */
+  lastHitbox: { x: number; y: number; z: number; w: number; h: number; d: number } | null;
+  /** Training combo counter (persistent, doesn't reset on round end) */
+  bestComboCount: number;
+  bestComboDamage: number;
+  /** Move height for display */
+  lastMoveHeight: string;
+  /** On-block frame advantage for display */
+  lastOnBlock: number;
+  /** On-hit frame advantage for display */
+  lastOnHit: number;
 }
 
 export interface StageHazard {
@@ -212,6 +227,12 @@ export interface TekkenState {
   trainingMode: TrainingModeState;
   difficulty: number; // 0=easy, 1=medium, 2=hard
   stageHazards: StageHazard[];
+  /** Ranked progression profile */
+  rankedProfile: TekkenRankedProfile;
+  /** Per-fighter customization state */
+  customization: [TekkenCustomizationState, TekkenCustomizationState];
+  /** Arcade mode progression */
+  arcadeState: TekkenArcadeState;
 }
 
 export function createDefaultInput(): TekkenInputState {
@@ -256,6 +277,13 @@ export function createFighter(characterId: string, x: number, facingRight: boole
   };
 }
 
+export function createDefaultCustomization(): TekkenCustomizationState {
+  return {
+    equippedSkins: {},
+    unlockedSkins: new Set<string>(),
+  };
+}
+
 export function createTekkenState(gameMode: TekkenGameMode, arenaId: string, p1CharId: string, p2CharId: string): TekkenState {
   return {
     phase: TekkenPhase.INTRO,
@@ -289,8 +317,35 @@ export function createTekkenState(gameMode: TekkenGameMode, arenaId: string, p1C
       lastMoveActive: 0,
       lastMoveRecovery: 0,
       frameAdvantage: 0,
+      showFrameDataOverlay: true,
+      overlayMovePhase: "none",
+      overlayPhaseFrame: 0,
+      overlayPhaseTotal: 0,
+      lastHitbox: null,
+      bestComboCount: 0,
+      bestComboDamage: 0,
+      lastMoveHeight: "",
+      lastOnBlock: 0,
+      lastOnHit: 0,
     },
     difficulty: 1,
     stageHazards: [],
+    rankedProfile: {
+      rating: 500,
+      wins: 0,
+      losses: 0,
+      winStreak: 0,
+      bestWinStreak: 0,
+      rankTier: "iron" as const,
+      characterWins: {},
+      characterLosses: {},
+      recentMatches: [],
+    },
+    customization: [createDefaultCustomization(), createDefaultCustomization()],
+    arcadeState: {
+      opponentsDefeated: 0,
+      totalOpponents: 8,
+      endingShown: false,
+    },
   };
 }

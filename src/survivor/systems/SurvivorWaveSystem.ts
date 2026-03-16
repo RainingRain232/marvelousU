@@ -9,6 +9,8 @@ import { WAVE_TABLE, BOSS_DEFS, DEATH_BOSS_DEF } from "../config/SurvivorEnemyDe
 import type { SurvivorEnemyDef } from "../config/SurvivorEnemyDefs";
 import { ELITE_CONFIG, ELITE_DEFS } from "../config/SurvivorEliteDefs";
 import type { EliteType } from "../config/SurvivorEliteDefs";
+import { SurvivorChallengeSystem } from "./SurvivorChallengeSystem";
+import { SurvivorBiomeSystem } from "./SurvivorBiomeSystem";
 import { DIFFICULTY_SETTINGS } from "../state/SurvivorState";
 import type { SurvivorState, SurvivorEnemy, AiBehavior } from "../state/SurvivorState";
 
@@ -168,7 +170,11 @@ function _createEnemy(state: SurvivorState, def: SurvivorEnemyDef, pos: { x: num
     1 + SurvivorBalance.ENEMY_SPEED_SCALE_PER_MIN * minute,
   );
 
-  let hp = (unitDef?.hp ?? 50) * def.hpMult * hpScale * diffMods.enemyHpMultiplier;
+  // Challenge + biome modifiers
+  const challengeHpMult = SurvivorChallengeSystem.getEnemyHpMultiplier(state);
+  const biomeHpMult = SurvivorBiomeSystem.getEnemyHpMultiplier(state);
+
+  let hp = (unitDef?.hp ?? 50) * def.hpMult * hpScale * diffMods.enemyHpMultiplier * challengeHpMult * biomeHpMult;
   let atk = (unitDef?.atk ?? 10) * def.atkMult * diffMods.enemyAtkMultiplier;
   let speed = (unitDef?.speed ?? 1) * def.speedMult * speedScale * diffMods.enemySpeedMultiplier;
 
@@ -239,18 +245,27 @@ export const SurvivorWaveSystem = {
       return;
     }
 
-    // Apply event spawn rate multiplier + difficulty
+    // Apply event spawn rate multiplier + difficulty + challenge + biome
     const eventSpawnMult = state.activeEvent?.spawnRateMultiplier ?? 1;
     const diffSpawnMult = DIFFICULTY_SETTINGS[state.difficulty].spawnRateMultiplier;
+    const challengeSpawnMult = SurvivorChallengeSystem.getSpawnRateMultiplier(state);
+    const biomeSpawnMult = SurvivorBiomeSystem.getSpawnRateMultiplier(state);
 
     // Regular enemy spawning
     const spawnRate = Math.min(
       SurvivorBalance.ENEMY_MAX_SPAWN_RATE,
       SurvivorBalance.ENEMY_BASE_SPAWN_RATE + SurvivorBalance.ENEMY_SPAWN_RATE_SCALE * minute,
-    ) * eventSpawnMult * diffSpawnMult;
+    ) * eventSpawnMult * diffSpawnMult * challengeSpawnMult * biomeSpawnMult;
     state.spawnAccumulator += spawnRate * dt;
 
     const pool = _getActiveEnemyPool(minute);
+
+    // Add biome-specific enemies to the pool
+    const biomeEnemies = SurvivorBiomeSystem.getBiomeEnemyPool(state);
+    for (const bDef of biomeEnemies) {
+      pool.push({ def: bDef, weight: 3 }); // biome enemies have moderate weight
+    }
+
     if (pool.length === 0) return;
 
     let aliveCount = state.enemies.filter((e) => e.alive).length;
@@ -263,8 +278,9 @@ export const SurvivorWaveSystem = {
       aliveCount++;
     }
 
-    // Boss spawning
-    state.bossTimer -= dt;
+    // Boss spawning (challenge: double boss frequency halves the interval)
+    const bossDtScale = SurvivorChallengeSystem.isDoubleBossFrequency(state) ? 2.0 : 1.0;
+    state.bossTimer -= dt * bossDtScale;
     if (state.bossTimer <= 0) {
       state.bossTimer = SurvivorBalance.BOSS_INTERVAL;
       const bossDef = BOSS_DEFS[state.nextBossIndex % BOSS_DEFS.length];

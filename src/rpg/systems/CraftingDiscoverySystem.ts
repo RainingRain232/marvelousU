@@ -1,6 +1,6 @@
 // Crafting discovery system — experiment with unknown material combinations
 // to discover new recipes. Players combine items without knowing the result.
-import type { RPGState, RPGItem } from "@rpg/state/RPGState";
+import type { RPGState } from "@rpg/state/RPGState";
 import { CRAFTING_RECIPES, type CraftingRecipe } from "@rpg/config/CraftingDefs";
 
 // ---------------------------------------------------------------------------

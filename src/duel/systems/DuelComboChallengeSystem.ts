@@ -4,7 +4,6 @@
 
 import type { DuelComboChallenge } from "../config/DuelComboChallenges";
 import { DUEL_COMBO_CHALLENGES } from "../config/DuelComboChallenges";
-import type { DuelState } from "../state/DuelState";
 
 // ---- Challenge state --------------------------------------------------------
 

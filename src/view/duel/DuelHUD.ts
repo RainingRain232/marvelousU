@@ -754,6 +754,352 @@ export class DuelHUD {
     }
   }
 
+  // ---- Training mode: frame data overlay ------------------------------------
+
+  private _updateFrameData(state: DuelState, sw: number, sh: number): void {
+    const isTraining = state.gameMode === "training" || state.gameMode === "combo_challenge";
+    if (!isTraining || !state.trainingShowFrameData) {
+      this._frameDataP1.visible = false;
+      this._frameDataP2.visible = false;
+      this._frameDataGfx.clear();
+      return;
+    }
+
+    this._frameDataP1.visible = true;
+    this._frameDataP2.visible = true;
+    this._frameDataGfx.clear();
+
+    for (let i = 0; i < 2; i++) {
+      const f = state.fighters[i];
+      const charDef = DUEL_CHARACTERS[f.characterId];
+      if (!charDef) continue;
+
+      const textEl = i === 0 ? this._frameDataP1 : this._frameDataP2;
+      const xPos = i === 0 ? 10 : sw - 240;
+      const yBase = 110;
+
+      // Build frame data string
+      const lines: string[] = [];
+      lines.push(`State: ${f.state}`);
+      lines.push(`Combo: ${f.comboCount} | Chain: ${f.comboChain}`);
+      lines.push(`Scaling: ${(f.comboDamageScaling * 100).toFixed(0)}%`);
+      lines.push(`Zeal: ${Math.round(f.zealGauge)}/${DuelBalance.ZEAL_MAX}`);
+
+      if (f.currentMove) {
+        const move =
+          charDef.normals[f.currentMove] ??
+          charDef.specials[f.currentMove] ??
+          charDef.zeals[f.currentMove] ??
+          (f.currentMove === "grab" ? charDef.grab : null);
+
+        if (move) {
+          lines.push(`--- ${move.name} ---`);
+          lines.push(`Startup: ${move.startup}f | Active: ${move.active}f | Recovery: ${move.recovery}f`);
+          lines.push(`Total: ${move.startup + move.active + move.recovery}f`);
+          lines.push(`Damage: ${move.damage} | Hitstun: ${move.hitstun}f`);
+          lines.push(`Frame: ${f.moveFrame}/${move.startup + move.active + move.recovery}`);
+
+          // Phase indicator
+          if (f.moveFrame < move.startup) {
+            lines.push(`Phase: STARTUP (${move.startup - f.moveFrame}f left)`);
+          } else if (f.moveFrame < move.startup + move.active) {
+            lines.push(`Phase: ACTIVE (${move.startup + move.active - f.moveFrame}f left)`);
+          } else {
+            lines.push(`Phase: RECOVERY (${move.startup + move.active + move.recovery - f.moveFrame}f left)`);
+          }
+
+          // Advantage on block/hit
+          const advantageOnHit = move.hitstun - move.recovery;
+          const advantageOnBlock = move.blockstun - move.recovery;
+          const hitAdv = advantageOnHit >= 0 ? `+${advantageOnHit}` : `${advantageOnHit}`;
+          const blockAdv = advantageOnBlock >= 0 ? `+${advantageOnBlock}` : `${advantageOnBlock}`;
+          lines.push(`On Hit: ${hitAdv} | On Block: ${blockAdv}`);
+        }
+      } else {
+        lines.push("No active move");
+      }
+
+      if (f.hitstunFrames > 0) lines.push(`Hitstun: ${f.hitstunFrames}f`);
+      if (f.blockstunFrames > 0) lines.push(`Blockstun: ${f.blockstunFrames}f`);
+      if (f.invincibleFrames > 0) lines.push(`Invincible: ${f.invincibleFrames}f`);
+
+      textEl.text = lines.join("\n");
+      textEl.position.set(xPos, yBase);
+
+      // Draw background panel
+      const panelW = 230;
+      const panelH = lines.length * 14 + 8;
+      this._frameDataGfx.roundRect(xPos - 4, yBase - 4, panelW, panelH, 4);
+      this._frameDataGfx.fill({ color: 0x000000, alpha: 0.7 });
+      this._frameDataGfx.stroke({ color: 0x00ff88, width: 1, alpha: 0.3 });
+    }
+  }
+
+  // ---- Hitbox overlay -------------------------------------------------------
+
+  private _updateHitboxOverlay(state: DuelState): void {
+    this._hitboxGfx.clear();
+    const isTraining = state.gameMode === "training" || state.gameMode === "combo_challenge";
+    if (!isTraining || !state.trainingShowHitboxes) return;
+
+    for (let i = 0; i < 2; i++) {
+      const f = state.fighters[i];
+      const charDef = DUEL_CHARACTERS[f.characterId];
+      if (!charDef) continue;
+
+      // Draw hurtbox (green)
+      const isCrouching = f.stance === "crouching";
+      const hurtH = isCrouching ? DuelBalance.CROUCH_HURTBOX_H : DuelBalance.STAND_HURTBOX_H;
+      const hurtW = DuelBalance.STAND_HURTBOX_W;
+      this._hitboxGfx.rect(
+        f.position.x - hurtW / 2,
+        f.position.y - hurtH,
+        hurtW,
+        hurtH,
+      );
+      this._hitboxGfx.stroke({ color: 0x00ff00, width: 1, alpha: 0.5 });
+
+      // Draw active hitbox (red)
+      if (f.currentMove && f.state === "attack") {
+        const move =
+          charDef.normals[f.currentMove] ??
+          charDef.specials[f.currentMove] ??
+          charDef.zeals[f.currentMove];
+
+        if (move && f.moveFrame >= move.startup && f.moveFrame < move.startup + move.active) {
+          const dir = f.facingRight ? 1 : -1;
+          const hbX = f.position.x + dir * move.hitbox.x;
+          const hbY = f.position.y + move.hitbox.y;
+          const hbLeft = dir > 0 ? hbX : hbX - move.hitbox.width;
+
+          this._hitboxGfx.rect(hbLeft, hbY, move.hitbox.width, move.hitbox.height);
+          this._hitboxGfx.fill({ color: 0xff0000, alpha: 0.25 });
+          this._hitboxGfx.stroke({ color: 0xff0000, width: 2, alpha: 0.8 });
+        }
+      }
+    }
+  }
+
+  // ---- Combo challenge display ----------------------------------------------
+
+  private _updateComboChallengeDisplay(state: DuelState, sw: number, sh: number): void {
+    const cs = state.comboChallengeState;
+    if (!cs || !cs.active) {
+      this._challengeTitle.visible = false;
+      this._challengeNotation.visible = false;
+      this._challengeProgress.visible = false;
+      this._challengeStatus.visible = false;
+      this._challengeGfx.clear();
+      return;
+    }
+
+    const challenge = DuelComboChallengeSystem.getCurrentChallenge(cs);
+    if (!challenge) {
+      this._challengeTitle.visible = false;
+      this._challengeNotation.visible = false;
+      this._challengeProgress.visible = false;
+      this._challengeStatus.visible = false;
+      this._challengeGfx.clear();
+      return;
+    }
+
+    this._challengeGfx.clear();
+
+    // Position: right side of screen, middle
+    const panelX = sw - 320;
+    const panelY = sh / 2 - 60;
+    const panelW = 300;
+    const panelH = 140;
+
+    // Background
+    this._challengeGfx.roundRect(panelX, panelY, panelW, panelH, 8);
+    this._challengeGfx.fill({ color: 0x000000, alpha: 0.8 });
+    this._challengeGfx.stroke({ color: 0xffcc00, width: 2, alpha: 0.6 });
+
+    // Title
+    const progress = DuelComboChallengeSystem.getProgress(cs);
+    this._challengeTitle.visible = true;
+    this._challengeTitle.text = `COMBO ${cs.challengeIndex + 1}/${progress.total}: ${challenge.name}`;
+    this._challengeTitle.position.set(panelX + 10, panelY + 8);
+
+    // Difficulty indicator
+    const diffColors: Record<string, number> = {
+      beginner: 0x44ff44, intermediate: 0xffcc00, advanced: 0xff6600, expert: 0xff2222,
+    };
+    this._challengeTitle.style.fill = diffColors[challenge.difficulty] ?? 0xffffff;
+
+    // Notation
+    this._challengeNotation.visible = true;
+    this._challengeNotation.text = challenge.notation;
+    this._challengeNotation.position.set(panelX + 10, panelY + 34);
+
+    // Progress bar: highlight completed inputs
+    const seqParts: string[] = [];
+    for (let i = 0; i < challenge.sequence.length; i++) {
+      if (i < cs.sequenceIndex) {
+        seqParts.push(`[${challenge.sequence[i]}]`);
+      } else if (i === cs.sequenceIndex) {
+        seqParts.push(`> ${challenge.sequence[i]} <`);
+      } else {
+        seqParts.push(challenge.sequence[i]);
+      }
+    }
+    this._challengeProgress.visible = true;
+    this._challengeProgress.text = `${cs.sequenceIndex}/${challenge.sequence.length}  ${seqParts.join(" ")}`;
+    this._challengeProgress.position.set(panelX + 10, panelY + 58);
+
+    // Status text
+    if (cs.completed) {
+      this._challengeStatus.visible = true;
+      this._challengeStatus.text = "COMPLETE!";
+      this._challengeStatus.style.fill = 0x00ff00;
+      this._challengeStatus.position.set(panelX + panelW / 2, panelY + 100);
+      this._challengeStatus.anchor.set(0.5, 0);
+    } else {
+      this._challengeStatus.visible = false;
+    }
+
+    // Draw progress dots
+    const dotY = panelY + 84;
+    for (let i = 0; i < challenge.sequence.length; i++) {
+      const dotX = panelX + 10 + i * 20;
+      this._challengeGfx.circle(dotX + 5, dotY, 6);
+      if (i < cs.sequenceIndex) {
+        this._challengeGfx.fill({ color: 0x00ff00 });
+      } else if (i === cs.sequenceIndex) {
+        this._challengeGfx.fill({ color: 0xffcc00 });
+      } else {
+        this._challengeGfx.fill({ color: 0x333333 });
+        this._challengeGfx.circle(dotX + 5, dotY, 6);
+        this._challengeGfx.stroke({ color: 0x888888, width: 1 });
+      }
+    }
+  }
+
+  // ---- Ranked display -------------------------------------------------------
+
+  private _updateRankedDisplay(state: DuelState, sw: number, _sh: number): void {
+    if (state.gameMode !== "vs_cpu" && state.gameMode !== "arcade") {
+      this._rankedInfo.visible = false;
+      return;
+    }
+
+    const ranked = state.rankedState;
+    const rankInfo = resolveRank(ranked.rp);
+    const rankStr = formatRank(rankInfo);
+
+    this._rankedInfo.visible = true;
+    this._rankedInfo.text = `${rankStr}  |  ${ranked.rp} RP  |  W:${ranked.wins} L:${ranked.losses}`;
+    this._rankedInfo.style.fill = rankInfo.tier.color;
+    this._rankedInfo.position.set(sw / 2 - 120, 8);
+  }
+
+  // ---- Assist display -------------------------------------------------------
+
+  private _updateAssistDisplay(state: DuelState, sw: number, sh: number): void {
+    const assist = state.assistState;
+    if (!assist) {
+      this._assistP1Label.visible = false;
+      this._assistP2Label.visible = false;
+      this._assistGfx.clear();
+      return;
+    }
+
+    this._assistGfx.clear();
+
+    for (let i = 0; i < 2; i++) {
+      const assistChar = assist.characters[i];
+      const label = i === 0 ? this._assistP1Label : this._assistP2Label;
+
+      if (!assistChar) {
+        label.visible = false;
+        continue;
+      }
+
+      label.visible = true;
+      const charDef = DUEL_CHARACTERS[assistChar.characterId];
+      const name = charDef?.name ?? assistChar.characterId;
+      const cooldown = assist.cooldowns[i];
+      const isActive = assist.activeAssists[i as 0 | 1] !== null;
+
+      const xPos = i === 0 ? 10 : sw - 160;
+      const yPos = sh - 50;
+
+      if (isActive) {
+        label.text = `ASSIST: ${name} [ACTIVE]`;
+        label.style.fill = 0x00ff00;
+      } else if (cooldown > 0) {
+        const cdSec = (cooldown / 60).toFixed(1);
+        label.text = `ASSIST: ${name} [${cdSec}s]`;
+        label.style.fill = 0xff4444;
+
+        // Cooldown bar
+        const barW = 140;
+        const barH = 4;
+        const barX = xPos;
+        const barY = yPos + 18;
+        this._assistGfx.rect(barX, barY, barW, barH);
+        this._assistGfx.fill({ color: 0x333333 });
+        const fillRatio = 1 - cooldown / ASSIST_COOLDOWN_FRAMES;
+        this._assistGfx.rect(barX, barY, barW * fillRatio, barH);
+        this._assistGfx.fill({ color: 0x44ddff });
+      } else {
+        label.text = `ASSIST: ${name} [READY]`;
+        label.style.fill = 0x44ddff;
+      }
+
+      label.position.set(xPos, yPos);
+    }
+  }
+
+  // ---- Dramatic finisher overlay -------------------------------------------
+
+  private _updateDramaticFinisher(state: DuelState, sw: number, sh: number): void {
+    const finisher = state.dramaticFinisher;
+    if (!finisher || !finisher.active) {
+      this._finisherText.visible = false;
+      this._finisherName.visible = false;
+      this._finisherGfx.clear();
+      return;
+    }
+
+    const info = getDramaticFinisherRenderInfo(finisher);
+    this._finisherGfx.clear();
+
+    // Screen flash
+    if (info.screenFlashAlpha > 0) {
+      this._finisherGfx.rect(0, 0, sw, sh);
+      this._finisherGfx.fill({ color: info.screenFlashColor, alpha: info.screenFlashAlpha });
+    }
+
+    // Finisher text
+    if (info.showFinisherText) {
+      this._finisherText.visible = true;
+      this._finisherText.text = info.finisherText;
+      this._finisherText.position.set(sw / 2, sh / 2 - 40);
+      this._finisherText.alpha = info.textAlpha;
+
+      this._finisherName.visible = true;
+      this._finisherName.text = info.finisherName;
+      this._finisherName.position.set(sw / 2, sh / 2 + 20);
+      this._finisherName.alpha = info.textAlpha;
+    } else {
+      this._finisherText.visible = false;
+      this._finisherName.visible = false;
+    }
+
+    // Vignette effect during zoom
+    if (info.zoomFactor > 1.1) {
+      const vigAlpha = Math.min(0.5, (info.zoomFactor - 1) * 0.6);
+      // Top and bottom bars for cinematic aspect ratio
+      const barH = sh * 0.08 * (info.zoomFactor - 1);
+      this._finisherGfx.rect(0, 0, sw, barH);
+      this._finisherGfx.fill({ color: 0x000000, alpha: vigAlpha + 0.3 });
+      this._finisherGfx.rect(0, sh - barH, sw, barH);
+      this._finisherGfx.fill({ color: 0x000000, alpha: vigAlpha + 0.3 });
+    }
+  }
+
   destroy(): void {
     this.container.destroy({ children: true });
   }

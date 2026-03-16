@@ -1,8 +1,10 @@
 // GTAPlayerSystem.ts – Pure logic, no PixiJS imports
 import type { MedievalGTAState, GTAVec2, GTABuilding, GTAActiveWorldEvent } from '../state/MedievalGTAState';
 import { PROPERTY_DEFS, CRIME_RING_DEFS, WORLD_EVENT_DEFS } from '../config/MedievalGTAConfig';
-import type { GTAWorldEventDef } from '../config/MedievalGTAConfig';
+import type { GTAWorldEventDef, GTAFactionId } from '../config/MedievalGTAConfig';
 import { increaseWanted } from './GTAWantedSystem';
+import { updateHeists } from './GTAHeistSystem';
+import { updateDayNight } from './GTADayNightSystem';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 const PLAYER_WALK_SPEED    = 120;
@@ -114,6 +116,21 @@ export function purchaseProperty(
   if (state.ownedProperties.some(p => p.propertyId === propertyId)) return false;
 
   const p = state.player;
+
+  // Check faction reputation requirement
+  if (def.requiredFaction && def.requiredRep !== undefined) {
+    const factionRep = p.reputation[def.requiredFaction] ?? 0;
+    if (factionRep < def.requiredRep) {
+      state.notifications.push({
+        id: `notif_${state.nextId++}`,
+        text: `Need ${def.requiredRep} ${def.requiredFaction} rep!`,
+        timer: 2.5,
+        color: 0xff8800,
+      });
+      return false;
+    }
+  }
+
   if (p.gold < def.cost) {
     state.notifications.push({
       id: `notif_${state.nextId++}`,
@@ -130,6 +147,7 @@ export function purchaseProperty(
     purchasedAt: state.timeElapsed,
     lastIncomeTime: state.timeElapsed,
     totalIncomeEarned: 0,
+    purchasedUpgrades: [],
   });
 
   state.notifications.push({
@@ -139,7 +157,99 @@ export function purchaseProperty(
     color: 0x44ff44,
   });
 
+  // Reputation effects from buying property
+  _applyPropertyReputation(state);
+
   return true;
+}
+
+/** Purchase an upgrade for an owned property. Returns true on success. */
+export function purchasePropertyUpgrade(
+  state: MedievalGTAState,
+  propertyId: string,
+  upgradeId: string,
+): boolean {
+  const ownedProp = state.ownedProperties.find(p => p.propertyId === propertyId);
+  if (!ownedProp) {
+    state.notifications.push({
+      id: `notif_${state.nextId++}`,
+      text: 'You do not own this property!',
+      timer: 2.5,
+      color: 0xff8800,
+    });
+    return false;
+  }
+
+  // Already purchased this upgrade?
+  if (ownedProp.purchasedUpgrades.includes(upgradeId)) {
+    state.notifications.push({
+      id: `notif_${state.nextId++}`,
+      text: 'Upgrade already purchased!',
+      timer: 2.0,
+      color: 0xff8800,
+    });
+    return false;
+  }
+
+  const def = PROPERTY_DEFS.find(p => p.id === propertyId);
+  if (!def || !def.upgrades) return false;
+
+  const upgradeDef = def.upgrades.find(u => u.id === upgradeId);
+  if (!upgradeDef) return false;
+
+  const p = state.player;
+  if (p.gold < upgradeDef.cost) {
+    state.notifications.push({
+      id: `notif_${state.nextId++}`,
+      text: `Not enough gold! Need ${upgradeDef.cost}g`,
+      timer: 2.5,
+      color: 0xff8800,
+    });
+    return false;
+  }
+
+  p.gold -= upgradeDef.cost;
+  ownedProp.purchasedUpgrades.push(upgradeId);
+
+  state.notifications.push({
+    id: `notif_${state.nextId++}`,
+    text: `Upgraded: ${upgradeDef.name}!`,
+    timer: 3.0,
+    color: 0x44ff44,
+  });
+
+  return true;
+}
+
+/** Get total income for a property including upgrades. */
+export function getPropertyTotalIncome(state: MedievalGTAState, propertyId: string): number {
+  const def = PROPERTY_DEFS.find(p => p.id === propertyId);
+  if (!def) return 0;
+
+  const owned = state.ownedProperties.find(p => p.propertyId === propertyId);
+  if (!owned) return 0;
+
+  let totalIncome = def.income;
+
+  if (def.upgrades) {
+    for (const upgId of owned.purchasedUpgrades) {
+      const upgDef = def.upgrades.find(u => u.id === upgId);
+      if (upgDef) totalIncome += upgDef.incomeBonus;
+    }
+  }
+
+  return totalIncome;
+}
+
+function _applyPropertyReputation(state: MedievalGTAState): void {
+  const repEffects: Array<{ faction: GTAFactionId; amount: number }> = [
+    { faction: 'merchants', amount: 5 },
+    { faction: 'nobles', amount: 3 },
+  ];
+  for (const eff of repEffects) {
+    const current = state.player.reputation[eff.faction] ?? 0;
+    state.player.reputation[eff.faction] = Math.max(-100, Math.min(100, current + eff.amount));
+  }
 }
 
 /** Tick property income generation. */
@@ -157,10 +267,21 @@ function updatePropertyIncome(state: MedievalGTAState): void {
 
   for (const prop of state.ownedProperties) {
     const def = PROPERTY_DEFS.find(d => d.id === prop.propertyId);
-    if (!def || def.income <= 0) continue;
+    if (!def) continue;
+
+    // Calculate total income including upgrades
+    let baseIncome = def.income;
+    if (def.upgrades) {
+      for (const upgId of prop.purchasedUpgrades) {
+        const upgDef = def.upgrades.find(u => u.id === upgId);
+        if (upgDef) baseIncome += upgDef.incomeBonus;
+      }
+    }
+
+    if (baseIncome <= 0) continue;
 
     if (now - prop.lastIncomeTime >= PROPERTY_INCOME_INTERVAL) {
-      const earned = Math.floor(def.income * incomeMultiplier);
+      const earned = Math.floor(baseIncome * incomeMultiplier);
       state.player.gold += earned;
       prop.lastIncomeTime = now;
       prop.totalIncomeEarned += earned;
@@ -577,6 +698,12 @@ export function updatePlayer(state: MedievalGTAState, dt: number): void {
 
   // ── Dynamic world events ───────────────────────────────────────────────
   updateWorldEvents(state, dt);
+
+  // ── Heist missions ──────────────────────────────────────────────────────
+  updateHeists(state, dt);
+
+  // ── Day/night cycle systems ─────────────────────────────────────────────
+  updateDayNight(state, dt);
 
   // ── Tick ─────────────────────────────────────────────────────────────────
   state.timeElapsed += dt;

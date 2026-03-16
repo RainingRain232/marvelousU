@@ -14,6 +14,7 @@ const MENU_ITEMS = [
   "VS MODE",
   "VS CPU",
   "TRAINING",
+  "COMBO CHALLENGE",
   "CONTROLS",
   "HOW TO PLAY",
   "SETTINGS",

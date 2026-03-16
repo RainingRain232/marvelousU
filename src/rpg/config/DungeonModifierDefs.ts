@@ -201,8 +201,6 @@ export function rollDungeonModifiers(rng: SeededRandom, count?: number): Dungeon
   const numModifiers = count ?? (rng.int(1, 4)); // 1-3 modifiers
   const pool = [...DUNGEON_MODIFIER_DEFS];
   const selected: DungeonModifierDef[] = [];
-  const usedCategories = new Set<string>();
-
   for (let i = 0; i < numModifiers && pool.length > 0; i++) {
     const idx = rng.int(0, pool.length - 1);
     const mod = pool[idx];

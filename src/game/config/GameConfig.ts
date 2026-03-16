@@ -698,6 +698,9 @@ export enum TileType {
   COMPANION_NPC = 17,
   ENCHANT_TABLE = 18,
   CRAFTING_BENCH = 19,
+  FOUNTAIN = 20,
+  BOOKSHELF = 21,
+  MERCHANT_STALL = 22,
 }
 
 // ---------------------------------------------------------------------------
@@ -713,6 +716,10 @@ export enum RoomType {
   PUZZLE = "puzzle",
   BOSS_ARENA = "boss_arena",
   COMPANION = "companion",
+  TRAP_GAUNTLET = "trap_gauntlet",
+  MERCHANT = "merchant",
+  LIBRARY = "library",
+  FOUNTAIN = "fountain",
 }
 
 // ---------------------------------------------------------------------------

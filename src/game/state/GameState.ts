@@ -9,6 +9,8 @@ import {
 } from "../config/GameConfig";
 import type { KnightDef, ItemDef, EnemyDef, QuestGenreDef, FloorParams } from "../config/GameConfig";
 import type { CompanionDef, CompanionBehavior, TrapVariant, PuzzleType } from "../config/GameArtifactDefs";
+import type { CurseType } from "../config/GameCurseDefs";
+import type { DailyChallengeConfig } from "../systems/GameDailyChallenge";
 
 // ---------------------------------------------------------------------------
 // Sub-state types
@@ -354,6 +356,15 @@ export interface GrailGameState {
   // Perception stat (for trap detection)
   perception: number;           // increases with level
   trapDisarmSkill: number;      // skill for disarming traps
+
+  // Curse System
+  activeCurses: CurseType[];           // curses currently affecting the player
+  cursedItemIds: string[];             // item IDs that are cursed (for tracking)
+
+  // Daily Challenge
+  isDailyChallenge: boolean;
+  dailyChallengeConfig: DailyChallengeConfig | null;
+  dailyScore: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -408,6 +419,13 @@ export function createGrailGameState(): GrailGameState {
     // Perception / Trap disarm
     perception: 15,
     trapDisarmSkill: 10,
+    // Curses
+    activeCurses: [],
+    cursedItemIds: [],
+    // Daily Challenge
+    isDailyChallenge: false,
+    dailyChallengeConfig: null,
+    dailyScore: 0,
   };
 }
 

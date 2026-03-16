@@ -6,7 +6,7 @@ import type { DungeonFloor, DungeonRoom, DungeonTile, TrapType } from "@rpg/stat
 import type { DungeonState } from "@rpg/state/DungeonState";
 import type { DungeonDef } from "@rpg/config/DungeonDefs";
 import { rollDungeonModifiers, mergeModifierEffects } from "@rpg/config/DungeonModifierDefs";
-import type { DungeonModifierDef, DungeonModifierEffects } from "@rpg/config/DungeonModifierDefs";
+import type { DungeonModifierEffects } from "@rpg/config/DungeonModifierDefs";
 
 // ---------------------------------------------------------------------------
 // BSP Node

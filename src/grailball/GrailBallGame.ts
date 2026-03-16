@@ -9,11 +9,10 @@ import { viewManager } from "../view/ViewManager";
 
 import {
   GBMatchPhase, GBPlayerClass, GBPowerUpType,
-  GBWeatherType, GBPosition, randomGBWeather,
+  GBPosition, randomGBWeather,
   GB_FIELD, GB_PHYSICS, GB_MATCH, GB_CAMERA, GB_ABILITIES,
   GB_TEAMS, GB_POWERUP_POSITIONS, GB_STAMINA,
-  GB_POSITION_ABILITIES, GB_INPUT_P1, GB_INPUT_P2,
-  type GBInputMapping,
+  GB_POSITION_ABILITIES, GB_INPUT_P2,
 } from "./GrailBallConfig";
 
 import {

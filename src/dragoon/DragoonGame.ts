@@ -123,6 +123,33 @@ export class DragoonGame {
       this._hud.showNotification(`Press [6] to use — [Tab] to switch`, 0xaaaaaa, sw2, sh2);
       this._fx.screenFlash(cfg.color, 0.2);
     });
+    // Dragon evolution callback
+    DragoonCombatSystem.setEvolutionCallback((_stage, name) => {
+      const sw2 = viewManager.screenWidth;
+      const sh2 = viewManager.screenHeight;
+      this._hud.showNotification(`Dragon Evolved: ${name}!`, 0xffd700, sw2, sh2);
+      this._fx.screenFlash(0xffd700, 0.4);
+      this._fx.shake(8, 0.4);
+    });
+
+    // Destructible collapse callback
+    DragoonCombatSystem.setDestructibleCollapseCallback((x, y, radius, color, _debrisCount) => {
+      this._fx.pendingExplosions.push({ x, y, radius, color });
+      this._fx.shake(6, 0.3);
+    });
+
+    // Fork selection callback
+    DragoonWaveSystem.setForkCallback((_forkState) => {
+      const sw2 = viewManager.screenWidth;
+      const sh2 = viewManager.screenHeight;
+      this._hud.showForkChoice(this._state, sw2, sh2);
+    });
+
+    // Fork path selection input callback
+    DragoonInputSystem.setForkSelectCallback((index) => {
+      this._selectForkPath(index);
+    });
+
     DragoonCombatSystem.setLevelUpCallback((level) => {
       const sw2 = viewManager.screenWidth;
       const sh2 = viewManager.screenHeight;
@@ -278,6 +305,25 @@ export class DragoonGame {
   }
 
   // ---------------------------------------------------------------------------
+  // Fork Path Selection
+  // ---------------------------------------------------------------------------
+
+  private _selectForkPath(index: number): void {
+    const state = this._state;
+    if (!state.branchState.forkActive) return;
+
+    DragoonWaveSystem.selectForkPath(state, index);
+    this._hud.hideForkChoice();
+
+    const sw = viewManager.screenWidth;
+    const sh = viewManager.screenHeight;
+    const path = state.branchState.chosenPath;
+    if (path) {
+      this._hud.showNotification(`Path chosen: ${path.replace(/_/g, " ")}`, 0xffcc44, sw, sh);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // Game Loop
   // ---------------------------------------------------------------------------
 
@@ -301,7 +347,7 @@ export class DragoonGame {
     }
 
     // Fixed timestep simulation
-    if (!state.paused && !state.gameOver && !state.victory && !state.classSelectActive && !state.subclassChoiceActive) {
+    if (!state.paused && !state.gameOver && !state.victory && !state.classSelectActive && !state.subclassChoiceActive && !state.branchState.forkActive) {
       this._simAccumulator += rawDt;
       while (this._simAccumulator >= DT) {
         this._simAccumulator -= DT;
@@ -409,6 +455,9 @@ export class DragoonGame {
     DragoonCombatSystem.setLightningCallback(null);
     DragoonCombatSystem.setLevelUpCallback(null);
     DragoonCombatSystem.setSkillUnlockCallback(null);
+    DragoonCombatSystem.setEvolutionCallback(null);
+    DragoonCombatSystem.setDestructibleCollapseCallback(null);
+    DragoonWaveSystem.setForkCallback(null);
     DragoonWaveSystem.reset();
 
     if (this._tickerCb) {

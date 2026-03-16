@@ -593,6 +593,21 @@ export class DragoonHUD {
   // Subclass select overlay
   private _subclassSelectContainer = new Container();
 
+  // Fork choice overlay
+  private _forkSelectContainer = new Container();
+
+  // Score attack chain HUD
+  private _chainMultText = new Text({ text: "", style: new TextStyle({
+    fontFamily: "Georgia, serif", fontSize: 18, fill: 0xff8844,
+    fontWeight: "bold", dropShadow: { color: 0x000000, distance: 1, alpha: 0.8 },
+  }) });
+
+  // Dragon evolution HUD
+  private _evoText = new Text({ text: "", style: new TextStyle({
+    fontFamily: "Georgia, serif", fontSize: 12, fill: 0xffd700,
+    dropShadow: { color: 0x000000, distance: 1, alpha: 0.8 },
+  }) });
+
   // Escape menu overlay
   private _escapeMenuContainer = new Container();
   private _escapeMenuResumeCb: (() => void) | null = null;
@@ -715,9 +730,23 @@ export class DragoonHUD {
     this._unlockSkillKey.anchor.set(0.5, 0.5);
     this.container.addChild(this._unlockSkillKey);
 
+    // Score attack chain multiplier display
+    this._chainMultText.anchor.set(1, 0);
+    this._chainMultText.position.set(sw - 20, 62);
+    this._chainMultText.alpha = 0;
+    this.container.addChild(this._chainMultText);
+
+    // Dragon evolution display
+    this._evoText.anchor.set(0, 0);
+    this._evoText.position.set(20, 50);
+    this.container.addChild(this._evoText);
+
     // Class select overlay
     this.container.addChild(this._classSelectContainer);
     this.container.addChild(this._subclassSelectContainer);
+
+    // Fork choice overlay
+    this.container.addChild(this._forkSelectContainer);
 
     // Escape menu overlay
     this.container.addChild(this._escapeMenuContainer);
@@ -960,12 +989,114 @@ export class DragoonHUD {
   }
 
   // ---------------------------------------------------------------------------
+  // Fork Choice screen
+  // ---------------------------------------------------------------------------
+
+  showForkChoice(state: DragoonState, sw: number, sh: number): void {
+    this._forkSelectContainer.removeChildren();
+
+    const fork = state.branchState.currentFork;
+    if (!fork) return;
+
+    // Background overlay
+    const bg = new Graphics();
+    bg.rect(0, 0, sw, sh).fill({ color: 0x000000, alpha: 0.85 });
+    this._forkSelectContainer.addChild(bg);
+
+    // Title
+    const title = new Text({ text: "CHOOSE YOUR PATH", style: new TextStyle({
+      fontFamily: "Georgia, serif", fontSize: 28, fill: 0xffd700,
+      fontWeight: "bold", dropShadow: { color: 0x000000, distance: 2, alpha: 0.9 },
+    }) });
+    title.anchor.set(0.5, 0);
+    title.position.set(sw / 2, sh * 0.12);
+    this._forkSelectContainer.addChild(title);
+
+    const cardW = 280;
+    const cardH = 300;
+    const gap = 40;
+    const totalW = 2 * cardW + gap;
+    const startX = (sw - totalW) / 2;
+    const cardY = sh / 2 - cardH / 2;
+
+    for (let i = 0; i < 2; i++) {
+      const choice = fork.choices[i];
+      const x = startX + i * (cardW + gap);
+
+      // Card background
+      const card = new Graphics();
+      card.roundRect(x, cardY, cardW, cardH, 10).fill({ color: 0x111122, alpha: 0.9 });
+      card.roundRect(x, cardY, cardW, cardH, 10).stroke({ color: choice.color, width: 2 });
+      this._forkSelectContainer.addChild(card);
+
+      // Key hint
+      const keyText = new Text({ text: `[${i + 1}]`, style: new TextStyle({
+        fontFamily: "Georgia, serif", fontSize: 22, fill: choice.color, fontWeight: "bold",
+      }) });
+      keyText.anchor.set(0.5, 0);
+      keyText.position.set(x + cardW / 2, cardY + 15);
+      this._forkSelectContainer.addChild(keyText);
+
+      // Path name
+      const nameText = new Text({ text: choice.label, style: new TextStyle({
+        fontFamily: "Georgia, serif", fontSize: 20, fill: 0xffffff, fontWeight: "bold",
+      }) });
+      nameText.anchor.set(0.5, 0);
+      nameText.position.set(x + cardW / 2, cardY + 50);
+      this._forkSelectContainer.addChild(nameText);
+
+      // Description
+      const descText = new Text({ text: choice.description, style: new TextStyle({
+        fontFamily: "Georgia, serif", fontSize: 13, fill: 0xcccccc, wordWrap: true, wordWrapWidth: 240,
+      }) });
+      descText.anchor.set(0.5, 0);
+      descText.position.set(x + cardW / 2, cardY + 85);
+      this._forkSelectContainer.addChild(descText);
+
+      // Difficulty indicator
+      const diffLabel = choice.difficultyMod > 1.2 ? "HARD" : choice.difficultyMod > 1.0 ? "MEDIUM" : "NORMAL";
+      const diffColor = choice.difficultyMod > 1.2 ? 0xff4444 : choice.difficultyMod > 1.0 ? 0xffaa44 : 0x44cc44;
+      const diffText = new Text({ text: `Difficulty: ${diffLabel}`, style: new TextStyle({
+        fontFamily: "Georgia, serif", fontSize: 14, fill: diffColor, fontWeight: "bold",
+      }) });
+      diffText.anchor.set(0.5, 0);
+      diffText.position.set(x + cardW / 2, cardY + 160);
+      this._forkSelectContainer.addChild(diffText);
+
+      // Score bonus
+      const bonusText = new Text({ text: `Score Bonus: x${choice.bonusScoreMult.toFixed(2)}`, style: new TextStyle({
+        fontFamily: "Georgia, serif", fontSize: 14, fill: 0xffdd44,
+      }) });
+      bonusText.anchor.set(0.5, 0);
+      bonusText.position.set(x + cardW / 2, cardY + 190);
+      this._forkSelectContainer.addChild(bonusText);
+
+      // Boss preview
+      if (choice.bossType) {
+        const bossText = new Text({ text: `Boss: ${choice.bossType.replace(/_/g, " ")}`, style: new TextStyle({
+          fontFamily: "Georgia, serif", fontSize: 13, fill: 0xff6666,
+        }) });
+        bossText.anchor.set(0.5, 0);
+        bossText.position.set(x + cardW / 2, cardY + 230);
+        this._forkSelectContainer.addChild(bossText);
+      }
+    }
+
+    this._forkSelectContainer.visible = true;
+  }
+
+  hideForkChoice(): void {
+    this._forkSelectContainer.removeChildren();
+    this._forkSelectContainer.visible = false;
+  }
+
+  // ---------------------------------------------------------------------------
   // Update
   // ---------------------------------------------------------------------------
 
   update(state: DragoonState, sw: number, sh: number, dt: number): void {
     // Don't update game HUD during selection screens
-    if (state.classSelectActive || state.subclassChoiceActive) return;
+    if (state.classSelectActive || state.subclassChoiceActive || state.branchState.forkActive) return;
 
     const p = state.player;
 
@@ -1064,6 +1195,24 @@ export class DragoonHUD {
     } else {
       this._comboText.text = "";
       this._comboText.rotation = 0;
+    }
+
+    // Score attack chain multiplier
+    if (state.scoreAttack.enabled && state.scoreAttack.chainMultiplier > 1.05) {
+      this._chainMultText.text = `CHAIN x${state.scoreAttack.chainMultiplier.toFixed(1)}`;
+      this._chainMultText.alpha = Math.min(1, state.scoreAttack.chainDecayTimer / 0.5);
+      this._chainMultText.position.set(sw - 20, 62);
+    } else {
+      this._chainMultText.alpha = 0;
+    }
+
+    // Dragon evolution display
+    if (state.evolutionState.stageIndex > 0) {
+      const stageName = state.evolutionState.currentStage.replace(/_/g, " ");
+      this._evoText.text = stageName.charAt(0).toUpperCase() + stageName.slice(1);
+      this._evoText.alpha = 0.8;
+    } else {
+      this._evoText.alpha = 0;
     }
 
     // Skill bar
@@ -1420,6 +1569,7 @@ export class DragoonHUD {
     this._lastSkillIds = "";
     this._classSelectContainer.removeChildren();
     this._subclassSelectContainer.removeChildren();
+    this._forkSelectContainer.removeChildren();
     this.hideEscapeMenu();
     this._escapeMenuContainer.removeChildren();
     this.container.removeChildren();

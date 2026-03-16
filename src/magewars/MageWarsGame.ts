@@ -8,6 +8,28 @@ import {
   VehicleDef, VEHICLE_DEFS, MapDef, MAP_DEFS, MW,
   MAP_VEHICLE_DEFS,
 } from "./MageWarsConfig";
+import {
+  // Spell Crafting
+  RuneElement, RuneInventory, CraftedSpellDef,
+  createRuneInventory, craftSpell, computeSpellHit, getCraftedSpellDef,
+  getRuneDef, RUNE_DEFS, CRAFTED_SPELL_DEFS,
+  // Environmental Spells
+  EnvSpellEntity, EnvSpellDef, EnvTickEffect,
+  createEnvSpellEntity, buildEnvSpellMesh, tickEnvSpellEntity,
+  isInsideEnvSpell, doesEnvSpellBlockProjectile,
+  getEnvSpellDef, ENV_SPELL_DEFS,
+  // Dragon Riding
+  DragonRiderState, DragonMountDef, DragonTickInput,
+  createDragonRider, buildDragonMesh, tickDragonRider,
+  getDragonMountDef, DRAGON_MOUNT_DEFS, DRAGON_COMBAT,
+  // Dueling Arena
+  DuelMatchState, DuelFighterState, DuelPhase, DuelLoadout,
+  createDuelMatchState, tickDuelMatch, buildDuelArenaScene,
+  getDuelArenaDef, DUEL_ARENA_DEFS,
+  DUEL_MAX_SPELL_SLOTS, DUEL_SPELL_SELECT_TIME,
+  DUEL_COUNTDOWN_TIME, DUEL_ROUNDS_TO_WIN, DUEL_ROUND_TIME,
+  createDefaultDuelLoadout,
+} from "./MageWarsSystems";
 
 // ---- State interfaces -----------------------------------------------------
 
@@ -57,6 +79,28 @@ interface MWPlayer {
   currentStreak: number;
   lastKillTime: number;
   spawnProtectionMesh: THREE.Mesh | null;
+  // Spell crafting
+  runeInventory: RuneInventory;
+  craftedSpellCooldown: number;
+  dotActive: boolean;
+  dotDamage: number;
+  dotTimer: number;
+  dotOwnerId: string;
+  stunned: boolean;
+  stunTimer: number;
+  slowed: boolean;
+  slowTimer: number;
+  slowFactor: number;
+  blinded: boolean;
+  blindTimer: number;
+  // Dragon riding
+  dragonState: DragonRiderState | null;
+  // Environmental spells
+  envSpellCooldown: number;
+  activeEnvSpells: string[];   // ids of placed env entities
+  selectedEnvSpellId: string;
+  selectedCraftedSpellSlot: number;
+  craftedSpellSlots: string[]; // crafted spell ids
 }
 
 interface AIState {
@@ -132,7 +176,9 @@ interface FloatingText {
 }
 
 enum MWPhase {
-  MAIN_MENU = 0, CHAR_SELECT = 1, LOADOUT = 2, PLAYING = 3, PAUSED = 4, SCOREBOARD = 5, ROUND_END = 6, WARMUP = 7, ROYALE_PLAYING = 8
+  MAIN_MENU = 0, CHAR_SELECT = 1, LOADOUT = 2, PLAYING = 3, PAUSED = 4, SCOREBOARD = 5, ROUND_END = 6, WARMUP = 7, ROYALE_PLAYING = 8,
+  DUEL_MENU = 9, DUEL_SPELL_SELECT = 10, DUEL_PLAYING = 11, DUEL_ROUND_END = 12, DUEL_MATCH_END = 13,
+  DRAGON_COMBAT = 14,
 }
 
 // ---- Mage Royale interfaces ------------------------------------------------
@@ -309,6 +355,21 @@ function createPlayer(
     currentStreak: 0,
     lastKillTime: 0,
     spawnProtectionMesh: null,
+    // Spell crafting
+    runeInventory: createRuneInventory(),
+    craftedSpellCooldown: 0,
+    dotActive: false, dotDamage: 0, dotTimer: 0, dotOwnerId: "",
+    stunned: false, stunTimer: 0,
+    slowed: false, slowTimer: 0, slowFactor: 1,
+    blinded: false, blindTimer: 0,
+    // Dragon riding
+    dragonState: null,
+    // Environmental spells
+    envSpellCooldown: 0,
+    activeEnvSpells: [],
+    selectedEnvSpellId: "env_ice_wall",
+    selectedCraftedSpellSlot: 0,
+    craftedSpellSlots: [],
   };
 }
 
@@ -381,6 +442,24 @@ export class MageWarsGame {
   // ---- Mage Royale -----
   private _royaleState: RoyaleState | null = null;
   private _isRoyaleMode = false;
+
+  // ---- Spell Crafting -----
+  private _runeSelectOpen = false;
+
+  // ---- Environmental Spells -----
+  private _envSpellEntities: EnvSpellEntity[] = [];
+
+  // ---- Dragon Riding -----
+  private _dragonRiders: DragonRiderState[] = [];
+  private _isDragonMode = false;
+
+  // ---- Dueling Arena -----
+  private _duelState: DuelMatchState | null = null;
+  private _isDuelMode = false;
+  private _duelArenaId = "arena_stone_circle";
+  private _duelArenaGroup: THREE.Group | null = null;
+  private _duelOpponentClassId = "pyromancer";
+  private _selectedDuelLoadout: DuelLoadout | null = null;
 
   // ---- Loop ---------------
   private _rafId = 0;
@@ -467,7 +546,8 @@ export class MageWarsGame {
 
     this._escHandler = (e: KeyboardEvent) => {
       if (e.code !== "Escape") return;
-      if (this._phase === MWPhase.PLAYING || this._phase === MWPhase.WARMUP || this._phase === MWPhase.ROYALE_PLAYING) {
+      if (this._phase === MWPhase.PLAYING || this._phase === MWPhase.WARMUP || this._phase === MWPhase.ROYALE_PLAYING ||
+          this._phase === MWPhase.DUEL_PLAYING || this._phase === MWPhase.DRAGON_COMBAT) {
         this._phase = MWPhase.PAUSED;
         document.exitPointerLock();
         this._showPauseMenu();
@@ -4126,6 +4206,16 @@ export class MageWarsGame {
           <span style="display:block;font-size:11px;color:#998877;margin-top:4px;font-weight:normal">Last mage standing - 12 player FFA</span>
         </button>
 
+        <button id="mw-duel" style="${this._menuBtnStyle("#1a1a2a", "#ffaa22")}">
+          Wizard Duel
+          <span style="display:block;font-size:11px;color:#998877;margin-top:4px;font-weight:normal">1v1 arena with spell loadout selection</span>
+        </button>
+
+        <button id="mw-dragon" style="${this._menuBtnStyle("#2a1010", "#ff6644")}">
+          Dragon Riding
+          <span style="display:block;font-size:11px;color:#998877;margin-top:4px;font-weight:normal">Aerial dragon combat with breath weapons</span>
+        </button>
+
         <div style="width:120px;height:1px;background:linear-gradient(90deg,transparent,#44443a,transparent);margin:12px 0"></div>
 
         <button id="mw-back" style="${this._menuBtnStyle("#2a2a2a", "#555")}">
@@ -4155,6 +4245,14 @@ export class MageWarsGame {
     document.getElementById("mw-royale")?.addEventListener("click", () => {
       this._removeMenu();
       this._showRoyaleClassSelect();
+    });
+    document.getElementById("mw-duel")?.addEventListener("click", () => {
+      this._removeMenu();
+      this._showDuelSetup();
+    });
+    document.getElementById("mw-dragon")?.addEventListener("click", () => {
+      this._removeMenu();
+      this._showDragonSetup();
     });
     document.getElementById("mw-back")?.addEventListener("click", () => { this._exit(); });
   }
@@ -6083,7 +6181,10 @@ export class MageWarsGame {
 
   private _startMatch(): void {
     this._isRoyaleMode = false;
+    this._isDuelMode = false;
+    this._isDragonMode = false;
     this._royaleState = null;
+    this._duelState = null;
     const mapDef = getMapDef(this._mapId);
     const teamSize = this._customTeamSize;
 
@@ -6094,6 +6195,8 @@ export class MageWarsGame {
     this._killFeed = [];
     this._capturePoints = [];
     this._floatingTexts = [];
+    this._envSpellEntities = [];
+    this._dragonRiders = [];
     this._teamScores = [0, 0];
     this._matchTimer = this._customTimeLimit;
     this._hitMarkerTimer = 0;
@@ -6367,7 +6470,10 @@ export class MageWarsGame {
         }
       }
       if (this._warmupTimer <= -0.5) {
-        this._phase = this._isRoyaleMode ? MWPhase.ROYALE_PLAYING : MWPhase.PLAYING;
+        this._phase = this._isRoyaleMode ? MWPhase.ROYALE_PLAYING :
+          this._isDuelMode ? MWPhase.DUEL_PLAYING :
+          this._isDragonMode ? MWPhase.DRAGON_COMBAT :
+          MWPhase.PLAYING;
         if (this._warmupCountdownDiv?.parentNode) {
           this._warmupCountdownDiv.parentNode.removeChild(this._warmupCountdownDiv);
           this._warmupCountdownDiv = null;
@@ -6386,7 +6492,8 @@ export class MageWarsGame {
       this._mouseDY = 0;
     }
 
-    if (this._phase === MWPhase.PLAYING || this._phase === MWPhase.ROYALE_PLAYING) {
+    if (this._phase === MWPhase.PLAYING || this._phase === MWPhase.ROYALE_PLAYING ||
+        this._phase === MWPhase.DUEL_PLAYING || this._phase === MWPhase.DRAGON_COMBAT) {
       this._simAccum += dt;
       while (this._simAccum >= MW.SIM_RATE) {
         this._simTick(MW.SIM_RATE);
@@ -6553,6 +6660,8 @@ export class MageWarsGame {
         continue;
       }
       if (p.vehicleId) continue;
+      if (p.dragonState) continue; // dragon movement handled separately
+      if (p.stunned) continue; // stunned = can't move
       if (p.frozen) {
         p.frozenTimer -= dt;
         if (p.frozenTimer <= 0) p.frozen = false;
@@ -6604,8 +6713,24 @@ export class MageWarsGame {
       if (p.abilityCooldown > 0) p.abilityCooldown -= dt;
     }
 
-    // Check win condition (skip in Royale - handled by _royaleSimTick)
-    if (!this._isRoyaleMode) {
+    // Update player status effects (DOT, stun, slow, blind from crafted spells)
+    this._tickPlayerStatusEffects(dt);
+
+    // Environmental spell entities tick
+    this._tickEnvSpells(dt, mapDef);
+
+    // Dragon riders tick
+    if (this._isDragonMode) {
+      this._tickDragonRiders(dt, mapDef);
+    }
+
+    // Duel mode tick
+    if (this._isDuelMode) {
+      this._tickDuel(dt);
+    }
+
+    // Check win condition (skip in Royale & Duel - handled separately)
+    if (!this._isRoyaleMode && !this._isDuelMode) {
       if (this._matchTimer <= 0 || this._teamScores[0] >= this._customScoreLimit || this._teamScores[1] >= this._customScoreLimit) {
         if (this._rafId) cancelAnimationFrame(this._rafId);
         this._rafId = 0;
@@ -8842,6 +8967,1027 @@ export class MageWarsGame {
       const pulse = 0.5 + Math.sin(this._gameTime * 3 + ap.mesh.position.z * 0.5) * 0.3;
       (ap.mesh.material as THREE.MeshBasicMaterial).opacity = pulse;
       (ap.mesh.material as THREE.MeshBasicMaterial).transparent = true;
+    }
+  }
+
+  // =====================================================================
+  // SPELL CRAFTING – combine runes to create spells
+  // =====================================================================
+
+  private _craftPlayerSpell(p: MWPlayer, rune1: RuneElement, rune2: RuneElement): void {
+    const result = craftSpell(rune1, rune2);
+    if (result.success && result.spell) {
+      p.runeInventory.craftedSpellId = result.spell.id;
+      p.runeInventory.rune1 = null;
+      p.runeInventory.rune2 = null;
+      // Add to crafted spell slots (max 4)
+      if (p.craftedSpellSlots.length < DUEL_MAX_SPELL_SLOTS) {
+        p.craftedSpellSlots.push(result.spell.id);
+      } else {
+        // Replace the currently selected slot
+        p.craftedSpellSlots[p.selectedCraftedSpellSlot] = result.spell.id;
+      }
+      if (p.id === "player_0") {
+        this._centerNotification = { text: result.message, color: "#daa520", timer: 2.0, size: 24 };
+      }
+    }
+  }
+
+  private _fireCraftedSpell(p: MWPlayer, spellId: string, mapDef: MapDef): void {
+    const spell = getCraftedSpellDef(spellId);
+    if (!spell) return;
+    if (p.mana < spell.manaCost) return;
+    if (p.craftedSpellCooldown > 0) return;
+
+    p.mana -= spell.manaCost;
+    p.craftedSpellCooldown = spell.cooldown;
+
+    // Create projectile
+    const cos = Math.cos(p.yaw);
+    const sin = Math.sin(p.yaw);
+    const cosP = Math.cos(p.pitch);
+    const sinP = Math.sin(p.pitch);
+    const dx = -sin * cosP;
+    const dy = -sinP;
+    const dz = -cos * cosP;
+
+    const proj: MWProjectile = {
+      id: `cs_${Date.now()}_${Math.random()}`,
+      ownerId: p.id,
+      team: p.team,
+      x: p.x + dx * 0.8, y: p.y + MW.EYE_HEIGHT + dy * 0.8, z: p.z + dz * 0.8,
+      dx, dy, dz,
+      speed: spell.projectileSpeed,
+      damage: spell.damage * (1 - (this._players.find(t => t.id !== p.id)?.armor || 0) / 100),
+      splashRadius: spell.splashRadius,
+      range: spell.range,
+      traveled: 0,
+      color: spell.projectileColor,
+      size: spell.projectileSize,
+      mesh: null,
+      fromVehicle: false,
+    };
+
+    // Create mesh
+    const geo = new THREE.SphereGeometry(spell.projectileSize, 6, 6);
+    const mat = new THREE.MeshBasicMaterial({ color: spell.projectileColor });
+    proj.mesh = new THREE.Mesh(geo, mat);
+    proj.mesh.position.set(proj.x, proj.y, proj.z);
+    this._scene.add(proj.mesh);
+    this._projectiles.push(proj);
+
+    // VFX: muzzle flash
+    const flashGeo = new THREE.SphereGeometry(spell.projectileSize * 2, 4, 4);
+    const flashMat = new THREE.MeshBasicMaterial({ color: spell.projectileColor, transparent: true, opacity: 0.8 });
+    const flash = new THREE.Mesh(flashGeo, flashMat);
+    flash.position.set(proj.x, proj.y, proj.z);
+    this._scene.add(flash);
+    this._muzzleFlashes.push({ mesh: flash, timer: 0.1, maxTime: 0.1 });
+
+    if (p.id === "player_0") this._hitMarkerTimer = 0;
+  }
+
+  private _applyCraftedSpellHit(spell: CraftedSpellDef, shooter: MWPlayer, target: MWPlayer): void {
+    const dx = target.x - shooter.x;
+    const dy = target.y - shooter.y;
+    const dz = target.z - shooter.z;
+    const hit = computeSpellHit(spell, target.armor, dx, dy, dz);
+
+    target.hp -= hit.damageDealt;
+    if (hit.healCaster > 0) {
+      shooter.hp = Math.min(shooter.maxHp, shooter.hp + hit.healCaster);
+    }
+    if (hit.knockbackX !== 0 || hit.knockbackZ !== 0) {
+      target.vx += hit.knockbackX;
+      target.vy += hit.knockbackY;
+      target.vz += hit.knockbackZ;
+    }
+    if (hit.applyFreeze) { target.frozen = true; target.frozenTimer = hit.freezeDuration; }
+    if (hit.applyStun) { target.stunned = true; target.stunTimer = hit.stunDuration; }
+    if (hit.applySlow) { target.slowed = true; target.slowFactor = hit.slowFactor; target.slowTimer = hit.slowDuration; }
+    if (hit.applyBlind) { target.blinded = true; target.blindTimer = hit.blindDuration; }
+    if (hit.applyDot) { target.dotActive = true; target.dotDamage = hit.dotDamage; target.dotTimer = hit.dotDuration; target.dotOwnerId = shooter.id; }
+
+    if (target.hp <= 0) this._killPlayer(target, shooter.id, spell.name);
+    if (target.id === "player_0") this._damageVignetteTimer = 0.5;
+    if (shooter.id === "player_0") this._hitMarkerTimer = 0.15;
+  }
+
+  // =====================================================================
+  // ENVIRONMENTAL SPELLS – persistent field entities
+  // =====================================================================
+
+  private _placeEnvSpell(p: MWPlayer, defId: string, mapDef: MapDef): void {
+    const def = getEnvSpellDef(defId);
+    if (p.mana < def.manaCost) return;
+    if (p.envSpellCooldown > 0) return;
+    if (p.activeEnvSpells.length >= MW.ENV_SPELL_MAX_PLACED) {
+      // Remove oldest
+      const oldestId = p.activeEnvSpells.shift()!;
+      this._removeEnvSpell(oldestId);
+    }
+
+    p.mana -= def.manaCost;
+    p.envSpellCooldown = def.cooldown;
+
+    // Place in front of the player
+    const cos = Math.cos(p.yaw);
+    const sin = Math.sin(p.yaw);
+    const placeX = p.x - sin * 4;
+    const placeZ = p.z - cos * 4;
+    const placeY = getTerrainHeight(placeX, placeZ, mapDef);
+
+    const entity = createEnvSpellEntity(defId, p.id, p.team, placeX, placeY, placeZ, p.yaw);
+
+    // Handle teleport portals — place a pair
+    if (def.type === "teleport_portal") {
+      const portal2X = p.x - sin * 15;
+      const portal2Z = p.z - cos * 15;
+      const portal2Y = getTerrainHeight(portal2X, portal2Z, mapDef);
+      const entity2 = createEnvSpellEntity(defId, p.id, p.team, portal2X, portal2Y, portal2Z, p.yaw + Math.PI);
+      entity.linkedPortalId = entity2.id;
+      entity2.linkedPortalId = entity.id;
+      entity2.mesh = buildEnvSpellMesh(entity2);
+      this._scene.add(entity2.mesh);
+      this._envSpellEntities.push(entity2);
+      p.activeEnvSpells.push(entity2.id);
+    }
+
+    entity.mesh = buildEnvSpellMesh(entity);
+    this._scene.add(entity.mesh);
+    this._envSpellEntities.push(entity);
+    p.activeEnvSpells.push(entity.id);
+
+    if (p.id === "player_0") {
+      this._centerNotification = { text: `${def.name} placed!`, color: "#44cc44", timer: 1.5, size: 22 };
+    }
+  }
+
+  private _removeEnvSpell(entityId: string): void {
+    const idx = this._envSpellEntities.findIndex(e => e.id === entityId);
+    if (idx < 0) return;
+    const entity = this._envSpellEntities[idx];
+    if (entity.mesh) {
+      this._scene.remove(entity.mesh);
+      entity.mesh.traverse(child => {
+        if ((child as THREE.Mesh).geometry) (child as THREE.Mesh).geometry.dispose();
+        const mat = (child as THREE.Mesh).material;
+        if (mat) {
+          if (Array.isArray(mat)) mat.forEach(m => m.dispose());
+          else (mat as THREE.Material).dispose();
+        }
+      });
+    }
+    this._envSpellEntities.splice(idx, 1);
+  }
+
+  private _tickEnvSpells(dt: number, mapDef: MapDef): void {
+    const playersInfo = this._players
+      .filter(p => p.alive)
+      .map(p => ({ id: p.id, team: p.team, x: p.x, y: p.y, z: p.z, alive: p.alive }));
+
+    for (let i = this._envSpellEntities.length - 1; i >= 0; i--) {
+      const entity = this._envSpellEntities[i];
+      const effects = tickEnvSpellEntity(entity, dt, playersInfo);
+
+      // Apply effects
+      for (const eff of effects) {
+        if (!eff.targetId) continue;
+        const target = this._players.find(p => p.id === eff.targetId);
+        if (!target || !target.alive) continue;
+
+        switch (eff.type) {
+          case "damage":
+            if (target.spawnProtection > 0) break;
+            target.hp -= eff.value;
+            if (target.id === "player_0") this._damageVignetteTimer = 0.3;
+            if (target.hp <= 0) this._killPlayer(target, entity.ownerId, getEnvSpellDef(entity.defId).name);
+            break;
+          case "heal":
+            target.hp = Math.min(target.maxHp, target.hp + eff.value);
+            break;
+          case "freeze":
+            target.frozen = true;
+            target.frozenTimer = eff.duration || 1.5;
+            break;
+          case "stun":
+            target.stunned = true;
+            target.stunTimer = eff.duration || 1;
+            break;
+          case "blind":
+            target.blinded = true;
+            target.blindTimer = eff.duration || 2;
+            break;
+          case "pull_launch":
+            // Pull toward center then launch up
+            const pullDx = entity.x - target.x;
+            const pullDz = entity.z - target.z;
+            const pullDist = Math.sqrt(pullDx * pullDx + pullDz * pullDz) || 1;
+            target.vx += (pullDx / pullDist) * eff.value * dt * 10;
+            target.vz += (pullDz / pullDist) * eff.value * dt * 10;
+            if (pullDist < 1.5) target.vy += 12;
+            break;
+          case "teleport": {
+            // Find linked portal
+            const linked = this._envSpellEntities.find(e => e.id === entity.linkedPortalId);
+            if (linked) {
+              target.x = linked.x;
+              target.y = linked.y + 0.5;
+              target.z = linked.z;
+            }
+            break;
+          }
+          case "turret_fire": {
+            // Create a projectile from turret to target
+            if (eff.targetX !== undefined && eff.targetY !== undefined && eff.targetZ !== undefined) {
+              const tdx = eff.targetX - entity.x;
+              const tdy = eff.targetY - (entity.y + 1.5);
+              const tdz = eff.targetZ - entity.z;
+              const tlen = Math.sqrt(tdx * tdx + tdy * tdy + tdz * tdz) || 1;
+              const tProj: MWProjectile = {
+                id: `turret_${Date.now()}_${Math.random()}`,
+                ownerId: entity.ownerId, team: entity.team,
+                x: entity.x, y: entity.y + 1.5, z: entity.z,
+                dx: tdx / tlen, dy: tdy / tlen, dz: tdz / tlen,
+                speed: 80, damage: eff.value, splashRadius: 0,
+                range: 30, traveled: 0,
+                color: 0xaa88ff, size: 0.08,
+                mesh: null, fromVehicle: false,
+              };
+              const tGeo = new THREE.SphereGeometry(0.08, 4, 4);
+              const tMat = new THREE.MeshBasicMaterial({ color: 0xaa88ff });
+              tProj.mesh = new THREE.Mesh(tGeo, tMat);
+              tProj.mesh.position.set(tProj.x, tProj.y, tProj.z);
+              this._scene.add(tProj.mesh);
+              this._projectiles.push(tProj);
+            }
+            break;
+          }
+        }
+      }
+
+      // Remove expired entities
+      if (entity.duration <= 0) {
+        // Remove from owner's active list
+        const owner = this._players.find(p => p.id === entity.ownerId);
+        if (owner) {
+          owner.activeEnvSpells = owner.activeEnvSpells.filter(id => id !== entity.id);
+        }
+        this._removeEnvSpell(entity.id);
+      }
+    }
+  }
+
+  // =====================================================================
+  // DRAGON RIDING COMBAT – aerial dogfights
+  // =====================================================================
+
+  private _showDragonSetup(): void {
+    this._phase = MWPhase.CHAR_SELECT;
+    this._removeMenu();
+    this._menuDiv = document.createElement("div");
+    this._menuDiv.style.cssText = `position:absolute;top:0;left:0;width:100%;height:100%;z-index:30;` +
+      `background:rgba(5,3,15,0.97);display:flex;flex-direction:column;align-items:center;` +
+      `font-family:'Segoe UI',sans-serif;color:#e0d5c0;overflow-y:auto;padding:20px 0;`;
+
+    let dragonsHtml = "";
+    for (const d of DRAGON_MOUNT_DEFS) {
+      dragonsHtml += `
+        <div class="mw-dragon-card" data-id="${d.id}" style="cursor:pointer;padding:12px;margin:6px;
+          border:2px solid #444;border-radius:8px;width:250px;background:rgba(20,10,30,0.8);
+          transition:border-color 0.2s">
+          <div style="font-size:20px">${d.icon} <b>${d.name}</b></div>
+          <div style="font-size:12px;color:#998877;margin-top:4px">${d.desc}</div>
+          <div style="font-size:11px;color:#777;margin-top:6px">
+            HP: ${d.hp} | Speed: ${d.speed}-${d.maxSpeed} | Breath: ${d.breathDamage}/tick
+          </div>
+        </div>`;
+    }
+
+    let classCardsHtml = "";
+    for (const cls of MAGE_CLASSES) {
+      classCardsHtml += `
+        <div class="mw-drider-class" data-id="${cls.id}" style="cursor:pointer;padding:8px;margin:4px;
+          border:2px solid ${cls.id === this._selectedClassId ? '#daa520' : '#333'};border-radius:6px;
+          width:120px;background:rgba(20,10,30,0.8);text-align:center;font-size:12px">
+          ${cls.icon} ${cls.name}
+        </div>`;
+    }
+
+    let mapCardsHtml = "";
+    for (const m of MAP_DEFS.slice(0, 6)) {
+      mapCardsHtml += `
+        <div class="mw-dmap" data-id="${m.id}" style="cursor:pointer;padding:6px;margin:3px;
+          border:2px solid ${m.id === this._mapId ? '#daa520' : '#333'};border-radius:6px;
+          width:100px;background:rgba(20,10,30,0.8);text-align:center;font-size:11px">
+          ${m.icon} ${m.name}
+        </div>`;
+    }
+
+    this._menuDiv.innerHTML = `
+      <h2 style="color:#ff6644;margin:0 0 4px 0">DRAGON RIDING COMBAT</h2>
+      <p style="color:#776655;margin:0 0 15px 0;font-size:12px">Choose your dragon, mage class, and map</p>
+
+      <h3 style="color:#daa520;margin:0 0 8px 0;font-size:14px">Select Dragon</h3>
+      <div style="display:flex;flex-wrap:wrap;justify-content:center;max-width:600px" id="mw-dragon-list">
+        ${dragonsHtml}
+      </div>
+
+      <h3 style="color:#daa520;margin:15px 0 8px 0;font-size:14px">Select Mage Class</h3>
+      <div style="display:flex;flex-wrap:wrap;justify-content:center;max-width:600px" id="mw-drider-classes">
+        ${classCardsHtml}
+      </div>
+
+      <h3 style="color:#daa520;margin:15px 0 8px 0;font-size:14px">Select Map</h3>
+      <div style="display:flex;flex-wrap:wrap;justify-content:center;max-width:600px" id="mw-dragon-maps">
+        ${mapCardsHtml}
+      </div>
+
+      <div style="margin-top:20px;display:flex;gap:10px">
+        <button id="mw-dragon-back" style="${this._menuBtnStyle("#2a2a2a", "#555")}">Back</button>
+        <button id="mw-dragon-start" style="${this._menuBtnStyle("#2a1010", "#ff6644")}">Mount Up!</button>
+      </div>
+    `;
+
+    const container = document.getElementById("pixi-container");
+    if (container) container.appendChild(this._menuDiv);
+
+    let selectedDragonId = DRAGON_MOUNT_DEFS[0].id;
+
+    // Dragon card selection
+    const dragonCards = this._menuDiv.querySelectorAll(".mw-dragon-card");
+    dragonCards.forEach(card => {
+      card.addEventListener("click", () => {
+        dragonCards.forEach(c => (c as HTMLElement).style.borderColor = "#444");
+        (card as HTMLElement).style.borderColor = "#ff6644";
+        selectedDragonId = (card as HTMLElement).dataset.id || DRAGON_MOUNT_DEFS[0].id;
+      });
+    });
+    // Highlight first card by default
+    if (dragonCards.length > 0) (dragonCards[0] as HTMLElement).style.borderColor = "#ff6644";
+
+    // Class selection
+    const classCards = this._menuDiv.querySelectorAll(".mw-drider-class");
+    classCards.forEach(card => {
+      card.addEventListener("click", () => {
+        classCards.forEach(c => (c as HTMLElement).style.borderColor = "#333");
+        (card as HTMLElement).style.borderColor = "#daa520";
+        this._selectedClassId = (card as HTMLElement).dataset.id || "battlemage";
+      });
+    });
+
+    // Map selection
+    const mapCards = this._menuDiv.querySelectorAll(".mw-dmap");
+    mapCards.forEach(card => {
+      card.addEventListener("click", () => {
+        mapCards.forEach(c => (c as HTMLElement).style.borderColor = "#333");
+        (card as HTMLElement).style.borderColor = "#daa520";
+        this._mapId = (card as HTMLElement).dataset.id || "enchanted_forest";
+      });
+    });
+
+    document.getElementById("mw-dragon-back")?.addEventListener("click", () => {
+      this._removeMenu();
+      this._showMainMenu();
+    });
+    document.getElementById("mw-dragon-start")?.addEventListener("click", () => {
+      this._removeMenu();
+      this._startDragonCombat(selectedDragonId);
+    });
+  }
+
+  private _startDragonCombat(dragonDefId: string): void {
+    this._isDragonMode = true;
+    this._isRoyaleMode = false;
+    this._isDuelMode = false;
+    this._royaleState = null;
+    this._duelState = null;
+    const mapDef = getMapDef(this._mapId);
+
+    // Reset base state
+    this._players = [];
+    this._vehicles = [];
+    this._projectiles = [];
+    this._killFeed = [];
+    this._capturePoints = [];
+    this._floatingTexts = [];
+    this._envSpellEntities = [];
+    this._dragonRiders = [];
+    this._teamScores = [0, 0];
+    this._matchTimer = 300;
+    this._hitMarkerTimer = 0;
+    this._damageVignetteTimer = 0;
+    this._fireTimer = 0;
+    this._gameTime = 0;
+    this._centerNotification = null;
+
+    // Build scene
+    this._buildScene(mapDef);
+
+    // Create human player + dragon
+    const human = createPlayer("player_0", 0, this._selectedClassId, false, -30, 0, mapDef);
+    this._players.push(human);
+    const humanDragon = createDragonRider(dragonDefId, "player_0", 0, -30, 15, 0);
+    humanDragon.mesh = buildDragonMesh(humanDragon);
+    this._scene.add(humanDragon.mesh);
+    this._dragonRiders.push(humanDragon);
+    human.dragonState = humanDragon;
+
+    // Create AI dragons
+    const aiDragonDefs = DRAGON_MOUNT_DEFS;
+    for (let i = 0; i < 4; i++) {
+      const team = (i < 2 ? 0 : 1) as 0 | 1;
+      const aiCls = MAGE_CLASSES[i % MAGE_CLASSES.length];
+      const angle = (i / 4) * Math.PI * 2;
+      const aiPlayer = createPlayer(
+        `ai_dragon_${AI_NAMES[i]}`, team, aiCls.id, true,
+        Math.cos(angle) * 40, Math.sin(angle) * 40, mapDef,
+      );
+      this._players.push(aiPlayer);
+      const aiDragon = createDragonRider(
+        aiDragonDefs[i % aiDragonDefs.length].id,
+        aiPlayer.id, team,
+        Math.cos(angle) * 40, 15 + Math.random() * 10, Math.sin(angle) * 40,
+      );
+      aiDragon.mesh = buildDragonMesh(aiDragon);
+      this._scene.add(aiDragon.mesh);
+      this._dragonRiders.push(aiDragon);
+      aiPlayer.dragonState = aiDragon;
+    }
+
+    // Build HUD
+    this._buildHUD();
+    this._phase = MWPhase.WARMUP;
+    this._warmupTimer = MW.WARMUP_TIME;
+    this._showWarmupCountdown();
+    this._lastTime = performance.now();
+    this._gameLoop(performance.now());
+  }
+
+  private _tickDragonRiders(dt: number, mapDef: MapDef): void {
+    for (const dragon of this._dragonRiders) {
+      if (!dragon.alive) continue;
+
+      const owner = this._players.find(p => p.id === dragon.riderId);
+      if (!owner || !owner.alive) continue;
+
+      // Build input
+      let input: DragonTickInput;
+      if (owner.id === "player_0") {
+        const forward = this._keys["KeyW"] ? 1 : this._keys["KeyS"] ? -0.5 : 0;
+        const yawInput = this._keys["KeyA"] ? 1 : this._keys["KeyD"] ? -1 : 0;
+        input = {
+          throttle: forward,
+          yawInput: yawInput,
+          pitchInput: this._keys["Space"] ? -1 : this._keys["ControlLeft"] ? 1 : 0,
+          wantBreath: this._mouseDown,
+          wantBarrelRoll: !!this._keys["KeyQ"],
+          wantDiveBomb: !!this._keys["KeyE"],
+        };
+        // Mouse look also affects yaw/pitch
+        if (this._pointerLocked) {
+          dragon.yaw -= this._mouseDX * MW.MOUSE_SENSITIVITY;
+          dragon.pitch -= this._mouseDY * MW.MOUSE_SENSITIVITY;
+          dragon.pitch = clamp(dragon.pitch, -Math.PI / 3, Math.PI / 3);
+        }
+      } else {
+        // AI dragon input — simple chase behavior
+        const enemies = this._dragonRiders.filter(d =>
+          d.riderId !== dragon.riderId && d.alive &&
+          this._players.find(p => p.id === d.riderId)?.team !== owner.team
+        );
+        let targetDragon: DragonRiderState | null = null;
+        let bestDist = 999;
+        for (const e of enemies) {
+          const d = dist3(dragon.x, dragon.y, dragon.z, e.x, e.y, e.z);
+          if (d < bestDist) { bestDist = d; targetDragon = e; }
+        }
+
+        if (targetDragon) {
+          const dx = targetDragon.x - dragon.x;
+          const dz = targetDragon.z - dragon.z;
+          const targetYaw = Math.atan2(-dx, -dz);
+          let yawDiff = targetYaw - dragon.yaw;
+          while (yawDiff > Math.PI) yawDiff -= Math.PI * 2;
+          while (yawDiff < -Math.PI) yawDiff += Math.PI * 2;
+
+          const dy = targetDragon.y - dragon.y;
+          input = {
+            throttle: bestDist > 20 ? 1 : 0.3,
+            yawInput: clamp(yawDiff * 2, -1, 1),
+            pitchInput: clamp(-dy * 0.1, -1, 1),
+            wantBreath: bestDist < 25 && Math.abs(yawDiff) < 0.5,
+            wantBarrelRoll: Math.random() < 0.002,
+            wantDiveBomb: bestDist < 15 && dragon.y > targetDragon.y + 5,
+          };
+        } else {
+          input = { throttle: 0.5, yawInput: Math.sin(this._gameTime * 0.3) * 0.3, pitchInput: 0, wantBreath: false, wantBarrelRoll: false, wantDiveBomb: false };
+        }
+      }
+
+      // Build targets for the tick (enemies)
+      const nearbyTargets = this._dragonRiders
+        .filter(d => d.riderId !== dragon.riderId && d.alive)
+        .map(d => ({ id: d.riderId, x: d.x, y: d.y, z: d.z, alive: d.alive }));
+
+      // Also include ground players
+      for (const p of this._players) {
+        if (!p.alive || p.dragonState || p.id === dragon.riderId) continue;
+        nearbyTargets.push({ id: p.id, x: p.x, y: p.y + MW.EYE_HEIGHT * 0.5, z: p.z, alive: true });
+      }
+
+      const result = tickDragonRider(dragon, input, dt, nearbyTargets);
+
+      // Update rider position to match dragon
+      owner.x = dragon.x;
+      owner.y = dragon.y;
+      owner.z = dragon.z;
+      owner.yaw = dragon.yaw;
+
+      // Apply breath/tail/divebomb hits
+      for (const hit of [...result.breathHits, ...result.tailSwipeHits, ...result.diveBombHits]) {
+        // Check if it hit a dragon or a player
+        const targetDragon = this._dragonRiders.find(d => d.riderId === hit.targetId);
+        if (targetDragon) {
+          targetDragon.hp -= hit.damage;
+          if (owner.id === "player_0") this._hitMarkerTimer = 0.15;
+          if (targetDragon.hp <= 0) {
+            targetDragon.alive = false;
+            const targetPlayer = this._players.find(p => p.id === hit.targetId);
+            if (targetPlayer) this._killPlayer(targetPlayer, dragon.riderId, "Dragon Attack");
+          }
+        } else {
+          const targetPlayer = this._players.find(p => p.id === hit.targetId);
+          if (targetPlayer && targetPlayer.alive) {
+            targetPlayer.hp -= hit.damage;
+            if (targetPlayer.id === "player_0") this._damageVignetteTimer = 0.3;
+            if (owner.id === "player_0") this._hitMarkerTimer = 0.15;
+            if (targetPlayer.hp <= 0) this._killPlayer(targetPlayer, dragon.riderId, "Dragon Attack");
+          }
+        }
+      }
+
+      // Breath VFX
+      if (dragon.isBreathing && dragon.mesh) {
+        const def = getDragonMountDef(dragon.dragonDefId);
+        const bGeo = new THREE.SphereGeometry(0.1, 4, 4);
+        const bMat = new THREE.MeshBasicMaterial({ color: def.breathColor, transparent: true, opacity: 0.8 });
+        const bMesh = new THREE.Mesh(bGeo, bMat);
+        const fwdX = -Math.sin(dragon.yaw) * Math.cos(dragon.pitch);
+        const fwdY = -Math.sin(dragon.pitch);
+        const fwdZ = -Math.cos(dragon.yaw) * Math.cos(dragon.pitch);
+        bMesh.position.set(
+          dragon.x + fwdX * 3 + (Math.random() - 0.5) * 0.5,
+          dragon.y + fwdY * 3 + (Math.random() - 0.5) * 0.5,
+          dragon.z + fwdZ * 3 + (Math.random() - 0.5) * 0.5,
+        );
+        this._scene.add(bMesh);
+        this._particles.push({
+          mesh: bMesh,
+          vx: fwdX * 20 + (Math.random() - 0.5) * 3,
+          vy: fwdY * 20 + (Math.random() - 0.5) * 3,
+          vz: fwdZ * 20 + (Math.random() - 0.5) * 3,
+          life: 0.4, maxLife: 0.4, gravity: false,
+        });
+      }
+    }
+  }
+
+  // =====================================================================
+  // DUELING ARENA – 1v1 wizard duels
+  // =====================================================================
+
+  private _showDuelSetup(): void {
+    this._phase = MWPhase.DUEL_MENU;
+    this._removeMenu();
+    this._menuDiv = document.createElement("div");
+    this._menuDiv.style.cssText = `position:absolute;top:0;left:0;width:100%;height:100%;z-index:30;` +
+      `background:rgba(5,3,15,0.97);display:flex;flex-direction:column;align-items:center;` +
+      `font-family:'Segoe UI',sans-serif;color:#e0d5c0;overflow-y:auto;padding:20px 0;`;
+
+    // Arena selection
+    let arenaHtml = "";
+    for (const a of DUEL_ARENA_DEFS) {
+      arenaHtml += `
+        <div class="mw-duel-arena" data-id="${a.id}" style="cursor:pointer;padding:10px;margin:5px;
+          border:2px solid ${a.id === this._duelArenaId ? '#ffaa22' : '#333'};border-radius:6px;
+          width:200px;background:rgba(20,10,30,0.8)">
+          <div style="font-size:16px">${a.icon} <b>${a.name}</b></div>
+          <div style="font-size:11px;color:#887766;margin-top:3px">${a.desc}</div>
+          <div style="font-size:10px;color:#666;margin-top:3px">Hazards: ${a.hazards.length > 0 ? a.hazards.map(h => h.type.replace("_", " ")).join(", ") : "None"}</div>
+        </div>`;
+    }
+
+    // Your class
+    let classHtml = "";
+    for (const cls of MAGE_CLASSES) {
+      classHtml += `
+        <div class="mw-duel-class" data-id="${cls.id}" style="cursor:pointer;padding:6px;margin:3px;
+          border:2px solid ${cls.id === this._selectedClassId ? '#ffaa22' : '#333'};border-radius:6px;
+          width:100px;background:rgba(20,10,30,0.8);text-align:center;font-size:11px">
+          ${cls.icon} ${cls.name}
+        </div>`;
+    }
+
+    // Opponent class
+    let oppClassHtml = "";
+    for (const cls of MAGE_CLASSES) {
+      oppClassHtml += `
+        <div class="mw-duel-opp" data-id="${cls.id}" style="cursor:pointer;padding:6px;margin:3px;
+          border:2px solid ${cls.id === this._duelOpponentClassId ? '#ff4444' : '#333'};border-radius:6px;
+          width:100px;background:rgba(20,10,30,0.8);text-align:center;font-size:11px">
+          ${cls.icon} ${cls.name}
+        </div>`;
+    }
+
+    // Crafted spell selection (pick up to 4)
+    let spellHtml = "";
+    for (const sp of CRAFTED_SPELL_DEFS) {
+      spellHtml += `
+        <div class="mw-duel-spell" data-id="${sp.id}" style="cursor:pointer;padding:5px;margin:3px;
+          border:2px solid #333;border-radius:4px;width:180px;background:rgba(20,10,30,0.8);font-size:11px">
+          ${sp.icon} <b>${sp.name}</b> - ${sp.damage}dmg, ${sp.manaCost}mana
+          <div style="color:#776655;font-size:10px">${sp.desc}</div>
+        </div>`;
+    }
+
+    // Env spell selection
+    let envHtml = "";
+    for (const env of ENV_SPELL_DEFS) {
+      envHtml += `
+        <div class="mw-duel-env" data-id="${env.id}" style="cursor:pointer;padding:5px;margin:3px;
+          border:2px solid #333;border-radius:4px;width:180px;background:rgba(20,10,30,0.8);font-size:11px">
+          ${env.icon} <b>${env.name}</b> - ${env.manaCost}mana, ${env.duration}s
+          <div style="color:#776655;font-size:10px">${env.desc}</div>
+        </div>`;
+    }
+
+    this._menuDiv.innerHTML = `
+      <h2 style="color:#ffaa22;margin:0 0 4px 0">WIZARD DUEL</h2>
+      <p style="color:#776655;margin:0 0 12px 0;font-size:12px">1v1 duel - Best of ${DUEL_ROUNDS_TO_WIN * 2 - 1} rounds</p>
+
+      <div style="display:flex;gap:30px;flex-wrap:wrap;justify-content:center;max-width:800px">
+        <div>
+          <h3 style="color:#daa520;font-size:13px;margin:0 0 6px 0">Arena</h3>
+          <div style="display:flex;flex-wrap:wrap;justify-content:center" id="mw-duel-arenas">${arenaHtml}</div>
+        </div>
+        <div>
+          <h3 style="color:#daa520;font-size:13px;margin:0 0 6px 0">Your Class</h3>
+          <div style="display:flex;flex-wrap:wrap;justify-content:center" id="mw-duel-classes">${classHtml}</div>
+          <h3 style="color:#ff4444;font-size:13px;margin:10px 0 6px 0">Opponent Class</h3>
+          <div style="display:flex;flex-wrap:wrap;justify-content:center" id="mw-duel-opps">${oppClassHtml}</div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:20px;flex-wrap:wrap;justify-content:center;max-width:800px;margin-top:15px">
+        <div>
+          <h3 style="color:#daa520;font-size:13px;margin:0 0 6px 0">Crafted Spells (pick up to ${DUEL_MAX_SPELL_SLOTS})</h3>
+          <div style="display:flex;flex-wrap:wrap;justify-content:center;max-height:200px;overflow-y:auto" id="mw-duel-spells">${spellHtml}</div>
+        </div>
+        <div>
+          <h3 style="color:#daa520;font-size:13px;margin:0 0 6px 0">Environmental Spell (pick 1)</h3>
+          <div style="display:flex;flex-wrap:wrap;justify-content:center;max-height:200px;overflow-y:auto" id="mw-duel-envs">${envHtml}</div>
+        </div>
+      </div>
+
+      <div style="margin-top:20px;display:flex;gap:10px">
+        <button id="mw-duel-back" style="${this._menuBtnStyle("#2a2a2a", "#555")}">Back</button>
+        <button id="mw-duel-start" style="${this._menuBtnStyle("#1a1a2a", "#ffaa22")}">Begin Duel!</button>
+      </div>
+    `;
+
+    const container = document.getElementById("pixi-container");
+    if (container) container.appendChild(this._menuDiv);
+
+    const selectedSpells: string[] = [];
+    let selectedEnvSpell: string | null = null;
+
+    // Arena selection
+    const arenaCards = this._menuDiv.querySelectorAll(".mw-duel-arena");
+    arenaCards.forEach(card => {
+      card.addEventListener("click", () => {
+        arenaCards.forEach(c => (c as HTMLElement).style.borderColor = "#333");
+        (card as HTMLElement).style.borderColor = "#ffaa22";
+        this._duelArenaId = (card as HTMLElement).dataset.id || "arena_stone_circle";
+      });
+    });
+
+    // Class selections
+    const classCards = this._menuDiv.querySelectorAll(".mw-duel-class");
+    classCards.forEach(card => {
+      card.addEventListener("click", () => {
+        classCards.forEach(c => (c as HTMLElement).style.borderColor = "#333");
+        (card as HTMLElement).style.borderColor = "#ffaa22";
+        this._selectedClassId = (card as HTMLElement).dataset.id || "battlemage";
+      });
+    });
+
+    const oppCards = this._menuDiv.querySelectorAll(".mw-duel-opp");
+    oppCards.forEach(card => {
+      card.addEventListener("click", () => {
+        oppCards.forEach(c => (c as HTMLElement).style.borderColor = "#333");
+        (card as HTMLElement).style.borderColor = "#ff4444";
+        this._duelOpponentClassId = (card as HTMLElement).dataset.id || "pyromancer";
+      });
+    });
+
+    // Crafted spell multi-select (toggle up to 4)
+    const spellCards = this._menuDiv.querySelectorAll(".mw-duel-spell");
+    spellCards.forEach(card => {
+      card.addEventListener("click", () => {
+        const spellId = (card as HTMLElement).dataset.id || "";
+        const idx = selectedSpells.indexOf(spellId);
+        if (idx >= 0) {
+          selectedSpells.splice(idx, 1);
+          (card as HTMLElement).style.borderColor = "#333";
+        } else if (selectedSpells.length < DUEL_MAX_SPELL_SLOTS) {
+          selectedSpells.push(spellId);
+          (card as HTMLElement).style.borderColor = "#ffaa22";
+        }
+      });
+    });
+
+    // Env spell single-select
+    const envCards = this._menuDiv.querySelectorAll(".mw-duel-env");
+    envCards.forEach(card => {
+      card.addEventListener("click", () => {
+        envCards.forEach(c => (c as HTMLElement).style.borderColor = "#333");
+        (card as HTMLElement).style.borderColor = "#44cc44";
+        selectedEnvSpell = (card as HTMLElement).dataset.id || null;
+      });
+    });
+
+    document.getElementById("mw-duel-back")?.addEventListener("click", () => {
+      this._removeMenu();
+      this._showMainMenu();
+    });
+    document.getElementById("mw-duel-start")?.addEventListener("click", () => {
+      const loadout: DuelLoadout = {
+        ...createDefaultDuelLoadout(this._selectedClassId),
+        craftedSpellIds: [...selectedSpells],
+        envSpellId: selectedEnvSpell,
+      };
+      this._selectedDuelLoadout = loadout;
+      this._removeMenu();
+      this._startDuel(loadout);
+    });
+  }
+
+  private _startDuel(playerLoadout: DuelLoadout): void {
+    this._isDuelMode = true;
+    this._isRoyaleMode = false;
+    this._isDragonMode = false;
+    this._royaleState = null;
+
+    // Reset base state
+    this._players = [];
+    this._vehicles = [];
+    this._projectiles = [];
+    this._killFeed = [];
+    this._capturePoints = [];
+    this._floatingTexts = [];
+    this._envSpellEntities = [];
+    this._dragonRiders = [];
+    this._teamScores = [0, 0];
+    this._hitMarkerTimer = 0;
+    this._damageVignetteTimer = 0;
+    this._fireTimer = 0;
+    this._gameTime = 0;
+    this._centerNotification = null;
+
+    // Build arena scene
+    this._scene = new THREE.Scene();
+    this._scene.fog = new THREE.FogExp2(getDuelArenaDef(this._duelArenaId).fogColor, 0.02);
+    this._duelArenaGroup = buildDuelArenaScene(this._duelArenaId, this._scene);
+
+    const arena = getDuelArenaDef(this._duelArenaId);
+
+    // Opponent loadout — AI picks random spells
+    const oppLoadout: DuelLoadout = {
+      ...createDefaultDuelLoadout(this._duelOpponentClassId),
+      craftedSpellIds: CRAFTED_SPELL_DEFS.slice(0, DUEL_MAX_SPELL_SLOTS).map(s => s.id),
+      envSpellId: ENV_SPELL_DEFS[Math.floor(Math.random() * ENV_SPELL_DEFS.length)].id,
+    };
+
+    this._duelState = createDuelMatchState(
+      this._duelArenaId,
+      this._selectedClassId, playerLoadout,
+      this._duelOpponentClassId, oppLoadout,
+      true,
+    );
+
+    // Create actual player objects for rendering
+    const p1 = createPlayer("player_0", 0, this._selectedClassId, false,
+      -arena.size * 0.4, 0, MAP_DEFS[0] /* not used for terrain height in arena */);
+    p1.y = 0.01;
+    p1.primaryWandId = playerLoadout.primaryWandId;
+    p1.secondaryWandId = playerLoadout.secondaryWandId;
+    p1.craftedSpellSlots = [...playerLoadout.craftedSpellIds];
+    p1.selectedEnvSpellId = playerLoadout.envSpellId || "env_ice_wall";
+    p1.yaw = 0;
+    this._players.push(p1);
+
+    const p2 = createPlayer("ai_duelist", 1, this._duelOpponentClassId, true,
+      arena.size * 0.4, 0, MAP_DEFS[0]);
+    p2.y = 0.01;
+    p2.yaw = Math.PI;
+    p2.craftedSpellSlots = [...oppLoadout.craftedSpellIds];
+    p2.selectedEnvSpellId = oppLoadout.envSpellId || "env_fire_pit";
+    this._players.push(p2);
+
+    // Build player meshes
+    for (const p of this._players) {
+      p.mesh = this._buildMageMesh(p);
+      p.mesh.position.set(p.x, p.y, p.z);
+      this._scene.add(p.mesh);
+      if (p.id !== "player_0") {
+        p.nameTag = this._buildNameTag("Opponent", p.team);
+        p.nameTag.position.set(p.x, p.y + MW.PLAYER_HEIGHT + 0.5, p.z);
+        this._scene.add(p.nameTag);
+      }
+    }
+
+    this._matchTimer = DUEL_ROUND_TIME;
+    this._buildHUD();
+    this._phase = MWPhase.WARMUP;
+    this._warmupTimer = DUEL_COUNTDOWN_TIME;
+    this._showWarmupCountdown();
+    this._lastTime = performance.now();
+    this._gameLoop(performance.now());
+  }
+
+  private _tickDuel(dt: number): void {
+    if (!this._duelState) return;
+
+    // Sync player positions into duel state
+    const p1 = this._players.find(p => p.id === "player_0");
+    const p2 = this._players.find(p => p.id === "ai_duelist");
+    if (p1 && this._duelState.player1) {
+      this._duelState.player1.x = p1.x;
+      this._duelState.player1.y = p1.y;
+      this._duelState.player1.z = p1.z;
+      this._duelState.player1.hp = p1.hp;
+      this._duelState.player1.alive = p1.alive;
+    }
+    if (p2 && this._duelState.player2) {
+      this._duelState.player2.x = p2.x;
+      this._duelState.player2.y = p2.y;
+      this._duelState.player2.z = p2.z;
+      this._duelState.player2.hp = p2.hp;
+      this._duelState.player2.alive = p2.alive;
+    }
+
+    const result = tickDuelMatch(this._duelState, dt);
+
+    // Apply hazard damages
+    for (const hd of result.hazardDamages) {
+      const target = this._players.find(p => p.id === hd.playerId);
+      if (target && target.alive) {
+        target.hp -= hd.damage;
+        if (target.id === "player_0") this._damageVignetteTimer = 0.2;
+        if (target.hp <= 0) {
+          target.hp = 0;
+          target.alive = false;
+        }
+      }
+    }
+
+    if (result.phaseChanged) {
+      if (result.newPhase === "round_end") {
+        const winnerText = result.roundWinner === "player_0" ? "You win this round!" :
+          result.roundWinner ? "Opponent wins this round!" : "Draw!";
+        this._centerNotification = {
+          text: `Round ${this._duelState.roundNumber} - ${winnerText}`,
+          color: result.roundWinner === "player_0" ? "#44ff44" : "#ff4444",
+          timer: 2.5, size: 28,
+        };
+      } else if (result.newPhase === "match_end") {
+        const matchText = result.matchWinner === "player_0" ? "VICTORY!" : "DEFEAT!";
+        const matchColor = result.matchWinner === "player_0" ? "#daa520" : "#ff4444";
+        this._centerNotification = { text: matchText, color: matchColor, timer: 4.0, size: 36 };
+        // End the game loop after a delay
+        setTimeout(() => {
+          if (this._rafId) cancelAnimationFrame(this._rafId);
+          this._rafId = 0;
+          this._showDuelEndScreen();
+        }, 4000);
+      } else if (result.newPhase === "countdown" && this._duelState.roundNumber > 1) {
+        // Reset player positions and HP for next round
+        if (p1) {
+          const arena = getDuelArenaDef(this._duelArenaId);
+          p1.x = -arena.size * 0.4; p1.y = 0.01; p1.z = 0;
+          p1.hp = p1.maxHp; p1.alive = true; p1.mana = p1.maxMana;
+          p1.frozen = false; p1.stunned = false; p1.slowed = false; p1.blinded = false;
+          p1.dotActive = false;
+        }
+        if (p2) {
+          const arena = getDuelArenaDef(this._duelArenaId);
+          p2.x = arena.size * 0.4; p2.y = 0.01; p2.z = 0;
+          p2.hp = p2.maxHp; p2.alive = true; p2.mana = p2.maxMana;
+          p2.frozen = false; p2.stunned = false; p2.slowed = false; p2.blinded = false;
+          p2.dotActive = false;
+        }
+        this._centerNotification = {
+          text: `Round ${this._duelState.roundNumber}`,
+          color: "#ffaa22", timer: 2.0, size: 30,
+        };
+      }
+    }
+
+    // Keep players in arena bounds
+    const arena = getDuelArenaDef(this._duelArenaId);
+    for (const p of this._players) {
+      const d = dist2(p.x, p.z, 0, 0);
+      if (d > arena.size - 1) {
+        const angle = Math.atan2(p.x, p.z);
+        p.x = Math.sin(angle) * (arena.size - 1);
+        p.z = Math.cos(angle) * (arena.size - 1);
+        p.vx *= -0.5;
+        p.vz *= -0.5;
+      }
+    }
+  }
+
+  private _showDuelEndScreen(): void {
+    if (!this._duelState) return;
+    this._removeMenu();
+    this._menuDiv = document.createElement("div");
+    this._menuDiv.style.cssText = `position:absolute;top:0;left:0;width:100%;height:100%;z-index:30;` +
+      `background:rgba(5,3,15,0.95);display:flex;flex-direction:column;align-items:center;justify-content:center;` +
+      `font-family:'Segoe UI',sans-serif;color:#e0d5c0;`;
+
+    const isWin = this._duelState.player1Wins >= DUEL_ROUNDS_TO_WIN;
+    this._menuDiv.innerHTML = `
+      <h1 style="font-size:48px;color:${isWin ? '#daa520' : '#ff4444'};margin:0 0 10px 0">
+        ${isWin ? 'VICTORY!' : 'DEFEAT!'}
+      </h1>
+      <div style="font-size:18px;color:#998877;margin-bottom:20px">
+        Score: ${this._duelState.player1Wins} - ${this._duelState.player2Wins}
+      </div>
+      <div style="font-size:14px;color:#776655;margin-bottom:30px">
+        Rounds played: ${this._duelState.roundNumber}
+      </div>
+      <div style="display:flex;gap:10px">
+        <button id="mw-duel-again" style="${this._menuBtnStyle("#1a1a2a", "#ffaa22")}">Duel Again</button>
+        <button id="mw-duel-menu" style="${this._menuBtnStyle("#2a2a2a", "#555")}">Back to Menu</button>
+      </div>
+    `;
+
+    const container = document.getElementById("pixi-container");
+    if (container) container.appendChild(this._menuDiv);
+
+    document.getElementById("mw-duel-again")?.addEventListener("click", () => {
+      this._removeMenu();
+      this._removeHUD();
+      if (this._selectedDuelLoadout) {
+        this._startDuel(this._selectedDuelLoadout);
+      } else {
+        this._showDuelSetup();
+      }
+    });
+    document.getElementById("mw-duel-menu")?.addEventListener("click", () => {
+      this._removeMenu();
+      this._removeHUD();
+      this._isDuelMode = false;
+      this._duelState = null;
+      this._showMainMenu();
+    });
+  }
+
+  // =====================================================================
+  // STATUS EFFECT UPDATES (used by all modes)
+  // =====================================================================
+
+  private _tickPlayerStatusEffects(dt: number): void {
+    for (const p of this._players) {
+      if (!p.alive) continue;
+
+      // DOT
+      if (p.dotActive) {
+        p.hp -= p.dotDamage * dt;
+        p.dotTimer -= dt;
+        if (p.dotTimer <= 0) p.dotActive = false;
+        if (p.hp <= 0) this._killPlayer(p, p.dotOwnerId, "Burn");
+      }
+      // Stun
+      if (p.stunned) {
+        p.stunTimer -= dt;
+        if (p.stunTimer <= 0) p.stunned = false;
+      }
+      // Slow
+      if (p.slowed) {
+        p.slowTimer -= dt;
+        if (p.slowTimer <= 0) { p.slowed = false; p.slowFactor = 1; }
+      }
+      // Blind
+      if (p.blinded) {
+        p.blindTimer -= dt;
+        if (p.blindTimer <= 0) p.blinded = false;
+      }
+      // Crafted spell cooldown
+      if (p.craftedSpellCooldown > 0) p.craftedSpellCooldown -= dt;
+      // Env spell cooldown
+      if (p.envSpellCooldown > 0) p.envSpellCooldown -= dt;
     }
   }
 

@@ -1,6 +1,7 @@
 // Save/Load system using localStorage
 import type { RPGState, ActiveBlessing } from "@rpg/state/RPGState";
 import type { OverworldState } from "@rpg/state/OverworldState";
+import { createCraftingDiscoveryState } from "@rpg/systems/CraftingDiscoverySystem";
 
 const SAVE_KEY_PREFIX = "rpg_save_";
 const SAVE_META_KEY = "rpg_save_meta";
@@ -77,6 +78,13 @@ interface SerializedRPGState {
   spawnRate?: number; // legacy
   randomEncounterRate?: number;
   roamingEncounterRate?: number;
+  // Crafting Discovery (optional for backward compat)
+  craftingDiscovery?: {
+    discoveredRecipes: string[];
+    knownRecipes: string[];
+    attemptHistory: { materialIds: string[]; success: boolean; recipeId?: string; timestamp: number }[];
+    hints: Record<string, number>;
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -229,6 +237,15 @@ export function restoreRPGState(
     arenaFightsLeft: serialized.arenaFightsLeft ?? 3,
     randomEncounterRate: serialized.randomEncounterRate ?? serialized.spawnRate ?? 100,
     roamingEncounterRate: serialized.roamingEncounterRate ?? serialized.spawnRate ?? 100,
+    // Crafting Discovery (backward compat: create fresh if missing)
+    craftingDiscovery: serialized.craftingDiscovery
+      ? {
+          discoveredRecipes: new Set(serialized.craftingDiscovery.discoveredRecipes ?? []),
+          knownRecipes: new Set(serialized.craftingDiscovery.knownRecipes ?? []),
+          attemptHistory: serialized.craftingDiscovery.attemptHistory ?? [],
+          hints: serialized.craftingDiscovery.hints ?? {},
+        }
+      : createCraftingDiscoveryState(),
   };
 }
 
@@ -283,5 +300,12 @@ function _serializeRPGState(state: RPGState): SerializedRPGState {
     arenaFightsLeft: state.arenaFightsLeft,
     randomEncounterRate: state.randomEncounterRate,
     roamingEncounterRate: state.roamingEncounterRate,
+    // Crafting Discovery
+    craftingDiscovery: {
+      discoveredRecipes: Array.from(state.craftingDiscovery.discoveredRecipes),
+      knownRecipes: Array.from(state.craftingDiscovery.knownRecipes),
+      attemptHistory: state.craftingDiscovery.attemptHistory,
+      hints: state.craftingDiscovery.hints,
+    },
   };
 }

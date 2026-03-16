@@ -15,6 +15,7 @@ let _pauseCallback: ((paused: boolean) => void) | null = null;
 let _classSelectCallback: ((classId: DragoonClassId) => void) | null = null;
 let _subclassSelectCallback: ((index: number) => void) | null = null;
 let _escapeMenuCallback: ((show: boolean) => void) | null = null;
+let _forkSelectCallback: ((index: number) => void) | null = null;
 
 const CLASS_ORDER: DragoonClassId[] = [
   DragoonClassId.ARCANE_MAGE,
@@ -40,6 +41,10 @@ export const DragoonInputSystem = {
     _escapeMenuCallback = cb;
   },
 
+  setForkSelectCallback(cb: ((index: number) => void) | null): void {
+    _forkSelectCallback = cb;
+  },
+
   init(state: DragoonState): void {
     const inp = state.input;
 
@@ -60,6 +65,15 @@ export const DragoonInputSystem = {
         switch (e.code) {
           case "Digit1": _subclassSelectCallback?.(0); break;
           case "Digit2": _subclassSelectCallback?.(1); break;
+        }
+        return;
+      }
+
+      // Fork path selection mode
+      if (state.branchState.forkActive) {
+        switch (e.code) {
+          case "Digit1": _forkSelectCallback?.(0); break;
+          case "Digit2": _forkSelectCallback?.(1); break;
         }
         return;
       }
@@ -146,6 +160,28 @@ export const DragoonInputSystem = {
           const cx = startX + i * (cardW + gap);
           if (mx >= cx && mx <= cx + cardW && my >= cardY && my <= cardY + cardH) {
             _classSelectCallback?.(CLASS_ORDER[i]);
+            return;
+          }
+        }
+        return;
+      }
+
+      // Fork path selection: hit-test card areas
+      if (state.branchState.forkActive) {
+        const mx = e.clientX;
+        const my = e.clientY;
+        const sw = state.screenW;
+        const sh = state.screenH;
+        const cardW = 280;
+        const cardH = 300;
+        const gap = 40;
+        const totalW = 2 * cardW + gap;
+        const startX = (sw - totalW) / 2;
+        const cardY = sh / 2 - cardH / 2;
+        for (let i = 0; i < 2; i++) {
+          const cx = startX + i * (cardW + gap);
+          if (mx >= cx && mx <= cx + cardW && my >= cardY && my <= cardY + cardH) {
+            _forkSelectCallback?.(i);
             return;
           }
         }
@@ -252,5 +288,6 @@ export const DragoonInputSystem = {
     _classSelectCallback = null;
     _subclassSelectCallback = null;
     _escapeMenuCallback = null;
+    _forkSelectCallback = null;
   },
 };

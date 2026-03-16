@@ -140,9 +140,10 @@ function damageEnemy(state: SurvivorState, enemy: SurvivorEnemy, amount: number,
     amount *= 2.0;
   }
 
-  // Synergy + arcana damage multipliers
+  // Synergy + arcana + fusion damage multipliers
   amount *= _getArcanaDamageMult(state);
   amount *= (1 + _getSynergyDamageBonus(state));
+  amount *= (1 + SurvivorFusionSystem.getDamageBonus(state));
 
   // Excalibur's Blessing: +50% ATK near Sword in the Stone
   if (state.activeLandmarkBuffs.has("sword_stone")) amount *= 1.5;
@@ -169,8 +170,8 @@ function damageEnemy(state: SurvivorState, enemy: SurvivorEnemy, amount: number,
   }
   _damageCallback?.(enemy.position.x, enemy.position.y, finalDmg, isCrit);
 
-  // Vampiric Aura: heal 3% of damage dealt
-  if (_hasArcana(state, "vampiric_aura")) {
+  // Vampiric Aura: heal 3% of damage dealt (blocked by no-healing challenge)
+  if (_hasArcana(state, "vampiric_aura") && !SurvivorChallengeSystem.isHealingDisabled(state)) {
     state.player.hp = Math.min(state.player.maxHp, state.player.hp + finalDmg * 0.03);
   }
 
@@ -213,6 +214,35 @@ function damageEnemy(state: SurvivorState, enemy: SurvivorEnemy, amount: number,
         }
       }
       _weaponFxCallback?.(enemy.position.x, enemy.position.y, 0xff6600, 2.0);
+    }
+
+    // Challenge modifier: volatile corpses — enemies explode on death, can hurt player
+    const challengeExplosion = SurvivorChallengeSystem.getExplosionOnDeath(state);
+    if (challengeExplosion && !_hasArcana(state, "chain_explosion")) {
+      const cExpDmg = enemy.maxHp * challengeExplosion.damagePct;
+      const cNearby = enemiesInRadius(state, enemy.position.x, enemy.position.y, challengeExplosion.radius);
+      for (const n of cNearby) {
+        if (n.id === enemy.id || !n.alive) continue;
+        n.hp -= cExpDmg;
+        n.hitTimer = 0.1;
+        _damageCallback?.(n.position.x, n.position.y, cExpDmg, false);
+        if (n.hp <= 0) {
+          n.alive = false;
+          n.deathTimer = 0.8;
+          state.totalKills++;
+        }
+      }
+      // Also damages player if in range
+      const pdx = state.player.position.x - enemy.position.x;
+      const pdy = state.player.position.y - enemy.position.y;
+      if (pdx * pdx + pdy * pdy < challengeExplosion.radius * challengeExplosion.radius) {
+        if (state.player.invincibilityTimer <= 0) {
+          state.player.hp -= cExpDmg * 0.5; // 50% to player
+          state.player.invincibilityTimer = 0.2;
+          _playerHitCallback?.();
+        }
+      }
+      _weaponFxCallback?.(enemy.position.x, enemy.position.y, 0xff8844, challengeExplosion.radius);
     }
 
     // Drop XP gem (elites drop one tier higher)
@@ -295,11 +325,12 @@ function getWeaponCooldown(ws: SurvivorWeaponState, player: SurvivorState["playe
 function getWeaponArea(ws: SurvivorWeaponState, player: SurvivorState["player"], state: SurvivorState): number {
   const arcanaMult = _getArcanaAreaMult(state);
   const synergyBonus = _getSynergyAreaBonus(state);
+  const fusionBonus = SurvivorFusionSystem.getAreaBonus(state);
   if (ws.evolved && ws.evolutionId) {
-    return EVOLUTION_DEFS[ws.evolutionId].area * player.areaMultiplier * arcanaMult * (1 + synergyBonus);
+    return EVOLUTION_DEFS[ws.evolutionId].area * player.areaMultiplier * arcanaMult * (1 + synergyBonus + fusionBonus);
   }
   const def = WEAPON_DEFS[ws.id];
-  return (def.baseArea + def.areaPerLevel * (ws.level - 1)) * player.areaMultiplier * arcanaMult * (1 + synergyBonus);
+  return (def.baseArea + def.areaPerLevel * (ws.level - 1)) * player.areaMultiplier * arcanaMult * (1 + synergyBonus + fusionBonus);
 }
 
 function getWeaponCount(ws: SurvivorWeaponState, state: SurvivorState): number {
@@ -335,6 +366,10 @@ function fireWeapon(state: SurvivorState, ws: SurvivorWeaponState): void {
       const enemies = enemiesInRadius(state, px, py, area);
       for (const e of enemies) {
         damageEnemy(state, e, damage, ws.id);
+        // Blade Chalice fusion: spinning blade heals 2% of damage dealt
+        if (ws.id === "spinning_blade" && SurvivorFusionSystem.hasFusion(state, "blade_chalice") && !SurvivorChallengeSystem.isHealingDisabled(state)) {
+          state.player.hp = Math.min(state.player.maxHp, state.player.hp + damage * 0.02);
+        }
       }
       if (enemies.length > 0) _weaponFxCallback?.(px, py, def.color, area, ws.id);
       break;
@@ -406,6 +441,11 @@ function fireWeapon(state: SurvivorState, ws: SurvivorWeaponState): void {
         const enemies = enemiesInRadius(state, target.position.x, target.position.y, area);
         for (const e of enemies) {
           damageEnemy(state, e, damage, ws.id);
+          // Catapult Armor fusion: stun enemies on impact for 1.5s
+          if (SurvivorFusionSystem.hasFusion(state, "catapult_armor")) {
+            e.slowFactor = 0;
+            e.slowTimer = Math.max(e.slowTimer, 1.5);
+          }
         }
         _arcFxCallback?.(px, py, target.position.x, target.position.y, def.color, area);
       }
@@ -426,8 +466,8 @@ function fireWeapon(state: SurvivorState, ws: SurvivorWeaponState): void {
         const enemies = enemiesInRadius(state, ox, oy, area);
         for (const e of enemies) {
           damageEnemy(state, e, damage, ws.id);
-          // Arcane Lifesteal synergy: rune hits heal
-          if (_hasSynergy(state, "arcane_lifesteal")) {
+          // Arcane Lifesteal synergy: rune hits heal (blocked by no-healing challenge)
+          if (_hasSynergy(state, "arcane_lifesteal") && !SurvivorChallengeSystem.isHealingDisabled(state)) {
             state.player.hp = Math.min(state.player.maxHp, state.player.hp + damage * 0.15);
           }
         }
@@ -437,11 +477,14 @@ function fireWeapon(state: SurvivorState, ws: SurvivorWeaponState): void {
     }
     case "soul_drain": {
       const healMult = _hasSynergy(state, "dark_arts") ? 0.45 : 0.3;
-      for (let i = 0; i < count; i++) {
+      const soulTomeBonus = SurvivorFusionSystem.hasFusion(state, "soul_tome") ? 2 : 0;
+      const totalCount = count + soulTomeBonus;
+      for (let i = 0; i < totalCount; i++) {
         const target = nearestEnemy(state, px, py, area);
         if (!target) break;
         damageEnemy(state, target, damage, ws.id);
-        state.player.hp = Math.min(state.player.maxHp, state.player.hp + damage * healMult);
+        const healAmount = SurvivorChallengeSystem.filterHeal(state, damage * healMult);
+        state.player.hp = Math.min(state.player.maxHp, state.player.hp + healAmount);
       }
       break;
     }
@@ -671,8 +714,10 @@ export const SurvivorCombatSystem = {
     // Enemy projectiles
     _updateEnemyProjectiles(state, dt);
 
-    // Enemy movement with varied AI behaviors (apply event speed multiplier)
+    // Enemy movement with varied AI behaviors (apply event + challenge + biome speed multipliers)
     const eventSpeedMult = state.activeEvent?.enemySpeedMultiplier ?? 1;
+    const challengeSpeedMult = SurvivorChallengeSystem.getEnemySpeedMultiplier(state);
+    const biomeSpeedMult = SurvivorBiomeSystem.getEnemySpeedMultiplier(state);
     for (const e of state.enemies) {
       if (!e.alive) {
         e.deathTimer -= dt;
@@ -688,7 +733,7 @@ export const SurvivorCombatSystem = {
       const dx = px - e.position.x;
       const dy = py - e.position.y;
       const len = Math.sqrt(dx * dx + dy * dy) || 1;
-      const spd = e.speed * e.slowFactor * eventSpeedMult * dt;
+      const spd = e.speed * e.slowFactor * eventSpeedMult * challengeSpeedMult * biomeSpeedMult * dt;
 
       // Ambush behavior: stay hidden and don't move until player is within 5 tiles
       if (e.aiBehavior === "ambush" && !e.ambushRevealed) {
@@ -856,8 +901,8 @@ export const SurvivorCombatSystem = {
       }
     }
 
-    // Player regen
-    if (state.player.regenRate > 0 && state.player.hp < state.player.maxHp) {
+    // Player regen (blocked by no-healing challenge)
+    if (state.player.regenRate > 0 && state.player.hp < state.player.maxHp && !SurvivorChallengeSystem.isHealingDisabled(state)) {
       state.player.hp = Math.min(state.player.maxHp, state.player.hp + state.player.regenRate * dt);
     }
   },

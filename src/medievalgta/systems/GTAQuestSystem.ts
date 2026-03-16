@@ -1,7 +1,7 @@
 // GTAQuestSystem.ts – Quest progression, dialog, item pickup. No PixiJS.
 import type { MedievalGTAState, GTANPC } from '../state/MedievalGTAState';
-import { GTAConfig } from '../config/MedievalGTAConfig';
-import { addNotification } from './GTACombatSystem';
+import { GTAConfig, getStealReputationAction, getTimeOfDay } from '../config/MedievalGTAConfig';
+import { addNotification, applyReputationEffects } from './GTACombatSystem';
 import { increaseWanted } from './GTAWantedSystem';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -288,15 +288,42 @@ function updateNPCInteraction(state: MedievalGTAState): void {
     }
   }
 
-  // ── Pickpocketing: steal from civilian/merchant from behind ──
+  // ── Pickpocketing: steal from NPC from behind (faction-aware) ──
   if (p.pickpocketCooldown <= 0) {
     const nearby = findNearestInteractableNPC(state, 30);
-    if (nearby && (nearby.type === 'civilian_m' || nearby.type === 'civilian_f' || nearby.type === 'merchant')) {
-      const stolen = 5 + Math.floor(Math.random() * 11); // 5-15
-      p.gold += stolen;
+    if (nearby && nearby.type !== 'bounty_hunter') {
+      // Base stolen amount depends on target type
+      let baseStolen = 5 + Math.floor(Math.random() * 11); // 5-15
+      if (nearby.type === 'merchant' || nearby.type === 'blacksmith_npc') {
+        baseStolen = 10 + Math.floor(Math.random() * 16); // 10-25
+      } else if (nearby.type === 'tavern_keeper' || nearby.type === 'bard') {
+        baseStolen = 15 + Math.floor(Math.random() * 21); // 15-35 (nobles carry more)
+      } else if (nearby.type === 'guard' || nearby.type === 'knight') {
+        baseStolen = 8 + Math.floor(Math.random() * 13); // 8-20
+      }
+
+      // Day/night crime detection: easier to steal at night
+      const todDef = getTimeOfDay(state.dayTime);
+      const detectionRoll = Math.random();
+      const detected = detectionRoll > (1.0 - todDef.crimeDetectionMult * 0.5);
+
+      p.gold += baseStolen;
       p.pickpocketCooldown = 3.0; // 3 second cooldown
-      addNotification(state, `Pickpocketed ${stolen} gold!`, 0xffdd44);
-      increaseWanted(state, 1);
+
+      // Apply faction-specific steal reputation
+      const stealAction = getStealReputationAction(nearby.type);
+      if (stealAction) {
+        applyReputationEffects(state, stealAction);
+      }
+
+      if (detected) {
+        addNotification(state, `Pickpocketed ${baseStolen} gold! (Spotted!)`, 0xff8844);
+        increaseWanted(state, 1);
+        nearby.behavior = 'flee';
+      } else {
+        addNotification(state, `Pickpocketed ${baseStolen} gold! (Unnoticed)`, 0xffdd44);
+      }
+
       p.dialogCooldown = 0.3;
       return;
     }

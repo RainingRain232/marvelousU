@@ -882,4 +882,23 @@ export const MW = {
   ROYALE_SCROLL_COUNT: 25,           // spell scrolls scattered on map
   ROYALE_ARTIFACT_COUNT: 8,          // powerful artifacts on map
   ROYALE_RESPAWN_ENABLED: false,
+
+  // Spell Crafting
+  CRAFTED_SPELL_SLOT_KEY: "KeyG",
+  RUNE_SELECT_KEY: "KeyV",
+  MAX_RUNE_INVENTORY: 8,
+  RUNE_PICKUP_RADIUS: 2.5,
+
+  // Environmental Spells
+  ENV_SPELL_KEY: "KeyF",
+  ENV_SPELL_MAX_PLACED: 3,      // max active env spells per player
+
+  // Dragon Riding
+  DRAGON_MOUNT_KEY: "KeyH",
+  DRAGON_DISMOUNT_KEY: "KeyH",
+  DRAGON_BREATH_KEY: "MouseLeft",
+  DRAGON_BARREL_ROLL_KEY: "KeyQ",
+
+  // Dueling Arena
+  DUEL_ARENA_ENABLED: true,
 };

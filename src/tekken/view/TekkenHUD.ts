@@ -9,6 +9,8 @@ import type { TekkenState } from "../state/TekkenState";
 import { TekkenPhase } from "../../types";
 import { TB } from "../config/TekkenBalanceConfig";
 import { TEKKEN_CHARACTERS } from "../config/TekkenCharacterDefs";
+import { getRankForRating, type TekkenRankDef } from "../config/TekkenRankedConfig";
+import type { ComboChallengeState } from "../systems/TekkenComboChallengeSystem";
 
 // ---- Battle Start Dialogue Data ------------------------------------------
 
@@ -152,6 +154,21 @@ export class TekkenHUD {
   private _trainingControls: Text | null = null;
   private _trainingAIStatus: Text | null = null;
   private _trainingHitboxLabel: Text | null = null;
+  private _trainingFrameBar: Graphics | null = null;
+  private _trainingBestCombo: Text | null = null;
+  private _trainingMoveHeight: Text | null = null;
+
+  // Ranked mode overlay elements
+  private _rankedContainer: Container | null = null;
+  private _rankedRankText: Text | null = null;
+  private _rankedRatingText: Text | null = null;
+  private _rankedRecordText: Text | null = null;
+
+  // Combo challenge overlay elements
+  private _challengeContainer: Container | null = null;
+  private _challengeTitle: Text | null = null;
+  private _challengeSteps: Text | null = null;
+  private _challengeStatus: Text | null = null;
 
   // Rage art meter elements
   private _rageMeterBgs: Graphics[] = [];
@@ -385,15 +402,104 @@ export class TekkenHUD {
     this._trainingHitboxLabel.y = viewManager.screenHeight - 135;
     this._trainingContainer.addChild(this._trainingHitboxLabel);
 
+    // Frame data bar (visual startup/active/recovery)
+    this._trainingFrameBar = new Graphics();
+    this._trainingFrameBar.x = 20;
+    this._trainingFrameBar.y = viewManager.screenHeight - 70;
+    this._trainingContainer.addChild(this._trainingFrameBar);
+
+    // Move height display
+    this._trainingMoveHeight = new Text({
+      text: "",
+      style: { ...trainingStyle, fill: 0xaaaaff },
+    });
+    this._trainingMoveHeight.x = 20;
+    this._trainingMoveHeight.y = viewManager.screenHeight - 55;
+    this._trainingContainer.addChild(this._trainingMoveHeight);
+
+    // Best combo display
+    this._trainingBestCombo = new Text({
+      text: "",
+      style: { fontFamily: "Courier New, monospace", fontSize: 14, fill: 0xffaa44 },
+    });
+    this._trainingBestCombo.anchor.set(1, 0);
+    this._trainingBestCombo.x = sw - 20;
+    this._trainingBestCombo.y = viewManager.screenHeight - 110;
+    this._trainingContainer.addChild(this._trainingBestCombo);
+
     // Controls hint
     this._trainingControls = new Text({
-      text: "F1: Toggle AI   F2: Reset Pos   F3: Hitboxes",
+      text: "F1: Toggle AI   F2: Reset Pos   F3: Hitboxes   F4: Frame Data",
       style: { fontFamily: "Courier New, monospace", fontSize: 13, fill: 0x666666 },
     });
     this._trainingControls.anchor.set(0.5, 1);
     this._trainingControls.x = centerX;
     this._trainingControls.y = viewManager.screenHeight - 10;
     this._trainingContainer.addChild(this._trainingControls);
+
+    // Ranked mode overlay (hidden by default)
+    this._rankedContainer = new Container();
+    this._rankedContainer.visible = false;
+    this._container.addChild(this._rankedContainer);
+
+    this._rankedRankText = new Text({
+      text: "",
+      style: { fontFamily: "Georgia, serif", fontSize: 18, fill: 0xffcc00, fontWeight: "bold", letterSpacing: 2 },
+    });
+    this._rankedRankText.anchor.set(0.5, 0);
+    this._rankedRankText.x = centerX;
+    this._rankedRankText.y = 70;
+    this._rankedContainer.addChild(this._rankedRankText);
+
+    this._rankedRatingText = new Text({
+      text: "",
+      style: { fontFamily: "Courier New, monospace", fontSize: 14, fill: 0xaaaaaa },
+    });
+    this._rankedRatingText.anchor.set(0.5, 0);
+    this._rankedRatingText.x = centerX;
+    this._rankedRatingText.y = 92;
+    this._rankedContainer.addChild(this._rankedRatingText);
+
+    this._rankedRecordText = new Text({
+      text: "",
+      style: { fontFamily: "Courier New, monospace", fontSize: 12, fill: 0x888888 },
+    });
+    this._rankedRecordText.anchor.set(0.5, 0);
+    this._rankedRecordText.x = centerX;
+    this._rankedRecordText.y = 110;
+    this._rankedContainer.addChild(this._rankedRecordText);
+
+    // Combo challenge overlay (hidden by default)
+    this._challengeContainer = new Container();
+    this._challengeContainer.visible = false;
+    this._container.addChild(this._challengeContainer);
+
+    this._challengeTitle = new Text({
+      text: "",
+      style: { fontFamily: "Georgia, serif", fontSize: 18, fill: 0x44ddff, fontWeight: "bold" },
+    });
+    this._challengeTitle.anchor.set(1, 0);
+    this._challengeTitle.x = sw - 20;
+    this._challengeTitle.y = viewManager.screenHeight * 0.25;
+    this._challengeContainer.addChild(this._challengeTitle);
+
+    this._challengeSteps = new Text({
+      text: "",
+      style: { fontFamily: "Courier New, monospace", fontSize: 15, fill: 0xdddddd },
+    });
+    this._challengeSteps.anchor.set(1, 0);
+    this._challengeSteps.x = sw - 20;
+    this._challengeSteps.y = viewManager.screenHeight * 0.25 + 28;
+    this._challengeContainer.addChild(this._challengeSteps);
+
+    this._challengeStatus = new Text({
+      text: "",
+      style: { fontFamily: "Georgia, serif", fontSize: 22, fill: 0x44ff44, fontWeight: "bold" },
+    });
+    this._challengeStatus.anchor.set(1, 0);
+    this._challengeStatus.x = sw - 20;
+    this._challengeStatus.y = viewManager.screenHeight * 0.25 - 30;
+    this._challengeContainer.addChild(this._challengeStatus);
   }
 
   update(state: TekkenState): void {
@@ -666,10 +772,122 @@ export class TekkenHUD {
         this._trainingHitboxLabel!.text = `Hitboxes: ${tm.showHitboxes ? "ON" : "OFF"}`;
         this._trainingHitboxLabel!.style.fill = tm.showHitboxes ? 0x8888ff : 0x666666;
 
+        // Frame data bar visualization
+        if (this._trainingFrameBar && tm.showFrameDataOverlay) {
+          this._trainingFrameBar.clear();
+          const barTotalW = 200;
+          const barH = 10;
+          const totalFrames = tm.lastMoveStartup + tm.lastMoveActive + tm.lastMoveRecovery;
+          if (totalFrames > 0) {
+            const startupW = (tm.lastMoveStartup / totalFrames) * barTotalW;
+            const activeW = (tm.lastMoveActive / totalFrames) * barTotalW;
+            const recoveryW = (tm.lastMoveRecovery / totalFrames) * barTotalW;
+            // Background
+            this._trainingFrameBar.roundRect(0, 0, barTotalW, barH, 2).fill({ color: 0x222222 });
+            // Startup (yellow)
+            this._trainingFrameBar.rect(0, 0, startupW, barH).fill({ color: 0xdddd44 });
+            // Active (green)
+            this._trainingFrameBar.rect(startupW, 0, activeW, barH).fill({ color: 0x44dd44 });
+            // Recovery (red)
+            this._trainingFrameBar.rect(startupW + activeW, 0, recoveryW, barH).fill({ color: 0xdd4444 });
+
+            // Current phase indicator
+            if (tm.overlayMovePhase !== "none" && tm.overlayPhaseTotal > 0) {
+              let indicatorX = 0;
+              const phaseFrac = tm.overlayPhaseFrame / tm.overlayPhaseTotal;
+              if (tm.overlayMovePhase === "startup") {
+                indicatorX = phaseFrac * startupW;
+              } else if (tm.overlayMovePhase === "active") {
+                indicatorX = startupW + phaseFrac * activeW;
+              } else if (tm.overlayMovePhase === "recovery") {
+                indicatorX = startupW + activeW + phaseFrac * recoveryW;
+              }
+              this._trainingFrameBar.rect(indicatorX - 1, -2, 2, barH + 4).fill({ color: 0xffffff });
+            }
+          }
+        }
+
+        // Move height display
+        if (this._trainingMoveHeight) {
+          this._trainingMoveHeight.text = tm.lastMoveHeight
+            ? `Height: ${tm.lastMoveHeight.toUpperCase()}  On Block: ${tm.lastOnBlock >= 0 ? "+" : ""}${tm.lastOnBlock}  On Hit: ${tm.lastOnHit >= 0 ? "+" : ""}${tm.lastOnHit}`
+            : "";
+        }
+
+        // Best combo display
+        if (this._trainingBestCombo) {
+          if (tm.bestComboCount > 0) {
+            this._trainingBestCombo.text = `Best: ${tm.bestComboCount} hits / ${tm.bestComboDamage} dmg`;
+          } else {
+            this._trainingBestCombo.text = "";
+          }
+        }
+
         // Hide round timer in training mode
         this._timerText!.text = "\u221E";
         this._timerText!.style.fill = 0x888888;
       }
+    }
+
+    // Ranked mode overlay
+    if (this._rankedContainer) {
+      const isRanked = state.gameMode === "ranked";
+      this._rankedContainer.visible = isRanked;
+      if (isRanked) {
+        const profile = state.rankedProfile;
+        const rank = getRankForRating(profile.rating);
+        this._rankedRankText!.text = `${rank.icon} ${rank.name.toUpperCase()} RANK`;
+        this._rankedRankText!.style.fill = rank.color;
+        this._rankedRatingText!.text = `Rating: ${profile.rating}  |  Streak: ${profile.winStreak}`;
+        this._rankedRecordText!.text = `W: ${profile.wins}  L: ${profile.losses}`;
+      }
+    }
+  }
+
+  // ---- Combo Challenge Overlay -----------------------------------------------
+
+  /** Update the combo challenge display with current challenge state */
+  updateComboChallengeOverlay(challengeState: ComboChallengeState): void {
+    if (!this._challengeContainer) return;
+
+    const challenge = challengeState.activeChallenge;
+    if (!challenge) {
+      this._challengeContainer.visible = false;
+      return;
+    }
+
+    this._challengeContainer.visible = true;
+
+    this._challengeTitle!.text = `${challenge.name} [${challenge.difficulty.toUpperCase()}]`;
+
+    // Build step display
+    const lines: string[] = [];
+    for (let i = 0; i < challenge.steps.length; i++) {
+      const step = challenge.steps[i];
+      let prefix = "  ";
+      if (i < challengeState.currentStepIndex) {
+        prefix = "\u2713 "; // checkmark
+      } else if (i === challengeState.currentStepIndex) {
+        prefix = "> ";
+      } else if (i === challengeState.lastFailedStep) {
+        prefix = "X ";
+      }
+      lines.push(`${prefix}${step.display}`);
+    }
+    this._challengeSteps!.text = lines.join("\n");
+
+    // Status
+    if (challengeState.completed) {
+      this._challengeStatus!.text = `COMPLETE! (${challengeState.completionCount}x)`;
+      this._challengeStatus!.style.fill = 0x44ff44;
+    } else if (challengeState.lastFailedStep >= 0) {
+      this._challengeStatus!.text = "DROPPED - Resetting...";
+      this._challengeStatus!.style.fill = 0xff4444;
+    } else if (challengeState.currentStepIndex > 0) {
+      this._challengeStatus!.text = `${challengeState.currentStepIndex}/${challenge.steps.length}`;
+      this._challengeStatus!.style.fill = 0xffcc00;
+    } else {
+      this._challengeStatus!.text = "";
     }
   }
 

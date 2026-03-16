@@ -6,7 +6,7 @@
 
 import { generateFloor } from "./GameDungeonGenerator";
 import { getFloorParams, QUEST_GENRE_DEFS } from "../config/GameConfig";
-import type { QuestGenreDef, FloorParams } from "../config/GameConfig";
+import type { QuestGenreDef } from "../config/GameConfig";
 import type { FloorState, GrailGameState } from "../state/GameState";
 
 // ---------------------------------------------------------------------------
