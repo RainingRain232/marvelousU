@@ -1,6 +1,7 @@
 // Dungeon crawling state — floors, rooms, fog of war
 import type { DungeonTileType, Vec2 } from "@/types";
 import type { RPGItem } from "./RPGState";
+import type { DungeonModifierDef, DungeonModifierEffects } from "@rpg/config/DungeonModifierDefs";
 
 // ---------------------------------------------------------------------------
 // Rooms
@@ -73,4 +74,8 @@ export interface DungeonState {
   partyPosition: Vec2;
   totalFloors: number;
   bossDefeated: boolean;
+  /** Active dungeon modifiers for this run. */
+  modifiers: DungeonModifierDef[];
+  /** Pre-merged modifier effects for fast lookup. */
+  mergedEffects: DungeonModifierEffects;
 }

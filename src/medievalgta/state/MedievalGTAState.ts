@@ -1,6 +1,6 @@
 // Medieval GTA – shared state types and factory function
 
-import type { GTAFactionId, GTAWorldEventType } from '../config/MedievalGTAConfig';
+import type { GTAFactionId, GTAWorldEventType, GTAHeistPhase, GTATimeOfDay } from '../config/MedievalGTAConfig';
 
 export interface GTAVec2 { x: number; y: number; }
 
@@ -74,6 +74,47 @@ export interface GTAOwnedProperty {
   purchasedAt: number;       // timeElapsed when purchased
   lastIncomeTime: number;    // last time income was collected
   totalIncomeEarned: number;
+  purchasedUpgrades: string[];  // upgrade ids that have been purchased
+}
+
+// ─── Heist state ─────────────────────────────────────────────────────────────
+
+export interface GTAHeistCrewMember {
+  role: string;
+  name: string;
+  hired: boolean;
+  hireCost: number;
+  successBonus: number;
+}
+
+export interface GTAActiveHeist {
+  heistId: string;
+  currentPhaseIndex: number;
+  phase: GTAHeistPhase;
+  phaseTimer: number;              // time remaining in current phase
+  phaseComplete: boolean;          // whether current phase objective is met
+  crewMembers: GTAHeistCrewMember[];
+  totalSuccessBonus: number;       // accumulated crew bonuses
+  startTime: number;               // timeElapsed when heist started
+  lootCollected: number;
+  detected: boolean;               // whether player was detected during heist
+}
+
+// ─── Shady dealer state ──────────────────────────────────────────────────────
+
+export interface GTAShadyDealerState {
+  dealerId: string;
+  spawned: boolean;
+  npcId: string | null;
+}
+
+// ─── Day/Night tracking ──────────────────────────────────────────────────────
+
+export interface GTADayNightState {
+  currentTimeOfDay: GTATimeOfDay;
+  previousTimeOfDay: GTATimeOfDay;
+  dayCount: number;                // number of full day cycles completed
+  timeOfDayChangeTimer: number;    // cooldown for time-of-day notifications
 }
 
 // ─── Active world event state ─────────────────────────────────────────────────
@@ -295,6 +336,16 @@ export interface MedievalGTAState {
   worldEventCooldowns: Record<string, number>;
   worldEventCheckTimer: number;
 
+  // ── Heist state ──
+  activeHeist: GTAActiveHeist | null;
+  completedHeistIds: string[];
+
+  // ── Shady dealers ──
+  shadyDealers: GTAShadyDealerState[];
+
+  // ── Day/Night tracking ──
+  dayNight: GTADayNightState;
+
   worldWidth: number;
   worldHeight: number;
   cityBounds: { x: number; y: number; w: number; h: number };
@@ -410,6 +461,18 @@ export function createMedievalGTAState(): MedievalGTAState {
     activeWorldEvents: [],
     worldEventCooldowns: {},
     worldEventCheckTimer: 0,
+
+    activeHeist: null,
+    completedHeistIds: [],
+
+    shadyDealers: [],
+
+    dayNight: {
+      currentTimeOfDay: 'morning',
+      previousTimeOfDay: 'morning',
+      dayCount: 0,
+      timeOfDayChangeTimer: 0,
+    },
 
     worldWidth: 4000,
     worldHeight: 3000,

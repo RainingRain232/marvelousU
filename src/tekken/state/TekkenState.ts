@@ -4,6 +4,10 @@ import {
   TekkenAttackHeight,
   TekkenLimb,
 } from "../../types";
+import type { TekkenRankedProfile } from "../config/TekkenRankedConfig";
+import type { TekkenSkinSlot } from "../config/TekkenCustomization";
+import type { ComboChallengeState } from "../systems/TekkenComboChallengeSystem";
+import type { StageTransitionState } from "../systems/TekkenStageTransitionSystem";
 
 export interface TekkenInputState {
   left: boolean;
@@ -147,7 +151,25 @@ export interface TekkenFighter {
   counterHitWindow: boolean;
 }
 
-export type TekkenGameMode = "vs_cpu" | "vs_mode" | "arcade" | "training";
+export type TekkenGameMode = "vs_cpu" | "vs_mode" | "arcade" | "training" | "ranked";
+
+/** Per-character customization selections */
+export interface TekkenCustomizationState {
+  /** Map from slot to selected skin ID */
+  equippedSkins: Partial<Record<TekkenSkinSlot, string>>;
+  /** Set of unlocked skin IDs */
+  unlockedSkins: Set<string>;
+}
+
+/** Arcade mode progression state */
+export interface TekkenArcadeState {
+  /** Opponents defeated so far */
+  opponentsDefeated: number;
+  /** Total opponents in arcade run */
+  totalOpponents: number;
+  /** Whether the story ending has been shown */
+  endingShown: boolean;
+}
 
 export interface TrainingModeState {
   aiEnabled: boolean;

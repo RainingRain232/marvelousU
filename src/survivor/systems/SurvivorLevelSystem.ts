@@ -10,6 +10,7 @@ import {
   PASSIVE_DEFS,
 } from "../config/SurvivorWeaponDefs";
 import { SYNERGY_DEFS } from "../config/SurvivorSynergyDefs";
+import { SurvivorFusionSystem } from "./SurvivorFusionSystem";
 import type { SurvivorState } from "../state/SurvivorState";
 
 // ---------------------------------------------------------------------------
@@ -141,6 +142,9 @@ export function applyUpgrade(state: SurvivorState, choice: UpgradeChoice): void 
 
   // Check synergies
   _checkSynergies(state);
+
+  // Check fusion synergies
+  SurvivorFusionSystem.checkFusions(state);
 
   state.levelUpPending = false;
 }

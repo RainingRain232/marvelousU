@@ -9,17 +9,22 @@ import { viewManager } from "../view/ViewManager";
 
 import {
   GBMatchPhase, GBPlayerClass, GBPowerUpType,
+  GBWeatherType, GBPosition, randomGBWeather,
   GB_FIELD, GB_PHYSICS, GB_MATCH, GB_CAMERA, GB_ABILITIES,
   GB_TEAMS, GB_POWERUP_POSITIONS, GB_STAMINA,
+  GB_POSITION_ABILITIES, GB_INPUT_P1, GB_INPUT_P2,
+  type GBInputMapping,
 } from "./GrailBallConfig";
 
 import {
   type GBMatchState, type GBPlayer, type GBPowerUp, type Vec3,
   GBPlayerAction,
   createMatchState, getPlayer, getOrbCarrier, getTeamPlayers, getSelectedPlayer,
+  getSelectedPlayer2,
   resetPositionsForKickoff, pushEvent, createPenaltyState,
   v3, v3Dist, v3Sub, v3Normalize, v3Len, v3Dist3D,
   getFatigueSpeedMultiplier, getFatigueAccuracyMultiplier, getFatigueTackleMultiplier,
+  getWeatherSpeedMultiplier, tickPositionAbility, canUsePositionAbility,
 } from "./GrailBallState";
 
 import { GrailBallRenderer } from "./GrailBallRenderer";
@@ -83,6 +88,9 @@ export class GrailBallGame {
   // Career mode UI
   private _careerDiv: HTMLDivElement | null = null;
   private _inCareerMode = false;
+
+  // Local multiplayer toggle
+  private _localMultiplayerEnabled = false;
 
   // ---------------------------------------------------------------------------
   // Boot
@@ -249,7 +257,8 @@ export class GrailBallGame {
     const team1 = GB_TEAMS[this._selectedTeam1];
     const team2 = GB_TEAMS[this._selectedTeam2];
     const careerState = this._state?.careerState ?? null;
-    this._state = createMatchState(team1, team2, 0);
+    const weather = randomGBWeather();
+    this._state = createMatchState(team1, team2, 0, weather, this._localMultiplayerEnabled);
     if (careerState) {
       this._state.careerState = careerState;
     }
@@ -580,6 +589,9 @@ export class GrailBallGame {
       }
     }
 
+    // Position ability tick
+    tickPositionAbility(p, dt);
+
     // Enhanced stamina regen based on activity
     const speed = Math.sqrt(p.vel.x * p.vel.x + p.vel.z * p.vel.z);
     let regenRate: number;
@@ -599,8 +611,10 @@ export class GrailBallGame {
     // Update fatigue factor (degrades over total distance)
     p.fatigueFactor = Math.max(0.3, 1.0 - p.totalDistanceRun * 0.0003);
 
-    // AI for non-human players
-    if (p.id !== s.selectedPlayerId || p.teamIndex !== s.humanTeam) {
+    // AI for non-human players (skip human-controlled players)
+    const isP1 = p.id === s.selectedPlayerId && p.teamIndex === s.humanTeam;
+    const isP2 = s.localMultiplayer && p.id === s.selectedPlayer2Id && p.teamIndex === s.player2Team;
+    if (!isP1 && !isP2) {
       const decision = decideAI(s, p, dt);
       this._applyAIDecision(p, decision, dt);
     }
@@ -667,14 +681,16 @@ export class GrailBallGame {
   private _applyAIDecision(p: GBPlayer, d: ReturnType<typeof decideAI>, dt: number): void {
     if (d.moveDir) {
       const fatigueMult = getFatigueSpeedMultiplier(p);
-      const spd = p.speed * (d.sprint ? p.sprintMultiplier : 1) * fatigueMult;
+      const weatherMult = getWeatherSpeedMultiplier(this._state);
+      const posAbilityMult = p.positionAbilityActive && p.position === GBPosition.STRIKER ? 1.6 : 1;
+      const spd = p.speed * (d.sprint ? p.sprintMultiplier : 1) * fatigueMult * weatherMult * posAbilityMult;
       // Apply power-up
       const speedMod = p.activePowerUp === GBPowerUpType.SPEED_BOOST ? 1.4 : 1;
       p.vel.x = d.moveDir.x * spd * speedMod;
       p.vel.z = d.moveDir.z * spd * speedMod;
 
       if (d.sprint && p.stamina > 0) {
-        p.stamina -= GB_STAMINA.SPRINT_DRAIN * dt;
+        p.stamina -= GB_STAMINA.SPRINT_DRAIN * dt * this._state.weatherEffect.staminaDrainMult;
       }
     }
 
@@ -747,7 +763,9 @@ export class GrailBallGame {
       mx /= len; mz /= len;
 
       const fatigueMult = getFatigueSpeedMultiplier(sel);
-      const spd = sel.speed * fatigueMult;
+      const weatherMult = getWeatherSpeedMultiplier(s);
+      const posAbilityMult = sel.positionAbilityActive && sel.position === GBPosition.STRIKER ? 1.6 : 1;
+      const spd = sel.speed * fatigueMult * weatherMult * posAbilityMult;
       const speedMod = sel.activePowerUp === GBPowerUpType.SPEED_BOOST ? 1.4 : 1;
       sel.vel.x = mx * spd * speedMod;
       sel.vel.z = mz * spd * speedMod;
@@ -839,6 +857,115 @@ export class GrailBallGame {
         }
       }
     }
+
+    // Position ability (F key by default for P1 in single player, mapped keys in multiplayer)
+    if (_justPressed("KeyF")) {
+      this._doPositionAbility(sel);
+    }
+
+    // --- Player 2 input (local multiplayer) ---
+    if (s.localMultiplayer) {
+      this._tickInputP2(dt);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Player 2 input handler (local multiplayer)
+  // ---------------------------------------------------------------------------
+  private _tickInputP2(dt: number): void {
+    const s = this._state;
+    if (s.phase !== GBMatchPhase.PLAYING && s.phase !== GBMatchPhase.OVERTIME) return;
+
+    const sel2 = getSelectedPlayer2(s);
+    if (!sel2) return;
+
+    const mapping = GB_INPUT_P2;
+
+    // Movement (WASD)
+    let mx = 0, mz = 0;
+    if (_isDown(mapping.up)) mz = -1;
+    if (_isDown(mapping.down)) mz = 1;
+    if (_isDown(mapping.left)) mx = -1;
+    if (_isDown(mapping.right)) mx = 1;
+
+    if (mx !== 0 || mz !== 0) {
+      const len = Math.sqrt(mx * mx + mz * mz);
+      mx /= len; mz /= len;
+
+      const fatigueMult = getFatigueSpeedMultiplier(sel2);
+      const weatherMult = getWeatherSpeedMultiplier(s);
+      const posAbilityMult = sel2.positionAbilityActive && sel2.position === GBPosition.STRIKER ? 1.6 : 1;
+      const spd = sel2.speed * fatigueMult * weatherMult * posAbilityMult;
+      const speedMod = sel2.activePowerUp === GBPowerUpType.SPEED_BOOST ? 1.4 : 1;
+      sel2.vel.x = mx * spd * speedMod;
+      sel2.vel.z = mz * spd * speedMod;
+    }
+
+    // Pass / Shoot (Space for P2)
+    if (_isDown(mapping.pass)) {
+      if (sel2.hasOrb) {
+        if (!sel2.throwCharging) {
+          sel2.throwCharging = true;
+          sel2.throwChargeTime = 0;
+        }
+        sel2.throwChargeTime += dt;
+      }
+    }
+    if (!_isDown(mapping.pass) && sel2.throwCharging) {
+      sel2.throwCharging = false;
+      if (sel2.hasOrb) {
+        if (sel2.throwChargeTime > 0.4) {
+          this._doShoot(sel2, sel2.throwChargeTime);
+        } else {
+          this._doPass(sel2);
+        }
+      }
+      sel2.throwChargeTime = 0;
+    }
+
+    // Tackle / Ability (Shift for P2)
+    const shiftPressed2 = _justPressed(mapping.tackle);
+    const shiftHeld2 = _isDown(mapping.tackle);
+    if (sel2.hasOrb) {
+      if (shiftPressed2) this._doAbility(sel2);
+    } else {
+      if (shiftHeld2) this._doTackle(sel2);
+    }
+
+    // Switch player (Tab for P2)
+    if (_justPressed(mapping.switchPlayer)) {
+      this._switchPlayer2();
+    }
+
+    // Lob pass
+    if (_justPressed(mapping.lobPass) && sel2.hasOrb) {
+      this._doLobPass(sel2);
+    }
+
+    // Call for pass
+    if (_justPressed(mapping.callForPass) && !sel2.hasOrb) {
+      this._doCallForPass(sel2);
+    }
+
+    // Position ability
+    if (_justPressed(mapping.positionAbility)) {
+      this._doPositionAbility(sel2);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Switch player for P2
+  // ---------------------------------------------------------------------------
+  private _switchPlayer2(): void {
+    const s = this._state;
+    const p2Players = getTeamPlayers(s, s.player2Team).filter(
+      p => p.stunTimer <= 0 && p.foulTimer <= 0,
+    );
+    if (p2Players.length === 0) return;
+
+    const currentIdx = p2Players.findIndex(p => p.id === s.selectedPlayer2Id);
+    const nextIdx = (currentIdx + 1) % p2Players.length;
+    s.selectedPlayer2Id = p2Players[nextIdx].id;
   }
 
   // ---------------------------------------------------------------------------
@@ -1062,6 +1189,77 @@ export class GrailBallGame {
         p.stunTimer = -abilityDef.duration; // negative = immune
         pushEvent(s, "ability", `${p.name} raises Fortress Wall!`, p.teamIndex, p.id);
         break;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Position-based ability activation
+  // ---------------------------------------------------------------------------
+  private _doPositionAbility(p: GBPlayer): void {
+    if (!canUsePositionAbility(p)) return;
+    const s = this._state;
+    const abilityDef = GB_POSITION_ABILITIES[p.position];
+
+    p.positionAbilityCooldown = abilityDef.cooldown;
+    p.stamina -= abilityDef.staminaCost;
+
+    switch (p.position) {
+      case GBPosition.GOALKEEPER: {
+        // Miraculous Save: expand catch radius dramatically for a brief moment
+        const originalCatchRadius = p.catchRadius;
+        p.catchRadius *= 3.0;
+        p.positionAbilityActive = true;
+        p.positionAbilityTimer = 0.8;
+        // Lunge toward ball
+        const orbDir = v3Normalize(v3Sub(s.orb.pos, p.pos));
+        p.vel.x = orbDir.x * 20;
+        p.vel.z = orbDir.z * 20;
+        pushEvent(s, "save", `${p.name} makes a Miraculous Save attempt!`, p.teamIndex, p.id);
+        // Schedule catch radius reset
+        setTimeout(() => { p.catchRadius = originalCatchRadius; }, 800);
+        break;
+      }
+      case GBPosition.DEFENDER: {
+        // Iron Wall: become immovable, block opponents
+        p.positionAbilityActive = true;
+        p.positionAbilityTimer = abilityDef.duration;
+        p.stunTimer = -abilityDef.duration; // negative = immune to stun
+        p.size *= 2.0; // double collision size
+        pushEvent(s, "ability", `${p.name} activates Iron Wall!`, p.teamIndex, p.id);
+        // Schedule size reset
+        const originalSize = p.size / 2.0;
+        setTimeout(() => { p.size = originalSize; }, abilityDef.duration * 1000);
+        break;
+      }
+      case GBPosition.MIDFIELDER: {
+        // Long Pass: perfect cross-field pass with zero scatter
+        if (!p.hasOrb) {
+          pushEvent(s, "ability", `${p.name} readies a Long Pass!`, p.teamIndex, p.id);
+          break;
+        }
+        // Find the furthest forward teammate
+        const teammates = getTeamPlayers(s, p.teamIndex).filter(t => t.id !== p.id);
+        const oppGateX = p.teamIndex === 0 ? GB_FIELD.HALF_LENGTH : -GB_FIELD.HALF_LENGTH;
+        let bestTarget = teammates[0];
+        let bestDist = Infinity;
+        for (const t of teammates) {
+          const d = Math.abs(t.pos.x - oppGateX);
+          if (d < bestDist) { bestDist = d; bestTarget = t; }
+        }
+        // Launch with enhanced speed and zero scatter — use launchOrbWithSpin directly
+        launchOrbWithSpin(s, p, bestTarget.pos, GB_PHYSICS.PASS_SPEED * 1.5, 0.25, 0, 0);
+        p.action = GBPlayerAction.THROWING;
+        p.actionTimer = 0.4;
+        pushEvent(s, "ability", `${p.name} delivers a perfect Long Pass!`, p.teamIndex, p.id);
+        break;
+      }
+      case GBPosition.STRIKER: {
+        // Speed Burst: massive speed boost for duration
+        p.positionAbilityActive = true;
+        p.positionAbilityTimer = abilityDef.duration;
+        pushEvent(s, "ability", `${p.name} activates Speed Burst!`, p.teamIndex, p.id);
+        break;
+      }
     }
   }
 

@@ -2,7 +2,11 @@
 // Panzer Dragoon mode — balance config, enemy definitions, skill definitions
 // ---------------------------------------------------------------------------
 
-import { DragoonClassId, DragoonEnemyType, DragoonSkillId, DragoonSubclassId, EnemyPattern, SubclassSkillNode } from "../state/DragoonState";
+import {
+  DragoonClassId, DragoonEnemyType, DragoonSkillId, DragoonSubclassId, EnemyPattern, SubclassSkillNode,
+  DragoonPathId, DragonEvolutionStage, DestructibleType,
+} from "../state/DragoonState";
+import type { DragoonForkPoint, DragonEvolutionDef } from "../state/DragoonState";
 
 // ---------------------------------------------------------------------------
 // Balance
@@ -56,6 +60,19 @@ export const DragoonBalance = {
 
   /** World width as a multiplier of screen width (camera range). */
   WORLD_WIDTH_MULT: 1.5,
+
+  /** Fork choice display time (seconds) before auto-picking left path. */
+  FORK_CHOICE_TIMEOUT: 10,
+  /** Seconds between fork choice appearance and wave resume. */
+  FORK_TRANSITION_PAUSE: 2.0,
+
+  /** Evolution point gain per enemy kill (based on score value). */
+  EVOLUTION_POINTS_PER_KILL: 1.0,
+  /** Duration of evolution transition visual effect. */
+  EVOLUTION_TRANSITION_DURATION: 1.5,
+
+  /** Destructible spawn margin (pixels offscreen right). */
+  DESTRUCTIBLE_SPAWN_MARGIN: 60,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -942,3 +959,330 @@ export function getSubclassSkillTree(subclassId: DragoonSubclassId): SubclassSki
   };
   return trees[subclassId] ?? [];
 }
+
+// ---------------------------------------------------------------------------
+// Branching Path definitions — fork points and path configurations
+// ---------------------------------------------------------------------------
+
+export const FORK_POINTS: DragoonForkPoint[] = [
+  {
+    afterWave: 4,
+    choices: [
+      {
+        pathId: DragoonPathId.MOUNTAIN_PASS,
+        label: "Mountain Pass",
+        description: "Rocky highlands — wyverns and storm hawks guard the peaks",
+        color: 0x886644,
+        enemyPool: [DragoonEnemyType.WYVERN, DragoonEnemyType.STORM_HAWK, DragoonEnemyType.DARK_CROW, DragoonEnemyType.GROUND_BALLISTA],
+        bossType: DragoonEnemyType.BOSS_DRAKE,
+        difficultyMod: 1.0,
+        bonusScoreMult: 1.0,
+      },
+      {
+        pathId: DragoonPathId.FOREST_CANYON,
+        label: "Forest Canyon",
+        description: "Dense woodland — shadow bats and dark angels lurk in the canopy",
+        color: 0x336622,
+        enemyPool: [DragoonEnemyType.SHADOW_BAT, DragoonEnemyType.DARK_ANGEL, DragoonEnemyType.SKY_VIPER, DragoonEnemyType.GROUND_CATAPULT],
+        bossType: DragoonEnemyType.BOSS_QUESTING_BEAST,
+        difficultyMod: 1.1,
+        bonusScoreMult: 1.15,
+      },
+    ],
+  },
+  {
+    afterWave: 8,
+    choices: [
+      {
+        pathId: DragoonPathId.DARK_FORTRESS,
+        label: "Dark Fortress",
+        description: "A heavily fortified citadel — siege engines and shield walls",
+        color: 0x443333,
+        enemyPool: [DragoonEnemyType.GROUND_SIEGE_ENGINE, DragoonEnemyType.GROUND_SHIELD_WALL, DragoonEnemyType.GROUND_MAGE_TOWER, DragoonEnemyType.DARK_FALCON_SQUAD],
+        bossType: DragoonEnemyType.BOSS_BLACK_KNIGHT,
+        difficultyMod: 1.2,
+        bonusScoreMult: 1.25,
+      },
+      {
+        pathId: DragoonPathId.COASTAL_CLIFFS,
+        label: "Coastal Cliffs",
+        description: "Wind-swept shores — fire sprites and floating eyes patrol the coast",
+        color: 0x336688,
+        enemyPool: [DragoonEnemyType.FIRE_SPRITE, DragoonEnemyType.FLOATING_EYE, DragoonEnemyType.STORM_HAWK, DragoonEnemyType.GROUND_WAR_CATAPULT],
+        bossType: DragoonEnemyType.BOSS_CHIMERA,
+        difficultyMod: 1.0,
+        bonusScoreMult: 1.1,
+      },
+    ],
+  },
+  {
+    afterWave: 12,
+    choices: [
+      {
+        pathId: DragoonPathId.VOLCANIC_RIDGE,
+        label: "Volcanic Ridge",
+        description: "Molten earth — fire sprites and wyverns swarm the lava fields",
+        color: 0xaa3300,
+        enemyPool: [DragoonEnemyType.FIRE_SPRITE, DragoonEnemyType.WYVERN, DragoonEnemyType.DARK_ANGEL, DragoonEnemyType.GROUND_DARK_MAGE_CIRCLE],
+        bossType: DragoonEnemyType.BOSS_DRAGON_PENDRAGON,
+        difficultyMod: 1.3,
+        bonusScoreMult: 1.35,
+      },
+      {
+        pathId: DragoonPathId.FROZEN_WASTES,
+        label: "Frozen Wastes",
+        description: "Icy tundra — shadow wraiths and spectral forces haunt the frost",
+        color: 0x88ccee,
+        enemyPool: [DragoonEnemyType.SHADOW_WRAITH, DragoonEnemyType.FLOATING_EYE, DragoonEnemyType.DARK_ANGEL, DragoonEnemyType.GROUND_SIEGE_ENGINE],
+        bossType: DragoonEnemyType.BOSS_LICH_KING,
+        difficultyMod: 1.2,
+        bonusScoreMult: 1.2,
+      },
+    ],
+  },
+  {
+    afterWave: 16,
+    choices: [
+      {
+        pathId: DragoonPathId.SHADOW_REALM,
+        label: "Shadow Realm",
+        description: "The void between worlds — elite wraiths and dark angels",
+        color: 0x330066,
+        enemyPool: [DragoonEnemyType.SHADOW_WRAITH, DragoonEnemyType.DARK_ANGEL, DragoonEnemyType.FLOATING_EYE, DragoonEnemyType.GROUND_DARK_MAGE_CIRCLE],
+        bossType: DragoonEnemyType.BOSS_VOID_SERPENT,
+        difficultyMod: 1.5,
+        bonusScoreMult: 1.5,
+      },
+      {
+        pathId: DragoonPathId.CELESTIAL_HEIGHTS,
+        label: "Celestial Heights",
+        description: "The sky realm above the clouds — the final ascent to the Grail",
+        color: 0xddaa44,
+        enemyPool: [DragoonEnemyType.STORM_HAWK, DragoonEnemyType.DARK_FALCON_SQUAD, DragoonEnemyType.FLOATING_EYE, DragoonEnemyType.GROUND_MAGE_TOWER],
+        bossType: DragoonEnemyType.BOSS_GRAIL_GUARDIAN,
+        difficultyMod: 1.4,
+        bonusScoreMult: 1.4,
+      },
+    ],
+  },
+];
+
+// ---------------------------------------------------------------------------
+// Dragon Evolution definitions — stages tied to upgrade thresholds
+// ---------------------------------------------------------------------------
+
+export const DRAGON_EVOLUTION_STAGES: DragonEvolutionDef[] = [
+  {
+    stage: DragonEvolutionStage.HATCHLING,
+    name: "Hatchling Eagle",
+    description: "A young white eagle, nimble but fragile",
+    upgradeThreshold: 0,
+    wingSpan: 1.0,
+    bodyScale: 1.0,
+    armorPlates: 0,
+    color: 0xffffff,
+    glowColor: 0xaaccff,
+    trailEffect: "feather",
+    statBonus: { hpMult: 1.0, damageMult: 1.0, speedMult: 1.0 },
+  },
+  {
+    stage: DragonEvolutionStage.FLEDGLING,
+    name: "Fledgling Raptor",
+    description: "Larger wings, sharper talons — a hint of golden plumage",
+    upgradeThreshold: 2000,
+    wingSpan: 1.15,
+    bodyScale: 1.1,
+    armorPlates: 0,
+    color: 0xffeedd,
+    glowColor: 0xddaa44,
+    trailEffect: "feather",
+    statBonus: { hpMult: 1.05, damageMult: 1.05, speedMult: 1.02 },
+  },
+  {
+    stage: DragonEvolutionStage.DRAKE,
+    name: "War Drake",
+    description: "Armored plates emerge along the spine — wings shimmer with energy",
+    upgradeThreshold: 6000,
+    wingSpan: 1.3,
+    bodyScale: 1.25,
+    armorPlates: 3,
+    color: 0xddccaa,
+    glowColor: 0xff8844,
+    trailEffect: "ember",
+    statBonus: { hpMult: 1.12, damageMult: 1.1, speedMult: 1.0 },
+  },
+  {
+    stage: DragonEvolutionStage.WYRM,
+    name: "Storm Wyrm",
+    description: "Massive wingspan with crackling lightning — armor plates harden",
+    upgradeThreshold: 15000,
+    wingSpan: 1.5,
+    bodyScale: 1.4,
+    armorPlates: 5,
+    color: 0xaabbdd,
+    glowColor: 0x44aaff,
+    trailEffect: "star",
+    statBonus: { hpMult: 1.2, damageMult: 1.18, speedMult: 1.05 },
+  },
+  {
+    stage: DragonEvolutionStage.ELDER_DRAGON,
+    name: "Elder Dragon",
+    description: "Full dragon form — golden armor, blazing aura, and devastating presence",
+    upgradeThreshold: 30000,
+    wingSpan: 1.7,
+    bodyScale: 1.6,
+    armorPlates: 8,
+    color: 0xffcc44,
+    glowColor: 0xffdd88,
+    trailEffect: "ember",
+    statBonus: { hpMult: 1.3, damageMult: 1.25, speedMult: 1.08 },
+  },
+  {
+    stage: DragonEvolutionStage.ANCIENT_WYRM,
+    name: "Ancient Wyrm of Camelot",
+    description: "Legendary form — celestial radiance, impervious scales, wings blot the sky",
+    upgradeThreshold: 60000,
+    wingSpan: 2.0,
+    bodyScale: 1.8,
+    armorPlates: 12,
+    color: 0xffffff,
+    glowColor: 0xffd700,
+    trailEffect: "star",
+    statBonus: { hpMult: 1.5, damageMult: 1.4, speedMult: 1.12 },
+  },
+];
+
+// ---------------------------------------------------------------------------
+// Score Attack Mode — balance constants
+// ---------------------------------------------------------------------------
+
+export const ScoreAttackBalance = {
+  /** Multiplier increase per consecutive hit */
+  CHAIN_INCREMENT: 0.05,
+  /** Maximum chain multiplier */
+  CHAIN_MAX: 10.0,
+  /** Seconds before chain starts decaying after last hit */
+  CHAIN_GRACE_PERIOD: 1.5,
+  /** Multiplier decay per second once grace period expires */
+  CHAIN_DECAY_PER_SEC: 0.5,
+  /** Bonus multiplier for perfect wave (no damage taken) */
+  PERFECT_WAVE_BONUS: 0.25,
+  /** Grace period (seconds) after firing before a "miss" is counted */
+  MISS_GRACE_PERIOD: 0.8,
+  /** Multiplier penalty on miss (subtracted) */
+  MISS_PENALTY: 0.3,
+  /** Score attack mode starts at higher difficulty */
+  ENEMY_HP_BONUS: 0.15,
+  /** Maximum high scores to persist */
+  MAX_HIGH_SCORES: 10,
+} as const;
+
+// ---------------------------------------------------------------------------
+// Environmental Destructible templates
+// ---------------------------------------------------------------------------
+
+export interface DestructibleTemplate {
+  type: DestructibleType;
+  hp: number;
+  width: number;
+  height: number;
+  color: number;
+  collapseDuration: number;
+  areaDamage: number;
+  areaDamageRadius: number;
+  scoreValue: number;
+  debrisCount: number;
+}
+
+export const DESTRUCTIBLE_TEMPLATES: Record<DestructibleType, DestructibleTemplate> = {
+  [DestructibleType.BRIDGE]: {
+    type: DestructibleType.BRIDGE,
+    hp: 80,
+    width: 120,
+    height: 30,
+    color: 0x886644,
+    collapseDuration: 1.2,
+    areaDamage: 60,
+    areaDamageRadius: 100,
+    scoreValue: 200,
+    debrisCount: 8,
+  },
+  [DestructibleType.TOWER]: {
+    type: DestructibleType.TOWER,
+    hp: 120,
+    width: 40,
+    height: 80,
+    color: 0x666677,
+    collapseDuration: 1.5,
+    areaDamage: 80,
+    areaDamageRadius: 80,
+    scoreValue: 300,
+    debrisCount: 10,
+  },
+  [DestructibleType.TREE]: {
+    type: DestructibleType.TREE,
+    hp: 30,
+    width: 30,
+    height: 50,
+    color: 0x336622,
+    collapseDuration: 0.8,
+    areaDamage: 25,
+    areaDamageRadius: 50,
+    scoreValue: 50,
+    debrisCount: 5,
+  },
+  [DestructibleType.WALL]: {
+    type: DestructibleType.WALL,
+    hp: 100,
+    width: 80,
+    height: 40,
+    color: 0x777777,
+    collapseDuration: 1.0,
+    areaDamage: 50,
+    areaDamageRadius: 70,
+    scoreValue: 150,
+    debrisCount: 7,
+  },
+  [DestructibleType.BOULDER]: {
+    type: DestructibleType.BOULDER,
+    hp: 60,
+    width: 35,
+    height: 35,
+    color: 0x555544,
+    collapseDuration: 0.6,
+    areaDamage: 40,
+    areaDamageRadius: 60,
+    scoreValue: 100,
+    debrisCount: 6,
+  },
+  [DestructibleType.WATCHTOWER]: {
+    type: DestructibleType.WATCHTOWER,
+    hp: 150,
+    width: 35,
+    height: 100,
+    color: 0x554433,
+    collapseDuration: 1.8,
+    areaDamage: 100,
+    areaDamageRadius: 90,
+    scoreValue: 400,
+    debrisCount: 12,
+  },
+};
+
+/** Which destructible types can appear in each wave tier (indices match WAVE_ENEMY_POOL tiers). */
+export const DESTRUCTIBLE_POOL: DestructibleType[][] = [
+  // Waves 1-4: simple
+  [DestructibleType.TREE, DestructibleType.BOULDER],
+  // Waves 5-8
+  [DestructibleType.TREE, DestructibleType.BOULDER, DestructibleType.WALL, DestructibleType.BRIDGE],
+  // Waves 9-12
+  [DestructibleType.TREE, DestructibleType.WALL, DestructibleType.BRIDGE, DestructibleType.TOWER],
+  // Waves 13-16
+  [DestructibleType.WALL, DestructibleType.BRIDGE, DestructibleType.TOWER, DestructibleType.WATCHTOWER],
+  // Waves 17-20
+  [DestructibleType.BRIDGE, DestructibleType.TOWER, DestructibleType.WATCHTOWER, DestructibleType.WALL],
+];
+
+/** Number of destructibles to spawn per wave. */
+export const DESTRUCTIBLES_PER_WAVE_BASE = 2;
+export const DESTRUCTIBLES_PER_WAVE_GROWTH = 0.5;

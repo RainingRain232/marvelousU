@@ -4,7 +4,13 @@
 
 import { Container, Graphics, Text } from "pixi.js";
 import { DuelBalance } from "../../duel/config/DuelBalanceConfig";
+import { DUEL_CHARACTERS } from "../../duel/config/DuelCharacterDefs";
 import type { DuelState } from "../../duel/state/DuelState";
+import { DuelComboChallengeSystem } from "../../duel/systems/DuelComboChallengeSystem";
+import { resolveRank, formatRank } from "../../duel/config/DuelRankedConfig";
+import type { DuelDramaticRenderInfo } from "../../duel/systems/DuelDramaticFinisher";
+import { getDramaticFinisherRenderInfo } from "../../duel/systems/DuelDramaticFinisher";
+import { ASSIST_COOLDOWN_FRAMES } from "../../duel/systems/DuelAssistSystem";
 
 const HP_BAR_HEIGHT = 36;
 const HP_BAR_Y = 40;
@@ -89,6 +95,34 @@ export class DuelHUD {
   // Announcement animation
   private _announcementScale = 1;
 
+  // Frame data overlay (training mode)
+  private _frameDataGfx = new Graphics();
+  private _frameDataP1: Text;
+  private _frameDataP2: Text;
+
+  // Hitbox overlay graphics
+  private _hitboxGfx = new Graphics();
+
+  // Combo challenge display
+  private _challengeGfx = new Graphics();
+  private _challengeTitle: Text;
+  private _challengeNotation: Text;
+  private _challengeProgress: Text;
+  private _challengeStatus: Text;
+
+  // Ranked display
+  private _rankedInfo: Text;
+
+  // Assist cooldown display
+  private _assistGfx = new Graphics();
+  private _assistP1Label: Text;
+  private _assistP2Label: Text;
+
+  // Dramatic finisher overlay
+  private _finisherGfx = new Graphics();
+  private _finisherText: Text;
+  private _finisherName: Text;
+
   constructor() {
     this._timerText = new Text({
       text: "99",
@@ -158,6 +192,76 @@ export class DuelHUD {
     this._waveInfo.anchor.set(0.5, 0);
     this._waveInfo.visible = false;
 
+    // Frame data overlay
+    this._frameDataP1 = new Text({
+      text: "",
+      style: { fontFamily: '"Courier New", monospace', fontSize: 11, fill: 0x00ff88 },
+    });
+    this._frameDataP2 = new Text({
+      text: "",
+      style: { fontFamily: '"Courier New", monospace', fontSize: 11, fill: 0x00ff88 },
+    });
+    this._frameDataP1.visible = false;
+    this._frameDataP2.visible = false;
+
+    // Combo challenge
+    this._challengeTitle = new Text({
+      text: "",
+      style: { fontFamily: '"Segoe UI", sans-serif', fontSize: 18, fill: 0xffcc00, fontWeight: "bold" },
+    });
+    this._challengeNotation = new Text({
+      text: "",
+      style: { fontFamily: '"Courier New", monospace', fontSize: 16, fill: 0xffffff },
+    });
+    this._challengeProgress = new Text({
+      text: "",
+      style: { fontFamily: '"Courier New", monospace', fontSize: 14, fill: 0x44ddff },
+    });
+    this._challengeStatus = new Text({
+      text: "",
+      style: { fontFamily: 'Impact, "Segoe UI", sans-serif', fontSize: 28, fill: 0x00ff00, fontWeight: "bold",
+        stroke: { color: 0x000000, width: 2 } },
+    });
+    this._challengeTitle.visible = false;
+    this._challengeNotation.visible = false;
+    this._challengeProgress.visible = false;
+    this._challengeStatus.visible = false;
+
+    // Ranked display
+    this._rankedInfo = new Text({
+      text: "",
+      style: { fontFamily: '"Segoe UI", sans-serif', fontSize: 16, fill: 0xaaaaaa, fontWeight: "bold" },
+    });
+    this._rankedInfo.visible = false;
+
+    // Assist cooldown
+    this._assistP1Label = new Text({
+      text: "",
+      style: { fontFamily: '"Segoe UI", monospace', fontSize: 12, fill: 0x44ddff },
+    });
+    this._assistP2Label = new Text({
+      text: "",
+      style: { fontFamily: '"Segoe UI", monospace', fontSize: 12, fill: 0x44ddff },
+    });
+    this._assistP1Label.visible = false;
+    this._assistP2Label.visible = false;
+
+    // Dramatic finisher
+    this._finisherText = new Text({
+      text: "",
+      style: { fontFamily: 'Impact, "Arial Black", sans-serif', fontSize: 64, fill: 0xffdd00, fontWeight: "bold",
+        stroke: { color: 0x000000, width: 5 } },
+    });
+    this._finisherName = new Text({
+      text: "",
+      style: { fontFamily: 'Impact, "Arial Black", sans-serif', fontSize: 36, fill: 0xffffff, fontWeight: "bold",
+        stroke: { color: 0x000000, width: 3 } },
+    });
+    this._finisherText.anchor.set(0.5);
+    this._finisherName.anchor.set(0.5);
+    this._finisherText.visible = false;
+    this._finisherName.visible = false;
+
     this._p1ComboHit.anchor.set(0.5);
     this._p1ComboLabel.anchor.set(0.5);
     this._p1ComboDmg.anchor.set(0.5);
@@ -183,6 +287,11 @@ export class DuelHUD {
       this._roundDotGfx,
       this._comboGfx,
       this._announcementGfx,
+      this._frameDataGfx,
+      this._hitboxGfx,
+      this._assistGfx,
+      this._challengeGfx,
+      this._finisherGfx,
       this._timerText,
       this._p1Name,
       this._p2Name,
@@ -195,6 +304,17 @@ export class DuelHUD {
       this._announcementText,
       this._trainingInfo,
       this._waveInfo,
+      this._frameDataP1,
+      this._frameDataP2,
+      this._challengeTitle,
+      this._challengeNotation,
+      this._challengeProgress,
+      this._challengeStatus,
+      this._rankedInfo,
+      this._assistP1Label,
+      this._assistP2Label,
+      this._finisherText,
+      this._finisherName,
     );
   }
 
@@ -349,6 +469,24 @@ export class DuelHUD {
     } else {
       this._waveInfo.visible = false;
     }
+
+    // ===== Training frame data overlay =====
+    this._updateFrameData(state, sw, sh);
+
+    // ===== Hitbox overlay =====
+    this._updateHitboxOverlay(state);
+
+    // ===== Combo challenge display =====
+    this._updateComboChallengeDisplay(state, sw, sh);
+
+    // ===== Ranked info =====
+    this._updateRankedDisplay(state, sw, sh);
+
+    // ===== Assist cooldown =====
+    this._updateAssistDisplay(state, sw, sh);
+
+    // ===== Dramatic finisher =====
+    this._updateDramaticFinisher(state, sw, sh);
   }
 
   private _drawHealthBar(

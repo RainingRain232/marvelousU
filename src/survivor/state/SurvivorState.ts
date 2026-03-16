@@ -9,6 +9,8 @@ import { SurvivorWeaponId, SurvivorPassiveId, SurvivorEvolutionId } from "../con
 import { SurvivorBalance } from "../config/SurvivorBalanceConfig";
 import type { EliteType } from "../config/SurvivorEliteDefs";
 import type { SurvivorArcanaDef } from "../config/SurvivorArcanaDefs";
+import type { SurvivorChallengeDef, ChallengeEffect } from "../config/SurvivorChallengeDefs";
+import type { BiomeId } from "../config/SurvivorBiomeDefs";
 import { SurvivorPersistence } from "./SurvivorPersistence";
 import { META_UPGRADES } from "../config/SurvivorMetaUpgradeDefs";
 
@@ -147,6 +149,59 @@ export interface SurvivorTimedEvent {
   color: number; // banner color
 }
 
+// ---------------------------------------------------------------------------
+// Co-op player state
+// ---------------------------------------------------------------------------
+
+export interface SurvivorCoopPlayer {
+  position: Vec2;
+  hp: number;
+  maxHp: number;
+  atk: number;
+  speed: number;
+  pickupRadius: number;
+  magnetRadius: number;
+  critChance: number;
+  xpMultiplier: number;
+  areaMultiplier: number;
+  attackSpeedMultiplier: number;
+  regenRate: number;
+  invincibilityTimer: number;
+  dashCooldownTimer: number;
+  dashTimer: number;
+  dashDirX: number;
+  dashDirY: number;
+  characterDef: SurvivorCharacterDef;
+  weapons: SurvivorWeaponState[];
+  passives: SurvivorPassiveState[];
+}
+
+// ---------------------------------------------------------------------------
+// Fusion trail state (for fire trail, etc.)
+// ---------------------------------------------------------------------------
+
+export interface SurvivorFusionTrail {
+  id: number;
+  position: Vec2;
+  damage: number;
+  radius: number;
+  lifetime: number;
+  color: number;
+  fusionId: string;
+}
+
+// ---------------------------------------------------------------------------
+// Prestige state
+// ---------------------------------------------------------------------------
+
+export interface SurvivorPrestigeState {
+  level: number;           // current prestige level
+  hpBonus: number;         // flat HP bonus per prestige
+  atkBonus: number;        // percentage ATK bonus per prestige
+  xpBonus: number;         // percentage XP bonus per prestige
+  speedBonus: number;      // percentage speed bonus per prestige
+}
+
 export interface SurvivorPlayer {
   position: Vec2;
   hp: number;
@@ -254,6 +309,44 @@ export interface SurvivorState {
 
   // Difficulty
   difficulty: SurvivorDifficulty;
+
+  // ---------------------------------------------------------------------------
+  // Fusion synergies (weapon+passive combos with special effects)
+  // ---------------------------------------------------------------------------
+  activeFusions: string[]; // fusion IDs currently active
+  fusionTrails: SurvivorFusionTrail[]; // active trail entities (fire trail, etc.)
+  nextFusionTrailId: number;
+
+  // ---------------------------------------------------------------------------
+  // Challenge modifiers
+  // ---------------------------------------------------------------------------
+  activeChallenge: SurvivorChallengeDef | null;
+  challengeEffects: ChallengeEffect[]; // flattened effect list from active challenge
+  challengeScoreMultiplier: number;    // score multiplier from challenge
+
+  // ---------------------------------------------------------------------------
+  // Biome progression
+  // ---------------------------------------------------------------------------
+  currentBiome: BiomeId;
+  biomeIndex: number; // 0-based index into BIOME_DEFS
+  biomeTransitioning: boolean; // true during a biome transition animation
+
+  // ---------------------------------------------------------------------------
+  // Co-op mode
+  // ---------------------------------------------------------------------------
+  coopEnabled: boolean;
+  coopPlayer: SurvivorCoopPlayer | null;
+  coopInput: {
+    left: boolean;
+    right: boolean;
+    up: boolean;
+    down: boolean;
+  };
+
+  // ---------------------------------------------------------------------------
+  // Prestige system
+  // ---------------------------------------------------------------------------
+  prestige: SurvivorPrestigeState;
 }
 
 // ---------------------------------------------------------------------------
@@ -318,7 +411,15 @@ function _generateLandmarks(mapW: number, mapH: number): SurvivorLandmark[] {
   ];
 }
 
-export function createSurvivorState(charDef: SurvivorCharacterDef, mapType: MapType, mapWidth: number, mapHeight: number, difficulty: SurvivorDifficulty = "normal"): SurvivorState {
+export function createSurvivorState(
+  charDef: SurvivorCharacterDef,
+  mapType: MapType,
+  mapWidth: number,
+  mapHeight: number,
+  difficulty: SurvivorDifficulty = "normal",
+  challenge: SurvivorChallengeDef | null = null,
+  coopCharDef: SurvivorCharacterDef | null = null,
+): SurvivorState {
   // Apply meta upgrades from persistence
   const metaLevels = SurvivorPersistence.getMetaUpgrades();
   let metaHpBonus = 0;
@@ -342,20 +443,58 @@ export function createSurvivorState(charDef: SurvivorCharacterDef, mapType: MapT
     }
   }
 
-  const baseHp = SurvivorBalance.PLAYER_BASE_HP + charDef.hpBonus + metaHpBonus;
-  const baseSpeed = SurvivorBalance.PLAYER_SPEED * (1 + charDef.speedBonus + metaSpeedBonus);
+  // Apply prestige bonuses
+  const prestigeData = SurvivorPersistence.getPrestige();
+
+  const baseHp = SurvivorBalance.PLAYER_BASE_HP + charDef.hpBonus + metaHpBonus + prestigeData.hpBonus;
+  const baseSpeed = SurvivorBalance.PLAYER_SPEED * (1 + charDef.speedBonus + metaSpeedBonus + prestigeData.speedBonus);
+
+  // Challenge modifiers — player speed penalty
+  const challengeEffects = challenge?.effects ?? [];
+  const playerSpeedPenalty = challengeEffects.reduce((m, e) => e.type === "player_speed_penalty" ? m * e.multiplier : m, 1.0);
+
+  // Build co-op player if requested
+  const coopPlayer: SurvivorCoopPlayer | null = coopCharDef ? {
+    position: { x: mapWidth / 2 + 2, y: mapHeight / 2 },
+    hp: SurvivorBalance.PLAYER_BASE_HP + coopCharDef.hpBonus + metaHpBonus + prestigeData.hpBonus,
+    maxHp: SurvivorBalance.PLAYER_BASE_HP + coopCharDef.hpBonus + metaHpBonus + prestigeData.hpBonus,
+    atk: SurvivorBalance.PLAYER_BASE_ATK * (1 + metaAtkBonus + prestigeData.atkBonus),
+    speed: SurvivorBalance.PLAYER_SPEED * (1 + coopCharDef.speedBonus + metaSpeedBonus + prestigeData.speedBonus) * playerSpeedPenalty,
+    pickupRadius: SurvivorBalance.PLAYER_PICKUP_RADIUS + metaPickupBonus,
+    magnetRadius: SurvivorBalance.PLAYER_MAGNET_RADIUS,
+    critChance: 0.05 + coopCharDef.critBonus,
+    xpMultiplier: 1.0 + metaXpBonus + prestigeData.xpBonus,
+    areaMultiplier: 1.0 + coopCharDef.areaBonus,
+    attackSpeedMultiplier: 1.0,
+    regenRate: coopCharDef.regenBonus,
+    invincibilityTimer: 0,
+    dashCooldownTimer: 0,
+    dashTimer: 0,
+    dashDirX: 0,
+    dashDirY: 0,
+    characterDef: coopCharDef,
+    weapons: [{
+      id: coopCharDef.startingWeapon,
+      level: 1,
+      cooldownTimer: 0,
+      evolved: false,
+    }],
+    passives: coopCharDef.passiveBonus
+      ? [{ id: coopCharDef.passiveBonus, level: 1 }]
+      : [],
+  } : null;
 
   return {
     player: {
       position: { x: mapWidth / 2, y: mapHeight / 2 },
       hp: baseHp,
       maxHp: baseHp,
-      atk: SurvivorBalance.PLAYER_BASE_ATK * (1 + metaAtkBonus),
-      speed: baseSpeed,
+      atk: SurvivorBalance.PLAYER_BASE_ATK * (1 + metaAtkBonus + prestigeData.atkBonus),
+      speed: baseSpeed * playerSpeedPenalty,
       pickupRadius: SurvivorBalance.PLAYER_PICKUP_RADIUS + metaPickupBonus,
       magnetRadius: SurvivorBalance.PLAYER_MAGNET_RADIUS,
       critChance: 0.05 + charDef.critBonus,
-      xpMultiplier: 1.0 + metaXpBonus,
+      xpMultiplier: 1.0 + metaXpBonus + prestigeData.xpBonus,
       areaMultiplier: 1.0 + charDef.areaBonus,
       attackSpeedMultiplier: 1.0,
       regenRate: charDef.regenBonus,
@@ -419,5 +558,28 @@ export function createSurvivorState(charDef: SurvivorCharacterDef, mapType: MapT
     gold: 0,
     goldMultiplier: metaGoldMult * (DIFFICULTY_SETTINGS[difficulty]?.goldMultiplier ?? 1),
     difficulty,
+
+    // Fusion synergies
+    activeFusions: [],
+    fusionTrails: [],
+    nextFusionTrailId: 1,
+
+    // Challenge modifiers
+    activeChallenge: challenge,
+    challengeEffects,
+    challengeScoreMultiplier: challenge?.scoreMultiplier ?? 1.0,
+
+    // Biome progression
+    currentBiome: "forest",
+    biomeIndex: 0,
+    biomeTransitioning: false,
+
+    // Co-op mode
+    coopEnabled: coopPlayer !== null,
+    coopPlayer,
+    coopInput: { left: false, right: false, up: false, down: false },
+
+    // Prestige
+    prestige: { ...prestigeData },
   };
 }

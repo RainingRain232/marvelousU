@@ -2,9 +2,9 @@
 // Panzer Dragoon mode — combat system (projectiles, collisions, skills)
 // ---------------------------------------------------------------------------
 
-import type { DragoonState, DragoonProjectile, DragoonEnemy, DragoonExplosion, DragoonPickup, DragoonCompanion } from "../state/DragoonState";
-import { DragoonSkillId, EnemyPattern, DragoonPickupType, xpForLevel } from "../state/DragoonState";
-import { DragoonBalance, SKILL_CONFIGS, CLASS_DEFINITIONS, UNLOCKABLE_SKILLS } from "../config/DragoonConfig";
+import type { DragoonState, DragoonProjectile, DragoonEnemy, DragoonExplosion, DragoonPickup, DragoonCompanion, DragoonDestructible } from "../state/DragoonState";
+import { DragoonSkillId, EnemyPattern, DragoonPickupType, xpForLevel, DragonEvolutionStage } from "../state/DragoonState";
+import { DragoonBalance, SKILL_CONFIGS, CLASS_DEFINITIONS, UNLOCKABLE_SKILLS, DRAGON_EVOLUTION_STAGES, ScoreAttackBalance } from "../config/DragoonConfig";
 
 // Callbacks for FX
 let _onExplosion: ((x: number, y: number, radius: number, color: number) => void) | null = null;
@@ -13,6 +13,8 @@ let _onPlayerHit: (() => void) | null = null;
 let _onLightningStrike: ((x: number, y: number) => void) | null = null;
 let _onLevelUp: ((level: number) => void) | null = null;
 let _onSkillUnlock: ((skillId: DragoonSkillId) => void) | null = null;
+let _onEvolution: ((stage: DragonEvolutionStage, name: string) => void) | null = null;
+let _onDestructibleCollapse: ((x: number, y: number, radius: number, color: number, debrisCount: number) => void) | null = null;
 
 export const DragoonCombatSystem = {
   setExplosionCallback(cb: typeof _onExplosion): void { _onExplosion = cb; },
@@ -21,6 +23,8 @@ export const DragoonCombatSystem = {
   setLightningCallback(cb: typeof _onLightningStrike): void { _onLightningStrike = cb; },
   setLevelUpCallback(cb: typeof _onLevelUp): void { _onLevelUp = cb; },
   setSkillUnlockCallback(cb: typeof _onSkillUnlock): void { _onSkillUnlock = cb; },
+  setEvolutionCallback(cb: typeof _onEvolution): void { _onEvolution = cb; },
+  setDestructibleCollapseCallback(cb: typeof _onDestructibleCollapse): void { _onDestructibleCollapse = cb; },
 
   update(state: DragoonState, dt: number): void {
     if (state.classSelectActive || state.subclassChoiceActive) return;
@@ -43,6 +47,9 @@ export const DragoonCombatSystem = {
     _updateInvincibility(state, dt);
     _updateBossEntrance(state, dt);
     _updateEnemyDoTs(state, dt);
+    _updateDestructibles(state, dt);
+    _updateDragonEvolution(state, dt);
+    _updateScoreAttackChain(state, dt);
     _cleanupDead(state);
   },
 };

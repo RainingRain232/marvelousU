@@ -5,9 +5,11 @@
 
 import {
   GBPlayerClass, GBMatchPhase, GBPowerUpType,
+  GBWeatherType, GBPosition, getPositionForSlot,
   GB_CLASS_STATS, GB_FORMATION, GB_FIELD, GB_MATCH, GB_STAMINA,
   GB_CAREER, GB_REPLAY, GB_FORMATION_TEMPLATES,
-  type GBTeamDef,
+  GB_WEATHER_EFFECTS, GB_POSITION_ABILITIES,
+  type GBTeamDef, type GBWeatherEffect,
 } from "./GrailBallConfig";
 
 // ---------------------------------------------------------------------------
@@ -124,6 +126,12 @@ export interface GBPlayer {
   fatigueFactor: number;       // 1.0 = fresh, decreases toward 0 with fatigue
   totalDistanceRun: number;    // cumulative distance for fatigue tracking
   isSubstitute: boolean;       // on bench, available as sub
+
+  // Position ability
+  position: GBPosition;
+  positionAbilityCooldown: number;
+  positionAbilityActive: boolean;
+  positionAbilityTimer: number;
 
   // AI hints
   aiRole: "chase_orb" | "defend" | "attack" | "support" | "mark" | "return";
@@ -361,6 +369,15 @@ export interface GBMatchState {
 
   // Career
   careerState: GBCareerState | null;
+
+  // Weather
+  weather: GBWeatherType;
+  weatherEffect: GBWeatherEffect;
+
+  // Local multiplayer
+  localMultiplayer: boolean;
+  player2Team: number;           // 0 or 1 (which team P2 controls)
+  selectedPlayer2Id: number;     // which player P2 controls
 }
 
 export type GBPressureMode = "balanced" | "offensive" | "defensive" | "ultra_attack" | "park_the_bus";
@@ -410,6 +427,8 @@ export function createMatchState(
   team1: GBTeamDef,
   team2: GBTeamDef,
   humanTeam = 0,
+  weather?: GBWeatherType,
+  localMultiplayer = false,
 ): GBMatchState {
   let nextId = 1;
   const players: GBPlayer[] = [];
@@ -473,6 +492,11 @@ export function createMatchState(
         fatigueFactor: 1.0,
         totalDistanceRun: 0,
         isSubstitute: false,
+
+        position: getPositionForSlot(si),
+        positionAbilityCooldown: 0,
+        positionAbilityActive: false,
+        positionAbilityTimer: 0,
 
         aiRole: "defend",
         aiTarget: null,
@@ -565,6 +589,17 @@ export function createMatchState(
 
     // Career
     careerState: null,
+
+    // Weather
+    weather: weather ?? GBWeatherType.CLEAR,
+    weatherEffect: GB_WEATHER_EFFECTS[weather ?? GBWeatherType.CLEAR],
+
+    // Local multiplayer
+    localMultiplayer,
+    player2Team: localMultiplayer ? 1 : 0,
+    selectedPlayer2Id: localMultiplayer
+      ? (players.find(p => p.teamIndex === 1 && p.cls === GBPlayerClass.ROGUE)?.id ?? players[10].id)
+      : 0,
   };
 
   return state;
@@ -672,6 +707,61 @@ export function getFatigueAccuracyMultiplier(p: GBPlayer): number {
 export function getFatigueTackleMultiplier(p: GBPlayer): number {
   if (isFatigued(p)) return GB_STAMINA.FATIGUE_TACKLE_MULT;
   return 1.0;
+}
+
+// ---------------------------------------------------------------------------
+// Weather helpers
+// ---------------------------------------------------------------------------
+
+/** Apply weather speed modifier to a player's effective speed */
+export function getWeatherSpeedMultiplier(state: GBMatchState): number {
+  return state.weatherEffect.playerSpeedMult;
+}
+
+/** Get wind force that should be applied to the orb each frame */
+export function getWeatherWindForce(state: GBMatchState): { x: number; z: number } {
+  return state.weatherEffect.windForce;
+}
+
+/** Get ball friction multiplier (slippery in rain, etc.) */
+export function getWeatherBallFriction(state: GBMatchState): number {
+  return state.weatherEffect.ballFrictionMult;
+}
+
+// ---------------------------------------------------------------------------
+// Position ability helpers
+// ---------------------------------------------------------------------------
+
+/** Check if a position ability can be activated */
+export function canUsePositionAbility(p: GBPlayer): boolean {
+  const abilityDef = GB_POSITION_ABILITIES[p.position];
+  return p.positionAbilityCooldown <= 0
+    && p.stamina >= abilityDef.staminaCost
+    && !p.positionAbilityActive;
+}
+
+/** Tick position ability cooldowns and active timers */
+export function tickPositionAbility(p: GBPlayer, dt: number): void {
+  if (p.positionAbilityCooldown > 0) {
+    p.positionAbilityCooldown = Math.max(0, p.positionAbilityCooldown - dt);
+  }
+  if (p.positionAbilityActive) {
+    p.positionAbilityTimer -= dt;
+    if (p.positionAbilityTimer <= 0) {
+      p.positionAbilityActive = false;
+      p.positionAbilityTimer = 0;
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Multiplayer helpers
+// ---------------------------------------------------------------------------
+
+/** Get the player controlled by player 2 in local multiplayer */
+export function getSelectedPlayer2(state: GBMatchState): GBPlayer | undefined {
+  if (!state.localMultiplayer) return undefined;
+  return getPlayer(state, state.selectedPlayer2Id);
 }
 
 // ---------------------------------------------------------------------------

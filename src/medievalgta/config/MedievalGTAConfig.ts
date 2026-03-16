@@ -251,6 +251,24 @@ export const REPUTATION_EFFECTS: Record<string, GTAReputationEffect[]> = {
   assault_priest:  [{ faction: 'church', amount: -20 }, { faction: 'peasants', amount: -10 }, { faction: 'crown', amount: -5 }],
   help_peasant:    [{ faction: 'peasants', amount: 8 }, { faction: 'church', amount: 3 }],
   join_crime_ring: [{ faction: 'thieves_guild', amount: 15 }, { faction: 'crown', amount: -10 }, { faction: 'merchants', amount: -5 }],
+
+  // ── Steal / pickpocket reputation effects ──
+  steal_peasant:   [{ faction: 'peasants', amount: -12 }, { faction: 'church', amount: -3 }, { faction: 'thieves_guild', amount: 3 }],
+  steal_noble:     [{ faction: 'nobles', amount: -15 }, { faction: 'crown', amount: -8 }, { faction: 'thieves_guild', amount: 8 }, { faction: 'peasants', amount: 2 }],
+  steal_guard:     [{ faction: 'crown', amount: -10 }, { faction: 'thieves_guild', amount: 6 }],
+  steal_priest:    [{ faction: 'church', amount: -15 }, { faction: 'peasants', amount: -5 }, { faction: 'thieves_guild', amount: 3 }],
+
+  // ── Heist reputation effects ──
+  heist_complete:  [{ faction: 'thieves_guild', amount: 20 }, { faction: 'crown', amount: -15 }, { faction: 'nobles', amount: -10 }, { faction: 'merchants', amount: -5 }],
+  heist_fail:      [{ faction: 'thieves_guild', amount: -5 }, { faction: 'crown', amount: -5 }],
+
+  // ── Property / commerce effects ──
+  buy_property:    [{ faction: 'merchants', amount: 5 }, { faction: 'nobles', amount: 3 }],
+  collect_rent:    [{ faction: 'peasants', amount: -2 }, { faction: 'merchants', amount: 1 }],
+
+  // ── Night-specific actions ──
+  shady_deal:      [{ faction: 'thieves_guild', amount: 5 }, { faction: 'crown', amount: -3 }],
+  night_patrol_help: [{ faction: 'crown', amount: 8 }, { faction: 'peasants', amount: 5 }],
 };
 
 /** Maps faction rep to a price multiplier (lower rep = higher prices) */
@@ -272,6 +290,82 @@ export function getFactionTierLabel(factionId: GTAFactionId, rep: number): strin
     if (rep >= tier.min) label = tier.label;
   }
   return label;
+}
+
+// ─── Faction Consequence Definitions ─────────────────────────────────────────
+
+export interface GTAFactionConsequence {
+  /** Reputation threshold (at or below this value) */
+  threshold: number;
+  /** Direction: 'below' means rep <= threshold triggers it */
+  direction: 'below' | 'above';
+  /** Effect type */
+  effect: 'price_increase' | 'refuse_service' | 'attack_on_sight' | 'discount'
+        | 'free_healing' | 'safe_house' | 'tip_off' | 'guild_shop';
+  /** Multiplier or value for the effect */
+  value: number;
+  /** Description shown to the player */
+  description: string;
+}
+
+export const FACTION_CONSEQUENCES: Record<GTAFactionId, GTAFactionConsequence[]> = {
+  crown: [
+    { threshold: -50, direction: 'below', effect: 'attack_on_sight', value: 1, description: 'Guards attack on sight' },
+    { threshold: -20, direction: 'below', effect: 'price_increase', value: 1.3, description: 'Shops in crown territory charge 30% more' },
+    { threshold: 50,  direction: 'above', effect: 'discount', value: 0.85, description: 'Crown shops offer 15% discount' },
+    { threshold: 80,  direction: 'above', effect: 'tip_off', value: 1, description: 'Guards warn you of bounty hunters' },
+  ],
+  thieves_guild: [
+    { threshold: -50, direction: 'below', effect: 'attack_on_sight', value: 1, description: 'Criminals attack on sight' },
+    { threshold: 20,  direction: 'above', effect: 'safe_house', value: 1, description: 'Access to thieves guild safe house' },
+    { threshold: 50,  direction: 'above', effect: 'guild_shop', value: 1, description: 'Access to black market dealer' },
+    { threshold: 80,  direction: 'above', effect: 'tip_off', value: 1, description: 'Thieves warn you of guard patrols' },
+  ],
+  merchants: [
+    { threshold: -50, direction: 'below', effect: 'refuse_service', value: 1, description: 'Merchants refuse to trade with you' },
+    { threshold: -20, direction: 'below', effect: 'price_increase', value: 1.25, description: 'Merchants charge 25% more' },
+    { threshold: 50,  direction: 'above', effect: 'discount', value: 0.80, description: 'Merchants offer 20% discount' },
+  ],
+  church: [
+    { threshold: -50, direction: 'below', effect: 'refuse_service', value: 1, description: 'Church refuses healing' },
+    { threshold: 50,  direction: 'above', effect: 'free_healing', value: 1, description: 'Free healing at the church' },
+  ],
+  peasants: [
+    { threshold: -50, direction: 'below', effect: 'tip_off', value: -1, description: 'Peasants report your location to guards' },
+    { threshold: 50,  direction: 'above', effect: 'safe_house', value: 1, description: 'Peasants offer shelter and food' },
+  ],
+  nobles: [
+    { threshold: -50, direction: 'below', effect: 'price_increase', value: 1.5, description: 'Noble establishments charge 50% more' },
+    { threshold: 50,  direction: 'above', effect: 'discount', value: 0.75, description: 'Noble establishments offer 25% discount' },
+  ],
+};
+
+/** Get active consequences for a faction based on current reputation. */
+export function getActiveFactionConsequences(
+  factionId: GTAFactionId,
+  rep: number,
+): GTAFactionConsequence[] {
+  const consequences = FACTION_CONSEQUENCES[factionId];
+  return consequences.filter(c => {
+    if (c.direction === 'below') return rep <= c.threshold;
+    return rep >= c.threshold;
+  });
+}
+
+/** Classify an NPC type for steal reputation effects. */
+export function getStealReputationAction(npcType: string): string | null {
+  const peasantTypes = ['civilian_m', 'civilian_f', 'stable_master'];
+  const nobleTypes   = ['tavern_keeper', 'bard'];
+  const guardTypes   = ['guard', 'knight', 'archer_guard', 'army_soldier'];
+  const priestTypes  = ['priest'];
+  const merchantTypes = ['merchant', 'blacksmith_npc'];
+
+  if (peasantTypes.includes(npcType))   return 'steal_peasant';
+  if (nobleTypes.includes(npcType))     return 'steal_noble';
+  if (guardTypes.includes(npcType))     return 'steal_guard';
+  if (priestTypes.includes(npcType))    return 'steal_priest';
+  if (merchantTypes.includes(npcType))  return 'steal_merchant';
+  return null;
 }
 
 // ─── Equipment Definitions ────────────────────────────────────────────────────
@@ -798,27 +892,122 @@ export const CRIME_RING_DEFS: GTACrimeRingDef[] = [
 
 // ─── Property Definitions ─────────────────────────────────────────────────────
 
+export type GTAPropertyType = 'house' | 'shop' | 'market_stall' | 'tavern';
+
+export interface GTAPropertyUpgrade {
+  id: string;
+  name: string;
+  cost: number;
+  incomeBonus: number;
+  description: string;
+}
+
 export interface GTAPropertyDef {
   id: string;
   name: string;
-  type: 'house' | 'shop' | 'market_stall';
+  type: GTAPropertyType;
   cost: number;
   /** Daily income generated */
   income: number;
   /** Position in world */
   pos: { x: number; y: number };
   description: string;
+  /** Optional minimum faction reputation to purchase */
+  requiredFaction?: GTAFactionId;
+  requiredRep?: number;
+  /** Available upgrades for this property */
+  upgrades?: GTAPropertyUpgrade[];
 }
 
 export const PROPERTY_DEFS: GTAPropertyDef[] = [
-  { id: 'prop_house_south',     name: 'South Quarter House',    type: 'house',        cost: 200,  income: 0,  pos: { x: 1550, y: 2100 }, description: 'A modest house near the south gate. A safe place to rest.' },
-  { id: 'prop_house_market',    name: 'Market District Home',   type: 'house',        cost: 400,  income: 0,  pos: { x: 1900, y: 1600 }, description: 'A comfortable home near the bustling market.' },
-  { id: 'prop_house_noble',     name: 'Noble Quarter Estate',   type: 'house',        cost: 1000, income: 5,  pos: { x: 2600, y: 800 },  description: 'A fine estate in the noble quarter, generating modest rent.' },
-  { id: 'prop_shop_herbs',      name: 'Herbalist Shop',         type: 'shop',         cost: 350,  income: 12, pos: { x: 2050, y: 1300 }, description: 'A small herb shop. Generates steady income from remedies.' },
-  { id: 'prop_shop_weapons',    name: 'Arms Dealer',            type: 'shop',         cost: 600,  income: 20, pos: { x: 1200, y: 1400 }, description: 'A weapons shop. Profitable but attracts attention.' },
-  { id: 'prop_stall_fruit',     name: 'Fruit Stall',            type: 'market_stall', cost: 100,  income: 6,  pos: { x: 1750, y: 1250 }, description: 'A simple market stall selling fresh fruit.' },
-  { id: 'prop_stall_cloth',     name: 'Cloth Stall',            type: 'market_stall', cost: 120,  income: 8,  pos: { x: 1900, y: 1250 }, description: 'A market stall dealing in fine fabrics.' },
-  { id: 'prop_tavern',          name: 'The Rusty Flagon',       type: 'shop',         cost: 800,  income: 25, pos: { x: 2500, y: 1400 }, description: 'A tavern generating good income from ale and lodging.' },
+  // ── Houses ──
+  {
+    id: 'prop_house_south', name: 'South Quarter House', type: 'house',
+    cost: 200, income: 0, pos: { x: 1550, y: 2100 },
+    description: 'A modest house near the south gate. A safe place to rest.',
+    upgrades: [
+      { id: 'upg_south_furnish', name: 'Furnish Rooms', cost: 100, incomeBonus: 3, description: 'Rent out a furnished room to travelers.' },
+    ],
+  },
+  {
+    id: 'prop_house_market', name: 'Market District Home', type: 'house',
+    cost: 400, income: 0, pos: { x: 1900, y: 1600 },
+    description: 'A comfortable home near the bustling market.',
+    upgrades: [
+      { id: 'upg_market_cellar', name: 'Secret Cellar', cost: 150, incomeBonus: 5, description: 'A hidden cellar for storing stolen goods.' },
+      { id: 'upg_market_garden', name: 'Herb Garden', cost: 80, incomeBonus: 4, description: 'Grow herbs to sell at the market.' },
+    ],
+  },
+  {
+    id: 'prop_house_noble', name: 'Noble Quarter Estate', type: 'house',
+    cost: 1000, income: 5, pos: { x: 2600, y: 800 },
+    description: 'A fine estate in the noble quarter, generating modest rent.',
+    requiredFaction: 'nobles', requiredRep: 10,
+    upgrades: [
+      { id: 'upg_noble_ballroom', name: 'Grand Ballroom', cost: 400, incomeBonus: 12, description: 'Host lavish parties for the nobility.' },
+      { id: 'upg_noble_servants', name: 'Hire Servants', cost: 200, incomeBonus: 8, description: 'Servants manage the estate for increased rent.' },
+    ],
+  },
+
+  // ── Shops ──
+  {
+    id: 'prop_shop_herbs', name: 'Herbalist Shop', type: 'shop',
+    cost: 350, income: 12, pos: { x: 2050, y: 1300 },
+    description: 'A small herb shop. Generates steady income from remedies.',
+    upgrades: [
+      { id: 'upg_herbs_expand', name: 'Expand Stock', cost: 150, incomeBonus: 6, description: 'Wider variety of remedies for more customers.' },
+    ],
+  },
+  {
+    id: 'prop_shop_weapons', name: 'Arms Dealer', type: 'shop',
+    cost: 600, income: 20, pos: { x: 1200, y: 1400 },
+    description: 'A weapons shop. Profitable but attracts attention.',
+    requiredFaction: 'merchants', requiredRep: 10,
+    upgrades: [
+      { id: 'upg_weapons_forge', name: 'Personal Forge', cost: 300, incomeBonus: 10, description: 'Craft your own weapons for higher margins.' },
+      { id: 'upg_weapons_black', name: 'Black Market Contact', cost: 200, incomeBonus: 15, description: 'Sell to underground buyers at premium prices.' },
+    ],
+  },
+
+  // ── Market Stalls ──
+  {
+    id: 'prop_stall_fruit', name: 'Fruit Stall', type: 'market_stall',
+    cost: 100, income: 6, pos: { x: 1750, y: 1250 },
+    description: 'A simple market stall selling fresh fruit.',
+  },
+  {
+    id: 'prop_stall_cloth', name: 'Cloth Stall', type: 'market_stall',
+    cost: 120, income: 8, pos: { x: 1900, y: 1250 },
+    description: 'A market stall dealing in fine fabrics.',
+  },
+  {
+    id: 'prop_stall_jewelry', name: 'Jewelry Stall', type: 'market_stall',
+    cost: 250, income: 14, pos: { x: 1600, y: 1250 },
+    description: 'A stall selling rings, brooches, and trinkets.',
+    requiredFaction: 'merchants', requiredRep: 5,
+  },
+
+  // ── Taverns ──
+  {
+    id: 'prop_tavern_rusty', name: 'The Rusty Flagon', type: 'tavern',
+    cost: 800, income: 25, pos: { x: 2500, y: 1400 },
+    description: 'A tavern generating good income from ale and lodging.',
+    upgrades: [
+      { id: 'upg_rusty_cellar', name: 'Wine Cellar', cost: 200, incomeBonus: 10, description: 'Fine wines attract wealthier patrons.' },
+      { id: 'upg_rusty_rooms', name: 'Upstairs Rooms', cost: 300, incomeBonus: 12, description: 'Rent rooms to weary travelers.' },
+      { id: 'upg_rusty_stage', name: 'Bard Stage', cost: 150, incomeBonus: 8, description: 'Live entertainment draws larger crowds.' },
+    ],
+  },
+  {
+    id: 'prop_tavern_dragon', name: 'The Sleeping Dragon', type: 'tavern',
+    cost: 1200, income: 35, pos: { x: 1400, y: 1800 },
+    description: 'A large tavern near the south quarter with a loyal clientele.',
+    requiredFaction: 'nobles', requiredRep: 20,
+    upgrades: [
+      { id: 'upg_dragon_gambling', name: 'Gambling Den', cost: 400, incomeBonus: 20, description: 'A back room for dice and cards. Very profitable.' },
+      { id: 'upg_dragon_kitchen', name: 'Grand Kitchen', cost: 250, incomeBonus: 12, description: 'Serve hot meals to hungry customers.' },
+    ],
+  },
 ];
 
 // ─── Dynamic World Event Definitions ──────────────────────────────────────────
@@ -937,5 +1126,390 @@ export const WORLD_EVENT_DEFS: GTAWorldEventDef[] = [
     },
     startText: 'A merchant caravan has arrived! Rare goods at low prices!',
     endText: 'The merchant caravan has departed.',
+  },
+];
+
+// ─── Heist Mission Definitions ───────────────────────────────────────────────
+
+export type GTAHeistPhase = 'planning' | 'casing' | 'recruiting' | 'executing' | 'escaping';
+
+export interface GTAHeistCrewRole {
+  role: 'lookout' | 'muscle' | 'lockpick' | 'distraction' | 'driver';
+  name: string;
+  /** Minimum thieves guild rep needed to recruit this role */
+  requiredRep: number;
+  /** Gold cost to hire */
+  hireCost: number;
+  /** Bonus to success chance (0-1) */
+  successBonus: number;
+  description: string;
+}
+
+export interface GTAHeistPhaseDef {
+  phase: GTAHeistPhase;
+  name: string;
+  description: string;
+  /** Duration in game-time seconds */
+  duration: number;
+  /** Required action for this phase (player must be at a location, etc.) */
+  requiredAction: 'go_to_location' | 'wait' | 'recruit_crew' | 'execute_plan' | 'escape';
+  /** Target position for go_to_location actions */
+  targetPos?: { x: number; y: number };
+  targetRadius?: number;
+}
+
+export interface GTAHeistDef {
+  id: string;
+  name: string;
+  description: string;
+  /** Minimum thieves guild rep to unlock */
+  requiredRep: number;
+  /** Base gold reward */
+  reward: number;
+  /** Base success chance (0-1) without crew bonuses */
+  baseSuccessChance: number;
+  /** Wanted level increase on failure */
+  failWantedIncrease: number;
+  /** Wanted level increase on success (if detected) */
+  successWantedIncrease: number;
+  /** Required crew roles */
+  crewSlots: GTAHeistCrewRole[];
+  /** Phases of the heist */
+  phases: GTAHeistPhaseDef[];
+  /** Can only be attempted at night */
+  nightOnly: boolean;
+}
+
+export const HEIST_DEFS: GTAHeistDef[] = [
+  {
+    id: 'heist_market_vault',
+    name: 'The Market Vault',
+    description: 'Break into the merchants guild vault hidden beneath the market square. A modest haul but a good introduction to the heist life.',
+    requiredRep: 10,
+    reward: 200,
+    baseSuccessChance: 0.60,
+    failWantedIncrease: 2,
+    successWantedIncrease: 1,
+    crewSlots: [
+      { role: 'lookout', name: 'Lookout', requiredRep: 0, hireCost: 20, successBonus: 0.10, description: 'Watches for guards and signals danger.' },
+      { role: 'lockpick', name: 'Lockpick', requiredRep: 5, hireCost: 30, successBonus: 0.15, description: 'Expert at picking locks quickly and quietly.' },
+    ],
+    phases: [
+      { phase: 'casing', name: 'Case the Joint', description: 'Scout the market vault entrance and note guard rotations.', duration: 15, requiredAction: 'go_to_location', targetPos: { x: 1800, y: 1450 }, targetRadius: 80 },
+      { phase: 'recruiting', name: 'Recruit Crew', description: 'Hire crew members for the job.', duration: 10, requiredAction: 'recruit_crew' },
+      { phase: 'executing', name: 'Break In', description: 'Enter the vault through the hidden entrance and grab the loot.', duration: 20, requiredAction: 'execute_plan' },
+      { phase: 'escaping', name: 'Escape', description: 'Get away from the market before the guards arrive!', duration: 15, requiredAction: 'escape', targetPos: { x: 1400, y: 1800 }, targetRadius: 120 },
+    ],
+    nightOnly: true,
+  },
+  {
+    id: 'heist_noble_manor',
+    name: 'The Noble Manor Robbery',
+    description: 'A wealthy lord keeps his fortune in a manor near the noble quarter. Heavy guard presence makes this a risky venture.',
+    requiredRep: 30,
+    reward: 500,
+    baseSuccessChance: 0.45,
+    failWantedIncrease: 3,
+    successWantedIncrease: 2,
+    crewSlots: [
+      { role: 'lookout', name: 'Lookout', requiredRep: 5, hireCost: 30, successBonus: 0.08, description: 'Watches for approaching knights.' },
+      { role: 'muscle', name: 'Muscle', requiredRep: 15, hireCost: 50, successBonus: 0.12, description: 'Handles any guards that get too close.' },
+      { role: 'lockpick', name: 'Master Locksmith', requiredRep: 20, hireCost: 60, successBonus: 0.15, description: 'Can crack even the finest noble locks.' },
+      { role: 'distraction', name: 'Distraction', requiredRep: 10, hireCost: 40, successBonus: 0.10, description: 'Creates a diversion to draw guards away.' },
+    ],
+    phases: [
+      { phase: 'casing', name: 'Scout the Manor', description: 'Observe the manor from a safe distance. Note entry points and guard schedules.', duration: 20, requiredAction: 'go_to_location', targetPos: { x: 2600, y: 800 }, targetRadius: 100 },
+      { phase: 'recruiting', name: 'Assemble the Crew', description: 'Hire your crew at the tavern.', duration: 15, requiredAction: 'recruit_crew' },
+      { phase: 'planning', name: 'Plan the Approach', description: 'Review the layout and finalize the plan. Meet at the safe house.', duration: 10, requiredAction: 'go_to_location', targetPos: { x: 2400, y: 1350 }, targetRadius: 80 },
+      { phase: 'executing', name: 'Execute the Heist', description: 'Break into the manor, neutralize guards, and steal the treasury.', duration: 25, requiredAction: 'execute_plan' },
+      { phase: 'escaping', name: 'Escape the Noble Quarter', description: 'Flee before the alarm is raised across the city!', duration: 20, requiredAction: 'escape', targetPos: { x: 1550, y: 2100 }, targetRadius: 150 },
+    ],
+    nightOnly: true,
+  },
+  {
+    id: 'heist_royal_treasury',
+    name: 'The Royal Treasury',
+    description: 'The ultimate heist: the king\'s own treasury within the castle walls. Only the most daring and well-connected thieves would attempt this.',
+    requiredRep: 60,
+    reward: 1500,
+    baseSuccessChance: 0.30,
+    failWantedIncrease: 5,
+    successWantedIncrease: 3,
+    crewSlots: [
+      { role: 'lookout', name: 'Castle Spy', requiredRep: 30, hireCost: 80, successBonus: 0.08, description: 'An inside contact within the castle staff.' },
+      { role: 'muscle', name: 'Veteran Fighter', requiredRep: 40, hireCost: 100, successBonus: 0.10, description: 'Can take on castle guards one-on-one.' },
+      { role: 'lockpick', name: 'Arcane Locksmith', requiredRep: 50, hireCost: 120, successBonus: 0.12, description: 'Can bypass even magically-warded locks.' },
+      { role: 'distraction', name: 'Court Jester', requiredRep: 25, hireCost: 60, successBonus: 0.10, description: 'Causes a commotion in the great hall.' },
+      { role: 'driver', name: 'Horse Handler', requiredRep: 20, hireCost: 50, successBonus: 0.08, description: 'Has fast horses ready for the escape.' },
+    ],
+    phases: [
+      { phase: 'casing', name: 'Infiltrate the Castle', description: 'Enter the castle grounds and map the treasury location.', duration: 25, requiredAction: 'go_to_location', targetPos: { x: 1075, y: 800 }, targetRadius: 120 },
+      { phase: 'recruiting', name: 'Recruit Elite Crew', description: 'Only the best will do for this job. Recruit at the thieves guild hideout.', duration: 20, requiredAction: 'recruit_crew' },
+      { phase: 'planning', name: 'The Grand Plan', description: 'Finalize every detail. One mistake and it is over.', duration: 15, requiredAction: 'go_to_location', targetPos: { x: 950, y: 1800 }, targetRadius: 80 },
+      { phase: 'executing', name: 'The Grand Heist', description: 'Breach the treasury, defeat the vault guards, and seize the king\'s gold.', duration: 30, requiredAction: 'execute_plan' },
+      { phase: 'escaping', name: 'Flee the Kingdom', description: 'Every guard in the city is after you. Reach the south gate and escape!', duration: 25, requiredAction: 'escape', targetPos: { x: 2000, y: 2700 }, targetRadius: 200 },
+    ],
+    nightOnly: true,
+  },
+  {
+    id: 'heist_church_relics',
+    name: 'The Sacred Relics',
+    description: 'The church houses priceless relics in a hidden chamber. A lucrative but morally dubious heist that will anger the clergy.',
+    requiredRep: 20,
+    reward: 350,
+    baseSuccessChance: 0.55,
+    failWantedIncrease: 3,
+    successWantedIncrease: 1,
+    crewSlots: [
+      { role: 'lookout', name: 'Acolyte Informant', requiredRep: 10, hireCost: 25, successBonus: 0.12, description: 'A disgraced acolyte who knows the church layout.' },
+      { role: 'lockpick', name: 'Lockpick', requiredRep: 10, hireCost: 35, successBonus: 0.15, description: 'Can open the relic chamber door quietly.' },
+    ],
+    phases: [
+      { phase: 'casing', name: 'Attend Evening Prayer', description: 'Enter the church during services and scout the relic chamber.', duration: 15, requiredAction: 'go_to_location', targetPos: { x: 2225, y: 725 }, targetRadius: 80 },
+      { phase: 'recruiting', name: 'Find Help', description: 'Recruit your crew from the criminal underworld.', duration: 10, requiredAction: 'recruit_crew' },
+      { phase: 'executing', name: 'Steal the Relics', description: 'Sneak in after midnight and take the relics.', duration: 18, requiredAction: 'execute_plan' },
+      { phase: 'escaping', name: 'Disappear', description: 'Vanish into the night before dawn breaks.', duration: 12, requiredAction: 'escape', targetPos: { x: 1100, y: 2100 }, targetRadius: 120 },
+    ],
+    nightOnly: true,
+  },
+];
+
+// ─── Day/Night Cycle Definitions ─────────────────────────────────────────────
+
+/** Time-of-day periods: dayTime is 0-1 where 0=dawn, 0.25=noon, 0.5=dusk, 0.75=midnight */
+export type GTATimeOfDay = 'dawn' | 'morning' | 'afternoon' | 'dusk' | 'evening' | 'night' | 'late_night';
+
+export interface GTATimeOfDayDef {
+  id: GTATimeOfDay;
+  name: string;
+  /** dayTime range start (inclusive) */
+  start: number;
+  /** dayTime range end (exclusive) */
+  end: number;
+  /** Ambient light level (0=pitch black, 1=full daylight) */
+  ambientLight: number;
+  /** Guard patrol speed multiplier */
+  guardSpeedMult: number;
+  /** Guard alertness multiplier (affects detection range) */
+  guardAlertMult: number;
+  /** Whether shops are open */
+  shopsOpen: boolean;
+  /** Whether shady dealers appear */
+  shadyDealersActive: boolean;
+  /** Crime detection multiplier (lower = easier to get away with crime) */
+  crimeDetectionMult: number;
+  /** NPC spawn multiplier */
+  npcSpawnMult: number;
+}
+
+export const TIME_OF_DAY_DEFS: GTATimeOfDayDef[] = [
+  { id: 'dawn',       name: 'Dawn',        start: 0.00, end: 0.08, ambientLight: 0.5,  guardSpeedMult: 0.8,  guardAlertMult: 0.9,  shopsOpen: false, shadyDealersActive: false, crimeDetectionMult: 0.7,  npcSpawnMult: 0.4 },
+  { id: 'morning',    name: 'Morning',     start: 0.08, end: 0.20, ambientLight: 0.85, guardSpeedMult: 1.0,  guardAlertMult: 1.0,  shopsOpen: true,  shadyDealersActive: false, crimeDetectionMult: 1.0,  npcSpawnMult: 0.8 },
+  { id: 'afternoon',  name: 'Afternoon',   start: 0.20, end: 0.40, ambientLight: 1.0,  guardSpeedMult: 1.0,  guardAlertMult: 1.0,  shopsOpen: true,  shadyDealersActive: false, crimeDetectionMult: 1.0,  npcSpawnMult: 1.0 },
+  { id: 'dusk',       name: 'Dusk',        start: 0.40, end: 0.52, ambientLight: 0.6,  guardSpeedMult: 0.9,  guardAlertMult: 0.85, shopsOpen: true,  shadyDealersActive: false, crimeDetectionMult: 0.8,  npcSpawnMult: 0.7 },
+  { id: 'evening',    name: 'Evening',     start: 0.52, end: 0.65, ambientLight: 0.35, guardSpeedMult: 0.85, guardAlertMult: 0.75, shopsOpen: false, shadyDealersActive: true,  crimeDetectionMult: 0.6,  npcSpawnMult: 0.5 },
+  { id: 'night',      name: 'Night',       start: 0.65, end: 0.85, ambientLight: 0.15, guardSpeedMult: 0.7,  guardAlertMult: 0.6,  shopsOpen: false, shadyDealersActive: true,  crimeDetectionMult: 0.4,  npcSpawnMult: 0.3 },
+  { id: 'late_night', name: 'Late Night',  start: 0.85, end: 1.00, ambientLight: 0.1,  guardSpeedMult: 0.6,  guardAlertMult: 0.5,  shopsOpen: false, shadyDealersActive: true,  crimeDetectionMult: 0.3,  npcSpawnMult: 0.2 },
+];
+
+/** Get the current time-of-day definition based on dayTime value. */
+export function getTimeOfDay(dayTime: number): GTATimeOfDayDef {
+  const t = dayTime % 1.0;
+  for (const def of TIME_OF_DAY_DEFS) {
+    if (t >= def.start && t < def.end) return def;
+  }
+  // Fallback to dawn
+  return TIME_OF_DAY_DEFS[0];
+}
+
+/** Check if it is currently nighttime (evening through late_night). */
+export function isNightTime(dayTime: number): boolean {
+  const t = dayTime % 1.0;
+  return t >= 0.52 || t < 0.08;
+}
+
+/** NPC schedule: defines what behavior an NPC type uses at different times. */
+export interface GTANPCScheduleEntry {
+  timeOfDay: GTATimeOfDay;
+  behavior: 'wander' | 'patrol' | 'stand' | 'idle' | 'sleep' | 'flee';
+  /** Speed multiplier for this schedule entry */
+  speedMult: number;
+  /** Optional: override home position (e.g., go indoors at night) */
+  homeOffset?: { x: number; y: number };
+}
+
+export const NPC_SCHEDULES: Record<string, GTANPCScheduleEntry[]> = {
+  // Civilians go inside at night
+  civilian_m: [
+    { timeOfDay: 'dawn',       behavior: 'idle',   speedMult: 0.5 },
+    { timeOfDay: 'morning',    behavior: 'wander', speedMult: 1.0 },
+    { timeOfDay: 'afternoon',  behavior: 'wander', speedMult: 1.0 },
+    { timeOfDay: 'dusk',       behavior: 'wander', speedMult: 0.8 },
+    { timeOfDay: 'evening',    behavior: 'idle',   speedMult: 0.3, homeOffset: { x: 0, y: 0 } },
+    { timeOfDay: 'night',      behavior: 'sleep',  speedMult: 0.0 },
+    { timeOfDay: 'late_night', behavior: 'sleep',  speedMult: 0.0 },
+  ],
+  civilian_f: [
+    { timeOfDay: 'dawn',       behavior: 'idle',   speedMult: 0.5 },
+    { timeOfDay: 'morning',    behavior: 'wander', speedMult: 1.0 },
+    { timeOfDay: 'afternoon',  behavior: 'wander', speedMult: 1.0 },
+    { timeOfDay: 'dusk',       behavior: 'wander', speedMult: 0.8 },
+    { timeOfDay: 'evening',    behavior: 'idle',   speedMult: 0.3 },
+    { timeOfDay: 'night',      behavior: 'sleep',  speedMult: 0.0 },
+    { timeOfDay: 'late_night', behavior: 'sleep',  speedMult: 0.0 },
+  ],
+  // Merchants are only at their stalls during shop hours
+  merchant: [
+    { timeOfDay: 'dawn',       behavior: 'idle',   speedMult: 0.3 },
+    { timeOfDay: 'morning',    behavior: 'stand',  speedMult: 1.0 },
+    { timeOfDay: 'afternoon',  behavior: 'stand',  speedMult: 1.0 },
+    { timeOfDay: 'dusk',       behavior: 'stand',  speedMult: 0.8 },
+    { timeOfDay: 'evening',    behavior: 'idle',   speedMult: 0.3 },
+    { timeOfDay: 'night',      behavior: 'sleep',  speedMult: 0.0 },
+    { timeOfDay: 'late_night', behavior: 'sleep',  speedMult: 0.0 },
+  ],
+  // Guards have different patrol patterns at night
+  guard: [
+    { timeOfDay: 'dawn',       behavior: 'patrol', speedMult: 0.8 },
+    { timeOfDay: 'morning',    behavior: 'patrol', speedMult: 1.0 },
+    { timeOfDay: 'afternoon',  behavior: 'patrol', speedMult: 1.0 },
+    { timeOfDay: 'dusk',       behavior: 'patrol', speedMult: 1.0 },
+    { timeOfDay: 'evening',    behavior: 'patrol', speedMult: 0.85 },
+    { timeOfDay: 'night',      behavior: 'patrol', speedMult: 0.7 },
+    { timeOfDay: 'late_night', behavior: 'patrol', speedMult: 0.6 },
+  ],
+  // Knights rest at night, more active during the day
+  knight: [
+    { timeOfDay: 'dawn',       behavior: 'patrol', speedMult: 0.7 },
+    { timeOfDay: 'morning',    behavior: 'patrol', speedMult: 1.0 },
+    { timeOfDay: 'afternoon',  behavior: 'patrol', speedMult: 1.0 },
+    { timeOfDay: 'dusk',       behavior: 'patrol', speedMult: 1.0 },
+    { timeOfDay: 'evening',    behavior: 'patrol', speedMult: 0.8 },
+    { timeOfDay: 'night',      behavior: 'stand',  speedMult: 0.5 },
+    { timeOfDay: 'late_night', behavior: 'stand',  speedMult: 0.4 },
+  ],
+  // Criminals are more active at night
+  criminal: [
+    { timeOfDay: 'dawn',       behavior: 'idle',   speedMult: 0.5 },
+    { timeOfDay: 'morning',    behavior: 'idle',   speedMult: 0.5 },
+    { timeOfDay: 'afternoon',  behavior: 'wander', speedMult: 0.7 },
+    { timeOfDay: 'dusk',       behavior: 'wander', speedMult: 0.9 },
+    { timeOfDay: 'evening',    behavior: 'wander', speedMult: 1.2 },
+    { timeOfDay: 'night',      behavior: 'wander', speedMult: 1.3 },
+    { timeOfDay: 'late_night', behavior: 'wander', speedMult: 1.4 },
+  ],
+  // Bandits lurk outside during all hours but are bolder at night
+  bandit: [
+    { timeOfDay: 'dawn',       behavior: 'wander', speedMult: 0.8 },
+    { timeOfDay: 'morning',    behavior: 'wander', speedMult: 0.8 },
+    { timeOfDay: 'afternoon',  behavior: 'wander', speedMult: 0.9 },
+    { timeOfDay: 'dusk',       behavior: 'wander', speedMult: 1.0 },
+    { timeOfDay: 'evening',    behavior: 'wander', speedMult: 1.2 },
+    { timeOfDay: 'night',      behavior: 'wander', speedMult: 1.3 },
+    { timeOfDay: 'late_night', behavior: 'wander', speedMult: 1.4 },
+  ],
+  // Tavern keeper is available evening and night
+  tavern_keeper: [
+    { timeOfDay: 'dawn',       behavior: 'sleep',  speedMult: 0.0 },
+    { timeOfDay: 'morning',    behavior: 'idle',   speedMult: 0.3 },
+    { timeOfDay: 'afternoon',  behavior: 'stand',  speedMult: 1.0 },
+    { timeOfDay: 'dusk',       behavior: 'stand',  speedMult: 1.0 },
+    { timeOfDay: 'evening',    behavior: 'stand',  speedMult: 1.0 },
+    { timeOfDay: 'night',      behavior: 'stand',  speedMult: 1.0 },
+    { timeOfDay: 'late_night', behavior: 'stand',  speedMult: 0.8 },
+  ],
+  // Priests are at the church during the day
+  priest: [
+    { timeOfDay: 'dawn',       behavior: 'wander', speedMult: 0.6 },
+    { timeOfDay: 'morning',    behavior: 'wander', speedMult: 1.0 },
+    { timeOfDay: 'afternoon',  behavior: 'wander', speedMult: 1.0 },
+    { timeOfDay: 'dusk',       behavior: 'wander', speedMult: 0.8 },
+    { timeOfDay: 'evening',    behavior: 'stand',  speedMult: 0.3 },
+    { timeOfDay: 'night',      behavior: 'sleep',  speedMult: 0.0 },
+    { timeOfDay: 'late_night', behavior: 'sleep',  speedMult: 0.0 },
+  ],
+};
+
+/** Get the NPC schedule entry for a type at the current time of day. Returns null if no schedule defined. */
+export function getNPCScheduleEntry(npcType: string, dayTime: number): GTANPCScheduleEntry | null {
+  const schedule = NPC_SCHEDULES[npcType];
+  if (!schedule) return null;
+  const tod = getTimeOfDay(dayTime);
+  return schedule.find(s => s.timeOfDay === tod.id) ?? null;
+}
+
+// ─── Shady Dealer Definitions ────────────────────────────────────────────────
+
+export interface GTAShadyDealerDef {
+  id: string;
+  name: string;
+  /** Position where dealer appears at night */
+  pos: { x: number; y: number };
+  /** Minimum thieves guild rep to interact */
+  requiredRep: number;
+  /** Items/services offered */
+  offerings: GTAShadyDealerOffering[];
+  dialogLines: string[];
+}
+
+export interface GTAShadyDealerOffering {
+  id: string;
+  name: string;
+  type: 'item' | 'service' | 'info';
+  cost: number;
+  description: string;
+  /** Effect when purchased */
+  effect: { stat?: string; value?: number; itemId?: string; wantedReduction?: number };
+}
+
+export const SHADY_DEALER_DEFS: GTAShadyDealerDef[] = [
+  {
+    id: 'dealer_alley',
+    name: 'Shadowmere the Fence',
+    pos: { x: 1050, y: 1900 },
+    requiredRep: -5,
+    offerings: [
+      { id: 'sd_lockpicks', name: 'Lockpick Set', type: 'item', cost: 25, description: 'Increases pickpocket success.', effect: { stat: 'pickpocketChance', value: 0.1 } },
+      { id: 'sd_poison', name: 'Poison Vial', type: 'item', cost: 40, description: 'Coat your blade for bonus damage.', effect: { stat: 'bonusDamage', value: 10 } },
+      { id: 'sd_bribe_kit', name: 'Bribe Kit', type: 'service', cost: 60, description: 'Reduce wanted level by 1.', effect: { wantedReduction: 1 } },
+      { id: 'sd_guard_schedule', name: 'Guard Patrol Map', type: 'info', cost: 35, description: 'Know where the guards are.', effect: { stat: 'guardDetection', value: 1 } },
+    ],
+    dialogLines: [
+      'Psst... looking for something special?',
+      'Keep your voice down. The guards have ears everywhere.',
+      'I have what you need. For a price.',
+    ],
+  },
+  {
+    id: 'dealer_docks',
+    name: 'Old Morrigan',
+    pos: { x: 2800, y: 2200 },
+    requiredRep: 5,
+    offerings: [
+      { id: 'sd_forged_papers', name: 'Forged Papers', type: 'service', cost: 80, description: 'Reduce wanted level by 2.', effect: { wantedReduction: 2 } },
+      { id: 'sd_smoke_bomb', name: 'Smoke Bomb', type: 'item', cost: 30, description: 'Escape from combat instantly.', effect: { stat: 'escapeTool', value: 1 } },
+      { id: 'sd_rare_ring', name: 'Cursed Ring', type: 'item', cost: 150, description: 'A powerful but ominous ring.', effect: { itemId: 'ring_of_power' } },
+    ],
+    dialogLines: [
+      'The night brings opportunity, does it not?',
+      'I deal in things the merchants dare not stock.',
+      'Payment first. Trust is earned, not given.',
+    ],
+  },
+  {
+    id: 'dealer_tavern_back',
+    name: 'Whisper Jack',
+    pos: { x: 2450, y: 1450 },
+    requiredRep: 15,
+    offerings: [
+      { id: 'sd_heist_intel', name: 'Heist Intelligence', type: 'info', cost: 50, description: 'Increases next heist success by 15%.', effect: { stat: 'heistBonus', value: 0.15 } },
+      { id: 'sd_crew_contact', name: 'Crew Contact', type: 'service', cost: 40, description: 'Cheaper crew hire for next heist.', effect: { stat: 'crewDiscount', value: 0.3 } },
+      { id: 'sd_safe_passage', name: 'Safe Passage', type: 'service', cost: 100, description: 'Clear all wanted levels instantly.', effect: { wantedReduction: 5 } },
+    ],
+    dialogLines: [
+      'Jack knows all, sees all, says nothing. For the right price.',
+      'Need information? That is my trade.',
+      'The guild sends its regards. What do you need?',
+    ],
   },
 ];

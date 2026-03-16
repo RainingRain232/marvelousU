@@ -5,6 +5,8 @@ import { SeededRandom } from "@sim/utils/random";
 import type { DungeonFloor, DungeonRoom, DungeonTile, TrapType } from "@rpg/state/DungeonState";
 import type { DungeonState } from "@rpg/state/DungeonState";
 import type { DungeonDef } from "@rpg/config/DungeonDefs";
+import { rollDungeonModifiers, mergeModifierEffects } from "@rpg/config/DungeonModifierDefs";
+import type { DungeonModifierDef, DungeonModifierEffects } from "@rpg/config/DungeonModifierDefs";
 
 // ---------------------------------------------------------------------------
 // BSP Node
@@ -26,10 +28,15 @@ interface BSPNode {
 
 export function generateDungeon(def: DungeonDef, seed: number): DungeonState {
   const rng = new SeededRandom(seed);
+
+  // Roll dungeon modifiers for this run
+  const modifiers = rollDungeonModifiers(rng);
+  const mergedEffects = mergeModifierEffects(modifiers);
+
   const floors: DungeonFloor[] = [];
 
   for (let level = 0; level < def.floors; level++) {
-    const floor = _generateFloor(def, level, rng);
+    const floor = _generateFloor(def, level, rng, mergedEffects);
     floors.push(floor);
   }
 
@@ -42,6 +49,8 @@ export function generateDungeon(def: DungeonDef, seed: number): DungeonState {
     partyPosition: { ...floors[0].stairsUp },
     totalFloors: def.floors,
     bossDefeated: false,
+    modifiers,
+    mergedEffects,
   };
 }
 
@@ -49,7 +58,7 @@ export function generateDungeon(def: DungeonDef, seed: number): DungeonState {
 // Floor generation
 // ---------------------------------------------------------------------------
 
-function _generateFloor(def: DungeonDef, level: number, rng: SeededRandom): DungeonFloor {
+function _generateFloor(def: DungeonDef, level: number, rng: SeededRandom, _modEffects?: DungeonModifierEffects): DungeonFloor {
   const width = def.gridWidth;
   const height = def.gridHeight;
 

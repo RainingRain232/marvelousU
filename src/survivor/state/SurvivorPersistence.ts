@@ -3,14 +3,23 @@
 // ---------------------------------------------------------------------------
 
 import { META_UPGRADES } from "../config/SurvivorMetaUpgradeDefs";
+import type { SurvivorPrestigeState } from "./SurvivorState";
 
 const STORAGE_KEY = "marvelousU_survivor";
+
+// Prestige constants
+const PRESTIGE_WAVE_THRESHOLD = 1500; // 25 minutes — must survive this long to prestige
+const PRESTIGE_HP_PER_LEVEL = 10;
+const PRESTIGE_ATK_PER_LEVEL = 0.03;  // +3% per prestige
+const PRESTIGE_XP_PER_LEVEL = 0.02;   // +2% per prestige
+const PRESTIGE_SPEED_PER_LEVEL = 0.01; // +1% per prestige
 
 export interface SurvivorSaveData {
   totalGold: number;
   unlockedCharacters: string[]; // character IDs
   highScores: HighScoreEntry[];
   metaUpgrades: Record<string, number>; // upgrade ID -> level
+  prestigeLevel: number; // prestige level (0 = not prestiged)
 }
 
 export interface HighScoreEntry {
@@ -30,6 +39,7 @@ const DEFAULT_SAVE: SurvivorSaveData = {
   unlockedCharacters: ["swordsman", "archer", "fire_mage"],
   highScores: [],
   metaUpgrades: {},
+  prestigeLevel: 0,
 };
 
 const MAX_HIGH_SCORES = 10;
@@ -45,9 +55,10 @@ export const SurvivorPersistence = {
         unlockedCharacters: data.unlockedCharacters ?? [...DEFAULT_SAVE.unlockedCharacters],
         highScores: data.highScores ?? [],
         metaUpgrades: data.metaUpgrades ?? {},
+        prestigeLevel: data.prestigeLevel ?? 0,
       };
     } catch {
-      return { ...DEFAULT_SAVE, unlockedCharacters: [...DEFAULT_SAVE.unlockedCharacters], metaUpgrades: {} };
+      return { ...DEFAULT_SAVE, unlockedCharacters: [...DEFAULT_SAVE.unlockedCharacters], metaUpgrades: {}, prestigeLevel: 0 };
     }
   },
 
@@ -111,5 +122,36 @@ export const SurvivorPersistence = {
 
   getMetaUpgrades(): Record<string, number> {
     return this.load().metaUpgrades;
+  },
+
+  // Prestige methods
+  getPrestigeLevel(): number {
+    return this.load().prestigeLevel;
+  },
+
+  getPrestige(): SurvivorPrestigeState {
+    const level = this.getPrestigeLevel();
+    return {
+      level,
+      hpBonus: level * PRESTIGE_HP_PER_LEVEL,
+      atkBonus: level * PRESTIGE_ATK_PER_LEVEL,
+      xpBonus: level * PRESTIGE_XP_PER_LEVEL,
+      speedBonus: level * PRESTIGE_SPEED_PER_LEVEL,
+    };
+  },
+
+  canPrestige(gameTime: number): boolean {
+    return gameTime >= PRESTIGE_WAVE_THRESHOLD;
+  },
+
+  applyPrestige(): number {
+    const data = this.load();
+    data.prestigeLevel += 1;
+    this.save(data);
+    return data.prestigeLevel;
+  },
+
+  getPrestigeThreshold(): number {
+    return PRESTIGE_WAVE_THRESHOLD;
   },
 };

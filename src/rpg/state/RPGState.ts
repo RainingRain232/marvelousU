@@ -1,6 +1,8 @@
 // Top-level RPG persistent state
 import type { AbilityType, RPGPhase, UnitType, UpgradeType, Vec2 } from "@/types";
 import type { LeaderBlessing } from "@rpg/config/LeaderEncounterDefs";
+import type { CraftingDiscoveryState } from "@rpg/systems/CraftingDiscoverySystem";
+import { createCraftingDiscoveryState } from "@rpg/systems/CraftingDiscoverySystem";
 
 // ---------------------------------------------------------------------------
 // Party & Equipment
@@ -65,6 +67,10 @@ export interface PartyMember {
   bonusHealingMult: number;
   /** Battles fought (for equipment durability) */
   battlesFought: number;
+  /** Class specialization ID (set at level 10). */
+  specializationId?: string;
+  /** Human-readable specialization name. */
+  specializationName?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -200,6 +206,10 @@ export interface RPGState {
   /** Roaming enemy encounter rate multiplier: 0=none, 100=normal, 200=double */
   roamingEncounterRate: number;
 
+  // --- Crafting Discovery ---
+  /** Crafting experimentation / recipe discovery state. */
+  craftingDiscovery: CraftingDiscoveryState;
+
   // --- Endgame ---
   /** New Game+ count (0 = first playthrough) */
   ngPlusCount: number;
@@ -259,6 +269,8 @@ export function createRPGState(seed: number, startPosition: Vec2): RPGState {
     battleSpeed: 1,
     randomEncounterRate: 100,
     roamingEncounterRate: 100,
+    // Crafting Discovery
+    craftingDiscovery: createCraftingDiscoveryState(),
     // Endgame
     ngPlusCount: 0,
     abyssRecord: 0,

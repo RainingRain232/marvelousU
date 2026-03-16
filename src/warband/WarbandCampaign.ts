@@ -1207,6 +1207,16 @@ interface CampaignState {
   playerSiegeEquip: { type: SiegeEquipType; count: number }[]; // built siege equipment in inventory
   flankingBonus: number; // 0 or positive multiplier for next battle
   playerTradeGoods: { good: string; count: number }[]; // trade inventory
+
+  // Companion relationships
+  companionRelEvents: CompanionRelationshipEvent[];
+  companionDialogueLog: { day: number; companionId: string; text: string }[];
+
+  // Faction AI strategy
+  factionStrategies: Map<string, { targetCityId: string | null; marshalPartyIds: string[]; siegeDay: number }>;
+
+  // Save/load
+  lastSaveDay: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -1902,6 +1912,11 @@ export class WarbandCampaign {
       playerSiegeEquip: [],
       flankingBonus: 0,
       playerTradeGoods: [],
+
+      companionRelEvents: [],
+      companionDialogueLog: [],
+      factionStrategies: new Map(),
+      lastSaveDay: 0,
     };
 
     // Initialize faction relations
@@ -3184,7 +3199,48 @@ export class WarbandCampaign {
             }
           }
         }
+
+        // Faction AI: update strategies after lord updates
+        this._updateFactionStrategy();
       }
+
+      // -----------------------------------------------------------------------
+      // Faction war check (every 7 days)
+      // -----------------------------------------------------------------------
+      if (s.day % 7 === 0) {
+        this._factionWarCheck();
+      }
+
+      // -----------------------------------------------------------------------
+      // Companion quests & relationships (every 10 days)
+      // -----------------------------------------------------------------------
+      if (s.day % 10 === 0) {
+        this._checkCompanionRelationships();
+      }
+      if (s.day % 15 === 0) {
+        this._generateCompanionQuests();
+      }
+
+      // -----------------------------------------------------------------------
+      // Companion camp dialogue (every 3 days)
+      // -----------------------------------------------------------------------
+      if (s.day % 3 === 0) {
+        if (s.campaignMorale < 30) {
+          this._triggerCompanionDialogue("low_morale");
+        } else if (Math.random() < 0.4) {
+          this._triggerCompanionDialogue("camp");
+        }
+        // Check for high loyalty dialogue
+        const highLoyaltyComp = s.companions.find(c => c.recruited && c.loyalty >= 90);
+        if (highLoyaltyComp && Math.random() < 0.3) {
+          this._triggerCompanionDialogue("high_loyalty");
+        }
+      }
+
+      // -----------------------------------------------------------------------
+      // Auto-save check
+      // -----------------------------------------------------------------------
+      this._autoSave();
 
       // -----------------------------------------------------------------------
       // Companion loyalty
@@ -3428,6 +3484,15 @@ export class WarbandCampaign {
         }
       }
     }
+
+    // Coordinated faction sieges
+    this._resolveCoordinatedSiege();
+
+    // Companion quest progress
+    this._checkCompanionQuests();
+
+    // Event interactions (player entering event zones)
+    this._checkEventInteractions();
 
     // Check faction elimination
     this._checkFactionElimination();
@@ -5243,6 +5308,13 @@ export class WarbandCampaign {
     const looterMult = 1 + this._getPerkCount("looter") * 0.3;
     const loot = Math.round(enemiesKilled * LOOT_PER_UNIT * looterMult);
 
+    // Trigger companion dialogue based on battle result
+    if (playerWon) {
+      this._triggerCompanionDialogue("battle_won");
+    } else {
+      this._triggerCompanionDialogue("battle_lost");
+    }
+
     setTimeout(() => {
       this._showBattleResults(playerWon, playerSurvivors, enemySurvivors, loot);
     }, 1500);
@@ -5633,6 +5705,62 @@ export class WarbandCampaign {
       this._updateTopBar();
     });
     this._campaignPauseMenuContainer.appendChild(resumeBtn);
+
+    // Save/Load buttons
+    const btnStyle = `
+      margin-top:8px;padding:10px 36px;font-size:16px;font-weight:bold;
+      border:2px solid #5a8a5a;border-radius:6px;
+      background:rgba(90,138,90,0.15);color:#88cc88;
+      cursor:pointer;font-family:inherit;pointer-events:auto;width:160px;
+    `;
+
+    const saveBtn = document.createElement("button");
+    saveBtn.textContent = "Save Campaign";
+    saveBtn.style.cssText = btnStyle;
+    saveBtn.addEventListener("mouseenter", () => { saveBtn.style.background = "rgba(90,138,90,0.35)"; });
+    saveBtn.addEventListener("mouseleave", () => { saveBtn.style.background = "rgba(90,138,90,0.15)"; });
+    saveBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      this.saveCampaign();
+      saveBtn.textContent = "Saved!";
+      setTimeout(() => { saveBtn.textContent = "Save Campaign"; }, 1500);
+    });
+    this._campaignPauseMenuContainer.appendChild(saveBtn);
+
+    const loadBtn = document.createElement("button");
+    loadBtn.textContent = "Load Campaign";
+    loadBtn.style.cssText = btnStyle.replace("#5a8a5a", "#5a5a8a").replace("rgba(90,138,90", "rgba(90,90,138").replace("#88cc88", "#8888cc");
+    loadBtn.addEventListener("mouseenter", () => { loadBtn.style.background = "rgba(90,90,138,0.35)"; });
+    loadBtn.addEventListener("mouseleave", () => { loadBtn.style.background = "rgba(90,90,138,0.15)"; });
+    loadBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (this.loadCampaign()) {
+        if (this._state) this._state.paused = false;
+        this._hideCampaignPauseMenu();
+        this._updateTopBar();
+      }
+    });
+    if (this.hasSave()) {
+      this._campaignPauseMenuContainer.appendChild(loadBtn);
+    }
+
+    // Load autosave button
+    if (this.hasSave("campaign_autosave")) {
+      const autoLoadBtn = document.createElement("button");
+      autoLoadBtn.textContent = "Load Autosave";
+      autoLoadBtn.style.cssText = btnStyle.replace("#5a8a5a", "#8a5a5a").replace("rgba(90,138,90", "rgba(138,90,90").replace("#88cc88", "#cc8888");
+      autoLoadBtn.addEventListener("mouseenter", () => { autoLoadBtn.style.background = "rgba(138,90,90,0.35)"; });
+      autoLoadBtn.addEventListener("mouseleave", () => { autoLoadBtn.style.background = "rgba(138,90,90,0.15)"; });
+      autoLoadBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (this.loadCampaign("campaign_autosave")) {
+          if (this._state) this._state.paused = false;
+          this._hideCampaignPauseMenu();
+          this._updateTopBar();
+        }
+      });
+      this._campaignPauseMenuContainer.appendChild(autoLoadBtn);
+    }
 
     if (this._container) this._container.appendChild(this._campaignPauseMenuContainer);
   }
@@ -6368,6 +6496,17 @@ export class WarbandCampaign {
     if (Math.random() > 0.6) return; // 60% chance each eligible day
 
     s.lastEventDay = s.day;
+
+    // 40% chance to generate one of the 6 new event types instead
+    if (Math.random() < 0.4) {
+      const newEvt = this._generateNewEventType();
+      if (newEvt) {
+        s.events.push(newEvt);
+        this._showEventPopup(newEvt);
+      }
+      return;
+    }
+
     const eventTypes: CampaignEventType[] = ["bandit_raid", "merchant_festival", "plague", "deserters", "alliance_offer"];
     const type = eventTypes[Math.floor(Math.random() * eventTypes.length)];
     const evtId = `evt_${s.day}_${Math.random().toString(36).slice(2, 6)}`;
@@ -7714,6 +7853,843 @@ export class WarbandCampaign {
     }
 
     window.dispatchEvent(new Event("warbandCampaignExit"));
+  }
+
+  // ===========================================================================
+  // FACTION AI STRATEGY
+  // ===========================================================================
+
+  /**
+   * Run every 7 days. Factions with relations < -50 declare war on each other.
+   * Wars cause factions to marshal armies and siege enemy cities.
+   */
+  private _factionWarCheck(): void {
+    if (!this._state) return;
+    const s = this._state;
+    const factions = this._getNonPlayerFactions();
+
+    for (let i = 0; i < factions.length; i++) {
+      for (let j = i + 1; j < factions.length; j++) {
+        const fA = factions[i];
+        const fB = factions[j];
+        const rel = this._getRelation(fA, fB);
+
+        // Declare war if relations are very hostile and no existing war
+        if (rel < -50) {
+          const existingWar = s.warDeclarations.some(
+            w => (w.aggressor === fA && w.target === fB) || (w.aggressor === fB && w.target === fA),
+          );
+          if (!existingWar) {
+            s.warDeclarations.push({ aggressor: fA, target: fB, day: s.day });
+            const fADef = CAMPAIGN_FACTIONS.find(f => f.id === fA);
+            const fBDef = CAMPAIGN_FACTIONS.find(f => f.id === fB);
+            this._addLog(`WAR! ${fADef?.name ?? fA} declares war on ${fBDef?.name ?? fB}!`);
+            // Worsen relations further
+            this._modRelation(fA, fB, -20);
+          }
+        }
+
+        // Peace if relations improved above -10 during a war
+        if (rel > -10) {
+          const warIdx = s.warDeclarations.findIndex(
+            w => (w.aggressor === fA && w.target === fB) || (w.aggressor === fB && w.target === fA),
+          );
+          if (warIdx >= 0) {
+            s.warDeclarations.splice(warIdx, 1);
+            const fADef = CAMPAIGN_FACTIONS.find(f => f.id === fA);
+            const fBDef = CAMPAIGN_FACTIONS.find(f => f.id === fB);
+            this._addLog(`PEACE! ${fADef?.name ?? fA} and ${fBDef?.name ?? fB} have made peace.`);
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Lords marshal armies and coordinate sieges against enemy cities.
+   * Called every 5 days during the day update.
+   */
+  private _updateFactionStrategy(): void {
+    if (!this._state) return;
+    const s = this._state;
+
+    for (const factionId of this._getNonPlayerFactions()) {
+      const factionCities = s.cities.filter(c => c.factionId === factionId);
+      if (factionCities.length === 0) continue;
+
+      // Find enemy factions this faction is at war with
+      const atWarWith = s.warDeclarations
+        .filter(w => w.aggressor === factionId || w.target === factionId)
+        .map(w => w.aggressor === factionId ? w.target : w.aggressor);
+
+      // Also treat hostile factions as enemies
+      const hostileFactions = this._getNonPlayerFactions().filter(fId => {
+        if (fId === factionId) return false;
+        return this._getRelationStatus(factionId, fId) === "hostile";
+      });
+      const enemies = [...new Set([...atWarWith, ...hostileFactions])];
+      if (enemies.length === 0) continue;
+
+      // Find the weakest enemy city to target
+      let weakestCity: CampaignCity | null = null;
+      let weakestGarrison = Infinity;
+      for (const enemy of enemies) {
+        for (const city of s.cities) {
+          if (city.factionId !== enemy) continue;
+          if (city.garrisonTotal < weakestGarrison) {
+            weakestGarrison = city.garrisonTotal;
+            weakestCity = city;
+          }
+        }
+      }
+
+      if (!weakestCity) continue;
+
+      // Update strategy map
+      const existing = s.factionStrategies.get(factionId);
+      if (!existing || !existing.targetCityId || !s.cities.find(c => c.id === existing.targetCityId && c.factionId !== factionId)) {
+        s.factionStrategies.set(factionId, {
+          targetCityId: weakestCity.id,
+          marshalPartyIds: [],
+          siegeDay: s.day + 5 + Math.floor(Math.random() * 10),
+        });
+      }
+
+      const strategy = s.factionStrategies.get(factionId)!;
+
+      // Marshal lords toward target city
+      const factionLords = s.lords.filter(l => l.factionId === factionId && !l.capturedBy);
+      for (const lord of factionLords) {
+        const party = s.parties.find(p => p.id === lord.partyId);
+        if (!party || party.armyTotal <= 0) continue;
+
+        // Aggressive lords always march to target
+        // Cautious lords only if they have enough troops
+        if (lord.personality === "cautious" && party.armyTotal < 8) continue;
+
+        const targetCity = s.cities.find(c => c.id === strategy.targetCityId);
+        if (targetCity) {
+          party.targetX = targetCity.x + (Math.random() - 0.5) * 40;
+          party.targetY = targetCity.y + (Math.random() - 0.5) * 40;
+          if (!strategy.marshalPartyIds.includes(party.id)) {
+            strategy.marshalPartyIds.push(party.id);
+          }
+        }
+      }
+
+      // Also send non-lord parties toward the target
+      const factionParties = s.parties.filter(p => p.factionId === factionId && !p.isPlayer && !p.lordId);
+      for (const party of factionParties) {
+        if (party.armyTotal < 5) continue;
+        if (Math.random() < 0.4) { // 40% chance to join the siege march
+          const targetCity = s.cities.find(c => c.id === strategy.targetCityId);
+          if (targetCity) {
+            party.targetX = targetCity.x + (Math.random() - 0.5) * 60;
+            party.targetY = targetCity.y + (Math.random() - 0.5) * 60;
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Resolve AI faction sieges when enough forces gather near an enemy city.
+   * Called every tick as part of the existing AI-vs-city collision check.
+   * This enhances the existing `_autoResolveCitySiege` with coordinated multi-army sieges.
+   */
+  private _resolveCoordinatedSiege(): void {
+    if (!this._state) return;
+    const s = this._state;
+
+    for (const [factionId, strategy] of s.factionStrategies) {
+      if (!strategy.targetCityId) continue;
+      const targetCity = s.cities.find(c => c.id === strategy.targetCityId);
+      if (!targetCity || targetCity.factionId === factionId) {
+        // City already captured or doesn't exist; clear strategy
+        strategy.targetCityId = null;
+        strategy.marshalPartyIds = [];
+        continue;
+      }
+
+      // Check if enough forces are near the target city
+      let totalNearby = 0;
+      const nearbyParties: CampaignParty[] = [];
+      for (const party of s.parties) {
+        if (party.factionId !== factionId || party.isPlayer) continue;
+        const dist = Math.hypot(party.x - targetCity.x, party.y - targetCity.y);
+        if (dist < 50) {
+          totalNearby += party.armyTotal;
+          nearbyParties.push(party);
+        }
+      }
+
+      // Need 1.3x garrison to attempt coordinated siege (slightly easier than solo)
+      if (totalNearby >= targetCity.garrisonTotal * 1.3 && nearbyParties.length >= 2) {
+        const oldFaction = targetCity.factionId;
+
+        // Losses proportional to garrison strength
+        const lossRatio = Math.min(0.7, targetCity.garrisonTotal / totalNearby);
+        for (const party of nearbyParties) {
+          for (const slot of party.army) {
+            slot.count = Math.max(1, Math.round(slot.count * (1 - lossRatio)));
+          }
+          party.army = party.army.filter(a => a.count > 0);
+          party.armyTotal = party.army.reduce((sum, a) => sum + a.count, 0);
+        }
+
+        // Capture
+        targetCity.factionId = factionId;
+        targetCity.garrison = _generateGarrison(factionId, 5 + Math.floor(Math.random() * 5));
+        targetCity.garrisonTotal = targetCity.garrison.reduce((sum, g) => sum + g.count, 0);
+
+        // Flip linked villages
+        for (const v of s.villages) {
+          if (v.linkedCityId === targetCity.id) v.factionId = factionId;
+        }
+
+        const fDef = CAMPAIGN_FACTIONS.find(f => f.id === factionId);
+        const oldDef = CAMPAIGN_FACTIONS.find(f => f.id === oldFaction);
+        this._addLog(`COORDINATED SIEGE: ${fDef?.name ?? factionId} captured ${targetCity.name} from ${oldDef?.name ?? oldFaction}!`);
+        this._modRelation(factionId, oldFaction, -40);
+
+        // Clear strategy
+        strategy.targetCityId = null;
+        strategy.marshalPartyIds = [];
+      }
+    }
+  }
+
+  // ===========================================================================
+  // COMPANION DEPTH
+  // ===========================================================================
+
+  /**
+   * Trigger a dialogue from a recruited companion based on the current situation.
+   */
+  private _triggerCompanionDialogue(trigger: CompanionDialogue["trigger"]): void {
+    if (!this._state) return;
+    const s = this._state;
+
+    const recruited = s.companions.filter(c => c.recruited);
+    if (recruited.length === 0) return;
+
+    // Pick one random recruited companion
+    const comp = recruited[Math.floor(Math.random() * recruited.length)];
+    const dialogues = COMPANION_DIALOGUES[comp.class];
+    if (!dialogues) return;
+
+    const matching = dialogues.filter(d => d.trigger === trigger);
+    if (matching.length === 0) return;
+
+    const dialogue = matching[Math.floor(Math.random() * matching.length)];
+    comp.loyalty = Math.max(0, Math.min(100, comp.loyalty + dialogue.loyaltyDelta));
+
+    // Log the dialogue
+    s.companionDialogueLog.push({ day: s.day, companionId: comp.id, text: dialogue.text });
+    // Keep log manageable
+    if (s.companionDialogueLog.length > 50) s.companionDialogueLog.shift();
+
+    this._addLog(`${comp.name}: "${dialogue.text}"`);
+  }
+
+  /**
+   * Check for companion relationship events (rivalries, friendships, mentorships).
+   * Called every 10 days.
+   */
+  private _checkCompanionRelationships(): void {
+    if (!this._state) return;
+    const s = this._state;
+    const recruited = s.companions.filter(c => c.recruited);
+    if (recruited.length < 2) return;
+
+    // Only spawn a new event if we don't have too many active ones
+    const activeEvents = s.companionRelEvents.filter(e => !e.resolved);
+    if (activeEvents.length >= 3) return;
+
+    // Pick two random companions
+    const shuffled = [...recruited].sort(() => Math.random() - 0.5);
+    const compA = shuffled[0];
+    const compB = shuffled[1];
+
+    // Check if they already have a relationship event
+    const existing = s.companionRelEvents.find(
+      e => !e.resolved && ((e.compA === compA.id && e.compB === compB.id) || (e.compA === compB.id && e.compB === compA.id)),
+    );
+    if (existing) return;
+
+    // Determine event type based on personality compatibility
+    const types: CompanionRelationshipEvent["type"][] = ["rivalry", "friendship", "mentorship"];
+    const typeRoll = Math.random();
+    let type: CompanionRelationshipEvent["type"];
+    if (compA.class === compB.class) {
+      type = typeRoll < 0.6 ? "rivalry" : "friendship"; // same class = more rivalry
+    } else if (Math.abs(compA.level - compB.level) >= 3) {
+      type = typeRoll < 0.5 ? "mentorship" : "friendship"; // big level gap = mentorship
+    } else {
+      type = types[Math.floor(Math.random() * types.length)];
+    }
+
+    const descriptions: Record<CompanionRelationshipEvent["type"], string[]> = {
+      rivalry: [
+        `${compA.name} and ${compB.name} are competing for glory — they argue over battle tactics.`,
+        `${compA.name} challenged ${compB.name} to a sparring match. Tensions are high.`,
+      ],
+      friendship: [
+        `${compA.name} and ${compB.name} have bonded over shared campfire stories.`,
+        `${compA.name} saved ${compB.name}'s life in a skirmish — a deep friendship forms.`,
+      ],
+      mentorship: [
+        `${compA.name} has taken ${compB.name} under their wing, teaching them ${compA.class} techniques.`,
+        `${compB.name} looks up to ${compA.name} as a mentor and role model.`,
+      ],
+    };
+
+    const descList = descriptions[type];
+    const description = descList[Math.floor(Math.random() * descList.length)];
+
+    const event: CompanionRelationshipEvent = {
+      id: `rel_${s.day}_${compA.id}_${compB.id}`,
+      compA: compA.id,
+      compB: compB.id,
+      type,
+      description,
+      resolved: false,
+    };
+
+    s.companionRelEvents.push(event);
+    this._addLog(`COMPANIONS: ${description}`);
+
+    // Apply effects
+    if (type === "rivalry") {
+      compA.loyalty = Math.max(0, compA.loyalty - 3);
+      compB.loyalty = Math.max(0, compB.loyalty - 3);
+    } else if (type === "friendship") {
+      compA.loyalty = Math.min(100, compA.loyalty + 5);
+      compB.loyalty = Math.min(100, compB.loyalty + 5);
+    } else if (type === "mentorship") {
+      const mentor = compA.level >= compB.level ? compA : compB;
+      const student = mentor === compA ? compB : compA;
+      student.xp += 20;
+      mentor.loyalty = Math.min(100, mentor.loyalty + 3);
+      student.loyalty = Math.min(100, student.loyalty + 5);
+    }
+  }
+
+  /**
+   * Generate a quest for a companion who doesn't have one.
+   * Called every 15 days.
+   */
+  private _generateCompanionQuests(): void {
+    if (!this._state) return;
+    const s = this._state;
+
+    for (const comp of s.companions) {
+      if (!comp.recruited || comp.quest) continue;
+      if (Math.random() > 0.3) continue; // 30% chance per eligible companion
+
+      const questTypes: CompanionQuest["type"][] = ["kill_lord", "explore_location", "deliver_goods", "defend_city"];
+      const qType = questTypes[Math.floor(Math.random() * questTypes.length)];
+
+      let quest: CompanionQuest | null = null;
+
+      if (qType === "kill_lord") {
+        const enemyLords = s.lords.filter(l => this._getRelationStatus(s.playerFaction, l.factionId) === "hostile" && !l.capturedBy);
+        if (enemyLords.length > 0) {
+          const lord = enemyLords[Math.floor(Math.random() * enemyLords.length)];
+          const lordParty = s.parties.find(p => p.id === lord.partyId);
+          quest = {
+            id: `quest_${s.day}_${comp.id}`,
+            name: `Hunt ${lord.name}`,
+            description: `${comp.name} wants to defeat the enemy lord ${lord.name}.`,
+            targetX: lordParty?.x ?? 400, targetY: lordParty?.y ?? 400,
+            type: qType, targetId: lord.id,
+            completed: false,
+            rewardGold: 200 + lord.level * 50,
+            rewardLoyalty: 15,
+            rewardXp: 40,
+          };
+        }
+      } else if (qType === "explore_location") {
+        const unexplored = s.specialLocations.filter(l => !l.explored);
+        if (unexplored.length > 0) {
+          const loc = unexplored[Math.floor(Math.random() * unexplored.length)];
+          quest = {
+            id: `quest_${s.day}_${comp.id}`,
+            name: `Explore ${loc.name}`,
+            description: `${comp.name} heard rumors about ${loc.name} and wants to investigate.`,
+            targetX: loc.x, targetY: loc.y,
+            type: qType, targetId: loc.id,
+            completed: false,
+            rewardGold: 100 + loc.difficulty * 10,
+            rewardLoyalty: 10,
+            rewardXp: 30,
+          };
+        }
+      } else if (qType === "deliver_goods") {
+        const otherCities = s.cities.filter(c => c.factionId !== s.playerFaction);
+        if (otherCities.length > 0) {
+          const city = otherCities[Math.floor(Math.random() * otherCities.length)];
+          quest = {
+            id: `quest_${s.day}_${comp.id}`,
+            name: `Trade Mission to ${city.name}`,
+            description: `${comp.name} wants to establish trade relations with ${city.name}.`,
+            targetX: city.x, targetY: city.y,
+            type: qType, targetId: city.id,
+            completed: false,
+            rewardGold: 150,
+            rewardLoyalty: 10,
+            rewardXp: 25,
+          };
+        }
+      } else if (qType === "defend_city") {
+        const ownCities = s.cities.filter(c => c.factionId === s.playerFaction);
+        if (ownCities.length > 0) {
+          const city = ownCities[Math.floor(Math.random() * ownCities.length)];
+          quest = {
+            id: `quest_${s.day}_${comp.id}`,
+            name: `Defend ${city.name}`,
+            description: `${comp.name} wants to strengthen the defenses of ${city.name}.`,
+            targetX: city.x, targetY: city.y,
+            type: qType, targetId: city.id,
+            completed: false,
+            rewardGold: 100,
+            rewardLoyalty: 12,
+            rewardXp: 20,
+          };
+        }
+      }
+
+      if (quest) {
+        comp.quest = quest;
+        this._addLog(`QUEST: ${comp.name} — ${quest.name}: ${quest.description}`);
+      }
+    }
+  }
+
+  /**
+   * Check if any companion quests have been completed based on player position / game state.
+   */
+  private _checkCompanionQuests(): void {
+    if (!this._state) return;
+    const s = this._state;
+
+    for (const comp of s.companions) {
+      if (!comp.recruited || !comp.quest || comp.quest.completed) continue;
+      const q = comp.quest;
+
+      let completed = false;
+
+      if (q.type === "explore_location") {
+        const loc = s.specialLocations.find(l => l.id === q.targetId);
+        if (loc?.explored) completed = true;
+      } else if (q.type === "kill_lord") {
+        const lord = s.lords.find(l => l.id === q.targetId);
+        if (lord?.capturedBy) completed = true;
+      } else if (q.type === "deliver_goods" || q.type === "defend_city") {
+        // Complete when player visits the target location
+        const dist = Math.hypot(s.playerParty.x - q.targetX, s.playerParty.y - q.targetY);
+        if (dist < 40) completed = true;
+      }
+
+      if (completed) {
+        q.completed = true;
+        comp.loyalty = Math.min(100, comp.loyalty + q.rewardLoyalty);
+        comp.xp += q.rewardXp;
+        s.gold += q.rewardGold;
+        this._addLog(`QUEST COMPLETE: ${comp.name} — ${q.name}! +${q.rewardGold}g, +${q.rewardLoyalty} loyalty`);
+        this._triggerCompanionDialogue("quest_complete");
+
+        // Level up check
+        if (comp.xp >= comp.level * 50) {
+          comp.xp -= comp.level * 50;
+          comp.level++;
+          this._addLog(`${comp.name} leveled up to level ${comp.level}!`);
+        }
+
+        // Resolve related relationship events
+        for (const relEvt of s.companionRelEvents) {
+          if (!relEvt.resolved && (relEvt.compA === comp.id || relEvt.compB === comp.id)) {
+            relEvt.resolved = true;
+          }
+        }
+
+        // Clear quest so a new one can be generated
+        comp.quest = null;
+      }
+    }
+  }
+
+  // ===========================================================================
+  // DYNAMIC EVENTS (6 new types)
+  // ===========================================================================
+
+  /**
+   * Generate one of the 6 new event types. Called from _checkCampaignEvents.
+   */
+  private _generateNewEventType(): CampaignEvent | null {
+    if (!this._state) return null;
+    const s = this._state;
+    const evtId = `evt_${s.day}_${Math.random().toString(36).slice(2, 6)}`;
+
+    const newTypes: CampaignEventType[] = ["famine", "holy_crusade", "rebellion", "tournament", "dragon_sighting", "eclipse"];
+    const type = newTypes[Math.floor(Math.random() * newTypes.length)];
+
+    if (type === "famine") {
+      const city = s.cities[Math.floor(Math.random() * s.cities.length)];
+      city.foodStock = Math.max(0, city.foodStock - 30);
+      this._addLog(`EVENT: Famine strikes ${city.name}! Food reserves depleted.`);
+      return {
+        id: evtId, type, name: "Famine",
+        description: `A severe famine has hit ${city.name}. Food stocks are depleted and troops grow weak.`,
+        targetCityId: city.id,
+        startDay: s.day, duration: 7, active: true,
+        data: { foodLost: 30 },
+      };
+    }
+
+    if (type === "holy_crusade") {
+      // A faction rallies all its lords for a massive push
+      const factions = this._getNonPlayerFactions();
+      if (factions.length === 0) return null;
+      const crusadeFaction = factions[Math.floor(Math.random() * factions.length)];
+      const fDef = CAMPAIGN_FACTIONS.find(f => f.id === crusadeFaction);
+
+      // Boost all lords of this faction
+      const factionLords = s.lords.filter(l => l.factionId === crusadeFaction && !l.capturedBy);
+      for (const lord of factionLords) {
+        const party = s.parties.find(p => p.id === lord.partyId);
+        if (party) {
+          // Reinforce with extra troops
+          const bonus = 3 + Math.floor(Math.random() * 5);
+          const pool = CAMPAIGN_UNITS.filter(u => u.tier <= 3);
+          const unit = pool[Math.floor(Math.random() * pool.length)];
+          const existing = party.army.find(a => a.unitId === unit.id);
+          if (existing) existing.count += bonus;
+          else party.army.push({ unitId: unit.id, count: bonus, xp: 0 });
+          party.armyTotal += bonus;
+        }
+      }
+
+      this._addLog(`EVENT: ${fDef?.name ?? crusadeFaction} declares a Holy Crusade! Their armies swell with zealots.`);
+      return {
+        id: evtId, type, name: "Holy Crusade",
+        description: `${fDef?.name ?? crusadeFaction} has rallied under a holy banner! All their lords receive reinforcements.`,
+        startDay: s.day, duration: 10, active: true,
+        data: { factionId: crusadeFaction },
+      };
+    }
+
+    if (type === "rebellion") {
+      // A random city rebels and becomes neutral/hostile to its owner
+      const eligibleCities = s.cities.filter(c => c.garrisonTotal >= 5);
+      if (eligibleCities.length === 0) return null;
+      const city = eligibleCities[Math.floor(Math.random() * eligibleCities.length)];
+      const oldFaction = city.factionId;
+
+      // Reduce garrison (rebels leave)
+      const rebelCount = Math.ceil(city.garrisonTotal * 0.4);
+      let remaining = rebelCount;
+      for (const slot of city.garrison) {
+        const lose = Math.min(slot.count, Math.ceil(remaining * 0.5));
+        slot.count -= lose;
+        remaining -= lose;
+      }
+      city.garrison = city.garrison.filter(g => g.count > 0);
+      city.garrisonTotal = city.garrison.reduce((sum, g) => sum + g.count, 0);
+
+      // Spawn a rebel party
+      const rebelArmy = _generateGarrison(oldFaction, rebelCount);
+      s.parties.push({
+        id: `rebel_${evtId}`, name: `${city.name} Rebels`,
+        x: city.x + (Math.random() - 0.5) * 60, y: city.y + (Math.random() - 0.5) * 60,
+        factionId: oldFaction, // Same faction but hostile behavior
+        army: rebelArmy, armyTotal: rebelCount,
+        targetX: city.x, targetY: city.y,
+        isPlayer: false, speed: AI_SPEED * 0.8,
+      });
+
+      this._addLog(`EVENT: Rebellion in ${city.name}! Garrison troops have defected!`);
+      return {
+        id: evtId, type, name: "Rebellion",
+        description: `Citizens of ${city.name} have rebelled! ${rebelCount} garrison troops defected.`,
+        targetCityId: city.id,
+        startDay: s.day, duration: 5, active: true,
+        data: { cityId: city.id, rebelCount },
+      };
+    }
+
+    if (type === "tournament") {
+      const playerCities = s.cities.filter(c => c.factionId === s.playerFaction);
+      const city = playerCities.length > 0
+        ? playerCities[Math.floor(Math.random() * playerCities.length)]
+        : s.cities[Math.floor(Math.random() * s.cities.length)];
+
+      const prizeGold = 200 + Math.floor(Math.random() * 300);
+      this._addLog(`EVENT: Grand Tournament at ${city.name}! Travel there within 5 days for a chance to win ${prizeGold}g!`);
+
+      return {
+        id: evtId, type, name: "Grand Tournament",
+        description: `A grand tournament is being held at ${city.name}. Prizes for the victor!`,
+        targetCityId: city.id,
+        startDay: s.day, duration: 5, active: true,
+        data: { prizeGold, claimed: false },
+      };
+    }
+
+    if (type === "dragon_sighting") {
+      const x = 100 + Math.random() * (MAP_W - 200);
+      const y = 100 + Math.random() * (MAP_H - 200);
+
+      // The dragon damages nearby parties/cities
+      for (const city of s.cities) {
+        if (Math.hypot(city.x - x, city.y - y) < 100) {
+          const loss = Math.ceil(city.garrisonTotal * 0.15);
+          let rem = loss;
+          for (const slot of city.garrison) {
+            const lose = Math.min(slot.count, Math.ceil(rem * 0.5));
+            slot.count -= lose;
+            rem -= lose;
+          }
+          city.garrison = city.garrison.filter(g => g.count > 0);
+          city.garrisonTotal = city.garrison.reduce((sum, g) => sum + g.count, 0);
+          this._addLog(`A dragon ravages the outskirts of ${city.name}! ${loss} garrison troops lost.`);
+        }
+      }
+
+      this._addLog(`EVENT: A dragon has been sighted! Beware the skies!`);
+      return {
+        id: evtId, type, name: "Dragon Sighting",
+        description: "A fearsome dragon terrorizes the countryside, damaging nearby settlements.",
+        mapX: x, mapY: y,
+        startDay: s.day, duration: 3, active: true,
+      };
+    }
+
+    if (type === "eclipse") {
+      // Eclipse: morale drops for everyone, but companion mages get a power boost
+      s.campaignMorale = Math.max(0, s.campaignMorale - 10);
+      const mageCompanions = s.companions.filter(c => c.recruited && c.class === "mage");
+      for (const mage of mageCompanions) {
+        mage.xp += 30;
+        this._addLog(`${mage.name} draws power from the eclipse! +30 XP`);
+      }
+
+      this._addLog(`EVENT: A solar eclipse darkens the land! Morale drops, but arcane power surges.`);
+      return {
+        id: evtId, type, name: "Solar Eclipse",
+        description: "A solar eclipse plunges the land into darkness. Morale suffers, but mages grow stronger.",
+        startDay: s.day, duration: 2, active: true,
+      };
+    }
+
+    return null;
+  }
+
+  /**
+   * Handle event interactions — player entering event zones.
+   */
+  private _checkEventInteractions(): void {
+    if (!this._state) return;
+    const s = this._state;
+
+    for (const evt of s.events) {
+      if (!evt.active) continue;
+
+      // Tournament: player arrives at the city
+      if (evt.type === "tournament" && evt.targetCityId && evt.data && !evt.data["claimed"]) {
+        const city = s.cities.find(c => c.id === evt.targetCityId);
+        if (city) {
+          const dist = Math.hypot(s.playerParty.x - city.x, s.playerParty.y - city.y);
+          if (dist < 30) {
+            const prizeGold = (evt.data["prizeGold"] as number) ?? 200;
+            // 50% chance to win the tournament
+            if (Math.random() < 0.5) {
+              s.gold += prizeGold;
+              s.heroXp += 20;
+              this._addLog(`You won the tournament at ${city.name}! +${prizeGold}g, +20 XP`);
+              s.campaignMorale = Math.min(100, s.campaignMorale + 10);
+            } else {
+              s.heroXp += 10;
+              this._addLog(`You participated in the tournament at ${city.name} but didn't win. +10 XP`);
+              s.campaignMorale = Math.min(100, s.campaignMorale + 3);
+            }
+            evt.data["claimed"] = true;
+          }
+        }
+      }
+
+      // Famine: ongoing food drain for affected city
+      if (evt.type === "famine" && evt.targetCityId) {
+        const city = s.cities.find(c => c.id === evt.targetCityId);
+        if (city && s.tick % DAY_TICKS === 0) {
+          city.foodStock = Math.max(0, city.foodStock - 5);
+          // Garrison desertion during famine
+          if (city.garrisonTotal > 3 && Math.random() < 0.2) {
+            const idx = Math.floor(Math.random() * city.garrison.length);
+            if (city.garrison[idx]) {
+              city.garrison[idx].count = Math.max(0, city.garrison[idx].count - 1);
+              city.garrisonTotal--;
+              city.garrison = city.garrison.filter(g => g.count > 0);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // ===========================================================================
+  // SAVE / LOAD PERSISTENCE
+  // ===========================================================================
+
+  /**
+   * Serialize the campaign state to a JSON string.
+   * Handles Map and Set types that don't serialize by default.
+   */
+  private _serializeState(): string {
+    if (!this._state) return "{}";
+    const s = this._state;
+
+    // Convert Maps and Sets to serializable forms
+    const factionRelationsArr: { key: string; entries: [string, number][] }[] = [];
+    for (const [fId, innerMap] of s.factionRelations) {
+      factionRelationsArr.push({ key: fId, entries: Array.from(innerMap.entries()) });
+    }
+
+    const factionStrategiesArr: { key: string; value: { targetCityId: string | null; marshalPartyIds: string[]; siegeDay: number } }[] = [];
+    for (const [fId, strat] of s.factionStrategies) {
+      factionStrategiesArr.push({ key: fId, value: strat });
+    }
+
+    const fogRevealedArr = Array.from(s.fogRevealed);
+
+    // Create a plain object copy
+    const serializable = {
+      ...s,
+      factionRelations: factionRelationsArr,
+      factionStrategies: factionStrategiesArr,
+      fogRevealed: fogRevealedArr,
+    };
+
+    return JSON.stringify(serializable);
+  }
+
+  /**
+   * Deserialize a JSON string back into a CampaignState.
+   */
+  private _deserializeState(json: string): CampaignState | null {
+    try {
+      const raw = JSON.parse(json);
+
+      // Restore factionRelations Map
+      const factionRelations = new Map<string, Map<string, number>>();
+      if (Array.isArray(raw.factionRelations)) {
+        for (const entry of raw.factionRelations) {
+          factionRelations.set(entry.key, new Map(entry.entries));
+        }
+      }
+
+      // Restore factionStrategies Map
+      const factionStrategies = new Map<string, { targetCityId: string | null; marshalPartyIds: string[]; siegeDay: number }>();
+      if (Array.isArray(raw.factionStrategies)) {
+        for (const entry of raw.factionStrategies) {
+          factionStrategies.set(entry.key, entry.value);
+        }
+      }
+
+      // Restore fogRevealed Set
+      const fogRevealed = new Set<number>(Array.isArray(raw.fogRevealed) ? raw.fogRevealed : []);
+
+      // Default new fields if loading old saves
+      const state: CampaignState = {
+        ...raw,
+        factionRelations,
+        factionStrategies,
+        fogRevealed,
+        companionRelEvents: raw.companionRelEvents ?? [],
+        companionDialogueLog: raw.companionDialogueLog ?? [],
+        lastSaveDay: raw.lastSaveDay ?? 0,
+      };
+
+      return state;
+    } catch (e) {
+      console.error("Failed to deserialize campaign state:", e);
+      return null;
+    }
+  }
+
+  /**
+   * Save the campaign to localStorage.
+   */
+  saveCampaign(slot = "campaign_save_1"): boolean {
+    if (!this._state) return false;
+    try {
+      const data = this._serializeState();
+      localStorage.setItem(slot, data);
+      this._state.lastSaveDay = this._state.day;
+      this._addLog(`Campaign saved on Day ${this._state.day}.`);
+      return true;
+    } catch (e) {
+      console.error("Save failed:", e);
+      this._addLog("ERROR: Failed to save campaign!");
+      return false;
+    }
+  }
+
+  /**
+   * Load a campaign from localStorage.
+   */
+  loadCampaign(slot = "campaign_save_1"): boolean {
+    try {
+      const data = localStorage.getItem(slot);
+      if (!data) {
+        this._addLog("No save data found.");
+        return false;
+      }
+      const state = this._deserializeState(data);
+      if (!state) {
+        this._addLog("ERROR: Save data is corrupted!");
+        return false;
+      }
+      this._state = state;
+      this._addLog(`Campaign loaded! Day ${state.day}.`);
+
+      // Rebake ground texture
+      if (this._state.terrain) {
+        this._groundTexture = _bakeGroundTexture(this._state.terrain, this._state.cities);
+      }
+
+      this._render();
+      this._updateTopBar();
+      this._updateLogPanel();
+      return true;
+    } catch (e) {
+      console.error("Load failed:", e);
+      return false;
+    }
+  }
+
+  /**
+   * Check if a save exists in the given slot.
+   */
+  hasSave(slot = "campaign_save_1"): boolean {
+    return !!localStorage.getItem(slot);
+  }
+
+  /**
+   * Delete a save from localStorage.
+   */
+  deleteSave(slot = "campaign_save_1"): void {
+    localStorage.removeItem(slot);
+  }
+
+  /**
+   * Auto-save every 10 days.
+   */
+  private _autoSave(): void {
+    if (!this._state) return;
+    if (this._state.day - this._state.lastSaveDay >= 10) {
+      this.saveCampaign("campaign_autosave");
+    }
   }
 
   destroy(): void {

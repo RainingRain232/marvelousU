@@ -11,6 +11,7 @@ import {
   type GBMatchState, type GBPlayer, type Vec3,
   v3, v3Dist3D, v3Sub, v3Normalize, v3Len,
   getFatigueAccuracyMultiplier,
+  getWeatherWindForce, getWeatherBallFriction,
 } from "./GrailBallState";
 
 // ---------------------------------------------------------------------------
@@ -32,6 +33,20 @@ export function tickOrbPhysics(state: GBMatchState, dt: number): void {
 
   // Gravity
   orb.vel.y += GB_PHYSICS.GRAVITY * dt;
+
+  // Weather: apply wind force to ball in flight
+  const wind = getWeatherWindForce(state);
+  if (wind.x !== 0 || wind.z !== 0) {
+    orb.vel.x += wind.x * dt;
+    orb.vel.z += wind.z * dt;
+  }
+
+  // Weather: random trajectory drift (rain/storm make ball unpredictable)
+  const drift = state.weatherEffect.ballTrajectoryDrift;
+  if (drift > 0 && orb.inFlight) {
+    orb.vel.x += (Math.random() - 0.5) * drift * dt * 60;
+    orb.vel.z += (Math.random() - 0.5) * drift * dt * 60;
+  }
 
   // Air drag
   const drag = GB_PHYSICS.ORB_DRAG;
@@ -71,8 +86,9 @@ export function tickOrbPhysics(state: GBMatchState, dt: number): void {
   orb.pos.y += orb.vel.y * dt;
   orb.pos.z += orb.vel.z * dt;
 
-  // Surface friction (get friction for current surface type)
-  const friction = SURFACE_FRICTION[orb.surfaceType] ?? GB_PHYSICS.ORB_SURFACE_FRICTION;
+  // Surface friction (get friction for current surface type, modified by weather)
+  const weatherFrictionMult = getWeatherBallFriction(state);
+  const friction = (SURFACE_FRICTION[orb.surfaceType] ?? GB_PHYSICS.ORB_SURFACE_FRICTION) * weatherFrictionMult;
 
   // Ground bounce with enhanced physics
   if (orb.pos.y < GB_PHYSICS.ORB_RADIUS) {

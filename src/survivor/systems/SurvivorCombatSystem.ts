@@ -6,6 +6,9 @@ import { SurvivorBalance } from "../config/SurvivorBalanceConfig";
 import { WEAPON_DEFS, EVOLUTION_DEFS, SurvivorWeaponId } from "../config/SurvivorWeaponDefs";
 import { ELITE_DEFS } from "../config/SurvivorEliteDefs";
 import { SYNERGY_DEFS } from "../config/SurvivorSynergyDefs";
+import { SurvivorChallengeSystem } from "./SurvivorChallengeSystem";
+import { SurvivorFusionSystem } from "./SurvivorFusionSystem";
+import { SurvivorBiomeSystem } from "./SurvivorBiomeSystem";
 import type {
   SurvivorState,
   SurvivorEnemy,

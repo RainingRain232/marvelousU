@@ -344,6 +344,132 @@ export interface SubclassSkillNode {
 }
 
 // ---------------------------------------------------------------------------
+// Branching Paths
+// ---------------------------------------------------------------------------
+
+export enum DragoonPathId {
+  MOUNTAIN_PASS = "mountain_pass",
+  FOREST_CANYON = "forest_canyon",
+  DARK_FORTRESS = "dark_fortress",
+  COASTAL_CLIFFS = "coastal_cliffs",
+  VOLCANIC_RIDGE = "volcanic_ridge",
+  FROZEN_WASTES = "frozen_wastes",
+  SHADOW_REALM = "shadow_realm",
+  CELESTIAL_HEIGHTS = "celestial_heights",
+}
+
+export interface DragoonForkChoice {
+  pathId: DragoonPathId;
+  label: string;
+  description: string;
+  color: number;
+  enemyPool: DragoonEnemyType[];
+  bossType: DragoonEnemyType | null;
+  difficultyMod: number;         // multiplier on enemy HP/damage for this path
+  bonusScoreMult: number;        // extra score multiplier for harder path
+}
+
+export interface DragoonForkPoint {
+  afterWave: number;             // fork appears after this wave completes
+  choices: [DragoonForkChoice, DragoonForkChoice];
+}
+
+export interface DragoonBranchState {
+  forkActive: boolean;           // is the player currently choosing a fork
+  currentFork: DragoonForkPoint | null;
+  chosenPath: DragoonPathId | null;
+  pathHistory: DragoonPathId[];  // history of chosen paths this run
+  pathDifficultyMod: number;     // current path's difficulty modifier
+  pathScoreMult: number;         // current path's score bonus
+  pathEnemyPool: DragoonEnemyType[] | null; // overrides wave enemy pool when set
+  pathBoss: DragoonEnemyType | null;        // overrides boss for next boss wave
+}
+
+// ---------------------------------------------------------------------------
+// Dragon Evolution
+// ---------------------------------------------------------------------------
+
+export enum DragonEvolutionStage {
+  HATCHLING = "hatchling",
+  FLEDGLING = "fledgling",
+  DRAKE = "drake",
+  WYRM = "wyrm",
+  ELDER_DRAGON = "elder_dragon",
+  ANCIENT_WYRM = "ancient_wyrm",
+}
+
+export interface DragonEvolutionDef {
+  stage: DragonEvolutionStage;
+  name: string;
+  description: string;
+  upgradeThreshold: number;       // total upgrade points (kills/score milestone) to reach this stage
+  wingSpan: number;               // visual wing size multiplier
+  bodyScale: number;              // body size multiplier
+  armorPlates: number;            // number of armor plate segments to render
+  color: number;                  // primary body color
+  glowColor: number;              // aura glow color
+  trailEffect: string;            // visual trail type
+  statBonus: { hpMult: number; damageMult: number; speedMult: number };
+}
+
+export interface DragonEvolutionState {
+  currentStage: DragonEvolutionStage;
+  evolutionPoints: number;        // accumulated from kills and score milestones
+  stageIndex: number;             // index into evolution stages array
+  transitionTimer: number;        // visual transition animation timer (>0 = transitioning)
+}
+
+// ---------------------------------------------------------------------------
+// Score Attack Mode
+// ---------------------------------------------------------------------------
+
+export interface ScoreAttackState {
+  enabled: boolean;               // true when playing score attack mode
+  chainMultiplier: number;        // current combo chain multiplier (1.0x base)
+  chainDecayTimer: number;        // time remaining before multiplier decays
+  chainDecayRate: number;         // how fast the multiplier decays per second
+  maxChainMultiplier: number;     // highest multiplier reached this run
+  consecutiveHits: number;        // hits without missing
+  missTimer: number;              // grace period after last shot before "miss" registered
+  highScores: number[];           // top 10 scores for score attack mode
+  totalBonusScore: number;        // bonus score earned from multiplier chains
+  perfectWaves: number;           // waves completed without taking damage
+  currentWaveDamageTaken: boolean; // has the player taken damage this wave
+}
+
+// ---------------------------------------------------------------------------
+// Environmental Destruction
+// ---------------------------------------------------------------------------
+
+export enum DestructibleType {
+  BRIDGE = "bridge",
+  TOWER = "tower",
+  TREE = "tree",
+  WALL = "wall",
+  BOULDER = "boulder",
+  WATCHTOWER = "watchtower",
+}
+
+export interface DragoonDestructible {
+  id: number;
+  type: DestructibleType;
+  position: Vec2;
+  hp: number;
+  maxHp: number;
+  width: number;                  // collision/visual width
+  height: number;                 // collision/visual height
+  color: number;
+  destroyed: boolean;
+  collapseTimer: number;          // >0 means collapsing animation active
+  collapseDuration: number;       // total collapse animation duration
+  areaDamage: number;             // damage dealt to enemies in collapse zone
+  areaDamageRadius: number;       // radius of collapse damage
+  hitTimer: number;               // flash timer when hit
+  scoreValue: number;             // score granted on destruction
+  debrisCount: number;            // number of debris particles on collapse
+}
+
+// ---------------------------------------------------------------------------
 // Pickups
 // ---------------------------------------------------------------------------
 
@@ -541,6 +667,18 @@ export interface DragoonState {
 
   // Leaderboard
   leaderboard: LeaderboardEntry[];
+
+  // Branching paths
+  branchState: DragoonBranchState;
+
+  // Dragon evolution
+  evolutionState: DragonEvolutionState;
+
+  // Score attack mode
+  scoreAttack: ScoreAttackState;
+
+  // Environmental destruction
+  destructibles: DragoonDestructible[];
 }
 
 // ---------------------------------------------------------------------------
@@ -791,5 +929,43 @@ export function createDragoonState(screenW: number, screenH: number, difficulty:
     equippedSkin: DragonSkinId.DEFAULT,
 
     leaderboard: meta.leaderboard,
+
+    // Branching paths
+    branchState: {
+      forkActive: false,
+      currentFork: null,
+      chosenPath: null,
+      pathHistory: [],
+      pathDifficultyMod: 1,
+      pathScoreMult: 1,
+      pathEnemyPool: null,
+      pathBoss: null,
+    },
+
+    // Dragon evolution
+    evolutionState: {
+      currentStage: DragonEvolutionStage.HATCHLING,
+      evolutionPoints: 0,
+      stageIndex: 0,
+      transitionTimer: 0,
+    },
+
+    // Score attack mode
+    scoreAttack: {
+      enabled: false,
+      chainMultiplier: 1,
+      chainDecayTimer: 0,
+      chainDecayRate: 0.5,
+      maxChainMultiplier: 1,
+      consecutiveHits: 0,
+      missTimer: 0,
+      highScores: [],
+      totalBonusScore: 0,
+      perfectWaves: 0,
+      currentWaveDamageTaken: false,
+    },
+
+    // Environmental destruction
+    destructibles: [],
   };
 }

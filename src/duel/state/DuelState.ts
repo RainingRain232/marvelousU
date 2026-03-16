@@ -4,6 +4,13 @@
 
 import { AttackHeight, DuelFighterState, DuelPhase } from "../../types";
 import { DuelBalance } from "../config/DuelBalanceConfig";
+import type { DuelAssistState } from "../systems/DuelAssistSystem";
+import { createAssistState } from "../systems/DuelAssistSystem";
+import type { DuelDramaticFinisherState } from "../systems/DuelDramaticFinisher";
+import type { DuelComboChallengeState } from "../systems/DuelComboChallengeSystem";
+import { createComboChallengeState } from "../systems/DuelComboChallengeSystem";
+import type { DuelRankedState } from "../config/DuelRankedConfig";
+import { createDuelRankedState } from "../config/DuelRankedConfig";
 
 // ---- Hitbox ----------------------------------------------------------------
 
@@ -168,7 +175,7 @@ export interface DuelRound {
 
 // ---- Top-level state -------------------------------------------------------
 
-export type DuelGameMode = "vs_cpu" | "vs_mode" | "arcade" | "training" | "wave";
+export type DuelGameMode = "vs_cpu" | "vs_mode" | "arcade" | "training" | "wave" | "combo_challenge";
 
 export type TrainingDummyMode = "stand" | "crouch" | "jump" | "cpu";
 
@@ -210,6 +217,22 @@ export interface DuelState {
     bestWaveReached: number;
     totalKOs: number;
   };
+  // Assist system
+  assistState: DuelAssistState | null;
+  // Dramatic finisher
+  dramaticFinisher: DuelDramaticFinisherState | null;
+  // Combo challenge mode
+  comboChallengeState: DuelComboChallengeState | null;
+  // Ranked progression
+  rankedState: DuelRankedState;
+  // Training mode: frame data overlay toggle
+  trainingShowFrameData: boolean;
+  // Training mode: hitbox overlay toggle
+  trainingShowHitboxes: boolean;
+  // Arcade mode: opponents defeated count
+  arcadeProgress: number;
+  // Arcade mode: total opponents
+  arcadeTotal: number;
 }
 
 // ---- Factory ---------------------------------------------------------------
@@ -324,5 +347,19 @@ export function createDuelState(
       bestWaveReached: 1,
       totalKOs: 0,
     },
+    // Assist system
+    assistState: null,
+    // Dramatic finisher
+    dramaticFinisher: null,
+    // Combo challenge
+    comboChallengeState: null,
+    // Ranked
+    rankedState: createDuelRankedState(),
+    // Training overlays
+    trainingShowFrameData: true,
+    trainingShowHitboxes: true,
+    // Arcade progress
+    arcadeProgress: 0,
+    arcadeTotal: 0,
   };
 }

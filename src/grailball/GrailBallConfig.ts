@@ -497,6 +497,238 @@ export const GB_POWERUP_POSITIONS = [
 ];
 
 // ---------------------------------------------------------------------------
+// Position-based ability definitions
+// Each position (role) in a formation has a unique special ability
+// that maps 1:1 with the class-based abilities but is activated
+// differently depending on where the player is fielded.
+// ---------------------------------------------------------------------------
+export enum GBPosition {
+  GOALKEEPER = "goalkeeper",
+  DEFENDER = "defender",
+  MIDFIELDER = "midfielder",
+  STRIKER = "striker",
+}
+
+/** Map formation slot index to a positional role */
+export function getPositionForSlot(slotIndex: number): GBPosition {
+  // Slot 0 = gatekeeper (goalkeeper)
+  // Slots 1-2 = knights (defenders)
+  // Slots 3-4 = rogues (midfielders)
+  // Slots 5-6 = mages (strikers)
+  if (slotIndex === 0) return GBPosition.GOALKEEPER;
+  if (slotIndex <= 2) return GBPosition.DEFENDER;
+  if (slotIndex <= 4) return GBPosition.MIDFIELDER;
+  return GBPosition.STRIKER;
+}
+
+export interface GBPositionAbilityDef {
+  name: string;
+  cooldown: number;
+  staminaCost: number;
+  duration: number;
+  description: string;
+}
+
+/** Position-specific abilities that augment class abilities */
+export const GB_POSITION_ABILITIES: Record<GBPosition, GBPositionAbilityDef> = {
+  [GBPosition.GOALKEEPER]: {
+    name: "Miraculous Save",
+    cooldown: 20,
+    staminaCost: 25,
+    duration: 0,
+    description: "Leap in any direction to make an impossible save, expanding catch radius by 200%.",
+  },
+  [GBPosition.DEFENDER]: {
+    name: "Iron Wall",
+    cooldown: 14,
+    staminaCost: 20,
+    duration: 2.5,
+    description: "Become immovable for 2.5s, blocking any opponent trying to pass through.",
+  },
+  [GBPosition.MIDFIELDER]: {
+    name: "Long Pass",
+    cooldown: 10,
+    staminaCost: 15,
+    duration: 0,
+    description: "Launch a perfectly accurate cross-field pass with enhanced speed and zero scatter.",
+  },
+  [GBPosition.STRIKER]: {
+    name: "Speed Burst",
+    cooldown: 12,
+    staminaCost: 20,
+    duration: 2.0,
+    description: "Gain a massive speed boost for 2 seconds, outrunning any defender.",
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Weather system types and effects
+// ---------------------------------------------------------------------------
+export enum GBWeatherType {
+  CLEAR = "clear",
+  RAIN = "rain",
+  SNOW = "snow",
+  WIND = "wind",
+  FOG = "fog",
+  STORM = "storm",
+}
+
+export interface GBWeatherEffect {
+  name: string;
+  description: string;
+  ballFrictionMult: number;       // 1.0 = normal; <1 = slippery
+  playerSpeedMult: number;        // 1.0 = normal; <1 = slower
+  ballTrajectoryDrift: number;    // 0 = none; higher = more random drift
+  passAccuracyMult: number;       // 1.0 = normal; <1 = less accurate
+  shotPowerMult: number;          // 1.0 = normal; can buff or nerf
+  staminaDrainMult: number;       // 1.0 = normal; >1 = faster fatigue
+  visibilityRange: number;        // 0 = full visibility; >0 = reduced (fog/storm)
+  windForce: { x: number; z: number }; // constant wind vector applied to ball
+}
+
+export const GB_WEATHER_EFFECTS: Record<GBWeatherType, GBWeatherEffect> = {
+  [GBWeatherType.CLEAR]: {
+    name: "Clear Skies",
+    description: "Perfect conditions for Grail Ball.",
+    ballFrictionMult: 1.0,
+    playerSpeedMult: 1.0,
+    ballTrajectoryDrift: 0,
+    passAccuracyMult: 1.0,
+    shotPowerMult: 1.0,
+    staminaDrainMult: 1.0,
+    visibilityRange: 0,
+    windForce: { x: 0, z: 0 },
+  },
+  [GBWeatherType.RAIN]: {
+    name: "Torrential Rain",
+    description: "The Orb is slippery! Passes are harder to control and the pitch is treacherous.",
+    ballFrictionMult: 0.75,
+    playerSpeedMult: 0.92,
+    ballTrajectoryDrift: 0.06,
+    passAccuracyMult: 0.78,
+    shotPowerMult: 0.95,
+    staminaDrainMult: 1.15,
+    visibilityRange: 0.15,
+    windForce: { x: 0, z: 0 },
+  },
+  [GBWeatherType.SNOW]: {
+    name: "Enchanted Snowfall",
+    description: "Snow blankets the field. Players are slower and stamina drains faster.",
+    ballFrictionMult: 0.85,
+    playerSpeedMult: 0.80,
+    ballTrajectoryDrift: 0.03,
+    passAccuracyMult: 0.90,
+    shotPowerMult: 0.90,
+    staminaDrainMult: 1.30,
+    visibilityRange: 0.10,
+    windForce: { x: 0, z: 0 },
+  },
+  [GBWeatherType.WIND]: {
+    name: "Howling Gale",
+    description: "Strong winds push the Orb off course. Passes drift and shots curve unpredictably.",
+    ballFrictionMult: 1.0,
+    playerSpeedMult: 0.95,
+    ballTrajectoryDrift: 0.12,
+    passAccuracyMult: 0.82,
+    shotPowerMult: 1.05,
+    staminaDrainMult: 1.10,
+    visibilityRange: 0,
+    windForce: { x: 3.5, z: 1.5 },
+  },
+  [GBWeatherType.FOG]: {
+    name: "Mystic Fog",
+    description: "Thick fog cloaks the field. Visibility is severely reduced.",
+    ballFrictionMult: 0.95,
+    playerSpeedMult: 0.96,
+    ballTrajectoryDrift: 0.02,
+    passAccuracyMult: 0.85,
+    shotPowerMult: 1.0,
+    staminaDrainMult: 1.0,
+    visibilityRange: 0.4,
+    windForce: { x: 0, z: 0 },
+  },
+  [GBWeatherType.STORM]: {
+    name: "Thunderstorm",
+    description: "Lightning and rain lash the field! All conditions deteriorate. Magic is unstable.",
+    ballFrictionMult: 0.70,
+    playerSpeedMult: 0.85,
+    ballTrajectoryDrift: 0.10,
+    passAccuracyMult: 0.70,
+    shotPowerMult: 1.10,
+    staminaDrainMult: 1.35,
+    visibilityRange: 0.25,
+    windForce: { x: 2.0, z: -1.5 },
+  },
+};
+
+/** Weighted random weather selection */
+const GB_WEATHER_WEIGHTS: [GBWeatherType, number][] = [
+  [GBWeatherType.CLEAR, 40],
+  [GBWeatherType.RAIN, 20],
+  [GBWeatherType.SNOW, 8],
+  [GBWeatherType.WIND, 15],
+  [GBWeatherType.FOG, 10],
+  [GBWeatherType.STORM, 7],
+];
+
+export function randomGBWeather(): GBWeatherType {
+  const total = GB_WEATHER_WEIGHTS.reduce((s, w) => s + w[1], 0);
+  let r = Math.random() * total;
+  for (const [w, weight] of GB_WEATHER_WEIGHTS) {
+    r -= weight;
+    if (r <= 0) return w;
+  }
+  return GBWeatherType.CLEAR;
+}
+
+// ---------------------------------------------------------------------------
+// Local multiplayer input mapping
+// ---------------------------------------------------------------------------
+export interface GBInputMapping {
+  up: string;
+  down: string;
+  left: string;
+  right: string;
+  pass: string;        // tap = pass, hold = shoot
+  tackle: string;      // tackle / ability
+  switchPlayer: string;
+  lobPass: string;
+  callForPass: string;
+  replay: string;
+  positionAbility: string; // trigger position-based ability
+}
+
+/** Player 1 default inputs (arrows + standard keys) */
+export const GB_INPUT_P1: GBInputMapping = {
+  up: "ArrowUp",
+  down: "ArrowDown",
+  left: "ArrowLeft",
+  right: "ArrowRight",
+  pass: "Numpad0",
+  tackle: "NumpadDecimal",
+  switchPlayer: "Numpad1",
+  lobPass: "Numpad2",
+  callForPass: "Numpad3",
+  replay: "KeyR",
+  positionAbility: "Numpad5",
+};
+
+/** Player 2 inputs (WASD + nearby keys) */
+export const GB_INPUT_P2: GBInputMapping = {
+  up: "KeyW",
+  down: "KeyS",
+  left: "KeyA",
+  right: "KeyD",
+  pass: "Space",
+  tackle: "ShiftLeft",
+  switchPlayer: "Tab",
+  lobPass: "KeyE",
+  callForPass: "KeyQ",
+  replay: "KeyR",
+  positionAbility: "KeyF",
+};
+
+// ---------------------------------------------------------------------------
 // Camera defaults
 // ---------------------------------------------------------------------------
 export const GB_CAMERA = {
