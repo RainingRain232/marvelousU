@@ -676,6 +676,8 @@ export enum GameMode {
   GRAIL_BALL = "grail_ball",
   GRAIL_MANAGER = "grail_manager",
   ARTHURIAN_RPG = "arthurian_rpg",
+  RIFT_WIZARD = "rift_wizard",
+  SETTLERS = "settlers",
 }
 
 // ---------------------------------------------------------------------------

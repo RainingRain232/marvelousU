@@ -300,6 +300,18 @@ const GAME_MODES: GameModeEntry[] = [
     desc: "Skyrim-style 3D RPG — the Quest for the Holy Grail",
     skipSetup: true,
   },
+  {
+    mode: GameMode.RIFT_WIZARD,
+    label: "RIFT WIZARD",
+    desc: "Turn-based tactical roguelike — 25 levels of spell mastery",
+    skipSetup: true,
+  },
+  {
+    mode: GameMode.SETTLERS,
+    label: "SETTLERS",
+    desc: "3D Settlers II — roads, carriers & production chains",
+    skipSetup: true,
+  },
 ];
 
 // ---------------------------------------------------------------------------

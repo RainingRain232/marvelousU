@@ -132,9 +132,11 @@ import { MedievalGTA3DGame } from "./medievalgta3d/MedievalGTA3DGame";
 import { DiabloGame } from "./diablo/DiabloGame";
 import { MageWarsGame } from "./magewars/MageWarsGame";
 import { GameGame } from "./game/GameGame";
+import { RiftWizardGame } from "./riftwizard/RiftWizardGame";
 import { GrailBallGame } from "./grailball/GrailBallGame";
 import { GrailManagerGame } from "./grailmanager/GrailManagerGame";
 import { ArthurianRPGGame } from "./arthurianrpg/ArthurianRPGGame";
+import { SettlersGame } from "./settlers/SettlersGame";
 import { camelotHubScreen } from "@view/ui/CamelotHubScreen";
 
 // World mode imports
@@ -327,6 +329,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     [GameMode.GRAIL_BALL]: 20,
     [GameMode.GRAIL_MANAGER]: 21,
     [GameMode.ARTHURIAN_RPG]: 22,
+    [GameMode.SETTLERS]: 23,
   };
   // Modes that need the setup screen (not skipSetup)
   const NEEDS_SETUP = new Set([GameMode.STANDARD, GameMode.DEATHMATCH, GameMode.BATTLEFIELD, GameMode.ROGUELIKE, GameMode.WAVE]);
@@ -451,6 +454,16 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     if (menuScreen.selectedGameMode === GameMode.ARTHURIAN_RPG) {
       menuScreen.hide();
       _bootArthurianRPGGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.RIFT_WIZARD) {
+      menuScreen.hide();
+      _bootRiftWizardGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.SETTLERS) {
+      menuScreen.hide();
+      _bootSettlersGame();
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.WORLD) {
@@ -2726,6 +2739,32 @@ async function _bootGameGame(): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// Rift Wizard mode boot
+// ---------------------------------------------------------------------------
+
+let _riftWizardGame: RiftWizardGame | null = null;
+
+async function _bootRiftWizardGame(): Promise<void> {
+  if (_riftWizardGame) {
+    _riftWizardGame.destroy();
+    _riftWizardGame = null;
+  }
+
+  _riftWizardGame = new RiftWizardGame();
+  await _riftWizardGame.boot();
+
+  const _onExit = () => {
+    window.removeEventListener("riftwizardExit", _onExit);
+    if (_riftWizardGame) {
+      _riftWizardGame.destroy();
+      _riftWizardGame = null;
+    }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("riftwizardExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
 // Grail Ball mode boot
 // ---------------------------------------------------------------------------
 
@@ -2989,6 +3028,31 @@ async function _bootThreeDragonGame(): Promise<void> {
     menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
   window.addEventListener("threeDragonExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Settlers mode boot
+// ---------------------------------------------------------------------------
+
+let _settlersGame: SettlersGame | null = null;
+
+async function _bootSettlersGame(): Promise<void> {
+  if (_settlersGame) {
+    _settlersGame.destroy();
+    _settlersGame = null;
+  }
+  viewManager.clearWorld();
+  _settlersGame = new SettlersGame();
+  await _settlersGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("settlersExit", _onExit);
+    if (_settlersGame) {
+      _settlersGame.destroy();
+      _settlersGame = null;
+    }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("settlersExit", _onExit);
 }
 
 // ---------------------------------------------------------------------------
