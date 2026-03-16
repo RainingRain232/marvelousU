@@ -12,8 +12,8 @@ import type {
   FloorState, EnemyInstance, TreasureChest, GridPos, Direction, RoomInfo,
   TrapInstance, PuzzleRoomState, ArenaHazardInstance, CompanionNPC,
 } from "../state/GameState";
-import { TRAP_DEFS, PUZZLE_DEFS, BOSS_ARENA_HAZARDS, ARENA_HAZARD_DEFS, MINI_BOSS_DEFS, COMPANION_DEFS } from "../config/GameArtifactDefs";
-import type { TrapVariant, CompanionDef } from "../config/GameArtifactDefs";
+import { PUZZLE_DEFS, MINI_BOSS_DEFS, COMPANION_DEFS } from "../config/GameArtifactDefs";
+import type { TrapVariant } from "../config/GameArtifactDefs";
 
 // ---------------------------------------------------------------------------
 // Public API

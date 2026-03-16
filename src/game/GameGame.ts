@@ -15,12 +15,10 @@ import {
   SHOP_ITEMS, ITEM_DEFS,
 } from "./config/GameConfig";
 
-import {
-  CRAFTING_MATERIALS,
-} from "./config/GameCraftingDefs";
+// GameCraftingDefs imported dynamically via require below
 
 import {
-  ARTIFACT_DEFS, ARTIFACT_SET_BONUSES, COMPANION_DEFS,
+  ARTIFACT_DEFS,
 } from "./config/GameArtifactDefs";
 
 import {
@@ -33,15 +31,13 @@ import type { GrailGameState } from "./state/GameState";
 import { generateFloor, revealAround } from "./systems/GameDungeonGenerator";
 import { GameCombatSystem, recalcStats } from "./systems/GameCombatSystem";
 import {
-  canCraft, craft, getAvailableRecipes,
+  craft, getAvailableRecipes,
   canEnchant, enchantItem, getApplicableEnchantments,
-  disenchantItem, canSocketGem, socketGem,
-  getEnchantmentBonuses, getSocketBonuses,
 } from "./systems/GameCraftingSystem";
 import { companionFloorBonus } from "./systems/GameCompanionSystem";
 import {
   getInfiniteFloorParams, getScaledEnemyDef, calculateFloorScore,
-  saveLeaderboardEntry, isRestFloor, loadLeaderboard,
+  saveLeaderboardEntry,
 } from "./systems/GameInfiniteMode";
 
 import { GameRenderer } from "./view/GameRenderer";
@@ -1088,6 +1084,7 @@ export class GameGame {
 
     // Reward materials based on difficulty
     const matCount = puzzle.difficulty + 1;
+    // @ts-ignore - dynamic require for lazy loading
     const { addMaterial: addMat, rollMaterialDrop } = require("./systems/GameCraftingSystem");
     for (let i = 0; i < matCount; i++) {
       const drop = rollMaterialDrop(state.currentFloor, "", 1.0);

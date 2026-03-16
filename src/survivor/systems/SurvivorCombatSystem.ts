@@ -10,7 +10,6 @@ import type {
   SurvivorState,
   SurvivorEnemy,
   SurvivorWeaponState,
-  AiBehavior,
 } from "../state/SurvivorState";
 
 // ---------------------------------------------------------------------------

@@ -17,6 +17,9 @@ import { generateUpgradeChoices, applyUpgrade } from "./systems/SurvivorLevelSys
 import { SurvivorHazardSystem } from "./systems/SurvivorHazardSystem";
 import { SurvivorLandmarkSystem } from "./systems/SurvivorLandmarkSystem";
 import { audioManager } from "@audio/AudioManager";
+import { TerrainType } from "@/types";
+import { ObstacleType } from "@sim/state/BattlefieldState";
+import type { BattlefieldState } from "@sim/state/BattlefieldState";
 
 // View modules
 import { SurvivorRenderer } from "./view/SurvivorRenderer";
@@ -102,7 +105,7 @@ export class SurvivorGame {
     // Draw terrain
     const grid = this._buildSimpleGrid(mapDef.width, mapDef.height);
     gridRenderer.init(viewManager);
-    gridRenderer.draw({ grid, width: mapDef.width, height: mapDef.height }, mapDef.mapType);
+    gridRenderer.draw({ grid, width: mapDef.width, height: mapDef.height } as BattlefieldState, mapDef.mapType);
 
     // Generate environmental map details
     this._renderer.generateMapDetails(mapDef.width, mapDef.height, mapDef.mapType);
@@ -393,12 +396,12 @@ export class SurvivorGame {
     viewManager.clearWorld();
   }
 
-  private _buildSimpleGrid(w: number, h: number): { x: number; y: number; walkable: boolean; owner: null; buildingId: null; zone: "neutral" }[][] {
-    const grid: { x: number; y: number; walkable: boolean; owner: null; buildingId: null; zone: "neutral" }[][] = [];
+  private _buildSimpleGrid(w: number, h: number) {
+    const grid = [];
     for (let y = 0; y < h; y++) {
-      const row: { x: number; y: number; walkable: boolean; owner: null; buildingId: null; zone: "neutral" }[] = [];
+      const row = [];
       for (let x = 0; x < w; x++) {
-        row.push({ x, y, walkable: true, owner: null, buildingId: null, zone: "neutral" });
+        row.push({ x, y, walkable: true, owner: null, buildingId: null, zone: "neutral" as const, terrain: TerrainType.PLAINS, obstacle: ObstacleType.NONE });
       }
       grid.push(row);
     }

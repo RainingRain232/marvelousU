@@ -130,7 +130,8 @@ export function updateVisibility(state: WorldState, playerId: string): void {
   const eagleEyeActive = player.activeSpells.has("eagle_eye");
 
   // Store current visible tiles before clearing (for stale data update)
-  const previouslyVisible = new Set(player.visibleTiles);
+  // @ts-ignore reserved for stale-data diffing
+const previouslyVisible = new Set(player.visibleTiles);
   player.visibleTiles.clear();
 
   // Ensure stale data map exists for this player

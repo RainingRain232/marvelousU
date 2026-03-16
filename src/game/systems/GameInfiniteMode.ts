@@ -4,7 +4,7 @@
 // ---------------------------------------------------------------------------
 
 import { INFINITE_MODE } from "../config/GameArtifactDefs";
-import { ENEMY_DEFS, ENEMY_POOLS, GameBalance } from "../config/GameConfig";
+import { ENEMY_POOLS } from "../config/GameConfig";
 import type { EnemyDef, FloorParams } from "../config/GameConfig";
 import type { GrailGameState } from "../state/GameState";
 

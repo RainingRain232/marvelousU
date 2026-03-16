@@ -2,8 +2,7 @@
 // Quest for the Grail — Artifact & Companion Definitions
 // ---------------------------------------------------------------------------
 
-import { ItemType, ItemRarity } from "./GameConfig";
-import type { ItemDef } from "./GameConfig";
+// ItemType, ItemRarity, ItemDef not directly used in this file
 
 // ---------------------------------------------------------------------------
 // Legendary Artifacts

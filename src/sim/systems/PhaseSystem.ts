@@ -315,7 +315,7 @@ function _enterPrep(state: GameState): void {
   }
 
   // Determine PREP duration (campaign difficulty may override)
-  let prepDuration = state.gameMode === GameMode.DEATHMATCH
+  let prepDuration: number = state.gameMode === GameMode.DEATHMATCH
     ? BalanceConfig.DEATHMATCH_PREP_DURATION
     : BalanceConfig.PREP_DURATION;
   if (state.gameMode === GameMode.CAMPAIGN) {

@@ -8,7 +8,7 @@ import {
   GameBalance, getFloorParams,
 } from "../config/GameConfig";
 import type { KnightDef, ItemDef, EnemyDef, QuestGenreDef, FloorParams } from "../config/GameConfig";
-import type { CompanionDef, CompanionBehavior, TrapVariant, PuzzleType, ArtifactDef } from "../config/GameArtifactDefs";
+import type { CompanionDef, CompanionBehavior, TrapVariant, PuzzleType } from "../config/GameArtifactDefs";
 
 // ---------------------------------------------------------------------------
 // Sub-state types

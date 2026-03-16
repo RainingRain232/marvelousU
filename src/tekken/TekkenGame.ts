@@ -1460,7 +1460,7 @@ export class TekkenGame {
       f.comboDamage = 0;
       f.comboDamageScaling = 1;
       f.grounded = true;
-      f.juggle = { isAirborne: false, velocity: { x: 0, y: 0, z: 0 }, hitCount: 0, screwUsed: false, boundUsed: false, gravityScale: 1, wallSplatActive: false, wallSplatTimer: 0 };
+      f.juggle = { isAirborne: false, velocity: { x: 0, y: 0, z: 0 }, hitCount: 0, screwUsed: false, boundUsed: false, gravityScale: 1, wallSplatActive: false, wallSplatTimer: 0, isWallSplatted: false, wallSplatFrames: 0, currentLaunchGravity: 0 };
       f.hitstunFrames = 0;
       f.blockstunFrames = 0;
       f.rageActive = false;
@@ -1697,7 +1697,7 @@ export class TekkenGame {
           f.comboDamageScaling = 1;
           f.hitstunFrames = 0;
           f.blockstunFrames = 0;
-          f.juggle = { isAirborne: false, velocity: { x: 0, y: 0, z: 0 }, hitCount: 0, screwUsed: false, boundUsed: false, gravityScale: 1, wallSplatActive: false, wallSplatTimer: 0 };
+          f.juggle = { isAirborne: false, velocity: { x: 0, y: 0, z: 0 }, hitCount: 0, screwUsed: false, boundUsed: false, gravityScale: 1, wallSplatActive: false, wallSplatTimer: 0, isWallSplatted: false, wallSplatFrames: 0, currentLaunchGravity: 0 };
           f.grounded = true;
           f.facingRight = i === 0;
         }

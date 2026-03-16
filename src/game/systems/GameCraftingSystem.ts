@@ -9,9 +9,9 @@ import {
   CRAFTING_MATERIALS, CRAFTING_RECIPES, MATERIAL_DROP_TABLES,
   ENCHANTMENT_DEFS, SOCKET_GEMS, GEM_DROP_TABLE,
 } from "../config/GameCraftingDefs";
-import type { CraftingMaterial, CraftingRecipe, EnchantmentDef, SocketGem } from "../config/GameCraftingDefs";
+import type { CraftingRecipe, EnchantmentDef } from "../config/GameCraftingDefs";
 import type {
-  GrailGameState, PlayerState, MaterialInventory, EnchantedItem,
+  GrailGameState,
 } from "../state/GameState";
 
 // ---------------------------------------------------------------------------

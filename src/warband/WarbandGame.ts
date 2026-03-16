@@ -3299,6 +3299,9 @@ export class WarbandGame {
   private _selectedRaceId: RaceId = RACE_DEFINITIONS[0].id;
   private _selectedMapId: WarbandMapId = "green_meadow";
 
+  // Siege equipment passed from campaign
+  private _siegeEquipment: { type: string; count: number }[] = [];
+
   // ESC handler
   private _escHandler: ((e: KeyboardEvent) => void) | null = null;
 
@@ -3556,6 +3559,17 @@ export class WarbandGame {
     }
   }
 
+  /** Set siege equipment data from campaign (catapult, siege_tower, battering_ram, ladders) */
+  setSiegeEquipment(equip: { type: string; count: number }[]): void {
+    this._siegeEquipment = equip;
+  }
+
+  /** Helper: get count of a specific siege equipment type */
+  private _getSiegeEquipCount(type: string): number {
+    const entry = this._siegeEquipment.find(e => e.type === type);
+    return entry ? entry.count : 0;
+  }
+
   private _removeMenu(): void {
     if (this._menuContainer?.parentNode) {
       this._menuContainer.parentNode.removeChild(this._menuContainer);
@@ -3680,19 +3694,48 @@ export class WarbandGame {
       return;
     }
 
+    // Siege equipment: compute attacker spawn Z offset
+    let siegeSpawnZOffset = 0;
+    let siegeLadderHpPenalty = false;
+    if (battleType === BattleType.SIEGE) {
+      const hasSiegeTower = this._getSiegeEquipCount("siege_tower") > 0;
+      const hasLadders = this._getSiegeEquipCount("ladders") > 0;
+      if (hasSiegeTower) {
+        siegeSpawnZOffset = -15; // move 15 units closer to defenders
+      } else if (hasLadders) {
+        siegeSpawnZOffset = -8; // move 8 units closer but HP penalty
+        siegeLadderHpPenalty = true;
+      }
+    }
+
     // Create player allies (skip in duel mode)
     if (!isDuel) {
       for (let i = 1; i < WB.TEAM_SIZE; i++) {
+        const allySpawnZ = 12 + siegeSpawnZOffset;
         const ally = createDefaultFighter(
           `ally_${i}`,
           AI_NAMES_PLAYER[i % AI_NAMES_PLAYER.length],
           "player",
           false,
-          vec3(-6 + i * 3, 0, 12),
+          vec3(-6 + i * 3, 0, allySpawnZ),
         );
         this._equipRandomUnitType(ally, false, this._state!);
         this._applyDifficulty(ally);
+        // Ladders HP penalty: reduce attacker HP by 10% (climbing losses)
+        if (siegeLadderHpPenalty) {
+          ally.hp = Math.round(ally.hp * 0.9);
+          ally.maxHp = Math.round(ally.maxHp * 0.9);
+        }
         this._state.fighters.push(ally);
+      }
+    }
+
+    // Adjust player spawn for siege equipment
+    if (siegeSpawnZOffset !== 0) {
+      player.position.z = 10 + siegeSpawnZOffset;
+      if (siegeLadderHpPenalty) {
+        player.hp = Math.round(player.hp * 0.9);
+        player.maxHp = Math.round(player.maxHp * 0.9);
       }
     }
 
@@ -3719,6 +3762,24 @@ export class WarbandGame {
       this._equipRandomUnitType(enemy, isDuel, this._state!);
       this._applyDifficulty(enemy);
       this._state.fighters.push(enemy);
+    }
+
+    // Catapult pre-bombardment: reduce all enemy HP after spawn
+    if (battleType === BattleType.SIEGE) {
+      const catapultCount = this._getSiegeEquipCount("catapult");
+      if (catapultCount > 0) {
+        const reductionPct = Math.min(0.6, catapultCount * 0.2); // 20% per catapult, capped at 60%
+        for (const f of this._state.fighters) {
+          if (f.team === "enemy" && f.combatState !== FighterCombatState.DEAD) {
+            const hpLoss = Math.round(f.hp * reductionPct);
+            f.hp = Math.max(1, f.hp - hpLoss);
+          }
+        }
+        this._hud.showCenterMessage(
+          `Catapult bombardment! (${catapultCount}x) — Enemies lost ${Math.round(reductionPct * 100)}% HP`,
+          3000,
+        );
+      }
     }
 
     // Auto-equip player based on leader — no loadout selection in battle mode
@@ -5559,24 +5620,43 @@ export class WarbandGame {
       this._state.enemyTeamAlive = enemyTotal;
       this._state.battleTimer = 180 * WB.TICKS_PER_SEC;
     } else {
+      // Siege equipment: compute attacker spawn Z offset for respawn rounds
+      const isSiege = this._state.battleType === BattleType.SIEGE;
+      let roundSiegeZOffset = 0;
+      let roundLadderPenalty = false;
+      if (isSiege) {
+        const hasSiegeTower = this._getSiegeEquipCount("siege_tower") > 0;
+        const hasLadders = this._getSiegeEquipCount("ladders") > 0;
+        if (hasSiegeTower) {
+          roundSiegeZOffset = -15;
+        } else if (hasLadders) {
+          roundSiegeZOffset = -8;
+          roundLadderPenalty = true;
+        }
+      }
+
       // Create new allies (skip in duel mode)
       if (!isDuel) {
         for (let i = 1; i < WB.TEAM_SIZE; i++) {
+          const allySpawnZ = 12 + roundSiegeZOffset;
           const ally = createDefaultFighter(
             `ally_r${this._state.round}_${i}`,
             AI_NAMES_PLAYER[i % AI_NAMES_PLAYER.length],
             "player",
             false,
-            vec3(-6 + i * 3, 0, 12),
+            vec3(-6 + i * 3, 0, allySpawnZ),
           );
           this._equipRandomUnitType(ally, false, this._state!);
           this._applyDifficulty(ally);
+          if (roundLadderPenalty) {
+            ally.hp = Math.round(ally.hp * 0.9);
+            ally.maxHp = Math.round(ally.maxHp * 0.9);
+          }
           this._state.fighters.push(ally);
         }
       }
 
       // Create new enemies (scale difficulty)
-      const isSiege = this._state.battleType === BattleType.SIEGE;
       const enemyCount = isDuel ? 1 : WB.TEAM_SIZE;
       for (let i = 0; i < enemyCount; i++) {
         let spawnX: number, spawnZ: number;
@@ -5604,6 +5684,24 @@ export class WarbandGame {
           enemy.ai.aggressiveness = Math.min(0.9, enemy.ai.aggressiveness + this._state.round * 0.05);
         }
         this._state.fighters.push(enemy);
+      }
+
+      // Catapult pre-bombardment for new rounds
+      if (isSiege) {
+        const catapultCount = this._getSiegeEquipCount("catapult");
+        if (catapultCount > 0) {
+          const reductionPct = Math.min(0.6, catapultCount * 0.2);
+          for (const f of this._state.fighters) {
+            if (f.team === "enemy" && f.combatState !== FighterCombatState.DEAD) {
+              const hpLoss = Math.round(f.hp * reductionPct);
+              f.hp = Math.max(1, f.hp - hpLoss);
+            }
+          }
+          this._hud.showCenterMessage(
+            `Catapult bombardment! (${catapultCount}x) — Enemies lost ${Math.round(reductionPct * 100)}% HP`,
+            3000,
+          );
+        }
       }
 
       // Reset counts

@@ -57,6 +57,10 @@ export interface SimEvents {
   roguelikeRoundChanged: { round: number };
   campaignAchievementEarned: { achievementId: string; title: string; reward: string };
 
+  // Deathmatch / Battlefield mode events
+  suddenDeathStarted: { dps: number };
+  arenaShrink: { inset: number };
+
   // Escalation (stalemate prevention)
   escalationStarted: { totalBattleTime: number };
   escalationUnitSpawned: { unitId: string; position: Vec2; strength: number };
@@ -107,6 +111,18 @@ export interface SimEvents {
   rpgFastTravel: { targetEntityId: string; position: Vec2 };
   rpgTutorialTip: { tipId: string; message: string };
   rpgBanter: { text: string };
+
+  // RPG dungeon events
+  rpgSecretRoomFound: { position: Vec2; roomId?: string };
+  rpgTrapDetected: { position: Vec2; trapType?: string };
+  rpgTrapDisarmed: { position: Vec2; trapType?: string };
+  rpgTrapTriggered: { position: Vec2; trapType: string; damage: number };
+  rpgPuzzleRoomEntered: { roomId: string; puzzleType?: string; solutionLength: number };
+  rpgPuzzleFailed: { roomId: string };
+  rpgPuzzleSolved: { roomId: string; bonusXp: number; loot?: unknown[] };
+
+  // RPG affinity events
+  rpgAffinityMilestone: { memberAId: string; memberBId: string; affinityLevel: number; milestone: number; dialogue: string };
 }
 
 // ---------------------------------------------------------------------------

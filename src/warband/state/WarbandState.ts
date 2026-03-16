@@ -56,6 +56,14 @@ export enum FormationType {
   SCATTER = "scatter",
 }
 
+export const FORMATION_BONUSES: Record<FormationType, { chargeDmg: number; defense: number; rangedReduction: number; moveSpeed: number; description: string }> = {
+  [FormationType.LINE]: { chargeDmg: 0, defense: 0, rangedReduction: 0, moveSpeed: 0, description: "Balanced line" },
+  [FormationType.WEDGE]: { chargeDmg: 0.15, defense: -0.1, rangedReduction: 0, moveSpeed: 0.05, description: "Aggressive wedge — +15% charge damage" },
+  [FormationType.SQUARE]: { chargeDmg: -0.1, defense: 0.2, rangedReduction: -0.1, moveSpeed: -0.1, description: "Defensive square — +20% defense" },
+  [FormationType.SCATTER]: { chargeDmg: 0, defense: -0.1, rangedReduction: -0.3, moveSpeed: 0.1, description: "Scattered — −30% ranged damage taken" },
+  [FormationType.COLUMN]: { chargeDmg: 0, defense: 0, rangedReduction: 0.1, moveSpeed: 0.1, description: "Column march — +10% speed" },
+};
+
 export enum TroopOrder {
   CHARGE = "charge",
   HOLD = "hold",
@@ -211,6 +219,10 @@ export interface WarbandFighter {
   morale: number;   // 0-100
   fleeing: boolean;
 
+  // Veteran tracking
+  battlesSurvived: number;
+  veteranTitle: string | null;
+
   // Stats tracking
   kills: number;
   damage_dealt: number;
@@ -352,6 +364,12 @@ export interface WarbandState {
   troopOrder: TroopOrder;
   selectedGroup: TroopGroup;
 
+  // Loot pool (collected after battle)
+  lootPool: { weapon?: WeaponDef; armor?: ArmorDef }[];
+
+  // Rally cooldown (ticks remaining)
+  rallyCooldown: number;
+
   // Flee mechanic
   fleeTimer: number;      // ticks player has been at map edge without being hit
   fleeAvailable: boolean; // true when flee button should be shown
@@ -431,6 +449,9 @@ export function createDefaultFighter(
     morale: 100,
     fleeing: false,
 
+    battlesSurvived: 0,
+    veteranTitle: null,
+
     kills: 0,
     damage_dealt: 0,
     damage_taken: 0,
@@ -489,6 +510,9 @@ export function createWarbandState(
     formation: FormationType.LINE,
     troopOrder: TroopOrder.CHARGE,
     selectedGroup: TroopGroup.ALL,
+
+    lootPool: [],
+    rallyCooldown: 0,
 
     fleeTimer: 0,
     fleeAvailable: false,

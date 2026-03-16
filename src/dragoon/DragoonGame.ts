@@ -7,8 +7,8 @@
 import { Ticker } from "pixi.js";
 import { viewManager } from "@view/ViewManager";
 import { audioManager } from "@audio/AudioManager";
-import { createDragoonState, DragoonClassId, DragoonDifficulty, DIFFICULTY_MODIFIERS, saveMetaProgression, DragonSkinId } from "./state/DragoonState";
-import type { DragoonState, LeaderboardEntry } from "./state/DragoonState";
+import { createDragoonState, DragoonClassId, DragoonDifficulty } from "./state/DragoonState";
+import type { DragoonState } from "./state/DragoonState";
 import { DragoonBalance, CLASS_DEFINITIONS, SUBCLASS_DEFINITIONS, SKILL_CONFIGS, getSubclassSkillTree } from "./config/DragoonConfig";
 import { DragoonInputSystem } from "./systems/DragoonInputSystem";
 import { DragoonWaveSystem } from "./systems/DragoonWaveSystem";

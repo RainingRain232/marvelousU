@@ -8,9 +8,9 @@ import { createTurnBattleState } from "@rpg/state/TurnBattleState";
 import type { PartyMember, RPGState, RPGItem, StatusEffect } from "@rpg/state/RPGState";
 import { ENCOUNTER_DEFS } from "@rpg/config/EncounterDefs";
 import type { EnemyDef } from "@rpg/config/EncounterDefs";
-import { RPGBalance, getWeatherModifiers } from "@rpg/config/RPGBalanceConfig";
+import { RPGBalance } from "@rpg/config/RPGBalanceConfig";
 import { RPG_SPELL_DEFS, type RPGSpellDef } from "@rpg/config/RPGSpellDefs";
-import { isCaster, spellPicksOnLevelUp, getSpellChoices, maxEquippedSpells } from "@rpg/systems/SpellLearningSystem";
+import { isCaster, spellPicksOnLevelUp, getSpellChoices } from "@rpg/systems/SpellLearningSystem";
 import {
   getComboChance,
   pickComboAttack,

@@ -12,10 +12,9 @@ import {
   Direction,
 } from "../state/GameState";
 import type {
-  GrailGameState, PlayerState, EnemyInstance, TrapInstance,
+  GrailGameState, PlayerState, EnemyInstance,
 } from "../state/GameState";
 import { TRAP_DEFS, ARENA_HAZARD_DEFS, BOSS_ARENA_HAZARDS, ARTIFACT_DEFS, ARTIFACT_DROP_TABLE, ARTIFACT_SET_BONUSES } from "../config/GameArtifactDefs";
-import type { TrapVariant } from "../config/GameArtifactDefs";
 import { rollMaterialDrop, addMaterial, rollGemDrop, rollChestMaterials, getEnchantmentBonuses, getSocketBonuses } from "./GameCraftingSystem";
 import { CRAFTING_MATERIALS, SOCKET_GEMS } from "../config/GameCraftingDefs";
 import { companionTakeDamage, updateCompanion, createCompanion } from "./GameCompanionSystem";

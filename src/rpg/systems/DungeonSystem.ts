@@ -2,7 +2,7 @@
 import { DungeonTileType, RPGPhase, UnitType } from "@/types";
 import type { Vec2 } from "@/types";
 import { EventBus } from "@sim/core/EventBus";
-import type { DungeonState, DungeonFloor, DungeonTile, DungeonRoom } from "@rpg/state/DungeonState";
+import type { DungeonState, DungeonFloor, DungeonTile } from "@rpg/state/DungeonState";
 import type { RPGState } from "@rpg/state/RPGState";
 import type { RPGStateMachine } from "./RPGStateMachine";
 
@@ -11,9 +11,9 @@ import type { RPGStateMachine } from "./RPGStateMachine";
 // ---------------------------------------------------------------------------
 
 const ROGUE_UNIT_TYPES: Set<UnitType> = new Set([
-  UnitType.ROGUE,
+  UnitType.ARCHER,
   UnitType.ASSASSIN,
-  UnitType.RANGER,
+  UnitType.LONGBOWMAN,
 ]);
 
 function partyHasRogue(rpg: RPGState): boolean {
@@ -218,8 +218,8 @@ function _handleTileInteraction(
 
 function _triggerTrap(
   rpg: RPGState,
-  dungeon: DungeonState,
-  floor: DungeonFloor,
+  _dungeon: DungeonState,
+  _floor: DungeonFloor,
   tile: DungeonTile,
   stateMachine: RPGStateMachine,
 ): void {

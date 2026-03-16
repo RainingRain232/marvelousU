@@ -13,6 +13,7 @@ import {
   TroopOrder,
   TroopGroup,
   vec3DistXZ,
+  FORMATION_BONUSES,
 } from "../state/WarbandState";
 import { WB } from "../config/WarbandBalanceConfig";
 import { isRangedWeapon } from "../config/WeaponDefs";
@@ -195,7 +196,8 @@ export class WarbandAISystem {
     ally.rotation += diff * 0.15;
 
     const speed = ally.isMounted ? WB.HORSE_WALK_SPEED : WB.WALK_SPEED;
-    const moveSpeed = dist > 5 ? speed * 1.2 : speed * 0.8;
+    const formBonus = FORMATION_BONUSES[state.formation];
+    const moveSpeed = (dist > 5 ? speed * 1.2 : speed * 0.8) * (1 + formBonus.moveSpeed);
     ally.velocity.x = Math.sin(angle) * moveSpeed;
     ally.velocity.z = Math.cos(angle) * moveSpeed;
 
@@ -719,6 +721,22 @@ export class WarbandAISystem {
 
   // ---- Morale system --------------------------------------------------------
 
+  /**
+   * Enhanced morale update: considers nearby allies/enemies, formation state,
+   * and outnumbered conditions. Called once per tick when morale is enabled.
+   */
+  updateMorale(fighters: WarbandFighter[], _tick: number): void {
+    // Delegate to the internal method with a minimal state wrapper
+    // This public API is provided for external callers that only have a fighter list.
+    const aliveFighters: Record<string, number> = { player: 0, enemy: 0 };
+    for (const f of fighters) {
+      if (f.combatState !== FighterCombatState.DEAD) {
+        aliveFighters[f.team]++;
+      }
+    }
+    this._updateMoraleCore(fighters, aliveFighters, _tick, undefined);
+  }
+
   private _updateMorale(state: WarbandState): void {
     const aliveFighters: Record<string, number> = { player: 0, enemy: 0 };
     for (const f of state.fighters) {
@@ -726,11 +744,22 @@ export class WarbandAISystem {
         aliveFighters[f.team]++;
       }
     }
+    this._updateMoraleCore(state.fighters, aliveFighters, state.tick, state.formation);
+  }
 
+  private _updateMoraleCore(
+    fighters: WarbandFighter[],
+    aliveFighters: Record<string, number>,
+    _tick: number,
+    formation?: FormationType,
+  ): void {
     const ticksPerSec = WB.TICKS_PER_SEC;
     const perTickBase = 1 / ticksPerSec; // base regen per tick (~1/sec)
 
-    for (const fighter of state.fighters) {
+    // Pre-compute alive-and-positioned fighters for proximity checks
+    const alive = fighters.filter(f => f.combatState !== FighterCombatState.DEAD);
+
+    for (const fighter of fighters) {
       if (fighter.combatState === FighterCombatState.DEAD) continue;
 
       const allyAlive = aliveFighters[fighter.team] ?? 0;
@@ -740,7 +769,12 @@ export class WarbandAISystem {
       // Base regen: +1 per second
       moraleDelta += perTickBase;
 
-      // Outnumbered penalty: -(enemyAlive - allyAlive) * 3 per second
+      // --- Outnumbered in battle: -2/tick if enemy count > 1.5x allies ---
+      if (enemyAlive > allyAlive * 1.5) {
+        moraleDelta -= 2;
+      }
+
+      // Outnumbered penalty (scaled): -(enemyAlive - allyAlive) * 3 per second
       if (enemyAlive > allyAlive) {
         moraleDelta -= (enemyAlive - allyAlive) * 3 * perTickBase;
       }
@@ -748,6 +782,34 @@ export class WarbandAISystem {
       // Outnumber bonus: +2 per second
       if (allyAlive > enemyAlive) {
         moraleDelta += 2 * perTickBase;
+      }
+
+      // --- Nearby allies bonus: +1/tick if > 3 allies within 8 units ---
+      let nearbyAllies = 0;
+      for (const other of alive) {
+        if (other.id === fighter.id) continue;
+        if (other.team !== fighter.team) continue;
+        if (vec3DistXZ(fighter.position, other.position) <= 8) {
+          nearbyAllies++;
+        }
+      }
+      if (nearbyAllies > 3) {
+        moraleDelta += 1;
+      }
+
+      // --- Formation broken penalty: -3/tick if player team and no allies within 5 units ---
+      if (formation !== undefined && fighter.team === "player" && !fighter.isPlayer) {
+        let hasFormationNeighbor = false;
+        for (const other of alive) {
+          if (other.id === fighter.id || other.team !== fighter.team) continue;
+          if (vec3DistXZ(fighter.position, other.position) <= 5) {
+            hasFormationNeighbor = true;
+            break;
+          }
+        }
+        if (!hasFormationNeighbor) {
+          moraleDelta -= 3;
+        }
       }
 
       fighter.morale = Math.max(0, Math.min(100, fighter.morale + moraleDelta));
@@ -773,10 +835,10 @@ export class WarbandAISystem {
       if (dist > 10) continue; // only affects fighters within 10 units
 
       if (fighter.team === deadFighter.team) {
-        // Ally died nearby: -15 morale
-        fighter.morale = Math.max(0, fighter.morale - 15);
+        // Ally died nearby: -5 morale per death within 10 units
+        fighter.morale = Math.max(0, fighter.morale - 5);
       } else {
-        // Enemy died nearby: +10 morale
+        // Killed enemy nearby: +10 morale
         fighter.morale = Math.min(100, fighter.morale + 10);
       }
     }

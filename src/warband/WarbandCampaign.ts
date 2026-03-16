@@ -109,7 +109,9 @@ const FOOD_PURCHASE_COST = 2; // gold per food unit
 const FOOD_CITY_STOCK = 50; // food available at cities
 const MORALE_FOOD_PENALTY = -5; // morale penalty when out of food
 const MORALE_TERRITORY_BONUS = 2; // morale bonus near own cities
+// @ts-ignore reserved for future use
 const MORALE_VICTORY_BONUS = 10;
+// @ts-ignore reserved for future use
 const MORALE_DEFEAT_PENALTY = -15;
 const MORALE_MAX = 100;
 const MORALE_MIN = 0;
@@ -130,6 +132,7 @@ const LORD_NAMES = [
   "Ulyana the Swift", "Viscount Dray", "Warlord Grimjaw", "Xavier Duskwalker",
 ];
 
+// @ts-ignore reserved for future use
 const LORD_TITLES: Record<LordPersonality, string> = {
   aggressive: "Warlord", cautious: "Steward", mercantile: "Merchant Prince",
   diplomatic: "Envoy", ruthless: "Tyrant",
@@ -193,6 +196,57 @@ interface CompanionQuest {
   rewardGold: number;
   rewardLoyalty: number;
   rewardXp: number;
+}
+
+// Companion dialogue & relationship
+interface CompanionDialogue {
+  trigger: "camp" | "battle_won" | "battle_lost" | "low_morale" | "high_loyalty" | "quest_complete";
+  text: string;
+  loyaltyDelta: number;
+}
+
+const COMPANION_DIALOGUES: Record<string, CompanionDialogue[]> = {
+  warrior: [
+    { trigger: "camp", text: "A good campfire and a sharp blade — what more could a warrior need?", loyaltyDelta: 1 },
+    { trigger: "battle_won", text: "Ha! They fell like wheat before the scythe!", loyaltyDelta: 3 },
+    { trigger: "battle_lost", text: "We were outmatched... but we live to fight again.", loyaltyDelta: -1 },
+    { trigger: "low_morale", text: "The troops are restless. We need a victory — or at least a full belly.", loyaltyDelta: 0 },
+    { trigger: "high_loyalty", text: "I'd follow you into the abyss itself. You've earned my blade for life.", loyaltyDelta: 2 },
+    { trigger: "quest_complete", text: "Well done! That's one more tale for the hearthside.", loyaltyDelta: 5 },
+  ],
+  archer: [
+    { trigger: "camp", text: "I've been fletching arrows. We'll need every last one.", loyaltyDelta: 1 },
+    { trigger: "battle_won", text: "My quiver's nearly empty, but every shaft found its mark!", loyaltyDelta: 3 },
+    { trigger: "battle_lost", text: "We should have held the high ground. Next time, listen to me.", loyaltyDelta: -2 },
+    { trigger: "low_morale", text: "Hungry soldiers can't aim. Feed them or find archers elsewhere.", loyaltyDelta: 0 },
+    { trigger: "high_loyalty", text: "No wind can sway my aim while I fight beside you.", loyaltyDelta: 2 },
+    { trigger: "quest_complete", text: "A fine day's work. The coin doesn't hurt either.", loyaltyDelta: 5 },
+  ],
+  mage: [
+    { trigger: "camp", text: "The stars whisper tonight. Change is coming.", loyaltyDelta: 1 },
+    { trigger: "battle_won", text: "My arcane arts proved decisive. As expected.", loyaltyDelta: 2 },
+    { trigger: "battle_lost", text: "Brute force alone won't win wars. We need strategy.", loyaltyDelta: -1 },
+    { trigger: "low_morale", text: "I sense despair in the camp. Perhaps a spell of warmth would help.", loyaltyDelta: 1 },
+    { trigger: "high_loyalty", text: "You respect knowledge. That is rare and valuable.", loyaltyDelta: 2 },
+    { trigger: "quest_complete", text: "The arcane energies are satisfied. As am I.", loyaltyDelta: 5 },
+  ],
+  scout: [
+    { trigger: "camp", text: "I scouted ahead. Three paths — one trap, one ambush, one clear.", loyaltyDelta: 1 },
+    { trigger: "battle_won", text: "They never saw us coming. That's the point.", loyaltyDelta: 3 },
+    { trigger: "battle_lost", text: "We were spotted too early. I need better cover next time.", loyaltyDelta: -1 },
+    { trigger: "low_morale", text: "Half the troops talk about deserting. Want me to keep watch?", loyaltyDelta: 1 },
+    { trigger: "high_loyalty", text: "Shadows are my domain, and you... you're worth stepping into the light for.", loyaltyDelta: 2 },
+    { trigger: "quest_complete", text: "Silent and swift. The job is done.", loyaltyDelta: 5 },
+  ],
+};
+
+interface CompanionRelationshipEvent {
+  id: string;
+  compA: string; // companion id
+  compB: string; // companion id
+  type: "rivalry" | "friendship" | "mentorship";
+  description: string;
+  resolved: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -1073,7 +1127,8 @@ interface CampaignWanderingNPC {
 }
 
 // Campaign event
-type CampaignEventType = "bandit_raid" | "merchant_festival" | "plague" | "deserters" | "alliance_offer";
+type CampaignEventType = "bandit_raid" | "merchant_festival" | "plague" | "deserters" | "alliance_offer"
+  | "famine" | "holy_crusade" | "rebellion" | "tournament" | "dragon_sighting" | "eclipse";
 interface CampaignEvent {
   id: string;
   type: CampaignEventType;
@@ -1440,7 +1495,7 @@ function _generateWanderingNPCs(day: number): CampaignWanderingNPC[] {
 // Lord generation
 // ---------------------------------------------------------------------------
 
-function _generateLords(parties: CampaignParty[], factions: RaceDef[], playerFaction: string): CampaignLord[] {
+function _generateLords(parties: CampaignParty[], _factions: RaceDef[], playerFaction: string): CampaignLord[] {
   const lords: CampaignLord[] = [];
   const usedNames = new Set<string>();
   const personalities: LordPersonality[] = ["aggressive", "cautious", "mercantile", "diplomatic", "ruthless"];
@@ -1575,6 +1630,7 @@ function _generateMercContracts(): MercContract[] {
 // Companion quest generation
 // ---------------------------------------------------------------------------
 
+// @ts-ignore unused function reserved for future use
 function _generateCompanionQuest(companion: Companion, state: { cities: CampaignCity[]; lords: CampaignLord[]; specialLocations: SpecialLocation[] }): CompanionQuest {
   const types: CompanionQuest["type"][] = ["kill_lord", "explore_location", "deliver_goods", "defend_city"];
   const type = types[Math.floor(Math.random() * types.length)];
@@ -1747,6 +1803,7 @@ export class WarbandCampaign {
 
   // Deployment state
   private _deploymentFormation: "line" | "wedge" | "flanking" | "defensive" = "line";
+  // @ts-ignore assigned but value not yet read (reserved for future use)
   private _battleTerrainType: TerrainKind | null = null;
 
   async boot(playerFaction: string): Promise<void> {
@@ -4765,6 +4822,7 @@ export class WarbandCampaign {
   // Battle integration
   // ---------------------------------------------------------------------------
 
+  // @ts-ignore unused method reserved for future use
   private _startPartyBattle(enemy: CampaignParty): void {
     if (!this._state || this._inBattle) return;
     this._inBattle = true;

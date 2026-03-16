@@ -110,6 +110,8 @@ import {
   ALL_CORRUPTION_MODIFIERS,
 } from "@sim/systems/GrailCorruptionSystem";
 
+import { placeBattlefieldObstacles } from "@sim/state/BattlefieldState";
+
 /** First 2 armory items unlocked at world game start. More drop from camps. */
 const WORLD_STARTING_ITEMS: ArmoryItemId[] = ARMORY_ITEMS.slice(0, 2).map((i) => i.id);
 

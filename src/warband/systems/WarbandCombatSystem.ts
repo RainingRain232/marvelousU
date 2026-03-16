@@ -9,6 +9,7 @@ import {
   type WarbandProjectile,
   FighterCombatState,
   CombatDirection,
+  BattleType,
   vec3DistXZ,
 } from "../state/WarbandState";
 import { WB } from "../config/WarbandBalanceConfig";
@@ -158,6 +159,24 @@ function mirrorDirection(dir: CombatDirection): CombatDirection {
     case CombatDirection.STAB:
       return CombatDirection.STAB; // block stab with center guard
   }
+}
+
+// ---- Flanking angle helper ------------------------------------------------
+
+/**
+ * Compute the angle between the direction from target to attacker and the
+ * target's facing direction.  Returns 0 when the attacker is directly in
+ * front of the target, PI when directly behind.
+ */
+function _flankingAngle(attacker: WarbandFighter, target: WarbandFighter): number {
+  const angleToAttacker = Math.atan2(
+    attacker.position.x - target.position.x,
+    attacker.position.z - target.position.z,
+  );
+  let diff = angleToAttacker - target.rotation;
+  while (diff > Math.PI) diff -= Math.PI * 2;
+  while (diff < -Math.PI) diff += Math.PI * 2;
+  return Math.abs(diff);
 }
 
 // ---- Combat system --------------------------------------------------------
@@ -436,7 +455,27 @@ export class WarbandCombatSystem {
         const hitZone = attackHitZone(attacker.attackDirection);
         const zoneMult = hitZoneMultiplier(hitZone);
         const armorDef = target.equipment.armor[hitZone]?.defense ?? 0;
-        const rawDamage = baseDamage * zoneMult * chargeMult;
+        let rawDamage = baseDamage * zoneMult * chargeMult;
+
+        // Flanking bonus: compare attacker position to target facing direction
+        const flankAngle = _flankingAngle(attacker, target);
+        if (flankAngle > Math.PI * 2 / 3) {
+          rawDamage *= 1.3;  // Behind target (>120°): 1.3x
+        } else if (flankAngle > Math.PI / 3) {
+          rawDamage *= 1.15; // Side of target (60-120°): 1.15x
+        }
+
+        // Siege defender bonus: defenders near their spawn get 1.15x damage
+        if (state.battleType === BattleType.SIEGE) {
+          const defenderSpawnZ = WB.SIEGE_CAPTURE_Z;
+          if (attacker.team === "enemy") {
+            const distFromSpawn = Math.abs(attacker.position.z - defenderSpawnZ);
+            if (distFromSpawn < 10) {
+              rawDamage *= 1.15; // fortification advantage
+            }
+          }
+        }
+
         const finalDamage = Math.max(1, Math.round(rawDamage - armorDef));
 
         target.hp -= finalDamage;
@@ -887,7 +926,18 @@ export class WarbandCombatSystem {
           if (!blocked) {
             const zoneMult = hitZoneMultiplier(hitZone);
             const armorDef = target.equipment.armor[hitZone]?.defense ?? 0;
-            const damage = Math.max(1, Math.round(proj.damage * zoneMult - armorDef));
+            let projDmgMult = 1;
+            // Siege defender bonus for ranged: defenders near spawn get 1.15x
+            if (state.battleType === BattleType.SIEGE && proj.ownerTeam === "enemy") {
+              const owner = state.fighters.find(f => f.id === proj.ownerId);
+              if (owner) {
+                const distFromSpawn = Math.abs(owner.position.z - WB.SIEGE_CAPTURE_Z);
+                if (distFromSpawn < 10) {
+                  projDmgMult = 1.15;
+                }
+              }
+            }
+            const damage = Math.max(1, Math.round(proj.damage * zoneMult * projDmgMult - armorDef));
 
             target.hp -= damage;
             target.lastHitBy = proj.ownerId;

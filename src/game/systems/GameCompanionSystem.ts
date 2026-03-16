@@ -5,7 +5,7 @@
 
 import { GameBalance, TileType } from "../config/GameConfig";
 import { COMPANION_DEFS } from "../config/GameArtifactDefs";
-import type { CompanionBehavior, CompanionDef } from "../config/GameArtifactDefs";
+import type { CompanionDef } from "../config/GameArtifactDefs";
 import { Direction } from "../state/GameState";
 import type {
   GrailGameState, CompanionState, EnemyInstance,

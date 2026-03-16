@@ -446,8 +446,11 @@ export class DiabloGame {
   private _goldEarnedTotal: number = 0;
 
   // Safe zone (enemy-free spawn area)
+  // @ts-ignore assigned but value never read (reserved for future use)
   private _safeZoneX: number = 0;
+  // @ts-ignore assigned but value never read (reserved for future use)
   private _safeZoneZ: number = 0;
+  // @ts-ignore assigned but value never read (reserved for future use)
   private _safeZoneRadius: number = 20;
 
   // Hit freeze & slow motion

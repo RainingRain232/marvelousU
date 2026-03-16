@@ -4296,7 +4296,7 @@ export class GameRenderer {
     g.circle(cx, cy, 3).stroke({ color: 0x8888ff, width: 1, alpha: pulse });
   }
 
-  private _drawCompanionNPCTile(g: Graphics, px: number, py: number, floorColor: number, r: number, c: number, floor: FloorState): void {
+  private _drawCompanionNPCTile(g: Graphics, px: number, py: number, floorColor: number, r: number, c: number, _floor: FloorState): void {
     this._drawFloorTile(g, px, py, floorColor, r, c);
     // NPC indicator
     const cx = px + TS / 2, cy = py + TS / 2;

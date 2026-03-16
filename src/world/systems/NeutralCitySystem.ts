@@ -48,6 +48,7 @@ const POOL_BUILDINGS: BuildingType[] = [
 // ---------------------------------------------------------------------------
 
 /** Turns between raider spawns from neutral cities. */
+// @ts-ignore reserved for future use
 const RAIDER_SPAWN_INTERVAL = 5;
 
 /** Base gold tribute cost to ally with a neutral city. */

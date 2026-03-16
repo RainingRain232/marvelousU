@@ -42,6 +42,7 @@ export function createPartyMember(
     range: def.range,
     abilityTypes: abilityOverrides ?? (def.abilityTypes ?? []),
     knownSpells: startingSpells ?? [],
+    equippedSpells: startingSpells ?? [],
     equipment: {
       weapon: null,
       armor: null,

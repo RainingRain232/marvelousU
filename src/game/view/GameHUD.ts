@@ -11,12 +11,11 @@ import {
   ItemType, ItemRarity, SHOP_ITEMS,
 } from "../config/GameConfig";
 import {
-  CRAFTING_MATERIALS, CRAFTING_RECIPES, ENCHANTMENT_DEFS, SOCKET_GEMS,
+  CRAFTING_MATERIALS, CRAFTING_RECIPES, ENCHANTMENT_DEFS,
 } from "../config/GameCraftingDefs";
 import {
-  ARTIFACT_DEFS, ARTIFACT_SET_BONUSES, COMPANION_DEFS,
+  ARTIFACT_DEFS, ARTIFACT_SET_BONUSES,
 } from "../config/GameArtifactDefs";
-import { loadLeaderboard } from "../systems/GameInfiniteMode";
 
 import { GamePhase, loadRunStats } from "../state/GameState";
 import type {
@@ -180,14 +179,12 @@ export class GameHUD {
     }
 
     // Companion HUD (shown during play)
-    if (state.companion && state.companion.alive &&
-        state.phase !== GamePhase.GENRE_SELECT && state.phase !== GamePhase.KNIGHT_SELECT &&
-        state.phase !== GamePhase.GAME_OVER && state.phase !== GamePhase.VICTORY) {
+    if (state.companion && state.companion.alive) {
       this._drawCompanionHUD(state, sw, sh);
     }
 
     // Infinite mode score display
-    if (state.isInfiniteMode && state.phase !== GamePhase.GENRE_SELECT && state.phase !== GamePhase.KNIGHT_SELECT) {
+    if (state.isInfiniteMode) {
       this._drawInfiniteScore(state, sw, sh);
     }
 
@@ -2550,10 +2547,10 @@ export class GameHUD {
 
   private _addText(
     str: string, x: number, y: number, size: number, color: number,
-    centered = false, alpha = 1,
+    centered = false, fontOrAlpha?: string | number,
   ): void {
     const style = new TextStyle({
-      fontFamily: size >= 20 ? FONT_FANCY : FONT,
+      fontFamily: typeof fontOrAlpha === "string" ? fontOrAlpha : (size >= 20 ? FONT_FANCY : FONT),
       fontSize: size,
       fill: color,
       align: centered ? "center" : "left",
@@ -2566,7 +2563,8 @@ export class GameHUD {
       } : undefined,
     });
     const t = new Text({ text: str, style });
-    t.alpha = alpha;
+    t.alpha = typeof fontOrAlpha === "number" ? fontOrAlpha : 1;
+
     if (centered) {
       t.anchor.set(0.5, 0.5);
     }
@@ -2662,7 +2660,6 @@ export class GameHUD {
   // =========================================================================
 
   private _drawEnchantingScreen(state: GrailGameState, sw: number, sh: number): void {
-    const g = this._gfx;
     const pw = Math.min(480, sw - 60);
     const ph = Math.min(450, sh - 80);
     const px = (sw - pw) / 2;
