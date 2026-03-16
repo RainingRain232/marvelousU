@@ -99,9 +99,9 @@ export class SettlersCameraController {
   update(dt: number): void {
     // Pan based on WASD relative to camera yaw
     const forward = -Math.cos(this._yaw);
-    const right = Math.sin(this._yaw);
+    const right = -Math.sin(this._yaw);
     const forwardX = -Math.sin(this._yaw);
-    const rightX = Math.cos(this._yaw) * -1;
+    const rightX = Math.cos(this._yaw);
 
     let dx = 0;
     let dz = 0;
