@@ -126,6 +126,7 @@ export function getSpellChoices(member: PartyMember): RPGSpellDef[] {
 /**
  * Apply selected spells to member's known list.
  * Returns the spells actually learned (capped by max known).
+ * Newly learned spells are also auto-equipped if there are free slots.
  */
 export function learnSpells(member: PartyMember, spellIds: UpgradeType[]): UpgradeType[] {
   const max = maxKnownSpells(member);
@@ -137,6 +138,63 @@ export function learnSpells(member: PartyMember, spellIds: UpgradeType[]): Upgra
     if (!def) continue;
     member.knownSpells.push(id);
     learned.push(id);
+    // Auto-equip if there's room
+    const maxSlots = maxEquippedSpells(member);
+    if (member.equippedSpells.length < maxSlots) {
+      member.equippedSpells.push(id);
+    }
   }
   return learned;
+}
+
+// ---------------------------------------------------------------------------
+// Spell slot limits — equipped vs. known
+// ---------------------------------------------------------------------------
+
+/** Maximum number of spells that can be equipped at once (usable in battle). */
+export function maxEquippedSpells(member: PartyMember): number {
+  if (isMageCaster(member.unitType)) return 6;
+  if (isHealerCaster(member.unitType)) return 4;
+  return 2;
+}
+
+/**
+ * Equip a known spell into a battle slot.
+ * Returns true if successful.
+ */
+export function equipSpell(member: PartyMember, spellId: UpgradeType): boolean {
+  if (!member.knownSpells.includes(spellId)) return false;
+  if (member.equippedSpells.includes(spellId)) return false;
+  const max = maxEquippedSpells(member);
+  if (member.equippedSpells.length >= max) return false;
+  member.equippedSpells.push(spellId);
+  return true;
+}
+
+/**
+ * Unequip a spell from battle slots.
+ * Returns true if it was equipped and successfully removed.
+ */
+export function unequipSpell(member: PartyMember, spellId: UpgradeType): boolean {
+  const idx = member.equippedSpells.indexOf(spellId);
+  if (idx === -1) return false;
+  member.equippedSpells.splice(idx, 1);
+  return true;
+}
+
+/**
+ * Swap an equipped spell for a known (but unequipped) spell.
+ * Returns true if successful.
+ */
+export function swapEquippedSpell(
+  member: PartyMember,
+  unequipId: UpgradeType,
+  equipId: UpgradeType,
+): boolean {
+  const idx = member.equippedSpells.indexOf(unequipId);
+  if (idx === -1) return false;
+  if (!member.knownSpells.includes(equipId)) return false;
+  if (member.equippedSpells.includes(equipId)) return false;
+  member.equippedSpells[idx] = equipId;
+  return true;
 }

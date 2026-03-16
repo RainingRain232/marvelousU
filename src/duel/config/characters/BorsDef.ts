@@ -120,6 +120,10 @@ export const BORS_DEF: DuelCharacterDef = {
   jumpVelocity: -18,
   jumpForwardSpeed: 5,
   weight: 1.1,
+  uniqueMechanic: {
+    name: "steadfastResolve",
+    description: "Cannot be launched or knocked down while above 50% HP; gains armor on heavy attacks",
+  },
 
   normals: {
     // Q — Light high: quick axe handle jab, moderate speed for Bors

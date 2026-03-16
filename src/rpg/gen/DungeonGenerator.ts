@@ -2,7 +2,7 @@
 import { DungeonTileType } from "@/types";
 import type { Vec2 } from "@/types";
 import { SeededRandom } from "@sim/utils/random";
-import type { DungeonFloor, DungeonRoom, DungeonTile } from "@rpg/state/DungeonState";
+import type { DungeonFloor, DungeonRoom, DungeonTile, TrapType } from "@rpg/state/DungeonState";
 import type { DungeonState } from "@rpg/state/DungeonState";
 import type { DungeonDef } from "@rpg/config/DungeonDefs";
 
@@ -119,6 +119,17 @@ function _generateFloor(def: DungeonDef, level: number, rng: SeededRandom): Dung
       }
     }
   }
+
+  // --- Secret rooms: 15% chance per floor ---
+  if (rng.next() < 0.15) {
+    _placeSecretRoom(grid, rooms, width, height, rng, def.minRoomSize);
+  }
+
+  // --- Puzzle room: 1 per floor ---
+  _placePuzzleRoom(rooms, rng);
+
+  // --- Traps: 10% of corridor tiles ---
+  _placeTraps(grid, corridors, rng);
 
   return {
     level,
@@ -307,6 +318,143 @@ function _carveVertical(
         grid[y][x].walkable = true;
       }
       corridor.push({ x, y });
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Secret rooms
+// ---------------------------------------------------------------------------
+
+function _placeSecretRoom(
+  grid: DungeonTile[][],
+  rooms: DungeonRoom[],
+  width: number,
+  height: number,
+  rng: SeededRandom,
+  minRoomSize: number,
+): void {
+  // Find a wall adjacent to an existing room to place the secret room
+  // Try to carve a small room on the opposite side of a random room's wall
+  const normalRooms = rooms.filter(r => r.type === "normal" || r.type === "treasure");
+  if (normalRooms.length === 0) return;
+
+  const hostRoom = rng.pick(normalRooms);
+  const roomSize = Math.max(3, Math.min(minRoomSize, 5));
+
+  // Try each direction from the host room
+  const directions = [
+    { dx: -1, dy: 0, wallX: hostRoom.bounds.x - 1, wallY: hostRoom.bounds.y + Math.floor(hostRoom.bounds.height / 2) },
+    { dx: 1, dy: 0, wallX: hostRoom.bounds.x + hostRoom.bounds.width, wallY: hostRoom.bounds.y + Math.floor(hostRoom.bounds.height / 2) },
+    { dx: 0, dy: -1, wallX: hostRoom.bounds.x + Math.floor(hostRoom.bounds.width / 2), wallY: hostRoom.bounds.y - 1 },
+    { dx: 0, dy: 1, wallX: hostRoom.bounds.x + Math.floor(hostRoom.bounds.width / 2), wallY: hostRoom.bounds.y + hostRoom.bounds.height },
+  ];
+
+  for (const dir of directions) {
+    const secretX = dir.dx < 0 ? dir.wallX - roomSize : dir.dx > 0 ? dir.wallX + 1 : hostRoom.bounds.x;
+    const secretY = dir.dy < 0 ? dir.wallY - roomSize : dir.dy > 0 ? dir.wallY + 1 : hostRoom.bounds.y;
+
+    // Bounds check
+    if (secretX < 1 || secretY < 1 || secretX + roomSize >= width - 1 || secretY + roomSize >= height - 1) continue;
+
+    // Check that the area is all walls (not overlapping other rooms)
+    let canPlace = true;
+    for (let y = secretY; y < secretY + roomSize && canPlace; y++) {
+      for (let x = secretX; x < secretX + roomSize && canPlace; x++) {
+        if (grid[y][x].type !== DungeonTileType.WALL) canPlace = false;
+      }
+    }
+    if (!canPlace) continue;
+
+    // Place the secret room
+    const secretRoomId = `room_secret_${rooms.length}`;
+    const secretRoom: DungeonRoom = {
+      id: secretRoomId,
+      bounds: { x: secretX, y: secretY, width: roomSize, height: roomSize },
+      type: "secret",
+      cleared: false,
+      encounterId: null,
+      loot: [],
+      secretRevealed: false,
+    };
+    rooms.push(secretRoom);
+
+    // Carve the room
+    for (let y = secretY; y < secretY + roomSize; y++) {
+      for (let x = secretX; x < secretX + roomSize; x++) {
+        grid[y][x].type = DungeonTileType.FLOOR;
+        grid[y][x].walkable = true;
+        grid[y][x].roomId = secretRoomId;
+      }
+    }
+
+    // Place a chest in the center with rare loot
+    const cx = secretX + Math.floor(roomSize / 2);
+    const cy = secretY + Math.floor(roomSize / 2);
+    grid[cy][cx].type = DungeonTileType.CHEST;
+
+    // Mark the wall tile as a secret wall (the doorway)
+    if (dir.wallY >= 0 && dir.wallY < height && dir.wallX >= 0 && dir.wallX < width) {
+      const wallTile = grid[dir.wallY][dir.wallX];
+      wallTile.isSecretWall = true;
+      wallTile.secretRoomId = secretRoomId;
+      // Secret wall is walkable once discovered but starts as wall
+      wallTile.type = DungeonTileType.WALL;
+      wallTile.walkable = false;
+    }
+
+    return; // Only one secret room per floor
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Puzzle rooms
+// ---------------------------------------------------------------------------
+
+function _placePuzzleRoom(rooms: DungeonRoom[], rng: SeededRandom): void {
+  // Convert one "normal" room to a puzzle room (if available)
+  const normalRooms = rooms.filter(r => r.type === "normal" && !r.encounterId);
+  if (normalRooms.length === 0) return;
+
+  const puzzleRoom = rng.pick(normalRooms);
+  puzzleRoom.type = "puzzle";
+  puzzleRoom.puzzleSolved = false;
+
+  // Pick a puzzle type
+  const puzzleTypes: DungeonRoom["puzzleType"][] = ["lever_order", "pressure_plates", "symbol_match"];
+  puzzleRoom.puzzleType = rng.pick(puzzleTypes);
+
+  // Generate a solution (3-5 step sequence)
+  const solutionLength = rng.int(3, 6);
+  const solution: number[] = [];
+  for (let i = 0; i < solutionLength; i++) {
+    solution.push(rng.int(0, 4)); // 0-3 positions
+  }
+  puzzleRoom.puzzleSolution = solution;
+}
+
+// ---------------------------------------------------------------------------
+// Traps
+// ---------------------------------------------------------------------------
+
+function _placeTraps(
+  grid: DungeonTile[][],
+  corridors: Vec2[][],
+  rng: SeededRandom,
+): void {
+  const trapTypes: TrapType[] = ["spike", "poison", "alarm"];
+
+  for (const corridor of corridors) {
+    for (const pos of corridor) {
+      if (rng.next() >= 0.10) continue; // 10% chance per corridor tile
+      const tile = grid[pos.y]?.[pos.x];
+      if (!tile || tile.type !== DungeonTileType.FLOOR) continue;
+
+      tile.type = DungeonTileType.TRAP;
+      tile.walkable = true; // Traps are on walkable floor
+      tile.trapType = rng.pick(trapTypes);
+      tile.trapTriggered = false;
+      tile.trapDetected = false;
     }
   }
 }

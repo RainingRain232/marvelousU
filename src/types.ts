@@ -648,6 +648,7 @@ export enum GamePhase {
   PREP = "prep",
   BATTLE = "battle",
   RESOLVE = "resolve",
+  DRAFT = "draft", // Battlefield mode: unit selection phase before battle
 }
 
 export enum GameMode {
@@ -714,6 +715,7 @@ export enum TekkenFighterState {
   GRAB = "grab",
   GRABBED = "grabbed",
   RAGE_ART = "rage_art",
+  WALL_SPLAT = "wall_splat",
   VICTORY = "victory",
   DEFEAT = "defeat",
 }
@@ -882,6 +884,72 @@ export enum ArthurianClass {
   ROGUE = "rogue",
   PALADIN = "paladin",
   DRUID = "druid",
+}
+
+// ---------------------------------------------------------------------------
+// Campaign difficulty tiers
+// ---------------------------------------------------------------------------
+
+export enum CampaignDifficulty {
+  NORMAL = "normal",
+  HARD = "hard",
+  NIGHTMARE = "nightmare",
+}
+
+// ---------------------------------------------------------------------------
+// Campaign achievement conditions
+// ---------------------------------------------------------------------------
+
+export enum CampaignAchievementCondition {
+  NO_DAMAGE = "no_damage",
+  SPEED_CLEAR = "speed_clear",
+  NO_BUILDINGS_LOST = "no_buildings_lost",
+  NO_UNITS_LOST = "no_units_lost",
+  GOLD_HOARDER = "gold_hoarder",
+}
+
+// ---------------------------------------------------------------------------
+// Roguelike wave event types
+// ---------------------------------------------------------------------------
+
+export enum RoguelikeWaveEventType {
+  MERCENARY = "mercenary",
+  SUPPLY_DROP = "supply_drop",
+  RITUAL = "ritual",
+  CHAMPION = "champion",
+}
+
+// ---------------------------------------------------------------------------
+// Roguelike enemy tier
+// ---------------------------------------------------------------------------
+
+export enum RoguelikeEnemyTier {
+  BASIC = "basic",
+  INTERMEDIATE = "intermediate",
+  ADVANCED = "advanced",
+  CHAOS = "chaos",
+}
+
+// ---------------------------------------------------------------------------
+// AI Personality (Standard autobattler)
+// ---------------------------------------------------------------------------
+
+export enum AIPersonality {
+  BALANCED = "balanced",
+  AGGRESSIVE = "aggressive",
+  DEFENSIVE = "defensive",
+  ECONOMY = "economy",
+}
+
+// ---------------------------------------------------------------------------
+// Terrain types (Standard autobattler)
+// ---------------------------------------------------------------------------
+
+export enum TerrainType {
+  PLAINS = "plains",
+  FOREST = "forest",
+  RIVER = "river",
+  HIGH_GROUND = "high_ground",
 }
 
 export enum MapType {

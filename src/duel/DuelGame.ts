@@ -638,6 +638,11 @@ export class DuelGame {
       duelAudio.playKO();
       const defeated = this._state.waveDefeated;
       const wave = this._state.waveNumber;
+      // Update meta-progression on defeat
+      this._state.waveProgress.bestWaveReached = Math.max(
+        this._state.waveProgress.bestWaveReached,
+        wave,
+      );
       this._announce(`DEFEATED! WAVE ${wave} - ${defeated} KILLS`, 180);
       setTimeout(() => {
         this._endMatch();
@@ -648,6 +653,7 @@ export class DuelGame {
     // Player won — advance
     duelAudio.playKO();
     this._state.waveDefeated++;
+    this._state.waveProgress.totalKOs++;
     this._state.waveEnemyIndex++;
 
     const isBoss = this._state.waveEnemyIndex >= this._state.waveEnemies.length;
@@ -670,10 +676,20 @@ export class DuelGame {
   private _startNextWave(): void {
     if (!this._state) return;
 
+    // Track wave clear meta-progression
+    this._state.waveProgress.totalWavesCleared++;
+    this._state.waveProgress.bestWaveReached = Math.max(
+      this._state.waveProgress.bestWaveReached,
+      this._state.waveNumber + 1,
+    );
+
     this._state.waveNumber++;
     const p1Id = this._state.fighters[0].characterId;
     this._state.waveEnemies = this._generateWave(this._state.waveNumber, p1Id);
     this._state.waveEnemyIndex = 0;
+
+    // Scale AI difficulty with wave progression (cap at difficulty 3)
+    this._state.aiDifficulty = Math.min(3, Math.floor(this._state.waveNumber / 3));
 
     this._spawnNextWaveEnemy();
   }
@@ -684,7 +700,11 @@ export class DuelGame {
     const enemyId = this._state.waveEnemies[this._state.waveEnemyIndex];
     const enemyDef = DUEL_CHARACTERS[enemyId];
     const isBoss = this._state.waveEnemyIndex === this._state.waveEnemies.length - 1;
-    const enemyHp = isBoss ? enemyDef.maxHp : Math.round(enemyDef.maxHp * 0.2);
+    // Wave difficulty scaling: enemy HP and damage increase per wave
+    const waveHpMult = 1 + (this._state.waveNumber - 1) * DuelBalance.WAVE_HP_SCALING;
+    const waveDmgMult = 1 + (this._state.waveNumber - 1) * DuelBalance.WAVE_DMG_SCALING;
+    const baseHp = isBoss ? enemyDef.maxHp : Math.round(enemyDef.maxHp * 0.2);
+    const enemyHp = Math.round(baseHp * waveHpMult);
 
     // Reset P2 fighter
     const p2X = Math.round(this._state.screenW * DuelBalance.P2_START_RATIO);
@@ -692,6 +712,7 @@ export class DuelGame {
     p2.characterId = enemyId;
     p2.hp = enemyHp;
     p2.maxHp = enemyHp;
+    p2.waveDamageMultiplier = waveDmgMult;
     p2.position.x = p2X;
     p2.position.y = this._state.stageFloorY;
     p2.velocity.x = 0;

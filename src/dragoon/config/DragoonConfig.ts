@@ -2,7 +2,7 @@
 // Panzer Dragoon mode — balance config, enemy definitions, skill definitions
 // ---------------------------------------------------------------------------
 
-import { DragoonClassId, DragoonEnemyType, DragoonSkillId, DragoonSubclassId, EnemyPattern } from "../state/DragoonState";
+import { DragoonClassId, DragoonEnemyType, DragoonSkillId, DragoonSubclassId, EnemyPattern, SubclassSkillNode } from "../state/DragoonState";
 
 // ---------------------------------------------------------------------------
 // Balance
@@ -51,7 +51,8 @@ export const DragoonBalance = {
 
   PROJECTILE_CLEANUP_MARGIN: 100,
 
-  SUBCLASS_LEVEL: 20,
+  SUBCLASS_LEVEL: 5,           // subclass selection now at level 5 (was 20)
+  SUBCLASS_POINT_LEVELS: [5, 10, 15, 20] as readonly number[],  // levels that grant subclass skill points
 
   /** World width as a multiplier of screen width (camera range). */
   WORLD_WIDTH_MULT: 1.5,
@@ -143,6 +144,31 @@ export const ENEMY_TEMPLATES: Record<string, EnemyTemplate> = {
     pattern: EnemyPattern.GROUND, fireRate: 1.5,
     color: 0x554433, glowColor: 0xaa8855, scoreValue: 80, isBoss: false, isGround: true,
   },
+  [DragoonEnemyType.GROUND_SIEGE_ENGINE]: {
+    type: DragoonEnemyType.GROUND_SIEGE_ENGINE, hp: 120, speed: 20, size: 2.2,
+    pattern: EnemyPattern.GROUND_SLOW, fireRate: 3.0,
+    color: 0x443322, glowColor: 0x886644, scoreValue: 200, isBoss: false, isGround: true,
+  },
+  [DragoonEnemyType.GROUND_CAVALRY]: {
+    type: DragoonEnemyType.GROUND_CAVALRY, hp: 40, speed: 160, size: 1.1,
+    pattern: EnemyPattern.GROUND_CHARGE, fireRate: 0,
+    color: 0x555566, glowColor: 0xaaaacc, scoreValue: 110, isBoss: false, isGround: true,
+  },
+  [DragoonEnemyType.GROUND_SHIELD_WALL]: {
+    type: DragoonEnemyType.GROUND_SHIELD_WALL, hp: 200, speed: 25, size: 1.8,
+    pattern: EnemyPattern.GROUND_SLOW, fireRate: 0,
+    color: 0x777788, glowColor: 0xbbbbcc, scoreValue: 160, isBoss: false, isGround: true,
+  },
+  [DragoonEnemyType.GROUND_WAR_CATAPULT]: {
+    type: DragoonEnemyType.GROUND_WAR_CATAPULT, hp: 70, speed: 30, size: 1.6,
+    pattern: EnemyPattern.GROUND, fireRate: 2.0,
+    color: 0x664422, glowColor: 0xcc8844, scoreValue: 140, isBoss: false, isGround: true,
+  },
+  [DragoonEnemyType.GROUND_DARK_MAGE_CIRCLE]: {
+    type: DragoonEnemyType.GROUND_DARK_MAGE_CIRCLE, hp: 60, speed: 0, size: 1.5,
+    pattern: EnemyPattern.GROUND_STATIONARY, fireRate: 1.2,
+    color: 0x440066, glowColor: 0xaa00ff, scoreValue: 180, isBoss: false, isGround: true,
+  },
   // --- Bosses ---
   [DragoonEnemyType.BOSS_DRAKE]: {
     type: DragoonEnemyType.BOSS_DRAKE, hp: 600, speed: 60, size: 3.5,
@@ -169,6 +195,32 @@ export const ENEMY_TEMPLATES: Record<string, EnemyTemplate> = {
     pattern: EnemyPattern.BOSS_PATTERN, fireRate: 0.3,
     color: 0x0a0a0a, glowColor: 0xff00ff, scoreValue: 10000, isBoss: true, isGround: false,
   },
+  // --- New Arthurian bosses ---
+  [DragoonEnemyType.BOSS_DRAGON_PENDRAGON]: {
+    type: DragoonEnemyType.BOSS_DRAGON_PENDRAGON, hp: 1800, speed: 55, size: 4.8,
+    pattern: EnemyPattern.BOSS_PATTERN, fireRate: 0.5,
+    color: 0xcc8800, glowColor: 0xffcc00, scoreValue: 8000, isBoss: true, isGround: false,
+  },
+  [DragoonEnemyType.BOSS_QUESTING_BEAST]: {
+    type: DragoonEnemyType.BOSS_QUESTING_BEAST, hp: 1400, speed: 70, size: 4.0,
+    pattern: EnemyPattern.BOSS_PATTERN, fireRate: 0.6,
+    color: 0x226622, glowColor: 0x44ff44, scoreValue: 6500, isBoss: true, isGround: false,
+  },
+  [DragoonEnemyType.BOSS_BLACK_KNIGHT]: {
+    type: DragoonEnemyType.BOSS_BLACK_KNIGHT, hp: 2000, speed: 40, size: 3.5,
+    pattern: EnemyPattern.BOSS_PATTERN, fireRate: 0.4,
+    color: 0x111111, glowColor: 0x444444, scoreValue: 7500, isBoss: true, isGround: false,
+  },
+  [DragoonEnemyType.BOSS_MORGANA_WYRM]: {
+    type: DragoonEnemyType.BOSS_MORGANA_WYRM, hp: 2200, speed: 50, size: 4.5,
+    pattern: EnemyPattern.BOSS_PATTERN, fireRate: 0.35,
+    color: 0x660044, glowColor: 0xff00aa, scoreValue: 9000, isBoss: true, isGround: false,
+  },
+  [DragoonEnemyType.BOSS_GRAIL_GUARDIAN]: {
+    type: DragoonEnemyType.BOSS_GRAIL_GUARDIAN, hp: 3000, speed: 30, size: 5.5,
+    pattern: EnemyPattern.BOSS_PATTERN, fireRate: 0.25,
+    color: 0xddaa00, glowColor: 0xffffff, scoreValue: 15000, isBoss: true, isGround: false,
+  },
 };
 
 // Which enemies can appear in each wave tier
@@ -176,22 +228,27 @@ export const WAVE_ENEMY_POOL: DragoonEnemyType[][] = [
   // Waves 1-4
   [DragoonEnemyType.DARK_CROW, DragoonEnemyType.SHADOW_BAT],
   // Waves 5-8
-  [DragoonEnemyType.DARK_CROW, DragoonEnemyType.SHADOW_BAT, DragoonEnemyType.WYVERN, DragoonEnemyType.FIRE_SPRITE, DragoonEnemyType.GROUND_CATAPULT, DragoonEnemyType.SKY_VIPER, DragoonEnemyType.DARK_FALCON_SQUAD],
+  [DragoonEnemyType.DARK_CROW, DragoonEnemyType.SHADOW_BAT, DragoonEnemyType.WYVERN, DragoonEnemyType.FIRE_SPRITE, DragoonEnemyType.GROUND_CATAPULT, DragoonEnemyType.SKY_VIPER, DragoonEnemyType.DARK_FALCON_SQUAD, DragoonEnemyType.GROUND_CAVALRY],
   // Waves 9-12
-  [DragoonEnemyType.WYVERN, DragoonEnemyType.FIRE_SPRITE, DragoonEnemyType.STORM_HAWK, DragoonEnemyType.FLOATING_EYE, DragoonEnemyType.GROUND_CATAPULT, DragoonEnemyType.GROUND_BALLISTA, DragoonEnemyType.SKY_VIPER, DragoonEnemyType.DARK_FALCON_SQUAD],
+  [DragoonEnemyType.WYVERN, DragoonEnemyType.FIRE_SPRITE, DragoonEnemyType.STORM_HAWK, DragoonEnemyType.FLOATING_EYE, DragoonEnemyType.GROUND_CATAPULT, DragoonEnemyType.GROUND_BALLISTA, DragoonEnemyType.SKY_VIPER, DragoonEnemyType.DARK_FALCON_SQUAD, DragoonEnemyType.GROUND_CAVALRY, DragoonEnemyType.GROUND_WAR_CATAPULT],
   // Waves 13-16
-  [DragoonEnemyType.STORM_HAWK, DragoonEnemyType.FLOATING_EYE, DragoonEnemyType.DARK_ANGEL, DragoonEnemyType.GROUND_MAGE_TOWER, DragoonEnemyType.GROUND_BALLISTA, DragoonEnemyType.SHADOW_WRAITH],
+  [DragoonEnemyType.STORM_HAWK, DragoonEnemyType.FLOATING_EYE, DragoonEnemyType.DARK_ANGEL, DragoonEnemyType.GROUND_MAGE_TOWER, DragoonEnemyType.GROUND_BALLISTA, DragoonEnemyType.SHADOW_WRAITH, DragoonEnemyType.GROUND_SIEGE_ENGINE, DragoonEnemyType.GROUND_SHIELD_WALL, DragoonEnemyType.GROUND_DARK_MAGE_CIRCLE],
   // Waves 17-20
-  [DragoonEnemyType.DARK_ANGEL, DragoonEnemyType.FLOATING_EYE, DragoonEnemyType.STORM_HAWK, DragoonEnemyType.WYVERN, DragoonEnemyType.GROUND_MAGE_TOWER, DragoonEnemyType.SHADOW_WRAITH],
+  [DragoonEnemyType.DARK_ANGEL, DragoonEnemyType.FLOATING_EYE, DragoonEnemyType.STORM_HAWK, DragoonEnemyType.WYVERN, DragoonEnemyType.GROUND_MAGE_TOWER, DragoonEnemyType.SHADOW_WRAITH, DragoonEnemyType.GROUND_SIEGE_ENGINE, DragoonEnemyType.GROUND_SHIELD_WALL, DragoonEnemyType.GROUND_DARK_MAGE_CIRCLE, DragoonEnemyType.GROUND_WAR_CATAPULT],
 ];
 
 // Boss order (cycles if needed)
 export const BOSS_ORDER: DragoonEnemyType[] = [
   DragoonEnemyType.BOSS_DRAKE,
+  DragoonEnemyType.BOSS_QUESTING_BEAST,
   DragoonEnemyType.BOSS_CHIMERA,
+  DragoonEnemyType.BOSS_BLACK_KNIGHT,
   DragoonEnemyType.BOSS_LICH_KING,
+  DragoonEnemyType.BOSS_DRAGON_PENDRAGON,
   DragoonEnemyType.BOSS_STORM_TITAN,
+  DragoonEnemyType.BOSS_MORGANA_WYRM,
   DragoonEnemyType.BOSS_VOID_SERPENT,
+  DragoonEnemyType.BOSS_GRAIL_GUARDIAN,
 ];
 
 // ---------------------------------------------------------------------------
@@ -742,3 +799,146 @@ export const SUBCLASS_DEFINITIONS: Record<DragoonSubclassId, SubclassDefinition>
     replaceSkill5: DragoonSkillId.PHASE_SHIFT,
   },
 };
+
+// ---------------------------------------------------------------------------
+// Boss descriptions (for UI / lore display)
+// ---------------------------------------------------------------------------
+
+export interface BossDescription {
+  name: string;
+  displayName: string;
+  description: string;
+  phases: string[];
+  mechanics: string[];
+}
+
+export const BOSS_DESCRIPTIONS: Record<string, BossDescription> = {
+  [DragoonEnemyType.BOSS_DRAKE]: {
+    name: "boss_drake",
+    displayName: "Ignis the Fire Drake",
+    description: "A lesser dragon fueled by primal flame. Its fiery breath scorches the skies.",
+    phases: ["Flame Breath Barrage", "Inferno Dive", "Ember Storm"],
+    mechanics: ["Leaves fire trails that linger", "Summons fire sprites as minions"],
+  },
+  [DragoonEnemyType.BOSS_CHIMERA]: {
+    name: "boss_chimera",
+    displayName: "The Chimera of Dread",
+    description: "A monstrous fusion of lion, goat, and serpent. Each head attacks independently.",
+    phases: ["Triple Head Assault", "Poison Serpent Spray", "Berserk Charge"],
+    mechanics: ["Three simultaneous bullet patterns", "Poison clouds on death of each head phase"],
+  },
+  [DragoonEnemyType.BOSS_LICH_KING]: {
+    name: "boss_lich_king",
+    displayName: "Mordrath the Lich King",
+    description: "An undead sorcerer-king who commands legions of spectral warriors.",
+    phases: ["Necrotic Barrage", "Soul Drain Vortex", "Spectral Army Summon", "Death Nova"],
+    mechanics: ["Raises defeated enemies as allies", "Drains player mana with vortex", "Regenerates HP through soul harvest"],
+  },
+  [DragoonEnemyType.BOSS_STORM_TITAN]: {
+    name: "boss_storm_titan",
+    displayName: "Thalassor, Storm Titan",
+    description: "A colossal being of living lightning that commands the tempest itself.",
+    phases: ["Thunder Barrage", "Lightning Chain Grid", "Eye of the Storm", "Thunderclap Nova"],
+    mechanics: ["Creates lightning walls that sweep the screen", "Teleports via lightning bolts", "Shield regenerates when not taking damage"],
+  },
+  [DragoonEnemyType.BOSS_VOID_SERPENT]: {
+    name: "boss_void_serpent",
+    displayName: "Nyx, the Void Serpent",
+    description: "A world-serpent from the spaces between stars. Reality bends in its presence.",
+    phases: ["Void Breath", "Dimensional Rift", "Gravity Well", "Cosmic Annihilation"],
+    mechanics: ["Warps bullet trajectories near its body", "Creates void zones that damage over time", "Spawns shadow duplicates of the player"],
+  },
+  [DragoonEnemyType.BOSS_DRAGON_PENDRAGON]: {
+    name: "boss_dragon_pendragon",
+    displayName: "Y Ddraig Goch, Dragon of Pendragon",
+    description: "The legendary red dragon of Arthurian prophecy, awoken from its slumber beneath Dinas Emrys.",
+    phases: ["Regal Fire Breath", "Wing Gust Shockwave", "Pendragon's Fury", "Golden Flame Spiral"],
+    mechanics: ["Deploys a golden shield that reflects projectiles", "Summons wyvern minions in V-formations", "Fire breath covers wide arcs"],
+  },
+  [DragoonEnemyType.BOSS_QUESTING_BEAST]: {
+    name: "boss_questing_beast",
+    displayName: "Glatisant, the Questing Beast",
+    description: "The impossible creature pursued by King Pellinore. Its belly howls like thirty hounds.",
+    phases: ["Hound's Howl Barrage", "Serpent Strike Rush", "Stag Leap Assault"],
+    mechanics: ["Erratic zigzag movement makes it hard to hit", "Spawns hound-like projectiles that track the player", "Periodically becomes untargetable while leaping"],
+  },
+  [DragoonEnemyType.BOSS_BLACK_KNIGHT]: {
+    name: "boss_black_knight",
+    displayName: "The Black Knight of Annwn",
+    description: "An indestructible dark knight from the Otherworld. Immune to fear and nearly immune to harm.",
+    phases: ["Shield Bash Charge", "Dark Sword Rain", "Impenetrable Guard", "Phantom Army"],
+    mechanics: ["Frontal shield blocks all projectiles — must be flanked", "Summons spectral knights that charge in formation", "Regenerates armor plating between phases"],
+  },
+  [DragoonEnemyType.BOSS_MORGANA_WYRM]: {
+    name: "boss_morgana_wyrm",
+    displayName: "Morgana's Wyrm, the Fae Serpent",
+    description: "A magical wyrm created by Morgan le Fay. It weaves illusions and dark enchantments.",
+    phases: ["Illusion Split", "Fae Fire Storm", "Enchantment Web", "Mirror Maze"],
+    mechanics: ["Creates illusory copies that also attack", "Hexes the player, reversing controls briefly", "Fires seeking fae-fire orbs that orbit before striking"],
+  },
+  [DragoonEnemyType.BOSS_GRAIL_GUARDIAN]: {
+    name: "boss_grail_guardian",
+    displayName: "Seraphiel, Guardian of the Grail",
+    description: "The ultimate celestial protector of the Holy Grail. A being of pure radiant light.",
+    phases: ["Holy Ray Barrage", "Judgement Pillars", "Radiant Nova", "Grail's Wrath", "Divine Ascension"],
+    mechanics: ["Heals itself with Grail radiance", "Creates pillars of light that sweep the arena", "Final phase envelops entire screen in holy fire", "Spawns celestial minions with halos"],
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Subclass skill trees — 4 nodes per subclass, unlocked at levels 5, 10, 15, 20
+// ---------------------------------------------------------------------------
+
+export function getSubclassSkillTree(subclassId: DragoonSubclassId): SubclassSkillNode[] {
+  const trees: Record<DragoonSubclassId, SubclassSkillNode[]> = {
+    [DragoonSubclassId.CHRONOMANCER]: [
+      { level: 5,  name: "Temporal Insight",    description: "Enemy bullets move 20% slower",       unlocked: false, skillId: null, statBonus: { speed: 10 } },
+      { level: 10, name: "Rewind",              description: "Gain Time Warp ability",              unlocked: false, skillId: DragoonSkillId.TIME_WARP },
+      { level: 15, name: "Chronostasis",        description: "+30 max mana, +20% mana regen",       unlocked: false, skillId: null, statBonus: { mana: 30 } },
+      { level: 20, name: "Temporal Mastery",     description: "Gain Temporal Loop ability",          unlocked: false, skillId: DragoonSkillId.TEMPORAL_LOOP },
+    ],
+    [DragoonSubclassId.VOID_WEAVER]: [
+      { level: 5,  name: "Void Touched",        description: "+15% damage to all attacks",          unlocked: false, skillId: null, statBonus: { damage: 15 } },
+      { level: 10, name: "Event Horizon",       description: "Gain Singularity ability",            unlocked: false, skillId: DragoonSkillId.SINGULARITY },
+      { level: 15, name: "Dark Matter",         description: "+25 max HP, attacks pierce +1",       unlocked: false, skillId: null, statBonus: { hp: 25 } },
+      { level: 20, name: "Dimensional Rift",    description: "Gain Mirror Image ability",           unlocked: false, skillId: DragoonSkillId.MIRROR_IMAGE },
+    ],
+    [DragoonSubclassId.TEMPEST_LORD]: [
+      { level: 5,  name: "Storm's Edge",        description: "+10% movement speed",                 unlocked: false, skillId: null, statBonus: { speed: 15 } },
+      { level: 10, name: "Tempest Rising",      description: "Gain Hurricane ability",              unlocked: false, skillId: DragoonSkillId.HURRICANE },
+      { level: 15, name: "Static Charge",       description: "Attacks chain to 1 nearby enemy",     unlocked: false, skillId: null, statBonus: { damage: 10 } },
+      { level: 20, name: "Eye of the Storm",    description: "Gain Thunder Armor ability",          unlocked: false, skillId: DragoonSkillId.THUNDER_ARMOR },
+    ],
+    [DragoonSubclassId.BEASTMASTER]: [
+      { level: 5,  name: "Animal Bond",         description: "Hawk Companion lasts 2s longer",      unlocked: false, skillId: null, statBonus: { hp: 15 } },
+      { level: 10, name: "Pack Leader",         description: "Gain Wolf Pack ability",              unlocked: false, skillId: DragoonSkillId.WOLF_PACK },
+      { level: 15, name: "Primal Fury",         description: "+20% damage when companions active",  unlocked: false, skillId: null, statBonus: { damage: 12 } },
+      { level: 20, name: "Alpha Strike",        description: "Gain Eagle Fury ability",             unlocked: false, skillId: DragoonSkillId.EAGLE_FURY },
+    ],
+    [DragoonSubclassId.DEATH_KNIGHT]: [
+      { level: 5,  name: "Necrotic Touch",      description: "Attacks apply a weak DoT",            unlocked: false, skillId: null, statBonus: { damage: 10 } },
+      { level: 10, name: "Undead Legion",       description: "Gain Raise Dead ability",             unlocked: false, skillId: DragoonSkillId.RAISE_DEAD },
+      { level: 15, name: "Death's Embrace",     description: "+30 max HP, lifesteal on kills",      unlocked: false, skillId: null, statBonus: { hp: 30 } },
+      { level: 20, name: "Harvest of Souls",    description: "Gain Soul Harvest ability",           unlocked: false, skillId: DragoonSkillId.SOUL_HARVEST },
+    ],
+    [DragoonSubclassId.PALADIN]: [
+      { level: 5,  name: "Holy Blessing",       description: "+20 max HP, slight passive regen",    unlocked: false, skillId: null, statBonus: { hp: 20 } },
+      { level: 10, name: "Smite",               description: "Gain Holy Nova ability",              unlocked: false, skillId: DragoonSkillId.HOLY_NOVA },
+      { level: 15, name: "Aura of Protection",  description: "Reduce all damage taken by 10%",      unlocked: false, skillId: null, statBonus: { hp: 15 } },
+      { level: 20, name: "Sacred Ground",       description: "Gain Consecration ability",           unlocked: false, skillId: DragoonSkillId.CONSECRATION },
+    ],
+    [DragoonSubclassId.NINJA]: [
+      { level: 5,  name: "Swift Blades",        description: "+15% attack speed",                   unlocked: false, skillId: null, statBonus: { speed: 12 } },
+      { level: 10, name: "Kage Bunshin",        description: "Gain Shadow Clones ability",          unlocked: false, skillId: DragoonSkillId.SHADOW_CLONE_ARMY },
+      { level: 15, name: "Critical Edge",       description: "+20% crit chance",                    unlocked: false, skillId: null, statBonus: { damage: 15 } },
+      { level: 20, name: "Whirlwind",           description: "Gain Blade Storm ability",            unlocked: false, skillId: DragoonSkillId.BLADE_STORM },
+    ],
+    [DragoonSubclassId.PHANTOM]: [
+      { level: 5,  name: "Ethereal Form",       description: "10% dodge chance on all attacks",     unlocked: false, skillId: null, statBonus: { speed: 10 } },
+      { level: 10, name: "Life Drain",          description: "Gain Soul Siphon ability",            unlocked: false, skillId: DragoonSkillId.SOUL_SIPHON },
+      { level: 15, name: "Spectral Power",      description: "+25 max mana, +15% damage",           unlocked: false, skillId: null, statBonus: { mana: 25, damage: 15 } },
+      { level: 20, name: "Between Worlds",      description: "Gain Phase Shift ability",            unlocked: false, skillId: DragoonSkillId.PHASE_SHIFT },
+    ],
+  };
+  return trees[subclassId] ?? [];
+}

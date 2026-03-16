@@ -10,6 +10,7 @@ import type {
   SurvivorState,
   SurvivorEnemy,
   SurvivorWeaponState,
+  AiBehavior,
 } from "../state/SurvivorState";
 
 // ---------------------------------------------------------------------------
@@ -132,9 +133,6 @@ function _getSynergyAreaBonus(state: SurvivorState): number {
 // ---------------------------------------------------------------------------
 
 function damageEnemy(state: SurvivorState, enemy: SurvivorEnemy, amount: number, weaponId?: string): void {
-  // Shielded elites take 50% damage
-  if (enemy.eliteType === "shielded") amount *= 0.5;
-
   // Giant Slayer arcana: +100% vs bosses/elites
   if (_hasArcana(state, "giant_slayer") && (enemy.isBoss || enemy.eliteType)) {
     amount *= 2.0;
@@ -148,7 +146,19 @@ function damageEnemy(state: SurvivorState, enemy: SurvivorEnemy, amount: number,
   if (state.activeLandmarkBuffs.has("sword_stone")) amount *= 1.5;
 
   const isCrit = Math.random() < state.player.critChance;
-  const finalDmg = isCrit ? amount * 2.5 : amount;
+  let finalDmg = isCrit ? amount * 2.5 : amount;
+
+  // Shielded elites: shield absorbs damage before health
+  if (enemy.shieldHp > 0) {
+    if (finalDmg <= enemy.shieldHp) {
+      enemy.shieldHp -= finalDmg;
+      finalDmg = 0;
+    } else {
+      finalDmg -= enemy.shieldHp;
+      enemy.shieldHp = 0;
+    }
+  }
+
   enemy.hp -= finalDmg;
   enemy.hitTimer = 0.1;
   state.totalDamageDealt += finalDmg;
@@ -262,16 +272,22 @@ function getWeaponDamage(ws: SurvivorWeaponState, player: SurvivorState["player"
   return (def.baseDamage + def.damagePerLevel * (ws.level - 1)) * (player.atk / SurvivorBalance.PLAYER_BASE_ATK);
 }
 
+// Minimum cooldown floor — prevents cooldowns from going negative or near-zero
+// at high weapon levels, attack speed stacking, and arcana multipliers
+const MIN_COOLDOWN = 0.1;
+
 function getWeaponCooldown(ws: SurvivorWeaponState, player: SurvivorState["player"], state: SurvivorState): number {
   const arcanaMult = _getArcanaCooldownMult(state);
   // Wayland's Fury: +50% attack speed
   const waylandMult = state.activeLandmarkBuffs.has("wayland_fury") ? 1.5 : 1.0;
   const totalAtkSpeed = player.attackSpeedMultiplier * waylandMult;
   if (ws.evolved && ws.evolutionId) {
-    return EVOLUTION_DEFS[ws.evolutionId].cooldown / totalAtkSpeed * arcanaMult;
+    const evoCd = EVOLUTION_DEFS[ws.evolutionId].cooldown / totalAtkSpeed * arcanaMult;
+    return Math.max(MIN_COOLDOWN, evoCd);
   }
   const def = WEAPON_DEFS[ws.id];
-  return Math.max(0.1, def.baseCooldown - def.cooldownPerLevel * (ws.level - 1)) / totalAtkSpeed * arcanaMult;
+  const baseCd = Math.max(MIN_COOLDOWN, def.baseCooldown - def.cooldownPerLevel * (ws.level - 1));
+  return Math.max(MIN_COOLDOWN, baseCd / totalAtkSpeed * arcanaMult);
 }
 
 function getWeaponArea(ws: SurvivorWeaponState, player: SurvivorState["player"], state: SurvivorState): number {
@@ -441,11 +457,34 @@ function _updateEliteAbilities(state: SurvivorState, dt: number): void {
   for (const e of state.enemies) {
     if (!e.alive || !e.eliteType) continue;
 
-    // Tick charge timer
+    // Tick charge timer — charger deals bonus damage on contact during charge
     if (e.chargeTimer > 0) {
       e.chargeTimer -= dt;
       e.position.x += e.chargeDirX * e.speed * 3 * dt;
       e.position.y += e.chargeDirY * e.speed * 3 * dt;
+
+      // Charger bonus: deal 2x contact damage if colliding with player during charge
+      if (e.eliteType === "charger" && state.player.invincibilityTimer <= 0) {
+        const cdx = px - e.position.x;
+        const cdy = py - e.position.y;
+        if (cdx * cdx + cdy * cdy < 1.5 * 1.5) {
+          const chargeDmg = e.atk * 2.0 * 0.5; // 2x base, scaled by ENEMY_DAMAGE_TO_PLAYER_SCALE
+          state.player.hp -= chargeDmg;
+          state.player.invincibilityTimer = 0.8;
+          _playerHitCallback?.();
+          if (state.player.hp <= 0) {
+            if (_hasArcana(state, "resurrection")) {
+              state.player.hp = state.player.maxHp * 0.3;
+              const idx = state.arcana.findIndex((a) => a.specialRule === "resurrection");
+              if (idx >= 0) state.arcana.splice(idx, 1);
+            } else {
+              state.player.hp = 0;
+              state.gameOver = true;
+            }
+          }
+          e.chargeTimer = 0; // stop charge after hit
+        }
+      }
       continue; // skip normal movement for charging enemies
     }
 
@@ -457,7 +496,7 @@ function _updateEliteAbilities(state: SurvivorState, dt: number): void {
 
     switch (e.eliteType) {
       case "charger": {
-        // Lunge toward player at 3x speed for 0.3s
+        // Lunge toward player at 3x speed for 0.3s with bonus damage on impact
         const dx = px - e.position.x;
         const dy = py - e.position.y;
         const len = Math.sqrt(dx * dx + dy * dy) || 1;
@@ -469,10 +508,11 @@ function _updateEliteAbilities(state: SurvivorState, dt: number): void {
         break;
       }
       case "ranged": {
-        // Fire a projectile toward the player
+        // Fire a projectile toward the player, then kite away
         const dx = px - e.position.x;
         const dy = py - e.position.y;
         const len = Math.sqrt(dx * dx + dy * dy) || 1;
+        // Fire projectile
         state.enemyProjectiles.push({
           id: state.nextEnemyProjId++,
           position: { x: e.position.x, y: e.position.y },
@@ -480,11 +520,21 @@ function _updateEliteAbilities(state: SurvivorState, dt: number): void {
           damage: e.atk * 0.8,
           lifetime: 3,
         });
+        // Kite: if player is close, push away (handled by retreating AI behavior)
+        break;
+      }
+      case "shielded": {
+        // Passive shield regen: regenerate 5% of max shield per cooldown tick
+        const maxShield = e.maxHp * 0.3;
+        if (e.shieldHp < maxShield) {
+          e.shieldHp = Math.min(maxShield, e.shieldHp + maxShield * 0.05);
+        }
         break;
       }
       case "summoner": {
-        // Spawn 2 tier-0 minions nearby
-        for (let i = 0; i < 2; i++) {
+        // Spawn 2-3 tier-0 minions nearby (count scales slightly with game time)
+        const minionCount = 2 + (state.gameTime > 600 ? 1 : 0);
+        for (let i = 0; i < minionCount; i++) {
           const ox = e.position.x + (Math.random() * 2 - 1) * 2;
           const oy = e.position.y + (Math.random() * 2 - 1) * 2;
           state.enemies.push({
@@ -507,13 +557,16 @@ function _updateEliteAbilities(state: SurvivorState, dt: number): void {
             chargeTimer: 0,
             chargeDirX: 0,
             chargeDirY: 0,
+            shieldHp: 0,
             isDeathBoss: false,
             displayName: null,
+            aiBehavior: "direct",
+            ambushRevealed: true,
+            preferredRange: 0,
           });
         }
         break;
       }
-      // shielded is passive (50% DR handled in damageEnemy)
     }
   }
 }
@@ -616,7 +669,7 @@ export const SurvivorCombatSystem = {
     // Enemy projectiles
     _updateEnemyProjectiles(state, dt);
 
-    // Enemy movement toward player (apply event speed multiplier)
+    // Enemy movement with varied AI behaviors (apply event speed multiplier)
     const eventSpeedMult = state.activeEvent?.enemySpeedMultiplier ?? 1;
     for (const e of state.enemies) {
       if (!e.alive) {
@@ -634,8 +687,115 @@ export const SurvivorCombatSystem = {
       const dy = py - e.position.y;
       const len = Math.sqrt(dx * dx + dy * dy) || 1;
       const spd = e.speed * e.slowFactor * eventSpeedMult * dt;
-      e.position.x += (dx / len) * spd;
-      e.position.y += (dy / len) * spd;
+
+      // Ambush behavior: stay hidden and don't move until player is within 5 tiles
+      if (e.aiBehavior === "ambush" && !e.ambushRevealed) {
+        if (len < 5) {
+          e.ambushRevealed = true;
+          // Burst of speed on reveal
+          e.position.x += (dx / len) * spd * 2;
+          e.position.y += (dy / len) * spd * 2;
+        }
+        continue; // stay still while hidden
+      }
+
+      let moveX = 0;
+      let moveY = 0;
+
+      switch (e.aiBehavior) {
+        case "direct": {
+          // Standard: walk straight toward player
+          moveX = (dx / len) * spd;
+          moveY = (dy / len) * spd;
+          break;
+        }
+        case "flanking": {
+          // Approach from the side: add a perpendicular component
+          const perpX = -dy / len; // perpendicular to player direction
+          const perpY = dx / len;
+          // Use enemy ID to determine which side (deterministic per enemy)
+          const side = (e.id % 2 === 0) ? 1 : -1;
+          const flankWeight = len > 3 ? 0.6 : 0.1; // flank more when far, rush in when close
+          moveX = ((dx / len) * (1 - flankWeight) + perpX * side * flankWeight) * spd;
+          moveY = ((dy / len) * (1 - flankWeight) + perpY * side * flankWeight) * spd;
+          break;
+        }
+        case "retreating": {
+          // Back away when too close, approach when too far
+          if (len < e.preferredRange) {
+            // Retreat away from player
+            moveX = -(dx / len) * spd;
+            moveY = -(dy / len) * spd;
+          } else if (len > e.preferredRange + 2) {
+            // Approach to get into range
+            moveX = (dx / len) * spd * 0.7;
+            moveY = (dy / len) * spd * 0.7;
+          }
+          // else: stay roughly in place (small jitter)
+          break;
+        }
+        case "circling": {
+          // Circle the player at preferred range
+          const perpX = -dy / len;
+          const perpY = dx / len;
+          const side = (e.id % 2 === 0) ? 1 : -1;
+          // Radial component: approach or retreat to maintain preferred range
+          let radialWeight = 0;
+          if (len > e.preferredRange + 1) radialWeight = 0.8;
+          else if (len < e.preferredRange - 1) radialWeight = -0.5;
+          // Tangential component: circle around player
+          const tangentWeight = 0.7;
+          moveX = ((dx / len) * radialWeight + perpX * side * tangentWeight) * spd;
+          moveY = ((dy / len) * radialWeight + perpY * side * tangentWeight) * spd;
+          break;
+        }
+        case "pack": {
+          // Move toward player but cluster with nearby same-behavior enemies
+          // Find average position of nearby pack members
+          let packX = 0, packY = 0, packCount = 0;
+          for (const other of state.enemies) {
+            if (!other.alive || other.id === e.id || other.aiBehavior !== "pack") continue;
+            const odx = other.position.x - e.position.x;
+            const ody = other.position.y - e.position.y;
+            if (odx * odx + ody * ody < 25) { // within 5 tiles
+              packX += other.position.x;
+              packY += other.position.y;
+              packCount++;
+            }
+          }
+          if (packCount >= 2) {
+            // Move toward midpoint between player and pack center
+            packX /= packCount;
+            packY /= packCount;
+            const midX = (px + packX) * 0.5;
+            const midY = (py + packY) * 0.5;
+            const mdx = midX - e.position.x;
+            const mdy = midY - e.position.y;
+            const mlen = Math.sqrt(mdx * mdx + mdy * mdy) || 1;
+            moveX = (mdx / mlen) * spd;
+            moveY = (mdy / mlen) * spd;
+          } else {
+            // Not enough pack members, fall back to direct
+            moveX = (dx / len) * spd;
+            moveY = (dy / len) * spd;
+          }
+          break;
+        }
+        case "ambush": {
+          // After reveal, rush the player at 1.5x speed
+          moveX = (dx / len) * spd * 1.5;
+          moveY = (dy / len) * spd * 1.5;
+          break;
+        }
+        default: {
+          moveX = (dx / len) * spd;
+          moveY = (dy / len) * spd;
+          break;
+        }
+      }
+
+      e.position.x += moveX;
+      e.position.y += moveY;
     }
 
     // Enemy separation

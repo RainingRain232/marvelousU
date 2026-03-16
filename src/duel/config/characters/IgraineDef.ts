@@ -122,6 +122,10 @@ export const IGRAINE_DEF: DuelCharacterDef = {
   jumpVelocity: -19,
   jumpForwardSpeed: 5,
   weight: 0.85,
+  uniqueMechanic: {
+    name: "divineGrace",
+    description: "Healing aura slowly regenerates HP when not attacking or being hit",
+  },
 
   normals: {
     // Q — Light high: quick staff jab with holy light tip

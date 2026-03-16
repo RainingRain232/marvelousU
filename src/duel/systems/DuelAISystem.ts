@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import { DuelFighterState } from "../../types";
+import { DuelBalance } from "../config/DuelBalanceConfig";
 import { DUEL_CHARACTERS } from "../config/DuelCharacterDefs";
 import type { DuelInputResult, DuelState } from "../state/DuelState";
 
@@ -167,6 +168,31 @@ export const DuelAISystem = {
     // === Make a new decision ===
     const charDef = DUEL_CHARACTERS[ai.characterId];
     const rand = Math.random();
+
+    // === Zeal ultimate: prioritize when meter is full and conditions are right ===
+    const zealKeys = Object.keys(charDef.zeals);
+    if (zealKeys.length > 0) {
+      const playerInRecovery =
+        player.state === DuelFighterState.ATTACK ||
+        player.state === DuelFighterState.HIT_STUN ||
+        player.state === DuelFighterState.KNOCKDOWN ||
+        player.state === DuelFighterState.GET_UP ||
+        player.state === DuelFighterState.GRABBED;
+
+      // Use Zeal 2 (full meter ultimate) when at max zeal and opponent is vulnerable or close
+      if (ai.zealGauge >= DuelBalance.ZEAL_2_COST && (playerInRecovery || dist < 120)) {
+        result.action = "zeal_2";
+        _currentDecision = null;
+        return result;
+      }
+
+      // Use Zeal 1 (half meter) when above threshold and opponent is in recovery at close range
+      if (ai.zealGauge >= DuelBalance.ZEAL_1_COST && playerInRecovery && dist < 160) {
+        result.action = "zeal_1";
+        _currentDecision = null;
+        return result;
+      }
+    }
 
     // Close range — attack or start combo
     if (dist < 70) {

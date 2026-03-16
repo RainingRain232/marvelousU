@@ -122,6 +122,10 @@ export const TRISTAN_DEF: DuelCharacterDef = {
   jumpVelocity: -20,
   jumpForwardSpeed: 6,
   weight: 0.9,
+  uniqueMechanic: {
+    name: "sorrowfulStrike",
+    description: "Damage increases as Tristan's HP decreases; desperation powers attacks",
+  },
 
   normals: {
     // Q — Light high: quick lance jab, excellent range

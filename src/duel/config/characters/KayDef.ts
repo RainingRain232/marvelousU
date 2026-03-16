@@ -122,6 +122,10 @@ export const KAY_DEF: DuelCharacterDef = {
   jumpVelocity: -18,
   jumpForwardSpeed: 5.5,
   weight: 1.0,
+  uniqueMechanic: {
+    name: "seneschalCommand",
+    description: "Blocking attacks builds Command stacks; at 3 stacks, next attack is unblockable",
+  },
 
   normals: {
     // Q — Light high: quick pike jab, good reach

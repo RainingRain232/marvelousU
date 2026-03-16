@@ -4,11 +4,12 @@ import { isAlly } from "@sim/state/GameState";
 import type { Unit } from "@sim/entities/Unit";
 import type { Ability } from "@sim/abilities/Ability";
 import { createAbility } from "@sim/abilities/index";
-import { BuildingState, UnitState, UnitType } from "@/types";
+import { BuildingState, UnitState, UnitType, GameMode } from "@/types";
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
 import { ABILITY_DEFINITIONS } from "@sim/config/AbilityDefs";
 import { inRange } from "@sim/utils/math";
 import { EventBus } from "@sim/core/EventBus";
+import { getCampaignDifficultyModifiers } from "@sim/config/DifficultyConfig";
 
 // ---------------------------------------------------------------------------
 // AbilitySystem
@@ -34,10 +35,23 @@ import { EventBus } from "@sim/core/EventBus";
  */
 export const AbilitySystem = {
   update(state: GameState, dt: number): void {
+    // Determine AI cooldown rate multiplier for campaign difficulty
+    // HARD: AI abilities cool down 20% faster; NIGHTMARE: 40% faster
+    let aiCooldownRate = 1.0;
+    if (state.gameMode === GameMode.CAMPAIGN) {
+      const mods = getCampaignDifficultyModifiers();
+      aiCooldownRate = mods.aiAbilityCooldownRate;
+    }
+
     // 1. Tick all ability cooldowns
+    // For AI-owned abilities in campaign, apply faster cooldown rate
     for (const ability of state.abilities.values()) {
       if (ability.currentCooldown > 0) {
-        ability.currentCooldown = Math.max(0, ability.currentCooldown - dt);
+        // Determine if this ability belongs to an AI unit
+        const ownerUnit = _findAbilityOwner(state, ability.id);
+        const isAIOwned = ownerUnit != null && _isAIUnit(state, ownerUnit);
+        const rate = isAIOwned ? aiCooldownRate : 1.0;
+        ability.currentCooldown = Math.max(0, ability.currentCooldown - dt * rate);
       }
     }
 
@@ -64,6 +78,20 @@ export const AbilitySystem = {
     }
   },
 };
+
+/** Check if a unit belongs to an AI player. */
+function _isAIUnit(state: GameState, unit: Unit): boolean {
+  const player = state.players.get(unit.owner);
+  return player?.isAI === true;
+}
+
+/** Find the unit that owns a given ability ID. */
+function _findAbilityOwner(state: GameState, abilityId: string): Unit | null {
+  for (const unit of state.units.values()) {
+    if (unit.abilityIds.includes(abilityId)) return unit;
+  }
+  return null;
+}
 
 // ---------------------------------------------------------------------------
 // Cast ticking

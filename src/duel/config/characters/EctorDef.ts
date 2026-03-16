@@ -122,6 +122,10 @@ export const ECTOR_DEF: DuelCharacterDef = {
   jumpVelocity: -19,
   jumpForwardSpeed: 5.5,
   weight: 0.9,
+  uniqueMechanic: {
+    name: "engineerTrap",
+    description: "Specials leave behind traps that trigger when the opponent steps on them",
+  },
 
   normals: {
     // Q — Light high: quick crossbow stock jab

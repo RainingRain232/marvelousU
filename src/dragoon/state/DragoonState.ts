@@ -210,12 +210,22 @@ export enum DragoonEnemyType {
   GROUND_CATAPULT = "ground_catapult",
   GROUND_MAGE_TOWER = "ground_mage_tower",
   GROUND_BALLISTA = "ground_ballista",
+  GROUND_SIEGE_ENGINE = "ground_siege_engine",
+  GROUND_CAVALRY = "ground_cavalry",
+  GROUND_SHIELD_WALL = "ground_shield_wall",
+  GROUND_WAR_CATAPULT = "ground_war_catapult",
+  GROUND_DARK_MAGE_CIRCLE = "ground_dark_mage_circle",
   // Bosses
   BOSS_DRAKE = "boss_drake",
   BOSS_CHIMERA = "boss_chimera",
   BOSS_LICH_KING = "boss_lich_king",
   BOSS_STORM_TITAN = "boss_storm_titan",
   BOSS_VOID_SERPENT = "boss_void_serpent",
+  BOSS_DRAGON_PENDRAGON = "boss_dragon_pendragon",
+  BOSS_QUESTING_BEAST = "boss_questing_beast",
+  BOSS_BLACK_KNIGHT = "boss_black_knight",
+  BOSS_MORGANA_WYRM = "boss_morgana_wyrm",
+  BOSS_GRAIL_GUARDIAN = "boss_grail_guardian",
 }
 
 export enum EnemyPattern {
@@ -229,6 +239,108 @@ export enum EnemyPattern {
   ZIGZAG = "zigzag",           // zigzag left with alternating Y
   V_FORMATION = "v_formation", // V-shape formation flight
   TELEPORT = "teleport",       // slow drift, teleport periodically
+  GROUND_CHARGE = "ground_charge",   // fast ground charge toward player X
+  GROUND_SLOW = "ground_slow",       // slow ground movement, heavy attacks
+  GROUND_STATIONARY = "ground_stationary", // stationary, fires projectiles
+}
+
+// ---------------------------------------------------------------------------
+// Difficulty
+// ---------------------------------------------------------------------------
+
+export enum DragoonDifficulty {
+  EASY = "easy",
+  NORMAL = "normal",
+  HARD = "hard",
+  NIGHTMARE = "nightmare",
+}
+
+export interface DifficultyModifiers {
+  enemyHpMult: number;
+  enemyDamageMult: number;
+  bulletSpeedMult: number;
+  spawnRateMult: number;    // lower = faster spawns
+  scoreMultiplier: number;
+  label: string;
+  color: number;
+}
+
+// ---------------------------------------------------------------------------
+// Leaderboard
+// ---------------------------------------------------------------------------
+
+export interface LeaderboardEntry {
+  playerName: string;
+  score: number;
+  difficulty: DragoonDifficulty;
+  classId: DragoonClassId;
+  date: string;               // ISO date string
+  wave: number;
+}
+
+// ---------------------------------------------------------------------------
+// Run Statistics
+// ---------------------------------------------------------------------------
+
+export interface RunStatistics {
+  enemiesKilled: number;
+  bossesDefeated: number;
+  damageDealt: number;
+  damageTaken: number;
+  itemsCollected: number;
+  timeSurvived: number;       // seconds
+  highestCombo: number;
+  projectilesFired: number;
+}
+
+// ---------------------------------------------------------------------------
+// Cosmetic Unlocks
+// ---------------------------------------------------------------------------
+
+export enum DragonSkinId {
+  DEFAULT = "default",
+  CRIMSON_FLAME = "crimson_flame",
+  FROST_WING = "frost_wing",
+  SHADOW_SCALE = "shadow_scale",
+  GOLDEN_LIGHT = "golden_light",
+  VOID_PURPLE = "void_purple",
+  STORM_BLUE = "storm_blue",
+  EMERALD_NATURE = "emerald_nature",
+  BONE_WHITE = "bone_white",
+  NIGHTMARE_BLACK = "nightmare_black",
+}
+
+export interface CosmeticUnlock {
+  id: DragonSkinId;
+  name: string;
+  description: string;
+  color: number;
+  unlocked: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Meta-Progression (persisted across runs)
+// ---------------------------------------------------------------------------
+
+export interface DragoonMetaProgression {
+  highScores: Record<DragoonDifficulty, number>;
+  totalRunsCompleted: number;
+  bestStageReached: Record<DragoonDifficulty, number>;
+  unlockedSkins: DragonSkinId[];
+  leaderboard: LeaderboardEntry[];      // top 10
+}
+
+// ---------------------------------------------------------------------------
+// Subclass Skill Tree
+// ---------------------------------------------------------------------------
+
+export interface SubclassSkillNode {
+  level: number;             // level at which this point is earned (5, 10, 15, 20)
+  name: string;
+  description: string;
+  unlocked: boolean;
+  skillId: DragoonSkillId | null;       // skill granted, if any
+  statBonus?: { hp?: number; mana?: number; damage?: number; speed?: number };
 }
 
 // ---------------------------------------------------------------------------
@@ -327,6 +439,10 @@ export interface DragoonState {
   gameOver: boolean;
   victory: boolean;
 
+  // Difficulty
+  difficulty: DragoonDifficulty;
+  difficultyMods: DifficultyModifiers;
+
   // Class system
   classId: DragoonClassId;
   subclassId: DragoonSubclassId | null;
@@ -334,6 +450,11 @@ export interface DragoonState {
   subclassChoiceActive: boolean;
   subclassOptions: [DragoonSubclassId, DragoonSubclassId] | null;
   subclassUnlocked: boolean; // prevent re-triggering
+
+  // Subclass skill tree (gradual progression)
+  subclassPoints: number;           // earned at levels 5, 10, 15, 20
+  subclassSkillTree: SubclassSkillNode[];
+  subclassSelected: boolean;        // has the player chosen a subclass path (at level 5)
 
   player: DragoonPlayer;
   enemies: DragoonEnemy[];
@@ -407,6 +528,19 @@ export interface DragoonState {
 
   // Escape menu
   escapeMenuOpen: boolean;
+
+  // Run statistics (tracked per run)
+  runStats: RunStatistics;
+
+  // Meta-progression (persisted across runs)
+  metaProgression: DragoonMetaProgression;
+
+  // Cosmetics
+  cosmeticUnlocks: CosmeticUnlock[];
+  equippedSkin: DragonSkinId;
+
+  // Leaderboard
+  leaderboard: LeaderboardEntry[];
 }
 
 // ---------------------------------------------------------------------------
@@ -421,12 +555,122 @@ export function xpForLevel(level: number): number {
 // Factory
 // ---------------------------------------------------------------------------
 
-export function createDragoonState(screenW: number, screenH: number): DragoonState {
+// ---------------------------------------------------------------------------
+// Difficulty definitions
+// ---------------------------------------------------------------------------
+
+export const DIFFICULTY_MODIFIERS: Record<DragoonDifficulty, DifficultyModifiers> = {
+  [DragoonDifficulty.EASY]: {
+    enemyHpMult: 0.7,
+    enemyDamageMult: 0.6,
+    bulletSpeedMult: 0.8,
+    spawnRateMult: 1.3,       // slower spawns
+    scoreMultiplier: 0.75,
+    label: "Easy",
+    color: 0x44cc44,
+  },
+  [DragoonDifficulty.NORMAL]: {
+    enemyHpMult: 1.0,
+    enemyDamageMult: 1.0,
+    bulletSpeedMult: 1.0,
+    spawnRateMult: 1.0,
+    scoreMultiplier: 1.0,
+    label: "Normal",
+    color: 0x4488ff,
+  },
+  [DragoonDifficulty.HARD]: {
+    enemyHpMult: 1.5,
+    enemyDamageMult: 1.4,
+    bulletSpeedMult: 1.25,
+    spawnRateMult: 0.75,      // faster spawns
+    scoreMultiplier: 1.5,
+    label: "Hard",
+    color: 0xff8800,
+  },
+  [DragoonDifficulty.NIGHTMARE]: {
+    enemyHpMult: 2.2,
+    enemyDamageMult: 2.0,
+    bulletSpeedMult: 1.5,
+    spawnRateMult: 0.55,      // much faster spawns
+    scoreMultiplier: 2.5,
+    label: "Nightmare",
+    color: 0xff0044,
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Cosmetic definitions
+// ---------------------------------------------------------------------------
+
+export function createDefaultCosmetics(): CosmeticUnlock[] {
+  return [
+    { id: DragonSkinId.DEFAULT, name: "Royal White", description: "The noble white eagle of Camelot", color: 0xffffff, unlocked: true },
+    { id: DragonSkinId.CRIMSON_FLAME, name: "Crimson Flame", description: "Defeat the Fire Drake boss", color: 0xff2200, unlocked: false },
+    { id: DragonSkinId.FROST_WING, name: "Frost Wing", description: "Reach a combo of 50", color: 0x88eeff, unlocked: false },
+    { id: DragonSkinId.SHADOW_SCALE, name: "Shadow Scale", description: "Defeat the Void Serpent boss", color: 0x330066, unlocked: false },
+    { id: DragonSkinId.GOLDEN_LIGHT, name: "Golden Light", description: "Score 100,000 points in a single run", color: 0xffd700, unlocked: false },
+    { id: DragonSkinId.VOID_PURPLE, name: "Void Purple", description: "Beat the game on Hard difficulty", color: 0x9900ff, unlocked: false },
+    { id: DragonSkinId.STORM_BLUE, name: "Storm Blue", description: "Defeat the Storm Titan boss", color: 0x00ccff, unlocked: false },
+    { id: DragonSkinId.EMERALD_NATURE, name: "Emerald Nature", description: "Collect 200 items in a single run", color: 0x22cc44, unlocked: false },
+    { id: DragonSkinId.BONE_WHITE, name: "Bone White", description: "Complete 10 total runs", color: 0xddccaa, unlocked: false },
+    { id: DragonSkinId.NIGHTMARE_BLACK, name: "Nightmare Black", description: "Beat the game on Nightmare difficulty", color: 0x110011, unlocked: false },
+  ];
+}
+
+// ---------------------------------------------------------------------------
+// Meta-progression helpers
+// ---------------------------------------------------------------------------
+
+export function createDefaultMetaProgression(): DragoonMetaProgression {
+  return {
+    highScores: {
+      [DragoonDifficulty.EASY]: 0,
+      [DragoonDifficulty.NORMAL]: 0,
+      [DragoonDifficulty.HARD]: 0,
+      [DragoonDifficulty.NIGHTMARE]: 0,
+    },
+    totalRunsCompleted: 0,
+    bestStageReached: {
+      [DragoonDifficulty.EASY]: 0,
+      [DragoonDifficulty.NORMAL]: 0,
+      [DragoonDifficulty.HARD]: 0,
+      [DragoonDifficulty.NIGHTMARE]: 0,
+    },
+    unlockedSkins: [DragonSkinId.DEFAULT],
+    leaderboard: [],
+  };
+}
+
+export function loadMetaProgression(): DragoonMetaProgression {
+  try {
+    const raw = localStorage.getItem("dragoon_meta");
+    if (raw) return JSON.parse(raw) as DragoonMetaProgression;
+  } catch { /* ignore parse errors */ }
+  return createDefaultMetaProgression();
+}
+
+export function saveMetaProgression(meta: DragoonMetaProgression): void {
+  try {
+    localStorage.setItem("dragoon_meta", JSON.stringify(meta));
+  } catch { /* ignore storage errors */ }
+}
+
+// ---------------------------------------------------------------------------
+// Factory
+// ---------------------------------------------------------------------------
+
+export function createDragoonState(screenW: number, screenH: number, difficulty: DragoonDifficulty = DragoonDifficulty.NORMAL): DragoonState {
+  const diffMods = DIFFICULTY_MODIFIERS[difficulty];
+  const meta = loadMetaProgression();
+
   return {
     gameTime: 0,
     paused: false,
     gameOver: false,
     victory: false,
+
+    difficulty,
+    difficultyMods: diffMods,
 
     classId: DragoonClassId.ARCANE_MAGE,
     subclassId: null,
@@ -434,6 +678,10 @@ export function createDragoonState(screenW: number, screenH: number): DragoonSta
     subclassChoiceActive: false,
     subclassOptions: null,
     subclassUnlocked: false,
+
+    subclassPoints: 0,
+    subclassSkillTree: [],
+    subclassSelected: false,
 
     player: {
       position: { x: screenW * 1.5 * 0.5, y: screenH * 0.5 },
@@ -525,5 +773,23 @@ export function createDragoonState(screenW: number, screenH: number): DragoonSta
     unlockSkillState: null,
 
     escapeMenuOpen: false,
+
+    runStats: {
+      enemiesKilled: 0,
+      bossesDefeated: 0,
+      damageDealt: 0,
+      damageTaken: 0,
+      itemsCollected: 0,
+      timeSurvived: 0,
+      highestCombo: 0,
+      projectilesFired: 0,
+    },
+
+    metaProgression: meta,
+
+    cosmeticUnlocks: createDefaultCosmetics(),
+    equippedSkin: DragonSkinId.DEFAULT,
+
+    leaderboard: meta.leaderboard,
   };
 }

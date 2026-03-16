@@ -3,7 +3,7 @@ import type { GameState } from "@sim/state/GameState";
 import type { Unit } from "@sim/entities/Unit";
 import type { Vec2 } from "@/types";
 import { UnitState, Direction } from "@/types";
-import { findPath } from "@sim/core/Grid";
+import { findPath, getTerrainSpeedMultiplier } from "@sim/core/Grid";
 import { EventBus } from "@sim/core/EventBus";
 
 // ---------------------------------------------------------------------------
@@ -206,7 +206,12 @@ function tickUnit(
   // starting position (applied once in startGroupMoving). While following the
   // path the unit targets the *centerline* waypoints — the offset is already
   // reflected in its current position relative to its group-mates.
-  const effectiveSpeed = unit.speed * (unit.slowTimer > 0 ? unit.slowFactor : 1);
+  const terrainMult = getTerrainSpeedMultiplier(
+    state.battlefield,
+    unit.position.x,
+    unit.position.y,
+  );
+  const effectiveSpeed = unit.speed * (unit.slowTimer > 0 ? unit.slowFactor : 1) * terrainMult;
   let remaining = effectiveSpeed * dt;
 
   while (remaining > 0 && unit.pathIndex < unit.path.length) {

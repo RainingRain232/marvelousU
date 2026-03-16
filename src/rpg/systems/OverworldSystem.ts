@@ -5,7 +5,7 @@ import { EventBus } from "@sim/core/EventBus";
 import { SeededRandom } from "@sim/utils/random";
 import type { OverworldState, OverworldEntity, DungeonEntranceData, NPCData, TownData, RoamingEnemyData, ShrineData, HerbNodeData, FishingSpotData } from "@rpg/state/OverworldState";
 import type { RPGState } from "@rpg/state/RPGState";
-import { RPGBalance } from "@rpg/config/RPGBalanceConfig";
+import { RPGBalance, getWeatherModifiers } from "@rpg/config/RPGBalanceConfig";
 import { OVERWORLD_ENCOUNTERS } from "@rpg/config/EncounterDefs";
 import { generateShopInventory } from "@rpg/config/RPGItemDefs";
 import { generateMagicShopSpells, generateArcaneLibrarySpells } from "@rpg/config/RPGSpellDefs";
@@ -47,8 +47,9 @@ export function moveParty(
   overworld.partyPosition = { x: newX, y: newY };
   rpg.overworldPosition = { x: newX, y: newY };
 
-  // Reveal tiles
-  _revealAround(overworld, newX, newY);
+  // Reveal tiles (weather affects vision radius)
+  const weatherMods = getWeatherModifiers(rpg.weather);
+  _revealAround(overworld, newX, newY, weatherMods.visionRadiusMult);
 
   // Track steps for recruit roster reset
   trackRecruitSteps(rpg);
@@ -103,8 +104,8 @@ export function moveParty(
 // Fog of war
 // ---------------------------------------------------------------------------
 
-function _revealAround(overworld: OverworldState, cx: number, cy: number): void {
-  const r = RPGBalance.VISION_RADIUS;
+function _revealAround(overworld: OverworldState, cx: number, cy: number, visionMult: number = 1.0): void {
+  const r = Math.max(2, Math.floor(RPGBalance.VISION_RADIUS * visionMult));
   for (let dy = -r; dy <= r; dy++) {
     for (let dx = -r; dx <= r; dx++) {
       if (dx * dx + dy * dy > r * r) continue;
@@ -304,10 +305,11 @@ function _checkRandomEncounter(
   const blessingMult = getBlessingEncounterRateMult(rpg);
   // Night (180-239) increases encounter rate by 50%
   const nightMult = rpg.timeOfDay >= 180 ? 1.5 : 1.0;
-  // Fog decreases encounter rate by 30% (enemies can't see you either)
-  const fogMult = rpg.weather === "fog" ? 0.7 : 1.0;
+  // Weather-based encounter rate and ambush modifiers
+  const weatherEncMods = getWeatherModifiers(rpg.weather);
+  const weatherMult = weatherEncMods.encounterRateMult * weatherEncMods.ambushChanceMult;
   const spawnMult = (rpg.randomEncounterRate ?? 100) / 100;
-  const chance = baseRate * (1 + overworld.stepsSinceLastEncounter * RPGBalance.ENCOUNTER_RATE_GROWTH) * blessingMult * nightMult * fogMult * spawnMult;
+  const chance = baseRate * (1 + overworld.stepsSinceLastEncounter * RPGBalance.ENCOUNTER_RATE_GROWTH) * blessingMult * nightMult * weatherMult * spawnMult;
   const rng = new SeededRandom(rpg.seed + rpg.gameTime);
   rpg.gameTime++;
 
@@ -354,7 +356,7 @@ export function fastTravel(
   overworld.partyPosition = { x: entity.position.x + 1, y: entity.position.y + 4 };
   rpg.overworldPosition = { ...overworld.partyPosition };
 
-  _revealAround(overworld, overworld.partyPosition.x, overworld.partyPosition.y);
+  _revealAround(overworld, overworld.partyPosition.x, overworld.partyPosition.y, 1.0);
 
   // Discover the town (should already be discovered, but ensure)
   rpg.discoveredTowns.add(targetEntityId);

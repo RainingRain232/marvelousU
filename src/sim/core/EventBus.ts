@@ -52,6 +52,14 @@ export interface SimEvents {
   // Game flow
   phaseChanged: { phase: GamePhase };
   roguelikeDisabledBuildingsChanged: { disabled: string[] };
+  roguelikeCursedBuildingsChanged: { cursed: string[] };
+  roguelikeWaveEvent: { eventType: string; round: number; description: string };
+  roguelikeRoundChanged: { round: number };
+  campaignAchievementEarned: { achievementId: string; title: string; reward: string };
+
+  // Escalation (stalemate prevention)
+  escalationStarted: { totalBattleTime: number };
+  escalationUnitSpawned: { unitId: string; position: Vec2; strength: number };
 
   // Grail Greed Corruption
   corruptionModifierActivated: { modifierName: string; description: string; corruptionLevel: number };

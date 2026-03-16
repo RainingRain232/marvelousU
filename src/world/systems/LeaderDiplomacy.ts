@@ -119,23 +119,30 @@ export function processAIDiplomacy(state: WorldState, aiPlayer: WorldPlayer): vo
 /**
  * Check if an AI player would accept a peace proposal based on leader affinity.
  * Returns true if they accept, false if they refuse.
+ * Guinevere's Diplomacy ability makes peace proposals 50% more likely to succeed.
  */
 export function wouldAcceptPeace(aiPlayer: WorldPlayer, proposingPlayer: WorldPlayer): boolean {
   if (!aiPlayer.leaderId || !proposingPlayer.leaderId) return true;
 
   const affinity = getLeaderAffinity(aiPlayer.leaderId, proposingPlayer.leaderId);
 
+  // Guinevere's Diplomacy: peace proposals 50% more likely to succeed
+  const isGuinevere = proposingPlayer.leaderId === "guinevere";
+  const diplomacyBonus = isGuinevere ? 0.5 : 0;
+
   if (affinity === "enemy") {
-    // Lore enemies refuse peace 80% of the time
-    return Math.random() < 0.2;
+    // Lore enemies refuse peace 80% of the time (Guinevere: 30% base → 45%)
+    const baseChance = 0.2;
+    return Math.random() < Math.min(1, baseChance + baseChance * diplomacyBonus);
   }
   if (affinity === "ally" || affinity === "family") {
     // Lore allies always accept peace
     return true;
   }
 
-  // No relationship — 60% accept
-  return Math.random() < 0.6;
+  // No relationship — 60% accept (Guinevere: 90%)
+  const baseChance = 0.6;
+  return Math.random() < Math.min(1, baseChance + baseChance * diplomacyBonus);
 }
 
 /**

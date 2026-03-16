@@ -1,6 +1,6 @@
 // Queue processing, group spawning thresholds
 import type { GameState } from "@sim/state/GameState";
-import { BuildingType, UnitState, UnitType } from "@/types";
+import { BuildingType, GameMode, UnitState, UnitType } from "@/types";
 import type { Building } from "@sim/entities/Building";
 import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
 import { createUnit, type Unit } from "@sim/entities/Unit";
@@ -9,6 +9,8 @@ import { EventBus } from "@sim/core/EventBus";
 import { getLeader } from "@sim/config/LeaderDefs";
 import { UpgradeSystem } from "@sim/systems/UpgradeSystem";
 import { getArmoryItem } from "@sim/config/ArmoryItemDefs";
+import { getCampaignDifficultyModifiers } from "@sim/config/DifficultyConfig";
+import { getRoguelikeEnemyStatBonus } from "@sim/systems/PhaseSystem";
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -124,6 +126,45 @@ function _spawnUnits(
     // Apply leader starting-level bonus
     if (startingLevel > 0) {
       unit.level = startingLevel;
+    }
+
+    // Campaign difficulty: apply HP/ATK bonuses to AI units
+    const ownerPlayer = state.players.get(owner);
+    if (state.gameMode === GameMode.CAMPAIGN && ownerPlayer?.isAI) {
+      const mods = getCampaignDifficultyModifiers();
+      if (mods.aiUnitHpBonus > 0) {
+        const hpBonus = Math.floor(unit.maxHp * mods.aiUnitHpBonus);
+        unit.maxHp += hpBonus;
+        unit.hp += hpBonus;
+      }
+      if (mods.aiUnitAtkBonus > 0) {
+        unit.atk += Math.floor(unit.atk * mods.aiUnitAtkBonus);
+      }
+    }
+
+    // Roguelike: apply round-tier enemy stat bonuses for AI units
+    if (state.gameMode === GameMode.ROGUELIKE && ownerPlayer?.isAI) {
+      const statBonus = getRoguelikeEnemyStatBonus(state.roguelikeRound);
+      if (statBonus > 0) {
+        const hpBonus = Math.floor(unit.maxHp * statBonus);
+        unit.maxHp += hpBonus;
+        unit.hp += hpBonus;
+        unit.atk += Math.floor(unit.atk * statBonus);
+      }
+    }
+
+    // Roguelike: apply champion buff to player units of the buffed type
+    if (
+      state.gameMode === GameMode.ROGUELIKE &&
+      owner === "p1" &&
+      state.roguelikeChampionBuff &&
+      unit.type === state.roguelikeChampionBuff.unitType
+    ) {
+      const champBonus = 0.25; // +25% stats
+      const hpBonus = Math.floor(unit.maxHp * champBonus);
+      unit.maxHp += hpBonus;
+      unit.hp += hpBonus;
+      unit.atk += Math.floor(unit.atk * champBonus);
     }
 
     state.units.set(unit.id, unit);

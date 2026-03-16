@@ -105,8 +105,8 @@ function _advanceToNextPlayer(state: WorldState): void {
   if (nextIndex <= state.currentPlayerIndex) {
     state.turn++;
 
-    // Spawn neutral city raiders every ~20 turns
-    if (state.turn > 0 && state.turn % 20 === 0) {
+    // Spawn neutral city raiders every 5 turns
+    if (state.turn > 0 && state.turn % 5 === 0) {
       spawnNeutralRaiders(state);
     }
 

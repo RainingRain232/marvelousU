@@ -1,6 +1,9 @@
 // Tile grid: walkability, building slots, A* pathfinding
 import type { PlayerId, Vec2 } from "@/types";
+import { TerrainType } from "@/types";
+import { ObstacleType } from "@sim/state/BattlefieldState";
 import type { BattlefieldState, Tile } from "@sim/state/BattlefieldState";
+import { BalanceConfig } from "@sim/config/BalanceConfig";
 
 // ---------------------------------------------------------------------------
 // Tile accessors
@@ -263,6 +266,103 @@ export function findWalkableTowards(
   }
 
   return lastWalkable;
+}
+
+// ---------------------------------------------------------------------------
+// Terrain helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns the terrain speed multiplier for the tile at (x, y).
+ * Floors the coordinates to integer tile coords.
+ */
+export function getTerrainSpeedMultiplier(
+  state: BattlefieldState,
+  x: number,
+  y: number,
+): number {
+  const tile = getTile(state, Math.floor(x), Math.floor(y));
+  if (!tile) return 1;
+
+  // Obstacle-based river (Battlefield mode) takes priority if present
+  if (tile.obstacle === ObstacleType.RIVER) {
+    return BalanceConfig.BATTLEFIELD_RIVER_SLOW_FACTOR;
+  }
+
+  switch (tile.terrain) {
+    case TerrainType.FOREST:
+      return BalanceConfig.TERRAIN_FOREST_SPEED_MULT;
+    case TerrainType.RIVER:
+      return BalanceConfig.TERRAIN_RIVER_SPEED_MULT;
+    default:
+      return 1;
+  }
+}
+
+/**
+ * Returns the terrain type at (x, y), or PLAINS if out of bounds.
+ */
+export function getTerrainAt(
+  state: BattlefieldState,
+  x: number,
+  y: number,
+): TerrainType {
+  const tile = getTile(state, Math.floor(x), Math.floor(y));
+  if (!tile) return TerrainType.PLAINS;
+  return tile.terrain;
+}
+
+/**
+ * Returns the defensive damage multiplier for a unit standing on a given terrain.
+ * Values < 1 mean the unit takes LESS damage (e.g. forest provides defense).
+ */
+export function getTerrainDefenseMultiplier(
+  state: BattlefieldState,
+  x: number,
+  y: number,
+): number {
+  const tile = getTile(state, Math.floor(x), Math.floor(y));
+  if (!tile) return 1;
+  switch (tile.terrain) {
+    case TerrainType.FOREST:
+      return BalanceConfig.TERRAIN_FOREST_DEFENSE_MULT;
+    default:
+      return 1;
+  }
+}
+
+/**
+ * Returns the attack damage multiplier for an attacker on high ground
+ * attacking a target on lower (non-high) ground.
+ */
+export function getTerrainAttackMultiplier(
+  state: BattlefieldState,
+  attackerX: number,
+  attackerY: number,
+  targetX: number,
+  targetY: number,
+): number {
+  const attackerTerrain = getTerrainAt(state, attackerX, attackerY);
+  const targetTerrain = getTerrainAt(state, targetX, targetY);
+  if (
+    attackerTerrain === TerrainType.HIGH_GROUND &&
+    targetTerrain !== TerrainType.HIGH_GROUND
+  ) {
+    return BalanceConfig.TERRAIN_HIGH_GROUND_ATK_MULT;
+  }
+  return 1;
+}
+
+/**
+ * Returns true if the unit at the given position is on a river tile.
+ * Units on river tiles cannot engage in combat.
+ */
+export function isOnRiver(
+  state: BattlefieldState,
+  x: number,
+  y: number,
+): boolean {
+  return getTerrainAt(state, x, y) === TerrainType.RIVER;
 }
 
 /**

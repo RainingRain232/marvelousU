@@ -50,6 +50,25 @@ export class TekkenFightingSystem {
         }
       }
 
+      // Wall splat recovery (allows wall-specific followups during window)
+      if (fighter.state === TekkenFighterState.WALL_SPLAT) {
+        fighter.stateTimer++;
+        if (fighter.stateTimer >= TB.WALL_SPLAT_DURATION) {
+          if (fighter.juggle.isAirborne) {
+            fighter.state = TekkenFighterState.JUGGLE;
+          } else {
+            fighter.state = TekkenFighterState.KNOCKDOWN;
+          }
+          fighter.stateTimer = 0;
+        }
+      }
+
+      // --- Rage activation: when health drops below 25%, activate rage ---
+      if (!fighter.rageActive && !fighter.rageArtUsed && fighter.hp > 0 &&
+          fighter.hp <= fighter.maxHp * TB.RAGE_THRESHOLD) {
+        fighter.rageActive = true;
+      }
+
       // Handle movement (only when idle or walking)
       if (this._canMove(fighter)) {
         this._handleMovement(fighter, opponent);
@@ -145,7 +164,7 @@ export class TekkenFightingSystem {
     const charDef = TEKKEN_CHARACTERS.find(c => c.id === fighter.characterId);
     if (!charDef) return;
 
-    // Check rage art
+    // Check rage art - only usable when rageActive is true
     if (input.rage && fighter.rageActive && !fighter.rageArtUsed) {
       fighter.state = TekkenFighterState.ATTACK;
       fighter.currentMove = charDef.rageArt.id;
@@ -154,6 +173,7 @@ export class TekkenFightingSystem {
       fighter.moveHasHit = false;
       fighter.counterHitWindow = true;
       fighter.rageArtUsed = true;
+      fighter.rageActive = false; // Consume rage on use
       return;
     }
 
@@ -283,11 +303,29 @@ export class TekkenFightingSystem {
   }
 
   private _applyBlock(attacker: TekkenFighter, defender: TekkenFighter, moveDef: TekkenMoveDef, state: TekkenState, fxManager: TekkenFXManager): void {
-    // Apply blockstun
+    // Apply blockstun using the move's onBlock frame advantage
+    // onBlock is negative = attacker is at disadvantage (defender recovers first)
+    // onBlock is positive = attacker is at advantage (attacker recovers first)
     defender.blockstunFrames = TB.BASE_BLOCKSTUN + Math.abs(moveDef.onBlock);
+
+    // If the move is plus on block, the attacker recovers faster (reduce attacker recovery)
+    if (moveDef.onBlock > 0) {
+      // Positive on block: attacker has frame advantage, shorten remaining recovery
+      const currentMoveDef = this._getMoveDef(attacker);
+      if (currentMoveDef) {
+        // Give attacker frame advantage by reducing effective recovery
+        attacker.moveFrame = Math.max(attacker.moveFrame, (currentMoveDef.recovery || 0) - moveDef.onBlock);
+      }
+    }
 
     // Chip damage
     defender.hp = Math.max(1, defender.hp - moveDef.chipDamage);
+
+    // Check rage activation after chip damage
+    if (!defender.rageActive && !defender.rageArtUsed && defender.hp > 0 &&
+        defender.hp <= defender.maxHp * TB.RAGE_THRESHOLD) {
+      defender.rageActive = true;
+    }
 
     // Pushback
     const pushDir = defender.facingRight ? -1 : 1;
@@ -314,11 +352,18 @@ export class TekkenFightingSystem {
     // Calculate damage with scaling
     let damage = moveDef.damage;
     if (isCounterHit) damage *= 1.2;
-    if (attacker.rageActive) damage *= TB.RAGE_DAMAGE_BOOST;
+    // Apply rage damage bonus (1.3x when rage is active)
+    if (attacker.rageActive) damage *= 1.3;
     damage = Math.round(damage * attacker.comboDamageScaling);
     damage = Math.max(1, damage);
 
     defender.hp = Math.max(0, defender.hp - damage);
+
+    // Check rage activation after taking damage
+    if (!defender.rageActive && !defender.rageArtUsed && defender.hp > 0 &&
+        defender.hp <= defender.maxHp * TB.RAGE_THRESHOLD) {
+      defender.rageActive = true;
+    }
 
     // Track combo
     attacker.comboCount++;
@@ -328,8 +373,11 @@ export class TekkenFightingSystem {
       attacker.comboDamageScaling * TB.COMBO_DAMAGE_SCALING,
     );
 
-    // Hitstun
-    const hitstun = TB.BASE_HITSTUN + (isCounterHit ? TB.COUNTER_HIT_BONUS : 0) + moveDef.onHit;
+    // Hitstun - apply onCounterHit bonus effects
+    let hitstun = TB.BASE_HITSTUN + moveDef.onHit;
+    if (isCounterHit) {
+      hitstun += TB.COUNTER_HIT_BONUS + moveDef.onCounterHit;
+    }
     defender.hitstunFrames = hitstun;
 
     // Knockback
@@ -337,17 +385,26 @@ export class TekkenFightingSystem {
     defender.velocity.x = moveDef.knockback * pushDir;
 
     // Determine hit reaction
-    if (moveDef.isLauncher && defender.grounded) {
+    // Counter-hit on a launcher move: always launch even if the move isn't normally a launcher
+    const shouldLaunch = moveDef.isLauncher || (isCounterHit && moveDef.onCounterHit >= 8);
+
+    if (shouldLaunch && defender.grounded) {
       // Launch!
       defender.state = TekkenFighterState.JUGGLE;
       defender.grounded = false;
       defender.juggle.isAirborne = true;
-      defender.juggle.velocity.y = moveDef.launchHeight;
+      // Counter-hit launchers get extra launch height
+      const launchBoost = isCounterHit ? 1.15 : 1.0;
+      defender.juggle.velocity.y = moveDef.launchHeight * launchBoost;
       defender.juggle.velocity.x = moveDef.knockback * 0.5 * pushDir;
       defender.juggle.hitCount = 1;
       defender.juggle.gravityScale = 1;
       defender.juggle.screwUsed = false;
       defender.juggle.boundUsed = false;
+      defender.juggle.isWallSplatted = false;
+      defender.juggle.wallSplatFrames = 0;
+      // Store per-move launch gravity for physics system
+      defender.juggle.currentLaunchGravity = moveDef.launchGravity;
 
       // Hit freeze (launcher)
       state.slowdownFrames = TB.HIT_FREEZE_LAUNCHER;
@@ -368,6 +425,12 @@ export class TekkenFightingSystem {
         defender.juggle.velocity.y += 0.05;
       }
       defender.juggle.velocity.x = moveDef.knockback * 0.3 * pushDir;
+
+      // Wall splat followup: hitting a wall-splatted opponent gives bonus damage
+      if (defender.juggle.isWallSplatted) {
+        // Wall combo bonus - extra hitstun for wall followups
+        defender.hitstunFrames += 4;
+      }
 
       state.slowdownFrames = TB.HIT_FREEZE_MEDIUM;
       state.slowdownScale = 0.3;
@@ -409,7 +472,11 @@ export class TekkenFightingSystem {
     if (moveDef.wallSplat && Math.abs(defender.position.x) >= TB.STAGE_HALF_WIDTH - 0.3) {
       defender.juggle.wallSplatActive = true;
       defender.juggle.wallSplatTimer = TB.WALL_SPLAT_DURATION;
+      defender.juggle.isWallSplatted = true;
+      defender.juggle.wallSplatFrames = TB.WALL_SPLAT_DURATION;
       defender.velocity.x = 0;
+      defender.state = TekkenFighterState.WALL_SPLAT;
+      defender.stateTimer = 0;
       state.cameraState.shakeIntensity = TB.CAMERA_SHAKE_HEAVY;
     }
 

@@ -1,6 +1,7 @@
 // GTACombatSystem.ts – Combat helpers, particles, and notifications. No PixiJS.
 import type { MedievalGTAState, GTAVec2, GTANPC, GTAProjectile } from '../state/MedievalGTAState';
-import { GTAConfig } from '../config/MedievalGTAConfig';
+import { GTAConfig, getEquipmentById, SKILL_DEFS, REPUTATION_EFFECTS } from '../config/MedievalGTAConfig';
+// Skill and faction types used by the reputation/skill systems above
 import { increaseWanted } from './GTAWantedSystem';
 
 // ─── Particles ───────────────────────────────────────────────────────────────
@@ -155,7 +156,10 @@ export function dealDamageToNPC(
   npc.vel.x      = 0;
   npc.vel.y      = 0;
 
-  // Wanted level consequences
+  // Award XP for the kill
+  awardXP(state, GTAConfig.XP_PER_KILL);
+
+  // Wanted level consequences + reputation effects
   if (_isGuardType(npc)) {
     const stars = npc.type === 'knight' ? 2 : 1;
     increaseWanted(state, stars);
@@ -164,12 +168,18 @@ export function dealDamageToNPC(
       `Guard slain! +${stars} Star${stars > 1 ? 's' : ''}`,
       0xff0000,
     );
+    // Apply reputation for killing guard/knight
+    const repAction = npc.type === 'knight' ? 'kill_knight' : 'kill_guard';
+    applyReputationEffects(state, repAction);
   } else if (_isCivilian(npc)) {
     increaseWanted(state, 2);
     addNotification(state, 'Innocent killed! +2 Stars', 0xff0000);
-  } else if (_isOutlaw(npc) && state.player.wantedLevel === 0) {
-    // No penalty for killing criminals/bandits at 0 stars
-    addNotification(state, `${npc.name} slain.`, 0xaaaaaa);
+    applyReputationEffects(state, 'kill_civilian');
+  } else if (_isOutlaw(npc)) {
+    if (state.player.wantedLevel === 0) {
+      addNotification(state, `${npc.name} slain.`, 0xaaaaaa);
+    }
+    applyReputationEffects(state, 'kill_criminal');
   }
 
   // Kill streak
@@ -225,9 +235,15 @@ export function dealDamageToPlayer(state: MedievalGTAState, dmg: number): void {
   if (p.invincibleTimer > 0) return;
   if (p.state === 'dead') return;
 
-  // Blocking check
+  // Equipment defense reduces incoming damage
+  const equipBonuses = computeEquipmentBonuses(state);
+  dmg = Math.max(1, dmg - equipBonuses.defenseBonus);
+
+  // Blocking check (with skill-enhanced block reduction)
   if (p.state === 'blocking' || p.blockTimer > 0) {
-    dmg = Math.floor(dmg * 0.15); // 85% damage reduction
+    const skillBonuses = computeSkillBonuses(state);
+    const blockReduction = GTAConfig.BLOCK_REDUCTION + skillBonuses.blockReduction;
+    dmg = Math.floor(dmg * (1.0 - blockReduction));
     addNotification(state, 'Blocked!', 0xaaddff);
     if (dmg <= 0) return;
   }
@@ -238,7 +254,16 @@ export function dealDamageToPlayer(state: MedievalGTAState, dmg: number): void {
   // Flash notification
   addNotification(state, `- ${dmg} HP`, 0xff4444);
 
+  // Second Wind skill: chance to survive lethal blow
   if (p.hp <= 0) {
+    const skillBonuses = computeSkillBonuses(state);
+    if (skillBonuses.secondWindChance > 0 && Math.random() < skillBonuses.secondWindChance) {
+      p.hp = 1;
+      p.invincibleTimer = 1.0;
+      addNotification(state, 'Second Wind! Survived at 1 HP!', 0xff8800);
+      return;
+    }
+
     (p as { state: string }).state = 'dead';
     p.vel.x      = 0;
     p.vel.y      = 0;
@@ -298,20 +323,32 @@ function resolvePlayerAttacks(state: MedievalGTAState, _dt: number): void {
     return;
   }
 
-  // Melee: determine range and damage based on weapon
+  // Melee: determine range and damage based on weapon + equipment + skills
   let range: number;
   let damage: number;
   const CONE_HALF_ANGLE = Math.PI / 6; // 30 degrees each side = 60 degree cone
 
+  // Equipment and skill bonuses
+  const equipBonuses = computeEquipmentBonuses(state);
+  const skillBonuses = computeSkillBonuses(state);
+
+  // Sprint attack multiplier includes skill bonus
+  const adjustedSprintMult = isSprinting
+    ? sprintMultiplier + skillBonuses.sprintDamageMult
+    : 1.0;
+
+  // Melee damage multiplier from skills
+  const meleeMult = 1.0 + skillBonuses.meleeDamageMult;
+
   switch (p.weapon) {
     case 'sword':
       range = GTAConfig.ATTACK_RANGE_MELEE + 25; // sword has extra reach
-      damage = Math.floor(GTAConfig.SWORD_DAMAGE * sprintMultiplier);
+      damage = Math.floor((GTAConfig.SWORD_DAMAGE + equipBonuses.damageBonus) * adjustedSprintMult * meleeMult);
       break;
     case 'fists':
     default:
       range = GTAConfig.ATTACK_RANGE_MELEE;
-      damage = Math.floor(GTAConfig.FIST_DAMAGE * sprintMultiplier);
+      damage = Math.floor((GTAConfig.FIST_DAMAGE + equipBonuses.damageBonus) * adjustedSprintMult * meleeMult);
       break;
   }
 
@@ -415,6 +452,204 @@ function updateProjectiles(state: MedievalGTAState, dt: number): void {
   }
 }
 
+// ─── Equipment Stat Computation ──────────────────────────────────────────────
+
+export interface GTAEquipmentBonuses {
+  damageBonus: number;
+  defenseBonus: number;
+  speedMult: number;
+  staminaRegenBonus: number;
+}
+
+/** Compute total stat bonuses from all equipped items. */
+export function computeEquipmentBonuses(state: MedievalGTAState): GTAEquipmentBonuses {
+  const equip = state.player.equipment;
+  const result: GTAEquipmentBonuses = {
+    damageBonus: 0,
+    defenseBonus: 0,
+    speedMult: 1.0,
+    staminaRegenBonus: 0,
+  };
+
+  const slots: (keyof typeof equip)[] = ['weapon', 'armor', 'helmet', 'shield', 'boots', 'ring'];
+  for (const slot of slots) {
+    const itemId = equip[slot];
+    if (!itemId) continue;
+    const def = getEquipmentById(itemId);
+    if (!def) continue;
+    result.damageBonus += def.damage;
+    result.defenseBonus += def.defense;
+    result.speedMult *= def.speedMult;
+    result.staminaRegenBonus += def.staminaRegen;
+  }
+
+  return result;
+}
+
+/** Apply equipment bonuses to player stats each frame. */
+function applyEquipmentBonuses(state: MedievalGTAState): void {
+  const bonuses = computeEquipmentBonuses(state);
+
+  // Stamina regen is recalculated each frame
+  state.player.runStaminaRegen = GTAConfig.STAMINA_REGEN + bonuses.staminaRegenBonus;
+}
+
+// ─── Skill System ────────────────────────────────────────────────────────────
+
+export interface GTASkillBonuses {
+  meleeDamageMult: number;
+  attackSpeedMult: number;
+  sprintDamageMult: number;
+  blockReduction: number;
+  pickpocketChance: number;
+  detectionMult: number;
+  sneakSpeedMult: number;
+  backstabMult: number;
+  priceReduction: number;
+  bribeChance: number;
+  intimidateChance: number;
+  repGainBonus: number;
+  maxHpBonus: number;
+  staminaRegenBonus: number;
+  secondWindChance: number;
+  potionHealMult: number;
+}
+
+/** Compute total skill bonuses from allocated skill points. */
+export function computeSkillBonuses(state: MedievalGTAState): GTASkillBonuses {
+  const result: GTASkillBonuses = {
+    meleeDamageMult: 0,
+    attackSpeedMult: 0,
+    sprintDamageMult: 0,
+    blockReduction: 0,
+    pickpocketChance: 0,
+    detectionMult: 0,
+    sneakSpeedMult: 0,
+    backstabMult: 0,
+    priceReduction: 0,
+    bribeChance: 0,
+    intimidateChance: 0,
+    repGainBonus: 0,
+    maxHpBonus: 0,
+    staminaRegenBonus: 0,
+    secondWindChance: 0,
+    potionHealMult: 0,
+  };
+
+  const skills = state.player.skills;
+  for (const skillDef of SKILL_DEFS) {
+    const rank = skills[skillDef.id] ?? 0;
+    if (rank <= 0) continue;
+    for (const eff of skillDef.effectPerRank) {
+      if (eff.stat in result) {
+        (result as unknown as Record<string, number>)[eff.stat] += eff.value * rank;
+      }
+    }
+  }
+
+  return result;
+}
+
+/** Apply skill bonuses to player stats each frame. */
+function applySkillBonuses(state: MedievalGTAState): void {
+  const bonuses = computeSkillBonuses(state);
+  const p = state.player;
+
+  // Max HP from toughness skill
+  p.maxHp = GTAConfig.PLAYER_MAX_HP + bonuses.maxHpBonus;
+
+  // Stamina regen also includes skill bonuses
+  p.runStaminaRegen += bonuses.staminaRegenBonus;
+}
+
+/**
+ * Attempt to allocate a skill point. Returns true on success.
+ */
+export function allocateSkillPoint(
+  state: MedievalGTAState,
+  skillId: string,
+): boolean {
+  const p = state.player;
+  if (p.skillPoints <= 0) return false;
+
+  const skillDef = SKILL_DEFS.find(s => s.id === skillId);
+  if (!skillDef) return false;
+
+  const currentRank = p.skills[skillId] ?? 0;
+  if (currentRank >= skillDef.maxRank) return false;
+
+  // Check branch prerequisites
+  let branchPoints = 0;
+  for (const s of SKILL_DEFS) {
+    if (s.branch === skillDef.branch) {
+      branchPoints += p.skills[s.id] ?? 0;
+    }
+  }
+  if (branchPoints < skillDef.branchPointsRequired) return false;
+
+  // Allocate
+  p.skills[skillId] = currentRank + 1;
+  p.skillPoints -= 1;
+
+  return true;
+}
+
+// ─── XP & Leveling ───────────────────────────────────────────────────────────
+
+/** Calculate XP required for the next level. */
+export function xpForLevel(level: number): number {
+  return Math.floor(GTAConfig.XP_PER_LEVEL_BASE * Math.pow(GTAConfig.XP_LEVEL_SCALE, level - 1));
+}
+
+/** Award XP to the player. Handles leveling up. */
+export function awardXP(state: MedievalGTAState, amount: number): void {
+  const p = state.player;
+  if (p.level >= GTAConfig.MAX_LEVEL) return;
+
+  p.xp += amount;
+
+  // Check for level up
+  while (p.level < GTAConfig.MAX_LEVEL) {
+    const needed = xpForLevel(p.level);
+    if (p.xp < needed) break;
+
+    p.xp -= needed;
+    p.level += 1;
+    p.skillPoints += GTAConfig.SKILL_POINTS_PER_LEVEL;
+
+    state.notifications.push({
+      id: `notif_${state.nextId++}`,
+      text: `LEVEL UP! You are now level ${p.level}!`,
+      timer: 4.0,
+      color: 0xffdd00,
+    });
+  }
+}
+
+// ─── Reputation Effects ──────────────────────────────────────────────────────
+
+/** Apply reputation effects for an action (e.g., 'kill_guard', 'steal_merchant'). */
+export function applyReputationEffects(
+  state: MedievalGTAState,
+  actionId: string,
+): void {
+  const effects = REPUTATION_EFFECTS[actionId];
+  if (!effects) return;
+
+  // Get rep gain bonus from skills
+  const skillBonuses = computeSkillBonuses(state);
+
+  for (const eff of effects) {
+    let amount = eff.amount;
+    // Apply silver tongue bonus to positive rep gains
+    if (amount > 0) {
+      amount += skillBonuses.repGainBonus;
+    }
+    const current = state.player.reputation[eff.faction] ?? 0;
+    state.player.reputation[eff.faction] = Math.max(-100, Math.min(100, current + amount));
+  }
+}
+
 // ─── Main combat update ─────────────────────────────────────────────────────
 
 /**
@@ -423,6 +658,10 @@ function updateProjectiles(state: MedievalGTAState, dt: number): void {
  */
 export function updateCombat(state: MedievalGTAState, dt: number): void {
   if (!state.paused && !state.gameOver) {
+    // Apply equipment and skill bonuses every frame
+    applyEquipmentBonuses(state);
+    applySkillBonuses(state);
+
     resolvePlayerAttacks(state, dt);
     updateProjectiles(state, dt);
   }

@@ -9,6 +9,11 @@ import { UNIT_DEFINITIONS } from "@sim/config/UnitDefinitions";
 import { BalanceConfig, CombatOptions } from "@sim/config/BalanceConfig";
 import { EventBus } from "@sim/core/EventBus";
 import { destroyBuilding } from "@sim/systems/BuildingSystem";
+import {
+  isOnRiver,
+  getTerrainDefenseMultiplier,
+  getTerrainAttackMultiplier,
+} from "@sim/core/Grid";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -61,6 +66,9 @@ export const CombatSystem = {
 
       // Skip units that can't participate in combat
       if (unit.state === UnitState.CAST || unit.idleInterruptionTimer > 0) continue;
+
+      // Units crossing a river cannot engage in combat
+      if (isOnRiver(state.battlefield, unit.position.x, unit.position.y)) continue;
 
       // Tick attack cooldown
       if (unit.attackTimer > 0) unit.attackTimer -= dt;
@@ -367,6 +375,23 @@ function applyDamage(attacker: Unit, target: Unit, state: GameState): void {
     damage *= 5;
     attacker.hasCharged = true;
   }
+
+  // --- Terrain modifiers ---
+  // High ground attack bonus
+  const terrainAtkMult = getTerrainAttackMultiplier(
+    state.battlefield,
+    attacker.position.x, attacker.position.y,
+    target.position.x, target.position.y,
+  );
+  damage = Math.floor(damage * terrainAtkMult);
+
+  // Forest defense bonus (reduces incoming damage for target)
+  const terrainDefMult = getTerrainDefenseMultiplier(
+    state.battlefield,
+    target.position.x,
+    target.position.y,
+  );
+  damage = Math.max(1, Math.floor(damage * terrainDefMult));
 
   // --- Block check (target) ---
   if (CombatOptions.blockEnabled) {

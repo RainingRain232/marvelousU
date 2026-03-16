@@ -1,5 +1,6 @@
 // Per-player state: gold, owned buildings, base, direction
 import type { Direction, PlayerId, PlayerSlot } from "@/types";
+import { AIPersonality } from "@/types";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
 
 export interface PlayerState {
@@ -11,6 +12,7 @@ export interface PlayerState {
   direction: Direction; // Which side of the battlefield this player controls
   slot: PlayerSlot; // Map corner slot (nw/ne/sw/se)
   isAI: boolean; // Whether this player is AI-controlled
+  aiPersonality: AIPersonality; // AI behavior variant (only used when isAI = true)
   ownedBaseId: string | null; // The player's main Base ID
   ownedBuildings: string[]; // Building IDs this player owns
 }
@@ -38,6 +40,7 @@ export function createPlayerState(
     direction,
     slot,
     isAI,
+    aiPersonality: AIPersonality.BALANCED,
     ownedBaseId: null,
     ownedBuildings: [],
   };

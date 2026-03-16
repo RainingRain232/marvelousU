@@ -121,6 +121,10 @@ export const ARTHUR_DEF: DuelCharacterDef = {
   jumpVelocity: -20,
   jumpForwardSpeed: 6,
   weight: 1.0,
+  uniqueMechanic: {
+    name: "excaliburCharge",
+    description: "Builds charge meter with successful hits; powered-up specials at full charge",
+  },
 
   normals: {
     // Q — Light high: quick sword jab
@@ -266,6 +270,10 @@ export const MERLIN_DEF: DuelCharacterDef = {
   jumpVelocity: -19,
   jumpForwardSpeed: 5.5,
   weight: 0.9,
+  uniqueMechanic: {
+    name: "spellWeave",
+    description: "Chain specials together for bonus damage on consecutive casts",
+  },
 
   normals: {
     light_high: normal(
@@ -403,6 +411,10 @@ export const ELAINE_DEF: DuelCharacterDef = {
   jumpVelocity: -21,
   jumpForwardSpeed: 7,
   weight: 0.8,
+  uniqueMechanic: {
+    name: "heartseeker",
+    description: "Consecutive ranged hits on the same target increase arrow damage",
+  },
 
   normals: {
     light_high: normal(
@@ -541,6 +553,10 @@ export const LANCELOT_DEF: DuelCharacterDef = {
   jumpVelocity: -19,
   jumpForwardSpeed: 6,
   weight: 0.95,
+  uniqueMechanic: {
+    name: "holyZeal",
+    description: "Combo counter increases damage; longer combos deal progressively more",
+  },
 
   normals: {
     // Q — Light high: quick spear jab — long range, low damage

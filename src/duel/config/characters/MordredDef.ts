@@ -122,6 +122,10 @@ export const MORDRED_DEF: DuelCharacterDef = {
   jumpVelocity: -20,
   jumpForwardSpeed: 6.5,
   weight: 1.0,
+  uniqueMechanic: {
+    name: "darkMirror",
+    description: "Copies opponent's last special used and can cast it as a shadow version",
+  },
 
   normals: {
     // Q — Light high: vicious quick stab, slightly slower than Arthur but hits harder

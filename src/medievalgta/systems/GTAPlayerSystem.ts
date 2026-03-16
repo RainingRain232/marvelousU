@@ -1,5 +1,8 @@
 // GTAPlayerSystem.ts – Pure logic, no PixiJS imports
-import type { MedievalGTAState, GTAVec2, GTABuilding } from '../state/MedievalGTAState';
+import type { MedievalGTAState, GTAVec2, GTABuilding, GTAActiveWorldEvent } from '../state/MedievalGTAState';
+import { PROPERTY_DEFS, CRIME_RING_DEFS, WORLD_EVENT_DEFS } from '../config/MedievalGTAConfig';
+import type { GTAWorldEventDef } from '../config/MedievalGTAConfig';
+import { increaseWanted } from './GTAWantedSystem';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 const PLAYER_WALK_SPEED    = 120;
@@ -92,6 +95,282 @@ function facingDir(dx: number, dy: number): 'n' | 's' | 'e' | 'w' {
 /** Facing angle in radians from dx/dy (0 = east). */
 function facingAngle(dx: number, dy: number): number {
   return Math.atan2(dy, dx);
+}
+
+// ─── Property Income System ──────────────────────────────────────────────────
+
+/** Income collection interval in game-time seconds (represents one "day"). */
+const PROPERTY_INCOME_INTERVAL = 60;
+
+/** Purchase a property. Returns true on success. */
+export function purchaseProperty(
+  state: MedievalGTAState,
+  propertyId: string,
+): boolean {
+  const def = PROPERTY_DEFS.find(p => p.id === propertyId);
+  if (!def) return false;
+
+  // Already owned?
+  if (state.ownedProperties.some(p => p.propertyId === propertyId)) return false;
+
+  const p = state.player;
+  if (p.gold < def.cost) {
+    state.notifications.push({
+      id: `notif_${state.nextId++}`,
+      text: `Not enough gold! Need ${def.cost}g`,
+      timer: 2.5,
+      color: 0xff8800,
+    });
+    return false;
+  }
+
+  p.gold -= def.cost;
+  state.ownedProperties.push({
+    propertyId,
+    purchasedAt: state.timeElapsed,
+    lastIncomeTime: state.timeElapsed,
+    totalIncomeEarned: 0,
+  });
+
+  state.notifications.push({
+    id: `notif_${state.nextId++}`,
+    text: `Purchased ${def.name}!`,
+    timer: 3.0,
+    color: 0x44ff44,
+  });
+
+  return true;
+}
+
+/** Tick property income generation. */
+function updatePropertyIncome(state: MedievalGTAState): void {
+  const now = state.timeElapsed;
+
+  // Get active world event price multiplier (affects property income too)
+  let incomeMultiplier = 1.0;
+  for (const evt of state.activeWorldEvents) {
+    if (evt.effects.priceMultiplier) {
+      // Higher prices = more income from shops
+      incomeMultiplier *= evt.effects.priceMultiplier;
+    }
+  }
+
+  for (const prop of state.ownedProperties) {
+    const def = PROPERTY_DEFS.find(d => d.id === prop.propertyId);
+    if (!def || def.income <= 0) continue;
+
+    if (now - prop.lastIncomeTime >= PROPERTY_INCOME_INTERVAL) {
+      const earned = Math.floor(def.income * incomeMultiplier);
+      state.player.gold += earned;
+      prop.lastIncomeTime = now;
+      prop.totalIncomeEarned += earned;
+
+      state.notifications.push({
+        id: `notif_${state.nextId++}`,
+        text: `${def.name}: +${earned}g income`,
+        timer: 2.0,
+        color: 0xffdd00,
+      });
+    }
+  }
+}
+
+// ─── Crime Ring System ───────────────────────────────────────────────────────
+
+/** Crime ring income interval in game-time seconds. */
+const CRIME_RING_CYCLE_INTERVAL = 45;
+
+/** Join a crime ring. Returns true on success. */
+export function joinCrimeRing(
+  state: MedievalGTAState,
+  ringId: string,
+): boolean {
+  const def = CRIME_RING_DEFS.find(r => r.id === ringId);
+  if (!def) return false;
+
+  // Already a member?
+  if (state.crimeRings.some(r => r.ringId === ringId)) return false;
+
+  // Check thieves guild reputation requirement
+  const thievesRep = state.player.reputation.thieves_guild ?? 0;
+  if (thievesRep < def.requiredRep) {
+    state.notifications.push({
+      id: `notif_${state.nextId++}`,
+      text: `Need ${def.requiredRep} Thieves Guild rep to join!`,
+      timer: 2.5,
+      color: 0xff8800,
+    });
+    return false;
+  }
+
+  state.crimeRings.push({
+    ringId,
+    role: 'member',
+    joinedAt: state.timeElapsed,
+    incomeAccumulated: 0,
+    lastCycleTime: state.timeElapsed,
+    busted: false,
+  });
+
+  state.notifications.push({
+    id: `notif_${state.nextId++}`,
+    text: `Joined ${def.name}!`,
+    timer: 3.0,
+    color: 0xcc88ff,
+  });
+
+  return true;
+}
+
+/** Tick crime ring operations – income and risk of getting caught. */
+function updateCrimeRings(state: MedievalGTAState): void {
+  const now = state.timeElapsed;
+
+  // Get active world event crime risk multiplier
+  let crimeRiskMult = 1.0;
+  for (const evt of state.activeWorldEvents) {
+    if (evt.effects.crimeRiskMultiplier) {
+      crimeRiskMult *= evt.effects.crimeRiskMultiplier;
+    }
+  }
+
+  for (let i = state.crimeRings.length - 1; i >= 0; i--) {
+    const ring = state.crimeRings[i];
+    if (ring.busted) continue;
+
+    const def = CRIME_RING_DEFS.find(d => d.id === ring.ringId);
+    if (!def) continue;
+
+    if (now - ring.lastCycleTime >= CRIME_RING_CYCLE_INTERVAL) {
+      ring.lastCycleTime = now;
+
+      // Risk check: chance of getting busted
+      const adjustedRisk = def.riskPerCycle * crimeRiskMult;
+      if (Math.random() < adjustedRisk) {
+        // Busted!
+        ring.busted = true;
+        increaseWanted(state, def.wantedOnCaught);
+
+        state.notifications.push({
+          id: `notif_${state.nextId++}`,
+          text: `${def.name} busted! +${def.wantedOnCaught} wanted!`,
+          timer: 4.0,
+          color: 0xff0000,
+        });
+
+        // Remove the ring after being busted
+        state.crimeRings.splice(i, 1);
+        continue;
+      }
+
+      // Income earned this cycle
+      const earned = def.income;
+      state.player.gold += earned;
+      ring.incomeAccumulated += earned;
+
+      state.notifications.push({
+        id: `notif_${state.nextId++}`,
+        text: `${def.name}: +${earned}g`,
+        timer: 2.0,
+        color: 0xcc88ff,
+      });
+    }
+  }
+}
+
+// ─── Dynamic World Events System ─────────────────────────────────────────────
+
+/** Time between world event spawn checks (seconds). */
+const WORLD_EVENT_CHECK_INTERVAL = 30;
+
+/** Start a world event. */
+function startWorldEvent(state: MedievalGTAState, def: GTAWorldEventDef): void {
+  const activeEvent: GTAActiveWorldEvent = {
+    type: def.type,
+    name: def.name,
+    startTime: state.timeElapsed,
+    duration: def.duration,
+    effects: { ...def.effects },
+  };
+
+  state.activeWorldEvents.push(activeEvent);
+  state.worldEventCooldowns[def.type] = state.timeElapsed + def.cooldown;
+
+  state.notifications.push({
+    id: `notif_${state.nextId++}`,
+    text: def.startText,
+    timer: 5.0,
+    color: 0xffdd00,
+  });
+}
+
+/** Tick world events: expire old events, potentially start new ones. */
+function updateWorldEvents(state: MedievalGTAState, dt: number): void {
+  const now = state.timeElapsed;
+
+  // Expire finished events
+  for (let i = state.activeWorldEvents.length - 1; i >= 0; i--) {
+    const evt = state.activeWorldEvents[i];
+    if (now - evt.startTime >= evt.duration) {
+      // Find the definition for the end text
+      const def = WORLD_EVENT_DEFS.find(d => d.type === evt.type);
+      if (def) {
+        state.notifications.push({
+          id: `notif_${state.nextId++}`,
+          text: def.endText,
+          timer: 4.0,
+          color: 0xaaaaaa,
+        });
+      }
+      state.activeWorldEvents.splice(i, 1);
+    }
+  }
+
+  // Check timer for spawning new events
+  state.worldEventCheckTimer -= dt;
+  if (state.worldEventCheckTimer > 0) return;
+  state.worldEventCheckTimer = WORLD_EVENT_CHECK_INTERVAL;
+
+  // Only allow one active event at a time
+  if (state.activeWorldEvents.length > 0) return;
+
+  // Random chance to start an event (30% per check)
+  if (Math.random() > 0.30) return;
+
+  // Pick a random eligible event (respecting cooldowns)
+  const eligible = WORLD_EVENT_DEFS.filter(def => {
+    const cooldownEnd = state.worldEventCooldowns[def.type] ?? 0;
+    return now >= cooldownEnd;
+  });
+
+  if (eligible.length === 0) return;
+
+  const chosen = eligible[Math.floor(Math.random() * eligible.length)];
+  startWorldEvent(state, chosen);
+}
+
+/** Get the combined effects of all active world events. */
+export function getActiveWorldEffects(state: MedievalGTAState): {
+  priceMultiplier: number;
+  guardMultiplier: number;
+  npcSpawnMultiplier: number;
+  crimeRiskMultiplier: number;
+} {
+  const result = {
+    priceMultiplier: 1.0,
+    guardMultiplier: 1.0,
+    npcSpawnMultiplier: 1.0,
+    crimeRiskMultiplier: 1.0,
+  };
+
+  for (const evt of state.activeWorldEvents) {
+    if (evt.effects.priceMultiplier) result.priceMultiplier *= evt.effects.priceMultiplier;
+    if (evt.effects.guardMultiplier) result.guardMultiplier *= evt.effects.guardMultiplier;
+    if (evt.effects.npcSpawnMultiplier) result.npcSpawnMultiplier *= evt.effects.npcSpawnMultiplier;
+    if (evt.effects.crimeRiskMultiplier) result.crimeRiskMultiplier *= evt.effects.crimeRiskMultiplier;
+  }
+
+  return result;
 }
 
 // ─── Main export ─────────────────────────────────────────────────────────────
@@ -289,6 +568,15 @@ export function updatePlayer(state: MedievalGTAState, dt: number): void {
 
   // ── Day/night ────────────────────────────────────────────────────────────
   state.dayTime = (state.dayTime + state.daySpeed * dt) % 1.0;
+
+  // ── Property income ────────────────────────────────────────────────────
+  updatePropertyIncome(state);
+
+  // ── Crime ring operations ──────────────────────────────────────────────
+  updateCrimeRings(state);
+
+  // ── Dynamic world events ───────────────────────────────────────────────
+  updateWorldEvents(state, dt);
 
   // ── Tick ─────────────────────────────────────────────────────────────────
   state.timeElapsed += dt;

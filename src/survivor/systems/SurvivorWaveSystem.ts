@@ -10,7 +10,7 @@ import type { SurvivorEnemyDef } from "../config/SurvivorEnemyDefs";
 import { ELITE_CONFIG, ELITE_DEFS } from "../config/SurvivorEliteDefs";
 import type { EliteType } from "../config/SurvivorEliteDefs";
 import { DIFFICULTY_SETTINGS } from "../state/SurvivorState";
-import type { SurvivorState, SurvivorEnemy } from "../state/SurvivorState";
+import type { SurvivorState, SurvivorEnemy, AiBehavior } from "../state/SurvivorState";
 
 // Visible area in tiles (approximate)
 const VIEW_HALF_W = 16;
@@ -120,6 +120,44 @@ function _rollEliteType(minute: number): EliteType | null {
   return ELITE_TYPES[Math.floor(Math.random() * ELITE_TYPES.length)];
 }
 
+// AI behavior weights: higher-tier enemies get more advanced behaviors
+const AI_BEHAVIOR_POOL: { behavior: AiBehavior; weight: number; minTier: number }[] = [
+  { behavior: "direct", weight: 5, minTier: 0 },
+  { behavior: "flanking", weight: 3, minTier: 1 },
+  { behavior: "circling", weight: 2, minTier: 1 },
+  { behavior: "pack", weight: 2, minTier: 2 },
+  { behavior: "ambush", weight: 1, minTier: 2 },
+  { behavior: "retreating", weight: 1, minTier: 0 }, // assigned to ranged elites, rarely to normal
+];
+
+function _rollAiBehavior(tier: number, eliteType: EliteType | null): AiBehavior {
+  // Ranged elites always retreat
+  if (eliteType === "ranged") return "retreating";
+  // Charger elites always flank
+  if (eliteType === "charger") return "flanking";
+  // Summoners circle at range
+  if (eliteType === "summoner") return "circling";
+
+  const eligible = AI_BEHAVIOR_POOL.filter((b) => tier >= b.minTier);
+  const totalWeight = eligible.reduce((sum, b) => sum + b.weight, 0);
+  let r = Math.random() * totalWeight;
+  for (const b of eligible) {
+    r -= b.weight;
+    if (r <= 0) return b.behavior;
+  }
+  return "direct";
+}
+
+function _getPreferredRange(behavior: AiBehavior, eliteType: EliteType | null): number {
+  if (eliteType === "ranged") return 8;
+  if (eliteType === "summoner") return 6;
+  switch (behavior) {
+    case "retreating": return 7;
+    case "circling": return 4;
+    default: return 0; // melee / direct
+  }
+}
+
 function _createEnemy(state: SurvivorState, def: SurvivorEnemyDef, pos: { x: number; y: number }, isDeathBoss = false): SurvivorEnemy {
   const unitDef = UNIT_DEFINITIONS[def.type];
   const minute = state.gameTime / 60;
@@ -147,6 +185,11 @@ function _createEnemy(state: SurvivorState, def: SurvivorEnemyDef, pos: { x: num
   }
 
   const isBoss = def.isBoss ?? false;
+  const aiBehavior = isBoss ? "direct" as AiBehavior : _rollAiBehavior(def.tier, eliteType);
+
+  // Shielded elites get a shield equal to 30% of their max HP
+  const shieldHp = eliteType === "shielded" ? hp * 0.3 : 0;
+
   return {
     id: state.nextEnemyId++,
     type: def.type,
@@ -167,8 +210,12 @@ function _createEnemy(state: SurvivorState, def: SurvivorEnemyDef, pos: { x: num
     chargeTimer: 0,
     chargeDirX: 0,
     chargeDirY: 0,
+    shieldHp,
     isDeathBoss,
     displayName: _getArthurianName(def.type, isBoss, eliteType, isDeathBoss),
+    aiBehavior,
+    ambushRevealed: aiBehavior !== "ambush", // ambush enemies start hidden
+    preferredRange: _getPreferredRange(aiBehavior, eliteType),
   };
 }
 

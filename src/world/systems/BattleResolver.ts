@@ -16,7 +16,9 @@ import { createBase } from "@sim/entities/Base";
 import { Direction, GamePhase, GameMode, UnitState } from "@/types";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
 import { hexNeighbors } from "@world/hex/HexCoord";
-import { TERRAIN_DEFINITIONS } from "@world/config/TerrainDefs";
+import { TERRAIN_DEFINITIONS, TerrainType } from "@world/config/TerrainDefs";
+import { getLeader } from "@sim/config/LeaderDefs";
+import { conquerNeutralCity } from "@world/systems/NeutralCitySystem";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -60,6 +62,43 @@ function _placeBases(state: GameState): void {
     spawnOffset: { x: 0, y: 1 },
   });
   state.bases.set(p2Base.id, p2Base);
+}
+
+/**
+ * Get a damage multiplier for a world army based on leader abilities.
+ * Returns a multiplier >= 1.0 (or 1.0 if no bonus).
+ */
+export function getLeaderBattleMultiplier(
+  worldState: WorldState,
+  army: WorldArmy,
+  battleType: "field" | "siege",
+  isDefender: boolean,
+): number {
+  const player = worldState.players.get(army.owner);
+  if (!player?.leaderId) return 1.0;
+  const leaderDef = getLeader(player.leaderId);
+  const abilityId = leaderDef?.leaderAbility?.id;
+  if (!abilityId) return 1.0;
+
+  // Lancelot — Champion's Challenge: +20% damage in field battles
+  if (abilityId === "champions_challenge" && battleType === "field") {
+    return 1.2;
+  }
+
+  // Gawain — Solar Strength: +15% on plains/grassland
+  if (abilityId === "solar_strength") {
+    const tile = worldState.grid.getTile(army.position.q, army.position.r);
+    if (tile && (tile.terrain === TerrainType.PLAINS || tile.terrain === TerrainType.GRASSLAND)) {
+      return 1.15;
+    }
+  }
+
+  // Bedivere — Unbreakable Line: +30% HP for garrison in siege defense
+  if (abilityId === "unbreakable_line" && battleType === "siege" && isDefender && army.isGarrison) {
+    return 1.3;
+  }
+
+  return 1.0;
 }
 
 /** Create a GameState for a field battle between two world armies. */
@@ -252,36 +291,51 @@ export function applyBattleResults(
     const city = worldState.cities.get(battle.defenderCityId);
     if (city && result.winnerId !== city.owner) {
       const oldOwner = city.owner;
-      city.owner = result.winnerId;
-      city.isUnderSiege = false;
 
-      // Transfer territory ownership
-      for (const hex of city.territory) {
-        const tile = worldState.grid.getTile(hex.q, hex.r);
-        if (tile && tile.owner === oldOwner) {
-          tile.owner = result.winnerId;
-        }
-      }
-
-      // Check if old owner lost their capital → eliminate
-      if (city.isCapital) {
-        const oldPlayer = worldState.players.get(oldOwner);
-        if (oldPlayer) {
-          // Check if they have any remaining capitals
-          let hasCapital = false;
-          for (const c of worldState.cities.values()) {
-            if (c.owner === oldOwner && c.isCapital && c.id !== city.id) {
-              hasCapital = true;
-              break;
-            }
+      // Handle neutral city conquest separately
+      if (oldOwner.startsWith("neutral_")) {
+        conquerNeutralCity(worldState, battle.defenderCityId, result.winnerId);
+      } else {
+        // Mordred — Treachery: gains 200 gold from conquering allied (peace) cities
+        const winner = worldState.players.get(result.winnerId);
+        if (winner?.leaderId === "mordred") {
+          const relation = winner.diplomacy.get(oldOwner);
+          if (relation === "peace") {
+            winner.gold += 200;
           }
-          if (!hasCapital) {
-            oldPlayer.isAlive = false;
-            // Transfer Morgaine crystals to the conquering player
-            const winner = worldState.players.get(result.winnerId!);
-            if (winner && oldPlayer.morgaineCrystals > 0) {
-              winner.morgaineCrystals += oldPlayer.morgaineCrystals;
-              oldPlayer.morgaineCrystals = 0;
+        }
+
+        city.owner = result.winnerId;
+        city.isUnderSiege = false;
+
+        // Transfer territory ownership
+        for (const hex of city.territory) {
+          const tile = worldState.grid.getTile(hex.q, hex.r);
+          if (tile && tile.owner === oldOwner) {
+            tile.owner = result.winnerId;
+          }
+        }
+
+        // Check if old owner lost their capital → eliminate
+        if (city.isCapital) {
+          const oldPlayer = worldState.players.get(oldOwner);
+          if (oldPlayer) {
+            // Check if they have any remaining capitals
+            let hasCapital = false;
+            for (const c of worldState.cities.values()) {
+              if (c.owner === oldOwner && c.isCapital && c.id !== city.id) {
+                hasCapital = true;
+                break;
+              }
+            }
+            if (!hasCapital) {
+              oldPlayer.isAlive = false;
+              // Transfer Morgaine crystals to the conquering player
+              const winnerPlayer = worldState.players.get(result.winnerId!);
+              if (winnerPlayer && oldPlayer.morgaineCrystals > 0) {
+                winnerPlayer.morgaineCrystals += oldPlayer.morgaineCrystals;
+                oldPlayer.morgaineCrystals = 0;
+              }
             }
           }
         }

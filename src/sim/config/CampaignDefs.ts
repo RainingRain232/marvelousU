@@ -6,7 +6,7 @@
 // Each victory reveals a 4-digit code that is shown on the victory screen.
 // Entering a code on the scenario select screen unlocks the next scenario.
 
-import { UnitType, BuildingType, UpgradeType } from "@/types";
+import { UnitType, BuildingType, UpgradeType, CampaignAchievementCondition } from "@/types";
 import type { RaceId } from "@sim/config/RaceDefs";
 import type { LeaderId } from "@sim/config/LeaderDefs";
 import type { ArmoryItemId } from "@sim/config/ArmoryItemDefs";
@@ -95,6 +95,132 @@ export interface ScenarioDef {
    * Player IDs that are allied with p1. E.g. ["p3"] makes p3 friendly.
    */
   alliedPlayerIds?: string[];
+}
+
+// ---------------------------------------------------------------------------
+// Campaign Achievement system
+// ---------------------------------------------------------------------------
+
+export type CampaignAchievementRewardType =
+  | "bonus_gold"
+  | "unlock_cosmetic"
+  | "bonus_unit";
+
+export interface CampaignAchievementReward {
+  type: CampaignAchievementRewardType;
+  /** For bonus_gold: extra gold for the next scenario. */
+  amount?: number;
+  /** For unlock_cosmetic / bonus_unit: the ID of the unlocked thing. */
+  id?: string;
+  /** Human-readable description of the reward. */
+  description: string;
+}
+
+export interface CampaignAchievement {
+  /** Unique achievement identifier. */
+  achievementId: string;
+  /** Which scenario this achievement belongs to. */
+  scenarioId: number;
+  /** The condition type to check. */
+  condition: CampaignAchievementCondition;
+  /** Numeric threshold (e.g. clear time in seconds for SPEED_CLEAR). */
+  threshold: number;
+  /** What the player gets for completing this achievement. */
+  reward: CampaignAchievementReward;
+  /** Short display title. */
+  title: string;
+}
+
+/**
+ * Campaign achievements — one per scenario for the first 10, then repeating patterns.
+ * Checked during the RESOLVE phase when the player wins.
+ */
+export const CAMPAIGN_ACHIEVEMENTS: CampaignAchievement[] = [
+  {
+    achievementId: "s1_speed",
+    scenarioId: 1,
+    condition: CampaignAchievementCondition.SPEED_CLEAR,
+    threshold: 120,
+    reward: { type: "bonus_gold", amount: 500, description: "+500 gold next scenario" },
+    title: "Swift Victory",
+  },
+  {
+    achievementId: "s2_no_damage",
+    scenarioId: 2,
+    condition: CampaignAchievementCondition.NO_DAMAGE,
+    threshold: 0,
+    reward: { type: "bonus_gold", amount: 750, description: "+750 gold next scenario" },
+    title: "Untouched",
+  },
+  {
+    achievementId: "s3_speed",
+    scenarioId: 3,
+    condition: CampaignAchievementCondition.SPEED_CLEAR,
+    threshold: 180,
+    reward: { type: "bonus_gold", amount: 500, description: "+500 gold next scenario" },
+    title: "Blitz Commander",
+  },
+  {
+    achievementId: "s4_no_units_lost",
+    scenarioId: 4,
+    condition: CampaignAchievementCondition.NO_UNITS_LOST,
+    threshold: 0,
+    reward: { type: "bonus_gold", amount: 1000, description: "+1000 gold next scenario" },
+    title: "Flawless Tactics",
+  },
+  {
+    achievementId: "s5_speed",
+    scenarioId: 5,
+    condition: CampaignAchievementCondition.SPEED_CLEAR,
+    threshold: 150,
+    reward: { type: "bonus_gold", amount: 750, description: "+750 gold next scenario" },
+    title: "Savant's Rush",
+  },
+  {
+    achievementId: "s6_no_buildings_lost",
+    scenarioId: 6,
+    condition: CampaignAchievementCondition.NO_BUILDINGS_LOST,
+    threshold: 0,
+    reward: { type: "bonus_gold", amount: 1000, description: "+1000 gold next scenario" },
+    title: "Fortress Intact",
+  },
+  {
+    achievementId: "s7_speed",
+    scenarioId: 7,
+    condition: CampaignAchievementCondition.SPEED_CLEAR,
+    threshold: 240,
+    reward: { type: "bonus_gold", amount: 1000, description: "+1000 gold next scenario" },
+    title: "Lightning March",
+  },
+  {
+    achievementId: "s8_no_buildings_lost",
+    scenarioId: 8,
+    condition: CampaignAchievementCondition.NO_BUILDINGS_LOST,
+    threshold: 0,
+    reward: { type: "bonus_gold", amount: 1500, description: "+1500 gold next scenario" },
+    title: "Impregnable",
+  },
+  {
+    achievementId: "s9_gold_hoarder",
+    scenarioId: 9,
+    condition: CampaignAchievementCondition.GOLD_HOARDER,
+    threshold: 3000,
+    reward: { type: "bonus_gold", amount: 1000, description: "+1000 gold next scenario" },
+    title: "Dragon's Hoard",
+  },
+  {
+    achievementId: "s10_speed",
+    scenarioId: 10,
+    condition: CampaignAchievementCondition.SPEED_CLEAR,
+    threshold: 180,
+    reward: { type: "bonus_gold", amount: 1500, description: "+1500 gold next scenario" },
+    title: "Blight Purger",
+  },
+];
+
+/** Return achievements for a given scenario. */
+export function getAchievementsForScenario(scenarioId: number): CampaignAchievement[] {
+  return CAMPAIGN_ACHIEVEMENTS.filter((a) => a.scenarioId === scenarioId);
 }
 
 // ---------------------------------------------------------------------------

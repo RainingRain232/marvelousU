@@ -35,6 +35,10 @@ export interface CampaignProgress {
   unlockedItems: ArmoryItemId[];
   /** Last selected scenario number (for "Return to Campaign" UX). */
   lastScenario: number;
+  /** Achievement IDs that have been earned (persisted across sessions). */
+  earnedAchievements: string[];
+  /** Bonus gold earned from achievements, applied to the next scenario played. */
+  achievementBonusGold: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -50,6 +54,8 @@ function _defaultProgress(): CampaignProgress {
     unlockedLeaders: [],
     unlockedItems: [],
     lastScenario: 1,
+    earnedAchievements: [],
+    achievementBonusGold: 0,
   };
 }
 
@@ -68,6 +74,9 @@ function _load(): CampaignProgress {
         parsed.unlockedUnits.push(UnitType.SWORDSMAN);
       // Migration: ensure unlockedItems exists for saves before this field was added
       if (!parsed.unlockedItems) parsed.unlockedItems = [];
+      // Migration: ensure achievement fields exist
+      if (!parsed.earnedAchievements) parsed.earnedAchievements = [];
+      if (parsed.achievementBonusGold == null) parsed.achievementBonusGold = 0;
       return parsed;
     }
   } catch {
@@ -125,6 +134,18 @@ export class CampaignState {
 
   get lastScenario(): number {
     return this._progress.lastScenario;
+  }
+
+  get earnedAchievements(): string[] {
+    return [...this._progress.earnedAchievements];
+  }
+
+  get achievementBonusGold(): number {
+    return this._progress.achievementBonusGold;
+  }
+
+  isAchievementEarned(achievementId: string): boolean {
+    return this._progress.earnedAchievements.includes(achievementId);
   }
 
   isScenarioUnlocked(number: number): boolean {

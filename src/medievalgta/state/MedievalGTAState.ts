@@ -1,16 +1,20 @@
 // Medieval GTA – shared state types and factory function
 
+import type { GTAFactionId, GTAWorldEventType } from '../config/MedievalGTAConfig';
+
 export interface GTAVec2 { x: number; y: number; }
 
 export type GTANPCType =
   | 'civilian_m' | 'civilian_f'
   | 'merchant' | 'blacksmith_npc' | 'priest' | 'bard' | 'stable_master' | 'tavern_keeper'
   | 'guard' | 'knight' | 'archer_guard' | 'army_soldier'
-  | 'criminal' | 'bandit';
+  | 'criminal' | 'bandit'
+  | 'bounty_hunter';
 
 export type GTANPCBehavior =
   | 'wander' | 'patrol' | 'idle' | 'stand'
   | 'flee' | 'chase_player' | 'attack_player'
+  | 'ambush' | 'hunt_player'
   | 'dead';
 
 export type GTAPlayerState =
@@ -34,6 +38,69 @@ export type GTABuildingType =
   | 'farm_field' | 'farmhouse' | 'mill';
 
 export type GTAFacingDir = 'n' | 's' | 'e' | 'w';
+
+// ─── Equipment state ─────────────────────────────────────────────────────────
+
+export interface GTAEquippedItems {
+  weapon: string | null;
+  armor: string | null;
+  helmet: string | null;
+  shield: string | null;
+  boots: string | null;
+  ring: string | null;
+}
+
+// ─── Skill state ──────────────────────────────────────────────────────────────
+
+export interface GTASkillRanks {
+  [skillId: string]: number;
+}
+
+// ─── Crime ring state ─────────────────────────────────────────────────────────
+
+export interface GTACrimeRingState {
+  ringId: string;
+  role: string;
+  joinedAt: number;          // timeElapsed when joined
+  incomeAccumulated: number;
+  lastCycleTime: number;     // last time income was collected
+  busted: boolean;
+}
+
+// ─── Property ownership state ─────────────────────────────────────────────────
+
+export interface GTAOwnedProperty {
+  propertyId: string;
+  purchasedAt: number;       // timeElapsed when purchased
+  lastIncomeTime: number;    // last time income was collected
+  totalIncomeEarned: number;
+}
+
+// ─── Active world event state ─────────────────────────────────────────────────
+
+export interface GTAActiveWorldEvent {
+  type: GTAWorldEventType;
+  name: string;
+  startTime: number;
+  duration: number;
+  effects: {
+    priceMultiplier?: number;
+    guardMultiplier?: number;
+    npcSpawnMultiplier?: number;
+    crimeRiskMultiplier?: number;
+  };
+}
+
+// ─── Bounty hunter tracking ───────────────────────────────────────────────────
+
+export interface GTABountyHunterState {
+  npcId: string;
+  tier: number;
+  tactics: 'direct' | 'ambush' | 'ranged';
+  bribeCost: number;
+  bountyReduction: number;
+  spawnTime: number;
+}
 
 export interface GTAPlayer {
   pos: GTAVec2;
@@ -65,6 +132,19 @@ export interface GTAPlayer {
   pickpocketCooldown: number;
   killStreak: number;
   killStreakTimer: number;
+
+  // ── Equipment ──
+  equipment: GTAEquippedItems;
+  inventory: string[];       // equipment item ids in inventory (not equipped)
+
+  // ── XP & Leveling ──
+  xp: number;
+  level: number;
+  skillPoints: number;
+  skills: GTASkillRanks;
+
+  // ── Faction Reputation ──
+  reputation: Record<GTAFactionId, number>;
 }
 
 export interface GTANPC {
@@ -199,6 +279,22 @@ export interface MedievalGTAState {
   particles: GTAParticle[];
   notifications: GTANotification[];
   bountyHunterSpawned: boolean;
+
+  // ── Bounty hunter tracking ──
+  activeBountyHunters: GTABountyHunterState[];
+  bountyHunterSpawnTimer: number;
+
+  // ── Crime rings ──
+  crimeRings: GTACrimeRingState[];
+
+  // ── Property ownership ──
+  ownedProperties: GTAOwnedProperty[];
+
+  // ── Active world events ──
+  activeWorldEvents: GTAActiveWorldEvent[];
+  worldEventCooldowns: Record<string, number>;
+  worldEventCheckTimer: number;
+
   worldWidth: number;
   worldHeight: number;
   cityBounds: { x: number; y: number; w: number; h: number };
@@ -265,6 +361,33 @@ export function createMedievalGTAState(): MedievalGTAState {
       pickpocketCooldown: 0,
       killStreak: 0,
       killStreakTimer: 0,
+
+      // ── Equipment ──
+      equipment: {
+        weapon: null,
+        armor: null,
+        helmet: null,
+        shield: null,
+        boots: null,
+        ring: null,
+      },
+      inventory: [],
+
+      // ── XP & Leveling ──
+      xp: 0,
+      level: 1,
+      skillPoints: 0,
+      skills: {},
+
+      // ── Faction Reputation ──
+      reputation: {
+        crown: 0,
+        thieves_guild: 0,
+        merchants: 0,
+        church: 0,
+        peasants: 0,
+        nobles: 0,
+      },
     },
 
     npcs: new Map<string, GTANPC>(),
@@ -276,6 +399,17 @@ export function createMedievalGTAState(): MedievalGTAState {
     particles: [],
     notifications: [],
     bountyHunterSpawned: false,
+
+    activeBountyHunters: [],
+    bountyHunterSpawnTimer: 0,
+
+    crimeRings: [],
+
+    ownedProperties: [],
+
+    activeWorldEvents: [],
+    worldEventCooldowns: {},
+    worldEventCheckTimer: 0,
 
     worldWidth: 4000,
     worldHeight: 3000,

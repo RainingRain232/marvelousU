@@ -122,6 +122,10 @@ export const MORGAN_DEF: DuelCharacterDef = {
   jumpVelocity: -19,
   jumpForwardSpeed: 5.5,
   weight: 0.85,
+  uniqueMechanic: {
+    name: "spellWeave",
+    description: "Chain specials together for bonus damage; each consecutive special adds +10% damage",
+  },
 
   normals: {
     // Q — Light high: quick staff jab with dark energy tip

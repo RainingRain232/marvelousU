@@ -122,6 +122,10 @@ export const GAWAIN_DEF: DuelCharacterDef = {
   jumpVelocity: -20,
   jumpForwardSpeed: 6.5,
   weight: 0.85,
+  uniqueMechanic: {
+    name: "sunlightPower",
+    description: "Damage increases over round time; the longer the fight, the stronger Gawain becomes",
+  },
 
   normals: {
     // Q — Light high: quick bow jab forward
