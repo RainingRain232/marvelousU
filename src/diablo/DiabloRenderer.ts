@@ -10526,17 +10526,55 @@ export class DiabloRenderer {
         group.add(pelvis);
 
         // Arms
-        for (let side = -1; side <= 1; side += 2) {
-          const armGroup = new THREE.Group();
-          armGroup.name = side === -1 ? 'anim_la' : 'anim_ra';
-          armGroup.position.set(side * 0.22, 1.375, 0);
-          const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.35, 44), boneMat);
-          upperArm.position.y = -0.175;
-          armGroup.add(upperArm);
-          const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.3, 44), boneMat);
-          forearm.position.set(side * 0.03, -0.475, 0);
-          armGroup.add(forearm);
-          group.add(armGroup);
+        {
+          // Left arm with shield
+          const leftArmGroup = new THREE.Group();
+          leftArmGroup.name = 'anim_la';
+          leftArmGroup.position.set(-0.22, 1.375, 0);
+          const leftUpperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.35, 44), boneMat);
+          leftUpperArm.position.y = -0.175;
+          leftArmGroup.add(leftUpperArm);
+          const leftForearm = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.3, 44), boneMat);
+          leftForearm.position.set(-0.03, -0.475, 0);
+          leftArmGroup.add(leftForearm);
+          // Finger bones
+          for (let fb = 0; fb < 3; fb++) {
+            const fingerBoneGeo = new THREE.CylinderGeometry(0.008, 0.008, 0.08, 44);
+            const fingerBone = new THREE.Mesh(fingerBoneGeo, boneMat);
+            fingerBone.position.set(-0.03 + (fb - 1) * 0.02, -0.655, 0);
+            leftArmGroup.add(fingerBone);
+          }
+          // Broken shield
+          const brokenShieldGeo = new THREE.CircleGeometry(0.15, 44, 0, Math.PI);
+          const brokenShieldMat = new THREE.MeshStandardMaterial({ color: 0x665544, roughness: 0.8, side: THREE.DoubleSide });
+          const brokenShield = new THREE.Mesh(brokenShieldGeo, brokenShieldMat);
+          brokenShield.position.set(-0.08, -0.475, 0.08);
+          leftArmGroup.add(brokenShield);
+          group.add(leftArmGroup);
+
+          // Right arm with sword
+          const rightArmGroup = new THREE.Group();
+          rightArmGroup.name = 'anim_ra';
+          rightArmGroup.position.set(0.22, 1.375, 0);
+          const rightUpperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.35, 44), boneMat);
+          rightUpperArm.position.y = -0.175;
+          rightArmGroup.add(rightUpperArm);
+          const rightForearm = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.3, 44), boneMat);
+          rightForearm.position.set(0.03, -0.475, 0);
+          rightArmGroup.add(rightForearm);
+          // Finger bones
+          for (let fb = 0; fb < 3; fb++) {
+            const fingerBoneGeo = new THREE.CylinderGeometry(0.008, 0.008, 0.08, 44);
+            const fingerBone = new THREE.Mesh(fingerBoneGeo, boneMat);
+            fingerBone.position.set(0.03 + (fb - 1) * 0.02, -0.655, 0);
+            rightArmGroup.add(fingerBone);
+          }
+          // Sword
+          const swordBlade = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.6, 0.015),
+            new THREE.MeshStandardMaterial({ color: 0x999999, metalness: 0.8, roughness: 0.3 }));
+          swordBlade.position.set(0.08, -0.575, 0);
+          rightArmGroup.add(swordBlade);
+          group.add(rightArmGroup);
         }
 
         // Legs
@@ -10560,16 +10598,6 @@ export class DiabloRenderer {
         jaw.rotation.x = 0.15;
         group.add(jaw);
 
-        // Finger bones (tiny cylinders at hands)
-        for (let side = -1; side <= 1; side += 2) {
-          for (let fb = 0; fb < 3; fb++) {
-            const fingerBoneGeo = new THREE.CylinderGeometry(0.008, 0.008, 0.08, 44);
-            const fingerBone = new THREE.Mesh(fingerBoneGeo, boneMat);
-            fingerBone.position.set(side * 0.25 + (fb - 1) * 0.02, 0.72, 0);
-            group.add(fingerBone);
-          }
-        }
-
         // Spine (column of small spheres connecting head to pelvis)
         for (let sv = 0; sv < 5; sv++) {
           const vertebraGeo = new THREE.SphereGeometry(0.03, 44, 36);
@@ -10586,26 +10614,6 @@ export class DiabloRenderer {
         const tatCloth = new THREE.Mesh(tatteredGeo, tatteredMat);
         tatCloth.position.set(0, 0.7, 0.08);
         group.add(tatCloth);
-
-        // Second tattered cloth piece
-        const tatteredGeo2 = new THREE.BoxGeometry(0.12, 0.18, 0.01);
-        const tatCloth2 = new THREE.Mesh(tatteredGeo2, tatteredMat);
-        tatCloth2.position.set(0.08, 0.65, 0.09);
-        tatCloth2.rotation.z = 0.2;
-        group.add(tatCloth2);
-
-        // Sword
-        const swordBlade = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.6, 0.015),
-          new THREE.MeshStandardMaterial({ color: 0x999999, metalness: 0.8, roughness: 0.3 }));
-        swordBlade.position.set(0.3, 0.8, 0);
-        group.add(swordBlade);
-
-        // Broken shield (half circle geometry)
-        const brokenShieldGeo = new THREE.CircleGeometry(0.15, 44, 0, Math.PI);
-        const brokenShieldMat = new THREE.MeshStandardMaterial({ color: 0x665544, roughness: 0.8, side: THREE.DoubleSide });
-        const brokenShield = new THREE.Mesh(brokenShieldGeo, brokenShieldMat);
-        brokenShield.position.set(-0.3, 0.9, 0.08);
-        group.add(brokenShield);
         break;
       }
 
@@ -10640,12 +10648,25 @@ export class DiabloRenderer {
         }
 
         // Arms (one hanging lower)
-        for (let side = -1; side <= 1; side += 2) {
-          const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.05, 0.6, 44), zombieSkin);
-          arm.position.set(side * 0.25, side === 1 ? 0.85 : 0.95, 0.1);
-          arm.rotation.z = side * 0.15;
-          arm.rotation.x = side === 1 ? 0.5 : 0;
-          group.add(arm);
+        {
+          const leftArmGroup = new THREE.Group();
+          leftArmGroup.name = 'anim_la';
+          leftArmGroup.position.set(-0.25, 1.25, 0.1);
+          const leftArm = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.05, 0.6, 44), zombieSkin);
+          leftArm.position.y = -0.3;
+          leftArm.rotation.z = -0.15;
+          leftArmGroup.add(leftArm);
+          group.add(leftArmGroup);
+
+          const rightArmGroup = new THREE.Group();
+          rightArmGroup.name = 'anim_ra';
+          rightArmGroup.position.set(0.25, 1.15, 0.1);
+          const rightArm = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.05, 0.6, 44), zombieSkin);
+          rightArm.position.y = -0.3;
+          rightArm.rotation.z = 0.15;
+          rightArm.rotation.x = 0.5;
+          rightArmGroup.add(rightArm);
+          group.add(rightArmGroup);
         }
 
         // Exposed flesh (small red/pink spheres on body - wounds)
@@ -10706,12 +10727,23 @@ export class DiabloRenderer {
         group.add(zJaw);
 
         // Legs (one shorter/angled differently for dragging foot)
-        for (let side = -1; side <= 1; side += 2) {
-          const legLen = side === 1 ? 0.55 : 0.65;
-          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, legLen, 44), clothMat);
-          leg.position.set(side * 0.1, side === 1 ? 0.35 : 0.4, 0);
-          if (side === 1) leg.rotation.x = 0.15;
-          group.add(leg);
+        {
+          const leftLegGroup = new THREE.Group();
+          leftLegGroup.name = 'anim_ll';
+          leftLegGroup.position.set(-0.1, 0.725, 0);
+          const leftLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.65, 44), clothMat);
+          leftLeg.position.y = -0.325;
+          leftLegGroup.add(leftLeg);
+          group.add(leftLegGroup);
+
+          const rightLegGroup = new THREE.Group();
+          rightLegGroup.name = 'anim_rl';
+          rightLegGroup.position.set(0.1, 0.625, 0);
+          const rightLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.55, 44), clothMat);
+          rightLeg.position.y = -0.275;
+          rightLeg.rotation.x = 0.15;
+          rightLegGroup.add(rightLeg);
+          group.add(rightLegGroup);
         }
         break;
       }
@@ -10751,29 +10783,39 @@ export class DiabloRenderer {
         }
 
         // Arms
-        for (let side = -1; side <= 1; side += 2) {
-          const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.04, 0.5, 44), robeMat);
-          arm.position.set(side * 0.25, 1.15, 0);
-          group.add(arm);
-        }
+        {
+          const leftArmGroup = new THREE.Group();
+          leftArmGroup.name = 'anim_la';
+          leftArmGroup.position.set(-0.25, 1.4, 0);
+          const leftArm = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.04, 0.5, 44), robeMat);
+          leftArm.position.y = -0.25;
+          leftArmGroup.add(leftArm);
+          group.add(leftArmGroup);
 
-        // Skull staff
-        const staffGeo = new THREE.CylinderGeometry(0.03, 0.04, 1.8, 44);
-        const staffMat = new THREE.MeshStandardMaterial({ color: 0x3a2a1a, roughness: 0.9 });
-        const staff = new THREE.Mesh(staffGeo, staffMat);
-        staff.position.set(0.3, 1.0, 0);
-        group.add(staff);
-
-        // Ornate staff skull with green emissive eyes
-        const staffSkullMat = new THREE.MeshStandardMaterial({ color: 0xe8e0d0, roughness: 0.7 });
-        const staffSkull = new THREE.Mesh(new THREE.SphereGeometry(0.1, 62, 44), staffSkullMat);
-        staffSkull.position.set(0.3, 1.95, 0);
-        group.add(staffSkull);
-        const skullEyeMat = new THREE.MeshStandardMaterial({ color: 0x44ff44, emissive: 0x22cc22, emissiveIntensity: 2.0 });
-        for (let side = -1; side <= 1; side += 2) {
-          const skullEye = new THREE.Mesh(new THREE.SphereGeometry(0.02, 44, 36), skullEyeMat);
-          skullEye.position.set(0.3 + side * 0.04, 1.97, 0.08);
-          group.add(skullEye);
+          const rightArmGroup = new THREE.Group();
+          rightArmGroup.name = 'anim_ra';
+          rightArmGroup.position.set(0.25, 1.4, 0);
+          const rightArm = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.04, 0.5, 44), robeMat);
+          rightArm.position.y = -0.25;
+          rightArmGroup.add(rightArm);
+          // Skull staff
+          const staffGeo = new THREE.CylinderGeometry(0.03, 0.04, 1.8, 44);
+          const staffMat = new THREE.MeshStandardMaterial({ color: 0x3a2a1a, roughness: 0.9 });
+          const staff = new THREE.Mesh(staffGeo, staffMat);
+          staff.position.set(0.05, -0.4, 0);
+          rightArmGroup.add(staff);
+          // Ornate staff skull with green emissive eyes
+          const staffSkullMat = new THREE.MeshStandardMaterial({ color: 0xe8e0d0, roughness: 0.7 });
+          const staffSkull = new THREE.Mesh(new THREE.SphereGeometry(0.1, 62, 44), staffSkullMat);
+          staffSkull.position.set(0.05, 0.55, 0);
+          rightArmGroup.add(staffSkull);
+          const skullEyeMat = new THREE.MeshStandardMaterial({ color: 0x44ff44, emissive: 0x22cc22, emissiveIntensity: 2.0 });
+          for (let side = -1; side <= 1; side += 2) {
+            const skullEye = new THREE.Mesh(new THREE.SphereGeometry(0.02, 44, 36), skullEyeMat);
+            skullEye.position.set(0.05 + side * 0.04, 0.57, 0.08);
+            rightArmGroup.add(skullEye);
+          }
+          group.add(rightArmGroup);
         }
 
         // Floating orbs (2 small translucent purple spheres orbiting)
@@ -11199,9 +11241,13 @@ export class DiabloRenderer {
         }
         // Legs
         for (const lx of [-0.12, 0.12]) {
+          const legGroup = new THREE.Group();
+          legGroup.name = lx < 0 ? 'anim_ll' : 'anim_rl';
+          legGroup.position.set(lx, 0.345, 0);
           const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.35, 44), bodyMat);
-          leg.position.set(lx, 0.17, 0);
-          group.add(leg);
+          leg.position.y = -0.175;
+          legGroup.add(leg);
+          group.add(legGroup);
         }
         // Arms
         for (const ax of [-0.25, 0.25]) {
@@ -11267,14 +11313,24 @@ export class DiabloRenderer {
         group.add(visor);
         // Legs
         for (const lx of [-0.12, 0.12]) {
+          const legGroup = new THREE.Group();
+          legGroup.name = lx < 0 ? 'anim_ll' : 'anim_rl';
+          legGroup.position.set(lx, 0.6, 0);
           const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.6, 44), armorMat);
-          leg.position.set(lx, 0.3, 0);
-          group.add(leg);
+          leg.position.y = -0.3;
+          legGroup.add(leg);
+          group.add(legGroup);
         }
-        // Sword
-        const sword = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.7, 0.02), fireMat);
-        sword.position.set(0.35, 0.8, 0);
-        group.add(sword);
+        // Sword (in right arm group)
+        {
+          const rightArmGroup = new THREE.Group();
+          rightArmGroup.name = 'anim_ra';
+          rightArmGroup.position.set(0.35, 1.15, 0);
+          const sword = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.7, 0.02), fireMat);
+          sword.position.y = -0.35;
+          rightArmGroup.add(sword);
+          group.add(rightArmGroup);
+        }
         // Shoulder pauldrons
         for (const sx of [-0.3, 0.3]) {
           const pauldron = new THREE.Mesh(new THREE.SphereGeometry(0.12, 62, 44), armorMat);
@@ -11388,13 +11444,22 @@ export class DiabloRenderer {
         }
         // Long limbs
         for (const lx of [-0.2, 0.2]) {
-          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.5, 44), voidMat);
-          leg.position.set(lx, 0.25, 0);
-          group.add(leg);
-          const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.45, 44), voidMat);
-          arm.position.set(lx * 1.5, 0.75, 0);
+          const legGroup = new THREE.Group();
+          legGroup.name = lx < 0 ? 'anim_ll' : 'anim_rl';
+          legGroup.position.set(lx, 0.5, 0);
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.5, 59), voidMat);
+          leg.position.y = -0.25;
+          legGroup.add(leg);
+          group.add(legGroup);
+
+          const armGroup = new THREE.Group();
+          armGroup.name = lx < 0 ? 'anim_la' : 'anim_ra';
+          armGroup.position.set(lx * 1.5, 0.975, 0);
+          const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.45, 59), voidMat);
+          arm.position.y = -0.225;
           arm.rotation.z = lx < 0 ? 0.5 : -0.5;
-          group.add(arm);
+          armGroup.add(arm);
+          group.add(armGroup);
         }
         break;
       }
@@ -11537,20 +11602,30 @@ export class DiabloRenderer {
           eye.position.set(ex, 1.38, 0.16);
           group.add(eye);
         }
-        // Legs & Arms
+        // Legs
         for (const lx of [-0.12, 0.12]) {
-          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.5, 44), scaleMat);
-          leg.position.set(lx, 0.3, 0);
-          group.add(leg);
+          const legGroup = new THREE.Group();
+          legGroup.name = lx < 0 ? 'anim_ll' : 'anim_rl';
+          legGroup.position.set(lx, 0.55, 0);
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.5, 59), scaleMat);
+          leg.position.y = -0.25;
+          legGroup.add(leg);
+          group.add(legGroup);
         }
-        // Weapon (halberd)
-        const weapMat = new THREE.MeshStandardMaterial({ color: 0x666666, metalness: 0.7, roughness: 0.3 });
-        const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.0, 44), weapMat);
-        shaft.position.set(0.3, 0.9, 0);
-        group.add(shaft);
-        const blade = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.2, 44), weapMat);
-        blade.position.set(0.3, 1.45, 0);
-        group.add(blade);
+        // Weapon arm (halberd)
+        {
+          const rightArmGroup = new THREE.Group();
+          rightArmGroup.name = 'anim_ra';
+          rightArmGroup.position.set(0.3, 1.2, 0);
+          const weapMat = new THREE.MeshStandardMaterial({ color: 0x666666, metalness: 0.7, roughness: 0.3 });
+          const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.0, 59), weapMat);
+          shaft.position.y = -0.3;
+          rightArmGroup.add(shaft);
+          const blade = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.2, 59), weapMat);
+          blade.position.y = 0.25;
+          rightArmGroup.add(blade);
+          group.add(rightArmGroup);
+        }
         break;
       }
       // --- WYRM_PRIEST | Estimated polygons: ~11176 triangles ---
@@ -11963,63 +12038,88 @@ export class DiabloRenderer {
         nose.position.set(0, 1.34, 0.14);
         nose.rotation.x = -0.3;
         group.add(nose);
-        // Scimitar (curved blade with guard and pommel)
-        const bladeGeo = new THREE.BoxGeometry(0.025, 0.45, 0.015);
-        const blade = new THREE.Mesh(bladeGeo, metalMat);
-        blade.position.set(0.3, 0.85, 0);
-        blade.rotation.z = -0.2;
-        group.add(blade);
-        // Blade curve tip
-        const bladeTip = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.1, 44), metalMat);
-        bladeTip.position.set(0.26, 1.08, 0);
-        bladeTip.rotation.z = -0.5;
-        group.add(bladeTip);
-        // Blade edge glow
-        const edgeGlow = new THREE.Mesh(new THREE.BoxGeometry(0.003, 0.42, 0.02), new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xaaaaaa, emissiveIntensity: 0.3, metalness: 1.0 }));
-        edgeGlow.position.set(0.315, 0.85, 0);
-        edgeGlow.rotation.z = -0.2;
-        group.add(edgeGlow);
-        // Sword guard
-        const guard = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.025, 0.04), goldTrimMat);
-        guard.position.set(0.32, 0.62, 0);
-        group.add(guard);
-        // Hilt wrap
-        const hilt = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.018, 0.1, 44), leatherMat);
-        hilt.position.set(0.33, 0.55, 0);
-        group.add(hilt);
-        // Pommel
-        const pommel = new THREE.Mesh(new THREE.SphereGeometry(0.02, 44, 36), goldTrimMat);
-        pommel.position.set(0.34, 0.49, 0);
-        group.add(pommel);
         // Arms
-        for (const ax of [-0.22, 0.22]) {
-          const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.05, 0.25, 44), robesMat);
-          upperArm.position.set(ax, 1.02, 0);
-          upperArm.rotation.z = ax < 0 ? 0.15 : -0.15;
-          group.add(upperArm);
-          const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.045, 0.22, 44), skinMat);
-          forearm.position.set(ax * 1.15, 0.82, 0);
-          forearm.rotation.z = ax < 0 ? 0.2 : -0.2;
-          group.add(forearm);
-          // Leather bracer
-          const bracer = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.05, 0.08, 44), leatherMat);
-          bracer.position.set(ax * 1.1, 0.88, 0);
-          group.add(bracer);
+        {
+          // Left arm
+          const leftArmGroup = new THREE.Group();
+          leftArmGroup.name = 'anim_la';
+          leftArmGroup.position.set(-0.22, 1.145, 0);
+          const leftUpperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.05, 0.25, 59), robesMat);
+          leftUpperArm.position.y = -0.125;
+          leftUpperArm.rotation.z = 0.15;
+          leftArmGroup.add(leftUpperArm);
+          const leftForearm = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.045, 0.22, 59), skinMat);
+          leftForearm.position.set(-0.033, -0.325, 0);
+          leftForearm.rotation.z = 0.2;
+          leftArmGroup.add(leftForearm);
+          const leftBracer = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.05, 0.08, 59), leatherMat);
+          leftBracer.position.set(-0.022, -0.265, 0);
+          leftArmGroup.add(leftBracer);
+          group.add(leftArmGroup);
+
+          // Right arm with scimitar
+          const rightArmGroup = new THREE.Group();
+          rightArmGroup.name = 'anim_ra';
+          rightArmGroup.position.set(0.22, 1.145, 0);
+          const rightUpperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.05, 0.25, 59), robesMat);
+          rightUpperArm.position.y = -0.125;
+          rightUpperArm.rotation.z = -0.15;
+          rightArmGroup.add(rightUpperArm);
+          const rightForearm = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.045, 0.22, 59), skinMat);
+          rightForearm.position.set(0.033, -0.325, 0);
+          rightForearm.rotation.z = -0.2;
+          rightArmGroup.add(rightForearm);
+          const rightBracer = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.05, 0.08, 59), leatherMat);
+          rightBracer.position.set(0.022, -0.265, 0);
+          rightArmGroup.add(rightBracer);
+          // Scimitar (curved blade with guard and pommel)
+          const bladeGeo = new THREE.BoxGeometry(0.025, 0.45, 0.015);
+          const blade = new THREE.Mesh(bladeGeo, metalMat);
+          blade.position.set(0.08, -0.295, 0);
+          blade.rotation.z = -0.2;
+          rightArmGroup.add(blade);
+          // Blade curve tip
+          const bladeTip = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.1, 59), metalMat);
+          bladeTip.position.set(0.04, -0.065, 0);
+          bladeTip.rotation.z = -0.5;
+          rightArmGroup.add(bladeTip);
+          // Blade edge glow
+          const edgeGlow = new THREE.Mesh(new THREE.BoxGeometry(0.003, 0.42, 0.02), new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xaaaaaa, emissiveIntensity: 0.3, metalness: 1.0 }));
+          edgeGlow.position.set(0.095, -0.295, 0);
+          edgeGlow.rotation.z = -0.2;
+          rightArmGroup.add(edgeGlow);
+          // Sword guard
+          const guard = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.025, 0.04), goldTrimMat);
+          guard.position.set(0.1, -0.525, 0);
+          rightArmGroup.add(guard);
+          // Hilt wrap
+          const hilt = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.018, 0.1, 59), leatherMat);
+          hilt.position.set(0.11, -0.595, 0);
+          rightArmGroup.add(hilt);
+          // Pommel
+          const pommel = new THREE.Mesh(new THREE.SphereGeometry(0.02, 57, 46), goldTrimMat);
+          pommel.position.set(0.12, -0.655, 0);
+          rightArmGroup.add(pommel);
+          group.add(rightArmGroup);
         }
         // Legs with sandals
         for (const lx of [-0.1, 0.1]) {
-          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.06, 0.45, 44), robesMat);
-          leg.position.set(lx, 0.35, 0);
-          group.add(leg);
+          const legGroup = new THREE.Group();
+          legGroup.name = lx < 0 ? 'anim_ll' : 'anim_rl';
+          legGroup.position.set(lx, 0.575, 0);
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.06, 0.45, 59), robesMat);
+          leg.position.y = -0.225;
+          legGroup.add(leg);
           // Sandal
           const sandal = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.03, 0.12), leatherMat);
-          sandal.position.set(lx, 0.1, 0.02);
-          group.add(sandal);
+          sandal.position.set(0, -0.475, 0.02);
+          legGroup.add(sandal);
           // Sandal strap
           const strap = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.008, 66, 98), leatherMat);
           strap.rotation.x = Math.PI / 2;
-          strap.position.set(lx, 0.14, 0.02);
-          group.add(strap);
+          strap.position.set(0, -0.435, 0.02);
+          legGroup.add(strap);
+          group.add(legGroup);
         }
         // Pouch on belt
         const pouch = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.07, 0.05), leatherMat);
@@ -12571,55 +12671,79 @@ export class DiabloRenderer {
         prNose.position.set(0, 1.39, 0.14);
         prNose.rotation.x = -0.2;
         group.add(prNose);
-        // Spear (detailed with wrapped grip and feathers)
-        const spearShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.02, 1.3, 59), woodMat);
-        spearShaft.position.set(0.3, 0.95, 0);
-        group.add(spearShaft);
-        // Spear grip wrap
-        for (let w = 0; w < 4; w++) {
-          const wrap = new THREE.Mesh(new THREE.TorusGeometry(0.022, 0.005, 66, 98), leatherDarkMat);
-          wrap.rotation.x = Math.PI / 2;
-          wrap.position.set(0.3, 0.6 + w * 0.08, 0);
-          group.add(wrap);
-        }
-        // Spear head (leaf-shaped)
-        const spearHead = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.18, 59), metalMat);
-        spearHead.position.set(0.3, 1.65, 0);
-        group.add(spearHead);
-        // Feathers on spear
-        for (let f = 0; f < 2; f++) {
-          const feather = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.1, 0.005), paintMat);
-          feather.position.set(0.3, 1.48 + f * 0.04, 0.03);
-          feather.rotation.z = f === 0 ? 0.2 : -0.2;
-          group.add(feather);
-        }
         // Arms
-        for (const ax of [-0.24, 0.24]) {
-          const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.05, 0.22, 59), skinMat);
-          upperArm.position.set(ax, 1.05, 0);
-          upperArm.rotation.z = ax < 0 ? 0.15 : -0.15;
-          group.add(upperArm);
-          const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.045, 0.2, 59), skinMat);
-          forearm.position.set(ax * 1.1, 0.86, 0);
-          group.add(forearm);
-          // Arm wraps
-          const armWrap = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.05, 0.06, 59), leatherDarkMat);
-          armWrap.position.set(ax * 1.05, 0.92, 0);
-          group.add(armWrap);
+        {
+          // Left arm
+          const leftArmGroup = new THREE.Group();
+          leftArmGroup.name = 'anim_la';
+          leftArmGroup.position.set(-0.24, 1.16, 0);
+          const leftUpperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.05, 0.22, 59), skinMat);
+          leftUpperArm.position.y = -0.11;
+          leftUpperArm.rotation.z = 0.15;
+          leftArmGroup.add(leftUpperArm);
+          const leftForearm = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.045, 0.2, 59), skinMat);
+          leftForearm.position.set(-0.024, -0.3, 0);
+          leftArmGroup.add(leftForearm);
+          const leftArmWrap = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.05, 0.06, 59), leatherDarkMat);
+          leftArmWrap.position.set(-0.012, -0.24, 0);
+          leftArmGroup.add(leftArmWrap);
+          group.add(leftArmGroup);
+
+          // Right arm with spear
+          const rightArmGroup = new THREE.Group();
+          rightArmGroup.name = 'anim_ra';
+          rightArmGroup.position.set(0.24, 1.16, 0);
+          const rightUpperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.05, 0.22, 59), skinMat);
+          rightUpperArm.position.y = -0.11;
+          rightUpperArm.rotation.z = -0.15;
+          rightArmGroup.add(rightUpperArm);
+          const rightForearm = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.045, 0.2, 59), skinMat);
+          rightForearm.position.set(0.024, -0.3, 0);
+          rightArmGroup.add(rightForearm);
+          const rightArmWrap = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.05, 0.06, 59), leatherDarkMat);
+          rightArmWrap.position.set(0.012, -0.24, 0);
+          rightArmGroup.add(rightArmWrap);
+          // Spear (detailed with wrapped grip and feathers)
+          const spearShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.02, 1.3, 59), woodMat);
+          spearShaft.position.set(0.06, -0.21, 0);
+          rightArmGroup.add(spearShaft);
+          // Spear grip wrap
+          for (let w = 0; w < 4; w++) {
+            const wrap = new THREE.Mesh(new THREE.TorusGeometry(0.022, 0.005, 66, 98), leatherDarkMat);
+            wrap.rotation.x = Math.PI / 2;
+            wrap.position.set(0.06, -0.56 + w * 0.08, 0);
+            rightArmGroup.add(wrap);
+          }
+          // Spear head (leaf-shaped)
+          const spearHead = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.18, 59), metalMat);
+          spearHead.position.set(0.06, 0.49, 0);
+          rightArmGroup.add(spearHead);
+          // Feathers on spear
+          for (let f = 0; f < 2; f++) {
+            const feather = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.1, 0.005), paintMat);
+            feather.position.set(0.06, 0.32 + f * 0.04, 0.03);
+            feather.rotation.z = f === 0 ? 0.2 : -0.2;
+            rightArmGroup.add(feather);
+          }
+          group.add(rightArmGroup);
         }
         // Legs with wraps
         for (const lx of [-0.1, 0.1]) {
+          const legGroup = new THREE.Group();
+          legGroup.name = lx < 0 ? 'anim_ll' : 'anim_rl';
+          legGroup.position.set(lx, 0.595, 0);
           const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.06, 0.45, 59), leatherMat);
-          leg.position.set(lx, 0.37, 0);
-          group.add(leg);
+          leg.position.y = -0.225;
+          legGroup.add(leg);
           // Knee wrap
           const kWrap = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.06, 0.06, 59), leatherDarkMat);
-          kWrap.position.set(lx, 0.48, 0);
-          group.add(kWrap);
+          kWrap.position.y = -0.115;
+          legGroup.add(kWrap);
           // Foot wraps / moccasins
           const moccasin = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.04, 0.1), leatherDarkMat);
-          moccasin.position.set(lx, 0.12, 0.02);
-          group.add(moccasin);
+          moccasin.position.set(0, -0.475, 0.02);
+          legGroup.add(moccasin);
+          group.add(legGroup);
         }
         // Belt with trophy pouch
         const prBelt = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.02, 66, 98), leatherDarkMat);
