@@ -96,6 +96,9 @@ export class SettlersGame {
     };
     this._input.onToggleWiki = () => this._hud.toggleWiki();
     this._input.onToggleAudio = () => this._hud.toggleAudioPanel();
+    this._input.onSpeedChange = (speed) => {
+      this._hud.showNotification(`Speed: ${Math.round(speed * 100)}%`);
+    };
 
     // --- 8. Init HUD ---
     this._hud.build();
@@ -171,7 +174,7 @@ export class SettlersGame {
 
     // Fixed timestep simulation
     if (!this._state.paused && !this._state.gameOver) {
-      this._simAccumulator += frameMs;
+      this._simAccumulator += frameMs * this._state.gameSpeed;
       while (this._simAccumulator >= SB.SIM_TICK_MS) {
         this._simAccumulator -= SB.SIM_TICK_MS;
         this._simTick(SB.SIM_TICK_MS / 1000);

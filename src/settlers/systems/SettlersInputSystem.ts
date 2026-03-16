@@ -30,6 +30,7 @@ export class SettlersInputSystem {
   onLoad: (() => void) | null = null;
   onToggleWiki: (() => void) | null = null;
   onToggleAudio: (() => void) | null = null;
+  onSpeedChange: ((speed: number) => void) | null = null;
 
   constructor(camera: SettlersCameraController) {
     this._camera = camera;
@@ -52,6 +53,8 @@ export class SettlersInputSystem {
       if (e.code === "KeyM") this.onToggleAudio?.();
       if (e.code === "F5") { e.preventDefault(); this.onSave?.(); }
       if (e.code === "F9") { e.preventDefault(); this.onLoad?.(); }
+      if (e.key === "+" || e.key === "=") this._changeSpeed(1.5);
+      if (e.key === "-" || e.key === "_") this._changeSpeed(1 / 1.5);
     };
 
     this._onKeyUp = (e: KeyboardEvent) => {
@@ -98,6 +101,13 @@ export class SettlersInputSystem {
 
   private _togglePause(): void {
     if (this._state) this._state.paused = !this._state.paused;
+  }
+
+  private _changeSpeed(factor: number): void {
+    if (!this._state) return;
+    const newSpeed = Math.round(this._state.gameSpeed * factor * 100) / 100;
+    this._state.gameSpeed = Math.max(0.5, Math.min(10, newSpeed));
+    this.onSpeedChange?.(this._state.gameSpeed);
   }
 
   setTerrainMesh(mesh: THREE.Mesh): void {

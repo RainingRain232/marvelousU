@@ -53,6 +53,9 @@ export interface SettlersState {
   /** AI difficulty level */
   difficulty: SettlersDifficulty;
 
+  /** Game speed multiplier (1 = 100%, max 10 = 1000%) */
+  gameSpeed: number;
+
   /** Dirty flag – set when buildings are placed, destroyed, or captured */
   territoryDirty: boolean;
 }
@@ -103,6 +106,7 @@ export function createSettlersState(screenW: number, screenH: number): SettlersS
     screenW,
     screenH,
     difficulty: "normal",
+    gameSpeed: 1,
     territoryDirty: true,
   };
 }

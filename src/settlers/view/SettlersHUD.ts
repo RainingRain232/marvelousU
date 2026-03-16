@@ -492,9 +492,10 @@ export class SettlersHUD {
     }
 
     // Tool indicator
+    const speedLabel = state.gameSpeed !== 1 ? ` | Speed: ${Math.round(state.gameSpeed * 100)}%` : "";
     this._toolIndicator.textContent = `Tool: ${state.selectedTool.toUpperCase()}${
       state.selectedBuildingType ? " - " + BUILDING_DEFS[state.selectedBuildingType].label : ""
-    }`;
+    }${speedLabel}`;
 
     // Pause
     this._pauseOverlay.style.display = state.paused ? "block" : "none";

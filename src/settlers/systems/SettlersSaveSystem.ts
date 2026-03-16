@@ -238,6 +238,7 @@ function deserializeState(s: SerializedState): SettlersState {
     screenH: s.screenH,
     territoryDirty: true, // recalculate territory on load
     difficulty: (s as any).difficulty || "normal",
+    gameSpeed: (s as any).gameSpeed || 1,
   };
 }
 
