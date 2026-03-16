@@ -467,7 +467,7 @@ function _drawSkillIcon(g: Graphics, cx: number, cy: number, skillId: DragoonSki
     }
     case DragoonSkillId.HOMING_MISSILES: {
       // Multiple missiles with curved trails
-      for (const [ox, oy, r] of [[-3, -4, 0.3], [3, -3, -0.2], [0, 1, 0.1]] as [number, number, number][]) {
+      for (const [ox, oy] of [[-3, -4, 0.3], [3, -3, -0.2], [0, 1, 0.1]] as [number, number, number][]) {
         g.moveTo(cx + ox, cy + oy).lineTo(cx + ox + 2, cy + oy - 1).lineTo(cx + ox, cy + oy + 2)
           .closePath().fill({ color, alpha: a * 0.8 });
       }

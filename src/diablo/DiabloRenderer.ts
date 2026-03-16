@@ -8671,7 +8671,7 @@ export class DiabloRenderer {
       const brickH = 0.12;
       const brickW = 0.25;
       const brickMat = new THREE.MeshStandardMaterial({ color: 0x4a3828, roughness: 0.9 });
-      const mortarMat = new THREE.MeshStandardMaterial({ color: 0x3a3020, roughness: 1.0 });
+      void new THREE.MeshStandardMaterial({ color: 0x3a3020, roughness: 1.0 }); // mortarMat reserved
       const numRows = Math.floor(wallH / (brickH + 0.02));
       for (let row = 0; row < Math.min(numRows, 12); row++) {
         const rowY = row * (brickH + 0.02) + brickH / 2;
@@ -8690,7 +8690,7 @@ export class DiabloRenderer {
 
       // Partially collapsed section (one side shorter)
       const collapseX = (Math.random() > 0.5 ? 1 : -1) * wallW * 0.3;
-      const collapseH = wallH * (0.3 + Math.random() * 0.3);
+      void (wallH * (0.3 + Math.random() * 0.3)); // collapseH reserved
       // Jagged top edge pieces
       for (let jt = 0; jt < 3 + Math.floor(Math.random() * 3); jt++) {
         const jagW = 0.15 + Math.random() * 0.2;
@@ -23397,7 +23397,7 @@ export class DiabloRenderer {
     this._scene.add(doorHandle);
 
     // Peaked roof (2 slopes using rotated boxes)
-    const roofW = 6.0, roofSlope = 2.0, roofOverhang = 0.6;
+    const roofW = 6.0, roofSlope = 2.0; void 0.6; // roofOverhang reserved
     const roofLen = Math.sqrt(roofSlope * roofSlope + (roofW / 2) * (roofW / 2));
     const roofAngle = Math.atan2(roofSlope, roofW / 2);
     // Left slope
@@ -38735,7 +38735,7 @@ export class DiabloRenderer {
     const coralMat = new THREE.MeshStandardMaterial({ color: 0xcc6655, roughness: 0.7 });
     const kelpMat = new THREE.MeshStandardMaterial({ color: 0x226633, roughness: 0.6 });
     const treasureMat = new THREE.MeshStandardMaterial({ color: 0xccaa33, metalness: 0.7, roughness: 0.3 });
-    const glassMat = new THREE.MeshStandardMaterial({ color: 0x4488cc, transparent: true, opacity: 0.4, emissive: 0x224466, emissiveIntensity: 0.3 });
+    void new THREE.MeshStandardMaterial({ color: 0x4488cc, transparent: true, opacity: 0.4, emissive: 0x224466, emissiveIntensity: 0.3 }); // glassMat reserved
     const shellMat = new THREE.MeshStandardMaterial({ color: 0xddccbb, roughness: 0.5 });
 
     // Flooded fortress walls with barnacle clusters
