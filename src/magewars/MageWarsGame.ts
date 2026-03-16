@@ -8,25 +8,26 @@ import {
   VehicleDef, VEHICLE_DEFS, MapDef, MAP_DEFS, MW,
   MAP_VEHICLE_DEFS,
 } from "./MageWarsConfig";
+import type {
+  RuneElement, RuneInventory, CraftedSpellDef,
+  EnvSpellEntity, DragonRiderState, DragonTickInput,
+  DuelMatchState, DuelLoadout,
+} from "./MageWarsSystems";
 import {
   // Spell Crafting
-  RuneElement, RuneInventory, CraftedSpellDef,
   createRuneInventory, craftSpell, computeSpellHit, getCraftedSpellDef,
-  getRuneDef, RUNE_DEFS, CRAFTED_SPELL_DEFS,
+  CRAFTED_SPELL_DEFS,
   // Environmental Spells
-  EnvSpellEntity, EnvSpellDef, EnvTickEffect,
   createEnvSpellEntity, buildEnvSpellMesh, tickEnvSpellEntity,
-  isInsideEnvSpell, doesEnvSpellBlockProjectile,
+  doesEnvSpellBlockProjectile,
   getEnvSpellDef, ENV_SPELL_DEFS,
   // Dragon Riding
-  DragonRiderState, DragonMountDef, DragonTickInput,
   createDragonRider, buildDragonMesh, tickDragonRider,
-  getDragonMountDef, DRAGON_MOUNT_DEFS, DRAGON_COMBAT,
+  getDragonMountDef, DRAGON_MOUNT_DEFS,
   // Dueling Arena
-  DuelMatchState, DuelFighterState, DuelPhase, DuelLoadout,
   createDuelMatchState, tickDuelMatch, buildDuelArenaScene,
   getDuelArenaDef, DUEL_ARENA_DEFS,
-  DUEL_MAX_SPELL_SLOTS, DUEL_SPELL_SELECT_TIME,
+  DUEL_MAX_SPELL_SLOTS,
   DUEL_COUNTDOWN_TIME, DUEL_ROUNDS_TO_WIN, DUEL_ROUND_TIME,
   createDefaultDuelLoadout,
 } from "./MageWarsSystems";
@@ -444,7 +445,8 @@ export class MageWarsGame {
   private _isRoyaleMode = false;
 
   // ---- Spell Crafting -----
-  private _runeSelectOpen = false;
+  /** Whether the rune selection wheel is currently open */
+  _runeSelectOpen = false;
 
   // ---- Environmental Spells -----
   private _envSpellEntities: EnvSpellEntity[] = [];
@@ -6837,6 +6839,45 @@ export class MageWarsGame {
       this._tryVehicleInteract(p, mapDef);
       this._wantInteract = false;
     }
+
+    // Rune combination (B key) — combine two held runes into a crafted spell
+    if (this._keys["KeyB"] && p.runeInventory.rune1 && p.runeInventory.rune2) {
+      this._runeSelectOpen = false;
+      this._craftPlayerSpell(p, p.runeInventory.rune1, p.runeInventory.rune2);
+      this._keys["KeyB"] = false;
+    }
+
+    // Crafted spell firing (G key)
+    if (this._keys["KeyG"] && p.craftedSpellSlots.length > 0 && p.craftedSpellCooldown <= 0) {
+      const spellId = p.craftedSpellSlots[p.selectedCraftedSpellSlot % p.craftedSpellSlots.length];
+      if (spellId) {
+        this._fireCraftedSpell(p, spellId, mapDef);
+      }
+      this._keys["KeyG"] = false; // consume key press
+    }
+
+    // Cycle crafted spell slot (V key)
+    if (this._keys["KeyV"] && p.craftedSpellSlots.length > 1) {
+      p.selectedCraftedSpellSlot = (p.selectedCraftedSpellSlot + 1) % p.craftedSpellSlots.length;
+      const spellId = p.craftedSpellSlots[p.selectedCraftedSpellSlot];
+      const spell = getCraftedSpellDef(spellId);
+      if (spell) {
+        this._centerNotification = { text: spell.name, color: "#daa520", timer: 1.0, size: 20 };
+      }
+      this._keys["KeyV"] = false;
+    }
+
+    // Place environmental spell (F key)
+    if (this._keys["KeyF"] && p.envSpellCooldown <= 0) {
+      this._placeEnvSpell(p, p.selectedEnvSpellId, mapDef);
+      this._keys["KeyF"] = false;
+    }
+
+    // Apply slow factor to movement
+    if (p.slowed) {
+      p.vx *= p.slowFactor;
+      p.vz *= p.slowFactor;
+    }
   }
 
   private _handleVehicleInput(p: MWPlayer, dt: number, mapDef: MapDef): void {
@@ -7281,6 +7322,22 @@ export class MageWarsGame {
         continue;
       }
 
+      // Check if blocked by environmental spell entities
+      let envBlocked = false;
+      for (const envEntity of this._envSpellEntities) {
+        if (doesEnvSpellBlockProjectile(envEntity, proj.x, proj.y, proj.z)) {
+          // Don't block own team's projectiles
+          if (envEntity.team !== proj.team) {
+            envBlocked = true;
+            break;
+          }
+        }
+      }
+      if (envBlocked) {
+        toRemove.push(i);
+        continue;
+      }
+
       // Check collision with players
       let hit = false;
       for (const target of this._players) {
@@ -7358,6 +7415,15 @@ export class MageWarsGame {
             this._lastDamageDir.x = proj.dx;
             this._lastDamageDir.z = proj.dz;
             this._lastDamageDir.timer = 0.5;
+          }
+
+          // Apply crafted spell effects if this is a crafted spell projectile
+          if (proj.id.startsWith("cs_") && owner) {
+            const csId = owner.craftedSpellSlots[owner.selectedCraftedSpellSlot];
+            const csDef = csId ? getCraftedSpellDef(csId) : null;
+            if (csDef) {
+              this._applyCraftedSpellHit(csDef, owner, target);
+            }
           }
 
           if (target.hp <= 0) {
@@ -8993,7 +9059,7 @@ export class MageWarsGame {
     }
   }
 
-  private _fireCraftedSpell(p: MWPlayer, spellId: string, mapDef: MapDef): void {
+  private _fireCraftedSpell(p: MWPlayer, spellId: string, _mapDef: MapDef): void {
     const spell = getCraftedSpellDef(spellId);
     if (!spell) return;
     if (p.mana < spell.manaCost) return;
@@ -9141,7 +9207,7 @@ export class MageWarsGame {
     this._envSpellEntities.splice(idx, 1);
   }
 
-  private _tickEnvSpells(dt: number, mapDef: MapDef): void {
+  private _tickEnvSpells(dt: number, _mapDef: MapDef): void {
     const playersInfo = this._players
       .filter(p => p.alive)
       .map(p => ({ id: p.id, team: p.team, x: p.x, y: p.y, z: p.z, alive: p.alive }));
@@ -9416,7 +9482,7 @@ export class MageWarsGame {
     }
 
     // Build HUD
-    this._buildHUD();
+    this._createHUD();
     this._phase = MWPhase.WARMUP;
     this._warmupTimer = MW.WARMUP_TIME;
     this._showWarmupCountdown();
@@ -9424,7 +9490,7 @@ export class MageWarsGame {
     this._gameLoop(performance.now());
   }
 
-  private _tickDragonRiders(dt: number, mapDef: MapDef): void {
+  private _tickDragonRiders(dt: number, _mapDef: MapDef): void {
     for (const dragon of this._dragonRiders) {
       if (!dragon.alive) continue;
 
@@ -9808,7 +9874,7 @@ export class MageWarsGame {
     }
 
     this._matchTimer = DUEL_ROUND_TIME;
-    this._buildHUD();
+    this._createHUD();
     this._phase = MWPhase.WARMUP;
     this._warmupTimer = DUEL_COUNTDOWN_TIME;
     this._showWarmupCountdown();
@@ -9950,6 +10016,10 @@ export class MageWarsGame {
       this._removeHUD();
       this._isDuelMode = false;
       this._duelState = null;
+      if (this._duelArenaGroup) {
+        this._scene?.remove(this._duelArenaGroup);
+        this._duelArenaGroup = null;
+      }
       this._showMainMenu();
     });
   }

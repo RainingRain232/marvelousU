@@ -4,10 +4,12 @@
 // ---------------------------------------------------------------------------
 
 import * as THREE from "three";
-import {
-  RuneElement, RuneInventory, CraftedSpellDef, CraftedSpellEffect,
+import type {
+  RuneElement, CraftedSpellDef, CraftedSpellEffect,
   EnvSpellDef, EnvSpellType, DragonMountDef, DuelPhase,
-  DuelArenaConfig, DuelHazardDef, DuelLoadout,
+  DuelArenaConfig, DuelHazardDef, DuelLoadout, RuneInventory,
+} from "./MageWarsCraftingDefs";
+import {
   createRuneInventory, findCraftedSpell, getCraftedSpellDef,
   getRuneDef, getEnvSpellDef, getDragonMountDef, getDuelArenaDef,
   RUNE_DEFS, CRAFTED_SPELL_DEFS, ENV_SPELL_DEFS, DRAGON_MOUNT_DEFS,
@@ -19,10 +21,12 @@ import {
 
 // ---- Re-export types the main game file will need -------------------------
 
-export {
+export type {
   RuneElement, RuneInventory, CraftedSpellDef, CraftedSpellEffect,
   EnvSpellDef, EnvSpellType, DragonMountDef, DuelPhase,
   DuelArenaConfig, DuelHazardDef, DuelLoadout,
+};
+export {
   createRuneInventory, findCraftedSpell, getCraftedSpellDef,
   getRuneDef, getEnvSpellDef, getDragonMountDef, getDuelArenaDef,
   RUNE_DEFS, CRAFTED_SPELL_DEFS, ENV_SPELL_DEFS, DRAGON_MOUNT_DEFS,

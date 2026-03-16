@@ -8,7 +8,6 @@ import { DUEL_CHARACTERS } from "../../duel/config/DuelCharacterDefs";
 import type { DuelState } from "../../duel/state/DuelState";
 import { DuelComboChallengeSystem } from "../../duel/systems/DuelComboChallengeSystem";
 import { resolveRank, formatRank } from "../../duel/config/DuelRankedConfig";
-import type { DuelDramaticRenderInfo } from "../../duel/systems/DuelDramaticFinisher";
 import { getDramaticFinisherRenderInfo } from "../../duel/systems/DuelDramaticFinisher";
 import { ASSIST_COOLDOWN_FRAMES } from "../../duel/systems/DuelAssistSystem";
 
@@ -756,7 +755,7 @@ export class DuelHUD {
 
   // ---- Training mode: frame data overlay ------------------------------------
 
-  private _updateFrameData(state: DuelState, sw: number, sh: number): void {
+  private _updateFrameData(state: DuelState, sw: number, _sh: number): void {
     const isTraining = state.gameMode === "training" || state.gameMode === "combo_challenge";
     if (!isTraining || !state.trainingShowFrameData) {
       this._frameDataP1.visible = false;

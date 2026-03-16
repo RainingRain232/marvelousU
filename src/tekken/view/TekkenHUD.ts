@@ -9,7 +9,7 @@ import type { TekkenState } from "../state/TekkenState";
 import { TekkenPhase } from "../../types";
 import { TB } from "../config/TekkenBalanceConfig";
 import { TEKKEN_CHARACTERS } from "../config/TekkenCharacterDefs";
-import { getRankForRating, type TekkenRankDef } from "../config/TekkenRankedConfig";
+import { getRankForRating } from "../config/TekkenRankedConfig";
 import type { ComboChallengeState } from "../systems/TekkenComboChallengeSystem";
 
 // ---- Battle Start Dialogue Data ------------------------------------------

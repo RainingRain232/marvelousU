@@ -854,7 +854,6 @@ export class TekkenGame {
     // Ranked profile (carry over from session or create new)
     if (gameMode === "ranked") {
       if (!this._rankedProfile) {
-        const { createRankedProfile } = require("./config/TekkenRankedConfig") as typeof import("./config/TekkenRankedConfig");
         this._rankedProfile = createRankedProfile();
       }
       this._state.rankedProfile = this._rankedProfile;

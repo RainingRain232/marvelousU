@@ -3,7 +3,7 @@
 // Checks player input sequences against combo challenge definitions
 // ---------------------------------------------------------------------------
 
-import type { TekkenFighter, InputBufferEntry } from "../state/TekkenState";
+import type { TekkenFighter } from "../state/TekkenState";
 import type { ComboChallenge, ComboChallengeStep } from "../config/TekkenComboChallenges";
 import { TEKKEN_CHARACTERS } from "../config/TekkenCharacterDefs";
 

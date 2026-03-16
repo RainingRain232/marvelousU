@@ -57,7 +57,7 @@ function makeMat(color: number, metalness = 0, roughness = 0.7): THREE.MeshStand
 // ---- Limb helper ----------------------------------------------------------
 
 function makeLimb(len: number, thickness: number, mat: THREE.MeshStandardMaterial): THREE.Mesh {
-  const geo = new THREE.CylinderGeometry(thickness, thickness * 0.9, len, 8);
+  const geo = new THREE.CylinderGeometry(thickness, thickness * 0.9, len, 16);
   geo.translate(0, -len / 2, 0);
   const mesh = new THREE.Mesh(geo, mat);
   mesh.castShadow = true;
@@ -65,7 +65,7 @@ function makeLimb(len: number, thickness: number, mat: THREE.MeshStandardMateria
 }
 
 function makeJoint(radius: number, mat: THREE.MeshStandardMaterial): THREE.Mesh {
-  const mesh = new THREE.Mesh(new THREE.SphereGeometry(radius, 8, 6), mat);
+  const mesh = new THREE.Mesh(new THREE.SphereGeometry(radius, 12, 8), mat);
   mesh.castShadow = true;
   return mesh;
 }
@@ -308,7 +308,7 @@ export class TekkenFighterRenderer {
   private _buildMeshes(): void {
     // Head sphere (higher poly for smoother look)
     const headMesh = new THREE.Mesh(
-      new THREE.SphereGeometry(HEAD_RADIUS, 16, 12),
+      new THREE.SphereGeometry(HEAD_RADIUS, 24, 18),
       this._skinMat,
     );
     headMesh.castShadow = true;
@@ -317,19 +317,19 @@ export class TekkenFighterRenderer {
 
     // Cheekbone definition (subtle bulges on sides of face)
     for (const side of [-1, 1]) {
-      const cheekGeo = new THREE.SphereGeometry(0.025, 6, 5);
+      const cheekGeo = new THREE.SphereGeometry(0.03, 12, 8);
       const cheekMesh = new THREE.Mesh(cheekGeo, this._skinMat);
       cheekMesh.position.set(side * 0.06, HEAD_RADIUS * 0.6, HEAD_RADIUS * 0.6);
-      cheekMesh.scale.set(0.8, 0.5, 0.5);
+      cheekMesh.scale.set(0.9, 0.6, 0.6);
       this._head.add(cheekMesh);
     }
 
     // Eyes (larger, more detailed)
-    const eyeGeo = new THREE.SphereGeometry(0.02, 8, 6);
+    const eyeGeo = new THREE.SphereGeometry(0.02, 12, 8);
     const eyeMat = new THREE.MeshStandardMaterial({ color: 0xfafafa, roughness: 0.15, metalness: 0.05 });
-    const irisGeo = new THREE.SphereGeometry(0.013, 8, 6);
+    const irisGeo = new THREE.SphereGeometry(0.013, 12, 8);
     const irisMat = new THREE.MeshStandardMaterial({ color: 0x445566, roughness: 0.3, metalness: 0.1 });
-    const pupilGeo = new THREE.SphereGeometry(0.007, 6, 4);
+    const pupilGeo = new THREE.SphereGeometry(0.007, 12, 8);
     const pupilMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.5 });
     for (const side of [-1, 1]) {
       const eye = new THREE.Mesh(eyeGeo, eyeMat);
@@ -343,7 +343,7 @@ export class TekkenFighterRenderer {
       this._head.add(pupil);
 
       // Eyelid (thin curved mesh over eye for depth)
-      const lidGeo = new THREE.SphereGeometry(0.023, 6, 4, 0, Math.PI * 2, 0, Math.PI * 0.35);
+      const lidGeo = new THREE.SphereGeometry(0.023, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.35);
       const lidMesh = new THREE.Mesh(lidGeo, this._skinMat);
       lidMesh.position.set(side * 0.04, HEAD_RADIUS * 0.83, HEAD_RADIUS * 0.73);
       lidMesh.rotation.x = 0.2;
@@ -359,14 +359,14 @@ export class TekkenFighterRenderer {
       this._head.add(browMesh);
 
       // Ear (more detailed with inner ear)
-      const earGeo = new THREE.SphereGeometry(0.028, 8, 6);
+      const earGeo = new THREE.SphereGeometry(0.028, 12, 8);
       const earMesh = new THREE.Mesh(earGeo, this._skinMat);
       earMesh.position.set(side * HEAD_RADIUS * 0.96, HEAD_RADIUS * 0.7, 0);
       earMesh.scale.set(0.3, 1, 0.7);
       earMesh.castShadow = true;
       this._head.add(earMesh);
       // Inner ear detail
-      const innerEarGeo = new THREE.SphereGeometry(0.015, 5, 4);
+      const innerEarGeo = new THREE.SphereGeometry(0.015, 12, 8);
       const innerEarMat = new THREE.MeshStandardMaterial({
         color: (this._skinMat.color as THREE.Color).clone().multiplyScalar(0.85),
         roughness: 0.6,
@@ -385,7 +385,7 @@ export class TekkenFighterRenderer {
     bridgeMesh.castShadow = true;
     this._head.add(bridgeMesh);
     // Nose tip (rounded)
-    const noseTipGeo = new THREE.SphereGeometry(0.014, 6, 5);
+    const noseTipGeo = new THREE.SphereGeometry(0.014, 12, 8);
     const noseTipMesh = new THREE.Mesh(noseTipGeo, this._skinMat);
     noseTipMesh.position.set(0, HEAD_RADIUS * 0.6, HEAD_RADIUS * 0.91);
     noseTipMesh.scale.set(1, 0.7, 0.8);
@@ -393,7 +393,7 @@ export class TekkenFighterRenderer {
     this._head.add(noseTipMesh);
     // Nostrils
     for (const side of [-1, 1]) {
-      const nostrilGeo = new THREE.SphereGeometry(0.006, 4, 3);
+      const nostrilGeo = new THREE.SphereGeometry(0.006, 12, 8);
       const nostrilMat = new THREE.MeshStandardMaterial({
         color: (this._skinMat.color as THREE.Color).clone().multiplyScalar(0.7),
         roughness: 0.7,
@@ -417,6 +417,49 @@ export class TekkenFighterRenderer {
     lowerLipMesh.position.set(0, HEAD_RADIUS * 0.43, HEAD_RADIUS * 0.87);
     this._head.add(lowerLipMesh);
 
+    // Teeth (small white box inside mouth area, slightly visible)
+    const teethMat = new THREE.MeshStandardMaterial({
+      color: 0xfafaf0, metalness: 0.0, roughness: 0.4,
+    });
+    const upperTeeth = new THREE.Mesh(
+      new THREE.BoxGeometry(0.025, 0.005, 0.008),
+      teethMat,
+    );
+    upperTeeth.position.set(0, HEAD_RADIUS * 0.455, HEAD_RADIUS * 0.85);
+    this._head.add(upperTeeth);
+    const lowerTeeth = new THREE.Mesh(
+      new THREE.BoxGeometry(0.023, 0.004, 0.007),
+      teethMat,
+    );
+    lowerTeeth.position.set(0, HEAD_RADIUS * 0.42, HEAD_RADIUS * 0.85);
+    this._head.add(lowerTeeth);
+
+    // Chin definition (small sphere below jaw)
+    const chinDefGeo = new THREE.SphereGeometry(0.016, 12, 8);
+    const chinDefMesh = new THREE.Mesh(chinDefGeo, this._skinMat);
+    chinDefMesh.position.set(0, HEAD_RADIUS * 0.25, HEAD_RADIUS * 0.75);
+    chinDefMesh.scale.set(1.2, 0.8, 0.7);
+    chinDefMesh.castShadow = true;
+    this._head.add(chinDefMesh);
+
+    // Forehead brow ridge (elongated box above eyes)
+    const browRidgeGeo = new THREE.BoxGeometry(HEAD_RADIUS * 1.1, 0.015, 0.025);
+    const browRidgeMesh = new THREE.Mesh(browRidgeGeo, this._skinMat);
+    browRidgeMesh.position.set(0, HEAD_RADIUS * 0.97, HEAD_RADIUS * 0.72);
+    browRidgeMesh.castShadow = true;
+    this._head.add(browRidgeMesh);
+
+    // Neck muscles (2 angled cylinders from jaw to collarbone area)
+    for (const side of [-1, 1]) {
+      const neckMuscleGeo = new THREE.CylinderGeometry(0.012, 0.016, NECK_LEN * 1.8, 12);
+      const neckMuscleMesh = new THREE.Mesh(neckMuscleGeo, this._skinMat);
+      neckMuscleMesh.position.set(side * 0.025, -NECK_LEN * 0.5, 0.01);
+      neckMuscleMesh.rotation.z = side * 0.15;
+      neckMuscleMesh.rotation.x = -0.1;
+      neckMuscleMesh.castShadow = true;
+      this._neck.add(neckMuscleMesh);
+    }
+
     // Jaw with chin point
     const jawMesh = new THREE.Mesh(
       new THREE.BoxGeometry(HEAD_RADIUS * 1.2, HEAD_RADIUS * 0.35, HEAD_RADIUS * 0.9),
@@ -426,7 +469,7 @@ export class TekkenFighterRenderer {
     this._jaw.add(jawMesh);
 
     // Chin point (more defined)
-    const chinGeo = new THREE.CylinderGeometry(0.018, 0.028, 0.035, 6);
+    const chinGeo = new THREE.CylinderGeometry(0.018, 0.028, 0.035, 16);
     const chinMesh = new THREE.Mesh(chinGeo, this._skinMat);
     chinMesh.position.set(0, -HEAD_RADIUS * 0.15, HEAD_RADIUS * 0.3);
     chinMesh.rotation.x = 0.3;
@@ -435,7 +478,7 @@ export class TekkenFighterRenderer {
 
     // Hair (higher poly half-sphere on top of head)
     const hairMesh = new THREE.Mesh(
-      new THREE.SphereGeometry(HEAD_RADIUS * 1.06, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.55),
+      new THREE.SphereGeometry(HEAD_RADIUS * 1.06, 20, 14, 0, Math.PI * 2, 0, Math.PI * 0.55),
       this._hairMat,
     );
     hairMesh.position.y = HEAD_RADIUS * 0.75;
@@ -458,7 +501,7 @@ export class TekkenFighterRenderer {
     this._neck.add(neckMesh);
 
     // Gorget / neck guard
-    const gorgetGeo = new THREE.TorusGeometry(NECK_RADIUS * 1.6, 0.015, 6, 12, Math.PI * 1.5);
+    const gorgetGeo = new THREE.TorusGeometry(NECK_RADIUS * 1.6, 0.015, 10, 20, Math.PI * 1.5);
     const gorgetMesh = new THREE.Mesh(gorgetGeo, this._armorMat);
     gorgetMesh.rotation.x = Math.PI / 2;
     gorgetMesh.rotation.z = -Math.PI * 0.25;
@@ -471,7 +514,7 @@ export class TekkenFighterRenderer {
       CHEST_WIDTH * 0.48, // top radius (shoulders)
       CHEST_WIDTH * 0.38, // bottom radius
       CHEST_HEIGHT,
-      8,
+      16,
     );
     chestGeo.translate(0, CHEST_HEIGHT / 2, 0);
     const chestMesh = new THREE.Mesh(chestGeo, this._armorMat);
@@ -501,7 +544,7 @@ export class TekkenFighterRenderer {
 
     // Pectoral definition (two subtle bumps on chest)
     for (const side of [-1, 1]) {
-      const pecGeo = new THREE.SphereGeometry(0.05, 8, 6);
+      const pecGeo = new THREE.SphereGeometry(0.05, 12, 8);
       const pecMesh = new THREE.Mesh(pecGeo, this._armorMat);
       pecMesh.position.set(side * 0.06, CHEST_HEIGHT * 0.65, CHEST_DEPTH * 0.38);
       pecMesh.scale.set(1, 0.6, 0.45);
@@ -525,14 +568,14 @@ export class TekkenFighterRenderer {
       emissiveIntensity: 0.3,
       envMapIntensity: 3.0,
     });
-    const gemGeo = new THREE.SphereGeometry(0.012, 8, 6);
+    const gemGeo = new THREE.SphereGeometry(0.012, 12, 8);
     const gemMesh = new THREE.Mesh(gemGeo, gemMat);
     gemMesh.position.set(0, CHEST_HEIGHT * 0.55, CHEST_DEPTH * 0.5 + 0.035);
     gemMesh.scale.set(1, 1, 0.5);
     this._chest.add(gemMesh);
 
     // Medallion rim (gold ring around medallion)
-    const rimGeo = new THREE.TorusGeometry(0.028, 0.004, 6, 14);
+    const rimGeo = new THREE.TorusGeometry(0.028, 0.004, 10, 20);
     const rimMat = new THREE.MeshStandardMaterial({
       color: 0xddaa22, metalness: 0.85, roughness: 0.25,
     });
@@ -545,7 +588,7 @@ export class TekkenFighterRenderer {
       LOWER_TORSO_WIDTH * 0.42,
       LOWER_TORSO_WIDTH * 0.35,
       LOWER_TORSO_HEIGHT,
-      8,
+      16,
     );
     lowerGeo.translate(0, LOWER_TORSO_HEIGHT / 2, 0);
     const lowerMesh = new THREE.Mesh(lowerGeo, this._clothMat);
@@ -563,7 +606,7 @@ export class TekkenFighterRenderer {
 
     // Pelvis/hip area
     const pelvisMesh = new THREE.Mesh(
-      new THREE.SphereGeometry(LOWER_TORSO_WIDTH * 0.38, 8, 6),
+      new THREE.SphereGeometry(LOWER_TORSO_WIDTH * 0.38, 12, 8),
       this._clothMat,
     );
     pelvisMesh.scale.set(1, 0.6, 0.8);
@@ -576,7 +619,7 @@ export class TekkenFighterRenderer {
       const px = side * (CHEST_WIDTH * 0.45 + CLAVICLE_LEN * 0.5);
       for (let layer = 0; layer < 3; layer++) {
         const radius = 0.06 - layer * 0.012;
-        const plateGeo = new THREE.SphereGeometry(radius, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.55);
+        const plateGeo = new THREE.SphereGeometry(radius, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.55);
         const plateMat = layer === 0 ? this._armorMat : this._accentMat;
         const plate = new THREE.Mesh(plateGeo, plateMat);
         plate.position.set(px, 0.01 + layer * 0.015, -layer * 0.01);
@@ -597,7 +640,7 @@ export class TekkenFighterRenderer {
 
       // Elbow guard (small sphere at elbow joint)
       const elbowGuard = new THREE.Mesh(
-        new THREE.SphereGeometry(JOINT_RADIUS * 1.4, 8, 6),
+        new THREE.SphereGeometry(JOINT_RADIUS * 1.4, 12, 8),
         this._armorMat,
       );
       elbowGuard.position.y = -UPPER_ARM_LEN;
@@ -611,7 +654,7 @@ export class TekkenFighterRenderer {
 
       // Bracer (armor on forearm)
       const bracerMesh = new THREE.Mesh(
-        new THREE.CylinderGeometry(LIMB_THICKNESS * 1.3, LIMB_THICKNESS * 1.2, FOREARM_LEN * 0.6, 10),
+        new THREE.CylinderGeometry(LIMB_THICKNESS * 1.3, LIMB_THICKNESS * 1.2, FOREARM_LEN * 0.6, 16),
         this._armorMat,
       );
       bracerMesh.position.y = -FOREARM_LEN * 0.35;
@@ -621,7 +664,7 @@ export class TekkenFighterRenderer {
       // Bracer edge trim (gold ring at top and bottom)
       for (const trimY of [-FOREARM_LEN * 0.05, -FOREARM_LEN * 0.65]) {
         const bracerTrim = new THREE.Mesh(
-          new THREE.TorusGeometry(LIMB_THICKNESS * 1.32, 0.005, 4, 10),
+          new THREE.TorusGeometry(LIMB_THICKNESS * 1.32, 0.005, 8, 16),
           new THREE.MeshStandardMaterial({ color: 0xddaa22, metalness: 0.85, roughness: 0.25 }),
         );
         bracerTrim.rotation.x = Math.PI / 2;
@@ -634,7 +677,7 @@ export class TekkenFighterRenderer {
         color: 0x666677, metalness: 0.7, roughness: 0.4,
       });
       const chainmail = new THREE.Mesh(
-        new THREE.CylinderGeometry(LIMB_THICKNESS * 1.05, LIMB_THICKNESS * 1.0, FOREARM_LEN * 0.15, 8),
+        new THREE.CylinderGeometry(LIMB_THICKNESS * 1.05, LIMB_THICKNESS * 1.0, FOREARM_LEN * 0.15, 16),
         chainmailMat,
       );
       chainmail.position.y = -FOREARM_LEN * 0.03;
@@ -642,7 +685,7 @@ export class TekkenFighterRenderer {
 
       // Wrist wrap (torus ring at wrist)
       const wristWrap = new THREE.Mesh(
-        new THREE.TorusGeometry(LIMB_THICKNESS * 1.1, 0.008, 6, 12),
+        new THREE.TorusGeometry(LIMB_THICKNESS * 1.1, 0.008, 10, 20),
         this._leatherMat,
       );
       wristWrap.rotation.x = Math.PI / 2;
@@ -663,7 +706,7 @@ export class TekkenFighterRenderer {
       for (let k = 0; k < 4; k++) {
         // Knuckle bump
         const knuckle = new THREE.Mesh(
-          new THREE.SphereGeometry(0.008, 6, 4),
+          new THREE.SphereGeometry(0.008, 12, 8),
           this._skinMat,
         );
         knuckle.position.set(
@@ -676,7 +719,7 @@ export class TekkenFighterRenderer {
 
         // Finger cylinder (proximal phalanx)
         const fingerSeg = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.006, 0.005, FINGER_LEN * 0.6, 4),
+          new THREE.CylinderGeometry(0.006, 0.004, FINGER_LEN * 0.6, 8),
           this._skinMat,
         );
         fingerSeg.position.set(
@@ -686,6 +729,35 @@ export class TekkenFighterRenderer {
         );
         fingerSeg.rotation.x = -0.3; // slightly curled
         hand.add(fingerSeg);
+
+        // Fingernail (tiny flat box at finger tip with slight metallic sheen)
+        const nailMat = new THREE.MeshStandardMaterial({
+          color: 0xeeddcc, metalness: 0.15, roughness: 0.35,
+        });
+        const nail = new THREE.Mesh(
+          new THREE.BoxGeometry(0.005, 0.003, 0.004),
+          nailMat,
+        );
+        nail.position.set(
+          -0.02 + k * 0.013,
+          -HAND_LEN * 0.15 - FINGER_LEN * 0.55,
+          HAND_LEN * 0.40,
+        );
+        nail.rotation.x = -0.3;
+        hand.add(nail);
+
+        // Knuckle wrinkle detail (thin torus ring at finger joint)
+        const knuckleWrinkle = new THREE.Mesh(
+          new THREE.TorusGeometry(0.006, 0.001, 6, 10),
+          this._skinMat,
+        );
+        knuckleWrinkle.position.set(
+          -0.02 + k * 0.013,
+          -HAND_LEN * 0.15 - FINGER_LEN * 0.1,
+          HAND_LEN * 0.36,
+        );
+        knuckleWrinkle.rotation.x = Math.PI / 2;
+        hand.add(knuckleWrinkle);
       }
 
       // Fingers group (distal phalanges)
@@ -697,17 +769,28 @@ export class TekkenFighterRenderer {
 
       // Thumb (two segments for more natural look)
       const thumbBase = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.013, 0.011, FINGER_LEN * 0.5, 5),
+        new THREE.CylinderGeometry(0.013, 0.011, FINGER_LEN * 0.5, 10),
         this._skinMat,
       );
       thumbBase.castShadow = true;
       thumb.add(thumbBase);
       const thumbTip = new THREE.Mesh(
-        new THREE.SphereGeometry(0.009, 5, 4),
+        new THREE.SphereGeometry(0.009, 12, 8),
         this._skinMat,
       );
       thumbTip.position.y = -FINGER_LEN * 0.3;
       thumb.add(thumbTip);
+
+      // Thumbnail
+      const thumbNailMat = new THREE.MeshStandardMaterial({
+        color: 0xeeddcc, metalness: 0.15, roughness: 0.35,
+      });
+      const thumbNail = new THREE.Mesh(
+        new THREE.BoxGeometry(0.006, 0.003, 0.005),
+        thumbNailMat,
+      );
+      thumbNail.position.set(0, -FINGER_LEN * 0.4, 0.008);
+      thumb.add(thumbNail);
     }
 
     // Legs
@@ -721,7 +804,7 @@ export class TekkenFighterRenderer {
 
       // Knee pad (half-sphere on front of knee)
       const kneePad = new THREE.Mesh(
-        new THREE.SphereGeometry(JOINT_RADIUS * 1.5, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.5),
+        new THREE.SphereGeometry(JOINT_RADIUS * 1.5, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.5),
         this._armorMat,
       );
       kneePad.position.set(0, -THIGH_LEN, LIMB_THICKNESS * 0.5);
@@ -735,7 +818,7 @@ export class TekkenFighterRenderer {
 
       // Shin guard (armor)
       const guardMesh = new THREE.Mesh(
-        new THREE.CylinderGeometry(LIMB_THICKNESS * 1.2, LIMB_THICKNESS * 1.1, SHIN_LEN * 0.5, 8),
+        new THREE.CylinderGeometry(LIMB_THICKNESS * 1.2, LIMB_THICKNESS * 1.1, SHIN_LEN * 0.5, 16),
         this._armorMat,
       );
       guardMesh.position.y = -SHIN_LEN * 0.3;
@@ -753,7 +836,7 @@ export class TekkenFighterRenderer {
 
       // Boot cuff (torus at top of foot / ankle area)
       const bootCuff = new THREE.Mesh(
-        new THREE.TorusGeometry(FOOT_LEN * 0.24, 0.012, 6, 12),
+        new THREE.TorusGeometry(FOOT_LEN * 0.24, 0.012, 10, 20),
         this._leatherMat,
       );
       bootCuff.rotation.x = Math.PI / 2;
@@ -772,7 +855,7 @@ export class TekkenFighterRenderer {
 
     // Belt/waist accent
     const beltMesh = new THREE.Mesh(
-      new THREE.TorusGeometry(LOWER_TORSO_WIDTH * 0.38, 0.02, 6, 16),
+      new THREE.TorusGeometry(LOWER_TORSO_WIDTH * 0.38, 0.02, 10, 24),
       this._leatherMat,
     );
     beltMesh.rotation.x = Math.PI / 2;
@@ -786,6 +869,92 @@ export class TekkenFighterRenderer {
     buckleMesh.position.set(0, 0.01, LOWER_TORSO_WIDTH * 0.38 + 0.01);
     buckleMesh.castShadow = true;
     this._hips.add(buckleMesh);
+
+    // ---- MUSCLE DEFINITION ----
+
+    // Deltoid muscles (spheres on top of each shoulder, between arm and chest)
+    for (const [clav, side] of [[this._leftClavicle, 1], [this._rightClavicle, -1]] as [THREE.Group, number][]) {
+      const deltoidGeo = new THREE.SphereGeometry(0.04, 12, 8);
+      const deltoidMesh = new THREE.Mesh(deltoidGeo, this._skinMat);
+      deltoidMesh.position.set(side * (CHEST_WIDTH * 0.45 + CLAVICLE_LEN * 0.3), -0.02, 0);
+      deltoidMesh.scale.set(0.9, 1.1, 0.8);
+      deltoidMesh.castShadow = true;
+      clav.add(deltoidMesh);
+    }
+
+    // Trapezius muscle (angled box from neck toward shoulders behind the head)
+    const trapGeo = new THREE.BoxGeometry(CHEST_WIDTH * 0.5, 0.06, 0.08);
+    const trapMesh = new THREE.Mesh(trapGeo, this._skinMat);
+    trapMesh.position.set(0, CHEST_HEIGHT * 0.85, -CHEST_DEPTH * 0.25);
+    trapMesh.rotation.x = 0.2;
+    trapMesh.castShadow = true;
+    this._chest.add(trapMesh);
+
+    // Calf muscle bulges (scaled spheres on back of shins)
+    for (const shin of [this._leftShin, this._rightShin]) {
+      const calfGeo = new THREE.SphereGeometry(0.035, 12, 8);
+      const calfMesh = new THREE.Mesh(calfGeo, this._skinMat);
+      calfMesh.position.set(0, -SHIN_LEN * 0.3, -LIMB_THICKNESS * 0.6);
+      calfMesh.scale.set(0.7, 1.4, 0.8);
+      calfMesh.castShadow = true;
+      shin.add(calfMesh);
+    }
+
+    // Forearm muscle definition (slightly flattened sphere on each forearm)
+    for (const forearm of [this._leftForearm, this._rightForearm]) {
+      const forearmMuscleGeo = new THREE.SphereGeometry(0.025, 12, 8);
+      const forearmMuscleMesh = new THREE.Mesh(forearmMuscleGeo, this._skinMat);
+      forearmMuscleMesh.position.set(0, -FOREARM_LEN * 0.25, LIMB_THICKNESS * 0.3);
+      forearmMuscleMesh.scale.set(1.0, 1.3, 0.6);
+      forearmMuscleMesh.castShadow = true;
+      forearm.add(forearmMuscleMesh);
+    }
+
+    // ---- ARMOR / CLOTHING DETAIL ----
+
+    // Rivets on chest plate (6 tiny metallic spheres in a pattern)
+    const rivetMat = new THREE.MeshStandardMaterial({
+      color: 0xaaaaaa, metalness: 0.9, roughness: 0.15,
+    });
+    const rivetPositions = [
+      [-0.07, CHEST_HEIGHT * 0.7], [-0.07, CHEST_HEIGHT * 0.4],
+      [0.07, CHEST_HEIGHT * 0.7], [0.07, CHEST_HEIGHT * 0.4],
+      [-0.04, CHEST_HEIGHT * 0.55], [0.04, CHEST_HEIGHT * 0.55],
+    ];
+    for (const [rx, ry] of rivetPositions) {
+      const rivetGeo = new THREE.SphereGeometry(0.004, 8, 6);
+      const rivet = new THREE.Mesh(rivetGeo, rivetMat);
+      rivet.position.set(rx, ry, CHEST_DEPTH * 0.5 + 0.025);
+      this._chest.add(rivet);
+    }
+
+    // Seam lines on cloth areas (thin dark boxes running along limb cylinders)
+    const seamMat = new THREE.MeshStandardMaterial({
+      color: 0x222222, metalness: 0.0, roughness: 0.9, transparent: true, opacity: 0.5,
+    });
+    // Seams on thighs
+    for (const thigh of [this._leftThigh, this._rightThigh]) {
+      const seamGeo = new THREE.BoxGeometry(0.003, THIGH_LEN * 0.8, 0.003);
+      const seam = new THREE.Mesh(seamGeo, seamMat);
+      seam.position.set(LIMB_THICKNESS * 0.5, -THIGH_LEN * 0.45, 0);
+      thigh.add(seam);
+    }
+    // Seams on shins
+    for (const shin of [this._leftShin, this._rightShin]) {
+      const seamGeo = new THREE.BoxGeometry(0.003, SHIN_LEN * 0.7, 0.003);
+      const seam = new THREE.Mesh(seamGeo, seamMat);
+      seam.position.set(LIMB_THICKNESS * 0.5, -SHIN_LEN * 0.4, 0);
+      shin.add(seam);
+    }
+
+    // Shoulder pad base (flattened cylinder on top of each shoulder)
+    for (const [clav, side] of [[this._leftClavicle, 1], [this._rightClavicle, -1]] as [THREE.Group, number][]) {
+      const padBaseGeo = new THREE.CylinderGeometry(0.045, 0.05, 0.015, 16);
+      const padBaseMesh = new THREE.Mesh(padBaseGeo, this._armorMat);
+      padBaseMesh.position.set(side * (CHEST_WIDTH * 0.45 + CLAVICLE_LEN * 0.5), 0.025, 0);
+      padBaseMesh.castShadow = true;
+      clav.add(padBaseMesh);
+    }
 
     // Cloth-simulated cape / cloak (built per archetype)
     this._buildClothCape();
@@ -832,7 +1001,7 @@ export class TekkenFighterRenderer {
 
         // Sword pommel
         const swordPommel = new THREE.Mesh(
-          new THREE.SphereGeometry(0.02, 6, 4),
+          new THREE.SphereGeometry(0.02, 12, 8),
           goldMat,
         );
         swordPommel.position.set(-0.16, 0.32, 0.05);
@@ -847,7 +1016,7 @@ export class TekkenFighterRenderer {
         this._chest.add(shieldMesh);
         // Shield rim
         const shieldRim = new THREE.Mesh(
-          new THREE.TorusGeometry(0.16, 0.012, 6, 16),
+          new THREE.TorusGeometry(0.16, 0.012, 10, 24),
           metalMat,
         );
         shieldRim.position.set(0, CHEST_HEIGHT * 0.5, -CHEST_DEPTH * 0.5 - 0.055);
@@ -872,6 +1041,68 @@ export class TekkenFighterRenderer {
           pauldron.position.set(0, 0.03, 0);
           pauldron.castShadow = true;
           clav.add(pauldron);
+        }
+
+        // Chain mail texture on torso (3x3 grid of tiny torus rings on chest)
+        const chainMailMat = new THREE.MeshStandardMaterial({
+          color: 0x777788, metalness: 0.75, roughness: 0.35,
+        });
+        for (let cx = 0; cx < 3; cx++) {
+          for (let cy = 0; cy < 3; cy++) {
+            const chainRing = new THREE.Mesh(
+              new THREE.TorusGeometry(0.008, 0.002, 6, 10),
+              chainMailMat,
+            );
+            chainRing.position.set(
+              -0.02 + cx * 0.02,
+              CHEST_HEIGHT * (0.35 + cy * 0.1),
+              CHEST_DEPTH * 0.5 + 0.03,
+            );
+            chainRing.castShadow = true;
+            this._chest.add(chainRing);
+          }
+        }
+
+        // Sword pommel jewel (small emissive sphere)
+        const pommelJewelMat = new THREE.MeshStandardMaterial({
+          color: 0xff2222, metalness: 0.1, roughness: 0.1,
+          emissive: 0xff2222, emissiveIntensity: 0.5,
+        });
+        const pommelJewel = new THREE.Mesh(
+          new THREE.SphereGeometry(0.012, 12, 8),
+          pommelJewelMat,
+        );
+        pommelJewel.position.set(-0.16, 0.32, 0.05);
+        this._hips.add(pommelJewel);
+
+        // Gauntlet finger guards (small cone-shaped covers over fingers)
+        for (const hand of [this._leftHand, this._rightHand]) {
+          for (let gk = 0; gk < 4; gk++) {
+            const fingerGuard = new THREE.Mesh(
+              new THREE.ConeGeometry(0.007, 0.02, 6),
+              metalMat,
+            );
+            fingerGuard.position.set(
+              -0.02 + gk * 0.013,
+              -HAND_LEN * 0.15 - FINGER_LEN * 0.2,
+              HAND_LEN * 0.42,
+            );
+            fingerGuard.rotation.x = -Math.PI / 2;
+            fingerGuard.castShadow = true;
+            hand.add(fingerGuard);
+          }
+        }
+
+        // Knee guards (half-sphere over each knee)
+        for (const thigh of [this._leftThigh, this._rightThigh]) {
+          const kneeGuard = new THREE.Mesh(
+            new THREE.SphereGeometry(JOINT_RADIUS * 1.8, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.5),
+            metalMat,
+          );
+          kneeGuard.position.set(0, -THIGH_LEN, LIMB_THICKNESS * 0.7);
+          kneeGuard.rotation.x = -Math.PI / 2;
+          kneeGuard.castShadow = true;
+          thigh.add(kneeGuard);
         }
         break;
       }
@@ -934,7 +1165,7 @@ export class TekkenFighterRenderer {
             CHEST_WIDTH * 0.47,
             CHEST_WIDTH * 0.37,
             CHEST_HEIGHT * 0.95,
-            8,
+            16,
           ),
           skinTone,
         );
@@ -957,7 +1188,7 @@ export class TekkenFighterRenderer {
         const furMat = makeMat(0x664422, 0, 0.95);
         for (let i = 0; i < 8; i++) {
           const tuft = new THREE.Mesh(
-            new THREE.SphereGeometry(0.025, 5, 4),
+            new THREE.SphereGeometry(0.025, 12, 8),
             furMat,
           );
           const angle = (i / 8) * Math.PI * 2;
@@ -970,6 +1201,90 @@ export class TekkenFighterRenderer {
           tuft.castShadow = true;
           this._neck.add(tuft);
         }
+
+        // Scarred skin marks (thin dark boxes on chest/arms, 3-4 scar lines)
+        const scarMat = new THREE.MeshStandardMaterial({
+          color: 0x993333, metalness: 0.0, roughness: 0.7, transparent: true, opacity: 0.6,
+        });
+        // Chest scars
+        const scarPositions = [
+          { x: -0.05, y: CHEST_HEIGHT * 0.55, rot: 0.3, len: 0.08 },
+          { x: 0.04, y: CHEST_HEIGHT * 0.45, rot: -0.2, len: 0.06 },
+          { x: 0.02, y: CHEST_HEIGHT * 0.7, rot: 0.5, len: 0.07 },
+        ];
+        for (const scar of scarPositions) {
+          const scarGeo = new THREE.BoxGeometry(0.004, scar.len, 0.004);
+          const scarMesh = new THREE.Mesh(scarGeo, scarMat);
+          scarMesh.position.set(scar.x, scar.y, CHEST_DEPTH * 0.5 + 0.015);
+          scarMesh.rotation.z = scar.rot;
+          this._chest.add(scarMesh);
+        }
+        // Arm scar
+        for (const upperArm of [this._leftUpperArm, this._rightUpperArm]) {
+          const armScar = new THREE.Mesh(
+            new THREE.BoxGeometry(0.004, 0.06, 0.004),
+            scarMat,
+          );
+          armScar.position.set(LIMB_THICKNESS * 0.5, -UPPER_ARM_LEN * 0.4, 0);
+          armScar.rotation.z = 0.2;
+          upperArm.add(armScar);
+        }
+
+        // Tooth necklace (row of small cone teeth hanging from torus around neck)
+        const toothNecklaceRing = new THREE.Mesh(
+          new THREE.TorusGeometry(NECK_RADIUS * 2.5, 0.005, 6, 16),
+          makeMat(0x553322, 0.1, 0.7),
+        );
+        toothNecklaceRing.rotation.x = Math.PI / 2;
+        toothNecklaceRing.position.set(0, -NECK_LEN * 0.6, 0);
+        this._neck.add(toothNecklaceRing);
+        const toothMat = makeMat(0xeeeedd, 0.05, 0.4);
+        for (let ti = 0; ti < 8; ti++) {
+          const toothAngle = (ti / 8) * Math.PI * 2;
+          const tooth = new THREE.Mesh(
+            new THREE.ConeGeometry(0.005, 0.018, 4),
+            toothMat,
+          );
+          tooth.position.set(
+            Math.cos(toothAngle) * NECK_RADIUS * 2.5,
+            -NECK_LEN * 0.7,
+            Math.sin(toothAngle) * NECK_RADIUS * 2.5,
+          );
+          tooth.rotation.x = Math.PI;
+          this._neck.add(tooth);
+        }
+
+        // Wrist chain (small torus links on each wrist)
+        for (const forearm of [this._leftForearm, this._rightForearm]) {
+          for (let wi = 0; wi < 3; wi++) {
+            const wristChain = new THREE.Mesh(
+              new THREE.TorusGeometry(LIMB_THICKNESS * 1.15, 0.004, 6, 10),
+              metalMat,
+            );
+            wristChain.rotation.x = Math.PI / 2;
+            wristChain.position.y = -FOREARM_LEN * (0.85 + wi * 0.04);
+            wristChain.castShadow = true;
+            forearm.add(wristChain);
+          }
+        }
+
+        // More shoulder spikes (2 more per shoulder, smaller)
+        for (const clav of [this._leftClavicle, this._rightClavicle]) {
+          for (let es = 0; es < 2; es++) {
+            const extraSpike = new THREE.Mesh(
+              new THREE.ConeGeometry(0.01, 0.05, 4),
+              metalMat,
+            );
+            extraSpike.position.set(
+              -0.03 + es * 0.06,
+              0.06,
+              0.02 - es * 0.04,
+            );
+            extraSpike.rotation.z = (es === 0 ? 0.3 : -0.3);
+            extraSpike.castShadow = true;
+            clav.add(extraSpike);
+          }
+        }
         break;
       }
 
@@ -979,7 +1294,7 @@ export class TekkenFighterRenderer {
         const beadMat = makeMat(0x884422, 0.2, 0.5);
         for (let i = 0; i < 12; i++) {
           const bead = new THREE.Mesh(
-            new THREE.SphereGeometry(0.012, 5, 4),
+            new THREE.SphereGeometry(0.012, 12, 8),
             beadMat,
           );
           const angle = (i / 12) * Math.PI * 2;
@@ -1021,7 +1336,7 @@ export class TekkenFighterRenderer {
               LIMB_THICKNESS * 1.15,
               LIMB_THICKNESS * 1.05,
               FOREARM_LEN * 0.7,
-              8,
+              16,
             ),
             wrapMat,
           );
@@ -1055,13 +1370,74 @@ export class TekkenFighterRenderer {
             LOWER_TORSO_WIDTH * 0.5,
             LOWER_TORSO_WIDTH * 0.6,
             LOWER_TORSO_HEIGHT * 1.3,
-            8,
+            16,
           ),
           robeMat,
         );
         robeSkirt.position.y = -0.05;
         robeSkirt.castShadow = true;
         this._hips.add(robeSkirt);
+
+        // Incense holder hanging from belt (tiny cylinder + sphere flame)
+        const incenseCylinder = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.008, 0.008, 0.03, 8),
+          makeMat(0x886633, 0.3, 0.5),
+        );
+        incenseCylinder.position.set(0.12, -0.05, LOWER_TORSO_WIDTH * 0.35);
+        incenseCylinder.castShadow = true;
+        this._hips.add(incenseCylinder);
+        const incenseFlame = new THREE.Mesh(
+          new THREE.SphereGeometry(0.006, 8, 6),
+          new THREE.MeshStandardMaterial({
+            color: 0xff6600, emissive: 0xff4400, emissiveIntensity: 0.8,
+            metalness: 0.0, roughness: 0.3,
+          }),
+        );
+        incenseFlame.position.set(0.12, -0.03, LOWER_TORSO_WIDTH * 0.35);
+        this._hips.add(incenseFlame);
+
+        // Foot wraps (torus rings on each foot)
+        for (const foot of [this._leftFoot, this._rightFoot]) {
+          for (let fw = 0; fw < 2; fw++) {
+            const footWrap = new THREE.Mesh(
+              new THREE.TorusGeometry(FOOT_LEN * 0.2, 0.006, 6, 12),
+              wrapMat,
+            );
+            footWrap.rotation.x = Math.PI / 2;
+            footWrap.position.set(0, -FOOT_HEIGHT * 0.1, FOOT_LEN * (0.1 + fw * 0.2));
+            footWrap.castShadow = true;
+            foot.add(footWrap);
+          }
+        }
+
+        // Meditation beads on wrist (smaller bead ring on left hand)
+        const meditationBeadMat = makeMat(0x663311, 0.15, 0.5);
+        for (let mb = 0; mb < 8; mb++) {
+          const medBead = new THREE.Mesh(
+            new THREE.SphereGeometry(0.006, 8, 6),
+            meditationBeadMat,
+          );
+          const mbAngle = (mb / 8) * Math.PI * 2;
+          medBead.position.set(
+            Math.cos(mbAngle) * LIMB_THICKNESS * 1.2,
+            -FOREARM_LEN * 0.88,
+            Math.sin(mbAngle) * LIMB_THICKNESS * 1.2,
+          );
+          this._leftForearm.add(medBead);
+        }
+
+        // Embroidered robe edge (gold-colored thin box trim at robe bottom)
+        const robeEdgeMat = new THREE.MeshStandardMaterial({
+          color: 0xddaa22, metalness: 0.6, roughness: 0.35,
+        });
+        const robeEdge = new THREE.Mesh(
+          new THREE.TorusGeometry(LOWER_TORSO_WIDTH * 0.58, 0.008, 6, 20),
+          robeEdgeMat,
+        );
+        robeEdge.rotation.x = Math.PI / 2;
+        robeEdge.position.set(0, -0.05 - LOWER_TORSO_HEIGHT * 0.65, 0);
+        robeEdge.castShadow = true;
+        this._hips.add(robeEdge);
         break;
       }
 
@@ -1107,7 +1483,7 @@ export class TekkenFighterRenderer {
 
         // Crown / circlet on head
         const circlet = new THREE.Mesh(
-          new THREE.TorusGeometry(HEAD_RADIUS * 0.8, 0.015, 6, 16),
+          new THREE.TorusGeometry(HEAD_RADIUS * 0.8, 0.015, 10, 24),
           goldMat,
         );
         circlet.position.y = HEAD_RADIUS * 1.2;
@@ -1118,7 +1494,7 @@ export class TekkenFighterRenderer {
         // Full plate armor layers on shoulders and chest
         for (const clav of [this._leftClavicle, this._rightClavicle]) {
           const plateLayer = new THREE.Mesh(
-            new THREE.SphereGeometry(0.07, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.5),
+            new THREE.SphereGeometry(0.07, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.5),
             metalMat,
           );
           plateLayer.position.set(0, 0.02, 0);
@@ -1154,6 +1530,75 @@ export class TekkenFighterRenderer {
         hairTaper.rotation.x = 0.2;
         hairTaper.castShadow = true;
         this._head.add(hairTaper);
+
+        // Shield boss (central sphere/cone on the shield)
+        const shieldBoss = new THREE.Mesh(
+          new THREE.SphereGeometry(0.04, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.5),
+          goldMat,
+        );
+        shieldBoss.position.set(0.06, -FOREARM_LEN * 0.5, 0.105);
+        shieldBoss.rotation.x = -Math.PI / 2;
+        shieldBoss.castShadow = true;
+        this._leftForearm.add(shieldBoss);
+        const shieldBossCone = new THREE.Mesh(
+          new THREE.ConeGeometry(0.02, 0.03, 8),
+          goldMat,
+        );
+        shieldBossCone.position.set(0.06, -FOREARM_LEN * 0.5, 0.13);
+        shieldBossCone.rotation.x = -Math.PI / 2;
+        shieldBossCone.castShadow = true;
+        this._leftForearm.add(shieldBossCone);
+
+        // Helmet wings/horns (2 small curved cones on helmet sides)
+        for (const side of [-1, 1]) {
+          const helmetWing = new THREE.Mesh(
+            new THREE.ConeGeometry(0.015, 0.08, 6),
+            goldMat,
+          );
+          helmetWing.position.set(
+            side * HEAD_RADIUS * 0.85,
+            HEAD_RADIUS * 1.15,
+            -HEAD_RADIUS * 0.1,
+          );
+          helmetWing.rotation.z = side * -0.6;
+          helmetWing.rotation.x = -0.2;
+          helmetWing.castShadow = true;
+          this._head.add(helmetWing);
+        }
+
+        // Tabard cloth (flat box hanging from belt, with cross emblem box)
+        const tabardMat = makeMat(colors.primary, 0, 0.85);
+        const tabard = new THREE.Mesh(
+          new THREE.BoxGeometry(0.12, 0.3, 0.01),
+          tabardMat,
+        );
+        tabard.position.set(0, -0.15, LOWER_TORSO_WIDTH * 0.38 + 0.015);
+        tabard.castShadow = true;
+        this._hips.add(tabard);
+        // Tabard cross emblem
+        const tabardCrossV = new THREE.Mesh(
+          new THREE.BoxGeometry(0.015, 0.08, 0.005),
+          goldMat,
+        );
+        tabardCrossV.position.set(0, -0.1, LOWER_TORSO_WIDTH * 0.38 + 0.025);
+        this._hips.add(tabardCrossV);
+        const tabardCrossH = new THREE.Mesh(
+          new THREE.BoxGeometry(0.06, 0.015, 0.005),
+          goldMat,
+        );
+        tabardCrossH.position.set(0, -0.08, LOWER_TORSO_WIDTH * 0.38 + 0.025);
+        this._hips.add(tabardCrossH);
+
+        // Armored boots (extra cylinder layer on feet)
+        for (const foot of [this._leftFoot, this._rightFoot]) {
+          const armoredBoot = new THREE.Mesh(
+            new THREE.CylinderGeometry(FOOT_LEN * 0.28, FOOT_LEN * 0.26, FOOT_HEIGHT * 2.0, 16),
+            metalMat,
+          );
+          armoredBoot.position.set(0, FOOT_HEIGHT * 0.2, FOOT_LEN * 0.1);
+          armoredBoot.castShadow = true;
+          foot.add(armoredBoot);
+        }
         break;
       }
 
@@ -1236,6 +1681,83 @@ export class TekkenFighterRenderer {
         backCloak.rotation.x = 0.08;
         backCloak.castShadow = true;
         this._chest.add(backCloak);
+
+        // Throwing stars on belt (3 small flat box crosses on hip)
+        for (let ts = 0; ts < 3; ts++) {
+          const starH = new THREE.Mesh(
+            new THREE.BoxGeometry(0.025, 0.004, 0.004),
+            metalMat,
+          );
+          starH.position.set(-0.1 + ts * 0.04, -0.02, LOWER_TORSO_WIDTH * 0.38 + 0.01);
+          this._hips.add(starH);
+          const starV = new THREE.Mesh(
+            new THREE.BoxGeometry(0.004, 0.025, 0.004),
+            metalMat,
+          );
+          starV.position.set(-0.1 + ts * 0.04, -0.02, LOWER_TORSO_WIDTH * 0.38 + 0.01);
+          this._hips.add(starV);
+        }
+
+        // Poison vial on thigh strap (small sphere + cylinder)
+        const vialStrap = new THREE.Mesh(
+          new THREE.TorusGeometry(LIMB_THICKNESS * 1.3, 0.005, 6, 12),
+          darkMat,
+        );
+        vialStrap.rotation.x = Math.PI / 2;
+        vialStrap.position.set(LIMB_THICKNESS * 1.5, -THIGH_LEN * 0.3, 0);
+        this._rightThigh.add(vialStrap);
+        const vialBody = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.008, 0.008, 0.03, 8),
+          new THREE.MeshStandardMaterial({
+            color: 0x22aa44, metalness: 0.1, roughness: 0.3,
+            transparent: true, opacity: 0.7,
+          }),
+        );
+        vialBody.position.set(LIMB_THICKNESS * 1.8, -THIGH_LEN * 0.3, 0.01);
+        this._rightThigh.add(vialBody);
+        const vialCap = new THREE.Mesh(
+          new THREE.SphereGeometry(0.009, 8, 6),
+          darkMat,
+        );
+        vialCap.position.set(LIMB_THICKNESS * 1.8, -THIGH_LEN * 0.3 + 0.018, 0.01);
+        this._rightThigh.add(vialCap);
+
+        // Wrist blade (thin flat box extending from forearm bracer)
+        for (const forearm of [this._leftForearm, this._rightForearm]) {
+          const wristBlade = new THREE.Mesh(
+            new THREE.BoxGeometry(0.01, 0.12, 0.003),
+            metalMat,
+          );
+          wristBlade.position.set(0, -FOREARM_LEN * 0.75, LIMB_THICKNESS * 1.2);
+          wristBlade.castShadow = true;
+          forearm.add(wristBlade);
+        }
+
+        // Bandolier across chest (angled cylinder with small sphere pouches)
+        const bandolierMat = makeMat(0x443322, 0.1, 0.7);
+        const bandolier = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.012, 0.012, CHEST_WIDTH * 1.1, 12),
+          bandolierMat,
+        );
+        bandolier.position.set(0, CHEST_HEIGHT * 0.55, CHEST_DEPTH * 0.4);
+        bandolier.rotation.z = 0.6;
+        bandolier.castShadow = true;
+        this._chest.add(bandolier);
+        // Pouches on bandolier
+        for (let bp = 0; bp < 4; bp++) {
+          const pouch = new THREE.Mesh(
+            new THREE.SphereGeometry(0.012, 8, 6),
+            bandolierMat,
+          );
+          pouch.position.set(
+            -0.06 + bp * 0.04,
+            CHEST_HEIGHT * (0.42 + bp * 0.08),
+            CHEST_DEPTH * 0.42,
+          );
+          pouch.scale.set(1, 0.8, 0.7);
+          pouch.castShadow = true;
+          this._chest.add(pouch);
+        }
         break;
       }
 
@@ -1243,7 +1765,7 @@ export class TekkenFighterRenderer {
       case "power": {
         // Battle axe on back – shaft + blade
         const axeShaft = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.015, 0.015, 0.8, 6),
+          new THREE.CylinderGeometry(0.015, 0.015, 0.8, 12),
           makeMat(0x553311, 0.1, 0.7),
         );
         axeShaft.position.set(0.05, CHEST_HEIGHT * 0.1, -CHEST_DEPTH * 0.5 - 0.05);
@@ -1307,7 +1829,7 @@ export class TekkenFighterRenderer {
         for (const clav of [this._leftClavicle, this._rightClavicle]) {
           for (let i = 0; i < 5; i++) {
             const tuft = new THREE.Mesh(
-              new THREE.SphereGeometry(0.03, 5, 4),
+              new THREE.SphereGeometry(0.03, 12, 8),
               furMantleMat,
             );
             tuft.position.set(
@@ -1323,7 +1845,7 @@ export class TekkenFighterRenderer {
         // Fur draping down back of neck
         for (let i = 0; i < 6; i++) {
           const furBack = new THREE.Mesh(
-            new THREE.SphereGeometry(0.025, 5, 4),
+            new THREE.SphereGeometry(0.025, 12, 8),
             furMantleMat,
           );
           furBack.position.set(
@@ -1351,13 +1873,91 @@ export class TekkenFighterRenderer {
 
         // Buckle emblem (smaller centered piece)
         const buckleEmblem = new THREE.Mesh(
-          new THREE.SphereGeometry(0.018, 6, 4),
+          new THREE.SphereGeometry(0.018, 12, 8),
           metalMat,
         );
         buckleEmblem.position.set(0, 0.01, LOWER_TORSO_WIDTH * 0.38 + 0.035);
         buckleEmblem.scale.set(1, 1, 0.4);
         buckleEmblem.castShadow = true;
         this._hips.add(buckleEmblem);
+
+        // Trophy skulls on belt (2-3 small spheres with dark eye holes using boxes)
+        const skullMat = makeMat(0xddddbb, 0.05, 0.5);
+        const eyeHoleMat = makeMat(0x111111, 0.0, 0.9);
+        for (let sk = 0; sk < 3; sk++) {
+          const skull = new THREE.Mesh(
+            new THREE.SphereGeometry(0.018, 12, 8),
+            skullMat,
+          );
+          skull.position.set(-0.08 + sk * 0.06, -0.04, LOWER_TORSO_WIDTH * 0.38 + 0.02);
+          skull.scale.set(0.8, 1, 0.7);
+          skull.castShadow = true;
+          this._hips.add(skull);
+          // Eye holes
+          for (const eSide of [-1, 1]) {
+            const eyeHole = new THREE.Mesh(
+              new THREE.BoxGeometry(0.005, 0.005, 0.005),
+              eyeHoleMat,
+            );
+            eyeHole.position.set(
+              -0.08 + sk * 0.06 + eSide * 0.006,
+              -0.035,
+              LOWER_TORSO_WIDTH * 0.38 + 0.033,
+            );
+            this._hips.add(eyeHole);
+          }
+        }
+
+        // War drum on back (large cylinder)
+        const drumMat = makeMat(0x664433, 0.1, 0.7);
+        const warDrum = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.08, 0.08, 0.1, 16),
+          drumMat,
+        );
+        warDrum.position.set(-0.06, CHEST_HEIGHT * 0.3, -CHEST_DEPTH * 0.5 - 0.08);
+        warDrum.rotation.x = Math.PI / 2;
+        warDrum.castShadow = true;
+        this._chest.add(warDrum);
+        // Drum skin (top face)
+        const drumSkin = new THREE.Mesh(
+          new THREE.CircleGeometry(0.078, 16),
+          makeMat(0xccbb99, 0.0, 0.7),
+        );
+        drumSkin.position.set(-0.06, CHEST_HEIGHT * 0.3, -CHEST_DEPTH * 0.5 - 0.03);
+        this._chest.add(drumSkin);
+
+        // Extra large gauntlets (cylinder overlays on hands)
+        for (const hand of [this._leftHand, this._rightHand]) {
+          const gauntlet = new THREE.Mesh(
+            new THREE.CylinderGeometry(HAND_LEN * 0.55, HAND_LEN * 0.5, HAND_LEN * 1.2, 16),
+            metalMat,
+          );
+          gauntlet.position.y = -HAND_LEN * 0.4;
+          gauntlet.castShadow = true;
+          hand.add(gauntlet);
+        }
+
+        // Battle standard pole on back (tall thin cylinder with small box flag)
+        const poleMat = makeMat(0x553311, 0.1, 0.7);
+        const standardPole = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.008, 0.008, 0.9, 8),
+          poleMat,
+        );
+        standardPole.position.set(0.08, CHEST_HEIGHT * 0.5 + 0.2, -CHEST_DEPTH * 0.5 - 0.04);
+        standardPole.castShadow = true;
+        this._chest.add(standardPole);
+        // Flag
+        const flagMat = new THREE.MeshStandardMaterial({
+          color: colors.accent, metalness: 0.0, roughness: 0.85,
+          side: THREE.DoubleSide,
+        });
+        const flag = new THREE.Mesh(
+          new THREE.BoxGeometry(0.12, 0.08, 0.003),
+          flagMat,
+        );
+        flag.position.set(0.08 + 0.07, CHEST_HEIGHT * 0.5 + 0.58, -CHEST_DEPTH * 0.5 - 0.04);
+        flag.castShadow = true;
+        this._chest.add(flag);
         break;
       }
     }

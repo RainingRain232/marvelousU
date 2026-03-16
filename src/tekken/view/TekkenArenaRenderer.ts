@@ -174,12 +174,50 @@ export class TekkenArenaRenderer {
 
     // Head
     const headColor = headColors[Math.floor(Math.random() * headColors.length)];
+    const headRadius = 0.07 + Math.random() * 0.02;
     const head = new THREE.Mesh(
-      new THREE.SphereGeometry(0.07 + Math.random() * 0.02, 6, 5),
+      new THREE.SphereGeometry(headRadius, 6, 5),
       new THREE.MeshStandardMaterial({ color: headColor, roughness: 0.7 }),
     );
     head.position.set(sx, sy + bodyH + 0.08, sz);
     this._spectatorGroup.add(head);
+
+    // Hat on some spectators
+    if (Math.random() < 0.3) {
+      const hatColors = [0x443322, 0x332211, 0x554433, 0x665544, 0x222222];
+      const hatColor = hatColors[Math.floor(Math.random() * hatColors.length)];
+      const hat = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.05, 0.08, 0.06 + Math.random() * 0.06, 6),
+        new THREE.MeshStandardMaterial({ color: hatColor, roughness: 0.8 }),
+      );
+      hat.position.set(sx, sy + bodyH + 0.08 + headRadius + 0.02, sz);
+      this._spectatorGroup.add(hat);
+      // Hat brim
+      const brim = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.1, 0.1, 0.01, 8),
+        new THREE.MeshStandardMaterial({ color: hatColor, roughness: 0.8 }),
+      );
+      brim.position.set(sx, sy + bodyH + 0.08 + headRadius, sz);
+      this._spectatorGroup.add(brim);
+    }
+
+    // Some spectators hold small banners/flags
+    if (Math.random() < 0.15) {
+      const flagColors = [0xaa2222, 0x2244aa, 0x228844, 0xaa8822, 0x662288];
+      const flagColor = flagColors[Math.floor(Math.random() * flagColors.length)];
+      const flagPole = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.005, 0.005, 0.4, 4),
+        new THREE.MeshStandardMaterial({ color: 0x654321, roughness: 0.7 }),
+      );
+      flagPole.position.set(sx + 0.1, sy + bodyH + 0.2, sz);
+      this._spectatorGroup.add(flagPole);
+      const flag = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.12, 0.08),
+        new THREE.MeshStandardMaterial({ color: flagColor, side: THREE.DoubleSide, roughness: 0.7 }),
+      );
+      flag.position.set(sx + 0.1 + 0.06, sy + bodyH + 0.35, sz);
+      this._spectatorGroup.add(flag);
+    }
   }
 
   /** Add a fire pit at position (ground level brazier) */
@@ -346,12 +384,12 @@ export class TekkenArenaRenderer {
     const floorW = TB.STAGE_HALF_WIDTH * 2 + 2;
     const floorD = TB.STAGE_HALF_DEPTH * 2 + 4;
 
-    // --- High-res procedural stone texture (1024x1024) ---
+    // --- High-res procedural stone texture (2048x2048) ---
     const canvas = document.createElement("canvas");
-    canvas.width = 1024;
-    canvas.height = 1024;
+    canvas.width = 2048;
+    canvas.height = 2048;
     const ctx = canvas.getContext("2d")!;
-    const S = 1024;
+    const S = 2048;
 
     // Base fill
     ctx.fillStyle = "#3a3530";
@@ -394,22 +432,38 @@ export class TekkenArenaRenderer {
           ctx.fillRect(gx, gy, 1 + Math.random() * 4, 1 + Math.random() * 2);
         }
 
-        // Cracks and weathering
-        if (Math.random() < 0.3) {
+        // Cracks and weathering (enhanced density)
+        if (Math.random() < 0.45) {
           ctx.strokeStyle = `rgba(20,15,10,${0.3 + Math.random() * 0.4})`;
-          ctx.lineWidth = 0.8 + Math.random() * 0.8;
+          ctx.lineWidth = 0.8 + Math.random() * 1.0;
           ctx.beginPath();
-          const cx = x + 8 + Math.random() * (tileSize - 16);
-          const cy = y + 8 + Math.random() * (tileSize - 16);
-          ctx.moveTo(cx, cy);
-          const segments = 2 + Math.floor(Math.random() * 4);
+          const crX = x + 8 + Math.random() * (tileSize - 16);
+          const crY = y + 8 + Math.random() * (tileSize - 16);
+          ctx.moveTo(crX, crY);
+          const segments = 3 + Math.floor(Math.random() * 6);
           for (let s = 0; s < segments; s++) {
             ctx.lineTo(
-              cx + (Math.random() - 0.5) * 30,
-              cy + (Math.random() - 0.5) * 30,
+              crX + (Math.random() - 0.5) * 40,
+              crY + (Math.random() - 0.5) * 40,
             );
           }
           ctx.stroke();
+
+          // Secondary branching cracks
+          if (Math.random() < 0.4) {
+            ctx.strokeStyle = `rgba(18,12,8,${0.2 + Math.random() * 0.3})`;
+            ctx.lineWidth = 0.5 + Math.random() * 0.6;
+            ctx.beginPath();
+            ctx.moveTo(crX, crY);
+            const branchSegs = 2 + Math.floor(Math.random() * 3);
+            for (let bs = 0; bs < branchSegs; bs++) {
+              ctx.lineTo(
+                crX + (Math.random() - 0.5) * 25,
+                crY + (Math.random() - 0.5) * 25,
+              );
+            }
+            ctx.stroke();
+          }
         }
 
         // Subtle scuff marks
@@ -516,6 +570,95 @@ export class TekkenArenaRenderer {
     ctx.beginPath();
     ctx.arc(cx, cy, 30, 0, Math.PI * 2);
     ctx.fill();
+
+    // --- Mosaic / inlay pattern (alternating dark/light stone wedges) ---
+    const mosaicOuterR = 160;
+    const mosaicInnerR = 80;
+    const wedgeCount = 24;
+    for (let w = 0; w < wedgeCount; w++) {
+      const startAngle = (w / wedgeCount) * Math.PI * 2;
+      const endAngle = ((w + 1) / wedgeCount) * Math.PI * 2;
+      ctx.fillStyle = w % 2 === 0 ? "rgba(70,60,45,0.6)" : "rgba(100,88,65,0.6)";
+      ctx.beginPath();
+      ctx.arc(cx, cy, mosaicOuterR, startAngle, endAngle);
+      ctx.arc(cx, cy, mosaicInnerR, endAngle, startAngle, true);
+      ctx.closePath();
+      ctx.fill();
+    }
+    // Gold rings around mosaic
+    ctx.strokeStyle = "#b89a4a";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(cx, cy, mosaicOuterR, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(cx, cy, mosaicInnerR, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // --- Blood stain splatters on texture ---
+    const bloodPositions = [
+      [cx - 300, cy + 200], [cx + 280, cy - 150], [cx + 50, cy + 350],
+      [cx - 200, cy - 300], [cx + 400, cy + 100],
+    ];
+    for (const [bpx, bpy] of bloodPositions) {
+      ctx.fillStyle = `rgba(80,10,10,${0.15 + Math.random() * 0.15})`;
+      ctx.beginPath();
+      ctx.ellipse(bpx, bpy, 20 + Math.random() * 30, 15 + Math.random() * 20,
+        Math.random() * Math.PI, 0, Math.PI * 2);
+      ctx.fill();
+      // Splatter droplets
+      for (let sd = 0; sd < 5; sd++) {
+        ctx.beginPath();
+        ctx.arc(
+          bpx + (Math.random() - 0.5) * 60,
+          bpy + (Math.random() - 0.5) * 60,
+          3 + Math.random() * 8, 0, Math.PI * 2,
+        );
+        ctx.fill();
+      }
+    }
+
+    // --- Worn / polished areas where fighters stand ---
+    const wornPositions = [[cx - 300, cy], [cx + 300, cy]];
+    for (const [wpx, wpy] of wornPositions) {
+      const wornGrad = ctx.createRadialGradient(wpx, wpy, 0, wpx, wpy, 100);
+      wornGrad.addColorStop(0, "rgba(85,78,65,0.35)");
+      wornGrad.addColorStop(0.6, "rgba(75,68,58,0.15)");
+      wornGrad.addColorStop(1, "rgba(60,54,48,0)");
+      ctx.fillStyle = wornGrad;
+      ctx.beginPath();
+      ctx.arc(wpx, wpy, 100, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // --- Drain grate details on texture corners ---
+    const drainCorners = [[100, 100], [S - 100, 100], [100, S - 100], [S - 100, S - 100]];
+    for (const [dx, dy] of drainCorners) {
+      // Dark circle
+      ctx.fillStyle = "rgba(15,12,10,0.7)";
+      ctx.beginPath();
+      ctx.arc(dx, dy, 40, 0, Math.PI * 2);
+      ctx.fill();
+      // Cross hatching
+      ctx.strokeStyle = "rgba(50,50,50,0.8)";
+      ctx.lineWidth = 3;
+      for (let ch = -2; ch <= 2; ch++) {
+        ctx.beginPath();
+        ctx.moveTo(dx - 35, dy + ch * 14);
+        ctx.lineTo(dx + 35, dy + ch * 14);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(dx + ch * 14, dy - 35);
+        ctx.lineTo(dx + ch * 14, dy + 35);
+        ctx.stroke();
+      }
+      // Rim
+      ctx.strokeStyle = "rgba(60,55,50,0.6)";
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(dx, dy, 40, 0, Math.PI * 2);
+      ctx.stroke();
+    }
 
     const texture = new THREE.CanvasTexture(canvas);
     texture.wrapS = THREE.RepeatWrapping;
@@ -638,6 +781,38 @@ export class TekkenArenaRenderer {
         capital.castShadow = true;
         this._props.add(capital);
 
+        // Capital ornamentation - scroll/volute shapes
+        for (let v = 0; v < 4; v++) {
+          const vAngle = (v / 4) * Math.PI * 2;
+          const volute = new THREE.Mesh(
+            new THREE.TorusGeometry(0.08, 0.015, 6, 8, Math.PI),
+            capitalMat,
+          );
+          volute.position.set(
+            xBase + Math.cos(vAngle) * 0.3,
+            4.2,
+            zPos + Math.sin(vAngle) * 0.3,
+          );
+          volute.rotation.y = vAngle;
+          volute.rotation.x = Math.PI / 4;
+          this._props.add(volute);
+        }
+
+        // Pillar base molding - stacked cylinders of decreasing radius
+        const baseMoldRadii = [0.38, 0.34, 0.32];
+        const baseMoldHeights = [0.08, 0.06, 0.05];
+        let baseMoldY = 0.0;
+        for (let bm = 0; bm < baseMoldRadii.length; bm++) {
+          const mold = new THREE.Mesh(
+            new THREE.CylinderGeometry(baseMoldRadii[bm], baseMoldRadii[bm] + 0.02, baseMoldHeights[bm], 12),
+            capitalMat,
+          );
+          mold.position.set(xBase, baseMoldY + baseMoldHeights[bm] / 2, zPos);
+          mold.castShadow = true;
+          this._props.add(mold);
+          baseMoldY += baseMoldHeights[bm];
+        }
+
         const base = new THREE.Mesh(
           new THREE.BoxGeometry(0.65, 0.2, 0.65),
           pillarMat,
@@ -645,6 +820,57 @@ export class TekkenArenaRenderer {
         base.position.set(xBase, 0.1, zPos);
         base.castShadow = true;
         this._props.add(base);
+
+        // Carved relief bands on pillar
+        for (let rb = 0; rb < 5; rb++) {
+          const reliefBand = new THREE.Mesh(
+            new THREE.BoxGeometry(0.06, 0.04, 0.06),
+            capitalMat,
+          );
+          const rbAngle = (rb / 5) * Math.PI * 2;
+          reliefBand.position.set(
+            xBase + Math.cos(rbAngle) * 0.26,
+            1.8 + rb * 0.5,
+            zPos + Math.sin(rbAngle) * 0.26,
+          );
+          reliefBand.rotation.y = rbAngle;
+          this._props.add(reliefBand);
+        }
+
+        // Gargoyle/lion head sculpture mounted on pillar (facing outward)
+        const gargoyleY = 3.2;
+        const gargoyleDir = side;
+        // Head (large sphere)
+        const lionHead = new THREE.Mesh(
+          new THREE.SphereGeometry(0.1, 8, 6),
+          new THREE.MeshStandardMaterial({ color: 0x5a5040, roughness: 0.7, metalness: 0.1 }),
+        );
+        lionHead.position.set(xBase + gargoyleDir * 0.35, gargoyleY, zPos);
+        this._props.add(lionHead);
+        // Eyes (2 small spheres)
+        for (const eyeOff of [-0.04, 0.04]) {
+          const eye = new THREE.Mesh(
+            new THREE.SphereGeometry(0.02, 5, 4),
+            new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.3 }),
+          );
+          eye.position.set(xBase + gargoyleDir * 0.44, gargoyleY + 0.03, zPos + eyeOff);
+          this._props.add(eye);
+        }
+        // Snout
+        const snout = new THREE.Mesh(
+          new THREE.SphereGeometry(0.05, 6, 4),
+          new THREE.MeshStandardMaterial({ color: 0x5a5040, roughness: 0.7, metalness: 0.1 }),
+        );
+        snout.position.set(xBase + gargoyleDir * 0.46, gargoyleY - 0.03, zPos);
+        this._props.add(snout);
+
+        // Torch sconce backplate
+        const backplate = new THREE.Mesh(
+          new THREE.BoxGeometry(0.02, 0.25, 0.2),
+          new THREE.MeshStandardMaterial({ color: 0x3a3a3a, roughness: 0.4, metalness: 0.7 }),
+        );
+        backplate.position.set(xBase + gargoyleDir * 0.26, 2.5, zPos);
+        this._props.add(backplate);
       }
 
       // Iron cage bars
@@ -652,6 +878,13 @@ export class TekkenArenaRenderer {
       const zEnd = floorD / 2 - 0.4;
       const barSpacing = 0.35;
       const barCount = Math.floor((zEnd - zStart) / barSpacing);
+
+      const rustMat = new THREE.MeshStandardMaterial({
+        color: 0x5a3520, roughness: 0.8, metalness: 0.3,
+      });
+      const spikeMat = new THREE.MeshStandardMaterial({
+        color: 0x555555, roughness: 0.3, metalness: 0.8,
+      });
 
       for (let i = 1; i < barCount; i++) {
         const bz = zStart + i * barSpacing;
@@ -663,7 +896,56 @@ export class TekkenArenaRenderer {
         bar.castShadow = true;
         this._props.add(bar);
         sideBars.push(bar);
+
+        // Spike top on each bar
+        const spike = new THREE.Mesh(
+          new THREE.ConeGeometry(0.025, 0.1, 6),
+          spikeMat,
+        );
+        spike.position.set(xBase, 3.85, bz);
+        this._props.add(spike);
+
+        // Rust/weathering on some bars
+        if (Math.random() < 0.4) {
+          const rustHeight = 0.3 + Math.random() * 0.5;
+          const rustY = 0.5 + Math.random() * 2.5;
+          const rustSleeve = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.02, 0.02, rustHeight, 6),
+            rustMat,
+          );
+          rustSleeve.position.set(xBase, rustY, bz);
+          this._props.add(rustSleeve);
+        }
+
+        // Decorative iron scrollwork between pairs of bars
+        if (i > 1 && i % 2 === 0) {
+          const scrollZ = bz - barSpacing / 2;
+          const scroll = new THREE.Mesh(
+            new THREE.TorusGeometry(0.06, 0.008, 6, 8, Math.PI),
+            barMat.clone(),
+          );
+          scroll.position.set(xBase, 1.2, scrollZ);
+          scroll.rotation.y = Math.PI / 2;
+          this._props.add(scroll);
+
+          const scroll2 = new THREE.Mesh(
+            new THREE.TorusGeometry(0.06, 0.008, 6, 8, Math.PI),
+            barMat.clone(),
+          );
+          scroll2.position.set(xBase, 2.6, scrollZ);
+          scroll2.rotation.y = Math.PI / 2;
+          scroll2.rotation.z = Math.PI;
+          this._props.add(scroll2);
+        }
       }
+
+      // Base plate under cage bars
+      const basePlate = new THREE.Mesh(
+        new THREE.BoxGeometry(0.08, 0.04, zEnd - zStart),
+        new THREE.MeshStandardMaterial({ color: 0x3a3a3a, roughness: 0.4, metalness: 0.7 }),
+      );
+      basePlate.position.set(xBase, 0.02, 0);
+      this._props.add(basePlate);
 
       for (const barY of [3.8, 2.0, 0.3]) {
         const crossBar = new THREE.Mesh(
@@ -719,13 +1001,119 @@ export class TekkenArenaRenderer {
       backRest.position.set(0, y + 0.3, z - 0.25);
       this._spectatorGroup.add(backRest);
 
-      // Spectators
-      const spacing = 0.55;
+      // Spectators (50% more density via tighter spacing)
+      const spacing = 0.37;
       const count = Math.floor(rowWidth / spacing);
       for (let i = 0; i < count; i++) {
         const sx = -rowWidth / 2 + spacing * 0.5 + i * spacing + (Math.random() - 0.5) * 0.12;
         this._addSpectatorFigure(sx, y + 0.1, z);
       }
+    }
+
+    // Wooden fence between spectator area and arena
+    const fenceZ = -2.6;
+    const fenceWidth = TB.STAGE_HALF_WIDTH * 2 + 3;
+    const fencePostSpacing = 1.2;
+    const fencePostCount = Math.floor(fenceWidth / fencePostSpacing) + 1;
+    for (let fp = 0; fp < fencePostCount; fp++) {
+      const fpx = -fenceWidth / 2 + fp * fencePostSpacing;
+      const post = new THREE.Mesh(
+        new THREE.BoxGeometry(0.06, 0.8, 0.06),
+        woodDarkMat,
+      );
+      post.position.set(fpx, 0.4, fenceZ);
+      this._spectatorGroup.add(post);
+    }
+    // Horizontal rails
+    for (const railY of [0.25, 0.6]) {
+      const rail2 = new THREE.Mesh(
+        new THREE.BoxGeometry(fenceWidth, 0.04, 0.04),
+        woodMat,
+      );
+      rail2.position.set(0, railY, fenceZ);
+      this._spectatorGroup.add(rail2);
+    }
+
+    // Food/drink stalls behind spectators
+    const stallMat = new THREE.MeshStandardMaterial({ color: 0x5a4025, roughness: 0.85 });
+    const awningColors = [0x882222, 0x886622, 0x224488];
+    for (let st = 0; st < 3; st++) {
+      const stallX = -3.5 + st * 3.5;
+      const stallZ = -8.0;
+      const stallY = 2.5;
+
+      // Stall body (box)
+      const stallBody = new THREE.Mesh(
+        new THREE.BoxGeometry(1.2, 1.0, 0.6),
+        stallMat,
+      );
+      stallBody.position.set(stallX, stallY + 0.5, stallZ);
+      this._spectatorGroup.add(stallBody);
+
+      // Counter top
+      const counter = new THREE.Mesh(
+        new THREE.BoxGeometry(1.4, 0.05, 0.8),
+        woodMat,
+      );
+      counter.position.set(stallX, stallY + 1.02, stallZ);
+      this._spectatorGroup.add(counter);
+
+      // Awning
+      const awning = new THREE.Mesh(
+        new THREE.PlaneGeometry(1.6, 0.8),
+        new THREE.MeshStandardMaterial({
+          color: awningColors[st], side: THREE.DoubleSide, roughness: 0.7,
+        }),
+      );
+      awning.position.set(stallX, stallY + 1.5, stallZ + 0.3);
+      awning.rotation.x = -0.3;
+      this._spectatorGroup.add(awning);
+
+      // Stall posts
+      for (const sp of [-0.55, 0.55]) {
+        const stallPost = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.03, 0.03, 1.8, 4),
+          woodDarkMat,
+        );
+        stallPost.position.set(stallX + sp, stallY + 0.9, stallZ + 0.35);
+        this._spectatorGroup.add(stallPost);
+      }
+    }
+
+    // Torches/lanterns in spectator area
+    const specTorchPositions: [number, number, number][] = [
+      [-3.5, 1.8, -4.0], [0, 1.8, -4.0], [3.5, 1.8, -4.0],
+      [-5, 2.2, -5.5], [5, 2.2, -5.5],
+    ];
+    for (const [ltx, lty, ltz] of specTorchPositions) {
+      // Lantern holder
+      const lanternHolder = new THREE.Mesh(
+        new THREE.BoxGeometry(0.04, 0.15, 0.04),
+        new THREE.MeshStandardMaterial({ color: 0x3a3a3a, roughness: 0.4, metalness: 0.7 }),
+      );
+      lanternHolder.position.set(ltx, lty, ltz);
+      this._spectatorGroup.add(lanternHolder);
+
+      // Lantern body
+      const lantern = new THREE.Mesh(
+        new THREE.BoxGeometry(0.08, 0.1, 0.08),
+        new THREE.MeshStandardMaterial({ color: 0x3a3a3a, roughness: 0.4, metalness: 0.7 }),
+      );
+      lantern.position.set(ltx, lty + 0.12, ltz);
+      this._spectatorGroup.add(lantern);
+
+      // Lantern glow
+      const lanternGlow = new THREE.Mesh(
+        new THREE.SphereGeometry(0.03, 5, 4),
+        new THREE.MeshStandardMaterial({
+          color: 0xffcc44, emissive: 0xffaa00, emissiveIntensity: 2.0,
+          transparent: true, opacity: 0.85,
+        }),
+      );
+      lanternGlow.position.set(ltx, lty + 0.12, ltz);
+      this._spectatorGroup.add(lanternGlow);
+
+      this._scene.addTorchLight(ltx, lty + 0.15, ltz);
     }
 
     // Noble's Box
@@ -840,21 +1228,50 @@ export class TekkenArenaRenderer {
 
   private _buildCourtyardTorches(): void {
     const torchPositions: [number, number, number][] = [
+      // Original positions (doubled with interleaved new positions)
+      [-TB.STAGE_HALF_WIDTH - 0.5, 2.5, 2.5],
       [-TB.STAGE_HALF_WIDTH - 0.5, 2.5, 1.5],
+      [-TB.STAGE_HALF_WIDTH - 0.5, 2.5, 0.5],
       [-TB.STAGE_HALF_WIDTH - 0.5, 2.5, -0.5],
+      [-TB.STAGE_HALF_WIDTH - 0.5, 2.5, -1.5],
       [-TB.STAGE_HALF_WIDTH - 0.5, 2.5, -2.5],
+      [-TB.STAGE_HALF_WIDTH - 0.5, 2.5, -3.5],
       [-TB.STAGE_HALF_WIDTH - 0.5, 2.5, -4.5],
+      [TB.STAGE_HALF_WIDTH + 0.5, 2.5, 2.5],
       [TB.STAGE_HALF_WIDTH + 0.5, 2.5, 1.5],
+      [TB.STAGE_HALF_WIDTH + 0.5, 2.5, 0.5],
       [TB.STAGE_HALF_WIDTH + 0.5, 2.5, -0.5],
+      [TB.STAGE_HALF_WIDTH + 0.5, 2.5, -1.5],
       [TB.STAGE_HALF_WIDTH + 0.5, 2.5, -2.5],
+      [TB.STAGE_HALF_WIDTH + 0.5, 2.5, -3.5],
       [TB.STAGE_HALF_WIDTH + 0.5, 2.5, -4.5],
       [0, 3.8, -7],
       [0, 3.8, -9.5],
+      [-2, 3.8, -8],
+      [2, 3.8, -8],
     ];
 
     for (const [tx, ty, tz] of torchPositions) {
       this._addWallTorch(tx, ty, tz);
     }
+
+    // Dramatic up-lighting at ground level
+    const upLight1 = new THREE.PointLight(0xff6633, 1.2, 8, 2);
+    upLight1.position.set(-TB.STAGE_HALF_WIDTH * 0.5, 0.1, 0);
+    this._scene.scene.add(upLight1);
+
+    const upLight2 = new THREE.PointLight(0xff6633, 1.2, 8, 2);
+    upLight2.position.set(TB.STAGE_HALF_WIDTH * 0.5, 0.1, 0);
+    this._scene.scene.add(upLight2);
+
+    // Colored rim lights for fighters (warm orange left, cool blue right)
+    const rimLightLeft = new THREE.PointLight(0xff8844, 0.6, 6, 2);
+    rimLightLeft.position.set(-TB.STAGE_HALF_WIDTH * 0.7, 1.5, 1.0);
+    this._scene.scene.add(rimLightLeft);
+
+    const rimLightRight = new THREE.PointLight(0x4488ff, 0.6, 6, 2);
+    rimLightRight.position.set(TB.STAGE_HALF_WIDTH * 0.7, 1.5, 1.0);
+    this._scene.scene.add(rimLightRight);
   }
 
   private _buildCourtyardChandelier(): void {
@@ -862,8 +1279,21 @@ export class TekkenArenaRenderer {
     const chanZ = -1.5;
     const ironMat = new THREE.MeshStandardMaterial({ color: 0x3a3a3a, roughness: 0.4, metalness: 0.75 });
 
+    // Hanging chain links (individual torus meshes forming a visible chain)
+    const chainLinkCount = 20;
+    for (let cl = 0; cl < chainLinkCount; cl++) {
+      const link = new THREE.Mesh(
+        new THREE.TorusGeometry(0.025, 0.006, 5, 6),
+        ironMat,
+      );
+      link.position.set(0, chanY + 0.15 * cl + 0.1, chanZ);
+      link.rotation.x = cl % 2 === 0 ? 0 : Math.PI / 2;
+      this._props.add(link);
+    }
+
+    // Keep the thin rod as structural support
     const chain = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.015, 0.015, 3.0, 4),
+      new THREE.CylinderGeometry(0.008, 0.008, 3.0, 4),
       ironMat,
     );
     chain.position.set(0, chanY + 1.5, chanZ);
@@ -907,25 +1337,76 @@ export class TekkenArenaRenderer {
         new THREE.CylinderGeometry(0.01, 0.01, 1.2, 4),
         ironMat,
       );
-      const sx = 0.6 * Math.cos(angle);
-      const sz = chanZ + 0.6 * Math.sin(angle);
-      supportChain.position.set(sx / 2, chanY + 0.55, (sz + chanZ) / 2);
+      const scx = 0.6 * Math.cos(angle);
+      const scz = chanZ + 0.6 * Math.sin(angle);
+      supportChain.position.set(scx / 2, chanY + 0.55, (scz + chanZ) / 2);
       supportChain.rotation.z = Math.atan2(0.6, 1.1) * Math.cos(angle);
       supportChain.rotation.x = Math.atan2(0.6, 1.1) * Math.sin(angle);
       this._props.add(supportChain);
     }
 
-    const candleCount = 10;
+    // Ornate iron filigree connecting ring to cross-bars
+    for (let fg = 0; fg < 8; fg++) {
+      const fgAngle = (fg / 8) * Math.PI * 2;
+      const filigree = new THREE.Mesh(
+        new THREE.TorusGeometry(0.06, 0.005, 5, 8, Math.PI),
+        ironMat,
+      );
+      filigree.position.set(
+        0.6 * Math.cos(fgAngle),
+        chanY - 0.04,
+        chanZ + 0.6 * Math.sin(fgAngle),
+      );
+      filigree.rotation.y = fgAngle;
+      this._props.add(filigree);
+    }
+
+    // Crystal pendants hanging from ring
+    for (let cp = 0; cp < 12; cp++) {
+      const cpAngle = (cp / 12) * Math.PI * 2;
+      const crystal = new THREE.Mesh(
+        new THREE.SphereGeometry(0.02, 6, 5),
+        new THREE.MeshStandardMaterial({
+          color: 0xaaddff,
+          emissive: 0x6699cc,
+          emissiveIntensity: 0.6,
+          transparent: true,
+          opacity: 0.7,
+          metalness: 0.1,
+          roughness: 0.2,
+        }),
+      );
+      crystal.position.set(
+        0.8 * Math.cos(cpAngle),
+        chanY - 0.12,
+        chanZ + 0.8 * Math.sin(cpAngle),
+      );
+      this._props.add(crystal);
+      // Thin wire holding crystal
+      const wire = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.002, 0.002, 0.1, 3),
+        ironMat,
+      );
+      wire.position.set(
+        0.8 * Math.cos(cpAngle),
+        chanY - 0.06,
+        chanZ + 0.8 * Math.sin(cpAngle),
+      );
+      this._props.add(wire);
+    }
+
+    // Double candle count
+    const candleCount = 20;
     for (let c = 0; c < candleCount; c++) {
-      const angle = (c / candleCount) * Math.PI * 2;
-      const cx = 0.8 * Math.cos(angle);
-      const cz = chanZ + 0.8 * Math.sin(angle);
+      const cAngle = (c / candleCount) * Math.PI * 2;
+      const candleX = 0.8 * Math.cos(cAngle);
+      const candleZ = chanZ + 0.8 * Math.sin(cAngle);
 
       const candle = new THREE.Mesh(
         new THREE.CylinderGeometry(0.015, 0.018, 0.15, 6),
         new THREE.MeshStandardMaterial({ color: 0xeeddcc, roughness: 0.9 }),
       );
-      candle.position.set(cx, chanY + 0.1, cz);
+      candle.position.set(candleX, chanY + 0.1, candleZ);
       this._props.add(candle);
 
       const candleFlame = new THREE.Mesh(
@@ -938,8 +1419,24 @@ export class TekkenArenaRenderer {
           opacity: 0.9,
         }),
       );
-      candleFlame.position.set(cx, chanY + 0.2, cz);
+      candleFlame.position.set(candleX, chanY + 0.2, candleZ);
       this._props.add(candleFlame);
+
+      // Candle drip wax
+      const dripCount = 1 + Math.floor(Math.random() * 3);
+      for (let dr = 0; dr < dripCount; dr++) {
+        const drip = new THREE.Mesh(
+          new THREE.ConeGeometry(0.006, 0.03 + Math.random() * 0.02, 4),
+          new THREE.MeshStandardMaterial({ color: 0xeeddcc, roughness: 0.9 }),
+        );
+        drip.position.set(
+          candleX + (Math.random() - 0.5) * 0.02,
+          chanY + 0.02 - dr * 0.015,
+          candleZ + (Math.random() - 0.5) * 0.02,
+        );
+        drip.rotation.x = Math.PI; // point downward
+        this._props.add(drip);
+      }
     }
 
     this._scene.addTorchLight(0, chanY - 0.2, chanZ);
@@ -973,6 +1470,54 @@ export class TekkenArenaRenderer {
       sCtx.fillRect(x, by - auroraH, 3, auroraH * 2);
     }
 
+    // Stars on the sky texture (varying brightness, 60 stars)
+    for (let st = 0; st < 60; st++) {
+      const stx = Math.random() * 512;
+      const sty = Math.random() * 160; // upper portion of sky
+      const brightness = 150 + Math.floor(Math.random() * 105);
+      const starSize = 0.5 + Math.random() * 1.5;
+      sCtx.fillStyle = `rgba(${brightness},${brightness},${Math.min(255, brightness + 20)},${0.4 + Math.random() * 0.6})`;
+      sCtx.beginPath();
+      sCtx.arc(stx, sty, starSize, 0, Math.PI * 2);
+      sCtx.fill();
+    }
+
+    // Clouds (semi-transparent grey blobs)
+    for (let cl = 0; cl < 8; cl++) {
+      const cloudX = Math.random() * 512;
+      const cloudY = 30 + Math.random() * 100;
+      const cloudW = 40 + Math.random() * 80;
+      const cloudH = 10 + Math.random() * 20;
+      const cloudAlpha = 0.04 + Math.random() * 0.06;
+      sCtx.fillStyle = `rgba(60,60,70,${cloudAlpha})`;
+      sCtx.beginPath();
+      sCtx.ellipse(cloudX, cloudY, cloudW, cloudH, 0, 0, Math.PI * 2);
+      sCtx.fill();
+      // Cloud detail blobs
+      for (let cb = 0; cb < 4; cb++) {
+        sCtx.beginPath();
+        sCtx.ellipse(
+          cloudX + (Math.random() - 0.5) * cloudW,
+          cloudY + (Math.random() - 0.5) * cloudH,
+          cloudW * 0.4, cloudH * 0.6, 0, 0, Math.PI * 2,
+        );
+        sCtx.fill();
+      }
+    }
+
+    // Distant mountain silhouettes along the horizon
+    sCtx.fillStyle = "rgba(8,8,15,0.9)";
+    sCtx.beginPath();
+    sCtx.moveTo(0, 256);
+    for (let mx = 0; mx <= 512; mx += 4) {
+      const mh = 220 - (Math.sin(mx * 0.025) * 15 + Math.sin(mx * 0.06) * 8 +
+        Math.sin(mx * 0.012) * 20 + Math.random() * 3);
+      sCtx.lineTo(mx, mh);
+    }
+    sCtx.lineTo(512, 256);
+    sCtx.closePath();
+    sCtx.fill();
+
     const skyTex = new THREE.CanvasTexture(skyCanvas);
     const skyGeo = new THREE.SphereGeometry(45, 24, 16);
     const skyMat = new THREE.MeshBasicMaterial({
@@ -982,21 +1527,53 @@ export class TekkenArenaRenderer {
     const sky = new THREE.Mesh(skyGeo, skyMat);
     this._scene.scene.add(sky);
 
-    // Moon
+    // Moon (larger with crater detail)
     const moonMat = new THREE.MeshStandardMaterial({
       color: 0xeeeedd,
       emissive: 0xccccaa,
       emissiveIntensity: 0.5,
     });
     const moon = new THREE.Mesh(
-      new THREE.SphereGeometry(1.5, 16, 12),
+      new THREE.SphereGeometry(2.5, 20, 16),
       moonMat,
     );
     moon.position.set(-15, 22, -25);
     this._scene.scene.add(moon);
 
+    // Moon craters (darker spots on surface)
+    const craterData = [
+      { x: 0.3, y: 0.5, z: 0.8, r: 0.35 },
+      { x: -0.6, y: 0.2, z: 0.7, r: 0.25 },
+      { x: 0.1, y: -0.4, z: 0.9, r: 0.2 },
+      { x: -0.3, y: 0.7, z: 0.6, r: 0.3 },
+      { x: 0.5, y: -0.2, z: 0.8, r: 0.15 },
+      { x: -0.7, y: -0.3, z: 0.6, r: 0.28 },
+      { x: 0.4, y: 0.1, z: 0.9, r: 0.18 },
+    ];
+    for (const cr of craterData) {
+      const len = Math.sqrt(cr.x * cr.x + cr.y * cr.y + cr.z * cr.z);
+      const crater = new THREE.Mesh(
+        new THREE.CircleGeometry(cr.r, 8),
+        new THREE.MeshStandardMaterial({
+          color: 0xbbbb99,
+          emissive: 0x999977,
+          emissiveIntensity: 0.3,
+          transparent: true,
+          opacity: 0.6,
+        }),
+      );
+      crater.position.set(
+        -15 + (cr.x / len) * 2.48,
+        22 + (cr.y / len) * 2.48,
+        -25 + (cr.z / len) * 2.48,
+      );
+      crater.lookAt(-15, 22, -25);
+      crater.rotateY(Math.PI);
+      this._scene.scene.add(crater);
+    }
+
     const moonGlow = new THREE.Mesh(
-      new THREE.SphereGeometry(2.5, 12, 8),
+      new THREE.SphereGeometry(3.5, 12, 8),
       new THREE.MeshBasicMaterial({
         color: 0xaaaaaa,
         transparent: true,
@@ -2391,6 +2968,190 @@ export class TekkenArenaRenderer {
         crestRim.rotation.y = side * -0.3;
         this._props.add(crestRim);
       }
+    }
+
+    // --- NEW STAGE PROPS ---
+
+    const ironMatProp = new THREE.MeshStandardMaterial({ color: 0x3a3a3a, roughness: 0.4, metalness: 0.7 });
+    const stonePropMat = new THREE.MeshStandardMaterial({ color: 0x5a4a3a, roughness: 0.7, metalness: 0.15 });
+    const woodPropMat = new THREE.MeshStandardMaterial({ color: 0x5a3a20, roughness: 0.85 });
+
+    // Trophy display on wall (small shelves with sphere trophies/skulls)
+    const trophyWallX = -TB.STAGE_HALF_WIDTH - 0.8;
+    const trophyWallZ = -3.0;
+    for (let ts = 0; ts < 3; ts++) {
+      const shelfY = 1.5 + ts * 0.8;
+      // Shelf
+      const shelf = new THREE.Mesh(
+        new THREE.BoxGeometry(0.6, 0.04, 0.2),
+        woodPropMat,
+      );
+      shelf.position.set(trophyWallX, shelfY, trophyWallZ + ts * 0.3);
+      this._props.add(shelf);
+
+      // Skull/trophy
+      const skull = new THREE.Mesh(
+        new THREE.SphereGeometry(0.06, 6, 5),
+        new THREE.MeshStandardMaterial({ color: 0xddd8c0, roughness: 0.6 }),
+      );
+      skull.position.set(trophyWallX - 0.1, shelfY + 0.08, trophyWallZ + ts * 0.3);
+      this._props.add(skull);
+
+      // Goblet/cup
+      const goblet = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.03, 0.02, 0.08, 6),
+        new THREE.MeshStandardMaterial({ color: 0xc4a855, roughness: 0.3, metalness: 0.6 }),
+      );
+      goblet.position.set(trophyWallX + 0.1, shelfY + 0.06, trophyWallZ + ts * 0.3);
+      this._props.add(goblet);
+    }
+
+    // Fallen debris/rubble at arena edges
+    for (let debris = 0; debris < 8; debris++) {
+      const debrisGroup = new THREE.Group();
+      const debrisX = (Math.random() > 0.5 ? 1 : -1) * (TB.STAGE_HALF_WIDTH * 0.8 + Math.random() * 0.5);
+      const debrisZ = (Math.random() - 0.5) * (TB.STAGE_HALF_DEPTH * 2);
+      for (let dc = 0; dc < 3 + Math.floor(Math.random() * 4); dc++) {
+        const chunk = new THREE.Mesh(
+          new THREE.BoxGeometry(
+            0.04 + Math.random() * 0.08,
+            0.03 + Math.random() * 0.06,
+            0.04 + Math.random() * 0.08,
+          ),
+          stonePropMat,
+        );
+        chunk.position.set(
+          (Math.random() - 0.5) * 0.2,
+          0.02 + Math.random() * 0.04,
+          (Math.random() - 0.5) * 0.2,
+        );
+        chunk.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
+        debrisGroup.add(chunk);
+      }
+      debrisGroup.position.set(debrisX, 0, debrisZ);
+      this._props.add(debrisGroup);
+    }
+
+    // Water feature/fountain at one end
+    const fountainX = TB.STAGE_HALF_WIDTH + 1.5;
+    const fountainZ = -5.5;
+    const blueMat = new THREE.MeshStandardMaterial({
+      color: 0x3355aa, roughness: 0.2, metalness: 0.1, transparent: true, opacity: 0.7,
+    });
+    // Base basin
+    const basin2 = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.4, 0.45, 0.2, 12),
+      stonePropMat,
+    );
+    basin2.position.set(fountainX, 0.1, fountainZ);
+    this._props.add(basin2);
+    // Pedestal
+    const pedestal = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.15, 0.2, 0.6, 8),
+      stonePropMat,
+    );
+    pedestal.position.set(fountainX, 0.5, fountainZ);
+    this._props.add(pedestal);
+    // Upper bowl
+    const upperBowl = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.25, 0.15, 0.15, 10),
+      stonePropMat,
+    );
+    upperBowl.position.set(fountainX, 0.88, fountainZ);
+    this._props.add(upperBowl);
+    // Water sphere on top
+    const waterTop = new THREE.Mesh(
+      new THREE.SphereGeometry(0.08, 8, 6),
+      blueMat,
+    );
+    waterTop.position.set(fountainX, 1.05, fountainZ);
+    this._props.add(waterTop);
+    // Water in basin
+    const waterBasin = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.38, 0.38, 0.04, 12),
+      blueMat,
+    );
+    waterBasin.position.set(fountainX, 0.18, fountainZ);
+    this._props.add(waterBasin);
+
+    // Hanging chains from ceiling at corners
+    const chainCorners: [number, number][] = [
+      [-TB.STAGE_HALF_WIDTH - 0.2, 2.0],
+      [TB.STAGE_HALF_WIDTH + 0.2, 2.0],
+      [-TB.STAGE_HALF_WIDTH - 0.2, -2.0],
+      [TB.STAGE_HALF_WIDTH + 0.2, -2.0],
+    ];
+    for (const [hcx, hcz] of chainCorners) {
+      const chainLength = 12;
+      for (let lk = 0; lk < chainLength; lk++) {
+        const link2 = new THREE.Mesh(
+          new THREE.TorusGeometry(0.02, 0.005, 5, 6),
+          ironMatProp,
+        );
+        link2.position.set(hcx, 5.5 - lk * 0.12, hcz);
+        link2.rotation.x = lk % 2 === 0 ? 0 : Math.PI / 2;
+        this._props.add(link2);
+      }
+    }
+
+    // Brazier/fire pit at 2 corners of the arena
+    const brazierPositions: [number, number][] = [
+      [-TB.STAGE_HALF_WIDTH + 0.5, TB.STAGE_HALF_DEPTH + 1.5],
+      [TB.STAGE_HALF_WIDTH - 0.5, TB.STAGE_HALF_DEPTH + 1.5],
+    ];
+    for (const [bpx, bpz] of brazierPositions) {
+      this._addFirePit(bpx, 0, bpz);
+    }
+
+    // Stone archway entrance on one side (front)
+    const archX = 0;
+    const archZ = TB.STAGE_HALF_DEPTH + 2.5;
+    // Left pillar
+    const archPillarL = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.2, 0.25, 3.5, 10),
+      stonePropMat,
+    );
+    archPillarL.position.set(archX - 1.0, 1.75, archZ);
+    archPillarL.castShadow = true;
+    this._props.add(archPillarL);
+    // Right pillar
+    const archPillarR = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.2, 0.25, 3.5, 10),
+      stonePropMat,
+    );
+    archPillarR.position.set(archX + 1.0, 1.75, archZ);
+    archPillarR.castShadow = true;
+    this._props.add(archPillarR);
+    // Arch top (curved section made of boxes forming an arch)
+    const archSegments = 10;
+    for (let as = 0; as <= archSegments; as++) {
+      const archAngle = (as / archSegments) * Math.PI;
+      const asx = archX + Math.cos(archAngle) * 1.0;
+      const asy = 3.5 + Math.sin(archAngle) * 0.6;
+      const block = new THREE.Mesh(
+        new THREE.BoxGeometry(0.25, 0.2, 0.4),
+        stonePropMat,
+      );
+      block.position.set(asx, asy, archZ);
+      block.rotation.z = -archAngle + Math.PI / 2;
+      this._props.add(block);
+    }
+    // Keystone
+    const keystone = new THREE.Mesh(
+      new THREE.BoxGeometry(0.2, 0.25, 0.45),
+      new THREE.MeshStandardMaterial({ color: 0x6a5a4a, roughness: 0.5, metalness: 0.2 }),
+    );
+    keystone.position.set(archX, 4.1, archZ);
+    this._props.add(keystone);
+
+    // Pillar bases for archway
+    for (const apx of [archX - 1.0, archX + 1.0]) {
+      const archBase = new THREE.Mesh(
+        new THREE.BoxGeometry(0.55, 0.2, 0.55),
+        stonePropMat,
+      );
+      archBase.position.set(apx, 0.1, archZ);
+      this._props.add(archBase);
     }
 
     // Volumetric light cones from chandelier and torches

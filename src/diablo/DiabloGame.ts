@@ -4300,6 +4300,98 @@ export class DiabloGame {
     `;
     lootFilterLabel.textContent = "Filter: Show All (Tab)";
     this._hud.appendChild(lootFilterLabel);
+
+    // === NEW: Animated torches flanking the skill bar ===
+    const torchPositions = [
+      { side: "left", xOffset: "-280px" },
+      { side: "right", xOffset: "280px" },
+    ];
+    for (const tp of torchPositions) {
+      const torchWrap = document.createElement("div");
+      torchWrap.style.cssText = `
+        position:absolute;bottom:40px;left:50%;transform:translateX(${tp.xOffset});
+        width:16px;height:40px;pointer-events:none;z-index:10;
+      `;
+      // Torch handle
+      const torchHandle = document.createElement("div");
+      torchHandle.style.cssText = `
+        position:absolute;bottom:0;left:50%;transform:translateX(-50%);
+        width:6px;height:24px;
+        background:linear-gradient(180deg, #6b4f0e, #4a3508, #6b4f0e);
+        border-radius:1px;
+        box-shadow:0 0 3px rgba(0,0,0,0.5);
+      `;
+      torchWrap.appendChild(torchHandle);
+      // Flame
+      const flame = document.createElement("div");
+      flame.style.cssText = `
+        position:absolute;bottom:20px;left:50%;transform:translateX(-50%);
+        width:12px;height:18px;
+        background:radial-gradient(ellipse at 50% 70%, #ffdd44, #ff8800, #ff4400, transparent);
+        border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;
+        animation:hud-torch-flicker 0.4s ease-in-out infinite alternate;
+        filter:blur(0.5px);
+      `;
+      torchWrap.appendChild(flame);
+      // Flame glow
+      const flameGlow = document.createElement("div");
+      flameGlow.style.cssText = `
+        position:absolute;bottom:18px;left:50%;transform:translateX(-50%);
+        width:8px;height:8px;border-radius:50%;
+        animation:hud-torch-glow 0.6s ease-in-out infinite alternate;
+        pointer-events:none;
+      `;
+      torchWrap.appendChild(flameGlow);
+      this._hud.appendChild(torchWrap);
+    }
+
+    // === NEW: Gothic frame border around entire HUD viewport ===
+    const gothicFrame = document.createElement("div");
+    gothicFrame.style.cssText = `
+      position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;
+      box-shadow:
+        inset 0 0 0 3px rgba(20,15,5,0.8),
+        inset 0 0 0 5px rgba(139,105,20,0.3),
+        inset 0 0 0 6px rgba(200,168,78,0.15),
+        inset 0 0 0 8px rgba(20,15,5,0.6),
+        inset 0 0 30px rgba(0,0,0,0.3);
+    `;
+    this._hud.appendChild(gothicFrame);
+
+    // Corner demon face ornaments (dark gradients shaped with border-radius)
+    const cornerOrnPositions = [
+      { top: "4px", left: "4px", rot: "0deg" },
+      { top: "4px", right: "4px", rot: "90deg" },
+      { bottom: "22px", left: "4px", rot: "270deg" },
+      { bottom: "22px", right: "4px", rot: "180deg" },
+    ];
+    for (const cp of cornerOrnPositions) {
+      const demon = document.createElement("div");
+      let dStyle = `position:absolute;width:28px;height:28px;pointer-events:none;z-index:1;
+        background:radial-gradient(circle at 50% 40%,
+          rgba(200,168,78,0.25), rgba(100,80,30,0.2) 40%, rgba(20,15,5,0.4) 70%, transparent);
+        border-radius:40% 40% 50% 50%;
+        box-shadow:0 0 6px rgba(200,168,78,0.1);
+        transform:rotate(${cp.rot});`;
+      if (cp.top) dStyle += `top:${cp.top};`;
+      if (cp.bottom) dStyle += `bottom:${cp.bottom};`;
+      if (cp.left) dStyle += `left:${cp.left};`;
+      if (cp.right) dStyle += `right:${cp.right};`;
+      demon.style.cssText = dStyle;
+      // Small face detail
+      demon.innerHTML = `<div style="position:absolute;top:30%;left:50%;transform:translateX(-50%);
+        font-size:10px;color:rgba(200,168,78,0.3);pointer-events:none;">\u2620</div>`;
+      this._hud.appendChild(demon);
+    }
+
+    // Thin gold pinstripe inside the stone border
+    const goldPinstripe = document.createElement("div");
+    goldPinstripe.style.cssText = `
+      position:absolute;top:6px;left:6px;right:6px;bottom:6px;pointer-events:none;z-index:0;
+      border:1px solid rgba(200,168,78,0.12);
+      border-radius:2px;
+    `;
+    this._hud.appendChild(goldPinstripe);
   }
 
   // ──────────────────────────────────────────────────────────────
@@ -4406,6 +4498,12 @@ export class DiabloGame {
     // XP bar
     const xpPct = p.xpToNext > 0 ? (p.xp / p.xpToNext) * 100 : 0;
     this._xpBar.style.width = Math.min(100, xpPct) + "%";
+    // Pulsing glow when near level up (>90% XP)
+    if (xpPct > 90) {
+      this._xpBar.style.animation = "hud-xp-pulse 1.2s ease-in-out infinite";
+    } else {
+      this._xpBar.style.animation = "none";
+    }
     if (this._xpLevelText) {
       this._xpLevelText.textContent = `Level ${p.level}  \u2014  ${Math.floor(xpPct)}%`;
     }
@@ -7488,15 +7586,31 @@ export class DiabloGame {
           align-items:center;justify-content:center;color:#fff;pointer-events:auto;
         ">
           <div style="
-            max-width:900px;width:92%;background:rgba(15,10,5,0.95);border:2px solid #5a4a2a;
+            max-width:920px;width:92%;position:relative;
+            background:linear-gradient(180deg,rgba(28,20,10,0.98),rgba(15,10,5,0.95));
+            border:2px solid #5a4a2a;
             border-radius:12px;padding:24px 30px;max-height:88vh;overflow-y:auto;
+            box-shadow:inset 0 0 40px rgba(0,0,0,0.3),0 0 20px rgba(0,0,0,0.5);
+            background-image:repeating-linear-gradient(0deg,transparent,transparent 20px,rgba(90,74,42,0.03) 20px,rgba(90,74,42,0.03) 21px);
           ">
-            <!-- Title -->
-            <div style="text-align:center;margin-bottom:16px;">
-              <div style="font-size:32px;color:#c8a84e;font-weight:bold;letter-spacing:2px;font-family:'Georgia',serif;">
-                ${vendor.icon} ${vendor.name}
+            <!-- Inner decorative border -->
+            <div style="position:absolute;inset:4px;border:1px solid #3a2a1a;border-radius:10px;pointer-events:none;"></div>
+
+            <!-- Hanging sign decoration -->
+            <div style="text-align:center;margin-bottom:4px;">
+              <div style="display:inline-block;position:relative;">
+                <div style="display:flex;justify-content:center;gap:120px;margin-bottom:-2px;">
+                  <div style="width:2px;height:12px;background:#5a4a2a;"></div>
+                  <div style="width:2px;height:12px;background:#5a4a2a;"></div>
+                </div>
+                <div style="display:inline-block;background:linear-gradient(180deg,rgba(60,45,20,0.9),rgba(40,28,12,0.9));border:2px solid #5a4a2a;border-radius:6px;padding:8px 24px;
+                  box-shadow:0 4px 12px rgba(0,0,0,0.4);">
+                  <div style="font-size:32px;color:#c8a84e;font-weight:bold;letter-spacing:2px;font-family:'Georgia',serif;">
+                    ${vendor.icon} ${vendor.name}
+                  </div>
+                </div>
               </div>
-              <div style="font-size:14px;color:#888;margin-top:4px;">${(VENDOR_DEFS.find(vd => vd.type === vendor.type) || { description: "" }).description}</div>
+              <div style="font-size:14px;color:#888;margin-top:6px;">${(VENDOR_DEFS.find(vd => vd.type === vendor.type) || { description: "" }).description}</div>
             </div>
 
             <!-- Dialogue box -->
@@ -7518,7 +7632,11 @@ export class DiabloGame {
             <div style="display:flex;gap:24px;align-items:flex-start;">
               <!-- Left: Vendor's Wares -->
               <div style="flex:1;min-width:0;">
-                <div style="color:#c8a84e;font-size:14px;font-weight:bold;margin-bottom:8px;text-align:center;">VENDOR'S WARES</div>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;justify-content:center;">
+                  <div style="width:40px;height:1px;background:linear-gradient(to right,transparent,#5a4a2a);"></div>
+                  <span style="color:#c8a84e;font-size:14px;font-weight:bold;">VENDOR'S WARES</span>
+                  <div style="width:40px;height:1px;background:linear-gradient(to left,transparent,#5a4a2a);"></div>
+                </div>
                 <div style="display:grid;grid-template-columns:repeat(4,120px);gap:6px;max-height:420px;overflow-y:auto;justify-content:center;">
                   ${waresHtml}
                 </div>
@@ -7527,7 +7645,11 @@ export class DiabloGame {
               ${vendor.type === VendorType.ALCHEMIST ? `
               <!-- Potions -->
               <div style="flex:1;min-width:0;">
-                <div style="color:#3a8a2a;font-size:14px;font-weight:bold;margin-bottom:8px;text-align:center;">POTIONS</div>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;justify-content:center;">
+                  <div style="width:40px;height:1px;background:linear-gradient(to right,transparent,#3a8a2a);"></div>
+                  <span style="color:#3a8a2a;font-size:14px;font-weight:bold;">POTIONS</span>
+                  <div style="width:40px;height:1px;background:linear-gradient(to left,transparent,#3a8a2a);"></div>
+                </div>
                 <div style="display:grid;grid-template-columns:repeat(3,120px);gap:6px;max-height:420px;overflow-y:auto;justify-content:center;">
                   ${potionWaresHtml}
                 </div>
@@ -7535,20 +7657,36 @@ export class DiabloGame {
 
               <!-- Right: Player's Items to Sell -->
               <div style="flex:0 0 auto;">
-                <div style="color:#c8a84e;font-size:14px;font-weight:bold;margin-bottom:8px;text-align:center;">YOUR ITEMS (click to sell)</div>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;justify-content:center;">
+                  <div style="width:40px;height:1px;background:linear-gradient(to right,transparent,#5a4a2a);"></div>
+                  <span style="color:#c8a84e;font-size:14px;font-weight:bold;">YOUR ITEMS (click to sell)</span>
+                  <div style="width:40px;height:1px;background:linear-gradient(to left,transparent,#5a4a2a);"></div>
+                </div>
                 <div style="display:grid;grid-template-columns:repeat(8,55px);grid-template-rows:repeat(5,55px);gap:3px;">
                   ${invHtml}
                 </div>
               </div>
             </div>
 
-            <!-- Bottom bar -->
-            <div style="margin-top:16px;display:flex;justify-content:center;align-items:center;gap:30px;">
-              <div style="font-size:18px;color:#ffd700;">\uD83E\uDE99 ${p.gold} gold</div>
+            <!-- Bottom bar with coin pile decoration -->
+            <div style="display:flex;align-items:center;gap:8px;margin:16px auto 0;justify-content:center;">
+              <div style="flex:1;height:1px;background:linear-gradient(to right,transparent,#5a4a2a);"></div>
+              <span style="color:#5a4a2a;font-size:8px;">\u25C6</span>
+              <div style="flex:1;height:1px;background:linear-gradient(to left,transparent,#5a4a2a);"></div>
+            </div>
+            <div style="margin-top:10px;display:flex;justify-content:center;align-items:center;gap:30px;">
+              <div style="display:flex;align-items:center;gap:6px;background:rgba(50,40,10,0.5);border:1px solid #5a4a2a;border-radius:6px;padding:8px 16px;position:relative;">
+                <span style="font-size:14px;position:absolute;left:-10px;top:-6px;opacity:0.4;">\uD83E\uDE99</span>
+                <span style="font-size:18px;">\uD83E\uDE99</span>
+                <span style="font-size:18px;color:#ffd700;font-weight:bold;">${p.gold} gold</span>
+                <span style="font-size:12px;position:absolute;right:-8px;bottom:-4px;opacity:0.3;">\uD83E\uDE99</span>
+              </div>
               <button id="vendor-close-btn" style="
                 padding:12px 40px;font-size:18px;letter-spacing:3px;font-weight:bold;
-                background:rgba(40,30,15,0.9);border:2px solid #5a4a2a;border-radius:8px;color:#c8a84e;
+                background:linear-gradient(180deg,rgba(50,40,20,0.95),rgba(30,22,10,0.95));
+                border:2px solid #5a4a2a;border-radius:8px;color:#c8a84e;
                 cursor:pointer;transition:all 0.2s;font-family:'Georgia',serif;pointer-events:auto;
+                text-shadow:0 1px 3px rgba(0,0,0,0.5);
               ">CLOSE</button>
             </div>
             <div id="vendor-status" style="margin-top:8px;text-align:center;color:#ff4444;font-size:14px;min-height:20px;"></div>
@@ -8453,12 +8591,19 @@ export class DiabloGame {
 
           nodesHtml += `
             <div class="talent-node" data-talent-id="${node.id}" style="
-              width:140px;background:rgba(15,10,5,0.9);border:2px solid ${borderColor};
+              width:148px;background:rgba(15,10,5,0.9);
+              border:2px solid ${borderColor};
               border-radius:8px;padding:10px;cursor:${canInvest ? "pointer" : "default"};
-              pointer-events:auto;opacity:${opacity};transition:border-color 0.2s;
+              pointer-events:auto;opacity:${opacity};transition:border-color 0.2s,box-shadow 0.3s;
+              position:relative;
+              ${isMaxed ? "box-shadow:0 0 10px rgba(255,215,0,0.2),inset 0 0 10px rgba(255,215,0,0.05);" : rank > 0 ? "box-shadow:0 0 8px rgba(90,138,42,0.2);" : ""}
             ">
+              ${isMaxed ? '<div style="position:absolute;top:3px;right:3px;color:#ffd700;font-size:8px;">\u2605</div>' : ""}
               <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-                <span style="font-size:20px;">${node.icon}</span>
+                <div style="position:relative;display:inline-block;">
+                  ${rank > 0 ? '<div style="position:absolute;inset:-3px;border-radius:50%;background:radial-gradient(circle,' + (isMaxed ? 'rgba(255,215,0,0.15)' : 'rgba(90,138,42,0.1)') + ',transparent 70%);"></div>' : ""}
+                  <span style="font-size:20px;position:relative;z-index:1;">${node.icon}</span>
+                </div>
                 <span style="color:#c8a84e;font-size:13px;font-weight:bold;">${node.name}</span>
               </div>
               <div style="font-size:11px;color:#aaa;margin-bottom:4px;">${node.description}</div>
@@ -8468,8 +8613,10 @@ export class DiabloGame {
         }
 
         branchesHtml += `
-          <div style="display:flex;flex-direction:column;gap:8px;align-items:center;">
-            <div style="color:#c8a84e;font-size:16px;font-weight:bold;letter-spacing:1px;border-bottom:1px solid #5a4a2a;padding-bottom:4px;width:100%;text-align:center;">${branchNames[b]}</div>
+          <div style="display:flex;flex-direction:column;gap:8px;align-items:center;
+            background:rgba(10,8,4,0.4);border:1px solid #3a2a1a;border-radius:8px;padding:12px 10px;">
+            <div style="color:#c8a84e;font-size:16px;font-weight:bold;letter-spacing:1px;padding-bottom:4px;width:100%;text-align:center;
+              border-bottom:1px solid #5a4a2a;text-shadow:0 0 8px rgba(200,168,78,0.2);">${branchNames[b]}</div>
             <div style="font-size:11px;color:#888;">${pointsInBranch} points invested</div>
             ${nodesHtml}
           </div>`;
@@ -8505,16 +8652,41 @@ export class DiabloGame {
       this._menuEl.innerHTML = `
         <div style="
           width:100%;height:100%;background:rgba(0,0,0,0.90);display:flex;flex-direction:column;
-          align-items:center;justify-content:center;color:#fff;pointer-events:auto;
+          align-items:center;justify-content:center;color:#fff;pointer-events:auto;position:relative;
         ">
-          <h2 style="color:#c8a84e;font-size:32px;letter-spacing:3px;margin-bottom:8px;font-family:'Georgia',serif;
-            text-shadow:0 0 15px rgba(200,168,78,0.4);">TALENT TREE</h2>
-          <div style="font-size:16px;color:#ffd700;margin-bottom:16px;">Available Points: ${p.talentPoints}</div>
-          <div style="display:flex;gap:24px;align-items:flex-start;">${branchesHtml}</div>
-          <div style="margin-top:16px;padding:10px;background:rgba(20,15,10,0.9);border:1px solid #5a4a2a;border-radius:8px;">
-            ${summaryHtml}
+          <!-- Stone tablet background -->
+          <div style="position:relative;padding:24px 30px;
+            background:linear-gradient(180deg,rgba(25,20,12,0.98),rgba(18,14,8,0.98));
+            border:2px solid #5a4a2a;border-radius:8px;
+            box-shadow:inset 0 0 50px rgba(0,0,0,0.3),0 0 20px rgba(0,0,0,0.5);
+            background-image:repeating-linear-gradient(90deg,transparent,transparent 30px,rgba(90,74,42,0.02) 30px,rgba(90,74,42,0.02) 31px);">
+            <!-- Inner border -->
+            <div style="position:absolute;inset:4px;border:1px solid #3a2a1a;border-radius:6px;pointer-events:none;"></div>
+
+            <!-- Title with flourishes -->
+            <div style="text-align:center;margin-bottom:4px;">
+              <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:4px;">
+                <div style="width:50px;height:1px;background:linear-gradient(to right,transparent,#c8a84e);"></div>
+                <span style="color:#c8a84e;font-size:10px;">\u2726</span>
+                <div style="width:50px;height:1px;background:linear-gradient(to left,transparent,#c8a84e);"></div>
+              </div>
+              <h2 style="color:#c8a84e;font-size:32px;letter-spacing:3px;margin:0 0 4px;font-family:'Georgia',serif;
+                text-shadow:0 0 15px rgba(200,168,78,0.4);">TALENT TREE</h2>
+              <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:8px;">
+                <div style="width:50px;height:1px;background:linear-gradient(to right,transparent,#c8a84e);"></div>
+                <span style="color:#c8a84e;font-size:10px;">\u2726</span>
+                <div style="width:50px;height:1px;background:linear-gradient(to left,transparent,#c8a84e);"></div>
+              </div>
+            </div>
+            <div style="font-size:16px;color:#ffd700;margin-bottom:16px;text-align:center;text-shadow:0 0 8px rgba(255,215,0,0.2);">Available Points: ${p.talentPoints}</div>
+            <div style="display:flex;gap:24px;align-items:flex-start;">${branchesHtml}</div>
+            <!-- Summary with ornate frame -->
+            <div style="margin-top:16px;padding:10px 16px;background:rgba(20,15,10,0.9);border:1px solid #5a4a2a;border-radius:8px;
+              box-shadow:inset 0 0 20px rgba(0,0,0,0.2);text-align:center;">
+              ${summaryHtml}
+            </div>
+            <div style="margin-top:12px;color:#888;font-size:12px;text-align:center;">Press T or Escape to close</div>
           </div>
-          <div style="margin-top:12px;color:#888;font-size:12px;">Press T or Escape to close</div>
         </div>`;
 
       // Wire up talent node clicks
