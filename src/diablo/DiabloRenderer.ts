@@ -87,6 +87,7 @@ export class DiabloRenderer {
   private _shakeOffsetX: number = 0;
   private _shakeOffsetY: number = 0;
   private _shakeOffsetZ: number = 0;
+  private _telegraphMeshes: Map<string, THREE.Mesh> = new Map();
 
   private _rngSeed: number = 0;
   private _currentWeather: Weather = Weather.NORMAL;
@@ -18210,6 +18211,21 @@ export class DiabloRenderer {
     this._shakeTimer = 0;
   }
 
+  /** Trigger a brief time-freeze effect for impactful hits */
+  triggerHitFreeze(_duration: number): void {
+    // This is tracked by the game logic; renderer just needs to know
+    // The freeze is handled by skipping update(dt) in the game loop
+  }
+
+  /** Apply slow-motion post-processing tint */
+  setSlowMotion(active: boolean): void {
+    if (active) {
+      this._renderer.toneMappingExposure = 0.7;
+    } else {
+      this._renderer.toneMappingExposure = 1.0;
+    }
+  }
+
   private _updateShake(dt: number): void {
     if (this._shakeDuration <= 0) {
       this._shakeOffsetX = 0;
@@ -18826,6 +18842,53 @@ export class DiabloRenderer {
 
     // -- Environment animation --
     this._animateEnvironment();
+
+    // Boss attack telegraphs
+    for (const enemy of state.enemies) {
+      if (!enemy.isBoss) continue;
+      if (enemy.state === 'DEAD' || enemy.state === 'DYING') continue;
+      const key = `telegraph_${enemy.id}`;
+
+      if (enemy.state === 'ATTACK' && enemy.attackTimer < 1.0) {
+        let tMesh = this._telegraphMeshes.get(key);
+        if (!tMesh) {
+          const geo = new THREE.RingGeometry(0.5, enemy.attackRange * 1.2, 32);
+          geo.rotateX(-Math.PI / 2);
+          const mat = new THREE.MeshBasicMaterial({
+            color: 0xff0000, transparent: true, opacity: 0.3, side: THREE.DoubleSide
+          });
+          tMesh = new THREE.Mesh(geo, mat);
+          this._scene.add(tMesh);
+          this._telegraphMeshes.set(key, tMesh);
+        }
+        tMesh.position.set(enemy.x, enemy.y + 0.1, enemy.z);
+        tMesh.visible = true;
+        const pulse = 0.3 + Math.sin(this._time * 8) * 0.15;
+        (tMesh.material as THREE.MeshBasicMaterial).opacity = pulse;
+      } else {
+        const tMesh = this._telegraphMeshes.get(key);
+        if (tMesh) tMesh.visible = false;
+      }
+    }
+
+    // Clean up old telegraphs
+    for (const [key, mesh] of this._telegraphMeshes) {
+      const id = key.replace('telegraph_', '');
+      const enemy = state.enemies.find(e => e.id === id);
+      if (!enemy || enemy.state === 'DEAD' || enemy.state === 'DYING') {
+        this._scene.remove(mesh);
+        mesh.geometry.dispose();
+        (mesh.material as THREE.Material).dispose();
+        this._telegraphMeshes.delete(key);
+      }
+    }
+
+    // Slow motion visual tint
+    if (state.slowMotionTimer > 0) {
+      this._renderer.toneMappingExposure = 0.6 + 0.4 * (1 - Math.min(state.slowMotionTimer, 1));
+    } else {
+      if (this._renderer.toneMappingExposure !== 1.0) this._renderer.toneMappingExposure = 1.0;
+    }
 
     // Render
     this._renderer.render(this._scene, this._camera);

@@ -9179,3 +9179,74 @@ export const SALVAGE_MATERIAL_YIELDS: Record<ItemRarity, number> = {
   [ItemRarity.MYTHIC]: 100,
   [ItemRarity.DIVINE]: 200,
 };
+
+// ---------------------------------------------------------------------------
+//  MAP MODIFIERS CONFIG
+// ---------------------------------------------------------------------------
+export const MAP_MODIFIER_DEFS: Record<string, {
+  name: string;
+  description: string;
+  icon: string;
+  color: string;
+  dropRateBonus: number; // percentage increase to drop rate
+  enemyHpMult: number;
+  enemyDamageMult: number;
+  enemySpeedMult: number;
+  xpBonus: number;
+  goldBonus: number;
+}> = {
+  ENEMY_SPEED: { name: 'Swift', description: 'Enemies are 40% faster', icon: '💨', color: '#44ccff', dropRateBonus: 15, enemyHpMult: 1, enemyDamageMult: 1, enemySpeedMult: 1.4, xpBonus: 15, goldBonus: 10 },
+  ENEMY_FIRE_RESIST: { name: 'Fireproof', description: 'Enemies have 50% fire resistance', icon: '🔥', color: '#ff4400', dropRateBonus: 10, enemyHpMult: 1, enemyDamageMult: 1, enemySpeedMult: 1, xpBonus: 10, goldBonus: 5 },
+  ENEMY_ICE_RESIST: { name: 'Frostbound', description: 'Enemies have 50% ice resistance', icon: '❄️', color: '#4488ff', dropRateBonus: 10, enemyHpMult: 1, enemyDamageMult: 1, enemySpeedMult: 1, xpBonus: 10, goldBonus: 5 },
+  ENEMY_LIGHTNING_RESIST: { name: 'Grounded', description: 'Enemies have 50% lightning resistance', icon: '⚡', color: '#ffdd00', dropRateBonus: 10, enemyHpMult: 1, enemyDamageMult: 1, enemySpeedMult: 1, xpBonus: 10, goldBonus: 5 },
+  ENEMY_THORNS: { name: 'Thorns', description: 'Enemies reflect 15% damage back', icon: '🌹', color: '#ff4488', dropRateBonus: 20, enemyHpMult: 1, enemyDamageMult: 1, enemySpeedMult: 1, xpBonus: 20, goldBonus: 15 },
+  ENEMY_REGEN: { name: 'Regenerating', description: 'Enemies regenerate 2% HP per second', icon: '💚', color: '#44ff44', dropRateBonus: 15, enemyHpMult: 1, enemyDamageMult: 1, enemySpeedMult: 1, xpBonus: 15, goldBonus: 10 },
+  EXTRA_ELITES: { name: 'Champions', description: '50% more elite/boss spawns', icon: '👑', color: '#ffd700', dropRateBonus: 25, enemyHpMult: 1, enemyDamageMult: 1, enemySpeedMult: 1, xpBonus: 25, goldBonus: 20 },
+  EXPLOSIVE_DEATH: { name: 'Volatile', description: 'Enemies explode on death for 30% max HP', icon: '💥', color: '#ff8800', dropRateBonus: 15, enemyHpMult: 1, enemyDamageMult: 1, enemySpeedMult: 1, xpBonus: 15, goldBonus: 10 },
+  DOUBLE_HP: { name: 'Fortified', description: 'Enemies have double HP', icon: '🛡️', color: '#888888', dropRateBonus: 30, enemyHpMult: 2, enemyDamageMult: 1, enemySpeedMult: 1, xpBonus: 30, goldBonus: 25 },
+  VAMPIRIC: { name: 'Vampiric', description: 'Enemies heal 5% of damage dealt', icon: '🧛', color: '#cc0000', dropRateBonus: 20, enemyHpMult: 1, enemyDamageMult: 1, enemySpeedMult: 1, xpBonus: 20, goldBonus: 15 },
+};
+
+// ---------------------------------------------------------------------------
+//  LEGENDARY SPECIAL EFFECTS
+// ---------------------------------------------------------------------------
+export const LEGENDARY_EFFECTS: Record<string, {
+  trigger: 'ON_HIT' | 'ON_KILL' | 'ON_CRIT' | 'ON_SKILL' | 'PASSIVE';
+  chance: number;
+  effect: string;
+  value: number;
+  description: string;
+}> = {
+  'Fireball Split': { trigger: 'ON_SKILL', chance: 1.0, effect: 'SPLIT_PROJECTILE', value: 3, description: 'Fireball splits into 3 on impact' },
+  'Frozen Nova on Kill': { trigger: 'ON_KILL', chance: 0.3, effect: 'ICE_NOVA', value: 50, description: 'Killing a frozen enemy triggers Ice Nova' },
+  'Chain Lightning Strike': { trigger: 'ON_CRIT', chance: 0.25, effect: 'CHAIN_LIGHTNING', value: 40, description: '25% chance on crit to unleash chain lightning' },
+  'Vampiric Touch': { trigger: 'ON_HIT', chance: 1.0, effect: 'LIFE_STEAL_BONUS', value: 5, description: 'Every hit heals 5% of damage dealt' },
+  'Berserker Rage': { trigger: 'ON_KILL', chance: 1.0, effect: 'DAMAGE_BUFF', value: 15, description: 'Gain 15% damage for 5s on kill (stacks 3x)' },
+  'Meteor Strike': { trigger: 'ON_CRIT', chance: 0.15, effect: 'METEOR', value: 200, description: '15% chance on crit to call down a meteor' },
+  'Soul Harvest': { trigger: 'ON_KILL', chance: 1.0, effect: 'MANA_RESTORE', value: 20, description: 'Restore 20 mana on kill' },
+  'Thundergod Wrath': { trigger: 'ON_HIT', chance: 0.1, effect: 'LIGHTNING_BURST', value: 80, description: '10% chance to unleash lightning burst on hit' },
+  'Phoenix Rebirth': { trigger: 'PASSIVE', chance: 1.0, effect: 'REVIVE', value: 50, description: 'Once per map: revive with 50% HP on death' },
+  'Whirlwind Mastery': { trigger: 'ON_SKILL', chance: 1.0, effect: 'EXTENDED_DURATION', value: 2, description: 'Whirlwind lasts 2s longer' },
+  'Every 5th Strike': { trigger: 'ON_HIT', chance: 1.0, effect: 'NTH_HIT_BONUS', value: 300, description: 'Every 5th hit deals 300% damage' },
+  'Frost Armor': { trigger: 'PASSIVE', chance: 1.0, effect: 'FREEZE_ATTACKER', value: 20, description: '20% chance to freeze attackers for 2s' },
+};
+
+// ---------------------------------------------------------------------------
+//  ELEMENTAL REACTIONS
+// ---------------------------------------------------------------------------
+export const ELEMENTAL_REACTIONS: { elements: [string, string]; result: string; damage: number; radius: number; duration: number; description: string }[] = [
+  { elements: ['BURNING', 'FROZEN'], result: 'STEAM_CLOUD', damage: 30, radius: 4, duration: 3, description: 'Steam cloud: blinds enemies, reducing accuracy' },
+  { elements: ['SHOCKED', 'FROZEN'], result: 'CHAIN_BURST', damage: 60, radius: 5, duration: 0, description: 'Chain burst: shatters frozen targets for AOE damage' },
+  { elements: ['POISONED', 'BURNING'], result: 'TOXIC_EXPLOSION', damage: 80, radius: 6, duration: 0, description: 'Toxic explosion: massive AOE poison+fire damage' },
+  { elements: ['FROZEN', 'PHYSICAL'], result: 'SHATTER', damage: 100, radius: 3, duration: 0, description: 'Shatter: bonus damage to frozen targets' },
+  { elements: ['SHOCKED', 'BURNING'], result: 'OVERLOAD', damage: 70, radius: 5, duration: 0, description: 'Overload: lightning+fire explosion' },
+  { elements: ['FROZEN', 'POISONED'], result: 'FROSTBITE', damage: 40, radius: 3, duration: 5, description: 'Frostbite: lingering cold poison DOT' },
+];
+
+// ---------------------------------------------------------------------------
+//  PARAGON LEVEL XP TABLE
+// ---------------------------------------------------------------------------
+export const PARAGON_XP_TABLE: number[] = [];
+for (let i = 0; i < 500; i++) {
+  PARAGON_XP_TABLE.push(Math.floor(1000 * Math.pow(1.08, i)));
+}

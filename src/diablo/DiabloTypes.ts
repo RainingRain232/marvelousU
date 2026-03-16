@@ -763,6 +763,36 @@ export enum Weather {
   STORMY = 'STORMY',
 }
 
+export enum MapModifier {
+  NONE = 'NONE',
+  ENEMY_SPEED = 'ENEMY_SPEED',        // Enemies 40% faster
+  ENEMY_FIRE_RESIST = 'ENEMY_FIRE_RESIST', // Enemies have 50% fire resist
+  ENEMY_ICE_RESIST = 'ENEMY_ICE_RESIST',
+  ENEMY_LIGHTNING_RESIST = 'ENEMY_LIGHTNING_RESIST',
+  ENEMY_THORNS = 'ENEMY_THORNS',      // Enemies reflect 15% damage
+  ENEMY_REGEN = 'ENEMY_REGEN',        // Enemies regen 2% HP/s
+  EXTRA_ELITES = 'EXTRA_ELITES',      // 50% more boss spawns
+  EXPLOSIVE_DEATH = 'EXPLOSIVE_DEATH', // Enemies explode on death
+  DOUBLE_HP = 'DOUBLE_HP',            // Enemies have 2x HP
+  VAMPIRIC = 'VAMPIRIC',             // Enemies heal 5% on hit
+}
+
+export enum ElementalReaction {
+  STEAM_CLOUD = 'STEAM_CLOUD',       // Fire + Ice
+  CHAIN_BURST = 'CHAIN_BURST',       // Lightning + Wet/Ice
+  TOXIC_EXPLOSION = 'TOXIC_EXPLOSION', // Poison + Fire
+  SHATTER = 'SHATTER',               // Physical + Frozen
+  OVERLOAD = 'OVERLOAD',             // Lightning + Fire
+  FROSTBITE = 'FROSTBITE',           // Ice + Poison
+}
+
+export enum LootFilterLevel {
+  SHOW_ALL = 'SHOW_ALL',
+  HIDE_COMMON = 'HIDE_COMMON',
+  RARE_PLUS = 'RARE_PLUS',
+  EPIC_PLUS = 'EPIC_PLUS',
+}
+
 // ── Talent & Potion interfaces ──────────────────────────────
 
 export interface TalentEffect {
@@ -970,6 +1000,24 @@ export interface DiabloPlayerState {
   lanternOn: boolean;
   skillBranches: Record<string, number>; // keys like "CLEAVE_b1" → 1 or 2 (0 = not chosen)
   unlockedSkills: SkillId[]; // bonus skills unlocked via leveling
+  // Dodge roll
+  dodgeCooldown: number;
+  dodgeTimer: number;
+  isDodging: boolean;
+  dodgeVx: number;
+  dodgeVz: number;
+  // Paragon
+  paragonLevel: number;
+  paragonXp: number;
+  paragonXpToNext: number;
+  paragonBonuses: Record<string, number>;
+  // Skill queue
+  queuedSkillIdx: number;
+  // Loot filter
+  lootFilter: LootFilterLevel;
+  // DPS tracking
+  damageDealtLog: { time: number; damage: number }[];
+  dpsDisplayVisible: boolean;
 }
 
 export interface DiabloEnemy {
@@ -1182,6 +1230,10 @@ export interface DiabloState {
   activeQuests: DiabloQuest[];
   completedQuestIds: string[];
   completedMaps: Record<string, boolean>;
+  activeMapModifiers: MapModifier[];
+  hitFreezeTimer: number;
+  slowMotionTimer: number;
+  slowMotionScale: number;
 }
 
 // ── Rarity color map (for UI rendering) ──────────────────────
@@ -1400,6 +1452,19 @@ export function createDefaultPlayer(cls: DiabloClass): DiabloPlayerState {
     lanternOn: false,
     skillBranches: {},
     unlockedSkills: [],
+    dodgeCooldown: 0,
+    dodgeTimer: 0,
+    isDodging: false,
+    dodgeVx: 0,
+    dodgeVz: 0,
+    paragonLevel: 0,
+    paragonXp: 0,
+    paragonXpToNext: 1000,
+    paragonBonuses: {},
+    queuedSkillIdx: -1,
+    lootFilter: LootFilterLevel.SHOW_ALL,
+    damageDealtLog: [],
+    dpsDisplayVisible: false,
   };
 }
 
@@ -1450,5 +1515,9 @@ export function createDefaultState(): DiabloState {
     activeQuests: [],
     completedQuestIds: [],
     completedMaps: {},
+    activeMapModifiers: [],
+    hitFreezeTimer: 0,
+    slowMotionTimer: 0,
+    slowMotionScale: 1,
   };
 }

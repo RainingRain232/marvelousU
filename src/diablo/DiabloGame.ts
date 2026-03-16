@@ -10,6 +10,7 @@ import {
   DiabloQuest, QuestType, CraftType,
   TalentEffectType,
   ParticleType, Weather,
+  MapModifier, LootFilterLevel,
   createDefaultPlayer, createDefaultState
 } from "./DiabloTypes";
 import {
@@ -29,6 +30,7 @@ import {
   SKILL_BRANCHES,
   UNLOCKABLE_SKILLS,
   MAP_SPECIFIC_ITEMS,
+  MAP_MODIFIER_DEFS, ELEMENTAL_REACTIONS, PARAGON_XP_TABLE,
 } from "./DiabloConfig";
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -439,6 +441,30 @@ export class DiabloGame {
   private _chestsOpened: number = 0;
   private _goldEarnedTotal: number = 0;
 
+  // Hit freeze & slow motion
+  private _hitFreezeTimer: number = 0;
+  private _slowMotionTimer: number = 0;
+  private _slowMotionScale: number = 1;
+
+  // DPS tracking
+  private _dpsDisplay!: HTMLDivElement;
+  private _combatLog: { time: number; damage: number }[] = [];
+  private _currentDps: number = 0;
+
+  // Skill queue
+  private _queuedSkillIdx: number = -1;
+
+  // Loot filter
+  private _lootFilterLevel: LootFilterLevel = LootFilterLevel.SHOW_ALL;
+
+  // Legendary hit counter (for "Every 5th Strike")
+  // @ts-ignore used by legendary effects
+  private _hitCounter: number = 0;
+
+  // Berserker stacks
+  // @ts-ignore used by legendary effects
+  private _berserkerStacks: { expiry: number }[] = [];
+
   // ──────────────────────────────────────────────────────────────
   //  BOOT
   // ──────────────────────────────────────────────────────────────
@@ -542,7 +568,21 @@ export class DiabloGame {
         this._phaseBeforeOverlay = DiabloPhase.PLAYING;
         this._state.phase = DiabloPhase.INVENTORY;
         this._showTalentTree();
-      } else if (e.code === "KeyQ") {
+      } else if (e.code === "Space") { e.preventDefault(); } // dodge handled in processInput
+      else if (e.code === "Tab") {
+        e.preventDefault();
+        const levels = [LootFilterLevel.SHOW_ALL, LootFilterLevel.HIDE_COMMON, LootFilterLevel.RARE_PLUS, LootFilterLevel.EPIC_PLUS];
+        const curIdx = levels.indexOf(this._lootFilterLevel);
+        this._lootFilterLevel = levels[(curIdx + 1) % levels.length];
+        this._state.player.lootFilter = this._lootFilterLevel;
+        const names = ['Show All', 'Hide Common', 'Rare+', 'Epic+'];
+        this._addFloatingText(this._state.player.x, this._state.player.y + 3, this._state.player.z, `Filter: ${names[(curIdx + 1) % levels.length]}`, '#ffdd00');
+      }
+      else if (e.code === "KeyH") {
+        // Toggle DPS display
+        this._state.player.dpsDisplayVisible = !this._state.player.dpsDisplayVisible;
+      }
+      else if (e.code === "KeyQ") {
         this._useQuickPotion(PotionType.HEALTH);
       } else if (e.code === "KeyE" && this._state.currentMap !== DiabloMapId.CAMELOT) {
         this._useQuickPotion(PotionType.MANA);
@@ -1216,6 +1256,32 @@ export class DiabloGame {
       ">${t.icon} ${t.label}</button>`;
     }
 
+    // Map modifier toggles
+    const modifiers = [
+      { id: 'ENEMY_SPEED', name: 'Swift', icon: '\uD83D\uDCA8', desc: 'Enemies 40% faster', color: '#44ccff', dropBonus: 15 },
+      { id: 'ENEMY_FIRE_RESIST', name: 'Fireproof', icon: '\uD83D\uDD25', desc: '50% fire resist', color: '#ff4400', dropBonus: 10 },
+      { id: 'ENEMY_ICE_RESIST', name: 'Frostbound', icon: '\u2744\uFE0F', desc: '50% ice resist', color: '#4488ff', dropBonus: 10 },
+      { id: 'ENEMY_LIGHTNING_RESIST', name: 'Grounded', icon: '\u26A1', desc: '50% lightning resist', color: '#ffdd00', dropBonus: 10 },
+      { id: 'ENEMY_THORNS', name: 'Thorns', icon: '\uD83C\uDF39', desc: '15% damage reflect', color: '#ff4488', dropBonus: 20 },
+      { id: 'ENEMY_REGEN', name: 'Regenerating', icon: '\uD83D\uDC9A', desc: 'Enemies regen', color: '#44ff44', dropBonus: 15 },
+      { id: 'EXTRA_ELITES', name: 'Champions', icon: '\uD83D\uDC51', desc: 'More bosses', color: '#ffd700', dropBonus: 25 },
+      { id: 'EXPLOSIVE_DEATH', name: 'Volatile', icon: '\uD83D\uDCA5', desc: 'Enemies explode', color: '#ff8800', dropBonus: 15 },
+      { id: 'DOUBLE_HP', name: 'Fortified', icon: '\uD83D\uDEE1\uFE0F', desc: 'Double enemy HP', color: '#888888', dropBonus: 30 },
+      { id: 'VAMPIRIC', name: 'Vampiric', icon: '\uD83E\uDDDB', desc: 'Enemies lifesteal', color: '#cc0000', dropBonus: 20 },
+    ];
+    let modHtml = '';
+    for (const mod of modifiers) {
+      modHtml += `<button class="mod-btn" data-mod="${mod.id}" style="
+        cursor:pointer;padding:6px 12px;font-size:13px;border-radius:6px;transition:0.2s;
+        background:rgba(30,20,10,0.7);border:2px solid #3a3a2a;color:#888;
+        font-family:'Georgia',serif;display:flex;align-items:center;gap:6px;
+      " title="${mod.desc} (+${mod.dropBonus}% drop rate)">
+        <span style="font-size:18px;">${mod.icon}</span>
+        <span>${mod.name}</span>
+        <span style="font-size:10px;color:#4a4;margin-left:4px;">+${mod.dropBonus}%\uD83C\uDF81</span>
+      </button>`;
+    }
+
     this._menuEl.innerHTML = `
       <div style="
         width:100%;height:100%;background:rgba(0,0,0,0.92);display:flex;flex-direction:column;
@@ -1230,6 +1296,11 @@ export class DiabloGame {
           ${DIFFICULTY_CONFIGS[this._state.difficulty].icon} ${DIFFICULTY_CONFIGS[this._state.difficulty].label} Difficulty
         </div>
         <div style="display:flex;gap:8px;margin-bottom:20px;">${todHtml}</div>
+        <div style="margin-bottom:12px;text-align:center;">
+          <div style="color:#c8a84e;font-size:14px;letter-spacing:2px;margin-bottom:8px;">MAP MODIFIERS (increase drop rate)</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:900px;">${modHtml}</div>
+          <div id="total-drop-bonus" style="color:#4a4;font-size:13px;margin-top:6px;">Total drop rate bonus: +0%</div>
+        </div>
         <div style="display:flex;gap:20px;flex-wrap:wrap;justify-content:center;max-width:95vw;overflow-y:auto;max-height:60vh;padding:10px;">${cardsHtml}</div>
       </div>`;
 
@@ -1248,6 +1319,38 @@ export class DiabloGame {
       });
     });
 
+    // Wire up map modifier buttons
+    const activeModifiers: Set<string> = new Set();
+    const modBtns = this._menuEl.querySelectorAll(".mod-btn") as NodeListOf<HTMLButtonElement>;
+    const dropBonusLabel = this._menuEl.querySelector("#total-drop-bonus") as HTMLDivElement;
+    modBtns.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const modId = btn.getAttribute("data-mod")!;
+        if (activeModifiers.has(modId)) {
+          activeModifiers.delete(modId);
+          btn.style.background = "rgba(30,20,10,0.7)";
+          btn.style.borderColor = "#3a3a2a";
+          btn.style.color = "#888";
+        } else {
+          activeModifiers.add(modId);
+          const mod = modifiers.find(m => m.id === modId)!;
+          btn.style.background = "rgba(60,50,20,0.9)";
+          btn.style.borderColor = mod.color;
+          btn.style.color = mod.color;
+        }
+        // Update total drop bonus display
+        let totalBonus = 0;
+        for (const id of activeModifiers) {
+          const m = modifiers.find(mod => mod.id === id);
+          if (m) totalBonus += m.dropBonus;
+        }
+        if (dropBonusLabel) {
+          dropBonusLabel.textContent = `Total drop rate bonus: +${totalBonus}%`;
+          dropBonusLabel.style.color = totalBonus > 0 ? '#44ff44' : '#4a4';
+        }
+      });
+    });
+
     const cards = this._menuEl.querySelectorAll(".diablo-map-card") as NodeListOf<HTMLDivElement>;
     cards.forEach((card) => {
       card.addEventListener("mouseenter", () => {
@@ -1260,6 +1363,7 @@ export class DiabloGame {
       });
       card.addEventListener("click", () => {
         const mapId = card.getAttribute("data-map") as DiabloMapId;
+        this._state.activeMapModifiers = [...activeModifiers] as MapModifier[];
         this._startMap(mapId);
       });
     });
@@ -1286,6 +1390,9 @@ export class DiabloGame {
 
     const weathers = [Weather.NORMAL, Weather.FOGGY, Weather.CLEAR, Weather.STORMY];
     this._state.weather = weathers[Math.floor(Math.random() * weathers.length)];
+
+    // Apply map modifier speed multiplier to spawned enemies
+    // (modifiers are already set from map select, stored in this._state.activeMapModifiers)
 
     const mapCfg = MAP_CONFIGS[mapId];
     const gridW = mapCfg.width;
@@ -1673,6 +1780,29 @@ export class DiabloGame {
       }
     }
 
+    // Item comparison with currently equipped
+    let comparisonLines = "";
+    const equipKey = resolveEquipKey(item.slot as string);
+    if (equipKey) {
+      const equipped = this._state.player.equipment[equipKey];
+      if (equipped && equipped.id !== item.id) {
+        comparisonLines += `<div style="border-top:1px solid rgba(90,74,42,0.3);margin:6px 0;padding-top:6px;">`;
+        comparisonLines += `<div style="color:#c8a84e;font-size:11px;font-weight:bold;margin-bottom:4px;">vs. ${equipped.name}</div>`;
+        const eqStats = equipped.stats as any;
+        for (const k of Object.keys(statLabels)) {
+          const newVal = (stats[k] || 0) as number;
+          const oldVal = (eqStats[k] || 0) as number;
+          const diff = newVal - oldVal;
+          if (diff !== 0) {
+            const clr = diff > 0 ? "#44ff44" : "#ff4444";
+            const arrow = diff > 0 ? "\u25B2" : "\u25BC";
+            comparisonLines += `<div style="color:${clr};font-size:11px;padding:1px 0;">${arrow} ${diff > 0 ? '+' : ''}${diff} ${statLabels[k] || k}</div>`;
+          }
+        }
+        comparisonLines += `</div>`;
+      }
+    }
+
     // Lantern light properties
     let lanternLines = "";
     if (item.type === "LANTERN") {
@@ -1721,6 +1851,7 @@ export class DiabloGame {
         <div style="height:1px;background:linear-gradient(to right,transparent,#5a4a2a60,transparent);margin:4px 0 6px;"></div>
         <!-- Stats -->
         ${statsLines}
+        ${comparisonLines}
         ${lanternLines}
         ${legendaryLine}
         ${setLine}
@@ -3565,6 +3696,26 @@ export class DiabloGame {
     `;
     this._viewModeLabel.textContent = "";
     this._hud.appendChild(this._viewModeLabel);
+
+    // DPS display
+    this._dpsDisplay = document.createElement("div");
+    this._dpsDisplay.style.cssText = `
+      position:absolute;bottom:140px;right:20px;background:rgba(0,0,0,0.7);
+      border:1px solid #5a4a2a;border-radius:6px;padding:8px 12px;display:none;
+      font-family:'Georgia',serif;color:#c8a84e;font-size:13px;min-width:120px;
+    `;
+    this._dpsDisplay.innerHTML = `<div style="font-size:10px;color:#888;margin-bottom:2px;">DPS METER</div><div id="dps-value">0</div>`;
+    this._hud.appendChild(this._dpsDisplay);
+
+    // Loot filter label
+    const lootFilterLabel = document.createElement("div");
+    lootFilterLabel.id = "loot-filter-label";
+    lootFilterLabel.style.cssText = `
+      position:absolute;bottom:110px;right:20px;color:#ffdd00;font-size:11px;
+      font-family:'Georgia',serif;opacity:0.7;
+    `;
+    lootFilterLabel.textContent = "Filter: Show All (Tab)";
+    this._hud.appendChild(lootFilterLabel);
   }
 
   // ──────────────────────────────────────────────────────────────
@@ -3572,6 +3723,12 @@ export class DiabloGame {
   // ──────────────────────────────────────────────────────────────
   private _updateHUD(): void {
     const p = this._state.player;
+
+    // DPS calculation
+    const now = performance.now();
+    this._combatLog = this._combatLog.filter(e => now - e.time < 5000);
+    const totalDmg = this._combatLog.reduce((s, e) => s + e.damage, 0);
+    this._currentDps = this._combatLog.length > 0 ? totalDmg / 5 : 0;
 
     // FPS crosshair + view mode label
     if (this._fpsCrosshair) this._fpsCrosshair.style.display = this._firstPerson ? "block" : "none";
@@ -3759,6 +3916,22 @@ export class DiabloGame {
     } else {
       this._chestHint.style.display = "none";
     }
+
+    // DPS meter update
+    if (this._state.player.dpsDisplayVisible && this._dpsDisplay) {
+      this._dpsDisplay.style.display = "block";
+      const dpsVal = this._dpsDisplay.querySelector("#dps-value");
+      if (dpsVal) dpsVal.textContent = `${Math.round(this._currentDps).toLocaleString()} DPS`;
+    } else if (this._dpsDisplay) {
+      this._dpsDisplay.style.display = "none";
+    }
+
+    // Loot filter label update
+    const filterLabel = this._hud.querySelector("#loot-filter-label") as HTMLDivElement;
+    if (filterLabel) {
+      const names: Record<string, string> = { SHOW_ALL: 'Show All', HIDE_COMMON: 'Hide Common', RARE_PLUS: 'Rare+', EPIC_PLUS: 'Epic+' };
+      filterLabel.textContent = `Filter: ${names[this._lootFilterLevel] || 'Show All'} (Tab)`;
+    }
   }
 
   // ──────────────────────────────────────────────────────────────
@@ -3766,24 +3939,35 @@ export class DiabloGame {
   // ──────────────────────────────────────────────────────────────
   private _gameLoop = (ts: number): void => {
     const dt = Math.min((ts - this._lastTime) / 1000, 0.1);
+    // Hit freeze: skip simulation frames
+    if (this._hitFreezeTimer > 0) {
+      this._hitFreezeTimer -= dt;
+      this._renderer.update(this._state, 0);
+      this._rafId = requestAnimationFrame(this._gameLoop);
+      return;
+    }
+    // Slow motion scaling
+    const timeScale = this._slowMotionTimer > 0 ? this._slowMotionScale : 1;
+    if (this._slowMotionTimer > 0) this._slowMotionTimer -= dt;
+    const scaledDt = dt * timeScale;
     this._lastTime = ts;
 
     if (this._state.phase === DiabloPhase.PLAYING) {
       if (this._isDead) {
-        this._updateDeathRespawn(dt);
+        this._updateDeathRespawn(scaledDt);
       } else {
-        this._processInput(dt);
-        this._updatePlayer(dt);
-        this._updateEnemies(dt);
-        this._updateBossAbilities(dt);
-        this._updateCombat(dt);
-        this._updateProjectiles(dt);
-        this._updateAOE(dt);
-        this._updateLoot(dt);
-        this._updateSpawning(dt);
-        this._updateStatusEffects(dt);
-        this._updateFloatingText(dt);
-        this._updateTownfolk(dt);
+        this._processInput(scaledDt);
+        this._updatePlayer(scaledDt);
+        this._updateEnemies(scaledDt);
+        this._updateBossAbilities(scaledDt);
+        this._updateCombat(scaledDt);
+        this._updateProjectiles(scaledDt);
+        this._updateAOE(scaledDt);
+        this._updateLoot(scaledDt);
+        this._updateSpawning(scaledDt);
+        this._updateStatusEffects(scaledDt);
+        this._updateFloatingText(scaledDt);
+        this._updateTownfolk(scaledDt);
         this._checkMapClear();
         this._revealAroundPlayer(this._state.player.x, this._state.player.z);
 
@@ -3886,6 +4070,26 @@ export class DiabloGame {
     this._state.camera.targetZ = p.z;
     this._state.camera.x += (p.x + Math.sin(this._state.camera.angle) * this._state.camera.distance - this._state.camera.x) * 3 * dt;
     this._state.camera.z += (p.z + Math.cos(this._state.camera.angle) * this._state.camera.distance - this._state.camera.z) * 3 * dt;
+
+    // Dodge roll (spacebar)
+    if (this._keys.has("Space") && p.dodgeCooldown <= 0 && !p.isDodging) {
+      p.isDodging = true;
+      p.dodgeTimer = 0.3; // 300ms roll duration
+      p.dodgeCooldown = 1.5; // 1.5s cooldown
+      p.invulnTimer = 0.3; // i-frames during roll
+      // Roll in movement direction or facing direction
+      let dx = 0, dz = 0;
+      if (this._keys.has("KeyW") || this._keys.has("ArrowUp")) dz -= 1;
+      if (this._keys.has("KeyS") || this._keys.has("ArrowDown")) dz += 1;
+      if (this._keys.has("KeyA") || this._keys.has("ArrowLeft")) dx -= 1;
+      if (this._keys.has("KeyD") || this._keys.has("ArrowRight")) dx += 1;
+      const len = Math.sqrt(dx * dx + dz * dz);
+      if (len > 0) { dx /= len; dz /= len; }
+      else { dx = Math.sin(p.angle); dz = Math.cos(p.angle); }
+      p.dodgeVx = dx * p.moveSpeed * 3; // 3x speed during roll
+      p.dodgeVz = dz * p.moveSpeed * 3;
+      this._renderer.spawnParticles(ParticleType.DUST, p.x, p.y, p.z, 8, this._state.particles);
+    }
   }
 
   // ──────────────────────────────────────────────────────────────
@@ -3893,6 +4097,27 @@ export class DiabloGame {
   // ──────────────────────────────────────────────────────────────
   private _updatePlayer(dt: number): void {
     const p = this._state.player;
+
+    // Dodge roll movement
+    if (p.dodgeCooldown > 0) p.dodgeCooldown -= dt;
+    if (p.isDodging) {
+      p.dodgeTimer -= dt;
+      p.x += p.dodgeVx * dt;
+      p.z += p.dodgeVz * dt;
+      if (p.dodgeTimer <= 0) {
+        p.isDodging = false;
+        p.dodgeVx = 0;
+        p.dodgeVz = 0;
+      }
+      return; // Skip other updates during dodge
+    }
+
+    // Process queued skill
+    if (this._queuedSkillIdx >= 0) {
+      const qIdx = this._queuedSkillIdx;
+      this._queuedSkillIdx = -1;
+      this._activateSkill(qIdx);
+    }
 
     // Mana regen
     const manaRegenBase = 1.0 + p.intelligence * 0.05;
@@ -3987,6 +4212,23 @@ export class DiabloGame {
           const def = SKILL_DEFS[entry.skillId];
           this._addFloatingText(p.x, p.y + 4, p.z, `NEW SKILL: ${def.name}!`, "#44ffff");
         }
+      }
+    }
+
+    // Paragon XP (after max normal level or always accumulate)
+    if (p.level >= 100) {
+      p.paragonXp += Math.floor(p.xp);
+      p.xp = 0;
+      while (p.paragonXp >= p.paragonXpToNext) {
+        p.paragonXp -= p.paragonXpToNext;
+        p.paragonLevel++;
+        p.paragonXpToNext = PARAGON_XP_TABLE[Math.min(p.paragonLevel, PARAGON_XP_TABLE.length - 1)];
+        // Small stat bonus per paragon level
+        p.paragonBonuses['bonusDamage'] = (p.paragonBonuses['bonusDamage'] || 0) + 1;
+        p.paragonBonuses['bonusHp'] = (p.paragonBonuses['bonusHp'] || 0) + 5;
+        p.paragonBonuses['bonusMana'] = (p.paragonBonuses['bonusMana'] || 0) + 2;
+        this._addFloatingText(p.x, p.y + 3, p.z, `PARAGON ${p.paragonLevel}!`, '#ffd700');
+        this._renderer.spawnParticles(ParticleType.LEVEL_UP, p.x, p.y + 1, p.z, 30, this._state.particles);
       }
     }
 
@@ -4217,6 +4459,12 @@ export class DiabloGame {
         }
       }
 
+      // Map modifier: Enemy regen
+      if (this._state.activeMapModifiers.includes(MapModifier.ENEMY_REGEN)) {
+        if (enemy.hp < enemy.maxHp && enemy.state !== EnemyState.DYING && enemy.state !== EnemyState.DEAD) {
+          enemy.hp = Math.min(enemy.maxHp, enemy.hp + enemy.maxHp * 0.02 * dt);
+        }
+      }
       // Keep enemies on terrain
       enemy.y = getTerrainHeight(enemy.x, enemy.z);
     }
@@ -4293,10 +4541,20 @@ export class DiabloGame {
 
     target.hp -= finalDamage;
 
+    // Map modifier: Thorns
+    if (this._state.activeMapModifiers.includes(MapModifier.ENEMY_THORNS)) {
+      const thornsDmg = finalDamage * 0.15;
+      p.hp -= thornsDmg;
+      this._addFloatingText(p.x, p.y + 2, p.z, `${Math.round(thornsDmg)} thorns`, '#ff4488');
+    }
+
+    this._combatLog.push({ time: performance.now(), damage: finalDamage });
+
     // Floating text
     if (isCrit) {
       this._addFloatingText(target.x, target.y + 2.5, target.z, `CRIT! ${Math.round(finalDamage)}`, "#ff4444");
       this._renderer.shakeCamera(0.15, 0.2);
+      this._hitFreezeTimer = 0.04; // 40ms freeze frame on crit
     } else {
       this._addFloatingText(target.x, target.y + 2, target.z, `${Math.round(finalDamage)}`, "#ffff44");
     }
@@ -4322,6 +4580,11 @@ export class DiabloGame {
       target.hp = 0;
       target.state = EnemyState.DYING;
       target.deathTimer = 0;
+      if (target.isBoss) {
+        this._slowMotionTimer = 1.5;
+        this._slowMotionScale = 0.3;
+        this._renderer.shakeCamera(0.8, 1.2);
+      }
       const meleeXpMult = this._state.weather === Weather.CLEAR ? 1.1 : 1.0;
       p.xp += Math.floor(target.xpReward * meleeXpMult);
       const goldFromKill = Math.floor(5 + Math.random() * 10 * target.level);
@@ -4350,6 +4613,35 @@ export class DiabloGame {
       if (!target.isBoss && Math.random() < 0.3) {
         target.state = EnemyState.HURT;
         target.stateTimer = 0;
+      }
+    }
+  }
+
+  private _checkElementalReaction(enemy: DiabloEnemy, newEffect: StatusEffect): void {
+    for (const reaction of ELEMENTAL_REACTIONS) {
+      const [e1, e2] = reaction.elements;
+      const hasOther = enemy.statusEffects.some(se =>
+        (se.effect === e1 && newEffect === e2 as any) ||
+        (se.effect === e2 && newEffect === e1 as any)
+      );
+      if (hasOther) {
+        // Trigger reaction
+        const baseDmg = reaction.damage * (1 + this._state.player.level * 0.1);
+        // Damage all enemies in radius
+        for (const e of this._state.enemies) {
+          if (e.state === EnemyState.DYING || e.state === EnemyState.DEAD) continue;
+          const dist = this._dist(enemy.x, enemy.z, e.x, e.z);
+          if (dist <= reaction.radius) {
+            e.hp -= baseDmg;
+            this._addFloatingText(e.x, e.y + 2.5, e.z, `${reaction.result.replace('_', ' ')}!`, '#ff44ff');
+            if (e.hp <= 0) this._killEnemy(e);
+          }
+        }
+        this._renderer.shakeCamera(0.3, 0.4);
+        this._renderer.spawnParticles(ParticleType.FIRE, enemy.x, enemy.y + 1, enemy.z, 15, this._state.particles);
+        // Remove consumed effects
+        enemy.statusEffects = enemy.statusEffects.filter(se => se.effect !== e1 && se.effect !== e2);
+        break;
       }
     }
   }
@@ -4396,7 +4688,10 @@ export class DiabloGame {
     if (!def) return;
 
     const cd = p.skillCooldowns.get(skillId) || 0;
-    if (cd > 0) return;
+    if (cd > 0) {
+      this._queuedSkillIdx = idx; // Queue this skill
+      return;
+    }
     const branchMods = this._getSkillBranchModifiers(skillId);
     if (p.mana < Math.ceil(def.manaCost * branchMods.manaCostMult)) return;
 
@@ -4997,6 +5292,7 @@ export class DiabloGame {
                 duration: 3,
                 source: proj.skillId || "projectile",
               });
+              this._checkElementalReaction(enemy, def.statusEffect);
             }
 
             // Chain lightning bounce
@@ -5121,6 +5417,7 @@ export class DiabloGame {
                 duration: 3,
                 source: "aoe",
               });
+              this._checkElementalReaction(enemy, aoe.statusEffect!);
             }
           }
 
@@ -5152,6 +5449,13 @@ export class DiabloGame {
 
     for (const loot of this._state.loot) {
       loot.timer += dt;
+
+      // Loot filter: hide filtered items
+      const rarityOrder = [ItemRarity.COMMON, ItemRarity.UNCOMMON, ItemRarity.RARE, ItemRarity.EPIC, ItemRarity.LEGENDARY, ItemRarity.MYTHIC, ItemRarity.DIVINE];
+      const minRarityIdx = this._lootFilterLevel === LootFilterLevel.HIDE_COMMON ? 1 :
+        this._lootFilterLevel === LootFilterLevel.RARE_PLUS ? 2 :
+        this._lootFilterLevel === LootFilterLevel.EPIC_PLUS ? 3 : 0;
+      if (rarityOrder.indexOf(loot.item.rarity) < minRarityIdx) continue;
 
       // Auto-pickup within 2 units
       const dist = this._dist(p.x, p.z, loot.x, loot.z);
@@ -5405,8 +5709,16 @@ export class DiabloGame {
     const table = LOOT_TABLES[enemy.type];
     if (!table) return items;
 
+    // Calculate drop rate bonus from map modifiers
+    let dropRateBonus = 0;
+    for (const mod of this._state.activeMapModifiers) {
+      const modDef = MAP_MODIFIER_DEFS[mod];
+      if (modDef) dropRateBonus += modDef.dropRateBonus;
+    }
+    const dropMult = 1 + dropRateBonus / 100;
+
     for (const entry of table) {
-      if (Math.random() < entry.chance) {
+      if (Math.random() < entry.chance * dropMult) {
         const item = this._pickRandomItemOfRarity(entry.rarity);
         if (item) {
           items.push({ ...item, id: this._genId() });
@@ -5498,8 +5810,23 @@ export class DiabloGame {
     ez = Math.max(-halfD, Math.min(halfD, ez));
 
     const diffCfg = DIFFICULTY_CONFIGS[this._state.difficulty];
-    const hpMult = (isBossSpawn ? 5 : 1) * diffCfg.hpMult;
-    const dmgMult = (isBossSpawn ? 2 : 1) * diffCfg.damageMult;
+    let hpMult = (isBossSpawn ? 5 : 1) * diffCfg.hpMult;
+    let dmgMult = (isBossSpawn ? 2 : 1) * diffCfg.damageMult;
+    // Apply map modifier effects
+    for (const mod of this._state.activeMapModifiers) {
+      const modDef = MAP_MODIFIER_DEFS[mod];
+      if (modDef) {
+        hpMult *= modDef.enemyHpMult;
+        dmgMult *= modDef.enemyDamageMult;
+      }
+    }
+    // Extra elites modifier
+    if (this._state.activeMapModifiers.includes(MapModifier.EXTRA_ELITES)) {
+      if (!isBossSpawn && this._state.killCount > 0 && this._state.killCount % 12 === 0) {
+        const existingBoss2 = this._state.enemies.find((e) => e.isBoss && e.state !== EnemyState.DEAD && e.state !== EnemyState.DYING);
+        if (!existingBoss2) isBossSpawn = true;
+      }
+    }
     const armorMult = (isBossSpawn ? 1.5 : 1) * diffCfg.armorMult;
     const bossNames = BOSS_NAMES[this._state.currentMap] || ["Dark Champion"];
     const bossName = bossNames[Math.floor(Math.random() * bossNames.length)];
@@ -5549,6 +5876,21 @@ export class DiabloGame {
     enemy.deathTimer = 0;
 
     this._renderer.spawnParticles(ParticleType.DUST, enemy.x, enemy.y + 0.5, enemy.z, 8 + Math.floor(Math.random() * 5), this._state.particles);
+
+    // Map modifier: Explosive death
+    if (this._state.activeMapModifiers.includes(MapModifier.EXPLOSIVE_DEATH)) {
+      const p = this._state.player;
+      const explodeDmg = enemy.maxHp * 0.3;
+      const explodeRadius = 4;
+      // Damage player if nearby
+      const distToPlayer = this._dist(enemy.x, enemy.z, p.x, p.z);
+      if (distToPlayer < explodeRadius && p.invulnTimer <= 0) {
+        p.hp -= explodeDmg;
+        this._addFloatingText(p.x, p.y + 2, p.z, `${Math.round(explodeDmg)} EXPLOSION`, '#ff8800');
+      }
+      this._renderer.spawnParticles(ParticleType.FIRE, enemy.x, enemy.y + 1, enemy.z, 20, this._state.particles);
+      this._renderer.shakeCamera(0.3, 0.3);
+    }
 
     const p = this._state.player;
     const xpMult = this._state.weather === Weather.CLEAR ? 1.1 : 1.0;
@@ -5652,6 +5994,7 @@ export class DiabloGame {
         duration: 2,
         source: "chain_lightning",
       });
+      this._checkElementalReaction(nearest, StatusEffect.SHOCKED);
 
       this._chainLightningBounce(nearest, damage * 0.7, bouncesLeft - 1);
     }
