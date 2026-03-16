@@ -18,6 +18,7 @@ import {
   advanceToNextLevel,
 } from "./systems/RiftWizardTurnSystem";
 import { castSpell, canCastSpell, createSpellInstance } from "./systems/RiftWizardCombatSystem";
+import { RWBalance } from "./config/RiftWizardConfig";
 import { RiftWizardRenderer } from "./view/RiftWizardRenderer";
 import { RiftWizardHUD } from "./view/RiftWizardHUD";
 import { RiftWizardSpellSelectUI } from "./view/RiftWizardSpellSelectUI";
@@ -28,6 +29,11 @@ import { RiftWizardSpellSelectUI } from "./view/RiftWizardSpellSelectUI";
 
 const _keys: Record<string, boolean> = {};
 const _justPressed: Record<string, boolean> = {};
+
+// Mouse tracking
+let _mouseClicked = false;
+let _mouseX = 0;
+let _mouseY = 0;
 
 function _onKeyDown(e: KeyboardEvent): void {
   if (!_keys[e.key]) {
@@ -52,6 +58,7 @@ function clearJustPressed(): void {
   for (const k in _justPressed) {
     _justPressed[k] = false;
   }
+  _mouseClicked = false;
 }
 
 // ---------------------------------------------------------------------------
@@ -68,6 +75,17 @@ export class RiftWizardGame {
   private _spellShopUI = new RiftWizardSpellSelectUI();
   private _keyDownHandler = _onKeyDown;
   private _keyUpHandler = _onKeyUp;
+  private _mouseDownHandler = (e: MouseEvent) => {
+    if (e.button === 0) {
+      _mouseClicked = true;
+      _mouseX = e.clientX;
+      _mouseY = e.clientY;
+    }
+  };
+  private _mouseMoveHandler = (e: MouseEvent) => {
+    _mouseX = e.clientX;
+    _mouseY = e.clientY;
+  };
 
   // -------------------------------------------------------------------------
   // Boot
@@ -125,6 +143,9 @@ export class RiftWizardGame {
     // Input
     window.addEventListener("keydown", this._keyDownHandler);
     window.addEventListener("keyup", this._keyUpHandler);
+    const canvas = viewManager.app.canvas as HTMLCanvasElement;
+    canvas.addEventListener("mousedown", this._mouseDownHandler);
+    canvas.addEventListener("mousemove", this._mouseMoveHandler);
 
     // Start ticker
     this._tickerCb = (ticker: Ticker) => {
@@ -178,6 +199,21 @@ export class RiftWizardGame {
     }
 
     clearJustPressed();
+  }
+
+  // -------------------------------------------------------------------------
+  // Mouse-to-grid conversion
+  // -------------------------------------------------------------------------
+
+  private _mouseToGrid(): { col: number; row: number } | null {
+    const canvas = viewManager.app.canvas as HTMLCanvasElement;
+    const rect = canvas.getBoundingClientRect();
+    const wl = this._renderer.worldLayer;
+    const col = Math.floor((_mouseX - rect.left - wl.x) / RWBalance.TILE_SIZE);
+    const row = Math.floor((_mouseY - rect.top - wl.y) / RWBalance.TILE_SIZE);
+    const level = this._state.level;
+    if (col < 0 || col >= level.width || row < 0 || row >= level.height) return null;
+    return { col, row };
   }
 
   // -------------------------------------------------------------------------
@@ -282,6 +318,31 @@ export class RiftWizardGame {
       }
     }
 
+    // Left-click to move one step toward clicked tile
+    if (_mouseClicked) {
+      const cell = this._mouseToGrid();
+      if (cell) {
+        const dx = cell.col - state.wizard.col;
+        const dy = cell.row - state.wizard.row;
+        // Move one step in the dominant axis direction
+        let stepX = 0;
+        let stepY = 0;
+        if (Math.abs(dx) >= Math.abs(dy)) {
+          stepX = dx > 0 ? 1 : dx < 0 ? -1 : 0;
+        } else {
+          stepY = dy > 0 ? 1 : dy < 0 ? -1 : 0;
+        }
+        if (stepX !== 0 || stepY !== 0) {
+          const didMove = tryMoveWizard(state, stepX, stepY);
+          if (didMove) {
+            executeTurn(state);
+            this._undoSnapshot = null;
+            return;
+          }
+        }
+      }
+    }
+
     // Pass turn
     if (consumeJustPressed(" ") || consumeJustPressed("Enter")) {
       executeTurn(state);
@@ -319,7 +380,7 @@ export class RiftWizardGame {
       return;
     }
 
-    // Move cursor
+    // Move cursor with keyboard
     if (state.targetCursor) {
       if (consumeJustPressed("ArrowUp") || consumeJustPressed("w")) {
         state.targetCursor = { col: state.targetCursor.col, row: state.targetCursor.row - 1 };
@@ -336,7 +397,31 @@ export class RiftWizardGame {
       state.targetCursor.row = Math.max(0, Math.min(state.level.height - 1, state.targetCursor.row));
     }
 
-    // Confirm cast
+    // Track mouse hover — move cursor to hovered cell
+    const hovered = this._mouseToGrid();
+    if (hovered) {
+      state.targetCursor = { col: hovered.col, row: hovered.row };
+    }
+
+    // Left-click to target and cast
+    if (_mouseClicked) {
+      const cell = this._mouseToGrid();
+      if (cell && state.selectedSpellIndex >= 0) {
+        if (canCastSpell(state, state.selectedSpellIndex, cell.col, cell.row)) {
+          castSpell(state, state.selectedSpellIndex, cell.col, cell.row);
+          state.phase = RWPhase.PLAYING;
+          state.selectedSpellIndex = -1;
+          state.targetCursor = null;
+          executeTurn(state);
+          this._undoSnapshot = null;
+        } else {
+          // Move cursor to clicked cell even if can't cast there
+          state.targetCursor = { col: cell.col, row: cell.row };
+        }
+      }
+    }
+
+    // Confirm cast (keyboard)
     if (consumeJustPressed("Enter") || consumeJustPressed(" ")) {
       if (
         state.targetCursor &&
@@ -407,6 +492,9 @@ export class RiftWizardGame {
 
     window.removeEventListener("keydown", this._keyDownHandler);
     window.removeEventListener("keyup", this._keyUpHandler);
+    const canvas = viewManager.app.canvas as HTMLCanvasElement;
+    canvas.removeEventListener("mousedown", this._mouseDownHandler);
+    canvas.removeEventListener("mousemove", this._mouseMoveHandler);
 
     viewManager.removeFromLayer("units", this._renderer.worldLayer);
     viewManager.removeFromLayer("ui", this._hud.container);
