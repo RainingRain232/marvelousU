@@ -29,6 +29,7 @@ export class SettlersInputSystem {
   onSave: (() => void) | null = null;
   onLoad: (() => void) | null = null;
   onToggleWiki: (() => void) | null = null;
+  onToggleAudio: (() => void) | null = null;
 
   constructor(camera: SettlersCameraController) {
     this._camera = camera;
@@ -48,6 +49,7 @@ export class SettlersInputSystem {
       if (e.code === "KeyT") this._setTool("attack");
       if (e.code === "Space") this._togglePause();
       if (e.code === "KeyH") this.onToggleWiki?.();
+      if (e.code === "KeyM") this.onToggleAudio?.();
       if (e.code === "F5") { e.preventDefault(); this.onSave?.(); }
       if (e.code === "F9") { e.preventDefault(); this.onLoad?.(); }
     };
@@ -84,8 +86,14 @@ export class SettlersInputSystem {
 
   private _state: SettlersState | null = null;
 
-  private _setTool(_tool: string): void {
-    // Will be wired later by SettlersGame
+  private _setTool(tool: string): void {
+    if (!this._state) return;
+    const validTools = ["select", "build", "road", "flag", "demolish", "attack"];
+    if (!validTools.includes(tool)) return;
+    this._state.selectedTool = tool as SettlersState["selectedTool"];
+    if (tool !== "build") {
+      this._state.selectedBuildingType = null;
+    }
   }
 
   private _togglePause(): void {

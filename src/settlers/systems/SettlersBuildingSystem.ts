@@ -10,6 +10,7 @@ import type { SettlersBuilding } from "../state/SettlersBuilding";
 import type { SettlersState } from "../state/SettlersState";
 import { nextId } from "../state/SettlersState";
 import type { SettlersFlag } from "../state/SettlersRoad";
+import { playResourceCollected } from "./SettlersAudioSystem";
 
 // ---------------------------------------------------------------------------
 // Placement validation
@@ -131,9 +132,13 @@ export function placeBuilding(
     hp: preBuilt ? def.hp : def.hp,
     maxHp: def.hp,
     flagId,
+    productionQueue: [],
   };
 
   state.buildings.set(id, building);
+
+  // Mark territory as dirty when a building is placed
+  state.territoryDirty = true;
 
   // Mark tiles as occupied
   for (let dz = 0; dz < def.footprint.h; dz++) {
@@ -172,6 +177,9 @@ export function updateConstruction(state: SettlersState, dt: number): void {
       if (building.constructionProgress >= 1) {
         building.constructionProgress = 1;
         building.active = true;
+
+        // Territory may change when a military building finishes construction
+        state.territoryDirty = true;
 
         // Assign a worker if available (for production buildings)
         const def = BUILDING_DEFS[building.type];
@@ -268,6 +276,10 @@ export function demolishBuilding(state: SettlersState, buildingId: string): bool
   }
 
   state.buildings.delete(buildingId);
+
+  // Mark territory as dirty when a building is demolished
+  state.territoryDirty = true;
+
   return true;
 }
 
@@ -330,6 +342,11 @@ export function updateProduction(state: SettlersState, dt: number): void {
       }
       // Clean up zero-count stacks
       building.inputStorage = building.inputStorage.filter((s) => s.amount > 0);
+
+      // Play resource collected sound (throttled to avoid spam)
+      if (building.owner === "p0" && Math.random() < 0.25) {
+        playResourceCollected();
+      }
 
       // Produce outputs -> place at building's flag
       for (const output of def.outputs) {

@@ -8,6 +8,13 @@ import { Biome, Deposit } from "../state/SettlersMap";
 import { SB } from "../config/SettlersBalance";
 import type { SettlersState, SettlersTool } from "../state/SettlersState";
 import { calculateScore } from "../systems/SettlersMilitarySystem";
+import {
+  setMasterVolume, getMasterVolume,
+  setSfxVolume, getSfxVolume,
+  setMusicVolume, getMusicVolume,
+  toggleMute, isMuted,
+  playUIClick,
+} from "../systems/SettlersAudioSystem";
 
 // Production chain data for the wiki panel
 const PRODUCTION_CHAINS: { name: string; steps: string[] }[] = [
@@ -33,6 +40,20 @@ export class SettlersHUD {
   private _notification!: HTMLDivElement;
   private _notificationTimer = 0;
   private _wikiVisible = false;
+  private _tooltip!: HTMLDivElement;
+  private _toast!: HTMLDivElement;
+  private _toastTimer = 0;
+  private _gameOverShown = false;
+  private _audioPanel!: HTMLDivElement;
+  private _audioPanelVisible = false;
+  private _muteBtn!: HTMLButtonElement;
+
+  // Camera info for minimap viewport indicator
+  private _cameraTargetX = 0;
+  private _cameraTargetZ = 0;
+  private _cameraDistance = 40;
+  private _cameraYaw = 0;
+  private _cameraPitch = 0;
 
   // Callbacks
   onSelectBuildingType: ((type: SettlersBuildingType) => void) | null = null;
@@ -40,6 +61,9 @@ export class SettlersHUD {
   onExit: (() => void) | null = null;
   onSave: (() => void) | null = null;
   onLoad: (() => void) | null = null;
+  onMinimapClick: ((worldX: number, worldZ: number) => void) | null = null;
+  onQueueAdd: ((buildingId: string, itemType: string) => void) | null = null;
+  onQueueRemove: ((buildingId: string, index: number) => void) | null = null;
 
   build(): void {
     this._root = document.createElement("div");
@@ -103,6 +127,21 @@ export class SettlersHUD {
     this._root.appendChild(this._minimap);
     this._minimapCtx = this._minimap.getContext("2d")!;
 
+    // Minimap click handler — move camera to clicked world position
+    this._minimap.addEventListener("mousedown", (e: MouseEvent) => {
+      e.stopPropagation();
+      this._handleMinimapClick(e);
+    });
+    this._minimap.addEventListener("mousemove", (e: MouseEvent) => {
+      if (e.buttons & 1) {
+        e.stopPropagation();
+        this._handleMinimapClick(e);
+      }
+    });
+
+    // --- Audio control panel (above minimap, toggleable) ---
+    this._buildAudioPanel();
+
     // --- Wiki panel (toggleable) ---
     this._wikiPanel = document.createElement("div");
     this._wikiPanel.style.cssText = `
@@ -141,6 +180,27 @@ export class SettlersHUD {
       justify-content: center; flex-direction: column; pointer-events: auto;
     `;
     this._root.appendChild(this._gameOverOverlay);
+
+    // --- Toast notification (for build errors, etc.) ---
+    this._toast = document.createElement("div");
+    this._toast.style.cssText = `
+      position: absolute; bottom: 180px; left: 50%; transform: translateX(-50%);
+      padding: 8px 20px; background: rgba(180,40,40,0.92); color: #ffe0e0;
+      border-radius: 6px; font-size: 14px; pointer-events: none; display: none;
+      border: 1px solid rgba(255,100,100,0.4); text-shadow: 1px 1px 2px #000;
+      transition: opacity 0.3s; white-space: nowrap;
+    `;
+    this._root.appendChild(this._toast);
+
+    // --- Hover tooltip (for build menu buttons) ---
+    this._tooltip = document.createElement("div");
+    this._tooltip.style.cssText = `
+      position: absolute; padding: 8px 12px; background: rgba(10,10,30,0.95);
+      color: #e0d8c8; border-radius: 6px; font-size: 11px; pointer-events: none;
+      display: none; z-index: 30; max-width: 260px; line-height: 1.5;
+      border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    `;
+    this._root.appendChild(this._tooltip);
   }
 
   showNotification(text: string): void {
@@ -148,6 +208,18 @@ export class SettlersHUD {
     this._notification.style.display = "block";
     this._notification.style.opacity = "1";
     this._notificationTimer = 2.0;
+  }
+
+  /** Show an error/info toast that fades after ~2 seconds */
+  showToast(text: string, isError = true): void {
+    this._toast.textContent = text;
+    this._toast.style.background = isError
+      ? "rgba(180,40,40,0.92)"
+      : "rgba(40,120,60,0.92)";
+    this._toast.style.color = isError ? "#ffe0e0" : "#e0ffe0";
+    this._toast.style.display = "block";
+    this._toast.style.opacity = "1";
+    this._toastTimer = 2.0;
   }
 
   private _buildWikiPanel(): void {
@@ -165,6 +237,82 @@ export class SettlersHUD {
   toggleWiki(): void {
     this._wikiVisible = !this._wikiVisible;
     this._wikiPanel.style.display = this._wikiVisible ? "block" : "none";
+  }
+
+  toggleAudioPanel(): void {
+    this._audioPanelVisible = !this._audioPanelVisible;
+    this._audioPanel.style.display = this._audioPanelVisible ? "block" : "none";
+    playUIClick();
+  }
+
+  private _buildAudioPanel(): void {
+    this._audioPanel = document.createElement("div");
+    this._audioPanel.style.cssText = `
+      position: absolute; bottom: 340px; left: 8px; width: 160px;
+      background: rgba(16,16,42,0.92); border-radius: 6px; padding: 10px;
+      pointer-events: auto; font-size: 11px; display: none;
+      border: 1px solid rgba(255,255,255,0.15);
+    `;
+
+    const titleRow = document.createElement("div");
+    titleRow.style.cssText = "display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;";
+    const title = document.createElement("span");
+    title.style.cssText = "color: #ffd700; font-size: 12px;";
+    title.textContent = "Audio";
+
+    this._muteBtn = document.createElement("button");
+    this._muteBtn.style.cssText = `
+      padding: 2px 8px; background: #2a2a4a; color: #e0d8c8; border: 1px solid #555;
+      border-radius: 3px; cursor: pointer; font-family: monospace; font-size: 11px;
+    `;
+    this._muteBtn.textContent = isMuted() ? "Unmute" : "Mute";
+    this._muteBtn.onclick = () => {
+      const nowMuted = toggleMute();
+      this._muteBtn.textContent = nowMuted ? "Unmute" : "Mute";
+      this._muteBtn.style.background = nowMuted ? "#4a2a2a" : "#2a2a4a";
+    };
+
+    titleRow.appendChild(title);
+    titleRow.appendChild(this._muteBtn);
+    this._audioPanel.appendChild(titleRow);
+
+    this._createVolumeSlider("Master", getMasterVolume(), (v) => {
+      setMasterVolume(v);
+    });
+    this._createVolumeSlider("SFX", getSfxVolume(), (v) => {
+      setSfxVolume(v);
+    });
+    this._createVolumeSlider("Music", getMusicVolume(), (v) => {
+      setMusicVolume(v);
+    });
+
+    this._root.appendChild(this._audioPanel);
+  }
+
+  private _createVolumeSlider(label: string, initialValue: number, onChange: (v: number) => void): void {
+    const row = document.createElement("div");
+    row.style.cssText = "margin-bottom: 6px;";
+
+    const lbl = document.createElement("div");
+    lbl.style.cssText = "color: #aaa; font-size: 10px; margin-bottom: 2px;";
+    lbl.textContent = label;
+    row.appendChild(lbl);
+
+    const slider = document.createElement("input");
+    slider.type = "range";
+    slider.min = "0";
+    slider.max = "100";
+    slider.value = String(Math.round(initialValue * 100));
+    slider.style.cssText = `
+      width: 100%; height: 12px; cursor: pointer;
+      accent-color: #6688aa; background: #333;
+    `;
+    slider.oninput = () => {
+      onChange(parseInt(slider.value) / 100);
+    };
+    row.appendChild(slider);
+
+    this._audioPanel.appendChild(row);
   }
 
   private _buildBuildMenu(): void {
@@ -193,6 +341,7 @@ export class SettlersHUD {
       { label: "[F5] Save", action: () => this.onSave?.() },
       { label: "[F9] Load", action: () => this.onLoad?.() },
       { label: "[H] Wiki", action: () => this.toggleWiki() },
+      { label: "[M] Audio", action: () => this.toggleAudioPanel() },
     ];
     for (const u of utilBtns) {
       const btn = document.createElement("button");
@@ -228,32 +377,87 @@ export class SettlersHUD {
           border-radius: 3px; cursor: pointer; font-family: monospace; font-size: 11px;
         `;
         btn.textContent = def.label;
-        btn.title = this._buildingTooltip(def);
         btn.onclick = () => {
           this.onSelectBuildingType?.(def.type);
           this.onSelectTool?.("build");
+        };
+        btn.onmouseenter = (e) => {
+          this._tooltip.innerHTML = this._buildingTooltipHTML(def);
+          this._tooltip.style.display = "block";
+          const rect = (e.target as HTMLElement).getBoundingClientRect();
+          this._tooltip.style.left = `${rect.left}px`;
+          this._tooltip.style.top = `${rect.top - this._tooltip.offsetHeight - 6}px`;
+        };
+        btn.onmouseleave = () => {
+          this._tooltip.style.display = "none";
         };
         this._buildMenu.appendChild(btn);
       }
     }
   }
 
-  private _buildingTooltip(def: (typeof BUILDING_DEFS)[SettlersBuildingType]): string {
-    let tip = `${def.label} (${def.size})\n`;
+  private _buildingTooltipHTML(def: (typeof BUILDING_DEFS)[SettlersBuildingType]): string {
+    let html = `<div style="font-size:13px;color:#ffd700;margin-bottom:4px;font-weight:bold;">${def.label}</div>`;
+    html += `<div style="color:#aaa;margin-bottom:4px;">Size: ${def.size} (${def.footprint.w}x${def.footprint.h})</div>`;
+
     if (def.constructionCost.length > 0) {
-      tip += "Cost: " + def.constructionCost.map((c) => `${c.amount} ${RESOURCE_META[c.type].label}`).join(", ") + "\n";
+      html += `<div style="color:#ff9966;">Cost: ${def.constructionCost.map((c) => `${c.amount} ${RESOURCE_META[c.type].label}`).join(", ")}</div>`;
     }
-    if (def.inputs.length > 0) {
-      tip += "In: " + def.inputs.map((i) => RESOURCE_META[i.type].label).join(", ") + "\n";
+    if (def.requiresTerrain) {
+      html += `<div style="color:#cc88ff;">Requires: ${def.requiresTerrain} terrain</div>`;
     }
-    if (def.outputs.length > 0) {
-      tip += "Out: " + def.outputs.map((o) => RESOURCE_META[o.type].label).join(", ") + "\n";
+
+    if (def.inputs.length > 0 || def.outputs.length > 0) {
+      html += `<div style="margin-top:4px;border-top:1px solid #444;padding-top:4px;">`;
+      if (def.inputs.length > 0) {
+        html += `<div style="color:#aaddff;">Consumes: ${def.inputs.map((i) => `${i.amount} ${RESOURCE_META[i.type].label}`).join(", ")}</div>`;
+      }
+      if (def.outputs.length > 0) {
+        html += `<div style="color:#aaffaa;">Produces: ${def.outputs.map((o) => `${o.amount} ${RESOURCE_META[o.type].label}`).join(", ")}</div>`;
+      }
+      if (def.productionTime > 0) {
+        html += `<div style="color:#888;">Cycle: ${def.productionTime}s</div>`;
+      }
+      html += `</div>`;
     }
-    if (def.garrisonSlots > 0) tip += `Garrison: ${def.garrisonSlots} soldiers\n`;
-    if (def.territoryRadius > 0) tip += `Territory: ${def.territoryRadius} tiles\n`;
-    if (def.requiresTerrain) tip += `Requires: ${def.requiresTerrain}\n`;
-    if (def.productionTime > 0) tip += `Production: ${def.productionTime}s per cycle\n`;
-    return tip;
+
+    if (def.garrisonSlots > 0) {
+      html += `<div style="color:#ff8888;margin-top:2px;">Garrison: ${def.garrisonSlots} soldiers</div>`;
+    }
+    if (def.territoryRadius > 0) {
+      html += `<div style="color:#88ccff;">Territory: ${def.territoryRadius} tiles</div>`;
+    }
+
+    // Description based on category
+    const descriptions: Partial<Record<SettlersBuildingType, string>> = {
+      [SettlersBuildingType.WOODCUTTER]: "Harvests wood from nearby forest tiles.",
+      [SettlersBuildingType.SAWMILL]: "Processes raw wood into planks for construction.",
+      [SettlersBuildingType.QUARRY]: "Extracts stone from mountain terrain.",
+      [SettlersBuildingType.FISHER]: "Catches fish from nearby water tiles.",
+      [SettlersBuildingType.HUNTER]: "Hunts game in forests for meat.",
+      [SettlersBuildingType.FARM]: "Grows wheat on meadow terrain.",
+      [SettlersBuildingType.MILL]: "Grinds wheat into flour.",
+      [SettlersBuildingType.BAKERY]: "Bakes bread from flour and water.",
+      [SettlersBuildingType.BREWERY]: "Brews beer from wheat and water.",
+      [SettlersBuildingType.IRON_MINE]: "Mines iron ore from mountains. Requires food.",
+      [SettlersBuildingType.GOLD_MINE]: "Mines gold ore from mountains. Requires food.",
+      [SettlersBuildingType.COAL_MINE]: "Mines coal from mountains. Requires food.",
+      [SettlersBuildingType.SMELTER]: "Smelts iron ore with coal into iron bars.",
+      [SettlersBuildingType.MINT]: "Refines gold ore with coal into gold coins.",
+      [SettlersBuildingType.SWORD_SMITH]: "Forges swords from iron and coal.",
+      [SettlersBuildingType.SHIELD_SMITH]: "Crafts shields from iron and coal.",
+      [SettlersBuildingType.BARRACKS]: "Trains soldiers using sword, shield, and beer.",
+      [SettlersBuildingType.GUARD_HOUSE]: "Small military outpost. Extends territory.",
+      [SettlersBuildingType.WATCHTOWER]: "Medium military building. Good territory range.",
+      [SettlersBuildingType.FORTRESS]: "Large military stronghold. Maximum territory.",
+      [SettlersBuildingType.STOREHOUSE]: "Additional storage for your settlement.",
+    };
+    const desc = descriptions[def.type];
+    if (desc) {
+      html += `<div style="color:#bbb;margin-top:4px;font-style:italic;border-top:1px solid #333;padding-top:4px;">${desc}</div>`;
+    }
+
+    return html;
   }
 
   update(state: SettlersState): void {
@@ -306,8 +510,20 @@ export class SettlersHUD {
       }
     }
 
+    // Toast fade
+    if (this._toastTimer > 0) {
+      this._toastTimer -= 1 / 60;
+      if (this._toastTimer <= 0.5) {
+        this._toast.style.opacity = String(Math.max(0, this._toastTimer / 0.5));
+      }
+      if (this._toastTimer <= 0) {
+        this._toast.style.display = "none";
+      }
+    }
+
     // Game over
-    if (state.gameOver) {
+    if (state.gameOver && !this._gameOverShown) {
+      this._gameOverShown = true;
       this._gameOverOverlay.style.display = "flex";
       const isVictory = state.winner === "p0";
       const p0Score = calculateScore(state, "p0");
@@ -330,16 +546,60 @@ export class SettlersHUD {
       }
       if (buildable > 0 && (p0Territory / buildable > 0.7 || p1Territory / buildable > 0.7)) victoryType = "Dominance";
 
+      // Count buildings
+      let p0Buildings = 0, p1Buildings = 0;
+      for (const [, b] of state.buildings) {
+        if (b.owner === "p0") p0Buildings++;
+        else p1Buildings++;
+      }
+
+      // Count soldiers
+      let p0Soldiers = 0, p1Soldiers = 0;
+      for (const [, s] of state.soldiers) {
+        if (s.owner === "p0") p0Soldiers++;
+        else p1Soldiers++;
+      }
+
+      const overlayBg = isVictory
+        ? "radial-gradient(ellipse at center, rgba(40,50,20,0.95) 0%, rgba(0,0,0,0.92) 100%)"
+        : "radial-gradient(ellipse at center, rgba(60,10,10,0.95) 0%, rgba(0,0,0,0.92) 100%)";
+
+      this._gameOverOverlay.style.background = overlayBg;
+
       this._gameOverOverlay.innerHTML = `
-        <div style="font-size: 48px; color: ${isVictory ? "#ffd700" : "#ff4444"}; text-shadow: 2px 2px 8px #000;">
-          ${isVictory ? "VICTORY!" : "DEFEAT"}
+        <div style="text-align:center; animation: fadeIn 0.5s ease-out;">
+          <div style="font-size: 56px; color: ${isVictory ? "#ffd700" : "#ff4444"}; text-shadow: 0 0 20px ${isVictory ? "rgba(255,215,0,0.5)" : "rgba(255,0,0,0.4)"}, 2px 2px 8px #000; letter-spacing: 4px;">
+            ${isVictory ? "VICTORY!" : "DEFEAT"}
+          </div>
+          <div style="font-size: 20px; color: ${isVictory ? "#aaddaa" : "#ddaaaa"}; margin-top: 8px; letter-spacing: 2px;">
+            ${victoryType} ${isVictory ? "Victory" : "- The enemy has won"}
+          </div>
+
+          <div style="margin-top: 24px; padding: 16px 24px; background: rgba(0,0,0,0.4); border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); display: inline-block;">
+            <div style="font-size: 16px; color: #ffd700; margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.15); padding-bottom: 6px;">Game Summary</div>
+            <table style="color: #ccc; font-size: 14px; border-collapse: collapse; text-align: left;">
+              <tr><td style="padding: 3px 16px 3px 0; color: #888;">Score</td><td style="padding: 3px 8px; color: #88bbff;">${p0Score}</td><td style="padding: 3px 8px; color: #ff8888;">${p1Score}</td></tr>
+              <tr><td style="padding: 3px 16px 3px 0; color: #888;">Buildings</td><td style="padding: 3px 8px; color: #88bbff;">${p0Buildings}</td><td style="padding: 3px 8px; color: #ff8888;">${p1Buildings}</td></tr>
+              <tr><td style="padding: 3px 16px 3px 0; color: #888;">Soldiers</td><td style="padding: 3px 8px; color: #88bbff;">${p0Soldiers}</td><td style="padding: 3px 8px; color: #ff8888;">${p1Soldiers}</td></tr>
+              <tr><td style="padding: 3px 16px 3px 0; color: #888;">Gold</td><td style="padding: 3px 8px; color: #88bbff;">${p0Gold}</td><td style="padding: 3px 8px; color: #ff8888;">${p1Gold}</td></tr>
+            </table>
+            <div style="margin-top: 6px; font-size: 11px; color: #666;">
+              <span style="color: #88bbff;">You</span> vs <span style="color: #ff8888;">Enemy</span>
+            </div>
+          </div>
+
+          <div style="margin-top: 24px;">
+            <button id="settlers-exit-btn" style="
+              padding: 12px 40px; font-size: 18px; font-family: monospace;
+              background: linear-gradient(180deg, #3a3a6a, #2a2a4a); color: #e0d8c8;
+              border: 1px solid #666; border-radius: 8px; cursor: pointer;
+              letter-spacing: 1px; transition: background 0.2s;
+            " onmouseover="this.style.background='linear-gradient(180deg, #4a4a8a, #3a3a6a)'"
+              onmouseout="this.style.background='linear-gradient(180deg, #3a3a6a, #2a2a4a)'">
+              Return to Menu
+            </button>
+          </div>
         </div>
-        <div style="font-size: 18px; color: #ccc; margin-top: 10px;">${victoryType} Victory</div>
-        <div style="font-size: 16px; color: #aaa; margin-top: 8px;">Your Score: ${p0Score} | Enemy Score: ${p1Score}</div>
-        <button id="settlers-exit-btn" style="margin-top: 20px; padding: 10px 30px; font-size: 18px;
-          background: #2a2a4a; color: #e0d8c8; border: 1px solid #666; border-radius: 6px; cursor: pointer;">
-          Exit
-        </button>
       `;
       const exitBtn = document.getElementById("settlers-exit-btn");
       if (exitBtn) exitBtn.onclick = () => this.onExit?.();
@@ -360,52 +620,185 @@ export class SettlersHUD {
       if (building) {
         this._infoPanel.style.display = "block";
         const def = BUILDING_DEFS[building.type];
-        let html = `<div style="font-size:14px;color:#ffd700;margin-bottom:6px;">${def.label}</div>`;
+        const ownerPlayer = state.players.get(building.owner);
+        const ownerName = ownerPlayer ? ownerPlayer.name : building.owner;
+        const ownerColor = building.owner === "p0" ? "#88bbff" : "#ff8888";
+
+        let html = `<div style="font-size:14px;color:#ffd700;margin-bottom:2px;font-weight:bold;">${def.label}</div>`;
+        html += `<div style="font-size:11px;color:${ownerColor};margin-bottom:6px;">Owner: ${ownerName}</div>`;
 
         // HP bar
         const hpPct = Math.max(0, building.hp / building.maxHp);
         const hpColor = hpPct > 0.5 ? "#4a4" : hpPct > 0.25 ? "#aa4" : "#a44";
-        html += `<div style="margin-bottom:4px;">HP: ${building.hp}/${building.maxHp}</div>`;
+        html += `<div style="margin-bottom:2px;font-size:11px;">HP: ${building.hp}/${building.maxHp}</div>`;
         html += `<div style="background:#333;height:6px;border-radius:3px;margin-bottom:6px;">
           <div style="width:${hpPct * 100}%;height:100%;background:${hpColor};border-radius:3px;"></div></div>`;
 
         if (building.constructionProgress < 1) {
+          // --- Under construction ---
           const pct = Math.floor(building.constructionProgress * 100);
-          html += `<div>Building: ${pct}%</div>`;
+          html += `<div style="color:#4488cc;font-weight:bold;">Under Construction</div>`;
+          html += `<div style="font-size:11px;">Progress: ${pct}%</div>`;
           html += `<div style="background:#333;height:6px;border-radius:3px;margin:4px 0;">
             <div style="width:${pct}%;height:100%;background:#4488cc;border-radius:3px;"></div></div>`;
-          if (building.constructionNeeds.length > 0) {
-            html += `<div style="color:#ff8;">Needs: ${building.constructionNeeds.filter(n => n.amount > 0).map((n) => `${n.amount} ${RESOURCE_META[n.type].label}`).join(", ")}</div>`;
+          const remaining = building.constructionNeeds.filter(n => n.amount > 0);
+          if (remaining.length > 0) {
+            html += `<div style="color:#ff8;font-size:11px;">Still needs: ${remaining.map((n) => `${n.amount} ${RESOURCE_META[n.type].label}`).join(", ")}</div>`;
+          } else {
+            html += `<div style="color:#88cc44;font-size:11px;">All materials delivered</div>`;
           }
         } else {
-          // Production timer
-          if (def.productionTime > 0 && def.type !== SettlersBuildingType.BARRACKS) {
-            const prodPct = Math.max(0, 1 - building.productionTimer / def.productionTime);
-            html += `<div style="margin-top:4px;">Production: ${Math.floor(prodPct * 100)}%</div>`;
-            html += `<div style="background:#333;height:4px;border-radius:2px;margin:2px 0;">
-              <div style="width:${prodPct * 100}%;height:100%;background:#88cc44;border-radius:2px;"></div></div>`;
+          // --- Completed building ---
+
+          // Worker status (for production buildings)
+          if (def.productionTime > 0) {
+            const workerStatus = building.workerId ? "Assigned" : "Waiting for worker";
+            const workerColor = building.workerId ? "#88cc44" : "#ff8844";
+            html += `<div style="font-size:11px;margin-bottom:4px;">Worker: <span style="color:${workerColor};">${workerStatus}</span></div>`;
           }
 
+          // Production status
+          if (def.productionTime > 0) {
+            let prodStatus: string;
+            let prodStatusColor: string;
+            const hasInputs = def.inputs.length === 0 || building.inputStorage.some(s => s.amount > 0);
+
+            if (!building.active) {
+              prodStatus = "Inactive";
+              prodStatusColor = "#888";
+            } else if (!hasInputs && def.inputs.length > 0) {
+              prodStatus = "Waiting for materials";
+              prodStatusColor = "#ff8844";
+            } else {
+              prodStatus = "Producing";
+              prodStatusColor = "#88cc44";
+            }
+            html += `<div style="font-size:11px;color:${prodStatusColor};margin-bottom:4px;">Status: ${prodStatus}</div>`;
+
+            if (def.type !== SettlersBuildingType.BARRACKS) {
+              const prodPct = Math.max(0, 1 - building.productionTimer / def.productionTime);
+              html += `<div style="font-size:11px;">Cycle: ${Math.floor(prodPct * 100)}%</div>`;
+              html += `<div style="background:#333;height:4px;border-radius:2px;margin:2px 0;">
+                <div style="width:${prodPct * 100}%;height:100%;background:#88cc44;border-radius:2px;"></div></div>`;
+            }
+          }
+
+          // Current inventory
           if (building.inputStorage.length > 0) {
-            html += `<div style="margin-top:4px;color:#aaddff;">Input: ${building.inputStorage.map((s) => `${s.amount} ${RESOURCE_META[s.type].label}`).join(", ")}</div>`;
+            html += `<div style="margin-top:6px;font-size:11px;color:#aaddff;border-top:1px solid #333;padding-top:4px;">`;
+            html += `<span style="color:#7799bb;">Input inventory:</span><br>`;
+            for (const s of building.inputStorage) {
+              const needed = def.inputs.find(i => i.type === s.type);
+              const neededAmt = needed ? needed.amount : 1;
+              const fillColor = s.amount >= neededAmt ? "#88cc44" : s.amount > 0 ? "#cccc44" : "#cc4444";
+              html += `<span style="color:${fillColor};">${RESOURCE_META[s.type].label}: ${s.amount}</span> `;
+            }
+            html += `</div>`;
           }
           if (building.outputStorage.length > 0) {
-            html += `<div style="color:#aaffaa;">Output: ${building.outputStorage.map((s) => `${s.amount} ${RESOURCE_META[s.type].label}`).join(", ")}</div>`;
-          }
-          if (building.garrisonSlots > 0) {
-            html += `<div style="margin-top:4px;">Garrison: ${building.garrison.length}/${building.garrisonSlots}</div>`;
+            html += `<div style="font-size:11px;color:#aaffaa;">`;
+            html += `<span style="color:#77bb77;">Output inventory:</span><br>`;
+            for (const s of building.outputStorage) {
+              html += `${RESOURCE_META[s.type].label}: ${s.amount} `;
+            }
+            html += `</div>`;
           }
 
-          // Show chain info
+          // Garrison (military buildings)
+          if (building.garrisonSlots > 0) {
+            const garrisonPct = building.garrison.length / building.garrisonSlots;
+            const garrisonColor = garrisonPct >= 1 ? "#88cc44" : garrisonPct > 0 ? "#cccc44" : "#cc4444";
+            html += `<div style="margin-top:6px;border-top:1px solid #333;padding-top:4px;">`;
+            html += `<div style="font-size:11px;">Garrison: <span style="color:${garrisonColor};">${building.garrison.length}/${building.garrisonSlots}</span></div>`;
+            html += `<div style="background:#333;height:4px;border-radius:2px;margin:2px 0;">
+              <div style="width:${garrisonPct * 100}%;height:100%;background:${garrisonColor};border-radius:2px;"></div></div>`;
+            if (building.garrison.length > 0) {
+              html += `<div style="font-size:10px;color:#aaa;">`;
+              for (const sId of building.garrison) {
+                const soldier = state.soldiers.get(sId);
+                if (soldier) {
+                  const rankStr = soldier.rank > 0 ? ` Rank ${soldier.rank}` : "";
+                  html += `<div>Soldier${rankStr} (HP: ${soldier.hp}/${soldier.maxHp})</div>`;
+                }
+              }
+              html += `</div>`;
+            }
+            html += `</div>`;
+          }
+
+          // Production queue display (for barracks)
+          if (def.type === SettlersBuildingType.BARRACKS && building.owner === "p0") {
+            html += `<div style="margin-top:8px;border-top:1px solid #444;padding-top:6px;">`;
+            html += `<div style="color:#ffcc44;margin-bottom:4px;">Production Queue (${building.productionQueue.length}/${SB.MAX_PRODUCTION_QUEUE})</div>`;
+
+            if (building.productionQueue.length > 0) {
+              for (let qi = 0; qi < building.productionQueue.length; qi++) {
+                const item = building.productionQueue[qi];
+                const isActive = qi === 0 && item.timeRemaining >= 0;
+                let itemHtml = `<div style="display:flex;align-items:center;justify-content:space-between;padding:2px 0;">`;
+                itemHtml += `<span style="color:${isActive ? "#88ff88" : "#aaa"};">`;
+                if (isActive) {
+                  const pct = Math.floor((1 - item.timeRemaining / def.productionTime) * 100);
+                  itemHtml += `Soldier (${pct}%)`;
+                } else {
+                  itemHtml += `Soldier (queued)`;
+                }
+                itemHtml += `</span>`;
+                // Cancel button (cannot cancel active item)
+                if (!isActive) {
+                  itemHtml += `<button class="settlers-queue-cancel" data-qi="${qi}" style="
+                    background:#5a2222;color:#ff8888;border:1px solid #883333;border-radius:3px;
+                    cursor:pointer;font-family:monospace;font-size:10px;padding:1px 6px;
+                  ">X</button>`;
+                }
+                itemHtml += `</div>`;
+                html += itemHtml;
+              }
+            } else {
+              html += `<div style="color:#666;font-style:italic;">Empty - click Train to add</div>`;
+            }
+
+            // Add to queue button
+            if (building.productionQueue.length < SB.MAX_PRODUCTION_QUEUE) {
+              html += `<button id="settlers-queue-add" style="
+                margin-top:4px;width:100%;padding:4px 8px;background:#2a4a2a;color:#88cc88;
+                border:1px solid #3a6a3a;border-radius:4px;cursor:pointer;
+                font-family:monospace;font-size:12px;
+              ">+ Train Soldier</button>`;
+            }
+            html += `</div>`;
+          }
+
+          // Production chain info
           if (def.inputs.length > 0 || def.outputs.length > 0) {
-            html += `<div style="margin-top:6px;color:#888;border-top:1px solid #444;padding-top:4px;">`;
-            if (def.inputs.length > 0) html += `Consumes: ${def.inputs.map(i => RESOURCE_META[i.type].label).join(", ")}<br>`;
-            if (def.outputs.length > 0) html += `Produces: ${def.outputs.map(o => RESOURCE_META[o.type].label).join(", ")}`;
+            html += `<div style="margin-top:6px;color:#888;border-top:1px solid #333;padding-top:4px;font-size:10px;">`;
+            if (def.inputs.length > 0) {
+              html += `Needs: ${def.inputs.map(i => `${i.amount} ${RESOURCE_META[i.type].label}`).join(" + ")}<br>`;
+            }
+            if (def.outputs.length > 0) {
+              html += `Makes: ${def.outputs.map(o => `${o.amount} ${RESOURCE_META[o.type].label}`).join(" + ")}`;
+            } else if (def.type === SettlersBuildingType.BARRACKS) {
+              html += `Makes: 1 Soldier`;
+            }
+            html += `<br>Every ${def.productionTime}s`;
             html += `</div>`;
           }
         }
 
         this._infoPanel.innerHTML = html;
+
+        // Wire up queue button handlers
+        if (def.type === SettlersBuildingType.BARRACKS && building.owner === "p0") {
+          const addBtn = document.getElementById("settlers-queue-add");
+          if (addBtn) {
+            addBtn.onclick = () => this.onQueueAdd?.(building.id, "soldier");
+          }
+          const cancelBtns = this._infoPanel.querySelectorAll(".settlers-queue-cancel");
+          cancelBtns.forEach((btn) => {
+            const qi = parseInt((btn as HTMLElement).dataset.qi || "0", 10);
+            (btn as HTMLElement).onclick = () => this.onQueueRemove?.(building.id, qi);
+          });
+        }
       } else {
         this._infoPanel.style.display = "none";
       }
@@ -488,6 +881,104 @@ export class SettlersHUD {
       const stz = soldier.position.z / SB.TILE_SIZE;
       ctx.fillRect(stx * sx - 1, stz * sz - 1, 2, 2);
     }
+
+    // Draw flags
+    for (const [, flag] of state.flags) {
+      ctx.fillStyle = flag.owner === "p0" ? "#aaccff" : "#ffaaaa";
+      ctx.fillRect(flag.tileX * sx - 0.5, flag.tileZ * sz - 0.5, 2, 2);
+    }
+
+    // Draw camera viewport indicator
+    this._drawMinimapViewport(ctx, cw, ch, map.width, map.height);
+  }
+
+  /** Draw the camera's approximate viewport rectangle on the minimap */
+  private _drawMinimapViewport(
+    ctx: CanvasRenderingContext2D,
+    cw: number, ch: number,
+    mapTilesW: number, mapTilesH: number,
+  ): void {
+    const mapWorldW = mapTilesW * SB.TILE_SIZE;
+    const mapWorldH = mapTilesH * SB.TILE_SIZE;
+
+    // Camera target in minimap coords
+    const cx = (this._cameraTargetX / mapWorldW) * cw;
+    const cy = (this._cameraTargetZ / mapWorldH) * ch;
+
+    // Approximate visible area based on camera distance and pitch
+    // The visible width/height on the ground depends on distance, fov, and pitch
+    const dist = this._cameraDistance;
+    const pitch = this._cameraPitch;
+    const fovFactor = 1.2; // approximate scaling
+
+    // Half-width and half-height of visible area in world units
+    const visHalfW = dist * Math.cos(pitch) * fovFactor * 0.7;
+    const visHalfH = dist * fovFactor * 0.5;
+
+    // Convert to minimap pixels
+    const rectHalfW = (visHalfW / mapWorldW) * cw;
+    const rectHalfH = (visHalfH / mapWorldH) * ch;
+
+    // Rotate the rectangle based on camera yaw
+    const yaw = this._cameraYaw;
+    const corners = [
+      [-rectHalfW, -rectHalfH],
+      [ rectHalfW, -rectHalfH],
+      [ rectHalfW,  rectHalfH],
+      [-rectHalfW,  rectHalfH],
+    ];
+
+    ctx.save();
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    for (let i = 0; i < corners.length; i++) {
+      const [rx, ry] = corners[i];
+      // Rotate by yaw
+      const rotX = rx * Math.cos(yaw) - ry * Math.sin(yaw);
+      const rotY = rx * Math.sin(yaw) + ry * Math.cos(yaw);
+      const px = cx + rotX;
+      const py = cy + rotY;
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.stroke();
+
+    // Small cross at center
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.6)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cx - 3, cy);
+    ctx.lineTo(cx + 3, cy);
+    ctx.moveTo(cx, cy - 3);
+    ctx.lineTo(cx, cy + 3);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  /** Update camera info for minimap viewport indicator (called from game loop) */
+  updateCamera(targetX: number, targetZ: number, distance: number, yaw: number, pitch: number): void {
+    this._cameraTargetX = targetX;
+    this._cameraTargetZ = targetZ;
+    this._cameraDistance = distance;
+    this._cameraYaw = yaw;
+    this._cameraPitch = pitch;
+  }
+
+  /** Handle click on minimap to move camera */
+  private _handleMinimapClick(e: MouseEvent): void {
+    const rect = this._minimap.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+
+    // Convert minimap pixel to world coordinates
+    const mapWorldW = SB.MAP_WIDTH * SB.TILE_SIZE;
+    const mapWorldH = SB.MAP_HEIGHT * SB.TILE_SIZE;
+    const worldX = (mx / this._minimap.width) * mapWorldW;
+    const worldZ = (my / this._minimap.height) * mapWorldH;
+
+    this.onMinimapClick?.(worldX, worldZ);
   }
 
   destroy(): void {

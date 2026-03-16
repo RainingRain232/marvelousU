@@ -4,6 +4,14 @@
 
 import { SettlersBuildingType, ResourceStack } from "../config/SettlersBuildingDefs";
 
+/** An item in a building's production queue */
+export interface ProductionQueueItem {
+  /** What to produce (e.g. "soldier" for barracks) */
+  type: string;
+  /** Time remaining for this item (seconds); -1 means not yet started */
+  timeRemaining: number;
+}
+
 export interface SettlersBuilding {
   id: string;
   type: SettlersBuildingType;
@@ -36,4 +44,7 @@ export interface SettlersBuilding {
 
   /** The flag at this building's entrance */
   flagId: string;
+
+  /** Queued production orders (processed one at a time, first-in-first-out) */
+  productionQueue: ProductionQueueItem[];
 }

@@ -188,7 +188,11 @@ function deserializeState(s: SerializedState): SettlersState {
 
   // Simple Record -> Map conversions
   const buildings = new Map<string, SettlersBuilding>();
-  for (const [id, b] of Object.entries(s.buildings)) buildings.set(id, b);
+  for (const [id, b] of Object.entries(s.buildings)) {
+    // Ensure productionQueue exists (backward compat with old saves)
+    if (!(b as any).productionQueue) (b as any).productionQueue = [];
+    buildings.set(id, b);
+  }
 
   const flags = new Map<string, SettlersFlag>();
   for (const [id, f] of Object.entries(s.flags)) {
@@ -232,6 +236,8 @@ function deserializeState(s: SerializedState): SettlersState {
     roadDrawing: { active: false, startFlagId: null, path: [] },
     screenW: s.screenW,
     screenH: s.screenH,
+    territoryDirty: true, // recalculate territory on load
+    difficulty: (s as any).difficulty || "normal",
   };
 }
 

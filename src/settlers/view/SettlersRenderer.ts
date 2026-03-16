@@ -95,6 +95,13 @@ export class SettlersRenderer {
   // Clouds
   private _cloudGroup = new THREE.Group();
 
+  // Frustum culling
+  private _frustum = new THREE.Frustum();
+  private _projScreenMatrix = new THREE.Matrix4();
+
+  // Road preview line (shown while drawing a road)
+  private _roadPreviewLine: THREE.Line | null = null;
+
   // Cached geometries
   private _boxGeo = new THREE.BoxGeometry(1, 1, 1);
   private _coneGeo = new THREE.ConeGeometry(0.5, 1, 6);
@@ -305,6 +312,14 @@ export class SettlersRenderer {
   render(state: SettlersState, _dt: number): void {
     const t = (Date.now() - this._startTime) * 0.001;
 
+    // Update frustum for culling
+    this.camera.updateMatrixWorld();
+    this._projScreenMatrix.multiplyMatrices(
+      this.camera.projectionMatrix,
+      this.camera.matrixWorldInverse,
+    );
+    this._frustum.setFromProjectionMatrix(this._projScreenMatrix);
+
     // Tile highlight
     if (state.hoveredTile) {
       this._tileHighlight.visible = true;
@@ -323,6 +338,12 @@ export class SettlersRenderer {
     this._syncCarriers(state, t);
     this._syncSoldiers(state, t);
     this._syncTerritory(state);
+
+    // Frustum-cull entity meshes
+    this._frustumCullEntities();
+
+    // Road preview
+    this._updateRoadPreview(state);
 
     // Health bars + combat effects
     this._updateHealthBars(state);
@@ -1067,7 +1088,7 @@ export class SettlersRenderer {
 
       if (progress < 1) {
         // Construction: apply transparency / wireframe
-        mesh.traverse((child) => {
+        mesh.traverse((child: any) => {
           if (child instanceof THREE.Mesh) {
             const mat = child.material as THREE.MeshStandardMaterial;
             if (mat.transparent !== undefined) {
@@ -1085,7 +1106,7 @@ export class SettlersRenderer {
         }
         // Animate scaffold opacity based on progress (fade out as building completes)
         const scaffold = this._scaffoldMeshes.get(id)!;
-        scaffold.traverse((child) => {
+        scaffold.traverse((child: any) => {
           if (child instanceof THREE.Mesh) {
             const mat = child.material as THREE.MeshStandardMaterial;
             mat.opacity = 1.0 - progress * 0.8;
@@ -1996,6 +2017,153 @@ export class SettlersRenderer {
       this._territoryLine = new THREE.LineSegments(geo, mat);
       this.scene.add(this._territoryLine);
     }
+  }
+
+  // -----------------------------------------------------------------------
+  // Frustum culling for entity meshes and decoration groups
+  // -----------------------------------------------------------------------
+
+  private _frustumCullEntities(): void {
+    const _sphere = new THREE.Sphere();
+    const _pos = new THREE.Vector3();
+
+    // Cull building meshes
+    for (const [, mesh] of this._buildingMeshes) {
+      _pos.copy(mesh.position);
+      _sphere.set(_pos, 5); // generous radius for buildings
+      mesh.visible = this._frustum.intersectsSphere(_sphere);
+    }
+
+    // Cull flag meshes
+    for (const [, mesh] of this._flagMeshes) {
+      _pos.copy(mesh.position);
+      _sphere.set(_pos, 2);
+      mesh.visible = this._frustum.intersectsSphere(_sphere);
+    }
+
+    // Cull carrier meshes
+    for (const [, mesh] of this._carrierMeshes) {
+      _pos.copy(mesh.position);
+      _sphere.set(_pos, 1.5);
+      mesh.visible = this._frustum.intersectsSphere(_sphere);
+    }
+
+    // Cull soldier meshes
+    for (const [, mesh] of this._soldierMeshes) {
+      _pos.copy(mesh.position);
+      _sphere.set(_pos, 1.5);
+      mesh.visible = this._frustum.intersectsSphere(_sphere);
+    }
+
+    // Cull scaffold meshes
+    for (const [, mesh] of this._scaffoldMeshes) {
+      _pos.copy(mesh.position);
+      _sphere.set(_pos, 5);
+      mesh.visible = this._frustum.intersectsSphere(_sphere);
+    }
+
+    // Cull spinner meshes
+    for (const [, mesh] of this._spinnerMeshes) {
+      _pos.copy(mesh.position);
+      _sphere.set(_pos, 1);
+      mesh.visible = this._frustum.intersectsSphere(_sphere);
+    }
+
+    // Cull individual decoration children (trees, rocks, grass)
+    for (const child of this._treesGroup.children) {
+      _pos.copy(child.position);
+      _sphere.set(_pos, 4);
+      child.visible = this._frustum.intersectsSphere(_sphere);
+    }
+
+    for (const child of this._rocksGroup.children) {
+      _pos.copy(child.position);
+      _sphere.set(_pos, 3);
+      child.visible = this._frustum.intersectsSphere(_sphere);
+    }
+
+    for (const child of this._grassGroup.children) {
+      _pos.copy(child.position);
+      _sphere.set(_pos, 1);
+      child.visible = this._frustum.intersectsSphere(_sphere);
+    }
+
+    for (const child of this._depositsGroup.children) {
+      _pos.copy(child.position);
+      _sphere.set(_pos, 1);
+      child.visible = this._frustum.intersectsSphere(_sphere);
+    }
+  }
+
+  // -----------------------------------------------------------------------
+  // Road preview line (drawn while road tool is active)
+  // -----------------------------------------------------------------------
+
+  private _updateRoadPreview(state: SettlersState): void {
+    const drawing = state.roadDrawing;
+
+    if (!drawing.active || drawing.path.length === 0) {
+      // Remove preview if not drawing
+      if (this._roadPreviewLine) {
+        this.scene.remove(this._roadPreviewLine);
+        this._roadPreviewLine.geometry.dispose();
+        (this._roadPreviewLine.material as THREE.Material).dispose();
+        this._roadPreviewLine = null;
+      }
+      return;
+    }
+
+    // Build path points including current hovered tile
+    const pathPoints: THREE.Vector3[] = [];
+    for (const p of drawing.path) {
+      const wx = (p.x + 0.5) * SB.TILE_SIZE;
+      const wz = (p.z + 0.5) * SB.TILE_SIZE;
+      const wy = getHeightAt(state.map, wx, wz) + 0.15;
+      pathPoints.push(new THREE.Vector3(wx, wy, wz));
+    }
+
+    // Extend to hovered tile if different from last path point
+    if (state.hoveredTile) {
+      const last = drawing.path[drawing.path.length - 1];
+      if (state.hoveredTile.x !== last.x || state.hoveredTile.z !== last.z) {
+        const wx = (state.hoveredTile.x + 0.5) * SB.TILE_SIZE;
+        const wz = (state.hoveredTile.z + 0.5) * SB.TILE_SIZE;
+        const wy = getHeightAt(state.map, wx, wz) + 0.15;
+        pathPoints.push(new THREE.Vector3(wx, wy, wz));
+      }
+    }
+
+    if (pathPoints.length < 2) {
+      if (this._roadPreviewLine) {
+        this.scene.remove(this._roadPreviewLine);
+        this._roadPreviewLine.geometry.dispose();
+        (this._roadPreviewLine.material as THREE.Material).dispose();
+        this._roadPreviewLine = null;
+      }
+      return;
+    }
+
+    // Remove old line
+    if (this._roadPreviewLine) {
+      this.scene.remove(this._roadPreviewLine);
+      this._roadPreviewLine.geometry.dispose();
+      (this._roadPreviewLine.material as THREE.Material).dispose();
+      this._roadPreviewLine = null;
+    }
+
+    // Create new line
+    const geo = new THREE.BufferGeometry().setFromPoints(pathPoints);
+    const pulse = 0.5 + Math.sin(Date.now() * 0.006) * 0.3;
+    const mat = new THREE.LineBasicMaterial({
+      color: 0xffdd44,
+      linewidth: 2,
+      transparent: true,
+      opacity: pulse,
+    });
+    this._roadPreviewLine = new THREE.Line(geo, mat);
+    this._roadPreviewLine.renderOrder = 999;
+    (this._roadPreviewLine.material as THREE.LineBasicMaterial).depthTest = false;
+    this.scene.add(this._roadPreviewLine);
   }
 
   // -----------------------------------------------------------------------

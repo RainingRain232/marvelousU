@@ -42,12 +42,12 @@ export function recalculateTerritory(state: SettlersState): void {
   }
 }
 
-/** Check if a military building change requires territory recalc */
-let _lastTerritoryTick = -1;
-
+/**
+ * Event-driven territory update: only recalculates when the dirty flag is set.
+ * The dirty flag is set by placeBuilding, demolishBuilding, and _captureBuilding.
+ */
 export function updateTerritory(state: SettlersState): void {
-  // Recalculate every 60 ticks (~1 second) or on first tick
-  if (state.tick - _lastTerritoryTick < 60 && _lastTerritoryTick >= 0) return;
-  _lastTerritoryTick = state.tick;
+  if (!state.territoryDirty) return;
+  state.territoryDirty = false;
   recalculateTerritory(state);
 }

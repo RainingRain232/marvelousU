@@ -88,6 +88,13 @@ export class SettlersCameraController {
   }
 
   get camera(): THREE.PerspectiveCamera { return this._camera; }
+  get targetX(): number { return this._smoothTargetX; }
+  get targetZ(): number { return this._smoothTargetZ; }
+  get distance(): number { return this._smoothDist; }
+  get yaw(): number { return this._smoothYaw; }
+  get pitch(): number { return this._smoothPitch; }
+  get mapW(): number { return this._mapW; }
+  get mapH(): number { return this._mapH; }
 
   update(dt: number): void {
     // Pan based on WASD relative to camera yaw

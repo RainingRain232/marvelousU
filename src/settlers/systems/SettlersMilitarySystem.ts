@@ -19,18 +19,20 @@ export function updateBarracks(state: SettlersState, dt: number): void {
     if (building.type !== SettlersBuildingType.BARRACKS) continue;
     if (!building.active) continue;
 
+    // Only produce if there are items in the queue
+    if (building.productionQueue.length === 0) continue;
+
     const def = BUILDING_DEFS[SettlersBuildingType.BARRACKS];
+    const front = building.productionQueue[0];
 
-    // Check inputs: Sword + Shield + Beer
-    const hasSword = building.inputStorage.some((s) => s.type === ResourceType.SWORD && s.amount >= 1);
-    const hasShield = building.inputStorage.some((s) => s.type === ResourceType.SHIELD && s.amount >= 1);
-    const hasBeer = building.inputStorage.some((s) => s.type === ResourceType.BEER && s.amount >= 1);
+    // If the front item hasn't started yet, try to consume inputs
+    if (front.timeRemaining < 0) {
+      // Check inputs: Sword + Shield + Beer
+      const hasSword = building.inputStorage.some((s) => s.type === ResourceType.SWORD && s.amount >= 1);
+      const hasShield = building.inputStorage.some((s) => s.type === ResourceType.SHIELD && s.amount >= 1);
+      const hasBeer = building.inputStorage.some((s) => s.type === ResourceType.BEER && s.amount >= 1);
 
-    if (!hasSword || !hasShield || !hasBeer) continue;
-
-    building.productionTimer -= dt;
-    if (building.productionTimer <= 0) {
-      building.productionTimer = def.productionTime;
+      if (!hasSword || !hasShield || !hasBeer) continue;
 
       // Consume resources
       for (const s of building.inputStorage) {
@@ -43,6 +45,16 @@ export function updateBarracks(state: SettlersState, dt: number): void {
         if (s.type === ResourceType.BEER) { s.amount--; break; }
       }
       building.inputStorage = building.inputStorage.filter((s) => s.amount > 0);
+
+      // Start production
+      front.timeRemaining = def.productionTime;
+    }
+
+    // Tick the active item
+    front.timeRemaining -= dt;
+    if (front.timeRemaining <= 0) {
+      // Remove completed item from queue
+      building.productionQueue.shift();
 
       // Create soldier
       const id = nextId(state);
@@ -70,6 +82,35 @@ export function updateBarracks(state: SettlersState, dt: number): void {
       if (player) player.freeSoldiers++;
     }
   }
+}
+
+/**
+ * Add a production item to a building's queue.
+ * Returns true if successfully added, false if queue is full.
+ */
+export function addToProductionQueue(
+  building: import("../state/SettlersBuilding").SettlersBuilding,
+  itemType: string,
+): boolean {
+  if (building.productionQueue.length >= SB.MAX_PRODUCTION_QUEUE) return false;
+  building.productionQueue.push({ type: itemType, timeRemaining: -1 });
+  return true;
+}
+
+/**
+ * Remove a production item from a building's queue by index.
+ * Cannot remove the first item if it's already in progress (timeRemaining >= 0).
+ * Returns true if successfully removed.
+ */
+export function removeFromProductionQueue(
+  building: import("../state/SettlersBuilding").SettlersBuilding,
+  index: number,
+): boolean {
+  if (index < 0 || index >= building.productionQueue.length) return false;
+  // Cannot cancel the front item once production has started (resources already consumed)
+  if (index === 0 && building.productionQueue[0].timeRemaining >= 0) return false;
+  building.productionQueue.splice(index, 1);
+  return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -278,6 +319,9 @@ function _captureBuilding(
 ): void {
   building.owner = newOwner;
   building.garrison = [];
+
+  // Mark territory as dirty when a building is captured
+  state.territoryDirty = true;
 
   // Update flag ownership
   const flag = state.flags.get(building.flagId);

@@ -6,7 +6,7 @@ import { SB } from "./config/SettlersBalance";
 import { ResourceType } from "./config/SettlersResourceDefs";
 import { SettlersBuildingType } from "./config/SettlersBuildingDefs";
 import { createSettlersState, nextId } from "./state/SettlersState";
-import type { SettlersState } from "./state/SettlersState";
+import type { SettlersState, SettlersDifficulty } from "./state/SettlersState";
 import type { SettlersPlayer } from "./state/SettlersPlayer";
 import { getHeightAt } from "./state/SettlersMap";
 import { generateTerrain, findStartPosition } from "./systems/SettlersTerrainSystem";
@@ -14,14 +14,14 @@ import { placeBuilding, canPlaceBuilding, updateConstruction, updateProduction, 
 import { recalculateTerritory, updateTerritory } from "./systems/SettlersTerritorySystem";
 import { placeFlag, createRoad, routeGoods } from "./systems/SettlersRoadSystem";
 import { updateCarriers } from "./systems/SettlersCarrierSystem";
-import { updateBarracks, updateGarrisoning, updateCombat, checkWinCondition } from "./systems/SettlersMilitarySystem";
+import { updateBarracks, updateGarrisoning, updateCombat, checkWinCondition, addToProductionQueue, removeFromProductionQueue } from "./systems/SettlersMilitarySystem";
 import { updateAI } from "./systems/SettlersAISystem";
 import { SettlersRenderer } from "./view/SettlersRenderer";
 import { SettlersCameraController } from "./view/SettlersCameraController";
 import { SettlersInputSystem } from "./systems/SettlersInputSystem";
 import { SettlersHUD } from "./view/SettlersHUD";
 import { saveToLocalStorage, loadFromLocalStorage } from "./systems/SettlersSaveSystem";
-import { updateAudio, destroyAudio, playBuildSound, playDemolishSound } from "./systems/SettlersAudioSystem";
+import { updateAudio, destroyAudio, playBuildSound, playDemolishSound, playUIClick, playUIToolSwitch } from "./systems/SettlersAudioSystem";
 
 export class SettlersGame {
   private _state!: SettlersState;
@@ -33,6 +33,12 @@ export class SettlersGame {
   private _rafId: number | null = null;
   private _lastTime = 0;
   private _simAccumulator = 0;
+  private _difficulty: SettlersDifficulty = "normal";
+
+  /** Set difficulty before calling boot(). Affects AI speed, attack thresholds, and starting resources. */
+  setDifficulty(difficulty: SettlersDifficulty): void {
+    this._difficulty = difficulty;
+  }
 
   async boot(): Promise<void> {
     const sw = window.innerWidth;
@@ -40,6 +46,7 @@ export class SettlersGame {
 
     // --- 1. Create state ---
     this._state = createSettlersState(sw, sh);
+    this._state.difficulty = this._difficulty;
 
     // --- 2. Generate terrain ---
     generateTerrain(this._state.map, Math.floor(Math.random() * 100000));
@@ -88,18 +95,24 @@ export class SettlersGame {
       }
     };
     this._input.onToggleWiki = () => this._hud.toggleWiki();
+    this._input.onToggleAudio = () => this._hud.toggleAudioPanel();
 
     // --- 8. Init HUD ---
     this._hud.build();
     this._hud.onSelectBuildingType = (type) => {
       this._state.selectedBuildingType = type;
       this._state.selectedTool = "build";
+      playUIClick();
     };
     this._hud.onSelectTool = (tool) => {
       this._state.selectedTool = tool;
       if (tool !== "build") this._state.selectedBuildingType = null;
+      playUIToolSwitch();
     };
     this._hud.onExit = () => this.destroy();
+    this._hud.onMinimapClick = (worldX, worldZ) => {
+      this._camera.lookAt(worldX, worldZ);
+    };
     this._hud.onSave = () => {
       saveToLocalStorage(this._state);
       this._hud.showNotification("Game saved!");
@@ -114,6 +127,15 @@ export class SettlersGame {
       } else {
         this._hud.showNotification("No save found!");
       }
+    };
+
+    this._hud.onQueueAdd = (buildingId, itemType) => {
+      const building = this._state.buildings.get(buildingId);
+      if (building) addToProductionQueue(building, itemType);
+    };
+    this._hud.onQueueRemove = (buildingId, index) => {
+      const building = this._state.buildings.get(buildingId);
+      if (building) removeFromProductionQueue(building, index);
     };
 
     // --- 9. Start game loop ---
@@ -165,6 +187,15 @@ export class SettlersGame {
     // Audio
     updateAudio(this._state, frameMs / 1000);
 
+    // Pass camera info to HUD for minimap viewport indicator
+    this._hud.updateCamera(
+      this._camera.targetX,
+      this._camera.targetZ,
+      this._camera.distance,
+      this._camera.yaw,
+      this._camera.pitch,
+    );
+
     // HUD update
     this._hud.update(this._state);
   };
@@ -200,6 +231,10 @@ export class SettlersGame {
   // -----------------------------------------------------------------------
 
   private _setupPlayers(): void {
+    const diff = SB.AI_DIFFICULTY[this._difficulty];
+    const playerMult = diff.playerResourceMult;
+    const aiMult = diff.startingResourceMult;
+
     // Player 0 (human) – northwest
     const p0Pos = findStartPosition(this._state.map, "nw");
     const p0: SettlersPlayer = {
@@ -214,15 +249,15 @@ export class SettlersGame {
       defeated: false,
     };
 
-    // Set starting resources
-    p0.storage.set(ResourceType.PLANKS, SB.START_PLANKS);
-    p0.storage.set(ResourceType.STONE, SB.START_STONE);
-    p0.storage.set(ResourceType.WOOD, SB.START_WOOD);
-    p0.storage.set(ResourceType.FISH, SB.START_FISH);
-    p0.storage.set(ResourceType.BREAD, SB.START_BREAD);
-    p0.storage.set(ResourceType.SWORD, SB.START_SWORDS);
-    p0.storage.set(ResourceType.SHIELD, SB.START_SHIELDS);
-    p0.storage.set(ResourceType.BEER, SB.START_BEER);
+    // Set starting resources (scaled by difficulty for the human player)
+    p0.storage.set(ResourceType.PLANKS, Math.round(SB.START_PLANKS * playerMult));
+    p0.storage.set(ResourceType.STONE, Math.round(SB.START_STONE * playerMult));
+    p0.storage.set(ResourceType.WOOD, Math.round(SB.START_WOOD * playerMult));
+    p0.storage.set(ResourceType.FISH, Math.round(SB.START_FISH * playerMult));
+    p0.storage.set(ResourceType.BREAD, Math.round(SB.START_BREAD * playerMult));
+    p0.storage.set(ResourceType.SWORD, Math.round(SB.START_SWORDS * playerMult));
+    p0.storage.set(ResourceType.SHIELD, Math.round(SB.START_SHIELDS * playerMult));
+    p0.storage.set(ResourceType.BEER, Math.round(SB.START_BEER * playerMult));
 
     this._state.players.set("p0", p0);
 
@@ -244,14 +279,15 @@ export class SettlersGame {
       defeated: false,
     };
 
-    p1.storage.set(ResourceType.PLANKS, SB.START_PLANKS);
-    p1.storage.set(ResourceType.STONE, SB.START_STONE);
-    p1.storage.set(ResourceType.WOOD, SB.START_WOOD);
-    p1.storage.set(ResourceType.FISH, SB.START_FISH);
-    p1.storage.set(ResourceType.BREAD, SB.START_BREAD);
-    p1.storage.set(ResourceType.SWORD, SB.START_SWORDS);
-    p1.storage.set(ResourceType.SHIELD, SB.START_SHIELDS);
-    p1.storage.set(ResourceType.BEER, SB.START_BEER);
+    // AI starting resources scaled by difficulty
+    p1.storage.set(ResourceType.PLANKS, Math.round(SB.START_PLANKS * aiMult));
+    p1.storage.set(ResourceType.STONE, Math.round(SB.START_STONE * aiMult));
+    p1.storage.set(ResourceType.WOOD, Math.round(SB.START_WOOD * aiMult));
+    p1.storage.set(ResourceType.FISH, Math.round(SB.START_FISH * aiMult));
+    p1.storage.set(ResourceType.BREAD, Math.round(SB.START_BREAD * aiMult));
+    p1.storage.set(ResourceType.SWORD, Math.round(SB.START_SWORDS * aiMult));
+    p1.storage.set(ResourceType.SHIELD, Math.round(SB.START_SHIELDS * aiMult));
+    p1.storage.set(ResourceType.BEER, Math.round(SB.START_BEER * aiMult));
 
     this._state.players.set("p1", p1);
 
@@ -318,10 +354,13 @@ export class SettlersGame {
     if (!state.selectedBuildingType) return;
 
     const error = canPlaceBuilding(state, state.selectedBuildingType, tileX, tileZ, "p0");
-    if (error) return; // silently fail – HUD could show error
+    if (error) {
+      this._hud.showToast(error);
+      return;
+    }
 
     placeBuilding(state, state.selectedBuildingType, tileX, tileZ, "p0");
-    recalculateTerritory(state);
+    // Territory recalc is handled by the dirty flag set in placeBuilding
     playBuildSound();
   }
 
@@ -369,17 +408,74 @@ export class SettlersGame {
 
   private _handleDemolish(tileX: number, tileZ: number): void {
     const state = this._state;
+
+    // 1. Check for a building on this tile
     const idx = tileZ * state.map.width + tileX;
     const buildingId = state.map.occupied[idx];
-    if (!buildingId) return;
-
-    const building = state.buildings.get(buildingId);
-    if (!building || building.owner !== "p0") return;
-
-    if (demolishBuilding(state, buildingId)) {
-      recalculateTerritory(state);
-      playDemolishSound();
+    if (buildingId) {
+      const building = state.buildings.get(buildingId);
+      if (building && building.owner === "p0") {
+        if (demolishBuilding(state, buildingId)) {
+          // Territory recalc is handled by the dirty flag set in demolishBuilding
+          playDemolishSound();
+        }
+      }
+      return;
     }
+
+    // 2. Check for a flag on this tile
+    for (const [, flag] of state.flags) {
+      if (flag.tileX === tileX && flag.tileZ === tileZ && flag.owner === "p0") {
+        // Don't demolish flags attached to buildings – demolish the building instead
+        if (flag.buildingId) return;
+
+        // Remove all roads connected to this flag
+        for (const roadId of [...flag.connectedRoads]) {
+          this._demolishRoadSegment(state, roadId);
+        }
+        // Remove the flag itself
+        state.flags.delete(flag.id);
+        playDemolishSound();
+        return;
+      }
+    }
+
+    // 3. Check for a road passing through this tile
+    for (const [, road] of state.roads) {
+      if (road.owner !== "p0") continue;
+      for (const pt of road.path) {
+        if (pt.x === tileX && pt.z === tileZ) {
+          this._demolishRoadSegment(state, road.id);
+          playDemolishSound();
+          return;
+        }
+      }
+    }
+  }
+
+  /** Remove a single road segment: delete carrier, disconnect from both flags */
+  private _demolishRoadSegment(state: SettlersState, roadId: string): void {
+    const road = state.roads.get(roadId);
+    if (!road) return;
+
+    // Remove the carrier assigned to this road
+    if (road.carrierId) {
+      state.carriers.delete(road.carrierId);
+    }
+
+    // Disconnect from flagA
+    const flagA = state.flags.get(road.flagA);
+    if (flagA) {
+      flagA.connectedRoads = flagA.connectedRoads.filter((r) => r !== roadId);
+    }
+
+    // Disconnect from flagB
+    const flagB = state.flags.get(road.flagB);
+    if (flagB) {
+      flagB.connectedRoads = flagB.connectedRoads.filter((r) => r !== roadId);
+    }
+
+    state.roads.delete(roadId);
   }
 
   private _handleAttack(tileX: number, tileZ: number): void {

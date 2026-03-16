@@ -15,6 +15,7 @@ export type { SettlersMap, SettlersBuilding, SettlersFlag, SettlersRoadSegment }
 export type { SettlersCarrier, SettlersSoldier, SettlersCombat, SettlersPlayer };
 
 export type SettlersTool = "select" | "build" | "road" | "flag" | "demolish" | "attack";
+export type SettlersDifficulty = "easy" | "normal" | "hard";
 
 export interface SettlersState {
   tick: number;
@@ -48,6 +49,12 @@ export interface SettlersState {
 
   screenW: number;
   screenH: number;
+
+  /** AI difficulty level */
+  difficulty: SettlersDifficulty;
+
+  /** Dirty flag – set when buildings are placed, destroyed, or captured */
+  territoryDirty: boolean;
 }
 
 /** Generate a unique ID */
@@ -95,5 +102,7 @@ export function createSettlersState(screenW: number, screenH: number): SettlersS
     roadDrawing: { active: false, startFlagId: null, path: [] },
     screenW,
     screenH,
+    difficulty: "normal",
+    territoryDirty: true,
   };
 }

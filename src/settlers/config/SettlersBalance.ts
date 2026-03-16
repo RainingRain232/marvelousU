@@ -52,6 +52,9 @@ export const SB = {
   PROD_SHIELD_SMITH: 18,
   PROD_BARRACKS: 30,
 
+  // Production queue
+  MAX_PRODUCTION_QUEUE: 5,     // max items in a building's production queue
+
   // Military
   SOLDIER_BASE_HP: 20,
   SOLDIER_BASE_ATK: 4,
@@ -82,8 +85,39 @@ export const SB = {
   START_WORKERS: 12,
   START_SOLDIERS: 2,
 
-  // AI
-  AI_TICK_INTERVAL: 2.0,     // seconds between AI decisions
+  // AI – base values (modified by difficulty)
+  AI_TICK_INTERVAL: 2.0,     // seconds between AI decisions (Normal)
+
+  // AI difficulty presets
+  AI_DIFFICULTY: {
+    easy: {
+      tickInterval: 3.5,        // slower decisions
+      attackThreshold: 8,        // needs more soldiers before attacking
+      attackGroupSize: 2,        // sends fewer soldiers per attack
+      buildEfficiency: 0.6,      // 60% chance to actually build each tick
+      startingResourceMult: 0.8, // AI gets fewer starting resources
+      playerResourceMult: 1.3,   // player gets more starting resources
+      defensePriority: 0.3,      // low priority on defensive placement
+    },
+    normal: {
+      tickInterval: 2.0,
+      attackThreshold: 5,
+      attackGroupSize: 4,
+      buildEfficiency: 0.85,
+      startingResourceMult: 1.0,
+      playerResourceMult: 1.0,
+      defensePriority: 0.6,
+    },
+    hard: {
+      tickInterval: 1.2,        // faster decisions
+      attackThreshold: 3,        // attacks earlier
+      attackGroupSize: 6,        // sends more soldiers
+      buildEfficiency: 1.0,      // always builds
+      startingResourceMult: 1.4, // AI gets more starting resources
+      playerResourceMult: 0.8,   // player gets fewer starting resources
+      defensePriority: 0.9,      // high priority on defensive placement
+    },
+  },
 
   // Rendering
   ROAD_WIDTH: 0.3,           // world units

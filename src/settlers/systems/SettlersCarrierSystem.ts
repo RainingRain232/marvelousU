@@ -6,6 +6,7 @@ import { SB } from "../config/SettlersBalance";
 import { getHeightAt } from "../state/SettlersMap";
 import type { SettlersState } from "../state/SettlersState";
 import type { SettlersCarrier } from "../state/SettlersUnit";
+import { playResourceDelivered } from "./SettlersAudioSystem";
 
 export function updateCarriers(state: SettlersState, dt: number): void {
   for (const [, carrier] of state.carriers) {
@@ -77,6 +78,10 @@ function _arriveAtFlag(
       const building = state.buildings.get(flag.buildingId);
       if (building) {
         _deliverToBuilding(building, carrier.carrying);
+        // Play delivery sound only for player-owned buildings (avoid audio spam)
+        if (building.owner === "p0" && Math.random() < 0.3) {
+          playResourceDelivered();
+        }
       }
       carrier.carrying = null;
       carrier.carryTargetBuildingId = "";
