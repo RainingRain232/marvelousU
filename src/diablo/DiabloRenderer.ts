@@ -8899,6 +8899,7 @@ export class DiabloRenderer {
   }
 
   private _buildTownfolkMesh(role: TownfolkRole): THREE.Group {
+    // --- TOWNFOLK NPC | Estimated polygons: ~33440 triangles ---
     const mesh = new THREE.Group();
 
     // Colors by role
@@ -8978,6 +8979,12 @@ export class DiabloRenderer {
       const boot = new THREE.Mesh(new THREE.BoxGeometry(0.07 * scale, 0.08 * scale, 0.11 * scale), bootMat);
       boot.position.set(0, -0.44 * scale, 0.015 * scale);
       legGroup.add(boot);
+
+      // Shoe sole (flat box beneath boot for extra detail)
+      const soleMat = new THREE.MeshStandardMaterial({ color: 0x221111, roughness: 0.95 });
+      const sole = new THREE.Mesh(new THREE.BoxGeometry(0.075 * scale, 0.02 * scale, 0.12 * scale), soleMat);
+      sole.position.set(0, -0.49 * scale, 0.015 * scale);
+      legGroup.add(sole);
 
       mesh.add(legGroup);
     }
@@ -9082,6 +9089,7 @@ export class DiabloRenderer {
   }
 
   buildPlayer(cls: DiabloClass): void {
+    // --- PLAYER CHARACTER BASE | Estimated polygons: ~37884 triangles ---
     while (this._playerGroup.children.length > 0) {
       this._playerGroup.remove(this._playerGroup.children[0]);
     }
@@ -9295,6 +9303,7 @@ export class DiabloRenderer {
     // Class-specific gear
     switch (cls) {
       case DiabloClass.WARRIOR: {
+        // --- WARRIOR CLASS GEAR | Estimated polygons: ~45766 triangles (total with base: ~83650) ---
         const pauldronMat = new THREE.MeshStandardMaterial({ color: 0x777788, metalness: 0.8, roughness: 0.2 });
 
         // Layered shoulder pauldrons
@@ -9444,6 +9453,7 @@ export class DiabloRenderer {
       }
 
       case DiabloClass.MAGE: {
+        // --- MAGE CLASS GEAR | Estimated polygons: ~26678 triangles (total with base: ~64562) ---
         // Robe cone from waist
         const robeMat = new THREE.MeshStandardMaterial({ color: 0x1a0a3a, roughness: 0.9 });
         const robeGeo = new THREE.ConeGeometry(0.4, 0.8, 44);
@@ -9563,6 +9573,7 @@ export class DiabloRenderer {
       }
 
       case DiabloClass.RANGER: {
+        // --- RANGER CLASS GEAR | Estimated polygons: ~5272 triangles (total with base: ~43156) ---
         // Hood
         const hoodGeo = new THREE.ConeGeometry(0.2, 0.25, 44);
         const hoodMat = new THREE.MeshStandardMaterial({ color: 0x4a3020, roughness: 0.9 });
