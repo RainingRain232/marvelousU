@@ -477,7 +477,8 @@ export class RiftWizardGame {
     const sw = viewManager.screenWidth;
     const sh = viewManager.screenHeight;
     this._renderer.draw(this._state, sw, sh, dt);
-    this._hud.update(this._state, sw, sh);
+    const hoverGrid = this._mouseToGrid();
+    this._hud.update(this._state, sw, sh, hoverGrid);
   }
 
   // -------------------------------------------------------------------------

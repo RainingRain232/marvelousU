@@ -7,7 +7,7 @@ import type { RiftWizardState } from "../state/RiftWizardState";
 import { SpellSchool } from "../state/RiftWizardState";
 import { RWPhase, RWTileType } from "../state/RiftWizardState";
 import { SPELL_DEFS } from "../config/RiftWizardSpellDefs";
-import { SCHOOL_COLORS } from "../config/RiftWizardShrineDefs";
+import { SCHOOL_COLORS, SHRINE_LABELS, getShrineDescription, getSpellCircleDescription } from "../config/RiftWizardShrineDefs";
 import { ENEMY_DEFS } from "../config/RiftWizardEnemyDefs";
 import {
   getAvailableSpells,
@@ -250,7 +250,7 @@ export class RiftWizardHUD {
     this.container.addChild(this._pauseContainer);
   }
 
-  update(state: RiftWizardState, screenWidth: number, screenHeight: number): void {
+  update(state: RiftWizardState, screenWidth: number, screenHeight: number, hoverGrid?: { col: number; row: number } | null): void {
     const hudH = 90;
     const hudY = screenHeight - hudH;
 
@@ -633,55 +633,176 @@ export class RiftWizardHUD {
     this._msgText.y = 12;
     this._msgText.anchor.set(0.5, 0);
 
-    // --- Enemy tooltip when targeting ---
-    if (state.phase === RWPhase.TARGETING && state.targetCursor) {
-      const tc = state.targetCursor;
-      const targetEnemy = state.level.enemies.find(
-        (e) => e.alive && e.col === tc.col && e.row === tc.row
-      );
-      if (targetEnemy) {
-        // Draw tooltip panel near the HUD area
-        const ttW = 200;
-        const ttH = 50;
-        const ttX = Math.floor(screenWidth / 2 - ttW / 2);
-        const ttY = 40;
+    // --- Hover tooltip system (works in PLAYING and TARGETING phases) ---
+    {
+      // Determine the grid cell to inspect: targeting cursor or mouse hover
+      const inspectCell = (state.phase === RWPhase.TARGETING && state.targetCursor)
+        ? state.targetCursor
+        : (state.phase === RWPhase.PLAYING && hoverGrid) ? hoverGrid : null;
 
-        // Background
-        this._bg.rect(ttX, ttY, ttW, ttH);
-        this._bg.fill({ color: 0x0a0a18, alpha: 0.92 });
-        this._bg.rect(ttX, ttY, ttW, ttH);
-        this._bg.stroke({ color: 0xcc4444, width: 1 });
+      if (inspectCell) {
+        const ic = inspectCell;
+        const tooltipLines: { text: string; color: number; bold?: boolean }[] = [];
+        let borderColor = 0x444477;
 
-        // Enemy name
-        const enemyDef = ENEMY_DEFS[targetEnemy.defId];
-        const enemyName = new Text({
-          text: enemyDef?.name ?? targetEnemy.defId,
-          style: new TextStyle({ fontFamily: "monospace", fontSize: 12, fill: 0xff6666, fontWeight: "bold" }),
-        });
-        enemyName.x = ttX + 8;
-        enemyName.y = ttY + 4;
-        this.container.addChild(enemyName);
-        this._spellTexts.push(enemyName);
+        // Check for enemy at this cell
+        const hovEnemy = state.level.enemies.find(e => e.alive && e.col === ic.col && e.row === ic.row);
+        if (hovEnemy) {
+          const eDef = ENEMY_DEFS[hovEnemy.defId];
+          borderColor = 0xcc4444;
+          tooltipLines.push({ text: eDef?.name ?? hovEnemy.defId, color: 0xff6666, bold: true });
+          tooltipLines.push({ text: `HP: ${hovEnemy.hp} / ${hovEnemy.maxHp}`, color: 0xcccccc });
+          tooltipLines.push({ text: `Dmg: ${hovEnemy.damage}  Range: ${hovEnemy.range}  Speed: ${hovEnemy.moveSpeed}`, color: 0x999999 });
+          tooltipLines.push({ text: `AI: ${hovEnemy.aiType}${hovEnemy.isBoss ? "  [BOSS]" : ""}`, color: hovEnemy.isBoss ? 0xff8844 : 0x777799 });
+          if (hovEnemy.school) tooltipLines.push({ text: `School: ${hovEnemy.school}`, color: SCHOOL_COLORS[hovEnemy.school] ?? 0x888888 });
+          if (hovEnemy.stunTurns > 0) tooltipLines.push({ text: `Stunned: ${hovEnemy.stunTurns} turns`, color: 0x44bbff });
+          if (hovEnemy.statusEffects.length > 0) {
+            for (const fx of hovEnemy.statusEffects) {
+              tooltipLines.push({ text: `${fx.type}: ${fx.turnsRemaining}t (x${fx.magnitude})`, color: 0xaaaacc });
+            }
+          }
+          if (hovEnemy.abilities.length > 0) {
+            const abilNames = hovEnemy.abilities.map(a => SPELL_DEFS[a]?.name ?? a).join(", ");
+            tooltipLines.push({ text: `Spells: ${abilNames}`, color: 0xaa88cc });
+          }
+        }
 
-        // HP info
-        const hpInfo = new Text({
-          text: `HP: ${targetEnemy.hp}/${targetEnemy.maxHp}`,
-          style: new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: 0xcccccc }),
-        });
-        hpInfo.x = ttX + 8;
-        hpInfo.y = ttY + 20;
-        this.container.addChild(hpInfo);
-        this._spellTexts.push(hpInfo);
+        // Check for summon at this cell
+        if (tooltipLines.length === 0) {
+          const hovSummon = state.level.summons.find(s => s.alive && s.col === ic.col && s.row === ic.row);
+          if (hovSummon) {
+            borderColor = 0x44cc44;
+            tooltipLines.push({ text: `Summon: ${hovSummon.unitType}`, color: 0x44cc44, bold: true });
+            tooltipLines.push({ text: `HP: ${hovSummon.hp} / ${hovSummon.maxHp}`, color: 0xcccccc });
+            tooltipLines.push({ text: `Dmg: ${hovSummon.damage}  Range: ${hovSummon.range}`, color: 0x999999 });
+            if (hovSummon.turnsRemaining > 0) tooltipLines.push({ text: `Turns left: ${hovSummon.turnsRemaining}`, color: 0xaaaa88 });
+          }
+        }
 
-        // Stats line
-        const statsLine = new Text({
-          text: `Dmg: ${targetEnemy.damage}  Range: ${targetEnemy.range}${targetEnemy.isBoss ? "  [BOSS]" : ""}`,
-          style: new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: 0x999999 }),
-        });
-        statsLine.x = ttX + 8;
-        statsLine.y = ttY + 34;
-        this.container.addChild(statsLine);
-        this._spellTexts.push(statsLine);
+        // Check for spawner at this cell
+        if (tooltipLines.length === 0) {
+          const hovSpawner = state.level.spawners.find(s => s.alive && s.col === ic.col && s.row === ic.row);
+          if (hovSpawner) {
+            borderColor = 0xcc6644;
+            const spawnName = ENEMY_DEFS[hovSpawner.spawnDefId]?.name ?? hovSpawner.spawnDefId;
+            tooltipLines.push({ text: "Enemy Spawner", color: 0xff8844, bold: true });
+            tooltipLines.push({ text: `HP: ${hovSpawner.hp} / ${hovSpawner.maxHp}`, color: 0xcccccc });
+            tooltipLines.push({ text: `Spawns: ${spawnName}`, color: 0xddaa66 });
+            tooltipLines.push({ text: `Every ${hovSpawner.spawnInterval} turns`, color: 0x999999 });
+          }
+        }
+
+        // Check for shrine at this cell
+        if (tooltipLines.length === 0) {
+          const hovShrine = state.level.shrines.find(s => s.col === ic.col && s.row === ic.row);
+          if (hovShrine) {
+            const sc = SCHOOL_COLORS[hovShrine.school] ?? 0x888888;
+            borderColor = sc;
+            tooltipLines.push({ text: SHRINE_LABELS[hovShrine.effect] ?? "Shrine", color: sc, bold: true });
+            tooltipLines.push({ text: getShrineDescription(hovShrine.school, hovShrine.effect, hovShrine.magnitude), color: 0xcccccc });
+            tooltipLines.push({ text: hovShrine.used ? "Already used" : "Press [E] to activate", color: hovShrine.used ? 0x666666 : 0xffcc44 });
+          }
+        }
+
+        // Check for spell circle at this cell
+        if (tooltipLines.length === 0) {
+          const hovCircle = state.level.spellCircles.find(c => c.col === ic.col && c.row === ic.row);
+          if (hovCircle) {
+            const sc = SCHOOL_COLORS[hovCircle.school] ?? 0x888888;
+            borderColor = sc;
+            tooltipLines.push({ text: `${hovCircle.school.charAt(0).toUpperCase() + hovCircle.school.slice(1)} Spell Circle`, color: sc, bold: true });
+            tooltipLines.push({ text: getSpellCircleDescription(hovCircle.school), color: 0xbbbbcc });
+          }
+        }
+
+        // Check for item at this cell
+        if (tooltipLines.length === 0) {
+          const hovItem = state.level.items.find(i => !i.picked && i.col === ic.col && i.row === ic.row);
+          if (hovItem) {
+            borderColor = 0xffcc44;
+            const itemNames: Record<string, string> = {
+              health_potion: "Health Potion",
+              charge_scroll: "Charge Scroll",
+              shield_scroll: "Shield Scroll",
+            };
+            const itemDescs: Record<string, string> = {
+              health_potion: "Restores 30 HP when used",
+              charge_scroll: "Restores 3 charges to a spell",
+              shield_scroll: "Grants temporary shields",
+            };
+            tooltipLines.push({ text: itemNames[hovItem.type] ?? hovItem.type, color: 0xffcc44, bold: true });
+            tooltipLines.push({ text: itemDescs[hovItem.type] ?? "", color: 0xbbbbcc });
+            tooltipLines.push({ text: "Walk over to pick up", color: 0x888899 });
+          }
+        }
+
+        // Check for rift portal at this cell
+        if (tooltipLines.length === 0) {
+          const hovPortal = state.level.riftPortals.find(p => p.col === ic.col && p.row === ic.row);
+          if (hovPortal) {
+            const sc = SCHOOL_COLORS[hovPortal.theme] ?? 0x8844ff;
+            borderColor = sc;
+            tooltipLines.push({ text: hovPortal.label || "Rift Portal", color: sc, bold: true });
+            tooltipLines.push({ text: "Exit to next level", color: 0xbbbbcc });
+            tooltipLines.push({ text: state.level.cleared ? "Press [E] to enter" : "Clear all enemies first", color: state.level.cleared ? 0xffcc44 : 0xff6644 });
+          }
+        }
+
+        // Check tile type for special tiles
+        if (tooltipLines.length === 0) {
+          const tile = state.level.tiles[ic.row]?.[ic.col];
+          if (tile === RWTileType.LAVA) {
+            borderColor = 0xff4400;
+            tooltipLines.push({ text: "Lava", color: 0xff6633, bold: true });
+            tooltipLines.push({ text: "Deals 15 damage when walked on", color: 0xccaa88 });
+          } else if (tile === RWTileType.ICE) {
+            borderColor = 0x44bbff;
+            tooltipLines.push({ text: "Ice", color: 0x88ccff, bold: true });
+            tooltipLines.push({ text: "Slippery surface", color: 0xbbbbcc });
+          } else if (tile === RWTileType.CHASM) {
+            borderColor = 0x222244;
+            tooltipLines.push({ text: "Chasm", color: 0x666688, bold: true });
+            tooltipLines.push({ text: "Impassable void", color: 0x555566 });
+          }
+        }
+
+        // Draw tooltip if there are lines
+        if (tooltipLines.length > 0) {
+          const lineH = 14;
+          const ttPad = 8;
+          const ttW = 260;
+          const ttH = tooltipLines.length * lineH + ttPad * 2;
+          const ttX = Math.floor(screenWidth / 2 - ttW / 2);
+          const ttY = 36;
+
+          // Background
+          this._bg.rect(ttX - 1, ttY - 1, ttW + 2, ttH + 2);
+          this._bg.fill({ color: 0x000000, alpha: 0.4 });
+          this._bg.rect(ttX, ttY, ttW, ttH);
+          this._bg.fill({ color: 0x0a0a18, alpha: 0.94 });
+          this._bg.rect(ttX, ttY, ttW, ttH);
+          this._bg.stroke({ color: borderColor, width: 1 });
+          // Top accent
+          this._bg.rect(ttX, ttY, ttW, 2);
+          this._bg.fill({ color: borderColor, alpha: 0.6 });
+
+          for (let li = 0; li < tooltipLines.length; li++) {
+            const line = tooltipLines[li];
+            const lineT = new Text({
+              text: line.text,
+              style: new TextStyle({
+                fontFamily: "monospace",
+                fontSize: line.bold ? 12 : 10,
+                fill: line.color,
+                fontWeight: line.bold ? "bold" : "normal",
+              }),
+            });
+            lineT.x = ttX + ttPad;
+            lineT.y = ttY + ttPad + li * lineH;
+            this.container.addChild(lineT);
+            this._spellTexts.push(lineT);
+          }
+        }
       }
     }
 
@@ -1188,9 +1309,13 @@ export class RiftWizardHUD {
   // -------------------------------------------------------------------------
 
   private _drawPauseSpells(state: RiftWizardState, screenWidth: number, screenHeight: number): void {
-    const panelW = 440;
-    const maxSpellRows = Math.max(state.spells.length, 1);
-    const panelH = Math.min(screenHeight - 40, 120 + maxSpellRows * 52);
+    const panelW = 460;
+    // Calculate height based on spells + their upgrades
+    let estimatedH = 120;
+    for (const spell of state.spells) {
+      estimatedH += 52 + spell.upgrades.length * 16 + (spell.upgrades.length > 0 ? 8 : 0);
+    }
+    const panelH = Math.min(screenHeight - 40, Math.max(180, estimatedH));
     const { panelX, panelY } = this._drawPausePanel(screenWidth, screenHeight, panelW, panelH);
 
     let yOff = this._addPauseTitle(panelX, panelW, panelY + 16, "YOUR SPELLS");
@@ -1213,12 +1338,13 @@ export class RiftWizardHUD {
 
         const schoolColor = SCHOOL_COLORS[spell.school] ?? 0x666666;
         const isEmpty = spell.charges <= 0;
+        const slotH = 52 + spell.upgrades.length * 16 + (spell.upgrades.length > 0 ? 8 : 0);
 
         // Spell slot background
-        this._pauseBg.rect(panelX + 14, yOff - 2, panelW - 28, 46);
+        this._pauseBg.rect(panelX + 14, yOff - 2, panelW - 28, slotH);
         this._pauseBg.fill({ color: 0x111122, alpha: 0.6 });
         // School accent
-        this._pauseBg.rect(panelX + 14, yOff - 2, 4, 46);
+        this._pauseBg.rect(panelX + 14, yOff - 2, 4, slotH);
         this._pauseBg.fill({ color: schoolColor, alpha: isEmpty ? 0.3 : 0.8 });
 
         // Hotkey
@@ -1265,12 +1391,42 @@ export class RiftWizardHUD {
         // School icon
         drawSchoolIcon(this._pauseBg, spell.school, panelX + panelW - 30, yOff + 18, 8, schoolColor, 0.6);
 
-        yOff += 52;
+        yOff += 46;
+
+        // Purchased upgrades
+        if (spell.upgrades.length > 0) {
+          yOff += 4;
+          for (const upId of spell.upgrades) {
+            const upDef = def.upgrades.find(u => u.id === upId);
+            if (!upDef) continue;
+
+            // Checkmark
+            this._pauseBg.moveTo(panelX + 62, yOff + 6);
+            this._pauseBg.lineTo(panelX + 65, yOff + 10);
+            this._pauseBg.lineTo(panelX + 72, yOff + 2);
+            this._pauseBg.stroke({ color: 0x44cc44, width: 1.5 });
+
+            const upT = new Text({
+              text: `${upDef.name}: ${upDef.description}`,
+              style: new TextStyle({ fontFamily: "monospace", fontSize: 9, fill: 0x44aa44 }),
+            });
+            upT.x = panelX + 78;
+            upT.y = yOff;
+            this._pauseContainer.addChild(upT);
+            this._pauseTexts.push(upT);
+            yOff += 16;
+          }
+          yOff += 4;
+        } else {
+          yOff += 6;
+        }
+
+        if (yOff > panelY + panelH - 50) break;
       }
     }
 
     yOff += 8;
-    this._addPauseButton(panelX, yOff, panelW, "Back", 0x444466, () => {
+    this._addPauseButton(panelX, Math.min(yOff, panelY + panelH - 40), panelW, "Back", 0x444466, () => {
       this.pauseSubMenu = "main";
     });
   }
