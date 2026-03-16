@@ -4,6 +4,7 @@
 
 import { Container, Graphics, Text, TextStyle } from "pixi.js";
 import type { RiftWizardState } from "../state/RiftWizardState";
+import { SpellSchool } from "../state/RiftWizardState";
 import { RWPhase } from "../state/RiftWizardState";
 import { SPELL_DEFS } from "../config/RiftWizardSpellDefs";
 import { SCHOOL_COLORS } from "../config/RiftWizardShrineDefs";
@@ -45,6 +46,115 @@ const MSG_STYLE = new TextStyle({
   fontWeight: "bold",
   stroke: { color: 0x000000, width: 4 },
 });
+
+// ---------------------------------------------------------------------------
+// Helper: draw a school icon polygon into a Graphics at (cx, cy) with size s
+// ---------------------------------------------------------------------------
+
+function drawSchoolIcon(g: Graphics, school: SpellSchool, cx: number, cy: number, s: number, color: number, alpha: number): void {
+  switch (school) {
+    case SpellSchool.FIRE: {
+      // Flame shape: 3 triangles stacked
+      g.moveTo(cx, cy - s);
+      g.lineTo(cx + s * 0.5, cy + s * 0.2);
+      g.lineTo(cx - s * 0.5, cy + s * 0.2);
+      g.closePath();
+      g.fill({ color, alpha });
+      g.moveTo(cx - s * 0.35, cy - s * 0.2);
+      g.lineTo(cx, cy + s * 0.6);
+      g.lineTo(cx - s * 0.7, cy + s * 0.6);
+      g.closePath();
+      g.fill({ color, alpha: alpha * 0.7 });
+      g.moveTo(cx + s * 0.35, cy - s * 0.2);
+      g.lineTo(cx + s * 0.7, cy + s * 0.6);
+      g.lineTo(cx, cy + s * 0.6);
+      g.closePath();
+      g.fill({ color, alpha: alpha * 0.7 });
+      break;
+    }
+    case SpellSchool.ICE: {
+      // 6-pointed star
+      for (let i = 0; i < 6; i++) {
+        const angle = (i * Math.PI) / 3 - Math.PI / 2;
+        const outerX = cx + Math.cos(angle) * s;
+        const outerY = cy + Math.sin(angle) * s;
+        const innerAngle = angle + Math.PI / 6;
+        const innerX = cx + Math.cos(innerAngle) * s * 0.45;
+        const innerY = cy + Math.sin(innerAngle) * s * 0.45;
+        if (i === 0) g.moveTo(outerX, outerY);
+        else g.lineTo(outerX, outerY);
+        g.lineTo(innerX, innerY);
+      }
+      g.closePath();
+      g.fill({ color, alpha });
+      break;
+    }
+    case SpellSchool.LIGHTNING: {
+      // Zigzag bolt
+      g.moveTo(cx - s * 0.2, cy - s);
+      g.lineTo(cx + s * 0.4, cy - s * 0.2);
+      g.lineTo(cx - s * 0.1, cy - s * 0.1);
+      g.lineTo(cx + s * 0.3, cy + s);
+      g.lineTo(cx - s * 0.1, cy + s * 0.1);
+      g.lineTo(cx + s * 0.1, cy + s * 0.15);
+      g.lineTo(cx - s * 0.4, cy - s * 0.15);
+      g.closePath();
+      g.fill({ color, alpha });
+      break;
+    }
+    case SpellSchool.ARCANE: {
+      // Spiral dots
+      for (let i = 0; i < 7; i++) {
+        const angle = (i * Math.PI * 2.5) / 7;
+        const r = s * 0.3 + (i / 7) * s * 0.6;
+        g.circle(cx + Math.cos(angle) * r, cy + Math.sin(angle) * r, s * 0.15);
+        g.fill({ color, alpha: alpha * (0.5 + i / 14) });
+      }
+      break;
+    }
+    case SpellSchool.NATURE: {
+      // Leaf shape
+      g.moveTo(cx, cy - s);
+      g.lineTo(cx + s * 0.6, cy - s * 0.2);
+      g.lineTo(cx + s * 0.5, cy + s * 0.4);
+      g.lineTo(cx, cy + s);
+      g.lineTo(cx - s * 0.5, cy + s * 0.4);
+      g.lineTo(cx - s * 0.6, cy - s * 0.2);
+      g.closePath();
+      g.fill({ color, alpha });
+      // Leaf vein
+      g.moveTo(cx, cy - s * 0.7);
+      g.lineTo(cx, cy + s * 0.7);
+      g.stroke({ color, width: 1, alpha: alpha * 0.6 });
+      break;
+    }
+    case SpellSchool.DARK: {
+      // Small pentagon
+      for (let i = 0; i < 5; i++) {
+        const angle = (i * Math.PI * 2) / 5 - Math.PI / 2;
+        const px = cx + Math.cos(angle) * s * 0.8;
+        const py = cy + Math.sin(angle) * s * 0.8;
+        if (i === 0) g.moveTo(px, py);
+        else g.lineTo(px, py);
+      }
+      g.closePath();
+      g.fill({ color, alpha });
+      break;
+    }
+    case SpellSchool.HOLY: {
+      // Sun with rays
+      g.circle(cx, cy, s * 0.4);
+      g.fill({ color, alpha });
+      for (let i = 0; i < 8; i++) {
+        const angle = (i * Math.PI) / 4;
+        g.moveTo(cx + Math.cos(angle) * s * 0.5, cy + Math.sin(angle) * s * 0.5);
+        g.lineTo(cx + Math.cos(angle) * s, cy + Math.sin(angle) * s);
+        g.stroke({ color, width: 1, alpha });
+      }
+      break;
+    }
+  }
+}
 
 // ---------------------------------------------------------------------------
 // HUD
@@ -106,6 +216,49 @@ export class RiftWizardHUD {
     this._bg.rect(0, hudY + 2, screenWidth, 3);
     this._bg.fill({ color: 0x1a1a2e, alpha: 0.6 });
 
+    // --- Ornate chevron/diamond border pattern along top ---
+    const chevronSpacing = 18;
+    const chevronH = 6;
+    for (let cx = chevronSpacing / 2; cx < screenWidth; cx += chevronSpacing) {
+      // Diamond shape
+      this._bg.moveTo(cx, hudY - 1);
+      this._bg.lineTo(cx + chevronSpacing * 0.3, hudY + chevronH * 0.5);
+      this._bg.lineTo(cx, hudY + chevronH);
+      this._bg.lineTo(cx - chevronSpacing * 0.3, hudY + chevronH * 0.5);
+      this._bg.closePath();
+      this._bg.fill({ color: 0x333366, alpha: 0.4 });
+      this._bg.moveTo(cx, hudY);
+      this._bg.lineTo(cx + chevronSpacing * 0.25, hudY + chevronH * 0.5);
+      this._bg.lineTo(cx, hudY + chevronH - 1);
+      this._bg.lineTo(cx - chevronSpacing * 0.25, hudY + chevronH * 0.5);
+      this._bg.closePath();
+      this._bg.stroke({ color: 0x4444aa, width: 0.5, alpha: 0.5 });
+    }
+
+    // --- Decorative divider lines between sections ---
+    // Divider between left (HP/Level) and mid (Turn/Enemy)
+    this._bg.moveTo(196, hudY + 8);
+    this._bg.lineTo(196, hudY + hudH - 8);
+    this._bg.stroke({ color: 0x333355, width: 1, alpha: 0.5 });
+    // Small diamond at mid of divider
+    this._bg.moveTo(196, hudY + hudH / 2 - 4);
+    this._bg.lineTo(199, hudY + hudH / 2);
+    this._bg.lineTo(196, hudY + hudH / 2 + 4);
+    this._bg.lineTo(193, hudY + hudH / 2);
+    this._bg.closePath();
+    this._bg.fill({ color: 0x4444aa, alpha: 0.4 });
+
+    // Divider between mid and spell bar area
+    this._bg.moveTo(350, hudY + 8);
+    this._bg.lineTo(350, hudY + hudH - 8);
+    this._bg.stroke({ color: 0x333355, width: 1, alpha: 0.5 });
+    this._bg.moveTo(350, hudY + hudH / 2 - 4);
+    this._bg.lineTo(353, hudY + hudH / 2);
+    this._bg.lineTo(350, hudY + hudH / 2 + 4);
+    this._bg.lineTo(347, hudY + hudH / 2);
+    this._bg.closePath();
+    this._bg.fill({ color: 0x4444aa, alpha: 0.4 });
+
     // --- Left section: HP + Level ---
     const leftX = 12;
 
@@ -134,9 +287,46 @@ export class RiftWizardHUD {
       this._hpBar.fill({ color: hpHighlight, alpha: 0.4 });
     }
 
-    // Border
-    this._hpBar.rect(hpBarX, hpBarY, hpBarW, hpBarH);
-    this._hpBar.stroke({ color: 0x444466, width: 1 });
+    // --- Tick marks at 25% intervals ---
+    for (let t = 1; t <= 3; t++) {
+      const tickX = hpBarX + hpBarW * (t / 4);
+      this._hpBar.moveTo(tickX, hpBarY);
+      this._hpBar.lineTo(tickX, hpBarY + hpBarH);
+      this._hpBar.stroke({ color: 0x000000, width: 1, alpha: 0.6 });
+      // Small notch marks on top and bottom
+      this._hpBar.rect(tickX - 0.5, hpBarY, 1, 3);
+      this._hpBar.fill({ color: 0x666688, alpha: 0.5 });
+      this._hpBar.rect(tickX - 0.5, hpBarY + hpBarH - 3, 1, 3);
+      this._hpBar.fill({ color: 0x666688, alpha: 0.5 });
+    }
+
+    // --- Beveled 3D border (lighter top-left, darker bottom-right) ---
+    // Top edge (lighter)
+    this._hpBar.moveTo(hpBarX - 1, hpBarY - 1);
+    this._hpBar.lineTo(hpBarX + hpBarW + 1, hpBarY - 1);
+    this._hpBar.stroke({ color: 0x666688, width: 1 });
+    // Left edge (lighter)
+    this._hpBar.moveTo(hpBarX - 1, hpBarY - 1);
+    this._hpBar.lineTo(hpBarX - 1, hpBarY + hpBarH + 1);
+    this._hpBar.stroke({ color: 0x555577, width: 1 });
+    // Bottom edge (darker)
+    this._hpBar.moveTo(hpBarX - 1, hpBarY + hpBarH + 1);
+    this._hpBar.lineTo(hpBarX + hpBarW + 1, hpBarY + hpBarH + 1);
+    this._hpBar.stroke({ color: 0x111122, width: 1 });
+    // Right edge (darker)
+    this._hpBar.moveTo(hpBarX + hpBarW + 1, hpBarY - 1);
+    this._hpBar.lineTo(hpBarX + hpBarW + 1, hpBarY + hpBarH + 1);
+    this._hpBar.stroke({ color: 0x111122, width: 1 });
+
+    // --- Pulse glow when HP is low (< 30%) ---
+    if (hpRatio > 0 && hpRatio <= 0.3) {
+      const pulseTime = Date.now() / 500;
+      const pulseAlpha = 0.15 + 0.15 * Math.sin(pulseTime * Math.PI);
+      this._hpBar.rect(hpBarX - 3, hpBarY - 3, hpBarW + 6, hpBarH + 6);
+      this._hpBar.fill({ color: 0xff0000, alpha: pulseAlpha });
+      this._hpBar.rect(hpBarX - 3, hpBarY - 3, hpBarW + 6, hpBarH + 6);
+      this._hpBar.stroke({ color: 0xff2200, width: 1, alpha: pulseAlpha * 1.5 });
+    }
 
     // Shield bar overlay
     if (state.wizard.shields > 0) {
@@ -153,12 +343,29 @@ export class RiftWizardHUD {
     this._infoText.x = hpBarX + hpBarW / 2 - this._infoText.width / 2;
     this._infoText.y = hpBarY + 1;
 
-    // Level info
+    // --- Level info with decorative frame polygon ---
     this._levelText.text = `Level ${state.currentLevel + 1}/25`;
     this._levelText.x = leftX;
     this._levelText.y = hudY + 32;
 
-    // SP display with icon-like styling
+    // Decorative frame around level text
+    const lvFrameX = leftX - 4;
+    const lvFrameY = hudY + 30;
+    const lvFrameW = 130;
+    const lvFrameH = 22;
+    // Corner notches for the frame
+    this._bg.moveTo(lvFrameX, lvFrameY + 3);
+    this._bg.lineTo(lvFrameX + 3, lvFrameY);
+    this._bg.lineTo(lvFrameX + lvFrameW - 3, lvFrameY);
+    this._bg.lineTo(lvFrameX + lvFrameW, lvFrameY + 3);
+    this._bg.lineTo(lvFrameX + lvFrameW, lvFrameY + lvFrameH - 3);
+    this._bg.lineTo(lvFrameX + lvFrameW - 3, lvFrameY + lvFrameH);
+    this._bg.lineTo(lvFrameX + 3, lvFrameY + lvFrameH);
+    this._bg.lineTo(lvFrameX, lvFrameY + lvFrameH - 3);
+    this._bg.closePath();
+    this._bg.stroke({ color: 0x444477, width: 1, alpha: 0.6 });
+
+    // --- SP display with star polygon next to it ---
     this._spText.text = `SP: ${state.skillPoints}`;
     this._spText.style = new TextStyle({
       fontFamily: "monospace",
@@ -166,8 +373,27 @@ export class RiftWizardHUD {
       fill: 0xffcc44,
       fontWeight: "bold",
     });
-    this._spText.x = leftX;
+    this._spText.x = leftX + 16;
     this._spText.y = hudY + 55;
+
+    // Star polygon next to SP text
+    const starCx = leftX + 8;
+    const starCy = hudY + 63;
+    const starOuter = 5;
+    const starInner = 2.5;
+    for (let i = 0; i < 5; i++) {
+      const outerAngle = (i * Math.PI * 2) / 5 - Math.PI / 2;
+      const innerAngle = outerAngle + Math.PI / 5;
+      const ox = starCx + Math.cos(outerAngle) * starOuter;
+      const oy = starCy + Math.sin(outerAngle) * starOuter;
+      const ix = starCx + Math.cos(innerAngle) * starInner;
+      const iy = starCy + Math.sin(innerAngle) * starInner;
+      if (i === 0) this._bg.moveTo(ox, oy);
+      else this._bg.lineTo(ox, oy);
+      this._bg.lineTo(ix, iy);
+    }
+    this._bg.closePath();
+    this._bg.fill({ color: 0xffcc44, alpha: 0.8 });
 
     // --- Middle section: Turn + Enemy info ---
     const midX = 200;
@@ -292,22 +518,43 @@ export class RiftWizardHUD {
       this._spellBar.rect(sx, slotY, 3, slotH);
       this._spellBar.fill({ color: schoolColor, alpha: isEmpty ? 0.3 : 0.8 });
 
+      // --- Double-line ornate borders ---
+      // Outer border
+      this._spellBar.rect(sx - 1, slotY - 1, slotW + 2, slotH + 2);
+      this._spellBar.stroke({
+        color: isSelected ? 0xffffff : isEmpty ? 0x222233 : schoolColor,
+        width: isSelected ? 2 : 1,
+        alpha: isSelected ? 1 : isEmpty ? 0.5 : 0.6,
+      });
+      // Inner border (ornate double-line)
+      this._spellBar.rect(sx + 2, slotY + 2, slotW - 4, slotH - 4);
+      this._spellBar.stroke({
+        color: isSelected ? 0x8888cc : isEmpty ? 0x1a1a22 : schoolColor,
+        width: 0.5,
+        alpha: isSelected ? 0.7 : 0.25,
+      });
+
       // Selection glow
       if (isSelected) {
-        this._spellBar.rect(sx - 1, slotY - 1, slotW + 2, slotH + 2);
-        this._spellBar.stroke({ color: 0xffffff, width: 2 });
-        // Inner glow
+        // Inner glow fill
         this._spellBar.rect(sx, slotY, slotW, slotH);
         this._spellBar.fill({ color: schoolColor, alpha: 0.1 });
-      } else {
-        // Normal border
-        this._spellBar.rect(sx, slotY, slotW, slotH);
-        this._spellBar.stroke({
-          color: isEmpty ? 0x222233 : schoolColor,
-          width: 1,
-          alpha: isEmpty ? 0.5 : 0.6,
-        });
+
+        // --- Glowing underline for selected spell ---
+        const glowTime = Date.now() / 600;
+        const glowAlpha = 0.5 + 0.3 * Math.sin(glowTime * Math.PI);
+        this._spellBar.rect(sx + 2, slotY + slotH - 2, slotW - 4, 2);
+        this._spellBar.fill({ color: schoolColor, alpha: glowAlpha });
+        // Wider soft glow beneath
+        this._spellBar.rect(sx, slotY + slotH, slotW, 2);
+        this._spellBar.fill({ color: schoolColor, alpha: glowAlpha * 0.4 });
       }
+
+      // --- Small spell school icon polygon inside each slot ---
+      const iconCx = sx + slotW - 10;
+      const iconCy = slotY + 10;
+      const iconSize = 4;
+      drawSchoolIcon(this._spellBar, spell.school, iconCx, iconCy, iconSize, schoolColor, isEmpty ? 0.2 : 0.6);
 
       // Key number
       const keyText = new Text({
@@ -326,7 +573,7 @@ export class RiftWizardHUD {
 
       // Spell name (abbreviated)
       const nameText = new Text({
-        text: def.name.substring(0, 7),
+        text: def.name.substring(0, 6),
         style: new TextStyle({
           fontFamily: "monospace",
           fontSize: 9,

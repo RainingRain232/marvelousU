@@ -195,6 +195,16 @@ export class RiftWizardRenderer {
   private _drawTiles(state: RiftWizardState): void {
     this._tileGfx.clear();
 
+    // Simple position-based hash for deterministic variation
+    const tileHash = (c: number, r: number, seed: number) =>
+      ((c * 7 + r * 13 + seed * 31) & 0xffff) / 0xffff;
+
+    // Check if a neighbour is a specific type
+    const tileAt = (c: number, r: number): RWTileType | null => {
+      if (c < 0 || r < 0 || c >= state.level.width || r >= state.level.height) return null;
+      return state.level.tiles[r][c];
+    };
+
     for (let row = 0; row < state.level.height; row++) {
       for (let col = 0; col < state.level.width; col++) {
         const tile = state.level.tiles[row][col];
@@ -202,34 +212,166 @@ export class RiftWizardRenderer {
         const y = row * TS;
 
         if (tile === RWTileType.WALL) {
-          // Walls: darker, with edge highlights where floor is adjacent
+          // --- WALL: base fill ---
           this._tileGfx.rect(x, y, TS, TS);
           this._tileGfx.fill(TILE_COLORS[RWTileType.WALL]);
+
+          // Brick texture: horizontal mortar lines every 8px
+          const brickH = 8;
+          for (let br = 0; br < TS; br += brickH) {
+            // Horizontal mortar line
+            this._tileGfx.moveTo(x, y + br);
+            this._tileGfx.lineTo(x + TS, y + br);
+            this._tileGfx.stroke({ color: 0x12122a, width: 1, alpha: 0.6 });
+
+            // Vertical mortar lines offset by row parity
+            const brickRow = Math.floor(br / brickH);
+            const offset = (brickRow % 2 === 0) ? 0 : TS / 2;
+            for (let bx = offset; bx < TS; bx += TS / 2) {
+              if (bx > 0 && bx < TS) {
+                this._tileGfx.moveTo(x + bx, y + br);
+                this._tileGfx.lineTo(x + bx, y + br + brickH);
+                this._tileGfx.stroke({ color: 0x12122a, width: 1, alpha: 0.5 });
+              }
+            }
+          }
+
+          // Inner shadow gradient: darker rects inset
+          this._tileGfx.rect(x + 2, y + 2, TS - 4, TS - 4);
+          this._tileGfx.fill({ color: 0x0a0a18, alpha: 0.15 });
+          this._tileGfx.rect(x + 4, y + 4, TS - 8, TS - 8);
+          this._tileGfx.fill({ color: 0x0a0a18, alpha: 0.1 });
+
           this._drawWallEdges(state, col, row, x, y);
+
         } else if (tile === RWTileType.CHASM) {
+          // --- CHASM: base fill ---
           this._tileGfx.rect(x, y, TS, TS);
           this._tileGfx.fill(TILE_COLORS[RWTileType.CHASM]);
-          // Subtle inner border for depth
+
+          // Depth lines: concentric rects getting darker toward center
+          for (let d = 0; d < 5; d++) {
+            const inset = 2 + d * 2;
+            const darkAlpha = 0.15 + d * 0.08;
+            this._tileGfx.rect(x + inset, y + inset, TS - inset * 2, TS - inset * 2);
+            this._tileGfx.fill({ color: 0x020204, alpha: darkAlpha });
+          }
+
+          // Subtle inner border for depth (original)
           this._tileGfx.rect(x + 1, y + 1, TS - 2, TS - 2);
           this._tileGfx.stroke({ color: 0x0c0c18, width: 1 });
+
+          // Jagged edges where chasm borders floor tiles
+          const directions = [
+            { dc: 0, dr: -1, side: "top" },
+            { dc: 0, dr: 1, side: "bottom" },
+            { dc: -1, dr: 0, side: "left" },
+            { dc: 1, dr: 0, side: "right" },
+          ] as const;
+          for (const dir of directions) {
+            const nb = tileAt(col + dir.dc, row + dir.dr);
+            if (nb !== null && nb !== RWTileType.CHASM && nb !== RWTileType.WALL) {
+              // Draw zigzag jagged edge on that side
+              const jagSegments = 8;
+              const jagAmp = 3;
+              if (dir.side === "top") {
+                this._tileGfx.moveTo(x, y);
+                for (let s = 1; s <= jagSegments; s++) {
+                  const sx2 = x + (s / jagSegments) * TS;
+                  const sy2 = y + ((s % 2 === 0) ? 0 : jagAmp * tileHash(col, row, s));
+                  this._tileGfx.lineTo(sx2, sy2);
+                }
+                this._tileGfx.stroke({ color: 0x1a1a30, width: 1, alpha: 0.8 });
+              } else if (dir.side === "bottom") {
+                this._tileGfx.moveTo(x, y + TS);
+                for (let s = 1; s <= jagSegments; s++) {
+                  const sx2 = x + (s / jagSegments) * TS;
+                  const sy2 = y + TS - ((s % 2 === 0) ? 0 : jagAmp * tileHash(col, row, s + 10));
+                  this._tileGfx.lineTo(sx2, sy2);
+                }
+                this._tileGfx.stroke({ color: 0x1a1a30, width: 1, alpha: 0.8 });
+              } else if (dir.side === "left") {
+                this._tileGfx.moveTo(x, y);
+                for (let s = 1; s <= jagSegments; s++) {
+                  const sx2 = x + ((s % 2 === 0) ? 0 : jagAmp * tileHash(col, row, s + 20));
+                  const sy2 = y + (s / jagSegments) * TS;
+                  this._tileGfx.lineTo(sx2, sy2);
+                }
+                this._tileGfx.stroke({ color: 0x1a1a30, width: 1, alpha: 0.8 });
+              } else {
+                this._tileGfx.moveTo(x + TS, y);
+                for (let s = 1; s <= jagSegments; s++) {
+                  const sx2 = x + TS - ((s % 2 === 0) ? 0 : jagAmp * tileHash(col, row, s + 30));
+                  const sy2 = y + (s / jagSegments) * TS;
+                  this._tileGfx.lineTo(sx2, sy2);
+                }
+                this._tileGfx.stroke({ color: 0x1a1a30, width: 1, alpha: 0.8 });
+              }
+            }
+          }
+
         } else if (tile === RWTileType.LAVA) {
-          // Lava with animated glow
+          // --- LAVA: base fill ---
           const pulse = 0.7 + 0.3 * Math.sin(this._time * 3 + col * 0.7 + row * 0.5);
           this._tileGfx.rect(x, y, TS, TS);
           this._tileGfx.fill(TILE_COLORS[RWTileType.LAVA]);
           this._tileGfx.rect(x + 2, y + 2, TS - 4, TS - 4);
           this._tileGfx.fill({ color: TILE_ACCENT[RWTileType.LAVA], alpha: pulse * 0.5 });
-          // Bright center
+          // Bright center (original)
           this._tileGfx.rect(x + 6, y + 6, TS - 12, TS - 12);
           this._tileGfx.fill({ color: 0xffaa22, alpha: pulse * 0.3 });
+
+          // Concentric irregular bubbling shapes
+          const cx = x + TS / 2;
+          const cy = y + TS / 2;
+          for (let ring = 0; ring < 3; ring++) {
+            const rSize = 4 + ring * 4;
+            const wobble = Math.sin(this._time * 4 + ring * 2.1 + col * 1.3) * 2;
+            const pts = 6;
+            this._tileGfx.moveTo(cx + rSize + wobble, cy);
+            for (let p = 1; p <= pts; p++) {
+              const angle = (p / pts) * Math.PI * 2;
+              const jitter = Math.sin(this._time * 5 + p * 1.7 + row) * 1.5;
+              this._tileGfx.lineTo(
+                cx + Math.cos(angle) * (rSize + jitter + wobble),
+                cy + Math.sin(angle) * (rSize + jitter),
+              );
+            }
+            this._tileGfx.closePath();
+            this._tileGfx.fill({ color: 0xff8811, alpha: 0.15 - ring * 0.03 });
+          }
+
+          // Hot spots: small bright stars
+          for (let hs = 0; hs < 2; hs++) {
+            const hx = x + 6 + tileHash(col, row, hs * 3) * (TS - 12);
+            const hy = y + 6 + tileHash(col, row, hs * 3 + 1) * (TS - 12);
+            const hPulse = 0.5 + 0.5 * Math.sin(this._time * 6 + hs * 3.7 + col);
+            this._tileGfx.star(hx, hy, 4, 3 * hPulse, 1.2 * hPulse);
+            this._tileGfx.fill({ color: 0xffee44, alpha: hPulse * 0.7 });
+          }
+
+          // Dark rock islands: small dark polygons
+          const numIslands = Math.floor(tileHash(col, row, 99) * 2);
+          for (let isl = 0; isl < numIslands; isl++) {
+            const ix = x + 4 + tileHash(col, row, 50 + isl) * (TS - 8);
+            const iy = y + 4 + tileHash(col, row, 60 + isl) * (TS - 8);
+            this._tileGfx.moveTo(ix, iy - 2);
+            this._tileGfx.lineTo(ix + 2.5, iy + 1);
+            this._tileGfx.lineTo(ix - 2.5, iy + 1.5);
+            this._tileGfx.closePath();
+            this._tileGfx.fill({ color: 0x331100, alpha: 0.6 });
+          }
+
         } else if (tile === RWTileType.ICE) {
+          // --- ICE: base fill ---
           this._tileGfx.rect(x, y, TS, TS);
           this._tileGfx.fill(TILE_COLORS[RWTileType.ICE]);
-          // Ice shimmer
+
           const shimmer = 0.2 + 0.15 * Math.sin(this._time * 2 + col * 1.3 + row * 0.8);
           this._tileGfx.rect(x + 3, y + 3, TS - 6, TS - 6);
           this._tileGfx.fill({ color: 0xaaddff, alpha: shimmer });
-          // Diamond highlight
+
+          // Original diamond highlight
           const cx = x + TS / 2;
           const cy = y + TS / 2;
           this._tileGfx.moveTo(cx, cy - 4);
@@ -238,59 +380,254 @@ export class RiftWizardRenderer {
           this._tileGfx.lineTo(cx - 4, cy);
           this._tileGfx.closePath();
           this._tileGfx.fill({ color: 0xffffff, alpha: shimmer * 0.5 });
+
+          // Crystalline facets: overlapping diamond/triangle shapes at different angles
+          for (let f = 0; f < 4; f++) {
+            const fAngle = (f / 4) * Math.PI + tileHash(col, row, f) * 0.5;
+            const fSize = 5 + tileHash(col, row, f + 10) * 6;
+            const fcx = cx + Math.cos(fAngle * 3) * 4;
+            const fcy = cy + Math.sin(fAngle * 3) * 4;
+            // Diamond facet
+            this._tileGfx.moveTo(fcx, fcy - fSize);
+            this._tileGfx.lineTo(fcx + fSize * 0.6, fcy);
+            this._tileGfx.lineTo(fcx, fcy + fSize * 0.7);
+            this._tileGfx.lineTo(fcx - fSize * 0.6, fcy);
+            this._tileGfx.closePath();
+            this._tileGfx.stroke({ color: 0x99ccff, width: 1, alpha: 0.2 + shimmer * 0.15 });
+          }
+
+          // Frost branching lines from corners
+          const corners = [
+            { ox: x, oy: y },
+            { ox: x + TS, oy: y },
+            { ox: x, oy: y + TS },
+            { ox: x + TS, oy: y + TS },
+          ];
+          for (let ci = 0; ci < corners.length; ci++) {
+            const c = corners[ci];
+            const branchLen = 6 + tileHash(col, row, ci + 20) * 6;
+            const branchAngle = Math.atan2(cy - c.oy, cx - c.ox);
+            const ex = c.ox + Math.cos(branchAngle) * branchLen;
+            const ey = c.oy + Math.sin(branchAngle) * branchLen;
+            this._tileGfx.moveTo(c.ox, c.oy);
+            this._tileGfx.lineTo(ex, ey);
+            this._tileGfx.stroke({ color: 0xcceeff, width: 1, alpha: 0.3 });
+            // Sub-branch
+            const subAngle = branchAngle + (tileHash(col, row, ci + 30) > 0.5 ? 0.6 : -0.6);
+            const subLen = branchLen * 0.5;
+            const midX = c.ox + Math.cos(branchAngle) * branchLen * 0.5;
+            const midY = c.oy + Math.sin(branchAngle) * branchLen * 0.5;
+            this._tileGfx.moveTo(midX, midY);
+            this._tileGfx.lineTo(midX + Math.cos(subAngle) * subLen, midY + Math.sin(subAngle) * subLen);
+            this._tileGfx.stroke({ color: 0xcceeff, width: 1, alpha: 0.2 });
+          }
+
         } else {
-          // Floor / corridor tiles with subtle variation
+          // --- FLOOR / CORRIDOR: base fill ---
           const color = TILE_COLORS[tile] ?? 0x2a2a3a;
           this._tileGfx.rect(x, y, TS, TS);
           this._tileGfx.fill(color);
 
-          // Subtle noise pattern using position-based hash
+          // Subtle noise pattern using position-based hash (original)
           const hash = ((col * 7 + row * 13) % 5);
           if (hash < 2) {
             this._tileGfx.rect(x + 1, y + 1, TS - 2, TS - 2);
             this._tileGfx.fill({ color: TILE_ACCENT[tile] ?? 0x222230, alpha: 0.3 });
           }
 
-          // Grid lines (subtle)
+          // Grid lines (original)
           this._tileGfx.rect(x, y, TS, TS);
           this._tileGfx.stroke({ color: 0x16162a, width: 1 });
+
+          // Stone flagstone pattern: cross-hatch lines based on position hash
+          // Determine stone block layout using hash for variation
+          const blockSeed = Math.floor(tileHash(col, row, 0) * 4);
+          if (blockSeed === 0) {
+            // Horizontal split
+            const splitY = y + 10 + Math.floor(tileHash(col, row, 1) * 12);
+            this._tileGfx.moveTo(x + 2, splitY);
+            this._tileGfx.lineTo(x + TS - 2, splitY);
+            this._tileGfx.stroke({ color: 0x1a1a2e, width: 1, alpha: 0.5 });
+          } else if (blockSeed === 1) {
+            // Vertical split
+            const splitX = x + 10 + Math.floor(tileHash(col, row, 2) * 12);
+            this._tileGfx.moveTo(splitX, y + 2);
+            this._tileGfx.lineTo(splitX, y + TS - 2);
+            this._tileGfx.stroke({ color: 0x1a1a2e, width: 1, alpha: 0.5 });
+          } else if (blockSeed === 2) {
+            // Cross pattern: both splits
+            const splitY = y + 12 + Math.floor(tileHash(col, row, 3) * 8);
+            const splitX = x + 12 + Math.floor(tileHash(col, row, 4) * 8);
+            this._tileGfx.moveTo(x + 2, splitY);
+            this._tileGfx.lineTo(x + TS - 2, splitY);
+            this._tileGfx.stroke({ color: 0x1a1a2e, width: 1, alpha: 0.4 });
+            this._tileGfx.moveTo(splitX, y + 2);
+            this._tileGfx.lineTo(splitX, y + TS - 2);
+            this._tileGfx.stroke({ color: 0x1a1a2e, width: 1, alpha: 0.4 });
+          } else {
+            // L-shaped crack
+            const midX = x + TS / 2 + (tileHash(col, row, 5) - 0.5) * 8;
+            const midY = y + TS / 2 + (tileHash(col, row, 6) - 0.5) * 8;
+            this._tileGfx.moveTo(x + 3, midY);
+            this._tileGfx.lineTo(midX, midY);
+            this._tileGfx.lineTo(midX, y + TS - 3);
+            this._tileGfx.stroke({ color: 0x1a1a2e, width: 1, alpha: 0.45 });
+          }
+
+          // Occasional chip/nick marks on some tiles
+          if (tileHash(col, row, 7) > 0.65) {
+            const chipX = x + 4 + tileHash(col, row, 8) * (TS - 8);
+            const chipY = y + 4 + tileHash(col, row, 9) * (TS - 8);
+            this._tileGfx.circle(chipX, chipY, 1.5);
+            this._tileGfx.fill({ color: 0x16162a, alpha: 0.4 });
+          }
         }
       }
     }
 
-    // Draw shrine indicators with glow
+    // Draw shrine indicators with ornate pedestals
     for (const shrine of state.level.shrines) {
       if (shrine.used) continue;
       const sx = shrine.col * TS + TS / 2;
       const sy = shrine.row * TS + TS / 2;
       const pulse = 0.5 + 0.3 * Math.sin(this._time * 2);
       const schoolColor = SCHOOL_COLORS[shrine.school];
-      // Outer glow
+
+      // Original outer glow
       this._tileGfx.circle(sx, sy, TS * 0.45);
       this._tileGfx.fill({ color: schoolColor, alpha: pulse * 0.15 });
-      // Inner
-      this._tileGfx.circle(sx, sy, TS * 0.3);
-      this._tileGfx.fill({ color: schoolColor, alpha: 0.4 });
-      // Center bright dot
-      this._tileGfx.circle(sx, sy, 3);
-      this._tileGfx.fill({ color: 0xffffff, alpha: 0.6 });
-      // Rune-like ring
+
+      // Multi-tiered pedestal base (stacked rects, bottom to top)
+      // Tier 1 (widest)
+      this._tileGfx.rect(sx - 12, sy + 6, 24, 5);
+      this._tileGfx.fill({ color: 0x555544, alpha: 0.8 });
+      this._tileGfx.rect(sx - 12, sy + 6, 24, 5);
+      this._tileGfx.stroke({ color: 0x777766, width: 1, alpha: 0.6 });
+      // Tier 2
+      this._tileGfx.rect(sx - 9, sy + 2, 18, 5);
+      this._tileGfx.fill({ color: 0x666655, alpha: 0.8 });
+      this._tileGfx.rect(sx - 9, sy + 2, 18, 5);
+      this._tileGfx.stroke({ color: 0x888877, width: 1, alpha: 0.6 });
+      // Tier 3 (narrowest)
+      this._tileGfx.rect(sx - 6, sy - 2, 12, 5);
+      this._tileGfx.fill({ color: 0x777766, alpha: 0.8 });
+      this._tileGfx.rect(sx - 6, sy - 2, 12, 5);
+      this._tileGfx.stroke({ color: 0x999988, width: 1, alpha: 0.6 });
+
+      // Glowing gem on top: faceted diamond polygon
+      const gemY = sy - 6;
+      const gemPulse = 0.6 + 0.4 * Math.sin(this._time * 3);
+      // Gem glow halo
+      this._tileGfx.circle(sx, gemY, 6);
+      this._tileGfx.fill({ color: schoolColor, alpha: gemPulse * 0.3 });
+      // Faceted diamond shape
+      this._tileGfx.moveTo(sx, gemY - 5);
+      this._tileGfx.lineTo(sx + 4, gemY - 1);
+      this._tileGfx.lineTo(sx + 3, gemY + 3);
+      this._tileGfx.lineTo(sx - 3, gemY + 3);
+      this._tileGfx.lineTo(sx - 4, gemY - 1);
+      this._tileGfx.closePath();
+      this._tileGfx.fill({ color: schoolColor, alpha: 0.85 });
+      // Gem highlight facet
+      this._tileGfx.moveTo(sx, gemY - 5);
+      this._tileGfx.lineTo(sx + 2, gemY);
+      this._tileGfx.lineTo(sx - 2, gemY);
+      this._tileGfx.closePath();
+      this._tileGfx.fill({ color: 0xffffff, alpha: 0.3 });
+
+      // Rune symbols around the base: small geometric shapes in a circle
+      for (let ri = 0; ri < 6; ri++) {
+        const runeAngle = (ri / 6) * Math.PI * 2 + this._time * 0.3;
+        const runeR = TS * 0.42;
+        const rx = sx + Math.cos(runeAngle) * runeR;
+        const ry = sy + Math.sin(runeAngle) * runeR;
+        if (ri % 3 === 0) {
+          // Small diamond rune
+          this._tileGfx.moveTo(rx, ry - 2);
+          this._tileGfx.lineTo(rx + 1.5, ry);
+          this._tileGfx.lineTo(rx, ry + 2);
+          this._tileGfx.lineTo(rx - 1.5, ry);
+          this._tileGfx.closePath();
+          this._tileGfx.fill({ color: schoolColor, alpha: 0.6 });
+        } else if (ri % 3 === 1) {
+          // Small triangle rune
+          this._tileGfx.moveTo(rx, ry - 2);
+          this._tileGfx.lineTo(rx + 2, ry + 1.5);
+          this._tileGfx.lineTo(rx - 2, ry + 1.5);
+          this._tileGfx.closePath();
+          this._tileGfx.fill({ color: schoolColor, alpha: 0.5 });
+        } else {
+          // Small square rune
+          this._tileGfx.rect(rx - 1.5, ry - 1.5, 3, 3);
+          this._tileGfx.fill({ color: schoolColor, alpha: 0.5 });
+        }
+      }
+
+      // Original rune-like ring
       this._tileGfx.circle(sx, sy, TS * 0.38);
       this._tileGfx.stroke({ color: schoolColor, width: 1, alpha: 0.6 });
     }
 
-    // Draw spell circle indicators with rotating ring effect
+    // Draw spell circle indicators with complex magic circle geometry
     for (const circle of state.level.spellCircles) {
       const cx = circle.col * TS + TS / 2;
       const cy = circle.row * TS + TS / 2;
       const schoolColor = SCHOOL_COLORS[circle.school];
-      // Outer ring
+
+      // Original outer ring
       this._tileGfx.circle(cx, cy, TS * 0.42);
       this._tileGfx.stroke({ color: schoolColor, width: 2, alpha: 0.5 });
-      // Inner ring
+      // Original inner ring
       this._tileGfx.circle(cx, cy, TS * 0.28);
       this._tileGfx.stroke({ color: schoolColor, width: 1, alpha: 0.8 });
-      // Four small dots around the ring (rune positions)
+
+      // Additional concentric rings with rune tick marks
+      this._tileGfx.circle(cx, cy, TS * 0.48);
+      this._tileGfx.stroke({ color: schoolColor, width: 1, alpha: 0.25 });
+      this._tileGfx.circle(cx, cy, TS * 0.18);
+      this._tileGfx.stroke({ color: schoolColor, width: 1, alpha: 0.5 });
+
+      // Rune tick marks on outer ring
+      for (let t = 0; t < 12; t++) {
+        const tickAngle = (t / 12) * Math.PI * 2;
+        const innerR = TS * 0.42;
+        const outerR = TS * 0.48;
+        this._tileGfx.moveTo(cx + Math.cos(tickAngle) * innerR, cy + Math.sin(tickAngle) * innerR);
+        this._tileGfx.lineTo(cx + Math.cos(tickAngle) * outerR, cy + Math.sin(tickAngle) * outerR);
+        this._tileGfx.stroke({ color: schoolColor, width: 1, alpha: 0.4 });
+      }
+
+      // Hexagram (Star of David) pattern inside
+      const hexR = TS * 0.25;
+      // Triangle 1 (pointing up)
+      this._tileGfx.moveTo(cx, cy - hexR);
+      this._tileGfx.lineTo(cx + hexR * Math.cos(Math.PI / 6), cy + hexR * Math.sin(Math.PI / 6));
+      this._tileGfx.lineTo(cx - hexR * Math.cos(Math.PI / 6), cy + hexR * Math.sin(Math.PI / 6));
+      this._tileGfx.closePath();
+      this._tileGfx.stroke({ color: schoolColor, width: 1, alpha: 0.5 });
+      // Triangle 2 (pointing down)
+      this._tileGfx.moveTo(cx, cy + hexR);
+      this._tileGfx.lineTo(cx + hexR * Math.cos(Math.PI / 6), cy - hexR * Math.sin(Math.PI / 6));
+      this._tileGfx.lineTo(cx - hexR * Math.cos(Math.PI / 6), cy - hexR * Math.sin(Math.PI / 6));
+      this._tileGfx.closePath();
+      this._tileGfx.stroke({ color: schoolColor, width: 1, alpha: 0.5 });
+
+      // Cardinal point markers (N, S, E, W)
+      const cardR = TS * 0.38;
+      for (let ci2 = 0; ci2 < 4; ci2++) {
+        const cAngle = (ci2 / 4) * Math.PI * 2 - Math.PI / 2;
+        const cpx = cx + Math.cos(cAngle) * cardR;
+        const cpy = cy + Math.sin(cAngle) * cardR;
+        // Small diamond marker
+        this._tileGfx.moveTo(cpx, cpy - 2.5);
+        this._tileGfx.lineTo(cpx + 2, cpy);
+        this._tileGfx.lineTo(cpx, cpy + 2.5);
+        this._tileGfx.lineTo(cpx - 2, cpy);
+        this._tileGfx.closePath();
+        this._tileGfx.fill({ color: schoolColor, alpha: 0.7 });
+      }
+
+      // Original four rotating dots (rune positions)
       for (let i = 0; i < 4; i++) {
         const angle = this._time * 0.5 + (i * Math.PI / 2);
         const dx = Math.cos(angle) * TS * 0.35;
@@ -300,21 +637,46 @@ export class RiftWizardRenderer {
       }
     }
 
-    // Draw items on ground with glow
+    // Draw items on ground with elaborate detail and glow halos
     for (const item of state.level.items) {
       if (item.picked) continue;
       const ix = item.col * TS + TS / 2;
       const iy = item.row * TS + TS / 2;
       const bounce = Math.sin(this._time * 3) * 2;
-      // Glow
+      const itemPulse = 0.5 + 0.5 * Math.sin(this._time * 2.5);
+
+      // Outer glow halo (larger, softer)
+      this._tileGfx.circle(ix, iy + bounce, TS * 0.45);
+      this._tileGfx.fill({ color: ITEM_COLOR, alpha: 0.06 * itemPulse });
+      // Mid glow halo
+      this._tileGfx.circle(ix, iy + bounce, TS * 0.35);
+      this._tileGfx.fill({ color: ITEM_COLOR, alpha: 0.1 * itemPulse });
+      // Original glow
       this._tileGfx.circle(ix, iy + bounce, TS * 0.3);
       this._tileGfx.fill({ color: ITEM_COLOR, alpha: 0.15 });
-      // Item shape
+
+      // Outer item outline star (slightly larger, semi-transparent)
+      this._tileGfx.star(ix, iy + bounce, 4, TS * 0.19, TS * 0.1);
+      this._tileGfx.stroke({ color: ITEM_COLOR, width: 1, alpha: 0.4 });
+
+      // Original item shape
       this._tileGfx.star(ix, iy + bounce, 4, TS * 0.15, TS * 0.08);
       this._tileGfx.fill(ITEM_COLOR);
-      // Sparkle
+
+      // Inner bright core
+      this._tileGfx.star(ix, iy + bounce, 4, TS * 0.07, TS * 0.04);
+      this._tileGfx.fill({ color: 0xffffff, alpha: 0.5 });
+
+      // Sparkle (original + extras)
       this._tileGfx.circle(ix + 3, iy + bounce - 3, 1.5);
       this._tileGfx.fill({ color: 0xffffff, alpha: 0.8 });
+      // Second sparkle
+      this._tileGfx.circle(ix - 2, iy + bounce + 2, 1);
+      this._tileGfx.fill({ color: 0xffffff, alpha: 0.5 * itemPulse });
+
+      // Ring outline around item
+      this._tileGfx.circle(ix, iy + bounce, TS * 0.22);
+      this._tileGfx.stroke({ color: ITEM_COLOR, width: 1, alpha: 0.3 });
     }
   }
 
@@ -333,24 +695,66 @@ export class RiftWizardRenderer {
     };
 
     const edgeColor = 0x2a2a44;
-    const edgeW = 2;
+    const edgeMid = 0x222238;
+    const edgeDark = 0x18182e;
 
+    // Stepped/beveled edges: 3-pixel wide with gradient (light -> mid -> dark)
     if (isFloor(col, row - 1)) {
-      // Top edge
-      this._tileGfx.rect(x, y, TS, edgeW);
+      // Top edge: 3-step bevel
+      this._tileGfx.rect(x, y, TS, 1);
       this._tileGfx.fill(edgeColor);
+      this._tileGfx.rect(x, y + 1, TS, 1);
+      this._tileGfx.fill(edgeMid);
+      this._tileGfx.rect(x, y + 2, TS, 1);
+      this._tileGfx.fill(edgeDark);
+      // Corner bevels: small diagonal highlight triangles
+      this._tileGfx.moveTo(x, y);
+      this._tileGfx.lineTo(x + 3, y);
+      this._tileGfx.lineTo(x, y + 3);
+      this._tileGfx.closePath();
+      this._tileGfx.fill({ color: 0x333355, alpha: 0.5 });
+      this._tileGfx.moveTo(x + TS, y);
+      this._tileGfx.lineTo(x + TS - 3, y);
+      this._tileGfx.lineTo(x + TS, y + 3);
+      this._tileGfx.closePath();
+      this._tileGfx.fill({ color: 0x333355, alpha: 0.5 });
     }
     if (isFloor(col, row + 1)) {
-      // Bottom edge - brighter (floor shadow)
-      this._tileGfx.rect(x, y + TS - edgeW, TS, edgeW);
+      // Bottom edge: 3-step bevel (brighter, floor shadow)
+      this._tileGfx.rect(x, y + TS - 3, TS, 1);
+      this._tileGfx.fill(edgeDark);
+      this._tileGfx.rect(x, y + TS - 2, TS, 1);
+      this._tileGfx.fill(edgeMid);
+      this._tileGfx.rect(x, y + TS - 1, TS, 1);
       this._tileGfx.fill(0x333350);
+      // Corner bevels
+      this._tileGfx.moveTo(x, y + TS);
+      this._tileGfx.lineTo(x + 3, y + TS);
+      this._tileGfx.lineTo(x, y + TS - 3);
+      this._tileGfx.closePath();
+      this._tileGfx.fill({ color: 0x383858, alpha: 0.5 });
+      this._tileGfx.moveTo(x + TS, y + TS);
+      this._tileGfx.lineTo(x + TS - 3, y + TS);
+      this._tileGfx.lineTo(x + TS, y + TS - 3);
+      this._tileGfx.closePath();
+      this._tileGfx.fill({ color: 0x383858, alpha: 0.5 });
     }
     if (isFloor(col - 1, row)) {
-      this._tileGfx.rect(x, y, edgeW, TS);
+      // Left edge: 3-step bevel
+      this._tileGfx.rect(x, y, 1, TS);
       this._tileGfx.fill(edgeColor);
+      this._tileGfx.rect(x + 1, y, 1, TS);
+      this._tileGfx.fill(edgeMid);
+      this._tileGfx.rect(x + 2, y, 1, TS);
+      this._tileGfx.fill(edgeDark);
     }
     if (isFloor(col + 1, row)) {
-      this._tileGfx.rect(x + TS - edgeW, y, edgeW, TS);
+      // Right edge: 3-step bevel
+      this._tileGfx.rect(x + TS - 3, y, 1, TS);
+      this._tileGfx.fill(edgeDark);
+      this._tileGfx.rect(x + TS - 2, y, 1, TS);
+      this._tileGfx.fill(edgeMid);
+      this._tileGfx.rect(x + TS - 1, y, 1, TS);
       this._tileGfx.fill(edgeColor);
     }
   }
