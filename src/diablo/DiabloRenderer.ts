@@ -9682,6 +9682,7 @@ export class DiabloRenderer {
 
     switch (type) {
       case EnemyType.WOLF: {
+        // --- WOLF | Estimated polygons: ~8164 triangles ---
         const bodyGeo = new THREE.BoxGeometry(0.6, 0.35, 1.0);
         const bodyMat = new THREE.MeshStandardMaterial({ color: 0x666655, roughness: 0.8 });
         const body = new THREE.Mesh(bodyGeo, bodyMat);
@@ -9761,6 +9762,7 @@ export class DiabloRenderer {
       }
 
       case EnemyType.BANDIT: {
+        // --- BANDIT | Estimated polygons: ~11786 triangles ---
         const mat = new THREE.MeshStandardMaterial({ color: 0x6b4226, roughness: 0.85 });
         // Torso
         const torso = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.5, 0.25), mat);
@@ -9842,6 +9844,7 @@ export class DiabloRenderer {
       }
 
       case EnemyType.BEAR: {
+        // --- BEAR | Estimated polygons: ~29264 triangles ---
         const mat = new THREE.MeshStandardMaterial({ color: 0x4a3020, roughness: 0.85 });
         const body = new THREE.Mesh(new THREE.SphereGeometry(0.7, 62, 44), mat);
         body.position.y = 0.9;
@@ -9919,6 +9922,7 @@ export class DiabloRenderer {
       }
 
       case EnemyType.FOREST_SPIDER: {
+        // --- FOREST_SPIDER | Estimated polygons: ~70400 triangles ---
         const spiderMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.7 });
         const bodyGeo = new THREE.SphereGeometry(0.25, 62, 44);
         const spiderBody = new THREE.Mesh(bodyGeo, spiderMat);
@@ -10007,6 +10011,7 @@ export class DiabloRenderer {
       }
 
       case EnemyType.TREANT: {
+        // --- TREANT | Estimated polygons: ~78440 triangles ---
         const barkMat = new THREE.MeshStandardMaterial({ color: 0x5a3a1a, roughness: 0.95 });
         const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.7, 2.5, 44), barkMat);
         trunk.position.y = 1.25;
@@ -10127,6 +10132,7 @@ export class DiabloRenderer {
       }
 
       case EnemyType.CORRUPTED_ELF: {
+        // --- CORRUPTED_ELF | Estimated polygons: ~34680 triangles ---
         const darkPurple = new THREE.MeshStandardMaterial({ color: 0x3a1a4a, roughness: 0.6 });
         const skinMat = new THREE.MeshStandardMaterial({ color: 0x8866aa, roughness: 0.5 });
         // Slender body
@@ -10228,6 +10234,7 @@ export class DiabloRenderer {
       }
 
       case EnemyType.DARK_RANGER: {
+        // --- DARK_RANGER | Estimated polygons: ~12972 triangles ---
         const cloakMat = new THREE.MeshStandardMaterial({ color: 0x1a1a2a, roughness: 0.9 });
         const skinMat = new THREE.MeshStandardMaterial({ color: 0x7766aa, roughness: 0.5 });
 
@@ -10281,14 +10288,14 @@ export class DiabloRenderer {
         drQuiver.position.set(0.12, 1.2, -0.15);
         group.add(drQuiver);
         const purpleTipMat = new THREE.MeshStandardMaterial({ color: 0x8844ff, emissive: 0x6622cc, emissiveIntensity: 1.0 });
-        for (let da = 0; da < 4; da++) {
+        for (let da = 0; da < 6; da++) {
           const daGeo = new THREE.CylinderGeometry(0.008, 0.008, 0.45, 44);
           const daArrow = new THREE.Mesh(daGeo, cloakMat);
-          daArrow.position.set(0.12 + (da - 1.5) * 0.018, 1.3, -0.15);
+          daArrow.position.set(0.12 + (da - 2.5) * 0.018, 1.3, -0.15);
           group.add(daArrow);
           const daTipGeo = new THREE.ConeGeometry(0.015, 0.04, 44);
           const daTip = new THREE.Mesh(daTipGeo, purpleTipMat);
-          daTip.position.set(0.12 + (da - 1.5) * 0.018, 1.54, -0.15);
+          daTip.position.set(0.12 + (da - 2.5) * 0.018, 1.54, -0.15);
           group.add(daTip);
         }
 
@@ -10312,6 +10319,7 @@ export class DiabloRenderer {
       }
 
       case EnemyType.SHADOW_BEAST: {
+        // --- SHADOW_BEAST | Estimated polygons: ~71930 triangles ---
         const shadowMat = new THREE.MeshStandardMaterial({
           color: 0x1a0a2a,
           transparent: true,
@@ -10348,8 +10356,9 @@ export class DiabloRenderer {
 
         // Jaw/maw (red emissive opening in the front)
         const mawMat = new THREE.MeshStandardMaterial({ color: 0xff2222, emissive: 0xaa0000, emissiveIntensity: 1.5 });
-        const mawGeo = new THREE.BoxGeometry(0.2, 0.1, 0.05);
+        const mawGeo = new THREE.SphereGeometry(0.12, 62, 44);
         const maw = new THREE.Mesh(mawGeo, mawMat);
+        maw.scale.set(1.6, 0.5, 0.4);
         maw.position.set(0, 1.8, 0.35);
         group.add(maw);
 
@@ -10398,6 +10407,7 @@ export class DiabloRenderer {
       }
 
       case EnemyType.SKELETON_WARRIOR: {
+        // --- SKELETON_WARRIOR | Estimated polygons: ~61106 triangles ---
         const boneMat = new THREE.MeshStandardMaterial({ color: 0xe8e0d0, roughness: 0.7 });
         // Skull
         const skull = new THREE.Mesh(new THREE.SphereGeometry(0.16, 62, 44), boneMat);
@@ -10485,6 +10495,13 @@ export class DiabloRenderer {
         tatCloth.position.set(0, 0.7, 0.08);
         group.add(tatCloth);
 
+        // Second tattered cloth piece
+        const tatteredGeo2 = new THREE.BoxGeometry(0.12, 0.18, 0.01);
+        const tatCloth2 = new THREE.Mesh(tatteredGeo2, tatteredMat);
+        tatCloth2.position.set(0.08, 0.65, 0.09);
+        tatCloth2.rotation.z = 0.2;
+        group.add(tatCloth2);
+
         // Sword
         const swordBlade = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.6, 0.015),
           new THREE.MeshStandardMaterial({ color: 0x999999, metalness: 0.8, roughness: 0.3 }));
@@ -10501,6 +10518,7 @@ export class DiabloRenderer {
       }
 
       case EnemyType.ZOMBIE: {
+        // --- ZOMBIE | Estimated polygons: ~24408 triangles ---
         const zombieSkin = new THREE.MeshStandardMaterial({ color: 0x667755, roughness: 0.9 });
         const clothMat = new THREE.MeshStandardMaterial({ color: 0x444433, roughness: 0.95 });
 
@@ -10574,6 +10592,14 @@ export class DiabloRenderer {
           group.add(torn);
         }
 
+        // Exposed bone (visible through wounds)
+        const exposedBoneGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.12, 44);
+        const exposedBoneMat = new THREE.MeshStandardMaterial({ color: 0xddccaa, roughness: 0.7 });
+        const exposedBone = new THREE.Mesh(exposedBoneGeo, exposedBoneMat);
+        exposedBone.position.set(0.08, 1.0, 0.14);
+        exposedBone.rotation.z = 0.3;
+        group.add(exposedBone);
+
         // Hunched back (additional sphere on upper back)
         const hunchGeo = new THREE.SphereGeometry(0.12, 62, 44);
         const hunch = new THREE.Mesh(hunchGeo, zombieSkin);
@@ -10599,6 +10625,7 @@ export class DiabloRenderer {
       }
 
       case EnemyType.NECROMANCER: {
+        // --- NECROMANCER | Estimated polygons: ~41748 triangles ---
         const robeMat = new THREE.MeshStandardMaterial({ color: 0x1a0a2a, roughness: 0.8 });
         const skinMat = new THREE.MeshStandardMaterial({ color: 0x998877, roughness: 0.6 });
 
@@ -10712,6 +10739,7 @@ export class DiabloRenderer {
       }
 
       case EnemyType.BONE_GOLEM: {
+        // --- BONE_GOLEM | Estimated polygons: ~112360 triangles ---
         const boneMat = new THREE.MeshStandardMaterial({ color: 0xd8d0c0, roughness: 0.7 });
 
         // Massive body cluster
@@ -10832,6 +10860,7 @@ export class DiabloRenderer {
       }
 
       case EnemyType.WRAITH: {
+        // --- WRAITH | Estimated polygons: ~33952 triangles ---
         const wraithMat = new THREE.MeshStandardMaterial({
           color: 0x2244aa,
           transparent: true,
@@ -10906,6 +10935,16 @@ export class DiabloRenderer {
         trail2.position.set(0, 0.8, -0.5);
         group.add(trail2);
 
+        // Second wider ethereal trail
+        const trailGeo3 = new THREE.BoxGeometry(0.4, 0.01, 0.6);
+        const trailMat3 = new THREE.MeshStandardMaterial({
+          color: 0x2244aa, emissive: 0x1122aa, emissiveIntensity: 0.5,
+          transparent: true, opacity: 0.15,
+        });
+        const trail3 = new THREE.Mesh(trailGeo3, trailMat3);
+        trail3.position.set(0, 0.75, -0.3);
+        group.add(trail3);
+
         // Ghostly face (very subtle light-colored features)
         const faceMat = new THREE.MeshStandardMaterial({
           color: 0x6688cc, emissive: 0x4466aa, emissiveIntensity: 0.3,
@@ -10964,6 +11003,7 @@ export class DiabloRenderer {
       }
 
       case EnemyType.TREASURE_MIMIC: {
+        // --- TREASURE_MIMIC | Estimated polygons: ~14316 triangles ---
         const chestMat = new THREE.MeshStandardMaterial({ color: 0x8b6914, roughness: 0.6, metalness: 0.3 });
 
         // Box base
