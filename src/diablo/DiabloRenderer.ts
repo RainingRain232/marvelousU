@@ -509,6 +509,96 @@ export class DiabloRenderer {
         tree.add(stub);
       }
 
+      // Bark texture bumps - small sphere clusters on trunk surface
+      const barkBumpCount = 4 + Math.floor(Math.random() * 5);
+      for (let bb = 0; bb < barkBumpCount; bb++) {
+        const bumpAng = Math.random() * Math.PI * 2;
+        const bumpY = 0.3 + Math.random() * trunkH * 0.7;
+        const bumpGeo = new THREE.SphereGeometry(trunkR * 0.15 + Math.random() * trunkR * 0.1, 8, 8);
+        const bump = new THREE.Mesh(bumpGeo, new THREE.MeshStandardMaterial({ color: barkColor - 0x080800, roughness: 0.98 }));
+        bump.position.set(Math.cos(bumpAng) * trunkR * 0.95, bumpY, Math.sin(bumpAng) * trunkR * 0.95);
+        bump.scale.set(0.6, 0.8, 0.6);
+        tree.add(bump);
+      }
+
+      // Mushroom clusters near tree base
+      if (Math.random() > 0.5) {
+        const mushClusterCount = 2 + Math.floor(Math.random() * 3);
+        for (let mc = 0; mc < mushClusterCount; mc++) {
+          const mcAng = Math.random() * Math.PI * 2;
+          const mcDist = trunkR * 1.2 + Math.random() * 0.2;
+          const mcStemH = 0.05 + Math.random() * 0.06;
+          const mcStem = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, mcStemH, 8),
+            new THREE.MeshStandardMaterial({ color: 0xddddbb, roughness: 0.8 }));
+          mcStem.position.set(Math.cos(mcAng) * mcDist, mcStemH / 2, Math.sin(mcAng) * mcDist);
+          tree.add(mcStem);
+          const mcCapR = 0.03 + Math.random() * 0.03;
+          const mcCap = new THREE.Mesh(new THREE.SphereGeometry(mcCapR, 12, 10, 0, Math.PI * 2, 0, Math.PI / 2),
+            new THREE.MeshStandardMaterial({ color: [0xaa7744, 0xcc8855, 0x886633][mc % 3], roughness: 0.65 }));
+          mcCap.position.set(Math.cos(mcAng) * mcDist, mcStemH, Math.sin(mcAng) * mcDist);
+          tree.add(mcCap);
+        }
+      }
+
+      // Bird nest in tree canopy (rare)
+      if (Math.random() > 0.8) {
+        const nestGrp = new THREE.Group();
+        const nestBase = new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.025, 10, 16),
+          new THREE.MeshStandardMaterial({ color: 0x6b4226, roughness: 0.95 }));
+        nestBase.rotation.x = Math.PI / 2;
+        nestGrp.add(nestBase);
+        // Twigs in nest
+        for (let tw = 0; tw < 4; tw++) {
+          const twig = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.005, 0.12, 6),
+            new THREE.MeshStandardMaterial({ color: 0x5a3a1e, roughness: 0.95 }));
+          twig.rotation.z = Math.random() * Math.PI;
+          twig.rotation.y = Math.random() * Math.PI;
+          twig.position.y = 0.01;
+          nestGrp.add(twig);
+        }
+        // Tiny eggs
+        for (let eg = 0; eg < 2; eg++) {
+          const egg = new THREE.Mesh(new THREE.SphereGeometry(0.015, 8, 8),
+            new THREE.MeshStandardMaterial({ color: 0xddeedd, roughness: 0.6 }));
+          egg.scale.y = 1.3;
+          egg.position.set((eg - 0.5) * 0.03, 0.015, 0);
+          nestGrp.add(egg);
+        }
+        const branchAng = Math.random() * Math.PI * 2;
+        nestGrp.position.set(Math.cos(branchAng) * trunkR * 2, trunkH * 0.6 + Math.random() * trunkH * 0.3, Math.sin(branchAng) * trunkR * 2);
+        tree.add(nestGrp);
+      }
+
+      // Cobweb between branches (rare)
+      if (Math.random() > 0.75) {
+        const webGeo = new THREE.PlaneGeometry(0.4 + Math.random() * 0.3, 0.4 + Math.random() * 0.3);
+        const webMat = new THREE.MeshStandardMaterial({
+          color: 0xffffff, transparent: true, opacity: 0.08, roughness: 0.3, side: THREE.DoubleSide,
+        });
+        const web = new THREE.Mesh(webGeo, webMat);
+        const webAng = Math.random() * Math.PI * 2;
+        web.position.set(Math.cos(webAng) * trunkR * 1.5, trunkH * 0.3 + Math.random() * trunkH * 0.4, Math.sin(webAng) * trunkR * 1.5);
+        web.rotation.y = webAng;
+        web.rotation.x = (Math.random() - 0.5) * 0.3;
+        tree.add(web);
+      }
+
+      // Fallen leaves/debris at tree base
+      const leafDebrisCount = 3 + Math.floor(Math.random() * 4);
+      for (let ld = 0; ld < leafDebrisCount; ld++) {
+        const ldAng = Math.random() * Math.PI * 2;
+        const ldDist = trunkR * 0.8 + Math.random() * 0.6;
+        const ldSize = 0.04 + Math.random() * 0.06;
+        const ldGeo = new THREE.CircleGeometry(ldSize, 6);
+        const ldColors = [0x886622, 0x995533, 0xaa7744, 0x664411, 0x3a6a2a];
+        const leafDebris = new THREE.Mesh(ldGeo,
+          new THREE.MeshStandardMaterial({ color: ldColors[ld % ldColors.length], roughness: 1.0, side: THREE.DoubleSide }));
+        leafDebris.rotation.x = -Math.PI / 2 + (Math.random() - 0.5) * 0.15;
+        leafDebris.rotation.z = Math.random() * Math.PI * 2;
+        leafDebris.position.set(Math.cos(ldAng) * ldDist, 0.01, Math.sin(ldAng) * ldDist);
+        tree.add(leafDebris);
+      }
+
       // Ground shadow circle under tree
       const shadowR = tType === 'pine' ? 1.8 : tType === 'oak' ? 2.2 : 1.5;
       const shadowGeo = new THREE.CircleGeometry(shadowR + Math.random() * 0.5, 36);
@@ -540,6 +630,35 @@ export class DiabloRenderer {
         moss.scale.y = 0.3;
         moss.position.y = rSize * 0.3;
         rockGrp.add(moss);
+      }
+      // Additional moss patches on rock sides (flattened spheres)
+      if (Math.random() > 0.5) {
+        const sideMossCount = 1 + Math.floor(Math.random() * 2);
+        for (let sm = 0; sm < sideMossCount; sm++) {
+          const smAng = Math.random() * Math.PI * 2;
+          const sideMoss = new THREE.Mesh(new THREE.SphereGeometry(rSize * 0.25 + Math.random() * rSize * 0.15, 10, 10),
+            new THREE.MeshStandardMaterial({ color: 0x2a5a1a + Math.floor(Math.random() * 0x112200), roughness: 1.0 }));
+          sideMoss.scale.set(1, 0.25, 1);
+          sideMoss.position.set(Math.cos(smAng) * rSize * 0.4, rSize * 0.1 + Math.random() * rSize * 0.2, Math.sin(smAng) * rSize * 0.4);
+          rockGrp.add(sideMoss);
+        }
+      }
+      // Small vegetation around rock base (fern/plant cone+sphere combos)
+      if (Math.random() > 0.6) {
+        const vegCount = 1 + Math.floor(Math.random() * 2);
+        for (let vg = 0; vg < vegCount; vg++) {
+          const vgAng = Math.random() * Math.PI * 2;
+          const vgDist = rSize * 1.1 + Math.random() * 0.1;
+          const vgStem = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.08 + Math.random() * 0.06, 6),
+            new THREE.MeshStandardMaterial({ color: 0x3a8a3a, roughness: 0.9 }));
+          vgStem.position.set(Math.cos(vgAng) * vgDist, 0.04, Math.sin(vgAng) * vgDist);
+          rockGrp.add(vgStem);
+          const vgLeaf = new THREE.Mesh(new THREE.SphereGeometry(0.025, 8, 8),
+            new THREE.MeshStandardMaterial({ color: 0x4a9a4a, roughness: 0.85 }));
+          vgLeaf.scale.y = 0.5;
+          vgLeaf.position.set(Math.cos(vgAng) * vgDist, 0.09, Math.sin(vgAng) * vgDist);
+          rockGrp.add(vgLeaf);
+        }
       }
       const rx = (Math.random() - 0.5) * w;
       const rz = (Math.random() - 0.5) * d;
@@ -625,6 +744,26 @@ export class DiabloRenderer {
           fungus.position.set((Math.random() - 0.5) * logLen * 0.5, logR * 0.7, logR * (Math.random() > 0.5 ? 1 : -1));
           logGrp.add(fungus);
         }
+      }
+      // Wood grain detail lines along log
+      const grainCount = 3 + Math.floor(Math.random() * 3);
+      for (let wg = 0; wg < grainCount; wg++) {
+        const grainAng = (wg / grainCount) * Math.PI * 2;
+        const grainLen = logLen * 0.6 + Math.random() * logLen * 0.3;
+        const grainGeo = new THREE.BoxGeometry(grainLen, logR * 0.04, logR * 0.06);
+        const grain = new THREE.Mesh(grainGeo,
+          new THREE.MeshStandardMaterial({ color: logColor - 0x0a0a00, roughness: 0.98 }));
+        grain.position.set(0, logR + Math.cos(grainAng) * logR * 0.85, Math.sin(grainAng) * logR * 0.85);
+        logGrp.add(grain);
+      }
+      // Cross-section growth rings at cut end
+      for (let gr = 1; gr <= 3; gr++) {
+        const ringR = logR * 0.9 * (gr / 4);
+        const growthRing = new THREE.Mesh(new THREE.RingGeometry(ringR - 0.005, ringR, 16),
+          new THREE.MeshStandardMaterial({ color: 0x7a6550, roughness: 0.85, side: THREE.DoubleSide }));
+        growthRing.rotation.y = Math.PI / 2;
+        growthRing.position.set(logLen * 0.5 + 0.001, logR, 0);
+        logGrp.add(growthRing);
       }
       const logX = (Math.random() - 0.5) * w * 0.85;
       const logZ = (Math.random() - 0.5) * d * 0.85;
@@ -890,6 +1029,63 @@ export class DiabloRenderer {
     fogPlane.position.y = 0.3;
     this._envGroup.add(fogPlane);
 
+    // Puddles on the ground (12) - flat reflective circles
+    for (let i = 0; i < 12; i++) {
+      const puddleR = 0.3 + Math.random() * 0.5;
+      const puddleGeo = new THREE.CircleGeometry(puddleR, 24);
+      const puddleMat = new THREE.MeshStandardMaterial({
+        color: 0x334455, transparent: true, opacity: 0.35,
+        roughness: 0.05, metalness: 0.4, side: THREE.DoubleSide,
+      });
+      const puddle = new THREE.Mesh(puddleGeo, puddleMat);
+      puddle.rotation.x = -Math.PI / 2;
+      const pdX = (Math.random() - 0.5) * w * 0.85;
+      const pdZ = (Math.random() - 0.5) * d * 0.85;
+      puddle.position.set(pdX, getTerrainHeight(pdX, pdZ) + 0.012, pdZ);
+      this._envGroup.add(puddle);
+      // Slight rim of mud around puddle
+      const rimGeo = new THREE.RingGeometry(puddleR - 0.02, puddleR + 0.04, 24);
+      const rim = new THREE.Mesh(rimGeo,
+        new THREE.MeshStandardMaterial({ color: 0x3d2b1f, roughness: 1.0, side: THREE.DoubleSide }));
+      rim.rotation.x = -Math.PI / 2;
+      rim.position.set(pdX, getTerrainHeight(pdX, pdZ) + 0.011, pdZ);
+      this._envGroup.add(rim);
+    }
+
+    // Small ground-level vegetation patches (20) - ferns, small plants using cone/sphere combos
+    for (let i = 0; i < 20; i++) {
+      const vegGrp = new THREE.Group();
+      const vegType = Math.random();
+      if (vegType < 0.5) {
+        // Small fern: multiple cone leaves
+        const fLeafCount = 3 + Math.floor(Math.random() * 3);
+        const fColor = [0x3a8a3a, 0x2a7a2a, 0x4a9a4a][i % 3];
+        for (let fl = 0; fl < fLeafCount; fl++) {
+          const fLeaf = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.15 + Math.random() * 0.1, 6),
+            new THREE.MeshStandardMaterial({ color: fColor, roughness: 0.85 }));
+          fLeaf.position.y = 0.08;
+          fLeaf.rotation.y = (fl / fLeafCount) * Math.PI * 2;
+          fLeaf.rotation.x = -0.4 - Math.random() * 0.3;
+          vegGrp.add(fLeaf);
+        }
+      } else {
+        // Small plant: sphere top + cone stem
+        const pStem = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.1, 6),
+          new THREE.MeshStandardMaterial({ color: 0x447733, roughness: 0.9 }));
+        pStem.position.y = 0.05;
+        vegGrp.add(pStem);
+        const pTop = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 8),
+          new THREE.MeshStandardMaterial({ color: 0x55aa44, roughness: 0.8 }));
+        pTop.scale.y = 0.6;
+        pTop.position.y = 0.11;
+        vegGrp.add(pTop);
+      }
+      const vX = (Math.random() - 0.5) * w * 0.9;
+      const vZ = (Math.random() - 0.5) * d * 0.9;
+      vegGrp.position.set(vX, getTerrainHeight(vX, vZ), vZ);
+      this._envGroup.add(vegGrp);
+    }
+
     // Light shafts (12) - volumetric god rays with dust motes
     for (let i = 0; i < 12; i++) {
       const shaftR = 0.15 + Math.random() * 0.35;
@@ -1061,6 +1257,42 @@ export class DiabloRenderer {
         new THREE.MeshStandardMaterial({ color: 0x1a0a00, roughness: 1.0 }));
       hollow.position.y = 0.5;
       stumpGrp.add(hollow);
+      // Growth rings on stump top
+      for (let sgr = 1; sgr <= 3; sgr++) {
+        const stRingR = 0.3 * (sgr / 4);
+        const stGrowthRing = new THREE.Mesh(new THREE.RingGeometry(stRingR - 0.008, stRingR, 20),
+          new THREE.MeshStandardMaterial({ color: 0x7a6550, roughness: 0.85, side: THREE.DoubleSide }));
+        stGrowthRing.rotation.x = -Math.PI / 2;
+        stGrowthRing.position.y = 0.501;
+        stumpGrp.add(stGrowthRing);
+      }
+      // Bark texture on stump sides
+      for (let sb = 0; sb < 4; sb++) {
+        const sbAng = (sb / 4) * Math.PI * 2;
+        const barkStrip = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.4, 0.02),
+          new THREE.MeshStandardMaterial({ color: 0x4a2a10, roughness: 0.98 }));
+        barkStrip.position.set(Math.cos(sbAng) * 0.33, 0.25, Math.sin(sbAng) * 0.33);
+        barkStrip.lookAt(new THREE.Vector3(0, 0.25, 0));
+        stumpGrp.add(barkStrip);
+      }
+      // Small roots at base
+      for (let sr = 0; sr < 3; sr++) {
+        const srAng = (sr / 3) * Math.PI * 2 + Math.random() * 0.5;
+        const stRoot = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.015, 0.3, 8),
+          new THREE.MeshStandardMaterial({ color: 0x5c3a1e, roughness: 0.9 }));
+        stRoot.position.set(Math.cos(srAng) * 0.3, 0.08, Math.sin(srAng) * 0.3);
+        stRoot.rotation.z = Math.cos(srAng) * 0.7;
+        stRoot.rotation.x = Math.sin(srAng) * 0.7;
+        stumpGrp.add(stRoot);
+      }
+      // Moss on stump
+      if (Math.random() > 0.4) {
+        const stMoss = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 10),
+          new THREE.MeshStandardMaterial({ color: 0x3a6a2a, roughness: 1.0 }));
+        stMoss.scale.y = 0.25;
+        stMoss.position.set(0.1, 0.48, 0.05);
+        stumpGrp.add(stMoss);
+      }
       const stumpX = (Math.random() - 0.5) * w * 0.7;
       const stumpZ = (Math.random() - 0.5) * d * 0.7;
       stumpGrp.position.set(stumpX, getTerrainHeight(stumpX, stumpZ), stumpZ);
@@ -1299,7 +1531,17 @@ export class DiabloRenderer {
       spire.position.y = bh + roofH + 0.2;
       building.add(spire);
 
-      // Glowing blue windows - arched shape
+      // Roof eaves/trim ring along the base of the roof
+      const eavesTrim = new THREE.Mesh(
+        new THREE.TorusGeometry(br * 1.32, 0.05, 12, 36),
+        new THREE.MeshStandardMaterial({ color: 0x2a5588, metalness: 0.4, roughness: 0.3 }),
+      );
+      eavesTrim.rotation.x = Math.PI / 2;
+      eavesTrim.position.y = bh;
+      building.add(eavesTrim);
+
+      // Glowing blue windows with frames, sills, shutters, and flower boxes
+      const winFrameMat = new THREE.MeshStandardMaterial({ color: 0x8899aa, metalness: 0.3, roughness: 0.4 });
       for (let wi = 0; wi < 4; wi++) {
         const winGeo = new THREE.BoxGeometry(0.3, 0.5, 0.1);
         const winMat = new THREE.MeshStandardMaterial({
@@ -1310,7 +1552,7 @@ export class DiabloRenderer {
         win.position.set(
           Math.cos(angle) * (br + 0.05),
           bh * 0.4 + wi * 0.4,
-          Math.sin(angle) * (br + 0.05)
+          Math.sin(angle) * (br + 0.05),
         );
         win.lookAt(building.position.x, win.position.y, building.position.z);
         building.add(win);
@@ -1320,15 +1562,166 @@ export class DiabloRenderer {
         winArch.position.y += 0.25;
         winArch.scale.y = 0.5;
         building.add(winArch);
+        // Window frame pieces (top, bottom, left, right)
+        const winOutR = br + 0.07;
+        const frameThick = 0.03;
+        const wfTop = new THREE.Mesh(new THREE.BoxGeometry(0.36, frameThick, 0.04), winFrameMat);
+        wfTop.position.set(Math.cos(angle) * winOutR, bh * 0.4 + wi * 0.4 + 0.26, Math.sin(angle) * winOutR);
+        wfTop.lookAt(building.position.x, wfTop.position.y, building.position.z);
+        building.add(wfTop);
+        const wfBot = new THREE.Mesh(new THREE.BoxGeometry(0.36, frameThick, 0.04), winFrameMat);
+        wfBot.position.set(Math.cos(angle) * winOutR, bh * 0.4 + wi * 0.4 - 0.26, Math.sin(angle) * winOutR);
+        wfBot.lookAt(building.position.x, wfBot.position.y, building.position.z);
+        building.add(wfBot);
+        const wfLeft = new THREE.Mesh(new THREE.BoxGeometry(frameThick, 0.56, 0.04), winFrameMat);
+        wfLeft.position.set(Math.cos(angle + 0.08) * winOutR, bh * 0.4 + wi * 0.4, Math.sin(angle + 0.08) * winOutR);
+        wfLeft.lookAt(building.position.x, wfLeft.position.y, building.position.z);
+        building.add(wfLeft);
+        const wfRight = new THREE.Mesh(new THREE.BoxGeometry(frameThick, 0.56, 0.04), winFrameMat);
+        wfRight.position.set(Math.cos(angle - 0.08) * winOutR, bh * 0.4 + wi * 0.4, Math.sin(angle - 0.08) * winOutR);
+        wfRight.lookAt(building.position.x, wfRight.position.y, building.position.z);
+        building.add(wfRight);
+        // Window sill
+        const winSill = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.03, 0.08), winFrameMat);
+        winSill.position.set(Math.cos(angle) * (br + 0.09), bh * 0.4 + wi * 0.4 - 0.28, Math.sin(angle) * (br + 0.09));
+        winSill.lookAt(building.position.x, winSill.position.y, building.position.z);
+        building.add(winSill);
+        // Shutters on alternating windows
+        if (wi % 2 === 0) {
+          const shutterMat = new THREE.MeshStandardMaterial({ color: 0x3a5577, roughness: 0.7 });
+          for (const shutSide of [-1, 1]) {
+            const shutter = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.48, 0.02), shutterMat);
+            shutter.position.set(
+              Math.cos(angle + shutSide * 0.12) * (br + 0.1),
+              bh * 0.4 + wi * 0.4,
+              Math.sin(angle + shutSide * 0.12) * (br + 0.1),
+            );
+            shutter.lookAt(building.position.x, shutter.position.y, building.position.z);
+            building.add(shutter);
+          }
+        }
+        // Flower box under some windows
+        if (Math.random() > 0.5) {
+          const fboxMat = new THREE.MeshStandardMaterial({ color: 0x6b4226, roughness: 0.85 });
+          const fbox = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.06, 0.06), fboxMat);
+          fbox.position.set(Math.cos(angle) * (br + 0.1), bh * 0.4 + wi * 0.4 - 0.32, Math.sin(angle) * (br + 0.1));
+          fbox.lookAt(building.position.x, fbox.position.y, building.position.z);
+          building.add(fbox);
+          const fbColors = [0xff6688, 0xffaa33, 0xddaaff, 0x88ffbb];
+          for (let fb = 0; fb < 2 + Math.floor(Math.random() * 3); fb++) {
+            const fPuff = new THREE.Mesh(
+              new THREE.SphereGeometry(0.02, 8, 8),
+              new THREE.MeshStandardMaterial({ color: fbColors[fb % fbColors.length], roughness: 0.5, emissive: fbColors[fb % fbColors.length], emissiveIntensity: 0.15 }),
+            );
+            fPuff.position.set(
+              Math.cos(angle) * (br + 0.12) + (Math.random() - 0.5) * 0.02,
+              bh * 0.4 + wi * 0.4 - 0.28,
+              Math.sin(angle) * (br + 0.12) + (Math.random() - 0.5) * 0.02,
+            );
+            building.add(fPuff);
+          }
+        }
       }
 
-      // Door with elvish arch
+      // Door with elvish arch, frame, doorstep, and handle
       const doorAngle = Math.random() * Math.PI * 2;
       const door = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.8, 0.1),
         new THREE.MeshStandardMaterial({ color: 0x5a4a3a, roughness: 0.8 }));
       door.position.set(Math.cos(doorAngle) * (br + 0.05), 0.4, Math.sin(doorAngle) * (br + 0.05));
       door.lookAt(building.position.x, 0.4, building.position.z);
       building.add(door);
+      // Door frame (U-shape)
+      const doorFrameMat = new THREE.MeshStandardMaterial({ color: 0x7a6a5a, roughness: 0.7, metalness: 0.15 });
+      const dfOutR = br + 0.08;
+      const dfTop = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.04, 0.05), doorFrameMat);
+      dfTop.position.set(Math.cos(doorAngle) * dfOutR, 0.82, Math.sin(doorAngle) * dfOutR);
+      dfTop.lookAt(building.position.x, dfTop.position.y, building.position.z);
+      building.add(dfTop);
+      for (const dfSide of [-1, 1]) {
+        const dfBar = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.84, 0.05), doorFrameMat);
+        dfBar.position.set(Math.cos(doorAngle + dfSide * 0.12) * dfOutR, 0.42, Math.sin(doorAngle + dfSide * 0.12) * dfOutR);
+        dfBar.lookAt(building.position.x, dfBar.position.y, building.position.z);
+        building.add(dfBar);
+      }
+      // Door arch top
+      const doorArch = new THREE.Mesh(
+        new THREE.SphereGeometry(0.22, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2),
+        doorFrameMat,
+      );
+      doorArch.position.set(Math.cos(doorAngle) * (br + 0.06), 0.82, Math.sin(doorAngle) * (br + 0.06));
+      doorArch.scale.y = 0.4;
+      building.add(doorArch);
+      // Doorstep
+      const doorstep = new THREE.Mesh(
+        new THREE.BoxGeometry(0.5, 0.04, 0.15),
+        new THREE.MeshStandardMaterial({ color: 0x999988, roughness: 0.7 }),
+      );
+      doorstep.position.set(Math.cos(doorAngle) * (br + 0.12), 0.02, Math.sin(doorAngle) * (br + 0.12));
+      doorstep.lookAt(building.position.x, doorstep.position.y, building.position.z);
+      building.add(doorstep);
+      // Door handle
+      const doorHandle = new THREE.Mesh(
+        new THREE.SphereGeometry(0.02, 8, 8),
+        new THREE.MeshStandardMaterial({ color: 0xddddbb, metalness: 0.6, roughness: 0.2 }),
+      );
+      doorHandle.position.set(Math.cos(doorAngle + 0.06) * (br + 0.11), 0.4, Math.sin(doorAngle + 0.06) * (br + 0.11));
+      building.add(doorHandle);
+
+      // Chimney on some buildings
+      if (Math.random() > 0.4) {
+        const chimAngle = doorAngle + Math.PI * (0.3 + Math.random() * 0.4);
+        const chimDist = br * 0.6;
+        const chimH = 1.2 + Math.random() * 0.6;
+        const chimneyMat = new THREE.MeshStandardMaterial({ color: 0x887766, roughness: 0.85 });
+        const chimBody = new THREE.Mesh(new THREE.BoxGeometry(0.2, chimH, 0.2), chimneyMat);
+        chimBody.position.set(Math.cos(chimAngle) * chimDist, bh + roofH * 0.3 + chimH / 2, Math.sin(chimAngle) * chimDist);
+        building.add(chimBody);
+        const chimCap = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.04, 0.26), chimneyMat);
+        chimCap.position.set(Math.cos(chimAngle) * chimDist, bh + roofH * 0.3 + chimH + 0.02, Math.sin(chimAngle) * chimDist);
+        building.add(chimCap);
+        for (let cb = 0; cb < 3; cb++) {
+          const brickLine = new THREE.Mesh(
+            new THREE.BoxGeometry(0.22, 0.01, 0.22),
+            new THREE.MeshStandardMaterial({ color: 0x776655, roughness: 0.9 }),
+          );
+          brickLine.position.set(Math.cos(chimAngle) * chimDist, bh + roofH * 0.3 + cb * chimH * 0.3 + 0.15, Math.sin(chimAngle) * chimDist);
+          building.add(brickLine);
+        }
+      }
+
+      // Wall texture variation overlays
+      const wallOverlayCount = 3 + Math.floor(Math.random() * 3);
+      for (let wo = 0; wo < wallOverlayCount; wo++) {
+        const woAngle = Math.random() * Math.PI * 2;
+        const woH = 0.3 + Math.random() * 0.5;
+        const woW = 0.4 + Math.random() * 0.4;
+        const overlay = new THREE.Mesh(
+          new THREE.BoxGeometry(woW, woH, 0.02),
+          new THREE.MeshStandardMaterial({ color: 0xbbbbaa + Math.floor(Math.random() * 0x111100), roughness: 0.65, metalness: 0.05 }),
+        );
+        overlay.position.set(Math.cos(woAngle) * (br + 0.06), 0.5 + Math.random() * (bh - 1), Math.sin(woAngle) * (br + 0.06));
+        overlay.lookAt(building.position.x, overlay.position.y, building.position.z);
+        building.add(overlay);
+      }
+
+      // Small hanging sign near door (some buildings)
+      if (Math.random() > 0.6) {
+        const signAngle = doorAngle + 0.2;
+        const signPost = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.01, 0.01, 0.3, 8),
+          new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.5, roughness: 0.3 }),
+        );
+        signPost.rotation.z = Math.PI / 2;
+        signPost.position.set(Math.cos(signAngle) * (br + 0.15), 1.2, Math.sin(signAngle) * (br + 0.15));
+        building.add(signPost);
+        const signBoard = new THREE.Mesh(
+          new THREE.BoxGeometry(0.2, 0.12, 0.015),
+          new THREE.MeshStandardMaterial({ color: 0x6b4226, roughness: 0.85 }),
+        );
+        signBoard.position.set(Math.cos(signAngle) * (br + 0.3), 1.1, Math.sin(signAngle) * (br + 0.3));
+        signBoard.lookAt(building.position.x, signBoard.position.y, building.position.z);
+        building.add(signBoard);
+      }
 
       // Building glow light
       const bldgLight = new THREE.PointLight(0x4488cc, 0.3, 6);
@@ -2051,6 +2444,67 @@ export class DiabloRenderer {
         stain.position.set((Math.random() - 0.5) * wallW * 0.5, wallH * 0.3, 0.26);
         wallGrp.add(stain);
       }
+      // Cracked stone detail - thin overlapping dark boxes on wall surface
+      const crackStoneMat = new THREE.MeshStandardMaterial({ color: 0x1a1a24, roughness: 1.0 });
+      for (let cs = 0; cs < 4 + Math.floor(Math.random() * 3); cs++) {
+        const crackW2 = 0.08 + Math.random() * 0.12;
+        const crackH2 = 0.3 + Math.random() * 0.5;
+        const crackStone = new THREE.Mesh(new THREE.BoxGeometry(crackW2, crackH2, 0.04), crackStoneMat);
+        crackStone.position.set(
+          (Math.random() - 0.5) * wallW * 0.8,
+          0.3 + Math.random() * (wallH - 0.6),
+          0.27 + Math.random() * 0.02
+        );
+        crackStone.rotation.z = (Math.random() - 0.5) * 0.4;
+        wallGrp.add(crackStone);
+      }
+      // Iron gate bars inset into wall gaps
+      if (Math.random() > 0.5) {
+        const gateBarMat = new THREE.MeshStandardMaterial({ color: 0x333344, metalness: 0.7, roughness: 0.3 });
+        const gateOffset = (Math.random() - 0.5) * wallW * 0.4;
+        for (let gb = 0; gb < 4; gb++) {
+          const gateBar = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, wallH * 0.6, 12), gateBarMat);
+          gateBar.position.set(gateOffset + gb * 0.08 - 0.12, wallH * 0.35, 0.27);
+          wallGrp.add(gateBar);
+        }
+        const gateHBar = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.35, 12), gateBarMat);
+        gateHBar.rotation.z = Math.PI / 2;
+        gateHBar.position.set(gateOffset, wallH * 0.4, 0.27);
+        wallGrp.add(gateHBar);
+      }
+      // Gargoyle perch on wall (sphere head + cone body)
+      if (Math.random() > 0.6) {
+        const gargoyleMat = new THREE.MeshStandardMaterial({ color: 0x3a3a44, roughness: 0.8 });
+        const gargX = (Math.random() - 0.5) * wallW * 0.5;
+        const gargY = wallH * 0.8;
+        const gargHead = new THREE.Mesh(new THREE.SphereGeometry(0.08, 12, 10), gargoyleMat);
+        gargHead.position.set(gargX, gargY + 0.15, 0.35);
+        wallGrp.add(gargHead);
+        const gargBody = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.2, 10), gargoyleMat);
+        gargBody.position.set(gargX, gargY, 0.35);
+        wallGrp.add(gargBody);
+        for (const gws of [-1, 1]) {
+          const gWing = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.08, 0.02), gargoyleMat);
+          gWing.position.set(gargX + gws * 0.1, gargY + 0.08, 0.35);
+          gWing.rotation.z = gws * 0.4;
+          wallGrp.add(gWing);
+        }
+        const perchBracket = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.04, 0.12), gargoyleMat);
+        perchBracket.position.set(gargX, gargY - 0.08, 0.32);
+        wallGrp.add(perchBracket);
+      }
+      // Crumbling edges - randomly offset small boxes along wall top
+      for (let ce = 0; ce < 3 + Math.floor(Math.random() * 3); ce++) {
+        const crumble = new THREE.Mesh(new THREE.BoxGeometry(0.1 + Math.random() * 0.1, 0.08 + Math.random() * 0.06, 0.12),
+          new THREE.MeshStandardMaterial({ color: 0x2a2a34, roughness: 0.9 }));
+        crumble.position.set(
+          (Math.random() - 0.5) * wallW * 0.9,
+          wallH + (Math.random() - 0.5) * 0.15,
+          (Math.random() - 0.5) * 0.3
+        );
+        crumble.rotation.set(Math.random() * 0.3, Math.random() * 0.3, Math.random() * 0.3);
+        wallGrp.add(crumble);
+      }
       const wx = (Math.random() - 0.5) * w * 0.7;
       const wz = (Math.random() - 0.5) * d * 0.7;
       wallGrp.position.set(wx, getTerrainHeight(wx, wz, 0.4), wz);
@@ -2167,6 +2621,27 @@ export class DiabloRenderer {
         frag.rotation.x = Math.random() * 0.4;
         bonePile.add(frag);
       }
+      // Detailed bone pile: small spheres as joint knobs and skull fragments
+      for (let bk = 0; bk < 2 + Math.floor(Math.random() * 3); bk++) {
+        const knob = new THREE.Mesh(new THREE.SphereGeometry(0.025 + Math.random() * 0.015, 10, 8),
+          new THREE.MeshStandardMaterial({ color: 0xddddbb, roughness: 0.9 }));
+        knob.position.set(
+          (Math.random() - 0.5) * 0.6,
+          0.03 + Math.random() * 0.08,
+          (Math.random() - 0.5) * 0.6
+        );
+        bonePile.add(knob);
+      }
+      // Rib-cage arcs near bones
+      if (Math.random() > 0.5) {
+        for (let rb = 0; rb < 3; rb++) {
+          const rib = new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.008, 6, 10, Math.PI * 0.7),
+            new THREE.MeshStandardMaterial({ color: 0xccccaa, roughness: 0.9 }));
+          rib.position.set((Math.random() - 0.5) * 0.3, 0.04, (Math.random() - 0.5) * 0.3);
+          rib.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
+          bonePile.add(rib);
+        }
+      }
       const bpX = (Math.random() - 0.5) * w * 0.8;
       const bpZ = (Math.random() - 0.5) * d * 0.8;
       bonePile.position.set(bpX, getTerrainHeight(bpX, bpZ, 0.4), bpZ);
@@ -2191,6 +2666,20 @@ export class DiabloRenderer {
         lid.position.x = 0.2;
       }
       coffin.add(lid);
+      // Coffin lid rune/cross detail (raised thin boxes)
+      const cofRuneMat = new THREE.MeshStandardMaterial({ color: 0x5a4a3a, roughness: 0.8, metalness: 0.15 });
+      const cofCrossV = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.03, 0.8), cofRuneMat);
+      cofCrossV.position.set(lid.position.x, 0.52, 0);
+      coffin.add(cofCrossV);
+      const cofCrossH = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.03, 0.04), cofRuneMat);
+      cofCrossH.position.set(lid.position.x, 0.52, -0.15);
+      coffin.add(cofCrossH);
+      // Coffin nail heads
+      for (let cn = 0; cn < 4; cn++) {
+        const nail = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.02, 8), new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.7, roughness: 0.3 }));
+        nail.position.set((cn < 2 ? -0.35 : 0.35), 0.46, cn % 2 === 0 ? -0.7 : 0.7);
+        coffin.add(nail);
+      }
 
       const cofX = (Math.random() - 0.5) * w * 0.7;
       const cofZ = (Math.random() - 0.5) * d * 0.7;
@@ -2208,6 +2697,18 @@ export class DiabloRenderer {
       bracket.position.y = 2.0;
       torch.add(bracket);
 
+      // Torch sconce bracket detail - wall mount plate and arm
+      const sconcePlate = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 0.03), bracketMat);
+      sconcePlate.position.set(0, 1.7, 0);
+      torch.add(sconcePlate);
+      const sconceArm = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.3, 10), bracketMat);
+      sconceArm.rotation.z = Math.PI / 3;
+      sconceArm.position.set(0.08, 1.85, 0);
+      torch.add(sconceArm);
+      // Iron ring at top of bracket
+      const sconceRing = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.01, 8, 12), bracketMat);
+      sconceRing.position.set(0, 2.32, 0);
+      torch.add(sconceRing);
       const flameGeo = new THREE.SphereGeometry(0.12, 31, 20);
       const flameMat = new THREE.MeshStandardMaterial({
         color: 0xff6600,
@@ -2377,6 +2878,16 @@ export class DiabloRenderer {
         cw.rotation.y = (Math.random() - 0.5) * 0.3;
         cwGroup.add(cw);
       }
+      // Cobweb string threads - thin cylinders between points
+      for (let ct = 0; ct < 4; ct++) {
+        const threadLen = 1.5 + Math.random() * 2.0;
+        const thread = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, threadLen, 4),
+          new THREE.MeshStandardMaterial({ color: 0xdddddd, transparent: true, opacity: 0.12, roughness: 0.5 }));
+        thread.position.set((Math.random() - 0.5) * 1.5, 2.5 + Math.random() * 1.5, (Math.random() - 0.5) * 0.5);
+        thread.rotation.z = (Math.random() - 0.5) * 1.0;
+        thread.rotation.x = (Math.random() - 0.5) * 0.5;
+        cwGroup.add(thread);
+      }
       const cwX = (Math.random() - 0.5) * w * 0.7;
       const cwZ = (Math.random() - 0.5) * d * 0.7;
       cwGroup.position.set(cwX, getTerrainHeight(cwX, cwZ, 0.4), cwZ);
@@ -2445,6 +2956,32 @@ export class DiabloRenderer {
       sarcLid.rotation.z = 0.15;
       sarcLid.rotation.y = 0.1;
       sarcGroup.add(sarcLid);
+      // Sarcophagus lid detail - raised rune cross pattern
+      const sarcRuneMat = new THREE.MeshStandardMaterial({ color: 0x555560, roughness: 0.65, metalness: 0.15 });
+      const sarcCrossV = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.04, 1.5), sarcRuneMat);
+      sarcCrossV.position.set(0.25, 0.76, 0);
+      sarcGroup.add(sarcCrossV);
+      const sarcCrossH = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.04, 0.05), sarcRuneMat);
+      sarcCrossH.position.set(0.25, 0.76, -0.3);
+      sarcGroup.add(sarcCrossH);
+      // Corner rune marks on sarcophagus lid
+      for (const [srx, srz] of [[-0.4, -0.9], [0.4, -0.9], [-0.4, 0.9], [0.4, 0.9]]) {
+        const srMark = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.03, 0.08), sarcRuneMat);
+        srMark.position.set(0.25 + srx * 0.5, 0.76, srz);
+        sarcGroup.add(srMark);
+      }
+      // Crumbling edges on sarcophagus
+      for (let se = 0; se < 4; se++) {
+        const sEdge = new THREE.Mesh(new THREE.BoxGeometry(0.08 + Math.random() * 0.06, 0.05, 0.08 + Math.random() * 0.06),
+          new THREE.MeshStandardMaterial({ color: 0x3a3a44, roughness: 0.9 }));
+        sEdge.position.set(
+          (Math.random() - 0.5) * 0.9,
+          0.62 + Math.random() * 0.05,
+          (Math.random() > 0.5 ? 1 : -1) * 1.1
+        );
+        sEdge.rotation.set(Math.random() * 0.3, Math.random() * 0.3, 0);
+        sarcGroup.add(sEdge);
+      }
       const darkGeo = new THREE.BoxGeometry(0.8, 0.1, 2.0);
       const darkMat = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 1.0 });
       const darkInside = new THREE.Mesh(darkGeo, darkMat);
@@ -2731,6 +3268,27 @@ export class DiabloRenderer {
       skull.position.set(0, 2.35, 0.1);
       skull.scale.set(1, 0.8, 0.8);
       cryptGrp.add(skull);
+      // Crypt archway keystone detail - wedge-shaped stone at arch top
+      const keystoneMat = new THREE.MeshStandardMaterial({ color: 0x3d3d48, roughness: 0.75 });
+      const keystone = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.3, 0.38), keystoneMat);
+      keystone.position.set(0, 2.25, 0.05);
+      keystone.rotation.z = 0;
+      cryptGrp.add(keystone);
+      // Arch curve using small boxes to simulate stone arch above lintel
+      for (let ak = 0; ak < 6; ak++) {
+        const archAngle = (ak / 5) * Math.PI;
+        const archStone = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.12, 0.36), cryptMat);
+        archStone.position.set(Math.cos(archAngle) * 0.65, 2.1 + Math.sin(archAngle) * 0.4, 0);
+        archStone.rotation.z = archAngle - Math.PI / 2;
+        cryptGrp.add(archStone);
+      }
+      // Iron gate bars across crypt entrance
+      const cryptBarMat = new THREE.MeshStandardMaterial({ color: 0x333344, metalness: 0.7, roughness: 0.3 });
+      for (let cb = 0; cb < 5; cb++) {
+        const cBar = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 1.8, 8), cryptBarMat);
+        cBar.position.set(-0.4 + cb * 0.2, 0.9, -0.05);
+        cryptGrp.add(cBar);
+      }
       // Crumbling stone debris around the crypt entrance
       for (let cd = 0; cd < 3; cd++) {
         const cDebrisGeo = new THREE.DodecahedronGeometry(0.06 + Math.random() * 0.06, 2);
@@ -2773,6 +3331,25 @@ export class DiabloRenderer {
       topRound.position.y = tombH;
       topRound.scale.x = 1;
       tombGrp.add(topRound);
+      // Crumbling edges on tombstone
+      for (let te = 0; te < 2 + Math.floor(Math.random() * 2); te++) {
+        const tCrumble = new THREE.Mesh(new THREE.BoxGeometry(0.06 + Math.random() * 0.04, 0.05 + Math.random() * 0.04, 0.06),
+          new THREE.MeshStandardMaterial({ color: 0x4a4a54, roughness: 0.9 }));
+        tCrumble.position.set(
+          (Math.random() - 0.5) * 0.35,
+          tombH * 0.3 + Math.random() * tombH * 0.5,
+          0.06 + Math.random() * 0.02
+        );
+        tCrumble.rotation.set(Math.random() * 0.3, 0, Math.random() * 0.3);
+        tombGrp.add(tCrumble);
+      }
+      // Moss patches on tombstones
+      if (Math.random() > 0.4) {
+        const mossPatch = new THREE.Mesh(new THREE.PlaneGeometry(0.12 + Math.random() * 0.1, 0.1 + Math.random() * 0.08),
+          new THREE.MeshStandardMaterial({ color: 0x2a4a1a, roughness: 0.95, transparent: true, opacity: 0.7, side: THREE.DoubleSide }));
+        mossPatch.position.set((Math.random() - 0.5) * 0.15, tombH * 0.2, 0.06);
+        tombGrp.add(mossPatch);
+      }
       tombGrp.position.set((Math.random() - 0.5) * w * 0.75, 0, (Math.random() - 0.5) * d * 0.75);
       tombGrp.rotation.y = Math.random() * Math.PI;
       this._envGroup.add(tombGrp);
@@ -2833,6 +3410,19 @@ export class DiabloRenderer {
       }
     }
 
+    // Cobblestone ground texture - small offset circles on market square
+    const cobblestoneCircleMat = new THREE.MeshStandardMaterial({ color: 0x998877, roughness: 0.95, side: THREE.DoubleSide });
+    for (let cbi = 0; cbi < 40; cbi++) {
+      const cbR = 0.15 + Math.random() * 0.12;
+      const cobbleCircle = new THREE.Mesh(new THREE.CircleGeometry(cbR, 8 + Math.floor(Math.random() * 4)), cobblestoneCircleMat);
+      cobbleCircle.rotation.x = -Math.PI / 2;
+      cobbleCircle.position.set(
+        (Math.random() - 0.5) * 28,
+        0.065 + Math.random() * 0.005,
+        (Math.random() - 0.5) * 28
+      );
+      this._envGroup.add(cobbleCircle);
+    }
     // Decorative stone border around market square
     const borderMat = new THREE.MeshStandardMaterial({ color: 0x776655, roughness: 0.9 });
     for (let bi = -15; bi <= 15; bi += 1.5) {
@@ -2924,6 +3514,37 @@ export class DiabloRenderer {
     keep.castShadow = true;
     keep.receiveShadow = true;
     castleGroup.add(keep);
+    // Arrow slit windows on keep walls
+    const arrowSlitMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.9 });
+    for (let asi = 0; asi < 6; asi++) {
+      for (const asFace of [[0, 1, 5.05], [0, -1, -5.05]] as [number, number, number][]) {
+        const arrowSlit = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.7, 0.08), arrowSlitMat);
+        arrowSlit.position.set(-4 + asi * 1.6, 8 + (asi % 2) * 2, asFace[2]);
+        castleGroup.add(arrowSlit);
+      }
+      for (const asFace of [[6.05, 0], [-6.05, 0]] as [number, number][]) {
+        const arrowSlit2 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.7, 0.12), arrowSlitMat);
+        arrowSlit2.position.set(asFace[0], 8 + (asi % 2) * 2, -3 + asi * 1.2);
+        castleGroup.add(arrowSlit2);
+      }
+    }
+    // Stone block lines on keep walls (horizontal thin boxes at intervals)
+    const stoneLineMat = new THREE.MeshStandardMaterial({ color: 0x777777, roughness: 0.9 });
+    for (let sli = 0; sli < 5; sli++) {
+      const slY = 2 + sli * 3;
+      // Front and back
+      for (const slZ of [5.03, -5.03]) {
+        const stoneLine = new THREE.Mesh(new THREE.BoxGeometry(11.8, 0.04, 0.06), stoneLineMat);
+        stoneLine.position.set(0, slY, slZ);
+        castleGroup.add(stoneLine);
+      }
+      // Sides
+      for (const slX of [6.03, -6.03]) {
+        const stoneLine2 = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.04, 9.8), stoneLineMat);
+        stoneLine2.position.set(slX, slY, 0);
+        castleGroup.add(stoneLine2);
+      }
+    }
 
     // 4 corner towers
     const towerPositions = [
@@ -2960,6 +3581,26 @@ export class DiabloRenderer {
       const goldTrim = new THREE.Mesh(goldTrimGeo, goldTrimMat);
       goldTrim.position.set(tx + 0.3, 16, tz);
       castleGroup.add(goldTrim);
+      // Banner pole on tower
+      const bannerPole = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 4, 10),
+        new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.8 }));
+      bannerPole.position.set(tx + 0.3, 19, tz);
+      castleGroup.add(bannerPole);
+      // Pennant triangle at top of pole
+      const pennantShape = new THREE.Shape();
+      pennantShape.moveTo(0, 0);
+      pennantShape.lineTo(0.5, -0.15);
+      pennantShape.lineTo(0, -0.3);
+      pennantShape.closePath();
+      const pennantGeo = new THREE.ShapeGeometry(pennantShape);
+      const pennant = new THREE.Mesh(pennantGeo, new THREE.MeshStandardMaterial({ color: 0xddaa22, roughness: 0.6, side: THREE.DoubleSide }));
+      pennant.position.set(tx + 0.3, 21, tz);
+      castleGroup.add(pennant);
+      // Heraldic shield emblem on banner (small circle)
+      const emblem = new THREE.Mesh(new THREE.CircleGeometry(0.12, 16),
+        new THREE.MeshStandardMaterial({ color: 0xddaa22, roughness: 0.4, metalness: 0.5, side: THREE.DoubleSide }));
+      emblem.position.set(tx + 0.31, 16.5, tz);
+      castleGroup.add(emblem);
     }
 
     // Crenellations on top of keep
@@ -2981,6 +3622,26 @@ export class DiabloRenderer {
       const cren2 = cren.clone();
       cren2.position.set(-6.25, 15.75, -4.5 + ci * 1);
       castleGroup.add(cren2);
+    }
+    // Tower crenellations - ring of merlons around each tower top
+    for (const [tcx, tcz] of towerPositions) {
+      for (let tci = 0; tci < 8; tci++) {
+        const tcAngle = (tci / 8) * Math.PI * 2;
+        const tcMerlon = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.8, 0.3), stoneMat);
+        tcMerlon.position.set(tcx + Math.cos(tcAngle) * 2.1, 11.5, tcz + Math.sin(tcAngle) * 2.1);
+        tcMerlon.rotation.y = tcAngle;
+        castleGroup.add(tcMerlon);
+      }
+    }
+    // Keep wall machicolations (stone brackets under crenellations)
+    for (let mi = 0; mi < 10; mi++) {
+      const machGeo = new THREE.BoxGeometry(0.6, 0.3, 0.3);
+      const machFront = new THREE.Mesh(machGeo, darkStoneMat);
+      machFront.position.set(-4.5 + mi * 1, 14.85, 5.4);
+      castleGroup.add(machFront);
+      const machBack = machFront.clone();
+      machBack.position.set(-4.5 + mi * 1, 14.85, -5.4);
+      castleGroup.add(machBack);
     }
 
     // Castle gate (archway)
@@ -3043,6 +3704,23 @@ export class DiabloRenderer {
     wWall.castShadow = true;
     this._envGroup.add(wWall);
 
+    // Stone block lines on town walls (horizontal grooves at intervals)
+    const wallBlockLineMat = new THREE.MeshStandardMaterial({ color: 0x777777, roughness: 0.9 });
+    for (let wbl = 0; wbl < 3; wbl++) {
+      const wblY = 1 + wbl * 1.2;
+      // North wall block lines
+      const nBlockLine = new THREE.Mesh(new THREE.BoxGeometry(w - 2, 0.03, 0.06), wallBlockLineMat);
+      nBlockLine.position.set(0, wblY, -hd + 0.53);
+      this._envGroup.add(nBlockLine);
+      // East wall block lines
+      const eBlockLine = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.03, d - 2), wallBlockLineMat);
+      eBlockLine.position.set(hw + 0.53, wblY, 0);
+      this._envGroup.add(eBlockLine);
+      // West wall block lines
+      const wBlockLine = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.03, d - 2), wallBlockLineMat);
+      wBlockLine.position.set(-hw - 0.53, wblY, 0);
+      this._envGroup.add(wBlockLine);
+    }
     // Wall corner towers (4)
     const wallTowerPositions = [
       [-hw, -hd], [hw, -hd], [-hw, hd], [hw, hd]
@@ -3156,6 +3834,32 @@ export class DiabloRenderer {
         ware.position.set(-0.4 + ww * 0.4, 0.88, 0.5);
         stallGroup.add(ware);
       }
+      // Canopy support cross-beams
+      const canopySupportMat = new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.8 });
+      const canopyBeamFront = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.7, 8), canopySupportMat);
+      canopyBeamFront.rotation.z = Math.PI / 2;
+      canopyBeamFront.position.set(0, 2.5, 0.6);
+      stallGroup.add(canopyBeamFront);
+      const canopyBeamBack = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.7, 8), canopySupportMat);
+      canopyBeamBack.rotation.z = Math.PI / 2;
+      canopyBeamBack.position.set(0, 2.5, -0.6);
+      stallGroup.add(canopyBeamBack);
+      // Cloth draping from canopy edges (hanging triangles)
+      const drapeMat = new THREE.MeshStandardMaterial({ color: stallColors[si], roughness: 0.7, side: THREE.DoubleSide, transparent: true, opacity: 0.85 });
+      for (let dr = 0; dr < 4; dr++) {
+        const drapeGeo = new THREE.PlaneGeometry(0.4, 0.25);
+        const drape = new THREE.Mesh(drapeGeo, drapeMat);
+        drape.position.set(-0.75 + dr * 0.5, 2.35, 0.76);
+        drape.rotation.x = 0.3;
+        stallGroup.add(drape);
+      }
+      // Canopy scalloped valance on front
+      for (let sv = 0; sv < 5; sv++) {
+        const valance = new THREE.Mesh(new THREE.CircleGeometry(0.12, 8, 0, Math.PI),
+          new THREE.MeshStandardMaterial({ color: stallColors[si], roughness: 0.7, side: THREE.DoubleSide }));
+        valance.position.set(-0.8 + sv * 0.4, 2.42, 0.76);
+        stallGroup.add(valance);
+      }
 
       stallGroup.position.set(Math.cos(angle) * radius, 0, Math.sin(angle) * radius);
       stallGroup.rotation.y = -angle + Math.PI;
@@ -3226,6 +3930,39 @@ export class DiabloRenderer {
     const wellCap = new THREE.Mesh(wellCapGeo, wellCapMat);
     wellCap.position.y = 0.83;
     wellGroup.add(wellCap);
+    // Well detail - decorative stone rim stones around top edge
+    for (let wr = 0; wr < 12; wr++) {
+      const rimAngle = (wr / 12) * Math.PI * 2;
+      const rimStone = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.12, 0.15),
+        new THREE.MeshStandardMaterial({ color: 0x777766, roughness: 0.85 }));
+      rimStone.position.set(Math.cos(rimAngle) * 1.45, 0.86, Math.sin(rimAngle) * 1.45);
+      rimStone.rotation.y = rimAngle;
+      wellGroup.add(rimStone);
+    }
+    // Well roof structure (small peaked roof over well)
+    const wellRoofMat = new THREE.MeshStandardMaterial({ color: 0x664422, roughness: 0.8, side: THREE.DoubleSide });
+    const wellRoofL = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.8), wellRoofMat);
+    wellRoofL.position.set(0, 3.3, -0.2);
+    wellRoofL.rotation.x = 0.5;
+    wellGroup.add(wellRoofL);
+    const wellRoofR = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.8), wellRoofMat);
+    wellRoofR.position.set(0, 3.3, 0.2);
+    wellRoofR.rotation.x = -0.5;
+    wellGroup.add(wellRoofR);
+    // Hanging chain from beam to bucket
+    const wellChain = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.6, 8),
+      new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.6, roughness: 0.4 }));
+    wellChain.position.set(0.1, 2.5, 0);
+    wellGroup.add(wellChain);
+    // Moss on well stones
+    for (let wm = 0; wm < 4; wm++) {
+      const wellMoss = new THREE.Mesh(new THREE.PlaneGeometry(0.15 + Math.random() * 0.1, 0.12),
+        new THREE.MeshStandardMaterial({ color: 0x2a5a1a, roughness: 0.95, transparent: true, opacity: 0.7, side: THREE.DoubleSide }));
+      const wmAngle = (wm / 4) * Math.PI * 2 + Math.random() * 0.5;
+      wellMoss.position.set(Math.cos(wmAngle) * 1.52, 0.5 + Math.random() * 0.3, Math.sin(wmAngle) * 1.52);
+      wellMoss.rotation.y = wmAngle;
+      wellGroup.add(wellMoss);
+    }
     wellGroup.position.set(0, 0, 0);
     this._envGroup.add(wellGroup);
 
@@ -3387,6 +4124,30 @@ export class DiabloRenderer {
         }
       }
 
+      // Wooden beam supports on building walls (brown cylinders crossing walls)
+      const beamSupportMat = new THREE.MeshStandardMaterial({ color: 0x5A3A1A, roughness: 0.85 });
+      // Horizontal beam under roofline
+      const hBeamSupport = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, bw + 0.3, 10), beamSupportMat);
+      hBeamSupport.rotation.z = Math.PI / 2;
+      hBeamSupport.position.set(0, bh - 0.1, bd / 2 + 0.04);
+      buildGroup.add(hBeamSupport);
+      // Diagonal braces from corners
+      if (Math.random() > 0.4) {
+        for (const bsx of [-1, 1]) {
+          const braceLen = Math.sqrt((bw * 0.3) ** 2 + (bh * 0.3) ** 2);
+          const braceAngle = Math.atan2(bh * 0.3, bw * 0.3);
+          const brace = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, braceLen, 8), beamSupportMat);
+          brace.rotation.z = bsx > 0 ? braceAngle : -braceAngle;
+          brace.position.set(bsx * bw * 0.25, bh * 0.7, bd / 2 + 0.04);
+          buildGroup.add(brace);
+        }
+      }
+      // Vertical beam posts at corners (visible on front face)
+      for (const vbx of [-bw / 2 + 0.03, bw / 2 - 0.03]) {
+        const vBeamPost = new THREE.Mesh(new THREE.BoxGeometry(0.06, bh, 0.06), beamSupportMat);
+        vBeamPost.position.set(vbx, bh / 2, bd / 2 + 0.04);
+        buildGroup.add(vBeamPost);
+      }
       // Chimney (every other building)
       if (bi % 2 === 0) {
         const chimGeo = new THREE.CylinderGeometry(0.15, 0.18, 1.5, 23);
@@ -4163,6 +4924,18 @@ export class DiabloRenderer {
       ch.rotation.x = Math.PI * 0.35;
       ch.position.set(cx, 4, -24);
       this._envGroup.add(ch);
+      // Chain link detail - small torus rings along chain length
+      for (let cl = 0; cl < 6; cl++) {
+        const chainLink = new THREE.Mesh(new THREE.TorusGeometry(0.035, 0.008, 8, 10), chainMtl);
+        const clT = cl / 5;
+        chainLink.position.set(cx, 2 + clT * 3, -24 + clT * 1.2);
+        chainLink.rotation.x = cl % 2 === 0 ? 0 : Math.PI / 2;
+        this._envGroup.add(chainLink);
+      }
+      // Chain mount bracket on wall
+      const chainBracket = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.08), chainMtl);
+      chainBracket.position.set(cx, 5.5, -24.5);
+      this._envGroup.add(chainBracket);
     }
 
     // ═══════════════════════════════════════════════
@@ -4613,6 +5386,10 @@ export class DiabloRenderer {
       const cren = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.8, 0.3), wallMat);
       cren.position.set(-hw + 1.5 + ci * (w / 30), 4.4, -hd + 0.4);
       this._envGroup.add(cren);
+      // Arrow slit in each crenellation merlon
+      const crenSlit = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.4, 0.05), new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.9 }));
+      crenSlit.position.set(-hw + 1.5 + ci * (w / 30), 4.4, -hd + 0.55);
+      this._envGroup.add(crenSlit);
     }
     // Guard torches on walls (4)
     for (const [gtx, gtz] of [[-hw * 0.5, -hd], [hw * 0.5, -hd], [-hw, 0], [hw, 0]] as [number, number][]) {
@@ -4849,6 +5626,31 @@ export class DiabloRenderer {
     // Fountain light
     const fntLight = new THREE.PointLight(0x4499bb, 0.5, 8);
     fntLight.position.set(5, 1, -8); this._scene.add(fntLight); this._torchLights.push(fntLight);
+    // Fountain decorative detail - carved stone rim segments
+    for (let fr = 0; fr < 8; fr++) {
+      const fRimAngle = (fr / 8) * Math.PI * 2;
+      const fRimStone = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.15, 0.2),
+        new THREE.MeshStandardMaterial({ color: 0x999999, roughness: 0.75 }));
+      fRimStone.position.set(Math.cos(fRimAngle) * (fPoolR - 0.1), 0.55, Math.sin(fRimAngle) * (fPoolR - 0.1));
+      fRimStone.rotation.y = fRimAngle;
+      fountainGrp.add(fRimStone);
+    }
+    // Fountain column decorative rings
+    for (let fcr = 0; fcr < 3; fcr++) {
+      const colRing = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.03, 12, 20),
+        new THREE.MeshStandardMaterial({ color: 0xbbbbbb, roughness: 0.6 }));
+      colRing.position.y = 1.0 + fcr * 0.8;
+      colRing.rotation.x = Math.PI / 2;
+      fountainGrp.add(colRing);
+    }
+    // Water splash particles around base
+    for (let fs = 0; fs < 6; fs++) {
+      const splash = new THREE.Mesh(new THREE.SphereGeometry(0.04, 10, 8),
+        new THREE.MeshStandardMaterial({ color: 0x55bbdd, transparent: true, opacity: 0.3 }));
+      const fsAngle = (fs / 6) * Math.PI * 2;
+      splash.position.set(Math.cos(fsAngle) * 0.6, 0.7 + Math.random() * 0.4, Math.sin(fsAngle) * 0.6);
+      fountainGrp.add(splash);
+    }
     fountainGrp.position.set(5, 0, -8); this._envGroup.add(fountainGrp);
 
     // ── More detailed market stalls with produce displays ──
@@ -5105,6 +5907,80 @@ export class DiabloRenderer {
       rock.rotation.set(Math.random(), Math.random(), Math.random());
       rock.castShadow = true;
       this._envGroup.add(rock);
+
+      // Lava crust details on rock surface (dark overlapping thin spheres with orange emissive edges)
+      for (let lc = 0; lc < 3; lc++) {
+        const crustR = rSize * (0.3 + Math.random() * 0.3);
+        const crustShell = new THREE.Mesh(new THREE.SphereGeometry(crustR, 16, 12),
+          new THREE.MeshStandardMaterial({ color: 0x0a0500, roughness: 0.95, transparent: true, opacity: 0.7 }));
+        const crustAng = Math.random() * Math.PI * 2;
+        const crustElev = (Math.random() - 0.5) * 0.5;
+        crustShell.position.set(
+          vrX + Math.cos(crustAng) * rSize * 0.4,
+          getTerrainHeight(vrX, vrZ, 1.6) + rSize * 0.3 + crustElev,
+          vrZ + Math.sin(crustAng) * rSize * 0.4
+        );
+        crustShell.scale.y = 0.3;
+        this._envGroup.add(crustShell);
+        // Orange emissive edge ring around crust
+        const crustEdge = new THREE.Mesh(new THREE.TorusGeometry(crustR * 0.85, 0.015, 8, 16),
+          new THREE.MeshStandardMaterial({ color: 0xff6600, emissive: 0xff4400, emissiveIntensity: 0.8, transparent: true, opacity: 0.5 }));
+        crustEdge.position.copy(crustShell.position);
+        crustEdge.rotation.x = -Math.PI / 2 + (Math.random() - 0.5) * 0.4;
+        this._envGroup.add(crustEdge);
+      }
+
+      // Ember particles resting on rock surface (tiny emissive spheres)
+      for (let ep = 0; ep < 2; ep++) {
+        const restEmber = new THREE.Mesh(new THREE.SphereGeometry(0.02 + Math.random() * 0.015, 8, 8),
+          new THREE.MeshStandardMaterial({ color: 0xff8800, emissive: 0xff5500, emissiveIntensity: 1.5 }));
+        restEmber.position.set(
+          vrX + (Math.random() - 0.5) * rSize * 0.6,
+          getTerrainHeight(vrX, vrZ, 1.6) + rSize * 0.5 + Math.random() * rSize * 0.2,
+          vrZ + (Math.random() - 0.5) * rSize * 0.6
+        );
+        this._envGroup.add(restEmber);
+      }
+    }
+
+    // Obsidian shard clusters (12) - rotated thin pyramids/cones
+    for (let i = 0; i < 12; i++) {
+      const clusterGrp = new THREE.Group();
+      const numShards = 3 + Math.floor(Math.random() * 4);
+      for (let s = 0; s < numShards; s++) {
+        const shH = 0.3 + Math.random() * 0.8;
+        const shardCone = new THREE.Mesh(new THREE.ConeGeometry(0.03 + Math.random() * 0.05, shH, 4),
+          new THREE.MeshStandardMaterial({ color: 0x080815, roughness: 0.05, metalness: 0.8 }));
+        shardCone.position.set((Math.random() - 0.5) * 0.5, shH / 2, (Math.random() - 0.5) * 0.5);
+        shardCone.rotation.set((Math.random() - 0.5) * 0.6, Math.random() * Math.PI, (Math.random() - 0.5) * 0.6);
+        clusterGrp.add(shardCone);
+      }
+      const oscX = (Math.random() - 0.5) * w * 0.85;
+      const oscZ = (Math.random() - 0.5) * d * 0.85;
+      clusterGrp.position.set(oscX, getTerrainHeight(oscX, oscZ, 1.6), oscZ);
+      this._envGroup.add(clusterGrp);
+    }
+
+    // Cracked ground detail lines (20) - thin dark boxes in terrain
+    for (let i = 0; i < 20; i++) {
+      const crackDetailGrp = new THREE.Group();
+      const mainLen = 1.5 + Math.random() * 3;
+      const mainCrackBox = new THREE.Mesh(new THREE.BoxGeometry(mainLen, 0.01, 0.03 + Math.random() * 0.02),
+        new THREE.MeshStandardMaterial({ color: 0x050200, roughness: 1.0 }));
+      crackDetailGrp.add(mainCrackBox);
+      for (let bc = 0; bc < 2; bc++) {
+        const brLen = 0.5 + Math.random() * 1.0;
+        const brCrack = new THREE.Mesh(new THREE.BoxGeometry(brLen, 0.01, 0.02),
+          new THREE.MeshStandardMaterial({ color: 0x050200, roughness: 1.0 }));
+        brCrack.position.set((Math.random() - 0.5) * mainLen * 0.5, 0, 0.15 + Math.random() * 0.2);
+        brCrack.rotation.y = (Math.random() - 0.5) * 0.8;
+        crackDetailGrp.add(brCrack);
+      }
+      const cgX = (Math.random() - 0.5) * w * 0.85;
+      const cgZ = (Math.random() - 0.5) * d * 0.85;
+      crackDetailGrp.position.set(cgX, getTerrainHeight(cgX, cgZ, 1.6) + 0.01, cgZ);
+      crackDetailGrp.rotation.y = Math.random() * Math.PI;
+      this._envGroup.add(crackDetailGrp);
     }
 
     // Ash pillars / volcanic columns (28)
@@ -5206,6 +6082,14 @@ export class DiabloRenderer {
       haze.position.y = 2;
       haze.rotation.y = Math.random() * Math.PI;
       ventGroup.add(haze);
+      // Volcanic vent steam column - stacked translucent spheres rising high
+      for (let sc = 0; sc < 8; sc++) {
+        const steamSphere = new THREE.Mesh(new THREE.SphereGeometry(0.15 + sc * 0.08, 16, 12),
+          new THREE.MeshStandardMaterial({ color: 0x888888, transparent: true, opacity: 0.08 - sc * 0.007, roughness: 1.0 }));
+        steamSphere.position.y = 3 + sc * 0.6;
+        steamSphere.scale.set(1 + sc * 0.2, 0.8, 1 + sc * 0.2);
+        ventGroup.add(steamSphere);
+      }
       const svX = (Math.random() - 0.5) * w * 0.8;
       const svZ = (Math.random() - 0.5) * d * 0.8;
       ventGroup.position.set(svX, getTerrainHeight(svX, svZ, 1.6), svZ);
@@ -5288,10 +6172,67 @@ export class DiabloRenderer {
         treeEmber.position.set((Math.random() - 0.5) * 0.3, trunkH * 0.6 + Math.random() * trunkH * 0.3, (Math.random() - 0.5) * 0.3);
         treeGrp.add(treeEmber);
       }
+      // Scorched stump detail - charred root knobs at base
+      const stumpR = 0.15 + Math.random() * 0.08;
+      const stump = new THREE.Mesh(new THREE.CylinderGeometry(stumpR, stumpR * 1.3, 0.15, 12),
+        new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 1.0 }));
+      stump.position.y = 0.07;
+      treeGrp.add(stump);
+      // Charred bark texture rings on trunk
+      for (let br = 0; br < 3; br++) {
+        const barkRing = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.02, 6, 12),
+          new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 1.0 }));
+        barkRing.position.y = 0.3 + br * (trunkH * 0.25);
+        barkRing.rotation.x = Math.PI / 2;
+        treeGrp.add(barkRing);
+      }
+      // Charred hollow detail at broken top
+      const hollowTop = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.03, 0.1, 8),
+        new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 1.0 }));
+      hollowTop.position.y = trunkH + 0.02;
+      treeGrp.add(hollowTop);
       const ctX = (Math.random() - 0.5) * w * 0.85;
       const ctZ = (Math.random() - 0.5) * d * 0.85;
       treeGrp.position.set(ctX, getTerrainHeight(ctX, ctZ, 1.6), ctZ);
       this._envGroup.add(treeGrp);
+    }
+
+    // Scorched dead tree stumps (10) with charred detail
+    for (let i = 0; i < 10; i++) {
+      const stumpGrp = new THREE.Group();
+      const stH = 0.3 + Math.random() * 0.6;
+      const stR = 0.15 + Math.random() * 0.15;
+      const stumpBody = new THREE.Mesh(new THREE.CylinderGeometry(stR * 0.8, stR, stH, 10),
+        new THREE.MeshStandardMaterial({ color: 0x0e0e0e, roughness: 1.0 }));
+      stumpBody.position.y = stH / 2;
+      stumpGrp.add(stumpBody);
+      // Exposed root stubs
+      for (let rt = 0; rt < 3; rt++) {
+        const rootAng = (rt / 3) * Math.PI * 2 + Math.random() * 0.5;
+        const rootLen = 0.2 + Math.random() * 0.3;
+        const root = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.035, rootLen, 6),
+          new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 1.0 }));
+        root.position.set(Math.cos(rootAng) * stR * 0.8, 0.05, Math.sin(rootAng) * stR * 0.8);
+        root.rotation.z = Math.PI / 2;
+        root.rotation.y = rootAng;
+        stumpGrp.add(root);
+      }
+      // Charred hollow in center of stump top
+      const stumpHollow = new THREE.Mesh(new THREE.CylinderGeometry(stR * 0.3, stR * 0.2, 0.08, 8),
+        new THREE.MeshStandardMaterial({ color: 0x030303, roughness: 1.0 }));
+      stumpHollow.position.y = stH + 0.02;
+      stumpGrp.add(stumpHollow);
+      // Tiny embers on stump surface
+      for (let se = 0; se < 2; se++) {
+        const stEmber = new THREE.Mesh(new THREE.SphereGeometry(0.015, 6, 6),
+          new THREE.MeshStandardMaterial({ color: 0xff6600, emissive: 0xff3300, emissiveIntensity: 1.0 }));
+        stEmber.position.set((Math.random() - 0.5) * stR, stH + 0.03, (Math.random() - 0.5) * stR);
+        stumpGrp.add(stEmber);
+      }
+      const tsX = (Math.random() - 0.5) * w * 0.8;
+      const tsZ = (Math.random() - 0.5) * d * 0.8;
+      stumpGrp.position.set(tsX, getTerrainHeight(tsX, tsZ, 1.6), tsZ);
+      this._envGroup.add(stumpGrp);
     }
 
     // Lava pools (circular, bubbling) (7) with cooling formations
@@ -5743,6 +6684,26 @@ export class DiabloRenderer {
       this._envGroup.add(debrisGrp);
     }
 
+    // Floating debris/rock fragments (20) - small boxes/spheres at various heights
+    for (let i = 0; i < 20; i++) {
+      const fragType = Math.random();
+      let fragMesh: THREE.Mesh;
+      if (fragType < 0.5) {
+        fragMesh = new THREE.Mesh(new THREE.BoxGeometry(0.08 + Math.random() * 0.12, 0.06 + Math.random() * 0.1, 0.08 + Math.random() * 0.1),
+          new THREE.MeshStandardMaterial({ color: 0x2a2a3a, roughness: 0.8 }));
+      } else {
+        fragMesh = new THREE.Mesh(new THREE.SphereGeometry(0.05 + Math.random() * 0.08, 8, 6),
+          new THREE.MeshStandardMaterial({ color: 0x333344, roughness: 0.7 }));
+      }
+      fragMesh.position.set(
+        (Math.random() - 0.5) * w * 0.85,
+        0.5 + Math.random() * 6,
+        (Math.random() - 0.5) * d * 0.85
+      );
+      fragMesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+      this._envGroup.add(fragMesh);
+    }
+
     // Void cracks in the ground (glowing purple fissures) (18)
     const voidMat = new THREE.MeshStandardMaterial({
       color: 0x6622ff, emissive: 0x4400cc, emissiveIntensity: 1.0,
@@ -5820,6 +6781,21 @@ export class DiabloRenderer {
       const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.3, 0.3, 44), pillarMat);
       cap.position.y = pH;
       pillarGroup.add(cap);
+      // Corrupted rune stones with carved symbol detail (inset boxes on pillars)
+      for (let rs = 0; rs < 3; rs++) {
+        const runeStoneAng = (rs / 3) * Math.PI * 2 + Math.random() * 0.5;
+        const runeStoneY = pH * 0.2 + rs * (pH * 0.25);
+        const runePlate = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.18, 0.04),
+          new THREE.MeshStandardMaterial({ color: 0x222233, roughness: 0.6 }));
+        runePlate.position.set(Math.cos(runeStoneAng) * 0.38, runeStoneY, Math.sin(runeStoneAng) * 0.38);
+        runePlate.lookAt(new THREE.Vector3(0, runeStoneY, 0));
+        pillarGroup.add(runePlate);
+        const carvedInset = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.02),
+          new THREE.MeshStandardMaterial({ color: 0x6622ff, emissive: 0x4400cc, emissiveIntensity: 0.8 }));
+        carvedInset.position.set(Math.cos(runeStoneAng) * 0.4, runeStoneY, Math.sin(runeStoneAng) * 0.4);
+        carvedInset.lookAt(new THREE.Vector3(0, runeStoneY, 0));
+        pillarGroup.add(carvedInset);
+      }
       const piX = (Math.random() - 0.5) * w * 0.8;
       const piZ = (Math.random() - 0.5) * d * 0.8;
       pillarGroup.position.set(piX, getTerrainHeight(piX, piZ, 0.5), piZ);
@@ -5903,6 +6879,57 @@ export class DiabloRenderer {
       this._envGroup.add(tentGrp);
     }
 
+    // Void tendrils (10) - curved cylinder chains with dark purple material
+    const tendrilMat = new THREE.MeshStandardMaterial({
+      color: 0x1a0033, roughness: 0.5, emissive: 0x220044, emissiveIntensity: 0.4,
+    });
+    for (let i = 0; i < 10; i++) {
+      const tendrilGrp = new THREE.Group();
+      const tendrilSegs = 10 + Math.floor(Math.random() * 8);
+      const tendrilBaseAng = Math.random() * Math.PI * 2;
+      let tdx = 0, tdy = 0, tdz = 0;
+      for (let s = 0; s < tendrilSegs; s++) {
+        const segR = 0.06 - (s / tendrilSegs) * 0.04;
+        const segLen = 0.2 + Math.random() * 0.1;
+        const seg = new THREE.Mesh(new THREE.CylinderGeometry(segR, segR * 1.1, segLen, 8), tendrilMat);
+        tdy += segLen * 0.7;
+        tdx += Math.sin(tendrilBaseAng + s * 0.5) * 0.12;
+        tdz += Math.cos(tendrilBaseAng + s * 0.5) * 0.12;
+        seg.position.set(tdx, tdy, tdz);
+        seg.rotation.set(Math.sin(s * 0.3) * 0.3, 0, Math.cos(s * 0.4) * 0.3);
+        tendrilGrp.add(seg);
+      }
+      // Glowing tip
+      const tipGlow = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8),
+        new THREE.MeshStandardMaterial({ color: 0x8844ff, emissive: 0x6622cc, emissiveIntensity: 1.5 }));
+      tipGlow.position.set(tdx, tdy + 0.1, tdz);
+      tendrilGrp.add(tipGlow);
+      const tdX = (Math.random() - 0.5) * w * 0.75;
+      const tdZ = (Math.random() - 0.5) * d * 0.75;
+      tendrilGrp.position.set(tdX, getTerrainHeight(tdX, tdZ, 0.5), tdZ);
+      this._envGroup.add(tendrilGrp);
+    }
+
+    // Rift edge crystal formations (14) - pointed cones with emissive glow
+    for (let i = 0; i < 14; i++) {
+      const riftCrystalGrp = new THREE.Group();
+      const numCrystals = 2 + Math.floor(Math.random() * 4);
+      for (let c = 0; c < numCrystals; c++) {
+        const rcH = 0.4 + Math.random() * 1.2;
+        const rcColor = [0x8844ff, 0x6622cc, 0xaa66ff, 0x9955dd][Math.floor(Math.random() * 4)];
+        const rcCrystal = new THREE.Mesh(new THREE.ConeGeometry(0.06 + Math.random() * 0.08, rcH, 6),
+          new THREE.MeshStandardMaterial({ color: rcColor, emissive: rcColor, emissiveIntensity: 0.6, transparent: true, opacity: 0.8, roughness: 0.1 }));
+        rcCrystal.position.set((Math.random() - 0.5) * 0.4, rcH / 2, (Math.random() - 0.5) * 0.4);
+        rcCrystal.rotation.z = (Math.random() - 0.5) * 0.5;
+        rcCrystal.rotation.x = (Math.random() - 0.5) * 0.5;
+        riftCrystalGrp.add(rcCrystal);
+      }
+      const rcX = (Math.random() - 0.5) * w * 0.85;
+      const rcZ = (Math.random() - 0.5) * d * 0.85;
+      riftCrystalGrp.position.set(rcX, getTerrainHeight(rcX, rcZ, 0.5), rcZ);
+      this._envGroup.add(riftCrystalGrp);
+    }
+
     // Unstable portals (6) with portal energy effects - torus rings with glowing center
     for (let i = 0; i < 6; i++) {
       const portalGrp = new THREE.Group();
@@ -5927,6 +6954,23 @@ export class DiabloRenderer {
         new THREE.MeshStandardMaterial({ color: 0xaa66ff, emissive: 0x8844cc, emissiveIntensity: 0.6 })
       );
       portalGrp.add(innerRing);
+      // Portal rim detail - torus segments with energy effects
+      for (let pr = 0; pr < 6; pr++) {
+        const rimSegAng = (pr / 6) * Math.PI * 2;
+        const rimSeg = new THREE.Mesh(
+          new THREE.TorusGeometry(portalR * 1.05, 0.04, 8, 12, Math.PI * 0.25),
+          new THREE.MeshStandardMaterial({ color: 0xcc88ff, emissive: 0xaa66ff, emissiveIntensity: 1.2, transparent: true, opacity: 0.6 }));
+        rimSeg.rotation.z = rimSegAng;
+        portalGrp.add(rimSeg);
+      }
+      // Energy sparks orbiting portal rim
+      for (let es = 0; es < 4; es++) {
+        const sparkAng = (es / 4) * Math.PI * 2;
+        const spark = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 6),
+          new THREE.MeshStandardMaterial({ color: 0xddaaff, emissive: 0xbb88ff, emissiveIntensity: 2.0 }));
+        spark.position.set(Math.cos(sparkAng) * portalR, Math.sin(sparkAng) * portalR, 0.1);
+        portalGrp.add(spark);
+      }
       // Portal light
       const portalLight = new THREE.PointLight(0x6622ff, 4, 15);
       portalGrp.add(portalLight);
@@ -6185,6 +7229,23 @@ export class DiabloRenderer {
         coin.rotation.x = Math.random() * 0.5;
         pileGroup.add(coin);
       }
+      // Treasure pile gems (small icosahedrons)
+      const tGemColors = [0xff2244, 0x2244ff, 0x22ff44, 0xff44ff, 0x44ffff];
+      for (let tg = 0; tg < 3; tg++) {
+        const tgColor = tGemColors[Math.floor(Math.random() * tGemColors.length)];
+        const tGem = new THREE.Mesh(new THREE.IcosahedronGeometry(0.03 + Math.random() * 0.03, 1),
+          new THREE.MeshStandardMaterial({ color: tgColor, emissive: tgColor, emissiveIntensity: 0.3, metalness: 0.3, roughness: 0.15 }));
+        tGem.position.set((Math.random() - 0.5) * pileSize * 0.7, pileSize * 0.3 + Math.random() * pileSize * 0.15, (Math.random() - 0.5) * pileSize * 0.7);
+        tGem.rotation.set(Math.random(), Math.random(), Math.random());
+        pileGroup.add(tGem);
+      }
+      // Extra scattered coins (tiny cylinders)
+      for (let ec = 0; ec < 5; ec++) {
+        const xCoin = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.005, 8), goldMat);
+        xCoin.position.set((Math.random() - 0.5) * pileSize * 1.5, 0.01, (Math.random() - 0.5) * pileSize * 1.5);
+        xCoin.rotation.x = -Math.PI / 2 + (Math.random() - 0.5) * 0.3;
+        pileGroup.add(xCoin);
+      }
       const gpX = (Math.random() - 0.5) * w * 0.85;
       const gpZ = (Math.random() - 0.5) * d * 0.85;
       pileGroup.position.set(gpX, getTerrainHeight(gpX, gpZ, 1.2), gpZ);
@@ -6206,6 +7267,19 @@ export class DiabloRenderer {
       const cap = new THREE.Mesh(capGeo, cavernMat);
       cap.position.y = cH;
       colGroup.add(cap);
+      // Claw mark scratches on pillars (angled thin dark boxes)
+      for (let cm = 0; cm < 3; cm++) {
+        const clawAng = Math.random() * Math.PI * 2;
+        const clawY = cH * 0.2 + Math.random() * cH * 0.5;
+        for (let cs = 0; cs < 3; cs++) {
+          const scratch = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.4 + Math.random() * 0.3, 0.01),
+            new THREE.MeshStandardMaterial({ color: 0x1a0a00, roughness: 1.0, transparent: true, opacity: 0.6 }));
+          scratch.position.set(Math.cos(clawAng) * cR * 0.85, clawY + cs * 0.08, Math.sin(clawAng) * cR * 0.85);
+          scratch.lookAt(new THREE.Vector3(0, clawY + cs * 0.08, 0));
+          scratch.rotation.z = 0.3 + (Math.random() - 0.5) * 0.2;
+          colGroup.add(scratch);
+        }
+      }
       const clX = (Math.random() - 0.5) * w * 0.85;
       const clZ = (Math.random() - 0.5) * d * 0.85;
       colGroup.position.set(clX, getTerrainHeight(clX, clZ, 1.2), clZ);
@@ -6317,6 +7391,47 @@ export class DiabloRenderer {
       skullGroup.position.set(dsX, getTerrainHeight(dsX, dsZ, 1.2) + 0.3, dsZ);
       skullGroup.rotation.y = Math.random() * Math.PI * 2;
       this._envGroup.add(skullGroup);
+    }
+
+    // Dragon skull/bone trophy wall displays (8) - mounted on cavern walls
+    for (let i = 0; i < 8; i++) {
+      const trophyGrp = new THREE.Group();
+      // Wall mount plaque
+      const plaque = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.8, 0.1),
+        new THREE.MeshStandardMaterial({ color: 0x3a2a1a, roughness: 0.8 }));
+      trophyGrp.add(plaque);
+      // Skull on mount
+      const tSkull = new THREE.Mesh(new THREE.SphereGeometry(0.25, 16, 12),
+        new THREE.MeshStandardMaterial({ color: 0xccbb99, roughness: 0.7 }));
+      tSkull.scale.set(1.3, 0.8, 1);
+      tSkull.position.z = 0.15;
+      trophyGrp.add(tSkull);
+      // Jaw bone
+      const jaw = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.1, 0.15),
+        new THREE.MeshStandardMaterial({ color: 0xccbb99, roughness: 0.7 }));
+      jaw.position.set(0, -0.15, 0.25);
+      trophyGrp.add(jaw);
+      // Horn trophies on sides
+      for (const hx of [-0.35, 0.35]) {
+        const tHorn = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.4, 8),
+          new THREE.MeshStandardMaterial({ color: 0xbbaa88, roughness: 0.6 }));
+        tHorn.position.set(hx, 0.15, 0.1);
+        tHorn.rotation.z = hx < 0 ? 0.5 : -0.5;
+        trophyGrp.add(tHorn);
+      }
+      // Crossed bone decoration
+      for (const bRot of [-0.4, 0.4]) {
+        const crossBone = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 0.6, 6),
+          new THREE.MeshStandardMaterial({ color: 0xccbb99, roughness: 0.7 }));
+        crossBone.position.set(0, -0.25, 0.08);
+        crossBone.rotation.z = bRot;
+        trophyGrp.add(crossBone);
+      }
+      const trAng = (i / 8) * Math.PI * 2;
+      const trR = w * 0.39;
+      trophyGrp.position.set(Math.cos(trAng) * trR, 4 + Math.random() * 3, Math.sin(trAng) * trR);
+      trophyGrp.rotation.y = -trAng + Math.PI;
+      this._envGroup.add(trophyGrp);
     }
 
     // Broken weapon piles (14)
@@ -6468,6 +7583,96 @@ export class DiabloRenderer {
       wallSeg.castShadow = true;
       wallSeg.receiveShadow = true;
       this._envGroup.add(wallSeg);
+      // Scale-pattern wall decoration using overlapping small flat circles
+      for (let sc = 0; sc < 8; sc++) {
+        const scaleCirc = new THREE.Mesh(new THREE.CircleGeometry(0.12 + Math.random() * 0.06, 12),
+          new THREE.MeshStandardMaterial({ color: 0x4a3a2a, roughness: 0.6, metalness: 0.2, side: THREE.DoubleSide }));
+        const scY = 1 + Math.random() * (wallH - 2);
+        const scOff = (Math.random() - 0.5) * 6;
+        scaleCirc.position.set(
+          Math.cos(wallAngle) * wallR + Math.cos(wallAngle + Math.PI / 2) * scOff,
+          scY,
+          Math.sin(wallAngle) * wallR + Math.sin(wallAngle + Math.PI / 2) * scOff
+        );
+        scaleCirc.rotation.y = -wallAngle + Math.PI / 2;
+        this._envGroup.add(scaleCirc);
+      }
+    }
+
+    // Nest material (6) - woven cylinder rings on floor
+    for (let i = 0; i < 6; i++) {
+      const nestGrp = new THREE.Group();
+      const nestR = 0.8 + Math.random() * 1.2;
+      // Woven ring layers
+      for (let nr = 0; nr < 5; nr++) {
+        const ringR = nestR - nr * 0.15;
+        const nestRing = new THREE.Mesh(new THREE.TorusGeometry(ringR, 0.03 + Math.random() * 0.02, 6, 16),
+          new THREE.MeshStandardMaterial({ color: 0x4a3a1a, roughness: 0.95 }));
+        nestRing.rotation.x = -Math.PI / 2;
+        nestRing.position.y = nr * 0.04;
+        nestGrp.add(nestRing);
+      }
+      // Cross-woven strands
+      for (let ns = 0; ns < 6; ns++) {
+        const strandAng = (ns / 6) * Math.PI * 2;
+        const strand = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, nestR * 1.8, 4),
+          new THREE.MeshStandardMaterial({ color: 0x3a2a10, roughness: 0.95 }));
+        strand.rotation.z = Math.PI / 2;
+        strand.rotation.y = strandAng;
+        strand.position.y = 0.08;
+        nestGrp.add(strand);
+      }
+      const nsX = (Math.random() - 0.5) * w * 0.6;
+      const nsZ = (Math.random() - 0.5) * d * 0.6;
+      nestGrp.position.set(nsX, getTerrainHeight(nsX, nsZ, 1.2), nsZ);
+      this._envGroup.add(nestGrp);
+    }
+
+    // Ancient weapon racks (6) with weapon silhouettes
+    for (let i = 0; i < 6; i++) {
+      const rackGrp = new THREE.Group();
+      const rackMat = new THREE.MeshStandardMaterial({ color: 0x5a4a3a, roughness: 0.8 });
+      // Rack frame - two vertical posts
+      for (const rx of [-0.6, 0.6]) {
+        const rPost = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.0, 8), rackMat);
+        rPost.position.set(rx, 1.0, 0);
+        rackGrp.add(rPost);
+      }
+      // Horizontal bars
+      for (const ry of [0.5, 1.2, 1.8]) {
+        const rBar = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1.3, 8), rackMat);
+        rBar.rotation.z = Math.PI / 2;
+        rBar.position.y = ry;
+        rackGrp.add(rBar);
+      }
+      // Weapon silhouettes hanging on rack
+      const wpMat = new THREE.MeshStandardMaterial({ color: 0x777777, metalness: 0.6, roughness: 0.4 });
+      // Sword
+      const rSword = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.8, 0.015), wpMat);
+      rSword.position.set(-0.25, 1.0, 0.03);
+      rackGrp.add(rSword);
+      const rGuard = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.03, 0.02), wpMat);
+      rGuard.position.set(-0.25, 0.6, 0.03);
+      rackGrp.add(rGuard);
+      // Axe
+      const rAxeHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.7, 6), rackMat);
+      rAxeHandle.position.set(0.1, 1.0, 0.03);
+      rackGrp.add(rAxeHandle);
+      const rAxeHead = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.15, 0.02), wpMat);
+      rAxeHead.position.set(0.1, 1.35, 0.03);
+      rackGrp.add(rAxeHead);
+      // Spear
+      const rSpear = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 1.5, 6), rackMat);
+      rSpear.position.set(0.35, 1.0, 0.03);
+      rackGrp.add(rSpear);
+      const rSpearTip = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.12, 4), wpMat);
+      rSpearTip.position.set(0.35, 1.8, 0.03);
+      rackGrp.add(rSpearTip);
+      const wrAng = (i / 6) * Math.PI * 2 + 0.3;
+      const wrR = w * 0.38;
+      rackGrp.position.set(Math.cos(wrAng) * wrR, getTerrainHeight(Math.cos(wrAng) * wrR, Math.sin(wrAng) * wrR, 1.2), Math.sin(wrAng) * wrR);
+      rackGrp.rotation.y = -wrAng + Math.PI;
+      this._envGroup.add(rackGrp);
     }
 
     // Scattered armor pieces (10)
@@ -16282,6 +17487,198 @@ export class DiabloRenderer {
       this._scene.add(rippleGroup);
     }
 
+
+    // ── Sand dune ripple details (wavy thin boxes) ──
+    const wavyRippleMat = new THREE.MeshStandardMaterial({ color: 0xc8a868, roughness: 0.92 });
+    for (let i = 0; i < 20; i++) {
+      const wavyGroup = new THREE.Group();
+      const wavyRippleCount = 12 + Math.floor(Math.random() * 8);
+      const groupWidth = 5 + Math.random() * 6;
+      for (let r = 0; r < wavyRippleCount; r++) {
+        const rWidth = groupWidth * (0.5 + Math.random() * 0.5);
+        const waviness = Math.sin(r * 0.6) * 0.15;
+        const wavyLine = new THREE.Mesh(
+          new THREE.BoxGeometry(rWidth, 0.012, 0.035),
+          r % 3 === 0 ? darkSandMat : wavyRippleMat,
+        );
+        wavyLine.position.set(waviness, 0.006, r * 0.18);
+        wavyLine.rotation.y = Math.sin(r * 0.4) * 0.08;
+        wavyGroup.add(wavyLine);
+      }
+      const wrX = (Math.random() - 0.5) * w * 0.85;
+      const wrZ = (Math.random() - 0.5) * d * 0.85;
+      wavyGroup.position.set(wrX, getTerrainHeight(wrX, wrZ, 1.4), wrZ);
+      wavyGroup.rotation.y = Math.random() * Math.PI;
+      this._scene.add(wavyGroup);
+    }
+
+    // ── Oasis palm tree frond detail (multiple thin cones fanning out) ──
+    for (let i = 0; i < 6; i++) {
+      const frondPalm = new THREE.Group();
+      const fpAngle = (i / 6) * Math.PI * 2;
+      const fpTrunkH = 5 + Math.random() * 2;
+      const fpTrunk = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.22, fpTrunkH, 20), palmTrunkMat);
+      fpTrunk.position.y = fpTrunkH / 2;
+      frondPalm.add(fpTrunk);
+      for (let tr = 0; tr < 6; tr++) {
+        const trRing = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.02, 8, 16), palmTrunkMat);
+        trRing.position.y = 0.5 + tr * (fpTrunkH / 7);
+        trRing.rotation.x = Math.PI / 2;
+        frondPalm.add(trRing);
+      }
+      const frondCount = 10 + Math.floor(Math.random() * 5);
+      for (let f = 0; f < frondCount; f++) {
+        const fAngle = (f / frondCount) * Math.PI * 2;
+        const frondLen = 2 + Math.random() * 1.5;
+        const frondSpine = new THREE.Mesh(new THREE.ConeGeometry(0.04, frondLen, 8), palmLeafMat);
+        frondSpine.position.set(
+          Math.cos(fAngle) * frondLen * 0.35,
+          fpTrunkH + 0.1 - frondLen * 0.15,
+          Math.sin(fAngle) * frondLen * 0.35,
+        );
+        frondSpine.rotation.z = Math.cos(fAngle) * 0.8;
+        frondSpine.rotation.x = Math.sin(fAngle) * 0.8;
+        frondPalm.add(frondSpine);
+        for (let lf = 0; lf < 5; lf++) {
+          const leaflet = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.08), palmLeafMat);
+          const lfDist = 0.3 + lf * (frondLen / 6);
+          leaflet.position.set(
+            Math.cos(fAngle) * lfDist,
+            fpTrunkH + 0.1 - lfDist * 0.25,
+            Math.sin(fAngle) * lfDist,
+          );
+          leaflet.rotation.y = fAngle;
+          leaflet.rotation.z = (Math.random() - 0.5) * 0.3;
+          frondPalm.add(leaflet);
+        }
+      }
+      const fpX = oasisX + Math.cos(fpAngle) * (9.5 + Math.random() * 2);
+      const fpZ = oasisZ + Math.sin(fpAngle) * (9.5 + Math.random() * 2);
+      frondPalm.position.set(fpX, getTerrainHeight(fpX, fpZ, 1.4), fpZ);
+      this._scene.add(frondPalm);
+    }
+
+    // ── Ancient ruin column fragments (broken cylinders at varying heights) ──
+    for (let i = 0; i < 10; i++) {
+      const fragGroup = new THREE.Group();
+      const fragCount = 3 + Math.floor(Math.random() * 4);
+      for (let f = 0; f < fragCount; f++) {
+        const fragH = 0.3 + Math.random() * 1.5;
+        const fragR = 0.2 + Math.random() * 0.25;
+        const frag = new THREE.Mesh(new THREE.CylinderGeometry(fragR * 0.9, fragR, fragH, 20), ruinMat);
+        frag.position.set((Math.random() - 0.5) * 3, fragH / 2, (Math.random() - 0.5) * 3);
+        frag.rotation.x = (Math.random() - 0.5) * 0.25;
+        frag.rotation.z = (Math.random() - 0.5) * 0.25;
+        fragGroup.add(frag);
+        for (let fl = 0; fl < 6; fl++) {
+          const fluteAngle = (fl / 6) * Math.PI * 2;
+          const flute = new THREE.Mesh(new THREE.BoxGeometry(0.02, fragH * 0.8, 0.02), stoneMat);
+          flute.position.set(
+            frag.position.x + Math.cos(fluteAngle) * fragR * 0.95,
+            fragH * 0.4,
+            frag.position.z + Math.sin(fluteAngle) * fragR * 0.95,
+          );
+          fragGroup.add(flute);
+        }
+      }
+      if (Math.random() > 0.4) {
+        const drumR = 0.25 + Math.random() * 0.15;
+        const drum = new THREE.Mesh(new THREE.CylinderGeometry(drumR, drumR, 0.5, 20), ruinMat);
+        drum.rotation.z = Math.PI / 2;
+        drum.position.set((Math.random() - 0.5) * 2, drumR, (Math.random() - 0.5) * 2);
+        fragGroup.add(drum);
+      }
+      const cfgX = (Math.random() - 0.5) * w * 0.7;
+      const cfgZ = (Math.random() - 0.5) * d * 0.7;
+      fragGroup.position.set(cfgX, getTerrainHeight(cfgX, cfgZ, 1.4), cfgZ);
+      fragGroup.rotation.y = Math.random() * Math.PI;
+      this._scene.add(fragGroup);
+    }
+
+    // ── Desert shrine details with carved stone patterns ──
+    for (let i = 0; i < 5; i++) {
+      const shrine = new THREE.Group();
+      const shrineBase = new THREE.Mesh(new THREE.BoxGeometry(3, 0.4, 3), stoneMat);
+      shrineBase.position.y = 0.2;
+      shrine.add(shrineBase);
+      const shrineStep = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.3, 2.4), ruinMat);
+      shrineStep.position.y = 0.55;
+      shrine.add(shrineStep);
+      const obeliskH = 2.5 + Math.random() * 1.5;
+      const obeliskMesh = new THREE.Mesh(new THREE.BoxGeometry(0.5, obeliskH, 0.5), ruinMat);
+      obeliskMesh.position.y = 0.7 + obeliskH / 2;
+      shrine.add(obeliskMesh);
+      const pyramidion = new THREE.Mesh(new THREE.ConeGeometry(0.4, 0.6, 4), new THREE.MeshStandardMaterial({ color: 0xddaa33, roughness: 0.3, metalness: 0.5 }));
+      pyramidion.position.y = 0.7 + obeliskH + 0.3;
+      pyramidion.rotation.y = Math.PI / 4;
+      shrine.add(pyramidion);
+      for (let b = 0; b < 5; b++) {
+        const bandY = 1.2 + b * (obeliskH / 5);
+        for (let side = 0; side < 4; side++) {
+          const band = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.06, 0.02), darkSandMat);
+          const sAngle = (side / 4) * Math.PI * 2;
+          band.position.set(Math.cos(sAngle) * 0.26, bandY, Math.sin(sAngle) * 0.26);
+          band.rotation.y = sAngle;
+          shrine.add(band);
+        }
+      }
+      const shrBowl = new THREE.Mesh(new THREE.SphereGeometry(0.2, 20, 16, 0, Math.PI * 2, Math.PI / 2), stoneMat);
+      shrBowl.position.set(0.8, 0.75, 0);
+      shrBowl.rotation.x = Math.PI;
+      shrine.add(shrBowl);
+      for (let c = 0; c < 4; c++) {
+        const cAngle = (c / 4) * Math.PI * 2 + Math.PI / 4;
+        const cornerPillar = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, 1.5, 16), ruinMat);
+        cornerPillar.position.set(Math.cos(cAngle) * 1.3, 1.05, Math.sin(cAngle) * 1.3);
+        shrine.add(cornerPillar);
+      }
+      const shX = (Math.random() - 0.5) * w * 0.65;
+      const shZ = (Math.random() - 0.5) * d * 0.65;
+      shrine.position.set(shX, getTerrainHeight(shX, shZ, 1.4), shZ);
+      shrine.rotation.y = Math.random() * Math.PI;
+      this._scene.add(shrine);
+    }
+
+    // ── Sun-bleached bone fragments scattered on ground ──
+    const bleachedBoneMat = new THREE.MeshStandardMaterial({ color: 0xf0e8d8, roughness: 0.75 });
+    for (let i = 0; i < 30; i++) {
+      const boneFragGroup = new THREE.Group();
+      const fragType = Math.floor(Math.random() * 4);
+      if (fragType === 0) {
+        const ribFrag = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.015, 16, 20, Math.PI * 0.6), bleachedBoneMat);
+        ribFrag.position.y = 0.02;
+        ribFrag.rotation.x = Math.PI / 2;
+        boneFragGroup.add(ribFrag);
+      } else if (fragType === 1) {
+        const vertFrag = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.03, 16), bleachedBoneMat);
+        vertFrag.position.y = 0.015;
+        boneFragGroup.add(vertFrag);
+        const spinous = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.04, 0.03), bleachedBoneMat);
+        spinous.position.set(0, 0.035, -0.02);
+        boneFragGroup.add(spinous);
+      } else if (fragType === 2) {
+        const longBoneFrag = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 0.3 + Math.random() * 0.2, 12), bleachedBoneMat);
+        longBoneFrag.rotation.z = Math.PI / 2;
+        longBoneFrag.position.y = 0.025;
+        boneFragGroup.add(longBoneFrag);
+      } else {
+        const jawFrag = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.012, 12, 16, Math.PI * 0.8), bleachedBoneMat);
+        jawFrag.position.y = 0.02;
+        boneFragGroup.add(jawFrag);
+        for (let t = 0; t < 3; t++) {
+          const toothFrag = new THREE.Mesh(new THREE.ConeGeometry(0.005, 0.02, 8), bleachedBoneMat);
+          toothFrag.position.set(Math.cos(t * 0.3) * 0.05, 0.02, Math.sin(t * 0.3) * 0.05);
+          toothFrag.rotation.x = Math.PI;
+          boneFragGroup.add(toothFrag);
+        }
+      }
+      const bfX = (Math.random() - 0.5) * w * 0.85;
+      const bfZ = (Math.random() - 0.5) * d * 0.85;
+      boneFragGroup.position.set(bfX, getTerrainHeight(bfX, bfZ, 1.4), bfZ);
+      boneFragGroup.rotation.y = Math.random() * Math.PI;
+      this._scene.add(boneFragGroup);
+    }
+
     // ── Vulture perches (dead tree stumps with vultures) ──
     const deadWoodMat = new THREE.MeshStandardMaterial({ color: 0x8a7050, roughness: 0.9 });
     for (let i = 0; i < 5; i++) {
@@ -17405,6 +18802,199 @@ export class DiabloRenderer {
     cartGroup.rotation.y = 0.3;
     this._scene.add(cartGroup);
 
+
+    // ── Wildflower patches with multi-petal detail (small colored spheres in clusters) ──
+    for (let i = 0; i < 25; i++) {
+      const petalCluster = new THREE.Group();
+      const clusterColor = flowerColors[Math.floor(Math.random() * flowerColors.length)];
+      const petalMat = new THREE.MeshStandardMaterial({ color: clusterColor, roughness: 0.3 });
+      const petalCount = 5 + Math.floor(Math.random() * 4);
+      // Central pistil
+      const pistil = new THREE.Mesh(new THREE.SphereGeometry(0.03, 16, 16), new THREE.MeshStandardMaterial({ color: 0xffdd22, roughness: 0.5 }));
+      pistil.position.y = 0.25;
+      petalCluster.add(pistil);
+      // Petals arranged around center
+      for (let p = 0; p < petalCount; p++) {
+        const pAngle = (p / petalCount) * Math.PI * 2;
+        const petal = new THREE.Mesh(new THREE.SphereGeometry(0.04, 16, 12), petalMat);
+        petal.scale.set(1.2, 0.5, 0.8);
+        petal.position.set(Math.cos(pAngle) * 0.05, 0.25, Math.sin(pAngle) * 0.05);
+        petal.rotation.y = pAngle;
+        petalCluster.add(petal);
+      }
+      // Stem
+      const pcStem = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.012, 0.25, 12), new THREE.MeshStandardMaterial({ color: 0x337722 }));
+      pcStem.position.y = 0.125;
+      petalCluster.add(pcStem);
+      // Leaf
+      const pcLeaf = new THREE.Mesh(new THREE.PlaneGeometry(0.06, 0.04), new THREE.MeshStandardMaterial({ color: 0x44aa22, side: THREE.DoubleSide }));
+      pcLeaf.position.set(0.03, 0.12, 0);
+      pcLeaf.rotation.z = 0.5;
+      petalCluster.add(pcLeaf);
+      const pcX = (Math.random() - 0.5) * w * 0.8;
+      const pcZ = (Math.random() - 0.5) * d * 0.8;
+      petalCluster.position.set(pcX, getTerrainHeight(pcX, pcZ, 1.4), pcZ);
+      this._scene.add(petalCluster);
+    }
+
+    // ── Stone fence/wall segments between fields ──
+    for (let i = 0; i < 8; i++) {
+      const stoneWall = new THREE.Group();
+      const wallLen = 6 + Math.floor(Math.random() * 8);
+      for (let s = 0; s < wallLen; s++) {
+        const stoneH = 0.3 + Math.random() * 0.3;
+        const stoneW = 0.4 + Math.random() * 0.3;
+        const stone = new THREE.Mesh(
+          new THREE.BoxGeometry(stoneW, stoneH, 0.4),
+          new THREE.MeshStandardMaterial({ color: 0x777766 + Math.floor(Math.random() * 0x111111), roughness: 0.85 }),
+        );
+        stone.position.set(s * 0.45, stoneH / 2, 0);
+        stone.rotation.y = (Math.random() - 0.5) * 0.1;
+        stoneWall.add(stone);
+        // Second layer (some gaps)
+        if (Math.random() > 0.3) {
+          const stone2H = 0.2 + Math.random() * 0.2;
+          const stone2 = new THREE.Mesh(
+            new THREE.BoxGeometry(0.35, stone2H, 0.35),
+            stoneMat,
+          );
+          stone2.position.set(s * 0.45 + (Math.random() - 0.5) * 0.1, stoneH + stone2H / 2, 0);
+          stoneWall.add(stone2);
+        }
+      }
+      // Moss on top
+      for (let m = 0; m < wallLen / 2; m++) {
+        const wallMoss = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.2), new THREE.MeshStandardMaterial({ color: 0x448833, roughness: 0.9, side: THREE.DoubleSide }));
+        wallMoss.rotation.x = -Math.PI / 2;
+        wallMoss.position.set(m * 0.9, 0.55, 0);
+        stoneWall.add(wallMoss);
+      }
+      const swX = (Math.random() - 0.5) * w * 0.7;
+      const swZ = (Math.random() - 0.5) * d * 0.7;
+      stoneWall.position.set(swX, getTerrainHeight(swX, swZ, 1.4), swZ);
+      stoneWall.rotation.y = Math.random() * Math.PI;
+      this._scene.add(stoneWall);
+    }
+
+    // ── Windmill blade detail and structural supports ──
+    const wmDetailX = -hw * 0.35, wmDetailZ = hd * 0.3;
+    // Hub detail
+    const wmHub = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.3, 20), new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.6, metalness: 0.5 }));
+    wmHub.rotation.x = Math.PI / 2;
+    wmHub.position.set(wmDetailX, 6, wmDetailZ - 1.6);
+    this._scene.add(wmHub);
+    // Blade lattice detail
+    for (let b = 0; b < 4; b++) {
+      const bladeAngle = b * Math.PI / 2;
+      // Cross-bars on each blade
+      for (let cb = 0; cb < 3; cb++) {
+        const crossBar = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.03, 0.03), woodMat);
+        const cbDist = 1 + cb * 0.9;
+        crossBar.position.set(
+          wmDetailX + Math.cos(bladeAngle) * cbDist,
+          6 + Math.sin(bladeAngle) * cbDist,
+          wmDetailZ - 1.65,
+        );
+        crossBar.rotation.z = bladeAngle + Math.PI / 2;
+        this._scene.add(crossBar);
+      }
+    }
+    // Structural braces on windmill body
+    for (let br = 0; br < 4; br++) {
+      const brAngle = (br / 4) * Math.PI * 2;
+      const brace = new THREE.Mesh(new THREE.BoxGeometry(0.08, 3, 0.08), woodMat);
+      brace.position.set(
+        wmDetailX + Math.cos(brAngle) * 1.7,
+        5.5,
+        wmDetailZ + Math.sin(brAngle) * 1.7,
+      );
+      brace.rotation.z = Math.cos(brAngle) * 0.15;
+      brace.rotation.x = Math.sin(brAngle) * 0.15;
+      this._scene.add(brace);
+    }
+
+    // ── Hay bale texture using wrapped cylinder rings ──
+    for (let i = 0; i < 8; i++) {
+      const detailedHay = new THREE.Group();
+      const hayBody = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.85, 27), hayMat);
+      hayBody.rotation.x = Math.PI / 2;
+      detailedHay.add(hayBody);
+      // Twine wrapping rings
+      for (let r = 0; r < 3; r++) {
+        const twine = new THREE.Mesh(new THREE.TorusGeometry(0.51, 0.015, 8, 20), new THREE.MeshStandardMaterial({ color: 0x997733, roughness: 0.7 }));
+        twine.position.z = -0.3 + r * 0.3;
+        detailedHay.add(twine);
+      }
+      // Straw texture strands on face
+      for (let s = 0; s < 8; s++) {
+        const strandAngle = (s / 8) * Math.PI * 2;
+        const strand = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.4, 0.01), hayMat);
+        strand.position.set(Math.cos(strandAngle) * 0.3, Math.sin(strandAngle) * 0.3, 0.43);
+        strand.rotation.z = strandAngle;
+        detailedHay.add(strand);
+      }
+      const dhX = (Math.random() - 0.5) * w * 0.7;
+      const dhZ = (Math.random() - 0.5) * d * 0.7;
+      detailedHay.position.set(dhX, getTerrainHeight(dhX, dhZ, 1.4) + 0.5, dhZ);
+      detailedHay.rotation.y = Math.random() * Math.PI;
+      this._scene.add(detailedHay);
+    }
+
+    // ── Butterfly/insect props (tiny colored planes) ──
+    const insectColors = [0xff6633, 0xffcc22, 0x88bbff, 0xff55aa, 0x55ddcc, 0xaaff44];
+    for (let i = 0; i < 30; i++) {
+      const insect = new THREE.Group();
+      const insectColor = insectColors[Math.floor(Math.random() * insectColors.length)];
+      const insectMat = new THREE.MeshStandardMaterial({ color: insectColor, emissive: insectColor, emissiveIntensity: 0.15, side: THREE.DoubleSide });
+      if (Math.random() > 0.3) {
+        // Butterfly with detailed wings
+        const lwing = new THREE.Mesh(new THREE.PlaneGeometry(0.1, 0.07), insectMat);
+        lwing.position.set(-0.035, 0, 0);
+        lwing.rotation.z = 0.35;
+        insect.add(lwing);
+        const rwing = new THREE.Mesh(new THREE.PlaneGeometry(0.1, 0.07), insectMat);
+        rwing.position.set(0.035, 0, 0);
+        rwing.rotation.z = -0.35;
+        insect.add(rwing);
+        // Lower wings (smaller)
+        const llwing = new THREE.Mesh(new THREE.PlaneGeometry(0.06, 0.05), insectMat);
+        llwing.position.set(-0.025, -0.03, 0);
+        llwing.rotation.z = 0.5;
+        insect.add(llwing);
+        const rlwing = new THREE.Mesh(new THREE.PlaneGeometry(0.06, 0.05), insectMat);
+        rlwing.position.set(0.025, -0.03, 0);
+        rlwing.rotation.z = -0.5;
+        insect.add(rlwing);
+        // Body
+        const iBody = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.05, 12), new THREE.MeshStandardMaterial({ color: 0x222222 }));
+        iBody.rotation.z = Math.PI / 2;
+        insect.add(iBody);
+        // Antennae
+        for (let a = 0; a < 2; a++) {
+          const antenna = new THREE.Mesh(new THREE.CylinderGeometry(0.001, 0.001, 0.03, 8), new THREE.MeshStandardMaterial({ color: 0x222222 }));
+          antenna.position.set(a === 0 ? -0.008 : 0.008, 0.015, 0.02);
+          antenna.rotation.z = a === 0 ? 0.4 : -0.4;
+          insect.add(antenna);
+        }
+      } else {
+        // Dragonfly
+        const dfBody = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.003, 0.06, 10), insectMat);
+        dfBody.rotation.z = Math.PI / 2;
+        insect.add(dfBody);
+        for (let dw = 0; dw < 4; dw++) {
+          const dfWing = new THREE.Mesh(new THREE.PlaneGeometry(0.08, 0.02), new THREE.MeshStandardMaterial({ color: 0xccddee, transparent: true, opacity: 0.5, side: THREE.DoubleSide }));
+          dfWing.position.set(dw < 2 ? -0.01 : 0.01, 0.01, dw % 2 === 0 ? 0.035 : -0.035);
+          dfWing.rotation.x = dw < 2 ? 0.3 : -0.3;
+          insect.add(dfWing);
+        }
+      }
+      const inX = (Math.random() - 0.5) * w * 0.8;
+      const inZ = (Math.random() - 0.5) * d * 0.8;
+      insect.position.set(inX, 0.6 + Math.random() * 2.5, inZ);
+      insect.rotation.y = Math.random() * Math.PI;
+      this._scene.add(insect);
+    }
+
     // ── Scarecrow ──
     const scarecrow = new THREE.Group();
     const scPole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 3, 17), woodMat);
@@ -18183,6 +19773,175 @@ export class DiabloRenderer {
       this._scene.add(fallenLog);
     }
 
+
+    // ── Dead tree branches extending outward (thin cylinder limbs) ──
+    for (let i = 0; i < 15; i++) {
+      const deadBranchTree = new THREE.Group();
+      const dbTrunkH = 2.5 + Math.random() * 3;
+      const dbTrunk = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.2, dbTrunkH, 17), deadWoodMat);
+      dbTrunk.position.y = dbTrunkH / 2;
+      deadBranchTree.add(dbTrunk);
+      const limbCount = 4 + Math.floor(Math.random() * 4);
+      for (let l = 0; l < limbCount; l++) {
+        const limbLen = 1.5 + Math.random() * 2.5;
+        const limbAngle = (l / limbCount) * Math.PI * 2 + Math.random() * 0.5;
+        const limbY = dbTrunkH * (0.4 + Math.random() * 0.5);
+        const limb = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.05, limbLen, 12), deadWoodMat);
+        limb.position.set(Math.cos(limbAngle) * limbLen * 0.35, limbY, Math.sin(limbAngle) * limbLen * 0.35);
+        limb.rotation.z = Math.cos(limbAngle) * 0.9;
+        limb.rotation.x = Math.sin(limbAngle) * 0.9;
+        deadBranchTree.add(limb);
+        // Sub-branches
+        for (let sb = 0; sb < 2; sb++) {
+          const subLen = 0.5 + Math.random() * 0.8;
+          const subBranch = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.025, subLen, 10), deadWoodMat);
+          subBranch.position.set(
+            Math.cos(limbAngle) * (limbLen * 0.5 + sb * 0.3),
+            limbY + (Math.random() - 0.5) * 0.3,
+            Math.sin(limbAngle) * (limbLen * 0.5 + sb * 0.3),
+          );
+          subBranch.rotation.z = Math.cos(limbAngle + sb) * 1.1;
+          subBranch.rotation.x = Math.sin(limbAngle + sb) * 0.8;
+          deadBranchTree.add(subBranch);
+        }
+      }
+      const dbtX = (Math.random() - 0.5) * w * 0.85;
+      const dbtZ = (Math.random() - 0.5) * d * 0.85;
+      deadBranchTree.position.set(dbtX, getTerrainHeight(dbtX, dbtZ, 0.8), dbtZ);
+      this._scene.add(deadBranchTree);
+    }
+
+    // ── Lily pad clusters on water (flat circles with slight curl) ──
+    for (let i = 0; i < 15; i++) {
+      const lilyPadCluster = new THREE.Group();
+      const lpCount = 5 + Math.floor(Math.random() * 5);
+      for (let lp = 0; lp < lpCount; lp++) {
+        const lpR = 0.1 + Math.random() * 0.15;
+        const lilyPad = new THREE.Mesh(new THREE.CircleGeometry(lpR, 20), lilyMat);
+        lilyPad.rotation.x = -Math.PI / 2;
+        const lpAng = Math.random() * Math.PI * 2;
+        const lpDist = Math.random() * 1.2;
+        lilyPad.position.set(Math.cos(lpAng) * lpDist, 0.062, Math.sin(lpAng) * lpDist);
+        lilyPadCluster.add(lilyPad);
+        // Curled edge (thin ring on one side)
+        const curl = new THREE.Mesh(new THREE.TorusGeometry(lpR, 0.008, 6, 12, Math.PI * 0.4), lilyMat);
+        curl.rotation.x = -Math.PI / 2;
+        curl.position.set(Math.cos(lpAng) * lpDist + lpR * 0.5, 0.07, Math.sin(lpAng) * lpDist);
+        curl.rotation.z = Math.random() * Math.PI;
+        lilyPadCluster.add(curl);
+      }
+      // Water lily flowers on some clusters
+      if (Math.random() > 0.4) {
+        const lilyFlowerGrp = new THREE.Group();
+        const lfPetalMat = new THREE.MeshStandardMaterial({ color: 0xffccdd, roughness: 0.3 });
+        for (let pf = 0; pf < 6; pf++) {
+          const pfAngle = (pf / 6) * Math.PI * 2;
+          const pfPetal = new THREE.Mesh(new THREE.PlaneGeometry(0.06, 0.03), lfPetalMat);
+          pfPetal.position.set(Math.cos(pfAngle) * 0.03, 0.075, Math.sin(pfAngle) * 0.03);
+          pfPetal.rotation.x = -Math.PI / 3;
+          pfPetal.rotation.y = pfAngle;
+          lilyFlowerGrp.add(pfPetal);
+        }
+        const lfCenter = new THREE.Mesh(new THREE.SphereGeometry(0.015, 12, 12), new THREE.MeshStandardMaterial({ color: 0xffee44 }));
+        lfCenter.position.y = 0.08;
+        lilyFlowerGrp.add(lfCenter);
+        lilyPadCluster.add(lilyFlowerGrp);
+      }
+      const lpcX = (Math.random() - 0.5) * w * 0.75;
+      const lpcZ = (Math.random() - 0.5) * d * 0.75;
+      lilyPadCluster.position.set(lpcX, 0, lpcZ);
+      this._scene.add(lilyPadCluster);
+    }
+
+    // ── Fog wisps (translucent elongated spheres) ──
+    const fogWispMat = new THREE.MeshStandardMaterial({ color: 0x88aa77, transparent: true, opacity: 0.1, side: THREE.DoubleSide, depthWrite: false });
+    for (let i = 0; i < 18; i++) {
+      const fogWisp = new THREE.Mesh(
+        new THREE.SphereGeometry(0.5 + Math.random() * 0.8, 20, 16),
+        fogWispMat,
+      );
+      fogWisp.scale.set(2 + Math.random() * 3, 0.3 + Math.random() * 0.3, 0.8 + Math.random() * 0.5);
+      fogWisp.position.set(
+        (Math.random() - 0.5) * w * 0.8,
+        0.3 + Math.random() * 1.5,
+        (Math.random() - 0.5) * d * 0.8,
+      );
+      fogWisp.rotation.y = Math.random() * Math.PI;
+      this._scene.add(fogWisp);
+    }
+
+    // ── Rotting wooden dock/boardwalk planks with gaps ──
+    for (let i = 0; i < 4; i++) {
+      const dock = new THREE.Group();
+      const dockLen = 8 + Math.floor(Math.random() * 6);
+      // Support pilings
+      for (let sp = 0; sp < 4; sp++) {
+        const piling = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 1.5, 12), plankMat);
+        piling.position.set(sp % 2 === 0 ? -0.8 : 0.8, -0.4, sp < 2 ? -dockLen * 0.2 : dockLen * 0.2);
+        piling.rotation.z = (Math.random() - 0.5) * 0.1;
+        dock.add(piling);
+      }
+      // Planks with intentional gaps
+      for (let dp = 0; dp < dockLen; dp++) {
+        if (Math.random() > 0.15) {
+          const dPlank = new THREE.Mesh(
+            new THREE.BoxGeometry(1.6, 0.06, 0.22),
+            Math.random() > 0.5 ? plankMat : new THREE.MeshStandardMaterial({ color: 0x5a4428, roughness: 0.95 }),
+          );
+          dPlank.position.set(0, 0.32, dp * 0.35 - dockLen * 0.175);
+          dPlank.rotation.z = (Math.random() - 0.5) * 0.04;
+          dPlank.position.y += (Math.random() - 0.5) * 0.05;
+          dock.add(dPlank);
+        }
+        // Some broken planks hanging
+        if (Math.random() > 0.85) {
+          const brokenPlank = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.05, 0.2), plankMat);
+          brokenPlank.position.set(0.5, 0.15, dp * 0.35 - dockLen * 0.175);
+          brokenPlank.rotation.z = -0.6;
+          dock.add(brokenPlank);
+        }
+      }
+      // Side rails (partial)
+      for (let sr = 0; sr < 2; sr++) {
+        if (Math.random() > 0.3) {
+          const railPost = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.035, 0.8, 10), plankMat);
+          railPost.position.set(-0.75, 0.7, -dockLen * 0.15 + sr * dockLen * 0.3);
+          dock.add(railPost);
+        }
+      }
+      const dkX = (Math.random() - 0.5) * w * 0.6;
+      const dkZ = (Math.random() - 0.5) * d * 0.6;
+      dock.position.set(dkX, 0.05, dkZ);
+      dock.rotation.y = Math.random() * Math.PI;
+      this._scene.add(dock);
+    }
+
+    // ── Hanging moss strands (thin drooping cylinders from branches) ──
+    for (let i = 0; i < 25; i++) {
+      const mossCluster = new THREE.Group();
+      const strandCount = 4 + Math.floor(Math.random() * 5);
+      for (let ms = 0; ms < strandCount; ms++) {
+        const mossLen = 0.8 + Math.random() * 2.5;
+        const mossStrand = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.008, 0.015, mossLen, 8),
+          hangingMossMat,
+        );
+        mossStrand.position.set((Math.random() - 0.5) * 0.6, -mossLen / 2, (Math.random() - 0.5) * 0.6);
+        mossStrand.rotation.z = (Math.random() - 0.5) * 0.15;
+        mossCluster.add(mossStrand);
+        // Clumps along strand
+        for (let cl = 0; cl < 2; cl++) {
+          const clump = new THREE.Mesh(new THREE.SphereGeometry(0.02 + Math.random() * 0.02, 10, 8), hangingMossMat);
+          clump.position.set(mossStrand.position.x, -mossLen * (0.3 + cl * 0.3), mossStrand.position.z);
+          mossCluster.add(clump);
+        }
+      }
+      const msX = (Math.random() - 0.5) * w * 0.8;
+      const msZ = (Math.random() - 0.5) * d * 0.8;
+      mossCluster.position.set(msX, 3 + Math.random() * 4, msZ);
+      this._scene.add(mossCluster);
+    }
+
     // ── Hanging vine curtains ──
     for (let i = 0; i < 15; i++) {
       const vineGroup = new THREE.Group();
@@ -18849,6 +20608,162 @@ export class DiabloRenderer {
       this._scene.add(chandelier);
     }
 
+
+    // ── Crystal cluster formations (groups of pointed hexagonal prisms) ──
+    for (let i = 0; i < 15; i++) {
+      const hexCluster = new THREE.Group();
+      const hClrChoice = crystalColors[Math.floor(Math.random() * crystalColors.length)];
+      const hexCrystMat = new THREE.MeshStandardMaterial({
+        color: hClrChoice.color,
+        emissive: hClrChoice.emissive,
+        emissiveIntensity: 0.55,
+        roughness: 0.08,
+        metalness: 0.35,
+        transparent: true,
+        opacity: 0.72,
+      });
+      const prismCount = 4 + Math.floor(Math.random() * 6);
+      for (let p = 0; p < prismCount; p++) {
+        const prismH = 0.8 + Math.random() * 2.5;
+        const prismR = 0.1 + Math.random() * 0.3;
+        const prism = new THREE.Mesh(new THREE.CylinderGeometry(prismR * 0.3, prismR, prismH, 6), hexCrystMat);
+        prism.position.set((Math.random() - 0.5) * 2, prismH / 2, (Math.random() - 0.5) * 2);
+        prism.rotation.z = (Math.random() - 0.5) * 0.4;
+        prism.rotation.x = (Math.random() - 0.5) * 0.4;
+        hexCluster.add(prism);
+      }
+      if (Math.random() > 0.3) {
+        const hcLight = new THREE.PointLight(hClrChoice.color, 0.5, 7);
+        hcLight.position.set(0, 1.5, 0);
+        hexCluster.add(hcLight);
+        this._torchLights.push(hcLight);
+      }
+      const hcX = (Math.random() - 0.5) * w * 0.85;
+      const hcZ = (Math.random() - 0.5) * d * 0.85;
+      hexCluster.position.set(hcX, getTerrainHeight(hcX, hcZ, 0.6), hcZ);
+      this._scene.add(hexCluster);
+    }
+
+    // ── Reflective pool surfaces with crystal reflections ──
+    for (let i = 0; i < 8; i++) {
+      const refPool = new THREE.Group();
+      const rpR = 2 + Math.random() * 3;
+      const rpClr = Math.random() > 0.5 ? 0x4466cc : 0x7744aa;
+      const rpSurface = new THREE.Mesh(
+        new THREE.CircleGeometry(rpR, 36),
+        new THREE.MeshStandardMaterial({ color: rpClr, roughness: 0.02, metalness: 0.6, transparent: true, opacity: 0.6, depthWrite: false }),
+      );
+      rpSurface.rotation.x = -Math.PI / 2;
+      rpSurface.position.y = 0.015;
+      refPool.add(rpSurface);
+      // Crystal reflections (inverted crystal shards beneath surface)
+      const refCount = 3 + Math.floor(Math.random() * 4);
+      const refClr = crystalColors[Math.floor(Math.random() * crystalColors.length)];
+      for (let rc = 0; rc < refCount; rc++) {
+        const refShard = new THREE.Mesh(
+          new THREE.ConeGeometry(0.08 + Math.random() * 0.15, 0.5 + Math.random() * 0.8, 6),
+          new THREE.MeshStandardMaterial({
+            color: refClr.color,
+            emissive: refClr.emissive,
+            emissiveIntensity: 0.3,
+            roughness: 0.05,
+            transparent: true,
+            opacity: 0.25,
+            depthWrite: false,
+          }),
+        );
+        refShard.rotation.x = Math.PI;
+        const rsAng = Math.random() * Math.PI * 2;
+        const rsDist = Math.random() * rpR * 0.6;
+        refShard.position.set(Math.cos(rsAng) * rsDist, -0.3, Math.sin(rsAng) * rsDist);
+        refPool.add(refShard);
+      }
+      const rpGlow = new THREE.PointLight(rpClr, 0.35, 5);
+      rpGlow.position.set(0, -0.5, 0);
+      refPool.add(rpGlow);
+      const rpX = (Math.random() - 0.5) * w * 0.7;
+      const rpZ = (Math.random() - 0.5) * d * 0.7;
+      refPool.position.set(rpX, 0.01, rpZ);
+      this._scene.add(refPool);
+    }
+
+    // ── Stalactite/stalagmite pairs with drip detail ──
+    for (let i = 0; i < 12; i++) {
+      const pairGroup = new THREE.Group();
+      const pairH = 1.5 + Math.random() * 2.5;
+      const pairR = 0.2 + Math.random() * 0.3;
+      // Stalagmite (ground)
+      const smite = new THREE.Mesh(new THREE.ConeGeometry(pairR, pairH, 23), caveStoneMat);
+      smite.position.y = pairH / 2;
+      pairGroup.add(smite);
+      // Stalactite (ceiling, aligned above)
+      const stiteH = 1 + Math.random() * 2;
+      const stite = new THREE.Mesh(new THREE.ConeGeometry(pairR * 0.8, stiteH, 23), darkStoneMat);
+      stite.rotation.x = Math.PI;
+      stite.position.y = 9 + Math.random() * 2;
+      pairGroup.add(stite);
+      // Drip line between them
+      const dripLineH = stite.position.y - pairH;
+      if (dripLineH > 0) {
+        const dripStream = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.008, 0.008, dripLineH, 8),
+          dripMat,
+        );
+        dripStream.position.y = pairH + dripLineH / 2;
+        pairGroup.add(dripStream);
+        // Drip droplet at bottom
+        const droplet = new THREE.Mesh(new THREE.SphereGeometry(0.02, 12, 12), dripMat);
+        droplet.position.y = pairH + 0.1;
+        droplet.scale.y = 1.5;
+        pairGroup.add(droplet);
+      }
+      // Small splash pool at base
+      const splashPool = new THREE.Mesh(
+        new THREE.CircleGeometry(0.15, 16),
+        new THREE.MeshStandardMaterial({ color: 0x6688cc, roughness: 0.05, transparent: true, opacity: 0.4 }),
+      );
+      splashPool.rotation.x = -Math.PI / 2;
+      splashPool.position.y = 0.01;
+      pairGroup.add(splashPool);
+      const spX = (Math.random() - 0.5) * w * 0.8;
+      const spZ = (Math.random() - 0.5) * d * 0.8;
+      pairGroup.position.set(spX, getTerrainHeight(spX, spZ, 0.6), spZ);
+      this._scene.add(pairGroup);
+    }
+
+    // ── Mineral vein lines on cave walls (thin colored strips) ──
+    const mineralVeinColors = [0xcc8833, 0x88cc44, 0x4488cc, 0xcc44aa, 0xdddd44];
+    for (let i = 0; i < 25; i++) {
+      const veinGroup = new THREE.Group();
+      const mvColor = mineralVeinColors[Math.floor(Math.random() * mineralVeinColors.length)];
+      const mvMat = new THREE.MeshStandardMaterial({ color: mvColor, roughness: 0.3, metalness: 0.6, emissive: mvColor, emissiveIntensity: 0.2 });
+      const segCount = 4 + Math.floor(Math.random() * 5);
+      let vx = 0, vy = 0;
+      for (let s = 0; s < segCount; s++) {
+        const segLen = 0.5 + Math.random() * 1.5;
+        const segW = 0.03 + Math.random() * 0.05;
+        const seg = new THREE.Mesh(new THREE.BoxGeometry(segLen, segW, 0.01), mvMat);
+        seg.position.set(vx + segLen / 2, vy, 0);
+        seg.rotation.z = (Math.random() - 0.5) * 0.4;
+        veinGroup.add(seg);
+        vx += segLen * 0.8;
+        vy += (Math.random() - 0.5) * 0.3;
+        // Branch veins
+        if (Math.random() > 0.5) {
+          const branchLen = 0.3 + Math.random() * 0.5;
+          const branchVein = new THREE.Mesh(new THREE.BoxGeometry(branchLen, segW * 0.6, 0.01), mvMat);
+          branchVein.position.set(vx - 0.2, vy + (Math.random() > 0.5 ? 0.15 : -0.15), 0);
+          branchVein.rotation.z = (Math.random() - 0.5) * 0.8;
+          veinGroup.add(branchVein);
+        }
+      }
+      const mvX = (Math.random() - 0.5) * w * 0.8;
+      const mvZ = (Math.random() - 0.5) * d * 0.8;
+      veinGroup.position.set(mvX, 1 + Math.random() * 5, mvZ);
+      veinGroup.rotation.y = Math.random() * Math.PI;
+      this._scene.add(veinGroup);
+    }
+
     // ── Fossil imprints on ground ──
     const fossilMat = new THREE.MeshStandardMaterial({ color: 0x667788, roughness: 0.7, metalness: 0.1 });
     for (let i = 0; i < 8; i++) {
@@ -19434,6 +21349,131 @@ export class DiabloRenderer {
       const pondX = (Math.random() - 0.5) * w * 0.65, pondZ = (Math.random() - 0.5) * d * 0.65;
       pondGrp.position.set(pondX, getTerrainHeight(pondX, pondZ, 1.4), pondZ);
       this._scene.add(pondGrp);
+    }
+
+
+    // ── Ice spike formations (transparent cones) ──
+    for (let i = 0; i < 20; i++) {
+      const spikeCluster = new THREE.Group();
+      const spikeCnt = 3 + Math.floor(Math.random() * 5);
+      for (let s = 0; s < spikeCnt; s++) {
+        const spkH = 1 + Math.random() * 3;
+        const spkR = 0.08 + Math.random() * 0.15;
+        const spk = new THREE.Mesh(new THREE.ConeGeometry(spkR, spkH, 17), iceMat);
+        spk.position.set((Math.random() - 0.5) * 1.5, spkH / 2, (Math.random() - 0.5) * 1.5);
+        spk.rotation.z = (Math.random() - 0.5) * 0.2;
+        spk.rotation.x = (Math.random() - 0.5) * 0.2;
+        spikeCluster.add(spk);
+      }
+      const scX = (Math.random() - 0.5) * w * 0.85;
+      const scZ = (Math.random() - 0.5) * d * 0.85;
+      spikeCluster.position.set(scX, getTerrainHeight(scX, scZ, 1.4), scZ);
+      this._scene.add(spikeCluster);
+    }
+
+    // ── Snow drift mounds (white flattened spheres) ──
+    for (let i = 0; i < 30; i++) {
+      const mound = new THREE.Mesh(
+        new THREE.SphereGeometry(0.5 + Math.random() * 1.5, 23, 17),
+        snowMat,
+      );
+      mound.scale.set(1 + Math.random() * 2, 0.2 + Math.random() * 0.3, 1 + Math.random() * 1.5);
+      const mdX = (Math.random() - 0.5) * w * 0.85;
+      const mdZ = (Math.random() - 0.5) * d * 0.85;
+      mound.position.set(mdX, getTerrainHeight(mdX, mdZ, 1.4) + 0.1, mdZ);
+      mound.rotation.y = Math.random() * Math.PI;
+      this._scene.add(mound);
+    }
+
+    // ── Frozen waterfall detail (translucent stacked cylinders) ──
+    for (let i = 0; i < 5; i++) {
+      const frozenFall = new THREE.Group();
+      const ffHeight = 5 + Math.random() * 5;
+      const ffWidth = 2 + Math.random() * 3;
+      // Stacked translucent cylinder segments for icy texture
+      const segCount = 6 + Math.floor(Math.random() * 4);
+      for (let s = 0; s < segCount; s++) {
+        const segH = ffHeight / segCount;
+        const segR = ffWidth * 0.3 * (0.7 + Math.random() * 0.6);
+        const fallSeg = new THREE.Mesh(
+          new THREE.CylinderGeometry(segR * 0.85, segR, segH, 16),
+          frozenFallMat,
+        );
+        fallSeg.position.y = s * segH + segH / 2;
+        fallSeg.scale.z = 0.3;
+        frozenFall.add(fallSeg);
+      }
+      // Ice bulges
+      for (let b = 0; b < 4; b++) {
+        const bulge = new THREE.Mesh(
+          new THREE.SphereGeometry(0.3 + Math.random() * 0.4, 16, 12),
+          new THREE.MeshStandardMaterial({ color: 0xbbddff, roughness: 0.08, metalness: 0.3, transparent: true, opacity: 0.45 }),
+        );
+        bulge.scale.set(0.8, 0.5 + Math.random() * 0.5, 0.3);
+        bulge.position.set((Math.random() - 0.5) * ffWidth * 0.3, Math.random() * ffHeight, 0.15);
+        frozenFall.add(bulge);
+      }
+      // Icicles at bottom
+      for (let ic = 0; ic < 5; ic++) {
+        const icLen = 0.3 + Math.random() * 0.6;
+        const icicle = new THREE.Mesh(new THREE.ConeGeometry(0.03, icLen, 12), iceMat);
+        icicle.rotation.x = Math.PI;
+        icicle.position.set(-ffWidth * 0.25 + ic * ffWidth * 0.125, -0.2, 0.1);
+        frozenFall.add(icicle);
+      }
+      // Frozen splash pool at base
+      const splashR = ffWidth * 0.5;
+      const splashBase = new THREE.Mesh(new THREE.CircleGeometry(splashR, 24),
+        new THREE.MeshStandardMaterial({ color: 0xaaccee, roughness: 0.03, metalness: 0.5, transparent: true, opacity: 0.75 }));
+      splashBase.rotation.x = -Math.PI / 2;
+      splashBase.position.set(0, 0.02, 0.6);
+      frozenFall.add(splashBase);
+      const ffX2 = (Math.random() - 0.5) * w * 0.65;
+      const ffZ2 = (Math.random() - 0.5) * d * 0.65;
+      frozenFall.position.set(ffX2, getTerrainHeight(ffX2, ffZ2, 1.4), ffZ2);
+      frozenFall.rotation.y = Math.random() * Math.PI;
+      this._scene.add(frozenFall);
+    }
+
+    // ── Aurora prop lights (curved translucent colored planes) ──
+    const auroraColors = [
+      { color: 0x44ff88, opacity: 0.12 },
+      { color: 0x8844ff, opacity: 0.1 },
+      { color: 0x44ddff, opacity: 0.09 },
+      { color: 0xff44aa, opacity: 0.08 },
+      { color: 0xaaff44, opacity: 0.11 },
+    ];
+    for (let i = 0; i < 12; i++) {
+      const auroraGroup = new THREE.Group();
+      const aC = auroraColors[i % auroraColors.length];
+      const auroraWidth = 5 + Math.random() * 10;
+      const auroraHeight = 3 + Math.random() * 6;
+      // Multiple curved layers for depth
+      for (let layer = 0; layer < 3; layer++) {
+        const curvedPlane = new THREE.Mesh(
+          new THREE.PlaneGeometry(auroraWidth * (0.8 + layer * 0.15), auroraHeight * (0.7 + layer * 0.2)),
+          new THREE.MeshStandardMaterial({
+            color: aC.color,
+            emissive: aC.color,
+            emissiveIntensity: 0.6 - layer * 0.15,
+            transparent: true,
+            opacity: aC.opacity - layer * 0.02,
+            side: THREE.DoubleSide,
+            depthWrite: false,
+          }),
+        );
+        curvedPlane.position.y = layer * 0.5;
+        curvedPlane.position.z = layer * 0.3;
+        curvedPlane.rotation.x = (Math.random() - 0.5) * 0.2;
+        auroraGroup.add(curvedPlane);
+      }
+      auroraGroup.position.set(
+        (Math.random() - 0.5) * w * 0.9,
+        auroraHeight / 2 + 8 + Math.random() * 4,
+        (Math.random() - 0.5) * d * 0.9,
+      );
+      auroraGroup.rotation.y = Math.random() * Math.PI;
+      this._scene.add(auroraGroup);
     }
 
     // ── Atmospheric cold lighting ──
@@ -20042,6 +22082,309 @@ export class DiabloRenderer {
       gargoyle.position.set(grgX, 4 + Math.random() * 4, grgZ);
       gargoyle.rotation.y = Math.random() * Math.PI;
       this._scene.add(gargoyle);
+    }
+
+
+    // ── Stained glass window detail (colored circle segments in arched frames) ──
+    for (let i = 0; i < 6; i++) {
+      const sgWindow = new THREE.Group();
+      const sgW = 1.5 + Math.random() * 1;
+      const sgH = 3 + Math.random() * 2;
+      // Stone frame
+      const sgFrameLeft = new THREE.Mesh(new THREE.BoxGeometry(0.15, sgH, 0.15), darkStoneMat);
+      sgFrameLeft.position.set(-sgW / 2, sgH / 2, 0);
+      sgWindow.add(sgFrameLeft);
+      const sgFrameRight = new THREE.Mesh(new THREE.BoxGeometry(0.15, sgH, 0.15), darkStoneMat);
+      sgFrameRight.position.set(sgW / 2, sgH / 2, 0);
+      sgWindow.add(sgFrameRight);
+      const sgFrameTop = new THREE.Mesh(new THREE.BoxGeometry(sgW + 0.15, 0.15, 0.15), darkStoneMat);
+      sgFrameTop.position.y = sgH;
+      sgWindow.add(sgFrameTop);
+      // Pointed arch top
+      const sgPeak = new THREE.Mesh(new THREE.ConeGeometry(sgW * 0.35, 0.8, 3), darkStoneMat);
+      sgPeak.position.y = sgH + 0.4;
+      sgPeak.rotation.y = Math.PI / 6;
+      sgWindow.add(sgPeak);
+      // Colored glass segments
+      const segCount = 6 + Math.floor(Math.random() * 4);
+      for (let sg = 0; sg < segCount; sg++) {
+        const segColor = stainedGlassColors[sg % stainedGlassColors.length];
+        const segY = 0.5 + sg * (sgH / segCount);
+        const segPane = new THREE.Mesh(
+          new THREE.PlaneGeometry(sgW * 0.85 / 2, sgH / segCount * 0.85),
+          new THREE.MeshStandardMaterial({ color: segColor, emissive: segColor, emissiveIntensity: 0.4, transparent: true, opacity: 0.45, side: THREE.DoubleSide }),
+        );
+        segPane.position.set(sg % 2 === 0 ? -sgW * 0.2 : sgW * 0.2, segY, 0);
+        sgWindow.add(segPane);
+      }
+      // Central medallion (circular)
+      const medallion = new THREE.Mesh(
+        new THREE.CircleGeometry(sgW * 0.2, 20),
+        new THREE.MeshStandardMaterial({ color: stainedGlassColors[i % stainedGlassColors.length], emissive: stainedGlassColors[i % stainedGlassColors.length], emissiveIntensity: 0.6, transparent: true, opacity: 0.55, side: THREE.DoubleSide }),
+      );
+      medallion.position.set(0, sgH * 0.6, 0.01);
+      sgWindow.add(medallion);
+      // Dividing mullions
+      const mullion = new THREE.Mesh(new THREE.BoxGeometry(0.04, sgH * 0.8, 0.04), darkStoneMat);
+      mullion.position.y = sgH * 0.45;
+      sgWindow.add(mullion);
+      const sgLight = new THREE.PointLight(stainedGlassColors[i % stainedGlassColors.length], 0.4, 7);
+      sgLight.position.set(0, sgH * 0.5, 0.5);
+      sgWindow.add(sgLight);
+      this._torchLights.push(sgLight);
+      sgWindow.position.set(
+        (Math.random() - 0.5) * w * 0.65,
+        2 + Math.random() * 3,
+        (Math.random() - 0.5) * d * 0.65,
+      );
+      sgWindow.rotation.y = Math.random() * Math.PI;
+      this._scene.add(sgWindow);
+    }
+
+    // ── Broken pew rows (boxes with gaps) ──
+    for (let i = 0; i < 4; i++) {
+      const pewRow = new THREE.Group();
+      const rowLen = 5 + Math.floor(Math.random() * 4);
+      for (let p = 0; p < rowLen; p++) {
+        if (Math.random() > 0.15) {
+          const rowPew = new THREE.Group();
+          const pewL = 1.5 + Math.random() * 0.5;
+          const pewSeat = new THREE.Mesh(new THREE.BoxGeometry(pewL, 0.08, 0.45), woodMat);
+          pewSeat.position.y = 0.45;
+          rowPew.add(pewSeat);
+          const pewBack = new THREE.Mesh(new THREE.BoxGeometry(pewL, 0.7, 0.06), woodMat);
+          pewBack.position.set(0, 0.8, -0.19);
+          rowPew.add(pewBack);
+          const pewLeg1 = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.45, 0.06), woodMat);
+          pewLeg1.position.set(-pewL / 2 + 0.08, 0.225, 0.12);
+          rowPew.add(pewLeg1);
+          const pewLeg2 = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.45, 0.06), woodMat);
+          pewLeg2.position.set(pewL / 2 - 0.08, 0.225, 0.12);
+          rowPew.add(pewLeg2);
+          // Armrest detail
+          if (p === 0 || p === rowLen - 1) {
+            const armrest = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.4), woodMat);
+            armrest.position.set(p === 0 ? -pewL / 2 - 0.03 : pewL / 2 + 0.03, 0.55, 0);
+            rowPew.add(armrest);
+          }
+          rowPew.position.set(p * 1.8, 0, 0);
+          rowPew.rotation.z = (Math.random() - 0.5) * 0.08;
+          pewRow.add(rowPew);
+        }
+      }
+      const prX = (Math.random() - 0.5) * w * 0.45;
+      const prZ = (Math.random() - 0.5) * d * 0.45;
+      pewRow.position.set(prX, getTerrainHeight(prX, prZ, 0.4), prZ);
+      pewRow.rotation.y = (Math.random() - 0.5) * 0.2;
+      this._scene.add(pewRow);
+    }
+
+    // ── Candelabra detail (branching cylinders with small spheres on top) ──
+    for (let i = 0; i < 6; i++) {
+      const detailedCandelabra = new THREE.Group();
+      const dcBaseH = 1.8 + Math.random() * 0.8;
+      // Ornate base
+      const dcBase1 = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.35, 0.1, 23), ironMat);
+      dcBase1.position.y = 0.05;
+      detailedCandelabra.add(dcBase1);
+      const dcBase2 = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 0.08, 20), ironMat);
+      dcBase2.position.y = 0.14;
+      detailedCandelabra.add(dcBase2);
+      // Main stem
+      const dcStem = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.05, dcBaseH, 17), ironMat);
+      dcStem.position.y = dcBaseH / 2 + 0.18;
+      detailedCandelabra.add(dcStem);
+      // Decorative node
+      const dcNode = new THREE.Mesh(new THREE.SphereGeometry(0.06, 16, 12), ironMat);
+      dcNode.position.y = dcBaseH * 0.5 + 0.18;
+      detailedCandelabra.add(dcNode);
+      // Branching arms with candles
+      const dcArmCount = 5 + Math.floor(Math.random() * 3);
+      for (let a = 0; a < dcArmCount; a++) {
+        const dcArmAngle = (a / dcArmCount) * Math.PI * 2;
+        const dcArmLen = 0.25 + Math.random() * 0.15;
+        // Curved arm
+        const dcArm = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.022, dcArmLen, 12), ironMat);
+        dcArm.rotation.z = Math.PI / 2;
+        dcArm.position.set(Math.cos(dcArmAngle) * dcArmLen * 0.5, dcBaseH + 0.18, Math.sin(dcArmAngle) * dcArmLen * 0.5);
+        detailedCandelabra.add(dcArm);
+        // Up-turn at end
+        const dcUpArm = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.018, 0.12, 10), ironMat);
+        dcUpArm.position.set(Math.cos(dcArmAngle) * dcArmLen, dcBaseH + 0.24, Math.sin(dcArmAngle) * dcArmLen);
+        detailedCandelabra.add(dcUpArm);
+        // Candle cup
+        const dcCup = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.025, 0.02, 12), ironMat);
+        dcCup.position.set(Math.cos(dcArmAngle) * dcArmLen, dcBaseH + 0.31, Math.sin(dcArmAngle) * dcArmLen);
+        detailedCandelabra.add(dcCup);
+        // Candle
+        const dcCandle = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.022, 0.15, 12), new THREE.MeshStandardMaterial({ color: 0xeeeecc }));
+        dcCandle.position.set(Math.cos(dcArmAngle) * dcArmLen, dcBaseH + 0.39, Math.sin(dcArmAngle) * dcArmLen);
+        detailedCandelabra.add(dcCandle);
+        // Flame sphere
+        const dcFlame = new THREE.Mesh(new THREE.SphereGeometry(0.02, 12, 12),
+          new THREE.MeshStandardMaterial({ color: 0xffaa33, emissive: 0xffaa33, emissiveIntensity: 1.0 }));
+        dcFlame.scale.y = 1.5;
+        dcFlame.position.set(Math.cos(dcArmAngle) * dcArmLen, dcBaseH + 0.48, Math.sin(dcArmAngle) * dcArmLen);
+        detailedCandelabra.add(dcFlame);
+      }
+      const dcLight = new THREE.PointLight(0xffaa44, 0.6, 6);
+      dcLight.position.set(0, dcBaseH + 0.5, 0);
+      detailedCandelabra.add(dcLight);
+      this._torchLights.push(dcLight);
+      const dcX = (Math.random() - 0.5) * w * 0.55;
+      const dcZ = (Math.random() - 0.5) * d * 0.55;
+      detailedCandelabra.position.set(dcX, getTerrainHeight(dcX, dcZ, 0.4), dcZ);
+      this._scene.add(detailedCandelabra);
+    }
+
+    // ── Fallen chandelier wreckage ──
+    for (let i = 0; i < 3; i++) {
+      const fallenChand = new THREE.Group();
+      // Bent main ring
+      const fcRing = new THREE.Mesh(new THREE.TorusGeometry(1.2, 0.06, 16, 27), ironMat);
+      fcRing.rotation.x = Math.PI / 2 + (Math.random() - 0.5) * 0.4;
+      fcRing.rotation.z = (Math.random() - 0.5) * 0.3;
+      fcRing.position.y = 0.15;
+      fallenChand.add(fcRing);
+      // Inner ring
+      const fcInner = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.04, 12, 20), ironMat);
+      fcInner.rotation.x = Math.PI / 2 + (Math.random() - 0.5) * 0.5;
+      fcInner.position.set(0.2, 0.12, 0.1);
+      fallenChand.add(fcInner);
+      // Broken chain segments
+      for (let ch = 0; ch < 3; ch++) {
+        const chainSeg = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.5 + Math.random() * 0.5, 10), ironMat);
+        chainSeg.position.set((Math.random() - 0.5) * 1, 0.3, (Math.random() - 0.5) * 1);
+        chainSeg.rotation.z = Math.random() * Math.PI;
+        fallenChand.add(chainSeg);
+      }
+      // Scattered candle stubs
+      for (let cs = 0; cs < 5; cs++) {
+        const candStub = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 0.06, 12),
+          new THREE.MeshStandardMaterial({ color: 0xeeeecc }));
+        candStub.position.set((Math.random() - 0.5) * 2, 0.03, (Math.random() - 0.5) * 2);
+        candStub.rotation.z = (Math.random() - 0.5) * 1.2;
+        fallenChand.add(candStub);
+      }
+      // Wax puddle
+      const waxPuddle = new THREE.Mesh(new THREE.CircleGeometry(0.15 + Math.random() * 0.1, 16),
+        new THREE.MeshStandardMaterial({ color: 0xddddbb, roughness: 0.6 }));
+      waxPuddle.rotation.x = -Math.PI / 2;
+      waxPuddle.position.set((Math.random() - 0.5) * 0.5, 0.01, (Math.random() - 0.5) * 0.5);
+      fallenChand.add(waxPuddle);
+      // Broken ornamental arms
+      for (let oa = 0; oa < 4; oa++) {
+        const ornArm = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.015, 0.4, 10), ironMat);
+        const oaAngle = (oa / 4) * Math.PI * 2;
+        ornArm.position.set(Math.cos(oaAngle) * 1, 0.08, Math.sin(oaAngle) * 1);
+        ornArm.rotation.z = Math.PI / 2 + (Math.random() - 0.5) * 0.5;
+        ornArm.rotation.y = oaAngle;
+        fallenChand.add(ornArm);
+      }
+      const fcX = (Math.random() - 0.5) * w * 0.5;
+      const fcZ = (Math.random() - 0.5) * d * 0.5;
+      fallenChand.position.set(fcX, getTerrainHeight(fcX, fcZ, 0.4), fcZ);
+      fallenChand.rotation.y = Math.random() * Math.PI;
+      this._scene.add(fallenChand);
+    }
+
+    // ── Altar with cloth draping detail ──
+    for (let i = 0; i < 3; i++) {
+      const detailedAltar = new THREE.Group();
+      // Stone base with steps
+      const altBase1 = new THREE.Mesh(new THREE.BoxGeometry(4, 0.3, 3), darkStoneMat);
+      altBase1.position.y = 0.15;
+      detailedAltar.add(altBase1);
+      const altBase2 = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.25, 2.5), lightStoneMat);
+      altBase2.position.y = 0.42;
+      detailedAltar.add(altBase2);
+      const altTop = new THREE.Mesh(new THREE.BoxGeometry(3, 0.2, 2), lightStoneMat);
+      altTop.position.y = 0.65;
+      detailedAltar.add(altTop);
+      // Cloth draping over edges
+      const clothMat = new THREE.MeshStandardMaterial({ color: 0x662244, roughness: 0.7, side: THREE.DoubleSide });
+      const clothTop = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 2.2), clothMat);
+      clothTop.rotation.x = -Math.PI / 2;
+      clothTop.position.y = 0.76;
+      detailedAltar.add(clothTop);
+      // Cloth draping down front
+      const clothFront = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 0.5), clothMat);
+      clothFront.position.set(0, 0.5, 1.01);
+      detailedAltar.add(clothFront);
+      // Gold trim on cloth
+      const goldTrimMat = new THREE.MeshStandardMaterial({ color: 0xddaa33, roughness: 0.3, metalness: 0.6 });
+      const trim = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.03, 0.03), goldTrimMat);
+      trim.position.set(0, 0.27, 1.01);
+      detailedAltar.add(trim);
+      // Candles on altar
+      for (let c = 0; c < 6; c++) {
+        const altCandle = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.25 + Math.random() * 0.1, 12),
+          new THREE.MeshStandardMaterial({ color: 0xeeeecc }));
+        altCandle.position.set(-1.2 + c * 0.5, 0.88, (Math.random() - 0.5) * 0.5);
+        detailedAltar.add(altCandle);
+        const altFlame = new THREE.Mesh(new THREE.SphereGeometry(0.015, 10, 10),
+          new THREE.MeshStandardMaterial({ color: 0xffaa33, emissive: 0xffaa33, emissiveIntensity: 1.0 }));
+        altFlame.scale.y = 1.5;
+        altFlame.position.set(altCandle.position.x, 1.02, altCandle.position.z);
+        detailedAltar.add(altFlame);
+      }
+      // Sacred object (chalice)
+      const chalice = new THREE.Group();
+      const chaliceBase = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.02, 16), goldTrimMat);
+      chalice.add(chaliceBase);
+      const chaliceStem = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, 0.12, 12), goldTrimMat);
+      chaliceStem.position.y = 0.07;
+      chalice.add(chaliceStem);
+      const chaliceCup = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.02, 0.06, 16), goldTrimMat);
+      chaliceCup.position.y = 0.16;
+      chalice.add(chaliceCup);
+      chalice.position.set(0, 0.77, 0);
+      detailedAltar.add(chalice);
+      const daLight = new THREE.PointLight(0xffaa44, 0.5, 6);
+      daLight.position.set(0, 1.3, 0);
+      detailedAltar.add(daLight);
+      this._torchLights.push(daLight);
+      const daX = (Math.random() - 0.5) * w * 0.45;
+      const daZ = (Math.random() - 0.5) * d * 0.45;
+      detailedAltar.position.set(daX, getTerrainHeight(daX, daZ, 0.4), daZ);
+      detailedAltar.rotation.y = Math.random() * Math.PI;
+      this._scene.add(detailedAltar);
+    }
+
+    // ── Cracked floor tiles pattern ──
+    for (let i = 0; i < 8; i++) {
+      const tilePattern = new THREE.Group();
+      const gridSize = 3 + Math.floor(Math.random() * 3);
+      const tileW = 0.8 + Math.random() * 0.3;
+      for (let tx = 0; tx < gridSize; tx++) {
+        for (let tz = 0; tz < gridSize; tz++) {
+          if (Math.random() > 0.1) {
+            const floorTile = new THREE.Mesh(
+              new THREE.BoxGeometry(tileW * 0.95, 0.06, tileW * 0.95),
+              (tx + tz) % 2 === 0 ? tileMat : darkStoneMat,
+            );
+            floorTile.position.set(tx * tileW, 0.03, tz * tileW);
+            floorTile.position.y += (Math.random() - 0.5) * 0.02;
+            floorTile.rotation.y = (Math.random() - 0.5) * 0.05;
+            tilePattern.add(floorTile);
+            // Crack lines on some tiles
+            if (Math.random() > 0.5) {
+              const crackLine = new THREE.Mesh(
+                new THREE.BoxGeometry(tileW * 0.7 * Math.random(), 0.004, 0.015),
+                new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 1.0 }),
+              );
+              crackLine.position.set(tx * tileW + (Math.random() - 0.5) * 0.2, 0.065, tz * tileW + (Math.random() - 0.5) * 0.2);
+              crackLine.rotation.y = Math.random() * Math.PI;
+              tilePattern.add(crackLine);
+            }
+          }
+        }
+      }
+      const tpX = (Math.random() - 0.5) * w * 0.6;
+      const tpZ = (Math.random() - 0.5) * d * 0.6;
+      tilePattern.position.set(tpX, getTerrainHeight(tpX, tpZ, 0.4), tpZ);
+      tilePattern.rotation.y = Math.random() * Math.PI * 0.5;
+      this._scene.add(tilePattern);
     }
 
     // ── Crumbling pillars with ivy ──
@@ -20849,6 +23192,127 @@ export class DiabloRenderer {
       const rsx = (Math.random() - 0.5) * w * 0.85; const rsz = (Math.random() - 0.5) * d * 0.85;
       rs.position.set(rsx, getTerrainHeight(rsx, rsz, 1.0), rsz); this._scene.add(rs);
     }
+
+    // ── Thorny vine spirals wrapped around trees ──
+    for (let i = 0; i < 20; i++) {
+      const vineSpiral = new THREE.Group();
+      const spiralH = 2 + Math.random() * 4; const spiralR = 0.15 + Math.random() * 0.1;
+      const spiralSegs = 12 + Math.floor(Math.random() * 8);
+      for (let s = 0; s < spiralSegs; s++) {
+        const t = s / spiralSegs;
+        const segLen = spiralH / spiralSegs * 1.2;
+        const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.012, segLen, 8), vineMat);
+        const angle = t * Math.PI * 4;
+        seg.position.set(Math.cos(angle) * spiralR, t * spiralH, Math.sin(angle) * spiralR);
+        seg.rotation.z = Math.cos(angle) * 0.3; seg.rotation.x = Math.sin(angle) * 0.3;
+        vineSpiral.add(seg);
+        if (Math.random() > 0.5) {
+          const vThorn = new THREE.Mesh(new THREE.ConeGeometry(0.008, 0.04, 6), thornMat);
+          vThorn.position.set(Math.cos(angle) * (spiralR + 0.02), t * spiralH, Math.sin(angle) * (spiralR + 0.02));
+          vThorn.rotation.z = Math.cos(angle) * 1.2; vThorn.rotation.x = Math.sin(angle) * 1.2;
+          vineSpiral.add(vThorn);
+        }
+      }
+      const vsx = (Math.random() - 0.5) * w * 0.85; const vsz = (Math.random() - 0.5) * d * 0.85;
+      vineSpiral.position.set(vsx, getTerrainHeight(vsx, vsz, 1.0), vsz); this._scene.add(vineSpiral);
+    }
+
+    // ── Spider web radial patterns between branches ──
+    for (let i = 0; i < 15; i++) {
+      const webDetail = new THREE.Group();
+      const wR2 = 0.5 + Math.random() * 1.0;
+      const radials = 8 + Math.floor(Math.random() * 4);
+      for (let r = 0; r < radials; r++) {
+        const rAngle = (r / radials) * Math.PI * 2;
+        const radLine = new THREE.Mesh(new THREE.CylinderGeometry(0.002, 0.002, wR2, 4), webMat);
+        radLine.position.set(Math.cos(rAngle) * wR2 * 0.5, 0, Math.sin(rAngle) * wR2 * 0.5);
+        radLine.rotation.z = Math.PI / 2; radLine.rotation.y = rAngle;
+        webDetail.add(radLine);
+      }
+      for (let c = 1; c <= 4; c++) {
+        const cR = wR2 * c * 0.2;
+        const cRing = new THREE.Mesh(new THREE.TorusGeometry(cR, 0.002, 3, radials), webMat);
+        webDetail.add(cRing);
+      }
+      webDetail.position.set((Math.random() - 0.5) * w * 0.8, 2 + Math.random() * 4, (Math.random() - 0.5) * d * 0.8);
+      webDetail.rotation.set(Math.random() * 0.4, Math.random() * Math.PI, Math.random() * 0.4);
+      this._scene.add(webDetail);
+    }
+
+    // ── Poisonous berry clusters on bushes ──
+    const poisonBerryMat = new THREE.MeshStandardMaterial({ color: 0xcc0044, emissive: 0x660022, emissiveIntensity: 0.4, roughness: 0.3 });
+    for (let i = 0; i < 22; i++) {
+      const berryCluster = new THREE.Group();
+      const berryCount = 4 + Math.floor(Math.random() * 6);
+      for (let b = 0; b < berryCount; b++) {
+        const berry = new THREE.Mesh(new THREE.SphereGeometry(0.015 + Math.random() * 0.01, 12, 10), poisonBerryMat);
+        berry.position.set((Math.random() - 0.5) * 0.06, (Math.random() - 0.5) * 0.06, (Math.random() - 0.5) * 0.06);
+        berryCluster.add(berry);
+      }
+      const bStem = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.006, 0.08, 6), darkBarkMat);
+      bStem.position.y = 0.05; berryCluster.add(bStem);
+      const bLeaf = new THREE.Mesh(new THREE.PlaneGeometry(0.03, 0.02), vineMat);
+      bLeaf.position.set(0.015, 0.04, 0); bLeaf.rotation.z = 0.3; berryCluster.add(bLeaf);
+      const bcx2 = (Math.random() - 0.5) * w * 0.85; const bcz2 = (Math.random() - 0.5) * d * 0.85;
+      berryCluster.position.set(bcx2, getTerrainHeight(bcx2, bcz2, 1.0) + 0.3 + Math.random() * 1.5, bcz2);
+      this._scene.add(berryCluster);
+    }
+
+    // ── Gnarled root systems breaking through ground ──
+    for (let i = 0; i < 16; i++) {
+      const rootSys = new THREE.Group();
+      const rootArms = 4 + Math.floor(Math.random() * 4);
+      for (let r = 0; r < rootArms; r++) {
+        const rAngle = (r / rootArms) * Math.PI * 2 + Math.random() * 0.5;
+        const rLen = 0.8 + Math.random() * 1.5;
+        const archSegs = 4;
+        for (let s = 0; s < archSegs; s++) {
+          const t = s / (archSegs - 1);
+          const segLen2 = rLen / archSegs * 1.2;
+          const rSeg = new THREE.Mesh(new THREE.CylinderGeometry(0.015 + (1 - t) * 0.02, 0.02 + (1 - t) * 0.03, segLen2, 8), rootMat);
+          const archY = Math.sin(t * Math.PI) * 0.2;
+          rSeg.position.set(Math.cos(rAngle) * rLen * t, archY, Math.sin(rAngle) * rLen * t);
+          rSeg.rotation.z = Math.PI / 2 - Math.cos(t * Math.PI) * 0.4; rSeg.rotation.y = rAngle;
+          rootSys.add(rSeg);
+        }
+      }
+      const knot = new THREE.Mesh(new THREE.SphereGeometry(0.08 + Math.random() * 0.06, 12, 10), rootMat);
+      knot.position.y = 0.03; knot.scale.y = 0.6; rootSys.add(knot);
+      const rsx2 = (Math.random() - 0.5) * w * 0.85; const rsz2 = (Math.random() - 0.5) * d * 0.85;
+      rootSys.position.set(rsx2, getTerrainHeight(rsx2, rsz2, 1.0), rsz2); this._scene.add(rootSys);
+    }
+
+    // ── Dead animal skeleton props (detailed) ──
+    for (let i = 0; i < 8; i++) {
+      const skel2 = new THREE.Group();
+      const spineLen2 = 0.3 + Math.random() * 0.2;
+      const vertebrae = 6 + Math.floor(Math.random() * 4);
+      for (let v = 0; v < vertebrae; v++) {
+        const vert = new THREE.Mesh(new THREE.SphereGeometry(0.008, 8, 6), skelBoneMat);
+        vert.position.set(0, 0.04, (v / vertebrae) * spineLen2 - spineLen2 / 2);
+        skel2.add(vert);
+      }
+      for (let r = 0; r < 4; r++) {
+        for (const side of [-1, 1]) {
+          const rib2 = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.003, 6, 12, Math.PI * 0.7), skelBoneMat);
+          rib2.position.set(side * 0.01, 0.04, (r / 4) * spineLen2 * 0.6 - spineLen2 * 0.15);
+          rib2.rotation.y = side * Math.PI / 2; rib2.rotation.x = 0.3;
+          skel2.add(rib2);
+        }
+      }
+      const miniSkull = new THREE.Mesh(new THREE.SphereGeometry(0.02, 10, 8), skelBoneMat);
+      miniSkull.position.set(0, 0.04, spineLen2 / 2 + 0.02); miniSkull.scale.set(0.8, 0.7, 1.1);
+      skel2.add(miniSkull);
+      for (let l = 0; l < 4; l++) {
+        const legBone = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.004, 0.06 + Math.random() * 0.04, 6), skelBoneMat);
+        legBone.position.set((Math.random() - 0.5) * 0.08, 0.015, (Math.random() - 0.5) * spineLen2);
+        legBone.rotation.set(Math.random() * 0.5, 0, Math.random() * Math.PI);
+        skel2.add(legBone);
+      }
+      const skx2 = (Math.random() - 0.5) * w * 0.8; const skz2 = (Math.random() - 0.5) * d * 0.8;
+      skel2.position.set(skx2, getTerrainHeight(skx2, skz2, 1.0), skz2);
+      skel2.rotation.y = Math.random() * Math.PI * 2; this._scene.add(skel2);
+    }
   }
 
   // ────────────────────────────────────────────────────────────────────────
@@ -21370,6 +23834,141 @@ export class DiabloRenderer {
       const fox = (Math.random() - 0.5) * w * 0.6; const foz = (Math.random() - 0.5) * d * 0.6;
       fo.position.set(fox, getTerrainHeight(fox, foz, 0.4) + 0.75, foz);
       fo.rotation.y = Math.random() * Math.PI; this._scene.add(fo);
+    }
+
+    // ── Gear/cog wall decorations (detailed) ──
+    for (let i = 0; i < 14; i++) {
+      const wallGear = new THREE.Group();
+      const wgR = 0.4 + Math.random() * 0.8;
+      const wgTeeth = 10 + Math.floor(Math.random() * 6);
+      const wgRing = new THREE.Mesh(new THREE.TorusGeometry(wgR, wgR * 0.08, 8, wgTeeth), bronzeMat);
+      wallGear.add(wgRing);
+      for (let t = 0; t < wgTeeth; t++) {
+        const ta = (t / wgTeeth) * Math.PI * 2;
+        const tooth = new THREE.Mesh(new THREE.BoxGeometry(wgR * 0.12, wgR * 0.18, wgR * 0.08), brassMat);
+        tooth.position.set(Math.cos(ta) * wgR, Math.sin(ta) * wgR, 0);
+        tooth.rotation.z = ta; wallGear.add(tooth);
+      }
+      const wgHub = new THREE.Mesh(new THREE.CylinderGeometry(wgR * 0.15, wgR * 0.15, wgR * 0.1, 20), darkMetalMat);
+      wgHub.rotation.x = Math.PI / 2; wallGear.add(wgHub);
+      wallGear.position.set((Math.random() - 0.5) * w * 0.7, 1.5 + Math.random() * 4, (Math.random() - 0.5) * d * 0.7);
+      wallGear.rotation.y = Math.random() * Math.PI; this._scene.add(wallGear);
+    }
+
+    // ── Steam pipe networks (connected with elbow joints) ──
+    for (let i = 0; i < 10; i++) {
+      const steamNet = new THREE.Group();
+      const netSegs = 3 + Math.floor(Math.random() * 3);
+      let snx = 0; let sny = 0; let snz = 0;
+      for (let s = 0; s < netSegs; s++) {
+        const sLen = 1.5 + Math.random() * 3; const sR = 0.06 + Math.random() * 0.06;
+        const seg = new THREE.Mesh(new THREE.CylinderGeometry(sR, sR, sLen, 16), copperMat);
+        const dir = s % 3;
+        if (dir === 0) { seg.position.set(snx + sLen / 2, sny, snz); seg.rotation.z = Math.PI / 2; snx += sLen; }
+        else if (dir === 1) { seg.position.set(snx, sny + sLen / 2, snz); sny += sLen; }
+        else { seg.position.set(snx, sny, snz + sLen / 2); seg.rotation.x = Math.PI / 2; snz += sLen; }
+        steamNet.add(seg);
+        const elbow = new THREE.Mesh(new THREE.SphereGeometry(sR * 1.4, 16, 16), darkMetalMat);
+        elbow.position.set(snx, sny, snz); steamNet.add(elbow);
+        // Valve wheel at random joints
+        if (Math.random() > 0.6) {
+          const valve = new THREE.Mesh(new THREE.TorusGeometry(sR * 2.5, sR * 0.4, 8, 16), ironMat);
+          valve.position.set(snx, sny, snz); valve.rotation.x = Math.random() * Math.PI;
+          steamNet.add(valve);
+        }
+      }
+      steamNet.position.set((Math.random() - 0.5) * w * 0.55, 0.5 + Math.random() * 2, (Math.random() - 0.5) * d * 0.55);
+      this._scene.add(steamNet);
+    }
+
+    // ── Pressure gauge details on walls ──
+    for (let i = 0; i < 12; i++) {
+      const pgDetail = new THREE.Group();
+      const pgR = 0.15 + Math.random() * 0.12;
+      const pgFace = new THREE.Mesh(new THREE.CircleGeometry(pgR, 32), new THREE.MeshStandardMaterial({ color: 0xeeeecc, roughness: 0.3 }));
+      pgDetail.add(pgFace);
+      const pgRim = new THREE.Mesh(new THREE.TorusGeometry(pgR, 0.015, 16, 32), brassMat);
+      pgDetail.add(pgRim);
+      const pgNeedle = new THREE.Mesh(new THREE.BoxGeometry(0.006, pgR * 0.75, 0.002), new THREE.MeshStandardMaterial({ color: 0xff0000 }));
+      pgNeedle.position.z = 0.01; pgNeedle.rotation.z = Math.random() * Math.PI - Math.PI / 2; pgDetail.add(pgNeedle);
+      // Tick marks
+      for (let t = 0; t < 8; t++) {
+        const ta = (t / 8) * Math.PI * 1.5 - Math.PI * 0.75;
+        const tick = new THREE.Mesh(new THREE.BoxGeometry(0.003, pgR * 0.15, 0.001), new THREE.MeshStandardMaterial({ color: 0x333333 }));
+        tick.position.set(Math.sin(ta) * pgR * 0.8, Math.cos(ta) * pgR * 0.8, 0.005);
+        tick.rotation.z = -ta; pgDetail.add(tick);
+      }
+      const pgPipe = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.2, 12), copperMat);
+      pgPipe.position.y = -pgR - 0.1; pgDetail.add(pgPipe);
+      pgDetail.position.set((Math.random() - 0.5) * w * 0.65, 1.5 + Math.random() * 3, (Math.random() - 0.5) * d * 0.65);
+      pgDetail.rotation.y = Math.random() * Math.PI; this._scene.add(pgDetail);
+    }
+
+    // ── Conveyor belt segments (detailed) ──
+    for (let i = 0; i < 8; i++) {
+      const convDetail = new THREE.Group();
+      const cdLen = 3 + Math.random() * 5;
+      const cdBelt = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.06, cdLen), darkMetalMat);
+      convDetail.add(cdBelt);
+      // Side rails
+      for (const sx of [-0.65, 0.65]) {
+        const rail = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.15, cdLen), ironMat);
+        rail.position.set(sx, 0.05, 0); convDetail.add(rail);
+      }
+      // Roller cylinders underneath
+      const rollerCount = Math.floor(cdLen / 0.5);
+      for (let r = 0; r < rollerCount; r++) {
+        const roller = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1.3, 12), ironMat);
+        roller.rotation.z = Math.PI / 2;
+        roller.position.set(0, -0.1, -cdLen / 2 + r * 0.5 + 0.25);
+        convDetail.add(roller);
+      }
+      // Items on belt (small boxes)
+      for (let b = 0; b < 2 + Math.floor(Math.random() * 3); b++) {
+        const item = new THREE.Mesh(new THREE.BoxGeometry(0.15 + Math.random() * 0.15, 0.1, 0.15), bronzeMat);
+        item.position.set((Math.random() - 0.5) * 0.6, 0.08, (Math.random() - 0.5) * cdLen * 0.6);
+        convDetail.add(item);
+      }
+      convDetail.position.set((Math.random() - 0.5) * w * 0.55, 1.0, (Math.random() - 0.5) * d * 0.55);
+      convDetail.rotation.y = Math.random() * Math.PI; this._scene.add(convDetail);
+    }
+
+    // ── Spark emitter details near machinery ──
+    for (let i = 0; i < 16; i++) {
+      const sparkCluster = new THREE.Group();
+      const sparkCount = 3 + Math.floor(Math.random() * 5);
+      for (let s = 0; s < sparkCount; s++) {
+        const sparkSphere = new THREE.Mesh(new THREE.SphereGeometry(0.015 + Math.random() * 0.01, 8, 8),
+          new THREE.MeshStandardMaterial({ color: 0xffff44, emissive: 0xffcc00, emissiveIntensity: 2.0, roughness: 0.1 }));
+        sparkSphere.position.set((Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3);
+        sparkCluster.add(sparkSphere);
+      }
+      const spkL = new THREE.PointLight(0xffaa00, 0.2, 2);
+      sparkCluster.add(spkL); this._torchLights.push(spkL);
+      sparkCluster.position.set((Math.random() - 0.5) * w * 0.6, 0.5 + Math.random() * 3, (Math.random() - 0.5) * d * 0.6);
+      this._scene.add(sparkCluster);
+    }
+
+    // ── Riveted metal plate patterns on walls ──
+    for (let i = 0; i < 10; i++) {
+      const plate = new THREE.Group();
+      const pW = 1.5 + Math.random() * 2; const pH = 1.5 + Math.random() * 2;
+      const plateBody = new THREE.Mesh(new THREE.BoxGeometry(pW, pH, 0.08), darkMetalMat);
+      plate.add(plateBody);
+      // Rivet grid
+      const cols = Math.floor(pW / 0.3); const rows = Math.floor(pH / 0.3);
+      for (let rx = 0; rx < cols; rx++) {
+        for (let ry = 0; ry < rows; ry++) {
+          const rivet = new THREE.Mesh(new THREE.SphereGeometry(0.02, 8, 6), ironMat);
+          rivet.position.set(-pW / 2 + 0.15 + rx * 0.3, -pH / 2 + 0.15 + ry * 0.3, 0.05);
+          plate.add(rivet);
+        }
+      }
+      // Seam lines
+      const seam = new THREE.Mesh(new THREE.BoxGeometry(pW, 0.01, 0.002), ironMat);
+      seam.position.z = 0.042; plate.add(seam);
+      plate.position.set((Math.random() - 0.5) * w * 0.65, 1 + Math.random() * 4, (Math.random() - 0.5) * d * 0.65);
+      plate.rotation.y = Math.random() * Math.PI; this._scene.add(plate);
     }
   }
 
@@ -21925,6 +24524,156 @@ export class DiabloRenderer {
       td.position.set(tdx, getTerrainHeight(tdx, tdz, 0.6), tdz);
       td.rotation.y = Math.random() * Math.PI; this._scene.add(td);
     }
+
+    // ── Blood-red banner details hanging from walls ──
+    const bannerRedMat = new THREE.MeshStandardMaterial({ color: 0xaa1122, roughness: 0.7, side: THREE.DoubleSide });
+    for (let i = 0; i < 14; i++) {
+      const banner = new THREE.Group();
+      const bPoleW = 1.5 + Math.random() * 1.5;
+      const bPole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, bPoleW, 12), ironMat);
+      bPole.rotation.z = Math.PI / 2; banner.add(bPole);
+      // Hanging fabric (multiple strips for tattered look)
+      const strips = 2 + Math.floor(Math.random() * 3);
+      for (let s = 0; s < strips; s++) {
+        const sH = 1.5 + Math.random() * 2; const sW = bPoleW / strips * 0.8;
+        const strip = new THREE.Mesh(new THREE.PlaneGeometry(sW, sH), bannerRedMat);
+        strip.position.set(-bPoleW / 2 + (s + 0.5) * (bPoleW / strips), -sH / 2, 0);
+        strip.rotation.z = (Math.random() - 0.5) * 0.1;
+        banner.add(strip);
+      }
+      // Decorative end caps
+      for (const ex of [-bPoleW / 2, bPoleW / 2]) {
+        const cap = new THREE.Mesh(new THREE.SphereGeometry(0.05, 12, 10), ironMat);
+        cap.position.set(ex, 0, 0); banner.add(cap);
+      }
+      banner.position.set((Math.random() - 0.5) * w * 0.7, 3 + Math.random() * 5, (Math.random() - 0.5) * d * 0.7);
+      this._scene.add(banner);
+    }
+
+    // ── Iron spike fencing ──
+    for (let i = 0; i < 8; i++) {
+      const fence = new THREE.Group();
+      const fLen = 3 + Math.random() * 4; const fH = 1.5 + Math.random() * 1;
+      const spikeCount = Math.floor(fLen / 0.3);
+      // Horizontal bars
+      for (let h = 0; h < 2; h++) {
+        const hBar = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, fLen, 10), ironMat);
+        hBar.rotation.z = Math.PI / 2; hBar.position.y = fH * (0.3 + h * 0.4);
+        fence.add(hBar);
+      }
+      // Vertical spikes with cone tips
+      for (let s = 0; s < spikeCount; s++) {
+        const spike = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.015, fH, 8), ironMat);
+        spike.position.set(-fLen / 2 + s * 0.3 + 0.15, fH / 2, 0);
+        fence.add(spike);
+        const tip = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.1, 8), ironMat);
+        tip.position.set(-fLen / 2 + s * 0.3 + 0.15, fH + 0.05, 0);
+        fence.add(tip);
+      }
+      const fex = (Math.random() - 0.5) * w * 0.7; const fez = (Math.random() - 0.5) * d * 0.7;
+      fence.position.set(fex, getTerrainHeight(fex, fez, 0.6), fez);
+      fence.rotation.y = Math.random() * Math.PI; this._scene.add(fence);
+    }
+
+    // ── Throne room carpet detail ──
+    const carpetMat = new THREE.MeshStandardMaterial({ color: 0x881122, roughness: 0.8, side: THREE.DoubleSide });
+    const carpetTrimMat = new THREE.MeshStandardMaterial({ color: 0xccaa44, roughness: 0.5, metalness: 0.3 });
+    for (let i = 0; i < 5; i++) {
+      const carpet = new THREE.Group();
+      const cLen = 4 + Math.random() * 6; const cW = 1.5 + Math.random() * 1;
+      const body = new THREE.Mesh(new THREE.BoxGeometry(cW, 0.02, cLen), carpetMat);
+      carpet.add(body);
+      // Gold trim edges
+      for (const ex of [-cW / 2, cW / 2]) {
+        const trim = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.025, cLen), carpetTrimMat);
+        trim.position.set(ex, 0.005, 0); carpet.add(trim);
+      }
+      // End tassels
+      for (const ez of [-cLen / 2, cLen / 2]) {
+        for (let t = 0; t < 5; t++) {
+          const tassel = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.005, 0.1, 6), carpetTrimMat);
+          tassel.position.set(-cW / 2 + 0.15 + t * (cW / 5), -0.05, ez);
+          carpet.add(tassel);
+        }
+      }
+      const cpx = (Math.random() - 0.5) * w * 0.5; const cpz = (Math.random() - 0.5) * d * 0.5;
+      carpet.position.set(cpx, getTerrainHeight(cpx, cpz, 0.6) + 0.02, cpz);
+      carpet.rotation.y = Math.random() * Math.PI; this._scene.add(carpet);
+    }
+
+    // ── Weapon display racks on walls ──
+    for (let i = 0; i < 10; i++) {
+      const display = new THREE.Group();
+      const dW = 1.2 + Math.random() * 0.8;
+      const dBoard = new THREE.Mesh(new THREE.BoxGeometry(dW, 1.5, 0.06), woodMat);
+      display.add(dBoard);
+      // Shield (circle)
+      const shield = new THREE.Mesh(new THREE.CircleGeometry(0.25, 20), new THREE.MeshStandardMaterial({ color: 0x882222, roughness: 0.6, metalness: 0.3 }));
+      shield.position.set(0, 0.2, 0.04); display.add(shield);
+      const shieldRim = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.02, 8, 20), ironMat);
+      shieldRim.position.set(0, 0.2, 0.04); display.add(shieldRim);
+      // Crossed swords behind shield
+      for (const sx of [-0.15, 0.15]) {
+        const sword = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.8, 0.01), ironMat);
+        sword.position.set(sx, 0.2, 0.02); sword.rotation.z = sx > 0 ? 0.3 : -0.3;
+        display.add(sword);
+      }
+      display.position.set((Math.random() - 0.5) * w * 0.65, 2.5 + Math.random() * 3, (Math.random() - 0.5) * d * 0.65);
+      display.rotation.y = Math.random() * Math.PI; this._scene.add(display);
+    }
+
+    // ── Prison cell bars ──
+    for (let i = 0; i < 6; i++) {
+      const cell = new THREE.Group();
+      const cellW = 2 + Math.random() * 1.5; const cellH = 3 + Math.random() * 1;
+      // Vertical bars
+      const barCount = Math.floor(cellW / 0.2);
+      for (let b = 0; b < barCount; b++) {
+        const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, cellH, 8), ironMat);
+        bar.position.set(-cellW / 2 + b * (cellW / barCount) + 0.1, cellH / 2, 0);
+        cell.add(bar);
+      }
+      // Horizontal crossbars
+      for (let h = 0; h < 3; h++) {
+        const hBar = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, cellW, 8), ironMat);
+        hBar.rotation.z = Math.PI / 2;
+        hBar.position.set(0, 0.5 + h * (cellH / 3), 0);
+        cell.add(hBar);
+      }
+      // Lock mechanism
+      const lock = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.12, 0.06), ironMat);
+      lock.position.set(-cellW / 2 + 0.05, cellH * 0.45, 0.03); cell.add(lock);
+      const clx = (Math.random() - 0.5) * w * 0.6; const clz = (Math.random() - 0.5) * d * 0.6;
+      cell.position.set(clx, getTerrainHeight(clx, clz, 0.6), clz);
+      cell.rotation.y = Math.random() * Math.PI; this._scene.add(cell);
+    }
+
+    // ── Gargoyle waterspout detail on building corners ──
+    for (let i = 0; i < 8; i++) {
+      const spout = new THREE.Group();
+      // Stone bracket
+      const bracket = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.25, 0.8), darkStoneMat);
+      spout.add(bracket);
+      // Gargoyle body (simplified beast)
+      const gBody = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.4, 0.6), darkStoneMat);
+      gBody.position.set(0, 0.25, 0.3); spout.add(gBody);
+      // Head with open mouth
+      const gHead = new THREE.Mesh(new THREE.SphereGeometry(0.15, 16, 12), darkStoneMat);
+      gHead.position.set(0, 0.45, 0.6); spout.add(gHead);
+      const jaw = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.04, 0.1), darkStoneMat);
+      jaw.position.set(0, 0.35, 0.7); jaw.rotation.x = 0.3; spout.add(jaw);
+      // Water channel (thin cylinder extending forward)
+      const channel = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.4, 8), darkStoneMat);
+      channel.rotation.x = Math.PI / 2; channel.position.set(0, 0.38, 0.85); spout.add(channel);
+      // Horns
+      for (const hx of [-0.08, 0.08]) {
+        const horn = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.12, 8), darkStoneMat);
+        horn.position.set(hx, 0.58, 0.55); horn.rotation.x = -0.3;
+        horn.rotation.z = hx > 0 ? -0.2 : 0.2; spout.add(horn);
+      }
+      spout.position.set((Math.random() - 0.5) * w * 0.7, 5 + Math.random() * 4, (Math.random() - 0.5) * d * 0.7);
+      this._scene.add(spout);
+    }
   }
 
   // ────────────────────────────────────────────────────────────────────────
@@ -22375,6 +25124,117 @@ export class DiabloRenderer {
       const bx = (Math.random() - 0.5) * w * 0.5; const bz = (Math.random() - 0.5) * d * 0.5;
       bridge.position.set(bx, getTerrainHeight(bx, bz, 2.0) + 2, bz);
       bridge.rotation.y = Math.random() * Math.PI; this._scene.add(bridge);
+    }
+
+    // ── Lightning rod arrays (thin metallic cylinders with sphere tips) ──
+    for (let i = 0; i < 10; i++) {
+      const rodArray = new THREE.Group();
+      const rodCount = 3 + Math.floor(Math.random() * 3);
+      for (let r = 0; r < rodCount; r++) {
+        const rH = 3 + Math.random() * 4;
+        const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.03, rH, 12), metalMat);
+        rod.position.set((r - rodCount / 2) * 0.4, rH / 2, 0);
+        rodArray.add(rod);
+        const tip = new THREE.Mesh(new THREE.SphereGeometry(0.06, 16, 12), metalMat);
+        tip.position.set((r - rodCount / 2) * 0.4, rH + 0.06, 0);
+        rodArray.add(tip);
+        // Cross braces between rods
+        if (r < rodCount - 1) {
+          const brace = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.4, 6), metalMat);
+          brace.rotation.z = Math.PI / 2;
+          brace.position.set((r - rodCount / 2 + 0.5) * 0.4, rH * 0.6, 0);
+          rodArray.add(brace);
+        }
+      }
+      // Base plate
+      const basePlate = new THREE.Mesh(new THREE.BoxGeometry(rodCount * 0.5, 0.1, 0.4), metalMat);
+      rodArray.add(basePlate);
+      const arrL = new THREE.PointLight(0x4488ff, 0.6, 6);
+      arrL.position.y = 4; rodArray.add(arrL); this._torchLights.push(arrL);
+      const arx = (Math.random() - 0.5) * w * 0.7; const arz = (Math.random() - 0.5) * d * 0.7;
+      rodArray.position.set(arx, getTerrainHeight(arx, arz, 2.0) + 2 + Math.random() * 4, arz);
+      this._scene.add(rodArray);
+    }
+
+    // ── Wind-worn rock formations with layered erosion ──
+    for (let i = 0; i < 12; i++) {
+      const erosion = new THREE.Group();
+      const layers = 4 + Math.floor(Math.random() * 4);
+      const baseR = 0.8 + Math.random() * 1.5;
+      for (let l = 0; l < layers; l++) {
+        const layerR = baseR * (1 - l * 0.12);
+        const layerH = 0.3 + Math.random() * 0.4;
+        const layer = new THREE.Mesh(new THREE.CylinderGeometry(layerR * 0.85, layerR, layerH, 12 + Math.floor(Math.random() * 3)), l % 2 === 0 ? greyRockMat : darkRockMat);
+        layer.position.y = l * 0.35;
+        layer.rotation.y = l * 0.3 + Math.random() * 0.2;
+        erosion.add(layer);
+      }
+      // Wind-cut groove
+      const groove = new THREE.Mesh(new THREE.BoxGeometry(baseR * 1.2, 0.08, 0.15), darkRockMat);
+      groove.position.y = layers * 0.15; groove.rotation.y = Math.random() * Math.PI;
+      erosion.add(groove);
+      const erx = (Math.random() - 0.5) * w * 0.8; const erz = (Math.random() - 0.5) * d * 0.8;
+      erosion.position.set(erx, getTerrainHeight(erx, erz, 2.0), erz); this._scene.add(erosion);
+    }
+
+    // ── Broken bridge segments with hanging chain details ──
+    for (let i = 0; i < 5; i++) {
+      const brokenBridge = new THREE.Group();
+      const bbLen = 3 + Math.random() * 4;
+      // Broken platform (tilted)
+      const plat = new THREE.Mesh(new THREE.BoxGeometry(2, 0.25, bbLen), greyRockMat);
+      plat.rotation.x = (Math.random() - 0.5) * 0.3; plat.rotation.z = (Math.random() - 0.5) * 0.15;
+      brokenBridge.add(plat);
+      // Low walls (partially broken)
+      const wallLen = bbLen * (0.4 + Math.random() * 0.3);
+      const bWall = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.5, wallLen), greyRockMat);
+      bWall.position.set(0.9, 0.35, (Math.random() - 0.5) * bbLen * 0.3); brokenBridge.add(bWall);
+      // Hanging chains from broken edge
+      for (let c = 0; c < 3; c++) {
+        const chainLen = 1 + Math.random() * 2;
+        const hangChain = new THREE.Group();
+        const linkCount = Math.floor(chainLen / 0.2);
+        for (let l = 0; l < linkCount; l++) {
+          const link = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.015, 8, 12), chainMat);
+          link.position.y = -l * 0.15;
+          link.rotation.x = l % 2 === 0 ? 0 : Math.PI / 2;
+          hangChain.add(link);
+        }
+        hangChain.position.set((c - 1) * 0.5, -0.1, bbLen / 2);
+        brokenBridge.add(hangChain);
+      }
+      const bbx = (Math.random() - 0.5) * w * 0.6; const bbz = (Math.random() - 0.5) * d * 0.6;
+      brokenBridge.position.set(bbx, getTerrainHeight(bbx, bbz, 2.0) + 3 + Math.random() * 3, bbz);
+      brokenBridge.rotation.y = Math.random() * Math.PI; this._scene.add(brokenBridge);
+    }
+
+    // ── Storm-damaged structures with tilted/broken elements ──
+    for (let i = 0; i < 6; i++) {
+      const damaged = new THREE.Group();
+      // Tilted wall section
+      const wallH = 2 + Math.random() * 3; const wallW = 2 + Math.random() * 2;
+      const dWall = new THREE.Mesh(new THREE.BoxGeometry(wallW, wallH, 0.4), greyRockMat);
+      dWall.position.y = wallH / 2; dWall.rotation.z = (Math.random() - 0.5) * 0.4;
+      dWall.rotation.x = (Math.random() - 0.5) * 0.2; damaged.add(dWall);
+      // Fallen pillar
+      const pillarH = 2 + Math.random() * 2;
+      const fallen = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, pillarH, 16), greyRockMat);
+      fallen.rotation.z = Math.PI / 2 + (Math.random() - 0.5) * 0.3;
+      fallen.position.set(wallW * 0.6, 0.3, (Math.random() - 0.5) * 1); damaged.add(fallen);
+      // Rubble pile
+      for (let r = 0; r < 4 + Math.floor(Math.random() * 3); r++) {
+        const rubble = new THREE.Mesh(new THREE.DodecahedronGeometry(0.15 + Math.random() * 0.2, 1), darkRockMat);
+        rubble.position.set((Math.random() - 0.5) * wallW, 0.1 + Math.random() * 0.2, (Math.random() - 0.5) * 1);
+        rubble.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+        damaged.add(rubble);
+      }
+      // Bent metal beam
+      const beam = new THREE.Mesh(new THREE.BoxGeometry(0.08, wallH * 0.7, 0.08), metalMat);
+      beam.position.set(-wallW * 0.3, wallH * 0.3, 0.3);
+      beam.rotation.z = 0.2 + Math.random() * 0.3; damaged.add(beam);
+      const dmx = (Math.random() - 0.5) * w * 0.7; const dmz = (Math.random() - 0.5) * d * 0.7;
+      damaged.position.set(dmx, getTerrainHeight(dmx, dmz, 2.0), dmz);
+      damaged.rotation.y = Math.random() * Math.PI; this._scene.add(damaged);
     }
   }
 
@@ -22836,6 +25696,109 @@ export class DiabloRenderer {
       bLight.position.y = 1.8; brazier.add(bLight); this._torchLights.push(bLight);
       const bx = (Math.random() - 0.5) * w * 0.65; const bz = (Math.random() - 0.5) * d * 0.65;
       brazier.position.set(bx, getTerrainHeight(bx, bz, 0.8), bz); this._scene.add(brazier);
+    }
+
+    // ── Shadow tendril pillars (dark twisted cylinders) ──
+    for (let i = 0; i < 10; i++) {
+      const tendrilPillar = new THREE.Group();
+      const tpH = 4 + Math.random() * 6;
+      const twistSegs = 8 + Math.floor(Math.random() * 4);
+      for (let s = 0; s < twistSegs; s++) {
+        const t = s / twistSegs;
+        const segH = tpH / twistSegs;
+        const segR = 0.15 * (1 - t * 0.3);
+        const seg = new THREE.Mesh(new THREE.CylinderGeometry(segR * 0.8, segR, segH, 8), darkPurpleMat);
+        const twistAngle = t * Math.PI * 2;
+        const offset = Math.sin(twistAngle) * 0.1;
+        seg.position.set(offset, t * tpH + segH / 2, Math.cos(twistAngle) * 0.1);
+        seg.rotation.x = Math.sin(twistAngle) * 0.15; seg.rotation.z = Math.cos(twistAngle) * 0.15;
+        tendrilPillar.add(seg);
+      }
+      // Pulsing glow at top
+      const tipOrb = new THREE.Mesh(new THREE.SphereGeometry(0.08, 16, 12), new THREE.MeshStandardMaterial({ color: 0x8800ff, emissive: 0x6600cc, emissiveIntensity: 1.0 }));
+      tipOrb.position.y = tpH; tendrilPillar.add(tipOrb);
+      const tpL = new THREE.PointLight(0x6600aa, 0.4, 5);
+      tpL.position.y = tpH; tendrilPillar.add(tpL); this._torchLights.push(tpL);
+      const tpx = (Math.random() - 0.5) * w * 0.7; const tpz = (Math.random() - 0.5) * d * 0.7;
+      tendrilPillar.position.set(tpx, getTerrainHeight(tpx, tpz, 0.8), tpz); this._scene.add(tendrilPillar);
+    }
+
+    // ── Mirror-like portal surfaces (reflective flat circles) ──
+    for (let i = 0; i < 10; i++) {
+      const mirrorPortal = new THREE.Group();
+      const mpR = 0.8 + Math.random() * 1.5;
+      // Reflective surface
+      const mpSurf = new THREE.Mesh(new THREE.CircleGeometry(mpR, 36), new THREE.MeshStandardMaterial({ color: 0x667799, roughness: 0.02, metalness: 0.95 }));
+      mirrorPortal.add(mpSurf);
+      // Ornate frame ring
+      const mpFrame = new THREE.Mesh(new THREE.TorusGeometry(mpR, 0.06, 12, 36), purpleMat);
+      mirrorPortal.add(mpFrame);
+      // Inner glow ring
+      const mpGlow = new THREE.Mesh(new THREE.TorusGeometry(mpR * 0.85, 0.02, 8, 36), new THREE.MeshStandardMaterial({ color: 0x8844ff, emissive: 0x6633cc, emissiveIntensity: 0.8 }));
+      mpGlow.position.z = 0.01; mirrorPortal.add(mpGlow);
+      // Ripple effect (concentric circles)
+      for (let r = 1; r <= 3; r++) {
+        const ripple = new THREE.Mesh(new THREE.TorusGeometry(mpR * r * 0.25, 0.008, 6, 32), new THREE.MeshStandardMaterial({ color: 0x6644aa, emissive: 0x4422aa, emissiveIntensity: 0.4, transparent: true, opacity: 0.3 }));
+        ripple.position.z = 0.005; mirrorPortal.add(ripple);
+      }
+      mirrorPortal.position.set((Math.random() - 0.5) * w * 0.65, 1.5 + Math.random() * 5, (Math.random() - 0.5) * d * 0.65);
+      mirrorPortal.rotation.set(Math.random() * 0.3, Math.random() * Math.PI, 0); this._scene.add(mirrorPortal);
+    }
+
+    // ── Floating rune symbols (arranged thin boxes forming glyphs) ──
+    for (let i = 0; i < 14; i++) {
+      const runeGlyph = new THREE.Group();
+      const runeSize = 0.4 + Math.random() * 0.6;
+      const glyphRuneMat = new THREE.MeshStandardMaterial({ color: 0x8855ff, emissive: 0x6633cc, emissiveIntensity: 0.8, roughness: 0.3 });
+      // Outer square frame
+      for (let side = 0; side < 4; side++) {
+        const bar = new THREE.Mesh(new THREE.BoxGeometry(runeSize, 0.02, 0.02), glyphRuneMat);
+        const sa = (side / 4) * Math.PI * 2;
+        bar.position.set(Math.cos(sa) * runeSize * 0.5, Math.sin(sa) * runeSize * 0.5, 0);
+        bar.rotation.z = sa; runeGlyph.add(bar);
+      }
+      // Inner cross pattern
+      const cross1 = new THREE.Mesh(new THREE.BoxGeometry(runeSize * 0.6, 0.015, 0.015), glyphRuneMat);
+      runeGlyph.add(cross1);
+      const cross2 = new THREE.Mesh(new THREE.BoxGeometry(0.015, runeSize * 0.6, 0.015), glyphRuneMat);
+      runeGlyph.add(cross2);
+      // Diagonal lines
+      const diag1 = new THREE.Mesh(new THREE.BoxGeometry(runeSize * 0.5, 0.012, 0.012), glyphRuneMat);
+      diag1.rotation.z = Math.PI / 4; runeGlyph.add(diag1);
+      const diag2 = new THREE.Mesh(new THREE.BoxGeometry(runeSize * 0.5, 0.012, 0.012), glyphRuneMat);
+      diag2.rotation.z = -Math.PI / 4; runeGlyph.add(diag2);
+      // Corner dots
+      for (let c = 0; c < 4; c++) {
+        const ca = (c / 4) * Math.PI * 2 + Math.PI / 4;
+        const dot = new THREE.Mesh(new THREE.SphereGeometry(0.02, 8, 6), glyphRuneMat);
+        dot.position.set(Math.cos(ca) * runeSize * 0.35, Math.sin(ca) * runeSize * 0.35, 0);
+        runeGlyph.add(dot);
+      }
+      runeGlyph.position.set((Math.random() - 0.5) * w * 0.75, 1 + Math.random() * 7, (Math.random() - 0.5) * d * 0.75);
+      runeGlyph.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+      this._scene.add(runeGlyph);
+    }
+
+    // ── Corrupted crystal outcrops (dark translucent cones) ──
+    for (let i = 0; i < 14; i++) {
+      const darkCrystal = new THREE.Group();
+      const dcMat = new THREE.MeshStandardMaterial({ color: 0x330055, emissive: 0x220044, emissiveIntensity: 0.4, roughness: 0.15, metalness: 0.3, transparent: true, opacity: 0.7 });
+      const dcH = 1 + Math.random() * 2.5;
+      const mainShard = new THREE.Mesh(new THREE.ConeGeometry(0.2 + Math.random() * 0.15, dcH, 8), dcMat);
+      mainShard.position.y = dcH / 2; darkCrystal.add(mainShard);
+      // Secondary shards
+      for (let s = 0; s < 3 + Math.floor(Math.random() * 3); s++) {
+        const subH = dcH * (0.2 + Math.random() * 0.3);
+        const sub = new THREE.Mesh(new THREE.ConeGeometry(0.08 + Math.random() * 0.08, subH, 6), dcMat);
+        sub.position.set((Math.random() - 0.5) * 0.4, subH / 2, (Math.random() - 0.5) * 0.4);
+        sub.rotation.x = (Math.random() - 0.5) * 0.4; sub.rotation.z = (Math.random() - 0.5) * 0.4;
+        darkCrystal.add(sub);
+      }
+      // Inner glow
+      const dcLight = new THREE.PointLight(0x5500aa, 0.3, 4);
+      dcLight.position.y = dcH * 0.5; darkCrystal.add(dcLight); this._torchLights.push(dcLight);
+      const dcx = (Math.random() - 0.5) * w * 0.75; const dcz = (Math.random() - 0.5) * d * 0.75;
+      darkCrystal.position.set(dcx, getTerrainHeight(dcx, dcz, 0.8), dcz); this._scene.add(darkCrystal);
     }
   }
 
@@ -23411,6 +26374,125 @@ export class DiabloRenderer {
       const sx = (Math.random() - 0.5) * w * 0.7; const sz = (Math.random() - 0.5) * d * 0.7;
       symGrp.position.set(sx, getTerrainHeight(sx, sz, 0.5) + 0.03, sz); this._scene.add(symGrp);
     }
+
+    // ── Ancient fossil details embedded in walls (spiral curve approximations) ──
+    for (let i = 0; i < 10; i++) {
+      const fossil = new THREE.Group();
+      const fossilMat = new THREE.MeshStandardMaterial({ color: 0x998877, roughness: 0.7, metalness: 0.1 });
+      // Spiral shell (approximated with torus segments)
+      const spiralTurns = 3 + Math.floor(Math.random() * 2);
+      for (let s = 0; s < spiralTurns * 8; s++) {
+        const t = s / (spiralTurns * 8);
+        const sAngle = t * spiralTurns * Math.PI * 2;
+        const sR = 0.05 + t * 0.3;
+        const dot = new THREE.Mesh(new THREE.SphereGeometry(0.01 + t * 0.015, 6, 6), fossilMat);
+        dot.position.set(Math.cos(sAngle) * sR, Math.sin(sAngle) * sR, 0);
+        fossil.add(dot);
+      }
+      // Connecting ribs (radial lines)
+      for (let r = 0; r < 6; r++) {
+        const rAngle = (r / 6) * Math.PI * 2;
+        const ribLen = 0.15 + Math.random() * 0.1;
+        const rib = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.005, ribLen, 4), fossilMat);
+        rib.position.set(Math.cos(rAngle) * 0.15, Math.sin(rAngle) * 0.15, 0);
+        rib.rotation.z = rAngle + Math.PI / 2; fossil.add(rib);
+      }
+      // Background stone plate
+      const plate = new THREE.Mesh(new THREE.CircleGeometry(0.4, 16), new THREE.MeshStandardMaterial({ color: 0x555566, roughness: 0.8 }));
+      plate.position.z = -0.01; fossil.add(plate);
+      fossil.position.set((Math.random() - 0.5) * w * 0.7, 1 + Math.random() * 4, (Math.random() - 0.5) * d * 0.7);
+      fossil.rotation.set(Math.random() * 0.3, Math.random() * Math.PI, Math.random() * 0.3); this._scene.add(fossil);
+    }
+
+    // ── Primordial ooze pools (enhanced with translucent surfaces and bubbles) ──
+    const enhancedOozeMat = new THREE.MeshStandardMaterial({ color: 0x113311, emissive: 0x0a1a0a, emissiveIntensity: 0.4, roughness: 0.08, transparent: true, opacity: 0.75 });
+    for (let i = 0; i < 10; i++) {
+      const oozePool = new THREE.Group();
+      const opR = 1.5 + Math.random() * 2.5;
+      const opSurf = new THREE.Mesh(new THREE.CircleGeometry(opR, 32), enhancedOozeMat);
+      opSurf.rotation.x = -Math.PI / 2; opSurf.position.y = 0.02; oozePool.add(opSurf);
+      // Bubble spheres
+      for (let b = 0; b < 6 + Math.floor(Math.random() * 4); b++) {
+        const bR = 0.03 + Math.random() * 0.06;
+        const bubble = new THREE.Mesh(new THREE.SphereGeometry(bR, 12, 10), new THREE.MeshStandardMaterial({ color: 0x336633, transparent: true, opacity: 0.3, roughness: 0.1 }));
+        const bDist = Math.random() * opR * 0.8;
+        const bAngle = Math.random() * Math.PI * 2;
+        bubble.position.set(Math.cos(bAngle) * bDist, 0.03 + Math.random() * 0.06, Math.sin(bAngle) * bDist);
+        oozePool.add(bubble);
+      }
+      // Ripple rings
+      for (let r = 0; r < 2; r++) {
+        const ripR = opR * (0.3 + r * 0.25);
+        const ripple = new THREE.Mesh(new THREE.TorusGeometry(ripR, 0.008, 6, 28), new THREE.MeshStandardMaterial({ color: 0x224422, transparent: true, opacity: 0.25 }));
+        ripple.rotation.x = Math.PI / 2; ripple.position.y = 0.025; oozePool.add(ripple);
+      }
+      const oLight = new THREE.PointLight(0x225522, 0.3, 4);
+      oLight.position.y = 0.5; oozePool.add(oLight); this._torchLights.push(oLight);
+      const opx = (Math.random() - 0.5) * w * 0.7; const opz = (Math.random() - 0.5) * d * 0.7;
+      oozePool.position.set(opx, getTerrainHeight(opx, opz, 0.5), opz); this._scene.add(oozePool);
+    }
+
+    // ── Tentacle props (tapered curved cylinder chains) ──
+    for (let i = 0; i < 10; i++) {
+      const tentProp = new THREE.Group();
+      const tSegs = 7 + Math.floor(Math.random() * 5);
+      let tpy = 0; let tpx2 = 0; let tpz2 = 0;
+      const tCurveX = (Math.random() - 0.5) * 0.4; const tCurveZ = (Math.random() - 0.5) * 0.4;
+      for (let s = 0; s < tSegs; s++) {
+        const t = s / tSegs;
+        const segH = 0.4 + Math.random() * 0.5;
+        const topR = Math.max(0.015, 0.15 * (1 - t * 0.8));
+        const botR = Math.max(0.02, 0.18 * (1 - t * 0.8));
+        const seg = new THREE.Mesh(new THREE.CylinderGeometry(topR, botR, segH, 12), tentacleMat);
+        tpx2 += tCurveX * (0.1 + Math.random() * 0.1); tpz2 += tCurveZ * (0.1 + Math.random() * 0.1);
+        seg.position.set(tpx2, tpy + segH / 2, tpz2);
+        seg.rotation.x = tCurveZ * t * 1.5; seg.rotation.z = -tCurveX * t * 1.5;
+        tentProp.add(seg); tpy += segH * 0.7;
+        // Suction cups
+        if (Math.random() > 0.5) {
+          const sucker = new THREE.Mesh(new THREE.CircleGeometry(botR * 0.5, 12), new THREE.MeshStandardMaterial({ color: 0x2a1a2a, roughness: 0.5, side: THREE.DoubleSide }));
+          sucker.position.set(tpx2 + botR * 1.1, tpy - segH * 0.3, tpz2);
+          sucker.rotation.y = Math.PI / 2; tentProp.add(sucker);
+        }
+      }
+      // Tip (slightly glowing)
+      const tentTip = new THREE.Mesh(new THREE.SphereGeometry(0.02, 10, 8), new THREE.MeshStandardMaterial({ color: 0x336633, emissive: 0x224422, emissiveIntensity: 0.5 }));
+      tentTip.position.set(tpx2, tpy, tpz2); tentProp.add(tentTip);
+      const ttx2 = (Math.random() - 0.5) * w * 0.75; const ttz2 = (Math.random() - 0.5) * d * 0.75;
+      tentProp.position.set(ttx2, getTerrainHeight(ttx2, ttz2, 0.5), ttz2); this._scene.add(tentProp);
+    }
+
+    // ── Eldritch eye motifs on surfaces (concentric circles with iris detail) ──
+    for (let i = 0; i < 12; i++) {
+      const eyeMotif = new THREE.Group();
+      const emR = 0.5 + Math.random() * 0.8;
+      const eyeMotifMat = new THREE.MeshStandardMaterial({ color: 0x1a1a2a, roughness: 0.6 });
+      // Outer eyelid shape (torus)
+      const lid = new THREE.Mesh(new THREE.TorusGeometry(emR, emR * 0.12, 12, 32), eyeMotifMat);
+      eyeMotif.add(lid);
+      // Iris (colored circle)
+      const irisMat = new THREE.MeshStandardMaterial({ color: 0xaa4400, emissive: 0x882200, emissiveIntensity: 0.5 });
+      const irisDisc = new THREE.Mesh(new THREE.CircleGeometry(emR * 0.6, 28), irisMat);
+      eyeMotif.add(irisDisc);
+      // Iris ring detail
+      const irisRing = new THREE.Mesh(new THREE.TorusGeometry(emR * 0.45, 0.01, 8, 28), new THREE.MeshStandardMaterial({ color: 0xcc6600, emissive: 0x884400, emissiveIntensity: 0.4 }));
+      irisRing.position.z = 0.005; eyeMotif.add(irisRing);
+      // Pupil (dark center)
+      const pupilDisc = new THREE.Mesh(new THREE.CircleGeometry(emR * 0.25, 24), new THREE.MeshStandardMaterial({ color: 0x000000 }));
+      pupilDisc.position.z = 0.01; eyeMotif.add(pupilDisc);
+      // Pupil highlight
+      const highlight = new THREE.Mesh(new THREE.SphereGeometry(emR * 0.06, 10, 8), new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.8 }));
+      highlight.position.set(emR * 0.08, emR * 0.06, 0.015); eyeMotif.add(highlight);
+      // Veins radiating from iris
+      for (let v = 0; v < 6; v++) {
+        const va = Math.random() * Math.PI * 2;
+        const vein = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, emR * 0.35, 4), new THREE.MeshStandardMaterial({ color: 0xcc2200, roughness: 0.5 }));
+        vein.position.set(Math.cos(va) * emR * 0.55, Math.sin(va) * emR * 0.55, 0.005);
+        vein.rotation.z = va + Math.PI / 2; eyeMotif.add(vein);
+      }
+      eyeMotif.position.set((Math.random() - 0.5) * w * 0.65, 1.5 + Math.random() * 5, (Math.random() - 0.5) * d * 0.65);
+      eyeMotif.rotation.set((Math.random() - 0.5) * 0.4, Math.random() * Math.PI, 0); this._scene.add(eyeMotif);
+    }
   }
 
   // ────────────────────────────────────────────────────────────────────────
@@ -23627,6 +26709,71 @@ export class DiabloRenderer {
       const mx = (Math.random()-0.5)*w*0.7, mz = (Math.random()-0.5)*d*0.7;
       mist.position.set(mx, getTerrainHeight(mx, mz, 1.2) + 0.15, mz); this._scene.add(mist);
     }
+    // ── Glowing moonflower petal detail ──
+    for (let i = 0; i < 20; i++) {
+      const petalGrp = new THREE.Group();
+      const petalCount = 7 + Math.floor(Math.random() * 4);
+      for (let p = 0; p < petalCount; p++) {
+        const petal = new THREE.Mesh(new THREE.PlaneGeometry(0.08, 0.14), new THREE.MeshStandardMaterial({ color: 0xddeeff, emissive: 0x99aadd, emissiveIntensity: 0.9, transparent: true, opacity: 0.7, side: THREE.DoubleSide }));
+        const pa = (p / petalCount) * Math.PI * 2;
+        petal.position.set(Math.cos(pa) * 0.09, 0, Math.sin(pa) * 0.09);
+        petal.rotation.set(-0.4, pa, 0); petalGrp.add(petal);
+      }
+      const pistil = new THREE.Mesh(new THREE.SphereGeometry(0.025, 17, 16), new THREE.MeshStandardMaterial({ color: 0xffeeaa, emissive: 0xddcc66, emissiveIntensity: 1.2 }));
+      petalGrp.add(pistil);
+      const pfx = (Math.random()-0.5)*w*0.75, pfz = (Math.random()-0.5)*d*0.75;
+      petalGrp.position.set(pfx, getTerrainHeight(pfx, pfz, 1.2) + 0.25 + Math.random() * 0.15, pfz);
+      this._scene.add(petalGrp);
+    }
+    // ── Firefly clusters (tiny emissive spheres in groups) ──
+    for (let i = 0; i < 10; i++) {
+      const cluster = new THREE.Group();
+      const count = 5 + Math.floor(Math.random() * 6);
+      for (let f = 0; f < count; f++) {
+        const fly = new THREE.Mesh(new THREE.SphereGeometry(0.012 + Math.random() * 0.008, 16, 8), new THREE.MeshStandardMaterial({ color: 0xeeffaa, emissive: 0xaaff44, emissiveIntensity: 2.5 }));
+        fly.position.set((Math.random()-0.5)*1.2, (Math.random()-0.5)*0.8, (Math.random()-0.5)*1.2);
+        cluster.add(fly);
+      }
+      cluster.position.set((Math.random()-0.5)*w*0.7, 1.0 + Math.random()*3.5, (Math.random()-0.5)*d*0.7);
+      this._scene.add(cluster);
+    }
+    // ── Ancient druid stone circles ──
+    for (let i = 0; i < 4; i++) {
+      const circleX = (Math.random()-0.5)*w*0.5, circleZ = (Math.random()-0.5)*d*0.5;
+      const circleR = 2.0 + Math.random() * 1.5;
+      const stoneCount = 8 + Math.floor(Math.random() * 4);
+      for (let s = 0; s < stoneCount; s++) {
+        const sAngle = (s / stoneCount) * Math.PI * 2;
+        const stoneH = 0.8 + Math.random() * 1.2;
+        const standing = new THREE.Mesh(new THREE.BoxGeometry(0.25 + Math.random() * 0.15, stoneH, 0.12 + Math.random() * 0.1), moonMat);
+        const sx2 = circleX + Math.cos(sAngle) * circleR, sz2 = circleZ + Math.sin(sAngle) * circleR;
+        standing.position.set(sx2, getTerrainHeight(sx2, sz2, 1.2) + stoneH / 2, sz2);
+        standing.rotation.y = sAngle + Math.PI / 2;
+        standing.rotation.z = (Math.random()-0.5)*0.1;
+        standing.castShadow = true; this._scene.add(standing);
+      }
+      const capA1 = 0, capA2 = (1 / stoneCount) * Math.PI * 2;
+      const capstone = new THREE.Mesh(new THREE.BoxGeometry(circleR * 0.4, 0.15, 0.3), moonMat);
+      capstone.position.set(circleX + Math.cos((capA1+capA2)/2)*circleR, getTerrainHeight(circleX, circleZ, 1.2) + 1.6, circleZ + Math.sin((capA1+capA2)/2)*circleR);
+      capstone.rotation.y = (capA1+capA2)/2 + Math.PI/2; this._scene.add(capstone);
+    }
+    // ── Silvery vine tendrils hanging from trees ──
+    for (let i = 0; i < 25; i++) {
+      const vine = new THREE.Group();
+      const vineLen = 1.5 + Math.random() * 2.5;
+      for (let s = 0; s < 5; s++) {
+        const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.015, vineLen / 5, 16), new THREE.MeshStandardMaterial({ color: 0xaabbcc, emissive: 0x445566, emissiveIntensity: 0.3, transparent: true, opacity: 0.6 }));
+        seg.position.y = -s * vineLen / 5;
+        seg.rotation.z = Math.sin(s * 1.2) * 0.15; vine.add(seg);
+        if (s > 0 && Math.random() > 0.4) {
+          const tinyLeaf = new THREE.Mesh(new THREE.PlaneGeometry(0.04, 0.06), new THREE.MeshStandardMaterial({ color: 0x88aacc, emissive: 0x446688, emissiveIntensity: 0.2, side: THREE.DoubleSide, transparent: true, opacity: 0.5 }));
+          tinyLeaf.position.set(0.03, -s * vineLen / 5, 0); vine.add(tinyLeaf);
+        }
+      }
+      const vx = (Math.random()-0.5)*w*0.8, vz = (Math.random()-0.5)*d*0.8;
+      vine.position.set(vx, getTerrainHeight(vx, vz, 1.2) + 3 + Math.random() * 4, vz);
+      this._scene.add(vine);
+    }
   }
 
   // ────────────────────────────────────────────────────────────────────────
@@ -23807,6 +26954,62 @@ export class DiabloRenderer {
         new THREE.MeshStandardMaterial({ color: 0x44aacc, emissive: 0x226688, emissiveIntensity: 0.3, transparent: true, opacity: 0.04 }));
       ray.position.set((Math.random()-0.5)*w*0.5, 5, (Math.random()-0.5)*d*0.5);
       ray.rotation.z = (Math.random()-0.5)*0.3; this._scene.add(ray);
+    }
+    // ── Detailed branching coral trees ──
+    for (let i = 0; i < 12; i++) {
+      const coralTree = new THREE.Group();
+      const trunkH = 0.8 + Math.random() * 1.2;
+      const cColor = coralColors[i % coralColors.length];
+      const cMat = new THREE.MeshStandardMaterial({ color: cColor, roughness: 0.5 });
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.1, trunkH, 17), cMat);
+      trunk.position.y = trunkH / 2; coralTree.add(trunk);
+      for (let b = 0; b < 4 + Math.floor(Math.random() * 3); b++) {
+        const bLen = 0.3 + Math.random() * 0.5;
+        const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.04, bLen, 16), cMat);
+        branch.position.set((Math.random()-0.5)*0.15, trunkH * 0.4 + b * 0.15, (Math.random()-0.5)*0.15);
+        branch.rotation.set((Math.random()-0.5)*0.8, 0, (Math.random()-0.5)*0.8); coralTree.add(branch);
+        for (let t = 0; t < 2; t++) {
+          const tip = new THREE.Mesh(new THREE.SphereGeometry(0.02 + Math.random() * 0.02, 16, 8), cMat);
+          tip.position.copy(branch.position); tip.position.y += bLen * 0.4; coralTree.add(tip);
+        }
+      }
+      const ctx = (Math.random()-0.5)*w*0.7, ctz = (Math.random()-0.5)*d*0.7;
+      coralTree.position.set(ctx, getTerrainHeight(ctx, ctz, 0.8), ctz); this._scene.add(coralTree);
+    }
+    // ── Pearl-bearing clam shells ──
+    for (let i = 0; i < 10; i++) {
+      const clam = new THREE.Group();
+      const shellR = 0.1 + Math.random() * 0.08;
+      const bottom = new THREE.Mesh(new THREE.SphereGeometry(shellR, 20, 17, 0, Math.PI * 2, 0, Math.PI * 0.5), shellMat);
+      bottom.rotation.x = Math.PI; clam.add(bottom);
+      const top = new THREE.Mesh(new THREE.SphereGeometry(shellR, 20, 17, 0, Math.PI * 2, 0, Math.PI * 0.5), shellMat);
+      top.position.y = shellR * 0.3; top.rotation.x = -0.4; clam.add(top);
+      if (Math.random() > 0.4) {
+        const pearl = new THREE.Mesh(new THREE.SphereGeometry(shellR * 0.25, 20, 17), new THREE.MeshStandardMaterial({ color: 0xffeedd, emissive: 0xddccbb, emissiveIntensity: 0.3, metalness: 0.4, roughness: 0.2 }));
+        pearl.position.y = shellR * 0.05; clam.add(pearl);
+      }
+      const clx = (Math.random()-0.5)*w*0.6, clz = (Math.random()-0.5)*d*0.6;
+      clam.position.set(clx, getTerrainHeight(clx, clz, 0.8) + 0.02, clz);
+      clam.rotation.y = Math.random() * Math.PI; this._scene.add(clam);
+    }
+    // ── Shipwreck debris (scattered planks, rope, anchor) ──
+    for (let i = 0; i < 15; i++) {
+      const plank = new THREE.Mesh(new THREE.BoxGeometry(0.12 + Math.random() * 0.2, 0.03, 0.6 + Math.random() * 0.8), shipWoodMat);
+      const plx = (Math.random()-0.5)*w*0.7, plz = (Math.random()-0.5)*d*0.7;
+      plank.position.set(plx, getTerrainHeight(plx, plz, 0.8) + 0.02, plz);
+      plank.rotation.set(Math.random()*0.2, Math.random()*Math.PI, Math.random()*0.2); this._scene.add(plank);
+    }
+    for (let i = 0; i < 3; i++) {
+      const anchor = new THREE.Group();
+      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.6, 17), new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.5, roughness: 0.6 }));
+      anchor.add(shaft);
+      const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.4, 16), new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.5, roughness: 0.6 }));
+      bar.rotation.z = Math.PI / 2; bar.position.y = -0.25; anchor.add(bar);
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.015, 17, 20), new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.5, roughness: 0.6 }));
+      ring.position.y = 0.35; anchor.add(ring);
+      const anx = (Math.random()-0.5)*w*0.5, anz = (Math.random()-0.5)*d*0.5;
+      anchor.position.set(anx, getTerrainHeight(anx, anz, 0.8) + 0.1, anz);
+      anchor.rotation.set(Math.random()*0.3, Math.random()*Math.PI, Math.random()*0.5); this._scene.add(anchor);
     }
   }
 
@@ -24014,6 +27217,71 @@ export class DiabloRenderer {
         new THREE.MeshStandardMaterial({ color: 0xddccaa, emissive: 0x886644, emissiveIntensity: 0.3 }));
       dust.position.set((Math.random()-0.5)*w*0.6, 0.5+Math.random()*4, (Math.random()-0.5)*d*0.6);
       this._scene.add(dust);
+    }
+    // ── Scroll racks (vertical slotted shelves) ──
+    for (let i = 0; i < 6; i++) {
+      const rack = new THREE.Group();
+      const rackFrame = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.5, 0.3), woodMat);
+      rackFrame.position.y = 0.75; rack.add(rackFrame);
+      for (let s = 0; s < 6; s++) {
+        const scroll = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 0.25, 16), parchmentMat);
+        scroll.position.set(-0.25 + s * 0.1, 0.4 + Math.floor(s / 3) * 0.5, 0);
+        scroll.rotation.z = Math.PI / 2 + (Math.random()-0.5)*0.15; rack.add(scroll);
+      }
+      const rrx = (Math.random()-0.5)*w*0.6, rrz = (Math.random()-0.5)*d*0.6;
+      rack.position.set(rrx, getTerrainHeight(rrx, rrz, 0.4), rrz);
+      rack.rotation.y = Math.random() * Math.PI; this._scene.add(rack);
+    }
+    // ── Reading lecterns ──
+    for (let i = 0; i < 5; i++) {
+      const lectern = new THREE.Group();
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 1.2, 17), woodMat);
+      post.position.y = 0.6; lectern.add(post);
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.22, 0.06, 23), woodMat);
+      lectern.add(base);
+      const top = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.03, 0.35), woodMat);
+      top.position.set(0, 1.22, 0.05); top.rotation.x = -0.3; lectern.add(top);
+      const openBook = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.02, 0.25), new THREE.MeshStandardMaterial({ color: bookColors[i % bookColors.length] }));
+      openBook.position.set(0, 1.26, 0.05); openBook.rotation.x = -0.3; lectern.add(openBook);
+      const lex = (Math.random()-0.5)*w*0.5, lez = (Math.random()-0.5)*d*0.5;
+      lectern.position.set(lex, getTerrainHeight(lex, lez, 0.4), lez);
+      lectern.rotation.y = Math.random() * Math.PI; this._scene.add(lectern);
+    }
+    // ── Ink well props ──
+    for (let i = 0; i < 8; i++) {
+      const inkwell = new THREE.Group();
+      const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.04, 17), new THREE.MeshStandardMaterial({ color: 0x222222 }));
+      pot.position.y = 0.02; inkwell.add(pot);
+      const inkSurface = new THREE.Mesh(new THREE.CircleGeometry(0.022, 16), inkMat);
+      inkSurface.rotation.x = -Math.PI / 2; inkSurface.position.y = 0.04; inkwell.add(inkSurface);
+      const iwx = (Math.random()-0.5)*w*0.5, iwz = (Math.random()-0.5)*d*0.5;
+      inkwell.position.set(iwx, getTerrainHeight(iwx, iwz, 0.4) + 0.78, iwz); this._scene.add(inkwell);
+    }
+    // ── Candle holders along walls ──
+    for (let i = 0; i < 12; i++) {
+      const holder = new THREE.Group();
+      const bracket = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.15), ironMat);
+      holder.add(bracket);
+      const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.02, 20), ironMat);
+      plate.position.z = 0.08; plate.rotation.x = Math.PI / 2; holder.add(plate);
+      const candle = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.018, 0.12, 16), candleMat);
+      candle.position.set(0, 0.03, 0.08); holder.add(candle);
+      const flameVis = new THREE.Mesh(new THREE.ConeGeometry(0.01, 0.03, 16), new THREE.MeshStandardMaterial({ color: 0xffaa33, emissive: 0xff8800, emissiveIntensity: 2.0 }));
+      flameVis.position.set(0, 0.1, 0.08); holder.add(flameVis);
+      const chx = (Math.random()-0.5)*w*0.75, chz = (Math.random()-0.5)*d*0.75;
+      holder.position.set(chx, getTerrainHeight(chx, chz, 0.4) + 2.0 + Math.random(), chz);
+      holder.rotation.y = Math.random() * Math.PI; this._scene.add(holder);
+    }
+    // ── Fallen book piles ──
+    for (let i = 0; i < 10; i++) {
+      const pile = new THREE.Group();
+      const count = 3 + Math.floor(Math.random() * 5);
+      for (let b = 0; b < count; b++) {
+        const book = new THREE.Mesh(new THREE.BoxGeometry(0.12 + Math.random() * 0.08, 0.025, 0.16 + Math.random() * 0.06), new THREE.MeshStandardMaterial({ color: bookColors[Math.floor(Math.random() * bookColors.length)] }));
+        book.position.y = b * 0.028; book.rotation.y = (Math.random()-0.5)*0.3; pile.add(book);
+      }
+      const fpx = (Math.random()-0.5)*w*0.65, fpz = (Math.random()-0.5)*d*0.65;
+      pile.position.set(fpx, getTerrainHeight(fpx, fpz, 0.4) + 0.01, fpz); this._scene.add(pile);
     }
   }
 
@@ -24229,6 +27497,60 @@ export class DiabloRenderer {
       const sx = (Math.random()-0.5)*w*0.6, sz = (Math.random()-0.5)*d*0.6;
       step.position.set(sx, getTerrainHeight(sx, sz, 1.0)+0.02, sz); this._scene.add(step);
     }
+    // ── Temple pillar carvings (inset box patterns) ──
+    for (let i = 0; i < 12; i++) {
+      const carvGrp = new THREE.Group();
+      for (let c = 0; c < 4; c++) {
+        const inset = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.18, 0.03), goldMat);
+        inset.position.y = 0.8 + c * 0.5;
+        carvGrp.add(inset);
+        const innerInset = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.04), jadeMat);
+        innerInset.position.y = 0.8 + c * 0.5; innerInset.position.z = 0.01;
+        carvGrp.add(innerInset);
+      }
+      const cvx = (Math.random()-0.5)*w*0.7, cvz = (Math.random()-0.5)*d*0.7;
+      carvGrp.position.set(cvx, getTerrainHeight(cvx, cvz, 1.0), cvz);
+      carvGrp.rotation.y = Math.random() * Math.PI; this._scene.add(carvGrp);
+    }
+    // ── Prayer bell props ──
+    for (let i = 0; i < 6; i++) {
+      const bellGrp = new THREE.Group();
+      const hanger = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.3, 16), goldMat);
+      bellGrp.add(hanger);
+      const bell = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.18, 23), goldMat);
+      bell.position.y = -0.24; bell.rotation.x = Math.PI; bellGrp.add(bell);
+      const clapper = new THREE.Mesh(new THREE.SphereGeometry(0.02, 16, 16), goldMat);
+      clapper.position.y = -0.3; bellGrp.add(clapper);
+      bellGrp.position.set((Math.random()-0.5)*w*0.5, getTerrainHeight(0, 0, 1.0) + 3 + Math.random() * 2, (Math.random()-0.5)*d*0.5);
+      this._scene.add(bellGrp);
+    }
+    // ── Ceremonial weapon displays ──
+    for (let i = 0; i < 4; i++) {
+      const display = new THREE.Group();
+      const backboard = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.2, 0.05), redWoodMat);
+      display.add(backboard);
+      const katana = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.8, 0.01), new THREE.MeshStandardMaterial({ color: 0xaaaaaa, metalness: 0.7, roughness: 0.2 }));
+      katana.position.set(-0.15, 0, 0.04); katana.rotation.z = 0.1; display.add(katana);
+      const katanaHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.2, 16), new THREE.MeshStandardMaterial({ color: 0x443322 }));
+      katanaHandle.position.set(-0.15, -0.45, 0.04); display.add(katanaHandle);
+      const naginata = new THREE.Mesh(new THREE.BoxGeometry(0.025, 1.0, 0.01), new THREE.MeshStandardMaterial({ color: 0xaaaaaa, metalness: 0.7, roughness: 0.2 }));
+      naginata.position.set(0.15, 0, 0.04); naginata.rotation.z = -0.1; display.add(naginata);
+      const dpx = (Math.random()-0.5)*w*0.5, dpz = (Math.random()-0.5)*d*0.5;
+      display.position.set(dpx, getTerrainHeight(dpx, dpz, 1.0) + 1.5, dpz);
+      display.rotation.y = Math.random() * Math.PI; this._scene.add(display);
+    }
+    // ── Roof tile layers on pagodas ──
+    for (let i = 0; i < 8; i++) {
+      const tileRow = new THREE.Group();
+      for (let t = 0; t < 10; t++) {
+        const tile = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.04, 0.3), new THREE.MeshStandardMaterial({ color: 0x664422, roughness: 0.7 }));
+        tile.position.set(-0.9 + t * 0.2, 0, 0);
+        tile.rotation.x = -0.15; tileRow.add(tile);
+      }
+      const trx = (Math.random()-0.5)*w*0.5, trz = (Math.random()-0.5)*d*0.5;
+      tileRow.position.set(trx, getTerrainHeight(trx, trz, 1.0) + 2 + Math.random() * 3, trz);
+      tileRow.rotation.y = Math.random() * Math.PI; this._scene.add(tileRow);
+    }
   }
 
   // ────────────────────────────────────────────────────────────────────────
@@ -24427,6 +27749,47 @@ export class DiabloRenderer {
       debris.position.set(dx, getTerrainHeight(dx, dz, 1.0)+0.02, dz);
       debris.rotation.y = Math.random()*Math.PI; this._scene.add(debris);
     }
+    // ── Broken weapon fragments (sword/shield pieces) ──
+    for (let i = 0; i < 20; i++) {
+      const frag = new THREE.Group();
+      const bladeFragment = new THREE.Mesh(new THREE.BoxGeometry(0.04 + Math.random()*0.06, 0.02, 0.15 + Math.random()*0.2), metalMat);
+      frag.add(bladeFragment);
+      if (Math.random() > 0.5) {
+        const shieldFrag = new THREE.Mesh(new THREE.BoxGeometry(0.15 + Math.random()*0.1, 0.02, 0.12 + Math.random()*0.08), new THREE.MeshStandardMaterial({ color: 0x664433, metalness: 0.2, roughness: 0.7 }));
+        shieldFrag.position.set(0.12, 0, 0.08); shieldFrag.rotation.y = Math.random()*0.5; frag.add(shieldFrag);
+      }
+      const frx = (Math.random()-0.5)*w*0.8, frz = (Math.random()-0.5)*d*0.8;
+      frag.position.set(frx, getTerrainHeight(frx, frz, 1.0) + 0.02, frz);
+      frag.rotation.y = Math.random() * Math.PI; this._scene.add(frag);
+    }
+    // ── Siege equipment ruins (battering ram pieces) ──
+    for (let i = 0; i < 2; i++) {
+      const ram = new THREE.Group();
+      const logBody = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.18, 3, 20), woodMat);
+      logBody.rotation.z = Math.PI / 2; logBody.position.y = 0.3; ram.add(logBody);
+      const cap = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.4, 20), metalMat);
+      cap.rotation.z = -Math.PI / 2; cap.position.set(1.7, 0.3, 0); ram.add(cap);
+      for (let r = 0; r < 3; r++) {
+        const band = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.02, 16, 20), metalMat);
+        band.rotation.y = Math.PI / 2; band.position.set(-0.8 + r * 0.8, 0.3, 0); ram.add(band);
+      }
+      const rmx = (Math.random()-0.5)*w*0.5, rmz = (Math.random()-0.5)*d*0.5;
+      ram.position.set(rmx, getTerrainHeight(rmx, rmz, 1.0), rmz);
+      ram.rotation.y = Math.random() * Math.PI; ram.rotation.z = (Math.random()-0.5)*0.15; this._scene.add(ram);
+    }
+    // ── Crater detail (inner rubble, heat shimmer) ──
+    for (let i = 0; i < 8; i++) {
+      const crDetail = new THREE.Group();
+      for (let r = 0; r < 4; r++) {
+        const rubble = new THREE.Mesh(new THREE.DodecahedronGeometry(0.1 + Math.random()*0.15, 1), ashMat);
+        rubble.position.set((Math.random()-0.5)*0.6, 0.05, (Math.random()-0.5)*0.6);
+        rubble.rotation.set(Math.random(), Math.random(), Math.random()); crDetail.add(rubble);
+      }
+      const shimmer = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 0.8, 16), new THREE.MeshStandardMaterial({ color: 0xff8844, transparent: true, opacity: 0.04, emissive: 0xff4422, emissiveIntensity: 0.3 }));
+      shimmer.position.y = 0.4; crDetail.add(shimmer);
+      const cdx = (Math.random()-0.5)*w*0.7, cdz = (Math.random()-0.5)*d*0.7;
+      crDetail.position.set(cdx, getTerrainHeight(cdx, cdz, 1.0), cdz); this._scene.add(crDetail);
+    }
   }
 
   // ────────────────────────────────────────────────────────────────────────
@@ -24587,6 +27950,43 @@ export class DiabloRenderer {
         mush.position.set(mmx, getTerrainHeight(mmx, mmz, 0.6), mmz); this._scene.add(mush);
       }
     }
+    // ── Giant mushroom cap gill detail (radial thin planes underneath) ──
+    for (let i = 0; i < 15; i++) {
+      const gillGrp = new THREE.Group();
+      const gillR = 0.5 + Math.random() * 1.0;
+      const gillCount = 12 + Math.floor(Math.random() * 8);
+      for (let g = 0; g < gillCount; g++) {
+        const gill = new THREE.Mesh(new THREE.PlaneGeometry(gillR, 0.08), new THREE.MeshStandardMaterial({ color: 0xddccbb, side: THREE.DoubleSide, transparent: true, opacity: 0.6 }));
+        gill.rotation.y = (g / gillCount) * Math.PI;
+        gillGrp.add(gill);
+      }
+      const gmx = (Math.random()-0.5)*w*0.7, gmz = (Math.random()-0.5)*d*0.7;
+      gillGrp.position.set(gmx, getTerrainHeight(gmx, gmz, 0.6) + 2 + Math.random() * 3, gmz);
+      this._scene.add(gillGrp);
+    }
+    // ── Bioluminescent vein patterns on ground ──
+    for (let i = 0; i < 20; i++) {
+      const vein = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.015, 1.5 + Math.random() * 2.5, 16), glowFungMat);
+      const vx = (Math.random()-0.5)*w*0.8, vz = (Math.random()-0.5)*d*0.8;
+      vein.position.set(vx, getTerrainHeight(vx, vz, 0.6) + 0.02, vz);
+      vein.rotation.x = Math.PI / 2; vein.rotation.y = Math.random() * Math.PI; this._scene.add(vein);
+      if (Math.random() > 0.5) {
+        const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.01, 0.5 + Math.random() * 0.8, 16), glowFungMat);
+        branch.position.set(vx + (Math.random()-0.5)*0.3, getTerrainHeight(vx, vz, 0.6) + 0.02, vz + (Math.random()-0.5)*0.3);
+        branch.rotation.x = Math.PI / 2; branch.rotation.y = Math.random() * Math.PI; this._scene.add(branch);
+      }
+    }
+    // ── Fungal shelf brackets on walls ──
+    for (let i = 0; i < 18; i++) {
+      const shelf = new THREE.Group();
+      const bracket = new THREE.Mesh(new THREE.CylinderGeometry(0.12 + Math.random()*0.1, 0.06, 0.04, 20), new THREE.MeshStandardMaterial({ color: mushCapColors[i % mushCapColors.length], roughness: 0.5 }));
+      bracket.rotation.x = -0.3; shelf.add(bracket);
+      const underRim = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.008, 16, 20, Math.PI), new THREE.MeshStandardMaterial({ color: 0xddccbb, roughness: 0.6 }));
+      underRim.position.y = -0.02; underRim.rotation.x = Math.PI / 2; shelf.add(underRim);
+      const sfx = (Math.random()-0.5)*w*0.8, sfz = (Math.random()-0.5)*d*0.8;
+      shelf.position.set(sfx, getTerrainHeight(sfx, sfz, 0.6) + 0.8 + Math.random() * 2.5, sfz);
+      shelf.rotation.y = Math.random() * Math.PI; this._scene.add(shelf);
+    }
   }
 
   // ────────────────────────────────────────────────────────────────────────
@@ -24737,6 +28137,56 @@ export class DiabloRenderer {
       const px = (Math.random()-0.5)*w*0.7, pz = (Math.random()-0.5)*d*0.7;
       pil.position.set(px, getTerrainHeight(px, pz, 0.5)+pil.geometry.parameters.height/2, pz);
       pil.castShadow = true; this._scene.add(pil);
+    }
+    // ── Obsidian blade wall spikes ──
+    for (let i = 0; i < 20; i++) {
+      const bladeSpike = new THREE.Group();
+      const blade = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.8 + Math.random() * 0.6, 0.15), obsidianMat);
+      bladeSpike.add(blade);
+      const tip = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.2, 16), obsidianMat);
+      tip.position.y = 0.5; bladeSpike.add(tip);
+      const bsx = (Math.random()-0.5)*w*0.8, bsz = (Math.random()-0.5)*d*0.8;
+      bladeSpike.position.set(bsx, getTerrainHeight(bsx, bsz, 0.5) + 1.5 + Math.random() * 2, bsz);
+      bladeSpike.rotation.set((Math.random()-0.5)*0.3, Math.random()*Math.PI, (Math.random()-0.5)*0.3); this._scene.add(bladeSpike);
+    }
+    // ── Magma channel floor details ──
+    for (let i = 0; i < 8; i++) {
+      const magmaDetail = new THREE.Group();
+      const pool = new THREE.Mesh(new THREE.CircleGeometry(0.3 + Math.random() * 0.5, 20), lavaMat);
+      pool.rotation.x = -Math.PI / 2; magmaDetail.add(pool);
+      for (let b = 0; b < 3; b++) {
+        const bubble = new THREE.Mesh(new THREE.SphereGeometry(0.04 + Math.random() * 0.03, 16, 8), new THREE.MeshStandardMaterial({ color: 0xff6600, emissive: 0xff4400, emissiveIntensity: 2.0 }));
+        bubble.position.set((Math.random()-0.5)*0.3, 0.03, (Math.random()-0.5)*0.3); magmaDetail.add(bubble);
+      }
+      const mdx = (Math.random()-0.5)*w*0.6, mdz = (Math.random()-0.5)*d*0.6;
+      magmaDetail.position.set(mdx, getTerrainHeight(mdx, mdz, 0.5) + 0.02, mdz); this._scene.add(magmaDetail);
+    }
+    // ── Skull trophy mounts ──
+    for (let i = 0; i < 10; i++) {
+      const trophy = new THREE.Group();
+      const mount = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 0.05), darkIronMat);
+      trophy.add(mount);
+      const skull = new THREE.Mesh(new THREE.SphereGeometry(0.08, 20, 17), new THREE.MeshStandardMaterial({ color: 0xccbbaa, roughness: 0.6 }));
+      skull.position.z = 0.06; trophy.add(skull);
+      const jaw = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.03, 0.04), new THREE.MeshStandardMaterial({ color: 0xccbbaa, roughness: 0.6 }));
+      jaw.position.set(0, -0.06, 0.08); trophy.add(jaw);
+      const tmx = (Math.random()-0.5)*w*0.7, tmz = (Math.random()-0.5)*d*0.7;
+      trophy.position.set(tmx, getTerrainHeight(tmx, tmz, 0.5) + 2 + Math.random() * 2, tmz);
+      trophy.rotation.y = Math.random() * Math.PI; this._scene.add(trophy);
+    }
+    // ── Molten metal crucible props ──
+    for (let i = 0; i < 4; i++) {
+      const crucible = new THREE.Group();
+      const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.15, 0.25, 20), darkIronMat);
+      bowl.position.y = 0.12; crucible.add(bowl);
+      const molten = new THREE.Mesh(new THREE.CircleGeometry(0.17, 20), lavaMat);
+      molten.rotation.x = -Math.PI / 2; molten.position.y = 0.25; crucible.add(molten);
+      const tripod1 = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, 0.4, 16), darkIronMat);
+      tripod1.position.set(0.12, 0.05, 0); tripod1.rotation.z = 0.2; crucible.add(tripod1);
+      const tripod2 = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, 0.4, 16), darkIronMat);
+      tripod2.position.set(-0.06, 0.05, 0.1); tripod2.rotation.z = -0.2; crucible.add(tripod2);
+      const crx = (Math.random()-0.5)*w*0.5, crz = (Math.random()-0.5)*d*0.5;
+      crucible.position.set(crx, getTerrainHeight(crx, crz, 0.5), crz); this._scene.add(crucible);
     }
   }
 
@@ -24919,6 +28369,58 @@ export class DiabloRenderer {
       const light = new THREE.PointLight([0xffffcc, 0x88aaff, 0xffaacc][i%3], 0.4, 8);
       light.position.set((Math.random()-0.5)*w*0.6, 3+Math.random()*5, (Math.random()-0.5)*d*0.6);
       this._scene.add(light); this._torchLights.push(light);
+    }
+    // ── Floating platform fragments ──
+    for (let i = 0; i < 12; i++) {
+      const fragment = new THREE.Mesh(new THREE.DodecahedronGeometry(0.3 + Math.random() * 0.5, 2), ruinMat);
+      fragment.position.set((Math.random()-0.5)*w*0.7, 1 + Math.random() * 7, (Math.random()-0.5)*d*0.7);
+      fragment.rotation.set(Math.random(), Math.random(), Math.random()); this._scene.add(fragment);
+    }
+    // ── Star map floor engravings (circle + line patterns) ──
+    for (let i = 0; i < 4; i++) {
+      const engrave = new THREE.Group();
+      const outer = new THREE.Mesh(new THREE.TorusGeometry(1.5, 0.015, 16, 44), arcaneMat);
+      outer.rotation.x = -Math.PI / 2; engrave.add(outer);
+      const inner = new THREE.Mesh(new THREE.TorusGeometry(0.8, 0.01, 16, 36), arcaneMat);
+      inner.rotation.x = -Math.PI / 2; engrave.add(inner);
+      for (let l = 0; l < 8; l++) {
+        const lineA = (l / 8) * Math.PI * 2;
+        const line = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 1.5, 16), arcaneMat);
+        line.rotation.x = Math.PI / 2; line.rotation.y = lineA;
+        line.position.set(Math.cos(lineA)*0.75, 0, Math.sin(lineA)*0.75); engrave.add(line);
+      }
+      const enx = (Math.random()-0.5)*w*0.4, enz = (Math.random()-0.5)*d*0.4;
+      engrave.position.set(enx, getTerrainHeight(enx, enz, 0.8) + 0.03, enz); this._scene.add(engrave);
+    }
+    // ── Broken celestial sphere armillary ──
+    for (let i = 0; i < 3; i++) {
+      const armillary = new THREE.Group();
+      const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.1, 0.6, 17), marbleMat);
+      stand.position.y = 0.3; armillary.add(stand);
+      for (let r = 0; r < 4; r++) {
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.25 + r * 0.06, 0.008, 16, 36), new THREE.MeshStandardMaterial({ color: 0xccaa66, metalness: 0.5, roughness: 0.3 }));
+        ring.position.y = 0.7; ring.rotation.set(r * 0.4, r * 0.7, r * 0.3); armillary.add(ring);
+      }
+      const sphere = new THREE.Mesh(new THREE.SphereGeometry(0.08, 20, 17), starMat);
+      sphere.position.y = 0.7; armillary.add(sphere);
+      const arx = (Math.random()-0.5)*w*0.4, arz = (Math.random()-0.5)*d*0.4;
+      armillary.position.set(arx, getTerrainHeight(arx, arz, 0.8), arz); this._scene.add(armillary);
+    }
+    // ── Divine statue fragments ──
+    for (let i = 0; i < 8; i++) {
+      const statFrag = new THREE.Group();
+      const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 0.6, 20), divineMat);
+      statFrag.add(torso);
+      if (Math.random() > 0.5) {
+        const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.4, 16), divineMat);
+        arm.position.set(0.15, 0.1, 0); arm.rotation.z = -0.6; statFrag.add(arm);
+      }
+      if (Math.random() > 0.5) {
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.1, 20, 17), divineMat);
+        head.position.y = 0.4; statFrag.add(head);
+      }
+      statFrag.position.set((Math.random()-0.5)*w*0.6, 0.5 + Math.random() * 4, (Math.random()-0.5)*d*0.6);
+      statFrag.rotation.set(Math.random()*0.5, Math.random(), Math.random()*0.5); this._scene.add(statFrag);
     }
   }
 
@@ -25114,6 +28616,56 @@ export class DiabloRenderer {
       const px = (Math.random()-0.5)*w*0.6, pz = (Math.random()-0.5)*d*0.6;
       pool.position.set(px, getTerrainHeight(px, pz, 0.6)+0.02, pz); this._scene.add(pool);
     }
+    // ── Lava fountain centerpieces ──
+    for (let i = 0; i < 3; i++) {
+      const fountain = new THREE.Group();
+      const basin = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.6, 0.3, 27), chainMat);
+      basin.position.y = 0.15; fountain.add(basin);
+      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.12, 1.0, 20), chainMat);
+      pillar.position.y = 0.65; fountain.add(pillar);
+      const lavaTop = new THREE.Mesh(new THREE.SphereGeometry(0.15, 20, 17), fireMat);
+      lavaTop.position.y = 1.2; fountain.add(lavaTop);
+      for (let s = 0; s < 3; s++) {
+        const stream = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.04, 0.6, 16), fireMat);
+        const sa = (s / 3) * Math.PI * 2;
+        stream.position.set(Math.cos(sa)*0.15, 0.9, Math.sin(sa)*0.15);
+        stream.rotation.z = 0.3 * Math.cos(sa); fountain.add(stream);
+      }
+      const lfx = (Math.random()-0.5)*w*0.4, lfz = (Math.random()-0.5)*d*0.4;
+      fountain.position.set(lfx, getTerrainHeight(lfx, lfz, 0.6), lfz); this._scene.add(fountain);
+    }
+    // ── Chain suspension bridge segments ──
+    for (let i = 0; i < 3; i++) {
+      const bridgeGrp = new THREE.Group();
+      const bridgeLen = 3 + Math.random() * 4;
+      const plank = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.04, bridgeLen), new THREE.MeshStandardMaterial({ color: 0x3a2a1a, roughness: 0.8 }));
+      bridgeGrp.add(plank);
+      for (const side of [-0.4, 0.4]) {
+        for (let c = 0; c < 6; c++) {
+          const link = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.01, 16, 16), chainMat);
+          link.position.set(side, 0.1 + c * 0.08, (Math.random()-0.5)*bridgeLen*0.8);
+          link.rotation.y = c % 2 === 0 ? 0 : Math.PI / 2; bridgeGrp.add(link);
+        }
+      }
+      const bx = (Math.random()-0.5)*w*0.4, bz = (Math.random()-0.5)*d*0.4;
+      bridgeGrp.position.set(bx, getTerrainHeight(bx, bz, 0.6) + 1 + Math.random() * 2, bz);
+      bridgeGrp.rotation.y = Math.random() * Math.PI; this._scene.add(bridgeGrp);
+    }
+    // ── Tortured soul relief carvings on walls ──
+    for (let i = 0; i < 8; i++) {
+      const relief = new THREE.Group();
+      const panel = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.5, 0.1), demonMat);
+      relief.add(panel);
+      for (let f = 0; f < 3; f++) {
+        const figure = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.6, 16), new THREE.MeshStandardMaterial({ color: 0x443333, roughness: 0.8 }));
+        figure.position.set(-0.3 + f * 0.3, -0.1, 0.06); relief.add(figure);
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.05, 16, 16), new THREE.MeshStandardMaterial({ color: 0x443333, roughness: 0.8 }));
+        head.position.set(-0.3 + f * 0.3, 0.25, 0.06); relief.add(head);
+      }
+      const rlx = (Math.random()-0.5)*w*0.6, rlz = (Math.random()-0.5)*d*0.6;
+      relief.position.set(rlx, getTerrainHeight(rlx, rlz, 0.6) + 2, rlz);
+      relief.rotation.y = Math.random() * Math.PI; this._scene.add(relief);
+    }
   }
 
   // ────────────────────────────────────────────────────────────────────────
@@ -25268,6 +28820,53 @@ export class DiabloRenderer {
       rift.rotation.set(Math.random(), Math.random(), Math.random()); this._scene.add(rift);
       const rLight = new THREE.PointLight(0xcc44ff, 0.4, 6);
       rLight.position.copy(rift.position); this._scene.add(rLight); this._torchLights.push(rLight);
+    }
+    // ── Nebula cloud patches (translucent colored spheres) ──
+    for (let i = 0; i < 8; i++) {
+      const nebCloud = new THREE.Group();
+      const colors = [0xcc44ff, 0x4488ff, 0xff4488];
+      for (let s = 0; s < 5 + Math.floor(Math.random() * 4); s++) {
+        const cloudSphere = new THREE.Mesh(new THREE.SphereGeometry(0.5 + Math.random() * 1.5, 20, 17), new THREE.MeshStandardMaterial({ color: colors[i % 3], emissive: colors[i % 3], emissiveIntensity: 0.2, transparent: true, opacity: 0.04 + Math.random() * 0.03 }));
+        cloudSphere.position.set((Math.random()-0.5)*3, (Math.random()-0.5)*2, (Math.random()-0.5)*3);
+        nebCloud.add(cloudSphere);
+      }
+      nebCloud.position.set((Math.random()-0.5)*w*0.6, 2 + Math.random() * 5, (Math.random()-0.5)*d*0.6);
+      this._scene.add(nebCloud);
+    }
+    // ── Dimensional rift tears (thin glowing planes) ──
+    for (let i = 0; i < 6; i++) {
+      const tear = new THREE.Group();
+      const tearPlane = new THREE.Mesh(new THREE.PlaneGeometry(0.4 + Math.random() * 0.6, 1.5 + Math.random() * 1.5), new THREE.MeshStandardMaterial({ color: 0xcc44ff, emissive: 0x8822cc, emissiveIntensity: 1.5, transparent: true, opacity: 0.4, side: THREE.DoubleSide }));
+      tear.add(tearPlane);
+      for (let j = 0; j < 3; j++) {
+        const jagged = new THREE.Mesh(new THREE.PlaneGeometry(0.15, 0.3), new THREE.MeshStandardMaterial({ color: 0xeeccff, emissive: 0xaa88dd, emissiveIntensity: 1.0, transparent: true, opacity: 0.3, side: THREE.DoubleSide }));
+        jagged.position.set((Math.random()-0.5)*0.3, (Math.random()-0.5)*0.8, 0.02);
+        jagged.rotation.z = (Math.random()-0.5)*0.5; tear.add(jagged);
+      }
+      tear.position.set((Math.random()-0.5)*w*0.5, 1 + Math.random() * 5, (Math.random()-0.5)*d*0.5);
+      tear.rotation.set(Math.random()*0.3, Math.random()*Math.PI, Math.random()*0.3); this._scene.add(tear);
+    }
+    // ── Star constellation markers ──
+    for (let i = 0; i < 6; i++) {
+      const constellation = new THREE.Group();
+      const starCount = 4 + Math.floor(Math.random() * 4);
+      const positions: {x: number, y: number, z: number}[] = [];
+      for (let s = 0; s < starCount; s++) {
+        const star = new THREE.Mesh(new THREE.SphereGeometry(0.04 + Math.random() * 0.03, 17, 16), starMat);
+        const sp = {x: (Math.random()-0.5)*2, y: (Math.random()-0.5)*2, z: (Math.random()-0.5)*2};
+        star.position.set(sp.x, sp.y, sp.z); constellation.add(star); positions.push(sp);
+      }
+      for (let l = 0; l < starCount - 1; l++) {
+        const p1 = positions[l], p2 = positions[l+1];
+        const dx2 = p2.x - p1.x, dy2 = p2.y - p1.y, dz2 = p2.z - p1.z;
+        const dist = Math.sqrt(dx2*dx2 + dy2*dy2 + dz2*dz2);
+        const line = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, dist, 16), new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xaaaaff, emissiveIntensity: 0.8, transparent: true, opacity: 0.3 }));
+        line.position.set((p1.x+p2.x)/2, (p1.y+p2.y)/2, (p1.z+p2.z)/2);
+        line.lookAt(new THREE.Vector3(p2.x, p2.y, p2.z));
+        line.rotateX(Math.PI/2); constellation.add(line);
+      }
+      constellation.position.set((Math.random()-0.5)*w*0.5, 3 + Math.random() * 4, (Math.random()-0.5)*d*0.5);
+      this._scene.add(constellation);
     }
   }
 
@@ -25583,6 +29182,71 @@ export class DiabloRenderer {
       const rx = (Math.random() - 0.5) * w * 0.35, rz = (Math.random() - 0.5) * d * 0.35;
       rope.position.set(rx, getTerrainHeight(rx, rz, 1.0) + 0.04, rz); this._scene.add(rope);
     }
+    // ── Tiered seating rows (stepped boxes) ──
+    for (let tier = 0; tier < 3; tier++) {
+      const tierR2 = w * 0.35 + tier * 1.5;
+      for (let s = 0; s < 16; s++) {
+        const seatAngle = (s / 16) * Math.PI * 2;
+        if (Math.random() > 0.3) {
+          const seatBlock = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.3, 0.6), stoneMat);
+          const stx = Math.sin(seatAngle) * tierR2, stz2 = Math.cos(seatAngle) * tierR2;
+          seatBlock.position.set(stx, 0.6 + tier * 0.6, stz2);
+          seatBlock.rotation.y = -seatAngle; this._scene.add(seatBlock);
+        }
+      }
+    }
+    // ── Arena floor sand pit detail ──
+    for (let i = 0; i < 15; i++) {
+      const sandPit = new THREE.Mesh(new THREE.CircleGeometry(0.3 + Math.random() * 0.5, 20), new THREE.MeshStandardMaterial({ color: 0xbbaa88, roughness: 1.0 }));
+      sandPit.rotation.x = -Math.PI / 2;
+      const spx = (Math.random()-0.5)*w*0.25, spz = (Math.random()-0.5)*d*0.25;
+      sandPit.position.set(spx, 0.025, spz); this._scene.add(sandPit);
+    }
+    // ── Gladiator equipment racks ──
+    for (let i = 0; i < 4; i++) {
+      const rack = new THREE.Group();
+      const frame = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.5, 0.1), woodMat);
+      rack.add(frame);
+      for (let h = 0; h < 3; h++) {
+        const hook = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.015, 0.15, 16), ironMat);
+        hook.position.set(-0.3 + h * 0.3, 0.3, 0.06);
+        hook.rotation.z = -0.5; rack.add(hook);
+      }
+      const rx2 = (Math.random()-0.5)*w*0.35, rz2 = (Math.random()-0.5)*d*0.35;
+      rack.position.set(rx2, getTerrainHeight(rx2, rz2, 1.0) + 0.8, rz2);
+      rack.rotation.y = Math.random() * Math.PI; this._scene.add(rack);
+    }
+    // ── Lion cage bars ──
+    for (let i = 0; i < 2; i++) {
+      const cage = new THREE.Group();
+      for (let b = 0; b < 8; b++) {
+        const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.8, 16), ironMat);
+        bar.position.set(-0.7 + b * 0.2, 0.9, 0); cage.add(bar);
+      }
+      const topBar = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.06, 0.06), ironMat);
+      topBar.position.y = 1.8; cage.add(topBar);
+      const botBar = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.06, 0.06), ironMat);
+      cage.add(botBar);
+      const cgx = (Math.random()-0.5)*w*0.38, cgz = (Math.random()-0.5)*d*0.38;
+      cage.position.set(cgx, getTerrainHeight(cgx, cgz, 1.0), cgz);
+      cage.rotation.y = Math.random() * Math.PI; this._scene.add(cage);
+    }
+    // ── Victory arch fragments ──
+    for (let i = 0; i < 2; i++) {
+      const arch = new THREE.Group();
+      const lPillar = new THREE.Mesh(new THREE.BoxGeometry(0.4, 3, 0.4), stoneMat);
+      lPillar.position.set(-1.0, 1.5, 0); arch.add(lPillar);
+      const rPillar = new THREE.Mesh(new THREE.BoxGeometry(0.4, 3, 0.4), stoneMat);
+      rPillar.position.set(1.0, 1.5, 0); arch.add(rPillar);
+      const archTop = new THREE.Mesh(new THREE.TorusGeometry(1.0, 0.2, 16, 20, Math.PI), stoneMat);
+      archTop.position.y = 3; arch.add(archTop);
+      const keystone = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.3), darkStoneMat);
+      keystone.position.y = 4; arch.add(keystone);
+      const aAngle = Math.random() * Math.PI * 2;
+      const ar = w * 0.38;
+      arch.position.set(Math.sin(aAngle) * ar, getTerrainHeight(Math.sin(aAngle) * ar, Math.cos(aAngle) * ar, 1.0), Math.cos(aAngle) * ar);
+      arch.rotation.y = -aAngle; this._scene.add(arch);
+    }
   }
 
   // ────────────────────────────────────────────────────────────────────────
@@ -25797,6 +29461,61 @@ export class DiabloRenderer {
       edging.position.set(ex, getTerrainHeight(ex, ez, 1.0) + 0.1, ez);
       edging.rotation.y = Math.random() * Math.PI; this._scene.add(edging);
     }
+    // ── Petrified tree stone bark texture detail ──
+    for (let i = 0; i < 20; i++) {
+      const barkDetail = new THREE.Group();
+      for (let s = 0; s < 4; s++) {
+        const strip = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.4 + Math.random() * 0.6, 0.01), darkStoneMat);
+        strip.position.set((Math.random()-0.5)*0.15, s * 0.5, (Math.random()-0.5)*0.15);
+        strip.rotation.z = (Math.random()-0.5)*0.1; barkDetail.add(strip);
+      }
+      const bdx = (Math.random()-0.5)*w*0.8, bdz = (Math.random()-0.5)*d*0.8;
+      barkDetail.position.set(bdx, getTerrainHeight(bdx, bdz, 1.0) + 0.5 + Math.random() * 2, bdz);
+      barkDetail.rotation.y = Math.random() * Math.PI; this._scene.add(barkDetail);
+    }
+    // ── Frozen-in-time bird/animal statues ──
+    for (let i = 0; i < 8; i++) {
+      const frozen = new THREE.Group();
+      if (Math.random() > 0.5) {
+        const butterfly = new THREE.Group();
+        const bBody = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.01, 0.05, 16), stoneMat);
+        butterfly.add(bBody);
+        for (const side of [-1, 1]) {
+          const wing = new THREE.Mesh(new THREE.PlaneGeometry(0.06, 0.04), new THREE.MeshStandardMaterial({ color: 0x999999, side: THREE.DoubleSide }));
+          wing.position.set(side * 0.03, 0.01, 0); wing.rotation.x = side * 0.3; butterfly.add(wing);
+        }
+        frozen.add(butterfly);
+      } else {
+        const squirrel = new THREE.Group();
+        const sBody = new THREE.Mesh(new THREE.SphereGeometry(0.04, 16, 16), stoneMat);
+        sBody.scale.x = 1.3; squirrel.add(sBody);
+        const sTail = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.02, 0.08, 16), stoneMat);
+        sTail.position.set(-0.05, 0.03, 0); sTail.rotation.z = 0.8; squirrel.add(sTail);
+        frozen.add(squirrel);
+      }
+      const frx = (Math.random()-0.5)*w*0.7, frz = (Math.random()-0.5)*d*0.7;
+      frozen.position.set(frx, getTerrainHeight(frx, frz, 1.0) + 0.5 + Math.random() * 2, frz);
+      frozen.rotation.y = Math.random() * Math.PI; this._scene.add(frozen);
+    }
+    // ── Stone flower beds ──
+    for (let i = 0; i < 10; i++) {
+      const bed = new THREE.Group();
+      const border = new THREE.Mesh(new THREE.TorusGeometry(0.5 + Math.random() * 0.3, 0.06, 16, 20), darkStoneMat);
+      border.rotation.x = -Math.PI / 2; bed.add(border);
+      for (let f = 0; f < 4 + Math.floor(Math.random() * 3); f++) {
+        const flower = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.1 + Math.random() * 0.08, 16), stoneMat);
+        flower.position.set((Math.random()-0.5)*0.4, 0.05, (Math.random()-0.5)*0.4); bed.add(flower);
+      }
+      const fbx = (Math.random()-0.5)*w*0.6, fbz = (Math.random()-0.5)*d*0.6;
+      bed.position.set(fbx, getTerrainHeight(fbx, fbz, 1.0) + 0.02, fbz); this._scene.add(bed);
+    }
+    // ── Vine fossils on walls ──
+    for (let i = 0; i < 15; i++) {
+      const fossil = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.012, 0.8 + Math.random() * 1.2, 16), new THREE.MeshStandardMaterial({ color: 0x777766, roughness: 0.7 }));
+      const vfx = (Math.random()-0.5)*w*0.75, vfz = (Math.random()-0.5)*d*0.75;
+      fossil.position.set(vfx, getTerrainHeight(vfx, vfz, 1.0) + 0.5 + Math.random() * 2, vfz);
+      fossil.rotation.set(Math.random()*0.5, Math.random()*Math.PI, Math.random()*0.5); this._scene.add(fossil);
+    }
   }
 
   // ────────────────────────────────────────────────────────────────────────
@@ -25971,6 +29690,49 @@ export class DiabloRenderer {
       const shx = (Math.random() - 0.5) * w * 0.7, shz = (Math.random() - 0.5) * d * 0.7;
       shell.position.set(shx, getTerrainHeight(shx, shz, 0.6) + 0.03, shz);
       shell.rotation.set(Math.random(), Math.random(), Math.random()); this._scene.add(shell);
+    }
+    // ── Underwater coral growths on walls ──
+    for (let i = 0; i < 15; i++) {
+      const wallCoral = new THREE.Group();
+      for (let b = 0; b < 3 + Math.floor(Math.random() * 3); b++) {
+        const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.04, 0.3 + Math.random() * 0.4, 16), coralMat);
+        branch.position.set((Math.random()-0.5)*0.2, b * 0.1, 0);
+        branch.rotation.set((Math.random()-0.5)*0.5, 0, (Math.random()-0.5)*0.5); wallCoral.add(branch);
+      }
+      const wcx = (Math.random()-0.5)*w*0.7, wcz = (Math.random()-0.5)*d*0.7;
+      wallCoral.position.set(wcx, getTerrainHeight(wcx, wcz, 0.6) + 0.5 + Math.random() * 2, wcz); this._scene.add(wallCoral);
+    }
+    // ── Barnacle clusters ──
+    for (let i = 0; i < 20; i++) {
+      const barnacles = new THREE.Group();
+      for (let b = 0; b < 4 + Math.floor(Math.random() * 4); b++) {
+        const barnacle = new THREE.Mesh(new THREE.ConeGeometry(0.02 + Math.random() * 0.02, 0.04 + Math.random() * 0.03, 16), barnacleMat);
+        barnacle.position.set((Math.random()-0.5)*0.12, 0, (Math.random()-0.5)*0.12); barnacles.add(barnacle);
+      }
+      const bnx = (Math.random()-0.5)*w*0.75, bnz = (Math.random()-0.5)*d*0.75;
+      barnacles.position.set(bnx, getTerrainHeight(bnx, bnz, 0.6) + Math.random() * 2, bnz); this._scene.add(barnacles);
+    }
+    // ── Water-logged furniture ──
+    for (let i = 0; i < 6; i++) {
+      const furn = new THREE.Group();
+      const table = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.05, 0.5), new THREE.MeshStandardMaterial({ color: 0x3a2a1a, roughness: 0.9 }));
+      table.position.y = 0.3; furn.add(table);
+      for (const lx of [-0.3, 0.3]) {
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 0.3, 16), new THREE.MeshStandardMaterial({ color: 0x3a2a1a, roughness: 0.9 }));
+        leg.position.set(lx, 0.15, 0); furn.add(leg);
+      }
+      const furnCoral = new THREE.Mesh(new THREE.SphereGeometry(0.06, 16, 16), coralMat);
+      furnCoral.position.set(0.2, 0.35, 0.1); furn.add(furnCoral);
+      const fnx = (Math.random()-0.5)*w*0.5, fnz = (Math.random()-0.5)*d*0.5;
+      furn.position.set(fnx, getTerrainHeight(fnx, fnz, 0.6), fnz);
+      furn.rotation.y = Math.random() * Math.PI; furn.rotation.z = (Math.random()-0.5)*0.2; this._scene.add(furn);
+    }
+    // ── Algae streamers (thin green cylinders) ──
+    for (let i = 0; i < 25; i++) {
+      const algaeStr = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.012, 0.8 + Math.random() * 1.5, 16), kelpMat);
+      const asx = (Math.random()-0.5)*w*0.7, asz = (Math.random()-0.5)*d*0.7;
+      algaeStr.position.set(asx, getTerrainHeight(asx, asz, 0.6) + 0.5 + Math.random() * 2, asz);
+      algaeStr.rotation.set(Math.random()*0.3, 0, Math.random()*0.3); this._scene.add(algaeStr);
     }
   }
 
@@ -26158,6 +29920,59 @@ export class DiabloRenderer {
       shard.position.set(shx, getTerrainHeight(shx, shz, 1.4) + 0.2, shz);
       shard.rotation.set((Math.random() - 0.5) * 0.3, Math.random(), (Math.random() - 0.5) * 0.3);
       this._scene.add(shard);
+    }
+    // ── Canyon wall layer striations (thin colored horizontal boxes) ──
+    for (let i = 0; i < 20; i++) {
+      const striation = new THREE.Group();
+      const colors = [0x664433, 0x553322, 0x776655, 0x443322, 0x887766];
+      for (let l = 0; l < 4 + Math.floor(Math.random() * 3); l++) {
+        const layer = new THREE.Mesh(new THREE.BoxGeometry(2 + Math.random() * 3, 0.06, 0.4 + Math.random() * 0.3), new THREE.MeshStandardMaterial({ color: colors[l % colors.length], roughness: 0.9 }));
+        layer.position.y = l * 0.15; striation.add(layer);
+      }
+      const stx = (Math.random()-0.5)*w*0.8, stz = (Math.random()-0.5)*d*0.8;
+      striation.position.set(stx, getTerrainHeight(stx, stz, 1.4) + 1 + Math.random() * 4, stz);
+      striation.rotation.y = Math.random() * Math.PI; this._scene.add(striation);
+    }
+    // ── Fossil exposures ──
+    for (let i = 0; i < 8; i++) {
+      const fossilGrp = new THREE.Group();
+      const spine = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 1.0, 16), boneMat);
+      spine.rotation.z = Math.PI / 2; fossilGrp.add(spine);
+      for (let r = 0; r < 4; r++) {
+        const rib = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.02, 16, 20, Math.PI * 0.7), boneMat);
+        rib.position.set(-0.3 + r * 0.2, 0, 0); rib.rotation.y = Math.PI / 2; fossilGrp.add(rib);
+      }
+      const fox = (Math.random()-0.5)*w*0.7, foz = (Math.random()-0.5)*d*0.7;
+      fossilGrp.position.set(fox, getTerrainHeight(fox, foz, 1.4) + 1 + Math.random() * 3, foz);
+      fossilGrp.rotation.y = Math.random() * Math.PI; this._scene.add(fossilGrp);
+    }
+    // ── Rope bridge detail ──
+    for (let i = 0; i < 3; i++) {
+      const ropeBridge = new THREE.Group();
+      const bLen = 4 + Math.random() * 4;
+      for (let p = 0; p < Math.floor(bLen / 0.4); p++) {
+        const plank = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.03, 0.12), new THREE.MeshStandardMaterial({ color: 0x443322, roughness: 0.9 }));
+        plank.position.z = -bLen/2 + p * 0.4; ropeBridge.add(plank);
+      }
+      for (const side of [-0.3, 0.3]) {
+        const rope = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, bLen, 16), new THREE.MeshStandardMaterial({ color: 0x887766, roughness: 0.8 }));
+        rope.position.set(side, 0.3, 0); rope.rotation.x = Math.PI / 2; ropeBridge.add(rope);
+      }
+      const rbx = (Math.random()-0.5)*w*0.4, rbz = (Math.random()-0.5)*d*0.4;
+      ropeBridge.position.set(rbx, getTerrainHeight(rbx, rbz, 1.4) + 2 + Math.random() * 2, rbz);
+      ropeBridge.rotation.y = Math.random() * Math.PI; this._scene.add(ropeBridge);
+    }
+    // ── Mineral deposit clusters ──
+    for (let i = 0; i < 12; i++) {
+      const mineral = new THREE.Group();
+      const mineralColors = [0xcc8844, 0x44aacc, 0xaacc44, 0xcc4488];
+      for (let c = 0; c < 3 + Math.floor(Math.random() * 3); c++) {
+        const crystal = new THREE.Mesh(new THREE.ConeGeometry(0.03 + Math.random() * 0.04, 0.15 + Math.random() * 0.2, 16), new THREE.MeshStandardMaterial({ color: mineralColors[i % 4], emissive: mineralColors[i % 4], emissiveIntensity: 0.2, roughness: 0.2 }));
+        crystal.position.set((Math.random()-0.5)*0.15, 0, (Math.random()-0.5)*0.15);
+        crystal.rotation.set((Math.random()-0.5)*0.3, 0, (Math.random()-0.5)*0.3); mineral.add(crystal);
+      }
+      const mnx = (Math.random()-0.5)*w*0.7, mnz = (Math.random()-0.5)*d*0.7;
+      mineral.position.set(mnx, getTerrainHeight(mnx, mnz, 1.4) + 0.5 + Math.random() * 3, mnz); this._scene.add(mineral);
     }
   }
 
@@ -26357,6 +30172,59 @@ export class DiabloRenderer {
       light.position.set((Math.random() - 0.5) * w * 0.6, 1 + Math.random() * 2, (Math.random() - 0.5) * d * 0.6);
       this._scene.add(light); this._torchLights.push(light);
     }
+    // ── Pipe network detail (various diameter cylinders) ──
+    for (let i = 0; i < 10; i++) {
+      const pipeNet = new THREE.Group();
+      const mainPipe = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 2 + Math.random() * 3, 20), pipeMat);
+      mainPipe.rotation.z = Math.PI / 2; pipeNet.add(mainPipe);
+      const elbow = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.08, 16, 20, Math.PI / 2), pipeMat);
+      elbow.position.set(1.2, 0.2, 0); pipeNet.add(elbow);
+      const vertPipe = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1.0, 16), rustPipeMat);
+      vertPipe.position.set(1.4, 0.7, 0); pipeNet.add(vertPipe);
+      const valve = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.02, 16, 20), grateMat);
+      valve.position.set(0, 0, 0.15); pipeNet.add(valve);
+      const pnx = (Math.random()-0.5)*w*0.6, pnz = (Math.random()-0.5)*d*0.6;
+      pipeNet.position.set(pnx, getTerrainHeight(pnx, pnz, 0.4) + 1 + Math.random() * 2, pnz);
+      pipeNet.rotation.y = Math.random() * Math.PI; this._scene.add(pipeNet);
+    }
+    // ── Toxic waste barrels ──
+    for (let i = 0; i < 6; i++) {
+      const barrel = new THREE.Group();
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.2, 0.5, 20), new THREE.MeshStandardMaterial({ color: 0x555533, metalness: 0.3, roughness: 0.6 }));
+      body.position.y = 0.25; barrel.add(body);
+      const symbol = new THREE.Mesh(new THREE.PlaneGeometry(0.15, 0.15), new THREE.MeshStandardMaterial({ color: 0xffcc00, side: THREE.DoubleSide }));
+      symbol.position.set(0, 0.25, 0.21); barrel.add(symbol);
+      const leak = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.12, 0.02, 16), slimeMat);
+      leak.rotation.x = -Math.PI / 2; leak.position.set(0, 0.05, 0.22); barrel.add(leak);
+      const tbx = (Math.random()-0.5)*w*0.6, tbz = (Math.random()-0.5)*d*0.6;
+      barrel.position.set(tbx, getTerrainHeight(tbx, tbz, 0.4), tbz);
+      barrel.rotation.y = Math.random() * Math.PI; barrel.rotation.z = Math.random() > 0.7 ? (Math.random()-0.5)*0.5 : 0;
+      this._scene.add(barrel);
+    }
+    // ── Brick archway detail ──
+    for (let i = 0; i < 5; i++) {
+      const archway = new THREE.Group();
+      const lPillar = new THREE.Mesh(new THREE.BoxGeometry(0.3, 2.5, 0.3), brickMat);
+      lPillar.position.set(-0.8, 1.25, 0); archway.add(lPillar);
+      const rPillar = new THREE.Mesh(new THREE.BoxGeometry(0.3, 2.5, 0.3), brickMat);
+      rPillar.position.set(0.8, 1.25, 0); archway.add(rPillar);
+      const arch = new THREE.Mesh(new THREE.TorusGeometry(0.8, 0.15, 16, 20, Math.PI), brickMat);
+      arch.position.y = 2.5; archway.add(arch);
+      const awx = (Math.random()-0.5)*w*0.6, awz = (Math.random()-0.5)*d*0.6;
+      archway.position.set(awx, getTerrainHeight(awx, awz, 0.4), awz);
+      archway.rotation.y = Math.random() * Math.PI; this._scene.add(archway);
+    }
+    // ── Dripping stalactites ──
+    for (let i = 0; i < 15; i++) {
+      const stalactite = new THREE.Group();
+      const stH = 0.3 + Math.random() * 0.8;
+      const cone = new THREE.Mesh(new THREE.ConeGeometry(0.05 + Math.random() * 0.06, stH, 16), brickMat);
+      cone.rotation.x = Math.PI; stalactite.add(cone);
+      const drip = new THREE.Mesh(new THREE.SphereGeometry(0.015, 16, 8), new THREE.MeshStandardMaterial({ color: 0x668844, transparent: true, opacity: 0.5 }));
+      drip.position.y = -stH / 2 - 0.02; stalactite.add(drip);
+      stalactite.position.set((Math.random()-0.5)*w*0.6, getTerrainHeight(0, 0, 0.4) + 3.5 + Math.random(), (Math.random()-0.5)*d*0.6);
+      this._scene.add(stalactite);
+    }
   }
 
   // ────────────────────────────────────────────────────────────────────────
@@ -26537,6 +30405,72 @@ export class DiabloRenderer {
     altarLight.position.y = 1.0; altar.add(altarLight); this._torchLights.push(altarLight);
     altar.position.set(0, getTerrainHeight(0, 0, 0.6), 0);
     this._scene.add(altar);
+    // ── Ethereal flame pedestals ──
+    for (let i = 0; i < 6; i++) {
+      const pedestal = new THREE.Group();
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 0.8, 20), stoneMat);
+      base.position.y = 0.4; pedestal.add(base);
+      const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.1, 0.08, 20), stoneMat);
+      bowl.position.y = 0.84; pedestal.add(bowl);
+      const flame = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.3, 20), new THREE.MeshStandardMaterial({ color: 0xaaccff, emissive: 0x6688ff, emissiveIntensity: 2.0, transparent: true, opacity: 0.5 }));
+      flame.position.y = 1.05; pedestal.add(flame);
+      const pLight = new THREE.PointLight(0x8888ff, 0.4, 6);
+      pLight.position.y = 1.1; pedestal.add(pLight); this._torchLights.push(pLight);
+      const epx = (Math.random()-0.5)*w*0.5, epz = (Math.random()-0.5)*d*0.5;
+      pedestal.position.set(epx, getTerrainHeight(epx, epz, 0.6), epz); this._scene.add(pedestal);
+    }
+    // ── Translucent crystal formations ──
+    for (let i = 0; i < 10; i++) {
+      const crystGrp = new THREE.Group();
+      for (let c = 0; c < 3 + Math.floor(Math.random() * 3); c++) {
+        const cH = 0.3 + Math.random() * 0.5;
+        const crystal = new THREE.Mesh(new THREE.ConeGeometry(0.04 + Math.random() * 0.04, cH, 6), crystalAltarMat);
+        crystal.position.set((Math.random()-0.5)*0.2, cH / 2, (Math.random()-0.5)*0.2);
+        crystal.rotation.set((Math.random()-0.5)*0.2, 0, (Math.random()-0.5)*0.2); crystGrp.add(crystal);
+      }
+      const cex = (Math.random()-0.5)*w*0.6, cez = (Math.random()-0.5)*d*0.6;
+      crystGrp.position.set(cex, getTerrainHeight(cex, cez, 0.6), cez); this._scene.add(crystGrp);
+    }
+    // ── Spirit wisp trails ──
+    for (let i = 0; i < 8; i++) {
+      const trail = new THREE.Group();
+      for (let s = 0; s < 8 + Math.floor(Math.random() * 5); s++) {
+        const wisp = new THREE.Mesh(new THREE.SphereGeometry(0.03 - s * 0.002, 16, 8), spiritMat);
+        wisp.position.set(s * 0.15 + (Math.random()-0.5)*0.1, (Math.random()-0.5)*0.2, (Math.random()-0.5)*0.1);
+        trail.add(wisp);
+      }
+      trail.position.set((Math.random()-0.5)*w*0.6, 1 + Math.random() * 3, (Math.random()-0.5)*d*0.6);
+      trail.rotation.y = Math.random() * Math.PI; this._scene.add(trail);
+    }
+    // ── Sacred geometry floor patterns ──
+    for (let i = 0; i < 5; i++) {
+      const geomPattern = new THREE.Group();
+      const hexR = 1.0 + Math.random() * 0.5;
+      for (let h = 0; h < 6; h++) {
+        const hAngle = (h / 6) * Math.PI * 2;
+        const nextAngle = ((h + 1) / 6) * Math.PI * 2;
+        const line = new THREE.Mesh(new THREE.BoxGeometry(hexR * 1.0, 0.015, 0.015), runeMat);
+        line.position.set(Math.cos((hAngle+nextAngle)/2) * hexR * 0.5, 0, Math.sin((hAngle+nextAngle)/2) * hexR * 0.5);
+        line.rotation.y = -(hAngle+nextAngle)/2 + Math.PI/2; geomPattern.add(line);
+      }
+      const innerHex = new THREE.Mesh(new THREE.TorusGeometry(hexR * 0.5, 0.01, 16, 6), runeMat);
+      innerHex.rotation.x = -Math.PI / 2; geomPattern.add(innerHex);
+      const gpx = (Math.random()-0.5)*w*0.4, gpz = (Math.random()-0.5)*d*0.4;
+      geomPattern.position.set(gpx, getTerrainHeight(gpx, gpz, 0.6) + 0.03, gpz); this._scene.add(geomPattern);
+    }
+    // ── Floating prayer beads ──
+    for (let i = 0; i < 8; i++) {
+      const beads = new THREE.Group();
+      const beadCount = 12 + Math.floor(Math.random() * 8);
+      const beadR = 0.3 + Math.random() * 0.2;
+      for (let b = 0; b < beadCount; b++) {
+        const bead = new THREE.Mesh(new THREE.SphereGeometry(0.02, 16, 8), chimeMat);
+        const bAngle = (b / beadCount) * Math.PI * 2;
+        bead.position.set(Math.cos(bAngle) * beadR, 0, Math.sin(bAngle) * beadR); beads.add(bead);
+      }
+      beads.position.set((Math.random()-0.5)*w*0.5, 1.5 + Math.random() * 3, (Math.random()-0.5)*d*0.5);
+      beads.rotation.set(Math.random()*0.3, Math.random(), Math.random()*0.3); this._scene.add(beads);
+    }
   }
 
   // ────────────────────────────────────────────────────────────────────────
@@ -26725,6 +30659,65 @@ export class DiabloRenderer {
       spark.position.set((Math.random() - 0.5) * w * 0.6, 1 + Math.random() * 2, (Math.random() - 0.5) * d * 0.6);
       this._scene.add(spark); this._torchLights.push(spark);
     }
+    // ── Rusted machinery hulks (gears, pistons) ──
+    for (let i = 0; i < 6; i++) {
+      const machine = new THREE.Group();
+      const housing = new THREE.Mesh(new THREE.BoxGeometry(1.0 + Math.random(), 0.8 + Math.random() * 0.5, 0.6), rustMat);
+      machine.add(housing);
+      const gear = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.04, 4, 8), metalMat);
+      gear.position.set(0.3, 0.2, 0.31); machine.add(gear);
+      const piston = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.8, 16), metalMat);
+      piston.position.set(-0.3, 0, 0.35); piston.rotation.x = Math.PI / 2; machine.add(piston);
+      const mx = (Math.random()-0.5)*w*0.7, mz = (Math.random()-0.5)*d*0.7;
+      machine.position.set(mx, getTerrainHeight(mx, mz, 1.0) + 0.4, mz);
+      machine.rotation.y = Math.random() * Math.PI; this._scene.add(machine);
+    }
+    // ── Barbed wire fencing (twisted thin cylinders) ──
+    for (let i = 0; i < 6; i++) {
+      const fence = new THREE.Group();
+      const fenceLen = 3 + Math.random() * 4;
+      for (let p = 0; p < 2; p++) {
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 1.2, 16), rustMat);
+        post.position.set(p * fenceLen - fenceLen/2, 0.6, 0); fence.add(post);
+      }
+      for (let w2 = 0; w2 < 3; w2++) {
+        const wire = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, fenceLen, 16), metalMat);
+        wire.rotation.z = Math.PI / 2; wire.position.y = 0.3 + w2 * 0.3; fence.add(wire);
+        for (let b = 0; b < Math.floor(fenceLen * 2); b++) {
+          const barb = new THREE.Mesh(new THREE.ConeGeometry(0.008, 0.03, 8), metalMat);
+          barb.position.set(-fenceLen/2 + b * 0.5, 0.3 + w2 * 0.3, 0.01);
+          barb.rotation.z = Math.random() * Math.PI; fence.add(barb);
+        }
+      }
+      const fex = (Math.random()-0.5)*w*0.7, fez = (Math.random()-0.5)*d*0.7;
+      fence.position.set(fex, getTerrainHeight(fex, fez, 1.0), fez);
+      fence.rotation.y = Math.random() * Math.PI; this._scene.add(fence);
+    }
+    // ── Abandoned vehicle frames ──
+    for (let i = 0; i < 3; i++) {
+      const vehicle = new THREE.Group();
+      const chassis = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.3, 2.5), rustMat);
+      chassis.position.y = 0.4; vehicle.add(chassis);
+      const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.6, 1.0), rustMat);
+      cabin.position.set(0, 0.85, -0.4); vehicle.add(cabin);
+      for (let ax2 = 0; ax2 < 2; ax2++) {
+        for (const side of [-0.8, 0.8]) {
+          const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.08, 16, 20), metalMat);
+          wheel.rotation.y = Math.PI / 2;
+          wheel.position.set(side, 0.25, -0.7 + ax2 * 1.4); vehicle.add(wheel);
+        }
+      }
+      const vhx = (Math.random()-0.5)*w*0.6, vhz = (Math.random()-0.5)*d*0.6;
+      vehicle.position.set(vhx, getTerrainHeight(vhx, vhz, 1.0), vhz);
+      vehicle.rotation.y = Math.random() * Math.PI; vehicle.rotation.z = (Math.random()-0.5)*0.15; this._scene.add(vehicle);
+    }
+    // ── Toxic puddles ──
+    for (let i = 0; i < 10; i++) {
+      const toxic = new THREE.Mesh(new THREE.CircleGeometry(0.3 + Math.random() * 0.8, 20), new THREE.MeshStandardMaterial({ color: 0x446622, emissive: 0x334411, emissiveIntensity: 0.3, transparent: true, opacity: 0.6, roughness: 0.1 }));
+      toxic.rotation.x = -Math.PI / 2;
+      const tpx = (Math.random()-0.5)*w*0.7, tpz = (Math.random()-0.5)*d*0.7;
+      toxic.position.set(tpx, getTerrainHeight(tpx, tpz, 1.0) + 0.02, tpz); this._scene.add(toxic);
+    }
   }
 
   // ────────────────────────────────────────────────────────────────────────
@@ -26912,6 +30905,59 @@ export class DiabloRenderer {
       const skx = (Math.random() - 0.5) * w * 0.2, skz = (Math.random() - 0.5) * d * 0.2;
       skulls.position.set(skx, getTerrainHeight(skx, skz, 0.5), skz); this._scene.add(skulls);
     }
+    // ── Disease-warped pillars ──
+    for (let i = 0; i < 8; i++) {
+      const warpedPillar = new THREE.Group();
+      const pilH = 2 + Math.random() * 2;
+      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, pilH, 20), corruptMat);
+      col.position.y = pilH / 2; warpedPillar.add(col);
+      for (let b = 0; b < 3 + Math.floor(Math.random() * 3); b++) {
+        const bulge = new THREE.Mesh(new THREE.SphereGeometry(0.08 + Math.random() * 0.06, 16, 16), rotMat);
+        const ba = Math.random() * Math.PI * 2;
+        bulge.position.set(Math.cos(ba) * 0.22, pilH * 0.2 + b * pilH * 0.2, Math.sin(ba) * 0.22); warpedPillar.add(bulge);
+      }
+      const wpx = (Math.random()-0.5)*w*0.6, wpz = (Math.random()-0.5)*d*0.6;
+      warpedPillar.position.set(wpx, getTerrainHeight(wpx, wpz, 0.5), wpz); this._scene.add(warpedPillar);
+    }
+    // ── Pustule clusters on walls ──
+    for (let i = 0; i < 15; i++) {
+      const pustules = new THREE.Group();
+      for (let p = 0; p < 3 + Math.floor(Math.random() * 4); p++) {
+        const pustule = new THREE.Mesh(new THREE.SphereGeometry(0.03 + Math.random() * 0.04, 16, 16), new THREE.MeshStandardMaterial({ color: 0x668833, emissive: 0x334411, emissiveIntensity: 0.3, roughness: 0.3 }));
+        pustule.position.set((Math.random()-0.5)*0.15, (Math.random()-0.5)*0.15, 0);
+        pustules.add(pustule);
+      }
+      const pux = (Math.random()-0.5)*w*0.7, puz = (Math.random()-0.5)*d*0.7;
+      pustules.position.set(pux, getTerrainHeight(pux, puz, 0.5) + 1 + Math.random() * 2, puz);
+      pustules.rotation.y = Math.random() * Math.PI; this._scene.add(pustules);
+    }
+    // ── Rotting carpet ──
+    for (let i = 0; i < 3; i++) {
+      const carpet = new THREE.Mesh(new THREE.PlaneGeometry(1.5 + Math.random(), 4 + Math.random() * 3), new THREE.MeshStandardMaterial({ color: 0x442233, roughness: 0.9, side: THREE.DoubleSide }));
+      carpet.rotation.x = -Math.PI / 2;
+      const cpx = (Math.random()-0.5)*w*0.3, cpz = (Math.random()-0.5)*d*0.3;
+      carpet.position.set(cpx, getTerrainHeight(cpx, cpz, 0.5) + 0.02, cpz);
+      carpet.rotation.z = Math.random() * Math.PI; this._scene.add(carpet);
+      for (let h = 0; h < 3; h++) {
+        const hole = new THREE.Mesh(new THREE.CircleGeometry(0.1 + Math.random() * 0.15, 16), new THREE.MeshStandardMaterial({ color: 0x1a111a }));
+        hole.rotation.x = -Math.PI / 2;
+        hole.position.set(cpx + (Math.random()-0.5)*1, getTerrainHeight(cpx, cpz, 0.5) + 0.025, cpz + (Math.random()-0.5)*2);
+        this._scene.add(hole);
+      }
+    }
+    // ── Broken crown prop near throne ──
+    {
+      const brokenCrown = new THREE.Group();
+      const band = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.02, 16, 20, Math.PI * 1.5), goldMat);
+      brokenCrown.add(band);
+      for (let s = 0; s < 4; s++) {
+        const spike = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.1, 16), goldMat);
+        const sa = (s / 5) * Math.PI * 1.5;
+        spike.position.set(Math.cos(sa) * 0.15, Math.sin(sa) * 0.15 + 0.05, 0); brokenCrown.add(spike);
+      }
+      brokenCrown.position.set((Math.random()-0.5)*2, getTerrainHeight(0, 0, 0.5) + 0.05, (Math.random()-0.5)*2);
+      brokenCrown.rotation.set(0.5, Math.random() * Math.PI, 0.3); this._scene.add(brokenCrown);
+    }
   }
 
   // ────────────────────────────────────────────────────────────────────────
@@ -27084,6 +31130,78 @@ export class DiabloRenderer {
       tile.rotation.x = -Math.PI / 2;
       const tlx = (Math.random() - 0.5) * w * 0.5, tlz = (Math.random() - 0.5) * d * 0.5;
       tile.position.set(tlx, getTerrainHeight(tlx, tlz, 0.5) + 0.02, tlz); this._scene.add(tile);
+    }
+    // ── Clock face wall decorations ──
+    for (let i = 0; i < 8; i++) {
+      const wallClock = new THREE.Group();
+      const backing = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.05), wallMat);
+      wallClock.add(backing);
+      const face = new THREE.Mesh(new THREE.CircleGeometry(0.35, 30), new THREE.MeshStandardMaterial({ color: 0xeeddcc }));
+      face.position.z = 0.03; wallClock.add(face);
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.35, 0.03, 16, 30), clockMat);
+      rim.position.z = 0.03; wallClock.add(rim);
+      for (let h = 0; h < 12; h++) {
+        const dot = new THREE.Mesh(new THREE.SphereGeometry(0.012, 16, 8), handMat);
+        const da = (h / 12) * Math.PI * 2;
+        dot.position.set(Math.sin(da) * 0.28, Math.cos(da) * 0.28, 0.04); wallClock.add(dot);
+      }
+      const wcx = (Math.random()-0.5)*w*0.6, wcz = (Math.random()-0.5)*d*0.6;
+      wallClock.position.set(wcx, getTerrainHeight(wcx, wcz, 0.5) + 2 + Math.random(), wcz);
+      wallClock.rotation.y = Math.random() * Math.PI; this._scene.add(wallClock);
+    }
+    // ── Hourglass props (smaller, on surfaces) ──
+    for (let i = 0; i < 6; i++) {
+      const smallHg = new THREE.Group();
+      const topBulb = new THREE.Mesh(new THREE.SphereGeometry(0.06, 16, 16), new THREE.MeshStandardMaterial({ color: 0xddddcc, transparent: true, opacity: 0.4 }));
+      topBulb.scale.y = 1.3; topBulb.position.y = 0.1; smallHg.add(topBulb);
+      const botBulb = new THREE.Mesh(new THREE.SphereGeometry(0.06, 16, 16), new THREE.MeshStandardMaterial({ color: 0xddddcc, transparent: true, opacity: 0.4 }));
+      botBulb.scale.y = 1.3; botBulb.position.y = -0.06; smallHg.add(botBulb);
+      const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.05, 16), clockMat);
+      neck.position.y = 0.02; smallHg.add(neck);
+      const sand = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.06, 16), sandMat);
+      sand.position.y = -0.08; smallHg.add(sand);
+      const shx = (Math.random()-0.5)*w*0.5, shz = (Math.random()-0.5)*d*0.5;
+      smallHg.position.set(shx, getTerrainHeight(shx, shz, 0.5) + 0.8 + Math.random(), shz); this._scene.add(smallHg);
+    }
+    // ── Time-frozen debris (mid-air floating pieces) ──
+    for (let i = 0; i < 10; i++) {
+      const debris = new THREE.Group();
+      const aura = new THREE.Mesh(new THREE.SphereGeometry(0.2, 16, 16), frozenMat);
+      debris.add(aura);
+      const piece = new THREE.Mesh(new THREE.DodecahedronGeometry(0.08 + Math.random() * 0.06, 1), new THREE.MeshStandardMaterial({ color: 0x887766, roughness: 0.7 }));
+      debris.add(piece);
+      debris.position.set((Math.random()-0.5)*w*0.5, 1 + Math.random() * 4, (Math.random()-0.5)*d*0.5);
+      this._scene.add(debris);
+    }
+    // ── Pendulum mechanisms (wall-mounted) ──
+    for (let i = 0; i < 4; i++) {
+      const mech = new THREE.Group();
+      const plate = new THREE.Mesh(new THREE.CircleGeometry(0.4, 20), clockMat);
+      mech.add(plate);
+      for (let g = 0; g < 3; g++) {
+        const gear = new THREE.Mesh(new THREE.TorusGeometry(0.08 + g * 0.05, 0.015, 4, [6, 8, 10][g]), clockMat);
+        gear.position.set((Math.random()-0.5)*0.2, (Math.random()-0.5)*0.2, 0.02);
+        gear.rotation.z = Math.random(); mech.add(gear);
+      }
+      const pendRod = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.6, 16), handMat);
+      pendRod.position.y = -0.35; mech.add(pendRod);
+      const pendBob = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.02, 20), clockMat);
+      pendBob.position.y = -0.65; mech.add(pendBob);
+      const mex = (Math.random()-0.5)*w*0.5, mez = (Math.random()-0.5)*d*0.5;
+      mech.position.set(mex, getTerrainHeight(mex, mez, 0.5) + 2 + Math.random(), mez);
+      mech.rotation.y = Math.random() * Math.PI; this._scene.add(mech);
+    }
+    // ── Temporal rift portals ──
+    for (let i = 0; i < 4; i++) {
+      const tPortal = new THREE.Group();
+      const outer = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.04, 16, 30), timeMat);
+      tPortal.add(outer);
+      const inner = new THREE.Mesh(new THREE.CircleGeometry(0.55, 30), new THREE.MeshStandardMaterial({ color: 0x224488, emissive: 0x112266, emissiveIntensity: 1.0, transparent: true, opacity: 0.15 }));
+      tPortal.add(inner);
+      const clockOverlay = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.01, 16, 12), clockMat);
+      tPortal.add(clockOverlay);
+      tPortal.position.set((Math.random()-0.5)*w*0.5, 1.5 + Math.random() * 2, (Math.random()-0.5)*d*0.5);
+      tPortal.rotation.set(Math.random()*0.3, Math.random(), Math.random()*0.3); this._scene.add(tPortal);
     }
   }
 
@@ -27302,6 +31420,74 @@ export class DiabloRenderer {
       const stream = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 4 + Math.random() * 6, 16), madnessMat);
       stream.position.set((Math.random() - 0.5) * w * 0.6, 8, (Math.random() - 0.5) * d * 0.6);
       stream.rotation.set(Math.random() * 0.5, 0, Math.random() * 0.5); this._scene.add(stream);
+    }
+    // ── Tentacle archways ──
+    for (let i = 0; i < 4; i++) {
+      const archway = new THREE.Group();
+      for (const side of [-1, 1]) {
+        for (let s = 0; s < 6; s++) {
+          const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.08 - s * 0.008, 0.1 - s * 0.008, 0.5, 20), tentacleMat);
+          const angle = (s / 6) * Math.PI * 0.5 * side;
+          seg.position.set(side * (1.0 - Math.sin(angle) * 0.8), s * 0.45, 0);
+          seg.rotation.z = angle * 0.8; archway.add(seg);
+        }
+      }
+      const ahx = (Math.random()-0.5)*w*0.5, ahz = (Math.random()-0.5)*d*0.5;
+      archway.position.set(ahx, getTerrainHeight(ahx, ahz, 0.5), ahz);
+      archway.rotation.y = Math.random() * Math.PI; this._scene.add(archway);
+    }
+    // ── Non-euclidean geometry hints (impossible angles with thin boxes) ──
+    for (let i = 0; i < 10; i++) {
+      const impossible = new THREE.Group();
+      const bar1 = new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.5, 0.05), alienStoneMat);
+      impossible.add(bar1);
+      const bar2 = new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.2, 0.05), alienStoneMat);
+      bar2.position.set(0.4, 0.3, 0.2); bar2.rotation.set(0.4, 0.6, -0.3); impossible.add(bar2);
+      const bar3 = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.8, 0.05), alienStoneMat);
+      bar3.position.set(-0.2, -0.2, 0.4); bar3.rotation.set(-0.3, 0.2, 0.7); impossible.add(bar3);
+      const connector = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.04, 0.04), eldritchMat);
+      connector.position.set(0.2, 0.5, 0.1); connector.rotation.set(0.2, 0.4, 0.3); impossible.add(connector);
+      impossible.position.set((Math.random()-0.5)*w*0.6, 1 + Math.random() * 4, (Math.random()-0.5)*d*0.6);
+      impossible.rotation.set(Math.random(), Math.random(), Math.random()); this._scene.add(impossible);
+    }
+    // ── Sigil floor patterns ──
+    for (let i = 0; i < 8; i++) {
+      const sigil = new THREE.Group();
+      const outerCirc = new THREE.Mesh(new THREE.TorusGeometry(0.8 + Math.random() * 0.4, 0.02, 16, 36), runeMat);
+      outerCirc.rotation.x = -Math.PI / 2; sigil.add(outerCirc);
+      const innerCirc = new THREE.Mesh(new THREE.TorusGeometry(0.4 + Math.random() * 0.2, 0.015, 16, 30), runeMat);
+      innerCirc.rotation.x = -Math.PI / 2; sigil.add(innerCirc);
+      for (let l = 0; l < 7; l++) {
+        const line = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.01, 1.4), runeMat);
+        line.rotation.y = (l / 7) * Math.PI; sigil.add(line);
+      }
+      const triangle = new THREE.Group();
+      for (let t = 0; t < 3; t++) {
+        const tAngle1 = (t / 3) * Math.PI * 2;
+        const tAngle2 = ((t+1) / 3) * Math.PI * 2;
+        const tLine = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.01, 0.8), runeMat);
+        tLine.position.set(Math.cos((tAngle1+tAngle2)/2)*0.35, 0, Math.sin((tAngle1+tAngle2)/2)*0.35);
+        tLine.rotation.y = -(tAngle1+tAngle2)/2 + Math.PI/2; triangle.add(tLine);
+      }
+      sigil.add(triangle);
+      const sgx = (Math.random()-0.5)*w*0.5, sgz = (Math.random()-0.5)*d*0.5;
+      sigil.position.set(sgx, getTerrainHeight(sgx, sgz, 0.5) + 0.03, sgz); this._scene.add(sigil);
+    }
+    // ── Otherworldly flora (alien plant forms) ──
+    for (let i = 0; i < 12; i++) {
+      const flora = new THREE.Group();
+      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.04, 0.5 + Math.random() * 0.5, 16), organicMat);
+      stem.position.y = 0.3; flora.add(stem);
+      for (let p = 0; p < 3 + Math.floor(Math.random() * 3); p++) {
+        const petal = new THREE.Mesh(new THREE.SphereGeometry(0.06 + Math.random() * 0.04, 16, 16), new THREE.MeshStandardMaterial({ color: 0xaa44cc, emissive: 0x662266, emissiveIntensity: 0.5, transparent: true, opacity: 0.6 }));
+        petal.scale.y = 0.3;
+        const pa = (p / 4) * Math.PI * 2;
+        petal.position.set(Math.cos(pa) * 0.08, 0.55 + Math.random() * 0.1, Math.sin(pa) * 0.08); flora.add(petal);
+      }
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.02, 16, 8), eyeMat);
+      eye.position.y = 0.6; flora.add(eye);
+      const flx = (Math.random()-0.5)*w*0.7, flz = (Math.random()-0.5)*d*0.7;
+      flora.position.set(flx, getTerrainHeight(flx, flz, 0.5), flz); this._scene.add(flora);
     }
   }
 
