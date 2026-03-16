@@ -11041,6 +11041,7 @@ export class DiabloRenderer {
       }
 
       // ── Volcanic Wastes enemies ──
+      // --- FIRE_IMP | Estimated polygons: ~18568 triangles ---
       case EnemyType.FIRE_IMP: {
         const bodyMat = new THREE.MeshStandardMaterial({ color: 0xcc3300, emissive: 0x661100, emissiveIntensity: 0.3, roughness: 0.6 });
         const body = new THREE.Mesh(new THREE.SphereGeometry(0.3, 62, 44), bodyMat);
@@ -11070,8 +11071,28 @@ export class DiabloRenderer {
           leg.position.set(lx, 0.17, 0);
           group.add(leg);
         }
+        // Arms
+        for (const ax of [-0.25, 0.25]) {
+          const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.25, 44), bodyMat);
+          arm.position.set(ax, 0.55, 0);
+          arm.rotation.z = ax < 0 ? 0.4 : -0.4;
+          group.add(arm);
+        }
+        // Tail
+        const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.01, 0.3, 44), bodyMat);
+        tail.position.set(0, 0.35, -0.25);
+        tail.rotation.x = -0.5;
+        group.add(tail);
+        // Flame cones on head
+        const flameMat = new THREE.MeshStandardMaterial({ color: 0xff6600, emissive: 0xff4400, emissiveIntensity: 1.5 });
+        for (let f = 0; f < 3; f++) {
+          const flame = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.08, 44), flameMat);
+          flame.position.set(-0.05 + f * 0.05, 1.05, 0);
+          group.add(flame);
+        }
         break;
       }
+      // --- LAVA_ELEMENTAL | Estimated polygons: ~5008 triangles ---
       case EnemyType.LAVA_ELEMENTAL: {
         const lavaMat = new THREE.MeshStandardMaterial({ color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 0.5, roughness: 0.4 });
         const rockMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.9 });
@@ -11097,6 +11118,7 @@ export class DiabloRenderer {
         }
         break;
       }
+      // --- INFERNAL_KNIGHT | Estimated polygons: ~11324 triangles ---
       case EnemyType.INFERNAL_KNIGHT: {
         const armorMat = new THREE.MeshStandardMaterial({ color: 0x330000, metalness: 0.7, roughness: 0.3 });
         const fireMat = new THREE.MeshStandardMaterial({ color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 0.8 });
@@ -11121,8 +11143,19 @@ export class DiabloRenderer {
         const sword = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.7, 0.02), fireMat);
         sword.position.set(0.35, 0.8, 0);
         group.add(sword);
+        // Shoulder pauldrons
+        for (const sx of [-0.3, 0.3]) {
+          const pauldron = new THREE.Mesh(new THREE.SphereGeometry(0.12, 62, 44), armorMat);
+          pauldron.position.set(sx, 1.15, 0);
+          group.add(pauldron);
+        }
+        // Cape
+        const cape = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.01, 0.5), armorMat);
+        cape.position.set(0, 0.7, -0.2);
+        group.add(cape);
         break;
       }
+      // --- MAGMA_SERPENT | Estimated polygons: ~44968 triangles ---
       case EnemyType.MAGMA_SERPENT: {
         const serpMat = new THREE.MeshStandardMaterial({ color: 0x882200, emissive: 0x441100, emissiveIntensity: 0.3, roughness: 0.5 });
         // Snake-like body segments
@@ -11145,8 +11178,24 @@ export class DiabloRenderer {
           eye.position.set(ex, 0.35, 0.3);
           group.add(eye);
         }
+        // Dorsal fins
+        const finMat = new THREE.MeshStandardMaterial({ color: 0xcc3300, emissive: 0x661100, emissiveIntensity: 0.4 });
+        for (let f = 0; f < 3; f++) {
+          const fin = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.08, 44), finMat);
+          fin.position.set(Math.sin(f * 0.8) * 0.2, 0.35 + Math.sin(f * 0.5) * 0.15, -f * 0.25);
+          group.add(fin);
+        }
+        // Forked tongue
+        const tongueMat = new THREE.MeshStandardMaterial({ color: 0xff2200, emissive: 0xcc0000, emissiveIntensity: 0.5 });
+        for (const tx of [-0.015, 0.015]) {
+          const tongue = new THREE.Mesh(new THREE.ConeGeometry(0.008, 0.06, 44), tongueMat);
+          tongue.position.set(tx, 0.28, 0.35);
+          tongue.rotation.x = 0.3;
+          group.add(tongue);
+        }
         break;
       }
+      // --- MOLTEN_COLOSSUS | Estimated polygons: ~27740 triangles ---
       case EnemyType.MOLTEN_COLOSSUS: {
         const rockMat = new THREE.MeshStandardMaterial({ color: 0x2a2a2a, roughness: 0.9 });
         const lavaMat = new THREE.MeshStandardMaterial({ color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 0.8 });
@@ -11188,64 +11237,67 @@ export class DiabloRenderer {
       }
 
       // ── Abyssal Rift enemies ──
+      // --- VOID_STALKER | Estimated polygons: ~12508 triangles ---
       case EnemyType.VOID_STALKER: {
         const voidMat = new THREE.MeshStandardMaterial({ color: 0x220044, emissive: 0x110022, emissiveIntensity: 0.3, roughness: 0.5 });
         const body = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.5, 0.6), voidMat);
         body.position.y = 0.6;
         body.castShadow = true;
         group.add(body);
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 83, 57), voidMat);
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 62, 44), voidMat);
         head.position.y = 1.0;
         group.add(head);
         // Glowing purple eyes
         const eyeMat = new THREE.MeshStandardMaterial({ color: 0xaa44ff, emissive: 0x8822cc, emissiveIntensity: 2.0 });
         for (const ex of [-0.06, 0.06]) {
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.03, 57, 46), eyeMat);
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.03, 44, 36), eyeMat);
           eye.position.set(ex, 1.03, 0.15);
           group.add(eye);
         }
         // Long limbs
         for (const lx of [-0.2, 0.2]) {
-          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.5, 59), voidMat);
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.5, 44), voidMat);
           leg.position.set(lx, 0.25, 0);
           group.add(leg);
-          const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.45, 59), voidMat);
+          const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.45, 44), voidMat);
           arm.position.set(lx * 1.5, 0.75, 0);
           arm.rotation.z = lx < 0 ? 0.5 : -0.5;
           group.add(arm);
         }
         break;
       }
+      // --- SHADOW_WEAVER | Estimated polygons: ~17160 triangles ---
       case EnemyType.SHADOW_WEAVER: {
         const shadowMat = new THREE.MeshStandardMaterial({ color: 0x1a0033, emissive: 0x0a0015, emissiveIntensity: 0.2, roughness: 0.7 });
         const robeMat = new THREE.MeshStandardMaterial({ color: 0x110022, roughness: 0.8 });
         // Floating robed figure
-        const robe = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.8, 59), robeMat);
+        const robe = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.8, 44), robeMat);
         robe.position.y = 0.6;
         robe.castShadow = true;
         group.add(robe);
-        const hood = new THREE.Mesh(new THREE.SphereGeometry(0.18, 83, 57), shadowMat);
+        const hood = new THREE.Mesh(new THREE.SphereGeometry(0.18, 62, 44), shadowMat);
         hood.position.y = 1.1;
         group.add(hood);
         // Glowing hands
         const handMat = new THREE.MeshStandardMaterial({ color: 0x8844ff, emissive: 0x6622cc, emissiveIntensity: 1.5 });
         for (const hx of [-0.3, 0.3]) {
-          const hand = new THREE.Mesh(new THREE.SphereGeometry(0.06, 83, 57), handMat);
+          const hand = new THREE.Mesh(new THREE.SphereGeometry(0.06, 62, 44), handMat);
           hand.position.set(hx, 0.8, 0.15);
           group.add(hand);
         }
         // Shadow tendrils
         for (let t = 0; t < 4; t++) {
-          const tendril = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.025, 0.4, 59), shadowMat);
+          const tendril = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.025, 0.4, 44), shadowMat);
           tendril.position.set((Math.random() - 0.5) * 0.3, 0.2, (Math.random() - 0.5) * 0.3);
           tendril.rotation.set(Math.random() * 0.5, 0, Math.random() * 0.5);
           group.add(tendril);
         }
         break;
       }
+      // --- ABYSSAL_HORROR | Estimated polygons: ~22352 triangles ---
       case EnemyType.ABYSSAL_HORROR: {
         const horrorMat = new THREE.MeshStandardMaterial({ color: 0x1a0a2e, emissive: 0x0a0015, emissiveIntensity: 0.2, roughness: 0.6 });
-        const body = new THREE.Mesh(new THREE.SphereGeometry(0.5, 83, 57), horrorMat);
+        const body = new THREE.Mesh(new THREE.SphereGeometry(0.5, 62, 44), horrorMat);
         body.position.y = 0.8;
         body.scale.set(1.2, 0.8, 1);
         body.castShadow = true;
@@ -11253,7 +11305,7 @@ export class DiabloRenderer {
         // Multiple eyes
         const eyeMat = new THREE.MeshStandardMaterial({ color: 0xcc44ff, emissive: 0xaa22dd, emissiveIntensity: 1.5 });
         for (let i = 0; i < 5; i++) {
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.04, 57, 46), eyeMat);
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.04, 44, 36), eyeMat);
           eye.position.set((Math.random() - 0.5) * 0.4, 0.7 + Math.random() * 0.3, 0.4);
           group.add(eye);
         }
@@ -11261,35 +11313,37 @@ export class DiabloRenderer {
         for (let t = 0; t < 6; t++) {
           const tentMat = new THREE.MeshStandardMaterial({ color: 0x2a1a3e, roughness: 0.7 });
           const angle = (t / 6) * Math.PI * 2;
-          const tent = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 0.6, 59), tentMat);
+          const tent = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 0.6, 44), tentMat);
           tent.position.set(Math.cos(angle) * 0.4, 0.3, Math.sin(angle) * 0.4);
           tent.rotation.set(Math.random() * 0.5, 0, Math.cos(angle) * 0.8);
           group.add(tent);
         }
         break;
       }
+      // --- RIFT_WALKER | Estimated polygons: ~11276 triangles ---
       case EnemyType.RIFT_WALKER: {
         const riftMat = new THREE.MeshStandardMaterial({ color: 0x2a1a4e, emissive: 0x110033, emissiveIntensity: 0.3, roughness: 0.5 });
         const body = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.6, 0.25), riftMat);
         body.position.y = 0.8;
         body.castShadow = true;
         group.add(body);
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 83, 57), riftMat);
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 62, 44), riftMat);
         head.position.y = 1.2;
         group.add(head);
         // Phase effect - translucent aura
         const auraMat = new THREE.MeshStandardMaterial({ color: 0x6622ff, emissive: 0x4400cc, emissiveIntensity: 0.5, transparent: true, opacity: 0.3 });
-        const aura = new THREE.Mesh(new THREE.SphereGeometry(0.5, 83, 57), auraMat);
+        const aura = new THREE.Mesh(new THREE.SphereGeometry(0.5, 62, 44), auraMat);
         aura.position.y = 0.8;
         group.add(aura);
         // Legs
         for (const lx of [-0.1, 0.1]) {
-          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.5, 59), riftMat);
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.5, 44), riftMat);
           leg.position.set(lx, 0.25, 0);
           group.add(leg);
         }
         break;
       }
+      // --- ENTROPY_LORD | Estimated polygons: ~17524 triangles ---
       case EnemyType.ENTROPY_LORD: {
         const lordMat = new THREE.MeshStandardMaterial({ color: 0x1a0a3e, emissive: 0x0a0020, emissiveIntensity: 0.3, roughness: 0.5 });
         const voidMat = new THREE.MeshStandardMaterial({ color: 0x8844ff, emissive: 0x6622cc, emissiveIntensity: 1.0 });
@@ -11297,30 +11351,30 @@ export class DiabloRenderer {
         torso.position.y = 1.5;
         torso.castShadow = true;
         group.add(torso);
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.35, 83, 57), lordMat);
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.35, 62, 44), lordMat);
         head.position.y = 2.2;
         group.add(head);
         // Crown of void energy
         const crownMat = new THREE.MeshStandardMaterial({ color: 0xaa66ff, emissive: 0x8844cc, emissiveIntensity: 1.5 });
         for (let c = 0; c < 5; c++) {
-          const spike = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.3, 59), crownMat);
+          const spike = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.3, 44), crownMat);
           const a = (c / 5) * Math.PI * 2;
           spike.position.set(Math.cos(a) * 0.25, 2.55, Math.sin(a) * 0.25);
           group.add(spike);
         }
         // Arms with void orbs
         for (const ax of [-0.6, 0.6]) {
-          const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.7, 59), lordMat);
+          const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.7, 44), lordMat);
           arm.position.set(ax, 1.3, 0);
           arm.rotation.z = ax < 0 ? 0.4 : -0.4;
           group.add(arm);
-          const orb = new THREE.Mesh(new THREE.SphereGeometry(0.12, 83, 57), voidMat);
+          const orb = new THREE.Mesh(new THREE.SphereGeometry(0.12, 62, 44), voidMat);
           orb.position.set(ax * 1.3, 1.0, 0);
           group.add(orb);
         }
         // Legs
         for (const lx of [-0.2, 0.2]) {
-          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.8, 59), lordMat);
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.8, 44), lordMat);
           leg.position.set(lx, 0.5, 0);
           group.add(leg);
         }
@@ -11328,6 +11382,7 @@ export class DiabloRenderer {
       }
 
       // ── Dragon's Sanctum enemies ──
+      // --- DRAGONKIN_WARRIOR | Estimated polygons: ~12432 triangles ---
       case EnemyType.DRAGONKIN_WARRIOR: {
         const scaleMat = new THREE.MeshStandardMaterial({ color: 0x445522, roughness: 0.6, metalness: 0.2 });
         const armorMat = new THREE.MeshStandardMaterial({ color: 0x554422, metalness: 0.5, roughness: 0.4 });
@@ -11335,7 +11390,7 @@ export class DiabloRenderer {
         torso.position.y = 0.9;
         torso.castShadow = true;
         group.add(torso);
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 83, 57), scaleMat);
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 62, 44), scaleMat);
         head.scale.set(1, 0.9, 1.2);
         head.position.y = 1.35;
         group.add(head);
@@ -11346,54 +11401,56 @@ export class DiabloRenderer {
         // Eyes
         const eyeMat = new THREE.MeshStandardMaterial({ color: 0xffaa00, emissive: 0xcc8800, emissiveIntensity: 1.0 });
         for (const ex of [-0.07, 0.07]) {
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 57, 46), eyeMat);
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 44, 36), eyeMat);
           eye.position.set(ex, 1.38, 0.16);
           group.add(eye);
         }
         // Legs & Arms
         for (const lx of [-0.12, 0.12]) {
-          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.5, 59), scaleMat);
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.5, 44), scaleMat);
           leg.position.set(lx, 0.3, 0);
           group.add(leg);
         }
         // Weapon (halberd)
         const weapMat = new THREE.MeshStandardMaterial({ color: 0x666666, metalness: 0.7, roughness: 0.3 });
-        const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.0, 59), weapMat);
+        const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.0, 44), weapMat);
         shaft.position.set(0.3, 0.9, 0);
         group.add(shaft);
-        const blade = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.2, 59), weapMat);
+        const blade = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.2, 44), weapMat);
         blade.position.set(0.3, 1.45, 0);
         group.add(blade);
         break;
       }
+      // --- WYRM_PRIEST | Estimated polygons: ~11176 triangles ---
       case EnemyType.WYRM_PRIEST: {
         const robeMat = new THREE.MeshStandardMaterial({ color: 0x442200, roughness: 0.8 });
         const scaleMat = new THREE.MeshStandardMaterial({ color: 0x556633, roughness: 0.6 });
         const fireMat = new THREE.MeshStandardMaterial({ color: 0xff6600, emissive: 0xff4400, emissiveIntensity: 1.0 });
         // Robed body
-        const robe = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.9, 59), robeMat);
+        const robe = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.9, 44), robeMat);
         robe.position.y = 0.5;
         robe.castShadow = true;
         group.add(robe);
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 83, 57), scaleMat);
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 62, 44), scaleMat);
         head.position.y = 1.1;
         group.add(head);
         // Staff with flame
-        const staff = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 1.2, 59), new THREE.MeshStandardMaterial({ color: 0x553311 }));
+        const staff = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 1.2, 44), new THREE.MeshStandardMaterial({ color: 0x553311 }));
         staff.position.set(0.25, 0.7, 0);
         group.add(staff);
-        const flame = new THREE.Mesh(new THREE.SphereGeometry(0.08, 83, 57), fireMat);
+        const flame = new THREE.Mesh(new THREE.SphereGeometry(0.08, 62, 44), fireMat);
         flame.position.set(0.25, 1.35, 0);
         group.add(flame);
         break;
       }
+      // --- DRAKE_GUARDIAN | Estimated polygons: ~6264 triangles ---
       case EnemyType.DRAKE_GUARDIAN: {
         const scaleMat = new THREE.MeshStandardMaterial({ color: 0x886633, roughness: 0.5, metalness: 0.3 });
         const body = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.5, 0.8), scaleMat);
         body.position.y = 0.6;
         body.castShadow = true;
         group.add(body);
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.25, 83, 57), scaleMat);
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.25, 62, 44), scaleMat);
         head.scale.set(1, 0.8, 1.4);
         head.position.set(0, 0.9, 0.3);
         group.add(head);
@@ -11408,25 +11465,26 @@ export class DiabloRenderer {
         }
         // Legs
         for (const [lx, lz] of [[-0.2, 0.2], [0.2, 0.2], [-0.2, -0.3], [0.2, -0.3]]) {
-          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.4, 59), scaleMat);
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.4, 44), scaleMat);
           leg.position.set(lx, 0.2, lz);
           group.add(leg);
         }
         // Tail
-        const tail = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.6, 59), scaleMat);
+        const tail = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.6, 44), scaleMat);
         tail.position.set(0, 0.5, -0.7);
         tail.rotation.x = -0.5;
         group.add(tail);
         break;
       }
+      // --- DRAGON_WHELP | Estimated polygons: ~18220 triangles ---
       case EnemyType.DRAGON_WHELP: {
         const whelpMat = new THREE.MeshStandardMaterial({ color: 0xcc5533, emissive: 0x441100, emissiveIntensity: 0.2, roughness: 0.5 });
-        const body = new THREE.Mesh(new THREE.SphereGeometry(0.25, 83, 57), whelpMat);
+        const body = new THREE.Mesh(new THREE.SphereGeometry(0.25, 62, 44), whelpMat);
         body.position.y = 0.5;
         body.scale.set(1, 0.8, 1.2);
         body.castShadow = true;
         group.add(body);
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 83, 57), whelpMat);
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 62, 44), whelpMat);
         head.position.set(0, 0.7, 0.15);
         group.add(head);
         // Small wings
@@ -11440,12 +11498,31 @@ export class DiabloRenderer {
         // Fire eyes
         const eyeMat = new THREE.MeshStandardMaterial({ color: 0xff8800, emissive: 0xcc6600, emissiveIntensity: 1.5 });
         for (const ex of [-0.05, 0.05]) {
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 57, 46), eyeMat);
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 44, 36), eyeMat);
           eye.position.set(ex, 0.73, 0.26);
           group.add(eye);
         }
+        // Tail
+        const whelpTail = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.4, 44), whelpMat);
+        whelpTail.position.set(0, 0.4, -0.35);
+        whelpTail.rotation.x = -0.4;
+        group.add(whelpTail);
+        // Horns
+        for (const hx of [-0.05, 0.05]) {
+          const horn = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.06, 44), new THREE.MeshStandardMaterial({ color: 0x222222 }));
+          horn.position.set(hx, 0.85, 0.12);
+          horn.rotation.z = hx < 0 ? 0.3 : -0.3;
+          group.add(horn);
+        }
+        // Legs
+        for (const [lx, lz] of [[-0.1, 0.08], [0.1, 0.08], [-0.1, -0.1], [0.1, -0.1]]) {
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.035, 0.15, 44), whelpMat);
+          leg.position.set(lx, 0.25, lz);
+          group.add(leg);
+        }
         break;
       }
+      // --- ELDER_DRAGON | Estimated polygons: ~17540 triangles ---
       case EnemyType.ELDER_DRAGON: {
         const dragonMat = new THREE.MeshStandardMaterial({ color: 0x884422, roughness: 0.4, metalness: 0.3 });
         const fireMat = new THREE.MeshStandardMaterial({ color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 0.8 });
@@ -11455,7 +11532,7 @@ export class DiabloRenderer {
         body.castShadow = true;
         group.add(body);
         // Neck and head
-        const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 0.8, 59), dragonMat);
+        const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 0.8, 44), dragonMat);
         neck.position.set(0, 1.5, 0.6);
         neck.rotation.x = -0.5;
         group.add(neck);
@@ -11464,7 +11541,7 @@ export class DiabloRenderer {
         group.add(head);
         // Horns
         for (const hx of [-0.15, 0.15]) {
-          const horn = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.4, 59), new THREE.MeshStandardMaterial({ color: 0x222211 }));
+          const horn = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.4, 44), new THREE.MeshStandardMaterial({ color: 0x222211 }));
           horn.position.set(hx, 2.1, 0.85);
           horn.rotation.z = hx < 0 ? 0.3 : -0.3;
           group.add(horn);
@@ -11472,7 +11549,7 @@ export class DiabloRenderer {
         // Fire eyes
         const eyeMat = new THREE.MeshStandardMaterial({ color: 0xff6600, emissive: 0xff4400, emissiveIntensity: 2.0 });
         for (const ex of [-0.1, 0.1]) {
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.05, 83, 57), eyeMat);
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.05, 62, 44), eyeMat);
           eye.position.set(ex, 1.85, 1.25);
           group.add(eye);
         }
@@ -11487,21 +11564,22 @@ export class DiabloRenderer {
         }
         // Legs
         for (const [lx, lz] of [[-0.4, 0.4], [0.4, 0.4], [-0.4, -0.5], [0.4, -0.5]]) {
-          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, 0.7, 59), dragonMat);
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, 0.7, 44), dragonMat);
           leg.position.set(lx, 0.35, lz);
           group.add(leg);
         }
         // Tail
-        const tail = new THREE.Mesh(new THREE.ConeGeometry(0.15, 1.2, 59), dragonMat);
+        const tail = new THREE.Mesh(new THREE.ConeGeometry(0.15, 1.2, 44), dragonMat);
         tail.position.set(0, 0.8, -1.3);
         tail.rotation.x = -0.3;
         group.add(tail);
         // Fire breath glow
-        const breathGlow = new THREE.Mesh(new THREE.SphereGeometry(0.15, 83, 57), fireMat);
+        const breathGlow = new THREE.Mesh(new THREE.SphereGeometry(0.15, 62, 44), fireMat);
         breathGlow.position.set(0, 1.75, 1.3);
         group.add(breathGlow);
         break;
       }
+
 
       // ── DESERT ENEMIES ──────────────────────────────────────────
       case EnemyType.SAND_SCORPION: {
