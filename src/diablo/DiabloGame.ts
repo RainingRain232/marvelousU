@@ -605,9 +605,13 @@ export class DiabloGame {
         } else if (document.pointerLockElement) {
           document.exitPointerLock();
         }
+      } else if (e.code === "KeyN") {
+        this._phaseBeforeOverlay = DiabloPhase.PLAYING;
+        this._state.phase = DiabloPhase.INVENTORY;
+        this._showCollection();
       }
     } else if (this._state.phase === DiabloPhase.INVENTORY) {
-      if (e.code === "Escape" || e.code === "KeyI" || e.code === "KeyT" || e.code === "KeyC") {
+      if (e.code === "Escape" || e.code === "KeyI" || e.code === "KeyT" || e.code === "KeyC" || e.code === "KeyN") {
         this._closeOverlay();
       } else if (e.code === "KeyS") {
         this._showStash();
@@ -1775,6 +1779,7 @@ export class DiabloGame {
         <button id="diablo-skilltree-btn" style="${btnBase}">SKILL TREE</button>
         <button id="diablo-skillswap-btn" style="${btnBase}">SWAP SKILLS</button>
         <button id="diablo-stash-btn" style="${btnBase}">STASH</button>
+        <button id="diablo-collection-btn" style="${btnBase}">COLLECTION</button>
         <button id="diablo-save-btn" style="${saveBtn}">SAVE GAME</button>
         ${loadBtnHtml}
         <button id="diablo-charselect-btn" style="${btnBase}">CHARACTER SELECT</button>
@@ -1787,7 +1792,7 @@ export class DiabloGame {
       </div>`;
 
     // Hover effects for standard buttons
-    const stdBtns = this._menuEl.querySelectorAll("#diablo-resume-btn,#diablo-controls-btn,#diablo-inventory-btn,#diablo-character-btn,#diablo-skilltree-btn,#diablo-skillswap-btn,#diablo-stash-btn,#diablo-charselect-btn") as NodeListOf<HTMLButtonElement>;
+    const stdBtns = this._menuEl.querySelectorAll("#diablo-resume-btn,#diablo-controls-btn,#diablo-inventory-btn,#diablo-character-btn,#diablo-skilltree-btn,#diablo-skillswap-btn,#diablo-stash-btn,#diablo-collection-btn,#diablo-charselect-btn") as NodeListOf<HTMLButtonElement>;
     stdBtns.forEach((btn) => {
       btn.addEventListener("mouseenter", () => {
         btn.style.borderColor = "#c8a84e";
@@ -1874,6 +1879,11 @@ export class DiabloGame {
     this._menuEl.querySelector("#diablo-stash-btn")!.addEventListener("click", () => {
       this._phaseBeforeOverlay = DiabloPhase.PAUSED;
       this._showStash();
+    });
+    this._menuEl.querySelector("#diablo-collection-btn")!.addEventListener("click", () => {
+      this._phaseBeforeOverlay = DiabloPhase.PAUSED;
+      this._state.phase = DiabloPhase.INVENTORY;
+      this._showCollection();
     });
     this._menuEl.querySelector("#diablo-charselect-btn")!.addEventListener("click", () => {
       this._state.phase = DiabloPhase.CLASS_SELECT;
@@ -2002,6 +2012,365 @@ export class DiabloGame {
     });
     backBtn.addEventListener("click", () => {
       this._backToMenu();
+    });
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  //  COLLECTION / CODEX MENU
+  // ──────────────────────────────────────────────────────────────
+  private _showCollection(): void {
+    // Inject styles once
+    if (!document.getElementById("codex-menu-styles")) {
+      const styleEl = document.createElement("style");
+      styleEl.id = "codex-menu-styles";
+      styleEl.textContent = `
+        .diablo-menu-scroll::-webkit-scrollbar { width: 8px; }
+        .diablo-menu-scroll::-webkit-scrollbar-track { background: rgba(10,8,4,0.6); border-radius: 4px; }
+        .diablo-menu-scroll::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #5a4a2a, #3a2a1a); border-radius: 4px; border: 1px solid #6b5a3a; }
+        .diablo-menu-scroll::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, #7a6a4a, #5a4a2a); }
+        @keyframes codex-panel-enter { from { opacity: 0; transform: scale(0.96) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        .codex-panel-anim { animation: codex-panel-enter 0.3s ease-out; }
+        @keyframes codex-legendary-shimmer { 0%,100% { background-position: -200% center; } 50% { background-position: 200% center; } }
+        .codex-item:hover { transform: scale(1.08); filter: brightness(1.2); }
+        .codex-item { transition: transform 0.2s, filter 0.2s; cursor: pointer; }
+        .codex-map-section:hover { border-color: #7a6a4a; }
+        .codex-map-section { transition: border-color 0.3s; }
+      `;
+      document.head.appendChild(styleEl);
+    }
+
+    const p = this._state.player;
+
+    // Build set of all owned item names
+    const ownedNames = new Set<string>();
+    const eqKeys: (keyof DiabloEquipment)[] = ["helmet", "body", "gauntlets", "legs", "feet", "accessory1", "accessory2", "weapon", "lantern"];
+    for (const k of eqKeys) {
+      const it = p.equipment[k];
+      if (it) ownedNames.add(it.name);
+    }
+    for (const slot of p.inventory) {
+      if (slot.item) ownedNames.add(slot.item.name);
+    }
+    for (const slot of this._state.persistentStash) {
+      if (slot.item) ownedNames.add(slot.item.name);
+    }
+    for (const slot of this._state.persistentInventory) {
+      if (slot.item) ownedNames.add(slot.item.name);
+    }
+
+    // Build item lookup by name
+    const itemByName: Record<string, DiabloItem> = {};
+    for (const it of ITEM_DATABASE) {
+      itemByName[it.name] = it;
+    }
+
+    // Build set bonus lookup by setName
+    const setBonusByName: Record<string, { pieces: number; bonusDescription: string }> = {};
+    for (const sb of SET_BONUSES) {
+      setBonusByName[sb.setName] = { pieces: sb.pieces, bonusDescription: sb.bonusDescription };
+    }
+
+    // Totals
+    let totalSets = 0;
+    let collectedSets = 0;
+    let totalUniques = 0;
+    let collectedUniques = 0;
+
+    // Build map sections HTML
+    let mapSectionsHtml = "";
+    const mapIds = Object.keys(MAP_SPECIFIC_ITEMS);
+
+    for (const mapId of mapIds) {
+      const itemNames = MAP_SPECIFIC_ITEMS[mapId];
+      const mapCfg = MAP_CONFIGS[mapId as DiabloMapId];
+      const mapDisplayName = mapCfg ? mapCfg.name : mapId;
+
+      // Separate set items and unique items
+      const setItems: DiabloItem[] = [];
+      const uniqueItems: DiabloItem[] = [];
+      let setName = "";
+
+      for (const name of itemNames) {
+        const it = itemByName[name];
+        if (!it) continue;
+        if (it.setName) {
+          setItems.push(it);
+          if (!setName) setName = it.setName;
+        } else if (it.rarity === ItemRarity.LEGENDARY || it.legendaryAbility) {
+          uniqueItems.push(it);
+        }
+      }
+
+      // Level range from items
+      const allItems = [...setItems, ...uniqueItems];
+      const levels = allItems.map(i => i.level).filter(l => l > 0);
+      const minLevel = levels.length > 0 ? Math.min(...levels) : 0;
+      const maxLevel = levels.length > 0 ? Math.max(...levels) : 0;
+      const levelStr = minLevel === maxLevel ? `Lv ${minLevel}` : `Lv ${minLevel}-${maxLevel}`;
+
+      // Set progress
+      const setOwned = setItems.filter(i => ownedNames.has(i.name)).length;
+      const setTotal = setItems.length;
+      if (setTotal > 0) {
+        totalSets++;
+        if (setOwned >= setTotal) collectedSets++;
+      }
+
+      // Unique progress
+      for (const ui of uniqueItems) {
+        totalUniques++;
+        if (ownedNames.has(ui.name)) collectedUniques++;
+      }
+
+      // Set bonus info
+      const bonus = setName ? setBonusByName[setName] : null;
+      const setProgressPct = setTotal > 0 ? Math.round((setOwned / setTotal) * 100) : 0;
+
+      // Build set items row
+      let setItemsHtml = "";
+      for (const it of setItems) {
+        const owned = ownedNames.has(it.name);
+        const color = RARITY_CSS[it.rarity];
+        const glow = owned ? `box-shadow: 0 0 10px ${color}, 0 0 4px ${color} inset;` : "";
+        const overlay = owned ? "" : `
+          <div style="position:absolute;inset:0;background:rgba(0,0,0,0.65);border-radius:6px;
+            display:flex;align-items:center;justify-content:center;font-size:24px;color:#555;">?</div>`;
+        const filter = owned ? "" : "filter: grayscale(0.8) brightness(0.5);";
+        setItemsHtml += `
+          <div class="codex-item codex-set-item" data-item-name="${it.name}" style="
+            position:relative;width:62px;height:62px;background:rgba(15,10,5,0.9);
+            border:2px solid ${owned ? color : '#3a3a3a'};border-radius:6px;
+            display:flex;flex-direction:column;align-items:center;justify-content:center;
+            ${glow}${filter}
+          ">
+            <div style="font-size:24px;">${it.icon}</div>
+            <div style="font-size:8px;color:${owned ? color : '#666'};margin-top:2px;
+              text-align:center;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;
+              max-width:56px;">${it.name.split(/\s/).slice(-1)[0]}</div>
+            ${overlay}
+          </div>`;
+      }
+
+      // Build unique items
+      let uniqueItemsHtml = "";
+      for (const it of uniqueItems) {
+        const owned = ownedNames.has(it.name);
+        const color = RARITY_CSS[it.rarity];
+        const glow = owned ? `box-shadow: 0 0 14px ${color}, 0 0 6px ${color} inset, 0 0 20px rgba(255,136,0,0.2);` : "";
+        const overlay = owned ? "" : `
+          <div style="position:absolute;inset:0;background:rgba(0,0,0,0.65);border-radius:6px;
+            display:flex;align-items:center;justify-content:center;font-size:24px;color:#555;">?</div>`;
+        const filter = owned ? "" : "filter: grayscale(0.8) brightness(0.5);";
+        const legendaryBorder = owned ? `border-image: linear-gradient(135deg, #ffd700, #ff8800, #ffd700) 1;` : "";
+        uniqueItemsHtml += `
+          <div style="display:flex;align-items:center;gap:12px;margin-top:8px;">
+            <div class="codex-item codex-unique-item" data-item-name="${it.name}" style="
+              position:relative;width:62px;height:62px;min-width:62px;
+              background:rgba(15,10,5,0.9);
+              border:2px solid ${owned ? '#ffd700' : '#3a3a3a'};border-radius:6px;
+              display:flex;flex-direction:column;align-items:center;justify-content:center;
+              ${glow}${filter}${legendaryBorder}
+            ">
+              <div style="font-size:24px;">${it.icon}</div>
+              ${overlay}
+            </div>
+            <div style="flex:1;">
+              <div style="color:${owned ? color : '#555'};font-size:13px;font-weight:bold;
+                font-family:'Cinzel','Georgia',serif;">${owned ? it.name : '???'}</div>
+              ${it.legendaryAbility && owned ? `
+                <div style="color:#ff8800;font-size:11px;font-style:italic;margin-top:2px;
+                  border-left:2px solid rgba(255,136,0,0.4);padding-left:6px;
+                  background:linear-gradient(90deg,rgba(255,136,0,0.06),transparent);
+                ">${it.legendaryAbility}</div>` : (it.legendaryAbility ? `
+                <div style="color:#555;font-size:11px;font-style:italic;margin-top:2px;">
+                  Legendary power unknown...</div>` : "")}
+            </div>
+          </div>`;
+      }
+
+      // Set bonus callout
+      let setBonusHtml = "";
+      if (bonus && setName) {
+        const bonusActive = setOwned >= (bonus.pieces || setTotal);
+        setBonusHtml = `
+          <div style="margin-top:8px;padding:8px 10px;
+            background:${bonusActive ? 'rgba(68,255,68,0.08)' : 'rgba(30,24,14,0.6)'};
+            border:1px solid ${bonusActive ? 'rgba(68,255,68,0.3)' : 'rgba(90,74,42,0.2)'};
+            border-radius:4px;">
+            <div style="font-size:11px;color:${bonusActive ? '#44ff44' : '#666'};">
+              <span style="color:${bonusActive ? '#6f6' : '#888'};">&#9830; Set Bonus (${bonus.pieces || setTotal}pc):</span>
+              ${bonus.bonusDescription}
+            </div>
+          </div>`;
+      }
+
+      mapSectionsHtml += `
+        <div class="codex-map-section" style="
+          background:linear-gradient(135deg,rgba(22,16,8,0.95),rgba(30,22,12,0.9));
+          border:1px solid rgba(90,74,42,0.3);border-radius:8px;padding:16px;margin-bottom:12px;
+        ">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <div>
+              <span style="color:#c8a84e;font-size:15px;font-weight:bold;
+                font-family:'Cinzel','Georgia',serif;letter-spacing:1px;">
+                &#10070; ${mapDisplayName}
+              </span>
+              <span style="color:#888;font-size:11px;margin-left:8px;">${levelStr}</span>
+            </div>
+            <div style="color:#888;font-size:11px;">Drop Location</div>
+          </div>
+
+          ${setItems.length > 0 ? `
+            <div style="margin-bottom:6px;">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                <span style="color:#44ff44;font-size:12px;font-family:'Cinzel','Georgia',serif;">
+                  ${setName}</span>
+                <span style="color:#888;font-size:11px;">${setOwned}/${setTotal} pieces</span>
+                <div style="flex:1;height:4px;background:rgba(30,24,14,0.8);border-radius:2px;
+                  max-width:120px;overflow:hidden;">
+                  <div style="width:${setProgressPct}%;height:100%;
+                    background:linear-gradient(90deg,#44ff44,#88ff88);border-radius:2px;
+                    transition:width 0.3s;"></div>
+                </div>
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                ${setItemsHtml}
+              </div>
+            </div>
+            ${setBonusHtml}
+          ` : ""}
+
+          ${uniqueItems.length > 0 ? `
+            <div style="margin-top:${setItems.length > 0 ? '12' : '0'}px;
+              border-top:${setItems.length > 0 ? '1px solid rgba(90,74,42,0.2)' : 'none'};
+              padding-top:${setItems.length > 0 ? '10' : '0'}px;">
+              <div style="color:#ff8800;font-size:11px;margin-bottom:4px;letter-spacing:1px;">
+                &#10022; LEGENDARY</div>
+              ${uniqueItemsHtml}
+            </div>
+          ` : ""}
+        </div>`;
+    }
+
+    // Summary counts
+    const totalSetPieces = Object.values(MAP_SPECIFIC_ITEMS).reduce((sum, names) => {
+      return sum + names.filter(n => { const it = itemByName[n]; return it && !!it.setName; }).length;
+    }, 0);
+    const ownedSetPieces = Object.values(MAP_SPECIFIC_ITEMS).reduce((sum, names) => {
+      return sum + names.filter(n => { const it = itemByName[n]; return it && !!it.setName && ownedNames.has(n); }).length;
+    }, 0);
+
+    this._menuEl.innerHTML = `
+      <div style="
+        position:absolute;inset:0;background:rgba(0,0,0,0.85);display:flex;
+        align-items:center;justify-content:center;z-index:100;pointer-events:auto;
+      ">
+        <div class="codex-panel-anim" style="
+          width:min(820px,92vw);max-height:88vh;overflow-y:auto;
+          background:rgba(18,12,6,0.97);border:2px solid #c8a84e;border-radius:12px;
+          padding:28px 32px;position:relative;
+          box-shadow:0 0 40px rgba(200,168,78,0.15), 0 0 80px rgba(0,0,0,0.6);
+          font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
+          color:#ddd;
+        " class="diablo-menu-scroll">
+
+          <!-- Corner flourishes -->
+          <div style="position:absolute;top:6px;left:10px;color:rgba(200,168,78,0.25);
+            font-size:18px;pointer-events:none;">&#9884;</div>
+          <div style="position:absolute;top:6px;right:10px;color:rgba(200,168,78,0.25);
+            font-size:18px;pointer-events:none;">&#9884;</div>
+          <div style="position:absolute;bottom:6px;left:10px;color:rgba(200,168,78,0.25);
+            font-size:18px;pointer-events:none;">&#9884;</div>
+          <div style="position:absolute;bottom:6px;right:10px;color:rgba(200,168,78,0.25);
+            font-size:18px;pointer-events:none;">&#9884;</div>
+
+          <!-- Title -->
+          <div style="text-align:center;margin-bottom:20px;">
+            <div style="color:rgba(200,168,78,0.4);font-size:12px;letter-spacing:4px;">
+              ${'═'.repeat(20)}</div>
+            <h2 style="color:#c8a84e;font-size:28px;letter-spacing:6px;margin:8px 0;
+              text-shadow:0 0 20px rgba(200,168,78,0.3);
+              font-family:'Cinzel','Georgia',serif;">
+              &#10070; COLLECTION CODEX &#10070;</h2>
+            <div style="color:rgba(200,168,78,0.4);font-size:12px;letter-spacing:4px;">
+              ${'═'.repeat(20)}</div>
+          </div>
+
+          <!-- Summary bar -->
+          <div style="display:flex;justify-content:center;gap:32px;margin-bottom:20px;
+            padding:10px 16px;background:rgba(30,24,14,0.6);border:1px solid rgba(90,74,42,0.3);
+            border-radius:6px;">
+            <div style="text-align:center;">
+              <div style="color:#44ff44;font-size:18px;font-weight:bold;">
+                ${collectedSets}/${totalSets}</div>
+              <div style="color:#888;font-size:10px;letter-spacing:1px;">SETS COMPLETE</div>
+            </div>
+            <div style="width:1px;background:rgba(90,74,42,0.3);"></div>
+            <div style="text-align:center;">
+              <div style="color:#44ff44;font-size:18px;font-weight:bold;">
+                ${ownedSetPieces}/${totalSetPieces}</div>
+              <div style="color:#888;font-size:10px;letter-spacing:1px;">SET PIECES</div>
+            </div>
+            <div style="width:1px;background:rgba(90,74,42,0.3);"></div>
+            <div style="text-align:center;">
+              <div style="color:#ff8800;font-size:18px;font-weight:bold;">
+                ${collectedUniques}/${totalUniques}</div>
+              <div style="color:#888;font-size:10px;letter-spacing:1px;">LEGENDARIES</div>
+            </div>
+          </div>
+
+          <!-- Map sections -->
+          ${mapSectionsHtml}
+
+          <!-- Close button -->
+          <div style="text-align:center;margin-top:20px;">
+            <button id="codex-close-btn" style="
+              width:200px;padding:12px 0;font-size:18px;letter-spacing:3px;font-weight:bold;
+              background:rgba(40,30,15,0.9);border:2px solid #5a4a2a;border-radius:8px;
+              color:#c8a84e;cursor:pointer;transition:all 0.2s;
+              font-family:'Georgia',serif;pointer-events:auto;
+            ">CLOSE</button>
+          </div>
+
+          <div style="text-align:center;margin-top:12px;color:#555;font-size:10px;
+            letter-spacing:1px;">Press <span style="color:#c8a84e;">N</span> or
+            <span style="color:#c8a84e;">ESC</span> to close</div>
+
+        </div>
+        <div id="inv-tooltip" style="
+          position:fixed;display:none;pointer-events:none;z-index:200;
+          background:rgba(12,8,4,0.97);border:2px solid #5a4a2a;border-radius:8px;
+          padding:12px;max-width:280px;min-width:180px;
+          box-shadow:0 4px 20px rgba(0,0,0,0.8);
+          font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
+        "></div>
+      </div>`;
+
+    // Wire close button
+    const closeBtn = this._menuEl.querySelector("#codex-close-btn") as HTMLButtonElement;
+    closeBtn.addEventListener("mouseenter", () => {
+      closeBtn.style.borderColor = "#c8a84e";
+      closeBtn.style.boxShadow = "0 0 15px rgba(200,168,78,0.3)";
+      closeBtn.style.background = "rgba(50,40,20,0.95)";
+    });
+    closeBtn.addEventListener("mouseleave", () => {
+      closeBtn.style.borderColor = "#5a4a2a";
+      closeBtn.style.boxShadow = "none";
+      closeBtn.style.background = "rgba(40,30,15,0.9)";
+    });
+    closeBtn.addEventListener("click", () => {
+      this._closeOverlay();
+    });
+
+    // Wire item tooltips
+    const codexItems = this._menuEl.querySelectorAll(".codex-item[data-item-name]");
+    codexItems.forEach((el) => {
+      const name = el.getAttribute("data-item-name") || "";
+      const it = itemByName[name];
+      if (it && ownedNames.has(name)) {
+        el.addEventListener("mouseenter", (ev) => this._showItemTooltip(ev as MouseEvent, it));
+        el.addEventListener("mouseleave", () => this._hideItemTooltip());
+      }
     });
   }
 

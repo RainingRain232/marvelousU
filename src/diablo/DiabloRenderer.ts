@@ -18308,6 +18308,107 @@ export class DiabloRenderer {
       this._playerGroup.visible = false;
       this._buildFPWeaponIfNeeded();
       if (this._fpWeapon) this._fpWeapon.visible = true;
+
+      // -- First-person weapon attack / ability animation --
+      if (this._fpWeapon) {
+        const restPos = { x: 0.28, y: -0.2, z: -0.4 };
+        const restRot = { x: 0.15, y: 0, z: -0.1 };
+
+        if (state.player.activeSkillAnimTimer > 0) {
+          // Skill/ability cast animation
+          const t = state.player.activeSkillAnimTimer / 0.5; // 1 = just started, 0 = done
+          const pClass = state.player.class;
+
+          if (pClass === DiabloClass.WARRIOR) {
+            // Overhead slam
+            if (t > 0.65) {
+              const rise = 1.0 - (t - 0.65) / 0.35;
+              this._fpWeapon.position.set(restPos.x - 0.05 * rise, restPos.y + 0.35 * rise, restPos.z + 0.1 * rise);
+              this._fpWeapon.rotation.set(-1.2 * rise, 0, restRot.z - 0.2 * rise);
+            } else if (t > 0.3) {
+              const strike = 1.0 - (t - 0.3) / 0.35;
+              this._fpWeapon.position.set(restPos.x, restPos.y + 0.35 - 0.55 * strike, restPos.z - 0.15 * strike);
+              this._fpWeapon.rotation.set(-1.2 + 2.0 * strike, 0, restRot.z + 0.3 * strike);
+            } else {
+              const recover = 1.0 - t / 0.3;
+              this._fpWeapon.position.set(restPos.x, restPos.y - 0.2 * (1 - recover), restPos.z - 0.15 * (1 - recover));
+              this._fpWeapon.rotation.set(0.8 * (1 - recover), 0, restRot.z + 0.3 * (1 - recover));
+            }
+          } else if (pClass === DiabloClass.MAGE) {
+            // Thrust forward with magical pulse
+            const thrust = Math.sin(t * Math.PI);
+            this._fpWeapon.position.set(restPos.x - 0.08 * thrust, restPos.y + 0.15 * thrust, restPos.z - 0.25 * thrust);
+            this._fpWeapon.rotation.set(restRot.x - 0.6 * thrust, 0.3 * thrust, restRot.z);
+          } else if (pClass === DiabloClass.RANGER) {
+            // Pull back then release (bow draw)
+            if (t > 0.5) {
+              const draw = 1.0 - (t - 0.5) / 0.5;
+              this._fpWeapon.position.set(restPos.x + 0.06 * draw, restPos.y + 0.1 * draw, restPos.z + 0.12 * draw);
+              this._fpWeapon.rotation.set(restRot.x - 0.3 * draw, -0.15 * draw, restRot.z);
+            } else {
+              const release = 1.0 - t / 0.5;
+              this._fpWeapon.position.set(restPos.x + 0.06 * (1 - release), restPos.y + 0.1 * (1 - release), restPos.z - 0.1 * release);
+              this._fpWeapon.rotation.set(restRot.x - 0.3 * (1 - release) + 0.2 * release, 0, restRot.z);
+            }
+          } else if (pClass === DiabloClass.PALADIN) {
+            // Holy smite — raise shield-arm then slam forward
+            if (t > 0.6) {
+              const rise = 1.0 - (t - 0.6) / 0.4;
+              this._fpWeapon.position.set(restPos.x - 0.12 * rise, restPos.y + 0.25 * rise, restPos.z);
+              this._fpWeapon.rotation.set(-0.8 * rise, -0.4 * rise, restRot.z);
+            } else {
+              const smash = Math.sin((1.0 - t / 0.6) * Math.PI * 0.5);
+              this._fpWeapon.position.set(restPos.x - 0.12 + 0.2 * smash, restPos.y + 0.25 - 0.45 * smash, restPos.z - 0.2 * smash);
+              this._fpWeapon.rotation.set(-0.8 + 1.6 * smash, -0.4 + 0.4 * smash, restRot.z + 0.15 * smash);
+            }
+          } else if (pClass === DiabloClass.NECROMANCER) {
+            // Dark channeling — weapon drifts up and trembles
+            const channel = Math.sin(t * Math.PI);
+            const tremble = Math.sin(this._time * 30) * 0.015 * channel;
+            this._fpWeapon.position.set(restPos.x + tremble, restPos.y + 0.2 * channel, restPos.z - 0.1 * channel);
+            this._fpWeapon.rotation.set(restRot.x - 0.4 * channel, 0.2 * channel + tremble * 5, restRot.z);
+          } else if (pClass === DiabloClass.ASSASSIN) {
+            // Rapid dual-strike — fast left-right slashes
+            const phase = t * 3.0; // 3 quick slashes in one cast
+            const slashDir = Math.sin(phase * Math.PI) * (Math.floor(phase) % 2 === 0 ? 1 : -1);
+            this._fpWeapon.position.set(restPos.x + 0.15 * slashDir, restPos.y + 0.05, restPos.z - 0.15 * Math.abs(slashDir));
+            this._fpWeapon.rotation.set(restRot.x + 0.3 * Math.abs(slashDir), 0.6 * slashDir, restRot.z - 0.3 * slashDir);
+          } else {
+            // Generic cast: thrust forward
+            const thrust = Math.sin(t * Math.PI);
+            this._fpWeapon.position.set(restPos.x, restPos.y + 0.1 * thrust, restPos.z - 0.2 * thrust);
+            this._fpWeapon.rotation.set(restRot.x - 0.4 * thrust, 0, restRot.z);
+          }
+        } else if (state.player.isAttacking) {
+          // Basic melee attack — 3-phase swing
+          const t = state.player.attackTimer;
+          if (t > 0.6) {
+            // Wind-up: pull weapon back and to the right
+            const w = (t - 0.6) / 0.4;
+            this._fpWeapon.position.set(restPos.x + 0.12 * (1 - w), restPos.y + 0.15 * (1 - w), restPos.z + 0.08 * (1 - w));
+            this._fpWeapon.rotation.set(restRot.x - 0.8 * (1 - w), -0.5 * (1 - w), restRot.z - 0.3 * (1 - w));
+          } else if (t > 0.3) {
+            // Strike: fast swing from right to left
+            const s = 1.0 - (t - 0.3) / 0.3;
+            this._fpWeapon.position.set(restPos.x + 0.12 - 0.3 * s, restPos.y + 0.15 - 0.1 * s, restPos.z - 0.15 * s);
+            this._fpWeapon.rotation.set(restRot.x - 0.8 + 1.4 * s, -0.5 + 1.2 * s, restRot.z - 0.3 + 0.6 * s);
+          } else {
+            // Follow-through and return
+            const r = 1.0 - t / 0.3;
+            this._fpWeapon.position.x = restPos.x - 0.18 * (1 - r);
+            this._fpWeapon.position.y = restPos.y + 0.05 * (1 - r);
+            this._fpWeapon.position.z = restPos.z - 0.15 * (1 - r);
+            this._fpWeapon.rotation.set(restRot.x + 0.6 * (1 - r), 0.7 * (1 - r), restRot.z + 0.3 * (1 - r));
+          }
+        } else {
+          // Idle: gentle sway
+          const sway = Math.sin(this._time * 1.5) * 0.008;
+          const bob = Math.sin(this._time * 2.0) * 0.004;
+          this._fpWeapon.position.set(restPos.x + sway, restPos.y + bob, restPos.z);
+          this._fpWeapon.rotation.set(restRot.x, restRot.y, restRot.z + sway * 0.5);
+        }
+      }
+
       // Hide aim line in FPS
       if (this._aimLine) this._aimLine.visible = false;
     } else {
