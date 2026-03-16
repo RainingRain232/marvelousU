@@ -104,9 +104,9 @@ export class SettlersRenderer {
 
   // Cached geometries
   private _boxGeo = new THREE.BoxGeometry(1, 1, 1);
-  private _coneGeo = new THREE.ConeGeometry(0.5, 1, 6);
-  private _cylGeo = new THREE.CylinderGeometry(0.1, 0.1, 1, 6);
-  private _sphereGeo = new THREE.SphereGeometry(0.15, 6, 4);
+  private _coneGeo = new THREE.ConeGeometry(0.5, 1, 8);
+  private _cylGeo = new THREE.CylinderGeometry(0.1, 0.1, 1, 8);
+  private _sphereGeo = new THREE.SphereGeometry(0.15, 8, 6);
 
   // Shared materials
   private _wallMat!: THREE.MeshStandardMaterial;
@@ -1211,250 +1211,650 @@ export class SettlersRenderer {
     return g;
   }
 
+  // Helper: create a ridged (A-frame) roof from vertices
+  private _createRidgeRoof(w: number, h: number, d: number, mat: THREE.Material): THREE.Mesh {
+    const hw = w * 0.5, hd = d * 0.5;
+    const overhang = w * 0.08;
+    const verts = new Float32Array([
+      // Left slope
+      -(hw + overhang), 0, -(hd + overhang),
+      0, h, -(hd * 0.3),
+      0, h, hd * 0.3,
+      -(hw + overhang), 0, hd + overhang,
+      // Right slope
+      (hw + overhang), 0, -(hd + overhang),
+      0, h, -(hd * 0.3),
+      0, h, hd * 0.3,
+      (hw + overhang), 0, hd + overhang,
+      // Front gable
+      -(hw + overhang), 0, -(hd + overhang),
+      (hw + overhang), 0, -(hd + overhang),
+      0, h, -(hd * 0.3),
+      // Back gable
+      -(hw + overhang), 0, hd + overhang,
+      (hw + overhang), 0, hd + overhang,
+      0, h, hd * 0.3,
+    ]);
+    const idx = [0,1,2, 0,2,3, 4,6,5, 4,7,6, 8,10,9, 11,12,13];
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.Float32BufferAttribute(verts, 3));
+    geo.setIndex(idx);
+    geo.computeVertexNormals();
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.castShadow = true;
+    return mesh;
+  }
+
+  // Helper: add stone foundation blocks around a building base
+  private _addFoundation(g: THREE.Group, w: number, d: number, h: number): void {
+    const stoneCol = [0x808078, 0x8a8a80, 0x757568, 0x929288];
+    const hw = w * 0.5, hd = d * 0.5;
+    const stoneH = h * 0.12;
+    // Place irregular stone blocks along bottom edges
+    for (let side = 0; side < 4; side++) {
+      const count = 3 + Math.floor(Math.random() * 3);
+      for (let i = 0; i < count; i++) {
+        const t = (i + 0.2) / count;
+        const mat = new THREE.MeshStandardMaterial({ color: stoneCol[i % 4], roughness: 0.95 });
+        (mat as THREE.MeshStandardMaterial).transparent = true;
+        const stone = new THREE.Mesh(this._boxGeo, mat);
+        const sw = w * (0.06 + Math.random() * 0.05);
+        const sh = stoneH * (0.7 + Math.random() * 0.6);
+        const sd = 0.06 + Math.random() * 0.04;
+        stone.scale.set(sw, sh, sd);
+        if (side === 0) stone.position.set(-hw + t * w, sh * 0.5, hd + 0.01);
+        else if (side === 1) stone.position.set(-hw + t * w, sh * 0.5, -hd - 0.01);
+        else if (side === 2) { stone.position.set(hw + 0.01, sh * 0.5, -hd + t * d); stone.rotation.y = Math.PI * 0.5; }
+        else { stone.position.set(-hw - 0.01, sh * 0.5, -hd + t * d); stone.rotation.y = Math.PI * 0.5; }
+        g.add(stone);
+      }
+    }
+  }
+
+  // Helper: add timber framing on a wall face
+  private _addTimberFrame(g: THREE.Group, w: number, wallH: number, z: number, woodMat: THREE.Material): void {
+    const hw = w * 0.5;
+    const makeBeam = (sx: number, sy: number, sz: number, px: number, py: number, pz: number, rz = 0) => {
+      const b = new THREE.Mesh(this._boxGeo, woodMat);
+      (b.material as THREE.MeshStandardMaterial).transparent = true;
+      b.scale.set(sx, sy, sz);
+      b.position.set(px, py, pz);
+      b.rotation.z = rz;
+      g.add(b);
+    };
+    // Corner posts
+    makeBeam(0.04, wallH, 0.04, -hw + 0.02, wallH * 0.5, z);
+    makeBeam(0.04, wallH, 0.04, hw - 0.02, wallH * 0.5, z);
+    // Mid post
+    makeBeam(0.03, wallH, 0.03, 0, wallH * 0.5, z);
+    // Top plate
+    makeBeam(w, 0.03, 0.03, 0, wallH, z);
+    // Bottom plate
+    makeBeam(w, 0.03, 0.03, 0, 0, z);
+    // Mid rail
+    makeBeam(w * 0.48, 0.025, 0.025, -hw * 0.5, wallH * 0.5, z);
+    makeBeam(w * 0.48, 0.025, 0.025, hw * 0.5, wallH * 0.5, z);
+    // Diagonal braces
+    makeBeam(0.025, hw * 0.7, 0.02, -hw * 0.5, wallH * 0.5, z, 0.45);
+    makeBeam(0.025, hw * 0.7, 0.02, hw * 0.5, wallH * 0.5, z, -0.45);
+  }
+
+  // Helper: add a detailed window with frame and shutters
+  private _addWindow(g: THREE.Group, x: number, y: number, z: number, size: number): void {
+    // Glass pane
+    const win = new THREE.Mesh(this._boxGeo, this._windowMat);
+    win.scale.set(size, size * 1.3, 0.02);
+    win.position.set(x, y, z);
+    g.add(win);
+    // Wooden frame
+    const frameMat = new THREE.MeshStandardMaterial({ color: 0x6b4226, roughness: 0.8 });
+    (frameMat as THREE.MeshStandardMaterial).transparent = true;
+    // Top/bottom
+    const ft = new THREE.Mesh(this._boxGeo, frameMat);
+    ft.scale.set(size * 1.2, 0.015, 0.025);
+    ft.position.set(x, y + size * 0.65, z + 0.01);
+    g.add(ft);
+    const fb = ft.clone(); fb.position.set(x, y - size * 0.65, z + 0.01); g.add(fb);
+    // Sides
+    const fs = new THREE.Mesh(this._boxGeo, frameMat);
+    fs.scale.set(0.015, size * 1.3, 0.025);
+    fs.position.set(x - size * 0.6, y, z + 0.01);
+    g.add(fs);
+    const fs2 = fs.clone(); fs2.position.set(x + size * 0.6, y, z + 0.01); g.add(fs2);
+    // Cross divider
+    const cx2 = new THREE.Mesh(this._boxGeo, frameMat);
+    cx2.scale.set(size * 1.1, 0.01, 0.02);
+    cx2.position.set(x, y, z + 0.012);
+    g.add(cx2);
+    const cv = new THREE.Mesh(this._boxGeo, frameMat);
+    cv.scale.set(0.01, size * 1.25, 0.02);
+    cv.position.set(x, y, z + 0.012);
+    g.add(cv);
+    // Shutters (angled open)
+    const shutMat = new THREE.MeshStandardMaterial({ color: 0x5a7a3a, roughness: 0.85 });
+    (shutMat as THREE.MeshStandardMaterial).transparent = true;
+    for (let side = -1; side <= 1; side += 2) {
+      const sh = new THREE.Mesh(this._boxGeo, shutMat);
+      sh.scale.set(size * 0.45, size * 1.2, 0.015);
+      sh.position.set(x + side * size * 0.75, y, z + 0.02);
+      sh.rotation.y = side * 0.35;
+      g.add(sh);
+      // Shutter hinge detail
+      const hinge = new THREE.Mesh(this._boxGeo, new THREE.MeshStandardMaterial({ color: 0x333333 }));
+      hinge.scale.set(0.01, 0.02, 0.015);
+      hinge.position.set(x + side * size * 0.55, y + size * 0.4, z + 0.025);
+      g.add(hinge);
+    }
+  }
+
+  // Helper: add a detailed door with arch and handle
+  private _addDoor(g: THREE.Group, x: number, z: number, w: number, h: number): void {
+    const doorMat = this._woodMat.clone();
+    (doorMat as THREE.MeshStandardMaterial).transparent = true;
+    (doorMat as THREE.MeshStandardMaterial).color.set(0x5c3a1e);
+    const door = new THREE.Mesh(this._boxGeo, doorMat);
+    door.scale.set(w, h, 0.04);
+    door.position.set(x, h * 0.5, z);
+    g.add(door);
+    // Door planks (vertical lines)
+    const plankMat = new THREE.MeshStandardMaterial({ color: 0x4a2e16, roughness: 0.9 });
+    (plankMat as THREE.MeshStandardMaterial).transparent = true;
+    for (let p = -1; p <= 1; p++) {
+      const plank = new THREE.Mesh(this._boxGeo, plankMat);
+      plank.scale.set(0.006, h * 0.9, 0.005);
+      plank.position.set(x + p * w * 0.25, h * 0.5, z + 0.025);
+      g.add(plank);
+    }
+    // Door frame
+    const frameMat = new THREE.MeshStandardMaterial({ color: 0x6b4226, roughness: 0.8 });
+    (frameMat as THREE.MeshStandardMaterial).transparent = true;
+    const frameL = new THREE.Mesh(this._boxGeo, frameMat);
+    frameL.scale.set(0.025, h * 1.05, 0.05);
+    frameL.position.set(x - w * 0.52, h * 0.5, z);
+    g.add(frameL);
+    const frameR = frameL.clone();
+    frameR.position.set(x + w * 0.52, h * 0.5, z);
+    g.add(frameR);
+    // Arch above door
+    const arch = new THREE.Mesh(this._boxGeo, frameMat);
+    arch.scale.set(w * 1.15, 0.035, 0.05);
+    arch.position.set(x, h * 1.02, z);
+    g.add(arch);
+    // Handle
+    const handleMat = new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.6, roughness: 0.3 });
+    const handle = new THREE.Mesh(this._sphereGeo, handleMat);
+    handle.scale.set(0.4, 0.4, 0.4);
+    handle.position.set(x + w * 0.25, h * 0.45, z + 0.03);
+    g.add(handle);
+  }
+
+  // Helper: chimney with cap and smoke opening
+  private _addChimney(g: THREE.Group, x: number, baseY: number, z: number, r: number, h: number): void {
+    // Main shaft (slightly tapered)
+    const chimneyGeo = new THREE.CylinderGeometry(r * 0.85, r, h, 6);
+    const chimney = new THREE.Mesh(chimneyGeo, this._chimneyMat);
+    chimney.position.set(x, baseY + h * 0.5, z);
+    chimney.castShadow = true;
+    g.add(chimney);
+    // Chimney cap (wider ring at top)
+    const capGeo = new THREE.CylinderGeometry(r * 1.1, r * 1.1, h * 0.08, 6);
+    const cap = new THREE.Mesh(capGeo, this._chimneyMat);
+    cap.position.set(x, baseY + h * 1.0, z);
+    g.add(cap);
+    // Dark interior
+    const innerGeo = new THREE.CylinderGeometry(r * 0.6, r * 0.6, 0.02, 6);
+    const inner = new THREE.Mesh(innerGeo, new THREE.MeshBasicMaterial({ color: 0x111111 }));
+    inner.position.set(x, baseY + h * 1.01, z);
+    g.add(inner);
+  }
+
+  // Helper: add a porch/awning over a door
+  private _addPorch(g: THREE.Group, x: number, y: number, z: number, w: number, d: number): void {
+    // Awning roof (tilted plane)
+    const awningMat = new THREE.MeshStandardMaterial({ color: 0x8b5a2a, roughness: 0.8, side: THREE.DoubleSide });
+    (awningMat as THREE.MeshStandardMaterial).transparent = true;
+    const awning = new THREE.Mesh(this._boxGeo, awningMat);
+    awning.scale.set(w * 1.2, 0.02, d);
+    awning.position.set(x, y, z + d * 0.5);
+    awning.rotation.x = 0.2;
+    g.add(awning);
+    // Support posts
+    const postMat = new THREE.MeshStandardMaterial({ color: 0x6b4226, roughness: 0.85 });
+    (postMat as THREE.MeshStandardMaterial).transparent = true;
+    for (let side = -1; side <= 1; side += 2) {
+      const post = new THREE.Mesh(this._cylGeo, postMat);
+      post.scale.set(0.4, y * 0.95, 0.4);
+      post.position.set(x + side * w * 0.5, y * 0.47, z + d * 0.85);
+      g.add(post);
+    }
+  }
+
   private _createBuildingMesh(building: SettlersBuilding, state: SettlersState): THREE.Group {
     const def = BUILDING_DEFS[building.type];
     const g = new THREE.Group();
     const playerColor = this._getPlayerColor(building.owner, state);
     const roofMat = new THREE.MeshStandardMaterial({ color: playerColor, roughness: 0.75, transparent: true });
+    const roofDarkMat = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(playerColor).multiplyScalar(0.7).getHex(),
+      roughness: 0.8, transparent: true,
+    });
 
     const ts = SB.TILE_SIZE;
     const fw = def.footprint.w * ts;
     const fh = def.footprint.h * ts;
 
     if (def.garrisonSlots > 0) {
-      // Military building – stone tower with battlements
+      // ===== MILITARY BUILDING – detailed stone tower =====
       const towerR = fw * 0.35;
       const towerH = fw * 1.4;
-      const towerGeo = new THREE.CylinderGeometry(towerR * 0.95, towerR, towerH, 8);
-      const tower = new THREE.Mesh(towerGeo, this._stoneMat.clone());
-      (tower.material as THREE.MeshStandardMaterial).transparent = true;
+
+      // Battered (tapered) tower walls with stone texture
+      const towerGeo = new THREE.CylinderGeometry(towerR * 0.9, towerR * 1.05, towerH, 12);
+      const towerMat = this._stoneMat.clone();
+      (towerMat as THREE.MeshStandardMaterial).transparent = true;
+      const tower = new THREE.Mesh(towerGeo, towerMat);
       tower.position.y = towerH * 0.5;
       tower.castShadow = true;
       g.add(tower);
 
-      // Battlements (small boxes around top)
-      const merlonCount = 8;
+      // Stone course lines (horizontal rings at intervals)
+      for (let row = 0; row < 5; row++) {
+        const ringY = towerH * (0.1 + row * 0.18);
+        const ringR = towerR * (1.05 - row * 0.03);
+        const ringGeo = new THREE.TorusGeometry(ringR, 0.015, 4, 12);
+        const ring = new THREE.Mesh(ringGeo, new THREE.MeshStandardMaterial({ color: 0x777770, roughness: 0.95 }));
+        ring.position.y = ringY;
+        ring.rotation.x = Math.PI * 0.5;
+        g.add(ring);
+      }
+
+      // Battlements with crenellation gaps
+      const merlonCount = 10;
       for (let m = 0; m < merlonCount; m++) {
         const angle = (m / merlonCount) * Math.PI * 2;
         const merlon = new THREE.Mesh(this._boxGeo, this._stoneMat.clone());
         (merlon.material as THREE.MeshStandardMaterial).transparent = true;
-        merlon.scale.set(0.2, 0.25, 0.15);
+        merlon.scale.set(0.18, 0.3, 0.18);
         merlon.position.set(
-          Math.cos(angle) * towerR * 0.95,
-          towerH + 0.12,
-          Math.sin(angle) * towerR * 0.95,
+          Math.cos(angle) * towerR * 0.92,
+          towerH + 0.15,
+          Math.sin(angle) * towerR * 0.92,
         );
+        merlon.rotation.y = angle;
         g.add(merlon);
       }
 
-      // Colored flag on top
+      // Walkway ring at top
+      const walkwayGeo = new THREE.TorusGeometry(towerR * 0.92, towerR * 0.12, 4, 12);
+      const walkway = new THREE.Mesh(walkwayGeo, this._stoneMat.clone());
+      (walkway.material as THREE.MeshStandardMaterial).transparent = true;
+      walkway.position.y = towerH;
+      walkway.rotation.x = Math.PI * 0.5;
+      g.add(walkway);
+
+      // Machicolations (overhanging supports under battlements)
+      for (let m = 0; m < 6; m++) {
+        const angle = (m / 6) * Math.PI * 2;
+        const bracket = new THREE.Mesh(this._boxGeo, this._stoneMat.clone());
+        (bracket.material as THREE.MeshStandardMaterial).transparent = true;
+        bracket.scale.set(0.08, 0.12, 0.15);
+        bracket.position.set(
+          Math.cos(angle) * towerR * 1.02,
+          towerH - 0.06,
+          Math.sin(angle) * towerR * 1.02,
+        );
+        bracket.rotation.y = angle;
+        g.add(bracket);
+      }
+
+      // Flag pole and pennant
       const flagPole = new THREE.Mesh(this._cylGeo, new THREE.MeshStandardMaterial({ color: 0x8b7355 }));
-      flagPole.scale.set(0.5, 0.6, 0.5);
-      flagPole.position.y = towerH + 0.55;
+      flagPole.scale.set(0.4, 0.7, 0.4);
+      flagPole.position.y = towerH + 0.6;
       g.add(flagPole);
 
       const pennantGeo = new THREE.BufferGeometry();
-      const verts = new Float32Array([0, 0, 0, 0.4, -0.05, 0, 0, -0.15, 0]);
+      const verts = new Float32Array([0, 0, 0, 0.45, -0.05, 0.02, 0.2, -0.18, 0, 0, -0.15, -0.01]);
+      const pennIdx = [0, 1, 2, 0, 2, 3];
       pennantGeo.setAttribute("position", new THREE.BufferAttribute(verts, 3));
+      pennantGeo.setIndex(pennIdx);
       pennantGeo.computeVertexNormals();
       const pennant = new THREE.Mesh(pennantGeo, new THREE.MeshStandardMaterial({ color: playerColor, side: THREE.DoubleSide }));
-      pennant.position.y = towerH + 0.8;
+      pennant.position.y = towerH + 0.88;
       g.add(pennant);
 
-      // Door
-      const door = new THREE.Mesh(this._boxGeo, this._woodMat.clone());
-      (door.material as THREE.MeshStandardMaterial).transparent = true;
-      door.scale.set(0.2, 0.35, 0.05);
-      door.position.set(0, 0.17, towerR + 0.03);
-      g.add(door);
+      // Arched doorway
+      this._addDoor(g, 0, towerR + 0.03, 0.22, 0.4);
 
-      // Arrow slits
-      for (let s = 0; s < 3; s++) {
-        const angle = (s / 3) * Math.PI * 2 + 0.5;
-        const slit = new THREE.Mesh(this._boxGeo, new THREE.MeshBasicMaterial({ color: 0x222222 }));
-        slit.scale.set(0.04, 0.15, 0.02);
-        slit.position.set(
-          Math.cos(angle) * (towerR + 0.01),
-          towerH * 0.5,
-          Math.sin(angle) * (towerR + 0.01),
-        );
-        slit.lookAt(0, towerH * 0.5, 0);
-        g.add(slit);
-      }
-    } else if (def.type === SettlersBuildingType.HEADQUARTERS) {
-      // HQ – large multi-story building
-      const base = new THREE.Mesh(this._boxGeo, this._wallMat.clone());
-      (base.material as THREE.MeshStandardMaterial).transparent = true;
-      base.scale.set(fw * 0.85, fw * 0.5, fh * 0.85);
-      base.position.y = fw * 0.25;
-      base.castShadow = true;
-      g.add(base);
-
-      // Second floor
-      const upper = new THREE.Mesh(this._boxGeo, this._wallDarkMat.clone());
-      (upper.material as THREE.MeshStandardMaterial).transparent = true;
-      upper.scale.set(fw * 0.7, fw * 0.35, fh * 0.7);
-      upper.position.y = fw * 0.67;
-      upper.castShadow = true;
-      g.add(upper);
-
-      // Large peaked roof
-      const roof = new THREE.Mesh(this._coneGeo, roofMat);
-      roof.scale.set(fw * 0.9, fw * 0.7, fh * 0.9);
-      roof.position.y = fw * 1.1;
-      roof.castShadow = true;
-      g.add(roof);
-
-      // Door
-      const door = new THREE.Mesh(this._boxGeo, this._woodMat.clone());
-      (door.material as THREE.MeshStandardMaterial).transparent = true;
-      door.scale.set(fw * 0.15, fw * 0.25, 0.05);
-      door.position.set(0, fw * 0.12, fh * 0.43);
-      g.add(door);
-
-      // Windows (2 on each side)
-      for (let side = -1; side <= 1; side += 2) {
-        for (let row = 0; row < 2; row++) {
-          const win = new THREE.Mesh(this._boxGeo, this._windowMat);
-          win.scale.set(0.08, 0.12, fw * 0.06);
-          win.position.set(
-            side * fw * 0.25,
-            fw * (0.3 + row * 0.35),
-            fh * 0.43,
+      // Arrow slits (taller, more of them, on multiple levels)
+      for (let level = 0; level < 2; level++) {
+        for (let s = 0; s < 4; s++) {
+          const angle = (s / 4) * Math.PI * 2 + 0.4 + level * 0.4;
+          const slitMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
+          const slit = new THREE.Mesh(this._boxGeo, slitMat);
+          slit.scale.set(0.025, 0.18, 0.015);
+          const r2 = towerR + 0.015;
+          slit.position.set(
+            Math.cos(angle) * r2,
+            towerH * (0.3 + level * 0.3),
+            Math.sin(angle) * r2,
           );
-          g.add(win);
+          slit.lookAt(new THREE.Vector3(0, towerH * (0.3 + level * 0.3), 0));
+          g.add(slit);
+          // Stone frame around slit
+          const frame = new THREE.Mesh(this._boxGeo, new THREE.MeshStandardMaterial({ color: 0x999990, roughness: 0.9 }));
+          frame.scale.set(0.05, 0.22, 0.025);
+          frame.position.copy(slit.position);
+          frame.lookAt(new THREE.Vector3(0, towerH * (0.3 + level * 0.3), 0));
+          g.add(frame);
         }
       }
 
-      // Chimney
-      const chimney = new THREE.Mesh(this._cylGeo, this._chimneyMat);
-      chimney.scale.set(1.5, fw * 0.4, 1.5);
-      chimney.position.set(fw * 0.25, fw * 1.3, fh * 0.15);
-      g.add(chimney);
-    } else if (def.size === "large") {
-      // Large production building
+      // Base stone foundation
+      const baseGeo = new THREE.CylinderGeometry(towerR * 1.12, towerR * 1.15, towerH * 0.08, 12);
+      const baseMesh = new THREE.Mesh(baseGeo, new THREE.MeshStandardMaterial({ color: 0x706860, roughness: 0.95 }));
+      baseMesh.position.y = towerH * 0.04;
+      g.add(baseMesh);
+
+    } else if (def.type === SettlersBuildingType.HEADQUARTERS) {
+      // ===== HQ – grand multi-story timber-framed manor =====
+      const wallH1 = fw * 0.5;
+      const wallH2 = fw * 0.35;
+
+      // Stone foundation
+      const foundation = new THREE.Mesh(this._boxGeo, new THREE.MeshStandardMaterial({ color: 0x706860, roughness: 0.95 }));
+      (foundation.material as THREE.MeshStandardMaterial).transparent = true;
+      foundation.scale.set(fw * 0.9, fw * 0.08, fh * 0.9);
+      foundation.position.y = fw * 0.04;
+      g.add(foundation);
+      this._addFoundation(g, fw * 0.85, fh * 0.85, fw * 0.5);
+
+      // Ground floor walls
       const base = new THREE.Mesh(this._boxGeo, this._wallMat.clone());
       (base.material as THREE.MeshStandardMaterial).transparent = true;
-      base.scale.set(fw * 0.8, fw * 0.5, fh * 0.8);
-      base.position.y = fw * 0.25;
+      base.scale.set(fw * 0.85, wallH1, fh * 0.85);
+      base.position.y = wallH1 * 0.5 + fw * 0.08;
       base.castShadow = true;
       g.add(base);
 
-      // Timber framing (dark cross beams)
-      for (let side = -1; side <= 1; side += 2) {
-        const beam = new THREE.Mesh(this._boxGeo, this._woodMat.clone());
-        (beam.material as THREE.MeshStandardMaterial).transparent = true;
-        beam.scale.set(0.04, fw * 0.48, fh * 0.78);
-        beam.position.set(side * fw * 0.39, fw * 0.25, 0);
-        g.add(beam);
-      }
-      // Horizontal beam
-      const hbeam = new THREE.Mesh(this._boxGeo, this._woodMat.clone());
-      (hbeam.material as THREE.MeshStandardMaterial).transparent = true;
-      hbeam.scale.set(fw * 0.78, 0.04, 0.04);
-      hbeam.position.set(0, fw * 0.35, fh * 0.4);
-      g.add(hbeam);
+      // Timber framing on front and back
+      const woodMat = this._woodMat.clone();
+      (woodMat as THREE.MeshStandardMaterial).transparent = true;
+      this._addTimberFrame(g, fw * 0.85, wallH1, fh * 0.43, woodMat);
+      this._addTimberFrame(g, fw * 0.85, wallH1, -fh * 0.43, woodMat);
 
-      // Roof
-      const roof = new THREE.Mesh(this._coneGeo, roofMat);
-      roof.scale.set(fw * 0.9, fw * 0.6, fh * 0.9);
-      roof.position.y = fw * 0.7;
-      roof.castShadow = true;
+      // Second floor (slightly overhanging – jettied)
+      const upper = new THREE.Mesh(this._boxGeo, this._wallDarkMat.clone());
+      (upper.material as THREE.MeshStandardMaterial).transparent = true;
+      upper.scale.set(fw * 0.75, wallH2, fh * 0.75);
+      upper.position.y = wallH1 + wallH2 * 0.5 + fw * 0.08;
+      upper.castShadow = true;
+      g.add(upper);
+
+      // Jetty overhang trim
+      const jettyTrim = new THREE.Mesh(this._boxGeo, woodMat);
+      jettyTrim.scale.set(fw * 0.78, 0.03, fh * 0.78);
+      jettyTrim.position.y = wallH1 + fw * 0.08;
+      g.add(jettyTrim);
+
+      // Ridge roof instead of cone
+      const roofH = fw * 0.55;
+      const roof = this._createRidgeRoof(fw * 0.85, roofH, fh * 0.85, roofMat);
+      roof.position.y = wallH1 + wallH2 + fw * 0.08;
       g.add(roof);
 
-      // Door
-      const door = new THREE.Mesh(this._boxGeo, this._woodMat.clone());
-      (door.material as THREE.MeshStandardMaterial).transparent = true;
-      door.scale.set(fw * 0.12, fw * 0.22, 0.05);
-      door.position.set(0, fw * 0.11, fh * 0.41);
-      g.add(door);
+      // Roof ridge beam
+      const ridgeBeam = new THREE.Mesh(this._boxGeo, woodMat);
+      ridgeBeam.scale.set(0.03, 0.03, fh * 0.6);
+      ridgeBeam.position.y = wallH1 + wallH2 + roofH + fw * 0.08;
+      g.add(ridgeBeam);
 
-      // Windows
-      const win = new THREE.Mesh(this._boxGeo, this._windowMat);
-      win.scale.set(0.06, 0.08, fw * 0.05);
-      win.position.set(-fw * 0.2, fw * 0.32, fh * 0.41);
-      g.add(win);
-      const win2 = win.clone();
-      win2.position.set(fw * 0.2, fw * 0.32, fh * 0.41);
-      g.add(win2);
+      // Dormer window on roof
+      const dormerBase = new THREE.Mesh(this._boxGeo, this._wallMat.clone());
+      (dormerBase.material as THREE.MeshStandardMaterial).transparent = true;
+      dormerBase.scale.set(fw * 0.18, fw * 0.15, fw * 0.12);
+      dormerBase.position.set(fw * 0.15, wallH1 + wallH2 + roofH * 0.35 + fw * 0.08, -fh * 0.35);
+      g.add(dormerBase);
+      const dormerRoof = new THREE.Mesh(this._coneGeo, roofDarkMat);
+      dormerRoof.scale.set(fw * 0.22, fw * 0.12, fw * 0.15);
+      dormerRoof.position.set(fw * 0.15, wallH1 + wallH2 + roofH * 0.35 + fw * 0.16, -fh * 0.35);
+      g.add(dormerRoof);
 
-      // Chimney
-      const chimney = new THREE.Mesh(this._cylGeo, this._chimneyMat);
-      chimney.scale.set(1.2, fw * 0.3, 1.2);
-      chimney.position.set(fw * 0.2, fw * 0.85, -fh * 0.1);
-      g.add(chimney);
-    } else if (def.size === "medium") {
-      // Medium building
+      // Grand entrance door with porch
+      this._addDoor(g, 0, fh * 0.43, fw * 0.16, fw * 0.28);
+      this._addPorch(g, 0, fw * 0.35, fh * 0.43, fw * 0.25, fw * 0.15);
+
+      // Windows – ground floor
+      for (let side = -1; side <= 1; side += 2) {
+        this._addWindow(g, side * fw * 0.25, fw * 0.32, fh * 0.435, 0.09);
+      }
+      // Windows – upper floor
+      for (let side = -1; side <= 1; side += 2) {
+        this._addWindow(g, side * fw * 0.2, wallH1 + wallH2 * 0.45 + fw * 0.08, fh * 0.385, 0.07);
+      }
+      // Side windows
+      for (let row = 0; row < 2; row++) {
+        this._addWindow(g, fw * 0.435, fw * (0.25 + row * 0.38), fh * 0.1, 0.07);
+      }
+
+      // Chimney with cap
+      this._addChimney(g, fw * 0.25, wallH1 + wallH2 + roofH * 0.5, fh * 0.15, 0.08, fw * 0.35);
+
+      // Flower boxes under ground floor windows
+      const flowerMat = new THREE.MeshStandardMaterial({ color: 0x6b4226, roughness: 0.85 });
+      (flowerMat as THREE.MeshStandardMaterial).transparent = true;
+      for (let side = -1; side <= 1; side += 2) {
+        const box = new THREE.Mesh(this._boxGeo, flowerMat);
+        box.scale.set(0.12, 0.025, 0.035);
+        box.position.set(side * fw * 0.25, fw * 0.2, fh * 0.46);
+        g.add(box);
+        // Flowers
+        for (let f = -1; f <= 1; f++) {
+          const flower = new THREE.Mesh(this._sphereGeo, new THREE.MeshStandardMaterial({
+            color: [0xdd4444, 0xdddd44, 0xff88aa][f + 1], roughness: 0.7,
+          }));
+          flower.scale.set(0.35, 0.35, 0.35);
+          flower.position.set(side * fw * 0.25 + f * 0.035, fw * 0.22, fh * 0.46);
+          g.add(flower);
+        }
+      }
+
+    } else if (def.size === "large") {
+      // ===== Large production building – detailed workshop =====
+      const wallH = fw * 0.5;
+
+      // Stone foundation
+      const foundation = new THREE.Mesh(this._boxGeo, new THREE.MeshStandardMaterial({ color: 0x706860, roughness: 0.95 }));
+      (foundation.material as THREE.MeshStandardMaterial).transparent = true;
+      foundation.scale.set(fw * 0.85, fw * 0.06, fh * 0.85);
+      foundation.position.y = fw * 0.03;
+      g.add(foundation);
+      this._addFoundation(g, fw * 0.8, fh * 0.8, wallH);
+
+      // Main walls
       const base = new THREE.Mesh(this._boxGeo, this._wallMat.clone());
       (base.material as THREE.MeshStandardMaterial).transparent = true;
-      base.scale.set(fw * 0.7, fw * 0.45, fh * 0.7);
-      base.position.y = fw * 0.22;
+      base.scale.set(fw * 0.8, wallH, fh * 0.8);
+      base.position.y = wallH * 0.5 + fw * 0.06;
       base.castShadow = true;
       g.add(base);
 
-      // Timber X on front face
+      // Timber framing on front and sides
+      const woodMat = this._woodMat.clone();
+      (woodMat as THREE.MeshStandardMaterial).transparent = true;
+      this._addTimberFrame(g, fw * 0.8, wallH, fh * 0.41, woodMat);
+
+      // Side timber verticals
+      for (let side = -1; side <= 1; side += 2) {
+        const vBeam = new THREE.Mesh(this._boxGeo, woodMat);
+        vBeam.scale.set(0.035, wallH, 0.035);
+        vBeam.position.set(side * fw * 0.4, wallH * 0.5 + fw * 0.06, 0);
+        g.add(vBeam);
+      }
+
+      // Ridge roof
+      const roofH = fw * 0.45;
+      const roof = this._createRidgeRoof(fw * 0.82, roofH, fh * 0.82, roofMat);
+      roof.position.y = wallH + fw * 0.06;
+      g.add(roof);
+
+      // Roof trim
+      const trimMat = new THREE.MeshStandardMaterial({ color: 0x6b4226, roughness: 0.85 });
+      (trimMat as THREE.MeshStandardMaterial).transparent = true;
+      const trim = new THREE.Mesh(this._boxGeo, trimMat);
+      trim.scale.set(fw * 0.84, 0.025, 0.03);
+      trim.position.set(0, wallH + fw * 0.06, fh * 0.42);
+      g.add(trim);
+      const trimB = trim.clone(); trimB.position.set(0, wallH + fw * 0.06, -fh * 0.42); g.add(trimB);
+
+      // Door
+      this._addDoor(g, 0, fh * 0.41, fw * 0.12, fw * 0.22);
+
+      // Windows with shutters
+      this._addWindow(g, -fw * 0.22, fw * 0.32, fh * 0.415, 0.07);
+      this._addWindow(g, fw * 0.22, fw * 0.32, fh * 0.415, 0.07);
+
+      // Chimney
+      this._addChimney(g, fw * 0.22, wallH + roofH * 0.3, -fh * 0.1, 0.06, fw * 0.3);
+
+      // Work bench / anvil outside (production detail)
+      const benchMat = new THREE.MeshStandardMaterial({ color: 0x8b6b3a, roughness: 0.85 });
+      (benchMat as THREE.MeshStandardMaterial).transparent = true;
+      const bench = new THREE.Mesh(this._boxGeo, benchMat);
+      bench.scale.set(fw * 0.2, fw * 0.12, fw * 0.1);
+      bench.position.set(-fw * 0.35, fw * 0.06, fh * 0.5);
+      g.add(bench);
+      // Bench legs
+      for (let lx = -1; lx <= 1; lx += 2) {
+        const leg = new THREE.Mesh(this._cylGeo, benchMat);
+        leg.scale.set(0.3, fw * 0.12, 0.3);
+        leg.position.set(-fw * 0.35 + lx * fw * 0.08, fw * 0.06, fh * 0.5);
+        g.add(leg);
+      }
+
+    } else if (def.size === "medium") {
+      // ===== Medium building – cottage with character =====
+      const wallH = fw * 0.45;
+
+      // Foundation
+      this._addFoundation(g, fw * 0.7, fh * 0.7, wallH);
+
+      // Walls
+      const base = new THREE.Mesh(this._boxGeo, this._wallMat.clone());
+      (base.material as THREE.MeshStandardMaterial).transparent = true;
+      base.scale.set(fw * 0.7, wallH, fh * 0.7);
+      base.position.y = wallH * 0.5;
+      base.castShadow = true;
+      g.add(base);
+
+      // Timber framing – X pattern plus verticals
+      const woodMat = this._woodMat.clone();
+      (woodMat as THREE.MeshStandardMaterial).transparent = true;
+      // Corner posts
+      for (let sx = -1; sx <= 1; sx += 2) {
+        const post = new THREE.Mesh(this._boxGeo, woodMat);
+        post.scale.set(0.035, wallH, 0.035);
+        post.position.set(sx * fw * 0.345, wallH * 0.5, fh * 0.355);
+        g.add(post);
+      }
+      // Diagonal braces on front
       for (let d = -1; d <= 1; d += 2) {
-        const xBeam = new THREE.Mesh(this._boxGeo, this._woodMat.clone());
-        (xBeam.material as THREE.MeshStandardMaterial).transparent = true;
-        xBeam.scale.set(0.03, fw * 0.4, 0.03);
-        xBeam.position.set(d * fw * 0.1, fw * 0.22, fh * 0.36);
-        xBeam.rotation.z = d * 0.4;
+        const xBeam = new THREE.Mesh(this._boxGeo, woodMat);
+        xBeam.scale.set(0.025, fw * 0.42, 0.025);
+        xBeam.position.set(d * fw * 0.12, wallH * 0.5, fh * 0.36);
+        xBeam.rotation.z = d * 0.42;
         g.add(xBeam);
       }
+      // Horizontal mid-rail
+      const hBeam = new THREE.Mesh(this._boxGeo, woodMat);
+      hBeam.scale.set(fw * 0.68, 0.025, 0.025);
+      hBeam.position.set(0, wallH * 0.55, fh * 0.36);
+      g.add(hBeam);
 
-      // Roof
-      const roof = new THREE.Mesh(this._coneGeo, roofMat);
-      roof.scale.set(fw * 0.8, fw * 0.5, fh * 0.8);
-      roof.position.y = fw * 0.55;
-      roof.castShadow = true;
+      // Ridge roof
+      const roofH = fw * 0.4;
+      const roof = this._createRidgeRoof(fw * 0.72, roofH, fh * 0.72, roofMat);
+      roof.position.y = wallH;
       g.add(roof);
 
-      // Door
-      const door = new THREE.Mesh(this._boxGeo, this._woodMat.clone());
-      (door.material as THREE.MeshStandardMaterial).transparent = true;
-      door.scale.set(fw * 0.1, fw * 0.18, 0.04);
-      door.position.set(0, fw * 0.09, fh * 0.36);
-      g.add(door);
+      // Door with frame
+      this._addDoor(g, 0, fh * 0.36, fw * 0.1, fw * 0.2);
 
-      // Window
-      const win = new THREE.Mesh(this._boxGeo, this._windowMat);
-      win.scale.set(0.05, 0.06, fw * 0.04);
-      win.position.set(-fw * 0.18, fw * 0.3, fh * 0.36);
-      g.add(win);
+      // Window with shutters
+      this._addWindow(g, -fw * 0.2, fw * 0.3, fh * 0.365, 0.055);
+
+      // Side window
+      this._addWindow(g, fw * 0.36, fw * 0.28, fh * 0.05, 0.045);
 
       // Chimney
-      const chimney = new THREE.Mesh(this._cylGeo, this._chimneyMat);
-      chimney.scale.set(1.0, fw * 0.25, 1.0);
-      chimney.position.set(fw * 0.15, fw * 0.7, 0);
-      g.add(chimney);
+      this._addChimney(g, fw * 0.18, wallH + roofH * 0.25, 0, 0.05, fw * 0.25);
+
+      // Barrel or crate beside building
+      const barrelMat = new THREE.MeshStandardMaterial({ color: 0x8b6b3a, roughness: 0.85 });
+      (barrelMat as THREE.MeshStandardMaterial).transparent = true;
+      const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.055, 0.12, 8), barrelMat);
+      barrel.position.set(fw * 0.42, 0.06, fh * 0.2);
+      g.add(barrel);
+      // Barrel hoops
+      for (let h2 = 0; h2 < 2; h2++) {
+        const hoop = new THREE.Mesh(new THREE.TorusGeometry(0.058, 0.005, 4, 8), new THREE.MeshStandardMaterial({ color: 0x444444 }));
+        hoop.position.set(fw * 0.42, 0.03 + h2 * 0.06, fh * 0.2);
+        hoop.rotation.x = Math.PI * 0.5;
+        g.add(hoop);
+      }
+
     } else {
-      // Small building
-      const base = new THREE.Mesh(this._boxGeo, this._wallMat.clone());
+      // ===== Small building – detailed hut =====
+      const wallH = fw * 0.35;
+
+      // Foundation stones
+      this._addFoundation(g, fw * 0.6, fh * 0.6, wallH);
+
+      // Walls with slight taper (wider at base)
+      const wallGeo = new THREE.BoxGeometry(fw * 0.6, wallH, fh * 0.6);
+      const base = new THREE.Mesh(wallGeo, this._wallMat.clone());
       (base.material as THREE.MeshStandardMaterial).transparent = true;
-      base.scale.set(fw * 0.6, fw * 0.35, fh * 0.6);
-      base.position.y = fw * 0.17;
+      base.position.y = wallH * 0.5;
       base.castShadow = true;
       g.add(base);
 
-      // Roof
-      const roof = new THREE.Mesh(this._coneGeo, roofMat);
-      roof.scale.set(fw * 0.7, fw * 0.45, fh * 0.7);
-      roof.position.y = fw * 0.47;
-      roof.castShadow = true;
+      // Corner posts
+      const woodMat = this._woodMat.clone();
+      (woodMat as THREE.MeshStandardMaterial).transparent = true;
+      for (let sx = -1; sx <= 1; sx += 2) {
+        for (let sz = -1; sz <= 1; sz += 2) {
+          const post = new THREE.Mesh(this._boxGeo, woodMat);
+          post.scale.set(0.03, wallH, 0.03);
+          post.position.set(sx * fw * 0.295, wallH * 0.5, sz * fh * 0.295);
+          g.add(post);
+        }
+      }
+
+      // Ridge roof
+      const roofH = fw * 0.35;
+      const roof = this._createRidgeRoof(fw * 0.62, roofH, fh * 0.62, roofMat);
+      roof.position.y = wallH;
       g.add(roof);
 
       // Door
-      const door = new THREE.Mesh(this._boxGeo, this._woodMat.clone());
-      (door.material as THREE.MeshStandardMaterial).transparent = true;
-      door.scale.set(fw * 0.08, fw * 0.15, 0.04);
-      door.position.set(0, fw * 0.07, fh * 0.31);
-      g.add(door);
+      this._addDoor(g, 0, fh * 0.31, fw * 0.08, fw * 0.16);
 
       // Small window
-      const win = new THREE.Mesh(this._boxGeo, this._windowMat);
-      win.scale.set(0.04, 0.04, fw * 0.03);
-      win.position.set(-fw * 0.15, fw * 0.24, fh * 0.31);
-      g.add(win);
+      this._addWindow(g, -fw * 0.16, fw * 0.24, fh * 0.315, 0.04);
+
+      // Chimney
+      this._addChimney(g, fw * 0.15, wallH + roofH * 0.2, 0, 0.04, fw * 0.2);
+
+      // Log pile beside building
+      const logMat = new THREE.MeshStandardMaterial({ color: 0x7a5a2a, roughness: 0.9 });
+      (logMat as THREE.MeshStandardMaterial).transparent = true;
+      for (let l = 0; l < 3; l++) {
+        const log = new THREE.Mesh(this._cylGeo, logMat);
+        log.scale.set(0.25, fw * 0.15, 0.25);
+        log.rotation.z = Math.PI * 0.5;
+        log.position.set(fw * 0.38, 0.03 + l * 0.04, fh * (0.05 + l * 0.02));
+        g.add(log);
+      }
     }
 
     // Position in world
@@ -1705,8 +2105,8 @@ export class SettlersRenderer {
       }
 
       // Animate legs
-      const leftLeg = mesh.getObjectByName("leftLeg") as THREE.Mesh | undefined;
-      const rightLeg = mesh.getObjectByName("rightLeg") as THREE.Mesh | undefined;
+      const leftLeg = mesh.getObjectByName("leftLeg") as THREE.Object3D | undefined;
+      const rightLeg = mesh.getObjectByName("rightLeg") as THREE.Object3D | undefined;
       const walkPhase = t * 8 + carrier.pathProgress * 20;
       if (leftLeg) leftLeg.rotation.x = Math.sin(walkPhase) * 0.4;
       if (rightLeg) rightLeg.rotation.x = Math.sin(walkPhase + Math.PI) * 0.4;
@@ -1731,56 +2131,208 @@ export class SettlersRenderer {
     const playerColor = this._getPlayerColor(owner, state);
     const h = SB.CARRIER_HEIGHT;
 
-    const bodyMat = new THREE.MeshStandardMaterial({ color: playerColor });
-    const skinMat = new THREE.MeshStandardMaterial({ color: 0xeeccaa });
+    const tunicMat = new THREE.MeshStandardMaterial({ color: playerColor, roughness: 0.8 });
+    const tunicDkMat = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(playerColor).multiplyScalar(0.7).getHex(), roughness: 0.85,
+    });
+    const skinMat = new THREE.MeshStandardMaterial({ color: 0xf0ccaa, roughness: 0.7 });
+    const skinShadow = new THREE.MeshStandardMaterial({ color: 0xd4a880, roughness: 0.75 });
+    const pantMat = new THREE.MeshStandardMaterial({ color: 0x6a5a3a, roughness: 0.85 });
+    const bootMat = new THREE.MeshStandardMaterial({ color: 0x4a2e16, roughness: 0.9 });
+    const beltMat = new THREE.MeshStandardMaterial({ color: 0x4a2e16, roughness: 0.85 });
 
-    // Body (torso)
-    const body = new THREE.Mesh(this._boxGeo, bodyMat);
-    body.scale.set(h * 0.5, h * 0.5, h * 0.3);
-    body.position.y = h * 0.55;
-    g.add(body);
+    // === TORSO (tapered – broader shoulders, narrower waist) ===
+    const torsoGeo = new THREE.BoxGeometry(h * 0.42, h * 0.32, h * 0.22);
+    const torso = new THREE.Mesh(torsoGeo, tunicMat);
+    torso.position.y = h * 0.55;
+    g.add(torso);
 
-    // Head
+    // Tunic skirt (flares out below waist)
+    const skirt = new THREE.Mesh(this._boxGeo, tunicMat);
+    skirt.scale.set(h * 0.44, h * 0.1, h * 0.24);
+    skirt.position.y = h * 0.38;
+    g.add(skirt);
+
+    // Belt
+    const belt = new THREE.Mesh(this._boxGeo, beltMat);
+    belt.scale.set(h * 0.44, h * 0.03, h * 0.24);
+    belt.position.y = h * 0.42;
+    g.add(belt);
+    // Belt buckle
+    const buckle = new THREE.Mesh(this._boxGeo, new THREE.MeshStandardMaterial({ color: 0xb8960c, metalness: 0.5 }));
+    buckle.scale.set(h * 0.04, h * 0.035, h * 0.02);
+    buckle.position.set(0, h * 0.42, h * 0.13);
+    g.add(buckle);
+
+    // Collar / neckline detail
+    const collar = new THREE.Mesh(this._boxGeo, tunicDkMat);
+    collar.scale.set(h * 0.18, h * 0.03, h * 0.18);
+    collar.position.y = h * 0.72;
+    g.add(collar);
+
+    // === NECK ===
+    const neck = new THREE.Mesh(this._cylGeo, skinMat);
+    neck.scale.set(0.35, h * 0.06, 0.35);
+    neck.position.y = h * 0.76;
+    g.add(neck);
+
+    // === HEAD (more detailed) ===
     const head = new THREE.Mesh(this._sphereGeo, skinMat);
-    head.scale.set(1.3, 1.3, 1.3);
-    head.position.y = h * 0.95;
+    head.scale.set(1.4, 1.5, 1.3);
+    head.position.y = h * 0.88;
     g.add(head);
 
-    // Hat
-    const hatMat = new THREE.MeshStandardMaterial({ color: 0x664422 });
-    const hat = new THREE.Mesh(this._coneGeo, hatMat);
-    hat.scale.set(h * 0.6, h * 0.3, h * 0.6);
-    hat.position.y = h * 1.1;
-    g.add(hat);
+    // Chin
+    const chin = new THREE.Mesh(this._sphereGeo, skinShadow);
+    chin.scale.set(0.6, 0.4, 0.5);
+    chin.position.set(0, h * 0.82, h * 0.02);
+    g.add(chin);
 
-    // Arms
+    // Eyes (small dark dots)
     for (let side = -1; side <= 1; side += 2) {
-      const arm = new THREE.Mesh(this._cylGeo, skinMat);
-      arm.scale.set(0.4, h * 0.35, 0.4);
-      arm.position.set(side * h * 0.32, h * 0.5, 0);
-      arm.rotation.z = side * 0.3;
-      g.add(arm);
+      const eye = new THREE.Mesh(this._sphereGeo, new THREE.MeshBasicMaterial({ color: 0x332211 }));
+      eye.scale.set(0.2, 0.2, 0.15);
+      eye.position.set(side * h * 0.06, h * 0.9, h * 0.04);
+      g.add(eye);
+      // White of eye
+      const eyeW = new THREE.Mesh(this._sphereGeo, new THREE.MeshBasicMaterial({ color: 0xffffff }));
+      eyeW.scale.set(0.28, 0.22, 0.12);
+      eyeW.position.set(side * h * 0.06, h * 0.9, h * 0.035);
+      g.add(eyeW);
     }
 
-    // Legs
-    const leftLeg = new THREE.Mesh(this._cylGeo, new THREE.MeshStandardMaterial({ color: 0x554433 }));
+    // Nose
+    const nose = new THREE.Mesh(this._sphereGeo, skinShadow);
+    nose.scale.set(0.2, 0.25, 0.2);
+    nose.position.set(0, h * 0.87, h * 0.06);
+    g.add(nose);
+
+    // === HAT (floppy wide-brim peasant hat) ===
+    // Hat crown
+    const hatMat = new THREE.MeshStandardMaterial({ color: 0x664422, roughness: 0.9 });
+    const hatCrown = new THREE.Mesh(new THREE.CylinderGeometry(h * 0.12, h * 0.14, h * 0.1, 8), hatMat);
+    hatCrown.position.y = h * 0.98;
+    g.add(hatCrown);
+    // Hat brim
+    const brimGeo = new THREE.CylinderGeometry(h * 0.25, h * 0.26, h * 0.02, 10);
+    const brim = new THREE.Mesh(brimGeo, hatMat);
+    brim.position.y = h * 0.94;
+    g.add(brim);
+    // Hat band
+    const bandGeo = new THREE.TorusGeometry(h * 0.13, h * 0.012, 4, 10);
+    const band = new THREE.Mesh(bandGeo, new THREE.MeshStandardMaterial({ color: 0x8b6914, roughness: 0.85 }));
+    band.position.y = h * 0.96;
+    band.rotation.x = Math.PI * 0.5;
+    g.add(band);
+
+    // === SHOULDERS ===
+    for (let side = -1; side <= 1; side += 2) {
+      const shoulder = new THREE.Mesh(this._sphereGeo, tunicMat);
+      shoulder.scale.set(0.65, 0.5, 0.55);
+      shoulder.position.set(side * h * 0.24, h * 0.68, 0);
+      g.add(shoulder);
+    }
+
+    // === ARMS (upper arm + forearm + hand) ===
+    for (let side = -1; side <= 1; side += 2) {
+      // Upper arm (tunic sleeve)
+      const upperArm = new THREE.Mesh(this._cylGeo, tunicMat);
+      upperArm.scale.set(0.35, h * 0.18, 0.35);
+      upperArm.position.set(side * h * 0.3, h * 0.58, 0);
+      upperArm.rotation.z = side * 0.2;
+      g.add(upperArm);
+      // Forearm (skin)
+      const forearm = new THREE.Mesh(this._cylGeo, skinMat);
+      forearm.scale.set(0.28, h * 0.16, 0.28);
+      forearm.position.set(side * h * 0.34, h * 0.42, 0);
+      forearm.rotation.z = side * 0.15;
+      g.add(forearm);
+      // Hand
+      const hand = new THREE.Mesh(this._sphereGeo, skinMat);
+      hand.scale.set(0.35, 0.3, 0.3);
+      hand.position.set(side * h * 0.36, h * 0.34, 0);
+      g.add(hand);
+    }
+
+    // === LEGS (thigh + shin + boot) ===
+    const legMat = pantMat;
+
+    // Left leg assembly
+    const leftLeg = new THREE.Group();
     leftLeg.name = "leftLeg";
-    leftLeg.scale.set(0.5, h * 0.3, 0.5);
-    leftLeg.position.set(-h * 0.12, h * 0.15, 0);
+    const lThigh = new THREE.Mesh(this._cylGeo, legMat);
+    lThigh.scale.set(0.4, h * 0.18, 0.4);
+    lThigh.position.y = h * 0.09;
+    leftLeg.add(lThigh);
+    const lShin = new THREE.Mesh(this._cylGeo, legMat);
+    lShin.scale.set(0.32, h * 0.14, 0.32);
+    lShin.position.y = -h * 0.05;
+    leftLeg.add(lShin);
+    // Boot
+    const lBoot = new THREE.Mesh(this._boxGeo, bootMat);
+    lBoot.scale.set(h * 0.08, h * 0.08, h * 0.14);
+    lBoot.position.set(0, -h * 0.12, h * 0.02);
+    leftLeg.add(lBoot);
+    // Boot cuff
+    const lCuff = new THREE.Mesh(this._cylGeo, bootMat);
+    lCuff.scale.set(0.38, h * 0.025, 0.38);
+    lCuff.position.y = -h * 0.02;
+    leftLeg.add(lCuff);
+    leftLeg.position.set(-h * 0.1, h * 0.22, 0);
     g.add(leftLeg);
 
-    const rightLeg = new THREE.Mesh(this._cylGeo, new THREE.MeshStandardMaterial({ color: 0x554433 }));
+    // Right leg assembly
+    const rightLeg = new THREE.Group();
     rightLeg.name = "rightLeg";
-    rightLeg.scale.set(0.5, h * 0.3, 0.5);
-    rightLeg.position.set(h * 0.12, h * 0.15, 0);
+    const rThigh = new THREE.Mesh(this._cylGeo, legMat);
+    rThigh.scale.set(0.4, h * 0.18, 0.4);
+    rThigh.position.y = h * 0.09;
+    rightLeg.add(rThigh);
+    const rShin = new THREE.Mesh(this._cylGeo, legMat);
+    rShin.scale.set(0.32, h * 0.14, 0.32);
+    rShin.position.y = -h * 0.05;
+    rightLeg.add(rShin);
+    const rBoot = new THREE.Mesh(this._boxGeo, bootMat);
+    rBoot.scale.set(h * 0.08, h * 0.08, h * 0.14);
+    rBoot.position.set(0, -h * 0.12, h * 0.02);
+    rightLeg.add(rBoot);
+    const rCuff = new THREE.Mesh(this._cylGeo, bootMat);
+    rCuff.scale.set(0.38, h * 0.025, 0.38);
+    rCuff.position.y = -h * 0.02;
+    rightLeg.add(rCuff);
+    rightLeg.position.set(h * 0.1, h * 0.22, 0);
     g.add(rightLeg);
 
-    // Cargo box (hidden by default)
+    // === BACKPACK (satchel for carrying goods) ===
+    const packMat = new THREE.MeshStandardMaterial({ color: 0xa08040, roughness: 0.85 });
+    const pack = new THREE.Mesh(this._boxGeo, packMat);
+    pack.scale.set(h * 0.3, h * 0.22, h * 0.12);
+    pack.position.set(0, h * 0.55, -h * 0.17);
+    g.add(pack);
+    // Pack straps
+    const strapMat = new THREE.MeshStandardMaterial({ color: 0x5c3a1e, roughness: 0.85 });
+    for (let side = -1; side <= 1; side += 2) {
+      const strap = new THREE.Mesh(this._boxGeo, strapMat);
+      strap.scale.set(h * 0.025, h * 0.28, h * 0.015);
+      strap.position.set(side * h * 0.08, h * 0.58, -h * 0.06);
+      strap.rotation.x = -0.15;
+      g.add(strap);
+    }
+    // Pack flap
+    const flap = new THREE.Mesh(this._boxGeo, new THREE.MeshStandardMaterial({
+      color: 0x8b6b3a, roughness: 0.85,
+    }));
+    flap.scale.set(h * 0.28, h * 0.06, h * 0.08);
+    flap.position.set(0, h * 0.67, -h * 0.18);
+    flap.rotation.x = 0.2;
+    g.add(flap);
+
+    // === CARGO (resource being carried, hidden by default) ===
     const cargoMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
     const cargo = new THREE.Mesh(this._boxGeo, cargoMat);
     cargo.name = "cargo";
-    cargo.scale.set(h * 0.25, h * 0.25, h * 0.25);
-    cargo.position.set(0, h * 0.9, -h * 0.2);
+    cargo.scale.set(h * 0.2, h * 0.15, h * 0.15);
+    cargo.position.set(0, h * 0.75, -h * 0.22);
     cargo.visible = false;
     g.add(cargo);
 
@@ -1827,8 +2379,8 @@ export class SettlersRenderer {
 
       // Marching leg animation
       if (soldier.state === "marching") {
-        const leftLeg = mesh.getObjectByName("sLeftLeg") as THREE.Mesh | undefined;
-        const rightLeg = mesh.getObjectByName("sRightLeg") as THREE.Mesh | undefined;
+        const leftLeg = mesh.getObjectByName("sLeftLeg") as THREE.Object3D | undefined;
+        const rightLeg = mesh.getObjectByName("sRightLeg") as THREE.Object3D | undefined;
         const phase = t * 6;
         if (leftLeg) leftLeg.rotation.x = Math.sin(phase) * 0.3;
         if (rightLeg) rightLeg.rotation.x = Math.sin(phase + Math.PI) * 0.3;
@@ -1841,103 +2393,336 @@ export class SettlersRenderer {
     const playerColor = this._getPlayerColor(owner, state);
     const h = SB.SOLDIER_HEIGHT;
 
-    const bodyMat = new THREE.MeshStandardMaterial({ color: playerColor });
-    const skinMat = new THREE.MeshStandardMaterial({ color: 0xeeccaa });
+    const tunicMat = new THREE.MeshStandardMaterial({ color: playerColor, roughness: 0.8 });
+    const skinMat = new THREE.MeshStandardMaterial({ color: 0xf0ccaa, roughness: 0.7 });
     const armorMat = new THREE.MeshStandardMaterial({
-      color: 0x888899,
-      metalness: 0.5,
-      roughness: 0.4,
+      color: rank >= 3 ? 0xc8b060 : 0x888899,
+      metalness: 0.6, roughness: 0.35,
     });
+    const armorDkMat = new THREE.MeshStandardMaterial({
+      color: rank >= 3 ? 0xa08838 : 0x666677,
+      metalness: 0.5, roughness: 0.4,
+    });
+    const chainmailMat = new THREE.MeshStandardMaterial({
+      color: 0x999999, metalness: 0.4, roughness: 0.6,
+    });
+    const leatherMat = new THREE.MeshStandardMaterial({ color: 0x5c3a1e, roughness: 0.85 });
+    const bootMat = new THREE.MeshStandardMaterial({ color: 0x4a2e16, roughness: 0.9 });
 
-    // Body
-    const body = new THREE.Mesh(this._boxGeo, bodyMat);
-    body.scale.set(h * 0.45, h * 0.6, h * 0.3);
-    body.position.y = h * 0.5;
-    g.add(body);
+    // === TORSO with layered armor ===
+    // Base tunic
+    const torso = new THREE.Mesh(this._boxGeo, tunicMat);
+    torso.scale.set(h * 0.44, h * 0.35, h * 0.24);
+    torso.position.y = h * 0.52;
+    g.add(torso);
 
-    // Armor chest plate (higher rank = more armor)
+    // Chainmail over tunic (visible below chestplate)
     if (rank >= 1) {
-      const chestplate = new THREE.Mesh(this._boxGeo, armorMat);
-      chestplate.scale.set(h * 0.48, h * 0.4, h * 0.32);
-      chestplate.position.y = h * 0.55;
-      g.add(chestplate);
+      const chain = new THREE.Mesh(this._boxGeo, chainmailMat);
+      chain.scale.set(h * 0.46, h * 0.15, h * 0.26);
+      chain.position.y = h * 0.4;
+      g.add(chain);
     }
 
-    // Head
+    // Chestplate (layered over torso)
+    const chestplate = new THREE.Mesh(this._boxGeo, armorMat);
+    chestplate.scale.set(h * 0.46, h * 0.28, h * 0.27);
+    chestplate.position.y = h * 0.56;
+    g.add(chestplate);
+
+    // Chest plate center ridge
+    const ridge = new THREE.Mesh(this._boxGeo, armorDkMat);
+    ridge.scale.set(h * 0.04, h * 0.22, h * 0.02);
+    ridge.position.set(0, h * 0.56, h * 0.14);
+    g.add(ridge);
+
+    // Belt with pouches
+    const belt = new THREE.Mesh(this._boxGeo, leatherMat);
+    belt.scale.set(h * 0.47, h * 0.035, h * 0.27);
+    belt.position.y = h * 0.4;
+    g.add(belt);
+    // Belt buckle
+    const buckle = new THREE.Mesh(this._boxGeo, new THREE.MeshStandardMaterial({
+      color: rank >= 3 ? 0xddaa33 : 0x999999, metalness: 0.6,
+    }));
+    buckle.scale.set(h * 0.05, h * 0.04, h * 0.02);
+    buckle.position.set(0, h * 0.4, h * 0.14);
+    g.add(buckle);
+    // Belt pouch
+    const pouch = new THREE.Mesh(this._boxGeo, leatherMat);
+    pouch.scale.set(h * 0.06, h * 0.06, h * 0.05);
+    pouch.position.set(-h * 0.18, h * 0.38, h * 0.12);
+    g.add(pouch);
+
+    // Shoulder pauldrons
+    for (let side = -1; side <= 1; side += 2) {
+      const pauldron = new THREE.Mesh(this._sphereGeo, armorMat);
+      pauldron.scale.set(0.7, 0.5, 0.65);
+      pauldron.position.set(side * h * 0.26, h * 0.7, 0);
+      g.add(pauldron);
+      // Pauldron rim
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(h * 0.065, h * 0.008, 4, 8, Math.PI),
+        armorDkMat);
+      rim.position.set(side * h * 0.26, h * 0.67, 0);
+      rim.rotation.x = Math.PI * 0.5;
+      rim.rotation.z = side * -0.3;
+      g.add(rim);
+    }
+
+    // === NECK ===
+    const neck = new THREE.Mesh(this._cylGeo, skinMat);
+    neck.scale.set(0.35, h * 0.05, 0.35);
+    neck.position.y = h * 0.76;
+    g.add(neck);
+
+    // Gorget (neck armor)
+    const gorget = new THREE.Mesh(this._cylGeo, armorDkMat);
+    gorget.scale.set(0.45, h * 0.035, 0.45);
+    gorget.position.y = h * 0.73;
+    g.add(gorget);
+
+    // === HEAD ===
     const head = new THREE.Mesh(this._sphereGeo, skinMat);
-    head.scale.set(1.6, 1.6, 1.6);
-    head.position.y = h * 0.95;
+    head.scale.set(1.5, 1.55, 1.4);
+    head.position.y = h * 0.86;
     g.add(head);
 
-    // Helmet (gets more elaborate with rank)
-    const helmetMat = new THREE.MeshStandardMaterial({
-      color: rank >= 3 ? 0xddaa33 : 0x888888,
-      metalness: 0.6,
-      roughness: 0.3,
-    });
-    const helmet = new THREE.Mesh(this._sphereGeo, helmetMat);
-    helmet.scale.set(1.8, 1.2, 1.8);
-    helmet.position.y = h * 1.05;
-    g.add(helmet);
-
-    // Helmet crest for rank >= 2
-    if (rank >= 2) {
-      const crest = new THREE.Mesh(this._boxGeo, new THREE.MeshStandardMaterial({ color: 0xcc2222 }));
-      crest.scale.set(0.03, h * 0.25, h * 0.2);
-      crest.position.y = h * 1.2;
-      g.add(crest);
+    // Eyes
+    for (let side = -1; side <= 1; side += 2) {
+      const eyeW = new THREE.Mesh(this._sphereGeo, new THREE.MeshBasicMaterial({ color: 0xffffff }));
+      eyeW.scale.set(0.28, 0.22, 0.12);
+      eyeW.position.set(side * h * 0.06, h * 0.88, h * 0.04);
+      g.add(eyeW);
+      const eye = new THREE.Mesh(this._sphereGeo, new THREE.MeshBasicMaterial({ color: 0x332211 }));
+      eye.scale.set(0.18, 0.18, 0.12);
+      eye.position.set(side * h * 0.06, h * 0.88, h * 0.045);
+      g.add(eye);
     }
 
-    // Shield
-    const shieldMat = new THREE.MeshStandardMaterial({
-      color: playerColor,
-      metalness: 0.2,
-      roughness: 0.5,
+    // === HELMET (detailed, rank-dependent) ===
+    const helmetColor = rank >= 3 ? 0xddaa33 : rank >= 2 ? 0x999999 : 0x777788;
+    const helmetMat = new THREE.MeshStandardMaterial({
+      color: helmetColor, metalness: 0.65, roughness: 0.3,
     });
-    const shieldGeo = new THREE.CylinderGeometry(h * 0.22, h * 0.22, 0.04, 6);
+
+    // Helmet dome
+    const helmet = new THREE.Mesh(this._sphereGeo, helmetMat);
+    helmet.scale.set(1.8, 1.3, 1.7);
+    helmet.position.y = h * 1.0;
+    g.add(helmet);
+
+    // Nose guard
+    const noseGuard = new THREE.Mesh(this._boxGeo, helmetMat);
+    noseGuard.scale.set(h * 0.02, h * 0.1, h * 0.04);
+    noseGuard.position.set(0, h * 0.9, h * 0.06);
+    g.add(noseGuard);
+
+    // Helmet brow ridge
+    const browRidge = new THREE.Mesh(this._boxGeo, helmetMat);
+    browRidge.scale.set(h * 0.28, h * 0.02, h * 0.04);
+    browRidge.position.set(0, h * 0.94, h * 0.05);
+    g.add(browRidge);
+
+    // Cheek guards
+    for (let side = -1; side <= 1; side += 2) {
+      const cheek = new THREE.Mesh(this._boxGeo, helmetMat);
+      cheek.scale.set(h * 0.04, h * 0.1, h * 0.08);
+      cheek.position.set(side * h * 0.12, h * 0.88, h * 0.01);
+      g.add(cheek);
+    }
+
+    // Helmet crest (feathered for rank >= 2)
+    if (rank >= 2) {
+      const crestMat = new THREE.MeshStandardMaterial({
+        color: rank >= 3 ? 0xff2222 : 0xcc2222, roughness: 0.7,
+      });
+      // Central crest ridge
+      const crest = new THREE.Mesh(this._boxGeo, crestMat);
+      crest.scale.set(h * 0.025, h * 0.18, h * 0.22);
+      crest.position.y = h * 1.14;
+      g.add(crest);
+      // Feather plume segments
+      for (let f = 0; f < 4; f++) {
+        const feather = new THREE.Mesh(this._boxGeo, crestMat);
+        feather.scale.set(h * 0.015, h * (0.12 - f * 0.015), h * 0.04);
+        feather.position.set(0, h * (1.18 + f * 0.02), -h * (0.05 + f * 0.04));
+        feather.rotation.x = f * 0.15;
+        g.add(feather);
+      }
+    }
+
+    // === ARMS (upper arm with armor + forearm + gauntlet) ===
+    for (let side = -1; side <= 1; side += 2) {
+      // Upper arm (sleeve + armor)
+      const upperArm = new THREE.Mesh(this._cylGeo, tunicMat);
+      upperArm.scale.set(0.38, h * 0.17, 0.38);
+      upperArm.position.set(side * h * 0.3, h * 0.58, 0);
+      upperArm.rotation.z = side * 0.15;
+      g.add(upperArm);
+      // Vambrace (forearm armor)
+      const vambrace = new THREE.Mesh(this._cylGeo, armorMat);
+      vambrace.scale.set(0.32, h * 0.14, 0.32);
+      vambrace.position.set(side * h * 0.34, h * 0.42, 0);
+      vambrace.rotation.z = side * 0.1;
+      g.add(vambrace);
+      // Gauntlet
+      const gauntlet = new THREE.Mesh(this._boxGeo, armorDkMat);
+      gauntlet.scale.set(h * 0.07, h * 0.06, h * 0.06);
+      gauntlet.position.set(side * h * 0.36, h * 0.34, 0);
+      g.add(gauntlet);
+    }
+
+    // === SHIELD (kite shield shape with emblem) ===
+    // Kite shield from custom geometry
+    const shieldVerts = new Float32Array([
+      0, h * 0.15, 0,     // top center
+      -h * 0.12, h * 0.08, 0.01,  // top left
+      -h * 0.13, 0, 0,     // mid left
+      0, -h * 0.18, 0.01,  // bottom point
+      h * 0.13, 0, 0,      // mid right
+      h * 0.12, h * 0.08, 0.01,   // top right
+    ]);
+    const shieldIdx = [0, 1, 5, 1, 2, 4, 1, 4, 5, 2, 3, 4];
+    const shieldGeo = new THREE.BufferGeometry();
+    shieldGeo.setAttribute("position", new THREE.Float32BufferAttribute(shieldVerts, 3));
+    shieldGeo.setIndex(shieldIdx);
+    shieldGeo.computeVertexNormals();
+    const shieldMat = new THREE.MeshStandardMaterial({
+      color: playerColor, metalness: 0.2, roughness: 0.5, side: THREE.DoubleSide,
+    });
     const shield = new THREE.Mesh(shieldGeo, shieldMat);
-    shield.rotation.z = Math.PI / 2;
-    shield.position.set(-h * 0.35, h * 0.5, 0);
+    shield.position.set(-h * 0.38, h * 0.48, h * 0.05);
     g.add(shield);
 
-    // Shield boss (center bump)
+    // Shield boss
     const boss = new THREE.Mesh(this._sphereGeo, armorMat);
-    boss.scale.set(0.5, 0.5, 0.5);
-    boss.position.set(-h * 0.37, h * 0.5, 0);
+    boss.scale.set(0.4, 0.4, 0.25);
+    boss.position.set(-h * 0.38, h * 0.5, h * 0.06);
     g.add(boss);
 
-    // Sword
-    const swordMat = new THREE.MeshStandardMaterial({
-      color: 0xccccdd,
-      metalness: 0.7,
-      roughness: 0.2,
-    });
-    const sword = new THREE.Mesh(this._cylGeo, swordMat);
-    sword.name = "sword";
-    sword.scale.set(0.25, h * 1.0, 0.15);
-    sword.position.set(h * 0.35, h * 0.65, 0);
-    sword.rotation.z = Math.PI * 0.15;
-    g.add(sword);
+    // Shield rim
+    const shieldRim = new THREE.Mesh(new THREE.TorusGeometry(h * 0.13, h * 0.008, 4, 8),
+      armorDkMat);
+    shieldRim.position.set(-h * 0.38, h * 0.5, h * 0.04);
+    g.add(shieldRim);
 
-    // Sword crossguard
-    const guard = new THREE.Mesh(this._boxGeo, new THREE.MeshStandardMaterial({ color: 0x886633 }));
-    guard.scale.set(h * 0.2, 0.03, 0.05);
+    // === SWORD (blade + fuller + crossguard + grip + pommel) ===
+    const bladeMat = new THREE.MeshStandardMaterial({
+      color: 0xdddde8, metalness: 0.75, roughness: 0.15,
+    });
+    // Blade
+    const blade = new THREE.Mesh(this._boxGeo, bladeMat);
+    blade.name = "sword";
+    blade.scale.set(h * 0.03, h * 0.45, h * 0.008);
+    blade.position.set(h * 0.36, h * 0.62, 0);
+    blade.rotation.z = Math.PI * 0.15;
+    g.add(blade);
+    // Fuller (groove in blade)
+    const fullerMat = new THREE.MeshStandardMaterial({ color: 0xaaaabc, metalness: 0.6, roughness: 0.2 });
+    const fuller = new THREE.Mesh(this._boxGeo, fullerMat);
+    fuller.scale.set(h * 0.01, h * 0.35, h * 0.002);
+    fuller.position.set(h * 0.36, h * 0.64, h * 0.005);
+    fuller.rotation.z = Math.PI * 0.15;
+    g.add(fuller);
+    // Crossguard
+    const guardMat = new THREE.MeshStandardMaterial({ color: 0x886633, metalness: 0.3, roughness: 0.5 });
+    const guard = new THREE.Mesh(this._boxGeo, guardMat);
+    guard.scale.set(h * 0.18, h * 0.025, h * 0.03);
     guard.position.set(h * 0.3, h * 0.4, 0);
     g.add(guard);
+    // Grip (wrapped leather)
+    const grip = new THREE.Mesh(this._cylGeo, leatherMat);
+    grip.scale.set(0.2, h * 0.08, 0.2);
+    grip.position.set(h * 0.28, h * 0.35, 0);
+    grip.rotation.z = Math.PI * 0.15;
+    g.add(grip);
+    // Pommel
+    const pommel = new THREE.Mesh(this._sphereGeo, new THREE.MeshStandardMaterial({
+      color: rank >= 3 ? 0xddaa33 : 0x886633, metalness: 0.4,
+    }));
+    pommel.scale.set(0.3, 0.3, 0.3);
+    pommel.position.set(h * 0.25, h * 0.3, 0);
+    g.add(pommel);
 
-    // Legs
-    const legMat = new THREE.MeshStandardMaterial({ color: 0x554433 });
-    const leftLeg = new THREE.Mesh(this._cylGeo, legMat);
+    // === LEGS (armored, with greaves and boots) ===
+    const pantMat = new THREE.MeshStandardMaterial({ color: 0x554433, roughness: 0.85 });
+
+    // Left leg
+    const leftLeg = new THREE.Group();
     leftLeg.name = "sLeftLeg";
-    leftLeg.scale.set(0.5, h * 0.3, 0.5);
-    leftLeg.position.set(-h * 0.12, h * 0.15, 0);
+    const lThigh = new THREE.Mesh(this._cylGeo, pantMat);
+    lThigh.scale.set(0.42, h * 0.17, 0.42);
+    lThigh.position.y = h * 0.08;
+    leftLeg.add(lThigh);
+    // Greave (shin armor)
+    const lGreave = new THREE.Mesh(this._cylGeo, armorDkMat);
+    lGreave.scale.set(0.36, h * 0.13, 0.36);
+    lGreave.position.y = -h * 0.04;
+    leftLeg.add(lGreave);
+    // Knee cop
+    const lKnee = new THREE.Mesh(this._sphereGeo, armorMat);
+    lKnee.scale.set(0.35, 0.3, 0.3);
+    lKnee.position.set(0, h * 0.01, h * 0.02);
+    leftLeg.add(lKnee);
+    // Boot
+    const lBoot = new THREE.Mesh(this._boxGeo, bootMat);
+    lBoot.scale.set(h * 0.08, h * 0.07, h * 0.14);
+    lBoot.position.set(0, -h * 0.11, h * 0.02);
+    leftLeg.add(lBoot);
+    leftLeg.position.set(-h * 0.12, h * 0.2, 0);
     g.add(leftLeg);
 
-    const rightLeg = new THREE.Mesh(this._cylGeo, legMat);
+    // Right leg
+    const rightLeg = new THREE.Group();
     rightLeg.name = "sRightLeg";
-    rightLeg.scale.set(0.5, h * 0.3, 0.5);
-    rightLeg.position.set(h * 0.12, h * 0.15, 0);
+    const rThigh = new THREE.Mesh(this._cylGeo, pantMat);
+    rThigh.scale.set(0.42, h * 0.17, 0.42);
+    rThigh.position.y = h * 0.08;
+    rightLeg.add(rThigh);
+    const rGreave = new THREE.Mesh(this._cylGeo, armorDkMat);
+    rGreave.scale.set(0.36, h * 0.13, 0.36);
+    rGreave.position.y = -h * 0.04;
+    rightLeg.add(rGreave);
+    const rKnee = new THREE.Mesh(this._sphereGeo, armorMat);
+    rKnee.scale.set(0.35, 0.3, 0.3);
+    rKnee.position.set(0, h * 0.01, h * 0.02);
+    rightLeg.add(rKnee);
+    const rBoot = new THREE.Mesh(this._boxGeo, bootMat);
+    rBoot.scale.set(h * 0.08, h * 0.07, h * 0.14);
+    rBoot.position.set(0, -h * 0.11, h * 0.02);
+    rightLeg.add(rBoot);
+    rightLeg.position.set(h * 0.12, h * 0.2, 0);
     g.add(rightLeg);
+
+    // === CAPE (rank >= 2) ===
+    if (rank >= 2) {
+      const capeMat = new THREE.MeshStandardMaterial({
+        color: playerColor, roughness: 0.75, side: THREE.DoubleSide,
+      });
+      const capeVerts = new Float32Array([
+        -h * 0.18, h * 0.7, -h * 0.13,   // top left
+        h * 0.18, h * 0.7, -h * 0.13,    // top right
+        h * 0.22, h * 0.15, -h * 0.18,   // bottom right
+        -h * 0.22, h * 0.15, -h * 0.18,  // bottom left
+        0, h * 0.72, -h * 0.14,           // top center
+        0, h * 0.1, -h * 0.2,             // bottom center
+      ]);
+      const capeIdx = [0, 4, 3, 4, 5, 3, 4, 1, 5, 1, 2, 5];
+      const capeGeo = new THREE.BufferGeometry();
+      capeGeo.setAttribute("position", new THREE.Float32BufferAttribute(capeVerts, 3));
+      capeGeo.setIndex(capeIdx);
+      capeGeo.computeVertexNormals();
+      const cape = new THREE.Mesh(capeGeo, capeMat);
+      g.add(cape);
+
+      // Cape clasp at neck
+      const clasp = new THREE.Mesh(this._sphereGeo, new THREE.MeshStandardMaterial({
+        color: rank >= 3 ? 0xddaa33 : 0xcccccc, metalness: 0.5,
+      }));
+      clasp.scale.set(0.25, 0.25, 0.2);
+      clasp.position.set(0, h * 0.72, -h * 0.12);
+      g.add(clasp);
+    }
 
     return g;
   }
