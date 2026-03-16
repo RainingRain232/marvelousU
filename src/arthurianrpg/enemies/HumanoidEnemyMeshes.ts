@@ -79,11 +79,6 @@ function plane(w: number, h: number): THREE.PlaneGeometry {
   return new THREE.PlaneGeometry(w, h);
 }
 
-function addTo(parent: THREE.Object3D, child: THREE.Object3D): THREE.Object3D {
-  parent.add(child);
-  return child;
-}
-
 /** Build a finger with 3 phalanx segments */
 function buildFinger(
   mat: THREE.Material,
@@ -196,7 +191,6 @@ export function buildHumanoidEnemy(
   const beltM = materials.armorMat(0x4a3018);
   const bootM = materials.armorMat(0x3d2b1a);
   const hairM = materials.furMat(0x3b2010);
-  const scarM = materials.skinMat(0xddc0b0);
 
   /* ============================================================== */
   /*  TORSO – Anatomical muscular build                             */

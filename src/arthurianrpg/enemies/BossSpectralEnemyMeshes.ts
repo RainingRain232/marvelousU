@@ -55,14 +55,12 @@ export function buildBossHumanoidEnemy(
   const sc = look.scale;
   const body = look.bodyColor;
   const accent = look.accentColor;
-  const eye = look.eyeColor;
   const glow = look.glowColor ?? accent;
 
   const armorM = materials.armorMat(body);
   const trimM = materials.armorMat(accent);
   const skinM = materials.skinMat(body);
   const furM = materials.furMat(body);
-  const accentM = materials.mat(accent);
   const glowEmissive = new THREE.MeshPhysicalMaterial({
     color: glow,
     emissive: glow,

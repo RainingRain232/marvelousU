@@ -170,7 +170,7 @@ export function buildLargeEnemy(
   // =========================================================================
 
   // Ribcage barrel
-  const ribcage = addMesh(g, sphere(1.4 * s, 20, 16), bodyMat, 0, 2.8 * s, 0, 0, 0, 0, 1.1, 0.85, 1.0);
+  addMesh(g, sphere(1.4 * s, 20, 16), bodyMat, 0, 2.8 * s, 0, 0, 0, 0, 1.1, 0.85, 1.0);
 
   // Individual rib hints - 8 ribs per side
   for (let side = -1; side <= 1; side += 2) {
@@ -250,7 +250,7 @@ export function buildLargeEnemy(
   }
 
   // Chest glow – inner fire inside neck base
-  const fireGlow = addMesh(neckGroup, sphere(0.4 * s, 12, 8), fireMat, 0, 0.3 * s, 0.1 * s);
+  addMesh(neckGroup, sphere(0.4 * s, 12, 8), fireMat, 0, 0.3 * s, 0.1 * s);
   addLight(neckGroup, 0xff4400, 1.5, 4 * s, 0, 0.3 * s, 0.1 * s);
 
   // =========================================================================
@@ -320,7 +320,7 @@ export function buildLargeEnemy(
   }
 
   // TONGUE – forked
-  const tongueBase = addMesh(lowerJaw, cylinder(0.06 * s, 0.04 * s, 0.5 * s, 8), tongueMat,
+  addMesh(lowerJaw, cylinder(0.06 * s, 0.04 * s, 0.5 * s, 8), tongueMat,
     0, 0.05 * s, 0.6 * s, Math.PI / 2 - 0.1, 0, 0);
   // Fork prongs
   addMesh(lowerJaw, cone(0.025 * s, 0.2 * s, 6), tongueMat,
@@ -564,13 +564,12 @@ export function buildLargeEnemy(
 
         const memW = Math.sqrt((nextEndX - endX) ** 2 + (nextEndY - endY) ** 2);
         const memH = fingerLen * 0.7;
-        const memMesh = addMesh(wingGroup, plane(memW, memH), membraneMat,
+        addMesh(wingGroup, plane(memW, memH), membraneMat,
           (endX + nextEndX) / 2, (endY + nextEndY) / 2, (f * 0.3 + (f + 1) * 0.3) / 2 * s,
           0, 0, 0);
 
         // Vein patterns on each membrane panel (4 veins each)
         for (let v = 0; v < 4; v++) {
-          const vt = (v + 1) / 5;
           const veinLen = memH * 0.6;
           addMesh(wingGroup, cylinder(0.01 * s, 0.008 * s, veinLen, 4), veinMat,
             (endX + nextEndX) / 2 + (v - 1.5) * memW * 0.15,
@@ -1066,7 +1065,7 @@ export function buildArachnidEnemy(
     [0.18, 0.14, 0.02, 0.04, "PLE"],
   ];
 
-  for (const [ex, ey, ez, er, label] of eyeDefs) {
+  for (const [ex, ey, ez, er, _label] of eyeDefs) {
     const erS = er * s;
     const exS = ex * s;
     const eyS = ey * s;
@@ -1116,7 +1115,6 @@ export function buildArachnidEnemy(
 
   for (let legIdx = 0; legIdx < 8; legIdx++) {
     const [lx, lz, spreadAng, elevAng, lenMult, raised] = legDefs[legIdx];
-    const side = lx > 0 ? 1 : -1;
 
     const legGroup = new THREE.Group();
     legGroup.position.set(lx * s, 1.2 * s, (0.6 + lz) * s);
