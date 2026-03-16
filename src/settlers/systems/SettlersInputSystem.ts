@@ -77,7 +77,7 @@ export class SettlersInputSystem {
 
   private _state: SettlersState | null = null;
 
-  private _setTool(tool: string): void {
+  private _setTool(_tool: string): void {
     // Will be wired later by SettlersGame
   }
 

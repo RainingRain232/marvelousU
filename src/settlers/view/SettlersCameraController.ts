@@ -31,8 +31,8 @@ export class SettlersCameraController {
   // Limits
   private _minDist = 10;
   private _maxDist = 80;
-  private _minPitch = 0.2;
-  private _maxPitch = Math.PI * 0.45;
+  private readonly _minPitch = 0.2;
+  private readonly _maxPitch = Math.PI * 0.45;
 
   // Map bounds
   private _mapW: number;
@@ -113,6 +113,9 @@ export class SettlersCameraController {
     // Rotate
     if (this._keys.q) this._yaw -= 1.5 * dt;
     if (this._keys.e) this._yaw += 1.5 * dt;
+
+    // Clamp pitch
+    this._pitch = Math.max(this._minPitch, Math.min(this._maxPitch, this._pitch));
 
     // Clamp target to map bounds
     this._targetX = Math.max(0, Math.min(this._mapW, this._targetX));

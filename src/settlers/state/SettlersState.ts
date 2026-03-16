@@ -3,8 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import { SB } from "../config/SettlersBalance";
-import { ResourceType } from "../config/SettlersResourceDefs";
-import { SettlersBuildingType } from "../config/SettlersBuildingDefs";
+import type { SettlersBuildingType } from "../config/SettlersBuildingDefs";
 import type { SettlersMap } from "./SettlersMap";
 import type { SettlersBuilding } from "./SettlersBuilding";
 import type { SettlersFlag, SettlersRoadSegment } from "./SettlersRoad";
