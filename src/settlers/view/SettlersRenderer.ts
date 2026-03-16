@@ -1149,6 +1149,17 @@ export class SettlersRenderer {
           this._spinnerMeshes.delete(id);
         }
       }
+
+      // Animate mill windmill sails
+      if (building.type === SettlersBuildingType.MILL && progress >= 1) {
+        const speed = building.active ? 1.5 : 0.2; // Spin faster when active
+        for (let s = 0; s < 4; s++) {
+          const sail = mesh.getObjectByName(`sail${s}`) as THREE.Object3D | undefined;
+          if (sail) {
+            sail.rotation.z = (s / 4) * Math.PI * 2 + t * speed;
+          }
+        }
+      }
     }
   }
 
@@ -1857,6 +1868,9 @@ export class SettlersRenderer {
       }
     }
 
+    // ===== Building-type-specific props and details =====
+    this._addBuildingTypeProps(g, def.type, fw, fh);
+
     // Position in world
     const cx = (building.tileX + def.footprint.w * 0.5) * ts;
     const cz = (building.tileZ + def.footprint.h * 0.5) * ts;
@@ -1864,6 +1878,423 @@ export class SettlersRenderer {
     g.position.set(cx, wy, cz);
 
     return g;
+  }
+
+  private _addBuildingTypeProps(g: THREE.Group, type: SettlersBuildingType, fw: number, fh: number): void {
+    const woodCol = 0x6b4226;
+    const ironCol = 0x666677;
+
+    switch (type) {
+      case SettlersBuildingType.WOODCUTTER: {
+        // Axe leaning against wall
+        const axeHandle = new THREE.Mesh(this._cylGeo, new THREE.MeshStandardMaterial({ color: woodCol, roughness: 0.9 }));
+        axeHandle.scale.set(0.15, fw * 0.25, 0.15);
+        axeHandle.position.set(fw * 0.35, fw * 0.12, fh * 0.2);
+        axeHandle.rotation.z = 0.2;
+        g.add(axeHandle);
+        const axeHead = new THREE.Mesh(this._boxGeo, new THREE.MeshStandardMaterial({ color: ironCol, metalness: 0.5 }));
+        axeHead.scale.set(fw * 0.08, fw * 0.06, 0.02);
+        axeHead.position.set(fw * 0.37, fw * 0.26, fh * 0.2);
+        g.add(axeHead);
+        // Tree stump
+        const stump = new THREE.Mesh(this._cylGeo, new THREE.MeshStandardMaterial({ color: 0x7a5a2a, roughness: 0.95 }));
+        stump.scale.set(0.6, fw * 0.06, 0.6);
+        stump.position.set(-fw * 0.35, fw * 0.03, fh * 0.35);
+        g.add(stump);
+        break;
+      }
+      case SettlersBuildingType.QUARRY: {
+        // Pickaxe
+        const pick = new THREE.Mesh(this._cylGeo, new THREE.MeshStandardMaterial({ color: woodCol, roughness: 0.9 }));
+        pick.scale.set(0.15, fw * 0.2, 0.15);
+        pick.position.set(-fw * 0.3, fw * 0.1, fh * 0.33);
+        pick.rotation.z = -0.3;
+        g.add(pick);
+        const pickHead = new THREE.Mesh(this._boxGeo, new THREE.MeshStandardMaterial({ color: ironCol, metalness: 0.5 }));
+        pickHead.scale.set(fw * 0.1, 0.025, 0.025);
+        pickHead.position.set(-fw * 0.32, fw * 0.22, fh * 0.33);
+        g.add(pickHead);
+        // Stone pile
+        for (let i = 0; i < 4; i++) {
+          const stone = new THREE.Mesh(this._boxGeo, new THREE.MeshStandardMaterial({
+            color: [0x808078, 0x8a8a80, 0x757568, 0x909088][i], roughness: 0.95,
+          }));
+          stone.scale.set(fw * (0.06 + Math.random() * 0.04), fw * 0.04, fw * 0.05);
+          stone.position.set(fw * (0.28 + (i % 2) * 0.08), fw * 0.02 + Math.floor(i / 2) * fw * 0.04, -fh * 0.32);
+          stone.rotation.y = i * 0.7;
+          g.add(stone);
+        }
+        break;
+      }
+      case SettlersBuildingType.FISHER: {
+        // Fishing rod leaning
+        const rod = new THREE.Mesh(this._cylGeo, new THREE.MeshStandardMaterial({ color: woodCol, roughness: 0.85 }));
+        rod.scale.set(0.1, fw * 0.35, 0.1);
+        rod.position.set(fw * 0.32, fw * 0.15, -fh * 0.2);
+        rod.rotation.z = 0.35;
+        g.add(rod);
+        // Fish drying rack
+        const rackPost1 = new THREE.Mesh(this._cylGeo, new THREE.MeshStandardMaterial({ color: woodCol }));
+        rackPost1.scale.set(0.15, fw * 0.15, 0.15);
+        rackPost1.position.set(-fw * 0.35, fw * 0.07, fh * 0.3);
+        g.add(rackPost1);
+        const rackPost2 = rackPost1.clone();
+        rackPost2.position.set(-fw * 0.2, fw * 0.07, fh * 0.3);
+        g.add(rackPost2);
+        const rackBar = new THREE.Mesh(this._cylGeo, new THREE.MeshStandardMaterial({ color: woodCol }));
+        rackBar.scale.set(0.08, fw * 0.16, 0.08);
+        rackBar.rotation.z = Math.PI * 0.5;
+        rackBar.position.set(-fw * 0.275, fw * 0.15, fh * 0.3);
+        g.add(rackBar);
+        break;
+      }
+      case SettlersBuildingType.HUNTER: {
+        // Hanging animal skin on wall
+        const skinMat = new THREE.MeshStandardMaterial({ color: 0xa08050, roughness: 0.9, side: THREE.DoubleSide });
+        const skin = new THREE.Mesh(this._boxGeo, skinMat);
+        skin.scale.set(fw * 0.12, fw * 0.1, 0.01);
+        skin.position.set(fw * 0.31, fw * 0.2, fh * 0.15);
+        g.add(skin);
+        // Bow
+        const bowMat = new THREE.MeshStandardMaterial({ color: woodCol, roughness: 0.85 });
+        const bow = new THREE.Mesh(new THREE.TorusGeometry(fw * 0.08, 0.008, 4, 8, Math.PI * 1.2), bowMat);
+        bow.position.set(-fw * 0.32, fw * 0.22, fh * 0.32);
+        bow.rotation.z = 0.3;
+        g.add(bow);
+        break;
+      }
+      case SettlersBuildingType.FARM: {
+        // Wheat field rows around building
+        const wheatMat = new THREE.MeshStandardMaterial({ color: 0xd4b844, roughness: 0.8 });
+        const wheatDkMat = new THREE.MeshStandardMaterial({ color: 0xb89830, roughness: 0.8 });
+        for (let row = 0; row < 4; row++) {
+          for (let col = 0; col < 6; col++) {
+            const stalk = new THREE.Mesh(this._cylGeo, row % 2 === 0 ? wheatMat : wheatDkMat);
+            stalk.scale.set(0.05, fw * 0.08, 0.05);
+            stalk.position.set(
+              -fw * 0.4 + col * fw * 0.12 + (row % 2) * fw * 0.06,
+              fw * 0.04,
+              -fh * 0.5 - row * fh * 0.08,
+            );
+            // Slight random lean
+            stalk.rotation.x = (Math.random() - 0.5) * 0.15;
+            stalk.rotation.z = (Math.random() - 0.5) * 0.15;
+            g.add(stalk);
+            // Wheat head (small sphere)
+            const head = new THREE.Mesh(this._sphereGeo, wheatMat);
+            head.scale.set(0.15, 0.25, 0.15);
+            head.position.set(stalk.position.x, fw * 0.09, stalk.position.z);
+            g.add(head);
+          }
+        }
+        // Scarecrow
+        const scPost = new THREE.Mesh(this._cylGeo, new THREE.MeshStandardMaterial({ color: woodCol }));
+        scPost.scale.set(0.12, fw * 0.22, 0.12);
+        scPost.position.set(fw * 0.45, fw * 0.11, -fh * 0.65);
+        g.add(scPost);
+        const scArm = new THREE.Mesh(this._cylGeo, new THREE.MeshStandardMaterial({ color: woodCol }));
+        scArm.scale.set(0.08, fw * 0.15, 0.08);
+        scArm.rotation.z = Math.PI * 0.5;
+        scArm.position.set(fw * 0.45, fw * 0.2, -fh * 0.65);
+        g.add(scArm);
+        const scHead = new THREE.Mesh(this._sphereGeo, new THREE.MeshStandardMaterial({ color: 0xd4b844 }));
+        scHead.scale.set(0.5, 0.5, 0.5);
+        scHead.position.set(fw * 0.45, fw * 0.25, -fh * 0.65);
+        g.add(scHead);
+        break;
+      }
+      case SettlersBuildingType.SAWMILL: {
+        // Log pile input side
+        const logMat = new THREE.MeshStandardMaterial({ color: 0x7a5a2a, roughness: 0.9 });
+        for (let l = 0; l < 4; l++) {
+          const log = new THREE.Mesh(this._cylGeo, logMat);
+          log.scale.set(0.22, fw * 0.18, 0.22);
+          log.rotation.z = Math.PI * 0.5;
+          log.position.set(-fw * 0.44, 0.03 + (l % 2) * 0.04, fh * (-0.05 + Math.floor(l / 2) * 0.1));
+          g.add(log);
+        }
+        // Plank stack output side
+        const plankMat = new THREE.MeshStandardMaterial({ color: 0xc49a5c, roughness: 0.8 });
+        for (let p = 0; p < 3; p++) {
+          const plank = new THREE.Mesh(this._boxGeo, plankMat);
+          plank.scale.set(fw * 0.18, 0.015, fw * 0.06);
+          plank.position.set(fw * 0.44, 0.01 + p * 0.018, fh * 0.05);
+          g.add(plank);
+        }
+        // Sawblade (thin disc on side of building)
+        const bladeMat = new THREE.MeshStandardMaterial({ color: ironCol, metalness: 0.6, roughness: 0.3 });
+        const blade = new THREE.Mesh(new THREE.CylinderGeometry(fw * 0.08, fw * 0.08, 0.01, 12), bladeMat);
+        blade.rotation.x = Math.PI * 0.5;
+        blade.position.set(0, fw * 0.35, fh * 0.42);
+        g.add(blade);
+        break;
+      }
+      case SettlersBuildingType.MILL: {
+        // Windmill sails (4 arms from roof peak)
+        const sailMat = new THREE.MeshStandardMaterial({ color: 0xeeeeee, roughness: 0.7, side: THREE.DoubleSide });
+        const hubMat = new THREE.MeshStandardMaterial({ color: woodCol, roughness: 0.85 });
+        // Hub
+        const hub = new THREE.Mesh(this._cylGeo, hubMat);
+        hub.name = "millHub";
+        hub.scale.set(0.3, fw * 0.04, 0.3);
+        hub.rotation.x = Math.PI * 0.5;
+        hub.position.set(0, fw * 0.7, fh * 0.42);
+        g.add(hub);
+        // 4 sail arms
+        for (let s = 0; s < 4; s++) {
+          const armGroup = new THREE.Group();
+          armGroup.name = `sail${s}`;
+          const arm = new THREE.Mesh(this._cylGeo, hubMat);
+          arm.scale.set(0.08, fw * 0.28, 0.08);
+          arm.position.y = fw * 0.14;
+          armGroup.add(arm);
+          // Sail cloth (flat quad)
+          const sail = new THREE.Mesh(this._boxGeo, sailMat);
+          sail.scale.set(fw * 0.06, fw * 0.22, 0.005);
+          sail.position.set(fw * 0.04, fw * 0.14, 0);
+          armGroup.add(sail);
+          armGroup.rotation.z = (s / 4) * Math.PI * 2;
+          armGroup.position.set(0, fw * 0.7, fh * 0.43);
+          g.add(armGroup);
+        }
+        // Flour sacks
+        const sackMat = new THREE.MeshStandardMaterial({ color: 0xf0e6c0, roughness: 0.9 });
+        for (let s = 0; s < 2; s++) {
+          const sack = new THREE.Mesh(this._boxGeo, sackMat);
+          sack.scale.set(fw * 0.06, fw * 0.08, fw * 0.05);
+          sack.position.set(fw * (0.3 + s * 0.1), fw * 0.04, -fh * 0.3);
+          g.add(sack);
+        }
+        break;
+      }
+      case SettlersBuildingType.BAKERY: {
+        // Brick oven (rounded back protrusion)
+        const ovenMat = new THREE.MeshStandardMaterial({ color: 0xb07050, roughness: 0.9 });
+        const oven = new THREE.Mesh(this._sphereGeo, ovenMat);
+        oven.scale.set(1.0, 0.7, 0.8);
+        oven.position.set(0, fw * 0.12, -fh * 0.42);
+        g.add(oven);
+        // Oven opening (dark)
+        const opening = new THREE.Mesh(this._boxGeo, new THREE.MeshBasicMaterial({ color: 0x221111 }));
+        opening.scale.set(fw * 0.06, fw * 0.05, 0.01);
+        opening.position.set(0, fw * 0.1, -fh * 0.5);
+        g.add(opening);
+        // Bread on windowsill
+        const breadMat = new THREE.MeshStandardMaterial({ color: 0xc89050, roughness: 0.8 });
+        const bread = new THREE.Mesh(this._sphereGeo, breadMat);
+        bread.scale.set(0.3, 0.2, 0.25);
+        bread.position.set(-fw * 0.22, fw * 0.33, fh * 0.42);
+        g.add(bread);
+        break;
+      }
+      case SettlersBuildingType.BREWERY: {
+        // Large brewing barrels
+        const barrelMat = new THREE.MeshStandardMaterial({ color: 0x8b6b3a, roughness: 0.85 });
+        for (let b = 0; b < 2; b++) {
+          const barrel = new THREE.Mesh(new THREE.CylinderGeometry(fw * 0.07, fw * 0.065, fw * 0.14, 8), barrelMat);
+          barrel.position.set(fw * (0.32 + b * 0.15), fw * 0.07, -fh * 0.25);
+          g.add(barrel);
+          // Barrel hoops
+          for (let h2 = 0; h2 < 2; h2++) {
+            const hoop = new THREE.Mesh(new THREE.TorusGeometry(fw * 0.068, 0.005, 4, 8),
+              new THREE.MeshStandardMaterial({ color: 0x444444 }));
+            hoop.position.set(fw * (0.32 + b * 0.15), fw * (0.03 + h2 * 0.06), -fh * 0.25);
+            hoop.rotation.x = Math.PI * 0.5;
+            g.add(hoop);
+          }
+        }
+        // Tankard on bench
+        const mugMat = new THREE.MeshStandardMaterial({ color: 0xaa8844, roughness: 0.8 });
+        const mug = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.013, 0.04, 6), mugMat);
+        mug.position.set(-fw * 0.35, fw * 0.14, fh * 0.38);
+        g.add(mug);
+        break;
+      }
+      case SettlersBuildingType.SMELTER:
+      case SettlersBuildingType.MINT: {
+        // Forge/crucible (glowing)
+        const forgeMat = new THREE.MeshStandardMaterial({
+          color: 0x444444, roughness: 0.9,
+        });
+        const forge = new THREE.Mesh(this._boxGeo, forgeMat);
+        forge.scale.set(fw * 0.15, fw * 0.1, fw * 0.12);
+        forge.position.set(-fw * 0.38, fw * 0.05, fh * 0.15);
+        g.add(forge);
+        // Embers glow
+        const emberMat = new THREE.MeshStandardMaterial({
+          color: type === SettlersBuildingType.MINT ? 0xffd700 : 0xff4400,
+          emissive: type === SettlersBuildingType.MINT ? 0xffd700 : 0xff4400,
+          emissiveIntensity: 0.5,
+        });
+        const ember = new THREE.Mesh(this._boxGeo, emberMat);
+        ember.scale.set(fw * 0.1, fw * 0.03, fw * 0.08);
+        ember.position.set(-fw * 0.38, fw * 0.1, fh * 0.15);
+        g.add(ember);
+        // Ingot stack
+        const ingotColor = type === SettlersBuildingType.MINT ? 0xffd700 : 0x888888;
+        const ingotMat = new THREE.MeshStandardMaterial({ color: ingotColor, metalness: 0.6, roughness: 0.3 });
+        for (let i = 0; i < 3; i++) {
+          const ingot = new THREE.Mesh(this._boxGeo, ingotMat);
+          ingot.scale.set(fw * 0.04, fw * 0.02, fw * 0.025);
+          ingot.position.set(fw * (0.32 + i * 0.05), fw * 0.01, -fh * 0.32);
+          g.add(ingot);
+        }
+        break;
+      }
+      case SettlersBuildingType.SWORD_SMITH:
+      case SettlersBuildingType.SHIELD_SMITH: {
+        // Anvil
+        const anvilMat = new THREE.MeshStandardMaterial({ color: 0x444455, metalness: 0.6, roughness: 0.4 });
+        const anvilBase = new THREE.Mesh(this._boxGeo, anvilMat);
+        anvilBase.scale.set(fw * 0.08, fw * 0.06, fw * 0.05);
+        anvilBase.position.set(-fw * 0.35, fw * 0.03, fh * 0.38);
+        g.add(anvilBase);
+        const anvilTop = new THREE.Mesh(this._boxGeo, anvilMat);
+        anvilTop.scale.set(fw * 0.1, fw * 0.02, fw * 0.06);
+        anvilTop.position.set(-fw * 0.35, fw * 0.07, fh * 0.38);
+        g.add(anvilTop);
+        // Hammer
+        const hammerH = new THREE.Mesh(this._cylGeo, new THREE.MeshStandardMaterial({ color: woodCol }));
+        hammerH.scale.set(0.12, fw * 0.1, 0.12);
+        hammerH.position.set(-fw * 0.28, fw * 0.08, fh * 0.38);
+        hammerH.rotation.z = 0.5;
+        g.add(hammerH);
+        // Product display
+        if (type === SettlersBuildingType.SWORD_SMITH) {
+          // Sword on rack
+          const swordMat = new THREE.MeshStandardMaterial({ color: 0xccccdd, metalness: 0.7, roughness: 0.2 });
+          const sword = new THREE.Mesh(this._boxGeo, swordMat);
+          sword.scale.set(0.015, fw * 0.15, 0.005);
+          sword.position.set(fw * 0.35, fw * 0.15, fh * 0.32);
+          sword.rotation.z = 0.15;
+          g.add(sword);
+        } else {
+          // Shield on wall
+          const shieldGeo = new THREE.CylinderGeometry(fw * 0.06, fw * 0.06, 0.01, 6);
+          const shieldMat = new THREE.MeshStandardMaterial({ color: 0x886633, metalness: 0.2 });
+          const shield = new THREE.Mesh(shieldGeo, shieldMat);
+          shield.rotation.x = Math.PI * 0.5;
+          shield.position.set(fw * 0.35, fw * 0.22, fh * 0.36);
+          g.add(shield);
+        }
+        break;
+      }
+      case SettlersBuildingType.BARRACKS: {
+        // Training dummy
+        const dummyPost = new THREE.Mesh(this._cylGeo, new THREE.MeshStandardMaterial({ color: woodCol }));
+        dummyPost.scale.set(0.15, fw * 0.22, 0.15);
+        dummyPost.position.set(fw * 0.42, fw * 0.11, fh * 0.0);
+        g.add(dummyPost);
+        const dummyArm = new THREE.Mesh(this._cylGeo, new THREE.MeshStandardMaterial({ color: woodCol }));
+        dummyArm.scale.set(0.1, fw * 0.12, 0.1);
+        dummyArm.rotation.z = Math.PI * 0.5;
+        dummyArm.position.set(fw * 0.42, fw * 0.18, fh * 0.0);
+        g.add(dummyArm);
+        // Target painted circle (flat disc)
+        const targetMat = new THREE.MeshStandardMaterial({ color: 0xcc3333, roughness: 0.8 });
+        const target = new THREE.Mesh(new THREE.CylinderGeometry(fw * 0.05, fw * 0.05, 0.01, 8), targetMat);
+        target.rotation.x = Math.PI * 0.5;
+        target.position.set(fw * 0.42, fw * 0.14, fh * 0.01);
+        g.add(target);
+        // Weapon rack
+        const rackMat = new THREE.MeshStandardMaterial({ color: woodCol, roughness: 0.85 });
+        const rack = new THREE.Mesh(this._boxGeo, rackMat);
+        rack.scale.set(fw * 0.15, fw * 0.15, 0.02);
+        rack.position.set(-fw * 0.38, fw * 0.12, fh * 0.35);
+        g.add(rack);
+        break;
+      }
+      case SettlersBuildingType.IRON_MINE:
+      case SettlersBuildingType.GOLD_MINE:
+      case SettlersBuildingType.COAL_MINE: {
+        // Mine entrance (dark opening in front)
+        const entranceMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
+        const entrance = new THREE.Mesh(this._boxGeo, entranceMat);
+        entrance.scale.set(fw * 0.14, fw * 0.16, 0.02);
+        entrance.position.set(0, fw * 0.08, fh * 0.37);
+        g.add(entrance);
+        // Timber frame around entrance
+        const frameMat = new THREE.MeshStandardMaterial({ color: woodCol, roughness: 0.85 });
+        const frameTop = new THREE.Mesh(this._boxGeo, frameMat);
+        frameTop.scale.set(fw * 0.18, 0.03, 0.04);
+        frameTop.position.set(0, fw * 0.17, fh * 0.38);
+        g.add(frameTop);
+        for (let side = -1; side <= 1; side += 2) {
+          const post = new THREE.Mesh(this._boxGeo, frameMat);
+          post.scale.set(0.025, fw * 0.17, 0.035);
+          post.position.set(side * fw * 0.08, fw * 0.08, fh * 0.38);
+          g.add(post);
+        }
+        // Ore cart track rails
+        const railMat = new THREE.MeshStandardMaterial({ color: ironCol, metalness: 0.4 });
+        for (let side = -1; side <= 1; side += 2) {
+          const rail = new THREE.Mesh(this._boxGeo, railMat);
+          rail.scale.set(0.008, 0.005, fw * 0.2);
+          rail.position.set(side * fw * 0.04, 0.003, fh * 0.48);
+          g.add(rail);
+        }
+        // Ore type indicator colored pile
+        const oreColor = type === SettlersBuildingType.GOLD_MINE ? 0xc4a32e
+          : type === SettlersBuildingType.IRON_MINE ? 0x7a4e2e : 0x2c2c2c;
+        const oreMat = new THREE.MeshStandardMaterial({ color: oreColor, roughness: 0.9 });
+        const orePile = new THREE.Mesh(this._coneGeo, oreMat);
+        orePile.scale.set(fw * 0.08, fw * 0.04, fw * 0.08);
+        orePile.position.set(fw * 0.28, fw * 0.02, fh * 0.35);
+        g.add(orePile);
+        break;
+      }
+      case SettlersBuildingType.STOREHOUSE: {
+        // Crate stacks
+        const crateMat = new THREE.MeshStandardMaterial({ color: 0xa08050, roughness: 0.85 });
+        for (let c = 0; c < 4; c++) {
+          const crate = new THREE.Mesh(this._boxGeo, crateMat);
+          const cs = fw * 0.06;
+          crate.scale.set(cs, cs, cs);
+          crate.position.set(
+            fw * (0.35 + (c % 2) * 0.08),
+            cs * 0.5 + Math.floor(c / 2) * cs,
+            fh * (0.15 + (c % 2) * 0.06),
+          );
+          crate.rotation.y = c * 0.3;
+          g.add(crate);
+        }
+        // Sacks
+        const sackMat = new THREE.MeshStandardMaterial({ color: 0xd4c4a0, roughness: 0.9 });
+        for (let s = 0; s < 2; s++) {
+          const sack = new THREE.Mesh(this._boxGeo, sackMat);
+          sack.scale.set(fw * 0.06, fw * 0.08, fw * 0.05);
+          sack.position.set(-fw * (0.35 + s * 0.09), fw * 0.04, -fh * 0.35);
+          g.add(sack);
+        }
+        break;
+      }
+      case SettlersBuildingType.FORTRESS: {
+        // Extra wall ring / curtain wall
+        const curtainGeo = new THREE.CylinderGeometry(fw * 0.52, fw * 0.55, fw * 0.2, 12, 1, true);
+        const curtainMat = this._stoneMat.clone();
+        (curtainMat as THREE.MeshStandardMaterial).transparent = true;
+        const curtain = new THREE.Mesh(curtainGeo, curtainMat);
+        curtain.position.y = fw * 0.1;
+        g.add(curtain);
+        // Gate portcullis texture (dark slats)
+        const portMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.4 });
+        for (let bar = 0; bar < 3; bar++) {
+          const vBar = new THREE.Mesh(this._boxGeo, portMat);
+          vBar.scale.set(0.015, fw * 0.15, 0.01);
+          vBar.position.set(-fw * 0.04 + bar * fw * 0.04, fw * 0.08, fw * 0.55);
+          g.add(vBar);
+        }
+        for (let bar = 0; bar < 2; bar++) {
+          const hBar = new THREE.Mesh(this._boxGeo, portMat);
+          hBar.scale.set(fw * 0.1, 0.01, 0.01);
+          hBar.position.set(0, fw * (0.04 + bar * 0.08), fw * 0.55);
+          g.add(hBar);
+        }
+        break;
+      }
+      default:
+        break;
+    }
   }
 
   // -----------------------------------------------------------------------
@@ -2104,12 +2535,32 @@ export class SettlersRenderer {
         }
       }
 
-      // Animate legs
+      // Animate walking: legs, body bob, and arm swing
       const leftLeg = mesh.getObjectByName("leftLeg") as THREE.Object3D | undefined;
       const rightLeg = mesh.getObjectByName("rightLeg") as THREE.Object3D | undefined;
+      const isMoving = carrier.pathProgress > 0.01 && carrier.pathProgress < 0.99;
       const walkPhase = t * 8 + carrier.pathProgress * 20;
-      if (leftLeg) leftLeg.rotation.x = Math.sin(walkPhase) * 0.4;
-      if (rightLeg) rightLeg.rotation.x = Math.sin(walkPhase + Math.PI) * 0.4;
+
+      if (isMoving) {
+        // Leg swing
+        if (leftLeg) leftLeg.rotation.x = Math.sin(walkPhase) * 0.45;
+        if (rightLeg) rightLeg.rotation.x = Math.sin(walkPhase + Math.PI) * 0.45;
+        // Body bob (vertical bounce)
+        const bob = Math.abs(Math.sin(walkPhase)) * 0.02;
+        mesh.position.y = carrier.position.y + bob;
+        // Torso slight lean forward while walking
+        mesh.children[0].rotation.x = 0.05;
+        // Body sway (slight tilt side to side)
+        mesh.children[0].rotation.z = Math.sin(walkPhase * 0.5) * 0.03;
+      } else {
+        // Idle breathing animation
+        if (leftLeg) leftLeg.rotation.x = 0;
+        if (rightLeg) rightLeg.rotation.x = 0;
+        mesh.children[0].rotation.x = 0;
+        mesh.children[0].rotation.z = 0;
+        // Subtle idle sway
+        mesh.position.y = carrier.position.y + Math.sin(t * 2) * 0.003;
+      }
 
       // Show/hide carried resource
       const cargo = mesh.getObjectByName("cargo") as THREE.Mesh | undefined;
@@ -2369,21 +2820,52 @@ export class SettlersRenderer {
       }
       mesh.position.set(soldier.position.x, soldier.position.y, soldier.position.z);
 
-      // Fighting animation
-      if (soldier.state === "fighting") {
-        const sword = mesh.getObjectByName("sword") as THREE.Mesh | undefined;
-        if (sword) {
-          sword.rotation.z = Math.PI * 0.15 + Math.sin(t * 6) * 0.5;
-        }
-      }
+      const leftLeg = mesh.getObjectByName("sLeftLeg") as THREE.Object3D | undefined;
+      const rightLeg = mesh.getObjectByName("sRightLeg") as THREE.Object3D | undefined;
+      const sword = mesh.getObjectByName("sword") as THREE.Object3D | undefined;
 
-      // Marching leg animation
-      if (soldier.state === "marching") {
-        const leftLeg = mesh.getObjectByName("sLeftLeg") as THREE.Object3D | undefined;
-        const rightLeg = mesh.getObjectByName("sRightLeg") as THREE.Object3D | undefined;
+      if (soldier.state === "fighting") {
+        // Combat animation: sword swings, body lunges, legs planted
+        if (sword) {
+          const swingPhase = t * 8;
+          sword.rotation.z = Math.PI * 0.15 + Math.sin(swingPhase) * 0.6;
+          sword.rotation.x = Math.cos(swingPhase * 0.7) * 0.2;
+        }
+        // Lunge forward and back
+        const lungePhase = Math.sin(t * 4);
+        mesh.children[0].rotation.x = lungePhase * 0.08;
+        // Combat stance – legs slightly apart
+        if (leftLeg) leftLeg.rotation.x = -0.15 + Math.sin(t * 3) * 0.1;
+        if (rightLeg) rightLeg.rotation.x = 0.15 + Math.cos(t * 3) * 0.1;
+        // Body bob from strikes
+        mesh.position.y = soldier.position.y + Math.abs(Math.sin(t * 8)) * 0.015;
+      } else if (soldier.state === "marching") {
+        // March animation: legs, body bob, sword at side
         const phase = t * 6;
-        if (leftLeg) leftLeg.rotation.x = Math.sin(phase) * 0.3;
-        if (rightLeg) rightLeg.rotation.x = Math.sin(phase + Math.PI) * 0.3;
+        if (leftLeg) leftLeg.rotation.x = Math.sin(phase) * 0.35;
+        if (rightLeg) rightLeg.rotation.x = Math.sin(phase + Math.PI) * 0.35;
+        if (sword) {
+          sword.rotation.z = Math.PI * 0.15;
+          sword.rotation.x = 0;
+        }
+        // Marching body bob
+        mesh.position.y = soldier.position.y + Math.abs(Math.sin(phase)) * 0.015;
+        mesh.children[0].rotation.x = 0.03;
+        mesh.children[0].rotation.z = Math.sin(phase * 0.5) * 0.02;
+      } else {
+        // Idle / garrison exit – subtle weight shift
+        if (leftLeg) leftLeg.rotation.x = 0;
+        if (rightLeg) rightLeg.rotation.x = 0;
+        if (sword) {
+          sword.rotation.z = Math.PI * 0.15;
+          sword.rotation.x = 0;
+        }
+        if (mesh.children[0]) {
+          mesh.children[0].rotation.x = 0;
+          mesh.children[0].rotation.z = 0;
+        }
+        // Idle breathing sway
+        mesh.position.y = soldier.position.y + Math.sin(t * 1.8) * 0.004;
       }
     }
   }
