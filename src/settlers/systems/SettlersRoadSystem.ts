@@ -263,15 +263,70 @@ export function routeGoods(state: SettlersState): void {
   _dispatchFromStorage(state);
 
   for (const [, flag] of state.flags) {
-    for (const item of flag.inventory) {
-      if (item.targetBuildingId && item.nextFlagId) continue; // already routed
+    for (let i = flag.inventory.length - 1; i >= 0; i--) {
+      const item = flag.inventory[i];
+      if (item.targetBuildingId && item.nextFlagId) {
+        // Already routed – but check if it's routed to THIS flag's building
+        // (items can get stuck when nextFlagId points to current flag)
+        if (item.nextFlagId === flag.id && flag.buildingId === item.targetBuildingId) {
+          const building = state.buildings.get(flag.buildingId);
+          if (building) {
+            _deliverDirectly(state, building, item.type);
+            flag.inventory.splice(i, 1);
+          }
+        }
+        continue;
+      }
 
       const route = findRoute(state, flag.id, item.type);
       if (route) {
+        // If the route points back to this same flag, deliver directly
+        if (route.nextFlagId === flag.id && flag.buildingId === route.targetBuildingId) {
+          const building = state.buildings.get(flag.buildingId);
+          if (building) {
+            _deliverDirectly(state, building, item.type);
+            flag.inventory.splice(i, 1);
+            continue;
+          }
+        }
         item.targetBuildingId = route.targetBuildingId;
         item.nextFlagId = route.nextFlagId;
       }
     }
+  }
+}
+
+/** Deliver a resource directly to a building (construction or input storage) */
+function _deliverDirectly(
+  state: SettlersState,
+  building: import("../state/SettlersBuilding").SettlersBuilding,
+  resourceType: ResourceType,
+): void {
+  // Construction materials
+  if (building.constructionProgress < 1) {
+    const need = building.constructionNeeds.find((n) => n.type === resourceType && n.amount > 0);
+    if (need) {
+      need.amount--;
+      return;
+    }
+  }
+
+  // HQ/storehouse: put resources back into player storage
+  const def = BUILDING_DEFS[building.type];
+  if (def.type === "headquarters" || def.type === "storehouse") {
+    const player = state.players.get(building.owner);
+    if (player) {
+      player.storage.set(resourceType, (player.storage.get(resourceType) || 0) + 1);
+    }
+    return;
+  }
+
+  // Production input
+  const existing = building.inputStorage.find((s) => s.type === resourceType);
+  if (existing) {
+    existing.amount++;
+  } else {
+    building.inputStorage.push({ type: resourceType, amount: 1 });
   }
 }
 
@@ -330,14 +385,16 @@ function _dispatchFromStorage(state: SettlersState): void {
       const available = player.storage.get(resType) || 0;
       if (available <= 0) continue;
 
-      // Count how many of this type are already in transit (on flags/carriers)
+      // Count how many of this type are already in transit (on this player's flags/carriers)
       let inTransit = 0;
       for (const [, flag] of state.flags) {
+        if (flag.owner !== player.id) continue;
         for (const item of flag.inventory) {
           if (item.type === resType) inTransit++;
         }
       }
       for (const [, carrier] of state.carriers) {
+        if (carrier.owner !== player.id) continue;
         if (carrier.carrying === resType) inTransit++;
       }
 

@@ -122,6 +122,6 @@ export const SB = {
   // Rendering
   ROAD_WIDTH: 0.3,           // world units
   FLAG_HEIGHT: 0.8,          // world units
-  CARRIER_HEIGHT: 0.3,       // world units
+  CARRIER_HEIGHT: 0.7,       // world units
   SOLDIER_HEIGHT: 0.5,       // world units
 } as const;
