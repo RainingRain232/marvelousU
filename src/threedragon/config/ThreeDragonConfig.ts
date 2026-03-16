@@ -141,6 +141,16 @@ export const TD_ENEMY_TEMPLATES: Record<string, TDEnemyTemplate> = {
     pattern: TDEnemyPattern.SWARM, fireRate: 3.0,
     color: 0x882288, glowColor: 0xff44ff, scoreValue: 70, isBoss: false, isGround: false,
   },
+  [TDEnemyType.BLOOD_HUNTER]: {
+    type: TDEnemyType.BLOOD_HUNTER, hp: 22, speed: 20, size: 1.1,
+    pattern: TDEnemyPattern.CHASE, fireRate: 0,
+    color: 0x880022, glowColor: 0xff3344, scoreValue: 65, isBoss: false, isGround: false,
+  },
+  [TDEnemyType.RUNIC_SENTINEL]: {
+    type: TDEnemyType.RUNIC_SENTINEL, hp: 40, speed: 6, size: 1.3,
+    pattern: TDEnemyPattern.SNIPE, fireRate: 1.0,
+    color: 0x224466, glowColor: 0x44ddff, scoreValue: 110, isBoss: false, isGround: false,
+  },
   // --- Ground enemies ---
   [TDEnemyType.DARK_TOWER]: {
     type: TDEnemyType.DARK_TOWER, hp: 90, speed: 3, size: 2.0,
@@ -188,15 +198,15 @@ export const TD_ENEMY_TEMPLATES: Record<string, TDEnemyTemplate> = {
 // Wave enemy pools
 export const TD_WAVE_ENEMY_POOL: TDEnemyType[][] = [
   // Waves 1-4
-  [TDEnemyType.SHADOW_RAVEN, TDEnemyType.ARCANE_ORB],
+  [TDEnemyType.SHADOW_RAVEN, TDEnemyType.ARCANE_ORB, TDEnemyType.BLOOD_HUNTER, TDEnemyType.RUNIC_SENTINEL],
   // Waves 5-8
-  [TDEnemyType.SHADOW_RAVEN, TDEnemyType.CRYSTAL_WYVERN, TDEnemyType.EMBER_PHOENIX, TDEnemyType.CANNON_FORT],
+  [TDEnemyType.SHADOW_RAVEN, TDEnemyType.CRYSTAL_WYVERN, TDEnemyType.EMBER_PHOENIX, TDEnemyType.CANNON_FORT, TDEnemyType.BLOOD_HUNTER, TDEnemyType.RUNIC_SENTINEL],
   // Waves 9-12
-  [TDEnemyType.CRYSTAL_WYVERN, TDEnemyType.STORM_HARPY, TDEnemyType.VOID_WRAITH, TDEnemyType.SIEGE_GOLEM, TDEnemyType.CANNON_FORT],
+  [TDEnemyType.CRYSTAL_WYVERN, TDEnemyType.STORM_HARPY, TDEnemyType.VOID_WRAITH, TDEnemyType.SIEGE_GOLEM, TDEnemyType.CANNON_FORT, TDEnemyType.BLOOD_HUNTER, TDEnemyType.RUNIC_SENTINEL],
   // Waves 13-16
-  [TDEnemyType.STORM_HARPY, TDEnemyType.VOID_WRAITH, TDEnemyType.SPECTRAL_KNIGHT, TDEnemyType.DARK_TOWER, TDEnemyType.SIEGE_GOLEM],
+  [TDEnemyType.STORM_HARPY, TDEnemyType.VOID_WRAITH, TDEnemyType.SPECTRAL_KNIGHT, TDEnemyType.DARK_TOWER, TDEnemyType.SIEGE_GOLEM, TDEnemyType.BLOOD_HUNTER, TDEnemyType.RUNIC_SENTINEL],
   // Waves 17-20
-  [TDEnemyType.SPECTRAL_KNIGHT, TDEnemyType.VOID_WRAITH, TDEnemyType.EMBER_PHOENIX, TDEnemyType.DARK_TOWER],
+  [TDEnemyType.SPECTRAL_KNIGHT, TDEnemyType.VOID_WRAITH, TDEnemyType.EMBER_PHOENIX, TDEnemyType.DARK_TOWER, TDEnemyType.BLOOD_HUNTER, TDEnemyType.RUNIC_SENTINEL],
 ];
 
 export const TD_BOSS_ORDER: TDEnemyType[] = [

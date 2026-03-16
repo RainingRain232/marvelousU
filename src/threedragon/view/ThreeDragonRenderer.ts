@@ -2597,6 +2597,158 @@ export class ThreeDragonRenderer {
         break;
       }
 
+      case TDEnemyType.BLOOD_HUNTER: {
+        // Demonic bat-like chaser with crimson energy
+        const bodyMat = new THREE.MeshPhongMaterial({
+          color: enemy.color,
+          emissive: 0x660011,
+          emissiveIntensity: 0.35,
+          specular: 0xff2222,
+          shininess: 50,
+        });
+        // Sleek angular body
+        const body = new THREE.Mesh(this._sphereGeo, bodyMat);
+        body.scale.set(s * 1.0, s * 0.5, s * 0.7);
+        group.add(body);
+        // Head - pointed forward
+        const headMat = new THREE.MeshPhongMaterial({
+          color: 0xaa0022,
+          emissive: 0xff1133,
+          emissiveIntensity: 0.3,
+        });
+        const head = new THREE.Mesh(this._sphereGeo, headMat);
+        head.scale.set(s * 0.35, s * 0.3, s * 0.3);
+        head.position.set(s * 0.9, s * 0.15, 0);
+        group.add(head);
+        // Horns
+        const hornMat = new THREE.MeshPhongMaterial({ color: 0x330000, emissive: 0x440000, emissiveIntensity: 0.2 });
+        for (const zOff of [-s * 0.15, s * 0.15]) {
+          const horn = new THREE.Mesh(new THREE.ConeGeometry(s * 0.06, s * 0.4, 4), hornMat);
+          horn.position.set(s * 0.85, s * 0.45, zOff);
+          horn.rotation.z = -0.3;
+          horn.rotation.x = zOff > 0 ? 0.2 : -0.2;
+          group.add(horn);
+        }
+        // Bat wings - large, membrane-like
+        const wingMat = new THREE.MeshPhongMaterial({
+          color: 0x660022,
+          side: THREE.DoubleSide,
+          emissive: 0x440011,
+          emissiveIntensity: 0.2,
+          transparent: true,
+          opacity: 0.85,
+        });
+        const wL = new THREE.Mesh(this._createWingGeometry(), wingMat);
+        wL.scale.set(s * 0.7, s * 0.7, s * 1.1);
+        wL.position.set(-s * 0.1, s * 0.1, -s * 0.4);
+        wL.name = "wingL";
+        group.add(wL);
+        const wR = new THREE.Mesh(this._createWingGeometry(), wingMat.clone());
+        wR.scale.set(s * 0.7, s * 0.7, -s * 1.1);
+        wR.position.set(-s * 0.1, s * 0.1, s * 0.4);
+        wR.name = "wingR";
+        group.add(wR);
+        // Glowing eyes
+        const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+        for (const z of [-s * 0.1, s * 0.1]) {
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(s * 0.07, 6, 4), eyeMat);
+          eye.position.set(s * 1.05, s * 0.22, z);
+          group.add(eye);
+        }
+        // Crimson energy core
+        const coreMat = new THREE.MeshBasicMaterial({
+          color: 0xff2244,
+          transparent: true,
+          opacity: 0.4,
+        });
+        const core = new THREE.Mesh(new THREE.SphereGeometry(s * 0.3, 6, 4), coreMat);
+        core.position.set(0, 0, 0);
+        group.add(core);
+        // Tail - whip-like
+        const tailMat = new THREE.MeshPhongMaterial({ color: 0x550011 });
+        const tail = new THREE.Mesh(new THREE.ConeGeometry(s * 0.08, s * 1.0, 4), tailMat);
+        tail.rotation.z = Math.PI / 2;
+        tail.position.set(-s * 0.8, -s * 0.05, 0);
+        group.add(tail);
+        // Claws
+        const clawMat = new THREE.MeshPhongMaterial({ color: 0x440000 });
+        for (const z of [-s * 0.25, s * 0.25]) {
+          const claw = new THREE.Mesh(new THREE.ConeGeometry(s * 0.04, s * 0.2, 3), clawMat);
+          claw.position.set(s * 0.3, -s * 0.4, z);
+          group.add(claw);
+        }
+        break;
+      }
+
+      case TDEnemyType.RUNIC_SENTINEL: {
+        // Floating runic eye/orb with arcane rings - a magical sniper
+        const orbMat = new THREE.MeshPhongMaterial({
+          color: enemy.color,
+          emissive: 0x1144aa,
+          emissiveIntensity: 0.4,
+          specular: 0x88ddff,
+          shininess: 90,
+        });
+        // Main orb body
+        const orb = new THREE.Mesh(this._sphereGeo, orbMat);
+        orb.scale.set(s * 0.8, s * 0.8, s * 0.8);
+        group.add(orb);
+        // Central eye
+        const eyeOuterMat = new THREE.MeshBasicMaterial({ color: 0x00aaff });
+        const eyeOuter = new THREE.Mesh(new THREE.SphereGeometry(s * 0.35, 8, 6), eyeOuterMat);
+        eyeOuter.position.set(s * 0.5, 0, 0);
+        group.add(eyeOuter);
+        const pupilMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        const pupil = new THREE.Mesh(new THREE.SphereGeometry(s * 0.15, 6, 4), pupilMat);
+        pupil.position.set(s * 0.7, 0, 0);
+        group.add(pupil);
+        // Arcane rings orbiting
+        const ringMat = new THREE.MeshBasicMaterial({
+          color: 0x44ddff,
+          transparent: true,
+          opacity: 0.5,
+          side: THREE.DoubleSide,
+        });
+        const ringGeo = new THREE.TorusGeometry(s * 1.2, s * 0.05, 6, 24);
+        const ring1 = new THREE.Mesh(ringGeo, ringMat);
+        ring1.name = "ring1";
+        group.add(ring1);
+        const ring2 = new THREE.Mesh(new THREE.TorusGeometry(s * 1.0, s * 0.04, 6, 24), ringMat.clone());
+        ring2.rotation.x = Math.PI / 2;
+        ring2.name = "ring2";
+        group.add(ring2);
+        // Runic crystals floating around
+        const crystalMat = new THREE.MeshPhongMaterial({
+          color: 0x2288cc,
+          emissive: 0x0066aa,
+          emissiveIntensity: 0.3,
+          transparent: true,
+          opacity: 0.8,
+        });
+        for (let i = 0; i < 4; i++) {
+          const angle = (i / 4) * Math.PI * 2;
+          const crystal = new THREE.Mesh(new THREE.OctahedronGeometry(s * 0.15), crystalMat.clone());
+          crystal.position.set(
+            Math.cos(angle) * s * 1.0,
+            Math.sin(angle) * s * 0.5,
+            Math.sin(angle + Math.PI / 4) * s * 0.5,
+          );
+          crystal.name = `crystal_${i}`;
+          group.add(crystal);
+        }
+        // Charging barrel/lens at front
+        const lensMat = new THREE.MeshBasicMaterial({
+          color: 0x88eeff,
+          transparent: true,
+          opacity: 0.6,
+        });
+        const lens = new THREE.Mesh(new THREE.CylinderGeometry(s * 0.2, s * 0.3, s * 0.15, 8), lensMat);
+        lens.rotation.z = -Math.PI / 2;
+        lens.position.set(s * 0.9, 0, 0);
+        group.add(lens);
+        break;
+      }
+
       default: {
         const mat = new THREE.MeshPhongMaterial({ color: enemy.color });
         const mesh = new THREE.Mesh(this._sphereGeo, mat);
@@ -3075,6 +3227,30 @@ export class ThreeDragonRenderer {
       if (ring) {
         ring.rotation.x = time * 2;
         ring.rotation.y = time * 1.5;
+      }
+
+      // Animate Runic Sentinel rings and crystals
+      if (enemy.type === TDEnemyType.RUNIC_SENTINEL) {
+        const ring1 = group.getObjectByName("ring1") as THREE.Mesh;
+        const ring2 = group.getObjectByName("ring2") as THREE.Mesh;
+        if (ring1) {
+          ring1.rotation.x = time * 1.5 + enemy.id;
+          ring1.rotation.y = time * 2.0;
+        }
+        if (ring2) {
+          ring2.rotation.y = time * 1.8 + enemy.id * 0.5;
+          ring2.rotation.z = time * 1.2;
+        }
+        for (let ci = 0; ci < 4; ci++) {
+          const crystal = group.getObjectByName(`crystal_${ci}`) as THREE.Mesh;
+          if (crystal) {
+            const angle = (ci / 4) * Math.PI * 2 + time * 1.5;
+            crystal.position.x = Math.cos(angle) * enemy.size * 1.0;
+            crystal.position.y = Math.sin(angle) * enemy.size * 0.5;
+            crystal.position.z = Math.sin(angle + Math.PI / 4) * enemy.size * 0.5;
+            crystal.rotation.y = time * 3;
+          }
+        }
       }
 
       // Animate halos

@@ -206,6 +206,8 @@ export enum DragoonEnemyType {
   SHADOW_WRAITH = "shadow_wraith",
   SKY_VIPER = "sky_viper",
   DARK_FALCON_SQUAD = "dark_falcon_squad",
+  HELL_WASP = "hell_wasp",          // chaser - flies toward player
+  DARK_ARCHER = "dark_archer",      // sniper - hovers and shoots at player
   // Ground enemies
   GROUND_CATAPULT = "ground_catapult",
   GROUND_MAGE_TOWER = "ground_mage_tower",
@@ -242,6 +244,8 @@ export enum EnemyPattern {
   GROUND_CHARGE = "ground_charge",   // fast ground charge toward player X
   GROUND_SLOW = "ground_slow",       // slow ground movement, heavy attacks
   GROUND_STATIONARY = "ground_stationary", // stationary, fires projectiles
+  CHASE = "chase",     // always flies toward player position
+  SNIPE = "snipe",     // finds a vantage point and fires rapidly at player
 }
 
 // ---------------------------------------------------------------------------

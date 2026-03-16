@@ -1290,6 +1290,12 @@ function _drawEnemyShape(g: Graphics, enemy: DragoonEnemy, time: number): void {
       g.circle(7 * s, -1 * s, 1 * s).fill({ color: 0x6666aa, alpha: 0.9 });
       break;
     }
+    case DragoonEnemyType.HELL_WASP:
+      _drawHellWasp(g, s, time);
+      break;
+    case DragoonEnemyType.DARK_ARCHER:
+      _drawDarkArcher(g, s, time);
+      break;
     default:
       // Bosses
       if (enemy.isBoss) {
@@ -1626,6 +1632,114 @@ function _drawDarkAngel(g: Graphics, s: number, time: number): void {
     g.circle(Math.cos(a) * r, Math.sin(a) * r - 5 * s, 1.5 * s).fill({ color: 0x9900ff, alpha: 0.25 });
     // Wisp trail
     g.circle(Math.cos(a - 0.3) * r * 0.95, Math.sin(a - 0.3) * r * 0.95 - 5 * s, 1 * s).fill({ color: 0x7700cc, alpha: 0.12 });
+  }
+}
+
+function _drawHellWasp(g: Graphics, s: number, time: number): void {
+  const wingBeat = Math.sin(time * 20) * 6 * s;
+  const wingBeat2 = Math.sin(time * 20 + 0.5) * 5 * s;
+  // Heat distortion
+  g.circle(0, 0, 14 * s).fill({ color: 0xff4400, alpha: 0.05 });
+  // Abdomen (rear, striped)
+  g.ellipse(8 * s, 1 * s, 8 * s, 5 * s).fill({ color: 0xcc4400 });
+  // Abdomen stripes
+  for (let i = 0; i < 3; i++) {
+    g.ellipse((5 + i * 3) * s, 1 * s, 1.5 * s, 4 * s).fill({ color: 0x331100, alpha: 0.5 });
+  }
+  // Stinger
+  g.moveTo(14 * s, 1 * s).lineTo(20 * s, 0).lineTo(14 * s, 2 * s).fill({ color: 0x221100 });
+  // Thorax (middle)
+  g.ellipse(0, 0, 6 * s, 4 * s).fill({ color: 0xdd5500 });
+  // Waist connector
+  g.ellipse(3 * s, 0.5 * s, 2 * s, 2 * s).fill({ color: 0xaa3300 });
+  // Head
+  g.ellipse(-6 * s, -1 * s, 4 * s, 3 * s).fill({ color: 0xbb4400 });
+  // Mandibles
+  g.moveTo(-9 * s, -2 * s).lineTo(-14 * s, -3 * s).lineTo(-11 * s, 0).fill({ color: 0x442200 });
+  g.moveTo(-9 * s, 1 * s).lineTo(-14 * s, 2 * s).lineTo(-11 * s, 0).fill({ color: 0x442200 });
+  // Eyes - large compound eyes, glowing orange
+  g.circle(-7 * s, -3 * s, 2.5 * s).fill({ color: 0x441100 });
+  g.circle(-7 * s, -3 * s, 2 * s).fill({ color: 0xff6600 });
+  g.circle(-6.5 * s, -3.5 * s, 0.7 * s).fill({ color: 0xffcc44, alpha: 0.6 });
+  g.circle(-7 * s, 1 * s, 2 * s).fill({ color: 0x441100 });
+  g.circle(-7 * s, 1 * s, 1.5 * s).fill({ color: 0xff6600 });
+  // Wings - translucent, fast-beating
+  // Upper wings
+  g.moveTo(-2 * s, -3 * s).lineTo(-12 * s, -14 * s + wingBeat).lineTo(4 * s, -8 * s + wingBeat * 0.5).lineTo(2 * s, -3 * s)
+    .fill({ color: 0xffcc88, alpha: 0.3 });
+  g.moveTo(-2 * s, -3 * s).lineTo(-12 * s, -14 * s + wingBeat).lineTo(4 * s, -8 * s + wingBeat * 0.5).lineTo(2 * s, -3 * s)
+    .stroke({ color: 0xff8844, width: 0.5 * s, alpha: 0.4 });
+  // Lower wings
+  g.moveTo(-1 * s, 3 * s).lineTo(-10 * s, 12 * s - wingBeat2).lineTo(3 * s, 7 * s - wingBeat2 * 0.5).lineTo(1 * s, 3 * s)
+    .fill({ color: 0xffcc88, alpha: 0.25 });
+  // Wing veins
+  g.moveTo(-2 * s, -3 * s).lineTo(-8 * s, -12 * s + wingBeat * 0.8).stroke({ color: 0xdd8844, width: 0.4 * s, alpha: 0.3 });
+  g.moveTo(0, -4 * s).lineTo(2 * s, -10 * s + wingBeat * 0.6).stroke({ color: 0xdd8844, width: 0.3 * s, alpha: 0.25 });
+  // Legs (6 legs, tucked)
+  for (let i = 0; i < 3; i++) {
+    const lx = (-2 + i * 3) * s;
+    g.moveTo(lx, 3 * s).lineTo(lx - 2 * s, 7 * s).lineTo(lx - 1 * s, 9 * s)
+      .stroke({ color: 0x663300, width: 0.6 * s });
+    g.moveTo(lx, -3 * s).lineTo(lx - 2 * s, -7 * s).lineTo(lx - 1 * s, -8 * s)
+      .stroke({ color: 0x663300, width: 0.6 * s });
+  }
+  // Fire trail from abdomen
+  const trailAlpha = 0.2 + Math.sin(time * 10) * 0.1;
+  g.circle(16 * s, 1 * s, 3 * s).fill({ color: 0xff4400, alpha: trailAlpha });
+  g.circle(19 * s, 1 * s, 2 * s).fill({ color: 0xff6600, alpha: trailAlpha * 0.6 });
+}
+
+function _drawDarkArcher(g: Graphics, s: number, time: number): void {
+  const hover = Math.sin(time * 3) * 2 * s;
+  const cloakWave = Math.sin(time * 4) * 3 * s;
+  // Dark mist aura
+  g.circle(0, hover, 16 * s).fill({ color: 0x6622aa, alpha: 0.06 });
+  g.circle(2 * s, hover + 2 * s, 12 * s).fill({ color: 0x4400aa, alpha: 0.04 });
+  // Dark cloud/platform
+  g.ellipse(0, 8 * s + hover, 12 * s, 4 * s).fill({ color: 0x1a0a2a, alpha: 0.5 });
+  g.ellipse(-2 * s, 9 * s + hover, 8 * s, 3 * s).fill({ color: 0x220e3a, alpha: 0.3 });
+  // Cloak/robe body
+  g.moveTo(-5 * s, -2 * s + hover).lineTo(-7 * s - cloakWave * 0.3, 8 * s + hover).lineTo(7 * s + cloakWave * 0.3, 8 * s + hover).lineTo(5 * s, -2 * s + hover)
+    .fill({ color: 0x1a0a2a });
+  // Cloak inner lining
+  g.moveTo(-3 * s, 0 + hover).lineTo(-5 * s, 7 * s + hover).lineTo(5 * s, 7 * s + hover).lineTo(3 * s, 0 + hover)
+    .fill({ color: 0x2a1040, alpha: 0.6 });
+  // Hood
+  g.ellipse(0, -4 * s + hover, 5 * s, 4 * s).fill({ color: 0x1a0a2a });
+  g.ellipse(0, -3 * s + hover, 4 * s, 3 * s).fill({ color: 0x0a0015 });
+  // Glowing eyes in hood
+  const eyeGlow = 0.6 + Math.sin(time * 5) * 0.2;
+  g.circle(-2 * s, -4 * s + hover, 1.5 * s).fill({ color: 0x8844cc, alpha: eyeGlow });
+  g.circle(-2 * s, -4 * s + hover, 0.8 * s).fill({ color: 0xcc88ff, alpha: eyeGlow * 0.8 });
+  g.circle(2 * s, -4 * s + hover, 1.5 * s).fill({ color: 0x8844cc, alpha: eyeGlow });
+  g.circle(2 * s, -4 * s + hover, 0.8 * s).fill({ color: 0xcc88ff, alpha: eyeGlow * 0.8 });
+  // Bow (held in front)
+  const bowCurve = 1 + Math.sin(time * 2) * 0.1;
+  // Bow arc
+  g.moveTo(-8 * s, -6 * s + hover).quadraticCurveTo(-14 * s * bowCurve, 0 + hover, -8 * s, 6 * s + hover)
+    .stroke({ color: 0x553322, width: 1.2 * s });
+  // Bowstring
+  g.moveTo(-8 * s, -6 * s + hover).lineTo(-7 * s, 0 + hover).lineTo(-8 * s, 6 * s + hover)
+    .stroke({ color: 0x8866aa, width: 0.5 * s, alpha: 0.7 });
+  // Arrow nocked (if about to fire, show energy arrow)
+  const chargeAlpha = 0.3 + Math.sin(time * 8) * 0.15;
+  g.moveTo(-7 * s, 0 + hover).lineTo(-15 * s, 0 + hover)
+    .stroke({ color: 0xaa66ff, width: 1 * s, alpha: chargeAlpha });
+  g.circle(-15 * s, 0 + hover, 1.5 * s).fill({ color: 0xaa66ff, alpha: chargeAlpha * 0.8 });
+  // Arcane runes floating around
+  for (let i = 0; i < 3; i++) {
+    const ra = time * 2 + i * 2.1;
+    const rr = 10 * s;
+    const rx = Math.cos(ra) * rr;
+    const ry = Math.sin(ra) * rr * 0.5 + hover;
+    g.circle(rx, ry, 1 * s).fill({ color: 0x8844cc, alpha: 0.3 + Math.sin(time * 4 + i) * 0.15 });
+  }
+  // Cloak bottom wisps
+  for (let i = 0; i < 3; i++) {
+    const wx = (-3 + i * 3) * s;
+    const wy = 8 * s + hover + Math.sin(time * 3 + i * 1.5) * 2 * s;
+    g.moveTo(wx, 7 * s + hover).lineTo(wx - 1 * s, wy + 3 * s).lineTo(wx + 1 * s, wy + 2 * s)
+      .fill({ color: 0x1a0a2a, alpha: 0.4 });
   }
 }
 

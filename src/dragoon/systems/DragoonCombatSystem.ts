@@ -1494,6 +1494,56 @@ function _updateEnemyBehavior(state: DragoonState, dt: number): void {
         break;
       }
 
+      case EnemyPattern.CHASE: {
+        // Always fly toward the player's position
+        const dx = state.player.position.x - e.position.x;
+        const dy = state.player.position.y - e.position.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > 10) {
+          const chaseSpeed = (160 + state.wave * 8) * sf;
+          e.position.x += (dx / dist) * chaseSpeed * dt;
+          e.position.y += (dy / dist) * chaseSpeed * dt;
+        }
+        // Slight weave to make movement less predictable
+        e.position.x += Math.sin(e.patternTimer * 6 + e.id) * 30 * dt;
+        e.position.y += Math.cos(e.patternTimer * 4 + e.id * 0.7) * 20 * dt;
+        break;
+      }
+
+      case EnemyPattern.SNIPE: {
+        // Move to a vantage position and hover there, shooting at the player
+        const targetX = state.cameraX + state.screenW * 0.55 + Math.sin(e.id * 2.1) * state.screenW * 0.25;
+        const targetY = state.screenH * 0.2 + Math.abs(Math.cos(e.id * 1.7)) * state.screenH * 0.4;
+        const sdx = targetX - e.position.x;
+        const sdy = targetY - e.position.y;
+        const sdist = Math.sqrt(sdx * sdx + sdy * sdy);
+        if (sdist > 20) {
+          const moveSpeed = e.velocity.x !== 0 ? Math.abs(e.velocity.x) * sf : 100 * sf;
+          e.position.x += (sdx / sdist) * moveSpeed * dt;
+          e.position.y += (sdy / sdist) * moveSpeed * dt;
+        } else {
+          // Gentle hover at vantage point
+          e.position.y += Math.sin(e.patternTimer * 2) * 15 * dt;
+          e.position.x += Math.cos(e.patternTimer * 1.2) * 10 * dt;
+        }
+        break;
+      }
+
+      case EnemyPattern.GROUND_CHARGE: {
+        // Fast charge toward player X along the ground
+        const cdx = state.player.position.x - e.position.x;
+        e.position.x += Math.sign(cdx) * e.velocity.x * sf * dt * 1.5;
+        break;
+      }
+
+      case EnemyPattern.GROUND_SLOW:
+        e.position.x += e.velocity.x * sf * dt * 0.5;
+        break;
+
+      case EnemyPattern.GROUND_STATIONARY:
+        // Don't move, just fire (handled by fire logic below)
+        break;
+
       case EnemyPattern.BOSS_PATTERN:
         _updateBoss(state, e, dt);
         break;

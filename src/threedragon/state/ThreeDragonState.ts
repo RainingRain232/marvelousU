@@ -232,6 +232,8 @@ export enum TDEnemyType {
   VOID_WRAITH = "void_wraith",
   SPECTRAL_KNIGHT = "spectral_knight",
   ARCANE_ORB = "arcane_orb",
+  BLOOD_HUNTER = "blood_hunter",      // chaser - flies toward player
+  RUNIC_SENTINEL = "runic_sentinel",  // sniper - hovers and shoots at player
   // Ground enemies
   DARK_TOWER = "dark_tower",
   SIEGE_GOLEM = "siege_golem",
@@ -253,6 +255,8 @@ export enum TDEnemyPattern {
   GROUND = "ground",
   BOSS_PATTERN = "boss",
   SWARM = "swarm",
+  CHASE = "chase",     // always flies toward player position
+  SNIPE = "snipe",     // finds a vantage point and fires rapidly at player
 }
 
 export interface TDProjectile {

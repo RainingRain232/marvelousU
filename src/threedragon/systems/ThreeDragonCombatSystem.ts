@@ -846,6 +846,48 @@ function _updateEnemyBehavior(state: ThreeDragonState, dt: number): void {
       case TDEnemyPattern.BOSS_PATTERN:
         _updateBoss(state, e, dt);
         break;
+
+      case TDEnemyPattern.CHASE: {
+        // Always fly toward the player's position
+        const dx = pPos.x - e.position.x;
+        const dy = pPos.y - e.position.y;
+        const dz = pPos.z - e.position.z;
+        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if (dist > 1.5) {
+          const speed = (14 + state.wave * 0.5) * sf;
+          e.position.x += (dx / dist) * speed * dt;
+          e.position.y += (dy / dist) * speed * dt;
+          e.position.z += (dz / dist) * speed * dt;
+        }
+        // Slight weave to make it less predictable
+        e.position.x += Math.sin(e.patternTimer * 4 + e.id) * 2 * dt;
+        e.position.y += Math.cos(e.patternTimer * 3 + e.id * 0.5) * 1.5 * dt;
+        break;
+      }
+
+      case TDEnemyPattern.SNIPE: {
+        // Find a vantage point to the side/above the player and hover there, firing
+        const targetX = pPos.x + Math.sin(e.id * 2.7) * 20;
+        const targetY = pPos.y + 5 + Math.abs(Math.cos(e.id * 1.3)) * 8;
+        const targetZ = pPos.z - 30 - Math.sin(e.id * 0.9) * 10;
+        const sdx = targetX - e.position.x;
+        const sdy = targetY - e.position.y;
+        const sdz = targetZ - e.position.z;
+        const sdist = Math.sqrt(sdx * sdx + sdy * sdy + sdz * sdz);
+        if (sdist > 3) {
+          const speed = 8 * sf;
+          e.position.x += (sdx / sdist) * speed * dt;
+          e.position.y += (sdy / sdist) * speed * dt;
+          e.position.z += (sdz / sdist) * speed * dt;
+        } else {
+          // Gentle hover at vantage point
+          e.position.y += Math.sin(e.patternTimer * 1.5) * 1.5 * dt;
+          e.position.x += Math.cos(e.patternTimer * 0.8) * 1 * dt;
+          // Keep pace with scrolling
+          e.position.z = pPos.z - 30 + Math.sin(e.patternTimer * 0.4) * 5;
+        }
+        break;
+      }
     }
 
     if (e.isBoss && !e.isShadowClone) {
