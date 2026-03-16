@@ -191,6 +191,90 @@ export function updateConstruction(state: SettlersState, dt: number): void {
 // Production tick – consume inputs, produce outputs
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Demolish a building – refund partial resources, free workers, clear tiles
+// ---------------------------------------------------------------------------
+
+export function demolishBuilding(state: SettlersState, buildingId: string): boolean {
+  const building = state.buildings.get(buildingId);
+  if (!building) return false;
+
+  const def = BUILDING_DEFS[building.type];
+
+  // Can't demolish HQ
+  if (def.type === SettlersBuildingType.HEADQUARTERS) return false;
+
+  const player = state.players.get(building.owner);
+
+  // Refund 50% of construction cost
+  if (player) {
+    for (const cost of def.constructionCost) {
+      const refund = Math.floor(cost.amount * 0.5);
+      if (refund > 0) {
+        player.storage.set(cost.type, (player.storage.get(cost.type) || 0) + refund);
+      }
+    }
+
+    // Return worker
+    if (building.workerId) {
+      player.availableWorkers++;
+    }
+  }
+
+  // Evict garrisoned soldiers
+  for (const soldierId of building.garrison) {
+    const soldier = state.soldiers.get(soldierId);
+    if (soldier) {
+      soldier.state = "idle";
+      soldier.garrisonedIn = null;
+      soldier.position = {
+        x: (building.tileX + 1) * SB.TILE_SIZE,
+        y: 0,
+        z: (building.tileZ + def.footprint.h + 1) * SB.TILE_SIZE,
+      };
+      if (player) player.freeSoldiers++;
+    }
+  }
+
+  // Remove the building's flag and associated roads
+  const flag = state.flags.get(building.flagId);
+  if (flag) {
+    // Remove roads connected to this flag
+    for (const roadId of [...flag.connectedRoads]) {
+      const road = state.roads.get(roadId);
+      if (road) {
+        // Remove carrier
+        if (road.carrierId) {
+          state.carriers.delete(road.carrierId);
+        }
+        // Disconnect from other flag
+        const otherId = road.flagA === flag.id ? road.flagB : road.flagA;
+        const otherFlag = state.flags.get(otherId);
+        if (otherFlag) {
+          otherFlag.connectedRoads = otherFlag.connectedRoads.filter((r) => r !== roadId);
+        }
+        state.roads.delete(roadId);
+      }
+    }
+    state.flags.delete(building.flagId);
+  }
+
+  // Clear occupied tiles
+  for (let dz = 0; dz < def.footprint.h; dz++) {
+    for (let dx = 0; dx < def.footprint.w; dx++) {
+      const idx = tileIdx(state.map, building.tileX + dx, building.tileZ + dz);
+      state.map.occupied[idx] = "";
+    }
+  }
+
+  state.buildings.delete(buildingId);
+  return true;
+}
+
+// ---------------------------------------------------------------------------
+// Production tick – consume inputs, produce outputs
+// ---------------------------------------------------------------------------
+
 export function updateProduction(state: SettlersState, dt: number): void {
   for (const [, building] of state.buildings) {
     if (!building.active) continue;

@@ -5,9 +5,10 @@
 import { Container, Graphics, Text, TextStyle } from "pixi.js";
 import type { RiftWizardState } from "../state/RiftWizardState";
 import { SpellSchool } from "../state/RiftWizardState";
-import { RWPhase } from "../state/RiftWizardState";
+import { RWPhase, RWTileType } from "../state/RiftWizardState";
 import { SPELL_DEFS } from "../config/RiftWizardSpellDefs";
 import { SCHOOL_COLORS } from "../config/RiftWizardShrineDefs";
+import { ENEMY_DEFS } from "../config/RiftWizardEnemyDefs";
 
 // ---------------------------------------------------------------------------
 // Styles
@@ -174,6 +175,8 @@ export class RiftWizardHUD {
   private _spellTexts: Text[] = [];
   private _consumableText: Text;
   private _tooltipText: Text;
+  private _logLines: string[] = [];
+  private _logTexts: Text[] = [];
 
   constructor() {
     this._infoText = new Text({ text: "", style: INFO_STYLE });
@@ -183,6 +186,13 @@ export class RiftWizardHUD {
     this._msgText = new Text({ text: "", style: MSG_STYLE });
     this._consumableText = new Text({ text: "", style: LABEL_STYLE });
     this._tooltipText = new Text({ text: "", style: STAT_VALUE_STYLE });
+  }
+
+  addLog(msg: string): void {
+    this._logLines.push(msg);
+    if (this._logLines.length > 6) {
+      this._logLines.shift();
+    }
   }
 
   build(): void {
@@ -473,6 +483,178 @@ export class RiftWizardHUD {
     this._msgText.x = Math.floor(screenWidth / 2);
     this._msgText.y = 12;
     this._msgText.anchor.set(0.5, 0);
+
+    // --- Enemy tooltip when targeting ---
+    if (state.phase === RWPhase.TARGETING && state.targetCursor) {
+      const tc = state.targetCursor;
+      const targetEnemy = state.level.enemies.find(
+        (e) => e.alive && e.col === tc.col && e.row === tc.row
+      );
+      if (targetEnemy) {
+        // Draw tooltip panel near the HUD area
+        const ttW = 200;
+        const ttH = 50;
+        const ttX = Math.floor(screenWidth / 2 - ttW / 2);
+        const ttY = 40;
+
+        // Background
+        this._bg.rect(ttX, ttY, ttW, ttH);
+        this._bg.fill({ color: 0x0a0a18, alpha: 0.92 });
+        this._bg.rect(ttX, ttY, ttW, ttH);
+        this._bg.stroke({ color: 0xcc4444, width: 1 });
+
+        // Enemy name
+        const enemyDef = ENEMY_DEFS[targetEnemy.defId];
+        const enemyName = new Text({
+          text: enemyDef?.name ?? targetEnemy.defId,
+          style: new TextStyle({ fontFamily: "monospace", fontSize: 12, fill: 0xff6666, fontWeight: "bold" }),
+        });
+        enemyName.x = ttX + 8;
+        enemyName.y = ttY + 4;
+        this.container.addChild(enemyName);
+        this._spellTexts.push(enemyName);
+
+        // HP info
+        const hpInfo = new Text({
+          text: `HP: ${targetEnemy.hp}/${targetEnemy.maxHp}`,
+          style: new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: 0xcccccc }),
+        });
+        hpInfo.x = ttX + 8;
+        hpInfo.y = ttY + 20;
+        this.container.addChild(hpInfo);
+        this._spellTexts.push(hpInfo);
+
+        // Stats line
+        const statsLine = new Text({
+          text: `Dmg: ${targetEnemy.damage}  Range: ${targetEnemy.range}${targetEnemy.isBoss ? "  [BOSS]" : ""}`,
+          style: new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: 0x999999 }),
+        });
+        statsLine.x = ttX + 8;
+        statsLine.y = ttY + 34;
+        this.container.addChild(statsLine);
+        this._spellTexts.push(statsLine);
+      }
+    }
+
+    // --- Minimap (top-right corner, drawn on _bg) ---
+    const tileSize = 3;
+    const mapW = state.level.width * tileSize;
+    const mapH = state.level.height * tileSize;
+    const mmX = screenWidth - mapW - 8;
+    const mmY = 8;
+
+    // Dark background with 1px border
+    this._bg.rect(mmX - 2, mmY - 2, mapW + 4, mapH + 4);
+    this._bg.fill({ color: 0x000000, alpha: 0.7 });
+    this._bg.rect(mmX - 2, mmY - 2, mapW + 4, mapH + 4);
+    this._bg.stroke({ color: 0x333355, width: 1, alpha: 0.8 });
+
+    // Draw tiles
+    for (let row = 0; row < state.level.height; row++) {
+      for (let col = 0; col < state.level.width; col++) {
+        const tile = state.level.tiles[row]?.[col];
+        if (tile === undefined) continue;
+        let color: number;
+        switch (tile) {
+          case RWTileType.WALL:
+            color = 0x1a1a2e;
+            break;
+          case RWTileType.FLOOR:
+          case RWTileType.CORRIDOR:
+            color = 0x3a3a4a;
+            break;
+          case RWTileType.LAVA:
+            color = 0xcc3300;
+            break;
+          case RWTileType.ICE:
+            color = 0x3388bb;
+            break;
+          case RWTileType.CHASM:
+            color = 0x080810;
+            break;
+          case RWTileType.SHRINE:
+            color = 0xffcc44;
+            break;
+          case RWTileType.SPELL_CIRCLE:
+            color = 0x8844ff;
+            break;
+          case RWTileType.RIFT_PORTAL:
+            color = 0x9933ff;
+            break;
+          default:
+            color = 0x1a1a2e;
+            break;
+        }
+        this._bg.rect(mmX + col * tileSize, mmY + row * tileSize, tileSize, tileSize);
+        this._bg.fill(color);
+      }
+    }
+
+    // Draw items (not picked) as yellow dots, 1x1 px
+    for (const item of state.level.items) {
+      if (!item.picked) {
+        this._bg.rect(mmX + item.col * tileSize + 1, mmY + item.row * tileSize + 1, 1, 1);
+        this._bg.fill(0xffcc00);
+      }
+    }
+
+    // Draw alive summons as green dots, 2x2 px
+    for (const summon of state.level.summons) {
+      if (summon.alive) {
+        this._bg.rect(mmX + summon.col * tileSize, mmY + summon.row * tileSize, 2, 2);
+        this._bg.fill(0x44cc88);
+      }
+    }
+
+    // Draw alive enemies as red dots, 2x2 px
+    for (const enemy of state.level.enemies) {
+      if (enemy.alive) {
+        this._bg.rect(mmX + enemy.col * tileSize, mmY + enemy.row * tileSize, 2, 2);
+        this._bg.fill(0xcc2222);
+      }
+    }
+
+    // Draw wizard position as bright blue dot, 3x3 px
+    this._bg.rect(mmX + state.wizard.col * tileSize, mmY + state.wizard.row * tileSize, tileSize, tileSize);
+    this._bg.fill(0x4488ff);
+
+    // --- Combat Log (top-left area) ---
+    // Remove old log texts
+    for (const t of this._logTexts) {
+      this.container.removeChild(t);
+      t.destroy();
+    }
+    this._logTexts = [];
+
+    if (this._logLines.length > 0) {
+      const logX = 8;
+      const logY = 20;
+      const lineH = 13;
+      const logW = 260;
+      const logH = this._logLines.length * lineH + 6;
+
+      // Subtle dark background
+      this._bg.rect(logX - 2, logY - 2, logW + 4, logH + 4);
+      this._bg.fill({ color: 0x000000, alpha: 0.5 });
+
+      for (let i = 0; i < this._logLines.length; i++) {
+        const age = this._logLines.length - 1 - i; // 0 = newest
+        const alpha = 1.0 - age * 0.15;
+        const logText = new Text({
+          text: this._logLines[i],
+          style: new TextStyle({
+            fontFamily: "monospace",
+            fontSize: 10,
+            fill: 0x999999,
+          }),
+        });
+        logText.x = logX;
+        logText.y = logY + i * lineH;
+        logText.alpha = Math.max(0.3, alpha);
+        this.container.addChild(logText);
+        this._logTexts.push(logText);
+      }
+    }
   }
 
   private _updateSpellBar(
@@ -656,6 +838,10 @@ export class RiftWizardHUD {
       t.destroy();
     }
     this._spellTexts = [];
+    for (const t of this._logTexts) {
+      t.destroy();
+    }
+    this._logTexts = [];
     this._infoText.destroy();
     this._levelText.destroy();
     this._spText.destroy();

@@ -10,7 +10,7 @@ import type { SettlersState } from "./state/SettlersState";
 import type { SettlersPlayer } from "./state/SettlersPlayer";
 import { getHeightAt } from "./state/SettlersMap";
 import { generateTerrain, findStartPosition } from "./systems/SettlersTerrainSystem";
-import { placeBuilding, canPlaceBuilding, updateConstruction, updateProduction } from "./systems/SettlersBuildingSystem";
+import { placeBuilding, canPlaceBuilding, updateConstruction, updateProduction, demolishBuilding } from "./systems/SettlersBuildingSystem";
 import { recalculateTerritory, updateTerritory } from "./systems/SettlersTerritorySystem";
 import { placeFlag, createRoad, routeGoods } from "./systems/SettlersRoadSystem";
 import { updateCarriers } from "./systems/SettlersCarrierSystem";
@@ -20,6 +20,8 @@ import { SettlersRenderer } from "./view/SettlersRenderer";
 import { SettlersCameraController } from "./view/SettlersCameraController";
 import { SettlersInputSystem } from "./systems/SettlersInputSystem";
 import { SettlersHUD } from "./view/SettlersHUD";
+import { saveToLocalStorage, loadFromLocalStorage } from "./systems/SettlersSaveSystem";
+import { updateAudio, destroyAudio, playBuildSound, playDemolishSound } from "./systems/SettlersAudioSystem";
 
 export class SettlersGame {
   private _state!: SettlersState;
@@ -70,6 +72,22 @@ export class SettlersGame {
     this._input.onLeftClick = (tx, tz) => this._handleLeftClick(tx, tz);
     this._input.onRightClick = () => this._handleRightClick();
     this._input.onEscape = () => this._handleEscape();
+    this._input.onSave = () => {
+      saveToLocalStorage(this._state);
+      this._hud.showNotification("Game saved!");
+    };
+    this._input.onLoad = () => {
+      const loaded = loadFromLocalStorage();
+      if (loaded) {
+        this._state = loaded;
+        this._renderer.rebuildAll(this._state);
+        this._input.setState(this._state);
+        this._hud.showNotification("Game loaded!");
+      } else {
+        this._hud.showNotification("No save found!");
+      }
+    };
+    this._input.onToggleWiki = () => this._hud.toggleWiki();
 
     // --- 8. Init HUD ---
     this._hud.build();
@@ -82,6 +100,21 @@ export class SettlersGame {
       if (tool !== "build") this._state.selectedBuildingType = null;
     };
     this._hud.onExit = () => this.destroy();
+    this._hud.onSave = () => {
+      saveToLocalStorage(this._state);
+      this._hud.showNotification("Game saved!");
+    };
+    this._hud.onLoad = () => {
+      const loaded = loadFromLocalStorage();
+      if (loaded) {
+        this._state = loaded;
+        this._renderer.rebuildAll(this._state);
+        this._input.setState(this._state);
+        this._hud.showNotification("Game loaded!");
+      } else {
+        this._hud.showNotification("No save found!");
+      }
+    };
 
     // --- 9. Start game loop ---
     this._lastTime = performance.now();
@@ -96,6 +129,7 @@ export class SettlersGame {
     this._input.destroy();
     this._renderer.destroy();
     this._hud.destroy();
+    destroyAudio();
     window.dispatchEvent(new Event("settlersExit"));
   }
 
@@ -127,6 +161,9 @@ export class SettlersGame {
 
     // Render
     this._renderer.render(this._state, frameMs / 1000);
+
+    // Audio
+    updateAudio(this._state, frameMs / 1000);
 
     // HUD update
     this._hud.update(this._state);
@@ -271,7 +308,7 @@ export class SettlersGame {
         this._handleAttack(tileX, tileZ);
         break;
       case "demolish":
-        // TODO: demolish building/road at tile
+        this._handleDemolish(tileX, tileZ);
         break;
     }
   }
@@ -285,6 +322,7 @@ export class SettlersGame {
 
     placeBuilding(state, state.selectedBuildingType, tileX, tileZ, "p0");
     recalculateTerritory(state);
+    playBuildSound();
   }
 
   private _handleRoadClick(tileX: number, tileZ: number): void {
@@ -329,6 +367,21 @@ export class SettlersGame {
     state.selectedBuildingId = buildingId || null;
   }
 
+  private _handleDemolish(tileX: number, tileZ: number): void {
+    const state = this._state;
+    const idx = tileZ * state.map.width + tileX;
+    const buildingId = state.map.occupied[idx];
+    if (!buildingId) return;
+
+    const building = state.buildings.get(buildingId);
+    if (!building || building.owner !== "p0") return;
+
+    if (demolishBuilding(state, buildingId)) {
+      recalculateTerritory(state);
+      playDemolishSound();
+    }
+  }
+
   private _handleAttack(tileX: number, tileZ: number): void {
     const state = this._state;
     const idx = tileZ * state.map.width + tileX;
@@ -338,23 +391,42 @@ export class SettlersGame {
     const building = state.buildings.get(buildingId);
     if (!building || building.owner === "p0") return;
 
-    // Find a garrisoned soldier to send
+    // Send up to 3 soldiers from nearest buildings (rally attack)
+    let sent = 0;
+    const maxSend = 3;
+
+    // Sort own buildings by distance to target for smarter dispatching
+    const targetX = (building.tileX + 1) * SB.TILE_SIZE;
+    const targetZ = (building.tileZ + 1) * SB.TILE_SIZE;
+
+    const candidates: { building: typeof building; dist: number }[] = [];
     for (const [, ownBuilding] of state.buildings) {
       if (ownBuilding.owner !== "p0") continue;
       if (ownBuilding.garrison.length <= 1) continue;
+      const bx = (ownBuilding.tileX + 1) * SB.TILE_SIZE;
+      const bz = (ownBuilding.tileZ + 1) * SB.TILE_SIZE;
+      const dx = bx - targetX;
+      const dz = bz - targetZ;
+      candidates.push({ building: ownBuilding, dist: Math.sqrt(dx * dx + dz * dz) });
+    }
+    candidates.sort((a, b) => a.dist - b.dist);
 
-      const soldierId = ownBuilding.garrison.pop()!;
-      const soldier = state.soldiers.get(soldierId);
-      if (soldier) {
-        soldier.state = "marching";
-        soldier.garrisonedIn = null;
-        soldier.targetBuildingId = buildingId;
-        soldier.position = {
-          x: (ownBuilding.tileX + 1) * SB.TILE_SIZE,
-          y: 0,
-          z: (ownBuilding.tileZ + 1) * SB.TILE_SIZE,
-        };
-        break;
+    for (const c of candidates) {
+      if (sent >= maxSend) break;
+      while (c.building.garrison.length > 1 && sent < maxSend) {
+        const soldierId = c.building.garrison.pop()!;
+        const soldier = state.soldiers.get(soldierId);
+        if (soldier) {
+          soldier.state = "marching";
+          soldier.garrisonedIn = null;
+          soldier.targetBuildingId = buildingId;
+          soldier.position = {
+            x: (c.building.tileX + 1) * SB.TILE_SIZE,
+            y: 0,
+            z: (c.building.tileZ + 1) * SB.TILE_SIZE,
+          };
+          sent++;
+        }
       }
     }
   }

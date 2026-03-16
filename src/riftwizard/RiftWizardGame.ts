@@ -60,6 +60,7 @@ function clearJustPressed(): void {
 
 export class RiftWizardGame {
   private _state!: RiftWizardState;
+  private _undoSnapshot: string | null = null;
   private _tickerCb: ((ticker: Ticker) => void) | null = null;
 
   private _renderer = new RiftWizardRenderer();
@@ -167,6 +168,19 @@ export class RiftWizardGame {
     const state = this._state;
     if (!state.isPlayerTurn) return;
 
+    // Undo last action (only before enemies move)
+    if ((consumeJustPressed("z") || consumeJustPressed("u")) && this._undoSnapshot) {
+      try {
+        const restored = JSON.parse(this._undoSnapshot);
+        Object.assign(this._state, restored);
+        this._undoSnapshot = null;  // Can only undo once
+      } catch {}
+      return;
+    }
+
+    // Save undo snapshot before any player action
+    this._undoSnapshot = JSON.stringify(this._state);
+
     // Movement
     let moved = false;
     if (consumeJustPressed("ArrowUp") || consumeJustPressed("w")) {
@@ -181,6 +195,7 @@ export class RiftWizardGame {
 
     if (moved) {
       executeTurn(state);
+      this._undoSnapshot = null; // Clear undo after enemy turns complete
       return;
     }
 
@@ -192,6 +207,24 @@ export class RiftWizardGame {
           state.phase = RWPhase.TARGETING;
           // Initialize cursor at wizard position
           state.targetCursor = { col: state.wizard.col, row: state.wizard.row };
+
+          // Auto-target nearest enemy in range
+          const spell = state.spells[state.selectedSpellIndex];
+          if (spell) {
+            let nearestDist = Infinity;
+            let nearestEnemy: { col: number; row: number } | null = null;
+            for (const enemy of state.level.enemies) {
+              if (!enemy.alive) continue;
+              const dist = Math.abs(enemy.col - state.wizard.col) + Math.abs(enemy.row - state.wizard.row);
+              if (dist <= spell.range && dist < nearestDist) {
+                nearestDist = dist;
+                nearestEnemy = { col: enemy.col, row: enemy.row };
+              }
+            }
+            if (nearestEnemy) {
+              state.targetCursor = { col: nearestEnemy.col, row: nearestEnemy.row };
+            }
+          }
         }
         return;
       }
@@ -200,6 +233,7 @@ export class RiftWizardGame {
     // Pass turn
     if (consumeJustPressed(" ") || consumeJustPressed("Enter")) {
       executeTurn(state);
+      this._undoSnapshot = null; // Clear undo after enemy turns complete
       return;
     }
 
@@ -262,6 +296,7 @@ export class RiftWizardGame {
         state.selectedSpellIndex = -1;
         state.targetCursor = null;
         executeTurn(state);
+        this._undoSnapshot = null; // Clear undo after enemy turns complete
       }
     }
   }

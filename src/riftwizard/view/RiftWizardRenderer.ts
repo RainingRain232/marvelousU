@@ -116,13 +116,23 @@ export class RiftWizardRenderer {
   private _summonSprites = new Map<number, EntitySprite>();
   private _wizardSprite: AnimatedSprite | null = null;
 
+  // Tile caching
+  private _staticTileGfx = new Graphics();
+  private _tileCacheDirty = true;
+  private _cachedLevelId = -1;
+
   // Screen shake
   private _shakeAmount = 0;
   private _shakeDecay = 0;
 
+  // Level transition overlay
+  private _transitionAlpha = 0;
+  private _transitionDir: "in" | "out" | "none" = "none";
+
   init(): void {
     this.worldLayer.removeChildren();
 
+    this._staticTileGfx = new Graphics();
     this._tileGfx = new Graphics();
     this._ambientGfx = new Graphics();
     this._entityGfx = new Graphics();
@@ -131,6 +141,7 @@ export class RiftWizardRenderer {
     this._fxParticleGfx = new Graphics();
     this._cursorGfx = new Graphics();
 
+    this.worldLayer.addChild(this._staticTileGfx);
     this.worldLayer.addChild(this._tileGfx);
     this.worldLayer.addChild(this._ambientGfx);
     this.worldLayer.addChild(this._entityGfx);
@@ -143,6 +154,8 @@ export class RiftWizardRenderer {
     this._activeAnims = [];
     this._particles = [];
     this._time = 0;
+    this._tileCacheDirty = true;
+    this._cachedLevelId = -1;
     this._wizardSprite = null;
     this._enemySprites.clear();
     this._summonSprites.clear();
@@ -151,6 +164,22 @@ export class RiftWizardRenderer {
   /** Returns true if animations are still playing. */
   get isAnimating(): boolean {
     return this._activeAnims.length > 0;
+  }
+
+  /** Start a level transition fade effect. */
+  startTransition(dir: "in" | "out"): void {
+    this._transitionDir = dir;
+    this._transitionAlpha = dir === "out" ? 0 : 1;
+  }
+
+  /** Returns true if a level transition is in progress. */
+  get isTransitioning(): boolean {
+    return this._transitionDir !== "none";
+  }
+
+  /** Mark the static tile cache as needing a redraw. */
+  invalidateTileCache(): void {
+    this._tileCacheDirty = true;
   }
 
   draw(
@@ -186,6 +215,36 @@ export class RiftWizardRenderer {
     this._updateAnimations(state, dt);
     this._updateParticles(dt);
     this._updateDamageNumbers(dt);
+
+    // Level transition overlay
+    if (this._transitionDir !== "none") {
+      if (this._transitionDir === "out") {
+        this._transitionAlpha = Math.min(1, this._transitionAlpha + dt * 2);
+        if (this._transitionAlpha >= 1) this._transitionDir = "none";
+      } else {
+        this._transitionAlpha = Math.max(0, this._transitionAlpha - dt * 2);
+        if (this._transitionAlpha <= 0) this._transitionDir = "none";
+      }
+      // Draw full-screen black overlay with current alpha
+      this._fxGfx.rect(-this.worldLayer.x, -this.worldLayer.y, screenWidth, screenHeight);
+      this._fxGfx.fill({ color: 0x000000, alpha: this._transitionAlpha });
+      // Optional: draw a portal swirl effect in the center during transition
+      if (this._transitionAlpha > 0.2) {
+        const cx = (screenWidth / 2) - this.worldLayer.x;
+        const cy = (screenHeight / 2) - this.worldLayer.y;
+        const r = (1 - this._transitionAlpha) * 200 + 20;
+        for (let i = 0; i < 6; i++) {
+          const angle = this._time * 3 + (i * Math.PI / 3);
+          const dx = Math.cos(angle) * r;
+          const dy = Math.sin(angle) * r;
+          this._fxGfx.circle(cx + dx, cy + dy, 4 * this._transitionAlpha);
+          this._fxGfx.fill({ color: 0x9933ff, alpha: this._transitionAlpha * 0.5 });
+        }
+        // Central portal ring
+        this._fxGfx.circle(cx, cy, r * 0.5);
+        this._fxGfx.stroke({ color: 0xaa44ff, width: 2, alpha: this._transitionAlpha * 0.6 });
+      }
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -193,6 +252,11 @@ export class RiftWizardRenderer {
   // -------------------------------------------------------------------------
 
   private _drawTiles(state: RiftWizardState): void {
+    // Determine if the static tile cache needs a redraw
+    const levelChanged = state.currentLevel !== this._cachedLevelId;
+    const needStaticRedraw = this._tileCacheDirty || levelChanged;
+
+    // Always clear and redraw dynamic/animated tiles
     this._tileGfx.clear();
 
     // Simple position-based hash for deterministic variation
@@ -205,6 +269,10 @@ export class RiftWizardRenderer {
       return state.level.tiles[r][c];
     };
 
+    if (needStaticRedraw) {
+      this._staticTileGfx.clear();
+    }
+
     for (let row = 0; row < state.level.height; row++) {
       for (let col = 0; col < state.level.width; col++) {
         const tile = state.level.tiles[row][col];
@@ -212,54 +280,56 @@ export class RiftWizardRenderer {
         const y = row * TS;
 
         if (tile === RWTileType.WALL) {
-          // --- WALL: base fill ---
-          this._tileGfx.rect(x, y, TS, TS);
-          this._tileGfx.fill(TILE_COLORS[RWTileType.WALL]);
+          if (!needStaticRedraw) continue;
+          // --- WALL: base fill --- (static)
+          this._staticTileGfx.rect(x, y, TS, TS);
+          this._staticTileGfx.fill(TILE_COLORS[RWTileType.WALL]);
 
           // Brick texture: horizontal mortar lines every 8px
           const brickH = 8;
           for (let br = 0; br < TS; br += brickH) {
             // Horizontal mortar line
-            this._tileGfx.moveTo(x, y + br);
-            this._tileGfx.lineTo(x + TS, y + br);
-            this._tileGfx.stroke({ color: 0x12122a, width: 1, alpha: 0.6 });
+            this._staticTileGfx.moveTo(x, y + br);
+            this._staticTileGfx.lineTo(x + TS, y + br);
+            this._staticTileGfx.stroke({ color: 0x12122a, width: 1, alpha: 0.6 });
 
             // Vertical mortar lines offset by row parity
             const brickRow = Math.floor(br / brickH);
             const offset = (brickRow % 2 === 0) ? 0 : TS / 2;
             for (let bx = offset; bx < TS; bx += TS / 2) {
               if (bx > 0 && bx < TS) {
-                this._tileGfx.moveTo(x + bx, y + br);
-                this._tileGfx.lineTo(x + bx, y + br + brickH);
-                this._tileGfx.stroke({ color: 0x12122a, width: 1, alpha: 0.5 });
+                this._staticTileGfx.moveTo(x + bx, y + br);
+                this._staticTileGfx.lineTo(x + bx, y + br + brickH);
+                this._staticTileGfx.stroke({ color: 0x12122a, width: 1, alpha: 0.5 });
               }
             }
           }
 
           // Inner shadow gradient: darker rects inset
-          this._tileGfx.rect(x + 2, y + 2, TS - 4, TS - 4);
-          this._tileGfx.fill({ color: 0x0a0a18, alpha: 0.15 });
-          this._tileGfx.rect(x + 4, y + 4, TS - 8, TS - 8);
-          this._tileGfx.fill({ color: 0x0a0a18, alpha: 0.1 });
+          this._staticTileGfx.rect(x + 2, y + 2, TS - 4, TS - 4);
+          this._staticTileGfx.fill({ color: 0x0a0a18, alpha: 0.15 });
+          this._staticTileGfx.rect(x + 4, y + 4, TS - 8, TS - 8);
+          this._staticTileGfx.fill({ color: 0x0a0a18, alpha: 0.1 });
 
           this._drawWallEdges(state, col, row, x, y);
 
         } else if (tile === RWTileType.CHASM) {
-          // --- CHASM: base fill ---
-          this._tileGfx.rect(x, y, TS, TS);
-          this._tileGfx.fill(TILE_COLORS[RWTileType.CHASM]);
+          if (!needStaticRedraw) continue;
+          // --- CHASM: base fill --- (static)
+          this._staticTileGfx.rect(x, y, TS, TS);
+          this._staticTileGfx.fill(TILE_COLORS[RWTileType.CHASM]);
 
           // Depth lines: concentric rects getting darker toward center
           for (let d = 0; d < 5; d++) {
             const inset = 2 + d * 2;
             const darkAlpha = 0.15 + d * 0.08;
-            this._tileGfx.rect(x + inset, y + inset, TS - inset * 2, TS - inset * 2);
-            this._tileGfx.fill({ color: 0x020204, alpha: darkAlpha });
+            this._staticTileGfx.rect(x + inset, y + inset, TS - inset * 2, TS - inset * 2);
+            this._staticTileGfx.fill({ color: 0x020204, alpha: darkAlpha });
           }
 
           // Subtle inner border for depth (original)
-          this._tileGfx.rect(x + 1, y + 1, TS - 2, TS - 2);
-          this._tileGfx.stroke({ color: 0x0c0c18, width: 1 });
+          this._staticTileGfx.rect(x + 1, y + 1, TS - 2, TS - 2);
+          this._staticTileGfx.stroke({ color: 0x0c0c18, width: 1 });
 
           // Jagged edges where chasm borders floor tiles
           const directions = [
@@ -275,37 +345,37 @@ export class RiftWizardRenderer {
               const jagSegments = 8;
               const jagAmp = 3;
               if (dir.side === "top") {
-                this._tileGfx.moveTo(x, y);
+                this._staticTileGfx.moveTo(x, y);
                 for (let s = 1; s <= jagSegments; s++) {
                   const sx2 = x + (s / jagSegments) * TS;
                   const sy2 = y + ((s % 2 === 0) ? 0 : jagAmp * tileHash(col, row, s));
-                  this._tileGfx.lineTo(sx2, sy2);
+                  this._staticTileGfx.lineTo(sx2, sy2);
                 }
-                this._tileGfx.stroke({ color: 0x1a1a30, width: 1, alpha: 0.8 });
+                this._staticTileGfx.stroke({ color: 0x1a1a30, width: 1, alpha: 0.8 });
               } else if (dir.side === "bottom") {
-                this._tileGfx.moveTo(x, y + TS);
+                this._staticTileGfx.moveTo(x, y + TS);
                 for (let s = 1; s <= jagSegments; s++) {
                   const sx2 = x + (s / jagSegments) * TS;
                   const sy2 = y + TS - ((s % 2 === 0) ? 0 : jagAmp * tileHash(col, row, s + 10));
-                  this._tileGfx.lineTo(sx2, sy2);
+                  this._staticTileGfx.lineTo(sx2, sy2);
                 }
-                this._tileGfx.stroke({ color: 0x1a1a30, width: 1, alpha: 0.8 });
+                this._staticTileGfx.stroke({ color: 0x1a1a30, width: 1, alpha: 0.8 });
               } else if (dir.side === "left") {
-                this._tileGfx.moveTo(x, y);
+                this._staticTileGfx.moveTo(x, y);
                 for (let s = 1; s <= jagSegments; s++) {
                   const sx2 = x + ((s % 2 === 0) ? 0 : jagAmp * tileHash(col, row, s + 20));
                   const sy2 = y + (s / jagSegments) * TS;
-                  this._tileGfx.lineTo(sx2, sy2);
+                  this._staticTileGfx.lineTo(sx2, sy2);
                 }
-                this._tileGfx.stroke({ color: 0x1a1a30, width: 1, alpha: 0.8 });
+                this._staticTileGfx.stroke({ color: 0x1a1a30, width: 1, alpha: 0.8 });
               } else {
-                this._tileGfx.moveTo(x + TS, y);
+                this._staticTileGfx.moveTo(x + TS, y);
                 for (let s = 1; s <= jagSegments; s++) {
                   const sx2 = x + TS - ((s % 2 === 0) ? 0 : jagAmp * tileHash(col, row, s + 30));
                   const sy2 = y + (s / jagSegments) * TS;
-                  this._tileGfx.lineTo(sx2, sy2);
+                  this._staticTileGfx.lineTo(sx2, sy2);
                 }
-                this._tileGfx.stroke({ color: 0x1a1a30, width: 1, alpha: 0.8 });
+                this._staticTileGfx.stroke({ color: 0x1a1a30, width: 1, alpha: 0.8 });
               }
             }
           }
@@ -423,21 +493,22 @@ export class RiftWizardRenderer {
           }
 
         } else {
-          // --- FLOOR / CORRIDOR: base fill ---
+          if (!needStaticRedraw) continue;
+          // --- FLOOR / CORRIDOR: base fill --- (static)
           const color = TILE_COLORS[tile] ?? 0x2a2a3a;
-          this._tileGfx.rect(x, y, TS, TS);
-          this._tileGfx.fill(color);
+          this._staticTileGfx.rect(x, y, TS, TS);
+          this._staticTileGfx.fill(color);
 
           // Subtle noise pattern using position-based hash (original)
           const hash = ((col * 7 + row * 13) % 5);
           if (hash < 2) {
-            this._tileGfx.rect(x + 1, y + 1, TS - 2, TS - 2);
-            this._tileGfx.fill({ color: TILE_ACCENT[tile] ?? 0x222230, alpha: 0.3 });
+            this._staticTileGfx.rect(x + 1, y + 1, TS - 2, TS - 2);
+            this._staticTileGfx.fill({ color: TILE_ACCENT[tile] ?? 0x222230, alpha: 0.3 });
           }
 
           // Grid lines (original)
-          this._tileGfx.rect(x, y, TS, TS);
-          this._tileGfx.stroke({ color: 0x16162a, width: 1 });
+          this._staticTileGfx.rect(x, y, TS, TS);
+          this._staticTileGfx.stroke({ color: 0x16162a, width: 1 });
 
           // Stone flagstone pattern: cross-hatch lines based on position hash
           // Determine stone block layout using hash for variation
@@ -445,44 +516,50 @@ export class RiftWizardRenderer {
           if (blockSeed === 0) {
             // Horizontal split
             const splitY = y + 10 + Math.floor(tileHash(col, row, 1) * 12);
-            this._tileGfx.moveTo(x + 2, splitY);
-            this._tileGfx.lineTo(x + TS - 2, splitY);
-            this._tileGfx.stroke({ color: 0x1a1a2e, width: 1, alpha: 0.5 });
+            this._staticTileGfx.moveTo(x + 2, splitY);
+            this._staticTileGfx.lineTo(x + TS - 2, splitY);
+            this._staticTileGfx.stroke({ color: 0x1a1a2e, width: 1, alpha: 0.5 });
           } else if (blockSeed === 1) {
             // Vertical split
             const splitX = x + 10 + Math.floor(tileHash(col, row, 2) * 12);
-            this._tileGfx.moveTo(splitX, y + 2);
-            this._tileGfx.lineTo(splitX, y + TS - 2);
-            this._tileGfx.stroke({ color: 0x1a1a2e, width: 1, alpha: 0.5 });
+            this._staticTileGfx.moveTo(splitX, y + 2);
+            this._staticTileGfx.lineTo(splitX, y + TS - 2);
+            this._staticTileGfx.stroke({ color: 0x1a1a2e, width: 1, alpha: 0.5 });
           } else if (blockSeed === 2) {
             // Cross pattern: both splits
             const splitY = y + 12 + Math.floor(tileHash(col, row, 3) * 8);
             const splitX = x + 12 + Math.floor(tileHash(col, row, 4) * 8);
-            this._tileGfx.moveTo(x + 2, splitY);
-            this._tileGfx.lineTo(x + TS - 2, splitY);
-            this._tileGfx.stroke({ color: 0x1a1a2e, width: 1, alpha: 0.4 });
-            this._tileGfx.moveTo(splitX, y + 2);
-            this._tileGfx.lineTo(splitX, y + TS - 2);
-            this._tileGfx.stroke({ color: 0x1a1a2e, width: 1, alpha: 0.4 });
+            this._staticTileGfx.moveTo(x + 2, splitY);
+            this._staticTileGfx.lineTo(x + TS - 2, splitY);
+            this._staticTileGfx.stroke({ color: 0x1a1a2e, width: 1, alpha: 0.4 });
+            this._staticTileGfx.moveTo(splitX, y + 2);
+            this._staticTileGfx.lineTo(splitX, y + TS - 2);
+            this._staticTileGfx.stroke({ color: 0x1a1a2e, width: 1, alpha: 0.4 });
           } else {
             // L-shaped crack
             const midX = x + TS / 2 + (tileHash(col, row, 5) - 0.5) * 8;
             const midY = y + TS / 2 + (tileHash(col, row, 6) - 0.5) * 8;
-            this._tileGfx.moveTo(x + 3, midY);
-            this._tileGfx.lineTo(midX, midY);
-            this._tileGfx.lineTo(midX, y + TS - 3);
-            this._tileGfx.stroke({ color: 0x1a1a2e, width: 1, alpha: 0.45 });
+            this._staticTileGfx.moveTo(x + 3, midY);
+            this._staticTileGfx.lineTo(midX, midY);
+            this._staticTileGfx.lineTo(midX, y + TS - 3);
+            this._staticTileGfx.stroke({ color: 0x1a1a2e, width: 1, alpha: 0.45 });
           }
 
           // Occasional chip/nick marks on some tiles
           if (tileHash(col, row, 7) > 0.65) {
             const chipX = x + 4 + tileHash(col, row, 8) * (TS - 8);
             const chipY = y + 4 + tileHash(col, row, 9) * (TS - 8);
-            this._tileGfx.circle(chipX, chipY, 1.5);
-            this._tileGfx.fill({ color: 0x16162a, alpha: 0.4 });
+            this._staticTileGfx.circle(chipX, chipY, 1.5);
+            this._staticTileGfx.fill({ color: 0x16162a, alpha: 0.4 });
           }
         }
       }
+    }
+
+    // Mark static tile cache as clean after redraw
+    if (needStaticRedraw) {
+      this._tileCacheDirty = false;
+      this._cachedLevelId = state.currentLevel;
     }
 
     // Draw shrine indicators with ornate pedestals
@@ -701,61 +778,61 @@ export class RiftWizardRenderer {
     // Stepped/beveled edges: 3-pixel wide with gradient (light -> mid -> dark)
     if (isFloor(col, row - 1)) {
       // Top edge: 3-step bevel
-      this._tileGfx.rect(x, y, TS, 1);
-      this._tileGfx.fill(edgeColor);
-      this._tileGfx.rect(x, y + 1, TS, 1);
-      this._tileGfx.fill(edgeMid);
-      this._tileGfx.rect(x, y + 2, TS, 1);
-      this._tileGfx.fill(edgeDark);
+      this._staticTileGfx.rect(x, y, TS, 1);
+      this._staticTileGfx.fill(edgeColor);
+      this._staticTileGfx.rect(x, y + 1, TS, 1);
+      this._staticTileGfx.fill(edgeMid);
+      this._staticTileGfx.rect(x, y + 2, TS, 1);
+      this._staticTileGfx.fill(edgeDark);
       // Corner bevels: small diagonal highlight triangles
-      this._tileGfx.moveTo(x, y);
-      this._tileGfx.lineTo(x + 3, y);
-      this._tileGfx.lineTo(x, y + 3);
-      this._tileGfx.closePath();
-      this._tileGfx.fill({ color: 0x333355, alpha: 0.5 });
-      this._tileGfx.moveTo(x + TS, y);
-      this._tileGfx.lineTo(x + TS - 3, y);
-      this._tileGfx.lineTo(x + TS, y + 3);
-      this._tileGfx.closePath();
-      this._tileGfx.fill({ color: 0x333355, alpha: 0.5 });
+      this._staticTileGfx.moveTo(x, y);
+      this._staticTileGfx.lineTo(x + 3, y);
+      this._staticTileGfx.lineTo(x, y + 3);
+      this._staticTileGfx.closePath();
+      this._staticTileGfx.fill({ color: 0x333355, alpha: 0.5 });
+      this._staticTileGfx.moveTo(x + TS, y);
+      this._staticTileGfx.lineTo(x + TS - 3, y);
+      this._staticTileGfx.lineTo(x + TS, y + 3);
+      this._staticTileGfx.closePath();
+      this._staticTileGfx.fill({ color: 0x333355, alpha: 0.5 });
     }
     if (isFloor(col, row + 1)) {
       // Bottom edge: 3-step bevel (brighter, floor shadow)
-      this._tileGfx.rect(x, y + TS - 3, TS, 1);
-      this._tileGfx.fill(edgeDark);
-      this._tileGfx.rect(x, y + TS - 2, TS, 1);
-      this._tileGfx.fill(edgeMid);
-      this._tileGfx.rect(x, y + TS - 1, TS, 1);
-      this._tileGfx.fill(0x333350);
+      this._staticTileGfx.rect(x, y + TS - 3, TS, 1);
+      this._staticTileGfx.fill(edgeDark);
+      this._staticTileGfx.rect(x, y + TS - 2, TS, 1);
+      this._staticTileGfx.fill(edgeMid);
+      this._staticTileGfx.rect(x, y + TS - 1, TS, 1);
+      this._staticTileGfx.fill(0x333350);
       // Corner bevels
-      this._tileGfx.moveTo(x, y + TS);
-      this._tileGfx.lineTo(x + 3, y + TS);
-      this._tileGfx.lineTo(x, y + TS - 3);
-      this._tileGfx.closePath();
-      this._tileGfx.fill({ color: 0x383858, alpha: 0.5 });
-      this._tileGfx.moveTo(x + TS, y + TS);
-      this._tileGfx.lineTo(x + TS - 3, y + TS);
-      this._tileGfx.lineTo(x + TS, y + TS - 3);
-      this._tileGfx.closePath();
-      this._tileGfx.fill({ color: 0x383858, alpha: 0.5 });
+      this._staticTileGfx.moveTo(x, y + TS);
+      this._staticTileGfx.lineTo(x + 3, y + TS);
+      this._staticTileGfx.lineTo(x, y + TS - 3);
+      this._staticTileGfx.closePath();
+      this._staticTileGfx.fill({ color: 0x383858, alpha: 0.5 });
+      this._staticTileGfx.moveTo(x + TS, y + TS);
+      this._staticTileGfx.lineTo(x + TS - 3, y + TS);
+      this._staticTileGfx.lineTo(x + TS, y + TS - 3);
+      this._staticTileGfx.closePath();
+      this._staticTileGfx.fill({ color: 0x383858, alpha: 0.5 });
     }
     if (isFloor(col - 1, row)) {
       // Left edge: 3-step bevel
-      this._tileGfx.rect(x, y, 1, TS);
-      this._tileGfx.fill(edgeColor);
-      this._tileGfx.rect(x + 1, y, 1, TS);
-      this._tileGfx.fill(edgeMid);
-      this._tileGfx.rect(x + 2, y, 1, TS);
-      this._tileGfx.fill(edgeDark);
+      this._staticTileGfx.rect(x, y, 1, TS);
+      this._staticTileGfx.fill(edgeColor);
+      this._staticTileGfx.rect(x + 1, y, 1, TS);
+      this._staticTileGfx.fill(edgeMid);
+      this._staticTileGfx.rect(x + 2, y, 1, TS);
+      this._staticTileGfx.fill(edgeDark);
     }
     if (isFloor(col + 1, row)) {
       // Right edge: 3-step bevel
-      this._tileGfx.rect(x + TS - 3, y, 1, TS);
-      this._tileGfx.fill(edgeDark);
-      this._tileGfx.rect(x + TS - 2, y, 1, TS);
-      this._tileGfx.fill(edgeMid);
-      this._tileGfx.rect(x + TS - 1, y, 1, TS);
-      this._tileGfx.fill(edgeColor);
+      this._staticTileGfx.rect(x + TS - 3, y, 1, TS);
+      this._staticTileGfx.fill(edgeDark);
+      this._staticTileGfx.rect(x + TS - 2, y, 1, TS);
+      this._staticTileGfx.fill(edgeMid);
+      this._staticTileGfx.rect(x + TS - 1, y, 1, TS);
+      this._staticTileGfx.fill(edgeColor);
     }
   }
 
@@ -787,12 +864,256 @@ export class RiftWizardRenderer {
       }
     }
 
-    // Wizard footstep glow
+    // --- 1. Dungeon atmosphere fog ---
+    for (let i = 0; i < 10; i++) {
+      const fogX = ((i * 7) % state.level.width) * TS + Math.sin(this._time * 0.3 + i * 1.7) * TS * 1.5;
+      const fogY = ((i * 13) % state.level.height) * TS + Math.cos(this._time * 0.25 + i * 2.3) * TS * 1.2;
+      const fogRadius = TS * (3 + (i % 3));
+      const fogAlpha = 0.04 + 0.02 * Math.sin(this._time * 0.4 + i);
+      this._ambientGfx.circle(fogX, fogY, fogRadius);
+      this._ambientGfx.fill({ color: 0x1a1a3a, alpha: fogAlpha });
+    }
+
+    // --- 2. Floor dust motes & 4. Torch effects & 5. Chasm mist ---
+    for (let row = 0; row < state.level.height; row++) {
+      for (let col = 0; col < state.level.width; col++) {
+        const tile = state.level.tiles[row][col];
+
+        // Floor dust motes
+        if ((tile === RWTileType.FLOOR || tile === RWTileType.CORRIDOR) && (col + row) % 5 === 0) {
+          const dustX = col * TS + TS * 0.5 + Math.sin(this._time + col * 3) * TS * 0.3;
+          const dustY = row * TS + TS * 0.5 + Math.cos(this._time * 0.8 + row * 2.7) * TS * 0.25;
+          this._ambientGfx.circle(dustX, dustY, 1);
+          this._ambientGfx.fill({ color: 0xaaaacc, alpha: 0.12 });
+        }
+
+        // Torch effects on select wall tiles bordering a floor
+        if (tile === RWTileType.WALL && (col * 7 + row * 11) % 13 === 0) {
+          let floorDirCol = 0;
+          let floorDirRow = 0;
+          const adjOffsets: [number, number][] = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+          for (const [dc, dr] of adjOffsets) {
+            const nc = col + dc;
+            const nr = row + dr;
+            if (nc >= 0 && nc < state.level.width && nr >= 0 && nr < state.level.height) {
+              const adj = state.level.tiles[nr][nc];
+              if (adj === RWTileType.FLOOR || adj === RWTileType.CORRIDOR) {
+                floorDirCol = dc;
+                floorDirRow = dr;
+                break;
+              }
+            }
+          }
+          if (floorDirCol !== 0 || floorDirRow !== 0) {
+            const torchX = col * TS + TS * 0.5 + floorDirCol * TS * 0.3;
+            const torchY = row * TS + TS * 0.5 + floorDirRow * TS * 0.3;
+            // Bracket (vertical line for torch body)
+            this._ambientGfx.moveTo(torchX, torchY + 2);
+            this._ambientGfx.lineTo(torchX, torchY - 4);
+            this._ambientGfx.stroke({ color: 0x886644, width: 1.5, alpha: 0.4 });
+            // Flickering flame triangles
+            const flicker = Math.sin(this._time * 4 + col) * 1.5;
+            for (let f = 0; f < 3; f++) {
+              const fOff = (f - 1) * 2;
+              const fHeight = 3 + f * 0.5 + flicker * (f === 1 ? 1 : 0.5);
+              this._ambientGfx.moveTo(torchX + fOff - 1, torchY - 4);
+              this._ambientGfx.lineTo(torchX + fOff + 1, torchY - 4);
+              this._ambientGfx.lineTo(torchX + fOff + flicker * 0.3, torchY - 4 - fHeight);
+              this._ambientGfx.closePath();
+              this._ambientGfx.fill({ color: f === 1 ? 0xffcc44 : 0xff8833, alpha: 0.35 });
+            }
+            // Warm glow on the floor side
+            const glowX = torchX + floorDirCol * TS * 0.5;
+            const glowY = torchY + floorDirRow * TS * 0.5;
+            this._ambientGfx.circle(glowX, glowY, TS * 0.8);
+            this._ambientGfx.fill({ color: 0xff8844, alpha: 0.04 });
+            // Smaller bright core glow
+            this._ambientGfx.circle(torchX, torchY - 5, TS * 0.3);
+            this._ambientGfx.fill({ color: 0xffcc66, alpha: 0.06 });
+          }
+        }
+
+        // Chasm mist wisps
+        if (tile === RWTileType.CHASM) {
+          const wispPhase = (this._time * 0.5 + col * 1.3 + row * 2.1) % 3.0;
+          const wispX = col * TS + TS * 0.5 + Math.sin(this._time * 0.7 + col * 2) * TS * 0.3;
+          const wispBaseY = row * TS + TS - wispPhase * TS * 0.6;
+          const wispSway = Math.sin(this._time * 1.2 + row + col) * 3;
+          // Thin wisp polygon
+          this._ambientGfx.moveTo(wispX - 1, wispBaseY);
+          this._ambientGfx.lineTo(wispX + wispSway, wispBaseY - TS * 0.35);
+          this._ambientGfx.lineTo(wispX + wispSway + 1, wispBaseY - TS * 0.3);
+          this._ambientGfx.lineTo(wispX + 1, wispBaseY + 2);
+          this._ambientGfx.closePath();
+          this._ambientGfx.fill({ color: 0x222244, alpha: 0.08 });
+          // Second smaller wisp offset
+          const w2X = wispX + TS * 0.25;
+          const w2Phase = (this._time * 0.4 + col * 0.9 + row * 1.7) % 2.5;
+          const w2BaseY = row * TS + TS - w2Phase * TS * 0.5;
+          this._ambientGfx.moveTo(w2X - 0.5, w2BaseY);
+          this._ambientGfx.lineTo(w2X + wispSway * 0.7, w2BaseY - TS * 0.25);
+          this._ambientGfx.lineTo(w2X + wispSway * 0.7 + 0.5, w2BaseY - TS * 0.2);
+          this._ambientGfx.lineTo(w2X + 0.5, w2BaseY + 1);
+          this._ambientGfx.closePath();
+          this._ambientGfx.fill({ color: 0x1a1a3a, alpha: 0.06 });
+        }
+      }
+    }
+
+    // --- 3. Magical ley lines between shrines ---
+    if (state.level.shrines.length >= 2) {
+      for (let i = 0; i < state.level.shrines.length - 1; i++) {
+        const s1 = state.level.shrines[i];
+        const s2 = state.level.shrines[i + 1];
+        const s1x = s1.col * TS + TS / 2;
+        const s1y = s1.row * TS + TS / 2;
+        const s2x = s2.col * TS + TS / 2;
+        const s2y = s2.row * TS + TS / 2;
+        const leyColor = SCHOOL_COLORS[s1.school] ?? 0x9933ff;
+        this._ambientGfx.moveTo(s1x, s1y);
+        const steps = 8;
+        for (let s = 1; s <= steps; s++) {
+          const t = s / steps;
+          const mx = s1x + (s2x - s1x) * t;
+          const my = s1y + (s2y - s1y) * t;
+          const perpX = -(s2y - s1y);
+          const perpY = s2x - s1x;
+          const len = Math.sqrt(perpX * perpX + perpY * perpY) || 1;
+          const wave = Math.sin(this._time * 1.5 + t * Math.PI * 4) * 3;
+          this._ambientGfx.lineTo(mx + (perpX / len) * wave, my + (perpY / len) * wave);
+        }
+        this._ambientGfx.stroke({ color: leyColor, width: 1, alpha: 0.06 });
+      }
+    }
+
+    // --- 6. Wizard magical aura (enhanced with concentric rotating rings) ---
     const wx = state.wizard.col * TS + TS / 2;
     const wy = state.wizard.row * TS + TS / 2;
     const wizPulse = 0.3 + 0.15 * Math.sin(this._time * 2);
+    // Base glow (preserved original)
     this._ambientGfx.circle(wx, wy, TS * 0.6);
     this._ambientGfx.fill({ color: WIZARD_COLOR, alpha: wizPulse * 0.1 });
+    // Concentric rotating rings with cardinal dot markers
+    const ringRadii = [TS * 0.45, TS * 0.7, TS * 0.95];
+    const ringSpeeds = [1.2, -0.8, 0.5];
+    for (let r = 0; r < 3; r++) {
+      const radius = ringRadii[r];
+      const speed = ringSpeeds[r];
+      const ringAlpha = 0.04 + 0.02 * Math.sin(this._time * 1.5 + r);
+      this._ambientGfx.circle(wx, wy, radius);
+      this._ambientGfx.stroke({ color: WIZARD_COLOR, width: 0.5, alpha: ringAlpha });
+      for (let d = 0; d < 4; d++) {
+        const angle = this._time * speed + (d * Math.PI * 0.5);
+        const dotX = wx + Math.cos(angle) * radius;
+        const dotY = wy + Math.sin(angle) * radius;
+        this._ambientGfx.circle(dotX, dotY, 1.5);
+        this._ambientGfx.fill({ color: WIZARD_COLOR, alpha: 0.12 });
+      }
+    }
+
+    // --- 7. Rift portal energy tendrils ---
+    for (const portal of state.level.riftPortals) {
+      const px = portal.col * TS + TS / 2;
+      const py = portal.row * TS + TS / 2;
+      const portalColor = SCHOOL_COLORS[portal.theme] ?? 0x9933ff;
+      for (let t = 0; t < 4; t++) {
+        const baseAngle = (t * Math.PI * 0.5) + this._time * 0.3;
+        this._ambientGfx.moveTo(px, py);
+        const tendrilSteps = 6;
+        const tendrilLen = TS * 1.5;
+        for (let s = 1; s <= tendrilSteps; s++) {
+          const frac = s / tendrilSteps;
+          const dist = frac * tendrilLen;
+          const wobble = Math.sin(this._time * 3 + t * 2.1 + frac * Math.PI * 3) * TS * 0.2 * frac;
+          const tx = px + Math.cos(baseAngle) * dist + Math.cos(baseAngle + Math.PI * 0.5) * wobble;
+          const ty = py + Math.sin(baseAngle) * dist + Math.sin(baseAngle + Math.PI * 0.5) * wobble;
+          this._ambientGfx.lineTo(tx, ty);
+        }
+        this._ambientGfx.stroke({ color: portalColor, width: 1, alpha: 0.08 });
+      }
+    }
+
+    // Status effect ground visuals on enemy tiles
+    for (const enemy of state.level.enemies) {
+      if (!enemy.alive) continue;
+      const ex = enemy.col * TS;
+      const ey = enemy.row * TS;
+
+      const burnEffect = enemy.statusEffects.find((e) => e.type === "burn" && e.turnsRemaining > 0);
+      const freezeEffect = enemy.statusEffects.find((e) => e.type === "freeze" && e.turnsRemaining > 0);
+      const poisonEffect = enemy.statusEffects.find((e) => e.type === "poison" && e.turnsRemaining > 0);
+      const slowEffect = enemy.statusEffects.find((e) => e.type === "slow" && e.turnsRemaining > 0);
+
+      // Burn: flickering orange-red ground fire
+      if (burnEffect) {
+        const flicker = 0.3 + 0.2 * Math.sin(this._time * 6 + enemy.col * 3);
+        // Small flame shapes on the ground
+        for (let i = 0; i < 3; i++) {
+          const fx = ex + 4 + i * (TS - 8) / 2;
+          const fy = ey + TS - 2;
+          const fh = 4 + Math.sin(this._time * 8 + i * 2) * 2;
+          this._ambientGfx.moveTo(fx, fy);
+          this._ambientGfx.lineTo(fx + 2, fy - fh);
+          this._ambientGfx.lineTo(fx + 4, fy);
+          this._ambientGfx.closePath();
+          this._ambientGfx.fill({ color: 0xff6600, alpha: flicker });
+        }
+        // Ground scorch mark
+        this._ambientGfx.rect(ex + 2, ey + TS - 3, TS - 4, 2);
+        this._ambientGfx.fill({ color: 0x331100, alpha: 0.3 });
+      }
+
+      // Freeze: ice crystal ground patches
+      if (freezeEffect) {
+        const shimmer = 0.25 + 0.1 * Math.sin(this._time * 3 + enemy.row);
+        // Ice patch
+        this._ambientGfx.rect(ex + 2, ey + 2, TS - 4, TS - 4);
+        this._ambientGfx.fill({ color: 0x44aaff, alpha: shimmer * 0.15 });
+        // Small ice crystals
+        const cx = ex + TS / 2;
+        const cy = ey + TS / 2;
+        for (let i = 0; i < 4; i++) {
+          const angle = (i * Math.PI / 2) + this._time * 0.3;
+          const dx = Math.cos(angle) * TS * 0.25;
+          const dy = Math.sin(angle) * TS * 0.25;
+          this._ambientGfx.moveTo(cx + dx, cy + dy - 3);
+          this._ambientGfx.lineTo(cx + dx + 2, cy + dy);
+          this._ambientGfx.lineTo(cx + dx, cy + dy + 3);
+          this._ambientGfx.lineTo(cx + dx - 2, cy + dy);
+          this._ambientGfx.closePath();
+          this._ambientGfx.fill({ color: 0xaaddff, alpha: shimmer });
+        }
+      }
+
+      // Poison: green bubbling ground
+      if (poisonEffect) {
+        // Green puddle
+        this._ambientGfx.circle(ex + TS / 2, ey + TS - 4, TS * 0.35);
+        this._ambientGfx.fill({ color: 0x33aa33, alpha: 0.12 });
+        // Bubbles
+        for (let i = 0; i < 3; i++) {
+          const bx = ex + 6 + ((i * 7 + Math.floor(this._time * 2)) % (TS - 12));
+          const by = ey + TS - 6 - Math.abs(Math.sin(this._time * 3 + i * 1.5)) * 6;
+          this._ambientGfx.circle(bx, by, 1.5);
+          this._ambientGfx.stroke({ color: 0x66cc66, width: 0.5, alpha: 0.4 });
+        }
+      }
+
+      // Slow: purple/arcane ground chains
+      if (slowEffect) {
+        // Slow field circle
+        this._ambientGfx.circle(ex + TS / 2, ey + TS / 2, TS * 0.4);
+        this._ambientGfx.stroke({ color: 0xaa44ff, width: 1, alpha: 0.2 });
+        // Clock-like marks
+        for (let i = 0; i < 4; i++) {
+          const angle = (i * Math.PI / 2) + this._time * 0.5;
+          const scx = ex + TS / 2 + Math.cos(angle) * TS * 0.3;
+          const scy = ey + TS / 2 + Math.sin(angle) * TS * 0.3;
+          this._ambientGfx.rect(scx - 1, scy - 1, 2, 2);
+          this._ambientGfx.fill({ color: 0xaa44ff, alpha: 0.25 });
+        }
+      }
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -886,86 +1207,822 @@ export class RiftWizardRenderer {
     const ex = enemy.col * TS + TS / 2;
     const ey = enemy.row * TS + TS / 2;
     const color = enemy.isBoss ? BOSS_COLOR : (enemy.school ? SCHOOL_COLORS[enemy.school] ?? ENEMY_COLOR : ENEMY_COLOR);
+    const g = this._entityGfx;
 
     if (enemy.isBoss) {
-      // Boss: larger diamond with inner glow
       const pulse = 0.8 + 0.2 * Math.sin(this._time * 3);
-      this._entityGfx.circle(ex, ey, TS * 0.45);
-      this._entityGfx.fill({ color, alpha: 0.15 * pulse });
-      this._entityGfx.moveTo(ex, ey - TS * 0.4);
-      this._entityGfx.lineTo(ex + TS * 0.4, ey);
-      this._entityGfx.lineTo(ex, ey + TS * 0.4);
-      this._entityGfx.lineTo(ex - TS * 0.4, ey);
-      this._entityGfx.closePath();
-      this._entityGfx.fill(color);
-      // Crown indicator
-      this._entityGfx.moveTo(ex - 5, ey - TS * 0.35);
-      this._entityGfx.lineTo(ex - 3, ey - TS * 0.45);
-      this._entityGfx.lineTo(ex, ey - TS * 0.38);
-      this._entityGfx.lineTo(ex + 3, ey - TS * 0.45);
-      this._entityGfx.lineTo(ex + 5, ey - TS * 0.35);
-      this._entityGfx.stroke({ color: 0xffcc00, width: 1.5 });
+      const s = TS * 0.42;
+
+      // Outer octagon body
+      for (let layer = 0; layer < 2; layer++) {
+        const r = layer === 0 ? s : s * 0.7;
+        const fillColor = layer === 0 ? color : 0x000000;
+        const fillAlpha = layer === 0 ? 1 : 0.3;
+        g.moveTo(ex + r, ey);
+        for (let i = 1; i <= 8; i++) {
+          const a = (i / 8) * Math.PI * 2;
+          g.lineTo(ex + Math.cos(a) * r, ey + Math.sin(a) * r);
+        }
+        g.closePath();
+        g.fill({ color: fillColor, alpha: fillAlpha });
+      }
+      // Inner diamond
+      const ds = s * 0.55;
+      g.moveTo(ex, ey - ds);
+      g.lineTo(ex + ds, ey);
+      g.lineTo(ex, ey + ds);
+      g.lineTo(ex - ds, ey);
+      g.closePath();
+      g.fill({ color, alpha: 0.9 });
+      g.moveTo(ex, ey - ds);
+      g.lineTo(ex + ds, ey);
+      g.lineTo(ex, ey + ds);
+      g.lineTo(ex - ds, ey);
+      g.closePath();
+      g.stroke({ color: 0xffffff, width: 0.5, alpha: 0.3 });
+
+      // Armor scales: small overlapping diamonds on body
+      for (let si = 0; si < 5; si++) {
+        const sa = ((si - 2) / 5) * Math.PI * 0.6;
+        const sd = s * 0.35;
+        const scx = ex + Math.cos(sa) * sd;
+        const scy = ey + Math.sin(sa) * sd;
+        g.moveTo(scx, scy - 3);
+        g.lineTo(scx + 2.5, scy);
+        g.lineTo(scx, scy + 3);
+        g.lineTo(scx - 2.5, scy);
+        g.closePath();
+        g.fill({ color: 0xffffff, alpha: 0.12 });
+      }
+
+      // Horns: two curved horns from top
+      for (const side of [-1, 1]) {
+        const hx1 = ex + side * 5;
+        const hy1 = ey - s * 0.85;
+        const hx2 = ex + side * 10;
+        const hy2 = ey - s * 1.05;
+        const hx3 = ex + side * 14;
+        const hy3 = ey - s * 0.9;
+        g.moveTo(hx1, hy1);
+        g.lineTo(hx2, hy2);
+        g.lineTo(hx3, hy3);
+        g.stroke({ color: 0xddaa44, width: 2 });
+      }
+
+      // Wings: two triangular wing shapes from sides with vein lines
+      for (const side of [-1, 1]) {
+        const wy = ey - 2;
+        const wtip = ex + side * (s * 1.5);
+        g.moveTo(ex + side * s * 0.5, ey - s * 0.3);
+        g.lineTo(wtip, wy - s * 0.4);
+        g.lineTo(wtip, wy + s * 0.2);
+        g.lineTo(ex + side * s * 0.5, ey + s * 0.15);
+        g.closePath();
+        g.fill({ color, alpha: 0.4 });
+        g.moveTo(ex + side * s * 0.5, ey - s * 0.3);
+        g.lineTo(wtip, wy - s * 0.4);
+        g.lineTo(wtip, wy + s * 0.2);
+        g.lineTo(ex + side * s * 0.5, ey + s * 0.15);
+        g.closePath();
+        g.stroke({ color, width: 1, alpha: 0.7 });
+        // Vein lines inside wing
+        for (let v = 0; v < 3; v++) {
+          const t = (v + 1) / 4;
+          const vx1 = ex + side * (s * 0.5 + t * (s * 1.0));
+          g.moveTo(vx1, wy - s * 0.3 * (1 - t * 0.5));
+          g.lineTo(vx1, wy + s * 0.1);
+          g.stroke({ color, width: 0.5, alpha: 0.5 });
+        }
+      }
+
+      // Crown: 5-pointed crown with gem circles at tips
+      const crownY = ey - s * 0.75;
+      const crownW = 10;
+      const crownH = 6;
+      g.moveTo(ex - crownW, crownY);
+      for (let ci = 0; ci < 5; ci++) {
+        const tipX = ex - crownW + (ci / 4) * crownW * 2;
+        g.lineTo(tipX, crownY - crownH);
+        if (ci < 4) g.lineTo(tipX + crownW * 0.25, crownY - 1);
+      }
+      g.lineTo(ex + crownW, crownY);
+      g.closePath();
+      g.fill(0xffcc00);
+      // Gem circles at crown tips
+      for (let ci = 0; ci < 5; ci++) {
+        const tipX = ex - crownW + (ci / 4) * crownW * 2;
+        g.circle(tipX, crownY - crownH, 1.5);
+        g.fill({ color: 0xff4488, alpha: pulse });
+      }
+
+      // Three glowing eyes in triangle pattern
+      const eyeAlpha = 0.7 + 0.3 * Math.sin(this._time * 5);
+      g.circle(ex - 4, ey - 3, 2);
+      g.fill({ color: 0xffff00, alpha: eyeAlpha });
+      g.circle(ex + 4, ey - 3, 2);
+      g.fill({ color: 0xffff00, alpha: eyeAlpha });
+      g.circle(ex, ey + 1, 2);
+      g.fill({ color: 0xffff00, alpha: eyeAlpha });
+
+    } else if (enemy.defId === "spider") {
+      // --- Spider: small oval body with 8 bent legs ---
+      const bw = TS * 0.18;
+      const bh = TS * 0.12;
+      // Body (ellipse approximated as rect with rounded feel)
+      g.rect(ex - bw, ey - bh, bw * 2, bh * 2);
+      g.fill(color);
+      g.rect(ex - bw, ey - bh, bw * 2, bh * 2);
+      g.stroke({ color: 0x000000, width: 1 });
+      // 8 legs, each with 2 segments (bent)
+      const legAngles = [-0.9, -0.55, -0.2, 0.15, 0.5, 0.85, 1.2, 1.55];
+      for (let li = 0; li < 8; li++) {
+        const baseAngle = legAngles[li] * Math.PI;
+        const side = li < 4 ? -1 : 1;
+        const mirrorAngle = side === -1 ? Math.PI - baseAngle : baseAngle;
+        const seg1 = TS * 0.22;
+        const seg2 = TS * 0.18;
+        const bendAngle = mirrorAngle + side * 0.5;
+        // Joint point
+        const jx = ex + Math.cos(mirrorAngle) * seg1;
+        const jy = ey + Math.sin(mirrorAngle) * seg1;
+        // Tip point
+        const tx = jx + Math.cos(bendAngle) * seg2;
+        const ty = jy + Math.sin(bendAngle) * seg2;
+        // Segment 1: body to joint
+        g.moveTo(ex, ey);
+        g.lineTo(jx, jy);
+        g.stroke({ color, width: 1.5 });
+        // Segment 2: joint to tip
+        g.moveTo(jx, jy);
+        g.lineTo(tx, ty);
+        g.stroke({ color, width: 1 });
+      }
+      // Small eyes
+      g.circle(ex - 2, ey - bh * 0.3, 1.2);
+      g.fill({ color: 0xff4444, alpha: 0.9 });
+      g.circle(ex + 2, ey - bh * 0.3, 1.2);
+      g.fill({ color: 0xff4444, alpha: 0.9 });
+
+    } else if (enemy.defId === "swordsman") {
+      // --- Swordsman: humanoid with sword ---
+      const r = TS * 0.3;
+      // Head (circle)
+      g.circle(ex, ey - r * 0.9, r * 0.35);
+      g.fill(color);
+      g.circle(ex, ey - r * 0.9, r * 0.35);
+      g.stroke({ color: 0x000000, width: 1 });
+      // Body (rect)
+      g.rect(ex - r * 0.4, ey - r * 0.55, r * 0.8, r * 1.1);
+      g.fill(color);
+      g.rect(ex - r * 0.4, ey - r * 0.55, r * 0.8, r * 1.1);
+      g.stroke({ color: 0x000000, width: 1 });
+      // Left leg (triangle)
+      g.moveTo(ex - r * 0.35, ey + r * 0.55);
+      g.lineTo(ex - r * 0.1, ey + r * 0.55);
+      g.lineTo(ex - r * 0.45, ey + r * 1.2);
+      g.closePath();
+      g.fill({ color, alpha: 0.85 });
+      // Right leg (triangle)
+      g.moveTo(ex + r * 0.1, ey + r * 0.55);
+      g.lineTo(ex + r * 0.35, ey + r * 0.55);
+      g.lineTo(ex + r * 0.45, ey + r * 1.2);
+      g.closePath();
+      g.fill({ color, alpha: 0.85 });
+      // Sword (tall thin triangle) from right side
+      g.moveTo(ex + r * 0.5, ey - r * 0.3);
+      g.lineTo(ex + r * 0.55, ey - r * 1.4);
+      g.lineTo(ex + r * 0.7, ey - r * 0.3);
+      g.closePath();
+      g.fill(0xcccccc);
+      g.moveTo(ex + r * 0.5, ey - r * 0.3);
+      g.lineTo(ex + r * 0.55, ey - r * 1.4);
+      g.lineTo(ex + r * 0.7, ey - r * 0.3);
+      g.closePath();
+      g.stroke({ color: 0x888888, width: 0.5 });
+      // Sword handle
+      g.rect(ex + r * 0.5, ey - r * 0.3, r * 0.2, r * 0.35);
+      g.fill(0x885533);
+      // Cross-guard
+      g.rect(ex + r * 0.4, ey - r * 0.35, r * 0.4, 2);
+      g.fill(0xaaaa44);
+      // Eyes
+      g.circle(ex - 2, ey - r * 0.95, 1);
+      g.fill(0xffff88);
+      g.circle(ex + 2, ey - r * 0.95, 1);
+      g.fill(0xffff88);
+
+    } else if (enemy.defId === "archer") {
+      // --- Archer: humanoid with bow and arrow ---
+      const r = TS * 0.3;
+      // Head
+      g.circle(ex, ey - r * 0.9, r * 0.35);
+      g.fill(color);
+      g.circle(ex, ey - r * 0.9, r * 0.35);
+      g.stroke({ color: 0x000000, width: 1 });
+      // Body (rect)
+      g.rect(ex - r * 0.35, ey - r * 0.55, r * 0.7, r * 1.0);
+      g.fill(color);
+      g.rect(ex - r * 0.35, ey - r * 0.55, r * 0.7, r * 1.0);
+      g.stroke({ color: 0x000000, width: 1 });
+      // Left leg
+      g.moveTo(ex - r * 0.3, ey + r * 0.45);
+      g.lineTo(ex - r * 0.05, ey + r * 0.45);
+      g.lineTo(ex - r * 0.4, ey + r * 1.15);
+      g.closePath();
+      g.fill({ color, alpha: 0.85 });
+      // Right leg
+      g.moveTo(ex + r * 0.05, ey + r * 0.45);
+      g.lineTo(ex + r * 0.3, ey + r * 0.45);
+      g.lineTo(ex + r * 0.4, ey + r * 1.15);
+      g.closePath();
+      g.fill({ color, alpha: 0.85 });
+      // Bow on left side (curved arc)
+      const bowCx = ex - r * 0.9;
+      for (let bi = 0; bi < 8; bi++) {
+        const a1 = -Math.PI * 0.4 + (bi / 8) * Math.PI * 0.8;
+        const a2 = -Math.PI * 0.4 + ((bi + 1) / 8) * Math.PI * 0.8;
+        const br = r * 0.8;
+        g.moveTo(bowCx + Math.cos(a1) * br, ey + Math.sin(a1) * br);
+        g.lineTo(bowCx + Math.cos(a2) * br, ey + Math.sin(a2) * br);
+        g.stroke({ color: 0x885533, width: 2 });
+      }
+      // Bowstring
+      g.moveTo(bowCx + Math.cos(-Math.PI * 0.4) * r * 0.8, ey + Math.sin(-Math.PI * 0.4) * r * 0.8);
+      g.lineTo(bowCx + Math.cos(Math.PI * 0.4) * r * 0.8, ey + Math.sin(Math.PI * 0.4) * r * 0.8);
+      g.stroke({ color: 0xcccccc, width: 0.5 });
+      // Arrow on right side (thin line with triangle tip)
+      g.moveTo(ex + r * 0.2, ey);
+      g.lineTo(ex + r * 1.4, ey);
+      g.stroke({ color: 0x885533, width: 1 });
+      // Arrow tip (small triangle)
+      g.moveTo(ex + r * 1.4, ey);
+      g.lineTo(ex + r * 1.6, ey - 2);
+      g.lineTo(ex + r * 1.6, ey + 2);
+      g.closePath();
+      g.fill(0xcccccc);
+      // Eyes
+      g.circle(ex - 2, ey - r * 0.95, 1);
+      g.fill(0xffff88);
+      g.circle(ex + 2, ey - r * 0.95, 1);
+      g.fill(0xffff88);
+
+    } else if (enemy.defId === "bat") {
+      // --- Bat: small circle body with large triangular scalloped wings ---
+      const bodyR = TS * 0.1;
+      // Body (small circle)
+      g.circle(ex, ey, bodyR);
+      g.fill(color);
+      g.circle(ex, ey, bodyR);
+      g.stroke({ color: 0x000000, width: 1 });
+      // Wings (two large triangles with scalloped/zigzag bottom edges)
+      for (const side of [-1, 1]) {
+        const wingTipX = ex + side * TS * 0.48;
+        const wingTopY = ey - TS * 0.25;
+        // Top edge of wing
+        g.moveTo(ex + side * bodyR * 0.5, ey - bodyR * 0.5);
+        g.lineTo(wingTipX, wingTopY);
+        // Scalloped bottom edge (zigzag back to body)
+        const scallops = 4;
+        for (let si = 0; si < scallops; si++) {
+          const sx = wingTipX * (1 - (si + 0.5) / scallops) + (ex + side * bodyR * 0.5) * ((si + 0.5) / scallops);
+          const sy = ey + TS * 0.12 + ((si % 2 === 0) ? TS * 0.08 : 0);
+          g.lineTo(sx, sy);
+        }
+        g.lineTo(ex + side * bodyR * 0.5, ey + bodyR * 0.3);
+        g.closePath();
+        g.fill({ color, alpha: 0.8 });
+        g.moveTo(ex + side * bodyR * 0.5, ey - bodyR * 0.5);
+        g.lineTo(wingTipX, wingTopY);
+        for (let si = 0; si < scallops; si++) {
+          const sx = wingTipX * (1 - (si + 0.5) / scallops) + (ex + side * bodyR * 0.5) * ((si + 0.5) / scallops);
+          const sy = ey + TS * 0.12 + ((si % 2 === 0) ? TS * 0.08 : 0);
+          g.lineTo(sx, sy);
+        }
+        g.lineTo(ex + side * bodyR * 0.5, ey + bodyR * 0.3);
+        g.closePath();
+        g.stroke({ color: 0x000000, width: 0.5 });
+      }
+      // Small eyes
+      g.circle(ex - 2, ey - 1, 1);
+      g.fill({ color: 0xff4444, alpha: 0.9 });
+      g.circle(ex + 2, ey - 1, 1);
+      g.fill({ color: 0xff4444, alpha: 0.9 });
+      // Small ears
+      for (const side of [-1, 1]) {
+        g.moveTo(ex + side * bodyR * 0.6, ey - bodyR);
+        g.lineTo(ex + side * bodyR * 1.2, ey - bodyR * 2.2);
+        g.lineTo(ex + side * bodyR * 0.2, ey - bodyR * 1.1);
+        g.closePath();
+        g.fill(color);
+      }
+
+    } else if (enemy.defId === "fire_mage" || enemy.defId === "ice_mage") {
+      // --- Fire/Ice Mage: robed figure with staff and orb ---
+      const r = TS * 0.3;
+      const isFire = enemy.defId === "fire_mage";
+      const orbColor = isFire ? 0xff6600 : 0x44bbff;
+      // Head (circle)
+      g.circle(ex, ey - r * 0.85, r * 0.3);
+      g.fill(color);
+      g.circle(ex, ey - r * 0.85, r * 0.3);
+      g.stroke({ color: 0x000000, width: 1 });
+      // Robed body (trapezoid - wider at bottom)
+      g.moveTo(ex - r * 0.3, ey - r * 0.55);
+      g.lineTo(ex + r * 0.3, ey - r * 0.55);
+      g.lineTo(ex + r * 0.6, ey + r * 1.0);
+      g.lineTo(ex - r * 0.6, ey + r * 1.0);
+      g.closePath();
+      g.fill(color);
+      g.moveTo(ex - r * 0.3, ey - r * 0.55);
+      g.lineTo(ex + r * 0.3, ey - r * 0.55);
+      g.lineTo(ex + r * 0.6, ey + r * 1.0);
+      g.lineTo(ex - r * 0.6, ey + r * 1.0);
+      g.closePath();
+      g.stroke({ color: 0x000000, width: 1 });
+      // Staff (vertical line on left side)
+      const staffX = ex - r * 0.75;
+      const staffTop = ey - r * 1.5;
+      const staffBot = ey + r * 0.8;
+      g.moveTo(staffX, staffTop);
+      g.lineTo(staffX, staffBot);
+      g.stroke({ color: 0x885533, width: 2 });
+      // Orb at top of staff
+      g.circle(staffX, staffTop - 2, 3);
+      g.fill({ color: orbColor, alpha: 0.9 });
+      g.circle(staffX, staffTop - 2, 4);
+      g.stroke({ color: orbColor, width: 1, alpha: 0.5 });
+      if (isFire) {
+        // Flame shapes around orb (3 small flame triangles)
+        for (let fi = 0; fi < 3; fi++) {
+          const fa = (fi / 3) * Math.PI * 2 - Math.PI / 2;
+          const fd = 5;
+          const fcx = staffX + Math.cos(fa) * fd;
+          const fcy = (staffTop - 2) + Math.sin(fa) * fd;
+          g.moveTo(fcx, fcy);
+          g.lineTo(fcx - 1.5, fcy + 3);
+          g.lineTo(fcx + 1.5, fcy + 3);
+          g.closePath();
+          g.fill({ color: 0xff4400, alpha: 0.7 });
+          // Inner flame
+          g.moveTo(fcx, fcy + 0.5);
+          g.lineTo(fcx - 0.8, fcy + 2.5);
+          g.lineTo(fcx + 0.8, fcy + 2.5);
+          g.closePath();
+          g.fill({ color: 0xffaa00, alpha: 0.8 });
+        }
+      } else {
+        // Crystal shapes around orb (3 small diamond/crystal shapes)
+        for (let ci = 0; ci < 3; ci++) {
+          const ca = (ci / 3) * Math.PI * 2 - Math.PI / 2;
+          const cd = 6;
+          const ccx = staffX + Math.cos(ca) * cd;
+          const ccy = (staffTop - 2) + Math.sin(ca) * cd;
+          g.moveTo(ccx, ccy - 3);
+          g.lineTo(ccx + 2, ccy);
+          g.lineTo(ccx, ccy + 3);
+          g.lineTo(ccx - 2, ccy);
+          g.closePath();
+          g.fill({ color: 0x88ddff, alpha: 0.7 });
+          g.moveTo(ccx, ccy - 3);
+          g.lineTo(ccx + 2, ccy);
+          g.lineTo(ccx, ccy + 3);
+          g.lineTo(ccx - 2, ccy);
+          g.closePath();
+          g.stroke({ color: 0xaaeeff, width: 0.5, alpha: 0.8 });
+        }
+      }
+      // Eyes (glow with school color)
+      g.circle(ex - 2, ey - r * 0.9, 1);
+      g.fill({ color: orbColor, alpha: 0.9 });
+      g.circle(ex + 2, ey - r * 0.9, 1);
+      g.fill({ color: orbColor, alpha: 0.9 });
+
+    } else if (enemy.defId === "goblin") {
+      // --- Goblin: small squat body, big ears, club weapon ---
+      const r = TS * 0.3;
+      // Wide squat body (rect)
+      g.rect(ex - r * 0.55, ey - r * 0.35, r * 1.1, r * 0.9);
+      g.fill(color);
+      g.rect(ex - r * 0.55, ey - r * 0.35, r * 1.1, r * 0.9);
+      g.stroke({ color: 0x000000, width: 1 });
+      // Head (slightly smaller rect on top)
+      g.rect(ex - r * 0.35, ey - r * 0.75, r * 0.7, r * 0.45);
+      g.fill(color);
+      g.rect(ex - r * 0.35, ey - r * 0.75, r * 0.7, r * 0.45);
+      g.stroke({ color: 0x000000, width: 1 });
+      // Large pointed ears (two triangles)
+      for (const side of [-1, 1]) {
+        g.moveTo(ex + side * r * 0.35, ey - r * 0.65);
+        g.lineTo(ex + side * r * 0.9, ey - r * 1.2);
+        g.lineTo(ex + side * r * 0.5, ey - r * 0.35);
+        g.closePath();
+        g.fill(color);
+        g.moveTo(ex + side * r * 0.35, ey - r * 0.65);
+        g.lineTo(ex + side * r * 0.9, ey - r * 1.2);
+        g.lineTo(ex + side * r * 0.5, ey - r * 0.35);
+        g.closePath();
+        g.stroke({ color: 0x000000, width: 0.5 });
+      }
+      // Short legs
+      for (const side of [-1, 1]) {
+        g.rect(ex + side * r * 0.2 - 2, ey + r * 0.55, 4, r * 0.4);
+        g.fill({ color, alpha: 0.85 });
+      }
+      // Club weapon (thick line with circle end) on right side
+      g.moveTo(ex + r * 0.55, ey - r * 0.1);
+      g.lineTo(ex + r * 1.3, ey - r * 0.5);
+      g.stroke({ color: 0x885533, width: 3 });
+      // Club head (circle at end)
+      g.circle(ex + r * 1.3, ey - r * 0.5, 3.5);
+      g.fill(0x664422);
+      g.circle(ex + r * 1.3, ey - r * 0.5, 3.5);
+      g.stroke({ color: 0x553311, width: 1 });
+      // Eyes (beady)
+      g.circle(ex - 2, ey - r * 0.6, 1.2);
+      g.fill(0xffff44);
+      g.circle(ex + 2, ey - r * 0.6, 1.2);
+      g.fill(0xffff44);
+      // Wide grin
+      g.moveTo(ex - 3, ey - r * 0.4);
+      g.lineTo(ex + 3, ey - r * 0.4);
+      g.stroke({ color: 0x000000, width: 1 });
+
     } else {
-      // Regular enemy: circle with outline
-      this._entityGfx.circle(ex, ey, TS * 0.3);
-      this._entityGfx.fill(color);
-      this._entityGfx.circle(ex, ey, TS * 0.3);
-      this._entityGfx.stroke({ color: 0x000000, width: 1 });
-      // Eye dots
-      this._entityGfx.circle(ex - 3, ey - 2, 1.5);
-      this._entityGfx.fill(0xffffff);
-      this._entityGfx.circle(ex + 3, ey - 2, 1.5);
-      this._entityGfx.fill(0xffffff);
+      // --- Unrecognized enemy: default hexagon body ---
+      const r = TS * 0.3;
+      g.moveTo(ex + r, ey);
+      for (let i = 1; i <= 6; i++) {
+        const a = (i / 6) * Math.PI * 2;
+        g.lineTo(ex + Math.cos(a) * r, ey + Math.sin(a) * r);
+      }
+      g.closePath();
+      g.fill(color);
+      g.moveTo(ex + r, ey);
+      for (let i = 1; i <= 6; i++) {
+        const a = (i / 6) * Math.PI * 2;
+        g.lineTo(ex + Math.cos(a) * r, ey + Math.sin(a) * r);
+      }
+      g.closePath();
+      g.stroke({ color: 0x000000, width: 1 });
+
+      // Armor plates: 2 overlapping angled rects on body
+      for (let pi = 0; pi < 2; pi++) {
+        const py = ey - 2 + pi * 5;
+        g.moveTo(ex - r * 0.5, py - 2);
+        g.lineTo(ex + r * 0.5, py - 3);
+        g.lineTo(ex + r * 0.55, py + 1);
+        g.lineTo(ex - r * 0.55, py + 2);
+        g.closePath();
+        g.fill({ color: 0xffffff, alpha: 0.1 });
+        g.moveTo(ex - r * 0.5, py - 2);
+        g.lineTo(ex + r * 0.5, py - 3);
+        g.lineTo(ex + r * 0.55, py + 1);
+        g.lineTo(ex - r * 0.55, py + 2);
+        g.closePath();
+        g.stroke({ color: 0xffffff, width: 0.5, alpha: 0.15 });
+      }
+
+      // Shoulder guards: small triangles on top sides
+      for (const side of [-1, 1]) {
+        g.moveTo(ex + side * r * 0.6, ey - r * 0.7);
+        g.lineTo(ex + side * r * 1.0, ey - r * 0.9);
+        g.lineTo(ex + side * r * 1.0, ey - r * 0.4);
+        g.closePath();
+        g.fill({ color, alpha: 0.8 });
+        g.moveTo(ex + side * r * 0.6, ey - r * 0.7);
+        g.lineTo(ex + side * r * 1.0, ey - r * 0.9);
+        g.lineTo(ex + side * r * 1.0, ey - r * 0.4);
+        g.closePath();
+        g.stroke({ color: 0x000000, width: 0.5 });
+      }
+
+      // Face: angular eye slits + mouth line
+      for (const side of [-1, 1]) {
+        g.moveTo(ex + side * 2, ey - 3);
+        g.lineTo(ex + side * 5, ey - 4);
+        g.stroke({ color: 0xffff88, width: 1.5 });
+      }
+      // Mouth line
+      g.moveTo(ex - 3, ey + 2);
+      g.lineTo(ex + 3, ey + 2);
+      g.stroke({ color: 0x000000, width: 1 });
+
+      // Weapon: small sword extending from right side
+      // Blade (triangle)
+      g.moveTo(ex + r + 2, ey - 1);
+      g.lineTo(ex + r + 10, ey - 3);
+      g.lineTo(ex + r + 10, ey + 1);
+      g.closePath();
+      g.fill(0xcccccc);
+      // Handle (thin rect)
+      g.rect(ex + r - 1, ey - 1, 4, 2);
+      g.fill(0x885533);
+      // Cross-guard
+      g.rect(ex + r + 1, ey - 3, 1.5, 6);
+      g.fill(0xaaaa44);
+
+      // Feet: two small trapezoids below body
+      for (const side of [-1, 1]) {
+        const fx = ex + side * 4;
+        const fy = ey + r + 1;
+        g.moveTo(fx - 3, fy);
+        g.lineTo(fx + 3, fy);
+        g.lineTo(fx + 4, fy + 4);
+        g.lineTo(fx - 2, fy + 4);
+        g.closePath();
+        g.fill({ color: 0x333333, alpha: 0.9 });
+      }
     }
   }
 
   private _drawSummonFallback(summon: RWSummonInstance): void {
     const sx = summon.col * TS + TS / 2;
     const sy = summon.row * TS + TS / 2;
-    // Summon: outlined circle with nature glow
-    this._entityGfx.circle(sx, sy, TS * 0.28);
-    this._entityGfx.fill(SUMMON_COLOR);
-    this._entityGfx.circle(sx, sy, TS * 0.28);
-    this._entityGfx.stroke({ color: 0x66ffaa, width: 1 });
+    const g = this._entityGfx;
+    const r = TS * 0.32;
+
+    // Leaf-shaped body: pointed top, curved sides, pointed bottom
+    g.moveTo(sx, sy - r);
+    g.lineTo(sx + r * 0.6, sy - r * 0.3);
+    g.lineTo(sx + r * 0.7, sy + r * 0.15);
+    g.lineTo(sx + r * 0.45, sy + r * 0.6);
+    g.lineTo(sx, sy + r);
+    g.lineTo(sx - r * 0.45, sy + r * 0.6);
+    g.lineTo(sx - r * 0.7, sy + r * 0.15);
+    g.lineTo(sx - r * 0.6, sy - r * 0.3);
+    g.closePath();
+    g.fill(SUMMON_COLOR);
+    g.moveTo(sx, sy - r);
+    g.lineTo(sx + r * 0.6, sy - r * 0.3);
+    g.lineTo(sx + r * 0.7, sy + r * 0.15);
+    g.lineTo(sx + r * 0.45, sy + r * 0.6);
+    g.lineTo(sx, sy + r);
+    g.lineTo(sx - r * 0.45, sy + r * 0.6);
+    g.lineTo(sx - r * 0.7, sy + r * 0.15);
+    g.lineTo(sx - r * 0.6, sy - r * 0.3);
+    g.closePath();
+    g.stroke({ color: 0x66ffaa, width: 1 });
+
+    // Inner glow: 2 concentric smaller leaf shapes
+    for (let layer = 0; layer < 2; layer++) {
+      const sc = 0.6 - layer * 0.2;
+      const alpha = 0.25 + layer * 0.2;
+      g.moveTo(sx, sy - r * sc);
+      g.lineTo(sx + r * 0.6 * sc, sy - r * 0.3 * sc);
+      g.lineTo(sx + r * 0.7 * sc, sy + r * 0.15 * sc);
+      g.lineTo(sx + r * 0.45 * sc, sy + r * 0.6 * sc);
+      g.lineTo(sx, sy + r * sc);
+      g.lineTo(sx - r * 0.45 * sc, sy + r * 0.6 * sc);
+      g.lineTo(sx - r * 0.7 * sc, sy + r * 0.15 * sc);
+      g.lineTo(sx - r * 0.6 * sc, sy - r * 0.3 * sc);
+      g.closePath();
+      g.fill({ color: 0xaaffcc, alpha });
+    }
+
+    // 4 petal shapes radiating from center
+    for (let pi = 0; pi < 4; pi++) {
+      const pa = (pi / 4) * Math.PI * 2 + Math.PI / 4;
+      const pd = r * 0.55;
+      const pcx = sx + Math.cos(pa) * pd;
+      const pcy = sy + Math.sin(pa) * pd;
+      const perpX = Math.cos(pa + Math.PI / 2);
+      const perpY = Math.sin(pa + Math.PI / 2);
+      const tipX = sx + Math.cos(pa) * (pd + r * 0.3);
+      const tipY = sy + Math.sin(pa) * (pd + r * 0.3);
+      g.moveTo(pcx + perpX * 3, pcy + perpY * 3);
+      g.lineTo(tipX, tipY);
+      g.lineTo(pcx - perpX * 3, pcy - perpY * 3);
+      g.lineTo(sx + Math.cos(pa) * pd * 0.6, sy + Math.sin(pa) * pd * 0.6);
+      g.closePath();
+      g.fill({ color: 0x88ffbb, alpha: 0.5 });
+    }
+
+    // Single bright center eye
+    g.circle(sx, sy, 2.5);
+    g.fill({ color: 0xffffff, alpha: 0.9 });
+    g.circle(sx, sy, 1.2);
+    g.fill({ color: 0xccffee, alpha: 1 });
+
+    // 3 tendrils extending downward, curving slightly
+    for (let ti = 0; ti < 3; ti++) {
+      const ta = Math.PI / 2 + (ti - 1) * 0.4;
+      const t1x = sx + Math.cos(ta) * r * 0.5;
+      const t1y = sy + Math.sin(ta) * r * 0.5;
+      const t2x = sx + Math.cos(ta + 0.15) * r * 1.1;
+      const t2y = sy + Math.sin(ta + 0.15) * r * 1.1;
+      const t3x = sx + Math.cos(ta + 0.3) * r * 1.5;
+      const t3y = sy + Math.sin(ta + 0.3) * r * 1.5;
+      g.moveTo(t1x, t1y);
+      g.lineTo(t2x, t2y);
+      g.stroke({ color: SUMMON_COLOR, width: 1.5, alpha: 0.7 });
+      g.moveTo(t2x, t2y);
+      g.lineTo(t3x, t3y);
+      g.stroke({ color: SUMMON_COLOR, width: 1, alpha: 0.4 });
+    }
   }
 
   private _drawWizardFallback(state: RiftWizardState): void {
     const wx = state.wizard.col * TS + TS / 2;
     const wy = state.wizard.row * TS + TS / 2;
-    // Body
-    this._entityGfx.circle(wx, wy, TS * 0.32);
-    this._entityGfx.fill(WIZARD_COLOR);
-    this._entityGfx.circle(wx, wy, TS * 0.32);
-    this._entityGfx.stroke({ color: 0x6699ff, width: 1 });
-    // Hat
-    this._entityGfx.moveTo(wx, wy - TS * 0.55);
-    this._entityGfx.lineTo(wx + TS * 0.22, wy - TS * 0.15);
-    this._entityGfx.lineTo(wx - TS * 0.22, wy - TS * 0.15);
-    this._entityGfx.closePath();
-    this._entityGfx.fill(WIZARD_COLOR);
-    // Hat star
-    this._entityGfx.star(wx, wy - TS * 0.35, 4, 3, 1.5);
-    this._entityGfx.fill(0xffffff);
+    const g = this._entityGfx;
+
+    // Magical aura: 2-3 concentric semi-transparent rings pulsing with time
+    for (let ri = 0; ri < 3; ri++) {
+      const auraR = TS * (0.42 + ri * 0.08);
+      const auraAlpha = (0.12 - ri * 0.03) * (0.6 + 0.4 * Math.sin(this._time * 3 + ri * 1.5));
+      g.circle(wx, wy, auraR);
+      g.stroke({ color: WIZARD_COLOR, width: 1.5, alpha: auraAlpha });
+    }
+
+    // Robes: trapezoid body wider at bottom with fold lines
+    const robeTop = wy - TS * 0.12;
+    const robeBot = wy + TS * 0.38;
+    const topHalf = TS * 0.16;
+    const botHalf = TS * 0.28;
+    g.moveTo(wx - topHalf, robeTop);
+    g.lineTo(wx + topHalf, robeTop);
+    g.lineTo(wx + botHalf, robeBot);
+    g.lineTo(wx - botHalf, robeBot);
+    g.closePath();
+    g.fill(WIZARD_COLOR);
+    g.moveTo(wx - topHalf, robeTop);
+    g.lineTo(wx + topHalf, robeTop);
+    g.lineTo(wx + botHalf, robeBot);
+    g.lineTo(wx - botHalf, robeBot);
+    g.closePath();
+    g.stroke({ color: 0x6699ff, width: 1 });
+    // Vertical fold lines on robes
+    for (let fi = -1; fi <= 1; fi++) {
+      const fx = wx + fi * (topHalf * 0.5);
+      const fbx = wx + fi * (botHalf * 0.5);
+      g.moveTo(fx, robeTop + 2);
+      g.lineTo(fbx, robeBot - 1);
+      g.stroke({ color: 0x3366cc, width: 0.7, alpha: 0.4 });
+    }
+
+    // Belt: horizontal line across midsection with buckle
+    const beltY = wy + TS * 0.08;
+    const beltLeftX = wx - (topHalf + (botHalf - topHalf) * 0.4);
+    const beltRightX = wx + (topHalf + (botHalf - topHalf) * 0.4);
+    g.moveTo(beltLeftX, beltY);
+    g.lineTo(beltRightX, beltY);
+    g.stroke({ color: 0x886633, width: 1.5 });
+    // Belt buckle
+    g.rect(wx - 2, beltY - 2, 4, 4);
+    g.fill(0xccaa44);
+    g.rect(wx - 2, beltY - 2, 4, 4);
+    g.stroke({ color: 0xeedd66, width: 0.5 });
+
+    // Shoulders: small angled polygon shapes on each side
+    for (const side of [-1, 1]) {
+      const shx = wx + side * topHalf;
+      const shy = robeTop;
+      g.moveTo(shx, shy);
+      g.lineTo(shx + side * 5, shy - 3);
+      g.lineTo(shx + side * 6, shy + 2);
+      g.lineTo(shx + side * 1, shy + 3);
+      g.closePath();
+      g.fill({ color: 0x3366bb, alpha: 0.8 });
+      g.moveTo(shx, shy);
+      g.lineTo(shx + side * 5, shy - 3);
+      g.lineTo(shx + side * 6, shy + 2);
+      g.lineTo(shx + side * 1, shy + 3);
+      g.closePath();
+      g.stroke({ color: 0x6699ff, width: 0.5 });
+    }
+
+    // Face: lighter area with glowing eye dots
+    const faceY = wy - TS * 0.2;
+    g.circle(wx, faceY, 5);
+    g.fill({ color: 0xddccaa, alpha: 0.7 });
+    // Glowing eyes
+    const eyeGlow = 0.7 + 0.3 * Math.sin(this._time * 4);
+    g.circle(wx - 2.5, faceY - 0.5, 1.2);
+    g.fill({ color: 0x88ddff, alpha: eyeGlow });
+    g.circle(wx + 2.5, faceY - 0.5, 1.2);
+    g.fill({ color: 0x88ddff, alpha: eyeGlow });
+
+    // Hat: wide brim + tall pointed cone
+    const hatBrimY = wy - TS * 0.28;
+    const hatTipY = wy - TS * 0.62;
+    // Brim (horizontal line extending beyond head)
+    g.moveTo(wx - TS * 0.28, hatBrimY);
+    g.lineTo(wx + TS * 0.28, hatBrimY);
+    g.stroke({ color: WIZARD_COLOR, width: 2 });
+    // Hat cone
+    g.moveTo(wx, hatTipY);
+    g.lineTo(wx + TS * 0.18, hatBrimY);
+    g.lineTo(wx - TS * 0.18, hatBrimY);
+    g.closePath();
+    g.fill(WIZARD_COLOR);
+    g.moveTo(wx, hatTipY);
+    g.lineTo(wx + TS * 0.18, hatBrimY);
+    g.lineTo(wx - TS * 0.18, hatBrimY);
+    g.closePath();
+    g.stroke({ color: 0x6699ff, width: 1 });
+    // Hat band
+    const bandY = hatBrimY - 3;
+    g.moveTo(wx - TS * 0.14, bandY);
+    g.lineTo(wx + TS * 0.14, bandY);
+    g.stroke({ color: 0x886633, width: 1.5 });
+    // Star buckle on hat
+    g.star(wx, bandY, 4, 2.5, 1.2);
+    g.fill(0xffff88);
+
+    // Staff: diagonal line extending upward from left side with crystal
+    const staffBaseX = wx - topHalf - 2;
+    const staffBaseY = robeBot - 2;
+    const staffTopX = wx - topHalf - 6;
+    const staffTopY = wy - TS * 0.55;
+    g.moveTo(staffBaseX, staffBaseY);
+    g.lineTo(staffTopX, staffTopY);
+    g.stroke({ color: 0x886644, width: 2 });
+    // Crystal diamond on top of staff
+    const crx = staffTopX;
+    const cry = staffTopY - 4;
+    g.moveTo(crx, cry - 4);
+    g.lineTo(crx + 3, cry);
+    g.lineTo(crx, cry + 4);
+    g.lineTo(crx - 3, cry);
+    g.closePath();
+    g.fill({ color: 0xaaddff, alpha: 0.9 });
+    // Crystal glow circle
+    const crystalGlow = 0.3 + 0.3 * Math.sin(this._time * 5);
+    g.circle(crx, cry, 5);
+    g.fill({ color: 0x88ccff, alpha: crystalGlow });
   }
 
   private _drawEntityOverlays(state: RiftWizardState): void {
+    const g = this._entityGfx;
+
     // HP bars for all entities
     for (const enemy of state.level.enemies) {
       if (!enemy.alive) continue;
       this._drawHpBar(enemy.col * TS, enemy.row * TS - 5, enemy.hp, enemy.maxHp);
-      // Stun indicator
+
+      // Stun indicator: chain-link shapes around the entity
       if (enemy.stunTurns > 0) {
         const ex = enemy.col * TS + TS / 2;
         const ey = enemy.row * TS + TS / 2;
-        this._entityGfx.circle(ex, ey, TS * 0.38);
-        this._entityGfx.stroke({ color: 0x88ccff, width: 2, alpha: 0.7 });
-        // Stars above head for stun
+        const chainR = TS * 0.38;
+        const numLinks = 8;
+        for (let i = 0; i < numLinks; i++) {
+          const a = (i / numLinks) * Math.PI * 2 + this._time * 1.5;
+          const lx = ex + Math.cos(a) * chainR;
+          const ly = ey + Math.sin(a) * chainR;
+          // Each chain link is a small oval (two arcs approximated as an ellipse)
+          const ovalW = 4;
+          const ovalH = 2.5;
+          const cosA = Math.cos(a);
+          const sinA = Math.sin(a);
+          // Draw oval aligned tangent to circle (6-point polygon approximation)
+          for (let oi = 0; oi <= 6; oi++) {
+            const oa = (oi / 6) * Math.PI * 2;
+            const ox = Math.cos(oa) * ovalW;
+            const oy = Math.sin(oa) * ovalH;
+            // Rotate oval to be tangent
+            const rx = ox * (-sinA) - oy * cosA;
+            const ry = ox * cosA + oy * (-sinA);
+            if (oi === 0) g.moveTo(lx + rx, ly + ry);
+            else g.lineTo(lx + rx, ly + ry);
+          }
+          g.closePath();
+          g.stroke({ color: 0x88ccff, width: 1.5, alpha: 0.7 });
+        }
+        // Stars above head for stun (keep original)
         for (let i = 0; i < 3; i++) {
           const angle = this._time * 3 + (i * Math.PI * 2 / 3);
           const dx = Math.cos(angle) * 6;
           const dy = Math.sin(angle) * 3;
-          this._entityGfx.star(ex + dx, ey - TS * 0.45 + dy, 4, 2, 1);
-          this._entityGfx.fill({ color: 0xffff44, alpha: 0.8 });
+          g.star(ex + dx, ey - TS * 0.45 + dy, 4, 2, 1);
+          g.fill({ color: 0xffff44, alpha: 0.8 });
+        }
+      }
+
+      // Burn indicator: small flame shapes near enemies with stunTurns (as a proxy for status)
+      if (enemy.stunTurns > 0) {
+        const ex = enemy.col * TS + TS / 2;
+        const ey = enemy.row * TS + TS / 2;
+        const flicker = 0.6 + 0.4 * Math.sin(this._time * 8);
+        for (let fi = 0; fi < 2; fi++) {
+          const fx = ex + (fi === 0 ? -TS * 0.35 : TS * 0.35);
+          const fy = ey + TS * 0.1;
+          // Flame polygon: teardrop shape
+          g.moveTo(fx, fy - 5 * flicker);
+          g.lineTo(fx + 2.5, fy - 1);
+          g.lineTo(fx + 2, fy + 3);
+          g.lineTo(fx, fy + 4);
+          g.lineTo(fx - 2, fy + 3);
+          g.lineTo(fx - 2.5, fy - 1);
+          g.closePath();
+          g.fill({ color: 0xff6622, alpha: 0.5 * flicker });
+          // Inner flame
+          g.moveTo(fx, fy - 3 * flicker);
+          g.lineTo(fx + 1.2, fy);
+          g.lineTo(fx, fy + 2);
+          g.lineTo(fx - 1.2, fy);
+          g.closePath();
+          g.fill({ color: 0xffcc44, alpha: 0.6 * flicker });
         }
       }
     }
@@ -978,34 +2035,86 @@ export class RiftWizardRenderer {
     // Wizard HP bar
     this._drawHpBar(state.wizard.col * TS, state.wizard.row * TS - 7, state.wizard.hp, state.wizard.maxHp);
 
-    // Shield indicator
+    // Shield indicator: hexagonal shield pattern (6 segments) with faceted look
     if (state.wizard.shields > 0) {
       const wx = state.wizard.col * TS + TS / 2;
       const wy = state.wizard.row * TS + TS / 2;
       const pulse = 0.6 + 0.4 * Math.sin(this._time * 4);
-      this._entityGfx.circle(wx, wy, TS * 0.42);
-      this._entityGfx.stroke({ color: 0x44ddff, width: 2, alpha: pulse * 0.7 });
+      const shieldR = TS * 0.42;
+
+      // Outer hex outline
+      g.moveTo(wx + shieldR, wy);
+      for (let i = 1; i <= 6; i++) {
+        const a = (i / 6) * Math.PI * 2;
+        g.lineTo(wx + Math.cos(a) * shieldR, wy + Math.sin(a) * shieldR);
+      }
+      g.closePath();
+      g.stroke({ color: 0x44ddff, width: 2, alpha: pulse * 0.7 });
+
+      // 6 faceted segments: lines from center to each vertex
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2;
+        g.moveTo(wx, wy);
+        g.lineTo(wx + Math.cos(a) * shieldR, wy + Math.sin(a) * shieldR);
+        g.stroke({ color: 0x44ddff, width: 1, alpha: pulse * 0.35 });
+      }
+
+      // Inner hex for faceted depth
+      const innerR = shieldR * 0.6;
+      g.moveTo(wx + innerR, wy);
+      for (let i = 1; i <= 6; i++) {
+        const a = (i / 6) * Math.PI * 2;
+        g.lineTo(wx + Math.cos(a) * innerR, wy + Math.sin(a) * innerR);
+      }
+      g.closePath();
+      g.stroke({ color: 0x44ddff, width: 1, alpha: pulse * 0.4 });
+
+      // Shield count indicator dots
+      for (let si = 0; si < Math.min(state.wizard.shields, 5); si++) {
+        const sa = (si / 5) * Math.PI * 2 - Math.PI / 2;
+        g.circle(wx + Math.cos(sa) * (shieldR + 4), wy + Math.sin(sa) * (shieldR + 4), 1.5);
+        g.fill({ color: 0x88eeff, alpha: pulse });
+      }
     }
   }
 
   private _drawHpBar(x: number, y: number, hp: number, maxHp: number): void {
+    const g = this._entityGfx;
     const barWidth = TS - 4;
-    const barHeight = 3;
+    const barHeight = 4;
     const ratio = Math.max(0, hp / maxHp);
+    const bx = x + 2;
 
     // Background with border
-    this._entityGfx.rect(x + 2, y, barWidth, barHeight);
-    this._entityGfx.fill(0x1a0000);
-    this._entityGfx.rect(x + 2, y, barWidth, barHeight);
-    this._entityGfx.stroke({ color: 0x333333, width: 0.5 });
+    g.rect(bx, y, barWidth, barHeight);
+    g.fill(0x1a0000);
+    g.rect(bx, y, barWidth, barHeight);
+    g.stroke({ color: 0x333333, width: 0.5 });
+
     // Fill with gradient-like effect
     const color = ratio > 0.6 ? 0x00cc00 : ratio > 0.3 ? 0xcccc00 : 0xcc0000;
-    this._entityGfx.rect(x + 2, y, barWidth * ratio, barHeight);
-    this._entityGfx.fill(color);
-    // Bright top edge
-    if (ratio > 0) {
-      this._entityGfx.rect(x + 2, y, barWidth * ratio, 1);
-      this._entityGfx.fill({ color: 0xffffff, alpha: 0.3 });
+    const fillW = barWidth * ratio;
+    if (fillW > 0) {
+      g.rect(bx, y, fillW, barHeight);
+      g.fill(color);
+    }
+
+    // Beveled 3D look: bright line on top edge, dark line on bottom edge
+    if (fillW > 0) {
+      g.moveTo(bx, y);
+      g.lineTo(bx + fillW, y);
+      g.stroke({ color: 0xffffff, width: 1, alpha: 0.35 });
+      g.moveTo(bx, y + barHeight);
+      g.lineTo(bx + fillW, y + barHeight);
+      g.stroke({ color: 0x000000, width: 1, alpha: 0.4 });
+    }
+
+    // Tick marks at 25%, 50%, 75%
+    for (const pct of [0.25, 0.5, 0.75]) {
+      const tx = bx + barWidth * pct;
+      g.moveTo(tx, y);
+      g.lineTo(tx, y + barHeight);
+      g.stroke({ color: 0x000000, width: 0.5, alpha: 0.5 });
     }
   }
 
@@ -1269,18 +2378,23 @@ export class RiftWizardRenderer {
 
   private _updateParticles(dt: number): void {
     this._fxParticleGfx.clear();
-    for (let i = this._particles.length - 1; i >= 0; i--) {
+    let writeIdx = 0;
+    for (let i = 0; i < this._particles.length; i++) {
       const p = this._particles[i];
       p.x += p.vx * dt;
       p.y += p.vy * dt;
       p.life -= dt;
-      const alpha = Math.max(0, p.life / p.maxLife);
+      if (p.life <= 0) continue; // skip dead particles
+      const alpha = p.life / p.maxLife;
       this._fxParticleGfx.circle(p.x, p.y, p.size * alpha);
       this._fxParticleGfx.fill({ color: p.color, alpha });
-      if (p.life <= 0) {
-        this._particles.splice(i, 1);
+      // Compact: move live particle to writeIdx
+      if (writeIdx !== i) {
+        this._particles[writeIdx] = p;
       }
+      writeIdx++;
     }
+    this._particles.length = writeIdx; // trim dead ones in O(1)
   }
 
   private _updateAnimations(_state: RiftWizardState, dt: number): void {
@@ -1315,13 +2429,13 @@ export class RiftWizardRenderer {
           const pt = t * 2;
           const px = fromX + (toX - fromX) * pt;
           const py = fromY + (toY - fromY) * pt;
-          // Trail
-          for (let j = 0; j < 3; j++) {
-            const tt = Math.max(0, pt - j * 0.1);
+          // Extended trail with 5 segments
+          for (let j = 0; j < 5; j++) {
+            const tt = Math.max(0, pt - j * 0.08);
             const tx = fromX + (toX - fromX) * tt;
             const ty = fromY + (toY - fromY) * tt;
-            this._fxGfx.circle(tx, ty, 3 - j);
-            this._fxGfx.fill({ color: trailColor, alpha: (1 - j * 0.3) * 0.5 });
+            this._fxGfx.circle(tx, ty, 3.5 - j * 0.6);
+            this._fxGfx.fill({ color: trailColor, alpha: (1 - j * 0.18) * 0.5 });
           }
           // Projectile with glow
           this._fxGfx.circle(px, py, 6);
@@ -1330,6 +2444,19 @@ export class RiftWizardRenderer {
           this._fxGfx.fill(color);
           this._fxGfx.circle(px, py, 2);
           this._fxGfx.fill(0xffffff);
+          // Rotating polygon ring: 5 small triangles orbiting the projectile
+          for (let ri = 0; ri < 5; ri++) {
+            const orbitAngle = (ri / 5) * Math.PI * 2 + pt * Math.PI * 6;
+            const orbitR = 9;
+            const ocx = px + Math.cos(orbitAngle) * orbitR;
+            const ocy = py + Math.sin(orbitAngle) * orbitR;
+            const triSize = 2.5;
+            this._fxGfx.moveTo(ocx, ocy - triSize);
+            this._fxGfx.lineTo(ocx - triSize * 0.87, ocy + triSize * 0.5);
+            this._fxGfx.lineTo(ocx + triSize * 0.87, ocy + triSize * 0.5);
+            this._fxGfx.closePath();
+            this._fxGfx.fill({ color, alpha: 0.6 });
+          }
         } else {
           const et = (t - 0.5) * 2;
           const radius = et * TS * 1.5;
@@ -1341,9 +2468,23 @@ export class RiftWizardRenderer {
           // Outer ring
           this._fxGfx.circle(toX, toY, radius);
           this._fxGfx.stroke({ color, width: 2, alpha: alpha * 0.6 });
-          // Spawn explosion particles
+          // Shockwave ring with inner radial spokes
+          if (radius > 2) {
+            this._fxGfx.circle(toX, toY, radius * 1.15);
+            this._fxGfx.stroke({ color: 0xffffff, width: 1, alpha: alpha * 0.25 });
+            const spokeCount = 10;
+            for (let si = 0; si < spokeCount; si++) {
+              const sa = (si / spokeCount) * Math.PI * 2;
+              const innerR = radius * 0.3;
+              const outerR = radius * 1.1;
+              this._fxGfx.moveTo(toX + Math.cos(sa) * innerR, toY + Math.sin(sa) * innerR);
+              this._fxGfx.lineTo(toX + Math.cos(sa) * outerR, toY + Math.sin(sa) * outerR);
+              this._fxGfx.stroke({ color, width: 1, alpha: alpha * 0.3 });
+            }
+          }
+          // Spawn explosion particles (4 instead of 2)
           if (et < 0.3) {
-            for (let j = 0; j < 2; j++) {
+            for (let j = 0; j < 4; j++) {
               const angle = Math.random() * Math.PI * 2;
               const speed = 30 + Math.random() * 40;
               this._particles.push({
@@ -1389,12 +2530,34 @@ export class RiftWizardRenderer {
               this._fxGfx.moveTo(lastX, lastY);
               this._fxGfx.lineTo(nx, ny);
               this._fxGfx.stroke({ color: 0xffff44, width: 2, alpha });
+              // Branching fork (50% chance per segment)
+              if (Math.random() < 0.5) {
+                const midX = (lastX + nx) / 2;
+                const midY = (lastY + ny) / 2;
+                const forkAngle = Math.atan2(ny - lastY, nx - lastX) + (Math.random() - 0.5) * Math.PI * 0.8;
+                const forkLen = 8 + Math.random() * 10;
+                const forkEndX = midX + Math.cos(forkAngle) * forkLen;
+                const forkEndY = midY + Math.sin(forkAngle) * forkLen;
+                this._fxGfx.moveTo(midX, midY);
+                this._fxGfx.lineTo(forkEndX, forkEndY);
+                this._fxGfx.stroke({ color: 0xffff44, width: 1, alpha: alpha * 0.6 });
+                this._fxGfx.moveTo(midX, midY);
+                this._fxGfx.lineTo(forkEndX, forkEndY);
+                this._fxGfx.stroke({ color: 0xffff88, width: 2.5, alpha: alpha * 0.15 });
+              }
               lastX = nx;
               lastY = ny;
             }
+            // Bright flash circle at each connection point
+            this._fxGfx.circle(ax, ay, 4 * alpha);
+            this._fxGfx.fill({ color: 0xffffff, alpha: alpha * 0.7 });
+            this._fxGfx.circle(ax, ay, 7 * alpha);
+            this._fxGfx.stroke({ color: 0xffff88, width: 1, alpha: alpha * 0.3 });
             // Impact flash at each target
             this._fxGfx.circle(bx, by, 5 * alpha);
             this._fxGfx.fill({ color: 0xffffff, alpha: alpha * 0.5 });
+            this._fxGfx.circle(bx, by, 8 * alpha);
+            this._fxGfx.stroke({ color: 0xffff88, width: 1, alpha: alpha * 0.3 });
           }
         }
         break;
@@ -1509,6 +2672,38 @@ export class RiftWizardRenderer {
           const py = toY - t * 20 - i * 5;
           this._fxGfx.circle(px, py, 1.5);
           this._fxGfx.fill({ color: 0x88ff88, alpha: alpha * 0.8 });
+        }
+        // Orbiting leaf/nature polygon shapes rising upward
+        for (let li = 0; li < 4; li++) {
+          const leafAngle = (li / 4) * Math.PI * 2 + this._time * 3;
+          const leafR = TS * 0.35 * Math.min(1, t * 2);
+          const leafX = toX + Math.cos(leafAngle) * leafR;
+          const leafY = toY - t * 15 - li * 4 + Math.sin(leafAngle) * leafR;
+          // Leaf shape (small diamond/pointed oval)
+          this._fxGfx.moveTo(leafX, leafY - 3);
+          this._fxGfx.lineTo(leafX + 2, leafY);
+          this._fxGfx.lineTo(leafX, leafY + 3);
+          this._fxGfx.lineTo(leafX - 2, leafY);
+          this._fxGfx.closePath();
+          this._fxGfx.fill({ color: 0x33cc33, alpha: alpha * 0.6 });
+          // Leaf vein
+          this._fxGfx.moveTo(leafX, leafY - 2);
+          this._fxGfx.lineTo(leafX, leafY + 2);
+          this._fxGfx.stroke({ color: 0x228822, width: 0.5, alpha: alpha * 0.5 });
+        }
+        // Ring of small plus-signs around the heal area
+        const plusRingR = TS * 0.5 * Math.min(1, t * 2.5);
+        for (let pi = 0; pi < 6; pi++) {
+          const pa = (pi / 6) * Math.PI * 2 + this._time * 2;
+          const pcx = toX + Math.cos(pa) * plusRingR;
+          const pcy = toY + Math.sin(pa) * plusRingR;
+          const ps = 2;
+          // Vertical bar of plus
+          this._fxGfx.rect(pcx - ps * 0.25, pcy - ps, ps * 0.5, ps * 2);
+          this._fxGfx.fill({ color: 0x88ff88, alpha: alpha * 0.5 });
+          // Horizontal bar of plus
+          this._fxGfx.rect(pcx - ps, pcy - ps * 0.25, ps * 2, ps * 0.5);
+          this._fxGfx.fill({ color: 0x88ff88, alpha: alpha * 0.5 });
         }
         break;
       }
@@ -1653,7 +2848,7 @@ export class RiftWizardRenderer {
         // Impact flash
         this._fxGfx.circle(toX, toY, TS * 0.4 * (1 - t));
         this._fxGfx.fill({ color: 0xffffff, alpha: alpha * 0.4 });
-        // Slash line
+        // First slash line (top-left to bottom-right)
         const slashAngle = Math.PI * 0.25;
         const slashLen = TS * 0.5 * slashT;
         this._fxGfx.moveTo(
@@ -1665,6 +2860,32 @@ export class RiftWizardRenderer {
           toY + Math.sin(slashAngle) * slashLen,
         );
         this._fxGfx.stroke({ color: 0xffffff, width: 3, alpha: alpha * 0.8 });
+        // Second cross-slash line (top-right to bottom-left) forming X pattern
+        const slashAngle2 = -Math.PI * 0.25;
+        this._fxGfx.moveTo(
+          toX - Math.cos(slashAngle2) * slashLen,
+          toY - Math.sin(slashAngle2) * slashLen,
+        );
+        this._fxGfx.lineTo(
+          toX + Math.cos(slashAngle2) * slashLen,
+          toY + Math.sin(slashAngle2) * slashLen,
+        );
+        this._fxGfx.stroke({ color: 0xffffff, width: 3, alpha: alpha * 0.7 });
+        // Starburst pattern: 8 short lines radiating from impact point
+        for (let sb = 0; sb < 8; sb++) {
+          const sbAngle = (sb / 8) * Math.PI * 2;
+          const sbInner = TS * 0.08;
+          const sbOuter = TS * 0.25 * slashT;
+          this._fxGfx.moveTo(
+            toX + Math.cos(sbAngle) * sbInner,
+            toY + Math.sin(sbAngle) * sbInner,
+          );
+          this._fxGfx.lineTo(
+            toX + Math.cos(sbAngle) * sbOuter,
+            toY + Math.sin(sbAngle) * sbOuter,
+          );
+          this._fxGfx.stroke({ color: 0xffffcc, width: 1.5, alpha: alpha * 0.5 });
+        }
         // Impact sparks
         if (t < 0.3) {
           for (let j = 0; j < 2; j++) {
@@ -1686,7 +2907,24 @@ export class RiftWizardRenderer {
         // Entity dissolving
         this._fxGfx.circle(fromX, fromY, TS * 0.35 * alpha);
         this._fxGfx.fill({ color: 0xff0000, alpha: alpha * 0.4 });
-        // Death particles dispersing
+        // Skull silhouette that appears and fades
+        const skullAlpha = alpha * Math.min(1, t * 4) * 0.6;
+        const skullY = fromY - 4;
+        // Skull head (circle)
+        this._fxGfx.circle(fromX, skullY, 6);
+        this._fxGfx.fill({ color: 0xdddddd, alpha: skullAlpha });
+        // Triangle jaw
+        this._fxGfx.moveTo(fromX - 4, skullY + 4);
+        this._fxGfx.lineTo(fromX + 4, skullY + 4);
+        this._fxGfx.lineTo(fromX, skullY + 9);
+        this._fxGfx.closePath();
+        this._fxGfx.fill({ color: 0xcccccc, alpha: skullAlpha });
+        // Dark eye sockets (two small rects)
+        this._fxGfx.rect(fromX - 3.5, skullY - 2, 2.5, 2.5);
+        this._fxGfx.fill({ color: 0x220000, alpha: skullAlpha });
+        this._fxGfx.rect(fromX + 1, skullY - 2, 2.5, 2.5);
+        this._fxGfx.fill({ color: 0x220000, alpha: skullAlpha });
+        // Bone fragment particles (elongated rects) flying outward
         if (t < 0.5) {
           for (let j = 0; j < 2; j++) {
             const angle = Math.random() * Math.PI * 2;
@@ -1699,6 +2937,23 @@ export class RiftWizardRenderer {
               color: Math.random() > 0.5 ? 0xff2222 : 0x882222,
               size: 1.5 + Math.random(),
             });
+          }
+          // Additional bone fragment particles (small elongated rects drawn as thin lines)
+          for (let j = 0; j < 2; j++) {
+            const boneAngle = Math.random() * Math.PI * 2;
+            const boneSpeed = 20 + Math.random() * 30;
+            const boneDist = t * boneSpeed * 2;
+            const bx = fromX + Math.cos(boneAngle) * boneDist;
+            const by = fromY + Math.sin(boneAngle) * boneDist;
+            const boneRot = Math.random() * Math.PI;
+            const boneLen = 3 + Math.random() * 3;
+            // Draw bone as an elongated rect
+            this._fxGfx.rect(
+              bx - Math.cos(boneRot) * boneLen * 0.5,
+              by - Math.sin(boneRot) * boneLen * 0.5,
+              boneLen, 1.5
+            );
+            this._fxGfx.fill({ color: 0xddccaa, alpha: alpha * 0.7 });
           }
         }
         break;
@@ -1733,6 +2988,7 @@ export class RiftWizardRenderer {
     this._summonSprites.clear();
 
     this.worldLayer.removeChildren();
+    this._staticTileGfx.destroy();
     this._tileGfx.destroy();
     this._ambientGfx.destroy();
     this._entityGfx.destroy();

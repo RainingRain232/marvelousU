@@ -339,4 +339,84 @@ export function checkWinCondition(state: SettlersState): void {
     state.gameOver = true;
     state.winner = "p1";
   }
+
+  // Economic victory: accumulate 50 gold
+  if (!state.gameOver) {
+    for (const [, player] of state.players) {
+      if (player.defeated) continue;
+      const gold = player.storage.get(ResourceType.GOLD) || 0;
+      if (gold >= 50) {
+        state.gameOver = true;
+        state.winner = player.id;
+        return;
+      }
+    }
+  }
+
+  // Territory dominance: control > 70% of buildable land
+  if (!state.gameOver) {
+    const map = state.map;
+    const total = map.width * map.height;
+    const counts = new Map<number, number>();
+    let buildableTiles = 0;
+    for (let i = 0; i < total; i++) {
+      if (map.buildable[i] === 0) continue;
+      buildableTiles++;
+      const owner = map.territory[i];
+      if (owner >= 0) {
+        counts.set(owner, (counts.get(owner) || 0) + 1);
+      }
+    }
+    if (buildableTiles > 0) {
+      for (const [ownerIdx, count] of counts) {
+        if (count / buildableTiles > 0.7) {
+          const playerId = ownerIdx === 0 ? "p0" : "p1";
+          state.gameOver = true;
+          state.winner = playerId;
+          return;
+        }
+      }
+    }
+  }
+}
+
+/** Calculate a player's score (for display in HUD) */
+export function calculateScore(state: SettlersState, playerId: string): number {
+  let score = 0;
+  const player = state.players.get(playerId);
+  if (!player) return 0;
+
+  // Buildings built
+  for (const [, building] of state.buildings) {
+    if (building.owner !== playerId) continue;
+    if (building.constructionProgress < 1) continue;
+    const def = BUILDING_DEFS[building.type];
+    score += def.size === "large" ? 30 : def.size === "medium" ? 20 : 10;
+    if (def.territoryRadius > 0) score += 15;
+  }
+
+  // Resources stored
+  for (const [, amount] of player.storage) {
+    score += amount;
+  }
+
+  // Territory controlled
+  const map = state.map;
+  const playerIdx = playerId === "p0" ? 0 : 1;
+  for (let i = 0; i < map.width * map.height; i++) {
+    if (map.territory[i] === playerIdx) score += 1;
+  }
+
+  // Soldiers
+  for (const [, soldier] of state.soldiers) {
+    if (soldier.owner === playerId) {
+      score += 10 + soldier.rank * 5;
+    }
+  }
+
+  // Gold is worth extra
+  const gold = player.storage.get(ResourceType.GOLD) || 0;
+  score += gold * 5;
+
+  return score;
 }

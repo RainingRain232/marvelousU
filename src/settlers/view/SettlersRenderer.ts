@@ -4,7 +4,7 @@
 
 import * as THREE from "three";
 import { SB } from "../config/SettlersBalance";
-import { Biome, getHeightAt, getVertex } from "../state/SettlersMap";
+import { Biome, Deposit, getHeightAt, getVertex, tileIdx } from "../state/SettlersMap";
 import { BUILDING_DEFS, SettlersBuildingType } from "../config/SettlersBuildingDefs";
 import { RESOURCE_META } from "../config/SettlersResourceDefs";
 import type { SettlersState } from "../state/SettlersState";
@@ -77,11 +77,20 @@ export class SettlersRenderer {
   private _treesGroup = new THREE.Group();
   private _rocksGroup = new THREE.Group();
   private _grassGroup = new THREE.Group();
+  private _depositsGroup = new THREE.Group();
 
   // Smoke particles
   private _smokeParticles: SmokeParticle[] = [];
   private _smokeGroup = new THREE.Group();
   private _smokeMat!: THREE.MeshBasicMaterial;
+
+  // Health bars
+  private _healthBarGroup = new THREE.Group();
+  private _combatFlashes: { mesh: THREE.Mesh; life: number }[] = [];
+
+  // Building construction scaffolding & production spinners
+  private _scaffoldMeshes = new Map<string, THREE.Group>();
+  private _spinnerMeshes = new Map<string, THREE.Mesh>();
 
   // Clouds
   private _cloudGroup = new THREE.Group();
@@ -101,6 +110,12 @@ export class SettlersRenderer {
   private _chimneyMat!: THREE.MeshStandardMaterial;
 
   private _startTime = Date.now();
+
+  // Day/night cycle
+  private _ambientLight!: THREE.AmbientLight;
+  private _hemiLight!: THREE.HemisphereLight;
+  private _dayLength = 300; // seconds for a full day cycle
+  private _sunDisc: THREE.Mesh | null = null;
 
   get terrainMesh(): THREE.Mesh { return this._terrainMesh; }
 
@@ -176,6 +191,8 @@ export class SettlersRenderer {
     this.scene.add(this._grassGroup);
     this.scene.add(this._smokeGroup);
     this.scene.add(this._cloudGroup);
+    this.scene.add(this._depositsGroup);
+    this.scene.add(this._healthBarGroup);
 
     // Resize handler
     window.addEventListener("resize", () => {
@@ -281,6 +298,7 @@ export class SettlersRenderer {
     this._buildTrees(state);
     this._buildRocks(state);
     this._buildGrass(state);
+    this._buildDeposits(state);
   }
 
   /** Main render call */
@@ -306,6 +324,10 @@ export class SettlersRenderer {
     this._syncSoldiers(state, t);
     this._syncTerritory(state);
 
+    // Health bars + combat effects
+    this._updateHealthBars(state);
+    this._updateCombatFlashes(state, _dt);
+
     // Animate water waves
     this._animateWater(t);
 
@@ -315,19 +337,130 @@ export class SettlersRenderer {
     // Update smoke
     this._updateSmoke(state, _dt, t);
 
+    // Day/night cycle
+    this._updateDayNight(t);
+
     // Move sun shadow target to camera focus
     this._sunLight.target.position.set(
       this.camera.position.x,
       0,
       this.camera.position.z,
     );
+
+    this.renderer.render(this.scene, this.camera);
+  }
+
+  // -----------------------------------------------------------------------
+  // Day/night cycle
+  // -----------------------------------------------------------------------
+
+  private _updateDayNight(t: number): void {
+    // Time of day: 0=noon, 0.25=sunset, 0.5=midnight, 0.75=sunrise
+    const dayTime = (t / this._dayLength) % 1;
+    const sunAngle = dayTime * Math.PI * 2; // 0 = noon (sun at top)
+
+    // Sun height (sinusoidal): peaks at noon, lowest at midnight
+    const sunHeight = Math.sin(sunAngle + Math.PI * 0.5);
+    const sunY = sunHeight * 80 + 10;
+    const sunX = Math.cos(sunAngle) * 60;
+
+    const mapCx = SB.MAP_WIDTH * SB.TILE_SIZE * 0.5;
+    const mapCz = SB.MAP_HEIGHT * SB.TILE_SIZE * 0.5;
+
+    // Move sun light
     this._sunLight.position.set(
-      this.camera.position.x + 50,
-      80,
+      this.camera.position.x + sunX,
+      Math.max(5, sunY),
       this.camera.position.z + 30,
     );
 
-    this.renderer.render(this.scene, this.camera);
+    // Move sun disc
+    if (this._sunDisc) {
+      this._sunDisc.position.set(mapCx + sunX * 2, Math.max(10, sunY * 2), mapCz - 60);
+      this._sunDisc.lookAt(mapCx, 0, mapCz);
+    }
+
+    // Light intensity based on time of day
+    const dayBrightness = Math.max(0, sunHeight);
+    const dayFactor = Math.pow(dayBrightness, 0.5); // Smoother transition
+
+    // Sun light color: warm gold at day, orange at dusk/dawn, dim blue at night
+    const sunColor = new THREE.Color();
+    if (dayFactor > 0.5) {
+      // Day: warm golden
+      sunColor.setHex(0xffeabb);
+    } else if (dayFactor > 0.1) {
+      // Dusk/dawn: orange to red
+      sunColor.lerpColors(new THREE.Color(0xff6644), new THREE.Color(0xffeabb), (dayFactor - 0.1) / 0.4);
+    } else {
+      // Night: dim blue
+      sunColor.lerpColors(new THREE.Color(0x223355), new THREE.Color(0xff6644), dayFactor / 0.1);
+    }
+
+    this._sunLight.color.copy(sunColor);
+    this._sunLight.intensity = 0.3 + dayFactor * 1.6;
+
+    // Ambient light
+    this._ambientLight.intensity = 0.15 + dayFactor * 0.35;
+    if (dayFactor < 0.3) {
+      this._ambientLight.color.setHex(0x334466);
+    } else {
+      this._ambientLight.color.setHex(0x8898b0);
+    }
+
+    // Hemisphere light
+    this._hemiLight.intensity = 0.2 + dayFactor * 0.6;
+
+    // Fog and background color
+    const bgDay = new THREE.Color(0x7ab8e0);
+    const bgDusk = new THREE.Color(0xcc7744);
+    const bgNight = new THREE.Color(0x112244);
+    const bgColor = new THREE.Color();
+    if (dayFactor > 0.5) {
+      bgColor.copy(bgDay);
+    } else if (dayFactor > 0.15) {
+      bgColor.lerpColors(bgDusk, bgDay, (dayFactor - 0.15) / 0.35);
+    } else {
+      bgColor.lerpColors(bgNight, bgDusk, dayFactor / 0.15);
+    }
+    this.scene.background = bgColor;
+    (this.scene.fog as THREE.FogExp2).color.copy(bgColor);
+
+    // Window emissive glow brightens at night
+    this._windowMat.emissiveIntensity = 0.1 + (1 - dayFactor) * 0.8;
+  }
+
+  /** Rebuild all visuals from a fresh state (used after loading) */
+  rebuildAll(state: SettlersState): void {
+    // Clear all entity meshes
+    for (const [, m] of this._buildingMeshes) this.scene.remove(m);
+    for (const [, m] of this._flagMeshes) this.scene.remove(m);
+    for (const [, m] of this._carrierMeshes) this.scene.remove(m);
+    for (const [, m] of this._soldierMeshes) this.scene.remove(m);
+    for (const [, m] of this._roadMeshes) this.scene.remove(m);
+    for (const [, m] of this._scaffoldMeshes) this.scene.remove(m);
+    for (const [, m] of this._spinnerMeshes) this.scene.remove(m);
+    this._buildingMeshes.clear();
+    this._flagMeshes.clear();
+    this._carrierMeshes.clear();
+    this._soldierMeshes.clear();
+    this._roadMeshes.clear();
+    this._scaffoldMeshes.clear();
+    this._spinnerMeshes.clear();
+
+    if (this._territoryLine) {
+      this.scene.remove(this._territoryLine);
+      this._territoryLine = null;
+    }
+
+    // Rebuild terrain
+    if (this._terrainMesh) this.scene.remove(this._terrainMesh);
+    if (this._waterMesh) this.scene.remove(this._waterMesh);
+    this._treesGroup.clear();
+    this._rocksGroup.clear();
+    this._grassGroup.clear();
+    this._depositsGroup.clear();
+    this.buildTerrain(state);
   }
 
   destroy(): void {
@@ -343,12 +476,12 @@ export class SettlersRenderer {
 
   private _setupLighting(): void {
     // Warm ambient
-    const ambient = new THREE.AmbientLight(0x8898b0, 0.5);
-    this.scene.add(ambient);
+    this._ambientLight = new THREE.AmbientLight(0x8898b0, 0.5);
+    this.scene.add(this._ambientLight);
 
     // Sky-ground hemisphere
-    const hemi = new THREE.HemisphereLight(0xc0d8f0, 0x446622, 0.8);
-    this.scene.add(hemi);
+    this._hemiLight = new THREE.HemisphereLight(0xc0d8f0, 0x446622, 0.8);
+    this.scene.add(this._hemiLight);
 
     // Sun – warm directional
     this._sunLight = new THREE.DirectionalLight(0xffeabb, 1.9);
@@ -420,6 +553,7 @@ export class SettlersRenderer {
       SB.MAP_HEIGHT * SB.TILE_SIZE * 0.5 - 60,
     );
     sun.lookAt(SB.MAP_WIDTH * SB.TILE_SIZE * 0.5, 0, SB.MAP_HEIGHT * SB.TILE_SIZE * 0.5);
+    this._sunDisc = sun;
     this.scene.add(sun);
 
     // Sun glow
@@ -691,6 +825,49 @@ export class SettlersRenderer {
   }
 
   // -----------------------------------------------------------------------
+  // Resource deposit indicators on terrain
+  // -----------------------------------------------------------------------
+
+  private _buildDeposits(state: SettlersState): void {
+    this._depositsGroup.clear();
+    const map = state.map;
+
+    const depositColors: Record<number, number> = {
+      [Deposit.IRON]: 0x7a4e2e,
+      [Deposit.GOLD]: 0xffd700,
+      [Deposit.COAL]: 0x333333,
+      [Deposit.STONE]: 0x999999,
+      [Deposit.FISH]: 0x5599bb,
+    };
+
+    const depositGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.05, 6);
+
+    for (let tz = 0; tz < map.height; tz++) {
+      for (let tx = 0; tx < map.width; tx++) {
+        const idx = tileIdx(map, tx, tz);
+        const deposit = map.deposits[idx];
+        if (deposit === Deposit.NONE) continue;
+
+        const color = depositColors[deposit] || 0xffffff;
+        const mat = new THREE.MeshStandardMaterial({
+          color,
+          emissive: color,
+          emissiveIntensity: 0.3,
+          roughness: 0.5,
+          metalness: deposit === Deposit.GOLD ? 0.6 : 0.2,
+        });
+
+        const marker = new THREE.Mesh(depositGeo, mat);
+        const wx = (tx + 0.5) * SB.TILE_SIZE;
+        const wz = (tz + 0.5) * SB.TILE_SIZE;
+        const wy = getHeightAt(map, wx, wz) + 0.05;
+        marker.position.set(wx, wy, wz);
+        this._depositsGroup.add(marker);
+      }
+    }
+  }
+
+  // -----------------------------------------------------------------------
   // Smoke particles from active production buildings
   // -----------------------------------------------------------------------
 
@@ -753,14 +930,128 @@ export class SettlersRenderer {
   }
 
   // -----------------------------------------------------------------------
+  // Health bars for soldiers and damaged buildings
+  // -----------------------------------------------------------------------
+
+  private _updateHealthBars(state: SettlersState): void {
+    this._healthBarGroup.clear();
+    const barBgGeo = new THREE.PlaneGeometry(0.6, 0.06);
+    const barFgGeo = new THREE.PlaneGeometry(0.6, 0.06);
+    const barBgMat = new THREE.MeshBasicMaterial({ color: 0x333333, side: THREE.DoubleSide, depthTest: false, transparent: true, opacity: 0.7 });
+
+    // Soldier health bars
+    for (const [, soldier] of state.soldiers) {
+      if (soldier.state === "garrisoned") continue;
+      if (soldier.hp >= soldier.maxHp) continue;
+
+      const hpPct = Math.max(0, soldier.hp / soldier.maxHp);
+      const color = hpPct > 0.5 ? 0x44cc44 : hpPct > 0.25 ? 0xcccc44 : 0xcc4444;
+
+      const bg = new THREE.Mesh(barBgGeo, barBgMat);
+      bg.position.set(soldier.position.x, soldier.position.y + SB.SOLDIER_HEIGHT + 0.35, soldier.position.z);
+      bg.lookAt(this.camera.position);
+      this._healthBarGroup.add(bg);
+
+      const fgMat = new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide, depthTest: false });
+      const fg = new THREE.Mesh(barFgGeo, fgMat);
+      fg.scale.x = hpPct;
+      fg.position.set(
+        soldier.position.x - (1 - hpPct) * 0.3,
+        soldier.position.y + SB.SOLDIER_HEIGHT + 0.35,
+        soldier.position.z,
+      );
+      fg.lookAt(this.camera.position);
+      this._healthBarGroup.add(fg);
+    }
+
+    // Damaged building health bars
+    for (const [, building] of state.buildings) {
+      if (building.hp >= building.maxHp) continue;
+      const def = BUILDING_DEFS[building.type];
+      const hpPct = Math.max(0, building.hp / building.maxHp);
+      const color = hpPct > 0.5 ? 0x44cc44 : hpPct > 0.25 ? 0xcccc44 : 0xcc4444;
+
+      const cx = (building.tileX + def.footprint.w * 0.5) * SB.TILE_SIZE;
+      const cz = (building.tileZ + def.footprint.h * 0.5) * SB.TILE_SIZE;
+      const wy = getHeightAt(state.map, cx, cz);
+      const buildH = def.size === "large" ? 3.5 : def.size === "medium" ? 2.5 : 2.0;
+
+      const barW = 1.2;
+      const bgGeo = new THREE.PlaneGeometry(barW, 0.08);
+      const fgGeo = new THREE.PlaneGeometry(barW, 0.08);
+
+      const bg = new THREE.Mesh(bgGeo, barBgMat);
+      bg.position.set(cx, wy + buildH, cz);
+      bg.lookAt(this.camera.position);
+      this._healthBarGroup.add(bg);
+
+      const fgMat = new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide, depthTest: false });
+      const fg = new THREE.Mesh(fgGeo, fgMat);
+      fg.scale.x = hpPct;
+      fg.position.set(cx - (1 - hpPct) * barW * 0.5, wy + buildH, cz);
+      fg.lookAt(this.camera.position);
+      this._healthBarGroup.add(fg);
+    }
+  }
+
+  // -----------------------------------------------------------------------
+  // Combat flash effects
+  // -----------------------------------------------------------------------
+
+  private _updateCombatFlashes(state: SettlersState, dt: number): void {
+    // Spawn flashes at combat locations
+    for (const combat of state.combats) {
+      if (Math.random() < 0.15) {
+        const geo = new THREE.SphereGeometry(0.15, 4, 3);
+        const mat = new THREE.MeshBasicMaterial({
+          color: 0xffff44,
+          transparent: true,
+          opacity: 0.8,
+          depthWrite: false,
+        });
+        const flash = new THREE.Mesh(geo, mat);
+        flash.position.set(
+          combat.position.x + (Math.random() - 0.5) * 0.3,
+          combat.position.y + SB.SOLDIER_HEIGHT * 0.5 + Math.random() * 0.3,
+          combat.position.z + (Math.random() - 0.5) * 0.3,
+        );
+        this.scene.add(flash);
+        this._combatFlashes.push({ mesh: flash, life: 0.3 });
+      }
+    }
+
+    // Update existing flashes
+    for (let i = this._combatFlashes.length - 1; i >= 0; i--) {
+      const f = this._combatFlashes[i];
+      f.life -= dt;
+      if (f.life <= 0) {
+        this.scene.remove(f.mesh);
+        f.mesh.geometry.dispose();
+        (f.mesh.material as THREE.Material).dispose();
+        this._combatFlashes.splice(i, 1);
+      } else {
+        const scale = 1 + (0.3 - f.life) * 3;
+        f.mesh.scale.set(scale, scale, scale);
+        (f.mesh.material as THREE.MeshBasicMaterial).opacity = f.life / 0.3 * 0.8;
+      }
+    }
+  }
+
+  // -----------------------------------------------------------------------
   // Entity sync
   // -----------------------------------------------------------------------
 
   private _syncBuildings(state: SettlersState): void {
+    const t = performance.now() * 0.001;
     for (const [id, mesh] of this._buildingMeshes) {
       if (!state.buildings.has(id)) {
         this.scene.remove(mesh);
         this._buildingMeshes.delete(id);
+        // Clean up scaffold / spinner
+        const scaffold = this._scaffoldMeshes.get(id);
+        if (scaffold) { this.scene.remove(scaffold); this._scaffoldMeshes.delete(id); }
+        const spinner = this._spinnerMeshes.get(id);
+        if (spinner) { this.scene.remove(spinner); this._spinnerMeshes.delete(id); }
       }
     }
     for (const [id, building] of state.buildings) {
@@ -770,8 +1061,12 @@ export class SettlersRenderer {
         this._buildingMeshes.set(id, mesh);
         this.scene.add(mesh);
       }
+      const def = BUILDING_DEFS[building.type];
+      const ts = SB.TILE_SIZE;
       const progress = building.constructionProgress;
+
       if (progress < 1) {
+        // Construction: apply transparency / wireframe
         mesh.traverse((child) => {
           if (child instanceof THREE.Mesh) {
             const mat = child.material as THREE.MeshStandardMaterial;
@@ -781,8 +1076,118 @@ export class SettlersRenderer {
             }
           }
         });
+
+        // Scaffolding: wooden poles around the building during construction
+        if (!this._scaffoldMeshes.has(id)) {
+          const scaffold = this._createScaffold(building, state);
+          this._scaffoldMeshes.set(id, scaffold);
+          this.scene.add(scaffold);
+        }
+        // Animate scaffold opacity based on progress (fade out as building completes)
+        const scaffold = this._scaffoldMeshes.get(id)!;
+        scaffold.traverse((child) => {
+          if (child instanceof THREE.Mesh) {
+            const mat = child.material as THREE.MeshStandardMaterial;
+            mat.opacity = 1.0 - progress * 0.8;
+          }
+        });
+      } else {
+        // Remove scaffold once construction is done
+        const scaffold = this._scaffoldMeshes.get(id);
+        if (scaffold) {
+          this.scene.remove(scaffold);
+          this._scaffoldMeshes.delete(id);
+        }
+      }
+
+      // Production spinner for active production buildings
+      if (progress >= 1 && building.productionTimer > 0 && def.garrisonSlots === 0
+          && def.type !== SettlersBuildingType.HEADQUARTERS) {
+        if (!this._spinnerMeshes.has(id)) {
+          const spinnerMat = new THREE.MeshStandardMaterial({
+            color: 0xffcc00, emissive: 0xffaa00, emissiveIntensity: 0.4,
+            roughness: 0.5, metalness: 0.3,
+          });
+          const spinner = new THREE.Mesh(this._boxGeo, spinnerMat);
+          const fw = def.footprint.w * ts;
+          spinner.scale.set(0.12, 0.12, 0.12);
+          const bh = def.size === "large" ? fw * 1.1 : def.size === "medium" ? fw * 0.85 : fw * 0.7;
+          spinner.position.copy(mesh.position);
+          spinner.position.y += bh;
+          this._spinnerMeshes.set(id, spinner);
+          this.scene.add(spinner);
+        }
+        const spinner = this._spinnerMeshes.get(id)!;
+        spinner.rotation.y = t * 3;
+        spinner.rotation.x = t * 1.5;
+      } else {
+        // Remove spinner when not producing
+        const spinner = this._spinnerMeshes.get(id);
+        if (spinner) {
+          this.scene.remove(spinner);
+          this._spinnerMeshes.delete(id);
+        }
       }
     }
+  }
+
+  private _createScaffold(building: SettlersBuilding, state: SettlersState): THREE.Group {
+    const def = BUILDING_DEFS[building.type];
+    const ts = SB.TILE_SIZE;
+    const fw = def.footprint.w * ts;
+    const fh = def.footprint.h * ts;
+    const scaffoldH = def.size === "large" ? fw * 1.0 : def.size === "medium" ? fw * 0.7 : fw * 0.55;
+
+    const g = new THREE.Group();
+    const poleMat = new THREE.MeshStandardMaterial({
+      color: 0xc4944a, roughness: 0.9, transparent: true, opacity: 1.0,
+    });
+
+    // 4 corner poles
+    const halfW = fw * 0.45;
+    const halfH = fh * 0.45;
+    const corners = [
+      [-halfW, -halfH], [halfW, -halfH],
+      [-halfW, halfH], [halfW, halfH],
+    ];
+    for (const [cx, cz] of corners) {
+      const pole = new THREE.Mesh(this._cylGeo, poleMat.clone());
+      pole.scale.set(0.3, scaffoldH * 0.5, 0.3);
+      pole.position.set(cx, scaffoldH * 0.5, cz);
+      g.add(pole);
+    }
+
+    // Horizontal cross beams at mid-height
+    const beamMat = poleMat.clone();
+    for (let side = -1; side <= 1; side += 2) {
+      // Along X
+      const hBeam = new THREE.Mesh(this._boxGeo, beamMat.clone());
+      hBeam.scale.set(fw * 0.88, 0.04, 0.04);
+      hBeam.position.set(0, scaffoldH * 0.55, side * halfH);
+      g.add(hBeam);
+      // Along Z
+      const vBeam = new THREE.Mesh(this._boxGeo, beamMat.clone());
+      vBeam.scale.set(0.04, 0.04, fh * 0.88);
+      vBeam.position.set(side * halfW, scaffoldH * 0.55, 0);
+      g.add(vBeam);
+    }
+
+    // Diagonal braces on two sides
+    for (let side = -1; side <= 1; side += 2) {
+      const brace = new THREE.Mesh(this._boxGeo, beamMat.clone());
+      brace.scale.set(0.03, scaffoldH * 0.7, 0.03);
+      brace.position.set(side * halfW, scaffoldH * 0.4, 0);
+      brace.rotation.z = side * 0.35;
+      g.add(brace);
+    }
+
+    // Position at building location
+    const bx = (building.tileX + def.footprint.w * 0.5) * ts;
+    const bz = (building.tileZ + def.footprint.h * 0.5) * ts;
+    const wy = getHeightAt(state.map, bx, bz);
+    g.position.set(bx, wy, bz);
+
+    return g;
   }
 
   private _createBuildingMesh(building: SettlersBuilding, state: SettlersState): THREE.Group {
@@ -1063,10 +1468,36 @@ export class SettlersRenderer {
       if (pennant) {
         const geo = pennant.geometry;
         const pos = geo.attributes.position;
-        // Wave the tip vertex
         pos.setX(1, 0.3 + Math.sin(t * 4 + flag.tileX * 2) * 0.06);
         pos.setY(1, -0.1 + Math.cos(t * 3.5 + flag.tileZ) * 0.03);
         pos.needsUpdate = true;
+      }
+
+      // Dynamic inventory dots
+      const dotsGroup = mesh.getObjectByName("inventoryDots") as THREE.Group | undefined;
+      if (dotsGroup) {
+        while (dotsGroup.children.length > 0) dotsGroup.remove(dotsGroup.children[0]);
+        const count = Math.min(flag.inventory.length, 8);
+        for (let i = 0; i < count; i++) {
+          const dotGeo = new THREE.SphereGeometry(0.04, 4, 3);
+          const dotMat = new THREE.MeshBasicMaterial({ color: RESOURCE_META[flag.inventory[i].type].color });
+          const dot = new THREE.Mesh(dotGeo, dotMat);
+          const row = Math.floor(i / 4);
+          const col = i % 4;
+          dot.position.set((col - 1.5) * 0.08, 0.1 + row * 0.08, 0.15);
+          dotsGroup.add(dot);
+        }
+        // Bottleneck glow
+        if (flag.inventory.length >= 6) {
+          const glowGeo = new THREE.SphereGeometry(0.15, 6, 4);
+          const glowMat = new THREE.MeshBasicMaterial({
+            color: 0xff4444, transparent: true,
+            opacity: 0.3 + Math.sin(t * 4) * 0.15, depthWrite: false,
+          });
+          const glow = new THREE.Mesh(glowGeo, glowMat);
+          glow.position.y = 0.3;
+          dotsGroup.add(glow);
+        }
       }
     }
   }
@@ -1084,18 +1515,12 @@ export class SettlersRenderer {
 
     // Pennant
     const pennantGeo = new THREE.BufferGeometry();
-    const verts = new Float32Array([
-      0, 0, 0,
-      0.3, -0.1, 0,
-      0, -0.22, 0,
-    ]);
+    const verts = new Float32Array([0, 0, 0, 0.3, -0.1, 0, 0, -0.22, 0]);
     pennantGeo.setAttribute("position", new THREE.BufferAttribute(verts, 3));
     pennantGeo.computeVertexNormals();
     const pennantMat = new THREE.MeshStandardMaterial({
-      color: playerColor,
-      side: THREE.DoubleSide,
-      emissive: playerColor,
-      emissiveIntensity: 0.1,
+      color: playerColor, side: THREE.DoubleSide,
+      emissive: playerColor, emissiveIntensity: 0.1,
     });
     const pennant = new THREE.Mesh(pennantGeo, pennantMat);
     pennant.name = "pennant";
@@ -1109,18 +1534,10 @@ export class SettlersRenderer {
     base.position.y = 0.04;
     g.add(base);
 
-    // Inventory indicators (small colored dots)
-    if (flag.inventory.length > 0) {
-      for (let i = 0; i < Math.min(flag.inventory.length, 4); i++) {
-        const dotGeo = new THREE.SphereGeometry(0.04, 4, 3);
-        const dotMat = new THREE.MeshBasicMaterial({
-          color: RESOURCE_META[flag.inventory[i].type].color,
-        });
-        const dot = new THREE.Mesh(dotGeo, dotMat);
-        dot.position.set((i - 1.5) * 0.08, 0.1, 0.15);
-        g.add(dot);
-      }
-    }
+    // Dynamic inventory group (updated each frame)
+    const dotsGroup = new THREE.Group();
+    dotsGroup.name = "inventoryDots";
+    g.add(dotsGroup);
 
     const wx = (flag.tileX + 0.5) * SB.TILE_SIZE;
     const wz = (flag.tileZ + 0.5) * SB.TILE_SIZE;

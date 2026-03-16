@@ -26,6 +26,9 @@ export class SettlersInputSystem {
   onLeftClick: ((tileX: number, tileZ: number) => void) | null = null;
   onRightClick: (() => void) | null = null;
   onEscape: (() => void) | null = null;
+  onSave: (() => void) | null = null;
+  onLoad: (() => void) | null = null;
+  onToggleWiki: (() => void) | null = null;
 
   constructor(camera: SettlersCameraController) {
     this._camera = camera;
@@ -42,7 +45,11 @@ export class SettlersInputSystem {
       if (e.code === "KeyR") this._setTool("road");
       if (e.code === "KeyF") this._setTool("flag");
       if (e.code === "KeyX") this._setTool("demolish");
+      if (e.code === "KeyT") this._setTool("attack");
       if (e.code === "Space") this._togglePause();
+      if (e.code === "KeyH") this.onToggleWiki?.();
+      if (e.code === "F5") { e.preventDefault(); this.onSave?.(); }
+      if (e.code === "F9") { e.preventDefault(); this.onLoad?.(); }
     };
 
     this._onKeyUp = (e: KeyboardEvent) => {
