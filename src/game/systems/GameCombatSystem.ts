@@ -12,8 +12,13 @@ import {
   Direction,
 } from "../state/GameState";
 import type {
-  GrailGameState, PlayerState, EnemyInstance,
+  GrailGameState, PlayerState, EnemyInstance, TrapInstance,
 } from "../state/GameState";
+import { TRAP_DEFS, ARENA_HAZARD_DEFS, BOSS_ARENA_HAZARDS, ARTIFACT_DEFS, ARTIFACT_DROP_TABLE, ARTIFACT_SET_BONUSES } from "../config/GameArtifactDefs";
+import type { TrapVariant } from "../config/GameArtifactDefs";
+import { rollMaterialDrop, addMaterial, rollGemDrop, rollChestMaterials, getEnchantmentBonuses, getSocketBonuses } from "./GameCraftingSystem";
+import { CRAFTING_MATERIALS, SOCKET_GEMS } from "../config/GameCraftingDefs";
+import { companionTakeDamage, updateCompanion, createCompanion } from "./GameCompanionSystem";
 
 // ---------------------------------------------------------------------------
 // Callbacks for view layer
@@ -26,6 +31,10 @@ type LevelUpCB = (level: number) => void;
 type LootCB = (item: ItemDef, x: number, y: number) => void;
 type BossPhaseFlashCB = (bossId: string, phase: number, color: number) => void;
 type SpawnCB = (enemy: EnemyInstance) => void;
+type MaterialCB = (matName: string, quantity: number, x: number, y: number) => void;
+type ArtifactCB = (artifactName: string, x: number, y: number) => void;
+type TrapCB = (trapName: string, x: number, y: number) => void;
+type CompanionCB = (compName: string) => void;
 
 let _onHit: HitCB | null = null;
 let _onDeath: DeathCB | null = null;
@@ -34,6 +43,10 @@ let _onLevelUp: LevelUpCB | null = null;
 let _onLoot: LootCB | null = null;
 let _onBossPhaseFlash: BossPhaseFlashCB | null = null;
 let _onSpawn: SpawnCB | null = null;
+let _onMaterial: MaterialCB | null = null;
+let _onArtifact: ArtifactCB | null = null;
+let _onTrap: TrapCB | null = null;
+let _onCompanion: CompanionCB | null = null;
 
 const TS = GameBalance.TILE_SIZE;
 
@@ -45,6 +58,10 @@ export const GameCombatSystem = {
   setLootCallback(cb: LootCB | null) { _onLoot = cb; },
   setBossPhaseFlashCallback(cb: BossPhaseFlashCB | null) { _onBossPhaseFlash = cb; },
   setSpawnCallback(cb: SpawnCB | null) { _onSpawn = cb; },
+  setMaterialCallback(cb: MaterialCB | null) { _onMaterial = cb; },
+  setArtifactCallback(cb: ArtifactCB | null) { _onArtifact = cb; },
+  setTrapCallback(cb: TrapCB | null) { _onTrap = cb; },
+  setCompanionCallback(cb: CompanionCB | null) { _onCompanion = cb; },
 
   // -------------------------------------------------------------------------
   // Player attacks nearest enemy in facing direction
@@ -189,6 +206,24 @@ export const GameCombatSystem = {
     const effect = inv.def.specialEffect;
     if (effect === "heal_30") {
       p.hp = Math.min(p.maxHp, p.hp + 30);
+    } else if (effect === "heal_60") {
+      p.hp = Math.min(p.maxHp, p.hp + 60);
+    } else if (effect === "cleanse") {
+      p.statusEffects = p.statusEffects.filter(e => e.id === "buff_atk" || e.id === "invulnerable");
+      p.confusionTimer = 0;
+      p.stunTimer = 0;
+    } else if (effect === "temp_shield") {
+      p.statusEffects.push({ id: "invulnerable", turnsRemaining: 5, value: 0 });
+    } else if (effect === "fire_all") {
+      for (const e of state.floor.enemies) {
+        if (e.alive) {
+          const dmg = 30;
+          e.hp -= dmg;
+          _onHit?.(e.x, e.y, dmg, false);
+          e.statusEffects.push({ id: "burn", turnsRemaining: 3, value: 8 });
+          if (e.hp <= 0) killEnemy(state, e);
+        }
+      }
     } else if (effect === "buff_atk_temp") {
       p.statusEffects.push({ id: "buff_atk", turnsRemaining: 5, value: 10 });
     } else if (effect === "lightning_all") {
@@ -223,17 +258,17 @@ export const GameCombatSystem = {
       if (p.equippedWeapon) addToInventory(p, p.equippedWeapon);
       p.equippedWeapon = def;
       p.inventory.splice(index, 1);
-      recalcStats(p);
+      recalcStats(state);
     } else if (def.type === "armor") {
       if (p.equippedArmor) addToInventory(p, p.equippedArmor);
       p.equippedArmor = def;
       p.inventory.splice(index, 1);
-      recalcStats(p);
+      recalcStats(state);
     } else if (def.type === "relic") {
       if (p.equippedRelic) addToInventory(p, p.equippedRelic);
       p.equippedRelic = def;
       p.inventory.splice(index, 1);
-      recalcStats(p);
+      recalcStats(state);
     }
   },
 
@@ -246,6 +281,14 @@ export const GameCombatSystem = {
     chest.opened = true;
     addToInventory(state.player, chest.item);
     _onLoot?.(chest.item, col * TS, row * TS);
+
+    // Also drop crafting materials from chests
+    const matDrops = rollChestMaterials(state.currentFloor, 2);
+    for (const drop of matDrops) {
+      addMaterial(state, drop.matId, drop.quantity);
+      const mat = CRAFTING_MATERIALS[drop.matId];
+      if (mat) _onMaterial?.(mat.name, drop.quantity, col * TS, row * TS);
+    }
   },
 
   // -------------------------------------------------------------------------
@@ -371,14 +414,92 @@ export const GameCombatSystem = {
     const col = Math.floor(p.x / TS);
     const row = Math.floor(p.y / TS);
     const floor = state.floor;
+
     if (col >= 0 && col < floor.width && row >= 0 && row < floor.height) {
       if (floor.tiles[row][col] === TileType.TRAP) {
         const invuln = p.statusEffects.find((e) => e.id === "invulnerable");
-        if (!invuln) {
-          p.hp -= GameBalance.TRAP_DAMAGE;
-          _onPlayerHit?.(GameBalance.TRAP_DAMAGE);
+
+        // Enhanced trap: find the trap instance
+        const trapInst = floor.traps.find(t => t.col === col && t.row === row && !t.disarmed);
+        if (trapInst) {
+          const trapDef = TRAP_DEFS[trapInst.variant];
+
+          // Detection check: player's perception vs trap's DC
+          if (!trapInst.detected) {
+            const detectionRoll = state.perception + Math.random() * 30;
+            if (detectionRoll >= trapDef.detectionDC) {
+              trapInst.detected = true;
+              _onTrap?.(trapDef.name, col * TS, row * TS);
+              return; // detected but not triggered
+            }
+          }
+
+          // If detected, player can choose to disarm (handled in GameGame via E key)
+          if (trapInst.detected) return;
+
+          if (!invuln) {
+            // Apply trap variant effects
+            switch (trapInst.variant) {
+              case "spike":
+                p.hp -= trapDef.damage;
+                _onPlayerHit?.(trapDef.damage);
+                break;
+              case "poison_gas":
+                p.hp -= trapDef.damage;
+                _onPlayerHit?.(trapDef.damage);
+                if (!p.statusEffects.find(e => e.id === "poison")) {
+                  p.statusEffects.push({ id: "poison", turnsRemaining: 5, value: 4 });
+                }
+                break;
+              case "falling_rocks":
+                p.hp -= trapDef.damage;
+                _onPlayerHit?.(trapDef.damage);
+                p.stunTimer = 1.5;
+                break;
+              case "teleport":
+                // Teleport player to random floor tile
+                for (let a = 0; a < 20; a++) {
+                  const tc = Math.floor(Math.random() * floor.width);
+                  const tr = Math.floor(Math.random() * floor.height);
+                  if (floor.tiles[tr][tc] !== TileType.WALL && floor.tiles[tr][tc] !== TileType.TRAP) {
+                    p.x = tc * TS + TS / 2;
+                    p.y = tr * TS + TS / 2;
+                    break;
+                  }
+                }
+                break;
+              case "alarm":
+                // Aggro all enemies on the floor
+                for (const e of floor.enemies) {
+                  if (e.alive) e.aggroed = true;
+                }
+                break;
+            }
+          }
+
+          trapInst.disarmed = true; // trap is consumed
+          floor.tiles[row][col] = TileType.FLOOR;
+        } else {
+          // Fallback for traps without instances
+          if (!invuln) {
+            p.hp -= GameBalance.TRAP_DAMAGE;
+            _onPlayerHit?.(GameBalance.TRAP_DAMAGE);
+          }
+          floor.tiles[row][col] = TileType.FLOOR;
         }
-        floor.tiles[row][col] = TileType.FLOOR;
+      }
+
+      // Trap detection: reveal nearby traps based on perception
+      for (const trap of floor.traps) {
+        if (trap.detected || trap.disarmed) continue;
+        const dist = Math.abs(trap.col - col) + Math.abs(trap.row - row);
+        if (dist <= 3) {
+          const detectionRoll = state.perception + Math.random() * 20;
+          const trapDef = TRAP_DEFS[trap.variant];
+          if (detectionRoll >= trapDef.detectionDC * 0.7) {
+            trap.detected = true;
+          }
+        }
       }
     }
 
@@ -389,6 +510,282 @@ export const GameCombatSystem = {
           const dmg = trail.damage * (GameBalance.SIM_TICK_MS / 1000);
           p.hp -= dmg;
         }
+      }
+    }
+  },
+
+  // -------------------------------------------------------------------------
+  // Disarm a detected trap
+  // -------------------------------------------------------------------------
+  disarmTrap(state: GrailGameState): boolean {
+    const p = state.player;
+    const col = Math.floor(p.x / TS);
+    const row = Math.floor(p.y / TS);
+
+    // Check nearby detected traps (within 2 tiles)
+    for (const trap of state.floor.traps) {
+      if (!trap.detected || trap.disarmed) continue;
+      const dist = Math.abs(trap.col - col) + Math.abs(trap.row - row);
+      if (dist <= 2) {
+        const trapDef = TRAP_DEFS[trap.variant];
+        const skillRoll = state.trapDisarmSkill + Math.random() * 40;
+        if (skillRoll >= trapDef.disarmDC) {
+          trap.disarmed = true;
+          state.floor.tiles[trap.row][trap.col] = TileType.FLOOR;
+          // Gain XP and disarm skill for successful disarm
+          state.trapDisarmSkill += 1;
+          return true;
+        } else {
+          // Failed disarm triggers the trap
+          trap.disarmed = true;
+          return false;
+        }
+      }
+    }
+    return false;
+  },
+
+  // -------------------------------------------------------------------------
+  // Interact with lever (secret rooms)
+  // -------------------------------------------------------------------------
+  checkLever(state: GrailGameState): boolean {
+    const p = state.player;
+    const col = Math.floor(p.x / TS);
+    const row = Math.floor(p.y / TS);
+    if (col < 0 || col >= state.floor.width || row < 0 || row >= state.floor.height) return false;
+    return state.floor.tiles[row][col] === TileType.LEVER;
+  },
+
+  activateLever(state: GrailGameState): boolean {
+    const p = state.player;
+    const col = Math.floor(p.x / TS);
+    const row = Math.floor(p.y / TS);
+
+    const trigger = state.floor.secretTriggers.find(t => t.col === col && t.row === row && !t.activated);
+    if (!trigger) return false;
+
+    trigger.activated = true;
+    state.floor.tiles[row][col] = TileType.FLOOR;
+
+    // Reveal the secret room — convert destructible walls to corridors
+    const room = state.floor.rooms[trigger.targetRoomIdx];
+    if (room) {
+      // Search for destructible walls around the secret room and break them
+      for (let r = room.y - 1; r <= room.y + room.h; r++) {
+        for (let c = room.x - 1; c <= room.x + room.w; c++) {
+          if (r >= 0 && r < state.floor.height && c >= 0 && c < state.floor.width) {
+            if (state.floor.tiles[r][c] === TileType.DESTRUCTIBLE_WALL) {
+              state.floor.tiles[r][c] = TileType.CORRIDOR;
+            }
+          }
+        }
+      }
+    }
+    return true;
+  },
+
+  // -------------------------------------------------------------------------
+  // Check crafting bench / enchant table
+  // -------------------------------------------------------------------------
+  checkCraftingBench(state: GrailGameState): boolean {
+    const p = state.player;
+    const col = Math.floor(p.x / TS);
+    const row = Math.floor(p.y / TS);
+    if (col < 0 || col >= state.floor.width || row < 0 || row >= state.floor.height) return false;
+    return state.floor.tiles[row][col] === TileType.CRAFTING_BENCH;
+  },
+
+  checkEnchantTable(state: GrailGameState): boolean {
+    const p = state.player;
+    const col = Math.floor(p.x / TS);
+    const row = Math.floor(p.y / TS);
+    if (col < 0 || col >= state.floor.width || row < 0 || row >= state.floor.height) return false;
+    return state.floor.tiles[row][col] === TileType.ENCHANT_TABLE;
+  },
+
+  // -------------------------------------------------------------------------
+  // Check companion NPC
+  // -------------------------------------------------------------------------
+  checkCompanionNPC(state: GrailGameState): boolean {
+    const p = state.player;
+    const col = Math.floor(p.x / TS);
+    const row = Math.floor(p.y / TS);
+    return state.floor.companionNPCs.some(c => c.col === col && c.row === row && !c.recruited);
+  },
+
+  recruitCompanion(state: GrailGameState): boolean {
+    const p = state.player;
+    const col = Math.floor(p.x / TS);
+    const row = Math.floor(p.y / TS);
+    const npc = state.floor.companionNPCs.find(c => c.col === col && c.row === row && !c.recruited);
+    if (!npc) return false;
+    if (state.companion !== null) return false; // already have a companion
+
+    npc.recruited = true;
+    state.floor.tiles[row][col] = TileType.FLOOR;
+
+    state.companion = createCompanion(npc.def, p.x, p.y);
+    _onCompanion?.(npc.def.name);
+    return true;
+  },
+
+  // -------------------------------------------------------------------------
+  // Update companion AI (called from GameGame)
+  // -------------------------------------------------------------------------
+  updateCompanionAI(state: GrailGameState, dt: number): void {
+    updateCompanion(state, dt);
+  },
+
+  // -------------------------------------------------------------------------
+  // Update boss arena hazards
+  // -------------------------------------------------------------------------
+  updateArenaHazards(state: GrailGameState, dt: number): void {
+    const p = state.player;
+    const floor = state.floor;
+    const invuln = p.statusEffects.find(e => e.id === "invulnerable");
+
+    // Spawn hazards for active bosses
+    for (const enemy of floor.enemies) {
+      if (!enemy.alive || !enemy.def.isBoss) continue;
+      const hazardList = BOSS_ARENA_HAZARDS[enemy.def.id];
+      if (!hazardList || hazardList.length === 0) continue;
+
+      // Spawn hazards during phase transitions and periodically
+      if (enemy.bossPhase > 0 && Math.random() < 0.005 * dt * 60) {
+        const hazardId = hazardList[Math.floor(Math.random() * hazardList.length)];
+        const hDef = ARENA_HAZARD_DEFS[hazardId];
+        if (hDef) {
+          // Spawn near player (telegraph by placing ahead of them)
+          const offsetX = (Math.random() - 0.5) * 4;
+          const offsetY = (Math.random() - 0.5) * 4;
+          const hc = Math.floor(p.x / TS) + Math.round(offsetX);
+          const hr = Math.floor(p.y / TS) + Math.round(offsetY);
+          if (hc >= 0 && hc < floor.width && hr >= 0 && hr < floor.height &&
+              floor.tiles[hr][hc] !== TileType.WALL) {
+            floor.arenaHazards.push({
+              id: hazardId, col: hc, row: hr,
+              timer: hDef.duration,
+              damagePerSecond: hDef.damagePerSecond,
+              radius: hDef.radius,
+              color: hDef.color,
+            });
+          }
+        }
+      }
+    }
+
+    // Update existing hazards
+    const pc = Math.floor(p.x / TS);
+    const pr = Math.floor(p.y / TS);
+    for (let i = floor.arenaHazards.length - 1; i >= 0; i--) {
+      const h = floor.arenaHazards[i];
+      h.timer -= dt;
+      if (h.timer <= 0) {
+        floor.arenaHazards.splice(i, 1);
+        continue;
+      }
+
+      // Check if player is in hazard radius
+      const dist = Math.abs(pc - h.col) + Math.abs(pr - h.row);
+      if (dist <= h.radius && !invuln && state.dashTimer <= 0) {
+        p.hp -= h.damagePerSecond * dt;
+        if (h.damagePerSecond > 5) _onPlayerHit?.(Math.ceil(h.damagePerSecond * dt));
+      }
+
+      // Hazards also affect companion
+      if (state.companion && state.companion.alive) {
+        const cc = Math.floor(state.companion.x / TS);
+        const cr = Math.floor(state.companion.y / TS);
+        const cdist = Math.abs(cc - h.col) + Math.abs(cr - h.row);
+        if (cdist <= h.radius) {
+          companionTakeDamage(state, h.damagePerSecond * dt);
+        }
+      }
+    }
+  },
+
+  // -------------------------------------------------------------------------
+  // Puzzle plate interaction
+  // -------------------------------------------------------------------------
+  checkPuzzlePlate(state: GrailGameState): boolean {
+    const p = state.player;
+    const col = Math.floor(p.x / TS);
+    const row = Math.floor(p.y / TS);
+    if (col < 0 || col >= state.floor.width || row < 0 || row >= state.floor.height) return false;
+    return state.floor.tiles[row][col] === TileType.PUZZLE_PLATE;
+  },
+
+  activatePuzzlePlate(state: GrailGameState): boolean {
+    const p = state.player;
+    const col = Math.floor(p.x / TS);
+    const row = Math.floor(p.y / TS);
+
+    // Find which puzzle room this plate belongs to
+    for (const puzzle of state.floor.puzzleRooms) {
+      if (puzzle.solved) continue;
+      const room = state.floor.rooms[puzzle.roomIndex];
+      if (!room) continue;
+
+      // Check if player is inside this room
+      if (col >= room.x && col < room.x + room.w && row >= room.y && row < room.y + room.h) {
+        if (!puzzle.playerSequence) puzzle.playerSequence = [];
+
+        // Determine plate index based on position
+        const plateIdx = col - room.x;
+        puzzle.playerSequence.push(plateIdx);
+
+        // Check against sequence
+        if (puzzle.sequence) {
+          const idx = puzzle.playerSequence.length - 1;
+          if (puzzle.playerSequence[idx] !== puzzle.sequence[idx]) {
+            // Wrong! Reset
+            puzzle.playerSequence = [];
+            return false;
+          }
+          if (puzzle.playerSequence.length >= puzzle.sequence.length) {
+            // Solved!
+            puzzle.solved = true;
+            return true;
+          }
+        }
+        return false;
+      }
+    }
+    return false;
+  },
+
+  // -------------------------------------------------------------------------
+  // Destructible wall attack
+  // -------------------------------------------------------------------------
+  checkDestructibleWall(state: GrailGameState): boolean {
+    const p = state.player;
+    let dx = 0, dy = 0;
+    switch (p.facing) {
+      case Direction.UP: dy = -1; break;
+      case Direction.DOWN: dy = 1; break;
+      case Direction.LEFT: dx = -1; break;
+      case Direction.RIGHT: dx = 1; break;
+    }
+    const col = Math.floor(p.x / TS) + dx;
+    const row = Math.floor(p.y / TS) + dy;
+    if (col < 0 || col >= state.floor.width || row < 0 || row >= state.floor.height) return false;
+    return state.floor.tiles[row][col] === TileType.DESTRUCTIBLE_WALL;
+  },
+
+  breakDestructibleWall(state: GrailGameState): void {
+    const p = state.player;
+    let dx = 0, dy = 0;
+    switch (p.facing) {
+      case Direction.UP: dy = -1; break;
+      case Direction.DOWN: dy = 1; break;
+      case Direction.LEFT: dx = -1; break;
+      case Direction.RIGHT: dx = 1; break;
+    }
+    const col = Math.floor(p.x / TS) + dx;
+    const row = Math.floor(p.y / TS) + dy;
+    if (col >= 0 && col < state.floor.width && row >= 0 && row < state.floor.height) {
+      if (state.floor.tiles[row][col] === TileType.DESTRUCTIBLE_WALL) {
+        state.floor.tiles[row][col] = TileType.CORRIDOR;
       }
     }
   },
@@ -671,6 +1068,10 @@ export const GameCombatSystem = {
     _onLoot = null;
     _onBossPhaseFlash = null;
     _onSpawn = null;
+    _onMaterial = null;
+    _onArtifact = null;
+    _onTrap = null;
+    _onCompanion = null;
   },
 };
 
@@ -728,6 +1129,46 @@ function killEnemy(state: GrailGameState, enemy: EnemyInstance): void {
     }
   }
 
+  // --- Material drops from crafting system ---
+  const matDrop = rollMaterialDrop(state.currentFloor, enemy.def.category, 0.3);
+  if (matDrop) {
+    addMaterial(state, matDrop.matId, matDrop.quantity);
+    const mat = CRAFTING_MATERIALS[matDrop.matId];
+    if (mat) _onMaterial?.(mat.name, matDrop.quantity, enemy.x, enemy.y);
+  }
+
+  // --- Gem drops from bosses ---
+  if (enemy.def.isBoss) {
+    const gemId = rollGemDrop();
+    if (gemId) {
+      addMaterial(state, gemId, 1);
+      const gem = SOCKET_GEMS[gemId];
+      if (gem) _onMaterial?.(gem.name, 1, enemy.x, enemy.y);
+    }
+
+    // --- Artifact drops from bosses (20% chance) ---
+    if (Math.random() < 0.2) {
+      const totalW = ARTIFACT_DROP_TABLE.reduce((s, e) => s + e.weight, 0);
+      let roll2 = Math.random() * totalW;
+      for (const entry of ARTIFACT_DROP_TABLE) {
+        roll2 -= entry.weight;
+        if (roll2 <= 0) {
+          const artifact = ARTIFACT_DEFS[entry.artifactId];
+          if (artifact && !state.artifacts.find(a => a.id === artifact.id)) {
+            state.artifacts.push({ id: artifact.id, found: true, upgraded: false });
+            _onArtifact?.(artifact.name, enemy.x, enemy.y);
+            recalcStats(state);
+          }
+          break;
+        }
+      }
+    }
+  }
+
+  // --- Perception and trap skill increase on kill ---
+  if (state.perception < 80) state.perception += 0.3;
+  if (state.trapDisarmSkill < 80) state.trapDisarmSkill += 0.2;
+
   // Reanimation: undead enemies come back on Crimson Crypts floors
   const themeFloor = Math.min(state.currentFloor, 7);
   if ((themeFloor === 2 || themeFloor === 7) && enemy.def.category === "undead" && !enemy.def.isBoss) {
@@ -781,16 +1222,63 @@ function rollLootTable(table: { itemId: string; weight: number }[]): ItemDef | n
   return null;
 }
 
-function recalcStats(player: PlayerState): void {
+export function recalcStats(state: GrailGameState): void {
+  const player = state.player;
   const base = player.knightDef;
   const lvlAtk = (player.level - 1) * 2;
   const lvlDef = (player.level - 1) * 1;
   const lvlHp = (player.level - 1) * 8;
-  player.attack = base.attack + lvlAtk + (player.equippedWeapon?.attackBonus ?? 0) + (player.equippedRelic?.attackBonus ?? 0);
-  player.defense = base.defense + lvlDef + (player.equippedArmor?.defenseBonus ?? 0) + (player.equippedRelic?.defenseBonus ?? 0);
-  player.maxHp = base.maxHp + lvlHp + (player.equippedWeapon?.hpBonus ?? 0) + (player.equippedArmor?.hpBonus ?? 0) + (player.equippedRelic?.hpBonus ?? 0);
+
+  // Base + level + equipment
+  let atk = base.attack + lvlAtk + (player.equippedWeapon?.attackBonus ?? 0) + (player.equippedRelic?.attackBonus ?? 0);
+  let def = base.defense + lvlDef + (player.equippedArmor?.defenseBonus ?? 0) + (player.equippedRelic?.defenseBonus ?? 0);
+  let hp = base.maxHp + lvlHp + (player.equippedWeapon?.hpBonus ?? 0) + (player.equippedArmor?.hpBonus ?? 0) + (player.equippedRelic?.hpBonus ?? 0);
+  let spd = base.speed + Math.floor((player.level - 1) / 3) + (player.equippedWeapon?.speedBonus ?? 0) + (player.equippedArmor?.speedBonus ?? 0) + (player.equippedRelic?.speedBonus ?? 0);
+
+  // Enchantment bonuses
+  const enchBonuses = getEnchantmentBonuses(state);
+  atk += enchBonuses.atk;
+  def += enchBonuses.def;
+  hp += enchBonuses.hp;
+  spd += enchBonuses.spd;
+
+  // Socket gem bonuses
+  const sockBonuses = getSocketBonuses(state);
+  atk += sockBonuses.atk;
+  def += sockBonuses.def;
+  hp += sockBonuses.hp;
+  spd += sockBonuses.spd;
+
+  // Artifact bonuses
+  for (const artState of state.artifacts) {
+    if (!artState.found) continue;
+    const artDef = ARTIFACT_DEFS[artState.id];
+    if (!artDef) continue;
+    atk += artDef.attackBonus;
+    def += artDef.defenseBonus;
+    hp += artDef.hpBonus;
+    spd += artDef.speedBonus;
+  }
+
+  // Artifact set bonuses
+  const ownedArtifactIds = state.artifacts.filter(a => a.found).map(a => a.id);
+  for (const setBonus of ARTIFACT_SET_BONUSES) {
+    const count = setBonus.pieces.filter(pid => ownedArtifactIds.includes(pid)).length;
+    for (const bonus of setBonus.bonuses) {
+      if (count >= bonus.count) {
+        atk += bonus.attackBonus;
+        def += bonus.defenseBonus;
+        hp += bonus.hpBonus;
+        spd += bonus.speedBonus;
+      }
+    }
+  }
+
+  player.attack = atk;
+  player.defense = def;
+  player.maxHp = hp;
   player.hp = Math.min(player.hp, player.maxHp);
-  player.speed = base.speed + Math.floor((player.level - 1) / 3) + (player.equippedWeapon?.speedBonus ?? 0) + (player.equippedArmor?.speedBonus ?? 0) + (player.equippedRelic?.speedBonus ?? 0);
+  player.speed = spd;
 }
 
 // ---------------------------------------------------------------------------

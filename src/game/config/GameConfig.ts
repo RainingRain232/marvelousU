@@ -692,6 +692,12 @@ export enum TileType {
   LAVA = 11,
   ILLUSION = 12,
   SHRINE = 13,
+  DESTRUCTIBLE_WALL = 14,
+  LEVER = 15,
+  PUZZLE_PLATE = 16,
+  COMPANION_NPC = 17,
+  ENCHANT_TABLE = 18,
+  CRAFTING_BENCH = 19,
 }
 
 // ---------------------------------------------------------------------------
@@ -704,6 +710,9 @@ export enum RoomType {
   CHAMPION_ARENA = "champion_arena",
   TREASURE_VAULT = "treasure_vault",
   SECRET = "secret",
+  PUZZLE = "puzzle",
+  BOSS_ARENA = "boss_arena",
+  COMPANION = "companion",
 }
 
 // ---------------------------------------------------------------------------

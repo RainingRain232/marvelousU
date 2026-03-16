@@ -11,6 +11,8 @@ import {
   TalentEffectType,
   ParticleType, Weather,
   MapModifier, LootFilterLevel,
+  PetType, PetSpecies, PetAIState, DiabloPet,
+  CraftingStationType, MaterialType, AdvancedCraftingRecipe,
   createDefaultPlayer, createDefaultState
 } from "./DiabloTypes";
 import {
@@ -31,6 +33,8 @@ import {
   UNLOCKABLE_SKILLS,
   MAP_SPECIFIC_ITEMS,
   MAP_MODIFIER_DEFS, ELEMENTAL_REACTIONS, PARAGON_XP_TABLE,
+  PET_DEFS, PET_DROP_TABLE, PET_XP_TABLE,
+  ADVANCED_CRAFTING_RECIPES, CRAFTING_MATERIALS, MATERIAL_DROP_TABLE,
 } from "./DiabloConfig";
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -470,6 +474,13 @@ export class DiabloGame {
   // @ts-ignore used by legendary effects
   private _berserkerStacks: { expiry: number }[] = [];
 
+  // Pet system
+  private _petBuffs: { type: string; value: number; remaining: number }[] = [];
+
+  // Advanced crafting
+  // @ts-ignore used by crafting UI state
+  private _craftingUIOpen: boolean = false;
+
   // ──────────────────────────────────────────────────────────────
   //  BOOT
   // ──────────────────────────────────────────────────────────────
@@ -654,6 +665,14 @@ export class DiabloGame {
         this._phaseBeforeOverlay = DiabloPhase.PLAYING;
         this._state.phase = DiabloPhase.INVENTORY;
         this._showCollection();
+      } else if (e.code === "KeyG") {
+        this._phaseBeforeOverlay = DiabloPhase.PLAYING;
+        this._state.phase = DiabloPhase.INVENTORY;
+        this._showPetManagement();
+      } else if (e.code === "KeyB") {
+        this._phaseBeforeOverlay = DiabloPhase.PLAYING;
+        this._state.phase = DiabloPhase.INVENTORY;
+        this._showAdvancedCraftingUI();
       }
     } else if (this._state.phase === DiabloPhase.INVENTORY) {
       if (e.code === "Escape" || e.code === "KeyI" || e.code === "KeyT" || e.code === "KeyC" || e.code === "KeyN") {
@@ -2125,6 +2144,8 @@ export class DiabloGame {
           ${row("T", "Open Talent Tree")}
           ${row("K", "Swap Skills Menu")}
           ${row("J", "Quest Journal")}
+          ${row("G", "Pet Management")}
+          ${row("B", "Advanced Crafting")}
           ${row("L / P", "Toggle Lantern")}
           ${row("M", "Toggle Fullscreen Map")}
           ${row("ESC", "Pause Menu")}
@@ -3977,6 +3998,9 @@ export class DiabloGame {
         this._updateStatusEffects(scaledDt);
         this._updateFloatingText(scaledDt);
         this._updateTownfolk(scaledDt);
+        this._updatePets(scaledDt);
+        this._updateCraftingQueue(scaledDt);
+        this._updatePetBuffs(scaledDt);
         this._checkMapClear();
         this._revealAroundPlayer(this._state.player.x, this._state.player.z);
 
@@ -4617,6 +4641,11 @@ export class DiabloGame {
         };
         this._state.loot.push(loot);
       }
+
+      // Pet XP and drops
+      this._grantPetXp(Math.floor(target.xpReward * 0.5));
+      this._rollPetDrop(target.isBoss);
+      this._rollMaterialDrop();
     } else {
       // Stagger
       if (!target.isBoss && Math.random() < 0.3) {
@@ -5902,9 +5931,10 @@ export class DiabloGame {
     }
 
     const p = this._state.player;
-    const xpMult = this._state.weather === Weather.CLEAR ? 1.1 : 1.0;
+    const xpMult = (this._state.weather === Weather.CLEAR ? 1.1 : 1.0) * (1 + this._hasPetBuff('xpBonus'));
     p.xp += Math.floor(enemy.xpReward * xpMult);
-    const goldEarned = Math.floor((5 + Math.random() * 10 * enemy.level) * DIFFICULTY_CONFIGS[this._state.difficulty].goldMult);
+    const goldMult = (1 + this._hasPetBuff('goldBonus'));
+    const goldEarned = Math.floor((5 + Math.random() * 10 * enemy.level) * DIFFICULTY_CONFIGS[this._state.difficulty].goldMult * goldMult);
     p.gold += goldEarned;
     this._goldEarnedTotal += goldEarned;
     this._state.killCount++;
@@ -5940,6 +5970,11 @@ export class DiabloGame {
       }
     }
     this._updateQuestProgress(QuestType.COLLECT_GOLD, undefined);
+
+    // Pet XP, pet egg drops, crafting material drops
+    this._grantPetXp(Math.floor(enemy.xpReward * 0.5));
+    this._rollPetDrop(enemy.isBoss);
+    this._rollMaterialDrop();
   }
 
   // ──────────────────────────────────────────────────────────────
@@ -8614,6 +8649,889 @@ export class DiabloGame {
     const grid = this._state.exploredGrid;
     if (gx < 0 || gx >= mapCfg.width || gz < 0 || gz >= mapCfg.depth) return false;
     return grid[gx] ? grid[gx][gz] : false;
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  //  PET SYSTEM
+  // ══════════════════════════════════════════════════════════════
+
+  /** Create a new pet from a species definition. */
+  private _createPet(species: PetSpecies): DiabloPet {
+    const def = PET_DEFS[species];
+    return {
+      id: this._genId(),
+      species,
+      petType: def.petType,
+      customName: def.name,
+      icon: def.icon,
+      level: 1,
+      xp: 0,
+      xpToNext: PET_XP_TABLE[0] || 80,
+      hp: def.baseHp,
+      maxHp: def.baseHp,
+      damage: def.baseDamage,
+      armor: def.baseArmor,
+      moveSpeed: def.moveSpeed,
+      attackRange: def.attackRange,
+      attackSpeed: def.attackSpeed,
+      aggroRange: def.aggroRange,
+      lootPickupRange: def.lootPickupRange || 0,
+      x: this._state.player.x + 2,
+      y: 0,
+      z: this._state.player.z + 2,
+      angle: 0,
+      aiState: PetAIState.FOLLOWING,
+      targetId: null,
+      attackTimer: 0,
+      abilityCooldowns: {},
+      equipment: { collar: null, charm: null },
+      isSummoned: false,
+      loyalty: 50,
+    };
+  }
+
+  /** Try to drop a pet egg when an enemy is killed. */
+  private _rollPetDrop(isBoss: boolean): void {
+    const mapId = this._state.currentMap;
+    const p = this._state.player;
+    for (const drop of PET_DROP_TABLE) {
+      if (drop.mapId !== mapId) continue;
+      if (drop.bossOnly && !isBoss) continue;
+      if (Math.random() < drop.chance) {
+        // Check if player already owns this species
+        if (p.pets.some(pet => pet.species === drop.species)) continue;
+        if (p.pets.length >= p.maxPets) {
+          this._addFloatingText(p.x, p.y + 3, p.z, "Pet inventory full!", "#ff4444");
+          return;
+        }
+        const newPet = this._createPet(drop.species);
+        p.pets.push(newPet);
+        const def = PET_DEFS[drop.species];
+        this._addFloatingText(p.x, p.y + 4, p.z, `PET FOUND: ${def.name}!`, "#ffd700");
+        return;
+      }
+    }
+  }
+
+  /** Summon / dismiss a pet. Only one can be active at a time. */
+  private _summonPet(petId: string): void {
+    const p = this._state.player;
+    // Dismiss currently active pet
+    for (const pet of p.pets) {
+      if (pet.isSummoned) {
+        pet.isSummoned = false;
+        pet.aiState = PetAIState.IDLE;
+      }
+    }
+    const pet = p.pets.find(pt => pt.id === petId);
+    if (!pet) return;
+    pet.isSummoned = true;
+    pet.aiState = PetAIState.FOLLOWING;
+    pet.hp = pet.maxHp;
+    pet.x = p.x + 2;
+    pet.z = p.z + 2;
+    p.activePetId = pet.id;
+    this._addFloatingText(p.x, p.y + 3, p.z, `${pet.customName} summoned!`, "#44ffff");
+  }
+
+  private _dismissPet(): void {
+    const p = this._state.player;
+    const pet = p.pets.find(pt => pt.id === p.activePetId);
+    if (pet) {
+      pet.isSummoned = false;
+      pet.aiState = PetAIState.IDLE;
+      this._addFloatingText(p.x, p.y + 3, p.z, `${pet.customName} dismissed.`, "#aaaaaa");
+    }
+    p.activePetId = null;
+  }
+
+  /** Award XP to the active pet. */
+  private _grantPetXp(amount: number): void {
+    const p = this._state.player;
+    const pet = p.pets.find(pt => pt.id === p.activePetId && pt.isSummoned);
+    if (!pet) return;
+    pet.xp += amount;
+    while (pet.xp >= pet.xpToNext && pet.level < 50) {
+      pet.xp -= pet.xpToNext;
+      pet.level++;
+      const def = PET_DEFS[pet.species];
+      pet.maxHp = def.baseHp + def.hpPerLevel * (pet.level - 1);
+      pet.hp = pet.maxHp;
+      pet.damage = def.baseDamage + def.damagePerLevel * (pet.level - 1);
+      pet.armor = def.baseArmor + def.armorPerLevel * (pet.level - 1);
+      pet.xpToNext = PET_XP_TABLE[Math.min(pet.level - 1, PET_XP_TABLE.length - 1)];
+      if (pet.loyalty < 100) pet.loyalty = Math.min(100, pet.loyalty + 5);
+      this._addFloatingText(p.x, p.y + 4, p.z, `${pet.customName} LEVEL ${pet.level}!`, "#44ff44");
+    }
+  }
+
+  /** Main pet AI update each frame. */
+  private _updatePets(dt: number): void {
+    const p = this._state.player;
+    const pet = p.pets.find(pt => pt.id === p.activePetId && pt.isSummoned);
+    if (!pet) return;
+
+    // Reduce ability cooldowns
+    for (const key of Object.keys(pet.abilityCooldowns)) {
+      if (pet.abilityCooldowns[key] > 0) pet.abilityCooldowns[key] -= dt;
+    }
+    pet.attackTimer = Math.max(0, pet.attackTimer - dt);
+
+    // Pet regeneration (slow)
+    if (pet.hp < pet.maxHp) {
+      pet.hp = Math.min(pet.maxHp, pet.hp + pet.maxHp * 0.005 * dt);
+    }
+
+    const distToPlayer = this._dist(pet.x, pet.z, p.x, p.z);
+
+    // Loot collection for loot pets
+    if (pet.petType === PetType.LOOT && pet.lootPickupRange > 0) {
+      const pickupRange = pet.lootPickupRange;
+      for (let i = this._state.loot.length - 1; i >= 0; i--) {
+        const loot = this._state.loot[i];
+        const lootDist = this._dist(pet.x, pet.z, loot.x, loot.z);
+        if (lootDist < pickupRange) {
+          // Pick up loot for the player
+          const emptySlot = p.inventory.findIndex(s => s.item === null);
+          if (emptySlot >= 0) {
+            p.inventory[emptySlot].item = { ...loot.item, id: this._genId() };
+            this._addFloatingText(loot.x, loot.y + 1, loot.z, `${pet.customName} picked up ${loot.item.name}`, "#44ffff");
+            this._state.loot.splice(i, 1);
+            pet.aiState = PetAIState.COLLECTING_LOOT;
+            // Brief state then back to following
+            setTimeout(() => { if (pet.isSummoned) pet.aiState = PetAIState.FOLLOWING; }, 500);
+          }
+        }
+      }
+    }
+
+    // Combat AI for combat pets
+    if (pet.petType === PetType.COMBAT && pet.aggroRange > 0) {
+      let nearestEnemy: DiabloEnemy | null = null;
+      let nearestEnemyDist = pet.aggroRange;
+      for (const enemy of this._state.enemies) {
+        if (enemy.state === EnemyState.DEAD) continue;
+        const d = this._dist(pet.x, pet.z, enemy.x, enemy.z);
+        if (d < nearestEnemyDist) {
+          nearestEnemyDist = d;
+          nearestEnemy = enemy;
+        }
+      }
+
+      if (nearestEnemy && nearestEnemyDist < pet.aggroRange) {
+        pet.aiState = PetAIState.ATTACKING;
+        pet.targetId = nearestEnemy.id;
+        // Move toward enemy
+        const dx = nearestEnemy.x - pet.x;
+        const dz = nearestEnemy.z - pet.z;
+        const dist = Math.hypot(dx, dz);
+        pet.angle = Math.atan2(dx, dz);
+
+        if (dist > pet.attackRange) {
+          pet.x += (dx / dist) * pet.moveSpeed * dt;
+          pet.z += (dz / dist) * pet.moveSpeed * dt;
+        } else if (pet.attackTimer <= 0) {
+          // Attack!
+          const loyaltyMult = 0.5 + (pet.loyalty / 100) * 0.5;
+          const dmg = pet.damage * loyaltyMult;
+          nearestEnemy.hp -= dmg;
+          pet.attackTimer = 1 / pet.attackSpeed;
+          this._addFloatingText(nearestEnemy.x, nearestEnemy.y + 2, nearestEnemy.z, String(Math.round(dmg)), "#44ffff");
+
+          // Try to use abilities
+          const def = PET_DEFS[pet.species];
+          for (const ability of def.abilities) {
+            if (ability.unlocksAtLevel > pet.level) continue;
+            if ((pet.abilityCooldowns[ability.id] || 0) > 0) continue;
+            if (ability.damageMultiplier && ability.damageMultiplier > 0) {
+              const abilDmg = pet.damage * ability.damageMultiplier * loyaltyMult;
+              nearestEnemy.hp -= abilDmg;
+              pet.abilityCooldowns[ability.id] = ability.cooldown;
+              this._addFloatingText(nearestEnemy.x, nearestEnemy.y + 3, nearestEnemy.z, `${ability.name}! ${Math.round(abilDmg)}`, "#ff8800");
+              break; // one ability per frame
+            }
+            if (ability.buffType) {
+              this._applyPetBuff(ability);
+              pet.abilityCooldowns[ability.id] = ability.cooldown;
+              break;
+            }
+          }
+        }
+      } else {
+        pet.aiState = PetAIState.FOLLOWING;
+        pet.targetId = null;
+      }
+    }
+
+    // Utility pet abilities (auto-use)
+    if (pet.petType === PetType.UTILITY) {
+      const def = PET_DEFS[pet.species];
+      for (const ability of def.abilities) {
+        if (ability.unlocksAtLevel > pet.level) continue;
+        if ((pet.abilityCooldowns[ability.id] || 0) > 0) continue;
+        // Auto heal when owner is low
+        if (ability.healAmount && ability.healAmount > 0 && p.hp < p.maxHp * 0.5) {
+          const healVal = ability.healAmount * p.maxHp;
+          p.hp = Math.min(p.maxHp, p.hp + healVal);
+          pet.abilityCooldowns[ability.id] = ability.cooldown;
+          this._addFloatingText(p.x, p.y + 3, p.z, `${ability.name}! +${Math.round(healVal)} HP`, "#44ff44");
+          break;
+        }
+        // Auto buff
+        if (ability.buffType && ability.buffDuration && ability.buffDuration > 0) {
+          // Only auto-use certain buffs when conditions warrant
+          const shouldBuff =
+            (ability.buffType === 'cleanse' && p.statusEffects.length > 0) ||
+            (ability.buffType === 'cooldownReduce') ||
+            (ability.buffType === 'damageReduction' && p.hp < p.maxHp * 0.4) ||
+            (ability.buffType === 'taunt' && this._state.enemies.filter(e => e.state !== EnemyState.DEAD && this._dist(e.x, e.z, p.x, p.z) < 8).length >= 3);
+          if (shouldBuff) {
+            this._applyPetBuff(ability);
+            pet.abilityCooldowns[ability.id] = ability.cooldown;
+            break;
+          }
+        }
+      }
+    }
+
+    // Following behavior (return to player if too far)
+    if (pet.aiState === PetAIState.FOLLOWING || distToPlayer > 25) {
+      if (distToPlayer > 3) {
+        const dx = p.x - pet.x;
+        const dz = p.z - pet.z;
+        const dist = Math.hypot(dx, dz);
+        const speed = distToPlayer > 15 ? pet.moveSpeed * 2 : pet.moveSpeed;
+        pet.x += (dx / dist) * speed * dt;
+        pet.z += (dz / dist) * speed * dt;
+        pet.angle = Math.atan2(dx, dz);
+      }
+      // Teleport if really far
+      if (distToPlayer > 40) {
+        pet.x = p.x + 2;
+        pet.z = p.z + 2;
+      }
+    }
+  }
+
+  /** Apply a pet buff to the player. */
+  private _applyPetBuff(ability: { id: string; name: string; buffType?: string; buffDuration?: number; healAmount?: number }): void {
+    if (!ability.buffType) return;
+    const p = this._state.player;
+
+    switch (ability.buffType) {
+      case 'damage':
+        this._petBuffs.push({ type: 'damage', value: 0.15, remaining: ability.buffDuration || 10 });
+        this._addFloatingText(p.x, p.y + 3, p.z, `${ability.name}! +15% DMG`, "#ff8800");
+        break;
+      case 'attackSpeed':
+        this._petBuffs.push({ type: 'attackSpeed', value: 1.0, remaining: ability.buffDuration || 8 });
+        this._addFloatingText(p.x, p.y + 3, p.z, `${ability.name}! 2x ATK SPD`, "#ffdd00");
+        break;
+      case 'fireResist':
+        this._petBuffs.push({ type: 'fireResist', value: 50, remaining: ability.buffDuration || 15 });
+        this._addFloatingText(p.x, p.y + 3, p.z, `${ability.name}! +50 Fire Res`, "#ff4400");
+        break;
+      case 'invuln':
+        p.invulnTimer = Math.max(p.invulnTimer, ability.buffDuration || 3);
+        this._addFloatingText(p.x, p.y + 3, p.z, `${ability.name}! Invulnerable`, "#ffffff");
+        break;
+      case 'damageReduction':
+        this._petBuffs.push({ type: 'damageReduction', value: 0.5, remaining: ability.buffDuration || 6 });
+        this._addFloatingText(p.x, p.y + 3, p.z, `${ability.name}! -50% DMG taken`, "#4488ff");
+        break;
+      case 'cleanse':
+        p.statusEffects = [];
+        this._addFloatingText(p.x, p.y + 3, p.z, `${ability.name}! Cleansed`, "#ffffff");
+        break;
+      case 'cooldownReduce':
+        for (const [skillId, cd] of p.skillCooldowns) {
+          p.skillCooldowns.set(skillId, Math.max(0, cd - 3));
+        }
+        this._addFloatingText(p.x, p.y + 3, p.z, `${ability.name}! -3s CDs`, "#44ffff");
+        break;
+      case 'xpBonus':
+        this._petBuffs.push({ type: 'xpBonus', value: 0.2, remaining: ability.buffDuration || 30 });
+        this._addFloatingText(p.x, p.y + 3, p.z, `${ability.name}! +20% XP`, "#ffd700");
+        break;
+      case 'lootRange':
+        this._petBuffs.push({ type: 'lootRange', value: 0.5, remaining: ability.buffDuration || 20 });
+        this._addFloatingText(p.x, p.y + 3, p.z, `${ability.name}! +50% Pickup`, "#44ff44");
+        break;
+      case 'goldBonus':
+        this._petBuffs.push({ type: 'goldBonus', value: 0.25, remaining: ability.buffDuration || 30 });
+        this._addFloatingText(p.x, p.y + 3, p.z, `${ability.name}! +25% Gold`, "#ffd700");
+        break;
+      case 'lootMagnet':
+        // Pull all loot to player
+        for (const loot of this._state.loot) {
+          loot.x = p.x + (Math.random() - 0.5) * 2;
+          loot.z = p.z + (Math.random() - 0.5) * 2;
+        }
+        this._addFloatingText(p.x, p.y + 3, p.z, `${ability.name}! All loot pulled!`, "#ffd700");
+        break;
+      case 'spellAmp':
+        this._petBuffs.push({ type: 'spellAmp', value: 0.5, remaining: ability.buffDuration || 10 });
+        this._addFloatingText(p.x, p.y + 3, p.z, `${ability.name}! +50% Spell DMG`, "#aa44ff");
+        break;
+      default:
+        this._addFloatingText(p.x, p.y + 3, p.z, `${ability.name}!`, "#44ffff");
+        break;
+    }
+  }
+
+  /** Update pet buff timers. */
+  private _updatePetBuffs(dt: number): void {
+    for (let i = this._petBuffs.length - 1; i >= 0; i--) {
+      this._petBuffs[i].remaining -= dt;
+      if (this._petBuffs[i].remaining <= 0) {
+        this._petBuffs.splice(i, 1);
+      }
+    }
+  }
+
+  /** Check if a pet buff is active. */
+  private _hasPetBuff(type: string): number {
+    let total = 0;
+    for (const buff of this._petBuffs) {
+      if (buff.type === type) total += buff.value;
+    }
+    return total;
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  //  PET MANAGEMENT UI
+  // ──────────────────────────────────────────────────────────────
+  private _showPetManagement(): void {
+    const p = this._state.player;
+    this._phaseBeforeOverlay = DiabloPhase.PLAYING;
+    this._state.phase = DiabloPhase.INVENTORY;
+
+    const renderPetUI = () => {
+      const activePet = p.pets.find(pt => pt.id === p.activePetId && pt.isSummoned);
+
+      let petListHtml = "";
+      if (p.pets.length === 0) {
+        petListHtml = `<div style="color:#887755;font-style:italic;padding:20px;text-align:center;">
+          No pets found yet. Defeat enemies to discover pet companions!</div>`;
+      }
+      for (const pet of p.pets) {
+        const def = PET_DEFS[pet.species];
+        const isActive = pet.id === p.activePetId && pet.isSummoned;
+        const borderColor = isActive ? "#ffd700" : "#5a4a2a";
+        const typeBadge = pet.petType === PetType.COMBAT ? "COMBAT" :
+          pet.petType === PetType.LOOT ? "LOOT" : "UTILITY";
+        const typeColor = pet.petType === PetType.COMBAT ? "#ff4444" :
+          pet.petType === PetType.LOOT ? "#ffd700" : "#44ff44";
+
+        let abilitiesHtml = "";
+        for (const ability of def.abilities) {
+          const unlocked = pet.level >= ability.unlocksAtLevel;
+          const color = unlocked ? "#cccccc" : "#555555";
+          abilitiesHtml += `<div style="color:${color};font-size:11px;margin:2px 0;">
+            ${ability.icon} ${ability.name} ${unlocked ? "" : `(Lv.${ability.unlocksAtLevel})`}
+            <span style="color:#888;font-size:10px;">${ability.description}</span>
+          </div>`;
+        }
+
+        petListHtml += `
+          <div class="pet-card" data-pet-id="${pet.id}" style="
+            background:rgba(20,15,8,0.9);border:2px solid ${borderColor};border-radius:8px;
+            padding:14px;cursor:pointer;transition:border-color 0.2s;pointer-events:auto;
+          ">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+              <span style="font-size:32px;">${pet.icon}</span>
+              <div>
+                <div style="color:#c8a84e;font-weight:bold;font-size:16px;">${pet.customName}</div>
+                <div style="font-size:11px;color:${typeColor};font-weight:bold;">${typeBadge}</div>
+                <div style="font-size:12px;color:#aaa;">Level ${pet.level} | Loyalty: ${Math.round(pet.loyalty)}%</div>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:11px;color:#aaa;margin-bottom:8px;">
+              <div>HP: <span style="color:#ff4444;">${Math.round(pet.hp)}/${pet.maxHp}</span></div>
+              <div>DMG: <span style="color:#ff8800;">${Math.round(pet.damage)}</span></div>
+              <div>Armor: <span style="color:#4488ff;">${Math.round(pet.armor)}</span></div>
+              <div>Speed: <span style="color:#44ff44;">${pet.moveSpeed.toFixed(1)}</span></div>
+              <div>XP: <span style="color:#ffd700;">${pet.xp}/${pet.xpToNext}</span></div>
+              ${pet.lootPickupRange > 0 ? `<div>Pickup: <span style="color:#ffdd00;">${pet.lootPickupRange}</span></div>` : ""}
+            </div>
+            <div style="margin-bottom:8px;">
+              <div style="font-size:11px;color:#c8a84e;font-weight:bold;margin-bottom:4px;">ABILITIES</div>
+              ${abilitiesHtml}
+            </div>
+            <div style="display:flex;gap:8px;">
+              <button class="pet-summon-btn" data-pet-id="${pet.id}" style="
+                flex:1;padding:8px;font-size:12px;font-weight:bold;
+                background:${isActive ? "rgba(80,40,20,0.9)" : "rgba(40,30,15,0.9)"};
+                border:1px solid ${isActive ? "#ff4444" : "#5a4a2a"};border-radius:6px;
+                color:${isActive ? "#ff4444" : "#c8a84e"};cursor:pointer;pointer-events:auto;
+              ">${isActive ? "DISMISS" : "SUMMON"}</button>
+            </div>
+          </div>`;
+      }
+
+      // Active pet status
+      let activeStatusHtml = "";
+      if (activePet) {
+        const hpPct = Math.round((activePet.hp / activePet.maxHp) * 100);
+        activeStatusHtml = `
+          <div style="background:rgba(20,15,8,0.9);border:2px solid #ffd700;border-radius:8px;padding:14px;margin-bottom:16px;">
+            <div style="color:#ffd700;font-weight:bold;font-size:14px;margin-bottom:8px;">ACTIVE COMPANION</div>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span style="font-size:36px;">${activePet.icon}</span>
+              <div style="flex:1;">
+                <div style="color:#c8a84e;font-weight:bold;">${activePet.customName} <span style="color:#aaa;font-weight:normal;">Lv.${activePet.level}</span></div>
+                <div style="background:#333;border-radius:3px;height:8px;margin-top:4px;overflow:hidden;">
+                  <div style="background:#ff4444;height:100%;width:${hpPct}%;transition:width 0.3s;"></div>
+                </div>
+                <div style="font-size:10px;color:#aaa;margin-top:2px;">HP: ${Math.round(activePet.hp)}/${activePet.maxHp} | AI: ${activePet.aiState}</div>
+              </div>
+            </div>
+          </div>`;
+      }
+
+      this._menuEl.innerHTML = `
+        <div style="
+          width:100%;height:100%;background:rgba(0,0,0,0.88);display:flex;flex-direction:column;
+          align-items:center;justify-content:center;color:#fff;pointer-events:auto;
+        ">
+          <div style="
+            max-width:700px;width:92%;background:rgba(15,10,5,0.95);border:2px solid #5a4a2a;
+            border-radius:12px;padding:24px 30px;max-height:88vh;overflow-y:auto;
+          ">
+            <div style="text-align:center;margin-bottom:16px;">
+              <div style="font-size:28px;color:#c8a84e;font-weight:bold;letter-spacing:2px;font-family:'Georgia',serif;">
+                PET COMPANIONS
+              </div>
+              <div style="font-size:12px;color:#887755;margin-top:4px;">
+                ${p.pets.length} / ${p.maxPets} pets | Defeat enemies to find new companions
+              </div>
+            </div>
+            ${activeStatusHtml}
+            <div style="display:flex;flex-direction:column;gap:12px;">
+              ${petListHtml}
+            </div>
+            <div style="text-align:center;margin-top:16px;">
+              <button id="pet-close-btn" style="
+                padding:10px 30px;font-size:14px;letter-spacing:2px;font-weight:bold;
+                background:rgba(40,30,15,0.9);border:2px solid #5a4a2a;border-radius:8px;color:#c8a84e;
+                cursor:pointer;pointer-events:auto;font-family:'Georgia',serif;
+              ">CLOSE</button>
+            </div>
+          </div>
+        </div>`;
+
+      // Summon/dismiss buttons
+      const summonBtns = this._menuEl.querySelectorAll(".pet-summon-btn") as NodeListOf<HTMLButtonElement>;
+      summonBtns.forEach(btn => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const petId = btn.getAttribute("data-pet-id")!;
+          const pet = p.pets.find(pt => pt.id === petId);
+          if (!pet) return;
+          if (pet.isSummoned) {
+            this._dismissPet();
+          } else {
+            this._summonPet(petId);
+          }
+          renderPetUI();
+        });
+      });
+
+      // Close
+      const closeBtn = this._menuEl.querySelector("#pet-close-btn") as HTMLButtonElement;
+      closeBtn.addEventListener("mouseenter", () => { closeBtn.style.borderColor = "#c8a84e"; });
+      closeBtn.addEventListener("mouseleave", () => { closeBtn.style.borderColor = "#5a4a2a"; });
+      closeBtn.addEventListener("click", () => {
+        this._state.phase = DiabloPhase.PLAYING;
+        this._menuEl.innerHTML = "";
+      });
+    };
+
+    renderPetUI();
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  //  ADVANCED CRAFTING SYSTEM
+  // ══════════════════════════════════════════════════════════════
+
+  /** Roll material drops from enemy kills. */
+  private _rollMaterialDrop(): void {
+    const mapId = this._state.currentMap;
+    const p = this._state.player;
+    const entry = MATERIAL_DROP_TABLE.find(e => e.mapId === mapId);
+    if (!entry) return;
+
+    for (const drop of entry.drops) {
+      if (Math.random() < drop.chance) {
+        const count = drop.countMin + Math.floor(Math.random() * (drop.countMax - drop.countMin + 1));
+        p.crafting.materials[drop.type] = (p.crafting.materials[drop.type] || 0) + count;
+        const mat = CRAFTING_MATERIALS[drop.type];
+        this._addFloatingText(p.x, p.y + 3, p.z, `+${count} ${mat.icon} ${mat.name}`, "#88ccff");
+      }
+    }
+  }
+
+  /** Award crafting XP and handle crafting level ups. */
+  private _grantCraftingXp(amount: number): void {
+    const cs = this._state.player.crafting;
+    cs.craftingXp += amount;
+    while (cs.craftingXp >= cs.craftingXpToNext) {
+      cs.craftingXp -= cs.craftingXpToNext;
+      cs.craftingLevel++;
+      cs.craftingXpToNext = Math.floor(100 * Math.pow(1.15, cs.craftingLevel - 1));
+      // Discover recipes at certain levels
+      this._checkRecipeDiscovery();
+      this._addFloatingText(
+        this._state.player.x, this._state.player.y + 4, this._state.player.z,
+        `Crafting Level ${cs.craftingLevel}!`, "#88ccff"
+      );
+    }
+  }
+
+  /** Check if new recipes should be discovered based on crafting level. */
+  private _checkRecipeDiscovery(): void {
+    const cs = this._state.player.crafting;
+    for (const recipe of ADVANCED_CRAFTING_RECIPES) {
+      if (cs.discoveredRecipes.includes(recipe.id)) continue;
+      if (cs.craftingLevel >= recipe.levelRequired) {
+        cs.discoveredRecipes.push(recipe.id);
+        this._addFloatingText(
+          this._state.player.x, this._state.player.y + 5, this._state.player.z,
+          `Recipe Discovered: ${recipe.name}!`, "#ffd700"
+        );
+      }
+    }
+  }
+
+  /** Process crafting queue progress. */
+  private _updateCraftingQueue(dt: number): void {
+    const cs = this._state.player.crafting;
+    if (cs.craftingQueue.length === 0) return;
+
+    const current = cs.craftingQueue[0];
+    current.progress += dt;
+    if (current.progress >= current.duration) {
+      // Craft completed
+      cs.craftingQueue.shift();
+      const recipe = ADVANCED_CRAFTING_RECIPES.find(r => r.id === current.recipeId);
+      if (!recipe) return;
+
+      if (Math.random() < recipe.successChance) {
+        this._completeCraft(recipe);
+        this._addFloatingText(
+          this._state.player.x, this._state.player.y + 3, this._state.player.z,
+          `Crafted ${recipe.name}!`, "#ffd700"
+        );
+      } else {
+        // Failed — return some materials
+        for (const mat of recipe.materials) {
+          const returned = Math.floor(mat.count * 0.3);
+          cs.materials[mat.type] = (cs.materials[mat.type] || 0) + returned;
+        }
+        this._addFloatingText(
+          this._state.player.x, this._state.player.y + 3, this._state.player.z,
+          `Crafting failed! Some materials returned.`, "#ff4444"
+        );
+      }
+      this._grantCraftingXp(recipe.levelRequired * 10 + 20);
+    }
+  }
+
+  /** Complete a craft and give the player the output item. */
+  private _completeCraft(recipe: AdvancedCraftingRecipe): void {
+    const p = this._state.player;
+
+    // Potion recipes
+    if (recipe.id === 'adv_craft_health_potion') {
+      const potion: DiabloPotion = {
+        id: this._genId(), name: 'Crafted Health Elixir', type: PotionType.HEALTH,
+        icon: '\u2764\uFE0F', value: 80, cooldown: 5, cost: 0,
+      };
+      p.potions.push(potion);
+      return;
+    }
+    if (recipe.id === 'adv_craft_mana_potion') {
+      const potion: DiabloPotion = {
+        id: this._genId(), name: 'Crafted Mana Elixir', type: PotionType.MANA,
+        icon: '\uD83D\uDCA7', value: 60, cooldown: 5, cost: 0,
+      };
+      p.potions.push(potion);
+      return;
+    }
+
+    // Item recipe — generate an item of the output rarity and slot
+    if (recipe.outputSlot && recipe.outputRarity) {
+      const pool = ITEM_DATABASE.filter(it => it.rarity === recipe.outputRarity && it.slot === recipe.outputSlot);
+      let outputItem: DiabloItem | null = null;
+      if (pool.length > 0) {
+        outputItem = { ...pool[Math.floor(Math.random() * pool.length)], id: this._genId() };
+      } else {
+        // Fallback: pick any item of the right rarity
+        outputItem = this._pickRandomItemOfRarity(recipe.outputRarity);
+        if (outputItem) outputItem = { ...outputItem, id: this._genId() };
+      }
+      if (outputItem) {
+        const emptyIdx = p.inventory.findIndex(s => s.item === null);
+        if (emptyIdx >= 0) {
+          p.inventory[emptyIdx].item = outputItem;
+        } else {
+          this._addFloatingText(p.x, p.y + 3, p.z, "Inventory full!", "#ff4444");
+        }
+      }
+    } else if (recipe.outputRarity) {
+      const outputItem = this._pickRandomItemOfRarity(recipe.outputRarity);
+      if (outputItem) {
+        const emptyIdx = p.inventory.findIndex(s => s.item === null);
+        if (emptyIdx >= 0) {
+          p.inventory[emptyIdx].item = { ...outputItem, id: this._genId() };
+        }
+      }
+    }
+  }
+
+  /** Check if the player can afford a recipe. */
+  private _canAffordRecipe(recipe: AdvancedCraftingRecipe): boolean {
+    const p = this._state.player;
+    const cs = p.crafting;
+    if (p.gold < recipe.goldCost) return false;
+    if (p.salvageMaterials < recipe.salvageCost) return false;
+    for (const mat of recipe.materials) {
+      if ((cs.materials[mat.type] || 0) < mat.count) return false;
+    }
+    return true;
+  }
+
+  /** Consume recipe costs. */
+  private _payRecipeCost(recipe: AdvancedCraftingRecipe): void {
+    const p = this._state.player;
+    const cs = p.crafting;
+    p.gold -= recipe.goldCost;
+    p.salvageMaterials -= recipe.salvageCost;
+    for (const mat of recipe.materials) {
+      cs.materials[mat.type] -= mat.count;
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  //  ADVANCED CRAFTING UI
+  // ──────────────────────────────────────────────────────────────
+  private _showAdvancedCraftingUI(): void {
+    const p = this._state.player;
+    const cs = p.crafting;
+    this._phaseBeforeOverlay = DiabloPhase.PLAYING;
+    this._state.phase = DiabloPhase.INVENTORY;
+    this._craftingUIOpen = true;
+
+    let selectedStation: CraftingStationType = CraftingStationType.BLACKSMITH_FORGE;
+
+    const renderCraftUI = () => {
+      const stations = [
+        { type: CraftingStationType.BLACKSMITH_FORGE, name: 'Blacksmith', icon: '\u2694\uFE0F' },
+        { type: CraftingStationType.JEWELER_BENCH, name: 'Jeweler', icon: '\uD83D\uDC8E' },
+        { type: CraftingStationType.ALCHEMIST_TABLE, name: 'Alchemist', icon: '\u2697\uFE0F' },
+        { type: CraftingStationType.ENCHANTER_ALTAR, name: 'Enchanter', icon: '\uD83D\uDD2E' },
+      ];
+
+      let stationTabsHtml = "";
+      for (const st of stations) {
+        const isActive = st.type === selectedStation;
+        stationTabsHtml += `
+          <button class="craft-station-tab" data-station="${st.type}" style="
+            flex:1;padding:10px;font-size:13px;font-weight:bold;
+            background:${isActive ? "rgba(60,45,20,0.95)" : "rgba(30,22,10,0.9)"};
+            border:1px solid ${isActive ? "#c8a84e" : "#5a4a2a"};border-radius:6px 6px 0 0;
+            color:${isActive ? "#ffd700" : "#887755"};cursor:pointer;pointer-events:auto;
+            border-bottom:${isActive ? "2px solid #c8a84e" : "none"};
+          ">${st.icon} ${st.name}</button>`;
+      }
+
+      // Filter recipes by station and discovered
+      const recipes = ADVANCED_CRAFTING_RECIPES.filter(
+        r => r.station === selectedStation && cs.discoveredRecipes.includes(r.id)
+      );
+
+      let recipesHtml = "";
+      if (recipes.length === 0) {
+        recipesHtml = `<div style="color:#887755;font-style:italic;padding:20px;text-align:center;">
+          No recipes discovered for this station yet. Level up crafting to discover more!</div>`;
+      }
+      for (const recipe of recipes) {
+        const canAfford = this._canAffordRecipe(recipe);
+        const meetsLevel = cs.craftingLevel >= recipe.levelRequired;
+        const borderColor = canAfford && meetsLevel ? "#5a4a2a" : "#3a2a1a";
+        const outputColor = recipe.outputRarity ? RARITY_CSS[recipe.outputRarity] : "#cccccc";
+        const successPct = Math.round(recipe.successChance * 100);
+
+        let matsHtml = "";
+        for (const mat of recipe.materials) {
+          const matDef = CRAFTING_MATERIALS[mat.type];
+          const have = cs.materials[mat.type] || 0;
+          const enough = have >= mat.count;
+          matsHtml += `<span style="color:${enough ? "#44ff44" : "#ff4444"};font-size:11px;">
+            ${matDef.icon} ${mat.count} ${matDef.name} (${have})</span> `;
+        }
+
+        // Check if it's being crafted
+        const inQueue = cs.craftingQueue.find(q => q.recipeId === recipe.id);
+        let progressHtml = "";
+        if (inQueue) {
+          const pct = Math.round((inQueue.progress / inQueue.duration) * 100);
+          progressHtml = `<div style="margin-top:6px;background:#333;border-radius:3px;height:6px;overflow:hidden;">
+            <div style="background:#ffd700;height:100%;width:${pct}%;transition:width 0.3s;"></div>
+          </div><div style="font-size:10px;color:#ffd700;margin-top:2px;">Crafting... ${pct}%</div>`;
+        }
+
+        recipesHtml += `
+          <div class="adv-craft-recipe" data-recipe-id="${recipe.id}" style="
+            background:rgba(20,15,8,0.9);border:1px solid ${borderColor};border-radius:6px;padding:12px;
+            cursor:${canAfford && meetsLevel ? "pointer" : "not-allowed"};
+            opacity:${canAfford && meetsLevel ? "1" : "0.6"};
+            transition:border-color 0.2s;pointer-events:auto;
+          ">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-size:22px;">${recipe.icon}</span>
+              <div>
+                <div style="color:${outputColor};font-weight:bold;font-size:14px;">${recipe.name}</div>
+                <div style="color:#aaa;font-size:11px;">${recipe.description}</div>
+              </div>
+            </div>
+            <div style="margin-top:6px;">${matsHtml}</div>
+            <div style="display:flex;gap:12px;margin-top:4px;font-size:11px;">
+              <span style="color:${p.gold >= recipe.goldCost ? "#ffd700" : "#ff4444"};">Gold: ${recipe.goldCost}</span>
+              ${recipe.salvageCost > 0 ? `<span style="color:${p.salvageMaterials >= recipe.salvageCost ? "#88ccff" : "#ff4444"};">Materials: ${recipe.salvageCost}</span>` : ""}
+              <span style="color:${successPct >= 80 ? "#44ff44" : successPct >= 50 ? "#ffdd00" : "#ff4444"};">Success: ${successPct}%</span>
+              ${!meetsLevel ? `<span style="color:#ff4444;">Requires Lv.${recipe.levelRequired}</span>` : ""}
+            </div>
+            ${progressHtml}
+          </div>`;
+      }
+
+      // Materials inventory
+      let matsInvHtml = "";
+      for (const [matType, count] of Object.entries(cs.materials) as [MaterialType, number][]) {
+        if (count <= 0) continue;
+        const matDef = CRAFTING_MATERIALS[matType];
+        if (!matDef) continue;
+        matsInvHtml += `
+          <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#ccc;">
+            <span style="font-size:16px;">${matDef.icon}</span>
+            <span>${matDef.name}:</span>
+            <span style="color:#ffd700;font-weight:bold;">${count}</span>
+          </div>`;
+      }
+      if (!matsInvHtml) {
+        matsInvHtml = `<div style="color:#665533;font-style:italic;font-size:12px;">No materials yet.</div>`;
+      }
+
+      this._menuEl.innerHTML = `
+        <div style="
+          width:100%;height:100%;background:rgba(0,0,0,0.88);display:flex;flex-direction:column;
+          align-items:center;justify-content:center;color:#fff;pointer-events:auto;
+        ">
+          <div style="
+            max-width:950px;width:92%;background:rgba(15,10,5,0.95);border:2px solid #5a4a2a;
+            border-radius:12px;padding:24px 30px;max-height:88vh;overflow-y:auto;
+          ">
+            <div style="text-align:center;margin-bottom:12px;">
+              <div style="font-size:28px;color:#c8a84e;font-weight:bold;letter-spacing:2px;font-family:'Georgia',serif;">
+                CRAFTING WORKSHOP
+              </div>
+              <div style="font-size:12px;color:#887755;margin-top:4px;">
+                Crafting Level: ${cs.craftingLevel} | XP: ${cs.craftingXp}/${cs.craftingXpToNext}
+              </div>
+            </div>
+            <div style="display:flex;gap:2px;margin-bottom:2px;">
+              ${stationTabsHtml}
+            </div>
+            <div style="display:flex;gap:20px;align-items:flex-start;">
+              <div style="flex:1;min-width:0;">
+                <div style="display:flex;flex-direction:column;gap:8px;max-height:400px;overflow-y:auto;padding:8px 0;">
+                  ${recipesHtml}
+                </div>
+              </div>
+              <div style="flex:0 0 200px;">
+                <div style="color:#c8a84e;font-size:13px;font-weight:bold;margin-bottom:8px;">MATERIALS</div>
+                <div style="display:flex;flex-direction:column;gap:6px;max-height:300px;overflow-y:auto;">
+                  ${matsInvHtml}
+                </div>
+                <div style="margin-top:12px;font-size:12px;">
+                  <div style="color:#ffd700;">Gold: ${p.gold}</div>
+                  <div style="color:#88ccff;">Salvage: ${p.salvageMaterials}</div>
+                </div>
+              </div>
+            </div>
+            <div style="margin-top:16px;display:flex;justify-content:center;gap:20px;">
+              <button id="adv-craft-close-btn" style="
+                padding:10px 30px;font-size:14px;letter-spacing:2px;font-weight:bold;
+                background:rgba(40,30,15,0.9);border:2px solid #5a4a2a;border-radius:8px;color:#c8a84e;
+                cursor:pointer;pointer-events:auto;font-family:'Georgia',serif;
+              ">CLOSE</button>
+            </div>
+            <div id="adv-craft-status" style="margin-top:8px;text-align:center;color:#ff4444;font-size:14px;min-height:20px;"></div>
+          </div>
+        </div>`;
+
+      // Status helper
+      const statusEl = this._menuEl.querySelector("#adv-craft-status") as HTMLDivElement;
+      const showStatus = (msg: string, color: string) => {
+        statusEl.textContent = msg;
+        statusEl.style.color = color;
+        setTimeout(() => { if (statusEl) statusEl.textContent = ""; }, 2500);
+      };
+
+      // Station tab clicks
+      const tabBtns = this._menuEl.querySelectorAll(".craft-station-tab") as NodeListOf<HTMLButtonElement>;
+      tabBtns.forEach(btn => {
+        btn.addEventListener("click", () => {
+          selectedStation = btn.getAttribute("data-station") as CraftingStationType;
+          renderCraftUI();
+        });
+      });
+
+      // Recipe clicks
+      const recipeEls = this._menuEl.querySelectorAll(".adv-craft-recipe") as NodeListOf<HTMLDivElement>;
+      recipeEls.forEach(el => {
+        el.addEventListener("mouseenter", () => { el.style.borderColor = "#c8a84e"; });
+        el.addEventListener("mouseleave", () => { el.style.borderColor = "#5a4a2a"; });
+        el.addEventListener("click", () => {
+          const recipeId = el.getAttribute("data-recipe-id")!;
+          const recipe = ADVANCED_CRAFTING_RECIPES.find(r => r.id === recipeId);
+          if (!recipe) return;
+
+          if (cs.craftingLevel < recipe.levelRequired) {
+            showStatus(`Requires crafting level ${recipe.levelRequired}!`, "#ff4444");
+            return;
+          }
+          if (!this._canAffordRecipe(recipe)) {
+            showStatus("Not enough resources!", "#ff4444");
+            return;
+          }
+          if (cs.craftingQueue.some(q => q.recipeId === recipeId)) {
+            showStatus("Already crafting this recipe!", "#ff8800");
+            return;
+          }
+
+          this._payRecipeCost(recipe);
+          // Crafting duration based on recipe complexity
+          const duration = 1.0 + recipe.levelRequired * 0.2;
+          cs.craftingQueue.push({ recipeId: recipe.id, progress: 0, duration });
+          showStatus(`Started crafting ${recipe.name}...`, "#ffd700");
+          renderCraftUI();
+        });
+      });
+
+      // Close
+      const closeBtn = this._menuEl.querySelector("#adv-craft-close-btn") as HTMLButtonElement;
+      closeBtn.addEventListener("mouseenter", () => { closeBtn.style.borderColor = "#c8a84e"; });
+      closeBtn.addEventListener("mouseleave", () => { closeBtn.style.borderColor = "#5a4a2a"; });
+      closeBtn.addEventListener("click", () => {
+        this._craftingUIOpen = false;
+        this._state.phase = DiabloPhase.PLAYING;
+        this._menuEl.innerHTML = "";
+      });
+    };
+
+    renderCraftUI();
   }
 
   // ──────────────────────────────────────────────────────────────

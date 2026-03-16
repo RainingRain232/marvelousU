@@ -10,20 +10,33 @@ import { viewManager } from "../view/ViewManager";
 import {
   GBMatchPhase, GBPlayerClass, GBPowerUpType,
   GB_FIELD, GB_PHYSICS, GB_MATCH, GB_CAMERA, GB_ABILITIES,
-  GB_TEAMS, GB_POWERUP_POSITIONS,
+  GB_TEAMS, GB_POWERUP_POSITIONS, GB_STAMINA,
 } from "./GrailBallConfig";
 
 import {
   type GBMatchState, type GBPlayer, type GBPowerUp, type Vec3,
   GBPlayerAction,
   createMatchState, getPlayer, getOrbCarrier, getTeamPlayers, getSelectedPlayer,
-  resetPositionsForKickoff, pushEvent,
+  resetPositionsForKickoff, pushEvent, createPenaltyState,
   v3, v3Dist, v3Sub, v3Normalize, v3Len, v3Dist3D,
+  getFatigueSpeedMultiplier, getFatigueAccuracyMultiplier, getFatigueTackleMultiplier,
 } from "./GrailBallState";
 
 import { GrailBallRenderer } from "./GrailBallRenderer";
 import { GrailBallHUD } from "./GrailBallHUD";
-import { assignAIRoles, decideAI } from "./GrailBallAI";
+import { assignAIRoles, decideAI, adaptFormation } from "./GrailBallAI";
+import {
+  tickOrbPhysics, checkBallPlayerCollisions, launchOrbWithSpin,
+  attemptHeader, attemptVolley,
+} from "./GrailBallPhysics";
+import {
+  tickReplayRecording, recordKeyMoment, startReplay,
+  tickReplayPlayback, stopReplay, cycleReplayCamera,
+} from "./GrailBallReplay";
+import {
+  initCareer, getNextFixture, recordMatchResult,
+  simulateRemainingFixtures, getSortedLeagueTable, endSeason,
+} from "./GrailBallCareer";
 
 // ---------------------------------------------------------------------------
 // Input state
@@ -63,6 +76,13 @@ export class GrailBallGame {
   private _teamSelectDiv: HTMLDivElement | null = null;
   private _selectedTeam1 = 0;
   private _selectedTeam2 = 1;
+
+  // Formation adaptation timer (don't check every frame)
+  private _formationAdaptTimer = 0;
+
+  // Career mode UI
+  private _careerDiv: HTMLDivElement | null = null;
+  private _inCareerMode = false;
 
   // ---------------------------------------------------------------------------
   // Boot
@@ -119,9 +139,12 @@ export class GrailBallGame {
     }
 
     html += `</div>
-      <div style="margin-top:30px;display:flex;gap:20px;">
+      <div style="margin-top:30px;display:flex;gap:20px;flex-wrap:wrap;justify-content:center;">
         <div id="gb-start-btn" style="font-size:28px;cursor:pointer;padding:14px 48px;border:3px solid #daa520;border-radius:12px;color:#ffd700;transition:all 0.2s;background:rgba(218,165,32,0.1);">
           START MATCH
+        </div>
+        <div id="gb-career-btn" style="font-size:24px;cursor:pointer;padding:14px 36px;border:3px solid #7b2ff7;border-radius:12px;color:#c0a0ff;transition:all 0.2s;background:rgba(123,47,247,0.1);">
+          CAREER MODE
         </div>
         <div id="gb-controls-btn" style="font-size:20px;cursor:pointer;padding:14px 32px;border:2px solid #666;border-radius:12px;color:#aaa;transition:all 0.2s;">
           CONTROLS
@@ -173,6 +196,23 @@ export class GrailBallGame {
     startBtn.addEventListener("mouseenter", () => { startBtn.style.background = "rgba(218,165,32,0.3)"; });
     startBtn.addEventListener("mouseleave", () => { startBtn.style.background = "rgba(218,165,32,0.1)"; });
 
+    const careerBtn = this._teamSelectDiv.querySelector("#gb-career-btn") as HTMLElement;
+    if (careerBtn) {
+      careerBtn.addEventListener("click", () => {
+        const team = GB_TEAMS[this._selectedTeam1];
+        this._inCareerMode = true;
+        const careerState = initCareer(team.id);
+        // Store career state temporarily; will be assigned to match state on match start
+        this._hideTeamSelect();
+        // Create a temporary state to hold career
+        this._state = createMatchState(team, GB_TEAMS[this._selectedTeam2], 0);
+        this._state.careerState = careerState;
+        this._showCareerMenu();
+      });
+      careerBtn.addEventListener("mouseenter", () => { careerBtn.style.background = "rgba(123,47,247,0.3)"; });
+      careerBtn.addEventListener("mouseleave", () => { careerBtn.style.background = "rgba(123,47,247,0.1)"; });
+    }
+
     const controlsBtn = this._teamSelectDiv.querySelector("#gb-controls-btn") as HTMLElement;
     controlsBtn.addEventListener("click", () => {
       this._hud.showControls(() => {});
@@ -204,10 +244,15 @@ export class GrailBallGame {
   // ---------------------------------------------------------------------------
   private _startMatch(): void {
     this._hideTeamSelect();
+    this._hideCareerMenu();
 
     const team1 = GB_TEAMS[this._selectedTeam1];
     const team2 = GB_TEAMS[this._selectedTeam2];
+    const careerState = this._state?.careerState ?? null;
     this._state = createMatchState(team1, team2, 0);
+    if (careerState) {
+      this._state.careerState = careerState;
+    }
 
     // Init renderer & HUD
     this._renderer.init();
@@ -239,6 +284,19 @@ export class GrailBallGame {
 
     const dt = Math.min(rawDt, 0.05); // cap delta
 
+    // Handle replay playback
+    if (this._state.replayActive) {
+      const still = tickReplayPlayback(this._state, dt);
+      if (!still) {
+        // Replay ended, resume normal play
+      }
+      this._renderer.update(this._state, dt);
+      this._hud.update(this._state);
+      // Allow input to skip/cycle replay
+      this._tickReplayInput();
+      return;
+    }
+
     // Apply slow-mo
     const effectiveDt = dt * this._state.slowMoFactor;
 
@@ -248,6 +306,13 @@ export class GrailBallGame {
     // Simulation (only during gameplay phases)
     if (this._state.phase === GBMatchPhase.PLAYING || this._state.phase === GBMatchPhase.OVERTIME) {
       this._tickSimulation(effectiveDt);
+      // Continuous replay recording
+      tickReplayRecording(this._state, effectiveDt);
+    }
+
+    // Penalty shootout
+    if (this._state.phase === GBMatchPhase.PENALTY_SHOOTOUT) {
+      this._tickPenaltyShootout(effectiveDt);
     }
 
     // Input
@@ -294,10 +359,26 @@ export class GrailBallGame {
 
       case GBMatchPhase.PLAYING:
         s.matchClock += dt;
-        if (s.matchClock >= GB_MATCH.HALF_DURATION) {
+
+        // Calculate and announce injury time near end of half
+        if (s.matchClock >= GB_MATCH.HALF_DURATION - 10 && !s.injuryTimeAnnounced) {
+          s.injuryTime = Math.min(
+            GB_MATCH.INJURY_TIME_MAX,
+            Math.max(GB_MATCH.INJURY_TIME_MIN, s.stoppageAccumulator),
+          );
+          s.injuryTimeAnnounced = true;
+          const injMins = Math.ceil(s.injuryTime / 60);
+          pushEvent(s, "injury_time", `${injMins} minute(s) of injury time added`);
+          s.merlinSpeech = `${injMins} minute(s) of added time!`;
+          s.merlinSpeechTimer = 3;
+        }
+
+        if (s.matchClock >= GB_MATCH.HALF_DURATION + s.injuryTime) {
           if (s.half === 1) {
             s.phase = GBMatchPhase.HALFTIME;
             s.phaseTimer = GB_MATCH.HALFTIME_DURATION;
+            s.injuryTimeAnnounced = false;
+            s.stoppageAccumulator = 0;
             pushEvent(s, "halftime", `Halftime: ${s.scores[0]} - ${s.scores[1]}`);
           } else {
             s.phase = GBMatchPhase.FULL_MATCH;
@@ -321,9 +402,14 @@ export class GrailBallGame {
         if (s.phaseTimer <= 0) {
           s.half = 2;
           s.matchClock = 0;
+          s.injuryTimeAnnounced = false;
+          s.stoppageAccumulator = 0;
           s.phase = GBMatchPhase.KICKOFF;
           s.phaseTimer = GB_MATCH.KICKOFF_DELAY;
           resetPositionsForKickoff(s, -1);
+
+          // AI team auto-substitution at halftime: sub out most fatigued player
+          this._autoSubstitute(s.humanTeam === 0 ? 1 : 0);
         }
         break;
 
@@ -347,28 +433,64 @@ export class GrailBallGame {
       case GBMatchPhase.OVERTIME:
         s.matchClock += dt;
         if (s.matchClock >= GB_MATCH.OVERTIME_DURATION) {
-          // End -- whoever has more goals wins, or draw
-          s.phase = GBMatchPhase.POST_GAME;
-          s.phaseTimer = 10;
           const winner = s.scores[0] > s.scores[1] ? 0 : s.scores[1] > s.scores[0] ? 1 : -1;
           if (winner === 0 || winner === 1) {
+            s.phase = GBMatchPhase.POST_GAME;
+            s.phaseTimer = GB_MATCH.POST_MATCH_CEREMONY;
             pushEvent(s, "match_end", `${s.teamDefs[winner].name} wins in overtime!`);
           } else {
-            pushEvent(s, "match_end", "Match ends in a draw!");
+            // Still tied: go to penalty shootout
+            s.phase = GBMatchPhase.PENALTY_SHOOTOUT;
+            s.phaseTimer = 0;
+            s.penaltyState = createPenaltyState();
+            this._setupPenaltyShooter();
+            pushEvent(s, "penalty", "Tied after overtime! Penalty shootout begins!");
+            s.merlinSpeech = "To the penalties! May the best team prevail!";
+            s.merlinSpeechTimer = 3;
           }
         }
         break;
 
+      case GBMatchPhase.PENALTY_SHOOTOUT:
+        // Handled in _tickPenaltyShootout
+        break;
+
       case GBMatchPhase.POST_GAME:
+        // Post-match ceremony: fireworks for the winner
+        if (s.phaseTimer > GB_MATCH.POST_MATCH_CEREMONY - 2 && s.phaseTimer <= GB_MATCH.POST_MATCH_CEREMONY) {
+          // Trigger celebration particles
+          const winTeam = s.scores[0] > s.scores[1] ? 0 : s.scores[1] > s.scores[0] ? 1 : -1;
+          if (winTeam >= 0) {
+            for (const p of s.players) {
+              if (p.teamIndex === winTeam) {
+                p.action = GBPlayerAction.CELEBRATING;
+                p.actionTimer = 5;
+              }
+            }
+          }
+        }
         if (s.phaseTimer <= 0) {
-          // Return to team select
+          // Record career result if in career mode
+          if (s.careerState?.active) {
+            const homeTeamId = s.teamDefs[0].id;
+            const awayTeamId = s.teamDefs[1].id;
+            recordMatchResult(s.careerState, homeTeamId, awayTeamId, s.scores[0], s.scores[1], false);
+            // Simulate other fixtures
+            simulateRemainingFixtures(s.careerState);
+          }
+
+          // Return to team select (or career menu)
           this._renderer.destroy();
           this._hud.destroy();
           if (this._tickerCb) {
             viewManager.app.ticker.remove(this._tickerCb);
             this._tickerCb = null;
           }
-          this._showTeamSelect();
+          if (this._inCareerMode && this._state.careerState?.active) {
+            this._showCareerMenu();
+          } else {
+            this._showTeamSelect();
+          }
         }
         break;
     }
@@ -384,13 +506,25 @@ export class GrailBallGame {
     assignAIRoles(s, 0);
     assignAIRoles(s, 1);
 
+    // AI formation adaptation (every ~5s for AI team)
+    this._formationAdaptTimer -= dt;
+    if (this._formationAdaptTimer <= 0) {
+      this._formationAdaptTimer = 5;
+      // Adapt AI team formation (team that is not human)
+      const aiTeam = s.humanTeam === 0 ? 1 : 0;
+      adaptFormation(s, aiTeam);
+    }
+
     // Tick each player
     for (const p of s.players) {
       this._tickPlayer(p, dt);
     }
 
-    // Tick orb
+    // Tick orb (enhanced physics)
     this._tickOrb(dt);
+
+    // Ball-player collisions with momentum transfer
+    checkBallPlayerCollisions(s);
 
     // Check goal
     this._checkGoal();
@@ -446,9 +580,24 @@ export class GrailBallGame {
       }
     }
 
-    // Stamina regen
-    const regenMod = p.action === GBPlayerAction.IDLE ? 1.5 : 0.5;
-    p.stamina = Math.min(p.maxStamina, p.stamina + p.staminaRegen * regenMod * dt);
+    // Enhanced stamina regen based on activity
+    const speed = Math.sqrt(p.vel.x * p.vel.x + p.vel.z * p.vel.z);
+    let regenRate: number;
+    if (p.action === GBPlayerAction.IDLE || speed < 0.5) {
+      regenRate = GB_STAMINA.STANDING_REGEN;
+    } else if (speed < p.speed * 0.6) {
+      regenRate = GB_STAMINA.WALKING_REGEN;
+    } else {
+      regenRate = GB_STAMINA.RUNNING_REGEN;
+    }
+    p.stamina = Math.min(p.maxStamina, p.stamina + regenRate * dt);
+
+    // Track distance for fatigue
+    const distThisFrame = speed * dt;
+    p.totalDistanceRun += distThisFrame;
+
+    // Update fatigue factor (degrades over total distance)
+    p.fatigueFactor = Math.max(0.3, 1.0 - p.totalDistanceRun * 0.0003);
 
     // AI for non-human players
     if (p.id !== s.selectedPlayerId || p.teamIndex !== s.humanTeam) {
@@ -498,18 +647,17 @@ export class GrailBallGame {
       }
     }
 
-    // Update action state for animation
+    // Update action state for animation (reuse 'speed' from stamina calc above)
     if (p.action === GBPlayerAction.IDLE || p.action === GBPlayerAction.RUNNING || p.action === GBPlayerAction.CARRYING || p.action === GBPlayerAction.SPRINTING) {
-      const speed = Math.sqrt(p.vel.x * p.vel.x + p.vel.z * p.vel.z);
+      const spd = Math.sqrt(p.vel.x * p.vel.x + p.vel.z * p.vel.z);
       if (p.hasOrb) {
-        p.action = speed > 1 ? GBPlayerAction.CARRYING : GBPlayerAction.CARRYING;
+        p.action = spd > 1 ? GBPlayerAction.CARRYING : GBPlayerAction.CARRYING;
       } else {
-        p.action = speed > 5 ? GBPlayerAction.SPRINTING : speed > 0.5 ? GBPlayerAction.RUNNING : GBPlayerAction.IDLE;
+        p.action = spd > 5 ? GBPlayerAction.SPRINTING : spd > 0.5 ? GBPlayerAction.RUNNING : GBPlayerAction.IDLE;
       }
     }
 
     // Anim phase
-    const speed = Math.sqrt(p.vel.x * p.vel.x + p.vel.z * p.vel.z);
     p.animPhase += dt * speed * 0.5;
   }
 
@@ -518,14 +666,15 @@ export class GrailBallGame {
   // ---------------------------------------------------------------------------
   private _applyAIDecision(p: GBPlayer, d: ReturnType<typeof decideAI>, dt: number): void {
     if (d.moveDir) {
-      const spd = p.speed * (d.sprint ? p.sprintMultiplier : 1);
+      const fatigueMult = getFatigueSpeedMultiplier(p);
+      const spd = p.speed * (d.sprint ? p.sprintMultiplier : 1) * fatigueMult;
       // Apply power-up
       const speedMod = p.activePowerUp === GBPowerUpType.SPEED_BOOST ? 1.4 : 1;
       p.vel.x = d.moveDir.x * spd * speedMod;
       p.vel.z = d.moveDir.z * spd * speedMod;
 
       if (d.sprint && p.stamina > 0) {
-        p.stamina -= 8 * dt;
+        p.stamina -= GB_STAMINA.SPRINT_DRAIN * dt;
       }
     }
 
@@ -597,7 +746,8 @@ export class GrailBallGame {
       const len = Math.sqrt(mx * mx + mz * mz);
       mx /= len; mz /= len;
 
-      const spd = sel.speed;
+      const fatigueMult = getFatigueSpeedMultiplier(sel);
+      const spd = sel.speed * fatigueMult;
       const speedMod = sel.activePowerUp === GBPowerUpType.SPEED_BOOST ? 1.4 : 1;
       sel.vel.x = mx * spd * speedMod;
       sel.vel.z = mz * spd * speedMod;
@@ -656,6 +806,39 @@ export class GrailBallGame {
     if (_justPressed("KeyQ") && !sel.hasOrb) {
       this._doCallForPass(sel);
     }
+
+    // R: replay last key moment
+    if (_justPressed("KeyR")) {
+      if (s.replayMoments.length > 0) {
+        startReplay(s);
+      }
+    }
+
+    // Header/Volley: if orb is in the air nearby and player does not have it
+    if (!sel.hasOrb && s.orb.carrier == null && s.orb.inFlight) {
+      const orbDist = v3Dist3D(sel.pos, s.orb.pos);
+      // Auto-attempt header when ball is at head height
+      if (s.orb.pos.y > 1.5 && s.orb.pos.y < 3.5 && orbDist < GB_PHYSICS.ORB_HEADER_RANGE) {
+        const oppGate = sel.teamIndex === 0
+          ? v3(GB_FIELD.HALF_LENGTH + 1, GB_FIELD.GATE_HEIGHT * 0.4, 0)
+          : v3(-GB_FIELD.HALF_LENGTH - 1, GB_FIELD.GATE_HEIGHT * 0.4, 0);
+        if (attemptHeader(s, sel, oppGate)) {
+          sel.stamina -= GB_STAMINA.HEADER_COST;
+          pushEvent(s, "header", `${sel.name} heads the orb!`, sel.teamIndex, sel.id);
+        }
+      }
+      // Auto-attempt volley when ball is at kick height
+      else if (s.orb.pos.y > 0.3 && s.orb.pos.y < 2.0 && orbDist < GB_PHYSICS.ORB_VOLLEY_RANGE && _isDown("Space")) {
+        const oppGate = sel.teamIndex === 0
+          ? v3(GB_FIELD.HALF_LENGTH + 1, GB_FIELD.GATE_HEIGHT * 0.4, 0)
+          : v3(-GB_FIELD.HALF_LENGTH - 1, GB_FIELD.GATE_HEIGHT * 0.4, 0);
+        if (attemptVolley(s, sel, oppGate)) {
+          sel.stamina -= GB_STAMINA.VOLLEY_COST;
+          s.shots[sel.teamIndex]++;
+          pushEvent(s, "volley", `${sel.name} volleys!`, sel.teamIndex, sel.id);
+        }
+      }
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -672,7 +855,7 @@ export class GrailBallGame {
   }
 
   private _doPass(p: GBPlayer): void {
-    if (!p.hasOrb || p.stamina < 5) return;
+    if (!p.hasOrb || p.stamina < GB_STAMINA.PASS_COST) return;
     const s = this._state;
 
     // Find best teammate to pass to (closest in facing direction)
@@ -692,26 +875,30 @@ export class GrailBallGame {
       if (score > bestScore) { bestScore = score; best = t; }
     }
 
-    this._launchOrb(p, best.pos, GB_PHYSICS.PASS_SPEED, 0.2);
-    p.stamina -= 5;
+    this._launchOrb(p, best.pos, GB_PHYSICS.PASS_SPEED * p.fatigueFactor, 0.2);
+    p.stamina -= GB_STAMINA.PASS_COST;
     p.action = GBPlayerAction.THROWING;
     p.actionTimer = 0.3;
   }
 
   private _doShoot(p: GBPlayer, chargeTime = 1): void {
-    if (!p.hasOrb || p.stamina < 10) return;
+    if (!p.hasOrb || p.stamina < GB_STAMINA.SHOOT_COST) return;
     const s = this._state;
 
+    // Fatigue affects shot accuracy
+    const accuracyMult = getFatigueAccuracyMultiplier(p);
+    const scatter = (1 - accuracyMult) * GB_FIELD.GATE_WIDTH * 0.4;
+
     const oppGate = p.teamIndex === 0
-      ? v3(GB_FIELD.HALF_LENGTH + 1, GB_FIELD.GATE_HEIGHT * 0.4, (Math.random() - 0.5) * GB_FIELD.GATE_WIDTH * 0.6)
-      : v3(-GB_FIELD.HALF_LENGTH - 1, GB_FIELD.GATE_HEIGHT * 0.4, (Math.random() - 0.5) * GB_FIELD.GATE_WIDTH * 0.6);
+      ? v3(GB_FIELD.HALF_LENGTH + 1, GB_FIELD.GATE_HEIGHT * 0.4, (Math.random() - 0.5) * GB_FIELD.GATE_WIDTH * 0.6 + (Math.random() - 0.5) * scatter)
+      : v3(-GB_FIELD.HALF_LENGTH - 1, GB_FIELD.GATE_HEIGHT * 0.4, (Math.random() - 0.5) * GB_FIELD.GATE_WIDTH * 0.6 + (Math.random() - 0.5) * scatter);
 
     const power = Math.min(chargeTime / GB_PHYSICS.MAX_THROW_CHARGE, 1);
-    const speed = GB_PHYSICS.SHOT_SPEED * (0.6 + power * 0.4);
+    const speed = GB_PHYSICS.SHOT_SPEED * (0.6 + power * 0.4) * p.fatigueFactor;
     const throwPowerMod = p.activePowerUp === GBPowerUpType.STRENGTH ? 1.3 : 1;
 
     this._launchOrb(p, oppGate, speed * throwPowerMod, 0.15);
-    p.stamina -= 10;
+    p.stamina -= GB_STAMINA.SHOOT_COST;
     p.action = GBPlayerAction.THROWING;
     p.actionTimer = 0.4;
 
@@ -720,7 +907,7 @@ export class GrailBallGame {
   }
 
   private _doLobPass(p: GBPlayer): void {
-    if (!p.hasOrb || p.stamina < 8) return;
+    if (!p.hasOrb || p.stamina < GB_STAMINA.LOB_COST) return;
     const s = this._state;
 
     // Lob toward furthest forward teammate
@@ -736,34 +923,27 @@ export class GrailBallGame {
       if (d < bestDist) { bestDist = d; best = t; }
     }
 
-    this._launchOrb(p, v3(best.pos.x, 0, best.pos.z), GB_PHYSICS.LOB_SPEED, GB_PHYSICS.LOB_ANGLE);
-    p.stamina -= 8;
+    this._launchOrb(p, v3(best.pos.x, 0, best.pos.z), GB_PHYSICS.LOB_SPEED * p.fatigueFactor, GB_PHYSICS.LOB_ANGLE);
+    p.stamina -= GB_STAMINA.LOB_COST;
     p.action = GBPlayerAction.THROWING;
     p.actionTimer = 0.4;
   }
 
   private _launchOrb(p: GBPlayer, target: Vec3, speed: number, upAngle: number): void {
-    const s = this._state;
-    p.hasOrb = false;
-    s.orb.carrier = null;
-    s.orb.lastThrownBy = p.id;
-    s.orb.lastTeam = p.teamIndex;
-    s.orb.inFlight = true;
-
-    const dir = v3Normalize(v3Sub(target, p.pos));
-    s.orb.pos = v3(p.pos.x + dir.x * 0.8, p.pos.y + 1.5, p.pos.z + dir.z * 0.8);
-    s.orb.vel = v3(dir.x * speed, speed * upAngle, dir.z * speed);
-    s.orb.glowIntensity = 2; // flash on throw
+    // Use the enhanced physics launch with spin
+    const spinY = (Math.random() - 0.5) * 0.2; // slight random curve
+    const spinX = p.cls === GBPlayerClass.MAGE ? 0.1 : 0; // mages add top spin
+    launchOrbWithSpin(this._state, p, target, speed, upAngle, spinY, spinX);
   }
 
   private _doTackle(p: GBPlayer): void {
-    if (p.tackleCooldown > 0 || p.stamina < 10) return;
+    if (p.tackleCooldown > 0 || p.stamina < GB_STAMINA.TACKLE_COST) return;
     const s = this._state;
 
     p.action = GBPlayerAction.TACKLING;
     p.actionTimer = 0.4;
     p.tackleCooldown = GB_PHYSICS.TACKLE_COOLDOWN;
-    p.stamina -= 12;
+    p.stamina -= GB_STAMINA.TACKLE_COST;
 
     // Lunge forward
     p.vel.x += Math.cos(p.facing) * 8;
@@ -774,7 +954,7 @@ export class GrailBallGame {
     for (const opp of opponents) {
       const dist = v3Dist(p.pos, opp.pos);
       if (dist < GB_PHYSICS.TACKLE_RANGE) {
-        const tacklePower = p.tacklePower * (p.activePowerUp === GBPowerUpType.STRENGTH ? 1.5 : 1);
+        const tacklePower = p.tacklePower * (p.activePowerUp === GBPowerUpType.STRENGTH ? 1.5 : 1) * getFatigueTackleMultiplier(p);
 
         // Stun the opponent
         opp.stunTimer = GB_PHYSICS.TACKLE_STUN_DURATION;
@@ -927,62 +1107,11 @@ export class GrailBallGame {
           carrier.pos.z - Math.sin(carrier.facing) * 0.5,
         );
         orb.vel = v3();
+        orb.spin = v3();
       }
     } else {
-      // Physics
-      orb.vel.y += GB_PHYSICS.GRAVITY * dt;
-      orb.pos.x += orb.vel.x * dt;
-      orb.pos.y += orb.vel.y * dt;
-      orb.pos.z += orb.vel.z * dt;
-
-      // Ground bounce
-      if (orb.pos.y < GB_PHYSICS.ORB_RADIUS) {
-        orb.pos.y = GB_PHYSICS.ORB_RADIUS;
-        orb.vel.y = Math.abs(orb.vel.y) * GB_PHYSICS.ORB_BOUNCE;
-        orb.vel.x *= GB_PHYSICS.ORB_FRICTION;
-        orb.vel.z *= GB_PHYSICS.ORB_FRICTION;
-
-        if (Math.abs(orb.vel.y) < 0.5) {
-          orb.vel.y = 0;
-          orb.inFlight = false;
-        }
-      }
-
-      // Wall bounce (sidelines)
-      if (orb.pos.z < -GB_FIELD.HALF_WIDTH || orb.pos.z > GB_FIELD.HALF_WIDTH) {
-        orb.pos.z = Math.max(-GB_FIELD.HALF_WIDTH, Math.min(GB_FIELD.HALF_WIDTH, orb.pos.z));
-        orb.vel.z *= -GB_PHYSICS.ORB_BOUNCE;
-      }
-
-      // Goal posts bounce
-      for (const xBound of [-GB_FIELD.HALF_LENGTH - 1, GB_FIELD.HALF_LENGTH + 1]) {
-        if (Math.abs(orb.pos.x - xBound) < 1) {
-          // Check if within gate opening
-          if (Math.abs(orb.pos.z) > GB_FIELD.GATE_WIDTH / 2) {
-            // Hit wall, bounce
-            orb.vel.x *= -GB_PHYSICS.ORB_BOUNCE;
-            orb.pos.x = xBound + (xBound < 0 ? 1 : -1);
-          }
-        }
-      }
-
-      // End wall bounce (behind gates)
-      if (orb.pos.x < -GB_FIELD.HALF_LENGTH - 3 || orb.pos.x > GB_FIELD.HALF_LENGTH + 3) {
-        orb.vel.x *= -0.5;
-        orb.pos.x = Math.max(-GB_FIELD.HALF_LENGTH - 3, Math.min(GB_FIELD.HALF_LENGTH + 3, orb.pos.x));
-      }
-
-      // Friction on ground
-      if (orb.pos.y <= GB_PHYSICS.ORB_RADIUS + 0.1) {
-        orb.vel.x *= 0.98;
-        orb.vel.z *= 0.98;
-      }
-
-      // Speed check: if very slow, mark as not in flight
-      const speed = v3Len(orb.vel);
-      if (speed < 0.5 && orb.pos.y < 0.5) {
-        orb.inFlight = false;
-      }
+      // Enhanced physics with spin, curve, drag, and surface friction
+      tickOrbPhysics(s, dt);
     }
 
     // Update trail
@@ -1052,15 +1181,21 @@ export class GrailBallGame {
         // Goal explosion particles
         this._renderer.spawnGoalExplosion(gateX, 2, 0);
 
+        // Record goal replay moment
+        recordKeyMoment(s, "goal",
+          scorer ? `${scorer.name} scores for ${s.teamDefs[scoringTeam].name}!` : `${s.teamDefs[scoringTeam].name} scores!`,
+          scorerId > 0 ? scorerId : undefined,
+          scoringTeam,
+        );
+
         // Sudden death overtime: first goal wins
         if (s.overtime) {
           s.phase = GBMatchPhase.POST_GAME;
-          s.phaseTimer = 8;
+          s.phaseTimer = GB_MATCH.POST_MATCH_CEREMONY;
           pushEvent(s, "match_end", `${s.teamDefs[scoringTeam].name} wins in sudden death!`);
         }
 
         // Check gatekeeper save (if orb was going at gate and gatekeeper touched it)
-        // (simplified: if a gatekeeper of the conceding team was near the goal)
         const gk = getTeamPlayers(s, side).find(p => p.cls === GBPlayerClass.GATEKEEPER);
         if (gk && v3Dist(gk.pos, v3(gateX, 0, 0)) < 4) {
           // Close but no save
@@ -1189,6 +1324,427 @@ export class GrailBallGame {
   }
 
   // ---------------------------------------------------------------------------
+  // Replay input during playback
+  // ---------------------------------------------------------------------------
+  private _tickReplayInput(): void {
+    // Space or R: skip replay
+    if (_justPressed("Space") || _justPressed("KeyR")) {
+      stopReplay(this._state);
+      return;
+    }
+    // C: cycle camera angle
+    if (_justPressed("KeyC")) {
+      cycleReplayCamera(this._state);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Penalty Shootout
+  // ---------------------------------------------------------------------------
+  private _setupPenaltyShooter(): void {
+    const s = this._state;
+    const ps = s.penaltyState;
+    if (!ps) return;
+
+    const shooterTeam = ps.shooterTeam;
+    const keeperTeam = shooterTeam === 0 ? 1 : 0;
+
+    // Pick shooter (cycle through outfield players)
+    const shooters = getTeamPlayers(s, shooterTeam).filter(p => p.cls !== GBPlayerClass.GATEKEEPER);
+    const idx = (ps.attempts[shooterTeam]) % shooters.length;
+    const shooter = shooters[idx];
+
+    const keeper = getTeamPlayers(s, keeperTeam).find(p => p.cls === GBPlayerClass.GATEKEEPER);
+
+    if (shooter) {
+      ps.shooterId = shooter.id;
+      // Position shooter at penalty spot
+      const penaltyX = keeperTeam === 0
+        ? -GB_FIELD.HALF_LENGTH + GB_MATCH.PENALTY_DISTANCE
+        : GB_FIELD.HALF_LENGTH - GB_MATCH.PENALTY_DISTANCE;
+      shooter.pos = v3(penaltyX, 0, 0);
+      shooter.facing = keeperTeam === 0 ? Math.PI : 0;
+    }
+
+    if (keeper) {
+      ps.keeperId = keeper.id;
+      const gateX = keeperTeam === 0 ? -GB_FIELD.HALF_LENGTH : GB_FIELD.HALF_LENGTH;
+      keeper.pos = v3(gateX, 0, 0);
+      keeper.facing = keeperTeam === 0 ? 0 : Math.PI;
+    }
+
+    ps.phase = "aiming";
+    ps.aimAngle = 0;
+    ps.aimPower = 0.7;
+    ps.shotTimer = GB_MATCH.PENALTY_SHOT_TIME;
+  }
+
+  private _tickPenaltyShootout(dt: number): void {
+    const s = this._state;
+    const ps = s.penaltyState;
+    if (!ps) return;
+
+    switch (ps.phase) {
+      case "aiming": {
+        ps.shotTimer -= dt;
+
+        // Human team aiming
+        if (ps.shooterTeam === s.humanTeam) {
+          // Oscillate aim with arrow keys
+          if (_isDown("ArrowLeft") || _isDown("KeyA")) ps.aimAngle -= 2 * dt;
+          if (_isDown("ArrowRight") || _isDown("KeyD")) ps.aimAngle += 2 * dt;
+          if (_isDown("ArrowUp") || _isDown("KeyW")) ps.aimPower = Math.min(1, ps.aimPower + dt);
+          if (_isDown("ArrowDown") || _isDown("KeyS")) ps.aimPower = Math.max(0.3, ps.aimPower - dt);
+          ps.aimAngle = Math.max(-1, Math.min(1, ps.aimAngle));
+
+          if (_justPressed("Space") || ps.shotTimer <= 0) {
+            this._executePenaltyShot();
+          }
+        } else {
+          // AI aiming: random aim with slight delay
+          if (ps.shotTimer <= GB_MATCH.PENALTY_SHOT_TIME - 1.5) {
+            ps.aimAngle = (Math.random() - 0.5) * 1.5;
+            ps.aimPower = 0.6 + Math.random() * 0.4;
+            this._executePenaltyShot();
+          }
+        }
+        break;
+      }
+
+      case "shooting": {
+        // Tick orb physics during the shot
+        this._tickOrb(dt);
+
+        // Check if ball reached the gate area or stopped
+        const keeperTeam = ps.shooterTeam === 0 ? 1 : 0;
+        const gateX = keeperTeam === 0 ? -GB_FIELD.HALF_LENGTH : GB_FIELD.HALF_LENGTH;
+        const orbPastGate = keeperTeam === 0
+          ? s.orb.pos.x < gateX + 0.5
+          : s.orb.pos.x > gateX - 0.5;
+
+        // AI keeper diving
+        if (ps.keeperId != null) {
+          const keeper = getPlayer(s, ps.keeperId);
+          if (keeper) {
+            // Keeper dives toward predicted ball position
+            const diveDir = Math.sign(s.orb.pos.z - keeper.pos.z);
+            keeper.vel.z = diveDir * 12;
+            keeper.pos.z += keeper.vel.z * dt;
+            keeper.pos.z = Math.max(-GB_FIELD.GATE_WIDTH / 2, Math.min(GB_FIELD.GATE_WIDTH / 2, keeper.pos.z));
+
+            // Check save
+            const dist = v3Dist3D(keeper.pos, s.orb.pos);
+            if (dist < keeper.catchRadius * 1.5) {
+              // Save!
+              ps.phase = "result";
+              ps.resultTimer = 2;
+              const shooter = ps.shooterId ? getPlayer(s, ps.shooterId) : null;
+              ps.history.push({ team: ps.shooterTeam, scored: false, shooter: shooter?.name ?? "Unknown" });
+              ps.attempts[ps.shooterTeam]++;
+              s.saves[keeperTeam]++;
+              pushEvent(s, "save", `Save! ${keeper.name} stops the penalty!`, keeperTeam, keeper.id);
+              recordKeyMoment(s, "save", `${keeper.name} saves the penalty!`, keeper.id, keeperTeam);
+              s.orb.vel = v3();
+              s.orb.inFlight = false;
+              return;
+            }
+          }
+        }
+
+        if (orbPastGate &&
+            Math.abs(s.orb.pos.z) < GB_FIELD.GATE_WIDTH / 2 &&
+            s.orb.pos.y < GB_FIELD.GATE_HEIGHT) {
+          // Goal!
+          ps.phase = "result";
+          ps.resultTimer = 2;
+          ps.scores[ps.shooterTeam]++;
+          const shooter = ps.shooterId ? getPlayer(s, ps.shooterId) : null;
+          ps.history.push({ team: ps.shooterTeam, scored: true, shooter: shooter?.name ?? "Unknown" });
+          ps.attempts[ps.shooterTeam]++;
+          pushEvent(s, "penalty", `Penalty scored by ${shooter?.name ?? "Unknown"}!`, ps.shooterTeam);
+          s.cameraShake = 0.3;
+        } else if (v3Len(s.orb.vel) < 1 || s.orb.pos.y < 0) {
+          // Miss
+          ps.phase = "result";
+          ps.resultTimer = 2;
+          const shooter = ps.shooterId ? getPlayer(s, ps.shooterId) : null;
+          ps.history.push({ team: ps.shooterTeam, scored: false, shooter: shooter?.name ?? "Unknown" });
+          ps.attempts[ps.shooterTeam]++;
+          pushEvent(s, "penalty", `Penalty missed by ${shooter?.name ?? "Unknown"}!`, ps.shooterTeam);
+        }
+        break;
+      }
+
+      case "result": {
+        ps.resultTimer -= dt;
+        if (ps.resultTimer <= 0) {
+          // Check if shootout is decided
+          const decided = this._isPenaltyShootoutDecided();
+          if (decided) {
+            ps.phase = "done";
+            const winner = ps.scores[0] > ps.scores[1] ? 0 : 1;
+            s.scores[winner]++; // add deciding point
+            s.phase = GBMatchPhase.POST_GAME;
+            s.phaseTimer = GB_MATCH.POST_MATCH_CEREMONY;
+            pushEvent(s, "match_end",
+              `${s.teamDefs[winner].name} wins on penalties! (${ps.scores[0]}-${ps.scores[1]})`);
+          } else {
+            // Next shooter (alternate teams)
+            ps.shooterTeam = ps.shooterTeam === 0 ? 1 : 0;
+            this._setupPenaltyShooter();
+          }
+        }
+        break;
+      }
+    }
+  }
+
+  private _executePenaltyShot(): void {
+    const s = this._state;
+    const ps = s.penaltyState;
+    if (!ps || !ps.shooterId) return;
+
+    const shooter = getPlayer(s, ps.shooterId);
+    if (!shooter) return;
+
+    ps.phase = "shooting";
+
+    const keeperTeam = ps.shooterTeam === 0 ? 1 : 0;
+    const gateX = keeperTeam === 0 ? -GB_FIELD.HALF_LENGTH - 0.5 : GB_FIELD.HALF_LENGTH + 0.5;
+
+    // Target based on aim angle
+    const targetZ = ps.aimAngle * (GB_FIELD.GATE_WIDTH / 2) * 0.8;
+    const targetY = GB_FIELD.GATE_HEIGHT * 0.3 + ps.aimPower * GB_FIELD.GATE_HEIGHT * 0.4;
+    const target = v3(gateX, targetY, targetZ);
+
+    const speed = GB_PHYSICS.SHOT_SPEED * ps.aimPower;
+    this._launchOrb(shooter, target, speed, 0.1);
+
+    s.orb.pos = v3(shooter.pos.x, 1.2, shooter.pos.z);
+    shooter.action = GBPlayerAction.THROWING;
+    shooter.actionTimer = 0.5;
+  }
+
+  private _isPenaltyShootoutDecided(): boolean {
+    const ps = this._state.penaltyState;
+    if (!ps) return false;
+
+    const maxRounds = GB_MATCH.PENALTY_ROUNDS;
+
+    // Best of 5 rounds
+    if (ps.attempts[0] >= maxRounds && ps.attempts[1] >= maxRounds) {
+      if (ps.scores[0] !== ps.scores[1]) return true;
+      // Sudden death after 5 rounds
+      if (ps.attempts[0] === ps.attempts[1] && ps.attempts[0] > maxRounds) {
+        if (ps.scores[0] !== ps.scores[1]) return true;
+      }
+    }
+
+    // One team can't catch up even with remaining shots
+    const remainingA = Math.max(0, maxRounds - ps.attempts[0]);
+    const remainingB = Math.max(0, maxRounds - ps.attempts[1]);
+    if (ps.scores[0] > ps.scores[1] + remainingB && ps.attempts[0] >= ps.attempts[1]) return true;
+    if (ps.scores[1] > ps.scores[0] + remainingA && ps.attempts[1] >= ps.attempts[0]) return true;
+
+    return false;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Auto-substitute: AI picks most fatigued player to sub out
+  // ---------------------------------------------------------------------------
+  private _autoSubstitute(teamIndex: number): void {
+    const s = this._state;
+    if (s.subsRemaining[teamIndex] <= 0) return;
+
+    const teamPlayers = getTeamPlayers(s, teamIndex).filter(
+      p => p.cls !== GBPlayerClass.GATEKEEPER,
+    );
+    const benchOptions = s.benchPlayers.filter(
+      p => p.teamIndex === teamIndex && !p.isSubstitute,
+    );
+    if (teamPlayers.length === 0 || benchOptions.length === 0) return;
+
+    // Find most fatigued outfield player
+    let mostFatigued = teamPlayers[0];
+    for (const p of teamPlayers) {
+      if (p.stamina / p.maxStamina < mostFatigued.stamina / mostFatigued.maxStamina) {
+        mostFatigued = p;
+      }
+    }
+
+    // Only sub if player is actually fatigued (below 50%)
+    if (mostFatigued.stamina / mostFatigued.maxStamina > 0.5) return;
+
+    // Find best bench player of same class
+    const sameCls = benchOptions.find(p => p.cls === mostFatigued.cls);
+    const sub = sameCls ?? benchOptions[0];
+    if (sub) {
+      this._doSubstitution(teamIndex, mostFatigued.id, sub.id);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Substitution
+  // ---------------------------------------------------------------------------
+  private _doSubstitution(teamIndex: number, outPlayerId: number, inPlayerId: number): boolean {
+    const s = this._state;
+    if (s.subsRemaining[teamIndex] <= 0) return false;
+
+    const outPlayer = s.players.find(p => p.id === outPlayerId && p.teamIndex === teamIndex);
+    const inPlayer = s.benchPlayers.find(p => p.id === inPlayerId && p.teamIndex === teamIndex);
+    if (!outPlayer || !inPlayer) return false;
+
+    // Swap positions
+    inPlayer.pos = v3(outPlayer.pos.x, outPlayer.pos.y, outPlayer.pos.z);
+    inPlayer.vel = v3();
+    inPlayer.isSubstitute = false;
+    inPlayer.stamina = inPlayer.maxStamina;
+    inPlayer.fatigueFactor = 1.0;
+    inPlayer.totalDistanceRun = 0;
+
+    outPlayer.isSubstitute = true;
+
+    // Swap in the arrays
+    const idx = s.players.indexOf(outPlayer);
+    s.players[idx] = inPlayer;
+    s.benchPlayers = s.benchPlayers.filter(p => p.id !== inPlayerId);
+    s.benchPlayers.push(outPlayer);
+
+    s.subsRemaining[teamIndex]--;
+    pushEvent(s, "substitution", `${inPlayer.name} replaces ${outPlayer.name}`, teamIndex);
+
+    // If the outgoing player was selected, switch to incoming
+    if (s.selectedPlayerId === outPlayerId) {
+      s.selectedPlayerId = inPlayerId;
+    }
+
+    return true;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Career Mode Menu
+  // ---------------------------------------------------------------------------
+  private _showCareerMenu(): void {
+    if (this._careerDiv) return;
+
+    const career = this._state?.careerState;
+    this._careerDiv = document.createElement("div");
+    this._careerDiv.style.cssText = `
+      position:fixed;top:0;left:0;width:100%;height:100%;
+      background:linear-gradient(135deg, #1a0a2e 0%, #0d1b2a 50%, #1a0a2e 100%);
+      z-index:200;display:flex;flex-direction:column;align-items:center;
+      font-family:Georgia,serif;color:#ffd700;overflow-y:auto;padding:20px;
+    `;
+
+    let html = `<h1 style="font-size:42px;margin:20px 0;text-shadow:3px 3px 6px #000;">CAREER MODE</h1>`;
+
+    if (career) {
+      const sorted = getSortedLeagueTable(career);
+
+      html += `<div style="margin:10px;font-size:18px;">Season ${career.season.year} | Budget: ${career.transferBudget} gold</div>`;
+
+      // League table
+      html += `<div style="background:rgba(30,30,50,0.9);border:2px solid #daa520;border-radius:8px;padding:16px;margin:10px;min-width:500px;">`;
+      html += `<h3 style="margin:0 0 10px;">League Table</h3>`;
+      html += `<table style="width:100%;color:#ddd;font-size:14px;border-collapse:collapse;">`;
+      html += `<tr style="border-bottom:1px solid #555;"><th style="text-align:left;padding:4px;">Pos</th><th style="text-align:left;">Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GF</th><th>GA</th><th>Pts</th></tr>`;
+      sorted.forEach((entry, i) => {
+        const team = GB_TEAMS.find(t => t.id === entry.teamId);
+        const isPlayer = entry.teamId === career.playerTeamId;
+        const style = isPlayer ? 'style="color:#ffd700;font-weight:bold;"' : '';
+        html += `<tr ${style}><td style="padding:4px;">${i + 1}</td><td>${team?.shortName ?? entry.teamId}</td>`;
+        html += `<td style="text-align:center;">${entry.played}</td><td style="text-align:center;">${entry.won}</td>`;
+        html += `<td style="text-align:center;">${entry.drawn}</td><td style="text-align:center;">${entry.lost}</td>`;
+        html += `<td style="text-align:center;">${entry.goalsFor}</td><td style="text-align:center;">${entry.goalsAgainst}</td>`;
+        html += `<td style="text-align:center;font-weight:bold;">${entry.points}</td></tr>`;
+      });
+      html += `</table></div>`;
+
+      // Trophies
+      if (career.trophies.length > 0) {
+        html += `<div style="background:rgba(30,30,50,0.9);border:2px solid #daa520;border-radius:8px;padding:16px;margin:10px;min-width:400px;">`;
+        html += `<h3 style="margin:0 0 10px;">Trophy Cabinet</h3>`;
+        for (const trophy of career.trophies) {
+          const icon = trophy.type === "league" ? "League Champion" : "Cup Winner";
+          html += `<div style="margin:4px 0;color:#ffd700;">${icon} - Year ${trophy.year}</div>`;
+        }
+        html += `</div>`;
+      }
+
+      // All-time stats
+      html += `<div style="background:rgba(30,30,50,0.9);border:2px solid #daa520;border-radius:8px;padding:16px;margin:10px;min-width:400px;">`;
+      html += `<h3 style="margin:0 0 10px;">All-Time Record</h3>`;
+      html += `<div style="color:#ddd;">W: ${career.allTimeStats.totalWins} | D: ${career.allTimeStats.totalDraws} | L: ${career.allTimeStats.totalLosses}</div>`;
+      html += `<div style="color:#ddd;">Goals: ${career.allTimeStats.totalGoalsFor} scored, ${career.allTimeStats.totalGoalsAgainst} conceded</div>`;
+      html += `<div style="color:#ddd;">Seasons: ${career.allTimeStats.seasonsPlayed}</div>`;
+      html += `</div>`;
+
+      // Next fixture
+      const nextFix = getNextFixture(career);
+      if (nextFix) {
+        const homeTeam = GB_TEAMS.find(t => t.id === nextFix.homeTeamId);
+        const awayTeam = GB_TEAMS.find(t => t.id === nextFix.awayTeamId);
+        html += `<div style="margin:20px;font-size:18px;">Next: ${homeTeam?.name ?? "?"} vs ${awayTeam?.name ?? "?"} ${nextFix.isCup ? "(Cup)" : "(League)"}</div>`;
+      }
+    }
+
+    // Buttons
+    html += `<div style="margin-top:20px;display:flex;gap:16px;">`;
+    html += `<div id="gb-career-play" style="font-size:24px;cursor:pointer;padding:12px 36px;border:3px solid #daa520;border-radius:10px;color:#ffd700;transition:all 0.2s;background:rgba(218,165,32,0.1);">PLAY NEXT MATCH</div>`;
+    html += `<div id="gb-career-end" style="font-size:18px;cursor:pointer;padding:12px 24px;border:2px solid #666;border-radius:10px;color:#aaa;transition:all 0.2s;">END SEASON</div>`;
+    html += `<div id="gb-career-exit" style="font-size:18px;cursor:pointer;padding:12px 24px;border:2px solid #666;border-radius:10px;color:#aaa;transition:all 0.2s;">EXIT CAREER</div>`;
+    html += `</div>`;
+
+    this._careerDiv.innerHTML = html;
+    document.body.appendChild(this._careerDiv);
+
+    // Event handlers
+    const playBtn = this._careerDiv.querySelector("#gb-career-play") as HTMLElement;
+    if (playBtn) {
+      playBtn.addEventListener("click", () => {
+        this._hideCareerMenu();
+        if (career) {
+          const fixture = getNextFixture(career);
+          if (fixture) {
+            const t1 = GB_TEAMS.find(t => t.id === fixture.homeTeamId);
+            const t2 = GB_TEAMS.find(t => t.id === fixture.awayTeamId);
+            if (t1 && t2) {
+              this._selectedTeam1 = GB_TEAMS.indexOf(t1);
+              this._selectedTeam2 = GB_TEAMS.indexOf(t2);
+              this._startMatch();
+            }
+          }
+        }
+      });
+    }
+
+    const endBtn = this._careerDiv.querySelector("#gb-career-end") as HTMLElement;
+    if (endBtn && career) {
+      endBtn.addEventListener("click", () => {
+        endSeason(career);
+        this._hideCareerMenu();
+        this._showCareerMenu(); // Refresh
+      });
+    }
+
+    const exitBtn = this._careerDiv.querySelector("#gb-career-exit") as HTMLElement;
+    if (exitBtn) {
+      exitBtn.addEventListener("click", () => {
+        this._hideCareerMenu();
+        this._inCareerMode = false;
+        this._showTeamSelect();
+      });
+    }
+  }
+
+  private _hideCareerMenu(): void {
+    if (this._careerDiv) {
+      this._careerDiv.remove();
+      this._careerDiv = null;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // Destroy
   // ---------------------------------------------------------------------------
   destroy(): void {
@@ -1205,6 +1761,7 @@ export class GrailBallGame {
     this._renderer.destroy();
     this._hud.destroy();
     this._hideTeamSelect();
+    this._hideCareerMenu();
 
     // Clear pressed keys
     for (const k of Object.keys(_keys)) _keys[k] = false;

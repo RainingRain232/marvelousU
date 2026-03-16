@@ -179,6 +179,9 @@ export class TekkenGame {
       defensive: "Defensive",
       evasive: "Evasive",
       power: "Power",
+      zoner: "Zoner",
+      grappler: "Grappler",
+      technical: "Technical",
     };
 
     const drawSelect = () => {
@@ -283,16 +286,21 @@ export class TekkenGame {
       g.moveTo(sw / 2, divY - 5).lineTo(sw / 2 + 5, divY).lineTo(sw / 2, divY + 5).lineTo(sw / 2 - 5, divY).closePath()
         .fill({ color: 0xffd700, alpha: 0.9 });
 
-      // ── Character cards ──
-      const boxW = 220, boxH = 280, gap = 24;
-      const totalW = charIds.length * (boxW + gap) - gap;
+      // ── Character cards (2 rows of 6) ──
+      const cols = 6;
+      const rows = Math.ceil(charIds.length / cols);
+      const boxW = 150, boxH = 200, gapX = 16, gapY = 14;
+      const totalW = cols * (boxW + gapX) - gapX;
+      const totalH = rows * (boxH + gapY) - gapY;
       const startX = (sw - totalW) / 2;
-      const cardsY = 110;
+      const cardsY = 100;
 
       for (let i = 0; i < charIds.length; i++) {
         const ch = TEKKEN_CHARACTERS[i];
-        const bx = startX + i * (boxW + gap);
-        const by = cardsY;
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        const bx = startX + col * (boxW + gapX);
+        const by = cardsY + row * (boxH + gapY);
 
         const isP1 = i === p1Idx;
         const isP2 = i === p2Idx;
@@ -343,81 +351,83 @@ export class TekkenGame {
         g.roundRect(bx, by, boxW, boxH, 10)
           .stroke({ color: borderCol, width: isSelected ? 3 : 1.5 });
 
-        // ── Detailed character silhouette ──
+        // ── Scaled character silhouette ──
         const cx = bx + boxW / 2;
-        const cy = by + boxH / 2 - 20;
+        const cy = by + boxH / 2 - 14;
+        const s = 0.65; // scale factor for smaller cards
         const skinColor = ch.colors.skin;
         const primaryColor = ch.colors.primary;
         const secondaryColor = ch.colors.secondary;
         const accentColor = ch.colors.accent;
 
         // Shadow under figure
-        g.ellipse(cx, cy + 75, 28, 6).fill({ color: 0x000000, alpha: 0.3 });
+        g.ellipse(cx, cy + 75 * s, 28 * s, 6 * s).fill({ color: 0x000000, alpha: 0.3 });
 
-        // Legs (slightly angled for stance)
-        g.roundRect(cx - 16, cy + 38, 13, 38, 3).fill({ color: secondaryColor });
-        g.roundRect(cx + 3, cy + 38, 13, 38, 3).fill({ color: secondaryColor });
+        // Legs
+        g.roundRect(cx - 16 * s, cy + 38 * s, 13 * s, 38 * s, 3).fill({ color: secondaryColor });
+        g.roundRect(cx + 3 * s, cy + 38 * s, 13 * s, 38 * s, 3).fill({ color: secondaryColor });
         // Boots
-        g.roundRect(cx - 18, cy + 70, 16, 8, 2).fill({ color: 0x332211 });
-        g.roundRect(cx + 2, cy + 70, 16, 8, 2).fill({ color: 0x332211 });
+        g.roundRect(cx - 18 * s, cy + 70 * s, 16 * s, 8 * s, 2).fill({ color: 0x332211 });
+        g.roundRect(cx + 2 * s, cy + 70 * s, 16 * s, 8 * s, 2).fill({ color: 0x332211 });
 
-        // Torso (main body)
-        g.roundRect(cx - 20, cy - 15, 40, 55, 5).fill({ color: primaryColor });
-        // Belt / waist detail
-        g.rect(cx - 20, cy + 30, 40, 6).fill({ color: accentColor, alpha: 0.8 });
-        // Belt buckle
-        g.rect(cx - 4, cy + 29, 8, 8).fill({ color: 0xdaa520 });
+        // Torso
+        g.roundRect(cx - 20 * s, cy - 15 * s, 40 * s, 55 * s, 5).fill({ color: primaryColor });
+        // Belt
+        g.rect(cx - 20 * s, cy + 30 * s, 40 * s, 6 * s).fill({ color: accentColor, alpha: 0.8 });
+        g.rect(cx - 4 * s, cy + 29 * s, 8 * s, 8 * s).fill({ color: 0xdaa520 });
 
-        // Shoulders (pauldrons)
-        g.ellipse(cx - 22, cy - 8, 10, 8).fill({ color: primaryColor });
-        g.ellipse(cx + 22, cy - 8, 10, 8).fill({ color: primaryColor });
-        // Shoulder highlights
-        g.ellipse(cx - 22, cy - 10, 6, 4).fill({ color: accentColor, alpha: 0.4 });
-        g.ellipse(cx + 22, cy - 10, 6, 4).fill({ color: accentColor, alpha: 0.4 });
+        // Shoulders
+        g.ellipse(cx - 22 * s, cy - 8 * s, 10 * s, 8 * s).fill({ color: primaryColor });
+        g.ellipse(cx + 22 * s, cy - 8 * s, 10 * s, 8 * s).fill({ color: primaryColor });
+        g.ellipse(cx - 22 * s, cy - 10 * s, 6 * s, 4 * s).fill({ color: accentColor, alpha: 0.4 });
+        g.ellipse(cx + 22 * s, cy - 10 * s, 6 * s, 4 * s).fill({ color: accentColor, alpha: 0.4 });
 
         // Arms
-        g.roundRect(cx - 34, cy - 5, 12, 36, 4).fill({ color: skinColor });
-        g.roundRect(cx + 22, cy - 5, 12, 36, 4).fill({ color: skinColor });
-        // Gauntlets / gloves
-        g.roundRect(cx - 36, cy + 24, 14, 10, 3).fill({ color: secondaryColor });
-        g.roundRect(cx + 22, cy + 24, 14, 10, 3).fill({ color: secondaryColor });
+        g.roundRect(cx - 34 * s, cy - 5 * s, 12 * s, 36 * s, 4).fill({ color: skinColor });
+        g.roundRect(cx + 22 * s, cy - 5 * s, 12 * s, 36 * s, 4).fill({ color: skinColor });
+        g.roundRect(cx - 36 * s, cy + 24 * s, 14 * s, 10 * s, 3).fill({ color: secondaryColor });
+        g.roundRect(cx + 22 * s, cy + 24 * s, 14 * s, 10 * s, 3).fill({ color: secondaryColor });
 
-        // Weapon hint on the right hand side
+        // Weapon hint
         if (ch.archetype === "balanced" || ch.archetype === "defensive") {
-          // Sword
-          g.rect(cx + 34, cy - 10, 3, 40).fill({ color: 0xaaaacc });
-          g.rect(cx + 30, cy - 12, 11, 3).fill({ color: accentColor });
+          g.rect(cx + 34 * s, cy - 10 * s, 3 * s, 40 * s).fill({ color: 0xaaaacc });
+          g.rect(cx + 30 * s, cy - 12 * s, 11 * s, 3 * s).fill({ color: accentColor });
         } else if (ch.archetype === "power") {
-          // Axe
-          g.rect(cx + 35, cy - 10, 3, 38).fill({ color: 0x664422 });
-          g.moveTo(cx + 34, cy - 10).lineTo(cx + 46, cy - 5).lineTo(cx + 34, cy + 4).closePath()
+          g.rect(cx + 35 * s, cy - 10 * s, 3 * s, 38 * s).fill({ color: 0x664422 });
+          g.moveTo(cx + 34 * s, cy - 10 * s).lineTo(cx + 46 * s, cy - 5 * s).lineTo(cx + 34 * s, cy + 4 * s).closePath()
             .fill({ color: 0x888899 });
         } else if (ch.archetype === "evasive") {
-          // Daggers
-          g.rect(cx + 34, cy + 10, 2, 20).fill({ color: 0xaaaacc });
-          g.rect(cx - 36, cy + 10, 2, 20).fill({ color: 0xaaaacc });
+          g.rect(cx + 34 * s, cy + 10 * s, 2 * s, 20 * s).fill({ color: 0xaaaacc });
+          g.rect(cx - 36 * s, cy + 10 * s, 2 * s, 20 * s).fill({ color: 0xaaaacc });
         } else if (ch.archetype === "rushdown") {
-          // Spiked fist
-          g.circle(cx + 28, cy + 26, 7).fill({ color: 0x555555 });
-          g.circle(cx + 28, cy + 22, 2).fill({ color: 0xcccccc });
+          g.circle(cx + 28 * s, cy + 26 * s, 7 * s).fill({ color: 0x555555 });
+          g.circle(cx + 28 * s, cy + 22 * s, 2 * s).fill({ color: 0xcccccc });
         } else if (ch.archetype === "mixup") {
-          // Staff
-          g.rect(cx + 35, cy - 20, 3, 55).fill({ color: 0x886633 });
+          g.rect(cx + 35 * s, cy - 20 * s, 3 * s, 55 * s).fill({ color: 0x886633 });
+        } else if (ch.archetype === "zoner") {
+          // Magic orb
+          g.circle(cx + 30 * s, cy + 10 * s, 6 * s).fill({ color: 0x66aaff, alpha: 0.7 });
+          g.circle(cx + 30 * s, cy + 10 * s, 3 * s).fill({ color: 0xaaddff });
+        } else if (ch.archetype === "grappler") {
+          // Chains
+          g.circle(cx + 30 * s, cy + 20 * s, 5 * s).stroke({ color: 0xbbaa66, width: 2 });
+          g.circle(cx + 30 * s, cy + 10 * s, 5 * s).stroke({ color: 0xbbaa66, width: 2 });
+        } else if (ch.archetype === "technical") {
+          // Rapier
+          g.rect(cx + 34 * s, cy - 15 * s, 2 * s, 45 * s).fill({ color: 0xccccdd });
+          g.circle(cx + 35 * s, cy - 16 * s, 3 * s).fill({ color: accentColor });
         }
 
         // Neck
-        g.rect(cx - 5, cy - 22, 10, 10).fill({ color: skinColor });
+        g.rect(cx - 5 * s, cy - 22 * s, 10 * s, 10 * s).fill({ color: skinColor });
 
         // Head
-        g.circle(cx, cy - 34, 18).fill({ color: skinColor });
-        // Hair (moveTo arc start to avoid stray line from previous path position)
-        g.moveTo(cx - 18, cy - 36).arc(cx, cy - 36, 18, Math.PI, 0, false);
+        g.circle(cx, cy - 34 * s, 18 * s).fill({ color: skinColor });
+        g.moveTo(cx - 18 * s, cy - 36 * s).arc(cx, cy - 36 * s, 18 * s, Math.PI, 0, false);
         g.fill({ color: ch.colors.hair });
-        // Eyes (simple dots)
-        g.circle(cx - 6, cy - 36, 2).fill({ color: 0x222222 });
-        g.circle(cx + 6, cy - 36, 2).fill({ color: 0x222222 });
-        // Mouth line
-        g.moveTo(cx - 4, cy - 28).lineTo(cx + 4, cy - 28)
+        g.circle(cx - 6 * s, cy - 36 * s, 2 * s).fill({ color: 0x222222 });
+        g.circle(cx + 6 * s, cy - 36 * s, 2 * s).fill({ color: 0x222222 });
+        g.moveTo(cx - 4 * s, cy - 28 * s).lineTo(cx + 4 * s, cy - 28 * s)
           .stroke({ color: 0x994444, width: 1.5 });
 
         // ── Character name ──
@@ -425,7 +435,7 @@ export class TekkenGame {
           text: ch.name,
           style: {
             fontFamily: "Georgia, serif",
-            fontSize: 18,
+            fontSize: 14,
             fill: 0xffffff,
             fontWeight: "bold",
             dropShadow: { color: 0x000000, blur: 3, distance: 1, alpha: 0.8 },
@@ -433,7 +443,7 @@ export class TekkenGame {
         });
         nameText.anchor.set(0.5);
         nameText.x = cx;
-        nameText.y = by + boxH - 45;
+        nameText.y = by + boxH - 34;
         container.addChild(nameText);
 
         // ── Archetype subtitle ──
@@ -442,31 +452,30 @@ export class TekkenGame {
           text: arcLabel.toUpperCase(),
           style: {
             fontFamily: "Georgia, serif",
-            fontSize: 11,
+            fontSize: 9,
             fill: accentColor,
-            letterSpacing: 3,
+            letterSpacing: 2,
           },
         });
         arcText.anchor.set(0.5);
         arcText.x = cx;
-        arcText.y = by + boxH - 24;
+        arcText.y = by + boxH - 18;
         container.addChild(arcText);
 
-        // ── P1/P2 indicators: styled crown/shield shapes ──
+        // ── P1/P2 indicators ──
         if (isP1) {
           const ig = new Graphics();
-          const ix = cx, iy = by - 24;
-          // Shield shape
-          ig.moveTo(ix - 16, iy - 10).lineTo(ix + 16, iy - 10)
-            .lineTo(ix + 16, iy + 4).lineTo(ix, iy + 14).lineTo(ix - 16, iy + 4).closePath()
+          const ix = cx, iy = by - 18;
+          ig.moveTo(ix - 12, iy - 8).lineTo(ix + 12, iy - 8)
+            .lineTo(ix + 12, iy + 3).lineTo(ix, iy + 10).lineTo(ix - 12, iy + 3).closePath()
             .fill({ color: 0x1a3a6a });
-          ig.moveTo(ix - 16, iy - 10).lineTo(ix + 16, iy - 10)
-            .lineTo(ix + 16, iy + 4).lineTo(ix, iy + 14).lineTo(ix - 16, iy + 4).closePath()
+          ig.moveTo(ix - 12, iy - 8).lineTo(ix + 12, iy - 8)
+            .lineTo(ix + 12, iy + 3).lineTo(ix, iy + 10).lineTo(ix - 12, iy + 3).closePath()
             .stroke({ color: 0x4488ff, width: 2 });
           container.addChild(ig);
           const p1Label = new Text({
             text: "P1",
-            style: { fontFamily: "Georgia, serif", fontSize: 14, fill: 0x88bbff, fontWeight: "bold" },
+            style: { fontFamily: "Georgia, serif", fontSize: 11, fill: 0x88bbff, fontWeight: "bold" },
           });
           p1Label.anchor.set(0.5);
           p1Label.x = ix;
@@ -475,34 +484,32 @@ export class TekkenGame {
         }
         if (isP2) {
           const ig = new Graphics();
-          const ix = cx, iy = by - 24;
-          // Crown shape
-          ig.moveTo(ix - 14, iy + 6).lineTo(ix - 14, iy - 6)
-            .lineTo(ix - 8, iy).lineTo(ix, iy - 10).lineTo(ix + 8, iy).lineTo(ix + 14, iy - 6)
-            .lineTo(ix + 14, iy + 6).closePath()
+          const ix = cx, iy = by - 18;
+          ig.moveTo(ix - 10, iy + 4).lineTo(ix - 10, iy - 4)
+            .lineTo(ix - 6, iy).lineTo(ix, iy - 8).lineTo(ix + 6, iy).lineTo(ix + 10, iy - 4)
+            .lineTo(ix + 10, iy + 4).closePath()
             .fill({ color: 0x5a1a1a });
-          ig.moveTo(ix - 14, iy + 6).lineTo(ix - 14, iy - 6)
-            .lineTo(ix - 8, iy).lineTo(ix, iy - 10).lineTo(ix + 8, iy).lineTo(ix + 14, iy - 6)
-            .lineTo(ix + 14, iy + 6).closePath()
+          ig.moveTo(ix - 10, iy + 4).lineTo(ix - 10, iy - 4)
+            .lineTo(ix - 6, iy).lineTo(ix, iy - 8).lineTo(ix + 6, iy).lineTo(ix + 10, iy - 4)
+            .lineTo(ix + 10, iy + 4).closePath()
             .stroke({ color: 0xff4444, width: 2 });
-          // Crown jewels
-          ig.circle(ix - 8, iy - 3, 2).fill({ color: 0xff6666 });
-          ig.circle(ix, iy - 7, 2).fill({ color: 0xff6666 });
-          ig.circle(ix + 8, iy - 3, 2).fill({ color: 0xff6666 });
+          ig.circle(ix - 6, iy - 2, 1.5).fill({ color: 0xff6666 });
+          ig.circle(ix, iy - 5, 1.5).fill({ color: 0xff6666 });
+          ig.circle(ix + 6, iy - 2, 1.5).fill({ color: 0xff6666 });
           container.addChild(ig);
           const cpuLabel = new Text({
             text: "CPU",
-            style: { fontFamily: "Georgia, serif", fontSize: 11, fill: 0xff8888, fontWeight: "bold" },
+            style: { fontFamily: "Georgia, serif", fontSize: 9, fill: 0xff8888, fontWeight: "bold" },
           });
           cpuLabel.anchor.set(0.5);
           cpuLabel.x = ix;
-          cpuLabel.y = iy + 16;
+          cpuLabel.y = iy + 12;
           container.addChild(cpuLabel);
         }
       }
 
       // ── Character info panel (below cards) ──
-      const infoPanelY = cardsY + boxH + 34;
+      const infoPanelY = cardsY + totalH + 24;
       const p1Char = TEKKEN_CHARACTERS[p1Idx];
       const p2Char = TEKKEN_CHARACTERS[p2Idx];
 

@@ -15,6 +15,13 @@ import {
   SHOP_ITEMS, ITEM_DEFS,
 } from "./config/GameConfig";
 
+import {
+  CRAFTING_MATERIALS,
+} from "./config/GameCraftingDefs";
+
+import {
+  ARTIFACT_DEFS, ARTIFACT_SET_BONUSES, COMPANION_DEFS,
+} from "./config/GameArtifactDefs";
 
 import {
   GamePhase, Direction,
@@ -24,7 +31,18 @@ import {
 import type { GrailGameState } from "./state/GameState";
 
 import { generateFloor, revealAround } from "./systems/GameDungeonGenerator";
-import { GameCombatSystem } from "./systems/GameCombatSystem";
+import { GameCombatSystem, recalcStats } from "./systems/GameCombatSystem";
+import {
+  canCraft, craft, getAvailableRecipes,
+  canEnchant, enchantItem, getApplicableEnchantments,
+  disenchantItem, canSocketGem, socketGem,
+  getEnchantmentBonuses, getSocketBonuses,
+} from "./systems/GameCraftingSystem";
+import { companionFloorBonus } from "./systems/GameCompanionSystem";
+import {
+  getInfiniteFloorParams, getScaledEnemyDef, calculateFloorScore,
+  saveLeaderboardEntry, isRestFloor, loadLeaderboard,
+} from "./systems/GameInfiniteMode";
 
 import { GameRenderer } from "./view/GameRenderer";
 import { GameHUD } from "./view/GameHUD";
@@ -118,6 +136,18 @@ export class GameGame {
     GameCombatSystem.setSpawnCallback((_enemy) => {
       // Visual spawn effect handled by renderer detecting new enemies
     });
+    GameCombatSystem.setMaterialCallback((name, qty, _x, _y) => {
+      this._hud.showNotification(`+${qty} ${name}`, 0xaaaaaa);
+    });
+    GameCombatSystem.setArtifactCallback((name, _x, _y) => {
+      this._hud.showNotification(`Artifact Found: ${name}!`, 0xffd700, 3);
+    });
+    GameCombatSystem.setTrapCallback((name, _x, _y) => {
+      this._hud.showNotification(`Trap Detected: ${name}`, 0xff8844, 2);
+    });
+    GameCombatSystem.setCompanionCallback((name) => {
+      this._hud.showNotification(`Companion Recruited: ${name}!`, 0x88ffaa, 3);
+    });
 
     // Start game loop
     this._tickerCb = (ticker: Ticker) => {
@@ -173,6 +203,22 @@ export class GameGame {
       case GamePhase.FLOOR_TRANSITION:
         this._handleFloorTransition(dt);
         break;
+
+      case GamePhase.CRAFTING:
+        this._handleCrafting();
+        break;
+
+      case GamePhase.ENCHANTING:
+        this._handleEnchanting();
+        break;
+
+      case GamePhase.PUZZLE:
+        this._handlePuzzle(dt);
+        break;
+
+      case GamePhase.ARTIFACT_LORE:
+        this._handleArtifactLore();
+        break;
     }
   }
 
@@ -184,9 +230,21 @@ export class GameGame {
       if (_justPressed(`Digit${i + 1}`)) {
         this._state.genre = QUEST_GENRE_DEFS[i];
         this._state.totalFloors = QUEST_GENRE_DEFS[i].floorCount;
+        this._state.isInfiniteMode = false;
         this._state.phase = GamePhase.KNIGHT_SELECT;
         return;
       }
+    }
+    // Infinite mode: press 0 or Digit7+
+    const infiniteKey = QUEST_GENRE_DEFS.length + 1;
+    if (_justPressed(`Digit${infiniteKey}`) || _justPressed("Digit0")) {
+      // Use Classic genre as base for infinite mode
+      this._state.genre = QUEST_GENRE_DEFS[0];
+      this._state.totalFloors = 999;
+      this._state.isInfiniteMode = true;
+      this._state.infiniteScore = 0;
+      this._state.phase = GamePhase.KNIGHT_SELECT;
+      return;
     }
     if (_justPressed("Escape")) {
       window.dispatchEvent(new Event("gameExit"));
@@ -218,8 +276,23 @@ export class GameGame {
   private _startFloor(floorNum: number): void {
     const state = this._state;
     state.currentFloor = floorNum;
-    const params = getFloorParams(floorNum, state.totalFloors);
+    state.floorStartTime = Date.now();
+
+    const params = state.isInfiniteMode
+      ? getInfiniteFloorParams(floorNum)
+      : getFloorParams(floorNum, state.totalFloors);
     const floor = generateFloor(floorNum, params, state.genre!, state.enemyIdCounter);
+
+    // Scale enemies for infinite mode
+    if (state.isInfiniteMode && floorNum > 0) {
+      for (const enemy of floor.enemies) {
+        const scaled = getScaledEnemyDef(enemy.def, floorNum);
+        enemy.def = scaled;
+        enemy.hp = scaled.hp;
+        enemy.maxHp = scaled.hp;
+      }
+    }
+
     state.floor = floor;
     state.enemyIdCounter += floor.enemies.length + 1;
 
@@ -245,6 +318,27 @@ export class GameGame {
       if (p.equippedArmor?.specialEffect === "regen") {
         p.hp = Math.min(p.maxHp, p.hp + 15);
       }
+
+      // Companion between-floor healing and loyalty
+      if (state.companion && state.companion.alive) {
+        companionFloorBonus(state.companion);
+      }
+
+      // Artifact set bonuses: Grail set heals between floors
+      const grailPieces = state.artifacts.filter(a =>
+        a.found && ARTIFACT_DEFS[a.id]?.setId === "grail_set",
+      ).length;
+      if (grailPieces >= 2) {
+        p.hp = Math.min(p.maxHp, p.hp + 10);
+        this._hud.showNotification("Grail Set (2pc): +10 HP", 0xffd700);
+      }
+      if (grailPieces >= 3) {
+        p.hp = p.maxHp;
+        this._hud.showNotification("Grail Set (3pc): Full heal!", 0xffd700);
+      }
+
+      // Perception increases each floor
+      state.perception = Math.min(80, state.perception + 2);
     }
 
     // Snap camera
@@ -447,7 +541,7 @@ export class GameGame {
       GameCombatSystem.playerAbility(state);
     }
 
-    // Interact (E) — treasure, stairs, shop, shrine
+    // Interact (E) — treasure, stairs, shop, shrine, lever, crafting, enchant, companion, puzzle
     if (_justPressed("KeyE")) {
       const pc = Math.floor(p.x / GameBalance.TILE_SIZE);
       const pr = Math.floor(p.y / GameBalance.TILE_SIZE);
@@ -472,16 +566,95 @@ export class GameGame {
         this._hud.showNotification(`Shrine Blessing: ${buffDesc}`, 0x88ffaa, 3);
       }
 
+      // Lever (secret rooms)
+      if (GameCombatSystem.checkLever(state)) {
+        const activated = GameCombatSystem.activateLever(state);
+        if (activated) {
+          this._hud.showNotification("A hidden passage opens!", 0xffcc44, 3);
+          this._renderer.shake(6, 0.3);
+        }
+      }
+
+      // Crafting bench
+      if (GameCombatSystem.checkCraftingBench(state)) {
+        state.prevPhase = state.phase;
+        state.craftingScrollIndex = 0;
+        state.phase = GamePhase.CRAFTING;
+        return;
+      }
+
+      // Enchant table
+      if (GameCombatSystem.checkEnchantTable(state)) {
+        state.prevPhase = state.phase;
+        state.enchantingScrollIndex = 0;
+        state.phase = GamePhase.ENCHANTING;
+        return;
+      }
+
+      // Companion NPC
+      if (GameCombatSystem.checkCompanionNPC(state)) {
+        const recruited = GameCombatSystem.recruitCompanion(state);
+        if (recruited && state.companion) {
+          this._hud.showNotification(`${state.companion.def.name} joins your quest!`, 0x88ffaa, 3);
+        } else if (state.companion) {
+          this._hud.showNotification("You already have a companion.", 0xffaa44);
+        }
+      }
+
+      // Puzzle plate
+      if (GameCombatSystem.checkPuzzlePlate(state)) {
+        const solved = GameCombatSystem.activatePuzzlePlate(state);
+        if (solved) {
+          this._hud.showNotification("Puzzle Solved! Rewards unlocked.", 0xffd700, 3);
+          // Grant puzzle reward
+          this._grantPuzzleReward(state);
+        }
+      }
+
+      // Destructible wall (attack to break)
+      if (GameCombatSystem.checkDestructibleWall(state)) {
+        GameCombatSystem.breakDestructibleWall(state);
+        this._hud.showNotification("Wall destroyed!", 0xcccccc);
+        this._renderer.shake(4, 0.15);
+      }
+
+      // Disarm detected trap
+      const trapDisarmed = GameCombatSystem.disarmTrap(state);
+      if (trapDisarmed) {
+        this._hud.showNotification("Trap disarmed! +XP", 0x44ff44);
+      }
+
       // Stairs
       if (GameCombatSystem.checkStairs(state)) {
-        if (state.currentFloor >= state.totalFloors - 1) {
+        if (!state.isInfiniteMode && state.currentFloor >= state.totalFloors - 1) {
           state.phase = GamePhase.VICTORY;
           this._handleVictoryUnlocks();
         } else {
+          // Calculate floor score for infinite mode
+          if (state.isInfiniteMode) {
+            const clearTime = Date.now() - state.floorStartTime;
+            state.infiniteScore += calculateFloorScore(state, clearTime);
+          }
           state.phase = GamePhase.FLOOR_TRANSITION;
-          this._floorTransitionTimer = 2.0; // 2 second pause between floors
+          this._floorTransitionTimer = 2.0;
         }
       }
+    }
+
+    // Toggle companion behavior (B key)
+    if (_justPressed("KeyB") && state.companion && state.companion.alive) {
+      const behaviors: Array<"aggressive" | "defensive" | "support"> = ["aggressive", "defensive", "support"];
+      const idx = behaviors.indexOf(state.companion.behavior);
+      state.companion.behavior = behaviors[(idx + 1) % behaviors.length];
+      this._hud.showNotification(`Companion: ${state.companion.behavior} mode`, 0x88ffaa);
+    }
+
+    // View artifact lore (L key)
+    if (_justPressed("KeyL") && state.artifacts.length > 0) {
+      state.prevPhase = state.phase;
+      state.artifactLoreViewing = state.artifacts[0]?.id ?? null;
+      state.phase = GamePhase.ARTIFACT_LORE;
+      return;
     }
 
     // Cooldowns
@@ -515,6 +688,12 @@ export class GameGame {
     // Reanimation processing (Crimson Crypts)
     GameCombatSystem.processReanimations(state, dt);
 
+    // Companion AI
+    GameCombatSystem.updateCompanionAI(state, dt);
+
+    // Boss arena hazards
+    GameCombatSystem.updateArenaHazards(state, dt);
+
     // Ability VFX timer
     if (state.activeAbilityVfx) {
       state.activeAbilityVfx.timer -= dt;
@@ -526,10 +705,38 @@ export class GameGame {
     // Abyssal Halls: reduce visibility radius over time
     // (handled by renderer based on floor.darknessTimer)
 
+    // Artifact: Green Girdle — survive lethal once
+    if (p.hp <= 0) {
+      const greenGirdle = state.artifacts.find(a => a.id === "green_girdle" && a.found && !a.upgraded);
+      if (greenGirdle) {
+        p.hp = Math.floor(p.maxHp * 0.3);
+        greenGirdle.upgraded = true; // consumed — can only save once
+        this._hud.showNotification("Green Girdle saves you from death!", 0x00aa44, 3);
+      } else if (state.companion?.alive && state.companion.loyalty >= 80) {
+        // High-loyalty companion sacrifice
+        p.hp = Math.floor(p.maxHp * 0.1);
+        state.companion.alive = false;
+        state.companion.hp = 0;
+        this._hud.showNotification(`${state.companion.def.name} sacrifices themselves!`, 0xff4444, 3);
+      }
+    }
+
     // Check death
     if (p.hp <= 0) {
       state.phase = GamePhase.GAME_OVER;
       updateRunStatsOnEnd(state, false);
+
+      // Save infinite mode score on death too
+      if (state.isInfiniteMode) {
+        saveLeaderboardEntry({
+          knightId: state.player.knightDef.id,
+          knightName: state.player.knightDef.name,
+          deepestFloor: state.currentFloor + 1,
+          score: state.infiniteScore,
+          totalKills: state.totalKills,
+          date: new Date().toISOString().slice(0, 10),
+        });
+      }
     }
 
     // ESC to exit
@@ -686,6 +893,18 @@ export class GameGame {
     const state = this._state;
     updateRunStatsOnEnd(state, true);
 
+    // Save infinite mode leaderboard entry
+    if (state.isInfiniteMode) {
+      saveLeaderboardEntry({
+        knightId: state.player.knightDef.id,
+        knightName: state.player.knightDef.name,
+        deepestFloor: state.currentFloor + 1,
+        score: state.infiniteScore,
+        totalKills: state.totalKills,
+        date: new Date().toISOString().slice(0, 10),
+      });
+    }
+
     // Unlock next knight based on which quest was completed
     const allKnights = KNIGHT_DEFS.map((k) => k.id);
     const locked = allKnights.filter((id) => !state.unlockedKnights.includes(id));
@@ -696,6 +915,192 @@ export class GameGame {
         this._hud.showNotification(`Unlocked: ${name}!`, 0xffd700, 4);
       }
     }
+  }
+
+  // -------------------------------------------------------------------------
+  // Crafting screen
+  // -------------------------------------------------------------------------
+  private _handleCrafting(): void {
+    if (_justPressed("Escape") || _justPressed("KeyE")) {
+      this._state.phase = this._state.prevPhase;
+      return;
+    }
+
+    const state = this._state;
+    const recipes = getAvailableRecipes(state);
+
+    // Scroll through recipes
+    if (_justPressed("ArrowUp") || _justPressed("KeyW")) {
+      state.craftingScrollIndex = Math.max(0, state.craftingScrollIndex - 1);
+    }
+    if (_justPressed("ArrowDown") || _justPressed("KeyS")) {
+      state.craftingScrollIndex = Math.min(recipes.length - 1, state.craftingScrollIndex + 1);
+    }
+
+    // Craft selected recipe
+    if (_justPressed("Enter") || _justPressed("Space")) {
+      const selected = recipes[state.craftingScrollIndex];
+      if (selected && selected.canCraft) {
+        const item = craft(state, selected.recipe.id);
+        if (item) {
+          this._hud.showNotification(`Crafted: ${item.name}!`, item.color);
+        }
+      } else {
+        this._hud.showNotification("Missing materials!", 0xff4444);
+      }
+    }
+
+    // Disenchant mode (Tab to switch, number keys to disenchant)
+    if (_justPressed("Tab")) {
+      // Toggle to disenchant mode — handled by HUD display state
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Enchanting screen
+  // -------------------------------------------------------------------------
+  private _handleEnchanting(): void {
+    if (_justPressed("Escape") || _justPressed("KeyE")) {
+      this._state.phase = this._state.prevPhase;
+      return;
+    }
+
+    const state = this._state;
+    const p = state.player;
+
+    // Number keys to select inventory item, then enchantment
+    for (let i = 0; i < 10; i++) {
+      if (_justPressed(i < 9 ? `Digit${i + 1}` : "Digit0")) {
+        if (i < p.inventory.length) {
+          const item = p.inventory[i];
+          const enchantments = getApplicableEnchantments(item.def);
+          if (enchantments.length > 0) {
+            // Apply first available enchantment
+            const enchIdx = state.enchantingScrollIndex % enchantments.length;
+            const ench = enchantments[enchIdx];
+            if (canEnchant(state, i, ench.id)) {
+              const result = enchantItem(state, i, ench.id);
+              if (result.success) {
+                this._hud.showNotification(`${ench.name} +${result.level}!`, ench.color);
+                recalcStats(state);
+              } else if (result.destroyed) {
+                this._hud.showNotification("Item destroyed!", 0xff0000, 3);
+                this._renderer.shake(10, 0.3);
+              } else {
+                this._hud.showNotification("Enchantment failed!", 0xff4444);
+              }
+            } else {
+              this._hud.showNotification("Missing materials!", 0xff4444);
+            }
+          }
+        }
+      }
+    }
+
+    // Scroll enchantment selection
+    if (_justPressed("ArrowLeft") || _justPressed("KeyA")) {
+      state.enchantingScrollIndex = Math.max(0, state.enchantingScrollIndex - 1);
+    }
+    if (_justPressed("ArrowRight") || _justPressed("KeyD")) {
+      state.enchantingScrollIndex = (state.enchantingScrollIndex + 1);
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Puzzle room
+  // -------------------------------------------------------------------------
+  private _handlePuzzle(dt: number): void {
+    if (_justPressed("Escape")) {
+      this._state.phase = this._state.prevPhase;
+      return;
+    }
+
+    const puzzle = this._state.activePuzzle;
+    if (!puzzle || puzzle.solved) {
+      this._state.phase = this._state.prevPhase;
+      return;
+    }
+
+    // Timer countdown
+    if (puzzle.timeRemaining !== undefined) {
+      puzzle.timeRemaining -= dt;
+      if (puzzle.timeRemaining <= 0) {
+        this._hud.showNotification("Time's up! Puzzle failed.", 0xff4444, 2);
+        this._state.phase = this._state.prevPhase;
+        return;
+      }
+    }
+
+    // Riddle puzzles: number keys for answer choices
+    if (puzzle.puzzleType === "riddle") {
+      for (let i = 0; i < 4; i++) {
+        if (_justPressed(`Digit${i + 1}`)) {
+          // Correct answer is always option (difficulty % 4 + 1)
+          const correctAnswer = (puzzle.difficulty % 4);
+          if (i === correctAnswer) {
+            puzzle.solved = true;
+            this._hud.showNotification("Riddle solved!", 0xffd700, 2);
+            this._grantPuzzleReward(this._state);
+          } else {
+            this._hud.showNotification("Wrong answer!", 0xff4444);
+            // Damage for wrong answer
+            this._state.player.hp -= 10 * puzzle.difficulty;
+          }
+          this._state.phase = this._state.prevPhase;
+          return;
+        }
+      }
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Artifact Lore viewing
+  // -------------------------------------------------------------------------
+  private _handleArtifactLore(): void {
+    if (_justPressed("Escape") || _justPressed("KeyL")) {
+      this._state.phase = this._state.prevPhase;
+      return;
+    }
+
+    // Navigate through artifacts
+    const arts = this._state.artifacts.filter(a => a.found);
+    if (arts.length === 0) {
+      this._state.phase = this._state.prevPhase;
+      return;
+    }
+
+    if (_justPressed("ArrowRight") || _justPressed("KeyD")) {
+      const idx = arts.findIndex(a => a.id === this._state.artifactLoreViewing);
+      this._state.artifactLoreViewing = arts[(idx + 1) % arts.length].id;
+    }
+    if (_justPressed("ArrowLeft") || _justPressed("KeyA")) {
+      const idx = arts.findIndex(a => a.id === this._state.artifactLoreViewing);
+      this._state.artifactLoreViewing = arts[(idx - 1 + arts.length) % arts.length].id;
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Grant puzzle rewards
+  // -------------------------------------------------------------------------
+  private _grantPuzzleReward(state: GrailGameState): void {
+    const puzzle = state.activePuzzle ?? state.floor.puzzleRooms.find(p => p.solved);
+    if (!puzzle) return;
+
+    // Reward materials based on difficulty
+    const matCount = puzzle.difficulty + 1;
+    const { addMaterial: addMat, rollMaterialDrop } = require("./systems/GameCraftingSystem");
+    for (let i = 0; i < matCount; i++) {
+      const drop = rollMaterialDrop(state.currentFloor, "", 1.0);
+      if (drop) addMat(state, drop.matId, drop.quantity);
+    }
+
+    // Bonus gold
+    state.player.gold += 20 * puzzle.difficulty;
+    state.totalGold += 20 * puzzle.difficulty;
+
+    // XP bonus
+    const xpBonus = 15 * puzzle.difficulty;
+    state.player.xp += xpBonus;
   }
 
   // -------------------------------------------------------------------------

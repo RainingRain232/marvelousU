@@ -10,7 +10,10 @@ import {
 import type { FloorParams, EnemyDef, ItemDef, QuestGenreDef } from "../config/GameConfig";
 import type {
   FloorState, EnemyInstance, TreasureChest, GridPos, Direction, RoomInfo,
+  TrapInstance, PuzzleRoomState, ArenaHazardInstance, CompanionNPC,
 } from "../state/GameState";
+import { TRAP_DEFS, PUZZLE_DEFS, BOSS_ARENA_HAZARDS, ARENA_HAZARD_DEFS, MINI_BOSS_DEFS, COMPANION_DEFS } from "../config/GameArtifactDefs";
+import type { TrapVariant, CompanionDef } from "../config/GameArtifactDefs";
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -56,9 +59,23 @@ export function generateFloor(
     } else if (idx === 2 && rawRooms.length > 5) {
       // Third room: treasure vault
       type = RoomType.TREASURE_VAULT;
+    } else if (idx === 3 && rawRooms.length > 6 && Math.random() < 0.4) {
+      // Fourth room: puzzle room (40% chance)
+      type = RoomType.PUZZLE;
+    } else if (idx === rawRooms.length - 3 && rawRooms.length > 7 && Math.random() < 0.25) {
+      // Companion encounter room (25% chance)
+      type = RoomType.COMPANION;
     }
     return { ...r, type };
   });
+
+  // Boss arena: upgrade stairs room to BOSS_ARENA if floor has boss
+  if (params.hasBoss) {
+    const stairsRoomIdxForArena = rawRooms.length - 1;
+    if (stairsRoomIdxForArena > 0) {
+      rooms[stairsRoomIdxForArena].type = RoomType.BOSS_ARENA;
+    }
+  }
 
   // Secret room (30% chance per floor)
   if (Math.random() < 0.3 && rooms.length > 2) {
@@ -248,10 +265,163 @@ export function generateFloor(
     }
   }
 
+  // --- Mini-boss encounters on non-boss floors ---
+  if (!params.hasBoss && floorNum > 1 && Math.random() < 0.35) {
+    const miniBossKeys = Object.keys(MINI_BOSS_DEFS);
+    const miniBossKey = miniBossKeys[randInt(0, miniBossKeys.length - 1)];
+    const mbDef = MINI_BOSS_DEFS[miniBossKey];
+    const baseDef = ENEMY_DEFS[mbDef.baseId];
+    if (baseDef) {
+      // Find a suitable room (not entrance, shrine, or stairs)
+      const mbRooms = rooms.filter((r, idx) => idx > 0 && r.type === RoomType.NORMAL);
+      if (mbRooms.length > 0) {
+        const room = mbRooms[randInt(0, mbRooms.length - 1)];
+        const center = roomCenter(room);
+        const buffedDef: EnemyDef = {
+          ...baseDef,
+          id: `mini_${mbDef.baseId}`,
+          name: mbDef.name,
+          hp: Math.floor(baseDef.hp * mbDef.hpMult),
+          attack: Math.floor(baseDef.attack * mbDef.atkMult),
+          defense: Math.floor(baseDef.defense * mbDef.defMult),
+          xpReward: Math.floor(baseDef.xpReward * mbDef.xpMult),
+          goldReward: Math.floor(baseDef.goldReward * mbDef.goldMult),
+          abilities: mbDef.abilities,
+          bossPhases: 2,
+        };
+        enemies.push(createEnemy(eid++, buffedDef, center.col, center.row));
+      }
+    }
+  }
+
+  // --- Destructible walls near secret rooms ---
+  for (const room of rooms) {
+    if (room.type === RoomType.SECRET) {
+      // Mark some walls adjacent to secret room as destructible
+      const cx = room.x + Math.floor(room.w / 2);
+      const cy = room.y + Math.floor(room.h / 2);
+      // Check cardinal directions for walls that could be made destructible
+      const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+      for (const [dc, dr] of directions) {
+        for (let d = 1; d <= 3; d++) {
+          const wc = cx + dc * d;
+          const wr = cy + dr * d;
+          if (wc >= 0 && wc < width && wr >= 0 && wr < height && tiles[wr][wc] === TileType.WALL) {
+            // Check if breaking this wall would connect to a non-secret room
+            const nc = wc + dc;
+            const nr = wr + dr;
+            if (nc >= 0 && nc < width && nr >= 0 && nr < height &&
+                tiles[nr][nc] !== TileType.WALL && tiles[nr][nc] !== undefined) {
+              tiles[wr][wc] = TileType.DESTRUCTIBLE_WALL;
+              break;
+            }
+          } else {
+            break;
+          }
+        }
+      }
+    }
+  }
+
   // Build explored grid (start unexplored)
   const explored: boolean[][] = [];
   for (let r = 0; r < height; r++) {
     explored.push(new Array(width).fill(false));
+  }
+
+  // --- Enhanced traps: assign variant types to trap tiles ---
+  const traps: TrapInstance[] = [];
+  const trapVariants: TrapVariant[] = ["spike", "poison_gas", "falling_rocks", "teleport", "alarm"];
+  for (let r = 0; r < height; r++) {
+    for (let c = 0; c < width; c++) {
+      if (tiles[r][c] === TileType.TRAP) {
+        const variant = trapVariants[randInt(0, trapVariants.length - 1)];
+        traps.push({ col: c, row: r, variant, detected: false, disarmed: false });
+      }
+    }
+  }
+
+  // --- Puzzle rooms ---
+  const puzzleRooms: PuzzleRoomState[] = [];
+  for (let ri = 0; ri < rooms.length; ri++) {
+    if (rooms[ri].type === RoomType.PUZZLE) {
+      const puzzleDef = PUZZLE_DEFS[randInt(0, PUZZLE_DEFS.length - 1)];
+      const seqLen = puzzleDef.type === "sequence" || puzzleDef.type === "pressure_plates"
+        ? 3 + puzzleDef.difficulty : 0;
+      const sequence = seqLen > 0 ? Array.from({ length: seqLen }, () => randInt(1, 4)) : undefined;
+      puzzleRooms.push({
+        roomIndex: ri,
+        puzzleType: puzzleDef.type,
+        difficulty: puzzleDef.difficulty,
+        solved: false,
+        sequence,
+        playerSequence: sequence ? [] : undefined,
+        timeRemaining: puzzleDef.timeLimit,
+        rewardTier: puzzleDef.rewardTier,
+      });
+
+      // Place puzzle plates in the room
+      const room = rooms[ri];
+      if (puzzleDef.type === "pressure_plates" || puzzleDef.type === "sequence") {
+        for (let pi = 0; pi < Math.min(seqLen, 4); pi++) {
+          const pc = room.x + 1 + (pi % (room.w - 2));
+          const pr = room.y + Math.floor(room.h / 2);
+          if (pc < room.x + room.w && tiles[pr][pc] === TileType.FLOOR) {
+            tiles[pr][pc] = TileType.PUZZLE_PLATE;
+          }
+        }
+      }
+    }
+  }
+
+  // --- Boss arena hazards ---
+  const arenaHazards: ArenaHazardInstance[] = [];
+
+  // --- Companion NPCs ---
+  const companionNPCs: CompanionNPC[] = [];
+  for (const room of rooms) {
+    if (room.type === RoomType.COMPANION) {
+      const eligible = COMPANION_DEFS.filter(d => d.recruitFloorMin <= floorNum);
+      if (eligible.length > 0) {
+        const compDef = eligible[randInt(0, eligible.length - 1)];
+        const center = roomCenter(room);
+        companionNPCs.push({ def: compDef, col: center.col, row: center.row, recruited: false });
+        tiles[center.row][center.col] = TileType.COMPANION_NPC;
+      }
+    }
+  }
+
+  // --- Secret room levers ---
+  const secretTriggers: { col: number; row: number; activated: boolean; targetRoomIdx: number }[] = [];
+  for (let ri = 0; ri < rooms.length; ri++) {
+    if (rooms[ri].type === RoomType.SECRET) {
+      // Place a lever in an adjacent connected room
+      const neighbors = rooms.filter((r, idx) => idx !== ri && r.type !== RoomType.SECRET);
+      if (neighbors.length > 0) {
+        const neighbor = neighbors[randInt(0, neighbors.length - 1)];
+        const lc = neighbor.x + randInt(1, Math.max(1, neighbor.w - 2));
+        const lr = neighbor.y + randInt(1, Math.max(1, neighbor.h - 2));
+        if (tiles[lr][lc] === TileType.FLOOR) {
+          tiles[lr][lc] = TileType.LEVER;
+          secretTriggers.push({ col: lc, row: lr, activated: false, targetRoomIdx: ri });
+        }
+      }
+    }
+  }
+
+  // --- Crafting bench and enchant table on shop floors ---
+  const isShopFloorCheck = (floorNum + 1) % 2 === 0;
+  if (isShopFloorCheck && entranceRoom.w >= 4 && entranceRoom.h >= 4) {
+    const benchC = entranceRoom.x + entranceRoom.w - 2;
+    const benchR = entranceRoom.y + 1;
+    if (tiles[benchR][benchC] === TileType.FLOOR) {
+      tiles[benchR][benchC] = TileType.CRAFTING_BENCH;
+    }
+    const enchC = entranceRoom.x + entranceRoom.w - 2;
+    const enchR = entranceRoom.y + entranceRoom.h - 2;
+    if (tiles[enchR][enchC] === TileType.FLOOR) {
+      tiles[enchR][enchC] = TileType.ENCHANT_TABLE;
+    }
   }
 
   return {
@@ -271,6 +441,11 @@ export function generateFloor(
     burningTrails: [],
     projectiles: [],
     poisonTrails: [],
+    traps,
+    puzzleRooms,
+    arenaHazards,
+    companionNPCs,
+    secretTriggers,
   };
 }
 

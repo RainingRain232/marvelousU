@@ -11,6 +11,7 @@ import {
 import {
   type GBMatchState,
   getSelectedPlayer,
+  isFatigued, isCriticallyFatigued,
 } from "./GrailBallState";
 
 // ---------------------------------------------------------------------------
@@ -113,6 +114,26 @@ export class GrailBallHUD {
   private _powerUpIndicator!: Graphics;
   private _powerUpText!: Text;
 
+  // Replay overlay
+  private _replayOverlay = new Container();
+  private _replayText!: Text;
+  private _replayProgressBar!: Graphics;
+
+  // Penalty overlay
+  private _penaltyOverlay = new Container();
+  private _penaltyScoreText!: Text;
+  private _penaltyAimIndicator!: Graphics;
+  private _penaltyHistoryText!: Text;
+
+  // Fatigue indicator
+  private _fatigueText!: Text;
+
+  // Injury time indicator
+  private _injuryTimeText!: Text;
+
+  // Formation display
+  private _formationText!: Text;
+
   init(): void {
     this._screenW = window.innerWidth;
     this._screenH = window.innerHeight;
@@ -128,6 +149,12 @@ export class GrailBallHUD {
     this._buildRulesOverlay();
     this._buildPowerUpIndicator();
 
+    this._buildReplayOverlay();
+    this._buildPenaltyOverlay();
+    this._buildFatigueIndicator();
+    this._buildInjuryTimeIndicator();
+    this._buildFormationDisplay();
+
     this.root.addChild(this._scoreBoard);
     this.root.addChild(this._timerDisplay);
     this.root.addChild(this._playerInfo);
@@ -137,6 +164,8 @@ export class GrailBallHUD {
     this.root.addChild(this._controlsHint);
     this.root.addChild(this._pauseOverlay);
     this.root.addChild(this._rulesOverlay);
+    this.root.addChild(this._replayOverlay);
+    this.root.addChild(this._penaltyOverlay);
   }
 
   // ---------------------------------------------------------------------------
@@ -320,6 +349,86 @@ export class GrailBallHUD {
     this.root.addChild(this._powerUpText);
   }
 
+  private _buildReplayOverlay(): void {
+    this._replayOverlay.visible = false;
+
+    const bg = new Graphics();
+    bg.rect(0, 0, this._screenW, 50);
+    bg.fill({ color: 0x000000, alpha: 0.7 });
+    this._replayOverlay.addChild(bg);
+
+    this._replayText = new Text({
+      text: "REPLAY",
+      style: { ...ANNOUNCEMENT_STYLE, fontSize: 28, fill: 0xff4444 },
+    });
+    this._replayText.position.set(20, 10);
+    this._replayOverlay.addChild(this._replayText);
+
+    this._replayProgressBar = new Graphics();
+    this._replayProgressBar.position.set(200, 18);
+    this._replayOverlay.addChild(this._replayProgressBar);
+
+    const hint = new Text({
+      text: "Space/R: Skip | C: Change Angle",
+      style: { ...SMALL_STYLE, fontSize: 12, fill: 0xcccccc },
+    });
+    hint.position.set(this._screenW - 250, 18);
+    this._replayOverlay.addChild(hint);
+
+    this._replayOverlay.position.set(0, this._screenH - 50);
+  }
+
+  private _buildPenaltyOverlay(): void {
+    this._penaltyOverlay.visible = false;
+
+    this._penaltyScoreText = new Text({
+      text: "Penalties: 0 - 0",
+      style: { ...TIMER_STYLE, fontSize: 24 },
+    });
+    this._penaltyScoreText.anchor.set(0.5, 0);
+    this._penaltyScoreText.position.set(this._screenW / 2, 110);
+    this._penaltyOverlay.addChild(this._penaltyScoreText);
+
+    this._penaltyAimIndicator = new Graphics();
+    this._penaltyAimIndicator.position.set(this._screenW / 2, this._screenH / 2 + 80);
+    this._penaltyOverlay.addChild(this._penaltyAimIndicator);
+
+    this._penaltyHistoryText = new Text({
+      text: "",
+      style: { ...SMALL_STYLE, fontSize: 12 },
+    });
+    this._penaltyHistoryText.position.set(this._screenW / 2 - 100, 140);
+    this._penaltyOverlay.addChild(this._penaltyHistoryText);
+  }
+
+  private _buildFatigueIndicator(): void {
+    this._fatigueText = new Text({
+      text: "",
+      style: { ...SMALL_STYLE, fontSize: 11, fill: 0xff6666 },
+    });
+    this._fatigueText.position.set(10, this._screenH - 140);
+    this.root.addChild(this._fatigueText);
+  }
+
+  private _buildInjuryTimeIndicator(): void {
+    this._injuryTimeText = new Text({
+      text: "",
+      style: { ...TIMER_STYLE, fontSize: 16, fill: 0xff4444 },
+    });
+    this._injuryTimeText.anchor.set(0.5, 0);
+    this._injuryTimeText.position.set(this._screenW / 2, 112);
+    this.root.addChild(this._injuryTimeText);
+  }
+
+  private _buildFormationDisplay(): void {
+    this._formationText = new Text({
+      text: "",
+      style: { ...SMALL_STYLE, fontSize: 10, fill: 0x999999 },
+    });
+    this._formationText.position.set(this._screenW - 260, 285);
+    this.root.addChild(this._formationText);
+  }
+
   private _buildPauseOverlay(): void {
     this._pauseOverlay.visible = false;
   }
@@ -342,6 +451,11 @@ export class GrailBallHUD {
     this._updateEvents(state);
     this._updateAnnouncement(state);
     this._updatePowerUpIndicator(state);
+    this._updateReplayOverlay(state);
+    this._updatePenaltyOverlay(state);
+    this._updateFatigueIndicator(state);
+    this._updateInjuryTimeIndicator(state);
+    this._updateFormationDisplay(state);
   }
 
   private _updateScoreboard(state: GBMatchState): void {
@@ -357,12 +471,16 @@ export class GrailBallHUD {
   }
 
   private _updateTimer(state: GBMatchState): void {
-    const remaining = Math.max(0, GB_MATCH.HALF_DURATION - state.matchClock);
+    const totalDuration = GB_MATCH.HALF_DURATION + (state.injuryTimeAnnounced ? state.injuryTime : 0);
+    const remaining = Math.max(0, totalDuration - state.matchClock);
     const minutes = Math.floor(remaining / 60);
     const seconds = Math.floor(remaining % 60);
     this._timerText.text = `${minutes}:${seconds.toString().padStart(2, "0")}`;
 
-    if (state.overtime) {
+    if (state.phase === GBMatchPhase.PENALTY_SHOOTOUT) {
+      this._halfText.text = "PENALTIES";
+      this._halfText.style.fill = 0xff4444;
+    } else if (state.overtime) {
       this._halfText.text = "OVERTIME";
       this._halfText.style.fill = 0xff4444;
     } else {
@@ -549,6 +667,14 @@ export class GrailBallHUD {
         this._announcementText.visible = true;
         this._merlinSpeech.visible = true;
         break;
+      case GBMatchPhase.PENALTY_SHOOTOUT:
+        this._announcementText.text = "PENALTY SHOOTOUT";
+        this._merlinSpeech.text = state.penaltyState
+          ? `Round ${state.penaltyState.round} - ${state.teamDefs[state.penaltyState.shooterTeam].name} to shoot`
+          : "";
+        this._announcementText.visible = true;
+        this._merlinSpeech.visible = true;
+        break;
       case GBMatchPhase.POST_GAME: {
         const winner = state.scores[0] >= state.scores[1] ? 0 : 1;
         this._announcementText.text = `${state.teamDefs[winner].name} WINS!`;
@@ -588,6 +714,121 @@ export class GrailBallHUD {
     this._powerUpIndicator.fill({ color, alpha: 0.9 });
     this._powerUpText.text = `${name} (${sel.powerUpTimer.toFixed(1)}s)`;
     this._powerUpText.style.fill = color;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Replay overlay
+  // ---------------------------------------------------------------------------
+  private _updateReplayOverlay(state: GBMatchState): void {
+    if (state.replayActive && state.replayCurrentMoment) {
+      this._replayOverlay.visible = true;
+      this._replayOverlay.position.set(0, this._screenH - 50);
+
+      const moment = state.replayCurrentMoment;
+      this._replayText.text = `REPLAY: ${moment.description}`;
+
+      // Progress bar
+      this._replayProgressBar.clear();
+      const barW = this._screenW - 500;
+      const progress = state.replayPlaybackIndex / Math.max(1, moment.frames.length);
+      this._replayProgressBar.roundRect(0, 0, barW, 14, 3);
+      this._replayProgressBar.fill({ color: 0x333333, alpha: 0.8 });
+      this._replayProgressBar.roundRect(0, 0, barW * progress, 14, 3);
+      this._replayProgressBar.fill({ color: 0xff4444, alpha: 0.9 });
+    } else {
+      this._replayOverlay.visible = false;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Penalty overlay
+  // ---------------------------------------------------------------------------
+  private _updatePenaltyOverlay(state: GBMatchState): void {
+    if (state.phase === GBMatchPhase.PENALTY_SHOOTOUT && state.penaltyState) {
+      this._penaltyOverlay.visible = true;
+      const ps = state.penaltyState;
+
+      this._penaltyScoreText.text = `Penalties: ${ps.scores[0]} - ${ps.scores[1]}`;
+      this._penaltyScoreText.position.set(this._screenW / 2, 110);
+
+      // Aim indicator (for human team aiming)
+      this._penaltyAimIndicator.clear();
+      if (ps.phase === "aiming" && ps.shooterTeam === state.humanTeam) {
+        const indicatorW = 100;
+        // Draw aim bar
+        this._penaltyAimIndicator.roundRect(-indicatorW / 2, -5, indicatorW, 10, 3);
+        this._penaltyAimIndicator.fill({ color: 0x333333, alpha: 0.7 });
+        // Aim marker
+        const aimX = ps.aimAngle * (indicatorW / 2);
+        this._penaltyAimIndicator.circle(aimX, 0, 6);
+        this._penaltyAimIndicator.fill({ color: 0xffd700, alpha: 0.9 });
+        // Power bar
+        this._penaltyAimIndicator.roundRect(-indicatorW / 2, 15, indicatorW * ps.aimPower, 6, 2);
+        this._penaltyAimIndicator.fill({ color: 0x44ff44, alpha: 0.8 });
+      }
+      this._penaltyAimIndicator.position.set(this._screenW / 2, this._screenH / 2 + 80);
+
+      // History
+      let historyStr = ps.history.map(h =>
+        `${state.teamDefs[h.team].shortName} ${h.shooter}: ${h.scored ? "SCORED" : "MISSED"}`
+      ).join("\n");
+      this._penaltyHistoryText.text = historyStr;
+      this._penaltyHistoryText.position.set(this._screenW / 2 - 100, 140);
+    } else {
+      this._penaltyOverlay.visible = false;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Fatigue indicator
+  // ---------------------------------------------------------------------------
+  private _updateFatigueIndicator(state: GBMatchState): void {
+    const sel = getSelectedPlayer(state);
+    if (!sel) { this._fatigueText.text = ""; return; }
+
+    this._fatigueText.position.set(10, this._screenH - 145);
+
+    if (isCriticallyFatigued(sel)) {
+      this._fatigueText.text = "EXHAUSTED - Speed & accuracy severely reduced!";
+      this._fatigueText.style.fill = 0xff2222;
+    } else if (isFatigued(sel)) {
+      this._fatigueText.text = "Fatigued - Performance reduced";
+      this._fatigueText.style.fill = 0xffaa44;
+    } else {
+      this._fatigueText.text = "";
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Injury time indicator
+  // ---------------------------------------------------------------------------
+  private _updateInjuryTimeIndicator(state: GBMatchState): void {
+    this._injuryTimeText.position.set(this._screenW / 2, 112);
+
+    if (state.injuryTimeAnnounced && (state.phase === GBMatchPhase.PLAYING || state.phase === GBMatchPhase.OVERTIME)) {
+      const remaining = Math.max(0, (GB_MATCH.HALF_DURATION + state.injuryTime) - state.matchClock);
+      if (state.matchClock >= GB_MATCH.HALF_DURATION) {
+        const injMins = Math.ceil(remaining / 60);
+        const injSecs = Math.floor(remaining % 60);
+        this._injuryTimeText.text = `+${injMins}:${injSecs.toString().padStart(2, "0")}`;
+        this._injuryTimeText.visible = true;
+      } else {
+        this._injuryTimeText.visible = false;
+      }
+    } else {
+      this._injuryTimeText.visible = false;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Formation display
+  // ---------------------------------------------------------------------------
+  private _updateFormationDisplay(state: GBMatchState): void {
+    this._formationText.position.set(this._screenW - 260, 285);
+
+    const humanFormation = state.teamFormations[state.humanTeam];
+    const pressure = state.pressureMode[state.humanTeam];
+    this._formationText.text = `Formation: ${humanFormation} | Tactic: ${pressure}`;
   }
 
   // ---------------------------------------------------------------------------

@@ -5,7 +5,8 @@
 
 import {
   GBPlayerClass, GBMatchPhase, GBPowerUpType,
-  GB_CLASS_STATS, GB_FORMATION, GB_FIELD, GB_MATCH,
+  GB_CLASS_STATS, GB_FORMATION, GB_FIELD, GB_MATCH, GB_STAMINA,
+  GB_CAREER, GB_REPLAY, GB_FORMATION_TEMPLATES,
   type GBTeamDef,
 } from "./GrailBallConfig";
 
@@ -119,6 +120,11 @@ export interface GBPlayer {
   animBlend: number;       // blend between idle and current action
   lastActionChange: number; // timestamp of last action change
 
+  // Fatigue system
+  fatigueFactor: number;       // 1.0 = fresh, decreases toward 0 with fatigue
+  totalDistanceRun: number;    // cumulative distance for fatigue tracking
+  isSubstitute: boolean;       // on bench, available as sub
+
   // AI hints
   aiRole: "chase_orb" | "defend" | "attack" | "support" | "mark" | "return";
   aiTarget: number | null; // id of player to mark, or null
@@ -136,6 +142,13 @@ export interface GBOrb {
   trail: Vec3[];              // recent positions for trail effect
   glowIntensity: number;
   inFlight: boolean;
+
+  // Enhanced ball physics
+  spin: Vec3;                  // angular velocity (spin axis)
+  curve: number;               // current lateral curve force
+  surfaceType: "grass" | "mud" | "stone"; // affects friction
+  lastBounceTime: number;      // time of last bounce
+  bounceCount: number;         // number of bounces since last throw
 }
 
 // ---------------------------------------------------------------------------
@@ -155,10 +168,114 @@ export interface GBPowerUp {
 // ---------------------------------------------------------------------------
 export interface GBMatchEvent {
   time: number;     // match clock
-  type: "goal" | "foul" | "tackle" | "save" | "ability" | "powerup" | "halftime" | "match_start" | "match_end" | "overtime";
+  type: "goal" | "foul" | "tackle" | "save" | "ability" | "powerup" | "halftime"
+      | "match_start" | "match_end" | "overtime" | "penalty" | "substitution"
+      | "header" | "volley" | "injury_time" | "ceremony";
   text: string;
   teamIndex?: number;
   playerId?: number;
+}
+
+// ---------------------------------------------------------------------------
+// Replay system state
+// ---------------------------------------------------------------------------
+export interface GBReplayFrame {
+  players: Array<{ id: number; pos: Vec3; vel: Vec3; facing: number; action: GBPlayerAction; hasOrb: boolean }>;
+  orbPos: Vec3;
+  orbVel: Vec3;
+  orbCarrier: number | null;
+  matchClock: number;
+}
+
+export interface GBReplayMoment {
+  type: "goal" | "save" | "foul" | "ability";
+  timestamp: number;
+  frames: GBReplayFrame[];
+  scorerId?: number;
+  teamIndex?: number;
+  description: string;
+}
+
+// ---------------------------------------------------------------------------
+// Penalty shootout state
+// ---------------------------------------------------------------------------
+export interface GBPenaltyState {
+  round: number;             // current round (1-based)
+  shooterTeam: number;       // which team is shooting
+  scores: [number, number];  // penalty scores
+  attempts: [number, number]; // total attempts
+  shooterId: number | null;  // current shooter
+  keeperId: number | null;   // current keeper
+  phase: "aiming" | "shooting" | "result" | "done";
+  aimAngle: number;          // current aim direction
+  aimPower: number;          // shot power
+  shotTimer: number;         // time remaining to shoot
+  resultTimer: number;       // display result time
+  history: Array<{ team: number; scored: boolean; shooter: string }>;
+}
+
+// ---------------------------------------------------------------------------
+// Career mode state
+// ---------------------------------------------------------------------------
+export interface GBCareerSeason {
+  year: number;
+  leagueTable: GBLeagueEntry[];
+  fixtures: GBFixture[];
+  currentFixture: number;
+  cupRound: number;
+  cupEliminated: boolean;
+}
+
+export interface GBLeagueEntry {
+  teamId: string;
+  played: number;
+  won: number;
+  drawn: number;
+  lost: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  points: number;
+}
+
+export interface GBFixture {
+  homeTeamId: string;
+  awayTeamId: string;
+  played: boolean;
+  homeGoals: number;
+  awayGoals: number;
+  isCup: boolean;
+}
+
+export interface GBPlayerProgression {
+  playerId: string;
+  name: string;
+  cls: GBPlayerClass;
+  seasonGoals: number;
+  seasonAssists: number;
+  seasonTackles: number;
+  rating: number;            // 1-100
+  potential: number;         // max rating
+  speedBonus: number;
+  tackleBonus: number;
+  magicBonus: number;
+}
+
+export interface GBCareerState {
+  active: boolean;
+  playerTeamId: string;
+  season: GBCareerSeason;
+  transferBudget: number;
+  trophies: Array<{ type: "league" | "cup"; year: number }>;
+  allTimeStats: {
+    totalWins: number;
+    totalDraws: number;
+    totalLosses: number;
+    totalGoalsFor: number;
+    totalGoalsAgainst: number;
+    seasonsPlayed: number;
+  };
+  roster: GBPlayerProgression[];
+  subsUsed: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -216,7 +333,37 @@ export interface GBMatchState {
 
   // Next unique id
   nextId: number;
+
+  // Replay system
+  replayMoments: GBReplayMoment[];
+  replayRecording: GBReplayFrame[];
+  replayActive: boolean;
+  replayPlaybackIndex: number;
+  replayPlaybackTimer: number;
+  replayCurrentMoment: GBReplayMoment | null;
+  replayCameraAngle: number;   // index into camera angles
+
+  // Injury time
+  injuryTime: number;            // calculated injury time for current half
+  injuryTimeAnnounced: boolean;
+  stoppageAccumulator: number;   // accumulated stoppage events
+
+  // Penalty shootout
+  penaltyState: GBPenaltyState | null;
+
+  // Formation
+  teamFormations: [string, string];  // formation template ids per team
+  pressureMode: [GBPressureMode, GBPressureMode]; // tactical mode per team
+
+  // Substitutions
+  subsRemaining: [number, number];
+  benchPlayers: GBPlayer[];
+
+  // Career
+  careerState: GBCareerState | null;
 }
+
+export type GBPressureMode = "balanced" | "offensive" | "defensive" | "ultra_attack" | "park_the_bus";
 
 // ---------------------------------------------------------------------------
 // Player names by class
@@ -323,6 +470,10 @@ export function createMatchState(
         animBlend: 0,
         lastActionChange: 0,
 
+        fatigueFactor: 1.0,
+        totalDistanceRun: 0,
+        isSubstitute: false,
+
         aiRole: "defend",
         aiTarget: null,
       };
@@ -352,6 +503,11 @@ export function createMatchState(
       trail: [],
       glowIntensity: 1,
       inFlight: false,
+      spin: v3(),
+      curve: 0,
+      surfaceType: "grass",
+      lastBounceTime: 0,
+      bounceCount: 0,
     },
     powerUps: [],
 
@@ -381,6 +537,34 @@ export function createMatchState(
     fouls: [0, 0],
 
     nextId,
+
+    // Replay
+    replayMoments: [],
+    replayRecording: [],
+    replayActive: false,
+    replayPlaybackIndex: 0,
+    replayPlaybackTimer: 0,
+    replayCurrentMoment: null,
+    replayCameraAngle: 0,
+
+    // Injury time
+    injuryTime: 0,
+    injuryTimeAnnounced: false,
+    stoppageAccumulator: 0,
+
+    // Penalty
+    penaltyState: null,
+
+    // Formation
+    teamFormations: ["1-2-2-2", "1-2-2-2"],
+    pressureMode: ["balanced", "balanced"],
+
+    // Subs
+    subsRemaining: [GB_MATCH.MAX_SUBS, GB_MATCH.MAX_SUBS],
+    benchPlayers: [],
+
+    // Career
+    careerState: null,
   };
 
   return state;
@@ -433,6 +617,9 @@ export function resetPositionsForKickoff(state: GBMatchState, _scoringTeam: numb
   state.orb.lastThrownBy = null;
   state.orb.inFlight = false;
   state.orb.trail = [];
+  state.orb.spin = v3();
+  state.orb.curve = 0;
+  state.orb.bounceCount = 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -448,4 +635,139 @@ export function pushEvent(state: GBMatchState, type: GBMatchEvent["type"], text:
   });
   // Keep last 50 events
   if (state.events.length > 50) state.events.shift();
+
+  // Track stoppages for injury time
+  if (type === "foul" || type === "goal" || type === "substitution") {
+    state.stoppageAccumulator += type === "goal" ? 4 : type === "foul" ? 2 : 1.5;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Fatigue helpers
+// ---------------------------------------------------------------------------
+export function getStaminaFraction(p: GBPlayer): number {
+  return p.stamina / p.maxStamina;
+}
+
+export function isFatigued(p: GBPlayer): boolean {
+  return getStaminaFraction(p) < GB_STAMINA.LOW_STAMINA_THRESHOLD;
+}
+
+export function isCriticallyFatigued(p: GBPlayer): boolean {
+  return getStaminaFraction(p) < GB_STAMINA.CRITICAL_STAMINA_THRESHOLD;
+}
+
+export function getFatigueSpeedMultiplier(p: GBPlayer): number {
+  if (isCriticallyFatigued(p)) return GB_STAMINA.CRITICAL_SPEED_MULT;
+  if (isFatigued(p)) return GB_STAMINA.FATIGUE_SPEED_MULT;
+  return 1.0;
+}
+
+export function getFatigueAccuracyMultiplier(p: GBPlayer): number {
+  if (isCriticallyFatigued(p)) return GB_STAMINA.CRITICAL_ACCURACY_MULT;
+  if (isFatigued(p)) return GB_STAMINA.FATIGUE_ACCURACY_MULT;
+  return 1.0;
+}
+
+export function getFatigueTackleMultiplier(p: GBPlayer): number {
+  if (isFatigued(p)) return GB_STAMINA.FATIGUE_TACKLE_MULT;
+  return 1.0;
+}
+
+// ---------------------------------------------------------------------------
+// Replay helpers
+// ---------------------------------------------------------------------------
+export function captureReplayFrame(state: GBMatchState): GBReplayFrame {
+  return {
+    players: state.players.map(p => ({
+      id: p.id,
+      pos: v3(p.pos.x, p.pos.y, p.pos.z),
+      vel: v3(p.vel.x, p.vel.y, p.vel.z),
+      facing: p.facing,
+      action: p.action,
+      hasOrb: p.hasOrb,
+    })),
+    orbPos: v3(state.orb.pos.x, state.orb.pos.y, state.orb.pos.z),
+    orbVel: v3(state.orb.vel.x, state.orb.vel.y, state.orb.vel.z),
+    orbCarrier: state.orb.carrier,
+    matchClock: state.matchClock,
+  };
+}
+
+export function saveReplayMoment(
+  state: GBMatchState,
+  type: GBReplayMoment["type"],
+  description: string,
+  scorerId?: number,
+  teamIndex?: number,
+): void {
+  const moment: GBReplayMoment = {
+    type,
+    timestamp: state.matchClock,
+    frames: [...state.replayRecording],
+    scorerId,
+    teamIndex,
+    description,
+  };
+  state.replayMoments.push(moment);
+  if (state.replayMoments.length > GB_REPLAY.MAX_MOMENTS) {
+    state.replayMoments.shift();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Career mode helpers
+// ---------------------------------------------------------------------------
+export function createCareerState(playerTeamId: string): GBCareerState {
+  const teams = GB_FORMATION_TEMPLATES; // just to reference the import
+  void teams; // suppress unused warning
+
+  const leagueTable: GBLeagueEntry[] = [];
+  // Use the imported GB_TEAMS from config won't work here, so we build minimal entries
+  // This will be populated by the career system
+
+  return {
+    active: true,
+    playerTeamId,
+    season: {
+      year: 1,
+      leagueTable,
+      fixtures: [],
+      currentFixture: 0,
+      cupRound: 1,
+      cupEliminated: false,
+    },
+    transferBudget: GB_CAREER.TRANSFER_BUDGET_BASE,
+    trophies: [],
+    allTimeStats: {
+      totalWins: 0,
+      totalDraws: 0,
+      totalLosses: 0,
+      totalGoalsFor: 0,
+      totalGoalsAgainst: 0,
+      seasonsPlayed: 0,
+    },
+    roster: [],
+    subsUsed: 0,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Penalty shootout helpers
+// ---------------------------------------------------------------------------
+export function createPenaltyState(): GBPenaltyState {
+  return {
+    round: 1,
+    shooterTeam: 0,
+    scores: [0, 0],
+    attempts: [0, 0],
+    shooterId: null,
+    keeperId: null,
+    phase: "aiming",
+    aimAngle: 0,
+    aimPower: 0.7,
+    shotTimer: GB_MATCH.PENALTY_SHOT_TIME,
+    resultTimer: 0,
+    history: [],
+  };
 }

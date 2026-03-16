@@ -24,6 +24,7 @@ export enum GBMatchPhase {
   HALFTIME = "halftime",
   FULL_MATCH = "full_match",
   OVERTIME = "overtime",
+  PENALTY_SHOOTOUT = "penalty_shootout",
   POST_GAME = "post_game",
 }
 
@@ -319,6 +320,18 @@ export const GB_PHYSICS = {
   AUTO_PICKUP_RANGE: 1.2,
   PLAYER_DECELERATION: 0.92,
   MAX_THROW_CHARGE: 1.5,   // seconds of holding = max power
+
+  // Ball physics (enhanced)
+  ORB_WEIGHT: 1.0,         // mass factor
+  ORB_DRAG: 0.995,         // air drag per frame
+  ORB_SPIN_DECAY: 0.97,    // spin decay per frame
+  ORB_MAGNUS_FORCE: 0.08,  // spin -> curve strength
+  ORB_SURFACE_FRICTION: 0.96, // ground friction multiplier
+  ORB_PLAYER_RESTITUTION: 0.4, // ball-player bounce factor
+  ORB_HEADER_RANGE: 2.5,   // distance to attempt header
+  ORB_HEADER_POWER: 18,    // header speed
+  ORB_VOLLEY_RANGE: 2.0,   // distance to attempt volley
+  ORB_VOLLEY_POWER: 30,    // volley speed
 };
 
 // ---------------------------------------------------------------------------
@@ -334,6 +347,141 @@ export const GB_MATCH = {
   POWERUP_SPAWN_INTERVAL: 25,  // seconds between spawns
   POWERUP_DURATION: 8,      // seconds a power-up lasts when picked up
   FOUL_PENALTY_TIME: 3,     // seconds player sits out after foul
+
+  // Match phases (enhanced)
+  INJURY_TIME_MIN: 5,       // minimum injury time (seconds)
+  INJURY_TIME_MAX: 30,      // maximum injury time (seconds)
+  PRE_MATCH_CEREMONY: 4,    // seconds for pre-match ceremony
+  POST_MATCH_CEREMONY: 8,   // seconds for post-match ceremony
+
+  // Penalty shootout
+  PENALTY_ROUNDS: 5,        // best-of rounds
+  PENALTY_SHOT_TIME: 5,     // seconds to take each penalty
+  PENALTY_DISTANCE: 15,     // distance from gate for penalty
+
+  // Substitution
+  MAX_SUBS: 3,              // max substitutions per team per match
+};
+
+// ---------------------------------------------------------------------------
+// Stamina / fatigue configuration
+// ---------------------------------------------------------------------------
+export const GB_STAMINA = {
+  // Depletion rates (per second)
+  SPRINT_DRAIN: 12,
+  TACKLE_COST: 15,
+  SHOOT_COST: 12,
+  PASS_COST: 5,
+  LOB_COST: 8,
+  HEADER_COST: 10,
+  VOLLEY_COST: 14,
+
+  // Recovery rates (per second)
+  STANDING_REGEN: 8,
+  WALKING_REGEN: 5,
+  RUNNING_REGEN: 2,
+
+  // Fatigue thresholds
+  LOW_STAMINA_THRESHOLD: 0.3,   // below 30% = fatigued
+  CRITICAL_STAMINA_THRESHOLD: 0.15, // below 15% = critical
+
+  // Fatigue effects (multipliers)
+  FATIGUE_SPEED_MULT: 0.7,       // speed multiplier when fatigued
+  FATIGUE_ACCURACY_MULT: 0.6,    // throw accuracy when fatigued
+  FATIGUE_TACKLE_MULT: 0.5,      // tackle power when fatigued
+  CRITICAL_SPEED_MULT: 0.5,      // speed multiplier when critically fatigued
+  CRITICAL_ACCURACY_MULT: 0.4,   // throw accuracy when critically fatigued
+};
+
+// ---------------------------------------------------------------------------
+// Formation templates
+// ---------------------------------------------------------------------------
+export interface GBFormationTemplate {
+  id: string;
+  name: string;
+  slots: GBFormationSlot[];
+}
+
+export const GB_FORMATION_TEMPLATES: Record<string, GBFormationTemplate> = {
+  "1-2-2-2": {
+    id: "1-2-2-2",
+    name: "Balanced (1-2-2-2)",
+    slots: [
+      { cls: GBPlayerClass.GATEKEEPER, baseX: 0.05, baseZ: 0 },
+      { cls: GBPlayerClass.KNIGHT,     baseX: 0.25, baseZ: -0.4 },
+      { cls: GBPlayerClass.KNIGHT,     baseX: 0.25, baseZ: 0.4 },
+      { cls: GBPlayerClass.ROGUE,      baseX: 0.55, baseZ: -0.3 },
+      { cls: GBPlayerClass.ROGUE,      baseX: 0.55, baseZ: 0.3 },
+      { cls: GBPlayerClass.MAGE,       baseX: 0.80, baseZ: -0.35 },
+      { cls: GBPlayerClass.MAGE,       baseX: 0.80, baseZ: 0.35 },
+    ],
+  },
+  "1-3-2-1": {
+    id: "1-3-2-1",
+    name: "Defensive (1-3-2-1)",
+    slots: [
+      { cls: GBPlayerClass.GATEKEEPER, baseX: 0.05, baseZ: 0 },
+      { cls: GBPlayerClass.KNIGHT,     baseX: 0.20, baseZ: -0.45 },
+      { cls: GBPlayerClass.KNIGHT,     baseX: 0.18, baseZ: 0 },
+      { cls: GBPlayerClass.KNIGHT,     baseX: 0.20, baseZ: 0.45 },
+      { cls: GBPlayerClass.ROGUE,      baseX: 0.50, baseZ: -0.25 },
+      { cls: GBPlayerClass.ROGUE,      baseX: 0.50, baseZ: 0.25 },
+      { cls: GBPlayerClass.MAGE,       baseX: 0.85, baseZ: 0 },
+    ],
+  },
+  "1-1-3-2": {
+    id: "1-1-3-2",
+    name: "Attacking (1-1-3-2)",
+    slots: [
+      { cls: GBPlayerClass.GATEKEEPER, baseX: 0.05, baseZ: 0 },
+      { cls: GBPlayerClass.KNIGHT,     baseX: 0.22, baseZ: 0 },
+      { cls: GBPlayerClass.ROGUE,      baseX: 0.50, baseZ: -0.4 },
+      { cls: GBPlayerClass.ROGUE,      baseX: 0.45, baseZ: 0 },
+      { cls: GBPlayerClass.ROGUE,      baseX: 0.50, baseZ: 0.4 },
+      { cls: GBPlayerClass.MAGE,       baseX: 0.80, baseZ: -0.3 },
+      { cls: GBPlayerClass.MAGE,       baseX: 0.80, baseZ: 0.3 },
+    ],
+  },
+  "1-2-3-1": {
+    id: "1-2-3-1",
+    name: "Wide Play (1-2-3-1)",
+    slots: [
+      { cls: GBPlayerClass.GATEKEEPER, baseX: 0.05, baseZ: 0 },
+      { cls: GBPlayerClass.KNIGHT,     baseX: 0.22, baseZ: -0.35 },
+      { cls: GBPlayerClass.KNIGHT,     baseX: 0.22, baseZ: 0.35 },
+      { cls: GBPlayerClass.ROGUE,      baseX: 0.50, baseZ: -0.5 },
+      { cls: GBPlayerClass.MAGE,       baseX: 0.50, baseZ: 0 },
+      { cls: GBPlayerClass.ROGUE,      baseX: 0.50, baseZ: 0.5 },
+      { cls: GBPlayerClass.MAGE,       baseX: 0.85, baseZ: 0 },
+    ],
+  },
+  // Set piece formations
+  "corner_attack": {
+    id: "corner_attack",
+    name: "Corner Attack",
+    slots: [
+      { cls: GBPlayerClass.GATEKEEPER, baseX: 0.15, baseZ: 0 },
+      { cls: GBPlayerClass.KNIGHT,     baseX: 0.70, baseZ: -0.15 },
+      { cls: GBPlayerClass.KNIGHT,     baseX: 0.70, baseZ: 0.15 },
+      { cls: GBPlayerClass.ROGUE,      baseX: 0.80, baseZ: -0.25 },
+      { cls: GBPlayerClass.ROGUE,      baseX: 0.80, baseZ: 0.25 },
+      { cls: GBPlayerClass.MAGE,       baseX: 0.90, baseZ: -0.1 },
+      { cls: GBPlayerClass.MAGE,       baseX: 0.90, baseZ: 0.1 },
+    ],
+  },
+  "free_kick_attack": {
+    id: "free_kick_attack",
+    name: "Free Kick Attack",
+    slots: [
+      { cls: GBPlayerClass.GATEKEEPER, baseX: 0.10, baseZ: 0 },
+      { cls: GBPlayerClass.KNIGHT,     baseX: 0.35, baseZ: -0.3 },
+      { cls: GBPlayerClass.KNIGHT,     baseX: 0.35, baseZ: 0.3 },
+      { cls: GBPlayerClass.ROGUE,      baseX: 0.65, baseZ: -0.4 },
+      { cls: GBPlayerClass.ROGUE,      baseX: 0.65, baseZ: 0.4 },
+      { cls: GBPlayerClass.MAGE,       baseX: 0.75, baseZ: -0.2 },
+      { cls: GBPlayerClass.MAGE,       baseX: 0.75, baseZ: 0.2 },
+    ],
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -425,5 +573,36 @@ CONTROLS
   Tab - Switch selected player
   E - Lob pass
   Q - Call for pass (AI teammate throws to you)
+  R - Replay last key moment
   Escape - Pause menu
 `;
+
+// ---------------------------------------------------------------------------
+// Replay system configuration
+// ---------------------------------------------------------------------------
+export const GB_REPLAY = {
+  MAX_MOMENTS: 20,          // max stored replay moments
+  REPLAY_DURATION: 4,       // seconds of replay playback
+  SLOW_MO_FACTOR: 0.3,      // slow motion speed during replay
+  CAMERA_ANGLES: ["wide", "close", "behind_scorer", "goal_view"] as const,
+  FRAME_INTERVAL: 1 / 30,   // capture every ~33ms
+  MAX_FRAMES: 300,           // ~10 seconds of recording at 30fps
+};
+
+// ---------------------------------------------------------------------------
+// Career mode configuration
+// ---------------------------------------------------------------------------
+export const GB_CAREER = {
+  SEASON_MATCHES: 14,         // matches per league season (play each team twice)
+  CUP_ROUNDS: 3,             // quarter-final, semi-final, final
+  WIN_POINTS: 3,
+  DRAW_POINTS: 1,
+  LOSS_POINTS: 0,
+  TRAINING_BOOST_SPEED: 0.02,
+  TRAINING_BOOST_TACKLE: 0.02,
+  TRAINING_BOOST_MAGIC: 0.02,
+  TRANSFER_BUDGET_BASE: 100,  // gold coins
+  PLAYER_COST_BASE: 20,
+  PLAYER_COST_STAR: 50,
+  MAX_TROPHIES: 50,
+};

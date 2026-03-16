@@ -10,6 +10,13 @@ import {
   GameBalance, TileType, FLOOR_THEMES, QUEST_GENRE_DEFS, KNIGHT_DEFS,
   ItemType, ItemRarity, SHOP_ITEMS,
 } from "../config/GameConfig";
+import {
+  CRAFTING_MATERIALS, CRAFTING_RECIPES, ENCHANTMENT_DEFS, SOCKET_GEMS,
+} from "../config/GameCraftingDefs";
+import {
+  ARTIFACT_DEFS, ARTIFACT_SET_BONUSES, COMPANION_DEFS,
+} from "../config/GameArtifactDefs";
+import { loadLeaderboard } from "../systems/GameInfiniteMode";
 
 import { GamePhase, loadRunStats } from "../state/GameState";
 import type {
@@ -161,6 +168,37 @@ export class GameHUD {
     }
     if (state.phase === GamePhase.PAUSED) {
       this._drawPaused(sw, sh);
+    }
+    if (state.phase === GamePhase.CRAFTING) {
+      this._drawCraftingScreen(state, sw, sh);
+    }
+    if (state.phase === GamePhase.ENCHANTING) {
+      this._drawEnchantingScreen(state, sw, sh);
+    }
+    if (state.phase === GamePhase.ARTIFACT_LORE) {
+      this._drawArtifactLoreScreen(state, sw, sh);
+    }
+
+    // Companion HUD (shown during play)
+    if (state.companion && state.companion.alive &&
+        state.phase !== GamePhase.GENRE_SELECT && state.phase !== GamePhase.KNIGHT_SELECT &&
+        state.phase !== GamePhase.GAME_OVER && state.phase !== GamePhase.VICTORY) {
+      this._drawCompanionHUD(state, sw, sh);
+    }
+
+    // Infinite mode score display
+    if (state.isInfiniteMode && state.phase !== GamePhase.GENRE_SELECT && state.phase !== GamePhase.KNIGHT_SELECT) {
+      this._drawInfiniteScore(state, sw, sh);
+    }
+
+    // Material count indicator
+    if (state.materials.length > 0 && (state.phase === GamePhase.PLAYING || state.phase === GamePhase.INVENTORY)) {
+      this._drawMaterialCount(state, sw, sh);
+    }
+
+    // Artifact count indicator
+    if (state.artifacts.length > 0 && (state.phase === GamePhase.PLAYING)) {
+      this._drawArtifactCount(state, sw, sh);
     }
   }
 
@@ -1718,7 +1756,14 @@ export class GameHUD {
       this._addText(`${i + 1}`, x + cardW / 2, y + cardH - 15, 12, 0x3a2a15, true);
     }
 
-    this._addText("Press 1-6 to select a quest type", sw / 2, sh - 36, 13, 0x665544, true);
+    // Infinite mode option
+    const infY = sh - 70;
+    const infPulse = 0.7 + 0.3 * Math.sin(time * 2.5);
+    g.roundRect(sw / 2 - 120, infY - 6, 240, 24, 4).fill({ color: 0x1a0a00, alpha: 0.7 });
+    g.roundRect(sw / 2 - 120, infY - 6, 240, 24, 4).stroke({ color: lerpColor(0x886644, 0xffd700, infPulse), width: 1, alpha: 0.6 });
+    this._addText("0. Infinite Dungeon (Endless)", sw / 2, infY, 11, lerpColor(0xaa8844, 0xffd700, infPulse), true, FONT_FANCY);
+
+    this._addText("Press 1-6 to select a quest type  |  0 for Infinite", sw / 2, sh - 36, 13, 0x665544, true);
   }
 
   private _drawGenreIcon(cx: number, cy: number, size: number, index: number, color: number): void {
@@ -2529,6 +2574,309 @@ export class GameHUD {
     t.y = y;
     this._texts.push(t);
     this.container.addChild(t);
+  }
+
+  // =========================================================================
+  //  CRAFTING SCREEN
+  // =========================================================================
+
+  private _drawCraftingScreen(state: GrailGameState, sw: number, sh: number): void {
+    const g = this._gfx;
+    const pw = Math.min(500, sw - 60);
+    const ph = Math.min(500, sh - 80);
+    const px = (sw - pw) / 2;
+    const py = (sh - ph) / 2;
+
+    this._drawParchmentBG(px, py, pw, ph);
+    this._drawOrnateFrame(px, py, pw, ph);
+
+    this._addText("Crafting Bench", px + pw / 2, py + 12, 16, 0x442200, true, FONT_FANCY);
+    this._drawOrnamentDivider(px + 10, py + 32, pw - 20, GOLD_DARK);
+
+    // Materials summary
+    this._addText("Materials:", px + 12, py + 42, 10, 0x442200, false, FONT);
+    let matY = py + 56;
+    for (const mat of state.materials.slice(0, 6)) {
+      const matDef = CRAFTING_MATERIALS[mat.id];
+      if (matDef) {
+        this._addText(`${matDef.name}: ${mat.quantity}`, px + 20, matY, 9, 0x553311, false, FONT);
+        matY += 14;
+      }
+    }
+    if (state.materials.length > 6) {
+      this._addText(`...and ${state.materials.length - 6} more`, px + 20, matY, 8, 0x776644, false, FONT);
+    }
+
+    // Recipe list
+    this._drawOrnamentDivider(px + 10, matY + 10, pw - 20, GOLD_DARK);
+    let recY = matY + 24;
+    this._addText("Recipes (Enter to craft):", px + 12, recY, 10, 0x442200, false, FONT);
+    recY += 16;
+
+    const recipes = CRAFTING_RECIPES;
+    const scrollIdx = state.craftingScrollIndex;
+    const visible = Math.min(8, recipes.length);
+    const startIdx = Math.max(0, scrollIdx - Math.floor(visible / 2));
+
+    for (let i = startIdx; i < Math.min(startIdx + visible, recipes.length); i++) {
+      const recipe = recipes[i];
+      const canMake = recipe.ingredients.every(ing => {
+        const mat = state.materials.find(m => m.id === ing.matId);
+        return mat && mat.quantity >= ing.quantity;
+      });
+      const isSelected = i === scrollIdx;
+      const color = isSelected ? 0x442200 : (canMake ? 0x554422 : 0x998877);
+
+      if (isSelected) {
+        g.rect(px + 10, recY - 2, pw - 20, 16).fill({ color: 0xccbb99, alpha: 0.3 });
+      }
+
+      const prefix = isSelected ? "> " : "  ";
+      const suffix = canMake ? "" : " (missing)";
+      this._addText(`${prefix}${recipe.name}${suffix}`, px + 16, recY, 9, color, false, FONT);
+      recY += 16;
+    }
+
+    // Selected recipe details
+    if (scrollIdx >= 0 && scrollIdx < recipes.length) {
+      const sel = recipes[scrollIdx];
+      recY += 8;
+      this._addText(sel.desc, px + 16, recY, 8, 0x665533, false, FONT);
+      recY += 14;
+      this._addText("Requires:", px + 16, recY, 8, 0x665533, false, FONT);
+      recY += 12;
+      for (const ing of sel.ingredients) {
+        const matDef = CRAFTING_MATERIALS[ing.matId];
+        const have = state.materials.find(m => m.id === ing.matId)?.quantity ?? 0;
+        const color = have >= ing.quantity ? 0x226622 : 0xaa2222;
+        this._addText(`  ${matDef?.name ?? ing.matId}: ${have}/${ing.quantity}`, px + 20, recY, 8, color, false, FONT);
+        recY += 11;
+      }
+    }
+
+    this._addText("ESC/E: Close  W/S: Navigate  Enter: Craft", px + pw / 2, py + ph - 14, 8, 0x776655, true, FONT);
+  }
+
+  // =========================================================================
+  //  ENCHANTING SCREEN
+  // =========================================================================
+
+  private _drawEnchantingScreen(state: GrailGameState, sw: number, sh: number): void {
+    const g = this._gfx;
+    const pw = Math.min(480, sw - 60);
+    const ph = Math.min(450, sh - 80);
+    const px = (sw - pw) / 2;
+    const py = (sh - ph) / 2;
+
+    this._drawParchmentBG(px, py, pw, ph);
+    this._drawOrnateFrame(px, py, pw, ph);
+
+    this._addText("Enchantment Table", px + pw / 2, py + 12, 16, 0x442200, true, FONT_FANCY);
+    this._drawOrnamentDivider(px + 10, py + 32, pw - 20, GOLD_DARK);
+
+    // Show inventory items that can be enchanted
+    this._addText("Select item (1-9):", px + 12, py + 42, 10, 0x442200, false, FONT);
+    let y = py + 58;
+    const p = state.player;
+    for (let i = 0; i < Math.min(9, p.inventory.length); i++) {
+      const inv = p.inventory[i];
+      if (inv.def.type === "weapon" || inv.def.type === "armor" || inv.def.type === "relic") {
+        this._addText(`${i + 1}. ${inv.def.name} [${inv.def.type}]`, px + 20, y, 9, inv.def.color, false, FONT);
+        y += 14;
+      }
+    }
+
+    // Show available enchantments
+    y += 8;
+    this._drawOrnamentDivider(px + 10, y, pw - 20, GOLD_DARK);
+    y += 14;
+    this._addText("Enchantments (A/D to select):", px + 12, y, 10, 0x442200, false, FONT);
+    y += 16;
+
+    const enchIdx = state.enchantingScrollIndex % ENCHANTMENT_DEFS.length;
+    for (let i = 0; i < ENCHANTMENT_DEFS.length; i++) {
+      const ench = ENCHANTMENT_DEFS[i];
+      const isSelected = i === enchIdx;
+      const color = isSelected ? ench.color : 0x776655;
+      const prefix = isSelected ? "> " : "  ";
+      this._addText(`${prefix}${ench.name}: ${ench.desc}`, px + 16, y, 9, color, false, FONT);
+      y += 14;
+    }
+
+    // Show cost of selected enchantment
+    if (enchIdx >= 0 && enchIdx < ENCHANTMENT_DEFS.length) {
+      const ench = ENCHANTMENT_DEFS[enchIdx];
+      y += 6;
+      this._addText(`Cost: ${ench.baseCost.map(c => {
+        const matDef = CRAFTING_MATERIALS[c.matId];
+        return `${matDef?.name ?? c.matId} x${c.quantity}`;
+      }).join(", ")}`, px + 16, y, 8, 0x665533, false, FONT);
+      y += 12;
+      this._addText(`Success rate: ${Math.floor(ench.successRate * 100)}%  Max level: ${ench.maxLevel}`, px + 16, y, 8, 0x665533, false, FONT);
+    }
+
+    this._addText("ESC/E: Close  A/D: Enchant  1-9: Apply to item", px + pw / 2, py + ph - 14, 8, 0x776655, true, FONT);
+  }
+
+  // =========================================================================
+  //  ARTIFACT LORE SCREEN
+  // =========================================================================
+
+  private _drawArtifactLoreScreen(state: GrailGameState, sw: number, sh: number): void {
+    const pw = Math.min(500, sw - 60);
+    const ph = Math.min(420, sh - 80);
+    const px = (sw - pw) / 2;
+    const py = (sh - ph) / 2;
+
+    this._drawParchmentBG(px, py, pw, ph);
+    this._drawOrnateFrame(px, py, pw, ph);
+
+    this._addText("Artifact Collection", px + pw / 2, py + 12, 16, GOLD_COLOR, true, FONT_FANCY);
+    this._drawOrnamentDivider(px + 10, py + 32, pw - 20, GOLD_DARK);
+
+    const artId = state.artifactLoreViewing;
+    const artDef = artId ? ARTIFACT_DEFS[artId] : null;
+
+    if (artDef) {
+      let y = py + 50;
+      this._addText(artDef.name, px + pw / 2, y, 14, artDef.color, true, FONT_FANCY);
+      y += 22;
+      this._addText(artDef.desc, px + 20, y, 10, 0x442200, false, FONT);
+      y += 20;
+      this._drawOrnamentDivider(px + 30, y, pw - 60, GOLD_DARK);
+      y += 14;
+      this._addText("Lore:", px + 20, y, 10, 0x553311, false, FONT_FANCY);
+      y += 16;
+
+      // Word-wrap lore text
+      const words = artDef.lore.split(" ");
+      let line = "";
+      for (const word of words) {
+        if ((line + " " + word).length > 50) {
+          this._addText(line, px + 24, y, 9, 0x665544, false, FONT);
+          y += 13;
+          line = word;
+        } else {
+          line = line ? line + " " + word : word;
+        }
+      }
+      if (line) {
+        this._addText(line, px + 24, y, 9, 0x665544, false, FONT);
+        y += 18;
+      }
+
+      // Stats
+      this._addText("Bonuses:", px + 20, y, 10, 0x442200, false, FONT);
+      y += 14;
+      if (artDef.attackBonus) this._addText(`  ATK +${artDef.attackBonus}`, px + 24, y, 9, 0xff4444, false, FONT), y += 12;
+      if (artDef.defenseBonus) this._addText(`  DEF +${artDef.defenseBonus}`, px + 24, y, 9, 0x4488ff, false, FONT), y += 12;
+      if (artDef.hpBonus) this._addText(`  HP +${artDef.hpBonus}`, px + 24, y, 9, 0xff4444, false, FONT), y += 12;
+      if (artDef.specialEffect) this._addText(`  Special: ${artDef.specialEffect}`, px + 24, y, 9, 0x8844ff, false, FONT), y += 12;
+
+      // Set bonus info
+      if (artDef.setId) {
+        const setBonus = ARTIFACT_SET_BONUSES.find(s => s.setId === artDef.setId);
+        if (setBonus) {
+          y += 8;
+          const owned = state.artifacts.filter(a => a.found && setBonus.pieces.includes(a.id)).length;
+          this._addText(`Set: ${setBonus.name} (${owned}/${setBonus.pieces.length})`, px + 20, y, 10, setBonus.color, false, FONT_FANCY);
+          y += 14;
+          for (const bonus of setBonus.bonuses) {
+            const active = owned >= bonus.count;
+            this._addText(`  ${bonus.count}pc: ${bonus.desc}`, px + 24, y, 8, active ? 0x226622 : 0x998877, false, FONT);
+            y += 11;
+          }
+        }
+      }
+
+      // Upgrade hint
+      if (artDef.questHint) {
+        y += 8;
+        this._addText(`Hint: ${artDef.questHint}`, px + 20, y, 8, 0x886644, false, FONT);
+      }
+    }
+
+    // Navigation
+    const artCount = state.artifacts.filter(a => a.found).length;
+    this._addText(`A/D: Navigate (${artCount} found)  ESC/L: Close`, px + pw / 2, py + ph - 14, 8, 0x776655, true, FONT);
+  }
+
+  // =========================================================================
+  //  COMPANION HUD (small panel during gameplay)
+  // =========================================================================
+
+  private _drawCompanionHUD(state: GrailGameState, _sw: number, sh: number): void {
+    const g = this._gfx;
+    const comp = state.companion!;
+    const x = 10;
+    const y = sh - 120;
+    const w = 140;
+    const h = 55;
+
+    this._drawPanel(x, y, w, h, PANEL_BG, 0.75);
+    this._drawOrnateFrame(x, y, w, h, comp.def.color, 1, 4);
+
+    // Name and class
+    this._addText(`${comp.def.name}`, x + 5, y + 4, 9, comp.def.color, false, FONT);
+    this._addText(`Lv${comp.level} ${comp.def.companionClass}`, x + w - 5, y + 4, 7, 0xaaaaaa, false, FONT);
+
+    // HP bar
+    const hpFrac = comp.hp / comp.maxHp;
+    g.roundRect(x + 5, y + 18, w - 10, 8, 2).fill({ color: 0x220000, alpha: 0.6 });
+    if (hpFrac > 0) {
+      const hpColor = hpFrac > 0.5 ? 0x44aa44 : (hpFrac > 0.25 ? 0xaaaa44 : 0xaa4444);
+      g.roundRect(x + 5, y + 18, (w - 10) * hpFrac, 8, 2).fill({ color: hpColor });
+    }
+    this._addText(`${Math.ceil(comp.hp)}/${comp.maxHp}`, x + w / 2, y + 18, 7, 0xffffff, true, FONT);
+
+    // Loyalty
+    const loyaltyColor = comp.loyalty >= 70 ? 0x44ff44 : (comp.loyalty >= 40 ? 0xffaa44 : 0xff4444);
+    this._addText(`Loyalty: ${comp.loyalty}%`, x + 5, y + 30, 7, loyaltyColor, false, FONT);
+
+    // Behavior
+    this._addText(`[B] ${comp.behavior}`, x + 5, y + 42, 7, 0xaaaaaa, false, FONT);
+  }
+
+  // =========================================================================
+  //  INFINITE MODE SCORE
+  // =========================================================================
+
+  private _drawInfiniteScore(state: GrailGameState, sw: number, _sh: number): void {
+    const g = this._gfx;
+    const x = sw / 2 - 60;
+    const y = 4;
+    const w = 120;
+    const h = 22;
+
+    g.roundRect(x, y, w, h, 3).fill({ color: PANEL_BG, alpha: 0.7 });
+    g.roundRect(x, y, w, h, 3).stroke({ color: GOLD_COLOR, width: 1, alpha: 0.5 });
+
+    this._addText(`SCORE: ${state.infiniteScore}`, x + w / 2, y + 4, 10, GOLD_COLOR, true, FONT);
+  }
+
+  // =========================================================================
+  //  MATERIAL COUNT INDICATOR
+  // =========================================================================
+
+  private _drawMaterialCount(state: GrailGameState, sw: number, sh: number): void {
+    const x = sw - 110;
+    const y = sh - 65;
+    const totalMats = state.materials.reduce((s, m) => s + m.quantity, 0);
+
+    this._addText(`Materials: ${totalMats}`, x, y, 8, 0xaaaaaa, false, FONT);
+    this._addText(`[E] at bench to craft`, x, y + 12, 7, 0x888888, false, FONT);
+  }
+
+  // =========================================================================
+  //  ARTIFACT COUNT INDICATOR
+  // =========================================================================
+
+  private _drawArtifactCount(state: GrailGameState, sw: number, sh: number): void {
+    const found = state.artifacts.filter(a => a.found).length;
+    if (found === 0) return;
+    const x = sw - 110;
+    const y = sh - 40;
+    this._addText(`Artifacts: ${found}  [L] lore`, x, y, 8, GOLD_COLOR, false, FONT);
   }
 
   // =========================================================================

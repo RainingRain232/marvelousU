@@ -10,7 +10,7 @@ import {
 } from "../config/GameConfig";
 import { Direction } from "../state/GameState";
 import type {
-  GrailGameState, FloorState, EnemyInstance, PlayerState,
+  GrailGameState, FloorState, EnemyInstance, PlayerState, CompanionState,
 } from "../state/GameState";
 
 const TS = GameBalance.TILE_SIZE;
@@ -230,6 +230,24 @@ export class GameRenderer {
             break;
           case TileType.SHRINE:
             this._drawShrineTile(g, px, py, theme.floorColor, r, c);
+            break;
+          case TileType.DESTRUCTIBLE_WALL:
+            this._drawDestructibleWallTile(g, px, py, theme.wallColor, r, c);
+            break;
+          case TileType.LEVER:
+            this._drawLeverTile(g, px, py, theme.floorColor, r, c);
+            break;
+          case TileType.PUZZLE_PLATE:
+            this._drawPuzzlePlateTile(g, px, py, theme.floorColor, r, c);
+            break;
+          case TileType.COMPANION_NPC:
+            this._drawCompanionNPCTile(g, px, py, theme.floorColor, r, c, floor);
+            break;
+          case TileType.ENCHANT_TABLE:
+            this._drawEnchantTableTile(g, px, py, theme.floorColor, r, c);
+            break;
+          case TileType.CRAFTING_BENCH:
+            this._drawCraftingBenchTile(g, px, py, theme.floorColor, r, c);
             break;
         }
       }
@@ -1275,6 +1293,43 @@ export class GameRenderer {
       if (!floor.explored[er][ec]) continue;
 
       this._drawEnemy(g, enemy);
+    }
+
+    // Draw companion
+    if (state.companion && state.companion.alive) {
+      const comp = state.companion;
+      const cc = Math.floor(comp.x / TS);
+      const cr = Math.floor(comp.y / TS);
+      if (cc >= 0 && cc < floor.width && cr >= 0 && cr < floor.height && floor.explored[cr][cc]) {
+        this._drawCompanionEntity(g, comp);
+      }
+    }
+
+    // Draw arena hazards
+    for (const hazard of floor.arenaHazards) {
+      if (hazard.row >= 0 && hazard.row < floor.height && hazard.col >= 0 && hazard.col < floor.width) {
+        if (floor.explored[hazard.row][hazard.col]) {
+          const hx = hazard.col * TS + TS / 2;
+          const hy = hazard.row * TS + TS / 2;
+          const radius = hazard.radius * TS;
+          const pulse = 0.3 + 0.2 * Math.sin(_globalTime * 4 + hazard.col);
+          // Warning circle
+          g.circle(hx, hy, radius).fill({ color: hazard.color, alpha: 0.1 * pulse });
+          g.circle(hx, hy, radius * 0.7).fill({ color: hazard.color, alpha: 0.15 * pulse });
+          g.circle(hx, hy, radius).stroke({ color: hazard.color, width: 1, alpha: 0.4 * pulse });
+        }
+      }
+    }
+
+    // Draw detected traps with warning indicators
+    for (const trap of floor.traps) {
+      if (trap.detected && !trap.disarmed && floor.explored[trap.row]?.[trap.col]) {
+        const tx = trap.col * TS + TS / 2;
+        const ty = trap.row * TS + TS / 2;
+        const warningPulse = 0.5 + 0.5 * Math.sin(_globalTime * 5);
+        g.circle(tx, ty, 4).fill({ color: 0xff4444, alpha: warningPulse * 0.6 });
+        g.circle(tx, ty, 6).stroke({ color: 0xff4444, width: 1, alpha: warningPulse * 0.4 });
+      }
     }
 
     // Draw player on top
@@ -4200,6 +4255,145 @@ export class GameRenderer {
         this.shakeIntensity = 0;
         this.shakeDuration = 0;
       }
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // New tile types
+  // -------------------------------------------------------------------------
+
+  private _drawDestructibleWallTile(g: Graphics, px: number, py: number, wallColor: number, _r: number, _c: number): void {
+    // Cracked wall appearance
+    g.rect(px, py, TS, TS).fill({ color: darken(wallColor, 0.1) });
+    // Cracks
+    const cx = px + TS / 2, cy = py + TS / 2;
+    g.moveTo(cx - 6, cy - 4).lineTo(cx, cy).lineTo(cx + 5, cy - 6).stroke({ color: 0x222222, width: 1, alpha: 0.6 });
+    g.moveTo(cx - 3, cy + 2).lineTo(cx + 2, cy + 6).stroke({ color: 0x222222, width: 0.8, alpha: 0.5 });
+    // Subtle glow to hint it's breakable
+    const pulse = 0.15 + 0.1 * Math.sin(_globalTime * 2);
+    g.rect(px + 2, py + 2, TS - 4, TS - 4).fill({ color: 0xffaa44, alpha: pulse * 0.1 });
+  }
+
+  private _drawLeverTile(g: Graphics, px: number, py: number, floorColor: number, r: number, c: number): void {
+    this._drawFloorTile(g, px, py, floorColor, r, c);
+    // Lever base
+    const cx = px + TS / 2, cy = py + TS / 2;
+    g.rect(cx - 4, cy + 2, 8, 4).fill({ color: 0x666666 });
+    // Lever handle
+    const tilt = Math.sin(_globalTime * 1.5) * 0.3;
+    g.moveTo(cx, cy + 4).lineTo(cx + tilt * 8, cy - 6).stroke({ color: 0xaa8844, width: 2 });
+    g.circle(cx + tilt * 8, cy - 7, 2).fill({ color: 0xffcc44 });
+  }
+
+  private _drawPuzzlePlateTile(g: Graphics, px: number, py: number, floorColor: number, r: number, c: number): void {
+    this._drawFloorTile(g, px, py, floorColor, r, c);
+    // Pressure plate
+    const cx = px + TS / 2, cy = py + TS / 2;
+    const pulse = 0.6 + 0.4 * Math.sin(_globalTime * 3 + c * 2);
+    g.roundRect(cx - 8, cy - 8, 16, 16, 2).fill({ color: 0x444466 });
+    g.roundRect(cx - 6, cy - 6, 12, 12, 1).fill({ color: 0x6666aa, alpha: pulse });
+    // Rune symbol
+    g.circle(cx, cy, 3).stroke({ color: 0x8888ff, width: 1, alpha: pulse });
+  }
+
+  private _drawCompanionNPCTile(g: Graphics, px: number, py: number, floorColor: number, r: number, c: number, floor: FloorState): void {
+    this._drawFloorTile(g, px, py, floorColor, r, c);
+    // NPC indicator
+    const cx = px + TS / 2, cy = py + TS / 2;
+    const bob = Math.sin(_globalTime * 2) * 2;
+    // Friendly glow
+    g.circle(cx, cy + bob, 10).fill({ color: 0x44ff88, alpha: 0.15 });
+    // Simple person shape
+    g.circle(cx, cy - 4 + bob, 4).fill({ color: 0x88ffaa });
+    g.rect(cx - 3, cy + 1 + bob, 6, 6).fill({ color: 0x66cc88 });
+    // "!" indicator
+    g.circle(cx, cy - 12 + bob, 4).fill({ color: 0xffd700, alpha: 0.8 });
+  }
+
+  private _drawEnchantTableTile(g: Graphics, px: number, py: number, floorColor: number, r: number, c: number): void {
+    this._drawFloorTile(g, px, py, floorColor, r, c);
+    const cx = px + TS / 2, cy = py + TS / 2;
+    // Table
+    g.rect(cx - 8, cy - 2, 16, 10).fill({ color: 0x553388 });
+    // Glowing runes
+    const pulse = 0.5 + 0.5 * Math.sin(_globalTime * 2.5);
+    g.circle(cx - 4, cy + 1, 2).fill({ color: 0x8844ff, alpha: pulse });
+    g.circle(cx + 4, cy + 1, 2).fill({ color: 0x8844ff, alpha: pulse });
+    g.circle(cx, cy - 1, 2).fill({ color: 0xaa66ff, alpha: pulse * 0.8 });
+    // Sparkle
+    g.circle(cx, cy - 6, 1.5).fill({ color: 0xffffff, alpha: pulse * 0.6 });
+  }
+
+  private _drawCraftingBenchTile(g: Graphics, px: number, py: number, floorColor: number, r: number, c: number): void {
+    this._drawFloorTile(g, px, py, floorColor, r, c);
+    const cx = px + TS / 2, cy = py + TS / 2;
+    // Anvil shape
+    g.rect(cx - 8, cy, 16, 6).fill({ color: 0x555555 });
+    g.rect(cx - 5, cy - 4, 10, 4).fill({ color: 0x666666 });
+    g.rect(cx - 3, cy - 7, 6, 3).fill({ color: 0x777777 });
+    // Hammer
+    g.rect(cx + 5, cy - 8, 3, 6).fill({ color: 0x886644 });
+    g.rect(cx + 3, cy - 10, 7, 3).fill({ color: 0x888888 });
+    // Warm glow
+    const pulse = 0.3 + 0.2 * Math.sin(_globalTime * 1.8);
+    g.circle(cx, cy - 2, 8).fill({ color: 0xff8844, alpha: pulse * 0.08 });
+  }
+
+  // -------------------------------------------------------------------------
+  // Companion entity
+  // -------------------------------------------------------------------------
+
+  private _drawCompanionEntity(g: Graphics, comp: CompanionState): void {
+    const cx = comp.x;
+    const cy = comp.y;
+    const color = comp.def.color;
+    const bob = Math.sin(_globalTime * 3) * 1.5;
+
+    // Shadow
+    g.ellipse(cx, cy + 7, 6, 3).fill({ color: 0x000000, alpha: 0.3 });
+
+    // Body
+    g.circle(cx, cy - 2 + bob, 7).fill({ color });
+    // Head
+    g.circle(cx, cy - 10 + bob, 5).fill({ color: lighten(color, 0.15) });
+    // Eyes
+    const fx = dirX(comp.facing);
+    const fy = dirY(comp.facing);
+    g.circle(cx + fx * 2 - 1, cy - 10 + bob + fy * 1, 1).fill({ color: 0xffffff });
+    g.circle(cx + fx * 2 + 1, cy - 10 + bob + fy * 1, 1).fill({ color: 0xffffff });
+
+    // Class indicator
+    switch (comp.def.companionClass) {
+      case "healer":
+        // Cross symbol
+        g.rect(cx - 1, cy - 5 + bob, 2, 6).fill({ color: 0xffffff, alpha: 0.6 });
+        g.rect(cx - 3, cy - 3 + bob, 6, 2).fill({ color: 0xffffff, alpha: 0.6 });
+        break;
+      case "tank":
+        // Shield
+        g.moveTo(cx - 4, cy - 5 + bob).lineTo(cx + 4, cy - 5 + bob)
+          .lineTo(cx + 4, cy - 1 + bob).lineTo(cx, cy + 2 + bob)
+          .lineTo(cx - 4, cy - 1 + bob).closePath()
+          .fill({ color: 0x6688aa, alpha: 0.6 });
+        break;
+      case "mage":
+        // Star
+        g.circle(cx, cy - 4 + bob, 3).fill({ color: 0x8844ff, alpha: 0.5 });
+        break;
+      case "rogue":
+        // Dagger
+        g.moveTo(cx, cy - 6 + bob).lineTo(cx + 2, cy + bob)
+          .lineTo(cx - 2, cy + bob).closePath()
+          .fill({ color: 0xaaaaaa, alpha: 0.6 });
+        break;
+    }
+
+    // HP bar
+    const hpFrac = comp.hp / comp.maxHp;
+    if (hpFrac < 1) {
+      g.rect(cx - 8, cy - 16, 16, 2).fill({ color: 0x220000 });
+      const hpColor = hpFrac > 0.5 ? 0x44aa44 : 0xaa4444;
+      g.rect(cx - 8, cy - 16, 16 * hpFrac, 2).fill({ color: hpColor });
     }
   }
 

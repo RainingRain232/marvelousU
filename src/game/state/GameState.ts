@@ -8,6 +8,7 @@ import {
   GameBalance, getFloorParams,
 } from "../config/GameConfig";
 import type { KnightDef, ItemDef, EnemyDef, QuestGenreDef, FloorParams } from "../config/GameConfig";
+import type { CompanionDef, CompanionBehavior, TrapVariant, PuzzleType, ArtifactDef } from "../config/GameArtifactDefs";
 
 // ---------------------------------------------------------------------------
 // Sub-state types
@@ -139,6 +140,112 @@ export interface ReanimationEntry {
   timer: number;
 }
 
+// ---------------------------------------------------------------------------
+// Crafting & Enchantment state
+// ---------------------------------------------------------------------------
+
+export interface MaterialInventory {
+  id: string;         // material id
+  quantity: number;
+}
+
+export interface EnchantedItem {
+  itemId: string;     // item def id
+  enchantId: string;  // enchantment def id
+  level: number;
+}
+
+export interface SocketedItem {
+  itemId: string;     // item def id
+  gems: string[];     // gem/rune ids
+}
+
+// ---------------------------------------------------------------------------
+// Companion state
+// ---------------------------------------------------------------------------
+
+export interface CompanionState {
+  def: CompanionDef;
+  x: number;
+  y: number;
+  hp: number;
+  maxHp: number;
+  attack: number;
+  defense: number;
+  level: number;
+  xp: number;
+  xpToNext: number;
+  alive: boolean;
+  behavior: CompanionBehavior;
+  loyalty: number;             // 0-100
+  abilityCooldowns: number[];  // per ability
+  attackCooldown: number;      // ms
+  facing: Direction;
+  isMoving: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Artifact state
+// ---------------------------------------------------------------------------
+
+export interface ArtifactState {
+  id: string;          // artifact def id
+  found: boolean;
+  upgraded: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Enhanced Trap state
+// ---------------------------------------------------------------------------
+
+export interface TrapInstance {
+  col: number;
+  row: number;
+  variant: TrapVariant;
+  detected: boolean;
+  disarmed: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Puzzle Room state
+// ---------------------------------------------------------------------------
+
+export interface PuzzleRoomState {
+  roomIndex: number;      // index in floor.rooms
+  puzzleType: PuzzleType;
+  difficulty: number;
+  solved: boolean;
+  sequence?: number[];    // for sequence puzzles
+  playerSequence?: number[];
+  timeRemaining?: number;
+  rewardTier: string;
+}
+
+// ---------------------------------------------------------------------------
+// Boss Arena Hazard state
+// ---------------------------------------------------------------------------
+
+export interface ArenaHazardInstance {
+  id: string;
+  col: number;
+  row: number;
+  timer: number;
+  damagePerSecond: number;
+  radius: number;
+  color: number;
+}
+
+// ---------------------------------------------------------------------------
+// Companion NPC (recruitable, not yet recruited)
+// ---------------------------------------------------------------------------
+
+export interface CompanionNPC {
+  def: CompanionDef;
+  col: number;
+  row: number;
+  recruited: boolean;
+}
+
 export interface FloorState {
   floorNum: number;
   params: FloorParams;
@@ -159,6 +266,16 @@ export interface FloorState {
   projectiles: Projectile[];
   // Poison trails from Questing Beast
   poisonTrails: PoisonTrail[];
+  // Enhanced traps
+  traps: TrapInstance[];
+  // Puzzle rooms
+  puzzleRooms: PuzzleRoomState[];
+  // Boss arena hazards
+  arenaHazards: ArenaHazardInstance[];
+  // Companion NPCs (recruitables)
+  companionNPCs: CompanionNPC[];
+  // Secret room levers/triggers
+  secretTriggers: { col: number; row: number; activated: boolean; targetRoomIdx: number }[];
 }
 
 export enum GamePhase {
@@ -173,6 +290,10 @@ export enum GamePhase {
   PAUSED = "paused",
   INVENTORY = "inventory",
   SHOP = "shop",
+  CRAFTING = "crafting",
+  ENCHANTING = "enchanting",
+  PUZZLE = "puzzle",
+  ARTIFACT_LORE = "artifact_lore",
 }
 
 export interface GrailGameState {
@@ -207,6 +328,32 @@ export interface GrailGameState {
   // Kill streak
   killStreakCount: number;     // consecutive kills within time window
   killStreakTimer: number;     // seconds remaining before streak resets
+
+  // Crafting & Enchantment
+  materials: MaterialInventory[];
+  enchantments: EnchantedItem[];
+  sockets: SocketedItem[];
+  craftingScrollIndex: number;
+  enchantingScrollIndex: number;
+
+  // Artifact Collection
+  artifacts: ArtifactState[];
+  artifactLoreViewing: string | null;
+
+  // Companion
+  companion: CompanionState | null;
+
+  // Puzzle state
+  activePuzzle: PuzzleRoomState | null;
+
+  // Infinite Mode
+  isInfiniteMode: boolean;
+  infiniteScore: number;
+  floorStartTime: number;      // timestamp for speed scoring
+
+  // Perception stat (for trap detection)
+  perception: number;           // increases with level
+  trapDisarmSkill: number;      // skill for disarming traps
 }
 
 // ---------------------------------------------------------------------------
@@ -241,6 +388,26 @@ export function createGrailGameState(): GrailGameState {
     dashDy: 0,
     killStreakCount: 0,
     killStreakTimer: 0,
+    // Crafting
+    materials: [],
+    enchantments: [],
+    sockets: [],
+    craftingScrollIndex: 0,
+    enchantingScrollIndex: 0,
+    // Artifacts
+    artifacts: [],
+    artifactLoreViewing: null,
+    // Companion
+    companion: null,
+    // Puzzle
+    activePuzzle: null,
+    // Infinite Mode
+    isInfiniteMode: false,
+    infiniteScore: 0,
+    floorStartTime: Date.now(),
+    // Perception / Trap disarm
+    perception: 15,
+    trapDisarmSkill: 10,
   };
 }
 
@@ -291,6 +458,11 @@ function createEmptyFloor(): FloorState {
     burningTrails: [],
     projectiles: [],
     poisonTrails: [],
+    traps: [],
+    puzzleRooms: [],
+    arenaHazards: [],
+    companionNPCs: [],
+    secretTriggers: [],
   };
 }
 

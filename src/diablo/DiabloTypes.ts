@@ -793,6 +793,62 @@ export enum LootFilterLevel {
   EPIC_PLUS = 'EPIC_PLUS',
 }
 
+// ── Pet System Enums ─────────────────────────────────────────
+
+export enum PetType {
+  COMBAT = 'COMBAT',
+  LOOT = 'LOOT',
+  UTILITY = 'UTILITY',
+}
+
+export enum PetSpecies {
+  // Combat pets
+  WOLF_PUP = 'WOLF_PUP',
+  FIRE_SPRITE = 'FIRE_SPRITE',
+  SHADOW_HOUND = 'SHADOW_HOUND',
+  STORM_FALCON = 'STORM_FALCON',
+  BONE_MINION = 'BONE_MINION',
+  // Loot pets
+  TREASURE_IMP = 'TREASURE_IMP',
+  GOLD_SCARAB = 'GOLD_SCARAB',
+  MAGPIE_FAMILIAR = 'MAGPIE_FAMILIAR',
+  // Utility pets
+  HEALING_WISP = 'HEALING_WISP',
+  SHIELD_GOLEM = 'SHIELD_GOLEM',
+  MANA_SPRITE = 'MANA_SPRITE',
+  LANTERN_FAIRY = 'LANTERN_FAIRY',
+}
+
+export enum PetAIState {
+  FOLLOWING = 'FOLLOWING',
+  ATTACKING = 'ATTACKING',
+  COLLECTING_LOOT = 'COLLECTING_LOOT',
+  IDLE = 'IDLE',
+  RETURNING = 'RETURNING',
+}
+
+// ── Advanced Crafting Enums ──────────────────────────────────
+
+export enum CraftingStationType {
+  BLACKSMITH_FORGE = 'BLACKSMITH_FORGE',
+  JEWELER_BENCH = 'JEWELER_BENCH',
+  ALCHEMIST_TABLE = 'ALCHEMIST_TABLE',
+  ENCHANTER_ALTAR = 'ENCHANTER_ALTAR',
+}
+
+export enum MaterialType {
+  IRON_ORE = 'IRON_ORE',
+  STEEL_INGOT = 'STEEL_INGOT',
+  MITHRIL_SHARD = 'MITHRIL_SHARD',
+  DRAGON_SCALE = 'DRAGON_SCALE',
+  ARCANE_DUST = 'ARCANE_DUST',
+  VOID_ESSENCE = 'VOID_ESSENCE',
+  CRYSTAL_FRAGMENT = 'CRYSTAL_FRAGMENT',
+  ENCHANTED_LEATHER = 'ENCHANTED_LEATHER',
+  PHOENIX_FEATHER = 'PHOENIX_FEATHER',
+  SOUL_GEM = 'SOUL_GEM',
+}
+
 // ── Talent & Potion interfaces ──────────────────────────────
 
 export interface TalentEffect {
@@ -1018,6 +1074,12 @@ export interface DiabloPlayerState {
   // DPS tracking
   damageDealtLog: { time: number; damage: number }[];
   dpsDisplayVisible: boolean;
+  // Pet system
+  pets: DiabloPet[];
+  activePetId: string | null;
+  maxPets: number;
+  // Crafting system
+  crafting: CraftingState;
 }
 
 export interface DiabloEnemy {
@@ -1184,6 +1246,114 @@ export interface DiabloMapConfig {
   backgroundMusic?: string;
 }
 
+// ── Pet System Interfaces ────────────────────────────────────
+
+export interface PetAbility {
+  id: string;
+  name: string;
+  description: string;
+  cooldown: number;
+  damageMultiplier?: number;
+  healAmount?: number;
+  buffType?: string;
+  buffDuration?: number;
+  icon: string;
+  unlocksAtLevel: number;
+}
+
+export interface PetEquipSlot {
+  collar: DiabloItem | null;
+  charm: DiabloItem | null;
+}
+
+export interface DiabloPetDef {
+  species: PetSpecies;
+  name: string;
+  petType: PetType;
+  icon: string;
+  description: string;
+  baseHp: number;
+  baseDamage: number;
+  baseArmor: number;
+  moveSpeed: number;
+  attackRange: number;
+  attackSpeed: number;
+  aggroRange: number;
+  lootPickupRange?: number;
+  abilities: PetAbility[];
+  hpPerLevel: number;
+  damagePerLevel: number;
+  armorPerLevel: number;
+}
+
+export interface DiabloPet {
+  id: string;
+  species: PetSpecies;
+  petType: PetType;
+  customName: string;
+  icon: string;
+  level: number;
+  xp: number;
+  xpToNext: number;
+  hp: number;
+  maxHp: number;
+  damage: number;
+  armor: number;
+  moveSpeed: number;
+  attackRange: number;
+  attackSpeed: number;
+  aggroRange: number;
+  lootPickupRange: number;
+  x: number;
+  y: number;
+  z: number;
+  angle: number;
+  aiState: PetAIState;
+  targetId: string | null;
+  attackTimer: number;
+  abilityCooldowns: Record<string, number>;
+  equipment: PetEquipSlot;
+  isSummoned: boolean;
+  loyalty: number; // 0-100, affects performance
+}
+
+// ── Advanced Crafting Interfaces ─────────────────────────────
+
+export interface CraftingMaterial {
+  type: MaterialType;
+  name: string;
+  icon: string;
+  description: string;
+  rarity: ItemRarity;
+}
+
+export interface AdvancedCraftingRecipe {
+  id: string;
+  name: string;
+  description: string;
+  station: CraftingStationType;
+  materials: { type: MaterialType; count: number }[];
+  goldCost: number;
+  salvageCost: number;
+  outputItemId?: string;
+  outputRarity?: ItemRarity;
+  outputSlot?: ItemSlot;
+  successChance: number;
+  levelRequired: number;
+  isDiscovered: boolean;
+  icon: string;
+}
+
+export interface CraftingState {
+  discoveredRecipes: string[];
+  craftingLevel: number;
+  craftingXp: number;
+  craftingXpToNext: number;
+  materials: Record<MaterialType, number>;
+  activeStation: CraftingStationType | null;
+  craftingQueue: { recipeId: string; progress: number; duration: number }[];
+}
+
 export interface DiabloState {
   phase: DiabloPhase;
   player: DiabloPlayerState;
@@ -1266,6 +1436,33 @@ function createEmptyEquipment(): DiabloEquipment {
 
 function createEmptyInventory(size: number): DiabloInventorySlot[] {
   return Array.from({ length: size }, () => ({ item: null }));
+}
+
+export function createDefaultCraftingState(): CraftingState {
+  const materials: Record<MaterialType, number> = {
+    [MaterialType.IRON_ORE]: 0,
+    [MaterialType.STEEL_INGOT]: 0,
+    [MaterialType.MITHRIL_SHARD]: 0,
+    [MaterialType.DRAGON_SCALE]: 0,
+    [MaterialType.ARCANE_DUST]: 0,
+    [MaterialType.VOID_ESSENCE]: 0,
+    [MaterialType.CRYSTAL_FRAGMENT]: 0,
+    [MaterialType.ENCHANTED_LEATHER]: 0,
+    [MaterialType.PHOENIX_FEATHER]: 0,
+    [MaterialType.SOUL_GEM]: 0,
+  };
+  return {
+    discoveredRecipes: [
+      'adv_craft_iron_sword', 'adv_craft_iron_helmet', 'adv_craft_leather_boots',
+      'adv_craft_health_potion', 'adv_craft_mana_potion',
+    ],
+    craftingLevel: 1,
+    craftingXp: 0,
+    craftingXpToNext: 100,
+    materials,
+    activeStation: null,
+    craftingQueue: [],
+  };
 }
 
 export function createDefaultPlayer(cls: DiabloClass): DiabloPlayerState {
@@ -1465,6 +1662,10 @@ export function createDefaultPlayer(cls: DiabloClass): DiabloPlayerState {
     lootFilter: LootFilterLevel.SHOW_ALL,
     damageDealtLog: [],
     dpsDisplayVisible: false,
+    pets: [],
+    activePetId: null,
+    maxPets: 5,
+    crafting: createDefaultCraftingState(),
   };
 }
 

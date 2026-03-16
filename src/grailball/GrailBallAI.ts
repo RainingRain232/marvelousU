@@ -5,13 +5,14 @@
 // ---------------------------------------------------------------------------
 
 import {
-  GBPlayerClass, GBMatchPhase, GB_FIELD, GB_PHYSICS,
-  GB_FORMATION,
+  GBPlayerClass, GBMatchPhase, GB_FIELD, GB_PHYSICS, GB_MATCH,
+  GB_FORMATION, GB_FORMATION_TEMPLATES,
 } from "./GrailBallConfig";
 import {
-  type GBMatchState, type GBPlayer, type Vec3,
+  type GBMatchState, type GBPlayer, type Vec3, type GBPressureMode,
   v3, v3Dist, v3Sub, v3Normalize, v3Scale, v3Add, v3Len,
   getPlayer, getOrbCarrier, getTeamPlayers,
+  isFatigued, isCriticallyFatigued,
 } from "./GrailBallState";
 
 // ---------------------------------------------------------------------------
@@ -50,16 +51,89 @@ function opponentGate(teamIndex: number): Vec3 {
 }
 
 function formationPos(player: GBPlayer, state: GBMatchState): Vec3 {
-  const slot = GB_FORMATION[player.slotIndex];
+  // Use dynamic formation template if available
+  const templateId = state.teamFormations[player.teamIndex];
+  const template = GB_FORMATION_TEMPLATES[templateId];
+  const slots = template ? template.slots : GB_FORMATION;
+  const slot = slots[player.slotIndex] ?? GB_FORMATION[player.slotIndex];
+
   const sign = player.teamIndex === 0 ? -1 : 1;
 
   // Shift formation based on orb position (press up / drop back)
   const orbX = state.orb.pos.x;
-  const pressShift = orbX * 0.15 * sign; // move toward the orb side
+  const pressShift = orbX * 0.15 * sign;
 
-  const x = sign * slot.baseX * GB_FIELD.HALF_LENGTH + pressShift;
+  // Apply pressure mode offset
+  const pressure = state.pressureMode[player.teamIndex];
+  const pressureOffset = getPressureModeOffset(pressure, player.cls);
+
+  const x = sign * (slot.baseX + pressureOffset) * GB_FIELD.HALF_LENGTH + pressShift;
   const z = slot.baseZ * GB_FIELD.HALF_WIDTH;
   return v3(x, 0, z);
+}
+
+// ---------------------------------------------------------------------------
+// Pressure mode affects how far up/back the formation sits
+// ---------------------------------------------------------------------------
+function getPressureModeOffset(mode: GBPressureMode, cls: GBPlayerClass): number {
+  switch (mode) {
+    case "offensive":
+      return cls === GBPlayerClass.GATEKEEPER ? 0.05 : 0.1;
+    case "ultra_attack":
+      return cls === GBPlayerClass.GATEKEEPER ? 0.08 : 0.2;
+    case "defensive":
+      return cls === GBPlayerClass.GATEKEEPER ? -0.02 : -0.1;
+    case "park_the_bus":
+      return cls === GBPlayerClass.GATEKEEPER ? -0.03 : -0.2;
+    default:
+      return 0;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// AI Formation & Pressure Adaptation
+// Adapts formation and pressure based on score differential and time remaining
+// ---------------------------------------------------------------------------
+export function adaptFormation(state: GBMatchState, teamIndex: number): void {
+  const scoreDiff = state.scores[teamIndex] - state.scores[teamIndex === 0 ? 1 : 0];
+  const timeRemaining = GB_MATCH.HALF_DURATION - state.matchClock;
+  const isLateGame = timeRemaining < GB_MATCH.HALF_DURATION * 0.25;
+  const isMidGame = timeRemaining < GB_MATCH.HALF_DURATION * 0.5;
+
+  // AI adapts based on score and time
+  if (scoreDiff <= -2 && isLateGame) {
+    // Losing badly late: go ultra-attack
+    state.teamFormations[teamIndex] = "1-1-3-2";
+    state.pressureMode[teamIndex] = "ultra_attack";
+  } else if (scoreDiff <= -1 && isMidGame) {
+    // Losing: attack more
+    state.teamFormations[teamIndex] = "1-1-3-2";
+    state.pressureMode[teamIndex] = "offensive";
+  } else if (scoreDiff >= 2 && isLateGame) {
+    // Winning comfortably late: park the bus
+    state.teamFormations[teamIndex] = "1-3-2-1";
+    state.pressureMode[teamIndex] = "park_the_bus";
+  } else if (scoreDiff >= 1 && isLateGame) {
+    // Winning late: go defensive
+    state.teamFormations[teamIndex] = "1-3-2-1";
+    state.pressureMode[teamIndex] = "defensive";
+  } else if (scoreDiff === 0) {
+    // Drawing: balanced
+    state.teamFormations[teamIndex] = "1-2-2-2";
+    state.pressureMode[teamIndex] = "balanced";
+  } else {
+    // Default based on play style
+    state.pressureMode[teamIndex] = "balanced";
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Set piece formation positioning
+// ---------------------------------------------------------------------------
+export function applySetPieceFormation(state: GBMatchState, teamIndex: number, type: "corner" | "free_kick"): void {
+  const templateId = type === "corner" ? "corner_attack" : "free_kick_attack";
+  // Temporarily override the team formation
+  state.teamFormations[teamIndex] = templateId;
 }
 
 function bestPassTarget(state: GBMatchState, player: GBPlayer): GBPlayer | null {
@@ -386,25 +460,28 @@ function decideWithOrb(state: GBMatchState, player: GBPlayer, d: AIDecision): AI
 function decideChaseOrb(state: GBMatchState, player: GBPlayer, d: AIDecision): AIDecision {
   const orbPos = state.orb.pos;
   const carrier = getOrbCarrier(state);
+  const fatigued = isFatigued(player);
+  const critFatigued = isCriticallyFatigued(player);
 
   if (carrier && carrier.teamIndex !== player.teamIndex) {
     // Chase the carrier
     const dist = v3Dist(player.pos, carrier.pos);
     d.moveDir = v3Normalize(v3Sub(carrier.pos, player.pos));
-    d.sprint = dist > 5 && player.stamina > 20;
+    // Fatigued players conserve stamina
+    d.sprint = dist > 5 && player.stamina > 20 && !critFatigued;
 
-    if (dist < GB_PHYSICS.TACKLE_RANGE * 1.3 && player.tackleCooldown <= 0) {
+    if (dist < GB_PHYSICS.TACKLE_RANGE * 1.3 && player.tackleCooldown <= 0 && !critFatigued) {
       d.tackle = true;
     }
 
     // Rogue: shadow step to close distance
-    if (player.cls === GBPlayerClass.ROGUE && dist < 8 && dist > 3 && player.abilityCooldown <= 0) {
+    if (player.cls === GBPlayerClass.ROGUE && dist < 8 && dist > 3 && player.abilityCooldown <= 0 && !fatigued) {
       d.useAbility = true;
     }
   } else {
     // Free orb, run to it
     d.moveDir = v3Normalize(v3Sub(orbPos, player.pos));
-    d.sprint = player.stamina > 15;
+    d.sprint = player.stamina > 15 && !critFatigued;
   }
 
   return d;

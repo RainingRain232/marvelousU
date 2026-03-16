@@ -64,6 +64,7 @@ export const TEKKEN_CHARACTERS: TekkenCharacterDef[] = [
     comboRoutes: [
       ["knight_rising_blade", "d/f+1", "knight_cross_slash_1", "d/f+4", "3"],
       ["u/f+3", "d/f+1", "knight_sword_thrust", "d/f+4", "4"],
+      ["knight_destrier_scythe", "d/f+1", "knight_bulwark_rush", "knight_crusaders_orbit", "d/f+4", "3"],
     ],
     advancedComboRoutes: [
       ["knight_rising_blade", "d/f+1", "knight_cross_slash_1", "d/f+1", "d/f+4", "3"],
@@ -98,6 +99,7 @@ export const TEKKEN_CHARACTERS: TekkenCharacterDef[] = [
     comboRoutes: [
       ["d/f+2", "berserker_hammerfist", "berserker_gut_punch", "d/f+4", "4"],
       ["berserker_skull_crusher", "berserker_gut_punch", "d/f+1", "d/f+4", "3"],
+      ["berserker_wrath", "berserker_warpath_elbow", "berserker_gut_punch", "berserker_demolition_slam", "d/f+4", "4"],
     ],
     advancedComboRoutes: [
       ["berserker_leaping_smash", "berserker_hammerfist", "berserker_gut_punch", "d/f+1", "d/f+4", "4"],
@@ -132,6 +134,7 @@ export const TEKKEN_CHARACTERS: TekkenCharacterDef[] = [
     comboRoutes: [
       ["monk_sky_fist", "monk_palm_strike", "d/f+1", "d/f+4", "d/f+3"],
       ["d/f+2", "monk_palm_strike", "monk_flowing_palm", "d/f+4", "3"],
+      ["monk_ascending_dragon", "monk_palm_strike", "monk_spiral_wind_kick", "monk_thunder_palm_thrust", "d/f+4", "3"],
     ],
     advancedComboRoutes: [
       ["monk_dragon_uppercut", "monk_palm_strike", "d/f+1", "monk_flowing_palm", "d/f+4", "d/f+3"],

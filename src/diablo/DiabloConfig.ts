@@ -27,6 +27,13 @@ import {
   CraftingRecipe,
   CraftType,
   TimeOfDay,
+  DiabloPetDef,
+  PetSpecies,
+  PetType,
+  AdvancedCraftingRecipe,
+  CraftingStationType,
+  MaterialType,
+  CraftingMaterial,
 } from './DiabloTypes';
 
 // ---------------------------------------------------------------------------
@@ -9250,3 +9257,351 @@ export const PARAGON_XP_TABLE: number[] = [];
 for (let i = 0; i < 500; i++) {
   PARAGON_XP_TABLE.push(Math.floor(1000 * Math.pow(1.08, i)));
 }
+
+// ---------------------------------------------------------------------------
+//  PET DEFINITIONS
+// ---------------------------------------------------------------------------
+export const PET_XP_TABLE: number[] = [];
+for (let i = 0; i < 50; i++) {
+  PET_XP_TABLE.push(Math.floor(80 * Math.pow(1.12, i)));
+}
+
+export const PET_DEFS: Record<PetSpecies, DiabloPetDef> = {
+  [PetSpecies.WOLF_PUP]: {
+    species: PetSpecies.WOLF_PUP,
+    name: 'Wolf Pup',
+    petType: PetType.COMBAT,
+    icon: '\uD83D\uDC3A',
+    description: 'A fierce young wolf that fights by your side. Fast and aggressive.',
+    baseHp: 80, baseDamage: 12, baseArmor: 5, moveSpeed: 6.5,
+    attackRange: 2, attackSpeed: 1.2, aggroRange: 12,
+    hpPerLevel: 15, damagePerLevel: 3, armorPerLevel: 1,
+    abilities: [
+      { id: 'wolf_bite', name: 'Savage Bite', description: 'A vicious bite that deals 200% damage.', cooldown: 8, damageMultiplier: 2.0, icon: '\uD83E\uDDB7', unlocksAtLevel: 1 },
+      { id: 'wolf_howl', name: 'Battle Howl', description: 'Howls to boost owner damage by 15% for 10s.', cooldown: 25, buffType: 'damage', buffDuration: 10, icon: '\uD83C\uDF19', unlocksAtLevel: 5 },
+      { id: 'wolf_pack', name: 'Pack Frenzy', description: 'Attack speed doubled for 8s.', cooldown: 30, buffType: 'attackSpeed', buffDuration: 8, icon: '\u26A1', unlocksAtLevel: 10 },
+    ],
+  },
+  [PetSpecies.FIRE_SPRITE]: {
+    species: PetSpecies.FIRE_SPRITE,
+    name: 'Fire Sprite',
+    petType: PetType.COMBAT,
+    icon: '\uD83D\uDD25',
+    description: 'A tiny fire elemental that hurls flames at enemies.',
+    baseHp: 50, baseDamage: 18, baseArmor: 2, moveSpeed: 5.5,
+    attackRange: 10, attackSpeed: 0.8, aggroRange: 14,
+    hpPerLevel: 10, damagePerLevel: 4, armorPerLevel: 0.5,
+    abilities: [
+      { id: 'fire_burst', name: 'Fire Burst', description: 'Explodes in a ring of fire dealing AOE damage.', cooldown: 12, damageMultiplier: 2.5, icon: '\uD83D\uDCA5', unlocksAtLevel: 1 },
+      { id: 'fire_shield', name: 'Ember Shield', description: 'Grants owner fire resistance for 15s.', cooldown: 30, buffType: 'fireResist', buffDuration: 15, icon: '\uD83D\uDEE1\uFE0F', unlocksAtLevel: 5 },
+      { id: 'fire_rain', name: 'Meteor Shower', description: 'Calls down small meteors for 5s.', cooldown: 40, damageMultiplier: 3.0, icon: '\u2604\uFE0F', unlocksAtLevel: 12 },
+    ],
+  },
+  [PetSpecies.SHADOW_HOUND]: {
+    species: PetSpecies.SHADOW_HOUND,
+    name: 'Shadow Hound',
+    petType: PetType.COMBAT,
+    icon: '\uD83D\uDC3E',
+    description: 'A spectral hound from the Shadow Realm. Inflicts fear and bleeding.',
+    baseHp: 100, baseDamage: 15, baseArmor: 8, moveSpeed: 7.0,
+    attackRange: 2.5, attackSpeed: 1.0, aggroRange: 15,
+    hpPerLevel: 18, damagePerLevel: 3.5, armorPerLevel: 1.5,
+    abilities: [
+      { id: 'shadow_bite', name: 'Shadow Rend', description: 'Tears at the target, causing bleeding for 5s.', cooldown: 10, damageMultiplier: 1.8, icon: '\uD83C\uDF11', unlocksAtLevel: 1 },
+      { id: 'shadow_phase', name: 'Phase Shift', description: 'Becomes invulnerable for 3s.', cooldown: 20, buffType: 'invuln', buffDuration: 3, icon: '\uD83D\uDC7B', unlocksAtLevel: 7 },
+      { id: 'shadow_howl', name: 'Terrifying Howl', description: 'Fears nearby enemies for 4s.', cooldown: 25, buffType: 'fear', buffDuration: 4, icon: '\uD83D\uDE31', unlocksAtLevel: 12 },
+    ],
+  },
+  [PetSpecies.STORM_FALCON]: {
+    species: PetSpecies.STORM_FALCON,
+    name: 'Storm Falcon',
+    petType: PetType.COMBAT,
+    icon: '\uD83E\uDD85',
+    description: 'An electrified raptor that strikes with lightning speed from above.',
+    baseHp: 60, baseDamage: 20, baseArmor: 3, moveSpeed: 8.0,
+    attackRange: 8, attackSpeed: 1.5, aggroRange: 18,
+    hpPerLevel: 8, damagePerLevel: 5, armorPerLevel: 0.5,
+    abilities: [
+      { id: 'falcon_dive', name: 'Thunder Dive', description: 'Dives at an enemy with a lightning strike.', cooldown: 8, damageMultiplier: 2.5, icon: '\u26A1', unlocksAtLevel: 1 },
+      { id: 'falcon_gust', name: 'Wing Gust', description: 'Knocks back nearby enemies.', cooldown: 15, damageMultiplier: 1.0, icon: '\uD83D\uDCA8', unlocksAtLevel: 6 },
+      { id: 'falcon_storm', name: 'Chain Storm', description: 'Lightning chains between up to 4 enemies.', cooldown: 25, damageMultiplier: 2.0, icon: '\u26C8\uFE0F', unlocksAtLevel: 10 },
+    ],
+  },
+  [PetSpecies.BONE_MINION]: {
+    species: PetSpecies.BONE_MINION,
+    name: 'Bone Minion',
+    petType: PetType.COMBAT,
+    icon: '\uD83D\uDC80',
+    description: 'A skeletal servant that absorbs hits and retaliates.',
+    baseHp: 150, baseDamage: 8, baseArmor: 15, moveSpeed: 4.0,
+    attackRange: 2, attackSpeed: 0.7, aggroRange: 10,
+    hpPerLevel: 25, damagePerLevel: 2, armorPerLevel: 3,
+    abilities: [
+      { id: 'bone_shield', name: 'Bone Barrier', description: 'Absorbs 50% of damage for owner for 6s.', cooldown: 20, buffType: 'absorb', buffDuration: 6, icon: '\uD83E\uDDB4', unlocksAtLevel: 1 },
+      { id: 'bone_explode', name: 'Bone Explosion', description: 'Sacrifices HP to deal massive AOE.', cooldown: 30, damageMultiplier: 4.0, icon: '\uD83D\uDCA3', unlocksAtLevel: 8 },
+      { id: 'bone_regen', name: 'Unholy Regen', description: 'Regenerates 30% max HP over 10s.', cooldown: 25, healAmount: 0.3, icon: '\uD83D\uDC9A', unlocksAtLevel: 5 },
+    ],
+  },
+  [PetSpecies.TREASURE_IMP]: {
+    species: PetSpecies.TREASURE_IMP,
+    name: 'Treasure Imp',
+    petType: PetType.LOOT,
+    icon: '\uD83D\uDC7F',
+    description: 'A greedy little imp that collects gold and loot automatically.',
+    baseHp: 40, baseDamage: 3, baseArmor: 2, moveSpeed: 7.0,
+    attackRange: 1, attackSpeed: 0.5, aggroRange: 0, lootPickupRange: 12,
+    hpPerLevel: 6, damagePerLevel: 1, armorPerLevel: 0.5,
+    abilities: [
+      { id: 'imp_scavenge', name: 'Scavenge', description: 'Increases loot pickup range by 50% for 20s.', cooldown: 30, buffType: 'lootRange', buffDuration: 20, icon: '\uD83D\uDD0D', unlocksAtLevel: 1 },
+      { id: 'imp_goldbonus', name: 'Midas Touch', description: 'Gold drops increased by 25% for 30s.', cooldown: 45, buffType: 'goldBonus', buffDuration: 30, icon: '\uD83D\uDCB0', unlocksAtLevel: 5 },
+      { id: 'imp_magnet', name: 'Loot Magnet', description: 'Pulls all loot on screen to the player.', cooldown: 60, buffType: 'lootMagnet', buffDuration: 3, icon: '\uD83E\uDDF2', unlocksAtLevel: 10 },
+    ],
+  },
+  [PetSpecies.GOLD_SCARAB]: {
+    species: PetSpecies.GOLD_SCARAB,
+    name: 'Gold Scarab',
+    petType: PetType.LOOT,
+    icon: '\uD83E\uDEB2',
+    description: 'A magical scarab that senses hidden treasures and increases gold drops.',
+    baseHp: 30, baseDamage: 1, baseArmor: 10, moveSpeed: 5.0,
+    attackRange: 0, attackSpeed: 0, aggroRange: 0, lootPickupRange: 10,
+    hpPerLevel: 5, damagePerLevel: 0.5, armorPerLevel: 2,
+    abilities: [
+      { id: 'scarab_sense', name: 'Treasure Sense', description: 'Reveals nearby treasure chests on minimap.', cooldown: 20, buffType: 'treasureSense', buffDuration: 30, icon: '\uD83D\uDDFA\uFE0F', unlocksAtLevel: 1 },
+      { id: 'scarab_fortune', name: 'Fortune Aura', description: 'Increases item rarity by one tier for 15s.', cooldown: 60, buffType: 'rarityBoost', buffDuration: 15, icon: '\u2728', unlocksAtLevel: 8 },
+      { id: 'scarab_dig', name: 'Excavate', description: 'Digs up bonus crafting materials.', cooldown: 45, buffType: 'materials', buffDuration: 1, icon: '\u26CF\uFE0F', unlocksAtLevel: 4 },
+    ],
+  },
+  [PetSpecies.MAGPIE_FAMILIAR]: {
+    species: PetSpecies.MAGPIE_FAMILIAR,
+    name: 'Magpie Familiar',
+    petType: PetType.LOOT,
+    icon: '\uD83D\uDC26',
+    description: 'A clever bird that steals items from enemies and collects crafting materials.',
+    baseHp: 35, baseDamage: 5, baseArmor: 1, moveSpeed: 8.0,
+    attackRange: 1, attackSpeed: 0.8, aggroRange: 0, lootPickupRange: 15,
+    hpPerLevel: 5, damagePerLevel: 1, armorPerLevel: 0.3,
+    abilities: [
+      { id: 'magpie_steal', name: 'Pilfer', description: 'Chance to steal an extra item from slain enemies.', cooldown: 15, buffType: 'extraLoot', buffDuration: 10, icon: '\uD83E\uDD0F', unlocksAtLevel: 1 },
+      { id: 'magpie_carry', name: 'Extra Pouch', description: 'Temporarily grants 5 extra inventory slots.', cooldown: 60, buffType: 'extraSlots', buffDuration: 30, icon: '\uD83C\uDF92', unlocksAtLevel: 6 },
+      { id: 'magpie_appraise', name: 'Appraise', description: 'Identifies the best item in inventory for your build.', cooldown: 30, buffType: 'identify', buffDuration: 5, icon: '\uD83D\uDCA1', unlocksAtLevel: 3 },
+    ],
+  },
+  [PetSpecies.HEALING_WISP]: {
+    species: PetSpecies.HEALING_WISP,
+    name: 'Healing Wisp',
+    petType: PetType.UTILITY,
+    icon: '\u2728',
+    description: 'A gentle spirit that heals you over time and cleanses debuffs.',
+    baseHp: 45, baseDamage: 0, baseArmor: 3, moveSpeed: 5.5,
+    attackRange: 0, attackSpeed: 0, aggroRange: 0,
+    hpPerLevel: 8, damagePerLevel: 0, armorPerLevel: 0.5,
+    abilities: [
+      { id: 'wisp_heal', name: 'Healing Pulse', description: 'Heals owner for 15% max HP.', cooldown: 12, healAmount: 0.15, icon: '\uD83D\uDC9A', unlocksAtLevel: 1 },
+      { id: 'wisp_cleanse', name: 'Purify', description: 'Removes all debuffs from owner.', cooldown: 20, buffType: 'cleanse', buffDuration: 1, icon: '\u2604\uFE0F', unlocksAtLevel: 4 },
+      { id: 'wisp_regen', name: 'Regeneration Aura', description: 'Grants 3% HP regen per second for 15s.', cooldown: 35, healAmount: 0.03, buffDuration: 15, icon: '\uD83C\uDF3F', unlocksAtLevel: 8 },
+    ],
+  },
+  [PetSpecies.SHIELD_GOLEM]: {
+    species: PetSpecies.SHIELD_GOLEM,
+    name: 'Shield Golem',
+    petType: PetType.UTILITY,
+    icon: '\uD83E\uDDF1',
+    description: 'A small golem that intercepts attacks and provides armor buffs.',
+    baseHp: 200, baseDamage: 5, baseArmor: 20, moveSpeed: 3.5,
+    attackRange: 2, attackSpeed: 0.5, aggroRange: 8,
+    hpPerLevel: 30, damagePerLevel: 1, armorPerLevel: 4,
+    abilities: [
+      { id: 'golem_taunt', name: 'Stone Taunt', description: 'Taunts nearby enemies to attack the golem for 5s.', cooldown: 15, buffType: 'taunt', buffDuration: 5, icon: '\uD83D\uDCAA', unlocksAtLevel: 1 },
+      { id: 'golem_wall', name: 'Stone Wall', description: 'Grants owner 50% damage reduction for 6s.', cooldown: 25, buffType: 'damageReduction', buffDuration: 6, icon: '\uD83E\uDDF1', unlocksAtLevel: 6 },
+      { id: 'golem_fortify', name: 'Fortify', description: 'Permanently increases owner armor by 5.', cooldown: 60, buffType: 'permanentArmor', buffDuration: 0, icon: '\uD83D\uDEE1\uFE0F', unlocksAtLevel: 10 },
+    ],
+  },
+  [PetSpecies.MANA_SPRITE]: {
+    species: PetSpecies.MANA_SPRITE,
+    name: 'Mana Sprite',
+    petType: PetType.UTILITY,
+    icon: '\uD83D\uDD2E',
+    description: 'A magical sprite that restores mana and reduces cooldowns.',
+    baseHp: 40, baseDamage: 8, baseArmor: 2, moveSpeed: 5.5,
+    attackRange: 8, attackSpeed: 0.6, aggroRange: 0,
+    hpPerLevel: 6, damagePerLevel: 2, armorPerLevel: 0.5,
+    abilities: [
+      { id: 'mana_restore', name: 'Mana Infusion', description: 'Restores 20% max mana to owner.', cooldown: 15, healAmount: 0.2, icon: '\uD83D\uDCA7', unlocksAtLevel: 1 },
+      { id: 'mana_cdr', name: 'Arcane Haste', description: 'Reduces all skill cooldowns by 3s.', cooldown: 30, buffType: 'cooldownReduce', buffDuration: 1, icon: '\u23F0', unlocksAtLevel: 5 },
+      { id: 'mana_amplify', name: 'Spell Amplify', description: 'Next skill deals 50% more damage.', cooldown: 25, buffType: 'spellAmp', buffDuration: 10, icon: '\uD83C\uDF1F', unlocksAtLevel: 9 },
+    ],
+  },
+  [PetSpecies.LANTERN_FAIRY]: {
+    species: PetSpecies.LANTERN_FAIRY,
+    name: 'Lantern Fairy',
+    petType: PetType.UTILITY,
+    icon: '\uD83E\uDDDA',
+    description: 'A tiny fairy with a glowing lantern. Reveals the map and boosts XP gain.',
+    baseHp: 25, baseDamage: 3, baseArmor: 1, moveSpeed: 6.0,
+    attackRange: 0, attackSpeed: 0, aggroRange: 0,
+    hpPerLevel: 4, damagePerLevel: 0.5, armorPerLevel: 0.2,
+    abilities: [
+      { id: 'fairy_light', name: 'Fairy Light', description: 'Doubles lantern radius and reveals hidden areas.', cooldown: 20, buffType: 'reveal', buffDuration: 20, icon: '\uD83D\uDCA1', unlocksAtLevel: 1 },
+      { id: 'fairy_xp', name: 'Wisdom Glow', description: 'Increases XP gain by 20% for 30s.', cooldown: 45, buffType: 'xpBonus', buffDuration: 30, icon: '\uD83D\uDCDA', unlocksAtLevel: 4 },
+      { id: 'fairy_teleport', name: 'Pixie Dust', description: 'Teleport to the nearest vendor.', cooldown: 120, buffType: 'teleport', buffDuration: 1, icon: '\u2728', unlocksAtLevel: 12 },
+    ],
+  },
+};
+
+// Pets drop from specific maps / enemy types
+export const PET_DROP_TABLE: { species: PetSpecies; mapId: DiabloMapId; chance: number; bossOnly: boolean }[] = [
+  { species: PetSpecies.WOLF_PUP, mapId: DiabloMapId.FOREST, chance: 0.05, bossOnly: false },
+  { species: PetSpecies.FIRE_SPRITE, mapId: DiabloMapId.VOLCANIC_WASTES, chance: 0.04, bossOnly: false },
+  { species: PetSpecies.SHADOW_HOUND, mapId: DiabloMapId.SHADOW_REALM, chance: 0.03, bossOnly: true },
+  { species: PetSpecies.STORM_FALCON, mapId: DiabloMapId.STORMSPIRE_PEAK, chance: 0.04, bossOnly: false },
+  { species: PetSpecies.BONE_MINION, mapId: DiabloMapId.NECROPOLIS_DUNGEON, chance: 0.05, bossOnly: false },
+  { species: PetSpecies.TREASURE_IMP, mapId: DiabloMapId.CRYSTAL_CAVERNS, chance: 0.03, bossOnly: true },
+  { species: PetSpecies.GOLD_SCARAB, mapId: DiabloMapId.SUNSCORCH_DESERT, chance: 0.04, bossOnly: false },
+  { species: PetSpecies.MAGPIE_FAMILIAR, mapId: DiabloMapId.EMERALD_GRASSLANDS, chance: 0.05, bossOnly: false },
+  { species: PetSpecies.HEALING_WISP, mapId: DiabloMapId.MOONLIT_GROVE, chance: 0.04, bossOnly: false },
+  { species: PetSpecies.SHIELD_GOLEM, mapId: DiabloMapId.CLOCKWORK_FOUNDRY, chance: 0.03, bossOnly: true },
+  { species: PetSpecies.MANA_SPRITE, mapId: DiabloMapId.ANCIENT_LIBRARY, chance: 0.04, bossOnly: false },
+  { species: PetSpecies.LANTERN_FAIRY, mapId: DiabloMapId.CELESTIAL_RUINS, chance: 0.03, bossOnly: true },
+];
+
+// ---------------------------------------------------------------------------
+//  CRAFTING MATERIALS CONFIG
+// ---------------------------------------------------------------------------
+export const CRAFTING_MATERIALS: Record<MaterialType, CraftingMaterial> = {
+  [MaterialType.IRON_ORE]: { type: MaterialType.IRON_ORE, name: 'Iron Ore', icon: '\u26AB', description: 'Common metal ore used in basic crafting.', rarity: ItemRarity.COMMON },
+  [MaterialType.STEEL_INGOT]: { type: MaterialType.STEEL_INGOT, name: 'Steel Ingot', icon: '\u26AA', description: 'Refined steel for quality weapons and armor.', rarity: ItemRarity.UNCOMMON },
+  [MaterialType.MITHRIL_SHARD]: { type: MaterialType.MITHRIL_SHARD, name: 'Mithril Shard', icon: '\uD83D\uDD37', description: 'A shard of the legendary mithril metal.', rarity: ItemRarity.RARE },
+  [MaterialType.DRAGON_SCALE]: { type: MaterialType.DRAGON_SCALE, name: 'Dragon Scale', icon: '\uD83D\uDC09', description: 'A heat-resistant scale from a powerful dragon.', rarity: ItemRarity.EPIC },
+  [MaterialType.ARCANE_DUST]: { type: MaterialType.ARCANE_DUST, name: 'Arcane Dust', icon: '\u2728', description: 'Magical residue from disenchanted items.', rarity: ItemRarity.UNCOMMON },
+  [MaterialType.VOID_ESSENCE]: { type: MaterialType.VOID_ESSENCE, name: 'Void Essence', icon: '\uD83C\uDF11', description: 'Dark energy harvested from abyssal creatures.', rarity: ItemRarity.EPIC },
+  [MaterialType.CRYSTAL_FRAGMENT]: { type: MaterialType.CRYSTAL_FRAGMENT, name: 'Crystal Fragment', icon: '\uD83D\uDC8E', description: 'A resonating crystal shard from deep caverns.', rarity: ItemRarity.RARE },
+  [MaterialType.ENCHANTED_LEATHER]: { type: MaterialType.ENCHANTED_LEATHER, name: 'Enchanted Leather', icon: '\uD83E\uDE76', description: 'Magically treated leather for light armor.', rarity: ItemRarity.UNCOMMON },
+  [MaterialType.PHOENIX_FEATHER]: { type: MaterialType.PHOENIX_FEATHER, name: 'Phoenix Feather', icon: '\uD83E\uDEB6', description: 'A feather imbued with regenerative fire.', rarity: ItemRarity.LEGENDARY },
+  [MaterialType.SOUL_GEM]: { type: MaterialType.SOUL_GEM, name: 'Soul Gem', icon: '\uD83D\uDC9C', description: 'Contains trapped spiritual energy for powerful enchantments.', rarity: ItemRarity.LEGENDARY },
+};
+
+// Material drops from enemy kills (by map)
+export const MATERIAL_DROP_TABLE: { mapId: DiabloMapId; drops: { type: MaterialType; chance: number; countMin: number; countMax: number }[] }[] = [
+  { mapId: DiabloMapId.FOREST, drops: [{ type: MaterialType.IRON_ORE, chance: 0.3, countMin: 1, countMax: 3 }, { type: MaterialType.ENCHANTED_LEATHER, chance: 0.1, countMin: 1, countMax: 1 }] },
+  { mapId: DiabloMapId.ELVEN_VILLAGE, drops: [{ type: MaterialType.ARCANE_DUST, chance: 0.2, countMin: 1, countMax: 2 }, { type: MaterialType.CRYSTAL_FRAGMENT, chance: 0.08, countMin: 1, countMax: 1 }] },
+  { mapId: DiabloMapId.NECROPOLIS_DUNGEON, drops: [{ type: MaterialType.SOUL_GEM, chance: 0.03, countMin: 1, countMax: 1 }, { type: MaterialType.IRON_ORE, chance: 0.25, countMin: 1, countMax: 2 }] },
+  { mapId: DiabloMapId.VOLCANIC_WASTES, drops: [{ type: MaterialType.DRAGON_SCALE, chance: 0.05, countMin: 1, countMax: 1 }, { type: MaterialType.STEEL_INGOT, chance: 0.15, countMin: 1, countMax: 2 }] },
+  { mapId: DiabloMapId.ABYSSAL_RIFT, drops: [{ type: MaterialType.VOID_ESSENCE, chance: 0.08, countMin: 1, countMax: 2 }, { type: MaterialType.SOUL_GEM, chance: 0.04, countMin: 1, countMax: 1 }] },
+  { mapId: DiabloMapId.DRAGONS_SANCTUM, drops: [{ type: MaterialType.DRAGON_SCALE, chance: 0.12, countMin: 1, countMax: 2 }, { type: MaterialType.PHOENIX_FEATHER, chance: 0.03, countMin: 1, countMax: 1 }] },
+  { mapId: DiabloMapId.CRYSTAL_CAVERNS, drops: [{ type: MaterialType.CRYSTAL_FRAGMENT, chance: 0.2, countMin: 1, countMax: 3 }, { type: MaterialType.MITHRIL_SHARD, chance: 0.08, countMin: 1, countMax: 1 }] },
+  { mapId: DiabloMapId.FROZEN_TUNDRA, drops: [{ type: MaterialType.MITHRIL_SHARD, chance: 0.1, countMin: 1, countMax: 2 }, { type: MaterialType.STEEL_INGOT, chance: 0.2, countMin: 1, countMax: 2 }] },
+  { mapId: DiabloMapId.CLOCKWORK_FOUNDRY, drops: [{ type: MaterialType.STEEL_INGOT, chance: 0.25, countMin: 2, countMax: 4 }, { type: MaterialType.MITHRIL_SHARD, chance: 0.12, countMin: 1, countMax: 2 }] },
+  { mapId: DiabloMapId.CELESTIAL_RUINS, drops: [{ type: MaterialType.PHOENIX_FEATHER, chance: 0.05, countMin: 1, countMax: 1 }, { type: MaterialType.ARCANE_DUST, chance: 0.2, countMin: 2, countMax: 4 }] },
+];
+
+// ---------------------------------------------------------------------------
+//  ADVANCED CRAFTING RECIPES
+// ---------------------------------------------------------------------------
+export const ADVANCED_CRAFTING_RECIPES: AdvancedCraftingRecipe[] = [
+  // Blacksmith Forge recipes
+  {
+    id: 'adv_craft_iron_sword', name: 'Forged Iron Sword', description: 'Craft a sturdy iron sword.',
+    station: CraftingStationType.BLACKSMITH_FORGE,
+    materials: [{ type: MaterialType.IRON_ORE, count: 5 }, { type: MaterialType.STEEL_INGOT, count: 2 }],
+    goldCost: 100, salvageCost: 0, outputRarity: ItemRarity.UNCOMMON, outputSlot: ItemSlot.WEAPON,
+    successChance: 1.0, levelRequired: 1, isDiscovered: true, icon: '\u2694\uFE0F',
+  },
+  {
+    id: 'adv_craft_iron_helmet', name: 'Forged Iron Helm', description: 'Craft a protective iron helmet.',
+    station: CraftingStationType.BLACKSMITH_FORGE,
+    materials: [{ type: MaterialType.IRON_ORE, count: 4 }, { type: MaterialType.STEEL_INGOT, count: 1 }],
+    goldCost: 80, salvageCost: 0, outputRarity: ItemRarity.UNCOMMON, outputSlot: ItemSlot.HELMET,
+    successChance: 1.0, levelRequired: 1, isDiscovered: true, icon: '\u26D1\uFE0F',
+  },
+  {
+    id: 'adv_craft_leather_boots', name: 'Enchanted Leather Boots', description: 'Craft swift enchanted boots.',
+    station: CraftingStationType.BLACKSMITH_FORGE,
+    materials: [{ type: MaterialType.ENCHANTED_LEATHER, count: 3 }, { type: MaterialType.ARCANE_DUST, count: 2 }],
+    goldCost: 120, salvageCost: 0, outputRarity: ItemRarity.RARE, outputSlot: ItemSlot.FEET,
+    successChance: 0.9, levelRequired: 3, isDiscovered: true, icon: '\uD83E\uDE74',
+  },
+  {
+    id: 'adv_craft_steel_blade', name: 'Tempered Steel Blade', description: 'A finely tempered blade of quality steel.',
+    station: CraftingStationType.BLACKSMITH_FORGE,
+    materials: [{ type: MaterialType.STEEL_INGOT, count: 5 }, { type: MaterialType.MITHRIL_SHARD, count: 1 }],
+    goldCost: 300, salvageCost: 5, outputRarity: ItemRarity.RARE, outputSlot: ItemSlot.WEAPON,
+    successChance: 0.85, levelRequired: 5, isDiscovered: false, icon: '\uD83D\uDDE1\uFE0F',
+  },
+  {
+    id: 'adv_craft_mithril_armor', name: 'Mithril Chainmail', description: 'Light yet incredibly strong mithril armor.',
+    station: CraftingStationType.BLACKSMITH_FORGE,
+    materials: [{ type: MaterialType.MITHRIL_SHARD, count: 5 }, { type: MaterialType.STEEL_INGOT, count: 3 }, { type: MaterialType.DRAGON_SCALE, count: 1 }],
+    goldCost: 1500, salvageCost: 20, outputRarity: ItemRarity.EPIC, outputSlot: ItemSlot.BODY,
+    successChance: 0.65, levelRequired: 10, isDiscovered: false, icon: '\uD83D\uDEE1\uFE0F',
+  },
+  {
+    id: 'adv_craft_dragon_gauntlets', name: 'Dragonscale Gauntlets', description: 'Gauntlets forged from dragon scales.',
+    station: CraftingStationType.BLACKSMITH_FORGE,
+    materials: [{ type: MaterialType.DRAGON_SCALE, count: 4 }, { type: MaterialType.STEEL_INGOT, count: 3 }],
+    goldCost: 2000, salvageCost: 30, outputRarity: ItemRarity.EPIC, outputSlot: ItemSlot.GAUNTLETS,
+    successChance: 0.6, levelRequired: 12, isDiscovered: false, icon: '\uD83E\uDDE4',
+  },
+  {
+    id: 'adv_craft_phoenix_blade', name: 'Phoenix Flamebrand', description: 'A legendary sword imbued with phoenix fire.',
+    station: CraftingStationType.BLACKSMITH_FORGE,
+    materials: [{ type: MaterialType.PHOENIX_FEATHER, count: 2 }, { type: MaterialType.DRAGON_SCALE, count: 3 }, { type: MaterialType.MITHRIL_SHARD, count: 5 }],
+    goldCost: 5000, salvageCost: 50, outputRarity: ItemRarity.LEGENDARY, outputSlot: ItemSlot.WEAPON,
+    successChance: 0.4, levelRequired: 18, isDiscovered: false, icon: '\uD83D\uDD25',
+  },
+
+  // Jeweler Bench recipes
+  {
+    id: 'adv_craft_crystal_ring', name: 'Crystal Focus Ring', description: 'A ring set with a resonating crystal.',
+    station: CraftingStationType.JEWELER_BENCH,
+    materials: [{ type: MaterialType.CRYSTAL_FRAGMENT, count: 3 }, { type: MaterialType.ARCANE_DUST, count: 2 }],
+    goldCost: 200, salvageCost: 5, outputRarity: ItemRarity.RARE, outputSlot: ItemSlot.ACCESSORY_1,
+    successChance: 0.9, levelRequired: 3, isDiscovered: false, icon: '\uD83D\uDC8D',
+  },
+  {
+    id: 'adv_craft_void_amulet', name: 'Void Heart Amulet', description: 'An amulet pulsing with abyssal energy.',
+    station: CraftingStationType.JEWELER_BENCH,
+    materials: [{ type: MaterialType.VOID_ESSENCE, count: 3 }, { type: MaterialType.SOUL_GEM, count: 1 }, { type: MaterialType.CRYSTAL_FRAGMENT, count: 2 }],
+    goldCost: 3000, salvageCost: 35, outputRarity: ItemRarity.LEGENDARY, outputSlot: ItemSlot.ACCESSORY_1,
+    successChance: 0.35, levelRequired: 15, isDiscovered: false, icon: '\uD83D\uDC9C',
+  },
+
+  // Alchemist Table recipes
+  {
+    id: 'adv_craft_health_potion', name: 'Brew Health Elixir', description: 'Brew a potent healing elixir from magical herbs.',
+    station: CraftingStationType.ALCHEMIST_TABLE,
+    materials: [{ type: MaterialType.IRON_ORE, count: 1 }, { type: MaterialType.ENCHANTED_LEATHER, count: 1 }],
+    goldCost: 30, salvageCost: 0, outputRarity: ItemRarity.COMMON,
+    successChance: 1.0, levelRequired: 1, isDiscovered: true, icon: '\u2764\uFE0F',
+  },
+  {
+    id: 'adv_craft_mana_potion', name: 'Brew Mana Elixir', description: 'Brew a potent mana restoration elixir.',
+    station: CraftingStationType.ALCHEMIST_TABLE,
+    materials: [{ type: MaterialType.ARCANE_DUST, count: 2 }],
+    goldCost: 40, salvageCost: 0, outputRarity: ItemRarity.COMMON,
+    successChance: 1.0, levelRequired: 1, isDiscovered: true, icon: '\uD83D\uDCA7',
+  },
+  {
+    id: 'adv_craft_phoenix_elixir', name: 'Phoenix Elixir', description: 'An elixir that revives you on death with 50% HP.',
+    station: CraftingStationType.ALCHEMIST_TABLE,
+    materials: [{ type: MaterialType.PHOENIX_FEATHER, count: 1 }, { type: MaterialType.SOUL_GEM, count: 1 }],
+    goldCost: 2000, salvageCost: 25, outputRarity: ItemRarity.LEGENDARY,
+    successChance: 0.5, levelRequired: 15, isDiscovered: false, icon: '\uD83E\uDD89',
+  },
+
+  // Enchanter Altar recipes
+  {
+    id: 'adv_craft_enchant_weapon', name: 'Enchant Weapon', description: 'Add a random elemental enchantment to a weapon.',
+    station: CraftingStationType.ENCHANTER_ALTAR,
+    materials: [{ type: MaterialType.ARCANE_DUST, count: 5 }, { type: MaterialType.CRYSTAL_FRAGMENT, count: 2 }],
+    goldCost: 500, salvageCost: 10, outputRarity: ItemRarity.RARE,
+    successChance: 0.8, levelRequired: 5, isDiscovered: false, icon: '\u2728',
+  },
+  {
+    id: 'adv_craft_soulforge', name: 'Soulforge Infusion', description: 'Upgrade any item to the next rarity tier using soul energy.',
+    station: CraftingStationType.ENCHANTER_ALTAR,
+    materials: [{ type: MaterialType.SOUL_GEM, count: 3 }, { type: MaterialType.VOID_ESSENCE, count: 2 }, { type: MaterialType.PHOENIX_FEATHER, count: 1 }],
+    goldCost: 8000, salvageCost: 80, outputRarity: ItemRarity.MYTHIC,
+    successChance: 0.25, levelRequired: 20, isDiscovered: false, icon: '\uD83D\uDCA0',
+  },
+];
