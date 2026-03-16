@@ -81,7 +81,229 @@ const HERO_PERKS = [
   { id: "veteran", name: "Veteran", desc: "+20 HP for hero in battle", color: "#cc6644" },
   { id: "intimidate", name: "Intimidate", desc: "10% chance enemies flee", color: "#aa66cc" },
   { id: "looter", name: "Looter", desc: "+30% loot from battles", color: "#ccaa44" },
+  { id: "logistician", name: "Logistician", desc: "-15% food consumption", color: "#66aa88" },
+  { id: "engineer", name: "Engineer", desc: "-20% building costs", color: "#8888cc" },
+  { id: "tactician", name: "Tactician", desc: "+10% flanking damage bonus", color: "#cc8866" },
 ] as const;
+
+// ---------------------------------------------------------------------------
+// Seasons
+// ---------------------------------------------------------------------------
+
+type Season = "spring" | "summer" | "autumn" | "winter";
+const SEASON_LENGTH_DAYS = 30; // each season lasts 30 days
+const SEASON_ORDER: Season[] = ["spring", "summer", "autumn", "winter"];
+const SEASON_EFFECTS: Record<Season, { speedMult: number; incomeMult: number; foodMult: number; color: string; label: string }> = {
+  spring: { speedMult: 1.0, incomeMult: 1.1, foodMult: 1.0, color: "#88cc66", label: "Spring" },
+  summer: { speedMult: 1.1, incomeMult: 1.2, foodMult: 0.9, color: "#ddaa33", label: "Summer" },
+  autumn: { speedMult: 0.95, incomeMult: 1.0, foodMult: 1.1, color: "#cc8844", label: "Autumn" },
+  winter: { speedMult: 0.75, incomeMult: 0.7, foodMult: 1.4, color: "#88aacc", label: "Winter" },
+};
+
+// ---------------------------------------------------------------------------
+// Food / Supply system
+// ---------------------------------------------------------------------------
+
+const FOOD_PER_UNIT_PER_DAY = 0.5; // each unit consumes 0.5 food/day
+const FOOD_PURCHASE_COST = 2; // gold per food unit
+const FOOD_CITY_STOCK = 50; // food available at cities
+const MORALE_FOOD_PENALTY = -5; // morale penalty when out of food
+const MORALE_TERRITORY_BONUS = 2; // morale bonus near own cities
+const MORALE_VICTORY_BONUS = 10;
+const MORALE_DEFEAT_PENALTY = -15;
+const MORALE_MAX = 100;
+const MORALE_MIN = 0;
+const MORALE_DESERTION_THRESHOLD = 20; // units desert below this
+
+// ---------------------------------------------------------------------------
+// Named AI Lords
+// ---------------------------------------------------------------------------
+
+type LordPersonality = "aggressive" | "cautious" | "mercantile" | "diplomatic" | "ruthless";
+
+const LORD_NAMES = [
+  "Aldric the Bold", "Baron Vexmoor", "Countess Miravel", "Duke Harren",
+  "Earl Blackthorn", "Freya Ironheart", "General Corvus", "Hector Stormborn",
+  "Ingrid Frostbane", "Jarl Ulfric", "King Roderic", "Lady Ashworth",
+  "Marshal Kaine", "Nadia Shadowveil", "Overlord Theron", "Prince Caelum",
+  "Queen Seraphina", "Ragnor the Grim", "Sir Percival", "Thane Godfrey",
+  "Ulyana the Swift", "Viscount Dray", "Warlord Grimjaw", "Xavier Duskwalker",
+];
+
+const LORD_TITLES: Record<LordPersonality, string> = {
+  aggressive: "Warlord", cautious: "Steward", mercantile: "Merchant Prince",
+  diplomatic: "Envoy", ruthless: "Tyrant",
+};
+
+interface CampaignLord {
+  id: string;
+  name: string;
+  personality: LordPersonality;
+  factionId: string;
+  partyId: string;
+  level: number;
+  renown: number;
+  capturedBy: string | null;
+  ransomCost: number;
+  rivalLordId: string | null; // personal rival
+}
+
+// ---------------------------------------------------------------------------
+// Companion Heroes
+// ---------------------------------------------------------------------------
+
+type CompanionClass = "warrior" | "archer" | "mage" | "scout";
+
+const COMPANION_DEFS = [
+  { name: "Gareth Ironhelm", class: "warrior" as CompanionClass, skill: "shield_wall", skillDesc: "+15% defense for all melee units", personality: "Loyal and straightforward" },
+  { name: "Lyra Swiftshadow", class: "scout" as CompanionClass, skill: "pathfinder", skillDesc: "+10% map movement speed", personality: "Cunning and resourceful" },
+  { name: "Theron Flamecaller", class: "mage" as CompanionClass, skill: "arcane_barrage", skillDesc: "+20% spell damage in battle", personality: "Proud and ambitious" },
+  { name: "Mira Trueshot", class: "archer" as CompanionClass, skill: "eagle_eye", skillDesc: "+15% ranged accuracy", personality: "Calm and precise" },
+  { name: "Bjorn Thunderfist", class: "warrior" as CompanionClass, skill: "berserker_rage", skillDesc: "+25% melee damage when HP < 50%", personality: "Hot-headed and brave" },
+  { name: "Elara Moonwhisper", class: "mage" as CompanionClass, skill: "healing_aura", skillDesc: "Heals 5 HP/tick to nearby allies", personality: "Kind and mysterious" },
+  { name: "Kael Darkblade", class: "scout" as CompanionClass, skill: "ambush_master", skillDesc: "+20% ambush damage bonus", personality: "Quiet and deadly" },
+  { name: "Senna Goldtongue", class: "archer" as CompanionClass, skill: "merchant_contacts", skillDesc: "+15% trade profits", personality: "Charming and shrewd" },
+];
+
+interface Companion {
+  id: string;
+  name: string;
+  class: CompanionClass;
+  level: number;
+  xp: number;
+  loyalty: number; // 0-100
+  skill: string;
+  skillDesc: string;
+  personality: string;
+  recruited: boolean;
+  locationX: number;
+  locationY: number;
+  quest: CompanionQuest | null;
+}
+
+interface CompanionQuest {
+  id: string;
+  name: string;
+  description: string;
+  targetX: number;
+  targetY: number;
+  type: "kill_lord" | "explore_location" | "deliver_goods" | "defend_city";
+  targetId: string;
+  completed: boolean;
+  rewardGold: number;
+  rewardLoyalty: number;
+  rewardXp: number;
+}
+
+// ---------------------------------------------------------------------------
+// Town Buildings
+// ---------------------------------------------------------------------------
+
+type BuildingType = "training_grounds" | "walls" | "market" | "stables" | "siege_workshop" | "mage_tower";
+
+interface BuildingDef {
+  type: BuildingType;
+  name: string;
+  desc: string;
+  maxLevel: number;
+  baseCost: number; // cost per level
+  color: string;
+}
+
+const BUILDING_DEFS: BuildingDef[] = [
+  { type: "training_grounds", name: "Training Grounds", desc: "+50% unit XP gain per level", maxLevel: 3, baseCost: 800, color: "#cc6644" },
+  { type: "walls", name: "Fortifications", desc: "+10 garrison cap and +20% garrison defense per level", maxLevel: 3, baseCost: 1000, color: "#8888aa" },
+  { type: "market", name: "Market", desc: "+30 gold/day income per level", maxLevel: 3, baseCost: 600, color: "#ddaa33" },
+  { type: "stables", name: "Stables", desc: "Unlocks cavalry recruitment, -10% cavalry cost per level", maxLevel: 2, baseCost: 700, color: "#aa8855" },
+  { type: "siege_workshop", name: "Siege Workshop", desc: "Unlocks siege equipment crafting", maxLevel: 2, baseCost: 1200, color: "#666688" },
+  { type: "mage_tower", name: "Mage Tower", desc: "Unlocks mage recruitment, +1 mage tier per level", maxLevel: 2, baseCost: 900, color: "#8844cc" },
+];
+
+interface CityBuilding {
+  type: BuildingType;
+  level: number;
+}
+
+// ---------------------------------------------------------------------------
+// Trade Goods
+// ---------------------------------------------------------------------------
+
+interface TradeGood {
+  name: string;
+  basePrice: number;
+  category: "food" | "luxury" | "military" | "raw";
+}
+
+const TRADE_GOODS: TradeGood[] = [
+  { name: "Grain", basePrice: 20, category: "food" },
+  { name: "Salted Meat", basePrice: 35, category: "food" },
+  { name: "Wine", basePrice: 50, category: "luxury" },
+  { name: "Spices", basePrice: 80, category: "luxury" },
+  { name: "Silk", basePrice: 100, category: "luxury" },
+  { name: "Iron", basePrice: 45, category: "military" },
+  { name: "Weapons", basePrice: 70, category: "military" },
+  { name: "Lumber", basePrice: 25, category: "raw" },
+  { name: "Stone", basePrice: 30, category: "raw" },
+  { name: "Horses", basePrice: 120, category: "military" },
+];
+
+interface CityTradeSlot {
+  good: string;
+  price: number; // current price (varies by supply/demand)
+  stock: number;
+}
+
+// ---------------------------------------------------------------------------
+// Mercenary Contracts
+// ---------------------------------------------------------------------------
+
+interface MercContract {
+  id: string;
+  name: string;
+  units: { unitId: string; count: number }[];
+  cost: number;
+  duration: number; // days remaining
+  hired: boolean;
+}
+
+const MERC_COMPANY_NAMES = [
+  "The Iron Company", "Crimson Wolves", "Blackwater Sellswords", "The Golden Lances",
+  "Shadow Stalkers", "The Warhounds", "Stormbreaker Legion", "Silver Serpents",
+];
+
+// ---------------------------------------------------------------------------
+// Victory Conditions
+// ---------------------------------------------------------------------------
+
+interface VictoryProgress {
+  conquest: { citiesCaptured: number; totalCities: number };
+  diplomatic: { alliances: number; required: number };
+  economic: { goldAccumulated: number; target: number };
+}
+
+const VICTORY_ECONOMIC_TARGET = 50000;
+const VICTORY_ALLIANCE_REQUIRED = 3;
+
+// ---------------------------------------------------------------------------
+// Siege Equipment
+// ---------------------------------------------------------------------------
+
+type SiegeEquipType = "battering_ram" | "siege_tower" | "catapult_siege" | "ladders";
+
+interface SiegeEquipment {
+  type: SiegeEquipType;
+  name: string;
+  cost: number;
+  buildTime: number; // days to build
+  effect: string;
+}
+
+const SIEGE_EQUIPMENT_DEFS: SiegeEquipment[] = [
+  { type: "ladders", name: "Siege Ladders", cost: 200, buildTime: 1, effect: "Basic wall scaling, -10% attack penalty" },
+  { type: "battering_ram", name: "Battering Ram", cost: 500, buildTime: 2, effect: "Break gates, bypass wall defense bonus" },
+  { type: "siege_tower", name: "Siege Tower", cost: 800, buildTime: 3, effect: "Scale walls with no penalty" },
+  { type: "catapult_siege", name: "Siege Catapult", cost: 1000, buildTime: 3, effect: "Bombardment: -20% garrison before battle" },
+];
 
 type HeroPerkId = typeof HERO_PERKS[number]["id"];
 
@@ -809,6 +1031,10 @@ interface CampaignCity {
   factionId: string;
   garrison: { unitId: string; count: number; xp: number }[];
   garrisonTotal: number;
+  buildings: CityBuilding[];
+  tradeGoods: CityTradeSlot[];
+  foodStock: number;
+  siegeEquipment: { type: SiegeEquipType; daysLeft: number }[]; // being built
 }
 
 interface CampaignVillage {
@@ -875,6 +1101,10 @@ interface CampaignParty {
   speed: number;
   homeCity?: string;
   retreatPenaltyUntilTick?: number; // retreat speed penalty
+  lordId?: string; // if led by a named lord
+  mercContractId?: string; // if a mercenary company
+  mercDaysLeft?: number;
+  heading?: number; // direction of travel (radians) for flanking detection
 }
 
 interface CampaignState {
@@ -908,6 +1138,20 @@ interface CampaignState {
   lastEventDay: number;
   // Battle preview state
   battlePreviewEnemy: CampaignParty | null;
+  // --- New systems ---
+  season: Season;
+  food: number;
+  campaignMorale: number; // 0-100
+  lords: CampaignLord[];
+  companions: Companion[];
+  mercContracts: MercContract[];
+  victoryProgress: VictoryProgress;
+  totalGoldEarned: number; // for economic victory tracking
+  tradeAgreements: { factionA: string; factionB: string; startDay: number }[];
+  warDeclarations: { aggressor: string; target: string; day: number }[];
+  playerSiegeEquip: { type: SiegeEquipType; count: number }[]; // built siege equipment in inventory
+  flankingBonus: number; // 0 or positive multiplier for next battle
+  playerTradeGoods: { good: string; count: number }[]; // trade inventory
 }
 
 // ---------------------------------------------------------------------------
@@ -982,6 +1226,10 @@ function _generateCities(factions: RaceDef[]): CampaignCity[] {
         factionId: faction.id,
         garrison,
         garrisonTotal: garrison.reduce((s, g) => s + g.count, 0),
+        buildings: [],
+        tradeGoods: _generateCityTradeGoods(),
+        foodStock: FOOD_CITY_STOCK,
+        siegeEquipment: [],
       });
     }
   }
@@ -1188,6 +1436,197 @@ function _generateWanderingNPCs(day: number): CampaignWanderingNPC[] {
   return npcs;
 }
 
+// ---------------------------------------------------------------------------
+// Lord generation
+// ---------------------------------------------------------------------------
+
+function _generateLords(parties: CampaignParty[], factions: RaceDef[], playerFaction: string): CampaignLord[] {
+  const lords: CampaignLord[] = [];
+  const usedNames = new Set<string>();
+  const personalities: LordPersonality[] = ["aggressive", "cautious", "mercantile", "diplomatic", "ruthless"];
+
+  for (const party of parties) {
+    if (party.isPlayer || party.factionId === playerFaction) continue;
+    // ~60% of AI parties get a named lord
+    if (Math.random() > 0.6) continue;
+
+    let name: string;
+    do {
+      name = LORD_NAMES[Math.floor(Math.random() * LORD_NAMES.length)];
+    } while (usedNames.has(name));
+    usedNames.add(name);
+
+    const personality = personalities[Math.floor(Math.random() * personalities.length)];
+    const lord: CampaignLord = {
+      id: `lord_${lords.length}`,
+      name,
+      personality,
+      factionId: party.factionId,
+      partyId: party.id,
+      level: 1 + Math.floor(Math.random() * 5),
+      renown: 10 + Math.floor(Math.random() * 40),
+      capturedBy: null,
+      ransomCost: 200 + Math.floor(Math.random() * 600),
+      rivalLordId: null,
+    };
+    party.lordId = lord.id;
+    party.name = `${name}'s ${party.name.split(" ").pop()}`;
+    lords.push(lord);
+  }
+
+  // Assign random rivals
+  for (const lord of lords) {
+    const enemies = lords.filter(l => l.factionId !== lord.factionId && l.id !== lord.id);
+    if (enemies.length > 0) {
+      lord.rivalLordId = enemies[Math.floor(Math.random() * enemies.length)].id;
+    }
+  }
+
+  return lords;
+}
+
+// ---------------------------------------------------------------------------
+// Companion generation
+// ---------------------------------------------------------------------------
+
+function _generateCompanions(): Companion[] {
+  const companions: Companion[] = [];
+  // Place 4-6 companions across the map
+  const count = 4 + Math.floor(Math.random() * 3);
+  const shuffled = [...COMPANION_DEFS].sort(() => Math.random() - 0.5);
+  for (let i = 0; i < Math.min(count, shuffled.length); i++) {
+    const def = shuffled[i];
+    companions.push({
+      id: `companion_${i}`,
+      name: def.name,
+      class: def.class,
+      level: 1,
+      xp: 0,
+      loyalty: 50,
+      skill: def.skill,
+      skillDesc: def.skillDesc,
+      personality: def.personality,
+      recruited: false,
+      locationX: 80 + Math.random() * (MAP_W - 160),
+      locationY: 80 + Math.random() * (MAP_H - 160),
+      quest: null,
+    });
+  }
+  return companions;
+}
+
+// ---------------------------------------------------------------------------
+// Trade goods generation for cities
+// ---------------------------------------------------------------------------
+
+function _generateCityTradeGoods(): CityTradeSlot[] {
+  const slots: CityTradeSlot[] = [];
+  // Each city gets 3-5 random goods with varied prices
+  const shuffled = [...TRADE_GOODS].sort(() => Math.random() - 0.5);
+  const count = 3 + Math.floor(Math.random() * 3);
+  for (let i = 0; i < Math.min(count, shuffled.length); i++) {
+    const good = shuffled[i];
+    const priceMult = 0.6 + Math.random() * 0.8; // 60%-140% of base
+    slots.push({
+      good: good.name,
+      price: Math.round(good.basePrice * priceMult),
+      stock: 5 + Math.floor(Math.random() * 15),
+    });
+  }
+  return slots;
+}
+
+// ---------------------------------------------------------------------------
+// Mercenary contract generation
+// ---------------------------------------------------------------------------
+
+function _generateMercContracts(): MercContract[] {
+  const contracts: MercContract[] = [];
+  const count = 2 + Math.floor(Math.random() * 3);
+  const usedNames = new Set<string>();
+  for (let i = 0; i < count; i++) {
+    let name: string;
+    do {
+      name = MERC_COMPANY_NAMES[Math.floor(Math.random() * MERC_COMPANY_NAMES.length)];
+    } while (usedNames.has(name));
+    usedNames.add(name);
+
+    const units: { unitId: string; count: number }[] = [];
+    const pool = CAMPAIGN_UNITS.filter(u => u.tier >= 2 && u.tier <= 4);
+    const unitCount = 2 + Math.floor(Math.random() * 2);
+    for (let j = 0; j < unitCount; j++) {
+      const unit = pool[Math.floor(Math.random() * pool.length)];
+      units.push({ unitId: unit.id, count: 2 + Math.floor(Math.random() * 4) });
+    }
+    const totalUnits = units.reduce((s, u) => s + u.count, 0);
+    contracts.push({
+      id: `merc_${i}`,
+      name,
+      units,
+      cost: totalUnits * 40 + Math.floor(Math.random() * 200),
+      duration: 15 + Math.floor(Math.random() * 20),
+      hired: false,
+    });
+  }
+  return contracts;
+}
+
+// ---------------------------------------------------------------------------
+// Companion quest generation
+// ---------------------------------------------------------------------------
+
+function _generateCompanionQuest(companion: Companion, state: { cities: CampaignCity[]; lords: CampaignLord[]; specialLocations: SpecialLocation[] }): CompanionQuest {
+  const types: CompanionQuest["type"][] = ["kill_lord", "explore_location", "deliver_goods", "defend_city"];
+  const type = types[Math.floor(Math.random() * types.length)];
+  let targetId = "";
+  let targetX = MAP_W / 2;
+  let targetY = MAP_H / 2;
+  let name = "";
+  let description = "";
+
+  if (type === "kill_lord" && state.lords.length > 0) {
+    const lord = state.lords[Math.floor(Math.random() * state.lords.length)];
+    targetId = lord.id;
+    name = `Hunt ${lord.name}`;
+    description = `${companion.name} wants you to defeat ${lord.name} in battle.`;
+  } else if (type === "explore_location") {
+    const unexplored = state.specialLocations.filter(l => !l.explored);
+    if (unexplored.length > 0) {
+      const loc = unexplored[Math.floor(Math.random() * unexplored.length)];
+      targetId = loc.id;
+      targetX = loc.x; targetY = loc.y;
+      name = `Explore ${loc.name}`;
+      description = `${companion.name} has heard of treasures at ${loc.name}.`;
+    } else {
+      targetX = 80 + Math.random() * (MAP_W - 160);
+      targetY = 80 + Math.random() * (MAP_H - 160);
+      name = "Scout the Wilds";
+      description = `${companion.name} wants to scout an area of the map.`;
+    }
+  } else if (type === "deliver_goods" && state.cities.length > 1) {
+    const city = state.cities[Math.floor(Math.random() * state.cities.length)];
+    targetId = city.id;
+    targetX = city.x; targetY = city.y;
+    name = `Deliver to ${city.name}`;
+    description = `${companion.name} wants you to visit ${city.name} for a trade opportunity.`;
+  } else {
+    const city = state.cities[Math.floor(Math.random() * state.cities.length)];
+    targetId = city.id;
+    targetX = city.x; targetY = city.y;
+    name = `Defend ${city.name}`;
+    description = `${companion.name} is concerned about threats near ${city.name}.`;
+  }
+
+  return {
+    id: `quest_${companion.id}_${Date.now()}`,
+    name, description, targetX, targetY, type, targetId,
+    completed: false,
+    rewardGold: 200 + Math.floor(Math.random() * 300),
+    rewardLoyalty: 10 + Math.floor(Math.random() * 15),
+    rewardXp: 30 + Math.floor(Math.random() * 50),
+  };
+}
+
 /** Reveal fog cells within a radius around a point. */
 function _revealFog(fogSet: Set<number>, cx: number, cy: number, radius: number): void {
   const cellR = Math.ceil(radius / FOG_CELL_SIZE);
@@ -1296,6 +1735,20 @@ export class WarbandCampaign {
   private _pauseMenuContainer: HTMLDivElement | null = null;
   private _campaignPauseMenuContainer: HTMLDivElement | null = null;
 
+  // New system panels
+  private _companionPanel: HTMLDivElement | null = null;
+  private _buildingPanel: HTMLDivElement | null = null;
+  private _tradePanel: HTMLDivElement | null = null;
+  private _warCouncilPanel: HTMLDivElement | null = null;
+  private _mercPanel: HTMLDivElement | null = null;
+  private _deploymentPanel: HTMLDivElement | null = null;
+  private _siegeEquipPanel: HTMLDivElement | null = null;
+  private _victoryPanel: HTMLDivElement | null = null;
+
+  // Deployment state
+  private _deploymentFormation: "line" | "wedge" | "flanking" | "defensive" = "line";
+  private _battleTerrainType: TerrainKind | null = null;
+
   async boot(playerFaction: string): Promise<void> {
     // Hide PixiJS
     const pixiContainer = document.getElementById("pixi-container");
@@ -1344,6 +1797,9 @@ export class WarbandCampaign {
       speed: PLAYER_SPEED,
     };
 
+    // Generate named lords for AI parties
+    const lords = _generateLords(parties, factionsOnMap, playerFaction);
+
     this._state = {
       day: 1,
       tick: 0,
@@ -1371,6 +1827,24 @@ export class WarbandCampaign {
       events: [],
       lastEventDay: 0,
       battlePreviewEnemy: null,
+      // New systems
+      season: "spring",
+      food: 100,
+      campaignMorale: 75,
+      lords,
+      companions: _generateCompanions(),
+      mercContracts: _generateMercContracts(),
+      victoryProgress: {
+        conquest: { citiesCaptured: homeCities.length, totalCities: cities.length },
+        diplomatic: { alliances: 0, required: VICTORY_ALLIANCE_REQUIRED },
+        economic: { goldAccumulated: STARTING_GOLD, target: VICTORY_ECONOMIC_TARGET },
+      },
+      totalGoldEarned: STARTING_GOLD,
+      tradeAgreements: [],
+      warDeclarations: [],
+      playerSiegeEquip: [],
+      flankingBonus: 0,
+      playerTradeGoods: [],
     };
 
     // Initialize faction relations
@@ -1536,6 +2010,51 @@ export class WarbandCampaign {
         <span style="font-size:11px">\u26EB</span> ${citiesOwned}/${totalCities}
       </span>
 
+      <span style="color:#555;font-size:16px;margin:0 -4px">\u2758</span>
+
+      <span style="
+        color:${SEASON_EFFECTS[s.season].color};font-size:12px;font-weight:bold;
+        text-shadow:0 0 4px ${SEASON_EFFECTS[s.season].color}44;
+        padding:2px 8px;border:1px solid ${SEASON_EFFECTS[s.season].color}44;border-radius:3px;
+        background:linear-gradient(180deg, ${SEASON_EFFECTS[s.season].color}18 0%, ${SEASON_EFFECTS[s.season].color}08 100%);
+      ">${s.season === "spring" ? "\u2618" : s.season === "summer" ? "\u2600" : s.season === "autumn" ? "\u2767" : "\u2744"} ${SEASON_EFFECTS[s.season].label}</span>
+
+      <span style="color:#555;font-size:16px;margin:0 -4px">\u2758</span>
+
+      <span style="color:${s.food > 30 ? "#66cc66" : s.food > 10 ? "#cccc44" : "#cc4444"};font-size:12px;
+        text-shadow:0 0 4px ${s.food > 30 ? "rgba(102,204,102,0.3)" : s.food > 10 ? "rgba(204,204,68,0.3)" : "rgba(204,68,68,0.3)"};">
+        \uD83C\uDF5E <strong>${Math.floor(s.food)}</strong>
+      </span>
+
+      <span style="color:#555;font-size:16px;margin:0 -4px">\u2758</span>
+
+      <span style="color:${s.campaignMorale > 60 ? "#66cc66" : s.campaignMorale > 30 ? "#cccc44" : "#cc4444"};font-size:12px;
+        text-shadow:0 0 4px ${s.campaignMorale > 60 ? "rgba(102,204,102,0.3)" : s.campaignMorale > 30 ? "rgba(204,204,68,0.3)" : "rgba(204,68,68,0.3)"};">
+        \u2691 <strong>${Math.floor(s.campaignMorale)}</strong>
+      </span>
+
+      <span style="color:#555;font-size:16px;margin:0 -4px">\u2758</span>
+
+      <span style="display:flex;gap:4px;align-items:center">
+        ${[
+          { key: "C", label: "Companions", id: "topbar-companions" },
+          { key: "B", label: "Buildings", id: "topbar-buildings" },
+          { key: "T", label: "Trade", id: "topbar-trade" },
+          { key: "W", label: "War Council", id: "topbar-warcouncil" },
+          { key: "M", label: "Mercenaries", id: "topbar-mercs" },
+          { key: "V", label: "Victory", id: "topbar-victory" },
+        ].map((b) => `
+          <button class="topbar-quick-btn" data-panel="${b.id}" title="${b.label}" style="
+            padding:2px 6px;font-size:10px;font-weight:bold;
+            border:1px solid #3a3020;border-radius:3px;
+            background:linear-gradient(180deg, rgba(30,25,15,0.7) 0%, rgba(15,12,8,0.8) 100%);
+            color:#998866;cursor:pointer;font-family:inherit;
+            box-shadow:inset 0 1px 0 rgba(255,255,255,0.03);
+            transition:all 0.15s ease;letter-spacing:0.5px;
+          ">[${b.key}]</button>
+        `).join("")}
+      </span>
+
       ${this._renderFactionRelationIndicators()}
 
       <div style="margin-left:auto;display:flex;gap:8px;align-items:center;
@@ -1594,6 +2113,26 @@ export class WarbandCampaign {
     });
     document.getElementById("camp-exit-btn")?.addEventListener("click", () => {
       this._exit();
+    });
+
+    // Bind topbar quick panel buttons
+    this._topBar.querySelectorAll(".topbar-quick-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        if (!this._state) return;
+        const panelId = (btn as HTMLElement).dataset.panel;
+        const nearestCity = this._state.cities
+          .filter((c) => c.factionId === this._state!.playerFaction)
+          .sort((a, b) =>
+            Math.hypot(a.x - this._state!.playerParty.x, a.y - this._state!.playerParty.y) -
+            Math.hypot(b.x - this._state!.playerParty.x, b.y - this._state!.playerParty.y)
+          )[0] ?? null;
+        if (panelId === "topbar-companions") this._showCompanionPanel();
+        else if (panelId === "topbar-buildings" && nearestCity) this._showBuildingPanel(nearestCity);
+        else if (panelId === "topbar-trade" && nearestCity) this._showTradePanel(nearestCity);
+        else if (panelId === "topbar-warcouncil") this._showWarCouncilPanel();
+        else if (panelId === "topbar-mercs") this._showMercPanel();
+        else if (panelId === "topbar-victory") this._showVictoryPanel();
+      });
     });
   }
 
@@ -1707,6 +2246,38 @@ export class WarbandCampaign {
       `;
     }
 
+    // City action buttons (buildings, trade, siege, food) — only if owned and close
+    const hasSiegeWorkshop = city.buildings.some((b) => b.type === "siege_workshop" && b.level > 0);
+    let cityActionsHTML = "";
+    if (isOwned && canInteract) {
+      const canBuyFood = city.foodStock > 0 && this._state!.gold >= FOOD_PURCHASE_COST;
+      cityActionsHTML = `
+        <div style="margin-top:14px;border-top:1px solid #443322;padding-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+          <button id="city-buildings-btn" style="
+            padding:6px 14px;font-size:12px;border:1px solid #daa520;border-radius:4px;
+            background:rgba(218,165,32,0.15);color:#daa520;cursor:pointer;font-family:inherit;
+          ">\uD83C\uDFD7 Buildings</button>
+          <button id="city-trade-btn" style="
+            padding:6px 14px;font-size:12px;border:1px solid #cc8844;border-radius:4px;
+            background:rgba(204,136,68,0.15);color:#cc8844;cursor:pointer;font-family:inherit;
+          ">\uD83D\uDCE6 Trade</button>
+          ${hasSiegeWorkshop ? `
+            <button id="city-siege-btn" style="
+              padding:6px 14px;font-size:12px;border:1px solid #666688;border-radius:4px;
+              background:rgba(102,102,136,0.15);color:#8888aa;cursor:pointer;font-family:inherit;
+            ">\u2694 Siege Equipment</button>
+          ` : ""}
+          <button id="city-buy-food-btn" style="
+            padding:6px 14px;font-size:12px;
+            border:1px solid ${canBuyFood ? "#66aa66" : "#444"};border-radius:4px;
+            background:${canBuyFood ? "rgba(102,170,102,0.15)" : "rgba(20,15,10,0.6)"};
+            color:${canBuyFood ? "#66cc66" : "#555"};
+            cursor:${canBuyFood ? "pointer" : "not-allowed"};font-family:inherit;
+          " ${canBuyFood ? "" : "disabled"}>Buy Food (${FOOD_PURCHASE_COST}g/ea, stock: ${city.foodStock})</button>
+        </div>
+      `;
+    }
+
     // Attack button (if enemy city and close enough)
     let attackHTML = "";
     if (!isOwned && canInteract) {
@@ -1738,6 +2309,7 @@ export class WarbandCampaign {
         <div style="font-size:12px;color:#ccc;line-height:1.6">${garrisonHTML || "<span style='color:#666'>Empty</span>"}</div>
       </div>
       ${hireHTML}
+      ${cityActionsHTML}
       ${attackHTML}
     `;
 
@@ -1767,6 +2339,31 @@ export class WarbandCampaign {
     document.getElementById("camp-attack-city")?.addEventListener("click", () => {
       this._removeCityPanel();
       this._startCityBattle(city);
+    });
+
+    // City action buttons
+    document.getElementById("city-buildings-btn")?.addEventListener("click", () => {
+      this._removeCityPanel();
+      this._showBuildingPanel(city);
+    });
+    document.getElementById("city-trade-btn")?.addEventListener("click", () => {
+      this._removeCityPanel();
+      this._showTradePanel(city);
+    });
+    document.getElementById("city-siege-btn")?.addEventListener("click", () => {
+      this._removeCityPanel();
+      this._showSiegeEquipPanel(city);
+    });
+    document.getElementById("city-buy-food-btn")?.addEventListener("click", () => {
+      if (!this._state) return;
+      const buyAmount = Math.min(city.foodStock, 10, Math.floor(this._state.gold / FOOD_PURCHASE_COST));
+      if (buyAmount > 0) {
+        this._state.gold -= buyAmount * FOOD_PURCHASE_COST;
+        this._state.food += buyAmount;
+        city.foodStock -= buyAmount;
+        this._addLog(`Bought ${buyAmount} food from ${city.name} for ${buyAmount * FOOD_PURCHASE_COST}g.`);
+        this._showCityPanel(city); // refresh
+      }
     });
   }
 
@@ -1857,7 +2454,7 @@ export class WarbandCampaign {
 
     document.getElementById("camp-attack-party")?.addEventListener("click", () => {
       this._removePartyPanel();
-      this._startPartyBattle(party);
+      this._startPartyBattleWithDeployment(party);
     });
   }
 
@@ -2065,6 +2662,27 @@ export class WarbandCampaign {
         } else if (this._npcPanel) {
           this._removeNPCPanel();
           if (this._state) this._state.paused = false;
+        } else if (this._companionPanel) {
+          this._removeCompanionPanel();
+          if (this._state) this._state.paused = false;
+        } else if (this._buildingPanel) {
+          this._removeBuildingPanel();
+          if (this._state) this._state.paused = false;
+        } else if (this._tradePanel) {
+          this._removeTradePanel();
+          if (this._state) this._state.paused = false;
+        } else if (this._warCouncilPanel) {
+          this._removeWarCouncilPanel();
+          if (this._state) this._state.paused = false;
+        } else if (this._mercPanel) {
+          this._removeMercPanel();
+          if (this._state) this._state.paused = false;
+        } else if (this._victoryPanel) {
+          this._removeVictoryPanel();
+          if (this._state) this._state.paused = false;
+        } else if (this._siegeEquipPanel) {
+          this._removeSiegeEquipPanel();
+          if (this._state) this._state.paused = false;
         } else if (this._campaignPauseMenuContainer) {
           if (this._state) this._state.paused = false;
           this._hideCampaignPauseMenu();
@@ -2086,6 +2704,66 @@ export class WarbandCampaign {
           if (this._state) this._state.paused = false;
         } else if (!this._cityPanel && !this._partyPanel) {
           this._showDiplomacyPanel();
+        }
+      }
+      if (e.code === "KeyC") {
+        if (this._companionPanel) {
+          this._removeCompanionPanel();
+          if (this._state) this._state.paused = false;
+        } else if (!this._cityPanel && !this._partyPanel) {
+          this._showCompanionPanel();
+        }
+      }
+      if (e.code === "KeyB") {
+        if (this._buildingPanel) {
+          this._removeBuildingPanel();
+          if (this._state) this._state.paused = false;
+        } else if (!this._cityPanel && !this._partyPanel && this._state) {
+          const nearest = this._state.cities
+            .filter((c) => c.factionId === this._state!.playerFaction)
+            .sort((a, b) =>
+              Math.hypot(a.x - this._state!.playerParty.x, a.y - this._state!.playerParty.y) -
+              Math.hypot(b.x - this._state!.playerParty.x, b.y - this._state!.playerParty.y)
+            )[0];
+          if (nearest) this._showBuildingPanel(nearest);
+        }
+      }
+      if (e.code === "KeyT") {
+        if (this._tradePanel) {
+          this._removeTradePanel();
+          if (this._state) this._state.paused = false;
+        } else if (!this._cityPanel && !this._partyPanel && this._state) {
+          const nearest = this._state.cities
+            .filter((c) => c.factionId === this._state!.playerFaction)
+            .sort((a, b) =>
+              Math.hypot(a.x - this._state!.playerParty.x, a.y - this._state!.playerParty.y) -
+              Math.hypot(b.x - this._state!.playerParty.x, b.y - this._state!.playerParty.y)
+            )[0];
+          if (nearest) this._showTradePanel(nearest);
+        }
+      }
+      if (e.code === "KeyW") {
+        if (this._warCouncilPanel) {
+          this._removeWarCouncilPanel();
+          if (this._state) this._state.paused = false;
+        } else if (!this._cityPanel && !this._partyPanel) {
+          this._showWarCouncilPanel();
+        }
+      }
+      if (e.code === "KeyV") {
+        if (this._victoryPanel) {
+          this._removeVictoryPanel();
+          if (this._state) this._state.paused = false;
+        } else if (!this._cityPanel && !this._partyPanel) {
+          this._showVictoryPanel();
+        }
+      }
+      if (e.code === "KeyM") {
+        if (this._mercPanel) {
+          this._removeMercPanel();
+          if (this._state) this._state.paused = false;
+        } else if (!this._cityPanel && !this._partyPanel) {
+          this._showMercPanel();
         }
       }
     };
@@ -2144,6 +2822,18 @@ export class WarbandCampaign {
           const caravanDist = Math.hypot(caravan.x - this._state.playerParty.x, caravan.y - this._state.playerParty.y);
           if (caravanDist < 60) {
             this._showCaravanPanel(caravan);
+            return;
+          }
+        }
+      }
+
+      // Check companion clicks
+      for (const comp of this._state.companions) {
+        if (comp.recruited) continue;
+        if (Math.hypot(comp.locationX - mx, comp.locationY - my) < 12) {
+          const compDist = Math.hypot(comp.locationX - this._state.playerParty.x, comp.locationY - this._state.playerParty.y);
+          if (compDist < 60) {
+            this._showCompanionPanel();
             return;
           }
         }
@@ -2319,6 +3009,229 @@ export class WarbandCampaign {
         s.playerParty.armyTotal--;
         if (slot.count <= 0) s.playerParty.army.splice(idx, 1);
         this._addLog(`A ${unitDef?.name ?? slot.unitId} deserted due to lack of pay!`);
+      }
+
+      // -----------------------------------------------------------------------
+      // Season progression
+      // -----------------------------------------------------------------------
+      if (s.day % SEASON_LENGTH_DAYS === 0) {
+        const curIdx = SEASON_ORDER.indexOf(s.season);
+        s.season = SEASON_ORDER[(curIdx + 1) % SEASON_ORDER.length];
+        const eff = SEASON_EFFECTS[s.season];
+        this._addLog(`Season changed to ${eff.label}! Speed ×${eff.speedMult}, Income ×${eff.incomeMult}, Food cost ×${eff.foodMult}`);
+      }
+
+      const seasonEff = SEASON_EFFECTS[s.season];
+      const armyTotal = s.playerParty.armyTotal;
+
+      // -----------------------------------------------------------------------
+      // Food consumption
+      // -----------------------------------------------------------------------
+      const logisticianReduction = 1 - this._getPerkCount("logistician") * 0.15;
+      const foodConsumed = FOOD_PER_UNIT_PER_DAY * armyTotal * seasonEff.foodMult * logisticianReduction;
+      s.food -= foodConsumed;
+      if (s.food <= 0) {
+        s.food = 0;
+        s.campaignMorale = Math.max(MORALE_MIN, s.campaignMorale + MORALE_FOOD_PENALTY);
+        this._addLog("No food! Morale drops.");
+      }
+
+      // -----------------------------------------------------------------------
+      // Food auto-purchase from nearby owned cities
+      // -----------------------------------------------------------------------
+      if (s.food < 20) {
+        const ownCities = s.cities.filter(c => c.factionId === s.playerFaction);
+        for (const city of ownCities) {
+          const dist = Math.hypot(city.x - s.playerParty.x, city.y - s.playerParty.y);
+          if (dist < 80 && city.foodStock > 0 && s.gold >= FOOD_PURCHASE_COST) {
+            const canBuy = Math.min(city.foodStock, FOOD_CITY_STOCK, Math.floor(s.gold / FOOD_PURCHASE_COST), Math.ceil(20 - s.food));
+            if (canBuy > 0) {
+              s.food += canBuy;
+              city.foodStock -= canBuy;
+              s.gold -= canBuy * FOOD_PURCHASE_COST;
+              this._addLog(`Auto-purchased ${canBuy} food from ${city.name} for ${canBuy * FOOD_PURCHASE_COST}g.`);
+            }
+            if (s.food >= 20) break;
+          }
+        }
+      }
+
+      // -----------------------------------------------------------------------
+      // Morale update: territory bonus near own cities, clamp, desertion
+      // -----------------------------------------------------------------------
+      const nearOwnCity = s.cities.some(c => c.factionId === s.playerFaction && Math.hypot(c.x - s.playerParty.x, c.y - s.playerParty.y) < 100);
+      if (nearOwnCity) {
+        s.campaignMorale = Math.min(MORALE_MAX, s.campaignMorale + MORALE_TERRITORY_BONUS);
+      }
+      s.campaignMorale = Math.max(MORALE_MIN, Math.min(MORALE_MAX, s.campaignMorale));
+      if (s.campaignMorale < MORALE_DESERTION_THRESHOLD && Math.random() < 0.15 && s.playerParty.army.length > 0) {
+        const di = Math.floor(Math.random() * s.playerParty.army.length);
+        const dSlot = s.playerParty.army[di];
+        const dDef = CAMPAIGN_UNITS.find(u => u.id === dSlot.unitId);
+        dSlot.count--;
+        s.playerParty.armyTotal--;
+        if (dSlot.count <= 0) s.playerParty.army.splice(di, 1);
+        this._addLog(`A ${dDef?.name ?? dSlot.unitId} deserted due to low morale!`);
+      }
+
+      // -----------------------------------------------------------------------
+      // Lord AI updates (every 5 days within the day block)
+      // -----------------------------------------------------------------------
+      if (s.day % 5 === 0) {
+        for (const lord of s.lords) {
+          // Captured lords may be ransomed
+          if (lord.capturedBy) {
+            if (Math.random() < 0.2) {
+              lord.capturedBy = null;
+              this._addLog(`Lord ${lord.name} has been ransomed and is free.`);
+            }
+            continue;
+          }
+          // Respawn lords whose party is dead
+          const lordParty = s.parties.find(p => p.id === lord.partyId);
+          if (!lordParty || lordParty.armyTotal <= 0) {
+            const factionCities = s.cities.filter(c => c.factionId === lord.factionId);
+            if (factionCities.length > 0) {
+              const spawnCity = factionCities[Math.floor(Math.random() * factionCities.length)];
+              const newId = `lord_party_${lord.id}_${s.day}`;
+              const size = 5 + Math.floor(Math.random() * 8);
+              const army: { unitId: string; count: number; xp: number }[] = [];
+              const pool = CAMPAIGN_UNITS.filter(u => u.tier <= 3);
+              for (let i = 0; i < size; i++) {
+                const unit = pool[Math.floor(Math.random() * pool.length)];
+                const existing = army.find(a => a.unitId === unit.id);
+                if (existing) existing.count++;
+                else army.push({ unitId: unit.id, count: 1, xp: 0 });
+              }
+              const newParty: CampaignParty = {
+                id: newId, name: `${lord.name}'s Warband`, x: spawnCity.x + (Math.random() - 0.5) * 30,
+                y: spawnCity.y + (Math.random() - 0.5) * 30, factionId: lord.factionId, army,
+                armyTotal: size, targetX: spawnCity.x, targetY: spawnCity.y, isPlayer: false,
+                speed: AI_SPEED, homeCity: spawnCity.id, lordId: lord.id,
+              };
+              s.parties.push(newParty);
+              lord.partyId = newId;
+              this._addLog(`Lord ${lord.name} has raised a new warband near ${spawnCity.name}.`);
+            }
+          }
+          // Aggressive lords pursue player more
+          if (lord.personality === "aggressive" && !lord.capturedBy) {
+            const lParty = s.parties.find(p => p.id === lord.partyId);
+            if (lParty && lParty.armyTotal > 0) {
+              const distToPlayer = Math.hypot(lParty.x - s.playerParty.x, lParty.y - s.playerParty.y);
+              if (distToPlayer < 300) {
+                lParty.targetX = s.playerParty.x;
+                lParty.targetY = s.playerParty.y;
+                lParty.speed = AI_SPEED * 1.3;
+              }
+            }
+          }
+        }
+      }
+
+      // -----------------------------------------------------------------------
+      // Companion loyalty
+      // -----------------------------------------------------------------------
+      for (let ci = s.companions.length - 1; ci >= 0; ci--) {
+        const comp = s.companions[ci];
+        if (!comp.recruited) continue;
+        if (s.campaignMorale > 50) comp.loyalty = Math.min(100, comp.loyalty + 1);
+        else if (s.campaignMorale < 30) comp.loyalty = Math.max(0, comp.loyalty - 2);
+        if (comp.loyalty < 10) {
+          this._addLog(`Companion ${comp.name} has left your party due to low loyalty!`);
+          comp.recruited = false;
+          comp.locationX = s.playerParty.x + (Math.random() - 0.5) * 200;
+          comp.locationY = s.playerParty.y + (Math.random() - 0.5) * 200;
+        }
+      }
+
+      // -----------------------------------------------------------------------
+      // Trade price fluctuation (every 3 days)
+      // -----------------------------------------------------------------------
+      if (s.day % 3 === 0) {
+        for (const city of s.cities) {
+          for (const slot of city.tradeGoods) {
+            const shift = 1 + (Math.random() * 0.2 - 0.1); // ±10%
+            slot.price = Math.max(1, Math.round(slot.price * shift));
+          }
+        }
+      }
+
+      // -----------------------------------------------------------------------
+      // Mercenary contract countdown
+      // -----------------------------------------------------------------------
+      for (let mi = s.mercContracts.length - 1; mi >= 0; mi--) {
+        const mc = s.mercContracts[mi];
+        if (!mc.hired) continue;
+        mc.duration--;
+        if (mc.duration <= 0) {
+          // Remove those units from player army
+          for (const mu of mc.units) {
+            const armySlot = s.playerParty.army.find(a => a.unitId === mu.unitId);
+            if (armySlot) {
+              armySlot.count = Math.max(0, armySlot.count - mu.count);
+              s.playerParty.armyTotal = Math.max(0, s.playerParty.armyTotal - mu.count);
+              if (armySlot.count <= 0) {
+                const idx = s.playerParty.army.indexOf(armySlot);
+                if (idx >= 0) s.playerParty.army.splice(idx, 1);
+              }
+            }
+          }
+          this._addLog(`Mercenary contract "${mc.name}" has expired. Units dismissed.`);
+          s.mercContracts.splice(mi, 1);
+        }
+      }
+
+      // -----------------------------------------------------------------------
+      // Siege equipment building
+      // -----------------------------------------------------------------------
+      for (const city of s.cities) {
+        if (city.factionId !== s.playerFaction) continue;
+        for (let si = city.siegeEquipment.length - 1; si >= 0; si--) {
+          const se = city.siegeEquipment[si];
+          se.daysLeft--;
+          if (se.daysLeft <= 0) {
+            const existing = s.playerSiegeEquip.find(e => e.type === se.type);
+            if (existing) existing.count++;
+            else s.playerSiegeEquip.push({ type: se.type, count: 1 });
+            const seDef = SIEGE_EQUIPMENT_DEFS.find(d => d.type === se.type);
+            this._addLog(`${seDef?.name ?? se.type} completed in ${city.name}!`);
+            city.siegeEquipment.splice(si, 1);
+          }
+        }
+      }
+
+      // -----------------------------------------------------------------------
+      // Victory condition checks
+      // -----------------------------------------------------------------------
+      const playerCities = s.cities.filter(c => c.factionId === s.playerFaction);
+      s.victoryProgress.conquest.citiesCaptured = playerCities.length;
+      s.victoryProgress.conquest.totalCities = s.cities.length;
+
+      let allianceCount = 0;
+      for (const faction of this._getNonPlayerFactions()) {
+        if (this._getRelationStatus(s.playerFaction, faction) === "friendly") allianceCount++;
+      }
+      s.victoryProgress.diplomatic.alliances = allianceCount;
+      s.victoryProgress.diplomatic.required = VICTORY_ALLIANCE_REQUIRED;
+
+      s.totalGoldEarned += GOLD_PER_DAY + Math.round(ownedCities.length * 30 * merchantMult) + Math.round(villageIncome * merchantMult);
+      s.victoryProgress.economic.goldAccumulated = s.totalGoldEarned;
+      s.victoryProgress.economic.target = VICTORY_ECONOMIC_TARGET;
+
+      // Check win conditions
+      if (playerCities.length === s.cities.length) {
+        s.gameOver = true;
+        s.winner = s.playerFaction;
+        this._addLog("CONQUEST VICTORY! You have captured all cities!");
+      } else if (allianceCount >= VICTORY_ALLIANCE_REQUIRED) {
+        s.gameOver = true;
+        s.winner = s.playerFaction;
+        this._addLog("DIPLOMATIC VICTORY! You have formed enough alliances!");
+      } else if (s.totalGoldEarned >= VICTORY_ECONOMIC_TARGET) {
+        s.gameOver = true;
+        s.winner = s.playerFaction;
+        this._addLog("ECONOMIC VICTORY! Your wealth knows no bounds!");
       }
     }
 
@@ -2602,6 +3515,19 @@ export class WarbandCampaign {
       ctx.drawImage(this._groundTexture, 0, 0);
     } else {
       ctx.fillStyle = "#2a3520";
+      ctx.fillRect(0, 0, MAP_W, MAP_H);
+    }
+
+    // ---- Season tint overlay -----------
+    {
+      const seasonTints: Record<string, [number, number, number, number]> = {
+        spring: [60, 180, 60, 0.04],
+        summer: [220, 180, 50, 0.05],
+        autumn: [200, 120, 40, 0.05],
+        winter: [180, 200, 240, 0.06],
+      };
+      const st = seasonTints[s.season] || seasonTints.spring;
+      ctx.fillStyle = `rgba(${st[0]},${st[1]},${st[2]},${st[3]})`;
       ctx.fillRect(0, 0, MAP_W, MAP_H);
     }
 
@@ -3323,6 +4249,37 @@ export class WarbandCampaign {
         }
       }
 
+      // ---- Lord crown + name for lord-led parties ----
+      if (party.lordId) {
+        const lord = s.lords.find(l => l.id === party.lordId);
+        if (lord && !lord.capturedBy) {
+          const crownY = party.y - pr - 22;
+          ctx.fillStyle = `rgba(${cr},${cg},${cb},0.9)`;
+          ctx.beginPath();
+          ctx.moveTo(party.x - 5, crownY + 4);
+          ctx.lineTo(party.x - 5, crownY);
+          ctx.lineTo(party.x - 2.5, crownY + 2);
+          ctx.lineTo(party.x, crownY - 2);
+          ctx.lineTo(party.x + 2.5, crownY + 2);
+          ctx.lineTo(party.x + 5, crownY);
+          ctx.lineTo(party.x + 5, crownY + 4);
+          ctx.closePath();
+          ctx.fill();
+          ctx.strokeStyle = "rgba(255,215,0,0.6)";
+          ctx.lineWidth = 0.8;
+          ctx.stroke();
+          ctx.font = "bold 7px 'Segoe UI', sans-serif";
+          ctx.textAlign = "center";
+          const lnW = ctx.measureText(lord.name).width + 6;
+          ctx.fillStyle = "rgba(10,8,5,0.7)";
+          ctx.beginPath();
+          ctx.roundRect(party.x - lnW / 2, crownY - 13, lnW, 10, 2);
+          ctx.fill();
+          ctx.fillStyle = `rgba(${Math.min(255, cr + 60)},${Math.min(255, cg + 60)},${Math.min(255, cb + 40)},0.9)`;
+          ctx.fillText(lord.name, party.x, crownY - 5);
+        }
+      }
+
       // Party name for larger armies
       if (threatLevel >= 1) {
         ctx.fillStyle = `rgba(${cr},${cg},${cb},0.5)`;
@@ -3518,6 +4475,42 @@ export class WarbandCampaign {
       ctx.fillText(npc.name, npc.x, npc.y + 12);
     }
 
+    // ---- Unrecruited companion markers ----
+    const companionColors: Record<string, string> = {
+      warrior: "#cc6644", archer: "#66cc44", mage: "#6644cc", scout: "#cccc44",
+    };
+    for (const comp of s.companions) {
+      if (comp.recruited) continue;
+      const compCx = comp.locationX, compCy = comp.locationY;
+      const compCell = Math.floor(compCy / FOG_CELL_SIZE) * FOG_GRID_W + Math.floor(compCx / FOG_CELL_SIZE);
+      if (!s.fogRevealed.has(compCell)) continue;
+      const cc = companionColors[comp.class] || "#aaa";
+      const ccR = parseInt(cc.slice(1, 3), 16), ccG = parseInt(cc.slice(3, 5), 16), ccB = parseInt(cc.slice(5, 7), 16);
+      const gPulse = 0.12 + Math.sin(t * 3 + compCx * 0.1 + compCy * 0.1) * 0.08;
+      ctx.fillStyle = `rgba(${ccR},${ccG},${ccB},${gPulse})`;
+      ctx.beginPath();
+      ctx.arc(compCx, compCy, 10, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = cc;
+      ctx.beginPath();
+      ctx.moveTo(compCx, compCy - 5);
+      ctx.lineTo(compCx + 4, compCy);
+      ctx.lineTo(compCx, compCy + 5);
+      ctx.lineTo(compCx - 4, compCy);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.3)";
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+      ctx.fillStyle = "rgba(255,255,255,0.7)";
+      ctx.font = "bold 6px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(comp.class[0].toUpperCase(), compCx, compCy + 2);
+      ctx.fillStyle = cc;
+      ctx.font = "7px 'Segoe UI', sans-serif";
+      ctx.fillText(comp.name, compCx, compCy + 13);
+    }
+
     // ---- Event markers on map ----------------------
     for (const evt of s.events) {
       if (!evt.active) continue;
@@ -3582,6 +4575,52 @@ export class WarbandCampaign {
     }
 
     ctx.restore();
+
+    // ---- Morale / Food HUD (screen-space, bottom-right) ----
+    {
+      const hudX = w - 230, hudY = h - 100;
+      const panelW = 120, panelH = 52;
+      ctx.fillStyle = "rgba(12,10,6,0.82)";
+      ctx.strokeStyle = "rgba(80,65,40,0.5)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.roundRect(hudX, hudY, panelW, panelH, 4);
+      ctx.fill();
+      ctx.stroke();
+      const food = Math.floor(s.food);
+      const foodColor = food > 30 ? "#66cc66" : food > 10 ? "#cccc44" : "#cc4444";
+      ctx.fillStyle = "#c8a050";
+      ctx.beginPath();
+      ctx.ellipse(hudX + 12, hudY + 14, 5, 3.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = foodColor;
+      ctx.font = "bold 10px sans-serif";
+      ctx.textAlign = "left";
+      ctx.fillText(`${food}`, hudX + 22, hudY + 17);
+      ctx.fillStyle = "rgba(160,140,110,0.6)";
+      ctx.font = "7px sans-serif";
+      ctx.fillText("food", hudX + 22 + ctx.measureText(`${food}`).width + 3, hudY + 17);
+      const morale = Math.max(0, Math.min(100, s.campaignMorale));
+      const barX = hudX + 8, barY = hudY + 28, barW = panelW - 16, barH = 8;
+      ctx.fillStyle = "rgba(160,140,110,0.6)";
+      ctx.font = "7px sans-serif";
+      ctx.textAlign = "left";
+      ctx.fillText("morale", barX, barY - 1);
+      ctx.fillStyle = "rgba(30,25,15,0.8)";
+      ctx.beginPath();
+      ctx.roundRect(barX, barY + 2, barW, barH, 2);
+      ctx.fill();
+      const moraleW = (morale / 100) * barW;
+      const moraleColor = morale > 60 ? "#66aa44" : morale > 30 ? "#ccaa33" : "#cc4433";
+      ctx.fillStyle = moraleColor;
+      ctx.beginPath();
+      ctx.roundRect(barX, barY + 2, moraleW, barH, 2);
+      ctx.fill();
+      ctx.fillStyle = "#d0c8b0";
+      ctx.font = "bold 7px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(`${Math.round(morale)}`, barX + barW / 2, barY + 9);
+    }
 
     // ---- Minimap (bottom-right) ---------------
     this._renderMinimap(ctx, w, h);
@@ -3805,45 +4844,47 @@ export class WarbandCampaign {
     player.maxHp = 200 + veteranBonus;
     this._battleState.fighters.push(player);
 
-    // Spawn player army units
+    // Spawn player army units using deployment formation
+    const totalAllies = this._battlePlayerArmy.reduce((sum, e) => sum + e.count, 0);
+    const allyPositions = this._getDeploymentPositions(totalAllies, this._deploymentFormation, "player", halfW);
     let allyIdx = 0;
     for (const entry of this._battlePlayerArmy) {
       const uDef = this._findCampaignUnit(entry.unitId);
       if (!uDef) continue;
       for (let n = 0; n < entry.count; n++) {
-        const row = Math.floor(allyIdx / 10);
-        const col = allyIdx % 10;
-        const x = (col - 4.5) * 2.5;
-        const z = 12 + row * 2.5;
+        const pos = allyPositions[allyIdx] || { x: (allyIdx % 10 - 4.5) * 2.5, z: 12 + Math.floor(allyIdx / 10) * 2.5 };
         const ally = createDefaultFighter(
           `ally_${allyIdx}`,
           uDef.name,
           "player",
           false,
-          vec3(Math.max(-halfW + 2, Math.min(halfW - 2, x)), 0, z),
+          vec3(Math.max(-halfW + 2, Math.min(halfW - 2, pos.x)), 0, pos.z),
         );
         this._equipCampaignUnit(ally, uDef, this._battleState!);
+        // Apply flanking damage bonus
+        if (this._state && this._state.flankingBonus > 0 && ally.ai) {
+          ally.ai.aggressiveness = Math.min(1, (ally.ai.aggressiveness ?? 0.5) + this._state.flankingBonus);
+        }
         this._battleState.fighters.push(ally);
         allyIdx++;
       }
     }
 
     // Spawn enemy army units
+    const totalEnemies = this._battleEnemyArmy.reduce((sum, e) => sum + e.count, 0);
+    const enemyPositions = this._getDeploymentPositions(totalEnemies, "line", "enemy", halfW);
     let enemyIdx = 0;
     for (const entry of this._battleEnemyArmy) {
       const uDef = this._findCampaignUnit(entry.unitId);
       if (!uDef) continue;
       for (let n = 0; n < entry.count; n++) {
-        const row = Math.floor(enemyIdx / 10);
-        const col = enemyIdx % 10;
-        const x = (col - 4.5) * 2.5;
-        const z = -12 - row * 2.5;
+        const pos = enemyPositions[enemyIdx] || { x: (enemyIdx % 10 - 4.5) * 2.5, z: -12 - Math.floor(enemyIdx / 10) * 2.5 };
         const enemy = createDefaultFighter(
           `enemy_${enemyIdx}`,
           uDef.name,
           "enemy",
           false,
-          vec3(Math.max(-halfW + 2, Math.min(halfW - 2, x)), 0, z),
+          vec3(Math.max(-halfW + 2, Math.min(halfW - 2, pos.x)), 0, pos.z),
         );
         this._equipCampaignUnit(enemy, uDef, this._battleState!);
         this._battleState.fighters.push(enemy);
@@ -4638,6 +5679,272 @@ export class WarbandCampaign {
   }
 
   // ---------------------------------------------------------------------------
+  // Deployment panel, terrain, flanking & enhanced battle launch
+  // ---------------------------------------------------------------------------
+
+  private _showDeploymentPanel(callback: () => void): void {
+    this._removeDeploymentPanel();
+    const panel = document.createElement("div");
+    this._deploymentPanel = panel;
+    Object.assign(panel.style, {
+      position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)",
+      width: "520px", maxHeight: "80vh", overflowY: "auto",
+      background: "rgba(15,12,8,0.97)", border: "2px solid #daa520",
+      borderRadius: "8px", padding: "24px", zIndex: "10000",
+      color: "#e8dcc8", fontFamily: "'Cinzel',serif",
+      boxShadow: "0 0 40px rgba(0,0,0,0.8), inset 0 0 20px rgba(218,165,32,0.05)",
+    });
+
+    const title = document.createElement("h2");
+    title.textContent = "Deploy Your Forces";
+    Object.assign(title.style, { textAlign: "center", color: "#daa520", margin: "0 0 16px", fontSize: "20px" });
+    panel.appendChild(title);
+
+    const formations: { id: "line" | "wedge" | "flanking" | "defensive"; label: string; desc: string; diagram: string }[] = [
+      { id: "line", label: "Line Formation", desc: "Ranks of soldiers in orderly rows. Balanced offense and defense.",
+        diagram: "  xxxxxxxxxx\n  xxxxxxxxxx\n  xxxxxxxxxx" },
+      { id: "wedge", label: "Wedge Formation", desc: "V-shape charge. Melee leads, ranged supports from behind.",
+        diagram: "      x\n     xxx\n    xxxxx\n   rrr rrr" },
+      { id: "flanking", label: "Flanking Formation", desc: "Two groups on left and right. Envelop the enemy.",
+        diagram: "  xxxx      xxxx\n  xxxx      xxxx\n  xxxx      xxxx" },
+      { id: "defensive", label: "Defensive Circle", desc: "Tight rings with archers in center. Maximum protection.",
+        diagram: "    xxxxx\n   x rrr x\n   x rrr x\n    xxxxx" },
+    ];
+
+    let selected = this._deploymentFormation;
+
+    const optionEls: HTMLDivElement[] = [];
+    for (const f of formations) {
+      const opt = document.createElement("div");
+      Object.assign(opt.style, {
+        border: f.id === selected ? "2px solid #daa520" : "1px solid #5a4a2a",
+        borderRadius: "6px", padding: "12px", marginBottom: "10px", cursor: "pointer",
+        background: f.id === selected ? "rgba(218,165,32,0.12)" : "rgba(30,24,16,0.6)",
+        transition: "border-color 0.2s, background 0.2s",
+      });
+      opt.innerHTML = `<div style="font-size:15px;color:#daa520;font-weight:bold;margin-bottom:4px">${f.label}</div>` +
+        `<div style="font-size:12px;color:#b0a080;margin-bottom:8px">${f.desc}</div>` +
+        `<pre style="font-size:11px;color:#8a7a5a;margin:0;line-height:1.3;font-family:monospace">${f.diagram}</pre>`;
+      opt.addEventListener("click", () => {
+        selected = f.id;
+        optionEls.forEach((el, i) => {
+          const isSel = formations[i].id === selected;
+          el.style.border = isSel ? "2px solid #daa520" : "1px solid #5a4a2a";
+          el.style.background = isSel ? "rgba(218,165,32,0.12)" : "rgba(30,24,16,0.6)";
+        });
+      });
+      optionEls.push(opt);
+      panel.appendChild(opt);
+    }
+
+    const terrainLabel = this._getBattleTerrain();
+    if (terrainLabel) {
+      const tDiv = document.createElement("div");
+      tDiv.textContent = `Terrain: ${terrainLabel}`;
+      Object.assign(tDiv.style, { textAlign: "center", color: "#8a7a5a", fontSize: "13px", margin: "8px 0" });
+      panel.appendChild(tDiv);
+    }
+
+    const btnRow = document.createElement("div");
+    Object.assign(btnRow.style, { display: "flex", gap: "12px", justifyContent: "center", marginTop: "16px" });
+
+    const makeBtn = (text: string, gold: boolean) => {
+      const btn = document.createElement("button");
+      btn.textContent = text;
+      Object.assign(btn.style, {
+        padding: "8px 28px", fontSize: "14px", fontFamily: "'Cinzel',serif", cursor: "pointer",
+        border: gold ? "2px solid #daa520" : "1px solid #5a4a2a", borderRadius: "4px",
+        background: gold ? "rgba(218,165,32,0.2)" : "rgba(40,32,20,0.8)",
+        color: gold ? "#daa520" : "#8a7a5a",
+      });
+      btn.addEventListener("mouseenter", () => { btn.style.background = gold ? "rgba(218,165,32,0.35)" : "rgba(60,48,30,0.8)"; });
+      btn.addEventListener("mouseleave", () => { btn.style.background = gold ? "rgba(218,165,32,0.2)" : "rgba(40,32,20,0.8)"; });
+      return btn;
+    };
+
+    const confirmBtn = makeBtn("March to Battle", true);
+    confirmBtn.addEventListener("click", () => {
+      this._deploymentFormation = selected;
+      this._removeDeploymentPanel();
+      callback();
+    });
+
+    const cancelBtn = makeBtn("Cancel", false);
+    cancelBtn.addEventListener("click", () => {
+      this._removeDeploymentPanel();
+      if (this._state) { this._state.paused = false; this._inBattle = false; }
+    });
+
+    btnRow.appendChild(confirmBtn);
+    btnRow.appendChild(cancelBtn);
+    panel.appendChild(btnRow);
+    document.body.appendChild(panel);
+  }
+
+  private _removeDeploymentPanel(): void {
+    if (this._deploymentPanel) { this._deploymentPanel.remove(); this._deploymentPanel = null; }
+  }
+
+  private _getDeploymentPositions(
+    count: number, formation: string, team: "player" | "enemy", halfW: number,
+  ): { x: number; z: number }[] {
+    const positions: { x: number; z: number }[] = [];
+    const sign = team === "player" ? 1 : -1;
+    const baseZ = sign * 12;
+
+    const clampX = (x: number) => Math.max(-halfW + 2, Math.min(halfW - 2, x));
+
+    if (formation === "wedge") {
+      // V-shape: row 0 has 1 unit, row 1 has 3, row 2 has 5, etc.
+      let placed = 0;
+      let row = 0;
+      while (placed < count) {
+        const unitsInRow = row * 2 + 1;
+        for (let c = 0; c < unitsInRow && placed < count; c++) {
+          const x = (c - (unitsInRow - 1) / 2) * 2.5;
+          const z = baseZ + sign * row * 2.5;
+          positions.push({ x: clampX(x), z });
+          placed++;
+        }
+        row++;
+      }
+    } else if (formation === "flanking") {
+      // Split into two groups, left and right
+      const leftCount = Math.ceil(count / 2);
+      const rightCount = count - leftCount;
+      const groupOffsetX = 10;
+      // Left group
+      for (let i = 0; i < leftCount; i++) {
+        const row = Math.floor(i / 5);
+        const col = i % 5;
+        const x = -groupOffsetX + (col - 2) * 2.5;
+        const z = baseZ + sign * row * 2.5;
+        positions.push({ x: clampX(x), z });
+      }
+      // Right group
+      for (let i = 0; i < rightCount; i++) {
+        const row = Math.floor(i / 5);
+        const col = i % 5;
+        const x = groupOffsetX + (col - 2) * 2.5;
+        const z = baseZ + sign * row * 2.5;
+        positions.push({ x: clampX(x), z });
+      }
+    } else if (formation === "defensive") {
+      // Concentric rings with tight spacing
+      const ringSpacing = 2.0;
+      let placed = 0;
+      let ring = 0;
+      while (placed < count) {
+        if (ring === 0) {
+          // Center cluster (archers/ranged)
+          const centerCount = Math.min(count, 4);
+          for (let i = 0; i < centerCount && placed < count; i++) {
+            const angle = (i / centerCount) * Math.PI * 2;
+            const x = Math.cos(angle) * 1.2;
+            const z = baseZ + Math.sin(angle) * 1.2;
+            positions.push({ x: clampX(x), z });
+            placed++;
+          }
+        } else {
+          const circumference = 2 * Math.PI * ring * ringSpacing;
+          const unitsInRing = Math.min(Math.floor(circumference / 2.0), count - placed);
+          for (let i = 0; i < unitsInRing && placed < count; i++) {
+            const angle = (i / unitsInRing) * Math.PI * 2;
+            const radius = ring * ringSpacing;
+            const x = Math.cos(angle) * radius;
+            const z = baseZ + Math.sin(angle) * radius;
+            positions.push({ x: clampX(x), z });
+            placed++;
+          }
+        }
+        ring++;
+        if (ring > 20) break; // safety
+      }
+    } else {
+      // "line" (default): Rows of 10, spacing 2.5
+      for (let i = 0; i < count; i++) {
+        const row = Math.floor(i / 10);
+        const col = i % 10;
+        const x = (col - 4.5) * 2.5;
+        const z = baseZ + sign * row * 2.5;
+        positions.push({ x: clampX(x), z });
+      }
+    }
+
+    return positions;
+  }
+
+  private _getBattleTerrain(): string | null {
+    if (!this._state) return null;
+    const px = this._state.playerParty.x;
+    const py = this._state.playerParty.y;
+    const result = _getTerrainAt(px, py, this._state.terrain);
+    if (result) {
+      this._battleTerrainType = result.name;
+      return result.name;
+    }
+    this._battleTerrainType = null;
+    return "plains";
+  }
+
+  private _calculateFlankingBonus(playerParty: CampaignParty, enemyParty: CampaignParty): number {
+    // Compute approach angle relative to enemy heading
+    const dx = playerParty.x - enemyParty.x;
+    const dy = playerParty.y - enemyParty.y;
+    const approachAngle = Math.atan2(dy, dx); // angle from enemy to player
+
+    // Enemy heading: use explicit heading, or derive from movement direction
+    let enemyHeading: number;
+    if (enemyParty.heading != null) {
+      enemyHeading = enemyParty.heading;
+    } else {
+      const edx = enemyParty.targetX - enemyParty.x;
+      const edy = enemyParty.targetY - enemyParty.y;
+      enemyHeading = Math.atan2(edy, edx);
+    }
+
+    // The enemy "faces" along enemyHeading. Their back is enemyHeading + PI.
+    // Angle difference between approach and enemy's back
+    const backAngle = enemyHeading + Math.PI;
+    let diff = approachAngle - backAngle;
+    // Normalize to [-PI, PI]
+    while (diff > Math.PI) diff -= 2 * Math.PI;
+    while (diff < -Math.PI) diff += 2 * Math.PI;
+    const absDiff = Math.abs(diff);
+
+    // 0 diff = perfect rear attack (max bonus 0.3)
+    // PI/2 diff = side attack (partial bonus ~0.15)
+    // PI diff = frontal (0 bonus)
+    const bonus = Math.max(0, 0.3 * (1 - absDiff / Math.PI));
+    return bonus;
+  }
+
+  private _startPartyBattleWithDeployment(enemy: CampaignParty): void {
+    if (!this._state || this._inBattle) return;
+    this._inBattle = true;
+    this._state.paused = true;
+    this._battleEnemyPartyId = enemy.id;
+    this._battleEnemyCityId = null;
+    this._battleLocationId = null;
+    this._battlePlayerArmy = this._state.playerParty.army.map((a) => ({ ...a }));
+    this._battleEnemyArmy = enemy.army.map((a) => ({ ...a }));
+
+    // Calculate flanking bonus and store on state
+    const flank = this._calculateFlankingBonus(this._state.playerParty, enemy);
+    this._state.flankingBonus = flank;
+    if (flank > 0.05) {
+      this._addLog(`Flanking bonus: +${Math.round(flank * 100)}% damage advantage!`);
+    }
+
+    this._addLog(`Battle! Your warband (${this._state.playerParty.armyTotal}) vs ${enemy.name} (${enemy.armyTotal})`);
+
+    // Show deployment panel, then launch battle on confirm
+    this._showDeploymentPanel(() => {
+      this._launchBattle();
+    });
+  }
+
+  // ---------------------------------------------------------------------------
   // Battle preview panel
   // ---------------------------------------------------------------------------
 
@@ -4707,7 +6014,7 @@ export class WarbandCampaign {
       const enemyRef = this._state?.battlePreviewEnemy;
       this._removeBattlePreview();
       if (this._state) this._state.battlePreviewEnemy = null;
-      if (enemyRef) this._startPartyBattle(enemyRef);
+      if (enemyRef) this._startPartyBattleWithDeployment(enemyRef);
     });
 
     document.getElementById("camp-preview-retreat")?.addEventListener("click", () => {
@@ -5361,6 +6668,38 @@ export class WarbandCampaign {
       const canGift = s.gold >= 500;
       const canDemand = ourArmy >= theirArmy * 2;
       const canAlliance = rel > 30;
+      const isAtWar = status === "hostile";
+      const canDeclareWar = !isAtWar;
+      const canTradeAgreement = rel > 0 && !s.tradeAgreements.some(
+        (ta) => (ta.factionA === s.playerFaction && ta.factionB === fId) || (ta.factionA === fId && ta.factionB === s.playerFaction)
+      );
+      const hasTradeAgreement = s.tradeAgreements.some(
+        (ta) => (ta.factionA === s.playerFaction && ta.factionB === fId) || (ta.factionA === fId && ta.factionB === s.playerFaction)
+      );
+
+      // Captured lords from this faction
+      const capturedLords = s.lords.filter((l) => l.factionId === fId && l.capturedBy === s.playerFaction);
+      let ransomHTML = "";
+      if (capturedLords.length > 0) {
+        ransomHTML = `
+          <div style="margin-top:8px;border-top:1px solid #332211;padding-top:8px">
+            <div style="color:#aa8844;font-size:10px;margin-bottom:4px;letter-spacing:1px">CAPTURED LORDS</div>
+            ${capturedLords.map((lord) => {
+              const ransomCost = 200 + lord.level * 100;
+              return `
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:3px 6px;margin-bottom:2px;
+                  background:rgba(20,15,10,0.5);border-radius:3px;border:1px solid #332211">
+                  <span style="color:#ccc;font-size:11px">${lord.name}</span>
+                  <button class="diplo-ransom-btn" data-lord="${lord.id}" data-ransom="${ransomCost}" data-faction="${fId}" style="
+                    padding:2px 8px;font-size:10px;border:1px solid #daa520;border-radius:3px;
+                    background:rgba(218,165,32,0.15);color:#daa520;cursor:pointer;font-family:inherit;
+                  ">Ransom for ${ransomCost}g</button>
+                </div>
+              `;
+            }).join("")}
+          </div>
+        `;
+      }
 
       factionsHTML += `
         <div style="margin-bottom:14px;padding:12px;background:rgba(30,25,15,0.5);border:1px solid ${fColor};border-radius:6px">
@@ -5372,6 +6711,7 @@ export class WarbandCampaign {
             <span>Cities: ${citiesCount}</span>
             <span>Parties: ${partiesCount}</span>
             <span>Army: ${theirArmy}</span>
+            ${hasTradeAgreement ? `<span style="color:#44aa88">\u2611 Trade Agreement</span>` : ""}
           </div>
           <!-- Relation bar -->
           <div style="height:8px;background:rgba(40,30,20,0.8);border-radius:4px;margin-bottom:10px;overflow:hidden;border:1px solid #332211">
@@ -5393,7 +6733,18 @@ export class WarbandCampaign {
               border-radius:4px;background:${canAlliance ? "rgba(68,204,68,0.15)" : "rgba(20,15,10,0.6)"};
               color:${canAlliance ? "#44cc44" : "#555"};cursor:${canAlliance ? "pointer" : "not-allowed"};font-family:inherit;
             " ${canAlliance ? "" : "disabled"}>Propose Alliance (+30 req)</button>
+            <button class="diplo-war-btn" data-faction="${fId}" style="
+              padding:4px 12px;font-size:11px;border:1px solid ${canDeclareWar ? "#cc3333" : "#444"};
+              border-radius:4px;background:${canDeclareWar ? "rgba(204,51,51,0.15)" : "rgba(20,15,10,0.6)"};
+              color:${canDeclareWar ? "#cc3333" : "#555"};cursor:${canDeclareWar ? "pointer" : "not-allowed"};font-family:inherit;
+            " ${canDeclareWar ? "" : "disabled"}>\u2694 Declare War</button>
+            <button class="diplo-trade-btn" data-faction="${fId}" style="
+              padding:4px 12px;font-size:11px;border:1px solid ${canTradeAgreement ? "#44aa88" : "#444"};
+              border-radius:4px;background:${canTradeAgreement ? "rgba(68,170,136,0.15)" : "rgba(20,15,10,0.6)"};
+              color:${canTradeAgreement ? "#44aa88" : "#555"};cursor:${canTradeAgreement ? "pointer" : "not-allowed"};font-family:inherit;
+            " ${canTradeAgreement ? "" : "disabled"}>\uD83E\uDD1D Trade Agreement</button>
           </div>
+          ${ransomHTML}
         </div>
       `;
     }
@@ -5468,12 +6819,690 @@ export class WarbandCampaign {
         }
       });
     });
+
+    // Bind declare war buttons
+    this._diplomacyPanel.querySelectorAll(".diplo-war-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const fId = (btn as HTMLElement).dataset.faction!;
+        if (!this._state) return;
+        const rel = this._getRelation(this._state.playerFaction, fId);
+        if (this._getRelationStatus(this._state.playerFaction, fId) !== "hostile") {
+          // Set relation to -100
+          this._modRelation(this._state.playerFaction, fId, -100 - rel);
+          this._state.warDeclarations.push({ aggressor: this._state.playerFaction, target: fId, day: this._state.day });
+          // Remove any existing trade agreement
+          this._state.tradeAgreements = this._state.tradeAgreements.filter(
+            (ta) => !((ta.factionA === this._state!.playerFaction && ta.factionB === fId) || (ta.factionA === fId && ta.factionB === this._state!.playerFaction))
+          );
+          this._addLog(`Declared war on ${fId}! All diplomatic ties severed.`);
+          this._showDiplomacyPanel(); // refresh
+        }
+      });
+    });
+
+    // Bind trade agreement buttons
+    this._diplomacyPanel.querySelectorAll(".diplo-trade-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const fId = (btn as HTMLElement).dataset.faction!;
+        if (!this._state) return;
+        const rel = this._getRelation(this._state.playerFaction, fId);
+        const alreadyHas = this._state.tradeAgreements.some(
+          (ta) => (ta.factionA === this._state!.playerFaction && ta.factionB === fId) || (ta.factionA === fId && ta.factionB === this._state!.playerFaction)
+        );
+        if (rel > 0 && !alreadyHas) {
+          this._state.tradeAgreements.push({ factionA: this._state.playerFaction, factionB: fId, startDay: this._state.day });
+          this._modRelation(this._state.playerFaction, fId, 10);
+          this._addLog(`Trade agreement established with ${fId}! +15% trade profits between your cities.`);
+          this._showDiplomacyPanel(); // refresh
+        }
+      });
+    });
+
+    // Bind ransom buttons
+    this._diplomacyPanel.querySelectorAll(".diplo-ransom-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const lordId = (btn as HTMLElement).dataset.lord!;
+        const ransomGold = parseInt((btn as HTMLElement).dataset.ransom ?? "0");
+        const fId = (btn as HTMLElement).dataset.faction!;
+        if (!this._state) return;
+        const lord = this._state.lords.find((l) => l.id === lordId);
+        if (lord && lord.capturedBy === this._state.playerFaction) {
+          lord.capturedBy = null;
+          this._state.gold += ransomGold;
+          this._modRelation(this._state.playerFaction, fId, 10);
+          this._addLog(`Ransomed ${lord.name} for ${ransomGold}g. Relations with ${fId} improved.`);
+          this._showDiplomacyPanel(); // refresh
+        }
+      });
+    });
   }
 
   private _removeDiplomacyPanel(): void {
     if (this._diplomacyPanel?.parentNode) {
       this._diplomacyPanel.parentNode.removeChild(this._diplomacyPanel);
       this._diplomacyPanel = null;
+    }
+    this._setCanvasPointerEvents(true);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Companion Panel
+  // ---------------------------------------------------------------------------
+
+  private _showCompanionPanel(): void {
+    if (!this._state) return;
+    this._removeCompanionPanel();
+    this._state.paused = true;
+    this._setCanvasPointerEvents(false);
+    const s = this._state;
+
+    this._companionPanel = document.createElement("div");
+    this._companionPanel.style.cssText = `
+      position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+      width:560px;max-height:85vh;overflow-y:auto;
+      background:rgba(15,12,8,0.97);border:2px solid #daa520;border-radius:10px;
+      padding:24px;z-index:10;
+    `;
+
+    const compsHTML = s.companions.map((c) => {
+      const loyaltyColor = c.loyalty > 60 ? "#66cc66" : c.loyalty > 30 ? "#cccc44" : "#cc4444";
+      return `
+        <div style="margin-bottom:8px;padding:10px;background:rgba(30,25,15,0.5);border:1px solid ${c.recruited ? "#daa520" : "#443322"};border-radius:6px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <span style="color:${c.recruited ? "#daa520" : "#ccc"};font-weight:bold;font-size:13px">${c.name}</span>
+            <span style="color:#998877;font-size:11px">${c.class} Lv${c.level}</span>
+          </div>
+          <div style="font-size:11px;color:#887766;margin-bottom:4px">${c.skillDesc}</div>
+          <div style="display:flex;gap:12px;font-size:11px;align-items:center">
+            <span style="color:${loyaltyColor}">Loyalty: ${c.loyalty}</span>
+            <span style="color:#776655">XP: ${c.xp}</span>
+            ${!c.recruited ? `
+              <button class="comp-recruit-btn" data-comp="${c.id}" style="
+                margin-left:auto;padding:3px 10px;font-size:11px;border:1px solid #daa520;border-radius:3px;
+                background:rgba(218,165,32,0.15);color:#daa520;cursor:pointer;font-family:inherit;
+              ">Recruit</button>
+            ` : `<span style="color:#557744;margin-left:auto">\u2713 Recruited</span>`}
+          </div>
+          ${c.quest ? `<div style="font-size:10px;color:#aa8844;margin-top:4px;border-top:1px solid #332211;padding-top:4px">Quest: ${c.quest.description}</div>` : ""}
+        </div>
+      `;
+    }).join("");
+
+    this._companionPanel.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h2 style="font-size:22px;color:#daa520;margin:0;letter-spacing:1px">COMPANIONS</h2>
+        <button id="comp-close" style="
+          padding:4px 12px;font-size:14px;border:1px solid #555;border-radius:4px;
+          background:rgba(30,25,15,0.6);color:#888;cursor:pointer;font-family:inherit;
+        ">X</button>
+      </div>
+      <div style="font-size:11px;color:#776655;margin-bottom:12px">
+        Recruited: ${s.companions.filter((c) => c.recruited).length}/${s.companions.length}
+      </div>
+      ${compsHTML}
+    `;
+
+    this._container!.appendChild(this._companionPanel);
+
+    document.getElementById("comp-close")?.addEventListener("click", () => {
+      this._removeCompanionPanel();
+      if (this._state) this._state.paused = false;
+    });
+
+    this._companionPanel.querySelectorAll(".comp-recruit-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const compId = (btn as HTMLElement).dataset.comp!;
+        if (!this._state) return;
+        const comp = this._state.companions.find((c) => c.id === compId);
+        if (comp && !comp.recruited) {
+          comp.recruited = true;
+          this._addLog(`${comp.name} the ${comp.class} has joined your warband!`);
+          this._showCompanionPanel(); // refresh
+        }
+      });
+    });
+  }
+
+  private _removeCompanionPanel(): void {
+    if (this._companionPanel?.parentNode) {
+      this._companionPanel.parentNode.removeChild(this._companionPanel);
+      this._companionPanel = null;
+    }
+    this._setCanvasPointerEvents(true);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Building Panel
+  // ---------------------------------------------------------------------------
+
+  private _showBuildingPanel(city: CampaignCity): void {
+    if (!this._state) return;
+    this._removeBuildingPanel();
+    this._state.paused = true;
+    this._setCanvasPointerEvents(false);
+    const s = this._state;
+
+    this._buildingPanel = document.createElement("div");
+    this._buildingPanel.style.cssText = `
+      position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+      width:520px;max-height:85vh;overflow-y:auto;
+      background:rgba(15,12,8,0.97);border:2px solid #daa520;border-radius:10px;
+      padding:24px;z-index:10;
+    `;
+
+    const buildingsHTML = BUILDING_DEFS.map((bDef) => {
+      const existing = city.buildings.find((b) => b.type === bDef.type);
+      const currentLevel = existing?.level ?? 0;
+      const canUpgrade = currentLevel < bDef.maxLevel;
+      const upgradeCost = bDef.baseCost * (currentLevel + 1);
+      const canAfford = s.gold >= upgradeCost;
+
+      return `
+        <div style="margin-bottom:8px;padding:10px;background:rgba(30,25,15,0.5);border:1px solid ${bDef.color};border-radius:6px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <span style="color:${bDef.color};font-weight:bold;font-size:13px">${bDef.name}</span>
+            <span style="color:#998877;font-size:11px">Level ${currentLevel}/${bDef.maxLevel}</span>
+          </div>
+          <div style="font-size:11px;color:#887766;margin-bottom:6px">${bDef.desc}</div>
+          ${canUpgrade ? `
+            <button class="build-upgrade-btn" data-type="${bDef.type}" data-cost="${upgradeCost}" style="
+              padding:4px 12px;font-size:11px;
+              border:1px solid ${canAfford ? bDef.color : "#444"};border-radius:3px;
+              background:${canAfford ? `${bDef.color}22` : "rgba(20,15,10,0.6)"};
+              color:${canAfford ? bDef.color : "#555"};
+              cursor:${canAfford ? "pointer" : "not-allowed"};font-family:inherit;
+            " ${canAfford ? "" : "disabled"}>Upgrade to Lv${currentLevel + 1} (${upgradeCost}g)</button>
+          ` : `<span style="color:#557744;font-size:11px">\u2713 Max Level</span>`}
+        </div>
+      `;
+    }).join("");
+
+    this._buildingPanel.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h2 style="font-size:22px;color:#daa520;margin:0;letter-spacing:1px">BUILDINGS — ${city.name}</h2>
+        <button id="build-close" style="
+          padding:4px 12px;font-size:14px;border:1px solid #555;border-radius:4px;
+          background:rgba(30,25,15,0.6);color:#888;cursor:pointer;font-family:inherit;
+        ">X</button>
+      </div>
+      <div style="font-size:11px;color:#776655;margin-bottom:12px">
+        Gold: ${s.gold} | Buildings: ${city.buildings.length}
+      </div>
+      ${buildingsHTML}
+    `;
+
+    this._container!.appendChild(this._buildingPanel);
+
+    document.getElementById("build-close")?.addEventListener("click", () => {
+      this._removeBuildingPanel();
+      if (this._state) this._state.paused = false;
+    });
+
+    this._buildingPanel.querySelectorAll(".build-upgrade-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const bType = (btn as HTMLElement).dataset.type as BuildingType;
+        const cost = parseInt((btn as HTMLElement).dataset.cost ?? "0");
+        if (!this._state || this._state.gold < cost) return;
+        this._state.gold -= cost;
+        const existing = city.buildings.find((b) => b.type === bType);
+        if (existing) {
+          existing.level++;
+        } else {
+          city.buildings.push({ type: bType, level: 1 });
+        }
+        this._addLog(`Built ${BUILDING_DEFS.find((d) => d.type === bType)?.name ?? bType} (Lv${(existing?.level ?? 1)}) in ${city.name} for ${cost}g.`);
+        this._showBuildingPanel(city); // refresh
+      });
+    });
+  }
+
+  private _removeBuildingPanel(): void {
+    if (this._buildingPanel?.parentNode) {
+      this._buildingPanel.parentNode.removeChild(this._buildingPanel);
+      this._buildingPanel = null;
+    }
+    this._setCanvasPointerEvents(true);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Trade Panel
+  // ---------------------------------------------------------------------------
+
+  private _showTradePanel(city: CampaignCity): void {
+    if (!this._state) return;
+    this._removeTradePanel();
+    this._state.paused = true;
+    this._setCanvasPointerEvents(false);
+    const s = this._state;
+
+    this._tradePanel = document.createElement("div");
+    this._tradePanel.style.cssText = `
+      position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+      width:520px;max-height:85vh;overflow-y:auto;
+      background:rgba(15,12,8,0.97);border:2px solid #cc8844;border-radius:10px;
+      padding:24px;z-index:10;
+    `;
+
+    const goodsHTML = city.tradeGoods.map((slot, i) => {
+      const canBuy = s.gold >= slot.price && slot.stock > 0;
+      return `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;
+          margin-bottom:4px;background:rgba(30,25,15,0.6);border-radius:4px;border:1px solid #332211">
+          <span style="color:#ccc;font-size:12px">${slot.good}</span>
+          <span style="color:#998877;font-size:11px">Stock: ${slot.stock} | ${slot.price}g</span>
+          <button class="trade-buy-btn" data-idx="${i}" style="
+            padding:2px 10px;font-size:11px;
+            border:1px solid ${canBuy ? "#cc8844" : "#444"};border-radius:3px;
+            background:${canBuy ? "rgba(204,136,68,0.2)" : "rgba(20,15,10,0.6)"};
+            color:${canBuy ? "#cc8844" : "#555"};
+            cursor:${canBuy ? "pointer" : "not-allowed"};font-family:inherit;
+          " ${canBuy ? "" : "disabled"}>Buy</button>
+        </div>
+      `;
+    }).join("");
+
+    this._tradePanel.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h2 style="font-size:22px;color:#cc8844;margin:0;letter-spacing:1px">TRADE — ${city.name}</h2>
+        <button id="trade-close" style="
+          padding:4px 12px;font-size:14px;border:1px solid #555;border-radius:4px;
+          background:rgba(30,25,15,0.6);color:#888;cursor:pointer;font-family:inherit;
+        ">X</button>
+      </div>
+      <div style="font-size:11px;color:#776655;margin-bottom:12px">
+        Gold: ${s.gold} | Trade Agreements: ${s.tradeAgreements.length}
+      </div>
+      ${goodsHTML || `<div style="color:#666;font-size:12px">No goods available.</div>`}
+    `;
+
+    this._container!.appendChild(this._tradePanel);
+
+    document.getElementById("trade-close")?.addEventListener("click", () => {
+      this._removeTradePanel();
+      if (this._state) this._state.paused = false;
+    });
+
+    this._tradePanel.querySelectorAll(".trade-buy-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const idx = parseInt((btn as HTMLElement).dataset.idx ?? "0");
+        if (!this._state) return;
+        const slot = city.tradeGoods[idx];
+        if (slot && this._state.gold >= slot.price && slot.stock > 0) {
+          this._state.gold -= slot.price;
+          slot.stock--;
+          this._addLog(`Bought ${slot.good} from ${city.name} for ${slot.price}g.`);
+          this._showTradePanel(city); // refresh
+        }
+      });
+    });
+  }
+
+  private _removeTradePanel(): void {
+    if (this._tradePanel?.parentNode) {
+      this._tradePanel.parentNode.removeChild(this._tradePanel);
+      this._tradePanel = null;
+    }
+    this._setCanvasPointerEvents(true);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Siege Equipment Panel
+  // ---------------------------------------------------------------------------
+
+  private _showSiegeEquipPanel(city: CampaignCity): void {
+    if (!this._state) return;
+    this._removeSiegeEquipPanel();
+    this._state.paused = true;
+    this._setCanvasPointerEvents(false);
+    const s = this._state;
+
+    this._siegeEquipPanel = document.createElement("div");
+    this._siegeEquipPanel.style.cssText = `
+      position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+      width:500px;max-height:85vh;overflow-y:auto;
+      background:rgba(15,12,8,0.97);border:2px solid #666688;border-radius:10px;
+      padding:24px;z-index:10;
+    `;
+
+    const workshopLevel = city.buildings.find((b) => b.type === "siege_workshop")?.level ?? 0;
+    const equipHTML = SIEGE_EQUIPMENT_DEFS.map((eq) => {
+      const canAfford = s.gold >= eq.cost;
+      const owned = s.playerSiegeEquip.find((e) => e.type === eq.type)?.count ?? 0;
+      const building = city.siegeEquipment.find((e) => e.type === eq.type);
+      return `
+        <div style="margin-bottom:8px;padding:10px;background:rgba(30,25,15,0.5);border:1px solid #555566;border-radius:6px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <span style="color:#8888aa;font-weight:bold;font-size:13px">${eq.name}</span>
+            <span style="color:#998877;font-size:11px">Owned: ${owned}${building ? ` | Building (${building.daysLeft}d)` : ""}</span>
+          </div>
+          <div style="font-size:11px;color:#887766;margin-bottom:6px">${eq.effect}</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span style="color:#776655;font-size:10px">${eq.cost}g, ${eq.buildTime} days</span>
+            <button class="siege-build-btn" data-type="${eq.type}" data-cost="${eq.cost}" style="
+              padding:3px 10px;font-size:11px;
+              border:1px solid ${canAfford ? "#666688" : "#444"};border-radius:3px;
+              background:${canAfford ? "rgba(102,102,136,0.2)" : "rgba(20,15,10,0.6)"};
+              color:${canAfford ? "#8888aa" : "#555"};
+              cursor:${canAfford ? "pointer" : "not-allowed"};font-family:inherit;
+            " ${canAfford ? "" : "disabled"}>Build</button>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    this._siegeEquipPanel.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h2 style="font-size:22px;color:#8888aa;margin:0;letter-spacing:1px">SIEGE WORKSHOP — ${city.name}</h2>
+        <button id="siege-close" style="
+          padding:4px 12px;font-size:14px;border:1px solid #555;border-radius:4px;
+          background:rgba(30,25,15,0.6);color:#888;cursor:pointer;font-family:inherit;
+        ">X</button>
+      </div>
+      <div style="font-size:11px;color:#776655;margin-bottom:12px">
+        Workshop Level: ${workshopLevel} | Gold: ${s.gold}
+      </div>
+      ${equipHTML}
+    `;
+
+    this._container!.appendChild(this._siegeEquipPanel);
+
+    document.getElementById("siege-close")?.addEventListener("click", () => {
+      this._removeSiegeEquipPanel();
+      if (this._state) this._state.paused = false;
+    });
+
+    this._siegeEquipPanel.querySelectorAll(".siege-build-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const eType = (btn as HTMLElement).dataset.type as SiegeEquipType;
+        const cost = parseInt((btn as HTMLElement).dataset.cost ?? "0");
+        if (!this._state || this._state.gold < cost) return;
+        this._state.gold -= cost;
+        const def = SIEGE_EQUIPMENT_DEFS.find((d) => d.type === eType);
+        city.siegeEquipment.push({ type: eType, daysLeft: def?.buildTime ?? 2 });
+        this._addLog(`Started building ${def?.name ?? eType} in ${city.name} for ${cost}g (${def?.buildTime ?? 2} days).`);
+        this._showSiegeEquipPanel(city); // refresh
+      });
+    });
+  }
+
+  private _removeSiegeEquipPanel(): void {
+    if (this._siegeEquipPanel?.parentNode) {
+      this._siegeEquipPanel.parentNode.removeChild(this._siegeEquipPanel);
+      this._siegeEquipPanel = null;
+    }
+    this._setCanvasPointerEvents(true);
+  }
+
+  // ---------------------------------------------------------------------------
+  // War Council Panel
+  // ---------------------------------------------------------------------------
+
+  private _showWarCouncilPanel(): void {
+    if (!this._state) return;
+    this._removeWarCouncilPanel();
+    this._state.paused = true;
+    this._setCanvasPointerEvents(false);
+    const s = this._state;
+
+    this._warCouncilPanel = document.createElement("div");
+    this._warCouncilPanel.style.cssText = `
+      position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+      width:580px;max-height:85vh;overflow-y:auto;
+      background:rgba(15,12,8,0.97);border:2px solid #cc6644;border-radius:10px;
+      padding:24px;z-index:10;
+    `;
+
+    const activeWars = s.warDeclarations.filter((w) => w.aggressor === s.playerFaction || w.target === s.playerFaction);
+    const warsHTML = activeWars.length > 0 ? activeWars.map((w) => {
+      const enemy = w.aggressor === s.playerFaction ? w.target : w.aggressor;
+      const fDef = CAMPAIGN_FACTIONS.find((f) => f.id === enemy);
+      const fColor = fDef ? `#${fDef.accentColor.toString(16).padStart(6, "0")}` : "#888";
+      const enemyCities = s.cities.filter((c) => c.factionId === enemy).length;
+      const enemyArmy = this._getFactionArmyTotal(enemy);
+      return `
+        <div style="padding:8px;margin-bottom:6px;background:rgba(40,20,15,0.5);border:1px solid ${fColor};border-radius:4px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="color:${fColor};font-weight:bold">${fDef?.name ?? enemy}</span>
+            <span style="color:#cc4444;font-size:11px">AT WAR (Day ${w.day})</span>
+          </div>
+          <div style="font-size:11px;color:#998877;margin-top:4px">Cities: ${enemyCities} | Army: ${enemyArmy}</div>
+        </div>
+      `;
+    }).join("") : `<div style="color:#666;font-size:12px">No active wars.</div>`;
+
+    // Lords info
+    const lordsHTML = s.lords.filter((l) => l.factionId === s.playerFaction || l.capturedBy === s.playerFaction).map((l) => {
+      const statusStr = l.capturedBy ? `Captured by ${l.capturedBy}` : `Active (Lv${l.level})`;
+      const color = l.capturedBy === s.playerFaction ? "#daa520" : l.capturedBy ? "#cc4444" : "#66aa66";
+      return `<div style="font-size:11px;color:${color};padding:2px 0">${l.name} — ${statusStr}</div>`;
+    }).join("");
+
+    this._warCouncilPanel.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h2 style="font-size:22px;color:#cc6644;margin:0;letter-spacing:1px">WAR COUNCIL</h2>
+        <button id="warcouncil-close" style="
+          padding:4px 12px;font-size:14px;border:1px solid #555;border-radius:4px;
+          background:rgba(30,25,15,0.6);color:#888;cursor:pointer;font-family:inherit;
+        ">X</button>
+      </div>
+      <div style="margin-bottom:14px">
+        <div style="color:#cc6644;font-size:13px;margin-bottom:8px;letter-spacing:1px">ACTIVE WARS</div>
+        ${warsHTML}
+      </div>
+      <div style="margin-bottom:14px">
+        <div style="color:#cc6644;font-size:13px;margin-bottom:8px;letter-spacing:1px">SIEGE INVENTORY</div>
+        ${s.playerSiegeEquip.length > 0
+          ? s.playerSiegeEquip.map((eq) => {
+              const def = SIEGE_EQUIPMENT_DEFS.find((d) => d.type === eq.type);
+              return `<div style="font-size:11px;color:#8888aa;padding:2px 0">${def?.name ?? eq.type} x${eq.count}</div>`;
+            }).join("")
+          : `<div style="color:#666;font-size:12px">No siege equipment.</div>`}
+      </div>
+      <div>
+        <div style="color:#cc6644;font-size:13px;margin-bottom:8px;letter-spacing:1px">LORDS</div>
+        ${lordsHTML || `<div style="color:#666;font-size:12px">No relevant lords.</div>`}
+      </div>
+    `;
+
+    this._container!.appendChild(this._warCouncilPanel);
+
+    document.getElementById("warcouncil-close")?.addEventListener("click", () => {
+      this._removeWarCouncilPanel();
+      if (this._state) this._state.paused = false;
+    });
+  }
+
+  private _removeWarCouncilPanel(): void {
+    if (this._warCouncilPanel?.parentNode) {
+      this._warCouncilPanel.parentNode.removeChild(this._warCouncilPanel);
+      this._warCouncilPanel = null;
+    }
+    this._setCanvasPointerEvents(true);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Mercenary Panel
+  // ---------------------------------------------------------------------------
+
+  private _showMercPanel(): void {
+    if (!this._state) return;
+    this._removeMercPanel();
+    this._state.paused = true;
+    this._setCanvasPointerEvents(false);
+    const s = this._state;
+
+    this._mercPanel = document.createElement("div");
+    this._mercPanel.style.cssText = `
+      position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+      width:520px;max-height:85vh;overflow-y:auto;
+      background:rgba(15,12,8,0.97);border:2px solid #aa8855;border-radius:10px;
+      padding:24px;z-index:10;
+    `;
+
+    const mercsHTML = s.mercContracts.map((mc) => {
+      const canAfford = s.gold >= mc.cost;
+      const unitsDesc = mc.units.map((u) => {
+        const uDef = CAMPAIGN_UNITS.find((cu) => cu.id === u.unitId);
+        return `${uDef?.name ?? u.unitId} x${u.count}`;
+      }).join(", ");
+
+      return `
+        <div style="margin-bottom:8px;padding:10px;background:rgba(30,25,15,0.5);border:1px solid ${mc.hired ? "#557744" : "#aa8855"};border-radius:6px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <span style="color:${mc.hired ? "#557744" : "#aa8855"};font-weight:bold;font-size:13px">${mc.name}</span>
+            <span style="color:#998877;font-size:11px">${mc.cost}g | ${mc.duration} days</span>
+          </div>
+          <div style="font-size:11px;color:#887766;margin-bottom:6px">${unitsDesc}</div>
+          ${!mc.hired ? `
+            <button class="merc-hire-btn" data-merc="${mc.id}" style="
+              padding:3px 10px;font-size:11px;
+              border:1px solid ${canAfford ? "#aa8855" : "#444"};border-radius:3px;
+              background:${canAfford ? "rgba(170,136,85,0.2)" : "rgba(20,15,10,0.6)"};
+              color:${canAfford ? "#aa8855" : "#555"};
+              cursor:${canAfford ? "pointer" : "not-allowed"};font-family:inherit;
+            " ${canAfford ? "" : "disabled"}>Hire Company</button>
+          ` : `<span style="color:#557744;font-size:11px">\u2713 Hired (${mc.duration} days left)</span>`}
+        </div>
+      `;
+    }).join("");
+
+    this._mercPanel.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h2 style="font-size:22px;color:#aa8855;margin:0;letter-spacing:1px">MERCENARIES</h2>
+        <button id="merc-close" style="
+          padding:4px 12px;font-size:14px;border:1px solid #555;border-radius:4px;
+          background:rgba(30,25,15,0.6);color:#888;cursor:pointer;font-family:inherit;
+        ">X</button>
+      </div>
+      <div style="font-size:11px;color:#776655;margin-bottom:12px">
+        Gold: ${s.gold} | Active Contracts: ${s.mercContracts.filter((m) => m.hired).length}
+      </div>
+      ${mercsHTML || `<div style="color:#666;font-size:12px">No mercenary companies available.</div>`}
+    `;
+
+    this._container!.appendChild(this._mercPanel);
+
+    document.getElementById("merc-close")?.addEventListener("click", () => {
+      this._removeMercPanel();
+      if (this._state) this._state.paused = false;
+    });
+
+    this._mercPanel.querySelectorAll(".merc-hire-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const mercId = (btn as HTMLElement).dataset.merc!;
+        if (!this._state) return;
+        const mc = this._state.mercContracts.find((m) => m.id === mercId);
+        if (mc && !mc.hired && this._state.gold >= mc.cost) {
+          this._state.gold -= mc.cost;
+          mc.hired = true;
+          // Add merc units to player army
+          for (const u of mc.units) {
+            const existing = this._state.playerParty.army.find((a) => a.unitId === u.unitId && a.xp === 0);
+            if (existing) {
+              existing.count += u.count;
+            } else {
+              this._state.playerParty.army.push({ unitId: u.unitId, count: u.count, xp: 0 });
+            }
+            this._state.playerParty.armyTotal += u.count;
+          }
+          this._addLog(`Hired ${mc.name} for ${mc.cost}g!`);
+          this._showMercPanel(); // refresh
+        }
+      });
+    });
+  }
+
+  private _removeMercPanel(): void {
+    if (this._mercPanel?.parentNode) {
+      this._mercPanel.parentNode.removeChild(this._mercPanel);
+      this._mercPanel = null;
+    }
+    this._setCanvasPointerEvents(true);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Victory Panel
+  // ---------------------------------------------------------------------------
+
+  private _showVictoryPanel(): void {
+    if (!this._state) return;
+    this._removeVictoryPanel();
+    this._state.paused = true;
+    this._setCanvasPointerEvents(false);
+    const s = this._state;
+    const vp = s.victoryProgress;
+
+    this._victoryPanel = document.createElement("div");
+    this._victoryPanel.style.cssText = `
+      position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+      width:480px;max-height:85vh;overflow-y:auto;
+      background:rgba(15,12,8,0.97);border:2px solid #daa520;border-radius:10px;
+      padding:24px;z-index:10;
+    `;
+
+    const conquestPct = Math.min(100, Math.round((vp.conquest.citiesCaptured / vp.conquest.totalCities) * 100));
+    const diploPct = Math.min(100, Math.round((vp.diplomatic.alliances / vp.diplomatic.required) * 100));
+    const econPct = Math.min(100, Math.round((vp.economic.goldAccumulated / vp.economic.target) * 100));
+
+    const barStyle = (pct: number, color: string) => `
+      <div style="height:10px;background:rgba(40,30,20,0.8);border-radius:5px;overflow:hidden;border:1px solid #332211;margin:4px 0 8px">
+        <div style="height:100%;width:${pct}%;background:${color};border-radius:4px;transition:width 0.3s"></div>
+      </div>
+    `;
+
+    this._victoryPanel.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h2 style="font-size:22px;color:#daa520;margin:0;letter-spacing:1px">VICTORY PROGRESS</h2>
+        <button id="victory-close" style="
+          padding:4px 12px;font-size:14px;border:1px solid #555;border-radius:4px;
+          background:rgba(30,25,15,0.6);color:#888;cursor:pointer;font-family:inherit;
+        ">X</button>
+      </div>
+
+      <div style="margin-bottom:16px;padding:12px;background:rgba(30,25,15,0.5);border:1px solid #cc4444;border-radius:6px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span style="color:#cc4444;font-weight:bold;font-size:13px">\u2694 Conquest Victory</span>
+          <span style="color:#998877;font-size:11px">${vp.conquest.citiesCaptured}/${vp.conquest.totalCities} cities</span>
+        </div>
+        <div style="font-size:11px;color:#887766;margin-bottom:4px">Capture all cities on the map</div>
+        ${barStyle(conquestPct, "#cc4444")}
+      </div>
+
+      <div style="margin-bottom:16px;padding:12px;background:rgba(30,25,15,0.5);border:1px solid #44cc44;border-radius:6px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span style="color:#44cc44;font-weight:bold;font-size:13px">\uD83E\uDD1D Diplomatic Victory</span>
+          <span style="color:#998877;font-size:11px">${vp.diplomatic.alliances}/${vp.diplomatic.required} alliances</span>
+        </div>
+        <div style="font-size:11px;color:#887766;margin-bottom:4px">Form alliances with ${vp.diplomatic.required} factions</div>
+        ${barStyle(diploPct, "#44cc44")}
+      </div>
+
+      <div style="margin-bottom:16px;padding:12px;background:rgba(30,25,15,0.5);border:1px solid #ddaa33;border-radius:6px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span style="color:#ddaa33;font-weight:bold;font-size:13px">\u2B23 Economic Victory</span>
+          <span style="color:#998877;font-size:11px">${s.totalGoldEarned}/${vp.economic.target}g</span>
+        </div>
+        <div style="font-size:11px;color:#887766;margin-bottom:4px">Accumulate ${vp.economic.target} total gold earned</div>
+        ${barStyle(econPct, "#ddaa33")}
+      </div>
+
+      <div style="text-align:center;color:#776655;font-size:11px;margin-top:8px">
+        Day ${s.day} | Season: ${SEASON_EFFECTS[s.season].label}
+      </div>
+    `;
+
+    this._container!.appendChild(this._victoryPanel);
+
+    document.getElementById("victory-close")?.addEventListener("click", () => {
+      this._removeVictoryPanel();
+      if (this._state) this._state.paused = false;
+    });
+  }
+
+  private _removeVictoryPanel(): void {
+    if (this._victoryPanel?.parentNode) {
+      this._victoryPanel.parentNode.removeChild(this._victoryPanel);
+      this._victoryPanel = null;
     }
     this._setCanvasPointerEvents(true);
   }
