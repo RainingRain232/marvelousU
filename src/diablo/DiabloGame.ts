@@ -28,6 +28,7 @@ import {
   LANTERN_CONFIGS,
   SKILL_BRANCHES,
   UNLOCKABLE_SKILLS,
+  MAP_SPECIFIC_ITEMS,
 } from "./DiabloConfig";
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -753,13 +754,34 @@ export class DiabloGame {
         desc: "A swift hunter of deadly precision. Rains arrows upon enemies and uses cunning traps to control the battlefield.",
         str: 8, dex: 26, int: 7, vit: 16,
       },
+      {
+        cls: DiabloClass.PALADIN,
+        icon: "\u{1F6E1}\uFE0F",
+        name: "PALADIN",
+        desc: "A holy knight channeling divine light. Wields sacred powers to smite evil and shield the faithful.",
+        str: 20, dex: 8, int: 15, vit: 24,
+      },
+      {
+        cls: DiabloClass.NECROMANCER,
+        icon: "\uD83D\uDC80",
+        name: "NECROMANCER",
+        desc: "A master of death and decay. Commands undead armies and wields dark curses to drain the life from foes.",
+        str: 6, dex: 10, int: 25, vit: 16,
+      },
+      {
+        cls: DiabloClass.ASSASSIN,
+        icon: "\uD83D\uDDE1\uFE0F",
+        name: "ASSASSIN",
+        desc: "A lethal shadow operative striking from the darkness. Dual-wields poisoned blades with blinding speed.",
+        str: 14, dex: 28, int: 6, vit: 15,
+      },
     ];
 
     let cardsHtml = "";
     for (const c of classes) {
       cardsHtml += `
         <div class="diablo-class-card" data-class="${c.cls}" style="
-          width:280px;background:rgba(20,15,10,0.95);border:2px solid #5a4a2a;
+          width:220px;background:rgba(20,15,10,0.95);border:2px solid #5a4a2a;
           border-radius:12px;padding:30px;cursor:pointer;text-align:center;
           transition:border-color 0.3s,box-shadow 0.3s;
         ">
@@ -832,7 +854,7 @@ export class DiabloGame {
           <span style="color:#888;font-size:14px;align-self:center;margin-right:8px;font-family:'Georgia',serif;">DIFFICULTY:</span>
           ${diffHtml}
         </div>
-        <div style="display:flex;gap:30px;">${cardsHtml}</div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center;">${cardsHtml}</div>
         <div style="display:flex;gap:14px;margin-top:30px;flex-wrap:wrap;justify-content:center;">
           ${saveBtns}
           <button id="diablo-cs-controls" style="${menuBtnStyle}">CONTROLS</button>
@@ -1161,7 +1183,7 @@ export class DiabloGame {
     for (const m of maps) {
       cardsHtml += `
         <div class="diablo-map-card" data-map="${m.id}" style="
-          width:280px;background:rgba(20,15,10,0.95);border:2px solid #5a4a2a;
+          width:220px;background:rgba(20,15,10,0.95);border:2px solid #5a4a2a;
           border-radius:12px;padding:30px;cursor:pointer;text-align:center;
           transition:border-color 0.3s,box-shadow 0.3s;
         ">
@@ -1647,6 +1669,25 @@ export class DiabloGame {
       }
     }
 
+    // Lantern light properties
+    let lanternLines = "";
+    if (item.type === "LANTERN") {
+      const lcfg = LANTERN_CONFIGS[item.name];
+      if (lcfg) {
+        const colorHex = '#' + lcfg.color.toString(16).padStart(6, '0');
+        lanternLines = `
+          <div style="border-top:1px solid rgba(90,74,42,0.3);margin:6px 0;padding-top:6px;">
+            <div style="color:#c8a84e;font-size:12px;font-weight:bold;margin-bottom:4px;">Light Properties</div>
+            <div style="color:#ffcc66;font-size:12px;padding:1px 0;">Intensity: ${lcfg.intensity.toFixed(1)}</div>
+            <div style="color:#ffcc66;font-size:12px;padding:1px 0;">Range: ${lcfg.distance} units</div>
+            <div style="display:flex;align-items:center;gap:6px;font-size:12px;padding:1px 0;">
+              <span style="color:#ffcc66;">Color:</span>
+              <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${colorHex};border:1px solid #555;box-shadow:0 0 6px ${colorHex};"></span>
+            </div>
+          </div>`;
+      }
+    }
+
     let legendaryLine = "";
     if (item.legendaryAbility) {
       legendaryLine = `<div style="color:#ff8800;margin-top:6px;font-style:italic;border-left:2px solid #ff880060;padding-left:6px;">${item.legendaryAbility}</div>`;
@@ -1676,6 +1717,7 @@ export class DiabloGame {
         <div style="height:1px;background:linear-gradient(to right,transparent,#5a4a2a60,transparent);margin:4px 0 6px;"></div>
         <!-- Stats -->
         ${statsLines}
+        ${lanternLines}
         ${legendaryLine}
         ${setLine}
         <!-- Separator before description -->
@@ -2167,11 +2209,17 @@ export class DiabloGame {
       [DiabloClass.WARRIOR]: "\u2694\uFE0F",
       [DiabloClass.MAGE]: "\uD83D\uDD2E",
       [DiabloClass.RANGER]: "\uD83C\uDFF9",
+      [DiabloClass.PALADIN]: "\u{1F6E1}\uFE0F",
+      [DiabloClass.NECROMANCER]: "\uD83D\uDC80",
+      [DiabloClass.ASSASSIN]: "\uD83D\uDDE1\uFE0F",
     };
     const classColors: Record<DiabloClass, string> = {
       [DiabloClass.WARRIOR]: "#aab",
       [DiabloClass.MAGE]: "#a4f",
       [DiabloClass.RANGER]: "#4c4",
+      [DiabloClass.PALADIN]: "#ffd700",
+      [DiabloClass.NECROMANCER]: "#8f8",
+      [DiabloClass.ASSASSIN]: "#c44",
     };
     const classIcon = classIcons[p.class] || "\u2694\uFE0F";
     const className = p.class.charAt(0).toUpperCase() + p.class.slice(1).toLowerCase();
@@ -2186,6 +2234,9 @@ export class DiabloGame {
       [DiabloClass.WARRIOR]: { str: 25, dex: 8, int: 5, vit: 22 },
       [DiabloClass.MAGE]: { str: 5, dex: 8, int: 28, vit: 14 },
       [DiabloClass.RANGER]: { str: 8, dex: 26, int: 7, vit: 16 },
+      [DiabloClass.PALADIN]: { str: 20, dex: 8, int: 15, vit: 24 },
+      [DiabloClass.NECROMANCER]: { str: 6, dex: 10, int: 25, vit: 16 },
+      [DiabloClass.ASSASSIN]: { str: 14, dex: 28, int: 6, vit: 15 },
     };
     const baseCls = baseMaxStats[p.class];
     const maxForLevel = (base: number) => base + (p.level - 1) * 3 + 30; // generous ceiling
@@ -4002,7 +4053,12 @@ export class DiabloGame {
       case SkillId.FIREBALL:
       case SkillId.LIGHTNING_BOLT:
       case SkillId.POISON_ARROW:
-      case SkillId.PIERCING_SHOT: {
+      case SkillId.PIERCING_SHOT:
+      case SkillId.SMITE:
+      case SkillId.BONE_SPEAR:
+      case SkillId.HOLY_BOLT:
+      case SkillId.SPIRIT_BARRAGE:
+      case SkillId.CRIPPLING_THROW: {
         this._createProjectile(p.x, p.y + 1, p.z, angle, modDmg, def, skillId);
         // Branch effect: extra projectiles for projectile skills
         if (branchMods.extraProjectiles > 0) {
@@ -4046,7 +4102,21 @@ export class DiabloGame {
       case SkillId.ICE_NOVA:
       case SkillId.GROUND_SLAM:
       case SkillId.BLADE_FURY:
-      case SkillId.SHIELD_BASH: {
+      case SkillId.SHIELD_BASH:
+      case SkillId.HOLY_STRIKE:
+      case SkillId.CONSECRATION:
+      case SkillId.JUDGMENT:
+      case SkillId.HOLY_NOVA:
+      case SkillId.CORPSE_EXPLOSION:
+      case SkillId.DEATH_NOVA:
+      case SkillId.POISON_NOVA:
+      case SkillId.SHADOW_STAB:
+      case SkillId.FAN_OF_KNIVES:
+      case SkillId.BLADE_FLURRY:
+      case SkillId.VENOMOUS_STRIKE:
+      case SkillId.BLADE_DANCE:
+      case SkillId.BLESSED_HAMMER:
+      case SkillId.LIFE_TAP: {
         const radius = modRadius(def.aoeRadius || 3);
         const aoe: DiabloAOE = {
           id: this._genId(),
@@ -4204,9 +4274,27 @@ export class DiabloGame {
         break;
       }
 
-      case SkillId.ARCANE_SHIELD: {
+      case SkillId.ARCANE_SHIELD:
+      case SkillId.DIVINE_SHIELD:
+      case SkillId.AVENGING_WRATH:
+      case SkillId.LAY_ON_HANDS:
+      case SkillId.AEGIS_OF_LIGHT:
+      case SkillId.RIGHTEOUS_FURY:
+      case SkillId.RAISE_SKELETON:
+      case SkillId.BLOOD_GOLEM:
+      case SkillId.ARMY_OF_THE_DEAD:
+      case SkillId.BONE_ARMOR:
+      case SkillId.REVIVE:
+      case SkillId.SMOKE_SCREEN:
+      case SkillId.DEATH_MARK:
+      case SkillId.SHADOW_CLONE:
+      case SkillId.VANISH:
+      case SkillId.ASSASSINATE:
+      case SkillId.EXECUTE:
+      case SkillId.CURSE_OF_FRAILTY: {
         p.invulnTimer = 8;
-        this._addFloatingText(p.x, p.y + 3, p.z, "ARCANE SHIELD!", "#aa44ff");
+        const buffName = def.name || skillId;
+        this._addFloatingText(p.x, p.y + 3, p.z, `${buffName}!`, "#aa44ff");
         break;
       }
 
@@ -4968,6 +5056,20 @@ export class DiabloGame {
       }
     }
 
+    // Map-specific set/unique drops (bosses: guaranteed, regular enemies: small chance)
+    const mapKey = this._state.currentMap as string;
+    const mapItemNames = MAP_SPECIFIC_ITEMS[mapKey];
+    if (mapItemNames) {
+      const dropChance = enemy.isBoss ? 1.0 : 0.04;
+      if (Math.random() < dropChance) {
+        const name = mapItemNames[Math.floor(Math.random() * mapItemNames.length)];
+        const mapItem = ITEM_DATABASE.find((it) => it.name === name);
+        if (mapItem) {
+          items.push({ ...mapItem, id: this._genId() });
+        }
+      }
+    }
+
     return items;
   }
 
@@ -5598,6 +5700,19 @@ export class DiabloGame {
     const initialCount = 8 + Math.floor(Math.random() * 5);
     for (let i = 0; i < initialCount; i++) {
       this._spawnEnemy();
+    }
+    // Ensure no enemies spawn too close to the player
+    const p = this._state.player;
+    for (const e of this._state.enemies) {
+      const dx = e.x - p.x;
+      const dz = e.z - p.z;
+      const dist = Math.sqrt(dx * dx + dz * dz);
+      if (dist < 25) {
+        const angle = Math.atan2(dz, dx);
+        e.x = p.x + Math.cos(angle) * (25 + Math.random() * 10);
+        e.z = p.z + Math.sin(angle) * (25 + Math.random() * 10);
+        e.y = getTerrainHeight(e.x, e.z);
+      }
     }
     // Spawn special night boss if time is NIGHT
     if (this._state.timeOfDay === TimeOfDay.NIGHT) {

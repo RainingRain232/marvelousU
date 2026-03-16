@@ -8,6 +8,9 @@ export enum DiabloClass {
   WARRIOR = 'WARRIOR',
   MAGE = 'MAGE',
   RANGER = 'RANGER',
+  PALADIN = 'PALADIN',
+  NECROMANCER = 'NECROMANCER',
+  ASSASSIN = 'ASSASSIN',
 }
 
 export enum DiabloMapId {
@@ -590,6 +593,48 @@ export enum SkillId {
   FIRE_VOLLEY = 'FIRE_VOLLEY',
   WIND_WALK = 'WIND_WALK',
   SHADOW_STRIKE = 'SHADOW_STRIKE',
+  // Paladin skills
+  HOLY_STRIKE = 'HOLY_STRIKE',
+  DIVINE_SHIELD = 'DIVINE_SHIELD',
+  CONSECRATION = 'CONSECRATION',
+  JUDGMENT = 'JUDGMENT',
+  SMITE = 'SMITE',
+  HOLY_NOVA = 'HOLY_NOVA',
+  // Paladin unlockable skills
+  AVENGING_WRATH = 'AVENGING_WRATH',
+  LAY_ON_HANDS = 'LAY_ON_HANDS',
+  HOLY_BOLT = 'HOLY_BOLT',
+  BLESSED_HAMMER = 'BLESSED_HAMMER',
+  AEGIS_OF_LIGHT = 'AEGIS_OF_LIGHT',
+  RIGHTEOUS_FURY = 'RIGHTEOUS_FURY',
+  // Necromancer skills
+  BONE_SPEAR = 'BONE_SPEAR',
+  RAISE_SKELETON = 'RAISE_SKELETON',
+  CORPSE_EXPLOSION = 'CORPSE_EXPLOSION',
+  CURSE_OF_FRAILTY = 'CURSE_OF_FRAILTY',
+  DEATH_NOVA = 'DEATH_NOVA',
+  BLOOD_GOLEM = 'BLOOD_GOLEM',
+  // Necromancer unlockable skills
+  ARMY_OF_THE_DEAD = 'ARMY_OF_THE_DEAD',
+  BONE_ARMOR = 'BONE_ARMOR',
+  LIFE_TAP = 'LIFE_TAP',
+  SPIRIT_BARRAGE = 'SPIRIT_BARRAGE',
+  POISON_NOVA = 'POISON_NOVA',
+  REVIVE = 'REVIVE',
+  // Assassin skills
+  SHADOW_STAB = 'SHADOW_STAB',
+  FAN_OF_KNIVES = 'FAN_OF_KNIVES',
+  BLADE_FLURRY = 'BLADE_FLURRY',
+  SMOKE_SCREEN = 'SMOKE_SCREEN',
+  VENOMOUS_STRIKE = 'VENOMOUS_STRIKE',
+  DEATH_MARK = 'DEATH_MARK',
+  // Assassin unlockable skills
+  ASSASSINATE = 'ASSASSINATE',
+  SHADOW_CLONE = 'SHADOW_CLONE',
+  BLADE_DANCE = 'BLADE_DANCE',
+  VANISH = 'VANISH',
+  CRIPPLING_THROW = 'CRIPPLING_THROW',
+  EXECUTE = 'EXECUTE',
 }
 
 export enum DamageType {
@@ -1238,6 +1283,60 @@ export function createDefaultPlayer(cls: DiabloClass): DiabloPlayerState {
       skills = [
         SkillId.MULTI_SHOT,
         SkillId.POISON_ARROW,
+      ];
+      break;
+
+    case DiabloClass.PALADIN:
+      strength = 20;
+      dexterity = 8;
+      intelligence = 15;
+      vitality = 24;
+      maxHp = 220;
+      maxMana = 120;
+      armor = 18;
+      moveSpeed = 4.2;
+      attackSpeed = 0.85;
+      critChance = 0.06;
+      critDamage = 1.5;
+      skills = [
+        SkillId.HOLY_STRIKE,
+        SkillId.DIVINE_SHIELD,
+      ];
+      break;
+
+    case DiabloClass.NECROMANCER:
+      strength = 6;
+      dexterity = 10;
+      intelligence = 25;
+      vitality = 16;
+      maxHp = 140;
+      maxMana = 180;
+      armor = 6;
+      moveSpeed = 4.6;
+      attackSpeed = 0.75;
+      critChance = 0.07;
+      critDamage = 1.9;
+      skills = [
+        SkillId.BONE_SPEAR,
+        SkillId.RAISE_SKELETON,
+      ];
+      break;
+
+    case DiabloClass.ASSASSIN:
+      strength = 14;
+      dexterity = 28;
+      intelligence = 6;
+      vitality = 15;
+      maxHp = 160;
+      maxMana = 90;
+      armor = 7;
+      moveSpeed = 6.0;
+      attackSpeed = 1.5;
+      critChance = 0.15;
+      critDamage = 2.0;
+      skills = [
+        SkillId.SHADOW_STAB,
+        SkillId.FAN_OF_KNIVES,
       ];
       break;
   }

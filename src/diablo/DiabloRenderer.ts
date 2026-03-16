@@ -11589,6 +11589,26 @@ export class DiabloRenderer {
         torsoMetalness = 0.0;
         torsoRoughness = 0.8;
         break;
+      case DiabloClass.PALADIN:
+        torsoColor = 0xcccc88;  // Holy gold/white plate
+        torsoMetalness = 0.8;
+        torsoRoughness = 0.2;
+        break;
+      case DiabloClass.NECROMANCER:
+        torsoColor = 0x1a1a2e;  // Dark midnight blue/black robes
+        torsoMetalness = 0.0;
+        torsoRoughness = 0.9;
+        break;
+      case DiabloClass.ASSASSIN:
+        torsoColor = 0x2a2a2a;  // Dark charcoal leather
+        torsoMetalness = 0.1;
+        torsoRoughness = 0.7;
+        break;
+      default:
+        torsoColor = 0x888899;
+        torsoMetalness = 0.7;
+        torsoRoughness = 0.3;
+        break;
     }
 
     const torsoMat = new THREE.MeshStandardMaterial({
@@ -12093,13 +12113,207 @@ export class DiabloRenderer {
         this._weaponMesh = bow;
         break;
       }
+      case DiabloClass.PALADIN: {
+        // --- PALADIN CLASS GEAR ---
+        // Golden pauldrons
+        const pauldronMat = new THREE.MeshStandardMaterial({ color: 0xccaa44, metalness: 0.9, roughness: 0.15, emissive: 0x332200, emissiveIntensity: 0.3 });
+        for (const side of [-1, 1]) {
+          const paulGeo = new THREE.SphereGeometry(0.1, 8, 8);
+          const paul = new THREE.Mesh(paulGeo, pauldronMat);
+          paul.position.set(side * 0.32, 1.45, 0);
+          paul.scale.set(1.2, 0.8, 1.0);
+          paul.castShadow = true;
+          this._playerGroup.add(paul);
+        }
+
+        // Holy mace (weapon arm)
+        const maceHandleMat = new THREE.MeshStandardMaterial({ color: 0x8B7355, roughness: 0.7 });
+        const maceHeadMat = new THREE.MeshStandardMaterial({ color: 0xddcc55, metalness: 0.9, roughness: 0.1, emissive: 0xffcc00, emissiveIntensity: 0.5 });
+
+        const maceHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.7, 8), maceHandleMat);
+        maceHandle.position.set(0, -0.1, 0);
+        this._weaponArmGroup.add(maceHandle);
+
+        const maceHead = new THREE.Mesh(new THREE.DodecahedronGeometry(0.08, 0), maceHeadMat);
+        maceHead.position.set(0, -0.5, 0);
+        maceHead.castShadow = true;
+        this._weaponArmGroup.add(maceHead);
+
+        // Flanges on mace
+        for (let i = 0; i < 4; i++) {
+          const flangeGeo = new THREE.BoxGeometry(0.03, 0.1, 0.12);
+          const flange = new THREE.Mesh(flangeGeo, maceHeadMat);
+          flange.position.set(0, -0.5, 0);
+          flange.rotation.y = (i * Math.PI) / 2;
+          this._weaponArmGroup.add(flange);
+        }
+
+        // Golden shield on left arm
+        const shieldMat = new THREE.MeshStandardMaterial({ color: 0xddcc55, metalness: 0.8, roughness: 0.2, emissive: 0x554400, emissiveIntensity: 0.2 });
+        const shieldGeo = new THREE.BoxGeometry(0.04, 0.35, 0.28);
+        const shield = new THREE.Mesh(shieldGeo, shieldMat);
+        shield.position.set(0, -0.15, 0.08);
+        this._leftArmGroup!.add(shield);
+
+        // Cross emblem on shield
+        const crossMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffcc, emissiveIntensity: 0.8 });
+        const crossV = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.2, 0.04), crossMat);
+        crossV.position.set(0.025, -0.15, 0.08);
+        this._leftArmGroup!.add(crossV);
+        const crossH = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.04, 0.14), crossMat);
+        crossH.position.set(0.025, -0.12, 0.08);
+        this._leftArmGroup!.add(crossH);
+
+        // Chest plate cross
+        const chestCross = new THREE.MeshStandardMaterial({ color: 0xffeedd, emissive: 0xffcc88, emissiveIntensity: 0.4 });
+        const cv = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.18, 0.01), chestCross);
+        cv.position.set(0, 1.28, 0.16);
+        this._playerGroup.add(cv);
+        const ch = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.04, 0.01), chestCross);
+        ch.position.set(0, 1.32, 0.16);
+        this._playerGroup.add(ch);
+
+        this._weaponMesh = maceHead;
+        break;
+      }
+      case DiabloClass.NECROMANCER: {
+        // --- NECROMANCER CLASS GEAR ---
+        // Tattered shoulder cloth
+        const clothMat = new THREE.MeshStandardMaterial({ color: 0x220033, roughness: 0.95 });
+        for (const side of [-1, 1]) {
+          const capeGeo = new THREE.BoxGeometry(0.15, 0.3, 0.12);
+          const cape = new THREE.Mesh(capeGeo, clothMat);
+          cape.position.set(side * 0.28, 1.3, -0.05);
+          cape.rotation.z = side * 0.3;
+          this._playerGroup.add(cape);
+        }
+
+        // Skull staff (weapon arm)
+        const staffMat = new THREE.MeshStandardMaterial({ color: 0x3a2a1a, roughness: 0.8 });
+        const staffGlowMat = new THREE.MeshStandardMaterial({ color: 0x44ff44, emissive: 0x22cc22, emissiveIntensity: 1.5, transparent: true, opacity: 0.9 });
+
+        const staffPole = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 1.4, 8), staffMat);
+        staffPole.position.set(0, -0.25, 0);
+        this._weaponArmGroup.add(staffPole);
+
+        // Skull on top
+        const skullMat = new THREE.MeshStandardMaterial({ color: 0xccbbaa, roughness: 0.5 });
+        const skull = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), skullMat);
+        skull.position.set(0, -0.95, 0);
+        skull.scale.set(1.0, 1.1, 0.9);
+        this._weaponArmGroup.add(skull);
+
+        // Glowing eyes
+        for (const sx of [-0.025, 0.025]) {
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.012, 6, 6), staffGlowMat);
+          eye.position.set(sx, -0.93, 0.04);
+          this._weaponArmGroup.add(eye);
+        }
+
+        // Glowing orb above skull
+        const orb = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), staffGlowMat);
+        orb.position.set(0, -1.05, 0);
+        this._weaponArmGroup.add(orb);
+
+        // Bone necklace
+        const boneMat = new THREE.MeshStandardMaterial({ color: 0xddccaa, roughness: 0.6 });
+        for (let i = 0; i < 5; i++) {
+          const bone = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.04, 6), boneMat);
+          const boneAngle = (i / 5) * Math.PI - Math.PI * 0.5;
+          bone.position.set(Math.sin(boneAngle) * 0.2, 1.4, Math.cos(boneAngle) * 0.15 + 0.05);
+          bone.rotation.z = boneAngle;
+          this._playerGroup.add(bone);
+        }
+
+        // Hood
+        const hoodMat = new THREE.MeshStandardMaterial({ color: 0x110022, roughness: 0.95 });
+        const hoodGeo = new THREE.SphereGeometry(0.14, 8, 8, 0, Math.PI * 2, 0, Math.PI * 0.7);
+        const hood = new THREE.Mesh(hoodGeo, hoodMat);
+        hood.position.set(0, 1.62, -0.02);
+        this._playerGroup.add(hood);
+
+        this._weaponMesh = staffPole;
+        break;
+      }
+      case DiabloClass.ASSASSIN: {
+        // --- ASSASSIN CLASS GEAR ---
+        // Leather shoulder guards
+        const leatherMat = new THREE.MeshStandardMaterial({ color: 0x2a2a2a, roughness: 0.75 });
+        const metalAccent = new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.7, roughness: 0.3 });
+        for (const side of [-1, 1]) {
+          const shoulderGeo = new THREE.BoxGeometry(0.12, 0.06, 0.1);
+          const shoulder = new THREE.Mesh(shoulderGeo, leatherMat);
+          shoulder.position.set(side * 0.3, 1.43, 0);
+          shoulder.castShadow = true;
+          this._playerGroup.add(shoulder);
+          // Metal stud
+          const stud = new THREE.Mesh(new THREE.SphereGeometry(0.015, 6, 6), metalAccent);
+          stud.position.set(side * 0.3, 1.46, 0.04);
+          this._playerGroup.add(stud);
+        }
+
+        // Main dagger (weapon arm)
+        const bladeMat = new THREE.MeshStandardMaterial({ color: 0x888899, metalness: 0.9, roughness: 0.1 });
+        const hiltMat = new THREE.MeshStandardMaterial({ color: 0x3a2a1a, roughness: 0.7 });
+
+        const daggerBlade = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.35, 0.04), bladeMat);
+        daggerBlade.position.set(0, -0.3, 0);
+        daggerBlade.castShadow = true;
+        this._weaponArmGroup.add(daggerBlade);
+
+        const daggerHilt = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.1, 8), hiltMat);
+        daggerHilt.position.set(0, -0.1, 0);
+        this._weaponArmGroup.add(daggerHilt);
+
+        const daggerGuard = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.015, 0.03), metalAccent);
+        daggerGuard.position.set(0, -0.15, 0);
+        this._weaponArmGroup.add(daggerGuard);
+
+        // Off-hand dagger (left arm)
+        const offBlade = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.3, 0.035), bladeMat);
+        offBlade.position.set(0, -0.25, 0);
+        offBlade.castShadow = true;
+        this._leftArmGroup!.add(offBlade);
+
+        const offHilt = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.08, 8), hiltMat);
+        offHilt.position.set(0, -0.08, 0);
+        this._leftArmGroup!.add(offHilt);
+
+        const offGuard = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.012, 0.025), metalAccent);
+        offGuard.position.set(0, -0.12, 0);
+        this._leftArmGroup!.add(offGuard);
+
+        // Face mask / cowl
+        const cowlMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.85 });
+        const cowl = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.08, 0.12), cowlMat);
+        cowl.position.set(0, 1.55, 0.06);
+        this._playerGroup.add(cowl);
+
+        // Belt pouches
+        for (const side of [-1, 1]) {
+          const pouch = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.05), leatherMat);
+          pouch.position.set(side * 0.22, 0.92, 0.12);
+          this._playerGroup.add(pouch);
+        }
+
+        // Throwing knives on belt
+        for (let i = 0; i < 3; i++) {
+          const knife = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.1, 0.02), bladeMat);
+          knife.position.set(-0.15 + i * 0.06, 0.92, -0.15);
+          knife.rotation.z = 0.1;
+          this._playerGroup.add(knife);
+        }
+
+        this._weaponMesh = daggerBlade;
+        break;
+      }
     }
 
     this._playerGroup.castShadow = true;
 
     // Player lantern – warm point light for dark maps
-    const lantern = new THREE.PointLight(0xffaa55, 0, 12, 2);
-    lantern.position.set(0, 1.8, 0);
+    const lantern = new THREE.PointLight(0xffaa55, 0, 12, 1.5);
+    lantern.position.set(0.3, 1.2, 0.3);
     this._playerGroup.add(lantern);
     this._playerLantern = lantern;
   }
@@ -18306,6 +18520,90 @@ export class DiabloRenderer {
             this._leftArmGroup.rotation.z = 0.2 * (1.0 - release);
           }
           if (this._playerGroup) this._playerGroup.rotation.x = -0.08 * (1.0 - release);
+        }
+
+      } else if (pClass === DiabloClass.PALADIN) {
+        // Paladin: raise weapon high then smash down with holy force
+        if (t > 0.65) {
+          const rise = 1.0 - (t - 0.65) / 0.35;
+          this._weaponArmGroup.rotation.x = -2.6 * rise;
+          this._weaponArmGroup.rotation.z = -0.1 * rise;
+          if (this._playerGroup) this._playerGroup.rotation.x = -0.2 * rise;
+          if (this._leftArmGroup) this._leftArmGroup.rotation.x = -0.4 * rise;
+        } else if (t > 0.3) {
+          const slam = 1.0 - (t - 0.3) / 0.35;
+          this._weaponArmGroup.rotation.x = -2.6 + slam * 4.4;
+          this._weaponArmGroup.rotation.z = -0.1 + slam * 0.3;
+          if (this._playerGroup) this._playerGroup.rotation.x = -0.2 + slam * 0.4;
+          if (this._leftArmGroup) this._leftArmGroup.rotation.x = -0.4 + slam * 0.8;
+        } else {
+          const recover = 1.0 - t / 0.3;
+          this._weaponArmGroup.rotation.x = 1.8 * (1.0 - recover);
+          this._weaponArmGroup.rotation.z = 0.2 * (1.0 - recover);
+          if (this._playerGroup) this._playerGroup.rotation.x = 0.2 * (1.0 - recover);
+          if (this._leftArmGroup) this._leftArmGroup.rotation.x = 0.4 * (1.0 - recover);
+        }
+        // Subtle golden glow pulse on weapon during cast
+        if (this._weaponMesh && (this._weaponMesh.material as THREE.MeshStandardMaterial).emissiveIntensity !== undefined) {
+          const glowT = Math.sin(t * Math.PI);
+          (this._weaponMesh.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.5 + glowT * 4.0;
+        }
+
+      } else if (pClass === DiabloClass.NECROMANCER) {
+        // Necromancer: thrust staff forward and channel dark energy, similar to Mage but with a sinister twist
+        if (t > 0.6) {
+          const thrust = 1.0 - (t - 0.6) / 0.4;
+          this._weaponArmGroup.rotation.x = 1.4 * thrust;
+          this._weaponArmGroup.rotation.z = 0.3 * thrust;
+          if (this._playerGroup) this._playerGroup.rotation.x = 0.15 * thrust;
+          if (this._leftArmGroup) this._leftArmGroup.rotation.x = 1.0 * thrust;
+        } else if (t > 0.2) {
+          const pulse = Math.sin((1.0 - (t - 0.2) / 0.4) * Math.PI * 4) * 0.1;
+          this._weaponArmGroup.rotation.x = 1.4 + pulse;
+          this._weaponArmGroup.rotation.z = 0.3;
+          if (this._playerGroup) this._playerGroup.rotation.x = 0.15 + pulse * 0.5;
+          if (this._leftArmGroup) this._leftArmGroup.rotation.x = 1.0 + pulse;
+        } else {
+          const release = 1.0 - t / 0.2;
+          this._weaponArmGroup.rotation.x = 1.4 * (1.0 - release);
+          this._weaponArmGroup.rotation.z = 0.3 * (1.0 - release);
+          if (this._playerGroup) this._playerGroup.rotation.x = 0.15 * (1.0 - release);
+          if (this._leftArmGroup) this._leftArmGroup.rotation.x = 1.0 * (1.0 - release);
+        }
+        // Green glow on staff
+        if (this._weaponMesh && (this._weaponMesh.material as THREE.MeshStandardMaterial).emissiveIntensity !== undefined) {
+          const glowT = Math.sin(t * Math.PI);
+          (this._weaponMesh.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.5 + glowT * 2.5;
+        }
+
+      } else if (pClass === DiabloClass.ASSASSIN) {
+        // Assassin: rapid dual-slash combo — fast alternating strikes
+        if (t > 0.7) {
+          // Phase 1: Right arm forward stab
+          const stab = 1.0 - (t - 0.7) / 0.3;
+          this._weaponArmGroup.rotation.x = 1.8 * stab;
+          this._weaponArmGroup.rotation.z = 0.2 * stab;
+          if (this._leftArmGroup) this._leftArmGroup.rotation.x = -0.5 * stab;
+          if (this._playerGroup) this._playerGroup.rotation.z = 0.15 * stab;
+        } else if (t > 0.4) {
+          // Phase 2: Left arm cross-slash
+          const cross = 1.0 - (t - 0.4) / 0.3;
+          this._weaponArmGroup.rotation.x = 1.8 * (1.0 - cross * 0.5);
+          if (this._leftArmGroup) {
+            this._leftArmGroup.rotation.x = -0.5 + cross * 2.3;
+            this._leftArmGroup.rotation.z = cross * 0.4;
+          }
+          if (this._playerGroup) this._playerGroup.rotation.z = 0.15 - cross * 0.3;
+        } else {
+          // Phase 3: Recovery — both arms snap back
+          const recover = 1.0 - t / 0.4;
+          this._weaponArmGroup.rotation.x = 0.9 * (1.0 - recover);
+          this._weaponArmGroup.rotation.z = 0.1 * (1.0 - recover);
+          if (this._leftArmGroup) {
+            this._leftArmGroup.rotation.x = 1.8 * (1.0 - recover);
+            this._leftArmGroup.rotation.z = 0.4 * (1.0 - recover);
+          }
+          if (this._playerGroup) this._playerGroup.rotation.z = -0.15 * (1.0 - recover);
         }
       }
 
