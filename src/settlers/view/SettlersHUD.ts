@@ -4,6 +4,7 @@
 
 import { BUILDING_DEFS, SettlersBuildingType } from "../config/SettlersBuildingDefs";
 import { RESOURCE_META, ResourceType } from "../config/SettlersResourceDefs";
+import { canUpgradeBuilding, getUpgradeCost, getEffectiveProductionTime, TRADEABLE_RESOURCES } from "../systems/SettlersBuildingSystem";
 import { Biome, Deposit, Visibility } from "../state/SettlersMap";
 import { SB } from "../config/SettlersBalance";
 import type { SettlersState, SettlersTool } from "../state/SettlersState";
@@ -25,6 +26,7 @@ const PRODUCTION_CHAINS: { name: string; steps: string[] }[] = [
   { name: "Iron", steps: ["Mountain -> Iron Mine (food) -> Iron Ore", "Mountain -> Coal Mine (food) -> Coal", "Iron Ore + Coal -> Smelter -> Iron"] },
   { name: "Gold", steps: ["Mountain -> Gold Mine (food) -> Gold Ore", "Gold Ore + Coal -> Mint -> Gold"] },
   { name: "Military", steps: ["Iron + Coal -> Swordsmith -> Sword", "Iron + Coal -> Shieldsmith -> Shield", "Sword + Shield + Beer -> Barracks -> Soldier"] },
+  { name: "Trade", steps: ["Market: convert resources (3:1 or 2:1 raw-to-raw)", "Build a Market and select sell/buy resources"] },
 ];
 
 export class SettlersHUD {
@@ -66,6 +68,8 @@ export class SettlersHUD {
   onMinimapClick: ((worldX: number, worldZ: number) => void) | null = null;
   onQueueAdd: ((buildingId: string, itemType: string) => void) | null = null;
   onQueueRemove: ((buildingId: string, index: number) => void) | null = null;
+  onUpgrade: ((buildingId: string) => void) | null = null;
+  onMarketTrade: ((buildingId: string, sell: ResourceType | null, buy: ResourceType | null) => void) | null = null;
 
   build(): void {
     this._root = document.createElement("div");
@@ -708,7 +712,9 @@ export class SettlersHUD {
         const ownerName = ownerPlayer ? ownerPlayer.name : building.owner;
         const ownerColor = building.owner === "p0" ? "#88bbff" : "#ff8888";
 
-        let html = `<div style="font-size:14px;color:#ffd700;margin-bottom:2px;font-weight:bold;">${def.label}</div>`;
+        const levelStr = building.level > 1 ? ` (Lvl ${building.level})` : "";
+        const starStr = building.level > 1 ? " " + "\u2605".repeat(building.level - 1) : "";
+        let html = `<div style="font-size:14px;color:#ffd700;margin-bottom:2px;font-weight:bold;">${def.label}${levelStr}<span style="color:#ffaa00;">${starStr}</span></div>`;
         html += `<div style="font-size:11px;color:${ownerColor};margin-bottom:6px;">Owner: ${ownerName}</div>`;
 
         // HP bar
@@ -731,6 +737,13 @@ export class SettlersHUD {
           } else {
             html += `<div style="color:#88cc44;font-size:11px;">All materials delivered</div>`;
           }
+        } else if (building.upgradeProgress > 0 && building.upgradeProgress < 1) {
+          // --- Upgrading ---
+          const pct = Math.floor(building.upgradeProgress * 100);
+          html += `<div style="color:#cc88ff;font-weight:bold;">Upgrading to Level ${building.level + 1}</div>`;
+          html += `<div style="font-size:11px;">Progress: ${pct}%</div>`;
+          html += `<div style="background:#333;height:6px;border-radius:3px;margin:4px 0;">
+            <div style="width:${pct}%;height:100%;background:#cc88ff;border-radius:3px;"></div></div>`;
         } else {
           // --- Completed building ---
 
@@ -760,7 +773,8 @@ export class SettlersHUD {
             html += `<div style="font-size:11px;color:${prodStatusColor};margin-bottom:4px;">Status: ${prodStatus}</div>`;
 
             if (def.type !== SettlersBuildingType.BARRACKS) {
-              const prodPct = Math.max(0, 1 - building.productionTimer / def.productionTime);
+              const effTime = getEffectiveProductionTime(building);
+              const prodPct = Math.max(0, 1 - building.productionTimer / effTime);
               html += `<div style="font-size:11px;">Cycle: ${Math.floor(prodPct * 100)}%</div>`;
               html += `<div style="background:#333;height:4px;border-radius:2px;margin:2px 0;">
                 <div style="width:${prodPct * 100}%;height:100%;background:#88cc44;border-radius:2px;"></div></div>`;
@@ -855,6 +869,7 @@ export class SettlersHUD {
 
           // Production chain info
           if (def.inputs.length > 0 || def.outputs.length > 0) {
+            const effTime = getEffectiveProductionTime(building);
             html += `<div style="margin-top:6px;color:#888;border-top:1px solid #333;padding-top:4px;font-size:10px;">`;
             if (def.inputs.length > 0) {
               html += `Needs: ${def.inputs.map(i => `${i.amount} ${RESOURCE_META[i.type].label}`).join(" + ")}<br>`;
@@ -864,7 +879,71 @@ export class SettlersHUD {
             } else if (def.type === SettlersBuildingType.BARRACKS) {
               html += `Makes: 1 Soldier`;
             }
-            html += `<br>Every ${def.productionTime}s`;
+            html += `<br>Every ${effTime.toFixed(1)}s`;
+            if (building.level > 1) {
+              html += ` <span style="color:#cc88ff;">(base ${def.productionTime}s)</span>`;
+            }
+            html += `</div>`;
+          }
+
+          // Market UI
+          if (def.type === SettlersBuildingType.MARKET && building.owner === "p0") {
+            html += `<div style="margin-top:8px;border-top:1px solid #444;padding-top:6px;">`;
+            html += `<div style="color:#ffcc44;margin-bottom:4px;">Trade Configuration</div>`;
+
+            // Sell dropdown
+            html += `<div style="font-size:11px;margin-bottom:3px;">Sell resource:</div>`;
+            html += `<select id="settlers-market-sell" style="width:100%;padding:3px;background:#1a1a30;color:#e0d8c8;border:1px solid #444;border-radius:4px;font-size:11px;margin-bottom:6px;">`;
+            html += `<option value="">-- None --</option>`;
+            for (const rt of TRADEABLE_RESOURCES) {
+              const sel = building.marketSellResource === rt ? " selected" : "";
+              html += `<option value="${rt}"${sel}>${RESOURCE_META[rt].label}</option>`;
+            }
+            html += `</select>`;
+
+            // Buy dropdown
+            html += `<div style="font-size:11px;margin-bottom:3px;">Buy resource:</div>`;
+            html += `<select id="settlers-market-buy" style="width:100%;padding:3px;background:#1a1a30;color:#e0d8c8;border:1px solid #444;border-radius:4px;font-size:11px;margin-bottom:6px;">`;
+            html += `<option value="">-- None --</option>`;
+            for (const rt of TRADEABLE_RESOURCES) {
+              const sel = building.marketBuyResource === rt ? " selected" : "";
+              html += `<option value="${rt}"${sel}>${RESOURCE_META[rt].label}</option>`;
+            }
+            html += `</select>`;
+
+            // Trade rate info
+            if (building.marketSellResource && building.marketBuyResource && building.marketSellResource !== building.marketBuyResource) {
+              const bothRaw = ["wood","stone","iron_ore","gold_ore","coal","wheat","water","fish"].includes(building.marketSellResource) &&
+                              ["wood","stone","iron_ore","gold_ore","coal","wheat","water","fish"].includes(building.marketBuyResource);
+              const rate = bothRaw ? SB.TRADE_RATE_RAW_TO_RAW : SB.TRADE_RATE_DEFAULT;
+              html += `<div style="font-size:10px;color:#88cc44;">Rate: ${rate} ${RESOURCE_META[building.marketSellResource].label} -> 1 ${RESOURCE_META[building.marketBuyResource].label}</div>`;
+              const effTime = getEffectiveProductionTime(building);
+              html += `<div style="font-size:10px;color:#888;">Trade every ${effTime.toFixed(1)}s</div>`;
+            }
+            html += `</div>`;
+          }
+
+          // Upgrade button (for player buildings that are fully built and not HQ/storehouse)
+          if (building.owner === "p0" && building.level < SB.MAX_BUILDING_LEVEL
+              && def.type !== SettlersBuildingType.HEADQUARTERS
+              && def.type !== SettlersBuildingType.STOREHOUSE
+              && building.upgradeProgress === 0) {
+            const upgradeError = canUpgradeBuilding(state, building.id);
+            const costs = getUpgradeCost(building);
+            html += `<div style="margin-top:8px;border-top:1px solid #444;padding-top:6px;">`;
+            if (costs) {
+              html += `<div style="font-size:10px;color:#aaa;margin-bottom:3px;">Upgrade to Lvl ${building.level + 1}: ${costs.map(c => `${c.amount} ${RESOURCE_META[c.type].label}`).join(", ")}</div>`;
+            }
+            const canUpgrade = upgradeError === null;
+            const btnStyle = canUpgrade
+              ? "background:#2a4a5a;color:#88ccff;border:1px solid #3a6a8a;cursor:pointer;"
+              : "background:#2a2a2a;color:#666;border:1px solid #333;cursor:not-allowed;";
+            html += `<button id="settlers-upgrade-btn" ${canUpgrade ? "" : "disabled"} style="
+              width:100%;padding:4px 8px;border-radius:4px;font-family:monospace;font-size:12px;${btnStyle}
+            ">Upgrade</button>`;
+            if (upgradeError && upgradeError !== "Already max level") {
+              html += `<div style="font-size:9px;color:#aa6644;margin-top:2px;">${upgradeError}</div>`;
+            }
             html += `</div>`;
           }
         }
@@ -882,6 +961,25 @@ export class SettlersHUD {
             const qi = parseInt((btn as HTMLElement).dataset.qi || "0", 10);
             (btn as HTMLElement).onclick = () => this.onQueueRemove?.(building.id, qi);
           });
+        }
+
+        // Wire up upgrade button
+        const upgradeBtn = document.getElementById("settlers-upgrade-btn");
+        if (upgradeBtn) {
+          upgradeBtn.onclick = () => this.onUpgrade?.(building.id);
+        }
+
+        // Wire up market dropdowns
+        if (def.type === SettlersBuildingType.MARKET && building.owner === "p0") {
+          const sellSelect = document.getElementById("settlers-market-sell") as HTMLSelectElement | null;
+          const buySelect = document.getElementById("settlers-market-buy") as HTMLSelectElement | null;
+          const updateTrade = () => {
+            const sell = sellSelect?.value ? sellSelect.value as ResourceType : null;
+            const buy = buySelect?.value ? buySelect.value as ResourceType : null;
+            this.onMarketTrade?.(building.id, sell, buy);
+          };
+          if (sellSelect) sellSelect.onchange = updateTrade;
+          if (buySelect) buySelect.onchange = updateTrade;
         }
       } else {
         this._infoPanel.style.display = "none";
@@ -1105,6 +1203,8 @@ export class SettlersHUD {
     this.onMinimapClick = null;
     this.onQueueAdd = null;
     this.onQueueRemove = null;
+    this.onUpgrade = null;
+    this.onMarketTrade = null;
     this._root.remove();
   }
 }

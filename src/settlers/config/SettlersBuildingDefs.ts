@@ -37,6 +37,9 @@ export enum SettlersBuildingType {
   // Military production
   BARRACKS = "barracks",
 
+  // Trade
+  MARKET = "market",
+
   // Military territory
   GUARD_HOUSE = "guard_house",
   WATCHTOWER = "watchtower",
@@ -368,6 +371,24 @@ export const BUILDING_DEFS: Record<SettlersBuildingType, SettlersBuildingDef> = 
     productionTime: SB.PROD_BARRACKS,
     garrisonSlots: 0, territoryRadius: 0,
     category: "military",
+  },
+
+  // ---- Trade ----
+  [SettlersBuildingType.MARKET]: {
+    type: SettlersBuildingType.MARKET,
+    label: "Market",
+    size: "large",
+    footprint: { w: 3, h: 3 },
+    constructionCost: [
+      { type: ResourceType.PLANKS, amount: 4 },
+      { type: ResourceType.STONE, amount: 3 },
+      { type: ResourceType.GOLD, amount: 2 },
+    ],
+    hp: SB.HP_LARGE,
+    inputs: [], outputs: [],
+    productionTime: SB.PROD_MARKET,
+    garrisonSlots: 0, territoryRadius: 0,
+    category: "economy",
   },
 
   // ---- Military territory ----

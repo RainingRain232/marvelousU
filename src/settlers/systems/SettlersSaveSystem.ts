@@ -201,8 +201,12 @@ function deserializeState(s: SerializedState): SettlersState {
   // Simple Record -> Map conversions
   const buildings = new Map<string, SettlersBuilding>();
   for (const [id, b] of Object.entries(s.buildings)) {
-    // Ensure productionQueue exists (backward compat with old saves)
+    // Ensure new fields exist (backward compat with old saves)
     if (!(b as any).productionQueue) (b as any).productionQueue = [];
+    if ((b as any).level === undefined) (b as any).level = 1;
+    if ((b as any).upgradeProgress === undefined) (b as any).upgradeProgress = 0;
+    if ((b as any).marketSellResource === undefined) (b as any).marketSellResource = null;
+    if ((b as any).marketBuyResource === undefined) (b as any).marketBuyResource = null;
     buildings.set(id, b);
   }
 
