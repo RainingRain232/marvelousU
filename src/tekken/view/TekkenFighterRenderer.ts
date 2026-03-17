@@ -3552,7 +3552,7 @@ export class TekkenFighterRenderer {
     this._lerpBone(this._rightShin, 0.6 + 0.1 * rootDepth, 0, 0, 0.22);
   }
 
-  private _animateDiveAttack(progress: number, frame: number, mv: MoveVariation): void {
+  private _animateDiveAttack(_progress: number, frame: number, mv: MoveVariation): void {
     // AERIAL — body LAUNCHES forward through the air, MAXIMUM advance distance, WIDE hitbox
     // Two phases: explosive launch upward/forward, then diving crash down
     const phase = frame < 10 ? 0 : 1;
