@@ -32,6 +32,10 @@ const COL_HP_YELLOW = 0xccaa22;
 const COL_HP_RED = 0xcc2222;
 const COL_DRAIN = 0xcc8800;
 
+// Gold accent colors
+const COL_GOLD = 0xd4af37;
+const COL_GOLD_BRIGHT = 0xffd700;
+
 // Combo colors by hit count
 const COMBO_COLORS = [0xffff00, 0xff8800, 0xff4400, 0xff0000, 0xff00ff];
 
@@ -48,6 +52,10 @@ export class DuelHUD {
   private _timerText: Text;
   private _p1Name: Text;
   private _p2Name: Text;
+
+  // Player badges
+  private _p1Badge: Text;
+  private _p2Badge: Text;
 
   // Combo text elements
   private _p1ComboHit: Text;
@@ -129,11 +137,23 @@ export class DuelHUD {
     });
     this._p1Name = new Text({
       text: "",
-      style: { fontFamily: '"Segoe UI", sans-serif', fontSize: 20, fill: COL_TEXT, fontWeight: "bold" },
+      style: { fontFamily: '"Segoe UI", sans-serif', fontSize: 22, fill: COL_TEXT, fontWeight: "bold",
+        letterSpacing: 1.5 },
     });
     this._p2Name = new Text({
       text: "",
-      style: { fontFamily: '"Segoe UI", sans-serif', fontSize: 20, fill: COL_TEXT, fontWeight: "bold" },
+      style: { fontFamily: '"Segoe UI", sans-serif', fontSize: 22, fill: COL_TEXT, fontWeight: "bold",
+        letterSpacing: 1.5 },
+    });
+
+    // Player badges
+    this._p1Badge = new Text({
+      text: "P1",
+      style: { fontFamily: '"Segoe UI", sans-serif', fontSize: 11, fill: 0x111111, fontWeight: "bold" },
+    });
+    this._p2Badge = new Text({
+      text: "P2",
+      style: { fontFamily: '"Segoe UI", sans-serif', fontSize: 11, fill: 0x111111, fontWeight: "bold" },
     });
 
     // P1 combo
@@ -294,6 +314,8 @@ export class DuelHUD {
       this._timerText,
       this._p1Name,
       this._p2Name,
+      this._p1Badge,
+      this._p2Badge,
       this._p1ComboHit,
       this._p1ComboLabel,
       this._p1ComboDmg,
@@ -333,6 +355,17 @@ export class DuelHUD {
     this._p1Name.position.set(centerX - this._hpBarWidth - TIMER_BOX_W / 2 - 10, HP_BAR_Y - 28);
     this._p2Name.anchor.set(1, 0);
     this._p2Name.position.set(centerX + this._hpBarWidth + TIMER_BOX_W / 2 + 10, HP_BAR_Y - 28);
+
+    // Position P1/P2 badges next to names
+    this._p1Badge.position.set(
+      centerX - this._hpBarWidth - TIMER_BOX_W / 2 - 10 - 28,
+      HP_BAR_Y - 26,
+    );
+    this._p2Badge.anchor.set(1, 0);
+    this._p2Badge.position.set(
+      centerX + this._hpBarWidth + TIMER_BOX_W / 2 + 10 + 28,
+      HP_BAR_Y - 26,
+    );
 
     // Timer
     this._timerText.position.set(centerX, HP_BAR_Y + HP_BAR_HEIGHT / 2);
@@ -385,16 +418,20 @@ export class DuelHUD {
     this._drawHealthBar(this._healthBarGfx, p2X, HP_BAR_Y, barW, HP_BAR_HEIGHT,
       this._p2HealthDisplay, this._p2HealthDrain, false);
 
+    // ===== Draw name accent bars =====
+    this._drawNameAccents(this._healthBarGfx, centerX, barW);
+
+    // ===== Draw P1/P2 badges =====
+    this._drawPlayerBadges(this._healthBarGfx, centerX, barW);
+
     // ===== Timer =====
     this._timerGfx.clear();
     const timerX = centerX - TIMER_BOX_W / 2;
     const timerY = HP_BAR_Y - 10;
-    this._timerGfx.roundRect(timerX, timerY, TIMER_BOX_W, TIMER_BOX_H, 8);
-    this._timerGfx.fill({ color: COL_TIMER_BG });
-    this._timerGfx.stroke({ color: COL_TIMER_BORDER, width: 3 });
-
     const seconds = Math.ceil(state.round.timeRemaining / 60);
     const timerVal = Math.max(0, seconds);
+    this._drawTimerBox(this._timerGfx, timerX, timerY, timerVal);
+
     this._timerText.text = String(timerVal).padStart(2, "0");
     this._timerText.style.fill = timerVal <= 10 ? 0xff4444 : COL_TEXT;
 
@@ -406,27 +443,13 @@ export class DuelHUD {
     const p2Wins = state.roundResults.filter((w) => w === 1).length;
 
     for (let i = 0; i < roundsNeeded; i++) {
-      // P1 dots
-      const d1x = p1X + i * 22 + 8;
-      this._roundDotGfx.circle(d1x, dotsY, 8);
-      if (i < p1Wins) {
-        this._roundDotGfx.fill({ color: COL_ROUND_WON });
-      } else {
-        this._roundDotGfx.fill({ color: 0x111111, alpha: 0.01 });
-        this._roundDotGfx.circle(d1x, dotsY, 8);
-        this._roundDotGfx.stroke({ color: COL_ROUND_WON, width: 2 });
-      }
+      // P1 dots - shield/medal shapes
+      const d1x = p1X + i * 24 + 8;
+      this._drawRoundMedal(this._roundDotGfx, d1x, dotsY, i < p1Wins);
 
       // P2 dots
-      const d2x = p2X + barW - i * 22 - 8;
-      this._roundDotGfx.circle(d2x, dotsY, 8);
-      if (i < p2Wins) {
-        this._roundDotGfx.fill({ color: COL_ROUND_WON });
-      } else {
-        this._roundDotGfx.fill({ color: 0x111111, alpha: 0.01 });
-        this._roundDotGfx.circle(d2x, dotsY, 8);
-        this._roundDotGfx.stroke({ color: COL_ROUND_WON, width: 2 });
-      }
+      const d2x = p2X + barW - i * 24 - 8;
+      this._drawRoundMedal(this._roundDotGfx, d2x, dotsY, i < p2Wins);
     }
 
     // ===== Zeal meters =====
@@ -488,6 +511,109 @@ export class DuelHUD {
     this._updateDramaticFinisher(state, sw, sh);
   }
 
+  // ---- Ornate timer box with corner diamonds and inner shadow ----------------
+
+  private _drawTimerBox(g: Graphics, x: number, y: number, timerVal: number): void {
+    const w = TIMER_BOX_W;
+    const h = TIMER_BOX_H;
+
+    // Darker inner background (simulated radial gradient with layered rects)
+    g.roundRect(x, y, w, h, 8);
+    g.fill({ color: 0x0d0d1e });
+    // Slightly lighter center area for radial gradient effect
+    g.roundRect(x + 6, y + 6, w - 12, h - 12, 5);
+    g.fill({ color: COL_TIMER_BG });
+    // Inner shadow: darker edges at top
+    g.roundRect(x + 3, y + 3, w - 6, 8, 4);
+    g.fill({ color: 0x000000, alpha: 0.35 });
+    // Inner shadow: darker edges at bottom
+    g.roundRect(x + 3, y + h - 11, w - 6, 8, 4);
+    g.fill({ color: 0x000000, alpha: 0.2 });
+
+    // Outer border (double-line)
+    g.roundRect(x - 1, y - 1, w + 2, h + 2, 9);
+    g.stroke({ color: COL_TIMER_BORDER, width: 3 });
+    g.roundRect(x + 2, y + 2, w - 4, h - 4, 6);
+    g.stroke({ color: COL_GOLD, width: 1, alpha: 0.5 });
+
+    // Corner diamond accents (top-left, top-right, bottom-left, bottom-right)
+    const dSize = 5;
+    const corners = [
+      { cx: x + 1, cy: y + 1 },
+      { cx: x + w - 1, cy: y + 1 },
+      { cx: x + 1, cy: y + h - 1 },
+      { cx: x + w - 1, cy: y + h - 1 },
+    ];
+    for (const { cx, cy } of corners) {
+      g.moveTo(cx, cy - dSize);
+      g.lineTo(cx + dSize, cy);
+      g.lineTo(cx, cy + dSize);
+      g.lineTo(cx - dSize, cy);
+      g.closePath();
+      g.fill({ color: COL_GOLD_BRIGHT, alpha: 0.8 });
+    }
+
+    // Low time pulsing glow (<=10 seconds)
+    if (timerVal <= 10 && timerVal > 0) {
+      const pulse = 0.15 + Math.sin(performance.now() / 180) * 0.15;
+      g.roundRect(x - 4, y - 4, w + 8, h + 8, 11);
+      g.fill({ color: 0xff2222, alpha: pulse });
+    }
+  }
+
+  // ---- Name accent bars and badges ------------------------------------------
+
+  private _drawNameAccents(g: Graphics, centerX: number, _barW: number): void {
+    // Gold accent bar under P1 name
+    const p1NameX = centerX - this._hpBarWidth - TIMER_BOX_W / 2 - 10;
+    g.rect(p1NameX, HP_BAR_Y - 4, 60, 2);
+    g.fill({ color: COL_GOLD, alpha: 0.7 });
+
+    // Gold accent bar under P2 name
+    const p2NameX = centerX + this._hpBarWidth + TIMER_BOX_W / 2 + 10;
+    g.rect(p2NameX - 60, HP_BAR_Y - 4, 60, 2);
+    g.fill({ color: COL_GOLD, alpha: 0.7 });
+  }
+
+  private _drawPlayerBadges(g: Graphics, centerX: number, _barW: number): void {
+    // P1 badge background
+    const p1bx = centerX - this._hpBarWidth - TIMER_BOX_W / 2 - 10 - 30;
+    const by = HP_BAR_Y - 28;
+    g.roundRect(p1bx, by, 22, 16, 3);
+    g.fill({ color: COL_GOLD_BRIGHT });
+    g.stroke({ color: COL_GOLD, width: 1 });
+
+    // P2 badge background
+    const p2bx = centerX + this._hpBarWidth + TIMER_BOX_W / 2 + 10 + 8;
+    g.roundRect(p2bx, by, 22, 16, 3);
+    g.fill({ color: COL_GOLD_BRIGHT });
+    g.stroke({ color: COL_GOLD, width: 1 });
+  }
+
+  // ---- Round medal shapes ---------------------------------------------------
+
+  private _drawRoundMedal(g: Graphics, cx: number, cy: number, won: boolean): void {
+    const size = 8;
+    // Rounded square medal shape
+    g.roundRect(cx - size, cy - size, size * 2, size * 2, 3);
+    if (won) {
+      g.fill({ color: COL_ROUND_WON });
+      // Gold glow behind won medal
+      g.roundRect(cx - size - 2, cy - size - 2, size * 2 + 4, size * 2 + 4, 4);
+      g.fill({ color: COL_GOLD_BRIGHT, alpha: 0.15 + Math.sin(performance.now() / 400) * 0.1 });
+      // Highlight on top
+      g.roundRect(cx - size + 2, cy - size + 1, size * 2 - 4, size - 2, 2);
+      g.fill({ color: 0xffffff, alpha: 0.3 });
+    } else {
+      g.fill({ color: 0x111111, alpha: 0.01 });
+      g.roundRect(cx - size, cy - size, size * 2, size * 2, 3);
+      g.stroke({ color: COL_ROUND_WON, width: 2 });
+    }
+    // Thin gold border on all medals
+    g.roundRect(cx - size, cy - size, size * 2, size * 2, 3);
+    g.stroke({ color: COL_GOLD, width: 1, alpha: 0.4 });
+  }
+
   private _drawHealthBar(
     g: Graphics,
     x: number,
@@ -498,6 +624,10 @@ export class DuelHUD {
     drainRatio: number,
     isP1: boolean,
   ): void {
+    // Outer ornate border (double-line effect)
+    g.roundRect(x - 4, y - 4, width + 8, height + 8, 6);
+    g.stroke({ color: COL_GOLD, width: 1, alpha: 0.35 });
+
     // Background
     g.roundRect(x - 2, y - 2, width + 4, height + 4, 4);
     g.fill({ color: COL_BG_DARK });
@@ -523,13 +653,46 @@ export class DuelHUD {
     }
     g.fill({ color: healthColor });
 
+    // 3D bevel: darker bottom edge
+    const hpStartX = isP1 ? x + width - healthWidth : x;
+    if (healthWidth > 0) {
+      g.rect(hpStartX, y + height - 5, healthWidth, 5);
+      g.fill({ color: 0x000000, alpha: 0.25 });
+    }
+
+    // Bright highlight stripe at top (beveled look)
+    if (healthWidth > 0) {
+      g.rect(hpStartX, y, healthWidth, 4);
+      g.fill({ color: 0xffffff, alpha: 0.3 });
+    }
+
     // Shine effect (top third brighter)
     if (isP1) {
       g.rect(x + width - healthWidth, y, healthWidth, height / 3);
     } else {
       g.rect(x, y, healthWidth, height / 3);
     }
-    g.fill({ color: 0xffffff, alpha: 0.15 });
+    g.fill({ color: 0xffffff, alpha: 0.1 });
+
+    // Inner glow line along filled portion
+    if (healthWidth > 2) {
+      const glowY = y + Math.floor(height * 0.4);
+      g.rect(hpStartX + 1, glowY, healthWidth - 2, 1);
+      g.fill({ color: 0xffffff, alpha: 0.2 });
+    }
+
+    // Segment marks every 25%
+    for (let s = 1; s <= 3; s++) {
+      const segFrac = s * 0.25;
+      const segX = isP1
+        ? x + width - width * segFrac
+        : x + width * segFrac;
+      g.rect(segX - 0.5, y, 1, height);
+      g.fill({ color: 0x000000, alpha: 0.3 });
+      // Thin gold tick at top
+      g.rect(segX - 0.5, y - 2, 1, 4);
+      g.fill({ color: COL_GOLD, alpha: 0.35 });
+    }
 
     // Critical health flash
     if (ratio <= 0.25 && ratio > 0) {
@@ -579,7 +742,7 @@ export class DuelHUD {
     const fillW = Math.min(1, ratio) * width;
     if (fillW <= 0) return;
 
-    // Color: blue → gold → white as it fills
+    // Color: blue -> gold -> white as it fills
     const col = ratio >= 1.0 ? 0xffdd66 : ratio >= 0.5 ? 0x4488ff : 0x2244aa;
 
     if (isP1) {
@@ -589,10 +752,15 @@ export class DuelHUD {
     }
     g.fill({ color: col });
 
-    // Half-meter notch
-    const notchX = isP1 ? x + width * 0.5 : x + width * 0.5;
-    g.rect(notchX - 0.5, y, 1, height);
-    g.fill({ color: 0xffffff, alpha: 0.3 });
+    // Notch marks at 25%, 50%, 75%
+    for (let n = 1; n <= 3; n++) {
+      const notchFrac = n * 0.25;
+      const notchX = isP1
+        ? x + width - width * notchFrac
+        : x + width * notchFrac;
+      g.rect(notchX - 0.5, y, 1, height);
+      g.fill({ color: 0xffffff, alpha: 0.3 });
+    }
 
     // Shine
     if (isP1) {
@@ -602,11 +770,34 @@ export class DuelHUD {
     }
     g.fill({ color: 0xffffff, alpha: 0.2 });
 
-    // Full meter glow/pulse
+    // Shimmer sweep effect when filling (animated bright line)
+    if (ratio > 0 && ratio < 1.0) {
+      const sweepCycle = (performance.now() / 800) % 1; // 0..1 sweep cycle
+      const sweepPos = sweepCycle * fillW;
+      const sweepWidth = 6;
+      const sweepStart = isP1
+        ? x + width - fillW + sweepPos
+        : x + sweepPos;
+      g.rect(sweepStart, y, sweepWidth, height);
+      g.fill({ color: 0xffffff, alpha: 0.25 });
+    }
+
+    // Full meter glow/pulse with golden particle dots
     if (ratio >= 1.0) {
       const pulse = 0.15 + Math.sin(performance.now() / 200) * 0.1;
       g.roundRect(x - 2, y - 2, width + 4, height + 4, 4);
       g.fill({ color: 0xffdd66, alpha: pulse });
+
+      // Golden particle-like dots scattered along the bar
+      const now = performance.now();
+      for (let p = 0; p < 6; p++) {
+        const phase = (now / 600 + p * 0.17) % 1;
+        const dotX = x + phase * width;
+        const dotY = y + Math.sin(now / 300 + p * 1.3) * (height * 0.3) + height / 2;
+        const dotAlpha = 0.3 + Math.sin(now / 150 + p * 2) * 0.2;
+        g.circle(dotX, dotY, 1.5);
+        g.fill({ color: COL_GOLD_BRIGHT, alpha: dotAlpha });
+      }
     }
 
     // Flash effect when reaching full
@@ -651,6 +842,8 @@ export class DuelHUD {
     if (this._p1ComboTimer > 0) this._p1ComboTimer -= 1 / 60;
     if (this._p2ComboTimer > 0) this._p2ComboTimer -= 1 / 60;
 
+    this._comboGfx.clear();
+
     // P1 combo display (left side)
     const showP1 = this._p1ComboTimer > 0 && this._p1ComboCount > 1;
     this._p1ComboHit.visible = showP1;
@@ -667,6 +860,9 @@ export class DuelHUD {
       // When timer=2 (just hit): scale = 1 + 0.3*3 = 1.9
       // Quickly drops to 1.0
       const popScale = 1 + Math.max(0, 0.3 - (2 - this._p1ComboTimer)) * 3;
+
+      // Background panel behind combo text
+      this._drawComboPanel(this._comboGfx, comboX, comboY, alpha, this._p1ComboCount);
 
       this._p1ComboHit.text = `${this._p1ComboCount} HIT`;
       this._p1ComboHit.style.fill = COMBO_COLORS[colorIdx];
@@ -686,6 +882,11 @@ export class DuelHUD {
         this._p1ComboDmg.alpha = alpha;
         this._p1ComboDmg.position.set(comboX, comboY - 40 * popScale);
         this._p1ComboDmg.scale.set(popScale);
+
+        // Underline accent on damage text
+        const ulY = comboY - 40 * popScale + 18 * popScale;
+        this._comboGfx.rect(comboX - 25 * popScale, ulY, 50 * popScale, 2);
+        this._comboGfx.fill({ color: COL_GOLD, alpha: alpha * 0.6 });
       }
     }
 
@@ -702,6 +903,9 @@ export class DuelHUD {
       const colorIdx = Math.min(this._p2ComboCount - 2, COMBO_COLORS.length - 1);
 
       const popScale = 1 + Math.max(0, 0.3 - (2 - this._p2ComboTimer)) * 3;
+
+      // Background panel behind combo text
+      this._drawComboPanel(this._comboGfx, comboX, comboY, alpha, this._p2ComboCount);
 
       this._p2ComboHit.text = `${this._p2ComboCount} HIT`;
       this._p2ComboHit.style.fill = COMBO_COLORS[colorIdx];
@@ -721,11 +925,55 @@ export class DuelHUD {
         this._p2ComboDmg.alpha = alpha;
         this._p2ComboDmg.position.set(comboX, comboY - 40 * popScale);
         this._p2ComboDmg.scale.set(popScale);
+
+        // Underline accent on damage text
+        const ulY = comboY - 40 * popScale + 18 * popScale;
+        this._comboGfx.rect(comboX - 25 * popScale, ulY, 50 * popScale, 2);
+        this._comboGfx.fill({ color: COL_GOLD, alpha: alpha * 0.6 });
+      }
+    }
+  }
+
+  // ---- Combo panel background with optional starburst -----------------------
+
+  private _drawComboPanel(
+    g: Graphics, cx: number, cy: number, alpha: number, hitCount: number,
+  ): void {
+    const panelW = 140;
+    const panelH = 120;
+    // Dark semi-transparent rounded rect
+    g.roundRect(cx - panelW / 2, cy - panelH / 2 - 10, panelW, panelH, 10);
+    g.fill({ color: 0x000000, alpha: alpha * 0.45 });
+    g.roundRect(cx - panelW / 2, cy - panelH / 2 - 10, panelW, panelH, 10);
+    g.stroke({ color: COL_GOLD, width: 1.5, alpha: alpha * 0.4 });
+
+    // Starburst effect for high combos (>5 hits)
+    if (hitCount > 5) {
+      const now = performance.now();
+      const rays = 8;
+      const innerR = 20;
+      const outerR = 45 + Math.sin(now / 200) * 8;
+      for (let r = 0; r < rays; r++) {
+        const angle = (r / rays) * Math.PI * 2 + now / 1000;
+        const nextAngle = ((r + 0.5) / rays) * Math.PI * 2 + now / 1000;
+        g.moveTo(cx, cy);
+        g.lineTo(
+          cx + Math.cos(angle) * outerR,
+          cy + Math.sin(angle) * outerR,
+        );
+        g.lineTo(
+          cx + Math.cos(nextAngle) * innerR,
+          cy + Math.sin(nextAngle) * innerR,
+        );
+        g.closePath();
+        g.fill({ color: COL_GOLD_BRIGHT, alpha: alpha * 0.12 });
       }
     }
   }
 
   private _updateAnnouncement(state: DuelState, _sw: number, _sh: number): void {
+    this._announcementGfx.clear();
+
     if (state.announcement) {
       this._announcementText.visible = true;
       this._announcementText.text = state.announcement;
@@ -741,12 +989,34 @@ export class DuelHUD {
 
       this._announcementText.style.fill = color;
 
-      // Scale animation (starts big, settles to 1)
+      // Scale animation (starts big, settles to 1) - more dramatic
       if (state.announcementTimer > 0) {
         const timerRatio = state.announcementTimer / 60;
-        this._announcementScale = 1 + Math.max(0, (timerRatio - 0.5)) * 2;
+        this._announcementScale = 1 + Math.max(0, (timerRatio - 0.4)) * 3.5;
         this._announcementText.scale.set(this._announcementScale);
         this._announcementText.alpha = Math.min(1, state.announcementTimer / 15);
+
+        const alpha = Math.min(1, state.announcementTimer / 15);
+        const ax = this._announcementText.x;
+        const ay = this._announcementText.y;
+
+        // Dark banner panel behind text
+        const bannerW = 500;
+        const bannerH = 90;
+        this._announcementGfx.roundRect(ax - bannerW / 2, ay - bannerH / 2, bannerW, bannerH, 6);
+        this._announcementGfx.fill({ color: 0x000000, alpha: alpha * 0.55 });
+        this._announcementGfx.roundRect(ax - bannerW / 2, ay - bannerH / 2, bannerW, bannerH, 6);
+        this._announcementGfx.stroke({ color: COL_GOLD, width: 2, alpha: alpha * 0.5 });
+
+        // Decorative horizontal lines flanking the text
+        const lineW = 140;
+        const lineY = ay;
+        // Left line
+        this._announcementGfx.rect(ax - bannerW / 2 + 10, lineY - 1, lineW, 2);
+        this._announcementGfx.fill({ color: COL_GOLD_BRIGHT, alpha: alpha * 0.4 });
+        // Right line
+        this._announcementGfx.rect(ax + bannerW / 2 - 10 - lineW, lineY - 1, lineW, 2);
+        this._announcementGfx.fill({ color: COL_GOLD_BRIGHT, alpha: alpha * 0.4 });
       }
     } else {
       this._announcementText.visible = false;

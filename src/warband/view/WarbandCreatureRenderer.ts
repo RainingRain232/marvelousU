@@ -9583,7 +9583,6 @@ export class CreatureMesh {
 
     // --- Deep battle scars across torso and arms ---
     const gsScarMat = mat(0x4a3a35, { roughness: 0.6 });
-    const gsWoundMat = mat(0x5a2222, { roughness: 0.4 });
     for (let i = 0; i < 6; i++) {
       const scarGeo = new THREE.SphereGeometry(1, 12, 8);
       const scar = new THREE.Mesh(scarGeo, gsScarMat);
@@ -29251,7 +29250,6 @@ export class CreatureMesh {
     const featherDetailMat = mat(0xeeeeee, { side: THREE.DoubleSide, transparent: true, opacity: 0.5, iridescence: 0.6, iridescenceIOR: 1.4 });
     for (let pair = 0; pair < 3; pair++) {
       const yOff = 2.4 - pair * 0.4;
-      const span = 0.9 - pair * 0.15;
       for (const side of [-1, 1]) {
         // Downy feather underlayer
         for (let f = 0; f < 5; f++) {
@@ -29587,254 +29585,6 @@ export class CreatureMesh {
       const st = new THREE.Mesh(stGeo, mat(0xcccc88, { metalness: 0.5 }));
       st.position.set(side * 0.45, 2.9, 0);
       st.rotation.x = Math.PI / 2;
-      this._body.add(st);
-    }
-
-    // Head
-    const _DIRE_BEAR_DETAIL_START = 0; // eslint-disable-line @typescript-eslint/no-unused-vars
-    const dbUndercoatMat = furryMat(0x3a2418, { sheen: 0.8, sheenRoughness: 0.3 });
-    for (let i = 0; i < 12; i++) {
-      const underGeo = new THREE.SphereGeometry(0.04 + Math.random() * 0.03, 8, 6);
-      const under = new THREE.Mesh(underGeo, dbUndercoatMat);
-      const uAngle = (i / 12) * Math.PI * 2;
-      under.scale.set(1.5, 0.4, 1.3);
-      under.position.set(
-        Math.cos(uAngle) * 0.42,
-        1.3 + Math.random() * 0.6,
-        Math.sin(uAngle) * 0.35
-      );
-      this._body.add(under);
-    }
-
-    // ---- Guard hair tufts (longer outer hairs) ----
-    for (let i = 0; i < 10; i++) {
-      const guardGeo = new THREE.ConeGeometry(0.008, 0.06 + Math.random() * 0.03, 4);
-      const guardHair = new THREE.Mesh(guardGeo, darkFurMat);
-      const ghAngle = Math.random() * Math.PI * 2;
-      const ghRadius = 0.35 + Math.random() * 0.15;
-      guardHair.position.set(
-        Math.cos(ghAngle) * ghRadius,
-        1.4 + Math.random() * 0.8,
-        Math.sin(ghAngle) * ghRadius
-      );
-      guardHair.rotation.set(
-        Math.cos(ghAngle) * 0.3,
-        0,
-        Math.sin(ghAngle) * 0.3
-      );
-      this._body.add(guardHair);
-    }
-
-    // ---- Muscle definition on limbs ----
-    for (const side of [-1, 1]) {
-      const dbArm = side === -1 ? this._leftArm : this._rightArm;
-      // Bicep muscle bulge
-      const bicepGeo = new THREE.SphereGeometry(0.05, 10, 8);
-      const bicep = new THREE.Mesh(bicepGeo, furMat);
-      bicep.scale.set(1.3, 0.8, 1.1);
-      bicep.position.set(side * 0.03, -0.2, 0.06);
-      dbArm.add(bicep);
-
-      // Forearm muscle
-      const forearmGeo = new THREE.SphereGeometry(0.04, 8, 6);
-      const forearm = new THREE.Mesh(forearmGeo, furMat);
-      forearm.scale.set(1.2, 0.7, 1.0);
-      forearm.position.set(-side * 0.02, -0.5, 0.04);
-      dbArm.add(forearm);
-
-      // Wrist tendon detail
-      for (let t = 0; t < 3; t++) {
-        const tendonGeo = cyl(0.004, 0.003, 0.12, 4);
-        const tendon = new THREE.Mesh(tendonGeo, organicMat(0x554433));
-        tendon.position.set((t - 1) * 0.02, -0.72, 0.04);
-        tendon.rotation.x = 0.1;
-        dbArm.add(tendon);
-      }
-    }
-
-    // ---- Hind leg musculature detail ----
-    for (const side of [-1, 1]) {
-      const dbLeg = side === -1 ? this._leftLeg : this._rightLeg;
-      // Thigh muscle
-      const thighGeo = new THREE.SphereGeometry(0.06, 10, 8);
-      const thigh = new THREE.Mesh(thighGeo, furMat);
-      thigh.scale.set(1.2, 0.8, 1.1);
-      thigh.position.set(side * 0.03, -0.15, 0.04);
-      dbLeg.add(thigh);
-
-      // Calf muscle
-      const calfGeo = new THREE.SphereGeometry(0.04, 8, 6);
-      const calf = new THREE.Mesh(calfGeo, furMat);
-      calf.scale.set(1.1, 0.7, 1.0);
-      calf.position.set(-side * 0.02, -0.45, 0.03);
-      dbLeg.add(calf);
-
-      // Ankle joint definition
-      const ankleGeo = new THREE.SphereGeometry(0.025, 8, 6);
-      const ankle = new THREE.Mesh(ankleGeo, darkFurMat);
-      ankle.position.set(0, -0.68, 0.02);
-      dbLeg.add(ankle);
-    }
-
-    // ---- Spine ridge definition ----
-    for (let i = 0; i < 8; i++) {
-      const spineGeo = new THREE.SphereGeometry(0.02, 8, 6);
-      const spine = new THREE.Mesh(spineGeo, darkFurMat);
-      spine.scale.set(0.8, 0.5, 1.5);
-      spine.position.set(0, 1.95 - i * 0.08, -0.3 - i * 0.02);
-      this._body.add(spine);
-    }
-
-    // ---- Drool/saliva detail under mouth ----
-    const dbDroolMat = mat(0xccccbb, { transparent: true, opacity: 0.35, roughness: 0.1, clearcoat: 0.8 });
-    for (let i = 0; i < 3; i++) {
-      const droolGeo = cyl(0.002, 0.001, 0.04 + Math.random() * 0.02, 4);
-      const drool = new THREE.Mesh(droolGeo, dbDroolMat);
-      drool.position.set((i - 1) * 0.02, -0.1, 0.2 + i * 0.01);
-      this._head.add(drool);
-    }
-
-    // ---- Whisker stubs on muzzle ----
-    for (const side of [-1, 1]) {
-      for (let w = 0; w < 4; w++) {
-        const whiskerGeo = cyl(0.001, 0.001, 0.04, 4);
-        const whisker = new THREE.Mesh(whiskerGeo, mat(0x888877));
-        whisker.position.set(
-          side * (0.06 + w * 0.01),
-          -0.02 - w * 0.01,
-          0.24
-        );
-        whisker.rotation.z = side * (0.2 + w * 0.1);
-        whisker.rotation.y = side * 0.15;
-        this._head.add(whisker);
-      }
-    }
-
-    // ---- Thick neck ruff (mane around neck) ----
-    for (let i = 0; i < 10; i++) {
-      const ruffGeo = new THREE.SphereGeometry(0.05 + Math.random() * 0.03, 8, 6);
-      const ruff = new THREE.Mesh(ruffGeo, i % 2 === 0 ? darkFurMat : furMat);
-      const rAngle = (i / 10) * Math.PI * 2;
-      ruff.scale.set(1.3, 0.5, 1.0);
-      ruff.position.set(
-        Math.cos(rAngle) * 0.2,
-        2.0 + Math.sin(rAngle) * 0.05,
-        0.35 + Math.cos(rAngle) * 0.08
-      );
-      this._body.add(ruff);
-    }
-
-    // ---- Jaw muscle definition ----
-    for (const side of [-1, 1]) {
-      const jawMuscGeo = new THREE.SphereGeometry(0.035, 8, 6);
-      const jawMusc = new THREE.Mesh(jawMuscGeo, furMat);
-      jawMusc.scale.set(0.8, 1.2, 0.7);
-      jawMusc.position.set(side * 0.14, -0.02, 0.04);
-      this._head.add(jawMusc);
-    }
-
-    // ---- Belly fat fold detail ----
-    for (let i = 0; i < 4; i++) {
-      const foldGeo = new THREE.SphereGeometry(0.06 + Math.random() * 0.03, 8, 6);
-      const fold = new THREE.Mesh(foldGeo, furryMat(0x5a4433));
-      fold.scale.set(2.0, 0.2, 1.0);
-      fold.position.set(
-        (Math.random() - 0.5) * 0.15,
-        1.15 + i * 0.06,
-        0.2 + (Math.random() - 0.5) * 0.1
-      );
-      this._body.add(fold);
-    }
-
-    // ---- Dried mud/debris clinging to lower legs ----
-    const dbMudMat = mat(0x665544, { roughness: 0.98 });
-    for (const side of [-1, 1]) {
-      const dbMudArm = side === -1 ? this._leftArm : this._rightArm;
-      for (let m = 0; m < 3; m++) {
-        const mudGeo = new THREE.SphereGeometry(0.015 + Math.random() * 0.01, 6, 4);
-        const mud = new THREE.Mesh(mudGeo, dbMudMat);
-        mud.scale.set(1.5, 0.5, 1.5);
-        mud.position.set(
-          (Math.random() - 0.5) * 0.06,
-          -0.7 - Math.random() * 0.1,
-          (Math.random() - 0.5) * 0.06
-        );
-        dbMudArm.add(mud);
-      }
-      const dbMudLeg = side === -1 ? this._leftLeg : this._rightLeg;
-      for (let m = 0; m < 3; m++) {
-        const mudGeo2 = new THREE.SphereGeometry(0.012 + Math.random() * 0.008, 6, 4);
-        const mud2 = new THREE.Mesh(mudGeo2, dbMudMat);
-        mud2.scale.set(1.5, 0.5, 1.5);
-        mud2.position.set(
-          (Math.random() - 0.5) * 0.05,
-          -0.65 - Math.random() * 0.1,
-          (Math.random() - 0.5) * 0.05
-        );
-        dbMudLeg.add(mud2);
-      }
-    }
-
-    // ---- Rib cage definition under fur ----
-    for (const side of [-1, 1]) {
-      for (let r = 0; r < 5; r++) {
-        const ribGeo = new THREE.SphereGeometry(0.015, 6, 4);
-        const rib = new THREE.Mesh(ribGeo, furMat);
-        rib.scale.set(0.5, 3.0, 1.0);
-        rib.position.set(
-          side * (0.38 - r * 0.02),
-          1.5 + r * 0.08,
-          0.1 - r * 0.04
-        );
-        rib.rotation.z = side * (0.1 + r * 0.02);
-        this._body.add(rib);
-      }
-    }
-
-    // ---- Tail stub ----
-    const tailStubGeo = new THREE.SphereGeometry(0.05, 10, 8);
-    const tailStub = new THREE.Mesh(tailStubGeo, darkFurMat);
-    tailStub.scale.set(1, 0.7, 1.3);
-    tailStub.position.set(0, 1.2, -0.5);
-    this._body.add(tailStub);
-
-    // Tail fur tuft
-    for (let i = 0; i < 4; i++) {
-      const tailTuftGeo = new THREE.ConeGeometry(0.01, 0.03, 4);
-      const tailTuft = new THREE.Mesh(tailTuftGeo, furMat);
-      tailTuft.position.set(
-        (Math.random() - 0.5) * 0.03,
-        1.18 + (Math.random() - 0.5) * 0.03,
-        -0.53 - Math.random() * 0.02
-      );
-      tailTuft.rotation.x = -0.5;
-      this._body.add(tailTuft);
-    }
-
-    // ---- Breath vapor effect ----
-    const dbBreathMat = mat(0xcccccc, { transparent: true, opacity: 0.06 });
-    for (let i = 0; i < 3; i++) {
-      const breathGeo = new THREE.SphereGeometry(0.03 + i * 0.01, 8, 6);
-      const breath = new THREE.Mesh(breathGeo, dbBreathMat);
-      breath.position.set(0, -0.03, 0.32 + i * 0.04);
-      this._head.add(breath);
-    }
-
-    // ---- Footprint depression effect ----
-    const dbPrintMat = mat(0x554433, { roughness: 0.98 });
-    for (const side of [-1, 1]) {
-      const printGeo = new THREE.SphereGeometry(0.08, 8, 6);
-      const print = new THREE.Mesh(printGeo, dbPrintMat);
-      print.scale.set(1.2, 0.1, 1.4);
-      print.position.set(side * 0.35, 0.01, 0.3);
-      this._body.add(print);
-
-      const printGeo2 = new THREE.SphereGeometry(0.07, 8, 6);
-      const print2 = new THREE.Mesh(printGeo2, dbPrintMat);
-      print2.scale.set(1.1, 0.1, 1.3);
-      print2.position.set(side * 0.3, 0.01, -0.3);
-      this._body.add(print2);
-    }
       this._body.add(st);
     }
 
@@ -31692,6 +31442,208 @@ export class CreatureMesh {
       eyeHigh.position.set(side * 0.098, 0.065, 0.155);
       this._head.add(eyeHigh);
     }
+
+    // Run additional detail pass
+    this._buildDireBearDetail();
+  }
+
+  // ---- Dire Bear additional detail -------------------------------------------
+
+  private _buildDireBearDetail(): void {
+    const furMat = furryMat(0x4a3322);
+    const darkFurMat = furryMat(0x2a1a11);
+
+    // ---- Thick undercoat fur layer detail ----
+    const dbUndercoatMat = furryMat(0x3a2418, { sheen: 0.8, sheenRoughness: 0.3 });
+    for (let i = 0; i < 12; i++) {
+      const underGeo = new THREE.SphereGeometry(0.04 + Math.random() * 0.03, 8, 6);
+      const under = new THREE.Mesh(underGeo, dbUndercoatMat);
+      const uAngle = (i / 12) * Math.PI * 2;
+      under.scale.set(1.5, 0.4, 1.3);
+      under.position.set(Math.cos(uAngle) * 0.42, 1.3 + Math.random() * 0.6, Math.sin(uAngle) * 0.35);
+      this._body.add(under);
+    }
+
+    // ---- Guard hair tufts (longer outer hairs) ----
+    for (let i = 0; i < 10; i++) {
+      const guardGeo = new THREE.ConeGeometry(0.008, 0.06 + Math.random() * 0.03, 4);
+      const guardHair = new THREE.Mesh(guardGeo, darkFurMat);
+      const ghAngle = Math.random() * Math.PI * 2;
+      const ghRadius = 0.35 + Math.random() * 0.15;
+      guardHair.position.set(Math.cos(ghAngle) * ghRadius, 1.4 + Math.random() * 0.8, Math.sin(ghAngle) * ghRadius);
+      guardHair.rotation.set(Math.cos(ghAngle) * 0.3, 0, Math.sin(ghAngle) * 0.3);
+      this._body.add(guardHair);
+    }
+
+    // ---- Muscle definition on limbs ----
+    for (const side of [-1, 1]) {
+      const dbArm = side === -1 ? this._leftArm : this._rightArm;
+      const bicepGeo = new THREE.SphereGeometry(0.05, 10, 8);
+      const bicep = new THREE.Mesh(bicepGeo, furMat);
+      bicep.scale.set(1.3, 0.8, 1.1);
+      bicep.position.set(side * 0.03, -0.2, 0.06);
+      dbArm.add(bicep);
+      const forearmGeo = new THREE.SphereGeometry(0.04, 8, 6);
+      const forearmM = new THREE.Mesh(forearmGeo, furMat);
+      forearmM.scale.set(1.2, 0.7, 1.0);
+      forearmM.position.set(-side * 0.02, -0.5, 0.04);
+      dbArm.add(forearmM);
+      for (let t = 0; t < 3; t++) {
+        const tendonGeo = cyl(0.004, 0.003, 0.12, 4);
+        const tendon = new THREE.Mesh(tendonGeo, organicMat(0x554433));
+        tendon.position.set((t - 1) * 0.02, -0.72, 0.04);
+        tendon.rotation.x = 0.1;
+        dbArm.add(tendon);
+      }
+    }
+
+    // ---- Hind leg musculature detail ----
+    for (const side of [-1, 1]) {
+      const dbLeg = side === -1 ? this._leftLeg : this._rightLeg;
+      const thighGeo = new THREE.SphereGeometry(0.06, 10, 8);
+      const thighM = new THREE.Mesh(thighGeo, furMat);
+      thighM.scale.set(1.2, 0.8, 1.1);
+      thighM.position.set(side * 0.03, -0.15, 0.04);
+      dbLeg.add(thighM);
+      const calfGeo = new THREE.SphereGeometry(0.04, 8, 6);
+      const calf = new THREE.Mesh(calfGeo, furMat);
+      calf.scale.set(1.1, 0.7, 1.0);
+      calf.position.set(-side * 0.02, -0.45, 0.03);
+      dbLeg.add(calf);
+      const ankleGeo = new THREE.SphereGeometry(0.025, 8, 6);
+      const ankle = new THREE.Mesh(ankleGeo, darkFurMat);
+      ankle.position.set(0, -0.68, 0.02);
+      dbLeg.add(ankle);
+    }
+
+    // ---- Spine ridge definition ----
+    for (let i = 0; i < 8; i++) {
+      const spineGeo = new THREE.SphereGeometry(0.02, 8, 6);
+      const spine = new THREE.Mesh(spineGeo, darkFurMat);
+      spine.scale.set(0.8, 0.5, 1.5);
+      spine.position.set(0, 1.95 - i * 0.08, -0.3 - i * 0.02);
+      this._body.add(spine);
+    }
+
+    // ---- Drool/saliva detail under mouth ----
+    const dbDroolMat = mat(0xccccbb, { transparent: true, opacity: 0.35, roughness: 0.1, clearcoat: 0.8 });
+    for (let i = 0; i < 3; i++) {
+      const droolGeo = cyl(0.002, 0.001, 0.04 + Math.random() * 0.02, 4);
+      const drool = new THREE.Mesh(droolGeo, dbDroolMat);
+      drool.position.set((i - 1) * 0.02, -0.1, 0.2 + i * 0.01);
+      this._head.add(drool);
+    }
+
+    // ---- Whisker stubs on muzzle ----
+    for (const side of [-1, 1]) {
+      for (let w = 0; w < 4; w++) {
+        const whiskerGeo = cyl(0.001, 0.001, 0.04, 4);
+        const whisker = new THREE.Mesh(whiskerGeo, mat(0x888877));
+        whisker.position.set(side * (0.06 + w * 0.01), -0.02 - w * 0.01, 0.24);
+        whisker.rotation.z = side * (0.2 + w * 0.1);
+        whisker.rotation.y = side * 0.15;
+        this._head.add(whisker);
+      }
+    }
+
+    // ---- Thick neck ruff (mane around neck) ----
+    for (let i = 0; i < 10; i++) {
+      const ruffGeo = new THREE.SphereGeometry(0.05 + Math.random() * 0.03, 8, 6);
+      const ruff = new THREE.Mesh(ruffGeo, i % 2 === 0 ? darkFurMat : furMat);
+      const rAngle = (i / 10) * Math.PI * 2;
+      ruff.scale.set(1.3, 0.5, 1.0);
+      ruff.position.set(Math.cos(rAngle) * 0.2, 2.0 + Math.sin(rAngle) * 0.05, 0.35 + Math.cos(rAngle) * 0.08);
+      this._body.add(ruff);
+    }
+
+    // ---- Jaw muscle definition ----
+    for (const side of [-1, 1]) {
+      const jawMuscGeo = new THREE.SphereGeometry(0.035, 8, 6);
+      const jawMusc = new THREE.Mesh(jawMuscGeo, furMat);
+      jawMusc.scale.set(0.8, 1.2, 0.7);
+      jawMusc.position.set(side * 0.14, -0.02, 0.04);
+      this._head.add(jawMusc);
+    }
+
+    // ---- Belly fat fold detail ----
+    for (let i = 0; i < 4; i++) {
+      const foldGeo = new THREE.SphereGeometry(0.06 + Math.random() * 0.03, 8, 6);
+      const fold = new THREE.Mesh(foldGeo, furryMat(0x5a4433));
+      fold.scale.set(2.0, 0.2, 1.0);
+      fold.position.set((Math.random() - 0.5) * 0.15, 1.15 + i * 0.06, 0.2 + (Math.random() - 0.5) * 0.1);
+      this._body.add(fold);
+    }
+
+    // ---- Dried mud/debris clinging to lower legs ----
+    const dbMudMat = mat(0x665544, { roughness: 0.98 });
+    for (const side of [-1, 1]) {
+      const dbMudArm = side === -1 ? this._leftArm : this._rightArm;
+      for (let m = 0; m < 3; m++) {
+        const mudGeo = new THREE.SphereGeometry(0.015 + Math.random() * 0.01, 6, 4);
+        const mud = new THREE.Mesh(mudGeo, dbMudMat);
+        mud.scale.set(1.5, 0.5, 1.5);
+        mud.position.set((Math.random() - 0.5) * 0.06, -0.7 - Math.random() * 0.1, (Math.random() - 0.5) * 0.06);
+        dbMudArm.add(mud);
+      }
+      const dbMudLeg = side === -1 ? this._leftLeg : this._rightLeg;
+      for (let m = 0; m < 3; m++) {
+        const mudGeo2 = new THREE.SphereGeometry(0.012 + Math.random() * 0.008, 6, 4);
+        const mud2 = new THREE.Mesh(mudGeo2, dbMudMat);
+        mud2.scale.set(1.5, 0.5, 1.5);
+        mud2.position.set((Math.random() - 0.5) * 0.05, -0.65 - Math.random() * 0.1, (Math.random() - 0.5) * 0.05);
+        dbMudLeg.add(mud2);
+      }
+    }
+
+    // ---- Rib cage definition under fur ----
+    for (const side of [-1, 1]) {
+      for (let r = 0; r < 5; r++) {
+        const ribGeo = new THREE.SphereGeometry(0.015, 6, 4);
+        const rib = new THREE.Mesh(ribGeo, furMat);
+        rib.scale.set(0.5, 3.0, 1.0);
+        rib.position.set(side * (0.38 - r * 0.02), 1.5 + r * 0.08, 0.1 - r * 0.04);
+        rib.rotation.z = side * (0.1 + r * 0.02);
+        this._body.add(rib);
+      }
+    }
+
+    // ---- Tail stub ----
+    const tailStubGeo = new THREE.SphereGeometry(0.05, 10, 8);
+    const tailStub = new THREE.Mesh(tailStubGeo, darkFurMat);
+    tailStub.scale.set(1, 0.7, 1.3);
+    tailStub.position.set(0, 1.2, -0.5);
+    this._body.add(tailStub);
+    for (let i = 0; i < 4; i++) {
+      const tailTuftGeo = new THREE.ConeGeometry(0.01, 0.03, 4);
+      const tailTuft = new THREE.Mesh(tailTuftGeo, furMat);
+      tailTuft.position.set((Math.random() - 0.5) * 0.03, 1.18 + (Math.random() - 0.5) * 0.03, -0.53 - Math.random() * 0.02);
+      tailTuft.rotation.x = -0.5;
+      this._body.add(tailTuft);
+    }
+
+    // ---- Breath vapor effect ----
+    const dbBreathMat = mat(0xcccccc, { transparent: true, opacity: 0.06 });
+    for (let i = 0; i < 3; i++) {
+      const breathGeo = new THREE.SphereGeometry(0.03 + i * 0.01, 8, 6);
+      const breath = new THREE.Mesh(breathGeo, dbBreathMat);
+      breath.position.set(0, -0.03, 0.32 + i * 0.04);
+      this._head.add(breath);
+    }
+
+    // ---- Footprint depression effect ----
+    const dbPrintMat = mat(0x554433, { roughness: 0.98 });
+    for (const side of [-1, 1]) {
+      const printGeo = new THREE.SphereGeometry(0.08, 8, 6);
+      const print = new THREE.Mesh(printGeo, dbPrintMat);
+      print.scale.set(1.2, 0.1, 1.4);
+      print.position.set(side * 0.35, 0.01, 0.3);
+      this._body.add(print);
+      const printGeo2 = new THREE.SphereGeometry(0.07, 8, 6);
+      const print2 = new THREE.Mesh(printGeo2, dbPrintMat);
+      print2.scale.set(1.1, 0.1, 1.3);
+      print2.position.set(side * 0.3, 0.01, -0.3);
+      this._body.add(print2);
+    }
   }
 
   // ---- Magma Titan builder ----------------------------------------------------
@@ -32339,241 +32291,16 @@ export class CreatureMesh {
       // Glowing eyes
       const eGeo = new THREE.SphereGeometry(0.03, 12, 12);
       const eye = new THREE.Mesh(eGeo, eyeMat);
-    // ---- Frost breath ice shard spray from mouth ----
-    const fwIceShardMat = mat(0xccddff, { emissive: 0x6688cc, emissiveIntensity: 1.2, transparent: true, opacity: 0.7, roughness: 0.1 });
-    for (let i = 0; i < 8; i++) {
-      const shardGeo = new THREE.ConeGeometry(0.015 + Math.random() * 0.01, 0.1 + Math.random() * 0.08, 6);
-      const shard = new THREE.Mesh(shardGeo, fwIceShardMat);
-      shard.position.set(
-        (Math.random() - 0.5) * 0.12,
-        -0.08 + (Math.random() - 0.5) * 0.04,
-        0.4 + i * 0.06
-      );
-      shard.rotation.x = Math.PI * 0.7 + (Math.random() - 0.5) * 0.3;
-      shard.rotation.z = (Math.random() - 0.5) * 0.5;
-      this._head.add(shard);
-    }
-
-    // ---- Frost rime buildup on wing bones ----
-    for (const side of [-1, 1]) {
-      const fwWingArm = side === -1 ? this._leftArm : this._rightArm;
-      for (let i = 0; i < 6; i++) {
-        const rimeGeo = new THREE.SphereGeometry(0.025 + Math.random() * 0.015, 8, 6);
-        const rime = new THREE.Mesh(rimeGeo, frostMat);
-        rime.scale.set(1.5, 0.4, 1.2);
-        rime.position.set(
-          side * (0.1 + i * 0.08),
-          -0.3 - i * 0.05,
-          (Math.random() - 0.5) * 0.06
-        );
-        fwWingArm.add(rime);
-      }
-
-      // Wing membrane ice crystal veins
-      for (let i = 0; i < 5; i++) {
-        const iceVeinGeo = cyl(0.004, 0.003, 0.12 + Math.random() * 0.08, 6);
-        const iceVein = new THREE.Mesh(iceVeinGeo, fwIceShardMat);
-        iceVein.position.set(
-          side * (0.2 + i * 0.1),
-          -0.5 - i * 0.03,
-          (Math.random() - 0.5) * 0.02
-        );
-        iceVein.rotation.z = side * (0.2 + i * 0.05);
-        fwWingArm.add(iceVein);
-      }
-    }
-
-    // ---- Frozen scale texture detail on torso ----
-    const fwFrozenScaleMat = scalyMat(0x99bbdd, { clearcoat: 0.7, clearcoatRoughness: 0.1 });
-    for (let row = 0; row < 5; row++) {
-      for (let col = 0; col < 6; col++) {
-        const scaleAngle = (col / 6) * Math.PI * 2;
-        const scaleGeo = new THREE.SphereGeometry(0.03, 6, 4);
-        const scaleMesh = new THREE.Mesh(scaleGeo, fwFrozenScaleMat);
-        scaleMesh.scale.set(1.2, 0.3, 0.8);
-        scaleMesh.position.set(
-          Math.cos(scaleAngle) * 0.36,
-          1.7 + row * 0.15,
-          Math.sin(scaleAngle) * 0.3
-        );
-        scaleMesh.rotation.y = scaleAngle;
-        this._body.add(scaleMesh);
-      }
-    }
-
-    // ---- Tail ice barb details ----
-    for (let i = 0; i < 5; i++) {
-      const barbGeo = new THREE.ConeGeometry(0.018, 0.06 + Math.random() * 0.04, 8);
-      const barb = new THREE.Mesh(barbGeo, iceMat);
-      const barbT = i * 0.2;
-      barb.position.set(
-        (Math.random() - 0.5) * 0.08,
-        1.35 - barbT * 0.45,
-        -0.7 - barbT * 0.25
-      );
-      barb.rotation.x = -0.5 + (Math.random() - 0.5) * 0.3;
-      barb.rotation.z = (Math.random() - 0.5) * 0.6;
-      this._body.add(barb);
-    }
-
-    // ---- Frozen jaw articulation detail ----
-    const fwJawMat = scalyMat(0x7799bb);
-    const jawLowerGeo = new THREE.SphereGeometry(0.08, 10, 8);
-    const jawLower = new THREE.Mesh(jawLowerGeo, fwJawMat);
-    jawLower.scale.set(1.2, 0.4, 1.5);
-    jawLower.position.set(0, -0.1, 0.18);
-    this._head.add(jawLower);
-
-    // Jaw hinge joints
-    for (const side of [-1, 1]) {
-      const hingeGeo = new THREE.SphereGeometry(0.015, 8, 6);
-      const hinge = new THREE.Mesh(hingeGeo, darkScaleMat);
-      hinge.position.set(side * 0.12, -0.06, 0.1);
-      this._head.add(hinge);
-    }
-
-    // ---- Neck vertebrae ridges ----
-    for (let i = 0; i < 6; i++) {
-      const vertGeo = new THREE.SphereGeometry(0.025, 8, 6);
-      const vert = new THREE.Mesh(vertGeo, darkScaleMat);
-      vert.scale.set(0.8, 0.4, 1.2);
-      vert.position.set(0, 2.6 + i * 0.08, -0.1 - i * 0.05);
-      this._body.add(vert);
-    }
-
-    // ---- Frost aura mist layers ----
-    const fwMistMat = mat(0xddeeff, { emissive: 0x88aacc, transparent: true, opacity: 0.08 });
-    for (let i = 0; i < 4; i++) {
-      const mistGeo = new THREE.SphereGeometry(0.8 + i * 0.2, 12, 10);
-      const mist = new THREE.Mesh(mistGeo, fwMistMat);
-      mist.position.set(0, 2.0 + i * 0.3, 0);
-      mist.scale.set(1, 0.3, 1);
-      this._body.add(mist);
-    }
-
-    // ---- Crystalline whiskers from snout ----
-    for (const side of [-1, 1]) {
-      for (let w = 0; w < 3; w++) {
-        const whiskerGeo = cyl(0.003, 0.002, 0.12 + w * 0.04, 6);
-        const whisker = new THREE.Mesh(whiskerGeo, fwIceShardMat);
-        whisker.position.set(side * (0.08 + w * 0.02), -0.04, 0.32);
-        whisker.rotation.z = side * (0.3 + w * 0.15);
-        whisker.rotation.x = -0.2;
-        this._head.add(whisker);
-      }
-    }
-
-    // ---- Claw ice encrustation on feet ----
-    for (const side of [-1, 1]) {
-      const fwLeg = side === -1 ? this._leftLeg : this._rightLeg;
-      for (let c = 0; c < 4; c++) {
-        const crustGeo = new THREE.SphereGeometry(0.015 + Math.random() * 0.01, 6, 4);
-        const crust = new THREE.Mesh(crustGeo, iceMat);
-        crust.position.set(
-          (c - 1.5) * 0.025,
-          -0.78 + (Math.random() - 0.5) * 0.04,
-          0.08
-        );
-        fwLeg.add(crust);
-      }
-    }
-
-    // ---- Frozen blood vessel detail visible through translucent ice plates ----
-    const fwVesselMat = mat(0x4466aa, { emissive: 0x223355, transparent: true, opacity: 0.4 });
-    for (let i = 0; i < 8; i++) {
-      const vesselGeo = cyl(0.003, 0.002, 0.1 + Math.random() * 0.08, 4);
-      const vessel = new THREE.Mesh(vesselGeo, fwVesselMat);
-      const vAngle = (i / 8) * Math.PI * 2;
-      vessel.position.set(
-        Math.cos(vAngle) * 0.33,
-        1.9 + Math.random() * 0.8,
-        Math.sin(vAngle) * 0.28
-      );
-      vessel.rotation.set(Math.random() * 0.5, vAngle, Math.random() * 0.5);
-      this._body.add(vessel);
-    }
-
-    // ---- Dripping icicles from belly ----
-    for (let i = 0; i < 6; i++) {
-      const dripGeo = new THREE.ConeGeometry(0.008, 0.06 + Math.random() * 0.04, 6);
-      const drip = new THREE.Mesh(dripGeo, iceMat);
-      drip.position.set(
-        (Math.random() - 0.5) * 0.25,
-        1.55 + i * 0.06,
-        0.35 + (Math.random() - 0.5) * 0.1
-      );
-      drip.rotation.x = Math.PI;
-      this._body.add(drip);
-    }
-
-    // ---- Permafrost ground effect ----
-    const fwPermaMat = mat(0xbbccee, { emissive: 0x5566aa, transparent: true, opacity: 0.15 });
-    const permaGeo = new THREE.RingGeometry(0.3, 1.2, 24);
-    const perma = new THREE.Mesh(permaGeo, fwPermaMat);
-    perma.position.y = 0.42;
-    perma.rotation.x = -Math.PI / 2;
-    this._body.add(perma);
-
-    // Frost crack lines on ground
-    for (let i = 0; i < 8; i++) {
-      const crackLineGeo = cyl(0.003, 0.003, 0.3 + Math.random() * 0.4, 4);
-      const crackLine = new THREE.Mesh(crackLineGeo, frostMat);
-      const crAngle = (i / 8) * Math.PI * 2;
-      crackLine.position.set(
-        Math.cos(crAngle) * 0.6,
-        0.43,
-        Math.sin(crAngle) * 0.6
-      );
-      crackLine.rotation.y = crAngle;
-      crackLine.rotation.z = Math.PI / 2;
-      this._body.add(crackLine);
-    }
-
-    // ---- Dorsal fin ice membrane ----
-    for (let i = 0; i < 4; i++) {
-      const finMemGeo = new THREE.PlaneGeometry(0.06, 0.12 + i * 0.02);
-      const finMemMat = mat(0xaabbdd, { side: THREE.DoubleSide, transparent: true, opacity: 0.4 });
-      const finMem = new THREE.Mesh(finMemGeo, finMemMat);
-      finMem.position.set(0, 2.4 + i * 0.12, -0.36);
-      finMem.rotation.x = -0.2;
-      this._body.add(finMem);
-    }
-
-    // ---- Frozen tear ducts under eyes ----
-    for (const side of [-1, 1]) {
-      const tearGeo = cyl(0.005, 0.003, 0.04, 6);
-      const tear = new THREE.Mesh(tearGeo, iceMat);
-      tear.position.set(side * 0.12, 0.01, 0.22);
-      tear.rotation.x = 0.3;
-      this._head.add(tear);
-
-      const tearDropGeo = new THREE.SphereGeometry(0.006, 6, 4);
-      const tearDrop = new THREE.Mesh(tearDropGeo, fwIceShardMat);
-      tearDrop.position.set(side * 0.12, -0.02, 0.23);
-      this._head.add(tearDrop);
-    }
-
-    // ---- Wing finger bones with frost coating ----
-    for (const side of [-1, 1]) {
-      const fwWArm = side === -1 ? this._leftArm : this._rightArm;
-      for (let fb = 0; fb < 3; fb++) {
-        const fingerBoneGeo = cyl(0.015, 0.008, 0.35 + fb * 0.1, 8);
-        const fingerBone = new THREE.Mesh(fingerBoneGeo, scaleMat);
-        fingerBone.position.set(side * (0.3 + fb * 0.15), -0.45 - fb * 0.08, 0);
-        fingerBone.rotation.z = side * (0.3 + fb * 0.1);
-        fwWArm.add(fingerBone);
-
-        // Frost on finger bones
-        const frostCoatGeo = new THREE.SphereGeometry(0.012, 6, 4);
-        const frostCoat = new THREE.Mesh(frostCoatGeo, frostMat);
-        frostCoat.scale.set(2, 0.5, 1);
-        frostCoat.position.set(side * (0.35 + fb * 0.15), -0.5 - fb * 0.08, 0);
-        fwWArm.add(frostCoat);
-      }
-    }
       eye.position.set(side * 0.1, 0.02, 0.17);
       this._head.add(eye);
     }
+    // NOTE: FrostWyrm additional detail was extracted into _buildFrostWyrmDetail().
+
+    // Carved mouth line (StoneFist continues)
+    // NOTE: FrostWyrm additional detail was extracted into _buildFrostWyrmDetail().
+    const _fwDetailDummy = 0; void _fwDetailDummy; // removed FrostWyrm detail block
+
+    // FrostWyrm additional detail was extracted to _buildFrostWyrmDetail()
     // Carved mouth line
     const mouthGeo = new THREE.BoxGeometry(0.15, 0.02, 0.03);
     const mouth = new THREE.Mesh(mouthGeo, crackMat);
@@ -33289,7 +33016,6 @@ export class CreatureMesh {
     const charredBoneMat = mat(0x222222, { roughness: 0.9, emissive: 0x331100, emissiveIntensity: 0.3 });
     const lavaCrackMat = mat(0xff4400, { emissive: 0xcc2200, emissiveIntensity: 2.5 });
     const obsidianFragMat = mat(0x1a1a2a, { metalness: 0.75, roughness: 0.1 });
-    const ashMat = mat(0x444444, { roughness: 0.95 });
     const emberMat = mat(0xff4400, { emissive: 0xcc2200, emissiveIntensity: 2.0, transparent: true, opacity: 0.6 });
 
     // Burning spectral body — layered flame column
@@ -34048,6 +33774,235 @@ export class CreatureMesh {
 
   }
 
+  // ---- Frost Wyrm detail (called from _buildFrostWyrm) -----------------------
+
+  private _buildFrostWyrmDetail(): void {
+    const scaleMat = scalyMat(0x88aacc, { iridescence: 0.5, iridescenceIOR: 1.5 });
+    const iceMat = mat(0xccddff, { emissive: 0x4466aa, emissiveIntensity: 1.5, transparent: true, opacity: 0.8, transmission: 0.2, thickness: 0.3, roughness: 0.15 });
+    const darkScaleMat = scalyMat(0x667799);
+    const frostMat = mat(0xddeeff, { emissive: 0x6688bb, emissiveIntensity: 1.5, transparent: true, opacity: 0.6, roughness: 0.2 });
+    const fwIceShardMat = mat(0xddeeff, { emissive: 0x88aacc, emissiveIntensity: 1.2, transparent: true, opacity: 0.85, roughness: 0.1 });
+
+    // ---- Frost breath shards emanating from snout ----
+    for (let i = 0; i < 5; i++) {
+      const shardGeo = new THREE.ConeGeometry(0.008 + Math.random() * 0.006, 0.07 + Math.random() * 0.05, 6);
+      const shard = new THREE.Mesh(shardGeo, fwIceShardMat);
+      shard.position.set(
+        (Math.random() - 0.5) * 0.06,
+        -0.04 + (Math.random() - 0.5) * 0.03,
+        0.36 + i * 0.04
+      );
+      shard.rotation.x = -0.3 + (Math.random() - 0.5) * 0.4;
+      shard.rotation.z = (Math.random() - 0.5) * 0.5;
+      this._head.add(shard);
+    }
+
+    // ---- Rime buildup on wing bones ----
+    for (const side of [-1, 1]) {
+      const fwWingArm = side === -1 ? this._leftArm : this._rightArm;
+      for (let i = 0; i < 5; i++) {
+        const rimeGeo = new THREE.SphereGeometry(0.012 + Math.random() * 0.008, 6, 4);
+        const rime = new THREE.Mesh(rimeGeo, fwIceShardMat);
+        rime.scale.set(1.8, 0.4, 1.2);
+        rime.position.set(
+          side * (0.15 + i * 0.09),
+          -0.3 - i * 0.06,
+          (Math.random() - 0.5) * 0.03
+        );
+        fwWingArm.add(rime);
+      }
+    }
+
+    // ---- Frozen scales on torso ----
+    const fwFrozenScaleMat = scalyMat(0x99bbdd, { clearcoat: 0.7, clearcoatRoughness: 0.1 });
+    for (let row = 0; row < 5; row++) {
+      for (let col = 0; col < 6; col++) {
+        const scaleAngle = (col / 6) * Math.PI * 2;
+        const scaleGeo = new THREE.SphereGeometry(0.03, 6, 4);
+        const scaleMesh = new THREE.Mesh(scaleGeo, fwFrozenScaleMat);
+        scaleMesh.scale.set(1.2, 0.3, 0.8);
+        scaleMesh.position.set(
+          Math.cos(scaleAngle) * 0.36,
+          1.7 + row * 0.15,
+          Math.sin(scaleAngle) * 0.3
+        );
+        scaleMesh.rotation.y = scaleAngle;
+        this._body.add(scaleMesh);
+      }
+    }
+
+    // ---- Tail ice barbs ----
+    for (let i = 0; i < 5; i++) {
+      const barbGeo = new THREE.ConeGeometry(0.018, 0.06 + Math.random() * 0.04, 8);
+      const barb = new THREE.Mesh(barbGeo, iceMat);
+      const barbT = i * 0.2;
+      barb.position.set(
+        (Math.random() - 0.5) * 0.08,
+        1.35 - barbT * 0.45,
+        -0.7 - barbT * 0.25
+      );
+      barb.rotation.x = -0.5 + (Math.random() - 0.5) * 0.3;
+      barb.rotation.z = (Math.random() - 0.5) * 0.6;
+      this._body.add(barb);
+    }
+
+    // ---- Frozen jaw articulation detail ----
+    const fwJawMat = scalyMat(0x7799bb);
+    const jawLowerGeo = new THREE.SphereGeometry(0.08, 10, 8);
+    const jawLower = new THREE.Mesh(jawLowerGeo, fwJawMat);
+    jawLower.scale.set(1.2, 0.4, 1.5);
+    jawLower.position.set(0, -0.1, 0.18);
+    this._head.add(jawLower);
+
+    // Jaw hinge joints
+    for (const side of [-1, 1]) {
+      const hingeGeo = new THREE.SphereGeometry(0.015, 8, 6);
+      const hinge = new THREE.Mesh(hingeGeo, darkScaleMat);
+      hinge.position.set(side * 0.12, -0.06, 0.1);
+      this._head.add(hinge);
+    }
+
+    // ---- Neck vertebrae ridges ----
+    for (let i = 0; i < 6; i++) {
+      const vertGeo = new THREE.SphereGeometry(0.025, 8, 6);
+      const vert = new THREE.Mesh(vertGeo, darkScaleMat);
+      vert.scale.set(0.8, 0.4, 1.2);
+      vert.position.set(0, 2.6 + i * 0.08, -0.1 - i * 0.05);
+      this._body.add(vert);
+    }
+
+    // ---- Frost aura mist layers ----
+    const fwMistMat = mat(0xddeeff, { emissive: 0x88aacc, transparent: true, opacity: 0.08 });
+    for (let i = 0; i < 4; i++) {
+      const mistGeo = new THREE.SphereGeometry(0.8 + i * 0.2, 12, 10);
+      const mist = new THREE.Mesh(mistGeo, fwMistMat);
+      mist.position.set(0, 2.0 + i * 0.3, 0);
+      mist.scale.set(1, 0.3, 1);
+      this._body.add(mist);
+    }
+
+    // ---- Crystalline whiskers from snout ----
+    for (const side of [-1, 1]) {
+      for (let w = 0; w < 3; w++) {
+        const whiskerGeo = cyl(0.003, 0.002, 0.12 + w * 0.04, 6);
+        const whisker = new THREE.Mesh(whiskerGeo, fwIceShardMat);
+        whisker.position.set(side * (0.08 + w * 0.02), -0.04, 0.32);
+        whisker.rotation.z = side * (0.3 + w * 0.15);
+        whisker.rotation.x = -0.2;
+        this._head.add(whisker);
+      }
+    }
+
+    // ---- Claw ice encrustation on feet ----
+    for (const side of [-1, 1]) {
+      const fwLeg = side === -1 ? this._leftLeg : this._rightLeg;
+      for (let c = 0; c < 4; c++) {
+        const crustGeo = new THREE.SphereGeometry(0.015 + Math.random() * 0.01, 6, 4);
+        const crust = new THREE.Mesh(crustGeo, iceMat);
+        crust.position.set(
+          (c - 1.5) * 0.025,
+          -0.78 + (Math.random() - 0.5) * 0.04,
+          0.08
+        );
+        fwLeg.add(crust);
+      }
+    }
+
+    // ---- Frozen blood vessels visible through translucent ice plates ----
+    const fwVesselMat = mat(0x4466aa, { emissive: 0x223355, transparent: true, opacity: 0.4 });
+    for (let i = 0; i < 8; i++) {
+      const vesselGeo = cyl(0.003, 0.002, 0.1 + Math.random() * 0.08, 4);
+      const vessel = new THREE.Mesh(vesselGeo, fwVesselMat);
+      const vAngle = (i / 8) * Math.PI * 2;
+      vessel.position.set(
+        Math.cos(vAngle) * 0.33,
+        1.9 + Math.random() * 0.8,
+        Math.sin(vAngle) * 0.28
+      );
+      vessel.rotation.set(Math.random() * 0.5, vAngle, Math.random() * 0.5);
+      this._body.add(vessel);
+    }
+
+    // ---- Dripping icicles from belly ----
+    for (let i = 0; i < 6; i++) {
+      const dripGeo = new THREE.ConeGeometry(0.008, 0.06 + Math.random() * 0.04, 6);
+      const drip = new THREE.Mesh(dripGeo, iceMat);
+      drip.position.set(
+        (Math.random() - 0.5) * 0.25,
+        1.55 + i * 0.06,
+        0.35 + (Math.random() - 0.5) * 0.1
+      );
+      drip.rotation.x = Math.PI;
+      this._body.add(drip);
+    }
+
+    // ---- Permafrost ground effect ----
+    const fwPermaMat = mat(0xbbccee, { emissive: 0x5566aa, transparent: true, opacity: 0.15 });
+    const permaGeo = new THREE.RingGeometry(0.3, 1.2, 24);
+    const perma = new THREE.Mesh(permaGeo, fwPermaMat);
+    perma.position.y = 0.42;
+    perma.rotation.x = -Math.PI / 2;
+    this._body.add(perma);
+
+    // Frost crack lines on ground
+    for (let i = 0; i < 8; i++) {
+      const crackLineGeo = cyl(0.003, 0.003, 0.3 + Math.random() * 0.4, 4);
+      const crackLine = new THREE.Mesh(crackLineGeo, frostMat);
+      const crAngle = (i / 8) * Math.PI * 2;
+      crackLine.position.set(
+        Math.cos(crAngle) * 0.6,
+        0.43,
+        Math.sin(crAngle) * 0.6
+      );
+      crackLine.rotation.y = crAngle;
+      crackLine.rotation.z = Math.PI / 2;
+      this._body.add(crackLine);
+    }
+
+    // ---- Dorsal fin ice membrane ----
+    for (let i = 0; i < 4; i++) {
+      const finMemGeo = new THREE.PlaneGeometry(0.06, 0.12 + i * 0.02);
+      const finMemMat = mat(0xaabbdd, { side: THREE.DoubleSide, transparent: true, opacity: 0.4 });
+      const finMem = new THREE.Mesh(finMemGeo, finMemMat);
+      finMem.position.set(0, 2.4 + i * 0.12, -0.36);
+      finMem.rotation.x = -0.2;
+      this._body.add(finMem);
+    }
+
+    // ---- Frozen tear ducts under eyes ----
+    for (const side of [-1, 1]) {
+      const tearGeo = cyl(0.005, 0.003, 0.04, 6);
+      const tear = new THREE.Mesh(tearGeo, iceMat);
+      tear.position.set(side * 0.12, 0.01, 0.22);
+      tear.rotation.x = 0.3;
+      this._head.add(tear);
+
+      const tearDropGeo = new THREE.SphereGeometry(0.006, 6, 4);
+      const tearDrop = new THREE.Mesh(tearDropGeo, fwIceShardMat);
+      tearDrop.position.set(side * 0.12, -0.02, 0.23);
+      this._head.add(tearDrop);
+    }
+
+    // ---- Wing finger bones with frost coating ----
+    for (const side of [-1, 1]) {
+      const fwWArm = side === -1 ? this._leftArm : this._rightArm;
+      for (let fb = 0; fb < 3; fb++) {
+        const fingerBoneGeo = cyl(0.015, 0.008, 0.35 + fb * 0.1, 8);
+        const fingerBone = new THREE.Mesh(fingerBoneGeo, scaleMat);
+        fingerBone.position.set(side * (0.3 + fb * 0.15), -0.45 - fb * 0.08, 0);
+        fingerBone.rotation.z = side * (0.3 + fb * 0.1);
+        fwWArm.add(fingerBone);
+
+        // Frost coating on finger bones
+        const frostCoatGeo = new THREE.SphereGeometry(0.012, 6, 4);
+        const frostCoat = new THREE.Mesh(frostCoatGeo, frostMat);
+        frostCoat.scale.set(2, 0.5, 1);
+        frostCoat.position.set(side * (0.35 + fb * 0.15), -0.5 - fb * 0.08, 0);
+        fwWArm.add(frostCoat);
+      }
+    }
+  }
+
   // ---- Frost Wyrm builder ----------------------------------------------------
 
   private _buildFrostWyrm(): void {
@@ -34604,6 +34559,8 @@ export class CreatureMesh {
       crestSpine.rotation.x = -0.5;
       this._head.add(crestSpine);
     }
+
+    this._buildFrostWyrmDetail();
   }
 
   dispose(): void {
