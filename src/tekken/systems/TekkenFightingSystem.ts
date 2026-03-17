@@ -247,12 +247,18 @@ export class TekkenFightingSystem {
       fighter.counterHitWindow = false;
     }
 
+    // Apply advance distance gradually during startup and active phases
+    const dir = fighter.facingRight ? 1 : -1;
+    if (fighter.movePhase === "startup" || fighter.movePhase === "active") {
+      const totalAdvanceFrames = moveDef.startup + moveDef.active;
+      if (totalAdvanceFrames > 0 && moveDef.advanceDistance > 0) {
+        fighter.velocity.x = (moveDef.advanceDistance / totalAdvanceFrames) * dir;
+      }
+    }
+
     if (fighter.movePhase === "startup" && fighter.moveFrame >= moveDef.startup) {
       fighter.movePhase = "active";
       fighter.moveFrame = 0;
-      // Advance forward during active frames
-      const dir = fighter.facingRight ? 1 : -1;
-      fighter.velocity.x = moveDef.advanceDistance * dir / Math.max(1, moveDef.active);
     } else if (fighter.movePhase === "active" && fighter.moveFrame >= moveDef.active) {
       fighter.movePhase = "recovery";
       fighter.moveFrame = 0;
@@ -269,11 +275,15 @@ export class TekkenFightingSystem {
     const moveDef = this._getMoveDef(attacker);
     if (!moveDef) return;
 
-    // Simple distance-based hit detection
+    // Range-aware hit detection: use hitbox.x (reach offset) + hitbox.w/2 (half-width) + advanceDistance
     const dx = Math.abs(attacker.position.x - defender.position.x);
-    const hitRange = moveDef.hitbox.w + 0.2; // base range + tolerance
+    const effectiveRange = moveDef.hitbox.x + moveDef.hitbox.w / 2 + moveDef.advanceDistance;
 
-    if (dx > hitRange) return;
+    if (dx > effectiveRange) {
+      // Move whiffed due to range - mark as hit so recovery still plays out (whiff punishment window)
+      // but don't apply damage. The attacker is stuck in recovery frames.
+      return;
+    }
 
     // Height check: HIGH attacks whiff on crouching
     if (moveDef.height === TekkenAttackHeight.HIGH && defender.crouching) {
@@ -401,9 +411,10 @@ export class TekkenFightingSystem {
     }
     defender.hitstunFrames = hitstun;
 
-    // Knockback
+    // Knockback - apply as impulse added to current velocity for visible pushback
     const pushDir = defender.facingRight ? -1 : 1;
-    defender.velocity.x = moveDef.knockback * pushDir;
+    const knockbackMultiplier = isCounterHit ? 1.3 : 1.0;
+    defender.velocity.x = moveDef.knockback * knockbackMultiplier * pushDir;
 
     // Determine hit reaction
     // Counter-hit on a launcher move: always launch even if the move isn't normally a launcher
