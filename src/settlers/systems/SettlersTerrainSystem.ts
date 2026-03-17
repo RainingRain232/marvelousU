@@ -16,15 +16,55 @@ function seededRandom(seed: number): () => number {
   };
 }
 
-/** Multi-octave noise using sin-based pseudo-noise (no library needed) */
+/** Hash-based pseudo-random for 2D lattice points (better than sin-based) */
+function _hash(ix: number, iz: number, seed: number): number {
+  let h = (ix * 374761393 + iz * 668265263 + seed * 1274126177) | 0;
+  h = ((h ^ (h >> 13)) * 1274126177) | 0;
+  return (h & 0x7fffffff) / 0x7fffffff; // 0..1
+}
+
+/** Smooth interpolation */
+function _smoothstep(t: number): number {
+  return t * t * (3 - 2 * t);
+}
+
+/** Value noise at any 2D coordinate – smooth lattice-based noise */
+function _valueNoise(x: number, z: number, seed: number): number {
+  const ix = Math.floor(x);
+  const iz = Math.floor(z);
+  const fx = _smoothstep(x - ix);
+  const fz = _smoothstep(z - iz);
+  const v00 = _hash(ix, iz, seed) * 2 - 1;
+  const v10 = _hash(ix + 1, iz, seed) * 2 - 1;
+  const v01 = _hash(ix, iz + 1, seed) * 2 - 1;
+  const v11 = _hash(ix + 1, iz + 1, seed) * 2 - 1;
+  const top = v00 + (v10 - v00) * fx;
+  const bot = v01 + (v11 - v01) * fx;
+  return top + (bot - top) * fz;
+}
+
+/** Multi-octave fractal noise with proper frequency/amplitude falloff */
 function noise2D(x: number, z: number, seed: number): number {
-  const s = seed * 0.1317;
+  let value = 0;
+  let amplitude = 1;
+  let frequency = 1;
+  let maxAmp = 0;
+  // 6 octaves for rich terrain detail
+  for (let i = 0; i < 6; i++) {
+    value += _valueNoise(x * frequency * 0.06, z * frequency * 0.06, seed + i * 31) * amplitude;
+    maxAmp += amplitude;
+    amplitude *= 0.48;  // persistence
+    frequency *= 2.1;   // lacunarity
+  }
+  return value / maxAmp; // normalize to roughly -1..1
+}
+
+/** High-frequency detail noise for micro-terrain variation */
+export function detailNoise(x: number, z: number, seed: number): number {
   return (
-    Math.sin(x * 0.08 + s) * 0.4 +
-    Math.cos(z * 0.06 + s * 1.3) * 0.3 +
-    Math.sin((x + z) * 0.04 + s * 0.7) * 0.6 +
-    Math.sin(x * 0.15 - z * 0.12 + s * 2.1) * 0.2 +
-    Math.cos(x * 0.03 + z * 0.025 + s * 0.4) * 0.8
+    _valueNoise(x * 0.5, z * 0.5, seed + 777) * 0.6 +
+    _valueNoise(x * 1.1, z * 1.1, seed + 888) * 0.3 +
+    _valueNoise(x * 2.3, z * 2.3, seed + 999) * 0.1
   );
 }
 
@@ -104,11 +144,21 @@ export function generateTerrain(map: SettlersMap, seed: number = 42, mode: Settl
     for (let vx = 0; vx <= w; vx++) {
       const nx = vx / w;
       const nz = vz / h;
+
+      // Base terrain from multi-octave fractal noise
       let height = noise2D(vx, vz, seed);
 
-      // Normalize to 0..1 range roughly
-      height = (height + 2.3) / 4.6;
+      // Normalize to 0..1
+      height = (height + 1) * 0.5;
       height = Math.max(0, Math.min(1, height));
+
+      // Add gentle rolling hills at medium frequency
+      const hills = _valueNoise(vx * 0.12, vz * 0.12, seed + 500) * 0.15;
+      height += hills;
+
+      // Add fine micro-detail for realistic surface texture
+      const micro = _valueNoise(vx * 0.4, vz * 0.4, seed + 600) * 0.04;
+      height += micro;
 
       // Push edges down toward water
       const edgeDist = Math.min(nx, 1 - nx, nz, 1 - nz);
@@ -118,6 +168,13 @@ export function generateTerrain(map: SettlersMap, seed: number = 42, mode: Settl
       // Apply map-mode-specific height modifier
       height = params.heightModifier(nx, nz, height, seed);
       height = Math.max(0, Math.min(1, height));
+
+      // Terracing effect on mountains for more interesting cliffs
+      if (height > params.mountainLevel * 0.8) {
+        const terraceScale = 8;
+        const terraced = Math.round(height * terraceScale) / terraceScale;
+        height = height * 0.6 + terraced * 0.4; // blend for softer steps
+      }
 
       map.heightmap[vz * (w + 1) + vx] = height * SB.MAX_HEIGHT;
     }

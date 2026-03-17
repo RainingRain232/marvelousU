@@ -169,7 +169,8 @@ export class RiftWizardSpellSelectUI {
       return true;
     }
 
-    if (key === "Tab") {
+    // Q = previous tab, E = next tab
+    if (key === "e" || key === "E") {
       const modes: SpellShopMode[] = ["buy", "abilities", "upgrade"];
       const idx = modes.indexOf(this._mode);
       this._mode = modes[(idx + 1) % modes.length];
@@ -179,37 +180,61 @@ export class RiftWizardSpellSelectUI {
       return true;
     }
 
-    if (key === "ArrowUp" || key === "w") {
+    if (key === "q" || key === "Q") {
+      const modes: SpellShopMode[] = ["buy", "abilities", "upgrade"];
+      const idx = modes.indexOf(this._mode);
+      this._mode = modes[(idx - 1 + modes.length) % modes.length];
+      this._selectedIndex = 0;
+      this._scrollOffset = 0;
+      this._render(state, screenWidth, screenHeight);
+      return true;
+    }
+
+    if (key === "ArrowUp") {
       this._selectedIndex = Math.max(0, this._selectedIndex - 1);
       this._ensureVisible();
       this._render(state, screenWidth, screenHeight);
       return true;
     }
 
-    if (key === "ArrowDown" || key === "s") {
+    if (key === "ArrowDown") {
       this._selectedIndex++;
       this._ensureVisible();
       this._render(state, screenWidth, screenHeight);
       return true;
     }
 
-    if (key === "ArrowLeft" || key === "a") {
+    if (key === "ArrowLeft") {
       if (this._mode === "upgrade") {
         this._upgradeSpellIndex = Math.max(0, this._upgradeSpellIndex - 1);
         this._selectedIndex = 0;
         this._scrollOffset = 0;
-        this._render(state, screenWidth, screenHeight);
+      } else {
+        // Switch to previous tab
+        const modes: SpellShopMode[] = ["buy", "abilities", "upgrade"];
+        const idx = modes.indexOf(this._mode);
+        this._mode = modes[(idx - 1 + modes.length) % modes.length];
+        this._selectedIndex = 0;
+        this._scrollOffset = 0;
       }
+      this._render(state, screenWidth, screenHeight);
       return true;
     }
 
-    if (key === "ArrowRight" || key === "d") {
+    if (key === "ArrowRight") {
       if (this._mode === "upgrade") {
         this._upgradeSpellIndex = Math.min(state.spells.length - 1, this._upgradeSpellIndex + 1);
         this._selectedIndex = 0;
         this._scrollOffset = 0;
-        this._render(state, screenWidth, screenHeight);
+      } else {
+        // Switch to next tab
+        const modes: SpellShopMode[] = ["buy", "abilities", "upgrade"];
+        const idx = modes.indexOf(this._mode);
+        this._mode = modes[(idx + 1) % modes.length];
+        this._selectedIndex = 0;
+        this._scrollOffset = 0;
       }
+      this._render(state, screenWidth, screenHeight);
       return true;
     }
 
@@ -358,7 +383,7 @@ export class RiftWizardSpellSelectUI {
     this._bg.rect(px + 10, helpY - 6, PANEL_W - 20, 1);
     this._bg.fill({ color: 0x333355, alpha: 0.4 });
     this._addText(
-      "Tab: switch  |  \u2191\u2193: select  |  Space: buy  |  Enter: continue",
+      "Q/E or \u2190\u2192: switch tab  |  \u2191\u2193: select  |  Space: buy  |  Enter: continue",
       px + 20, helpY, 10, 0x555577,
     );
 

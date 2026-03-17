@@ -34,10 +34,38 @@ const BIOME_VAR: Record<number, THREE.Color> = {
 
 const PLAYER_COLORS = [0x3388ff, 0xff3333, 0x33cc33, 0xffaa00];
 
-// Simple noise helper for vertex color variation
-function _vnoise(x: number, z: number, seed: number): number {
-  return Math.sin(x * 0.7 + seed) * 0.5 + Math.cos(z * 0.9 + seed * 1.3) * 0.5;
+/** Hash-based value noise for vertex color variation (matches terrain system) */
+function _hashR(ix: number, iz: number, seed: number): number {
+  let h = (ix * 374761393 + iz * 668265263 + seed * 1274126177) | 0;
+  h = ((h ^ (h >> 13)) * 1274126177) | 0;
+  return (h & 0x7fffffff) / 0x7fffffff;
 }
+function _smoothstepR(t: number): number { return t * t * (3 - 2 * t); }
+function _vnoise(x: number, z: number, seed: number): number {
+  const ix = Math.floor(x);
+  const iz = Math.floor(z);
+  const fx = _smoothstepR(x - ix);
+  const fz = _smoothstepR(z - iz);
+  const v00 = _hashR(ix, iz, seed) * 2 - 1;
+  const v10 = _hashR(ix + 1, iz, seed) * 2 - 1;
+  const v01 = _hashR(ix, iz + 1, seed) * 2 - 1;
+  const v11 = _hashR(ix + 1, iz + 1, seed) * 2 - 1;
+  const top = v00 + (v10 - v00) * fx;
+  const bot = v01 + (v11 - v01) * fx;
+  return top + (bot - top) * fz;
+}
+
+/** Multi-octave color noise for rich surface variation */
+function _colorNoise(x: number, z: number, seed: number): number {
+  return (
+    _vnoise(x * 0.7, z * 0.7, seed) * 0.5 +
+    _vnoise(x * 1.8, z * 1.8, seed + 37) * 0.3 +
+    _vnoise(x * 4.3, z * 4.3, seed + 71) * 0.2
+  );
+}
+
+// Terrain subdivision: vertices per tile edge (4 = 16 sub-quads per tile)
+const TERRAIN_SUB = 4;
 
 // ---------------------------------------------------------------------------
 // Smoke particle pool
@@ -254,53 +282,131 @@ export class SettlersRenderer {
     const map = state.map;
     const w = map.width;
     const h = map.height;
+    const ts = map.tileSize;
+    const sub = TERRAIN_SUB;
+    const segsX = w * sub;
+    const segsZ = h * sub;
 
-    // Terrain geometry
-    const geo = new THREE.PlaneGeometry(w * map.tileSize, h * map.tileSize, w, h);
+    // High-resolution terrain geometry
+    const geo = new THREE.PlaneGeometry(w * ts, h * ts, segsX, segsZ);
     geo.rotateX(-Math.PI / 2);
 
-    // Displace vertices from heightmap + apply biome colors with noise variation
     const pos = geo.attributes.position;
     const colors: number[] = [];
     const tmp = new THREE.Color();
-    for (let i = 0; i < pos.count; i++) {
-      const vx = i % (w + 1);
-      const vz = Math.floor(i / (w + 1));
-      const height = getVertex(map, vx, vz);
-      pos.setY(i, height);
-      pos.setX(i, vx * map.tileSize);
-      pos.setZ(i, vz * map.tileSize);
+    const tmp2 = new THREE.Color();
+    const snowColor = new THREE.Color(0xeeeeff);
+    const sandColor = new THREE.Color(0xc8b878);
+    const cliffColor = new THREE.Color(0x706858);
+    const dirtColor = new THREE.Color(0x8a7a5a);
 
-      // Biome color with noise variation
-      const tx = Math.min(vx, w - 1);
-      const tz = Math.min(vz, h - 1);
+    for (let i = 0; i < pos.count; i++) {
+      const svx = i % (segsX + 1);
+      const svz = Math.floor(i / (segsX + 1));
+
+      // Map sub-vertex to continuous tile coords
+      const fx = svx / sub;
+      const fz = svz / sub;
+
+      // Interpolate height from heightmap
+      const height = getHeightAt(map, fx * ts, fz * ts);
+
+      // Add micro-displacement for surface texture at sub-tile level
+      const microH = _vnoise(fx * 2.5, fz * 2.5, 42) * 0.06 +
+                      _vnoise(fx * 6.0, fz * 6.0, 99) * 0.02;
+
+      pos.setY(i, height + microH);
+      pos.setX(i, fx * ts);
+      pos.setZ(i, fz * ts);
+
+      // --- Vertex color computation ---
+
+      // Determine biome at this point (sample the nearest tile)
+      const tx = Math.min(Math.floor(fx), w - 1);
+      const tz = Math.min(Math.floor(fz), h - 1);
       const biome = map.biomes[tz * w + tx];
+
+      // Sample neighboring biomes for blending at tile edges
+      const fracX = fx - tx;
+      const fracZ = fz - tz;
+      let blendBiome = biome;
+      if (fracX > 0.7 && tx + 1 < w) blendBiome = map.biomes[tz * w + tx + 1];
+      else if (fracZ > 0.7 && tz + 1 < h) blendBiome = map.biomes[(tz + 1) * w + tx];
+
       const base = BIOME_BASE[biome] || BIOME_BASE[Biome.MEADOW];
       const vari = BIOME_VAR[biome] || BIOME_VAR[Biome.MEADOW];
 
-      // Mix base and variation using noise
-      const n = _vnoise(vx, vz, 7.3) * 0.5 + 0.5; // 0..1
-      tmp.lerpColors(base, vari, n);
+      // Multi-frequency noise for rich color variation
+      const n1 = _colorNoise(fx, fz, 7.3) * 0.5 + 0.5;
+      const n2 = _vnoise(fx * 3.2, fz * 3.2, 17.1) * 0.5 + 0.5;
+      tmp.lerpColors(base, vari, n1 * 0.7 + n2 * 0.3);
 
-      // Height-based tint
-      const hFactor = 0.82 + (height / SB.MAX_HEIGHT) * 0.35;
+      // Biome edge blending – soften transitions
+      if (blendBiome !== biome) {
+        const blendBase = BIOME_BASE[blendBiome] || BIOME_BASE[Biome.MEADOW];
+        const blendFactor = Math.max(fracX - 0.7, fracZ - 0.7) / 0.3;
+        tmp2.copy(blendBase);
+        tmp.lerp(tmp2, Math.min(1, blendFactor) * 0.5);
+      }
+
+      // Calculate slope from nearby height samples for cliff/slope coloring
+      const dx1 = getHeightAt(map, Math.min(fx + 0.3, w) * ts, fz * ts);
+      const dx0 = getHeightAt(map, Math.max(fx - 0.3, 0) * ts, fz * ts);
+      const dz1 = getHeightAt(map, fx * ts, Math.min(fz + 0.3, h) * ts);
+      const dz0 = getHeightAt(map, fx * ts, Math.max(fz - 0.3, 0) * ts);
+      const slopeX = (dx1 - dx0) / (0.6 * ts);
+      const slopeZ = (dz1 - dz0) / (0.6 * ts);
+      const slope = Math.sqrt(slopeX * slopeX + slopeZ * slopeZ);
+
+      // Cliff faces get rocky/earthy color
+      if (slope > 0.3) {
+        const cliffBlend = Math.min(1, (slope - 0.3) / 0.5);
+        tmp.lerp(cliffColor, cliffBlend * 0.7);
+      }
+
+      // Height-based tint (more nuanced)
+      const normalizedH = height / SB.MAX_HEIGHT;
+      const hFactor = 0.80 + normalizedH * 0.38;
       tmp.r *= hFactor;
       tmp.g *= hFactor;
       tmp.b *= hFactor;
 
-      // Snow on mountain peaks
-      if (biome === Biome.MOUNTAIN && height > SB.MAX_HEIGHT * 0.8) {
-        const snowBlend = Math.min(1, (height - SB.MAX_HEIGHT * 0.8) / (SB.MAX_HEIGHT * 0.2));
-        tmp.lerp(new THREE.Color(0xeeeeff), snowBlend * 0.6);
+      // Dirt patches in meadows (procedural)
+      if (biome === Biome.MEADOW) {
+        const dirtN = _vnoise(fx * 2.0, fz * 2.0, 333);
+        if (dirtN > 0.4) {
+          tmp.lerp(dirtColor, (dirtN - 0.4) * 0.5);
+        }
       }
 
-      // Sandy shore near water
-      if (biome === Biome.MEADOW) {
-        const normalizedH = height / SB.MAX_HEIGHT;
-        if (normalizedH < SB.WATER_LEVEL + 0.08) {
-          const sandBlend = 1 - (normalizedH - SB.WATER_LEVEL) / 0.08;
-          tmp.lerp(new THREE.Color(0xc8b878), Math.max(0, sandBlend) * 0.7);
+      // Snow on mountain peaks with noise-based edge
+      if (biome === Biome.MOUNTAIN && normalizedH > 0.7) {
+        const snowNoise = _vnoise(fx * 3, fz * 3, 55) * 0.1;
+        const snowLine = 0.7 + snowNoise;
+        if (normalizedH > snowLine) {
+          const snowBlend = Math.min(1, (normalizedH - snowLine) / 0.15);
+          // Less snow on steep slopes
+          const slopePenalty = Math.min(1, slope * 2);
+          tmp.lerp(snowColor, snowBlend * 0.7 * (1 - slopePenalty * 0.6));
         }
+      }
+
+      // Sandy shore near water with noise-based edge
+      if (biome !== Biome.WATER && normalizedH < SB.WATER_LEVEL + 0.1) {
+        const sandNoise = _vnoise(fx * 4, fz * 4, 77) * 0.03;
+        const sandLine = SB.WATER_LEVEL + 0.1 + sandNoise;
+        if (normalizedH < sandLine) {
+          const sandBlend = 1 - (normalizedH - SB.WATER_LEVEL) / (sandLine - SB.WATER_LEVEL);
+          tmp.lerp(sandColor, Math.max(0, sandBlend) * 0.75);
+        }
+      }
+
+      // Subtle ambient occlusion in valleys (darker in low areas)
+      if (normalizedH < 0.25 && biome !== Biome.WATER) {
+        const aoFactor = 1 - (0.25 - normalizedH) * 0.4;
+        tmp.r *= aoFactor;
+        tmp.g *= aoFactor;
+        tmp.b *= aoFactor;
       }
 
       colors.push(tmp.r, tmp.g, tmp.b);
@@ -311,31 +417,33 @@ export class SettlersRenderer {
 
     const mat = new THREE.MeshStandardMaterial({
       vertexColors: true,
-      roughness: 0.92,
-      metalness: 0.0,
+      roughness: 0.88,
+      metalness: 0.02,
+      flatShading: false,
     });
 
     this._terrainMesh = new THREE.Mesh(geo, mat);
     this._terrainMesh.receiveShadow = true;
+    this._terrainMesh.castShadow = true;
     this.scene.add(this._terrainMesh);
 
     // Water plane with vertex displacement
-    const waterSegs = 64;
-    const waterGeo = new THREE.PlaneGeometry(w * map.tileSize * 1.4, h * map.tileSize * 1.4, waterSegs, waterSegs);
+    const waterSegs = Math.max(64, w);
+    const waterGeo = new THREE.PlaneGeometry(w * ts * 1.4, h * ts * 1.4, waterSegs, waterSegs);
     const waterMat = new THREE.MeshStandardMaterial({
-      color: 0x2288aa,
+      color: 0x1a7090,
       transparent: true,
-      opacity: 0.55,
-      roughness: 0.05,
-      metalness: 0.4,
+      opacity: 0.6,
+      roughness: 0.02,
+      metalness: 0.5,
       side: THREE.DoubleSide,
     });
     this._waterMesh = new THREE.Mesh(waterGeo, waterMat);
     this._waterMesh.rotation.x = -Math.PI / 2;
     this._waterMesh.position.set(
-      w * map.tileSize * 0.5,
+      w * ts * 0.5,
       SB.WATER_LEVEL * SB.MAX_HEIGHT - 0.1,
-      h * map.tileSize * 0.5,
+      h * ts * 0.5,
     );
     this.scene.add(this._waterMesh);
 

@@ -16,7 +16,11 @@ import {
   getEffectiveUpgradeCost,
   learnSpell,
   buyUpgrade,
+  getAvailableAbilities,
+  getEffectiveAbilityCost,
+  learnAbility,
 } from "../systems/RiftWizardProgressionSystem";
+import { ABILITY_DEFS } from "../config/RiftWizardAbilityDefs";
 
 export type PauseSubMenu = "main" | "controls" | "instructions" | "spells" | "buy" | "abilities";
 
@@ -204,6 +208,8 @@ export class RiftWizardHUD {
   private _buyViewingUpgrades = false;
   /** Which owned spell is selected for upgrade viewing */
   private _buyUpgradeSpellIndex = 0;
+  /** Selected index within abilities sub-menu */
+  private _abilitiesSelectedIndex = 0;
 
   onPauseResume: (() => void) | null = null;
   onPauseRestart: (() => void) | null = null;
@@ -1142,6 +1148,7 @@ export class RiftWizardHUD {
     // Abilities
     this._addPauseButton(panelX, yOff, panelW, "Abilities", 0x448866, () => {
       this.pauseSubMenu = "abilities";
+      this._abilitiesSelectedIndex = 0;
     });
     yOff += 40;
 
@@ -1180,6 +1187,8 @@ export class RiftWizardHUD {
       ["C", "Use charge scroll"],
       ["Z / U", "Undo last move"],
       ["?", "Toggle quick-help overlay"],
+      ["Q / E (in menus)", "Switch tabs"],
+      ["Arrow Keys (in menus)", "Navigate"],
     ];
 
     for (const [key, desc] of controls) {
@@ -1432,6 +1441,27 @@ export class RiftWizardHUD {
   }
 
   // -------------------------------------------------------------------------
+  // Pause sub-menu: Abilities key handler
+  // -------------------------------------------------------------------------
+
+  handleAbilitiesKey(state: RiftWizardState, key: string): void {
+    const available = getAvailableAbilities(state);
+    if (key === "ArrowUp") {
+      this._abilitiesSelectedIndex = Math.max(0, this._abilitiesSelectedIndex - 1);
+    } else if (key === "ArrowDown") {
+      this._abilitiesSelectedIndex = Math.min(available.length - 1, this._abilitiesSelectedIndex);
+    } else if (key === "Enter" || key === " ") {
+      if (this._abilitiesSelectedIndex < available.length) {
+        const sorted = available.sort((a, b) => a.spCost - b.spCost);
+        const def = sorted[this._abilitiesSelectedIndex];
+        if (def) {
+          learnAbility(state, def.id);
+        }
+      }
+    }
+  }
+
+  // -------------------------------------------------------------------------
   // Pause sub-menu: Buy Spells / Upgrades
   // -------------------------------------------------------------------------
 
@@ -1441,9 +1471,9 @@ export class RiftWizardHUD {
       if (!spell) { this._buyViewingUpgrades = false; return; }
       const upgrades = getAvailableUpgrades(spell);
 
-      if (key === "ArrowUp" || key === "w") {
+      if (key === "ArrowUp") {
         this._buySelectedIndex = Math.max(0, this._buySelectedIndex - 1);
-      } else if (key === "ArrowDown" || key === "s") {
+      } else if (key === "ArrowDown") {
         this._buySelectedIndex = Math.min(upgrades.length - 1, this._buySelectedIndex);
       } else if (key === "Enter" || key === " ") {
         const upg = upgrades[this._buySelectedIndex];
@@ -1458,9 +1488,9 @@ export class RiftWizardHUD {
       const available = getAvailableSpells(state);
       const totalItems = available.length + state.spells.length; // spells to buy + owned spells for upgrades
 
-      if (key === "ArrowUp" || key === "w") {
+      if (key === "ArrowUp") {
         this._buySelectedIndex = Math.max(0, this._buySelectedIndex - 1);
-      } else if (key === "ArrowDown" || key === "s") {
+      } else if (key === "ArrowDown") {
         this._buySelectedIndex = Math.min(totalItems - 1, this._buySelectedIndex);
       } else if (key === "Enter" || key === " ") {
         if (this._buySelectedIndex < available.length) {
@@ -1731,129 +1761,186 @@ export class RiftWizardHUD {
   // -------------------------------------------------------------------------
 
   private _drawPauseAbilities(state: RiftWizardState, screenWidth: number, screenHeight: number): void {
-    const panelW = 400;
-    const panelH = 380;
+    const panelW = 480;
+    const panelH = Math.min(screenHeight - 40, 600);
     const { panelX, panelY } = this._drawPausePanel(screenWidth, screenHeight, panelW, panelH);
 
     let yOff = this._addPauseTitle(panelX, panelW, panelY + 16, "ABILITIES");
 
-    // Wizard stats
+    // SP display
+    const spT = new Text({
+      text: `Skill Points: ${state.skillPoints}`,
+      style: new TextStyle({ fontFamily: "monospace", fontSize: 14, fill: 0xffcc44, fontWeight: "bold" }),
+    });
+    spT.x = panelX + panelW / 2;
+    spT.anchor.set(0.5, 0);
+    spT.y = yOff;
+    this._pauseContainer.addChild(spT);
+    this._pauseTexts.push(spT);
+    yOff += 22;
+
+    yOff = this._addPauseDivider(panelX, panelW, yOff);
+
+    // Learned abilities section
+    if (state.abilities.length > 0) {
+      const learnedHeader = new Text({
+        text: "Learned Abilities",
+        style: new TextStyle({ fontFamily: "monospace", fontSize: 12, fill: 0x44cc44, fontWeight: "bold" }),
+      });
+      learnedHeader.x = panelX + 20;
+      learnedHeader.y = yOff;
+      this._pauseContainer.addChild(learnedHeader);
+      this._pauseTexts.push(learnedHeader);
+      yOff += 18;
+
+      for (const id of state.abilities) {
+        const def = ABILITY_DEFS[id];
+        if (!def) continue;
+        const schoolColor = SCHOOL_COLORS[def.school] ?? 0x666666;
+
+        this._pauseBg.rect(panelX + 14, yOff - 2, 3, 18);
+        this._pauseBg.fill({ color: schoolColor, alpha: 0.7 });
+
+        const nameT = new Text({
+          text: def.name,
+          style: new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: schoolColor }),
+        });
+        nameT.x = panelX + 24;
+        nameT.y = yOff;
+        this._pauseContainer.addChild(nameT);
+        this._pauseTexts.push(nameT);
+
+        const trigLabel = def.trigger === "on_spell_cast" ? "[On Cast]" :
+          def.trigger === "on_kill" ? "[On Kill]" :
+          def.trigger === "on_take_damage" ? "[On Hit]" :
+          def.trigger === "on_turn_start" ? "[Per Turn]" :
+          def.trigger === "passive" ? "[Passive]" : `[${def.trigger}]`;
+        const trigT = new Text({
+          text: trigLabel,
+          style: new TextStyle({ fontFamily: "monospace", fontSize: 9, fill: 0x888899 }),
+        });
+        trigT.x = panelX + panelW - 100;
+        trigT.y = yOff + 1;
+        this._pauseContainer.addChild(trigT);
+        this._pauseTexts.push(trigT);
+
+        yOff += 22;
+      }
+
+      yOff += 4;
+      yOff = this._addPauseDivider(panelX, panelW, yOff);
+    }
+
+    // Available abilities to buy
+    const available = getAvailableAbilities(state).sort((a, b) => a.spCost - b.spCost);
+    this._abilitiesSelectedIndex = Math.min(this._abilitiesSelectedIndex, Math.max(0, available.length - 1));
+
+    const buyHeader = new Text({
+      text: "Buy Abilities",
+      style: new TextStyle({ fontFamily: "monospace", fontSize: 12, fill: 0xccccff, fontWeight: "bold" }),
+    });
+    buyHeader.x = panelX + 20;
+    buyHeader.y = yOff;
+    this._pauseContainer.addChild(buyHeader);
+    this._pauseTexts.push(buyHeader);
+    yOff += 18;
+
+    if (available.length === 0) {
+      const allDone = new Text({
+        text: "All abilities learned!",
+        style: new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: 0x44cc44 }),
+      });
+      allDone.x = panelX + 28;
+      allDone.y = yOff;
+      this._pauseContainer.addChild(allDone);
+      this._pauseTexts.push(allDone);
+      yOff += 20;
+    } else {
+      const maxVisible = Math.min(available.length, 8);
+      for (let i = 0; i < maxVisible; i++) {
+        const def = available[i];
+        const cost = getEffectiveAbilityCost(state, def);
+        const canAfford = state.skillPoints >= cost;
+        const isSelected = this._abilitiesSelectedIndex === i;
+        const schoolColor = SCHOOL_COLORS[def.school] ?? 0x666666;
+
+        if (isSelected) {
+          this._pauseBg.rect(panelX + 14, yOff - 2, panelW - 28, 32);
+          this._pauseBg.fill({ color: 0x222244, alpha: 0.8 });
+          this._pauseBg.rect(panelX + 14, yOff - 2, panelW - 28, 32);
+          this._pauseBg.stroke({ color: schoolColor, width: 1 });
+        }
+
+        // School accent bar
+        this._pauseBg.rect(panelX + 14, yOff - 2, 3, 32);
+        this._pauseBg.fill({ color: schoolColor, alpha: 0.7 });
+
+        const nameT = new Text({
+          text: def.name,
+          style: new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: canAfford ? schoolColor : 0x555566, fontWeight: isSelected ? "bold" : "normal" }),
+        });
+        nameT.x = panelX + 24;
+        nameT.y = yOff;
+        this._pauseContainer.addChild(nameT);
+        this._pauseTexts.push(nameT);
+
+        const costT = new Text({
+          text: `${cost} SP`,
+          style: new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: canAfford ? 0xffcc44 : 0x884422 }),
+        });
+        costT.x = panelX + panelW - 60;
+        costT.y = yOff;
+        this._pauseContainer.addChild(costT);
+        this._pauseTexts.push(costT);
+
+        const descT = new Text({
+          text: `${def.description.substring(0, 55)}`,
+          style: new TextStyle({ fontFamily: "monospace", fontSize: 9, fill: 0x666688 }),
+        });
+        descT.x = panelX + 24;
+        descT.y = yOff + 15;
+        this._pauseContainer.addChild(descT);
+        this._pauseTexts.push(descT);
+
+        yOff += 36;
+      }
+    }
+
+    yOff += 4;
+    yOff = this._addPauseDivider(panelX, panelW, yOff);
+
+    // Wizard stats (compact)
     const statsHeader = new Text({
       text: "Wizard Stats",
-      style: new TextStyle({ fontFamily: "monospace", fontSize: 13, fill: 0xccccff, fontWeight: "bold" }),
+      style: new TextStyle({ fontFamily: "monospace", fontSize: 12, fill: 0xccccff, fontWeight: "bold" }),
     });
     statsHeader.x = panelX + 20;
     statsHeader.y = yOff;
     this._pauseContainer.addChild(statsHeader);
     this._pauseTexts.push(statsHeader);
-    yOff += 20;
+    yOff += 18;
 
-    const stats: [string, string][] = [
-      ["HP", `${state.wizard.hp} / ${state.wizard.maxHp}`],
-      ["Shields", `${state.wizard.shields}`],
-      ["Spells Known", `${state.spells.length}`],
-      ["Skill Points", `${state.skillPoints}`],
-      ["Total SP Earned", `${state.totalSPEarned}`],
-      ["Current Level", `${state.currentLevel + 1} / 25`],
-      ["Turn", `${state.turnNumber}`],
-    ];
-
-    for (const [label, value] of stats) {
-      const labelT = new Text({
-        text: label,
-        style: new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: 0x8888aa }),
-      });
-      labelT.x = panelX + 28;
-      labelT.y = yOff;
-      this._pauseContainer.addChild(labelT);
-      this._pauseTexts.push(labelT);
-
-      const valT = new Text({
-        text: value,
-        style: new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: 0xddddee }),
-      });
-      valT.x = panelX + 200;
-      valT.y = yOff;
-      this._pauseContainer.addChild(valT);
-      this._pauseTexts.push(valT);
-
-      yOff += 17;
-    }
-
-    yOff += 8;
-    yOff = this._addPauseDivider(panelX, panelW, yOff);
-
-    // Status effects
-    const statusHeader = new Text({
-      text: "Status Effects",
-      style: new TextStyle({ fontFamily: "monospace", fontSize: 13, fill: 0xccccff, fontWeight: "bold" }),
+    const statsLine = `HP: ${state.wizard.hp}/${state.wizard.maxHp}  |  Shields: ${state.wizard.shields}  |  Level: ${state.currentLevel + 1}/25  |  Spells: ${state.spells.length}`;
+    const statsT = new Text({
+      text: statsLine,
+      style: new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: 0x9999aa }),
     });
-    statusHeader.x = panelX + 20;
-    statusHeader.y = yOff;
-    this._pauseContainer.addChild(statusHeader);
-    this._pauseTexts.push(statusHeader);
-    yOff += 20;
+    statsT.x = panelX + 28;
+    statsT.y = yOff;
+    this._pauseContainer.addChild(statsT);
+    this._pauseTexts.push(statsT);
+    yOff += 18;
 
-    if (state.wizard.statusEffects.length === 0) {
-      const noFx = new Text({
-        text: "None active",
-        style: new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: 0x666688 }),
-      });
-      noFx.x = panelX + 28;
-      noFx.y = yOff;
-      this._pauseContainer.addChild(noFx);
-      this._pauseTexts.push(noFx);
-      yOff += 17;
-    } else {
-      for (const fx of state.wizard.statusEffects) {
-        const fxColor =
-          fx.type === "shield" ? 0x44ddff :
-          fx.type === "burn" ? 0xff6633 :
-          fx.type === "poison" ? 0x44cc44 :
-          fx.type === "freeze" ? 0x88ccff :
-          fx.type === "stun" ? 0xffff44 :
-          fx.type === "slow" ? 0xaa88cc : 0xaaaaaa;
-
-        const fxT = new Text({
-          text: `${fx.type.toUpperCase()}  (${fx.turnsRemaining} turns, x${fx.magnitude})`,
-          style: new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: fxColor }),
-        });
-        fxT.x = panelX + 28;
-        fxT.y = yOff;
-        this._pauseContainer.addChild(fxT);
-        this._pauseTexts.push(fxT);
-        yOff += 17;
-      }
-    }
-
-    yOff += 8;
-    yOff = this._addPauseDivider(panelX, panelW, yOff);
-
-    // Consumables
-    const consHeader = new Text({
-      text: "Consumables",
-      style: new TextStyle({ fontFamily: "monospace", fontSize: 13, fill: 0xccccff, fontWeight: "bold" }),
+    // Hint bar
+    const hint = new Text({
+      text: "[Up/Down] Navigate  [Enter/Space] Buy  [Esc] Back",
+      style: new TextStyle({ fontFamily: "monospace", fontSize: 9, fill: 0x555577 }),
     });
-    consHeader.x = panelX + 20;
-    consHeader.y = yOff;
-    this._pauseContainer.addChild(consHeader);
-    this._pauseTexts.push(consHeader);
-    yOff += 20;
-
-    for (const cons of state.consumables) {
-      const label = cons.type === "health_potion" ? "Health Potion [P]" :
-        cons.type === "charge_scroll" ? "Charge Scroll [C]" :
-        cons.type === "shield_scroll" ? "Shield Scroll" : cons.type;
-      const consT = new Text({
-        text: `${label}: ${cons.quantity}`,
-        style: new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: cons.quantity > 0 ? 0xddddee : 0x555566 }),
-      });
-      consT.x = panelX + 28;
-      consT.y = yOff;
-      this._pauseContainer.addChild(consT);
-      this._pauseTexts.push(consT);
-      yOff += 17;
-    }
+    hint.x = panelX + panelW / 2;
+    hint.anchor.set(0.5, 0);
+    hint.y = yOff + 4;
+    this._pauseContainer.addChild(hint);
+    this._pauseTexts.push(hint);
 
     // Back button
     const backY = panelY + panelH - 40;

@@ -241,6 +241,15 @@ export class RiftWizardGame {
       }
     }
 
+    // Delegate keyboard to abilities sub-menu if active
+    if (this._hud.pauseSubMenu === "abilities") {
+      for (const key of Object.keys(_justPressed)) {
+        if (_justPressed[key]) {
+          this._hud.handleAbilitiesKey(this._state, key);
+        }
+      }
+    }
+
     // HUD buttons handle Resume / Restart / Exit / sub-menu nav via callbacks
   }
 
