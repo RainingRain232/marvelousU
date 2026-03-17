@@ -245,6 +245,7 @@ export interface RiftWizardState {
 
   wizard: WizardState;
   spells: SpellInstance[];
+  abilities: string[]; // learned ability IDs
   consumables: ConsumableInstance[];
 
   level: LevelState;
@@ -282,6 +283,7 @@ export function createRiftWizardState(): RiftWizardState {
     },
 
     spells: [],
+    abilities: [],
     consumables: [{ type: "health_potion", quantity: 1 }],
 
     level: createEmptyLevel(),

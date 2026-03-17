@@ -102,11 +102,26 @@ export class SettlersRenderer {
   // Road preview line (shown while drawing a road)
   private _roadPreviewLine: THREE.Line | null = null;
 
-  // Cached geometries
-  private _boxGeo = new THREE.BoxGeometry(1, 1, 1);
-  private _coneGeo = new THREE.ConeGeometry(0.5, 1, 8);
-  private _cylGeo = new THREE.CylinderGeometry(0.1, 0.1, 1, 8);
-  private _sphereGeo = new THREE.SphereGeometry(0.15, 8, 6);
+  // Cached geometries (higher polygon counts for visual quality)
+  private _boxGeo = new THREE.BoxGeometry(1, 1, 1, 2, 2, 2);
+  private _coneGeo = new THREE.ConeGeometry(0.5, 1, 16);
+  private _cylGeo = new THREE.CylinderGeometry(0.1, 0.1, 1, 16);
+  private _sphereGeo = new THREE.SphereGeometry(0.15, 16, 12);
+
+  // Cached geometries for frequently recreated objects (prevents memory leaks)
+  private _healthBarBgGeo = new THREE.PlaneGeometry(0.6, 0.06);
+  private _healthBarFgGeo = new THREE.PlaneGeometry(0.6, 0.06);
+  private _healthBarBuildBgGeo = new THREE.PlaneGeometry(1.2, 0.08);
+  private _healthBarBuildFgGeo = new THREE.PlaneGeometry(1.2, 0.08);
+  private _healthBarBgMat = new THREE.MeshBasicMaterial({ color: 0x333333, side: THREE.DoubleSide, depthTest: false, transparent: true, opacity: 0.7 });
+  private _dotGeo = new THREE.SphereGeometry(0.04, 6, 4);
+  private _dotMats = new Map<number, THREE.MeshBasicMaterial>();
+  private _glowGeo = new THREE.SphereGeometry(0.15, 8, 6);
+  private _combatFlashGeo = new THREE.SphereGeometry(0.15, 8, 6);
+  private _smokeGeo = new THREE.SphereGeometry(0.18, 8, 6);
+
+  // Resize handler reference (for cleanup)
+  private _resizeHandler: (() => void) | null = null;
 
   // Shared materials
   private _wallMat!: THREE.MeshStandardMaterial;
@@ -201,14 +216,15 @@ export class SettlersRenderer {
     this.scene.add(this._depositsGroup);
     this.scene.add(this._healthBarGroup);
 
-    // Resize handler
-    window.addEventListener("resize", () => {
+    // Resize handler (stored for cleanup)
+    this._resizeHandler = () => {
       const w = window.innerWidth;
       const h = window.innerHeight;
       this.camera.aspect = w / h;
       this.camera.updateProjectionMatrix();
       this.renderer.setSize(w, h);
-    });
+    };
+    window.addEventListener("resize", this._resizeHandler);
   }
 
   /** Build terrain mesh from map state */
@@ -485,6 +501,79 @@ export class SettlersRenderer {
   }
 
   destroy(): void {
+    // Remove event listeners
+    if (this._resizeHandler) {
+      window.removeEventListener("resize", this._resizeHandler);
+      this._resizeHandler = null;
+    }
+
+    // Dispose cached geometries
+    this._boxGeo.dispose();
+    this._coneGeo.dispose();
+    this._cylGeo.dispose();
+    this._sphereGeo.dispose();
+    this._healthBarBgGeo.dispose();
+    this._healthBarFgGeo.dispose();
+    this._healthBarBuildBgGeo.dispose();
+    this._healthBarBuildFgGeo.dispose();
+    this._healthBarBgMat.dispose();
+    this._dotGeo.dispose();
+    this._glowGeo.dispose();
+    this._combatFlashGeo.dispose();
+    this._smokeGeo.dispose();
+    for (const mat of this._dotMats.values()) mat.dispose();
+    this._dotMats.clear();
+
+    // Dispose all mesh maps
+    const disposeMesh = (mesh: THREE.Object3D) => {
+      mesh.traverse((child: any) => {
+        if (child.geometry) child.geometry.dispose();
+        if (child.material) {
+          if (Array.isArray(child.material)) {
+            child.material.forEach((m: THREE.Material) => m.dispose());
+          } else {
+            child.material.dispose();
+          }
+        }
+      });
+    };
+    for (const [, mesh] of this._buildingMeshes) disposeMesh(mesh);
+    for (const [, mesh] of this._flagMeshes) disposeMesh(mesh);
+    for (const [, mesh] of this._roadMeshes) disposeMesh(mesh);
+    for (const [, mesh] of this._carrierMeshes) disposeMesh(mesh);
+    for (const [, mesh] of this._soldierMeshes) disposeMesh(mesh);
+    for (const [, mesh] of this._scaffoldMeshes) disposeMesh(mesh);
+    for (const [, mesh] of this._spinnerMeshes) disposeMesh(mesh);
+    this._buildingMeshes.clear();
+    this._flagMeshes.clear();
+    this._roadMeshes.clear();
+    this._carrierMeshes.clear();
+    this._soldierMeshes.clear();
+    this._scaffoldMeshes.clear();
+    this._spinnerMeshes.clear();
+
+    // Dispose combat flashes
+    for (const f of this._combatFlashes) {
+      this.scene.remove(f.mesh);
+      (f.mesh.material as THREE.Material).dispose();
+    }
+    this._combatFlashes.length = 0;
+
+    // Dispose smoke particles
+    for (const p of this._smokeParticles) {
+      this._smokeGroup.remove(p.mesh);
+      (p.mesh.material as THREE.Material).dispose();
+    }
+    this._smokeParticles.length = 0;
+
+    // Dispose shared materials
+    this._wallMat?.dispose();
+    this._wallDarkMat?.dispose();
+    this._woodMat?.dispose();
+    this._stoneMat?.dispose();
+    this._windowMat?.dispose();
+    this._chimneyMat?.dispose();
+
     this.renderer.dispose();
     this.canvas.remove();
     const container = document.getElementById("pixi-container");
@@ -911,8 +1000,9 @@ export class SettlersRenderer {
         const wy = getHeightAt(state.map, cx, cz);
         const buildH = def.size === "large" ? ts * 2.5 : def.size === "medium" ? ts * 1.8 : ts * 1.4;
 
-        const geo = new THREE.SphereGeometry(0.15 + Math.random() * 0.1, 4, 3);
-        const mesh = new THREE.Mesh(geo, this._smokeMat.clone());
+        const mesh = new THREE.Mesh(this._smokeGeo, this._smokeMat.clone());
+        const smokeScale = 0.8 + Math.random() * 0.6;
+        mesh.scale.set(smokeScale, smokeScale, smokeScale);
         mesh.position.set(cx + (Math.random() - 0.5) * 0.3, wy + buildH, cz + (Math.random() - 0.5) * 0.3);
         this._smokeGroup.add(mesh);
 
@@ -933,7 +1023,7 @@ export class SettlersRenderer {
       p.life += dt;
       if (p.life >= p.maxLife) {
         this._smokeGroup.remove(p.mesh);
-        p.mesh.geometry.dispose();
+        // Only dispose cloned material (geometry is shared/cached)
         (p.mesh.material as THREE.Material).dispose();
         this._smokeParticles.splice(i, 1);
         continue;
@@ -954,27 +1044,34 @@ export class SettlersRenderer {
   // Health bars for soldiers and damaged buildings
   // -----------------------------------------------------------------------
 
-  private _updateHealthBars(state: SettlersState): void {
-    this._healthBarGroup.clear();
-    const barBgGeo = new THREE.PlaneGeometry(0.6, 0.06);
-    const barFgGeo = new THREE.PlaneGeometry(0.6, 0.06);
-    const barBgMat = new THREE.MeshBasicMaterial({ color: 0x333333, side: THREE.DoubleSide, depthTest: false, transparent: true, opacity: 0.7 });
+  // Cached health bar foreground materials (reused each frame)
+  private _hpBarGreenMat = new THREE.MeshBasicMaterial({ color: 0x44cc44, side: THREE.DoubleSide, depthTest: false });
+  private _hpBarYellowMat = new THREE.MeshBasicMaterial({ color: 0xcccc44, side: THREE.DoubleSide, depthTest: false });
+  private _hpBarRedMat = new THREE.MeshBasicMaterial({ color: 0xcc4444, side: THREE.DoubleSide, depthTest: false });
 
-    // Soldier health bars
+  private _getHpBarMat(hpPct: number): THREE.MeshBasicMaterial {
+    return hpPct > 0.5 ? this._hpBarGreenMat : hpPct > 0.25 ? this._hpBarYellowMat : this._hpBarRedMat;
+  }
+
+  private _updateHealthBars(state: SettlersState): void {
+    // Remove old meshes without disposing shared geometry/materials
+    while (this._healthBarGroup.children.length > 0) {
+      this._healthBarGroup.remove(this._healthBarGroup.children[0]);
+    }
+
+    // Soldier health bars (reuse cached geo & materials)
     for (const [, soldier] of state.soldiers) {
       if (soldier.state === "garrisoned") continue;
       if (soldier.hp >= soldier.maxHp) continue;
 
       const hpPct = Math.max(0, soldier.hp / soldier.maxHp);
-      const color = hpPct > 0.5 ? 0x44cc44 : hpPct > 0.25 ? 0xcccc44 : 0xcc4444;
 
-      const bg = new THREE.Mesh(barBgGeo, barBgMat);
+      const bg = new THREE.Mesh(this._healthBarBgGeo, this._healthBarBgMat);
       bg.position.set(soldier.position.x, soldier.position.y + SB.SOLDIER_HEIGHT + 0.35, soldier.position.z);
       bg.lookAt(this.camera.position);
       this._healthBarGroup.add(bg);
 
-      const fgMat = new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide, depthTest: false });
-      const fg = new THREE.Mesh(barFgGeo, fgMat);
+      const fg = new THREE.Mesh(this._healthBarFgGeo, this._getHpBarMat(hpPct));
       fg.scale.x = hpPct;
       fg.position.set(
         soldier.position.x - (1 - hpPct) * 0.3,
@@ -985,31 +1082,25 @@ export class SettlersRenderer {
       this._healthBarGroup.add(fg);
     }
 
-    // Damaged building health bars
+    // Damaged building health bars (reuse cached geo & materials)
     for (const [, building] of state.buildings) {
       if (building.hp >= building.maxHp) continue;
       const def = BUILDING_DEFS[building.type];
       const hpPct = Math.max(0, building.hp / building.maxHp);
-      const color = hpPct > 0.5 ? 0x44cc44 : hpPct > 0.25 ? 0xcccc44 : 0xcc4444;
 
       const cx = (building.tileX + def.footprint.w * 0.5) * SB.TILE_SIZE;
       const cz = (building.tileZ + def.footprint.h * 0.5) * SB.TILE_SIZE;
       const wy = getHeightAt(state.map, cx, cz);
       const buildH = def.size === "large" ? 3.5 : def.size === "medium" ? 2.5 : 2.0;
 
-      const barW = 1.2;
-      const bgGeo = new THREE.PlaneGeometry(barW, 0.08);
-      const fgGeo = new THREE.PlaneGeometry(barW, 0.08);
-
-      const bg = new THREE.Mesh(bgGeo, barBgMat);
+      const bg = new THREE.Mesh(this._healthBarBuildBgGeo, this._healthBarBgMat);
       bg.position.set(cx, wy + buildH, cz);
       bg.lookAt(this.camera.position);
       this._healthBarGroup.add(bg);
 
-      const fgMat = new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide, depthTest: false });
-      const fg = new THREE.Mesh(fgGeo, fgMat);
+      const fg = new THREE.Mesh(this._healthBarBuildFgGeo, this._getHpBarMat(hpPct));
       fg.scale.x = hpPct;
-      fg.position.set(cx - (1 - hpPct) * barW * 0.5, wy + buildH, cz);
+      fg.position.set(cx - (1 - hpPct) * 0.6, wy + buildH, cz);
       fg.lookAt(this.camera.position);
       this._healthBarGroup.add(fg);
     }
@@ -1023,14 +1114,13 @@ export class SettlersRenderer {
     // Spawn flashes at combat locations
     for (const combat of state.combats) {
       if (Math.random() < 0.15) {
-        const geo = new THREE.SphereGeometry(0.15, 4, 3);
         const mat = new THREE.MeshBasicMaterial({
           color: 0xffff44,
           transparent: true,
           opacity: 0.8,
           depthWrite: false,
         });
-        const flash = new THREE.Mesh(geo, mat);
+        const flash = new THREE.Mesh(this._combatFlashGeo, mat);
         flash.position.set(
           combat.position.x + (Math.random() - 0.5) * 0.3,
           combat.position.y + SB.SOLDIER_HEIGHT * 0.5 + Math.random() * 0.3,
@@ -1047,7 +1137,7 @@ export class SettlersRenderer {
       f.life -= dt;
       if (f.life <= 0) {
         this.scene.remove(f.mesh);
-        f.mesh.geometry.dispose();
+        // Only dispose material (geometry is shared/cached)
         (f.mesh.material as THREE.Material).dispose();
         this._combatFlashes.splice(i, 1);
       } else {
@@ -2325,28 +2415,31 @@ export class SettlersRenderer {
         pos.needsUpdate = true;
       }
 
-      // Dynamic inventory dots
+      // Dynamic inventory dots (reuse cached geometry & materials)
       const dotsGroup = mesh.getObjectByName("inventoryDots") as THREE.Group | undefined;
       if (dotsGroup) {
         while (dotsGroup.children.length > 0) dotsGroup.remove(dotsGroup.children[0]);
         const count = Math.min(flag.inventory.length, 8);
         for (let i = 0; i < count; i++) {
-          const dotGeo = new THREE.SphereGeometry(0.04, 4, 3);
-          const dotMat = new THREE.MeshBasicMaterial({ color: RESOURCE_META[flag.inventory[i].type].color });
-          const dot = new THREE.Mesh(dotGeo, dotMat);
+          const resColor = RESOURCE_META[flag.inventory[i].type].color;
+          let dotMat = this._dotMats.get(resColor);
+          if (!dotMat) {
+            dotMat = new THREE.MeshBasicMaterial({ color: resColor });
+            this._dotMats.set(resColor, dotMat);
+          }
+          const dot = new THREE.Mesh(this._dotGeo, dotMat);
           const row = Math.floor(i / 4);
           const col = i % 4;
           dot.position.set((col - 1.5) * 0.08, 0.1 + row * 0.08, 0.15);
           dotsGroup.add(dot);
         }
-        // Bottleneck glow
+        // Bottleneck glow (reuse cached geo, only update existing material)
         if (flag.inventory.length >= 6) {
-          const glowGeo = new THREE.SphereGeometry(0.15, 6, 4);
           const glowMat = new THREE.MeshBasicMaterial({
             color: 0xff4444, transparent: true,
             opacity: 0.3 + Math.sin(t * 4) * 0.15, depthWrite: false,
           });
-          const glow = new THREE.Mesh(glowGeo, glowMat);
+          const glow = new THREE.Mesh(this._glowGeo, glowMat);
           glow.position.y = 0.3;
           dotsGroup.add(glow);
         }

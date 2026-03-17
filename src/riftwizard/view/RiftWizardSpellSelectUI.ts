@@ -1,18 +1,22 @@
 // ---------------------------------------------------------------------------
-// Rift Wizard spell shop / upgrade UI (between-level screen)
+// Rift Wizard spell shop / upgrade / ability UI (between-level screen)
 // ---------------------------------------------------------------------------
 
 import { Container, Graphics, Text, TextStyle } from "pixi.js";
 import type { RiftWizardState } from "../state/RiftWizardState";
 import { SpellSchool } from "../state/RiftWizardState";
 import { SPELL_DEFS } from "../config/RiftWizardSpellDefs";
+import { ABILITY_DEFS } from "../config/RiftWizardAbilityDefs";
 import { SCHOOL_COLORS } from "../config/RiftWizardShrineDefs";
 import {
   getAvailableSpells,
   getAvailableUpgrades,
   getEffectiveSpellCost,
   getEffectiveUpgradeCost,
+  getAvailableAbilities,
+  getEffectiveAbilityCost,
   learnSpell,
+  learnAbility,
   buyUpgrade,
 } from "../systems/RiftWizardProgressionSystem";
 
@@ -20,128 +24,90 @@ import {
 // Styles
 // ---------------------------------------------------------------------------
 
-const TITLE_STYLE = new TextStyle({
-  fontFamily: "monospace",
-  fontSize: 22,
-  fill: 0xffffff,
-  fontWeight: "bold",
-});
+const FONT = "monospace";
 
-const SP_STYLE = new TextStyle({
-  fontFamily: "monospace",
-  fontSize: 16,
-  fill: 0xffcc44,
-  fontWeight: "bold",
-});
-
-const TAB_ACTIVE_STYLE = new TextStyle({
-  fontFamily: "monospace",
-  fontSize: 14,
-  fill: 0xffffff,
-  fontWeight: "bold",
-});
-
-const TAB_INACTIVE_STYLE = new TextStyle({
-  fontFamily: "monospace",
-  fontSize: 14,
-  fill: 0x666688,
-});
-
-const HELP_STYLE = new TextStyle({
-  fontFamily: "monospace",
-  fontSize: 10,
-  fill: 0x555577,
-});
+function _style(size: number, color: number, bold = false): TextStyle {
+  return new TextStyle({
+    fontFamily: FONT,
+    fontSize: size,
+    fill: color,
+    fontWeight: bold ? "bold" : "normal",
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Helper: draw a small school icon polygon
 // ---------------------------------------------------------------------------
 
-function drawSchoolIconSmall(g: Graphics, school: SpellSchool, cx: number, cy: number, s: number, color: number, alpha: number): void {
+function drawSchoolIcon(
+  g: Graphics, school: SpellSchool,
+  cx: number, cy: number, s: number,
+  color: number, alpha: number,
+): void {
   switch (school) {
     case SpellSchool.FIRE: {
-      g.moveTo(cx, cy - s);
-      g.lineTo(cx + s * 0.5, cy + s * 0.3);
-      g.lineTo(cx - s * 0.5, cy + s * 0.3);
-      g.closePath();
+      g.moveTo(cx, cy - s); g.lineTo(cx + s * 0.6, cy + s * 0.4);
+      g.lineTo(cx - s * 0.6, cy + s * 0.4); g.closePath();
       g.fill({ color, alpha });
-      g.moveTo(cx - s * 0.3, cy - s * 0.1);
-      g.lineTo(cx + s * 0.1, cy + s * 0.6);
-      g.lineTo(cx - s * 0.6, cy + s * 0.6);
-      g.closePath();
-      g.fill({ color, alpha: alpha * 0.65 });
-      g.moveTo(cx + s * 0.3, cy - s * 0.1);
-      g.lineTo(cx + s * 0.6, cy + s * 0.6);
-      g.lineTo(cx - s * 0.1, cy + s * 0.6);
-      g.closePath();
-      g.fill({ color, alpha: alpha * 0.65 });
+      g.moveTo(cx - s * 0.25, cy); g.lineTo(cx + s * 0.1, cy + s * 0.55);
+      g.lineTo(cx - s * 0.5, cy + s * 0.55); g.closePath();
+      g.fill({ color, alpha: alpha * 0.6 });
       break;
     }
     case SpellSchool.ICE: {
       for (let i = 0; i < 6; i++) {
-        const angle = (i * Math.PI) / 3 - Math.PI / 2;
-        const ox = cx + Math.cos(angle) * s;
-        const oy = cy + Math.sin(angle) * s;
-        const ia = angle + Math.PI / 6;
+        const a = (i * Math.PI) / 3 - Math.PI / 2;
+        const ox = cx + Math.cos(a) * s;
+        const oy = cy + Math.sin(a) * s;
+        const ia = a + Math.PI / 6;
         const ix = cx + Math.cos(ia) * s * 0.45;
         const iy = cy + Math.sin(ia) * s * 0.45;
         if (i === 0) g.moveTo(ox, oy); else g.lineTo(ox, oy);
         g.lineTo(ix, iy);
       }
-      g.closePath();
-      g.fill({ color, alpha });
+      g.closePath(); g.fill({ color, alpha });
       break;
     }
     case SpellSchool.LIGHTNING: {
-      g.moveTo(cx - s * 0.2, cy - s);
-      g.lineTo(cx + s * 0.4, cy - s * 0.15);
-      g.lineTo(cx - s * 0.05, cy);
-      g.lineTo(cx + s * 0.3, cy + s);
-      g.lineTo(cx - s * 0.15, cy + s * 0.1);
-      g.lineTo(cx + s * 0.1, cy + s * 0.05);
-      g.lineTo(cx - s * 0.4, cy - s * 0.2);
-      g.closePath();
+      g.moveTo(cx - s * 0.2, cy - s); g.lineTo(cx + s * 0.4, cy - s * 0.15);
+      g.lineTo(cx - s * 0.05, cy); g.lineTo(cx + s * 0.3, cy + s);
+      g.lineTo(cx - s * 0.15, cy + s * 0.1); g.lineTo(cx + s * 0.1, cy + s * 0.05);
+      g.lineTo(cx - s * 0.4, cy - s * 0.2); g.closePath();
       g.fill({ color, alpha });
       break;
     }
     case SpellSchool.ARCANE: {
       for (let i = 0; i < 6; i++) {
-        const angle = (i * Math.PI * 2.2) / 6;
+        const a = (i * Math.PI * 2.2) / 6;
         const r = s * 0.35 + (i / 6) * s * 0.55;
-        g.circle(cx + Math.cos(angle) * r, cy + Math.sin(angle) * r, s * 0.14);
+        g.circle(cx + Math.cos(a) * r, cy + Math.sin(a) * r, s * 0.14);
         g.fill({ color, alpha: alpha * (0.5 + i / 12) });
       }
       break;
     }
     case SpellSchool.NATURE: {
-      g.moveTo(cx, cy - s);
-      g.lineTo(cx + s * 0.55, cy - s * 0.15);
-      g.lineTo(cx + s * 0.4, cy + s * 0.45);
-      g.lineTo(cx, cy + s);
-      g.lineTo(cx - s * 0.4, cy + s * 0.45);
-      g.lineTo(cx - s * 0.55, cy - s * 0.15);
-      g.closePath();
-      g.fill({ color, alpha });
+      g.moveTo(cx, cy - s); g.lineTo(cx + s * 0.55, cy - s * 0.15);
+      g.lineTo(cx + s * 0.4, cy + s * 0.45); g.lineTo(cx, cy + s);
+      g.lineTo(cx - s * 0.4, cy + s * 0.45); g.lineTo(cx - s * 0.55, cy - s * 0.15);
+      g.closePath(); g.fill({ color, alpha });
       break;
     }
     case SpellSchool.DARK: {
       for (let i = 0; i < 5; i++) {
-        const angle = (i * Math.PI * 2) / 5 - Math.PI / 2;
-        const px = cx + Math.cos(angle) * s * 0.8;
-        const py = cy + Math.sin(angle) * s * 0.8;
+        const a = (i * Math.PI * 2) / 5 - Math.PI / 2;
+        const px = cx + Math.cos(a) * s * 0.8;
+        const py = cy + Math.sin(a) * s * 0.8;
         if (i === 0) g.moveTo(px, py); else g.lineTo(px, py);
       }
-      g.closePath();
-      g.fill({ color, alpha });
+      g.closePath(); g.fill({ color, alpha });
       break;
     }
     case SpellSchool.HOLY: {
-      g.circle(cx, cy, s * 0.35);
-      g.fill({ color, alpha });
+      g.circle(cx, cy, s * 0.35); g.fill({ color, alpha });
       for (let i = 0; i < 8; i++) {
-        const angle = (i * Math.PI) / 4;
-        g.moveTo(cx + Math.cos(angle) * s * 0.45, cy + Math.sin(angle) * s * 0.45);
-        g.lineTo(cx + Math.cos(angle) * s, cy + Math.sin(angle) * s);
+        const a = (i * Math.PI) / 4;
+        g.moveTo(cx + Math.cos(a) * s * 0.45, cy + Math.sin(a) * s * 0.45);
+        g.lineTo(cx + Math.cos(a) * s, cy + Math.sin(a) * s);
         g.stroke({ color, width: 1, alpha });
       }
       break;
@@ -150,10 +116,21 @@ function drawSchoolIconSmall(g: Graphics, school: SpellSchool, cx: number, cy: n
 }
 
 // ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+const PANEL_W = 620;
+const PANEL_H = 540;
+const ROW_H = 24;
+const LIST_TOP = 92;
+const LIST_BOT_MARGIN = 90; // reserved for detail panel + help
+const MAX_VISIBLE_ROWS = Math.floor((PANEL_H - LIST_TOP - LIST_BOT_MARGIN) / ROW_H);
+
+// ---------------------------------------------------------------------------
 // Spell Select UI
 // ---------------------------------------------------------------------------
 
-export type SpellShopMode = "buy" | "upgrade";
+export type SpellShopMode = "buy" | "upgrade" | "abilities";
 
 export class RiftWizardSpellSelectUI {
   readonly container = new Container();
@@ -162,9 +139,9 @@ export class RiftWizardSpellSelectUI {
   private _texts: Text[] = [];
   private _mode: SpellShopMode = "buy";
   private _selectedIndex = 0;
+  private _scrollOffset = 0;
   private _upgradeSpellIndex = 0;
 
-  /** Callback when player confirms and wants to continue. */
   onConfirm: (() => void) | null = null;
 
   build(): void {
@@ -175,20 +152,17 @@ export class RiftWizardSpellSelectUI {
   show(state: RiftWizardState, screenWidth: number, screenHeight: number): void {
     this._mode = "buy";
     this._selectedIndex = 0;
+    this._scrollOffset = 0;
     this._upgradeSpellIndex = 0;
     this._render(state, screenWidth, screenHeight);
     this.container.visible = true;
   }
 
-  hide(): void {
-    this.container.visible = false;
-  }
+  hide(): void { this.container.visible = false; }
 
   handleKey(
-    state: RiftWizardState,
-    key: string,
-    screenWidth: number,
-    screenHeight: number,
+    state: RiftWizardState, key: string,
+    screenWidth: number, screenHeight: number,
   ): boolean {
     if (key === "Enter" || key === "Escape") {
       this.onConfirm?.();
@@ -196,20 +170,25 @@ export class RiftWizardSpellSelectUI {
     }
 
     if (key === "Tab") {
-      this._mode = this._mode === "buy" ? "upgrade" : "buy";
+      const modes: SpellShopMode[] = ["buy", "abilities", "upgrade"];
+      const idx = modes.indexOf(this._mode);
+      this._mode = modes[(idx + 1) % modes.length];
       this._selectedIndex = 0;
+      this._scrollOffset = 0;
       this._render(state, screenWidth, screenHeight);
       return true;
     }
 
     if (key === "ArrowUp" || key === "w") {
       this._selectedIndex = Math.max(0, this._selectedIndex - 1);
+      this._ensureVisible();
       this._render(state, screenWidth, screenHeight);
       return true;
     }
 
     if (key === "ArrowDown" || key === "s") {
       this._selectedIndex++;
+      this._ensureVisible();
       this._render(state, screenWidth, screenHeight);
       return true;
     }
@@ -218,6 +197,7 @@ export class RiftWizardSpellSelectUI {
       if (this._mode === "upgrade") {
         this._upgradeSpellIndex = Math.max(0, this._upgradeSpellIndex - 1);
         this._selectedIndex = 0;
+        this._scrollOffset = 0;
         this._render(state, screenWidth, screenHeight);
       }
       return true;
@@ -227,6 +207,7 @@ export class RiftWizardSpellSelectUI {
       if (this._mode === "upgrade") {
         this._upgradeSpellIndex = Math.min(state.spells.length - 1, this._upgradeSpellIndex + 1);
         this._selectedIndex = 0;
+        this._scrollOffset = 0;
         this._render(state, screenWidth, screenHeight);
       }
       return true;
@@ -241,12 +222,25 @@ export class RiftWizardSpellSelectUI {
     return false;
   }
 
+  private _ensureVisible(): void {
+    if (this._selectedIndex < this._scrollOffset) {
+      this._scrollOffset = this._selectedIndex;
+    }
+    if (this._selectedIndex >= this._scrollOffset + MAX_VISIBLE_ROWS) {
+      this._scrollOffset = this._selectedIndex - MAX_VISIBLE_ROWS + 1;
+    }
+  }
+
   private _tryBuySelected(state: RiftWizardState): void {
     if (this._mode === "buy") {
-      const available = getAvailableSpells(state);
-      const sorted = available.sort((a, b) => a.spCost - b.spCost);
-      if (this._selectedIndex < sorted.length) {
-        learnSpell(state, sorted[this._selectedIndex].id);
+      const available = getAvailableSpells(state).sort((a, b) => a.spCost - b.spCost);
+      if (this._selectedIndex < available.length) {
+        learnSpell(state, available[this._selectedIndex].id);
+      }
+    } else if (this._mode === "abilities") {
+      const available = getAvailableAbilities(state).sort((a, b) => a.spCost - b.spCost);
+      if (this._selectedIndex < available.length) {
+        learnAbility(state, available[this._selectedIndex].id);
       }
     } else {
       const spell = state.spells[this._upgradeSpellIndex];
@@ -258,414 +252,290 @@ export class RiftWizardSpellSelectUI {
     }
   }
 
-  private _render(
-    state: RiftWizardState,
-    screenWidth: number,
-    screenHeight: number,
-  ): void {
-    // Clear previous texts
-    for (const t of this._texts) {
-      this.container.removeChild(t);
-      t.destroy();
-    }
-    this._texts = [];
+  // -----------------------------------------------------------------------
+  // Main render
+  // -----------------------------------------------------------------------
 
+  private _render(
+    state: RiftWizardState, screenWidth: number, screenHeight: number,
+  ): void {
+    for (const t of this._texts) { this.container.removeChild(t); t.destroy(); }
+    this._texts = [];
     this._bg.clear();
 
-    const panelW = 560;
-    const panelH = 480;
-    const px = Math.floor((screenWidth - panelW) / 2);
-    const py = Math.floor((screenHeight - panelH) / 2);
+    const px = Math.floor((screenWidth - PANEL_W) / 2);
+    const py = Math.floor((screenHeight - PANEL_H) / 2);
 
-    // Panel background with layered effect
-    // Outer shadow
-    this._bg.rect(px + 3, py + 3, panelW, panelH);
+    // --- Background layers ---
+    this._bg.rect(px + 4, py + 4, PANEL_W, PANEL_H);
     this._bg.fill({ color: 0x000000, alpha: 0.5 });
-    // Main panel
-    this._bg.rect(px, py, panelW, panelH);
-    this._bg.fill({ color: 0x0c0c1e, alpha: 0.97 });
+    this._bg.rect(px, py, PANEL_W, PANEL_H);
+    this._bg.fill({ color: 0x0a0a18, alpha: 0.97 });
 
-    // --- Diagonal line pattern in background ---
-    for (let d = 0; d < panelW + panelH; d += 20) {
-      const x1 = Math.max(0, d - panelH);
-      const y1 = Math.min(panelH, d);
-      const x2 = Math.min(panelW, d);
-      const y2 = Math.max(0, d - panelW);
-      this._bg.moveTo(px + x1, py + y1);
-      this._bg.lineTo(px + x2, py + y2);
-      this._bg.stroke({ color: 0x111125, width: 0.5, alpha: 0.3 });
+    // Subtle grid pattern
+    for (let gx = px + 16; gx < px + PANEL_W; gx += 16) {
+      this._bg.moveTo(gx, py); this._bg.lineTo(gx, py + PANEL_H);
+      this._bg.stroke({ color: 0x111122, width: 0.5, alpha: 0.2 });
+    }
+    for (let gy = py + 16; gy < py + PANEL_H; gy += 16) {
+      this._bg.moveTo(px, gy); this._bg.lineTo(px + PANEL_W, gy);
+      this._bg.stroke({ color: 0x111122, width: 0.5, alpha: 0.2 });
     }
 
-    // Inner gradient strip
-    this._bg.rect(px, py, panelW, 50);
-    this._bg.fill({ color: 0x141430, alpha: 0.8 });
+    // Header gradient
+    this._bg.rect(px, py, PANEL_W, 48);
+    this._bg.fill({ color: 0x12122a, alpha: 0.9 });
 
-    // --- Inner frame lines ---
-    this._bg.rect(px + 6, py + 6, panelW - 12, panelH - 12);
-    this._bg.stroke({ color: 0x222244, width: 0.5, alpha: 0.4 });
+    // Borders
+    this._bg.rect(px, py, PANEL_W, PANEL_H);
+    this._bg.stroke({ color: 0x3838aa, width: 2 });
+    // Glow line at top
+    this._bg.rect(px + 1, py + 1, PANEL_W - 2, 2);
+    this._bg.fill({ color: 0x6666dd, alpha: 0.7 });
 
-    // Border
-    this._bg.rect(px, py, panelW, panelH);
-    this._bg.stroke({ color: 0x3333aa, width: 2 });
-    // Top accent line
-    this._bg.rect(px, py, panelW, 2);
-    this._bg.fill({ color: 0x6666cc, alpha: 0.8 });
+    // Inner frame
+    this._bg.rect(px + 8, py + 8, PANEL_W - 16, PANEL_H - 16);
+    this._bg.stroke({ color: 0x222244, width: 0.5, alpha: 0.35 });
 
-    // --- Repeating rune-like geometric shapes along borders ---
-    const runeSpacing = 24;
-    // Top border runes
-    for (let rx = px + runeSpacing; rx < px + panelW - runeSpacing / 2; rx += runeSpacing) {
-      // Small diamond rune
-      this._bg.moveTo(rx, py + 4);
-      this._bg.lineTo(rx + 4, py + 8);
-      this._bg.lineTo(rx, py + 12);
-      this._bg.lineTo(rx - 4, py + 8);
-      this._bg.closePath();
-      this._bg.stroke({ color: 0x4444aa, width: 0.5, alpha: 0.4 });
-      // Center dot
-      this._bg.circle(rx, py + 8, 1);
-      this._bg.fill({ color: 0x5555bb, alpha: 0.3 });
-    }
-    // Bottom border runes
-    for (let rx = px + runeSpacing; rx < px + panelW - runeSpacing / 2; rx += runeSpacing) {
-      this._bg.moveTo(rx, py + panelH - 12);
-      this._bg.lineTo(rx + 4, py + panelH - 8);
-      this._bg.lineTo(rx, py + panelH - 4);
-      this._bg.lineTo(rx - 4, py + panelH - 8);
-      this._bg.closePath();
-      this._bg.stroke({ color: 0x4444aa, width: 0.5, alpha: 0.4 });
-      this._bg.circle(rx, py + panelH - 8, 1);
-      this._bg.fill({ color: 0x5555bb, alpha: 0.3 });
-    }
-    // Left border runes
-    for (let ry = py + runeSpacing; ry < py + panelH - runeSpacing / 2; ry += runeSpacing) {
-      this._bg.moveTo(px + 4, ry);
-      this._bg.lineTo(px + 8, ry + 4);
-      this._bg.lineTo(px + 4, ry + 8);
-      this._bg.lineTo(px, ry + 4);
-      this._bg.closePath();
-      this._bg.stroke({ color: 0x4444aa, width: 0.5, alpha: 0.35 });
-    }
-    // Right border runes
-    for (let ry = py + runeSpacing; ry < py + panelH - runeSpacing / 2; ry += runeSpacing) {
-      this._bg.moveTo(px + panelW - 4, ry);
-      this._bg.lineTo(px + panelW, ry + 4);
-      this._bg.lineTo(px + panelW - 4, ry + 8);
-      this._bg.lineTo(px + panelW - 8, ry + 4);
-      this._bg.closePath();
-      this._bg.stroke({ color: 0x4444aa, width: 0.5, alpha: 0.35 });
+    // Corner gems
+    for (const [cx, cy] of [[px + 8, py + 8], [px + PANEL_W - 8, py + 8], [px + 8, py + PANEL_H - 8], [px + PANEL_W - 8, py + PANEL_H - 8]]) {
+      this._bg.circle(cx, cy, 3);
+      this._bg.fill({ color: 0x5555cc, alpha: 0.6 });
+      this._bg.circle(cx, cy, 1.5);
+      this._bg.fill({ color: 0x8888ff, alpha: 0.4 });
     }
 
-    // Corner decorations
-    this._drawCorner(px, py, 1, 1);
-    this._drawCorner(px + panelW, py, -1, 1);
-    this._drawCorner(px, py + panelH, 1, -1);
-    this._drawCorner(px + panelW, py + panelH, -1, -1);
+    // --- Title ---
+    this._addText("SPELL SHOP", px + 20, py + 13, 20, 0xeeeeff, true);
 
-    // Title
-    const title = new Text({ text: "SPELL SHOP", style: TITLE_STYLE });
-    title.x = px + 20;
-    title.y = py + 12;
-    this.container.addChild(title);
-    this._texts.push(title);
+    // SP display with gem
+    const spX = px + PANEL_W - 100;
+    this._drawGem(spX, py + 22, 8);
+    this._addText(`${state.skillPoints} SP`, spX + 14, py + 14, 15, 0xffcc44, true);
 
-    // SP display
-    const spDisplay = new Text({ text: `${state.skillPoints} SP`, style: SP_STYLE });
-    spDisplay.x = px + panelW - 80;
-    spDisplay.y = py + 14;
-    this.container.addChild(spDisplay);
-    this._texts.push(spDisplay);
-
-    // --- SP icon: faceted gem polygon with inner star pattern ---
-    const gemCx = px + panelW - 90;
-    const gemCy = py + 22;
-    const gemR = 7;
-    // Outer hexagon gem facet
-    for (let i = 0; i < 6; i++) {
-      const angle = (i * Math.PI) / 3 - Math.PI / 6;
-      const gx = gemCx + Math.cos(angle) * gemR;
-      const gy = gemCy + Math.sin(angle) * gemR;
-      if (i === 0) this._bg.moveTo(gx, gy); else this._bg.lineTo(gx, gy);
-    }
-    this._bg.closePath();
-    this._bg.fill({ color: 0xffcc44, alpha: 0.9 });
-    this._bg.stroke({ color: 0xffdd66, width: 1 });
-    // Inner facet lines (star pattern connecting alternate vertices)
-    for (let i = 0; i < 6; i++) {
-      const angle = (i * Math.PI) / 3 - Math.PI / 6;
-      const gx = gemCx + Math.cos(angle) * gemR;
-      const gy = gemCy + Math.sin(angle) * gemR;
-      this._bg.moveTo(gemCx, gemCy);
-      this._bg.lineTo(gx, gy);
-      this._bg.stroke({ color: 0x0c0c1e, width: 0.5, alpha: 0.5 });
-    }
-    // Inner star (3-pointed, rotated)
-    for (let i = 0; i < 3; i++) {
-      const a1 = (i * Math.PI * 2) / 3 - Math.PI / 2;
-      const a2 = ((i + 1) * Math.PI * 2) / 3 - Math.PI / 2;
-      this._bg.moveTo(gemCx + Math.cos(a1) * gemR * 0.55, gemCy + Math.sin(a1) * gemR * 0.55);
-      this._bg.lineTo(gemCx + Math.cos(a2) * gemR * 0.55, gemCy + Math.sin(a2) * gemR * 0.55);
-      this._bg.stroke({ color: 0xffee88, width: 0.5, alpha: 0.6 });
-    }
-    // Center bright dot
-    this._bg.circle(gemCx, gemCy, 1.5);
-    this._bg.fill({ color: 0xffffff, alpha: 0.8 });
-
-    // --- Tab bar with shaped tab polygons ---
+    // --- Tab bar ---
     const tabY = py + 50;
-    this._bg.rect(px, tabY, panelW, 28);
-    this._bg.fill({ color: 0x101024, alpha: 0.8 });
+    this._bg.rect(px, tabY, PANEL_W, 32);
+    this._bg.fill({ color: 0x0c0c20, alpha: 0.9 });
 
-    // Shaped tab polygon for "BUY SPELLS" with curved top
-    const buyTabX = px + 8;
-    const buyTabW = 128;
-    const buyTabActive = this._mode === "buy";
-    this._bg.moveTo(buyTabX, tabY + 28);
-    this._bg.lineTo(buyTabX, tabY + 4);
-    this._bg.lineTo(buyTabX + 4, tabY);
-    this._bg.lineTo(buyTabX + buyTabW - 4, tabY);
-    this._bg.lineTo(buyTabX + buyTabW, tabY + 4);
-    this._bg.lineTo(buyTabX + buyTabW, tabY + 28);
-    this._bg.closePath();
-    this._bg.fill({ color: buyTabActive ? 0x1a1a3a : 0x0e0e1e, alpha: 0.8 });
-    this._bg.stroke({ color: buyTabActive ? 0x4444cc : 0x333355, width: 1 });
-    // Active tab indicator
-    if (buyTabActive) {
-      this._bg.rect(buyTabX + 4, tabY + 24, buyTabW - 8, 3);
-      this._bg.fill(0x4444cc);
+    const tabs: { label: string; mode: SpellShopMode; w: number }[] = [
+      { label: "SPELLS", mode: "buy", w: 100 },
+      { label: "ABILITIES", mode: "abilities", w: 110 },
+      { label: "UPGRADES", mode: "upgrade", w: 110 },
+    ];
+
+    let tabX = px + 10;
+    for (const tab of tabs) {
+      const active = this._mode === tab.mode;
+      // Tab shape
+      this._bg.moveTo(tabX, tabY + 32);
+      this._bg.lineTo(tabX, tabY + 4);
+      this._bg.lineTo(tabX + 4, tabY);
+      this._bg.lineTo(tabX + tab.w - 4, tabY);
+      this._bg.lineTo(tabX + tab.w, tabY + 4);
+      this._bg.lineTo(tabX + tab.w, tabY + 32);
+      this._bg.closePath();
+      this._bg.fill({ color: active ? 0x1a1a3a : 0x0c0c1a, alpha: active ? 0.95 : 0.6 });
+      this._bg.stroke({ color: active ? 0x5555cc : 0x333355, width: 1 });
+      if (active) {
+        this._bg.rect(tabX + 4, tabY + 28, tab.w - 8, 3);
+        this._bg.fill(0x5555cc);
+      }
+      this._addText(tab.label, tabX + 12, tabY + 8, 12, active ? 0xffffff : 0x666688, active);
+      tabX += tab.w + 6;
     }
-    // Small scroll icon in buy tab
-    this._bg.rect(buyTabX + 6, tabY + 6, 5, 8);
-    this._bg.stroke({ color: buyTabActive ? 0x8888cc : 0x444466, width: 0.5 });
-    this._bg.moveTo(buyTabX + 6, tabY + 6);
-    this._bg.lineTo(buyTabX + 11, tabY + 6);
-    this._bg.stroke({ color: buyTabActive ? 0x8888cc : 0x444466, width: 0.5 });
 
-    // Shaped tab polygon for "UPGRADES"
-    const upTabX = px + 146;
-    const upTabW = 110;
-    const upTabActive = this._mode === "upgrade";
-    this._bg.moveTo(upTabX, tabY + 28);
-    this._bg.lineTo(upTabX, tabY + 4);
-    this._bg.lineTo(upTabX + 4, tabY);
-    this._bg.lineTo(upTabX + upTabW - 4, tabY);
-    this._bg.lineTo(upTabX + upTabW, tabY + 4);
-    this._bg.lineTo(upTabX + upTabW, tabY + 28);
-    this._bg.closePath();
-    this._bg.fill({ color: upTabActive ? 0x1a1a3a : 0x0e0e1e, alpha: 0.8 });
-    this._bg.stroke({ color: upTabActive ? 0x4444cc : 0x333355, width: 1 });
-    if (upTabActive) {
-      this._bg.rect(upTabX + 4, tabY + 24, upTabW - 8, 3);
-      this._bg.fill(0x4444cc);
+    // Owned abilities count badge
+    if (state.abilities.length > 0) {
+      const badgeX = px + 10 + 100 + 6 + 90;
+      this._bg.circle(badgeX, tabY + 8, 7);
+      this._bg.fill({ color: 0x44aa44, alpha: 0.8 });
+      this._addText(`${state.abilities.length}`, badgeX - 3, tabY + 2, 9, 0xffffff, true);
     }
-    // Small arrow-up icon in upgrade tab
-    this._bg.moveTo(upTabX + 8, tabY + 14);
-    this._bg.lineTo(upTabX + 11, tabY + 7);
-    this._bg.lineTo(upTabX + 14, tabY + 14);
-    this._bg.closePath();
-    this._bg.fill({ color: upTabActive ? 0x88cc88 : 0x444466, alpha: 0.7 });
 
-    const buyTab = new Text({
-      text: "BUY SPELLS",
-      style: this._mode === "buy" ? TAB_ACTIVE_STYLE : TAB_INACTIVE_STYLE,
-    });
-    buyTab.x = px + 24;
-    buyTab.y = tabY + 4;
-    this.container.addChild(buyTab);
-    this._texts.push(buyTab);
+    // --- Help bar ---
+    const helpY = py + PANEL_H - 22;
+    this._bg.rect(px + 10, helpY - 6, PANEL_W - 20, 1);
+    this._bg.fill({ color: 0x333355, alpha: 0.4 });
+    this._addText(
+      "Tab: switch  |  \u2191\u2193: select  |  Space: buy  |  Enter: continue",
+      px + 20, helpY, 10, 0x555577,
+    );
 
-    const upgradeTab = new Text({
-      text: "UPGRADES",
-      style: this._mode === "upgrade" ? TAB_ACTIVE_STYLE : TAB_INACTIVE_STYLE,
-    });
-    upgradeTab.x = upTabX + 20;
-    upgradeTab.y = tabY + 4;
-    this.container.addChild(upgradeTab);
-    this._texts.push(upgradeTab);
-
-    // Help text
-    const helpText = new Text({
-      text: "Tab: switch tabs  |  Up/Down: select  |  Space: buy  |  Enter: continue",
-      style: HELP_STYLE,
-    });
-    helpText.x = px + 20;
-    helpText.y = py + panelH - 22;
-    this.container.addChild(helpText);
-    this._texts.push(helpText);
-
-    // Separator above help
-    this._bg.rect(px + 10, py + panelH - 30, panelW - 20, 1);
-    this._bg.fill({ color: 0x333355, alpha: 0.5 });
-
-    let listY = py + 88;
-
-    if (this._mode === "buy") {
-      this._renderBuyMode(state, px, listY, panelW, panelH, py);
-    } else {
-      this._renderUpgradeMode(state, px, listY, panelW, panelH, py);
-    }
+    // --- Content area ---
+    const listY = py + LIST_TOP;
+    if (this._mode === "buy") this._renderBuyMode(state, px, listY, py);
+    else if (this._mode === "abilities") this._renderAbilitiesMode(state, px, listY, py);
+    else this._renderUpgradeMode(state, px, listY, py);
   }
 
+  // -----------------------------------------------------------------------
+  // BUY SPELLS tab
+  // -----------------------------------------------------------------------
+
   private _renderBuyMode(
-    state: RiftWizardState,
-    px: number,
-    listY: number,
-    panelW: number,
-    panelH: number,
-    py: number,
+    state: RiftWizardState, px: number, listY: number, py: number,
   ): void {
     const available = getAvailableSpells(state).sort((a, b) => a.spCost - b.spCost);
     this._selectedIndex = Math.min(this._selectedIndex, Math.max(0, available.length - 1));
 
     if (available.length === 0) {
-      const noSpells = new Text({
-        text: "No more spells available.",
-        style: new TextStyle({ fontFamily: "monospace", fontSize: 13, fill: 0x666688 }),
-      });
-      noSpells.x = px + 20;
-      noSpells.y = listY;
-      this.container.addChild(noSpells);
-      this._texts.push(noSpells);
+      this._addText("All spells learned!", px + 20, listY + 10, 13, 0x44cc44);
       return;
     }
 
-    for (let i = 0; i < available.length; i++) {
+    // Scroll indicator
+    if (available.length > MAX_VISIBLE_ROWS) {
+      const pct = this._scrollOffset / Math.max(1, available.length - MAX_VISIBLE_ROWS);
+      this._drawScrollbar(px + PANEL_W - 18, listY, PANEL_H - LIST_TOP - LIST_BOT_MARGIN, pct);
+    }
+
+    const end = Math.min(available.length, this._scrollOffset + MAX_VISIBLE_ROWS);
+    for (let i = this._scrollOffset; i < end; i++) {
       const def = available[i];
       const cost = getEffectiveSpellCost(state, def);
       const affordable = state.skillPoints >= cost;
-      const isSelected = i === this._selectedIndex;
-      const schoolColor = SCHOOL_COLORS[def.school] ?? 0x888888;
+      const selected = i === this._selectedIndex;
+      const sc = SCHOOL_COLORS[def.school] ?? 0x888888;
+      const rowY = listY + (i - this._scrollOffset) * ROW_H;
 
-      // Row background
-      if (isSelected) {
-        this._bg.rect(px + 4, listY - 2, panelW - 8, 22);
-        this._bg.fill({ color: 0x222244, alpha: 0.8 });
-        this._bg.rect(px + 4, listY - 2, 3, 22);
-        this._bg.fill(schoolColor);
+      if (selected) {
+        this._bg.rect(px + 12, rowY - 2, PANEL_W - 40, ROW_H);
+        this._bg.fill({ color: 0x1a1a3a, alpha: 0.9 });
+        this._bg.rect(px + 12, rowY - 2, 3, ROW_H);
+        this._bg.fill(sc);
+        // Subtle glow
+        this._bg.rect(px + 15, rowY - 2, PANEL_W - 46, ROW_H);
+        this._bg.stroke({ color: sc, width: 0.5, alpha: 0.3 });
       }
 
-      // --- School-colored icon polygon instead of plain dot ---
-      drawSchoolIconSmall(this._bg, def.school, px + 18, listY + 8, 5, schoolColor, affordable ? 0.9 : 0.3);
-
-      // Spell name
-      const nameText = new Text({
-        text: def.name,
-        style: new TextStyle({
-          fontFamily: "monospace",
-          fontSize: 12,
-          fill: isSelected ? 0xffffff : affordable ? 0xccccdd : 0x555566,
-          fontWeight: isSelected ? "bold" : "normal",
-        }),
-      });
-      nameText.x = px + 30;
-      nameText.y = listY;
-      this.container.addChild(nameText);
-      this._texts.push(nameText);
-
-      // Cost
-      const costText = new Text({
-        text: `${cost} SP`,
-        style: new TextStyle({
-          fontFamily: "monospace",
-          fontSize: 11,
-          fill: affordable ? 0xffcc44 : 0x664422,
-          fontWeight: "bold",
-        }),
-      });
-      costText.x = px + 200;
-      costText.y = listY + 1;
-      this.container.addChild(costText);
-      this._texts.push(costText);
-
-      // Description
-      const descText = new Text({
-        text: def.description.substring(0, 40),
-        style: new TextStyle({
-          fontFamily: "monospace",
-          fontSize: 10,
-          fill: isSelected ? 0x9999aa : 0x555566,
-        }),
-      });
-      descText.x = px + 260;
-      descText.y = listY + 2;
-      this.container.addChild(descText);
-      this._texts.push(descText);
-
-      listY += 22;
-
-      if (listY > py + panelH - 100) break;
+      drawSchoolIcon(this._bg, def.school, px + 26, rowY + 9, 5, sc, affordable ? 0.9 : 0.3);
+      this._addText(def.name, px + 38, rowY + 1, 12,
+        selected ? 0xffffff : affordable ? 0xccccdd : 0x555566, selected);
+      this._addText(`${cost} SP`, px + 210, rowY + 2, 11,
+        affordable ? 0xffcc44 : 0x664422, true);
+      this._addText(def.description.substring(0, 42), px + 268, rowY + 3, 9,
+        selected ? 0x9999bb : 0x555566);
     }
 
-    // --- Selected spell detail panel at bottom with ornate border ---
+    // Detail panel
     if (this._selectedIndex < available.length) {
-      const sel = available[this._selectedIndex];
-      const detailY = py + panelH - 80;
-      const detailX = px + 10;
-      const detailW = panelW - 20;
-      const detailH = 40;
-
-      this._bg.rect(detailX, detailY, detailW, detailH);
-      this._bg.fill({ color: 0x141428, alpha: 0.8 });
-
-      // Ornate border with notched corners
-      this._bg.moveTo(detailX + 4, detailY);
-      this._bg.lineTo(detailX + detailW - 4, detailY);
-      this._bg.lineTo(detailX + detailW, detailY + 4);
-      this._bg.lineTo(detailX + detailW, detailY + detailH - 4);
-      this._bg.lineTo(detailX + detailW - 4, detailY + detailH);
-      this._bg.lineTo(detailX + 4, detailY + detailH);
-      this._bg.lineTo(detailX, detailY + detailH - 4);
-      this._bg.lineTo(detailX, detailY + 4);
-      this._bg.closePath();
-      this._bg.stroke({ color: 0x444477, width: 1 });
-
-      // Small corner accents
-      this._bg.circle(detailX + 4, detailY + 4, 1.5);
-      this._bg.fill({ color: 0x5555aa, alpha: 0.5 });
-      this._bg.circle(detailX + detailW - 4, detailY + 4, 1.5);
-      this._bg.fill({ color: 0x5555aa, alpha: 0.5 });
-      this._bg.circle(detailX + 4, detailY + detailH - 4, 1.5);
-      this._bg.fill({ color: 0x5555aa, alpha: 0.5 });
-      this._bg.circle(detailX + detailW - 4, detailY + detailH - 4, 1.5);
-      this._bg.fill({ color: 0x5555aa, alpha: 0.5 });
-
-      const detailText = new Text({
-        text: `${sel.name} | Dmg: ${sel.damage} | Range: ${sel.range ?? "-"} | AoE: ${sel.aoeRadius ?? 0} | Charges: ${sel.baseCharges}`,
-        style: new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: 0xbbbbcc }),
-      });
-      detailText.x = detailX + 8;
-      detailText.y = detailY + 4;
-      this.container.addChild(detailText);
-      this._texts.push(detailText);
-
-      const descFull = new Text({
-        text: sel.description,
-        style: new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: 0x888899 }),
-      });
-      descFull.x = detailX + 8;
-      descFull.y = detailY + 22;
-      this.container.addChild(descFull);
-      this._texts.push(descFull);
+      this._renderSpellDetail(available[this._selectedIndex], state, px, py);
     }
   }
 
+  // -----------------------------------------------------------------------
+  // ABILITIES tab
+  // -----------------------------------------------------------------------
+
+  private _renderAbilitiesMode(
+    state: RiftWizardState, px: number, listY: number, py: number,
+  ): void {
+    const available = getAvailableAbilities(state).sort((a, b) => a.spCost - b.spCost);
+    this._selectedIndex = Math.min(this._selectedIndex, Math.max(0, available.length - 1));
+
+    // Show owned abilities at top
+    if (state.abilities.length > 0) {
+      this._addText("Owned:", px + 16, listY, 10, 0x44aa44, true);
+      let ox = px + 66;
+      for (const id of state.abilities) {
+        const def = ABILITY_DEFS[id];
+        if (!def) continue;
+        const sc = SCHOOL_COLORS[def.school] ?? 0x888888;
+        this._bg.roundRect(ox - 2, listY - 2, 10, 14, 2);
+        this._bg.fill({ color: sc, alpha: 0.3 });
+        drawSchoolIcon(this._bg, def.school, ox + 3, listY + 5, 4, sc, 0.8);
+        this._addText(def.name, ox + 12, listY, 9, 0x44aa44);
+        ox += 10 + def.name.length * 5.5 + 10;
+        if (ox > px + PANEL_W - 40) break;
+      }
+      listY += 20;
+    }
+
+    if (available.length === 0) {
+      this._addText("All abilities learned!", px + 20, listY + 10, 13, 0x44cc44);
+      return;
+    }
+
+    // Section label
+    this._addText("Available Abilities:", px + 16, listY, 11, 0x8888aa, true);
+    listY += 18;
+
+    if (available.length > MAX_VISIBLE_ROWS - 1) {
+      const pct = this._scrollOffset / Math.max(1, available.length - MAX_VISIBLE_ROWS + 1);
+      this._drawScrollbar(px + PANEL_W - 18, listY, PANEL_H - LIST_TOP - LIST_BOT_MARGIN - 38, pct);
+    }
+
+    const maxRows = MAX_VISIBLE_ROWS - (state.abilities.length > 0 ? 2 : 0);
+    const end = Math.min(available.length, this._scrollOffset + maxRows);
+    for (let i = this._scrollOffset; i < end; i++) {
+      const def = available[i];
+      const cost = getEffectiveAbilityCost(state, def);
+      const affordable = state.skillPoints >= cost;
+      const selected = i === this._selectedIndex;
+      const sc = SCHOOL_COLORS[def.school] ?? 0x888888;
+      const rowY = listY + (i - this._scrollOffset) * ROW_H;
+
+      if (selected) {
+        this._bg.rect(px + 12, rowY - 2, PANEL_W - 40, ROW_H);
+        this._bg.fill({ color: 0x1a1a3a, alpha: 0.9 });
+        this._bg.rect(px + 12, rowY - 2, 3, ROW_H);
+        this._bg.fill(sc);
+      }
+
+      // Ability icon: small diamond with school icon inside
+      this._bg.moveTo(px + 26, rowY + 2);
+      this._bg.lineTo(px + 34, rowY + 10);
+      this._bg.lineTo(px + 26, rowY + 18);
+      this._bg.lineTo(px + 18, rowY + 10);
+      this._bg.closePath();
+      this._bg.fill({ color: sc, alpha: affordable ? 0.15 : 0.05 });
+      this._bg.stroke({ color: sc, width: 0.5, alpha: affordable ? 0.5 : 0.2 });
+      drawSchoolIcon(this._bg, def.school, px + 26, rowY + 10, 4, sc, affordable ? 0.8 : 0.3);
+
+      this._addText(def.name, px + 42, rowY + 1, 12,
+        selected ? 0xffffff : affordable ? 0xccccdd : 0x555566, selected);
+      this._addText(`${cost} SP`, px + 210, rowY + 2, 11,
+        affordable ? 0xffcc44 : 0x664422, true);
+
+      // Trigger tag
+      const triggerLabel = this._triggerLabel(def.trigger);
+      this._addText(triggerLabel, px + 268, rowY + 2, 9,
+        selected ? 0xaa99cc : 0x666688);
+
+      this._addText(def.description.substring(0, 36), px + 360, rowY + 3, 9,
+        selected ? 0x9999bb : 0x555566);
+    }
+
+    // Detail panel for selected ability
+    if (this._selectedIndex < available.length) {
+      this._renderAbilityDetail(available[this._selectedIndex], state, px, py);
+    }
+  }
+
+  private _triggerLabel(trigger: string): string {
+    switch (trigger) {
+      case "on_spell_cast": return "[On Cast]";
+      case "on_fire_cast": return "[Fire Cast]";
+      case "on_ice_cast": return "[Ice Cast]";
+      case "on_lightning_cast": return "[Ltng Cast]";
+      case "on_kill": return "[On Kill]";
+      case "on_take_damage": return "[On Hit]";
+      case "on_turn_start": return "[Per Turn]";
+      case "passive": return "[Passive]";
+      default: return "";
+    }
+  }
+
+  // -----------------------------------------------------------------------
+  // UPGRADES tab
+  // -----------------------------------------------------------------------
+
   private _renderUpgradeMode(
-    state: RiftWizardState,
-    px: number,
-    listY: number,
-    panelW: number,
-    panelH: number,
-    py: number,
+    state: RiftWizardState, px: number, listY: number, py: number,
   ): void {
     if (state.spells.length === 0) {
-      const noSpells = new Text({
-        text: "No spells learned yet.",
-        style: new TextStyle({ fontFamily: "monospace", fontSize: 13, fill: 0x666688 }),
-      });
-      noSpells.x = px + 20;
-      noSpells.y = listY;
-      this.container.addChild(noSpells);
-      this._texts.push(noSpells);
+      this._addText("No spells learned yet.", px + 20, listY + 10, 13, 0x666688);
       return;
     }
 
@@ -674,38 +544,22 @@ export class RiftWizardSpellSelectUI {
     const def = SPELL_DEFS[spell.defId];
     if (!def) return;
 
-    const schoolColor = SCHOOL_COLORS[spell.school] ?? 0x888888;
+    const sc = SCHOOL_COLORS[spell.school] ?? 0x888888;
 
     // Spell header with navigation
-    const headerBg_y = listY - 4;
-    this._bg.rect(px + 10, headerBg_y, panelW - 20, 30);
-    this._bg.fill({ color: 0x1a1a34, alpha: 0.8 });
-    this._bg.rect(px + 10, headerBg_y, 3, 30);
-    this._bg.fill(schoolColor);
+    this._bg.rect(px + 12, listY - 4, PANEL_W - 24, 32);
+    this._bg.fill({ color: 0x141430, alpha: 0.8 });
+    this._bg.rect(px + 12, listY - 4, 3, 32);
+    this._bg.fill(sc);
 
-    const spellHeader = new Text({
-      text: `< ${def.name} (${this._upgradeSpellIndex + 1}/${state.spells.length}) >`,
-      style: new TextStyle({
-        fontFamily: "monospace",
-        fontSize: 14,
-        fill: schoolColor,
-        fontWeight: "bold",
-      }),
-    });
-    spellHeader.x = px + 20;
-    spellHeader.y = listY;
-    this.container.addChild(spellHeader);
-    this._texts.push(spellHeader);
-
-    // Current stats
-    const statsText = new Text({
-      text: `Dmg: ${spell.damage}  Range: ${spell.range}  AoE: ${spell.aoeRadius}  Charges: ${spell.charges}/${spell.maxCharges}`,
-      style: new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: 0x9999aa }),
-    });
-    statsText.x = px + 240;
-    statsText.y = listY + 2;
-    this.container.addChild(statsText);
-    this._texts.push(statsText);
+    this._addText(
+      `\u25C0  ${def.name}  (${this._upgradeSpellIndex + 1}/${state.spells.length})  \u25B6`,
+      px + 22, listY + 2, 14, sc, true,
+    );
+    this._addText(
+      `Dmg:${spell.damage}  Rng:${spell.range}  AoE:${spell.aoeRadius}  Chg:${spell.charges}/${spell.maxCharges}`,
+      px + 300, listY + 4, 10, 0x9999aa,
+    );
 
     listY += 38;
 
@@ -713,214 +567,188 @@ export class RiftWizardSpellSelectUI {
     const upgrades = getAvailableUpgrades(spell);
     this._selectedIndex = Math.min(this._selectedIndex, Math.max(0, upgrades.length - 1));
 
-    if (upgrades.length === 0) {
-      const noUp = new Text({
-        text: "All upgrades purchased!",
-        style: new TextStyle({ fontFamily: "monospace", fontSize: 12, fill: 0x44cc44 }),
-      });
-      noUp.x = px + 20;
-      noUp.y = listY;
-      this.container.addChild(noUp);
-      this._texts.push(noUp);
-      listY += 20;
-    } else {
-      const upLabel = new Text({
-        text: "Available Upgrades:",
-        style: new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: 0x8888aa }),
-      });
-      upLabel.x = px + 20;
-      upLabel.y = listY;
-      this.container.addChild(upLabel);
-      this._texts.push(upLabel);
-      listY += 18;
+    if (upgrades.length === 0 && spell.upgrades.length === def.upgrades.length) {
+      this._addText("All upgrades purchased!", px + 20, listY, 12, 0x44cc44);
+      listY += 22;
+    } else if (upgrades.length > 0) {
+      this._addText("Available:", px + 16, listY, 10, 0x8888aa, true);
+      listY += 16;
 
       for (let i = 0; i < upgrades.length; i++) {
         const up = upgrades[i];
         const cost = getEffectiveUpgradeCost(state, spell, up);
         const affordable = state.skillPoints >= cost;
-        const isSelected = i === this._selectedIndex;
+        const selected = i === this._selectedIndex;
+        const rowY = listY;
 
-        // Row background
-        if (isSelected) {
-          this._bg.rect(px + 4, listY - 2, panelW - 8, 22);
-          this._bg.fill({ color: 0x222244, alpha: 0.8 });
-          this._bg.rect(px + 4, listY - 2, 3, 22);
+        if (selected) {
+          this._bg.rect(px + 12, rowY - 2, PANEL_W - 40, ROW_H);
+          this._bg.fill({ color: 0x1a2a1a, alpha: 0.8 });
+          this._bg.rect(px + 12, rowY - 2, 3, ROW_H);
           this._bg.fill(0x44cc44);
         }
 
-        // Arrow indicator
-        const arrow = new Text({
-          text: isSelected ? ">" : " ",
-          style: new TextStyle({
-            fontFamily: "monospace",
-            fontSize: 12,
-            fill: 0x44cc44,
-            fontWeight: "bold",
-          }),
-        });
-        arrow.x = px + 16;
-        arrow.y = listY;
-        this.container.addChild(arrow);
-        this._texts.push(arrow);
-
-        // Upgrade name
-        const nameText = new Text({
-          text: up.name,
-          style: new TextStyle({
-            fontFamily: "monospace",
-            fontSize: 12,
-            fill: isSelected ? 0xffffff : affordable ? 0xccccdd : 0x555566,
-            fontWeight: isSelected ? "bold" : "normal",
-          }),
-        });
-        nameText.x = px + 30;
-        nameText.y = listY;
-        this.container.addChild(nameText);
-        this._texts.push(nameText);
-
-        // Cost
-        const costText = new Text({
-          text: `${cost} SP`,
-          style: new TextStyle({
-            fontFamily: "monospace",
-            fontSize: 11,
-            fill: affordable ? 0xffcc44 : 0x664422,
-            fontWeight: "bold",
-          }),
-        });
-        costText.x = px + 220;
-        costText.y = listY + 1;
-        this.container.addChild(costText);
-        this._texts.push(costText);
-
-        // Description
-        const descText = new Text({
-          text: up.description.substring(0, 35),
-          style: new TextStyle({
-            fontFamily: "monospace",
-            fontSize: 10,
-            fill: isSelected ? 0x9999aa : 0x555566,
-          }),
-        });
-        descText.x = px + 280;
-        descText.y = listY + 2;
-        this.container.addChild(descText);
-        this._texts.push(descText);
-
-        listY += 22;
+        this._addText(selected ? "\u25B8" : " ", px + 16, rowY + 1, 12, 0x44cc44, true);
+        this._addText(up.name, px + 30, rowY + 1, 12,
+          selected ? 0xffffff : affordable ? 0xccccdd : 0x555566, selected);
+        this._addText(`${cost} SP`, px + 230, rowY + 2, 11,
+          affordable ? 0xffcc44 : 0x664422, true);
+        this._addText(up.description.substring(0, 38), px + 290, rowY + 3, 9,
+          selected ? 0x9999bb : 0x555566);
+        listY += ROW_H;
       }
     }
 
     // Purchased upgrades
     if (spell.upgrades.length > 0) {
-      listY += 10;
-      this._bg.rect(px + 20, listY, panelW - 40, 1);
-      this._bg.fill({ color: 0x335533, alpha: 0.5 });
       listY += 8;
-
-      const owned = new Text({
-        text: "Purchased:",
-        style: new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: 0x44aa44 }),
-      });
-      owned.x = px + 20;
-      owned.y = listY;
-      this.container.addChild(owned);
-      this._texts.push(owned);
+      this._bg.rect(px + 20, listY, PANEL_W - 40, 1);
+      this._bg.fill({ color: 0x335533, alpha: 0.4 });
+      listY += 8;
+      this._addText("Purchased:", px + 16, listY, 10, 0x44aa44, true);
       listY += 16;
 
       for (const upId of spell.upgrades) {
         const up = def.upgrades.find((u) => u.id === upId);
         if (!up) continue;
+        if (listY > py + PANEL_H - LIST_BOT_MARGIN) break;
 
-        // --- Decorated checkbox polygon with fancy check shape ---
-        const cbx = px + 22;
-        const cby = listY + 6;
-        const cbr = 5;
-        // Decorated box (rounded-corner-like octagon)
-        this._bg.moveTo(cbx - cbr, cby - cbr + 2);
-        this._bg.lineTo(cbx - cbr + 2, cby - cbr);
-        this._bg.lineTo(cbx + cbr - 2, cby - cbr);
-        this._bg.lineTo(cbx + cbr, cby - cbr + 2);
-        this._bg.lineTo(cbx + cbr, cby + cbr - 2);
-        this._bg.lineTo(cbx + cbr - 2, cby + cbr);
-        this._bg.lineTo(cbx - cbr + 2, cby + cbr);
-        this._bg.lineTo(cbx - cbr, cby + cbr - 2);
-        this._bg.closePath();
-        this._bg.fill({ color: 0x1a2a1a, alpha: 0.6 });
-        this._bg.stroke({ color: 0x44aa44, width: 1 });
-        // Small corner dots on the checkbox
-        this._bg.circle(cbx - cbr + 2, cby - cbr + 2, 0.8);
-        this._bg.fill({ color: 0x44aa44, alpha: 0.4 });
-        this._bg.circle(cbx + cbr - 2, cby - cbr + 2, 0.8);
-        this._bg.fill({ color: 0x44aa44, alpha: 0.4 });
-        // Fancy checkmark (thick, with a flourish)
-        this._bg.moveTo(cbx - 3, cby);
-        this._bg.lineTo(cbx - 1, cby + 3);
-        this._bg.lineTo(cbx + 4, cby - 3);
+        // Checkmark
+        this._bg.moveTo(px + 18, listY + 7);
+        this._bg.lineTo(px + 21, listY + 11);
+        this._bg.lineTo(px + 27, listY + 3);
         this._bg.stroke({ color: 0x66dd66, width: 1.5 });
-        // Small flourish dot at check tip
-        this._bg.circle(cbx + 4, cby - 3, 1);
-        this._bg.fill({ color: 0x66dd66, alpha: 0.6 });
 
-        const line = new Text({
-          text: `${up.name} — ${up.description}`,
-          style: new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: 0x339933 }),
-        });
-        line.x = px + 34;
-        line.y = listY;
-        this.container.addChild(line);
-        this._texts.push(line);
-        listY += 16;
-
-        if (listY > py + panelH - 50) break;
+        this._addText(`${up.name} \u2014 ${up.description}`, px + 34, listY + 1, 10, 0x339933);
+        listY += 18;
       }
     }
   }
 
-  private _drawCorner(x: number, y: number, dx: number, dy: number): void {
-    const len = 10;
-    // Main corner L-shape
-    this._bg.moveTo(x, y + dy * len);
-    this._bg.lineTo(x, y);
-    this._bg.lineTo(x + dx * len, y);
-    this._bg.stroke({ color: 0x6666cc, width: 2 });
+  // -----------------------------------------------------------------------
+  // Detail panels
+  // -----------------------------------------------------------------------
 
-    // --- Spiral curve extensions ---
-    // Spiral at the end of horizontal arm
-    const spiralX = x + dx * len;
-    const spiralR = 3;
-    this._bg.moveTo(spiralX, y);
-    this._bg.lineTo(spiralX + dx * spiralR, y + dy * spiralR);
-    this._bg.lineTo(spiralX + dx * spiralR * 0.3, y + dy * spiralR * 1.2);
-    this._bg.stroke({ color: 0x5555bb, width: 1, alpha: 0.7 });
-    // Small circle at end of horizontal spiral
-    this._bg.circle(spiralX + dx * spiralR * 0.3, y + dy * spiralR * 1.2, 1.5);
-    this._bg.fill({ color: 0x6666cc, alpha: 0.6 });
+  private _renderSpellDetail(
+    def: import("../config/RiftWizardSpellDefs").SpellDef,
+    state: RiftWizardState, px: number, py: number,
+  ): void {
+    const dY = py + PANEL_H - LIST_BOT_MARGIN + 6;
+    const dX = px + 14;
+    const dW = PANEL_W - 28;
+    const dH = 52;
 
-    // Spiral at the end of vertical arm
-    const spiralY = y + dy * len;
-    this._bg.moveTo(x, spiralY);
-    this._bg.lineTo(x + dx * spiralR, spiralY + dy * spiralR);
-    this._bg.lineTo(x + dx * spiralR * 1.2, spiralY + dy * spiralR * 0.3);
-    this._bg.stroke({ color: 0x5555bb, width: 1, alpha: 0.7 });
-    // Small circle at end of vertical spiral
-    this._bg.circle(x + dx * spiralR * 1.2, spiralY + dy * spiralR * 0.3, 1.5);
-    this._bg.fill({ color: 0x6666cc, alpha: 0.6 });
+    this._drawDetailBox(dX, dY, dW, dH, SCHOOL_COLORS[def.school] ?? 0x444477);
 
-    // --- Filigree connecting line between the two spiral ends ---
-    this._bg.moveTo(spiralX + dx * spiralR * 0.3, y + dy * spiralR * 1.2);
-    this._bg.lineTo(x + dx * spiralR * 1.2, spiralY + dy * spiralR * 0.3);
-    this._bg.stroke({ color: 0x4444aa, width: 0.5, alpha: 0.4 });
+    const cost = getEffectiveSpellCost(state, def);
+    const stats = [
+      def.name,
+      `Dmg: ${def.damage}`,
+      `Range: ${def.range || "\u221E"}`,
+      `AoE: ${def.aoeRadius}`,
+      `Charges: ${def.baseCharges}`,
+      `Cost: ${cost} SP`,
+    ].join("  |  ");
+    this._addText(stats, dX + 10, dY + 6, 10, 0xbbbbcc);
+    this._addText(def.description, dX + 10, dY + 24, 10, 0x888899);
 
-    // Small circle at the corner vertex itself
-    this._bg.circle(x, y, 2);
-    this._bg.fill({ color: 0x6666cc, alpha: 0.5 });
+    // Upgrade count hint
+    const upCount = def.upgrades.length;
+    if (upCount > 0) {
+      this._addText(`${upCount} upgrades available`, dX + dW - 130, dY + 6, 9, 0x6666aa);
+    }
+  }
+
+  private _renderAbilityDetail(
+    def: import("../config/RiftWizardAbilityDefs").AbilityDef,
+    state: RiftWizardState, px: number, py: number,
+  ): void {
+    const dY = py + PANEL_H - LIST_BOT_MARGIN + 6;
+    const dX = px + 14;
+    const dW = PANEL_W - 28;
+    const dH = 52;
+
+    this._drawDetailBox(dX, dY, dW, dH, SCHOOL_COLORS[def.school] ?? 0x444477);
+
+    const cost = getEffectiveAbilityCost(state, def);
+    this._addText(
+      `${def.name}  |  ${this._triggerLabel(def.trigger)}  |  ${def.school.toUpperCase()} school  |  ${cost} SP`,
+      dX + 10, dY + 6, 10, 0xbbbbcc,
+    );
+    this._addText(def.description, dX + 10, dY + 24, 10, 0x888899);
+  }
+
+  // -----------------------------------------------------------------------
+  // Drawing helpers
+  // -----------------------------------------------------------------------
+
+  private _addText(
+    text: string, x: number, y: number,
+    size: number, color: number, bold = false,
+  ): Text {
+    const t = new Text({ text, style: _style(size, color, bold) });
+    t.x = x; t.y = y;
+    this.container.addChild(t);
+    this._texts.push(t);
+    return t;
+  }
+
+  private _drawGem(cx: number, cy: number, r: number): void {
+    for (let i = 0; i < 6; i++) {
+      const a = (i * Math.PI) / 3 - Math.PI / 6;
+      const gx = cx + Math.cos(a) * r;
+      const gy = cy + Math.sin(a) * r;
+      if (i === 0) this._bg.moveTo(gx, gy); else this._bg.lineTo(gx, gy);
+    }
+    this._bg.closePath();
+    this._bg.fill({ color: 0xffcc44, alpha: 0.9 });
+    this._bg.stroke({ color: 0xffdd66, width: 1 });
+    for (let i = 0; i < 6; i++) {
+      const a = (i * Math.PI) / 3 - Math.PI / 6;
+      this._bg.moveTo(cx, cy);
+      this._bg.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+      this._bg.stroke({ color: 0x0c0c1e, width: 0.5, alpha: 0.4 });
+    }
+    this._bg.circle(cx, cy, 1.5);
+    this._bg.fill({ color: 0xffffff, alpha: 0.7 });
+  }
+
+  private _drawDetailBox(
+    x: number, y: number, w: number, h: number, accentColor: number,
+  ): void {
+    this._bg.rect(x, y, w, h);
+    this._bg.fill({ color: 0x10102a, alpha: 0.9 });
+    // Notched corners
+    this._bg.moveTo(x + 4, y);
+    this._bg.lineTo(x + w - 4, y);
+    this._bg.lineTo(x + w, y + 4);
+    this._bg.lineTo(x + w, y + h - 4);
+    this._bg.lineTo(x + w - 4, y + h);
+    this._bg.lineTo(x + 4, y + h);
+    this._bg.lineTo(x, y + h - 4);
+    this._bg.lineTo(x, y + 4);
+    this._bg.closePath();
+    this._bg.stroke({ color: accentColor, width: 1, alpha: 0.6 });
+    // Corner dots
+    for (const [cx, cy] of [[x + 4, y + 4], [x + w - 4, y + 4], [x + 4, y + h - 4], [x + w - 4, y + h - 4]]) {
+      this._bg.circle(cx, cy, 1.5);
+      this._bg.fill({ color: accentColor, alpha: 0.4 });
+    }
+  }
+
+  private _drawScrollbar(x: number, y: number, h: number, pct: number): void {
+    // Track
+    this._bg.rect(x, y, 4, h);
+    this._bg.fill({ color: 0x222244, alpha: 0.4 });
+    // Thumb
+    const thumbH = Math.max(12, h * 0.3);
+    const thumbY = y + pct * (h - thumbH);
+    this._bg.rect(x, thumbY, 4, thumbH);
+    this._bg.fill({ color: 0x5555aa, alpha: 0.7 });
   }
 
   destroy(): void {
-    for (const t of this._texts) {
-      t.destroy();
-    }
+    for (const t of this._texts) t.destroy();
     this._texts = [];
     this._bg.destroy();
     this.container.removeChildren();

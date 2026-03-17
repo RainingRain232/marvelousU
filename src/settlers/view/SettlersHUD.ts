@@ -70,26 +70,32 @@ export class SettlersHUD {
     this._root.id = "settlers-hud";
     this._root.style.cssText = `
       position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-      pointer-events: none; z-index: 20; font-family: monospace; color: #e0d8c8;
+      pointer-events: none; z-index: 20; font-family: 'Segoe UI', system-ui, sans-serif; color: #e0d8c8;
     `;
     document.body.appendChild(this._root);
 
     // --- Resource bar (top) ---
     this._resourceBar = document.createElement("div");
     this._resourceBar.style.cssText = `
-      position: absolute; top: 0; left: 0; right: 0; height: 36px;
-      background: rgba(16,16,42,0.85); display: flex; align-items: center;
-      padding: 0 12px; gap: 14px; font-size: 13px; pointer-events: auto;
-      border-bottom: 1px solid rgba(255,255,255,0.1);
+      position: absolute; top: 0; left: 0; right: 0; height: 40px;
+      background: linear-gradient(180deg, rgba(20,18,48,0.95) 0%, rgba(12,10,30,0.92) 100%);
+      display: flex; align-items: center;
+      padding: 0 16px; gap: 16px; font-size: 13px; pointer-events: auto;
+      border-bottom: 2px solid rgba(180,160,100,0.25);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+      backdrop-filter: blur(8px);
     `;
     this._root.appendChild(this._resourceBar);
 
     // --- Tool indicator (top-right) ---
     this._toolIndicator = document.createElement("div");
     this._toolIndicator.style.cssText = `
-      position: absolute; top: 44px; right: 12px; padding: 6px 14px;
-      background: rgba(16,16,42,0.85); border-radius: 6px; font-size: 14px;
-      pointer-events: auto; border: 1px solid rgba(255,255,255,0.15);
+      position: absolute; top: 50px; right: 12px; padding: 8px 16px;
+      background: linear-gradient(135deg, rgba(20,18,48,0.92), rgba(30,25,60,0.92));
+      border-radius: 8px; font-size: 14px; font-weight: 600;
+      pointer-events: auto; border: 1px solid rgba(180,160,100,0.3);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      backdrop-filter: blur(6px);
     `;
     this._root.appendChild(this._toolIndicator);
 
@@ -97,10 +103,14 @@ export class SettlersHUD {
     this._buildMenu = document.createElement("div");
     this._buildMenu.style.cssText = `
       position: absolute; bottom: 0; left: 0; right: 0;
-      background: rgba(16,16,42,0.9); padding: 8px 12px;
-      pointer-events: auto; display: flex; flex-wrap: wrap; gap: 4px;
-      border-top: 1px solid rgba(255,255,255,0.1); max-height: 160px;
+      background: linear-gradient(0deg, rgba(12,10,30,0.95) 0%, rgba(20,18,48,0.92) 100%);
+      padding: 10px 14px;
+      pointer-events: auto; display: flex; flex-wrap: wrap; gap: 5px;
+      align-items: center;
+      border-top: 2px solid rgba(180,160,100,0.25); max-height: 170px;
       overflow-y: auto;
+      box-shadow: 0 -2px 12px rgba(0,0,0,0.4);
+      backdrop-filter: blur(8px);
     `;
     this._root.appendChild(this._buildMenu);
     this._buildBuildMenu();
@@ -108,10 +118,13 @@ export class SettlersHUD {
     // --- Info panel (right) ---
     this._infoPanel = document.createElement("div");
     this._infoPanel.style.cssText = `
-      position: absolute; top: 80px; right: 12px; width: 220px;
-      background: rgba(16,16,42,0.88); border-radius: 8px; padding: 10px;
+      position: absolute; top: 90px; right: 12px; width: 240px;
+      background: linear-gradient(135deg, rgba(20,18,48,0.94), rgba(14,12,35,0.94));
+      border-radius: 10px; padding: 12px 14px;
       pointer-events: auto; font-size: 12px; display: none;
-      border: 1px solid rgba(255,255,255,0.12);
+      border: 1px solid rgba(180,160,100,0.25);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+      backdrop-filter: blur(8px);
     `;
     this._root.appendChild(this._infoPanel);
 
@@ -120,9 +133,10 @@ export class SettlersHUD {
     this._minimap.width = 160;
     this._minimap.height = 160;
     this._minimap.style.cssText = `
-      position: absolute; bottom: 170px; left: 8px;
-      background: rgba(16,16,42,0.9); border: 1px solid rgba(255,255,255,0.2);
-      border-radius: 4px; pointer-events: auto; image-rendering: pixelated;
+      position: absolute; bottom: 180px; left: 10px;
+      background: rgba(12,10,30,0.95); border: 2px solid rgba(180,160,100,0.3);
+      border-radius: 8px; pointer-events: auto; image-rendering: pixelated;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.5);
     `;
     this._root.appendChild(this._minimap);
     this._minimapCtx = this._minimap.getContext("2d")!;
@@ -145,10 +159,13 @@ export class SettlersHUD {
     // --- Wiki panel (toggleable) ---
     this._wikiPanel = document.createElement("div");
     this._wikiPanel.style.cssText = `
-      position: absolute; top: 80px; left: 12px; width: 280px; max-height: 400px;
-      background: rgba(16,16,42,0.92); border-radius: 8px; padding: 12px;
+      position: absolute; top: 90px; left: 12px; width: 300px; max-height: 420px;
+      background: linear-gradient(135deg, rgba(20,18,48,0.95), rgba(14,12,35,0.95));
+      border-radius: 10px; padding: 14px;
       pointer-events: auto; font-size: 11px; display: none; overflow-y: auto;
-      border: 1px solid rgba(255,255,255,0.12);
+      border: 1px solid rgba(180,160,100,0.25);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      backdrop-filter: blur(8px);
     `;
     this._buildWikiPanel();
     this._root.appendChild(this._wikiPanel);
@@ -157,8 +174,9 @@ export class SettlersHUD {
     this._notification = document.createElement("div");
     this._notification.style.cssText = `
       position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-      font-size: 22px; color: #ffd700; text-shadow: 2px 2px 8px #000;
+      font-size: 24px; color: #ffd700; text-shadow: 0 0 12px rgba(255,215,0,0.4), 2px 2px 8px #000;
       display: none; pointer-events: none; transition: opacity 0.3s;
+      font-weight: 600; letter-spacing: 1px;
     `;
     this._root.appendChild(this._notification);
 
@@ -195,10 +213,11 @@ export class SettlersHUD {
     // --- Hover tooltip (for build menu buttons) ---
     this._tooltip = document.createElement("div");
     this._tooltip.style.cssText = `
-      position: absolute; padding: 8px 12px; background: rgba(10,10,30,0.95);
-      color: #e0d8c8; border-radius: 6px; font-size: 11px; pointer-events: none;
-      display: none; z-index: 30; max-width: 260px; line-height: 1.5;
-      border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+      position: absolute; padding: 10px 14px; background: linear-gradient(135deg, rgba(16,14,38,0.97), rgba(10,8,25,0.97));
+      color: #e0d8c8; border-radius: 8px; font-size: 11px; pointer-events: none;
+      display: none; z-index: 30; max-width: 280px; line-height: 1.6;
+      border: 1px solid rgba(180,160,100,0.3); box-shadow: 0 6px 20px rgba(0,0,0,0.6);
+      backdrop-filter: blur(10px);
     `;
     this._root.appendChild(this._tooltip);
   }
@@ -328,10 +347,14 @@ export class SettlersHUD {
     for (const t of tools) {
       const btn = document.createElement("button");
       btn.style.cssText = `
-        padding: 4px 10px; background: #2a2a4a; color: #e0d8c8; border: 1px solid #444;
-        border-radius: 4px; cursor: pointer; font-family: monospace; font-size: 12px;
+        padding: 5px 12px; background: linear-gradient(180deg, #35305a, #2a2548);
+        color: #e0d8c8; border: 1px solid rgba(180,160,100,0.3);
+        border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 12px;
+        font-weight: 500; transition: all 0.15s; text-shadow: 0 1px 2px rgba(0,0,0,0.5);
       `;
       btn.textContent = `[${t.key}] ${t.label}`;
+      btn.onmouseenter = () => { btn.style.background = "linear-gradient(180deg, #4a4570, #3a3560)"; btn.style.borderColor = "rgba(200,180,120,0.5)"; };
+      btn.onmouseleave = () => { btn.style.background = "linear-gradient(180deg, #35305a, #2a2548)"; btn.style.borderColor = "rgba(180,160,100,0.3)"; };
       btn.onclick = () => this.onSelectTool?.(t.tool);
       this._buildMenu.appendChild(btn);
     }
@@ -346,9 +369,13 @@ export class SettlersHUD {
     for (const u of utilBtns) {
       const btn = document.createElement("button");
       btn.style.cssText = `
-        padding: 4px 10px; background: #3a2a4a; color: #d0c8e8; border: 1px solid #554;
-        border-radius: 4px; cursor: pointer; font-family: monospace; font-size: 12px;
+        padding: 5px 12px; background: linear-gradient(180deg, #3a2850, #2e2045);
+        color: #d0c8e8; border: 1px solid rgba(160,120,200,0.3);
+        border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 12px;
+        font-weight: 500; transition: all 0.15s; text-shadow: 0 1px 2px rgba(0,0,0,0.5);
       `;
+      btn.onmouseenter = () => { btn.style.background = "linear-gradient(180deg, #4a3868, #3a2e58)"; btn.style.borderColor = "rgba(180,140,220,0.5)"; };
+      btn.onmouseleave = () => { btn.style.background = "linear-gradient(180deg, #3a2850, #2e2045)"; btn.style.borderColor = "rgba(160,120,200,0.3)"; };
       btn.textContent = u.label;
       btn.onclick = u.action;
       this._buildMenu.appendChild(btn);
@@ -356,15 +383,15 @@ export class SettlersHUD {
 
     // Separator
     const sep = document.createElement("div");
-    sep.style.cssText = "width: 100%; height: 1px; background: #444; margin: 4px 0;";
+    sep.style.cssText = "width: 100%; height: 1px; background: linear-gradient(90deg, transparent, rgba(180,160,100,0.3), transparent); margin: 5px 0;";
     this._buildMenu.appendChild(sep);
 
     // Building buttons by category
     const categories = ["economy", "military", "infrastructure"] as const;
     for (const cat of categories) {
       const catLabel = document.createElement("span");
-      catLabel.style.cssText = "color: #aaa; font-size: 11px; margin-right: 6px; text-transform: uppercase;";
-      catLabel.textContent = cat + ":";
+      catLabel.style.cssText = "color: rgba(180,160,100,0.7); font-size: 10px; margin-right: 6px; text-transform: uppercase; font-weight: 700; letter-spacing: 1px;";
+      catLabel.textContent = cat;
       this._buildMenu.appendChild(catLabel);
 
       for (const def of Object.values(BUILDING_DEFS)) {
@@ -372,9 +399,17 @@ export class SettlersHUD {
         if (def.type === SettlersBuildingType.HEADQUARTERS) continue;
 
         const btn = document.createElement("button");
+        const catColors: Record<string, string[]> = {
+          economy: ["#1a3a28", "#254535", "rgba(80,160,100,0.3)", "#c0d8b0"],
+          military: ["#3a1a1a", "#452525", "rgba(180,80,80,0.3)", "#e0b8b8"],
+          infrastructure: ["#1a2a3a", "#253540", "rgba(80,120,180,0.3)", "#b8c8e0"],
+        };
+        const cc = catColors[cat] || catColors.economy;
         btn.style.cssText = `
-          padding: 3px 8px; background: #1a3a2a; color: #c0d0b0; border: 1px solid #3a5a3a;
-          border-radius: 3px; cursor: pointer; font-family: monospace; font-size: 11px;
+          padding: 4px 10px; background: linear-gradient(180deg, ${cc[1]}, ${cc[0]});
+          color: ${cc[3]}; border: 1px solid ${cc[2]};
+          border-radius: 5px; cursor: pointer; font-family: inherit; font-size: 11px;
+          font-weight: 500; transition: all 0.15s; text-shadow: 0 1px 2px rgba(0,0,0,0.4);
         `;
         btn.textContent = def.label;
         btn.onclick = () => {
@@ -983,6 +1018,15 @@ export class SettlersHUD {
   }
 
   destroy(): void {
+    // Clean up all callbacks to prevent dangling references
+    this.onSelectBuildingType = null;
+    this.onSelectTool = null;
+    this.onExit = null;
+    this.onSave = null;
+    this.onLoad = null;
+    this.onMinimapClick = null;
+    this.onQueueAdd = null;
+    this.onQueueRemove = null;
     this._root.remove();
   }
 }

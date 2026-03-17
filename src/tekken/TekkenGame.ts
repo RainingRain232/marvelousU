@@ -70,6 +70,7 @@ export class TekkenGame {
   private _menuKeyHandler: ((e: KeyboardEvent) => void) | null = null;
   private _selectedChars: [string, string] = ["knight", "berserker"];
   private _charSelectContainer: Container | null = null;
+  private _stageSelectContainer: Container | null = null;
   private _selectedDifficulty = 1; // 0=easy, 1=medium, 2=hard
   private _selectedGameMode: TekkenGameMode = "vs_cpu";
   private _selectedArenaIdx = 0; // index into TEKKEN_ARENAS, 0 = random
@@ -122,6 +123,11 @@ export class TekkenGame {
       viewManager.removeFromLayer("ui", this._charSelectContainer);
       this._charSelectContainer.destroy({ children: true });
       this._charSelectContainer = null;
+    }
+    if (this._stageSelectContainer) {
+      viewManager.removeFromLayer("ui", this._stageSelectContainer);
+      this._stageSelectContainer.destroy({ children: true });
+      this._stageSelectContainer = null;
     }
     if (this._trainingKeyHandler) {
       window.removeEventListener("keydown", this._trainingKeyHandler);
@@ -610,7 +616,7 @@ export class TekkenGame {
 
       // Controls hint text
       const hint = new Text({
-        text: "\u2190\u2192 P1  \u2191\u2193 CPU  S/D Stage  1/2/3 Difficulty  T Training  Enter Fight  Esc Exit",
+        text: "\u2190\u2192 P1  \u2191\u2193 CPU  1/2/3 Difficulty  T Training  Enter Next  Esc Exit",
         style: {
           fontFamily: "Georgia, serif",
           fontSize: 14,
@@ -656,67 +662,6 @@ export class TekkenGame {
       modeText.y = barY - 8;
       container.addChild(modeText);
 
-      // Stage/Map selector (centered above bottom bar)
-      const stageName = this._selectedArenaIdx === 0
-        ? "RANDOM"
-        : TEKKEN_ARENAS[(this._selectedArenaIdx - 1) % TEKKEN_ARENAS.length].name;
-      const stageColor = this._selectedArenaIdx === 0 ? 0xaaaaaa : 0xddcc88;
-
-      // Stage selector panel background
-      const stagePanelW = 320;
-      const stagePanelH = 28;
-      const stagePanelX = sw / 2 - stagePanelW / 2;
-      const stagePanelY = barY - 34;
-      g.roundRect(stagePanelX, stagePanelY, stagePanelW, stagePanelH, 5)
-        .fill({ color: 0x0c0c18, alpha: 0.85 });
-      g.roundRect(stagePanelX, stagePanelY, stagePanelW, stagePanelH, 5)
-        .stroke({ color: 0x6a5a20, width: 1.5 });
-
-      // Left arrow (S key)
-      const arrowLText = new Text({
-        text: "\u25C0 S",
-        style: { fontFamily: "Georgia, serif", fontSize: 13, fill: 0xbbbb88, fontWeight: "bold" },
-      });
-      arrowLText.anchor.set(0.5);
-      arrowLText.x = stagePanelX + 24;
-      arrowLText.y = stagePanelY + stagePanelH / 2;
-      container.addChild(arrowLText);
-
-      // Right arrow (D key)
-      const arrowRText = new Text({
-        text: "D \u25B6",
-        style: { fontFamily: "Georgia, serif", fontSize: 13, fill: 0xbbbb88, fontWeight: "bold" },
-      });
-      arrowRText.anchor.set(0.5);
-      arrowRText.x = stagePanelX + stagePanelW - 24;
-      arrowRText.y = stagePanelY + stagePanelH / 2;
-      container.addChild(arrowRText);
-
-      // Stage label
-      const stageLabelText = new Text({
-        text: "Stage:",
-        style: { fontFamily: "Georgia, serif", fontSize: 13, fill: 0x888888 },
-      });
-      stageLabelText.anchor.set(1, 0.5);
-      stageLabelText.x = sw / 2 - 10;
-      stageLabelText.y = stagePanelY + stagePanelH / 2;
-      container.addChild(stageLabelText);
-
-      // Stage name
-      const stageNameText = new Text({
-        text: stageName,
-        style: {
-          fontFamily: "Georgia, serif",
-          fontSize: 15,
-          fill: stageColor,
-          fontWeight: "bold",
-        },
-      });
-      stageNameText.anchor.set(0, 0.5);
-      stageNameText.x = sw / 2 - 4;
-      stageNameText.y = stagePanelY + stagePanelH / 2;
-      container.addChild(stageNameText);
-
       // Add base graphics first, then text layers are already added
       container.addChildAt(g, 0);
       container.addChild(hint);
@@ -754,16 +699,6 @@ export class TekkenGame {
       } else if (e.key === "t" || e.key === "T") {
         this._selectedGameMode = this._selectedGameMode === "training" ? "vs_cpu" : "training";
         drawSelect();
-      } else if (e.key === "s" || e.key === "S") {
-        // Cycle stage backward (0 = random, 1..N = specific arenas)
-        const totalStages = TEKKEN_ARENAS.length + 1; // +1 for "Random"
-        this._selectedArenaIdx = (this._selectedArenaIdx - 1 + totalStages) % totalStages;
-        drawSelect();
-      } else if (e.key === "d" || e.key === "D") {
-        // Cycle stage forward
-        const totalStages = TEKKEN_ARENAS.length + 1;
-        this._selectedArenaIdx = (this._selectedArenaIdx + 1) % totalStages;
-        drawSelect();
       } else if (e.key === "Enter") {
         confirmed = true;
         this._selectedChars = [charIds[p1Idx], charIds[p2Idx]];
@@ -772,7 +707,7 @@ export class TekkenGame {
         viewManager.removeFromLayer("ui", container);
         container.destroy({ children: true });
         this._charSelectContainer = null;
-        this._startMatch(this._selectedGameMode);
+        this._showStageSelect();
       } else if (e.key === "Escape") {
         window.removeEventListener("keydown", this._menuKeyHandler!);
         this._menuKeyHandler = null;
@@ -780,6 +715,383 @@ export class TekkenGame {
         container.destroy({ children: true });
         this._charSelectContainer = null;
         window.dispatchEvent(new Event("tekkenExit"));
+      }
+    };
+    window.addEventListener("keydown", this._menuKeyHandler);
+  }
+
+  // ---- Stage Select (separate screen after character select) ----
+
+  private _showStageSelect(): void {
+    const sw = viewManager.screenWidth;
+    const sh = viewManager.screenHeight;
+
+    // Total options: "RANDOM" + all arenas
+    const totalOptions = TEKKEN_ARENAS.length + 1; // index 0 = RANDOM
+    // Reset to 0 (random) if desired, or keep previous
+    let selIdx = this._selectedArenaIdx;
+
+    const container = new Container();
+    viewManager.addToLayer("ui", container);
+    this._stageSelectContainer = container;
+
+    // Animated particle state for background embers
+    const particles: { x: number; y: number; vx: number; vy: number; life: number; maxLife: number; size: number; color: number }[] = [];
+    for (let i = 0; i < 60; i++) {
+      particles.push({
+        x: Math.random() * sw,
+        y: Math.random() * sh,
+        vx: (Math.random() - 0.5) * 0.4,
+        vy: -Math.random() * 0.8 - 0.2,
+        life: Math.random() * 200,
+        maxLife: 200 + Math.random() * 150,
+        size: Math.random() * 2.5 + 0.5,
+        color: Math.random() > 0.5 ? 0xff8822 : 0xffaa44,
+      });
+    }
+    let animFrame = 0;
+
+    // Horizontal scroll offset for the stage cards row
+    const cardW = 180;
+    const cardH = 220;
+    const cardGap = 18;
+
+    const drawStageSelect = () => {
+      container.removeChildren();
+      animFrame++;
+
+      const g = new Graphics();
+
+      // ── Dark gradient background ──
+      const gradSteps = 20;
+      for (let i = 0; i < gradSteps; i++) {
+        const t = i / gradSteps;
+        const r = Math.floor(0x08 + t * 0x06);
+        const gv = Math.floor(0x06 + t * 0x04);
+        const b = Math.floor(0x14 + t * 0x08);
+        const color = (r << 16) | (gv << 8) | b;
+        const yy = (sh / gradSteps) * i;
+        g.rect(0, yy, sw, sh / gradSteps + 1).fill({ color, alpha: 0.97 });
+      }
+
+      // ── Animated floating embers/sparks ──
+      for (const p of particles) {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life++;
+        if (p.life > p.maxLife || p.y < -10) {
+          p.x = Math.random() * sw;
+          p.y = sh + 10;
+          p.life = 0;
+          p.maxLife = 200 + Math.random() * 150;
+        }
+        const alpha = Math.max(0, 1 - p.life / p.maxLife) * 0.6;
+        g.circle(p.x, p.y, p.size).fill({ color: p.color, alpha });
+      }
+
+      // ── Medieval ornamental border ──
+      const borderInset = 12;
+      const borderW = 3;
+      g.roundRect(borderInset, borderInset, sw - borderInset * 2, sh - borderInset * 2, 6)
+        .stroke({ color: 0x3a2a10, width: borderW + 2 });
+      g.roundRect(borderInset + 3, borderInset + 3, sw - (borderInset + 3) * 2, sh - (borderInset + 3) * 2, 4)
+        .stroke({ color: 0x8a6a20, width: 1.5 });
+      // Corner ornaments
+      const corners = [
+        [borderInset + 3, borderInset + 3],
+        [sw - borderInset - 3, borderInset + 3],
+        [borderInset + 3, sh - borderInset - 3],
+        [sw - borderInset - 3, sh - borderInset - 3],
+      ];
+      for (const [cx, cy] of corners) {
+        g.moveTo(cx, cy - 8).lineTo(cx + 8, cy).lineTo(cx, cy + 8).lineTo(cx - 8, cy).closePath()
+          .fill({ color: 0xdaa520, alpha: 0.7 });
+      }
+
+      // ── Matchup display (P1 vs P2) at top ──
+      const p1Char = TEKKEN_CHARACTERS.find(c => c.id === this._selectedChars[0]);
+      const p2Char = TEKKEN_CHARACTERS.find(c => c.id === this._selectedChars[1]);
+      const matchupText = new Text({
+        text: `${p1Char?.name ?? "P1"}  vs  ${p2Char?.name ?? "P2"}`,
+        style: {
+          fontFamily: "Georgia, serif",
+          fontSize: 22,
+          fill: 0xcccccc,
+          letterSpacing: 3,
+          dropShadow: { color: 0x000000, blur: 3, distance: 1, alpha: 0.7 },
+        },
+      });
+      matchupText.anchor.set(0.5);
+      matchupText.x = sw / 2;
+      matchupText.y = 36;
+      container.addChild(matchupText);
+
+      // ── Title: "SELECT STAGE" with golden glow ──
+      for (let layer = 3; layer >= 0; layer--) {
+        const glowAlpha = 0.12 + (3 - layer) * 0.06;
+        const glowSize = 6 + layer * 4;
+        const glowText = new Text({
+          text: "SELECT STAGE",
+          style: {
+            fontFamily: "Georgia, serif",
+            fontSize: 48,
+            fill: 0xffd700,
+            fontWeight: "bold",
+            letterSpacing: 6,
+            dropShadow: { color: 0xffa500, blur: glowSize, distance: 0, alpha: glowAlpha },
+          },
+        });
+        glowText.anchor.set(0.5);
+        glowText.x = sw / 2;
+        glowText.y = 76;
+        container.addChild(glowText);
+      }
+      const title = new Text({
+        text: "SELECT STAGE",
+        style: {
+          fontFamily: "Georgia, serif",
+          fontSize: 48,
+          fill: 0xffd700,
+          fontWeight: "bold",
+          letterSpacing: 6,
+          dropShadow: { color: 0x000000, blur: 4, distance: 2, alpha: 0.7 },
+        },
+      });
+      title.anchor.set(0.5);
+      title.x = sw / 2;
+      title.y = 76;
+      container.addChild(title);
+
+      // ── Ornamental divider below title ──
+      const divY = 110;
+      const divHalfW = 140;
+      g.moveTo(sw / 2 - divHalfW, divY).lineTo(sw / 2 + divHalfW, divY)
+        .stroke({ color: 0xdaa520, width: 2, alpha: 0.8 });
+      g.moveTo(sw / 2 - divHalfW + 30, divY + 5).lineTo(sw / 2 + divHalfW - 30, divY + 5)
+        .stroke({ color: 0x8a6a20, width: 1, alpha: 0.5 });
+      g.moveTo(sw / 2, divY - 5).lineTo(sw / 2 + 5, divY).lineTo(sw / 2, divY + 5).lineTo(sw / 2 - 5, divY).closePath()
+        .fill({ color: 0xffd700, alpha: 0.9 });
+
+      // ── Stage cards in a horizontal row ──
+      // Center the selected card; compute scroll offset
+      const centerX = sw / 2;
+      const selectedCardCenter = selIdx * (cardW + cardGap) + cardW / 2;
+      const scrollOffsetX = centerX - selectedCardCenter;
+
+      const cardsY = 150;
+
+      for (let i = 0; i < totalOptions; i++) {
+        const isRandom = i === 0;
+        const arena = isRandom ? null : TEKKEN_ARENAS[(i - 1) % TEKKEN_ARENAS.length];
+        const isSelected = i === selIdx;
+
+        const bx = scrollOffsetX + i * (cardW + cardGap);
+        const by = cardsY;
+
+        // Skip cards that are entirely off screen
+        if (bx + cardW < -20 || bx > sw + 20) continue;
+
+        // Card background - use arena colors for preview
+        const bgColor = isRandom ? 0x1a1a2e : (arena!.floorColor);
+        const fogCol = isRandom ? 0x222244 : (arena!.fogColor);
+
+        // Gradient fill for card
+        const cSteps = 8;
+        for (let s = 0; s < cSteps; s++) {
+          const t = s / cSteps;
+          const bgR = (bgColor >> 16) & 0xff;
+          const bgG = (bgColor >> 8) & 0xff;
+          const bgB = bgColor & 0xff;
+          const fgR = (fogCol >> 16) & 0xff;
+          const fgG = (fogCol >> 8) & 0xff;
+          const fgB = fogCol & 0xff;
+          const mr = Math.floor(bgR * (1 - t) + fgR * t);
+          const mg = Math.floor(bgG * (1 - t) + fgG * t);
+          const mb = Math.floor(bgB * (1 - t) + fgB * t);
+          const mixed = (Math.min(mr, 255) << 16) | (Math.min(mg, 255) << 8) | Math.min(mb, 255);
+          const sy = by + (cardH / cSteps) * s;
+          if (s === 0) {
+            g.roundRect(bx, sy, cardW, cardH / cSteps + 1, 10).fill({ color: mixed });
+          } else if (s === cSteps - 1) {
+            g.roundRect(bx, sy, cardW, cardH / cSteps + 1, 10).fill({ color: mixed });
+          } else {
+            g.rect(bx, sy, cardW, cardH / cSteps + 1).fill({ color: mixed });
+          }
+        }
+
+        // Inner bevel
+        g.roundRect(bx + 4, by + 4, cardW - 8, cardH - 8, 6)
+          .stroke({ color: 0x555555, width: 1, alpha: 0.4 });
+
+        // Arena color preview block (centered in card)
+        if (isRandom) {
+          // "?" icon for random
+          const qText = new Text({
+            text: "?",
+            style: {
+              fontFamily: "Georgia, serif",
+              fontSize: 72,
+              fill: 0xffd700,
+              fontWeight: "bold",
+              dropShadow: { color: 0x000000, blur: 6, distance: 2, alpha: 0.8 },
+            },
+          });
+          qText.anchor.set(0.5);
+          qText.x = bx + cardW / 2;
+          qText.y = by + cardH / 2 - 20;
+          container.addChild(qText);
+        } else {
+          // Color preview: sky strip, ground strip, ambient strip, torch dot
+          const previewX = bx + 20;
+          const previewY = by + 30;
+          const previewW = cardW - 40;
+          const previewH = 100;
+          // Sky
+          g.roundRect(previewX, previewY, previewW, previewH * 0.4, 4)
+            .fill({ color: arena!.skyColor });
+          // Fog overlay
+          g.roundRect(previewX, previewY + previewH * 0.2, previewW, previewH * 0.3, 0)
+            .fill({ color: arena!.fogColor, alpha: 0.5 });
+          // Ground
+          g.roundRect(previewX, previewY + previewH * 0.4, previewW, previewH * 0.6, 4)
+            .fill({ color: arena!.floorColor });
+          // Ambient glow
+          g.circle(previewX + previewW / 2, previewY + previewH * 0.4, 12)
+            .fill({ color: arena!.ambientColor, alpha: 0.6 });
+          // Torch dots
+          g.circle(previewX + 10, previewY + previewH * 0.35, 5)
+            .fill({ color: arena!.torchColor, alpha: 0.8 });
+          g.circle(previewX + previewW - 10, previewY + previewH * 0.35, 5)
+            .fill({ color: arena!.torchColor, alpha: 0.8 });
+          // Key light highlight
+          g.circle(previewX + previewW / 2, previewY + 10, 8)
+            .fill({ color: arena!.keyLightColor, alpha: 0.3 });
+
+          // Hazard indicators
+          if (arena!.hazards.length > 0) {
+            const hazLabel = new Text({
+              text: `${arena!.hazards.length} hazard${arena!.hazards.length > 1 ? "s" : ""}`,
+              style: {
+                fontFamily: "Georgia, serif",
+                fontSize: 10,
+                fill: 0xff8844,
+                fontStyle: "italic",
+              },
+            });
+            hazLabel.anchor.set(0.5);
+            hazLabel.x = bx + cardW / 2;
+            hazLabel.y = previewY + previewH + 6;
+            container.addChild(hazLabel);
+          }
+        }
+
+        // Selected glow
+        if (isSelected) {
+          const pulse = Math.sin(animFrame * 0.08) * 0.3 + 0.7;
+          g.roundRect(bx - 3, by - 3, cardW + 6, cardH + 6, 12)
+            .stroke({ color: 0xffd700, width: 4, alpha: pulse * 0.5 });
+          g.roundRect(bx - 1, by - 1, cardW + 2, cardH + 2, 11)
+            .stroke({ color: 0xffd700, width: 2, alpha: pulse });
+        }
+
+        // Card outer border
+        const borderCol = isSelected ? 0xffd700 : 0x4a4a5a;
+        g.roundRect(bx, by, cardW, cardH, 10)
+          .stroke({ color: borderCol, width: isSelected ? 3 : 1.5 });
+
+        // Stage name at bottom of card
+        const stageName = isRandom ? "RANDOM" : arena!.name;
+        const nameText = new Text({
+          text: stageName,
+          style: {
+            fontFamily: "Georgia, serif",
+            fontSize: 14,
+            fill: isSelected ? 0xffd700 : 0xcccccc,
+            fontWeight: "bold",
+            dropShadow: { color: 0x000000, blur: 3, distance: 1, alpha: 0.8 },
+          },
+        });
+        nameText.anchor.set(0.5);
+        nameText.x = bx + cardW / 2;
+        nameText.y = by + cardH - 22;
+        container.addChild(nameText);
+      }
+
+      // ── Left/Right arrow indicators ──
+      if (selIdx > 0) {
+        const arrowL = new Text({
+          text: "\u25C0",
+          style: { fontFamily: "Georgia, serif", fontSize: 36, fill: 0xdaa520, fontWeight: "bold" },
+        });
+        arrowL.anchor.set(0.5);
+        arrowL.x = 40;
+        arrowL.y = cardsY + cardH / 2;
+        container.addChild(arrowL);
+      }
+      if (selIdx < totalOptions - 1) {
+        const arrowR = new Text({
+          text: "\u25B6",
+          style: { fontFamily: "Georgia, serif", fontSize: 36, fill: 0xdaa520, fontWeight: "bold" },
+        });
+        arrowR.anchor.set(0.5);
+        arrowR.x = sw - 40;
+        arrowR.y = cardsY + cardH / 2;
+        container.addChild(arrowR);
+      }
+
+      // ── Bottom bar ──
+      const barH = 50;
+      const barY = sh - barH - 8;
+      g.roundRect(30, barY, sw - 60, barH, 6).fill({ color: 0x0c0c18, alpha: 0.9 });
+      g.roundRect(30, barY, sw - 60, barH, 6).stroke({ color: 0x8a6a20, width: 1.5 });
+      g.roundRect(33, barY + 3, sw - 66, barH - 6, 4).stroke({ color: 0x3a2a10, width: 1, alpha: 0.5 });
+      const barMidY = barY + barH / 2;
+      g.moveTo(44, barMidY - 5).lineTo(49, barMidY).lineTo(44, barMidY + 5).lineTo(39, barMidY).closePath()
+        .fill({ color: 0xdaa520, alpha: 0.6 });
+      g.moveTo(sw - 44, barMidY - 5).lineTo(sw - 39, barMidY).lineTo(sw - 44, barMidY + 5).lineTo(sw - 49, barMidY).closePath()
+        .fill({ color: 0xdaa520, alpha: 0.6 });
+
+      const hint = new Text({
+        text: "\u2190\u2192 Select Stage  Enter Fight  Esc Back",
+        style: {
+          fontFamily: "Georgia, serif",
+          fontSize: 14,
+          fill: 0x999999,
+          letterSpacing: 1,
+        },
+      });
+      hint.anchor.set(0.5);
+      hint.x = sw / 2;
+      hint.y = barY + barH / 2 - 1;
+
+      container.addChildAt(g, 0);
+      container.addChild(hint);
+    };
+
+    drawStageSelect();
+
+    this._menuKeyHandler = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft") {
+        selIdx = (selIdx - 1 + totalOptions) % totalOptions;
+        drawStageSelect();
+      } else if (e.key === "ArrowRight") {
+        selIdx = (selIdx + 1) % totalOptions;
+        drawStageSelect();
+      } else if (e.key === "Enter") {
+        this._selectedArenaIdx = selIdx;
+        window.removeEventListener("keydown", this._menuKeyHandler!);
+        this._menuKeyHandler = null;
+        viewManager.removeFromLayer("ui", container);
+        container.destroy({ children: true });
+        this._stageSelectContainer = null;
+        this._startMatch(this._selectedGameMode);
+      } else if (e.key === "Escape") {
+        window.removeEventListener("keydown", this._menuKeyHandler!);
+        this._menuKeyHandler = null;
+        viewManager.removeFromLayer("ui", container);
+        container.destroy({ children: true });
+        this._stageSelectContainer = null;
+        this._showCharSelect();
       }
     };
     window.addEventListener("keydown", this._menuKeyHandler);

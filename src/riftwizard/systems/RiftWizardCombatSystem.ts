@@ -4,6 +4,7 @@
 
 import { SPELL_DEFS } from "../config/RiftWizardSpellDefs";
 import { ENEMY_DEFS } from "../config/RiftWizardEnemyDefs";
+import { ABILITY_DEFS, type AbilityDef } from "../config/RiftWizardAbilityDefs";
 import { RWBalance } from "../config/RiftWizardConfig";
 import {
   type RiftWizardState,
@@ -106,9 +107,9 @@ export function applyDamageToEnemy(
 ): void {
   // Holy does double damage to undead
   const def = ENEMY_DEFS[enemy.defId];
-  let finalDamage = amount;
+  let finalDamage = Math.floor(amount * getAbilityDamageMultiplier(state));
   if (school === SpellSchool.HOLY && def?.tags.includes("undead")) {
-    finalDamage = Math.floor(amount * 2);
+    finalDamage = Math.floor(finalDamage * 2);
   }
 
   enemy.hp -= finalDamage;
@@ -133,6 +134,8 @@ export function applyDamageToEnemy(
       toRow: enemy.row,
       duration: RWBalance.DEATH_ANIM_DURATION,
     });
+    // Trigger on-kill abilities
+    _triggerAbilities(state, "on_kill", { killedEnemy: enemy });
   }
 }
 
@@ -166,7 +169,9 @@ export function applyDamageToSpawner(
   }
 }
 
-export function applyDamageToWizard(state: RiftWizardState, amount: number): void {
+export function applyDamageToWizard(
+  state: RiftWizardState, amount: number, attackerCol?: number, attackerRow?: number,
+): void {
   // Shields absorb first
   if (state.wizard.shields > 0) {
     const absorbed = Math.min(state.wizard.shields, amount);
@@ -185,6 +190,11 @@ export function applyDamageToWizard(state: RiftWizardState, amount: number): voi
     amount,
     duration: RWBalance.DAMAGE_NUMBER_DURATION,
   });
+
+  // Trigger on-take-damage abilities
+  if (amount > 0 && attackerCol !== undefined && attackerRow !== undefined) {
+    _triggerAbilities(state, "on_take_damage", { attackerCol, attackerRow });
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -216,9 +226,10 @@ export function canCastSpell(
     if (!isWalkable(state, targetCol, targetRow)) return false;
   }
 
-  // Range check
+  // Range check (includes passive ability range bonus)
   const dist = tileDistance(wizPos, targetPos);
-  if (dist > spell.range) return false;
+  const effectiveRange = spell.range + getAbilityRangeBonus(state);
+  if (dist > effectiveRange) return false;
 
   // Line of sight
   if (!hasLineOfSight(state, wizPos, targetPos)) return false;
@@ -280,6 +291,191 @@ export function castSpell(
       resolveHolyBlast(state, spell, wizPos, targetPos);
       break;
   }
+
+  // --- Trigger abilities after spell resolution ---
+  _triggerAbilities(state, "on_spell_cast", { targetPos, spell });
+
+  // School-specific cast triggers
+  if (def.school === SpellSchool.FIRE) {
+    _triggerAbilities(state, "on_fire_cast", { targetPos, spell });
+  } else if (def.school === SpellSchool.ICE) {
+    _triggerAbilities(state, "on_ice_cast", { targetPos, spell });
+  } else if (def.school === SpellSchool.LIGHTNING) {
+    _triggerAbilities(state, "on_lightning_cast", { targetPos, spell });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Ability trigger system
+// ---------------------------------------------------------------------------
+
+interface AbilityContext {
+  targetPos?: GridPos;
+  spell?: SpellInstance;
+  killedEnemy?: RWEnemyInstance;
+  attackerCol?: number;
+  attackerRow?: number;
+}
+
+function _triggerAbilities(
+  state: RiftWizardState,
+  trigger: string,
+  ctx: AbilityContext,
+): void {
+  for (const abilityId of state.abilities) {
+    const def = ABILITY_DEFS[abilityId];
+    if (!def || def.trigger !== trigger) continue;
+    _executeAbilityEffect(state, def, ctx);
+  }
+}
+
+function _executeAbilityEffect(
+  state: RiftWizardState,
+  def: AbilityDef,
+  ctx: AbilityContext,
+): void {
+  const wiz = state.wizard;
+  const eff = def.effect;
+
+  switch (eff.type) {
+    case "bonus_missile": {
+      // Fire a magic missile at the target
+      if (ctx.targetPos) {
+        for (const e of state.level.enemies) {
+          if (e.alive && e.col === ctx.targetPos.col && e.row === ctx.targetPos.row) {
+            applyDamageToEnemy(state, e, eff.damage, SpellSchool.ARCANE);
+            state.animationQueue.push({
+              type: RWAnimationType.MAGIC_MISSILE,
+              fromCol: wiz.col, fromRow: wiz.row,
+              toCol: e.col, toRow: e.row,
+              duration: 0.3,
+            });
+            break;
+          }
+        }
+      }
+      break;
+    }
+    case "chain_frost": {
+      // Ice nova centered on wizard
+      const wizPos = { col: wiz.col, row: wiz.row };
+      for (const e of state.level.enemies) {
+        if (e.alive && chebyshevDistance({ col: e.col, row: e.row }, wizPos) <= eff.radius) {
+          applyDamageToEnemy(state, e, eff.damage, SpellSchool.ICE);
+        }
+      }
+      state.animationQueue.push({
+        type: RWAnimationType.ICE_BALL,
+        fromCol: wiz.col, fromRow: wiz.row,
+        toCol: wiz.col, toRow: wiz.row,
+        duration: 0.3,
+      });
+      break;
+    }
+    case "static_discharge": {
+      // Zap a random nearby enemy
+      const nearby = state.level.enemies.filter(
+        (e) => e.alive && chebyshevDistance({ col: e.col, row: e.row }, { col: wiz.col, row: wiz.row }) <= 4,
+      );
+      if (nearby.length > 0) {
+        const target = nearby[Math.floor(Math.random() * nearby.length)];
+        applyDamageToEnemy(state, target, eff.damage, SpellSchool.LIGHTNING);
+        state.animationQueue.push({
+          type: RWAnimationType.CHAIN_LIGHTNING,
+          fromCol: wiz.col, fromRow: wiz.row,
+          toCol: target.col, toRow: target.row,
+          duration: 0.25,
+        });
+      }
+      break;
+    }
+    case "soul_siphon": {
+      // Heal % of killed enemy's max HP
+      if (ctx.killedEnemy) {
+        const heal = Math.floor(ctx.killedEnemy.maxHp * eff.healPercent / 100);
+        wiz.hp = Math.min(wiz.maxHp, wiz.hp + heal);
+        if (heal > 0) {
+          state.animationQueue.push({
+            type: RWAnimationType.HEAL,
+            fromCol: wiz.col, fromRow: wiz.row,
+            toCol: wiz.col, toRow: wiz.row,
+            amount: -heal,
+            duration: 0.3,
+          });
+        }
+      }
+      break;
+    }
+    case "arcane_shield": {
+      wiz.shields += eff.amount;
+      break;
+    }
+    case "thorns": {
+      // Deal damage back to attacker
+      if (ctx.attackerCol !== undefined && ctx.attackerRow !== undefined) {
+        for (const e of state.level.enemies) {
+          if (e.alive && e.col === ctx.attackerCol && e.row === ctx.attackerRow) {
+            applyDamageToEnemy(state, e, eff.damage, SpellSchool.DARK);
+            break;
+          }
+        }
+      }
+      break;
+    }
+    case "regeneration": {
+      const heal = Math.min(eff.amount, wiz.maxHp - wiz.hp);
+      if (heal > 0) {
+        wiz.hp += heal;
+      }
+      break;
+    }
+    case "mana_siphon": {
+      // Restore charge to a random spell that isn't full
+      const candidates = state.spells.filter((s) => s.charges < s.maxCharges);
+      if (candidates.length > 0) {
+        const spell = candidates[Math.floor(Math.random() * candidates.length)];
+        spell.charges = Math.min(spell.maxCharges, spell.charges + eff.chargeCount);
+      }
+      break;
+    }
+    case "fire_trail": {
+      // Apply burn to enemies on wizard's previous tile (simplified: AoE around wizard)
+      for (const e of state.level.enemies) {
+        if (e.alive && chebyshevDistance({ col: e.col, row: e.row }, { col: wiz.col, row: wiz.row }) <= 1) {
+          applyDamageToEnemy(state, e, eff.damage, SpellSchool.FIRE);
+        }
+      }
+      break;
+    }
+    // Passive effects (max_hp, spell_range, damage_amp) are handled at purchase or in stat calculation
+    default:
+      break;
+  }
+}
+
+/** Trigger on_turn_start abilities. Call from the game loop at the start of the wizard's turn. */
+export function triggerTurnStartAbilities(state: RiftWizardState): void {
+  _triggerAbilities(state, "on_turn_start", {});
+}
+
+/** Get passive ability bonuses for range. */
+export function getAbilityRangeBonus(state: RiftWizardState): number {
+  let bonus = 0;
+  for (const id of state.abilities) {
+    const def = ABILITY_DEFS[id];
+    if (def && def.effect.type === "spell_range") bonus += def.effect.amount;
+  }
+  return bonus;
+}
+
+/** Get passive ability damage multiplier (1.0 = no bonus). */
+export function getAbilityDamageMultiplier(state: RiftWizardState): number {
+  let mult = 1.0;
+  for (const id of state.abilities) {
+    const def = ABILITY_DEFS[id];
+    if (def && def.effect.type === "damage_amp") mult += def.effect.percent / 100;
+  }
+  return mult;
 }
 
 // ---------------------------------------------------------------------------

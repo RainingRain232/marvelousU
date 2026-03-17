@@ -10,6 +10,7 @@ import {
 } from "../state/RiftWizardState";
 import { RWBalance, getSPForLevel } from "../config/RiftWizardConfig";
 import {
+  triggerTurnStartAbilities,
   processDeaths,
   checkLevelClear,
   processEndOfTurn,
@@ -210,6 +211,9 @@ export function executeTurn(state: RiftWizardState): void {
 
   // Back to player
   state.isPlayerTurn = true;
+
+  // Trigger turn-start abilities (regeneration, fire trail, etc.)
+  triggerTurnStartAbilities(state);
 }
 
 // ---------------------------------------------------------------------------

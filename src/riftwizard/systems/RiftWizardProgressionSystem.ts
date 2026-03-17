@@ -7,6 +7,7 @@ import {
   type SpellInstance,
 } from "../state/RiftWizardState";
 import { SPELL_DEFS, type SpellDef, type SpellUpgradeDef } from "../config/RiftWizardSpellDefs";
+import { ABILITY_DEFS, type AbilityDef } from "../config/RiftWizardAbilityDefs";
 import { createSpellInstance, computeSpellStats } from "./RiftWizardCombatSystem";
 
 // ---------------------------------------------------------------------------
@@ -134,4 +135,62 @@ export function buyUpgrade(
   spell.charges = spell.maxCharges;
 
   return true;
+}
+
+// ---------------------------------------------------------------------------
+// Ability shop queries & actions
+// ---------------------------------------------------------------------------
+
+/** Get abilities the wizard hasn't learned yet. */
+export function getAvailableAbilities(state: RiftWizardState): AbilityDef[] {
+  const learnedIds = new Set(state.abilities);
+  return Object.values(ABILITY_DEFS).filter((def) => !learnedIds.has(def.id));
+}
+
+/** Get effective ability cost (spell circle discount applies). */
+export function getEffectiveAbilityCost(
+  state: RiftWizardState,
+  def: AbilityDef,
+): number {
+  let cost = def.spCost;
+  for (const circle of state.level.spellCircles) {
+    if (
+      circle.col === state.wizard.col &&
+      circle.row === state.wizard.row &&
+      circle.school === def.school
+    ) {
+      cost = Math.max(1, cost - 1);
+      break;
+    }
+  }
+  return cost;
+}
+
+/** Learn an ability. Returns true if successful. */
+export function learnAbility(
+  state: RiftWizardState,
+  abilityId: string,
+): boolean {
+  const def = ABILITY_DEFS[abilityId];
+  if (!def) return false;
+  if (state.abilities.includes(abilityId)) return false;
+
+  const cost = getEffectiveAbilityCost(state, def);
+  if (state.skillPoints < cost) return false;
+
+  state.skillPoints -= cost;
+  state.abilities.push(abilityId);
+
+  // Apply immediate passive effects
+  if (def.effect.type === "max_hp") {
+    state.wizard.maxHp += def.effect.amount;
+    state.wizard.hp += def.effect.amount;
+  }
+
+  return true;
+}
+
+/** Check if wizard has a specific ability. */
+export function hasAbility(state: RiftWizardState, abilityId: string): boolean {
+  return state.abilities.includes(abilityId);
 }

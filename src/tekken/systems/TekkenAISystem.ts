@@ -100,6 +100,7 @@ export class TekkenAISystem {
 
     const dx = opponent.position.x - fighter.position.x;
     const dist = Math.abs(dx);
+    const hpPct = fighter.hp / fighter.maxHp;
 
     // Execute combo if in progress
     if (this._isExecutingCombo && this._comboIndex < this._comboRoute.length) {
@@ -139,7 +140,9 @@ export class TekkenAISystem {
 
     // Use rage art when available and health is critical
     if (fighter.rageActive && !fighter.rageArtUsed && dist < 1.5) {
-      if (Math.random() < 0.3 * this._difficulty) {
+      // Use rage art more aggressively when health is critical
+      const rageUrgency = hpPct < 0.15 ? 0.8 : hpPct < 0.25 ? 0.5 : 0.3;
+      if (Math.random() < rageUrgency * this._difficulty) {
         fighter.input.rage = true;
         this._actionCooldown = 30;
         return;
@@ -172,16 +175,15 @@ export class TekkenAISystem {
         }
 
         if (routes.length > 0) {
-          // Validate combo routes and pick the best one that can connect
+          // Validate combo routes and pick the best one based on connectivity
           let bestRoute: string[] | null = null;
+          let bestScore = -1;
           for (const route of routes) {
             const dropIndex = this._comboSystem.validateComboRoute(fighter, opponent, route);
-            if (dropIndex === -1) {
-              bestRoute = route;
-              break; // Fully valid route found
-            }
-            // Pick the route that connects the most moves
-            if (!bestRoute || dropIndex > (this._comboSystem.validateComboRoute(fighter, opponent, bestRoute))) {
+            const connected = dropIndex === -1 ? route.length : dropIndex;
+            // Prefer longer connecting routes (more damage potential)
+            if (connected > bestScore) {
+              bestScore = connected;
               bestRoute = route;
             }
           }
@@ -199,13 +201,22 @@ export class TekkenAISystem {
       }
     }
 
-    // Whiff punish (influenced by whiffPunishRate from AI profile)
+    // Enhanced whiff punish (influenced by whiffPunishRate from AI profile)
     const whiffThreshold = this._difficulty * this._aiProfile.whiffPunishRate;
-    if (whiffThreshold > 0.4 && dist > 0.8 && dist < 2.0 &&
+    if (whiffThreshold > 0.3 && dist > 0.5 && dist < 2.5 &&
         opponent.state === TekkenFighterState.ATTACK && opponent.movePhase === "recovery") {
       if (Math.random() < whiffThreshold) {
-        this._doAttack(fighter, "d/f", ["rp"]);
-        this._actionCooldown = 15;
+        // Pick punish based on distance: close = launcher, far = poke
+        if (dist < 1.2 && this._difficulty > 0.5) {
+          this._doAttack(fighter, "d/f", ["rp"]); // launcher punish
+        } else {
+          this._doAttack(fighter, "f", ["rp"]); // safe poke punish
+        }
+        this._actionCooldown = 12;
+        this._lastAttackFrame = this._frameCounter;
+        if (this._difficulty > 0.6) {
+          this._postAttackRetreatFrames = 4 + Math.floor(Math.random() * 4);
+        }
       }
     }
   }
@@ -236,12 +247,19 @@ export class TekkenAISystem {
     const rangeDiff = dist - this._optimalRange;
     const profile = this._aiProfile;
 
+    // Adaptive aggression: go aggressive when winning, defensive when losing
+    const hpPct = _fighter.hp / _fighter.maxHp;
+    const oppHpPct = _opponent.hp / _opponent.maxHp;
+    const healthAdvantage = hpPct - oppHpPct; // positive = winning
+    const adaptedAggression = Math.max(0, Math.min(1, profile.aggression + healthAdvantage * 0.3));
+    const adaptedDefensiveness = Math.max(0, Math.min(1, profile.defensiveness - healthAdvantage * 0.2));
+
     if (rangeDiff > 1.5) {
       this._footsiePhase = "approach";
     } else if (rangeDiff > 0.3) {
       if (this._footsieTimer > 30) {
         // Aggressive AI approaches more, defensive AI spaces more
-        const approachChance = 0.4 + profile.aggression * 0.3;
+        const approachChance = 0.4 + adaptedAggression * 0.3;
         this._footsiePhase = Math.random() < approachChance ? "approach" : "spacing";
         this._footsieTimer = 0;
       }
@@ -254,7 +272,7 @@ export class TekkenAISystem {
     } else {
       if (this._footsieTimer > 15) {
         // Defensive AI retreats more from close range; aggressive AI stays in
-        const retreatChance = profile.defensiveness * 0.5;
+        const retreatChance = adaptedDefensiveness * 0.5;
         this._footsiePhase = Math.random() < retreatChance ? "retreat" : "pressure";
         this._footsieTimer = 0;
       }
@@ -262,7 +280,7 @@ export class TekkenAISystem {
 
     // Post-attack: brief retreat after recently attacking
     if (this._frameCounter - this._lastAttackFrame < 30 && this._frameCounter - this._lastAttackFrame > 10) {
-      if (this._difficulty > 0.5 && Math.random() < 0.3 * profile.defensiveness) {
+      if (this._difficulty > 0.5 && Math.random() < 0.3 * adaptedDefensiveness) {
         this._footsiePhase = "retreat";
       }
     }
@@ -517,6 +535,22 @@ export class TekkenAISystem {
       return;
     }
 
+    // Desperation mode: when low on HP, play more aggressively or defensively
+    const myHpPct = fighter.hp / fighter.maxHp;
+    if (myHpPct < 0.25) {
+      // Low HP: either go all-in with launcher or retreat
+      if (Math.random() < 0.5 * profile.aggression) {
+        this._doAttack(fighter, "d/f", ["rp"]); // desperation launcher
+        this._actionCooldown = 20;
+        this._lastAttackFrame = this._frameCounter;
+        return;
+      } else {
+        this._startDashBack(fighter, opponent);
+        this._actionCooldown = 5;
+        return;
+      }
+    }
+
     // Default: jumping spin kick
     this._doAttack(fighter, "u/f", ["rk"]);
     this._actionCooldown = 24;
@@ -626,14 +660,34 @@ export class TekkenAISystem {
   }
 
   private _doBlock(fighter: TekkenFighter, opponent: TekkenFighter): void {
+    // Block in correct direction
     if (opponent.position.x > fighter.position.x) {
       fighter.input.left = true;
     } else {
       fighter.input.right = true;
     }
 
-    if (Math.random() < this._difficulty * 0.6) {
-      fighter.input.down = true;
+    // Smart low block: read opponent's current move to determine block height
+    // At higher difficulty, the AI reads the attack more accurately
+    if (opponent.currentMove) {
+      const isLowMove = opponent.currentMove.includes("d+3") || opponent.currentMove.includes("d+4") ||
+        opponent.currentMove.includes("low") || opponent.currentMove.includes("sweep") ||
+        opponent.currentMove.includes("d/b") || opponent.currentMove.includes("hellsweep");
+      if (isLowMove && Math.random() < this._difficulty * 0.85) {
+        fighter.input.down = true; // low block
+      } else if (!isLowMove && Math.random() < this._difficulty * 0.7) {
+        // Stand block for mid/high attacks (don't crouch)
+      } else {
+        // Fuzzy guard: mix between high and low
+        if (Math.random() < this._difficulty * 0.5) {
+          fighter.input.down = true;
+        }
+      }
+    } else {
+      // Default fuzzy guard when can't read the move
+      if (Math.random() < this._difficulty * 0.5) {
+        fighter.input.down = true;
+      }
     }
   }
 
