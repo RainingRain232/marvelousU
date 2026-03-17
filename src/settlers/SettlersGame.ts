@@ -6,7 +6,7 @@ import { SB } from "./config/SettlersBalance";
 import { ResourceType } from "./config/SettlersResourceDefs";
 import { SettlersBuildingType } from "./config/SettlersBuildingDefs";
 import { createSettlersState, nextId } from "./state/SettlersState";
-import type { SettlersState, SettlersDifficulty } from "./state/SettlersState";
+import type { SettlersState, SettlersDifficulty, SettlersSkirmishSettings } from "./state/SettlersState";
 import type { SettlersPlayer } from "./state/SettlersPlayer";
 import { getHeightAt } from "./state/SettlersMap";
 import { generateTerrain, findStartPosition } from "./systems/SettlersTerrainSystem";
@@ -41,27 +41,44 @@ export class SettlersGame {
   }
 
   async boot(): Promise<void> {
+    // --- 1. Build HUD first (shows skirmish settings overlay) ---
+    this._hud.build();
+    this._hud.onStartGame = (settings) => this._startWithSettings(settings);
+    this._hud.onExit = () => this.destroy();
+  }
+
+  /** Called when the player clicks "Start Game" from the skirmish settings screen */
+  private _startWithSettings(settings: SettlersSkirmishSettings): void {
     const sw = window.innerWidth;
     const sh = window.innerHeight;
 
-    // --- 1. Create state ---
-    this._state = createSettlersState(sw, sh);
-    this._state.difficulty = this._difficulty;
+    // Apply map size from settings to SB (mutate the balance constants)
+    const mapSizePreset = settings.mapSize === "small" ? SB.MAP_SIZE_SMALL
+      : settings.mapSize === "large" ? SB.MAP_SIZE_LARGE
+      : SB.MAP_SIZE_NORMAL;
+    (SB as any).MAP_WIDTH = mapSizePreset.width;
+    (SB as any).MAP_HEIGHT = mapSizePreset.height;
 
-    // --- 2. Generate terrain ---
+    // --- 2. Create state ---
+    this._state = createSettlersState(sw, sh);
+    this._state.difficulty = settings.difficulty;
+    this._difficulty = settings.difficulty;
+    this._state.skirmishSettings = { ...settings };
+
+    // --- 3. Generate terrain ---
     generateTerrain(this._state.map, Math.floor(Math.random() * 100000));
 
-    // --- 3. Place players ---
-    this._setupPlayers();
+    // --- 4. Place players (apply starting resource multiplier from settings) ---
+    this._setupPlayers(settings.startingResources);
 
-    // --- 4. Calculate initial territory ---
+    // --- 5. Calculate initial territory ---
     recalculateTerritory(this._state);
 
-    // --- 5. Init renderer ---
+    // --- 6. Init renderer ---
     this._renderer.init(sw, sh);
     this._renderer.buildTerrain(this._state);
 
-    // --- 6. Init camera ---
+    // --- 7. Init camera ---
     this._camera = new SettlersCameraController(this._renderer.camera);
     // Point camera at player HQ
     const player = this._state.players.get("p0")!;
@@ -70,7 +87,7 @@ export class SettlersGame {
     const hqCenterZ = (hq.tileZ + 1.5) * SB.TILE_SIZE;
     this._camera.lookAt(hqCenterX, hqCenterZ);
 
-    // --- 7. Init input ---
+    // --- 8. Init input ---
     this._input = new SettlersInputSystem(this._camera);
     this._input.setTerrainMesh(this._renderer.terrainMesh);
     this._input.setState(this._state);
@@ -100,8 +117,7 @@ export class SettlersGame {
       this._hud.showNotification(`Speed: ${Math.round(speed * 100)}%`);
     };
 
-    // --- 8. Init HUD ---
-    this._hud.build();
+    // --- 9. Wire remaining HUD callbacks ---
     this._hud.onSelectBuildingType = (type) => {
       this._state.selectedBuildingType = type;
       this._state.selectedTool = "build";
@@ -112,7 +128,6 @@ export class SettlersGame {
       if (tool !== "build") this._state.selectedBuildingType = null;
       playUIToolSwitch();
     };
-    this._hud.onExit = () => this.destroy();
     this._hud.onMinimapClick = (worldX, worldZ) => {
       this._camera.lookAt(worldX, worldZ);
     };
@@ -141,7 +156,7 @@ export class SettlersGame {
       if (building) removeFromProductionQueue(building, index);
     };
 
-    // --- 9. Start game loop ---
+    // --- 10. Start game loop ---
     this._lastTime = performance.now();
     this._gameLoop();
   }
@@ -151,8 +166,8 @@ export class SettlersGame {
       cancelAnimationFrame(this._rafId);
       this._rafId = null;
     }
-    this._input.destroy();
-    this._renderer.destroy();
+    if (this._input) this._input.destroy();
+    if (this._renderer?.canvas) this._renderer.destroy();
     this._hud.destroy();
     destroyAudio();
     window.dispatchEvent(new Event("settlersExit"));
@@ -233,10 +248,13 @@ export class SettlersGame {
   // Player setup
   // -----------------------------------------------------------------------
 
-  private _setupPlayers(): void {
+  private _setupPlayers(startingResources: "low" | "normal" | "high" = "normal"): void {
     const diff = SB.AI_DIFFICULTY[this._difficulty];
-    const playerMult = diff.playerResourceMult;
-    const aiMult = diff.startingResourceMult;
+    const resMult = startingResources === "low" ? SB.STARTING_RESOURCES_LOW
+      : startingResources === "high" ? SB.STARTING_RESOURCES_HIGH
+      : SB.STARTING_RESOURCES_NORMAL;
+    const playerMult = diff.playerResourceMult * resMult;
+    const aiMult = diff.startingResourceMult * resMult;
 
     // Player 0 (human) – northwest
     const p0Pos = findStartPosition(this._state.map, "nw");

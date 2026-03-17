@@ -239,6 +239,14 @@ function deserializeState(s: SerializedState): SettlersState {
     territoryDirty: true, // recalculate territory on load
     difficulty: (s as any).difficulty || "normal",
     gameSpeed: (s as any).gameSpeed || 1,
+    skirmishSettings: (s as any).skirmishSettings || {
+      mapSize: "normal",
+      difficulty: "normal",
+      startingResources: "normal",
+      winCondition: "both",
+    },
+    bottlenecks: new Map(),
+    flagWarnings: new Set(),
   };
 }
 

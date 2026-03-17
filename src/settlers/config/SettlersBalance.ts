@@ -119,6 +119,20 @@ export const SB = {
     },
   },
 
+  // Map size presets (width x height in tiles)
+  MAP_SIZE_SMALL: { width: 48, height: 48 },
+  MAP_SIZE_NORMAL: { width: 64, height: 64 },
+  MAP_SIZE_LARGE: { width: 96, height: 96 },
+
+  // Starting resource multipliers
+  STARTING_RESOURCES_LOW: 0.5,
+  STARTING_RESOURCES_NORMAL: 1.0,
+  STARTING_RESOURCES_HIGH: 2.0,
+
+  // Bottleneck thresholds
+  BOTTLENECK_IDLE_THRESHOLD: 30,  // seconds before warning
+  FLAG_NEAR_FULL_THRESHOLD: 7,    // items (max is 8)
+
   // Rendering
   ROAD_WIDTH: 0.8,           // world units
   FLAG_HEIGHT: 0.8,          // world units
