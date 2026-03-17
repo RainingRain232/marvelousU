@@ -346,6 +346,7 @@ function _captureBuilding(
 
   // Mark territory as dirty when a building is captured
   state.territoryDirty = true;
+  state.fogDirty = true;
 
   // Update flag ownership
   const flag = state.flags.get(building.flagId);

@@ -38,6 +38,7 @@ interface SerializedState {
     territory: number[];
     buildable: number[];
     occupied: string[];
+    visibility?: number[][];
     trees: { x: number; z: number; scale: number; variant: number }[];
     rocks: { x: number; z: number; scale: number }[];
   };
@@ -128,6 +129,7 @@ function serializeState(state: SettlersState): SerializedState {
       territory: Array.from(state.map.territory),
       buildable: Array.from(state.map.buildable),
       occupied: [...state.map.occupied],
+      visibility: state.map.visibility.map(v => Array.from(v)),
       trees: state.map.trees,
       rocks: state.map.rocks,
     },
@@ -172,6 +174,12 @@ function deserializeState(s: SerializedState): SettlersState {
     territory: new Int8Array(s.map.territory),
     buildable: new Uint8Array(s.map.buildable),
     occupied: s.map.occupied,
+    visibility: s.map.visibility
+      ? s.map.visibility.map(v => new Uint8Array(v))
+      : [
+          new Uint8Array(s.map.width * s.map.height),
+          new Uint8Array(s.map.width * s.map.height),
+        ],
     trees: s.map.trees,
     rocks: s.map.rocks,
   };
@@ -241,6 +249,7 @@ function deserializeState(s: SerializedState): SettlersState {
     screenW: s.screenW,
     screenH: s.screenH,
     territoryDirty: true, // recalculate territory on load
+    fogDirty: true, // recalculate fog on load
     difficulty: (s as any).difficulty || "normal",
     gameSpeed: (s as any).gameSpeed || 1,
   };

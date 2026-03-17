@@ -16,6 +16,7 @@ import { placeFlag, createRoad, routeGoods } from "./systems/SettlersRoadSystem"
 import { updateCarriers } from "./systems/SettlersCarrierSystem";
 import { updateBarracks, updateGarrisoning, updateCombat, checkWinCondition, addToProductionQueue, removeFromProductionQueue } from "./systems/SettlersMilitarySystem";
 import { updateAI } from "./systems/SettlersAISystem";
+import { recalculateFog, updateFog } from "./systems/SettlersFogSystem";
 import { SettlersRenderer } from "./view/SettlersRenderer";
 import { SettlersCameraController } from "./view/SettlersCameraController";
 import { SettlersInputSystem } from "./systems/SettlersInputSystem";
@@ -55,8 +56,9 @@ export class SettlersGame {
     // --- 3. Place players ---
     this._setupPlayers();
 
-    // --- 4. Calculate initial territory ---
+    // --- 4. Calculate initial territory & fog ---
     recalculateTerritory(this._state);
+    recalculateFog(this._state);
 
     // --- 5. Init renderer ---
     this._renderer.init(sw, sh);
@@ -215,8 +217,9 @@ export class SettlersGame {
     // Carrier movement
     updateCarriers(this._state, dt);
 
-    // Territory
+    // Territory & fog
     updateTerritory(this._state);
+    updateFog(this._state);
 
     // Military
     updateBarracks(this._state, dt);

@@ -119,6 +119,12 @@ export const SB = {
     },
   },
 
+  // Fog of war – sight ranges (in tiles)
+  HQ_SIGHT_RANGE: 9,
+  GUARD_HOUSE_SIGHT_RANGE: 7,
+  WATCHTOWER_SIGHT_RANGE: 10,
+  FORTRESS_SIGHT_RANGE: 13,
+
   // Rendering
   ROAD_WIDTH: 0.8,           // world units
   FLAG_HEIGHT: 0.8,          // world units

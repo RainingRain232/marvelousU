@@ -139,6 +139,7 @@ export function placeBuilding(
 
   // Mark territory as dirty when a building is placed
   state.territoryDirty = true;
+  state.fogDirty = true;
 
   // Mark tiles as occupied
   for (let dz = 0; dz < def.footprint.h; dz++) {
@@ -180,6 +181,7 @@ export function updateConstruction(state: SettlersState, dt: number): void {
 
         // Territory may change when a military building finishes construction
         state.territoryDirty = true;
+  state.fogDirty = true;
 
         // Assign a worker if available (for production buildings)
         const def = BUILDING_DEFS[building.type];
@@ -279,6 +281,7 @@ export function demolishBuilding(state: SettlersState, buildingId: string): bool
 
   // Mark territory as dirty when a building is demolished
   state.territoryDirty = true;
+  state.fogDirty = true;
 
   return true;
 }

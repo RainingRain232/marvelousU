@@ -4,7 +4,7 @@
 
 import { BUILDING_DEFS, SettlersBuildingType } from "../config/SettlersBuildingDefs";
 import { RESOURCE_META, ResourceType } from "../config/SettlersResourceDefs";
-import { Biome, Deposit } from "../state/SettlersMap";
+import { Biome, Deposit, Visibility } from "../state/SettlersMap";
 import { SB } from "../config/SettlersBalance";
 import type { SettlersState, SettlersTool } from "../state/SettlersState";
 import { calculateScore } from "../systems/SettlersMilitarySystem";
@@ -853,12 +853,22 @@ export class SettlersHUD {
 
     ctx.clearRect(0, 0, cw, ch);
 
-    // Draw terrain biomes
+    const vis = map.visibility[0]; // human player fog of war
+
+    // Draw terrain biomes (with fog of war)
     for (let tz = 0; tz < map.height; tz++) {
       for (let tx = 0; tx < map.width; tx++) {
         const idx = tz * map.width + tx;
+        const tileVis = vis[idx];
         const biome = map.biomes[idx];
         const territory = map.territory[idx];
+
+        // HIDDEN tiles are dark on minimap
+        if (tileVis === Visibility.HIDDEN) {
+          ctx.fillStyle = "#111";
+          ctx.fillRect(tx * sx, tz * sz, sx + 0.5, sz + 0.5);
+          continue;
+        }
 
         let color: string;
         switch (biome) {
@@ -873,13 +883,19 @@ export class SettlersHUD {
         ctx.fillStyle = color;
         ctx.fillRect(tx * sx, tz * sz, sx + 0.5, sz + 0.5);
 
-        // Territory tint overlay
-        if (territory >= 0) {
+        // Dim explored (non-visible) tiles
+        if (tileVis === Visibility.EXPLORED) {
+          ctx.fillStyle = "rgba(0,0,0,0.4)";
+          ctx.fillRect(tx * sx, tz * sz, sx + 0.5, sz + 0.5);
+        }
+
+        // Territory tint overlay (only in visible tiles)
+        if (territory >= 0 && tileVis === Visibility.VISIBLE) {
           ctx.fillStyle = territory === 0 ? "rgba(51,136,255,0.25)" : "rgba(255,51,51,0.25)";
           ctx.fillRect(tx * sx, tz * sz, sx + 0.5, sz + 0.5);
         }
 
-        // Resource deposit indicators
+        // Resource deposit indicators (visible or explored)
         const deposit = map.deposits[idx];
         if (deposit !== Deposit.NONE) {
           let dColor: string;
@@ -897,9 +913,13 @@ export class SettlersHUD {
       }
     }
 
-    // Draw buildings
+    // Draw buildings (own = always; enemy = only if tile is EXPLORED or VISIBLE)
     for (const [, building] of state.buildings) {
       const def = BUILDING_DEFS[building.type];
+      const bcx = building.tileX + Math.floor(def.footprint.w / 2);
+      const bcz = building.tileZ + Math.floor(def.footprint.h / 2);
+      const bIdx = bcz * map.width + bcx;
+      if (building.owner !== "p0" && (bIdx < 0 || bIdx >= vis.length || vis[bIdx] === Visibility.HIDDEN)) continue;
       ctx.fillStyle = building.owner === "p0" ? "#4488ff" : "#ff4444";
       ctx.fillRect(
         building.tileX * sx,
@@ -909,17 +929,27 @@ export class SettlersHUD {
       );
     }
 
-    // Draw soldiers
+    // Draw soldiers (own = always; enemy = only VISIBLE tiles)
     for (const [, soldier] of state.soldiers) {
       if (soldier.state === "garrisoned") continue;
-      ctx.fillStyle = soldier.owner === "p0" ? "#88bbff" : "#ff8888";
       const stx = soldier.position.x / SB.TILE_SIZE;
       const stz = soldier.position.z / SB.TILE_SIZE;
+      const sTileX = Math.floor(stx);
+      const sTileZ = Math.floor(stz);
+      if (soldier.owner !== "p0") {
+        const sIdx = sTileZ * map.width + sTileX;
+        if (sIdx < 0 || sIdx >= vis.length || vis[sIdx] !== Visibility.VISIBLE) continue;
+      }
+      ctx.fillStyle = soldier.owner === "p0" ? "#88bbff" : "#ff8888";
       ctx.fillRect(stx * sx - 1, stz * sz - 1, 2, 2);
     }
 
-    // Draw flags
+    // Draw flags (own = always; enemy = only EXPLORED or VISIBLE)
     for (const [, flag] of state.flags) {
+      if (flag.owner !== "p0") {
+        const fIdx = flag.tileZ * map.width + flag.tileX;
+        if (fIdx < 0 || fIdx >= vis.length || vis[fIdx] === Visibility.HIDDEN) continue;
+      }
       ctx.fillStyle = flag.owner === "p0" ? "#aaccff" : "#ffaaaa";
       ctx.fillRect(flag.tileX * sx - 0.5, flag.tileZ * sz - 0.5, 2, 2);
     }

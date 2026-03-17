@@ -11,6 +11,13 @@ export enum Biome {
 }
 
 /** Per-tile resource deposit type (0 = none) */
+/** Per-tile fog of war visibility (per player) */
+export enum Visibility {
+  HIDDEN = 0,
+  EXPLORED = 1,
+  VISIBLE = 2,
+}
+
 export enum Deposit {
   NONE = 0,
   IRON = 1,
@@ -48,6 +55,12 @@ export interface SettlersMap {
 
   /** Per-tile building ID occupying this tile (empty string = free) */
   occupied: string[];
+
+  /**
+   * Per-player visibility grids: playerIndex -> Uint8Array of Visibility values.
+   * Index 0 = human player (p0), index 1 = AI (p1).
+   */
+  visibility: Uint8Array[];
 
   /** Tree positions for rendering (subset of forest tiles) */
   trees: { x: number; z: number; scale: number; variant: number }[];
