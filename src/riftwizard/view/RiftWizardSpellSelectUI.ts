@@ -434,43 +434,80 @@ export class RiftWizardSpellSelectUI {
     const py = Math.floor((screenHeight - PANEL_H) / 2);
 
     // --- Background layers ---
+    // Drop shadow
     this._bg.rect(px + 4, py + 4, PANEL_W, PANEL_H);
     this._bg.fill({ color: 0x000000, alpha: 0.5 });
+    // Main background
     this._bg.rect(px, py, PANEL_W, PANEL_H);
     this._bg.fill({ color: 0x0a0a18, alpha: 0.97 });
 
-    // Subtle grid pattern
+    // Subtle runic/grid pattern in the background
     for (let gx = px + 16; gx < px + PANEL_W; gx += 16) {
       this._bg.moveTo(gx, py); this._bg.lineTo(gx, py + PANEL_H);
-      this._bg.stroke({ color: 0x111122, width: 0.5, alpha: 0.2 });
+      this._bg.stroke({ color: 0x111122, width: 0.5, alpha: 0.15 });
     }
     for (let gy = py + 16; gy < py + PANEL_H; gy += 16) {
       this._bg.moveTo(px, gy); this._bg.lineTo(px + PANEL_W, gy);
-      this._bg.stroke({ color: 0x111122, width: 0.5, alpha: 0.2 });
+      this._bg.stroke({ color: 0x111122, width: 0.5, alpha: 0.15 });
+    }
+    // Runic cross marks at grid intersections (sparse, every 48px)
+    for (let gx = px + 48; gx < px + PANEL_W - 16; gx += 48) {
+      for (let gy = py + 48; gy < py + PANEL_H - 16; gy += 48) {
+        this._bg.moveTo(gx - 2, gy); this._bg.lineTo(gx + 2, gy);
+        this._bg.stroke({ color: 0x222244, width: 0.5, alpha: 0.2 });
+        this._bg.moveTo(gx, gy - 2); this._bg.lineTo(gx, gy + 2);
+        this._bg.stroke({ color: 0x222244, width: 0.5, alpha: 0.2 });
+      }
     }
 
-    // Header gradient
+    // Gradient header bar
     this._bg.rect(px, py, PANEL_W, 48);
     this._bg.fill({ color: 0x12122a, alpha: 0.9 });
+    this._bg.rect(px, py, PANEL_W, 24);
+    this._bg.fill({ color: 0x181838, alpha: 0.4 });
 
-    // Borders
+    // Triple-line frame effect (outer, mid, inner)
     this._bg.rect(px, py, PANEL_W, PANEL_H);
     this._bg.stroke({ color: 0x3838aa, width: 2 });
-    // Glow line at top
+    this._bg.rect(px + 3, py + 3, PANEL_W - 6, PANEL_H - 6);
+    this._bg.stroke({ color: 0x2a2a66, width: 1, alpha: 0.5 });
+    this._bg.rect(px + 6, py + 6, PANEL_W - 12, PANEL_H - 12);
+    this._bg.stroke({ color: 0x222244, width: 0.5, alpha: 0.35 });
+
+    // Top glow line
     this._bg.rect(px + 1, py + 1, PANEL_W - 2, 2);
     this._bg.fill({ color: 0x6666dd, alpha: 0.7 });
 
-    // Inner frame
-    this._bg.rect(px + 8, py + 8, PANEL_W - 16, PANEL_H - 16);
-    this._bg.stroke({ color: 0x222244, width: 0.5, alpha: 0.35 });
-
-    // Corner gems
+    // Corner gem decorations (colored circles at all 4 corners)
     for (const [cx, cy] of [[px + 8, py + 8], [px + PANEL_W - 8, py + 8], [px + 8, py + PANEL_H - 8], [px + PANEL_W - 8, py + PANEL_H - 8]]) {
+      // Outer glow ring
+      this._bg.circle(cx, cy, 4.5);
+      this._bg.stroke({ color: 0x4444aa, width: 0.5, alpha: 0.3 });
+      // Gem body
       this._bg.circle(cx, cy, 3);
       this._bg.fill({ color: 0x5555cc, alpha: 0.6 });
+      // Gem highlight
       this._bg.circle(cx, cy, 1.5);
       this._bg.fill({ color: 0x8888ff, alpha: 0.4 });
+      // Tiny white specular
+      this._bg.circle(cx - 0.5, cy - 0.5, 0.7);
+      this._bg.fill({ color: 0xffffff, alpha: 0.3 });
     }
+
+    // Corner bevel ornaments (diagonal lines at corners)
+    const cbSz = 10;
+    // Top-left
+    this._bg.moveTo(px, py + cbSz); this._bg.lineTo(px + cbSz, py);
+    this._bg.stroke({ color: 0x6666cc, width: 1, alpha: 0.4 });
+    // Top-right
+    this._bg.moveTo(px + PANEL_W - cbSz, py); this._bg.lineTo(px + PANEL_W, py + cbSz);
+    this._bg.stroke({ color: 0x6666cc, width: 1, alpha: 0.4 });
+    // Bottom-left
+    this._bg.moveTo(px, py + PANEL_H - cbSz); this._bg.lineTo(px + cbSz, py + PANEL_H);
+    this._bg.stroke({ color: 0x6666cc, width: 1, alpha: 0.4 });
+    // Bottom-right
+    this._bg.moveTo(px + PANEL_W - cbSz, py + PANEL_H); this._bg.lineTo(px + PANEL_W, py + PANEL_H - cbSz);
+    this._bg.stroke({ color: 0x6666cc, width: 1, alpha: 0.4 });
 
     // --- Title ---
     this._addText("SPELL SHOP", px + 20, py + 13, 20, 0xeeeeff, true);
@@ -520,10 +557,31 @@ export class RiftWizardSpellSelectUI {
       this._addText(`${state.abilities.length}`, badgeX - 3, tabY + 2, 9, 0xffffff, true);
     }
 
+    // Decorative separator line below tabs
+    const sepY = py + 84;
+    this._bg.moveTo(px + 14, sepY);
+    this._bg.lineTo(px + PANEL_W - 14, sepY);
+    this._bg.stroke({ color: 0x333366, width: 0.5, alpha: 0.3 });
+    // Small diamond at center of separator
+    const sepMidX = px + PANEL_W / 2;
+    this._bg.moveTo(sepMidX, sepY - 2);
+    this._bg.lineTo(sepMidX + 2, sepY);
+    this._bg.lineTo(sepMidX, sepY + 2);
+    this._bg.lineTo(sepMidX - 2, sepY);
+    this._bg.closePath();
+    this._bg.fill({ color: 0x4444aa, alpha: 0.3 });
+
     // --- Help bar ---
     const helpY = py + PANEL_H - 22;
-    this._bg.rect(px + 10, helpY - 6, PANEL_W - 20, 1);
-    this._bg.fill({ color: 0x333355, alpha: 0.4 });
+    // Decorative separator above help bar
+    this._bg.moveTo(px + 14, helpY - 6);
+    this._bg.lineTo(px + PANEL_W - 14, helpY - 6);
+    this._bg.stroke({ color: 0x333366, width: 0.5, alpha: 0.4 });
+    // Diamond ornaments at separator ends
+    for (const dx of [px + 14, px + PANEL_W - 14]) {
+      this._bg.circle(dx, helpY - 6, 1.5);
+      this._bg.fill({ color: 0x4444aa, alpha: 0.3 });
+    }
     this._addText(
       "Q/E or \u2190\u2192: switch tab  |  \u2191\u2193 or Mouse: select  |  Space/Click: buy  |  Enter: continue",
       px + 20, helpY, 10, 0x555577,

@@ -1966,6 +1966,49 @@ export class SettlersRenderer {
         g.add(merlon);
       }
 
+      // Moss patches on sides
+      const mossMat = new THREE.MeshStandardMaterial({ color: 0x4a6b3a, roughness: 0.95, transparent: true });
+      for (let mp = 0; mp < 3; mp++) {
+        const moss = new THREE.Mesh(this._boxGeo, mossMat);
+        moss.scale.set(ts * 0.12, ts * 0.06, 0.02);
+        const mSide = mp === 0 ? 1 : -1;
+        moss.position.set(mSide * ts * 0.43, wallH * (0.15 + mp * 0.25), mp === 2 ? ts * 0.43 : 0);
+        if (mp === 2) moss.rotation.y = Math.PI * 0.5;
+        g.add(moss);
+      }
+
+      // Arrow slit detail (narrow vertical opening on front)
+      const arrowSlitMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
+      const arrowSlit = new THREE.Mesh(this._boxGeo, arrowSlitMat);
+      arrowSlit.scale.set(0.015, wallH * 0.25, 0.01);
+      arrowSlit.position.set(0, wallH * 0.55, ts * 0.435);
+      g.add(arrowSlit);
+
+      // Weathered stone cap on top
+      const capMat = new THREE.MeshStandardMaterial({ color: 0x8a8a80, roughness: 0.9, transparent: true });
+      const cap = new THREE.Mesh(this._boxGeo, capMat);
+      cap.scale.set(ts * 0.9, wallH * 0.05, ts * 0.9);
+      cap.position.y = wallH + wallH * 0.02;
+      g.add(cap);
+
+      // Ground shadow / dirt patch
+      const wallDirtMat = new THREE.MeshStandardMaterial({ color: 0x3a3525, roughness: 1.0, transparent: true, opacity: 0.6 });
+      const wallDirt = new THREE.Mesh(this._boxGeo, wallDirtMat);
+      wallDirt.scale.set(ts * 1.1, 0.005, ts * 1.1);
+      wallDirt.position.y = 0.003;
+      g.add(wallDirt);
+
+      // Base rubble / debris stones
+      const rubbleMat = new THREE.MeshStandardMaterial({ color: 0x706860, roughness: 0.95, transparent: true });
+      for (let rb = 0; rb < 4; rb++) {
+        const rubble = new THREE.Mesh(this._boxGeo, rubbleMat);
+        const angle = (rb / 4) * Math.PI * 2 + 0.3;
+        rubble.scale.set(ts * 0.06, ts * 0.03, ts * 0.05);
+        rubble.position.set(Math.cos(angle) * ts * 0.5, ts * 0.015, Math.sin(angle) * ts * 0.5);
+        rubble.rotation.y = rb * 1.1;
+        g.add(rubble);
+      }
+
     } else if (def.type === SettlersBuildingType.GATE) {
       // ===== GATE – stone archway =====
       const gateH = ts * 0.9;
@@ -2014,6 +2057,23 @@ export class SettlersRenderer {
       pennant.scale.set(ts * 0.12, ts * 0.08, ts * 0.01);
       pennant.position.set(0, gateH + gateH * 0.25, 0);
       g.add(pennant);
+
+      // Ground shadow / dirt patch
+      const gateDirtMat = new THREE.MeshStandardMaterial({ color: 0x3a3525, roughness: 1.0, transparent: true, opacity: 0.6 });
+      const gateDirt = new THREE.Mesh(this._boxGeo, gateDirtMat);
+      gateDirt.scale.set(ts * 1.2, 0.005, ts * 1.2);
+      gateDirt.position.y = 0.003;
+      g.add(gateDirt);
+
+      // Base rubble / debris
+      const gateRubbleMat = new THREE.MeshStandardMaterial({ color: 0x706860, roughness: 0.95, transparent: true });
+      for (let rb = 0; rb < 3; rb++) {
+        const rubble = new THREE.Mesh(this._boxGeo, gateRubbleMat);
+        rubble.scale.set(ts * 0.05, ts * 0.025, ts * 0.04);
+        rubble.position.set(ts * (-0.35 + rb * 0.35), ts * 0.012, ts * 0.48);
+        rubble.rotation.y = rb * 0.8;
+        g.add(rubble);
+      }
 
     } else if (def.garrisonSlots > 0) {
       // ===== MILITARY BUILDING – detailed stone tower =====
@@ -2128,6 +2188,64 @@ export class SettlersRenderer {
       baseMesh.position.y = towerH * 0.04;
       g.add(baseMesh);
 
+      // Torch brackets on wall (2 torches at front)
+      const torchBracketMat = new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.5, roughness: 0.4, transparent: true });
+      for (let ti = 0; ti < 2; ti++) {
+        const tAngle = (ti === 0 ? -0.5 : 0.5);
+        // Bracket arm (cylinder)
+        const bracket = new THREE.Mesh(this._cylGeo, torchBracketMat);
+        bracket.scale.set(0.12, 0.15, 0.12);
+        bracket.rotation.z = Math.PI * 0.4;
+        bracket.position.set(Math.cos(tAngle) * (towerR + 0.04), towerH * 0.6, Math.sin(tAngle) * (towerR + 0.04));
+        bracket.castShadow = true;
+        g.add(bracket);
+        // Torch flame glow (emissive sphere)
+        const flameMat = new THREE.MeshStandardMaterial({
+          color: 0xff8800, emissive: 0xff6600, emissiveIntensity: 0.6, transparent: true,
+        });
+        const flame = new THREE.Mesh(this._sphereGeo, flameMat);
+        flame.scale.set(0.25, 0.35, 0.25);
+        flame.position.set(Math.cos(tAngle) * (towerR + 0.08), towerH * 0.65, Math.sin(tAngle) * (towerR + 0.08));
+        g.add(flame);
+      }
+
+      // Banner / cloth hanging from side
+      const bannerMat = new THREE.MeshStandardMaterial({ color: playerColor, roughness: 0.7, side: THREE.DoubleSide, transparent: true });
+      const banner = new THREE.Mesh(this._boxGeo, bannerMat);
+      banner.scale.set(0.2, 0.35, 0.01);
+      banner.position.set(towerR + 0.02, towerH * 0.55, 0);
+      banner.rotation.z = 0.05;
+      banner.castShadow = true;
+      g.add(banner);
+
+      // Guard platform railing detail (posts around walkway)
+      const railMat = new THREE.MeshStandardMaterial({ color: 0x706860, roughness: 0.9, transparent: true });
+      for (let rp = 0; rp < 8; rp++) {
+        const rAngle = (rp / 8) * Math.PI * 2;
+        const railPost = new THREE.Mesh(this._cylGeo, railMat);
+        railPost.scale.set(0.08, 0.15, 0.08);
+        railPost.position.set(Math.cos(rAngle) * towerR * 1.05, towerH + 0.25, Math.sin(rAngle) * towerR * 1.05);
+        g.add(railPost);
+      }
+
+      // Ground shadow / dirt patch
+      const towerDirtMat = new THREE.MeshStandardMaterial({ color: 0x3a3525, roughness: 1.0, transparent: true, opacity: 0.6 });
+      const towerDirt = new THREE.Mesh(this._boxGeo, towerDirtMat);
+      towerDirt.scale.set(towerR * 3.0, 0.005, towerR * 3.0);
+      towerDirt.position.y = 0.003;
+      g.add(towerDirt);
+
+      // Base rubble / debris
+      const towerRubbleMat = new THREE.MeshStandardMaterial({ color: 0x706860, roughness: 0.95, transparent: true });
+      for (let rb = 0; rb < 4; rb++) {
+        const rubble = new THREE.Mesh(this._boxGeo, towerRubbleMat);
+        const rbAngle = (rb / 4) * Math.PI * 2 + 0.7;
+        rubble.scale.set(0.06, 0.03, 0.05);
+        rubble.position.set(Math.cos(rbAngle) * towerR * 1.25, 0.015, Math.sin(rbAngle) * towerR * 1.25);
+        rubble.rotation.y = rb * 1.3;
+        g.add(rubble);
+      }
+
     } else if (def.type === SettlersBuildingType.HEADQUARTERS) {
       // ===== HQ – grand multi-story timber-framed manor =====
       const wallH1 = fw * 0.5;
@@ -2231,6 +2349,73 @@ export class SettlersRenderer {
         }
       }
 
+      // Cobblestone courtyard in front
+      const courtyardMat = new THREE.MeshStandardMaterial({ color: 0x706860, roughness: 0.95, transparent: true });
+      const courtyard = new THREE.Mesh(this._boxGeo, courtyardMat);
+      courtyard.scale.set(fw * 0.6, 0.01, fw * 0.3);
+      courtyard.position.set(0, 0.006, fh * 0.6);
+      g.add(courtyard);
+
+      // Decorative window shutters (dark wood panels beside upper windows)
+      const shutterMat = new THREE.MeshStandardMaterial({ color: 0x4a3520, roughness: 0.85, transparent: true });
+      for (let side = -1; side <= 1; side += 2) {
+        for (let sh = -1; sh <= 1; sh += 2) {
+          const shutter = new THREE.Mesh(this._boxGeo, shutterMat);
+          shutter.scale.set(0.02, 0.07, 0.01);
+          shutter.position.set(side * fw * 0.2 + sh * 0.045, wallH1 + wallH2 * 0.45 + fw * 0.08, fh * 0.39);
+          g.add(shutter);
+        }
+      }
+
+      // Roof weathervane (thin rod + arrow)
+      const vaneMat = new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.5, roughness: 0.3, transparent: true });
+      const vaneRod = new THREE.Mesh(this._cylGeo, vaneMat);
+      vaneRod.scale.set(0.06, fw * 0.12, 0.06);
+      vaneRod.position.set(0, wallH1 + wallH2 + roofH + fw * 0.14, 0);
+      g.add(vaneRod);
+      const vaneArrow = new THREE.Mesh(this._boxGeo, vaneMat);
+      vaneArrow.scale.set(fw * 0.1, 0.015, 0.01);
+      vaneArrow.position.set(0, wallH1 + wallH2 + roofH + fw * 0.2, 0);
+      g.add(vaneArrow);
+
+      // Hanging shop sign
+      const signPostMat = new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.3, roughness: 0.6, transparent: true });
+      const signArm = new THREE.Mesh(this._cylGeo, signPostMat);
+      signArm.scale.set(0.06, fw * 0.1, 0.06);
+      signArm.rotation.z = Math.PI * 0.5;
+      signArm.position.set(fw * 0.48, fw * 0.38, fh * 0.43);
+      g.add(signArm);
+      const signBoard = new THREE.Mesh(this._boxGeo, new THREE.MeshStandardMaterial({ color: 0x8b6b3a, roughness: 0.85, transparent: true }));
+      signBoard.scale.set(fw * 0.08, fw * 0.06, 0.01);
+      signBoard.position.set(fw * 0.52, fw * 0.32, fh * 0.43);
+      g.add(signBoard);
+
+      // Smoke wisps from chimney
+      const hqSmokeMat = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 1.0, transparent: true, opacity: 0.25 });
+      for (let si = 0; si < 3; si++) {
+        const smoke = new THREE.Mesh(this._sphereGeo, hqSmokeMat);
+        smoke.scale.set(0.3 + si * 0.15, 0.25 + si * 0.1, 0.3 + si * 0.15);
+        smoke.position.set(fw * 0.25 + si * 0.02, wallH1 + wallH2 + roofH * 0.5 + fw * 0.35 + si * 0.15, fh * 0.15);
+        g.add(smoke);
+      }
+
+      // Ground shadow / dirt patch
+      const hqDirtMat = new THREE.MeshStandardMaterial({ color: 0x3a3525, roughness: 1.0, transparent: true, opacity: 0.6 });
+      const hqDirt = new THREE.Mesh(this._boxGeo, hqDirtMat);
+      hqDirt.scale.set(fw * 1.2, 0.005, fh * 1.2);
+      hqDirt.position.y = 0.003;
+      g.add(hqDirt);
+
+      // Base rubble / debris
+      const hqRubbleMat = new THREE.MeshStandardMaterial({ color: 0x706860, roughness: 0.95, transparent: true });
+      for (let rb = 0; rb < 4; rb++) {
+        const rubble = new THREE.Mesh(this._boxGeo, hqRubbleMat);
+        rubble.scale.set(fw * 0.04, fw * 0.02, fw * 0.03);
+        rubble.position.set(fw * (-0.45 + rb * 0.3), fw * 0.01, fh * (0.48 + (rb % 2) * 0.05));
+        rubble.rotation.y = rb * 0.9;
+        g.add(rubble);
+      }
+
     } else if (def.size === "large") {
       // ===== Large production building – detailed workshop =====
       const wallH = fw * 0.5;
@@ -2304,6 +2489,62 @@ export class SettlersRenderer {
         g.add(leg);
       }
 
+      // Roof ridge cap (thin box along ridge peak)
+      const lgRidgeCapMat = new THREE.MeshStandardMaterial({ color: 0x6b4226, roughness: 0.85, transparent: true });
+      const lgRidgeCap = new THREE.Mesh(this._boxGeo, lgRidgeCapMat);
+      lgRidgeCap.scale.set(0.025, 0.025, fh * 0.84);
+      lgRidgeCap.position.y = wallH + roofH + fw * 0.06;
+      g.add(lgRidgeCap);
+
+      // Rain gutter (thin cylinder along roof edge, front)
+      const lgGutterMat = new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.3, roughness: 0.5, transparent: true });
+      const lgGutter = new THREE.Mesh(this._cylGeo, lgGutterMat);
+      lgGutter.scale.set(0.06, fh * 0.84, 0.06);
+      lgGutter.rotation.x = Math.PI * 0.5;
+      lgGutter.position.set(0, wallH + fw * 0.06 + 0.01, fh * 0.43);
+      g.add(lgGutter);
+
+      // Flower / garden patch beside building
+      const lgGardenMat = new THREE.MeshStandardMaterial({ color: 0x3a5a2a, roughness: 0.9, transparent: true });
+      const lgGarden = new THREE.Mesh(this._boxGeo, lgGardenMat);
+      lgGarden.scale.set(fw * 0.2, 0.02, fw * 0.1);
+      lgGarden.position.set(fw * 0.35, 0.01, -fh * 0.45);
+      g.add(lgGarden);
+      // Small flowers in the garden
+      const lgFlowerColors = [0xdd4444, 0xdddd44, 0xff88aa];
+      for (let fi = 0; fi < 3; fi++) {
+        const fl = new THREE.Mesh(this._sphereGeo, new THREE.MeshStandardMaterial({ color: lgFlowerColors[fi], roughness: 0.7, transparent: true }));
+        fl.scale.set(0.15, 0.15, 0.15);
+        fl.position.set(fw * (0.28 + fi * 0.07), 0.03, -fh * 0.45);
+        g.add(fl);
+      }
+
+      // Smoke wisps from chimney
+      const lgSmokeMat = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 1.0, transparent: true, opacity: 0.25 });
+      for (let si = 0; si < 3; si++) {
+        const smoke = new THREE.Mesh(this._sphereGeo, lgSmokeMat);
+        smoke.scale.set(0.25 + si * 0.1, 0.2 + si * 0.08, 0.25 + si * 0.1);
+        smoke.position.set(fw * 0.22, wallH + roofH * 0.3 + fw * 0.3 + si * 0.12, -fh * 0.1);
+        g.add(smoke);
+      }
+
+      // Ground shadow / dirt patch
+      const lgDirtMat = new THREE.MeshStandardMaterial({ color: 0x3a3525, roughness: 1.0, transparent: true, opacity: 0.6 });
+      const lgDirt = new THREE.Mesh(this._boxGeo, lgDirtMat);
+      lgDirt.scale.set(fw * 1.1, 0.005, fh * 1.1);
+      lgDirt.position.y = 0.003;
+      g.add(lgDirt);
+
+      // Base rubble / debris
+      const lgRubbleMat = new THREE.MeshStandardMaterial({ color: 0x706860, roughness: 0.95, transparent: true });
+      for (let rb = 0; rb < 3; rb++) {
+        const rubble = new THREE.Mesh(this._boxGeo, lgRubbleMat);
+        rubble.scale.set(fw * 0.04, fw * 0.02, fw * 0.035);
+        rubble.position.set(fw * (-0.42 + rb * 0.42), fw * 0.01, fh * 0.48);
+        rubble.rotation.y = rb * 1.2;
+        g.add(rubble);
+      }
+
     } else if (def.size === "medium") {
       // ===== Medium building – cottage with character =====
       const wallH = fw * 0.45;
@@ -2375,6 +2616,58 @@ export class SettlersRenderer {
         g.add(hoop);
       }
 
+      // Roof ridge cap
+      const mdRidgeCapMat = new THREE.MeshStandardMaterial({ color: 0x6b4226, roughness: 0.85, transparent: true });
+      const mdRidgeCap = new THREE.Mesh(this._boxGeo, mdRidgeCapMat);
+      mdRidgeCap.scale.set(0.02, 0.02, fh * 0.74);
+      mdRidgeCap.position.y = wallH + roofH;
+      g.add(mdRidgeCap);
+
+      // Rain gutter (thin cylinder along roof edge, front)
+      const mdGutterMat = new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.3, roughness: 0.5, transparent: true });
+      const mdGutter = new THREE.Mesh(this._cylGeo, mdGutterMat);
+      mdGutter.scale.set(0.05, fh * 0.74, 0.05);
+      mdGutter.rotation.x = Math.PI * 0.5;
+      mdGutter.position.set(0, wallH + 0.01, fh * 0.37);
+      g.add(mdGutter);
+
+      // Flower pot beside door
+      const mdPotMat = new THREE.MeshStandardMaterial({ color: 0x9a5a3a, roughness: 0.85, transparent: true });
+      const mdPot = new THREE.Mesh(this._cylGeo, mdPotMat);
+      mdPot.scale.set(0.25, fw * 0.04, 0.25);
+      mdPot.position.set(fw * 0.15, fw * 0.02, fh * 0.38);
+      g.add(mdPot);
+      const mdPlant = new THREE.Mesh(this._sphereGeo, new THREE.MeshStandardMaterial({ color: 0x4a7a3a, roughness: 0.8, transparent: true }));
+      mdPlant.scale.set(0.3, 0.35, 0.3);
+      mdPlant.position.set(fw * 0.15, fw * 0.06, fh * 0.38);
+      g.add(mdPlant);
+
+      // Smoke wisps from chimney
+      const mdSmokeMat = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 1.0, transparent: true, opacity: 0.25 });
+      for (let si = 0; si < 3; si++) {
+        const smoke = new THREE.Mesh(this._sphereGeo, mdSmokeMat);
+        smoke.scale.set(0.2 + si * 0.08, 0.18 + si * 0.06, 0.2 + si * 0.08);
+        smoke.position.set(fw * 0.18, wallH + roofH * 0.25 + fw * 0.25 + si * 0.1, 0);
+        g.add(smoke);
+      }
+
+      // Ground shadow / dirt patch
+      const mdDirtMat = new THREE.MeshStandardMaterial({ color: 0x3a3525, roughness: 1.0, transparent: true, opacity: 0.6 });
+      const mdDirt = new THREE.Mesh(this._boxGeo, mdDirtMat);
+      mdDirt.scale.set(fw * 1.0, 0.005, fh * 1.0);
+      mdDirt.position.y = 0.003;
+      g.add(mdDirt);
+
+      // Base rubble / debris
+      const mdRubbleMat = new THREE.MeshStandardMaterial({ color: 0x706860, roughness: 0.95, transparent: true });
+      for (let rb = 0; rb < 3; rb++) {
+        const rubble = new THREE.Mesh(this._boxGeo, mdRubbleMat);
+        rubble.scale.set(fw * 0.03, fw * 0.015, fw * 0.025);
+        rubble.position.set(fw * (-0.38 + rb * 0.38), fw * 0.008, fh * 0.4);
+        rubble.rotation.y = rb * 1.1;
+        g.add(rubble);
+      }
+
     } else {
       // ===== Small building – detailed hut =====
       const wallH = fw * 0.35;
@@ -2417,7 +2710,7 @@ export class SettlersRenderer {
       // Chimney
       this._addChimney(g, fw * 0.15, wallH + roofH * 0.2, 0, 0.04, fw * 0.2);
 
-      // Log pile beside building
+      // Log pile beside building (more detailed woodpile)
       const logMat = new THREE.MeshStandardMaterial({ color: 0x7a5a2a, roughness: 0.9 });
       (logMat as THREE.MeshStandardMaterial).transparent = true;
       for (let l = 0; l < 3; l++) {
@@ -2426,6 +2719,62 @@ export class SettlersRenderer {
         log.rotation.z = Math.PI * 0.5;
         log.position.set(fw * 0.38, 0.03 + l * 0.04, fh * (0.05 + l * 0.02));
         g.add(log);
+      }
+      // Additional split wood pieces leaning against the pile
+      const splitMat = new THREE.MeshStandardMaterial({ color: 0x8a6a3a, roughness: 0.9, transparent: true });
+      const splitLog = new THREE.Mesh(this._boxGeo, splitMat);
+      splitLog.scale.set(fw * 0.04, fw * 0.12, 0.02);
+      splitLog.position.set(fw * 0.42, fw * 0.06, fh * 0.12);
+      splitLog.rotation.z = 0.15;
+      g.add(splitLog);
+
+      // Thatched roof texture (rougher material overlay on ridge roof)
+      const thatchMat = new THREE.MeshStandardMaterial({ color: 0xb89850, roughness: 0.98, transparent: true });
+      const thatchOverlay = new THREE.Mesh(this._boxGeo, thatchMat);
+      thatchOverlay.scale.set(fw * 0.3, 0.015, fh * 0.3);
+      thatchOverlay.position.set(0, wallH + roofH * 0.5, 0);
+      thatchOverlay.rotation.x = 0.25;
+      g.add(thatchOverlay);
+
+      // Hanging lantern by door
+      const lanternBracketMat = new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.4, roughness: 0.5, transparent: true });
+      const lanternBracket = new THREE.Mesh(this._cylGeo, lanternBracketMat);
+      lanternBracket.scale.set(0.05, fw * 0.06, 0.05);
+      lanternBracket.rotation.z = Math.PI * 0.5;
+      lanternBracket.position.set(fw * 0.14, fw * 0.3, fh * 0.32);
+      g.add(lanternBracket);
+      const lanternGlowMat = new THREE.MeshStandardMaterial({
+        color: 0xffcc44, emissive: 0xffaa22, emissiveIntensity: 0.4, transparent: true,
+      });
+      const lantern = new THREE.Mesh(this._sphereGeo, lanternGlowMat);
+      lantern.scale.set(0.18, 0.22, 0.18);
+      lantern.position.set(fw * 0.18, fw * 0.27, fh * 0.32);
+      g.add(lantern);
+
+      // Smoke wisps from chimney
+      const smSmokeMat = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 1.0, transparent: true, opacity: 0.25 });
+      for (let si = 0; si < 3; si++) {
+        const smoke = new THREE.Mesh(this._sphereGeo, smSmokeMat);
+        smoke.scale.set(0.18 + si * 0.06, 0.15 + si * 0.05, 0.18 + si * 0.06);
+        smoke.position.set(fw * 0.15, wallH + roofH * 0.2 + fw * 0.2 + si * 0.09, 0);
+        g.add(smoke);
+      }
+
+      // Ground shadow / dirt patch
+      const smDirtMat = new THREE.MeshStandardMaterial({ color: 0x3a3525, roughness: 1.0, transparent: true, opacity: 0.6 });
+      const smDirt = new THREE.Mesh(this._boxGeo, smDirtMat);
+      smDirt.scale.set(fw * 0.9, 0.005, fh * 0.9);
+      smDirt.position.y = 0.003;
+      g.add(smDirt);
+
+      // Base rubble / debris
+      const smRubbleMat = new THREE.MeshStandardMaterial({ color: 0x706860, roughness: 0.95, transparent: true });
+      for (let rb = 0; rb < 3; rb++) {
+        const rubble = new THREE.Mesh(this._boxGeo, smRubbleMat);
+        rubble.scale.set(fw * 0.025, fw * 0.012, fw * 0.02);
+        rubble.position.set(fw * (-0.32 + rb * 0.32), fw * 0.006, fh * 0.34);
+        rubble.rotation.y = rb * 0.9;
+        g.add(rubble);
       }
     }
 
@@ -2588,6 +2937,32 @@ export class SettlersRenderer {
         blade.rotation.x = Math.PI * 0.5;
         blade.position.set(0, fw * 0.35, fh * 0.42);
         g.add(blade);
+        // Saw horse with wood piece
+        const sawHorseMat = new THREE.MeshStandardMaterial({ color: woodCol, roughness: 0.9, transparent: true });
+        // Two X-legs
+        for (let sx = -1; sx <= 1; sx += 2) {
+          const horseLeg = new THREE.Mesh(this._boxGeo, sawHorseMat);
+          horseLeg.scale.set(0.02, fw * 0.1, fw * 0.06);
+          horseLeg.position.set(fw * (0.25 + sx * 0.05), fw * 0.05, fh * 0.5);
+          g.add(horseLeg);
+        }
+        // Cross beam on horse
+        const horseBeam = new THREE.Mesh(this._boxGeo, sawHorseMat);
+        horseBeam.scale.set(fw * 0.12, 0.015, 0.02);
+        horseBeam.position.set(fw * 0.25, fw * 0.1, fh * 0.5);
+        g.add(horseBeam);
+        // Wood piece on saw horse
+        const sawPiece = new THREE.Mesh(this._cylGeo, logMat);
+        sawPiece.scale.set(0.18, fw * 0.14, 0.18);
+        sawPiece.rotation.z = Math.PI * 0.5;
+        sawPiece.position.set(fw * 0.25, fw * 0.12, fh * 0.5);
+        g.add(sawPiece);
+        // Sawdust pile
+        const dustMat = new THREE.MeshStandardMaterial({ color: 0xd4b87a, roughness: 0.95, transparent: true });
+        const dustPile = new THREE.Mesh(this._coneGeo, dustMat);
+        dustPile.scale.set(fw * 0.08, fw * 0.03, fw * 0.08);
+        dustPile.position.set(fw * 0.25, fw * 0.015, fh * 0.55);
+        g.add(dustPile);
         break;
       }
       case SettlersBuildingType.MILL: {
@@ -2646,6 +3021,36 @@ export class SettlersRenderer {
         bread.scale.set(0.3, 0.2, 0.25);
         bread.position.set(-fw * 0.22, fw * 0.33, fh * 0.42);
         g.add(bread);
+        // Smoke from oven (emissive)
+        const ovenSmokeMat = new THREE.MeshStandardMaterial({
+          color: 0xcccccc, emissive: 0x443322, emissiveIntensity: 0.2, transparent: true, opacity: 0.3,
+        });
+        for (let si = 0; si < 2; si++) {
+          const ovenSmoke = new THREE.Mesh(this._sphereGeo, ovenSmokeMat);
+          ovenSmoke.scale.set(0.2 + si * 0.1, 0.15 + si * 0.08, 0.2 + si * 0.1);
+          ovenSmoke.position.set(0, fw * 0.22 + si * 0.1, -fh * 0.5);
+          g.add(ovenSmoke);
+        }
+        // Bread cooling rack (wooden shelf with bread loaves)
+        const rackWoodMat = new THREE.MeshStandardMaterial({ color: woodCol, roughness: 0.85, transparent: true });
+        const coolRack = new THREE.Mesh(this._boxGeo, rackWoodMat);
+        coolRack.scale.set(fw * 0.14, 0.01, fw * 0.06);
+        coolRack.position.set(fw * 0.35, fw * 0.18, fh * 0.35);
+        g.add(coolRack);
+        // Rack legs
+        for (let rl = -1; rl <= 1; rl += 2) {
+          const rackLeg = new THREE.Mesh(this._cylGeo, rackWoodMat);
+          rackLeg.scale.set(0.08, fw * 0.18, 0.08);
+          rackLeg.position.set(fw * (0.35 + rl * 0.06), fw * 0.09, fh * 0.35);
+          g.add(rackLeg);
+        }
+        // Bread loaves on rack
+        for (let bl = 0; bl < 2; bl++) {
+          const loaf = new THREE.Mesh(this._sphereGeo, breadMat);
+          loaf.scale.set(0.2, 0.12, 0.15);
+          loaf.position.set(fw * (0.31 + bl * 0.08), fw * 0.2, fh * 0.35);
+          g.add(loaf);
+        }
         break;
       }
       case SettlersBuildingType.BREWERY: {
@@ -2669,6 +3074,34 @@ export class SettlersRenderer {
         const mug = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.013, 0.04, 6), mugMat);
         mug.position.set(-fw * 0.35, fw * 0.14, fh * 0.38);
         g.add(mug);
+        // Steam from vat (semi-transparent wisps above barrels)
+        const vatSteamMat = new THREE.MeshStandardMaterial({ color: 0xdddddd, roughness: 1.0, transparent: true, opacity: 0.2 });
+        for (let vi = 0; vi < 2; vi++) {
+          const steam = new THREE.Mesh(this._sphereGeo, vatSteamMat);
+          steam.scale.set(0.25 + vi * 0.1, 0.2 + vi * 0.08, 0.25 + vi * 0.1);
+          steam.position.set(fw * 0.39, fw * (0.18 + vi * 0.1), -fh * 0.25);
+          g.add(steam);
+        }
+        // Hop vine on trellis
+        const trellisMat = new THREE.MeshStandardMaterial({ color: woodCol, roughness: 0.85, transparent: true });
+        const trellisPost = new THREE.Mesh(this._cylGeo, trellisMat);
+        trellisPost.scale.set(0.08, fw * 0.2, 0.08);
+        trellisPost.position.set(-fw * 0.44, fw * 0.1, -fh * 0.15);
+        g.add(trellisPost);
+        // Trellis cross bar
+        const trellisBar = new THREE.Mesh(this._cylGeo, trellisMat);
+        trellisBar.scale.set(0.06, fw * 0.12, 0.06);
+        trellisBar.rotation.z = Math.PI * 0.5;
+        trellisBar.position.set(-fw * 0.44, fw * 0.18, -fh * 0.15);
+        g.add(trellisBar);
+        // Hop leaves (green spheres on trellis)
+        const hopMat = new THREE.MeshStandardMaterial({ color: 0x4a8a3a, roughness: 0.8, transparent: true });
+        for (let hi = 0; hi < 3; hi++) {
+          const hop = new THREE.Mesh(this._sphereGeo, hopMat);
+          hop.scale.set(0.2, 0.2, 0.2);
+          hop.position.set(-fw * 0.44 + (hi - 1) * fw * 0.04, fw * (0.14 + hi * 0.03), -fh * 0.15);
+          g.add(hop);
+        }
         break;
       }
       case SettlersBuildingType.SMELTER:
@@ -2691,15 +3124,39 @@ export class SettlersRenderer {
         ember.scale.set(fw * 0.1, fw * 0.03, fw * 0.08);
         ember.position.set(-fw * 0.38, fw * 0.1, fh * 0.15);
         g.add(ember);
-        // Ingot stack
+        // Ingot stack (larger, more ingots)
         const ingotColor = type === SettlersBuildingType.MINT ? 0xffd700 : 0x888888;
-        const ingotMat = new THREE.MeshStandardMaterial({ color: ingotColor, metalness: 0.6, roughness: 0.3 });
+        const ingotMat = new THREE.MeshStandardMaterial({ color: ingotColor, metalness: 0.6, roughness: 0.3, transparent: true });
         for (let i = 0; i < 3; i++) {
           const ingot = new THREE.Mesh(this._boxGeo, ingotMat);
           ingot.scale.set(fw * 0.04, fw * 0.02, fw * 0.025);
           ingot.position.set(fw * (0.32 + i * 0.05), fw * 0.01, -fh * 0.32);
           g.add(ingot);
         }
+        // Second row of ingots stacked
+        for (let i = 0; i < 2; i++) {
+          const ingot2 = new THREE.Mesh(this._boxGeo, ingotMat);
+          ingot2.scale.set(fw * 0.04, fw * 0.02, fw * 0.025);
+          ingot2.position.set(fw * (0.345 + i * 0.05), fw * 0.03, -fh * 0.32);
+          g.add(ingot2);
+        }
+        // Bellows (accordion-like shape: two boxes with a wedge)
+        const bellowsMat = new THREE.MeshStandardMaterial({ color: 0x8b6b3a, roughness: 0.85, transparent: true });
+        const bellowsBase = new THREE.Mesh(this._boxGeo, bellowsMat);
+        bellowsBase.scale.set(fw * 0.06, fw * 0.04, fw * 0.08);
+        bellowsBase.position.set(-fw * 0.25, fw * 0.02, fh * 0.15);
+        g.add(bellowsBase);
+        const bellowsTop = new THREE.Mesh(this._boxGeo, bellowsMat);
+        bellowsTop.scale.set(fw * 0.06, fw * 0.02, fw * 0.08);
+        bellowsTop.position.set(-fw * 0.25, fw * 0.06, fh * 0.15);
+        g.add(bellowsTop);
+        // Bellows nozzle
+        const nozzleMat = new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.4, roughness: 0.5, transparent: true });
+        const nozzle = new THREE.Mesh(this._cylGeo, nozzleMat);
+        nozzle.scale.set(0.08, fw * 0.04, 0.08);
+        nozzle.rotation.z = Math.PI * 0.5;
+        nozzle.position.set(-fw * 0.3, fw * 0.04, fh * 0.15);
+        g.add(nozzle);
         break;
       }
       case SettlersBuildingType.SWORD_SMITH:

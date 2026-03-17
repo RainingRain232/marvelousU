@@ -337,11 +337,40 @@ export class RiftWizardHUD {
     const hpHighlight = hpRatio > 0.6 ? 0x22dd22 : hpRatio > 0.3 ? 0xdddd22 : 0xee4422;
     this._hpBar.rect(hpBarX, hpBarY, hpBarW * hpRatio, hpBarH);
     this._hpBar.fill(hpColor);
-    // Highlight strip on top
+    // Subtle gradient effect (brighter at top of bar)
     if (hpRatio > 0) {
       this._hpBar.rect(hpBarX, hpBarY, hpBarW * hpRatio, 3);
       this._hpBar.fill({ color: hpHighlight, alpha: 0.4 });
+      this._hpBar.rect(hpBarX, hpBarY + 3, hpBarW * hpRatio, 3);
+      this._hpBar.fill({ color: hpHighlight, alpha: 0.2 });
+      // Darker bottom gradient
+      this._hpBar.rect(hpBarX, hpBarY + hpBarH - 3, hpBarW * hpRatio, 3);
+      this._hpBar.fill({ color: 0x000000, alpha: 0.2 });
     }
+
+    // Decorative end caps on the HP bar frame
+    // Left end cap
+    this._hpBar.moveTo(hpBarX - 4, hpBarY - 2);
+    this._hpBar.lineTo(hpBarX - 1, hpBarY - 2);
+    this._hpBar.lineTo(hpBarX - 1, hpBarY + hpBarH + 2);
+    this._hpBar.lineTo(hpBarX - 4, hpBarY + hpBarH + 2);
+    this._hpBar.closePath();
+    this._hpBar.fill({ color: 0x333355, alpha: 0.6 });
+    this._hpBar.moveTo(hpBarX - 4, hpBarY + 2);
+    this._hpBar.lineTo(hpBarX - 6, hpBarY + hpBarH / 2);
+    this._hpBar.lineTo(hpBarX - 4, hpBarY + hpBarH - 2);
+    this._hpBar.stroke({ color: 0x4444aa, width: 1, alpha: 0.5 });
+    // Right end cap
+    this._hpBar.moveTo(hpBarX + hpBarW + 1, hpBarY - 2);
+    this._hpBar.lineTo(hpBarX + hpBarW + 4, hpBarY - 2);
+    this._hpBar.lineTo(hpBarX + hpBarW + 4, hpBarY + hpBarH + 2);
+    this._hpBar.lineTo(hpBarX + hpBarW + 1, hpBarY + hpBarH + 2);
+    this._hpBar.closePath();
+    this._hpBar.fill({ color: 0x333355, alpha: 0.6 });
+    this._hpBar.moveTo(hpBarX + hpBarW + 4, hpBarY + 2);
+    this._hpBar.lineTo(hpBarX + hpBarW + 6, hpBarY + hpBarH / 2);
+    this._hpBar.lineTo(hpBarX + hpBarW + 4, hpBarY + hpBarH - 2);
+    this._hpBar.stroke({ color: 0x4444aa, width: 1, alpha: 0.5 });
 
     // --- Tick marks at 25% intervals ---
     for (let t = 1; t <= 3; t++) {
@@ -392,6 +421,21 @@ export class RiftWizardHUD {
       this._hpBar.rect(hpBarX, hpBarY, hpBarW * shieldRatio, hpBarH);
       this._hpBar.stroke({ color: 0x44ddff, width: 1, alpha: 0.5 });
     }
+
+    // Heart icon to the left of the HP bar
+    const heartCx = hpBarX - 10;
+    const heartCy = hpBarY + hpBarH / 2;
+    const hs = 4;
+    // Heart shape (two circles + triangle)
+    this._hpBar.circle(heartCx - hs * 0.35, heartCy - hs * 0.2, hs * 0.45);
+    this._hpBar.fill({ color: hpColor, alpha: 0.8 });
+    this._hpBar.circle(heartCx + hs * 0.35, heartCy - hs * 0.2, hs * 0.45);
+    this._hpBar.fill({ color: hpColor, alpha: 0.8 });
+    this._hpBar.moveTo(heartCx - hs * 0.7, heartCy);
+    this._hpBar.lineTo(heartCx, heartCy + hs * 0.8);
+    this._hpBar.lineTo(heartCx + hs * 0.7, heartCy);
+    this._hpBar.closePath();
+    this._hpBar.fill({ color: hpColor, alpha: 0.8 });
 
     // HP text on bar
     const hpStr = `${state.wizard.hp}/${state.wizard.maxHp}${state.wizard.shields > 0 ? ` +${state.wizard.shields}` : ""}`;
@@ -1049,13 +1093,40 @@ export class RiftWizardHUD {
     // Panel background
     this._pauseBg.rect(panelX, panelY, panelW, panelH);
     this._pauseBg.fill({ color: 0x0a0a18, alpha: 0.95 });
+
+    // Subtle inner shadow (darker rect slightly inset)
+    this._pauseBg.rect(panelX + 2, panelY + 2, panelW - 4, panelH - 4);
+    this._pauseBg.fill({ color: 0x050510, alpha: 0.3 });
+
+    // Subtle background grid pattern (thin lines every 16px, very low alpha)
+    for (let gx = panelX + 16; gx < panelX + panelW; gx += 16) {
+      this._pauseBg.moveTo(gx, panelY);
+      this._pauseBg.lineTo(gx, panelY + panelH);
+      this._pauseBg.stroke({ color: 0x111122, width: 0.5, alpha: 0.12 });
+    }
+    for (let gy = panelY + 16; gy < panelY + panelH; gy += 16) {
+      this._pauseBg.moveTo(panelX, gy);
+      this._pauseBg.lineTo(panelX + panelW, gy);
+      this._pauseBg.stroke({ color: 0x111122, width: 0.5, alpha: 0.12 });
+    }
+
+    // Header gradient bar (brighter area at top of panel)
+    this._pauseBg.rect(panelX, panelY, panelW, 40);
+    this._pauseBg.fill({ color: 0x12122a, alpha: 0.6 });
+    this._pauseBg.rect(panelX, panelY, panelW, 20);
+    this._pauseBg.fill({ color: 0x181838, alpha: 0.4 });
+
     // Double border
     this._pauseBg.rect(panelX, panelY, panelW, panelH);
     this._pauseBg.stroke({ color: 0x4444aa, width: 2 });
     this._pauseBg.rect(panelX + 3, panelY + 3, panelW - 6, panelH - 6);
     this._pauseBg.stroke({ color: 0x333366, width: 1, alpha: 0.6 });
 
-    // Corner ornaments
+    // Top glow line (thin bright rect at very top of panel)
+    this._pauseBg.rect(panelX + 1, panelY + 1, panelW - 2, 2);
+    this._pauseBg.fill({ color: 0x6666dd, alpha: 0.7 });
+
+    // Corner ornaments with gems/dots + diagonal bevels
     const cornerSize = 8;
     for (const [cx, cy] of [
       [panelX, panelY],
@@ -1065,9 +1136,20 @@ export class RiftWizardHUD {
     ]) {
       const dx = cx === panelX ? 1 : -1;
       const dy = cy === panelY ? 1 : -1;
+      // Diagonal bevel line
       this._pauseBg.moveTo(cx, cy + dy * cornerSize);
       this._pauseBg.lineTo(cx + dx * cornerSize, cy);
       this._pauseBg.stroke({ color: 0x6666cc, width: 1.5, alpha: 0.6 });
+      // Gem dot at corner
+      this._pauseBg.circle(cx + dx * 4, cy + dy * 4, 2.5);
+      this._pauseBg.fill({ color: 0x5555cc, alpha: 0.6 });
+      this._pauseBg.circle(cx + dx * 4, cy + dy * 4, 1.2);
+      this._pauseBg.fill({ color: 0x8888ff, alpha: 0.4 });
+      // Small dot at end of bevel line
+      this._pauseBg.circle(cx + dx * cornerSize, cy, 1.5);
+      this._pauseBg.fill({ color: 0x4444aa, alpha: 0.5 });
+      this._pauseBg.circle(cx, cy + dy * cornerSize, 1.5);
+      this._pauseBg.fill({ color: 0x4444aa, alpha: 0.5 });
     }
 
     return { panelX, panelY };
@@ -1091,9 +1173,45 @@ export class RiftWizardHUD {
     this._pauseTexts.push(title);
 
     const lineY = y + 36;
+    // Main divider line
     this._pauseBg.moveTo(panelX + 30, lineY);
     this._pauseBg.lineTo(panelX + panelW - 30, lineY);
     this._pauseBg.stroke({ color: 0x4444aa, width: 1, alpha: 0.6 });
+
+    // Decorative wing lines extending from the divider (diagonal strokes at each end)
+    // Left wing
+    this._pauseBg.moveTo(panelX + 30, lineY);
+    this._pauseBg.lineTo(panelX + 22, lineY - 5);
+    this._pauseBg.stroke({ color: 0x4444aa, width: 1, alpha: 0.4 });
+    this._pauseBg.moveTo(panelX + 30, lineY);
+    this._pauseBg.lineTo(panelX + 22, lineY + 5);
+    this._pauseBg.stroke({ color: 0x4444aa, width: 1, alpha: 0.4 });
+    // Right wing
+    this._pauseBg.moveTo(panelX + panelW - 30, lineY);
+    this._pauseBg.lineTo(panelX + panelW - 22, lineY - 5);
+    this._pauseBg.stroke({ color: 0x4444aa, width: 1, alpha: 0.4 });
+    this._pauseBg.moveTo(panelX + panelW - 30, lineY);
+    this._pauseBg.lineTo(panelX + panelW - 22, lineY + 5);
+    this._pauseBg.stroke({ color: 0x4444aa, width: 1, alpha: 0.4 });
+
+    // Small diamond ornaments at the ends of the divider
+    // Left diamond
+    const ldx = panelX + 30;
+    this._pauseBg.moveTo(ldx, lineY - 3);
+    this._pauseBg.lineTo(ldx + 3, lineY);
+    this._pauseBg.lineTo(ldx, lineY + 3);
+    this._pauseBg.lineTo(ldx - 3, lineY);
+    this._pauseBg.closePath();
+    this._pauseBg.fill({ color: 0x5555cc, alpha: 0.5 });
+    // Right diamond
+    const rdx = panelX + panelW - 30;
+    this._pauseBg.moveTo(rdx, lineY - 3);
+    this._pauseBg.lineTo(rdx + 3, lineY);
+    this._pauseBg.lineTo(rdx, lineY + 3);
+    this._pauseBg.lineTo(rdx - 3, lineY);
+    this._pauseBg.closePath();
+    this._pauseBg.fill({ color: 0x5555cc, alpha: 0.5 });
+
     return lineY + 12;
   }
 
@@ -2125,6 +2243,12 @@ export class RiftWizardHUD {
     const spellBarX = Math.max(360, Math.floor(screenWidth - totalW - 12));
     const slotY = hudY + 8;
 
+    // Subtle background panel behind the entire spell bar
+    this._spellBar.rect(spellBarX - 6, slotY - 4, totalW + 12, slotH + 8);
+    this._spellBar.fill({ color: 0x08081a, alpha: 0.5 });
+    this._spellBar.rect(spellBarX - 6, slotY - 4, totalW + 12, slotH + 8);
+    this._spellBar.stroke({ color: 0x222244, width: 1, alpha: 0.4 });
+
     for (let i = 0; i < state.spells.length && i < 9; i++) {
       const spell = state.spells[i];
       const def = SPELL_DEFS[spell.defId];
@@ -2175,6 +2299,45 @@ export class RiftWizardHUD {
         // Wider soft glow beneath
         this._spellBar.rect(sx, slotY + slotH, slotW, 2);
         this._spellBar.fill({ color: schoolColor, alpha: glowAlpha * 0.4 });
+      }
+
+      // Ornamental corner notches on each spell slot
+      const cnSz = 3;
+      // Top-left corner notch
+      this._spellBar.moveTo(sx, slotY + cnSz);
+      this._spellBar.lineTo(sx + cnSz, slotY);
+      this._spellBar.stroke({ color: schoolColor, width: 0.5, alpha: isEmpty ? 0.15 : 0.4 });
+      // Top-right corner notch
+      this._spellBar.moveTo(sx + slotW - cnSz, slotY);
+      this._spellBar.lineTo(sx + slotW, slotY + cnSz);
+      this._spellBar.stroke({ color: schoolColor, width: 0.5, alpha: isEmpty ? 0.15 : 0.4 });
+      // Bottom-left corner notch
+      this._spellBar.moveTo(sx, slotY + slotH - cnSz);
+      this._spellBar.lineTo(sx + cnSz, slotY + slotH);
+      this._spellBar.stroke({ color: schoolColor, width: 0.5, alpha: isEmpty ? 0.15 : 0.4 });
+      // Bottom-right corner notch
+      this._spellBar.moveTo(sx + slotW - cnSz, slotY + slotH);
+      this._spellBar.lineTo(sx + slotW, slotY + slotH - cnSz);
+      this._spellBar.stroke({ color: schoolColor, width: 0.5, alpha: isEmpty ? 0.15 : 0.4 });
+
+      // Subtle vignette/gradient on empty spell slots
+      if (isEmpty) {
+        this._spellBar.rect(sx, slotY, slotW, 4);
+        this._spellBar.fill({ color: 0x000000, alpha: 0.15 });
+        this._spellBar.rect(sx, slotY + slotH - 4, slotW, 4);
+        this._spellBar.fill({ color: 0x000000, alpha: 0.15 });
+      }
+
+      // Charge indicator dots below slot
+      const maxDots = Math.min(spell.maxCharges, 8);
+      const dotSpacing = Math.min(6, (slotW - 4) / maxDots);
+      const dotsStartX = sx + (slotW - maxDots * dotSpacing) / 2;
+      for (let d = 0; d < maxDots; d++) {
+        const dotX = dotsStartX + d * dotSpacing + dotSpacing / 2;
+        const dotY = slotY + slotH + 3;
+        const filled = d < spell.charges;
+        this._spellBar.circle(dotX, dotY, 1.5);
+        this._spellBar.fill({ color: filled ? schoolColor : 0x222233, alpha: filled ? 0.7 : 0.3 });
       }
 
       // --- Small spell school icon polygon inside each slot ---

@@ -2668,8 +2668,10 @@ export class RiftWizardRenderer {
     switch (event.type) {
       case RWAnimationType.FIREBALL:
       case RWAnimationType.ICE_BALL: {
-        const color = event.type === RWAnimationType.FIREBALL ? 0xff6600 : 0x44bbff;
-        const trailColor = event.type === RWAnimationType.FIREBALL ? 0xff3300 : 0x2288cc;
+        const isFire = event.type === RWAnimationType.FIREBALL;
+        const color = isFire ? 0xff6600 : 0x44bbff;
+        const trailColor = isFire ? 0xff3300 : 0x2288cc;
+        const accentColor = isFire ? 0xffaa22 : 0xaaddff;
         if (t < 0.5) {
           const pt = t * 2;
           const px = fromX + (toX - fromX) * pt;
@@ -2681,6 +2683,18 @@ export class RiftWizardRenderer {
             const ty = fromY + (toY - fromY) * tt;
             this._fxGfx.circle(tx, ty, 3.5 - j * 0.6);
             this._fxGfx.fill({ color: trailColor, alpha: (1 - j * 0.18) * 0.5 });
+          }
+          // Smoke trail behind projectile (fire) / frost spiral trail (ice)
+          for (let st = 0; st < 4; st++) {
+            const sTT = Math.max(0, pt - st * 0.06 - 0.04);
+            const stx = fromX + (toX - fromX) * sTT;
+            const sty = fromY + (toY - fromY) * sTT;
+            const spiralAngle = pt * Math.PI * 8 + st * Math.PI * 0.5;
+            const spiralR = isFire ? 3 + st * 0.8 : 5 + st * 1.2;
+            const sox = stx + Math.cos(spiralAngle) * spiralR;
+            const soy = sty + Math.sin(spiralAngle) * spiralR;
+            this._fxGfx.circle(sox, soy, isFire ? 2 - st * 0.3 : 1.5);
+            this._fxGfx.fill({ color: isFire ? 0x555555 : 0xaaddff, alpha: (0.35 - st * 0.07) });
           }
           // Projectile with glow
           this._fxGfx.circle(px, py, 6);
@@ -2702,6 +2716,20 @@ export class RiftWizardRenderer {
             this._fxGfx.closePath();
             this._fxGfx.fill({ color, alpha: 0.6 });
           }
+          // Ember particles spiraling outward (fire) / crystalline shards (ice)
+          if (Math.random() < 0.5) {
+            const eAngle = Math.random() * Math.PI * 2;
+            const eSpeed = 12 + Math.random() * 18;
+            this._particles.push({
+              x: px + Math.cos(eAngle) * 4, y: py + Math.sin(eAngle) * 4,
+              vx: Math.cos(eAngle) * eSpeed,
+              vy: Math.sin(eAngle) * eSpeed + (isFire ? -8 : 0),
+              life: 0.2 + Math.random() * 0.15,
+              maxLife: 0.35,
+              color: isFire ? accentColor : 0xddeeFF,
+              size: 1 + Math.random(),
+            });
+          }
         } else {
           const et = (t - 0.5) * 2;
           const radius = et * TS * 1.5;
@@ -2713,10 +2741,13 @@ export class RiftWizardRenderer {
           // Outer ring
           this._fxGfx.circle(toX, toY, radius);
           this._fxGfx.stroke({ color, width: 2, alpha: alpha * 0.6 });
-          // Shockwave ring with inner radial spokes
+          // Heat shimmer ring (fire) / ice crystal ring (ice)
           if (radius > 2) {
             this._fxGfx.circle(toX, toY, radius * 1.15);
             this._fxGfx.stroke({ color: 0xffffff, width: 1, alpha: alpha * 0.25 });
+            // Secondary shimmer ring
+            this._fxGfx.circle(toX, toY, radius * 1.3);
+            this._fxGfx.stroke({ color: isFire ? 0xff4400 : 0x88ccff, width: 1.5, alpha: alpha * 0.15 });
             const spokeCount = 10;
             for (let si = 0; si < spokeCount; si++) {
               const sa = (si / spokeCount) * Math.PI * 2;
@@ -2727,9 +2758,26 @@ export class RiftWizardRenderer {
               this._fxGfx.stroke({ color, width: 1, alpha: alpha * 0.3 });
             }
           }
-          // Spawn explosion particles (4 instead of 2)
+          // Ice crystal fragment shapes on explosion (ice only)
+          if (!isFire && radius > 4) {
+            for (let ci = 0; ci < 6; ci++) {
+              const cAngle = (ci / 6) * Math.PI * 2 + et * 0.5;
+              const cDist = radius * 0.6;
+              const ccx = toX + Math.cos(cAngle) * cDist;
+              const ccy = toY + Math.sin(cAngle) * cDist;
+              // Diamond crystal shape
+              const cSize = 3 * alpha;
+              this._fxGfx.moveTo(ccx, ccy - cSize);
+              this._fxGfx.lineTo(ccx + cSize * 0.6, ccy);
+              this._fxGfx.lineTo(ccx, ccy + cSize);
+              this._fxGfx.lineTo(ccx - cSize * 0.6, ccy);
+              this._fxGfx.closePath();
+              this._fxGfx.fill({ color: 0xddeeFF, alpha: alpha * 0.5 });
+            }
+          }
+          // Spawn explosion particles (6 for more drama)
           if (et < 0.3) {
-            for (let j = 0; j < 4; j++) {
+            for (let j = 0; j < 6; j++) {
               const angle = Math.random() * Math.PI * 2;
               const speed = 30 + Math.random() * 40;
               this._particles.push({
@@ -2740,6 +2788,20 @@ export class RiftWizardRenderer {
                 maxLife: 0.6,
                 color: Math.random() > 0.5 ? color : 0xffffff,
                 size: 2 + Math.random() * 2,
+              });
+            }
+            // Snowflake particles (ice) / smoke puffs (fire)
+            for (let j = 0; j < 2; j++) {
+              const angle = Math.random() * Math.PI * 2;
+              this._particles.push({
+                x: toX + Math.cos(angle) * radius * 0.3,
+                y: toY + Math.sin(angle) * radius * 0.3,
+                vx: Math.cos(angle) * 15,
+                vy: isFire ? -20 - Math.random() * 10 : Math.sin(angle) * 15,
+                life: 0.3 + Math.random() * 0.2,
+                maxLife: 0.5,
+                color: isFire ? 0x666666 : 0xeeffFF,
+                size: 1.5 + Math.random(),
               });
             }
           }
@@ -2756,25 +2818,29 @@ export class RiftWizardRenderer {
             const ay = a.row * TS + TS / 2;
             const bx = b.col * TS + TS / 2;
             const by = b.row * TS + TS / 2;
-            // Main bolt with multiple segments
-            const segments = 4;
+            // Main bolt with more segments for jagged look
+            const segments = 6;
             let lastX = ax, lastY = ay;
             for (let s = 1; s <= segments; s++) {
               const frac = s / segments;
               let nx = ax + (bx - ax) * frac;
               let ny = ay + (by - ay) * frac;
               if (s < segments) {
-                nx += (Math.random() - 0.5) * 12;
-                ny += (Math.random() - 0.5) * 12;
+                nx += (Math.random() - 0.5) * 14;
+                ny += (Math.random() - 0.5) * 14;
               }
-              // Glow line
+              // Wide outer glow line
               this._fxGfx.moveTo(lastX, lastY);
               this._fxGfx.lineTo(nx, ny);
-              this._fxGfx.stroke({ color: 0xffff88, width: 4, alpha: alpha * 0.3 });
-              // Core line
+              this._fxGfx.stroke({ color: 0xffff88, width: 5, alpha: alpha * 0.2 });
+              // Mid glow line
               this._fxGfx.moveTo(lastX, lastY);
               this._fxGfx.lineTo(nx, ny);
-              this._fxGfx.stroke({ color: 0xffff44, width: 2, alpha });
+              this._fxGfx.stroke({ color: 0xffff44, width: 3, alpha: alpha * 0.35 });
+              // Bright core line (thin)
+              this._fxGfx.moveTo(lastX, lastY);
+              this._fxGfx.lineTo(nx, ny);
+              this._fxGfx.stroke({ color: 0xffffff, width: 1, alpha });
               // Branching fork (50% chance per segment)
               if (Math.random() < 0.5) {
                 const midX = (lastX + nx) / 2;
@@ -2793,16 +2859,50 @@ export class RiftWizardRenderer {
               lastX = nx;
               lastY = ny;
             }
+            // Secondary thinner jittery bolt (parallel arc)
+            let last2X = ax, last2Y = ay;
+            for (let s = 1; s <= segments; s++) {
+              const frac = s / segments;
+              let nx = ax + (bx - ax) * frac;
+              let ny = ay + (by - ay) * frac;
+              if (s < segments) {
+                nx += (Math.random() - 0.5) * 18;
+                ny += (Math.random() - 0.5) * 18;
+              }
+              this._fxGfx.moveTo(last2X, last2Y);
+              this._fxGfx.lineTo(nx, ny);
+              this._fxGfx.stroke({ color: 0xccccff, width: 0.8, alpha: alpha * 0.4 });
+              last2X = nx;
+              last2Y = ny;
+            }
             // Bright flash circle at each connection point
             this._fxGfx.circle(ax, ay, 4 * alpha);
             this._fxGfx.fill({ color: 0xffffff, alpha: alpha * 0.7 });
             this._fxGfx.circle(ax, ay, 7 * alpha);
             this._fxGfx.stroke({ color: 0xffff88, width: 1, alpha: alpha * 0.3 });
-            // Impact flash at each target
+            // Electric spark particles at each bounce point
+            if (t < 0.4 && Math.random() < 0.4) {
+              for (let sp = 0; sp < 2; sp++) {
+                const spAngle = Math.random() * Math.PI * 2;
+                this._particles.push({
+                  x: bx, y: by,
+                  vx: Math.cos(spAngle) * 25,
+                  vy: Math.sin(spAngle) * 25,
+                  life: 0.12 + Math.random() * 0.1,
+                  maxLife: 0.22,
+                  color: 0xffffcc,
+                  size: 1 + Math.random(),
+                });
+              }
+            }
+            // Impact flash at each target with pulsing ring
             this._fxGfx.circle(bx, by, 5 * alpha);
             this._fxGfx.fill({ color: 0xffffff, alpha: alpha * 0.5 });
             this._fxGfx.circle(bx, by, 8 * alpha);
             this._fxGfx.stroke({ color: 0xffff88, width: 1, alpha: alpha * 0.3 });
+            // Subtle arc ring at target
+            this._fxGfx.circle(bx, by, 11 * alpha);
+            this._fxGfx.stroke({ color: 0xffff44, width: 0.5, alpha: alpha * 0.15 });
           }
         }
         break;
@@ -2818,20 +2918,75 @@ export class RiftWizardRenderer {
         const len = Math.sqrt(dx * dx + dy * dy) || 1;
         const nx = -dy / len;
         const ny = dx / len;
+        const projX = px + nx * wave;
+        const projY = py + ny * wave;
+        // Stardust particle trail
+        for (let st = 1; st <= 5; st++) {
+          const stT = Math.max(0, t - st * 0.03);
+          const stpx = fromX + (toX - fromX) * stT;
+          const stpy = fromY + (toY - fromY) * stT;
+          const stWave = Math.sin(stT * 20) * 4;
+          this._fxGfx.circle(stpx + nx * stWave, stpy + ny * stWave, 1.5 - st * 0.2);
+          this._fxGfx.fill({ color: 0xcc88ff, alpha: (0.5 - st * 0.08) * alpha });
+        }
+        // Pulsing glow aura around projectile
+        const pulseSize = 8 + Math.sin(this._time * 15) * 2;
+        this._fxGfx.circle(projX, projY, pulseSize);
+        this._fxGfx.fill({ color: 0x8833cc, alpha: alpha * 0.15 });
         // Glow
-        this._fxGfx.circle(px + nx * wave, py + ny * wave, 6);
+        this._fxGfx.circle(projX, projY, 6);
         this._fxGfx.fill({ color: 0xaa44ff, alpha: alpha * 0.3 });
         // Core
-        this._fxGfx.circle(px + nx * wave, py + ny * wave, 3);
+        this._fxGfx.circle(projX, projY, 3);
         this._fxGfx.fill({ color: 0xcc66ff, alpha });
-        this._fxGfx.circle(px + nx * wave, py + ny * wave, 1.5);
+        this._fxGfx.circle(projX, projY, 1.5);
         this._fxGfx.fill({ color: 0xffffff, alpha });
+        // Stardust sparkle particles
+        if (Math.random() < 0.4) {
+          this._particles.push({
+            x: projX, y: projY,
+            vx: (Math.random() - 0.5) * 12,
+            vy: (Math.random() - 0.5) * 12,
+            life: 0.15 + Math.random() * 0.1,
+            maxLife: 0.25,
+            color: Math.random() > 0.5 ? 0xddaaff : 0xffffff,
+            size: 1 + Math.random() * 0.5,
+          });
+        }
+        // Impact sparkle burst at end
+        if (t > 0.85) {
+          const impactT = (t - 0.85) / 0.15;
+          for (let ib = 0; ib < 4; ib++) {
+            const ibAngle = (ib / 4) * Math.PI * 2 + this._time * 8;
+            const ibR = impactT * 10;
+            this._fxGfx.circle(toX + Math.cos(ibAngle) * ibR, toY + Math.sin(ibAngle) * ibR, 1.5);
+            this._fxGfx.fill({ color: 0xeeddff, alpha: (1 - impactT) * 0.6 });
+          }
+        }
         break;
       }
 
       case RWAnimationType.DEATH_BOLT: {
         const px = fromX + (toX - fromX) * t;
         const py = fromY + (toY - fromY) * t;
+        // Dark energy particles orbiting the bolt
+        for (let oi = 0; oi < 3; oi++) {
+          const oAngle = (oi / 3) * Math.PI * 2 + this._time * 6;
+          const oR = 7 + Math.sin(this._time * 10 + oi) * 2;
+          const ox = px + Math.cos(oAngle) * oR;
+          const oy = py + Math.sin(oAngle) * oR;
+          this._fxGfx.circle(ox, oy, 1.5);
+          this._fxGfx.fill({ color: 0x551155, alpha: alpha * 0.6 });
+        }
+        // Dark wisp trails
+        for (let wi = 0; wi < 3; wi++) {
+          const wT = Math.max(0, t - wi * 0.05);
+          const wx = fromX + (toX - fromX) * wT;
+          const wy = fromY + (toY - fromY) * wT;
+          const wDrift = Math.sin(this._time * 8 + wi * 2) * 5;
+          this._fxGfx.circle(wx + wDrift, wy - wi * 2, 2.5 - wi * 0.5);
+          this._fxGfx.fill({ color: 0x331133, alpha: (0.3 - wi * 0.08) * alpha });
+        }
         // Dark bolt with skull-like shape
         this._fxGfx.circle(px, py, 7);
         this._fxGfx.fill({ color: 0x222222, alpha: alpha * 0.5 });
@@ -2851,19 +3006,80 @@ export class RiftWizardRenderer {
             size: 2,
           });
         }
+        // Skull outline flash on impact
+        if (t > 0.8) {
+          const impT = (t - 0.8) / 0.2;
+          const skullAlpha = (1 - impT) * 0.5;
+          // Skull head outline
+          this._fxGfx.circle(toX, toY - 3, 6 * (1 - impT * 0.3));
+          this._fxGfx.stroke({ color: 0x886688, width: 1.5, alpha: skullAlpha });
+          // Eye sockets
+          this._fxGfx.circle(toX - 2.5, toY - 4, 1.5);
+          this._fxGfx.fill({ color: 0xaa44aa, alpha: skullAlpha * 0.8 });
+          this._fxGfx.circle(toX + 2.5, toY - 4, 1.5);
+          this._fxGfx.fill({ color: 0xaa44aa, alpha: skullAlpha * 0.8 });
+          // Dark burst ring
+          this._fxGfx.circle(toX, toY, impT * 15);
+          this._fxGfx.stroke({ color: 0x442244, width: 1, alpha: skullAlpha * 0.4 });
+        }
         break;
       }
 
       case RWAnimationType.HOLY_LIGHT: {
         const px = fromX + (toX - fromX) * t;
         const py = fromY + (toY - fromY) * t;
-        // Golden beam
+        // Divine halo ring around projectile
+        const haloR = 10 + Math.sin(this._time * 12) * 1.5;
+        this._fxGfx.circle(px, py, haloR);
+        this._fxGfx.stroke({ color: 0xffdd66, width: 1, alpha: alpha * 0.35 });
+        // Golden beam glow
         this._fxGfx.circle(px, py, 8);
         this._fxGfx.fill({ color: 0xffffaa, alpha: alpha * 0.3 });
         this._fxGfx.circle(px, py, 4);
         this._fxGfx.fill({ color: 0xffff88, alpha });
         this._fxGfx.star(px, py, 4, 6, 2);
         this._fxGfx.fill({ color: 0xffffff, alpha: alpha * 0.6 });
+        // Dramatic golden rays radiating outward
+        for (let ri = 0; ri < 6; ri++) {
+          const rayAngle = (ri / 6) * Math.PI * 2 + this._time * 3;
+          const rayLen = 12 + Math.sin(this._time * 8 + ri * 1.5) * 4;
+          this._fxGfx.moveTo(px, py);
+          this._fxGfx.lineTo(px + Math.cos(rayAngle) * rayLen, py + Math.sin(rayAngle) * rayLen);
+          this._fxGfx.stroke({ color: 0xffee44, width: 1.5, alpha: alpha * 0.35 });
+        }
+        // Cross/star burst pattern at impact
+        if (t > 0.7) {
+          const burstT = (t - 0.7) / 0.3;
+          const burstR = burstT * 18;
+          // Vertical beam
+          this._fxGfx.moveTo(toX, toY - burstR);
+          this._fxGfx.lineTo(toX, toY + burstR);
+          this._fxGfx.stroke({ color: 0xffff88, width: 2, alpha: (1 - burstT) * 0.6 });
+          // Horizontal beam
+          this._fxGfx.moveTo(toX - burstR, toY);
+          this._fxGfx.lineTo(toX + burstR, toY);
+          this._fxGfx.stroke({ color: 0xffff88, width: 2, alpha: (1 - burstT) * 0.6 });
+          // Diagonal beams
+          this._fxGfx.moveTo(toX - burstR * 0.7, toY - burstR * 0.7);
+          this._fxGfx.lineTo(toX + burstR * 0.7, toY + burstR * 0.7);
+          this._fxGfx.stroke({ color: 0xffee66, width: 1, alpha: (1 - burstT) * 0.35 });
+          this._fxGfx.moveTo(toX + burstR * 0.7, toY - burstR * 0.7);
+          this._fxGfx.lineTo(toX - burstR * 0.7, toY + burstR * 0.7);
+          this._fxGfx.stroke({ color: 0xffee66, width: 1, alpha: (1 - burstT) * 0.35 });
+        }
+        // Ascending sparkle particles
+        if (Math.random() < 0.4) {
+          this._particles.push({
+            x: px + (Math.random() - 0.5) * 8,
+            y: py,
+            vx: (Math.random() - 0.5) * 6,
+            vy: -15 - Math.random() * 10,
+            life: 0.2 + Math.random() * 0.15,
+            maxLife: 0.35,
+            color: Math.random() > 0.5 ? 0xffff88 : 0xffffff,
+            size: 1 + Math.random() * 0.5,
+          });
+        }
         break;
       }
 
@@ -2884,11 +3100,35 @@ export class RiftWizardRenderer {
         this._fxGfx.fill({ color: 0xaa44ff, alpha: alpha * 0.4 });
         this._fxGfx.circle(fromX, fromY, TS * 0.3 * alpha);
         this._fxGfx.stroke({ color: 0xcc66ff, width: 2, alpha: alpha * 0.6 });
+        // Spiral vortex pattern at origin (dissolving)
+        for (let vi = 0; vi < 5; vi++) {
+          const vAngle = (vi / 5) * Math.PI * 2 + this._time * 8;
+          const vR = TS * 0.45 * alpha * (0.5 + vi * 0.1);
+          const vx = fromX + Math.cos(vAngle) * vR;
+          const vy = fromY + Math.sin(vAngle) * vR;
+          this._fxGfx.circle(vx, vy, 1.5);
+          this._fxGfx.fill({ color: 0xcc88ff, alpha: alpha * 0.5 });
+        }
+        // Distortion ring at origin
+        this._fxGfx.circle(fromX, fromY, TS * 0.55 * alpha);
+        this._fxGfx.stroke({ color: 0x8822cc, width: 1, alpha: alpha * 0.2 });
         // Destination materialize
         this._fxGfx.circle(toX, toY, TS * 0.5 * t);
         this._fxGfx.fill({ color: 0xaa44ff, alpha: t * 0.4 });
         this._fxGfx.circle(toX, toY, TS * 0.3 * t);
         this._fxGfx.stroke({ color: 0xcc66ff, width: 2, alpha: t * 0.6 });
+        // Spiral vortex at destination (materializing)
+        for (let vi = 0; vi < 5; vi++) {
+          const vAngle = (vi / 5) * Math.PI * 2 - this._time * 8;
+          const vR = TS * 0.45 * t * (0.5 + vi * 0.1);
+          const vx = toX + Math.cos(vAngle) * vR;
+          const vy = toY + Math.sin(vAngle) * vR;
+          this._fxGfx.circle(vx, vy, 1.5);
+          this._fxGfx.fill({ color: 0xcc88ff, alpha: t * 0.5 });
+        }
+        // Distortion ring at destination
+        this._fxGfx.circle(toX, toY, TS * 0.55 * t);
+        this._fxGfx.stroke({ color: 0x8822cc, width: 1, alpha: t * 0.2 });
         // Sparkles
         for (let i = 0; i < 4; i++) {
           const angle = this._time * 5 + i * Math.PI / 2;
@@ -2898,10 +3138,38 @@ export class RiftWizardRenderer {
           this._fxGfx.circle(cx, cy, 2);
           this._fxGfx.fill({ color: 0xffffff, alpha: 0.7 });
         }
+        // Dissolve particles
+        if (Math.random() < 0.4) {
+          const activeSide = t < 0.5;
+          const sx = activeSide ? fromX : toX;
+          const sy = activeSide ? fromY : toY;
+          const pAngle = Math.random() * Math.PI * 2;
+          this._particles.push({
+            x: sx + Math.cos(pAngle) * 6, y: sy + Math.sin(pAngle) * 6,
+            vx: Math.cos(pAngle) * 18,
+            vy: Math.sin(pAngle) * 18,
+            life: 0.15 + Math.random() * 0.15,
+            maxLife: 0.3,
+            color: 0xcc66ff,
+            size: 1 + Math.random(),
+          });
+        }
         break;
       }
 
       case RWAnimationType.HEAL: {
+        // Healing rune circle below target
+        const runeR = TS * 0.55 * Math.min(1, t * 2);
+        this._fxGfx.circle(toX, toY + 4, runeR);
+        this._fxGfx.stroke({ color: 0x22aa22, width: 1.5, alpha: alpha * 0.3 });
+        // Rune marks on the circle
+        for (let rm = 0; rm < 8; rm++) {
+          const rmAngle = (rm / 8) * Math.PI * 2 + this._time * 1.5;
+          const rmx = toX + Math.cos(rmAngle) * runeR;
+          const rmy = toY + 4 + Math.sin(rmAngle) * runeR * 0.4;
+          this._fxGfx.circle(rmx, rmy, 1);
+          this._fxGfx.fill({ color: 0x66ff66, alpha: alpha * 0.4 });
+        }
         // Rising green cross
         this._fxGfx.circle(toX, toY, TS * 0.6 * t);
         this._fxGfx.fill({ color: 0x44ff44, alpha: alpha * 0.2 });
@@ -2911,12 +3179,12 @@ export class RiftWizardRenderer {
         this._fxGfx.fill({ color: 0x44ff44, alpha: alpha * 0.6 });
         this._fxGfx.rect(toX - cs, toY - cs / 4, cs * 2, cs / 2);
         this._fxGfx.fill({ color: 0x44ff44, alpha: alpha * 0.6 });
-        // Sparkles rising
-        for (let i = 0; i < 3; i++) {
-          const px = toX + (Math.sin(this._time * 4 + i * 2) * 8);
-          const py = toY - t * 20 - i * 5;
-          this._fxGfx.circle(px, py, 1.5);
-          this._fxGfx.fill({ color: 0x88ff88, alpha: alpha * 0.8 });
+        // Rising green sparkles (more of them)
+        for (let i = 0; i < 5; i++) {
+          const spx = toX + (Math.sin(this._time * 4 + i * 1.4) * 10);
+          const spy = toY - t * 25 - i * 4;
+          this._fxGfx.circle(spx, spy, 1.5 - i * 0.15);
+          this._fxGfx.fill({ color: 0x88ff88, alpha: alpha * (0.8 - i * 0.1) });
         }
         // Orbiting leaf/nature polygon shapes rising upward
         for (let li = 0; li < 4; li++) {
@@ -2950,6 +3218,19 @@ export class RiftWizardRenderer {
           this._fxGfx.rect(pcx - ps, pcy - ps * 0.25, ps * 2, ps * 0.5);
           this._fxGfx.fill({ color: 0x88ff88, alpha: alpha * 0.5 });
         }
+        // Rising sparkle particles
+        if (Math.random() < 0.35) {
+          this._particles.push({
+            x: toX + (Math.random() - 0.5) * 12,
+            y: toY + 4,
+            vx: (Math.random() - 0.5) * 6,
+            vy: -12 - Math.random() * 10,
+            life: 0.25 + Math.random() * 0.15,
+            maxLife: 0.4,
+            color: 0x66ff66,
+            size: 1 + Math.random() * 0.5,
+          });
+        }
         break;
       }
 
@@ -2967,35 +3248,72 @@ export class RiftWizardRenderer {
 
       case RWAnimationType.FIRE_BREATH:
       case RWAnimationType.FROST_BREATH: {
-        const color = event.type === RWAnimationType.FIRE_BREATH ? 0xff6600 : 0x44bbff;
-        const innerColor = event.type === RWAnimationType.FIRE_BREATH ? 0xffaa22 : 0xaaddff;
-        const dx = toX - fromX;
-        const dy = toY - fromY;
+        const isFireBreath = event.type === RWAnimationType.FIRE_BREATH;
+        const color = isFireBreath ? 0xff6600 : 0x44bbff;
+        const innerColor = isFireBreath ? 0xffaa22 : 0xaaddff;
+        const edgeColor = isFireBreath ? 0xff2200 : 0x2266cc;
+        const bdx = toX - fromX;
+        const bdy = toY - fromY;
         const spread = t * TS * 2;
         // Outer cone
         this._fxGfx.moveTo(fromX, fromY);
-        this._fxGfx.lineTo(fromX + dx * t + spread * 0.5, fromY + dy * t - spread * 0.3);
-        this._fxGfx.lineTo(fromX + dx * t - spread * 0.5, fromY + dy * t + spread * 0.3);
+        this._fxGfx.lineTo(fromX + bdx * t + spread * 0.5, fromY + bdy * t - spread * 0.3);
+        this._fxGfx.lineTo(fromX + bdx * t - spread * 0.5, fromY + bdy * t + spread * 0.3);
         this._fxGfx.closePath();
         this._fxGfx.fill({ color, alpha: alpha * 0.4 });
-        // Inner cone
+        // Mid cone layer for gradient effect
         this._fxGfx.moveTo(fromX, fromY);
-        this._fxGfx.lineTo(fromX + dx * t * 0.7 + spread * 0.25, fromY + dy * t * 0.7 - spread * 0.15);
-        this._fxGfx.lineTo(fromX + dx * t * 0.7 - spread * 0.25, fromY + dy * t * 0.7 + spread * 0.15);
+        this._fxGfx.lineTo(fromX + bdx * t * 0.85 + spread * 0.35, fromY + bdy * t * 0.85 - spread * 0.22);
+        this._fxGfx.lineTo(fromX + bdx * t * 0.85 - spread * 0.35, fromY + bdy * t * 0.85 + spread * 0.22);
         this._fxGfx.closePath();
-        this._fxGfx.fill({ color: innerColor, alpha: alpha * 0.3 });
-        // Particles
-        if (t < 0.7 && Math.random() < 0.4) {
-          this._particles.push({
-            x: fromX + dx * t * Math.random(),
-            y: fromY + dy * t * Math.random(),
-            vx: (Math.random() - 0.5) * 20,
-            vy: -10 - Math.random() * 15,
-            life: 0.3 + Math.random() * 0.3,
-            maxLife: 0.6,
-            color,
-            size: 1 + Math.random() * 2,
-          });
+        this._fxGfx.fill({ color: innerColor, alpha: alpha * 0.25 });
+        // Inner cone (brightest)
+        this._fxGfx.moveTo(fromX, fromY);
+        this._fxGfx.lineTo(fromX + bdx * t * 0.7 + spread * 0.25, fromY + bdy * t * 0.7 - spread * 0.15);
+        this._fxGfx.lineTo(fromX + bdx * t * 0.7 - spread * 0.25, fromY + bdy * t * 0.7 + spread * 0.15);
+        this._fxGfx.closePath();
+        this._fxGfx.fill({ color: 0xffffff, alpha: alpha * 0.12 });
+        // Edge sparks (fire) / ice crystals (frost) along cone edges
+        for (let ei = 0; ei < 4; ei++) {
+          const edgeFrac = 0.3 + ei * 0.15;
+          const side = ei % 2 === 0 ? 1 : -1;
+          const ex = fromX + bdx * t * edgeFrac + spread * 0.5 * side * edgeFrac;
+          const ey = fromY + bdy * t * edgeFrac - spread * 0.3 * side * edgeFrac;
+          if (isFireBreath) {
+            // Spark dot
+            this._fxGfx.circle(ex, ey, 1.5);
+            this._fxGfx.fill({ color: 0xffcc44, alpha: alpha * 0.5 });
+          } else {
+            // Small crystal diamond
+            this._fxGfx.moveTo(ex, ey - 2);
+            this._fxGfx.lineTo(ex + 1.5, ey);
+            this._fxGfx.lineTo(ex, ey + 2);
+            this._fxGfx.lineTo(ex - 1.5, ey);
+            this._fxGfx.closePath();
+            this._fxGfx.fill({ color: 0xddeeFF, alpha: alpha * 0.5 });
+          }
+        }
+        // Cone edge outlines
+        this._fxGfx.moveTo(fromX, fromY);
+        this._fxGfx.lineTo(fromX + bdx * t + spread * 0.5, fromY + bdy * t - spread * 0.3);
+        this._fxGfx.stroke({ color: edgeColor, width: 1, alpha: alpha * 0.25 });
+        this._fxGfx.moveTo(fromX, fromY);
+        this._fxGfx.lineTo(fromX + bdx * t - spread * 0.5, fromY + bdy * t + spread * 0.3);
+        this._fxGfx.stroke({ color: edgeColor, width: 1, alpha: alpha * 0.25 });
+        // Particles (more of them)
+        if (t < 0.7 && Math.random() < 0.5) {
+          for (let pi = 0; pi < 2; pi++) {
+            this._particles.push({
+              x: fromX + bdx * t * Math.random(),
+              y: fromY + bdy * t * Math.random(),
+              vx: (Math.random() - 0.5) * 20,
+              vy: -10 - Math.random() * 15,
+              life: 0.3 + Math.random() * 0.3,
+              maxLife: 0.6,
+              color: Math.random() > 0.5 ? color : innerColor,
+              size: 1 + Math.random() * 2,
+            });
+          }
         }
         break;
       }
@@ -3034,44 +3352,102 @@ export class RiftWizardRenderer {
         const shakeAlpha = alpha * 0.15;
         this._fxGfx.rect(0, 0, 1000, 800);
         this._fxGfx.fill({ color: 0x886633, alpha: shakeAlpha });
-        // Radial cracks
-        for (let i = 0; i < 8; i++) {
-          const angle = i * Math.PI / 4 + Math.random() * 0.3;
+        // Screen-wide dust cloud layer
+        this._fxGfx.rect(0, 0, 1000, 800);
+        this._fxGfx.fill({ color: 0xaa8855, alpha: alpha * 0.06 });
+        // Radial cracks (more, with branching)
+        for (let i = 0; i < 12; i++) {
+          const angle = i * Math.PI / 6 + Math.random() * 0.3;
           const len = t * 200;
           this._fxGfx.moveTo(fromX, fromY);
-          this._fxGfx.lineTo(
-            fromX + Math.cos(angle) * len,
-            fromY + Math.sin(angle) * len,
-          );
+          const crackEndX = fromX + Math.cos(angle) * len;
+          const crackEndY = fromY + Math.sin(angle) * len;
+          this._fxGfx.lineTo(crackEndX, crackEndY);
           this._fxGfx.stroke({ color: 0x664422, width: 2, alpha: alpha * 0.5 });
+          // Sub-cracks branching off main crack
+          if (len > 40) {
+            const branchFrac = 0.4 + Math.random() * 0.3;
+            const bx = fromX + Math.cos(angle) * len * branchFrac;
+            const by = fromY + Math.sin(angle) * len * branchFrac;
+            const bAngle = angle + (Math.random() - 0.5) * 1.2;
+            const bLen = len * 0.3;
+            this._fxGfx.moveTo(bx, by);
+            this._fxGfx.lineTo(bx + Math.cos(bAngle) * bLen, by + Math.sin(bAngle) * bLen);
+            this._fxGfx.stroke({ color: 0x553311, width: 1, alpha: alpha * 0.35 });
+          }
         }
-        // Rock particles
-        if (t < 0.5 && Math.random() < 0.3) {
-          for (let j = 0; j < 3; j++) {
+        // Shockwave ring
+        const quakeR = t * 180;
+        this._fxGfx.circle(fromX, fromY, quakeR);
+        this._fxGfx.stroke({ color: 0x886633, width: 2, alpha: alpha * 0.2 });
+        // Rock debris particles (more)
+        if (t < 0.5 && Math.random() < 0.4) {
+          for (let j = 0; j < 4; j++) {
             this._particles.push({
-              x: fromX + (Math.random() - 0.5) * 100,
-              y: fromY + (Math.random() - 0.5) * 100,
+              x: fromX + (Math.random() - 0.5) * 120,
+              y: fromY + (Math.random() - 0.5) * 120,
               vx: (Math.random() - 0.5) * 30,
               vy: -20 - Math.random() * 30,
               life: 0.4 + Math.random() * 0.3,
               maxLife: 0.7,
-              color: 0x886644,
-              size: 2 + Math.random() * 2,
+              color: Math.random() > 0.5 ? 0x886644 : 0x665533,
+              size: 2 + Math.random() * 2.5,
             });
           }
+        }
+        // Dust particles settling
+        if (t > 0.3 && Math.random() < 0.25) {
+          this._particles.push({
+            x: fromX + (Math.random() - 0.5) * 160,
+            y: fromY + (Math.random() - 0.5) * 80,
+            vx: (Math.random() - 0.5) * 8,
+            vy: 5 + Math.random() * 8,
+            life: 0.3 + Math.random() * 0.3,
+            maxLife: 0.6,
+            color: 0xaa9966,
+            size: 1 + Math.random(),
+          });
         }
         break;
       }
 
       case RWAnimationType.FIRE_AURA: {
         const r = TS * 2 * t;
+        // Heat ripple effect (inner expanding ring)
+        this._fxGfx.circle(fromX, fromY, r * 0.5);
+        this._fxGfx.fill({ color: 0xff4400, alpha: alpha * 0.08 });
         // Expanding fire ring
         this._fxGfx.circle(fromX, fromY, r);
         this._fxGfx.stroke({ color: 0xff6600, width: 4, alpha: alpha * 0.6 });
         this._fxGfx.circle(fromX, fromY, r * 0.8);
         this._fxGfx.stroke({ color: 0xffaa22, width: 2, alpha: alpha * 0.4 });
+        // Inner fire particles (small flames around center)
+        for (let fi = 0; fi < 5; fi++) {
+          const fAngle = (fi / 5) * Math.PI * 2 + this._time * 5;
+          const fR = r * 0.3;
+          const fx2 = fromX + Math.cos(fAngle) * fR;
+          const fy2 = fromY + Math.sin(fAngle) * fR;
+          this._fxGfx.circle(fx2, fy2 - 2, 2);
+          this._fxGfx.fill({ color: 0xffcc22, alpha: alpha * 0.4 });
+        }
+        // Flickering flame tongues along the ring
+        for (let ft = 0; ft < 6; ft++) {
+          const ftAngle = (ft / 6) * Math.PI * 2 + this._time * 3;
+          const ftx = fromX + Math.cos(ftAngle) * r;
+          const fty = fromY + Math.sin(ftAngle) * r;
+          const flicker = Math.sin(this._time * 10 + ft * 2) * 3;
+          // Flame tongue (upward triangle)
+          this._fxGfx.moveTo(ftx - 2, fty);
+          this._fxGfx.lineTo(ftx, fty - 5 - flicker);
+          this._fxGfx.lineTo(ftx + 2, fty);
+          this._fxGfx.closePath();
+          this._fxGfx.fill({ color: 0xff8822, alpha: alpha * 0.4 });
+        }
+        // Outer heat ripple ring
+        this._fxGfx.circle(fromX, fromY, r * 1.15);
+        this._fxGfx.stroke({ color: 0xff4400, width: 1, alpha: alpha * 0.15 });
         // Fire particles
-        if (Math.random() < 0.3) {
+        if (Math.random() < 0.35) {
           const angle = Math.random() * Math.PI * 2;
           this._particles.push({
             x: fromX + Math.cos(angle) * r,
@@ -3080,7 +3456,7 @@ export class RiftWizardRenderer {
             vy: -15 - Math.random() * 10,
             life: 0.3,
             maxLife: 0.3,
-            color: 0xff6600,
+            color: Math.random() > 0.5 ? 0xff6600 : 0xffaa22,
             size: 2,
           });
         }
@@ -3090,9 +3466,11 @@ export class RiftWizardRenderer {
       case RWAnimationType.MELEE_HIT: {
         // Quick slash effect
         const slashT = Math.min(1, t * 3);
-        // Impact flash
-        this._fxGfx.circle(toX, toY, TS * 0.4 * (1 - t));
-        this._fxGfx.fill({ color: 0xffffff, alpha: alpha * 0.4 });
+        // Dramatic impact flash (bigger, brighter)
+        this._fxGfx.circle(toX, toY, TS * 0.5 * (1 - t));
+        this._fxGfx.fill({ color: 0xffffff, alpha: alpha * 0.5 });
+        this._fxGfx.circle(toX, toY, TS * 0.3 * (1 - t));
+        this._fxGfx.fill({ color: 0xffffcc, alpha: alpha * 0.3 });
         // First slash line (top-left to bottom-right)
         const slashAngle = Math.PI * 0.25;
         const slashLen = TS * 0.5 * slashT;
@@ -3116,6 +3494,21 @@ export class RiftWizardRenderer {
           toY + Math.sin(slashAngle2) * slashLen,
         );
         this._fxGfx.stroke({ color: 0xffffff, width: 3, alpha: alpha * 0.7 });
+        // Speed lines radiating outward from impact direction
+        for (let sl = 0; sl < 4; sl++) {
+          const slAngle = Math.PI * 0.25 + (sl - 1.5) * 0.3;
+          const slInner = TS * 0.35 * slashT;
+          const slOuter = TS * 0.6 * slashT;
+          this._fxGfx.moveTo(
+            toX + Math.cos(slAngle) * slInner,
+            toY + Math.sin(slAngle) * slInner,
+          );
+          this._fxGfx.lineTo(
+            toX + Math.cos(slAngle) * slOuter,
+            toY + Math.sin(slAngle) * slOuter,
+          );
+          this._fxGfx.stroke({ color: 0xffffff, width: 1, alpha: alpha * 0.3 });
+        }
         // Starburst pattern: 8 short lines radiating from impact point
         for (let sb = 0; sb < 8; sb++) {
           const sbAngle = (sb / 8) * Math.PI * 2;
@@ -3131,17 +3524,17 @@ export class RiftWizardRenderer {
           );
           this._fxGfx.stroke({ color: 0xffffcc, width: 1.5, alpha: alpha * 0.5 });
         }
-        // Impact sparks
+        // Impact sparks (more)
         if (t < 0.3) {
-          for (let j = 0; j < 2; j++) {
+          for (let j = 0; j < 4; j++) {
             this._particles.push({
               x: toX, y: toY,
-              vx: (Math.random() - 0.5) * 40,
-              vy: (Math.random() - 0.5) * 40,
-              life: 0.15,
-              maxLife: 0.15,
-              color: 0xffffaa,
-              size: 1.5,
+              vx: (Math.random() - 0.5) * 50,
+              vy: (Math.random() - 0.5) * 50,
+              life: 0.12 + Math.random() * 0.08,
+              maxLife: 0.2,
+              color: Math.random() > 0.5 ? 0xffffaa : 0xffffff,
+              size: 1 + Math.random(),
             });
           }
         }
@@ -3152,15 +3545,25 @@ export class RiftWizardRenderer {
         const fx = fromX;
         const fy = fromY;
 
-        // Phase 1: Flash and collapse (t < 0.3)
+        // Phase 1: Flash and collapse (t < 0.3) - more dramatic flash
         if (t < 0.3) {
           const flashT = t / 0.3;
-          // White flash that fades
+          // Bigger white flash that fades
+          this._fxGfx.circle(fx, fy, TS * 0.7 * (1 - flashT * 0.5));
+          this._fxGfx.fill({ color: 0xffffff, alpha: (1 - flashT) * 0.7 });
           this._fxGfx.circle(fx, fy, TS * 0.5 * (1 - flashT * 0.5));
-          this._fxGfx.fill({ color: 0xffffff, alpha: (1 - flashT) * 0.6 });
+          this._fxGfx.fill({ color: 0xffffff, alpha: (1 - flashT) * 0.5 });
           // Collapsing silhouette
           this._fxGfx.circle(fx, fy, TS * 0.35 * (1 - flashT * 0.3));
           this._fxGfx.fill({ color: 0xff2222, alpha: alpha * 0.5 });
+          // Flash burst lines
+          for (let fb = 0; fb < 6; fb++) {
+            const fbAngle = (fb / 6) * Math.PI * 2;
+            const fbLen = TS * 0.6 * (1 - flashT);
+            this._fxGfx.moveTo(fx, fy);
+            this._fxGfx.lineTo(fx + Math.cos(fbAngle) * fbLen, fy + Math.sin(fbAngle) * fbLen);
+            this._fxGfx.stroke({ color: 0xff4444, width: 1.5, alpha: (1 - flashT) * 0.4 });
+          }
         }
 
         // Phase 2: Disintegration (t 0.3-0.7)
@@ -3186,13 +3589,22 @@ export class RiftWizardRenderer {
           this._fxGfx.fill({ color: 0xcccccc, alpha: alpha * 0.2 });
         }
 
-        // Phase 3: Final dissolution particles (t 0.7-1.0)
-        // Bone fragment particles throughout
+        // Soul wisp rising effect (throughout animation)
+        if (t > 0.2) {
+          const soulT = (t - 0.2) / 0.8;
+          for (let sw = 0; sw < 3; sw++) {
+            const swx = fx + Math.sin(this._time * 4 + sw * 2.2) * (6 + sw * 3);
+            const swy = fy - soulT * 30 - sw * 8;
+            this._fxGfx.circle(swx, swy, 2 - sw * 0.4);
+            this._fxGfx.fill({ color: 0xaabbcc, alpha: (1 - soulT) * 0.4 });
+          }
+        }
+
+        // Bone fragment particles throughout (more)
         if (t < 0.6) {
-          for (let j = 0; j < 3; j++) {
+          for (let j = 0; j < 4; j++) {
             const angle = Math.random() * Math.PI * 2;
             const speed = 20 + Math.random() * 30;
-            // Bone fragments (elongated rects via small particles)
             this._particles.push({
               x: fx + (Math.random() - 0.5) * 10,
               y: fy + (Math.random() - 0.5) * 10,
@@ -3210,6 +3622,9 @@ export class RiftWizardRenderer {
         const smokeR = t * TS * 0.8;
         this._fxGfx.circle(fx, fy, smokeR);
         this._fxGfx.stroke({ color: 0x444444, width: 1.5, alpha: alpha * 0.2 });
+        // Second inner smoke ring
+        this._fxGfx.circle(fx, fy, smokeR * 0.6);
+        this._fxGfx.stroke({ color: 0x555555, width: 1, alpha: alpha * 0.15 });
 
         break;
       }
