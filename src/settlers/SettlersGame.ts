@@ -14,7 +14,7 @@ import { placeBuilding, canPlaceBuilding, updateConstruction, updateProduction, 
 import { recalculateTerritory, updateTerritory } from "./systems/SettlersTerritorySystem";
 import { placeFlag, createRoad, routeGoods } from "./systems/SettlersRoadSystem";
 import { updateCarriers } from "./systems/SettlersCarrierSystem";
-import { updateBarracks, updateGarrisoning, updateCombat, checkWinCondition, addToProductionQueue, removeFromProductionQueue } from "./systems/SettlersMilitarySystem";
+import { updateBarracks, updateGarrisoning, updateCombat, updateCatapultTowers, checkWinCondition, addToProductionQueue, removeFromProductionQueue } from "./systems/SettlersMilitarySystem";
 import { updateAI } from "./systems/SettlersAISystem";
 import { recalculateFog, updateFog } from "./systems/SettlersFogSystem";
 import { createEventState, updateEvents } from "./systems/SettlersEventSystem";
@@ -239,6 +239,7 @@ export class SettlersGame {
 
     // Military
     updateBarracks(this._state, dt);
+    updateCatapultTowers(this._state, dt);
     updateGarrisoning(this._state, dt);
     updateCombat(this._state, dt);
     checkWinCondition(this._state);
@@ -343,6 +344,7 @@ export class SettlersGame {
         id,
         owner: playerId,
         rank: 0,
+        unitType: "swordsman",
         position: { x: wx, y: getHeightAt(this._state.map, wx, wz), z: wz },
         state: "idle",
         garrisonedIn: null,
@@ -352,6 +354,8 @@ export class SettlersGame {
         maxHp: SB.SOLDIER_BASE_HP,
         attackPower: SB.SOLDIER_BASE_ATK,
         swingTimer: 0,
+        attackRange: 1,
+        moveSpeed: SB.SOLDIER_MARCH_SPEED,
       });
     }
   }

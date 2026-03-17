@@ -325,7 +325,9 @@ export function updateProduction(state: SettlersState, dt: number): void {
 
     const def = BUILDING_DEFS[building.type];
     if (def.productionTime <= 0) continue;
-    if (def.type === SettlersBuildingType.BARRACKS) continue; // handled by military system
+    if (def.type === SettlersBuildingType.BARRACKS ||
+        def.type === SettlersBuildingType.ARCHERY_RANGE ||
+        def.type === SettlersBuildingType.STABLE) continue; // handled by military system
 
     // Market building – handle trade cycle
     if (def.type === SettlersBuildingType.MARKET) {

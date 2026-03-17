@@ -232,6 +232,10 @@ function deserializeState(s: SerializedState): SettlersState {
   for (const [id, sol] of Object.entries(s.soldiers)) {
     // Migrate old saves that lack pathWaypoints
     if (!sol.pathWaypoints) sol.pathWaypoints = [];
+    // Migration: add fields introduced with archer/knight unit types
+    if (!sol.unitType) sol.unitType = "swordsman";
+    if (!sol.attackRange) sol.attackRange = 1;
+    if (!sol.moveSpeed) sol.moveSpeed = 1.5;
     soldiers.set(id, sol);
   }
 

@@ -52,6 +52,9 @@ export const SB = {
   PROD_SHIELD_SMITH: 18,
   PROD_BARRACKS: 30,
   PROD_MARKET: 15,
+  PROD_BOWYER: 16,
+  PROD_ARCHERY_RANGE: 28,
+  PROD_STABLE: 40,
 
   // Building upgrades
   MAX_BUILDING_LEVEL: 3,
@@ -69,7 +72,7 @@ export const SB = {
   // Production queue
   MAX_PRODUCTION_QUEUE: 5,     // max items in a building's production queue
 
-  // Military
+  // Military – Swordsman (default)
   SOLDIER_BASE_HP: 20,
   SOLDIER_BASE_ATK: 4,
   SOLDIER_RANK_HP_BONUS: 5,
@@ -77,6 +80,23 @@ export const SB = {
   SOLDIER_SWING_INTERVAL: 1.5, // seconds
   SOLDIER_MARCH_SPEED: 1.5,    // tiles per second
   MAX_SOLDIER_RANK: 4,
+
+  // Military – Archer
+  ARCHER_BASE_HP: 15,
+  ARCHER_BASE_ATK: 3,
+  ARCHER_SWING_INTERVAL: 2.0,  // seconds
+  ARCHER_MARCH_SPEED: 1.5,     // tiles per second
+  ARCHER_RANGE: 3,             // tiles
+
+  // Military – Knight
+  KNIGHT_BASE_HP: 25,
+  KNIGHT_BASE_ATK: 5,
+  KNIGHT_SWING_INTERVAL: 1.2,  // seconds
+  KNIGHT_MARCH_SPEED: 2.5,     // tiles per second
+
+  // Military – Catapult tower
+  CATAPULT_TOWER_RANGE: 4,     // tiles
+  CATAPULT_TOWER_DAMAGE: 2,    // damage per tick
 
   // Building HP
   HP_SMALL: 50,
@@ -86,6 +106,9 @@ export const SB = {
   HP_GUARD_HOUSE: 60,
   HP_WATCHTOWER: 100,
   HP_FORTRESS: 160,
+  HP_WALL: 80,
+  HP_GATE: 80,
+  HP_CATAPULT_TOWER: 120,
 
   // Starting resources in HQ
   START_PLANKS: 8,

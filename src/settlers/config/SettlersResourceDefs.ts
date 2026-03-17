@@ -25,6 +25,7 @@ export enum ResourceType {
   // Military
   SWORD = "sword",
   SHIELD = "shield",
+  BOW = "bow",
 }
 
 /** Visual metadata for each resource */
@@ -53,6 +54,7 @@ export const RESOURCE_META: Record<ResourceType, ResourceMeta> = {
 
   [ResourceType.SWORD]:    { label: "Sword",    color: 0xaaaacc },
   [ResourceType.SHIELD]:   { label: "Shield",   color: 0x886633 },
+  [ResourceType.BOW]:      { label: "Bow",      color: 0x8b6914 },
 };
 
 /** Food types accepted by mines */

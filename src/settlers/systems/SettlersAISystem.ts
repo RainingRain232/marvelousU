@@ -296,16 +296,22 @@ export function updateAI(state: SettlersState, dt: number): void {
   }
 }
 
-/** AI automatically queues soldiers in its barracks when queue is not full */
+/** AI automatically queues units in its military production buildings */
 function _keepBarracksQueued(state: SettlersState, player: SettlersPlayer): void {
+  const unitProducers: Record<string, string> = {
+    [SettlersBuildingType.BARRACKS]: "soldier",
+    [SettlersBuildingType.ARCHERY_RANGE]: "archer",
+    [SettlersBuildingType.STABLE]: "knight",
+  };
   for (const [, building] of state.buildings) {
     if (building.owner !== player.id) continue;
-    if (building.type !== SettlersBuildingType.BARRACKS) continue;
+    const unitType = unitProducers[building.type];
+    if (!unitType) continue;
     if (!building.active) continue;
 
     // Keep the queue full
     while (building.productionQueue.length < SB.MAX_PRODUCTION_QUEUE) {
-      addToProductionQueue(building, "soldier");
+      addToProductionQueue(building, unitType);
     }
   }
 }
