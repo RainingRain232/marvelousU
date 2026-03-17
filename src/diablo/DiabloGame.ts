@@ -1521,7 +1521,7 @@ export class DiabloGame {
     // Mark spawn location as enemy-free safe zone
     this._safeZoneX = spawnX;
     this._safeZoneZ = spawnZ;
-    this._safeZoneRadius = 20;
+    this._safeZoneRadius = 40;
     this._revealAroundPlayer(spawnX, spawnZ);
     this._state.player.hp = this._state.player.maxHp;
     this._state.player.mana = this._state.player.maxMana;
@@ -4325,7 +4325,7 @@ export class DiabloGame {
       // Flame
       const flame = document.createElement("div");
       flame.style.cssText = `
-        position:absolute;bottom:20px;left:50%;transform:translateX(-50%);
+        position:absolute;bottom:24px;left:50%;transform:translateX(-50%);
         width:12px;height:18px;
         background:radial-gradient(ellipse at 50% 70%, #ffdd44, #ff8800, #ff4400, transparent);
         border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;
@@ -4336,7 +4336,7 @@ export class DiabloGame {
       // Flame glow
       const flameGlow = document.createElement("div");
       flameGlow.style.cssText = `
-        position:absolute;bottom:18px;left:50%;transform:translateX(-50%);
+        position:absolute;bottom:26px;left:50%;transform:translateX(-50%);
         width:8px;height:8px;border-radius:50%;
         animation:hud-torch-glow 0.6s ease-in-out infinite alternate;
         pointer-events:none;
@@ -6488,9 +6488,9 @@ export class DiabloGame {
     const def = ENEMY_DEFS[chosenType];
     if (!def) return;
 
-    // Random position 20-40 units from player, within map bounds
+    // Random position 30-50 units from player, within map bounds
     const angle = Math.random() * Math.PI * 2;
-    const dist = 20 + Math.random() * 20;
+    const dist = 30 + Math.random() * 20;
     const halfW = mapCfg.width / 2 - 2;
     const halfD = ((mapCfg as any).depth || (mapCfg as any).height || mapCfg.width) / 2 - 2;
 
@@ -7115,10 +7115,10 @@ export class DiabloGame {
       const dx = e.x - p.x;
       const dz = e.z - p.z;
       const dist = Math.sqrt(dx * dx + dz * dz);
-      if (dist < 25) {
+      if (dist < 40) {
         const angle = Math.atan2(dz, dx);
-        e.x = p.x + Math.cos(angle) * (25 + Math.random() * 10);
-        e.z = p.z + Math.sin(angle) * (25 + Math.random() * 10);
+        e.x = p.x + Math.cos(angle) * (40 + Math.random() * 15);
+        e.z = p.z + Math.sin(angle) * (40 + Math.random() * 15);
         e.y = getTerrainHeight(e.x, e.z);
       }
     }

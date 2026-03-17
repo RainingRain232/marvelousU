@@ -57,7 +57,8 @@ export const UNIVERSAL_MOVES: TekkenMoveEntry[] = [
       damage: 7,
       chipDamage: 1,
       knockback: 0.07,
-      hitbox: { x: 0.39, y: 1.5, z: 0, w: 0.16, h: 0.25, d: 0.4 },
+      hitbox: { x: 0.35, y: 1.5, z: 0, w: 0.16, h: 0.25, d: 0.4 },
+      advanceDistance: 0.06,
     }),
   },
   {
@@ -72,7 +73,7 @@ export const UNIVERSAL_MOVES: TekkenMoveEntry[] = [
       damage: 12,
       chipDamage: 1,
       knockback: 0.14,
-      hitbox: { x: 0.35, y: 1.5, z: 0, w: 0.19, h: 0.3, d: 0.4 },
+      hitbox: { x: 0.45, y: 1.5, z: 0, w: 0.19, h: 0.3, d: 0.4 },
     }),
   },
   {
@@ -84,11 +85,11 @@ export const UNIVERSAL_MOVES: TekkenMoveEntry[] = [
       onHit: 7,
       onBlock: -6,
       onCounterHit: 10,
-      damage: 22,
+      damage: 20,
       chipDamage: 3,
       knockback: 0.32,
-      hitbox: { x: 0.86, y: 1.5, z: 0, w: 0.32, h: 0.27, d: 0.4 },
-      advanceDistance: 0.21,
+      hitbox: { x: 0.8, y: 1.5, z: 0, w: 0.32, h: 0.27, d: 0.4 },
+      advanceDistance: 0.15,
     }),
   },
   {
@@ -111,17 +112,18 @@ export const UNIVERSAL_MOVES: TekkenMoveEntry[] = [
   // ── MID attacks ───────────────────────────────────────────────────────
   {
     input: cmd("d", ["lp"]),
-    move: move("d+1", "Mid Jab", TekkenAttackHeight.MID, TekkenLimb.LEFT_PUNCH, {
-      startup: 12,
+    move: move("d+1", "Low Jab", TekkenAttackHeight.LOW, TekkenLimb.LEFT_PUNCH, {
+      startup: 10,
       active: 2,
       recovery: 10,
       onHit: 2,
       onBlock: -2,
       onCounterHit: 4,
-      damage: 10,
+      damage: 5,
       chipDamage: 1,
-      knockback: 0.08,
-      hitbox: { x: 0.43, y: 0.9, z: 0, w: 0.17, h: 0.25, d: 0.4 },
+      knockback: 0.04,
+      hitbox: { x: 0.3, y: 0.2, z: 0, w: 0.17, h: 0.25, d: 0.4 },
+      advanceDistance: 0.02,
     }),
   },
   {
@@ -138,12 +140,13 @@ export const UNIVERSAL_MOVES: TekkenMoveEntry[] = [
       isLauncher: true,
       launchHeight: 0.22,
       knockback: 0.15,
-      hitbox: { x: 0.51, y: 0.9, z: 0, w: 0.22, h: 0.26, d: 0.4 },
+      hitbox: { x: 0.35, y: 0.9, z: 0, w: 0.22, h: 0.26, d: 0.4 },
+      advanceDistance: 0.05,
     }),
   },
   {
     input: cmd("n", ["lk"]),
-    move: move("3", "Front Kick", TekkenAttackHeight.MID, TekkenLimb.LEFT_KICK, {
+    move: move("3", "High Kick", TekkenAttackHeight.HIGH, TekkenLimb.LEFT_KICK, {
       startup: 14,
       active: 3,
       recovery: 12,
@@ -152,9 +155,9 @@ export const UNIVERSAL_MOVES: TekkenMoveEntry[] = [
       onCounterHit: 8,
       damage: 17,
       chipDamage: 2,
-      knockback: 0.32,
-      hitbox: { x: 0.61, y: 0.9, z: 0, w: 0.33, h: 0.22, d: 0.4 },
-      advanceDistance: 0.23,
+      knockback: 0.25,
+      hitbox: { x: 0.75, y: 1.5, z: 0, w: 0.33, h: 0.22, d: 0.4 },
+      advanceDistance: 0.12,
     }),
   },
   {
@@ -169,7 +172,8 @@ export const UNIVERSAL_MOVES: TekkenMoveEntry[] = [
       damage: 13,
       chipDamage: 1,
       knockback: 0.12,
-      hitbox: { x: 0.41, y: 0.9, z: 0, w: 0.21, h: 0.23, d: 0.4 },
+      hitbox: { x: 0.5, y: 0.9, z: 0, w: 0.21, h: 0.23, d: 0.4 },
+      advanceDistance: 0.1,
     }),
   },
   {
@@ -186,22 +190,23 @@ export const UNIVERSAL_MOVES: TekkenMoveEntry[] = [
       isLauncher: true,
       launchHeight: 0.2,
       knockback: 0.12,
-      hitbox: { x: 0.55, y: 0.9, z: 0, w: 0.27, h: 0.29, d: 0.4 },
+      hitbox: { x: 0.5, y: 0.9, z: 0, w: 0.27, h: 0.29, d: 0.4 },
+      advanceDistance: 0.2,
     }),
   },
   {
     input: cmd("d/f", ["lk"]),
-    move: move("d/f+3", "Knee", TekkenAttackHeight.MID, TekkenLimb.LEFT_KICK, {
-      startup: 16,
+    move: move("d/f+3", "Mid Side Kick", TekkenAttackHeight.MID, TekkenLimb.LEFT_KICK, {
+      startup: 15,
       active: 4,
       recovery: 14,
       onHit: 6,
       onBlock: -7,
       onCounterHit: 9,
-      damage: 20,
+      damage: 18,
       chipDamage: 2,
-      knockback: 0.18,
-      hitbox: { x: 0.22, y: 0.9, z: 0, w: 0.28, h: 0.2, d: 0.4 },
+      knockback: 0.22,
+      hitbox: { x: 0.7, y: 0.9, z: 0, w: 0.28, h: 0.2, d: 0.4 },
       advanceDistance: 0.15,
     }),
   },
@@ -244,19 +249,19 @@ export const UNIVERSAL_MOVES: TekkenMoveEntry[] = [
   },
   {
     input: cmd("d/f", ["rk"]),
-    move: move("d/f+4", "Screw Kick", TekkenAttackHeight.MID, TekkenLimb.RIGHT_KICK, {
-      startup: 16,
+    move: move("d/f+4", "Mid Roundhouse", TekkenAttackHeight.MID, TekkenLimb.RIGHT_KICK, {
+      startup: 15,
       active: 4,
       recovery: 16,
       onHit: 4,
       onBlock: -9,
       onCounterHit: 7,
-      damage: 15,
+      damage: 16,
       chipDamage: 2,
       isScrew: true,
-      knockback: 0.35,
+      knockback: 0.25,
       hitbox: { x: 0.7, y: 0.9, z: 0, w: 0.3, h: 0.18, d: 0.4 },
-      advanceDistance: 0.16,
+      advanceDistance: 0.12,
     }),
   },
 
@@ -264,7 +269,7 @@ export const UNIVERSAL_MOVES: TekkenMoveEntry[] = [
   {
     input: cmd("d", ["lk"]),
     move: move("d+3", "Low Kick", TekkenAttackHeight.LOW, TekkenLimb.LEFT_KICK, {
-      startup: 16,
+      startup: 14,
       active: 3,
       recovery: 18,
       onHit: 2,
@@ -272,23 +277,25 @@ export const UNIVERSAL_MOVES: TekkenMoveEntry[] = [
       onCounterHit: 5,
       damage: 12,
       chipDamage: 1,
-      knockback: 0.21,
-      hitbox: { x: 0.64, y: 0.2, z: 0, w: 0.42, h: 0.12, d: 0.4 },
+      knockback: 0.18,
+      hitbox: { x: 0.6, y: 0.2, z: 0, w: 0.42, h: 0.12, d: 0.4 },
+      advanceDistance: 0.05,
     }),
   },
   {
     input: cmd("d", ["rk"]),
-    move: move("d+4", "Ankle Kick", TekkenAttackHeight.LOW, TekkenLimb.LEFT_KICK, {
-      startup: 12,
-      active: 2,
+    move: move("d+4", "Low Sweep", TekkenAttackHeight.LOW, TekkenLimb.RIGHT_KICK, {
+      startup: 14,
+      active: 3,
       recovery: 16,
       onHit: 0,
       onBlock: -11,
       onCounterHit: 3,
-      damage: 10,
+      damage: 11,
       chipDamage: 1,
-      knockback: 0.14,
-      hitbox: { x: 0.52, y: 0.2, z: 0, w: 0.38, h: 0.13, d: 0.4 },
+      knockback: 0.16,
+      hitbox: { x: 0.65, y: 0.2, z: 0, w: 0.38, h: 0.13, d: 0.4 },
+      advanceDistance: 0.04,
     }),
   },
   {
@@ -329,7 +336,7 @@ export const UNIVERSAL_MOVES: TekkenMoveEntry[] = [
   {
     input: cmd("f", ["lk"]),
     move: move("f+3", "Advancing Mid Kick", TekkenAttackHeight.MID, TekkenLimb.LEFT_KICK, {
-      startup: 15,
+      startup: 16,
       active: 4,
       recovery: 14,
       onHit: 5,
@@ -337,9 +344,9 @@ export const UNIVERSAL_MOVES: TekkenMoveEntry[] = [
       onCounterHit: 8,
       damage: 19,
       chipDamage: 2,
-      knockback: 0.28,
-      hitbox: { x: 0.65, y: 0.9, z: 0, w: 0.27, h: 0.25, d: 0.4 },
-      advanceDistance: 0.2,
+      knockback: 0.3,
+      hitbox: { x: 0.9, y: 0.9, z: 0, w: 0.27, h: 0.25, d: 0.4 },
+      advanceDistance: 0.25,
     }),
   },
 
@@ -362,21 +369,21 @@ export const UNIVERSAL_MOVES: TekkenMoveEntry[] = [
     }),
   },
 
-  // 3. Elbow Strike (f+2) – fast mid elbow, safe poke
+  // 3. Advancing Straight (f+2) – lunging long-range punch
   {
     input: cmd("f", ["rp"]),
-    move: move("f+2", "Elbow Strike", TekkenAttackHeight.MID, TekkenLimb.RIGHT_PUNCH, {
-      startup: 13,
+    move: move("f+2", "Advancing Straight", TekkenAttackHeight.MID, TekkenLimb.RIGHT_PUNCH, {
+      startup: 15,
       active: 3,
-      recovery: 11,
+      recovery: 13,
       onHit: 4,
-      onBlock: -3,
+      onBlock: -5,
       onCounterHit: 7,
-      damage: 16,
+      damage: 18,
       chipDamage: 2,
-      knockback: 0.12,
-      hitbox: { x: 0.32, y: 0.9, z: 0, w: 0.3, h: 0.2, d: 0.4 },
-      advanceDistance: 0.16,
+      knockback: 0.2,
+      hitbox: { x: 0.65, y: 0.9, z: 0, w: 0.3, h: 0.2, d: 0.4 },
+      advanceDistance: 0.25,
     }),
   },
 
@@ -399,22 +406,22 @@ export const UNIVERSAL_MOVES: TekkenMoveEntry[] = [
     }),
   },
 
-  // 5. Knee Strike (f+4) – advancing knee, good wallsplat potential
+  // 5. Front Kick (f+4) – advancing knee kick, good wallsplat potential
   {
     input: cmd("f", ["rk"]),
-    move: move("f+4", "Knee Strike", TekkenAttackHeight.MID, TekkenLimb.RIGHT_KICK, {
-      startup: 16,
+    move: move("f+4", "Front Kick", TekkenAttackHeight.MID, TekkenLimb.RIGHT_KICK, {
+      startup: 15,
       active: 3,
       recovery: 14,
       onHit: 5,
       onBlock: -6,
       onCounterHit: 9,
-      damage: 20,
+      damage: 18,
       chipDamage: 2,
-      knockback: 0.14,
+      knockback: 0.3,
       wallSplat: true,
-      hitbox: { x: 0.25, y: 0.9, z: 0, w: 0.25, h: 0.17, d: 0.4 },
-      advanceDistance: 0.12,
+      hitbox: { x: 0.6, y: 0.9, z: 0, w: 0.25, h: 0.17, d: 0.4 },
+      advanceDistance: 0.2,
     }),
   },
 
@@ -580,21 +587,21 @@ export const UNIVERSAL_MOVES: TekkenMoveEntry[] = [
     }),
   },
 
-  // 14. Palm Strike (f+1) – fast advancing mid palm, good pressure tool
+  // 14. Body Blow (f+1) – advancing mid punch, good pressure tool
   {
     input: cmd("f", ["lp"]),
-    move: move("f+1", "Palm Strike", TekkenAttackHeight.MID, TekkenLimb.LEFT_PUNCH, {
-      startup: 13,
+    move: move("f+1", "Body Blow", TekkenAttackHeight.MID, TekkenLimb.LEFT_PUNCH, {
+      startup: 14,
       active: 3,
-      recovery: 11,
+      recovery: 12,
       onHit: 4,
       onBlock: -3,
       onCounterHit: 7,
-      damage: 14,
+      damage: 12,
       chipDamage: 1,
-      knockback: 0.48,
-      hitbox: { x: 0.41, y: 0.9, z: 0, w: 0.43, h: 0.27, d: 0.4 },
-      advanceDistance: 0.15,
+      knockback: 0.22,
+      hitbox: { x: 0.55, y: 0.9, z: 0, w: 0.43, h: 0.27, d: 0.4 },
+      advanceDistance: 0.2,
     }),
   },
 

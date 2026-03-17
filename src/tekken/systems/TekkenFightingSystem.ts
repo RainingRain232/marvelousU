@@ -157,21 +157,66 @@ export class TekkenFightingSystem {
 
   private _handleAttackInput(fighter: TekkenFighter, _playerIndex: number): void {
     const input = fighter.input;
-    const hasButton = input.lp || input.rp || input.lk || input.rk || input.rage;
-    if (!hasButton) return;
+    const hasButtonNow = input.lp || input.rp || input.lk || input.rk || input.rage;
 
-    // Resolve direction
+    // Resolve current-frame direction
     const fwd = fighter.facingRight ? input.right : input.left;
     const back = fighter.facingRight ? input.left : input.right;
-    let dir = "n";
-    if (input.down && fwd) dir = "d/f";
-    else if (input.down && back) dir = "d/b";
-    else if (input.up && fwd) dir = "u/f";
-    else if (input.up && back) dir = "u/b";
-    else if (input.down) dir = "d";
-    else if (input.up) dir = "u";
-    else if (fwd) dir = "f";
-    else if (back) dir = "b";
+    let currentDir = "n";
+    if (input.down && fwd) currentDir = "d/f";
+    else if (input.down && back) currentDir = "d/b";
+    else if (input.up && fwd) currentDir = "u/f";
+    else if (input.up && back) currentDir = "u/b";
+    else if (input.down) currentDir = "d";
+    else if (input.up) currentDir = "u";
+    else if (fwd) currentDir = "f";
+    else if (back) currentDir = "b";
+
+    // Collect current-frame buttons
+    const currentButtons: string[] = [];
+    if (input.lp) currentButtons.push("lp");
+    if (input.rp) currentButtons.push("rp");
+    if (input.lk) currentButtons.push("lk");
+    if (input.rk) currentButtons.push("rk");
+
+    const buf = fighter.inputBuffer;
+    const latestFrame = buf.length > 0 ? buf[buf.length - 1].frame : 0;
+
+    // --- Button buffer: check if a button was pressed within BUTTON_BUFFER_WINDOW ---
+    let bufferedButtons: string[] = [];
+    if (!hasButtonNow) {
+      for (let j = buf.length - 1; j >= 0; j--) {
+        const entry = buf[j];
+        if (latestFrame - entry.frame > TB.BUTTON_BUFFER_WINDOW) break;
+        if (entry.buttons.length > 0) {
+          bufferedButtons = entry.buttons;
+          break;
+        }
+      }
+    }
+
+    // Determine which buttons to use: current frame > recent buffer
+    const buttons = currentButtons.length > 0 ? currentButtons : bufferedButtons;
+    const hasButton = buttons.length > 0 || (input.rage);
+
+    if (!hasButton) return;
+
+    // --- Direction buffer: look back through buffer for recent directional input ---
+    let dir = currentDir;
+    if (dir === "n") {
+      // Current frame has no direction -- check buffer for recent direction
+      for (let j = buf.length - 1; j >= 0; j--) {
+        const entry = buf[j];
+        if (latestFrame - entry.frame > TB.INPUT_BUFFER_WINDOW) break;
+        if (entry.direction !== "n") {
+          dir = entry.direction;
+          break; // Use most recent directional input
+        }
+      }
+    }
+
+    // Also handle reverse case: direction is pressed NOW, button was in buffer
+    // (already handled above by merging bufferedButtons into buttons)
 
     // Find matching move from character's move list
     const charDef = TEKKEN_CHARACTERS.find(c => c.id === fighter.characterId);
@@ -193,14 +238,7 @@ export class TekkenFightingSystem {
       return;
     }
 
-    // Collect pressed buttons
-    const buttons: string[] = [];
-    if (input.lp) buttons.push("lp");
-    if (input.rp) buttons.push("rp");
-    if (input.lk) buttons.push("lk");
-    if (input.rk) buttons.push("rk");
-
-    // Find best matching move
+    // Find best matching move (try buffered direction first, fall back to neutral)
     let bestMove: TekkenMoveEntry | null = null;
     let bestScore = -1;
 
@@ -218,6 +256,24 @@ export class TekkenFightingSystem {
       if (score > bestScore) {
         bestScore = score;
         bestMove = entry;
+      }
+    }
+
+    // If no directional move matched but we used a buffered direction, fall back to neutral
+    if (!bestMove && dir !== "n") {
+      for (const entry of charDef.moveList) {
+        if (entry.input.length !== 1) continue;
+        const cmd = entry.input[0];
+        if (cmd.direction !== "n") continue;
+
+        const btnMatch = cmd.buttons.every(b => buttons.includes(b)) && buttons.every(b => cmd.buttons.includes(b));
+        if (!btnMatch) continue;
+
+        const score = cmd.buttons.length;
+        if (score > bestScore) {
+          bestScore = score;
+          bestMove = entry;
+        }
       }
     }
 
