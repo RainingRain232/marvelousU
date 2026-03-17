@@ -7,6 +7,7 @@ import { RESOURCE_META, ResourceType } from "../config/SettlersResourceDefs";
 import { Biome, Deposit, Visibility } from "../state/SettlersMap";
 import { SB } from "../config/SettlersBalance";
 import type { SettlersState, SettlersTool } from "../state/SettlersState";
+import { AI_PERSONALITY_LABELS, AI_PERSONALITY_DESCRIPTIONS } from "../state/SettlersPlayer";
 import { calculateScore } from "../systems/SettlersMilitarySystem";
 import {
   setMasterVolume, getMasterVolume,
@@ -47,6 +48,7 @@ export class SettlersHUD {
   private _audioPanel!: HTMLDivElement;
   private _audioPanelVisible = false;
   private _muteBtn!: HTMLButtonElement;
+  private _aiPersonalityIndicator!: HTMLDivElement;
 
   // Camera info for minimap viewport indicator
   private _cameraTargetX = 0;
@@ -98,6 +100,19 @@ export class SettlersHUD {
       backdrop-filter: blur(6px);
     `;
     this._root.appendChild(this._toolIndicator);
+
+    // --- AI Personality indicator (top-right, below tool indicator) ---
+    this._aiPersonalityIndicator = document.createElement("div");
+    this._aiPersonalityIndicator.style.cssText = `
+      position: absolute; top: 90px; right: 12px; padding: 6px 14px;
+      background: linear-gradient(135deg, rgba(40,15,15,0.92), rgba(50,20,20,0.92));
+      border-radius: 8px; font-size: 12px;
+      pointer-events: auto; border: 1px solid rgba(200,80,80,0.3);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      backdrop-filter: blur(6px); display: none; cursor: default;
+      transition: all 0.3s ease;
+    `;
+    this._root.appendChild(this._aiPersonalityIndicator);
 
     // --- Build menu (bottom) ---
     this._buildMenu = document.createElement("div");
@@ -526,6 +541,34 @@ export class SettlersHUD {
       this._resourceBar.innerHTML = html;
     }
 
+    // AI personality indicator
+    const aiPlayer = state.players.get("p1");
+    if (aiPlayer && aiPlayer.isAI && aiPlayer.aiPersonality) {
+      if (aiPlayer.aiPersonalityRevealed) {
+        this._aiPersonalityIndicator.style.display = "block";
+        const pLabel = AI_PERSONALITY_LABELS[aiPlayer.aiPersonality];
+        const pDesc = AI_PERSONALITY_DESCRIPTIONS[aiPlayer.aiPersonality];
+        const personalityColors: Record<string, string> = {
+          balanced: "#aabbcc",
+          rusher: "#ff6644",
+          turtle: "#44aa88",
+          economist: "#ffcc44",
+          expansionist: "#aa66ff",
+        };
+        const pColor = personalityColors[aiPlayer.aiPersonality] || "#cc8888";
+        this._aiPersonalityIndicator.innerHTML =
+          `<span style="color:#999;font-size:10px;">Enemy AI:</span> ` +
+          `<span style="color:${pColor};font-weight:bold;">${pLabel}</span>`;
+        this._aiPersonalityIndicator.title = pDesc;
+      } else {
+        this._aiPersonalityIndicator.style.display = "block";
+        this._aiPersonalityIndicator.innerHTML =
+          `<span style="color:#999;font-size:10px;">Enemy AI:</span> ` +
+          `<span style="color:#666;font-style:italic;">Unknown</span>`;
+        this._aiPersonalityIndicator.title = "AI personality will be revealed after first contact or 5 minutes.";
+      }
+    }
+
     // Tool indicator
     const speedLabel = state.gameSpeed !== 1 ? ` | Speed: ${Math.round(state.gameSpeed * 100)}%` : "";
     this._toolIndicator.textContent = `Tool: ${state.selectedTool.toUpperCase()}${
@@ -620,7 +663,9 @@ export class SettlersHUD {
               <tr><td style="padding: 3px 16px 3px 0; color: #888;">Gold</td><td style="padding: 3px 8px; color: #88bbff;">${p0Gold}</td><td style="padding: 3px 8px; color: #ff8888;">${p1Gold}</td></tr>
             </table>
             <div style="margin-top: 6px; font-size: 11px; color: #666;">
-              <span style="color: #88bbff;">You</span> vs <span style="color: #ff8888;">Enemy</span>
+              <span style="color: #88bbff;">You</span> vs <span style="color: #ff8888;">Enemy${
+                aiPlayer?.aiPersonality ? ` (${AI_PERSONALITY_LABELS[aiPlayer.aiPersonality]})` : ""
+              }</span>
             </div>
           </div>
 

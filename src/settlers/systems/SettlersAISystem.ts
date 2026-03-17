@@ -1,9 +1,10 @@
 // ---------------------------------------------------------------------------
-// Settlers – Enhanced AI opponent
+// Settlers – Enhanced AI opponent with personality system
 //   1. Multi-unit coordinated attacks
 //   2. Defensive perimeter placement
 //   3. Adaptive resource balancing
 //   4. Difficulty levels (easy / normal / hard)
+//   5. AI personalities (balanced / rusher / turtle / economist / expansionist)
 // ---------------------------------------------------------------------------
 
 import { SB } from "../config/SettlersBalance";
@@ -13,9 +14,146 @@ import { inBounds } from "../state/SettlersMap";
 import { findPath } from "./SettlersPathfinding";
 import type { SettlersState } from "../state/SettlersState";
 import type { SettlersPlayer } from "../state/SettlersPlayer";
+import type { AIPersonality } from "../state/SettlersPlayer";
 import { canPlaceBuilding, placeBuilding } from "./SettlersBuildingSystem";
 import { createRoad } from "./SettlersRoadSystem";
 import { addToProductionQueue } from "./SettlersMilitarySystem";
+
+// ---------------------------------------------------------------------------
+// Personality configuration – each personality tweaks AI decision-making
+// ---------------------------------------------------------------------------
+
+interface PersonalityConfig {
+  /** Multiplier on attack threshold from difficulty (lower = attacks sooner) */
+  attackThresholdMult: number;
+  /** Multiplier on attack group size from difficulty */
+  attackGroupSizeMult: number;
+  /** How many ticks the economy phase lasts in the economy/military cycle */
+  economyCycleTicks: number;
+  /** How many ticks the military phase lasts in the economy/military cycle */
+  militaryCycleTicks: number;
+  /** When to transition from economy to military phase (phaseTicks threshold) */
+  earlyMilitaryTransition: number;
+  /** Defense priority multiplier (stacks with difficulty) */
+  defensePriorityMult: number;
+  /** Extra guard houses / watchtowers / fortresses caps */
+  extraGuardHouses: number;
+  extraWatchtowers: number;
+  extraFortresses: number;
+  /** Whether to prioritize barracks in economy phase */
+  rushBarracks: boolean;
+  /** Whether to prioritize gold mine + mint */
+  rushGold: boolean;
+  /** Whether to prioritize territory-expanding buildings */
+  rushTerritory: boolean;
+  /** Minimum garrison to keep per building before attacking (default 1) */
+  garrisonReserve: number;
+  /** Target selection bias: "nearest" | "hq" | "territory" */
+  targetBias: "nearest" | "hq" | "territory";
+  /** Extra barracks cap */
+  extraBarracks: number;
+  /** Extra economy building caps */
+  extraWoodcutters: number;
+  extraFarms: number;
+}
+
+const PERSONALITY_CONFIGS: Record<AIPersonality, PersonalityConfig> = {
+  balanced: {
+    attackThresholdMult: 1.0,
+    attackGroupSizeMult: 1.0,
+    economyCycleTicks: 12,
+    militaryCycleTicks: 8,
+    earlyMilitaryTransition: 10,
+    defensePriorityMult: 1.0,
+    extraGuardHouses: 0,
+    extraWatchtowers: 0,
+    extraFortresses: 0,
+    rushBarracks: false,
+    rushGold: false,
+    rushTerritory: false,
+    garrisonReserve: 1,
+    targetBias: "nearest",
+    extraBarracks: 0,
+    extraWoodcutters: 0,
+    extraFarms: 0,
+  },
+  rusher: {
+    attackThresholdMult: 0.5,      // attacks with far fewer soldiers
+    attackGroupSizeMult: 0.7,
+    economyCycleTicks: 6,          // short economy phases
+    militaryCycleTicks: 14,        // long military phases
+    earlyMilitaryTransition: 5,    // switches to military very early
+    defensePriorityMult: 0.3,      // barely defends
+    extraGuardHouses: 0,
+    extraWatchtowers: 0,
+    extraFortresses: 0,
+    rushBarracks: true,             // builds barracks ASAP
+    rushGold: false,
+    rushTerritory: false,
+    garrisonReserve: 0,            // empties garrisons for attacks
+    targetBias: "nearest",
+    extraBarracks: 1,              // builds extra barracks
+    extraWoodcutters: 0,
+    extraFarms: 0,
+  },
+  turtle: {
+    attackThresholdMult: 2.0,      // needs lots of soldiers before attacking
+    attackGroupSizeMult: 1.5,      // sends big groups when it does attack
+    economyCycleTicks: 14,         // long economy phases
+    militaryCycleTicks: 6,
+    earlyMilitaryTransition: 15,
+    defensePriorityMult: 2.0,      // very high defense priority
+    extraGuardHouses: 3,           // lots of guard houses
+    extraWatchtowers: 2,           // extra watchtowers
+    extraFortresses: 2,            // extra fortresses
+    rushBarracks: false,
+    rushGold: false,
+    rushTerritory: false,
+    garrisonReserve: 2,            // keeps 2 soldiers per building
+    targetBias: "nearest",
+    extraBarracks: 0,
+    extraWoodcutters: 1,
+    extraFarms: 1,
+  },
+  economist: {
+    attackThresholdMult: 1.5,
+    attackGroupSizeMult: 1.0,
+    economyCycleTicks: 16,         // very long economy phases
+    militaryCycleTicks: 4,         // short military phases
+    earlyMilitaryTransition: 18,
+    defensePriorityMult: 0.8,
+    extraGuardHouses: 1,
+    extraWatchtowers: 0,
+    extraFortresses: 0,
+    rushBarracks: false,
+    rushGold: true,                // prioritizes gold production
+    rushTerritory: false,
+    garrisonReserve: 1,
+    targetBias: "nearest",
+    extraBarracks: 0,
+    extraWoodcutters: 1,
+    extraFarms: 1,
+  },
+  expansionist: {
+    attackThresholdMult: 0.8,
+    attackGroupSizeMult: 0.9,
+    economyCycleTicks: 10,
+    militaryCycleTicks: 10,
+    earlyMilitaryTransition: 8,
+    defensePriorityMult: 1.2,
+    extraGuardHouses: 4,           // lots of territory buildings
+    extraWatchtowers: 3,
+    extraFortresses: 1,
+    rushBarracks: false,
+    rushGold: false,
+    rushTerritory: true,           // prioritizes territory expansion
+    garrisonReserve: 1,
+    targetBias: "territory",       // attacks territory buildings first
+    extraBarracks: 0,
+    extraWoodcutters: 1,
+    extraFarms: 0,
+  },
+};
 
 // ---------------------------------------------------------------------------
 // Per-AI-player state (keyed by player id)
@@ -56,6 +194,74 @@ function _diff(state: SettlersState) {
   return SB.AI_DIFFICULTY[state.difficulty];
 }
 
+/** Get personality config for a player (defaults to balanced) */
+function _personality(player: SettlersPlayer): PersonalityConfig {
+  return PERSONALITY_CONFIGS[player.aiPersonality || "balanced"];
+}
+
+// ---------------------------------------------------------------------------
+// Personality reveal system – show AI personality after contact or 5 min
+// ---------------------------------------------------------------------------
+
+const REVEAL_TIME_SECONDS = 300; // 5 minutes
+const _gameTimers = new Map<string, number>();
+
+function _updatePersonalityReveal(state: SettlersState, player: SettlersPlayer, dt: number): void {
+  if (player.aiPersonalityRevealed) return;
+
+  // Track elapsed time
+  const elapsed = (_gameTimers.get(player.id) || 0) + dt;
+  _gameTimers.set(player.id, elapsed);
+
+  // Reveal after 5 minutes
+  if (elapsed >= REVEAL_TIME_SECONDS) {
+    player.aiPersonalityRevealed = true;
+    return;
+  }
+
+  // Reveal on first enemy contact: if any human soldier is fighting an AI soldier
+  for (const [, soldier] of state.soldiers) {
+    if (soldier.owner === player.id && soldier.state === "fighting") {
+      // Check if fighting a human-owned soldier
+      for (const combat of state.combats) {
+        if (
+          (combat.attackerId === soldier.id || combat.defenderId === soldier.id)
+        ) {
+          const otherId = combat.attackerId === soldier.id ? combat.defenderId : combat.attackerId;
+          const other = state.soldiers.get(otherId);
+          if (other && other.owner !== player.id) {
+            player.aiPersonalityRevealed = true;
+            return;
+          }
+        }
+      }
+    }
+  }
+
+  // Also reveal if human player captures or loses a building to this AI
+  // (simplified: reveal if territories are adjacent)
+  const humanPlayer = state.players.get("p0");
+  if (humanPlayer) {
+    const playerIdx = player.id === "p0" ? 0 : 1;
+    const humanIdx = 0;
+    const map = state.map;
+    for (let i = 0; i < map.width * map.height; i++) {
+      if (map.territory[i] !== playerIdx) continue;
+      const tx = i % map.width;
+      const tz = Math.floor(i / map.width);
+      for (const [ddx, ddz] of [[-1, 0], [1, 0], [0, -1], [0, 1]] as const) {
+        const nx = tx + ddx;
+        const nz = tz + ddz;
+        if (!inBounds(map, nx, nz)) continue;
+        if (map.territory[nz * map.width + nx] === humanIdx) {
+          player.aiPersonalityRevealed = true;
+          return;
+        }
+      }
+    }
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Main entry point
 // ---------------------------------------------------------------------------
@@ -64,6 +270,9 @@ export function updateAI(state: SettlersState, dt: number): void {
   for (const [, player] of state.players) {
     if (!player.isAI) continue;
     if (player.defeated) continue;
+
+    // Update personality reveal
+    _updatePersonalityReveal(state, player, dt);
 
     const ai = _getAI(player.id);
     const diff = _diff(state);
@@ -102,11 +311,12 @@ function _keepBarracksQueued(state: SettlersState, player: SettlersPlayer): void
 }
 
 // ---------------------------------------------------------------------------
-// Phase management – AI shifts strategy based on game state
+// Phase management – AI shifts strategy based on game state + personality
 // ---------------------------------------------------------------------------
 
 function _updatePhase(state: SettlersState, player: SettlersPlayer, ai: AIPlayerState): void {
   const counts = _countBuildings(state, player.id);
+  const pConfig = _personality(player);
 
   // Count enemy military presence
   let enemySoldiers = 0;
@@ -125,32 +335,38 @@ function _updatePhase(state: SettlersState, player: SettlersPlayer, ai: AIPlayer
   }
 
   const diff = _diff(state);
+  const effectiveAttackThreshold = Math.max(1, Math.round(diff.attackThreshold * pConfig.attackThresholdMult));
+
+  // Rusher: skip basic economy requirements if we already have barracks or it is early
+  const needsBasicEconomy = !pConfig.rushBarracks || (!hasSawmill && !hasQuarry);
 
   // Phase transitions
-  if (!hasSawmill || !hasQuarry) {
+  if (needsBasicEconomy && (!hasSawmill || !hasQuarry)) {
     ai.phase = "economy";
   } else if (enemySoldiers > 4 && ownGarrison < 3) {
     // React to enemy military buildup
     ai.phase = "military";
-  } else if (ownGarrison >= diff.attackThreshold && ai.phaseTicks > 20) {
+  } else if (ownGarrison >= effectiveAttackThreshold && ai.phaseTicks > 20) {
     ai.phase = "attack";
   } else if (!hasBarracks) {
-    ai.phase = ai.phaseTicks > 10 ? "military" : "economy";
-  } else if (ai.phaseTicks % 20 < 12) {
-    ai.phase = "economy";
+    ai.phase = ai.phaseTicks > pConfig.earlyMilitaryTransition ? "military" : "economy";
   } else {
-    ai.phase = "military";
+    // Cycle between economy and military based on personality
+    const cycleLength = pConfig.economyCycleTicks + pConfig.militaryCycleTicks;
+    const cyclePos = ai.phaseTicks % cycleLength;
+    ai.phase = cyclePos < pConfig.economyCycleTicks ? "economy" : "military";
   }
 }
 
 // ---------------------------------------------------------------------------
-// Main AI decision – with adaptive resource balancing
+// Main AI decision – with adaptive resource balancing + personality
 // ---------------------------------------------------------------------------
 
 function _aiDecision(state: SettlersState, player: SettlersPlayer, ai: AIPlayerState): void {
   const counts = _countBuildings(state, player.id);
   const has = (t: SettlersBuildingType) => (counts.get(t) || 0);
   const res = (t: ResourceType) => player.storage.get(t) || 0;
+  const pConfig = _personality(player);
 
   // Check affordability
   const canAffordSmall = res(ResourceType.PLANKS) >= 2 && res(ResourceType.STONE) >= 2;
@@ -172,20 +388,20 @@ function _aiDecision(state: SettlersState, player: SettlersPlayer, ai: AIPlayerS
   const resourceNeeds = _analyzeResourceNeeds(state, player, counts);
 
   // ------------------------------------------------------------------
-  // Build order depends on phase + resource needs
+  // Build order depends on phase + resource needs + personality
   // ------------------------------------------------------------------
   let buildOrder: { type: SettlersBuildingType; max: number }[];
 
   if (ai.phase === "economy") {
-    buildOrder = _adaptiveEconomyBuildOrder(resourceNeeds, counts);
+    buildOrder = _adaptiveEconomyBuildOrder(resourceNeeds, counts, pConfig);
   } else if (ai.phase === "military") {
-    buildOrder = _adaptiveMilitaryBuildOrder(resourceNeeds, counts);
+    buildOrder = _adaptiveMilitaryBuildOrder(resourceNeeds, counts, pConfig);
   } else {
     // Attack phase – initiate coordinated attack, but also build
     _initiateCoordinatedAttack(state, player, ai);
     buildOrder = [
-      { type: SettlersBuildingType.WATCHTOWER, max: 3 },
-      { type: SettlersBuildingType.FORTRESS, max: 2 },
+      { type: SettlersBuildingType.WATCHTOWER, max: 3 + pConfig.extraWatchtowers },
+      { type: SettlersBuildingType.FORTRESS, max: 2 + pConfig.extraFortresses },
     ];
   }
 
@@ -289,12 +505,13 @@ function _analyzeResourceNeeds(
 }
 
 // ---------------------------------------------------------------------------
-// Adaptive build orders based on resource needs
+// Adaptive build orders based on resource needs + personality
 // ---------------------------------------------------------------------------
 
 function _adaptiveEconomyBuildOrder(
   needs: ResourceNeeds,
   counts: Map<SettlersBuildingType, number>,
+  pConfig: PersonalityConfig,
 ): { type: SettlersBuildingType; max: number }[] {
   const order: { type: SettlersBuildingType; max: number }[] = [];
   const has = (t: SettlersBuildingType) => counts.get(t) || 0;
@@ -310,6 +527,18 @@ function _adaptiveEconomyBuildOrder(
     order.push({ type: SettlersBuildingType.QUARRY, max: 1 });
   }
 
+  // Rusher: squeeze in barracks infrastructure early
+  if (pConfig.rushBarracks) {
+    order.push({ type: SettlersBuildingType.FISHER, max: 1 });
+    order.push({ type: SettlersBuildingType.COAL_MINE, max: 1 });
+    order.push({ type: SettlersBuildingType.IRON_MINE, max: 1 });
+    order.push({ type: SettlersBuildingType.SMELTER, max: 1 });
+    order.push({ type: SettlersBuildingType.SWORD_SMITH, max: 1 });
+    order.push({ type: SettlersBuildingType.SHIELD_SMITH, max: 1 });
+    order.push({ type: SettlersBuildingType.BREWERY, max: 1 });
+    order.push({ type: SettlersBuildingType.BARRACKS, max: 1 });
+  }
+
   // If food is low, prioritize food production before mines
   if (needs.needFood) {
     order.push({ type: SettlersBuildingType.FISHER, max: 1 });
@@ -317,8 +546,14 @@ function _adaptiveEconomyBuildOrder(
     order.push({ type: SettlersBuildingType.FARM, max: 1 });
   }
 
-  // Territory expansion (at least one guard house early)
-  order.push({ type: SettlersBuildingType.GUARD_HOUSE, max: 1 });
+  // Expansionist: prioritize territory buildings early
+  if (pConfig.rushTerritory) {
+    order.push({ type: SettlersBuildingType.GUARD_HOUSE, max: 2 });
+    order.push({ type: SettlersBuildingType.WATCHTOWER, max: 1 });
+  } else {
+    // Territory expansion (at least one guard house early)
+    order.push({ type: SettlersBuildingType.GUARD_HOUSE, max: 1 });
+  }
 
   // If iron supply chain is missing, build it
   if (needs.needIron) {
@@ -337,18 +572,36 @@ function _adaptiveEconomyBuildOrder(
     order.push({ type: SettlersBuildingType.BREWERY, max: 1 });
   }
 
+  // Economist: rush gold production chain
+  if (pConfig.rushGold) {
+    order.push({ type: SettlersBuildingType.GOLD_MINE, max: 1 });
+    order.push({ type: SettlersBuildingType.COAL_MINE, max: 1 });
+    order.push({ type: SettlersBuildingType.MINT, max: 1 });
+    // Second gold mine + mint for faster gold accumulation
+    order.push({ type: SettlersBuildingType.GOLD_MINE, max: 2 });
+    order.push({ type: SettlersBuildingType.MINT, max: 2 });
+  }
+
   // Standard economy expansion
   order.push(
-    { type: SettlersBuildingType.FARM, max: 1 },
+    { type: SettlersBuildingType.FARM, max: 1 + pConfig.extraFarms },
     { type: SettlersBuildingType.MILL, max: 1 },
     { type: SettlersBuildingType.BAKERY, max: 1 },
     { type: SettlersBuildingType.BREWERY, max: 1 },
-    { type: SettlersBuildingType.WOODCUTTER, max: 4 },
-    { type: SettlersBuildingType.GUARD_HOUSE, max: 3 },
+    { type: SettlersBuildingType.WOODCUTTER, max: 4 + pConfig.extraWoodcutters },
+    { type: SettlersBuildingType.GUARD_HOUSE, max: 3 + pConfig.extraGuardHouses },
     { type: SettlersBuildingType.STOREHOUSE, max: 1 },
     { type: SettlersBuildingType.GOLD_MINE, max: 1 },
     { type: SettlersBuildingType.MINT, max: 1 },
   );
+
+  // Expansionist: more territory buildings in economy phase
+  if (pConfig.rushTerritory) {
+    order.push(
+      { type: SettlersBuildingType.WATCHTOWER, max: 2 + pConfig.extraWatchtowers },
+      { type: SettlersBuildingType.GUARD_HOUSE, max: 5 + pConfig.extraGuardHouses },
+    );
+  }
 
   // If under threat, sprinkle in more military buildings
   if (needs.threatLevel > 0.5) {
@@ -362,6 +615,7 @@ function _adaptiveEconomyBuildOrder(
 function _adaptiveMilitaryBuildOrder(
   needs: ResourceNeeds,
   _counts: Map<SettlersBuildingType, number>,
+  pConfig: PersonalityConfig,
 ): { type: SettlersBuildingType; max: number }[] {
   const order: { type: SettlersBuildingType; max: number }[] = [];
 
@@ -381,24 +635,32 @@ function _adaptiveMilitaryBuildOrder(
     order.push({ type: SettlersBuildingType.SMELTER, max: 1 });
   }
 
-  // Standard military build
+  // Standard military build with personality adjustments
   order.push(
     { type: SettlersBuildingType.SWORD_SMITH, max: 1 },
     { type: SettlersBuildingType.SHIELD_SMITH, max: 1 },
-    { type: SettlersBuildingType.BARRACKS, max: 1 },
-    { type: SettlersBuildingType.GUARD_HOUSE, max: 3 },
-    { type: SettlersBuildingType.WATCHTOWER, max: 2 },
-    { type: SettlersBuildingType.FORTRESS, max: 1 },
-    { type: SettlersBuildingType.BARRACKS, max: 2 },
+    { type: SettlersBuildingType.BARRACKS, max: 1 + pConfig.extraBarracks },
+    { type: SettlersBuildingType.GUARD_HOUSE, max: 3 + pConfig.extraGuardHouses },
+    { type: SettlersBuildingType.WATCHTOWER, max: 2 + pConfig.extraWatchtowers },
+    { type: SettlersBuildingType.FORTRESS, max: 1 + pConfig.extraFortresses },
+    { type: SettlersBuildingType.BARRACKS, max: 2 + pConfig.extraBarracks },
     { type: SettlersBuildingType.BREWERY, max: 2 },
-    { type: SettlersBuildingType.WOODCUTTER, max: 3 },
+    { type: SettlersBuildingType.WOODCUTTER, max: 3 + pConfig.extraWoodcutters },
   );
+
+  // Economist: keep building gold infrastructure even in military phase
+  if (pConfig.rushGold) {
+    order.push(
+      { type: SettlersBuildingType.GOLD_MINE, max: 2 },
+      { type: SettlersBuildingType.MINT, max: 2 },
+    );
+  }
 
   // If threatened, build extra defensive structures
   if (needs.threatLevel > 0.4) {
     order.push(
-      { type: SettlersBuildingType.WATCHTOWER, max: 3 },
-      { type: SettlersBuildingType.FORTRESS, max: 2 },
+      { type: SettlersBuildingType.WATCHTOWER, max: 3 + pConfig.extraWatchtowers },
+      { type: SettlersBuildingType.FORTRESS, max: 2 + pConfig.extraFortresses },
     );
   }
 
@@ -406,7 +668,7 @@ function _adaptiveMilitaryBuildOrder(
 }
 
 // ---------------------------------------------------------------------------
-// Multi-unit coordinated attack system
+// Multi-unit coordinated attack system (personality-aware)
 // ---------------------------------------------------------------------------
 
 function _initiateCoordinatedAttack(
@@ -415,6 +677,7 @@ function _initiateCoordinatedAttack(
   ai: AIPlayerState,
 ): void {
   const diff = _diff(state);
+  const pConfig = _personality(player);
 
   // If we already have a rally in progress, don't start a new one
   if (ai.rallyTarget && ai.rallyPool.length > 0) return;
@@ -423,16 +686,18 @@ function _initiateCoordinatedAttack(
   let totalAvailable = 0;
   for (const [, building] of state.buildings) {
     if (building.owner !== player.id) continue;
-    // Keep at least 1 soldier in each garrison for defense
-    if (building.garrison.length > 1) {
-      totalAvailable += building.garrison.length - 1;
+    // Keep garrison reserve based on personality
+    const reserve = pConfig.garrisonReserve;
+    if (building.garrison.length > reserve) {
+      totalAvailable += building.garrison.length - reserve;
     }
   }
 
-  // Don't attack unless we have enough soldiers
-  if (totalAvailable < diff.attackThreshold) return;
+  // Don't attack unless we have enough soldiers (personality-adjusted threshold)
+  const effectiveThreshold = Math.max(1, Math.round(diff.attackThreshold * pConfig.attackThresholdMult));
+  if (totalAvailable < effectiveThreshold) return;
 
-  // Find best target
+  // Find best target based on personality bias
   const hq = state.buildings.get(player.hqId);
   if (!hq) return;
 
@@ -452,10 +717,31 @@ function _initiateCoordinatedAttack(
     if (totalAvailable < garrisonCount + 1) continue;
 
     let score = 100 - dist * 2 - garrisonCount * 10;
-    // Bonus for territory-projecting buildings
-    if (def.territoryRadius > 0) score += 30;
-    // Bonus for HQ (ultimate target)
-    if (def.type === SettlersBuildingType.HEADQUARTERS) score += 50;
+
+    // Apply personality-based target selection bias
+    switch (pConfig.targetBias) {
+      case "nearest":
+        // Default: favor nearby targets (already reflected in dist penalty)
+        if (def.territoryRadius > 0) score += 30;
+        if (def.type === SettlersBuildingType.HEADQUARTERS) score += 50;
+        break;
+
+      case "hq":
+        // Rusher-style: go straight for the HQ
+        if (def.type === SettlersBuildingType.HEADQUARTERS) score += 100;
+        if (def.territoryRadius > 0) score += 10;
+        break;
+
+      case "territory":
+        // Expansionist: prioritize territory-granting buildings
+        if (def.territoryRadius > 0) score += 60;
+        if (def.type === SettlersBuildingType.FORTRESS) score += 40;
+        if (def.type === SettlersBuildingType.WATCHTOWER) score += 30;
+        if (def.type === SettlersBuildingType.GUARD_HOUSE) score += 20;
+        if (def.type === SettlersBuildingType.HEADQUARTERS) score += 50;
+        break;
+    }
+
     // Penalty for heavily defended targets
     if (garrisonCount > 4) score -= 20;
 
@@ -470,9 +756,10 @@ function _initiateCoordinatedAttack(
   const targetBuilding = state.buildings.get(bestTarget)!;
   const targetGarrison = targetBuilding.garrison.length;
 
-  // Determine how many soldiers to send: at least garrison+2, up to groupSize
+  // Determine how many soldiers to send (personality-adjusted group size)
+  const effectiveGroupSize = Math.max(1, Math.round(diff.attackGroupSize * pConfig.attackGroupSizeMult));
   const desiredCount = Math.min(
-    Math.max(targetGarrison + 2, diff.attackGroupSize),
+    Math.max(targetGarrison + 2, effectiveGroupSize),
     totalAvailable,
   );
 
@@ -483,19 +770,19 @@ function _initiateCoordinatedAttack(
   const candidates: { building: import("../state/SettlersBuilding").SettlersBuilding; dist: number }[] = [];
   for (const [, building] of state.buildings) {
     if (building.owner !== player.id) continue;
-    if (building.garrison.length <= 1) continue;
+    if (building.garrison.length <= pConfig.garrisonReserve) continue;
     const bx = (building.tileX + 1) * SB.TILE_SIZE;
     const bz = (building.tileZ + 1) * SB.TILE_SIZE;
-    const dx = bx - targetX;
-    const dz = bz - targetZ;
-    candidates.push({ building, dist: Math.sqrt(dx * dx + dz * dz) });
+    const ddx = bx - targetX;
+    const ddz = bz - targetZ;
+    candidates.push({ building, dist: Math.sqrt(ddx * ddx + ddz * ddz) });
   }
   candidates.sort((a, b) => a.dist - b.dist);
 
   let sent = 0;
   for (const c of candidates) {
     if (sent >= desiredCount) break;
-    while (c.building.garrison.length > 1 && sent < desiredCount) {
+    while (c.building.garrison.length > pConfig.garrisonReserve && sent < desiredCount) {
       const soldierId = c.building.garrison.pop()!;
       const soldier = state.soldiers.get(soldierId);
       if (soldier) {
@@ -559,7 +846,7 @@ function _updateRally(
 }
 
 // ---------------------------------------------------------------------------
-// Defensive military building placement
+// Defensive military building placement (personality-aware)
 // ---------------------------------------------------------------------------
 
 function _tryPlaceMilitaryDefensive(
@@ -572,9 +859,11 @@ function _tryPlaceMilitaryDefensive(
   if (!player) return null;
   const playerIdx = playerId === "p0" ? 0 : 1;
   const diff = _diff(state);
+  const pConfig = _personality(player);
 
-  // Only do defensive placement with some probability based on difficulty
-  if (Math.random() > diff.defensePriority) return null;
+  // Only do defensive placement with some probability based on difficulty + personality
+  const effectiveDefensePriority = Math.min(1, diff.defensePriority * pConfig.defensePriorityMult);
+  if (Math.random() > effectiveDefensePriority) return null;
 
   // Find border tiles: our territory tiles adjacent to neutral or enemy territory
   const borderTiles: { x: number; z: number; enemyDist: number }[] = [];
@@ -613,7 +902,20 @@ function _tryPlaceMilitaryDefensive(
       }
 
       // Prioritize tiles near enemy territory
-      const priority = nearEnemy ? minEnemyDist : minEnemyDist + 100;
+      // Expansionist: prefer tiles farther from HQ (to expand outward)
+      let priority: number;
+      if (pConfig.rushTerritory) {
+        const hq = state.buildings.get(player.hqId);
+        if (hq) {
+          const hqDist = Math.sqrt((tx - hq.tileX) ** 2 + (tz - hq.tileZ) ** 2);
+          // Prefer expansion direction: favor farther from HQ but still near border
+          priority = nearEnemy ? minEnemyDist * 0.5 - hqDist * 0.3 : minEnemyDist + 50 - hqDist * 0.2;
+        } else {
+          priority = nearEnemy ? minEnemyDist : minEnemyDist + 100;
+        }
+      } else {
+        priority = nearEnemy ? minEnemyDist : minEnemyDist + 100;
+      }
       borderTiles.push({ x: tx, z: tz, enemyDist: priority });
     }
   }
@@ -631,6 +933,9 @@ function _tryPlaceMilitaryDefensive(
     }
   }
 
+  // Expansionist allows slightly closer clustering (3 vs 5)
+  const minClusterDist = pConfig.rushTerritory ? 3 : 5;
+
   // Try top border tile candidates
   const maxTries = Math.min(borderTiles.length, 40);
   for (let i = 0; i < maxTries; i++) {
@@ -641,7 +946,7 @@ function _tryPlaceMilitaryDefensive(
     for (const m of existingMilitary) {
       const dx = m.x - tile.x;
       const dz = m.z - tile.z;
-      if (Math.sqrt(dx * dx + dz * dz) < 5) {
+      if (Math.sqrt(dx * dx + dz * dz) < minClusterDist) {
         tooClose = true;
         break;
       }

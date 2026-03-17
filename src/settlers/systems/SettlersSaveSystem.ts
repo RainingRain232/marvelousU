@@ -191,7 +191,11 @@ function deserializeState(s: SerializedState): SettlersState {
     for (const [res, count] of Object.entries((p as any).storage)) {
       storage.set(res as ResourceType, count as number);
     }
-    players.set(id, { ...p, storage } as SettlersPlayer);
+    const player = { ...p, storage } as SettlersPlayer;
+    // Backward compat: old saves won't have personality fields
+    if (player.aiPersonality === undefined) player.aiPersonality = null;
+    if (player.aiPersonalityRevealed === undefined) player.aiPersonalityRevealed = false;
+    players.set(id, player);
   }
 
   // Simple Record -> Map conversions
