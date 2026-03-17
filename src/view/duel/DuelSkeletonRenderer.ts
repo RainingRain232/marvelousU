@@ -156,7 +156,7 @@ function drawLimb(
   const nx = -dy / len; // perpendicular
   const ny = dx / len;
 
-  // Outline
+  // Outline (thicker for more definition)
   g.moveTo(x1, y1);
   g.lineTo(x2, y2);
   g.stroke({ color: outlineColor, width: thickness + OUTLINE_EXTRA, cap: "round", join: "round" });
@@ -166,34 +166,57 @@ function drawLimb(
   g.lineTo(x2, y2);
   g.stroke({ color, width: thickness, cap: "round", join: "round" });
 
-  // Muscle contour: bulge at 40% along the limb for natural shape
-  const midT = 0.4;
-  const midX = x1 + dx * midT;
-  const midY = y1 + dy * midT;
-  const bulgeOff = thickness * 0.12;
-  // Subtle convex shading to suggest muscle volume (lighter on near side)
-  g.moveTo(x1 + nx * bulgeOff, y1 + ny * bulgeOff);
-  g.quadraticCurveTo(midX + nx * (bulgeOff + thickness * 0.15), midY + ny * (bulgeOff + thickness * 0.15),
-    x2 + nx * bulgeOff * 0.5, y2 + ny * bulgeOff * 0.5);
-  g.stroke({ color: lighten(color, 0.22), width: thickness * 0.28, cap: "round", alpha: 0.38 });
+  // Multi-point muscle contour: bulges at 30% and 60% for bicep/forearm shape
+  for (const [t, bulgeScale, lightAmt, alpha] of [[0.3, 0.16, 0.24, 0.40], [0.6, 0.10, 0.16, 0.30]] as [number, number, number, number][]) {
+    const mx = x1 + dx * t;
+    const my = y1 + dy * t;
+    const bulge = thickness * bulgeScale;
+    g.moveTo(x1 + nx * bulge * 0.5, y1 + ny * bulge * 0.5);
+    g.quadraticCurveTo(mx + nx * (bulge + thickness * 0.18), my + ny * (bulge + thickness * 0.18),
+      x2 + nx * bulge * 0.3, y2 + ny * bulge * 0.3);
+    g.stroke({ color: lighten(color, lightAmt), width: thickness * 0.26, cap: "round", alpha });
+  }
 
-  // Shadow contour on the opposite side (darker strip)
-  g.moveTo(x1 - nx * bulgeOff, y1 - ny * bulgeOff);
-  g.quadraticCurveTo(midX - nx * (bulgeOff + thickness * 0.08), midY - ny * (bulgeOff + thickness * 0.08),
-    x2 - nx * bulgeOff * 0.5, y2 - ny * bulgeOff * 0.5);
-  g.stroke({ color: darken(color, 0.12), width: thickness * 0.2, cap: "round", alpha: 0.25 });
+  // Shadow contour on the opposite side (deeper, two layers for softer falloff)
+  for (const [sOff, sDark, sAlpha] of [[0.12, 0.14, 0.28], [0.08, 0.08, 0.15]] as [number, number, number][]) {
+    const bulgeOff = thickness * sOff;
+    g.moveTo(x1 - nx * bulgeOff, y1 - ny * bulgeOff);
+    g.quadraticCurveTo(
+      x1 + dx * 0.4 - nx * (bulgeOff + thickness * 0.1),
+      y1 + dy * 0.4 - ny * (bulgeOff + thickness * 0.1),
+      x2 - nx * bulgeOff * 0.5, y2 - ny * bulgeOff * 0.5);
+    g.stroke({ color: darken(color, sDark), width: thickness * 0.22, cap: "round", alpha: sAlpha });
+  }
 
-  // Highlight edge — subtle light strip along one side of the limb
-  const off = thickness * 0.25;
+  // Highlight edge — specular strip along one side
+  const off = thickness * 0.28;
   g.moveTo(x1 + nx * off, y1 + ny * off);
-  g.lineTo(x2 + nx * off, y2 + ny * off);
-  g.stroke({ color: lighten(color, 0.2), width: thickness * 0.22, cap: "round", alpha: 0.3 });
+  g.lineTo(x2 + nx * off * 0.7, y2 + ny * off * 0.7);
+  g.stroke({ color: lighten(color, 0.25), width: thickness * 0.18, cap: "round", alpha: 0.32 });
 
-  // Subtle skin/fabric crease at mid-length (cross-hatch detail)
-  if (thickness > 12) {
-    g.moveTo(midX + nx * thickness * 0.35, midY + ny * thickness * 0.35);
-    g.lineTo(midX - nx * thickness * 0.35, midY - ny * thickness * 0.35);
-    g.stroke({ color: darken(color, 0.08), width: 0.7, cap: "round", alpha: 0.2 });
+  // Secondary highlight (narrower, brighter, for wet/shiny look)
+  g.moveTo(x1 + nx * off * 0.6, y1 + ny * off * 0.6);
+  g.lineTo(x1 + dx * 0.5 + nx * off * 0.5, y1 + dy * 0.5 + ny * off * 0.5);
+  g.stroke({ color: lighten(color, 0.35), width: thickness * 0.08, cap: "round", alpha: 0.2 });
+
+  // Fabric/skin creases at multiple points along the limb
+  if (thickness > 10) {
+    for (const ct of [0.35, 0.65]) {
+      const cx = x1 + dx * ct;
+      const cy = y1 + dy * ct;
+      g.moveTo(cx + nx * thickness * 0.38, cy + ny * thickness * 0.38);
+      g.lineTo(cx - nx * thickness * 0.38, cy - ny * thickness * 0.38);
+      g.stroke({ color: darken(color, 0.08), width: 0.7, cap: "round", alpha: 0.18 });
+    }
+  }
+
+  // Vein/tendon suggestion on larger limbs
+  if (thickness > 16) {
+    g.moveTo(x1 + nx * thickness * 0.15, y1 + ny * thickness * 0.15);
+    g.quadraticCurveTo(
+      x1 + dx * 0.5 + nx * thickness * 0.2, y1 + dy * 0.5 + ny * thickness * 0.2,
+      x2 + nx * thickness * 0.1, y2 + ny * thickness * 0.1);
+    g.stroke({ color: darken(color, 0.06), width: 0.6, cap: "round", alpha: 0.12 });
   }
 }
 
@@ -213,13 +236,33 @@ function drawCircle(
   // Fill
   g.circle(x, y, radius);
   g.fill({ color });
-  // Top-left specular highlight for 3D volume
-  g.circle(x - radius * 0.22, y - radius * 0.25, radius * 0.45);
-  g.fill({ color: lighten(color, 0.18), alpha: 0.25 });
-  // Bottom-right ambient occlusion
-  { const sa = Math.PI * 0.15; g.moveTo(x + radius * 0.7 * Math.cos(sa), y + radius * 0.7 * Math.sin(sa)); }
-  g.arc(x, y, radius * 0.7, Math.PI * 0.15, Math.PI * 0.85);
-  g.fill({ color: darken(color, 0.1), alpha: 0.15 });
+
+  // Multi-layer volume shading for convincing 3D sphere
+  // Top-left bright highlight (primary specular)
+  g.circle(x - radius * 0.2, y - radius * 0.22, radius * 0.42);
+  g.fill({ color: lighten(color, 0.22), alpha: 0.30 });
+  // Smaller, brighter specular hotspot
+  g.circle(x - radius * 0.25, y - radius * 0.28, radius * 0.2);
+  g.fill({ color: lighten(color, 0.4), alpha: 0.2 });
+
+  // Mid-body ambient light (subtle)
+  g.circle(x + radius * 0.05, y - radius * 0.05, radius * 0.65);
+  g.fill({ color: lighten(color, 0.06), alpha: 0.12 });
+
+  // Bottom-right ambient occlusion (larger, softer)
+  { const sa = Math.PI * 0.1; g.moveTo(x + radius * 0.75 * Math.cos(sa), y + radius * 0.75 * Math.sin(sa)); }
+  g.arc(x, y, radius * 0.75, Math.PI * 0.1, Math.PI * 0.9);
+  g.fill({ color: darken(color, 0.12), alpha: 0.18 });
+
+  // Edge darkening (rim shadow for depth)
+  { const sa = Math.PI * 0.6; g.moveTo(x + radius * 0.9 * Math.cos(sa), y + radius * 0.9 * Math.sin(sa)); }
+  g.arc(x, y, radius * 0.9, Math.PI * 0.6, Math.PI * 1.4);
+  g.fill({ color: darken(color, 0.08), alpha: 0.1 });
+
+  // Subtle rim light on the opposite side (backlight effect)
+  { const sa = -Math.PI * 0.7; g.moveTo(x + radius * 0.85 * Math.cos(sa), y + radius * 0.85 * Math.sin(sa)); }
+  g.arc(x, y, radius * 0.95, -Math.PI * 0.7, -Math.PI * 0.3);
+  g.stroke({ color: lighten(color, 0.15), width: 1.5, alpha: 0.15 });
 }
 
 /**
@@ -765,22 +808,34 @@ export function drawFighterSkeleton(g: Graphics, opts: DrawFighterOptions): void
       g.lineTo(hx + 3, hy + 14);
       g.stroke({ color: darken(skinColor, 0.08), width: 0.8, cap: "round", alpha: 0.3 });
 
-      // Hair (behind head) — more dimensional with side coverage
-      g.circle(hx, hy - 3, hr + 4);
+      // Hair (behind head) — more dimensional with side coverage and volume
+      g.circle(hx, hy - 3, hr + 5);
       g.fill({ color: outline });
-      g.circle(hx, hy - 3, hr + 3);
+      g.circle(hx, hy - 3, hr + 4);
       g.fill({ color: hairColor });
       // Hair side coverage (wraps around head more)
-      { const sa = Math.PI * 0.55; g.moveTo(hx + (hr + 2) * Math.cos(sa), hy + (hr + 2) * Math.sin(sa)); }
-      g.arc(hx, hy, hr + 2, Math.PI * 0.55, Math.PI * 1.45);
+      { const sa = Math.PI * 0.55; g.moveTo(hx + (hr + 3) * Math.cos(sa), hy + (hr + 3) * Math.sin(sa)); }
+      g.arc(hx, hy, hr + 3, Math.PI * 0.55, Math.PI * 1.45);
       g.fill({ color: hairColor });
-      // Hair texture strands
-      g.moveTo(hx - hr, hy - 8);
-      g.quadraticCurveTo(hx - hr - 4, hy - 2, hx - hr + 1, hy + 4);
-      g.stroke({ color: darken(hairColor, 0.15), width: 1, cap: "round", alpha: 0.4 });
-      g.moveTo(hx - hr + 3, hy - 12);
-      g.quadraticCurveTo(hx - hr - 1, hy - 6, hx - hr + 4, hy);
-      g.stroke({ color: lighten(hairColor, 0.15), width: 1, cap: "round", alpha: 0.35 });
+      // Hair volume highlight (top sheen)
+      g.circle(hx - 2, hy - hr - 1, hr * 0.5);
+      g.fill({ color: lighten(hairColor, 0.18), alpha: 0.2 });
+      // Multiple hair strand groups for texture
+      for (const [ox, oy, cx, cy, ex, ey, dark, w, a] of [
+        [-hr, -8, -hr - 4, -2, -hr + 1, 4, true, 1.2, 0.4],
+        [-hr + 3, -12, -hr - 1, -6, -hr + 4, 0, false, 1, 0.35],
+        [-hr + 6, -14, -hr + 2, -8, -hr + 5, -2, true, 0.8, 0.3],
+        [-hr - 1, -4, -hr - 3, 2, -hr + 2, 8, true, 1, 0.35],
+        [-hr + 8, -16, -hr + 5, -10, -hr + 7, -4, false, 0.7, 0.25],
+      ] as [number, number, number, number, number, number, boolean, number, number][]) {
+        g.moveTo(hx + ox, hy + oy);
+        g.quadraticCurveTo(hx + cx, hy + cy, hx + ex, hy + ey);
+        g.stroke({ color: dark ? darken(hairColor, 0.15) : lighten(hairColor, 0.15), width: w, cap: "round", alpha: a });
+      }
+      // Hair parting line
+      g.moveTo(hx - 4, hy - hr - 2);
+      g.quadraticCurveTo(hx, hy - hr + 3, hx + 5, hy - hr);
+      g.stroke({ color: darken(hairColor, 0.1), width: 0.7, cap: "round", alpha: 0.2 });
 
       // Ear (visible between hair and head, on the back side)
       const earX = hx - 6;
@@ -796,24 +851,45 @@ export function drawFighterSkeleton(g: Graphics, opts: DrawFighterOptions): void
       // Head circle
       drawCircle(g, hx, hy, hr, skinColor, outline);
 
-      // Subtle cheek/face contour shading
+      // Subtle cheek/face contour shading (multi-layer for depth)
       { const sa = -Math.PI * 0.3; g.moveTo(hx + (hr - 1) * Math.cos(sa), hy + (hr - 1) * Math.sin(sa)); }
       g.arc(hx, hy, hr - 1, -Math.PI * 0.3, Math.PI * 0.3);
       g.fill({ color: lighten(skinColor, 0.08), alpha: 0.3 });
+      // Cheekbone highlight
+      g.circle(hx + 10, hy - 1, 5);
+      g.fill({ color: lighten(skinColor, 0.1), alpha: 0.15 });
+      // Cheek shadow (hollow below cheekbone)
+      g.ellipse(hx + 8, hy + 6, 4, 3);
+      g.fill({ color: darken(skinColor, 0.06), alpha: 0.12 });
+      // Temple shadow
+      g.circle(hx - 4, hy - 6, 5);
+      g.fill({ color: darken(skinColor, 0.04), alpha: 0.1 });
 
-      // Jaw/chin definition
+      // Jaw/chin definition (stronger jawline)
       g.moveTo(hx + 2, hy + hr - 8);
       g.quadraticCurveTo(hx + 8, hy + hr + 1, hx + 14, hy + hr - 6);
-      g.stroke({ color: darken(skinColor, 0.1), width: 1.2, cap: "round", alpha: 0.35 });
+      g.stroke({ color: darken(skinColor, 0.1), width: 1.4, cap: "round", alpha: 0.38 });
+      // Chin cleft suggestion
+      g.circle(hx + 7, hy + hr - 3, 1.2);
+      g.fill({ color: darken(skinColor, 0.06), alpha: 0.15 });
 
-      // Nose (subtle wedge with bridge)
+      // Nose (more defined bridge and tip)
       g.moveTo(hx + 6, hy - 8);
       g.quadraticCurveTo(hx + 10, hy - 2, hx + 13, hy + 2);
       g.lineTo(hx + 9, hy + 4);
       g.stroke({ color: outline, width: 1.2, cap: "round", join: "round", alpha: 0.35 });
-      // Nostril dot
-      g.circle(hx + 10, hy + 3, 0.8);
+      // Nose bridge highlight
+      g.moveTo(hx + 7, hy - 7);
+      g.quadraticCurveTo(hx + 9.5, hy - 3, hx + 11, hy);
+      g.stroke({ color: lighten(skinColor, 0.15), width: 0.8, cap: "round", alpha: 0.25 });
+      // Nostril (with shadow)
+      g.circle(hx + 10, hy + 3, 1);
       g.fill({ color: outline, alpha: 0.25 });
+      g.circle(hx + 8.5, hy + 3.5, 0.7);
+      g.fill({ color: outline, alpha: 0.15 });
+      // Nose tip roundness
+      g.circle(hx + 11, hy + 1, 2.5);
+      g.fill({ color: lighten(skinColor, 0.06), alpha: 0.12 });
 
       const eyeY = hy - 4;
       const hurt = !!opts.isHurt;
@@ -875,46 +951,98 @@ export function drawFighterSkeleton(g: Graphics, opts: DrawFighterOptions): void
       } else {
         // --- NORMAL EXPRESSION ---
         // Back eye (further, slightly smaller for 3/4 perspective)
+        // Eye socket shadow
+        g.ellipse(hx - 2, eyeY, 4.5, 3.5);
+        g.fill({ color: darken(skinColor, 0.05), alpha: 0.15 });
+        // White sclera
         g.ellipse(hx - 2, eyeY, 3.5, 2.5);
         g.fill({ color: 0xf8f4f0 });
-        // Upper eyelid shadow
+        // Upper eyelid shadow (deeper)
         g.ellipse(hx - 2, eyeY - 1.5, 3.5, 1.2);
-        g.fill({ color: darken(skinColor, 0.06), alpha: 0.3 });
-        // Iris
+        g.fill({ color: darken(skinColor, 0.08), alpha: 0.35 });
+        // Lower eyelid
+        g.ellipse(hx - 2, eyeY + 1.5, 3.2, 0.8);
+        g.fill({ color: darken(skinColor, 0.04), alpha: 0.15 });
+        // Iris with gradient (outer ring darker)
+        g.circle(hx - 1, eyeY, 2);
+        g.fill({ color: darken(pal.eyes, 0.2) });
         g.circle(hx - 1, eyeY, 1.8);
         g.fill({ color: pal.eyes });
+        // Iris detail (lighter inner ring)
+        g.circle(hx - 0.8, eyeY, 1.2);
+        g.fill({ color: lighten(pal.eyes, 0.15), alpha: 0.3 });
         // Pupil
         g.circle(hx - 0.5, eyeY - 0.3, 0.8);
         g.fill({ color: 0x111111 });
-        // Eye catchlight
+        // Eye catchlight (primary)
         g.circle(hx - 1.5, eyeY - 0.8, 0.5);
         g.fill({ color: 0xffffff, alpha: 0.7 });
+        // Secondary catchlight (smaller, lower)
+        g.circle(hx - 0.2, eyeY + 0.5, 0.3);
+        g.fill({ color: 0xffffff, alpha: 0.35 });
+        // Eyelash line
+        g.moveTo(hx - 5, eyeY - 1);
+        g.quadraticCurveTo(hx - 2, eyeY - 2.8, hx + 1.5, eyeY - 1.5);
+        g.stroke({ color: outline, width: 0.8, cap: "round", alpha: 0.4 });
 
         // Front eye (closer, slightly larger)
+        // Eye socket shadow
+        g.ellipse(hx + 8, eyeY, 5.5, 4);
+        g.fill({ color: darken(skinColor, 0.05), alpha: 0.15 });
+        // White sclera
         g.ellipse(hx + 8, eyeY, 4.5, 2.8);
         g.fill({ color: 0xf8f4f0 });
-        // Upper eyelid shadow
+        // Upper eyelid shadow (deeper)
         g.ellipse(hx + 8, eyeY - 1.8, 4.5, 1.3);
-        g.fill({ color: darken(skinColor, 0.06), alpha: 0.3 });
-        // Iris
+        g.fill({ color: darken(skinColor, 0.08), alpha: 0.35 });
+        // Lower eyelid
+        g.ellipse(hx + 8, eyeY + 1.6, 4.2, 0.9);
+        g.fill({ color: darken(skinColor, 0.04), alpha: 0.15 });
+        // Iris with gradient
+        g.circle(hx + 8.5, eyeY, 2.3);
+        g.fill({ color: darken(pal.eyes, 0.2) });
         g.circle(hx + 8.5, eyeY, 2);
         g.fill({ color: pal.eyes });
+        // Iris inner detail
+        g.circle(hx + 8.7, eyeY, 1.3);
+        g.fill({ color: lighten(pal.eyes, 0.15), alpha: 0.3 });
         // Pupil
         g.circle(hx + 9, eyeY - 0.3, 0.9);
         g.fill({ color: 0x111111 });
-        // Eye catchlight
+        // Eye catchlight (primary)
         g.circle(hx + 7.5, eyeY - 1, 0.6);
         g.fill({ color: 0xffffff, alpha: 0.7 });
+        // Secondary catchlight
+        g.circle(hx + 9.2, eyeY + 0.5, 0.35);
+        g.fill({ color: 0xffffff, alpha: 0.35 });
+        // Eyelash line
+        g.moveTo(hx + 3.5, eyeY - 1.5);
+        g.quadraticCurveTo(hx + 8, eyeY - 3.2, hx + 12.5, eyeY - 1.5);
+        g.stroke({ color: outline, width: 0.9, cap: "round", alpha: 0.45 });
 
-        // Eyebrows — thicker, more defined with shape
+        // Eyebrows — thicker, more defined with hair texture
         g.moveTo(hx - 5, eyeY - 5);
         g.quadraticCurveTo(hx - 2, eyeY - 7, hx + 1, eyeY - 6);
-        g.stroke({ color: hairColor, width: 2.8, cap: "round" });
+        g.stroke({ color: hairColor, width: 3, cap: "round" });
+        // Brow hair strokes
+        g.moveTo(hx - 4, eyeY - 5.5);
+        g.quadraticCurveTo(hx - 2.5, eyeY - 6.8, hx, eyeY - 6.2);
+        g.stroke({ color: darken(hairColor, 0.1), width: 1.2, cap: "round", alpha: 0.3 });
         g.moveTo(hx + 4, eyeY - 6.5);
         g.quadraticCurveTo(hx + 8, eyeY - 7.5, hx + 13, eyeY - 5.5);
-        g.stroke({ color: hairColor, width: 2.8, cap: "round" });
+        g.stroke({ color: hairColor, width: 3, cap: "round" });
+        // Brow hair strokes
+        g.moveTo(hx + 5, eyeY - 6.8);
+        g.quadraticCurveTo(hx + 9, eyeY - 7.8, hx + 12, eyeY - 5.8);
+        g.stroke({ color: darken(hairColor, 0.1), width: 1.2, cap: "round", alpha: 0.3 });
 
-        // Mouth — firm with lip definition
+        // Brow ridge shadow
+        g.moveTo(hx - 4, eyeY - 4);
+        g.quadraticCurveTo(hx + 5, eyeY - 5, hx + 13, eyeY - 4);
+        g.stroke({ color: darken(skinColor, 0.06), width: 1.5, cap: "round", alpha: 0.15 });
+
+        // Mouth — firm with lip definition and volume
+        // Lip outline
         g.moveTo(hx + 2, hy + 8);
         g.quadraticCurveTo(hx + 6, hy + 8.5, hx + 10, hy + 7.5);
         g.stroke({ color: 0x774444, width: 1.8, cap: "round" });
@@ -922,10 +1050,25 @@ export function drawFighterSkeleton(g: Graphics, opts: DrawFighterOptions): void
         g.moveTo(hx + 3, hy + 7.5);
         g.lineTo(hx + 9, hy + 7);
         g.stroke({ color: 0x553333, width: 0.8, cap: "round", alpha: 0.25 });
-        // Lower lip highlight
+        // Cupid's bow (upper lip shape)
+        g.moveTo(hx + 4, hy + 7.8);
+        g.quadraticCurveTo(hx + 6, hy + 7, hx + 8, hy + 7.8);
+        g.stroke({ color: darken(skinColor, 0.08), width: 0.6, cap: "round", alpha: 0.2 });
+        // Lower lip highlight (fuller)
         g.moveTo(hx + 3, hy + 9.5);
-        g.quadraticCurveTo(hx + 6, hy + 10.5, hx + 9, hy + 9);
-        g.stroke({ color: lighten(skinColor, 0.05), width: 1.2, cap: "round", alpha: 0.3 });
+        g.quadraticCurveTo(hx + 6, hy + 10.8, hx + 9, hy + 9);
+        g.stroke({ color: lighten(skinColor, 0.08), width: 1.5, cap: "round", alpha: 0.3 });
+        // Lip center highlight (wet look)
+        g.circle(hx + 6, hy + 9.5, 1.5);
+        g.fill({ color: lighten(skinColor, 0.12), alpha: 0.15 });
+        // Chin shadow below lip
+        g.moveTo(hx + 4, hy + 11);
+        g.quadraticCurveTo(hx + 6, hy + 12, hx + 8, hy + 11);
+        g.stroke({ color: darken(skinColor, 0.06), width: 0.8, cap: "round", alpha: 0.15 });
+        // Nasolabial fold (nose-to-mouth crease)
+        g.moveTo(hx + 3, hy + 3);
+        g.quadraticCurveTo(hx + 2, hy + 5.5, hx + 3, hy + 7.5);
+        g.stroke({ color: darken(skinColor, 0.05), width: 0.6, cap: "round", alpha: 0.12 });
       }
     }
   }

@@ -1780,17 +1780,23 @@ export class DuelArenaRenderer {
   // Helper: draw a sky gradient from arena palette
   // =========================================================================
 
-  private _drawSkyGradient(g: Graphics, a: DuelArenaDef, sw: number, floorY: number, bands = 12): void {
+  private _drawSkyGradient(g: Graphics, a: DuelArenaDef, sw: number, floorY: number, bands = 24): void {
+    const r1 = (a.skyTop >> 16) & 0xff, g1 = (a.skyTop >> 8) & 0xff, b1 = a.skyTop & 0xff;
+    const r2 = (a.skyBottom >> 16) & 0xff, g2 = (a.skyBottom >> 8) & 0xff, b2 = a.skyBottom & 0xff;
     for (let i = 0; i < bands; i++) {
       const t = i / bands;
-      const r1 = (a.skyTop >> 16) & 0xff, g1 = (a.skyTop >> 8) & 0xff, b1 = a.skyTop & 0xff;
-      const r2 = (a.skyBottom >> 16) & 0xff, g2 = (a.skyBottom >> 8) & 0xff, b2 = a.skyBottom & 0xff;
-      const col = (Math.round(r1 + (r2 - r1) * t) << 16) |
-                  (Math.round(g1 + (g2 - g1) * t) << 8) |
-                   Math.round(b1 + (b2 - b1) * t);
+      // Smoothstep for more natural sky gradient (less banding)
+      const st = t * t * (3 - 2 * t);
+      const col = (Math.round(r1 + (r2 - r1) * st) << 16) |
+                  (Math.round(g1 + (g2 - g1) * st) << 8) |
+                   Math.round(b1 + (b2 - b1) * st);
       g.rect(0, floorY * t, sw, floorY / bands + 1);
       g.fill({ color: col });
     }
+    // Warm horizon glow (subtle atmospheric haze near ground)
+    const horizonH = floorY * 0.15;
+    g.rect(0, floorY - horizonH, sw, horizonH);
+    g.fill({ color: 0xffccaa, alpha: 0.06 });
   }
 
   // =========================================================================

@@ -57,7 +57,7 @@ function makeMat(color: number, metalness = 0, roughness = 0.7): THREE.MeshStand
 // ---- Limb helper ----------------------------------------------------------
 
 function makeLimb(len: number, thickness: number, mat: THREE.MeshStandardMaterial): THREE.Mesh {
-  const geo = new THREE.CylinderGeometry(thickness, thickness * 0.9, len, 16);
+  const geo = new THREE.CylinderGeometry(thickness, thickness * 0.9, len, 24);
   geo.translate(0, -len / 2, 0);
   const mesh = new THREE.Mesh(geo, mat);
   mesh.castShadow = true;
@@ -65,7 +65,7 @@ function makeLimb(len: number, thickness: number, mat: THREE.MeshStandardMateria
 }
 
 function makeJoint(radius: number, mat: THREE.MeshStandardMaterial): THREE.Mesh {
-  const mesh = new THREE.Mesh(new THREE.SphereGeometry(radius, 12, 8), mat);
+  const mesh = new THREE.Mesh(new THREE.SphereGeometry(radius, 20, 16), mat);
   mesh.castShadow = true;
   return mesh;
 }
@@ -308,7 +308,7 @@ export class TekkenFighterRenderer {
   private _buildMeshes(): void {
     // Head sphere (higher poly for smoother look)
     const headMesh = new THREE.Mesh(
-      new THREE.SphereGeometry(HEAD_RADIUS, 24, 18),
+      new THREE.SphereGeometry(HEAD_RADIUS, 32, 24),
       this._skinMat,
     );
     headMesh.castShadow = true;
@@ -317,7 +317,7 @@ export class TekkenFighterRenderer {
 
     // Cheekbone definition (subtle bulges on sides of face)
     for (const side of [-1, 1]) {
-      const cheekGeo = new THREE.SphereGeometry(0.03, 12, 8);
+      const cheekGeo = new THREE.SphereGeometry(0.03, 20, 16);
       const cheekMesh = new THREE.Mesh(cheekGeo, this._skinMat);
       cheekMesh.position.set(side * 0.06, HEAD_RADIUS * 0.6, HEAD_RADIUS * 0.6);
       cheekMesh.scale.set(0.9, 0.6, 0.6);
@@ -325,11 +325,11 @@ export class TekkenFighterRenderer {
     }
 
     // Eyes (larger, more detailed)
-    const eyeGeo = new THREE.SphereGeometry(0.02, 12, 8);
+    const eyeGeo = new THREE.SphereGeometry(0.02, 20, 16);
     const eyeMat = new THREE.MeshStandardMaterial({ color: 0xfafafa, roughness: 0.15, metalness: 0.05 });
-    const irisGeo = new THREE.SphereGeometry(0.013, 12, 8);
+    const irisGeo = new THREE.SphereGeometry(0.013, 20, 16);
     const irisMat = new THREE.MeshStandardMaterial({ color: 0x445566, roughness: 0.3, metalness: 0.1 });
-    const pupilGeo = new THREE.SphereGeometry(0.007, 12, 8);
+    const pupilGeo = new THREE.SphereGeometry(0.007, 20, 16);
     const pupilMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.5 });
     for (const side of [-1, 1]) {
       const eye = new THREE.Mesh(eyeGeo, eyeMat);
@@ -343,7 +343,7 @@ export class TekkenFighterRenderer {
       this._head.add(pupil);
 
       // Eyelid (thin curved mesh over eye for depth)
-      const lidGeo = new THREE.SphereGeometry(0.023, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.35);
+      const lidGeo = new THREE.SphereGeometry(0.023, 20, 16, 0, Math.PI * 2, 0, Math.PI * 0.35);
       const lidMesh = new THREE.Mesh(lidGeo, this._skinMat);
       lidMesh.position.set(side * 0.04, HEAD_RADIUS * 0.83, HEAD_RADIUS * 0.73);
       lidMesh.rotation.x = 0.2;
@@ -359,14 +359,14 @@ export class TekkenFighterRenderer {
       this._head.add(browMesh);
 
       // Ear (more detailed with inner ear)
-      const earGeo = new THREE.SphereGeometry(0.028, 12, 8);
+      const earGeo = new THREE.SphereGeometry(0.028, 20, 16);
       const earMesh = new THREE.Mesh(earGeo, this._skinMat);
       earMesh.position.set(side * HEAD_RADIUS * 0.96, HEAD_RADIUS * 0.7, 0);
       earMesh.scale.set(0.3, 1, 0.7);
       earMesh.castShadow = true;
       this._head.add(earMesh);
       // Inner ear detail
-      const innerEarGeo = new THREE.SphereGeometry(0.015, 12, 8);
+      const innerEarGeo = new THREE.SphereGeometry(0.015, 20, 16);
       const innerEarMat = new THREE.MeshStandardMaterial({
         color: (this._skinMat.color as THREE.Color).clone().multiplyScalar(0.85),
         roughness: 0.6,
@@ -385,7 +385,7 @@ export class TekkenFighterRenderer {
     bridgeMesh.castShadow = true;
     this._head.add(bridgeMesh);
     // Nose tip (rounded)
-    const noseTipGeo = new THREE.SphereGeometry(0.014, 12, 8);
+    const noseTipGeo = new THREE.SphereGeometry(0.014, 20, 16);
     const noseTipMesh = new THREE.Mesh(noseTipGeo, this._skinMat);
     noseTipMesh.position.set(0, HEAD_RADIUS * 0.6, HEAD_RADIUS * 0.91);
     noseTipMesh.scale.set(1, 0.7, 0.8);
@@ -393,7 +393,7 @@ export class TekkenFighterRenderer {
     this._head.add(noseTipMesh);
     // Nostrils
     for (const side of [-1, 1]) {
-      const nostrilGeo = new THREE.SphereGeometry(0.006, 12, 8);
+      const nostrilGeo = new THREE.SphereGeometry(0.006, 20, 16);
       const nostrilMat = new THREE.MeshStandardMaterial({
         color: (this._skinMat.color as THREE.Color).clone().multiplyScalar(0.7),
         roughness: 0.7,
@@ -435,7 +435,7 @@ export class TekkenFighterRenderer {
     this._head.add(lowerTeeth);
 
     // Chin definition (small sphere below jaw)
-    const chinDefGeo = new THREE.SphereGeometry(0.016, 12, 8);
+    const chinDefGeo = new THREE.SphereGeometry(0.016, 20, 16);
     const chinDefMesh = new THREE.Mesh(chinDefGeo, this._skinMat);
     chinDefMesh.position.set(0, HEAD_RADIUS * 0.25, HEAD_RADIUS * 0.75);
     chinDefMesh.scale.set(1.2, 0.8, 0.7);
@@ -478,7 +478,7 @@ export class TekkenFighterRenderer {
 
     // Hair (higher poly half-sphere on top of head)
     const hairMesh = new THREE.Mesh(
-      new THREE.SphereGeometry(HEAD_RADIUS * 1.06, 20, 14, 0, Math.PI * 2, 0, Math.PI * 0.55),
+      new THREE.SphereGeometry(HEAD_RADIUS * 1.06, 28, 20, 0, Math.PI * 2, 0, Math.PI * 0.55),
       this._hairMat,
     );
     hairMesh.position.y = HEAD_RADIUS * 0.75;
@@ -544,7 +544,7 @@ export class TekkenFighterRenderer {
 
     // Pectoral definition (two subtle bumps on chest)
     for (const side of [-1, 1]) {
-      const pecGeo = new THREE.SphereGeometry(0.05, 12, 8);
+      const pecGeo = new THREE.SphereGeometry(0.05, 20, 16);
       const pecMesh = new THREE.Mesh(pecGeo, this._armorMat);
       pecMesh.position.set(side * 0.06, CHEST_HEIGHT * 0.65, CHEST_DEPTH * 0.38);
       pecMesh.scale.set(1, 0.6, 0.45);
@@ -568,7 +568,7 @@ export class TekkenFighterRenderer {
       emissiveIntensity: 0.3,
       envMapIntensity: 3.0,
     });
-    const gemGeo = new THREE.SphereGeometry(0.012, 12, 8);
+    const gemGeo = new THREE.SphereGeometry(0.012, 20, 16);
     const gemMesh = new THREE.Mesh(gemGeo, gemMat);
     gemMesh.position.set(0, CHEST_HEIGHT * 0.55, CHEST_DEPTH * 0.5 + 0.035);
     gemMesh.scale.set(1, 1, 0.5);
@@ -606,7 +606,7 @@ export class TekkenFighterRenderer {
 
     // Pelvis/hip area
     const pelvisMesh = new THREE.Mesh(
-      new THREE.SphereGeometry(LOWER_TORSO_WIDTH * 0.38, 12, 8),
+      new THREE.SphereGeometry(LOWER_TORSO_WIDTH * 0.38, 20, 16),
       this._clothMat,
     );
     pelvisMesh.scale.set(1, 0.6, 0.8);
@@ -619,7 +619,7 @@ export class TekkenFighterRenderer {
       const px = side * (CHEST_WIDTH * 0.45 + CLAVICLE_LEN * 0.5);
       for (let layer = 0; layer < 3; layer++) {
         const radius = 0.06 - layer * 0.012;
-        const plateGeo = new THREE.SphereGeometry(radius, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.55);
+        const plateGeo = new THREE.SphereGeometry(radius, 20, 16, 0, Math.PI * 2, 0, Math.PI * 0.55);
         const plateMat = layer === 0 ? this._armorMat : this._accentMat;
         const plate = new THREE.Mesh(plateGeo, plateMat);
         plate.position.set(px, 0.01 + layer * 0.015, -layer * 0.01);
@@ -640,7 +640,7 @@ export class TekkenFighterRenderer {
 
       // Elbow guard (small sphere at elbow joint)
       const elbowGuard = new THREE.Mesh(
-        new THREE.SphereGeometry(JOINT_RADIUS * 1.4, 12, 8),
+        new THREE.SphereGeometry(JOINT_RADIUS * 1.4, 20, 16),
         this._armorMat,
       );
       elbowGuard.position.y = -UPPER_ARM_LEN;
@@ -706,7 +706,7 @@ export class TekkenFighterRenderer {
       for (let k = 0; k < 4; k++) {
         // Knuckle bump
         const knuckle = new THREE.Mesh(
-          new THREE.SphereGeometry(0.008, 12, 8),
+          new THREE.SphereGeometry(0.008, 20, 16),
           this._skinMat,
         );
         knuckle.position.set(
@@ -775,7 +775,7 @@ export class TekkenFighterRenderer {
       thumbBase.castShadow = true;
       thumb.add(thumbBase);
       const thumbTip = new THREE.Mesh(
-        new THREE.SphereGeometry(0.009, 12, 8),
+        new THREE.SphereGeometry(0.009, 20, 16),
         this._skinMat,
       );
       thumbTip.position.y = -FINGER_LEN * 0.3;
@@ -804,7 +804,7 @@ export class TekkenFighterRenderer {
 
       // Knee pad (half-sphere on front of knee)
       const kneePad = new THREE.Mesh(
-        new THREE.SphereGeometry(JOINT_RADIUS * 1.5, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.5),
+        new THREE.SphereGeometry(JOINT_RADIUS * 1.5, 20, 16, 0, Math.PI * 2, 0, Math.PI * 0.5),
         this._armorMat,
       );
       kneePad.position.set(0, -THIGH_LEN, LIMB_THICKNESS * 0.5);
@@ -874,7 +874,7 @@ export class TekkenFighterRenderer {
 
     // Deltoid muscles (spheres on top of each shoulder, between arm and chest)
     for (const [clav, side] of [[this._leftClavicle, 1], [this._rightClavicle, -1]] as [THREE.Group, number][]) {
-      const deltoidGeo = new THREE.SphereGeometry(0.04, 12, 8);
+      const deltoidGeo = new THREE.SphereGeometry(0.04, 20, 16);
       const deltoidMesh = new THREE.Mesh(deltoidGeo, this._skinMat);
       deltoidMesh.position.set(side * (CHEST_WIDTH * 0.45 + CLAVICLE_LEN * 0.3), -0.02, 0);
       deltoidMesh.scale.set(0.9, 1.1, 0.8);
@@ -892,7 +892,7 @@ export class TekkenFighterRenderer {
 
     // Calf muscle bulges (scaled spheres on back of shins)
     for (const shin of [this._leftShin, this._rightShin]) {
-      const calfGeo = new THREE.SphereGeometry(0.035, 12, 8);
+      const calfGeo = new THREE.SphereGeometry(0.035, 20, 16);
       const calfMesh = new THREE.Mesh(calfGeo, this._skinMat);
       calfMesh.position.set(0, -SHIN_LEN * 0.3, -LIMB_THICKNESS * 0.6);
       calfMesh.scale.set(0.7, 1.4, 0.8);
@@ -902,7 +902,7 @@ export class TekkenFighterRenderer {
 
     // Forearm muscle definition (slightly flattened sphere on each forearm)
     for (const forearm of [this._leftForearm, this._rightForearm]) {
-      const forearmMuscleGeo = new THREE.SphereGeometry(0.025, 12, 8);
+      const forearmMuscleGeo = new THREE.SphereGeometry(0.025, 20, 16);
       const forearmMuscleMesh = new THREE.Mesh(forearmMuscleGeo, this._skinMat);
       forearmMuscleMesh.position.set(0, -FOREARM_LEN * 0.25, LIMB_THICKNESS * 0.3);
       forearmMuscleMesh.scale.set(1.0, 1.3, 0.6);
@@ -1001,7 +1001,7 @@ export class TekkenFighterRenderer {
 
         // Sword pommel
         const swordPommel = new THREE.Mesh(
-          new THREE.SphereGeometry(0.02, 12, 8),
+          new THREE.SphereGeometry(0.02, 20, 16),
           goldMat,
         );
         swordPommel.position.set(-0.16, 0.32, 0.05);
@@ -1069,7 +1069,7 @@ export class TekkenFighterRenderer {
           emissive: 0xff2222, emissiveIntensity: 0.5,
         });
         const pommelJewel = new THREE.Mesh(
-          new THREE.SphereGeometry(0.012, 12, 8),
+          new THREE.SphereGeometry(0.012, 20, 16),
           pommelJewelMat,
         );
         pommelJewel.position.set(-0.16, 0.32, 0.05);
@@ -1096,7 +1096,7 @@ export class TekkenFighterRenderer {
         // Knee guards (half-sphere over each knee)
         for (const thigh of [this._leftThigh, this._rightThigh]) {
           const kneeGuard = new THREE.Mesh(
-            new THREE.SphereGeometry(JOINT_RADIUS * 1.8, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.5),
+            new THREE.SphereGeometry(JOINT_RADIUS * 1.8, 20, 16, 0, Math.PI * 2, 0, Math.PI * 0.5),
             metalMat,
           );
           kneeGuard.position.set(0, -THIGH_LEN, LIMB_THICKNESS * 0.7);
@@ -1188,7 +1188,7 @@ export class TekkenFighterRenderer {
         const furMat = makeMat(0x664422, 0, 0.95);
         for (let i = 0; i < 8; i++) {
           const tuft = new THREE.Mesh(
-            new THREE.SphereGeometry(0.025, 12, 8),
+            new THREE.SphereGeometry(0.025, 20, 16),
             furMat,
           );
           const angle = (i / 8) * Math.PI * 2;
@@ -1294,7 +1294,7 @@ export class TekkenFighterRenderer {
         const beadMat = makeMat(0x884422, 0.2, 0.5);
         for (let i = 0; i < 12; i++) {
           const bead = new THREE.Mesh(
-            new THREE.SphereGeometry(0.012, 12, 8),
+            new THREE.SphereGeometry(0.012, 20, 16),
             beadMat,
           );
           const angle = (i / 12) * Math.PI * 2;
@@ -1494,7 +1494,7 @@ export class TekkenFighterRenderer {
         // Full plate armor layers on shoulders and chest
         for (const clav of [this._leftClavicle, this._rightClavicle]) {
           const plateLayer = new THREE.Mesh(
-            new THREE.SphereGeometry(0.07, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.5),
+            new THREE.SphereGeometry(0.07, 20, 16, 0, Math.PI * 2, 0, Math.PI * 0.5),
             metalMat,
           );
           plateLayer.position.set(0, 0.02, 0);
@@ -1829,7 +1829,7 @@ export class TekkenFighterRenderer {
         for (const clav of [this._leftClavicle, this._rightClavicle]) {
           for (let i = 0; i < 5; i++) {
             const tuft = new THREE.Mesh(
-              new THREE.SphereGeometry(0.03, 12, 8),
+              new THREE.SphereGeometry(0.03, 20, 16),
               furMantleMat,
             );
             tuft.position.set(
@@ -1845,7 +1845,7 @@ export class TekkenFighterRenderer {
         // Fur draping down back of neck
         for (let i = 0; i < 6; i++) {
           const furBack = new THREE.Mesh(
-            new THREE.SphereGeometry(0.025, 12, 8),
+            new THREE.SphereGeometry(0.025, 20, 16),
             furMantleMat,
           );
           furBack.position.set(
@@ -2504,7 +2504,7 @@ export class TekkenFighterRenderer {
     }
 
     // Detect move type from ID patterns
-    const isKick = moveDef.includes("kick") || moveDef.includes("3") || moveDef.includes("4") || moveDef.includes("lk") || moveDef.includes("rk") || moveDef.includes("knee") || moveDef.includes("spin");
+    const isKick = moveDef.includes("kick") || moveDef.includes("3") || moveDef.includes("4") || moveDef.includes("lk") || moveDef.includes("rk");
     const isLow = moveDef.includes("d+3") || moveDef.includes("d+4") || moveDef.includes("d/b") || moveDef.includes("ankle") || moveDef.includes("sweep") || moveDef.includes("low") || moveDef.includes("hellsweep");
     const isLauncher = moveDef.includes("uppercut") || moveDef.includes("hopkick") || moveDef.includes("d+2") || moveDef.includes("d/f+2") || moveDef.includes("u/f") || moveDef.includes("jumping");
     const isRight = moveDef.includes("rp") || moveDef.includes("rk") || moveDef.includes("2") || moveDef.includes("4") || moveDef.includes("straight") || moveDef.includes("roundhouse");
@@ -2514,11 +2514,30 @@ export class TekkenFighterRenderer {
     const isGrab = moveDef.includes("throw") || moveDef.includes("grab") || moveDef.includes("1+3") || moveDef.includes("f+1+3");
     const isRage = moveDef.includes("rage");
     const isFlurry = moveDef.includes("flurry") || moveDef.includes("string") || moveDef.includes("rush") || moveDef.includes("1,2");
+    const isSlash = moveDef.includes("slash") || moveDef.includes("cleave") || moveDef.includes("cut") || moveDef.includes("rend") || moveDef.includes("arc") || moveDef.includes("scythe");
+    const isOverhead = moveDef.includes("smash") || moveDef.includes("slam") || moveDef.includes("crush") || moveDef.includes("hammer") || moveDef.includes("drop") || moveDef.includes("chop") || moveDef.includes("splitter") || moveDef.includes("pound") || moveDef.includes("meteor") || moveDef.includes("smite");
+    const isThrust = moveDef.includes("thrust") || moveDef.includes("stab") || moveDef.includes("impale") || moveDef.includes("lance") || moveDef.includes("pierce");
+    const isStomp = moveDef.includes("stomp") || moveDef.includes("earthquake") || moveDef.includes("ground_pound");
+    const isHeadbutt = moveDef.includes("headbutt");
+    const isShield = moveDef.includes("shield") || moveDef.includes("bulwark") || moveDef.includes("aegis");
+    const isPalm = moveDef.includes("palm") || moveDef.includes("push") || moveDef.includes("shove");
+    const isDive = moveDef.includes("dive") || moveDef.includes("diving") || moveDef.includes("aerial") || moveDef.includes("descent") || moveDef.includes("death_from_above") || moveDef.includes("vault");
+    const isBackhand = moveDef.includes("backhand") || moveDef.includes("backfist") || moveDef.includes("backslash");
 
     if (isGrab) {
       this._animateGrabAttack(progress, isRight);
     } else if (isRage) {
       this._animateRageAttack(progress, f);
+    } else if (isHeadbutt) {
+      this._animateHeadbuttAttack(progress);
+    } else if (isDive) {
+      this._animateDiveAttack(progress, f);
+    } else if (isShield) {
+      this._animateShieldAttack(progress, isRight);
+    } else if (isStomp) {
+      this._animateStompAttack(progress);
+    } else if (isBackhand) {
+      this._animateBackhandAttack(progress, isRight);
     } else if (isElbow) {
       this._animateElbowAttack(progress, isRight);
     } else if (isKnee) {
@@ -2527,6 +2546,14 @@ export class TekkenFighterRenderer {
       this._animateSpinningAttack(progress, isLow, isRight);
     } else if (isFlurry) {
       this._animateFlurryAttack(progress, f);
+    } else if (isOverhead) {
+      this._animateOverheadAttack(progress, isLauncher);
+    } else if (isSlash) {
+      this._animateSlashAttack(progress, isLow, isRight);
+    } else if (isThrust) {
+      this._animateThrustAttack(progress, isLow, isRight);
+    } else if (isPalm) {
+      this._animatePalmAttack(progress, isRight);
     } else if (isKick) {
       this._animateKickAttack(progress, isLow, isLauncher, isRight);
     } else {
@@ -2882,6 +2909,397 @@ export class TekkenFighterRenderer {
     this._lerpBone(this._leftShin, 0.38, 0, 0, 0.2);
     this._lerpBone(this._rightThigh, -0.18 - footShift, 0, -0.13, 0.2);
     this._lerpBone(this._rightShin, 0.34, 0, 0, 0.2);
+  }
+
+  private _animateSlashAttack(progress: number, isLow: boolean, isRight: boolean): void {
+    const p = progress;
+    const s = isRight ? -1 : 1;
+
+    // Wide arcing swing from one side across the body
+    const windPhase = Math.min(p * 1.8, 1);
+    const swingPhase = Math.max(0, (p - 0.25) / 0.75);
+
+    // Torso rotates dramatically to drive the slash
+    this._lerpBone(this._hips, isLow ? 0.12 : 0, s * (-0.25 + 0.5 * swingPhase), 0, 0.3);
+    this._lerpBone(this._spineLower, isLow ? 0.15 : -0.05 * p, s * (-0.35 * windPhase + 0.7 * swingPhase), 0.04 * s * p, 0.3);
+    this._lerpBone(this._spineUpper, -0.06 * p, s * (-0.25 * windPhase + 0.5 * swingPhase), 0, 0.3);
+    this._lerpBone(this._chest, -0.08 * p, s * (-0.15 * windPhase + 0.3 * swingPhase), 0, 0.28);
+    this._lerpBone(this._head, 0.04, s * 0.1 * swingPhase, 0, 0.2);
+
+    // Lead arm sweeps in wide arc — extended reach
+    if (isRight) {
+      this._lerpBone(this._rightClavicle, -0.1 * p, 0, -0.15 * p, 0.3);
+      this._lerpBone(this._rightUpperArm, -0.7 * swingPhase - 0.2, -0.6 * windPhase + 0.8 * swingPhase, -0.4 * swingPhase, 0.32);
+      this._lerpBone(this._rightForearm, -0.3 * (1 - swingPhase), 0, -0.1 * p, 0.32);
+      this._lerpBone(this._rightHand, -0.2 * p, 0, -0.15, 0.3);
+      this._lerpBone(this._rightFingers, -0.85, 0, 0, 0.3);
+      // Off-hand follows or guards
+      this._lerpBone(this._leftUpperArm, -0.4, 0.2, 0.6, 0.18);
+      this._lerpBone(this._leftForearm, -1.3, 0, 0, 0.18);
+    } else {
+      this._lerpBone(this._leftClavicle, -0.1 * p, 0, 0.15 * p, 0.3);
+      this._lerpBone(this._leftUpperArm, -0.7 * swingPhase - 0.2, 0.6 * windPhase - 0.8 * swingPhase, 0.4 * swingPhase, 0.32);
+      this._lerpBone(this._leftForearm, -0.3 * (1 - swingPhase), 0, 0.1 * p, 0.32);
+      this._lerpBone(this._leftHand, -0.2 * p, 0, 0.15, 0.3);
+      this._lerpBone(this._leftFingers, -0.85, 0, 0, 0.3);
+      this._lerpBone(this._rightUpperArm, -0.4, -0.2, -0.6, 0.18);
+      this._lerpBone(this._rightForearm, -1.3, 0, 0, 0.18);
+    }
+
+    // Legs: pivot stance for the swing
+    if (isLow) {
+      this._lerpBone(this._leftThigh, -0.65, 0, 0.22, 0.22);
+      this._lerpBone(this._leftShin, 1.0, 0, 0, 0.22);
+      this._lerpBone(this._rightThigh, -0.55, 0, -0.22, 0.22);
+      this._lerpBone(this._rightShin, 0.9, 0, 0, 0.22);
+    } else {
+      this._lerpBone(this._leftThigh, -0.2 - 0.1 * swingPhase, 0, 0.15, 0.2);
+      this._lerpBone(this._leftShin, 0.35 + 0.1 * p, 0, 0, 0.2);
+      this._lerpBone(this._rightThigh, -0.18 - 0.08 * p, 0, -0.15, 0.2);
+      this._lerpBone(this._rightShin, 0.3, 0, 0, 0.2);
+      this._lerpBone(this._rightAnkle, 0.06 * swingPhase, 0, 0, 0.2);
+    }
+  }
+
+  private _animateOverheadAttack(progress: number, isLauncher: boolean): void {
+    const p = progress;
+
+    // Overhead smash: arms raise high during windup, slam down during active
+    const raisePhase = Math.min(p * 2.0, 1);
+    const strikePhase = Math.max(0, (p - 0.35) / 0.65);
+    const slamAngle = raisePhase * 0.6 - strikePhase * 1.8; // rises then slams down
+
+    // Body rises then drops weight into strike
+    this._lerpBone(this._hips, -0.08 * raisePhase + 0.15 * strikePhase, 0, 0, 0.3);
+    this._lerpBone(this._spineLower, -0.15 * raisePhase + 0.25 * strikePhase, 0, 0, 0.3);
+    this._lerpBone(this._spineUpper, -0.2 * raisePhase + 0.2 * strikePhase, 0, 0, 0.3);
+    this._lerpBone(this._chest, -0.25 * raisePhase + 0.3 * strikePhase, 0, 0, 0.3);
+    this._lerpBone(this._head, 0.1 * raisePhase - 0.15 * strikePhase, 0, 0, 0.25);
+
+    // Both arms raise high then slam down together
+    const armAngle = slamAngle;
+    this._lerpBone(this._leftClavicle, -0.1 * raisePhase, 0, 0.1 * raisePhase, 0.3);
+    this._lerpBone(this._leftUpperArm, armAngle - 0.3, 0.2 * raisePhase, 0.3 * (1 - strikePhase), 0.35);
+    this._lerpBone(this._leftForearm, -0.8 * raisePhase - 0.3 * strikePhase, 0, 0, 0.35);
+    this._lerpBone(this._leftHand, -0.3, 0, 0, 0.3);
+    this._lerpBone(this._leftFingers, -0.9, 0, 0, 0.3);
+
+    this._lerpBone(this._rightClavicle, -0.1 * raisePhase, 0, -0.1 * raisePhase, 0.3);
+    this._lerpBone(this._rightUpperArm, armAngle - 0.3, -0.2 * raisePhase, -0.3 * (1 - strikePhase), 0.35);
+    this._lerpBone(this._rightForearm, -0.8 * raisePhase - 0.3 * strikePhase, 0, 0, 0.35);
+    this._lerpBone(this._rightHand, -0.3, 0, 0, 0.3);
+    this._lerpBone(this._rightFingers, -0.9, 0, 0, 0.3);
+
+    // Legs: wide stance, drop weight on impact
+    if (isLauncher) {
+      this._lerpBone(this._leftThigh, -0.3 - 0.15 * strikePhase, 0, 0.2, 0.25);
+      this._lerpBone(this._leftShin, 0.5 + 0.3 * strikePhase, 0, 0, 0.25);
+      this._lerpBone(this._rightThigh, -0.35 * strikePhase, 0, -0.2, 0.25);
+      this._lerpBone(this._rightShin, 0.6 * strikePhase, 0, 0, 0.25);
+    } else {
+      this._lerpBone(this._leftThigh, -0.25 - 0.2 * strikePhase, 0, 0.18, 0.22);
+      this._lerpBone(this._leftShin, 0.45 + 0.25 * strikePhase, 0, 0, 0.22);
+      this._lerpBone(this._rightThigh, -0.2 - 0.15 * strikePhase, 0, -0.18, 0.22);
+      this._lerpBone(this._rightShin, 0.4 + 0.2 * strikePhase, 0, 0, 0.22);
+    }
+  }
+
+  private _animateThrustAttack(progress: number, isLow: boolean, isRight: boolean): void {
+    const p = progress;
+
+    // Linear forward lunge — arm extends straight ahead like a rapier thrust
+    const lungePhase = p * p; // accelerating lunge
+
+    // Minimal torso rotation, strong forward lean
+    this._lerpBone(this._hips, isLow ? 0.1 : 0.06 * lungePhase, 0, 0, 0.3);
+    this._lerpBone(this._spineLower, isLow ? 0.2 * p : 0.12 * lungePhase, isRight ? -0.08 * p : 0.08 * p, 0, 0.3);
+    this._lerpBone(this._spineUpper, isLow ? 0.15 * p : 0.08 * lungePhase, 0, 0, 0.3);
+    this._lerpBone(this._chest, 0.1 * lungePhase, 0, 0, 0.28);
+    this._lerpBone(this._head, -0.06 * p, 0, 0, 0.2);
+
+    if (isRight) {
+      // Right arm thrusts straight forward — shoulder drives, arm fully extends
+      this._lerpBone(this._rightClavicle, -0.08 * p, 0, -0.2 * lungePhase, 0.32);
+      this._lerpBone(this._rightUpperArm, -1.1 * lungePhase, -0.15 * lungePhase, -0.1 * lungePhase, 0.35);
+      this._lerpBone(this._rightForearm, -0.15 * (1 - lungePhase), 0, 0, 0.35);
+      this._lerpBone(this._rightHand, -0.1, 0, -0.1, 0.3);
+      this._lerpBone(this._rightFingers, -0.7, 0, 0, 0.3);
+      // Rear arm pulled back for counterbalance
+      this._lerpBone(this._leftUpperArm, 0.2 * p, 0.15, 0.9, 0.2);
+      this._lerpBone(this._leftForearm, -1.6, 0, 0, 0.2);
+    } else {
+      this._lerpBone(this._leftClavicle, -0.08 * p, 0, 0.2 * lungePhase, 0.32);
+      this._lerpBone(this._leftUpperArm, -1.1 * lungePhase, 0.15 * lungePhase, 0.1 * lungePhase, 0.35);
+      this._lerpBone(this._leftForearm, -0.15 * (1 - lungePhase), 0, 0, 0.35);
+      this._lerpBone(this._leftHand, -0.1, 0, 0.1, 0.3);
+      this._lerpBone(this._leftFingers, -0.7, 0, 0, 0.3);
+      this._lerpBone(this._rightUpperArm, 0.2 * p, -0.15, -0.9, 0.2);
+      this._lerpBone(this._rightForearm, -1.6, 0, 0, 0.2);
+    }
+
+    // Legs: deep lunge forward
+    if (isLow) {
+      this._lerpBone(this._leftThigh, -0.7, 0, 0.2, 0.25);
+      this._lerpBone(this._leftShin, 1.1, 0, 0, 0.25);
+      this._lerpBone(this._rightThigh, -0.15 - 0.3 * p, 0, -0.18, 0.25);
+      this._lerpBone(this._rightShin, 0.2 + 0.3 * p, 0, 0, 0.25);
+    } else {
+      this._lerpBone(this._leftThigh, -0.35 * lungePhase, 0, 0.14, 0.22);
+      this._lerpBone(this._leftShin, 0.3 + 0.25 * lungePhase, 0, 0, 0.22);
+      this._lerpBone(this._rightThigh, -0.12 - 0.2 * lungePhase, 0, -0.14, 0.22);
+      this._lerpBone(this._rightShin, 0.25 + 0.15 * lungePhase, 0, 0, 0.22);
+      this._lerpBone(this._leftAnkle, -0.08 * lungePhase, 0, 0, 0.22);
+    }
+  }
+
+  private _animateStompAttack(progress: number): void {
+    const p = progress;
+
+    // Stomp: leg lifts high then drives straight down
+    const liftPhase = Math.min(p * 2.5, 1);
+    const slamPhase = Math.max(0, (p - 0.3) / 0.7);
+    const legAngle = -1.2 * liftPhase + 0.8 * slamPhase; // raises then drops past neutral
+
+    // Body shifts weight over stomping leg
+    this._lerpBone(this._hips, 0.08 * slamPhase, 0, -0.06 * liftPhase, 0.3);
+    this._lerpBone(this._spineLower, 0.1 * slamPhase, 0, -0.04 * p, 0.25);
+    this._lerpBone(this._spineUpper, -0.05 * liftPhase + 0.12 * slamPhase, 0, 0, 0.25);
+    this._lerpBone(this._chest, 0.08 * slamPhase, 0, 0, 0.25);
+    this._lerpBone(this._head, -0.1 * slamPhase, 0, 0, 0.2);
+
+    // Arms raise for balance during lift, brace for impact during slam
+    this._lerpBone(this._leftUpperArm, -0.3 * liftPhase, 0.2, 0.7 + 0.3 * liftPhase, 0.25);
+    this._lerpBone(this._leftForearm, -1.0 - 0.3 * liftPhase, 0, 0, 0.25);
+    this._lerpBone(this._rightUpperArm, -0.3 * liftPhase, -0.2, -0.7 - 0.3 * liftPhase, 0.25);
+    this._lerpBone(this._rightForearm, -1.0 - 0.3 * liftPhase, 0, 0, 0.25);
+    this._lerpBone(this._leftFingers, -0.6, 0, 0, 0.2);
+    this._lerpBone(this._rightFingers, -0.6, 0, 0, 0.2);
+
+    // Stomping leg (right) lifts high then drives down
+    this._lerpBone(this._rightThigh, legAngle, 0, -0.12, 0.35);
+    this._lerpBone(this._rightShin, Math.max(0, 1.2 * liftPhase - 0.8 * slamPhase), 0, 0, 0.35);
+    this._lerpBone(this._rightAnkle, 0.3 * liftPhase - 0.5 * slamPhase, 0, 0, 0.35);
+    this._lerpBone(this._rightFoot, -0.2 * slamPhase, 0, 0, 0.35);
+
+    // Plant leg — stable, slight bend to absorb impact
+    this._lerpBone(this._leftThigh, -0.2 - 0.15 * slamPhase, 0, 0.15, 0.2);
+    this._lerpBone(this._leftShin, 0.4 + 0.2 * slamPhase, 0, 0, 0.2);
+    this._lerpBone(this._leftAnkle, -0.05, 0, 0, 0.2);
+  }
+
+  private _animateHeadbuttAttack(progress: number): void {
+    const p = progress;
+
+    // Headbutt: compact body hunches forward, head thrusts
+    const crunchPhase = Math.min(p * 2.0, 1);
+    const thrustPhase = Math.max(0, (p - 0.3) / 0.7);
+
+    // Shoulders hunch, body compacts then thrusts forward
+    this._lerpBone(this._hips, 0.08 * crunchPhase + 0.06 * thrustPhase, 0, 0, 0.35);
+    this._lerpBone(this._spineLower, 0.15 * crunchPhase + 0.1 * thrustPhase, 0, 0, 0.35);
+    this._lerpBone(this._spineUpper, 0.2 * crunchPhase - 0.05 * thrustPhase, 0, 0, 0.35);
+    this._lerpBone(this._chest, 0.25 * crunchPhase - 0.1 * thrustPhase, 0, 0, 0.35);
+
+    // Neck and head: pull back then snap forward
+    this._lerpBone(this._neck, 0.2 * crunchPhase - 0.5 * thrustPhase, 0, 0, 0.4);
+    this._lerpBone(this._head, 0.15 * crunchPhase - 0.45 * thrustPhase, 0, 0, 0.4);
+    this._lerpBone(this._jaw, 0.1 * thrustPhase, 0, 0, 0.3);
+
+    // Arms brace and pull tight to sides
+    this._lerpBone(this._leftClavicle, 0.1 * crunchPhase, 0, 0.15, 0.3);
+    this._lerpBone(this._leftUpperArm, -0.3, 0.15, 0.5 + 0.2 * crunchPhase, 0.25);
+    this._lerpBone(this._leftForearm, -1.8 * crunchPhase, 0, 0, 0.25);
+    this._lerpBone(this._leftFingers, -0.9, 0, 0, 0.25);
+    this._lerpBone(this._rightClavicle, 0.1 * crunchPhase, 0, -0.15, 0.3);
+    this._lerpBone(this._rightUpperArm, -0.3, -0.15, -0.5 - 0.2 * crunchPhase, 0.25);
+    this._lerpBone(this._rightForearm, -1.8 * crunchPhase, 0, 0, 0.25);
+    this._lerpBone(this._rightFingers, -0.9, 0, 0, 0.25);
+
+    // Legs: aggressive step forward
+    this._lerpBone(this._leftThigh, -0.25 - 0.15 * thrustPhase, 0, 0.12, 0.25);
+    this._lerpBone(this._leftShin, 0.4 + 0.2 * thrustPhase, 0, 0, 0.25);
+    this._lerpBone(this._rightThigh, -0.15 - 0.05 * p, 0, -0.12, 0.2);
+    this._lerpBone(this._rightShin, 0.3, 0, 0, 0.2);
+  }
+
+  private _animateShieldAttack(progress: number, isRight: boolean): void {
+    const p = progress;
+
+    // Shield bash: lead arm forms shield wall, body drives forward behind it
+    const chargePhase = p * p; // accelerating charge
+
+    // Body leans into the charge
+    this._lerpBone(this._hips, 0.1 * chargePhase, 0, 0, 0.3);
+    this._lerpBone(this._spineLower, 0.15 * chargePhase, isRight ? -0.1 * p : 0.1 * p, 0, 0.3);
+    this._lerpBone(this._spineUpper, 0.1 * chargePhase, 0, 0, 0.3);
+    this._lerpBone(this._chest, 0.12 * chargePhase, 0, 0, 0.28);
+    this._lerpBone(this._head, -0.1 * p, 0, 0, 0.22);
+
+    if (isRight) {
+      // Right arm holds shield — forearm vertical, bracing for impact
+      this._lerpBone(this._rightClavicle, 0.05, 0, -0.2 * p, 0.3);
+      this._lerpBone(this._rightUpperArm, -0.8 * chargePhase, -0.4 * chargePhase, -0.5 * chargePhase, 0.32);
+      this._lerpBone(this._rightForearm, -1.6, 0, 0, 0.32); // vertical forearm = shield face
+      this._lerpBone(this._rightHand, -0.1, 0, -0.2, 0.3);
+      this._lerpBone(this._rightFingers, -0.9, 0, 0, 0.3);
+      // Left arm braces behind shield
+      this._lerpBone(this._leftUpperArm, -0.6 * chargePhase, 0.3, 0.5, 0.2);
+      this._lerpBone(this._leftForearm, -1.4, 0, 0, 0.2);
+    } else {
+      this._lerpBone(this._leftClavicle, 0.05, 0, 0.2 * p, 0.3);
+      this._lerpBone(this._leftUpperArm, -0.8 * chargePhase, 0.4 * chargePhase, 0.5 * chargePhase, 0.32);
+      this._lerpBone(this._leftForearm, -1.6, 0, 0, 0.32);
+      this._lerpBone(this._leftHand, -0.1, 0, 0.2, 0.3);
+      this._lerpBone(this._leftFingers, -0.9, 0, 0, 0.3);
+      this._lerpBone(this._rightUpperArm, -0.6 * chargePhase, -0.3, -0.5, 0.2);
+      this._lerpBone(this._rightForearm, -1.4, 0, 0, 0.2);
+    }
+
+    // Legs: driving charge forward, wide base
+    this._lerpBone(this._leftThigh, -0.3 * chargePhase, 0, 0.16, 0.25);
+    this._lerpBone(this._leftShin, 0.4 + 0.25 * chargePhase, 0, 0, 0.25);
+    this._lerpBone(this._rightThigh, -0.15 - 0.1 * chargePhase, 0, -0.16, 0.2);
+    this._lerpBone(this._rightShin, 0.3 + 0.1 * chargePhase, 0, 0, 0.2);
+  }
+
+  private _animatePalmAttack(progress: number, isRight: boolean): void {
+    const p = progress;
+
+    // Palm strike: open hand, arm extends from center with wrist extension
+    const gatherPhase = Math.min(p * 1.6, 1);
+    const strikPhase = Math.max(0, (p - 0.2) / 0.8);
+
+    // Rooted stance, chi gathered then released
+    this._lerpBone(this._hips, 0.04 * gatherPhase, 0, 0, 0.28);
+    this._lerpBone(this._spineLower, 0.06 * gatherPhase, isRight ? -0.2 * strikPhase : 0.2 * strikPhase, 0, 0.28);
+    this._lerpBone(this._spineUpper, 0.04 * p, isRight ? -0.15 * strikPhase : 0.15 * strikPhase, 0, 0.28);
+    this._lerpBone(this._chest, 0.08 * strikPhase, 0, 0, 0.25);
+    this._lerpBone(this._head, -0.04, 0, 0, 0.2);
+
+    if (isRight) {
+      // Right palm — fingers spread, wrist extended back (open hand)
+      this._lerpBone(this._rightClavicle, -0.05 * p, 0, -0.15 * strikPhase, 0.3);
+      this._lerpBone(this._rightUpperArm, -0.95 * strikPhase, -0.3 * strikPhase, -0.15 * (1 - strikPhase), 0.32);
+      this._lerpBone(this._rightForearm, -0.5 * (1 - strikPhase), 0, -0.1 * p, 0.32);
+      this._lerpBone(this._rightHand, 0.35 * strikPhase, 0, 0, 0.32); // wrist extends back = palm face
+      this._lerpBone(this._rightFingers, 0.1, 0, 0, 0.3); // open fingers, not clenched
+      this._lerpBone(this._rightThumb, 0.2, -0.3, 0, 0.3);
+      // Guard arm tucked at waist (martial arts style)
+      this._lerpBone(this._leftUpperArm, 0.1 * gatherPhase, 0.1, 0.6, 0.2);
+      this._lerpBone(this._leftForearm, -1.8, 0, 0, 0.2);
+      this._lerpBone(this._leftFingers, -0.9, 0, 0, 0.2);
+    } else {
+      this._lerpBone(this._leftClavicle, -0.05 * p, 0, 0.15 * strikPhase, 0.3);
+      this._lerpBone(this._leftUpperArm, -0.95 * strikPhase, 0.3 * strikPhase, 0.15 * (1 - strikPhase), 0.32);
+      this._lerpBone(this._leftForearm, -0.5 * (1 - strikPhase), 0, 0.1 * p, 0.32);
+      this._lerpBone(this._leftHand, 0.35 * strikPhase, 0, 0, 0.32);
+      this._lerpBone(this._leftFingers, 0.1, 0, 0, 0.3);
+      this._lerpBone(this._leftThumb, 0.2, 0.3, 0, 0.3);
+      this._lerpBone(this._rightUpperArm, 0.1 * gatherPhase, -0.1, -0.6, 0.2);
+      this._lerpBone(this._rightForearm, -1.8, 0, 0, 0.2);
+      this._lerpBone(this._rightFingers, -0.9, 0, 0, 0.2);
+    }
+
+    // Legs: rooted horse stance, lower center of gravity
+    this._lerpBone(this._leftThigh, -0.3 - 0.1 * gatherPhase, 0, 0.22, 0.22);
+    this._lerpBone(this._leftShin, 0.55, 0, 0, 0.22);
+    this._lerpBone(this._rightThigh, -0.3 - 0.1 * gatherPhase, 0, -0.22, 0.22);
+    this._lerpBone(this._rightShin, 0.55, 0, 0, 0.22);
+  }
+
+  private _animateDiveAttack(progress: number, frame: number): void {
+    // Dive: body rises then crashes down — two-phase cinematic
+    const phase = frame < 10 ? 0 : 1; // rise phase, then dive phase
+
+    if (phase === 0) {
+      // Rise — body launches upward, arms spread, legs tuck
+      const rp = Math.min(frame / 10, 1);
+      const rise = rp * rp * (3 - 2 * rp);
+
+      this._lerpBone(this._hips, -0.15 * rise, 0, 0, 0.35);
+      this._lerpBone(this._spineLower, -0.2 * rise, 0, 0, 0.35);
+      this._lerpBone(this._spineUpper, -0.15 * rise, 0, 0, 0.35);
+      this._lerpBone(this._chest, -0.1 * rise, 0, 0, 0.3);
+      this._lerpBone(this._head, -0.1 * rise, 0, 0, 0.25);
+
+      // Arms spread wide during ascent
+      this._lerpBone(this._leftUpperArm, -0.4 * rise, 0.3 * rise, 1.0 * rise, 0.3);
+      this._lerpBone(this._leftForearm, -0.5, 0, 0, 0.3);
+      this._lerpBone(this._rightUpperArm, -0.4 * rise, -0.3 * rise, -1.0 * rise, 0.3);
+      this._lerpBone(this._rightForearm, -0.5, 0, 0, 0.3);
+
+      // Legs tuck under body
+      this._lerpBone(this._leftThigh, -0.6 * rise, 0, 0.15, 0.3);
+      this._lerpBone(this._leftShin, 1.0 * rise, 0, 0, 0.3);
+      this._lerpBone(this._rightThigh, -0.6 * rise, 0, -0.15, 0.3);
+      this._lerpBone(this._rightShin, 1.0 * rise, 0, 0, 0.3);
+    } else {
+      // Dive down — body tilts forward, arms drive downward, legs extend
+      const dp = Math.min((frame - 10) / 8, 1);
+      const dive = dp * dp; // accelerating dive
+
+      this._lerpBone(this._hips, 0.3 * dive, 0, 0, 0.4);
+      this._lerpBone(this._spineLower, 0.4 * dive, 0, 0, 0.4);
+      this._lerpBone(this._spineUpper, 0.35 * dive, 0, 0, 0.4);
+      this._lerpBone(this._chest, 0.3 * dive, 0, 0, 0.38);
+      this._lerpBone(this._head, 0.15 * dive, 0, 0, 0.3);
+
+      // Arms drive downward/forward for impact
+      this._lerpBone(this._leftUpperArm, -1.2 * dive, 0.2 * (1 - dive), 0.3 * (1 - dive), 0.4);
+      this._lerpBone(this._leftForearm, -0.4 * (1 - dive), 0, 0, 0.4);
+      this._lerpBone(this._leftFingers, -0.9, 0, 0, 0.4);
+      this._lerpBone(this._rightUpperArm, -1.2 * dive, -0.2 * (1 - dive), -0.3 * (1 - dive), 0.4);
+      this._lerpBone(this._rightForearm, -0.4 * (1 - dive), 0, 0, 0.4);
+      this._lerpBone(this._rightFingers, -0.9, 0, 0, 0.4);
+
+      // Legs extend behind as body dives
+      this._lerpBone(this._leftThigh, -0.3 + 0.6 * dive, 0, 0.12, 0.35);
+      this._lerpBone(this._leftShin, 0.6 * (1 - dive), 0, 0, 0.35);
+      this._lerpBone(this._rightThigh, -0.3 + 0.6 * dive, 0, -0.12, 0.35);
+      this._lerpBone(this._rightShin, 0.6 * (1 - dive), 0, 0, 0.35);
+    }
+  }
+
+  private _animateBackhandAttack(progress: number, isRight: boolean): void {
+    const p = progress;
+    const s = isRight ? -1 : 1;
+
+    // Backhand: reverse swing — arm goes from front to back across body
+    const windPhase = Math.min(p * 1.6, 1);
+    const swingPhase = Math.max(0, (p - 0.2) / 0.8);
+
+    // Torso rotates opposite of normal punch — opening up
+    this._lerpBone(this._hips, 0, s * 0.15 * swingPhase, 0, 0.3);
+    this._lerpBone(this._spineLower, 0.04, s * (0.2 * windPhase + 0.2 * swingPhase), 0, 0.3);
+    this._lerpBone(this._spineUpper, 0, s * (0.15 * windPhase + 0.15 * swingPhase), 0, 0.3);
+    this._lerpBone(this._chest, 0.05, s * 0.1 * swingPhase, 0, 0.28);
+    this._lerpBone(this._head, 0.03, s * -0.1 * swingPhase, 0, 0.2);
+
+    if (isRight) {
+      // Right arm crosses body then swings back outward
+      this._lerpBone(this._rightClavicle, 0, 0, 0.1 * windPhase - 0.25 * swingPhase, 0.3);
+      this._lerpBone(this._rightUpperArm, -0.6 * windPhase - 0.3 * swingPhase, 0.4 * windPhase - 0.8 * swingPhase, -0.3, 0.32);
+      this._lerpBone(this._rightForearm, -0.8 * windPhase + 0.3 * swingPhase, 0, 0, 0.32);
+      this._lerpBone(this._rightHand, -0.2, -0.15 * swingPhase, 0, 0.3);
+      this._lerpBone(this._rightFingers, -0.7, 0, 0, 0.3);
+      // Left arm guards
+      this._lerpBone(this._leftUpperArm, -0.45, 0.1, 0.75, 0.18);
+      this._lerpBone(this._leftForearm, -1.4, 0, 0, 0.18);
+    } else {
+      this._lerpBone(this._leftClavicle, 0, 0, -0.1 * windPhase + 0.25 * swingPhase, 0.3);
+      this._lerpBone(this._leftUpperArm, -0.6 * windPhase - 0.3 * swingPhase, -0.4 * windPhase + 0.8 * swingPhase, 0.3, 0.32);
+      this._lerpBone(this._leftForearm, -0.8 * windPhase + 0.3 * swingPhase, 0, 0, 0.32);
+      this._lerpBone(this._leftHand, -0.2, 0.15 * swingPhase, 0, 0.3);
+      this._lerpBone(this._leftFingers, -0.7, 0, 0, 0.3);
+      this._lerpBone(this._rightUpperArm, -0.45, -0.1, -0.75, 0.18);
+      this._lerpBone(this._rightForearm, -1.4, 0, 0, 0.18);
+    }
+
+    // Legs: pivot stance
+    this._lerpBone(this._leftThigh, -0.2 - 0.06 * swingPhase, 0, 0.14, 0.2);
+    this._lerpBone(this._leftShin, 0.35, 0, 0, 0.2);
+    this._lerpBone(this._rightThigh, -0.18, 0, -0.14, 0.2);
+    this._lerpBone(this._rightShin, 0.32 + 0.05 * swingPhase, 0, 0, 0.2);
   }
 
   private _animateHitStunHigh(): void {

@@ -155,7 +155,7 @@ export class TekkenArenaRenderer {
 
     const bodyColor = bodyColors[Math.floor(Math.random() * bodyColors.length)];
     const body = new THREE.Mesh(
-      new THREE.CylinderGeometry(bodyW - 0.02, bodyW, bodyH, 6),
+      new THREE.CylinderGeometry(bodyW - 0.02, bodyW, bodyH, 12),
       new THREE.MeshStandardMaterial({ color: bodyColor, roughness: 0.8 }),
     );
     body.position.set(sx, sy + bodyH / 2, sz);
@@ -176,7 +176,7 @@ export class TekkenArenaRenderer {
     const headColor = headColors[Math.floor(Math.random() * headColors.length)];
     const headRadius = 0.07 + Math.random() * 0.02;
     const head = new THREE.Mesh(
-      new THREE.SphereGeometry(headRadius, 6, 5),
+      new THREE.SphereGeometry(headRadius, 12, 10),
       new THREE.MeshStandardMaterial({ color: headColor, roughness: 0.7 }),
     );
     head.position.set(sx, sy + bodyH + 0.08, sz);
@@ -250,7 +250,7 @@ export class TekkenArenaRenderer {
     for (let f = 0; f < flameColors.length; f++) {
       const fc = flameColors[f];
       const flame = new THREE.Mesh(
-        new THREE.SphereGeometry(0.12 - f * 0.02, 6, 4),
+        new THREE.SphereGeometry(0.12 - f * 0.02, 12, 8),
         new THREE.MeshStandardMaterial({
           color: fc.color,
           emissive: fc.emissive,
@@ -294,7 +294,7 @@ export class TekkenArenaRenderer {
 
     // Torch cup
     const cup = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.06, 0.04, 0.1, 8),
+      new THREE.CylinderGeometry(0.06, 0.04, 0.1, 12),
       ironMat,
     );
     cup.position.set(tx, ty - 0.05, tz);
@@ -302,7 +302,7 @@ export class TekkenArenaRenderer {
 
     // Torch handle
     const handle = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.02, 0.025, 0.35, 6),
+      new THREE.CylinderGeometry(0.02, 0.025, 0.35, 12),
       torchWoodMat,
     );
     handle.position.set(tx, ty - 0.25, tz);
@@ -319,7 +319,7 @@ export class TekkenArenaRenderer {
     for (let f = 0; f < flameColors.length; f++) {
       const fc = flameColors[f];
       const flame = new THREE.Mesh(
-        new THREE.SphereGeometry(0.06 - f * 0.012, 6, 4),
+        new THREE.SphereGeometry(0.06 - f * 0.012, 12, 8),
         new THREE.MeshStandardMaterial({
           color: fc.color,
           emissive: fc.emissive,
@@ -384,12 +384,12 @@ export class TekkenArenaRenderer {
     const floorW = TB.STAGE_HALF_WIDTH * 2 + 2;
     const floorD = TB.STAGE_HALF_DEPTH * 2 + 4;
 
-    // --- High-res procedural stone texture (2048x2048) ---
+    // --- High-res procedural stone texture (4096x4096) ---
     const canvas = document.createElement("canvas");
-    canvas.width = 2048;
-    canvas.height = 2048;
+    canvas.width = 4096;
+    canvas.height = 4096;
     const ctx = canvas.getContext("2d")!;
-    const S = 2048;
+    const S = 4096;
 
     // Base fill
     ctx.fillStyle = "#3a3530";
@@ -424,7 +424,7 @@ export class TekkenArenaRenderer {
         ctx.fillRect(x, y, tileSize - 2, tileSize - 2);
 
         // Stone grain speckles
-        for (let i = 0; i < 35; i++) {
+        for (let i = 0; i < 50; i++) {
           const gx = x + Math.random() * (tileSize - 4);
           const gy = y + Math.random() * (tileSize - 4);
           const gb = r + Math.floor(Math.random() * 20 - 10);
@@ -433,7 +433,7 @@ export class TekkenArenaRenderer {
         }
 
         // Cracks and weathering (enhanced density)
-        if (Math.random() < 0.45) {
+        if (Math.random() < 0.55) {
           ctx.strokeStyle = `rgba(20,15,10,${0.3 + Math.random() * 0.4})`;
           ctx.lineWidth = 0.8 + Math.random() * 1.0;
           ctx.beginPath();
@@ -607,7 +607,7 @@ export class TekkenArenaRenderer {
         Math.random() * Math.PI, 0, Math.PI * 2);
       ctx.fill();
       // Splatter droplets
-      for (let sd = 0; sd < 5; sd++) {
+      for (let sd = 0; sd < 8; sd++) {
         ctx.beginPath();
         ctx.arc(
           bpx + (Math.random() - 0.5) * 60,
@@ -735,6 +735,34 @@ export class TekkenArenaRenderer {
       sideEdge.castShadow = true;
       this._floorGroup.add(sideEdge);
     }
+
+    // Small debris piles near corners
+    const debrisMat = new THREE.MeshStandardMaterial({ color: 0x4a3a2a, roughness: 0.9, metalness: 0.05 });
+    const debrisCorners: [number, number][] = [
+      [floorW / 2 - 0.3, floorD / 2 - 0.3],
+      [-floorW / 2 + 0.3, floorD / 2 - 0.3],
+      [floorW / 2 - 0.3, -floorD / 2 + 0.3],
+      [-floorW / 2 + 0.3, -floorD / 2 + 0.3],
+    ];
+    for (const [dx, dz] of debrisCorners) {
+      const pile = new THREE.Group();
+      for (let d = 0; d < 3; d++) {
+        const sw = 0.04 + Math.random() * 0.08;
+        const sh = 0.02 + Math.random() * 0.04;
+        const sd = 0.04 + Math.random() * 0.06;
+        const chunk = new THREE.Mesh(new THREE.BoxGeometry(sw, sh, sd), debrisMat);
+        chunk.position.set(
+          (Math.random() - 0.5) * 0.15,
+          sh / 2,
+          (Math.random() - 0.5) * 0.15,
+        );
+        chunk.rotation.set(Math.random() * 0.3, Math.random() * Math.PI, Math.random() * 0.3);
+        chunk.castShadow = true;
+        pile.add(chunk);
+      }
+      pile.position.set(dx, 0, dz);
+      this._floorGroup.add(pile);
+    }
   }
 
   private _buildCourtyardWalls(): void {
@@ -756,7 +784,7 @@ export class TekkenArenaRenderer {
       // Two massive stone pillars per side
       for (const zPos of [floorD / 2 - 0.4, -floorD / 2 + 0.4]) {
         const pillar = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.25, 0.3, 4.0, 12),
+          new THREE.CylinderGeometry(0.25, 0.3, 4.0, 24),
           pillarMat,
         );
         pillar.position.set(xBase, 2.0, zPos);
@@ -765,7 +793,7 @@ export class TekkenArenaRenderer {
 
         for (let r = 0; r < 4; r++) {
           const groove = new THREE.Mesh(
-            new THREE.TorusGeometry(0.28, 0.02, 6, 16),
+            new THREE.TorusGeometry(0.28, 0.02, 12, 32),
             capitalMat,
           );
           groove.position.set(xBase, 0.8 + r * 0.9, zPos);
@@ -774,7 +802,7 @@ export class TekkenArenaRenderer {
         }
 
         const capital = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.35, 0.25, 0.3, 12),
+          new THREE.CylinderGeometry(0.35, 0.25, 0.3, 24),
           capitalMat,
         );
         capital.position.set(xBase, 4.15, zPos);
@@ -785,7 +813,7 @@ export class TekkenArenaRenderer {
         for (let v = 0; v < 4; v++) {
           const vAngle = (v / 4) * Math.PI * 2;
           const volute = new THREE.Mesh(
-            new THREE.TorusGeometry(0.08, 0.015, 6, 8, Math.PI),
+            new THREE.TorusGeometry(0.08, 0.015, 12, 16, Math.PI),
             capitalMat,
           );
           volute.position.set(
@@ -804,7 +832,7 @@ export class TekkenArenaRenderer {
         let baseMoldY = 0.0;
         for (let bm = 0; bm < baseMoldRadii.length; bm++) {
           const mold = new THREE.Mesh(
-            new THREE.CylinderGeometry(baseMoldRadii[bm], baseMoldRadii[bm] + 0.02, baseMoldHeights[bm], 12),
+            new THREE.CylinderGeometry(baseMoldRadii[bm], baseMoldRadii[bm] + 0.02, baseMoldHeights[bm], 24),
             capitalMat,
           );
           mold.position.set(xBase, baseMoldY + baseMoldHeights[bm] / 2, zPos);
@@ -2404,7 +2432,7 @@ export class TekkenArenaRenderer {
 
         // Main pillar column (6m tall)
         const pillar = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.2, 0.25, 6.0, 12),
+          new THREE.CylinderGeometry(0.2, 0.25, 6.0, 24),
           pillarMat,
         );
         pillar.position.set(xBase, 3.0, pz);
@@ -2414,7 +2442,7 @@ export class TekkenArenaRenderer {
         // Gold ring accents
         for (let r = 0; r < 6; r++) {
           const ring = new THREE.Mesh(
-            new THREE.TorusGeometry(0.23, 0.015, 6, 16),
+            new THREE.TorusGeometry(0.23, 0.015, 12, 32),
             goldTrimMat,
           );
           ring.position.set(xBase, 0.5 + r * 1.0, pz);
@@ -2424,7 +2452,7 @@ export class TekkenArenaRenderer {
 
         // Ornate capital
         const capital = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.35, 0.2, 0.3, 12),
+          new THREE.CylinderGeometry(0.35, 0.2, 0.3, 24),
           goldTrimMat,
         );
         capital.position.set(xBase, 6.15, pz);
@@ -4176,7 +4204,7 @@ export class TekkenArenaRenderer {
         case "fire_brazier": {
           // Iron brazier base
           const brazierMat = new THREE.MeshStandardMaterial({ color: 0x3a3a3a, roughness: 0.4, metalness: 0.7 });
-          const basin = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.22, 0.35, 10), brazierMat);
+          const basin = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.22, 0.35, 20), brazierMat);
           basin.position.y = 0.175;
           group.add(basin);
           // Fire glow sphere
