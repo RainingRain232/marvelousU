@@ -4,6 +4,8 @@
 
 import { ResourceType } from "../config/SettlersResourceDefs";
 
+export type SoldierType = "swordsman" | "archer" | "knight";
+
 export interface SettlersCarrier {
   id: string;
   owner: string;
@@ -37,6 +39,9 @@ export interface SettlersSoldier {
   /** 0 = private, 1 = corporal, 2 = sergeant, 3 = officer, 4 = general */
   rank: number;
 
+  /** Unit type: swordsman (default), archer, or knight */
+  unitType: SoldierType;
+
   position: { x: number; y: number; z: number };
   state: SoldierState;
 
@@ -51,6 +56,12 @@ export interface SettlersSoldier {
 
   /** Timer for swing cooldown */
   swingTimer: number;
+
+  /** Attack range in tiles (1 for melee, 3 for archers) */
+  attackRange: number;
+
+  /** Movement speed in tiles/s */
+  moveSpeed: number;
 }
 
 export interface SettlersCombat {

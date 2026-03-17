@@ -293,7 +293,9 @@ export function updateProduction(state: SettlersState, dt: number): void {
 
     const def = BUILDING_DEFS[building.type];
     if (def.productionTime <= 0) continue;
-    if (def.type === SettlersBuildingType.BARRACKS) continue; // handled by military system
+    if (def.type === SettlersBuildingType.BARRACKS ||
+        def.type === SettlersBuildingType.ARCHERY_RANGE ||
+        def.type === SettlersBuildingType.STABLE) continue; // handled by military system
 
     // Check if inputs are available
     if (def.inputs.length > 0) {

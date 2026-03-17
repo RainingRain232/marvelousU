@@ -23,7 +23,7 @@ const PRODUCTION_CHAINS: { name: string; steps: string[] }[] = [
   { name: "Beer", steps: ["Wheat + Water -> Brewery -> Beer"] },
   { name: "Iron", steps: ["Mountain -> Iron Mine (food) -> Iron Ore", "Mountain -> Coal Mine (food) -> Coal", "Iron Ore + Coal -> Smelter -> Iron"] },
   { name: "Gold", steps: ["Mountain -> Gold Mine (food) -> Gold Ore", "Gold Ore + Coal -> Mint -> Gold"] },
-  { name: "Military", steps: ["Iron + Coal -> Swordsmith -> Sword", "Iron + Coal -> Shieldsmith -> Shield", "Sword + Shield + Beer -> Barracks -> Soldier"] },
+  { name: "Military", steps: ["Iron + Coal -> Swordsmith -> Sword", "Iron + Coal -> Shieldsmith -> Shield", "Sword + Shield + Beer -> Barracks -> Soldier", "Planks + Iron -> Bowyer -> Bow", "Bow + Beer -> Archery Range -> Archer", "Sword + Shield + Beer + 2 Bread -> Stable -> Knight"] },
 ];
 
 export class SettlersHUD {
@@ -482,9 +482,15 @@ export class SettlersHUD {
       [SettlersBuildingType.SWORD_SMITH]: "Forges swords from iron and coal.",
       [SettlersBuildingType.SHIELD_SMITH]: "Crafts shields from iron and coal.",
       [SettlersBuildingType.BARRACKS]: "Trains soldiers using sword, shield, and beer.",
+      [SettlersBuildingType.BOWYER]: "Crafts bows from planks and iron.",
+      [SettlersBuildingType.ARCHERY_RANGE]: "Trains archers using bow and beer. Ranged unit.",
+      [SettlersBuildingType.STABLE]: "Trains knights. Fast, powerful mounted units.",
       [SettlersBuildingType.GUARD_HOUSE]: "Small military outpost. Extends territory.",
       [SettlersBuildingType.WATCHTOWER]: "Medium military building. Good territory range.",
       [SettlersBuildingType.FORTRESS]: "Large military stronghold. Maximum territory.",
+      [SettlersBuildingType.WALL]: "Stone wall. Blocks enemy movement. Cheap to build.",
+      [SettlersBuildingType.GATE]: "Gate passage. Allies pass through, enemies blocked.",
+      [SettlersBuildingType.CATAPULT_TOWER]: "Ranged tower. Garrison soldiers to deal AOE damage.",
       [SettlersBuildingType.STOREHOUSE]: "Additional storage for your settlement.",
     };
     const desc = descriptions[def.type];
@@ -506,7 +512,7 @@ export class SettlersHUD {
         ResourceType.GOLD_ORE, ResourceType.GOLD,
         ResourceType.WHEAT, ResourceType.FLOUR, ResourceType.BREAD,
         ResourceType.FISH, ResourceType.MEAT, ResourceType.BEER,
-        ResourceType.SWORD, ResourceType.SHIELD,
+        ResourceType.SWORD, ResourceType.SHIELD, ResourceType.BOW,
       ];
       for (const r of show) {
         const count = player.storage.get(r) || 0;
@@ -762,8 +768,14 @@ export class SettlersHUD {
             html += `</div>`;
           }
 
-          // Production queue display (for barracks)
-          if (def.type === SettlersBuildingType.BARRACKS && building.owner === "p0") {
+          // Production queue display (for unit-producing buildings)
+          const unitProducers: Record<string, { unitLabel: string; queueLabel: string }> = {
+            [SettlersBuildingType.BARRACKS]: { unitLabel: "Soldier", queueLabel: "soldier" },
+            [SettlersBuildingType.ARCHERY_RANGE]: { unitLabel: "Archer", queueLabel: "archer" },
+            [SettlersBuildingType.STABLE]: { unitLabel: "Knight", queueLabel: "knight" },
+          };
+          const producerInfo = unitProducers[def.type];
+          if (producerInfo && building.owner === "p0") {
             html += `<div style="margin-top:8px;border-top:1px solid #444;padding-top:6px;">`;
             html += `<div style="color:#ffcc44;margin-bottom:4px;">Production Queue (${building.productionQueue.length}/${SB.MAX_PRODUCTION_QUEUE})</div>`;
 
@@ -775,9 +787,9 @@ export class SettlersHUD {
                 itemHtml += `<span style="color:${isActive ? "#88ff88" : "#aaa"};">`;
                 if (isActive) {
                   const pct = Math.floor((1 - item.timeRemaining / def.productionTime) * 100);
-                  itemHtml += `Soldier (${pct}%)`;
+                  itemHtml += `${producerInfo.unitLabel} (${pct}%)`;
                 } else {
-                  itemHtml += `Soldier (queued)`;
+                  itemHtml += `${producerInfo.unitLabel} (queued)`;
                 }
                 itemHtml += `</span>`;
                 // Cancel button (cannot cancel active item)
@@ -800,7 +812,7 @@ export class SettlersHUD {
                 margin-top:4px;width:100%;padding:4px 8px;background:#2a4a2a;color:#88cc88;
                 border:1px solid #3a6a3a;border-radius:4px;cursor:pointer;
                 font-family:monospace;font-size:12px;
-              ">+ Train Soldier</button>`;
+              ">+ Train ${producerInfo.unitLabel}</button>`;
             }
             html += `</div>`;
           }
@@ -815,6 +827,10 @@ export class SettlersHUD {
               html += `Makes: ${def.outputs.map(o => `${o.amount} ${RESOURCE_META[o.type].label}`).join(" + ")}`;
             } else if (def.type === SettlersBuildingType.BARRACKS) {
               html += `Makes: 1 Soldier`;
+            } else if (def.type === SettlersBuildingType.ARCHERY_RANGE) {
+              html += `Makes: 1 Archer`;
+            } else if (def.type === SettlersBuildingType.STABLE) {
+              html += `Makes: 1 Knight`;
             }
             html += `<br>Every ${def.productionTime}s`;
             html += `</div>`;
@@ -823,11 +839,17 @@ export class SettlersHUD {
 
         this._infoPanel.innerHTML = html;
 
-        // Wire up queue button handlers
-        if (def.type === SettlersBuildingType.BARRACKS && building.owner === "p0") {
+        // Wire up queue button handlers for unit-producing buildings
+        const queueLabels: Record<string, string> = {
+          [SettlersBuildingType.BARRACKS]: "soldier",
+          [SettlersBuildingType.ARCHERY_RANGE]: "archer",
+          [SettlersBuildingType.STABLE]: "knight",
+        };
+        const queueLabel = queueLabels[def.type];
+        if (queueLabel && building.owner === "p0") {
           const addBtn = document.getElementById("settlers-queue-add");
           if (addBtn) {
-            addBtn.onclick = () => this.onQueueAdd?.(building.id, "soldier");
+            addBtn.onclick = () => this.onQueueAdd?.(building.id, queueLabel);
           }
           const cancelBtns = this._infoPanel.querySelectorAll(".settlers-queue-cancel");
           cancelBtns.forEach((btn) => {

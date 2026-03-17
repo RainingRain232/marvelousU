@@ -36,11 +36,19 @@ export enum SettlersBuildingType {
 
   // Military production
   BARRACKS = "barracks",
+  BOWYER = "bowyer",
+  ARCHERY_RANGE = "archery_range",
+  STABLE = "stable",
 
   // Military territory
   GUARD_HOUSE = "guard_house",
   WATCHTOWER = "watchtower",
   FORTRESS = "fortress",
+
+  // Defensive structures
+  WALL = "wall",
+  GATE = "gate",
+  CATAPULT_TOWER = "catapult_tower",
 }
 
 export type BuildingSize = "small" | "medium" | "large";
@@ -370,6 +378,57 @@ export const BUILDING_DEFS: Record<SettlersBuildingType, SettlersBuildingDef> = 
     category: "military",
   },
 
+  [SettlersBuildingType.BOWYER]: {
+    type: SettlersBuildingType.BOWYER,
+    label: "Bowyer",
+    size: "small",
+    footprint: { w: 2, h: 2 },
+    constructionCost: cost("small"),
+    hp: SB.HP_SMALL,
+    inputs: [
+      { type: ResourceType.PLANKS, amount: 1 },
+      { type: ResourceType.IRON, amount: 1 },
+    ],
+    outputs: [{ type: ResourceType.BOW, amount: 1 }],
+    productionTime: SB.PROD_BOWYER,
+    garrisonSlots: 0, territoryRadius: 0,
+    category: "economy",
+  },
+  [SettlersBuildingType.ARCHERY_RANGE]: {
+    type: SettlersBuildingType.ARCHERY_RANGE,
+    label: "Archery Range",
+    size: "small",
+    footprint: { w: 2, h: 2 },
+    constructionCost: cost("small"),
+    hp: SB.HP_SMALL,
+    inputs: [
+      { type: ResourceType.BOW, amount: 1 },
+      { type: ResourceType.BEER, amount: 1 },
+    ],
+    outputs: [], // produces archers, handled by military system
+    productionTime: SB.PROD_ARCHERY_RANGE,
+    garrisonSlots: 0, territoryRadius: 0,
+    category: "military",
+  },
+  [SettlersBuildingType.STABLE]: {
+    type: SettlersBuildingType.STABLE,
+    label: "Stable",
+    size: "large",
+    footprint: { w: 3, h: 3 },
+    constructionCost: cost("large"),
+    hp: SB.HP_LARGE,
+    inputs: [
+      { type: ResourceType.SWORD, amount: 1 },
+      { type: ResourceType.SHIELD, amount: 1 },
+      { type: ResourceType.BEER, amount: 1 },
+      { type: ResourceType.BREAD, amount: 2 },
+    ],
+    outputs: [], // produces knights, handled by military system
+    productionTime: SB.PROD_STABLE,
+    garrisonSlots: 0, territoryRadius: 0,
+    category: "military",
+  },
+
   // ---- Military territory ----
   [SettlersBuildingType.GUARD_HOUSE]: {
     type: SettlersBuildingType.GUARD_HOUSE,
@@ -408,6 +467,50 @@ export const BUILDING_DEFS: Record<SettlersBuildingType, SettlersBuildingDef> = 
     productionTime: 0,
     garrisonSlots: 9,
     territoryRadius: SB.FORTRESS_RADIUS,
+    category: "military",
+  },
+
+  // ---- Defensive structures ----
+  [SettlersBuildingType.WALL]: {
+    type: SettlersBuildingType.WALL,
+    label: "Wall",
+    size: "small",
+    footprint: { w: 1, h: 1 },
+    constructionCost: [{ type: ResourceType.STONE, amount: 2 }],
+    hp: SB.HP_WALL,
+    inputs: [], outputs: [],
+    productionTime: 0,
+    garrisonSlots: 0,
+    territoryRadius: 0,
+    category: "military",
+  },
+  [SettlersBuildingType.GATE]: {
+    type: SettlersBuildingType.GATE,
+    label: "Gate",
+    size: "small",
+    footprint: { w: 1, h: 1 },
+    constructionCost: [
+      { type: ResourceType.STONE, amount: 2 },
+      { type: ResourceType.IRON, amount: 1 },
+    ],
+    hp: SB.HP_GATE,
+    inputs: [], outputs: [],
+    productionTime: 0,
+    garrisonSlots: 0,
+    territoryRadius: 0,
+    category: "military",
+  },
+  [SettlersBuildingType.CATAPULT_TOWER]: {
+    type: SettlersBuildingType.CATAPULT_TOWER,
+    label: "Catapult Tower",
+    size: "medium",
+    footprint: { w: 2, h: 2 },
+    constructionCost: cost("medium"),
+    hp: SB.HP_CATAPULT_TOWER,
+    inputs: [], outputs: [],
+    productionTime: 0,
+    garrisonSlots: 2,
+    territoryRadius: 0,
     category: "military",
   },
 };

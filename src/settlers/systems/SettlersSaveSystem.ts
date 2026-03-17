@@ -213,7 +213,13 @@ function deserializeState(s: SerializedState): SettlersState {
   for (const [id, c] of Object.entries(s.carriers)) carriers.set(id, c);
 
   const soldiers = new Map<string, SettlersSoldier>();
-  for (const [id, sol] of Object.entries(s.soldiers)) soldiers.set(id, sol);
+  for (const [id, sol] of Object.entries(s.soldiers)) {
+    // Migration: add fields introduced with archer/knight unit types
+    if (!sol.unitType) sol.unitType = "swordsman";
+    if (!sol.attackRange) sol.attackRange = 1;
+    if (!sol.moveSpeed) sol.moveSpeed = 1.5;
+    soldiers.set(id, sol);
+  }
 
   return {
     tick: s.tick,

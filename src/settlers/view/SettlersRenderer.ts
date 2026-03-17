@@ -10,6 +10,7 @@ import { RESOURCE_META } from "../config/SettlersResourceDefs";
 import type { SettlersState } from "../state/SettlersState";
 import type { SettlersBuilding } from "../state/SettlersBuilding";
 import type { SettlersFlag } from "../state/SettlersRoad";
+import type { SoldierType } from "../state/SettlersUnit";
 
 // ---------------------------------------------------------------------------
 // Biome colors – base + variation pairs
@@ -1544,7 +1545,85 @@ export class SettlersRenderer {
     const fw = def.footprint.w * ts;
     const fh = def.footprint.h * ts;
 
-    if (def.garrisonSlots > 0) {
+    if (def.type === SettlersBuildingType.WALL) {
+      // ===== WALL – simple stone block =====
+      const wallH = ts * 0.8;
+      const wallMat = this._stoneMat.clone();
+      (wallMat as THREE.MeshStandardMaterial).transparent = true;
+      const wallBlock = new THREE.Mesh(this._boxGeo, wallMat);
+      wallBlock.scale.set(ts * 0.85, wallH, ts * 0.85);
+      wallBlock.position.y = wallH * 0.5;
+      wallBlock.castShadow = true;
+      g.add(wallBlock);
+
+      // Stone texture lines
+      for (let row = 0; row < 3; row++) {
+        const line = new THREE.Mesh(this._boxGeo, new THREE.MeshStandardMaterial({ color: 0x666660, roughness: 0.95 }));
+        line.scale.set(ts * 0.87, 0.015, ts * 0.87);
+        line.position.y = wallH * (0.2 + row * 0.3);
+        g.add(line);
+      }
+
+      // Battlements on top
+      for (let m = 0; m < 4; m++) {
+        const merlon = new THREE.Mesh(this._boxGeo, wallMat);
+        merlon.scale.set(ts * 0.18, wallH * 0.2, ts * 0.18);
+        const mx = (m % 2 === 0 ? -1 : 1) * ts * 0.28;
+        const mz = (m < 2 ? -1 : 1) * ts * 0.28;
+        merlon.position.set(mx, wallH + wallH * 0.1, mz);
+        g.add(merlon);
+      }
+
+    } else if (def.type === SettlersBuildingType.GATE) {
+      // ===== GATE – stone archway =====
+      const gateH = ts * 0.9;
+      const gateMat = this._stoneMat.clone();
+      (gateMat as THREE.MeshStandardMaterial).transparent = true;
+
+      // Left pillar
+      const pillarL = new THREE.Mesh(this._boxGeo, gateMat);
+      pillarL.scale.set(ts * 0.25, gateH, ts * 0.85);
+      pillarL.position.set(-ts * 0.3, gateH * 0.5, 0);
+      pillarL.castShadow = true;
+      g.add(pillarL);
+
+      // Right pillar
+      const pillarR = new THREE.Mesh(this._boxGeo, gateMat);
+      pillarR.scale.set(ts * 0.25, gateH, ts * 0.85);
+      pillarR.position.set(ts * 0.3, gateH * 0.5, 0);
+      pillarR.castShadow = true;
+      g.add(pillarR);
+
+      // Arch / lintel
+      const lintel = new THREE.Mesh(this._boxGeo, gateMat);
+      lintel.scale.set(ts * 0.85, gateH * 0.2, ts * 0.85);
+      lintel.position.y = gateH + gateH * 0.1;
+      g.add(lintel);
+
+      // Gate door (wooden)
+      const doorMat = new THREE.MeshStandardMaterial({ color: 0x6b4226, roughness: 0.85, transparent: true });
+      const door = new THREE.Mesh(this._boxGeo, doorMat);
+      door.scale.set(ts * 0.3, gateH * 0.7, ts * 0.04);
+      door.position.set(0, gateH * 0.35, ts * 0.42);
+      g.add(door);
+
+      // Iron bars on door
+      const barMat = new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.5, roughness: 0.4 });
+      for (let b = -1; b <= 1; b++) {
+        const bar = new THREE.Mesh(this._boxGeo, barMat);
+        bar.scale.set(ts * 0.01, gateH * 0.5, ts * 0.01);
+        bar.position.set(b * ts * 0.08, gateH * 0.35, ts * 0.44);
+        g.add(bar);
+      }
+
+      // Player color pennant
+      const pennantMat = new THREE.MeshStandardMaterial({ color: playerColor, roughness: 0.7 });
+      const pennant = new THREE.Mesh(this._boxGeo, pennantMat);
+      pennant.scale.set(ts * 0.12, ts * 0.08, ts * 0.01);
+      pennant.position.set(0, gateH + gateH * 0.25, 0);
+      g.add(pennant);
+
+    } else if (def.garrisonSlots > 0) {
       // ===== MILITARY BUILDING – detailed stone tower =====
       const towerR = fw * 0.35;
       const towerH = fw * 1.4;
@@ -3044,7 +3123,7 @@ export class SettlersRenderer {
 
       let mesh = this._soldierMeshes.get(id);
       if (!mesh) {
-        mesh = this._createSoldierMesh(state, soldier.owner, soldier.rank);
+        mesh = this._createSoldierMesh(state, soldier.owner, soldier.rank, soldier.unitType || "swordsman");
         this._soldierMeshes.set(id, mesh);
         this.scene.add(mesh);
       }
@@ -3100,7 +3179,13 @@ export class SettlersRenderer {
     }
   }
 
-  private _createSoldierMesh(state: SettlersState, owner: string, rank: number): THREE.Group {
+  private _createSoldierMesh(state: SettlersState, owner: string, rank: number, unitType: SoldierType = "swordsman"): THREE.Group {
+    if (unitType === "archer") return this._createArcherMesh(state, owner, rank);
+    if (unitType === "knight") return this._createKnightMesh(state, owner, rank);
+    return this._createSwordsmanMesh(state, owner, rank);
+  }
+
+  private _createSwordsmanMesh(state: SettlersState, owner: string, rank: number): THREE.Group {
     const g = new THREE.Group();
     const playerColor = this._getPlayerColor(owner, state);
     const h = SB.SOLDIER_HEIGHT;
@@ -3436,6 +3521,322 @@ export class SettlersRenderer {
       g.add(clasp);
     }
 
+    return g;
+  }
+
+  // -----------------------------------------------------------------------
+  // Archer mesh – lighter armor, bow instead of sword+shield
+  // -----------------------------------------------------------------------
+
+  private _createArcherMesh(state: SettlersState, owner: string, rank: number): THREE.Group {
+    const g = new THREE.Group();
+    const playerColor = this._getPlayerColor(owner, state);
+    const h = SB.SOLDIER_HEIGHT;
+
+    const tunicColor = rank >= 3 ? 0x1e4e0e : 0x2e5e1e;
+    const tunicMat = new THREE.MeshStandardMaterial({ color: tunicColor, roughness: 0.8 }); // green tunic
+    const skinMat = new THREE.MeshStandardMaterial({ color: 0xf0ccaa, roughness: 0.7 });
+    const leatherMat = new THREE.MeshStandardMaterial({ color: 0x5c3a1e, roughness: 0.85 });
+    const bootMat = new THREE.MeshStandardMaterial({ color: 0x4a2e16, roughness: 0.9 });
+
+    // Torso (lighter leather vest)
+    const torso = new THREE.Mesh(this._boxGeo, tunicMat);
+    torso.scale.set(h * 0.40, h * 0.32, h * 0.22);
+    torso.position.y = h * 0.52;
+    g.add(torso);
+
+    // Leather vest overlay
+    const vest = new THREE.Mesh(this._boxGeo, leatherMat);
+    vest.scale.set(h * 0.42, h * 0.25, h * 0.24);
+    vest.position.y = h * 0.54;
+    g.add(vest);
+
+    // Belt with quiver
+    const belt = new THREE.Mesh(this._boxGeo, leatherMat);
+    belt.scale.set(h * 0.43, h * 0.03, h * 0.25);
+    belt.position.y = h * 0.4;
+    g.add(belt);
+
+    // Quiver on back
+    const quiver = new THREE.Mesh(this._cylGeo, leatherMat);
+    quiver.scale.set(0.2, h * 0.25, 0.2);
+    quiver.position.set(h * 0.1, h * 0.6, -h * 0.15);
+    quiver.rotation.z = 0.15;
+    g.add(quiver);
+
+    // Arrow tips poking out
+    const arrowMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.6 });
+    for (let a = 0; a < 3; a++) {
+      const arrow = new THREE.Mesh(this._boxGeo, arrowMat);
+      arrow.scale.set(h * 0.01, h * 0.04, h * 0.01);
+      arrow.position.set(h * (0.08 + a * 0.02), h * 0.76, -h * 0.15);
+      g.add(arrow);
+    }
+
+    // Neck
+    const neck = new THREE.Mesh(this._cylGeo, skinMat);
+    neck.scale.set(0.3, h * 0.05, 0.3);
+    neck.position.y = h * 0.73;
+    g.add(neck);
+
+    // Head
+    const head = new THREE.Mesh(this._sphereGeo, skinMat);
+    head.scale.set(1.4, 1.45, 1.3);
+    head.position.y = h * 0.84;
+    g.add(head);
+
+    // Hood (instead of helmet)
+    const hoodMat = new THREE.MeshStandardMaterial({ color: 0x2a4a1a, roughness: 0.8 });
+    const hood = new THREE.Mesh(this._sphereGeo, hoodMat);
+    hood.scale.set(1.6, 1.2, 1.6);
+    hood.position.y = h * 0.96;
+    g.add(hood);
+
+    // Eyes
+    for (let side = -1; side <= 1; side += 2) {
+      const eyeW = new THREE.Mesh(this._sphereGeo, new THREE.MeshBasicMaterial({ color: 0xffffff }));
+      eyeW.scale.set(0.26, 0.20, 0.12);
+      eyeW.position.set(side * h * 0.05, h * 0.86, h * 0.04);
+      g.add(eyeW);
+      const eye = new THREE.Mesh(this._sphereGeo, new THREE.MeshBasicMaterial({ color: 0x332211 }));
+      eye.scale.set(0.16, 0.16, 0.12);
+      eye.position.set(side * h * 0.05, h * 0.86, h * 0.045);
+      g.add(eye);
+    }
+
+    // Arms
+    for (let side = -1; side <= 1; side += 2) {
+      const arm = new THREE.Mesh(this._cylGeo, tunicMat);
+      arm.scale.set(0.32, h * 0.15, 0.32);
+      arm.position.set(side * h * 0.26, h * 0.54, 0);
+      arm.rotation.z = side * 0.15;
+      g.add(arm);
+      const hand = new THREE.Mesh(this._boxGeo, skinMat);
+      hand.scale.set(h * 0.05, h * 0.05, h * 0.05);
+      hand.position.set(side * h * 0.3, h * 0.38, 0);
+      g.add(hand);
+    }
+
+    // Bow (held in left hand)
+    const bowMat = new THREE.MeshStandardMaterial({ color: 0x8b6914, roughness: 0.7 });
+    const bowStave = new THREE.Mesh(new THREE.TorusGeometry(h * 0.2, h * 0.012, 4, 12, Math.PI * 0.85),
+      bowMat);
+    bowStave.name = "sword"; // reuse animation hook name
+    bowStave.position.set(-h * 0.34, h * 0.5, h * 0.08);
+    bowStave.rotation.y = Math.PI * 0.5;
+    g.add(bowStave);
+
+    // Bowstring
+    const stringMat = new THREE.MeshBasicMaterial({ color: 0xddddbb });
+    const bowString = new THREE.Mesh(this._boxGeo, stringMat);
+    bowString.scale.set(h * 0.003, h * 0.35, h * 0.003);
+    bowString.position.set(-h * 0.34, h * 0.5, h * 0.08);
+    g.add(bowString);
+
+    // Legs
+    const pantMat = new THREE.MeshStandardMaterial({ color: 0x3a4a2a, roughness: 0.85 });
+    for (let side = -1; side <= 1; side += 2) {
+      const leg = new THREE.Group();
+      leg.name = side === -1 ? "sLeftLeg" : "sRightLeg";
+      const thigh = new THREE.Mesh(this._cylGeo, pantMat);
+      thigh.scale.set(0.36, h * 0.15, 0.36);
+      thigh.position.y = h * 0.08;
+      leg.add(thigh);
+      const boot = new THREE.Mesh(this._boxGeo, bootMat);
+      boot.scale.set(h * 0.07, h * 0.06, h * 0.12);
+      boot.position.set(0, -h * 0.08, h * 0.02);
+      leg.add(boot);
+      leg.position.set(side * h * 0.1, h * 0.2, 0);
+      g.add(leg);
+    }
+
+    // Player color banner on belt
+    const bannerMat = new THREE.MeshStandardMaterial({ color: playerColor, roughness: 0.7 });
+    const banner = new THREE.Mesh(this._boxGeo, bannerMat);
+    banner.scale.set(h * 0.08, h * 0.1, h * 0.01);
+    banner.position.set(h * 0.18, h * 0.35, h * 0.12);
+    g.add(banner);
+
+    g.castShadow = true;
+    return g;
+  }
+
+  // -----------------------------------------------------------------------
+  // Knight mesh – mounted soldier, taller, heavier armor
+  // -----------------------------------------------------------------------
+
+  private _createKnightMesh(state: SettlersState, owner: string, rank: number): THREE.Group {
+    const g = new THREE.Group();
+    const playerColor = this._getPlayerColor(owner, state);
+    const h = SB.SOLDIER_HEIGHT;
+
+    const armorMat = new THREE.MeshStandardMaterial({
+      color: rank >= 3 ? 0xc8b060 : 0x888899,
+      metalness: 0.6, roughness: 0.35,
+    });
+    const skinMat = new THREE.MeshStandardMaterial({ color: 0xf0ccaa, roughness: 0.7 });
+    const horseMat = new THREE.MeshStandardMaterial({ color: 0x6b4226, roughness: 0.75 });
+    const horseDkMat = new THREE.MeshStandardMaterial({ color: 0x3a2415, roughness: 0.8 });
+    const saddleMat = new THREE.MeshStandardMaterial({ color: playerColor, roughness: 0.6 });
+
+    // === HORSE BODY ===
+    const horseBody = new THREE.Mesh(this._boxGeo, horseMat);
+    horseBody.scale.set(h * 0.35, h * 0.25, h * 0.6);
+    horseBody.position.set(0, h * 0.25, 0);
+    g.add(horseBody);
+
+    // Horse neck
+    const horseNeck = new THREE.Mesh(this._cylGeo, horseMat);
+    horseNeck.scale.set(0.5, h * 0.2, 0.4);
+    horseNeck.position.set(0, h * 0.4, h * 0.25);
+    horseNeck.rotation.x = -0.5;
+    g.add(horseNeck);
+
+    // Horse head
+    const horseHead = new THREE.Mesh(this._boxGeo, horseMat);
+    horseHead.scale.set(h * 0.14, h * 0.12, h * 0.2);
+    horseHead.position.set(0, h * 0.5, h * 0.42);
+    g.add(horseHead);
+
+    // Horse mane
+    const maneMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.9 });
+    const mane = new THREE.Mesh(this._boxGeo, maneMat);
+    mane.scale.set(h * 0.02, h * 0.08, h * 0.2);
+    mane.position.set(0, h * 0.52, h * 0.3);
+    g.add(mane);
+
+    // Horse legs (4)
+    const legPositions: [number, number][] = [
+      [-h * 0.13, h * 0.2],
+      [h * 0.13, h * 0.2],
+      [-h * 0.13, -h * 0.2],
+      [h * 0.13, -h * 0.2],
+    ];
+    for (const [lx, lz] of legPositions) {
+      const leg = new THREE.Mesh(this._cylGeo, horseDkMat);
+      leg.scale.set(0.2, h * 0.12, 0.2);
+      leg.position.set(lx, h * 0.06, lz);
+      g.add(leg);
+      // Hoof
+      const hoof = new THREE.Mesh(this._cylGeo, new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.9 }));
+      hoof.scale.set(0.18, h * 0.02, 0.18);
+      hoof.position.set(lx, 0, lz);
+      g.add(hoof);
+    }
+
+    // Horse tail
+    const tail = new THREE.Mesh(this._boxGeo, maneMat);
+    tail.scale.set(h * 0.02, h * 0.12, h * 0.02);
+    tail.position.set(0, h * 0.2, -h * 0.32);
+    tail.rotation.x = 0.3;
+    g.add(tail);
+
+    // Saddle
+    const saddle = new THREE.Mesh(this._boxGeo, saddleMat);
+    saddle.scale.set(h * 0.3, h * 0.04, h * 0.2);
+    saddle.position.set(0, h * 0.4, 0);
+    g.add(saddle);
+
+    // === RIDER ===
+    // Rider torso (heavy armor)
+    const riderTorso = new THREE.Mesh(this._boxGeo, armorMat);
+    riderTorso.scale.set(h * 0.32, h * 0.28, h * 0.2);
+    riderTorso.position.set(0, h * 0.68, 0);
+    g.add(riderTorso);
+
+    // Rider neck
+    const neck = new THREE.Mesh(this._cylGeo, skinMat);
+    neck.scale.set(0.25, h * 0.04, 0.25);
+    neck.position.y = h * 0.86;
+    g.add(neck);
+
+    // Rider head
+    const head = new THREE.Mesh(this._sphereGeo, skinMat);
+    head.scale.set(1.3, 1.35, 1.2);
+    head.position.y = h * 0.94;
+    g.add(head);
+
+    // Knight helmet (great helm style)
+    const helmetColor = rank >= 3 ? 0xddaa33 : rank >= 2 ? 0x999999 : 0x777788;
+    const helmetMat = new THREE.MeshStandardMaterial({
+      color: helmetColor, metalness: 0.65, roughness: 0.3,
+    });
+    const helmet = new THREE.Mesh(this._boxGeo, helmetMat);
+    helmet.scale.set(h * 0.18, h * 0.18, h * 0.17);
+    helmet.position.y = h * 1.02;
+    g.add(helmet);
+
+    // Helmet visor slit
+    const visorMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
+    const visor = new THREE.Mesh(this._boxGeo, visorMat);
+    visor.scale.set(h * 0.12, h * 0.02, h * 0.01);
+    visor.position.set(0, h * 1.0, h * 0.09);
+    g.add(visor);
+
+    // Helmet plume (rank >= 2)
+    if (rank >= 2) {
+      const plumeMat = new THREE.MeshStandardMaterial({
+        color: playerColor, roughness: 0.7,
+      });
+      const plume = new THREE.Mesh(this._boxGeo, plumeMat);
+      plume.scale.set(h * 0.02, h * 0.12, h * 0.16);
+      plume.position.y = h * 1.14;
+      g.add(plume);
+    }
+
+    // Rider arms
+    for (let side = -1; side <= 1; side += 2) {
+      const arm = new THREE.Mesh(this._cylGeo, armorMat);
+      arm.scale.set(0.3, h * 0.14, 0.3);
+      arm.position.set(side * h * 0.22, h * 0.64, 0);
+      arm.rotation.z = side * 0.3;
+      g.add(arm);
+    }
+
+    // Lance (right hand)
+    const lanceMat = new THREE.MeshStandardMaterial({ color: 0x8b6914, roughness: 0.7 });
+    const lance = new THREE.Mesh(this._cylGeo, lanceMat);
+    lance.name = "sword"; // reuse animation hook name
+    lance.scale.set(0.08, h * 0.6, 0.08);
+    lance.position.set(h * 0.28, h * 0.8, h * 0.05);
+    lance.rotation.z = Math.PI * 0.08;
+    g.add(lance);
+
+    // Lance tip
+    const tipMat = new THREE.MeshStandardMaterial({ color: 0xccccdd, metalness: 0.7 });
+    const tip = new THREE.Mesh(this._boxGeo, tipMat);
+    tip.scale.set(h * 0.04, h * 0.08, h * 0.015);
+    tip.position.set(h * 0.3, h * 1.12, h * 0.05);
+    g.add(tip);
+
+    // Shield (left arm, smaller)
+    const shieldMat = new THREE.MeshStandardMaterial({
+      color: playerColor, metalness: 0.2, roughness: 0.5,
+    });
+    const shield = new THREE.Mesh(this._boxGeo, shieldMat);
+    shield.scale.set(h * 0.02, h * 0.14, h * 0.1);
+    shield.position.set(-h * 0.28, h * 0.6, h * 0.06);
+    g.add(shield);
+
+    // Rider legs (straddling horse)
+    const pantMat = new THREE.MeshStandardMaterial({ color: 0x554433, roughness: 0.85 });
+    for (let side = -1; side <= 1; side += 2) {
+      const leg = new THREE.Group();
+      leg.name = side === -1 ? "sLeftLeg" : "sRightLeg";
+      const thigh = new THREE.Mesh(this._cylGeo, pantMat);
+      thigh.scale.set(0.3, h * 0.1, 0.3);
+      thigh.position.set(side * h * 0.16, h * 0.04, 0);
+      thigh.rotation.z = side * 0.4;
+      leg.add(thigh);
+      const boot = new THREE.Mesh(this._boxGeo, new THREE.MeshStandardMaterial({ color: 0x4a2e16, roughness: 0.9 }));
+      boot.scale.set(h * 0.06, h * 0.05, h * 0.1);
+      boot.position.set(side * h * 0.2, -h * 0.02, h * 0.02);
+      leg.add(boot);
+      leg.position.y = h * 0.42;
+      g.add(leg);
+    }
+
+    g.castShadow = true;
     return g;
   }
 

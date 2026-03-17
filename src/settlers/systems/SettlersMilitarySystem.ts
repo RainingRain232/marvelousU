@@ -9,77 +9,149 @@ import { getHeightAt } from "../state/SettlersMap";
 import type { SettlersState } from "../state/SettlersState";
 import { nextId } from "../state/SettlersState";
 import type { SettlersSoldier } from "../state/SettlersUnit";
+import type { SoldierType } from "../state/SettlersUnit";
 
 // ---------------------------------------------------------------------------
-// Soldier creation from Barracks
+// Helper: get base stats for a unit type
+// ---------------------------------------------------------------------------
+
+function _baseStats(unitType: SoldierType): {
+  hp: number; atk: number; swing: number; speed: number; range: number;
+} {
+  switch (unitType) {
+    case "archer":
+      return {
+        hp: SB.ARCHER_BASE_HP,
+        atk: SB.ARCHER_BASE_ATK,
+        swing: SB.ARCHER_SWING_INTERVAL,
+        speed: SB.ARCHER_MARCH_SPEED,
+        range: SB.ARCHER_RANGE,
+      };
+    case "knight":
+      return {
+        hp: SB.KNIGHT_BASE_HP,
+        atk: SB.KNIGHT_BASE_ATK,
+        swing: SB.KNIGHT_SWING_INTERVAL,
+        speed: SB.KNIGHT_MARCH_SPEED,
+        range: 1,
+      };
+    default: // swordsman
+      return {
+        hp: SB.SOLDIER_BASE_HP,
+        atk: SB.SOLDIER_BASE_ATK,
+        swing: SB.SOLDIER_SWING_INTERVAL,
+        speed: SB.SOLDIER_MARCH_SPEED,
+        range: 1,
+      };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Helper: consume building inputs and start production
+// ---------------------------------------------------------------------------
+
+function _tryConsumeInputs(
+  building: import("../state/SettlersBuilding").SettlersBuilding,
+  required: { type: ResourceType; amount: number }[],
+): boolean {
+  // Check all required resources
+  for (const req of required) {
+    const stored = building.inputStorage.find((s) => s.type === req.type);
+    if (!stored || stored.amount < req.amount) return false;
+  }
+  // Consume
+  for (const req of required) {
+    for (const s of building.inputStorage) {
+      if (s.type === req.type) { s.amount -= req.amount; break; }
+    }
+  }
+  building.inputStorage = building.inputStorage.filter((s) => s.amount > 0);
+  return true;
+}
+
+// ---------------------------------------------------------------------------
+// Helper: spawn a soldier at a building's exit
+// ---------------------------------------------------------------------------
+
+function _spawnSoldier(
+  state: SettlersState,
+  building: import("../state/SettlersBuilding").SettlersBuilding,
+  unitType: SoldierType,
+): void {
+  const id = nextId(state);
+  const def = BUILDING_DEFS[building.type];
+  const wx = (building.tileX + Math.floor(def.footprint.w / 2)) * SB.TILE_SIZE;
+  const wz = (building.tileZ + def.footprint.h) * SB.TILE_SIZE;
+  const wy = getHeightAt(state.map, wx, wz);
+
+  const stats = _baseStats(unitType);
+
+  const soldier: SettlersSoldier = {
+    id,
+    owner: building.owner,
+    rank: 0,
+    unitType,
+    position: { x: wx, y: wy, z: wz },
+    state: "idle",
+    garrisonedIn: null,
+    targetBuildingId: null,
+    hp: stats.hp,
+    maxHp: stats.hp,
+    attackPower: stats.atk,
+    swingTimer: 0,
+    attackRange: stats.range,
+    moveSpeed: stats.speed,
+  };
+
+  state.soldiers.set(id, soldier);
+
+  const player = state.players.get(building.owner);
+  if (player) player.freeSoldiers++;
+}
+
+// ---------------------------------------------------------------------------
+// Generic unit-producing building tick
+// ---------------------------------------------------------------------------
+
+function _tickUnitProducer(
+  state: SettlersState,
+  building: import("../state/SettlersBuilding").SettlersBuilding,
+  dt: number,
+  unitType: SoldierType,
+): void {
+  if (!building.active) return;
+  if (building.productionQueue.length === 0) return;
+
+  const def = BUILDING_DEFS[building.type];
+  const front = building.productionQueue[0];
+
+  // If the front item hasn't started yet, try to consume inputs
+  if (front.timeRemaining < 0) {
+    const required = def.inputs.map((i) => ({ type: i.type, amount: i.amount }));
+    if (!_tryConsumeInputs(building, required)) return;
+    front.timeRemaining = def.productionTime;
+  }
+
+  // Tick the active item
+  front.timeRemaining -= dt;
+  if (front.timeRemaining <= 0) {
+    building.productionQueue.shift();
+    _spawnSoldier(state, building, unitType);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Soldier creation from Barracks / Archery Range / Stable
 // ---------------------------------------------------------------------------
 
 export function updateBarracks(state: SettlersState, dt: number): void {
   for (const [, building] of state.buildings) {
-    if (building.type !== SettlersBuildingType.BARRACKS) continue;
-    if (!building.active) continue;
-
-    // Only produce if there are items in the queue
-    if (building.productionQueue.length === 0) continue;
-
-    const def = BUILDING_DEFS[SettlersBuildingType.BARRACKS];
-    const front = building.productionQueue[0];
-
-    // If the front item hasn't started yet, try to consume inputs
-    if (front.timeRemaining < 0) {
-      // Check inputs: Sword + Shield + Beer
-      const hasSword = building.inputStorage.some((s) => s.type === ResourceType.SWORD && s.amount >= 1);
-      const hasShield = building.inputStorage.some((s) => s.type === ResourceType.SHIELD && s.amount >= 1);
-      const hasBeer = building.inputStorage.some((s) => s.type === ResourceType.BEER && s.amount >= 1);
-
-      if (!hasSword || !hasShield || !hasBeer) continue;
-
-      // Consume resources
-      for (const s of building.inputStorage) {
-        if (s.type === ResourceType.SWORD) { s.amount--; break; }
-      }
-      for (const s of building.inputStorage) {
-        if (s.type === ResourceType.SHIELD) { s.amount--; break; }
-      }
-      for (const s of building.inputStorage) {
-        if (s.type === ResourceType.BEER) { s.amount--; break; }
-      }
-      building.inputStorage = building.inputStorage.filter((s) => s.amount > 0);
-
-      // Start production
-      front.timeRemaining = def.productionTime;
-    }
-
-    // Tick the active item
-    front.timeRemaining -= dt;
-    if (front.timeRemaining <= 0) {
-      // Remove completed item from queue
-      building.productionQueue.shift();
-
-      // Create soldier
-      const id = nextId(state);
-      const wx = (building.tileX + 1) * SB.TILE_SIZE;
-      const wz = (building.tileZ + 2) * SB.TILE_SIZE;
-      const wy = getHeightAt(state.map, wx, wz);
-
-      const soldier: SettlersSoldier = {
-        id,
-        owner: building.owner,
-        rank: 0,
-        position: { x: wx, y: wy, z: wz },
-        state: "idle",
-        garrisonedIn: null,
-        targetBuildingId: null,
-        hp: SB.SOLDIER_BASE_HP,
-        maxHp: SB.SOLDIER_BASE_HP,
-        attackPower: SB.SOLDIER_BASE_ATK,
-        swingTimer: 0,
-      };
-
-      state.soldiers.set(id, soldier);
-
-      const player = state.players.get(building.owner);
-      if (player) player.freeSoldiers++;
+    if (building.type === SettlersBuildingType.BARRACKS) {
+      _tickUnitProducer(state, building, dt, "swordsman");
+    } else if (building.type === SettlersBuildingType.ARCHERY_RANGE) {
+      _tickUnitProducer(state, building, dt, "archer");
+    } else if (building.type === SettlersBuildingType.STABLE) {
+      _tickUnitProducer(state, building, dt, "knight");
     }
   }
 }
@@ -111,6 +183,45 @@ export function removeFromProductionQueue(
   if (index === 0 && building.productionQueue[0].timeRemaining >= 0) return false;
   building.productionQueue.splice(index, 1);
   return true;
+}
+
+// ---------------------------------------------------------------------------
+// Catapult tower: deals AOE damage to nearest enemy in range
+// ---------------------------------------------------------------------------
+
+export function updateCatapultTowers(state: SettlersState, dt: number): void {
+  for (const [, building] of state.buildings) {
+    if (building.type !== SettlersBuildingType.CATAPULT_TOWER) continue;
+    if (!building.active) continue;
+    if (building.garrison.length === 0) continue; // needs garrison to operate
+
+    const bx = (building.tileX + 1) * SB.TILE_SIZE;
+    const bz = (building.tileZ + 1) * SB.TILE_SIZE;
+    const range = SB.CATAPULT_TOWER_RANGE * SB.TILE_SIZE;
+
+    // Find nearest enemy soldier in range
+    let nearestEnemy: SettlersSoldier | null = null;
+    let nearestDist = Infinity;
+
+    for (const [, soldier] of state.soldiers) {
+      if (soldier.owner === building.owner) continue;
+      if (soldier.state === "garrisoned") continue;
+      const dx = soldier.position.x - bx;
+      const dz = soldier.position.z - bz;
+      const dist = Math.sqrt(dx * dx + dz * dz);
+      if (dist <= range && dist < nearestDist) {
+        nearestDist = dist;
+        nearestEnemy = soldier;
+      }
+    }
+
+    if (nearestEnemy) {
+      nearestEnemy.hp -= SB.CATAPULT_TOWER_DAMAGE * dt;
+      if (nearestEnemy.hp <= 0) {
+        state.soldiers.delete(nearestEnemy.id);
+      }
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -166,7 +277,7 @@ export function updateGarrisoning(state: SettlersState, dt: number): void {
         const player = state.players.get(soldier.owner);
         if (player) player.freeSoldiers = Math.max(0, player.freeSoldiers - 1);
       } else {
-        const speed = SB.SOLDIER_MARCH_SPEED * SB.TILE_SIZE * dt;
+        const speed = soldier.moveSpeed * SB.TILE_SIZE * dt;
         soldier.position.x += (dx / dist) * speed;
         soldier.position.z += (dz / dist) * speed;
         soldier.position.y = getHeightAt(state.map, soldier.position.x, soldier.position.z);
@@ -232,7 +343,7 @@ export function updateGarrisoning(state: SettlersState, dt: number): void {
         }
       }
     } else {
-      const speed = SB.SOLDIER_MARCH_SPEED * SB.TILE_SIZE * dt;
+      const speed = soldier.moveSpeed * SB.TILE_SIZE * dt;
       soldier.position.x += (dx / dist) * speed;
       soldier.position.z += (dz / dist) * speed;
       soldier.position.y = getHeightAt(state.map, soldier.position.x, soldier.position.z);
@@ -243,6 +354,21 @@ export function updateGarrisoning(state: SettlersState, dt: number): void {
 // ---------------------------------------------------------------------------
 // Combat resolution
 // ---------------------------------------------------------------------------
+
+/** Get the swing interval for a soldier based on their unit type */
+function _swingInterval(soldier: SettlersSoldier): number {
+  const stats = _baseStats(soldier.unitType);
+  return stats.swing;
+}
+
+/** Rank up a soldier after winning a fight, preserving unit-type-specific stats */
+function _rankUp(soldier: SettlersSoldier): void {
+  soldier.rank = Math.min(SB.MAX_SOLDIER_RANK, soldier.rank + 1);
+  const stats = _baseStats(soldier.unitType);
+  soldier.hp = stats.hp + soldier.rank * SB.SOLDIER_RANK_HP_BONUS;
+  soldier.maxHp = soldier.hp;
+  soldier.attackPower = stats.atk + soldier.rank * SB.SOLDIER_RANK_ATK_BONUS;
+}
 
 export function updateCombat(state: SettlersState, dt: number): void {
   const finishedCombats: number[] = [];
@@ -262,13 +388,13 @@ export function updateCombat(state: SettlersState, dt: number): void {
     defender.swingTimer -= dt;
 
     if (attacker.swingTimer <= 0) {
-      attacker.swingTimer = SB.SOLDIER_SWING_INTERVAL;
+      attacker.swingTimer = _swingInterval(attacker);
       const dmg = attacker.attackPower + attacker.rank * SB.SOLDIER_RANK_ATK_BONUS;
       defender.hp -= dmg;
     }
 
     if (defender.swingTimer <= 0) {
-      defender.swingTimer = SB.SOLDIER_SWING_INTERVAL;
+      defender.swingTimer = _swingInterval(defender);
       const dmg = defender.attackPower + defender.rank * SB.SOLDIER_RANK_ATK_BONUS;
       attacker.hp -= dmg;
     }
@@ -278,10 +404,7 @@ export function updateCombat(state: SettlersState, dt: number): void {
       // Attacker wins
       state.soldiers.delete(combat.defenderId);
       attacker.state = "idle";
-      attacker.rank = Math.min(SB.MAX_SOLDIER_RANK, attacker.rank + 1);
-      attacker.hp = SB.SOLDIER_BASE_HP + attacker.rank * SB.SOLDIER_RANK_HP_BONUS;
-      attacker.maxHp = attacker.hp;
-      attacker.attackPower = SB.SOLDIER_BASE_ATK + attacker.rank * SB.SOLDIER_RANK_ATK_BONUS;
+      _rankUp(attacker);
 
       // Check if building is now empty
       const building = state.buildings.get(combat.buildingId);
@@ -294,10 +417,7 @@ export function updateCombat(state: SettlersState, dt: number): void {
       // Defender wins
       state.soldiers.delete(combat.attackerId);
       defender.state = "idle";
-      defender.rank = Math.min(SB.MAX_SOLDIER_RANK, defender.rank + 1);
-      defender.hp = SB.SOLDIER_BASE_HP + defender.rank * SB.SOLDIER_RANK_HP_BONUS;
-      defender.maxHp = defender.hp;
-      defender.attackPower = SB.SOLDIER_BASE_ATK + defender.rank * SB.SOLDIER_RANK_ATK_BONUS;
+      _rankUp(defender);
       finishedCombats.push(i);
     }
   }
