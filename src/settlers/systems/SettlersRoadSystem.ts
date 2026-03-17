@@ -293,8 +293,8 @@ function _traceRoute(
 // ---------------------------------------------------------------------------
 
 export function routeGoods(state: SettlersState): void {
-  // Only re-route every 30 ticks (~0.5s)
-  if (state.tick % 30 !== 0) return;
+  // Re-route every 10 ticks (~0.17s) for responsive logistics
+  if (state.tick % 10 !== 0) return;
 
   // Dispatch resources from storage to flags at HQ/storehouses
   _dispatchFromStorage(state);

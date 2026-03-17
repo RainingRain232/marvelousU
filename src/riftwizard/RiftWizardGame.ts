@@ -239,6 +239,12 @@ export class RiftWizardGame {
           this._hud.handleBuyKey(this._state, key);
         }
       }
+      // Mouse click support for buy sub-menu
+      if (_mouseClicked) {
+        const sw = viewManager.screenWidth;
+        const sh = viewManager.screenHeight;
+        this._hud.handleBuyClick(this._state, _mouseX, _mouseY, sw, sh);
+      }
     }
 
     // Delegate keyboard to abilities sub-menu if active
@@ -247,6 +253,12 @@ export class RiftWizardGame {
         if (_justPressed[key]) {
           this._hud.handleAbilitiesKey(this._state, key);
         }
+      }
+      // Mouse click support for abilities sub-menu
+      if (_mouseClicked) {
+        const sw = viewManager.screenWidth;
+        const sh = viewManager.screenHeight;
+        this._hud.handleAbilitiesClick(this._state, _mouseX, _mouseY, sw, sh);
       }
     }
 
@@ -461,6 +473,12 @@ export class RiftWizardGame {
       if (_justPressed[key]) {
         this._spellShopUI.handleKey(state, key, sw, sh);
       }
+    }
+
+    // Mouse hover + click support for spell shop
+    this._spellShopUI.handleHover(state, _mouseX, _mouseY, sw, sh);
+    if (_mouseClicked) {
+      this._spellShopUI.handleClick(state, _mouseX, _mouseY, sw, sh);
     }
   }
 

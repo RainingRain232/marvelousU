@@ -701,10 +701,7 @@ export class SettlersGame {
   }
 
   private _handleEscape(): void {
-    if (this._state.roadDrawing.active) {
-      this._handleRightClick();
-    } else {
-      this._state.paused = !this._state.paused;
-    }
+    // Escape always deselects / cancels current action (never pauses)
+    this._handleRightClick();
   }
 }

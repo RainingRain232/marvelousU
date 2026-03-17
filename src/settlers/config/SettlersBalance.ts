@@ -30,7 +30,7 @@ export const SB = {
   COST_LARGE:  { planks: 6, stone: 5 },
 
   // Carrier
-  CARRIER_SPEED: 2.0,        // tiles per second
+  CARRIER_SPEED: 3.5,        // tiles per second
   FLAG_MAX_INVENTORY: 8,     // max goods waiting at a flag
 
   // Building production (seconds per output)

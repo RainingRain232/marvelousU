@@ -3000,7 +3000,7 @@ export class SettlersRenderer {
     for (const p of path) {
       const wx = (p.x + 0.5) * SB.TILE_SIZE;
       const wz = (p.z + 0.5) * SB.TILE_SIZE;
-      const wy = getHeightAt(state.map, wx, wz) + 0.08;
+      const wy = getHeightAt(state.map, wx, wz) + 0.25;
       points.push(new THREE.Vector3(wx, wy, wz));
     }
 
@@ -3008,8 +3008,8 @@ export class SettlersRenderer {
       return group;
     }
 
-    // Road width is wider than before – nearly a full tile
-    const roadWidth = SB.TILE_SIZE * 0.7;
+    // Road width – nearly a full tile for clear visibility
+    const roadWidth = SB.TILE_SIZE * 0.8;
     const hw = roadWidth * 0.5;
 
     // Build ribbon with vertex colors – 6 vertices per point for richer detail:
@@ -3078,14 +3078,21 @@ export class SettlersRenderer {
     geo.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
     geo.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
     geo.setIndex(indices);
-    geo.computeVertexNormals();
+
+    // Explicitly set normals to point up for consistent lighting on road surface
+    const normals: number[] = [];
+    for (let i = 0; i < positions.length / 3; i++) {
+      normals.push(0, 1, 0);
+    }
+    geo.setAttribute("normal", new THREE.Float32BufferAttribute(normals, 3));
 
     const mat = new THREE.MeshStandardMaterial({
       vertexColors: true,
       roughness: quality === "paved" ? 0.6 : quality === "stone" ? 0.8 : 0.95,
+      side: THREE.DoubleSide,
       polygonOffset: true,
-      polygonOffsetFactor: -2,
-      polygonOffsetUnits: -2,
+      polygonOffsetFactor: -4,
+      polygonOffsetUnits: -4,
     });
 
     const roadMesh = new THREE.Mesh(geo, mat);

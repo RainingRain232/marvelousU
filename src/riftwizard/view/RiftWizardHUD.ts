@@ -1462,6 +1462,112 @@ export class RiftWizardHUD {
   }
 
   // -------------------------------------------------------------------------
+  // Pause sub-menu: Click handlers
+  // -------------------------------------------------------------------------
+
+  /** Handle mouse click in buy sub-menu. mx/my are screen coords. */
+  handleBuyClick(state: RiftWizardState, mx: number, my: number, screenWidth: number, screenHeight: number): void {
+    const panelW = 460;
+    const panelH = Math.min(screenHeight - 40, 520);
+    const panelX = Math.floor((screenWidth - panelW) / 2);
+    const panelY = Math.floor((screenHeight - panelH) / 2);
+
+    // Outside panel
+    if (mx < panelX || mx > panelX + panelW || my < panelY || my > panelY + panelH) return;
+
+    if (this._buyViewingUpgrades) {
+      const spell = state.spells[this._buyUpgradeSpellIndex];
+      if (!spell) return;
+      const upgrades = getAvailableUpgrades(spell);
+      // Upgrades list starts around panelY + 80
+      const listTop = panelY + 80;
+      const rowH = 38;
+      if (my >= listTop && mx >= panelX + 14) {
+        const idx = Math.floor((my - listTop) / rowH);
+        if (idx >= 0 && idx < upgrades.length) {
+          if (this._buySelectedIndex === idx) {
+            const upg = upgrades[idx];
+            if (upg) buyUpgrade(state, this._buyUpgradeSpellIndex, upg.id);
+          } else {
+            this._buySelectedIndex = idx;
+          }
+        }
+      }
+    } else {
+      const available = getAvailableSpells(state);
+      // "New Spells" section starts around panelY + 76, each row is 34px
+      // "Upgrade Owned Spells" section follows
+      const newSpellsTop = panelY + 76;
+      const rowH = 34;
+      if (my >= newSpellsTop && mx >= panelX + 14) {
+        const maxNewVisible = Math.min(available.length, 8);
+        const newSpellsBottom = newSpellsTop + maxNewVisible * rowH;
+
+        if (my < newSpellsBottom) {
+          // Clicked on a new spell
+          const idx = Math.floor((my - newSpellsTop) / rowH);
+          if (idx >= 0 && idx < available.length) {
+            if (this._buySelectedIndex === idx) {
+              learnSpell(state, available[idx].id);
+            } else {
+              this._buySelectedIndex = idx;
+            }
+          }
+        } else {
+          // Clicked on owned spells section
+          const ownedTop = newSpellsBottom + 30; // divider + header
+          const ownedRowH = 26;
+          if (my >= ownedTop) {
+            const ownedIdx = Math.floor((my - ownedTop) / ownedRowH);
+            if (ownedIdx >= 0 && ownedIdx < state.spells.length) {
+              const listIdx = available.length + ownedIdx;
+              if (this._buySelectedIndex === listIdx) {
+                // Enter upgrade view
+                this._buyUpgradeSpellIndex = ownedIdx;
+                this._buyViewingUpgrades = true;
+                this._buySelectedIndex = 0;
+              } else {
+                this._buySelectedIndex = listIdx;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /** Handle mouse click in abilities sub-menu. mx/my are screen coords. */
+  handleAbilitiesClick(state: RiftWizardState, mx: number, my: number, screenWidth: number, screenHeight: number): void {
+    const panelW = 480;
+    const panelH = Math.min(screenHeight - 40, 600);
+    const panelX = Math.floor((screenWidth - panelW) / 2);
+    const panelY = Math.floor((screenHeight - panelH) / 2);
+
+    if (mx < panelX || mx > panelX + panelW || my < panelY || my > panelY + panelH) return;
+
+    const available = getAvailableAbilities(state).sort((a, b) => a.spCost - b.spCost);
+    // Learned abilities section height
+    const learnedH = state.abilities.length > 0 ? (22 * state.abilities.length + 36) : 0;
+    // "Buy Abilities" list starts after SP display + divider + learned section
+    const buyTop = panelY + 60 + learnedH + 18;
+    const rowH = 36;
+
+    if (my >= buyTop && mx >= panelX + 14) {
+      const idx = Math.floor((my - buyTop) / rowH);
+      const maxVisible = Math.min(available.length, 8);
+      if (idx >= 0 && idx < maxVisible) {
+        if (this._abilitiesSelectedIndex === idx) {
+          const sorted = available;
+          const def = sorted[idx];
+          if (def) learnAbility(state, def.id);
+        } else {
+          this._abilitiesSelectedIndex = idx;
+        }
+      }
+    }
+  }
+
+  // -------------------------------------------------------------------------
   // Pause sub-menu: Buy Spells / Upgrades
   // -------------------------------------------------------------------------
 

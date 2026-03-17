@@ -247,6 +247,148 @@ export class RiftWizardSpellSelectUI {
     return false;
   }
 
+  /** Handle a left-mouse click at screen coordinates. Returns true if consumed. */
+  handleClick(
+    state: RiftWizardState, mx: number, my: number,
+    screenWidth: number, screenHeight: number,
+  ): boolean {
+    const px = Math.floor((screenWidth - PANEL_W) / 2);
+    const py = Math.floor((screenHeight - PANEL_H) / 2);
+
+    // Outside panel?
+    if (mx < px || mx > px + PANEL_W || my < py || my > py + PANEL_H) return false;
+
+    // --- Tab bar clicks ---
+    const tabY = py + 50;
+    if (my >= tabY && my <= tabY + 32) {
+      const tabs: { mode: SpellShopMode; w: number }[] = [
+        { mode: "buy", w: 100 },
+        { mode: "abilities", w: 110 },
+        { mode: "upgrade", w: 110 },
+      ];
+      let tabX = px + 10;
+      for (const tab of tabs) {
+        if (mx >= tabX && mx <= tabX + tab.w) {
+          this._mode = tab.mode;
+          this._selectedIndex = 0;
+          this._scrollOffset = 0;
+          this._render(state, screenWidth, screenHeight);
+          return true;
+        }
+        tabX += tab.w + 6;
+      }
+    }
+
+    // --- List item clicks ---
+    const listY = py + LIST_TOP;
+    const listBottom = py + PANEL_H - LIST_BOT_MARGIN;
+    if (my >= listY && my < listBottom && mx >= px + 12 && mx <= px + PANEL_W - 20) {
+      const rowIndex = Math.floor((my - listY) / ROW_H) + this._scrollOffset;
+
+      if (this._mode === "buy") {
+        const available = getAvailableSpells(state).sort((a, b) => a.spCost - b.spCost);
+        if (rowIndex >= 0 && rowIndex < available.length) {
+          if (this._selectedIndex === rowIndex) {
+            // Double-click / click on already selected = buy
+            this._tryBuySelected(state);
+          } else {
+            this._selectedIndex = rowIndex;
+          }
+          this._render(state, screenWidth, screenHeight);
+          return true;
+        }
+      } else if (this._mode === "abilities") {
+        const available = getAvailableAbilities(state).sort((a, b) => a.spCost - b.spCost);
+        // Account for owned abilities header offset
+        const ownedOffset = state.abilities.length > 0 ? 2 : 0;
+        const adjustedRow = rowIndex - ownedOffset;
+        if (adjustedRow >= 0 && adjustedRow < available.length) {
+          if (this._selectedIndex === adjustedRow) {
+            this._tryBuySelected(state);
+          } else {
+            this._selectedIndex = adjustedRow;
+          }
+          this._render(state, screenWidth, screenHeight);
+          return true;
+        }
+      } else {
+        // Upgrade mode
+        const spell = state.spells[this._upgradeSpellIndex];
+        if (spell) {
+          const upgrades = getAvailableUpgrades(spell);
+          // Account for header offset (~38px for spell header + 16px for "Available:" label)
+          const upgradeListY = listY + 38 + 16;
+          if (my >= upgradeListY) {
+            const upgRow = Math.floor((my - upgradeListY) / ROW_H);
+            if (upgRow >= 0 && upgRow < upgrades.length) {
+              if (this._selectedIndex === upgRow) {
+                this._tryBuySelected(state);
+              } else {
+                this._selectedIndex = upgRow;
+              }
+              this._render(state, screenWidth, screenHeight);
+              return true;
+            }
+          }
+        }
+        // Spell nav arrows (left/right in header area)
+        if (my >= listY && my < listY + 32) {
+          if (mx < px + PANEL_W / 2) {
+            // Left arrow
+            this._upgradeSpellIndex = Math.max(0, this._upgradeSpellIndex - 1);
+          } else {
+            // Right arrow
+            this._upgradeSpellIndex = Math.min(state.spells.length - 1, this._upgradeSpellIndex + 1);
+          }
+          this._selectedIndex = 0;
+          this._scrollOffset = 0;
+          this._render(state, screenWidth, screenHeight);
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  /** Handle mouse hover – update selection to hovered item for visual feedback */
+  handleHover(
+    state: RiftWizardState, mx: number, my: number,
+    screenWidth: number, screenHeight: number,
+  ): void {
+    const px = Math.floor((screenWidth - PANEL_W) / 2);
+    const py = Math.floor((screenHeight - PANEL_H) / 2);
+    if (mx < px || mx > px + PANEL_W || my < py || my > py + PANEL_H) return;
+
+    const listY = py + LIST_TOP;
+    const listBottom = py + PANEL_H - LIST_BOT_MARGIN;
+    if (my >= listY && my < listBottom && mx >= px + 12 && mx <= px + PANEL_W - 20) {
+      const rowIndex = Math.floor((my - listY) / ROW_H) + this._scrollOffset;
+      let maxItems = 0;
+
+      if (this._mode === "buy") {
+        maxItems = getAvailableSpells(state).length;
+      } else if (this._mode === "abilities") {
+        const ownedOffset = state.abilities.length > 0 ? 2 : 0;
+        const adjusted = rowIndex - ownedOffset;
+        maxItems = getAvailableAbilities(state).length;
+        if (adjusted >= 0 && adjusted < maxItems && adjusted !== this._selectedIndex) {
+          this._selectedIndex = adjusted;
+          this._render(state, screenWidth, screenHeight);
+        }
+        return;
+      } else {
+        // Upgrade mode - handled differently
+        return;
+      }
+
+      if (rowIndex >= 0 && rowIndex < maxItems && rowIndex !== this._selectedIndex) {
+        this._selectedIndex = rowIndex;
+        this._render(state, screenWidth, screenHeight);
+      }
+    }
+  }
+
   private _ensureVisible(): void {
     if (this._selectedIndex < this._scrollOffset) {
       this._scrollOffset = this._selectedIndex;
@@ -383,7 +525,7 @@ export class RiftWizardSpellSelectUI {
     this._bg.rect(px + 10, helpY - 6, PANEL_W - 20, 1);
     this._bg.fill({ color: 0x333355, alpha: 0.4 });
     this._addText(
-      "Q/E or \u2190\u2192: switch tab  |  \u2191\u2193: select  |  Space: buy  |  Enter: continue",
+      "Q/E or \u2190\u2192: switch tab  |  \u2191\u2193 or Mouse: select  |  Space/Click: buy  |  Enter: continue",
       px + 20, helpY, 10, 0x555577,
     );
 
