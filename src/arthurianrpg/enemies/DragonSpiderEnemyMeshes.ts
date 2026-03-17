@@ -43,28 +43,28 @@ function castShadows(m: THREE.Mesh): THREE.Mesh {
   return m;
 }
 
-function sphere(r: number, wSeg = 16, hSeg = 12): THREE.SphereGeometry {
+function sphere(r: number, wSeg = 24, hSeg = 16): THREE.SphereGeometry {
   return new THREE.SphereGeometry(r, wSeg, hSeg);
 }
 
-function cylinder(rTop: number, rBot: number, h: number, seg = 12): THREE.CylinderGeometry {
+function cylinder(rTop: number, rBot: number, h: number, seg = 20): THREE.CylinderGeometry {
   return new THREE.CylinderGeometry(rTop, rBot, h, seg);
 }
 
-function cone(r: number, h: number, seg = 10): THREE.ConeGeometry {
+function cone(r: number, h: number, seg = 16): THREE.ConeGeometry {
   return new THREE.ConeGeometry(r, h, seg);
 }
 
 function box(w: number, h: number, d: number): THREE.BoxGeometry {
-  return new THREE.BoxGeometry(w, h, d);
+  return new THREE.BoxGeometry(w, h, d, 2, 2, 2);
 }
 
-function torus(r: number, tube: number, rSeg = 12, tSeg = 24): THREE.TorusGeometry {
+function torus(r: number, tube: number, rSeg = 16, tSeg = 32): THREE.TorusGeometry {
   return new THREE.TorusGeometry(r, tube, rSeg, tSeg);
 }
 
 function plane(w: number, h: number): THREE.PlaneGeometry {
-  return new THREE.PlaneGeometry(w, h, 4, 4);
+  return new THREE.PlaneGeometry(w, h, 6, 6);
 }
 
 function addMesh(

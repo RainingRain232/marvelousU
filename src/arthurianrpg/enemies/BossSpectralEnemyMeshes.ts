@@ -79,7 +79,7 @@ export function buildBossHumanoidEnemy(
   g.add(upperTorso);
 
   // Chest pectorals - left and right
-  const pectoralGeo = new THREE.SphereGeometry(0.38 * sc, 12, 10, 0, Math.PI);
+  const pectoralGeo = new THREE.SphereGeometry(0.38 * sc, 18, 14, 0, Math.PI);
   const pectoralL = m(pectoralGeo, armorM);
   pos(pectoralL, -0.3 * sc, 1.7 * sc, 0.35 * sc);
   rot(pectoralL, -0.3, 0, 0);
@@ -95,7 +95,7 @@ export function buildBossHumanoidEnemy(
   g.add(chestRidge);
 
   // Dragon relief on breastplate - built from multiple small shapes
-  const dragonSpineGeo = new THREE.CylinderGeometry(0.02 * sc, 0.02 * sc, 0.5 * sc, 6);
+  const dragonSpineGeo = new THREE.CylinderGeometry(0.02 * sc, 0.02 * sc, 0.5 * sc, 10);
   const dragonSpine = m(dragonSpineGeo, trimM);
   pos(dragonSpine, 0, 1.7 * sc, 0.45 * sc);
   rot(dragonSpine, 0, 0, 0.1);
@@ -272,7 +272,7 @@ export function buildBossHumanoidEnemy(
   headGroup.position.set(0, 2.3 * sc, 0);
 
   // Cranium
-  const cranium = m(new THREE.SphereGeometry(0.28 * sc, 14, 12), skinM);
+  const cranium = m(new THREE.SphereGeometry(0.28 * sc, 20, 16), skinM);
   headGroup.add(cranium);
 
   // Heavy brow ridge
@@ -334,7 +334,7 @@ export function buildBossHumanoidEnemy(
     helmGroup.position.set(0, 2.3 * sc, 0);
 
     // Base helm
-    const helmBase = m(new THREE.SphereGeometry(0.32 * sc, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.6), armorM);
+    const helmBase = m(new THREE.SphereGeometry(0.32 * sc, 20, 14, 0, Math.PI * 2, 0, Math.PI * 0.6), armorM);
     pos(helmBase, 0, 0.05 * sc, 0);
     helmGroup.add(helmBase);
 
@@ -838,7 +838,7 @@ export function buildSpectralEnemy(
   skullGroup.position.set(0, 2.0 * sc, 0);
 
   // Cranium
-  const cranium = m(new THREE.SphereGeometry(0.22 * sc, 14, 12), boneMat);
+  const cranium = m(new THREE.SphereGeometry(0.22 * sc, 20, 16), boneMat);
   pos(cranium, 0, 0.05 * sc, 0);
   skullGroup.add(cranium);
 

@@ -32,23 +32,23 @@ function m(geo: THREE.BufferGeometry, mat: THREE.Material): THREE.Mesh {
   return mesh;
 }
 
-function sphere(r: number, w = 16, h = 12): THREE.SphereGeometry {
+function sphere(r: number, w = 24, h = 16): THREE.SphereGeometry {
   return new THREE.SphereGeometry(r, w, h);
 }
 
 function box(w: number, h: number, d: number): THREE.BoxGeometry {
-  return new THREE.BoxGeometry(w, h, d);
+  return new THREE.BoxGeometry(w, h, d, 2, 2, 2);
 }
 
-function cyl(rt: number, rb: number, h: number, seg = 12): THREE.CylinderGeometry {
+function cyl(rt: number, rb: number, h: number, seg = 20): THREE.CylinderGeometry {
   return new THREE.CylinderGeometry(rt, rb, h, seg);
 }
 
-function cone(r: number, h: number, seg = 10): THREE.ConeGeometry {
+function cone(r: number, h: number, seg = 16): THREE.ConeGeometry {
   return new THREE.ConeGeometry(r, h, seg);
 }
 
-function torus(r: number, tube: number, seg = 16, tSeg = 8): THREE.TorusGeometry {
+function torus(r: number, tube: number, seg = 20, tSeg = 12): THREE.TorusGeometry {
   return new THREE.TorusGeometry(r, tube, seg, tSeg);
 }
 

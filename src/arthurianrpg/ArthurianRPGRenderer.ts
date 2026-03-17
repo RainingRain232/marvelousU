@@ -976,91 +976,218 @@ function buildEnemyMesh(look: EnemyAppearance): THREE.Group {
   const g = new THREE.Group();
 
   // --- PBR material helpers (shared with sub-builders) ---
+  // Generic material: cloth, leather, bone – subtle sheen for realism
   const mat = (c: number) => new THREE.MeshPhysicalMaterial({
-    color: c, roughness: 0.7, metalness: 0.08, envMapIntensity: 0.6,
-    sheen: 0.15, sheenRoughness: 0.6, sheenColor: new THREE.Color(c).offsetHSL(0, 0, 0.15),
+    color: c, roughness: 0.65, metalness: 0.06, envMapIntensity: 0.8,
+    sheen: 0.2, sheenRoughness: 0.55, sheenColor: new THREE.Color(c).offsetHSL(0, 0, 0.15),
+    clearcoat: 0.02, clearcoatRoughness: 0.95,
   });
-  const skinMat = (c: number) => new THREE.MeshPhysicalMaterial({
-    color: c, roughness: 0.75, metalness: 0.0,
-    sheen: 0.4, sheenRoughness: 0.4, sheenColor: new THREE.Color(c).offsetHSL(0, -0.1, 0.2),
-    clearcoat: 0.05, clearcoatRoughness: 0.9,
-  });
+  // Skin: subsurface-like warmth, slight clearcoat for moisture
+  const skinMat = (c: number) => {
+    const base = new THREE.Color(c);
+    const warm = base.clone().offsetHSL(0.02, 0.05, 0.1);
+    return new THREE.MeshPhysicalMaterial({
+      color: c, roughness: 0.7, metalness: 0.0,
+      sheen: 0.5, sheenRoughness: 0.35, sheenColor: warm,
+      clearcoat: 0.08, clearcoatRoughness: 0.85,
+      // Subsurface scattering approximation via thickness + transmission
+      thickness: 0.4, transmission: 0.02, attenuationColor: warm,
+      attenuationDistance: 0.5,
+    });
+  };
+  // Armor: high metalness with micro-roughness variation for worn look
   const armorMat = (c: number) => new THREE.MeshPhysicalMaterial({
-    color: c, roughness: 0.3, metalness: 0.7,
-    clearcoat: 0.5, clearcoatRoughness: 0.2, reflectivity: 0.8,
+    color: c, roughness: 0.25, metalness: 0.78,
+    clearcoat: 0.6, clearcoatRoughness: 0.15, reflectivity: 0.9,
+    envMapIntensity: 1.2,
+    sheen: 0.1, sheenRoughness: 0.3, sheenColor: new THREE.Color(c).offsetHSL(0, -0.1, 0.3),
   });
-  const furMat = (c: number) => new THREE.MeshPhysicalMaterial({
-    color: c, roughness: 0.85, metalness: 0.0,
-    sheen: 0.8, sheenRoughness: 0.3, sheenColor: new THREE.Color(c).offsetHSL(0, 0, 0.25),
-  });
+  // Fur/hair: strong anisotropic-like sheen for realistic fiber look
+  const furMat = (c: number) => {
+    const highlight = new THREE.Color(c).offsetHSL(0.02, 0, 0.3);
+    return new THREE.MeshPhysicalMaterial({
+      color: c, roughness: 0.82, metalness: 0.0,
+      sheen: 1.0, sheenRoughness: 0.25, sheenColor: highlight,
+      clearcoat: 0.01, clearcoatRoughness: 0.95,
+    });
+  };
+  // Eyes: intense glow with glassy clearcoat, high refraction feel
   const eyeMat = new THREE.MeshPhysicalMaterial({
-    color: look.eyeColor, emissive: look.eyeColor, emissiveIntensity: 2.0,
-    roughness: 0.05, clearcoat: 1.0, clearcoatRoughness: 0.0,
+    color: look.eyeColor, emissive: look.eyeColor, emissiveIntensity: 2.5,
+    roughness: 0.02, metalness: 0.0,
+    clearcoat: 1.0, clearcoatRoughness: 0.0, reflectivity: 1.0,
+    ior: 1.5,
   });
+  // Optional entity glow (aura/magic)
   const glowMat = look.glowColor ? new THREE.MeshPhysicalMaterial({
-    color: look.glowColor, emissive: look.glowColor, emissiveIntensity: 0.6,
-    transparent: true, opacity: 0.25, transmission: 0.4,
+    color: look.glowColor, emissive: look.glowColor, emissiveIntensity: 0.8,
+    transparent: true, opacity: 0.22, transmission: 0.5,
+    roughness: 0.1, metalness: 0.0,
   }) : null;
 
   // --- Weapon builder helper ---
   const addWeapon = (parent: THREE.Group, wx: number, wy: number) => {
     if (!look.hasWeapon || look.hasWeapon === "none" || look.hasWeapon === "claws") return;
-    const metalMat = new THREE.MeshPhysicalMaterial({ color: 0xbbbbcc, metalness: 0.85, roughness: 0.12, clearcoat: 0.6 });
-    const hiltMat = new THREE.MeshPhysicalMaterial({ color: 0x553322, roughness: 0.8 });
+    const metalMat = new THREE.MeshPhysicalMaterial({
+      color: 0xccccdd, metalness: 0.92, roughness: 0.08,
+      clearcoat: 0.8, clearcoatRoughness: 0.1, reflectivity: 1.0,
+      envMapIntensity: 1.5,
+    });
+    const edgeMat = new THREE.MeshPhysicalMaterial({
+      color: 0xeeeeff, metalness: 0.95, roughness: 0.02,
+      clearcoat: 1.0, clearcoatRoughness: 0.0,
+    });
+    const hiltMat = new THREE.MeshPhysicalMaterial({
+      color: 0x553322, roughness: 0.75, metalness: 0.05,
+      sheen: 0.3, sheenRoughness: 0.5, sheenColor: new THREE.Color(0x886644),
+    });
+    const wrapMat = new THREE.MeshPhysicalMaterial({ color: 0x332211, roughness: 0.9, metalness: 0.0 });
+
     if (look.hasWeapon === "sword") {
-      const blade = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.4, 0.03), metalMat);
-      blade.position.set(wx, wy + 0.2, 0);
+      // Blade with fuller (groove) detail
+      const blade = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.42, 0.028, 1, 4, 1), metalMat);
+      blade.position.set(wx, wy + 0.21, 0);
       blade.castShadow = true;
       parent.add(blade);
-      const guard = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.02, 0.03), armorMat(look.accentColor));
+      // Blade edge highlights (thin strips on both sides)
+      for (const dz of [-0.016, 0.016]) {
+        const edge = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.4, 0.003), edgeMat);
+        edge.position.set(wx, wy + 0.2, dz);
+        parent.add(edge);
+      }
+      // Fuller (blood groove)
+      const fuller = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.28, 0.004), new THREE.MeshPhysicalMaterial({
+        color: 0x888899, metalness: 0.7, roughness: 0.3,
+      }));
+      fuller.position.set(wx, wy + 0.22, 0);
+      parent.add(fuller);
+      // Blade tip (tapered)
+      const tip = new THREE.Mesh(new THREE.ConeGeometry(0.014, 0.06, 4), metalMat);
+      tip.position.set(wx, wy + 0.45, 0);
+      tip.castShadow = true;
+      parent.add(tip);
+      // Cross-guard with curved ends
+      const guard = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.025, 0.035, 2, 1, 1), armorMat(look.accentColor));
       guard.position.set(wx, wy, 0);
       parent.add(guard);
-      const hilt = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.014, 0.1, 6), hiltMat);
+      // Guard end caps
+      for (const dx of [-0.065, 0.065]) {
+        const cap = new THREE.Mesh(new THREE.SphereGeometry(0.012, 8, 6), armorMat(look.accentColor));
+        cap.position.set(wx + dx, wy, 0);
+        parent.add(cap);
+      }
+      // Leather-wrapped hilt
+      const hilt = new THREE.Mesh(new THREE.CylinderGeometry(0.013, 0.015, 0.1, 8), hiltMat);
       hilt.position.set(wx, wy - 0.06, 0);
       parent.add(hilt);
-      const pommel = new THREE.Mesh(new THREE.SphereGeometry(0.018, 6, 4), armorMat(look.accentColor));
-      pommel.position.set(wx, wy - 0.12, 0);
+      // Hilt wrap bands
+      for (let i = 0; i < 4; i++) {
+        const wrap = new THREE.Mesh(new THREE.TorusGeometry(0.015, 0.003, 4, 8), wrapMat);
+        wrap.position.set(wx, wy - 0.09 + i * 0.02, 0);
+        wrap.rotation.x = Math.PI / 2;
+        parent.add(wrap);
+      }
+      // Pommel
+      const pommel = new THREE.Mesh(new THREE.SphereGeometry(0.02, 10, 8), armorMat(look.accentColor));
+      pommel.position.set(wx, wy - 0.13, 0);
       parent.add(pommel);
     } else if (look.hasWeapon === "axe") {
-      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.015, 0.5, 6), hiltMat);
+      // Shaft with wood grain (tapered)
+      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.013, 0.016, 0.55, 8), hiltMat);
       shaft.position.set(wx, wy + 0.1, 0);
+      shaft.castShadow = true;
       parent.add(shaft);
-      const headGeo = new THREE.BoxGeometry(0.12, 0.15, 0.02);
+      // Axe head - larger with curved edge
+      const headGeo = new THREE.BoxGeometry(0.14, 0.18, 0.025, 2, 2, 1);
       const axeHead = new THREE.Mesh(headGeo, metalMat);
-      axeHead.position.set(wx + 0.06, wy + 0.3, 0);
+      axeHead.position.set(wx + 0.07, wy + 0.32, 0);
       axeHead.castShadow = true;
       parent.add(axeHead);
+      // Cutting edge (bright strip)
+      const axeEdge = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.16, 0.03), edgeMat);
+      axeEdge.position.set(wx + 0.145, wy + 0.32, 0);
+      parent.add(axeEdge);
+      // Binding where head meets shaft
+      const binding = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.04, 8), wrapMat);
+      binding.position.set(wx, wy + 0.3, 0);
+      parent.add(binding);
     } else if (look.hasWeapon === "bow") {
+      const bowMat = new THREE.MeshPhysicalMaterial({
+        color: 0x664422, roughness: 0.6, metalness: 0.05,
+        sheen: 0.3, sheenRoughness: 0.4, sheenColor: new THREE.Color(0x886644),
+      });
       const bowCurve = new THREE.Mesh(
-        new THREE.TorusGeometry(0.3, 0.015, 6, 12, Math.PI),
-        hiltMat,
+        new THREE.TorusGeometry(0.3, 0.018, 8, 20, Math.PI),
+        bowMat,
       );
       bowCurve.position.set(wx, wy + 0.15, 0.05);
       bowCurve.rotation.z = Math.PI / 2;
+      bowCurve.castShadow = true;
       parent.add(bowCurve);
-      // bowstring
-      const string = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, 0.58, 4), new THREE.MeshPhysicalMaterial({ color: 0xddddcc, roughness: 0.5 }));
+      // Nock tips
+      for (const dy of [-0.3, 0.3]) {
+        const nock = new THREE.Mesh(new THREE.SphereGeometry(0.008, 6, 4), armorMat(look.accentColor));
+        nock.position.set(wx, wy + 0.15 + dy, 0.05 + 0.3);
+        parent.add(nock);
+      }
+      // Bowstring
+      const stringMat = new THREE.MeshPhysicalMaterial({ color: 0xddddcc, roughness: 0.4, metalness: 0.0 });
+      const string = new THREE.Mesh(new THREE.CylinderGeometry(0.002, 0.002, 0.58, 6), stringMat);
       string.position.set(wx, wy + 0.15, 0.05);
       parent.add(string);
+      // Grip wrap
+      const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.08, 8), wrapMat);
+      grip.position.set(wx, wy + 0.15, 0.05 + 0.3);
+      grip.rotation.z = Math.PI / 2;
+      parent.add(grip);
     } else if (look.hasWeapon === "staff") {
-      const staff = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.018, 0.8, 6), hiltMat);
-      staff.position.set(wx, wy + 0.25, 0);
+      // Gnarled wooden staff
+      const staffMat = new THREE.MeshPhysicalMaterial({
+        color: 0x554433, roughness: 0.7, metalness: 0.02,
+        sheen: 0.2, sheenRoughness: 0.6, sheenColor: new THREE.Color(0x776655),
+      });
+      const staff = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.02, 0.85, 8), staffMat);
+      staff.position.set(wx, wy + 0.28, 0);
+      staff.castShadow = true;
       parent.add(staff);
-      const orb = new THREE.Mesh(new THREE.SphereGeometry(0.05, 10, 8), eyeMat);
-      orb.position.set(wx, wy + 0.68, 0);
+      // Knots/bumps on staff
+      for (let i = 0; i < 3; i++) {
+        const knot = new THREE.Mesh(new THREE.SphereGeometry(0.018, 6, 4), staffMat);
+        knot.position.set(wx + (i % 2 === 0 ? 0.01 : -0.01), wy + 0.15 + i * 0.2, 0.01);
+        parent.add(knot);
+      }
+      // Crystal/orb at top
+      const orb = new THREE.Mesh(new THREE.SphereGeometry(0.055, 16, 12), eyeMat);
+      orb.position.set(wx, wy + 0.73, 0);
       parent.add(orb);
+      // Orb cradle (twisted metal prongs)
+      for (let i = 0; i < 3; i++) {
+        const a = (i * Math.PI * 2) / 3;
+        const prong = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.008, 0.1, 4), armorMat(look.accentColor));
+        prong.position.set(wx + Math.cos(a) * 0.025, wy + 0.7, Math.sin(a) * 0.025);
+        prong.rotation.x = Math.cos(a) * 0.3;
+        prong.rotation.z = Math.sin(a) * 0.3;
+        parent.add(prong);
+      }
       if (glowMat) {
-        const orbGlow = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), glowMat);
-        orbGlow.position.set(wx, wy + 0.68, 0);
+        const orbGlow = new THREE.Mesh(new THREE.SphereGeometry(0.09, 12, 8), glowMat);
+        orbGlow.position.set(wx, wy + 0.73, 0);
         parent.add(orbGlow);
       }
     } else if (look.hasWeapon === "dual") {
       for (const dx of [-1, 1]) {
-        const dagger = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.2, 0.02), metalMat);
-        dagger.position.set(dx * Math.abs(wx), wy + 0.1, 0);
+        // Tapered dagger blade
+        const dagger = new THREE.Mesh(new THREE.ConeGeometry(0.012, 0.22, 4), metalMat);
+        dagger.position.set(dx * Math.abs(wx), wy + 0.12, 0);
+        dagger.castShadow = true;
         parent.add(dagger);
-        const dHilt = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.012, 0.06, 5), hiltMat);
-        dHilt.position.set(dx * Math.abs(wx), wy - 0.02, 0);
+        // Dagger guard
+        const dGuard = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.01, 0.015), armorMat(look.accentColor));
+        dGuard.position.set(dx * Math.abs(wx), wy, 0);
+        parent.add(dGuard);
+        // Dagger hilt
+        const dHilt = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.012, 0.06, 6), hiltMat);
+        dHilt.position.set(dx * Math.abs(wx), wy - 0.04, 0);
         parent.add(dHilt);
       }
     }
@@ -1069,16 +1196,31 @@ function buildEnemyMesh(look: EnemyAppearance): THREE.Group {
   // --- Shield builder helper ---
   const addShield = (parent: THREE.Group, sx: number, sy: number) => {
     if (!look.hasShield) return;
-    const shield = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.25, 0.2), armorMat(look.accentColor));
+    const shieldMat = armorMat(look.accentColor);
+    // Main shield body (slightly convex using scale)
+    const shield = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.28, 0.22, 1, 2, 2), shieldMat);
     shield.position.set(sx, sy, 0.04);
     shield.castShadow = true;
     parent.add(shield);
-    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.008, 4, 12), armorMat(look.accentColor));
-    rim.position.set(sx - 0.02, sy, 0.14);
+    // Outer rim (thicker torus)
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.012, 6, 16), shieldMat);
+    rim.position.set(sx - 0.025, sy, 0.15);
     parent.add(rim);
-    const emblem = new THREE.Mesh(new THREE.OctahedronGeometry(0.03), eyeMat);
-    emblem.position.set(sx - 0.02, sy, 0.15);
+    // Shield boss (center bulge)
+    const boss = new THREE.Mesh(new THREE.SphereGeometry(0.04, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), shieldMat);
+    boss.position.set(sx - 0.025, sy, 0.16);
+    parent.add(boss);
+    // Emblem
+    const emblem = new THREE.Mesh(new THREE.OctahedronGeometry(0.025), eyeMat);
+    emblem.position.set(sx - 0.025, sy, 0.2);
     parent.add(emblem);
+    // Decorative rivets around rim
+    for (let i = 0; i < 8; i++) {
+      const a = (i * Math.PI * 2) / 8;
+      const rivet = new THREE.Mesh(new THREE.SphereGeometry(0.006, 4, 3), armorMat(look.accentColor));
+      rivet.position.set(sx - 0.025 + Math.cos(a) * 0.1, sy + Math.sin(a) * 0.1, 0.165);
+      parent.add(rivet);
+    }
   };
 
   // --- Delegate to enhanced enemy mesh builders ---
@@ -2243,12 +2385,17 @@ export class ArthurianRPGRenderer {
     this.scene.add(this.moonLight);
 
     // Hemisphere light for more realistic ambient (sky blue from above, earth brown from below)
-    const hemiLight = new THREE.HemisphereLight(0x88aacc, 0x445522, 0.25);
+    const hemiLight = new THREE.HemisphereLight(0x88aacc, 0x445522, 0.35);
     this.scene.add(hemiLight);
 
     // Ambient – softer base
-    this.ambientLight = new THREE.AmbientLight(0x334466, 0.2);
+    this.ambientLight = new THREE.AmbientLight(0x334466, 0.25);
     this.scene.add(this.ambientLight);
+
+    // Fill light from camera direction for better enemy detail visibility
+    const fillLight = new THREE.DirectionalLight(0x9999bb, 0.15);
+    fillLight.position.set(0, 30, 50);
+    this.scene.add(fillLight);
 
     // Torches / campfires at key locations – more warm light sources
     const torchPositions = [
@@ -2353,9 +2500,9 @@ export class ArthurianRPGRenderer {
     // Bloom for magical glow – tuned for cinematic quality
     this.bloomPass = new UnrealBloomPass(
       new THREE.Vector2(this.canvas.clientWidth, this.canvas.clientHeight),
-      0.55,  // strength
-      0.5,   // radius (wider bloom spread for softer glow)
-      0.65,  // threshold (catch bright emissives)
+      0.6,   // strength (slightly stronger for eye glow, magic effects)
+      0.6,   // radius (wider bloom spread for softer, more realistic glow)
+      0.6,   // threshold (catch emissive eyes, magic, fire)
     );
     this.composer.addPass(this.bloomPass);
 

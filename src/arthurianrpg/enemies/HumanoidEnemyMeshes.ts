@@ -55,23 +55,23 @@ function scl(mesh: THREE.Object3D, x: number, y: number, z: number): THREE.Objec
   return mesh;
 }
 
-function cyl(rTop: number, rBot: number, h: number, seg = 16): THREE.CylinderGeometry {
+function cyl(rTop: number, rBot: number, h: number, seg = 20): THREE.CylinderGeometry {
   return new THREE.CylinderGeometry(rTop, rBot, h, seg);
 }
 
 function box(w: number, h: number, d: number): THREE.BoxGeometry {
-  return new THREE.BoxGeometry(w, h, d);
+  return new THREE.BoxGeometry(w, h, d, 2, 2, 2);
 }
 
-function sph(r: number, wSeg = 16, hSeg = 12): THREE.SphereGeometry {
+function sph(r: number, wSeg = 24, hSeg = 16): THREE.SphereGeometry {
   return new THREE.SphereGeometry(r, wSeg, hSeg);
 }
 
-function tor(r: number, tube: number, rSeg = 12, tSeg = 24): THREE.TorusGeometry {
+function tor(r: number, tube: number, rSeg = 16, tSeg = 32): THREE.TorusGeometry {
   return new THREE.TorusGeometry(r, tube, rSeg, tSeg);
 }
 
-function cone(r: number, h: number, seg = 12): THREE.ConeGeometry {
+function cone(r: number, h: number, seg = 16): THREE.ConeGeometry {
   return new THREE.ConeGeometry(r, h, seg);
 }
 
