@@ -7,7 +7,7 @@ import { ResourceType } from "./config/SettlersResourceDefs";
 import { SettlersBuildingType } from "./config/SettlersBuildingDefs";
 import { createSettlersState, nextId } from "./state/SettlersState";
 import type { SettlersState, SettlersDifficulty } from "./state/SettlersState";
-import type { SettlersPlayer } from "./state/SettlersPlayer";
+import type { SettlersPlayer, AIPersonality } from "./state/SettlersPlayer";
 import { getHeightAt } from "./state/SettlersMap";
 import { generateTerrain, findStartPosition } from "./systems/SettlersTerrainSystem";
 import { placeBuilding, canPlaceBuilding, updateConstruction, updateProduction, demolishBuilding } from "./systems/SettlersBuildingSystem";
@@ -250,6 +250,8 @@ export class SettlersGame {
       freeSoldiers: SB.START_SOLDIERS,
       hqId: "",
       defeated: false,
+      aiPersonality: null,
+      aiPersonalityRevealed: false,
     };
 
     // Set starting resources (scaled by difficulty for the human player)
@@ -270,6 +272,8 @@ export class SettlersGame {
 
     // Player 1 (AI) – southeast
     const p1Pos = findStartPosition(this._state.map, "se");
+    const personalities: AIPersonality[] = ["balanced", "rusher", "turtle", "economist", "expansionist"];
+    const aiPersonality = personalities[Math.floor(Math.random() * personalities.length)];
     const p1: SettlersPlayer = {
       id: "p1",
       name: "AI Opponent",
@@ -280,6 +284,8 @@ export class SettlersGame {
       freeSoldiers: SB.START_SOLDIERS,
       hqId: "",
       defeated: false,
+      aiPersonality,
+      aiPersonalityRevealed: false,
     };
 
     // AI starting resources scaled by difficulty
