@@ -54,7 +54,7 @@ const EVENT_STYLE = new TextStyle({
   fontSize: 13,
   fill: 0xffffff,
   wordWrap: true,
-  wordWrapWidth: 240,
+  wordWrapWidth: 220,
   stroke: { color: 0x000000, width: 1 },
 });
 
@@ -66,6 +66,52 @@ const ANNOUNCEMENT_STYLE = new TextStyle({
   stroke: { color: 0x000000, width: 5 },
   dropShadow: { color: 0x000000, alpha: 0.8, blur: 6, distance: 3 },
 });
+
+// ---------------------------------------------------------------------------
+// Drawing helpers
+// ---------------------------------------------------------------------------
+
+/** Draw small diamond shapes at specified positions */
+function drawDiamond(g: Graphics, cx: number, cy: number, size: number, color: number, alpha = 1): void {
+  g.moveTo(cx, cy - size);
+  g.lineTo(cx + size, cy);
+  g.lineTo(cx, cy + size);
+  g.lineTo(cx - size, cy);
+  g.closePath();
+  g.fill({ color, alpha });
+}
+
+/** Draw corner flourish (L-shaped ornament) */
+function drawCornerFlourish(g: Graphics, x: number, y: number, size: number, flipX: boolean, flipY: boolean, color: number): void {
+  const sx = flipX ? -1 : 1;
+  const sy = flipY ? -1 : 1;
+  // Main L stroke
+  g.moveTo(x, y + sy * size);
+  g.lineTo(x, y);
+  g.lineTo(x + sx * size, y);
+  g.stroke({ color, width: 2, alpha: 0.8 });
+  // Small curl dot
+  g.circle(x + sx * 2, y + sy * 2, 1.5);
+  g.fill({ color, alpha: 0.7 });
+  // Tiny diamond accent at corner tip
+  drawDiamond(g, x + sx * (size - 2), y, 2, color, 0.5);
+  drawDiamond(g, x, y + sy * (size - 2), 2, color, 0.5);
+}
+
+/** Draw a decorative horizontal filigree line */
+function drawFiligree(g: Graphics, x: number, y: number, width: number, color: number): void {
+  const half = width / 2;
+  g.moveTo(x - half, y);
+  g.lineTo(x + half, y);
+  g.stroke({ color, width: 1, alpha: 0.6 });
+  // Center diamond
+  drawDiamond(g, x, y, 3, color, 0.8);
+  // End dots
+  g.circle(x - half, y, 1.5);
+  g.fill({ color, alpha: 0.5 });
+  g.circle(x + half, y, 1.5);
+  g.fill({ color, alpha: 0.5 });
+}
 
 // ---------------------------------------------------------------------------
 // GrailBallHUD
@@ -134,6 +180,12 @@ export class GrailBallHUD {
   // Formation display
   private _formationText!: Text;
 
+  // Event icon graphics
+  private _eventIcons: Graphics[] = [];
+
+  // Announcement background
+  private _announcementBg!: Graphics;
+
   init(): void {
     this._screenW = window.innerWidth;
     this._screenH = window.innerHeight;
@@ -174,26 +226,91 @@ export class GrailBallHUD {
 
   private _buildScoreboard(): void {
     const cx = this._screenW / 2;
+    const panelW = 340;
+    const panelH = 66;
+    const px = cx - panelW / 2;
+    const py = 8;
 
-    // Background frame
+    // Outer dark shadow border
+    const shadow = new Graphics();
+    shadow.roundRect(px - 4, py - 4, panelW + 8, panelH + 8, 12);
+    shadow.fill({ color: 0x000000, alpha: 0.5 });
+    this._scoreBoard.addChild(shadow);
+
+    // Main background - layered dark fills for depth
     const bg = new Graphics();
-    bg.roundRect(cx - 160, 8, 320, 60, 8);
-    bg.fill({ color: 0x1a1a2e, alpha: 0.85 });
-    bg.stroke({ color: 0xdaa520, width: 2 });
+    bg.roundRect(px - 2, py - 2, panelW + 4, panelH + 4, 10);
+    bg.fill({ color: 0x0d0d1a, alpha: 0.95 });
+    bg.roundRect(px, py, panelW, panelH, 8);
+    bg.fill({ color: 0x1a1a2e, alpha: 0.9 });
+    // Inner subtle gradient layer
+    bg.roundRect(px + 3, py + 3, panelW - 6, panelH - 6, 6);
+    bg.fill({ color: 0x22223a, alpha: 0.5 });
     this._scoreBoard.addChild(bg);
 
-    // Ornamental top
+    // Gold border (middle layer)
+    const border = new Graphics();
+    border.roundRect(px - 2, py - 2, panelW + 4, panelH + 4, 10);
+    border.stroke({ color: 0xdaa520, width: 2.5 });
+    // Inner subtle border
+    border.roundRect(px + 2, py + 2, panelW - 4, panelH - 4, 6);
+    border.stroke({ color: 0xdaa520, width: 0.5, alpha: 0.3 });
+    this._scoreBoard.addChild(border);
+
+    // Inner glow effect
+    const glow = new Graphics();
+    glow.roundRect(px + 4, py + 4, panelW - 8, panelH - 8, 5);
+    glow.stroke({ color: 0xffd700, width: 1, alpha: 0.1 });
+    this._scoreBoard.addChild(glow);
+
+    // Corner flourish decorations
+    const flourish = new Graphics();
+    drawCornerFlourish(flourish, px + 6, py + 6, 14, false, false, 0xdaa520);
+    drawCornerFlourish(flourish, px + panelW - 6, py + 6, 14, true, false, 0xdaa520);
+    drawCornerFlourish(flourish, px + 6, py + panelH - 6, 14, false, true, 0xdaa520);
+    drawCornerFlourish(flourish, px + panelW - 6, py + panelH - 6, 14, true, true, 0xdaa520);
+    this._scoreBoard.addChild(flourish);
+
+    // Ornamental top triangle with grail/cup shape
     const ornament = new Graphics();
-    ornament.moveTo(cx - 30, 4);
-    ornament.lineTo(cx, -8);
-    ornament.lineTo(cx + 30, 4);
-    ornament.fill({ color: 0xdaa520, alpha: 0.9 });
+    // Larger triangle
+    ornament.moveTo(cx - 35, py - 2);
+    ornament.lineTo(cx, py - 14);
+    ornament.lineTo(cx + 35, py - 2);
+    ornament.fill({ color: 0xdaa520, alpha: 0.85 });
+    ornament.stroke({ color: 0xffd700, width: 1, alpha: 0.6 });
+    // Small grail cup shape in triangle
+    ornament.moveTo(cx - 5, py - 5);
+    ornament.lineTo(cx - 3, py - 10);
+    ornament.lineTo(cx + 3, py - 10);
+    ornament.lineTo(cx + 5, py - 5);
+    ornament.closePath();
+    ornament.fill({ color: 0xffd700, alpha: 0.9 });
+    // Cup base
+    ornament.rect(cx - 2, py - 5, 4, 2);
+    ornament.fill({ color: 0xffd700, alpha: 0.9 });
+    // Tiny gem on top
+    drawDiamond(ornament, cx, py - 12, 2, 0xffffff, 0.8);
     this._scoreBoard.addChild(ornament);
+
+    // Divider line between teams
+    const divider = new Graphics();
+    divider.moveTo(cx, py + 14);
+    divider.lineTo(cx, py + panelH - 14);
+    divider.stroke({ color: 0xdaa520, width: 0.5, alpha: 0.3 });
+    this._scoreBoard.addChild(divider);
 
     this._team1Name = new Text({ text: "HOME", style: { ...INFO_STYLE, fontSize: 14, fill: 0xdddddd } });
     this._team1Name.anchor.set(1, 0.5);
     this._team1Name.position.set(cx - 60, 28);
     this._scoreBoard.addChild(this._team1Name);
+
+    // Gold accent underline for team 1
+    const underline1 = new Graphics();
+    underline1.moveTo(cx - 120, 37);
+    underline1.lineTo(cx - 55, 37);
+    underline1.stroke({ color: 0xdaa520, width: 1, alpha: 0.4 });
+    this._scoreBoard.addChild(underline1);
 
     this._scoreText = new Text({ text: "0 - 0", style: SCORE_STYLE });
     this._scoreText.anchor.set(0.5, 0.5);
@@ -204,116 +321,298 @@ export class GrailBallHUD {
     this._team2Name.anchor.set(0, 0.5);
     this._team2Name.position.set(cx + 60, 28);
     this._scoreBoard.addChild(this._team2Name);
+
+    // Gold accent underline for team 2
+    const underline2 = new Graphics();
+    underline2.moveTo(cx + 55, 37);
+    underline2.lineTo(cx + 120, 37);
+    underline2.stroke({ color: 0xdaa520, width: 1, alpha: 0.4 });
+    this._scoreBoard.addChild(underline2);
   }
 
   private _buildTimer(): void {
     const cx = this._screenW / 2;
+    const panelW = 130;
+    const panelH = 50;
+
+    // Timer panel background
+    const bg = new Graphics();
+    bg.roundRect(cx - panelW / 2, 70, panelW, panelH, 6);
+    bg.fill({ color: 0x0d0d1a, alpha: 0.8 });
+    bg.stroke({ color: 0xdaa520, width: 1.5 });
+    // Inner border
+    bg.roundRect(cx - panelW / 2 + 2, 72, panelW - 4, panelH - 4, 4);
+    bg.stroke({ color: 0xdaa520, width: 0.5, alpha: 0.2 });
+    // Diamond accents at sides
+    drawDiamond(bg, cx - panelW / 2 - 2, 95, 3, 0xdaa520, 0.7);
+    drawDiamond(bg, cx + panelW / 2 + 2, 95, 3, 0xdaa520, 0.7);
+    // Top center diamond
+    drawDiamond(bg, cx, 70, 3, 0xdaa520, 0.6);
+    this._timerDisplay.addChild(bg);
 
     this._timerText = new Text({ text: "5:00", style: TIMER_STYLE });
     this._timerText.anchor.set(0.5, 0);
-    this._timerText.position.set(cx, 72);
+    this._timerText.position.set(cx, 74);
     this._timerDisplay.addChild(this._timerText);
 
-    this._halfText = new Text({ text: "1st Half", style: { ...SMALL_STYLE, fill: 0xffd700 } });
+    // Half text with decorative banner shape
+    const halfBannerW = 90;
+    const halfBannerH = 18;
+    const halfBannerY = 98;
+    const banner = new Graphics();
+    // Banner shape - rectangle with notched ends
+    banner.moveTo(cx - halfBannerW / 2 - 6, halfBannerY);
+    banner.lineTo(cx - halfBannerW / 2, halfBannerY + halfBannerH / 2);
+    banner.lineTo(cx - halfBannerW / 2 - 6, halfBannerY + halfBannerH);
+    banner.lineTo(cx + halfBannerW / 2 + 6, halfBannerY + halfBannerH);
+    banner.lineTo(cx + halfBannerW / 2, halfBannerY + halfBannerH / 2);
+    banner.lineTo(cx + halfBannerW / 2 + 6, halfBannerY);
+    banner.closePath();
+    banner.fill({ color: 0x1a1a2e, alpha: 0.7 });
+    banner.stroke({ color: 0xdaa520, width: 0.5, alpha: 0.4 });
+    this._timerDisplay.addChild(banner);
+
+    this._halfText = new Text({ text: "1st Half", style: { ...SMALL_STYLE, fill: 0xffd700, fontSize: 11 } });
     this._halfText.anchor.set(0.5, 0);
-    this._halfText.position.set(cx, 96);
+    this._halfText.position.set(cx, 100);
     this._timerDisplay.addChild(this._halfText);
   }
 
   private _buildPlayerInfo(): void {
     const x = 16;
-    const y = this._screenH - 130;
+    const y = this._screenH - 140;
+    const panelW = 270;
+    const panelH = 130;
+
+    // Outer shadow
+    const shadow = new Graphics();
+    shadow.roundRect(0, 0, panelW + 4, panelH + 4, 8);
+    shadow.fill({ color: 0x000000, alpha: 0.4 });
+    shadow.position.set(-2, -2);
+    this._playerInfo.addChild(shadow);
 
     const bg = new Graphics();
-    bg.roundRect(0, 0, 260, 120, 6);
-    bg.fill({ color: 0x1a1a2e, alpha: 0.8 });
-    bg.stroke({ color: 0xdaa520, width: 1 });
+    // Main background
+    bg.roundRect(0, 0, panelW, panelH, 6);
+    bg.fill({ color: 0x0d0d1a, alpha: 0.9 });
+    bg.roundRect(2, 2, panelW - 4, panelH - 4, 5);
+    bg.fill({ color: 0x1a1a2e, alpha: 0.7 });
+    // Gold border
+    bg.roundRect(0, 0, panelW, panelH, 6);
+    bg.stroke({ color: 0xdaa520, width: 1.5 });
+    // Inner border
+    bg.roundRect(3, 3, panelW - 6, panelH - 6, 4);
+    bg.stroke({ color: 0xdaa520, width: 0.5, alpha: 0.2 });
     this._playerInfo.addChild(bg);
     this._playerInfo.position.set(x, y);
 
+    // Corner flourishes
+    const flourish = new Graphics();
+    drawCornerFlourish(flourish, 6, 6, 10, false, false, 0xdaa520);
+    drawCornerFlourish(flourish, panelW - 6, 6, 10, true, false, 0xdaa520);
+    drawCornerFlourish(flourish, 6, panelH - 6, 10, false, true, 0xdaa520);
+    drawCornerFlourish(flourish, panelW - 6, panelH - 6, 10, true, true, 0xdaa520);
+    this._playerInfo.addChild(flourish);
+
+    // Title bar accent at top
+    const titleBar = new Graphics();
+    titleBar.roundRect(8, 2, panelW - 16, 14, 3);
+    titleBar.fill({ color: 0xdaa520, alpha: 0.15 });
+    this._playerInfo.addChild(titleBar);
+
+    const titleLabel = new Text({ text: "PLAYER", style: { ...SMALL_STYLE, fontSize: 8, fill: 0xdaa520 } });
+    titleLabel.anchor.set(0.5, 0.5);
+    titleLabel.position.set(panelW / 2, 9);
+    this._playerInfo.addChild(titleLabel);
+
+    // Class icon badge (small shield shape) - positioned near class text
+    const classBadge = new Graphics();
+    classBadge.moveTo(10, 40);
+    classBadge.lineTo(18, 40);
+    classBadge.lineTo(18, 46);
+    classBadge.lineTo(14, 50);
+    classBadge.lineTo(10, 46);
+    classBadge.closePath();
+    classBadge.fill({ color: 0xdaa520, alpha: 0.6 });
+    classBadge.stroke({ color: 0xffd700, width: 0.5, alpha: 0.4 });
+    this._playerInfo.addChild(classBadge);
+
     this._playerNameText = new Text({ text: "Player Name", style: { ...INFO_STYLE, fontSize: 16, fill: 0xffd700 } });
-    this._playerNameText.position.set(10, 8);
+    this._playerNameText.position.set(10, 16);
     this._playerInfo.addChild(this._playerNameText);
 
     this._playerClassText = new Text({ text: "Class", style: SMALL_STYLE });
-    this._playerClassText.position.set(10, 28);
+    this._playerClassText.position.set(22, 38);
     this._playerInfo.addChild(this._playerClassText);
 
     // Stamina bar
     this._staminaBar = new Graphics();
-    this._staminaBar.position.set(10, 50);
+    this._staminaBar.position.set(10, 62);
     this._playerInfo.addChild(this._staminaBar);
 
     const staminaLabel = new Text({ text: "Stamina", style: { ...SMALL_STYLE, fontSize: 10 } });
-    staminaLabel.position.set(10, 38);
+    staminaLabel.position.set(10, 50);
     this._playerInfo.addChild(staminaLabel);
 
     // Cooldown bar
     this._cooldownBar = new Graphics();
-    this._cooldownBar.position.set(10, 80);
+    this._cooldownBar.position.set(10, 92);
     this._playerInfo.addChild(this._cooldownBar);
 
     this._cooldownText = new Text({ text: "Ability: Ready", style: { ...SMALL_STYLE, fontSize: 11 } });
-    this._cooldownText.position.set(10, 68);
+    this._cooldownText.position.set(10, 80);
     this._playerInfo.addChild(this._cooldownText);
 
     // Possession bars
     this._possessionBars = new Graphics();
-    this._possessionBars.position.set(10, 100);
+    this._possessionBars.position.set(10, 112);
     this._playerInfo.addChild(this._possessionBars);
   }
 
   private _buildMinimap(): void {
-    const mmW = 180;
-    const mmH = 110;
+    const mmW = 190;
+    const mmH = 120;
     const x = this._screenW - mmW - 16;
     const y = this._screenH - mmH - 16;
 
     this._minimap.position.set(x, y);
 
     this._minimapBg = new Graphics();
+    // Outer border shadow
+    this._minimapBg.roundRect(-3, -3, mmW + 6, mmH + 6, 6);
+    this._minimapBg.fill({ color: 0x000000, alpha: 0.4 });
+    // Main fill
     this._minimapBg.roundRect(0, 0, mmW, mmH, 4);
-    this._minimapBg.fill({ color: 0x2d5016, alpha: 0.85 });
-    this._minimapBg.stroke({ color: 0xdaa520, width: 1 });
+    this._minimapBg.fill({ color: 0x2d5016, alpha: 0.88 });
+    // Inner shadow / vignette edges (subtle darker borders inside)
+    this._minimapBg.roundRect(1, 1, mmW - 2, mmH - 2, 3);
+    this._minimapBg.stroke({ color: 0x1a3008, width: 2, alpha: 0.5 });
+    // Double-line gold border
+    this._minimapBg.roundRect(-1, -1, mmW + 2, mmH + 2, 5);
+    this._minimapBg.stroke({ color: 0xdaa520, width: 2 });
+    this._minimapBg.roundRect(2, 2, mmW - 4, mmH - 4, 3);
+    this._minimapBg.stroke({ color: 0xdaa520, width: 0.5, alpha: 0.4 });
+
+    // Corner knots (small decorative knot-like marks)
+    const knot = (kx: number, ky: number) => {
+      this._minimapBg.circle(kx, ky, 3);
+      this._minimapBg.fill({ color: 0xdaa520, alpha: 0.6 });
+      this._minimapBg.circle(kx, ky, 3);
+      this._minimapBg.stroke({ color: 0xffd700, width: 0.5, alpha: 0.4 });
+    };
+    knot(0, 0); knot(mmW, 0); knot(0, mmH); knot(mmW, mmH);
+
     // Center line
-    this._minimapBg.moveTo(mmW / 2, 0);
-    this._minimapBg.lineTo(mmW / 2, mmH);
+    this._minimapBg.moveTo(mmW / 2, 4);
+    this._minimapBg.lineTo(mmW / 2, mmH - 4);
     this._minimapBg.stroke({ color: 0xffffff, width: 0.5, alpha: 0.4 });
     // Center circle
-    this._minimapBg.circle(mmW / 2, mmH / 2, 12);
+    this._minimapBg.circle(mmW / 2, mmH / 2, 14);
     this._minimapBg.stroke({ color: 0xffffff, width: 0.5, alpha: 0.4 });
+    // Center dot
+    this._minimapBg.circle(mmW / 2, mmH / 2, 1.5);
+    this._minimapBg.fill({ color: 0xffffff, alpha: 0.3 });
+
+    // Goal area markings (left)
+    this._minimapBg.rect(0, mmH / 2 - 16, 12, 32);
+    this._minimapBg.stroke({ color: 0xffffff, width: 0.5, alpha: 0.35 });
+    // Goal area markings (right)
+    this._minimapBg.rect(mmW - 12, mmH / 2 - 16, 12, 32);
+    this._minimapBg.stroke({ color: 0xffffff, width: 0.5, alpha: 0.35 });
+    // Goal lines
+    this._minimapBg.rect(0, mmH / 2 - 8, 3, 16);
+    this._minimapBg.fill({ color: 0xffffff, alpha: 0.2 });
+    this._minimapBg.rect(mmW - 3, mmH / 2 - 8, 3, 16);
+    this._minimapBg.fill({ color: 0xffffff, alpha: 0.2 });
+
     this._minimap.addChild(this._minimapBg);
 
     this._minimapDots = new Graphics();
     this._minimap.addChild(this._minimapDots);
 
-    const label = new Text({ text: "MINIMAP", style: { ...SMALL_STYLE, fontSize: 9 } });
-    label.anchor.set(0.5, 1);
-    label.position.set(mmW / 2, -2);
+    // Decorative banner for label
+    const labelBanner = new Graphics();
+    const bannerW = 60;
+    const bannerH = 14;
+    const bx = mmW / 2 - bannerW / 2;
+    const by = -16;
+    labelBanner.moveTo(bx - 4, by);
+    labelBanner.lineTo(bx - 4 + bannerW + 8, by);
+    labelBanner.lineTo(bx - 4 + bannerW + 4, by + bannerH);
+    labelBanner.lineTo(bx, by + bannerH);
+    labelBanner.closePath();
+    labelBanner.fill({ color: 0x1a1a2e, alpha: 0.8 });
+    labelBanner.stroke({ color: 0xdaa520, width: 0.5, alpha: 0.5 });
+    this._minimap.addChild(labelBanner);
+
+    const label = new Text({ text: "MINIMAP", style: { ...SMALL_STYLE, fontSize: 9, fill: 0xdaa520 } });
+    label.anchor.set(0.5, 0.5);
+    label.position.set(mmW / 2, -9);
     this._minimap.addChild(label);
   }
 
   private _buildEventsFeed(): void {
-    const x = this._screenW - 260;
+    const feedW = 260;
+    const feedH = 220;
+    const x = this._screenW - feedW - 6;
     const y = 80;
     this._eventsFeed.position.set(x, y);
 
+    // Background panel
     const bg = new Graphics();
-    bg.roundRect(0, 0, 250, 200, 4);
-    bg.fill({ color: 0x1a1a2e, alpha: 0.6 });
+    bg.roundRect(0, 0, feedW, feedH, 6);
+    bg.fill({ color: 0x0d0d1a, alpha: 0.7 });
+    bg.stroke({ color: 0xdaa520, width: 1, alpha: 0.5 });
+    bg.roundRect(2, 2, feedW - 4, feedH - 4, 5);
+    bg.stroke({ color: 0xdaa520, width: 0.3, alpha: 0.2 });
     this._eventsFeed.addChild(bg);
 
-    // Pre-create event text slots
+    // Decorative header
+    const headerBg = new Graphics();
+    headerBg.roundRect(2, 2, feedW - 4, 18, 4);
+    headerBg.fill({ color: 0xdaa520, alpha: 0.15 });
+    this._eventsFeed.addChild(headerBg);
+
+    const headerTitle = new Text({ text: "MATCH EVENTS", style: { ...SMALL_STYLE, fontSize: 9, fill: 0xdaa520 } });
+    headerTitle.anchor.set(0.5, 0.5);
+    headerTitle.position.set(feedW / 2, 11);
+    this._eventsFeed.addChild(headerTitle);
+
+    // Filigree line below header
+    const filigree = new Graphics();
+    drawFiligree(filigree, feedW / 2, 22, feedW - 30, 0xdaa520);
+    this._eventsFeed.addChild(filigree);
+
+    // Alternating row tinting
+    const rowTint = new Graphics();
     for (let i = 0; i < 10; i++) {
+      if (i % 2 === 0) {
+        rowTint.rect(4, 26 + i * 19, feedW - 8, 19);
+        rowTint.fill({ color: 0xffffff, alpha: 0.02 });
+      }
+    }
+    this._eventsFeed.addChild(rowTint);
+
+    // Pre-create event icon slots and text slots
+    for (let i = 0; i < 10; i++) {
+      const icon = new Graphics();
+      icon.position.set(8, 30 + i * 19);
+      this._eventsFeed.addChild(icon);
+      this._eventIcons.push(icon);
+
       const t = new Text({ text: "", style: EVENT_STYLE });
-      t.position.set(8, 6 + i * 19);
-      t.alpha = 1 - i * 0.08;
+      t.position.set(22, 26 + i * 19);
+      t.alpha = 1 - i * 0.07;
       this._eventsFeed.addChild(t);
       this._eventTexts.push(t);
     }
   }
 
   private _buildAnnouncement(): void {
+    // Dark banner background behind announcement
+    this._announcementBg = new Graphics();
+    this._announcement.addChild(this._announcementBg);
+
     this._announcementText = new Text({ text: "", style: ANNOUNCEMENT_STYLE });
     this._announcementText.anchor.set(0.5, 0.5);
     this._announcementText.position.set(this._screenW / 2, this._screenH / 2 - 40);
@@ -329,32 +628,62 @@ export class GrailBallHUD {
   }
 
   private _buildControlsHint(): void {
-    const y = this._screenH - 20;
+    const y = this._screenH - 14;
+    const cx = this._screenW / 2;
+    const panelW = 680;
+
+    // Subtle background panel
+    const bg = new Graphics();
+    bg.roundRect(cx - panelW / 2, y - 18, panelW, 22, 4);
+    bg.fill({ color: 0x0d0d1a, alpha: 0.5 });
+    // Decorative top border
+    bg.moveTo(cx - panelW / 2 + 10, y - 18);
+    bg.lineTo(cx + panelW / 2 - 10, y - 18);
+    bg.stroke({ color: 0xdaa520, width: 0.5, alpha: 0.4 });
+    // Small diamonds at panel edges
+    drawDiamond(bg, cx - panelW / 2, y - 7, 2, 0xdaa520, 0.3);
+    drawDiamond(bg, cx + panelW / 2, y - 7, 2, 0xdaa520, 0.3);
+    this._controlsHint.addChild(bg);
+
     const controlsText = new Text({
       text: "Arrow/WASD: Move | Space: Pass/Shoot | Shift: Tackle/Ability | Tab: Switch | E: Lob | Q: Call | Esc: Pause",
       style: { ...SMALL_STYLE, fontSize: 11 },
     });
     controlsText.anchor.set(0.5, 1);
-    controlsText.position.set(this._screenW / 2, y);
+    controlsText.position.set(cx, y);
     this._controlsHint.addChild(controlsText);
   }
 
   private _buildPowerUpIndicator(): void {
     this._powerUpIndicator = new Graphics();
-    this._powerUpIndicator.position.set(16, this._screenH - 160);
+    this._powerUpIndicator.position.set(16, this._screenH - 170);
     this.root.addChild(this._powerUpIndicator);
 
     this._powerUpText = new Text({ text: "", style: { ...SMALL_STYLE, fontSize: 11, fill: 0x00ffcc } });
-    this._powerUpText.position.set(30, this._screenH - 158);
+    this._powerUpText.position.set(38, this._screenH - 168);
     this.root.addChild(this._powerUpText);
   }
 
   private _buildReplayOverlay(): void {
     this._replayOverlay.visible = false;
 
+    // Ornate background panel
     const bg = new Graphics();
+    bg.rect(0, -2, this._screenW, 54);
+    bg.fill({ color: 0x000000, alpha: 0.8 });
     bg.rect(0, 0, this._screenW, 50);
-    bg.fill({ color: 0x000000, alpha: 0.7 });
+    bg.fill({ color: 0x0d0d1a, alpha: 0.6 });
+    // Top gold accent line
+    bg.moveTo(0, 0);
+    bg.lineTo(this._screenW, 0);
+    bg.stroke({ color: 0xdaa520, width: 2 });
+    // Bottom gold accent
+    bg.moveTo(0, 50);
+    bg.lineTo(this._screenW, 50);
+    bg.stroke({ color: 0xdaa520, width: 1, alpha: 0.5 });
+    // Diamond accents
+    drawDiamond(bg, 10, 25, 3, 0xdaa520, 0.6);
+    drawDiamond(bg, this._screenW - 10, 25, 3, 0xdaa520, 0.6);
     this._replayOverlay.addChild(bg);
 
     this._replayText = new Text({
@@ -380,6 +709,23 @@ export class GrailBallHUD {
 
   private _buildPenaltyOverlay(): void {
     this._penaltyOverlay.visible = false;
+
+    // Decorative frame around penalty display
+    const frame = new Graphics();
+    const frameW = 320;
+    const frameCx = this._screenW / 2;
+    frame.roundRect(frameCx - frameW / 2, 100, frameW, 50, 8);
+    frame.fill({ color: 0x0d0d1a, alpha: 0.85 });
+    frame.roundRect(frameCx - frameW / 2, 100, frameW, 50, 8);
+    frame.stroke({ color: 0xdaa520, width: 2 });
+    frame.roundRect(frameCx - frameW / 2 + 3, 103, frameW - 6, 44, 6);
+    frame.stroke({ color: 0xdaa520, width: 0.5, alpha: 0.25 });
+    // Corner diamonds
+    drawDiamond(frame, frameCx - frameW / 2 + 8, 108, 3, 0xdaa520, 0.5);
+    drawDiamond(frame, frameCx + frameW / 2 - 8, 108, 3, 0xdaa520, 0.5);
+    drawDiamond(frame, frameCx - frameW / 2 + 8, 142, 3, 0xdaa520, 0.5);
+    drawDiamond(frame, frameCx + frameW / 2 - 8, 142, 3, 0xdaa520, 0.5);
+    this._penaltyOverlay.addChild(frame);
 
     this._penaltyScoreText = new Text({
       text: "Penalties: 0 - 0",
@@ -489,15 +835,15 @@ export class GrailBallHUD {
     }
 
     const cx = this._screenW / 2;
-    this._timerText.position.set(cx, 72);
-    this._halfText.position.set(cx, 96);
+    this._timerText.position.set(cx, 74);
+    this._halfText.position.set(cx, 100);
   }
 
   private _updatePlayerInfo(state: GBMatchState): void {
     const sel = getSelectedPlayer(state);
     if (!sel) return;
 
-    this._playerInfo.position.set(16, this._screenH - 130);
+    this._playerInfo.position.set(16, this._screenH - 140);
 
     this._playerNameText.text = sel.name;
     const classNames: Record<string, string> = {
@@ -508,22 +854,42 @@ export class GrailBallHUD {
     };
     this._playerClassText.text = `${classNames[sel.cls] || sel.cls} | ${sel.action}`;
 
-    // Stamina bar
+    // Stamina bar with 3D beveled appearance
     this._staminaBar.clear();
-    const staminaW = 230;
-    const staminaH = 12;
+    const staminaW = 240;
+    const staminaH = 14;
     const staminaPct = sel.stamina / sel.maxStamina;
+    // Bar background
     this._staminaBar.roundRect(0, 0, staminaW, staminaH, 3);
-    this._staminaBar.fill({ color: 0x333333, alpha: 0.8 });
+    this._staminaBar.fill({ color: 0x222222, alpha: 0.9 });
+    // Bottom shadow bevel
+    this._staminaBar.roundRect(0, staminaH - 3, staminaW, 3, 1);
+    this._staminaBar.fill({ color: 0x111111, alpha: 0.5 });
     if (staminaPct > 0) {
       const color = staminaPct > 0.5 ? 0x44bb44 : staminaPct > 0.25 ? 0xbbbb44 : 0xbb4444;
+      const highlightColor = staminaPct > 0.5 ? 0x66dd66 : staminaPct > 0.25 ? 0xdddd66 : 0xdd6666;
+      // Main fill
       this._staminaBar.roundRect(0, 0, staminaW * staminaPct, staminaH, 3);
       this._staminaBar.fill({ color, alpha: 0.9 });
+      // Top highlight bevel
+      this._staminaBar.roundRect(1, 1, staminaW * staminaPct - 2, 4, 2);
+      this._staminaBar.fill({ color: highlightColor, alpha: 0.35 });
+      // Bottom shadow on fill
+      this._staminaBar.roundRect(1, staminaH - 4, staminaW * staminaPct - 2, 3, 1);
+      this._staminaBar.fill({ color: 0x000000, alpha: 0.2 });
     }
+    // Segment marks
+    for (let s = 1; s < 4; s++) {
+      const sx = (staminaW / 4) * s;
+      this._staminaBar.moveTo(sx, 0);
+      this._staminaBar.lineTo(sx, staminaH);
+      this._staminaBar.stroke({ color: 0x000000, width: 0.5, alpha: 0.3 });
+    }
+    // Border
     this._staminaBar.roundRect(0, 0, staminaW, staminaH, 3);
     this._staminaBar.stroke({ color: 0x888888, width: 1 });
 
-    // Cooldown bar
+    // Cooldown bar with 3D beveled appearance
     const abilityDef = GB_ABILITIES[sel.cls];
     const cdMax = abilityDef.cooldown;
     const cdRemaining = sel.abilityCooldown;
@@ -534,12 +900,33 @@ export class GrailBallHUD {
     this._cooldownText.style.fill = cdReady ? 0x44ff44 : 0xffaa44;
 
     this._cooldownBar.clear();
+    // Bar background
     this._cooldownBar.roundRect(0, 0, staminaW, staminaH, 3);
-    this._cooldownBar.fill({ color: 0x333333, alpha: 0.8 });
+    this._cooldownBar.fill({ color: 0x222222, alpha: 0.9 });
+    // Bottom shadow bevel
+    this._cooldownBar.roundRect(0, staminaH - 3, staminaW, 3, 1);
+    this._cooldownBar.fill({ color: 0x111111, alpha: 0.5 });
     if (cdPct > 0) {
+      const cdColor = cdReady ? 0x4488ff : 0x664422;
+      const cdHighlight = cdReady ? 0x66aaff : 0x886644;
+      // Main fill
       this._cooldownBar.roundRect(0, 0, staminaW * cdPct, staminaH, 3);
-      this._cooldownBar.fill({ color: cdReady ? 0x4488ff : 0x664422, alpha: 0.9 });
+      this._cooldownBar.fill({ color: cdColor, alpha: 0.9 });
+      // Top highlight bevel
+      this._cooldownBar.roundRect(1, 1, staminaW * cdPct - 2, 4, 2);
+      this._cooldownBar.fill({ color: cdHighlight, alpha: 0.35 });
+      // Bottom shadow on fill
+      this._cooldownBar.roundRect(1, staminaH - 4, staminaW * cdPct - 2, 3, 1);
+      this._cooldownBar.fill({ color: 0x000000, alpha: 0.2 });
     }
+    // Segment marks
+    for (let s = 1; s < 4; s++) {
+      const sx = (staminaW / 4) * s;
+      this._cooldownBar.moveTo(sx, 0);
+      this._cooldownBar.lineTo(sx, staminaH);
+      this._cooldownBar.stroke({ color: 0x000000, width: 0.5, alpha: 0.3 });
+    }
+    // Border
     this._cooldownBar.roundRect(0, 0, staminaW, staminaH, 3);
     this._cooldownBar.stroke({ color: 0x888888, width: 1 });
 
@@ -556,8 +943,8 @@ export class GrailBallHUD {
   }
 
   private _updateMinimap(state: GBMatchState): void {
-    const mmW = 180;
-    const mmH = 110;
+    const mmW = 190;
+    const mmH = 120;
     this._minimap.position.set(this._screenW - mmW - 16, this._screenH - mmH - 16);
 
     this._minimapDots.clear();
@@ -610,7 +997,7 @@ export class GrailBallHUD {
   }
 
   private _updateEvents(state: GBMatchState): void {
-    this._eventsFeed.position.set(this._screenW - 260, 80);
+    this._eventsFeed.position.set(this._screenW - 266, 80);
     const recent = state.events.slice(-10).reverse();
     for (let i = 0; i < this._eventTexts.length; i++) {
       if (i < recent.length) {
@@ -618,8 +1005,34 @@ export class GrailBallHUD {
         const timeStr = formatTime(ev.time);
         this._eventTexts[i].text = `[${timeStr}] ${ev.text}`;
         this._eventTexts[i].visible = true;
+
+        // Draw event type icons
+        this._eventIcons[i].clear();
+        const text = ev.text.toLowerCase();
+        if (text.includes("goal") || text.includes("score")) {
+          // Golden circle for goal
+          this._eventIcons[i].circle(5, 6, 5);
+          this._eventIcons[i].fill({ color: 0xffd700, alpha: 0.9 });
+          this._eventIcons[i].circle(5, 6, 5);
+          this._eventIcons[i].stroke({ color: 0xdaa520, width: 0.5 });
+        } else if (text.includes("foul") || text.includes("card") || text.includes("tackle")) {
+          // Red diamond for foul
+          drawDiamond(this._eventIcons[i], 5, 6, 5, 0xff3333, 0.9);
+        } else if (text.includes("save") || text.includes("keeper")) {
+          // Blue circle for save
+          this._eventIcons[i].circle(5, 6, 5);
+          this._eventIcons[i].fill({ color: 0x4488ff, alpha: 0.8 });
+        } else if (text.includes("power") || text.includes("ability")) {
+          // Purple diamond for ability/power
+          drawDiamond(this._eventIcons[i], 5, 6, 4, 0xaa44ff, 0.8);
+        } else {
+          // Small neutral dot
+          this._eventIcons[i].circle(5, 6, 2.5);
+          this._eventIcons[i].fill({ color: 0x666666, alpha: 0.5 });
+        }
       } else {
         this._eventTexts[i].visible = false;
+        this._eventIcons[i].clear();
       }
     }
   }
@@ -629,18 +1042,21 @@ export class GrailBallHUD {
     this._merlinSpeech.position.set(this._screenW / 2, this._screenH / 2 + 20);
 
     // Phase-based announcements
+    let showBg = false;
     switch (state.phase) {
       case GBMatchPhase.PRE_GAME:
         this._announcementText.text = "GRAIL BALL";
         this._merlinSpeech.text = `${state.teamDefs[0].name} vs ${state.teamDefs[1].name}`;
         this._announcementText.visible = true;
         this._merlinSpeech.visible = true;
+        showBg = true;
         break;
       case GBMatchPhase.KICKOFF:
         this._announcementText.text = state.half === 1 && !state.overtime ? "KICK OFF!" : state.overtime ? "OVERTIME!" : "2ND HALF!";
         this._merlinSpeech.text = "";
         this._announcementText.visible = true;
         this._merlinSpeech.visible = false;
+        showBg = true;
         break;
       case GBMatchPhase.GOAL_SCORED: {
         const scorer = state.players.find(p => p.id === state.lastGoalScorer);
@@ -648,6 +1064,7 @@ export class GrailBallHUD {
         this._merlinSpeech.text = scorer ? `${scorer.name} scores for ${state.teamDefs[state.lastGoalTeam].name}!` : "";
         this._announcementText.visible = true;
         this._merlinSpeech.visible = true;
+        showBg = true;
         break;
       }
       case GBMatchPhase.HALFTIME:
@@ -655,6 +1072,7 @@ export class GrailBallHUD {
         this._merlinSpeech.text = `${state.scores[0]} - ${state.scores[1]}`;
         this._announcementText.visible = true;
         this._merlinSpeech.visible = true;
+        showBg = true;
         break;
       case GBMatchPhase.FULL_MATCH:
         this._announcementText.text = "FULL TIME";
@@ -666,6 +1084,7 @@ export class GrailBallHUD {
         }
         this._announcementText.visible = true;
         this._merlinSpeech.visible = true;
+        showBg = true;
         break;
       case GBMatchPhase.PENALTY_SHOOTOUT:
         this._announcementText.text = "PENALTY SHOOTOUT";
@@ -674,6 +1093,7 @@ export class GrailBallHUD {
           : "";
         this._announcementText.visible = true;
         this._merlinSpeech.visible = true;
+        showBg = true;
         break;
       case GBMatchPhase.POST_GAME: {
         const winner = state.scores[0] >= state.scores[1] ? 0 : 1;
@@ -681,6 +1101,7 @@ export class GrailBallHUD {
         this._merlinSpeech.text = `Final: ${state.scores[0]} - ${state.scores[1]}`;
         this._announcementText.visible = true;
         this._merlinSpeech.visible = true;
+        showBg = true;
         break;
       }
       default:
@@ -689,10 +1110,48 @@ export class GrailBallHUD {
         if (state.merlinSpeech && state.merlinSpeechTimer > 0) {
           this._merlinSpeech.text = `Merlin: "${state.merlinSpeech}"`;
           this._merlinSpeech.visible = true;
+          showBg = true;
         } else {
           this._merlinSpeech.visible = false;
         }
         break;
+    }
+
+    // Draw or clear the announcement background banner
+    this._announcementBg.clear();
+    if (showBg) {
+      const cx = this._screenW / 2;
+      const cy = this._screenH / 2;
+      const bgW = 500;
+      const bgH = 120;
+
+      // Dark panel
+      this._announcementBg.roundRect(cx - bgW / 2, cy - bgH / 2 - 20, bgW, bgH, 10);
+      this._announcementBg.fill({ color: 0x0a0a14, alpha: 0.7 });
+      // Gold border
+      this._announcementBg.roundRect(cx - bgW / 2, cy - bgH / 2 - 20, bgW, bgH, 10);
+      this._announcementBg.stroke({ color: 0xdaa520, width: 2, alpha: 0.7 });
+      // Inner border
+      this._announcementBg.roundRect(cx - bgW / 2 + 4, cy - bgH / 2 - 16, bgW - 8, bgH - 8, 8);
+      this._announcementBg.stroke({ color: 0xdaa520, width: 0.5, alpha: 0.2 });
+
+      // Corner ornaments
+      const l = cx - bgW / 2 + 10;
+      const r = cx + bgW / 2 - 10;
+      const t = cy - bgH / 2 - 14;
+      const b = cy + bgH / 2 - 26;
+      drawDiamond(this._announcementBg, l, t, 3, 0xdaa520, 0.5);
+      drawDiamond(this._announcementBg, r, t, 3, 0xdaa520, 0.5);
+      drawDiamond(this._announcementBg, l, b, 3, 0xdaa520, 0.5);
+      drawDiamond(this._announcementBg, r, b, 3, 0xdaa520, 0.5);
+
+      // Decorative horizontal lines flanking text area
+      this._announcementBg.moveTo(cx - bgW / 2 + 20, cy - 8);
+      this._announcementBg.lineTo(cx - 200, cy - 8);
+      this._announcementBg.stroke({ color: 0xdaa520, width: 0.5, alpha: 0.3 });
+      this._announcementBg.moveTo(cx + 200, cy - 8);
+      this._announcementBg.lineTo(cx + bgW / 2 - 20, cy - 8);
+      this._announcementBg.stroke({ color: 0xdaa520, width: 0.5, alpha: 0.3 });
     }
   }
 
@@ -710,8 +1169,20 @@ export class GrailBallHUD {
       : sel.activePowerUp === GBPowerUpType.STRENGTH ? "Strength" : "Magic Surge";
 
     this._powerUpIndicator.clear();
+    // Ornate panel around power-up
+    this._powerUpIndicator.roundRect(-4, -4, 24, 24, 4);
+    this._powerUpIndicator.fill({ color: 0x0d0d1a, alpha: 0.7 });
+    this._powerUpIndicator.roundRect(-4, -4, 24, 24, 4);
+    this._powerUpIndicator.stroke({ color: 0xdaa520, width: 1, alpha: 0.6 });
+    // Themed circle icon
     this._powerUpIndicator.circle(8, 8, 8);
     this._powerUpIndicator.fill({ color, alpha: 0.9 });
+    this._powerUpIndicator.circle(8, 8, 8);
+    this._powerUpIndicator.stroke({ color: 0xffd700, width: 0.5, alpha: 0.4 });
+    // Inner glow dot
+    this._powerUpIndicator.circle(6, 5, 3);
+    this._powerUpIndicator.fill({ color: 0xffffff, alpha: 0.15 });
+
     this._powerUpText.text = `${name} (${sel.powerUpTimer.toFixed(1)}s)`;
     this._powerUpText.style.fill = color;
   }
@@ -727,14 +1198,24 @@ export class GrailBallHUD {
       const moment = state.replayCurrentMoment;
       this._replayText.text = `REPLAY: ${moment.description}`;
 
-      // Progress bar
+      // Progress bar with gold accents
       this._replayProgressBar.clear();
       const barW = this._screenW - 500;
       const progress = state.replayPlaybackIndex / Math.max(1, moment.frames.length);
+      // Bar background
       this._replayProgressBar.roundRect(0, 0, barW, 14, 3);
-      this._replayProgressBar.fill({ color: 0x333333, alpha: 0.8 });
+      this._replayProgressBar.fill({ color: 0x222222, alpha: 0.8 });
+      // Gold border
+      this._replayProgressBar.roundRect(0, 0, barW, 14, 3);
+      this._replayProgressBar.stroke({ color: 0xdaa520, width: 0.5, alpha: 0.4 });
+      // Progress fill
       this._replayProgressBar.roundRect(0, 0, barW * progress, 14, 3);
       this._replayProgressBar.fill({ color: 0xff4444, alpha: 0.9 });
+      // Highlight on progress bar
+      this._replayProgressBar.roundRect(1, 1, barW * progress - 2, 5, 2);
+      this._replayProgressBar.fill({ color: 0xff6666, alpha: 0.3 });
+      // Position marker diamond
+      drawDiamond(this._replayProgressBar, barW * progress, 7, 4, 0xffd700, 0.8);
     } else {
       this._replayOverlay.visible = false;
     }
@@ -843,29 +1324,122 @@ export class GrailBallHUD {
     this._pauseDiv = document.createElement("div");
     this._pauseDiv.style.cssText = `
       position:fixed;top:0;left:0;width:100%;height:100%;
-      background:rgba(0,0,0,0.75);z-index:100;
+      background:rgba(0,0,0,0.8);z-index:100;
       display:flex;flex-direction:column;align-items:center;justify-content:center;
       font-family:Georgia,serif;color:#ffd700;
     `;
     this._pauseDiv.innerHTML = `
-      <h1 style="font-size:48px;margin-bottom:40px;text-shadow:2px 2px 4px #000;">PAUSED</h1>
-      <div id="gb-pause-resume" style="font-size:24px;cursor:pointer;margin:12px 0;padding:8px 32px;border:2px solid #daa520;border-radius:8px;transition:all 0.2s;">Resume</div>
-      <div id="gb-pause-controls" style="font-size:24px;cursor:pointer;margin:12px 0;padding:8px 32px;border:2px solid #daa520;border-radius:8px;transition:all 0.2s;">Controls</div>
-      <div id="gb-pause-rules" style="font-size:24px;cursor:pointer;margin:12px 0;padding:8px 32px;border:2px solid #daa520;border-radius:8px;transition:all 0.2s;">Rules</div>
-      <div id="gb-pause-exit" style="font-size:24px;cursor:pointer;margin:12px 0;padding:8px 32px;border:2px solid #daa520;border-radius:8px;transition:all 0.2s;">Exit to Menu</div>
+      <style>
+        .gb-pause-panel {
+          background: linear-gradient(180deg, rgba(40,28,15,0.97) 0%, rgba(25,18,10,0.98) 50%, rgba(35,24,12,0.97) 100%);
+          border: 3px solid #daa520;
+          border-radius: 16px;
+          padding: 40px 60px;
+          text-align: center;
+          position: relative;
+          box-shadow:
+            0 0 30px rgba(0,0,0,0.8),
+            inset 0 0 60px rgba(0,0,0,0.3),
+            0 0 8px rgba(218,165,32,0.3),
+            inset 0 1px 0 rgba(218,165,32,0.2);
+        }
+        .gb-pause-panel::before {
+          content: '';
+          position: absolute;
+          top: 6px; left: 6px; right: 6px; bottom: 6px;
+          border: 1px solid rgba(218,165,32,0.2);
+          border-radius: 12px;
+          pointer-events: none;
+        }
+        .gb-pause-panel::after {
+          content: '';
+          position: absolute;
+          top: -1px; left: 50%; transform: translateX(-50%);
+          width: 60px; height: 4px;
+          background: linear-gradient(90deg, transparent, #ffd700, transparent);
+          border-radius: 2px;
+        }
+        .gb-pause-title {
+          font-size: 52px;
+          margin-bottom: 36px;
+          color: #ffd700;
+          text-shadow:
+            0 0 10px rgba(255,215,0,0.4),
+            2px 2px 4px rgba(0,0,0,0.8),
+            0 0 30px rgba(218,165,32,0.2);
+          letter-spacing: 6px;
+        }
+        .gb-pause-corner {
+          position: absolute;
+          width: 20px; height: 20px;
+          border-color: #daa520;
+          border-style: solid;
+        }
+        .gb-pause-corner.tl { top: 10px; left: 10px; border-width: 2px 0 0 2px; border-radius: 4px 0 0 0; }
+        .gb-pause-corner.tr { top: 10px; right: 10px; border-width: 2px 2px 0 0; border-radius: 0 4px 0 0; }
+        .gb-pause-corner.bl { bottom: 10px; left: 10px; border-width: 0 0 2px 2px; border-radius: 0 0 0 4px; }
+        .gb-pause-corner.br { bottom: 10px; right: 10px; border-width: 0 2px 2px 0; border-radius: 0 0 4px 0; }
+        .gb-pause-btn {
+          font-family: Georgia, serif;
+          font-size: 22px;
+          cursor: pointer;
+          margin: 10px 0;
+          padding: 10px 40px;
+          border: 2px solid #daa520;
+          border-radius: 8px;
+          color: #ffd700;
+          background: linear-gradient(180deg, rgba(218,165,32,0.1) 0%, rgba(218,165,32,0.05) 100%);
+          transition: all 0.25s ease;
+          letter-spacing: 1px;
+          position: relative;
+          min-width: 200px;
+        }
+        .gb-pause-btn:hover {
+          background: linear-gradient(180deg, rgba(218,165,32,0.3) 0%, rgba(218,165,32,0.15) 100%);
+          box-shadow: 0 0 15px rgba(218,165,32,0.4), inset 0 0 10px rgba(218,165,32,0.1);
+          border-color: #ffd700;
+          text-shadow: 0 0 8px rgba(255,215,0,0.5);
+          transform: scale(1.03);
+        }
+        .gb-pause-btn::before {
+          content: '';
+          position: absolute;
+          left: 8px; top: 50%; transform: translateY(-50%);
+          width: 4px; height: 4px;
+          background: #daa520;
+          clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+        }
+        .gb-pause-btn::after {
+          content: '';
+          position: absolute;
+          right: 8px; top: 50%; transform: translateY(-50%);
+          width: 4px; height: 4px;
+          background: #daa520;
+          clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+        }
+        .gb-pause-divider {
+          width: 180px; height: 1px; margin: 8px auto;
+          background: linear-gradient(90deg, transparent, rgba(218,165,32,0.4), transparent);
+        }
+      </style>
+      <div class="gb-pause-panel">
+        <div class="gb-pause-corner tl"></div>
+        <div class="gb-pause-corner tr"></div>
+        <div class="gb-pause-corner bl"></div>
+        <div class="gb-pause-corner br"></div>
+        <div class="gb-pause-title">PAUSED</div>
+        <div class="gb-pause-divider"></div>
+        <div id="gb-pause-resume" class="gb-pause-btn">Resume</div>
+        <div id="gb-pause-controls" class="gb-pause-btn">Controls</div>
+        <div id="gb-pause-rules" class="gb-pause-btn">Rules</div>
+        <div id="gb-pause-exit" class="gb-pause-btn">Exit to Menu</div>
+      </div>
     `;
-
-    const addHover = (el: HTMLElement) => {
-      el.addEventListener("mouseenter", () => { el.style.background = "rgba(218,165,32,0.3)"; });
-      el.addEventListener("mouseleave", () => { el.style.background = "transparent"; });
-    };
 
     const resume = this._pauseDiv.querySelector("#gb-pause-resume") as HTMLElement;
     const controls = this._pauseDiv.querySelector("#gb-pause-controls") as HTMLElement;
     const rules = this._pauseDiv.querySelector("#gb-pause-rules") as HTMLElement;
     const exit = this._pauseDiv.querySelector("#gb-pause-exit") as HTMLElement;
-
-    addHover(resume); addHover(controls); addHover(rules); addHover(exit);
 
     resume.onclick = () => { this.hidePause(); onResume(); };
     controls.onclick = () => { this.hidePause(); if (onControls) onControls(); };
@@ -901,13 +1475,96 @@ export class GrailBallHUD {
 
     const content = document.createElement("div");
     content.style.cssText = `
-      max-width:700px;padding:40px;margin:20px;
-      background:rgba(30,20,10,0.95);border:2px solid #daa520;border-radius:12px;
+      max-width:720px;padding:50px;margin:30px;position:relative;
+      background: linear-gradient(180deg, rgba(55,42,25,0.97) 0%, rgba(35,25,12,0.98) 40%, rgba(45,35,20,0.97) 100%);
+      border:3px solid #daa520;border-radius:16px;
+      box-shadow:
+        0 0 40px rgba(0,0,0,0.8),
+        inset 0 0 80px rgba(0,0,0,0.2),
+        0 0 10px rgba(218,165,32,0.2);
     `;
+    // Format rules text with drop cap styling for first letter
+    const rulesFormatted = GB_RULES_TEXT.replace(/\n/g, '<br>');
     content.innerHTML = `
-      <pre style="white-space:pre-wrap;font-family:Georgia,serif;font-size:15px;line-height:1.6;color:#ddd;">${GB_RULES_TEXT}</pre>
-      <div id="gb-rules-close" style="text-align:center;margin-top:20px;font-size:20px;color:#ffd700;cursor:pointer;border:2px solid #daa520;padding:8px 24px;border-radius:8px;">
-        Close [Esc]
+      <style>
+        .gb-rules-header {
+          text-align: center;
+          color: #ffd700;
+          font-size: 28px;
+          margin-bottom: 10px;
+          text-shadow: 0 0 8px rgba(255,215,0,0.3), 2px 2px 4px rgba(0,0,0,0.8);
+          letter-spacing: 4px;
+        }
+        .gb-rules-scrollwork {
+          text-align: center;
+          margin-bottom: 20px;
+          color: #daa520;
+          font-size: 14px;
+          opacity: 0.6;
+        }
+        .gb-rules-divider {
+          width: 80%;
+          height: 1px;
+          margin: 0 auto 20px;
+          background: linear-gradient(90deg, transparent, #daa520, transparent);
+        }
+        .gb-rules-body {
+          font-family: Georgia, serif;
+          font-size: 15px;
+          line-height: 1.7;
+          color: #ddd;
+        }
+        .gb-rules-body::first-letter {
+          font-size: 2.5em;
+          float: left;
+          color: #ffd700;
+          line-height: 1;
+          margin-right: 6px;
+          text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        .gb-rules-inner-border {
+          position: absolute;
+          top: 8px; left: 8px; right: 8px; bottom: 8px;
+          border: 1px solid rgba(218,165,32,0.2);
+          border-radius: 12px;
+          pointer-events: none;
+        }
+        .gb-rules-corner {
+          position: absolute;
+          width: 24px; height: 24px;
+          border-color: #daa520;
+          border-style: solid;
+          opacity: 0.5;
+        }
+        .gb-rules-corner.tl { top: 12px; left: 12px; border-width: 2px 0 0 2px; }
+        .gb-rules-corner.tr { top: 12px; right: 12px; border-width: 2px 2px 0 0; }
+        .gb-rules-corner.bl { bottom: 12px; left: 12px; border-width: 0 0 2px 2px; }
+        .gb-rules-corner.br { bottom: 12px; right: 12px; border-width: 0 2px 2px 0; }
+        .gb-rules-close-btn {
+          text-align:center;margin-top:24px;font-size:20px;color:#ffd700;cursor:pointer;
+          border:2px solid #daa520;padding:10px 28px;border-radius:8px;
+          background: linear-gradient(180deg, rgba(218,165,32,0.1) 0%, rgba(218,165,32,0.05) 100%);
+          transition: all 0.25s ease;
+          letter-spacing: 1px;
+          display: inline-block;
+        }
+        .gb-rules-close-btn:hover {
+          background: linear-gradient(180deg, rgba(218,165,32,0.3) 0%, rgba(218,165,32,0.15) 100%);
+          box-shadow: 0 0 12px rgba(218,165,32,0.4);
+          border-color: #ffd700;
+        }
+      </style>
+      <div class="gb-rules-inner-border"></div>
+      <div class="gb-rules-corner tl"></div>
+      <div class="gb-rules-corner tr"></div>
+      <div class="gb-rules-corner bl"></div>
+      <div class="gb-rules-corner br"></div>
+      <div class="gb-rules-header">RULES OF GRAIL BALL</div>
+      <div class="gb-rules-scrollwork">~ ~ ~</div>
+      <div class="gb-rules-divider"></div>
+      <div class="gb-rules-body">${rulesFormatted}</div>
+      <div style="text-align:center;">
+        <div id="gb-rules-close" class="gb-rules-close-btn">Close [Esc]</div>
       </div>
     `;
 
@@ -939,30 +1596,99 @@ export class GrailBallHUD {
     this._controlsDiv.style.cssText = `
       position:fixed;top:0;left:0;width:100%;height:100%;
       background:rgba(0,0,0,0.9);z-index:110;
-      display:flex;flex-direction:column;align-items:center;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
       font-family:Georgia,serif;color:#ddd;overflow-y:auto;
     `;
 
     const content = document.createElement("div");
     content.style.cssText = `
-      max-width:700px;padding:40px;margin:20px;
-      background:rgba(30,20,10,0.95);border:2px solid #daa520;border-radius:12px;
+      max-width:700px;padding:50px;margin:20px;position:relative;
+      background: linear-gradient(180deg, rgba(55,42,25,0.97) 0%, rgba(35,25,12,0.98) 40%, rgba(45,35,20,0.97) 100%);
+      border:3px solid #daa520;border-radius:16px;
+      box-shadow:
+        0 0 40px rgba(0,0,0,0.8),
+        inset 0 0 80px rgba(0,0,0,0.2),
+        0 0 10px rgba(218,165,32,0.2);
     `;
-    const controlsText = `CONTROLS
 
-Arrow Keys / WASD  —  Move player
-Space (tap)        —  Pass orb to teammate
-Space (hold)       —  Charge shot, release to shoot
-Shift              —  Tackle (no orb) / Use Ability (with orb)
-Tab                —  Switch selected player
-E                  —  Lob pass
-Q                  —  Call for pass
-Escape             —  Pause`;
+    const controlRows = [
+      { keys: ["Arrow", "WASD"], action: "Move player" },
+      { keys: ["Space"], action: "Pass orb (tap) / Charge shot (hold)" },
+      { keys: ["Shift"], action: "Tackle (no orb) / Use Ability (with orb)" },
+      { keys: ["Tab"], action: "Switch selected player" },
+      { keys: ["E"], action: "Lob pass" },
+      { keys: ["Q"], action: "Call for pass" },
+      { keys: ["Esc"], action: "Pause game" },
+    ];
+
+    const rowsHtml = controlRows.map(r => {
+      const keyCaps = r.keys.map(k =>
+        `<span style="
+          display:inline-block;
+          background: linear-gradient(180deg, #3a3020 0%, #2a2015 100%);
+          border:1px solid #daa520;
+          border-radius:5px;
+          padding:4px 12px;
+          margin:0 3px;
+          font-size:14px;
+          color:#ffd700;
+          text-shadow:0 1px 1px rgba(0,0,0,0.5);
+          box-shadow: 0 2px 4px rgba(0,0,0,0.4), inset 0 1px 0 rgba(218,165,32,0.2);
+          min-width:30px;
+          text-align:center;
+        ">${k}</span>`
+      ).join(" ");
+      return `
+        <div style="display:flex;align-items:center;margin:10px 0;padding:6px 0;border-bottom:1px solid rgba(218,165,32,0.1);">
+          <div style="flex:0 0 180px;text-align:right;padding-right:16px;">${keyCaps}</div>
+          <div style="flex:1;color:#ccc;font-size:15px;">${r.action}</div>
+        </div>
+      `;
+    }).join("");
 
     content.innerHTML = `
-      <pre style="white-space:pre-wrap;font-family:Georgia,serif;font-size:15px;line-height:1.6;color:#ddd;">${controlsText}</pre>
-      <div id="gb-controls-close" style="text-align:center;margin-top:20px;font-size:20px;color:#ffd700;cursor:pointer;border:2px solid #daa520;padding:8px 24px;border-radius:8px;">
-        Close [Esc]
+      <style>
+        .gb-ctrl-inner-border {
+          position: absolute;
+          top: 8px; left: 8px; right: 8px; bottom: 8px;
+          border: 1px solid rgba(218,165,32,0.2);
+          border-radius: 12px;
+          pointer-events: none;
+        }
+        .gb-ctrl-corner {
+          position: absolute;
+          width: 20px; height: 20px;
+          border-color: #daa520;
+          border-style: solid;
+          opacity: 0.5;
+        }
+        .gb-ctrl-corner.tl { top: 12px; left: 12px; border-width: 2px 0 0 2px; }
+        .gb-ctrl-corner.tr { top: 12px; right: 12px; border-width: 2px 2px 0 0; }
+        .gb-ctrl-corner.bl { bottom: 12px; left: 12px; border-width: 0 0 2px 2px; }
+        .gb-ctrl-corner.br { bottom: 12px; right: 12px; border-width: 0 2px 2px 0; }
+        .gb-ctrl-close-btn {
+          text-align:center;margin-top:24px;font-size:20px;color:#ffd700;cursor:pointer;
+          border:2px solid #daa520;padding:10px 28px;border-radius:8px;
+          background: linear-gradient(180deg, rgba(218,165,32,0.1) 0%, rgba(218,165,32,0.05) 100%);
+          transition: all 0.25s ease;display:inline-block;letter-spacing:1px;
+        }
+        .gb-ctrl-close-btn:hover {
+          background: linear-gradient(180deg, rgba(218,165,32,0.3) 0%, rgba(218,165,32,0.15) 100%);
+          box-shadow: 0 0 12px rgba(218,165,32,0.4);
+          border-color: #ffd700;
+        }
+      </style>
+      <div class="gb-ctrl-inner-border"></div>
+      <div class="gb-ctrl-corner tl"></div>
+      <div class="gb-ctrl-corner tr"></div>
+      <div class="gb-ctrl-corner bl"></div>
+      <div class="gb-ctrl-corner br"></div>
+      <div style="text-align:center;color:#ffd700;font-size:28px;margin-bottom:8px;text-shadow:0 0 8px rgba(255,215,0,0.3),2px 2px 4px rgba(0,0,0,0.8);letter-spacing:4px;">CONTROLS</div>
+      <div style="text-align:center;margin-bottom:16px;color:#daa520;font-size:14px;opacity:0.6;">~ ~ ~</div>
+      <div style="width:80%;height:1px;margin:0 auto 20px;background:linear-gradient(90deg,transparent,#daa520,transparent);"></div>
+      ${rowsHtml}
+      <div style="text-align:center;">
+        <div id="gb-controls-close" class="gb-ctrl-close-btn">Close [Esc]</div>
       </div>
     `;
 

@@ -15286,27 +15286,102 @@ export class DiabloRenderer {
 
       case EnemyType.BONE_GOLEM: {
         // --- BONE_GOLEM | Estimated polygons: ~150000 triangles ---
-        const boneMat = new THREE.MeshStandardMaterial({ color: 0xd8d0c0, roughness: 0.7 });
 
-        // Massive body cluster
+        // --- Materials ---
+        const boneMat = new THREE.MeshStandardMaterial({ color: 0xd8d0c0, roughness: 0.7 });
+        const boneOldMat = new THREE.MeshStandardMaterial({ color: 0xc8b890, roughness: 0.8 });
+        const boneDarkMat = new THREE.MeshStandardMaterial({ color: 0x8a7a60, roughness: 0.85 });
+        const boneGlowMat = new THREE.MeshStandardMaterial({
+          color: 0x44ff44, emissive: 0x44ff44, emissiveIntensity: 1.0,
+          transparent: true, opacity: 0.6,
+        });
+        const boneCrackMat = new THREE.MeshStandardMaterial({ color: 0x333322, roughness: 1.0 });
+
+        // --- Body cluster with mixed materials, spikes, and crack details ---
         const bodyParts = [
-          { r: 0.8, y: 1.2, x: 0, z: 0 },
-          { r: 0.6, y: 2.0, x: 0.1, z: 0 },
-          { r: 0.5, y: 0.6, x: -0.1, z: 0.1 },
-          { r: 0.4, y: 2.5, x: 0, z: 0 },
+          { r: 0.8, y: 1.2, x: 0, z: 0, mat: boneMat },
+          { r: 0.6, y: 2.0, x: 0.1, z: 0, mat: boneOldMat },
+          { r: 0.5, y: 0.6, x: -0.1, z: 0.1, mat: boneOldMat },
+          { r: 0.4, y: 2.5, x: 0, z: 0, mat: boneMat },
         ];
         for (const part of bodyParts) {
           const geo = new THREE.SphereGeometry(part.r, 62, 44);
-          const mesh = new THREE.Mesh(geo, boneMat);
+          const mesh = new THREE.Mesh(geo, part.mat);
           mesh.position.set(part.x, part.y, part.z);
           mesh.castShadow = true;
           group.add(mesh);
         }
 
-        // Head skull
+        // Bone shard spikes protruding from body
+        const spikeAngles = [0, 0.8, 1.6, 2.4, 3.2, 4.0, 4.8, 5.6];
+        for (let si = 0; si < spikeAngles.length; si++) {
+          const ang = spikeAngles[si];
+          const spikeGeo = new THREE.ConeGeometry(0.06, 0.38, 8);
+          const spike = new THREE.Mesh(spikeGeo, si % 2 === 0 ? boneMat : boneOldMat);
+          const radius = 0.72 + (si % 3) * 0.06;
+          const yOff = 0.9 + (si % 4) * 0.35;
+          spike.position.set(Math.cos(ang) * radius, yOff, Math.sin(ang) * radius);
+          spike.rotation.z = Math.cos(ang) * 1.1;
+          spike.rotation.x = Math.sin(ang) * 1.1;
+          group.add(spike);
+        }
+
+        // Crack detail lines across the largest body sphere
+        for (let cr = 0; cr < 4; cr++) {
+          const crLineGeo = new THREE.CylinderGeometry(0.012, 0.012, 0.45 + cr * 0.08, 6);
+          const crLine = new THREE.Mesh(crLineGeo, boneCrackMat);
+          crLine.position.set(
+            (cr % 2 === 0 ? 0.2 : -0.25) + cr * 0.07,
+            1.15 + cr * 0.1,
+            0.6
+          );
+          crLine.rotation.set(cr * 0.4, cr * 0.5, cr * 0.3);
+          group.add(crLine);
+        }
+
+        // --- Enhanced skull ---
         const skull = new THREE.Mesh(new THREE.SphereGeometry(0.3, 62, 44), boneMat);
         skull.position.y = 3.0;
+        skull.scale.z = 0.85;
         group.add(skull);
+
+        // Brow ridge
+        const browGeo = new THREE.BoxGeometry(0.34, 0.07, 0.1);
+        const brow = new THREE.Mesh(browGeo, boneOldMat);
+        brow.position.set(0, 3.1, 0.24);
+        group.add(brow);
+
+        // Nasal cavity
+        const nasalGeo = new THREE.ConeGeometry(0.055, 0.1, 8);
+        const nasal = new THREE.Mesh(nasalGeo, boneDarkMat);
+        nasal.position.set(0, 2.97, 0.27);
+        nasal.rotation.x = Math.PI; // inverted cone pointing inward
+        group.add(nasal);
+
+        // Jaw (lower sphere flattened)
+        const jawGeo = new THREE.SphereGeometry(0.22, 44, 32);
+        const jaw = new THREE.Mesh(jawGeo, boneOldMat);
+        jaw.position.set(0, 2.75, 0.06);
+        jaw.scale.set(1.0, 0.45, 0.85);
+        group.add(jaw);
+
+        // Teeth on jaw (small cones)
+        for (let t = 0; t < 5; t++) {
+          const toothGeo = new THREE.ConeGeometry(0.028, 0.09, 6);
+          const tooth = new THREE.Mesh(toothGeo, boneMat);
+          tooth.position.set(-0.12 + t * 0.06, 2.67, 0.22);
+          tooth.rotation.x = Math.PI * 0.1; // slight forward lean
+          group.add(tooth);
+        }
+
+        // Cranial suture lines across top of skull
+        for (let sl = 0; sl < 3; sl++) {
+          const sutureGeo = new THREE.CylinderGeometry(0.008, 0.008, 0.28 - sl * 0.04, 6);
+          const suture = new THREE.Mesh(sutureGeo, boneCrackMat);
+          suture.position.set(-0.06 + sl * 0.06, 3.22 - sl * 0.06, sl * 0.05);
+          suture.rotation.z = Math.PI * 0.5 + sl * 0.3;
+          group.add(suture);
+        }
 
         // Eye sockets
         const socketMat = new THREE.MeshStandardMaterial({ color: 0x440000, emissive: 0x330000, emissiveIntensity: 1.0 });
@@ -15316,7 +15391,7 @@ export class DiabloRenderer {
           group.add(socket);
         }
 
-        // Arms
+        // --- Arms ---
         for (let side = -1; side <= 1; side += 2) {
           const bgArmGroup = new THREE.Group();
           bgArmGroup.name = side === -1 ? 'anim_la' : 'anim_ra';
@@ -15335,16 +15410,34 @@ export class DiabloRenderer {
           group.add(bgArmGroup);
         }
 
-        // Central ribcage structure (curved cylinders forming ribs)
+        // --- Enhanced ribcage with sternum and floating bone fragments ---
         for (let rb = 0; rb < 4; rb++) {
           const ribGeo2 = new THREE.TorusGeometry(0.4 - rb * 0.03, 0.03, 44, 62, Math.PI);
-          const rib2 = new THREE.Mesh(ribGeo2, boneMat);
+          const rib2 = new THREE.Mesh(ribGeo2, rb % 2 === 0 ? boneMat : boneOldMat);
           rib2.position.set(0, 1.8 - rb * 0.15, 0);
           rib2.rotation.y = Math.PI;
           group.add(rib2);
         }
 
-        // Massive bone club arm (one arm much larger - part of right arm)
+        // Sternum connecting ribs down the center front
+        const sternumGeo = new THREE.CylinderGeometry(0.035, 0.035, 0.55, 10);
+        const sternum = new THREE.Mesh(sternumGeo, boneOldMat);
+        sternum.position.set(0, 1.62, 0.38);
+        group.add(sternum);
+
+        // Small floating bone fragments near ribcage
+        const ribFragOffsets = [
+          [0.52, 2.0, 0.1], [-0.55, 1.85, 0.05], [0.46, 1.55, -0.12],
+          [-0.42, 1.65, 0.15], [0.38, 2.1, -0.08],
+        ];
+        for (const rfo of ribFragOffsets) {
+          const fragGeo = new THREE.SphereGeometry(0.055 + (rfo[0] % 0.03), 16, 12);
+          const frag = new THREE.Mesh(fragGeo, boneOldMat);
+          frag.position.set(rfo[0], rfo[1], rfo[2]);
+          group.add(frag);
+        }
+
+        // --- Massive bone club arm (one arm much larger - part of right arm) ---
         const bgRaGroup = group.getObjectByName('anim_ra') as THREE.Group;
         const clubGeo = new THREE.CylinderGeometry(0.2, 0.3, 1.0, 44);
         const club = new THREE.Mesh(clubGeo, boneMat);
@@ -15355,7 +15448,7 @@ export class DiabloRenderer {
         clubEnd.position.set(0.9, -2.05, 0);
         bgRaGroup.add(clubEnd);
 
-        // Visible joints (green/purple glowing spheres at connections)
+        // --- Visible joints (green/purple glowing spheres at connections) ---
         const jointGlowMat = new THREE.MeshStandardMaterial({
           color: 0x44ff44, emissive: 0x22aa22, emissiveIntensity: 1.5,
           transparent: true, opacity: 0.7,
@@ -15371,44 +15464,89 @@ export class DiabloRenderer {
           group.add(jMesh);
         }
 
-        // Ground cracks (small dark planes around feet)
+        // --- Ground cracks (small dark planes around feet) ---
         const crackMat = new THREE.MeshStandardMaterial({ color: 0x111111, transparent: true, opacity: 0.4, roughness: 1.0 });
         for (let ci = 0; ci < 4; ci++) {
-          const crackGeo = new THREE.BoxGeometry(0.3 + Math.random() * 0.2, 0.01, 0.05);
+          const crackGeo = new THREE.BoxGeometry(0.3 + (ci * 0.05), 0.01, 0.05);
           const crack = new THREE.Mesh(crackGeo, crackMat);
-          crack.position.set((Math.random() - 0.5) * 1.0, 0.01, (Math.random() - 0.5) * 0.8);
-          crack.rotation.y = Math.random() * Math.PI;
+          crack.position.set((ci % 2 === 0 ? 0.3 : -0.25) * (1 + ci * 0.1), 0.01, (ci % 2 === 0 ? 0.2 : -0.3) * (1 + ci * 0.05));
+          crack.rotation.y = ci * 0.8;
           group.add(crack);
         }
 
-        // More varied bone pieces (mix of shapes)
+        // --- More varied bone pieces (mix of shapes) ---
         for (let bv = 0; bv < 5; bv++) {
           const bvType = bv % 3;
           let bvMesh: THREE.Mesh;
           if (bvType === 0) {
-            bvMesh = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.3, 0.1), boneMat);
+            bvMesh = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.3, 0.1), boneOldMat);
           } else if (bvType === 1) {
             bvMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.35, 44), boneMat);
           } else {
-            bvMesh = new THREE.Mesh(new THREE.SphereGeometry(0.12, 80, 44), boneMat);
+            bvMesh = new THREE.Mesh(new THREE.SphereGeometry(0.12, 80, 44), boneOldMat);
           }
           bvMesh.position.set(
-            (Math.random() - 0.5) * 0.8,
-            0.5 + Math.random() * 1.5,
-            (Math.random() - 0.5) * 0.6
+            (bv % 2 === 0 ? 0.3 : -0.2) * (1 + bv * 0.1),
+            0.5 + bv * 0.3,
+            (bv % 3 === 0 ? 0.25 : -0.15) * (1 + bv * 0.05)
           );
-          bvMesh.rotation.set(Math.random(), Math.random(), Math.random());
+          bvMesh.rotation.set(bv * 0.6, bv * 0.4, bv * 0.5);
           group.add(bvMesh);
         }
 
-        // Legs
+        // --- Soul wisps: small emissive green cones floating near body ---
+        const wispOffsets = [
+          [0.65, 2.3, 0.3], [-0.6, 1.9, 0.25], [0.2, 2.8, 0.35], [-0.3, 1.5, -0.3],
+        ];
+        for (const wo of wispOffsets) {
+          const wispGeo = new THREE.ConeGeometry(0.05, 0.18, 8);
+          const wisp = new THREE.Mesh(wispGeo, boneGlowMat);
+          wisp.position.set(wo[0], wo[1], wo[2]);
+          wisp.rotation.set(wo[2] * 1.5, wo[0], wo[1] * 0.4);
+          group.add(wisp);
+        }
+
+        // --- Bone dust: tiny semi-transparent spheres scattered around feet ---
+        const boneDustMat = new THREE.MeshStandardMaterial({ color: 0xd0c8b0, transparent: true, opacity: 0.45 });
+        const dustPositions = [
+          [0.5, 0.06, 0.3], [-0.4, 0.06, 0.4], [0.2, 0.06, -0.4], [-0.6, 0.06, -0.25],
+          [0.7, 0.06, -0.1], [-0.2, 0.06, 0.55], [0.35, 0.06, 0.6], [-0.55, 0.06, 0.1],
+        ];
+        for (const dp of dustPositions) {
+          const dustGeo = new THREE.SphereGeometry(0.03 + (Math.abs(dp[0]) % 0.02), 8, 6);
+          const dust = new THREE.Mesh(dustGeo, boneDustMat);
+          dust.position.set(dp[0], dp[1], dp[2]);
+          group.add(dust);
+        }
+
+        // --- Enhanced legs with knee joints and foot structures ---
         for (let side = -1; side <= 1; side += 2) {
           const bgLegGroup = new THREE.Group();
           bgLegGroup.name = side === -1 ? 'anim_ll' : 'anim_rl';
           bgLegGroup.position.set(side * 0.4, 0.7, 0);
-          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 0.8, 44), boneMat);
-          leg.position.y = -0.4;
-          bgLegGroup.add(leg);
+
+          // Thigh cylinder
+          const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.22, 0.45, 44), boneMat);
+          thigh.position.y = -0.22;
+          bgLegGroup.add(thigh);
+
+          // Knee joint sphere
+          const kneeGeo = new THREE.SphereGeometry(0.13, 32, 24);
+          const knee = new THREE.Mesh(kneeGeo, boneDarkMat);
+          knee.position.y = -0.5;
+          bgLegGroup.add(knee);
+
+          // Lower leg cylinder
+          const lowerLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.18, 0.42, 44), boneOldMat);
+          lowerLeg.position.y = -0.75;
+          bgLegGroup.add(lowerLeg);
+
+          // Foot (flattened box)
+          const footGeo = new THREE.BoxGeometry(0.22, 0.1, 0.38);
+          const foot = new THREE.Mesh(footGeo, boneMat);
+          foot.position.set(0, -1.02, 0.1);
+          bgLegGroup.add(foot);
+
           group.add(bgLegGroup);
         }
         break;

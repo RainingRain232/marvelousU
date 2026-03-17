@@ -87,10 +87,14 @@ export class GrailManagerRenderer {
     for (const zone of this.clickZones) {
       if (mouseX >= zone.x && mouseX <= zone.x + zone.w && mouseY >= zone.y && mouseY <= zone.y + zone.h) {
         this._hoverZone = zone.id;
-        // Soft glow behind hover zone
-        g.fill({ color: GOLD, alpha: 0.04 }).roundRect(zone.x - 2, zone.y - 2, zone.w + 4, zone.h + 4, 4).fill();
-        g.fill({ color: GOLD, alpha: 0.08 }).roundRect(zone.x, zone.y, zone.w, zone.h, 2).fill();
-        g.stroke({ color: GOLD, alpha: 0.25, width: 1 }).roundRect(zone.x, zone.y, zone.w, zone.h, 2).stroke();
+        // Enhanced tactile hover feedback with layered glow
+        g.fill({ color: GOLD, alpha: 0.03 }).roundRect(zone.x - 4, zone.y - 4, zone.w + 8, zone.h + 8, 6).fill();
+        g.fill({ color: GOLD, alpha: 0.06 }).roundRect(zone.x - 2, zone.y - 2, zone.w + 4, zone.h + 4, 4).fill();
+        g.fill({ color: GOLD, alpha: 0.1 }).roundRect(zone.x, zone.y, zone.w, zone.h, 2).fill();
+        // Top-edge highlight for embossed hover feel
+        g.fill({ color: WHITE, alpha: 0.04 }).roundRect(zone.x, zone.y, zone.w, zone.h * 0.4, 2).fill();
+        g.stroke({ color: GOLD, alpha: 0.35, width: 1.2 }).roundRect(zone.x, zone.y, zone.w, zone.h, 2).stroke();
+        g.stroke({ color: GOLD, alpha: 0.1, width: 0.5 }).roundRect(zone.x + 1, zone.y + 1, zone.w - 2, zone.h - 2, 2).stroke();
         break;
       }
     }
@@ -400,6 +404,27 @@ export class GrailManagerRenderer {
     this._drawCornerFlourish(g, x, y + h, 1, -1);
     this._drawCornerFlourish(g, x + w, y + h, -1, -1);
     this._drawKnotBorder(g, x, y, w, h);
+    // Subtle paper/scroll curl shadow at bottom-right corner
+    g.fill({ color: 0x000000, alpha: 0.06 });
+    g.moveTo(x + w - 20, y + h);
+    g.bezierCurveTo(x + w - 12, y + h - 2, x + w - 4, y + h - 8, x + w, y + h - 18);
+    g.lineTo(x + w, y + h);
+    g.closePath().fill();
+    g.stroke({ color: PARCHMENT, alpha: 0.06, width: 0.5 });
+    g.moveTo(x + w - 18, y + h);
+    g.bezierCurveTo(x + w - 10, y + h - 3, x + w - 5, y + h - 8, x + w, y + h - 16);
+    g.stroke();
+    // Subtle animated shimmer/gleam on gold border
+    const shimmerPos = ((this._time * 0.4) % 1) * (w + h) * 2;
+    if (shimmerPos < w) {
+      g.fill({ color: GOLD, alpha: 0.08 }).circle(x + shimmerPos, y, 3).fill();
+    } else if (shimmerPos < w + h) {
+      g.fill({ color: GOLD, alpha: 0.08 }).circle(x + w, y + shimmerPos - w, 3).fill();
+    } else if (shimmerPos < w * 2 + h) {
+      g.fill({ color: GOLD, alpha: 0.08 }).circle(x + w - (shimmerPos - w - h), y + h, 3).fill();
+    } else {
+      g.fill({ color: GOLD, alpha: 0.08 }).circle(x, y + h - (shimmerPos - w * 2 - h), 3).fill();
+    }
     if (title) {
       g.fill({ color: GOLD_DARK, alpha: 0.22 }).rect(x + 3, y + 3, w - 6, 26).fill();
       g.fill({ color: GOLD, alpha: 0.05 }).rect(x + 3, y + 3, w - 6, 13).fill();
@@ -508,6 +533,18 @@ export class GrailManagerRenderer {
     const cx = sw / 2;
     const cy = sh / 2;
     const pulse = Math.sin(this._time * 2) * 0.15 + 0.85;
+
+    // Ornate frame/border around entire menu area
+    const frameX = cx - 200, frameY = cy - 210, frameW = 400, frameH = 440;
+    g.stroke({ color: GOLD_DARK, alpha: 0.18, width: 2 }).roundRect(frameX - 4, frameY - 4, frameW + 8, frameH + 8, 12).stroke();
+    g.stroke({ color: GOLD_DARK, alpha: 0.12, width: 1 }).roundRect(frameX - 8, frameY - 8, frameW + 16, frameH + 16, 14).stroke();
+    g.fill({ color: BURGUNDY, alpha: 0.04 }).roundRect(frameX, frameY, frameW, frameH, 10).fill();
+    this._drawKnotBorder(g, frameX, frameY, frameW, frameH);
+    this._drawCornerFlourish(g, frameX, frameY, 1, 1);
+    this._drawCornerFlourish(g, frameX + frameW, frameY, -1, 1);
+    this._drawCornerFlourish(g, frameX, frameY + frameH, 1, -1);
+    this._drawCornerFlourish(g, frameX + frameW, frameY + frameH, -1, -1);
+
     // Radiant background glow
     g.fill({ color: GOLD, alpha: pulse * 0.05 }).circle(cx, cy - 100, 280).fill();
     g.fill({ color: BURGUNDY, alpha: 0.04 }).circle(cx, cy - 100, 220).fill();
@@ -523,6 +560,29 @@ export class GrailManagerRenderer {
       const ry = cy - 100 + Math.sin(angle) * 160;
       g.fill({ color: GOLD, alpha: 0.08 }).circle(rx, ry, 4).fill();
     }
+
+    // Dramatic radiant beams emanating from the orb
+    for (let i = 0; i < 16; i++) {
+      const beamAngle = (i / 16) * Math.PI * 2 + this._time * 0.15;
+      const beamLen = 80 + Math.sin(this._time * 1.5 + i * 1.3) * 30;
+      const beamAlpha = 0.04 + Math.sin(this._time * 2 + i * 0.8) * 0.025;
+      g.stroke({ color: GOLD, alpha: beamAlpha, width: 0.8 })
+        .moveTo(cx + Math.cos(beamAngle) * 20, cy - 60 + Math.sin(beamAngle) * 20)
+        .lineTo(cx + Math.cos(beamAngle) * beamLen, cy - 60 + Math.sin(beamAngle) * beamLen)
+        .stroke();
+    }
+
+    // Floating rune/symbol particles around the title text
+    const runeSymbols = ["\u2726", "\u2727", "\u2720", "\u2605", "\u2666", "\u2022"];
+    for (let i = 0; i < 8; i++) {
+      const rx = cx - 160 + seededRng(200, i * 3) * 320;
+      const baseY = cy - 190 + seededRng(200, i * 3 + 1) * 60;
+      const floatY = baseY + Math.sin(this._time * 1.2 + i * 1.7) * 6;
+      const runeAlpha = 0.12 + Math.sin(this._time * 1.8 + i * 2.1) * 0.08;
+      const sym = runeSymbols[i % runeSymbols.length];
+      this._addText(sym, 8, lerpColor(GOLD, GOLD_DARK, runeAlpha), false, rx, floatY);
+    }
+
     // Title with double shadow
     this._addText("GRAIL BALL", 42, 0x000000, true, cx - 136, cy - 176);
     this._addText("GRAIL BALL", 42, GOLD, true, cx - 140, cy - 180);
@@ -534,6 +594,26 @@ export class GrailManagerRenderer {
     // Outer ethereal glow
     g.fill({ color: GOLD, alpha: 0.06 }).circle(cx, cy - 60, 55 + orbPulse).fill();
     g.fill({ color: GOLD, alpha: 0.12 }).circle(cx, cy - 60, 42 + orbPulse).fill();
+
+    // Chalice/cup silhouette outline around the orb
+    g.stroke({ color: GOLD, alpha: 0.18, width: 1.5 });
+    g.moveTo(cx - 12, cy - 30);
+    g.bezierCurveTo(cx - 18, cy - 38, cx - 20, cy - 50, cx - 16, cy - 62);
+    g.bezierCurveTo(cx - 14, cy - 72, cx - 8, cy - 82, cx, cy - 86);
+    g.bezierCurveTo(cx + 8, cy - 82, cx + 14, cy - 72, cx + 16, cy - 62);
+    g.bezierCurveTo(cx + 20, cy - 50, cx + 18, cy - 38, cx + 12, cy - 30);
+    g.stroke();
+    // Chalice stem
+    g.stroke({ color: GOLD, alpha: 0.14, width: 1.2 })
+      .moveTo(cx - 4, cy - 30).lineTo(cx - 4, cy - 22).stroke();
+    g.stroke({ color: GOLD, alpha: 0.14, width: 1.2 })
+      .moveTo(cx + 4, cy - 30).lineTo(cx + 4, cy - 22).stroke();
+    // Chalice base
+    g.stroke({ color: GOLD, alpha: 0.14, width: 1.2 })
+      .moveTo(cx - 10, cy - 20).lineTo(cx + 10, cy - 20).stroke();
+    g.stroke({ color: GOLD, alpha: 0.10, width: 1 })
+      .moveTo(cx - 14, cy - 18).lineTo(cx + 14, cy - 18).stroke();
+
     // Main orb layers
     g.fill({ color: GOLD, alpha: 0.2 }).circle(cx, cy - 60, 34 + orbPulse * 0.5).fill();
     g.fill({ color: 0xffdd55, alpha: 0.35 }).circle(cx, cy - 60, 24 + orbPulse2 * 0.3).fill();
@@ -639,13 +719,20 @@ export class GrailManagerRenderer {
     const lw = Math.min(350, sw * 0.45);
     this._drawPanel(g, 10, top, lw, 160, "Club Overview");
     this._drawMiniCrest(g, 24, top + 38, team.teamDef.color1, team.teamDef.color2, team.teamDef.crestColor);
-    this._addText(team.teamDef.name, 16, GOLD, true, 65, top + 34);
-    this._addText(`Manager: ${state.managerName}`, 11, PARCHMENT, false, 65, top + 54);
-    this._addText(`Gold: ${state.gold}`, 11, 0xffd700, false, 65, top + 70);
-    this._addText(`Income/Match: ${state.weeklyIncome}g | Wages: ${state.weeklyExpenses}g/wk`, 10, PARCHMENT_DARK, false, 65, top + 86);
-    this._addText(`Formation: ${team.formation} | Style: ${team.instruction}`, 10, PARCHMENT_DARK, false, 65, top + 102);
-    this._addText(`Squad: ${team.squad.length} players`, 10, PARCHMENT_DARK, false, 65, top + 118);
-    this._addText(`Training: ${team.trainingType}`, 10, PARCHMENT_DARK, false, 65, top + 134);
+    // Mini crest decoration beside club name
+    this._drawMiniCrest(g, 48, top + 34, team.teamDef.color1, team.teamDef.color2, team.teamDef.crestColor);
+    this._addText(team.teamDef.name, 16, GOLD, true, 75, top + 34);
+    this._addText(`Manager: ${state.managerName}`, 11, PARCHMENT, false, 75, top + 54);
+    this._addText(`Gold: ${state.gold}`, 11, 0xffd700, false, 75, top + 70);
+    // Decorative divider between gold info and details
+    g.stroke({ color: GOLD_DARK, alpha: 0.2, width: 0.6 }).moveTo(25, top + 84).lineTo(lw - 10, top + 84).stroke();
+    this._addText(`Income/Match: ${state.weeklyIncome}g | Wages: ${state.weeklyExpenses}g/wk`, 10, PARCHMENT_DARK, false, 25, top + 88);
+    this._addText(`Formation: ${team.formation} | Style: ${team.instruction}`, 10, PARCHMENT_DARK, false, 25, top + 104);
+    this._addText(`Squad: ${team.squad.length} players`, 10, PARCHMENT_DARK, false, 25, top + 120);
+    this._addText(`Training: ${team.trainingType}`, 10, PARCHMENT_DARK, false, 25, top + 136);
+
+    // Decorative divider between panels
+    this._drawFiligree(g, 20, top + 163, lw - 20);
 
     const leaguePos = state.leagueTable.findIndex(e => e.teamId === state.playerTeamId) + 1;
     this._drawPanel(g, 10, top + 170, lw, 60, "League Standing");
@@ -654,6 +741,10 @@ export class GrailManagerRenderer {
     if (entry) {
       this._addText(`P:${entry.played} W:${entry.won} D:${entry.drawn} L:${entry.lost} Pts:${entry.points}`, 11, PARCHMENT, false, 20, top + 216);
     }
+
+    // Decorative divider between panels
+    this._drawFiligree(g, 20, top + 234, lw - 20);
+
     this._drawPanel(g, 10, top + 240, lw, 80, "Next Match");
     const nextFixture = state.fixtures.find(f => !f.played &&
       (f.homeTeamId === state.playerTeamId || f.awayTeamId === state.playerTeamId));
@@ -662,16 +753,35 @@ export class GrailManagerRenderer {
       const opp = state.teams[oppId];
       const isHome = nextFixture.homeTeamId === state.playerTeamId;
       this._addText(`Week ${nextFixture.week}: ${isHome ? "HOME" : "AWAY"}`, 11, isHome ? GREEN_GOOD : RED_ACCENT, true, 20, top + 268);
-      if (opp) this._addText(`vs ${opp.teamDef.name}`, 13, WHITE, true, 20, top + 286);
+      if (opp) {
+        this._drawMiniCrest(g, 20, top + 284, opp.teamDef.color1, opp.teamDef.color2, opp.teamDef.crestColor);
+        this._addText(`vs ${opp.teamDef.name}`, 13, WHITE, true, 46, top + 286);
+        // Opponent form indicators (W/L mini dots)
+        const oppEntry = state.leagueTable.find(e => e.teamId === oppId);
+        if (oppEntry && oppEntry.form.length > 0) {
+          for (let fi = 0; fi < oppEntry.form.length; fi++) {
+            const formColor = oppEntry.form[fi] === "W" ? GREEN_GOOD : oppEntry.form[fi] === "L" ? RED_ACCENT : 0xcccc00;
+            g.fill({ color: formColor, alpha: 0.8 }).circle(lw - 20 - (oppEntry.form.length - fi - 1) * 12, top + 292, 4).fill();
+            this._addText(oppEntry.form[fi], 6, WHITE, true, lw - 23 - (oppEntry.form.length - fi - 1) * 12, top + 288);
+          }
+        }
+      }
       this._addText("Press Enter or click 'Advance Week' to proceed", 10, PARCHMENT_DARK, false, 20, top + 304);
     } else {
       this._addText("No upcoming matches", 12, PARCHMENT_DARK, false, 20, top + 270);
     }
     const btnX = 10, btnY = top + 330, btnW = lw, btnH = 36;
     const advHover = this._hoverZone === "advance_week";
+    // Animated heartbeat/pulse on the Advance Week button
+    const advPulse = 1 + Math.sin(this._time * 3.5) * 0.02;
+    const advGlow = 0.06 + Math.sin(this._time * 3.5) * 0.04;
+    g.fill({ color: GOLD, alpha: advGlow }).roundRect(btnX - 3, btnY - 3, btnW + 6, btnH + 6, 7).fill();
     g.fill({ color: advHover ? GREEN_GOOD : CELTIC_GREEN, alpha: 0.9 }).roundRect(btnX, btnY, btnW, btnH, 5).fill();
     if (advHover) g.fill({ color: WHITE, alpha: 0.06 }).roundRect(btnX, btnY, btnW, btnH * 0.5, 5).fill();
-    g.stroke({ color: GOLD_DARK, width: 1 }).roundRect(btnX, btnY, btnW, btnH, 5).stroke();
+    // Top highlight bevel
+    g.fill({ color: WHITE, alpha: 0.06 }).roundRect(btnX + 2, btnY + 1, btnW - 4, btnH * 0.35, 4).fill();
+    g.stroke({ color: GOLD_DARK, width: 1.5 }).roundRect(btnX, btnY, btnW, btnH, 5).stroke();
+    g.stroke({ color: GOLD, alpha: 0.15 * advPulse, width: 0.5 }).roundRect(btnX + 2, btnY + 2, btnW - 4, btnH - 4, 3).stroke();
     this._addText("Advance Week (Enter)", 14, WHITE, true, btnX + btnW / 2 - 80, btnY + 9);
     this.clickZones.push({ id: "advance_week", x: btnX, y: btnY, w: btnW, h: btnH });
     const rx = lw + 30;
@@ -725,8 +835,18 @@ export class GrailManagerRenderer {
       const isStarter = team.startingLineup.includes(p.id);
       const isSub = team.substitutes.includes(p.id);
       const isSelected = state.selectedPlayerId === p.id;
+      // Decorative row separator every 5 players
+      if (i > 0 && i % 5 === 0) {
+        g.stroke({ color: GOLD_DARK, alpha: 0.15, width: 0.5 }).moveTo(20, ry - 3).lineTo(sw - 30, ry - 3).stroke();
+        g.fill({ color: GOLD_DARK, alpha: 0.1 }).circle(sw / 2, ry - 3, 1.5).fill();
+      }
+
       if (isSelected) {
-        g.fill({ color: GOLD_DARK, alpha: 0.2 }).rect(18, ry - 2, sw - 36, rowH).fill();
+        // Dramatic gold-bordered highlight for selected row
+        g.fill({ color: GOLD_DARK, alpha: 0.25 }).rect(18, ry - 2, sw - 36, rowH).fill();
+        g.fill({ color: GOLD, alpha: 0.05 }).rect(18, ry - 2, sw - 36, rowH * 0.5).fill();
+        g.stroke({ color: GOLD, alpha: 0.4, width: 1 }).rect(18, ry - 2, sw - 36, rowH).stroke();
+        g.stroke({ color: GOLD, alpha: 0.15, width: 0.5 }).rect(19, ry - 1, sw - 38, rowH - 2).stroke();
       } else if (i % 2 === 0) {
         g.fill({ color: PARCHMENT, alpha: 0.03 }).rect(18, ry - 2, sw - 36, rowH).fill();
       }
@@ -738,12 +858,23 @@ export class GrailManagerRenderer {
       const classColors: Record<string, number> = {
         Gatekeeper: 0x8888ff, Knight: 0xff8844, Rogue: 0x44ff88, Mage: 0xcc44ff,
       };
-      this._addText(p.class, 9, classColors[p.class] || WHITE, false, 200, ry);
+      // Class-colored dot badge next to class name
+      const ccol = classColors[p.class] || WHITE;
+      g.fill({ color: ccol, alpha: 0.7 }).circle(197, ry + 5, 3).fill();
+      g.stroke({ color: ccol, alpha: 0.3, width: 0.5 }).circle(197, ry + 5, 3).stroke();
+      this._addText(p.class, 9, ccol, false, 203, ry);
       this._addText(`${p.age}`, 9, p.age >= 30 ? RED_ACCENT : WHITE, false, 280, ry);
 
       const ovr = getOverall(p);
       const ovrColor = ovr >= 75 ? GREEN_GOOD : ovr >= 55 ? 0xcccc00 : ovr >= 40 ? 0xff8800 : RED_ACCENT;
       this._addText(`${ovr}`, 9, ovrColor, true, 320, ry);
+      // Small star ratings for top-rated players
+      if (ovr >= 75) {
+        const stars = ovr >= 85 ? 3 : ovr >= 80 ? 2 : 1;
+        for (let si = 0; si < stars; si++) {
+          this._addText("\u2605", 6, GOLD, false, 340 + si * 8, ry);
+        }
+      }
       this._addStatText(`${p.stats.attack}`, 360, ry, p.stats.attack);
       this._addStatText(`${p.stats.defense}`, 395, ry, p.stats.defense);
       this._addStatText(`${p.stats.speed}`, 430, ry, p.stats.speed);
@@ -786,14 +917,24 @@ export class GrailManagerRenderer {
     this._drawPanel(g, 10, top, lw, sh - top - 10, "Tactics");
     this._addText("Formation:", 12, GOLD, true, 20, top + 30);
     const formations = Object.values(Formation);
+    const tacticsPulse = 0.4 + Math.sin(this._time * 3) * 0.15;
     for (let i = 0; i < formations.length; i++) {
       const fy = top + 50 + i * 24;
       const active = team.formation === formations[i];
       g.fill({ color: active ? GOLD_DARK : DARK_WOOD, alpha: 0.5 }).roundRect(20, fy, lw - 20, 20, 3).fill();
-      if (active) g.stroke({ color: GOLD, alpha: 0.4, width: 1 }).roundRect(20, fy, lw - 20, 20, 3).stroke();
+      if (active) {
+        // Pulsing gold border for active formation
+        g.stroke({ color: GOLD, alpha: tacticsPulse, width: 1.5 }).roundRect(20, fy, lw - 20, 20, 3).stroke();
+        g.fill({ color: GOLD, alpha: 0.06 }).roundRect(20, fy, lw - 20, 10, 3).fill();
+      }
       this._addText(`${formations[i]}`, 11, active ? GOLD : PARCHMENT, active, 30, fy + 3);
       this.clickZones.push({ id: `formation_${i}`, x: 20, y: fy, w: lw - 20, h: 20 });
     }
+
+    // Decorative separator between Formation and Instructions
+    const sepY1 = top + 50 + formations.length * 24 + 6;
+    g.stroke({ color: GOLD_DARK, alpha: 0.2, width: 0.6 }).moveTo(25, sepY1).lineTo(lw - 10, sepY1).stroke();
+    g.fill({ color: GOLD_DARK, alpha: 0.25 }).circle(lw / 2 + 5, sepY1, 2).fill();
 
     const instY = top + 50 + formations.length * 24 + 20;
     this._addText("Team Instructions:", 12, GOLD, true, 20, instY);
@@ -802,10 +943,18 @@ export class GrailManagerRenderer {
       const iy = instY + 20 + i * 24;
       const active = team.instruction === instructions[i];
       g.fill({ color: active ? GOLD_DARK : DARK_WOOD, alpha: 0.5 }).roundRect(20, iy, lw - 20, 20, 3).fill();
-      if (active) g.stroke({ color: GOLD, alpha: 0.4, width: 1 }).roundRect(20, iy, lw - 20, 20, 3).stroke();
+      if (active) {
+        g.stroke({ color: GOLD, alpha: tacticsPulse, width: 1.5 }).roundRect(20, iy, lw - 20, 20, 3).stroke();
+        g.fill({ color: GOLD, alpha: 0.06 }).roundRect(20, iy, lw - 20, 10, 3).fill();
+      }
       this._addText(`${instructions[i]}`, 11, active ? GOLD : PARCHMENT, active, 30, iy + 3);
       this.clickZones.push({ id: `instruction_${i}`, x: 20, y: iy, w: lw - 20, h: 20 });
     }
+
+    // Decorative separator between Instructions and Training
+    const sepY2 = instY + 20 + instructions.length * 24 + 6;
+    g.stroke({ color: GOLD_DARK, alpha: 0.2, width: 0.6 }).moveTo(25, sepY2).lineTo(lw - 10, sepY2).stroke();
+    g.fill({ color: GOLD_DARK, alpha: 0.25 }).circle(lw / 2 + 5, sepY2, 2).fill();
 
     const trainY = instY + 20 + instructions.length * 24 + 20;
     this._addText("Training:", 12, GOLD, true, 20, trainY);
@@ -814,7 +963,10 @@ export class GrailManagerRenderer {
       const ty = trainY + 20 + i * 24;
       const active = team.trainingType === trainings[i];
       g.fill({ color: active ? GREEN_GOOD : DARK_WOOD, alpha: 0.5 }).roundRect(20, ty, lw - 20, 20, 3).fill();
-      if (active) g.stroke({ color: GOLD, alpha: 0.4, width: 1 }).roundRect(20, ty, lw - 20, 20, 3).stroke();
+      if (active) {
+        g.stroke({ color: GOLD, alpha: tacticsPulse, width: 1.5 }).roundRect(20, ty, lw - 20, 20, 3).stroke();
+        g.fill({ color: GOLD, alpha: 0.06 }).roundRect(20, ty, lw - 20, 10, 3).fill();
+      }
       this._addText(`${trainings[i]}`, 11, active ? GOLD : PARCHMENT, active, 30, ty + 3);
       this.clickZones.push({ id: `training_${i}`, x: 20, y: ty, w: lw - 20, h: 20 });
     }
@@ -868,9 +1020,13 @@ export class GrailManagerRenderer {
     g.stroke({ color: teamDef.color2, width: 2 }).circle(x, y, 14).stroke();
     g.stroke({ color: WHITE, alpha: 0.2, width: 0.5 }).circle(x, y, 12).stroke();
     const classIcons: Record<string, string> = { Gatekeeper: "GK", Knight: "KN", Rogue: "RG", Mage: "MG" };
+    const classSymbols: Record<string, string> = { Gatekeeper: "\u2666", Knight: "\u2694", Rogue: "\u2666", Mage: "\u2605" };
     // Class icon with shadow
     this._addText(classIcons[player.class] || "?", 8, 0x000000, true, x - 6, y - 4);
     this._addText(classIcons[player.class] || "?", 8, WHITE, true, x - 7, y - 5);
+    // Small class-specific symbol beside position
+    const sym = classSymbols[player.class] || "\u2022";
+    this._addText(sym, 6, GOLD, false, x + 8, y - 12);
     this._addText(player.lastName.substring(0, 8), 7, WHITE, false, x - 20, y + 16);
     // Overall rating badge
     const ovr = getOverall(player);
@@ -898,13 +1054,17 @@ export class GrailManagerRenderer {
     g.fill({ color: DARK_WOOD, alpha: 0.95 }).rect(0, 0, sw, 70).fill();
     g.fill({ color: BURGUNDY, alpha: 0.06 }).rect(0, 0, sw, 70).fill();
     this._drawFiligree(g, 0, 70, sw);
+    // Team crest badges beside team names in score header
     this._drawMiniCrest(g, 20, 15, homeTeam.teamDef.color1, homeTeam.teamDef.color2, homeTeam.teamDef.crestColor);
     this._addText(homeTeam.teamDef.name, 16, WHITE, true, 55, 10);
 
     const scoreX = sw / 2;
+    // Small crest badges flanking the score
+    this._drawMiniCrest(g, scoreX - 70, 18, homeTeam.teamDef.color1, homeTeam.teamDef.color2, homeTeam.teamDef.crestColor);
     this._addText(`${match.homeGoals}`, 32, GOLD, true, scoreX - 40, 10);
     this._addText("-", 32, PARCHMENT, true, scoreX - 6, 10);
     this._addText(`${match.awayGoals}`, 32, GOLD, true, scoreX + 20, 10);
+    this._drawMiniCrest(g, scoreX + 48, 18, awayTeam.teamDef.color1, awayTeam.teamDef.color2, awayTeam.teamDef.crestColor);
     this._drawMiniCrest(g, sw - 40, 15, awayTeam.teamDef.color1, awayTeam.teamDef.color2, awayTeam.teamDef.crestColor);
     this._addText(awayTeam.teamDef.name, 16, WHITE, true, sw - 200, 10);
 
@@ -920,11 +1080,16 @@ export class GrailManagerRenderer {
     const pitchX = 10, pitchY = 80;
     this._drawPanel(g, pitchX, pitchY, pitchW, pitchH);
     const fpx = pitchX + 10, fpy = pitchY + 10, fpw = pitchW - 20, fph = pitchH - 20;
-    // Richer grass with stripes
+    // Richer grass with detailed stripe alternation
     g.fill({ color: 0x1a5c1a, alpha: 0.8 }).rect(fpx, fpy, fpw, fph).fill();
-    const stripeW = fpw / 8;
-    for (let i = 0; i < 8; i++) {
-      if (i % 2 === 0) g.fill({ color: 0x1f6b1f, alpha: 0.15 }).rect(fpx + i * stripeW, fpy, stripeW, fph).fill();
+    const stripeW = fpw / 16;
+    for (let i = 0; i < 16; i++) {
+      if (i % 2 === 0) g.fill({ color: 0x1f6b1f, alpha: 0.12 }).rect(fpx + i * stripeW, fpy, stripeW, fph).fill();
+      else g.fill({ color: 0x165a16, alpha: 0.06 }).rect(fpx + i * stripeW, fpy, stripeW, fph).fill();
+    }
+    // Subtle grass texture pattern (horizontal lines)
+    for (let gy = 0; gy < fph; gy += 6) {
+      g.stroke({ color: 0x2a8c2a, alpha: 0.04, width: 0.3 }).moveTo(fpx, fpy + gy).lineTo(fpx + fpw, fpy + gy).stroke();
     }
     // Pitch markings
     g.stroke({ color: 0x3a9c3a, width: 1.5 }).moveTo(fpx + fpw / 2, fpy).lineTo(fpx + fpw / 2, fpy + fph).stroke();
@@ -961,19 +1126,30 @@ export class GrailManagerRenderer {
         g.stroke({ color: GOLD, alpha: 0.5, width: 1.5 }).circle(dx, dy, r + 4).stroke();
       }
     }
-    // Orb with enhanced glow
+    // Orb with enhanced glow and sparkle trail
     const orbDx = fpx + match.orbX * fpw;
     const orbDy = fpy + match.orbY * fph;
     const orbGlow = 0.3 + Math.sin(this._time * 4) * 0.15;
+    // Animated sparkle/glow trail behind the orb
+    for (let ti = 0; ti < 6; ti++) {
+      const trailAge = ti * 0.08;
+      const trailX = orbDx - Math.cos(this._time * 2 + ti * 0.5) * ti * 3;
+      const trailY = orbDy - Math.sin(this._time * 1.5 + ti * 0.7) * ti * 2;
+      const trailAlpha = (0.2 - trailAge) * (0.5 + Math.sin(this._time * 6 + ti * 1.3) * 0.3);
+      if (trailAlpha > 0) {
+        g.fill({ color: GOLD, alpha: trailAlpha }).circle(trailX, trailY, 2 - ti * 0.2).fill();
+      }
+    }
     g.fill({ color: GOLD, alpha: orbGlow * 0.3 }).circle(orbDx, orbDy, 14).fill();
     g.fill({ color: GOLD, alpha: orbGlow * 0.5 }).circle(orbDx, orbDy, 8).fill();
     g.fill({ color: GOLD, alpha: orbGlow * 0.8 }).circle(orbDx, orbDy, 4).fill();
     g.fill({ color: WHITE, alpha: 0.9 }).circle(orbDx, orbDy, 2).fill();
     // Sparkle ring around orb
-    for (let i = 0; i < 4; i++) {
-      const sa = this._time * 3 + (i / 4) * Math.PI * 2;
+    for (let i = 0; i < 6; i++) {
+      const sa = this._time * 3 + (i / 6) * Math.PI * 2;
       const sr = 6 + Math.sin(this._time * 5 + i) * 2;
-      g.fill({ color: GOLD, alpha: 0.4 }).circle(orbDx + Math.cos(sa) * sr, orbDy + Math.sin(sa) * sr, 1).fill();
+      const sparkAlpha = 0.3 + Math.sin(this._time * 7 + i * 2) * 0.15;
+      g.fill({ color: GOLD, alpha: sparkAlpha }).circle(orbDx + Math.cos(sa) * sr, orbDy + Math.sin(sa) * sr, 1).fill();
     }
     const statsY = pitchY + pitchH + 5;
     this._drawPanel(g, pitchX, statsY, pitchW, sh - statsY - 10);
@@ -998,6 +1174,15 @@ export class GrailManagerRenderer {
                     c.type === "halftime" || c.type === "fulltime" ? GOLD :
                     c.type === "penalty" ? 0xff8800 : c.type === "redCard" ? 0xff0000 : PARCHMENT;
       const prefix = c.type === "goal" ? "GOAL! " : "";
+      // Banner-style highlight for goal events
+      if (c.type === "goal") {
+        g.fill({ color: GOLD_DARK, alpha: 0.2 }).roundRect(commX + 6, cy - 2, commW - 16, 18, 3).fill();
+        g.fill({ color: GOLD, alpha: 0.06 }).roundRect(commX + 6, cy - 2, commW - 16, 9, 3).fill();
+        g.stroke({ color: GOLD, alpha: 0.3, width: 0.8 }).roundRect(commX + 6, cy - 2, commW - 16, 18, 3).stroke();
+        // Small gold ornaments on banner
+        g.fill({ color: GOLD, alpha: 0.5 }).circle(commX + 10, cy + 7, 1.5).fill();
+        g.fill({ color: GOLD, alpha: 0.5 }).circle(commX + commW - 14, cy + 7, 1.5).fill();
+      }
       this._addText(`${c.minute}' ${prefix}${c.text}`, 10, color, c.type === "goal", commX + 10, cy);
     }
     const speedY = sh - 35;
@@ -1067,7 +1252,11 @@ export class GrailManagerRenderer {
       this._addText(fromName, 9, PARCHMENT_DARK, false, 475, ry);
       this._addText(`${listing.askingPrice}g`, 9, canAfford ? GREEN_GOOD : RED_ACCENT, false, 570, ry);
       if (canAfford) {
-        g.fill({ color: GREEN_GOOD, alpha: 0.7 }).roundRect(640, ry - 2, 50, 16, 3).fill();
+        // Enhanced layered Buy button
+        g.fill({ color: 0x000000, alpha: 0.1 }).roundRect(641, ry - 1, 50, 16, 3).fill();
+        g.fill({ color: GREEN_GOOD, alpha: 0.85 }).roundRect(640, ry - 2, 50, 16, 3).fill();
+        g.fill({ color: WHITE, alpha: 0.08 }).roundRect(640, ry - 2, 50, 8, 3).fill();
+        g.stroke({ color: GOLD_DARK, alpha: 0.5, width: 0.8 }).roundRect(640, ry - 2, 50, 16, 3).stroke();
         this._addText("Buy", 9, WHITE, true, 655, ry);
         this.clickZones.push({ id: `buy_${i + startIdx}`, x: 640, y: ry - 2, w: 50, h: 16 });
       }
@@ -1109,7 +1298,11 @@ export class GrailManagerRenderer {
         const canAfford = state.gold >= nextUpgrade.cost;
         const building = state.constructions.some(c => c.type === ft);
         if (!building && canAfford) {
-          g.fill({ color: GREEN_GOOD, alpha: 0.7 }).roundRect(x + cardW - 70, y + 55, 60, 20, 3).fill();
+          // Enhanced layered Build button
+          g.fill({ color: 0x000000, alpha: 0.1 }).roundRect(x + cardW - 69, y + 56, 60, 20, 3).fill();
+          g.fill({ color: GREEN_GOOD, alpha: 0.85 }).roundRect(x + cardW - 70, y + 55, 60, 20, 3).fill();
+          g.fill({ color: WHITE, alpha: 0.08 }).roundRect(x + cardW - 70, y + 55, 60, 10, 3).fill();
+          g.stroke({ color: GOLD_DARK, alpha: 0.5, width: 0.8 }).roundRect(x + cardW - 70, y + 55, 60, 20, 3).stroke();
           this._addText("Build", 10, WHITE, true, x + cardW - 58, y + 57);
           this.clickZones.push({ id: `build_${ft}`, x: x + cardW - 70, y: y + 55, w: 60, h: 20 });
         } else if (building) {

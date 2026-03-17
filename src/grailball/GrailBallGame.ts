@@ -111,22 +111,74 @@ export class GrailBallGame {
     this._teamSelectDiv = document.createElement("div");
     this._teamSelectDiv.style.cssText = `
       position:fixed;top:0;left:0;width:100%;height:100%;
-      background:linear-gradient(135deg, #1a0a2e 0%, #0d1b2a 50%, #1a0a2e 100%);
+      background:
+        radial-gradient(ellipse at 50% 0%, rgba(218,165,32,0.10) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 80%, rgba(107,15,46,0.15) 0%, transparent 40%),
+        radial-gradient(ellipse at 20% 90%, rgba(62,39,35,0.20) 0%, transparent 40%),
+        radial-gradient(ellipse at 50% 50%, rgba(26,10,46,0.0) 0%, rgba(0,0,0,0.4) 100%),
+        linear-gradient(160deg, #1a0a2e 0%, #0d1b2a 30%, #2a1a0e 60%, #1a0a2e 100%);
       z-index:200; display:flex;flex-direction:column;align-items:center;
-      font-family:Georgia,serif;color:#ffd700;overflow-y:auto;
+      font-family:'Palatino Linotype','Book Antiqua',Georgia,serif;color:#ffd700;overflow-y:auto;
+      box-shadow: inset 0 0 120px 40px rgba(0,0,0,0.7), inset 0 0 300px 80px rgba(0,0,0,0.3);
+      border: 4px solid transparent;
+      border-image: linear-gradient(135deg, #daa520 0%, #3e2723 25%, #ffd700 50%, #3e2723 75%, #daa520 100%) 1;
     `;
 
     let html = `
-      <h1 style="font-size:56px;margin:30px 0 10px;text-shadow:3px 3px 6px #000;letter-spacing:4px;">GRAIL BALL</h1>
-      <p style="font-size:18px;color:#aaa;margin-bottom:30px;font-style:italic;">A Fantasy Medieval Ball Sport</p>
+      <style>
+        @keyframes gb-title-glow {
+          0%, 100% { text-shadow: 0 0 10px rgba(255,215,0,0.6), 0 0 20px rgba(255,215,0,0.3), 0 0 40px rgba(218,165,32,0.2), 3px 3px 8px rgba(0,0,0,0.8), -1px -1px 0 rgba(139,90,0,0.6); }
+          50% { text-shadow: 0 0 15px rgba(255,215,0,0.8), 0 0 30px rgba(255,215,0,0.5), 0 0 60px rgba(218,165,32,0.3), 3px 3px 8px rgba(0,0,0,0.8), -1px -1px 0 rgba(139,90,0,0.6); }
+        }
+        @keyframes gb-shimmer {
+          0% { background-position: -200% center; }
+          100% { background-position: 200% center; }
+        }
+        .gb-team-btn:hover {
+          transform: translateY(-2px) scale(1.02) !important;
+          filter: brightness(1.2) !important;
+        }
+        .gb-menu-btn:hover {
+          transform: translateY(-2px) !important;
+          filter: brightness(1.15) !important;
+        }
+      </style>
+
+      <!-- Decorative top ornament -->
+      <div style="width:100%;text-align:center;margin-top:10px;font-size:22px;color:#daa520;letter-spacing:12px;opacity:0.5;user-select:none;">&#9876; &#9876; &#9876;</div>
+
+      <!-- Title Section -->
+      <div style="text-align:center;position:relative;padding:10px 60px;">
+        <h1 style="font-size:62px;margin:10px 0 6px;letter-spacing:8px;
+          background:linear-gradient(180deg, #ffd700 0%, #daa520 40%, #b8860b 100%);
+          -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+          animation:gb-title-glow 3s ease-in-out infinite;
+          filter:drop-shadow(2px 4px 6px rgba(0,0,0,0.8));
+          font-variant:small-caps;">GRAIL BALL</h1>
+        <!-- Ornamental line under title -->
+        <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:6px;">
+          <div style="width:80px;height:1px;background:linear-gradient(90deg,transparent,#daa520);"></div>
+          <div style="font-size:14px;color:#daa520;opacity:0.7;">&#9830;</div>
+          <div style="width:80px;height:1px;background:linear-gradient(90deg,#daa520,transparent);"></div>
+        </div>
+        <p style="font-size:17px;color:#d4c5a9;margin-bottom:24px;font-style:italic;letter-spacing:2px;
+          text-shadow:1px 1px 3px rgba(0,0,0,0.6);">A Fantasy Medieval Ball Sport</p>
+      </div>
+
       <div style="display:flex;gap:60px;align-items:flex-start;">
     `;
 
     // Team columns
     for (let col = 0; col < 2; col++) {
       html += `<div style="text-align:center;">
-        <h2 style="font-size:24px;margin-bottom:16px;">${col === 0 ? "YOUR TEAM" : "OPPONENT"}</h2>
-        <div id="gb-team-col-${col}" style="display:flex;flex-direction:column;gap:8px;">`;
+        <h2 style="font-size:22px;margin-bottom:14px;letter-spacing:3px;
+          color:#ffd700;text-shadow:0 0 8px rgba(218,165,32,0.3),2px 2px 4px rgba(0,0,0,0.7);
+          font-variant:small-caps;position:relative;padding-bottom:8px;">
+          ${col === 0 ? "YOUR TEAM" : "OPPONENT"}
+          <span style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:60%;height:2px;
+            background:linear-gradient(90deg,transparent,#daa520,transparent);"></span>
+        </h2>
+        <div id="gb-team-col-${col}" style="display:flex;flex-direction:column;gap:6px;">`;
 
       for (let i = 0; i < GB_TEAMS.length; i++) {
         const t = GB_TEAMS[i];
@@ -135,35 +187,102 @@ export class GrailBallGame {
         const secHex = "#" + t.secondaryColor.toString(16).padStart(6, "0");
         html += `
           <div data-col="${col}" data-idx="${i}" class="gb-team-btn"
-            style="cursor:pointer;padding:10px 28px;border:2px solid ${selected ? "#ffd700" : "#555"};
-            border-radius:8px;background:${selected ? "rgba(218,165,32,0.2)" : "rgba(30,30,50,0.8)"};
-            display:flex;align-items:center;gap:12px;transition:all 0.2s;min-width:260px;">
-            <div style="width:28px;height:28px;border-radius:4px;background:linear-gradient(135deg,${priHex},${secHex});border:1px solid #888;"></div>
-            <span style="font-size:16px;color:${selected ? "#ffd700" : "#ccc"};">${t.name}</span>
+            style="cursor:pointer;padding:10px 24px;
+            border:2px solid ${selected ? "#ffd700" : "#555"};
+            outline:${selected ? "1px solid #3e2723" : "none"};outline-offset:-4px;
+            border-radius:6px;
+            background:${selected
+              ? "linear-gradient(135deg, rgba(218,165,32,0.25) 0%, rgba(139,90,0,0.15) 100%)"
+              : "linear-gradient(135deg, rgba(30,30,50,0.85) 0%, rgba(20,15,35,0.9) 100%)"};
+            display:flex;align-items:center;gap:12px;
+            transition:all 0.25s ease;min-width:270px;
+            box-shadow:${selected
+              ? "inset 0 0 15px rgba(218,165,32,0.15), 0 2px 8px rgba(0,0,0,0.5), 0 0 12px rgba(218,165,32,0.1)"
+              : "inset 0 1px 0 rgba(255,255,255,0.03), 0 2px 6px rgba(0,0,0,0.4)"};">
+            <!-- Shield/crest shape beside color swatch -->
+            <div style="position:relative;width:32px;height:36px;flex-shrink:0;">
+              <div style="width:32px;height:36px;
+                clip-path:polygon(50% 0%, 100% 10%, 100% 65%, 50% 100%, 0% 65%, 0% 10%);
+                background:linear-gradient(160deg,${priHex},${secHex});
+                box-shadow:0 0 6px rgba(0,0,0,0.5);"></div>
+              <div style="position:absolute;top:3px;left:3px;width:26px;height:30px;
+                clip-path:polygon(50% 0%, 100% 10%, 100% 65%, 50% 100%, 0% 65%, 0% 10%);
+                background:linear-gradient(160deg,${secHex},${priHex});opacity:0.4;"></div>
+            </div>
+            <span style="font-size:15px;letter-spacing:1px;
+              color:${selected ? "#ffd700" : "#c8c0b0"};
+              text-shadow:${selected ? "0 0 6px rgba(218,165,32,0.3)" : "none"};">${t.name}</span>
+            ${selected ? '<span style="margin-left:auto;font-size:11px;color:#daa520;opacity:0.7;">&#9733;</span>' : ""}
           </div>`;
       }
       html += `</div></div>`;
     }
 
     html += `</div>
-      <div style="margin-top:30px;display:flex;gap:20px;flex-wrap:wrap;justify-content:center;">
-        <div id="gb-start-btn" style="font-size:28px;cursor:pointer;padding:14px 48px;border:3px solid #daa520;border-radius:12px;color:#ffd700;transition:all 0.2s;background:rgba(218,165,32,0.1);">
+
+      <!-- Button area -->
+      <div style="margin-top:32px;display:flex;gap:18px;flex-wrap:wrap;justify-content:center;">
+
+        <div id="gb-start-btn" class="gb-menu-btn" style="font-size:30px;cursor:pointer;padding:16px 56px;
+          border:3px solid #daa520;border-radius:10px;color:#ffd700;
+          transition:all 0.3s ease;
+          background:linear-gradient(180deg, rgba(218,165,32,0.15) 0%, rgba(139,90,0,0.08) 100%);
+          box-shadow:0 4px 15px rgba(0,0,0,0.5), 0 0 20px rgba(218,165,32,0.08), inset 0 1px 0 rgba(255,215,0,0.15);
+          letter-spacing:4px;font-variant:small-caps;text-shadow:0 0 10px rgba(255,215,0,0.3),2px 2px 4px rgba(0,0,0,0.6);
+          position:relative;overflow:hidden;">
           START MATCH
         </div>
-        <div id="gb-career-btn" style="font-size:24px;cursor:pointer;padding:14px 36px;border:3px solid #7b2ff7;border-radius:12px;color:#c0a0ff;transition:all 0.2s;background:rgba(123,47,247,0.1);">
+
+        <div id="gb-career-btn" class="gb-menu-btn" style="font-size:22px;cursor:pointer;padding:14px 36px;
+          border:2px solid #7b5ea7;border-radius:10px;color:#c0a0ff;
+          transition:all 0.3s ease;
+          background:linear-gradient(180deg, rgba(123,47,247,0.12) 0%, rgba(80,20,160,0.06) 100%);
+          box-shadow:0 3px 12px rgba(0,0,0,0.4), inset 0 1px 0 rgba(192,160,255,0.1);
+          letter-spacing:2px;font-variant:small-caps;text-shadow:0 0 8px rgba(123,47,247,0.25);">
           CAREER MODE
         </div>
-        <div id="gb-controls-btn" style="font-size:20px;cursor:pointer;padding:14px 32px;border:2px solid #666;border-radius:12px;color:#aaa;transition:all 0.2s;">
+
+        <div id="gb-controls-btn" class="gb-menu-btn" style="font-size:18px;cursor:pointer;padding:12px 28px;
+          border:2px solid #6b5a3e;border-radius:10px;color:#d4c5a9;
+          transition:all 0.3s ease;
+          background:linear-gradient(180deg, rgba(62,39,35,0.3) 0%, rgba(40,25,20,0.2) 100%);
+          box-shadow:0 2px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(212,197,169,0.06);
+          letter-spacing:2px;font-variant:small-caps;">
           CONTROLS
         </div>
-        <div id="gb-rules-btn" style="font-size:20px;cursor:pointer;padding:14px 32px;border:2px solid #666;border-radius:12px;color:#aaa;transition:all 0.2s;">
+
+        <div id="gb-rules-btn" class="gb-menu-btn" style="font-size:18px;cursor:pointer;padding:12px 28px;
+          border:2px solid #6b5a3e;border-radius:10px;color:#d4c5a9;
+          transition:all 0.3s ease;
+          background:linear-gradient(180deg, rgba(62,39,35,0.3) 0%, rgba(40,25,20,0.2) 100%);
+          box-shadow:0 2px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(212,197,169,0.06);
+          letter-spacing:2px;font-variant:small-caps;">
           RULES
         </div>
-        <div id="gb-exit-btn" style="font-size:20px;cursor:pointer;padding:14px 32px;border:2px solid #666;border-radius:12px;color:#aaa;transition:all 0.2s;">
+
+        <div id="gb-exit-btn" class="gb-menu-btn" style="font-size:18px;cursor:pointer;padding:12px 28px;
+          border:2px solid #6b5a3e;border-radius:10px;color:#d4c5a9;
+          transition:all 0.3s ease;
+          background:linear-gradient(180deg, rgba(62,39,35,0.3) 0%, rgba(40,25,20,0.2) 100%);
+          box-shadow:0 2px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(212,197,169,0.06);
+          letter-spacing:2px;font-variant:small-caps;">
           EXIT
         </div>
       </div>
-      <p style="font-size:13px;color:#666;margin:20px 0;">${GB_TEAMS[this._selectedTeam1].motto}</p>
+
+      <!-- Footer motto panel -->
+      <div style="margin:24px 0 16px;padding:10px 40px;
+        background:linear-gradient(90deg, transparent, rgba(62,39,35,0.3), transparent);
+        border-top:1px solid rgba(218,165,32,0.2);border-bottom:1px solid rgba(218,165,32,0.2);
+        text-align:center;">
+        <p style="font-size:14px;color:#8b7355;margin:0;font-style:italic;letter-spacing:1px;
+          text-shadow:1px 1px 2px rgba(0,0,0,0.4);">
+          "${GB_TEAMS[this._selectedTeam1].motto}"
+        </p>
+      </div>
+
+      <!-- Decorative bottom ornament -->
+      <div style="font-size:18px;color:#daa520;letter-spacing:12px;opacity:0.35;user-select:none;margin-bottom:16px;">&#9876; &#9876; &#9876;</div>
     `;
 
     this._teamSelectDiv.innerHTML = html;
@@ -200,8 +319,14 @@ export class GrailBallGame {
 
     const startBtn = this._teamSelectDiv.querySelector("#gb-start-btn") as HTMLElement;
     startBtn.addEventListener("click", () => { this._startMatch(); });
-    startBtn.addEventListener("mouseenter", () => { startBtn.style.background = "rgba(218,165,32,0.3)"; });
-    startBtn.addEventListener("mouseleave", () => { startBtn.style.background = "rgba(218,165,32,0.1)"; });
+    startBtn.addEventListener("mouseenter", () => {
+      startBtn.style.background = "linear-gradient(180deg, rgba(218,165,32,0.3) 0%, rgba(139,90,0,0.15) 100%)";
+      startBtn.style.boxShadow = "0 4px 20px rgba(0,0,0,0.5), 0 0 30px rgba(218,165,32,0.2), inset 0 1px 0 rgba(255,215,0,0.25)";
+    });
+    startBtn.addEventListener("mouseleave", () => {
+      startBtn.style.background = "linear-gradient(180deg, rgba(218,165,32,0.15) 0%, rgba(139,90,0,0.08) 100%)";
+      startBtn.style.boxShadow = "0 4px 15px rgba(0,0,0,0.5), 0 0 20px rgba(218,165,32,0.08), inset 0 1px 0 rgba(255,215,0,0.15)";
+    });
 
     const careerBtn = this._teamSelectDiv.querySelector("#gb-career-btn") as HTMLElement;
     if (careerBtn) {
@@ -216,8 +341,14 @@ export class GrailBallGame {
         this._state.careerState = careerState;
         this._showCareerMenu();
       });
-      careerBtn.addEventListener("mouseenter", () => { careerBtn.style.background = "rgba(123,47,247,0.3)"; });
-      careerBtn.addEventListener("mouseleave", () => { careerBtn.style.background = "rgba(123,47,247,0.1)"; });
+      careerBtn.addEventListener("mouseenter", () => {
+        careerBtn.style.background = "linear-gradient(180deg, rgba(123,47,247,0.25) 0%, rgba(80,20,160,0.12) 100%)";
+        careerBtn.style.boxShadow = "0 3px 16px rgba(0,0,0,0.4), 0 0 18px rgba(123,47,247,0.15), inset 0 1px 0 rgba(192,160,255,0.15)";
+      });
+      careerBtn.addEventListener("mouseleave", () => {
+        careerBtn.style.background = "linear-gradient(180deg, rgba(123,47,247,0.12) 0%, rgba(80,20,160,0.06) 100%)";
+        careerBtn.style.boxShadow = "0 3px 12px rgba(0,0,0,0.4), inset 0 1px 0 rgba(192,160,255,0.1)";
+      });
     }
 
     const controlsBtn = this._teamSelectDiv.querySelector("#gb-controls-btn") as HTMLElement;
@@ -1828,52 +1959,126 @@ export class GrailBallGame {
     this._careerDiv = document.createElement("div");
     this._careerDiv.style.cssText = `
       position:fixed;top:0;left:0;width:100%;height:100%;
-      background:linear-gradient(135deg, #1a0a2e 0%, #0d1b2a 50%, #1a0a2e 100%);
+      background:
+        radial-gradient(ellipse at 50% 0%, rgba(218,165,32,0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 80%, rgba(107,15,46,0.12) 0%, transparent 40%),
+        radial-gradient(ellipse at 50% 50%, rgba(26,10,46,0.0) 0%, rgba(0,0,0,0.4) 100%),
+        linear-gradient(160deg, #1a0a2e 0%, #0d1b2a 30%, #2a1a0e 60%, #1a0a2e 100%);
       z-index:200;display:flex;flex-direction:column;align-items:center;
-      font-family:Georgia,serif;color:#ffd700;overflow-y:auto;padding:20px;
+      font-family:'Palatino Linotype','Book Antiqua',Georgia,serif;color:#ffd700;overflow-y:auto;padding:20px;
+      box-shadow: inset 0 0 120px 40px rgba(0,0,0,0.7);
+      border: 4px solid transparent;
+      border-image: linear-gradient(135deg, #daa520 0%, #3e2723 25%, #ffd700 50%, #3e2723 75%, #daa520 100%) 1;
     `;
 
-    let html = `<h1 style="font-size:42px;margin:20px 0;text-shadow:3px 3px 6px #000;">CAREER MODE</h1>`;
+    let html = `
+      <style>
+        .gb-career-panel {
+          background: linear-gradient(180deg, rgba(30,30,50,0.92) 0%, rgba(20,15,35,0.95) 100%);
+          border: 2px solid #daa520;
+          border-radius: 8px;
+          padding: 18px 22px;
+          margin: 10px;
+          min-width: 500px;
+          box-shadow: 0 4px 16px rgba(0,0,0,0.5), inset 0 1px 0 rgba(218,165,32,0.08), 0 0 12px rgba(218,165,32,0.05);
+          position: relative;
+        }
+        .gb-career-panel::before {
+          content: '';
+          position: absolute;
+          top: 4px; left: 4px; right: 4px; bottom: 4px;
+          border: 1px solid rgba(62,39,35,0.4);
+          border-radius: 5px;
+          pointer-events: none;
+        }
+        .gb-career-panel h3 {
+          margin: 0 0 12px;
+          font-variant: small-caps;
+          letter-spacing: 2px;
+          color: #ffd700;
+          text-shadow: 0 0 8px rgba(218,165,32,0.3), 2px 2px 4px rgba(0,0,0,0.6);
+          padding-bottom: 8px;
+          border-bottom: 1px solid rgba(218,165,32,0.25);
+        }
+        .gb-career-btn:hover {
+          transform: translateY(-2px) !important;
+          filter: brightness(1.15) !important;
+        }
+      </style>
+
+      <!-- Top ornament -->
+      <div style="font-size:20px;color:#daa520;letter-spacing:12px;opacity:0.45;user-select:none;margin-bottom:4px;">&#9876; &#9876; &#9876;</div>
+
+      <h1 style="font-size:46px;margin:10px 0 6px;letter-spacing:6px;font-variant:small-caps;
+        background:linear-gradient(180deg, #ffd700 0%, #daa520 40%, #b8860b 100%);
+        -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+        filter:drop-shadow(2px 4px 6px rgba(0,0,0,0.8));
+        text-shadow:0 0 10px rgba(255,215,0,0.4);">CAREER MODE</h1>
+
+      <!-- Ornamental divider -->
+      <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:12px;">
+        <div style="width:60px;height:1px;background:linear-gradient(90deg,transparent,#daa520);"></div>
+        <div style="font-size:12px;color:#daa520;opacity:0.6;">&#9830;</div>
+        <div style="width:60px;height:1px;background:linear-gradient(90deg,#daa520,transparent);"></div>
+      </div>`;
 
     if (career) {
       const sorted = getSortedLeagueTable(career);
 
-      html += `<div style="margin:10px;font-size:18px;">Season ${career.season.year} | Budget: ${career.transferBudget} gold</div>`;
+      html += `<div style="margin:8px;font-size:17px;color:#d4c5a9;letter-spacing:1px;
+        text-shadow:1px 1px 3px rgba(0,0,0,0.5);">
+        Season <span style="color:#ffd700;">${career.season.year}</span> &nbsp;|&nbsp;
+        Budget: <span style="color:#ffd700;">${career.transferBudget}</span> gold
+      </div>`;
 
       // League table
-      html += `<div style="background:rgba(30,30,50,0.9);border:2px solid #daa520;border-radius:8px;padding:16px;margin:10px;min-width:500px;">`;
-      html += `<h3 style="margin:0 0 10px;">League Table</h3>`;
-      html += `<table style="width:100%;color:#ddd;font-size:14px;border-collapse:collapse;">`;
-      html += `<tr style="border-bottom:1px solid #555;"><th style="text-align:left;padding:4px;">Pos</th><th style="text-align:left;">Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GF</th><th>GA</th><th>Pts</th></tr>`;
+      html += `<div class="gb-career-panel">`;
+      html += `<h3>League Table</h3>`;
+      html += `<table style="width:100%;color:#c8c0b0;font-size:14px;border-collapse:collapse;">`;
+      html += `<tr style="border-bottom:1px solid rgba(218,165,32,0.3);">
+        <th style="text-align:left;padding:5px 4px;color:#daa520;font-size:12px;letter-spacing:1px;">POS</th>
+        <th style="text-align:left;color:#daa520;font-size:12px;letter-spacing:1px;">TEAM</th>
+        <th style="color:#daa520;font-size:12px;">P</th><th style="color:#daa520;font-size:12px;">W</th>
+        <th style="color:#daa520;font-size:12px;">D</th><th style="color:#daa520;font-size:12px;">L</th>
+        <th style="color:#daa520;font-size:12px;">GF</th><th style="color:#daa520;font-size:12px;">GA</th>
+        <th style="color:#daa520;font-size:12px;">PTS</th></tr>`;
       sorted.forEach((entry, i) => {
         const team = GB_TEAMS.find(t => t.id === entry.teamId);
         const isPlayer = entry.teamId === career.playerTeamId;
-        const style = isPlayer ? 'style="color:#ffd700;font-weight:bold;"' : '';
-        html += `<tr ${style}><td style="padding:4px;">${i + 1}</td><td>${team?.shortName ?? entry.teamId}</td>`;
+        const rowBg = isPlayer ? "background:rgba(218,165,32,0.1);" : (i % 2 === 0 ? "" : "background:rgba(255,255,255,0.02);");
+        const rowColor = isPlayer ? "color:#ffd700;font-weight:bold;text-shadow:0 0 6px rgba(218,165,32,0.2);" : "";
+        html += `<tr style="${rowBg}${rowColor}border-bottom:1px solid rgba(255,255,255,0.04);">
+          <td style="padding:5px 4px;">${i + 1}</td><td>${team?.shortName ?? entry.teamId}</td>`;
         html += `<td style="text-align:center;">${entry.played}</td><td style="text-align:center;">${entry.won}</td>`;
         html += `<td style="text-align:center;">${entry.drawn}</td><td style="text-align:center;">${entry.lost}</td>`;
         html += `<td style="text-align:center;">${entry.goalsFor}</td><td style="text-align:center;">${entry.goalsAgainst}</td>`;
-        html += `<td style="text-align:center;font-weight:bold;">${entry.points}</td></tr>`;
+        html += `<td style="text-align:center;font-weight:bold;color:#ffd700;">${entry.points}</td></tr>`;
       });
       html += `</table></div>`;
 
       // Trophies
       if (career.trophies.length > 0) {
-        html += `<div style="background:rgba(30,30,50,0.9);border:2px solid #daa520;border-radius:8px;padding:16px;margin:10px;min-width:400px;">`;
-        html += `<h3 style="margin:0 0 10px;">Trophy Cabinet</h3>`;
+        html += `<div class="gb-career-panel" style="min-width:400px;">`;
+        html += `<h3>Trophy Cabinet</h3>`;
         for (const trophy of career.trophies) {
-          const icon = trophy.type === "league" ? "League Champion" : "Cup Winner";
-          html += `<div style="margin:4px 0;color:#ffd700;">${icon} - Year ${trophy.year}</div>`;
+          const icon = trophy.type === "league" ? "&#9733; League Champion" : "&#9733; Cup Winner";
+          html += `<div style="margin:6px 0;color:#ffd700;font-size:15px;
+            text-shadow:0 0 6px rgba(218,165,32,0.2);letter-spacing:1px;">${icon} - Year ${trophy.year}</div>`;
         }
         html += `</div>`;
       }
 
       // All-time stats
-      html += `<div style="background:rgba(30,30,50,0.9);border:2px solid #daa520;border-radius:8px;padding:16px;margin:10px;min-width:400px;">`;
-      html += `<h3 style="margin:0 0 10px;">All-Time Record</h3>`;
-      html += `<div style="color:#ddd;">W: ${career.allTimeStats.totalWins} | D: ${career.allTimeStats.totalDraws} | L: ${career.allTimeStats.totalLosses}</div>`;
-      html += `<div style="color:#ddd;">Goals: ${career.allTimeStats.totalGoalsFor} scored, ${career.allTimeStats.totalGoalsAgainst} conceded</div>`;
-      html += `<div style="color:#ddd;">Seasons: ${career.allTimeStats.seasonsPlayed}</div>`;
+      html += `<div class="gb-career-panel" style="min-width:400px;">`;
+      html += `<h3>All-Time Record</h3>`;
+      html += `<div style="color:#c8c0b0;line-height:1.8;">
+        <span style="color:#daa520;">W:</span> ${career.allTimeStats.totalWins} &nbsp;
+        <span style="color:#daa520;">D:</span> ${career.allTimeStats.totalDraws} &nbsp;
+        <span style="color:#daa520;">L:</span> ${career.allTimeStats.totalLosses}</div>`;
+      html += `<div style="color:#c8c0b0;line-height:1.8;">
+        <span style="color:#daa520;">Goals:</span> ${career.allTimeStats.totalGoalsFor} scored, ${career.allTimeStats.totalGoalsAgainst} conceded</div>`;
+      html += `<div style="color:#c8c0b0;line-height:1.8;">
+        <span style="color:#daa520;">Seasons:</span> ${career.allTimeStats.seasonsPlayed}</div>`;
       html += `</div>`;
 
       // Next fixture
@@ -1881,16 +2086,39 @@ export class GrailBallGame {
       if (nextFix) {
         const homeTeam = GB_TEAMS.find(t => t.id === nextFix.homeTeamId);
         const awayTeam = GB_TEAMS.find(t => t.id === nextFix.awayTeamId);
-        html += `<div style="margin:20px;font-size:18px;">Next: ${homeTeam?.name ?? "?"} vs ${awayTeam?.name ?? "?"} ${nextFix.isCup ? "(Cup)" : "(League)"}</div>`;
+        html += `<div style="margin:18px;padding:12px 28px;font-size:17px;
+          background:linear-gradient(90deg, transparent, rgba(62,39,35,0.3), transparent);
+          border-top:1px solid rgba(218,165,32,0.2);border-bottom:1px solid rgba(218,165,32,0.2);
+          color:#d4c5a9;letter-spacing:1px;text-shadow:1px 1px 3px rgba(0,0,0,0.4);">
+          Next: <span style="color:#ffd700;">${homeTeam?.name ?? "?"}</span> vs
+          <span style="color:#ffd700;">${awayTeam?.name ?? "?"}</span>
+          ${nextFix.isCup ? '<span style="color:#c0a0ff;">(Cup)</span>' : '<span style="color:#8b7355;">(League)</span>'}
+        </div>`;
       }
     }
 
     // Buttons
-    html += `<div style="margin-top:20px;display:flex;gap:16px;">`;
-    html += `<div id="gb-career-play" style="font-size:24px;cursor:pointer;padding:12px 36px;border:3px solid #daa520;border-radius:10px;color:#ffd700;transition:all 0.2s;background:rgba(218,165,32,0.1);">PLAY NEXT MATCH</div>`;
-    html += `<div id="gb-career-end" style="font-size:18px;cursor:pointer;padding:12px 24px;border:2px solid #666;border-radius:10px;color:#aaa;transition:all 0.2s;">END SEASON</div>`;
-    html += `<div id="gb-career-exit" style="font-size:18px;cursor:pointer;padding:12px 24px;border:2px solid #666;border-radius:10px;color:#aaa;transition:all 0.2s;">EXIT CAREER</div>`;
+    html += `<div style="margin-top:22px;display:flex;gap:16px;flex-wrap:wrap;justify-content:center;">`;
+    html += `<div id="gb-career-play" class="gb-career-btn" style="font-size:24px;cursor:pointer;padding:14px 40px;
+      border:3px solid #daa520;border-radius:10px;color:#ffd700;transition:all 0.3s ease;
+      background:linear-gradient(180deg, rgba(218,165,32,0.15) 0%, rgba(139,90,0,0.08) 100%);
+      box-shadow:0 4px 15px rgba(0,0,0,0.5), 0 0 15px rgba(218,165,32,0.08), inset 0 1px 0 rgba(255,215,0,0.15);
+      letter-spacing:3px;font-variant:small-caps;text-shadow:0 0 8px rgba(255,215,0,0.3),2px 2px 4px rgba(0,0,0,0.5);">
+      PLAY NEXT MATCH</div>`;
+    html += `<div id="gb-career-end" class="gb-career-btn" style="font-size:17px;cursor:pointer;padding:12px 24px;
+      border:2px solid #6b5a3e;border-radius:10px;color:#d4c5a9;transition:all 0.3s ease;
+      background:linear-gradient(180deg, rgba(62,39,35,0.3) 0%, rgba(40,25,20,0.2) 100%);
+      box-shadow:0 2px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(212,197,169,0.06);
+      letter-spacing:2px;font-variant:small-caps;">END SEASON</div>`;
+    html += `<div id="gb-career-exit" class="gb-career-btn" style="font-size:17px;cursor:pointer;padding:12px 24px;
+      border:2px solid #6b5a3e;border-radius:10px;color:#d4c5a9;transition:all 0.3s ease;
+      background:linear-gradient(180deg, rgba(62,39,35,0.3) 0%, rgba(40,25,20,0.2) 100%);
+      box-shadow:0 2px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(212,197,169,0.06);
+      letter-spacing:2px;font-variant:small-caps;">EXIT CAREER</div>`;
     html += `</div>`;
+
+    // Bottom ornament
+    html += `<div style="font-size:18px;color:#daa520;letter-spacing:12px;opacity:0.35;user-select:none;margin:20px 0 16px;">&#9876; &#9876; &#9876;</div>`;
 
     this._careerDiv.innerHTML = html;
     document.body.appendChild(this._careerDiv);
