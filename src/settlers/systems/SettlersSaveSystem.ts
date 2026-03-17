@@ -213,7 +213,11 @@ function deserializeState(s: SerializedState): SettlersState {
   for (const [id, c] of Object.entries(s.carriers)) carriers.set(id, c);
 
   const soldiers = new Map<string, SettlersSoldier>();
-  for (const [id, sol] of Object.entries(s.soldiers)) soldiers.set(id, sol);
+  for (const [id, sol] of Object.entries(s.soldiers)) {
+    // Migrate old saves that lack pathWaypoints
+    if (!sol.pathWaypoints) sol.pathWaypoints = [];
+    soldiers.set(id, sol);
+  }
 
   return {
     tick: s.tick,

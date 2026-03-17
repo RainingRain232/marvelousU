@@ -45,6 +45,9 @@ export interface SettlersSoldier {
   /** Target military building to attack (null if none) */
   targetBuildingId: string | null;
 
+  /** A* path waypoints in world coordinates (soldier walks toward index 0, shifts when reached) */
+  pathWaypoints: { x: number; z: number }[];
+
   hp: number;
   maxHp: number;
   attackPower: number;

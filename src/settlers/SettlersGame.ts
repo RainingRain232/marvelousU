@@ -22,6 +22,7 @@ import { SettlersInputSystem } from "./systems/SettlersInputSystem";
 import { SettlersHUD } from "./view/SettlersHUD";
 import { saveToLocalStorage, loadFromLocalStorage } from "./systems/SettlersSaveSystem";
 import { updateAudio, destroyAudio, playBuildSound, playDemolishSound, playUIClick, playUIToolSwitch } from "./systems/SettlersAudioSystem";
+import { findPath } from "./systems/SettlersPathfinding";
 
 export class SettlersGame {
   private _state!: SettlersState;
@@ -315,6 +316,7 @@ export class SettlersGame {
         state: "idle",
         garrisonedIn: null,
         targetBuildingId: null,
+        pathWaypoints: [],
         hp: SB.SOLDIER_BASE_HP,
         maxHp: SB.SOLDIER_BASE_HP,
         attackPower: SB.SOLDIER_BASE_ATK,
@@ -588,6 +590,11 @@ export class SettlersGame {
             y: 0,
             z: (c.building.tileZ + 1) * SB.TILE_SIZE,
           };
+          soldier.pathWaypoints = findPath(
+            state.map,
+            soldier.position.x, soldier.position.z,
+            targetX, targetZ,
+          );
           sent++;
         }
       }

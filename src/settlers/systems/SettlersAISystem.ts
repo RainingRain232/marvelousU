@@ -10,6 +10,7 @@ import { SB } from "../config/SettlersBalance";
 import { BUILDING_DEFS, SettlersBuildingType } from "../config/SettlersBuildingDefs";
 import { ResourceType } from "../config/SettlersResourceDefs";
 import { inBounds } from "../state/SettlersMap";
+import { findPath } from "./SettlersPathfinding";
 import type { SettlersState } from "../state/SettlersState";
 import type { SettlersPlayer } from "../state/SettlersPlayer";
 import { canPlaceBuilding, placeBuilding } from "./SettlersBuildingSystem";
@@ -506,6 +507,11 @@ function _initiateCoordinatedAttack(
           y: 0,
           z: (c.building.tileZ + 1) * SB.TILE_SIZE,
         };
+        soldier.pathWaypoints = findPath(
+          state.map,
+          soldier.position.x, soldier.position.z,
+          targetX, targetZ,
+        );
         ai.rallyPool.push(soldierId);
         sent++;
       }

@@ -9,6 +9,7 @@ import { getHeightAt } from "../state/SettlersMap";
 import type { SettlersState } from "../state/SettlersState";
 import { nextId } from "../state/SettlersState";
 import type { SettlersSoldier } from "../state/SettlersUnit";
+import { findPath } from "./SettlersPathfinding";
 
 // ---------------------------------------------------------------------------
 // Soldier creation from Barracks
@@ -70,6 +71,7 @@ export function updateBarracks(state: SettlersState, dt: number): void {
         state: "idle",
         garrisonedIn: null,
         targetBuildingId: null,
+        pathWaypoints: [],
         hp: SB.SOLDIER_BASE_HP,
         maxHp: SB.SOLDIER_BASE_HP,
         attackPower: SB.SOLDIER_BASE_ATK,
@@ -118,6 +120,7 @@ export function removeFromProductionQueue(
 // ---------------------------------------------------------------------------
 
 export function updateGarrisoning(state: SettlersState, dt: number): void {
+  // Idle soldiers pick a garrison target and compute an A* path
   for (const [, soldier] of state.soldiers) {
     if (soldier.state !== "idle") continue;
 
@@ -149,32 +152,17 @@ export function updateGarrisoning(state: SettlersState, dt: number): void {
       const bx = (building.tileX + 1) * SB.TILE_SIZE;
       const bz = (building.tileZ + 1) * SB.TILE_SIZE;
 
-      // March toward building
       soldier.state = "marching";
       soldier.targetBuildingId = bestBuildingId;
-
-      // Move toward target
-      const dx = bx - soldier.position.x;
-      const dz = bz - soldier.position.z;
-      const dist = Math.sqrt(dx * dx + dz * dz);
-
-      if (dist < SB.TILE_SIZE) {
-        // Arrived – garrison
-        soldier.state = "garrisoned";
-        soldier.garrisonedIn = bestBuildingId;
-        building.garrison.push(soldier.id);
-        const player = state.players.get(soldier.owner);
-        if (player) player.freeSoldiers = Math.max(0, player.freeSoldiers - 1);
-      } else {
-        const speed = SB.SOLDIER_MARCH_SPEED * SB.TILE_SIZE * dt;
-        soldier.position.x += (dx / dist) * speed;
-        soldier.position.z += (dz / dist) * speed;
-        soldier.position.y = getHeightAt(state.map, soldier.position.x, soldier.position.z);
-      }
+      soldier.pathWaypoints = findPath(
+        state.map,
+        soldier.position.x, soldier.position.z,
+        bx, bz,
+      );
     }
   }
 
-  // Also move marching soldiers
+  // Move marching soldiers along their waypoint paths
   for (const [, soldier] of state.soldiers) {
     if (soldier.state !== "marching" || !soldier.targetBuildingId) continue;
     if (soldier.garrisonedIn) continue;
@@ -183,18 +171,33 @@ export function updateGarrisoning(state: SettlersState, dt: number): void {
     if (!building) {
       soldier.state = "idle";
       soldier.targetBuildingId = null;
+      soldier.pathWaypoints = [];
       continue;
     }
 
+    // If no waypoints remain, recalculate path
+    if (soldier.pathWaypoints.length === 0) {
+      const bx = (building.tileX + 1) * SB.TILE_SIZE;
+      const bz = (building.tileZ + 1) * SB.TILE_SIZE;
+      soldier.pathWaypoints = findPath(
+        state.map,
+        soldier.position.x, soldier.position.z,
+        bx, bz,
+      );
+      if (soldier.pathWaypoints.length === 0) continue;
+    }
+
+    // Check distance to final destination (building center)
     const bx = (building.tileX + 1) * SB.TILE_SIZE;
     const bz = (building.tileZ + 1) * SB.TILE_SIZE;
-    const dx = bx - soldier.position.x;
-    const dz = bz - soldier.position.z;
-    const dist = Math.sqrt(dx * dx + dz * dz);
+    const dxFinal = bx - soldier.position.x;
+    const dzFinal = bz - soldier.position.z;
+    const distFinal = Math.sqrt(dxFinal * dxFinal + dzFinal * dzFinal);
 
-    if (dist < SB.TILE_SIZE) {
+    if (distFinal < SB.TILE_SIZE) {
+      // Arrived at target building
+      soldier.pathWaypoints = [];
       if (building.owner === soldier.owner) {
-        // Garrison
         const def = BUILDING_DEFS[building.type];
         if (building.garrison.length < def.garrisonSlots) {
           soldier.state = "garrisoned";
@@ -225,18 +228,39 @@ export function updateGarrisoning(state: SettlersState, dt: number): void {
             });
           }
         } else {
-          // Building undefended – capture it!
           _captureBuilding(state, building, soldier.owner);
           soldier.state = "idle";
           soldier.targetBuildingId = null;
         }
       }
     } else {
-      const speed = SB.SOLDIER_MARCH_SPEED * SB.TILE_SIZE * dt;
-      soldier.position.x += (dx / dist) * speed;
-      soldier.position.z += (dz / dist) * speed;
-      soldier.position.y = getHeightAt(state.map, soldier.position.x, soldier.position.z);
+      // Follow waypoints
+      _followWaypoints(state, soldier, dt);
     }
+  }
+}
+
+/** Move soldier toward current waypoint, advancing to next when reached */
+function _followWaypoints(state: SettlersState, soldier: SettlersSoldier, dt: number): void {
+  if (soldier.pathWaypoints.length === 0) return;
+
+  const wp = soldier.pathWaypoints[0];
+  const dx = wp.x - soldier.position.x;
+  const dz = wp.z - soldier.position.z;
+  const dist = Math.sqrt(dx * dx + dz * dz);
+
+  const speed = SB.SOLDIER_MARCH_SPEED * SB.TILE_SIZE * dt;
+
+  if (dist < speed || dist < 0.1) {
+    // Reached this waypoint, advance to next
+    soldier.position.x = wp.x;
+    soldier.position.z = wp.z;
+    soldier.position.y = getHeightAt(state.map, wp.x, wp.z);
+    soldier.pathWaypoints.shift();
+  } else {
+    soldier.position.x += (dx / dist) * speed;
+    soldier.position.z += (dz / dist) * speed;
+    soldier.position.y = getHeightAt(state.map, soldier.position.x, soldier.position.z);
   }
 }
 
