@@ -38,6 +38,7 @@ interface SerializedState {
     territory: number[];
     buildable: number[];
     occupied: string[];
+    roadTiles?: number[];
     visibility?: number[][];
     trees: { x: number; z: number; scale: number; variant: number }[];
     rocks: { x: number; z: number; scale: number }[];
@@ -133,6 +134,7 @@ function serializeState(state: SettlersState): SerializedState {
       territory: Array.from(state.map.territory),
       buildable: Array.from(state.map.buildable),
       occupied: [...state.map.occupied],
+      roadTiles: Array.from(state.map.roadTiles),
       visibility: state.map.visibility.map(v => Array.from(v)),
       trees: state.map.trees,
       rocks: state.map.rocks,
@@ -179,6 +181,9 @@ function deserializeState(s: SerializedState): SettlersState {
     territory: new Int8Array(s.map.territory),
     buildable: new Uint8Array(s.map.buildable),
     occupied: s.map.occupied,
+    roadTiles: (s.map as any).roadTiles
+      ? new Uint8Array((s.map as any).roadTiles)
+      : new Uint8Array(s.map.width * s.map.height),
     visibility: s.map.visibility
       ? s.map.visibility.map(v => new Uint8Array(v))
       : [
@@ -212,6 +217,7 @@ function deserializeState(s: SerializedState): SettlersState {
     if ((b as any).upgradeProgress === undefined) (b as any).upgradeProgress = 0;
     if ((b as any).marketSellResource === undefined) (b as any).marketSellResource = null;
     if ((b as any).marketBuyResource === undefined) (b as any).marketBuyResource = null;
+    if ((b as any).constructionElapsed === undefined) (b as any).constructionElapsed = 0;
     buildings.set(id, b);
   }
 

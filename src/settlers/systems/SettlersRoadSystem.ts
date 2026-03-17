@@ -84,10 +84,45 @@ export function createRoad(
   flagA.connectedRoads.push(id);
   flagB.connectedRoads.push(id);
 
+  // Mark road tiles on the map and clear trees along the path
+  _markRoadTiles(state, road.path, 1);
+  const ts = state.map.tileSize;
+  const clearRadius = ts * 0.6;
+  state.map.trees = state.map.trees.filter((tree) => {
+    for (const p of road.path) {
+      const cx = (p.x + 0.5) * ts;
+      const cz = (p.z + 0.5) * ts;
+      const dx = tree.x - cx;
+      const dz = tree.z - cz;
+      if (dx * dx + dz * dz < clearRadius * clearRadius) return false;
+    }
+    return true;
+  });
+
   // Spawn a carrier for this road segment
   spawnCarrier(state, road);
 
   return road;
+}
+
+// ---------------------------------------------------------------------------
+// Road tile marking
+// ---------------------------------------------------------------------------
+
+/** Increment or decrement road tile counts along a path */
+function _markRoadTiles(state: SettlersState, path: { x: number; z: number }[], delta: number): void {
+  const map = state.map;
+  for (const p of path) {
+    if (inBounds(map, p.x, p.z)) {
+      const idx = tileIdx(map, p.x, p.z);
+      map.roadTiles[idx] = Math.max(0, map.roadTiles[idx] + delta);
+    }
+  }
+}
+
+/** Unmark road tiles when a road is removed (call before deleting from state.roads) */
+export function unmarkRoadTiles(state: SettlersState, road: SettlersRoadSegment): void {
+  _markRoadTiles(state, road.path, -1);
 }
 
 // ---------------------------------------------------------------------------

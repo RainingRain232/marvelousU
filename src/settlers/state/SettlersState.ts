@@ -119,6 +119,7 @@ export function createSettlersState(screenW: number, screenH: number): SettlersS
     territory: new Int8Array(totalTiles).fill(-1),
     buildable: new Uint8Array(totalTiles),
     occupied: new Array(totalTiles).fill(""),
+    roadTiles: new Uint8Array(totalTiles),
     visibility: [
       new Uint8Array(totalTiles), // p0 – all HIDDEN (0)
       new Uint8Array(totalTiles), // p1 – all HIDDEN (0)

@@ -12,6 +12,7 @@ import { nextId } from "../state/SettlersState";
 import type { SettlersFlag } from "../state/SettlersRoad";
 import type { SettlersWorker } from "../state/SettlersUnit";
 import { playResourceCollected } from "./SettlersAudioSystem";
+import { unmarkRoadTiles } from "./SettlersRoadSystem";
 
 // ---------------------------------------------------------------------------
 // Raw resource types (for trade rate calculation)
@@ -151,6 +152,7 @@ export function placeBuilding(
     upgradeProgress: 0,
     marketSellResource: null,
     marketBuyResource: null,
+    constructionElapsed: 0,
   };
 
   state.buildings.set(id, building);
@@ -184,9 +186,41 @@ export function placeBuilding(
 // Construction tick – deliver materials and advance progress
 // ---------------------------------------------------------------------------
 
+/** Seconds before fallback kicks in and delivers materials directly */
+const CONSTRUCTION_FALLBACK_DELAY = 8;
+/** Seconds between each fallback material delivery */
+const CONSTRUCTION_FALLBACK_INTERVAL = 2;
+
 export function updateConstruction(state: SettlersState, dt: number): void {
   for (const [, building] of state.buildings) {
     if (building.constructionProgress >= 1) continue;
+
+    building.constructionElapsed += dt;
+
+    // Fallback: if materials haven't been fully delivered after a delay,
+    // directly consume from player storage (simulates a builder carrying them).
+    // This fires once every FALLBACK_INTERVAL after the initial delay.
+    const hasUndelivered = building.constructionNeeds.some((n) => n.amount > 0);
+    if (hasUndelivered && building.constructionElapsed > CONSTRUCTION_FALLBACK_DELAY) {
+      const elapsed = building.constructionElapsed - CONSTRUCTION_FALLBACK_DELAY;
+      const prevElapsed = elapsed - dt;
+      // Trigger once per interval
+      if (Math.floor(elapsed / CONSTRUCTION_FALLBACK_INTERVAL) > Math.floor(Math.max(0, prevElapsed) / CONSTRUCTION_FALLBACK_INTERVAL)) {
+        const player = state.players.get(building.owner);
+        if (player) {
+          for (const need of building.constructionNeeds) {
+            if (need.amount > 0) {
+              const available = player.storage.get(need.type) || 0;
+              if (available > 0) {
+                player.storage.set(need.type, available - 1);
+                need.amount--;
+              }
+              break; // one material per interval
+            }
+          }
+        }
+      }
+    }
 
     // Check if all construction materials have been delivered
     const allDelivered = building.constructionNeeds.every((n) => n.amount <= 0);
@@ -199,7 +233,7 @@ export function updateConstruction(state: SettlersState, dt: number): void {
 
         // Territory may change when a military building finishes construction
         state.territoryDirty = true;
-  state.fogDirty = true;
+        state.fogDirty = true;
 
         // Assign a worker if available (for production buildings)
         const def = BUILDING_DEFS[building.type];
@@ -293,6 +327,8 @@ export function demolishBuilding(state: SettlersState, buildingId: string): bool
     for (const roadId of [...flag.connectedRoads]) {
       const road = state.roads.get(roadId);
       if (road) {
+        // Unmark road tiles
+        unmarkRoadTiles(state, road);
         // Remove carrier
         if (road.carrierId) {
           state.carriers.delete(road.carrierId);

@@ -12,7 +12,7 @@ import { getHeightAt } from "./state/SettlersMap";
 import { generateTerrain, findStartPosition } from "./systems/SettlersTerrainSystem";
 import { placeBuilding, canPlaceBuilding, updateConstruction, updateProduction, updateUpgrades, upgradeBuilding, setMarketTrade, demolishBuilding, updateWorkers } from "./systems/SettlersBuildingSystem";
 import { recalculateTerritory, updateTerritory } from "./systems/SettlersTerritorySystem";
-import { placeFlag, createRoad, routeGoods, upgradeRoad } from "./systems/SettlersRoadSystem";
+import { placeFlag, createRoad, routeGoods, upgradeRoad, unmarkRoadTiles } from "./systems/SettlersRoadSystem";
 import { updateCarriers } from "./systems/SettlersCarrierSystem";
 import { updateBarracks, updateGarrisoning, updateCombat, updateCatapultTowers, checkWinCondition, addToProductionQueue, removeFromProductionQueue } from "./systems/SettlersMilitarySystem";
 import { updateAI } from "./systems/SettlersAISystem";
@@ -611,6 +611,9 @@ export class SettlersGame {
   private _demolishRoadSegment(state: SettlersState, roadId: string): void {
     const road = state.roads.get(roadId);
     if (!road) return;
+
+    // Unmark road tiles on the map
+    unmarkRoadTiles(state, road);
 
     // Remove the carrier assigned to this road
     if (road.carrierId) {

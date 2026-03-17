@@ -57,4 +57,7 @@ export interface SettlersBuilding {
   /** Market trade state (only for MARKET buildings) */
   marketSellResource: ResourceType | null;
   marketBuyResource: ResourceType | null;
+
+  /** Seconds elapsed since construction started (for fallback delivery) */
+  constructionElapsed: number;
 }

@@ -68,7 +68,7 @@ export class SettlersRenderer {
   private _carrierMeshes = new Map<string, THREE.Group>();
   private _workerMeshes = new Map<string, THREE.Group>();
   private _soldierMeshes = new Map<string, THREE.Group>();
-  private _roadMeshes = new Map<string, THREE.Mesh>();
+  private _roadMeshes = new Map<string, THREE.Group>();
   /** Track road quality so we know when to rebuild road meshes */
   private _roadQualities = new Map<string, string>();
 
@@ -2885,38 +2885,48 @@ export class SettlersRenderer {
     path: { x: number; z: number }[],
     state: SettlersState,
     quality: RoadQuality = "dirt",
-  ): THREE.Mesh {
+  ): THREE.Group {
+    const group = new THREE.Group();
+
     const points: THREE.Vector3[] = [];
     for (const p of path) {
       const wx = (p.x + 0.5) * SB.TILE_SIZE;
       const wz = (p.z + 0.5) * SB.TILE_SIZE;
-      const wy = getHeightAt(state.map, wx, wz) + 0.12;
+      const wy = getHeightAt(state.map, wx, wz) + 0.08;
       points.push(new THREE.Vector3(wx, wy, wz));
     }
 
     if (points.length < 2) {
-      const geo = new THREE.PlaneGeometry(0.01, 0.01);
-      return new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ visible: false }));
+      return group;
     }
 
-    // Build ribbon with vertex colors – color varies by road quality
+    // Road width is wider than before – nearly a full tile
+    const roadWidth = SB.TILE_SIZE * 0.7;
+    const hw = roadWidth * 0.5;
+
+    // Build ribbon with vertex colors – 6 vertices per point for richer detail:
+    // outer-left, left-border, left-surface, right-surface, right-border, outer-right
     const positions: number[] = [];
     const indices: number[] = [];
     const colors: number[] = [];
-    const hw = SB.ROAD_WIDTH * 0.5;
 
-    // Road colors by quality: dirt = brown, stone = gray, paved = light gray/white
-    let edgeColor: THREE.Color;
-    let centerColor: THREE.Color;
+    // Road colors by quality
+    let outerColor: THREE.Color;
+    let borderColor: THREE.Color;
+    let surfaceColor: THREE.Color;
     if (quality === "paved") {
-      edgeColor = new THREE.Color(0x999999);
-      centerColor = new THREE.Color(0xd8d8d0);
+      outerColor = new THREE.Color(0x666660);
+      borderColor = new THREE.Color(0x888880);
+      surfaceColor = new THREE.Color(0xd0d0c8);
     } else if (quality === "stone") {
-      edgeColor = new THREE.Color(0x6a6a62);
-      centerColor = new THREE.Color(0x9a9a90);
+      outerColor = new THREE.Color(0x555550);
+      borderColor = new THREE.Color(0x7a7a72);
+      surfaceColor = new THREE.Color(0xa0a098);
     } else {
-      edgeColor = new THREE.Color(0x7a6a4a);
-      centerColor = new THREE.Color(0xb09868);
+      // Dirt – warm brown, clearly distinct from green terrain
+      outerColor = new THREE.Color(0x5a4a2a);
+      borderColor = new THREE.Color(0x7a6030);
+      surfaceColor = new THREE.Color(0xc0a060);
     }
 
     for (let i = 0; i < points.length; i++) {
@@ -2930,31 +2940,29 @@ export class SettlersRenderer {
       const px = -dz / len * hw;
       const pz = dx / len * hw;
 
-      // Left edge
-      positions.push(cur.x + px * 1.3, cur.y - 0.01, cur.z + pz * 1.3);
-      // Left
-      positions.push(cur.x + px, cur.y, cur.z + pz);
-      // Right
-      positions.push(cur.x - px, cur.y, cur.z - pz);
-      // Right edge
-      positions.push(cur.x - px * 1.3, cur.y - 0.01, cur.z - pz * 1.3);
+      // 6 vertices per path point: outer-left → center → outer-right
+      const drop = 0.03; // outer edges drop slightly for ground blending
+      positions.push(cur.x + px * 1.4, cur.y - drop, cur.z + pz * 1.4);  // 0: outer-left
+      positions.push(cur.x + px * 1.05, cur.y, cur.z + pz * 1.05);       // 1: border-left
+      positions.push(cur.x + px * 0.5, cur.y + 0.02, cur.z + pz * 0.5);  // 2: surface-left
+      positions.push(cur.x - px * 0.5, cur.y + 0.02, cur.z - pz * 0.5);  // 3: surface-right
+      positions.push(cur.x - px * 1.05, cur.y, cur.z - pz * 1.05);       // 4: border-right
+      positions.push(cur.x - px * 1.4, cur.y - drop, cur.z - pz * 1.4);  // 5: outer-right
 
-      colors.push(edgeColor.r, edgeColor.g, edgeColor.b);
-      colors.push(centerColor.r, centerColor.g, centerColor.b);
-      colors.push(centerColor.r, centerColor.g, centerColor.b);
-      colors.push(edgeColor.r, edgeColor.g, edgeColor.b);
+      colors.push(outerColor.r, outerColor.g, outerColor.b);
+      colors.push(borderColor.r, borderColor.g, borderColor.b);
+      colors.push(surfaceColor.r, surfaceColor.g, surfaceColor.b);
+      colors.push(surfaceColor.r, surfaceColor.g, surfaceColor.b);
+      colors.push(borderColor.r, borderColor.g, borderColor.b);
+      colors.push(outerColor.r, outerColor.g, outerColor.b);
 
       if (i < points.length - 1) {
-        const vi = i * 4;
-        // Left edge strip
-        indices.push(vi, vi + 1, vi + 4);
-        indices.push(vi + 1, vi + 5, vi + 4);
-        // Center strip
-        indices.push(vi + 1, vi + 2, vi + 5);
-        indices.push(vi + 2, vi + 6, vi + 5);
-        // Right edge strip
-        indices.push(vi + 2, vi + 3, vi + 6);
-        indices.push(vi + 3, vi + 7, vi + 6);
+        const vi = i * 6;
+        // 5 strips connecting 6 vertices per point
+        for (let s = 0; s < 5; s++) {
+          indices.push(vi + s, vi + s + 1, vi + 6 + s);
+          indices.push(vi + s + 1, vi + 6 + s + 1, vi + 6 + s);
+        }
       }
     }
 
@@ -2966,16 +2974,56 @@ export class SettlersRenderer {
 
     const mat = new THREE.MeshStandardMaterial({
       vertexColors: true,
-      roughness: 0.95,
+      roughness: quality === "paved" ? 0.6 : quality === "stone" ? 0.8 : 0.95,
       polygonOffset: true,
-      polygonOffsetFactor: -1,
-      polygonOffsetUnits: -1,
+      polygonOffsetFactor: -2,
+      polygonOffsetUnits: -2,
     });
 
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.receiveShadow = true;
-    mesh.renderOrder = 1;
-    return mesh;
+    const roadMesh = new THREE.Mesh(geo, mat);
+    roadMesh.receiveShadow = true;
+    roadMesh.renderOrder = 1;
+    group.add(roadMesh);
+
+    // For stone and paved roads, add small border stones along edges
+    if (quality !== "dirt" && points.length >= 2) {
+      const stoneGeo = new THREE.SphereGeometry(0.06, 4, 3);
+      const stoneMat = new THREE.MeshStandardMaterial({
+        color: quality === "paved" ? 0xaaaaaa : 0x888880,
+        roughness: 0.9,
+      });
+      const spacing = quality === "paved" ? 1.0 : 1.5;
+      let accumulated = 0;
+      for (let i = 0; i < points.length - 1; i++) {
+        const a = points[i];
+        const b = points[i + 1];
+        const segLen = a.distanceTo(b);
+        const dx = b.x - a.x;
+        const dz = b.z - a.z;
+        const len = Math.sqrt(dx * dx + dz * dz) || 1;
+        const nx = -dz / len * hw * 1.05;
+        const nz = dx / len * hw * 1.05;
+
+        while (accumulated < segLen) {
+          const t = accumulated / segLen;
+          const sx = a.x + (b.x - a.x) * t;
+          const sz = a.z + (b.z - a.z) * t;
+          const sy = a.y + (b.y - a.y) * t;
+          // Left border stone
+          const stoneL = new THREE.Mesh(stoneGeo, stoneMat);
+          stoneL.position.set(sx + nx, sy - 0.02, sz + nz);
+          group.add(stoneL);
+          // Right border stone
+          const stoneR = new THREE.Mesh(stoneGeo, stoneMat);
+          stoneR.position.set(sx - nx, sy - 0.02, sz - nz);
+          group.add(stoneR);
+          accumulated += spacing;
+        }
+        accumulated -= segLen;
+      }
+    }
+
+    return group;
   }
 
   // -----------------------------------------------------------------------
@@ -3378,12 +3426,12 @@ export class SettlersRenderer {
       body.add(strap);
     }
 
-    // === CARGO (resource being carried – on top of pack, hidden by default) ===
-    const cargoMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+    // === CARGO (resource being carried – on top of pack, visible and prominent) ===
+    const cargoMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x222222 });
     const cargo = new THREE.Mesh(this._boxGeo, cargoMat);
     cargo.name = "cargo";
-    cargo.scale.set(h * 0.18, h * 0.12, h * 0.12);
-    cargo.position.set(0, h * 0.72, -h * 0.2);
+    cargo.scale.set(h * 0.28, h * 0.2, h * 0.2);
+    cargo.position.set(0, h * 0.80, -h * 0.18);
     cargo.visible = false;
     body.add(cargo);
 

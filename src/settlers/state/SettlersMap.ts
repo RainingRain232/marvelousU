@@ -56,6 +56,9 @@ export interface SettlersMap {
   /** Per-tile building ID occupying this tile (empty string = free) */
   occupied: string[];
 
+  /** Per-tile road count – how many road segments pass through this tile (0 = no road) */
+  roadTiles: Uint8Array;
+
   /**
    * Per-player visibility grids: playerIndex -> Uint8Array of Visibility values.
    * Index 0 = human player (p0), index 1 = AI (p1).
