@@ -2268,9 +2268,14 @@ export class WarbandCampaign {
     this._cityPanel = document.createElement("div");
     this._cityPanel.style.cssText = `
       position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-      width:520px;max-height:80vh;overflow-y:auto;
-      background:rgba(15,12,8,0.97);border:2px solid ${factionColor};border-radius:10px;
-      padding:24px;z-index:10;
+      width:540px;max-height:80vh;overflow-y:auto;
+      background:linear-gradient(180deg, rgba(18,14,9,0.98) 0%, rgba(12,10,6,0.98) 100%);
+      border:2px solid ${factionColor};border-radius:10px;
+      padding:24px 28px;z-index:10;
+      box-shadow:0 8px 40px rgba(0,0,0,0.7), 0 0 20px ${factionColor}15, inset 0 1px 0 rgba(255,220,140,0.06);
+      scrollbar-width:thin;scrollbar-color:#5a4020 rgba(10,8,5,0.3);
+      font-family:'Palatino Linotype','Book Antiqua',Palatino,serif;
+      background-image:url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='60' height='60' filter='url(%23n)' opacity='0.02'/%3E%3C/svg%3E");
     `;
 
     // Garrison display
@@ -2289,26 +2294,30 @@ export class WarbandCampaign {
       const allUnits = elite ? [...available, elite] : available;
 
       hireHTML = `
-        <div style="margin-top:16px;border-top:1px solid #443322;padding-top:12px">
-          <div style="color:#daa520;font-size:13px;margin-bottom:8px;letter-spacing:1px">RECRUIT UNITS</div>
+        <div style="margin-top:16px;border-top:1px solid rgba(90,64,32,0.3);padding-top:14px">
+          <div style="color:#daa520;font-size:12px;margin-bottom:8px;letter-spacing:1.5px;text-transform:uppercase"><span style="color:#5a4020">\u2726</span> RECRUIT UNITS</div>
           <div style="max-height:250px;overflow-y:auto">
             ${allUnits.map((u) => {
               const cost = Math.round(u.cost * HIRE_COST_MULT);
               const canAfford = this._state!.gold >= cost;
               const partyFull = this._state!.playerParty.armyTotal >= MAX_PARTY_SIZE + this._getPerkCount("commander") * 5;
               return `
-                <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 8px;
-                  margin-bottom:3px;background:rgba(30,25,15,0.6);border-radius:4px;border:1px solid #332211">
-                  <span style="color:${u.faction ? factionColor : "#ccc"}">${u.name} ${u.faction ? "(Elite)" : ""}</span>
-                  <span style="color:#998877;font-size:11px">T${u.tier} | ${cost}g</span>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;
+                  margin-bottom:4px;background:linear-gradient(135deg, rgba(30,25,15,0.6) 0%, rgba(20,16,10,0.5) 100%);border-radius:5px;border:1px solid rgba(90,64,32,0.2);
+                  transition:border-color 0.15s;box-shadow:inset 0 1px 0 rgba(255,220,140,0.03)"
+                  onmouseover="this.style.borderColor='rgba(218,165,32,0.4)'" onmouseout="this.style.borderColor='rgba(90,64,32,0.2)'">
+                  <span style="color:${u.faction ? factionColor : "#ccc"};font-size:12px">${u.name} ${u.faction ? "<span style='color:#daa520;font-size:10px'>\u2605</span>" : ""}</span>
+                  <span style="color:#998877;font-size:10px">T${u.tier} \u2758 ${cost}g</span>
                   <button class="camp-hire-btn" data-unit="${u.id}" data-cost="${cost}" style="
-                    padding:2px 10px;font-size:11px;
-                    border:1px solid ${canAfford && !partyFull ? "#daa520" : "#444"};
-                    border-radius:3px;
-                    background:${canAfford && !partyFull ? "rgba(218,165,32,0.2)" : "rgba(20,15,10,0.6)"};
+                    padding:3px 12px;font-size:10px;font-weight:bold;letter-spacing:0.5px;
+                    border:1px solid ${canAfford && !partyFull ? "#daa520" : "#333"};
+                    border-radius:4px;
+                    background:${canAfford && !partyFull ? "linear-gradient(180deg, rgba(218,165,32,0.25) 0%, rgba(160,120,20,0.15) 100%)" : "rgba(20,15,10,0.6)"};
                     color:${canAfford && !partyFull ? "#daa520" : "#555"};
                     cursor:${canAfford && !partyFull ? "pointer" : "not-allowed"};
                     font-family:inherit;
+                    box-shadow:${canAfford && !partyFull ? "inset 0 1px 0 rgba(255,220,140,0.1)" : "none"};
+                    transition:all 0.15s ease;
                   " ${canAfford && !partyFull ? "" : "disabled"}>Hire</button>
                 </div>
               `;
@@ -2324,27 +2333,34 @@ export class WarbandCampaign {
     if (isOwned && canInteract) {
       const canBuyFood = city.foodStock > 0 && this._state!.gold >= FOOD_PURCHASE_COST;
       cityActionsHTML = `
-        <div style="margin-top:14px;border-top:1px solid #443322;padding-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+        <div style="margin-top:14px;border-top:1px solid rgba(90,64,32,0.3);padding-top:14px;display:flex;gap:8px;flex-wrap:wrap">
           <button id="city-buildings-btn" style="
-            padding:6px 14px;font-size:12px;border:1px solid #daa520;border-radius:4px;
-            background:rgba(218,165,32,0.15);color:#daa520;cursor:pointer;font-family:inherit;
+            padding:7px 16px;font-size:11px;font-weight:bold;border:1px solid rgba(218,165,32,0.5);border-radius:5px;
+            background:linear-gradient(180deg, rgba(218,165,32,0.2) 0%, rgba(160,120,20,0.1) 100%);
+            color:#daa520;cursor:pointer;font-family:inherit;letter-spacing:0.5px;
+            box-shadow:inset 0 1px 0 rgba(255,220,140,0.1);transition:all 0.15s ease;
           ">\uD83C\uDFD7 Buildings</button>
           <button id="city-trade-btn" style="
-            padding:6px 14px;font-size:12px;border:1px solid #cc8844;border-radius:4px;
-            background:rgba(204,136,68,0.15);color:#cc8844;cursor:pointer;font-family:inherit;
+            padding:7px 16px;font-size:11px;font-weight:bold;border:1px solid rgba(204,136,68,0.5);border-radius:5px;
+            background:linear-gradient(180deg, rgba(204,136,68,0.2) 0%, rgba(150,100,50,0.1) 100%);
+            color:#cc8844;cursor:pointer;font-family:inherit;letter-spacing:0.5px;
+            box-shadow:inset 0 1px 0 rgba(255,180,100,0.08);transition:all 0.15s ease;
           ">\uD83D\uDCE6 Trade</button>
           ${hasSiegeWorkshop ? `
             <button id="city-siege-btn" style="
-              padding:6px 14px;font-size:12px;border:1px solid #666688;border-radius:4px;
-              background:rgba(102,102,136,0.15);color:#8888aa;cursor:pointer;font-family:inherit;
+              padding:7px 16px;font-size:11px;font-weight:bold;border:1px solid rgba(102,102,136,0.5);border-radius:5px;
+              background:linear-gradient(180deg, rgba(102,102,136,0.2) 0%, rgba(70,70,100,0.1) 100%);
+              color:#8888aa;cursor:pointer;font-family:inherit;letter-spacing:0.5px;
+              box-shadow:inset 0 1px 0 rgba(150,150,200,0.08);transition:all 0.15s ease;
             ">\u2694 Siege Equipment</button>
           ` : ""}
           <button id="city-buy-food-btn" style="
-            padding:6px 14px;font-size:12px;
-            border:1px solid ${canBuyFood ? "#66aa66" : "#444"};border-radius:4px;
-            background:${canBuyFood ? "rgba(102,170,102,0.15)" : "rgba(20,15,10,0.6)"};
+            padding:7px 16px;font-size:11px;font-weight:bold;
+            border:1px solid ${canBuyFood ? "rgba(102,170,102,0.5)" : "#333"};border-radius:5px;
+            background:${canBuyFood ? "linear-gradient(180deg, rgba(102,170,102,0.2) 0%, rgba(70,120,70,0.1) 100%)" : "rgba(20,15,10,0.6)"};
             color:${canBuyFood ? "#66cc66" : "#555"};
-            cursor:${canBuyFood ? "pointer" : "not-allowed"};font-family:inherit;
+            cursor:${canBuyFood ? "pointer" : "not-allowed"};font-family:inherit;letter-spacing:0.5px;
+            box-shadow:${canBuyFood ? "inset 0 1px 0 rgba(150,255,150,0.08)" : "none"};transition:all 0.15s ease;
           " ${canBuyFood ? "" : "disabled"}>Buy Food (${FOOD_PURCHASE_COST}g/ea, stock: ${city.foodStock})</button>
         </div>
       `;
@@ -2355,29 +2371,36 @@ export class WarbandCampaign {
     if (!isOwned && canInteract) {
       attackHTML = `
         <button id="camp-attack-city" style="
-          margin-top:16px;padding:10px 24px;font-size:14px;font-weight:bold;
-          border:2px solid #cc4444;border-radius:6px;
-          background:rgba(204,68,68,0.2);color:#ff6666;
-          cursor:pointer;font-family:inherit;width:100%;
-        ">Attack City (${city.garrisonTotal} defenders)</button>
+          margin-top:16px;padding:12px 24px;font-size:14px;font-weight:bold;
+          border:2px solid rgba(204,68,68,0.6);border-radius:6px;
+          background:linear-gradient(180deg, rgba(180,40,40,0.3) 0%, rgba(120,20,20,0.2) 100%);
+          color:#ff6666;cursor:pointer;font-family:inherit;width:100%;letter-spacing:1px;
+          box-shadow:0 2px 10px rgba(204,68,68,0.15), inset 0 1px 0 rgba(255,120,120,0.1);
+          transition:all 0.2s ease;text-shadow:0 1px 3px rgba(0,0,0,0.5);
+        "
+        onmouseover="this.style.background='linear-gradient(180deg, rgba(200,50,50,0.45) 0%, rgba(140,30,30,0.3) 100%)';this.style.boxShadow='0 2px 16px rgba(204,68,68,0.3), inset 0 1px 0 rgba(255,120,120,0.15)'"
+        onmouseout="this.style.background='linear-gradient(180deg, rgba(180,40,40,0.3) 0%, rgba(120,20,20,0.2) 100%)';this.style.boxShadow='0 2px 10px rgba(204,68,68,0.15), inset 0 1px 0 rgba(255,120,120,0.1)'"
+        >\u2694 Attack City (${city.garrisonTotal} defenders)</button>
       `;
     }
 
     this._cityPanel.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid rgba(90,64,32,0.3)">
         <div>
-          <h2 style="font-size:24px;color:${factionColor};margin:0">${city.name}</h2>
-          <span style="font-size:12px;color:#887766">${factionDef?.name ?? city.factionId} — ${factionDef?.title ?? ""}</span>
-          ${!isOwned ? `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;margin-left:6px;vertical-align:middle;background:${this._relationColor(this._getRelation(this._state!.playerFaction, city.factionId))}" title="Relation: ${this._getRelation(this._state!.playerFaction, city.factionId)} (${this._getRelationStatus(this._state!.playerFaction, city.factionId)})"></span>` : ""}
+          <h2 style="font-size:24px;color:${factionColor};margin:0;text-shadow:0 0 10px ${factionColor}33;letter-spacing:1px">${city.name}</h2>
+          <span style="font-size:11px;color:#887766">${factionDef?.name ?? city.factionId} — ${factionDef?.title ?? ""}</span>
+          ${!isOwned ? `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;margin-left:6px;vertical-align:middle;background:${this._relationColor(this._getRelation(this._state!.playerFaction, city.factionId))};box-shadow:0 0 4px ${this._relationColor(this._getRelation(this._state!.playerFaction, city.factionId))}66" title="Relation: ${this._getRelation(this._state!.playerFaction, city.factionId)} (${this._getRelationStatus(this._state!.playerFaction, city.factionId)})"></span>` : ""}
         </div>
         <button id="camp-close-city" style="
-          padding:4px 12px;font-size:14px;border:1px solid #555;border-radius:4px;
-          background:rgba(30,25,15,0.6);color:#888;cursor:pointer;font-family:inherit;
-        ">X</button>
+          padding:4px 10px;font-size:12px;border:1px solid rgba(90,64,32,0.4);border-radius:4px;
+          background:linear-gradient(180deg, rgba(30,25,15,0.7) 0%, rgba(15,12,8,0.8) 100%);
+          color:#998877;cursor:pointer;font-family:inherit;
+          box-shadow:inset 0 1px 0 rgba(255,255,255,0.03);transition:all 0.15s ease;letter-spacing:1px;
+        ">\u2716</button>
       </div>
-      ${!canInteract ? `<div style="color:#cc8844;font-size:12px;margin-bottom:8px">Move closer to interact with this city.</div>` : ""}
+      ${!canInteract ? `<div style="color:#cc8844;font-size:12px;margin-bottom:8px;padding:6px 10px;background:rgba(204,136,68,0.08);border:1px solid rgba(204,136,68,0.2);border-radius:4px">Move closer to interact with this city.</div>` : ""}
       <div style="margin-bottom:12px">
-        <div style="color:#998877;font-size:12px;margin-bottom:4px">GARRISON (${city.garrisonTotal})</div>
+        <div style="color:#998877;font-size:11px;margin-bottom:6px;letter-spacing:1px;text-transform:uppercase"><span style="color:#5a4020">\u2726</span> GARRISON (${city.garrisonTotal})</div>
         <div style="font-size:12px;color:#ccc;line-height:1.6">${garrisonHTML || "<span style='color:#666'>Empty</span>"}</div>
       </div>
       ${hireHTML}
@@ -2481,9 +2504,13 @@ export class WarbandCampaign {
     this._partyPanel = document.createElement("div");
     this._partyPanel.style.cssText = `
       position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-      width:400px;max-height:60vh;overflow-y:auto;
-      background:rgba(15,12,8,0.97);border:2px solid ${factionColor};border-radius:10px;
-      padding:20px;z-index:10;
+      width:420px;max-height:60vh;overflow-y:auto;
+      background:linear-gradient(180deg, rgba(18,14,9,0.98) 0%, rgba(12,10,6,0.98) 100%);
+      border:2px solid ${factionColor};border-radius:10px;
+      padding:22px 26px;z-index:10;
+      box-shadow:0 8px 40px rgba(0,0,0,0.7), 0 0 20px ${factionColor}15, inset 0 1px 0 rgba(255,220,140,0.06);
+      font-family:'Palatino Linotype','Book Antiqua',Palatino,serif;
+      background-image:url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='60' height='60' filter='url(%23n)' opacity='0.02'/%3E%3C/svg%3E");
     `;
 
     const armyHTML = party.army.map((a) => {
@@ -2493,22 +2520,26 @@ export class WarbandCampaign {
     }).join("");
 
     this._partyPanel.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <h3 style="color:${factionColor};margin:0">${party.name}</h3>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid rgba(90,64,32,0.3)">
+        <h3 style="color:${factionColor};margin:0;text-shadow:0 0 10px ${factionColor}33;letter-spacing:1px">${party.name}</h3>
         <button id="camp-close-party" style="
-          padding:4px 12px;font-size:14px;border:1px solid #555;border-radius:4px;
-          background:rgba(30,25,15,0.6);color:#888;cursor:pointer;font-family:inherit;
-        ">X</button>
+          padding:4px 10px;font-size:12px;border:1px solid rgba(90,64,32,0.4);border-radius:4px;
+          background:linear-gradient(180deg, rgba(30,25,15,0.7) 0%, rgba(15,12,8,0.8) 100%);
+          color:#998877;cursor:pointer;font-family:inherit;letter-spacing:1px;
+          box-shadow:inset 0 1px 0 rgba(255,255,255,0.03);transition:all 0.15s ease;
+        ">\u2716</button>
       </div>
-      <div style="font-size:12px;color:#998877;margin-bottom:6px">${factionDef?.name ?? party.factionId} | ${party.armyTotal} units${!party.isPlayer ? ` <span style="display:inline-block;width:8px;height:8px;border-radius:50%;margin-left:4px;vertical-align:middle;background:${this._relationColor(this._getRelation(this._state!.playerFaction, party.factionId))}" title="Relation: ${this._getRelation(this._state!.playerFaction, party.factionId)} (${this._getRelationStatus(this._state!.playerFaction, party.factionId)})"></span>` : ""}</div>
+      <div style="font-size:11px;color:#998877;margin-bottom:6px">${factionDef?.name ?? party.factionId} \u2758 ${party.armyTotal} units${!party.isPlayer ? ` <span style="display:inline-block;width:8px;height:8px;border-radius:50%;margin-left:4px;vertical-align:middle;background:${this._relationColor(this._getRelation(this._state!.playerFaction, party.factionId))};box-shadow:0 0 4px ${this._relationColor(this._getRelation(this._state!.playerFaction, party.factionId))}66" title="Relation: ${this._getRelation(this._state!.playerFaction, party.factionId)} (${this._getRelationStatus(this._state!.playerFaction, party.factionId)})"></span>` : ""}</div>
       <div style="font-size:12px;color:#ccc;line-height:1.6">${armyHTML}</div>
       ${canAttack ? `
         <button id="camp-attack-party" style="
-          margin-top:14px;padding:8px 20px;font-size:13px;font-weight:bold;
-          border:2px solid #cc4444;border-radius:6px;
-          background:rgba(204,68,68,0.2);color:#ff6666;
-          cursor:pointer;font-family:inherit;width:100%;
-        ">Attack (${party.armyTotal} troops)</button>
+          margin-top:14px;padding:10px 20px;font-size:13px;font-weight:bold;
+          border:2px solid rgba(204,68,68,0.6);border-radius:6px;
+          background:linear-gradient(180deg, rgba(180,40,40,0.3) 0%, rgba(120,20,20,0.2) 100%);
+          color:#ff6666;cursor:pointer;font-family:inherit;width:100%;letter-spacing:1px;
+          box-shadow:0 2px 10px rgba(204,68,68,0.15), inset 0 1px 0 rgba(255,120,120,0.1);
+          transition:all 0.2s ease;text-shadow:0 1px 3px rgba(0,0,0,0.5);
+        ">\u2694 Attack (${party.armyTotal} troops)</button>
       ` : ""}
       ${party.isPlayer ? `
         <div style="margin-top:12px;border-top:1px solid #443322;padding-top:10px">
@@ -2558,17 +2589,20 @@ export class WarbandCampaign {
     this._villagePanel.style.cssText = `
       position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
       width:380px;max-height:60vh;overflow-y:auto;
-      background:rgba(15,12,8,0.97);border:2px solid ${factionColor};border-radius:10px;
+      background:linear-gradient(180deg, rgba(18,14,9,0.98) 0%, rgba(12,10,6,0.98) 100%);border:2px solid ${factionColor};border-radius:10px;
       padding:20px;z-index:10;
+      box-shadow:0 8px 40px rgba(0,0,0,0.7), 0 0 20px ${factionColor}15, inset 0 1px 0 rgba(255,220,140,0.06);
+      font-family:'Palatino Linotype','Book Antiqua',Palatino,serif;
+      background-image:url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='60' height='60' filter='url(%23n)' opacity='0.02'/%3E%3C/svg%3E");
     `;
 
     this._villagePanel.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <h3 style="color:${factionColor};margin:0">${village.name}</h3>
+        <h3 style="color:${factionColor};margin:0;text-shadow:0 0 10px ${factionColor}33;letter-spacing:1px">${village.name}</h3>
         <button id="camp-close-village" style="
-          padding:4px 12px;font-size:14px;border:1px solid #555;border-radius:4px;
-          background:rgba(30,25,15,0.6);color:#888;cursor:pointer;font-family:inherit;
-        ">X</button>
+          padding:4px 10px;font-size:12px;border:1px solid rgba(90,64,32,0.4);border-radius:4px;
+          background:linear-gradient(180deg, rgba(30,25,15,0.7) 0%, rgba(15,12,8,0.8) 100%);color:#998877;cursor:pointer;font-family:inherit;letter-spacing:1px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.03);transition:all 0.15s ease;
+        ">\u2716</button>
       </div>
       <div style="font-size:12px;color:#998877;margin-bottom:6px">${factionDef?.name ?? village.factionId} Village</div>
       <div style="font-size:12px;color:#ccc;margin-bottom:4px">Population: ${village.population}</div>
@@ -2577,8 +2611,8 @@ export class WarbandCampaign {
       ${canRaid ? `
         <button id="camp-raid-village" style="
           margin-top:10px;padding:8px 20px;font-size:13px;font-weight:bold;
-          border:2px solid #cc4444;border-radius:6px;
-          background:rgba(204,68,68,0.2);color:#ff6666;
+          background:linear-gradient(180deg, rgba(180,40,40,0.3) 0%, rgba(120,20,20,0.2) 100%);box-shadow:0 2px 10px rgba(204,68,68,0.15), inset 0 1px 0 rgba(255,120,120,0.1);border:2px solid rgba(204,68,68,0.6);border-radius:6px;
+          color:#ff6666;letter-spacing:1px;transition:all 0.2s ease;text-shadow:0 1px 3px rgba(0,0,0,0.5);
           cursor:pointer;font-family:inherit;width:100%;
         ">Raid Village (+${village.population * 2}g)</button>
       ` : ""}
@@ -2632,8 +2666,11 @@ export class WarbandCampaign {
     this._locationPanel.style.cssText = `
       position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
       width:400px;max-height:60vh;overflow-y:auto;
-      background:rgba(15,12,8,0.97);border:2px solid ${typeColor};border-radius:10px;
+      background:linear-gradient(180deg, rgba(18,14,9,0.98) 0%, rgba(12,10,6,0.98) 100%);border:2px solid ${typeColor};border-radius:10px;
       padding:20px;z-index:10;
+      box-shadow:0 8px 40px rgba(0,0,0,0.7), 0 0 20px ${typeColor}15, inset 0 1px 0 rgba(255,220,140,0.06);
+      font-family:'Palatino Linotype','Book Antiqua',Palatino,serif;
+      background-image:url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='60' height='60' filter='url(%23n)' opacity='0.02'/%3E%3C/svg%3E");
     `;
 
     const rewardText = loc.reward.unitId
@@ -2642,11 +2679,11 @@ export class WarbandCampaign {
 
     this._locationPanel.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <h3 style="color:${typeColor};margin:0">${loc.name}</h3>
+        <h3 style="color:${typeColor};margin:0;text-shadow:0 0 10px ${typeColor}33;letter-spacing:1px">${loc.name}</h3>
         <button id="camp-close-location" style="
-          padding:4px 12px;font-size:14px;border:1px solid #555;border-radius:4px;
-          background:rgba(30,25,15,0.6);color:#888;cursor:pointer;font-family:inherit;
-        ">X</button>
+          padding:4px 10px;font-size:12px;border:1px solid rgba(90,64,32,0.4);border-radius:4px;
+          background:linear-gradient(180deg, rgba(30,25,15,0.7) 0%, rgba(15,12,8,0.8) 100%);color:#998877;cursor:pointer;font-family:inherit;letter-spacing:1px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.03);transition:all 0.15s ease;
+        ">\u2716</button>
       </div>
       <div style="font-size:12px;color:#998877;margin-bottom:6px;text-transform:capitalize">${loc.type} — Difficulty: ${loc.difficulty}</div>
       <div style="font-size:12px;color:#ccc;margin-bottom:4px">Status: ${loc.explored ? '<span style="color:#666">Explored</span>' : '<span style="color:#ffcc44">Unexplored</span>'}</div>
@@ -2655,8 +2692,9 @@ export class WarbandCampaign {
       ${canExplore ? `
         <button id="camp-explore-location" style="
           margin-top:10px;padding:8px 20px;font-size:13px;font-weight:bold;
-          border:2px solid ${typeColor};border-radius:6px;
-          background:rgba(${loc.type === "lair" ? "204,68,68" : loc.type === "shrine" ? "218,165,32" : "150,130,100"},0.2);color:${typeColor};
+          background:linear-gradient(180deg, rgba(${loc.type === "lair" ? "180,40,40" : loc.type === "shrine" ? "180,140,20" : "130,110,80"},0.3) 0%, rgba(${loc.type === "lair" ? "120,20,20" : loc.type === "shrine" ? "120,100,10" : "80,65,40"},0.2) 100%);
+          box-shadow:0 2px 10px ${typeColor}25, inset 0 1px 0 rgba(255,200,120,0.1);border:2px solid ${typeColor};border-radius:6px;
+          color:${typeColor};letter-spacing:1px;transition:all 0.2s ease;text-shadow:0 1px 3px rgba(0,0,0,0.5);
           cursor:pointer;font-family:inherit;width:100%;
         ">Explore (${loc.difficulty} enemies)</button>
       ` : ""}
@@ -5353,16 +5391,16 @@ export class WarbandCampaign {
     this._battleResultsContainer.style.cssText = `
       position:absolute;top:0;left:0;width:100%;height:100%;z-index:100;
       pointer-events:auto;
-      background:rgba(10,8,5,0.92);display:flex;flex-direction:column;
-      align-items:center;justify-content:center;font-family:'Segoe UI',sans-serif;color:#e0d5c0;
+      background:linear-gradient(180deg, rgba(8,6,3,0.94) 0%, rgba(5,4,2,0.96) 100%);display:flex;flex-direction:column;
+      align-items:center;justify-content:center;font-family:'Palatino Linotype','Book Antiqua',Palatino,serif;color:#e0d5c0;
     `;
 
     const survivorCount = playerSurvivors.length;
     const playerLost = (this._battlePlayerArmy.reduce((s, a) => s + a.count, 0)) - survivorCount;
 
     this._battleResultsContainer.innerHTML = `
-      <h1 style="font-size:42px;color:${won ? "#ffd700" : "#cc4444"};
-        text-shadow:0 0 15px rgba(${won ? "218,165,32" : "204,68,68"},0.4)">
+      <h1 style="font-size:48px;letter-spacing:6px;color:${won ? "#ffd700" : "#cc4444"};
+        text-shadow:0 0 20px rgba(${won ? "218,165,32" : "204,68,68"},0.5), 0 2px 4px rgba(0,0,0,0.6)">
         ${won ? "VICTORY" : "DEFEAT"}
       </h1>
       <div style="margin:16px 0;font-size:14px;color:#aa9977">
@@ -5377,7 +5415,8 @@ export class WarbandCampaign {
     btn.style.cssText = `
       padding:12px 30px;font-size:16px;font-weight:bold;
       border:2px solid #daa520;border-radius:6px;
-      background:rgba(218,165,32,0.15);color:#daa520;
+      background:linear-gradient(180deg, rgba(218,165,32,0.2) 0%, rgba(160,120,20,0.1) 100%);color:#daa520;letter-spacing:2px;
+      box-shadow:0 2px 12px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,220,140,0.1);
       cursor:pointer;font-family:inherit;margin-top:10px;
       pointer-events:auto;
     `;
@@ -5587,15 +5626,15 @@ export class WarbandCampaign {
     this._pauseMenuContainer = document.createElement("div");
     this._pauseMenuContainer.style.cssText = `
       position:absolute;top:0;left:0;width:100%;height:100%;z-index:90;
-      background:rgba(10,8,5,0.85);display:flex;flex-direction:column;
-      align-items:center;justify-content:center;font-family:'Segoe UI',sans-serif;color:#e0d5c0;
+      background:linear-gradient(180deg, rgba(8,6,3,0.9) 0%, rgba(5,4,2,0.92) 100%);display:flex;flex-direction:column;
+      align-items:center;justify-content:center;font-family:'Palatino Linotype','Book Antiqua',Palatino,serif;color:#e0d5c0;
       pointer-events:auto;
     `;
     this._pauseMenuContainer.addEventListener("mousedown", (e) => e.stopPropagation());
 
     this._pauseMenuContainer.innerHTML = `
-      <h1 style="font-size:36px;color:#daa520;text-shadow:0 0 12px rgba(218,165,32,0.4);margin-bottom:24px;">PAUSED</h1>
-      <div style="background:rgba(30,24,16,0.9);border:2px solid #5a4020;border-radius:8px;padding:28px 36px;max-width:480px;width:90%;">
+      <h1 style="font-size:36px;letter-spacing:6px;color:#daa520;text-shadow:0 0 12px rgba(218,165,32,0.4);margin-bottom:24px;">PAUSED</h1>
+      <div style="background:linear-gradient(135deg, rgba(30,24,16,0.92) 0%, rgba(20,16,10,0.9) 100%);border:2px solid rgba(218,165,32,0.3);border-radius:8px;padding:28px 36px;max-width:480px;width:90%;box-shadow:0 4px 20px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,220,140,0.05);">
         <h2 style="font-size:18px;color:#daa520;margin:0 0 14px 0;border-bottom:1px solid #5a4020;padding-bottom:8px;">Controls</h2>
         <div style="font-size:13px;line-height:1.8;color:#aa9977;">
           <div><span style="color:#e0d5c0;font-weight:bold;">WASD</span> - Move</div>
@@ -5627,7 +5666,8 @@ export class WarbandCampaign {
     resumeBtn.style.cssText = `
       margin-top:16px;padding:10px 36px;font-size:16px;font-weight:bold;
       border:2px solid #daa520;border-radius:6px;
-      background:rgba(218,165,32,0.15);color:#daa520;
+      background:linear-gradient(180deg, rgba(218,165,32,0.2) 0%, rgba(160,120,20,0.1) 100%);color:#daa520;
+      letter-spacing:2px;box-shadow:0 2px 12px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,220,140,0.1);
       cursor:pointer;font-family:inherit;pointer-events:auto;
     `;
     resumeBtn.addEventListener("mouseenter", () => { resumeBtn.style.background = "rgba(218,165,32,0.35)"; });
@@ -5658,15 +5698,15 @@ export class WarbandCampaign {
     this._campaignPauseMenuContainer = document.createElement("div");
     this._campaignPauseMenuContainer.style.cssText = `
       position:absolute;top:0;left:0;width:100%;height:100%;z-index:90;
-      background:rgba(10,8,5,0.85);display:flex;flex-direction:column;
-      align-items:center;justify-content:center;font-family:'Segoe UI',sans-serif;color:#e0d5c0;
+      background:linear-gradient(180deg, rgba(8,6,3,0.9) 0%, rgba(5,4,2,0.92) 100%);display:flex;flex-direction:column;
+      align-items:center;justify-content:center;font-family:'Palatino Linotype','Book Antiqua',Palatino,serif;color:#e0d5c0;
       pointer-events:auto;
     `;
     this._campaignPauseMenuContainer.addEventListener("mousedown", (e) => e.stopPropagation());
 
     this._campaignPauseMenuContainer.innerHTML = `
-      <h1 style="font-size:36px;color:#daa520;text-shadow:0 0 12px rgba(218,165,32,0.4);margin-bottom:24px;">PAUSED</h1>
-      <div style="background:rgba(30,24,16,0.9);border:2px solid #5a4020;border-radius:8px;padding:28px 36px;max-width:480px;width:90%;">
+      <h1 style="font-size:36px;letter-spacing:6px;color:#daa520;text-shadow:0 0 12px rgba(218,165,32,0.4);margin-bottom:24px;">PAUSED</h1>
+      <div style="background:linear-gradient(135deg, rgba(30,24,16,0.92) 0%, rgba(20,16,10,0.9) 100%);border:2px solid rgba(218,165,32,0.3);border-radius:8px;padding:28px 36px;max-width:480px;width:90%;box-shadow:0 4px 20px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,220,140,0.05);">
         <h2 style="font-size:18px;color:#daa520;margin:0 0 14px 0;border-bottom:1px solid #5a4020;padding-bottom:8px;">Campaign Controls</h2>
         <div style="font-size:13px;line-height:1.8;color:#aa9977;">
           <div><span style="color:#e0d5c0;font-weight:bold;">Left Click</span> - Move party / Select city</div>
@@ -5693,7 +5733,8 @@ export class WarbandCampaign {
     resumeBtn.style.cssText = `
       margin-top:16px;padding:10px 36px;font-size:16px;font-weight:bold;
       border:2px solid #daa520;border-radius:6px;
-      background:rgba(218,165,32,0.15);color:#daa520;
+      background:linear-gradient(180deg, rgba(218,165,32,0.2) 0%, rgba(160,120,20,0.1) 100%);color:#daa520;
+      letter-spacing:2px;box-shadow:0 2px 12px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,220,140,0.1);
       cursor:pointer;font-family:inherit;pointer-events:auto;
     `;
     resumeBtn.addEventListener("mouseenter", () => { resumeBtn.style.background = "rgba(218,165,32,0.35)"; });
@@ -5710,7 +5751,8 @@ export class WarbandCampaign {
     const btnStyle = `
       margin-top:8px;padding:10px 36px;font-size:16px;font-weight:bold;
       border:2px solid #5a8a5a;border-radius:6px;
-      background:rgba(90,138,90,0.15);color:#88cc88;
+      background:linear-gradient(180deg, rgba(90,138,90,0.2) 0%, rgba(60,100,60,0.1) 100%);color:#88cc88;
+      letter-spacing:1px;box-shadow:0 2px 10px rgba(0,0,0,0.3), inset 0 1px 0 rgba(180,255,180,0.08);
       cursor:pointer;font-family:inherit;pointer-events:auto;width:160px;
     `;
 
@@ -5875,10 +5917,10 @@ export class WarbandCampaign {
     Object.assign(panel.style, {
       position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)",
       width: "520px", maxHeight: "80vh", overflowY: "auto",
-      background: "rgba(15,12,8,0.97)", border: "2px solid #daa520",
+      background: "linear-gradient(180deg, rgba(18,14,9,0.98) 0%, rgba(12,10,6,0.98) 100%)", border: "2px solid #daa520",
       borderRadius: "8px", padding: "24px", zIndex: "10000",
-      color: "#e8dcc8", fontFamily: "'Cinzel',serif",
-      boxShadow: "0 0 40px rgba(0,0,0,0.8), inset 0 0 20px rgba(218,165,32,0.05)",
+      color: "#e8dcc8", fontFamily: "'Palatino Linotype','Book Antiqua',Palatino,serif",
+      boxShadow: "0 8px 40px rgba(0,0,0,0.8), 0 0 20px rgba(218,165,32,0.1), inset 0 1px 0 rgba(255,220,140,0.06)",
     });
 
     const title = document.createElement("h2");
@@ -6153,13 +6195,14 @@ export class WarbandCampaign {
     this._battlePreviewPanel.style.cssText = `
       position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
       width:440px;max-height:60vh;overflow-y:auto;
-      background:rgba(15,12,8,0.97);border:2px solid ${factionColor};border-radius:10px;
-      padding:24px;z-index:10;
+      background:linear-gradient(180deg, rgba(18,14,9,0.98) 0%, rgba(12,10,6,0.98) 100%);border:2px solid ${factionColor};border-radius:10px;
+      padding:24px;z-index:10;font-family:'Palatino Linotype','Book Antiqua',Palatino,serif;
+      box-shadow:0 8px 40px rgba(0,0,0,0.8), 0 0 20px rgba(218,165,32,0.1), inset 0 1px 0 rgba(255,220,140,0.06);
     `;
 
     this._battlePreviewPanel.innerHTML = `
       <div style="margin-bottom:12px">
-        <h3 style="color:#cc4444;margin:0;font-size:20px">ENEMY APPROACHING!</h3>
+        <h3 style="color:#cc4444;margin:0;font-size:20px;letter-spacing:2px;text-shadow:0 0 10px rgba(204,68,68,0.3)">ENEMY APPROACHING!</h3>
         <div style="color:${factionColor};font-size:13px;margin-top:4px">${enemy.name} (${factionDef?.name ?? enemy.factionId})</div>
       </div>
       <div style="margin-bottom:12px;border:1px solid #332211;border-radius:6px;padding:10px;background:rgba(30,25,15,0.5)">
@@ -6178,14 +6221,16 @@ export class WarbandCampaign {
       <div style="display:flex;gap:12px">
         <button id="camp-preview-fight" style="
           flex:1;padding:12px;font-size:15px;font-weight:bold;
-          border:2px solid #cc4444;border-radius:6px;
-          background:rgba(204,68,68,0.2);color:#ff6666;
+          background:linear-gradient(180deg, rgba(180,40,40,0.3) 0%, rgba(120,20,20,0.2) 100%);border:2px solid rgba(204,68,68,0.6);border-radius:6px;
+          box-shadow:0 2px 10px rgba(204,68,68,0.15), inset 0 1px 0 rgba(255,120,120,0.1);color:#ff6666;
+          letter-spacing:1px;transition:all 0.2s ease;text-shadow:0 1px 3px rgba(0,0,0,0.5);
           cursor:pointer;font-family:inherit;
         ">Fight!</button>
         <button id="camp-preview-retreat" style="
           flex:1;padding:12px;font-size:15px;font-weight:bold;
-          border:2px solid #888;border-radius:6px;
-          background:rgba(80,80,80,0.2);color:#aaa;
+          background:linear-gradient(180deg, rgba(60,60,60,0.3) 0%, rgba(40,40,40,0.2) 100%);border:2px solid rgba(136,136,136,0.5);border-radius:6px;
+          box-shadow:0 2px 10px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.05);color:#aaa;
+          letter-spacing:1px;transition:all 0.2s ease;
           cursor:pointer;font-family:inherit;
         ">Retreat</button>
       </div>
@@ -6270,12 +6315,15 @@ export class WarbandCampaign {
     this._caravanPanel.style.cssText = `
       position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
       width:380px;max-height:60vh;overflow-y:auto;
-      background:rgba(15,12,8,0.97);border:2px solid #aa8844;border-radius:10px;
+      background:linear-gradient(180deg, rgba(18,14,9,0.98) 0%, rgba(12,10,6,0.98) 100%);border:2px solid #aa8844;border-radius:10px;
       padding:20px;z-index:10;
+      box-shadow:0 8px 40px rgba(0,0,0,0.7), 0 0 20px #aa884415, inset 0 1px 0 rgba(255,220,140,0.06);
+      font-family:'Palatino Linotype','Book Antiqua',Palatino,serif;
+      background-image:url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='60' height='60' filter='url(%23n)' opacity='0.02'/%3E%3C/svg%3E");
     `;
 
     const goodsHTML = caravan.goods.map(g =>
-      `<div style="display:flex;justify-content:space-between;padding:4px 8px;margin-bottom:3px;background:rgba(30,25,15,0.6);border-radius:4px;border:1px solid #332211">
+      `<div style="display:flex;justify-content:space-between;padding:4px 8px;margin-bottom:3px;background:linear-gradient(135deg, rgba(30,25,15,0.6) 0%, rgba(20,16,10,0.5) 100%);border-radius:4px;border:1px solid rgba(90,64,32,0.2)">
         <span style="color:#ccc">${g.name}</span>
         <div style="display:flex;gap:8px;align-items:center">
           <span style="color:#aa8833;font-size:11px">${g.cost}g</span>
@@ -6291,11 +6339,11 @@ export class WarbandCampaign {
 
     this._caravanPanel.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <h3 style="color:#aa8844;margin:0">Merchant Caravan</h3>
+        <h3 style="color:#aa8844;margin:0;text-shadow:0 0 10px #aa884433;letter-spacing:1px">Merchant Caravan</h3>
         <button id="camp-close-caravan" style="
-          padding:4px 12px;font-size:14px;border:1px solid #555;border-radius:4px;
-          background:rgba(30,25,15,0.6);color:#888;cursor:pointer;font-family:inherit;
-        ">X</button>
+          padding:4px 10px;font-size:12px;border:1px solid rgba(90,64,32,0.4);border-radius:4px;
+          background:linear-gradient(180deg, rgba(30,25,15,0.7) 0%, rgba(15,12,8,0.8) 100%);color:#998877;cursor:pointer;font-family:inherit;letter-spacing:1px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.03);transition:all 0.15s ease;
+        ">\u2716</button>
       </div>
       <div style="color:#998877;font-size:12px;margin-bottom:8px">A traveling merchant with goods to trade.</div>
       <div style="margin-bottom:12px">
@@ -6304,8 +6352,8 @@ export class WarbandCampaign {
       </div>
       <button id="camp-rob-caravan" style="
         margin-top:8px;padding:8px 16px;font-size:12px;font-weight:bold;
-        border:2px solid #cc4444;border-radius:6px;
-        background:rgba(204,68,68,0.15);color:#cc6666;
+        background:linear-gradient(180deg, rgba(180,40,40,0.3) 0%, rgba(120,20,20,0.2) 100%);box-shadow:0 2px 10px rgba(204,68,68,0.15), inset 0 1px 0 rgba(255,120,120,0.1);border:2px solid rgba(204,68,68,0.6);border-radius:6px;
+        color:#cc6666;letter-spacing:1px;transition:all 0.2s ease;text-shadow:0 1px 3px rgba(0,0,0,0.5);
         cursor:pointer;font-family:inherit;width:100%;
       ">Rob Caravan (lose reputation)</button>
     `;
@@ -6411,25 +6459,29 @@ export class WarbandCampaign {
     this._npcPanel.style.cssText = `
       position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
       width:380px;max-height:60vh;overflow-y:auto;
-      background:rgba(15,12,8,0.97);border:2px solid ${typeColor};border-radius:10px;
+      background:linear-gradient(180deg, rgba(18,14,9,0.98) 0%, rgba(12,10,6,0.98) 100%);border:2px solid ${typeColor};border-radius:10px;
       padding:20px;z-index:10;
+      box-shadow:0 8px 40px rgba(0,0,0,0.7), 0 0 20px ${typeColor}15, inset 0 1px 0 rgba(255,220,140,0.06);
+      font-family:'Palatino Linotype','Book Antiqua',Palatino,serif;
+      background-image:url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='60' height='60' filter='url(%23n)' opacity='0.02'/%3E%3C/svg%3E");
     `;
 
     this._npcPanel.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <h3 style="color:${typeColor};margin:0">${npc.name}</h3>
+        <h3 style="color:${typeColor};margin:0;text-shadow:0 0 10px ${typeColor}33;letter-spacing:1px">${npc.name}</h3>
         <button id="camp-close-npc" style="
-          padding:4px 12px;font-size:14px;border:1px solid #555;border-radius:4px;
-          background:rgba(30,25,15,0.6);color:#888;cursor:pointer;font-family:inherit;
-        ">X</button>
+          padding:4px 10px;font-size:12px;border:1px solid rgba(90,64,32,0.4);border-radius:4px;
+          background:linear-gradient(180deg, rgba(30,25,15,0.7) 0%, rgba(15,12,8,0.8) 100%);color:#998877;cursor:pointer;font-family:inherit;letter-spacing:1px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.03);transition:all 0.15s ease;
+        ">\u2716</button>
       </div>
       <div style="color:#998877;font-size:12px;margin-bottom:6px;text-transform:capitalize">${npc.type}</div>
       <div style="color:#ccc;font-size:12px;margin-bottom:16px">${interactText}</div>
       <button id="camp-npc-interact" style="
         padding:10px 20px;font-size:13px;font-weight:bold;
-        border:2px solid ${typeColor};border-radius:6px;
-        background:rgba(${npc.type === "hermit" ? "100,170,200" : npc.type === "messenger" ? "200,170,70" : "200,130,100"},0.15);
-        color:${typeColor};cursor:pointer;font-family:inherit;width:100%;
+        background:linear-gradient(180deg, rgba(${npc.type === "hermit" ? "80,140,170" : npc.type === "messenger" ? "170,140,50" : "170,110,80"},0.3) 0%, rgba(${npc.type === "hermit" ? "50,100,130" : npc.type === "messenger" ? "120,100,30" : "120,75,50"},0.2) 100%);
+        box-shadow:0 2px 10px ${typeColor}25, inset 0 1px 0 rgba(255,200,120,0.1);border:2px solid ${typeColor};border-radius:6px;
+        color:${typeColor};letter-spacing:1px;transition:all 0.2s ease;text-shadow:0 1px 3px rgba(0,0,0,0.5);
+        cursor:pointer;font-family:inherit;width:100%;
       ">${interactBtnLabel}</button>
     `;
 
@@ -6602,9 +6654,10 @@ export class WarbandCampaign {
     this._eventPopup.style.cssText = `
       position:absolute;top:60px;left:50%;transform:translateX(-50%);
       padding:14px 24px;border:2px solid ${popupColor};border-radius:8px;
-      background:rgba(15,12,8,0.95);z-index:15;
-      font-family:'Segoe UI',sans-serif;color:#e0d5c0;
+      background:linear-gradient(180deg, rgba(18,14,9,0.97) 0%, rgba(12,10,6,0.97) 100%);z-index:15;
+      font-family:'Palatino Linotype','Book Antiqua',Palatino,serif;color:#e0d5c0;
       max-width:400px;text-align:center;
+      box-shadow:0 4px 20px rgba(0,0,0,0.6), 0 0 12px ${popupColor}22;
       animation: fadeInDown 0.3s ease;
     `;
     this._eventPopup.innerHTML = `
@@ -6841,8 +6894,7 @@ export class WarbandCampaign {
     this._diplomacyPanel.style.cssText = `
       position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
       width:620px;max-height:85vh;overflow-y:auto;
-      background:rgba(15,12,8,0.97);border:2px solid #daa520;border-radius:10px;
-      padding:24px;z-index:10;
+      background:linear-gradient(180deg, rgba(18,14,9,0.98) 0%, rgba(12,10,6,0.98) 100%);border:2px solid #daa520;border-radius:10px;padding:24px 28px;z-index:10;box-shadow:0 8px 40px rgba(0,0,0,0.7), 0 0 20px rgba(218,165,32,0.15), inset 0 1px 0 rgba(255,220,140,0.06);font-family:'Palatino Linotype','Book Antiqua',Palatino,serif;scrollbar-width:thin;scrollbar-color:#5a4020 rgba(10,8,5,0.3);background-image:url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='60' height='60' filter='url(%23n)' opacity='0.02'/%3E%3C/svg%3E");
     `;
 
     let factionsHTML = "";
@@ -6899,7 +6951,7 @@ export class WarbandCampaign {
       }
 
       factionsHTML += `
-        <div style="margin-bottom:14px;padding:12px;background:rgba(30,25,15,0.5);border:1px solid ${fColor};border-radius:6px">
+        <div style="margin-bottom:14px;padding:12px;background:rgba(30,25,15,0.5);border:1px solid ${fColor}88;border-radius:6px;box-shadow:inset 0 1px 0 rgba(255,220,140,0.03)">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
             <span style="color:${fColor};font-weight:bold;font-size:14px">${fDef?.name ?? fId}</span>
             <span style="color:${relColor};font-size:12px;font-weight:bold">${statusLabel} (${rel > 0 ? "+" : ""}${rel})</span>
@@ -6947,12 +6999,11 @@ export class WarbandCampaign {
     }
 
     this._diplomacyPanel.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-        <h2 style="font-size:22px;color:#daa520;margin:0;letter-spacing:1px">DIPLOMACY</h2>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid rgba(90,64,32,0.3)">
+        <h2 style="font-size:22px;color:#daa520;margin:0;letter-spacing:1px;text-shadow:0 0 10px #daa52033">DIPLOMACY</h2>
         <button id="diplo-close" style="
-          padding:4px 12px;font-size:14px;border:1px solid #555;border-radius:4px;
-          background:rgba(30,25,15,0.6);color:#888;cursor:pointer;font-family:inherit;
-        ">X</button>
+          padding:4px 10px;font-size:12px;border:1px solid rgba(90,64,32,0.4);border-radius:4px;background:linear-gradient(180deg, rgba(30,25,15,0.7) 0%, rgba(15,12,8,0.8) 100%);color:#998877;cursor:pointer;font-family:inherit;letter-spacing:1px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.03);transition:all 0.15s ease;
+        ">\u2716</button>
       </div>
       <div style="font-size:11px;color:#776655;margin-bottom:12px">
         Hostile &lt; -30 | Neutral -30 to +30 | Friendly &gt; +30
@@ -7097,8 +7148,7 @@ export class WarbandCampaign {
     this._companionPanel.style.cssText = `
       position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
       width:560px;max-height:85vh;overflow-y:auto;
-      background:rgba(15,12,8,0.97);border:2px solid #daa520;border-radius:10px;
-      padding:24px;z-index:10;
+      background:linear-gradient(180deg, rgba(18,14,9,0.98) 0%, rgba(12,10,6,0.98) 100%);border:2px solid #daa520;border-radius:10px;padding:24px 28px;z-index:10;box-shadow:0 8px 40px rgba(0,0,0,0.7), 0 0 20px rgba(218,165,32,0.15), inset 0 1px 0 rgba(255,220,140,0.06);font-family:'Palatino Linotype','Book Antiqua',Palatino,serif;scrollbar-width:thin;scrollbar-color:#5a4020 rgba(10,8,5,0.3);background-image:url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='60' height='60' filter='url(%23n)' opacity='0.02'/%3E%3C/svg%3E");
     `;
 
     const compsHTML = s.companions.map((c) => {
@@ -7126,12 +7176,11 @@ export class WarbandCampaign {
     }).join("");
 
     this._companionPanel.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-        <h2 style="font-size:22px;color:#daa520;margin:0;letter-spacing:1px">COMPANIONS</h2>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid rgba(90,64,32,0.3)">
+        <h2 style="font-size:22px;color:#daa520;margin:0;letter-spacing:1px;text-shadow:0 0 10px #daa52033">COMPANIONS</h2>
         <button id="comp-close" style="
-          padding:4px 12px;font-size:14px;border:1px solid #555;border-radius:4px;
-          background:rgba(30,25,15,0.6);color:#888;cursor:pointer;font-family:inherit;
-        ">X</button>
+          padding:4px 10px;font-size:12px;border:1px solid rgba(90,64,32,0.4);border-radius:4px;background:linear-gradient(180deg, rgba(30,25,15,0.7) 0%, rgba(15,12,8,0.8) 100%);color:#998877;cursor:pointer;font-family:inherit;letter-spacing:1px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.03);transition:all 0.15s ease;
+        ">\u2716</button>
       </div>
       <div style="font-size:11px;color:#776655;margin-bottom:12px">
         Recruited: ${s.companions.filter((c) => c.recruited).length}/${s.companions.length}
@@ -7183,8 +7232,7 @@ export class WarbandCampaign {
     this._buildingPanel.style.cssText = `
       position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
       width:520px;max-height:85vh;overflow-y:auto;
-      background:rgba(15,12,8,0.97);border:2px solid #daa520;border-radius:10px;
-      padding:24px;z-index:10;
+      background:linear-gradient(180deg, rgba(18,14,9,0.98) 0%, rgba(12,10,6,0.98) 100%);border:2px solid #daa520;border-radius:10px;padding:24px 28px;z-index:10;box-shadow:0 8px 40px rgba(0,0,0,0.7), 0 0 20px rgba(218,165,32,0.15), inset 0 1px 0 rgba(255,220,140,0.06);font-family:'Palatino Linotype','Book Antiqua',Palatino,serif;scrollbar-width:thin;scrollbar-color:#5a4020 rgba(10,8,5,0.3);background-image:url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='60' height='60' filter='url(%23n)' opacity='0.02'/%3E%3C/svg%3E");
     `;
 
     const buildingsHTML = BUILDING_DEFS.map((bDef) => {
@@ -7215,12 +7263,11 @@ export class WarbandCampaign {
     }).join("");
 
     this._buildingPanel.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-        <h2 style="font-size:22px;color:#daa520;margin:0;letter-spacing:1px">BUILDINGS — ${city.name}</h2>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid rgba(90,64,32,0.3)">
+        <h2 style="font-size:22px;color:#daa520;margin:0;letter-spacing:1px;text-shadow:0 0 10px #daa52033">BUILDINGS — ${city.name}</h2>
         <button id="build-close" style="
-          padding:4px 12px;font-size:14px;border:1px solid #555;border-radius:4px;
-          background:rgba(30,25,15,0.6);color:#888;cursor:pointer;font-family:inherit;
-        ">X</button>
+          padding:4px 10px;font-size:12px;border:1px solid rgba(90,64,32,0.4);border-radius:4px;background:linear-gradient(180deg, rgba(30,25,15,0.7) 0%, rgba(15,12,8,0.8) 100%);color:#998877;cursor:pointer;font-family:inherit;letter-spacing:1px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.03);transition:all 0.15s ease;
+        ">\u2716</button>
       </div>
       <div style="font-size:11px;color:#776655;margin-bottom:12px">
         Gold: ${s.gold} | Buildings: ${city.buildings.length}
@@ -7276,8 +7323,7 @@ export class WarbandCampaign {
     this._tradePanel.style.cssText = `
       position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
       width:520px;max-height:85vh;overflow-y:auto;
-      background:rgba(15,12,8,0.97);border:2px solid #cc8844;border-radius:10px;
-      padding:24px;z-index:10;
+      background:linear-gradient(180deg, rgba(18,14,9,0.98) 0%, rgba(12,10,6,0.98) 100%);border:2px solid #cc8844;border-radius:10px;padding:24px 28px;z-index:10;box-shadow:0 8px 40px rgba(0,0,0,0.7), 0 0 20px rgba(204,136,68,0.15), inset 0 1px 0 rgba(255,220,140,0.06);font-family:'Palatino Linotype','Book Antiqua',Palatino,serif;scrollbar-width:thin;scrollbar-color:#5a4020 rgba(10,8,5,0.3);background-image:url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='60' height='60' filter='url(%23n)' opacity='0.02'/%3E%3C/svg%3E");
     `;
 
     const goodsHTML = city.tradeGoods.map((slot, i) => {
@@ -7299,12 +7345,11 @@ export class WarbandCampaign {
     }).join("");
 
     this._tradePanel.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-        <h2 style="font-size:22px;color:#cc8844;margin:0;letter-spacing:1px">TRADE — ${city.name}</h2>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid rgba(90,64,32,0.3)">
+        <h2 style="font-size:22px;color:#cc8844;margin:0;letter-spacing:1px;text-shadow:0 0 10px #cc884433">TRADE — ${city.name}</h2>
         <button id="trade-close" style="
-          padding:4px 12px;font-size:14px;border:1px solid #555;border-radius:4px;
-          background:rgba(30,25,15,0.6);color:#888;cursor:pointer;font-family:inherit;
-        ">X</button>
+          padding:4px 10px;font-size:12px;border:1px solid rgba(90,64,32,0.4);border-radius:4px;background:linear-gradient(180deg, rgba(30,25,15,0.7) 0%, rgba(15,12,8,0.8) 100%);color:#998877;cursor:pointer;font-family:inherit;letter-spacing:1px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.03);transition:all 0.15s ease;
+        ">\u2716</button>
       </div>
       <div style="font-size:11px;color:#776655;margin-bottom:12px">
         Gold: ${s.gold} | Trade Agreements: ${s.tradeAgreements.length}
@@ -7357,8 +7402,7 @@ export class WarbandCampaign {
     this._siegeEquipPanel.style.cssText = `
       position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
       width:500px;max-height:85vh;overflow-y:auto;
-      background:rgba(15,12,8,0.97);border:2px solid #666688;border-radius:10px;
-      padding:24px;z-index:10;
+      background:linear-gradient(180deg, rgba(18,14,9,0.98) 0%, rgba(12,10,6,0.98) 100%);border:2px solid #666688;border-radius:10px;padding:24px 28px;z-index:10;box-shadow:0 8px 40px rgba(0,0,0,0.7), 0 0 20px rgba(102,102,136,0.15), inset 0 1px 0 rgba(255,220,140,0.06);font-family:'Palatino Linotype','Book Antiqua',Palatino,serif;scrollbar-width:thin;scrollbar-color:#5a4020 rgba(10,8,5,0.3);background-image:url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='60' height='60' filter='url(%23n)' opacity='0.02'/%3E%3C/svg%3E");
     `;
 
     const workshopLevel = city.buildings.find((b) => b.type === "siege_workshop")?.level ?? 0;
@@ -7388,12 +7432,11 @@ export class WarbandCampaign {
     }).join("");
 
     this._siegeEquipPanel.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-        <h2 style="font-size:22px;color:#8888aa;margin:0;letter-spacing:1px">SIEGE WORKSHOP — ${city.name}</h2>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid rgba(90,64,32,0.3)">
+        <h2 style="font-size:22px;color:#8888aa;margin:0;letter-spacing:1px;text-shadow:0 0 10px #8888aa33">SIEGE WORKSHOP — ${city.name}</h2>
         <button id="siege-close" style="
-          padding:4px 12px;font-size:14px;border:1px solid #555;border-radius:4px;
-          background:rgba(30,25,15,0.6);color:#888;cursor:pointer;font-family:inherit;
-        ">X</button>
+          padding:4px 10px;font-size:12px;border:1px solid rgba(90,64,32,0.4);border-radius:4px;background:linear-gradient(180deg, rgba(30,25,15,0.7) 0%, rgba(15,12,8,0.8) 100%);color:#998877;cursor:pointer;font-family:inherit;letter-spacing:1px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.03);transition:all 0.15s ease;
+        ">\u2716</button>
       </div>
       <div style="font-size:11px;color:#776655;margin-bottom:12px">
         Workshop Level: ${workshopLevel} | Gold: ${s.gold}
@@ -7445,8 +7488,7 @@ export class WarbandCampaign {
     this._warCouncilPanel.style.cssText = `
       position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
       width:580px;max-height:85vh;overflow-y:auto;
-      background:rgba(15,12,8,0.97);border:2px solid #cc6644;border-radius:10px;
-      padding:24px;z-index:10;
+      background:linear-gradient(180deg, rgba(18,14,9,0.98) 0%, rgba(12,10,6,0.98) 100%);border:2px solid #cc6644;border-radius:10px;padding:24px 28px;z-index:10;box-shadow:0 8px 40px rgba(0,0,0,0.7), 0 0 20px rgba(204,102,68,0.15), inset 0 1px 0 rgba(255,220,140,0.06);font-family:'Palatino Linotype','Book Antiqua',Palatino,serif;scrollbar-width:thin;scrollbar-color:#5a4020 rgba(10,8,5,0.3);background-image:url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='60' height='60' filter='url(%23n)' opacity='0.02'/%3E%3C/svg%3E");
     `;
 
     const activeWars = s.warDeclarations.filter((w) => w.aggressor === s.playerFaction || w.target === s.playerFaction);
@@ -7475,12 +7517,11 @@ export class WarbandCampaign {
     }).join("");
 
     this._warCouncilPanel.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-        <h2 style="font-size:22px;color:#cc6644;margin:0;letter-spacing:1px">WAR COUNCIL</h2>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid rgba(90,64,32,0.3)">
+        <h2 style="font-size:22px;color:#cc6644;margin:0;letter-spacing:1px;text-shadow:0 0 10px #cc664433">WAR COUNCIL</h2>
         <button id="warcouncil-close" style="
-          padding:4px 12px;font-size:14px;border:1px solid #555;border-radius:4px;
-          background:rgba(30,25,15,0.6);color:#888;cursor:pointer;font-family:inherit;
-        ">X</button>
+          padding:4px 10px;font-size:12px;border:1px solid rgba(90,64,32,0.4);border-radius:4px;background:linear-gradient(180deg, rgba(30,25,15,0.7) 0%, rgba(15,12,8,0.8) 100%);color:#998877;cursor:pointer;font-family:inherit;letter-spacing:1px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.03);transition:all 0.15s ease;
+        ">\u2716</button>
       </div>
       <div style="margin-bottom:14px">
         <div style="color:#cc6644;font-size:13px;margin-bottom:8px;letter-spacing:1px">ACTIVE WARS</div>
@@ -7532,8 +7573,7 @@ export class WarbandCampaign {
     this._mercPanel.style.cssText = `
       position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
       width:520px;max-height:85vh;overflow-y:auto;
-      background:rgba(15,12,8,0.97);border:2px solid #aa8855;border-radius:10px;
-      padding:24px;z-index:10;
+      background:linear-gradient(180deg, rgba(18,14,9,0.98) 0%, rgba(12,10,6,0.98) 100%);border:2px solid #aa8855;border-radius:10px;padding:24px 28px;z-index:10;box-shadow:0 8px 40px rgba(0,0,0,0.7), 0 0 20px rgba(170,136,85,0.15), inset 0 1px 0 rgba(255,220,140,0.06);font-family:'Palatino Linotype','Book Antiqua',Palatino,serif;scrollbar-width:thin;scrollbar-color:#5a4020 rgba(10,8,5,0.3);background-image:url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='60' height='60' filter='url(%23n)' opacity='0.02'/%3E%3C/svg%3E");
     `;
 
     const mercsHTML = s.mercContracts.map((mc) => {
@@ -7564,12 +7604,11 @@ export class WarbandCampaign {
     }).join("");
 
     this._mercPanel.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-        <h2 style="font-size:22px;color:#aa8855;margin:0;letter-spacing:1px">MERCENARIES</h2>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid rgba(90,64,32,0.3)">
+        <h2 style="font-size:22px;color:#aa8855;margin:0;letter-spacing:1px;text-shadow:0 0 10px #aa885533">MERCENARIES</h2>
         <button id="merc-close" style="
-          padding:4px 12px;font-size:14px;border:1px solid #555;border-radius:4px;
-          background:rgba(30,25,15,0.6);color:#888;cursor:pointer;font-family:inherit;
-        ">X</button>
+          padding:4px 10px;font-size:12px;border:1px solid rgba(90,64,32,0.4);border-radius:4px;background:linear-gradient(180deg, rgba(30,25,15,0.7) 0%, rgba(15,12,8,0.8) 100%);color:#998877;cursor:pointer;font-family:inherit;letter-spacing:1px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.03);transition:all 0.15s ease;
+        ">\u2716</button>
       </div>
       <div style="font-size:11px;color:#776655;margin-bottom:12px">
         Gold: ${s.gold} | Active Contracts: ${s.mercContracts.filter((m) => m.hired).length}
@@ -7633,8 +7672,7 @@ export class WarbandCampaign {
     this._victoryPanel.style.cssText = `
       position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
       width:480px;max-height:85vh;overflow-y:auto;
-      background:rgba(15,12,8,0.97);border:2px solid #daa520;border-radius:10px;
-      padding:24px;z-index:10;
+      background:linear-gradient(180deg, rgba(18,14,9,0.98) 0%, rgba(12,10,6,0.98) 100%);border:2px solid #daa520;border-radius:10px;padding:24px 28px;z-index:10;box-shadow:0 8px 40px rgba(0,0,0,0.7), 0 0 20px rgba(218,165,32,0.15), inset 0 1px 0 rgba(255,220,140,0.06);font-family:'Palatino Linotype','Book Antiqua',Palatino,serif;scrollbar-width:thin;scrollbar-color:#5a4020 rgba(10,8,5,0.3);background-image:url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='60' height='60' filter='url(%23n)' opacity='0.02'/%3E%3C/svg%3E");
     `;
 
     const conquestPct = Math.min(100, Math.round((vp.conquest.citiesCaptured / vp.conquest.totalCities) * 100));
@@ -7642,18 +7680,17 @@ export class WarbandCampaign {
     const econPct = Math.min(100, Math.round((vp.economic.goldAccumulated / vp.economic.target) * 100));
 
     const barStyle = (pct: number, color: string) => `
-      <div style="height:10px;background:rgba(40,30,20,0.8);border-radius:5px;overflow:hidden;border:1px solid #332211;margin:4px 0 8px">
+      <div style="height:10px;background:linear-gradient(180deg, rgba(20,15,10,0.8) 0%, rgba(15,12,8,0.7) 100%);border-radius:5px;overflow:hidden;border:1px solid #332211;margin:4px 0 8px">
         <div style="height:100%;width:${pct}%;background:${color};border-radius:4px;transition:width 0.3s"></div>
       </div>
     `;
 
     this._victoryPanel.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-        <h2 style="font-size:22px;color:#daa520;margin:0;letter-spacing:1px">VICTORY PROGRESS</h2>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid rgba(90,64,32,0.3)">
+        <h2 style="font-size:22px;color:#daa520;margin:0;letter-spacing:1px;text-shadow:0 0 10px #daa52033">VICTORY PROGRESS</h2>
         <button id="victory-close" style="
-          padding:4px 12px;font-size:14px;border:1px solid #555;border-radius:4px;
-          background:rgba(30,25,15,0.6);color:#888;cursor:pointer;font-family:inherit;
-        ">X</button>
+          padding:4px 10px;font-size:12px;border:1px solid rgba(90,64,32,0.4);border-radius:4px;background:linear-gradient(180deg, rgba(30,25,15,0.7) 0%, rgba(15,12,8,0.8) 100%);color:#998877;cursor:pointer;font-family:inherit;letter-spacing:1px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.03);transition:all 0.15s ease;
+        ">\u2716</button>
       </div>
 
       <div style="margin-bottom:16px;padding:12px;background:rgba(30,25,15,0.5);border:1px solid #cc4444;border-radius:6px">
@@ -7745,15 +7782,15 @@ export class WarbandCampaign {
     this._perkModal = document.createElement("div");
     this._perkModal.style.cssText = `
       position:absolute;top:0;left:0;width:100%;height:100%;z-index:50;
-      background:rgba(5,3,0,0.88);display:flex;flex-direction:column;
-      align-items:center;justify-content:center;font-family:'Segoe UI',sans-serif;color:#e0d5c0;
+      background:linear-gradient(180deg, rgba(5,3,0,0.92) 0%, rgba(3,2,0,0.94) 100%);display:flex;flex-direction:column;
+      align-items:center;justify-content:center;font-family:'Palatino Linotype','Book Antiqua',Palatino,serif;color:#e0d5c0;
     `;
 
     const currentCounts = choices.map((p) => this._getPerkCount(p.id));
 
     this._perkModal.innerHTML = `
       <div style="text-align:center;margin-bottom:24px">
-        <h2 style="font-size:28px;color:#ffd700;text-shadow:0 0 12px rgba(218,165,32,0.4);margin:0">
+        <h2 style="font-size:28px;letter-spacing:4px;color:#ffd700;text-shadow:0 0 12px rgba(218,165,32,0.4);margin:0">
           LEVEL ${this._state.heroLevel}
         </h2>
         <div style="color:#aa9977;font-size:14px;margin-top:6px">Choose a perk:</div>
@@ -7763,7 +7800,7 @@ export class WarbandCampaign {
           <div class="camp-perk-btn" data-perk="${perk.id}" style="
             width:180px;padding:20px;text-align:center;cursor:pointer;
             border:2px solid ${perk.color}44;border-radius:8px;
-            background:rgba(20,15,10,0.8);transition:border-color 0.2s, background 0.2s;
+            background:linear-gradient(135deg, rgba(25,20,12,0.85) 0%, rgba(15,12,8,0.8) 100%);box-shadow:inset 0 1px 0 rgba(255,220,140,0.03);transition:border-color 0.2s, background 0.2s;
           " onmouseover="this.style.borderColor='${perk.color}';this.style.background='rgba(40,30,20,0.9)'"
              onmouseout="this.style.borderColor='${perk.color}44';this.style.background='rgba(20,15,10,0.8)'">
             <div style="font-size:18px;color:${perk.color};font-weight:bold;margin-bottom:8px">${perk.name}</div>
