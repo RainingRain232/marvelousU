@@ -3198,28 +3198,49 @@ export class SettlersRenderer {
         break;
       }
       case SettlersBuildingType.BARRACKS: {
-        // Training dummy
-        const dummyPost = new THREE.Mesh(this._cylGeo, new THREE.MeshStandardMaterial({ color: woodCol }));
+        // Training dummy (more detailed with head and shield)
+        const dummyPost = new THREE.Mesh(this._cylGeo, new THREE.MeshStandardMaterial({ color: woodCol, transparent: true }));
         dummyPost.scale.set(0.15, fw * 0.22, 0.15);
         dummyPost.position.set(fw * 0.42, fw * 0.11, fh * 0.0);
         g.add(dummyPost);
-        const dummyArm = new THREE.Mesh(this._cylGeo, new THREE.MeshStandardMaterial({ color: woodCol }));
+        const dummyArm = new THREE.Mesh(this._cylGeo, new THREE.MeshStandardMaterial({ color: woodCol, transparent: true }));
         dummyArm.scale.set(0.1, fw * 0.12, 0.1);
         dummyArm.rotation.z = Math.PI * 0.5;
         dummyArm.position.set(fw * 0.42, fw * 0.18, fh * 0.0);
         g.add(dummyArm);
+        // Dummy head (sphere)
+        const dummyHeadMat = new THREE.MeshStandardMaterial({ color: 0xd4b87a, roughness: 0.9, transparent: true });
+        const dummyHead = new THREE.Mesh(this._sphereGeo, dummyHeadMat);
+        dummyHead.scale.set(0.35, 0.35, 0.35);
+        dummyHead.position.set(fw * 0.42, fw * 0.24, fh * 0.0);
+        g.add(dummyHead);
         // Target painted circle (flat disc)
         const targetMat = new THREE.MeshStandardMaterial({ color: 0xcc3333, roughness: 0.8 });
         const target = new THREE.Mesh(new THREE.CylinderGeometry(fw * 0.05, fw * 0.05, 0.01, 8), targetMat);
         target.rotation.x = Math.PI * 0.5;
         target.position.set(fw * 0.42, fw * 0.14, fh * 0.01);
         g.add(target);
-        // Weapon rack
-        const rackMat = new THREE.MeshStandardMaterial({ color: woodCol, roughness: 0.85 });
+        // Weapon rack with crossed swords/spears
+        const rackMat = new THREE.MeshStandardMaterial({ color: woodCol, roughness: 0.85, transparent: true });
         const rack = new THREE.Mesh(this._boxGeo, rackMat);
         rack.scale.set(fw * 0.15, fw * 0.15, 0.02);
         rack.position.set(-fw * 0.38, fw * 0.12, fh * 0.35);
         g.add(rack);
+        // Crossed spears on the rack
+        const spearMat = new THREE.MeshStandardMaterial({ color: 0xccccdd, metalness: 0.5, roughness: 0.3, transparent: true });
+        for (let sp = -1; sp <= 1; sp += 2) {
+          const spear = new THREE.Mesh(this._cylGeo, spearMat);
+          spear.scale.set(0.04, fw * 0.18, 0.04);
+          spear.position.set(-fw * 0.38, fw * 0.14, fh * 0.36);
+          spear.rotation.z = sp * 0.3;
+          g.add(spear);
+        }
+        // Sword hanging on rack
+        const rackSwordMat = new THREE.MeshStandardMaterial({ color: 0xccccdd, metalness: 0.7, roughness: 0.2, transparent: true });
+        const rackSword = new THREE.Mesh(this._boxGeo, rackSwordMat);
+        rackSword.scale.set(0.012, fw * 0.12, 0.004);
+        rackSword.position.set(-fw * 0.38, fw * 0.12, fh * 0.37);
+        g.add(rackSword);
         break;
       }
       case SettlersBuildingType.IRON_MINE:
