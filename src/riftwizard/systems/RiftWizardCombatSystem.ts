@@ -16,6 +16,7 @@ import {
   SpellSchool,
 } from "../state/RiftWizardState";
 import { spawnRiftPortals } from "./RiftWizardLevelGenerator";
+import { rwEventBus, RWEvent } from "./RiftWizardEventBus";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -114,6 +115,8 @@ export function applyDamageToEnemy(
 
   enemy.hp -= finalDamage;
 
+  rwEventBus.emit(RWEvent.SPELL_HIT, { amount: finalDamage, school, enemyDefId: enemy.defId });
+
   state.animationQueue.push({
     type: RWAnimationType.DAMAGE_NUMBER,
     fromCol: enemy.col,
@@ -126,6 +129,7 @@ export function applyDamageToEnemy(
 
   if (enemy.hp <= 0) {
     enemy.alive = false;
+    rwEventBus.emit(RWEvent.ENEMY_DEATH, { enemyDefId: enemy.defId, isBoss: enemy.isBoss, school });
     state.animationQueue.push({
       type: RWAnimationType.DEATH,
       fromCol: enemy.col,
@@ -180,6 +184,11 @@ export function applyDamageToWizard(
   }
   state.wizard.hp -= amount;
   if (state.wizard.hp < 0) state.wizard.hp = 0;
+
+  rwEventBus.emit(RWEvent.WIZARD_HIT, { amount });
+  if (state.wizard.hp <= 0) {
+    rwEventBus.emit(RWEvent.WIZARD_DEATH);
+  }
 
   state.animationQueue.push({
     type: RWAnimationType.DAMAGE_NUMBER,
@@ -249,6 +258,8 @@ export function castSpell(
 
   const def = SPELL_DEFS[spell.defId];
   if (!def) return;
+
+  rwEventBus.emit(RWEvent.SPELL_CAST, { spellDefId: spell.defId, school: def.school });
 
   const wizPos: GridPos = { col: state.wizard.col, row: state.wizard.row };
   const targetPos: GridPos = { col: targetCol, row: targetRow };

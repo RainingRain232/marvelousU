@@ -23,6 +23,8 @@ export interface RWEnemyDef {
   isBoss: boolean;
   /** Tags for special interactions (e.g. "undead" for holy bonus). */
   tags: string[];
+  /** Override drop chance (default uses RWBalance.ENEMY_DROP_CHANCE). */
+  dropChance?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -246,6 +248,7 @@ export const ENEMY_DEFS: Record<string, RWEnemyDef> = {
     abilities: [],
     isBoss: false,
     tags: ["elemental"],
+    dropChance: 0.3,
   },
   death_knight: {
     id: "death_knight",
@@ -260,6 +263,7 @@ export const ENEMY_DEFS: Record<string, RWEnemyDef> = {
     abilities: [],
     isBoss: false,
     tags: ["undead", "elite"],
+    dropChance: 0.3,
   },
   distortion_mage: {
     id: "distortion_mage",
@@ -274,6 +278,7 @@ export const ENEMY_DEFS: Record<string, RWEnemyDef> = {
     abilities: ["distortion_blast"],
     isBoss: false,
     tags: ["humanoid", "mage"],
+    dropChance: 0.3,
   },
   pit_lord: {
     id: "pit_lord",
@@ -288,6 +293,7 @@ export const ENEMY_DEFS: Record<string, RWEnemyDef> = {
     abilities: [],
     isBoss: false,
     tags: ["demon"],
+    dropChance: 0.3,
   },
 
   // --- Tier 5 (levels 20-24) ---
@@ -304,6 +310,7 @@ export const ENEMY_DEFS: Record<string, RWEnemyDef> = {
     abilities: ["fireball", "chain_lightning"],
     isBoss: false,
     tags: ["humanoid", "mage"],
+    dropChance: 0.3,
   },
   seraphim: {
     id: "seraphim",
@@ -318,6 +325,7 @@ export const ENEMY_DEFS: Record<string, RWEnemyDef> = {
     abilities: ["holy_light"],
     isBoss: false,
     tags: ["angel"],
+    dropChance: 0.3,
   },
 
   // --- Bosses ---
@@ -334,6 +342,7 @@ export const ENEMY_DEFS: Record<string, RWEnemyDef> = {
     abilities: [],
     isBoss: true,
     tags: ["beast", "boss"],
+    dropChance: 1.0,
   },
   boss_fire_lord: {
     id: "boss_fire_lord",
@@ -348,6 +357,7 @@ export const ENEMY_DEFS: Record<string, RWEnemyDef> = {
     abilities: ["fireball", "fire_breath"],
     isBoss: true,
     tags: ["elemental", "boss"],
+    dropChance: 1.0,
   },
   boss_lich: {
     id: "boss_lich",
@@ -362,6 +372,7 @@ export const ENEMY_DEFS: Record<string, RWEnemyDef> = {
     abilities: ["death_bolt", "summon_imps"],
     isBoss: true,
     tags: ["undead", "boss"],
+    dropChance: 1.0,
   },
   boss_storm_titan: {
     id: "boss_storm_titan",
@@ -376,6 +387,7 @@ export const ENEMY_DEFS: Record<string, RWEnemyDef> = {
     abilities: ["chain_lightning"],
     isBoss: true,
     tags: ["elemental", "boss"],
+    dropChance: 1.0,
   },
   boss_mordred: {
     id: "boss_mordred",
@@ -390,6 +402,7 @@ export const ENEMY_DEFS: Record<string, RWEnemyDef> = {
     abilities: ["fireball", "chain_lightning", "death_bolt", "warp"],
     isBoss: true,
     tags: ["humanoid", "mage", "boss"],
+    dropChance: 1.0,
   },
 };
 

@@ -15,10 +15,13 @@ import type { RiftWizardState, RWEnemyInstance, RWSummonInstance } from "../stat
 import {
   RWTileType,
   RWAnimationType,
+  RWPhase,
+  SpellSchool,
   type AnimationEvent,
 } from "../state/RiftWizardState";
 import { RWBalance } from "../config/RiftWizardConfig";
 import { SCHOOL_COLORS } from "../config/RiftWizardShrineDefs";
+import { SPELL_DEFS } from "../config/RiftWizardSpellDefs";
 import { animationManager } from "@view/animation/AnimationManager";
 
 const TS = RWBalance.TILE_SIZE;
@@ -105,6 +108,8 @@ export class RiftWizardRenderer {
   private _spriteLayer = new Container();
   private _fxGfx = new Graphics();
   private _fxParticleGfx = new Graphics();
+  private _statusOverlayGfx = new Graphics();
+  private _telegraphGfx = new Graphics();
   private _cursorGfx = new Graphics();
   private _dmgNumbers: { x: number; y: number; text: Text; lifetime: number }[] = [];
   private _activeAnims: ActiveAnim[] = [];
@@ -142,13 +147,17 @@ export class RiftWizardRenderer {
     this._spriteLayer = new Container();
     this._fxGfx = new Graphics();
     this._fxParticleGfx = new Graphics();
+    this._statusOverlayGfx = new Graphics();
+    this._telegraphGfx = new Graphics();
     this._cursorGfx = new Graphics();
 
     this.worldLayer.addChild(this._staticTileGfx);
     this.worldLayer.addChild(this._tileGfx);
     this.worldLayer.addChild(this._ambientGfx);
+    this.worldLayer.addChild(this._telegraphGfx);
     this.worldLayer.addChild(this._entityGfx);
     this.worldLayer.addChild(this._spriteLayer);
+    this.worldLayer.addChild(this._statusOverlayGfx);
     this.worldLayer.addChild(this._fxGfx);
     this.worldLayer.addChild(this._fxParticleGfx);
     this.worldLayer.addChild(this._cursorGfx);
@@ -217,9 +226,12 @@ export class RiftWizardRenderer {
 
     this._drawTiles(state);
     this._drawAmbientEffects(state, dt);
+    this._drawTelegraphedTiles(state);
     this._drawEntities(state);
     this._syncSprites(state);
+    this._drawStatusOverlays(state);
     this._drawTargetCursor(state);
+    this._drawSpellPreview(state);
     this._updateAnimations(state, dt);
     this._updateParticles(dt);
     this._updateDamageNumbers(dt);
@@ -2390,6 +2402,341 @@ export class RiftWizardRenderer {
 
     es.sprite.x = summon.col * TS + TS / 2;
     es.sprite.y = summon.row * TS + TS * 0.75;
+  }
+
+  // -------------------------------------------------------------------------
+  // Status effect overlays (drawn on top of sprites)
+  // -------------------------------------------------------------------------
+
+  private _drawStatusOverlays(state: RiftWizardState): void {
+    this._statusOverlayGfx.clear();
+    const g = this._statusOverlayGfx;
+
+    // Enemy status effect visuals
+    for (const enemy of state.level.enemies) {
+      if (!enemy.alive) continue;
+      const cx = enemy.col * TS + TS / 2;
+      const cy = enemy.row * TS + TS / 2;
+      const ex = enemy.col * TS;
+      const ey = enemy.row * TS;
+
+      // Frozen / stunned: blue tint overlay + ice crystal shapes
+      if (enemy.stunTurns > 0 || enemy.statusEffects.some(e => e.type === "freeze" && e.turnsRemaining > 0)) {
+        // Blue tint overlay on the tile
+        g.rect(ex + 1, ey + 1, TS - 2, TS - 2);
+        g.fill({ color: 0x4488ff, alpha: 0.18 });
+        // Ice crystal diamond shapes around the enemy
+        for (let i = 0; i < 6; i++) {
+          const angle = (i / 6) * Math.PI * 2 + this._time * 0.8;
+          const dist = TS * 0.38;
+          const dx = cx + Math.cos(angle) * dist;
+          const dy = cy + Math.sin(angle) * dist;
+          const cSize = 3 + Math.sin(this._time * 2 + i) * 0.5;
+          // Diamond shape
+          g.moveTo(dx, dy - cSize);
+          g.lineTo(dx + cSize * 0.6, dy);
+          g.lineTo(dx, dy + cSize);
+          g.lineTo(dx - cSize * 0.6, dy);
+          g.closePath();
+          g.fill({ color: 0x88ccff, alpha: 0.6 });
+          g.moveTo(dx, dy - cSize);
+          g.lineTo(dx + cSize * 0.6, dy);
+          g.lineTo(dx, dy + cSize);
+          g.lineTo(dx - cSize * 0.6, dy);
+          g.closePath();
+          g.stroke({ color: 0xaaddff, width: 0.5, alpha: 0.8 });
+        }
+      }
+
+      // Burn status: orange/red flickering overlay + flame particles
+      if (enemy.statusEffects.some(e => e.type === "burn" && e.turnsRemaining > 0)) {
+        const flicker = 0.1 + 0.08 * Math.sin(this._time * 7 + enemy.col * 2.3);
+        // Orange-red flickering overlay
+        g.rect(ex + 1, ey + 1, TS - 2, TS - 2);
+        g.fill({ color: 0xff4400, alpha: flicker });
+        // Small flame triangles (2-3)
+        for (let i = 0; i < 3; i++) {
+          const fx = cx + (i - 1) * 7;
+          const fBaseY = cy + TS * 0.25;
+          const fh = 6 + Math.sin(this._time * 9 + i * 2.5) * 3;
+          // Outer flame (orange)
+          g.moveTo(fx - 2.5, fBaseY);
+          g.lineTo(fx, fBaseY - fh);
+          g.lineTo(fx + 2.5, fBaseY);
+          g.closePath();
+          g.fill({ color: 0xff6600, alpha: 0.55 });
+          // Inner flame (yellow)
+          g.moveTo(fx - 1.2, fBaseY);
+          g.lineTo(fx, fBaseY - fh * 0.6);
+          g.lineTo(fx + 1.2, fBaseY);
+          g.closePath();
+          g.fill({ color: 0xffcc00, alpha: 0.65 });
+        }
+      }
+
+      // Poison status: green tint + bubble circles
+      if (enemy.statusEffects.some(e => e.type === "poison" && e.turnsRemaining > 0)) {
+        // Green tint overlay
+        g.rect(ex + 1, ey + 1, TS - 2, TS - 2);
+        g.fill({ color: 0x33cc33, alpha: 0.12 });
+        // Green bubble circles
+        for (let i = 0; i < 4; i++) {
+          const bx = cx + Math.cos(this._time * 1.5 + i * 1.7) * TS * 0.28;
+          const by = cy + Math.sin(this._time * 1.2 + i * 2.1) * TS * 0.28 - Math.abs(Math.sin(this._time * 2.5 + i)) * 4;
+          const br = 1.5 + Math.sin(this._time * 3 + i) * 0.5;
+          g.circle(bx, by, br);
+          g.stroke({ color: 0x66ff66, width: 1, alpha: 0.55 });
+          // Highlight on bubble
+          g.circle(bx - 0.5, by - 0.5, br * 0.3);
+          g.fill({ color: 0xaaffaa, alpha: 0.4 });
+        }
+      }
+    }
+
+    // Wizard shield: blue glowing circle
+    if (state.wizard.shields > 0 || state.wizard.statusEffects.some(e => e.type === "shield" && e.turnsRemaining > 0)) {
+      const wx = state.wizard.col * TS + TS / 2;
+      const wy = state.wizard.row * TS + TS / 2;
+      const pulse = 0.5 + 0.3 * Math.sin(this._time * 3);
+      // Outer glow ring
+      g.circle(wx, wy, TS * 0.52);
+      g.fill({ color: 0x4488ff, alpha: pulse * 0.08 });
+      g.circle(wx, wy, TS * 0.48);
+      g.stroke({ color: 0x44aaff, width: 2.5, alpha: pulse * 0.5 });
+      // Inner glow ring
+      g.circle(wx, wy, TS * 0.42);
+      g.stroke({ color: 0x88ccff, width: 1, alpha: pulse * 0.35 });
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Telegraphed tiles: pulsing warning indicators
+  // -------------------------------------------------------------------------
+
+  private _drawTelegraphedTiles(state: RiftWizardState): void {
+    this._telegraphGfx.clear();
+    const g = this._telegraphGfx;
+
+    if (!state.telegraphedTiles || state.telegraphedTiles.length === 0) return;
+
+    for (const tile of state.telegraphedTiles) {
+      const tx = tile.col * TS;
+      const ty = tile.row * TS;
+      const cx = tx + TS / 2;
+      const cy = ty + TS / 2;
+
+      // Alpha based on turnDelay: more opaque = about to trigger
+      const urgency = Math.max(0.2, 1 - (tile.turnDelay - 1) * 0.25);
+      const pulseRate = 3 + (1 - urgency) * 2; // faster pulse when about to trigger
+      const pulse = 0.5 + 0.5 * Math.sin(this._time * pulseRate);
+      const baseAlpha = urgency * 0.5 * pulse;
+
+      // Red/orange pulsing rectangle
+      g.rect(tx + 1, ty + 1, TS - 2, TS - 2);
+      g.fill({ color: 0xff4400, alpha: baseAlpha * 0.4 });
+      g.rect(tx + 1, ty + 1, TS - 2, TS - 2);
+      g.stroke({ color: 0xff6622, width: 1.5, alpha: baseAlpha * 0.7 });
+
+      // Inner pulsing rect
+      g.rect(tx + 3, ty + 3, TS - 6, TS - 6);
+      g.fill({ color: 0xff8800, alpha: baseAlpha * 0.25 });
+
+      // Warning "!" icon above the tile
+      const iconY = ty - 6;
+      const iconAlpha = urgency * (0.6 + 0.4 * pulse);
+
+      // Exclamation mark background circle
+      g.circle(cx, iconY, 5);
+      g.fill({ color: 0xff2200, alpha: iconAlpha * 0.7 });
+
+      // "!" stem (vertical line)
+      g.rect(cx - 1, iconY - 3.5, 2, 4.5);
+      g.fill({ color: 0xffffff, alpha: iconAlpha });
+      // "!" dot
+      g.circle(cx, iconY + 2.5, 0.8);
+      g.fill({ color: 0xffffff, alpha: iconAlpha });
+
+      // School-colored corner accents if school is defined
+      if (tile.school) {
+        const schoolColor = SCHOOL_COLORS[tile.school] ?? 0xff4400;
+        // Small corner diamonds
+        const corners = [
+          { x: tx + 3, y: ty + 3 },
+          { x: tx + TS - 3, y: ty + 3 },
+          { x: tx + 3, y: ty + TS - 3 },
+          { x: tx + TS - 3, y: ty + TS - 3 },
+        ];
+        for (const c of corners) {
+          g.moveTo(c.x, c.y - 2);
+          g.lineTo(c.x + 1.5, c.y);
+          g.lineTo(c.x, c.y + 2);
+          g.lineTo(c.x - 1.5, c.y);
+          g.closePath();
+          g.fill({ color: schoolColor, alpha: baseAlpha * 0.8 });
+        }
+      }
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Spell preview (targeting mode enhancements)
+  // -------------------------------------------------------------------------
+
+  private _drawSpellPreview(state: RiftWizardState): void {
+    if (state.phase !== RWPhase.TARGETING) return;
+    if (state.selectedSpellIndex < 0) return;
+
+    const spell = state.spells[state.selectedSpellIndex];
+    if (!spell) return;
+
+    const spellDef = SPELL_DEFS[spell.defId];
+    if (!spellDef) return;
+
+    const g = this._cursorGfx;
+    const tc = state.targetCursor;
+    const wizCol = state.wizard.col;
+    const wizRow = state.wizard.row;
+    const wizX = wizCol * TS + TS / 2;
+    const wizY = wizRow * TS + TS / 2;
+    const spellColor = SCHOOL_COLORS[spell.school] ?? 0xff4444;
+
+    // Range ring around the wizard (circle outline showing max spell range)
+    const rangePixels = spell.range * TS;
+    if (spell.range > 0) {
+      g.circle(wizX, wizY, rangePixels);
+      g.stroke({ color: spellColor, width: 1.5, alpha: 0.2 });
+      // Dashed inner ring for clarity
+      const dashCount = 24;
+      for (let i = 0; i < dashCount; i += 2) {
+        const a1 = (i / dashCount) * Math.PI * 2;
+        const a2 = ((i + 1) / dashCount) * Math.PI * 2;
+        g.moveTo(wizX + Math.cos(a1) * (rangePixels - 2), wizY + Math.sin(a1) * (rangePixels - 2));
+        g.lineTo(wizX + Math.cos(a2) * (rangePixels - 2), wizY + Math.sin(a2) * (rangePixels - 2));
+        g.stroke({ color: spellColor, width: 1, alpha: 0.12 });
+      }
+    }
+
+    // Tint valid/invalid target tiles
+    if (tc) {
+      const distToCursor = Math.abs(tc.col - wizCol) + Math.abs(tc.row - wizRow);
+      const inRange = distToCursor <= spell.range && (spell.range > 0 || distToCursor === 0);
+      // Tint the target tile
+      const tintColor = inRange ? 0x44ff44 : 0xff4444;
+      g.rect(tc.col * TS + 1, tc.row * TS + 1, TS - 2, TS - 2);
+      g.fill({ color: tintColor, alpha: 0.12 });
+    }
+
+    if (!tc) return;
+
+    const mechanic = spellDef.mechanic;
+
+    // AoE radius highlighted tiles (semi-transparent yellow/orange circles)
+    if (spell.aoeRadius > 0 && (mechanic === "projectile_aoe" || mechanic === "global_aoe" || mechanic === "aoe_slow" || mechanic === "aoe_knockback")) {
+      for (let dr = -spell.aoeRadius; dr <= spell.aoeRadius; dr++) {
+        for (let dc = -spell.aoeRadius; dc <= spell.aoeRadius; dc++) {
+          if (Math.abs(dr) + Math.abs(dc) > spell.aoeRadius) continue;
+          const hx = (tc.col + dc) * TS + TS / 2;
+          const hy = (tc.row + dr) * TS + TS / 2;
+          // Semi-transparent yellow/orange circle
+          g.circle(hx, hy, TS * 0.4);
+          g.fill({ color: 0xffaa33, alpha: 0.12 });
+          g.circle(hx, hy, TS * 0.38);
+          g.stroke({ color: 0xffcc44, width: 1, alpha: 0.2 });
+        }
+      }
+    }
+
+    // Chain spells: draw connector lines showing potential bounce paths to nearby enemies
+    if (mechanic === "chain" && spell.maxBounces > 0) {
+      const aliveEnemies = state.level.enemies.filter(e => e.alive);
+      // Find enemies within range from the cursor as potential starting targets
+      let chainTarget: { col: number; row: number } | null = null;
+      for (const enemy of aliveEnemies) {
+        if (enemy.col === tc.col && enemy.row === tc.row) {
+          chainTarget = { col: enemy.col, row: enemy.row };
+          break;
+        }
+      }
+      if (chainTarget) {
+        const visited = new Set<number>();
+        visited.add(chainTarget.col * 1000 + chainTarget.row);
+        let current = chainTarget;
+        let bounces = 0;
+        while (bounces < spell.maxBounces) {
+          // Find nearest unvisited enemy
+          let nearest: { col: number; row: number; dist: number } | null = null;
+          for (const enemy of aliveEnemies) {
+            const key = enemy.col * 1000 + enemy.row;
+            if (visited.has(key)) continue;
+            const d = Math.abs(enemy.col - current.col) + Math.abs(enemy.row - current.row);
+            if (d <= (spell.range || 5) && (!nearest || d < nearest.dist)) {
+              nearest = { col: enemy.col, row: enemy.row, dist: d };
+            }
+          }
+          if (!nearest) break;
+          // Draw connector line
+          const fromPx = current.col * TS + TS / 2;
+          const fromPy = current.row * TS + TS / 2;
+          const toPx = nearest.col * TS + TS / 2;
+          const toPy = nearest.row * TS + TS / 2;
+
+          // Dashed line with lightning-like zigzag
+          const segments = 4;
+          let lx = fromPx, ly = fromPy;
+          for (let s = 1; s <= segments; s++) {
+            const frac = s / segments;
+            let nx = fromPx + (toPx - fromPx) * frac;
+            let ny = fromPy + (toPy - fromPy) * frac;
+            if (s < segments) {
+              nx += (Math.random() - 0.5) * 6;
+              ny += (Math.random() - 0.5) * 6;
+            }
+            g.moveTo(lx, ly);
+            g.lineTo(nx, ny);
+            g.stroke({ color: spellColor, width: 1, alpha: 0.3 });
+            lx = nx;
+            ly = ny;
+          }
+
+          // Small circle at bounce target
+          g.circle(toPx, toPy, 4);
+          g.stroke({ color: spellColor, width: 1, alpha: 0.4 });
+
+          visited.add(nearest.col * 1000 + nearest.row);
+          current = { col: nearest.col, row: nearest.row };
+          bounces++;
+        }
+      }
+    }
+
+    // Cone spells: highlight the cone area
+    if (mechanic === "cone") {
+      const dx = tc.col - wizCol;
+      const dy = tc.row - wizRow;
+      const angle = Math.atan2(dy, dx);
+      const coneHalfAngle = Math.PI / 4; // 45 degree half-angle
+      const coneRange = spell.range || 3;
+
+      for (let row = 0; row < state.level.height; row++) {
+        for (let col = 0; col < state.level.width; col++) {
+          const tdx = col - wizCol;
+          const tdy = row - wizRow;
+          const dist = Math.abs(tdx) + Math.abs(tdy);
+          if (dist === 0 || dist > coneRange) continue;
+          const tileAngle = Math.atan2(tdy, tdx);
+          let angleDiff = tileAngle - angle;
+          // Normalize to -PI..PI
+          while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+          while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+          if (Math.abs(angleDiff) <= coneHalfAngle) {
+            const hx = col * TS + TS / 2;
+            const hy = row * TS + TS / 2;
+            g.circle(hx, hy, TS * 0.35);
+            g.fill({ color: spellColor, alpha: 0.12 });
+          }
+        }
+      }
+    }
   }
 
   // -------------------------------------------------------------------------

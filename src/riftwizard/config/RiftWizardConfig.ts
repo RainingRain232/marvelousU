@@ -70,7 +70,20 @@ export const RWBalance = {
 
   // Summon lifespan
   SUMMON_DEFAULT_TURNS: 15,
+
+  // Enemy drop chances
+  ENEMY_DROP_CHANCE: 0.1,
+  BOSS_DROP_CHANCE: 1.0,
+  ELITE_DROP_CHANCE: 0.3,
 } as const;
+
+export const DIFFICULTY_MULTIPLIERS = {
+  easy: { enemyHp: 0.7, enemyDmg: 0.7, spBonus: 2, wizardHpMult: 1.3 },
+  normal: { enemyHp: 1.0, enemyDmg: 1.0, spBonus: 0, wizardHpMult: 1.0 },
+  hard: { enemyHp: 1.4, enemyDmg: 1.3, spBonus: 0, wizardHpMult: 0.8 },
+} as const;
+
+export type Difficulty = "easy" | "normal" | "hard";
 
 // SP awarded for clearing a level
 export function getSPForLevel(levelNum: number): number {

@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import type { UnitType, BuildingType } from "@/types";
+import { createRunStats, type RWRunStats } from "../systems/RiftWizardRunStats";
 
 // ---------------------------------------------------------------------------
 // Enums
@@ -16,6 +17,7 @@ export enum RWPhase {
   VICTORY = "victory",
   GAME_OVER = "game_over",
   PAUSED = "paused",
+  LEVEL_SUMMARY = "level_summary",
 }
 
 export enum RWTileType {
@@ -260,6 +262,12 @@ export interface RiftWizardState {
 
   // ID counters
   nextEntityId: number;
+
+  runStats: RWRunStats;
+  difficulty: "easy" | "normal" | "hard";
+  runSeed: number;
+  encounteredEnemies: string[]; // defIds of enemies seen
+  telegraphedTiles: { col: number; row: number; turnDelay: number; damage: number; school: SpellSchool | null }[];
 }
 
 // ---------------------------------------------------------------------------
@@ -295,6 +303,12 @@ export function createRiftWizardState(): RiftWizardState {
     selectedSpellIndex: -1,
     targetCursor: null,
     nextEntityId: 1,
+
+    runStats: createRunStats(),
+    difficulty: "normal",
+    runSeed: Date.now(),
+    encounteredEnemies: [],
+    telegraphedTiles: [],
   };
 }
 

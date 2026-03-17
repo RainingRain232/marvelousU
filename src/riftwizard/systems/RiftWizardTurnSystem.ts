@@ -18,6 +18,7 @@ import {
 } from "./RiftWizardCombatSystem";
 import { updateAllEnemies } from "./RiftWizardEnemyAI";
 import { generateLevel, getNextEntityId } from "./RiftWizardLevelGenerator";
+import { rwEventBus, RWEvent } from "./RiftWizardEventBus";
 
 // ---------------------------------------------------------------------------
 // Player actions
@@ -63,6 +64,7 @@ export function tryInteract(state: RiftWizardState): boolean {
   for (const shrine of state.level.shrines) {
     if (shrine.col === col && shrine.row === row && !shrine.used) {
       shrine.used = true;
+      rwEventBus.emit(RWEvent.SHRINE_USE, { school: shrine.school, effect: shrine.effect });
       // Apply shrine buff to first qualifying spell
       for (const spell of state.spells) {
         if (spell.school === shrine.school) {
@@ -98,6 +100,7 @@ export function tryInteract(state: RiftWizardState): boolean {
   for (const item of state.level.items) {
     if (item.col === col && item.row === row && !item.picked) {
       item.picked = true;
+      rwEventBus.emit(RWEvent.ITEM_PICKUP, { type: item.type });
       const existing = state.consumables.find((c) => c.type === item.type);
       if (existing) {
         existing.quantity++;
@@ -114,9 +117,11 @@ export function tryInteract(state: RiftWizardState): boolean {
       if (state.currentLevel >= RWBalance.TOTAL_LEVELS - 1) {
         // Victory!
         state.phase = RWPhase.VICTORY;
+        rwEventBus.emit(RWEvent.VICTORY);
         return true;
       }
       // Award SP
+      rwEventBus.emit(RWEvent.PORTAL_ENTER);
       const sp = getSPForLevel(state.currentLevel);
       state.skillPoints += sp;
       state.totalSPEarned += sp;
@@ -177,6 +182,7 @@ export function useConsumable(
  * Call this after a valid player action (move, cast, or pass).
  */
 export function executeTurn(state: RiftWizardState): void {
+  rwEventBus.emit(RWEvent.TURN_START);
   state.turnNumber++;
 
   // Process deaths from player action
@@ -184,12 +190,14 @@ export function executeTurn(state: RiftWizardState): void {
 
   // Check level clear
   if (checkLevelClear(state)) {
+    rwEventBus.emit(RWEvent.LEVEL_CLEAR);
     // If final level, victory
     if (state.currentLevel >= RWBalance.TOTAL_LEVELS - 1) {
       state.phase = RWPhase.VICTORY;
       return;
     }
     // Otherwise portals have been spawned, wait for player to walk to one
+    rwEventBus.emit(RWEvent.TURN_END);
     return;
   }
 
@@ -203,17 +211,22 @@ export function executeTurn(state: RiftWizardState): void {
   // Check wizard death
   if (state.wizard.hp <= 0) {
     state.phase = RWPhase.GAME_OVER;
+    rwEventBus.emit(RWEvent.GAME_OVER);
     return;
   }
 
   // Check level clear again (enemies may have died to lava)
-  checkLevelClear(state);
+  if (checkLevelClear(state)) {
+    rwEventBus.emit(RWEvent.LEVEL_CLEAR);
+  }
 
   // Back to player
   state.isPlayerTurn = true;
 
   // Trigger turn-start abilities (regeneration, fire trail, etc.)
   triggerTurnStartAbilities(state);
+
+  rwEventBus.emit(RWEvent.TURN_END);
 }
 
 // ---------------------------------------------------------------------------
@@ -251,6 +264,8 @@ export function advanceToNextLevel(state: RiftWizardState): void {
 
   state.isPlayerTurn = true;
   state.phase = RWPhase.PLAYING;
+
+  rwEventBus.emit(RWEvent.LEVEL_START, { level: state.currentLevel });
 }
 
 // ---------------------------------------------------------------------------

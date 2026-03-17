@@ -18,6 +18,9 @@ import {
   DiabloTownfolk,
   TownfolkRole,
   DamageType,
+  PetSpecies,
+  PetAIState,
+  DiabloPet,
 } from './DiabloTypes';
 import { ENEMY_DEFS, MAP_CONFIGS, VENDOR_DEFS } from './DiabloConfig';
 import { RARITY_COLORS } from './DiabloTypes';
@@ -96,6 +99,38 @@ export class DiabloRenderer {
   private _baseFogDensity: number = 0;
   private _baseAmbientIntensity: number = 0;
   private _baseDirIntensity: number = 0;
+
+  // Pet rendering
+  private _petMeshes: Map<string, THREE.Group> = new Map();
+
+  // Enemy death animation tracking (id -> { timer, sinkY, initialY })
+  private _dyingAnims: Map<string, { timer: number; sinkY: number; initialY: number; scattered: boolean }> = new Map();
+
+  // Skill cast effect meshes (temporary visual bursts at player position)
+  private _castEffectGroup: THREE.Group | null = null;
+  private _castEffectTimer: number = 0;
+  private _castEffectClass: DiabloClass | null = null;
+  private _castEffectSkillId: SkillId | null = null;
+  private _prevActiveSkillTimer: number = 0;
+
+  // Water surface meshes for animation
+  private _waterMeshes: THREE.Mesh[] = [];
+
+  // Player status effect overlay meshes
+  private _playerStatusFxGroup: THREE.Group | null = null;
+
+  // Dodge roll animation state
+  private _dodgeRollAngle: number = 0;
+  private _wasDodging: boolean = false;
+
+  // Loot drop animation tracking (id -> spawn time)
+  private _lootSpawnTimes: Map<string, number> = new Map();
+
+  // Boss telegraph enhancements
+  private _bossWarningRings: Map<string, THREE.Group> = new Map();
+
+  // Post-processing
+  private _bloomComposer: any = null;
 
   init(w: number, h: number): void {
     this._renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -280,6 +315,10 @@ export class DiabloRenderer {
     for (const [, m] of this._floatTextSprites) persistent.add(m);
     for (const [, m] of this._shieldMeshes) persistent.add(m);
     for (const [, m] of this._healBeams) persistent.add(m);
+    for (const [, m] of this._petMeshes) persistent.add(m);
+    for (const [, m] of this._bossWarningRings) persistent.add(m);
+    if (this._castEffectGroup) persistent.add(this._castEffectGroup);
+    if (this._playerStatusFxGroup) persistent.add(this._playerStatusFxGroup);
     if (this._aimLine) persistent.add(this._aimLine);
     if (this._invulnMesh) persistent.add(this._invulnMesh);
 
@@ -296,6 +335,9 @@ export class DiabloRenderer {
       tl.dispose();
     }
     this._torchLights = [];
+
+    // 2b. Clear tracked water meshes (they live in _envGroup or scene, already disposed above)
+    this._waterMeshes = [];
 
     // 3. Remove ALL non-persistent objects from the scene (catches objects
     //    added directly to _scene by map builders instead of _envGroup)
@@ -27035,48 +27077,26 @@ export class DiabloRenderer {
       this._townfolkMeshes.clear();
     }
 
+    // -- Pets --
+    this._syncPets(state, dt);
+
+    // -- Skill cast effects (3rd person) --
+    this._updateCastEffects(state, dt);
+
+    // -- Player status effect visuals --
+    this._syncPlayerStatusEffects(state);
+
+    // -- Dodge roll animation --
+    this._updateDodgeRoll(state, dt);
+
     // -- Environment animation --
     this._animateEnvironment();
 
-    // Boss attack telegraphs
-    for (const enemy of state.enemies) {
-      if (!enemy.isBoss) continue;
-      if (enemy.state === 'DEAD' || enemy.state === 'DYING') continue;
-      const key = `telegraph_${enemy.id}`;
+    // -- Water surface animation --
+    this._animateWater(dt);
 
-      if (enemy.state === 'ATTACK' && enemy.attackTimer < 1.0) {
-        let tMesh = this._telegraphMeshes.get(key);
-        if (!tMesh) {
-          const geo = new THREE.RingGeometry(0.5, enemy.attackRange * 1.2, 32);
-          geo.rotateX(-Math.PI / 2);
-          const mat = new THREE.MeshBasicMaterial({
-            color: 0xff0000, transparent: true, opacity: 0.3, side: THREE.DoubleSide
-          });
-          tMesh = new THREE.Mesh(geo, mat);
-          this._scene.add(tMesh);
-          this._telegraphMeshes.set(key, tMesh);
-        }
-        tMesh.position.set(enemy.x, enemy.y + 0.1, enemy.z);
-        tMesh.visible = true;
-        const pulse = 0.3 + Math.sin(this._time * 8) * 0.15;
-        (tMesh.material as THREE.MeshBasicMaterial).opacity = pulse;
-      } else {
-        const tMesh = this._telegraphMeshes.get(key);
-        if (tMesh) tMesh.visible = false;
-      }
-    }
-
-    // Clean up old telegraphs
-    for (const [key, mesh] of this._telegraphMeshes) {
-      const id = key.replace('telegraph_', '');
-      const enemy = state.enemies.find(e => e.id === id);
-      if (!enemy || enemy.state === 'DEAD' || enemy.state === 'DYING') {
-        this._scene.remove(mesh);
-        mesh.geometry.dispose();
-        (mesh.material as THREE.Material).dispose();
-        this._telegraphMeshes.delete(key);
-      }
-    }
+    // Boss attack telegraphs (enhanced)
+    this._syncBossTelegraphs(state);
 
     // Slow motion visual tint
     if (state.slowMotionTimer > 0) {
@@ -27214,15 +27234,45 @@ export class DiabloRenderer {
         }
       }
 
-      // Dying fade
+      // Enhanced dying animation: collapse + sink + dissolve
       if (enemy.state === EnemyState.DYING) {
-        const fade = Math.max(0, 1.0 - enemy.deathTimer * 2);
+        let dyingAnim = this._dyingAnims.get(enemy.id);
+        if (!dyingAnim) {
+          dyingAnim = { timer: 0, sinkY: 0, initialY: enemy.y, scattered: false };
+          this._dyingAnims.set(enemy.id, dyingAnim);
+        }
+        const dt2 = enemy.deathTimer; // how far into death (increases)
+        const phase = Math.min(dt2 * 2, 1.0); // 0→1 over 0.5s
+
+        // Phase 1: Collapse — tilt forward/sideways and shrink
+        const collapseT = Math.min(phase * 2, 1.0);
+        mesh.rotation.x = collapseT * 1.2; // fall forward
+        mesh.rotation.z = collapseT * 0.4 * (enemy.id.charCodeAt(0) % 2 === 0 ? 1 : -1); // lean to a side
+        const baseScale = enemy.scale || 1;
+        const scaleY = baseScale * (1.0 - collapseT * 0.5); // flatten vertically
+        mesh.scale.set(baseScale * (1.0 + collapseT * 0.15), scaleY, baseScale * (1.0 + collapseT * 0.15));
+
+        // Phase 2: Sink into ground
+        const sinkT = Math.max(0, (phase - 0.3) / 0.7);
+        mesh.position.y = enemy.y - sinkT * 0.8;
+
+        // Phase 3: Dissolve/fade
+        const fadeT = Math.max(0, (phase - 0.2) / 0.8);
+        const fade = Math.max(0, 1.0 - fadeT);
         mesh.traverse((child) => {
           if (child instanceof THREE.Mesh && child.material instanceof THREE.MeshStandardMaterial) {
             child.material.transparent = true;
             child.material.opacity = fade;
+            // Red flash at death start
+            if (phase < 0.2) {
+              child.material.emissive.setHex(0xff2200);
+              child.material.emissiveIntensity = (1.0 - phase * 5) * 2.0;
+            }
           }
         });
+      } else {
+        // Clean up dying anim tracking if enemy is no longer dying
+        this._dyingAnims.delete(enemy.id);
       }
 
       // Status effect visuals
@@ -29047,6 +29097,7 @@ export class DiabloRenderer {
       if (!currentIds.has(id)) {
         this._scene.remove(mesh);
         this._lootMeshes.delete(id);
+        this._lootSpawnTimes.delete(id);
       }
     }
 
@@ -29056,12 +29107,31 @@ export class DiabloRenderer {
         mesh = this._createLootBeam(loot.item.rarity);
         this._scene.add(mesh);
         this._lootMeshes.set(loot.id, mesh);
+        this._lootSpawnTimes.set(loot.id, this._time);
       }
 
-      // Bob up/down and rotate
+      // Loot drop bounce animation for newly spawned items
+      const spawnTime = this._lootSpawnTimes.get(loot.id) || 0;
+      const age = this._time - spawnTime;
+      const bounceDuration = 0.8;
+      let dropOffset = 0;
+      let scaleMultiplier = 1.0;
+
+      if (age < bounceDuration) {
+        // Pop up from the ground with decaying bounces
+        const t = age / bounceDuration;
+        const bounce1 = Math.sin(t * Math.PI) * (1.0 - t) * 1.5; // first big bounce
+        const bounce2 = Math.sin(t * Math.PI * 3) * (1.0 - t) * 0.3; // smaller secondary bounces
+        dropOffset = bounce1 + bounce2;
+        // Scale pop: starts small, pops to slightly large, settles to normal
+        scaleMultiplier = 0.3 + t * 0.7 + Math.sin(t * Math.PI) * 0.3 * (1.0 - t);
+      }
+
+      // Bob up/down and rotate (ongoing after bounce settles)
       const bob = Math.sin(this._time * 2 + loot.x) * 0.2;
-      mesh.position.set(loot.x, loot.y + bob, loot.z);
+      mesh.position.set(loot.x, loot.y + bob + dropOffset, loot.z);
       mesh.rotation.y = this._time * 0.8;
+      mesh.scale.setScalar(scaleMultiplier);
     }
   }
 
@@ -29711,17 +29781,43 @@ export class DiabloRenderer {
       }
     }
 
-    // Water shimmer (forest stream, elven village pond)
-    if (this._currentMap === DiabloMapId.FOREST || this._currentMap === DiabloMapId.ELVEN_VILLAGE) {
+    // Auto-detect and register water meshes from environment (run once per map)
+    if (this._waterMeshes.length === 0) {
       this._envGroup.traverse((child) => {
         if (
           child instanceof THREE.Mesh &&
           child.material instanceof THREE.MeshStandardMaterial &&
           child.material.transparent &&
-          child.material.opacity < 0.7 &&
-          child.material.opacity > 0.3
+          child.material.opacity >= 0.3 &&
+          child.material.opacity <= 0.75 &&
+          child.material.roughness <= 0.35 &&
+          child.material.color.getHex() !== 0x000000
         ) {
-          child.material.opacity = 0.5 + Math.sin(this._time * 1.5) * 0.08;
+          // Likely a water surface (transparent, low roughness)
+          const c = child.material.color;
+          const b = c.b;
+          const r = c.r;
+          // Must be blue-ish or teal (blue channel dominant or close to it)
+          if (b > 0.25 && b >= r * 0.8) {
+            this._waterMeshes.push(child);
+          }
+        }
+      });
+      // Also scan scene root for water added directly
+      this._scene.traverse((child) => {
+        if (
+          child instanceof THREE.Mesh &&
+          this._waterMeshes.indexOf(child) === -1 &&
+          child.material instanceof THREE.MeshStandardMaterial &&
+          child.material.transparent &&
+          child.material.opacity >= 0.3 &&
+          child.material.opacity <= 0.75 &&
+          child.material.roughness <= 0.35
+        ) {
+          const c = child.material.color;
+          if (c.b > 0.25 && c.b >= c.r * 0.8) {
+            this._waterMeshes.push(child);
+          }
         }
       });
     }
@@ -50678,6 +50774,815 @@ export class DiabloRenderer {
     }
   }
 
+  // ════════════════════════════════════════════════════════════════════════
+  //  PET RENDERING
+  // ════════════════════════════════════════════════════════════════════════
+
+  private _createPetMesh(species: PetSpecies): THREE.Group {
+    const group = new THREE.Group();
+
+    switch (species) {
+      case PetSpecies.WOLF_PUP: {
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0x887766, roughness: 0.8 });
+        const body = new THREE.Mesh(new THREE.SphereGeometry(0.2, 16, 12), bodyMat);
+        body.scale.set(1.3, 0.9, 0.9);
+        body.position.y = 0.25;
+        group.add(body);
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 10), bodyMat);
+        head.position.set(0.22, 0.35, 0);
+        group.add(head);
+        // Ears
+        for (const side of [-1, 1]) {
+          const ear = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.1, 8), bodyMat);
+          ear.position.set(0.22, 0.48, side * 0.06);
+          ear.rotation.z = side * 0.3;
+          group.add(ear);
+        }
+        // Tail
+        const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.01, 0.15, 8), bodyMat);
+        tail.position.set(-0.25, 0.3, 0);
+        tail.rotation.z = 0.8;
+        tail.name = 'pet_tail';
+        group.add(tail);
+        // Legs
+        for (const lx of [0.12, -0.12]) {
+          for (const lz of [0.08, -0.08]) {
+            const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.15, 8), bodyMat);
+            leg.position.set(lx, 0.08, lz);
+            group.add(leg);
+          }
+        }
+        break;
+      }
+      case PetSpecies.FIRE_SPRITE: {
+        const fireMat = new THREE.MeshStandardMaterial({
+          color: 0xff6600, emissive: 0xff4400, emissiveIntensity: 2.0, transparent: true, opacity: 0.8
+        });
+        const core = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 10), fireMat);
+        core.position.y = 0.5;
+        group.add(core);
+        for (let i = 0; i < 5; i++) {
+          const flame = new THREE.Mesh(
+            new THREE.ConeGeometry(0.05 + Math.random() * 0.04, 0.2 + Math.random() * 0.15, 8),
+            new THREE.MeshStandardMaterial({
+              color: 0xffaa00, emissive: 0xff6600, emissiveIntensity: 3.0, transparent: true, opacity: 0.6
+            })
+          );
+          const a = (i / 5) * Math.PI * 2;
+          flame.position.set(Math.cos(a) * 0.1, 0.5 + Math.random() * 0.1, Math.sin(a) * 0.1);
+          flame.name = 'pet_flame';
+          group.add(flame);
+        }
+        const light = new THREE.PointLight(0xff6600, 2, 4);
+        light.position.y = 0.5;
+        group.add(light);
+        break;
+      }
+      case PetSpecies.SHADOW_HOUND: {
+        const shadowMat = new THREE.MeshStandardMaterial({
+          color: 0x221133, emissive: 0x330066, emissiveIntensity: 0.5, transparent: true, opacity: 0.85
+        });
+        const body = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 12), shadowMat);
+        body.scale.set(1.4, 0.85, 0.85);
+        body.position.y = 0.28;
+        group.add(body);
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.13, 12, 10), shadowMat);
+        head.position.set(0.25, 0.38, 0);
+        group.add(head);
+        const eyes = new THREE.Mesh(new THREE.SphereGeometry(0.025, 8, 6),
+          new THREE.MeshStandardMaterial({ color: 0xff0044, emissive: 0xff0044, emissiveIntensity: 3.0 }));
+        eyes.position.set(0.35, 0.4, 0);
+        group.add(eyes);
+        const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.01, 0.2, 8), shadowMat);
+        tail.position.set(-0.28, 0.32, 0);
+        tail.rotation.z = 0.6;
+        tail.name = 'pet_tail';
+        group.add(tail);
+        break;
+      }
+      case PetSpecies.STORM_FALCON: {
+        const featherMat = new THREE.MeshStandardMaterial({ color: 0x6688aa, roughness: 0.6 });
+        const body = new THREE.Mesh(new THREE.SphereGeometry(0.1, 12, 10), featherMat);
+        body.scale.set(1.2, 0.8, 0.8);
+        body.position.y = 0.8;
+        group.add(body);
+        for (const side of [-1, 1]) {
+          const wing = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.05, 0.3), featherMat);
+          wing.position.set(0, 0.82, side * 0.2);
+          wing.name = 'pet_wing';
+          wing.userData.side = side;
+          group.add(wing);
+        }
+        const beak = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.06, 8),
+          new THREE.MeshStandardMaterial({ color: 0xffcc44 }));
+        beak.position.set(0.12, 0.8, 0);
+        beak.rotation.z = -Math.PI / 2;
+        group.add(beak);
+        break;
+      }
+      case PetSpecies.BONE_MINION: {
+        const boneMat = new THREE.MeshStandardMaterial({ color: 0xddd8c8, roughness: 0.7 });
+        const skull = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), boneMat);
+        skull.position.y = 0.45;
+        group.add(skull);
+        const spine = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.2, 8), boneMat);
+        spine.position.y = 0.28;
+        group.add(spine);
+        for (const side of [-1, 1]) {
+          const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.15, 6), boneMat);
+          arm.position.set(0, 0.35, side * 0.1);
+          arm.rotation.z = side * 0.5;
+          group.add(arm);
+        }
+        const eyeGlow = new THREE.Mesh(new THREE.SphereGeometry(0.02, 8, 6),
+          new THREE.MeshStandardMaterial({ color: 0x44ff44, emissive: 0x22ff22, emissiveIntensity: 2.0 }));
+        eyeGlow.position.set(0.08, 0.47, 0);
+        group.add(eyeGlow);
+        break;
+      }
+      case PetSpecies.TREASURE_IMP: {
+        const impMat = new THREE.MeshStandardMaterial({ color: 0xcc8844, roughness: 0.7 });
+        const body = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 10), impMat);
+        body.position.y = 0.2;
+        group.add(body);
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 8), impMat);
+        head.position.y = 0.38;
+        group.add(head);
+        // Little sack on back
+        const sack = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6),
+          new THREE.MeshStandardMaterial({ color: 0x886633 }));
+        sack.position.set(-0.08, 0.25, 0);
+        sack.scale.set(0.8, 1.0, 0.8);
+        group.add(sack);
+        // Gold coin glow
+        const coin = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.005, 12),
+          new THREE.MeshStandardMaterial({ color: 0xffdd44, emissive: 0xffaa00, emissiveIntensity: 1.5, metalness: 0.8 }));
+        coin.position.set(0.05, 0.48, 0);
+        group.add(coin);
+        break;
+      }
+      case PetSpecies.GOLD_SCARAB: {
+        const scarabMat = new THREE.MeshStandardMaterial({ color: 0xccaa22, metalness: 0.6, roughness: 0.3 });
+        const shell = new THREE.Mesh(new THREE.SphereGeometry(0.1, 12, 8), scarabMat);
+        shell.scale.set(1.3, 0.6, 1.0);
+        shell.position.y = 0.12;
+        group.add(shell);
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 6), scarabMat);
+        head.position.set(0.12, 0.12, 0);
+        group.add(head);
+        break;
+      }
+      case PetSpecies.MAGPIE_FAMILIAR: {
+        const birdMat = new THREE.MeshStandardMaterial({ color: 0x222244 });
+        const body = new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 8), birdMat);
+        body.scale.set(1.1, 0.8, 0.8);
+        body.position.y = 0.7;
+        group.add(body);
+        for (const side of [-1, 1]) {
+          const wing = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.04, 0.2), birdMat);
+          wing.position.set(0, 0.72, side * 0.14);
+          wing.name = 'pet_wing';
+          wing.userData.side = side;
+          group.add(wing);
+        }
+        break;
+      }
+      case PetSpecies.HEALING_WISP: {
+        const wispMat = new THREE.MeshStandardMaterial({
+          color: 0x44ff88, emissive: 0x22ff66, emissiveIntensity: 2.5, transparent: true, opacity: 0.7
+        });
+        const core = new THREE.Mesh(new THREE.SphereGeometry(0.08, 12, 10), wispMat);
+        core.position.y = 0.5;
+        group.add(core);
+        const glow = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 10),
+          new THREE.MeshStandardMaterial({
+            color: 0x44ff88, emissive: 0x22ff66, emissiveIntensity: 1.0, transparent: true, opacity: 0.15
+          }));
+        glow.position.y = 0.5;
+        group.add(glow);
+        const light = new THREE.PointLight(0x44ff88, 1.5, 3);
+        light.position.y = 0.5;
+        group.add(light);
+        break;
+      }
+      case PetSpecies.SHIELD_GOLEM: {
+        const golemMat = new THREE.MeshStandardMaterial({ color: 0x888899, roughness: 0.6, metalness: 0.4 });
+        const body = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.3, 0.18), golemMat);
+        body.position.y = 0.25;
+        group.add(body);
+        const head = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.12), golemMat);
+        head.position.y = 0.45;
+        group.add(head);
+        const eyeGlow = new THREE.Mesh(new THREE.SphereGeometry(0.02, 8, 6),
+          new THREE.MeshStandardMaterial({ color: 0x4488ff, emissive: 0x4488ff, emissiveIntensity: 2.0 }));
+        eyeGlow.position.set(0.05, 0.47, 0);
+        group.add(eyeGlow);
+        break;
+      }
+      case PetSpecies.MANA_SPRITE: {
+        const manaMat = new THREE.MeshStandardMaterial({
+          color: 0x4466ff, emissive: 0x2244cc, emissiveIntensity: 2.0, transparent: true, opacity: 0.75
+        });
+        const core = new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 10), manaMat);
+        core.position.y = 0.5;
+        group.add(core);
+        // Orbiting mana crystals
+        for (let i = 0; i < 3; i++) {
+          const crystal = new THREE.Mesh(new THREE.OctahedronGeometry(0.025, 0),
+            new THREE.MeshStandardMaterial({
+              color: 0x6688ff, emissive: 0x4466ff, emissiveIntensity: 3.0, transparent: true, opacity: 0.8
+            }));
+          crystal.name = 'pet_orbit';
+          crystal.userData.orbitAngle = (i / 3) * Math.PI * 2;
+          crystal.userData.orbitSpeed = 3.0;
+          crystal.userData.orbitRadius = 0.15;
+          group.add(crystal);
+        }
+        const light = new THREE.PointLight(0x4466ff, 1.5, 3);
+        light.position.y = 0.5;
+        group.add(light);
+        break;
+      }
+      case PetSpecies.LANTERN_FAIRY: {
+        const fairyMat = new THREE.MeshStandardMaterial({
+          color: 0xffdd88, emissive: 0xffaa44, emissiveIntensity: 2.0, transparent: true, opacity: 0.8
+        });
+        const core = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8), fairyMat);
+        core.position.y = 0.6;
+        group.add(core);
+        for (const side of [-1, 1]) {
+          const wing = new THREE.Mesh(
+            new THREE.SphereGeometry(0.04, 8, 6),
+            new THREE.MeshStandardMaterial({
+              color: 0xffeedd, emissive: 0xffcc88, emissiveIntensity: 1.0, transparent: true, opacity: 0.4
+            }));
+          wing.scale.set(0.5, 1.0, 1.5);
+          wing.position.set(0, 0.62, side * 0.08);
+          wing.name = 'pet_wing';
+          wing.userData.side = side;
+          group.add(wing);
+        }
+        const light = new THREE.PointLight(0xffdd88, 3, 8);
+        light.position.y = 0.6;
+        group.add(light);
+        break;
+      }
+      default: {
+        // Generic glowing orb fallback
+        const mat = new THREE.MeshStandardMaterial({
+          color: 0xaaaaff, emissive: 0x6666cc, emissiveIntensity: 1.5, transparent: true, opacity: 0.7
+        });
+        const orb = new THREE.Mesh(new THREE.SphereGeometry(0.1, 12, 10), mat);
+        orb.position.y = 0.4;
+        group.add(orb);
+        break;
+      }
+    }
+
+    group.scale.setScalar(0.8);
+    return group;
+  }
+
+  private _syncPets(state: DiabloState, dt: number): void {
+    const activePets = state.player.pets.filter(p => p.isSummoned);
+    const currentIds = new Set(activePets.map(p => p.id));
+
+    // Remove meshes for despawned pets
+    for (const [id, mesh] of this._petMeshes) {
+      if (!currentIds.has(id)) {
+        this._scene.remove(mesh);
+        this._petMeshes.delete(id);
+      }
+    }
+
+    for (const pet of activePets) {
+      let mesh = this._petMeshes.get(pet.id);
+      if (!mesh) {
+        mesh = this._createPetMesh(pet.species);
+        this._scene.add(mesh);
+        this._petMeshes.set(pet.id, mesh);
+      }
+
+      mesh.position.set(pet.x, pet.y, pet.z);
+      mesh.rotation.y = pet.angle;
+
+      // Animate based on AI state
+      const petOffset = pet.id.charCodeAt(0) * 0.7;
+
+      if (pet.aiState === PetAIState.FOLLOWING || pet.aiState === PetAIState.RETURNING) {
+        // Gentle bob while following
+        mesh.position.y += Math.sin(this._time * 3 + petOffset) * 0.04;
+      } else if (pet.aiState === PetAIState.ATTACKING) {
+        // Quick forward lean + bob
+        mesh.rotation.x = 0.2;
+        mesh.position.y += Math.sin(this._time * 8 + petOffset) * 0.03;
+      } else if (pet.aiState === PetAIState.COLLECTING_LOOT) {
+        // Excited bounce
+        mesh.position.y += Math.abs(Math.sin(this._time * 6 + petOffset)) * 0.08;
+      }
+
+      // Animate wings for flying pets
+      mesh.traverse((child) => {
+        if (child.name === 'pet_wing') {
+          const side = child.userData.side || 1;
+          child.rotation.x = Math.sin(this._time * 8 + petOffset) * 0.6 * side;
+        }
+        if (child.name === 'pet_tail') {
+          child.rotation.y = Math.sin(this._time * 5 + petOffset) * 0.4;
+        }
+        if (child.name === 'pet_flame') {
+          child.position.y += Math.sin(this._time * 10 + child.position.x * 10) * 0.003;
+          const mat = (child as THREE.Mesh).material as THREE.MeshStandardMaterial;
+          mat.opacity = 0.4 + Math.sin(this._time * 12 + child.position.z * 10) * 0.3;
+        }
+        if (child.name === 'pet_orbit') {
+          const angle = child.userData.orbitAngle + this._time * child.userData.orbitSpeed;
+          const r = child.userData.orbitRadius;
+          child.position.set(Math.cos(angle) * r, 0.5 + Math.sin(angle * 2) * 0.05, Math.sin(angle) * r);
+        }
+      });
+    }
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  //  SKILL CAST VISUAL EFFECTS (3rd person)
+  // ════════════════════════════════════════════════════════════════════════
+
+  private _updateCastEffects(state: DiabloState, dt: number): void {
+    // Detect new skill cast
+    if (state.player.activeSkillAnimTimer > 0 && this._prevActiveSkillTimer <= 0) {
+      this._spawnCastEffect(state);
+    }
+    this._prevActiveSkillTimer = state.player.activeSkillAnimTimer;
+
+    // Animate existing cast effect
+    if (this._castEffectGroup && this._castEffectTimer > 0) {
+      this._castEffectTimer -= dt;
+      const t = Math.max(0, this._castEffectTimer / 0.6); // 1 → 0 over 0.6s
+      const expand = 1.0 + (1.0 - t) * 2.0;
+      const fade = t;
+
+      this._castEffectGroup.scale.setScalar(expand);
+      this._castEffectGroup.rotation.y += dt * 4;
+      this._castEffectGroup.traverse((child) => {
+        if (child instanceof THREE.Mesh && child.material instanceof THREE.MeshStandardMaterial) {
+          child.material.opacity = fade * 0.7;
+        }
+      });
+      this._castEffectGroup.position.set(state.player.x, state.player.y + 0.1, state.player.z);
+
+      if (this._castEffectTimer <= 0) {
+        this._scene.remove(this._castEffectGroup);
+        this._disposeObject3D(this._castEffectGroup);
+        this._castEffectGroup = null;
+      }
+    }
+  }
+
+  private _spawnCastEffect(state: DiabloState): void {
+    // Clean up previous
+    if (this._castEffectGroup) {
+      this._scene.remove(this._castEffectGroup);
+      this._disposeObject3D(this._castEffectGroup);
+    }
+
+    const group = new THREE.Group();
+    const pClass = state.player.class;
+
+    let color = 0xffffff;
+    let emissive = 0x888888;
+    switch (pClass) {
+      case DiabloClass.WARRIOR: color = 0xff8844; emissive = 0xff4400; break;
+      case DiabloClass.MAGE: color = 0x4488ff; emissive = 0x2244cc; break;
+      case DiabloClass.RANGER: color = 0x44cc44; emissive = 0x228822; break;
+      case DiabloClass.PALADIN: color = 0xffdd88; emissive = 0xffaa44; break;
+      case DiabloClass.NECROMANCER: color = 0x44ff44; emissive = 0x006600; break;
+      case DiabloClass.ASSASSIN: color = 0x8844cc; emissive = 0x442266; break;
+    }
+
+    // Ground ring burst
+    const ringGeo = new THREE.TorusGeometry(0.5, 0.06, 12, 32);
+    const ringMat = new THREE.MeshStandardMaterial({
+      color, emissive, emissiveIntensity: 3.0, transparent: true, opacity: 0.7
+    });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.y = 0.05;
+    group.add(ring);
+
+    // Rising energy wisps
+    for (let i = 0; i < 6; i++) {
+      const angle = (i / 6) * Math.PI * 2;
+      const wisp = new THREE.Mesh(
+        new THREE.SphereGeometry(0.06, 8, 6),
+        new THREE.MeshStandardMaterial({
+          color, emissive, emissiveIntensity: 4.0, transparent: true, opacity: 0.6
+        })
+      );
+      wisp.position.set(Math.cos(angle) * 0.4, 0.2 + i * 0.15, Math.sin(angle) * 0.4);
+      group.add(wisp);
+    }
+
+    // Central glow column
+    const columnGeo = new THREE.CylinderGeometry(0.08, 0.15, 1.5, 12);
+    const columnMat = new THREE.MeshStandardMaterial({
+      color, emissive, emissiveIntensity: 2.0, transparent: true, opacity: 0.25
+    });
+    const column = new THREE.Mesh(columnGeo, columnMat);
+    column.position.y = 0.75;
+    group.add(column);
+
+    group.position.set(state.player.x, state.player.y + 0.1, state.player.z);
+    this._scene.add(group);
+    this._castEffectGroup = group;
+    this._castEffectTimer = 0.6;
+    this._castEffectClass = pClass;
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  //  PLAYER STATUS EFFECT VISUALS
+  // ════════════════════════════════════════════════════════════════════════
+
+  private _syncPlayerStatusEffects(state: DiabloState): void {
+    const effects = state.player.statusEffects;
+
+    if (effects.length === 0) {
+      if (this._playerStatusFxGroup) {
+        this._playerStatusFxGroup.visible = false;
+      }
+      return;
+    }
+
+    if (!this._playerStatusFxGroup) {
+      this._playerStatusFxGroup = new THREE.Group();
+      this._scene.add(this._playerStatusFxGroup);
+    }
+
+    this._playerStatusFxGroup.visible = true;
+    this._playerStatusFxGroup.position.set(state.player.x, state.player.y, state.player.z);
+
+    // Clear existing children and rebuild based on current effects
+    while (this._playerStatusFxGroup.children.length > 0) {
+      const child = this._playerStatusFxGroup.children[0];
+      this._playerStatusFxGroup.remove(child);
+    }
+
+    for (const fx of effects) {
+      switch (fx.effect) {
+        case StatusEffect.BURNING: {
+          // Fire particles swirling around player
+          for (let i = 0; i < 4; i++) {
+            const angle = (i / 4) * Math.PI * 2 + this._time * 3;
+            const flame = new THREE.Mesh(
+              new THREE.ConeGeometry(0.08, 0.3, 8),
+              new THREE.MeshStandardMaterial({
+                color: 0xff6600, emissive: 0xff4400, emissiveIntensity: 3.0,
+                transparent: true, opacity: 0.5 + Math.sin(this._time * 8 + i) * 0.2
+              })
+            );
+            flame.position.set(Math.cos(angle) * 0.6, 0.3 + Math.sin(this._time * 5 + i) * 0.2, Math.sin(angle) * 0.6);
+            this._playerStatusFxGroup.add(flame);
+          }
+          break;
+        }
+        case StatusEffect.FROZEN: {
+          // Ice crystal shell around player
+          const iceMat = new THREE.MeshStandardMaterial({
+            color: 0x88ccff, emissive: 0x4488cc, emissiveIntensity: 1.0,
+            transparent: true, opacity: 0.3 + Math.sin(this._time * 2) * 0.1
+          });
+          const iceShell = new THREE.Mesh(new THREE.IcosahedronGeometry(0.7, 1), iceMat);
+          iceShell.position.y = 0.8;
+          iceShell.rotation.y = this._time * 0.3;
+          this._playerStatusFxGroup.add(iceShell);
+          break;
+        }
+        case StatusEffect.SHOCKED: {
+          // Lightning bolts flickering around player
+          for (let i = 0; i < 3; i++) {
+            const boltMat = new THREE.MeshStandardMaterial({
+              color: 0xffff44, emissive: 0xffff00, emissiveIntensity: 4.0,
+              transparent: true, opacity: Math.random() > 0.3 ? 0.7 : 0.0
+            });
+            const bolt = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.5 + Math.random() * 0.3, 0.02), boltMat);
+            const a = Math.random() * Math.PI * 2;
+            bolt.position.set(Math.cos(a) * 0.5, 0.5 + Math.random() * 0.5, Math.sin(a) * 0.5);
+            bolt.rotation.set(Math.random() * 0.8, 0, Math.random() * 1.5 - 0.75);
+            this._playerStatusFxGroup.add(bolt);
+          }
+          break;
+        }
+        case StatusEffect.POISONED: {
+          // Green toxic cloud
+          for (let i = 0; i < 5; i++) {
+            const cloudMat = new THREE.MeshStandardMaterial({
+              color: 0x44ff44, emissive: 0x22aa22, emissiveIntensity: 1.5,
+              transparent: true, opacity: 0.2 + Math.sin(this._time * 3 + i) * 0.1
+            });
+            const cloud = new THREE.Mesh(new THREE.SphereGeometry(0.15 + Math.random() * 0.1, 8, 6), cloudMat);
+            const a = (i / 5) * Math.PI * 2 + this._time * 1.5;
+            cloud.position.set(Math.cos(a) * 0.5, 0.3 + Math.sin(this._time * 2 + i) * 0.3, Math.sin(a) * 0.5);
+            this._playerStatusFxGroup.add(cloud);
+          }
+          break;
+        }
+        case StatusEffect.BLEEDING: {
+          // Red drip particles falling
+          for (let i = 0; i < 4; i++) {
+            const dropMat = new THREE.MeshStandardMaterial({
+              color: 0xff2222, emissive: 0xaa0000, emissiveIntensity: 1.0,
+              transparent: true, opacity: 0.6
+            });
+            const drop = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 4), dropMat);
+            const phase = (this._time * 3 + i * 1.5) % 2.0;
+            const a = (i / 4) * Math.PI * 2;
+            drop.position.set(Math.cos(a) * 0.3, 1.5 - phase * 0.8, Math.sin(a) * 0.3);
+            this._playerStatusFxGroup.add(drop);
+          }
+          break;
+        }
+        case StatusEffect.SLOWED: {
+          // Blue chains/tendrils at feet
+          const slowMat = new THREE.MeshStandardMaterial({
+            color: 0x6666ff, emissive: 0x3333aa, emissiveIntensity: 1.0,
+            transparent: true, opacity: 0.4 + Math.sin(this._time * 2) * 0.1
+          });
+          const slowRing = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.04, 8, 24), slowMat);
+          slowRing.rotation.x = -Math.PI / 2;
+          slowRing.position.y = 0.1;
+          this._playerStatusFxGroup.add(slowRing);
+          break;
+        }
+        case StatusEffect.STUNNED: {
+          // Circling stars above head
+          for (let i = 0; i < 3; i++) {
+            const starMat = new THREE.MeshStandardMaterial({
+              color: 0xffff88, emissive: 0xffff44, emissiveIntensity: 2.0
+            });
+            const star = new THREE.Mesh(new THREE.OctahedronGeometry(0.04, 0), starMat);
+            const a = (i / 3) * Math.PI * 2 + this._time * 4;
+            star.position.set(Math.cos(a) * 0.3, 2.0 + Math.sin(a * 2) * 0.05, Math.sin(a) * 0.3);
+            this._playerStatusFxGroup.add(star);
+          }
+          break;
+        }
+        case StatusEffect.WEAKENED: {
+          // Dark aura
+          const weakMat = new THREE.MeshStandardMaterial({
+            color: 0x444444, emissive: 0x222222, emissiveIntensity: 0.5,
+            transparent: true, opacity: 0.2 + Math.sin(this._time * 2) * 0.08
+          });
+          const aura = new THREE.Mesh(new THREE.SphereGeometry(0.8, 12, 10), weakMat);
+          aura.position.y = 0.8;
+          this._playerStatusFxGroup.add(aura);
+          break;
+        }
+      }
+    }
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  //  DODGE ROLL ANIMATION
+  // ════════════════════════════════════════════════════════════════════════
+
+  private _updateDodgeRoll(state: DiabloState, dt: number): void {
+    if (state.player.isDodging) {
+      if (!this._wasDodging) {
+        // Just started dodging — capture the roll direction
+        this._dodgeRollAngle = 0;
+        this._wasDodging = true;
+      }
+
+      // Roll the player mesh forward (full 360 rotation over dodge duration ~0.3s)
+      this._dodgeRollAngle += dt * 12; // ~2 full rotations in 0.3s
+      const rollAngle = Math.min(this._dodgeRollAngle, Math.PI * 2);
+
+      // Apply roll rotation along the movement direction
+      this._playerGroup.rotation.x = Math.sin(state.player.angle) * rollAngle * 0.8;
+      this._playerGroup.rotation.z = -Math.cos(state.player.angle) * rollAngle * 0.8;
+
+      // Squash and stretch during roll
+      const squashPhase = Math.sin(rollAngle);
+      this._playerGroup.scale.set(
+        1.0 + squashPhase * 0.15,
+        1.0 - Math.abs(squashPhase) * 0.2,
+        1.0 + squashPhase * 0.15
+      );
+
+      // Lower to ground during roll
+      this._playerGroup.position.y -= Math.abs(Math.sin(rollAngle)) * 0.3;
+
+    } else if (this._wasDodging) {
+      // Just stopped dodging — snap back
+      this._wasDodging = false;
+      this._playerGroup.scale.set(1, 1, 1);
+      // rotation.x and rotation.z will be naturally cleared by the idle/walk code
+    }
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  //  WATER SURFACE ANIMATION
+  // ════════════════════════════════════════════════════════════════════════
+
+  /** Register a water mesh for animation (call from map builders) */
+  trackWaterMesh(mesh: THREE.Mesh): void {
+    this._waterMeshes.push(mesh);
+  }
+
+  private _animateWater(_dt: number): void {
+    for (const water of this._waterMeshes) {
+      if (!water.parent) {
+        // Water mesh was removed from scene — skip
+        continue;
+      }
+      const mat = water.material as THREE.MeshStandardMaterial;
+      if (!mat) continue;
+
+      // Subtle opacity ripple
+      mat.opacity = 0.45 + Math.sin(this._time * 1.8 + water.position.x * 0.5) * 0.08
+        + Math.sin(this._time * 2.5 + water.position.z * 0.7) * 0.05;
+
+      // Gentle Y bob (simulates waves)
+      water.position.y += Math.sin(this._time * 2.0 + water.position.x) * 0.0003;
+
+      // Vertex displacement for wave effect (only for sufficiently detailed meshes)
+      const geo = water.geometry;
+      if (geo && geo.attributes.position && geo.attributes.position.count > 10) {
+        const posAttr = geo.attributes.position as THREE.BufferAttribute;
+        for (let i = 0; i < posAttr.count; i++) {
+          const x = posAttr.getX(i);
+          const z = posAttr.getZ(i);
+          // Small wave displacement on Y
+          const wave = Math.sin(this._time * 2.5 + x * 2.0 + z * 1.5) * 0.015
+            + Math.sin(this._time * 1.8 + x * 1.2 - z * 2.0) * 0.01;
+          posAttr.setY(i, wave);
+        }
+        posAttr.needsUpdate = true;
+        geo.computeVertexNormals();
+      }
+
+      // Emissive shimmer
+      if (mat.emissive) {
+        const shimmer = Math.sin(this._time * 3 + water.position.x) * 0.15 + 0.2;
+        mat.emissiveIntensity = shimmer;
+      }
+    }
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  //  BOSS TELEGRAPH VISUALS (ENHANCED)
+  // ════════════════════════════════════════════════════════════════════════
+
+  private _syncBossTelegraphs(state: DiabloState): void {
+    for (const enemy of state.enemies) {
+      if (!enemy.isBoss) continue;
+      if (enemy.state === 'DEAD' || enemy.state === 'DYING') continue;
+      const key = `telegraph_${enemy.id}`;
+
+      if (enemy.state === 'ATTACK' && enemy.attackTimer < 1.0) {
+        let tGroup = this._bossWarningRings.get(key);
+        if (!tGroup) {
+          tGroup = new THREE.Group();
+
+          // Outer warning ring
+          const outerGeo = new THREE.RingGeometry(0.5, enemy.attackRange * 1.2, 48);
+          outerGeo.rotateX(-Math.PI / 2);
+          const outerMat = new THREE.MeshBasicMaterial({
+            color: 0xff0000, transparent: true, opacity: 0.3, side: THREE.DoubleSide
+          });
+          const outerRing = new THREE.Mesh(outerGeo, outerMat);
+          outerRing.name = 'telegraph_outer';
+          tGroup.add(outerRing);
+
+          // Inner filling disc that grows as attack charges
+          const innerGeo = new THREE.CircleGeometry(enemy.attackRange * 1.2, 48);
+          innerGeo.rotateX(-Math.PI / 2);
+          const innerMat = new THREE.MeshBasicMaterial({
+            color: 0xff2200, transparent: true, opacity: 0.1, side: THREE.DoubleSide
+          });
+          const innerDisc = new THREE.Mesh(innerGeo, innerMat);
+          innerDisc.position.y = 0.01;
+          innerDisc.name = 'telegraph_inner';
+          tGroup.add(innerDisc);
+
+          // Pulsing danger border
+          const borderGeo = new THREE.TorusGeometry(enemy.attackRange * 1.2, 0.08, 8, 48);
+          borderGeo.rotateX(-Math.PI / 2);
+          const borderMat = new THREE.MeshStandardMaterial({
+            color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 2.0,
+            transparent: true, opacity: 0.6
+          });
+          const border = new THREE.Mesh(borderGeo, borderMat);
+          border.position.y = 0.02;
+          border.name = 'telegraph_border';
+          tGroup.add(border);
+
+          // Directional arrow (shows attack direction)
+          const arrowGeo = new THREE.ConeGeometry(0.3, 0.8, 8);
+          arrowGeo.rotateX(-Math.PI / 2);
+          const arrowMat = new THREE.MeshStandardMaterial({
+            color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 2.0,
+            transparent: true, opacity: 0.5
+          });
+          const arrow = new THREE.Mesh(arrowGeo, arrowMat);
+          arrow.position.y = 0.1;
+          arrow.name = 'telegraph_arrow';
+          tGroup.add(arrow);
+
+          this._scene.add(tGroup);
+          this._bossWarningRings.set(key, tGroup);
+        }
+
+        tGroup.position.set(enemy.x, enemy.y + 0.05, enemy.z);
+        tGroup.visible = true;
+
+        // Animate: pulse opacity, grow inner fill, rotate border
+        const chargeT = 1.0 - enemy.attackTimer; // 0→1 as attack charges
+        const pulse = 0.3 + Math.sin(this._time * 8) * 0.15;
+
+        tGroup.traverse((child) => {
+          if (child.name === 'telegraph_outer') {
+            (child as THREE.Mesh).material = (child as THREE.Mesh).material;
+            ((child as THREE.Mesh).material as THREE.MeshBasicMaterial).opacity = pulse;
+          }
+          if (child.name === 'telegraph_inner') {
+            ((child as THREE.Mesh).material as THREE.MeshBasicMaterial).opacity = chargeT * 0.2;
+            child.scale.setScalar(chargeT);
+          }
+          if (child.name === 'telegraph_border') {
+            child.rotation.y = this._time * 2;
+            const borderMat2 = (child as THREE.Mesh).material as THREE.MeshStandardMaterial;
+            borderMat2.emissiveIntensity = 2.0 + Math.sin(this._time * 10) * 1.0;
+          }
+          if (child.name === 'telegraph_arrow') {
+            // Point arrow toward player
+            const dx = state.player.x - enemy.x;
+            const dz = state.player.z - enemy.z;
+            child.rotation.y = Math.atan2(dx, dz);
+            child.position.x = Math.sin(child.rotation.y) * enemy.attackRange * 0.5;
+            child.position.z = Math.cos(child.rotation.y) * enemy.attackRange * 0.5;
+            ((child as THREE.Mesh).material as THREE.MeshStandardMaterial).opacity = 0.3 + chargeT * 0.4;
+          }
+        });
+
+      } else {
+        const tGroup = this._bossWarningRings.get(key);
+        if (tGroup) tGroup.visible = false;
+      }
+    }
+
+    // Also keep the old simple telegraph meshes working
+    for (const enemy of state.enemies) {
+      if (!enemy.isBoss) continue;
+      if (enemy.state === 'DEAD' || enemy.state === 'DYING') continue;
+      const key = `telegraph_${enemy.id}`;
+
+      if (enemy.state === 'ATTACK' && enemy.attackTimer < 1.0) {
+        let tMesh = this._telegraphMeshes.get(key);
+        if (!tMesh) {
+          const geo = new THREE.RingGeometry(0.5, enemy.attackRange * 1.2, 32);
+          geo.rotateX(-Math.PI / 2);
+          const mat = new THREE.MeshBasicMaterial({
+            color: 0xff0000, transparent: true, opacity: 0.3, side: THREE.DoubleSide
+          });
+          tMesh = new THREE.Mesh(geo, mat);
+          this._scene.add(tMesh);
+          this._telegraphMeshes.set(key, tMesh);
+        }
+        tMesh.position.set(enemy.x, enemy.y + 0.1, enemy.z);
+        tMesh.visible = true;
+        const pulse = 0.3 + Math.sin(this._time * 8) * 0.15;
+        (tMesh.material as THREE.MeshBasicMaterial).opacity = pulse;
+      } else {
+        const tMesh = this._telegraphMeshes.get(key);
+        if (tMesh) tMesh.visible = false;
+      }
+    }
+
+    // Clean up old telegraphs
+    for (const [key, mesh] of this._telegraphMeshes) {
+      const id = key.replace('telegraph_', '');
+      const enemy = state.enemies.find(e => e.id === id);
+      if (!enemy || enemy.state === 'DEAD' || enemy.state === 'DYING') {
+        this._scene.remove(mesh);
+        mesh.geometry.dispose();
+        (mesh.material as THREE.Material).dispose();
+        this._telegraphMeshes.delete(key);
+      }
+    }
+
+    // Clean up boss warning rings for removed enemies
+    for (const [key, grp] of this._bossWarningRings) {
+      const id = key.replace('telegraph_', '');
+      const enemy = state.enemies.find(e => e.id === id);
+      if (!enemy || enemy.state === 'DEAD' || enemy.state === 'DYING') {
+        this._scene.remove(grp);
+        this._disposeObject3D(grp);
+        this._bossWarningRings.delete(key);
+      }
+    }
+  }
+
   dispose(): void {
     if (this.canvas && this.canvas.parentElement) {
       this.canvas.parentElement.removeChild(this.canvas);
@@ -50739,6 +51644,29 @@ export class DiabloRenderer {
       this._scene.remove(mesh);
     }
     this._townfolkMeshes.clear();
+
+    for (const [, mesh] of this._petMeshes) {
+      this._scene.remove(mesh);
+    }
+    this._petMeshes.clear();
+
+    this._dyingAnims.clear();
+    this._lootSpawnTimes.clear();
+    this._waterMeshes = [];
+
+    if (this._castEffectGroup) {
+      this._scene.remove(this._castEffectGroup);
+      this._castEffectGroup = null;
+    }
+    if (this._playerStatusFxGroup) {
+      this._scene.remove(this._playerStatusFxGroup);
+      this._playerStatusFxGroup = null;
+    }
+
+    for (const [, grp] of this._bossWarningRings) {
+      this._scene.remove(grp);
+    }
+    this._bossWarningRings.clear();
 
     for (const mesh of this._particleMeshPool) {
       this._scene.remove(mesh);

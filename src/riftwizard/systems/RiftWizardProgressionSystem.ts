@@ -9,6 +9,7 @@ import {
 import { SPELL_DEFS, type SpellDef, type SpellUpgradeDef } from "../config/RiftWizardSpellDefs";
 import { ABILITY_DEFS, type AbilityDef } from "../config/RiftWizardAbilityDefs";
 import { createSpellInstance, computeSpellStats } from "./RiftWizardCombatSystem";
+import { rwEventBus, RWEvent } from "./RiftWizardEventBus";
 
 // ---------------------------------------------------------------------------
 // Spell shop queries
@@ -100,6 +101,8 @@ export function learnSpell(
   const instance = createSpellInstance(defId);
   state.spells.push(instance);
 
+  rwEventBus.emit(RWEvent.SPELL_LEARNED, { spellDefId: defId });
+
   return true;
 }
 
@@ -133,6 +136,8 @@ export function buyUpgrade(
 
   // Refresh charges to new max
   spell.charges = spell.maxCharges;
+
+  rwEventBus.emit(RWEvent.UPGRADE_BOUGHT, { spellDefId: spell.defId, upgradeId });
 
   return true;
 }
@@ -180,6 +185,8 @@ export function learnAbility(
 
   state.skillPoints -= cost;
   state.abilities.push(abilityId);
+
+  rwEventBus.emit(RWEvent.SPELL_LEARNED, { spellDefId: abilityId });
 
   // Apply immediate passive effects
   if (def.effect.type === "max_hp") {

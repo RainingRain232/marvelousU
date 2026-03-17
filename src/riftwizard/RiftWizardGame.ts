@@ -8,8 +8,9 @@ import {
   createRiftWizardState,
   RWPhase,
   type RiftWizardState,
+  type ItemOnGround,
 } from "./state/RiftWizardState";
-import { generateLevel, getNextEntityId } from "./systems/RiftWizardLevelGenerator";
+import { generateLevel, setSeed, getNextEntityId } from "./systems/RiftWizardLevelGenerator";
 import {
   tryMoveWizard,
   tryInteract,
@@ -22,6 +23,80 @@ import { RWBalance } from "./config/RiftWizardConfig";
 import { RiftWizardRenderer } from "./view/RiftWizardRenderer";
 import { RiftWizardHUD } from "./view/RiftWizardHUD";
 import { RiftWizardSpellSelectUI } from "./view/RiftWizardSpellSelectUI";
+
+// --- New system imports ---
+import { rwEventBus, RWEvent } from "./systems/RiftWizardEventBus";
+import type { RWEventData } from "./systems/RiftWizardEventBus";
+import {
+  createRunStats,
+  recordDamageDealt,
+  recordDamageTaken,
+  recordEnemyKilled,
+  recordSpellCast,
+  recordFloorCleared,
+  recordTurn,
+  type RWRunStats,
+} from "./systems/RiftWizardRunStats";
+import { saveGame, loadGame, hasSave, deleteSave } from "./systems/RiftWizardSaveSystem";
+
+// These modules will be created separately — import stubs
+// Audio system
+import type { RiftWizardAudioSystem } from "./systems/RiftWizardAudioSystem";
+let rwAudio: RiftWizardAudioSystem | null = null;
+try {
+  // Dynamic import pattern — module may not exist yet
+  const audioMod = require("./systems/RiftWizardAudioSystem");
+  rwAudio = audioMod.rwAudio ?? null;
+} catch {
+  // Audio system not yet available
+}
+
+// Tutorial UI
+let RiftWizardTutorial: (new () => any) | null = null;
+try {
+  const tutorialMod = require("./view/RiftWizardTutorial");
+  RiftWizardTutorial = tutorialMod.RiftWizardTutorial ?? null;
+} catch {
+  // Tutorial not yet available
+}
+
+// Codex / Bestiary UI
+let RiftWizardCodex: (new () => any) | null = null;
+try {
+  const codexMod = require("./view/RiftWizardCodex");
+  RiftWizardCodex = codexMod.RiftWizardCodex ?? null;
+} catch {
+  // Codex not yet available
+}
+
+// Leaderboard
+let saveToLeaderboard: ((entry: Record<string, unknown>) => void) | null = null;
+try {
+  const lbMod = require("./systems/RiftWizardLeaderboard");
+  saveToLeaderboard = lbMod.saveToLeaderboard ?? null;
+} catch {
+  // Leaderboard not yet available
+}
+
+// Spell synergies
+let getActiveSynergies: ((spells: unknown[]) => { id: string; bonuses: Record<string, number> }[]) | null = null;
+try {
+  const synMod = require("./config/RiftWizardSpellSynergies");
+  getActiveSynergies = synMod.getActiveSynergies ?? null;
+} catch {
+  // Synergies config not yet available
+}
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+const ENEMY_DROP_CHANCE = 0.12; // default if not specified on enemy def
+const ITEM_DROP_TYPES: ItemOnGround["type"][] = [
+  "health_potion",
+  "charge_scroll",
+  "shield_scroll",
+];
 
 // ---------------------------------------------------------------------------
 // Input tracking
@@ -67,12 +142,26 @@ function clearJustPressed(): void {
 
 export class RiftWizardGame {
   private _state!: RiftWizardState;
+  private _runStats!: RWRunStats;
   private _undoSnapshot: string | null = null;
   private _tickerCb: ((ticker: Ticker) => void) | null = null;
 
   private _renderer = new RiftWizardRenderer();
   private _hud = new RiftWizardHUD();
   private _spellShopUI = new RiftWizardSpellSelectUI();
+
+  // Optional UI components (loaded dynamically)
+  private _tutorial: any = null;
+  private _codex: any = null;
+
+  // Tutorial state
+  private _tutorialFirstTurnShown = false;
+  private _tutorialFirstSpellShown = false;
+  private _tutorialFirstInteractShown = false;
+
+  // EventBus unsubscribe handles
+  private _eventUnsubscribers: (() => void)[] = [];
+
   private _keyDownHandler = _onKeyDown;
   private _keyUpHandler = _onKeyUp;
   private _mouseDownHandler = (e: MouseEvent) => {
@@ -97,16 +186,35 @@ export class RiftWizardGame {
     // Initialize state
     this._state = createRiftWizardState();
 
+    // --- Run seed ---
+    (this._state as any).runSeed = Date.now();
+
+    // --- Difficulty default ---
+    (this._state as any).difficulty = "normal";
+
+    // --- Encountered enemies tracking ---
+    (this._state as any).encounteredEnemies = new Set<string>();
+
+    // --- Run stats ---
+    this._runStats = createRunStats();
+
     // Give the wizard 2 starting spells
     this._state.spells.push(createSpellInstance("magic_missile"));
     this._state.spells.push(createSpellInstance("fireball"));
     this._state.skillPoints = 5; // starting SP for first shop visit
 
-    // Generate first level
+    // Generate first level (using run seed)
+    setSeed((this._state as any).runSeed);
     this._state.level = generateLevel(0, this._state.nextEntityId);
     this._state.nextEntityId = getNextEntityId();
     this._state.wizard.col = this._state.level.entrancePos.col;
     this._state.wizard.row = this._state.level.entrancePos.row;
+
+    // Track encountered enemies for first level
+    this._trackEncounteredEnemies();
+
+    // --- Compute initial spell synergies ---
+    this._computeSpellSynergies();
 
     // Init renderer
     this._renderer.init();
@@ -129,6 +237,16 @@ export class RiftWizardGame {
     this._hud.onPauseExit = () => {
       window.dispatchEvent(new Event("riftwizardExit"));
     };
+
+    // --- Save/Load callbacks ---
+    (this._hud as any).onPauseSave = () => {
+      saveGame(this._state);
+    };
+    (this._hud as any).onPauseLoad = () => {
+      const saved = loadGame();
+      if (saved) Object.assign(this._state, saved);
+    };
+
     viewManager.addToLayer("ui", this._hud.container);
 
     // Init spell shop UI
@@ -137,8 +255,36 @@ export class RiftWizardGame {
     this._spellShopUI.onConfirm = () => {
       this._spellShopUI.hide();
       advanceToNextLevel(this._state);
+      // Recompute synergies after potential new spells
+      this._computeSpellSynergies();
     };
     viewManager.addToLayer("ui", this._spellShopUI.container);
+
+    // --- Tutorial ---
+    if (RiftWizardTutorial) {
+      this._tutorial = new RiftWizardTutorial();
+      if (typeof this._tutorial.build === "function") this._tutorial.build();
+      if (this._tutorial.container) {
+        viewManager.addToLayer("ui", this._tutorial.container);
+      }
+    }
+
+    // --- Codex / Bestiary ---
+    if (RiftWizardCodex) {
+      this._codex = new RiftWizardCodex();
+      if (typeof this._codex.build === "function") this._codex.build();
+      if (this._codex.container) {
+        viewManager.addToLayer("ui", this._codex.container);
+      }
+    }
+
+    // --- Audio ---
+    if (rwAudio && typeof rwAudio.init === "function") {
+      rwAudio.init();
+    }
+
+    // --- EventBus wiring ---
+    this._wireEventBus();
 
     // Input
     window.addEventListener("keydown", this._keyDownHandler);
@@ -153,6 +299,167 @@ export class RiftWizardGame {
       this._render(ticker.deltaMS / 1000);
     };
     viewManager.app.ticker.add(this._tickerCb);
+  }
+
+  // -------------------------------------------------------------------------
+  // EventBus wiring
+  // -------------------------------------------------------------------------
+
+  private _wireEventBus(): void {
+    // Global listener to route events to RunStats
+    const unsubGlobal = rwEventBus.onAny((data: RWEventData) => {
+      this._routeEventToStats(data);
+    });
+    this._eventUnsubscribers.push(unsubGlobal);
+
+    // Portal enter -> Level Summary phase
+    const unsubPortal = rwEventBus.on(RWEvent.PORTAL_ENTER, () => {
+      (this._state as any).phase = "level_summary";
+    });
+    this._eventUnsubscribers.push(unsubPortal);
+
+    // Enemy death -> enemy drops
+    const unsubEnemyDeath = rwEventBus.on(RWEvent.ENEMY_DEATH, (data) => {
+      this._handleEnemyDrop(data);
+    });
+    this._eventUnsubscribers.push(unsubEnemyDeath);
+
+    // Level start -> track encountered enemies
+    const unsubLevelStart = rwEventBus.on(RWEvent.LEVEL_START, () => {
+      this._trackEncounteredEnemies();
+      this._computeSpellSynergies();
+    });
+    this._eventUnsubscribers.push(unsubLevelStart);
+
+    // Victory / Game Over -> leaderboard
+    const unsubVictory = rwEventBus.on(RWEvent.VICTORY, () => {
+      this._saveToLeaderboard(true);
+    });
+    this._eventUnsubscribers.push(unsubVictory);
+
+    const unsubGameOver = rwEventBus.on(RWEvent.GAME_OVER, () => {
+      this._saveToLeaderboard(false);
+    });
+    this._eventUnsubscribers.push(unsubGameOver);
+  }
+
+  private _routeEventToStats(data: RWEventData): void {
+    const stats = this._runStats;
+    switch (data.type) {
+      case RWEvent.SPELL_HIT:
+        recordDamageDealt(stats, (data.amount as number) ?? 0, data.school as string | undefined);
+        break;
+      case RWEvent.WIZARD_HIT:
+        recordDamageTaken(stats, (data.amount as number) ?? 0);
+        break;
+      case RWEvent.ENEMY_DEATH:
+        recordEnemyKilled(stats, !!(data.isBoss), data.school as string | undefined);
+        break;
+      case RWEvent.SPELL_CAST:
+        recordSpellCast(stats, data.school as string | undefined);
+        break;
+      case RWEvent.LEVEL_CLEAR:
+        recordFloorCleared(stats);
+        break;
+      case RWEvent.TURN_END:
+        recordTurn(stats);
+        break;
+      case RWEvent.ITEM_PICKUP:
+        stats.itemsCollected++;
+        break;
+      case RWEvent.SHRINE_USE:
+        stats.shrinesUsed++;
+        break;
+      case RWEvent.SPELL_LEARNED:
+        stats.spellsLearned++;
+        break;
+      case RWEvent.UPGRADE_BOUGHT:
+        stats.upgradesBought++;
+        break;
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Enemy drops
+  // -------------------------------------------------------------------------
+
+  private _handleEnemyDrop(data: RWEventData): void {
+    const col = data.col as number | undefined;
+    const row = data.row as number | undefined;
+    if (col == null || row == null) return;
+
+    const dropChance = (data.dropChance as number) ?? ENEMY_DROP_CHANCE;
+    if (Math.random() >= dropChance) return;
+
+    // Pick random item type
+    const itemType = ITEM_DROP_TYPES[Math.floor(Math.random() * ITEM_DROP_TYPES.length)];
+    const item: ItemOnGround = {
+      id: this._state.nextEntityId++,
+      col,
+      row,
+      type: itemType,
+      picked: false,
+    };
+    this._state.level.items.push(item);
+  }
+
+  // -------------------------------------------------------------------------
+  // Encountered enemies tracking
+  // -------------------------------------------------------------------------
+
+  private _trackEncounteredEnemies(): void {
+    const encountered: Set<string> = (this._state as any).encounteredEnemies ?? new Set<string>();
+    for (const enemy of this._state.level.enemies) {
+      encountered.add(enemy.defId);
+    }
+    (this._state as any).encounteredEnemies = encountered;
+  }
+
+  // -------------------------------------------------------------------------
+  // Spell synergies
+  // -------------------------------------------------------------------------
+
+  private _computeSpellSynergies(): void {
+    if (!getActiveSynergies) return;
+    const synergies = getActiveSynergies(this._state.spells);
+    // Store active synergies on state for HUD display
+    (this._state as any).activeSynergies = synergies;
+    // Apply bonuses to spells
+    for (const syn of synergies) {
+      if (!syn.bonuses) continue;
+      for (const spell of this._state.spells) {
+        // Each synergy definition determines which spells it affects;
+        // here we apply global bonuses across all spells
+        if (syn.bonuses.damage) spell.damage += syn.bonuses.damage;
+        if (syn.bonuses.range) spell.range += syn.bonuses.range;
+        if (syn.bonuses.aoeRadius) spell.aoeRadius += syn.bonuses.aoeRadius;
+      }
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Leaderboard
+  // -------------------------------------------------------------------------
+
+  private _saveToLeaderboard(victory: boolean): void {
+    if (!saveToLeaderboard) return;
+    saveToLeaderboard({
+      seed: (this._state as any).runSeed,
+      victory,
+      level: this._state.currentLevel,
+      score: this._computeScore(victory),
+      stats: { ...this._runStats },
+      difficulty: (this._state as any).difficulty ?? "normal",
+      timestamp: Date.now(),
+    });
+  }
+
+  private _computeScore(victory: boolean): number {
+    const base = this._state.currentLevel * 100;
+    const killBonus = this._runStats.enemiesKilled * 10;
+    const bossBonus = this._runStats.bossesKilled * 200;
+    const victoryBonus = victory ? 1000 : 0;
+    return base + killBonus + bossBonus + victoryBonus;
   }
 
   // -------------------------------------------------------------------------
@@ -173,10 +480,28 @@ export class RiftWizardGame {
       return;
     }
 
+    // --- Tutorial dismissal: consume SPACE/click before normal input ---
+    if (this._tutorial && typeof this._tutorial.isShowing === "function" && this._tutorial.isShowing()) {
+      if (consumeJustPressed(" ") || _mouseClicked) {
+        if (typeof this._tutorial.dismiss === "function") this._tutorial.dismiss();
+        clearJustPressed();
+        return;
+      }
+    }
+
     // Help toggle — works from any phase
     if (consumeJustPressed("?")) {
       this._hud.toggleKeyReference();
       return;
+    }
+
+    // --- Codex / Bestiary toggle ---
+    if (consumeJustPressed("b") || consumeJustPressed("B")) {
+      if (this._codex && typeof this._codex.toggle === "function") {
+        this._codex.toggle((this._state as any).encounteredEnemies);
+        clearJustPressed();
+        return;
+      }
     }
 
     switch (state.phase) {
@@ -195,6 +520,12 @@ export class RiftWizardGame {
       case RWPhase.VICTORY:
       case RWPhase.GAME_OVER:
         this._handleGameOver();
+        break;
+      default:
+        // --- Level Summary phase ---
+        if ((state as any).phase === "level_summary") {
+          this._handleLevelSummary();
+        }
         break;
     }
 
@@ -277,12 +608,16 @@ export class RiftWizardGame {
 
     if (!state.isPlayerTurn) return;
 
+    // --- Tutorial tips ---
+    this._checkTutorialTriggers(state);
+
     // Undo last action (only before enemies move)
     if ((consumeJustPressed("z") || consumeJustPressed("u")) && this._undoSnapshot) {
       try {
         const restored = JSON.parse(this._undoSnapshot);
         Object.assign(this._state, restored);
         this._undoSnapshot = null;  // Can only undo once
+        this._runStats.timesUndone++;
       } catch {}
       return;
     }
@@ -303,7 +638,7 @@ export class RiftWizardGame {
     }
 
     if (moved) {
-      executeTurn(state);
+      this._executeTurnWithTelegraphs(state);
       this._undoSnapshot = null; // Clear undo after enemy turns complete
       return;
     }
@@ -316,6 +651,14 @@ export class RiftWizardGame {
           state.phase = RWPhase.TARGETING;
           // Initialize cursor at wizard position
           state.targetCursor = { col: state.wizard.col, row: state.wizard.row };
+
+          // --- Tutorial: first spell select ---
+          if (!this._tutorialFirstSpellShown && this._tutorial) {
+            if (typeof this._tutorial.showTip === "function") {
+              this._tutorial.showTip("spell_targeting", "Use arrow keys to move the cursor, then SPACE/Enter to cast. ESC to cancel.");
+            }
+            this._tutorialFirstSpellShown = true;
+          }
 
           // Auto-target nearest enemy in range
           const spell = state.spells[state.selectedSpellIndex];
@@ -356,7 +699,7 @@ export class RiftWizardGame {
         if (stepX !== 0 || stepY !== 0) {
           const didMove = tryMoveWizard(state, stepX, stepY);
           if (didMove) {
-            executeTurn(state);
+            this._executeTurnWithTelegraphs(state);
             this._undoSnapshot = null;
             return;
           }
@@ -366,13 +709,24 @@ export class RiftWizardGame {
 
     // Pass turn
     if (consumeJustPressed(" ") || consumeJustPressed("Enter")) {
-      executeTurn(state);
+      this._executeTurnWithTelegraphs(state);
       this._undoSnapshot = null; // Clear undo after enemy turns complete
       return;
     }
 
     // Interact (shrines, items, portals)
     if (consumeJustPressed("e") || consumeJustPressed("E")) {
+      // --- Tutorial: first interact ---
+      if (!this._tutorialFirstInteractShown && this._tutorial) {
+        // Check if interact is available by looking for adjacent interactable
+        const hasInteractable = this._checkInteractAvailable(state);
+        if (hasInteractable) {
+          if (typeof this._tutorial.showTip === "function") {
+            this._tutorial.showTip("interact", "Press E near shrines, items, and portals to interact.");
+          }
+          this._tutorialFirstInteractShown = true;
+        }
+      }
       tryInteract(state);
       return;
     }
@@ -433,7 +787,7 @@ export class RiftWizardGame {
           state.phase = RWPhase.PLAYING;
           state.selectedSpellIndex = -1;
           state.targetCursor = null;
-          executeTurn(state);
+          this._executeTurnWithTelegraphs(state);
           this._undoSnapshot = null;
         } else {
           // Move cursor to clicked cell even if can't cast there
@@ -453,7 +807,7 @@ export class RiftWizardGame {
         state.phase = RWPhase.PLAYING;
         state.selectedSpellIndex = -1;
         state.targetCursor = null;
-        executeTurn(state);
+        this._executeTurnWithTelegraphs(state);
         this._undoSnapshot = null; // Clear undo after enemy turns complete
       }
     }
@@ -482,6 +836,22 @@ export class RiftWizardGame {
     }
   }
 
+  // -------------------------------------------------------------------------
+  // Level Summary phase
+  // -------------------------------------------------------------------------
+
+  private _handleLevelSummary(): void {
+    // Show the summary overlay (renderer/HUD can read state.phase === "level_summary")
+    // Advance to spell shop on SPACE or Enter
+    if (consumeJustPressed(" ") || consumeJustPressed("Enter")) {
+      this._state.phase = RWPhase.SPELL_SHOP;
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Game Over / Victory
+  // -------------------------------------------------------------------------
+
   private _handleGameOver(): void {
     // Restart on R
     if (consumeJustPressed("r") || consumeJustPressed("R")) {
@@ -494,6 +864,94 @@ export class RiftWizardGame {
     if (consumeJustPressed("Escape")) {
       window.dispatchEvent(new Event("riftwizardExit"));
     }
+  }
+
+  // -------------------------------------------------------------------------
+  // Turn execution with telegraphed tiles (Boss mechanics)
+  // -------------------------------------------------------------------------
+
+  private _executeTurnWithTelegraphs(state: RiftWizardState): void {
+    executeTurn(state);
+
+    // --- Process telegraphed tiles ---
+    const telegraphed: any[] = (state as any).telegraphedTiles ?? [];
+    const remaining: any[] = [];
+    for (const tile of telegraphed) {
+      tile.turnDelay--;
+      if (tile.turnDelay <= 0) {
+        // Tile triggers: deal damage if wizard is standing on it
+        if (state.wizard.col === tile.col && state.wizard.row === tile.row) {
+          const dmg = tile.damage ?? 20;
+          state.wizard.hp -= dmg;
+          rwEventBus.emit(RWEvent.WIZARD_HIT, {
+            amount: dmg,
+            source: "telegraphed_tile",
+            col: tile.col,
+            row: tile.row,
+          });
+          if (state.wizard.hp <= 0) {
+            state.wizard.hp = 0;
+            state.phase = RWPhase.GAME_OVER;
+            rwEventBus.emit(RWEvent.WIZARD_DEATH);
+            rwEventBus.emit(RWEvent.GAME_OVER);
+          }
+        }
+        // Tile is consumed — do not keep
+      } else {
+        remaining.push(tile);
+      }
+    }
+    (state as any).telegraphedTiles = remaining;
+  }
+
+  // -------------------------------------------------------------------------
+  // Tutorial helpers
+  // -------------------------------------------------------------------------
+
+  private _checkTutorialTriggers(state: RiftWizardState): void {
+    if (!this._tutorial) return;
+
+    // First turn tip
+    if (!this._tutorialFirstTurnShown && state.turnNumber === 0) {
+      if (typeof this._tutorial.showTip === "function") {
+        this._tutorial.showTip("movement", "Use WASD or arrow keys to move. Press 1-9 to select spells. E to interact.");
+      }
+      this._tutorialFirstTurnShown = true;
+    }
+
+    // First interact available
+    if (!this._tutorialFirstInteractShown) {
+      const hasInteractable = this._checkInteractAvailable(state);
+      if (hasInteractable && typeof this._tutorial.showTip === "function") {
+        this._tutorial.showTip("interact_hint", "An interactable object is nearby! Press E to interact.");
+        this._tutorialFirstInteractShown = true;
+      }
+    }
+  }
+
+  private _checkInteractAvailable(state: RiftWizardState): boolean {
+    const { col, row } = state.wizard;
+    // Check adjacent tiles (including current) for shrines, items, portals
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const c = col + dx;
+        const r = row + dy;
+        if (c < 0 || c >= state.level.width || r < 0 || r >= state.level.height) continue;
+        // Shrine
+        for (const shrine of state.level.shrines) {
+          if (shrine.col === c && shrine.row === r && !shrine.used) return true;
+        }
+        // Item
+        for (const item of state.level.items) {
+          if (item.col === c && item.row === r && !item.picked) return true;
+        }
+        // Portal
+        for (const portal of state.level.riftPortals) {
+          if (portal.col === c && portal.row === r) return true;
+        }
+      }
+    }
+    return false;
   }
 
   // -------------------------------------------------------------------------
@@ -528,9 +986,48 @@ export class RiftWizardGame {
     viewManager.removeFromLayer("ui", this._hud.container);
     viewManager.removeFromLayer("ui", this._spellShopUI.container);
 
+    // --- Remove tutorial UI ---
+    if (this._tutorial?.container) {
+      viewManager.removeFromLayer("ui", this._tutorial.container);
+    }
+
+    // --- Remove codex UI ---
+    if (this._codex?.container) {
+      viewManager.removeFromLayer("ui", this._codex.container);
+    }
+
     this._renderer.destroy();
     this._hud.destroy();
     this._spellShopUI.destroy();
+
+    // --- Destroy tutorial ---
+    if (this._tutorial && typeof this._tutorial.destroy === "function") {
+      this._tutorial.destroy();
+    }
+    this._tutorial = null;
+
+    // --- Destroy codex ---
+    if (this._codex && typeof this._codex.destroy === "function") {
+      this._codex.destroy();
+    }
+    this._codex = null;
+
+    // --- Audio cleanup ---
+    if (rwAudio && typeof rwAudio.destroy === "function") {
+      rwAudio.destroy();
+    }
+
+    // --- EventBus cleanup ---
+    for (const unsub of this._eventUnsubscribers) {
+      unsub();
+    }
+    this._eventUnsubscribers.length = 0;
+    rwEventBus.clear();
+
+    // Reset tutorial tracking
+    this._tutorialFirstTurnShown = false;
+    this._tutorialFirstSpellShown = false;
+    this._tutorialFirstInteractShown = false;
 
     // Re-enable camera
     viewManager.camera.keyboardEnabled = true;
