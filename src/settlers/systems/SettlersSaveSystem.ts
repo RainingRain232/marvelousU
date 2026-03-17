@@ -256,6 +256,8 @@ function deserializeState(s: SerializedState): SettlersState {
     fogDirty: true, // recalculate fog on load
     difficulty: (s as any).difficulty || "normal",
     gameSpeed: (s as any).gameSpeed || 1,
+    mapMode: (s as any).mapMode || "CONTINENTAL",
+    eventState: (s as any).eventState || null,
   };
 }
 

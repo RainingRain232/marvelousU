@@ -125,6 +125,12 @@ export const SB = {
   WATCHTOWER_SIGHT_RANGE: 10,
   FORTRESS_SIGHT_RANGE: 13,
 
+  // Random events
+  EVENT_MIN_INTERVAL: 60,          // seconds between events (min)
+  EVENT_MAX_INTERVAL: 120,         // seconds between events (max)
+  EVENT_MINE_COLLAPSE_DURATION: 30, // seconds a mine stays collapsed
+  EVENT_HARVEST_DURATION: 30,      // seconds bountiful harvest lasts
+
   // Rendering
   ROAD_WIDTH: 0.8,           // world units
   FLAG_HEIGHT: 0.8,          // world units

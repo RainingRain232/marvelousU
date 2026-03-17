@@ -5,6 +5,7 @@
 import { SB } from "../config/SettlersBalance";
 import { Biome, Deposit, getVertex, tileIdx } from "../state/SettlersMap";
 import type { SettlersMap } from "../state/SettlersMap";
+import type { SettlersMapMode } from "../state/SettlersState";
 
 /** Simple seeded PRNG */
 function seededRandom(seed: number): () => number {
@@ -27,11 +28,76 @@ function noise2D(x: number, z: number, seed: number): number {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Map mode parameters
+// ---------------------------------------------------------------------------
+
+interface MapModeParams {
+  waterLevel: number;
+  mountainLevel: number;
+  edgeFadeStrength: number;
+  /** Extra height modifier applied per-vertex after base noise */
+  heightModifier: (nx: number, nz: number, baseHeight: number, seed: number) => number;
+}
+
+function getMapModeParams(mode: SettlersMapMode): MapModeParams {
+  switch (mode) {
+    case "ARCHIPELAGO":
+      return {
+        waterLevel: 0.30,
+        mountainLevel: 0.70,
+        edgeFadeStrength: 3,
+        heightModifier: (nx, nz, h, seed) => {
+          // Create island clusters using high-frequency noise
+          const islands = Math.sin(nx * 18 + seed * 0.03) * Math.cos(nz * 18 + seed * 0.07);
+          return h * 0.5 + (islands > 0.1 ? 0.4 : -0.15);
+        },
+      };
+    case "MOUNTAIN_PASS":
+      return {
+        waterLevel: 0.12,
+        mountainLevel: 0.50,
+        edgeFadeStrength: 5,
+        heightModifier: (nx, nz, h, _seed) => {
+          // Mountains along center band, with a narrow pass
+          const centerDist = Math.abs(nz - 0.5);
+          const passX = Math.abs(nx - 0.5);
+          const mountainRidge = centerDist < 0.12 ? 0.35 : 0;
+          // Carve a pass near the center
+          const passGap = passX < 0.08 && centerDist < 0.12 ? -0.45 : 0;
+          return h + mountainRidge + passGap;
+        },
+      };
+    case "LAKES":
+      return {
+        waterLevel: 0.22,
+        mountainLevel: 0.68,
+        edgeFadeStrength: 6,
+        heightModifier: (nx, nz, h, seed) => {
+          // Reduce edge fade (mostly land), add scattered depressions for lakes
+          const lake1 = Math.sin(nx * 12 + seed * 0.05) * Math.sin(nz * 10 + seed * 0.08);
+          const lake2 = Math.cos(nx * 8 - nz * 6 + seed * 0.12);
+          const depression = lake1 > 0.5 || lake2 > 0.7 ? -0.25 : 0;
+          return h + depression;
+        },
+      };
+    case "CONTINENTAL":
+    default:
+      return {
+        waterLevel: SB.WATER_LEVEL,
+        mountainLevel: SB.MOUNTAIN_LEVEL,
+        edgeFadeStrength: 5,
+        heightModifier: (_nx, _nz, h, _seed) => h,
+      };
+  }
+}
+
 /** Generate the full map terrain */
-export function generateTerrain(map: SettlersMap, seed: number = 42): void {
+export function generateTerrain(map: SettlersMap, seed: number = 42, mode: SettlersMapMode = "CONTINENTAL"): void {
   const rng = seededRandom(seed);
   const w = map.width;
   const h = map.height;
+  const params = getMapModeParams(mode);
 
   // --- 1. Generate heightmap vertices ---
   for (let vz = 0; vz <= h; vz++) {
@@ -44,10 +110,14 @@ export function generateTerrain(map: SettlersMap, seed: number = 42): void {
       height = (height + 2.3) / 4.6;
       height = Math.max(0, Math.min(1, height));
 
-      // Push edges down toward water for island feel
+      // Push edges down toward water
       const edgeDist = Math.min(nx, 1 - nx, nz, 1 - nz);
-      const edgeFade = Math.min(1, edgeDist * 5);
+      const edgeFade = Math.min(1, edgeDist * params.edgeFadeStrength);
       height *= edgeFade;
+
+      // Apply map-mode-specific height modifier
+      height = params.heightModifier(nx, nz, height, seed);
+      height = Math.max(0, Math.min(1, height));
 
       map.heightmap[vz * (w + 1) + vx] = height * SB.MAX_HEIGHT;
     }
@@ -67,9 +137,9 @@ export function generateTerrain(map: SettlersMap, seed: number = 42): void {
 
       const normalizedH = avg / SB.MAX_HEIGHT;
 
-      if (normalizedH < SB.WATER_LEVEL) {
+      if (normalizedH < params.waterLevel) {
         map.biomes[idx] = Biome.WATER;
-      } else if (normalizedH > SB.MOUNTAIN_LEVEL) {
+      } else if (normalizedH > params.mountainLevel) {
         map.biomes[idx] = Biome.MOUNTAIN;
       } else {
         // Mix forest and meadow using noise
