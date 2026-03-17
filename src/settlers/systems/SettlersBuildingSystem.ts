@@ -3,14 +3,27 @@
 // ---------------------------------------------------------------------------
 
 import { SB } from "../config/SettlersBalance";
-import { BUILDING_DEFS, SettlersBuildingType } from "../config/SettlersBuildingDefs";
-import { FOOD_TYPES } from "../config/SettlersResourceDefs";
+import { BUILDING_DEFS, SettlersBuildingType, ResourceStack } from "../config/SettlersBuildingDefs";
+import { FOOD_TYPES, ResourceType } from "../config/SettlersResourceDefs";
 import { Biome, inBounds, tileIdx } from "../state/SettlersMap";
 import type { SettlersBuilding } from "../state/SettlersBuilding";
 import type { SettlersState } from "../state/SettlersState";
 import { nextId } from "../state/SettlersState";
 import type { SettlersFlag } from "../state/SettlersRoad";
 import { playResourceCollected } from "./SettlersAudioSystem";
+
+// ---------------------------------------------------------------------------
+// Raw resource types (for trade rate calculation)
+// ---------------------------------------------------------------------------
+
+const RAW_RESOURCES: ReadonlySet<ResourceType> = new Set([
+  ResourceType.WOOD, ResourceType.STONE, ResourceType.IRON_ORE,
+  ResourceType.GOLD_ORE, ResourceType.COAL, ResourceType.WHEAT,
+  ResourceType.WATER, ResourceType.FISH,
+]);
+
+/** All tradeable resource types */
+export const TRADEABLE_RESOURCES: ResourceType[] = Object.values(ResourceType);
 
 // ---------------------------------------------------------------------------
 // Placement validation
@@ -133,6 +146,10 @@ export function placeBuilding(
     maxHp: def.hp,
     flagId,
     productionQueue: [],
+    level: 1,
+    upgradeProgress: 0,
+    marketSellResource: null,
+    marketBuyResource: null,
   };
 
   state.buildings.set(id, building);
@@ -287,13 +304,31 @@ export function demolishBuilding(state: SettlersState, buildingId: string): bool
 // Production tick – consume inputs, produce outputs
 // ---------------------------------------------------------------------------
 
+/** Get effective production time for a building, accounting for level */
+export function getEffectiveProductionTime(building: SettlersBuilding): number {
+  const def = BUILDING_DEFS[building.type];
+  let time = def.productionTime;
+  for (let l = 1; l < building.level; l++) {
+    time *= SB.UPGRADE_SPEED_MULT;
+  }
+  return time;
+}
+
 export function updateProduction(state: SettlersState, dt: number): void {
   for (const [, building] of state.buildings) {
     if (!building.active) continue;
+    // Skip buildings currently being upgraded
+    if (building.upgradeProgress > 0 && building.upgradeProgress < 1) continue;
 
     const def = BUILDING_DEFS[building.type];
     if (def.productionTime <= 0) continue;
     if (def.type === SettlersBuildingType.BARRACKS) continue; // handled by military system
+
+    // Market building – handle trade cycle
+    if (def.type === SettlersBuildingType.MARKET) {
+      _updateMarketTrade(state, building, dt);
+      continue;
+    }
 
     // Check if inputs are available
     if (def.inputs.length > 0) {
@@ -320,7 +355,8 @@ export function updateProduction(state: SettlersState, dt: number): void {
     // Tick production timer
     building.productionTimer -= dt;
     if (building.productionTimer <= 0) {
-      building.productionTimer = def.productionTime;
+      const effTime = getEffectiveProductionTime(building);
+      building.productionTimer = effTime;
 
       // Consume inputs
       for (const input of def.inputs) {
@@ -369,4 +405,138 @@ export function updateProduction(state: SettlersState, dt: number): void {
       }
     }
   }
+}
+
+// ---------------------------------------------------------------------------
+// Market trade logic
+// ---------------------------------------------------------------------------
+
+function _updateMarketTrade(state: SettlersState, building: SettlersBuilding, dt: number): void {
+  if (!building.marketSellResource || !building.marketBuyResource) return;
+  if (building.marketSellResource === building.marketBuyResource) return;
+
+  const player = state.players.get(building.owner);
+  if (!player) return;
+
+  const effTime = getEffectiveProductionTime(building);
+  building.productionTimer -= dt;
+  if (building.productionTimer <= 0) {
+    building.productionTimer = effTime;
+
+    const sellRes = building.marketSellResource;
+    const buyRes = building.marketBuyResource;
+
+    // Determine trade rate
+    const bothRaw = RAW_RESOURCES.has(sellRes) && RAW_RESOURCES.has(buyRes);
+    const rate = bothRaw ? SB.TRADE_RATE_RAW_TO_RAW : SB.TRADE_RATE_DEFAULT;
+
+    const available = player.storage.get(sellRes) || 0;
+    if (available >= rate) {
+      player.storage.set(sellRes, available - rate);
+      player.storage.set(buyRes, (player.storage.get(buyRes) || 0) + 1);
+
+      if (building.owner === "p0" && Math.random() < 0.25) {
+        playResourceCollected();
+      }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Building upgrades
+// ---------------------------------------------------------------------------
+
+/** Get upgrade cost for the next level */
+export function getUpgradeCost(building: SettlersBuilding): ResourceStack[] | null {
+  const nextLevel = building.level + 1;
+  if (nextLevel > SB.MAX_BUILDING_LEVEL) return null;
+  const costs = SB.UPGRADE_COSTS[nextLevel];
+  if (!costs) return null;
+  return [
+    { type: ResourceType.PLANKS, amount: costs.planks },
+    { type: ResourceType.STONE, amount: costs.stone },
+    { type: ResourceType.GOLD, amount: costs.gold },
+  ];
+}
+
+/** Check if upgrade is possible and affordable */
+export function canUpgradeBuilding(state: SettlersState, buildingId: string): string | null {
+  const building = state.buildings.get(buildingId);
+  if (!building) return "Building not found";
+  if (building.constructionProgress < 1) return "Still under construction";
+  if (building.upgradeProgress > 0 && building.upgradeProgress < 1) return "Already upgrading";
+  if (building.level >= SB.MAX_BUILDING_LEVEL) return "Already max level";
+
+  // HQ and storehouses cannot be upgraded
+  const def = BUILDING_DEFS[building.type];
+  if (def.type === SettlersBuildingType.HEADQUARTERS) return "Cannot upgrade HQ";
+  if (def.type === SettlersBuildingType.STOREHOUSE) return "Cannot upgrade storehouse";
+
+  const costs = getUpgradeCost(building);
+  if (!costs) return "No upgrade available";
+
+  const player = state.players.get(building.owner);
+  if (!player) return "Invalid player";
+
+  for (const cost of costs) {
+    const have = player.storage.get(cost.type) || 0;
+    if (have < cost.amount) return `Need ${cost.amount} ${cost.type} (have ${have})`;
+  }
+
+  return null; // can upgrade
+}
+
+/** Start upgrading a building */
+export function upgradeBuilding(state: SettlersState, buildingId: string): boolean {
+  const error = canUpgradeBuilding(state, buildingId);
+  if (error) return false;
+
+  const building = state.buildings.get(buildingId)!;
+  const costs = getUpgradeCost(building)!;
+  const player = state.players.get(building.owner)!;
+
+  // Deduct resources
+  for (const cost of costs) {
+    player.storage.set(cost.type, (player.storage.get(cost.type) || 0) - cost.amount);
+  }
+
+  // Start upgrade progress
+  building.upgradeProgress = 0.001; // just above 0 to indicate "upgrading"
+  return true;
+}
+
+/** Tick upgrade progress for all buildings */
+export function updateUpgrades(state: SettlersState, dt: number): void {
+  for (const [, building] of state.buildings) {
+    if (building.upgradeProgress <= 0 || building.upgradeProgress >= 1) continue;
+
+    const def = BUILDING_DEFS[building.type];
+    // Upgrade takes UPGRADE_BUILD_TIME_MULT * original construction time
+    // We approximate original build time as ~2s (same rate as construction: dt * 0.5)
+    const upgradeSpeed = 0.5 / SB.UPGRADE_BUILD_TIME_MULT; // rate per second
+    building.upgradeProgress += dt * (upgradeSpeed / Math.max(def.constructionCost.length, 1));
+
+    if (building.upgradeProgress >= 1) {
+      building.upgradeProgress = 1;
+      building.level++;
+      // Reset upgrade progress so it can be upgraded again
+      building.upgradeProgress = 0;
+      // Reset production timer with new speed
+      building.productionTimer = getEffectiveProductionTime(building);
+    }
+  }
+}
+
+/** Set market trade resources */
+export function setMarketTrade(
+  state: SettlersState,
+  buildingId: string,
+  sellResource: ResourceType | null,
+  buyResource: ResourceType | null,
+): void {
+  const building = state.buildings.get(buildingId);
+  if (!building) return;
+  if (building.type !== SettlersBuildingType.MARKET) return;
+  building.marketSellResource = sellResource;
+  building.marketBuyResource = buyResource;
 }

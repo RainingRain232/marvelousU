@@ -10,7 +10,7 @@ import type { SettlersState, SettlersDifficulty } from "./state/SettlersState";
 import type { SettlersPlayer } from "./state/SettlersPlayer";
 import { getHeightAt } from "./state/SettlersMap";
 import { generateTerrain, findStartPosition } from "./systems/SettlersTerrainSystem";
-import { placeBuilding, canPlaceBuilding, updateConstruction, updateProduction, demolishBuilding } from "./systems/SettlersBuildingSystem";
+import { placeBuilding, canPlaceBuilding, updateConstruction, updateProduction, updateUpgrades, upgradeBuilding, setMarketTrade, demolishBuilding } from "./systems/SettlersBuildingSystem";
 import { recalculateTerritory, updateTerritory } from "./systems/SettlersTerritorySystem";
 import { placeFlag, createRoad, routeGoods } from "./systems/SettlersRoadSystem";
 import { updateCarriers } from "./systems/SettlersCarrierSystem";
@@ -140,6 +140,12 @@ export class SettlersGame {
       const building = this._state.buildings.get(buildingId);
       if (building) removeFromProductionQueue(building, index);
     };
+    this._hud.onUpgrade = (buildingId) => {
+      upgradeBuilding(this._state, buildingId);
+    };
+    this._hud.onMarketTrade = (buildingId, sell, buy) => {
+      setMarketTrade(this._state, buildingId, sell, buy);
+    };
 
     // --- 9. Start game loop ---
     this._lastTime = performance.now();
@@ -206,6 +212,7 @@ export class SettlersGame {
   private _simTick(dt: number): void {
     // Building construction & production
     updateConstruction(this._state, dt);
+    updateUpgrades(this._state, dt);
     updateProduction(this._state, dt);
 
     // Goods routing

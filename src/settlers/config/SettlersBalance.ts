@@ -51,6 +51,20 @@ export const SB = {
   PROD_SWORD_SMITH: 18,
   PROD_SHIELD_SMITH: 18,
   PROD_BARRACKS: 30,
+  PROD_MARKET: 15,
+
+  // Building upgrades
+  MAX_BUILDING_LEVEL: 3,
+  UPGRADE_SPEED_MULT: 0.75,        // production time multiplier per level
+  UPGRADE_BUILD_TIME_MULT: 0.5,    // upgrade takes 50% of original build time
+  UPGRADE_COSTS: {
+    2: { planks: 3, stone: 2, gold: 1 },
+    3: { planks: 5, stone: 3, gold: 2 },
+  } as Record<number, { planks: number; stone: number; gold: number }>,
+
+  // Trade rates
+  TRADE_RATE_DEFAULT: 3,           // 3 sell -> 1 buy
+  TRADE_RATE_RAW_TO_RAW: 2,       // 2 sell -> 1 buy (raw-to-raw)
 
   // Production queue
   MAX_PRODUCTION_QUEUE: 5,     // max items in a building's production queue

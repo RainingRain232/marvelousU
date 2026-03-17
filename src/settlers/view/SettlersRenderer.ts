@@ -92,6 +92,9 @@ export class SettlersRenderer {
   private _scaffoldMeshes = new Map<string, THREE.Group>();
   private _spinnerMeshes = new Map<string, THREE.Mesh>();
 
+  // Building level indicators (star meshes above buildings)
+  private _levelIndicators = new Map<string, { group: THREE.Group; level: number }>();
+
   // Clouds
   private _cloudGroup = new THREE.Group();
 
@@ -477,6 +480,7 @@ export class SettlersRenderer {
     for (const [, m] of this._roadMeshes) this.scene.remove(m);
     for (const [, m] of this._scaffoldMeshes) this.scene.remove(m);
     for (const [, m] of this._spinnerMeshes) this.scene.remove(m);
+    for (const [, m] of this._levelIndicators) this.scene.remove(m.group);
     this._buildingMeshes.clear();
     this._flagMeshes.clear();
     this._carrierMeshes.clear();
@@ -484,6 +488,7 @@ export class SettlersRenderer {
     this._roadMeshes.clear();
     this._scaffoldMeshes.clear();
     this._spinnerMeshes.clear();
+    this._levelIndicators.clear();
 
     if (this._territoryLine) {
       this.scene.remove(this._territoryLine);
@@ -1158,11 +1163,13 @@ export class SettlersRenderer {
       if (!state.buildings.has(id)) {
         this.scene.remove(mesh);
         this._buildingMeshes.delete(id);
-        // Clean up scaffold / spinner
+        // Clean up scaffold / spinner / level indicator
         const scaffold = this._scaffoldMeshes.get(id);
         if (scaffold) { this.scene.remove(scaffold); this._scaffoldMeshes.delete(id); }
         const spinner = this._spinnerMeshes.get(id);
         if (spinner) { this.scene.remove(spinner); this._spinnerMeshes.delete(id); }
+        const lvlInd = this._levelIndicators.get(id);
+        if (lvlInd) { this.scene.remove(lvlInd.group); this._levelIndicators.delete(id); }
       }
     }
     for (const [id, building] of state.buildings) {
@@ -1238,6 +1245,50 @@ export class SettlersRenderer {
           this.scene.remove(spinner);
           this._spinnerMeshes.delete(id);
         }
+      }
+
+      // Level indicators (star-like meshes for upgraded buildings)
+      if (building.level > 1 && progress >= 1) {
+        const existing = this._levelIndicators.get(id);
+        if (!existing || existing.level !== building.level) {
+          // Remove old indicator
+          if (existing) { this.scene.remove(existing.group); }
+          // Create new indicator group
+          const indGroup = new THREE.Group();
+          const starMat = new THREE.MeshStandardMaterial({
+            color: 0xffcc00, emissive: 0xffaa00, emissiveIntensity: 0.6,
+            roughness: 0.3, metalness: 0.5,
+          });
+          const starCount = building.level - 1;
+          const fwInd = def.footprint.w * ts;
+          const bh = def.size === "large" ? fwInd * 1.1 : def.size === "medium" ? fwInd * 0.85 : fwInd * 0.7;
+          for (let s = 0; s < starCount; s++) {
+            const star = new THREE.Mesh(this._sphereGeo, starMat);
+            star.scale.set(1.5, 1.5, 1.5);
+            const offset = (s - (starCount - 1) * 0.5) * 0.4;
+            star.position.set(offset, bh + 0.4, 0);
+            indGroup.add(star);
+          }
+          indGroup.position.copy(mesh.position);
+          this._levelIndicators.set(id, { group: indGroup, level: building.level });
+          this.scene.add(indGroup);
+        }
+        // Animate the stars: gentle bobbing
+        const ind = this._levelIndicators.get(id)!;
+        ind.group.position.y = mesh.position.y + Math.sin(t * 2) * 0.05;
+      } else {
+        // Remove indicator if not applicable
+        const existing = this._levelIndicators.get(id);
+        if (existing) {
+          this.scene.remove(existing.group);
+          this._levelIndicators.delete(id);
+        }
+      }
+
+      // Also scale building slightly taller per level
+      if (building.level > 1 && progress >= 1) {
+        const scaleY = 1 + (building.level - 1) * 0.1;
+        mesh.scale.set(1, scaleY, 1);
       }
 
       // Animate mill windmill sails

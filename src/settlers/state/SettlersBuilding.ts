@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import { SettlersBuildingType, ResourceStack } from "../config/SettlersBuildingDefs";
+import type { ResourceType } from "../config/SettlersResourceDefs";
 
 /** An item in a building's production queue */
 export interface ProductionQueueItem {
@@ -47,4 +48,13 @@ export interface SettlersBuilding {
 
   /** Queued production orders (processed one at a time, first-in-first-out) */
   productionQueue: ProductionQueueItem[];
+
+  /** Building upgrade level (1 = base, max 3) */
+  level: number;
+  /** 0..1 – upgrade progress (when > 0 and < 1, upgrade is in progress) */
+  upgradeProgress: number;
+
+  /** Market trade state (only for MARKET buildings) */
+  marketSellResource: ResourceType | null;
+  marketBuyResource: ResourceType | null;
 }
