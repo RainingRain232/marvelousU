@@ -1081,6 +1081,281 @@ export class CreatureMesh {
     strap.rotation.x = Math.PI / 2;
     strap.rotation.z = 0.5;
     this._body.add(strap);
+
+    // ======== ENHANCED TROLL DETAIL ========
+
+    // --- Muscle fiber detail — visible striations on major muscle groups ---
+    const muscleStriMat = organicMat(0x4e5c34, { roughness: 0.55 });
+    for (const side of [-1, 1]) {
+      // Deltoid striations
+      for (let i = 0; i < 4; i++) {
+        const striGeo = new THREE.BoxGeometry(0.01, 0.12, 0.006);
+        const stri = new THREE.Mesh(striGeo, muscleStriMat);
+        stri.position.set(side * (0.42 + i * 0.02), 2.45, 0.12);
+        stri.rotation.z = side * 0.3;
+        this._body.add(stri);
+      }
+      // Forearm muscle bulk
+      const forearmGeo = new THREE.SphereGeometry(1, 14, 10);
+      const forearm = new THREE.Mesh(forearmGeo, skinMat);
+      forearm.scale.set(0.08, 0.15, 0.07);
+      forearm.position.set(side * 0.5, 1.8, 0.05);
+      this._body.add(forearm);
+    }
+
+    // --- Thick veins running along arms and neck ---
+    for (const side of [-1, 1]) {
+      // Arm veins
+      for (let i = 0; i < 3; i++) {
+        const armVeinGeo = cyl(0.01, 0.007, 0.2, 8);
+        const armVein = new THREE.Mesh(armVeinGeo, veinMat);
+        armVein.position.set(side * (0.45 + i * 0.02), 1.9 + i * 0.15, 0.08);
+        armVein.rotation.z = side * (0.1 + i * 0.05);
+        this._body.add(armVein);
+      }
+      // Neck veins
+      const neckVeinGeo = cyl(0.008, 0.006, 0.15, 6);
+      const neckVein = new THREE.Mesh(neckVeinGeo, veinMat);
+      neckVein.position.set(side * 0.12, 2.75, 0.1);
+      neckVein.rotation.z = side * 0.2;
+      this._body.add(neckVein);
+    }
+
+    // --- Thick toenails and fingernails ---
+    for (const side of [-1, 1]) {
+      // Fingernails (dirty, cracked)
+      for (let f = 0; f < 3; f++) {
+        const fNailGeo = new THREE.BoxGeometry(0.025, 0.012, 0.035);
+        const fNail = new THREE.Mesh(fNailGeo, nailMat);
+        fNail.position.set(side * 0.55 + (f - 1) * 0.02, 1.35, 0.1);
+        this._body.add(fNail);
+      }
+      // Toenails
+      for (let t = 0; t < 3; t++) {
+        const tNailGeo = new THREE.BoxGeometry(0.028, 0.012, 0.04);
+        const tNail = new THREE.Mesh(tNailGeo, nailMat);
+        tNail.position.set(side * 0.2 + (t - 1) * 0.03, 0.04, 0.28);
+        this._body.add(tNail);
+      }
+    }
+
+    // --- Wart clusters on skin ---
+    for (let i = 0; i < 12; i++) {
+      const wartClusterGeo = new THREE.SphereGeometry(0.012 + Math.random() * 0.015, 8, 6);
+      const wartCluster = new THREE.Mesh(wartClusterGeo, wartMat);
+      const wAngle = Math.random() * Math.PI * 2;
+      wartCluster.position.set(
+        Math.cos(wAngle) * (0.2 + Math.random() * 0.3),
+        1.6 + Math.random() * 1.2,
+        Math.sin(wAngle) * (0.15 + Math.random() * 0.25),
+      );
+      this._body.add(wartCluster);
+    }
+
+    // --- Crude bone weapon (club with embedded bone shards) ---
+    const trollWeaponMat = mat(0x5a4020, { roughness: 0.9 });
+    const trollBoneShardMat = boneMaterial(0xc8b890);
+
+    // Club handle
+    const clubHandleGeo = cyl(0.03, 0.025, 0.9, 10);
+    const clubHandle = new THREE.Mesh(clubHandleGeo, trollWeaponMat);
+    clubHandle.position.set(0.6, 1.6, 0.05);
+    clubHandle.rotation.z = 0.2;
+    this._body.add(clubHandle);
+
+    // Club head — lumpy wood
+    const clubLumpGeo = new THREE.SphereGeometry(0.1, 12, 10);
+    const clubLump = new THREE.Mesh(clubLumpGeo, trollWeaponMat);
+    clubLump.scale.set(0.8, 1.2, 0.8);
+    clubLump.position.set(0.65, 2.1, 0.07);
+    this._body.add(clubLump);
+
+    // Embedded bone shards in club
+    for (let s = 0; s < 5; s++) {
+      const shardGeo = new THREE.ConeGeometry(0.01, 0.06 + Math.random() * 0.03, 5);
+      const shard = new THREE.Mesh(shardGeo, trollBoneShardMat);
+      const shardA = (s / 5) * Math.PI * 2;
+      shard.position.set(
+        0.65 + Math.cos(shardA) * 0.08,
+        2.1 + (Math.random() - 0.5) * 0.1,
+        0.07 + Math.sin(shardA) * 0.08,
+      );
+      shard.rotation.set(Math.random() * Math.PI, 0, Math.random() * Math.PI);
+      this._body.add(shard);
+    }
+
+    // --- Leather loincloth ---
+    const trollLoinMat = mat(0x4a3018, { roughness: 0.9 });
+    const frontFlapGeo = new THREE.PlaneGeometry(0.25, 0.3);
+    const frontFlap = new THREE.Mesh(frontFlapGeo, mat(0x4a3018, { roughness: 0.9, side: THREE.DoubleSide }));
+    frontFlap.position.set(0, 1.3, 0.2);
+    this._body.add(frontFlap);
+
+    const backFlapGeo = new THREE.PlaneGeometry(0.2, 0.25);
+    const backFlap = new THREE.Mesh(backFlapGeo, mat(0x4a3018, { roughness: 0.9, side: THREE.DoubleSide }));
+    backFlap.position.set(0, 1.35, -0.18);
+    this._body.add(backFlap);
+
+    // Loincloth waist cord
+    const waistCordGeo = new THREE.TorusGeometry(0.3, 0.01, 6, 16);
+    const waistCord = new THREE.Mesh(waistCordGeo, trollLoinMat);
+    waistCord.position.set(0, 1.5, 0);
+    waistCord.rotation.x = Math.PI / 2;
+    this._body.add(waistCord);
+
+    // --- Skin fold detail — armpit and groin creases ---
+    for (const side of [-1, 1]) {
+      // Armpit fold
+      const apFoldGeo = new THREE.SphereGeometry(1, 12, 8);
+      const apFold = new THREE.Mesh(apFoldGeo, darkMat);
+      apFold.scale.set(0.04, 0.08, 0.06);
+      apFold.position.set(side * 0.38, 2.3, 0);
+      this._body.add(apFold);
+
+      // Inner elbow crease
+      const elbowCreaseGeo = new THREE.SphereGeometry(1, 10, 8);
+      const elbowCrease = new THREE.Mesh(elbowCreaseGeo, darkMat);
+      elbowCrease.scale.set(0.025, 0.06, 0.02);
+      elbowCrease.position.set(side * 0.48, 1.95, 0.08);
+      this._body.add(elbowCrease);
+    }
+
+    // --- Shoulder calluses / thickened skin patches ---
+    for (const side of [-1, 1]) {
+      const callusGeo = new THREE.SphereGeometry(0.05, 10, 8);
+      const callus = new THREE.Mesh(callusGeo, organicMat(0x6a7a4a, { roughness: 0.4, clearcoat: 0.2 }));
+      callus.scale.set(1.2, 0.3, 1.0);
+      callus.position.set(side * 0.42, 2.55, 0.08);
+      this._body.add(callus);
+    }
+
+    // --- Flies buzzing around the troll ---
+    const trollFlyMat = mat(0x111111);
+    for (let i = 0; i < 8; i++) {
+      const flyGeo = new THREE.SphereGeometry(0.006, 4, 4);
+      const fly = new THREE.Mesh(flyGeo, trollFlyMat);
+      const flyA = Math.random() * Math.PI * 2;
+      const flyR = 0.3 + Math.random() * 0.5;
+      fly.position.set(
+        Math.cos(flyA) * flyR,
+        1.8 + Math.random() * 1.5,
+        Math.sin(flyA) * flyR,
+      );
+      this._body.add(fly);
+
+      // Tiny wings
+      for (const ws of [-1, 1]) {
+        const fwGeo = new THREE.PlaneGeometry(0.008, 0.004);
+        const fw = new THREE.Mesh(fwGeo, mat(0xaaaaaa, { transparent: true, opacity: 0.25, side: THREE.DoubleSide }));
+        fw.position.copy(fly.position);
+        fw.position.x += ws * 0.007;
+        fw.position.y += 0.004;
+        this._body.add(fw);
+      }
+    }
+
+    // --- Blood-stained hands ---
+    const trollBloodMat = mat(0x550011, { roughness: 0.3, transparent: true, opacity: 0.5 });
+    for (const side of [-1, 1]) {
+      for (let b = 0; b < 3; b++) {
+        const bloodGeo = new THREE.SphereGeometry(0.015 + Math.random() * 0.01, 6, 6);
+        const blood = new THREE.Mesh(bloodGeo, trollBloodMat);
+        blood.scale.set(1.3, 0.3, 1.0);
+        blood.position.set(
+          side * (0.52 + Math.random() * 0.05),
+          1.35 + b * 0.05,
+          0.05 + Math.random() * 0.06,
+        );
+        this._body.add(blood);
+      }
+    }
+
+    // --- Knee definition ---
+    for (const side of [-1, 1]) {
+      const kneeGeo = new THREE.SphereGeometry(0.05, 10, 8);
+      const knee = new THREE.Mesh(kneeGeo, skinMat);
+      knee.scale.set(0.8, 1.0, 0.6);
+      knee.position.set(side * 0.2, 1.05, 0.15);
+      this._body.add(knee);
+
+      // Knee callus
+      const kCallusGeo = new THREE.SphereGeometry(0.03, 8, 6);
+      const kCallus = new THREE.Mesh(kCallusGeo, organicMat(0x6a7a4a, { roughness: 0.4 }));
+      kCallus.scale.set(1.0, 0.4, 0.8);
+      kCallus.position.set(side * 0.2, 1.05, 0.19);
+      this._body.add(kCallus);
+    }
+
+    // --- Moss/lichen growing on back and shoulders ---
+    const trollMossMat = organicMat(0x3a5a2a, { roughness: 0.9 });
+    for (let i = 0; i < 8; i++) {
+      const mossGeo = new THREE.SphereGeometry(0.03 + Math.random() * 0.03, 8, 6);
+      const moss = new THREE.Mesh(mossGeo, trollMossMat);
+      moss.scale.set(1.5, 0.3, 1.2);
+      const mAngle = Math.PI + (Math.random() - 0.5) * 1.2;
+      moss.position.set(
+        Math.sin(mAngle) * 0.4,
+        2.0 + Math.random() * 0.8,
+        Math.cos(mAngle) * 0.35,
+      );
+      this._body.add(moss);
+    }
+
+    // --- Drool / saliva drip from mouth ---
+    const trollDroolMat = mat(0x88aa77, { transparent: true, opacity: 0.4, roughness: 0.2 });
+    for (let i = 0; i < 3; i++) {
+      const droolGeo = new THREE.SphereGeometry(0.006, 4, 4);
+      const drool = new THREE.Mesh(droolGeo, trollDroolMat);
+      drool.scale.set(0.6, 1.5, 0.6);
+      drool.position.set(
+        (Math.random() - 0.5) * 0.05,
+        2.65 - i * 0.05,
+        0.35,
+      );
+      this._body.add(drool);
+    }
+
+    // --- Chest scar (large healed wound) ---
+    const trollChestScarGeo = new THREE.SphereGeometry(1, 14, 10);
+    const trollChestScar = new THREE.Mesh(trollChestScarGeo, scarMat);
+    trollChestScar.scale.set(0.05, 0.25, 0.02);
+    trollChestScar.position.set(-0.15, 2.1, 0.35);
+    trollChestScar.rotation.z = -0.4;
+    this._body.add(trollChestScar);
+
+    // --- Ankle detail ---
+    for (const side of [-1, 1]) {
+      // Achilles tendon
+      const achillesGeo = cyl(0.012, 0.008, 0.12, 6);
+      const achilles = new THREE.Mesh(achillesGeo, veinMat);
+      achilles.position.set(side * 0.2, 0.45, -0.08);
+      this._body.add(achilles);
+
+      // Ankle bone protrusion
+      for (const as of [-1, 1]) {
+        const ankleGeo = new THREE.SphereGeometry(0.018, 8, 6);
+        const ankle = new THREE.Mesh(ankleGeo, skinMat);
+        ankle.position.set(side * 0.2 + as * 0.04, 0.4, 0);
+        this._body.add(ankle);
+      }
+    }
+
+    // --- Crude ear detail ---
+    for (const side of [-1, 1]) {
+      // Inner ear
+      const innerEarGeo = new THREE.SphereGeometry(0.04, 8, 6);
+      const innerEar = new THREE.Mesh(innerEarGeo, organicMat(0x6a5a4a));
+      innerEar.scale.set(0.4, 0.8, 0.2);
+      innerEar.position.set(side * 0.32, 2.85, 0);
+      this._body.add(innerEar);
+
+      // Earring (crude bone ring)
+      const earringGeo = new THREE.TorusGeometry(0.02, 0.004, 6, 8);
+      const earring = new THREE.Mesh(earringGeo, boneMaterial(0xc8b890));
+      earring.position.set(side * 0.34, 2.8, 0.02);
+      earring.rotation.y = Math.PI / 2;
+      this._body.add(earring);
+    }
   }
 
   // ---- Cyclops builder -----------------------------------------------------
@@ -1590,6 +1865,282 @@ export class CreatureMesh {
       scar.position.set(Math.sin(a) * 0.55, 2.8 + i * 0.15, Math.cos(a) * 0.4);
       scar.rotation.z = 0.4 + i * 0.2;
       this._body.add(scar);
+    }
+
+    // ======== ENHANCED CYCLOPS DETAIL ========
+
+    // --- Massive brow ridge with deep skin folds ---
+    const cyBrowMat = organicMat(0x7a5f40, { roughness: 0.7 });
+    for (let i = 0; i < 5; i++) {
+      const browFoldGeo = new THREE.SphereGeometry(1, 14, 10);
+      const browFold = new THREE.Mesh(browFoldGeo, cyBrowMat);
+      browFold.scale.set(0.08, 0.025, 0.04);
+      browFold.position.set(-0.16 + i * 0.08, 4.35, 0.5);
+      this._body.add(browFold);
+    }
+
+    // --- Thick neck muscles (trapezius/sternocleidomastoid) ---
+    for (const side of [-1, 1]) {
+      const neckMusGeo = new THREE.SphereGeometry(1, 16, 12);
+      const neckMus = new THREE.Mesh(neckMusGeo, skinMat);
+      neckMus.scale.set(0.15, 0.25, 0.12);
+      neckMus.position.set(side * 0.2, 3.8, 0.05);
+      this._body.add(neckMus);
+
+      // Neck veins
+      const neckVeinGeo = cyl(0.012, 0.008, 0.22, 8);
+      const neckVein = new THREE.Mesh(neckVeinGeo, veinMat);
+      neckVein.position.set(side * 0.18, 3.85, 0.12);
+      neckVein.rotation.z = side * 0.15;
+      this._body.add(neckVein);
+    }
+
+    // --- Forearm muscles — massive and defined ---
+    for (const side of [-1, 1]) {
+      // Brachioradialis
+      const brachiGeo = new THREE.SphereGeometry(1, 14, 10);
+      const brachi = new THREE.Mesh(brachiGeo, skinMat);
+      brachi.scale.set(0.1, 0.2, 0.09);
+      brachi.position.set(side * 0.75, 2.6, 0.1);
+      this._body.add(brachi);
+
+      // Extensor muscles
+      const extGeo = new THREE.SphereGeometry(1, 12, 10);
+      const ext = new THREE.Mesh(extGeo, skinMat);
+      ext.scale.set(0.08, 0.18, 0.07);
+      ext.position.set(side * 0.78, 2.5, -0.05);
+      this._body.add(ext);
+
+      // Wrist tendons visible
+      for (let t = 0; t < 3; t++) {
+        const wTendonGeo = cyl(0.008, 0.006, 0.15, 6);
+        const wTendon = new THREE.Mesh(wTendonGeo, wrinkleMat);
+        wTendon.position.set(side * (0.7 + t * 0.025), 2.3, 0.05);
+        this._body.add(wTendon);
+      }
+    }
+
+    // --- Callused hands with knuckle detail ---
+    for (const side of [-1, 1]) {
+      // Knuckle bumps
+      for (let k = 0; k < 4; k++) {
+        const knuckGeo = new THREE.SphereGeometry(0.025, 8, 6);
+        const knuck = new THREE.Mesh(knuckGeo, callMat);
+        knuck.position.set(
+          side * 0.82 + (k - 1.5) * 0.02,
+          1.95,
+          0.08 + k * 0.015,
+        );
+        this._body.add(knuck);
+      }
+      // Palm calluses
+      const palmGeo = new THREE.SphereGeometry(0.04, 10, 8);
+      const palm = new THREE.Mesh(palmGeo, callMat);
+      palm.scale.set(1.0, 0.3, 0.8);
+      palm.position.set(side * 0.8, 1.9, 0.06);
+      this._body.add(palm);
+    }
+
+    // --- Heavy leather belt with iron buckle ---
+    const cyBeltMat = mat(0x5a3a1a, { roughness: 0.85 });
+    const cyBeltGeo = cyl(0.62, 0.62, 0.08, 20);
+    const cyBelt = new THREE.Mesh(cyBeltGeo, cyBeltMat);
+    cyBelt.position.set(0, 2.35, 0);
+    this._body.add(cyBelt);
+
+    // Belt buckle
+    const buckleGeo = new THREE.BoxGeometry(0.1, 0.08, 0.03);
+    const buckleMat = mat(0x555555, { metalness: 0.6, roughness: 0.3 });
+    const buckle = new THREE.Mesh(buckleGeo, buckleMat);
+    buckle.position.set(0, 2.35, 0.55);
+    this._body.add(buckle);
+
+    // Belt rivets
+    for (let i = 0; i < 8; i++) {
+      const rivetGeo = new THREE.SphereGeometry(0.012, 6, 6);
+      const rivet = new THREE.Mesh(rivetGeo, buckleMat);
+      const rAngle = (i / 8) * Math.PI * 2;
+      rivet.position.set(
+        Math.sin(rAngle) * 0.58,
+        2.35,
+        Math.cos(rAngle) * 0.58,
+      );
+      this._body.add(rivet);
+    }
+
+    // --- Crude stone club weapon in one hand ---
+    const cyClubMat = mat(0x666666, { roughness: 0.9 });
+    const cyWoodMat = mat(0x5a4020, { roughness: 0.9 });
+
+    // Handle (thick wood)
+    const handleGeo = cyl(0.04, 0.035, 1.2, 10);
+    const handle = new THREE.Mesh(handleGeo, cyWoodMat);
+    handle.position.set(0.9, 2.0, 0.1);
+    handle.rotation.z = 0.15;
+    this._body.add(handle);
+
+    // Club head (large rough stone)
+    const clubHeadGeo = new THREE.SphereGeometry(0.15, 12, 10);
+    const clubHead = new THREE.Mesh(clubHeadGeo, cyClubMat);
+    clubHead.scale.set(1.0, 1.3, 0.9);
+    clubHead.position.set(0.95, 2.65, 0.12);
+    this._body.add(clubHead);
+
+    // Stone fracture lines on club head
+    for (let i = 0; i < 4; i++) {
+      const fractGeo = new THREE.BoxGeometry(0.003, 0.1, 0.003);
+      const fract = new THREE.Mesh(fractGeo, mat(0x444444));
+      fract.position.set(
+        0.95 + Math.cos(i * 1.5) * 0.12,
+        2.65,
+        0.12 + Math.sin(i * 1.5) * 0.1,
+      );
+      fract.rotation.z = (Math.random() - 0.5) * 0.5;
+      this._body.add(fract);
+    }
+
+    // --- Leather wrist wraps ---
+    for (const side of [-1, 1]) {
+      for (let w = 0; w < 3; w++) {
+        const wrapGeo = cyl(0.1, 0.1, 0.02, 10);
+        const wrap = new THREE.Mesh(wrapGeo, cyBeltMat);
+        wrap.position.set(side * 0.78, 2.15 + w * 0.03, 0);
+        this._body.add(wrap);
+      }
+    }
+
+    // --- Warts and skin blemishes ---
+    for (let i = 0; i < 10; i++) {
+      const wartGeo = new THREE.SphereGeometry(0.015 + Math.random() * 0.015, 8, 6);
+      const wart = new THREE.Mesh(wartGeo, organicMat(0x9a7a55, { roughness: 0.4, clearcoat: 0.3 }));
+      const wAngle = Math.random() * Math.PI * 2;
+      wart.position.set(
+        Math.cos(wAngle) * (0.3 + Math.random() * 0.35),
+        2.5 + Math.random() * 2.0,
+        Math.sin(wAngle) * (0.25 + Math.random() * 0.3),
+      );
+      this._body.add(wart);
+    }
+
+    // --- Chest hair tufts ---
+    const cyHairMat = mat(0x3a3020, { roughness: 0.9 });
+    for (let i = 0; i < 12; i++) {
+      const chestHairGeo = cyl(0.004, 0.002, 0.04 + Math.random() * 0.03, 4);
+      const chestHair = new THREE.Mesh(chestHairGeo, cyHairMat);
+      chestHair.position.set(
+        (Math.random() - 0.5) * 0.3,
+        3.0 + Math.random() * 0.4,
+        0.45 + Math.random() * 0.05,
+      );
+      chestHair.rotation.x = -0.3 + Math.random() * 0.6;
+      chestHair.rotation.z = (Math.random() - 0.5) * 0.4;
+      this._body.add(chestHair);
+    }
+
+    // --- Deep forehead wrinkles around the eye ---
+    for (let i = 0; i < 4; i++) {
+      const wrinkleGeo = new THREE.SphereGeometry(1, 12, 8);
+      const wrinkle = new THREE.Mesh(wrinkleGeo, wrinkleMat);
+      wrinkle.scale.set(0.2, 0.012, 0.02);
+      wrinkle.position.set(0, 4.2 + i * 0.05, 0.48);
+      this._body.add(wrinkle);
+    }
+
+    // --- Trophy necklace — bone and tooth fragments ---
+    const cyNecklaceMat = mat(0xc8b890);
+    for (let i = 0; i < 8; i++) {
+      const toothGeo = new THREE.ConeGeometry(0.012, 0.04 + Math.random() * 0.02, 5);
+      const toothMesh = new THREE.Mesh(toothGeo, cyNecklaceMat);
+      const nAngle = -0.8 + (i / 7) * 1.6;
+      toothMesh.position.set(
+        Math.sin(nAngle) * 0.45,
+        3.5,
+        Math.cos(nAngle) * 0.38,
+      );
+      toothMesh.rotation.x = Math.PI;
+      toothMesh.rotation.z = (Math.random() - 0.5) * 0.3;
+      this._body.add(toothMesh);
+    }
+    // Necklace cord
+    const cordGeo = new THREE.TorusGeometry(0.42, 0.008, 6, 24);
+    const cord = new THREE.Mesh(cordGeo, mat(0x4a3a1a, { roughness: 0.9 }));
+    cord.position.set(0, 3.52, 0.05);
+    cord.rotation.x = Math.PI / 2;
+    this._body.add(cord);
+
+    // --- Shoulder / deltoid veins ---
+    for (const side of [-1, 1]) {
+      for (let v = 0; v < 2; v++) {
+        const dVeinGeo = cyl(0.01, 0.007, 0.12, 6);
+        const dVein = new THREE.Mesh(dVeinGeo, veinMat);
+        dVein.position.set(side * 0.58, 3.4 + v * 0.1, 0.15);
+        dVein.rotation.z = side * 0.4;
+        this._body.add(dVein);
+      }
+    }
+
+    // --- Kneecap definition ---
+    for (const side of [-1, 1]) {
+      const kneeGeo = new THREE.SphereGeometry(0.06, 10, 8);
+      const knee = new THREE.Mesh(kneeGeo, skinMat);
+      knee.scale.set(0.8, 1.0, 0.6);
+      knee.position.set(side * 0.3, 1.6, 0.25);
+      this._body.add(knee);
+    }
+
+    // --- Ankle bone protrusion ---
+    for (const side of [-1, 1]) {
+      for (const as of [-1, 1]) {
+        const ankleGeo = new THREE.SphereGeometry(0.025, 8, 6);
+        const ankle = new THREE.Mesh(ankleGeo, skinMat);
+        ankle.position.set(side * 0.32 + as * 0.04, 0.5, 0);
+        this._body.add(ankle);
+      }
+    }
+
+    // --- Crude leather shin guards ---
+    for (const side of [-1, 1]) {
+      const shinGuardGeo = new THREE.BoxGeometry(0.08, 0.25, 0.06);
+      const shinGuard = new THREE.Mesh(shinGuardGeo, cyBeltMat);
+      shinGuard.position.set(side * 0.32, 1.1, 0.18);
+      this._body.add(shinGuard);
+
+      // Shin guard straps
+      for (let s = 0; s < 2; s++) {
+        const sgStrapGeo = cyl(0.12, 0.12, 0.015, 8);
+        const sgStrap = new THREE.Mesh(sgStrapGeo, mat(0x3a2510));
+        sgStrap.position.set(side * 0.32, 1.0 + s * 0.2, 0);
+        this._body.add(sgStrap);
+      }
+    }
+
+    // --- Dried blood stains on torso ---
+    const cyBloodMat = mat(0x550011, { roughness: 0.3, transparent: true, opacity: 0.5 });
+    for (let i = 0; i < 5; i++) {
+      const bloodGeo = new THREE.SphereGeometry(0.03 + Math.random() * 0.02, 8, 6);
+      const blood = new THREE.Mesh(bloodGeo, cyBloodMat);
+      blood.scale.set(1.5, 0.3, 1.0);
+      const bAngle = Math.random() * Math.PI * 2;
+      blood.position.set(
+        Math.cos(bAngle) * 0.45,
+        2.7 + Math.random() * 0.8,
+        Math.sin(bAngle) * 0.38,
+      );
+      this._body.add(blood);
+    }
+
+    // --- Ground dust/debris at feet ---
+    const cyDustMat = mat(0xbbaa88, { transparent: true, opacity: 0.2 });
+    for (let i = 0; i < 12; i++) {
+      const dustGeo = new THREE.SphereGeometry(0.015 + Math.random() * 0.02, 6, 4);
+      const dust = new THREE.Mesh(dustGeo, cyDustMat);
+      const dAngle = Math.random() * Math.PI * 2;
+      dust.position.set(
+        Math.cos(dAngle) * (0.3 + Math.random() * 0.6),
+        0.02 + Math.random() * 0.3,
+        Math.sin(dAngle) * (0.3 + Math.random() * 0.6),
+      );
+      this._body.add(dust);
     }
   }
 
@@ -2625,6 +3176,414 @@ export class CreatureMesh {
         this._body.add(flank);
       }
     }
+
+    // ---- Enhanced: Dorsal ridge bumps along spine ----
+    for (let i = 0; i < 8; i++) {
+      const ridgeBumpGeo = new THREE.SphereGeometry(
+        0.02 + Math.random() * 0.015,
+        10,
+        8,
+      );
+      const ridgeBump = new THREE.Mesh(ridgeBumpGeo, darkSkinMat);
+      ridgeBump.position.set(
+        (Math.random() - 0.5) * 0.06,
+        1.32 + Math.random() * 0.05,
+        -0.1 + i * -0.06,
+      );
+      this._body.add(ridgeBump);
+    }
+
+    // ---- Mucous membrane glands -- glistening patches on sides ----
+    const frogMucusMat = mat(0x4a7a44, {
+      transparent: true,
+      opacity: 0.5,
+      roughness: 0.05,
+      metalness: 0.3,
+      clearcoat: 0.8,
+      clearcoatRoughness: 0.1,
+    });
+    for (let i = 0; i < 10; i++) {
+      const mucAngle = Math.random() * Math.PI * 2;
+      const mucGeo = new THREE.SphereGeometry(
+        0.02 + Math.random() * 0.02,
+        10,
+        8,
+      );
+      const mucPatch = new THREE.Mesh(mucGeo, frogMucusMat);
+      mucPatch.scale.set(1.5, 0.3, 1.2);
+      mucPatch.position.set(
+        Math.cos(mucAngle) * (0.48 + Math.random() * 0.15),
+        0.9 + Math.random() * 0.4,
+        Math.sin(mucAngle) * (0.38 + Math.random() * 0.12),
+      );
+      this._body.add(mucPatch);
+    }
+
+    // ---- Subcutaneous vein network -- dark lines under skin ----
+    const frogSubVeinMat = mat(0x1a3a18, {
+      transparent: true,
+      opacity: 0.6,
+    });
+    for (let i = 0; i < 12; i++) {
+      const svAngle = (i / 12) * Math.PI * 2;
+      const svLen = 0.08 + Math.random() * 0.1;
+      const subVeinGeo = cyl(0.004, 0.003, svLen, 6);
+      const subVein = new THREE.Mesh(subVeinGeo, frogSubVeinMat);
+      subVein.position.set(
+        Math.cos(svAngle) * (0.42 + Math.random() * 0.18),
+        0.85 + Math.random() * 0.5,
+        Math.sin(svAngle) * (0.35 + Math.random() * 0.15),
+      );
+      subVein.rotation.set(
+        Math.random() * 0.5,
+        Math.random() * Math.PI,
+        Math.random() * 0.8,
+      );
+      this._body.add(subVein);
+    }
+
+    // ---- Poison gland bumps behind eyes ----
+    for (const side of [-1, 1]) {
+      const frogGlandGeo = new THREE.SphereGeometry(0.04, 12, 10);
+      const frogGland = new THREE.Mesh(
+        frogGlandGeo,
+        mat(0x88aa33, { emissive: 0x445500, emissiveIntensity: 0.3 }),
+      );
+      frogGland.scale.set(1.0, 0.6, 0.8);
+      frogGland.position.set(side * 0.22, 0.14, -0.05);
+      this._head.add(frogGland);
+
+      for (let p = 0; p < 3; p++) {
+        const poreGeo = new THREE.SphereGeometry(0.006, 8, 6);
+        const pore = new THREE.Mesh(poreGeo, mat(0x667722));
+        pore.position.set(
+          side * (0.22 + (p - 1) * 0.015),
+          0.17,
+          -0.04 + p * 0.01,
+        );
+        this._head.add(pore);
+      }
+    }
+
+    // ---- Tympanum (ear drum) -- circular membrane behind eyes ----
+    for (const side of [-1, 1]) {
+      const tympGeo = new THREE.SphereGeometry(0.04, 14, 12);
+      const tymp = new THREE.Mesh(
+        tympGeo,
+        mat(0x3a5a34, { roughness: 0.3, metalness: 0.05, clearcoat: 0.3 }),
+      );
+      tymp.scale.set(1.0, 1.0, 0.3);
+      tymp.position.set(side * 0.28, 0.08, 0.0);
+      this._head.add(tymp);
+
+      const tympRimGeo = new THREE.TorusGeometry(0.04, 0.005, 8, 16);
+      const tympRim = new THREE.Mesh(tympRimGeo, darkSkinMat);
+      tympRim.position.set(side * 0.28, 0.08, 0.01);
+      this._head.add(tympRim);
+    }
+
+    // ---- Chin dewlap -- fleshy hanging fold under jaw ----
+    const frogDewlapGeo = new THREE.SphereGeometry(1, 16, 12);
+    const frogDewlap = new THREE.Mesh(
+      frogDewlapGeo,
+      mat(0x8aaa4b, { transparent: true, opacity: 0.85 }),
+    );
+    frogDewlap.scale.set(0.15, 0.08, 0.12);
+    frogDewlap.position.set(0, -0.12, 0.25);
+    this._head.add(frogDewlap);
+
+    for (let i = 0; i < 3; i++) {
+      const frogDwGeo = new THREE.SphereGeometry(1, 10, 8);
+      const frogDw = new THREE.Mesh(frogDwGeo, veinMat);
+      frogDw.scale.set(0.1 - i * 0.02, 0.005, 0.01);
+      frogDw.position.set(0, -0.14 + i * 0.02, 0.28);
+      this._head.add(frogDw);
+    }
+
+    // ---- Dripping slime strands from mouth ----
+    const frogSlimeMat = mat(0x5a9a54, {
+      transparent: true,
+      opacity: 0.4,
+      roughness: 0.05,
+      metalness: 0.2,
+      clearcoat: 0.9,
+    });
+    for (let i = 0; i < 4; i++) {
+      const slimeLen = 0.08 + Math.random() * 0.12;
+      const slimeGeo = cyl(0.003, 0.001, slimeLen, 6);
+      const slime = new THREE.Mesh(slimeGeo, frogSlimeMat);
+      slime.position.set(-0.08 + i * 0.05, -0.08 - slimeLen / 2, 0.22);
+      this._head.add(slime);
+
+      const dropGeo = new THREE.SphereGeometry(
+        0.005 + Math.random() * 0.004,
+        8,
+        6,
+      );
+      const drop = new THREE.Mesh(dropGeo, frogSlimeMat);
+      drop.position.set(-0.08 + i * 0.05, -0.08 - slimeLen, 0.22);
+      this._head.add(drop);
+    }
+
+    // ---- Detailed toe pads -- adhesive disc structures ----
+    for (const side of [-1, 1]) {
+      const frogPadLeg = side === -1 ? this._leftLeg : this._rightLeg;
+      for (let t = -1; t <= 1; t++) {
+        const padGeo = cyl(0.018, 0.02, 0.008, 12);
+        const pad = new THREE.Mesh(
+          padGeo,
+          mat(0x4a6a44, { roughness: 0.15, clearcoat: 0.6 }),
+        );
+        pad.position.set(side * 0.2 + t * 0.06, -1.04, 0.14);
+        pad.rotation.x = -Math.PI / 2;
+        frogPadLeg.add(pad);
+
+        for (let r = 0; r < 2; r++) {
+          const padRidgeGeo = new THREE.TorusGeometry(
+            0.008 + r * 0.005,
+            0.001,
+            6,
+            10,
+          );
+          const padRidge = new THREE.Mesh(padRidgeGeo, darkSkinMat);
+          padRidge.position.set(side * 0.2 + t * 0.06, -1.045, 0.14);
+          padRidge.rotation.x = -Math.PI / 2;
+          frogPadLeg.add(padRidge);
+        }
+      }
+    }
+
+    // ---- Belly texture -- granular bumps on underside ----
+    for (let i = 0; i < 20; i++) {
+      const bAngle = (Math.random() - 0.5) * Math.PI;
+      const bBumpGeo = new THREE.SphereGeometry(
+        0.008 + Math.random() * 0.008,
+        8,
+        6,
+      );
+      const bBump = new THREE.Mesh(bBumpGeo, mat(0x7a8a3b));
+      bBump.position.set(
+        Math.cos(bAngle) * (0.3 + Math.random() * 0.2),
+        0.7 + Math.random() * 0.15,
+        Math.sin(bAngle) * (0.2 + Math.random() * 0.15) + 0.1,
+      );
+      this._body.add(bBump);
+    }
+
+    // ---- Lateral line organs -- sensory dots along sides ----
+    for (const side of [-1, 1]) {
+      for (let i = 0; i < 6; i++) {
+        const sensGeo = new THREE.SphereGeometry(0.006, 8, 6);
+        const sensor = new THREE.Mesh(
+          sensGeo,
+          mat(0x99bb55, { emissive: 0x334400, emissiveIntensity: 0.2 }),
+        );
+        sensor.position.set(
+          side * (0.52 + Math.random() * 0.05),
+          0.95 + i * 0.06,
+          0.2 - i * 0.08,
+        );
+        this._body.add(sensor);
+      }
+    }
+
+    // ---- Interdigital webbing detail ----
+    for (const side of [-1, 1]) {
+      const frogWebLeg = side === -1 ? this._leftLeg : this._rightLeg;
+      for (let w = 0; w < 2; w++) {
+        const membrGeo = new THREE.PlaneGeometry(0.05, 0.08);
+        const membr = new THREE.Mesh(
+          membrGeo,
+          mat(0x3a6a33, {
+            transparent: true,
+            opacity: 0.45,
+            side: THREE.DoubleSide,
+            roughness: 0.1,
+            clearcoat: 0.5,
+          }),
+        );
+        membr.position.set(
+          side * 0.2 + (w - 0.5) * 0.06,
+          -1.01,
+          0.1,
+        );
+        membr.rotation.x = -Math.PI / 2;
+        membr.rotation.z = (w - 0.5) * 0.3;
+        frogWebLeg.add(membr);
+      }
+    }
+
+    // ---- Cloaca vent detail ----
+    const cloacaGeo = new THREE.SphereGeometry(0.02, 10, 8);
+    const cloacaMesh = new THREE.Mesh(cloacaGeo, darkSkinMat);
+    cloacaMesh.scale.set(1.5, 0.5, 1.0);
+    cloacaMesh.position.set(0, 0.72, -0.45);
+    this._body.add(cloacaMesh);
+
+    // ---- Hind leg muscle striations ----
+    for (const side of [-1, 1]) {
+      const frogStrLeg = side === -1 ? this._leftLeg : this._rightLeg;
+      for (let s = 0; s < 4; s++) {
+        const strGeo = new THREE.SphereGeometry(1, 10, 8);
+        const strMesh = new THREE.Mesh(strGeo, veinMat);
+        strMesh.scale.set(0.015, 0.1, 0.01);
+        strMesh.position.set(
+          side * (0.12 + s * 0.02),
+          -0.15 - s * 0.08,
+          -0.08 + s * 0.02,
+        );
+        strMesh.rotation.z = side * 0.2;
+        frogStrLeg.add(strMesh);
+      }
+    }
+
+    // ---- Eye blood vessels -- tiny red veins on eyeball ----
+    const frogEyeVeinMat = mat(0x993322, {
+      transparent: true,
+      opacity: 0.4,
+    });
+    for (const side of [-1, 1]) {
+      for (let v = 0; v < 3; v++) {
+        const evGeo = cyl(0.002, 0.001, 0.04, 4);
+        const ev = new THREE.Mesh(evGeo, frogEyeVeinMat);
+        ev.position.set(
+          side * 0.18 + (v - 1) * 0.02,
+          0.22 + (v - 1) * 0.015,
+          0.185,
+        );
+        ev.rotation.set(Math.random() * 0.5, 0, Math.random() * 0.5);
+        this._head.add(ev);
+      }
+    }
+
+    // ---- Parotoid gland -- large bumpy gland behind each eye ----
+    for (const side of [-1, 1]) {
+      const parotoidGeo = new THREE.SphereGeometry(0.05, 14, 10);
+      const parotoid = new THREE.Mesh(parotoidGeo, mat(0x3d5a30));
+      parotoid.scale.set(1.2, 0.5, 0.8);
+      parotoid.position.set(side * 0.25, 0.1, -0.1);
+      this._head.add(parotoid);
+
+      for (let g = 0; g < 4; g++) {
+        const gpGeo = new THREE.SphereGeometry(0.008, 6, 6);
+        const gp = new THREE.Mesh(gpGeo, mat(0x2a4a22));
+        gp.position.set(
+          side * (0.25 + (g - 1.5) * 0.012),
+          0.12,
+          -0.1 + g * 0.008,
+        );
+        this._head.add(gp);
+      }
+    }
+
+    // ---- Water droplets on skin surface ----
+    const frogWaterDropMat = mat(0xaaccbb, {
+      transparent: true,
+      opacity: 0.3,
+      roughness: 0.0,
+      metalness: 0.5,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.0,
+    });
+    for (let i = 0; i < 15; i++) {
+      const wdAngle = Math.random() * Math.PI * 2;
+      const wdGeo = new THREE.SphereGeometry(
+        0.004 + Math.random() * 0.006,
+        8,
+        6,
+      );
+      const waterDrop = new THREE.Mesh(wdGeo, frogWaterDropMat);
+      waterDrop.scale.set(1.0, 0.4, 1.0);
+      waterDrop.position.set(
+        Math.cos(wdAngle) * (0.4 + Math.random() * 0.22),
+        0.85 + Math.random() * 0.5,
+        Math.sin(wdAngle) * (0.32 + Math.random() * 0.18),
+      );
+      this._body.add(waterDrop);
+    }
+
+    // ---- Nostril flare detail ----
+    for (const side of [-1, 1]) {
+      const nFlareGeo = new THREE.TorusGeometry(0.018, 0.004, 8, 10);
+      const nFlare = new THREE.Mesh(nFlareGeo, skinMat);
+      nFlare.position.set(side * 0.06, 0.06, 0.225);
+      this._head.add(nFlare);
+    }
+
+    // ---- Tongue texture -- bumpy papillae ----
+    for (let i = 0; i < 8; i++) {
+      const papGeo = new THREE.SphereGeometry(0.004, 6, 6);
+      const pap = new THREE.Mesh(papGeo, mat(0xdd7788));
+      pap.position.set(
+        (Math.random() - 0.5) * 0.03,
+        -0.1 - i * 0.06,
+        (Math.random() - 0.5) * 0.01,
+      );
+      tongueBase.add(pap);
+    }
+
+    // ---- Front arm muscle detail ----
+    for (const side of [-1, 1]) {
+      const frogArm = side === -1 ? this._leftArm : this._rightArm;
+      const deltGeo = new THREE.SphereGeometry(0.035, 10, 8);
+      const delt = new THREE.Mesh(deltGeo, moistMat);
+      delt.scale.set(0.8, 0.6, 0.7);
+      delt.position.set(side * 0.06, -0.05, 0.02);
+      frogArm.add(delt);
+
+      const fTendonGeo = cyl(0.005, 0.004, 0.15, 6);
+      const fTendon = new THREE.Mesh(fTendonGeo, veinMat);
+      fTendon.position.set(side * 0.09, -0.45, 0.02);
+      frogArm.add(fTendon);
+
+      const frogWristGeo = new THREE.SphereGeometry(0.02, 10, 8);
+      const frogWrist = new THREE.Mesh(frogWristGeo, skinMat);
+      frogWrist.position.set(side * 0.1, -0.55, 0.0);
+      frogArm.add(frogWrist);
+    }
+
+    // ---- Ground contact splash -- water ring around feet ----
+    for (const side of [-1, 1]) {
+      const frogSplashLeg = side === -1 ? this._leftLeg : this._rightLeg;
+      const splashGeo = new THREE.TorusGeometry(0.16, 0.008, 6, 16);
+      const splash = new THREE.Mesh(
+        splashGeo,
+        mat(0x5a8a55, { transparent: true, opacity: 0.25 }),
+      );
+      splash.position.set(side * 0.2, -1.04, 0.0);
+      splash.rotation.x = Math.PI / 2;
+      frogSplashLeg.add(splash);
+    }
+
+    // ---- Pelvic bone ridges ----
+    for (const side of [-1, 1]) {
+      const pelvisGeo = new THREE.SphereGeometry(1, 12, 10);
+      const pelvis = new THREE.Mesh(pelvisGeo, darkSkinMat);
+      pelvis.scale.set(0.06, 0.04, 0.08);
+      pelvis.position.set(side * 0.35, 0.78, -0.2);
+      this._body.add(pelvis);
+    }
+
+    // ---- Throat pouch internal veins ----
+    for (let i = 0; i < 5; i++) {
+      const tpvGeo = cyl(0.003, 0.002, 0.08 + Math.random() * 0.06, 4);
+      const tpv = new THREE.Mesh(tpvGeo, frogSubVeinMat);
+      tpv.position.set(
+        (Math.random() - 0.5) * 0.15,
+        0.55 + Math.random() * 0.1,
+        0.38 + Math.random() * 0.05,
+      );
+      tpv.rotation.set(Math.random() * 0.5, 0, Math.random() * 0.8);
+      this._body.add(tpv);
+    }
+
+    // ---- Sacral vertebrae bumps ----
+    for (let i = 0; i < 4; i++) {
+      const sacGeo = new THREE.SphereGeometry(0.015, 8, 6);
+      const sac = new THREE.Mesh(sacGeo, darkSkinMat);
+      sac.position.set(0, 0.95, -0.35 - i * 0.05);
+      this._body.add(sac);
+    }
   }
 
   // ---- Rhino builder -------------------------------------------------------
@@ -2951,6 +3910,255 @@ export class CreatureMesh {
     const tuft = new THREE.Mesh(tuftGeo, armorMat);
     tuft.position.set(0, 1.35, -1.35);
     this._body.add(tuft);
+
+    // ---- Enhanced: Deep wrinkle furrows across hide ----
+    for (let i = 0; i < 8; i++) {
+      const furrowAngle = (i / 8) * Math.PI * 2;
+      const furrowGeo = cyl(
+        0.008,
+        0.006,
+        0.15 + Math.random() * 0.1,
+        6,
+      );
+      const furrow = new THREE.Mesh(furrowGeo, wrinkleMat);
+      furrow.position.set(
+        Math.cos(furrowAngle) * (0.55 + Math.random() * 0.15),
+        1.3 + Math.random() * 0.4,
+        Math.sin(furrowAngle) * (0.6 + Math.random() * 0.3),
+      );
+      furrow.rotation.set(
+        Math.random() * 0.8,
+        Math.random() * Math.PI,
+        Math.random() * 0.6,
+      );
+      this._body.add(furrow);
+    }
+
+    // ---- Tick / parasite bumps -- small raised lumps ----
+    for (let i = 0; i < 6; i++) {
+      const tickAngle = Math.random() * Math.PI * 2;
+      const tickGeo = new THREE.SphereGeometry(
+        0.012 + Math.random() * 0.01,
+        8,
+        6,
+      );
+      const tick = new THREE.Mesh(
+        tickGeo,
+        mat(0x3a3a3a, { roughness: 0.3, metalness: 0.1 }),
+      );
+      tick.position.set(
+        Math.cos(tickAngle) * (0.5 + Math.random() * 0.2),
+        1.2 + Math.random() * 0.6,
+        Math.sin(tickAngle) * (0.5 + Math.random() * 0.4),
+      );
+      this._body.add(tick);
+    }
+
+    // ---- Mud splatters on lower body ----
+    const rhinoMudMat = mat(0x4a3a2a, { roughness: 0.95, metalness: 0.0 });
+    for (let i = 0; i < 12; i++) {
+      const mudAngle = Math.random() * Math.PI * 2;
+      const mudGeo = new THREE.SphereGeometry(
+        0.02 + Math.random() * 0.03,
+        8,
+        6,
+      );
+      const mud = new THREE.Mesh(mudGeo, rhinoMudMat);
+      mud.scale.set(1.5, 0.3, 1.2);
+      mud.position.set(
+        Math.cos(mudAngle) * (0.5 + Math.random() * 0.2),
+        0.9 + Math.random() * 0.3,
+        Math.sin(mudAngle) * (0.5 + Math.random() * 0.4),
+      );
+      this._body.add(mud);
+    }
+
+    // ---- Shoulder blade muscle definition ----
+    for (const side of [-1, 1]) {
+      const scapGeo = new THREE.SphereGeometry(1, 14, 12);
+      const scap = new THREE.Mesh(scapGeo, hideMat);
+      scap.scale.set(0.12, 0.18, 0.08);
+      scap.position.set(side * 0.45, 1.65, 0.5);
+      this._body.add(scap);
+
+      const deltoidGeo = new THREE.SphereGeometry(1, 12, 10);
+      const deltoid = new THREE.Mesh(deltoidGeo, wrinkleMat);
+      deltoid.scale.set(0.08, 0.12, 0.06);
+      deltoid.position.set(side * 0.5, 1.45, 0.55);
+      this._body.add(deltoid);
+    }
+
+    // ---- Skin fold creases on neck ----
+    for (let i = 0; i < 5; i++) {
+      const neckCreaseGeo = new THREE.SphereGeometry(1, 10, 8);
+      const neckCrease = new THREE.Mesh(neckCreaseGeo, armorMat);
+      neckCrease.scale.set(0.25 - i * 0.03, 0.008, 0.2 - i * 0.02);
+      neckCrease.position.set(0, 1.45 + i * 0.06, 0.8 + i * 0.04);
+      this._body.add(neckCrease);
+    }
+
+    // ---- Horn base roughness -- cracked keratin texture ----
+    for (let i = 0; i < 6; i++) {
+      const hornCrackAngle = (i / 6) * Math.PI * 2;
+      const hornCrackGeo = cyl(0.005, 0.003, 0.08, 4);
+      const hornCrack = new THREE.Mesh(hornCrackGeo, mat(0xb4a888));
+      hornCrack.position.set(
+        Math.cos(hornCrackAngle) * 0.06,
+        0.1,
+        0.5 + Math.sin(hornCrackAngle) * 0.04,
+      );
+      hornCrack.rotation.set(
+        Math.random() * 0.5,
+        0,
+        Math.random() * 0.3 - 0.6,
+      );
+      this._head.add(hornCrack);
+    }
+
+    // ---- Lip and mouth detail ----
+    const rhinoLowerLipGeo = new THREE.SphereGeometry(1, 14, 10);
+    const rhinoLowerLip = new THREE.Mesh(
+      rhinoLowerLipGeo,
+      mat(0x4a4a4a),
+    );
+    rhinoLowerLip.scale.set(0.18, 0.03, 0.15);
+    rhinoLowerLip.position.set(0, -0.18, 0.35);
+    this._head.add(rhinoLowerLip);
+
+    for (const side of [-1, 1]) {
+      const cornerGeo = new THREE.SphereGeometry(0.02, 8, 6);
+      const corner = new THREE.Mesh(cornerGeo, wrinkleMat);
+      corner.scale.set(0.8, 0.5, 1.2);
+      corner.position.set(side * 0.18, -0.12, 0.28);
+      this._head.add(corner);
+    }
+
+    // ---- Underbelly veins -- visible through thinner skin ----
+    const rhinoBellyVeinMat = mat(0x6a6a7a, {
+      transparent: true,
+      opacity: 0.5,
+    });
+    for (let i = 0; i < 8; i++) {
+      const bvAngle = (Math.random() - 0.5) * Math.PI;
+      const bvLen = 0.1 + Math.random() * 0.12;
+      const bvGeo = cyl(0.005, 0.003, bvLen, 4);
+      const bv = new THREE.Mesh(bvGeo, rhinoBellyVeinMat);
+      bv.position.set(
+        Math.cos(bvAngle) * (0.35 + Math.random() * 0.2),
+        1.0 + Math.random() * 0.15,
+        Math.sin(bvAngle) * (0.3 + Math.random() * 0.3),
+      );
+      bv.rotation.set(
+        Math.random() * 0.5,
+        Math.random() * Math.PI,
+        Math.random() * 0.5,
+      );
+      this._body.add(bv);
+    }
+
+    // ---- Dust cloud around hooves ----
+    const rhinoDustMat = mat(0x8a7a6a, {
+      transparent: true,
+      opacity: 0.15,
+    });
+    for (const side of [-1, 1]) {
+      const rhinoLeg = side === -1 ? this._leftLeg : this._rightLeg;
+      for (let d = 0; d < 4; d++) {
+        const dustGeo = new THREE.SphereGeometry(
+          0.04 + Math.random() * 0.04,
+          8,
+          6,
+        );
+        const dust = new THREE.Mesh(dustGeo, rhinoDustMat);
+        dust.position.set(
+          (Math.random() - 0.5) * 0.15,
+          -0.85 + Math.random() * 0.1,
+          0.55 * (d < 2 ? 1 : -1) + (Math.random() - 0.5) * 0.1,
+        );
+        rhinoLeg.add(dust);
+      }
+    }
+
+    // ---- Hoof crack detail -- worn keratin splits ----
+    for (const side of [-1, 1]) {
+      const rhinoLeg2 = side === -1 ? this._leftLeg : this._rightLeg;
+      for (const zPos of [0.55, -0.5]) {
+        for (let c = 0; c < 3; c++) {
+          const hoofCrackGeo = cyl(0.003, 0.002, 0.04, 4);
+          const hoofCrack = new THREE.Mesh(hoofCrackGeo, mat(0x1a1a1a));
+          hoofCrack.position.set((c - 1) * 0.04, -0.81, zPos);
+          hoofCrack.rotation.x = Math.PI / 2;
+          rhinoLeg2.add(hoofCrack);
+        }
+      }
+    }
+
+    // ---- Ear cartilage detail ----
+    for (const side of [-1, 1]) {
+      const earInnerGeo = new THREE.ConeGeometry(0.025, 0.06, 8);
+      const earInner = new THREE.Mesh(earInnerGeo, mat(0x6a5a5a));
+      earInner.position.set(side * 0.2, 0.22, -0.04);
+      earInner.rotation.z = side * 0.3;
+      this._head.add(earInner);
+    }
+
+    // ---- Rib cage undulation detail ----
+    for (const side of [-1, 1]) {
+      for (let i = 0; i < 6; i++) {
+        const ribDetailGeo = cyl(0.006, 0.005, 0.12, 6);
+        const ribDetail = new THREE.Mesh(ribDetailGeo, wrinkleMat);
+        ribDetail.position.set(
+          side * 0.6,
+          1.25 + i * 0.07,
+          0.3 - i * 0.12,
+        );
+        ribDetail.rotation.z = Math.PI / 2;
+        ribDetail.rotation.y = 0.3;
+        this._body.add(ribDetail);
+      }
+    }
+
+    // ---- Tail vertebrae bumps ----
+    for (let i = 0; i < 3; i++) {
+      const tvGeo = new THREE.SphereGeometry(0.015, 8, 6);
+      const tv = new THREE.Mesh(tvGeo, hideMat);
+      tv.position.set(0, 1.48 - i * 0.05, -1.05 - i * 0.08);
+      this._body.add(tv);
+    }
+
+    // ---- Drool / moisture on mouth ----
+    const rhinoDroolMat = mat(0x7a7a8a, {
+      transparent: true,
+      opacity: 0.3,
+      roughness: 0.05,
+      clearcoat: 0.8,
+    });
+    for (let i = 0; i < 3; i++) {
+      const droolGeo = new THREE.SphereGeometry(0.008, 6, 6);
+      const drool = new THREE.Mesh(droolGeo, rhinoDroolMat);
+      drool.position.set((i - 1) * 0.05, -0.2, 0.42);
+      this._head.add(drool);
+    }
+
+    // ---- Oxpecker birds resting on back ----
+    for (let i = 0; i < 2; i++) {
+      const birdBodyGeo = new THREE.SphereGeometry(0.02, 8, 6);
+      const birdBody = new THREE.Mesh(birdBodyGeo, mat(0x5a4a3a));
+      birdBody.scale.set(0.8, 0.6, 1.5);
+      birdBody.position.set(-0.1 + i * 0.25, 2.08, 0.2 - i * 0.4);
+      this._body.add(birdBody);
+
+      const birdHeadGeo = new THREE.SphereGeometry(0.01, 8, 6);
+      const birdHead = new THREE.Mesh(birdHeadGeo, mat(0x6a5a4a));
+      birdHead.position.set(-0.1 + i * 0.25, 2.1, 0.24 - i * 0.4);
+      this._body.add(birdHead);
+
+      const beakGeo = new THREE.ConeGeometry(0.004, 0.015, 6);
+      const beak = new THREE.Mesh(beakGeo, mat(0xcc8844));
+      beak.position.set(-0.1 + i * 0.25, 2.1, 0.255 - i * 0.4);
+      beak.rotation.x = Math.PI / 2;
+      this._body.add(beak);
+    }
   }
 
   // ---- Vampire Bat builder --------------------------------------------------
@@ -3356,6 +4564,282 @@ export class CreatureMesh {
     tailTip.position.set(0, 1.2, -0.5);
     tailTip.rotation.x = Math.PI - 0.8;
     this._body.add(tailTip);
+
+    // ======== ENHANCED VAMPIRE BAT DETAIL ========
+
+    // --- Exposed tendons on wings — structural connectors between bones ---
+    const tendonMat = mat(0x3a1122, { roughness: 0.4 });
+    for (const side of [-1, 1]) {
+      for (let i = 0; i < 6; i++) {
+        const tendonGeo = cyl(0.006, 0.004, 0.2 + Math.random() * 0.15, 8);
+        const tendon = new THREE.Mesh(tendonGeo, tendonMat);
+        tendon.position.set(
+          side * (0.5 + i * 0.15),
+          2.3 + Math.sin(i * 0.5) * 0.15,
+          -0.05,
+        );
+        tendon.rotation.z = side * (0.3 + i * 0.1);
+        tendon.rotation.x = 0.2;
+        this._body.add(tendon);
+      }
+    }
+
+    // --- Wing membrane blood veins — branching network ---
+    for (const side of [-1, 1]) {
+      for (let i = 0; i < 8; i++) {
+        const bvGeo = cyl(0.004, 0.002, 0.15 + Math.random() * 0.12, 6);
+        const bv = new THREE.Mesh(bvGeo, veinMat);
+        bv.position.set(
+          side * (0.4 + i * 0.12),
+          2.0 + Math.random() * 0.6,
+          0.01,
+        );
+        bv.rotation.z = side * (0.5 + Math.random() * 0.3);
+        bv.rotation.y = (Math.random() - 0.5) * 0.4;
+        this._body.add(bv);
+      }
+      // Secondary branching veins
+      for (let i = 0; i < 5; i++) {
+        const bv2Geo = cyl(0.003, 0.001, 0.08 + Math.random() * 0.06, 4);
+        const bv2 = new THREE.Mesh(bv2Geo, veinMat);
+        bv2.position.set(
+          side * (0.55 + i * 0.1),
+          1.9 + Math.random() * 0.5,
+          0.015,
+        );
+        bv2.rotation.z = side * (0.8 + Math.random() * 0.4);
+        this._body.add(bv2);
+      }
+    }
+
+    // --- Muscle definition on legs — lean and powerful ---
+    for (const side of [-1, 1]) {
+      // Quadriceps
+      const quadGeo = new THREE.SphereGeometry(1, 14, 10);
+      const quad = new THREE.Mesh(quadGeo, skinMat);
+      quad.scale.set(0.06, 0.12, 0.05);
+      quad.position.set(side * 0.1, 1.3, 0.08);
+      this._body.add(quad);
+
+      // Calf muscle
+      const calfGeo = new THREE.SphereGeometry(1, 12, 10);
+      const calf = new THREE.Mesh(calfGeo, skinMat);
+      calf.scale.set(0.05, 0.1, 0.055);
+      calf.position.set(side * 0.1, 0.85, -0.03);
+      this._body.add(calf);
+
+      // Shin bone visible through thin skin
+      const shinGeo = cyl(0.012, 0.01, 0.25, 8);
+      const shin = new THREE.Mesh(shinGeo, darkSkinMat);
+      shin.position.set(side * 0.1, 0.9, 0.06);
+      this._body.add(shin);
+    }
+
+    // --- Ear detail — large bat ears with inner folds ---
+    for (const side of [-1, 1]) {
+      // Inner ear flesh
+      const innerEarGeo = new THREE.SphereGeometry(0.06, 10, 8);
+      const innerEar = new THREE.Mesh(innerEarGeo, mat(0x4a1525));
+      innerEar.scale.set(0.6, 1.0, 0.15);
+      innerEar.position.set(side * 0.16, 3.0, 0.02);
+      this._body.add(innerEar);
+
+      // Ear veins
+      for (let v = 0; v < 3; v++) {
+        const earVeinGeo = cyl(0.003, 0.002, 0.06, 4);
+        const earVein = new THREE.Mesh(earVeinGeo, veinMat);
+        earVein.position.set(
+          side * (0.14 + v * 0.015),
+          2.95 + v * 0.03,
+          0.04,
+        );
+        earVein.rotation.z = side * 0.2;
+        this._body.add(earVein);
+      }
+
+      // Ear tip cartilage
+      const earTipGeo = new THREE.ConeGeometry(0.008, 0.03, 6);
+      const earTip = new THREE.Mesh(earTipGeo, darkSkinMat);
+      earTip.position.set(side * 0.15, 3.12, 0.02);
+      this._body.add(earTip);
+    }
+
+    // --- Fangs with blood drip detail ---
+    const vbBloodMat = mat(0x880011, { roughness: 0.2, transparent: true, opacity: 0.7 });
+    for (const side of [-1, 1]) {
+      // Blood drip on fang
+      const dripGeo = new THREE.SphereGeometry(0.008, 6, 6);
+      const drip = new THREE.Mesh(dripGeo, vbBloodMat);
+      drip.scale.set(0.6, 1.5, 0.6);
+      drip.position.set(side * 0.04, 2.5, 0.22);
+      this._body.add(drip);
+
+      // Blood trail running down chin
+      const trailGeo = cyl(0.003, 0.002, 0.06, 4);
+      const trail = new THREE.Mesh(trailGeo, vbBloodMat);
+      trail.position.set(side * 0.03, 2.52, 0.2);
+      this._body.add(trail);
+    }
+
+    // --- Abdominal muscle definition ---
+    for (let i = 0; i < 3; i++) {
+      for (const side of [-1, 1]) {
+        const abGeo = new THREE.SphereGeometry(1, 12, 8);
+        const ab = new THREE.Mesh(abGeo, skinMat);
+        ab.scale.set(0.05, 0.04, 0.03);
+        ab.position.set(side * 0.06, 1.65 + i * 0.1, 0.22);
+        this._body.add(ab);
+      }
+    }
+
+    // --- Spine ridges visible through thin back skin ---
+    for (let i = 0; i < 8; i++) {
+      const spineGeo = new THREE.SphereGeometry(0.015, 8, 6);
+      const spine = new THREE.Mesh(spineGeo, darkSkinMat);
+      spine.scale.set(0.8, 0.5, 1.0);
+      spine.position.set(0, 1.5 + i * 0.12, -0.25);
+      this._body.add(spine);
+    }
+
+    // --- Collar bone / clavicle protrusion ---
+    for (const side of [-1, 1]) {
+      const clavGeo = cyl(0.01, 0.008, 0.15, 8);
+      const clav = new THREE.Mesh(clavGeo, darkSkinMat);
+      clav.position.set(side * 0.1, 2.4, 0.18);
+      clav.rotation.z = side * 0.6;
+      this._body.add(clav);
+    }
+
+    // --- Wing claw hooks at wing joints ---
+    for (const side of [-1, 1]) {
+      for (let w = 0; w < 2; w++) {
+        const hookGeo = new THREE.ConeGeometry(0.008, 0.04, 6);
+        const hook = new THREE.Mesh(hookGeo, clawMat);
+        hook.position.set(side * (0.6 + w * 0.3), 2.35, -0.02);
+        hook.rotation.z = side * 0.8;
+        hook.rotation.x = -0.3;
+        this._body.add(hook);
+      }
+    }
+
+    // --- Dark energy aura particles around body ---
+    const vbAuraMat = mat(0x2a0033, { emissive: 0x1a0022, emissiveIntensity: 2.0, transparent: true, opacity: 0.2 });
+    for (let i = 0; i < 15; i++) {
+      const auraGeo = new THREE.SphereGeometry(0.015 + Math.random() * 0.02, 6, 6);
+      const auraP = new THREE.Mesh(auraGeo, vbAuraMat);
+      const aAngle = Math.random() * Math.PI * 2;
+      const aR = 0.3 + Math.random() * 0.4;
+      auraP.position.set(
+        Math.cos(aAngle) * aR,
+        1.5 + Math.random() * 1.5,
+        Math.sin(aAngle) * aR,
+      );
+      this._body.add(auraP);
+    }
+
+    // --- Scarred wing membrane patches (torn/healed areas) ---
+    const vbScarMat = mat(0x3a1828, { roughness: 0.5 });
+    for (const side of [-1, 1]) {
+      for (let i = 0; i < 3; i++) {
+        const wingScarGeo = new THREE.SphereGeometry(0.04, 8, 6);
+        const wingScar = new THREE.Mesh(wingScarGeo, vbScarMat);
+        wingScar.scale.set(1.5, 0.3, 0.1);
+        wingScar.position.set(
+          side * (0.5 + i * 0.2),
+          2.0 + Math.random() * 0.4,
+          0.01,
+        );
+        this._body.add(wingScar);
+      }
+    }
+
+    // --- Neck muscles / sternocleidomastoid ---
+    for (const side of [-1, 1]) {
+      const neckMusGeo = cyl(0.018, 0.012, 0.15, 8);
+      const neckMus = new THREE.Mesh(neckMusGeo, skinMat);
+      neckMus.position.set(side * 0.06, 2.55, 0.08);
+      neckMus.rotation.z = side * 0.2;
+      this._body.add(neckMus);
+    }
+
+    // --- Glowing red eye reflection spots ---
+    const vbReflectMat = mat(0xff4400, { emissive: 0xff2200, emissiveIntensity: 3.0, transparent: true, opacity: 0.8 });
+    for (const side of [-1, 1]) {
+      const reflectGeo = new THREE.SphereGeometry(0.006, 6, 6);
+      const reflect = new THREE.Mesh(reflectGeo, vbReflectMat);
+      reflect.position.set(side * 0.065, 2.76, 0.22);
+      this._body.add(reflect);
+    }
+
+    // --- Wrist bone protrusion on wing arms ---
+    for (const side of [-1, 1]) {
+      const wristBoneGeo = new THREE.SphereGeometry(0.02, 8, 6);
+      const wristBone = new THREE.Mesh(wristBoneGeo, darkSkinMat);
+      wristBone.scale.set(0.8, 1.2, 0.8);
+      wristBone.position.set(side * 0.38, 2.25, -0.02);
+      this._body.add(wristBone);
+    }
+
+    // --- Scapula / shoulder blade definition on back ---
+    for (const side of [-1, 1]) {
+      const scapGeo = new THREE.SphereGeometry(0.06, 10, 8);
+      const scapMesh = new THREE.Mesh(scapGeo, darkSkinMat);
+      scapMesh.scale.set(0.8, 1.2, 0.3);
+      scapMesh.position.set(side * 0.18, 2.25, -0.22);
+      this._body.add(scapMesh);
+    }
+
+    // --- Finger bones on wing (phalanges) ---
+    for (const side of [-1, 1]) {
+      for (let f = 0; f < 4; f++) {
+        const phalGeo = cyl(0.006, 0.004, 0.12 + f * 0.04, 6);
+        const phal = new THREE.Mesh(phalGeo, darkSkinMat);
+        phal.position.set(
+          side * (0.45 + f * 0.15),
+          2.4 - f * 0.1,
+          -0.03,
+        );
+        phal.rotation.z = side * (0.4 + f * 0.15);
+        this._body.add(phal);
+      }
+    }
+
+    // --- Blood drip particles falling from mouth ---
+    for (let i = 0; i < 6; i++) {
+      const dropGeo = new THREE.SphereGeometry(0.005 + Math.random() * 0.004, 4, 4);
+      const drop = new THREE.Mesh(dropGeo, vbBloodMat);
+      drop.position.set(
+        (Math.random() - 0.5) * 0.06,
+        2.3 - Math.random() * 0.4,
+        0.2 + Math.random() * 0.05,
+      );
+      this._body.add(drop);
+    }
+
+    // --- Foot detail — elongated bat-like toes with gripping claws ---
+    for (const side of [-1, 1]) {
+      for (let t = 0; t < 3; t++) {
+        const toeGeo = cyl(0.008, 0.005, 0.06, 6);
+        const toe = new THREE.Mesh(toeGeo, skinMat);
+        toe.position.set(side * 0.1 + (t - 1) * 0.02, 0.35, 0.2);
+        toe.rotation.x = Math.PI / 4;
+        this._body.add(toe);
+
+        // Toe claw
+        const toeClawGeo = new THREE.ConeGeometry(0.005, 0.025, 6);
+        const toeClaw = new THREE.Mesh(toeClawGeo, clawMat);
+        toeClaw.position.set(side * 0.1 + (t - 1) * 0.02, 0.32, 0.24);
+        toeClaw.rotation.x = Math.PI / 3;
+        this._body.add(toeClaw);
+      }
+    }
+
+    // --- Subtle pulsing glow underneath skin (vampiric energy) ---
+    const vbPulseMat = mat(0x440022, { emissive: 0x330011, emissiveIntensity: 1.0, transparent: true, opacity: 0.15 });
+    const pulseGeo = new THREE.SphereGeometry(0.38, 14, 12);
+    const pulse = new THREE.Mesh(pulseGeo, vbPulseMat);
+    pulse.position.set(0, 2.0, 0);
+    this._body.add(pulse);
   }
 
   // ---- Earth Elemental builder ----------------------------------------------
@@ -6688,6 +8172,271 @@ export class CreatureMesh {
       barb.rotation.z = side * 0.4 - Math.PI / 2;
       this._body.add(barb);
     }
+
+    // ---- Enhanced: Wood grain texture lines on frame ----
+    for (let i = 0; i < 10; i++) {
+      const grainGeo = cyl(
+        0.003,
+        0.003,
+        0.8 + Math.random() * 0.4,
+        4,
+      );
+      const grain = new THREE.Mesh(
+        grainGeo,
+        mat(0x6a4520, { roughness: 0.9 }),
+      );
+      grain.rotation.z = Math.PI / 2;
+      grain.position.set(
+        (Math.random() - 0.5) * 0.6,
+        0.55 + Math.random() * 0.15,
+        (Math.random() - 0.5) * 0.3,
+      );
+      this._body.add(grain);
+    }
+
+    // ---- Nail heads on wooden joints ----
+    for (let i = 0; i < 16; i++) {
+      const nailGeo = new THREE.SphereGeometry(0.008, 6, 6);
+      const nail = new THREE.Mesh(nailGeo, ironMat);
+      const nailAngle = Math.random() * Math.PI * 2;
+      nail.position.set(
+        -0.6 + Math.random() * 1.2,
+        0.5 + Math.random() * 0.3,
+        Math.cos(nailAngle) * 0.38,
+      );
+      this._body.add(nail);
+    }
+
+    // ---- Rope lashing on joints ----
+    for (let j = 0; j < 3; j++) {
+      const lashX = -0.3 + j * 0.35;
+      for (let w = 0; w < 4; w++) {
+        const ropeGeo = new THREE.TorusGeometry(0.045, 0.004, 6, 10);
+        const rope = new THREE.Mesh(
+          ropeGeo,
+          mat(0x8b7355, { roughness: 0.9 }),
+        );
+        rope.position.set(lashX, 0.6 + w * 0.03, 0);
+        rope.rotation.y = w * 0.3;
+        this._body.add(rope);
+      }
+    }
+
+    // ---- Wear and rust patches on iron parts ----
+    const ballistaRustMat = mat(0x7a4422, {
+      roughness: 0.95,
+      metalness: 0.3,
+    });
+    for (let i = 0; i < 8; i++) {
+      const rustGeo = new THREE.SphereGeometry(
+        0.01 + Math.random() * 0.012,
+        8,
+        6,
+      );
+      const rust = new THREE.Mesh(rustGeo, ballistaRustMat);
+      rust.scale.set(1.5, 0.3, 1.2);
+      rust.position.set(
+        -0.5 + Math.random() * 1.0,
+        0.55 + Math.random() * 0.35,
+        (Math.random() > 0.5 ? 1 : -1) * (0.38 + Math.random() * 0.06),
+      );
+      this._body.add(rust);
+    }
+
+    // ---- Trigger mechanism detail ----
+    const triggerHousingGeo = new THREE.BoxGeometry(0.08, 0.1, 0.06);
+    const triggerHousing = new THREE.Mesh(triggerHousingGeo, ironMat);
+    triggerHousing.position.set(-0.15, 0.78, 0);
+    this._body.add(triggerHousing);
+
+    const triggerLeverGeo = cyl(0.008, 0.006, 0.12, 6);
+    const triggerLever = new THREE.Mesh(triggerLeverGeo, ironMat);
+    triggerLever.position.set(-0.15, 0.7, 0);
+    triggerLever.rotation.z = 0.3;
+    this._body.add(triggerLever);
+
+    const triggerPinGeo = cyl(0.005, 0.005, 0.08, 6);
+    const triggerPin = new THREE.Mesh(triggerPinGeo, ironMat);
+    triggerPin.position.set(-0.15, 0.75, 0);
+    triggerPin.rotation.x = Math.PI / 2;
+    this._body.add(triggerPin);
+
+    // ---- Winch mechanism on rear ----
+    const winchDrumGeo = cyl(0.04, 0.04, 0.15, 12);
+    const winchDrum = new THREE.Mesh(winchDrumGeo, ironMat);
+    winchDrum.position.set(-0.5, 0.72, 0);
+    winchDrum.rotation.x = Math.PI / 2;
+    this._body.add(winchDrum);
+
+    const winchHandleGeo = cyl(0.008, 0.008, 0.12, 6);
+    const winchHandle = new THREE.Mesh(winchHandleGeo, ironMat);
+    winchHandle.position.set(-0.5, 0.72, 0.1);
+    this._body.add(winchHandle);
+
+    const winchGripGeo = cyl(0.012, 0.012, 0.04, 8);
+    const winchGrip = new THREE.Mesh(winchGripGeo, woodMat);
+    winchGrip.position.set(-0.5, 0.84, 0.1);
+    this._body.add(winchGrip);
+
+    for (let w = 0; w < 5; w++) {
+      const wCableGeo = new THREE.TorusGeometry(0.042, 0.003, 6, 10);
+      const wCable = new THREE.Mesh(wCableGeo, stringMat);
+      wCable.position.set(-0.5, 0.72, -0.05 + w * 0.025);
+      wCable.rotation.x = Math.PI / 2;
+      this._body.add(wCable);
+    }
+
+    // ---- Leather bolt grip pad ----
+    const ballistaLeatherMat = mat(0x5a3a1a, {
+      roughness: 0.85,
+      metalness: 0.0,
+      sheen: 0.15,
+      sheenRoughness: 0.6,
+      sheenColor: new THREE.Color(0x6a4a2a),
+    });
+    const gripPadGeo = new THREE.BoxGeometry(0.2, 0.03, 0.1);
+    const gripPad = new THREE.Mesh(gripPadGeo, ballistaLeatherMat);
+    gripPad.position.set(0.0, 0.86, 0);
+    this._body.add(gripPad);
+
+    for (let s = 0; s < 6; s++) {
+      const stitchGeo = new THREE.SphereGeometry(0.003, 4, 4);
+      const stitch = new THREE.Mesh(stitchGeo, mat(0x3a2a1a));
+      stitch.position.set(-0.08 + s * 0.03, 0.875, 0.04);
+      this._body.add(stitch);
+    }
+
+    // ---- Wheel reinforcement nails ----
+    for (const side of [-1, 1]) {
+      const ballistaLeg = side === -1 ? this._leftLeg : this._rightLeg;
+      for (let n = 0; n < 8; n++) {
+        const wheelNailAngle = (n / 8) * Math.PI * 2;
+        const wheelNailGeo = new THREE.SphereGeometry(0.006, 6, 6);
+        const wheelNail = new THREE.Mesh(wheelNailGeo, ironMat);
+        wheelNail.position.set(
+          Math.cos(wheelNailAngle) * 0.34,
+          Math.sin(wheelNailAngle) * 0.34,
+          side * 0.035,
+        );
+        ballistaLeg.add(wheelNail);
+      }
+    }
+
+    // ---- Ground chocks / wheel blocks ----
+    for (const side of [-1, 1]) {
+      const chockGeo = new THREE.BoxGeometry(0.08, 0.04, 0.06);
+      const chock = new THREE.Mesh(chockGeo, woodMat);
+      chock.position.set(-0.3, 0.02, side * 0.55);
+      chock.rotation.z = 0.2;
+      this._body.add(chock);
+    }
+
+    // ---- Oil stains / grease patches on mechanism ----
+    const ballistaGreaseMat = mat(0x2a2a2a, {
+      transparent: true,
+      opacity: 0.4,
+      roughness: 0.1,
+      metalness: 0.3,
+    });
+    for (let i = 0; i < 5; i++) {
+      const greaseGeo = new THREE.SphereGeometry(
+        0.008 + Math.random() * 0.01,
+        8,
+        6,
+      );
+      const grease = new THREE.Mesh(greaseGeo, ballistaGreaseMat);
+      grease.scale.set(1.5, 0.2, 1.2);
+      grease.position.set(
+        -0.2 + Math.random() * 0.6,
+        0.75 + Math.random() * 0.15,
+        (Math.random() - 0.5) * 0.1,
+      );
+      this._body.add(grease);
+    }
+
+    // ---- Bow limb stress cracks ----
+    for (const side of [-1, 1]) {
+      const ballistaArm = side === -1 ? this._leftArm : this._rightArm;
+      for (let c = 0; c < 3; c++) {
+        const stressCrackGeo = cyl(
+          0.002,
+          0.001,
+          0.06 + Math.random() * 0.04,
+          4,
+        );
+        const stressCrack = new THREE.Mesh(
+          stressCrackGeo,
+          mat(0x5a3a18),
+        );
+        stressCrack.position.set(
+          0.02,
+          side * (0.1 + c * 0.15),
+          side * c * 0.02,
+        );
+        stressCrack.rotation.x = side * 0.2;
+        ballistaArm.add(stressCrack);
+      }
+    }
+
+    // ---- Trail / drag marks underneath ----
+    for (let i = 0; i < 3; i++) {
+      const dragGeo = cyl(0.003, 0.003, 0.5, 4);
+      const drag = new THREE.Mesh(
+        dragGeo,
+        mat(0x5a4a3a, { transparent: true, opacity: 0.3 }),
+      );
+      drag.rotation.z = Math.PI / 2;
+      drag.position.set(-0.3, 0.01, -0.15 + i * 0.15);
+      this._body.add(drag);
+    }
+
+    // ---- Corner bracket reinforcements ----
+    for (const side of [-1, 1]) {
+      for (let c = 0; c < 2; c++) {
+        const bracketGeo = new THREE.BoxGeometry(0.06, 0.06, 0.015);
+        const bracket = new THREE.Mesh(bracketGeo, ironMat);
+        bracket.position.set(-0.6 + c * 1.15, 0.55, side * 0.39);
+        this._body.add(bracket);
+
+        for (let rv = 0; rv < 2; rv++) {
+          for (let rh = 0; rh < 2; rh++) {
+            const bRivetGeo = new THREE.SphereGeometry(0.005, 6, 6);
+            const bRivet = new THREE.Mesh(bRivetGeo, ironMat);
+            bRivet.position.set(
+              -0.62 + c * 1.15 + rh * 0.04,
+              0.53 + rv * 0.04,
+              side * 0.4,
+            );
+            this._body.add(bRivet);
+          }
+        }
+      }
+    }
+
+    // ---- Battle damage -- gouges and dents on shield ----
+    for (let i = 0; i < 4; i++) {
+      const gougeGeo = new THREE.SphereGeometry(0.008, 8, 6);
+      const gouge = new THREE.Mesh(
+        gougeGeo,
+        mat(0x3a3a3a, { roughness: 0.4, metalness: 0.7 }),
+      );
+      gouge.scale.set(2.0, 0.5, 1.0);
+      gouge.position.set(-0.55, 0.65 + i * 0.08, 0.015);
+      gouge.rotation.z = (Math.random() - 0.5) * 0.5;
+      this._body.add(gouge);
+    }
+
+    // ---- Ammunition count tally marks on side ----
+    for (let i = 0; i < 7; i++) {
+      const tallyGeo = cyl(0.002, 0.002, 0.03, 4);
+      const tally = new THREE.Mesh(tallyGeo, mat(0x2a2a2a));
+      tally.position.set(0.15 + (i % 5) * 0.015, 0.52, 0.42);
+      if (i === 4) {
+        tally.rotation.z = 0.8;
+        tally.position.x = 0.15 + 0.03;
+      }
+      this._body.add(tally);
+    }
   }
 
   // ---- Cannon builder ------------------------------------------------------
@@ -7816,6 +9565,288 @@ export class CreatureMesh {
       );
       rubble.scale.set(1, 0.6 + Math.random() * 0.4, 1);
       this._body.add(rubble);
+    }
+
+    // ======== ENHANCED GIANT SIEGE DETAIL ========
+
+    // --- Muscle fiber striations on chest and shoulders ---
+    const muscleFiberMat = mat(0x6a6055, { roughness: 0.7 });
+    for (const side of [-1, 1]) {
+      for (let i = 0; i < 5; i++) {
+        const fiberGeo = new THREE.BoxGeometry(0.015, 0.25, 0.008);
+        const fiber = new THREE.Mesh(fiberGeo, muscleFiberMat);
+        fiber.position.set(side * (0.2 + i * 0.06), 3.8, 0.55);
+        fiber.rotation.z = side * 0.15;
+        this._body.add(fiber);
+      }
+    }
+
+    // --- Deep battle scars across torso and arms ---
+    const gsScarMat = mat(0x4a3a35, { roughness: 0.6 });
+    const gsWoundMat = mat(0x5a2222, { roughness: 0.4 });
+    for (let i = 0; i < 6; i++) {
+      const scarGeo = new THREE.SphereGeometry(1, 12, 8);
+      const scar = new THREE.Mesh(scarGeo, gsScarMat);
+      scar.scale.set(0.04, 0.25 + Math.random() * 0.15, 0.02);
+      const scarAngle = -0.8 + i * 0.35;
+      scar.position.set(
+        Math.sin(scarAngle) * 0.65,
+        3.0 + i * 0.25,
+        Math.cos(scarAngle) * 0.5,
+      );
+      scar.rotation.z = 0.3 + i * 0.2;
+      this._body.add(scar);
+    }
+
+    // --- Old wound stitching (crude leather thread) ---
+    for (let i = 0; i < 3; i++) {
+      for (let s = 0; s < 4; s++) {
+        const stitchGeo = new THREE.BoxGeometry(0.06, 0.008, 0.008);
+        const stitch = new THREE.Mesh(stitchGeo, hideMat);
+        stitch.position.set(
+          0.3 + i * 0.15,
+          3.2 + s * 0.06,
+          0.52,
+        );
+        stitch.rotation.z = 0.3;
+        this._body.add(stitch);
+      }
+    }
+
+    // --- Skin folds and wrinkles on neck ---
+    for (let i = 0; i < 5; i++) {
+      const neckFoldGeo = new THREE.TorusGeometry(0.22 - i * 0.01, 0.015, 6, 16);
+      const neckFold = new THREE.Mesh(neckFoldGeo, darkSkinMat);
+      neckFold.position.set(0, 4.6 + i * 0.06, 0);
+      neckFold.rotation.x = Math.PI / 2;
+      this._body.add(neckFold);
+    }
+
+    // --- Veins bulging on forearms and neck ---
+    const gsVeinMat = mat(0x5a5540, { roughness: 0.5 });
+    for (const side of [-1, 1]) {
+      // Forearm veins
+      for (let i = 0; i < 3; i++) {
+        const veinGeo = cyl(0.012, 0.01, 0.3, 8);
+        const vein = new THREE.Mesh(veinGeo, gsVeinMat);
+        vein.position.set(side * (0.85 + i * 0.03), 2.8 + i * 0.15, 0.1);
+        vein.rotation.z = side * (0.1 + i * 0.05);
+        this._body.add(vein);
+      }
+      // Bicep veins
+      const bicepVeinGeo = cyl(0.015, 0.012, 0.25, 8);
+      const bicepVein = new THREE.Mesh(bicepVeinGeo, gsVeinMat);
+      bicepVein.position.set(side * 0.72, 3.5, 0.15);
+      bicepVein.rotation.z = side * 0.3;
+      this._body.add(bicepVein);
+    }
+    // Neck veins
+    for (const side of [-1, 1]) {
+      const neckVeinGeo = cyl(0.01, 0.008, 0.2, 8);
+      const neckVein = new THREE.Mesh(neckVeinGeo, gsVeinMat);
+      neckVein.position.set(side * 0.12, 4.7, 0.08);
+      neckVein.rotation.z = side * 0.15;
+      this._body.add(neckVein);
+    }
+
+    // --- Iron pauldrons (crude shoulder armor) ---
+    for (const side of [-1, 1]) {
+      const pauldronGeo = new THREE.SphereGeometry(0.22, 14, 10);
+      const pauldron = new THREE.Mesh(pauldronGeo, ironMat);
+      pauldron.scale.set(1.0, 0.5, 0.8);
+      pauldron.position.set(side * 0.82, 4.2, 0);
+      this._body.add(pauldron);
+
+      // Pauldron rivets
+      for (let r = 0; r < 4; r++) {
+        const rivetGeo = new THREE.SphereGeometry(0.015, 6, 6);
+        const rivet = new THREE.Mesh(rivetGeo, chainMat);
+        const rivetA = -0.4 + r * 0.3;
+        rivet.position.set(
+          side * (0.82 + Math.cos(rivetA) * 0.18),
+          4.25 + Math.sin(rivetA) * 0.05,
+          Math.sin(rivetA) * 0.15,
+        );
+        this._body.add(rivet);
+      }
+
+      // Leather strap under pauldron
+      const pStrapGeo = cyl(0.2, 0.2, 0.03, 12);
+      const pStrap = new THREE.Mesh(pStrapGeo, hideMat);
+      pStrap.position.set(side * 0.82, 4.05, 0);
+      this._body.add(pStrap);
+    }
+
+    // --- Trophy skulls hanging from belt ---
+    for (let i = 0; i < 3; i++) {
+      const trophySkullGeo = new THREE.SphereGeometry(0.06, 10, 8);
+      const trophySkull = new THREE.Mesh(trophySkullGeo, mat(0xd4c4a0));
+      trophySkull.scale.set(0.8, 1.0, 0.7);
+      const tAngle = -0.8 + i * 0.8;
+      trophySkull.position.set(
+        Math.sin(tAngle) * 0.55,
+        2.3,
+        Math.cos(tAngle) * 0.45,
+      );
+      this._body.add(trophySkull);
+
+      // Eye sockets on trophy skull
+      for (const es of [-1, 1]) {
+        const eyeSocketGeo = new THREE.SphereGeometry(0.015, 6, 6);
+        const eyeSocket = new THREE.Mesh(eyeSocketGeo, mat(0x111111));
+        eyeSocket.position.set(
+          Math.sin(tAngle) * 0.55 + es * 0.02,
+          2.33,
+          Math.cos(tAngle) * 0.45 + 0.04,
+        );
+        this._body.add(eyeSocket);
+      }
+
+      // Rope connecting skull to belt
+      const skullRopeGeo = cyl(0.006, 0.006, 0.12, 6);
+      const skullRope = new THREE.Mesh(skullRopeGeo, ropeMat);
+      skullRope.position.set(
+        Math.sin(tAngle) * 0.52,
+        2.38,
+        Math.cos(tAngle) * 0.42,
+      );
+      this._body.add(skullRope);
+    }
+
+    // --- Wrist wrappings (leather bands) ---
+    for (const side of [-1, 1]) {
+      for (let i = 0; i < 4; i++) {
+        const wrapGeo = cyl(0.14 - i * 0.005, 0.14 - i * 0.005, 0.025, 10);
+        const wrap = new THREE.Mesh(wrapGeo, hideMat);
+        wrap.position.set(side * 0.9, 2.3 + i * 0.035, 0);
+        this._body.add(wrap);
+      }
+    }
+
+    // --- Crude iron bracers ---
+    for (const side of [-1, 1]) {
+      const bracerGeo = new THREE.BoxGeometry(0.08, 0.15, 0.12);
+      const bracer = new THREE.Mesh(bracerGeo, ironMat);
+      bracer.position.set(side * 0.92, 2.5, 0.05);
+      this._body.add(bracer);
+
+      // Bracer studs
+      for (let s = 0; s < 3; s++) {
+        const studGeo = new THREE.ConeGeometry(0.012, 0.025, 6);
+        const stud = new THREE.Mesh(studGeo, chainMat);
+        stud.position.set(side * 0.96, 2.42 + s * 0.06, 0.12);
+        stud.rotation.x = -Math.PI / 2;
+        this._body.add(stud);
+      }
+    }
+
+    // --- Blood stains on hands and weapon ---
+    const gsBloodMat = mat(0x550011, { roughness: 0.3, transparent: true, opacity: 0.6 });
+    for (let i = 0; i < 6; i++) {
+      const bloodGeo = new THREE.SphereGeometry(0.02 + Math.random() * 0.03, 8, 6);
+      const blood = new THREE.Mesh(bloodGeo, gsBloodMat);
+      blood.scale.set(1.5, 0.3, 1.2);
+      const bSide = i % 2 === 0 ? 1 : -1;
+      blood.position.set(
+        bSide * (0.85 + Math.random() * 0.1),
+        1.8 + Math.random() * 0.4,
+        (Math.random() - 0.5) * 0.15,
+      );
+      this._body.add(blood);
+    }
+
+    // --- Callused knuckles ---
+    for (const side of [-1, 1]) {
+      for (let k = 0; k < 4; k++) {
+        const knuckleGeo = new THREE.SphereGeometry(0.025, 8, 6);
+        const knuckle = new THREE.Mesh(knuckleGeo, mat(0x8a7a6a, { roughness: 0.5 }));
+        knuckle.position.set(
+          side * 0.95 + (k - 1.5) * 0.025,
+          1.7,
+          0.05 + k * 0.02,
+        );
+        this._body.add(knuckle);
+      }
+    }
+
+    // --- Belly button scar and navel ---
+    const gsNavelGeo = new THREE.SphereGeometry(0.03, 10, 8);
+    const gsNavel = new THREE.Mesh(gsNavelGeo, darkSkinMat);
+    gsNavel.position.set(0, 2.85, 0.58);
+    gsNavel.scale.set(1, 1.3, 0.4);
+    this._body.add(gsNavel);
+
+    // --- Flies buzzing around giant (small dark spheres) ---
+    const flyMat = mat(0x111111);
+    for (let i = 0; i < 10; i++) {
+      const flyGeo = new THREE.SphereGeometry(0.008, 4, 4);
+      const fly = new THREE.Mesh(flyGeo, flyMat);
+      const flyA = Math.random() * Math.PI * 2;
+      const flyR = 0.5 + Math.random() * 1.0;
+      fly.position.set(
+        Math.cos(flyA) * flyR,
+        2.5 + Math.random() * 3.0,
+        Math.sin(flyA) * flyR,
+      );
+      this._body.add(fly);
+
+      // Fly wings (tiny transparent planes)
+      for (const ws of [-1, 1]) {
+        const wingGeo = new THREE.PlaneGeometry(0.012, 0.006);
+        const wing = new THREE.Mesh(wingGeo, mat(0xaaaaaa, { transparent: true, opacity: 0.3, side: THREE.DoubleSide }));
+        wing.position.copy(fly.position);
+        wing.position.x += ws * 0.01;
+        wing.position.y += 0.005;
+        wing.rotation.z = ws * 0.5;
+        this._body.add(wing);
+      }
+    }
+
+    // --- Ground impact cracks radiating from feet ---
+    for (let i = 0; i < 8; i++) {
+      const crackGeo = new THREE.BoxGeometry(0.02, 0.005, 0.4 + Math.random() * 0.3);
+      const gsCrack = new THREE.Mesh(crackGeo, mat(0x444444, { roughness: 0.95 }));
+      const crackA = (i / 8) * Math.PI * 2;
+      gsCrack.position.set(Math.cos(crackA) * 0.4, 0.01, Math.sin(crackA) * 0.4);
+      gsCrack.rotation.y = crackA;
+      this._body.add(gsCrack);
+    }
+
+    // --- Crude iron chain wrapped diagonally across torso ---
+    for (let i = 0; i < 12; i++) {
+      const tChainGeo = new THREE.TorusGeometry(0.04, 0.012, 6, 8);
+      const tChain = new THREE.Mesh(tChainGeo, chainMat);
+      const cx = -0.4 + i * 0.07;
+      const cy = 3.0 + i * 0.1;
+      tChain.position.set(cx, cy, 0.4);
+      tChain.rotation.x = Math.PI / 2;
+      tChain.rotation.y = i * 0.15;
+      this._body.add(tChain);
+    }
+
+    // --- Dried mud / dirt patches on skin ---
+    const gsMudMat = mat(0x5a4a30, { roughness: 0.95 });
+    for (let i = 0; i < 8; i++) {
+      const mudGeo = new THREE.SphereGeometry(0.05 + Math.random() * 0.04, 8, 6);
+      const mud = new THREE.Mesh(mudGeo, gsMudMat);
+      mud.scale.set(1.5, 0.2, 1.3);
+      const mudA = Math.random() * Math.PI * 2;
+      mud.position.set(
+        Math.cos(mudA) * (0.3 + Math.random() * 0.5),
+        0.5 + Math.random() * 2.5,
+        Math.sin(mudA) * (0.25 + Math.random() * 0.4),
+      );
+      this._body.add(mud);
+    }
+
+    // --- Toenails (crude thick nails) ---
+    for (const side of [-1, 1]) {
+      for (let t = 0; t < 3; t++) {
+        const toeNailGeo = new THREE.BoxGeometry(0.03, 0.015, 0.04);
+        const toeNail = new THREE.Mesh(toeNailGeo, mat(0x999977, { roughness: 0.5 }));
+        toeNail.position.set(side * 0.35 + (t - 1) * 0.04, 0.04, 0.35);
+        this._body.add(toeNail);
+      }
     }
   }
 
@@ -10989,6 +13020,282 @@ export class CreatureMesh {
       crystal.position.set(0, 2.8 - i * 0.35, -0.35 - i * 0.05);
       crystal.rotation.x = -0.3;
       this._body.add(crystal);
+    }
+
+    // ---- Enhanced: Fracture lines across body surface ----
+    for (let i = 0; i < 10; i++) {
+      const fracAngle = (i / 10) * Math.PI * 2;
+      const fracLen = 0.15 + Math.random() * 0.2;
+      const fractureGeo = cyl(0.003, 0.002, fracLen, 4);
+      const fracture = new THREE.Mesh(fractureGeo, whiteMat);
+      fracture.position.set(
+        Math.cos(fracAngle) * (0.35 + Math.random() * 0.15),
+        2.0 + Math.random() * 1.2,
+        Math.sin(fracAngle) * (0.3 + Math.random() * 0.12),
+      );
+      fracture.rotation.set(
+        Math.random() * Math.PI,
+        Math.random() * Math.PI,
+        Math.random() * Math.PI,
+      );
+      this._body.add(fracture);
+    }
+
+    // ---- Frost rime coating -- white crystalline dust layer ----
+    const iceRimeMat = mat(0xeef4ff, {
+      transparent: true,
+      opacity: 0.25,
+      roughness: 0.05,
+      metalness: 0.1,
+    });
+    for (let i = 0; i < 14; i++) {
+      const rimeAngle = Math.random() * Math.PI * 2;
+      const rimeGeo = new THREE.SphereGeometry(
+        0.03 + Math.random() * 0.04,
+        8,
+        6,
+      );
+      const rime = new THREE.Mesh(rimeGeo, iceRimeMat);
+      rime.scale.set(1.5, 0.2, 1.3);
+      rime.position.set(
+        Math.cos(rimeAngle) * (0.35 + Math.random() * 0.3),
+        1.8 + Math.random() * 2.0,
+        Math.sin(rimeAngle) * (0.3 + Math.random() * 0.25),
+      );
+      this._body.add(rime);
+    }
+
+    // ---- Internal energy conduits -- glowing lines through body ----
+    const iceConduitMat = mat(0x44aacc, {
+      emissive: 0x2288aa,
+      transparent: true,
+      opacity: 0.4,
+    });
+    for (let i = 0; i < 6; i++) {
+      const condAngle = (i / 6) * Math.PI * 2;
+      const conduitGeo = cyl(
+        0.005,
+        0.004,
+        0.8 + Math.random() * 0.4,
+        4,
+      );
+      const conduit = new THREE.Mesh(conduitGeo, iceConduitMat);
+      conduit.position.set(
+        Math.cos(condAngle) * 0.2,
+        2.2,
+        Math.sin(condAngle) * 0.15,
+      );
+      conduit.rotation.z = (Math.random() - 0.5) * 0.3;
+      this._body.add(conduit);
+    }
+
+    // ---- Snowflake crystal patterns on surface ----
+    for (let i = 0; i < 5; i++) {
+      const sfAngle = (i / 5) * Math.PI * 2;
+      const sfR = 0.42 + Math.random() * 0.15;
+      for (let spoke = 0; spoke < 6; spoke++) {
+        const spokeAngle = (spoke / 6) * Math.PI * 2;
+        const spokeLen = 0.02 + Math.random() * 0.015;
+        const iceSpokeGeo = cyl(0.002, 0.001, spokeLen, 4);
+        const iceSpokeMesh = new THREE.Mesh(iceSpokeGeo, whiteMat);
+        iceSpokeMesh.position.set(
+          Math.cos(sfAngle) * sfR +
+            Math.cos(spokeAngle) * spokeLen * 0.5,
+          2.3 + i * 0.3,
+          Math.sin(sfAngle) * sfR +
+            Math.sin(spokeAngle) * spokeLen * 0.5,
+        );
+        iceSpokeMesh.rotation.set(sfAngle, spokeAngle, 0);
+        this._body.add(iceSpokeMesh);
+      }
+    }
+
+    // ---- Dripping icicles from arm joints ----
+    for (const side of [-1, 1]) {
+      const iceArm = side === -1 ? this._leftArm : this._rightArm;
+      for (let d = 0; d < 4; d++) {
+        const dripLen = 0.06 + Math.random() * 0.08;
+        const dripGeo = new THREE.ConeGeometry(0.012, dripLen, 8);
+        const drip = new THREE.Mesh(dripGeo, whiteMat);
+        drip.position.set(
+          (Math.random() - 0.5) * 0.12,
+          -0.4 - d * 0.25,
+          (Math.random() - 0.5) * 0.08,
+        );
+        drip.rotation.x = Math.PI;
+        iceArm.add(drip);
+      }
+    }
+
+    // ---- Frozen ground ring -- ice patch at base ----
+    const groundIceGeo = new THREE.RingGeometry(0.3, 0.8, 20, 2);
+    const groundIce = new THREE.Mesh(
+      groundIceGeo,
+      mat(0x8ec8d8, {
+        transparent: true,
+        opacity: 0.3,
+        roughness: 0.05,
+        metalness: 0.4,
+      }),
+    );
+    groundIce.position.set(0, 0.02, 0);
+    groundIce.rotation.x = -Math.PI / 2;
+    this._body.add(groundIce);
+
+    for (let i = 0; i < 8; i++) {
+      const gfAngle = (i / 8) * Math.PI * 2;
+      const gfR = 0.4 + Math.random() * 0.3;
+      const gfHeight = 0.05 + Math.random() * 0.08;
+      const gfGeo = new THREE.ConeGeometry(0.015, gfHeight, 6);
+      const gf = new THREE.Mesh(gfGeo, whiteMat);
+      gf.position.set(
+        Math.cos(gfAngle) * gfR,
+        gfHeight / 2,
+        Math.sin(gfAngle) * gfR,
+      );
+      gf.rotation.z = (Math.random() - 0.5) * 0.3;
+      this._body.add(gf);
+    }
+
+    // ---- Cold breath vapor particles ----
+    const iceVaporMat = mat(0xddeeff, {
+      transparent: true,
+      opacity: 0.15,
+    });
+    for (let i = 0; i < 6; i++) {
+      const vapGeo = new THREE.SphereGeometry(
+        0.03 + Math.random() * 0.04,
+        8,
+        6,
+      );
+      const vap = new THREE.Mesh(vapGeo, iceVaporMat);
+      vap.position.set(
+        (Math.random() - 0.5) * 0.15,
+        -0.15 - Math.random() * 0.2,
+        0.2 + Math.random() * 0.15,
+      );
+      this._head.add(vap);
+    }
+
+    // ---- Shoulder crystal cluster -- secondary micro-crystals ----
+    for (const side of [-1, 1]) {
+      for (let mc = 0; mc < 5; mc++) {
+        const microGeo = new THREE.ConeGeometry(
+          0.02,
+          0.08 + Math.random() * 0.06,
+          6,
+        );
+        const micro = new THREE.Mesh(microGeo, shardMat);
+        micro.position.set(
+          side * (0.45 + (Math.random() - 0.5) * 0.15),
+          3.1 + (Math.random() - 0.5) * 0.3,
+          (Math.random() - 0.5) * 0.15,
+        );
+        micro.rotation.z = side * (0.3 + Math.random() * 0.5);
+        micro.rotation.x = (Math.random() - 0.5) * 0.4;
+        this._body.add(micro);
+      }
+    }
+
+    // ---- Ice veins running through limbs ----
+    for (const side of [-1, 1]) {
+      const iceLeg = side === -1 ? this._leftLeg : this._rightLeg;
+      for (let v = 0; v < 3; v++) {
+        const legVeinGeo = cyl(
+          0.004,
+          0.003,
+          0.15 + Math.random() * 0.1,
+          4,
+        );
+        const legVein = new THREE.Mesh(legVeinGeo, iceConduitMat);
+        legVein.position.set(
+          (Math.random() - 0.5) * 0.08,
+          -0.3 - v * 0.3,
+          0.08 + Math.random() * 0.04,
+        );
+        legVein.rotation.set(
+          Math.random() * 0.3,
+          0,
+          Math.random() * 0.3,
+        );
+        iceLeg.add(legVein);
+      }
+    }
+
+    // ---- Frozen dust motes -- tiny floating ice specks ----
+    for (let i = 0; i < 20; i++) {
+      const moteAngle = Math.random() * Math.PI * 2;
+      const moteR = 0.5 + Math.random() * 1.0;
+      const moteGeo = new THREE.SphereGeometry(
+        0.005 + Math.random() * 0.008,
+        6,
+        4,
+      );
+      const iceMote = new THREE.Mesh(
+        moteGeo,
+        mat(0xddeeff, {
+          transparent: true,
+          opacity: 0.4 + Math.random() * 0.3,
+        }),
+      );
+      iceMote.position.set(
+        Math.cos(moteAngle) * moteR,
+        1.5 + Math.random() * 2.8,
+        Math.sin(moteAngle) * moteR,
+      );
+      this._body.add(iceMote);
+    }
+
+    // ---- Chest cavity glow pulsation layers ----
+    for (let i = 0; i < 3; i++) {
+      const pulseGeo = new THREE.SphereGeometry(
+        0.15 + i * 0.08,
+        12,
+        10,
+      );
+      const pulse = new THREE.Mesh(
+        pulseGeo,
+        mat(0x55aacc, {
+          emissive: 0x2288aa,
+          transparent: true,
+          opacity: 0.12 - i * 0.03,
+        }),
+      );
+      pulse.position.y = 2.5;
+      this._body.add(pulse);
+    }
+
+    // ---- Crown icicle beard extensions ----
+    for (let i = 0; i < 3; i++) {
+      const beardLen = 0.08 + Math.random() * 0.06;
+      const beardGeo = new THREE.ConeGeometry(0.015, beardLen, 8);
+      const beard = new THREE.Mesh(beardGeo, deepBlueMat);
+      beard.position.set(
+        -0.06 + i * 0.06,
+        -0.25 - beardLen / 2,
+        0.08,
+      );
+      beard.rotation.x = Math.PI;
+      this._head.add(beard);
+    }
+
+    // ---- Leg foot frost spikes -- tiny spikes around feet ----
+    for (const side of [-1, 1]) {
+      const iceLeg2 = side === -1 ? this._leftLeg : this._rightLeg;
+      for (let fs = 0; fs < 6; fs++) {
+        const footSpikeAngle = (fs / 6) * Math.PI * 2;
+        const fsHeight = 0.04 + Math.random() * 0.04;
+        const fsGeo = new THREE.ConeGeometry(0.01, fsHeight, 6);
+        const footSpike = new THREE.Mesh(fsGeo, whiteMat);
+        footSpike.position.set(
+          Math.cos(footSpikeAngle) * 0.14,
+          -1.3,
+          Math.sin(footSpikeAngle) * 0.14,
+        );
+        footSpike.rotation.z = Math.cos(footSpikeAngle) * 0.3;
+        footSpike.rotation.x = Math.sin(footSpikeAngle) * 0.3;
+        iceLeg2.add(footSpike);
+      }
     }
   }
 
@@ -22620,6 +24927,314 @@ export class CreatureMesh {
       resRing.rotation.y = (Math.random() - 0.5) * 0.2;
       this._body.add(resRing);
     }
+
+    // ---- Enhanced: Crystal stress fracture network ----
+    for (let i = 0; i < 12; i++) {
+      const cfAngle = (i / 12) * Math.PI * 2;
+      const cfLen = 0.1 + Math.random() * 0.15;
+      const cfGeo = cyl(0.003, 0.002, cfLen, 4);
+      const cfMesh = new THREE.Mesh(cfGeo, veinMat);
+      cfMesh.position.set(
+        Math.cos(cfAngle) * (0.28 + Math.random() * 0.1),
+        1.8 + Math.random() * 1.2,
+        Math.sin(cfAngle) * (0.25 + Math.random() * 0.08),
+      );
+      cfMesh.rotation.set(
+        Math.random() * Math.PI,
+        Math.random() * Math.PI,
+        Math.random() * Math.PI,
+      );
+      this._body.add(cfMesh);
+    }
+
+    // ---- Geode cavity detail -- inner druse crystal clusters ----
+    for (let i = 0; i < 8; i++) {
+      const druseAngle = (i / 8) * Math.PI * 2;
+      const druseGeo = new THREE.ConeGeometry(
+        0.015 + Math.random() * 0.01,
+        0.06 + Math.random() * 0.04,
+        5,
+      );
+      const druse = new THREE.Mesh(
+        druseGeo,
+        i % 3 === 0
+          ? amethystMat
+          : i % 3 === 1
+            ? roseMat
+            : crystalMat,
+      );
+      druse.position.set(
+        Math.cos(druseAngle) * 0.12,
+        2.25 + Math.sin(druseAngle) * 0.08,
+        0.1 + Math.sin(druseAngle * 2) * 0.05,
+      );
+      druse.rotation.set(
+        (Math.random() - 0.5) * 1.0,
+        0,
+        (Math.random() - 0.5) * 1.0,
+      );
+      this._body.add(druse);
+    }
+
+    // ---- Mineral inclusion spots -- embedded foreign crystal specks ----
+    for (let i = 0; i < 15; i++) {
+      const incAngle = Math.random() * Math.PI * 2;
+      const incGeo = new THREE.OctahedronGeometry(
+        0.008 + Math.random() * 0.008,
+        0,
+      );
+      const incColors = [0xff6644, 0x44cc44, 0xffaa22, 0x8844ff, 0xff4488];
+      const incColor =
+        incColors[Math.floor(Math.random() * incColors.length)];
+      const inclusion = new THREE.Mesh(
+        incGeo,
+        mat(incColor, {
+          emissive: incColor,
+          emissiveIntensity: 0.5,
+          transparent: true,
+          opacity: 0.6,
+        }),
+      );
+      inclusion.position.set(
+        Math.cos(incAngle) * (0.25 + Math.random() * 0.15),
+        1.7 + Math.random() * 1.5,
+        Math.sin(incAngle) * (0.2 + Math.random() * 0.12),
+      );
+      inclusion.rotation.set(
+        Math.random() * Math.PI,
+        Math.random() * Math.PI,
+        0,
+      );
+      this._body.add(inclusion);
+    }
+
+    // ---- Crystal twinning planes -- flat reflective surfaces ----
+    for (let i = 0; i < 6; i++) {
+      const twinAngle = (i / 6) * Math.PI * 2;
+      const twinGeo = new THREE.PlaneGeometry(
+        0.08 + Math.random() * 0.05,
+        0.12 + Math.random() * 0.06,
+      );
+      const twin = new THREE.Mesh(
+        twinGeo,
+        mat(0xbbddff, {
+          transparent: true,
+          opacity: 0.3,
+          side: THREE.DoubleSide,
+          metalness: 0.5,
+          roughness: 0.0,
+          clearcoat: 1.0,
+        }),
+      );
+      twin.position.set(
+        Math.cos(twinAngle) * 0.32,
+        2.0 + Math.random() * 0.8,
+        Math.sin(twinAngle) * 0.28,
+      );
+      twin.rotation.y = twinAngle;
+      twin.rotation.x = (Math.random() - 0.5) * 0.4;
+      this._body.add(twin);
+    }
+
+    // ---- Phantom crystal overgrowths on limbs ----
+    for (const side of [-1, 1]) {
+      const cgPhantomArm =
+        side === -1 ? this._leftArm : this._rightArm;
+      for (let ph = 0; ph < 4; ph++) {
+        const phantomGeo = new THREE.ConeGeometry(
+          0.02 + Math.random() * 0.015,
+          0.08 + Math.random() * 0.05,
+          5,
+        );
+        const phantom = new THREE.Mesh(
+          phantomGeo,
+          mat(0xaaccee, {
+            transparent: true,
+            opacity: 0.35,
+            emissive: 0x556688,
+            emissiveIntensity: 0.8,
+          }),
+        );
+        phantom.position.set(
+          side * (0.04 + Math.random() * 0.04),
+          -0.2 - ph * 0.25,
+          0.05 + Math.random() * 0.04,
+        );
+        phantom.rotation.z = side * (0.2 + Math.random() * 0.3);
+        cgPhantomArm.add(phantom);
+      }
+    }
+
+    // ---- Piezoelectric spark particles near joints ----
+    const cgSparkMat2 = mat(0xffffff, {
+      emissive: 0xccddff,
+      emissiveIntensity: 2.0,
+      transparent: true,
+      opacity: 0.7,
+    });
+    for (let i = 0; i < 10; i++) {
+      const cgSparkAngle = Math.random() * Math.PI * 2;
+      const cgSparkR = 0.08 + Math.random() * 0.12;
+      const cgSparkY = [2.7, 2.2, 1.5][
+        Math.floor(Math.random() * 3)
+      ];
+      const cgSparkGeo = new THREE.SphereGeometry(
+        0.004 + Math.random() * 0.004,
+        6,
+        4,
+      );
+      const cgSpark = new THREE.Mesh(cgSparkGeo, cgSparkMat2);
+      cgSpark.position.set(
+        Math.cos(cgSparkAngle) * cgSparkR +
+          (Math.random() - 0.5) * 0.3,
+        cgSparkY + (Math.random() - 0.5) * 0.3,
+        Math.sin(cgSparkAngle) * cgSparkR,
+      );
+      this._body.add(cgSpark);
+    }
+
+    // ---- Crystal lattice cage around torso ----
+    for (let i = 0; i < 8; i++) {
+      const cageAngle = (i / 8) * Math.PI * 2;
+      const cageGeo = cyl(0.003, 0.003, 0.5, 4);
+      const cage = new THREE.Mesh(
+        cageGeo,
+        mat(0x8899bb, { transparent: true, opacity: 0.25 }),
+      );
+      cage.position.set(
+        Math.cos(cageAngle) * 0.38,
+        2.2,
+        Math.sin(cageAngle) * 0.33,
+      );
+      cage.rotation.z = (Math.random() - 0.5) * 0.4;
+      this._body.add(cage);
+    }
+
+    for (let i = 0; i < 4; i++) {
+      const cgHRingGeo = new THREE.TorusGeometry(0.36, 0.003, 6, 16);
+      const cgHRing = new THREE.Mesh(
+        cgHRingGeo,
+        mat(0x8899bb, { transparent: true, opacity: 0.2 }),
+      );
+      cgHRing.position.set(0, 1.8 + i * 0.3, 0);
+      cgHRing.rotation.x = Math.PI / 2;
+      this._body.add(cgHRing);
+    }
+
+    // ---- Stalactite growth from head underside ----
+    for (let i = 0; i < 4; i++) {
+      const stalLen = 0.04 + Math.random() * 0.05;
+      const stalGeo = new THREE.ConeGeometry(0.012, stalLen, 5);
+      const stal = new THREE.Mesh(stalGeo, darkCrystalMat);
+      stal.position.set(
+        -0.06 + i * 0.04,
+        -0.2 - stalLen / 2,
+        0.05 + (Math.random() - 0.5) * 0.1,
+      );
+      stal.rotation.x = Math.PI;
+      this._head.add(stal);
+    }
+
+    // ---- Faceted surface micro-crystals across body ----
+    for (let i = 0; i < 18; i++) {
+      const mcAngle = Math.random() * Math.PI * 2;
+      const mcR = 0.3 + Math.random() * 0.12;
+      const mcSize = 0.008 + Math.random() * 0.01;
+      const mcGeo = new THREE.OctahedronGeometry(mcSize, 0);
+      const mcMesh = new THREE.Mesh(
+        mcGeo,
+        i % 4 === 0
+          ? roseMat
+          : i % 4 === 1
+            ? amethystMat
+            : i % 4 === 2
+              ? darkCrystalMat
+              : crystalMat,
+      );
+      mcMesh.position.set(
+        Math.cos(mcAngle) * mcR,
+        1.7 + Math.random() * 1.4,
+        Math.sin(mcAngle) * mcR,
+      );
+      mcMesh.rotation.set(
+        Math.random() * Math.PI,
+        Math.random() * Math.PI,
+        Math.random() * Math.PI,
+      );
+      this._body.add(mcMesh);
+    }
+
+    // ---- Energy discharge arcs between crystal formations ----
+    for (let i = 0; i < 5; i++) {
+      const arcStartY = 2.0 + Math.random() * 0.8;
+      const arcGeo = cyl(
+        0.003,
+        0.002,
+        0.2 + Math.random() * 0.15,
+        4,
+      );
+      const arc = new THREE.Mesh(
+        arcGeo,
+        mat(0xaaddff, {
+          emissive: 0x88ccff,
+          emissiveIntensity: 2.0,
+          transparent: true,
+          opacity: 0.5,
+        }),
+      );
+      arc.position.set(
+        (Math.random() - 0.5) * 0.4,
+        arcStartY,
+        (Math.random() - 0.5) * 0.3,
+      );
+      arc.rotation.set(Math.random() * Math.PI, 0, Math.random() * Math.PI);
+      this._body.add(arc);
+    }
+
+    // ---- Crystal powder / dust halo around base ----
+    for (let i = 0; i < 10; i++) {
+      const powderAngle = (i / 10) * Math.PI * 2;
+      const powderR = 0.3 + Math.random() * 0.25;
+      const powderGeo = new THREE.SphereGeometry(
+        0.008 + Math.random() * 0.008,
+        6,
+        4,
+      );
+      const powder = new THREE.Mesh(
+        powderGeo,
+        mat(0xbbccee, { transparent: true, opacity: 0.2 }),
+      );
+      powder.position.set(
+        Math.cos(powderAngle) * powderR,
+        0.3 + Math.random() * 0.3,
+        Math.sin(powderAngle) * powderR,
+      );
+      this._body.add(powder);
+    }
+
+    // ---- Shin crystal cluster growths ----
+    for (const side of [-1, 1]) {
+      const cgShinLeg =
+        side === -1 ? this._leftLeg : this._rightLeg;
+      for (let sc = 0; sc < 3; sc++) {
+        const shinCrystalGeo = new THREE.ConeGeometry(
+          0.018 + Math.random() * 0.01,
+          0.06 + Math.random() * 0.04,
+          5,
+        );
+        const shinCrystal = new THREE.Mesh(
+          shinCrystalGeo,
+          sc % 2 === 0 ? amethystMat : crystalMat,
+        );
+        shinCrystal.position.set(
+          side * 0.05,
+          -0.8 - sc * 0.08,
+          0.07 + sc * 0.01,
+        );
+        shinCrystal.rotation.z = side * (0.2 + sc * 0.1);
+        cgShinLeg.add(shinCrystal);
+      }
+    }
   }
 
   // ---- Iron Colossus builder -------------------------------------------------
@@ -23765,6 +26380,358 @@ export class CreatureMesh {
       const a = (i / 3) * Math.PI * 2;
       sw.position.set(Math.cos(a) * 0.4, 4.9 + Math.sin(a) * 0.2, Math.sin(a) * 0.3);
       this._body.add(sw);
+    }
+
+    // ======== ENHANCED BONE COLOSSUS DETAIL ========
+
+    // --- Bone weathering patches — darker discoloration on major bones ---
+    const weatheredMat = boneMaterial(0x998860, { roughness: 0.75 });
+    const crackedMat = boneMaterial(0x887750, { roughness: 0.85 });
+    for (let i = 0; i < 8; i++) {
+      const patchGeo = new THREE.SphereGeometry(0.06 + Math.random() * 0.04, 10, 8);
+      const patch = new THREE.Mesh(patchGeo, weatheredMat);
+      patch.scale.set(1.5, 0.3, 1.2);
+      const angle = (i / 8) * Math.PI * 2;
+      patch.position.set(
+        Math.cos(angle) * 0.35,
+        2.8 + i * 0.25,
+        Math.sin(angle) * 0.3,
+      );
+      this._body.add(patch);
+    }
+
+    // --- Bone cracks — thin dark lines running along major bones ---
+    for (let i = 0; i < 12; i++) {
+      const crackGeo = new THREE.BoxGeometry(0.005, 0.12 + Math.random() * 0.08, 0.003);
+      const crack = new THREE.Mesh(crackGeo, cavityMat);
+      const ca = Math.random() * Math.PI * 2;
+      crack.position.set(
+        Math.cos(ca) * (0.25 + Math.random() * 0.2),
+        2.6 + Math.random() * 2.5,
+        Math.sin(ca) * (0.2 + Math.random() * 0.15),
+      );
+      crack.rotation.z = (Math.random() - 0.5) * 0.8;
+      crack.rotation.y = Math.random() * Math.PI;
+      this._body.add(crack);
+    }
+
+    // --- Bone dust particle cloud around feet ---
+    const bcDustMat = mat(0xccbb99, { transparent: true, opacity: 0.15, emissive: 0x332200, emissiveIntensity: 0.2 });
+    for (let i = 0; i < 20; i++) {
+      const dustGeo = new THREE.SphereGeometry(0.02 + Math.random() * 0.03, 6, 6);
+      const dustP = new THREE.Mesh(dustGeo, bcDustMat);
+      const da = Math.random() * Math.PI * 2;
+      const dr = 0.3 + Math.random() * 0.8;
+      dustP.position.set(Math.cos(da) * dr, 0.05 + Math.random() * 0.6, Math.sin(da) * dr);
+      this._body.add(dustP);
+    }
+
+    // --- Scapulae (shoulder blades) — flat triangular bone plates ---
+    for (const side of [-1, 1]) {
+      const scapGeo = new THREE.BoxGeometry(0.25, 0.3, 0.03);
+      const scap = new THREE.Mesh(scapGeo, boneMat);
+      scap.position.set(side * 0.45, 4.0, -0.35);
+      scap.rotation.y = side * 0.2;
+      scap.rotation.z = side * -0.15;
+      this._body.add(scap);
+
+      // Scapular spine ridge
+      const scapRidgeGeo = new THREE.BoxGeometry(0.2, 0.025, 0.04);
+      const scapRidge = new THREE.Mesh(scapRidgeGeo, darkBoneMat);
+      scapRidge.position.set(side * 0.45, 4.1, -0.38);
+      scapRidge.rotation.y = side * 0.2;
+      this._body.add(scapRidge);
+
+      // Acromion process (protruding tip)
+      const acromGeo = new THREE.ConeGeometry(0.025, 0.08, 6);
+      const acrom = new THREE.Mesh(acromGeo, wornBoneMat);
+      acrom.position.set(side * 0.6, 4.15, -0.3);
+      acrom.rotation.z = side * -0.6;
+      this._body.add(acrom);
+    }
+
+    // --- Clavicles (collar bones) — curved rods across upper chest ---
+    for (const side of [-1, 1]) {
+      const clavGeo = cyl(0.025, 0.02, 0.35, 10);
+      const clav = new THREE.Mesh(clavGeo, boneMat);
+      clav.position.set(side * 0.22, 4.3, 0.15);
+      clav.rotation.z = side * 0.8;
+      clav.rotation.x = 0.15;
+      this._body.add(clav);
+    }
+
+    // --- Sternum (breastbone) — flat vertical plate ---
+    const bcSternumGeo = new THREE.BoxGeometry(0.06, 0.45, 0.025);
+    const bcSternum = new THREE.Mesh(bcSternumGeo, wornBoneMat);
+    bcSternum.position.set(0, 3.8, 0.38);
+    this._body.add(bcSternum);
+
+    // Xiphoid process (small pointed tip at bottom of sternum)
+    const bcXiphGeo = new THREE.ConeGeometry(0.015, 0.06, 6);
+    const bcXiph = new THREE.Mesh(bcXiphGeo, darkBoneMat);
+    bcXiph.position.set(0, 3.5, 0.38);
+    bcXiph.rotation.x = Math.PI;
+    this._body.add(bcXiph);
+
+    // --- Sacrum and coccyx (lower spine base) ---
+    const bcSacrumGeo = new THREE.SphereGeometry(0.1, 10, 8);
+    const bcSacrum = new THREE.Mesh(bcSacrumGeo, darkBoneMat);
+    bcSacrum.scale.set(1.2, 0.5, 0.8);
+    bcSacrum.position.set(0, 2.35, -0.35);
+    this._body.add(bcSacrum);
+
+    const bcCoccyxGeo = new THREE.ConeGeometry(0.03, 0.1, 6);
+    const bcCoccyx = new THREE.Mesh(bcCoccyxGeo, wornBoneMat);
+    bcCoccyx.position.set(0, 2.2, -0.38);
+    bcCoccyx.rotation.x = Math.PI;
+    this._body.add(bcCoccyx);
+
+    // --- Green necromantic runes etched into bones ---
+    const bcRuneMat = mat(0x33ff33, { emissive: 0x22cc22, emissiveIntensity: 3.0, transparent: true, opacity: 0.7 });
+    for (let i = 0; i < 6; i++) {
+      const runeGeo = new THREE.BoxGeometry(0.08 + Math.random() * 0.05, 0.008, 0.005);
+      const bcRune = new THREE.Mesh(runeGeo, bcRuneMat);
+      const ra = (i / 6) * Math.PI * 2;
+      bcRune.position.set(Math.cos(ra) * 0.38, 3.0 + i * 0.3, Math.sin(ra) * 0.32);
+      bcRune.rotation.y = ra;
+      this._body.add(bcRune);
+
+      // Vertical rune connector
+      const runeVGeo = new THREE.BoxGeometry(0.005, 0.06, 0.005);
+      const runeV = new THREE.Mesh(runeVGeo, bcRuneMat);
+      runeV.position.set(Math.cos(ra) * 0.38, 3.0 + i * 0.3 + 0.03, Math.sin(ra) * 0.32);
+      runeV.rotation.y = ra;
+      this._body.add(runeV);
+    }
+
+    // --- Floating bone shards orbiting the colossus ---
+    for (let i = 0; i < 8; i++) {
+      const shardGeo = new THREE.ConeGeometry(0.015 + Math.random() * 0.01, 0.08 + Math.random() * 0.06, 5);
+      const shardMesh = new THREE.Mesh(shardGeo, i % 2 === 0 ? boneMat : wornBoneMat);
+      const sa = (i / 8) * Math.PI * 2;
+      const sr = 0.8 + Math.random() * 0.3;
+      shardMesh.position.set(Math.cos(sa) * sr, 2.5 + Math.random() * 3.0, Math.sin(sa) * sr);
+      shardMesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+      this._body.add(shardMesh);
+    }
+
+    // --- Intervertebral discs between vertebrae ---
+    for (let i = 0; i < 9; i++) {
+      const discGeo = cyl(0.07, 0.07, 0.02, 10);
+      const discMesh = new THREE.Mesh(discGeo, mat(0x556644, { transparent: true, opacity: 0.3, emissive: 0x224411, emissiveIntensity: 0.5 }));
+      discMesh.position.set(0, 2.71 + i * 0.22, -0.38);
+      this._body.add(discMesh);
+    }
+
+    // --- Ossified tendons connecting ribs to spine ---
+    for (let i = 0; i < 6; i++) {
+      for (const side of [-1, 1]) {
+        const bcTendonGeo = cyl(0.008, 0.006, 0.2, 6);
+        const bcTendon = new THREE.Mesh(bcTendonGeo, crackedMat);
+        bcTendon.position.set(side * 0.08, 3.0 + i * 0.28, -0.3);
+        bcTendon.rotation.z = side * 0.6;
+        bcTendon.rotation.x = 0.15;
+        this._body.add(bcTendon);
+      }
+    }
+
+    // --- Skull suture lines — dark grooves on cranium ---
+    for (let i = 0; i < 5; i++) {
+      const sutureGeo = new THREE.BoxGeometry(0.004, 0.003, 0.15);
+      const sutureMesh = new THREE.Mesh(sutureGeo, cavityMat);
+      const sutureAngle = -0.4 + i * 0.2;
+      sutureMesh.position.set(Math.sin(sutureAngle) * 0.28, 4.9, Math.cos(sutureAngle) * 0.22);
+      sutureMesh.rotation.y = sutureAngle;
+      this._body.add(sutureMesh);
+    }
+
+    // --- Tooth-like projections on the jawbone ---
+    for (let t = 0; t < 8; t++) {
+      const bcToothGeo = new THREE.ConeGeometry(0.012, 0.04 + Math.random() * 0.02, 5);
+      const bcTooth = new THREE.Mesh(bcToothGeo, boneMat);
+      const ta = -0.6 + (t / 7) * 1.2;
+      bcTooth.position.set(Math.sin(ta) * 0.2, 4.45, Math.cos(ta) * 0.18 + 0.1);
+      bcTooth.rotation.x = Math.PI;
+      this._body.add(bcTooth);
+    }
+
+    // --- Pelvic bone structure (iliac crests) ---
+    for (const side of [-1, 1]) {
+      const iliacGeo = new THREE.SphereGeometry(0.15, 10, 8);
+      const iliac = new THREE.Mesh(iliacGeo, boneMat);
+      iliac.scale.set(1.0, 0.4, 0.6);
+      iliac.position.set(side * 0.3, 2.4, -0.1);
+      this._body.add(iliac);
+
+      const bcCrestGeo = new THREE.BoxGeometry(0.18, 0.02, 0.06);
+      const bcCrest = new THREE.Mesh(bcCrestGeo, darkBoneMat);
+      bcCrest.position.set(side * 0.32, 2.5, -0.1);
+      bcCrest.rotation.z = side * 0.3;
+      this._body.add(bcCrest);
+
+      const ischGeo = new THREE.SphereGeometry(0.06, 8, 6);
+      const isch = new THREE.Mesh(ischGeo, wornBoneMat);
+      isch.position.set(side * 0.2, 2.15, -0.05);
+      this._body.add(isch);
+    }
+
+    // --- Pubic symphysis ---
+    const bcPubicGeo = new THREE.BoxGeometry(0.06, 0.04, 0.04);
+    const bcPubic = new THREE.Mesh(bcPubicGeo, darkBoneMat);
+    bcPubic.position.set(0, 2.2, 0.1);
+    this._body.add(bcPubic);
+
+    // --- Floating green soul orbs trapped inside ribcage ---
+    for (let i = 0; i < 5; i++) {
+      const orbGeo = new THREE.SphereGeometry(0.03 + Math.random() * 0.02, 8, 8);
+      const orbMesh = new THREE.Mesh(orbGeo, mat(0x55ff55, {
+        emissive: 0x33dd33, emissiveIntensity: 2.5,
+        transparent: true, opacity: 0.5 + Math.random() * 0.3,
+      }));
+      orbMesh.position.set((Math.random() - 0.5) * 0.4, 3.2 + Math.random() * 1.0, (Math.random() - 0.5) * 0.3);
+      this._body.add(orbMesh);
+    }
+
+    // --- Bone spurs / osteophytes growing on joint surfaces ---
+    for (let i = 0; i < 10; i++) {
+      const spurGeo = new THREE.ConeGeometry(0.008 + Math.random() * 0.008, 0.04 + Math.random() * 0.04, 5);
+      const spurMesh = new THREE.Mesh(spurGeo, wornBoneMat);
+      const spa = Math.random() * Math.PI * 2;
+      spurMesh.position.set(
+        Math.cos(spa) * (0.3 + Math.random() * 0.15),
+        2.5 + Math.random() * 2.5,
+        Math.sin(spa) * (0.25 + Math.random() * 0.12),
+      );
+      spurMesh.rotation.set(Math.random() * 0.5, spa, Math.random() * 0.5);
+      this._body.add(spurMesh);
+    }
+
+    // --- Calcified cartilage rings on the trachea area ---
+    for (let i = 0; i < 4; i++) {
+      const cartGeo = new THREE.TorusGeometry(0.04 - i * 0.003, 0.008, 6, 12);
+      const cartMesh = new THREE.Mesh(cartGeo, wornBoneMat);
+      cartMesh.position.set(0, 4.55 + i * 0.06, 0.08);
+      cartMesh.rotation.x = Math.PI / 2;
+      this._body.add(cartMesh);
+    }
+
+    // --- Necromantic chain bindings wrapped around limbs ---
+    const bcChainMat = mat(0x333333, { metalness: 0.6, roughness: 0.35, emissive: 0x112211, emissiveIntensity: 0.3 });
+    for (const side of [-1, 1]) {
+      for (let i = 0; i < 3; i++) {
+        const chainRingGeo = new THREE.TorusGeometry(0.07, 0.008, 6, 12);
+        const chainRing = new THREE.Mesh(chainRingGeo, bcChainMat);
+        chainRing.position.set(side * 0.65, 3.8 - i * 0.12, 0);
+        chainRing.rotation.x = Math.PI / 2;
+        chainRing.rotation.z = i * 0.15;
+        this._body.add(chainRing);
+      }
+    }
+
+    // --- Dangling chain links ---
+    for (const side of [-1, 1]) {
+      for (let i = 0; i < 4; i++) {
+        const linkGeo = new THREE.TorusGeometry(0.015, 0.004, 6, 8);
+        const linkMesh = new THREE.Mesh(linkGeo, bcChainMat);
+        linkMesh.position.set(side * 0.65 + (Math.random() - 0.5) * 0.05, 3.5 - i * 0.06, (Math.random() - 0.5) * 0.05);
+        linkMesh.rotation.x = Math.PI / 2 + (Math.random() - 0.5) * 0.3;
+        this._body.add(linkMesh);
+      }
+    }
+
+    // --- Marrow glow visible through bone cavities ---
+    const bcMarrowMat = mat(0x88ff88, { emissive: 0x44cc44, emissiveIntensity: 1.5, transparent: true, opacity: 0.25 });
+    for (let i = 0; i < 6; i++) {
+      const marrowGeo = cyl(0.02, 0.02, 0.15, 6);
+      const marrowMesh = new THREE.Mesh(marrowGeo, bcMarrowMat);
+      const mAngle = Math.random() * Math.PI * 2;
+      marrowMesh.position.set(Math.cos(mAngle) * 0.15, 2.6 + i * 0.4, Math.sin(mAngle) * 0.12);
+      marrowMesh.rotation.z = (Math.random() - 0.5) * 0.4;
+      this._body.add(marrowMesh);
+    }
+
+    // --- Zygomatic arches (cheekbones) on the skull ---
+    for (const side of [-1, 1]) {
+      const zygGeo = new THREE.BoxGeometry(0.12, 0.025, 0.035);
+      const zyg = new THREE.Mesh(zygGeo, boneMat);
+      zyg.position.set(side * 0.2, 4.75, 0.15);
+      zyg.rotation.y = side * 0.4;
+      this._body.add(zyg);
+    }
+
+    // --- Supraorbital ridge (brow bone) ---
+    const bcBrowGeo = new THREE.BoxGeometry(0.25, 0.03, 0.04);
+    const bcBrow = new THREE.Mesh(bcBrowGeo, darkBoneMat);
+    bcBrow.position.set(0, 4.85, 0.2);
+    this._body.add(bcBrow);
+
+    // --- Nasal bone / cavity ---
+    const bcNasalGeo = new THREE.ConeGeometry(0.025, 0.06, 4);
+    const bcNasal = new THREE.Mesh(bcNasalGeo, boneMat);
+    bcNasal.position.set(0, 4.7, 0.25);
+    bcNasal.rotation.x = Math.PI;
+    this._body.add(bcNasal);
+
+    const bcNasalCavGeo = new THREE.SphereGeometry(0.02, 6, 6);
+    const bcNasalCav = new THREE.Mesh(bcNasalCavGeo, cavityMat);
+    bcNasalCav.position.set(0, 4.68, 0.26);
+    this._body.add(bcNasalCav);
+
+    // --- Temporal fossae (depressions on skull sides) ---
+    for (const side of [-1, 1]) {
+      const tempFossaGeo = new THREE.SphereGeometry(0.06, 8, 6);
+      const tempFossa = new THREE.Mesh(tempFossaGeo, cavityMat);
+      tempFossa.scale.set(0.5, 1.0, 0.4);
+      tempFossa.position.set(side * 0.25, 4.82, 0.02);
+      this._body.add(tempFossa);
+    }
+
+    // --- Patellae (kneecaps) ---
+    for (const side of [-1, 1]) {
+      const patGeo = new THREE.SphereGeometry(0.04, 8, 8);
+      const patMesh = new THREE.Mesh(patGeo, boneMat);
+      patMesh.position.set(side * 0.25, 1.6, 0.15);
+      patMesh.scale.set(0.8, 1.0, 0.5);
+      this._body.add(patMesh);
+    }
+
+    // --- Calcaneus (heel bones) ---
+    for (const side of [-1, 1]) {
+      const heelGeo = new THREE.SphereGeometry(0.04, 8, 6);
+      const heelMesh = new THREE.Mesh(heelGeo, wornBoneMat);
+      heelMesh.position.set(side * 0.25, 0.04, -0.12);
+      heelMesh.scale.set(0.8, 0.6, 1.2);
+      this._body.add(heelMesh);
+    }
+
+    // --- Green necromantic aura ground circle ---
+    const bcAuraGeo = new THREE.RingGeometry(0.6, 1.2, 24, 1);
+    const bcAuraMat = mat(0x44ff44, { emissive: 0x22bb22, emissiveIntensity: 1.5, transparent: true, opacity: 0.12, side: THREE.DoubleSide });
+    const bcAura = new THREE.Mesh(bcAuraGeo, bcAuraMat);
+    bcAura.position.set(0, 0.02, 0);
+    bcAura.rotation.x = -Math.PI / 2;
+    this._body.add(bcAura);
+
+    // --- Ulna / radius bone detail on forearms ---
+    for (const side of [-1, 1]) {
+      const ulnaGeo = cyl(0.02, 0.015, 0.35, 8);
+      const ulnaMesh = new THREE.Mesh(ulnaGeo, boneMat);
+      ulnaMesh.position.set(side * 0.75, 3.0, 0.05);
+      ulnaMesh.rotation.z = side * 0.2;
+      this._body.add(ulnaMesh);
+
+      const radiusGeo = cyl(0.018, 0.013, 0.33, 8);
+      const radiusMesh = new THREE.Mesh(radiusGeo, wornBoneMat);
+      radiusMesh.position.set(side * 0.78, 3.0, 0.1);
+      radiusMesh.rotation.z = side * 0.25;
+      this._body.add(radiusMesh);
+
+      // Olecranon (elbow point)
+      const olecGeo = new THREE.ConeGeometry(0.02, 0.05, 6);
+      const olecMesh = new THREE.Mesh(olecGeo, darkBoneMat);
+      olecMesh.position.set(side * 0.68, 3.2, -0.05);
+      olecMesh.rotation.x = -0.3;
+      this._body.add(olecMesh);
     }
   }
 

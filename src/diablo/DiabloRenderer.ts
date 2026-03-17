@@ -13262,14 +13262,12 @@ export class DiabloRenderer {
           const side = i < 4 ? -1 : 1;  // left/right
           const pairIdx = i < 4 ? i : i - 4; // 0..3 per side
           const forwardOffset = (pairIdx - 1.5) * 0.14; // spread front-to-back
-          const angle = side < 0 ? Math.PI + pairIdx * 0.22 - 0.33 : -pairIdx * 0.22 + 0.33;
 
           const spiderLegGroup = new THREE.Group();
           spiderLegGroup.name = 'anim_leg_' + i;
           // Root at cephalothorax side
           spiderLegGroup.position.set(side * 0.24, 0.5, forwardOffset);
 
-          const outX = side * 1.0;
           const spreadZ = (pairIdx - 1.5) * 0.18;
 
           // COXA — short thick base segment
@@ -14058,9 +14056,7 @@ export class DiabloRenderer {
         const shadowMat = new THREE.MeshStandardMaterial({
           color: 0x1a0a2a, transparent: true, opacity: 0.72, roughness: 0.5,
         });
-        const shadowOuterMat = new THREE.MeshStandardMaterial({
-          color: 0x120820, transparent: true, opacity: 0.45, roughness: 0.6,
-        });
+
         const shadowDarkMat = new THREE.MeshStandardMaterial({
           color: 0x0d0518, transparent: true, opacity: 0.85, roughness: 0.5,
         });
@@ -14110,7 +14106,7 @@ export class DiabloRenderer {
           [-0.04, 1.80, -0.04,0.35, shadowMat],
         ];
         for (const bs of bodySpheresInner) {
-          const bSphere = new THREE.Mesh(new THREE.SphereGeometry(bs[3], 32, 24), bs[4]);
+          const bSphere = new THREE.Mesh(new THREE.SphereGeometry(bs[3] as number, 32, 24), bs[4] as THREE.MeshStandardMaterial);
           bSphere.position.set(bs[0] as number, bs[1] as number, bs[2] as number);
           sbHover.add(bSphere);
         }
@@ -14947,7 +14943,6 @@ export class DiabloRenderer {
         const robeMat = new THREE.MeshStandardMaterial({ color: 0x1a0a2a, roughness: 0.8 });
         const robeOuterMat = new THREE.MeshStandardMaterial({ color: 0x120718, roughness: 0.85 });
         const robeTrimMat = new THREE.MeshStandardMaterial({ color: 0x2a0a3a, roughness: 0.75 });
-        const skinMat = new THREE.MeshStandardMaterial({ color: 0x998877, roughness: 0.6 });
         const skinGauntMat = new THREE.MeshStandardMaterial({ color: 0x7a6a5a, roughness: 0.65 });
         const boneMat = new THREE.MeshStandardMaterial({ color: 0xe8e0d0, roughness: 0.7 });
         const staffWoodMat = new THREE.MeshStandardMaterial({ color: 0x3a2a1a, roughness: 0.9 });
@@ -16624,7 +16619,6 @@ export class DiabloRenderer {
         const segRadii = [0.16, 0.155, 0.155, 0.15, 0.148, 0.145, 0.14, 0.135, 0.13, 0.122, 0.112, 0.098, 0.082, 0.065];
         // S-curve positions: amplitude on X varies with depth along body
         for (let s = 0; s < segCount; s++) {
-          const t = s / (segCount - 1);
           const sx = Math.sin(s * 0.72 + 0.3) * 0.28;
           const sy = 0.22 + Math.sin(s * 0.45) * 0.14;
           const sz = -s * 0.22;
@@ -20420,127 +20414,417 @@ export class DiabloRenderer {
       }
 
       case EnemyType.SAND_GOLEM: {
-        // --- SAND_GOLEM | Estimated polygons: ~115284 triangles ---
+        // --- SAND_GOLEM | Estimated polygons: ~185000 triangles ---
         const sandMat = new THREE.MeshStandardMaterial({ color: 0xb8a070, roughness: 0.9 });
         const sandDarkMat = new THREE.MeshStandardMaterial({ color: 0x8a7050, roughness: 0.95 });
+        const sandLightMat = new THREE.MeshStandardMaterial({ color: 0xd4bc8a, roughness: 0.85 });
         const crystalMat = new THREE.MeshStandardMaterial({ color: 0xffcc44, emissive: 0xffaa00, emissiveIntensity: 0.6, metalness: 0.3 });
         const crystalBrightMat = new THREE.MeshStandardMaterial({ color: 0xffee88, emissive: 0xffcc22, emissiveIntensity: 1.0, transparent: true, opacity: 0.8 });
         const crackedMat = new THREE.MeshStandardMaterial({ color: 0x665530, roughness: 1.0 });
-        // Massive torso (layered rock slabs)
+        const runeMat = new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xd4a800, emissiveIntensity: 0.9, metalness: 0.6 });
+        const goldenArtifactMat = new THREE.MeshStandardMaterial({ color: 0xffc000, emissive: 0xff9900, emissiveIntensity: 1.2, metalness: 0.8, roughness: 0.2 });
+        const sandFlowMat = new THREE.MeshStandardMaterial({ color: 0xc8a860, transparent: true, opacity: 0.55, roughness: 0.8 });
+        const coreMat = new THREE.MeshStandardMaterial({ color: 0xff8800, emissive: 0xff6600, emissiveIntensity: 1.5, transparent: true, opacity: 0.9 });
+        const sandCloudMat = new THREE.MeshStandardMaterial({ color: 0xd4b870, transparent: true, opacity: 0.25, roughness: 1.0 });
+        // ── TORSO ─────────────────────────────────────────────────────────────
         const sgTorso = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.9, 0.55), sandMat);
         sgTorso.position.y = 1.25;
         sgTorso.castShadow = true;
         group.add(sgTorso);
-        // Rock slab layers on torso
-        for (let sl = 0; sl < 3; sl++) {
-          const slab = new THREE.Mesh(new THREE.BoxGeometry(0.78 - sl * 0.04, 0.08, 0.58 - sl * 0.03), sandDarkMat);
-          slab.position.set(0, 0.95 + sl * 0.3, 0);
-          slab.rotation.y = sl * 0.1;
+        // Enhanced rock slab layers (6–8 layers with rotational variation)
+        const slabConfigs = [
+          { y: 0.88, w: 0.80, h: 0.09, d: 0.60, ry: 0.00 },
+          { y: 1.00, w: 0.77, h: 0.08, d: 0.57, ry: 0.07 },
+          { y: 1.12, w: 0.79, h: 0.09, d: 0.58, ry: -0.05 },
+          { y: 1.24, w: 0.76, h: 0.08, d: 0.56, ry: 0.10 },
+          { y: 1.36, w: 0.78, h: 0.09, d: 0.57, ry: -0.08 },
+          { y: 1.48, w: 0.74, h: 0.08, d: 0.55, ry: 0.06 },
+          { y: 1.60, w: 0.72, h: 0.07, d: 0.53, ry: -0.04 },
+          { y: 1.70, w: 0.70, h: 0.07, d: 0.51, ry: 0.09 },
+        ];
+        for (const sc of slabConfigs) {
+          const slab = new THREE.Mesh(new THREE.BoxGeometry(sc.w, sc.h, sc.d), sandDarkMat);
+          slab.position.set(0, sc.y, 0);
+          slab.rotation.y = sc.ry;
           group.add(slab);
         }
-        // Cracks running through body (glowing energy lines)
-        for (let c = 0; c < 5; c++) {
-          const crack = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.25 + Math.random() * 0.2, 0.015), crystalBrightMat);
-          crack.position.set((Math.random() - 0.5) * 0.5, 1.0 + Math.random() * 0.5, (Math.random() - 0.5) * 0.35);
-          crack.rotation.z = (Math.random() - 0.5) * 0.4;
-          group.add(crack);
+        // Sand flowing between slab cracks (thin sand-coloured cylinders)
+        for (let sf = 0; sf < 8; sf++) {
+          const sandFlow = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.12, 8), sandFlowMat);
+          sandFlow.position.set(
+            (Math.random() - 0.5) * 0.55,
+            0.94 + sf * 0.1,
+            (Math.random() - 0.5) * 0.38
+          );
+          group.add(sandFlow);
         }
-        // Head (rough-hewn boulder)
+        // Ancient hieroglyphic rune marks on torso surface (8–10 small emissive golden boxes)
+        const runePositions = [
+          [-0.22, 1.15, 0.28], [0.18, 1.22, 0.28], [-0.10, 1.38, 0.28],
+          [0.28, 1.44, 0.28], [-0.28, 1.52, 0.28], [0.08, 1.58, 0.28],
+          [-0.18, 1.65, 0.28], [0.22, 1.30, 0.28], [0.00, 1.08, 0.28], [-0.06, 1.72, 0.28],
+        ] as const;
+        for (const [rx, ry, rz] of runePositions) {
+          const rune = new THREE.Mesh(new THREE.BoxGeometry(0.028, 0.028, 0.008), runeMat);
+          rune.position.set(rx, ry, rz);
+          group.add(rune);
+        }
+        // Glowing energy core visible through the largest chest crack
+        const energyCore = new THREE.Mesh(new THREE.SphereGeometry(0.09, 32, 24), coreMat);
+        energyCore.position.set(0, 1.28, 0.0);
+        group.add(energyCore);
+        // Ancient golden artifact embedded in chest
+        const artifact = new THREE.Mesh(new THREE.OctahedronGeometry(0.065, 2), goldenArtifactMat);
+        artifact.position.set(0.05, 1.22, 0.22);
+        artifact.rotation.y = 0.4;
+        group.add(artifact);
+        // ── ENERGY CRACKS (10–12, some branching Y-shapes) ───────────────────
+        const crackDefs = [
+          { x: -0.22, y: 1.05, z:  0.28, h: 0.30, rz:  0.15, branch: true  },
+          { x:  0.18, y: 1.18, z:  0.28, h: 0.28, rz: -0.20, branch: false },
+          { x: -0.08, y: 1.35, z:  0.28, h: 0.35, rz:  0.08, branch: true  },
+          { x:  0.28, y: 1.40, z:  0.28, h: 0.26, rz: -0.10, branch: false },
+          { x: -0.30, y: 1.55, z:  0.28, h: 0.29, rz:  0.22, branch: false },
+          { x:  0.05, y: 1.60, z:  0.28, h: 0.32, rz: -0.05, branch: true  },
+          { x: -0.18, y: 1.20, z: -0.28, h: 0.27, rz:  0.18, branch: false },
+          { x:  0.22, y: 1.10, z: -0.28, h: 0.31, rz: -0.12, branch: true  },
+          { x:  0.12, y: 1.48, z:  0.20, h: 0.25, rz:  0.30, branch: false },
+          { x: -0.10, y: 0.98, z:  0.10, h: 0.22, rz: -0.25, branch: false },
+          { x:  0.30, y: 1.62, z:  0.10, h: 0.28, rz:  0.05, branch: true  },
+          { x: -0.25, y: 1.70, z: -0.15, h: 0.20, rz:  0.14, branch: false },
+        ];
+        for (const cd of crackDefs) {
+          const crack = new THREE.Mesh(new THREE.BoxGeometry(0.014, cd.h, 0.014), crystalBrightMat);
+          crack.position.set(cd.x, cd.y, cd.z);
+          crack.rotation.z = cd.rz;
+          group.add(crack);
+          if (cd.branch) {
+            // Y-branch A
+            const branchA = new THREE.Mesh(new THREE.BoxGeometry(0.010, cd.h * 0.5, 0.010), crystalBrightMat);
+            branchA.position.set(cd.x + 0.04, cd.y + cd.h * 0.3, cd.z);
+            branchA.rotation.z = cd.rz + 0.45;
+            group.add(branchA);
+            // Y-branch B
+            const branchB = new THREE.Mesh(new THREE.BoxGeometry(0.010, cd.h * 0.5, 0.010), crystalBrightMat);
+            branchB.position.set(cd.x - 0.04, cd.y + cd.h * 0.3, cd.z);
+            branchB.rotation.z = cd.rz - 0.45;
+            group.add(branchB);
+          }
+        }
+        // ── HEAD ──────────────────────────────────────────────────────────────
         const sgHead = new THREE.Mesh(new THREE.DodecahedronGeometry(0.28, 4), sandMat);
         sgHead.scale.set(0.9, 0.8, 0.85);
         sgHead.position.y = 2.0;
         group.add(sgHead);
+        // Extra craggy detail blobs on head
+        const headBlobOffsets: [number, number, number, number, number][] = [
+          [-0.14, 2.14,  0.12, 0.10, 2],
+          [ 0.16, 2.12,  0.10, 0.09, 2],
+          [-0.05, 2.18, -0.08, 0.08, 2],
+          [ 0.08, 2.06, -0.14, 0.07, 2],
+          [-0.18, 1.96,  0.08, 0.08, 2],
+        ];
+        for (const [hx, hy, hz, hr, hd] of headBlobOffsets) {
+          const blob = new THREE.Mesh(new THREE.DodecahedronGeometry(hr, hd), sandDarkMat);
+          blob.position.set(hx, hy, hz);
+          group.add(blob);
+        }
         // Brow ridge
-        const brow = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.08, 0.2), sandDarkMat);
-        brow.position.set(0, 2.08, 0.12);
+        const brow = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.09, 0.22), sandDarkMat);
+        brow.position.set(0, 2.09, 0.13);
         group.add(brow);
-        // Crystal eyes (glowing octahedrons with glow halo)
-        for (const ex of [-0.1, 0.1]) {
-          const eyeGlow = new THREE.Mesh(new THREE.SphereGeometry(0.06, 62, 44), crystalBrightMat);
-          eyeGlow.position.set(ex, 2.02, 0.22);
+        // Brow rune marks
+        for (const brx of [-0.12, 0, 0.12]) {
+          const browRune = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.022, 0.006), runeMat);
+          browRune.position.set(brx, 2.10, 0.245);
+          group.add(browRune);
+        }
+        // Crystal eyes — larger, more intense glow halos
+        for (const ex of [-0.11, 0.11]) {
+          const eyeGlow = new THREE.Mesh(new THREE.SphereGeometry(0.075, 32, 24), crystalBrightMat);
+          eyeGlow.position.set(ex, 2.03, 0.22);
           group.add(eyeGlow);
-          const eye = new THREE.Mesh(new THREE.OctahedronGeometry(0.05, 4), crystalMat);
-          eye.position.set(ex, 2.02, 0.24);
+          const eye = new THREE.Mesh(new THREE.OctahedronGeometry(0.055, 4), crystalMat);
+          eye.position.set(ex, 2.03, 0.245);
           group.add(eye);
+          // Light beam cone projecting forward from each eye
+          const beam = new THREE.Mesh(new THREE.ConeGeometry(0.018, 0.18, 12), crystalBrightMat);
+          beam.position.set(ex, 2.03, 0.36);
+          beam.rotation.x = Math.PI / 2;
+          group.add(beam);
+          // Sand pouring from eye socket (thin cylinder drips)
+          for (let ed = 0; ed < 2; ed++) {
+            const eyeDrip = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.10, 8), sandFlowMat);
+            eyeDrip.position.set(ex + (ed - 0.5) * 0.025, 1.96, 0.22);
+            group.add(eyeDrip);
+          }
         }
-        // Jaw line
-        const jaw = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.06, 0.15), sandDarkMat);
-        jaw.position.set(0, 1.85, 0.1);
-        group.add(jaw);
-        // Shoulder boulders
-        for (const sx of [-0.5, 0.5]) {
-          const shoulder = new THREE.Mesh(new THREE.DodecahedronGeometry(0.18, 4), sandMat);
-          shoulder.position.set(sx, 1.7, 0);
+        // Mouth opening (dark recessed box)
+        const mouth = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.06, 0.04), crackedMat);
+        mouth.position.set(0, 1.88, 0.26);
+        group.add(mouth);
+        // Ancient runes glowing around mouth
+        for (let mr = 0; mr < 4; mr++) {
+          const mRune = new THREE.Mesh(new THREE.BoxGeometry(0.020, 0.020, 0.006), runeMat);
+          mRune.position.set((mr - 1.5) * 0.07, 1.88, 0.275);
+          group.add(mRune);
+        }
+        // Articulated jaw group
+        const sgJaw = new THREE.Group();
+        sgJaw.name = 'anim_jaw';
+        sgJaw.position.set(0, 1.83, 0.08);
+        const jawBlock = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.07, 0.16), sandDarkMat);
+        jawBlock.position.set(0, 0, 0);
+        sgJaw.add(jawBlock);
+        // Tooth-like protrusions on jaw
+        for (let t = 0; t < 5; t++) {
+          const tooth = new THREE.Mesh(new THREE.BoxGeometry(0.028, 0.04, 0.028), sandLightMat);
+          tooth.position.set(-0.10 + t * 0.05, -0.05, 0.05);
+          sgJaw.add(tooth);
+        }
+        group.add(sgJaw);
+        // ── SHOULDER BOULDERS ─────────────────────────────────────────────────
+        for (const sx of [-0.52, 0.52]) {
+          const shoulder = new THREE.Mesh(new THREE.DodecahedronGeometry(0.22, 4), sandMat);
+          shoulder.position.set(sx, 1.72, 0);
           group.add(shoulder);
-          // Small crystal shard on shoulder
-          const shard = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.12, 44), crystalMat);
-          shard.position.set(sx * 0.9, 1.85, 0);
-          shard.rotation.z = sx > 0 ? -0.3 : 0.3;
-          group.add(shard);
+          // Secondary boulder overlapping
+          const shoulder2 = new THREE.Mesh(new THREE.DodecahedronGeometry(0.13, 3), sandDarkMat);
+          shoulder2.position.set(sx * 1.1, 1.85, 0.06);
+          group.add(shoulder2);
+          // 3–4 crystal shards per shoulder
+          const shardAngles = [-0.5, 0.0, 0.5, 0.9];
+          for (let si = 0; si < 4; si++) {
+            const shard = new THREE.Mesh(new THREE.ConeGeometry(0.028, 0.13, 12), crystalMat);
+            shard.position.set(sx * (0.88 + si * 0.04), 1.83 + si * 0.04, si * 0.04 - 0.06);
+            shard.rotation.z = sx > 0 ? -0.3 - shardAngles[si] * 0.2 : 0.3 + shardAngles[si] * 0.2;
+            group.add(shard);
+          }
+          // Sand cascading off shoulder (thin cylinder drips)
+          for (let sd = 0; sd < 3; sd++) {
+            const sDrip = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.007, 0.14, 8), sandFlowMat);
+            sDrip.position.set(sx * (0.78 + sd * 0.05), 1.62 + sd * 0.02, (sd - 1) * 0.05);
+            group.add(sDrip);
+          }
+          // Small crystal clusters on shoulder
+          for (let cc = 0; cc < 3; cc++) {
+            const clust = new THREE.Mesh(new THREE.ConeGeometry(0.018, 0.07, 8), crystalBrightMat);
+            clust.position.set(sx * (0.70 + cc * 0.03), 1.68 + cc * 0.03, 0.06 - cc * 0.03);
+            clust.rotation.z = sx > 0 ? -0.6 : 0.6;
+            group.add(clust);
+          }
         }
-        // Arms (segmented rock chunks with visible joints)
-        for (const ax of [-0.55, 0.55]) {
+        // ── ARMS ──────────────────────────────────────────────────────────────
+        for (const ax of [-0.60, 0.60]) {
           const sgArmGroup = new THREE.Group();
           sgArmGroup.name = ax < 0 ? 'anim_la' : 'anim_ra';
-          sgArmGroup.position.set(ax, 1.55, 0);
-          // Upper arm
-          const upperArm = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.35, 0.16), sandMat);
-          upperArm.position.set(0, -0.2, 0);
-          upperArm.rotation.z = ax < 0 ? 0.25 : -0.25;
-          sgArmGroup.add(upperArm);
-          // Elbow joint (glowing energy)
-          const elbow = new THREE.Mesh(new THREE.SphereGeometry(0.08, 62, 44), crystalBrightMat);
-          elbow.position.set(ax * 0.1, -0.45, 0);
+          sgArmGroup.position.set(ax, 1.58, 0);
+          // Upper arm — multiple overlapping rock slabs
+          const uaSlabs: [number, number, number, number, number, number][] = [
+            [0.19, 0.36, 0.17, 0, -0.18, 0],
+            [0.14, 0.30, 0.13, ax < 0 ? 0.10 : -0.10, -0.16, 0.04],
+            [0.12, 0.26, 0.12, ax < 0 ? -0.06 : 0.06, -0.22, -0.03],
+          ];
+          for (const [sw, sh, sd, ox, oy, oz] of uaSlabs) {
+            const uaSlab = new THREE.Mesh(new THREE.BoxGeometry(sw, sh, sd), sandMat);
+            uaSlab.position.set(ox, oy, oz);
+            uaSlab.rotation.z = ax < 0 ? 0.25 : -0.25;
+            sgArmGroup.add(uaSlab);
+          }
+          // Sand joint ring between upper arm and elbow
+          const uaRing = new THREE.Mesh(new THREE.TorusGeometry(0.075, 0.012, 12, 24), sandFlowMat);
+          uaRing.position.set(ax * 0.05, -0.39, 0);
+          uaRing.rotation.x = Math.PI / 2;
+          sgArmGroup.add(uaRing);
+          // Elbow energy joint sphere
+          const elbow = new THREE.Mesh(new THREE.SphereGeometry(0.09, 32, 24), crystalBrightMat);
+          elbow.position.set(ax * 0.10, -0.46, 0);
           sgArmGroup.add(elbow);
-          // Forearm
-          const forearm = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.3, 0.14), sandDarkMat);
-          forearm.position.set(ax * 0.15, -0.67, 0);
-          forearm.rotation.z = ax < 0 ? 0.15 : -0.15;
-          sgArmGroup.add(forearm);
-          // Massive fist with knuckle detail
-          const fist = new THREE.Mesh(new THREE.DodecahedronGeometry(0.16, 4), sandMat);
-          fist.position.set(ax * 0.25, -0.95, 0);
+          // Elbow torus ring
+          const elbowTorus = new THREE.Mesh(new THREE.TorusGeometry(0.10, 0.016, 12, 24), crystalMat);
+          elbowTorus.position.set(ax * 0.10, -0.46, 0);
+          elbowTorus.rotation.x = Math.PI / 2;
+          sgArmGroup.add(elbowTorus);
+          // Small crystal clusters on elbow
+          for (let ec = 0; ec < 3; ec++) {
+            const eClust = new THREE.Mesh(new THREE.ConeGeometry(0.016, 0.06, 8), crystalMat);
+            eClust.position.set(ax * 0.10 + (ec - 1) * 0.05, -0.50, 0.08);
+            eClust.rotation.x = -0.5;
+            sgArmGroup.add(eClust);
+          }
+          // Forearm — segmented rock slabs
+          const forearmSlabDefs: [number, number, number, number][] = [
+            [0.17, 0.16, 0.15, -0.60],
+            [0.14, 0.14, 0.13, -0.72],
+          ];
+          for (const [fw, fh, fd, fy] of forearmSlabDefs) {
+            const fSlab = new THREE.Mesh(new THREE.BoxGeometry(fw, fh, fd), sandDarkMat);
+            fSlab.position.set(ax * 0.16, fy, 0);
+            fSlab.rotation.z = ax < 0 ? 0.15 : -0.15;
+            sgArmGroup.add(fSlab);
+          }
+          // Golden rune bands on forearm (thin torus rings)
+          for (let rb = 0; rb < 2; rb++) {
+            const runeBand = new THREE.Mesh(new THREE.TorusGeometry(0.072, 0.010, 10, 20), runeMat);
+            runeBand.position.set(ax * 0.16, -0.58 - rb * 0.12, 0);
+            runeBand.rotation.x = Math.PI / 2;
+            sgArmGroup.add(runeBand);
+          }
+          // Large fist
+          const fist = new THREE.Mesh(new THREE.DodecahedronGeometry(0.18, 4), sandMat);
+          fist.position.set(ax * 0.28, -0.97, 0);
           sgArmGroup.add(fist);
-          // Knuckle ridges
-          for (let k = 0; k < 3; k++) {
-            const knuckle = new THREE.Mesh(new THREE.SphereGeometry(0.04, 44, 36), sandDarkMat);
-            knuckle.position.set(ax * 0.25 + (k - 1) * 0.06, -0.9, 0.12);
-            sgArmGroup.add(knuckle);
+          // 4 blocky finger shapes
+          for (let fi = 0; fi < 4; fi++) {
+            const finger = new THREE.Mesh(new THREE.BoxGeometry(0.048, 0.09, 0.048), sandDarkMat);
+            finger.position.set(ax * 0.28 + (fi - 1.5) * 0.055, -1.07, 0.13);
+            sgArmGroup.add(finger);
+          }
+          // Crystal shards / cones protruding from knuckles
+          for (let k = 0; k < 4; k++) {
+            const knuckleCone = new THREE.Mesh(new THREE.ConeGeometry(0.018, 0.08, 10), crystalMat);
+            knuckleCone.position.set(ax * 0.28 + (k - 1.5) * 0.055, -0.94, 0.18);
+            knuckleCone.rotation.x = -0.8;
+            sgArmGroup.add(knuckleCone);
+          }
+          // Sand dripping from fists
+          for (let fd = 0; fd < 3; fd++) {
+            const fDrip = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.007, 0.13, 8), sandFlowMat);
+            fDrip.position.set(ax * 0.28 + (fd - 1) * 0.06, -1.10, 0.04);
+            sgArmGroup.add(fDrip);
           }
           group.add(sgArmGroup);
         }
-        // Legs (thick pillars with knee joints)
-        for (const lx of [-0.22, 0.22]) {
+        // ── LEGS ──────────────────────────────────────────────────────────────
+        for (const lx of [-0.23, 0.23]) {
           const sgLegGroup = new THREE.Group();
           sgLegGroup.name = lx < 0 ? 'anim_ll' : 'anim_rl';
-          sgLegGroup.position.set(lx, 0.77, 0);
-          const upperLeg = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.3, 0.16), sandMat);
-          upperLeg.position.y = -0.15;
-          sgLegGroup.add(upperLeg);
-          const knee = new THREE.Mesh(new THREE.SphereGeometry(0.09, 62, 44), crackedMat);
-          knee.position.set(0, -0.32, 0.04);
+          sgLegGroup.position.set(lx, 0.80, 0);
+          // Thigh — segmented rock slabs
+          for (let tsl = 0; tsl < 2; tsl++) {
+            const thigh = new THREE.Mesh(new THREE.BoxGeometry(0.20 - tsl * 0.03, 0.16, 0.18 - tsl * 0.02), sandMat);
+            thigh.position.set(tsl * 0.02, -0.13 - tsl * 0.10, 0);
+            sgLegGroup.add(thigh);
+          }
+          // Energy band on thigh
+          const thighBand = new THREE.Mesh(new THREE.TorusGeometry(0.085, 0.010, 10, 20), runeMat);
+          thighBand.position.set(0, -0.20, 0);
+          thighBand.rotation.x = Math.PI / 2;
+          sgLegGroup.add(thighBand);
+          // Knee energy sphere
+          const knee = new THREE.Mesh(new THREE.SphereGeometry(0.10, 32, 24), crystalBrightMat);
+          knee.position.set(0, -0.34, 0.04);
           sgLegGroup.add(knee);
-          const lowerLeg = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.28, 0.18), sandDarkMat);
-          lowerLeg.position.y = -0.52;
-          sgLegGroup.add(lowerLeg);
-          // Foot (flat rock slab)
-          const foot = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.06, 0.22), sandMat);
-          foot.position.set(0, -0.69, 0.03);
+          // Knee torus ring
+          const kneeTorus = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.014, 12, 24), crystalMat);
+          kneeTorus.position.set(0, -0.34, 0.04);
+          kneeTorus.rotation.x = Math.PI / 2;
+          sgLegGroup.add(kneeTorus);
+          // Crystal clusters on knee
+          for (let kc = 0; kc < 2; kc++) {
+            const kClust = new THREE.Mesh(new THREE.ConeGeometry(0.016, 0.06, 8), crystalMat);
+            kClust.position.set((kc - 0.5) * 0.08, -0.36, 0.12);
+            kClust.rotation.x = -0.5;
+            sgLegGroup.add(kClust);
+          }
+          // Shin — layered rock with rune markings
+          const shin = new THREE.Mesh(new THREE.BoxGeometry(0.21, 0.30, 0.19), sandDarkMat);
+          shin.position.y = -0.54;
+          sgLegGroup.add(shin);
+          const shin2 = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.22, 0.15), sandMat);
+          shin2.position.set(0.02, -0.55, 0.02);
+          sgLegGroup.add(shin2);
+          // Rune marks on shin
+          for (let sr = 0; sr < 3; sr++) {
+            const shinRune = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.022, 0.006), runeMat);
+            shinRune.position.set((sr - 1) * 0.06, -0.50 - sr * 0.06, 0.10);
+            sgLegGroup.add(shinRune);
+          }
+          // Wide foot with toe protrusions
+          const foot = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.07, 0.26), sandMat);
+          foot.position.set(0, -0.71, 0.04);
           sgLegGroup.add(foot);
+          // 3 toe-like rock protrusions at front of foot
+          for (let to = 0; to < 3; to++) {
+            const toe = new THREE.Mesh(new THREE.BoxGeometry(0.065, 0.055, 0.07), sandDarkMat);
+            toe.position.set((to - 1) * 0.085, -0.72, 0.17);
+            sgLegGroup.add(toe);
+          }
+          // Ground impact crack emissive lines radiating from foot
+          for (let cr = 0; cr < 4; cr++) {
+            const impactCrack = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.007, 0.09 + cr * 0.02), crystalBrightMat);
+            const angle = (cr / 4) * Math.PI * 2;
+            impactCrack.position.set(Math.cos(angle) * 0.14, -0.745, Math.sin(angle) * 0.10 + 0.04);
+            impactCrack.rotation.y = angle;
+            sgLegGroup.add(impactCrack);
+          }
           group.add(sgLegGroup);
         }
-        // Embedded crystals on back
-        for (let bc = 0; bc < 3; bc++) {
-          const crystal = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.18, 44), crystalMat);
-          crystal.position.set((bc - 1) * 0.18, 1.5 + bc * 0.1, -0.3);
-          crystal.rotation.x = 0.4;
-          group.add(crystal);
+        // ── BACK CRYSTALS (6–8 varying sizes) ────────────────────────────────
+        const backCrystalDefs: [number, number, number, number, number, boolean][] = [
+          [-0.28, 1.42, -0.30, 0.05, 0.22, false],
+          [-0.12, 1.58, -0.32, 0.04, 0.19, true ],
+          [ 0.00, 1.68, -0.31, 0.06, 0.26, true ],
+          [ 0.14, 1.55, -0.32, 0.04, 0.18, false],
+          [ 0.28, 1.44, -0.29, 0.05, 0.21, true ],
+          [-0.20, 1.72, -0.28, 0.035,0.15, false],
+          [ 0.20, 1.70, -0.28, 0.035,0.16, true ],
+          [ 0.06, 1.30, -0.30, 0.045,0.17, false],
+        ];
+        for (const [bx, by, bz, br, bh, glow] of backCrystalDefs) {
+          const bCryst = new THREE.Mesh(new THREE.ConeGeometry(br, bh, 16), glow ? crystalBrightMat : crystalMat);
+          bCryst.position.set(bx, by, bz);
+          bCryst.rotation.x = 0.4;
+          group.add(bCryst);
         }
-        // Falling sand particles
-        for (let fp = 0; fp < 4; fp++) {
-          const particle = new THREE.Mesh(new THREE.SphereGeometry(0.015, 44, 36), new THREE.MeshStandardMaterial({ color: 0xc8a870, transparent: true, opacity: 0.4 }));
-          particle.position.set((Math.random() - 0.5) * 0.6, 0.3 + Math.random() * 0.8, (Math.random() - 0.5) * 0.4);
+        // ── SAND WATERFALL — continuous stream from back crack ────────────────
+        for (let sw = 0; sw < 7; sw++) {
+          const streamSeg = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.22, 8), sandFlowMat);
+          streamSeg.position.set(-0.04 + (sw % 2) * 0.04, 1.70 - sw * 0.22, -0.34);
+          group.add(streamSeg);
+        }
+        // ── ORBITING ROCK DEBRIS ──────────────────────────────────────────────
+        const orbitAngles = [0, 1.05, 2.09, 3.14, 4.19, 5.24];
+        for (let od = 0; od < 6; od++) {
+          const orbitR = 0.62 + (od % 2) * 0.12;
+          const orbitY = 1.10 + od * 0.14;
+          const debris = new THREE.Mesh(new THREE.DodecahedronGeometry(0.045 + (od % 3) * 0.015, 1), sandDarkMat);
+          debris.position.set(Math.cos(orbitAngles[od]) * orbitR, orbitY, Math.sin(orbitAngles[od]) * orbitR);
+          group.add(debris);
+        }
+        // ── SAND CLOUD AT FEET (4–5 flat transparent spheres) ────────────────
+        for (let sc = 0; sc < 5; sc++) {
+          const cloudSphere = new THREE.Mesh(new THREE.SphereGeometry(0.14 + sc * 0.04, 16, 12), sandCloudMat);
+          cloudSphere.scale.set(1, 0.28, 1);
+          cloudSphere.position.set(
+            (sc - 2) * 0.16,
+            0.04,
+            (sc % 2) * 0.12 - 0.08
+          );
+          group.add(cloudSphere);
+        }
+        // ── FLOATING SAND PARTICLES (10–12) with sand stream cylinders ────────
+        for (let fp = 0; fp < 12; fp++) {
+          const particle = new THREE.Mesh(
+            new THREE.SphereGeometry(0.016, 16, 12),
+            new THREE.MeshStandardMaterial({ color: 0xc8a870, transparent: true, opacity: 0.45 })
+          );
+          particle.position.set(
+            (Math.random() - 0.5) * 0.8,
+            0.25 + Math.random() * 1.2,
+            (Math.random() - 0.5) * 0.6
+          );
           group.add(particle);
+          // Thin vertical cylinder showing sand falling from body
+          if (fp < 6) {
+            const sandStream = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.14, 8), sandFlowMat);
+            sandStream.position.set(
+              (Math.random() - 0.5) * 0.7,
+              0.22 + Math.random() * 0.9,
+              (Math.random() - 0.5) * 0.5
+            );
+            group.add(sandStream);
+          }
         }
         break;
       }
