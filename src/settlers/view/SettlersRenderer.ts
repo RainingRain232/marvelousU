@@ -7,6 +7,7 @@ import { SB } from "../config/SettlersBalance";
 import { Biome, Deposit, getHeightAt, getVertex, tileIdx } from "../state/SettlersMap";
 import { BUILDING_DEFS, SettlersBuildingType } from "../config/SettlersBuildingDefs";
 import { RESOURCE_META } from "../config/SettlersResourceDefs";
+import { Visibility } from "../state/SettlersMap";
 import type { SettlersState } from "../state/SettlersState";
 import type { SettlersBuilding } from "../state/SettlersBuilding";
 import type { SettlersFlag } from "../state/SettlersRoad";
@@ -91,6 +92,9 @@ export class SettlersRenderer {
   // Building construction scaffolding & production spinners
   private _scaffoldMeshes = new Map<string, THREE.Group>();
   private _spinnerMeshes = new Map<string, THREE.Mesh>();
+
+  // Fog of war overlay
+  private _fogMesh: THREE.Mesh | null = null;
 
   // Clouds
   private _cloudGroup = new THREE.Group();
@@ -322,6 +326,170 @@ export class SettlersRenderer {
     this._buildRocks(state);
     this._buildGrass(state);
     this._buildDeposits(state);
+
+    // Fog of war overlay – a semi-transparent plane matching the terrain grid
+    this._buildFogOverlay(state);
+  }
+
+  /** Create (or recreate) the fog-of-war overlay mesh */
+  private _buildFogOverlay(state: SettlersState): void {
+    if (this._fogMesh) {
+      this.scene.remove(this._fogMesh);
+      this._fogMesh.geometry.dispose();
+      (this._fogMesh.material as THREE.Material).dispose();
+    }
+
+    const map = state.map;
+    const w = map.width;
+    const h = map.height;
+
+    // Same grid as terrain but using vertex alpha for fog darkness
+    const fogGeo = new THREE.PlaneGeometry(w * map.tileSize, h * map.tileSize, w, h);
+    fogGeo.rotateX(-Math.PI / 2);
+
+    // Position vertices to match terrain heightmap (slightly above to prevent z-fighting)
+    const pos = fogGeo.attributes.position;
+    const alphas: number[] = [];
+    for (let i = 0; i < pos.count; i++) {
+      const vx = i % (w + 1);
+      const vz = Math.floor(i / (w + 1));
+      const height = getVertex(map, vx, vz);
+      pos.setX(i, vx * map.tileSize);
+      pos.setY(i, height + 0.15);
+      pos.setZ(i, vz * map.tileSize);
+      alphas.push(1.0); // default: fully dark (HIDDEN)
+    }
+
+    fogGeo.setAttribute("alpha", new THREE.Float32BufferAttribute(alphas, 1));
+    fogGeo.computeVertexNormals();
+
+    const fogMat = new THREE.ShaderMaterial({
+      transparent: true,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      uniforms: {},
+      vertexShader: `
+        attribute float alpha;
+        varying float vAlpha;
+        void main() {
+          vAlpha = alpha;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        varying float vAlpha;
+        void main() {
+          if (vAlpha < 0.01) discard;
+          gl_FragColor = vec4(0.0, 0.0, 0.0, vAlpha);
+        }
+      `,
+    });
+
+    this._fogMesh = new THREE.Mesh(fogGeo, fogMat);
+    this._fogMesh.renderOrder = 999; // render on top
+    this._fogMesh.frustumCulled = false;
+    this.scene.add(this._fogMesh);
+  }
+
+  /** Update the fog overlay vertex alphas from the visibility grid */
+  private _updateFogOverlay(state: SettlersState): void {
+    if (!this._fogMesh) return;
+
+    const map = state.map;
+    const w = map.width;
+    const h = map.height;
+    const vis = map.visibility[0]; // player 0 (human)
+
+    const alphaAttr = this._fogMesh.geometry.getAttribute("alpha") as THREE.BufferAttribute;
+
+    for (let i = 0; i < alphaAttr.count; i++) {
+      const vx = i % (w + 1);
+      const vz = Math.floor(i / (w + 1));
+
+      // Sample the tile this vertex belongs to (clamp to grid)
+      const tx = Math.min(vx, w - 1);
+      const tz = Math.min(vz, h - 1);
+      const tileVis = vis[tz * w + tx];
+
+      let alpha: number;
+      if (tileVis === Visibility.VISIBLE) {
+        alpha = 0.0;   // fully clear
+      } else if (tileVis === Visibility.EXPLORED) {
+        alpha = 0.45;  // dimmed
+      } else {
+        alpha = 0.85;  // dark (HIDDEN)
+      }
+
+      alphaAttr.setX(i, alpha);
+    }
+
+    alphaAttr.needsUpdate = true;
+  }
+
+  /**
+   * Hide/show entities based on fog of war visibility for the human player (p0).
+   * - Enemy carriers & soldiers: hidden unless tile is VISIBLE
+   * - Enemy buildings: visible in EXPLORED tiles (but we could dim them)
+   * - Own entities: always visible
+   */
+  private _applyFogVisibility(state: SettlersState): void {
+    const map = state.map;
+    const vis = map.visibility[0]; // human player
+
+    // Hide enemy carriers in non-visible tiles
+    for (const [id, mesh] of this._carrierMeshes) {
+      const carrier = state.carriers.get(id);
+      if (!carrier || carrier.owner === "p0") continue;
+      const tx = Math.floor(carrier.position.x / map.tileSize);
+      const tz = Math.floor(carrier.position.z / map.tileSize);
+      if (tx >= 0 && tx < map.width && tz >= 0 && tz < map.height) {
+        mesh.visible = vis[tz * map.width + tx] === Visibility.VISIBLE;
+      } else {
+        mesh.visible = false;
+      }
+    }
+
+    // Hide enemy soldiers in non-visible tiles
+    for (const [id, mesh] of this._soldierMeshes) {
+      const soldier = state.soldiers.get(id);
+      if (!soldier || soldier.owner === "p0") continue;
+      const tx = Math.floor(soldier.position.x / map.tileSize);
+      const tz = Math.floor(soldier.position.z / map.tileSize);
+      if (tx >= 0 && tx < map.width && tz >= 0 && tz < map.height) {
+        mesh.visible = vis[tz * map.width + tx] === Visibility.VISIBLE;
+      } else {
+        mesh.visible = false;
+      }
+    }
+
+    // Enemy buildings: hide in HIDDEN tiles, show (but dimmed) in EXPLORED, full in VISIBLE
+    for (const [id, mesh] of this._buildingMeshes) {
+      const building = state.buildings.get(id);
+      if (!building || building.owner === "p0") continue;
+      const def = BUILDING_DEFS[building.type];
+      const cx = building.tileX + Math.floor(def.footprint.w / 2);
+      const cz = building.tileZ + Math.floor(def.footprint.h / 2);
+      if (cx >= 0 && cx < map.width && cz >= 0 && cz < map.height) {
+        const tileVis = vis[cz * map.width + cx];
+        mesh.visible = tileVis !== Visibility.HIDDEN;
+      } else {
+        mesh.visible = false;
+      }
+    }
+
+    // Enemy flags: same as buildings
+    for (const [id, mesh] of this._flagMeshes) {
+      const flag = state.flags.get(id);
+      if (!flag || flag.owner === "p0") continue;
+      const tx = flag.tileX;
+      const tz = flag.tileZ;
+      if (tx >= 0 && tx < map.width && tz >= 0 && tz < map.height) {
+        const tileVis = vis[tz * map.width + tx];
+        mesh.visible = tileVis !== Visibility.HIDDEN;
+      } else {
+        mesh.visible = false;
+      }
+    }
   }
 
   /** Main render call */
@@ -354,6 +522,10 @@ export class SettlersRenderer {
     this._syncCarriers(state, t);
     this._syncSoldiers(state, t);
     this._syncTerritory(state);
+
+    // Fog of war overlay
+    this._updateFogOverlay(state);
+    this._applyFogVisibility(state);
 
     // Frustum-cull entity meshes
     this._frustumCullEntities();
@@ -490,9 +662,15 @@ export class SettlersRenderer {
       this._territoryLine = null;
     }
 
-    // Rebuild terrain
+    // Rebuild terrain + fog
     if (this._terrainMesh) this.scene.remove(this._terrainMesh);
     if (this._waterMesh) this.scene.remove(this._waterMesh);
+    if (this._fogMesh) {
+      this.scene.remove(this._fogMesh);
+      this._fogMesh.geometry.dispose();
+      (this._fogMesh.material as THREE.Material).dispose();
+      this._fogMesh = null;
+    }
     this._treesGroup.clear();
     this._rocksGroup.clear();
     this._grassGroup.clear();
@@ -565,6 +743,14 @@ export class SettlersRenderer {
       (p.mesh.material as THREE.Material).dispose();
     }
     this._smokeParticles.length = 0;
+
+    // Dispose fog overlay
+    if (this._fogMesh) {
+      this.scene.remove(this._fogMesh);
+      this._fogMesh.geometry.dispose();
+      (this._fogMesh.material as THREE.Material).dispose();
+      this._fogMesh = null;
+    }
 
     // Dispose shared materials
     this._wallMat?.dispose();

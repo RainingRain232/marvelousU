@@ -58,6 +58,9 @@ export interface SettlersState {
 
   /** Dirty flag – set when buildings are placed, destroyed, or captured */
   territoryDirty: boolean;
+
+  /** Dirty flag for fog of war recalculation */
+  fogDirty: boolean;
 }
 
 /** Generate a unique ID */
@@ -80,6 +83,10 @@ export function createSettlersState(screenW: number, screenH: number): SettlersS
     territory: new Int8Array(totalTiles).fill(-1),
     buildable: new Uint8Array(totalTiles),
     occupied: new Array(totalTiles).fill(""),
+    visibility: [
+      new Uint8Array(totalTiles), // p0 – all HIDDEN (0)
+      new Uint8Array(totalTiles), // p1 – all HIDDEN (0)
+    ],
     trees: [],
     rocks: [],
   };
@@ -108,5 +115,6 @@ export function createSettlersState(screenW: number, screenH: number): SettlersS
     difficulty: "normal",
     gameSpeed: 1,
     territoryDirty: true,
+    fogDirty: true,
   };
 }
