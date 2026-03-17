@@ -6,7 +6,7 @@ import { SB } from "./config/SettlersBalance";
 import { ResourceType } from "./config/SettlersResourceDefs";
 import { SettlersBuildingType } from "./config/SettlersBuildingDefs";
 import { createSettlersState, nextId } from "./state/SettlersState";
-import type { SettlersState, SettlersDifficulty } from "./state/SettlersState";
+import type { SettlersState, SettlersDifficulty, SettlersMapMode } from "./state/SettlersState";
 import type { SettlersPlayer } from "./state/SettlersPlayer";
 import { getHeightAt } from "./state/SettlersMap";
 import { generateTerrain, findStartPosition } from "./systems/SettlersTerrainSystem";
@@ -16,6 +16,7 @@ import { placeFlag, createRoad, routeGoods } from "./systems/SettlersRoadSystem"
 import { updateCarriers } from "./systems/SettlersCarrierSystem";
 import { updateBarracks, updateGarrisoning, updateCombat, checkWinCondition, addToProductionQueue, removeFromProductionQueue } from "./systems/SettlersMilitarySystem";
 import { updateAI } from "./systems/SettlersAISystem";
+import { createEventState, updateEvents } from "./systems/SettlersEventSystem";
 import { SettlersRenderer } from "./view/SettlersRenderer";
 import { SettlersCameraController } from "./view/SettlersCameraController";
 import { SettlersInputSystem } from "./systems/SettlersInputSystem";
@@ -34,10 +35,16 @@ export class SettlersGame {
   private _lastTime = 0;
   private _simAccumulator = 0;
   private _difficulty: SettlersDifficulty = "normal";
+  private _mapMode: SettlersMapMode = "CONTINENTAL";
 
   /** Set difficulty before calling boot(). Affects AI speed, attack thresholds, and starting resources. */
   setDifficulty(difficulty: SettlersDifficulty): void {
     this._difficulty = difficulty;
+  }
+
+  /** Set map generation mode before calling boot(). */
+  setMapMode(mode: SettlersMapMode): void {
+    this._mapMode = mode;
   }
 
   async boot(): Promise<void> {
@@ -47,9 +54,11 @@ export class SettlersGame {
     // --- 1. Create state ---
     this._state = createSettlersState(sw, sh);
     this._state.difficulty = this._difficulty;
+    this._state.mapMode = this._mapMode;
+    this._state.eventState = createEventState();
 
     // --- 2. Generate terrain ---
-    generateTerrain(this._state.map, Math.floor(Math.random() * 100000));
+    generateTerrain(this._state.map, Math.floor(Math.random() * 100000), this._mapMode);
 
     // --- 3. Place players ---
     this._setupPlayers();
@@ -225,6 +234,12 @@ export class SettlersGame {
 
     // AI
     updateAI(this._state, dt);
+
+    // Random terrain events
+    const eventToast = updateEvents(this._state, dt);
+    if (eventToast) {
+      this._hud.showToast(eventToast, false);
+    }
 
     this._state.tick++;
   }

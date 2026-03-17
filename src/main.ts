@@ -137,6 +137,7 @@ import { GrailBallGame } from "./grailball/GrailBallGame";
 import { GrailManagerGame } from "./grailmanager/GrailManagerGame";
 import { ArthurianRPGGame } from "./arthurianrpg/ArthurianRPGGame";
 import { SettlersGame } from "./settlers/SettlersGame";
+import type { SettlersMapMode } from "./settlers/state/SettlersState";
 import { camelotHubScreen } from "@view/ui/CamelotHubScreen";
 
 // World mode imports
@@ -463,7 +464,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     }
     if (menuScreen.selectedGameMode === GameMode.SETTLERS) {
       menuScreen.hide();
-      _bootSettlersGame();
+      _showSettlersMapModeSelect();
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.WORLD) {
@@ -3036,13 +3037,68 @@ async function _bootThreeDragonGame(): Promise<void> {
 
 let _settlersGame: SettlersGame | null = null;
 
-async function _bootSettlersGame(): Promise<void> {
+function _showSettlersMapModeSelect(): void {
+  const overlay = document.createElement("div");
+  overlay.style.cssText = `
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.85); display: flex; align-items: center;
+    justify-content: center; z-index: 9999; font-family: 'Segoe UI', system-ui, sans-serif;
+  `;
+  const card = document.createElement("div");
+  card.style.cssText = `
+    background: linear-gradient(135deg, #1a1830, #0e0c23); border-radius: 14px;
+    padding: 32px 40px; text-align: center; border: 1px solid rgba(180,160,100,0.3);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6); max-width: 480px;
+  `;
+  card.innerHTML = `<h2 style="color:#ffd700;margin:0 0 20px;font-size:22px;">Select Map Mode</h2>`;
+  const modes: { mode: SettlersMapMode; label: string; desc: string }[] = [
+    { mode: "CONTINENTAL", label: "Continental", desc: "Classic island landmass (default)" },
+    { mode: "ARCHIPELAGO", label: "Archipelago", desc: "Scattered small islands with water channels" },
+    { mode: "MOUNTAIN_PASS", label: "Mountain Pass", desc: "Two areas connected by a narrow mountain pass" },
+    { mode: "LAKES", label: "Lakes", desc: "Mostly land with several large inland lakes" },
+  ];
+  for (const m of modes) {
+    const btn = document.createElement("button");
+    btn.style.cssText = `
+      display: block; width: 100%; margin: 8px 0; padding: 12px 16px;
+      background: rgba(40,35,70,0.9); border: 1px solid rgba(180,160,100,0.25);
+      border-radius: 8px; color: #e0d8c8; font-size: 14px; cursor: pointer;
+      text-align: left; font-family: inherit; transition: background 0.15s;
+    `;
+    btn.innerHTML = `<strong style="color:#ffd700">${m.label}</strong><br><span style="font-size:12px;opacity:0.7">${m.desc}</span>`;
+    btn.onmouseenter = () => { btn.style.background = "rgba(80,70,130,0.9)"; };
+    btn.onmouseleave = () => { btn.style.background = "rgba(40,35,70,0.9)"; };
+    btn.onclick = () => {
+      overlay.remove();
+      _bootSettlersGame(m.mode);
+    };
+    card.appendChild(btn);
+  }
+  // Back button
+  const back = document.createElement("button");
+  back.style.cssText = `
+    margin-top: 16px; padding: 8px 24px; background: transparent;
+    border: 1px solid rgba(180,160,100,0.3); border-radius: 6px;
+    color: #a09880; font-size: 13px; cursor: pointer; font-family: inherit;
+  `;
+  back.textContent = "Back";
+  back.onclick = () => {
+    overlay.remove();
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  card.appendChild(back);
+  overlay.appendChild(card);
+  document.body.appendChild(overlay);
+}
+
+async function _bootSettlersGame(mapMode: SettlersMapMode = "CONTINENTAL"): Promise<void> {
   if (_settlersGame) {
     _settlersGame.destroy();
     _settlersGame = null;
   }
   viewManager.clearWorld();
   _settlersGame = new SettlersGame();
+  _settlersGame.setMapMode(mapMode);
   await _settlersGame.boot();
   const _onExit = () => {
     window.removeEventListener("settlersExit", _onExit);

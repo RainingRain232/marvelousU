@@ -9,6 +9,7 @@ import type { SettlersBuilding } from "./SettlersBuilding";
 import type { SettlersFlag, SettlersRoadSegment } from "./SettlersRoad";
 import type { SettlersCarrier, SettlersSoldier, SettlersCombat } from "./SettlersUnit";
 import type { SettlersPlayer } from "./SettlersPlayer";
+import type { SettlersEventState } from "../systems/SettlersEventSystem";
 
 // Re-export for convenience
 export type { SettlersMap, SettlersBuilding, SettlersFlag, SettlersRoadSegment };
@@ -16,6 +17,7 @@ export type { SettlersCarrier, SettlersSoldier, SettlersCombat, SettlersPlayer }
 
 export type SettlersTool = "select" | "build" | "road" | "flag" | "demolish" | "attack";
 export type SettlersDifficulty = "easy" | "normal" | "hard";
+export type SettlersMapMode = "CONTINENTAL" | "ARCHIPELAGO" | "MOUNTAIN_PASS" | "LAKES";
 
 export interface SettlersState {
   tick: number;
@@ -58,6 +60,12 @@ export interface SettlersState {
 
   /** Dirty flag – set when buildings are placed, destroyed, or captured */
   territoryDirty: boolean;
+
+  /** Map generation mode */
+  mapMode: SettlersMapMode;
+
+  /** Random terrain events state */
+  eventState: SettlersEventState | null;
 }
 
 /** Generate a unique ID */
@@ -108,5 +116,7 @@ export function createSettlersState(screenW: number, screenH: number): SettlersS
     difficulty: "normal",
     gameSpeed: 1,
     territoryDirty: true,
+    mapMode: "CONTINENTAL",
+    eventState: null,
   };
 }

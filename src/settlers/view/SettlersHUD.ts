@@ -528,9 +528,12 @@ export class SettlersHUD {
 
     // Tool indicator
     const speedLabel = state.gameSpeed !== 1 ? ` | Speed: ${Math.round(state.gameSpeed * 100)}%` : "";
+    const mapModeLabel = ` | Map: ${state.mapMode}`;
+    const eventCount = state.eventState ? state.eventState.events.length : 0;
+    const eventLabel = eventCount > 0 ? ` | Events: ${eventCount}` : "";
     this._toolIndicator.textContent = `Tool: ${state.selectedTool.toUpperCase()}${
       state.selectedBuildingType ? " - " + BUILDING_DEFS[state.selectedBuildingType].label : ""
-    }${speedLabel}`;
+    }${speedLabel}${mapModeLabel}${eventLabel}`;
 
     // Pause
     this._pauseOverlay.style.display = state.paused ? "block" : "none";
