@@ -21,6 +21,7 @@ import {
   learnAbility,
 } from "../systems/RiftWizardProgressionSystem";
 import { ABILITY_DEFS } from "../config/RiftWizardAbilityDefs";
+import { drawOrnateFrame, drawTitleDivider, drawOrnateButton } from "@view/fx/OrnateFrame";
 
 export type PauseSubMenu = "main" | "controls" | "instructions" | "spells" | "buy" | "abilities";
 
@@ -825,16 +826,32 @@ export class RiftWizardHUD {
           const ttX = Math.floor(screenWidth / 2 - ttW / 2);
           const ttY = 36;
 
+          // Drop shadow
+          this._bg.rect(ttX + 2, ttY + 2, ttW, ttH);
+          this._bg.fill({ color: 0x000000, alpha: 0.35 });
           // Background
           this._bg.rect(ttX - 1, ttY - 1, ttW + 2, ttH + 2);
           this._bg.fill({ color: 0x000000, alpha: 0.4 });
           this._bg.rect(ttX, ttY, ttW, ttH);
           this._bg.fill({ color: 0x0a0a18, alpha: 0.94 });
+          // Double border
           this._bg.rect(ttX, ttY, ttW, ttH);
-          this._bg.stroke({ color: borderColor, width: 1 });
-          // Top accent
+          this._bg.stroke({ color: borderColor, width: 1.5 });
+          this._bg.rect(ttX + 2, ttY + 2, ttW - 4, ttH - 4);
+          this._bg.stroke({ color: borderColor, width: 0.5, alpha: 0.3 });
+          // Top accent glow
           this._bg.rect(ttX, ttY, ttW, 2);
           this._bg.fill({ color: borderColor, alpha: 0.6 });
+          // Corner bevels
+          const bv = 6;
+          this._bg.moveTo(ttX, ttY + bv); this._bg.lineTo(ttX + bv, ttY);
+          this._bg.stroke({ color: borderColor, width: 0.8, alpha: 0.4 });
+          this._bg.moveTo(ttX + ttW - bv, ttY); this._bg.lineTo(ttX + ttW, ttY + bv);
+          this._bg.stroke({ color: borderColor, width: 0.8, alpha: 0.4 });
+          this._bg.moveTo(ttX, ttY + ttH - bv); this._bg.lineTo(ttX + bv, ttY + ttH);
+          this._bg.stroke({ color: borderColor, width: 0.8, alpha: 0.4 });
+          this._bg.moveTo(ttX + ttW - bv, ttY + ttH); this._bg.lineTo(ttX + ttW, ttY + ttH - bv);
+          this._bg.stroke({ color: borderColor, width: 0.8, alpha: 0.4 });
 
           for (let li = 0; li < tooltipLines.length; li++) {
             const line = tooltipLines[li];
@@ -863,11 +880,23 @@ export class RiftWizardHUD {
     const mmX = screenWidth - mapW - 8;
     const mmY = 8;
 
-    // Dark background with 1px border
-    this._bg.rect(mmX - 2, mmY - 2, mapW + 4, mapH + 4);
+    // Minimap background with ornate double border
+    this._bg.rect(mmX - 4, mmY - 4, mapW + 8, mapH + 8);
     this._bg.fill({ color: 0x000000, alpha: 0.7 });
-    this._bg.rect(mmX - 2, mmY - 2, mapW + 4, mapH + 4);
-    this._bg.stroke({ color: 0x333355, width: 1, alpha: 0.8 });
+    // Outer border
+    this._bg.rect(mmX - 4, mmY - 4, mapW + 8, mapH + 8);
+    this._bg.stroke({ color: 0x333355, width: 1.5, alpha: 0.8 });
+    // Inner border
+    this._bg.rect(mmX - 1, mmY - 1, mapW + 2, mapH + 2);
+    this._bg.stroke({ color: 0x222244, width: 0.5, alpha: 0.5 });
+    // Top glow accent
+    this._bg.rect(mmX - 3, mmY - 3, mapW + 6, 1);
+    this._bg.fill({ color: 0x4444aa, alpha: 0.4 });
+    // Corner dots
+    for (const [cx, cy] of [[mmX - 3, mmY - 3], [mmX + mapW + 3, mmY - 3], [mmX - 3, mmY + mapH + 3], [mmX + mapW + 3, mmY + mapH + 3]]) {
+      this._bg.circle(cx, cy, 1.5);
+      this._bg.fill({ color: 0x4444aa, alpha: 0.4 });
+    }
 
     // Draw tiles
     for (let row = 0; row < state.level.height; row++) {
@@ -993,11 +1022,21 @@ export class RiftWizardHUD {
       const refX = Math.floor((screenWidth - refW) / 2);
       const refY = Math.floor((screenHeight - refH) / 2) - 40;
 
+      // Drop shadow
+      this._bg.rect(refX + 3, refY + 3, refW, refH);
+      this._bg.fill({ color: 0x000000, alpha: 0.35 });
       // Background
       this._bg.rect(refX, refY, refW, refH);
       this._bg.fill({ color: 0x0a0a18, alpha: 0.95 });
-      this._bg.rect(refX, refY, refW, refH);
-      this._bg.stroke({ color: 0x4444aa, width: 2 });
+      // Ornate frame
+      drawOrnateFrame(this._bg, refX, refY, refW, refH, {
+        color: 0x4444aa,
+        highlight: 0x6666dd,
+        headerBand: false,
+        grid: false,
+        runicTicks: false,
+        edgeFiligree: false,
+      });
 
       const keys = [
         "KEYBOARD REFERENCE",
@@ -1090,69 +1129,72 @@ export class RiftWizardHUD {
     const panelX = Math.floor((screenWidth - panelW) / 2);
     const panelY = Math.floor((screenHeight - panelH) / 2);
 
+    // Drop shadow
+    this._pauseBg.rect(panelX + 4, panelY + 4, panelW, panelH);
+    this._pauseBg.fill({ color: 0x000000, alpha: 0.4 });
+
     // Panel background
     this._pauseBg.rect(panelX, panelY, panelW, panelH);
-    this._pauseBg.fill({ color: 0x0a0a18, alpha: 0.95 });
+    this._pauseBg.fill({ color: 0x0a0a18, alpha: 0.96 });
 
-    // Subtle inner shadow (darker rect slightly inset)
+    // Inner shadow
     this._pauseBg.rect(panelX + 2, panelY + 2, panelW - 4, panelH - 4);
     this._pauseBg.fill({ color: 0x050510, alpha: 0.3 });
 
-    // Subtle background grid pattern (thin lines every 16px, very low alpha)
-    for (let gx = panelX + 16; gx < panelX + panelW; gx += 16) {
-      this._pauseBg.moveTo(gx, panelY);
-      this._pauseBg.lineTo(gx, panelY + panelH);
-      this._pauseBg.stroke({ color: 0x111122, width: 0.5, alpha: 0.12 });
+    // Draw the full ornate frame (grid, triple border, gems, flourishes, ticks)
+    drawOrnateFrame(this._pauseBg, panelX, panelY, panelW, panelH, {
+      color: 0x4444aa,
+      highlight: 0x6666dd,
+    });
+
+    // === Additional arcane circle ornaments at corners ===
+    const arcaneCorners: [number, number][] = [
+      [panelX + 18, panelY + 18],
+      [panelX + panelW - 18, panelY + 18],
+      [panelX + 18, panelY + panelH - 18],
+      [panelX + panelW - 18, panelY + panelH - 18],
+    ];
+    for (const [acx, acy] of arcaneCorners) {
+      // Outer arcane ring
+      this._pauseBg.circle(acx, acy, 8);
+      this._pauseBg.stroke({ color: 0x4444aa, width: 0.5, alpha: 0.15 });
+      // Inner arcane ring
+      this._pauseBg.circle(acx, acy, 4);
+      this._pauseBg.stroke({ color: 0x5555cc, width: 0.5, alpha: 0.1 });
+      // Radial lines (6 rays)
+      for (let r = 0; r < 6; r++) {
+        const angle = (r * Math.PI) / 3;
+        this._pauseBg.moveTo(acx + Math.cos(angle) * 4, acy + Math.sin(angle) * 4);
+        this._pauseBg.lineTo(acx + Math.cos(angle) * 8, acy + Math.sin(angle) * 8);
+        this._pauseBg.stroke({ color: 0x4444aa, width: 0.3, alpha: 0.12 });
+      }
     }
-    for (let gy = panelY + 16; gy < panelY + panelH; gy += 16) {
-      this._pauseBg.moveTo(panelX, gy);
-      this._pauseBg.lineTo(panelX + panelW, gy);
-      this._pauseBg.stroke({ color: 0x111122, width: 0.5, alpha: 0.12 });
-    }
 
-    // Header gradient bar (brighter area at top of panel)
-    this._pauseBg.rect(panelX, panelY, panelW, 40);
-    this._pauseBg.fill({ color: 0x12122a, alpha: 0.6 });
-    this._pauseBg.rect(panelX, panelY, panelW, 20);
-    this._pauseBg.fill({ color: 0x181838, alpha: 0.4 });
-
-    // Double border
-    this._pauseBg.rect(panelX, panelY, panelW, panelH);
-    this._pauseBg.stroke({ color: 0x4444aa, width: 2 });
-    this._pauseBg.rect(panelX + 3, panelY + 3, panelW - 6, panelH - 6);
-    this._pauseBg.stroke({ color: 0x333366, width: 1, alpha: 0.6 });
-
-    // Top glow line (thin bright rect at very top of panel)
-    this._pauseBg.rect(panelX + 1, panelY + 1, panelW - 2, 2);
-    this._pauseBg.fill({ color: 0x6666dd, alpha: 0.7 });
-
-    // Corner ornaments with gems/dots + diagonal bevels
-    const cornerSize = 8;
-    for (const [cx, cy] of [
-      [panelX, panelY],
-      [panelX + panelW, panelY],
-      [panelX, panelY + panelH],
-      [panelX + panelW, panelY + panelH],
-    ]) {
-      const dx = cx === panelX ? 1 : -1;
-      const dy = cy === panelY ? 1 : -1;
-      // Diagonal bevel line
-      this._pauseBg.moveTo(cx, cy + dy * cornerSize);
-      this._pauseBg.lineTo(cx + dx * cornerSize, cy);
-      this._pauseBg.stroke({ color: 0x6666cc, width: 1.5, alpha: 0.6 });
-      // Gem dot at corner
-      this._pauseBg.circle(cx + dx * 4, cy + dy * 4, 2.5);
-      this._pauseBg.fill({ color: 0x5555cc, alpha: 0.6 });
-      this._pauseBg.circle(cx + dx * 4, cy + dy * 4, 1.2);
-      this._pauseBg.fill({ color: 0x8888ff, alpha: 0.4 });
-      // Small dot at end of bevel line
-      this._pauseBg.circle(cx + dx * cornerSize, cy, 1.5);
-      this._pauseBg.fill({ color: 0x4444aa, alpha: 0.5 });
-      this._pauseBg.circle(cx, cy + dy * cornerSize, 1.5);
-      this._pauseBg.fill({ color: 0x4444aa, alpha: 0.5 });
+    // === Rune glyphs along top and bottom edges ===
+    const glyphSpacing = 36;
+    for (let gx = panelX + 40; gx < panelX + panelW - 40; gx += glyphSpacing) {
+      // Top edge mini-rune (small hexagon)
+      this._drawMiniRune(gx, panelY + 3, 0x4444aa);
+      // Bottom edge mini-rune
+      this._drawMiniRune(gx, panelY + panelH - 3, 0x4444aa);
     }
 
     return { panelX, panelY };
+  }
+
+  /** Draw a tiny hexagonal rune glyph */
+  private _drawMiniRune(cx: number, cy: number, color: number): void {
+    const s = 2.5;
+    for (let i = 0; i < 6; i++) {
+      const a = (i * Math.PI) / 3;
+      const x = cx + Math.cos(a) * s;
+      const y = cy + Math.sin(a) * s;
+      if (i === 0) this._pauseBg.moveTo(x, y);
+      else this._pauseBg.lineTo(x, y);
+    }
+    this._pauseBg.closePath();
+    this._pauseBg.fill({ color, alpha: 0.15 });
+    this._pauseBg.stroke({ color, alpha: 0.25, width: 0.3 });
   }
 
   private _addPauseTitle(panelX: number, panelW: number, y: number, text: string): number {
@@ -1163,7 +1205,14 @@ export class RiftWizardHUD {
         fontSize: 24,
         fill: 0xffffff,
         fontWeight: "bold",
+        letterSpacing: 3,
         stroke: { color: 0x000000, width: 3 },
+        dropShadow: {
+          color: 0x2222aa,
+          blur: 6,
+          distance: 0,
+          alpha: 0.4,
+        },
       }),
     });
     title.x = panelX + panelW / 2;
@@ -1173,52 +1222,30 @@ export class RiftWizardHUD {
     this._pauseTexts.push(title);
 
     const lineY = y + 36;
-    // Main divider line
-    this._pauseBg.moveTo(panelX + 30, lineY);
-    this._pauseBg.lineTo(panelX + panelW - 30, lineY);
-    this._pauseBg.stroke({ color: 0x4444aa, width: 1, alpha: 0.6 });
-
-    // Decorative wing lines extending from the divider (diagonal strokes at each end)
-    // Left wing
-    this._pauseBg.moveTo(panelX + 30, lineY);
-    this._pauseBg.lineTo(panelX + 22, lineY - 5);
-    this._pauseBg.stroke({ color: 0x4444aa, width: 1, alpha: 0.4 });
-    this._pauseBg.moveTo(panelX + 30, lineY);
-    this._pauseBg.lineTo(panelX + 22, lineY + 5);
-    this._pauseBg.stroke({ color: 0x4444aa, width: 1, alpha: 0.4 });
-    // Right wing
-    this._pauseBg.moveTo(panelX + panelW - 30, lineY);
-    this._pauseBg.lineTo(panelX + panelW - 22, lineY - 5);
-    this._pauseBg.stroke({ color: 0x4444aa, width: 1, alpha: 0.4 });
-    this._pauseBg.moveTo(panelX + panelW - 30, lineY);
-    this._pauseBg.lineTo(panelX + panelW - 22, lineY + 5);
-    this._pauseBg.stroke({ color: 0x4444aa, width: 1, alpha: 0.4 });
-
-    // Small diamond ornaments at the ends of the divider
-    // Left diamond
-    const ldx = panelX + 30;
-    this._pauseBg.moveTo(ldx, lineY - 3);
-    this._pauseBg.lineTo(ldx + 3, lineY);
-    this._pauseBg.lineTo(ldx, lineY + 3);
-    this._pauseBg.lineTo(ldx - 3, lineY);
-    this._pauseBg.closePath();
-    this._pauseBg.fill({ color: 0x5555cc, alpha: 0.5 });
-    // Right diamond
-    const rdx = panelX + panelW - 30;
-    this._pauseBg.moveTo(rdx, lineY - 3);
-    this._pauseBg.lineTo(rdx + 3, lineY);
-    this._pauseBg.lineTo(rdx, lineY + 3);
-    this._pauseBg.lineTo(rdx - 3, lineY);
-    this._pauseBg.closePath();
-    this._pauseBg.fill({ color: 0x5555cc, alpha: 0.5 });
+    drawTitleDivider(this._pauseBg, panelX, panelW, lineY);
 
     return lineY + 12;
   }
 
   private _addPauseDivider(panelX: number, panelW: number, y: number): number {
+    // Main line
     this._pauseBg.moveTo(panelX + 20, y);
     this._pauseBg.lineTo(panelX + panelW - 20, y);
     this._pauseBg.stroke({ color: 0x333355, width: 1, alpha: 0.4 });
+    // Small diamond at center
+    const cx = panelX + panelW / 2;
+    const ds = 3;
+    this._pauseBg.moveTo(cx, y - ds);
+    this._pauseBg.lineTo(cx + ds, y);
+    this._pauseBg.lineTo(cx, y + ds);
+    this._pauseBg.lineTo(cx - ds, y);
+    this._pauseBg.closePath();
+    this._pauseBg.fill({ color: 0x4444aa, alpha: 0.25 });
+    // End dots
+    this._pauseBg.circle(panelX + 20, y, 1.2);
+    this._pauseBg.fill({ color: 0x4444aa, alpha: 0.3 });
+    this._pauseBg.circle(panelX + panelW - 20, y, 1.2);
+    this._pauseBg.fill({ color: 0x4444aa, alpha: 0.3 });
     return y + 12;
   }
 
@@ -2181,26 +2208,25 @@ export class RiftWizardHUD {
     color: number,
     action: () => void,
   ): void {
-    const btnW = 200;
-    const btnH = 26;
+    const btnW = 220;
+    const btnH = 28;
     const btnX = panelX + Math.floor((panelW - btnW) / 2);
 
     const gfx = new Graphics();
-    // Button background
-    gfx.rect(btnX, y, btnW, btnH);
-    gfx.fill({ color, alpha: 0.3 });
-    // Button border
-    gfx.rect(btnX, y, btnW, btnH);
-    gfx.stroke({ color, width: 1.5, alpha: 0.7 });
-    // Highlight top edge
-    gfx.moveTo(btnX + 1, y + 1);
-    gfx.lineTo(btnX + btnW - 1, y + 1);
-    gfx.stroke({ color: 0xffffff, width: 0.5, alpha: 0.15 });
+    drawOrnateButton(gfx, btnX, y, btnW, btnH, color);
 
     gfx.eventMode = "static";
     gfx.cursor = "pointer";
     gfx.hitArea = { contains: (x: number, yy: number) => x >= btnX && x <= btnX + btnW && yy >= y && yy <= y + btnH };
     gfx.on("pointerdown", () => action());
+    gfx.on("pointerover", () => {
+      gfx.clear();
+      drawOrnateButton(gfx, btnX, y, btnW, btnH, color, { selected: true });
+    });
+    gfx.on("pointerout", () => {
+      gfx.clear();
+      drawOrnateButton(gfx, btnX, y, btnW, btnH, color);
+    });
 
     const text = new Text({
       text: label,
@@ -2209,6 +2235,7 @@ export class RiftWizardHUD {
         fontSize: 13,
         fill: 0xffffff,
         fontWeight: "bold",
+        letterSpacing: 1,
       }),
     });
     text.x = btnX + btnW / 2;

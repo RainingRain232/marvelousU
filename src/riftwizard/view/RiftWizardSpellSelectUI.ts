@@ -19,6 +19,7 @@ import {
   learnAbility,
   buyUpgrade,
 } from "../systems/RiftWizardProgressionSystem";
+import { drawOrnateFrame, drawTitleDivider } from "@view/fx/OrnateFrame";
 
 // ---------------------------------------------------------------------------
 // Styles
@@ -441,73 +442,44 @@ export class RiftWizardSpellSelectUI {
     this._bg.rect(px, py, PANEL_W, PANEL_H);
     this._bg.fill({ color: 0x0a0a18, alpha: 0.97 });
 
-    // Subtle runic/grid pattern in the background
-    for (let gx = px + 16; gx < px + PANEL_W; gx += 16) {
-      this._bg.moveTo(gx, py); this._bg.lineTo(gx, py + PANEL_H);
-      this._bg.stroke({ color: 0x111122, width: 0.5, alpha: 0.15 });
-    }
-    for (let gy = py + 16; gy < py + PANEL_H; gy += 16) {
-      this._bg.moveTo(px, gy); this._bg.lineTo(px + PANEL_W, gy);
-      this._bg.stroke({ color: 0x111122, width: 0.5, alpha: 0.15 });
-    }
-    // Runic cross marks at grid intersections (sparse, every 48px)
-    for (let gx = px + 48; gx < px + PANEL_W - 16; gx += 48) {
-      for (let gy = py + 48; gy < py + PANEL_H - 16; gy += 48) {
-        this._bg.moveTo(gx - 2, gy); this._bg.lineTo(gx + 2, gy);
-        this._bg.stroke({ color: 0x222244, width: 0.5, alpha: 0.2 });
-        this._bg.moveTo(gx, gy - 2); this._bg.lineTo(gx, gy + 2);
-        this._bg.stroke({ color: 0x222244, width: 0.5, alpha: 0.2 });
-      }
-    }
+    // Draw the full ornate frame with all decorations
+    drawOrnateFrame(this._bg, px, py, PANEL_W, PANEL_H, {
+      color: 0x3838aa,
+      highlight: 0x6666dd,
+    });
 
-    // Gradient header bar
+    // Extra header gradient for spell shop (taller)
     this._bg.rect(px, py, PANEL_W, 48);
-    this._bg.fill({ color: 0x12122a, alpha: 0.9 });
-    this._bg.rect(px, py, PANEL_W, 24);
-    this._bg.fill({ color: 0x181838, alpha: 0.4 });
+    this._bg.fill({ color: 0x12122a, alpha: 0.5 });
 
-    // Triple-line frame effect (outer, mid, inner)
-    this._bg.rect(px, py, PANEL_W, PANEL_H);
-    this._bg.stroke({ color: 0x3838aa, width: 2 });
-    this._bg.rect(px + 3, py + 3, PANEL_W - 6, PANEL_H - 6);
-    this._bg.stroke({ color: 0x2a2a66, width: 1, alpha: 0.5 });
-    this._bg.rect(px + 6, py + 6, PANEL_W - 12, PANEL_H - 12);
-    this._bg.stroke({ color: 0x222244, width: 0.5, alpha: 0.35 });
-
-    // Top glow line
-    this._bg.rect(px + 1, py + 1, PANEL_W - 2, 2);
-    this._bg.fill({ color: 0x6666dd, alpha: 0.7 });
-
-    // Corner gem decorations (colored circles at all 4 corners)
-    for (const [cx, cy] of [[px + 8, py + 8], [px + PANEL_W - 8, py + 8], [px + 8, py + PANEL_H - 8], [px + PANEL_W - 8, py + PANEL_H - 8]]) {
-      // Outer glow ring
-      this._bg.circle(cx, cy, 4.5);
-      this._bg.stroke({ color: 0x4444aa, width: 0.5, alpha: 0.3 });
-      // Gem body
-      this._bg.circle(cx, cy, 3);
-      this._bg.fill({ color: 0x5555cc, alpha: 0.6 });
-      // Gem highlight
-      this._bg.circle(cx, cy, 1.5);
-      this._bg.fill({ color: 0x8888ff, alpha: 0.4 });
-      // Tiny white specular
-      this._bg.circle(cx - 0.5, cy - 0.5, 0.7);
-      this._bg.fill({ color: 0xffffff, alpha: 0.3 });
+    // Arcane circle ornaments at corners (additional detail beyond OrnateFrame)
+    const cornerPositions: [number, number][] = [
+      [px + 16, py + 16],
+      [px + PANEL_W - 16, py + 16],
+      [px + 16, py + PANEL_H - 16],
+      [px + PANEL_W - 16, py + PANEL_H - 16],
+    ];
+    for (const [acx, acy] of cornerPositions) {
+      // Outer ring with tick marks
+      const arcR = 10;
+      this._bg.circle(acx, acy, arcR);
+      this._bg.stroke({ color: 0x3838aa, width: 0.5, alpha: 0.15 });
+      for (let t = 0; t < 8; t++) {
+        const a = (t * Math.PI) / 4;
+        this._bg.moveTo(acx + Math.cos(a) * (arcR - 2), acy + Math.sin(a) * (arcR - 2));
+        this._bg.lineTo(acx + Math.cos(a) * arcR, acy + Math.sin(a) * arcR);
+        this._bg.stroke({ color: 0x3838aa, width: 0.3, alpha: 0.12 });
+      }
+      // Inner dot
+      this._bg.circle(acx, acy, 2);
+      this._bg.fill({ color: 0x5555cc, alpha: 0.12 });
     }
 
-    // Corner bevel ornaments (diagonal lines at corners)
-    const cbSz = 10;
-    // Top-left
-    this._bg.moveTo(px, py + cbSz); this._bg.lineTo(px + cbSz, py);
-    this._bg.stroke({ color: 0x6666cc, width: 1, alpha: 0.4 });
-    // Top-right
-    this._bg.moveTo(px + PANEL_W - cbSz, py); this._bg.lineTo(px + PANEL_W, py + cbSz);
-    this._bg.stroke({ color: 0x6666cc, width: 1, alpha: 0.4 });
-    // Bottom-left
-    this._bg.moveTo(px, py + PANEL_H - cbSz); this._bg.lineTo(px + cbSz, py + PANEL_H);
-    this._bg.stroke({ color: 0x6666cc, width: 1, alpha: 0.4 });
-    // Bottom-right
-    this._bg.moveTo(px + PANEL_W - cbSz, py + PANEL_H); this._bg.lineTo(px + PANEL_W, py + PANEL_H - cbSz);
-    this._bg.stroke({ color: 0x6666cc, width: 1, alpha: 0.4 });
+    // Rune glyphs along edges (small pentagons)
+    for (let gx = px + 40; gx < px + PANEL_W - 40; gx += 32) {
+      this._drawMiniPentagon(gx, py + 3, 0x3838aa);
+      this._drawMiniPentagon(gx, py + PANEL_H - 3, 0x3838aa);
+    }
 
     // --- Title ---
     this._addText("SPELL SHOP", px + 20, py + 13, 20, 0xeeeeff, true);
@@ -559,29 +531,12 @@ export class RiftWizardSpellSelectUI {
 
     // Decorative separator line below tabs
     const sepY = py + 84;
-    this._bg.moveTo(px + 14, sepY);
-    this._bg.lineTo(px + PANEL_W - 14, sepY);
-    this._bg.stroke({ color: 0x333366, width: 0.5, alpha: 0.3 });
-    // Small diamond at center of separator
-    const sepMidX = px + PANEL_W / 2;
-    this._bg.moveTo(sepMidX, sepY - 2);
-    this._bg.lineTo(sepMidX + 2, sepY);
-    this._bg.lineTo(sepMidX, sepY + 2);
-    this._bg.lineTo(sepMidX - 2, sepY);
-    this._bg.closePath();
-    this._bg.fill({ color: 0x4444aa, alpha: 0.3 });
+    drawTitleDivider(this._bg, px + 4, PANEL_W - 8, sepY, 0x333366, 0x4444aa);
 
     // --- Help bar ---
     const helpY = py + PANEL_H - 22;
     // Decorative separator above help bar
-    this._bg.moveTo(px + 14, helpY - 6);
-    this._bg.lineTo(px + PANEL_W - 14, helpY - 6);
-    this._bg.stroke({ color: 0x333366, width: 0.5, alpha: 0.4 });
-    // Diamond ornaments at separator ends
-    for (const dx of [px + 14, px + PANEL_W - 14]) {
-      this._bg.circle(dx, helpY - 6, 1.5);
-      this._bg.fill({ color: 0x4444aa, alpha: 0.3 });
-    }
+    drawTitleDivider(this._bg, px + 4, PANEL_W - 8, helpY - 6, 0x333366, 0x4444aa);
     this._addText(
       "Q/E or \u2190\u2192: switch tab  |  \u2191\u2193 or Mouse: select  |  Space/Click: buy  |  Enter: continue",
       px + 20, helpY, 10, 0x555577,
@@ -941,35 +896,111 @@ export class RiftWizardSpellSelectUI {
   private _drawDetailBox(
     x: number, y: number, w: number, h: number, accentColor: number,
   ): void {
+    // Drop shadow
+    this._bg.rect(x + 2, y + 2, w, h);
+    this._bg.fill({ color: 0x000000, alpha: 0.25 });
+    // Background
     this._bg.rect(x, y, w, h);
     this._bg.fill({ color: 0x10102a, alpha: 0.9 });
-    // Notched corners
-    this._bg.moveTo(x + 4, y);
-    this._bg.lineTo(x + w - 4, y);
-    this._bg.lineTo(x + w, y + 4);
-    this._bg.lineTo(x + w, y + h - 4);
-    this._bg.lineTo(x + w - 4, y + h);
-    this._bg.lineTo(x + 4, y + h);
-    this._bg.lineTo(x, y + h - 4);
-    this._bg.lineTo(x, y + 4);
+    // Notched corner polygon (octagonal border)
+    const nc = 6;
+    this._bg.moveTo(x + nc, y);
+    this._bg.lineTo(x + w - nc, y);
+    this._bg.lineTo(x + w, y + nc);
+    this._bg.lineTo(x + w, y + h - nc);
+    this._bg.lineTo(x + w - nc, y + h);
+    this._bg.lineTo(x + nc, y + h);
+    this._bg.lineTo(x, y + h - nc);
+    this._bg.lineTo(x, y + nc);
     this._bg.closePath();
     this._bg.stroke({ color: accentColor, width: 1, alpha: 0.6 });
-    // Corner dots
-    for (const [cx, cy] of [[x + 4, y + 4], [x + w - 4, y + 4], [x + 4, y + h - 4], [x + w - 4, y + h - 4]]) {
-      this._bg.circle(cx, cy, 1.5);
+    // Inner notched border
+    const nc2 = 4;
+    this._bg.moveTo(x + nc2 + 2, y + 2);
+    this._bg.lineTo(x + w - nc2 - 2, y + 2);
+    this._bg.lineTo(x + w - 2, y + nc2 + 2);
+    this._bg.lineTo(x + w - 2, y + h - nc2 - 2);
+    this._bg.lineTo(x + w - nc2 - 2, y + h - 2);
+    this._bg.lineTo(x + nc2 + 2, y + h - 2);
+    this._bg.lineTo(x + 2, y + h - nc2 - 2);
+    this._bg.lineTo(x + 2, y + nc2 + 2);
+    this._bg.closePath();
+    this._bg.stroke({ color: accentColor, width: 0.5, alpha: 0.25 });
+    // Top accent line
+    this._bg.moveTo(x + nc + 2, y + 1);
+    this._bg.lineTo(x + w - nc - 2, y + 1);
+    this._bg.stroke({ color: accentColor, width: 1, alpha: 0.4 });
+    // Corner gems (multi-layer)
+    for (const [cx, cy] of [[x + nc, y + nc], [x + w - nc, y + nc], [x + nc, y + h - nc], [x + w - nc, y + h - nc]]) {
+      this._bg.circle(cx, cy, 3);
+      this._bg.fill({ color: accentColor, alpha: 0.08 });
+      this._bg.circle(cx, cy, 2);
       this._bg.fill({ color: accentColor, alpha: 0.4 });
+      this._bg.circle(cx, cy, 1);
+      this._bg.fill({ color: 0xffffff, alpha: 0.15 });
     }
   }
 
+  /** Draw a tiny pentagon rune glyph */
+  private _drawMiniPentagon(cx: number, cy: number, color: number): void {
+    const s = 2.5;
+    for (let i = 0; i < 5; i++) {
+      const a = (i * Math.PI * 2) / 5 - Math.PI / 2;
+      const x = cx + Math.cos(a) * s;
+      const y = cy + Math.sin(a) * s;
+      if (i === 0) this._bg.moveTo(x, y);
+      else this._bg.lineTo(x, y);
+    }
+    this._bg.closePath();
+    this._bg.fill({ color, alpha: 0.12 });
+    this._bg.stroke({ color, alpha: 0.2, width: 0.3 });
+  }
+
   private _drawScrollbar(x: number, y: number, h: number, pct: number): void {
-    // Track
-    this._bg.rect(x, y, 4, h);
-    this._bg.fill({ color: 0x222244, alpha: 0.4 });
+    // Track background
+    this._bg.rect(x - 1, y, 6, h);
+    this._bg.fill({ color: 0x111122, alpha: 0.4 });
+    // Track border
+    this._bg.rect(x - 1, y, 6, h);
+    this._bg.stroke({ color: 0x222244, width: 0.5, alpha: 0.4 });
+    // Track tick marks
+    for (let ty = y + 8; ty < y + h - 8; ty += 12) {
+      this._bg.moveTo(x, ty);
+      this._bg.lineTo(x + 4, ty);
+      this._bg.stroke({ color: 0x222244, width: 0.3, alpha: 0.3 });
+    }
     // Thumb
-    const thumbH = Math.max(12, h * 0.3);
+    const thumbH = Math.max(14, h * 0.3);
     const thumbY = y + pct * (h - thumbH);
     this._bg.rect(x, thumbY, 4, thumbH);
     this._bg.fill({ color: 0x5555aa, alpha: 0.7 });
+    // Thumb highlight
+    this._bg.rect(x, thumbY, 4, 2);
+    this._bg.fill({ color: 0x7777cc, alpha: 0.4 });
+    // Thumb grip lines
+    const gripY = thumbY + thumbH / 2;
+    this._bg.moveTo(x + 1, gripY - 2);
+    this._bg.lineTo(x + 3, gripY - 2);
+    this._bg.stroke({ color: 0x8888cc, width: 0.5, alpha: 0.4 });
+    this._bg.moveTo(x + 1, gripY);
+    this._bg.lineTo(x + 3, gripY);
+    this._bg.stroke({ color: 0x8888cc, width: 0.5, alpha: 0.4 });
+    this._bg.moveTo(x + 1, gripY + 2);
+    this._bg.lineTo(x + 3, gripY + 2);
+    this._bg.stroke({ color: 0x8888cc, width: 0.5, alpha: 0.4 });
+    // Top/bottom arrow indicators
+    // Top arrow
+    this._bg.moveTo(x + 2, y + 2);
+    this._bg.lineTo(x + 4, y + 5);
+    this._bg.lineTo(x, y + 5);
+    this._bg.closePath();
+    this._bg.fill({ color: 0x4444aa, alpha: 0.3 });
+    // Bottom arrow
+    this._bg.moveTo(x + 2, y + h - 2);
+    this._bg.lineTo(x + 4, y + h - 5);
+    this._bg.lineTo(x, y + h - 5);
+    this._bg.closePath();
+    this._bg.fill({ color: 0x4444aa, alpha: 0.3 });
   }
 
   destroy(): void {
