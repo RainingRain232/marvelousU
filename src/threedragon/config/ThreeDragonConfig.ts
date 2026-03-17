@@ -1139,11 +1139,12 @@ for (const m of TD_WAVE_MODIFIERS) (TD_WAVE_MODIFIER_BY_ID as Record<string, TDW
 // ---------------------------------------------------------------------------
 
 export const TD_UPGRADE_POOL: TDUpgradeChoice[] = [
-  { id: "max_hp", name: "+15 Max HP", description: "Increases maximum health by 15", icon: "\u{2764}", color: "#ff4444" },
-  { id: "max_mana", name: "+20 Max Mana", description: "Increases maximum mana by 20", icon: "\u{1F4A7}", color: "#4488ff" },
-  { id: "damage", name: "+10% Damage", description: "All damage increased by 10%", icon: "\u{2694}", color: "#ff8844" },
-  { id: "mana_regen", name: "+1 Mana/s", description: "Mana regeneration +1 per second", icon: "\u{2728}", color: "#88aaff" },
-  { id: "crit_chance", name: "+5% Crit", description: "Critical hit chance +5%", icon: "\u{1F4AB}", color: "#ffdd44" },
-  { id: "move_speed", name: "+10% Speed", description: "Movement speed increased by 10%", icon: "\u{1F3C3}", color: "#44ff88" },
-  { id: "cooldown_reduction", name: "-15% Cooldowns", description: "All skill cooldowns reduced by 15%", icon: "\u{23F1}", color: "#cc88ff" },
+  { id: "max_hp", name: "+25 Max HP", description: "Increases maximum health by 25", icon: "\u{2764}", color: "#ff4444" },
+  { id: "max_mana", name: "+30 Max Mana", description: "Increases maximum mana by 30", icon: "\u{1F4A7}", color: "#4488ff" },
+  { id: "damage", name: "+18% Damage", description: "All damage increased by 18%", icon: "\u{2694}", color: "#ff8844" },
+  { id: "mana_regen", name: "+2 Mana/s", description: "Mana regeneration +2 per second", icon: "\u{2728}", color: "#88aaff" },
+  { id: "crit_chance", name: "+8% Crit", description: "Critical hit chance +8%", icon: "\u{1F4AB}", color: "#ffdd44" },
+  { id: "move_speed", name: "+15% Speed", description: "Movement speed increased by 15%", icon: "\u{1F3C3}", color: "#44ff88" },
+  { id: "cooldown_reduction", name: "-20% Cooldowns", description: "All skill cooldowns reduced by 20%", icon: "\u{23F1}", color: "#cc88ff" },
+  { id: "skill_mastery", name: "Skill Mastery", description: "Boosts a random skill's damage by 35%", icon: "\u{1F52E}", color: "#cc44ff" },
 ];

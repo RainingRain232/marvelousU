@@ -379,28 +379,38 @@ export class ThreeDragonGame {
 
     switch (upgradeId) {
       case "max_hp":
-        p.maxHp += 15;
-        p.hp = Math.min(p.maxHp, p.hp + 15);
+        p.maxHp += 25;
+        p.hp = Math.min(p.maxHp, p.hp + 25);
         break;
       case "max_mana":
-        p.maxMana += 20;
-        p.mana = Math.min(p.maxMana, p.mana + 20);
+        p.maxMana += 30;
+        p.mana = Math.min(p.maxMana, p.mana + 30);
         break;
       case "damage":
-        us.damageMult *= 1.1;
+        us.damageMult *= 1.18;
         break;
       case "mana_regen":
-        p.manaRegen += 1;
+        p.manaRegen += 2;
         break;
       case "crit_chance":
-        us.critChanceBonus += 0.05;
+        us.critChanceBonus += 0.08;
         break;
       case "move_speed":
-        us.moveSpeedMult *= 1.1;
+        us.moveSpeedMult *= 1.15;
         break;
       case "cooldown_reduction":
-        us.cooldownReduction += 0.15;
+        us.cooldownReduction += 0.20;
         break;
+      case "skill_mastery": {
+        const skills = this._state.equippedSkills.length > 0
+          ? this._state.equippedSkills
+          : this._state.unlockedSkills;
+        if (skills.length > 0) {
+          const skillId = skills[Math.floor(Math.random() * skills.length)];
+          us.skillMasteryBonuses[skillId] = (us.skillMasteryBonuses[skillId] || 0) + 0.35;
+        }
+        break;
+      }
     }
 
     this._state.upgradeChoicesActive = false;

@@ -34,7 +34,7 @@ export class ThreeDragonHUD {
   private _styleEl!: HTMLStyleElement;
   private _mapNameEl!: HTMLDivElement;
   private _highScoreEl!: HTMLDivElement;
-  private _dmgNumbers: { el: HTMLDivElement; timer: number; totalDur: number; startY: number; startX: number; driftX: number; driftCurve: number; isCrit: boolean; isElite: boolean }[] = [];
+  private _dmgNumbers: { el: HTMLDivElement; timer: number; totalDur: number; startY: number; startX: number; driftX: number; driftCurve: number; isCrit: boolean; isElite: boolean; sparks: HTMLDivElement[]; initRotation: number }[] = [];
   private _pauseOverlay!: HTMLDivElement;
   private _pauseMenuVisible = false;
   private _onPauseResume: (() => void) | null = null;
@@ -116,6 +116,14 @@ export class ThreeDragonHUD {
       @keyframes td-score-glow {
         0%, 100% { text-shadow: 0 0 12px rgba(255,215,0,0.5), 0 0 24px rgba(255,180,0,0.2), 2px 2px 4px rgba(0,0,0,0.9); }
         50% { text-shadow: 0 0 18px rgba(255,215,0,0.7), 0 0 36px rgba(255,180,0,0.4), 0 0 48px rgba(255,150,0,0.15), 2px 2px 4px rgba(0,0,0,0.9); }
+      }
+      @keyframes td-dmg-crit-pulse {
+        0%, 100% { filter: brightness(1) drop-shadow(0 0 6px rgba(255,80,20,0.6)); }
+        50% { filter: brightness(1.3) drop-shadow(0 0 14px rgba(255,120,40,0.9)); }
+      }
+      @keyframes td-dmg-elite-shimmer {
+        0%, 100% { filter: brightness(1) drop-shadow(0 0 4px rgba(255,215,0,0.4)); }
+        50% { filter: brightness(1.2) drop-shadow(0 0 10px rgba(255,215,0,0.7)); }
       }
     `;
     document.head.appendChild(this._styleEl);
@@ -1788,49 +1796,86 @@ export class ThreeDragonHUD {
       this._centerText.style.opacity = "0";
     }
 
-    // Update damage numbers — pop-in scale, drift, and fade
+    // Update damage numbers — pop-in scale, drift, jitter, rotation, and fade
     this._dmgNumbers = this._dmgNumbers.filter(dn => {
       dn.timer -= dt;
       if (dn.timer <= 0) {
         if (dn.el.parentNode) dn.el.parentNode.removeChild(dn.el);
+        for (const sp of dn.sparks) {
+          if (sp.parentNode) sp.parentNode.removeChild(sp);
+        }
         return false;
       }
       const progress = 1 - dn.timer / dn.totalDur;
 
       // Ease-out rise with slight sine curve for organic drift
       const eased = 1 - Math.pow(1 - progress, 2.5);
-      const riseHeight = (dn.isCrit || dn.isElite) ? 85 : 60;
+      const riseHeight = dn.isCrit ? 110 : dn.isElite ? 90 : 60;
       const yOffset = eased * riseHeight;
-      const xDrift = dn.driftX * eased + Math.sin(progress * Math.PI * dn.driftCurve) * 12;
+      const xDrift = dn.driftX * eased + Math.sin(progress * Math.PI * dn.driftCurve) * (dn.isCrit ? 18 : 12);
 
-      dn.el.style.top = `${dn.startY - yOffset}px`;
-      dn.el.style.left = `${dn.startX + xDrift}px`;
+      // Crit jitter in the first 0.15s of total duration
+      let jitterX = 0, jitterY = 0;
+      const jitterWindow = 0.15 / dn.totalDur; // normalized threshold
+      if (dn.isCrit && progress < jitterWindow) {
+        const jitterIntensity = 1 - progress / jitterWindow; // fades out
+        jitterX = (Math.random() - 0.5) * 8 * jitterIntensity;
+        jitterY = (Math.random() - 0.5) * 6 * jitterIntensity;
+      }
 
-      // Scale: big pop on spawn, overshoot, then settle to 1, shrink at end
+      dn.el.style.top = `${dn.startY - yOffset + jitterY}px`;
+      dn.el.style.left = `${dn.startX + xDrift + jitterX}px`;
+
+      // Scale: big pop on spawn, dramatic overshoot, then settle to 1, shrink at end
       let scalePop: number;
-      if (progress < 0.08) {
-        // Initial burst: scale from 0.3 to peak
-        const peak = dn.isCrit ? 2.2 : dn.isElite ? 1.8 : 1.5;
-        scalePop = 0.3 + (peak - 0.3) * (progress / 0.08);
+      if (progress < 0.06) {
+        // Initial burst: scale from 0.2 to peak (bigger overshoot)
+        const peak = dn.isCrit ? 2.8 : dn.isElite ? 2.2 : 1.7;
+        scalePop = 0.2 + (peak - 0.2) * (progress / 0.06);
+      } else if (progress < 0.12) {
+        // Overshoot bounce back
+        const peak = dn.isCrit ? 2.8 : dn.isElite ? 2.2 : 1.7;
+        const settleProgress = (progress - 0.06) / 0.06;
+        scalePop = peak - (peak - 0.9) * settleProgress;
       } else if (progress < 0.18) {
-        // Overshoot settle
-        const peak = dn.isCrit ? 2.2 : dn.isElite ? 1.8 : 1.5;
-        const settleProgress = (progress - 0.08) / 0.10;
-        scalePop = peak - (peak - 1.0) * settleProgress;
-      } else if (progress > 0.85) {
+        // Secondary bounce
+        const settleProgress = (progress - 0.12) / 0.06;
+        scalePop = 0.9 + 0.15 * Math.sin(settleProgress * Math.PI);
+      } else if (progress > 0.82) {
         // Shrink out at end
-        const shrinkProgress = (progress - 0.85) / 0.15;
-        scalePop = 1.0 - shrinkProgress * 0.4;
+        const shrinkProgress = (progress - 0.82) / 0.18;
+        scalePop = 1.0 - shrinkProgress * 0.5;
       } else {
         scalePop = 1.0;
       }
 
+      // Rotation: crits start tilted and straighten out
+      let rotation = 0;
+      if (dn.isCrit && progress < 0.25) {
+        rotation = dn.initRotation * (1 - progress / 0.25);
+      }
+
       // Opacity: hold full, then smooth fade
-      const fadeStart = 0.65;
+      const fadeStart = 0.60;
       const opacity = progress > fadeStart ? 1.0 - ((progress - fadeStart) / (1 - fadeStart)) : 1.0;
 
       dn.el.style.opacity = `${opacity}`;
-      dn.el.style.transform = `scale(${scalePop}) translateX(-50%)`;
+      dn.el.style.transform = `scale(${scalePop}) translateX(-50%) rotate(${rotation}deg)`;
+
+      // Update spark positions
+      for (let si = 0; si < dn.sparks.length; si++) {
+        const sp = dn.sparks[si];
+        const sparkProgress = Math.min(1, progress * 3); // sparks move 3x faster
+        const angle = (si / dn.sparks.length) * Math.PI * 2 + si * 1.2;
+        const sparkDist = sparkProgress * 45;
+        const sparkX = Math.cos(angle) * sparkDist;
+        const sparkY = Math.sin(angle) * sparkDist - sparkProgress * 20;
+        const sparkOpacity = Math.max(0, 1 - sparkProgress * 1.5);
+        const sparkScale = Math.max(0, 1 - sparkProgress);
+        sp.style.transform = `translate(${sparkX}px, ${sparkY}px) scale(${sparkScale})`;
+        sp.style.opacity = `${sparkOpacity}`;
+      }
+
       return true;
     });
 
@@ -1850,49 +1895,93 @@ export class ThreeDragonHUD {
   showDamageNumber(screenX: number, screenY: number, damage: number, isCrit: boolean, isElite: boolean): void {
     const el = document.createElement("div");
 
-    // Color coding: crits are fiery red-orange, elites are gold, normal is white-blue
-    const color = isElite ? "#ffd700" : isCrit ? "#ff3322" : "#e8eeff";
-    const size = isCrit ? 30 : isElite ? 26 : 17;
-    const duration = isCrit ? 1.8 : isElite ? 1.6 : 1.3;
+    // Pronounced visual hierarchy: normal 16px, elite 24px, crit 38px
+    const size = isCrit ? 38 : isElite ? 24 : 16;
+    const duration = isCrit ? 2.0 : isElite ? 1.7 : 1.3;
 
-    // Thick multi-layer outline for readability
-    const outlineColor = isElite ? "rgba(100,70,0,1)" : isCrit ? "rgba(120,0,0,1)" : "rgba(0,0,0,0.95)";
-    const glowColor = isElite ? "rgba(255,215,0,0.8)" : isCrit ? "rgba(255,100,30,0.8)" : "rgba(150,180,255,0.4)";
-    const secondGlow = isElite ? "rgba(255,180,0,0.5)" : isCrit ? "rgba(255,50,0,0.5)" : "rgba(100,140,255,0.2)";
+    // Stroke color for -webkit-text-stroke
+    const strokeColor = isElite ? "rgba(100,60,0,0.9)" : isCrit ? "rgba(100,0,0,0.9)" : "rgba(0,0,30,0.8)";
+    const strokeWidth = isCrit ? 2 : isElite ? 1.5 : 1;
+
+    // Glow / shadow layers for depth
+    const glowColor = isElite ? "rgba(255,215,0,0.8)" : isCrit ? "rgba(255,100,30,0.9)" : "rgba(150,180,255,0.35)";
+    const secondGlow = isElite ? "rgba(255,180,0,0.5)" : isCrit ? "rgba(255,50,0,0.6)" : "rgba(100,140,255,0.15)";
+
+    // CSS animation for pulsing glow
+    const pulseAnim = isCrit ? "td-dmg-crit-pulse 0.3s ease-in-out 3" : isElite ? "td-dmg-elite-shimmer 0.4s ease-in-out 2" : "none";
 
     // Random horizontal offset + drift direction for variety
-    const offsetX = (Math.random() - 0.5) * 40;
-    const driftX = (Math.random() - 0.5) * 30;
-    const driftCurve = 1.5 + Math.random() * 2; // random sine frequency for wavy path
+    const offsetX = (Math.random() - 0.5) * 50;
+    const driftX = (Math.random() - 0.5) * 35;
+    const driftCurve = 1.5 + Math.random() * 2;
+
+    // Crit rotation: slight initial tilt that straightens out
+    const initRotation = isCrit ? (Math.random() - 0.5) * 20 : 0;
 
     const startX = screenX + offsetX;
 
-    el.style.cssText = `
-      position: absolute; left: ${startX}px; top: ${screenY}px;
-      font-size: ${size}px; font-weight: 900; color: ${color};
-      text-shadow:
-        0 0 12px ${glowColor},
-        0 0 4px ${secondGlow},
-        -2px -2px 0 ${outlineColor},
-        2px -2px 0 ${outlineColor},
-        -2px 2px 0 ${outlineColor},
-        2px 2px 0 ${outlineColor},
-        -1px 0 0 ${outlineColor},
-        1px 0 0 ${outlineColor},
-        0 -1px 0 ${outlineColor},
-        0 1px 0 ${outlineColor},
-        0 3px 6px rgba(0,0,0,0.8);
-      pointer-events: none; z-index: 15;
-      font-family: 'Impact', 'Arial Black', sans-serif;
-      letter-spacing: ${isCrit ? '2' : '1'}px;
-      transform: scale(0.3) translateX(-50%);
-      will-change: transform, opacity, top, left;
-    `;
+    // Gradient text for crits and elites via background-clip technique
+    // Normal hits use a clean white-blue color directly
+    if (isCrit) {
+      el.style.cssText = `
+        position: absolute; left: ${startX}px; top: ${screenY}px;
+        font-size: ${size}px; font-weight: 900;
+        background: linear-gradient(180deg, #fff44f 0%, #ff6600 35%, #ff2200 70%, #cc0000 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        -webkit-text-stroke: ${strokeWidth}px ${strokeColor};
+        text-shadow:
+          0 0 16px ${glowColor},
+          0 0 6px ${secondGlow},
+          0 4px 8px rgba(0,0,0,0.9);
+        pointer-events: none; z-index: 16;
+        font-family: 'Impact', 'Arial Black', sans-serif;
+        letter-spacing: 3px;
+        transform: scale(0.2) translateX(-50%) rotate(${initRotation}deg);
+        will-change: transform, opacity, top, left, filter;
+        animation: ${pulseAnim};
+      `;
+    } else if (isElite) {
+      el.style.cssText = `
+        position: absolute; left: ${startX}px; top: ${screenY}px;
+        font-size: ${size}px; font-weight: 900;
+        background: linear-gradient(180deg, #fffbe6 0%, #ffd700 30%, #ffaa00 60%, #cc8800 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        -webkit-text-stroke: ${strokeWidth}px ${strokeColor};
+        text-shadow:
+          0 0 10px ${glowColor},
+          0 0 4px ${secondGlow},
+          0 3px 6px rgba(0,0,0,0.8);
+        pointer-events: none; z-index: 15;
+        font-family: 'Impact', 'Arial Black', sans-serif;
+        letter-spacing: 2px;
+        transform: scale(0.2) translateX(-50%);
+        will-change: transform, opacity, top, left, filter;
+        animation: ${pulseAnim};
+      `;
+    } else {
+      el.style.cssText = `
+        position: absolute; left: ${startX}px; top: ${screenY}px;
+        font-size: ${size}px; font-weight: 900;
+        color: #dde4ff;
+        -webkit-text-stroke: ${strokeWidth}px ${strokeColor};
+        text-shadow:
+          0 0 8px ${glowColor},
+          0 0 3px ${secondGlow},
+          0 2px 4px rgba(0,0,0,0.7);
+        pointer-events: none; z-index: 15;
+        font-family: 'Impact', 'Arial Black', sans-serif;
+        letter-spacing: 1px;
+        transform: scale(0.2) translateX(-50%);
+        will-change: transform, opacity, top, left;
+      `;
+    }
 
     // Build text content
     const dmgText = Math.floor(damage).toString();
     if (isCrit) {
-      el.textContent = `\u2605 ${dmgText} \u2605`;
+      el.textContent = `CRIT! ${dmgText}`;
     } else if (isElite) {
       el.textContent = `\u2666 ${dmgText}`;
     } else {
@@ -1900,6 +1989,27 @@ export class ThreeDragonHUD {
     }
 
     this._root.appendChild(el);
+
+    // Spawn spark particles for crits
+    const sparks: HTMLDivElement[] = [];
+    if (isCrit) {
+      const sparkCount = 2 + Math.floor(Math.random() * 2); // 2-3 sparks
+      for (let i = 0; i < sparkCount; i++) {
+        const spark = document.createElement("div");
+        const sparkHue = Math.floor(Math.random() * 40 + 10); // 10-50 (orange-yellow range)
+        spark.style.cssText = `
+          position: absolute; left: ${startX}px; top: ${screenY}px;
+          width: 6px; height: 6px; border-radius: 50%;
+          background: radial-gradient(circle, hsl(${sparkHue},100%,80%) 0%, hsl(${sparkHue},100%,50%) 60%, transparent 100%);
+          box-shadow: 0 0 6px 2px hsla(${sparkHue},100%,60%,0.8);
+          pointer-events: none; z-index: 16;
+          will-change: transform, opacity;
+        `;
+        this._root.appendChild(spark);
+        sparks.push(spark);
+      }
+    }
+
     this._dmgNumbers.push({
       el,
       timer: duration,
@@ -1910,6 +2020,8 @@ export class ThreeDragonHUD {
       driftCurve,
       isCrit,
       isElite,
+      sparks,
+      initRotation,
     });
   }
 
@@ -2380,6 +2492,9 @@ export class ThreeDragonHUD {
   cleanup(): void {
     for (const dn of this._dmgNumbers) {
       if (dn.el.parentNode) dn.el.parentNode.removeChild(dn.el);
+      for (const sp of dn.sparks) {
+        if (sp.parentNode) sp.parentNode.removeChild(sp);
+      }
     }
     this._dmgNumbers = [];
     for (const ind of this._edgeIndicators) {

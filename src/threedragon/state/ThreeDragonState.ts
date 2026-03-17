@@ -93,7 +93,7 @@ export interface TDWaveModifier {
 // Between-wave upgrades
 // ---------------------------------------------------------------------------
 
-export type TDUpgradeId = "max_hp" | "max_mana" | "damage" | "mana_regen" | "crit_chance" | "move_speed" | "cooldown_reduction";
+export type TDUpgradeId = "max_hp" | "max_mana" | "damage" | "mana_regen" | "crit_chance" | "move_speed" | "cooldown_reduction" | "skill_mastery";
 
 export interface TDUpgradeChoice {
   id: TDUpgradeId;
@@ -108,6 +108,7 @@ export interface TDUpgradeState {
   critChanceBonus: number;
   moveSpeedMult: number;
   cooldownReduction: number;
+  skillMasteryBonuses: Record<string, number>;
   upgrades: TDUpgradeId[];     // history of picked upgrades
 }
 
@@ -521,6 +522,7 @@ export function createThreeDragonState(screenW: number, screenH: number, mapId =
       critChanceBonus: 0,
       moveSpeedMult: 1,
       cooldownReduction: 0,
+      skillMasteryBonuses: {},
       upgrades: [],
     },
     upgradeChoicesActive: false,

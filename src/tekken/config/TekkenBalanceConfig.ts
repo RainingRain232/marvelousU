@@ -3,6 +3,10 @@ export const TB = {
   TPS: 60,
   SIM_DT: 1 / 60,
 
+  // Input buffer
+  INPUT_BUFFER_WINDOW: 8,    // frames to look back for directional input (~133ms at 60fps)
+  BUTTON_BUFFER_WINDOW: 4,   // frames to look back for button input (~67ms at 60fps)
+
   // Health
   MAX_HP: 170,
   RAGE_THRESHOLD: 0.25,

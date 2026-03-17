@@ -1610,6 +1610,11 @@ function _damageEnemy(state: ThreeDragonState, enemy: TDEnemy, damage: number, s
   // Apply upgrade damage multiplier
   let finalDmg = damage * state.upgradeState.damageMult;
 
+  // Apply skill mastery bonus
+  if (skillId && state.upgradeState.skillMasteryBonuses[skillId]) {
+    finalDmg *= (1 + state.upgradeState.skillMasteryBonuses[skillId]);
+  }
+
   // Shadow Strike synergy: 2x damage during Shadow Dive
   if (state.player.shadowDiveActive && skillId) {
     finalDmg *= 2;
