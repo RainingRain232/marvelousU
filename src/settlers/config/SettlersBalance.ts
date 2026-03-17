@@ -168,9 +168,19 @@ export const SB = {
   EVENT_MINE_COLLAPSE_DURATION: 30, // seconds a mine stays collapsed
   EVENT_HARVEST_DURATION: 30,      // seconds bountiful harvest lasts
 
+  // Road quality
+  ROAD_QUALITY_DIRT_SPEED: 1.0,     // speed multiplier for dirt roads
+  ROAD_QUALITY_STONE_SPEED: 1.5,    // speed multiplier for stone roads
+  ROAD_QUALITY_PAVED_SPEED: 2.0,    // speed multiplier for paved roads
+  ROAD_UPGRADE_STONE_COST: 2,       // stone per segment for stone road
+  ROAD_UPGRADE_PAVED_STONE_COST: 2, // stone per segment for paved road
+  ROAD_UPGRADE_PAVED_IRON_COST: 1,  // iron per segment for paved road
+
   // Rendering
   ROAD_WIDTH: 0.8,           // world units
   FLAG_HEIGHT: 0.8,          // world units
   CARRIER_HEIGHT: 0.7,       // world units
   SOLDIER_HEIGHT: 0.5,       // world units
+  WORKER_HEIGHT: 0.55,       // world units (smaller than carriers)
+  WORKER_SPEED: 1.5,         // tiles per second (walk speed to/from building)
 } as const;

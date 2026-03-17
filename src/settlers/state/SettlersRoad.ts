@@ -4,6 +4,8 @@
 
 import { ResourceType } from "../config/SettlersResourceDefs";
 
+export type RoadQuality = "dirt" | "stone" | "paved";
+
 export interface SettlersFlag {
   id: string;
   tileX: number;
@@ -36,6 +38,9 @@ export interface SettlersRoadSegment {
 
   /** Tile positions along the road (including flag tiles at both ends) */
   path: { x: number; z: number }[];
+
+  /** Road surface quality – affects carrier speed */
+  quality: RoadQuality;
 
   /** Assigned carrier ID (one carrier per road segment) */
   carrierId: string | null;

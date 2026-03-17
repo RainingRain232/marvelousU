@@ -10,9 +10,9 @@ import type { SettlersState, SettlersDifficulty, SettlersMapMode } from "./state
 import type { SettlersPlayer, AIPersonality } from "./state/SettlersPlayer";
 import { getHeightAt } from "./state/SettlersMap";
 import { generateTerrain, findStartPosition } from "./systems/SettlersTerrainSystem";
-import { placeBuilding, canPlaceBuilding, updateConstruction, updateProduction, updateUpgrades, upgradeBuilding, setMarketTrade, demolishBuilding } from "./systems/SettlersBuildingSystem";
+import { placeBuilding, canPlaceBuilding, updateConstruction, updateProduction, updateUpgrades, upgradeBuilding, setMarketTrade, demolishBuilding, updateWorkers } from "./systems/SettlersBuildingSystem";
 import { recalculateTerritory, updateTerritory } from "./systems/SettlersTerritorySystem";
-import { placeFlag, createRoad, routeGoods } from "./systems/SettlersRoadSystem";
+import { placeFlag, createRoad, routeGoods, upgradeRoad } from "./systems/SettlersRoadSystem";
 import { updateCarriers } from "./systems/SettlersCarrierSystem";
 import { updateBarracks, updateGarrisoning, updateCombat, updateCatapultTowers, checkWinCondition, addToProductionQueue, removeFromProductionQueue } from "./systems/SettlersMilitarySystem";
 import { updateAI } from "./systems/SettlersAISystem";
@@ -144,6 +144,15 @@ export class SettlersGame {
       }
     };
 
+    this._hud.onRoadUpgrade = (roadId) => {
+      if (upgradeRoad(this._state, roadId)) {
+        playBuildSound();
+        this._hud.showNotification("Road upgraded!");
+      } else {
+        this._hud.showNotification("Not enough resources!");
+      }
+    };
+
     this._hud.onQueueAdd = (buildingId, itemType) => {
       const building = this._state.buildings.get(buildingId);
       if (building) addToProductionQueue(building, itemType);
@@ -232,6 +241,9 @@ export class SettlersGame {
 
     // Carrier movement
     updateCarriers(this._state, dt);
+
+    // Worker movement
+    updateWorkers(this._state, dt);
 
     // Territory & fog
     updateTerritory(this._state);
@@ -507,7 +519,27 @@ export class SettlersGame {
     // Check if there's a building at this tile
     const idx = tileZ * state.map.width + tileX;
     const buildingId = state.map.occupied[idx];
-    state.selectedBuildingId = buildingId || null;
+
+    if (buildingId) {
+      state.selectedBuildingId = buildingId;
+      state.selectedRoadId = null;
+      return;
+    }
+
+    // Check if there's a road segment passing through this tile
+    for (const [, road] of state.roads) {
+      for (const p of road.path) {
+        if (p.x === tileX && p.z === tileZ) {
+          state.selectedRoadId = road.id;
+          state.selectedBuildingId = null;
+          return;
+        }
+      }
+    }
+
+    // Nothing selected
+    state.selectedBuildingId = null;
+    state.selectedRoadId = null;
   }
 
   private _handleDemolish(tileX: number, tileZ: number): void {
