@@ -152,10 +152,10 @@ export class SettlersRenderer {
   private _roadPreviewLine: THREE.Line | null = null;
 
   // Cached geometries (higher polygon counts for visual quality)
-  private _boxGeo = new THREE.BoxGeometry(1, 1, 1, 2, 2, 2);
-  private _coneGeo = new THREE.ConeGeometry(0.5, 1, 16);
-  private _cylGeo = new THREE.CylinderGeometry(0.1, 0.1, 1, 16);
-  private _sphereGeo = new THREE.SphereGeometry(0.15, 16, 12);
+  private _boxGeo = new THREE.BoxGeometry(1, 1, 1, 3, 3, 3);
+  private _coneGeo = new THREE.ConeGeometry(0.5, 1, 24);
+  private _cylGeo = new THREE.CylinderGeometry(0.1, 0.1, 1, 24);
+  private _sphereGeo = new THREE.SphereGeometry(0.15, 24, 16);
 
   // Cached geometries for frequently recreated objects (prevents memory leaks)
   private _healthBarBgGeo = new THREE.PlaneGeometry(0.6, 0.06);
@@ -1706,37 +1706,77 @@ export class SettlersRenderer {
   }
 
   // Helper: create a ridged (A-frame) roof from vertices
-  private _createRidgeRoof(w: number, h: number, d: number, mat: THREE.Material): THREE.Mesh {
+  private _createRidgeRoof(w: number, h: number, d: number, mat: THREE.Material): THREE.Group {
+    const g = new THREE.Group();
     const hw = w * 0.5, hd = d * 0.5;
-    const overhang = w * 0.08;
+    const overhang = w * 0.12;
+
+    // Ridge spans the full depth of the roof
+    const ridgeFront = -(hd + overhang);
+    const ridgeBack = hd + overhang;
+    const eaveL = -(hw + overhang);
+    const eaveR = hw + overhang;
+
+    // --- Main roof slopes + gable ends (fully closed) ---
     const verts = new Float32Array([
-      // Left slope
-      -(hw + overhang), 0, -(hd + overhang),
-      0, h, -(hd * 0.3),
-      0, h, hd * 0.3,
-      -(hw + overhang), 0, hd + overhang,
-      // Right slope
-      (hw + overhang), 0, -(hd + overhang),
-      0, h, -(hd * 0.3),
-      0, h, hd * 0.3,
-      (hw + overhang), 0, hd + overhang,
-      // Front gable
-      -(hw + overhang), 0, -(hd + overhang),
-      (hw + overhang), 0, -(hd + overhang),
-      0, h, -(hd * 0.3),
-      // Back gable
-      -(hw + overhang), 0, hd + overhang,
-      (hw + overhang), 0, hd + overhang,
-      0, h, hd * 0.3,
+      // Left slope (2 triangles)
+      eaveL, 0, ridgeFront,           // 0: left-front eave
+      0, h, ridgeFront,               // 1: ridge-front
+      0, h, ridgeBack,                // 2: ridge-back
+      eaveL, 0, ridgeBack,            // 3: left-back eave
+      // Right slope (2 triangles)
+      eaveR, 0, ridgeFront,           // 4: right-front eave
+      0, h, ridgeFront,               // 5: ridge-front (shared pos)
+      0, h, ridgeBack,                // 6: ridge-back (shared pos)
+      eaveR, 0, ridgeBack,            // 7: right-back eave
+      // Front gable triangle
+      eaveL, 0, ridgeFront,           // 8
+      eaveR, 0, ridgeFront,           // 9
+      0, h, ridgeFront,               // 10
+      // Back gable triangle
+      eaveL, 0, ridgeBack,            // 11
+      eaveR, 0, ridgeBack,            // 12
+      0, h, ridgeBack,                // 13
+      // Underside (close the bottom so roof isn't open)
+      eaveL, 0, ridgeFront,           // 14
+      eaveR, 0, ridgeFront,           // 15
+      eaveR, 0, ridgeBack,            // 16
+      eaveL, 0, ridgeBack,            // 17
     ]);
-    const idx = [0,1,2, 0,2,3, 4,6,5, 4,7,6, 8,10,9, 11,12,13];
+    const idx = [
+      0,1,2, 0,2,3,     // left slope
+      4,6,5, 4,7,6,     // right slope
+      8,10,9,            // front gable
+      11,12,13,          // back gable
+      14,16,15, 14,17,16 // underside
+    ];
     const geo = new THREE.BufferGeometry();
     geo.setAttribute("position", new THREE.Float32BufferAttribute(verts, 3));
     geo.setIndex(idx);
     geo.computeVertexNormals();
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.castShadow = true;
-    return mesh;
+    const roofMesh = new THREE.Mesh(geo, mat);
+    roofMesh.castShadow = true;
+    g.add(roofMesh);
+
+    // --- Ridge cap (decorative strip along the peak) ---
+    const ridgeCap = new THREE.Mesh(this._boxGeo, (mat as THREE.MeshStandardMaterial).clone());
+    ((ridgeCap.material as THREE.MeshStandardMaterial).color as THREE.Color).multiplyScalar(0.8);
+    ridgeCap.scale.set(w * 0.04, h * 0.08, d + overhang * 2 + 0.02);
+    ridgeCap.position.set(0, h - h * 0.02, 0);
+    ridgeCap.castShadow = true;
+    g.add(ridgeCap);
+
+    // --- Fascia boards along eaves (L and R edges) ---
+    const fasciaMat = this._woodMat.clone();
+    (fasciaMat as THREE.MeshStandardMaterial).transparent = true;
+    for (const side of [-1, 1]) {
+      const fascia = new THREE.Mesh(this._boxGeo, fasciaMat);
+      fascia.scale.set(0.02, 0.025, d + overhang * 2);
+      fascia.position.set(side * (hw + overhang), 0, 0);
+      g.add(fascia);
+    }
+
+    return g;
   }
 
   // Helper: add stone foundation blocks around a building base

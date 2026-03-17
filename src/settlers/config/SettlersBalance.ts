@@ -19,10 +19,10 @@ export const SB = {
   TREE_DENSITY: 0.35,        // probability of tree in forest tile
 
   // Territory radii (in tiles)
-  HQ_RADIUS: 7,
-  GUARD_HOUSE_RADIUS: 5,
-  WATCHTOWER_RADIUS: 8,
-  FORTRESS_RADIUS: 11,
+  HQ_RADIUS: 12,
+  GUARD_HOUSE_RADIUS: 6,
+  WATCHTOWER_RADIUS: 9,
+  FORTRESS_RADIUS: 13,
 
   // Construction costs (planks, stone)
   COST_SMALL:  { planks: 2, stone: 2 },
@@ -111,16 +111,16 @@ export const SB = {
   HP_CATAPULT_TOWER: 120,
 
   // Starting resources in HQ
-  START_PLANKS: 8,
-  START_STONE: 8,
-  START_WOOD: 4,
-  START_FISH: 4,
-  START_BREAD: 4,
-  START_SWORDS: 2,
-  START_SHIELDS: 2,
-  START_BEER: 2,
-  START_WORKERS: 12,
-  START_SOLDIERS: 2,
+  START_PLANKS: 20,
+  START_STONE: 20,
+  START_WOOD: 12,
+  START_FISH: 8,
+  START_BREAD: 8,
+  START_SWORDS: 4,
+  START_SHIELDS: 4,
+  START_BEER: 4,
+  START_WORKERS: 18,
+  START_SOLDIERS: 4,
 
   // AI – base values (modified by difficulty)
   AI_TICK_INTERVAL: 2.0,     // seconds between AI decisions (Normal)
@@ -157,10 +157,10 @@ export const SB = {
   },
 
   // Fog of war – sight ranges (in tiles)
-  HQ_SIGHT_RANGE: 9,
-  GUARD_HOUSE_SIGHT_RANGE: 7,
-  WATCHTOWER_SIGHT_RANGE: 10,
-  FORTRESS_SIGHT_RANGE: 13,
+  HQ_SIGHT_RANGE: 14,
+  GUARD_HOUSE_SIGHT_RANGE: 8,
+  WATCHTOWER_SIGHT_RANGE: 12,
+  FORTRESS_SIGHT_RANGE: 15,
 
   // Random events
   EVENT_MIN_INTERVAL: 60,          // seconds between events (min)
