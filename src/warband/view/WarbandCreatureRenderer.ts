@@ -3700,12 +3700,779 @@ export class CreatureMesh {
     );
     flag.position.set(0.13, 2.75, -0.8);
     this._body.add(flag);
+    // ---- ENHANCED DETAIL: Structural wood grain and plank texturing ----
+    // Vertical plank seams on side walls
+    for (const wSide of [-1, 1]) {
+      for (let s = 0; s < 7; s++) {
+        const seamGeo = new THREE.BoxGeometry(0.003, housingH * 0.9, 0.008);
+        const seam = new THREE.Mesh(seamGeo, mat(0x3a2010));
+        seam.rotation.y = Math.PI / 2;
+        seam.position.set(wSide * (housingW * 0.5 + 0.005), wallY, -housingD * 0.45 + s * 0.33);
+        this._body.add(seam);
+      }
+    }
+
+    // Horizontal wood grain lines on roof planks
+    for (let rg = 0; rg < 8; rg++) {
+      const roofGrainGeo = new THREE.BoxGeometry(housingW * 0.95, 0.003, 0.005);
+      const roofGrain = new THREE.Mesh(roofGrainGeo, mat(0x4a2a10));
+      roofGrain.rotation.x = -Math.PI / 2;
+      roofGrain.position.set(0, wallY + housingH * 0.5 + 0.005, -housingD * 0.4 + rg * 0.28);
+      this._body.add(roofGrain);
+    }
+
+    // ---- ENHANCED DETAIL: Iron banding and rivets on housing ----
+    for (const wSide of [-1, 1]) {
+      for (let b = 0; b < 3; b++) {
+        const hBandGeo = new THREE.BoxGeometry(0.005, 0.03, housingD * 0.95);
+        const hBand = new THREE.Mesh(hBandGeo, ironMat);
+        hBand.position.set(wSide * (housingW * 0.5 + 0.008), wallY - 0.35 + b * 0.35, 0);
+        this._body.add(hBand);
+      }
+    }
+
+    // Corner iron L-brackets at each corner of the housing
+    for (const wSide of [-1, 1]) {
+      for (const fb of [-1, 1]) {
+        for (let bIdx = 0; bIdx < 3; bIdx++) {
+          const lBracketGeo = new THREE.BoxGeometry(0.04, 0.08, 0.04);
+          const lBracket = new THREE.Mesh(lBracketGeo, ironMat);
+          lBracket.position.set(
+            wSide * housingW * 0.5,
+            wallY - 0.35 + bIdx * 0.35,
+            fb * housingD * 0.5,
+          );
+          this._body.add(lBracket);
+        }
+      }
+    }
+
+    // Rivets on side iron bands
+    for (const wSide of [-1, 1]) {
+      for (let b = 0; b < 3; b++) {
+        for (let r = 0; r < 5; r++) {
+          const bandRivetGeo = new THREE.SphereGeometry(0.008, 6, 6);
+          const bandRivet = new THREE.Mesh(bandRivetGeo, mat(0x555555, { metalness: 0.6 }));
+          bandRivet.position.set(
+            wSide * (housingW * 0.5 + 0.015),
+            wallY - 0.35 + b * 0.35,
+            -housingD * 0.35 + r * 0.2,
+          );
+          this._body.add(bandRivet);
+        }
+      }
+    }
+
+    // ---- ENHANCED DETAIL: Rope wrapping on frame and support beams ----
+    for (const rzOff of [-0.4, 0.4]) {
+      for (let rc = 0; rc < 5; rc++) {
+        const ropeCoilGeo = new THREE.TorusGeometry(0.02, 0.005, 6, 10);
+        const ropeCoil = new THREE.Mesh(ropeCoilGeo, ropeMat);
+        ropeCoil.position.set(0, 0.55 - rc * 0.06, 1.0 + rzOff);
+        this._rightArm.add(ropeCoil);
+      }
+    }
+
+    // Rope binding wraps on side rails
+    for (const rSide of [-1, 1]) {
+      for (let rw = 0; rw < 4; rw++) {
+        const railWrapGeo = new THREE.TorusGeometry(0.06, 0.006, 6, 10);
+        const railWrap = new THREE.Mesh(railWrapGeo, ropeMat);
+        railWrap.position.set(rSide * 0.6, 1.2, -0.8 + rw * 0.55);
+        railWrap.rotation.y = Math.PI / 2;
+        this._body.add(railWrap);
+      }
+    }
+
+    // Cross-lashed rope X-pattern on back wall
+    for (let xr = 0; xr < 2; xr++) {
+      const xRopeGeo = cyl(0.008, 0.008, 1.3, 6);
+      const xRope = new THREE.Mesh(xRopeGeo, ropeMat);
+      xRope.position.set(0, wallY, -housingD * 0.5 - 0.01);
+      xRope.rotation.z = xr === 0 ? 0.6 : -0.6;
+      this._body.add(xRope);
+    }
+
+    // ---- ENHANCED DETAIL: Leather strapping ----
+    const leatherMat = new THREE.MeshPhongMaterial({
+      color: 0x5a3a1a,
+      shininess: 15,
+      specular: new THREE.Color(0x221100),
+    });
+
+    // Leather straps holding the ram beam to suspension ropes
+    for (const lzOff of [-0.4, 0, 0.4]) {
+      const strapGeo = new THREE.BoxGeometry(0.25, 0.015, 0.04);
+      const strapMesh = new THREE.Mesh(strapGeo, leatherMat);
+      strapMesh.position.set(0, -0.06, 1.0 + lzOff);
+      this._rightArm.add(strapMesh);
+
+      const buckleGeo = new THREE.BoxGeometry(0.03, 0.02, 0.05);
+      const buckleMesh = new THREE.Mesh(buckleGeo, ironMat);
+      buckleMesh.position.set(0.1, -0.06, 1.0 + lzOff);
+      this._rightArm.add(buckleMesh);
+    }
+
+    // Leather grip wrapping on the ram beam near the head
+    for (let lw = 0; lw < 6; lw++) {
+      const gripWrapGeo = new THREE.TorusGeometry(0.11, 0.008, 6, 12);
+      const gripWrap = new THREE.Mesh(gripWrapGeo, leatherMat);
+      gripWrap.position.set(0, 0, 2.3 + lw * 0.08);
+      gripWrap.rotation.y = Math.PI / 2;
+      this._rightArm.add(gripWrap);
+    }
+
+    // ---- ENHANCED DETAIL: Battle damage and scorch marks ----
+    for (let gm = 0; gm < 5; gm++) {
+      const gougeAngle = (gm / 5) * Math.PI * 2;
+      const gougeGeo = new THREE.BoxGeometry(0.005, 0.04, 0.08);
+      const gouge = new THREE.Mesh(gougeGeo, mat(0x333333, { metalness: 0.7 }));
+      gouge.position.set(Math.cos(gougeAngle) * 0.15, Math.sin(gougeAngle) * 0.15, 3.0);
+      gouge.rotation.z = gougeAngle;
+      this._rightArm.add(gouge);
+    }
+
+    // Scorch marks on the front wall
+    for (let sc = 0; sc < 4; sc++) {
+      const scorchGeo = new THREE.PlaneGeometry(0.15, 0.12);
+      const scorch = new THREE.Mesh(
+        scorchGeo,
+        mat(0x1a1008, { side: THREE.DoubleSide, transparent: true, opacity: 0.6 }),
+      );
+      scorch.position.set(-0.35 + sc * 0.22, wallY - 0.2 + sc * 0.12, housingD * 0.5 + 0.005);
+      this._body.add(scorch);
+    }
+
+    // Blood stain splatter on the ram head
+    const ramBloodMat = mat(0x4a0808, { transparent: true, opacity: 0.5 });
+    for (let bs = 0; bs < 3; bs++) {
+      const splatGeo = new THREE.PlaneGeometry(0.06, 0.08);
+      const splat = new THREE.Mesh(splatGeo, ramBloodMat);
+      splat.position.set(Math.cos(bs * 2.0) * 0.1, Math.sin(bs * 2.0) * 0.1, 3.12);
+      this._rightArm.add(splat);
+    }
+
+    // Weathering streaks running down the side walls
+    for (const wsSide of [-1, 1]) {
+      for (let ws = 0; ws < 4; ws++) {
+        const streakGeo = new THREE.BoxGeometry(0.003, 0.4, 0.015);
+        const streak = new THREE.Mesh(
+          streakGeo,
+          mat(0x2a1a08, { transparent: true, opacity: 0.4 }),
+        );
+        streak.rotation.y = Math.PI / 2;
+        streak.position.set(wsSide * (housingW * 0.5 + 0.006), wallY + 0.15, -0.5 + ws * 0.35);
+        this._body.add(streak);
+      }
+    }
+
+    // Mud splatter on lower frame
+    const ramMudMat = mat(0x4a3a1a, { transparent: true, opacity: 0.5 });
+    for (let ms = 0; ms < 6; ms++) {
+      const mudGeo = new THREE.SphereGeometry(0.025, 6, 5);
+      const mudBlob = new THREE.Mesh(mudGeo, ramMudMat);
+      mudBlob.position.set(-0.5 + ms * 0.2, 0.55, 0.5 - ms * 0.1);
+      this._body.add(mudBlob);
+    }
+
+    // ---- ENHANCED DETAIL: Hinges on the roof panels ----
+    for (let hi = 0; hi < 3; hi++) {
+      const hingeBodyGeo = new THREE.BoxGeometry(0.06, 0.04, 0.12);
+      const hingeBody = new THREE.Mesh(hingeBodyGeo, ironMat);
+      hingeBody.position.set(housingW * 0.48, wallY + housingH * 0.5 + 0.015, -0.7 + hi * 0.7);
+      this._body.add(hingeBody);
+
+      const hingePinGeo = cyl(0.008, 0.008, 0.13, 6);
+      const hingePin = new THREE.Mesh(hingePinGeo, ironMat);
+      hingePin.position.set(housingW * 0.48, wallY + housingH * 0.5 + 0.015, -0.7 + hi * 0.7);
+      hingePin.rotation.x = Math.PI / 2;
+      this._body.add(hingePin);
+    }
+
+    // ---- ENHANCED DETAIL: Chain links for pulling the ram ----
+    for (const chainXOff of [-0.3, 0.3]) {
+      for (let cl = 0; cl < 8; cl++) {
+        const chainLinkGeo = new THREE.TorusGeometry(0.018, 0.004, 6, 8);
+        const chainLink = new THREE.Mesh(chainLinkGeo, ironMat);
+        chainLink.position.set(chainXOff, 0.85 + cl * 0.04, -housingD * 0.5 - 0.02);
+        chainLink.rotation.y = cl % 2 === 0 ? 0 : Math.PI / 2;
+        this._body.add(chainLink);
+      }
+    }
+
+    // ---- ENHANCED DETAIL: Splinter debris around impact area ----
+    for (let spi = 0; spi < 8; spi++) {
+      const splinterGeo = new THREE.BoxGeometry(0.005, 0.005, 0.06);
+      const splinter = new THREE.Mesh(splinterGeo, mat(0x6b4226));
+      splinter.position.set((spi % 3 - 1) * 0.1, (spi % 2 - 0.5) * 0.15, 3.1 + spi * 0.01);
+      splinter.rotation.set(spi * 0.7, spi * 1.1, spi * 0.5);
+      this._rightArm.add(splinter);
+    }
+
+    // ---- ENHANCED DETAIL: Dust particles near ground level ----
+    const ramDustMat = mat(0x998877, { transparent: true, opacity: 0.25 });
+    for (let dp = 0; dp < 10; dp++) {
+      const dustGeo = new THREE.SphereGeometry(0.015, 4, 4);
+      const dustP = new THREE.Mesh(dustGeo, ramDustMat);
+      dustP.position.set(-0.7 + dp * 0.16, 0.35 + (dp % 3) * 0.06, -0.8 + dp * 0.18);
+      this._body.add(dustP);
+    }
+
+    // ---- ENHANCED DETAIL: Iron collar plates along the ram beam ----
+    for (let cp = 0; cp < 6; cp++) {
+      const collarGeo = new THREE.BoxGeometry(0.14, 0.14, 0.02);
+      const collarPlate = new THREE.Mesh(collarGeo, ironMat);
+      collarPlate.position.set(0, 0, 0.4 + cp * 0.38);
+      collarPlate.rotation.x = Math.PI / 2;
+      this._rightArm.add(collarPlate);
+
+      for (const cx of [-1, 1]) {
+        for (const cy of [-1, 1]) {
+          const collarRvGeo = new THREE.SphereGeometry(0.006, 5, 5);
+          const collarRv = new THREE.Mesh(collarRvGeo, mat(0x555555, { metalness: 0.6 }));
+          collarRv.position.set(cx * 0.055, cy * 0.055, 0.4 + cp * 0.38);
+          this._rightArm.add(collarRv);
+        }
+      }
+    }
+
+    // ---- ENHANCED DETAIL: Protective rawhide covering on roof ----
+    const ramRawhideMat = new THREE.MeshPhongMaterial({
+      color: 0x6a5a3a,
+      shininess: 5,
+      specular: new THREE.Color(0x111100),
+      side: THREE.DoubleSide,
+    });
+    const rawhideGeo = new THREE.PlaneGeometry(housingW * 1.05, housingD * 1.05);
+    const rawhideMesh = new THREE.Mesh(rawhideGeo, ramRawhideMat);
+    rawhideMesh.rotation.x = -Math.PI / 2;
+    rawhideMesh.position.set(0, wallY + housingH * 0.5 + 0.025, 0);
+    this._body.add(rawhideMesh);
+
+    // Stitching on rawhide covering
+    for (let st = 0; st < 6; st++) {
+      const stitchGeo = new THREE.BoxGeometry(0.008, 0.002, housingD * 0.9);
+      const stitchLine = new THREE.Mesh(stitchGeo, mat(0x3a2a1a));
+      stitchLine.position.set(-housingW * 0.35 + st * 0.14, wallY + housingH * 0.5 + 0.028, 0);
+      this._body.add(stitchLine);
+    }
+
+    // ---- ENHANCED DETAIL: Spark particles near the ram head ----
+    const ramSparkMat = mat(0xffcc44, { emissive: 0xaa6600, transparent: true, opacity: 0.7 });
+    for (let sk = 0; sk < 5; sk++) {
+      const sparkGeo = new THREE.SphereGeometry(0.008, 4, 4);
+      const sparkP = new THREE.Mesh(sparkGeo, ramSparkMat);
+      sparkP.position.set((sk % 3 - 1) * 0.08, (sk % 2 - 0.5) * 0.12, 3.15 + sk * 0.02);
+      this._rightArm.add(sparkP);
+    }
+
+    // ---- ENHANCED DETAIL: Wheel hub grease stains ----
+    const ramGreaseMat = mat(0x1a1a0a, { transparent: true, opacity: 0.35 });
+    for (const gSide of [-1, 1]) {
+      const gLeg = gSide === -1 ? this._leftLeg : this._rightLeg;
+      for (const gFb of [-1, 1]) {
+        const greaseGeo = new THREE.SphereGeometry(0.04, 6, 6);
+        const greaseMark = new THREE.Mesh(greaseGeo, ramGreaseMat);
+        greaseMark.position.set(gSide * 0.03, -0.05, gFb * 0.75);
+        gLeg.add(greaseMark);
+      }
+    }
+
+    // ---- ENHANCED DETAIL: Nail heads on planks ----
+    for (const nSide of [-1, 1]) {
+      for (let n = 0; n < 12; n++) {
+        const nailGeo = new THREE.CylinderGeometry(0.005, 0.005, 0.01, 6);
+        const nailHead = new THREE.Mesh(nailGeo, ironMat);
+        nailHead.rotation.y = Math.PI / 2;
+        nailHead.position.set(
+          nSide * (housingW * 0.5 + 0.01),
+          wallY - 0.4 + (n % 4) * 0.25,
+          -housingD * 0.4 + Math.floor(n / 4) * 0.35,
+        );
+        this._body.add(nailHead);
+      }
+    }
+
+    // ---- ENHANCED DETAIL: Rust patches on iron bands ----
+    const ramRustMat = new THREE.MeshPhongMaterial({
+      color: 0x6b3a1a,
+      shininess: 8,
+      specular: new THREE.Color(0x221100),
+      transparent: true,
+      opacity: 0.55,
+    });
+    for (let rp = 0; rp < 5; rp++) {
+      const rustGeo = new THREE.PlaneGeometry(0.04, 0.03);
+      const rustPatch = new THREE.Mesh(rustGeo, ramRustMat);
+      rustPatch.position.set(-0.4 + rp * 0.22, wallY + housingH * 0.5 + 0.018, 0.1 + rp * 0.05);
+      rustPatch.rotation.x = -Math.PI / 2;
+      this._body.add(rustPatch);
+    }
+
+    // ---- ENHANCED DETAIL: Reinforced iron corner gussets on housing ----
+    const ramGussetMat = new THREE.MeshPhongMaterial({
+      color: 0x444444,
+      shininess: 30,
+      specular: new THREE.Color(0x333333),
+    });
+    for (const gSide of [-1, 1]) {
+      for (const gFb of [-1, 1]) {
+        const gussetGeo = new THREE.BoxGeometry(0.08, 0.15, 0.08);
+        const gusset = new THREE.Mesh(gussetGeo, ramGussetMat);
+        gusset.position.set(gSide * housingW * 0.48, wallY + housingH * 0.35, gFb * housingD * 0.48);
+        this._body.add(gusset);
+
+        const gussetRvGeo = new THREE.SphereGeometry(0.007, 5, 5);
+        const gussetRv = new THREE.Mesh(gussetRvGeo, ironMat);
+        gussetRv.position.set(gSide * housingW * 0.48, wallY + housingH * 0.42, gFb * housingD * 0.48);
+        this._body.add(gussetRv);
+
+        const gussetRv2 = new THREE.Mesh(gussetRvGeo, ironMat);
+        gussetRv2.position.set(gSide * housingW * 0.48, wallY + housingH * 0.28, gFb * housingD * 0.48);
+        this._body.add(gussetRv2);
+      }
+    }
+
+    // ---- ENHANCED DETAIL: Worn rope coils stored on frame ----
+    const ramCoilRopeMat = new THREE.MeshPhongMaterial({
+      color: 0x8b7355,
+      shininess: 5,
+      specular: new THREE.Color(0x111100),
+    });
+    for (const coilPos of [[-0.4, 0.97, -0.9], [0.35, 0.97, -0.85]] as const) {
+      const coilStackGeo = new THREE.TorusGeometry(0.06, 0.015, 8, 14);
+      const coilStack = new THREE.Mesh(coilStackGeo, ramCoilRopeMat);
+      coilStack.position.set(coilPos[0], coilPos[1], coilPos[2]);
+      coilStack.rotation.x = -Math.PI / 2;
+      this._body.add(coilStack);
+
+      const coilStack2 = new THREE.Mesh(coilStackGeo, ramCoilRopeMat);
+      coilStack2.position.set(coilPos[0], coilPos[1] + 0.025, coilPos[2]);
+      coilStack2.rotation.x = -Math.PI / 2;
+      this._body.add(coilStack2);
+
+      const coilStack3 = new THREE.Mesh(coilStackGeo, ramCoilRopeMat);
+      coilStack3.position.set(coilPos[0], coilPos[1] + 0.05, coilPos[2]);
+      coilStack3.rotation.x = -Math.PI / 2;
+      this._body.add(coilStack3);
+    }
+
+    // ---- ENHANCED DETAIL: Worn tool rack on back wall ----
+    const toolRackGeo = new THREE.BoxGeometry(0.5, 0.04, 0.03);
+    const toolRack = new THREE.Mesh(toolRackGeo, woodMat);
+    toolRack.position.set(0, wallY + 0.2, -housingD * 0.5 - 0.02);
+    this._body.add(toolRack);
+
+    // Hooks on tool rack
+    for (let th = 0; th < 3; th++) {
+      const hookGeo = new THREE.BoxGeometry(0.01, 0.06, 0.03);
+      const hookMesh = new THREE.Mesh(hookGeo, ironMat);
+      hookMesh.position.set(-0.15 + th * 0.15, wallY + 0.17, -housingD * 0.5 - 0.03);
+      this._body.add(hookMesh);
+    }
+
+    // Mallet hanging from tool rack
+    const malletHandleGeo = cyl(0.008, 0.008, 0.2, 6);
+    const malletHandle = new THREE.Mesh(malletHandleGeo, woodMat);
+    malletHandle.position.set(-0.15, wallY + 0.07, -housingD * 0.5 - 0.04);
+    this._body.add(malletHandle);
+
+    const malletHeadGeo = new THREE.BoxGeometry(0.05, 0.04, 0.04);
+    const malletHead = new THREE.Mesh(malletHeadGeo, woodMat);
+    malletHead.position.set(-0.15, wallY - 0.04, -housingD * 0.5 - 0.04);
+    this._body.add(malletHead);
+
+    // ---- ENHANCED DETAIL: Wedge chocks under wheels ----
+    const wedgeMat = mat(0x5a3a18, { roughness: 0.9 });
+    for (const wSide of [-1, 1]) {
+      for (const wFb of [-1, 1]) {
+        const wedgeGeo = new THREE.BoxGeometry(0.1, 0.06, 0.08);
+        const wedge = new THREE.Mesh(wedgeGeo, wedgeMat);
+        wedge.position.set(wSide * 0.7 + wFb * 0.1, 0.03, wFb * 0.75 + wFb * 0.18);
+        wedge.rotation.z = wFb * 0.3;
+        this._body.add(wedge);
+      }
+    }
+
+    // ---- ENHANCED DETAIL: Crude wooden pegs protruding from frame ----
+    for (let peg = 0; peg < 8; peg++) {
+      const pegGeo = cyl(0.01, 0.008, 0.06, 6);
+      const pegMesh = new THREE.Mesh(pegGeo, mat(0x7b5230));
+      pegMesh.rotation.z = Math.PI / 2;
+      const pegSide = peg % 2 === 0 ? -1 : 1;
+      pegMesh.position.set(
+        pegSide * (housingW * 0.5 + 0.03),
+        wallY - 0.3 + Math.floor(peg / 2) * 0.22,
+        -housingD * 0.3 + (peg % 3) * 0.35,
+      );
+      this._body.add(pegMesh);
+    }
+
+    // ---- ENHANCED DETAIL: Damaged plank splinters on walls ----
+    for (let ds = 0; ds < 6; ds++) {
+      const dsGeo = new THREE.BoxGeometry(0.004, 0.08, 0.015);
+      const dsMesh = new THREE.Mesh(dsGeo, mat(0x8b6b3a));
+      dsMesh.position.set(
+        (ds % 2 === 0 ? 1 : -1) * (housingW * 0.5 + 0.005),
+        wallY - 0.15 + ds * 0.08,
+        -0.3 + (ds % 4) * 0.2,
+      );
+      dsMesh.rotation.z = (ds - 3) * 0.15;
+      this._body.add(dsMesh);
+    }
+
+    // ---- ENHANCED DETAIL: Iron reinforcement plate on ram head transition ----
+    const ramTransitionGeo = cyl(0.16, 0.12, 0.1, 14);
+    const ramTransition = new THREE.Mesh(ramTransitionGeo, ironMat);
+    ramTransition.rotation.x = Math.PI / 2;
+    ramTransition.position.set(0, 0.0, 2.75);
+    this._rightArm.add(ramTransition);
+
+    // Decorative boss on ram head face
+    const ramBossGeo = new THREE.SphereGeometry(0.06, 10, 8);
+    const ramBoss = new THREE.Mesh(ramBossGeo, ironHeadMat);
+    ramBoss.position.set(0, 0, 3.12);
+    this._rightArm.add(ramBoss);
+
+    // ---- ENHANCED DETAIL: Woven wicker shield panels on lower walls ----
+    const wickerMat = new THREE.MeshPhongMaterial({
+      color: 0x8b7b55,
+      shininess: 3,
+      specular: new THREE.Color(0x111100),
+    });
+    for (const wkSide of [-1, 1]) {
+      const wickerPanelGeo = new THREE.PlaneGeometry(housingD * 0.3, 0.35);
+      const wickerPanel = new THREE.Mesh(wickerPanelGeo, wickerMat);
+      wickerPanel.rotation.y = Math.PI / 2;
+      wickerPanel.position.set(wkSide * (housingW * 0.5 + 0.008), wallY - 0.3, 0.3);
+      this._body.add(wickerPanel);
+
+      // Wicker weave lines
+      for (let wl = 0; wl < 5; wl++) {
+        const weaveGeo = new THREE.BoxGeometry(0.002, 0.008, housingD * 0.28);
+        const weave = new THREE.Mesh(weaveGeo, mat(0x6b5b35));
+        weave.position.set(wkSide * (housingW * 0.5 + 0.012), wallY - 0.42 + wl * 0.06, 0.3);
+        this._body.add(weave);
+      }
+    }
+
+    // ---- ENHANCED DETAIL: Torch sconce brackets on housing ----
+    for (const tSide of [-1, 1]) {
+      const sconceArmGeo = new THREE.BoxGeometry(0.03, 0.03, 0.1);
+      const sconceArm = new THREE.Mesh(sconceArmGeo, ironMat);
+      sconceArm.position.set(tSide * (housingW * 0.5 + 0.05), wallY + 0.3, 0.5);
+      this._body.add(sconceArm);
+
+      const sconceRingGeo = new THREE.TorusGeometry(0.025, 0.005, 6, 8);
+      const sconceRing = new THREE.Mesh(sconceRingGeo, ironMat);
+      sconceRing.position.set(tSide * (housingW * 0.5 + 0.1), wallY + 0.3, 0.5);
+      sconceRing.rotation.y = Math.PI / 2;
+      this._body.add(sconceRing);
+    }
+
+    // ---- ENHANCED DETAIL: Dripping water stain streaks ----
+    const waterStainMat = mat(0x3a4a3a, { transparent: true, opacity: 0.25 });
+    for (let wst = 0; wst < 6; wst++) {
+      const stainGeo = new THREE.BoxGeometry(0.005, 0.35, 0.012);
+      const stainMesh = new THREE.Mesh(stainGeo, waterStainMat);
+      stainMesh.rotation.y = Math.PI / 2;
+      stainMesh.position.set(
+        (wst % 2 === 0 ? 1 : -1) * (housingW * 0.5 + 0.004),
+        wallY + 0.1,
+        -0.5 + wst * 0.2,
+      );
+      this._body.add(stainMesh);
+    }
+
+    // ---- ENHANCED DETAIL: Wheel brake lever mechanism ----
+    const brakeLeverGeo = new THREE.BoxGeometry(0.03, 0.25, 0.03);
+    const brakeLever = new THREE.Mesh(brakeLeverGeo, ironMat);
+    brakeLever.position.set(-0.5, 0.55, 0.9);
+    brakeLever.rotation.x = 0.35;
+    this._body.add(brakeLever);
+
+    const brakePadGeo = new THREE.BoxGeometry(0.06, 0.04, 0.08);
+    const brakePad = new THREE.Mesh(brakePadGeo, mat(0x5a3a1a));
+    brakePad.position.set(-0.5, 0.38, 1.0);
+    this._body.add(brakePad);
+
+    const brakePivotGeo = cyl(0.008, 0.008, 0.1, 6);
+    const brakePivot = new THREE.Mesh(brakePivotGeo, ironMat);
+    brakePivot.rotation.x = Math.PI / 2;
+    brakePivot.position.set(-0.5, 0.55, 0.85);
+    this._body.add(brakePivot);
+
+    // ---- ENHANCED DETAIL: Ram beam decorative carvings ----
+    for (let carv = 0; carv < 4; carv++) {
+      const carvAngle = (carv / 4) * Math.PI * 2;
+      const carvGeo = new THREE.BoxGeometry(0.015, 0.01, 0.12);
+      const carvMesh = new THREE.Mesh(carvGeo, mat(0x4a2a10));
+      carvMesh.position.set(
+        Math.cos(carvAngle) * 0.09,
+        Math.sin(carvAngle) * 0.09,
+        2.1 + carv * 0.05,
+      );
+      carvMesh.rotation.z = carvAngle;
+      this._rightArm.add(carvMesh);
+    }
+
+    // ---- ENHANCED DETAIL: Pulley bracket at top of housing ----
+    const ramPulleyBracketGeo = new THREE.BoxGeometry(0.06, 0.08, 0.04);
+    const ramPulleyBracket = new THREE.Mesh(ramPulleyBracketGeo, ironMat);
+    ramPulleyBracket.position.set(0, wallY + housingH * 0.5 + 0.06, -housingD * 0.3);
+    this._body.add(ramPulleyBracket);
+
+    const ramPulleyWheelGeo = new THREE.TorusGeometry(0.03, 0.008, 6, 10);
+    const ramPulleyWheel = new THREE.Mesh(ramPulleyWheelGeo, ironMat);
+    ramPulleyWheel.position.set(0, wallY + housingH * 0.5 + 0.06, -housingD * 0.3);
+    this._body.add(ramPulleyWheel);
+
+    const ramPulleyRopeGeo = cyl(0.005, 0.005, 0.6, 6);
+    const ramPulleyRope = new THREE.Mesh(ramPulleyRopeGeo, ropeMat);
+    ramPulleyRope.position.set(0, wallY + housingH * 0.2, -housingD * 0.3);
+    this._body.add(ramPulleyRope);
+
+    // ---- ENHANCED DETAIL: Charred wood patches from fire attacks ----
+    const charMat = new THREE.MeshPhongMaterial({
+      color: 0x1a1008,
+      shininess: 2,
+      specular: new THREE.Color(0x000000),
+      transparent: true,
+      opacity: 0.7,
+    });
+    for (let ch = 0; ch < 4; ch++) {
+      const charGeo = new THREE.PlaneGeometry(0.12, 0.1);
+      const charPatch = new THREE.Mesh(charGeo, charMat);
+      charPatch.rotation.y = Math.PI / 2;
+      charPatch.position.set(
+        (ch % 2 === 0 ? 1 : -1) * (housingW * 0.5 + 0.004),
+        wallY + 0.15 - ch * 0.1,
+        0.6 + ch * 0.1,
+      );
+      this._body.add(charPatch);
+    }
+
+    // ---- ENHANCED DETAIL: Small oil lantern hanging from roof beam ----
+    const lanternBodyGeo = new THREE.BoxGeometry(0.04, 0.06, 0.04);
+    const lanternBody = new THREE.Mesh(lanternBodyGeo, ironMat);
+    lanternBody.position.set(0.3, wallY + housingH * 0.5 - 0.12, 0);
+    this._body.add(lanternBody);
+
+    const lanternChainGeo = cyl(0.003, 0.003, 0.08, 4);
+    const lanternChain = new THREE.Mesh(lanternChainGeo, ironMat);
+    lanternChain.position.set(0.3, wallY + housingH * 0.5 - 0.05, 0);
+    this._body.add(lanternChain);
+
+    const lanternGlowGeo = new THREE.SphereGeometry(0.012, 6, 6);
+    const lanternGlow = new THREE.Mesh(
+      lanternGlowGeo,
+      mat(0xffaa44, { emissive: 0x884400, transparent: true, opacity: 0.8 }),
+    );
+    lanternGlow.position.set(0.3, wallY + housingH * 0.5 - 0.11, 0);
+    this._body.add(lanternGlow);
   }
 
   // ---- Catapult builder -----------------------------------------------------
 
   private _buildCatapult(): void {
     const woodMat = mat(0x7b5230, { roughness: 0.85 });
+    // ---- Wood grain detail on main frame beams ----
+    const catGrainMat = mat(0x5a3018, { roughness: 0.95 });
+    for (const side of [-1, 1]) {
+      for (let g = 0; g < 6; g++) {
+        const grainGeo = new THREE.BoxGeometry(0.003, 1.0, 0.003);
+        const grain = new THREE.Mesh(grainGeo, catGrainMat);
+        grain.position.set(side * (0.43 + g * 0.006), 1.5, g * 0.004 - 0.01);
+        grain.rotation.z = side * -0.1;
+        this._body.add(grain);
+      }
+    }
+
+    // ---- Iron bolt heads on frame connections ----
+    const catBoltMat = mat(0x2a2a2a, { metalness: 0.7, roughness: 0.3 });
+    const catBoltPositions = [
+      { x: -0.45, y: 0.95, z: 0.07 }, { x: 0.45, y: 0.95, z: 0.07 },
+      { x: -0.45, y: 0.95, z: -0.07 }, { x: 0.45, y: 0.95, z: -0.07 },
+      { x: -0.42, y: 2.0, z: 0.07 }, { x: 0.42, y: 2.0, z: 0.07 },
+      { x: -0.42, y: 2.0, z: -0.07 }, { x: 0.42, y: 2.0, z: -0.07 },
+      { x: 0, y: 0.55, z: 0.85 }, { x: 0, y: 0.55, z: -0.85 },
+    ];
+    for (const bp of catBoltPositions) {
+      const boltGeo = new THREE.CylinderGeometry(0.008, 0.008, 0.005, 6);
+      const bolt = new THREE.Mesh(boltGeo, catBoltMat);
+      bolt.position.set(bp.x, bp.y, bp.z);
+      this._body.add(bolt);
+    }
+
+    // ---- Leather sling reinforcement patches ----
+    const catLeatherMat = mat(0x6b4226, { roughness: 0.75, metalness: 0.05 });
+    for (let i = 0; i < 3; i++) {
+      const patchGeo = new THREE.BoxGeometry(0.06, 0.004, 0.08);
+      const patch = new THREE.Mesh(patchGeo, catLeatherMat);
+      patch.position.set((i - 1) * 0.05, -0.06, 2.15 + i * 0.03);
+      this._rightArm.add(patch);
+    }
+
+    // ---- Throwing arm battle scars / splintering ----
+    const catScarMat = mat(0x4a2812, { roughness: 0.98 });
+    for (let i = 0; i < 5; i++) {
+      const scarGeo = new THREE.BoxGeometry(0.003, 0.06 + Math.random() * 0.04, 0.003);
+      const scar = new THREE.Mesh(scarGeo, catScarMat);
+      scar.position.set(
+        (Math.random() - 0.5) * 0.08,
+        0.065,
+        0.3 + i * 0.4
+      );
+      scar.rotation.z = (Math.random() - 0.5) * 0.4;
+      this._rightArm.add(scar);
+    }
+
+    // ---- Rust staining on iron brackets ----
+    const catRustMat = mat(0x8b4513, { roughness: 0.9, metalness: 0.15 });
+    for (const side of [-1, 1]) {
+      const rustDripGeo = cyl(0.003, 0.005, 0.06, 4);
+      const rustDrip = new THREE.Mesh(rustDripGeo, catRustMat);
+      rustDrip.position.set(side * 0.42, 1.95, 0.06);
+      this._body.add(rustDrip);
+
+      const rustPatchGeo = new THREE.SphereGeometry(0.015, 6, 4);
+      const rustPatch = new THREE.Mesh(rustPatchGeo, catRustMat);
+      rustPatch.scale.set(1.5, 0.3, 1.5);
+      rustPatch.position.set(side * 0.42, 2.02, 0.04);
+      this._body.add(rustPatch);
+    }
+
+    // ---- Rope fraying detail on bindings ----
+    for (const side of [-1, 1]) {
+      for (let f = 0; f < 4; f++) {
+        const frayGeo = cyl(0.002, 0.001, 0.03 + Math.random() * 0.02, 4);
+        const fray = new THREE.Mesh(frayGeo, ropeMat);
+        fray.position.set(
+          side * (0.47 + (Math.random() - 0.5) * 0.02),
+          0.93 + (Math.random() - 0.5) * 0.04,
+          (Math.random() - 0.5) * 0.04
+        );
+        fray.rotation.set(Math.random(), 0, Math.random());
+        this._body.add(fray);
+      }
+    }
+
+    // ---- Wheel axle grease detail ----
+    const catGreaseMat = mat(0x333322, { roughness: 0.5, metalness: 0.1 });
+    for (const side of [-1, 1]) {
+      const catWLeg = side === -1 ? this._leftLeg : this._rightLeg;
+      const greaseRingGeo = new THREE.TorusGeometry(0.04, 0.006, 6, 10);
+      const greaseRing = new THREE.Mesh(greaseRingGeo, catGreaseMat);
+      greaseRing.rotation.z = Math.PI / 2;
+      catWLeg.add(greaseRing);
+    }
+
+    // ---- Ground track ruts (worn earth marks) ----
+    const catRutMat = mat(0x665544, { roughness: 0.98 });
+    for (const side of [-1, 1]) {
+      const rutGeo = new THREE.BoxGeometry(0.08, 0.005, 1.8);
+      const rut = new THREE.Mesh(rutGeo, catRutMat);
+      rut.position.set(side * 0.75, 0.02, 0);
+      this._body.add(rut);
+    }
+
+    // ---- Additional frame knot/joint reinforcement ----
+    const catKnotMat = mat(0x8b7355, { roughness: 0.85 });
+    for (let i = 0; i < 3; i++) {
+      const knotGeo = new THREE.SphereGeometry(0.02, 8, 6);
+      const knot = new THREE.Mesh(knotGeo, catKnotMat);
+      knot.position.set(0, 0.55, -0.8 + i * 0.8);
+      this._body.add(knot);
+    }
+
+    // ---- Winch mechanism pawl detail ----
+    const pawlGeo = new THREE.BoxGeometry(0.03, 0.06, 0.02);
+    const pawl = new THREE.Mesh(pawlGeo, ironMat);
+    pawl.position.set(0, 0.72, -0.65);
+    pawl.rotation.z = 0.3;
+    this._body.add(pawl);
+
+    const pawlPinGeo = cyl(0.008, 0.008, 0.04, 8);
+    const pawlPin = new THREE.Mesh(pawlPinGeo, ironMat);
+    pawlPin.position.set(0, 0.73, -0.65);
+    pawlPin.rotation.z = Math.PI / 2;
+    this._body.add(pawlPin);
+
+    // ---- Boulder surface detail (cracks and texture) ----
+    const catBoulderDetailMat = mat(0x666666, { roughness: 0.98 });
+    for (let i = 0; i < 3; i++) {
+      const bdGeo = new THREE.BoxGeometry(0.003, 0.04 + Math.random() * 0.03, 0.003);
+      const bd = new THREE.Mesh(bdGeo, catBoulderDetailMat);
+      bd.position.set(
+        (Math.random() - 0.5) * 0.08,
+        0.03 + (Math.random() - 0.5) * 0.04,
+        2.2 + (Math.random() - 0.5) * 0.06
+      );
+      bd.rotation.z = Math.random() * Math.PI;
+      this._rightArm.add(bd);
+    }
+
+    // ---- Platform edge wear marks ----
+    for (let i = 0; i < 8; i++) {
+      const wearGeo = new THREE.BoxGeometry(0.12, 0.003, 0.01);
+      const wear = new THREE.Mesh(wearGeo, catScarMat);
+      wear.position.set(
+        (Math.random() - 0.5) * 0.8,
+        0.44,
+        -0.28 + i * 0.08
+      );
+      this._body.add(wear);
+    }
+
+    // ---- Pivot iron reinforcement collar ----
+    const collarGeo = new THREE.TorusGeometry(0.06, 0.012, 8, 16);
+    const collar = new THREE.Mesh(collarGeo, ironMat);
+    collar.position.set(0, 2.0, 0);
+    collar.rotation.y = Math.PI / 2;
+    this._body.add(collar);
+
+    // ---- Iron corner brackets on base ----
+    for (const side of [-1, 1]) {
+      for (const fb of [-1, 1]) {
+        const cornerBracketGeo = new THREE.BoxGeometry(0.06, 0.04, 0.06);
+        const cornerBracket = new THREE.Mesh(cornerBracketGeo, ironMat);
+        cornerBracket.position.set(side * 0.65, 0.62, fb * 0.95);
+        this._body.add(cornerBracket);
+
+        // L-shaped iron strip
+        const stripGeo = new THREE.BoxGeometry(0.04, 0.003, 0.12);
+        const strip = new THREE.Mesh(stripGeo, ironMat);
+        strip.position.set(side * 0.65, 0.65, fb * 0.92);
+        this._body.add(strip);
+      }
+    }
+
+    // ---- Rope coil stored on platform ----
+    const coilGeo = new THREE.TorusGeometry(0.08, 0.015, 8, 16);
+    const coil = new THREE.Mesh(coilGeo, ropeMat);
+    coil.position.set(0.4, 0.46, -0.2);
+    coil.rotation.x = Math.PI / 2;
+    this._body.add(coil);
+
+    // ---- Tension rope from winch to arm ----
+    const tensionGeo = cyl(0.008, 0.008, 1.5, 8);
+    const tension = new THREE.Mesh(tensionGeo, ropeMat);
+    tension.position.set(0, 1.3, -0.4);
+    tension.rotation.x = 0.15;
+    this._body.add(tension);
+
+    // ---- Dust cloud effect at base ----
+    const catDustMat = mat(0x998877, { transparent: true, opacity: 0.08, roughness: 0.95 });
+    for (let i = 0; i < 5; i++) {
+      const dustGeo = new THREE.SphereGeometry(0.08 + Math.random() * 0.06, 8, 6);
+      const dust = new THREE.Mesh(dustGeo, catDustMat);
+      dust.position.set(
+        (Math.random() - 0.5) * 1.2,
+        0.08 + Math.random() * 0.1,
+        (Math.random() - 0.5) * 1.5
+      );
+      this._body.add(dust);
+    }
     const ropeMat = mat(0x8b7355, { roughness: 0.95 });
     const ironMat = mat(0x444444, { roughness: 0.4, metalness: 0.5 });
     const boulderMat = mat(0x888888, { roughness: 0.95 });
@@ -4019,6 +4786,240 @@ export class CreatureMesh {
   // ---- Trebuchet builder ----------------------------------------------------
 
   private _buildTrebuchet(): void {
+    // ---- Wood grain texture lines on main beams ----
+    const trebGrainMat = mat(0x5a3820, { roughness: 0.95 });
+    for (const side of [-1, 1]) {
+      for (let g = 0; g < 8; g++) {
+        const grainGeo = new THREE.BoxGeometry(0.005, 3.6, 0.005);
+        const grain = new THREE.Mesh(grainGeo, trebGrainMat);
+        grain.position.set(side * (0.32 + g * 0.008), 2.5, g * 0.005 - 0.02);
+        grain.rotation.z = side * -0.09;
+        this._body.add(grain);
+      }
+    }
+
+    // ---- Weathering/damage marks on the base platform ----
+    const trebWeatherMat = mat(0x4a2e18, { roughness: 0.98 });
+    for (let i = 0; i < 6; i++) {
+      const weatherGeo = new THREE.BoxGeometry(
+        0.15 + Math.random() * 0.2,
+        0.005,
+        0.08 + Math.random() * 0.1
+      );
+      const weather = new THREE.Mesh(weatherGeo, trebWeatherMat);
+      weather.position.set(
+        (Math.random() - 0.5) * 1.6,
+        0.61,
+        (Math.random() - 0.5) * 2.4
+      );
+      weather.rotation.y = Math.random() * Math.PI;
+      this._body.add(weather);
+    }
+
+    // ---- Rust patches on iron fittings ----
+    const trebRustMat = mat(0x8b4513, { roughness: 0.9, metalness: 0.2 });
+    for (const side of [-1, 1]) {
+      for (const fb of [-1, 1]) {
+        const rustGeo = new THREE.SphereGeometry(0.02 + Math.random() * 0.015, 6, 4);
+        const rust = new THREE.Mesh(rustGeo, trebRustMat);
+        rust.scale.set(1.5, 0.3, 1.5);
+        rust.position.set(side * 0.9, 0.62, fb * 1.35);
+        this._body.add(rust);
+      }
+    }
+
+    // ---- Additional rope lashings on A-frame joints ----
+    for (const side of [-1, 1]) {
+      for (let r = 0; r < 4; r++) {
+        const lashGeo = new THREE.TorusGeometry(0.075 + r * 0.003, 0.004, 6, 10);
+        const lash = new THREE.Mesh(lashGeo, ropeMat);
+        lash.position.set(side * 0.35, 1.2 + r * 0.35, 0);
+        lash.rotation.y = Math.PI / 2;
+        this._body.add(lash);
+      }
+    }
+
+    // ---- Iron nail heads on base planks ----
+    const trebNailMat = mat(0x2a2a2a, { metalness: 0.7, roughness: 0.3 });
+    for (let i = 0; i < 16; i++) {
+      const nailGeo = new THREE.CylinderGeometry(0.008, 0.008, 0.005, 6);
+      const nail = new THREE.Mesh(nailGeo, trebNailMat);
+      nail.position.set(
+        (Math.random() - 0.5) * 1.8,
+        0.61,
+        (Math.random() - 0.5) * 2.6
+      );
+      this._body.add(nail);
+    }
+
+    // ---- Counterweight chain detail with individual links ----
+    for (const side of [-1, 1]) {
+      for (let ci = 0; ci < 6; ci++) {
+        const chainLinkGeo = new THREE.TorusGeometry(0.015, 0.004, 6, 8);
+        const chainLink = new THREE.Mesh(chainLinkGeo, ironMat);
+        chainLink.position.set(side * 0.15, -0.55 - ci * 0.04, -1.5);
+        chainLink.rotation.x = ci % 2 === 0 ? 0 : Math.PI / 2;
+        this._rightArm.add(chainLink);
+      }
+    }
+
+    // ---- Sling leather patches ----
+    const trebLeatherMat = mat(0x6b4226, { roughness: 0.8, metalness: 0.05 });
+    const slingPatch1Geo = new THREE.BoxGeometry(0.08, 0.005, 0.12);
+    const slingPatch1 = new THREE.Mesh(slingPatch1Geo, trebLeatherMat);
+    slingPatch1.position.set(0, -0.68, 2.65);
+    this._rightArm.add(slingPatch1);
+    const slingPatch2Geo = new THREE.BoxGeometry(0.06, 0.005, 0.1);
+    const slingPatch2 = new THREE.Mesh(slingPatch2Geo, trebLeatherMat);
+    slingPatch2.position.set(0, -0.72, 2.75);
+    this._rightArm.add(slingPatch2);
+
+    // ---- Throwing beam reinforcement straps ----
+    for (let s = 0; s < 6; s++) {
+      const strapGeo = new THREE.BoxGeometry(0.15, 0.008, 0.02);
+      const strap = new THREE.Mesh(strapGeo, ironMat);
+      strap.position.set(0, 0.072, -1.0 + s * 0.7);
+      this._rightArm.add(strap);
+    }
+
+    // ---- Wheel wood weathering details ----
+    for (const side of [-1, 1]) {
+      const trebLeg = side === -1 ? this._leftLeg : this._rightLeg;
+      for (const fb of [-1, 1]) {
+        // Wheel crack lines
+        for (let c = 0; c < 3; c++) {
+          const crackGeo = new THREE.BoxGeometry(0.003, 0.15 + Math.random() * 0.1, 0.003);
+          const crack = new THREE.Mesh(crackGeo, trebWeatherMat);
+          const crAngle = Math.random() * Math.PI;
+          crack.position.set(
+            Math.cos(crAngle) * 0.15,
+            Math.sin(crAngle) * 0.15,
+            fb * 1.15
+          );
+          crack.rotation.z = crAngle;
+          trebLeg.add(crack);
+        }
+
+        // Wheel rim bolt heads
+        for (let b = 0; b < 6; b++) {
+          const boltAngle = (b / 6) * Math.PI * 2;
+          const boltGeo = new THREE.CylinderGeometry(0.01, 0.01, 0.02, 6);
+          const bolt = new THREE.Mesh(boltGeo, ironMat);
+          bolt.position.set(
+            Math.cos(boltAngle) * 0.36,
+            Math.sin(boltAngle) * 0.36,
+            fb * (1.15 + side * 0.06)
+          );
+          bolt.rotation.x = Math.PI / 2;
+          trebLeg.add(bolt);
+        }
+      }
+    }
+
+    // ---- Ammunition stockpile near base ----
+    for (let i = 0; i < 4; i++) {
+      const ammoGeo = new THREE.SphereGeometry(0.12 + Math.random() * 0.04, 12, 10);
+      const ammo = new THREE.Mesh(ammoGeo, boulderMat);
+      ammo.position.set(
+        -0.6 + i * 0.28,
+        0.15,
+        1.8 + (Math.random() - 0.5) * 0.3
+      );
+      this._body.add(ammo);
+    }
+
+    // Ammo basket
+    const trebAmmoBasketGeo = cyl(0.35, 0.35, 0.12, 14);
+    const trebAmmoBasket = new THREE.Mesh(trebAmmoBasketGeo, ropeMat);
+    trebAmmoBasket.scale.set(1.3, 1, 1);
+    trebAmmoBasket.position.set(-0.15, 0.08, 1.8);
+    this._body.add(trebAmmoBasket);
+
+    // ---- Dust/dirt buildup at base ----
+    const trebDirtMat = mat(0x665544, { roughness: 0.98 });
+    for (let i = 0; i < 8; i++) {
+      const dirtGeo = new THREE.SphereGeometry(0.04 + Math.random() * 0.03, 6, 4);
+      const dirt = new THREE.Mesh(dirtGeo, trebDirtMat);
+      dirt.scale.set(2, 0.3, 2);
+      dirt.position.set(
+        (Math.random() - 0.5) * 1.5,
+        0.4,
+        (Math.random() - 0.5) * 2.2
+      );
+      this._body.add(dirt);
+    }
+
+    // ---- Pivot bearing detail ----
+    const bearingGeo = new THREE.TorusGeometry(0.07, 0.015, 8, 16);
+    const bearingMat2 = mat(0x444444, { metalness: 0.6, roughness: 0.25 });
+    const bearing = new THREE.Mesh(bearingGeo, bearingMat2);
+    bearing.position.set(0, 4.3, 0);
+    bearing.rotation.y = Math.PI / 2;
+    this._body.add(bearing);
+
+    // Grease stains around pivot
+    const greaseMat = mat(0x333322, { roughness: 0.6, metalness: 0.1 });
+    for (let i = 0; i < 4; i++) {
+      const greaseGeo = new THREE.SphereGeometry(0.015, 6, 4);
+      const grease = new THREE.Mesh(greaseGeo, greaseMat);
+      const gAngle = (i / 4) * Math.PI * 2;
+      grease.scale.set(2, 0.3, 2);
+      grease.position.set(Math.cos(gAngle) * 0.1, 4.28, Math.sin(gAngle) * 0.1);
+      this._body.add(grease);
+    }
+
+    // ---- Counterweight surface detail ----
+    // Counterweight stone texture
+    for (let i = 0; i < 6; i++) {
+      const cwStoneGeo = new THREE.SphereGeometry(0.03 + Math.random() * 0.02, 6, 4);
+      const cwStone = new THREE.Mesh(cwStoneGeo, boulderMat);
+      cwStone.scale.set(1, 0.5, 1);
+      cwStone.position.set(
+        (Math.random() - 0.5) * 0.35,
+        -0.06 + (Math.random() - 0.5) * 0.3,
+        -1.5 + (Math.random() - 0.5) * 0.35
+      );
+      this._rightArm.add(cwStone);
+    }
+
+    // ---- Battle damage — splintered wood ----
+    for (let i = 0; i < 4; i++) {
+      const splinterGeo = new THREE.BoxGeometry(0.008, 0.08 + Math.random() * 0.06, 0.005);
+      const splinter = new THREE.Mesh(splinterGeo, woodMat);
+      splinter.position.set(
+        (Math.random() - 0.5) * 0.6,
+        1.5 + Math.random() * 2.0,
+        (Math.random() - 0.5) * 0.1
+      );
+      splinter.rotation.z = (Math.random() - 0.5) * 0.8;
+      this._body.add(splinter);
+    }
+
+    // ---- Support beam knee braces ----
+    for (const side of [-1, 1]) {
+      const kneeBraceGeo = new THREE.BoxGeometry(0.05, 0.4, 0.05);
+      const kneeBrace = new THREE.Mesh(kneeBraceGeo, darkWoodMat);
+      kneeBrace.position.set(side * 0.3, 0.9, 0);
+      kneeBrace.rotation.z = side * 0.5;
+      this._body.add(kneeBrace);
+    }
+
+    // ---- Trigger mechanism detail ----
+    const triggerBarGeo = new THREE.BoxGeometry(0.04, 0.04, 0.3);
+    const triggerBar = new THREE.Mesh(triggerBarGeo, ironMat);
+    triggerBar.position.set(0.3, 0.75, -1.0);
+    this._body.add(triggerBar);
+
+    const triggerPinGeo = cyl(0.015, 0.015, 0.1, 8);
+    const triggerPin = new THREE.Mesh(triggerPinGeo, ironMat);
+    triggerPin.position.set(0.3, 0.85, -0.9);
+    this._body.add(triggerPin);
+
+    const triggerHandleGeo = cyl(0.01, 0.01, 0.2, 8);
+    const triggerHandle = new THREE.Mesh(triggerHandleGeo, woodMat);
+    triggerHandle.position.set(0.3, 0.7, -1.15);
+    triggerHandle.rotation.x = 0.3;
+    this._body.add(triggerHandle);
     const woodMat = mat(0x6b4226, { roughness: 0.85 });
     const darkWoodMat = mat(0x4a2e15, { roughness: 0.9 });
     const ironMat = mat(0x333333, { roughness: 0.35, metalness: 0.5 });
@@ -10419,6 +11420,321 @@ export class CreatureMesh {
       this._rightLeg.add(claw);
     }
   }
+    // ---- Tesla coil spine array along the back ----
+    const coilMetalMat = mat(0x556677, { metalness: 0.8, roughness: 0.15, clearcoat: 0.4, clearcoatRoughness: 0.2 });
+    const coilGlowMat = mat(0x66aaff, { emissive: 0x4488ee, transparent: true, opacity: 0.6 });
+    for (let i = 0; i < 5; i++) {
+      const coilPostGeo = cyl(0.025, 0.03, 0.25, 10);
+      const coilPost = new THREE.Mesh(coilPostGeo, coilMetalMat);
+      coilPost.position.set(0, 2.6 + i * 0.12, -0.42 - i * 0.03);
+      coilPost.rotation.x = -0.4;
+      this._body.add(coilPost);
+
+      for (let j = 0; j < 3; j++) {
+        const windingGeo = new THREE.TorusGeometry(0.035, 0.004, 6, 12);
+        const winding = new THREE.Mesh(windingGeo, mat(0xbb7733, { metalness: 0.7, roughness: 0.2 }));
+        winding.position.set(0, 2.5 + i * 0.12 + j * 0.06, -0.42 - i * 0.03);
+        winding.rotation.x = Math.PI / 2 - 0.4;
+        this._body.add(winding);
+      }
+
+      const sparkGlobeGeo = new THREE.SphereGeometry(0.03, 10, 8);
+      const sparkGlobe = new THREE.Mesh(sparkGlobeGeo, coilGlowMat);
+      sparkGlobe.position.set(0, 2.72 + i * 0.12, -0.46 - i * 0.03);
+      this._body.add(sparkGlobe);
+    }
+
+    // ---- Chain lightning tendrils connecting coil tips ----
+    const chainLightMat = mat(0xaaddff, { emissive: 0x6699dd, transparent: true, opacity: 0.5 });
+    for (let i = 0; i < 4; i++) {
+      const clTendrilGeo = cyl(0.006, 0.004, 0.18, 8);
+      const clTendril = new THREE.Mesh(clTendrilGeo, chainLightMat);
+      clTendril.position.set(0.02 * (i % 2 === 0 ? 1 : -1), 2.76 + i * 0.12, -0.44 - i * 0.03);
+      clTendril.rotation.set(0.3, 0, (Math.random() - 0.5) * 0.8);
+      this._body.add(clTendril);
+    }
+
+    // ---- Electromagnetic field rings orbiting the core ----
+    const emFieldMat = mat(0x4488ff, { emissive: 0x2266cc, transparent: true, opacity: 0.2, side: THREE.DoubleSide });
+    for (let i = 0; i < 3; i++) {
+      const fieldRingGeo = new THREE.TorusGeometry(0.6 + i * 0.15, 0.008, 8, 32);
+      const fieldRing = new THREE.Mesh(fieldRingGeo, emFieldMat);
+      fieldRing.position.y = 2.4;
+      fieldRing.rotation.x = Math.PI / 2 + i * 0.3;
+      fieldRing.rotation.y = i * 1.05;
+      this._body.add(fieldRing);
+    }
+
+    // ---- Capacitor nodes on shoulders ----
+    const capacitorMat = mat(0x778899, { metalness: 0.6, roughness: 0.25 });
+    for (const side of [-1, 1]) {
+      const capGeo = cyl(0.06, 0.06, 0.18, 12);
+      const capNode = new THREE.Mesh(capGeo, capacitorMat);
+      capNode.position.set(side * 0.65, 2.9, -0.1);
+      capNode.rotation.z = side * 0.3;
+      this._body.add(capNode);
+
+      for (const end of [-1, 1]) {
+        const endCapGeo = new THREE.SphereGeometry(0.062, 10, 8);
+        const endCap = new THREE.Mesh(endCapGeo, coilMetalMat);
+        endCap.scale.set(1, 0.3, 1);
+        endCap.position.set(side * (0.65 + end * 0.04), 2.9 + end * 0.08, -0.1);
+        this._body.add(endCap);
+      }
+
+      for (let d = 0; d < 3; d++) {
+        const discGeo = cyl(0.008, 0.005, 0.12 + Math.random() * 0.08, 8);
+        const discArc = new THREE.Mesh(discGeo, arcMat);
+        discArc.position.set(
+          side * (0.68 + Math.random() * 0.05),
+          2.85 + Math.random() * 0.15,
+          -0.1 + (Math.random() - 0.5) * 0.1
+        );
+        discArc.rotation.set(Math.random() * Math.PI, 0, Math.random() * Math.PI);
+        this._body.add(discArc);
+      }
+    }
+
+    // ---- Ionized air trails (vertical wispy strands) ----
+    const ionTrailMat = mat(0xaaddff, { emissive: 0x88bbee, transparent: true, opacity: 0.15 });
+    for (let i = 0; i < 8; i++) {
+      const trailGeo = cyl(0.003, 0.003, 0.6 + Math.random() * 0.5, 6);
+      const ionTrail = new THREE.Mesh(trailGeo, ionTrailMat);
+      const ionAngle = (i / 8) * Math.PI * 2;
+      const ionRadius = 0.8 + Math.random() * 0.4;
+      ionTrail.position.set(
+        Math.cos(ionAngle) * ionRadius,
+        1.5 + Math.random() * 2.0,
+        Math.sin(ionAngle) * ionRadius
+      );
+      ionTrail.rotation.z = (Math.random() - 0.5) * 0.3;
+      this._body.add(ionTrail);
+    }
+
+    // ---- Crackling elbow joints with spark clusters ----
+    for (const side of [-1, 1]) {
+      const leArm = side === -1 ? this._leftArm : this._rightArm;
+      for (let k = 0; k < 5; k++) {
+        const elbowSpkGeo = new THREE.SphereGeometry(0.015 + Math.random() * 0.01, 8, 6);
+        const elbowSpk = new THREE.Mesh(elbowSpkGeo, sparkMat);
+        elbowSpk.position.set(
+          (Math.random() - 0.5) * 0.1,
+          -0.55 + (Math.random() - 0.5) * 0.1,
+          (Math.random() - 0.5) * 0.08
+        );
+        leArm.add(elbowSpk);
+      }
+
+      const wristBandGeo = new THREE.TorusGeometry(0.08, 0.01, 8, 16);
+      const wristBand = new THREE.Mesh(wristBandGeo, coilGlowMat);
+      wristBand.position.set(0, -1.05, 0);
+      wristBand.rotation.x = Math.PI / 2;
+      leArm.add(wristBand);
+
+      for (let f = 0; f < 4; f++) {
+        const forkAngle = (f / 4) * Math.PI * 2;
+        const forkGeo = cyl(0.006, 0.003, 0.15 + Math.random() * 0.1, 6);
+        const forkArc = new THREE.Mesh(forkGeo, arcMat);
+        forkArc.position.set(
+          Math.cos(forkAngle) * 0.06,
+          -1.3 - Math.random() * 0.08,
+          Math.sin(forkAngle) * 0.06
+        );
+        forkArc.rotation.set(
+          (Math.random() - 0.5) * 0.8,
+          0,
+          side * 0.2 + (Math.random() - 0.5) * 0.4
+        );
+        leArm.add(forkArc);
+      }
+    }
+
+    // ---- Static electricity ground sparks radiating outward ----
+    const groundSpkMat = mat(0x88ccff, { emissive: 0x4488ff, transparent: true, opacity: 0.4 });
+    for (let i = 0; i < 12; i++) {
+      const gsAngle = (i / 12) * Math.PI * 2;
+      const gsLen = 0.2 + Math.random() * 0.25;
+      const gsGeo = cyl(0.005, 0.003, gsLen, 6);
+      const gsSpark = new THREE.Mesh(gsGeo, groundSpkMat);
+      gsSpark.position.set(
+        Math.cos(gsAngle) * 0.35,
+        0.3,
+        Math.sin(gsAngle) * 0.35
+      );
+      gsSpark.rotation.set(Math.PI / 2 - 0.2, gsAngle, 0);
+      this._body.add(gsSpark);
+    }
+
+    // ---- Plasma filament web between arms and core ----
+    const filamentMat = mat(0x6699ff, { emissive: 0x3366cc, transparent: true, opacity: 0.35 });
+    for (const side of [-1, 1]) {
+      for (let f = 0; f < 4; f++) {
+        const filGeo = cyl(0.004, 0.004, 0.7 + Math.random() * 0.4, 6);
+        const filMesh = new THREE.Mesh(filGeo, filamentMat);
+        filMesh.position.set(
+          side * (0.25 + f * 0.06),
+          2.5 - f * 0.12,
+          (Math.random() - 0.5) * 0.15
+        );
+        filMesh.rotation.z = side * (0.5 + f * 0.08);
+        filMesh.rotation.y = (Math.random() - 0.5) * 0.3;
+        this._body.add(filMesh);
+      }
+    }
+
+    // ---- Crown aurora wisps (flowing upward from head) ----
+    const auroraMat = mat(0x66bbff, { emissive: 0x3388dd, transparent: true, opacity: 0.25, side: THREE.DoubleSide });
+    for (let i = 0; i < 6; i++) {
+      const auroraGeo = new THREE.PlaneGeometry(0.08, 0.35 + Math.random() * 0.2);
+      const auroraWisp = new THREE.Mesh(auroraGeo, auroraMat);
+      const aAngle = (i / 6) * Math.PI * 2;
+      auroraWisp.position.set(
+        Math.cos(aAngle) * 0.15,
+        0.3 + Math.random() * 0.2,
+        Math.sin(aAngle) * 0.15
+      );
+      auroraWisp.rotation.y = aAngle;
+      auroraWisp.rotation.x = -0.2;
+      this._head.add(auroraWisp);
+    }
+
+    // ---- Electric vein patterns on torso surface ----
+    const leVeinMat = mat(0x88ddff, { emissive: 0x4488cc, transparent: true, opacity: 0.4 });
+    for (let i = 0; i < 10; i++) {
+      const vAngle = (i / 10) * Math.PI * 2;
+      const veinGeo = cyl(0.004, 0.003, 0.2 + Math.random() * 0.15, 6);
+      const leVein = new THREE.Mesh(veinGeo, leVeinMat);
+      leVein.position.set(
+        Math.cos(vAngle) * 0.42,
+        2.1 + Math.random() * 0.6,
+        Math.sin(vAngle) * 0.42
+      );
+      leVein.rotation.set(
+        (Math.random() - 0.5) * 0.5,
+        vAngle,
+        (Math.random() - 0.5) * 0.7
+      );
+      this._body.add(leVein);
+    }
+
+    // ---- Floating magnetic debris (small metallic shards) ----
+    const leDebrisMat = mat(0x667788, { metalness: 0.7, roughness: 0.3 });
+    for (let i = 0; i < 8; i++) {
+      const debrisGeo = new THREE.BoxGeometry(
+        0.02 + Math.random() * 0.02,
+        0.01 + Math.random() * 0.015,
+        0.015 + Math.random() * 0.01
+      );
+      const debrisPiece = new THREE.Mesh(debrisGeo, leDebrisMat);
+      const dAngle = (i / 8) * Math.PI * 2;
+      const dRadius = 0.7 + Math.random() * 0.5;
+      debrisPiece.position.set(
+        Math.cos(dAngle) * dRadius,
+        1.8 + Math.random() * 1.5,
+        Math.sin(dAngle) * dRadius
+      );
+      debrisPiece.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+      this._body.add(debrisPiece);
+    }
+
+    // ---- St. Elmo's fire on crown extremities ----
+    const stElmoMat = mat(0xccddff, { emissive: 0xaaccff, transparent: true, opacity: 0.5 });
+    for (let i = 0; i < 6; i++) {
+      const seAngle = (i / 6) * Math.PI * 2;
+      const seGeo = new THREE.SphereGeometry(0.018, 8, 6);
+      const stElmoOrb = new THREE.Mesh(seGeo, stElmoMat);
+      stElmoOrb.position.set(
+        Math.cos(seAngle) * 0.2,
+        0.35 + Math.random() * 0.08,
+        Math.sin(seAngle) * 0.2
+      );
+      this._head.add(stElmoOrb);
+    }
+
+    // ---- Knee joint crackling ----
+    for (const side of [-1, 1]) {
+      const leLeg = side === -1 ? this._leftLeg : this._rightLeg;
+      const kneeRingGeo = new THREE.TorusGeometry(0.12, 0.008, 8, 14);
+      const kneeRing = new THREE.Mesh(kneeRingGeo, coilGlowMat);
+      kneeRing.position.y = -0.55;
+      kneeRing.rotation.x = Math.PI / 2;
+      leLeg.add(kneeRing);
+
+      for (let k = 0; k < 4; k++) {
+        const kSpkGeo = new THREE.SphereGeometry(0.012, 6, 6);
+        const kSpk = new THREE.Mesh(kSpkGeo, sparkMat);
+        const kAngle = (k / 4) * Math.PI * 2;
+        kSpk.position.set(Math.cos(kAngle) * 0.14, -0.55, Math.sin(kAngle) * 0.14);
+        leLeg.add(kSpk);
+      }
+    }
+
+    // ---- Lichtenberg fractal burn patterns ----
+    const leBurnMat = mat(0x335577, { emissive: 0x224466, transparent: true, opacity: 0.5 });
+    for (let i = 0; i < 6; i++) {
+      const fractGeo = cyl(0.005, 0.003, 0.15 + Math.random() * 0.1, 6);
+      const fractBranch = new THREE.Mesh(fractGeo, leBurnMat);
+      const bAngle = (i / 6) * Math.PI * 2;
+      fractBranch.position.set(
+        Math.cos(bAngle) * 0.48,
+        2.0 + Math.random() * 0.8,
+        Math.sin(bAngle) * 0.48
+      );
+      fractBranch.rotation.set(0, bAngle, (Math.random() - 0.5) * 1.2);
+      this._body.add(fractBranch);
+
+      for (let sb = 0; sb < 2; sb++) {
+        const subGeo = cyl(0.003, 0.002, 0.06 + Math.random() * 0.04, 4);
+        const subBranch = new THREE.Mesh(subGeo, leBurnMat);
+        subBranch.position.set(
+          Math.cos(bAngle) * 0.48 + (Math.random() - 0.5) * 0.04,
+          2.0 + Math.random() * 0.8 + (sb - 0.5) * 0.06,
+          Math.sin(bAngle) * 0.48 + (Math.random() - 0.5) * 0.04
+        );
+        subBranch.rotation.set(Math.random(), bAngle + 0.5, Math.random());
+        this._body.add(subBranch);
+      }
+    }
+
+    // ---- Ozone haze around feet ----
+    const ozoneMat = mat(0x99bbdd, { emissive: 0x445566, transparent: true, opacity: 0.06 });
+    for (const side of [-1, 1]) {
+      const ozoneGeo = new THREE.SphereGeometry(0.4, 12, 10);
+      const ozoneHaze = new THREE.Mesh(ozoneGeo, ozoneMat);
+      ozoneHaze.position.set(side * 0.25, 0.3, 0);
+      ozoneHaze.scale.set(1.2, 0.4, 1.2);
+      this._body.add(ozoneHaze);
+    }
+
+    // ---- Voltage indicator nodes along limbs ----
+    const leVoltMat = mat(0xffffff, { emissive: 0xddddff });
+    for (const side of [-1, 1]) {
+      const leVArm = side === -1 ? this._leftArm : this._rightArm;
+      for (let v = 0; v < 5; v++) {
+        const vNodeGeo = new THREE.SphereGeometry(0.01, 6, 6);
+        const vNode = new THREE.Mesh(vNodeGeo, leVoltMat);
+        vNode.position.set(side * 0.03 * (v % 2 === 0 ? 1 : -1), -0.15 - v * 0.2, 0.06);
+        leVArm.add(vNode);
+      }
+      const leVLeg = side === -1 ? this._leftLeg : this._rightLeg;
+      for (let v = 0; v < 4; v++) {
+        const vNodeGeo2 = new THREE.SphereGeometry(0.01, 6, 6);
+        const vNode2 = new THREE.Mesh(vNodeGeo2, leVoltMat);
+        vNode2.position.set(0.05, -0.2 - v * 0.22, 0.08);
+        leVLeg.add(vNode2);
+      }
+    }
+
+    // ---- Charged particle vortex around midsection ----
+    const leVortexMat = mat(0x6699ff, { emissive: 0x3355aa, transparent: true, opacity: 0.12, side: THREE.DoubleSide });
+    for (let i = 0; i < 5; i++) {
+      const vortexGeo = new THREE.RingGeometry(0.55 + i * 0.08, 0.57 + i * 0.08, 24);
+      const vortexRing = new THREE.Mesh(vortexGeo, leVortexMat);
+      vortexRing.position.y = 2.0 + i * 0.2;
+      vortexRing.rotation.x = Math.PI / 2;
+      vortexRing.rotation.z = i * 0.4;
+      this._body.add(vortexRing);
+    }
 
 
   // ---- Lightning Elemental builder ------------------------------------------
@@ -11152,6 +12468,251 @@ export class CreatureMesh {
       flick.rotation.z = Math.sin(flickAngle) * 0.3;
       this._body.add(flick);
     }
+
+    // --- Additional detail: magma fissure network on torso ---
+    for (let fi = 0; fi < 8; fi++) {
+      const fissureAngle = (fi / 8) * Math.PI * 2;
+      const fissureLen = (0.12 + Math.random() * 0.15) * s;
+      const fissureGeo = cyl(0.008 * s, 0.004 * s, fissureLen, 4);
+      const fissure = new THREE.Mesh(fissureGeo, mat(0xff2200, { emissive: 0xff4400, emissiveIntensity: 2.5 }));
+      fissure.position.set(
+        Math.cos(fissureAngle) * 0.42 * s,
+        (2.0 + Math.random() * 0.8) * s,
+        Math.sin(fissureAngle) * 0.42 * s,
+      );
+      fissure.rotation.set(Math.random() * 0.6, fissureAngle, Math.random() * Math.PI);
+      this._body.add(fissure);
+      // Fissure glow bleed
+      const fissureGlowGeo = cyl(0.018 * s, 0.01 * s, fissureLen * 1.1, 4);
+      const fissureGlow = new THREE.Mesh(fissureGlowGeo, mat(0xff6600, { emissive: 0xff3300, transparent: true, opacity: 0.15 }));
+      fissureGlow.position.copy(fissure.position);
+      fissureGlow.rotation.copy(fissure.rotation);
+      this._body.add(fissureGlow);
+    }
+
+    // --- Additional detail: molten core veins branching outward ---
+    for (let mv = 0; mv < 6; mv++) {
+      const veinAngle = (mv / 6) * Math.PI * 2 + 0.2;
+      const veinBaseR = 0.25 * s;
+      for (let seg = 0; seg < 4; seg++) {
+        const segLen = (0.06 + Math.random() * 0.04) * s;
+        const veinSegGeo = cyl((0.01 - seg * 0.002) * s, (0.008 - seg * 0.002) * s, segLen, 6);
+        const veinSeg = new THREE.Mesh(veinSegGeo, mat(0xff4400, { emissive: 0xff2200, emissiveIntensity: 1.5 + seg * 0.3 }));
+        const segR = veinBaseR + seg * 0.08 * s;
+        veinSeg.position.set(
+          Math.cos(veinAngle + seg * 0.12) * segR,
+          (2.4 + seg * 0.05 - Math.random() * 0.1) * s,
+          Math.sin(veinAngle + seg * 0.12) * segR,
+        );
+        veinSeg.rotation.set(seg * 0.2, veinAngle + seg * 0.1, Math.PI / 3);
+        this._body.add(veinSeg);
+      }
+    }
+
+    // --- Additional detail: obsidian rock plates on shoulders ---
+    for (const side of [-1, 1]) {
+      const fireArm2 = side === -1 ? this._leftArm : this._rightArm;
+      for (let pl = 0; pl < 3; pl++) {
+        const plateGeo = new THREE.BoxGeometry((0.06 + Math.random() * 0.04) * s, (0.03 + Math.random() * 0.02) * s, (0.04 + Math.random() * 0.03) * s);
+        const plate = new THREE.Mesh(plateGeo, mat(0x1a1a1a, { roughness: 0.3, metalness: 0.1 }));
+        plate.position.set(
+          side * (0.02 + pl * 0.03) * s,
+          (0.05 + pl * 0.06) * s,
+          (Math.random() - 0.5) * 0.06 * s,
+        );
+        plate.rotation.set(Math.random() * 0.3, Math.random() * 0.3, side * 0.2);
+        fireArm2.add(plate);
+      }
+      // Molten glow between plates
+      const plateGlowGeo = new THREE.SphereGeometry(0.04 * s, 8, 6);
+      const plateGlow = new THREE.Mesh(plateGlowGeo, mat(0xff6600, { emissive: 0xff4400, transparent: true, opacity: 0.5 }));
+      plateGlow.position.set(side * 0.02 * s, 0.08 * s, 0);
+      fireArm2.add(plateGlow);
+    }
+
+    // --- Additional detail: scorched earth ground patch ---
+    const scorchGeo = new THREE.CylinderGeometry(0.6 * s, 0.65 * s, 0.02, 24);
+    const scorch = new THREE.Mesh(scorchGeo, mat(0x1a0a00, { roughness: 1.0 }));
+    scorch.position.y = 0.01;
+    this._body.add(scorch);
+    // Scorch cracks radiating outward
+    for (let sc = 0; sc < 8; sc++) {
+      const scAngle = (sc / 8) * Math.PI * 2;
+      const scLen = (0.15 + Math.random() * 0.2) * s;
+      const scCrackGeo = cyl(0.006 * s, 0.003 * s, scLen, 4);
+      const scCrack = new THREE.Mesh(scCrackGeo, mat(0xff3300, { emissive: 0xff2200, transparent: true, opacity: 0.6 }));
+      scCrack.position.set(
+        Math.cos(scAngle) * 0.3 * s,
+        0.02,
+        Math.sin(scAngle) * 0.3 * s,
+      );
+      scCrack.rotation.x = Math.PI / 2;
+      scCrack.rotation.z = scAngle;
+      this._body.add(scCrack);
+    }
+
+    // --- Additional detail: rising heat shimmer columns ---
+    for (let hc = 0; hc < 5; hc++) {
+      const hcAngle = (hc / 5) * Math.PI * 2;
+      const hcRadius = (0.3 + Math.random() * 0.2) * s;
+      const hcHeight = (0.5 + Math.random() * 0.4) * s;
+      const shimmerGeo = cyl(0.03 * s, 0.05 * s, hcHeight, 8);
+      const shimmer = new THREE.Mesh(shimmerGeo, mat(0xff8844, { transparent: true, opacity: 0.06, side: THREE.DoubleSide }));
+      shimmer.position.set(
+        Math.cos(hcAngle) * hcRadius,
+        (3.5 + hcHeight / 2) * s,
+        Math.sin(hcAngle) * hcRadius,
+      );
+      this._body.add(shimmer);
+    }
+
+    // --- Additional detail: volcanic ash particles ---
+    for (let ash = 0; ash < 12; ash++) {
+      const ashSize = (0.008 + Math.random() * 0.012) * s;
+      const ashGeo = new THREE.BoxGeometry(ashSize, ashSize * 0.5, ashSize);
+      const ashMesh = new THREE.Mesh(ashGeo, mat(0x333333, { transparent: true, opacity: 0.3 + Math.random() * 0.2 }));
+      const ashAngle = Math.random() * Math.PI * 2;
+      const ashR = (0.4 + Math.random() * 0.6) * s;
+      ashMesh.position.set(
+        Math.cos(ashAngle) * ashR,
+        (2.0 + Math.random() * 2.5) * s,
+        Math.sin(ashAngle) * ashR,
+      );
+      ashMesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+      this._body.add(ashMesh);
+    }
+
+    // --- Additional detail: flame tongue protrusions from joints ---
+    for (const side of [-1, 1]) {
+      const jointArm = side === -1 ? this._leftArm : this._rightArm;
+      for (let ft = 0; ft < 4; ft++) {
+        const tongueH = (0.08 + Math.random() * 0.1) * s;
+        const tongueGeo = new THREE.ConeGeometry(0.015 * s, tongueH, 6);
+        const tongue = new THREE.Mesh(tongueGeo, mat(0xff8800, { emissive: 0xff5500, transparent: true, opacity: 0.55 }));
+        tongue.position.set(
+          (Math.random() - 0.5) * 0.1 * s,
+          (-0.15 - ft * 0.15) * s,
+          (Math.random() - 0.5) * 0.08 * s,
+        );
+        tongue.rotation.set(Math.random() * 0.5, 0, (Math.random() - 0.5) * 0.6);
+        jointArm.add(tongue);
+      }
+    }
+
+    // --- Additional detail: inner magma chamber layers ---
+    for (let ch = 0; ch < 3; ch++) {
+      const chamberGeo = new THREE.SphereGeometry((0.2 + ch * 0.08) * s, 12 - ch * 2, 10 - ch * 2);
+      const chamber = new THREE.Mesh(chamberGeo, mat(
+        ch === 0 ? 0xffcc00 : ch === 1 ? 0xff8800 : 0xff4400,
+        { emissive: ch === 0 ? 0xffaa00 : ch === 1 ? 0xff6600 : 0xff2200, transparent: true, opacity: 0.15 - ch * 0.03 },
+      ));
+      chamber.position.y = 2.4 * s;
+      chamber.scale.set(1 + ch * 0.1, 1 + ch * 0.05, 1 + ch * 0.1);
+      this._body.add(chamber);
+    }
+
+    // --- Additional detail: flying cinder streaks ---
+    for (let cs = 0; cs < 10; cs++) {
+      const cinderLen = (0.04 + Math.random() * 0.06) * s;
+      const cinderGeo = cyl(0.003 * s, 0.001 * s, cinderLen, 4);
+      const cinder = new THREE.Mesh(cinderGeo, mat(0xffaa33, { emissive: 0xff8811, transparent: true, opacity: 0.5 + Math.random() * 0.3 }));
+      const csAngle = Math.random() * Math.PI * 2;
+      const csR = (0.3 + Math.random() * 0.7) * s;
+      cinder.position.set(
+        Math.cos(csAngle) * csR,
+        (1.8 + Math.random() * 2.2) * s,
+        Math.sin(csAngle) * csR,
+      );
+      cinder.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+      this._body.add(cinder);
+    }
+
+    // --- Additional detail: leg lava flow channels ---
+    for (const side of [-1, 1]) {
+      const fireLeg = side === -1 ? this._leftLeg : this._rightLeg;
+      for (let lf = 0; lf < 3; lf++) {
+        const flowAngle = (lf / 3) * Math.PI * 2;
+        const flowGeo = cyl(0.008 * s, 0.005 * s, 0.35 * s, 4);
+        const flow = new THREE.Mesh(flowGeo, mat(0xff4400, { emissive: 0xff2200, transparent: true, opacity: 0.6 }));
+        flow.position.set(
+          Math.cos(flowAngle) * 0.15 * s,
+          -0.5 * s,
+          Math.sin(flowAngle) * 0.15 * s,
+        );
+        flow.rotation.set(0.1, flowAngle * 0.3, 0);
+        fireLeg.add(flow);
+      }
+      // Foot pool lava bubbles
+      for (let bb = 0; bb < 3; bb++) {
+        const bubbleGeo = new THREE.SphereGeometry((0.015 + Math.random() * 0.01) * s, 8, 6);
+        const bubble = new THREE.Mesh(bubbleGeo, mat(0xff8800, { emissive: 0xff6600, transparent: true, opacity: 0.6 }));
+        bubble.position.set(
+          (Math.random() - 0.5) * 0.2 * s,
+          -0.88 * s,
+          (Math.random() - 0.5) * 0.2 * s,
+        );
+        fireLeg.add(bubble);
+      }
+    }
+
+    // --- Additional detail: face glow cavity ---
+    const faceCavityGeo = new THREE.SphereGeometry(0.12 * s, 10, 8);
+    const faceCavity = new THREE.Mesh(faceCavityGeo, mat(0xff6600, { emissive: 0xff4400, emissiveIntensity: 2.0, transparent: true, opacity: 0.4 }));
+    faceCavity.position.set(0, -0.06 * s, 0.12 * s);
+    faceCavity.scale.set(1.2, 0.6, 0.5);
+    this._head.add(faceCavity);
+
+    // Mouth slit with inner glow
+    const mouthGeo = new THREE.BoxGeometry(0.1 * s, 0.015 * s, 0.02 * s);
+    const mouth = new THREE.Mesh(mouthGeo, mat(0xffcc00, { emissive: 0xffaa00, emissiveIntensity: 3.0 }));
+    mouth.position.set(0, -0.08 * s, 0.2 * s);
+    this._head.add(mouth);
+
+    // --- Additional detail: swirling fire tornado funnel ---
+    for (let tf = 0; tf < 4; tf++) {
+      const funnelGeo = new THREE.TorusGeometry((0.15 + tf * 0.08) * s, 0.012 * s, 6, 16);
+      const funnel = new THREE.Mesh(funnelGeo, mat(0xff6600, { emissive: 0xff4400, transparent: true, opacity: 0.12 - tf * 0.02, side: THREE.DoubleSide }));
+      funnel.position.y = (3.6 + tf * 0.2) * s;
+      funnel.rotation.x = Math.PI / 2;
+      funnel.rotation.z = tf * 0.35;
+      this._body.add(funnel);
+    }
+
+    // --- Additional detail: ember nest at body base ---
+    for (let en = 0; en < 6; en++) {
+      const nestEmberAngle = (en / 6) * Math.PI * 2;
+      const nestEmberGeo = new THREE.SphereGeometry((0.02 + Math.random() * 0.015) * s, 8, 6);
+      const nestEmber = new THREE.Mesh(nestEmberGeo, mat(0xff6600, { emissive: 0xff4400 }));
+      nestEmber.position.set(
+        Math.cos(nestEmberAngle) * 0.22 * s,
+        1.6 * s,
+        Math.sin(nestEmberAngle) * 0.22 * s,
+      );
+      this._body.add(nestEmber);
+    }
+
+    // --- Additional detail: charred surface patches ---
+    for (let cp = 0; cp < 6; cp++) {
+      const charAngle = Math.random() * Math.PI * 2;
+      const charGeo = new THREE.SphereGeometry((0.04 + Math.random() * 0.03) * s, 8, 6);
+      const charPatch = new THREE.Mesh(charGeo, mat(0x0a0a0a, { roughness: 1.0 }));
+      charPatch.position.set(
+        Math.cos(charAngle) * 0.48 * s,
+        (2.0 + Math.random() * 1.0) * s,
+        Math.sin(charAngle) * 0.48 * s,
+      );
+      charPatch.scale.set(1.5, 0.4, 1.2);
+      this._body.add(charPatch);
+    }
+
+    // --- Additional detail: superheated air distortion rings ---
+    for (let dr = 0; dr < 3; dr++) {
+      const distRingGeo = new THREE.TorusGeometry((0.5 + dr * 0.15) * s, 0.008 * s, 6, 24);
+      const distRing = new THREE.Mesh(distRingGeo, mat(0xffaa44, { transparent: true, opacity: 0.04, side: THREE.DoubleSide }));
+      distRing.position.y = (2.4 + dr * 0.4) * s;
+      distRing.rotation.x = Math.PI / 2 + dr * 0.1;
+      this._body.add(distRing);
+    }
   }
 
   // ---- Minor Ice Elemental builder ------------------------------------------
@@ -11420,6 +12981,204 @@ export class CreatureMesh {
         snowflake.rotation.set(Math.random() * Math.PI, plane * Math.PI / 3, Math.random() * Math.PI);
         this._body.add(snowflake);
       }
+    }
+
+    // --- Additional detail: glacial plate armor segments ---
+    for (let gp = 0; gp < 8; gp++) {
+      const gpAngle = (gp / 8) * Math.PI * 2;
+      const gpWidth = (0.08 + Math.random() * 0.05) * s;
+      const gpHeight = (0.06 + Math.random() * 0.04) * s;
+      const gpDepth = (0.02 + Math.random() * 0.01) * s;
+      const gpGeo = new THREE.BoxGeometry(gpWidth, gpHeight, gpDepth);
+      const gPlate = new THREE.Mesh(gpGeo, mat(0x99ccdd, { transparent: true, opacity: 0.65, roughness: 0.08, metalness: 0.5 }));
+      gPlate.position.set(
+        Math.cos(gpAngle) * 0.48 * s,
+        (2.0 + gp * 0.15) * s,
+        Math.sin(gpAngle) * 0.48 * s,
+      );
+      gPlate.lookAt(new THREE.Vector3(0, gPlate.position.y, 0));
+      gPlate.rotation.z += (Math.random() - 0.5) * 0.2;
+      this._body.add(gPlate);
+    }
+
+    // --- Additional detail: deep frost veins running through body ---
+    for (let dfv = 0; dfv < 10; dfv++) {
+      const dfAngle = Math.random() * Math.PI * 2;
+      const dfLen = (0.15 + Math.random() * 0.2) * s;
+      const dfGeo = cyl(0.006 * s, 0.003 * s, dfLen, 4);
+      const deepFrost = new THREE.Mesh(dfGeo, mat(0x3399ff, { emissive: 0x2266cc, emissiveIntensity: 1.8, transparent: true, opacity: 0.7 }));
+      deepFrost.position.set(
+        Math.cos(dfAngle) * 0.38 * s,
+        (1.8 + Math.random() * 1.5) * s,
+        Math.sin(dfAngle) * 0.38 * s,
+      );
+      deepFrost.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+      this._body.add(deepFrost);
+      // Glow bleed around vein
+      const veinGlowGeo = cyl(0.015 * s, 0.008 * s, dfLen * 1.05, 4);
+      const veinGlow = new THREE.Mesh(veinGlowGeo, mat(0x66aaff, { emissive: 0x4488dd, transparent: true, opacity: 0.08 }));
+      veinGlow.position.copy(deepFrost.position);
+      veinGlow.rotation.copy(deepFrost.rotation);
+      this._body.add(veinGlow);
+    }
+
+    // --- Additional detail: permafrost ground ring ---
+    const permafrostGeo = new THREE.CylinderGeometry(0.55 * s, 0.6 * s, 0.025, 24);
+    const permafrost = new THREE.Mesh(permafrostGeo, mat(0xaabbcc, { roughness: 0.1, metalness: 0.3, transparent: true, opacity: 0.7 }));
+    permafrost.position.y = 0.01;
+    this._body.add(permafrost);
+    // Frost crystal spikes around base
+    for (let fc = 0; fc < 10; fc++) {
+      const fcAngle = (fc / 10) * Math.PI * 2;
+      const fcH = (0.06 + Math.random() * 0.08) * s;
+      const fcGeo = new THREE.ConeGeometry(0.015 * s, fcH, 6);
+      const frostCrystal = new THREE.Mesh(fcGeo, whiteMat);
+      frostCrystal.position.set(
+        Math.cos(fcAngle) * 0.5 * s,
+        fcH / 2,
+        Math.sin(fcAngle) * 0.5 * s,
+      );
+      this._body.add(frostCrystal);
+    }
+
+    // --- Additional detail: frozen mist tendrils at legs ---
+    for (const side of [-1, 1]) {
+      const iceLeg = side === -1 ? this._leftLeg : this._rightLeg;
+      for (let mt = 0; mt < 4; mt++) {
+        const mistGeo = new THREE.SphereGeometry((0.04 + Math.random() * 0.03) * s, 8, 6);
+        const mist = new THREE.Mesh(mistGeo, mat(0xddeeff, { transparent: true, opacity: 0.08 + Math.random() * 0.06 }));
+        mist.position.set(
+          (Math.random() - 0.5) * 0.15 * s,
+          (-0.4 - mt * 0.15) * s,
+          (Math.random() - 0.5) * 0.15 * s,
+        );
+        mist.scale.set(1.8, 0.5, 1.8);
+        iceLeg.add(mist);
+      }
+    }
+
+    // --- Additional detail: crystalline refraction prisms ---
+    for (let pr = 0; pr < 6; pr++) {
+      const prismGeo = new THREE.TetrahedronGeometry((0.03 + Math.random() * 0.025) * s, 0);
+      const prism = new THREE.Mesh(prismGeo, mat(0xbbddff, { transparent: true, opacity: 0.5, roughness: 0.02, metalness: 0.7 }));
+      const prAngle = (pr / 6) * Math.PI * 2;
+      prism.position.set(
+        Math.cos(prAngle) * 0.35 * s,
+        (2.2 + pr * 0.15) * s,
+        Math.sin(prAngle) * 0.35 * s,
+      );
+      prism.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+      this._body.add(prism);
+      // Light refraction beam from each prism
+      const beamGeo = cyl(0.003 * s, 0.001 * s, 0.12 * s, 4);
+      const beam = new THREE.Mesh(beamGeo, mat(0xccddff, { emissive: 0x88aadd, transparent: true, opacity: 0.25 }));
+      beam.position.copy(prism.position);
+      beam.position.y += 0.05 * s;
+      beam.rotation.set(Math.random() * 0.5, Math.random() * Math.PI, Math.random() * 0.5);
+      this._body.add(beam);
+    }
+
+    // --- Additional detail: surface hoarfrost texture bumps ---
+    for (let hf = 0; hf < 14; hf++) {
+      const hfAngle = Math.random() * Math.PI * 2;
+      const hfGeo = new THREE.SphereGeometry((0.012 + Math.random() * 0.01) * s, 6, 4);
+      const hoarfrost = new THREE.Mesh(hfGeo, mat(0xeef4ff, { roughness: 0.05, metalness: 0.2 }));
+      hoarfrost.position.set(
+        Math.cos(hfAngle) * (0.42 + Math.random() * 0.05) * s,
+        (1.8 + Math.random() * 1.6) * s,
+        Math.sin(hfAngle) * (0.42 + Math.random() * 0.05) * s,
+      );
+      hoarfrost.scale.set(1.5, 0.5, 1.5);
+      this._body.add(hoarfrost);
+    }
+
+    // --- Additional detail: ice column spine ridge on back ---
+    for (let sp = 0; sp < 6; sp++) {
+      const spineH = (0.06 + Math.random() * 0.06) * s;
+      const spineGeo = new THREE.ConeGeometry(0.025 * s, spineH, 6);
+      const spine = new THREE.Mesh(spineGeo, deepBlueMat);
+      spine.position.set(
+        0,
+        (2.0 + sp * 0.22) * s,
+        -0.38 * s,
+      );
+      spine.rotation.x = -0.3;
+      this._body.add(spine);
+    }
+
+    // --- Additional detail: frozen debris chunks embedded in body ---
+    for (let dc = 0; dc < 5; dc++) {
+      const debrisGeo = new THREE.DodecahedronGeometry((0.025 + Math.random() * 0.02) * s, 0);
+      const debris = new THREE.Mesh(debrisGeo, mat(0x667788, { roughness: 0.9, metalness: 0.05 }));
+      const dcAngle = Math.random() * Math.PI * 2;
+      debris.position.set(
+        Math.cos(dcAngle) * 0.44 * s,
+        (2.0 + Math.random() * 1.0) * s,
+        Math.sin(dcAngle) * 0.44 * s,
+      );
+      debris.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+      this._body.add(debris);
+      // Ice encasing the debris
+      const iceWrapGeo = new THREE.SphereGeometry((0.03 + Math.random() * 0.015) * s, 8, 6);
+      const iceWrap = new THREE.Mesh(iceWrapGeo, mat(0x8ec8d8, { transparent: true, opacity: 0.3, roughness: 0.05 }));
+      iceWrap.position.copy(debris.position);
+      this._body.add(iceWrap);
+    }
+
+    // --- Additional detail: cold aura shimmer layers ---
+    for (let ca = 0; ca < 3; ca++) {
+      const coldAuraGeo = new THREE.SphereGeometry((0.7 + ca * 0.12) * s, 14, 10);
+      const coldAura = new THREE.Mesh(coldAuraGeo, mat(0xaaccee, { transparent: true, opacity: 0.025, side: THREE.DoubleSide }));
+      coldAura.position.y = 2.5 * s;
+      coldAura.scale.set(1 + ca * 0.08, 1.3 + ca * 0.08, 1 + ca * 0.08);
+      this._body.add(coldAura);
+    }
+
+    // --- Additional detail: icicle stalactites hanging from arms ---
+    for (const side of [-1, 1]) {
+      const stalArm = side === -1 ? this._leftArm : this._rightArm;
+      for (let st = 0; st < 5; st++) {
+        const stalLen = (0.04 + Math.random() * 0.06) * s;
+        const stalGeo = new THREE.ConeGeometry(0.008 * s, stalLen, 6);
+        const stalactite = new THREE.Mesh(stalGeo, whiteMat);
+        stalactite.position.set(
+          (Math.random() - 0.5) * 0.08 * s,
+          (-0.3 - st * 0.12) * s,
+          (Math.random() - 0.5) * 0.06 * s,
+        );
+        stalactite.rotation.x = Math.PI;
+        stalArm.add(stalactite);
+      }
+    }
+
+    // --- Additional detail: cryo-energy pulses in core ---
+    for (let cp2 = 0; cp2 < 4; cp2++) {
+      const cryoGeo = new THREE.OctahedronGeometry((0.08 + cp2 * 0.04) * s, 0);
+      const cryo = new THREE.Mesh(cryoGeo, mat(0x3399ff, { emissive: 0x2266cc, transparent: true, opacity: 0.12 - cp2 * 0.02 }));
+      cryo.position.y = 2.5 * s;
+      cryo.rotation.y = cp2 * 0.4;
+      cryo.rotation.x = cp2 * 0.2;
+      this._body.add(cryo);
+    }
+
+    // --- Additional detail: head frost crown filigree ---
+    const filiGeo = new THREE.TorusGeometry(0.22 * s, 0.008 * s, 6, 20);
+    const filigree = new THREE.Mesh(filiGeo, mat(0xccddff, { emissive: 0x88aacc, transparent: true, opacity: 0.5 }));
+    filigree.position.set(0, 0.12 * s, 0);
+    filigree.rotation.x = Math.PI / 2;
+    this._head.add(filigree);
+    // Crown ice crystals decorating the filigree
+    for (let cc = 0; cc < 8; cc++) {
+      const ccAngle = (cc / 8) * Math.PI * 2;
+      const crystGeo = new THREE.OctahedronGeometry(0.012 * s, 0);
+      const cryst = new THREE.Mesh(crystGeo, mat(0xddeeff, { emissive: 0x88bbdd }));
+      cryst.position.set(
+        Math.cos(ccAngle) * 0.22 * s,
+        0.12 * s,
+        Math.sin(ccAngle) * 0.22 * s,
+      );
+      cryst.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
+      this._head.add(cryst);
     }
   }
 
@@ -11693,6 +13452,224 @@ export class CreatureMesh {
       );
       this._body.add(tdTip);
     }
+
+    // --- Additional detail: tesla coil spines on back ---
+    for (let tc = 0; tc < 5; tc++) {
+      const coilH = (0.15 + Math.random() * 0.12) * s;
+      const coilBaseGeo = cyl(0.025 * s, 0.015 * s, coilH, 8);
+      const coilBase = new THREE.Mesh(coilBaseGeo, mat(0x556688, { metalness: 0.7, roughness: 0.3 }));
+      coilBase.position.set(
+        (Math.random() - 0.5) * 0.15 * s,
+        (2.6 + tc * 0.15) * s,
+        -0.4 * s,
+      );
+      this._body.add(coilBase);
+      // Spark ball at coil tip
+      const coilSparkGeo = new THREE.SphereGeometry(0.02 * s, 8, 6);
+      const coilSpark = new THREE.Mesh(coilSparkGeo, sparkMat);
+      coilSparkGeo.translate(0, coilH / 2, 0);
+      coilSpark.position.copy(coilBase.position);
+      this._body.add(coilSpark);
+      // Arc between adjacent coils
+      if (tc > 0) {
+        const interArcGeo = cyl(0.005 * s, 0.003 * s, 0.12 * s, 4);
+        const interArc = new THREE.Mesh(interArcGeo, arcBoltMat);
+        interArc.position.set(
+          coilBase.position.x,
+          (2.6 + (tc - 0.5) * 0.15) * s,
+          -0.38 * s,
+        );
+        interArc.rotation.z = (Math.random() - 0.5) * 0.6;
+        this._body.add(interArc);
+      }
+    }
+
+    // --- Additional detail: ionized air glow shells ---
+    for (let ig = 0; ig < 4; ig++) {
+      const ionGeo = new THREE.SphereGeometry((0.55 + ig * 0.1) * s, 14, 10);
+      const ionShell = new THREE.Mesh(ionGeo, mat(0x4488ff, { emissive: 0x2244aa, transparent: true, opacity: 0.04 - ig * 0.008, side: THREE.DoubleSide }));
+      ionShell.position.y = 2.4 * s;
+      ionShell.scale.set(1 + ig * 0.05, 1.1 + ig * 0.03, 1 + ig * 0.05);
+      this._body.add(ionShell);
+    }
+
+    // --- Additional detail: chain lightning links between limbs ---
+    for (const side of [-1, 1]) {
+      // Torso to arm arcs
+      for (let cl = 0; cl < 4; cl++) {
+        const chainLenght = (0.08 + Math.random() * 0.06) * s;
+        const chainGeo = cyl(0.006 * s, 0.003 * s, chainLenght, 4);
+        const chain = new THREE.Mesh(chainGeo, mat(0x88ccff, { emissive: 0x4488ff, transparent: true, opacity: 0.5 + Math.random() * 0.2 }));
+        const t = (cl + 1) / 5;
+        chain.position.set(
+          side * (0.2 + t * 0.3) * s,
+          (2.6 - t * 0.4) * s,
+          (Math.random() - 0.5) * 0.1 * s,
+        );
+        chain.rotation.set(Math.random() * 0.5, 0, side * (0.5 + cl * 0.2));
+        this._body.add(chain);
+      }
+      // Torso to leg arcs
+      for (let ll = 0; ll < 3; ll++) {
+        const legChainGeo = cyl(0.005 * s, 0.003 * s, 0.1 * s, 4);
+        const legChain = new THREE.Mesh(legChainGeo, mat(0x6699cc, { emissive: 0x3366aa, transparent: true, opacity: 0.4 }));
+        legChain.position.set(
+          side * (0.15 + ll * 0.04) * s,
+          (1.8 - ll * 0.15) * s,
+          0,
+        );
+        legChain.rotation.z = side * 0.8;
+        this._body.add(legChain);
+      }
+    }
+
+    // --- Additional detail: electrified ground discharge ---
+    const groundDischargeGeo = new THREE.CylinderGeometry(0.5 * s, 0.55 * s, 0.02, 20);
+    const groundDischarge = new THREE.Mesh(groundDischargeGeo, mat(0x4488ff, { emissive: 0x2244aa, transparent: true, opacity: 0.15 }));
+    groundDischarge.position.y = 0.01;
+    this._body.add(groundDischarge);
+    // Ground spark lines radiating from feet
+    for (let gs = 0; gs < 8; gs++) {
+      const gsAngle = (gs / 8) * Math.PI * 2;
+      const gsLen = (0.12 + Math.random() * 0.15) * s;
+      for (let gseg = 0; gseg < 3; gseg++) {
+        const gsegLen = gsLen / 3;
+        const gsegGeo = cyl(0.004 * s, 0.002 * s, gsegLen, 4);
+        const gsegMesh = new THREE.Mesh(gsegGeo, mat(0x88ccff, { emissive: 0x4488ff, transparent: true, opacity: 0.5 - gseg * 0.12 }));
+        const gsR = 0.25 * s + gseg * gsegLen;
+        gsegMesh.position.set(
+          Math.cos(gsAngle + gseg * 0.15) * gsR,
+          0.02,
+          Math.sin(gsAngle + gseg * 0.15) * gsR,
+        );
+        gsegMesh.rotation.x = Math.PI / 2;
+        gsegMesh.rotation.z = gsAngle + gseg * 0.2;
+        this._body.add(gsegMesh);
+      }
+    }
+
+    // --- Additional detail: magnetic field visualization rings ---
+    for (let mf2 = 0; mf2 < 3; mf2++) {
+      const fieldRingGeo = new THREE.TorusGeometry((0.4 + mf2 * 0.12) * s, 0.008 * s, 6, 20);
+      const fieldRing = new THREE.Mesh(fieldRingGeo, mat(0x6644cc, { emissive: 0x4422aa, transparent: true, opacity: 0.12 - mf2 * 0.03, side: THREE.DoubleSide }));
+      fieldRing.position.y = 2.4 * s;
+      fieldRing.rotation.x = Math.PI / 3 + mf2 * 0.5;
+      fieldRing.rotation.y = mf2 * 0.7;
+      this._body.add(fieldRing);
+    }
+
+    // --- Additional detail: flickering spark motes ---
+    for (let fm = 0; fm < 15; fm++) {
+      const moteGeo = new THREE.SphereGeometry((0.004 + Math.random() * 0.006) * s, 4, 4);
+      const mote = new THREE.Mesh(moteGeo, mat(0xeeeeff, { emissive: 0xddddff, emissiveIntensity: 2.0 }));
+      const mAngle = Math.random() * Math.PI * 2;
+      const mRadius = (0.2 + Math.random() * 0.8) * s;
+      mote.position.set(
+        Math.cos(mAngle) * mRadius,
+        (1.2 + Math.random() * 2.8) * s,
+        Math.sin(mAngle) * mRadius,
+      );
+      this._body.add(mote);
+    }
+
+    // --- Additional detail: arm capacitor nodes ---
+    for (const side of [-1, 1]) {
+      const capArm = side === -1 ? this._leftArm : this._rightArm;
+      for (let cn = 0; cn < 3; cn++) {
+        const nodeGeo = new THREE.OctahedronGeometry(0.025 * s, 0);
+        const node = new THREE.Mesh(nodeGeo, mat(0x556688, { metalness: 0.8, roughness: 0.15 }));
+        node.position.set(
+          (Math.random() - 0.5) * 0.06 * s,
+          (-0.15 - cn * 0.25) * s,
+          0.06 * s,
+        );
+        node.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
+        capArm.add(node);
+        // Spark emanating from node
+        const nodeSparkGeo = cyl(0.003 * s, 0.001 * s, 0.06 * s, 4);
+        const nodeSpark = new THREE.Mesh(nodeSparkGeo, sparkMat);
+        nodeSpark.position.copy(node.position);
+        nodeSpark.position.y -= 0.02 * s;
+        nodeSpark.rotation.set(Math.random() * Math.PI, 0, Math.random() * Math.PI);
+        capArm.add(nodeSpark);
+      }
+    }
+
+    // --- Additional detail: ozone cloud wisps ---
+    for (let oz = 0; oz < 6; oz++) {
+      const ozoneGeo = new THREE.SphereGeometry((0.05 + Math.random() * 0.04) * s, 8, 6);
+      const ozone = new THREE.Mesh(ozoneGeo, mat(0x99aacc, { transparent: true, opacity: 0.06 + Math.random() * 0.04 }));
+      const ozAngle = Math.random() * Math.PI * 2;
+      ozone.position.set(
+        Math.cos(ozAngle) * (0.4 + Math.random() * 0.3) * s,
+        (3.0 + Math.random() * 0.8) * s,
+        Math.sin(ozAngle) * (0.4 + Math.random() * 0.3) * s,
+      );
+      ozone.scale.set(1.5, 0.6, 1.5);
+      this._body.add(ozone);
+    }
+
+    // --- Additional detail: leg lightning channel grooves ---
+    for (const side of [-1, 1]) {
+      const ltgLeg = side === -1 ? this._leftLeg : this._rightLeg;
+      for (let lc = 0; lc < 4; lc++) {
+        const channelAngle = (lc / 4) * Math.PI * 2;
+        const channelGeo = cyl(0.006 * s, 0.004 * s, 0.4 * s, 4);
+        const channel = new THREE.Mesh(channelGeo, mat(0x4488ff, { emissive: 0x2266cc, transparent: true, opacity: 0.5 }));
+        channel.position.set(
+          Math.cos(channelAngle) * 0.12 * s,
+          -0.45 * s,
+          Math.sin(channelAngle) * 0.12 * s,
+        );
+        ltgLeg.add(channel);
+      }
+      // Foot discharge sparks
+      for (let fd = 0; fd < 4; fd++) {
+        const footSparkGeo = new THREE.SphereGeometry(0.01 * s, 6, 4);
+        const footSpark = new THREE.Mesh(footSparkGeo, sparkMat);
+        footSpark.position.set(
+          (Math.random() - 0.5) * 0.2 * s,
+          -0.92 * s,
+          (Math.random() - 0.5) * 0.2 * s,
+        );
+        ltgLeg.add(footSpark);
+      }
+    }
+
+    // --- Additional detail: stormy energy vortex above head ---
+    for (let sv = 0; sv < 3; sv++) {
+      const vortexGeo = new THREE.TorusGeometry((0.12 + sv * 0.06) * s, 0.01 * s, 6, 14);
+      const vortex = new THREE.Mesh(vortexGeo, mat(0x4488ff, { emissive: 0x2266cc, transparent: true, opacity: 0.2 - sv * 0.05, side: THREE.DoubleSide }));
+      vortex.position.y = (3.7 + sv * 0.12) * s;
+      vortex.rotation.x = Math.PI / 2;
+      vortex.rotation.z = sv * 0.4;
+      this._body.add(vortex);
+    }
+    // Central bolt from vortex
+    const boltCoreGeo = cyl(0.015 * s, 0.008 * s, 0.3 * s, 6);
+    const boltCore = new THREE.Mesh(boltCoreGeo, mat(0xaaddff, { emissive: 0x88ccff, transparent: true, opacity: 0.6 }));
+    boltCore.position.y = 3.85 * s;
+    this._body.add(boltCore);
+
+    // --- Additional detail: purple electrical corona at head ---
+    const coronaGeo = new THREE.SphereGeometry(0.3 * s, 12, 10);
+    const corona = new THREE.Mesh(coronaGeo, mat(0x6644cc, { emissive: 0x4422aa, transparent: true, opacity: 0.08, side: THREE.DoubleSide }));
+    corona.position.y = 3.4 * s;
+    this._body.add(corona);
+    // Corona tendrils
+    for (let ct = 0; ct < 6; ct++) {
+      const ctAngle = (ct / 6) * Math.PI * 2;
+      const ctLen = (0.08 + Math.random() * 0.06) * s;
+      const ctGeo = cyl(0.005 * s, 0.002 * s, ctLen, 4);
+      const coronaTendril = new THREE.Mesh(ctGeo, mat(0x8855dd, { emissive: 0x6644cc, transparent: true, opacity: 0.4 }));
+      coronaTendril.position.set(
+        Math.cos(ctAngle) * 0.22 * s,
+        3.4 * s,
+        Math.sin(ctAngle) * 0.22 * s,
+      );
+      coronaTendril.rotation.set(Math.random() * 0.5, ctAngle, Math.PI / 4);
+      this._body.add(coronaTendril);
+    }
   }
 
   // ---- Minor Distortion Elemental builder -----------------------------------
@@ -11937,6 +13914,229 @@ export class CreatureMesh {
       ringPulse.rotation.x = Math.PI / 2 + i * 0.2;
       ringPulse.rotation.z = i * 0.6;
       this._body.add(ringPulse);
+    }
+
+    // --- Additional detail: gravitational lens warp spheres ---
+    for (let gl = 0; gl < 5; gl++) {
+      const lensGeo = new THREE.SphereGeometry((0.06 + Math.random() * 0.04) * s, 10, 8);
+      const lens = new THREE.Mesh(lensGeo, mat(0x220044, { transparent: true, opacity: 0.15, roughness: 0.1, metalness: 0.4 }));
+      const glAngle = (gl / 5) * Math.PI * 2;
+      const glR = (0.45 + Math.random() * 0.25) * s;
+      lens.position.set(
+        Math.cos(glAngle) * glR,
+        (2.0 + Math.random() * 1.2) * s,
+        Math.sin(glAngle) * glR,
+      );
+      lens.scale.set(1.3, 0.7, 1.3);
+      this._body.add(lens);
+      // Warped light ring around each lens
+      const warpRingGeo = new THREE.TorusGeometry(0.05 * s, 0.004 * s, 6, 12);
+      const warpRing = new THREE.Mesh(warpRingGeo, mat(0x8833cc, { emissive: 0x6622aa, transparent: true, opacity: 0.3 }));
+      warpRing.position.copy(lens.position);
+      warpRing.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+      this._body.add(warpRing);
+    }
+
+    // --- Additional detail: void rift tears in space ---
+    for (let vr = 0; vr < 4; vr++) {
+      const riftWidth = (0.08 + Math.random() * 0.06) * s;
+      const riftHeight = (0.15 + Math.random() * 0.1) * s;
+      const riftGeo = new THREE.PlaneGeometry(riftWidth, riftHeight, 1, 1);
+      const riftTear = new THREE.Mesh(riftGeo, mat(0x000000, { emissive: 0x220044, emissiveIntensity: 0.5, transparent: true, opacity: 0.8, side: THREE.DoubleSide }));
+      const vrAngle = (vr / 4) * Math.PI * 2 + 0.3;
+      riftTear.position.set(
+        Math.cos(vrAngle) * 0.55 * s,
+        (2.0 + vr * 0.3) * s,
+        Math.sin(vrAngle) * 0.55 * s,
+      );
+      riftTear.rotation.y = vrAngle + Math.PI / 2;
+      riftTear.rotation.z = (Math.random() - 0.5) * 0.4;
+      this._body.add(riftTear);
+      // Rift glow border
+      const riftBorderGeo = new THREE.PlaneGeometry(riftWidth + 0.02 * s, riftHeight + 0.02 * s, 1, 1);
+      const riftBorder = new THREE.Mesh(riftBorderGeo, mat(0x8833cc, { emissive: 0x6622aa, transparent: true, opacity: 0.35, side: THREE.DoubleSide }));
+      riftBorder.position.copy(riftTear.position);
+      riftBorder.rotation.copy(riftTear.rotation);
+      this._body.add(riftBorder);
+      // Leaking void particles from each rift
+      for (let rp = 0; rp < 3; rp++) {
+        const leakGeo = new THREE.SphereGeometry((0.008 + Math.random() * 0.006) * s, 6, 4);
+        const leak = new THREE.Mesh(leakGeo, mat(0xaa44ff, { emissive: 0x6622cc }));
+        leak.position.set(
+          riftTear.position.x + (Math.random() - 0.5) * 0.06 * s,
+          riftTear.position.y + (Math.random() - 0.5) * 0.1 * s,
+          riftTear.position.z + (Math.random() - 0.5) * 0.06 * s,
+        );
+        this._body.add(leak);
+      }
+    }
+
+    // --- Additional detail: shadow tendril filaments from arms ---
+    for (const side of [-1, 1]) {
+      const distArm = side === -1 ? this._leftArm : this._rightArm;
+      for (let sf = 0; sf < 5; sf++) {
+        const filLen = (0.06 + Math.random() * 0.08) * s;
+        const filGeo = cyl(0.005 * s, 0.002 * s, filLen, 4);
+        const filament = new THREE.Mesh(filGeo, mat(0x1a0a2e, { transparent: true, opacity: 0.5 - sf * 0.06 }));
+        filament.position.set(
+          (Math.random() - 0.5) * 0.08 * s,
+          (-0.3 - sf * 0.12) * s,
+          (Math.random() - 0.5) * 0.06 * s,
+        );
+        filament.rotation.set(Math.random() * Math.PI, 0, (Math.random() - 0.5) * 0.8);
+        distArm.add(filament);
+      }
+      // Void orb at fingertip
+      const voidOrbGeo = new THREE.SphereGeometry(0.03 * s, 10, 8);
+      const voidOrb = new THREE.Mesh(voidOrbGeo, mat(0x000000, { emissive: 0x330066, transparent: true, opacity: 0.8 }));
+      voidOrb.position.y = -1.0 * s;
+      distArm.add(voidOrb);
+      const voidOrbAuraGeo = new THREE.SphereGeometry(0.05 * s, 8, 6);
+      const voidOrbAura = new THREE.Mesh(voidOrbAuraGeo, mat(0x6622aa, { emissive: 0x4411aa, transparent: true, opacity: 0.2 }));
+      voidOrbAura.position.y = -1.0 * s;
+      distArm.add(voidOrbAura);
+    }
+
+    // --- Additional detail: entropy erosion patches on body ---
+    for (let ep = 0; ep < 8; ep++) {
+      const epAngle = Math.random() * Math.PI * 2;
+      const erodeGeo = new THREE.SphereGeometry((0.03 + Math.random() * 0.025) * s, 8, 6);
+      const erode = new THREE.Mesh(erodeGeo, mat(0x0a0018, { roughness: 1.0 }));
+      erode.position.set(
+        Math.cos(epAngle) * 0.46 * s,
+        (1.8 + Math.random() * 1.4) * s,
+        Math.sin(epAngle) * 0.46 * s,
+      );
+      erode.scale.set(1.4, 0.5, 1.0);
+      this._body.add(erode);
+    }
+
+    // --- Additional detail: anti-gravity debris field ---
+    for (let ag = 0; ag < 8; ag++) {
+      const debrisSize = (0.015 + Math.random() * 0.02) * s;
+      const debrisGeo = new THREE.BoxGeometry(debrisSize, debrisSize * 1.5, debrisSize);
+      const debris = new THREE.Mesh(debrisGeo, mat(0x2a1a3e, { transparent: true, opacity: 0.6 }));
+      const agAngle = Math.random() * Math.PI * 2;
+      const agR = (0.5 + Math.random() * 0.4) * s;
+      debris.position.set(
+        Math.cos(agAngle) * agR,
+        (1.5 + Math.random() * 2.5) * s,
+        Math.sin(agAngle) * agR,
+      );
+      debris.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+      this._body.add(debris);
+    }
+
+    // --- Additional detail: event horizon ring at waist ---
+    const horizonGeo = new THREE.TorusGeometry(0.5 * s, 0.02 * s, 8, 24);
+    const horizon = new THREE.Mesh(horizonGeo, mat(0x000000, { emissive: 0x110022, transparent: true, opacity: 0.7 }));
+    horizon.position.y = 2.0 * s;
+    horizon.rotation.x = Math.PI / 2;
+    this._body.add(horizon);
+    // Accretion glow around horizon
+    const accretionGeo = new THREE.TorusGeometry(0.5 * s, 0.06 * s, 8, 24);
+    const accretion = new THREE.Mesh(accretionGeo, mat(0x6622aa, { emissive: 0x4411aa, transparent: true, opacity: 0.1, side: THREE.DoubleSide }));
+    accretion.position.y = 2.0 * s;
+    accretion.rotation.x = Math.PI / 2;
+    this._body.add(accretion);
+
+    // --- Additional detail: dimensional echo ghost copies ---
+    for (let ge = 0; ge < 3; ge++) {
+      const echoGeo = new THREE.SphereGeometry(0.45 * s, 14, 12);
+      const echo = new THREE.Mesh(echoGeo, mat(0x3a1a5e, { transparent: true, opacity: 0.03 }));
+      echo.position.set(
+        (Math.random() - 0.5) * 0.3 * s,
+        (2.3 + ge * 0.1) * s,
+        (Math.random() - 0.5) * 0.3 * s,
+      );
+      echo.scale.set(1 + ge * 0.08, 1.1 + ge * 0.05, 1 + ge * 0.08);
+      this._body.add(echo);
+    }
+
+    // --- Additional detail: void mist ground layer ---
+    const voidMistGeo = new THREE.CylinderGeometry(0.6 * s, 0.65 * s, 0.03, 20);
+    const voidMist = new THREE.Mesh(voidMistGeo, mat(0x0a0018, { transparent: true, opacity: 0.2 }));
+    voidMist.position.y = 0.02;
+    this._body.add(voidMist);
+    for (let vm = 0; vm < 6; vm++) {
+      const mistWispGeo = new THREE.SphereGeometry((0.06 + Math.random() * 0.04) * s, 8, 6);
+      const mistWisp = new THREE.Mesh(mistWispGeo, mat(0x1a0a2e, { transparent: true, opacity: 0.1 + Math.random() * 0.08 }));
+      const mwAngle = Math.random() * Math.PI * 2;
+      mistWisp.position.set(
+        Math.cos(mwAngle) * (0.3 + Math.random() * 0.3) * s,
+        0.05 + Math.random() * 0.08,
+        Math.sin(mwAngle) * (0.3 + Math.random() * 0.3) * s,
+      );
+      mistWisp.scale.set(1.8, 0.3, 1.8);
+      this._body.add(mistWisp);
+    }
+
+    // --- Additional detail: sigil markings on head ---
+    for (let sg = 0; sg < 4; sg++) {
+      const sigilAngle = (sg / 4) * Math.PI * 2;
+      const sigilGeo = new THREE.PlaneGeometry(0.03 * s, 0.03 * s, 1, 1);
+      const sigil = new THREE.Mesh(sigilGeo, mat(0xaa44ff, { emissive: 0x8833cc, emissiveIntensity: 2.0, transparent: true, opacity: 0.6, side: THREE.DoubleSide }));
+      sigil.position.set(
+        Math.cos(sigilAngle) * 0.22 * s,
+        0.02 * s,
+        Math.sin(sigilAngle) * 0.22 * s,
+      );
+      sigil.rotation.y = sigilAngle + Math.PI / 2;
+      this._head.add(sigil);
+    }
+
+    // --- Additional detail: unstable matter flickers around legs ---
+    for (const side of [-1, 1]) {
+      const distLeg = side === -1 ? this._leftLeg : this._rightLeg;
+      for (let uf = 0; uf < 4; uf++) {
+        const flickGeo = new THREE.OctahedronGeometry((0.015 + Math.random() * 0.01) * s, 0);
+        const flick = new THREE.Mesh(flickGeo, mat(0x6622aa, { emissive: 0x4411aa, transparent: true, opacity: 0.4 + Math.random() * 0.2 }));
+        flick.position.set(
+          (Math.random() - 0.5) * 0.18 * s,
+          (-0.3 - uf * 0.15) * s,
+          (Math.random() - 0.5) * 0.18 * s,
+        );
+        flick.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+        distLeg.add(flick);
+      }
+    }
+
+    // --- Additional detail: phantom eye afterimages ---
+    for (let pa = 0; pa < 3; pa++) {
+      for (const side of [-1, 1]) {
+        const ghostEyeGeo = new THREE.BoxGeometry(0.04 * s, 0.01 * s, 0.01 * s);
+        const ghostEye = new THREE.Mesh(ghostEyeGeo, mat(0xaa44ff, { emissive: 0xaa44ff, transparent: true, opacity: 0.15 - pa * 0.04 }));
+        ghostEye.position.set(
+          side * (0.09 + pa * 0.03) * s,
+          (0.02 + pa * 0.015) * s,
+          (0.2 + pa * 0.02) * s,
+        );
+        this._head.add(ghostEye);
+      }
+    }
+
+    // --- Additional detail: reality anchor chains ---
+    for (let ra = 0; ra < 4; ra++) {
+      const anchorAngle = (ra / 4) * Math.PI * 2 + 0.4;
+      const anchorLen = (0.3 + Math.random() * 0.2) * s;
+      const anchorGeo = cyl(0.01 * s, 0.006 * s, anchorLen, 6);
+      const anchor = new THREE.Mesh(anchorGeo, mat(0x3a1a5e, { metalness: 0.3, roughness: 0.5, transparent: true, opacity: 0.5 }));
+      anchor.position.set(
+        Math.cos(anchorAngle) * 0.3 * s,
+        (2.4) * s,
+        Math.sin(anchorAngle) * 0.3 * s,
+      );
+      anchor.rotation.set(Math.PI / 4, anchorAngle, 0);
+      this._body.add(anchor);
+      // Anchor point glow
+      const anchorPtGeo = new THREE.SphereGeometry(0.015 * s, 6, 4);
+      const anchorPt = new THREE.Mesh(anchorPtGeo, glowMat);
+      anchorPt.position.set(
+        Math.cos(anchorAngle) * (0.3 + anchorLen * 0.5) * s,
+        (2.4 - anchorLen * 0.35) * s,
+        Math.sin(anchorAngle) * (0.3 + anchorLen * 0.5) * s,
+      );
+      this._body.add(anchorPt);
     }
   }
 
@@ -12234,6 +14434,226 @@ export class CreatureMesh {
     }
 
     // Double bow arms (two stacked crossbow arms)
+    // ---- ENHANCED DETAIL: Wood grain texture on carriage ----
+    for (let wg = 0; wg < 8; wg++) {
+      const wGrainGeo = new THREE.BoxGeometry(1.76, 0.004, 0.006);
+      const wGrain = new THREE.Mesh(wGrainGeo, mat(0x3a1a08));
+      wGrain.position.set(0, 0.62, -0.38 + wg * 0.1);
+      this._body.add(wGrain);
+    }
+
+    // Wood knots on carriage surface
+    for (let wk = 0; wk < 5; wk++) {
+      const knotGeo = new THREE.SphereGeometry(0.012, 6, 6);
+      const knotMesh = new THREE.Mesh(knotGeo, mat(0x3a1808));
+      knotMesh.position.set(-0.6 + wk * 0.3, 0.76, -0.2 + wk * 0.08);
+      this._body.add(knotMesh);
+    }
+
+    // ---- ENHANCED DETAIL: Torsion bundle rope wrapping ----
+    for (let tb = 0; tb < 8; tb++) {
+      const torsionGeo = new THREE.TorusGeometry(0.05, 0.006, 6, 12);
+      const torsionRing = new THREE.Mesh(torsionGeo, mat(0x887755));
+      torsionRing.position.set(0.55, 0.86 + tb * 0.025, 0);
+      torsionRing.rotation.x = Math.PI / 2;
+      this._body.add(torsionRing);
+    }
+
+    // Torsion skein rope strands
+    for (let ts = 0; ts < 6; ts++) {
+      const tsAngle = (ts / 6) * Math.PI * 2;
+      const skeinGeo = cyl(0.006, 0.006, 0.22, 6);
+      const skein = new THREE.Mesh(skeinGeo, mat(0x887755));
+      skein.position.set(0.55 + Math.cos(tsAngle) * 0.04, 0.93, Math.sin(tsAngle) * 0.04);
+      this._body.add(skein);
+    }
+
+    // ---- ENHANCED DETAIL: Iron reinforcement plates on bow arms ----
+    for (const armSide of [-1, 1]) {
+      for (let ap = 0; ap < 3; ap++) {
+        const armPlateGeo = new THREE.BoxGeometry(0.1, 0.03, 0.04);
+        const armPlate = new THREE.Mesh(armPlateGeo, ironMat);
+        armPlate.position.set(0.55, 0.96, armSide * (0.2 + ap * 0.18));
+        this._body.add(armPlate);
+      }
+    }
+
+    // ---- ENHANCED DETAIL: Leather bolt quiver ----
+    const btLeatherMat = new THREE.MeshPhongMaterial({
+      color: 0x5a3a1a,
+      shininess: 15,
+      specular: new THREE.Color(0x221100),
+    });
+    const quiverGeo = cyl(0.08, 0.06, 0.45, 10);
+    const quiver = new THREE.Mesh(quiverGeo, btLeatherMat);
+    quiver.position.set(-0.7, 0.9, -0.3);
+    quiver.rotation.z = 0.15;
+    this._body.add(quiver);
+
+    // Bolts sticking out of quiver
+    for (let qb = 0; qb < 5; qb++) {
+      const qBoltAngle = (qb / 5) * Math.PI * 2;
+      const qBoltGeo = cyl(0.012, 0.012, 0.5, 6);
+      const qBolt = new THREE.Mesh(qBoltGeo, mat(0x5a4020));
+      qBolt.position.set(
+        -0.7 + Math.cos(qBoltAngle) * 0.03,
+        1.1,
+        -0.3 + Math.sin(qBoltAngle) * 0.03,
+      );
+      this._body.add(qBolt);
+    }
+
+    // ---- ENHANCED DETAIL: Winch drum rope wrapping ----
+    for (let wr = 0; wr < 6; wr++) {
+      const windRopeGeo = new THREE.TorusGeometry(0.085, 0.005, 6, 12);
+      const windRope = new THREE.Mesh(windRopeGeo, mat(0x887755));
+      windRope.rotation.y = Math.PI / 2;
+      windRope.position.set(-0.3, 0.7, -0.48 + wr * 0.02);
+      this._body.add(windRope);
+    }
+
+    // ---- ENHANCED DETAIL: Trigger mechanism ----
+    const triggerHousingGeo = new THREE.BoxGeometry(0.1, 0.12, 0.08);
+    const triggerHousing = new THREE.Mesh(triggerHousingGeo, ironMat);
+    triggerHousing.position.set(-0.1, 0.78, 0);
+    this._body.add(triggerHousing);
+
+    const triggerLeverGeo = new THREE.BoxGeometry(0.03, 0.15, 0.03);
+    const triggerLever = new THREE.Mesh(triggerLeverGeo, ironMat);
+    triggerLever.position.set(-0.1, 0.68, -0.06);
+    triggerLever.rotation.x = 0.3;
+    this._body.add(triggerLever);
+
+    const triggerPinGeo = cyl(0.01, 0.01, 0.1, 6);
+    const triggerPin = new THREE.Mesh(triggerPinGeo, ironMat);
+    triggerPin.rotation.x = Math.PI / 2;
+    triggerPin.position.set(-0.1, 0.78, 0);
+    this._body.add(triggerPin);
+
+    // ---- ENHANCED DETAIL: Battle damage on shield plate ----
+    for (let bd = 0; bd < 6; bd++) {
+      const dentGeo = new THREE.SphereGeometry(0.015, 5, 4);
+      const dent = new THREE.Mesh(dentGeo, mat(0x2a2a2a, { metalness: 0.5 }));
+      dent.position.set(-0.5 + (bd % 3) * 0.15, 1.0 + (bd % 2) * 0.15, -0.42);
+      this._body.add(dent);
+    }
+
+    // Arrow stuck in shield plate
+    const arrowShaftGeo = cyl(0.008, 0.008, 0.25, 6);
+    const arrowShaft = new THREE.Mesh(arrowShaftGeo, mat(0x5a4020));
+    arrowShaft.position.set(-0.4, 1.15, -0.3);
+    arrowShaft.rotation.x = -0.8;
+    this._body.add(arrowShaft);
+
+    const arrowFletchGeo = new THREE.PlaneGeometry(0.04, 0.06);
+    const arrowFletch = new THREE.Mesh(
+      arrowFletchGeo,
+      mat(0x885533, { side: THREE.DoubleSide }),
+    );
+    arrowFletch.position.set(-0.4, 1.22, -0.18);
+    arrowFletch.rotation.x = -0.8;
+    this._body.add(arrowFletch);
+
+    // ---- ENHANCED DETAIL: Scorch marks and weathering ----
+    for (let scm = 0; scm < 5; scm++) {
+      const scorchGeo = new THREE.PlaneGeometry(0.08, 0.06);
+      const scorchMark = new THREE.Mesh(
+        scorchGeo,
+        mat(0x1a1008, { side: THREE.DoubleSide, transparent: true, opacity: 0.5 }),
+      );
+      scorchMark.position.set(-0.3 + scm * 0.2, 0.76, 0.52);
+      scorchMark.rotation.x = Math.PI / 2;
+      this._body.add(scorchMark);
+    }
+
+    // Rust streaks on iron bands
+    const btRustMat = new THREE.MeshPhongMaterial({
+      color: 0x6b3a1a,
+      shininess: 8,
+      specular: new THREE.Color(0x221100),
+      transparent: true,
+      opacity: 0.5,
+    });
+    for (let rs = 0; rs < 4; rs++) {
+      const rustStreakGeo = new THREE.BoxGeometry(0.003, 0.12, 0.02);
+      const rustStreak = new THREE.Mesh(rustStreakGeo, btRustMat);
+      rustStreak.position.set(rs * 0.5 - 0.75, 0.55, 0.53);
+      this._body.add(rustStreak);
+    }
+
+    // ---- ENHANCED DETAIL: Mud and dust accumulation ----
+    const btMudMat = mat(0x4a3a1a, { transparent: true, opacity: 0.45 });
+    for (let md = 0; md < 8; md++) {
+      const mudGeo = new THREE.SphereGeometry(0.018, 5, 4);
+      const mudBlob = new THREE.Mesh(mudGeo, btMudMat);
+      mudBlob.position.set(-0.6 + md * 0.18, 0.45, -0.3 + (md % 3) * 0.15);
+      this._body.add(mudBlob);
+    }
+
+    // Dust particles floating near the mechanism
+    const btDustMat = mat(0xaa9977, { transparent: true, opacity: 0.2 });
+    for (let dtp = 0; dtp < 8; dtp++) {
+      const dustPGeo = new THREE.SphereGeometry(0.01, 4, 3);
+      const dustParticle = new THREE.Mesh(dustPGeo, btDustMat);
+      dustParticle.position.set(
+        -0.4 + dtp * 0.12,
+        0.9 + (dtp % 3) * 0.08,
+        -0.3 + (dtp % 2) * 0.15,
+      );
+      this._body.add(dustParticle);
+    }
+
+    // ---- ENHANCED DETAIL: Wheel mud and wear ----
+    for (const wxOff of [-0.7, 0.7]) {
+      for (const wzOff of [-0.55, 0.55]) {
+        // Mud on wheel rims
+        for (let wm = 0; wm < 4; wm++) {
+          const wmAngle = (wm / 4) * Math.PI * 2;
+          const wheelMudGeo = new THREE.SphereGeometry(0.015, 4, 4);
+          const wheelMud = new THREE.Mesh(wheelMudGeo, btMudMat);
+          wheelMud.position.set(
+            wxOff + Math.cos(wmAngle) * 0.27,
+            0.28 + Math.sin(wmAngle) * 0.27,
+            wzOff,
+          );
+          this._body.add(wheelMud);
+        }
+
+        // Iron tire nails
+        for (let tn = 0; tn < 8; tn++) {
+          const tnAngle = (tn / 8) * Math.PI * 2;
+          const tireNailGeo = new THREE.SphereGeometry(0.008, 4, 4);
+          const tireNail = new THREE.Mesh(tireNailGeo, rivetMat);
+          tireNail.position.set(
+            wxOff + Math.cos(tnAngle) * 0.28,
+            0.28 + Math.sin(tnAngle) * 0.28,
+            wzOff + (wzOff > 0 ? 0.05 : -0.05),
+          );
+          this._body.add(tireNail);
+        }
+      }
+    }
+
+    // ---- ENHANCED DETAIL: Ammunition count markers carved into wood ----
+    for (let cm = 0; cm < 7; cm++) {
+      const tallyGeo = new THREE.BoxGeometry(0.003, 0.04, 0.008);
+      const tally = new THREE.Mesh(tallyGeo, mat(0x2a1a08));
+      tally.position.set(0.7, 0.76, -0.3 + cm * 0.04);
+      this._body.add(tally);
+    }
+
+    // ---- ENHANCED DETAIL: Spare bowstring hanging from side ----
+    const spareStringGeo = cyl(0.004, 0.004, 0.6, 6);
+    const spareString = new THREE.Mesh(spareStringGeo, mat(0x998866));
+    spareString.position.set(-0.6, 0.8, 0.45);
+    spareString.rotation.z = 0.1;
+    this._body.add(spareString);
+
+    // Coiled end of spare string
+    const coilGeo = new THREE.TorusGeometry(0.02, 0.004, 6, 8);
+    const coil = new THREE.Mesh(coilGeo, mat(0x998866));
+    coil.position.set(-0.6, 0.48, 0.45);
+    this._body.add(coil);
     for (const yOff of [0.88, 1.05]) {
       for (const s of [-1, 1]) {
         const armGeo = new THREE.BoxGeometry(0.08, 0.06, 0.85);
@@ -12457,6 +14877,201 @@ export class CreatureMesh {
     const shieldLip = new THREE.Mesh(shieldLipGeo, ironMat);
     shieldLip.position.set(-0.5, 1.36, -0.4);
     this._body.add(shieldLip);
+
+    // ---- ENHANCED DETAIL: Torsion bundle casing plates ----
+    const btTorsionCaseMat = new THREE.MeshPhongMaterial({
+      color: 0x3a3a3a,
+      shininess: 35,
+      specular: new THREE.Color(0x444444),
+    });
+    for (const tcSide of [-1, 1]) {
+      const casePlateGeo = new THREE.BoxGeometry(0.18, 0.12, 0.06);
+      const casePlate = new THREE.Mesh(casePlateGeo, btTorsionCaseMat);
+      casePlate.position.set(0.55, 0.92, tcSide * 0.08);
+      this._body.add(casePlate);
+
+      // Bolt heads on casing
+      for (const tcX of [-0.06, 0.06]) {
+        for (const tcY of [-0.04, 0.04]) {
+          const caseBoltGeo = new THREE.SphereGeometry(0.006, 5, 5);
+          const caseBolt = new THREE.Mesh(caseBoltGeo, rivetMat);
+          caseBolt.position.set(0.55 + tcX, 0.92 + tcY, tcSide * 0.1);
+          this._body.add(caseBolt);
+        }
+      }
+    }
+
+    // ---- ENHANCED DETAIL: Worn leather hand grips on crank ----
+    const btGripMat = new THREE.MeshPhongMaterial({
+      color: 0x4a2a0a,
+      shininess: 8,
+      specular: new THREE.Color(0x110800),
+    });
+    for (let gw = 0; gw < 4; gw++) {
+      const gripWrapGeo = new THREE.TorusGeometry(0.025, 0.006, 6, 10);
+      const gripWrap = new THREE.Mesh(gripWrapGeo, btGripMat);
+      gripWrap.position.set(-0.3, 0.75 + gw * 0.02, -0.72);
+      this._body.add(gripWrap);
+    }
+
+    // ---- ENHANCED DETAIL: Iron washer plates under bolts ----
+    for (let iw = 0; iw < 6; iw++) {
+      const washerGeo = cyl(0.012, 0.012, 0.003, 8);
+      const washer = new THREE.Mesh(washerGeo, ironMat);
+      washer.rotation.z = Math.PI / 2;
+      washer.position.set(-0.6 + iw * 0.25, 0.55, -0.53);
+      this._body.add(washer);
+    }
+
+    // ---- ENHANCED DETAIL: Cracked plank on carriage surface ----
+    const crackMat = mat(0x2a1a08, { transparent: true, opacity: 0.7 });
+    for (let cr = 0; cr < 3; cr++) {
+      const crackGeo = new THREE.BoxGeometry(0.25 + cr * 0.1, 0.003, 0.003);
+      const crackLine = new THREE.Mesh(crackGeo, crackMat);
+      crackLine.position.set(0.2, 0.76, -0.15 + cr * 0.08);
+      crackLine.rotation.y = cr * 0.2 - 0.1;
+      this._body.add(crackLine);
+    }
+
+    // ---- ENHANCED DETAIL: Rope tie-down loops on carriage sides ----
+    for (const tdSide of [-1, 1]) {
+      for (const tdZ of [-0.3, 0.3]) {
+        const tieRingGeo = new THREE.TorusGeometry(0.02, 0.004, 6, 8);
+        const tieRing = new THREE.Mesh(tieRingGeo, ironMat);
+        tieRing.position.set(tdSide * 0.91, 0.5, tdZ);
+        tieRing.rotation.y = Math.PI / 2;
+        this._body.add(tieRing);
+
+        const tiePinGeo = cyl(0.005, 0.005, 0.04, 5);
+        const tiePin = new THREE.Mesh(tiePinGeo, ironMat);
+        tiePin.rotation.z = Math.PI / 2;
+        tiePin.position.set(tdSide * 0.9, 0.5, tdZ);
+        this._body.add(tiePin);
+      }
+    }
+
+    // ---- ENHANCED DETAIL: Worn iron hook for drawing bowstring ----
+    const drawHookGeo = new THREE.BoxGeometry(0.03, 0.08, 0.02);
+    const drawHook = new THREE.Mesh(drawHookGeo, ironMat);
+    drawHook.position.set(0.1, 0.68, 0.3);
+    this._body.add(drawHook);
+
+    const drawHookTipGeo = new THREE.BoxGeometry(0.03, 0.02, 0.04);
+    const drawHookTip = new THREE.Mesh(drawHookTipGeo, ironMat);
+    drawHookTip.position.set(0.1, 0.64, 0.32);
+    this._body.add(drawHookTip);
+
+    // ---- ENHANCED DETAIL: Grease pot with applicator ----
+    const greasePotGeo = cyl(0.03, 0.025, 0.04, 8);
+    const greasePot = new THREE.Mesh(greasePotGeo, mat(0x3a3a2a));
+    greasePot.position.set(0.6, 0.78, -0.35);
+    this._body.add(greasePot);
+
+    const greaseContentGeo = cyl(0.024, 0.024, 0.01, 8);
+    const greaseContent = new THREE.Mesh(
+      greaseContentGeo,
+      mat(0x2a2a0a, { transparent: true, opacity: 0.8 }),
+    );
+    greaseContent.position.set(0.6, 0.8, -0.35);
+    this._body.add(greaseContent);
+
+    // ---- ENHANCED DETAIL: Iron stabilizer feet at carriage corners ----
+    for (const fxOff of [-0.85, 0.85]) {
+      for (const fzOff of [-0.45, 0.45]) {
+        const footPlateGeo = new THREE.BoxGeometry(0.08, 0.015, 0.08);
+        const footPlate = new THREE.Mesh(footPlateGeo, ironMat);
+        footPlate.position.set(fxOff, 0.42, fzOff);
+        this._body.add(footPlate);
+
+        const footSpikeGeo = cyl(0.008, 0.004, 0.04, 6);
+        const footSpike = new THREE.Mesh(footSpikeGeo, ironMat);
+        footSpike.position.set(fxOff, 0.4, fzOff);
+        this._body.add(footSpike);
+      }
+    }
+
+    // ---- ENHANCED DETAIL: Charred bowstring wrapping (battle damage) ----
+    const btCharMat = mat(0x1a1008, { transparent: true, opacity: 0.6 });
+    for (let cb = 0; cb < 3; cb++) {
+      const charGeo = new THREE.BoxGeometry(0.01, 0.005, 0.15);
+      const charWrap = new THREE.Mesh(charGeo, btCharMat);
+      charWrap.position.set(0.55, 0.88, -0.2 + cb * 0.2);
+      this._body.add(charWrap);
+    }
+
+    // ---- ENHANCED DETAIL: Blood-stained bolt tip ----
+    const btBloodTipMat = mat(0x6a0808, { transparent: true, opacity: 0.45 });
+    const bloodTipGeo = new THREE.ConeGeometry(0.065, 0.08, 10);
+    const bloodTip = new THREE.Mesh(bloodTipGeo, btBloodTipMat);
+    bloodTip.rotation.z = -Math.PI / 2;
+    bloodTip.position.set(1.02, 0.9, 0);
+    this._body.add(bloodTip);
+
+    // ---- ENHANCED DETAIL: Carved alignment markings on trough ----
+    for (let am = 0; am < 8; am++) {
+      const markGeo = new THREE.BoxGeometry(0.003, 0.02, 0.005);
+      const mark = new THREE.Mesh(markGeo, mat(0x2a1a08));
+      mark.position.set(-0.4 + am * 0.12, 0.87, 0.08);
+      this._body.add(mark);
+    }
+
+    // ---- ENHANCED DETAIL: Splintered wood fragments near bolt tips ----
+    for (let sf = 0; sf < 5; sf++) {
+      const splinterGeo = new THREE.BoxGeometry(0.003, 0.004, 0.04 + sf * 0.01);
+      const splinter = new THREE.Mesh(splinterGeo, mat(0x7b5a30));
+      splinter.position.set(
+        0.85 + sf * 0.03,
+        0.88 + (sf % 2) * 0.04,
+        (sf % 3 - 1) * 0.04,
+      );
+      splinter.rotation.set(sf * 0.5, sf * 0.3, sf * 0.4);
+      this._body.add(splinter);
+    }
+
+    // ---- ENHANCED DETAIL: Worn leather sling for tool storage ----
+    const btSlingMat = new THREE.MeshPhongMaterial({
+      color: 0x5a3a1a,
+      shininess: 10,
+      specular: new THREE.Color(0x110800),
+      side: THREE.DoubleSide,
+    });
+    const slingGeo = new THREE.PlaneGeometry(0.3, 0.12);
+    const slingMesh = new THREE.Mesh(slingGeo, btSlingMat);
+    slingMesh.position.set(-0.7, 0.65, 0);
+    slingMesh.rotation.x = -0.3;
+    this._body.add(slingMesh);
+
+    // ---- ENHANCED DETAIL: Ornamental iron finials on shield struts ----
+    for (const finSide of [-0.2, 0.2]) {
+      const finGeo = new THREE.SphereGeometry(0.018, 6, 6);
+      const finMesh = new THREE.Mesh(finGeo, ironMat);
+      finMesh.position.set(-0.5 + finSide, 1.36, -0.4);
+      this._body.add(finMesh);
+    }
+
+    // ---- ENHANCED DETAIL: Extra iron clamping band on trough channel ----
+    for (let ec = 0; ec < 3; ec++) {
+      const clampGeo = new THREE.BoxGeometry(0.03, 0.12, 0.2);
+      const clampBand = new THREE.Mesh(clampGeo, ironMat);
+      clampBand.position.set(-0.3 + ec * 0.35, 0.84, 0);
+      this._body.add(clampBand);
+
+      const clampRvGeo = new THREE.SphereGeometry(0.006, 5, 5);
+      for (const rvZ of [-0.08, 0.08]) {
+        const clampRv = new THREE.Mesh(clampRvGeo, rivetMat);
+        clampRv.position.set(-0.3 + ec * 0.35, 0.87, rvZ);
+        this._body.add(clampRv);
+      }
+    }
+
+    // ---- ENHANCED DETAIL: Axle grease drip marks on ground ----
+    const btGreaseDripMat = mat(0x1a1a0a, { transparent: true, opacity: 0.3 });
+    for (let gd = 0; gd < 6; gd++) {
+      const dripGeo = new THREE.SphereGeometry(0.008, 4, 4);
+      const dripMark = new THREE.Mesh(dripGeo, btGreaseDripMat);
+      dripMark.position.set(-0.65 + gd * 0.28, 0.0, -0.5 + (gd % 3) * 0.22);
+      this._body.add(dripMark);
+    }
   }
 
   // ---- Siege Catapult ------------------------------------------------------
@@ -12687,6 +15302,232 @@ export class CreatureMesh {
       trimZ.position.set(0, 2.1, s * 1.4);
       this._body.add(trimZ);
       const trimXGeo = new THREE.BoxGeometry(0.04, 0.06, 2.82);
+    // ---- ENHANCED DETAIL: Plank grain texturing on wagon body ----
+    for (const pgSide of [-1, 1]) {
+      for (let pg = 0; pg < 10; pg++) {
+        const plankGrainGeo = new THREE.BoxGeometry(0.003, 0.005, 2.58);
+        const plankGrain = new THREE.Mesh(plankGrainGeo, mat(0x3a1a08));
+        plankGrain.position.set(pgSide * 0.91, 0.75 + pg * 0.12, 0);
+        this._body.add(plankGrain);
+      }
+    }
+
+    // Wood knots on the wagon body panels
+    for (const kSide of [-1, 1]) {
+      for (let kn = 0; kn < 6; kn++) {
+        const knotGeo = new THREE.SphereGeometry(0.012, 6, 5);
+        const knotMesh = new THREE.Mesh(knotGeo, mat(0x3a1808));
+        knotMesh.position.set(kSide * 0.9, 0.9 + kn * 0.15, -0.8 + kn * 0.3);
+        this._body.add(knotMesh);
+      }
+    }
+
+    // ---- ENHANCED DETAIL: Door on the back wall ----
+    const doorFrameGeo = new THREE.BoxGeometry(0.7, 1.1, 0.06);
+    const doorFrame = new THREE.Mesh(doorFrameGeo, darkWoodMat);
+    doorFrame.position.set(0, 1.15, -1.33);
+    this._body.add(doorFrame);
+
+    // Door iron hinges
+    for (const dhY of [0.85, 1.45]) {
+      const hingeGeo = new THREE.BoxGeometry(0.2, 0.06, 0.03);
+      const hingeMesh = new THREE.Mesh(hingeGeo, ironMat);
+      hingeMesh.position.set(-0.15, dhY, -1.35);
+      this._body.add(hingeMesh);
+
+      const hingePinGeo = cyl(0.012, 0.012, 0.08, 6);
+      const hingePin = new THREE.Mesh(hingePinGeo, ironMat);
+      hingePin.position.set(-0.35, dhY, -1.35);
+      this._body.add(hingePin);
+    }
+
+    // Door latch
+    const latchGeo = new THREE.BoxGeometry(0.08, 0.04, 0.04);
+    const latch = new THREE.Mesh(latchGeo, ironMat);
+    latch.position.set(0.2, 1.2, -1.36);
+    this._body.add(latch);
+
+    const latchHandleGeo = cyl(0.01, 0.01, 0.08, 6);
+    const latchHandle = new THREE.Mesh(latchHandleGeo, ironMat);
+    latchHandle.position.set(0.25, 1.2, -1.38);
+    latchHandle.rotation.x = Math.PI / 2;
+    this._body.add(latchHandle);
+
+    // ---- ENHANCED DETAIL: Iron shield bosses on side armor ----
+    for (const bSide of [-1, 1]) {
+      for (let sb = 0; sb < 4; sb++) {
+        const bossGeo = new THREE.SphereGeometry(0.04, 8, 6);
+        const boss = new THREE.Mesh(bossGeo, ironMat);
+        boss.position.set(bSide * 0.95, 1.1 + (sb % 2) * 0.45, -0.8 + sb * 0.5);
+        this._body.add(boss);
+      }
+    }
+
+    // ---- ENHANCED DETAIL: Leather strapping on sides ----
+    const wwLeatherMat = new THREE.MeshPhongMaterial({
+      color: 0x5a3a1a,
+      shininess: 15,
+      specular: new THREE.Color(0x221100),
+    });
+    for (const lsSide of [-1, 1]) {
+      for (let ls = 0; ls < 3; ls++) {
+        const strapGeo = new THREE.BoxGeometry(0.005, 1.2, 0.06);
+        const strapMesh = new THREE.Mesh(strapGeo, wwLeatherMat);
+        strapMesh.position.set(lsSide * 0.94, 1.2, -0.7 + ls * 0.7);
+        this._body.add(strapMesh);
+
+        // Buckle
+        const buckleGeo = new THREE.BoxGeometry(0.008, 0.04, 0.07);
+        const buckle = new THREE.Mesh(buckleGeo, ironMat);
+        buckle.position.set(lsSide * 0.945, 1.7, -0.7 + ls * 0.7);
+        this._body.add(buckle);
+      }
+    }
+
+    // ---- ENHANCED DETAIL: Arrow damage and embedded projectiles ----
+    // Arrows stuck in side armor
+    for (let ai = 0; ai < 3; ai++) {
+      const arrowGeo = cyl(0.008, 0.008, 0.25, 6);
+      const arrowMesh = new THREE.Mesh(arrowGeo, mat(0x5a4020));
+      arrowMesh.position.set(0.98 + ai * 0.02, 1.1 + ai * 0.2, -0.3 + ai * 0.35);
+      arrowMesh.rotation.z = -Math.PI / 2 + 0.15;
+      this._body.add(arrowMesh);
+
+      const fletchGeo = new THREE.PlaneGeometry(0.04, 0.05);
+      const fletch = new THREE.Mesh(
+        fletchGeo,
+        mat(0x885533, { side: THREE.DoubleSide }),
+      );
+      fletch.position.set(1.18 + ai * 0.02, 1.1 + ai * 0.2, -0.3 + ai * 0.35);
+      fletch.rotation.z = -0.15;
+      this._body.add(fletch);
+    }
+
+    // ---- ENHANCED DETAIL: Scorch marks from fire attacks ----
+    for (let scm = 0; scm < 6; scm++) {
+      const scorchGeo = new THREE.PlaneGeometry(0.12, 0.1);
+      const scorch = new THREE.Mesh(
+        scorchGeo,
+        mat(0x1a1008, { side: THREE.DoubleSide, transparent: true, opacity: 0.5 }),
+      );
+      scorch.position.set(-0.91, 0.8 + scm * 0.18, -0.6 + scm * 0.22);
+      scorch.rotation.y = Math.PI / 2;
+      this._body.add(scorch);
+    }
+
+    // ---- ENHANCED DETAIL: Blood stains on lower body ----
+    const wwBloodMat = mat(0x4a0808, { transparent: true, opacity: 0.4 });
+    for (let bl = 0; bl < 4; bl++) {
+      const bloodGeo = new THREE.PlaneGeometry(0.08, 0.12);
+      const bloodStain = new THREE.Mesh(bloodGeo, wwBloodMat);
+      bloodStain.position.set(0.92, 0.8 + bl * 0.15, 0.2 + bl * 0.2);
+      bloodStain.rotation.y = Math.PI / 2;
+      this._body.add(bloodStain);
+    }
+
+    // ---- ENHANCED DETAIL: Ammunition boxes inside wagon ----
+    for (const abZ of [-0.5, 0.3]) {
+      const ammoBoxGeo = new THREE.BoxGeometry(0.3, 0.2, 0.25);
+      const ammoBox = new THREE.Mesh(ammoBoxGeo, darkWoodMat);
+      ammoBox.position.set(-0.5, 0.7, abZ);
+      this._body.add(ammoBox);
+
+      const ammoLidGeo = new THREE.BoxGeometry(0.32, 0.03, 0.27);
+      const ammoLid = new THREE.Mesh(ammoLidGeo, ironMat);
+      ammoLid.position.set(-0.5, 0.81, abZ);
+      this._body.add(ammoLid);
+
+      // Iron latch on ammo box
+      const ammoLatchGeo = new THREE.BoxGeometry(0.04, 0.03, 0.02);
+      const ammoLatch = new THREE.Mesh(ammoLatchGeo, ironMat);
+      ammoLatch.position.set(-0.35, 0.78, abZ + 0.13);
+      this._body.add(ammoLatch);
+    }
+
+    // ---- ENHANCED DETAIL: Chains hanging from roof interior ----
+    for (const chZ of [-0.7, 0, 0.7]) {
+      for (let chl = 0; chl < 5; chl++) {
+        const chainLinkGeo = new THREE.TorusGeometry(0.015, 0.004, 6, 8);
+        const chainLink = new THREE.Mesh(chainLinkGeo, ironMat);
+        chainLink.position.set(0.5, 1.95 - chl * 0.08, chZ);
+        chainLink.rotation.y = chl % 2 === 0 ? 0 : Math.PI / 2;
+        this._body.add(chainLink);
+      }
+    }
+
+    // ---- ENHANCED DETAIL: Rust streaks on iron plating ----
+    const wwRustMat = new THREE.MeshPhongMaterial({
+      color: 0x6b3a1a,
+      shininess: 8,
+      specular: new THREE.Color(0x221100),
+      transparent: true,
+      opacity: 0.5,
+    });
+    for (const rsSide of [-1, 1]) {
+      for (let rs = 0; rs < 5; rs++) {
+        const rustStreakGeo = new THREE.BoxGeometry(0.003, 0.15, 0.02);
+        const rustStreak = new THREE.Mesh(rustStreakGeo, wwRustMat);
+        rustStreak.position.set(rsSide * 0.93, 1.0 + rs * 0.2, -0.5 + rs * 0.25);
+        this._body.add(rustStreak);
+      }
+    }
+
+    // ---- ENHANCED DETAIL: Mud accumulation on lower body and wheels ----
+    const wwMudMat = mat(0x4a3a1a, { transparent: true, opacity: 0.45 });
+    for (let md = 0; md < 10; md++) {
+      const mudGeo = new THREE.SphereGeometry(0.02, 5, 4);
+      const mudBlob = new THREE.Mesh(mudGeo, wwMudMat);
+      mudBlob.position.set(-0.8 + md * 0.18, 0.62, -1.0 + (md % 4) * 0.5);
+      this._body.add(mudBlob);
+    }
+
+    // Mud on wheel rims
+    for (const mzOff of [-1.0, 1.0]) {
+      for (const mxOff of [-1.15, 1.15]) {
+        for (let wm = 0; wm < 6; wm++) {
+          const wmAngle = (wm / 6) * Math.PI * 2;
+          const wheelMudGeo = new THREE.SphereGeometry(0.018, 4, 4);
+          const wheelMud = new THREE.Mesh(wheelMudGeo, wwMudMat);
+          wheelMud.position.set(
+            mxOff + Math.cos(wmAngle) * 0.41,
+            0.42 + Math.sin(wmAngle) * 0.41,
+            mzOff,
+          );
+          this._body.add(wheelMud);
+        }
+      }
+    }
+
+    // ---- ENHANCED DETAIL: Interior floor planking ----
+    for (let fp = 0; fp < 7; fp++) {
+      const floorPlankGeo = new THREE.BoxGeometry(1.76, 0.03, 0.24);
+      const floorPlank = new THREE.Mesh(
+        floorPlankGeo,
+        fp % 2 === 0 ? woodMat : darkWoodMat,
+      );
+      floorPlank.position.set(0, 0.62, -0.9 + fp * 0.3);
+      this._body.add(floorPlank);
+    }
+
+    // ---- ENHANCED DETAIL: Smoke wisps near the barrel ports ----
+    const wwSmokeMat = mat(0x888888, { transparent: true, opacity: 0.15 });
+    for (let sm = 0; sm < 4; sm++) {
+      const smokeGeo = new THREE.SphereGeometry(0.03, 4, 4);
+      const smokeWisp = new THREE.Mesh(smokeGeo, wwSmokeMat);
+      smokeWisp.position.set((sm % 2 - 0.5) * 0.2, 1.2 + sm * 0.06, 2.2 + sm * 0.05);
+      this._body.add(smokeWisp);
+    }
+
+    // ---- ENHANCED DETAIL: Nail heads on every plank seam ----
+    for (const nSide of [-1, 1]) {
+      for (let np = 0; np < 15; np++) {
+        const nailGeo = new THREE.CylinderGeometry(0.005, 0.005, 0.008, 5);
+        const nailMesh = new THREE.Mesh(nailGeo, rivetMat);
+        nailMesh.rotation.z = Math.PI / 2;
+        nailMesh.position.set(nSide * 0.92, 0.7 + (np % 5) * 0.22, -1.0 + Math.floor(np / 5) * 0.45);
+        this._body.add(nailMesh);
+      }
+    }
       const trimX = new THREE.Mesh(trimXGeo, ironMat);
       trimX.position.set(s * 1.0, 2.1, 0);
       this._body.add(trimX);
@@ -12910,6 +15751,243 @@ export class CreatureMesh {
         }
       }
     }
+
+    // ---- ENHANCED DETAIL: Heavy iron chain tow loops on front ----
+    for (const clZ of [-0.5, 0.5]) {
+      const chainMountGeo = new THREE.BoxGeometry(0.08, 0.08, 0.06);
+      const chainMount = new THREE.Mesh(chainMountGeo, ironMat);
+      chainMount.position.set(0, 0.8, 1.35 + (clZ > 0 ? 0.01 : 0.01));
+      this._body.add(chainMount);
+
+      const chainRingGeo = new THREE.TorusGeometry(0.04, 0.008, 6, 10);
+      const chainRing = new THREE.Mesh(chainRingGeo, ironMat);
+      chainRing.position.set(clZ * 0.4, 0.8, 1.38);
+      this._body.add(chainRing);
+
+      for (let tl = 0; tl < 6; tl++) {
+        const towLinkGeo = new THREE.TorusGeometry(0.02, 0.005, 6, 8);
+        const towLink = new THREE.Mesh(towLinkGeo, ironMat);
+        towLink.position.set(clZ * 0.4, 0.75 - tl * 0.05, 1.38 + tl * 0.03);
+        towLink.rotation.y = tl % 2 === 0 ? 0 : Math.PI / 2;
+        this._body.add(towLink);
+      }
+    }
+
+    // ---- ENHANCED DETAIL: Firing port shutters on sides ----
+    const wwShutterMat = new THREE.MeshPhongMaterial({
+      color: 0x3a3a3a,
+      shininess: 25,
+      specular: new THREE.Color(0x333333),
+    });
+    for (const shSide of [-1, 1]) {
+      for (const shZ of [-0.7, 0, 0.7]) {
+        const shutterGeo = new THREE.BoxGeometry(0.005, 0.14, 0.24);
+        const shutter = new THREE.Mesh(shutterGeo, wwShutterMat);
+        shutter.position.set(shSide * 0.96, 1.32, shZ);
+        this._body.add(shutter);
+
+        // Shutter hinge pin
+        const shPinGeo = cyl(0.005, 0.005, 0.14, 6);
+        const shPin = new THREE.Mesh(shPinGeo, ironMat);
+        shPin.position.set(shSide * 0.96, 1.32, shZ + 0.12);
+        this._body.add(shPin);
+      }
+    }
+
+    // ---- ENHANCED DETAIL: Ventilation grate on roof ----
+    const ventGrateGeo = new THREE.BoxGeometry(0.4, 0.02, 0.3);
+    const ventGrate = new THREE.Mesh(ventGrateGeo, ironMat);
+    ventGrate.position.set(0.3, 2.15, 0);
+    this._body.add(ventGrate);
+
+    for (let vb = 0; vb < 5; vb++) {
+      const ventBarGeo = new THREE.BoxGeometry(0.38, 0.015, 0.01);
+      const ventBar = new THREE.Mesh(ventBarGeo, ironMat);
+      ventBar.position.set(0.3, 2.16, -0.12 + vb * 0.06);
+      this._body.add(ventBar);
+    }
+
+    // ---- ENHANCED DETAIL: Reinforced iron corner brackets ----
+    const wwCornerMat = new THREE.MeshPhongMaterial({
+      color: 0x444444,
+      shininess: 30,
+      specular: new THREE.Color(0x444444),
+    });
+    for (const cxs of [-1, 1]) {
+      for (const czs of [-1, 1]) {
+        const cornerBracketGeo = new THREE.BoxGeometry(0.06, 0.2, 0.06);
+        const cornerBracket = new THREE.Mesh(cornerBracketGeo, wwCornerMat);
+        cornerBracket.position.set(cxs * 0.87, 2.0, czs * 1.27);
+        this._body.add(cornerBracket);
+
+        const cornerBracket2 = new THREE.Mesh(cornerBracketGeo, wwCornerMat);
+        cornerBracket2.position.set(cxs * 0.87, 0.7, czs * 1.27);
+        this._body.add(cornerBracket2);
+
+        // Corner rivets
+        for (const crY of [0.0, 0.08]) {
+          const crGeo = new THREE.SphereGeometry(0.008, 5, 5);
+          const crMesh = new THREE.Mesh(crGeo, rivetMat);
+          crMesh.position.set(cxs * 0.89, 2.0 + crY, czs * 1.27);
+          this._body.add(crMesh);
+        }
+      }
+    }
+
+    // ---- ENHANCED DETAIL: Thick leather curtains over door opening ----
+    const wwCurtainMat = new THREE.MeshPhongMaterial({
+      color: 0x4a2a0a,
+      shininess: 6,
+      specular: new THREE.Color(0x110800),
+      side: THREE.DoubleSide,
+    });
+    for (const curtSide of [-1, 1]) {
+      const curtainGeo = new THREE.PlaneGeometry(0.3, 1.0);
+      const curtain = new THREE.Mesh(curtainGeo, wwCurtainMat);
+      curtain.position.set(curtSide * 0.2, 1.15, -1.37);
+      curtain.rotation.y = curtSide * 0.1;
+      this._body.add(curtain);
+    }
+
+    // ---- ENHANCED DETAIL: Iron shoe protection on wheel rims ----
+    for (const wsZ of [-1.0, 1.0]) {
+      for (const wsX of [-1.15, 1.15]) {
+        for (let ws = 0; ws < 8; ws++) {
+          const shoeAngle = (ws / 8) * Math.PI * 2;
+          const shoeGeo = new THREE.BoxGeometry(0.05, 0.015, 0.14);
+          const shoe = new THREE.Mesh(shoeGeo, ironMat);
+          shoe.position.set(
+            wsX + Math.cos(shoeAngle) * 0.42,
+            0.42 + Math.sin(shoeAngle) * 0.42,
+            wsZ + (wsX < 0 ? -0.07 : 0.07),
+          );
+          shoe.rotation.z = shoeAngle;
+          this._body.add(shoe);
+        }
+      }
+    }
+
+    // ---- ENHANCED DETAIL: Lantern bracket with glass panes ----
+    const lanternArmGeo = new THREE.BoxGeometry(0.03, 0.03, 0.12);
+    const lanternArm = new THREE.Mesh(lanternArmGeo, ironMat);
+    lanternArm.position.set(0.92, 1.6, 1.2);
+    this._body.add(lanternArm);
+
+    const lanternBoxGeo = new THREE.BoxGeometry(0.06, 0.08, 0.06);
+    const lanternBox = new THREE.Mesh(lanternBoxGeo, ironMat);
+    lanternBox.position.set(0.92, 1.56, 1.28);
+    this._body.add(lanternBox);
+
+    const lanternFlameGeo = new THREE.SphereGeometry(0.015, 6, 6);
+    const lanternFlame = new THREE.Mesh(
+      lanternFlameGeo,
+      mat(0xffaa44, { emissive: 0x884400, transparent: true, opacity: 0.8 }),
+    );
+    lanternFlame.position.set(0.92, 1.56, 1.28);
+    this._body.add(lanternFlame);
+
+    const lanternGlassGeo = new THREE.BoxGeometry(0.055, 0.07, 0.055);
+    const lanternGlass = new THREE.Mesh(
+      lanternGlassGeo,
+      mat(0xaaaa66, { transparent: true, opacity: 0.15 }),
+    );
+    lanternGlass.position.set(0.92, 1.56, 1.28);
+    this._body.add(lanternGlass);
+
+    // ---- ENHANCED DETAIL: Water barrel strapped to side ----
+    const wwBarrelGeo = cyl(0.1, 0.1, 0.3, 12);
+    const wwBarrel = new THREE.Mesh(wwBarrelGeo, darkWoodMat);
+    wwBarrel.position.set(-0.82, 1.0, 0.8);
+    this._body.add(wwBarrel);
+
+    const wwBarrelBand1 = new THREE.TorusGeometry(0.1, 0.008, 6, 14);
+    const wwBand1 = new THREE.Mesh(wwBarrelBand1, ironMat);
+    wwBand1.position.set(-0.82, 0.92, 0.8);
+    this._body.add(wwBand1);
+
+    const wwBand2 = new THREE.Mesh(wwBarrelBand1, ironMat);
+    wwBand2.position.set(-0.82, 1.08, 0.8);
+    this._body.add(wwBand2);
+
+    // Barrel strap holding it to wall
+    const barrelStrapGeo = new THREE.BoxGeometry(0.005, 0.35, 0.05);
+    const barrelStrap = new THREE.Mesh(barrelStrapGeo, wwCurtainMat);
+    barrelStrap.rotation.y = Math.PI / 2;
+    barrelStrap.position.set(-0.92, 1.0, 0.8);
+    this._body.add(barrelStrap);
+
+    // ---- ENHANCED DETAIL: Dent marks on iron plating ----
+    for (let dm = 0; dm < 8; dm++) {
+      const dentGeo = new THREE.SphereGeometry(0.02, 5, 4);
+      const dentMark = new THREE.Mesh(
+        dentGeo,
+        mat(0x2a2a2a, { metalness: 0.5, transparent: true, opacity: 0.6 }),
+      );
+      dentMark.position.set(
+        (dm % 2 === 0 ? -1 : 1) * 0.93,
+        0.9 + dm * 0.12,
+        -0.6 + (dm % 4) * 0.35,
+      );
+      this._body.add(dentMark);
+    }
+
+    // ---- ENHANCED DETAIL: Crossbow bolt quarrels stored inside ----
+    for (let cq = 0; cq < 6; cq++) {
+      const quarrelGeo = cyl(0.008, 0.008, 0.35, 6);
+      const quarrel = new THREE.Mesh(quarrelGeo, mat(0x5a4020));
+      quarrel.rotation.z = Math.PI / 2;
+      quarrel.position.set(0.4, 0.68, -0.6 + cq * 0.12);
+      this._body.add(quarrel);
+
+      const quarrelTipGeo = new THREE.ConeGeometry(0.015, 0.04, 6);
+      const quarrelTip = new THREE.Mesh(quarrelTipGeo, ironMat);
+      quarrelTip.rotation.z = -Math.PI / 2;
+      quarrelTip.position.set(0.6, 0.68, -0.6 + cq * 0.12);
+      this._body.add(quarrelTip);
+    }
+
+    // ---- ENHANCED DETAIL: Smoke-stained patches on roof ----
+    const wwSootMat = mat(0x0a0a08, { transparent: true, opacity: 0.3 });
+    for (let sp = 0; sp < 5; sp++) {
+      const sootGeo = new THREE.PlaneGeometry(0.15, 0.12);
+      const sootPatch = new THREE.Mesh(sootGeo, wwSootMat);
+      sootPatch.rotation.x = -Math.PI / 2;
+      sootPatch.position.set(-0.5 + sp * 0.25, 2.15, -0.8 + sp * 0.35);
+      this._body.add(sootPatch);
+    }
+
+    // ---- ENHANCED DETAIL: Worn plank edges with chipped wood ----
+    for (let cp = 0; cp < 10; cp++) {
+      const chipGeo = new THREE.BoxGeometry(0.02, 0.015, 0.01);
+      const chipMesh = new THREE.Mesh(chipGeo, mat(0x7b5a30));
+      chipMesh.position.set(
+        (cp % 2 === 0 ? -1 : 1) * 0.9,
+        0.62 + cp * 0.12,
+        -1.2 + (cp % 5) * 0.5,
+      );
+      chipMesh.rotation.set(cp * 0.3, cp * 0.5, cp * 0.2);
+      this._body.add(chipMesh);
+    }
+
+    // ---- ENHANCED DETAIL: Carved tally marks on interior wall ----
+    for (let tm = 0; tm < 9; tm++) {
+      const tallyGeo = new THREE.BoxGeometry(0.003, 0.06, 0.008);
+      const tallyMark = new THREE.Mesh(tallyGeo, mat(0x2a1a08));
+      const tallyX = tm < 5 ? tm * 0.02 : (tm - 5) * 0.02;
+      const tallyY = tm < 5 ? 1.4 : 1.3;
+      tallyMark.position.set(0.7, tallyY, -1.1 + tallyX);
+      if (tm === 4) tallyMark.rotation.z = 0.5;
+      this._body.add(tallyMark);
+    }
+
+    // ---- ENHANCED DETAIL: Dragging chains underneath ----
+    for (let dc = 0; dc < 8; dc++) {
+      const dragLinkGeo = new THREE.TorusGeometry(0.018, 0.005, 6, 8);
+      const dragLink = new THREE.Mesh(dragLinkGeo, ironMat);
+      dragLink.position.set(-0.3 + dc * 0.08, 0.3, 0.6);
+      dragLink.rotation.y = dc % 2 === 0 ? 0 : Math.PI / 2;
+      this._body.add(dragLink);
+    }
   }
 
   // ---- Bombard -------------------------------------------------------------
@@ -12967,6 +16045,230 @@ export class CreatureMesh {
     // Iron cascabel (knob at breech end)
     const cascGeo = new THREE.SphereGeometry(0.18, 16, 12);
     const casc = new THREE.Mesh(cascGeo, bronzeMat);
+    // ---- ENHANCED DETAIL: Barrel surface texturing (cast marks) ----
+    for (let cm = 0; cm < 12; cm++) {
+      const castAngle = (cm / 12) * Math.PI * 2;
+      const castMarkGeo = new THREE.BoxGeometry(0.008, 0.005, 1.6);
+      const castMark = new THREE.Mesh(castMarkGeo, mat(0x6a4a00, { metalness: 0.6 }));
+      castMark.position.set(
+        0.3 + Math.cos(castAngle) * 0.48,
+        1.1 + Math.sin(castAngle) * 0.48,
+        0,
+      );
+      castMark.rotation.x = -Math.PI / 2;
+      this._body.add(castMark);
+    }
+
+    // Decorative raised lettering band on barrel
+    for (let dl = 0; dl < 8; dl++) {
+      const letterAngle = (dl / 8) * Math.PI * 2;
+      const letterGeo = new THREE.BoxGeometry(0.015, 0.02, 0.06);
+      const letterMark = new THREE.Mesh(letterGeo, bronzeMat);
+      letterMark.position.set(
+        0.6 + Math.cos(letterAngle) * 0.47,
+        1.08 + Math.sin(letterAngle) * 0.47,
+        0,
+      );
+      this._body.add(letterMark);
+    }
+
+    // ---- ENHANCED DETAIL: Carriage wood grain detail ----
+    for (let cg = 0; cg < 6; cg++) {
+      const cheekGrainGeo = new THREE.BoxGeometry(1.88, 0.004, 0.005);
+      const cheekGrain = new THREE.Mesh(cheekGrainGeo, mat(0x3a1a08));
+      cheekGrain.position.set(0, 0.7 + cg * 0.08, 0.49);
+      this._body.add(cheekGrain);
+      const cheekGrain2Geo = new THREE.BoxGeometry(1.88, 0.004, 0.005);
+      const cheekGrain2 = new THREE.Mesh(cheekGrain2Geo, mat(0x3a1a08));
+      cheekGrain2.position.set(0, 0.7 + cg * 0.08, -0.49);
+      this._body.add(cheekGrain2);
+    }
+
+    // ---- ENHANCED DETAIL: Rope lashing on trunnion brackets ----
+    for (const tSide of [-1, 1]) {
+      for (let tr = 0; tr < 5; tr++) {
+        const tRopeGeo = new THREE.TorusGeometry(0.05, 0.005, 6, 10);
+        const tRope = new THREE.Mesh(tRopeGeo, mat(0x887755));
+        tRope.position.set(-0.1, 0.82 + tr * 0.05, tSide * 0.45);
+        tRope.rotation.x = Math.PI / 2;
+        this._body.add(tRope);
+      }
+    }
+
+    // ---- ENHANCED DETAIL: Sponge and rammer tools ----
+    const toolWoodMat = mat(0x5a3a10);
+    // Rammer pole
+    const rammerGeo = cyl(0.02, 0.02, 1.6, 8);
+    const rammer = new THREE.Mesh(rammerGeo, toolWoodMat);
+    rammer.position.set(-0.9, 0.7, 0.35);
+    rammer.rotation.z = 0.05;
+    this._body.add(rammer);
+
+    // Rammer head
+    const rammerHeadGeo = cyl(0.06, 0.06, 0.08, 10);
+    const rammerHead = new THREE.Mesh(rammerHeadGeo, mat(0x887766));
+    rammerHead.position.set(-0.9, 1.5, 0.35);
+    this._body.add(rammerHead);
+
+    // Sponge pole
+    const spongeGeo = cyl(0.018, 0.018, 1.4, 8);
+    const sponge = new THREE.Mesh(spongeGeo, toolWoodMat);
+    sponge.position.set(-0.85, 0.7, 0.25);
+    sponge.rotation.z = 0.08;
+    this._body.add(sponge);
+
+    // Sponge head (wet cloth)
+    const spongeHeadGeo = new THREE.SphereGeometry(0.04, 8, 6);
+    const spongeHead = new THREE.Mesh(
+      spongeHeadGeo,
+      mat(0x6a6a5a, { roughness: 1.0 }),
+    );
+    spongeHead.position.set(-0.85, 1.4, 0.25);
+    this._body.add(spongeHead);
+
+    // ---- ENHANCED DETAIL: Powder scoop and ladle ----
+    const ladleGeo = cyl(0.015, 0.015, 0.8, 6);
+    const ladle = new THREE.Mesh(ladleGeo, ironMat);
+    ladle.position.set(-0.75, 0.7, -0.35);
+    ladle.rotation.z = 0.1;
+    this._body.add(ladle);
+
+    const ladleCupGeo = new THREE.SphereGeometry(0.035, 8, 6);
+    const ladleCup = new THREE.Mesh(ladleCupGeo, ironMat);
+    ladleCup.scale.set(1, 0.5, 1);
+    ladleCup.position.set(-0.75, 1.1, -0.35);
+    this._body.add(ladleCup);
+
+    // ---- ENHANCED DETAIL: Burn marks around muzzle ----
+    for (let bm = 0; bm < 8; bm++) {
+      const burnAngle = (bm / 8) * Math.PI * 2;
+      const burnGeo = new THREE.PlaneGeometry(0.06, 0.08);
+      const burnMark = new THREE.Mesh(
+        burnGeo,
+        mat(0x0a0a08, { side: THREE.DoubleSide, transparent: true, opacity: 0.6 }),
+      );
+      burnMark.position.set(
+        1.26,
+        1.1 + Math.sin(burnAngle) * 0.5,
+        Math.cos(burnAngle) * 0.5,
+      );
+      burnMark.rotation.y = Math.PI / 2;
+      this._body.add(burnMark);
+    }
+
+    // Soot accumulation inside muzzle
+    const sootRingGeo = new THREE.CylinderGeometry(0.43, 0.43, 0.04, 18);
+    const sootRing = new THREE.Mesh(
+      sootRingGeo,
+      mat(0x0a0a0a, { transparent: true, opacity: 0.7 }),
+    );
+    sootRing.rotation.x = Math.PI / 2;
+    sootRing.position.set(1.22, 1.1, 0);
+    this._body.add(sootRing);
+
+    // ---- ENHANCED DETAIL: Smoke wisps from muzzle ----
+    const bombSmokeMat = mat(0x888888, { transparent: true, opacity: 0.15 });
+    for (let sw = 0; sw < 6; sw++) {
+      const smokeGeo = new THREE.SphereGeometry(0.04 + sw * 0.01, 5, 4);
+      const smokeWisp = new THREE.Mesh(smokeGeo, bombSmokeMat);
+      smokeWisp.position.set(1.3 + sw * 0.08, 1.15 + sw * 0.05, (sw % 2 - 0.5) * 0.1);
+      this._body.add(smokeWisp);
+    }
+
+    // ---- ENHANCED DETAIL: Cannonball rack ----
+    const rackGeo = new THREE.BoxGeometry(0.5, 0.08, 0.5);
+    const rackBase = new THREE.Mesh(rackGeo, woodMat);
+    rackBase.position.set(0.5, 0.42, -0.6);
+    this._body.add(rackBase);
+
+    // Pyramid of cannonballs on rack
+    for (const [cbx, cbz] of [[0.38, -0.72], [0.38, -0.52], [0.62, -0.72], [0.62, -0.52]] as const) {
+      const cbGeo = new THREE.SphereGeometry(0.1, 12, 10);
+      const cb = new THREE.Mesh(cbGeo, cannonballMat);
+      cb.position.set(cbx, 0.55, cbz);
+      this._body.add(cb);
+    }
+    // Top ball
+    const topCbGeo = new THREE.SphereGeometry(0.1, 12, 10);
+    const topCb = new THREE.Mesh(topCbGeo, cannonballMat);
+    topCb.position.set(0.5, 0.7, -0.62);
+    this._body.add(topCb);
+
+    // ---- ENHANCED DETAIL: Leather covering on powder kegs ----
+    const bombLeatherMat = new THREE.MeshPhongMaterial({
+      color: 0x5a3a1a,
+      shininess: 15,
+      specular: new THREE.Color(0x221100),
+    });
+    const kegCoverGeo = new THREE.PlaneGeometry(0.35, 0.35);
+    const kegCover = new THREE.Mesh(kegCoverGeo, bombLeatherMat);
+    kegCover.position.set(-0.8, 0.68, -0.5);
+    kegCover.rotation.x = -Math.PI / 2;
+    this._body.add(kegCover);
+
+    // ---- ENHANCED DETAIL: Rust and corrosion on barrel ----
+    const bombRustMat = new THREE.MeshPhongMaterial({
+      color: 0x5a6a3a,
+      shininess: 4,
+      specular: new THREE.Color(0x111100),
+      transparent: true,
+      opacity: 0.4,
+    });
+    for (let rp = 0; rp < 6; rp++) {
+      const rustAngle = (rp / 6) * Math.PI * 2;
+      const rustGeo = new THREE.PlaneGeometry(0.08, 0.1);
+      const rustPatch = new THREE.Mesh(rustGeo, bombRustMat);
+      rustPatch.position.set(
+        0.4 + rp * 0.12,
+        1.1 + Math.sin(rustAngle) * 0.45,
+        Math.cos(rustAngle) * 0.45,
+      );
+      rustPatch.rotation.y = Math.PI / 2;
+      this._body.add(rustPatch);
+    }
+
+    // ---- ENHANCED DETAIL: Ground debris and spent wadding ----
+    for (let gd = 0; gd < 5; gd++) {
+      const debrisGeo = new THREE.BoxGeometry(0.03, 0.01, 0.04);
+      const debris = new THREE.Mesh(debrisGeo, mat(0x4a3a1a));
+      debris.position.set(0.8 + gd * 0.12, 0.38, -0.2 + gd * 0.1);
+      debris.rotation.y = gd * 1.2;
+      this._body.add(debris);
+    }
+
+    // Spent powder residue
+    const residueMat = mat(0x1a1a1a, { transparent: true, opacity: 0.3 });
+    for (let pr = 0; pr < 6; pr++) {
+      const residueGeo = new THREE.SphereGeometry(0.015, 4, 4);
+      const residue = new THREE.Mesh(residueGeo, residueMat);
+      residue.position.set(1.0 + pr * 0.08, 0.38, -0.1 + (pr % 3) * 0.08);
+      this._body.add(residue);
+    }
+
+    // ---- ENHANCED DETAIL: Spark particles from fuse ----
+    const bombSparkMat = mat(0xffaa22, { emissive: 0xff6600, transparent: true, opacity: 0.6 });
+    for (let spk = 0; spk < 4; spk++) {
+      const sparkGeo = new THREE.SphereGeometry(0.006, 4, 4);
+      const sparkP = new THREE.Mesh(sparkGeo, bombSparkMat);
+      sparkP.position.set(-0.05 + spk * 0.03, 1.85 + spk * 0.02, (spk % 2 - 0.5) * 0.03);
+      this._body.add(sparkP);
+    }
+
+    // ---- ENHANCED DETAIL: Wheel wear grooves ----
+    for (const wSide of [-1, 1]) {
+      for (let wg = 0; wg < 10; wg++) {
+        const grooveAngle = (wg / 10) * Math.PI * 2;
+        const grooveGeo = new THREE.BoxGeometry(0.008, 0.005, 0.14);
+        const groove = new THREE.Mesh(grooveGeo, mat(0x2a1808));
+        groove.position.set(
+          Math.cos(grooveAngle) * 0.5,
+          0.52 + Math.sin(grooveAngle) * 0.5,
+          wSide * 0.6 + (wSide > 0 ? 0.08 : -0.08),
+        );
+        groove.rotation.z = grooveAngle;
+        this._body.add(groove);
+      }
+    }
     casc.position.set(-0.72, 1.05, 0);
     this._body.add(casc);
 
@@ -13190,6 +16492,229 @@ export class CreatureMesh {
     const quoin = new THREE.Mesh(quoinGeo, mat(0x5a3210));
     quoin.position.set(-0.3, 0.68, 0);
     this._body.add(quoin);
+
+    // ---- ENHANCED DETAIL: Muzzle blast erosion ring ----
+    const blastErosionMat = new THREE.MeshPhongMaterial({
+      color: 0x4a4a3a,
+      shininess: 15,
+      specular: new THREE.Color(0x222211),
+      transparent: true,
+      opacity: 0.6,
+    });
+    const erosionRingGeo = new THREE.TorusGeometry(0.5, 0.012, 8, 20);
+    const erosionRing = new THREE.Mesh(erosionRingGeo, blastErosionMat);
+    erosionRing.position.set(1.25, 1.1, 0);
+    erosionRing.rotation.y = Math.PI / 2;
+    this._body.add(erosionRing);
+
+    // ---- ENHANCED DETAIL: Trunnion cap bolts ----
+    for (const trnSide of [-1, 1]) {
+      const trCapGeo = cyl(0.04, 0.04, 0.03, 10);
+      const trCap = new THREE.Mesh(trCapGeo, ironMat);
+      trCap.rotation.x = Math.PI / 2;
+      trCap.position.set(-0.1, 0.95, trnSide * 0.56);
+      this._body.add(trCap);
+
+      for (let trc = 0; trc < 4; trc++) {
+        const trcAngle = (trc / 4) * Math.PI * 2;
+        const trCapRvGeo = new THREE.SphereGeometry(0.008, 5, 5);
+        const trCapRv = new THREE.Mesh(trCapRvGeo, rivetMat);
+        trCapRv.position.set(
+          -0.1 + Math.cos(trcAngle) * 0.03,
+          0.95 + Math.sin(trcAngle) * 0.03,
+          trnSide * 0.57,
+        );
+        this._body.add(trCapRv);
+      }
+    }
+
+    // ---- ENHANCED DETAIL: Worm screw elevation mechanism detail ----
+    for (let ws = 0; ws < 10; ws++) {
+      const screwThreadGeo = new THREE.TorusGeometry(0.022, 0.003, 6, 8);
+      const screwThread = new THREE.Mesh(screwThreadGeo, ironMat);
+      screwThread.position.set(-0.55 + ws * 0.02, 0.72, 0);
+      screwThread.rotation.y = Math.PI / 2;
+      this._body.add(screwThread);
+    }
+
+    // ---- ENHANCED DETAIL: Rope lashing securing barrel to carriage ----
+    const bombRopeMat = new THREE.MeshPhongMaterial({
+      color: 0x887755,
+      shininess: 5,
+      specular: new THREE.Color(0x111100),
+    });
+    for (const rlSide of [-1, 1]) {
+      for (let rl = 0; rl < 3; rl++) {
+        const lashGeo = cyl(0.006, 0.006, 0.5, 6);
+        const lash = new THREE.Mesh(lashGeo, bombRopeMat);
+        lash.position.set(-0.1 + rl * 0.25, 1.0, rlSide * 0.3);
+        lash.rotation.z = rlSide * 0.6;
+        this._body.add(lash);
+      }
+    }
+
+    // Knots on rope lashings
+    for (const knSide of [-1, 1]) {
+      const knotGeo = new THREE.SphereGeometry(0.015, 6, 6);
+      const knotMesh = new THREE.Mesh(knotGeo, bombRopeMat);
+      knotMesh.position.set(-0.1, 0.72, knSide * 0.48);
+      this._body.add(knotMesh);
+    }
+
+    // ---- ENHANCED DETAIL: Iron drag hooks at trail end ----
+    const dragHookGeo = new THREE.BoxGeometry(0.04, 0.12, 0.05);
+    const dragHook1 = new THREE.Mesh(dragHookGeo, ironMat);
+    dragHook1.position.set(-1.05, 0.32, -0.2);
+    this._body.add(dragHook1);
+
+    const dragHook2 = new THREE.Mesh(dragHookGeo, ironMat);
+    dragHook2.position.set(-1.05, 0.32, 0.2);
+    this._body.add(dragHook2);
+
+    for (const dhZ of [-0.2, 0.2]) {
+      const dHookRingGeo = new THREE.TorusGeometry(0.03, 0.006, 6, 8);
+      const dHookRing = new THREE.Mesh(dHookRingGeo, ironMat);
+      dHookRing.position.set(-1.08, 0.25, dhZ);
+      this._body.add(dHookRing);
+    }
+
+    // ---- ENHANCED DETAIL: Powder horn hanging from carriage ----
+    const hornMat = new THREE.MeshPhongMaterial({
+      color: 0x8b7b55,
+      shininess: 20,
+      specular: new THREE.Color(0x332211),
+    });
+    const hornGeo = cyl(0.03, 0.015, 0.2, 8);
+    const powderHorn = new THREE.Mesh(hornGeo, hornMat);
+    powderHorn.position.set(0.7, 0.85, 0.45);
+    powderHorn.rotation.z = 0.3;
+    this._body.add(powderHorn);
+
+    const hornCapGeo = cyl(0.032, 0.032, 0.02, 8);
+    const hornCap = new THREE.Mesh(hornCapGeo, ironMat);
+    hornCap.position.set(0.7, 0.95, 0.45);
+    this._body.add(hornCap);
+
+    const hornStrapGeo = cyl(0.004, 0.004, 0.35, 6);
+    const hornStrap = new THREE.Mesh(hornStrapGeo, mat(0x5a3a1a));
+    hornStrap.position.set(0.75, 0.9, 0.46);
+    hornStrap.rotation.z = 0.8;
+    this._body.add(hornStrap);
+
+    // ---- ENHANCED DETAIL: Worn ground tracks from wheel ruts ----
+    for (const wtSide of [-1, 1]) {
+      const rutGeo = new THREE.BoxGeometry(2.0, 0.005, 0.08);
+      const rutMark = new THREE.Mesh(
+        rutGeo,
+        mat(0x3a2a1a, { transparent: true, opacity: 0.35 }),
+      );
+      rutMark.position.set(0, 0.0, wtSide * 0.6);
+      this._body.add(rutMark);
+    }
+
+    // ---- ENHANCED DETAIL: Cast bronze maker's marks on barrel ----
+    for (let mk = 0; mk < 3; mk++) {
+      const markAngle = mk * 0.8 - 0.8;
+      const markGeo = new THREE.BoxGeometry(0.02, 0.015, 0.03);
+      const markMesh = new THREE.Mesh(markGeo, mat(0x8a6a10, { metalness: 0.7 }));
+      markMesh.position.set(
+        0.0 + Math.cos(markAngle) * 0.52,
+        1.1 + Math.sin(markAngle) * 0.52,
+        0,
+      );
+      this._body.add(markMesh);
+    }
+
+    // ---- ENHANCED DETAIL: Iron linstock holder bracket ----
+    const linstockHolderGeo = new THREE.BoxGeometry(0.04, 0.04, 0.1);
+    const linstockHolder = new THREE.Mesh(linstockHolderGeo, ironMat);
+    linstockHolder.position.set(0.5, 1.0, -0.5);
+    this._body.add(linstockHolder);
+
+    const linstockClipGeo = new THREE.TorusGeometry(0.02, 0.004, 6, 8);
+    const linstockClip = new THREE.Mesh(linstockClipGeo, ironMat);
+    linstockClip.position.set(0.5, 1.0, -0.56);
+    this._body.add(linstockClip);
+
+    // ---- ENHANCED DETAIL: Copper patina verdigris on bronze ----
+    const verdigrisMat = new THREE.MeshPhongMaterial({
+      color: 0x3a7a5a,
+      shininess: 10,
+      specular: new THREE.Color(0x113322),
+      transparent: true,
+      opacity: 0.3,
+    });
+    for (let vp = 0; vp < 5; vp++) {
+      const vpAngle = (vp / 5) * Math.PI * 2;
+      const vpGeo = new THREE.PlaneGeometry(0.06, 0.08);
+      const vpMesh = new THREE.Mesh(vpGeo, verdigrisMat);
+      vpMesh.position.set(
+        -0.3 + vp * 0.15,
+        1.1 + Math.sin(vpAngle) * 0.44,
+        Math.cos(vpAngle) * 0.44,
+      );
+      vpMesh.rotation.y = Math.PI / 2;
+      this._body.add(vpMesh);
+    }
+
+    // ---- ENHANCED DETAIL: Wadding material near muzzle ----
+    const waddingMat = mat(0x8b8b7a, { transparent: true, opacity: 0.5 });
+    for (let wd = 0; wd < 4; wd++) {
+      const wadGeo = new THREE.SphereGeometry(0.02, 5, 4);
+      const wadMesh = new THREE.Mesh(wadGeo, waddingMat);
+      wadMesh.position.set(1.3 + wd * 0.06, 0.38, -0.08 + wd * 0.04);
+      this._body.add(wadMesh);
+    }
+
+    // ---- ENHANCED DETAIL: Iron reinforcement straps on trail ----
+    for (let ts = 0; ts < 4; ts++) {
+      const trailStrapGeo = new THREE.BoxGeometry(0.06, 0.32, 0.04);
+      const trailStrap = new THREE.Mesh(trailStrapGeo, ironMat);
+      trailStrap.position.set(-0.4 - ts * 0.15, 0.55, 0);
+      this._body.add(trailStrap);
+
+      // Strap rivets
+      for (const sry of [-0.1, 0.1]) {
+        const strapRvGeo = new THREE.SphereGeometry(0.007, 5, 5);
+        const strapRv = new THREE.Mesh(strapRvGeo, rivetMat);
+        strapRv.position.set(-0.4 - ts * 0.15, 0.55 + sry, 0.03);
+        this._body.add(strapRv);
+      }
+    }
+
+    // ---- ENHANCED DETAIL: Cannonball iron stand triangles ----
+    for (const [cbx, cbz] of [[-0.6, 0.7], [0, 0.72], [0.6, 0.7]] as const) {
+      const standGeo = new THREE.BoxGeometry(0.08, 0.02, 0.08);
+      const standMesh = new THREE.Mesh(standGeo, ironMat);
+      standMesh.position.set(cbx, 0.38, cbz);
+      this._body.add(standMesh);
+    }
+
+    // ---- ENHANCED DETAIL: Worn leather bucket for swabbing ----
+    const bucketGeo = cyl(0.04, 0.06, 0.1, 10);
+    const bucketMesh = new THREE.Mesh(bucketGeo, mat(0x5a3a1a));
+    bucketMesh.position.set(0.85, 0.45, 0.3);
+    this._body.add(bucketMesh);
+
+    const bucketBandGeo = new THREE.TorusGeometry(0.055, 0.005, 6, 10);
+    const bucketBand = new THREE.Mesh(bucketBandGeo, ironMat);
+    bucketBand.position.set(0.85, 0.42, 0.3);
+    this._body.add(bucketBand);
+
+    const bucketHandleGeo = cyl(0.004, 0.004, 0.1, 6);
+    const bucketHandle = new THREE.Mesh(bucketHandleGeo, ironMat);
+    bucketHandle.rotation.x = Math.PI / 2;
+    bucketHandle.position.set(0.85, 0.52, 0.3);
+    this._body.add(bucketHandle);
+
+    // Water inside bucket
+    const waterGeo = cyl(0.038, 0.038, 0.01, 10);
+    const waterMesh = new THREE.Mesh(
+      waterGeo,
+      mat(0x4a5a6a, { transparent: true, opacity: 0.6 }),
+    );
+    waterMesh.position.set(0.85, 0.49, 0.3);
+    this._body.add(waterMesh);
   }
 
   // ---- Siege Tower ---------------------------------------------------------
@@ -13250,6 +16775,256 @@ export class CreatureMesh {
           const slit = new THREE.Mesh(slitGeo, mat(0x0a0a0a));
           slit.position.set(xOff, y, s * 1.1);
           this._body.add(slit);
+    // ---- ENHANCED DETAIL: Plank grain on all wall surfaces ----
+    for (const pgSide of [-1, 1]) {
+      for (let pg = 0; pg < 12; pg++) {
+        const grainGeo = new THREE.BoxGeometry(0.005, 0.003, 2.18);
+        const grain = new THREE.Mesh(grainGeo, mat(0x3a1a08));
+        grain.position.set(pgSide * 1.1, 1.3 + pg * 0.35, 0);
+        this._body.add(grain);
+      }
+      for (let pg2 = 0; pg2 < 12; pg2++) {
+        const grain2Geo = new THREE.BoxGeometry(2.18, 0.003, 0.005);
+        const grain2 = new THREE.Mesh(grain2Geo, mat(0x3a1a08));
+        grain2.position.set(0, 1.3 + pg2 * 0.35, pgSide * 1.1);
+        this._body.add(grain2);
+      }
+    }
+
+    // Wood knots scattered on walls
+    for (let kn = 0; kn < 16; kn++) {
+      const knotGeo = new THREE.SphereGeometry(0.015, 6, 5);
+      const knotMesh = new THREE.Mesh(knotGeo, mat(0x3a1808));
+      const kSide = kn % 4 < 2 ? -1 : 1;
+      const kFace = kn % 2 === 0;
+      if (kFace) {
+        knotMesh.position.set(kSide * 1.1, 1.5 + kn * 0.25, -0.5 + (kn % 3) * 0.5);
+      } else {
+        knotMesh.position.set(-0.5 + (kn % 3) * 0.5, 1.5 + kn * 0.25, kSide * 1.1);
+      }
+      this._body.add(knotMesh);
+    }
+
+    // ---- ENHANCED DETAIL: Rope wrapping on corner posts ----
+    for (const rpxs of [-1, 1]) {
+      for (const rpzs of [-1, 1]) {
+        for (let rr = 0; rr < 8; rr++) {
+          const postRopeGeo = new THREE.TorusGeometry(0.14, 0.006, 6, 10);
+          const postRope = new THREE.Mesh(postRopeGeo, mat(0x887755));
+          postRope.position.set(rpxs * 1.1, 1.0 + rr * 0.7, rpzs * 1.1);
+          this._body.add(postRope);
+        }
+      }
+    }
+
+    // ---- ENHANCED DETAIL: Iron nail heads on all planks ----
+    for (const nSide of [-1, 1]) {
+      for (let ni = 0; ni < 20; ni++) {
+        const nailGeo = new THREE.CylinderGeometry(0.006, 0.006, 0.01, 5);
+        const nail = new THREE.Mesh(nailGeo, ironMat);
+        nail.rotation.z = Math.PI / 2;
+        nail.position.set(
+          nSide * 1.12,
+          1.2 + (ni % 5) * 0.9,
+          -0.8 + Math.floor(ni / 5) * 0.4,
+        );
+        this._body.add(nail);
+      }
+    }
+
+    // ---- ENHANCED DETAIL: Leather hide covering on front face ----
+    const stLeatherMat = new THREE.MeshPhongMaterial({
+      color: 0x5a3a1a,
+      shininess: 12,
+      specular: new THREE.Color(0x221100),
+      side: THREE.DoubleSide,
+    });
+    const hideGeo = new THREE.PlaneGeometry(2.2, 4.5);
+    const hideCover = new THREE.Mesh(hideGeo, stLeatherMat);
+    hideCover.position.set(1.12, 3.5, 0);
+    hideCover.rotation.y = Math.PI / 2;
+    this._body.add(hideCover);
+
+    // Leather stitching on hide
+    for (let st = 0; st < 8; st++) {
+      const stitchGeo = new THREE.BoxGeometry(0.002, 4.4, 0.008);
+      const stitchLine = new THREE.Mesh(stitchGeo, mat(0x3a2a1a));
+      stitchLine.position.set(1.13, 3.5, -0.8 + st * 0.23);
+      this._body.add(stitchLine);
+    }
+
+    // ---- ENHANCED DETAIL: Battle damage — arrow impacts ----
+    for (let ai = 0; ai < 5; ai++) {
+      const arrowGeo = cyl(0.008, 0.008, 0.2, 6);
+      const arrowShaft = new THREE.Mesh(arrowGeo, mat(0x5a4020));
+      arrowShaft.position.set(
+        1.15,
+        2.0 + ai * 0.8,
+        -0.6 + ai * 0.3,
+      );
+      arrowShaft.rotation.z = -Math.PI / 2 + 0.2;
+      this._body.add(arrowShaft);
+    }
+
+    // ---- ENHANCED DETAIL: Scorch marks from fire attacks ----
+    for (let scm = 0; scm < 8; scm++) {
+      const scorchGeo = new THREE.PlaneGeometry(0.2, 0.15);
+      const scorch = new THREE.Mesh(
+        scorchGeo,
+        mat(0x1a1008, { side: THREE.DoubleSide, transparent: true, opacity: 0.5 }),
+      );
+      const scFace = scm % 2;
+      if (scFace === 0) {
+        scorch.position.set(-1.11, 1.5 + scm * 0.5, -0.3 + (scm % 3) * 0.3);
+        scorch.rotation.y = Math.PI / 2;
+      } else {
+        scorch.position.set(-0.3 + (scm % 3) * 0.3, 1.5 + scm * 0.5, -1.11);
+      }
+      this._body.add(scorch);
+    }
+
+    // ---- ENHANCED DETAIL: Blood stains on lower levels ----
+    const stBloodMat = mat(0x4a0808, { transparent: true, opacity: 0.4 });
+    for (let bl = 0; bl < 4; bl++) {
+      const bloodGeo = new THREE.PlaneGeometry(0.1, 0.15);
+      const bloodStain = new THREE.Mesh(bloodGeo, stBloodMat);
+      bloodStain.position.set(1.12, 1.0 + bl * 0.4, -0.3 + bl * 0.2);
+      bloodStain.rotation.y = Math.PI / 2;
+      this._body.add(bloodStain);
+    }
+
+    // ---- ENHANCED DETAIL: Pulley system for drawbridge ----
+    const pulleyWheelGeo = new THREE.TorusGeometry(0.06, 0.012, 8, 14);
+    const pulleyWheel = new THREE.Mesh(pulleyWheelGeo, ironMat);
+    pulleyWheel.position.set(0.95, 6.7, 0);
+    this._body.add(pulleyWheel);
+
+    const pulleyAxleGeo = cyl(0.015, 0.015, 0.08, 8);
+    const pulleyAxle = new THREE.Mesh(pulleyAxleGeo, ironMat);
+    pulleyAxle.rotation.x = Math.PI / 2;
+    pulleyAxle.position.set(0.95, 6.7, 0);
+    this._body.add(pulleyAxle);
+
+    const pulleyBracketGeo = new THREE.BoxGeometry(0.06, 0.1, 0.15);
+    const pulleyBracket = new THREE.Mesh(pulleyBracketGeo, ironMat);
+    pulleyBracket.position.set(0.95, 6.78, 0);
+    this._body.add(pulleyBracket);
+
+    // Rope through pulley
+    const pulleyRopeGeo = cyl(0.008, 0.008, 1.5, 6);
+    const pulleyRope = new THREE.Mesh(pulleyRopeGeo, mat(0x887755));
+    pulleyRope.position.set(0.98, 5.95, 0);
+    this._body.add(pulleyRope);
+
+    // ---- ENHANCED DETAIL: Rust on iron fittings ----
+    const stRustMat = new THREE.MeshPhongMaterial({
+      color: 0x6b3a1a,
+      shininess: 8,
+      specular: new THREE.Color(0x221100),
+      transparent: true,
+      opacity: 0.5,
+    });
+    for (const yrBand of [1.5, 3.3, 5.1]) {
+      for (const rxs of [-1, 1]) {
+        const rustGeo = new THREE.BoxGeometry(0.15, 0.04, 0.06);
+        const rustPatch = new THREE.Mesh(rustGeo, stRustMat);
+        rustPatch.position.set(rxs * 0.6, yrBand, 1.14);
+        this._body.add(rustPatch);
+      }
+    }
+
+    // ---- ENHANCED DETAIL: Mud accumulation at base ----
+    const stMudMat = mat(0x4a3a1a, { transparent: true, opacity: 0.45 });
+    for (let md = 0; md < 12; md++) {
+      const mudGeo = new THREE.SphereGeometry(0.025, 5, 4);
+      const mudBlob = new THREE.Mesh(mudGeo, stMudMat);
+      mudBlob.position.set(
+        -1.2 + (md % 4) * 0.8,
+        0.4,
+        -1.2 + Math.floor(md / 4) * 0.8,
+      );
+      this._body.add(mudBlob);
+    }
+
+    // ---- ENHANCED DETAIL: Wheel iron tire nails ----
+    for (const wzOff of [-1.1, 0, 1.1]) {
+      for (const wxOff of [-1.45, 1.45]) {
+        for (let tn = 0; tn < 10; tn++) {
+          const tnAngle = (tn / 10) * Math.PI * 2;
+          const tireNailGeo = new THREE.SphereGeometry(0.008, 4, 4);
+          const tireNail = new THREE.Mesh(tireNailGeo, ironMat);
+          tireNail.position.set(
+            wxOff + Math.cos(tnAngle) * 0.45,
+            0.45 + Math.sin(tnAngle) * 0.45,
+            wzOff + (wxOff < 0 ? -0.08 : 0.08),
+          );
+          this._body.add(tireNail);
+        }
+      }
+    }
+
+    // ---- ENHANCED DETAIL: Dust and debris at base ----
+    const stDustMat = mat(0xaa9977, { transparent: true, opacity: 0.2 });
+    for (let dt = 0; dt < 10; dt++) {
+      const dustGeo = new THREE.SphereGeometry(0.012, 4, 3);
+      const dustP = new THREE.Mesh(dustGeo, stDustMat);
+      dustP.position.set(
+        -1.0 + dt * 0.22,
+        0.42 + (dt % 3) * 0.04,
+        -1.0 + (dt % 4) * 0.55,
+      );
+      this._body.add(dustP);
+    }
+
+    // ---- ENHANCED DETAIL: Torch brackets on walls ----
+    for (const tbY of [2.5, 4.3]) {
+      for (const tbSide of [-1, 1]) {
+        const bracketArmGeo = new THREE.BoxGeometry(0.04, 0.04, 0.15);
+        const bracketArm = new THREE.Mesh(bracketArmGeo, ironMat);
+        bracketArm.position.set(tbSide * 1.12, tbY, 0);
+        this._body.add(bracketArm);
+
+        const bracketRingGeo = new THREE.TorusGeometry(0.035, 0.006, 6, 8);
+        const bracketRing = new THREE.Mesh(bracketRingGeo, ironMat);
+        bracketRing.position.set(tbSide * 1.12, tbY, tbSide > 0 ? 0.08 : -0.08);
+        bracketRing.rotation.y = Math.PI / 2;
+        this._body.add(bracketRing);
+      }
+    }
+
+    // ---- ENHANCED DETAIL: Grappling hooks stored at top ----
+    for (const ghZ of [-0.5, 0.5]) {
+      const hookShaftGeo = cyl(0.012, 0.012, 0.4, 6);
+      const hookShaft = new THREE.Mesh(hookShaftGeo, ironMat);
+      hookShaft.position.set(0.8, 6.6, ghZ);
+      hookShaft.rotation.z = 0.3;
+      this._body.add(hookShaft);
+
+      const hookTipGeo = new THREE.ConeGeometry(0.02, 0.08, 6);
+      const hookTip = new THREE.Mesh(hookTipGeo, ironMat);
+      hookTip.position.set(0.95, 6.78, ghZ);
+      hookTip.rotation.z = 0.3;
+      this._body.add(hookTip);
+    }
+
+    // ---- ENHANCED DETAIL: Signal flag at top ----
+    const flagPoleGeo = cyl(0.015, 0.015, 1.0, 8);
+    const towerFlagPole = new THREE.Mesh(flagPoleGeo, ironMat);
+    towerFlagPole.position.set(0, 7.5, 0);
+    this._body.add(towerFlagPole);
+
+    const towerFlagGeo = new THREE.PlaneGeometry(0.35, 0.25);
+    const towerFlag = new THREE.Mesh(
+      towerFlagGeo,
+      mat(0xaa2222, { side: THREE.DoubleSide }),
+    );
+    towerFlag.position.set(0.18, 7.85, 0);
+    this._body.add(towerFlag);
+
+    const finialGeo2 = new THREE.SphereGeometry(0.025, 8, 6);
+    const towerFinial = new THREE.Mesh(finialGeo2, ironMat);
+    towerFinial.position.set(0, 8.0, 0);
+    this._body.add(towerFinial);
         }
         // Front/back walls (x-facing)
         const wallXGeo = new THREE.BoxGeometry(0.12, h, 2.2);
@@ -13472,6 +17247,272 @@ export class CreatureMesh {
           this._body.add(cornerBand);
         }
       }
+    }
+
+    // ---- ENHANCED DETAIL: Sandbag barricade on top platform ----
+    const sandbagMat = new THREE.MeshPhongMaterial({
+      color: 0x8b7b5a,
+      shininess: 3,
+      specular: new THREE.Color(0x111100),
+    });
+    for (let sb = 0; sb < 6; sb++) {
+      const sbAngle = (sb / 6) * Math.PI * 2;
+      const sandbagGeo = new THREE.BoxGeometry(0.3, 0.12, 0.15);
+      const sandbag = new THREE.Mesh(sandbagGeo, sandbagMat);
+      sandbag.position.set(
+        Math.cos(sbAngle) * 0.7,
+        6.64,
+        Math.sin(sbAngle) * 0.7,
+      );
+      sandbag.rotation.y = sbAngle;
+      this._body.add(sandbag);
+    }
+
+    // Second layer of sandbags
+    for (let sb2 = 0; sb2 < 4; sb2++) {
+      const sb2Angle = (sb2 / 4) * Math.PI * 2 + 0.4;
+      const sandbag2Geo = new THREE.BoxGeometry(0.28, 0.11, 0.14);
+      const sandbag2 = new THREE.Mesh(sandbag2Geo, sandbagMat);
+      sandbag2.position.set(
+        Math.cos(sb2Angle) * 0.65,
+        6.76,
+        Math.sin(sb2Angle) * 0.65,
+      );
+      sandbag2.rotation.y = sb2Angle + 0.3;
+      this._body.add(sandbag2);
+    }
+
+    // ---- ENHANCED DETAIL: Wooden shield mantlets between merlons ----
+    const mantletMat = new THREE.MeshPhongMaterial({
+      color: 0x5a3a1a,
+      shininess: 8,
+      specular: new THREE.Color(0x110800),
+      side: THREE.DoubleSide,
+    });
+    for (let mt = -1; mt <= 1; mt++) {
+      for (const mSide of [-1, 1]) {
+        const mantletGeo = new THREE.PlaneGeometry(0.3, 0.4);
+        const mantlet = new THREE.Mesh(mantletGeo, mantletMat);
+        mantlet.position.set(mt * 0.7 + 0.35, 6.78, mSide * 1.14);
+        this._body.add(mantlet);
+
+        const mantletZ = new THREE.Mesh(mantletGeo, mantletMat);
+        mantletZ.rotation.y = Math.PI / 2;
+        mantletZ.position.set(mSide * 1.14, 6.78, mt * 0.7 + 0.35);
+        this._body.add(mantletZ);
+      }
+    }
+
+    // ---- ENHANCED DETAIL: Interior staircase support beams ----
+    for (let isb = 0; isb < 5; isb++) {
+      const stairBeamGeo = new THREE.BoxGeometry(0.08, 0.06, 1.5);
+      const stairBeam = new THREE.Mesh(stairBeamGeo, darkWoodMat);
+      stairBeam.position.set(-0.6, 1.2 + isb * 1.1, 0);
+      stairBeam.rotation.z = 0.6;
+      this._body.add(stairBeam);
+    }
+
+    // ---- ENHANCED DETAIL: Hoarding (overhanging timber gallery) ----
+    for (const hSide of [-1, 1]) {
+      // Horizontal support brackets
+      for (let hb = 0; hb < 4; hb++) {
+        const hoardBracketGeo = new THREE.BoxGeometry(0.06, 0.06, 0.4);
+        const hoardBracket = new THREE.Mesh(hoardBracketGeo, darkWoodMat);
+        hoardBracket.position.set(-0.7 + hb * 0.45, 6.3, hSide * 1.3);
+        this._body.add(hoardBracket);
+      }
+
+      // Hoarding floor planks
+      const hoardFloorGeo = new THREE.BoxGeometry(2.0, 0.04, 0.35);
+      const hoardFloor = new THREE.Mesh(hoardFloorGeo, woodMat);
+      hoardFloor.position.set(0, 6.28, hSide * 1.35);
+      this._body.add(hoardFloor);
+    }
+
+    // ---- ENHANCED DETAIL: Soaked leather fire protection panels ----
+    const wetLeatherMat = new THREE.MeshPhongMaterial({
+      color: 0x3a2a1a,
+      shininess: 18,
+      specular: new THREE.Color(0x332211),
+      side: THREE.DoubleSide,
+    });
+    for (const wlSide of [-1, 1]) {
+      const wetHideGeo = new THREE.PlaneGeometry(2.0, 1.5);
+      const wetHide = new THREE.Mesh(wetHideGeo, wetLeatherMat);
+      wetHide.position.set(0, 5.0, wlSide * 1.13);
+      this._body.add(wetHide);
+
+      // Drip marks on wet leather
+      for (let drip = 0; drip < 6; drip++) {
+        const dripGeo = new THREE.BoxGeometry(0.004, 0.3, 0.003);
+        const dripMark = new THREE.Mesh(
+          dripGeo,
+          mat(0x2a2a3a, { transparent: true, opacity: 0.25 }),
+        );
+        dripMark.position.set(-0.6 + drip * 0.25, 4.5, wlSide * 1.14);
+        this._body.add(dripMark);
+      }
+    }
+
+    // ---- ENHANCED DETAIL: Siege hooks and grappling irons at each level ----
+    for (const ghY of [2.0, 3.8, 5.6]) {
+      const hookBracketGeo = new THREE.BoxGeometry(0.05, 0.05, 0.08);
+      const hookBracket = new THREE.Mesh(hookBracketGeo, ironMat);
+      hookBracket.position.set(1.14, ghY, 0.6);
+      this._body.add(hookBracket);
+
+      const hookShaftGeo2 = cyl(0.01, 0.01, 0.25, 6);
+      const hookShaft2 = new THREE.Mesh(hookShaftGeo2, ironMat);
+      hookShaft2.position.set(1.2, ghY, 0.6);
+      hookShaft2.rotation.z = 0.4;
+      this._body.add(hookShaft2);
+
+      const hookCurveGeo = new THREE.TorusGeometry(0.03, 0.008, 6, 8, Math.PI);
+      const hookCurve = new THREE.Mesh(hookCurveGeo, ironMat);
+      hookCurve.position.set(1.33, ghY + 0.1, 0.6);
+      this._body.add(hookCurve);
+    }
+
+    // ---- ENHANCED DETAIL: Iron banding on floor joists ----
+    for (const flY of [1.0, 2.8, 4.6]) {
+      for (let fj = 0; fj < 5; fj++) {
+        const joistBandGeo = new THREE.BoxGeometry(0.03, 0.16, 2.18);
+        const joistBand = new THREE.Mesh(joistBandGeo, ironMat);
+        joistBand.position.set(-0.8 + fj * 0.4, flY, 0);
+        this._body.add(joistBand);
+      }
+    }
+
+    // ---- ENHANCED DETAIL: Damaged splinters protruding from walls ----
+    for (let dsp = 0; dsp < 12; dsp++) {
+      const dspGeo = new THREE.BoxGeometry(0.005, 0.06, 0.01);
+      const dspMesh = new THREE.Mesh(dspGeo, mat(0x8b6b3a));
+      const dspSide = dsp % 4;
+      if (dspSide === 0) {
+        dspMesh.position.set(1.13, 2.0 + dsp * 0.3, -0.5 + (dsp % 3) * 0.5);
+      } else if (dspSide === 1) {
+        dspMesh.position.set(-1.13, 2.0 + dsp * 0.3, -0.3 + (dsp % 3) * 0.3);
+      } else if (dspSide === 2) {
+        dspMesh.position.set(-0.4 + (dsp % 3) * 0.4, 2.0 + dsp * 0.3, 1.13);
+      } else {
+        dspMesh.position.set(-0.3 + (dsp % 3) * 0.3, 2.0 + dsp * 0.3, -1.13);
+      }
+      dspMesh.rotation.set(dsp * 0.5, dsp * 0.3, dsp * 0.4);
+      this._body.add(dspMesh);
+    }
+
+    // ---- ENHANCED DETAIL: Battering ram suspended in base level ----
+    const towerRamGeo = cyl(0.06, 0.06, 1.6, 10);
+    const towerRam = new THREE.Mesh(towerRamGeo, darkWoodMat);
+    towerRam.rotation.z = Math.PI / 2;
+    towerRam.position.set(0.6, 0.85, 0);
+    this._body.add(towerRam);
+
+    const towerRamHeadGeo = new THREE.SphereGeometry(0.1, 10, 8);
+    const towerRamHead = new THREE.Mesh(towerRamHeadGeo, ironMat);
+    towerRamHead.scale.set(0.7, 0.7, 1.2);
+    towerRamHead.position.set(1.5, 0.85, 0);
+    this._body.add(towerRamHead);
+
+    // Ram suspension ropes
+    for (const rsZ of [-0.3, 0.3]) {
+      const rSuspGeo = cyl(0.008, 0.008, 0.4, 6);
+      const rSusp = new THREE.Mesh(rSuspGeo, mat(0x887755));
+      rSusp.position.set(0.5, 1.05, rsZ);
+      this._body.add(rSusp);
+    }
+
+    // ---- ENHANCED DETAIL: Cauldron at second level (for boiling liquid) ----
+    const cauldronGeo = new THREE.SphereGeometry(0.12, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.6);
+    const cauldron = new THREE.Mesh(cauldronGeo, ironMat);
+    cauldron.position.set(-0.4, 3.05, -0.4);
+    this._body.add(cauldron);
+
+    const cauldronRimGeo = new THREE.TorusGeometry(0.12, 0.008, 6, 12);
+    const cauldronRim = new THREE.Mesh(cauldronRimGeo, ironMat);
+    cauldronRim.position.set(-0.4, 3.05, -0.4);
+    this._body.add(cauldronRim);
+
+    // ---- ENHANCED DETAIL: Shield racks on interior walls ----
+    for (const srSide of [-1, 1]) {
+      for (let sr = 0; sr < 3; sr++) {
+        const shieldGeo = new THREE.BoxGeometry(0.25, 0.3, 0.03);
+        const shield = new THREE.Mesh(
+          shieldGeo,
+          mat(0x5a3a1a, { side: THREE.DoubleSide }),
+        );
+        shield.position.set(srSide * 0.85, 2.0 + sr * 0.4, -0.7);
+        this._body.add(shield);
+
+        const shieldBossGeo = new THREE.SphereGeometry(0.04, 6, 6);
+        const shieldBoss = new THREE.Mesh(shieldBossGeo, ironMat);
+        shieldBoss.position.set(srSide * 0.85, 2.0 + sr * 0.4, -0.72);
+        this._body.add(shieldBoss);
+      }
+    }
+
+    // ---- ENHANCED DETAIL: Wooden water troughs for fire suppression ----
+    const troughGeo2 = new THREE.BoxGeometry(0.6, 0.08, 0.2);
+    const troughMesh = new THREE.Mesh(troughGeo2, darkWoodMat);
+    troughMesh.position.set(0, 4.65, 0.7);
+    this._body.add(troughMesh);
+
+    const troughSide1 = new THREE.BoxGeometry(0.6, 0.12, 0.02);
+    const troughWall1 = new THREE.Mesh(troughSide1, darkWoodMat);
+    troughWall1.position.set(0, 4.71, 0.8);
+    this._body.add(troughWall1);
+
+    const troughWall2 = new THREE.Mesh(troughSide1, darkWoodMat);
+    troughWall2.position.set(0, 4.71, 0.6);
+    this._body.add(troughWall2);
+
+    // Water surface
+    const troughWaterGeo = new THREE.BoxGeometry(0.58, 0.01, 0.16);
+    const troughWater = new THREE.Mesh(
+      troughWaterGeo,
+      mat(0x4a5a6a, { transparent: true, opacity: 0.6 }),
+    );
+    troughWater.position.set(0, 4.72, 0.7);
+    this._body.add(troughWater);
+
+    // ---- ENHANCED DETAIL: Chalk siege markings on walls ----
+    const chalkMat = mat(0xccccbb, { transparent: true, opacity: 0.3 });
+    for (let cm = 0; cm < 4; cm++) {
+      const chalkGeo = new THREE.BoxGeometry(0.003, 0.08, 0.01);
+      const chalkMark = new THREE.Mesh(chalkGeo, chalkMat);
+      chalkMark.position.set(-1.11, 3.0 + cm * 0.12, 0.3);
+      this._body.add(chalkMark);
+    }
+    // Diagonal strike-through
+    const chalkDiagGeo = new THREE.BoxGeometry(0.003, 0.15, 0.01);
+    const chalkDiag = new THREE.Mesh(chalkDiagGeo, chalkMat);
+    chalkDiag.position.set(-1.11, 3.24, 0.3);
+    chalkDiag.rotation.z = 0.5;
+    this._body.add(chalkDiag);
+
+    // ---- ENHANCED DETAIL: Iron anchor pegs at base ----
+    for (const apX of [-1.2, 1.2]) {
+      for (const apZ of [-1.2, 1.2]) {
+        const anchorPegGeo = cyl(0.015, 0.01, 0.2, 6);
+        const anchorPeg = new THREE.Mesh(anchorPegGeo, ironMat);
+        anchorPeg.position.set(apX, 0.32, apZ);
+        this._body.add(anchorPeg);
+
+        const anchorRingGeo = new THREE.TorusGeometry(0.025, 0.005, 6, 8);
+        const anchorRing = new THREE.Mesh(anchorRingGeo, ironMat);
+        anchorRing.position.set(apX, 0.42, apZ);
+        this._body.add(anchorRing);
+      }
+    }
+
+    // ---- ENHANCED DETAIL: Charred and darkened base timbers ----
+    const charBaseMat = mat(0x1a1008, { transparent: true, opacity: 0.5 });
+    for (let chb = 0; chb < 8; chb++) {
+      const charBaseGeo = new THREE.PlaneGeometry(0.3, 0.15);
+      const charBase = new THREE.Mesh(charBaseGeo, charBaseMat);
+      charBase.rotation.x = -Math.PI / 2;
+      charBase.position.set(-1.0 + chb * 0.3, 0.71, 1.25);
+      this._body.add(charBase);
     }
   }
 
@@ -13881,6 +17922,315 @@ export class CreatureMesh {
       const sapDrop = new THREE.Mesh(sapDropGeo, mat(0xcc8833, { transparent: true, opacity: 0.8, clearcoat: 0.8 }));
       sapDrop.position.set(Math.cos(sapAngle) * 0.45, sapY - 0.07, Math.sin(sapAngle) * 0.45);
       this._body.add(sapDrop);
+    }
+
+    // --- Additional detail: inner heartwood rings visible through cracks ---
+    for (let hr = 0; hr < 5; hr++) {
+      const heartAngle = Math.random() * Math.PI * 2;
+      const heartY = 1.2 + Math.random() * 1.8;
+      const ringGeo = new THREE.TorusGeometry(0.04 + Math.random() * 0.03, 0.006, 6, 12);
+      const ring = new THREE.Mesh(ringGeo, mat(0x886644, { roughness: 0.7 }));
+      ring.position.set(Math.cos(heartAngle) * 0.44, heartY, Math.sin(heartAngle) * 0.44);
+      ring.rotation.y = heartAngle + Math.PI / 2;
+      ring.rotation.x = (Math.random() - 0.5) * 0.3;
+      this._body.add(ring);
+      // Inner heartwood exposed through crack
+      const heartWoodGeo = new THREE.SphereGeometry(0.03, 6, 4);
+      const heartWood = new THREE.Mesh(heartWoodGeo, mat(0xaa7744, { roughness: 0.6, sheen: 0.2, sheenRoughness: 0.5, sheenColor: new THREE.Color(0xccaa66) }));
+      heartWood.position.set(Math.cos(heartAngle) * 0.43, heartY, Math.sin(heartAngle) * 0.43);
+      heartWood.scale.set(1, 1, 0.3);
+      this._body.add(heartWood);
+    }
+
+    // --- Additional detail: bark peeling strips ---
+    for (let bp = 0; bp < 8; bp++) {
+      const peelAngle = Math.random() * Math.PI * 2;
+      const peelY = 0.8 + Math.random() * 2.2;
+      const peelLen = 0.1 + Math.random() * 0.15;
+      const peelGeo = new THREE.PlaneGeometry(0.04, peelLen, 1, 1);
+      const peel = new THREE.Mesh(peelGeo, barkMaterial(0x5a4028, { side: THREE.DoubleSide }));
+      peel.position.set(Math.cos(peelAngle) * 0.46, peelY, Math.sin(peelAngle) * 0.46);
+      peel.rotation.y = peelAngle + Math.PI / 2;
+      peel.rotation.z = (Math.random() - 0.5) * 0.3;
+      peel.rotation.x = 0.2 + Math.random() * 0.3;
+      this._body.add(peel);
+    }
+
+    // --- Additional detail: shelf fungi (bracket fungi) growing on trunk ---
+    for (let bf = 0; bf < 6; bf++) {
+      const fungiAngle = Math.random() * Math.PI * 2;
+      const fungiY = 0.6 + Math.random() * 2.0;
+      const fungiW = 0.06 + Math.random() * 0.04;
+      const fungiGeo = new THREE.SphereGeometry(fungiW, 10, 8);
+      const fungi = new THREE.Mesh(fungiGeo, mat(0x997755, { roughness: 0.85, sheen: 0.1, sheenRoughness: 0.7, sheenColor: new THREE.Color(0xbbaa88) }));
+      fungi.position.set(Math.cos(fungiAngle) * 0.47, fungiY, Math.sin(fungiAngle) * 0.47);
+      fungi.scale.set(1.5, 0.3, 1.2);
+      fungi.rotation.y = fungiAngle;
+      this._body.add(fungi);
+      // Fungi underside gills
+      const gillGeo = new THREE.CylinderGeometry(fungiW * 0.8, fungiW * 0.9, 0.008, 10);
+      const gill = new THREE.Mesh(gillGeo, mat(0xddccaa, { roughness: 0.9 }));
+      gill.position.set(Math.cos(fungiAngle) * 0.47, fungiY - 0.015, Math.sin(fungiAngle) * 0.47);
+      this._body.add(gill);
+    }
+
+    // --- Additional detail: ivy vine wrapping around trunk ---
+    for (let iv = 0; iv < 10; iv++) {
+      const ivyAngle = iv * 0.7;
+      const ivyY = 0.5 + iv * 0.25;
+      const ivyR = 0.44 + Math.random() * 0.03;
+      const vineSegGeo = cyl(0.012, 0.01, 0.2, 6);
+      const vineSeg = new THREE.Mesh(vineSegGeo, mat(0x2a5518, { roughness: 0.9 }));
+      vineSeg.position.set(Math.cos(ivyAngle) * ivyR, ivyY, Math.sin(ivyAngle) * ivyR);
+      vineSeg.rotation.set(0.15, ivyAngle + 0.3, Math.PI / 4);
+      this._body.add(vineSeg);
+      // Ivy leaves along the vine
+      for (let il = 0; il < 2; il++) {
+        const ivyLeafGeo = new THREE.SphereGeometry(0.02, 6, 4);
+        const ivyLeaf = new THREE.Mesh(ivyLeafGeo, mat(0x336622, { roughness: 0.8, sheen: 0.3, sheenColor: new THREE.Color(0x55aa33), sheenRoughness: 0.4 }));
+        ivyLeaf.position.set(
+          Math.cos(ivyAngle + il * 0.3) * (ivyR + 0.02),
+          ivyY + (il - 0.5) * 0.06,
+          Math.sin(ivyAngle + il * 0.3) * (ivyR + 0.02),
+        );
+        ivyLeaf.scale.set(1.5, 0.4, 1.2);
+        this._body.add(ivyLeaf);
+      }
+    }
+
+    // --- Additional detail: canopy flowers and blossoms ---
+    for (let fl = 0; fl < 8; fl++) {
+      const flowerGeo = new THREE.SphereGeometry(0.03 + Math.random() * 0.02, 8, 6);
+      const flowerColor = Math.random() > 0.5 ? 0xffaacc : 0xffffaa;
+      const flower = new THREE.Mesh(flowerGeo, mat(flowerColor, { roughness: 0.6 }));
+      flower.position.set(
+        (Math.random() - 0.5) * 0.8,
+        Math.random() * 0.5,
+        (Math.random() - 0.5) * 0.8,
+      );
+      flower.scale.set(1.2, 0.5, 1.2);
+      this._head.add(flower);
+      // Flower center stamen
+      const stamenGeo = new THREE.SphereGeometry(0.01, 4, 4);
+      const stamen = new THREE.Mesh(stamenGeo, mat(0xffdd44));
+      stamen.position.copy(flower.position);
+      stamen.position.y += 0.015;
+      this._head.add(stamen);
+    }
+
+    // --- Additional detail: pollen/spore particles drifting from canopy ---
+    for (let po = 0; po < 14; po++) {
+      const pollenGeo = new THREE.SphereGeometry(0.005 + Math.random() * 0.004, 4, 4);
+      const pollen = new THREE.Mesh(pollenGeo, mat(0xffffcc, { transparent: true, opacity: 0.5 + Math.random() * 0.3 }));
+      pollen.position.set(
+        (Math.random() - 0.5) * 1.2,
+        0.5 + Math.random() * 0.8,
+        (Math.random() - 0.5) * 1.2,
+      );
+      this._head.add(pollen);
+    }
+
+    // --- Additional detail: fallen leaf litter at base ---
+    for (let ll = 0; ll < 12; ll++) {
+      const leafLitterGeo = new THREE.SphereGeometry(0.015 + Math.random() * 0.01, 6, 4);
+      const leafColor = Math.random() > 0.6 ? 0x886622 : Math.random() > 0.3 ? 0x668833 : 0xaa8833;
+      const leafLitter = new THREE.Mesh(leafLitterGeo, mat(leafColor, { roughness: 0.9 }));
+      const llAngle = Math.random() * Math.PI * 2;
+      const llR = 0.15 + Math.random() * 0.5;
+      leafLitter.position.set(Math.cos(llAngle) * llR, 0.01, Math.sin(llAngle) * llR);
+      leafLitter.scale.set(1.5, 0.2, 1.3);
+      leafLitter.rotation.y = Math.random() * Math.PI;
+      this._body.add(leafLitter);
+    }
+
+    // --- Additional detail: bird perch branch stubs ---
+    for (let pb = 0; pb < 4; pb++) {
+      const perchAngle = (pb / 4) * Math.PI * 2 + 0.8;
+      const perchLen = 0.15 + Math.random() * 0.12;
+      const perchGeo = cyl(0.03, 0.02, perchLen, 8);
+      const perch = new THREE.Mesh(perchGeo, darkBarkMat);
+      perch.position.set(
+        Math.cos(perchAngle) * 0.42,
+        2.0 + pb * 0.35,
+        Math.sin(perchAngle) * 0.42,
+      );
+      perch.rotation.z = Math.cos(perchAngle) * 0.7;
+      perch.rotation.x = -Math.sin(perchAngle) * 0.7;
+      this._body.add(perch);
+    }
+
+    // --- Additional detail: spider web between arm branches ---
+    for (const side of [-1, 1]) {
+      const webArm = side === -1 ? this._leftArm : this._rightArm;
+      for (let wb = 0; wb < 3; wb++) {
+        const webGeo = new THREE.PlaneGeometry(0.08, 0.08, 1, 1);
+        const web = new THREE.Mesh(webGeo, mat(0xdddddd, { transparent: true, opacity: 0.08, side: THREE.DoubleSide }));
+        web.position.set(side * 0.12, -0.5 - wb * 0.25, 0.06);
+        web.rotation.y = side * 0.3;
+        webArm.add(web);
+      }
+      // Web anchor threads
+      for (let wt = 0; wt < 4; wt++) {
+        const threadGeo = cyl(0.002, 0.001, 0.12, 4);
+        const thread = new THREE.Mesh(threadGeo, mat(0xcccccc, { transparent: true, opacity: 0.12 }));
+        thread.position.set(side * (0.1 + wt * 0.02), -0.4 - wt * 0.15, 0.04);
+        thread.rotation.set(Math.random() * 0.5, 0, (Math.random() - 0.5) * 0.8);
+        webArm.add(thread);
+      }
+    }
+
+    // --- Additional detail: woodpecker holes ---
+    for (let wh = 0; wh < 5; wh++) {
+      const whAngle = Math.random() * Math.PI * 2;
+      const whY = 1.0 + Math.random() * 2.0;
+      const holeGeo = new THREE.SphereGeometry(0.02, 8, 6);
+      const hole = new THREE.Mesh(holeGeo, mat(0x0a0804));
+      hole.position.set(Math.cos(whAngle) * 0.45, whY, Math.sin(whAngle) * 0.45);
+      hole.scale.set(0.7, 1.0, 0.3);
+      this._body.add(hole);
+      // Wood shavings below each hole
+      for (let ws = 0; ws < 2; ws++) {
+        const shavingGeo = new THREE.BoxGeometry(0.008, 0.003, 0.012);
+        const shaving = new THREE.Mesh(shavingGeo, mat(0xccaa77));
+        shaving.position.set(
+          Math.cos(whAngle) * 0.46 + (Math.random() - 0.5) * 0.02,
+          whY - 0.04 - ws * 0.015,
+          Math.sin(whAngle) * 0.46 + (Math.random() - 0.5) * 0.02,
+        );
+        shaving.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+        this._body.add(shaving);
+      }
+    }
+
+    // --- Additional detail: gnarled surface texture with burl formations ---
+    for (let bu = 0; bu < 6; bu++) {
+      const burlAngle = Math.random() * Math.PI * 2;
+      const burlY = 0.8 + Math.random() * 2.0;
+      const burlSize = 0.04 + Math.random() * 0.04;
+      const burlGeo = new THREE.SphereGeometry(burlSize, 10, 8);
+      const burl = new THREE.Mesh(burlGeo, barkMaterial(0x3a2818));
+      burl.position.set(Math.cos(burlAngle) * 0.43, burlY, Math.sin(burlAngle) * 0.43);
+      burl.scale.set(1.2, 0.8, 0.6);
+      this._body.add(burl);
+      // Bark swirl pattern on burl
+      const swirlGeo = new THREE.TorusGeometry(burlSize * 0.6, 0.004, 4, 10);
+      const swirl = new THREE.Mesh(swirlGeo, darkBarkMat);
+      swirl.position.copy(burl.position);
+      swirl.position.x += Math.cos(burlAngle) * 0.01;
+      swirl.position.z += Math.sin(burlAngle) * 0.01;
+      swirl.rotation.y = burlAngle + Math.PI / 2;
+      this._body.add(swirl);
+    }
+
+    // --- Additional detail: caterpillar/insect on branch ---
+    const bugBodyGeo = cyl(0.008, 0.008, 0.04, 6);
+    const bugBody = new THREE.Mesh(bugBodyGeo, mat(0x44aa22, { roughness: 0.7 }));
+    bugBody.position.set(0.3, -0.6, 0.06);
+    bugBody.rotation.z = Math.PI / 2;
+    this._leftArm.add(bugBody);
+    const bugHeadGeo = new THREE.SphereGeometry(0.01, 6, 4);
+    const bugHead = new THREE.Mesh(bugHeadGeo, mat(0x338811));
+    bugHead.position.set(0.32, -0.6, 0.06);
+    this._leftArm.add(bugHead);
+
+    // --- Additional detail: deep bark furrows (vertical crack lines) ---
+    for (let df = 0; df < 10; df++) {
+      const furrowAngle = (df / 10) * Math.PI * 2;
+      const furrowLen = 0.5 + Math.random() * 1.5;
+      const furrowY = 0.6 + Math.random() * 0.5;
+      const furrowGeo = cyl(0.005, 0.003, furrowLen, 4);
+      const furrow = new THREE.Mesh(furrowGeo, mat(0x1a1008, { roughness: 1.0 }));
+      furrow.position.set(Math.cos(furrowAngle) * 0.44, furrowY + furrowLen / 2, Math.sin(furrowAngle) * 0.44);
+      this._body.add(furrow);
+    }
+
+    // --- Additional detail: mistletoe clumps in canopy ---
+    for (let mi = 0; mi < 3; mi++) {
+      const mistletoeGeo = new THREE.SphereGeometry(0.06 + Math.random() * 0.03, 8, 6);
+      const mistletoe = new THREE.Mesh(mistletoeGeo, mat(0x558833, { roughness: 0.85, sheen: 0.15, sheenRoughness: 0.6, sheenColor: new THREE.Color(0x77aa44) }));
+      mistletoe.position.set(
+        (Math.random() - 0.5) * 0.5,
+        -0.1 - Math.random() * 0.15,
+        (Math.random() - 0.5) * 0.5,
+      );
+      this._head.add(mistletoe);
+      // Mistletoe berries
+      for (let mb = 0; mb < 3; mb++) {
+        const berryGeo = new THREE.SphereGeometry(0.008, 4, 4);
+        const berry = new THREE.Mesh(berryGeo, mat(0xeeeeee, { clearcoat: 0.6, clearcoatRoughness: 0.3 }));
+        berry.position.set(
+          mistletoe.position.x + (Math.random() - 0.5) * 0.04,
+          mistletoe.position.y - 0.03,
+          mistletoe.position.z + (Math.random() - 0.5) * 0.04,
+        );
+        this._head.add(berry);
+      }
+    }
+
+    // --- Additional detail: root fungal network at ground level ---
+    for (let fn = 0; fn < 8; fn++) {
+      const mycAngle = (fn / 8) * Math.PI * 2;
+      const mycLen = 0.15 + Math.random() * 0.2;
+      const mycGeo = cyl(0.006, 0.003, mycLen, 4);
+      const mycelium = new THREE.Mesh(mycGeo, mat(0xddddcc, { transparent: true, opacity: 0.3 }));
+      mycelium.position.set(
+        Math.cos(mycAngle) * 0.4,
+        0.02,
+        Math.sin(mycAngle) * 0.4,
+      );
+      mycelium.rotation.x = Math.PI / 2;
+      mycelium.rotation.z = mycAngle;
+      this._body.add(mycelium);
+    }
+
+    // --- Additional detail: seasonal leaf color variation clusters ---
+    for (let sc = 0; sc < 6; sc++) {
+      const seasonGeo = new THREE.SphereGeometry(0.1 + Math.random() * 0.08, 10, 8);
+      const seasonColor = [0x886622, 0xcc6633, 0xddaa33, 0x44882a, 0x668833, 0x99aa22][sc % 6];
+      const seasonLeaf = new THREE.Mesh(seasonGeo, mat(seasonColor, { roughness: 0.8, sheen: 0.25, sheenColor: new THREE.Color(seasonColor).multiplyScalar(1.3), sheenRoughness: 0.4 }));
+      seasonLeaf.position.set(
+        (Math.random() - 0.5) * 0.7,
+        -0.05 + Math.random() * 0.3,
+        (Math.random() - 0.5) * 0.7,
+      );
+      this._head.add(seasonLeaf);
+    }
+
+    // --- Additional detail: weathered split in trunk ---
+    const splitGeo = new THREE.BoxGeometry(0.015, 0.6, 0.08);
+    const split = new THREE.Mesh(splitGeo, mat(0x0a0804, { roughness: 1.0 }));
+    split.position.set(0.42, 2.0, 0);
+    this._body.add(split);
+    // Inner pith visible through split
+    const pithGeo = new THREE.BoxGeometry(0.01, 0.5, 0.06);
+    const pith = new THREE.Mesh(pithGeo, mat(0xccaa66, { roughness: 0.6 }));
+    pith.position.set(0.41, 2.0, 0);
+    this._body.add(pith);
+
+    // --- Additional detail: small ferns growing at trunk base ---
+    for (let fe = 0; fe < 5; fe++) {
+      const fernAngle = Math.random() * Math.PI * 2;
+      const fernR = 0.4 + Math.random() * 0.15;
+      // Fern frond as a thin elongated shape
+      const frondGeo = new THREE.BoxGeometry(0.03, 0.12 + Math.random() * 0.08, 0.005);
+      const frond = new THREE.Mesh(frondGeo, mat(0x336622, { roughness: 0.85, side: THREE.DoubleSide }));
+      frond.position.set(Math.cos(fernAngle) * fernR, 0.15, Math.sin(fernAngle) * fernR);
+      frond.rotation.y = fernAngle;
+      frond.rotation.x = -0.3;
+      this._body.add(frond);
+      // Fern leaflets
+      for (let fl2 = 0; fl2 < 3; fl2++) {
+        const leafletGeo = new THREE.BoxGeometry(0.015, 0.04, 0.003);
+        const leaflet = new THREE.Mesh(leafletGeo, mat(0x448833, { roughness: 0.8, side: THREE.DoubleSide }));
+        leaflet.position.set(
+          Math.cos(fernAngle) * (fernR + 0.015),
+          0.1 + fl2 * 0.04,
+          Math.sin(fernAngle) * (fernR + 0.015),
+        );
+        leaflet.rotation.y = fernAngle;
+        leaflet.rotation.z = 0.4;
+        this._body.add(leaflet);
+      }
     }
   }
 
@@ -18180,6 +22530,250 @@ export class CreatureMesh {
       const st = new THREE.Mesh(stGeo, mat(0xcccc88, { metalness: 0.5 }));
       st.position.set(side * 0.45, 2.9, 0);
       st.rotation.x = Math.PI / 2;
+    // ---- Thick undercoat fur layer detail ----
+    const dbUndercoatMat = furryMat(0x3a2418, { sheen: 0.8, sheenRoughness: 0.3 });
+    for (let i = 0; i < 12; i++) {
+      const underGeo = new THREE.SphereGeometry(0.04 + Math.random() * 0.03, 8, 6);
+      const under = new THREE.Mesh(underGeo, dbUndercoatMat);
+      const uAngle = (i / 12) * Math.PI * 2;
+      under.scale.set(1.5, 0.4, 1.3);
+      under.position.set(
+        Math.cos(uAngle) * 0.42,
+        1.3 + Math.random() * 0.6,
+        Math.sin(uAngle) * 0.35
+      );
+      this._body.add(under);
+    }
+
+    // ---- Guard hair tufts (longer outer hairs) ----
+    for (let i = 0; i < 10; i++) {
+      const guardGeo = new THREE.ConeGeometry(0.008, 0.06 + Math.random() * 0.03, 4);
+      const guardHair = new THREE.Mesh(guardGeo, darkFurMat);
+      const ghAngle = Math.random() * Math.PI * 2;
+      const ghRadius = 0.35 + Math.random() * 0.15;
+      guardHair.position.set(
+        Math.cos(ghAngle) * ghRadius,
+        1.4 + Math.random() * 0.8,
+        Math.sin(ghAngle) * ghRadius
+      );
+      guardHair.rotation.set(
+        Math.cos(ghAngle) * 0.3,
+        0,
+        Math.sin(ghAngle) * 0.3
+      );
+      this._body.add(guardHair);
+    }
+
+    // ---- Muscle definition on limbs ----
+    for (const side of [-1, 1]) {
+      const dbArm = side === -1 ? this._leftArm : this._rightArm;
+      // Bicep muscle bulge
+      const bicepGeo = new THREE.SphereGeometry(0.05, 10, 8);
+      const bicep = new THREE.Mesh(bicepGeo, furMat);
+      bicep.scale.set(1.3, 0.8, 1.1);
+      bicep.position.set(side * 0.03, -0.2, 0.06);
+      dbArm.add(bicep);
+
+      // Forearm muscle
+      const forearmGeo = new THREE.SphereGeometry(0.04, 8, 6);
+      const forearm = new THREE.Mesh(forearmGeo, furMat);
+      forearm.scale.set(1.2, 0.7, 1.0);
+      forearm.position.set(-side * 0.02, -0.5, 0.04);
+      dbArm.add(forearm);
+
+      // Wrist tendon detail
+      for (let t = 0; t < 3; t++) {
+        const tendonGeo = cyl(0.004, 0.003, 0.12, 4);
+        const tendon = new THREE.Mesh(tendonGeo, organicMat(0x554433));
+        tendon.position.set((t - 1) * 0.02, -0.72, 0.04);
+        tendon.rotation.x = 0.1;
+        dbArm.add(tendon);
+      }
+    }
+
+    // ---- Hind leg musculature detail ----
+    for (const side of [-1, 1]) {
+      const dbLeg = side === -1 ? this._leftLeg : this._rightLeg;
+      // Thigh muscle
+      const thighGeo = new THREE.SphereGeometry(0.06, 10, 8);
+      const thigh = new THREE.Mesh(thighGeo, furMat);
+      thigh.scale.set(1.2, 0.8, 1.1);
+      thigh.position.set(side * 0.03, -0.15, 0.04);
+      dbLeg.add(thigh);
+
+      // Calf muscle
+      const calfGeo = new THREE.SphereGeometry(0.04, 8, 6);
+      const calf = new THREE.Mesh(calfGeo, furMat);
+      calf.scale.set(1.1, 0.7, 1.0);
+      calf.position.set(-side * 0.02, -0.45, 0.03);
+      dbLeg.add(calf);
+
+      // Ankle joint definition
+      const ankleGeo = new THREE.SphereGeometry(0.025, 8, 6);
+      const ankle = new THREE.Mesh(ankleGeo, darkFurMat);
+      ankle.position.set(0, -0.68, 0.02);
+      dbLeg.add(ankle);
+    }
+
+    // ---- Spine ridge definition ----
+    for (let i = 0; i < 8; i++) {
+      const spineGeo = new THREE.SphereGeometry(0.02, 8, 6);
+      const spine = new THREE.Mesh(spineGeo, darkFurMat);
+      spine.scale.set(0.8, 0.5, 1.5);
+      spine.position.set(0, 1.95 - i * 0.08, -0.3 - i * 0.02);
+      this._body.add(spine);
+    }
+
+    // ---- Drool/saliva detail under mouth ----
+    const dbDroolMat = mat(0xccccbb, { transparent: true, opacity: 0.35, roughness: 0.1, clearcoat: 0.8 });
+    for (let i = 0; i < 3; i++) {
+      const droolGeo = cyl(0.002, 0.001, 0.04 + Math.random() * 0.02, 4);
+      const drool = new THREE.Mesh(droolGeo, dbDroolMat);
+      drool.position.set((i - 1) * 0.02, -0.1, 0.2 + i * 0.01);
+      this._head.add(drool);
+    }
+
+    // ---- Whisker stubs on muzzle ----
+    for (const side of [-1, 1]) {
+      for (let w = 0; w < 4; w++) {
+        const whiskerGeo = cyl(0.001, 0.001, 0.04, 4);
+        const whisker = new THREE.Mesh(whiskerGeo, mat(0x888877));
+        whisker.position.set(
+          side * (0.06 + w * 0.01),
+          -0.02 - w * 0.01,
+          0.24
+        );
+        whisker.rotation.z = side * (0.2 + w * 0.1);
+        whisker.rotation.y = side * 0.15;
+        this._head.add(whisker);
+      }
+    }
+
+    // ---- Thick neck ruff (mane around neck) ----
+    for (let i = 0; i < 10; i++) {
+      const ruffGeo = new THREE.SphereGeometry(0.05 + Math.random() * 0.03, 8, 6);
+      const ruff = new THREE.Mesh(ruffGeo, i % 2 === 0 ? darkFurMat : furMat);
+      const rAngle = (i / 10) * Math.PI * 2;
+      ruff.scale.set(1.3, 0.5, 1.0);
+      ruff.position.set(
+        Math.cos(rAngle) * 0.2,
+        2.0 + Math.sin(rAngle) * 0.05,
+        0.35 + Math.cos(rAngle) * 0.08
+      );
+      this._body.add(ruff);
+    }
+
+    // ---- Jaw muscle definition ----
+    for (const side of [-1, 1]) {
+      const jawMuscGeo = new THREE.SphereGeometry(0.035, 8, 6);
+      const jawMusc = new THREE.Mesh(jawMuscGeo, furMat);
+      jawMusc.scale.set(0.8, 1.2, 0.7);
+      jawMusc.position.set(side * 0.14, -0.02, 0.04);
+      this._head.add(jawMusc);
+    }
+
+    // ---- Belly fat fold detail ----
+    for (let i = 0; i < 4; i++) {
+      const foldGeo = new THREE.SphereGeometry(0.06 + Math.random() * 0.03, 8, 6);
+      const fold = new THREE.Mesh(foldGeo, furryMat(0x5a4433));
+      fold.scale.set(2.0, 0.2, 1.0);
+      fold.position.set(
+        (Math.random() - 0.5) * 0.15,
+        1.15 + i * 0.06,
+        0.2 + (Math.random() - 0.5) * 0.1
+      );
+      this._body.add(fold);
+    }
+
+    // ---- Dried mud/debris clinging to lower legs ----
+    const dbMudMat = mat(0x665544, { roughness: 0.98 });
+    for (const side of [-1, 1]) {
+      const dbMudArm = side === -1 ? this._leftArm : this._rightArm;
+      for (let m = 0; m < 3; m++) {
+        const mudGeo = new THREE.SphereGeometry(0.015 + Math.random() * 0.01, 6, 4);
+        const mud = new THREE.Mesh(mudGeo, dbMudMat);
+        mud.scale.set(1.5, 0.5, 1.5);
+        mud.position.set(
+          (Math.random() - 0.5) * 0.06,
+          -0.7 - Math.random() * 0.1,
+          (Math.random() - 0.5) * 0.06
+        );
+        dbMudArm.add(mud);
+      }
+      const dbMudLeg = side === -1 ? this._leftLeg : this._rightLeg;
+      for (let m = 0; m < 3; m++) {
+        const mudGeo2 = new THREE.SphereGeometry(0.012 + Math.random() * 0.008, 6, 4);
+        const mud2 = new THREE.Mesh(mudGeo2, dbMudMat);
+        mud2.scale.set(1.5, 0.5, 1.5);
+        mud2.position.set(
+          (Math.random() - 0.5) * 0.05,
+          -0.65 - Math.random() * 0.1,
+          (Math.random() - 0.5) * 0.05
+        );
+        dbMudLeg.add(mud2);
+      }
+    }
+
+    // ---- Rib cage definition under fur ----
+    for (const side of [-1, 1]) {
+      for (let r = 0; r < 5; r++) {
+        const ribGeo = new THREE.SphereGeometry(0.015, 6, 4);
+        const rib = new THREE.Mesh(ribGeo, furMat);
+        rib.scale.set(0.5, 3.0, 1.0);
+        rib.position.set(
+          side * (0.38 - r * 0.02),
+          1.5 + r * 0.08,
+          0.1 - r * 0.04
+        );
+        rib.rotation.z = side * (0.1 + r * 0.02);
+        this._body.add(rib);
+      }
+    }
+
+    // ---- Tail stub ----
+    const tailStubGeo = new THREE.SphereGeometry(0.05, 10, 8);
+    const tailStub = new THREE.Mesh(tailStubGeo, darkFurMat);
+    tailStub.scale.set(1, 0.7, 1.3);
+    tailStub.position.set(0, 1.2, -0.5);
+    this._body.add(tailStub);
+
+    // Tail fur tuft
+    for (let i = 0; i < 4; i++) {
+      const tailTuftGeo = new THREE.ConeGeometry(0.01, 0.03, 4);
+      const tailTuft = new THREE.Mesh(tailTuftGeo, furMat);
+      tailTuft.position.set(
+        (Math.random() - 0.5) * 0.03,
+        1.18 + (Math.random() - 0.5) * 0.03,
+        -0.53 - Math.random() * 0.02
+      );
+      tailTuft.rotation.x = -0.5;
+      this._body.add(tailTuft);
+    }
+
+    // ---- Breath vapor effect ----
+    const dbBreathMat = mat(0xcccccc, { transparent: true, opacity: 0.06 });
+    for (let i = 0; i < 3; i++) {
+      const breathGeo = new THREE.SphereGeometry(0.03 + i * 0.01, 8, 6);
+      const breath = new THREE.Mesh(breathGeo, dbBreathMat);
+      breath.position.set(0, -0.03, 0.32 + i * 0.04);
+      this._head.add(breath);
+    }
+
+    // ---- Footprint depression effect ----
+    const dbPrintMat = mat(0x554433, { roughness: 0.98 });
+    for (const side of [-1, 1]) {
+      const printGeo = new THREE.SphereGeometry(0.08, 8, 6);
+      const print = new THREE.Mesh(printGeo, dbPrintMat);
+      print.scale.set(1.2, 0.1, 1.4);
+      print.position.set(side * 0.35, 0.01, 0.3);
+      this._body.add(print);
+
+      const printGeo2 = new THREE.SphereGeometry(0.07, 8, 6);
+      const print2 = new THREE.Mesh(printGeo2, dbPrintMat);
+      print2.scale.set(1.1, 0.1, 1.3);
+      print2.position.set(side * 0.3, 0.01, -0.3);
+      this._body.add(print2);
+    }
       this._body.add(st);
     }
 
@@ -19849,6 +24443,238 @@ export class CreatureMesh {
       // Glowing eyes
       const eGeo = new THREE.SphereGeometry(0.03, 12, 12);
       const eye = new THREE.Mesh(eGeo, eyeMat);
+    // ---- Frost breath ice shard spray from mouth ----
+    const fwIceShardMat = mat(0xccddff, { emissive: 0x6688cc, emissiveIntensity: 1.2, transparent: true, opacity: 0.7, roughness: 0.1 });
+    for (let i = 0; i < 8; i++) {
+      const shardGeo = new THREE.ConeGeometry(0.015 + Math.random() * 0.01, 0.1 + Math.random() * 0.08, 6);
+      const shard = new THREE.Mesh(shardGeo, fwIceShardMat);
+      shard.position.set(
+        (Math.random() - 0.5) * 0.12,
+        -0.08 + (Math.random() - 0.5) * 0.04,
+        0.4 + i * 0.06
+      );
+      shard.rotation.x = Math.PI * 0.7 + (Math.random() - 0.5) * 0.3;
+      shard.rotation.z = (Math.random() - 0.5) * 0.5;
+      this._head.add(shard);
+    }
+
+    // ---- Frost rime buildup on wing bones ----
+    for (const side of [-1, 1]) {
+      const fwWingArm = side === -1 ? this._leftArm : this._rightArm;
+      for (let i = 0; i < 6; i++) {
+        const rimeGeo = new THREE.SphereGeometry(0.025 + Math.random() * 0.015, 8, 6);
+        const rime = new THREE.Mesh(rimeGeo, frostMat);
+        rime.scale.set(1.5, 0.4, 1.2);
+        rime.position.set(
+          side * (0.1 + i * 0.08),
+          -0.3 - i * 0.05,
+          (Math.random() - 0.5) * 0.06
+        );
+        fwWingArm.add(rime);
+      }
+
+      // Wing membrane ice crystal veins
+      for (let i = 0; i < 5; i++) {
+        const iceVeinGeo = cyl(0.004, 0.003, 0.12 + Math.random() * 0.08, 6);
+        const iceVein = new THREE.Mesh(iceVeinGeo, fwIceShardMat);
+        iceVein.position.set(
+          side * (0.2 + i * 0.1),
+          -0.5 - i * 0.03,
+          (Math.random() - 0.5) * 0.02
+        );
+        iceVein.rotation.z = side * (0.2 + i * 0.05);
+        fwWingArm.add(iceVein);
+      }
+    }
+
+    // ---- Frozen scale texture detail on torso ----
+    const fwFrozenScaleMat = scalyMat(0x99bbdd, { clearcoat: 0.7, clearcoatRoughness: 0.1 });
+    for (let row = 0; row < 5; row++) {
+      for (let col = 0; col < 6; col++) {
+        const scaleAngle = (col / 6) * Math.PI * 2;
+        const scaleGeo = new THREE.SphereGeometry(0.03, 6, 4);
+        const scaleMesh = new THREE.Mesh(scaleGeo, fwFrozenScaleMat);
+        scaleMesh.scale.set(1.2, 0.3, 0.8);
+        scaleMesh.position.set(
+          Math.cos(scaleAngle) * 0.36,
+          1.7 + row * 0.15,
+          Math.sin(scaleAngle) * 0.3
+        );
+        scaleMesh.rotation.y = scaleAngle;
+        this._body.add(scaleMesh);
+      }
+    }
+
+    // ---- Tail ice barb details ----
+    for (let i = 0; i < 5; i++) {
+      const barbGeo = new THREE.ConeGeometry(0.018, 0.06 + Math.random() * 0.04, 8);
+      const barb = new THREE.Mesh(barbGeo, iceMat);
+      const barbT = i * 0.2;
+      barb.position.set(
+        (Math.random() - 0.5) * 0.08,
+        1.35 - barbT * 0.45,
+        -0.7 - barbT * 0.25
+      );
+      barb.rotation.x = -0.5 + (Math.random() - 0.5) * 0.3;
+      barb.rotation.z = (Math.random() - 0.5) * 0.6;
+      this._body.add(barb);
+    }
+
+    // ---- Frozen jaw articulation detail ----
+    const fwJawMat = scalyMat(0x7799bb);
+    const jawLowerGeo = new THREE.SphereGeometry(0.08, 10, 8);
+    const jawLower = new THREE.Mesh(jawLowerGeo, fwJawMat);
+    jawLower.scale.set(1.2, 0.4, 1.5);
+    jawLower.position.set(0, -0.1, 0.18);
+    this._head.add(jawLower);
+
+    // Jaw hinge joints
+    for (const side of [-1, 1]) {
+      const hingeGeo = new THREE.SphereGeometry(0.015, 8, 6);
+      const hinge = new THREE.Mesh(hingeGeo, darkScaleMat);
+      hinge.position.set(side * 0.12, -0.06, 0.1);
+      this._head.add(hinge);
+    }
+
+    // ---- Neck vertebrae ridges ----
+    for (let i = 0; i < 6; i++) {
+      const vertGeo = new THREE.SphereGeometry(0.025, 8, 6);
+      const vert = new THREE.Mesh(vertGeo, darkScaleMat);
+      vert.scale.set(0.8, 0.4, 1.2);
+      vert.position.set(0, 2.6 + i * 0.08, -0.1 - i * 0.05);
+      this._body.add(vert);
+    }
+
+    // ---- Frost aura mist layers ----
+    const fwMistMat = mat(0xddeeff, { emissive: 0x88aacc, transparent: true, opacity: 0.08 });
+    for (let i = 0; i < 4; i++) {
+      const mistGeo = new THREE.SphereGeometry(0.8 + i * 0.2, 12, 10);
+      const mist = new THREE.Mesh(mistGeo, fwMistMat);
+      mist.position.set(0, 2.0 + i * 0.3, 0);
+      mist.scale.set(1, 0.3, 1);
+      this._body.add(mist);
+    }
+
+    // ---- Crystalline whiskers from snout ----
+    for (const side of [-1, 1]) {
+      for (let w = 0; w < 3; w++) {
+        const whiskerGeo = cyl(0.003, 0.002, 0.12 + w * 0.04, 6);
+        const whisker = new THREE.Mesh(whiskerGeo, fwIceShardMat);
+        whisker.position.set(side * (0.08 + w * 0.02), -0.04, 0.32);
+        whisker.rotation.z = side * (0.3 + w * 0.15);
+        whisker.rotation.x = -0.2;
+        this._head.add(whisker);
+      }
+    }
+
+    // ---- Claw ice encrustation on feet ----
+    for (const side of [-1, 1]) {
+      const fwLeg = side === -1 ? this._leftLeg : this._rightLeg;
+      for (let c = 0; c < 4; c++) {
+        const crustGeo = new THREE.SphereGeometry(0.015 + Math.random() * 0.01, 6, 4);
+        const crust = new THREE.Mesh(crustGeo, iceMat);
+        crust.position.set(
+          (c - 1.5) * 0.025,
+          -0.78 + (Math.random() - 0.5) * 0.04,
+          0.08
+        );
+        fwLeg.add(crust);
+      }
+    }
+
+    // ---- Frozen blood vessel detail visible through translucent ice plates ----
+    const fwVesselMat = mat(0x4466aa, { emissive: 0x223355, transparent: true, opacity: 0.4 });
+    for (let i = 0; i < 8; i++) {
+      const vesselGeo = cyl(0.003, 0.002, 0.1 + Math.random() * 0.08, 4);
+      const vessel = new THREE.Mesh(vesselGeo, fwVesselMat);
+      const vAngle = (i / 8) * Math.PI * 2;
+      vessel.position.set(
+        Math.cos(vAngle) * 0.33,
+        1.9 + Math.random() * 0.8,
+        Math.sin(vAngle) * 0.28
+      );
+      vessel.rotation.set(Math.random() * 0.5, vAngle, Math.random() * 0.5);
+      this._body.add(vessel);
+    }
+
+    // ---- Dripping icicles from belly ----
+    for (let i = 0; i < 6; i++) {
+      const dripGeo = new THREE.ConeGeometry(0.008, 0.06 + Math.random() * 0.04, 6);
+      const drip = new THREE.Mesh(dripGeo, iceMat);
+      drip.position.set(
+        (Math.random() - 0.5) * 0.25,
+        1.55 + i * 0.06,
+        0.35 + (Math.random() - 0.5) * 0.1
+      );
+      drip.rotation.x = Math.PI;
+      this._body.add(drip);
+    }
+
+    // ---- Permafrost ground effect ----
+    const fwPermaMat = mat(0xbbccee, { emissive: 0x5566aa, transparent: true, opacity: 0.15 });
+    const permaGeo = new THREE.RingGeometry(0.3, 1.2, 24);
+    const perma = new THREE.Mesh(permaGeo, fwPermaMat);
+    perma.position.y = 0.42;
+    perma.rotation.x = -Math.PI / 2;
+    this._body.add(perma);
+
+    // Frost crack lines on ground
+    for (let i = 0; i < 8; i++) {
+      const crackLineGeo = cyl(0.003, 0.003, 0.3 + Math.random() * 0.4, 4);
+      const crackLine = new THREE.Mesh(crackLineGeo, frostMat);
+      const crAngle = (i / 8) * Math.PI * 2;
+      crackLine.position.set(
+        Math.cos(crAngle) * 0.6,
+        0.43,
+        Math.sin(crAngle) * 0.6
+      );
+      crackLine.rotation.y = crAngle;
+      crackLine.rotation.z = Math.PI / 2;
+      this._body.add(crackLine);
+    }
+
+    // ---- Dorsal fin ice membrane ----
+    for (let i = 0; i < 4; i++) {
+      const finMemGeo = new THREE.PlaneGeometry(0.06, 0.12 + i * 0.02);
+      const finMemMat = mat(0xaabbdd, { side: THREE.DoubleSide, transparent: true, opacity: 0.4 });
+      const finMem = new THREE.Mesh(finMemGeo, finMemMat);
+      finMem.position.set(0, 2.4 + i * 0.12, -0.36);
+      finMem.rotation.x = -0.2;
+      this._body.add(finMem);
+    }
+
+    // ---- Frozen tear ducts under eyes ----
+    for (const side of [-1, 1]) {
+      const tearGeo = cyl(0.005, 0.003, 0.04, 6);
+      const tear = new THREE.Mesh(tearGeo, iceMat);
+      tear.position.set(side * 0.12, 0.01, 0.22);
+      tear.rotation.x = 0.3;
+      this._head.add(tear);
+
+      const tearDropGeo = new THREE.SphereGeometry(0.006, 6, 4);
+      const tearDrop = new THREE.Mesh(tearDropGeo, fwIceShardMat);
+      tearDrop.position.set(side * 0.12, -0.02, 0.23);
+      this._head.add(tearDrop);
+    }
+
+    // ---- Wing finger bones with frost coating ----
+    for (const side of [-1, 1]) {
+      const fwWArm = side === -1 ? this._leftArm : this._rightArm;
+      for (let fb = 0; fb < 3; fb++) {
+        const fingerBoneGeo = cyl(0.015, 0.008, 0.35 + fb * 0.1, 8);
+        const fingerBone = new THREE.Mesh(fingerBoneGeo, scaleMat);
+        fingerBone.position.set(side * (0.3 + fb * 0.15), -0.45 - fb * 0.08, 0);
+        fingerBone.rotation.z = side * (0.3 + fb * 0.1);
+        fwWArm.add(fingerBone);
+
+        // Frost on finger bones
+        const frostCoatGeo = new THREE.SphereGeometry(0.012, 6, 4);
+        const frostCoat = new THREE.Mesh(frostCoatGeo, frostMat);
+        frostCoat.scale.set(2, 0.5, 1);
+        frostCoat.position.set(side * (0.35 + fb * 0.15), -0.5 - fb * 0.08, 0);
+        fwWArm.add(frostCoat);
+      }
+    }
       eye.position.set(side * 0.1, 0.02, 0.17);
       this._head.add(eye);
     }
