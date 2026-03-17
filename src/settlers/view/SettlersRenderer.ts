@@ -3282,6 +3282,48 @@ export class SettlersRenderer {
         g.add(orePile);
         break;
       }
+      case SettlersBuildingType.MARKET: {
+        // Merchant stall awning (colored canopy)
+        const awningMat = new THREE.MeshStandardMaterial({ color: 0xcc4444, roughness: 0.7, side: THREE.DoubleSide, transparent: true });
+        const awning = new THREE.Mesh(this._boxGeo, awningMat);
+        awning.scale.set(fw * 0.25, 0.01, fw * 0.15);
+        awning.position.set(0, fw * 0.32, fh * 0.5);
+        awning.rotation.x = 0.15;
+        awning.castShadow = true;
+        g.add(awning);
+        // Awning support poles
+        const stallPoleMat = new THREE.MeshStandardMaterial({ color: woodCol, roughness: 0.85, transparent: true });
+        for (let sp = -1; sp <= 1; sp += 2) {
+          const pole = new THREE.Mesh(this._cylGeo, stallPoleMat);
+          pole.scale.set(0.08, fw * 0.3, 0.08);
+          pole.position.set(sp * fw * 0.11, fw * 0.15, fh * 0.55);
+          g.add(pole);
+        }
+        // Market counter / table
+        const counterMat = new THREE.MeshStandardMaterial({ color: 0x8b6b3a, roughness: 0.85, transparent: true });
+        const counter = new THREE.Mesh(this._boxGeo, counterMat);
+        counter.scale.set(fw * 0.22, fw * 0.06, fw * 0.08);
+        counter.position.set(0, fw * 0.13, fh * 0.52);
+        g.add(counter);
+        // Crates beside stall
+        const mktCrateMat = new THREE.MeshStandardMaterial({ color: 0xa08050, roughness: 0.85, transparent: true });
+        for (let c = 0; c < 2; c++) {
+          const crate = new THREE.Mesh(this._boxGeo, mktCrateMat);
+          crate.scale.set(fw * 0.05, fw * 0.05, fw * 0.05);
+          crate.position.set(fw * (0.2 + c * 0.08), fw * 0.025, fh * 0.48);
+          crate.rotation.y = c * 0.4;
+          g.add(crate);
+        }
+        // Sacks of goods
+        const mktSackMat = new THREE.MeshStandardMaterial({ color: 0xd4c4a0, roughness: 0.9, transparent: true });
+        for (let s = 0; s < 2; s++) {
+          const sack = new THREE.Mesh(this._boxGeo, mktSackMat);
+          sack.scale.set(fw * 0.04, fw * 0.06, fw * 0.035);
+          sack.position.set(-fw * (0.18 + s * 0.07), fw * 0.03, fh * 0.5);
+          g.add(sack);
+        }
+        break;
+      }
       case SettlersBuildingType.STOREHOUSE: {
         // Crate stacks
         const crateMat = new THREE.MeshStandardMaterial({ color: 0xa08050, roughness: 0.85 });
@@ -3486,6 +3528,13 @@ export class SettlersRenderer {
       return group;
     }
 
+    // Seeded pseudo-random for deterministic decoration placement
+    const seed = Math.abs(points[0].x * 73856093 + points[0].z * 19349663) | 0;
+    const seededRand = (idx: number): number => {
+      const n = ((seed + idx * 374761393) ^ 0x5bd1e995) * 0x5bd1e995;
+      return ((n >>> 0) % 10000) / 10000;
+    };
+
     // Road width – nearly a full tile for clear visibility
     const roadWidth = SB.TILE_SIZE * 0.8;
     const hw = roadWidth * 0.5;
@@ -3515,6 +3564,9 @@ export class SettlersRenderer {
       surfaceColor = new THREE.Color(0xc0a060);
     }
 
+    // Precompute perpendicular vectors for each point (used for decorations later)
+    const perps: { px: number; pz: number }[] = [];
+
     for (let i = 0; i < points.length; i++) {
       const cur = points[i];
       const next = i < points.length - 1 ? points[i + 1] : points[i];
@@ -3525,20 +3577,43 @@ export class SettlersRenderer {
       const len = Math.sqrt(dx * dx + dz * dz) || 1;
       const px = -dz / len * hw;
       const pz = dx / len * hw;
+      perps.push({ px, pz });
 
-      // 6 vertices per path point: outer-left → center → outer-right
+      // Subtle height undulation along the road for natural terrain following
+      const heightVar = Math.sin(i * 1.7) * 0.03 + Math.sin(i * 3.1) * 0.015;
+      const adjY = cur.y + heightVar;
+
+      // For dirt roads, make outer edges rougher/more irregular
+      let outerJitterL = 0;
+      let outerJitterR = 0;
+      if (quality === "dirt") {
+        outerJitterL = (seededRand(i * 6) - 0.5) * 0.12;
+        outerJitterR = (seededRand(i * 6 + 1) - 0.5) * 0.12;
+      }
+
+      // 6 vertices per path point: outer-left -> center -> outer-right
       const drop = 0.03; // outer edges drop slightly for ground blending
-      positions.push(cur.x + px * 1.4, cur.y - drop, cur.z + pz * 1.4);  // 0: outer-left
-      positions.push(cur.x + px * 1.05, cur.y, cur.z + pz * 1.05);       // 1: border-left
-      positions.push(cur.x + px * 0.5, cur.y + 0.02, cur.z + pz * 0.5);  // 2: surface-left
-      positions.push(cur.x - px * 0.5, cur.y + 0.02, cur.z - pz * 0.5);  // 3: surface-right
-      positions.push(cur.x - px * 1.05, cur.y, cur.z - pz * 1.05);       // 4: border-right
-      positions.push(cur.x - px * 1.4, cur.y - drop, cur.z - pz * 1.4);  // 5: outer-right
+      positions.push(cur.x + px * (1.4 + outerJitterL), adjY - drop, cur.z + pz * (1.4 + outerJitterL));  // 0: outer-left
+      positions.push(cur.x + px * 1.05, adjY, cur.z + pz * 1.05);       // 1: border-left
+      positions.push(cur.x + px * 0.5, adjY + 0.02, cur.z + pz * 0.5);  // 2: surface-left
+      positions.push(cur.x - px * 0.5, adjY + 0.02, cur.z - pz * 0.5);  // 3: surface-right
+      positions.push(cur.x - px * 1.05, adjY, cur.z - pz * 1.05);       // 4: border-right
+      positions.push(cur.x - px * (1.4 + outerJitterR), adjY - drop, cur.z - pz * (1.4 + outerJitterR));  // 5: outer-right
+
+      // Vertex color variation for dirt track marks
+      let surfL = surfaceColor.clone();
+      let surfR = surfaceColor.clone();
+      if (quality === "dirt") {
+        const darkeningL = seededRand(i * 6 + 2) * 0.15;
+        const darkeningR = seededRand(i * 6 + 3) * 0.15;
+        surfL = surfaceColor.clone().multiplyScalar(1.0 - darkeningL);
+        surfR = surfaceColor.clone().multiplyScalar(1.0 - darkeningR);
+      }
 
       colors.push(outerColor.r, outerColor.g, outerColor.b);
       colors.push(borderColor.r, borderColor.g, borderColor.b);
-      colors.push(surfaceColor.r, surfaceColor.g, surfaceColor.b);
-      colors.push(surfaceColor.r, surfaceColor.g, surfaceColor.b);
+      colors.push(surfL.r, surfL.g, surfL.b);
+      colors.push(surfR.r, surfR.g, surfR.b);
       colors.push(borderColor.r, borderColor.g, borderColor.b);
       colors.push(outerColor.r, outerColor.g, outerColor.b);
 
@@ -3577,6 +3652,345 @@ export class SettlersRenderer {
     roadMesh.receiveShadow = true;
     roadMesh.renderOrder = 1;
     group.add(roadMesh);
+
+    // ===================================================================
+    // ALL ROADS: Wheel ruts - two parallel darker lines along road center
+    // ===================================================================
+    const rutColor = quality === "dirt" ? 0x4a3a1a : quality === "stone" ? 0x555555 : 0x888888;
+    const rutMat = new THREE.MeshStandardMaterial({
+      color: rutColor,
+      roughness: 0.95,
+      polygonOffset: true,
+      polygonOffsetFactor: -5,
+      polygonOffsetUnits: -5,
+    });
+    const rutWidth = hw * 0.06;
+    const rutPositions: number[] = [];
+    const rutIndices: number[] = [];
+    for (let i = 0; i < points.length; i++) {
+      const cur = points[i];
+      const { px, pz } = perps[i];
+      const heightVar = Math.sin(i * 1.7) * 0.03 + Math.sin(i * 3.1) * 0.015;
+      const ry = cur.y + heightVar + 0.03; // slightly above road surface
+      // Left rut at ~25% from center, right rut at ~25% from center
+      const rutOffset = 0.25;
+      // Left rut: two vertices (inner/outer edge of rut)
+      rutPositions.push(cur.x + px * (rutOffset + rutWidth), ry, cur.z + pz * (rutOffset + rutWidth));
+      rutPositions.push(cur.x + px * (rutOffset - rutWidth), ry, cur.z + pz * (rutOffset - rutWidth));
+      // Right rut: two vertices
+      rutPositions.push(cur.x - px * (rutOffset - rutWidth), ry, cur.z - pz * (rutOffset - rutWidth));
+      rutPositions.push(cur.x - px * (rutOffset + rutWidth), ry, cur.z - pz * (rutOffset + rutWidth));
+
+      if (i < points.length - 1) {
+        const vi = i * 4;
+        // Left rut strip
+        rutIndices.push(vi, vi + 1, vi + 4);
+        rutIndices.push(vi + 1, vi + 5, vi + 4);
+        // Right rut strip
+        rutIndices.push(vi + 2, vi + 3, vi + 6);
+        rutIndices.push(vi + 3, vi + 7, vi + 6);
+      }
+    }
+    const rutGeo = new THREE.BufferGeometry();
+    rutGeo.setAttribute("position", new THREE.Float32BufferAttribute(rutPositions, 3));
+    rutGeo.setIndex(rutIndices);
+    const rutNormals: number[] = [];
+    for (let i = 0; i < rutPositions.length / 3; i++) rutNormals.push(0, 1, 0);
+    rutGeo.setAttribute("normal", new THREE.Float32BufferAttribute(rutNormals, 3));
+    const rutMesh = new THREE.Mesh(rutGeo, rutMat);
+    rutMesh.receiveShadow = true;
+    rutMesh.renderOrder = 2;
+    group.add(rutMesh);
+
+    // ===================================================================
+    // ALL ROADS: Edge grass/weeds - small green cones along outer edges
+    // ===================================================================
+    const grassGeo = new THREE.ConeGeometry(0.04, 0.12, 4);
+    const grassMat = new THREE.MeshStandardMaterial({ color: 0x4a8a2a, roughness: 0.9 });
+    const grassSpacing = SB.TILE_SIZE * 2; // every ~2 tiles
+    let grassCount = 0;
+    {
+      let accum = 0;
+      for (let i = 0; i < points.length - 1 && grassCount < 10; i++) {
+        const a = points[i];
+        const b = points[i + 1];
+        const segLen = a.distanceTo(b);
+        const segDx = b.x - a.x;
+        const segDz = b.z - a.z;
+        const segL = Math.sqrt(segDx * segDx + segDz * segDz) || 1;
+        const nx = -segDz / segL * hw * 1.45;
+        const nz = segDx / segL * hw * 1.45;
+
+        while (accum < segLen && grassCount < 10) {
+          const t = accum / segLen;
+          const gx = a.x + (b.x - a.x) * t;
+          const gz = a.z + (b.z - a.z) * t;
+          const gy = a.y + (b.y - a.y) * t;
+          // Left side grass
+          const grassL = new THREE.Mesh(grassGeo, grassMat);
+          grassL.position.set(gx + nx, gy + 0.04, gz + nz);
+          grassL.rotation.set(seededRand(grassCount * 2) * 0.4 - 0.2, 0, seededRand(grassCount * 2 + 1) * 0.4 - 0.2);
+          group.add(grassL);
+          // Right side grass
+          const grassR = new THREE.Mesh(grassGeo, grassMat);
+          grassR.position.set(gx - nx, gy + 0.04, gz - nz);
+          grassR.rotation.set(seededRand(grassCount * 2 + 50) * 0.4 - 0.2, 0, seededRand(grassCount * 2 + 51) * 0.4 - 0.2);
+          group.add(grassR);
+          grassCount++;
+          accum += grassSpacing;
+        }
+        accum -= segLen;
+      }
+    }
+
+    // ===================================================================
+    // DIRT ROADS: Puddle patches - small flat reflective circles
+    // ===================================================================
+    if (quality === "dirt" && points.length >= 3) {
+      const puddleGeo = new THREE.CircleGeometry(0.1, 8);
+      const puddleMat = new THREE.MeshStandardMaterial({
+        color: 0x5a6a7a,
+        roughness: 0.15,
+        metalness: 0.1,
+        polygonOffset: true,
+        polygonOffsetFactor: -6,
+        polygonOffsetUnits: -6,
+      });
+      // Place 1-3 puddles along the road
+      const puddleCount = Math.min(3, Math.floor(points.length / 3));
+      for (let p = 0; p < puddleCount; p++) {
+        const idx = 1 + Math.floor(seededRand(p + 200) * (points.length - 2));
+        const pt = points[idx];
+        const { px, pz } = perps[idx];
+        const offsetFrac = (seededRand(p + 210) - 0.5) * 0.4;
+        const puddle = new THREE.Mesh(puddleGeo, puddleMat);
+        puddle.position.set(pt.x + px * offsetFrac, pt.y + 0.035, pt.z + pz * offsetFrac);
+        puddle.rotation.x = -Math.PI / 2;
+        puddle.scale.set(0.6 + seededRand(p + 220) * 0.8, 0.4 + seededRand(p + 230) * 0.6, 1);
+        group.add(puddle);
+      }
+    }
+
+    // ===================================================================
+    // STONE ROADS: Cobblestone pattern + curb stones + drainage lines
+    // ===================================================================
+    if (quality === "stone" && points.length >= 2) {
+      // Cobblestone cubes on the road surface
+      const cobbleGeo = new THREE.BoxGeometry(0.06, 0.03, 0.06);
+      const cobbleMat = new THREE.MeshStandardMaterial({ color: 0x8a8a82, roughness: 0.85 });
+      const cobbleDkMat = new THREE.MeshStandardMaterial({ color: 0x6a6a62, roughness: 0.9 });
+      let cobbleCount = 0;
+      const cobbleSpacing = 0.15;
+      let cobbleAccum = 0;
+      for (let i = 0; i < points.length - 1 && cobbleCount < 15; i++) {
+        const a = points[i];
+        const b = points[i + 1];
+        const segLen = a.distanceTo(b);
+        const segDx = b.x - a.x;
+        const segDz = b.z - a.z;
+        const segL = Math.sqrt(segDx * segDx + segDz * segDz) || 1;
+        const cpx = -segDz / segL * hw;
+        const cpz = segDx / segL * hw;
+
+        while (cobbleAccum < segLen && cobbleCount < 15) {
+          const t = cobbleAccum / segLen;
+          const cx = a.x + (b.x - a.x) * t;
+          const cz = a.z + (b.z - a.z) * t;
+          const cy = a.y + (b.y - a.y) * t;
+          // Place 3 cobbles across the road width
+          for (let col = -1; col <= 1; col++) {
+            const cMat = seededRand(cobbleCount * 3 + col + 100) > 0.5 ? cobbleMat : cobbleDkMat;
+            const cobble = new THREE.Mesh(cobbleGeo, cMat);
+            const hVar = seededRand(cobbleCount * 3 + col + 110) * 0.015;
+            cobble.position.set(cx + cpx * col * 0.35, cy + 0.035 + hVar, cz + cpz * col * 0.35);
+            cobble.rotation.y = seededRand(cobbleCount * 3 + col + 120) * 0.3;
+            group.add(cobble);
+          }
+          cobbleCount++;
+          cobbleAccum += cobbleSpacing;
+        }
+        cobbleAccum -= segLen;
+      }
+
+      // Curb stones - taller raised blocks along edges
+      const curbGeo = new THREE.BoxGeometry(0.12, 0.06, 0.08);
+      const curbMat = new THREE.MeshStandardMaterial({ color: 0x7a7a72, roughness: 0.85 });
+      const curbSpacing = 0.3;
+      let curbAccum = 0;
+      let curbCount = 0;
+      for (let i = 0; i < points.length - 1 && curbCount < 8; i++) {
+        const a = points[i];
+        const b = points[i + 1];
+        const segLen = a.distanceTo(b);
+        const segDx = b.x - a.x;
+        const segDz = b.z - a.z;
+        const segL = Math.sqrt(segDx * segDx + segDz * segDz) || 1;
+        const cnx = -segDz / segL * hw * 1.1;
+        const cnz = segDx / segL * hw * 1.1;
+
+        while (curbAccum < segLen && curbCount < 8) {
+          const t = curbAccum / segLen;
+          const cx = a.x + (b.x - a.x) * t;
+          const cz = a.z + (b.z - a.z) * t;
+          const cy = a.y + (b.y - a.y) * t;
+          const angle = Math.atan2(segDx, segDz);
+          // Left curb
+          const curbL = new THREE.Mesh(curbGeo, curbMat);
+          curbL.position.set(cx + cnx, cy + 0.02, cz + cnz);
+          curbL.rotation.y = angle;
+          group.add(curbL);
+          // Right curb
+          const curbR = new THREE.Mesh(curbGeo, curbMat);
+          curbR.position.set(cx - cnx, cy + 0.02, cz - cnz);
+          curbR.rotation.y = angle;
+          group.add(curbR);
+          curbCount++;
+          curbAccum += curbSpacing;
+        }
+        curbAccum -= segLen;
+      }
+
+      // Drainage channel lines along inner edges
+      const drainMat = new THREE.MeshStandardMaterial({
+        color: 0x3a3a35,
+        roughness: 0.95,
+        polygonOffset: true,
+        polygonOffsetFactor: -5,
+        polygonOffsetUnits: -5,
+      });
+      const drainPositions: number[] = [];
+      const drainIndices: number[] = [];
+      for (let i = 0; i < points.length; i++) {
+        const cur = points[i];
+        const { px, pz } = perps[i];
+        const heightVar = Math.sin(i * 1.7) * 0.03 + Math.sin(i * 3.1) * 0.015;
+        const dy = cur.y + heightVar + 0.025;
+        const drainOff = 0.85;
+        const drainW = 0.02;
+        drainPositions.push(cur.x + px * (drainOff + drainW), dy, cur.z + pz * (drainOff + drainW));
+        drainPositions.push(cur.x + px * (drainOff - drainW), dy, cur.z + pz * (drainOff - drainW));
+        drainPositions.push(cur.x - px * (drainOff - drainW), dy, cur.z - pz * (drainOff - drainW));
+        drainPositions.push(cur.x - px * (drainOff + drainW), dy, cur.z - pz * (drainOff + drainW));
+        if (i < points.length - 1) {
+          const vi = i * 4;
+          drainIndices.push(vi, vi + 1, vi + 4);
+          drainIndices.push(vi + 1, vi + 5, vi + 4);
+          drainIndices.push(vi + 2, vi + 3, vi + 6);
+          drainIndices.push(vi + 3, vi + 7, vi + 6);
+        }
+      }
+      const drainGeo = new THREE.BufferGeometry();
+      drainGeo.setAttribute("position", new THREE.Float32BufferAttribute(drainPositions, 3));
+      drainGeo.setIndex(drainIndices);
+      const drainNormals: number[] = [];
+      for (let i = 0; i < drainPositions.length / 3; i++) drainNormals.push(0, 1, 0);
+      drainGeo.setAttribute("normal", new THREE.Float32BufferAttribute(drainNormals, 3));
+      const drainMesh = new THREE.Mesh(drainGeo, drainMat);
+      drainMesh.receiveShadow = true;
+      drainMesh.renderOrder = 2;
+      group.add(drainMesh);
+    }
+
+    // ===================================================================
+    // PAVED ROADS: Flagstone pattern + center line + milestones
+    // ===================================================================
+    if (quality === "paved" && points.length >= 2) {
+      // Flagstone rectangles in a brick pattern on the surface
+      const flagGeo = new THREE.BoxGeometry(0.14, 0.015, 0.08);
+      const flagMat = new THREE.MeshStandardMaterial({ color: 0xc8c8c0, roughness: 0.55 });
+      const flagDkMat = new THREE.MeshStandardMaterial({ color: 0xb0b0a8, roughness: 0.6 });
+      let flagCount = 0;
+      const flagSpacing = 0.18;
+      let flagAccum = 0;
+      let flagRow = 0;
+      for (let i = 0; i < points.length - 1 && flagCount < 12; i++) {
+        const a = points[i];
+        const b = points[i + 1];
+        const segLen = a.distanceTo(b);
+        const segDx = b.x - a.x;
+        const segDz = b.z - a.z;
+        const segL = Math.sqrt(segDx * segDx + segDz * segDz) || 1;
+        const fpx = -segDz / segL * hw;
+        const fpz = segDx / segL * hw;
+        const angle = Math.atan2(segDx, segDz);
+
+        while (flagAccum < segLen && flagCount < 12) {
+          const t = flagAccum / segLen;
+          const fx = a.x + (b.x - a.x) * t;
+          const fz = a.z + (b.z - a.z) * t;
+          const fy = a.y + (b.y - a.y) * t;
+          // Brick pattern: offset every other row
+          const brickOffset = (flagRow % 2 === 0) ? 0 : 0.35;
+          for (let col = -1; col <= 1; col++) {
+            const fMat = (flagRow + col) % 3 === 0 ? flagDkMat : flagMat;
+            const flag = new THREE.Mesh(flagGeo, fMat);
+            flag.position.set(
+              fx + fpx * (col * 0.35 + brickOffset * 0.1),
+              fy + 0.03,
+              fz + fpz * (col * 0.35 + brickOffset * 0.1),
+            );
+            flag.rotation.y = angle;
+            group.add(flag);
+          }
+          flagCount++;
+          flagRow++;
+          flagAccum += flagSpacing;
+        }
+        flagAccum -= segLen;
+      }
+
+      // Decorative center line - thin gold strip down the middle
+      const centerMat = new THREE.MeshStandardMaterial({
+        color: 0xd4b040,
+        roughness: 0.4,
+        metalness: 0.3,
+        polygonOffset: true,
+        polygonOffsetFactor: -6,
+        polygonOffsetUnits: -6,
+      });
+      const centerPositions: number[] = [];
+      const centerIndices: number[] = [];
+      for (let i = 0; i < points.length; i++) {
+        const cur = points[i];
+        const { px, pz } = perps[i];
+        const heightVar = Math.sin(i * 1.7) * 0.03 + Math.sin(i * 3.1) * 0.015;
+        const cy = cur.y + heightVar + 0.035;
+        const cLineW = 0.025;
+        centerPositions.push(cur.x + px * cLineW, cy, cur.z + pz * cLineW);
+        centerPositions.push(cur.x - px * cLineW, cy, cur.z - pz * cLineW);
+        if (i < points.length - 1) {
+          const vi = i * 2;
+          centerIndices.push(vi, vi + 1, vi + 2);
+          centerIndices.push(vi + 1, vi + 3, vi + 2);
+        }
+      }
+      const centerGeo = new THREE.BufferGeometry();
+      centerGeo.setAttribute("position", new THREE.Float32BufferAttribute(centerPositions, 3));
+      centerGeo.setIndex(centerIndices);
+      const centerNormals: number[] = [];
+      for (let i = 0; i < centerPositions.length / 3; i++) centerNormals.push(0, 1, 0);
+      centerGeo.setAttribute("normal", new THREE.Float32BufferAttribute(centerNormals, 3));
+      const centerMesh = new THREE.Mesh(centerGeo, centerMat);
+      centerMesh.receiveShadow = true;
+      centerMesh.renderOrder = 2;
+      group.add(centerMesh);
+
+      // Milestone markers - small stone pillars at start and end
+      const milestoneGeo = new THREE.CylinderGeometry(0.04, 0.06, 0.2, 6);
+      const milestoneMat = new THREE.MeshStandardMaterial({ color: 0xc0c0b8, roughness: 0.7 });
+      const milestoneCapGeo = new THREE.SphereGeometry(0.05, 6, 4);
+      for (const ptIdx of [0, points.length - 1]) {
+        const pt = points[ptIdx];
+        const { px, pz } = perps[ptIdx];
+        // Place milestone on the right side of the road
+        const pillar = new THREE.Mesh(milestoneGeo, milestoneMat);
+        pillar.position.set(pt.x - px * 1.3, pt.y + 0.08, pt.z - pz * 1.3);
+        group.add(pillar);
+        const cap = new THREE.Mesh(milestoneCapGeo, milestoneMat);
+        cap.position.set(pt.x - px * 1.3, pt.y + 0.2, pt.z - pz * 1.3);
+        group.add(cap);
+      }
+    }
 
     // For stone and paved roads, add small border stones along edges
     if (quality !== "dirt" && points.length >= 2) {
