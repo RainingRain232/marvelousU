@@ -301,7 +301,7 @@ export class TekkenSceneManager {
     const coneMat = new THREE.MeshBasicMaterial({
       color,
       transparent: true,
-      opacity: 0.04,
+      opacity: 0.02,
       side: THREE.DoubleSide,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
@@ -323,7 +323,7 @@ export class TekkenSceneManager {
     for (let i = 0; i < this._lightCones.length; i++) {
       const cone = this._lightCones[i];
       const mat = cone.material as THREE.MeshBasicMaterial;
-      mat.opacity = 0.03 + Math.sin(time * 1.5 + i * 2.3) * 0.015;
+      mat.opacity = 0.015 + Math.sin(time * 1.5 + i * 2.3) * 0.008;
     }
   }
 

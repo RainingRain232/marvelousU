@@ -1283,12 +1283,12 @@ export class TekkenArenaRenderer {
       this._addWallTorch(tx, ty, tz);
     }
 
-    // Dramatic up-lighting at ground level
-    const upLight1 = new THREE.PointLight(0xff6633, 1.2, 8, 2);
+    // Subtle up-lighting at ground level (reduced to avoid center hotspot)
+    const upLight1 = new THREE.PointLight(0xff6633, 0.4, 8, 2);
     upLight1.position.set(-TB.STAGE_HALF_WIDTH * 0.5, 0.1, 0);
     this._scene.scene.add(upLight1);
 
-    const upLight2 = new THREE.PointLight(0xff6633, 1.2, 8, 2);
+    const upLight2 = new THREE.PointLight(0xff6633, 0.4, 8, 2);
     upLight2.position.set(TB.STAGE_HALF_WIDTH * 0.5, 0.1, 0);
     this._scene.scene.add(upLight2);
 

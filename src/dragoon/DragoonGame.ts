@@ -7,7 +7,7 @@
 import { Ticker } from "pixi.js";
 import { viewManager } from "@view/ViewManager";
 import { audioManager } from "@audio/AudioManager";
-import { createDragoonState, DragoonClassId, DragoonDifficulty } from "./state/DragoonState";
+import { createDragoonState, DragoonClassId, DragoonDifficulty, saveMetaProgression } from "./state/DragoonState";
 import type { DragoonState } from "./state/DragoonState";
 import { DragoonBalance, CLASS_DEFINITIONS, SUBCLASS_DEFINITIONS, SKILL_CONFIGS, getSubclassSkillTree } from "./config/DragoonConfig";
 import { DragoonInputSystem } from "./systems/DragoonInputSystem";
@@ -27,6 +27,7 @@ export class DragoonGame {
   private _state!: DragoonState;
   private _tickerCb: ((ticker: Ticker) => void) | null = null;
   private _simAccumulator = 0;
+  private _pauseStuckTimer = 0;
   private _selectedDifficulty: DragoonDifficulty = DragoonDifficulty.NORMAL;
 
   // View delegates
@@ -166,7 +167,7 @@ export class DragoonGame {
     audioManager.switchTrack("battle");
 
     // Show class selection
-    this._hud.buildClassSelect(sw, sh);
+    this._hud.buildClassSelect(sw, sh, this._state.metaProgression);
 
     // Start game loop
     this._tickerCb = (ticker: Ticker) => {
@@ -346,6 +347,20 @@ export class DragoonGame {
       this._handleVictory(sw, sh);
     }
 
+    // Safety: if game is stuck in a paused/blocked state for too long, force resume
+    if (state.paused && !state.gameOver && !state.victory && !state.classSelectActive) {
+      this._pauseStuckTimer = (this._pauseStuckTimer ?? 0) + rawDt;
+      if (this._pauseStuckTimer > 15) {
+        // Force-clear blocking states after 15 seconds
+        state.paused = false;
+        state.subclassChoiceActive = false;
+        state.branchState.forkActive = false;
+        this._pauseStuckTimer = 0;
+      }
+    } else {
+      this._pauseStuckTimer = 0;
+    }
+
     // Fixed timestep simulation
     if (!state.paused && !state.gameOver && !state.victory && !state.classSelectActive && !state.subclassChoiceActive && !state.branchState.forkActive) {
       this._simAccumulator += rawDt;
@@ -396,16 +411,47 @@ export class DragoonGame {
     this._gameOverShown = true;
     audioManager.switchTrack("game_over");
 
+    // Save high scores
+    this._saveHighScores();
+
     this._hud.showNotification("GAME OVER", 0xff4444, sw, sh);
+    this._hud.showNotification(`Final Score: ${this._state.player.score.toLocaleString()}`, 0xffffff, sw, sh);
 
     setTimeout(() => {
       this._showRestartPrompt(sw, sh);
     }, 2000);
   }
 
+  private _saveHighScores(): void {
+    const state = this._state;
+    const meta = state.metaProgression;
+    const score = state.player.score;
+    const diff = state.difficulty;
+    const classId = state.classId;
+
+    // Update per-difficulty high score
+    if (score > (meta.highScores[diff] || 0)) {
+      meta.highScores[diff] = score;
+    }
+    // Update per-class high score
+    if (classId && score > (meta.classHighScores[classId] || 0)) {
+      meta.classHighScores[classId] = score;
+    }
+    // Update best stage
+    if (state.wave > (meta.bestStageReached[diff] || 0)) {
+      meta.bestStageReached[diff] = state.wave;
+    }
+    meta.totalRunsCompleted++;
+
+    saveMetaProgression(meta);
+  }
+
   private _handleVictory(sw: number, sh: number): void {
     if (this._victoryShown) return;
     this._victoryShown = true;
+
+    // Save high scores
+    this._saveHighScores();
 
     this._hud.showNotification("VICTORY!", 0xffd700, sw, sh);
     this._fx.screenFlash(0xffd700, 0.5);

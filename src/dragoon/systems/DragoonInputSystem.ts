@@ -63,8 +63,8 @@ export const DragoonInputSystem = {
       // Subclass selection mode
       if (state.subclassChoiceActive) {
         switch (e.code) {
-          case "Digit1": _subclassSelectCallback?.(0); break;
-          case "Digit2": _subclassSelectCallback?.(1); break;
+          case "Digit1": case "ArrowLeft": _subclassSelectCallback?.(0); break;
+          case "Digit2": case "ArrowRight": _subclassSelectCallback?.(1); break;
         }
         return;
       }
@@ -72,8 +72,8 @@ export const DragoonInputSystem = {
       // Fork path selection mode
       if (state.branchState.forkActive) {
         switch (e.code) {
-          case "Digit1": _forkSelectCallback?.(0); break;
-          case "Digit2": _forkSelectCallback?.(1); break;
+          case "Digit1": case "ArrowLeft": _forkSelectCallback?.(0); break;
+          case "Digit2": case "ArrowRight": _forkSelectCallback?.(1); break;
         }
         return;
       }

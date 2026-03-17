@@ -2185,6 +2185,9 @@ function _updateDragonEvolution(state: DragoonState, dt: number): void {
     evo.transitionTimer -= dt;
   }
 
+  // Don't trigger evolution while fork/subclass choice is active
+  if (state.branchState.forkActive || state.subclassChoiceActive) return;
+
   // Check if player has reached the next evolution threshold
   const nextStageIdx = evo.stageIndex + 1;
   if (nextStageIdx < DRAGON_EVOLUTION_STAGES.length) {

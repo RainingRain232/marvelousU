@@ -328,6 +328,8 @@ export interface CosmeticUnlock {
 
 export interface DragoonMetaProgression {
   highScores: Record<DragoonDifficulty, number>;
+  /** Best score per class (across all difficulties) */
+  classHighScores: Record<DragoonClassId, number>;
   totalRunsCompleted: number;
   bestStageReached: Record<DragoonDifficulty, number>;
   unlockedSkins: DragonSkinId[];
@@ -771,6 +773,12 @@ export function createDefaultMetaProgression(): DragoonMetaProgression {
       [DragoonDifficulty.HARD]: 0,
       [DragoonDifficulty.NIGHTMARE]: 0,
     },
+    classHighScores: {
+      [DragoonClassId.ARCANE_MAGE]: 0,
+      [DragoonClassId.STORM_RANGER]: 0,
+      [DragoonClassId.BLOOD_KNIGHT]: 0,
+      [DragoonClassId.SHADOW_ASSASSIN]: 0,
+    },
     totalRunsCompleted: 0,
     bestStageReached: {
       [DragoonDifficulty.EASY]: 0,
@@ -786,7 +794,19 @@ export function createDefaultMetaProgression(): DragoonMetaProgression {
 export function loadMetaProgression(): DragoonMetaProgression {
   try {
     const raw = localStorage.getItem("dragoon_meta");
-    if (raw) return JSON.parse(raw) as DragoonMetaProgression;
+    if (raw) {
+      const meta = JSON.parse(raw) as DragoonMetaProgression;
+      // Backward compat: add classHighScores if missing
+      if (!meta.classHighScores) {
+        meta.classHighScores = {
+          [DragoonClassId.ARCANE_MAGE]: 0,
+          [DragoonClassId.STORM_RANGER]: 0,
+          [DragoonClassId.BLOOD_KNIGHT]: 0,
+          [DragoonClassId.SHADOW_ASSASSIN]: 0,
+        };
+      }
+      return meta;
+    }
   } catch { /* ignore parse errors */ }
   return createDefaultMetaProgression();
 }

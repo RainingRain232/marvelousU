@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import { Container, Graphics, Text, TextStyle } from "pixi.js";
-import type { DragoonState } from "../state/DragoonState";
+import type { DragoonState, DragoonMetaProgression } from "../state/DragoonState";
 import { DragoonClassId, DragoonSkillId } from "../state/DragoonState";
 import { SKILL_CONFIGS, CLASS_DEFINITIONS, SUBCLASS_DEFINITIONS } from "../config/DragoonConfig";
 
@@ -802,7 +802,7 @@ export class DragoonHUD {
   // Class select screen
   // ---------------------------------------------------------------------------
 
-  buildClassSelect(sw: number, sh: number): void {
+  buildClassSelect(sw: number, sh: number, meta?: DragoonMetaProgression): void {
     this._classSelectContainer.removeChildren();
 
     // Background overlay
@@ -880,8 +880,48 @@ export class DragoonHUD {
         fontFamily: "Georgia, serif", fontSize: 9, fill: 0x888888,
       }) });
       statText.anchor.set(0.5, 0);
-      statText.position.set(x + cardW / 2, cardY + cardH - 25);
+      statText.position.set(x + cardW / 2, cardY + cardH - 42);
       this._classSelectContainer.addChild(statText);
+
+      // High score for this class
+      const classScore = meta?.classHighScores?.[classes[i]] ?? 0;
+      if (classScore > 0) {
+        // Trophy icon
+        const trophy = new Graphics();
+        trophy.moveTo(x + cardW / 2 - 30, cardY + cardH - 18);
+        trophy.lineTo(x + cardW / 2 - 26, cardY + cardH - 25);
+        trophy.lineTo(x + cardW / 2 - 22, cardY + cardH - 18);
+        trophy.closePath();
+        trophy.fill({ color: 0xffd700, alpha: 0.8 });
+        this._classSelectContainer.addChild(trophy);
+        const scoreText = new Text({ text: classScore.toLocaleString(), style: new TextStyle({
+          fontFamily: "Georgia, serif", fontSize: 11, fill: 0xffd700, fontWeight: "bold",
+        }) });
+        scoreText.anchor.set(0, 0.5);
+        scoreText.position.set(x + cardW / 2 - 18, cardY + cardH - 20);
+        this._classSelectContainer.addChild(scoreText);
+      } else {
+        const noScore = new Text({ text: "No runs yet", style: new TextStyle({
+          fontFamily: "Georgia, serif", fontSize: 9, fill: 0x555555, fontStyle: "italic",
+        }) });
+        noScore.anchor.set(0.5, 0);
+        noScore.position.set(x + cardW / 2, cardY + cardH - 22);
+        this._classSelectContainer.addChild(noScore);
+      }
+    }
+
+    // Overall high score and runs counter below cards
+    if (meta) {
+      const overallHigh = Math.max(...Object.values(meta.highScores));
+      const totalRuns = meta.totalRunsCompleted;
+      if (overallHigh > 0 || totalRuns > 0) {
+        const summaryText = new Text({ text: `Best Score: ${overallHigh.toLocaleString()}  |  Runs: ${totalRuns}`, style: new TextStyle({
+          fontFamily: "Georgia, serif", fontSize: 13, fill: 0xaaaaaa,
+        }) });
+        summaryText.anchor.set(0.5, 0);
+        summaryText.position.set(sw / 2, cardY + cardH + 20);
+        this._classSelectContainer.addChild(summaryText);
+      }
     }
 
     this._classSelectContainer.visible = true;

@@ -10,6 +10,14 @@ import type { TekkenFighter } from "../state/TekkenState";
 import type { TekkenCharacterDef } from "../state/TekkenState";
 import type { TekkenSceneManager } from "./TekkenSceneManager";
 
+// ---- Move variation type ---------------------------------------------------
+
+interface MoveVariation {
+  spineOff: number; chestOff: number; hipOff: number;
+  headTilt: number; shoulderRoll: number; armSpread: number;
+  legWidth: number; leanAngle: number; twistBias: number;
+}
+
 // ---- Cloth physics types --------------------------------------------------
 
 interface ClothParticle {
@@ -2481,6 +2489,24 @@ export class TekkenFighterRenderer {
     this._lerpBone(this._rightAnkle, -0.5, 0, 0);
   }
 
+  /** Generate deterministic per-move variation values from move ID */
+  private _moveHash(moveId: string): MoveVariation {
+    let h = 0;
+    for (let i = 0; i < moveId.length; i++) h = ((h << 5) - h + moveId.charCodeAt(i)) | 0;
+    const f = (seed: number) => (Math.sin(h * 0.001 + seed * 12.9898) * 43758.5453) % 1;
+    return {
+      spineOff: f(1) * 0.15 - 0.075,
+      chestOff: f(2) * 0.12 - 0.06,
+      hipOff: f(3) * 0.1 - 0.05,
+      headTilt: f(4) * 0.2 - 0.1,
+      shoulderRoll: f(5) * 0.15 - 0.075,
+      armSpread: f(6) * 0.2,
+      legWidth: f(7) * 0.1,
+      leanAngle: f(8) * 0.12 - 0.06,
+      twistBias: f(9) * 0.2 - 0.1,
+    };
+  }
+
   private _animateAttack(fighter: TekkenFighter): void {
     this._attackFrame++;
     const f = this._attackFrame;
@@ -2524,59 +2550,61 @@ export class TekkenFighterRenderer {
     const isDive = moveDef.includes("dive") || moveDef.includes("diving") || moveDef.includes("aerial") || moveDef.includes("descent") || moveDef.includes("death_from_above") || moveDef.includes("vault");
     const isBackhand = moveDef.includes("backhand") || moveDef.includes("backfist") || moveDef.includes("backslash");
 
+    const mv = this._moveHash(moveDef);
+
     if (isGrab) {
-      this._animateGrabAttack(progress, isRight);
+      this._animateGrabAttack(progress, isRight, mv);
     } else if (isRage) {
-      this._animateRageAttack(progress, f);
+      this._animateRageAttack(progress, f, mv);
     } else if (isHeadbutt) {
-      this._animateHeadbuttAttack(progress);
+      this._animateHeadbuttAttack(progress, mv);
     } else if (isDive) {
-      this._animateDiveAttack(progress, f);
+      this._animateDiveAttack(progress, f, mv);
     } else if (isShield) {
-      this._animateShieldAttack(progress, isRight);
+      this._animateShieldAttack(progress, isRight, mv);
     } else if (isStomp) {
-      this._animateStompAttack(progress);
+      this._animateStompAttack(progress, mv);
     } else if (isBackhand) {
-      this._animateBackhandAttack(progress, isRight);
+      this._animateBackhandAttack(progress, isRight, mv);
     } else if (isElbow) {
-      this._animateElbowAttack(progress, isRight);
+      this._animateElbowAttack(progress, isRight, mv);
     } else if (isKnee) {
-      this._animateKneeAttack(progress, isRight);
+      this._animateKneeAttack(progress, isRight, mv);
     } else if (isSpinning) {
-      this._animateSpinningAttack(progress, isLow, isRight);
+      this._animateSpinningAttack(progress, isLow, isRight, mv);
     } else if (isFlurry) {
-      this._animateFlurryAttack(progress, f);
+      this._animateFlurryAttack(progress, f, mv);
     } else if (isOverhead) {
-      this._animateOverheadAttack(progress, isLauncher);
+      this._animateOverheadAttack(progress, isLauncher, mv);
     } else if (isSlash) {
-      this._animateSlashAttack(progress, isLow, isRight);
+      this._animateSlashAttack(progress, isLow, isRight, mv);
     } else if (isThrust) {
-      this._animateThrustAttack(progress, isLow, isRight);
+      this._animateThrustAttack(progress, isLow, isRight, mv);
     } else if (isPalm) {
-      this._animatePalmAttack(progress, isRight);
+      this._animatePalmAttack(progress, isRight, mv);
     } else if (isKick) {
-      this._animateKickAttack(progress, isLow, isLauncher, isRight);
+      this._animateKickAttack(progress, isLow, isLauncher, isRight, mv);
     } else {
-      this._animatePunchAttack(progress, isLow, isLauncher, isRight);
+      this._animatePunchAttack(progress, isLow, isLauncher, isRight, mv);
     }
   }
 
-  private _animatePunchAttack(progress: number, isLow: boolean, isLauncher: boolean, isRight: boolean): void {
+  private _animatePunchAttack(progress: number, isLow: boolean, isLauncher: boolean, isRight: boolean, mv: MoveVariation): void {
     const p = progress;
 
     // Spine twist with weight transfer — torso coils before extending
     const coilPhase = Math.min(p * 1.5, 1); // faster coil than extension
     const extensionPhase = Math.max(0, (p - 0.3) / 0.7); // extension starts after coil
 
-    this._lerpBone(this._spineLower, isLow ? 0.25 : -0.04 * p, isRight ? -0.35 * coilPhase : 0.35 * coilPhase, 0.02 * p, 0.3);
-    this._lerpBone(this._spineUpper, isLauncher ? -0.25 * p : 0.03, isRight ? -0.25 * coilPhase : 0.25 * coilPhase, 0, 0.3);
-    this._lerpBone(this._chest, isLauncher ? -0.35 * p : 0.06, isRight ? -0.1 * p : 0.1 * p, 0, 0.28);
+    this._lerpBone(this._spineLower, (isLow ? 0.25 : -0.04 * p) + mv.spineOff, isRight ? -0.35 * coilPhase : 0.35 * coilPhase, 0.02 * p + mv.leanAngle, 0.3);
+    this._lerpBone(this._spineUpper, (isLauncher ? -0.25 * p : 0.03) + mv.spineOff * 0.7, (isRight ? -0.25 * coilPhase : 0.25 * coilPhase) + mv.twistBias, 0, 0.3);
+    this._lerpBone(this._chest, (isLauncher ? -0.35 * p : 0.06) + mv.chestOff, isRight ? -0.1 * p : 0.1 * p, 0, 0.28);
     // Head tracks forward
-    this._lerpBone(this._head, isLauncher ? -0.15 * p : 0.04, 0, 0, 0.2);
+    this._lerpBone(this._head, (isLauncher ? -0.15 * p : 0.04) + mv.headTilt, 0, 0, 0.2);
 
     if (isRight) {
       // Right punch: shoulder drives, arm snaps out, wrist turns over
-      this._lerpBone(this._rightClavicle, -0.05 * p, 0, -0.2 * p, 0.3);
+      this._lerpBone(this._rightClavicle, -0.05 * p, 0, -0.2 * p + mv.shoulderRoll, 0.3);
       this._lerpBone(this._rightUpperArm, -0.9 * extensionPhase, -0.5 * extensionPhase, -0.25 * (1 - extensionPhase), 0.3);
       this._lerpBone(this._rightForearm, -0.4 * (1 - extensionPhase), 0, -0.15 * p, 0.3);
       this._lerpBone(this._rightHand, -0.35, 0.1 * p, -0.1 * p, 0.3);
@@ -2584,13 +2612,13 @@ export class TekkenFighterRenderer {
       this._lerpBone(this._rightThumb, -0.5, 0.2, 0, 0.3);
 
       // Left arm guard — elbow tucked, hand near chin
-      this._lerpBone(this._leftClavicle, 0, 0, 0.05, 0.15);
-      this._lerpBone(this._leftUpperArm, -0.5, 0.1, 0.8, 0.18);
+      this._lerpBone(this._leftClavicle, 0, 0, 0.05 - mv.shoulderRoll, 0.15);
+      this._lerpBone(this._leftUpperArm, -0.5, 0.1, 0.8 + mv.armSpread, 0.18);
       this._lerpBone(this._leftForearm, -1.5, 0, 0, 0.18);
       this._lerpBone(this._leftFingers, -0.7, 0, 0, 0.18);
     } else {
       // Left punch
-      this._lerpBone(this._leftClavicle, -0.05 * p, 0, 0.2 * p, 0.3);
+      this._lerpBone(this._leftClavicle, -0.05 * p, 0, 0.2 * p + mv.shoulderRoll, 0.3);
       this._lerpBone(this._leftUpperArm, -0.9 * extensionPhase, 0.5 * extensionPhase, 0.25 * (1 - extensionPhase), 0.3);
       this._lerpBone(this._leftForearm, -0.4 * (1 - extensionPhase), 0, 0.15 * p, 0.3);
       this._lerpBone(this._leftHand, -0.35, -0.1 * p, 0.1 * p, 0.3);
@@ -2598,8 +2626,8 @@ export class TekkenFighterRenderer {
       this._lerpBone(this._leftThumb, -0.5, -0.2, 0, 0.3);
 
       // Right arm guard
-      this._lerpBone(this._rightClavicle, 0, 0, -0.05, 0.15);
-      this._lerpBone(this._rightUpperArm, -0.5, -0.1, -0.8, 0.18);
+      this._lerpBone(this._rightClavicle, 0, 0, -0.05 - mv.shoulderRoll, 0.15);
+      this._lerpBone(this._rightUpperArm, -0.5, -0.1, -0.8 - mv.armSpread, 0.18);
       this._lerpBone(this._rightForearm, -1.5, 0, 0, 0.18);
       this._lerpBone(this._rightFingers, -0.7, 0, 0, 0.18);
     }
@@ -2607,47 +2635,47 @@ export class TekkenFighterRenderer {
     // Legs: weight transfer with punch
     if (isLauncher) {
       // Rising uppercut — explosive push from rear leg, body lifts
-      this._lerpBone(this._hips, -0.08 * p, 0, 0, 0.25);
-      this._lerpBone(this._leftThigh, -0.1 - 0.15 * p, 0, 0.15, 0.25);
+      this._lerpBone(this._hips, -0.08 * p + mv.hipOff, 0, 0, 0.25);
+      this._lerpBone(this._leftThigh, -0.1 - 0.15 * p, 0, 0.15 + mv.legWidth, 0.25);
       this._lerpBone(this._leftShin, 0.25 + 0.2 * p, 0, 0, 0.25);
-      this._lerpBone(this._rightThigh, -0.35 * p, 0, -0.12, 0.25);
+      this._lerpBone(this._rightThigh, -0.35 * p, 0, -0.12 - mv.legWidth, 0.25);
       this._lerpBone(this._rightShin, 0.7 * p, 0, 0, 0.25);
       this._lerpBone(this._rightFoot, -0.2 * p, 0, 0, 0.25);
     } else if (isLow) {
       // Low punch — deep crouch, lead hand reaches down
-      this._lerpBone(this._hips, 0.08, 0, 0, 0.22);
-      this._lerpBone(this._leftThigh, -0.7, 0, 0.22, 0.22);
+      this._lerpBone(this._hips, 0.08 + mv.hipOff, 0, 0, 0.22);
+      this._lerpBone(this._leftThigh, -0.7, 0, 0.22 + mv.legWidth, 0.22);
       this._lerpBone(this._leftShin, 1.1, 0, 0, 0.22);
-      this._lerpBone(this._rightThigh, -0.6, 0, -0.22, 0.22);
+      this._lerpBone(this._rightThigh, -0.6, 0, -0.22 - mv.legWidth, 0.22);
       this._lerpBone(this._rightShin, 1.0, 0, 0, 0.22);
     } else {
       // Mid stance — lead foot steps, rear foot pivots
-      this._lerpBone(this._leftThigh, -0.22, 0, 0.13, 0.18);
+      this._lerpBone(this._leftThigh, -0.22, 0, 0.13 + mv.legWidth, 0.18);
       this._lerpBone(this._leftShin, 0.38, 0, 0, 0.18);
       this._lerpBone(this._leftAnkle, -0.05 * p, 0, 0, 0.18);
-      this._lerpBone(this._rightThigh, -0.16 - 0.12 * p, 0, -0.13, 0.18);
+      this._lerpBone(this._rightThigh, -0.16 - 0.12 * p, 0, -0.13 - mv.legWidth, 0.18);
       this._lerpBone(this._rightShin, 0.32, 0, 0, 0.18);
       this._lerpBone(this._rightAnkle, 0.05 * p, 0, 0, 0.18);
     }
   }
 
-  private _animateKickAttack(progress: number, isLow: boolean, isLauncher: boolean, isRight: boolean): void {
+  private _animateKickAttack(progress: number, isLow: boolean, isLauncher: boolean, isRight: boolean, mv: MoveVariation): void {
     const p = progress;
 
     // Dynamic lean — body counterbalances the kicking leg
     const leanBack = isLauncher ? -0.2 * p : isLow ? 0.12 : -0.12 * p;
     const lateralLean = isRight ? 0.08 * p : -0.08 * p; // lean away from kicking leg
-    this._lerpBone(this._spineLower, leanBack, 0, lateralLean, 0.28);
-    this._lerpBone(this._spineUpper, isLauncher ? -0.18 * p : -0.06 * p, 0, lateralLean * 0.5, 0.28);
-    this._lerpBone(this._chest, -0.12 * p, 0, lateralLean * 0.3, 0.28);
-    this._lerpBone(this._head, 0.05 * p, 0, 0, 0.2); // head stays level
+    this._lerpBone(this._spineLower, leanBack + mv.spineOff, 0 + mv.twistBias, lateralLean + mv.leanAngle, 0.28);
+    this._lerpBone(this._spineUpper, (isLauncher ? -0.18 * p : -0.06 * p) + mv.spineOff * 0.7, 0, lateralLean * 0.5, 0.28);
+    this._lerpBone(this._chest, -0.12 * p + mv.chestOff, 0, lateralLean * 0.3, 0.28);
+    this._lerpBone(this._head, 0.05 * p + mv.headTilt, 0, 0, 0.2); // head stays level
 
     // Arms react for balance — opposite to kick direction
     const armSpread = isLauncher ? 0.8 : 0.5;
-    this._lerpBone(this._leftUpperArm, -0.45, 0.25 * p, armSpread + 0.15 * p, 0.22);
+    this._lerpBone(this._leftUpperArm, -0.45, 0.25 * p, armSpread + 0.15 * p + mv.armSpread, 0.22);
     this._lerpBone(this._leftForearm, -1.2 - 0.2 * p, 0, 0, 0.22);
     this._lerpBone(this._leftFingers, -0.5, 0, 0, 0.22);
-    this._lerpBone(this._rightUpperArm, -0.45, -0.25 * p, -armSpread - 0.15 * p, 0.22);
+    this._lerpBone(this._rightUpperArm, -0.45, -0.25 * p, -armSpread - 0.15 * p - mv.armSpread, 0.22);
     this._lerpBone(this._rightForearm, -1.2 - 0.2 * p, 0, 0, 0.22);
     this._lerpBone(this._rightFingers, -0.5, 0, 0, 0.22);
 
@@ -2664,20 +2692,20 @@ export class TekkenFighterRenderer {
 
     if (isLauncher) {
       // Hopkick — explosive upward, knee drives high, shin snaps out
-      this._lerpBone(this._hips, -0.1 * p, 0, 0, 0.28);
+      this._lerpBone(this._hips, -0.1 * p + mv.hipOff, 0, 0, 0.28);
       this._lerpBone(kickThigh, -1.4 * p, 0, sideSign * 0.08, 0.35);
       this._lerpBone(kickShin, 0.15 * (1 - p), 0, 0, 0.35);
       this._lerpBone(kickAnkle, 0.35 * p, 0, 0, 0.35);
       this._lerpBone(kickToes, -0.35 * p, 0, 0, 0.35);
     } else if (isLow) {
       // Low kick — crouch and sweep, ankle turns
-      this._lerpBone(this._hips, 0.06, 0, 0, 0.25);
+      this._lerpBone(this._hips, 0.06 + mv.hipOff, 0, 0, 0.25);
       this._lerpBone(kickThigh, 0.35 * p, 0, sideSign * 0.35 * p, 0.32);
       this._lerpBone(kickShin, 0.15, 0, 0, 0.32);
       this._lerpBone(kickAnkle, -0.25, 0, sideSign * 0.1, 0.32);
     } else {
       // Mid/high kick — hip rotation drives the kick, full extension
-      this._lerpBone(this._hips, 0, isRight ? -0.12 * p : 0.12 * p, 0, 0.28);
+      this._lerpBone(this._hips, 0 + mv.hipOff, isRight ? -0.12 * p : 0.12 * p, 0, 0.28);
       this._lerpBone(kickThigh, -1.15 * p, 0, sideSign * 0.12, 0.32);
       this._lerpBone(kickShin, 0.45 * (1 - p), 0, 0, 0.32);
       this._lerpBone(kickAnkle, 0.25 * p, 0, 0, 0.32);
@@ -2685,123 +2713,123 @@ export class TekkenFighterRenderer {
     }
 
     // Plant leg — stable base, slight bend for power
-    this._lerpBone(plantThigh, -0.22 - 0.05 * p, 0, -sideSign * 0.16, 0.18);
+    this._lerpBone(plantThigh, -0.22 - 0.05 * p, 0, -sideSign * (0.16 + mv.legWidth), 0.18);
     this._lerpBone(plantShin, 0.42, 0, 0, 0.18);
     this._lerpBone(plantAnkle, -0.04, 0, 0, 0.18);
   }
 
-  private _animateElbowAttack(progress: number, isRight: boolean): void {
+  private _animateElbowAttack(progress: number, isRight: boolean, mv: MoveVariation): void {
     const p = progress;
 
     // Elbow drives forward from close range - torso twists hard
-    this._lerpBone(this._spineLower, 0.05, isRight ? -0.4 * p : 0.4 * p, 0, 0.3);
-    this._lerpBone(this._spineUpper, 0.02, isRight ? -0.3 * p : 0.3 * p, 0, 0.3);
-    this._lerpBone(this._chest, 0.08, 0, 0, 0.3);
+    this._lerpBone(this._spineLower, 0.05 + mv.spineOff, (isRight ? -0.4 * p : 0.4 * p) + mv.twistBias, mv.leanAngle, 0.3);
+    this._lerpBone(this._spineUpper, 0.02 + mv.spineOff * 0.7, isRight ? -0.3 * p : 0.3 * p, 0, 0.3);
+    this._lerpBone(this._chest, 0.08 + mv.chestOff, 0, 0, 0.3);
 
     if (isRight) {
       // Right elbow: upper arm swings forward, forearm tucked tight
-      this._lerpBone(this._rightClavicle, 0, 0, -0.2 * p, 0.3);
+      this._lerpBone(this._rightClavicle, 0, 0, -0.2 * p + mv.shoulderRoll, 0.3);
       this._lerpBone(this._rightUpperArm, -1.2 * p, -0.3 * p, -0.5 * p, 0.3);
       this._lerpBone(this._rightForearm, -2.2 * p, 0, 0, 0.3); // tight fold = elbow forward
       this._lerpBone(this._rightHand, -0.4, 0, 0, 0.3);
       this._lerpBone(this._rightFingers, -0.8, 0, 0, 0.3);
       // Left guard
-      this._lerpBone(this._leftUpperArm, -0.4, 0, 0.7, 0.15);
+      this._lerpBone(this._leftUpperArm, -0.4, 0, 0.7 + mv.armSpread, 0.15);
       this._lerpBone(this._leftForearm, -1.4, 0, 0, 0.15);
     } else {
-      this._lerpBone(this._leftClavicle, 0, 0, 0.2 * p, 0.3);
+      this._lerpBone(this._leftClavicle, 0, 0, 0.2 * p + mv.shoulderRoll, 0.3);
       this._lerpBone(this._leftUpperArm, -1.2 * p, 0.3 * p, 0.5 * p, 0.3);
       this._lerpBone(this._leftForearm, -2.2 * p, 0, 0, 0.3);
       this._lerpBone(this._leftHand, -0.4, 0, 0, 0.3);
       this._lerpBone(this._leftFingers, -0.8, 0, 0, 0.3);
-      this._lerpBone(this._rightUpperArm, -0.4, 0, -0.7, 0.15);
+      this._lerpBone(this._rightUpperArm, -0.4, 0, -0.7 - mv.armSpread, 0.15);
       this._lerpBone(this._rightForearm, -1.4, 0, 0, 0.15);
     }
 
     // Legs: step forward with elbow
-    this._lerpBone(this._leftThigh, -0.25 - 0.1 * p, 0, 0.12, 0.2);
+    this._lerpBone(this._leftThigh, -0.25 - 0.1 * p, 0, 0.12 + mv.legWidth, 0.2);
     this._lerpBone(this._leftShin, 0.4, 0, 0, 0.2);
-    this._lerpBone(this._rightThigh, -0.15, 0, -0.12, 0.2);
+    this._lerpBone(this._rightThigh, -0.15, 0, -0.12 - mv.legWidth, 0.2);
     this._lerpBone(this._rightShin, 0.3, 0, 0, 0.2);
   }
 
-  private _animateSpinningAttack(progress: number, isLow: boolean, _isRight: boolean): void {
+  private _animateSpinningAttack(progress: number, isLow: boolean, _isRight: boolean, mv: MoveVariation): void {
     const p = progress;
 
     // Full body spin: hips and spine rotate through
     const spinAngle = p * Math.PI * 1.2;
-    this._lerpBone(this._hips, isLow ? 0.15 : 0, spinAngle * 0.3, 0, 0.25);
-    this._lerpBone(this._spineLower, isLow ? 0.1 : -0.05, spinAngle * 0.5, 0, 0.25);
-    this._lerpBone(this._spineUpper, -0.05 * p, spinAngle * 0.4, 0, 0.25);
-    this._lerpBone(this._chest, -0.1 * p, spinAngle * 0.3, 0, 0.25);
-    this._lerpBone(this._head, 0, -spinAngle * 0.2, 0, 0.2); // head counter-rotates
+    this._lerpBone(this._hips, (isLow ? 0.15 : 0) + mv.hipOff, spinAngle * 0.3, 0, 0.25);
+    this._lerpBone(this._spineLower, (isLow ? 0.1 : -0.05) + mv.spineOff, spinAngle * 0.5 + mv.twistBias, mv.leanAngle, 0.25);
+    this._lerpBone(this._spineUpper, -0.05 * p + mv.spineOff * 0.7, spinAngle * 0.4, 0, 0.25);
+    this._lerpBone(this._chest, -0.1 * p + mv.chestOff, spinAngle * 0.3, 0, 0.25);
+    this._lerpBone(this._head, mv.headTilt, -spinAngle * 0.2, 0, 0.2); // head counter-rotates
 
     // Arms fling outward during spin
-    this._lerpBone(this._leftUpperArm, -0.3, 0.4 * p, 1.2 * p, 0.25);
+    this._lerpBone(this._leftUpperArm, -0.3, 0.4 * p, 1.2 * p + mv.armSpread, 0.25);
     this._lerpBone(this._leftForearm, -0.8, 0, 0, 0.25);
-    this._lerpBone(this._rightUpperArm, -0.3, -0.4 * p, -1.2 * p, 0.25);
+    this._lerpBone(this._rightUpperArm, -0.3, -0.4 * p, -1.2 * p - mv.armSpread, 0.25);
     this._lerpBone(this._rightForearm, -0.8, 0, 0, 0.25);
 
     if (isLow) {
       // Low spinning sweep: deep crouch, leg extends
-      this._lerpBone(this._leftThigh, -0.8, 0, 0.3 * p, 0.3);
+      this._lerpBone(this._leftThigh, -0.8, 0, 0.3 * p + mv.legWidth, 0.3);
       this._lerpBone(this._leftShin, 1.2, 0, 0, 0.3);
-      this._lerpBone(this._rightThigh, 0.4 * p, 0, -0.4 * p, 0.3);
+      this._lerpBone(this._rightThigh, 0.4 * p, 0, -0.4 * p - mv.legWidth, 0.3);
       this._lerpBone(this._rightShin, 0.1, 0, 0, 0.3);
     } else {
       // Standing spinning kick
-      this._lerpBone(this._leftThigh, -0.2, 0, 0.15, 0.2);
+      this._lerpBone(this._leftThigh, -0.2, 0, 0.15 + mv.legWidth, 0.2);
       this._lerpBone(this._leftShin, 0.35, 0, 0, 0.2);
-      this._lerpBone(this._rightThigh, -0.8 * p, 0, -0.3 * p, 0.3);
+      this._lerpBone(this._rightThigh, -0.8 * p, 0, -0.3 * p - mv.legWidth, 0.3);
       this._lerpBone(this._rightShin, 0.3 * (1 - p), 0, 0, 0.3);
       this._lerpBone(this._rightAnkle, 0.2 * p, 0, 0, 0.3);
     }
   }
 
-  private _animateGrabAttack(progress: number, _isRight: boolean): void {
+  private _animateGrabAttack(progress: number, _isRight: boolean, mv: MoveVariation): void {
     const p = progress;
 
     // Grab: both arms extend forward to seize opponent
-    this._lerpBone(this._spineLower, 0.1 * p, 0, 0, 0.3);
-    this._lerpBone(this._spineUpper, 0.08 * p, 0, 0, 0.3);
-    this._lerpBone(this._chest, 0.12 * p, 0, 0, 0.3);
-    this._lerpBone(this._head, -0.05, 0, 0, 0.2);
+    this._lerpBone(this._spineLower, 0.1 * p + mv.spineOff, mv.twistBias, mv.leanAngle, 0.3);
+    this._lerpBone(this._spineUpper, 0.08 * p + mv.spineOff * 0.7, 0, 0, 0.3);
+    this._lerpBone(this._chest, 0.12 * p + mv.chestOff, 0, 0, 0.3);
+    this._lerpBone(this._head, -0.05 + mv.headTilt, 0, 0, 0.2);
 
     // Both arms reach forward
-    this._lerpBone(this._leftClavicle, 0, 0, 0.15 * p, 0.3);
-    this._lerpBone(this._leftUpperArm, -0.9 * p, 0.2 * p, 0.3 * p, 0.3);
+    this._lerpBone(this._leftClavicle, 0, 0, 0.15 * p + mv.shoulderRoll, 0.3);
+    this._lerpBone(this._leftUpperArm, -0.9 * p, 0.2 * p, 0.3 * p + mv.armSpread, 0.3);
     this._lerpBone(this._leftForearm, -0.6 * (1 - p), 0, 0, 0.3);
     this._lerpBone(this._leftHand, -0.1 * p, 0, 0, 0.3);
     this._lerpBone(this._leftFingers, -0.3 * p, 0, 0, 0.3); // open hand reaching
 
-    this._lerpBone(this._rightClavicle, 0, 0, -0.15 * p, 0.3);
-    this._lerpBone(this._rightUpperArm, -0.9 * p, -0.2 * p, -0.3 * p, 0.3);
+    this._lerpBone(this._rightClavicle, 0, 0, -0.15 * p - mv.shoulderRoll, 0.3);
+    this._lerpBone(this._rightUpperArm, -0.9 * p, -0.2 * p, -0.3 * p - mv.armSpread, 0.3);
     this._lerpBone(this._rightForearm, -0.6 * (1 - p), 0, 0, 0.3);
     this._lerpBone(this._rightHand, -0.1 * p, 0, 0, 0.3);
     this._lerpBone(this._rightFingers, -0.3 * p, 0, 0, 0.3);
 
     // Step forward aggressively
-    this._lerpBone(this._leftThigh, -0.3 * p, 0, 0.12, 0.2);
+    this._lerpBone(this._leftThigh, -0.3 * p, 0, 0.12 + mv.legWidth, 0.2);
     this._lerpBone(this._leftShin, 0.5 * p, 0, 0, 0.2);
-    this._lerpBone(this._rightThigh, -0.15, 0, -0.12, 0.15);
+    this._lerpBone(this._rightThigh, -0.15, 0, -0.12 - mv.legWidth, 0.15);
     this._lerpBone(this._rightShin, 0.25, 0, 0, 0.15);
   }
 
-  private _animateKneeAttack(progress: number, isRight: boolean): void {
+  private _animateKneeAttack(progress: number, isRight: boolean, mv: MoveVariation): void {
     const p = progress;
     const s = isRight ? -1 : 1;
 
     // Knee strike — hips drive forward, trunk stays upright, rear knee thrusts
-    this._lerpBone(this._hips, 0.05 * p, s * 0.1 * p, 0, 0.3);
-    this._lerpBone(this._spineLower, 0.08 * p, s * 0.15 * p, 0, 0.28);
-    this._lerpBone(this._spineUpper, -0.05, 0, 0, 0.25);
-    this._lerpBone(this._chest, 0.1 * p, 0, 0, 0.25);
-    this._lerpBone(this._head, -0.08, 0, 0, 0.2);
+    this._lerpBone(this._hips, 0.05 * p + mv.hipOff, s * 0.1 * p, 0, 0.3);
+    this._lerpBone(this._spineLower, 0.08 * p + mv.spineOff, s * 0.15 * p + mv.twistBias, mv.leanAngle, 0.28);
+    this._lerpBone(this._spineUpper, -0.05 + mv.spineOff * 0.7, 0, 0, 0.25);
+    this._lerpBone(this._chest, 0.1 * p + mv.chestOff, 0, 0, 0.25);
+    this._lerpBone(this._head, -0.08 + mv.headTilt, 0, 0, 0.2);
 
     // Arms guard close to body, slight forward lean
-    this._lerpBone(this._leftUpperArm, -0.6, 0.15, 0.75, 0.22);
+    this._lerpBone(this._leftUpperArm, -0.6, 0.15, 0.75 + mv.armSpread, 0.22);
     this._lerpBone(this._leftForearm, -1.5, 0, 0, 0.22);
-    this._lerpBone(this._rightUpperArm, -0.6, -0.15, -0.75, 0.22);
+    this._lerpBone(this._rightUpperArm, -0.6, -0.15, -0.75 - mv.armSpread, 0.22);
     this._lerpBone(this._rightForearm, -1.5, 0, 0, 0.22);
 
     // Kicking leg — knee drives up sharply, shin stays tucked
@@ -2816,11 +2844,11 @@ export class TekkenFighterRenderer {
     this._lerpBone(kickAnkle, -0.3 * p, 0, 0, 0.35);
 
     // Plant leg — springy push
-    this._lerpBone(plantThigh, -0.2 - 0.08 * p, 0, -s * 0.15, 0.2);
+    this._lerpBone(plantThigh, -0.2 - 0.08 * p, 0, -s * (0.15 + mv.legWidth), 0.2);
     this._lerpBone(plantShin, 0.35 + 0.15 * p, 0, 0, 0.2);
   }
 
-  private _animateRageAttack(progress: number, frame: number): void {
+  private _animateRageAttack(progress: number, frame: number, mv: MoveVariation): void {
     const p = progress;
     // Rage art: dramatic multi-phase cinematic attack
     const phase = frame < 8 ? 0 : frame < 16 ? 1 : 2; // windup, strike, follow-through
@@ -2828,53 +2856,53 @@ export class TekkenFighterRenderer {
     if (phase === 0) {
       // Windup — crouch, pull both fists back, intense lean
       const wp = Math.min(frame / 8, 1);
-      this._lerpBone(this._hips, 0.1 * wp, 0, 0, 0.35);
-      this._lerpBone(this._spineLower, 0.15 * wp, 0, 0, 0.35);
-      this._lerpBone(this._spineUpper, 0.1 * wp, 0, 0, 0.35);
-      this._lerpBone(this._chest, 0.2 * wp, 0, 0, 0.35);
-      this._lerpBone(this._head, -0.2 * wp, 0, 0, 0.3);
-      this._lerpBone(this._leftUpperArm, 0.3 * wp, 0.3 * wp, 0.8, 0.3);
+      this._lerpBone(this._hips, 0.1 * wp + mv.hipOff, 0, 0, 0.35);
+      this._lerpBone(this._spineLower, 0.15 * wp + mv.spineOff, mv.twistBias, mv.leanAngle, 0.35);
+      this._lerpBone(this._spineUpper, 0.1 * wp + mv.spineOff * 0.7, 0, 0, 0.35);
+      this._lerpBone(this._chest, 0.2 * wp + mv.chestOff, 0, 0, 0.35);
+      this._lerpBone(this._head, -0.2 * wp + mv.headTilt, 0, 0, 0.3);
+      this._lerpBone(this._leftUpperArm, 0.3 * wp, 0.3 * wp, 0.8 + mv.armSpread, 0.3);
       this._lerpBone(this._leftForearm, -2.0 * wp, 0, 0, 0.3);
-      this._lerpBone(this._rightUpperArm, 0.3 * wp, -0.3 * wp, -0.8, 0.3);
+      this._lerpBone(this._rightUpperArm, 0.3 * wp, -0.3 * wp, -0.8 - mv.armSpread, 0.3);
       this._lerpBone(this._rightForearm, -2.0 * wp, 0, 0, 0.3);
-      this._lerpBone(this._leftThigh, -0.5, 0, 0.2, 0.25);
+      this._lerpBone(this._leftThigh, -0.5, 0, 0.2 + mv.legWidth, 0.25);
       this._lerpBone(this._leftShin, 0.8, 0, 0, 0.25);
-      this._lerpBone(this._rightThigh, -0.5, 0, -0.2, 0.25);
+      this._lerpBone(this._rightThigh, -0.5, 0, -0.2 - mv.legWidth, 0.25);
       this._lerpBone(this._rightShin, 0.8, 0, 0, 0.25);
     } else if (phase === 1) {
       // Explosive double punch — both arms thrust forward, body unfurls
       const sp = Math.min((frame - 8) / 8, 1);
-      this._lerpBone(this._hips, -0.05 * sp, 0, 0, 0.4);
-      this._lerpBone(this._spineLower, -0.1 * sp, 0, 0, 0.4);
-      this._lerpBone(this._spineUpper, -0.08 * sp, 0, 0, 0.4);
-      this._lerpBone(this._chest, -0.15 * sp, 0, 0, 0.4);
-      this._lerpBone(this._head, 0.05, 0, 0, 0.3);
-      this._lerpBone(this._leftUpperArm, -1.0 * sp, 0.4 * sp, 0.2 * (1 - sp), 0.4);
+      this._lerpBone(this._hips, -0.05 * sp + mv.hipOff, 0, 0, 0.4);
+      this._lerpBone(this._spineLower, -0.1 * sp + mv.spineOff, mv.twistBias, mv.leanAngle, 0.4);
+      this._lerpBone(this._spineUpper, -0.08 * sp + mv.spineOff * 0.7, 0, 0, 0.4);
+      this._lerpBone(this._chest, -0.15 * sp + mv.chestOff, 0, 0, 0.4);
+      this._lerpBone(this._head, 0.05 + mv.headTilt, 0, 0, 0.3);
+      this._lerpBone(this._leftUpperArm, -1.0 * sp, 0.4 * sp, 0.2 * (1 - sp) + mv.armSpread, 0.4);
       this._lerpBone(this._leftForearm, -0.3 * (1 - sp), 0, 0, 0.4);
       this._lerpBone(this._leftFingers, -1.0, 0, 0, 0.4);
-      this._lerpBone(this._rightUpperArm, -1.0 * sp, -0.4 * sp, -0.2 * (1 - sp), 0.4);
+      this._lerpBone(this._rightUpperArm, -1.0 * sp, -0.4 * sp, -0.2 * (1 - sp) - mv.armSpread, 0.4);
       this._lerpBone(this._rightForearm, -0.3 * (1 - sp), 0, 0, 0.4);
       this._lerpBone(this._rightFingers, -1.0, 0, 0, 0.4);
-      this._lerpBone(this._leftThigh, -0.25 - 0.1 * sp, 0, 0.14, 0.3);
+      this._lerpBone(this._leftThigh, -0.25 - 0.1 * sp, 0, 0.14 + mv.legWidth, 0.3);
       this._lerpBone(this._leftShin, 0.4, 0, 0, 0.3);
-      this._lerpBone(this._rightThigh, -0.2, 0, -0.14, 0.3);
+      this._lerpBone(this._rightThigh, -0.2, 0, -0.14 - mv.legWidth, 0.3);
       this._lerpBone(this._rightShin, 0.35, 0, 0, 0.3);
     } else {
       // Follow-through — arms still extended, body settling
-      this._lerpBone(this._spineLower, -0.05 * p, 0, 0, 0.2);
-      this._lerpBone(this._chest, -0.1 * p, 0, 0, 0.2);
-      this._lerpBone(this._leftUpperArm, -0.9 * p, 0.35 * p, 0.15, 0.25);
+      this._lerpBone(this._spineLower, -0.05 * p + mv.spineOff, mv.twistBias, mv.leanAngle, 0.2);
+      this._lerpBone(this._chest, -0.1 * p + mv.chestOff, 0, 0, 0.2);
+      this._lerpBone(this._leftUpperArm, -0.9 * p, 0.35 * p, 0.15 + mv.armSpread, 0.25);
       this._lerpBone(this._leftForearm, -0.2, 0, 0, 0.25);
-      this._lerpBone(this._rightUpperArm, -0.9 * p, -0.35 * p, -0.15, 0.25);
+      this._lerpBone(this._rightUpperArm, -0.9 * p, -0.35 * p, -0.15 - mv.armSpread, 0.25);
       this._lerpBone(this._rightForearm, -0.2, 0, 0, 0.25);
-      this._lerpBone(this._leftThigh, -0.22, 0, 0.13, 0.18);
+      this._lerpBone(this._leftThigh, -0.22, 0, 0.13 + mv.legWidth, 0.18);
       this._lerpBone(this._leftShin, 0.38, 0, 0, 0.18);
-      this._lerpBone(this._rightThigh, -0.18, 0, -0.13, 0.18);
+      this._lerpBone(this._rightThigh, -0.18, 0, -0.13 - mv.legWidth, 0.18);
       this._lerpBone(this._rightShin, 0.32, 0, 0, 0.18);
     }
   }
 
-  private _animateFlurryAttack(_progress: number, frame: number): void {
+  private _animateFlurryAttack(_progress: number, frame: number, mv: MoveVariation): void {
     // Rapid alternating punches — left, right, left, right
     const hitIdx = Math.floor(frame / 4) % 4; // cycles through 4 hits
     const hitProgress = (frame % 4) / 4;
@@ -2883,35 +2911,35 @@ export class TekkenFighterRenderer {
 
     // Body rocks side to side with each hit
     const rockAngle = isRightHit ? -0.15 : 0.15;
-    this._lerpBone(this._spineLower, 0.04, rockAngle * hp, 0, 0.35);
-    this._lerpBone(this._spineUpper, 0.02, rockAngle * 0.7 * hp, 0, 0.35);
-    this._lerpBone(this._chest, 0.06, rockAngle * 0.4 * hp, 0, 0.32);
-    this._lerpBone(this._head, 0.03, 0, 0, 0.25);
+    this._lerpBone(this._spineLower, 0.04 + mv.spineOff, rockAngle * hp + mv.twistBias, mv.leanAngle, 0.35);
+    this._lerpBone(this._spineUpper, 0.02 + mv.spineOff * 0.7, rockAngle * 0.7 * hp, 0, 0.35);
+    this._lerpBone(this._chest, 0.06 + mv.chestOff, rockAngle * 0.4 * hp, 0, 0.32);
+    this._lerpBone(this._head, 0.03 + mv.headTilt, 0, 0, 0.25);
 
     // Alternating arms — one extends while other retracts
     if (isRightHit) {
       this._lerpBone(this._rightUpperArm, -0.85 * hp, -0.4 * hp, -0.2 * (1 - hp), 0.4);
       this._lerpBone(this._rightForearm, -0.3 * (1 - hp), 0, 0, 0.4);
       this._lerpBone(this._rightFingers, -0.9, 0, 0, 0.4);
-      this._lerpBone(this._leftUpperArm, -0.45, 0.1, 0.75, 0.35);
+      this._lerpBone(this._leftUpperArm, -0.45, 0.1, 0.75 + mv.armSpread, 0.35);
       this._lerpBone(this._leftForearm, -1.4, 0, 0, 0.35);
     } else {
       this._lerpBone(this._leftUpperArm, -0.85 * hp, 0.4 * hp, 0.2 * (1 - hp), 0.4);
       this._lerpBone(this._leftForearm, -0.3 * (1 - hp), 0, 0, 0.4);
       this._lerpBone(this._leftFingers, -0.9, 0, 0, 0.4);
-      this._lerpBone(this._rightUpperArm, -0.45, -0.1, -0.75, 0.35);
+      this._lerpBone(this._rightUpperArm, -0.45, -0.1, -0.75 - mv.armSpread, 0.35);
       this._lerpBone(this._rightForearm, -1.4, 0, 0, 0.35);
     }
 
     // Shuffling feet — quick in-place weight shifts
     const footShift = Math.sin(frame * 0.8) * 0.08;
-    this._lerpBone(this._leftThigh, -0.22 + footShift, 0, 0.13, 0.2);
+    this._lerpBone(this._leftThigh, -0.22 + footShift, 0, 0.13 + mv.legWidth, 0.2);
     this._lerpBone(this._leftShin, 0.38, 0, 0, 0.2);
-    this._lerpBone(this._rightThigh, -0.18 - footShift, 0, -0.13, 0.2);
+    this._lerpBone(this._rightThigh, -0.18 - footShift, 0, -0.13 - mv.legWidth, 0.2);
     this._lerpBone(this._rightShin, 0.34, 0, 0, 0.2);
   }
 
-  private _animateSlashAttack(progress: number, isLow: boolean, isRight: boolean): void {
+  private _animateSlashAttack(progress: number, isLow: boolean, isRight: boolean, mv: MoveVariation): void {
     const p = progress;
     const s = isRight ? -1 : 1;
 
@@ -2920,48 +2948,48 @@ export class TekkenFighterRenderer {
     const swingPhase = Math.max(0, (p - 0.25) / 0.75);
 
     // Torso rotates dramatically to drive the slash
-    this._lerpBone(this._hips, isLow ? 0.12 : 0, s * (-0.25 + 0.5 * swingPhase), 0, 0.3);
-    this._lerpBone(this._spineLower, isLow ? 0.15 : -0.05 * p, s * (-0.35 * windPhase + 0.7 * swingPhase), 0.04 * s * p, 0.3);
-    this._lerpBone(this._spineUpper, -0.06 * p, s * (-0.25 * windPhase + 0.5 * swingPhase), 0, 0.3);
-    this._lerpBone(this._chest, -0.08 * p, s * (-0.15 * windPhase + 0.3 * swingPhase), 0, 0.28);
-    this._lerpBone(this._head, 0.04, s * 0.1 * swingPhase, 0, 0.2);
+    this._lerpBone(this._hips, (isLow ? 0.12 : 0) + mv.hipOff, s * (-0.25 + 0.5 * swingPhase), 0, 0.3);
+    this._lerpBone(this._spineLower, (isLow ? 0.15 : -0.05 * p) + mv.spineOff, s * (-0.35 * windPhase + 0.7 * swingPhase) + mv.twistBias, 0.04 * s * p + mv.leanAngle, 0.3);
+    this._lerpBone(this._spineUpper, -0.06 * p + mv.spineOff * 0.7, s * (-0.25 * windPhase + 0.5 * swingPhase), 0, 0.3);
+    this._lerpBone(this._chest, -0.08 * p + mv.chestOff, s * (-0.15 * windPhase + 0.3 * swingPhase), 0, 0.28);
+    this._lerpBone(this._head, 0.04 + mv.headTilt, s * 0.1 * swingPhase, 0, 0.2);
 
     // Lead arm sweeps in wide arc — extended reach
     if (isRight) {
-      this._lerpBone(this._rightClavicle, -0.1 * p, 0, -0.15 * p, 0.3);
+      this._lerpBone(this._rightClavicle, -0.1 * p, 0, -0.15 * p + mv.shoulderRoll, 0.3);
       this._lerpBone(this._rightUpperArm, -0.7 * swingPhase - 0.2, -0.6 * windPhase + 0.8 * swingPhase, -0.4 * swingPhase, 0.32);
       this._lerpBone(this._rightForearm, -0.3 * (1 - swingPhase), 0, -0.1 * p, 0.32);
       this._lerpBone(this._rightHand, -0.2 * p, 0, -0.15, 0.3);
       this._lerpBone(this._rightFingers, -0.85, 0, 0, 0.3);
       // Off-hand follows or guards
-      this._lerpBone(this._leftUpperArm, -0.4, 0.2, 0.6, 0.18);
+      this._lerpBone(this._leftUpperArm, -0.4, 0.2, 0.6 + mv.armSpread, 0.18);
       this._lerpBone(this._leftForearm, -1.3, 0, 0, 0.18);
     } else {
-      this._lerpBone(this._leftClavicle, -0.1 * p, 0, 0.15 * p, 0.3);
+      this._lerpBone(this._leftClavicle, -0.1 * p, 0, 0.15 * p + mv.shoulderRoll, 0.3);
       this._lerpBone(this._leftUpperArm, -0.7 * swingPhase - 0.2, 0.6 * windPhase - 0.8 * swingPhase, 0.4 * swingPhase, 0.32);
       this._lerpBone(this._leftForearm, -0.3 * (1 - swingPhase), 0, 0.1 * p, 0.32);
       this._lerpBone(this._leftHand, -0.2 * p, 0, 0.15, 0.3);
       this._lerpBone(this._leftFingers, -0.85, 0, 0, 0.3);
-      this._lerpBone(this._rightUpperArm, -0.4, -0.2, -0.6, 0.18);
+      this._lerpBone(this._rightUpperArm, -0.4, -0.2, -0.6 - mv.armSpread, 0.18);
       this._lerpBone(this._rightForearm, -1.3, 0, 0, 0.18);
     }
 
     // Legs: pivot stance for the swing
     if (isLow) {
-      this._lerpBone(this._leftThigh, -0.65, 0, 0.22, 0.22);
+      this._lerpBone(this._leftThigh, -0.65, 0, 0.22 + mv.legWidth, 0.22);
       this._lerpBone(this._leftShin, 1.0, 0, 0, 0.22);
-      this._lerpBone(this._rightThigh, -0.55, 0, -0.22, 0.22);
+      this._lerpBone(this._rightThigh, -0.55, 0, -0.22 - mv.legWidth, 0.22);
       this._lerpBone(this._rightShin, 0.9, 0, 0, 0.22);
     } else {
-      this._lerpBone(this._leftThigh, -0.2 - 0.1 * swingPhase, 0, 0.15, 0.2);
+      this._lerpBone(this._leftThigh, -0.2 - 0.1 * swingPhase, 0, 0.15 + mv.legWidth, 0.2);
       this._lerpBone(this._leftShin, 0.35 + 0.1 * p, 0, 0, 0.2);
-      this._lerpBone(this._rightThigh, -0.18 - 0.08 * p, 0, -0.15, 0.2);
+      this._lerpBone(this._rightThigh, -0.18 - 0.08 * p, 0, -0.15 - mv.legWidth, 0.2);
       this._lerpBone(this._rightShin, 0.3, 0, 0, 0.2);
       this._lerpBone(this._rightAnkle, 0.06 * swingPhase, 0, 0, 0.2);
     }
   }
 
-  private _animateOverheadAttack(progress: number, isLauncher: boolean): void {
+  private _animateOverheadAttack(progress: number, isLauncher: boolean, mv: MoveVariation): void {
     const p = progress;
 
     // Overhead smash: arms raise high during windup, slam down during active
@@ -2970,89 +2998,89 @@ export class TekkenFighterRenderer {
     const slamAngle = raisePhase * 0.6 - strikePhase * 1.8; // rises then slams down
 
     // Body rises then drops weight into strike
-    this._lerpBone(this._hips, -0.08 * raisePhase + 0.15 * strikePhase, 0, 0, 0.3);
-    this._lerpBone(this._spineLower, -0.15 * raisePhase + 0.25 * strikePhase, 0, 0, 0.3);
-    this._lerpBone(this._spineUpper, -0.2 * raisePhase + 0.2 * strikePhase, 0, 0, 0.3);
-    this._lerpBone(this._chest, -0.25 * raisePhase + 0.3 * strikePhase, 0, 0, 0.3);
-    this._lerpBone(this._head, 0.1 * raisePhase - 0.15 * strikePhase, 0, 0, 0.25);
+    this._lerpBone(this._hips, -0.08 * raisePhase + 0.15 * strikePhase + mv.hipOff, 0, 0, 0.3);
+    this._lerpBone(this._spineLower, -0.15 * raisePhase + 0.25 * strikePhase + mv.spineOff, mv.twistBias, mv.leanAngle, 0.3);
+    this._lerpBone(this._spineUpper, -0.2 * raisePhase + 0.2 * strikePhase + mv.spineOff * 0.7, 0, 0, 0.3);
+    this._lerpBone(this._chest, -0.25 * raisePhase + 0.3 * strikePhase + mv.chestOff, 0, 0, 0.3);
+    this._lerpBone(this._head, 0.1 * raisePhase - 0.15 * strikePhase + mv.headTilt, 0, 0, 0.25);
 
     // Both arms raise high then slam down together
     const armAngle = slamAngle;
-    this._lerpBone(this._leftClavicle, -0.1 * raisePhase, 0, 0.1 * raisePhase, 0.3);
-    this._lerpBone(this._leftUpperArm, armAngle - 0.3, 0.2 * raisePhase, 0.3 * (1 - strikePhase), 0.35);
+    this._lerpBone(this._leftClavicle, -0.1 * raisePhase, 0, 0.1 * raisePhase + mv.shoulderRoll, 0.3);
+    this._lerpBone(this._leftUpperArm, armAngle - 0.3, 0.2 * raisePhase, 0.3 * (1 - strikePhase) + mv.armSpread, 0.35);
     this._lerpBone(this._leftForearm, -0.8 * raisePhase - 0.3 * strikePhase, 0, 0, 0.35);
     this._lerpBone(this._leftHand, -0.3, 0, 0, 0.3);
     this._lerpBone(this._leftFingers, -0.9, 0, 0, 0.3);
 
-    this._lerpBone(this._rightClavicle, -0.1 * raisePhase, 0, -0.1 * raisePhase, 0.3);
-    this._lerpBone(this._rightUpperArm, armAngle - 0.3, -0.2 * raisePhase, -0.3 * (1 - strikePhase), 0.35);
+    this._lerpBone(this._rightClavicle, -0.1 * raisePhase, 0, -0.1 * raisePhase - mv.shoulderRoll, 0.3);
+    this._lerpBone(this._rightUpperArm, armAngle - 0.3, -0.2 * raisePhase, -0.3 * (1 - strikePhase) - mv.armSpread, 0.35);
     this._lerpBone(this._rightForearm, -0.8 * raisePhase - 0.3 * strikePhase, 0, 0, 0.35);
     this._lerpBone(this._rightHand, -0.3, 0, 0, 0.3);
     this._lerpBone(this._rightFingers, -0.9, 0, 0, 0.3);
 
     // Legs: wide stance, drop weight on impact
     if (isLauncher) {
-      this._lerpBone(this._leftThigh, -0.3 - 0.15 * strikePhase, 0, 0.2, 0.25);
+      this._lerpBone(this._leftThigh, -0.3 - 0.15 * strikePhase, 0, 0.2 + mv.legWidth, 0.25);
       this._lerpBone(this._leftShin, 0.5 + 0.3 * strikePhase, 0, 0, 0.25);
-      this._lerpBone(this._rightThigh, -0.35 * strikePhase, 0, -0.2, 0.25);
+      this._lerpBone(this._rightThigh, -0.35 * strikePhase, 0, -0.2 - mv.legWidth, 0.25);
       this._lerpBone(this._rightShin, 0.6 * strikePhase, 0, 0, 0.25);
     } else {
-      this._lerpBone(this._leftThigh, -0.25 - 0.2 * strikePhase, 0, 0.18, 0.22);
+      this._lerpBone(this._leftThigh, -0.25 - 0.2 * strikePhase, 0, 0.18 + mv.legWidth, 0.22);
       this._lerpBone(this._leftShin, 0.45 + 0.25 * strikePhase, 0, 0, 0.22);
-      this._lerpBone(this._rightThigh, -0.2 - 0.15 * strikePhase, 0, -0.18, 0.22);
+      this._lerpBone(this._rightThigh, -0.2 - 0.15 * strikePhase, 0, -0.18 - mv.legWidth, 0.22);
       this._lerpBone(this._rightShin, 0.4 + 0.2 * strikePhase, 0, 0, 0.22);
     }
   }
 
-  private _animateThrustAttack(progress: number, isLow: boolean, isRight: boolean): void {
+  private _animateThrustAttack(progress: number, isLow: boolean, isRight: boolean, mv: MoveVariation): void {
     const p = progress;
 
     // Linear forward lunge — arm extends straight ahead like a rapier thrust
     const lungePhase = p * p; // accelerating lunge
 
     // Minimal torso rotation, strong forward lean
-    this._lerpBone(this._hips, isLow ? 0.1 : 0.06 * lungePhase, 0, 0, 0.3);
-    this._lerpBone(this._spineLower, isLow ? 0.2 * p : 0.12 * lungePhase, isRight ? -0.08 * p : 0.08 * p, 0, 0.3);
-    this._lerpBone(this._spineUpper, isLow ? 0.15 * p : 0.08 * lungePhase, 0, 0, 0.3);
-    this._lerpBone(this._chest, 0.1 * lungePhase, 0, 0, 0.28);
-    this._lerpBone(this._head, -0.06 * p, 0, 0, 0.2);
+    this._lerpBone(this._hips, (isLow ? 0.1 : 0.06 * lungePhase) + mv.hipOff, 0, 0, 0.3);
+    this._lerpBone(this._spineLower, (isLow ? 0.2 * p : 0.12 * lungePhase) + mv.spineOff, (isRight ? -0.08 * p : 0.08 * p) + mv.twistBias, mv.leanAngle, 0.3);
+    this._lerpBone(this._spineUpper, (isLow ? 0.15 * p : 0.08 * lungePhase) + mv.spineOff * 0.7, 0, 0, 0.3);
+    this._lerpBone(this._chest, 0.1 * lungePhase + mv.chestOff, 0, 0, 0.28);
+    this._lerpBone(this._head, -0.06 * p + mv.headTilt, 0, 0, 0.2);
 
     if (isRight) {
       // Right arm thrusts straight forward — shoulder drives, arm fully extends
-      this._lerpBone(this._rightClavicle, -0.08 * p, 0, -0.2 * lungePhase, 0.32);
+      this._lerpBone(this._rightClavicle, -0.08 * p, 0, -0.2 * lungePhase + mv.shoulderRoll, 0.32);
       this._lerpBone(this._rightUpperArm, -1.1 * lungePhase, -0.15 * lungePhase, -0.1 * lungePhase, 0.35);
       this._lerpBone(this._rightForearm, -0.15 * (1 - lungePhase), 0, 0, 0.35);
       this._lerpBone(this._rightHand, -0.1, 0, -0.1, 0.3);
       this._lerpBone(this._rightFingers, -0.7, 0, 0, 0.3);
       // Rear arm pulled back for counterbalance
-      this._lerpBone(this._leftUpperArm, 0.2 * p, 0.15, 0.9, 0.2);
+      this._lerpBone(this._leftUpperArm, 0.2 * p, 0.15, 0.9 + mv.armSpread, 0.2);
       this._lerpBone(this._leftForearm, -1.6, 0, 0, 0.2);
     } else {
-      this._lerpBone(this._leftClavicle, -0.08 * p, 0, 0.2 * lungePhase, 0.32);
+      this._lerpBone(this._leftClavicle, -0.08 * p, 0, 0.2 * lungePhase + mv.shoulderRoll, 0.32);
       this._lerpBone(this._leftUpperArm, -1.1 * lungePhase, 0.15 * lungePhase, 0.1 * lungePhase, 0.35);
       this._lerpBone(this._leftForearm, -0.15 * (1 - lungePhase), 0, 0, 0.35);
       this._lerpBone(this._leftHand, -0.1, 0, 0.1, 0.3);
       this._lerpBone(this._leftFingers, -0.7, 0, 0, 0.3);
-      this._lerpBone(this._rightUpperArm, 0.2 * p, -0.15, -0.9, 0.2);
+      this._lerpBone(this._rightUpperArm, 0.2 * p, -0.15, -0.9 - mv.armSpread, 0.2);
       this._lerpBone(this._rightForearm, -1.6, 0, 0, 0.2);
     }
 
     // Legs: deep lunge forward
     if (isLow) {
-      this._lerpBone(this._leftThigh, -0.7, 0, 0.2, 0.25);
+      this._lerpBone(this._leftThigh, -0.7, 0, 0.2 + mv.legWidth, 0.25);
       this._lerpBone(this._leftShin, 1.1, 0, 0, 0.25);
-      this._lerpBone(this._rightThigh, -0.15 - 0.3 * p, 0, -0.18, 0.25);
+      this._lerpBone(this._rightThigh, -0.15 - 0.3 * p, 0, -0.18 - mv.legWidth, 0.25);
       this._lerpBone(this._rightShin, 0.2 + 0.3 * p, 0, 0, 0.25);
     } else {
-      this._lerpBone(this._leftThigh, -0.35 * lungePhase, 0, 0.14, 0.22);
+      this._lerpBone(this._leftThigh, -0.35 * lungePhase, 0, 0.14 + mv.legWidth, 0.22);
       this._lerpBone(this._leftShin, 0.3 + 0.25 * lungePhase, 0, 0, 0.22);
-      this._lerpBone(this._rightThigh, -0.12 - 0.2 * lungePhase, 0, -0.14, 0.22);
+      this._lerpBone(this._rightThigh, -0.12 - 0.2 * lungePhase, 0, -0.14 - mv.legWidth, 0.22);
       this._lerpBone(this._rightShin, 0.25 + 0.15 * lungePhase, 0, 0, 0.22);
       this._lerpBone(this._leftAnkle, -0.08 * lungePhase, 0, 0, 0.22);
     }
   }
 
-  private _animateStompAttack(progress: number): void {
+  private _animateStompAttack(progress: number, mv: MoveVariation): void {
     const p = progress;
 
     // Stomp: leg lifts high then drives straight down
@@ -3061,33 +3089,33 @@ export class TekkenFighterRenderer {
     const legAngle = -1.2 * liftPhase + 0.8 * slamPhase; // raises then drops past neutral
 
     // Body shifts weight over stomping leg
-    this._lerpBone(this._hips, 0.08 * slamPhase, 0, -0.06 * liftPhase, 0.3);
-    this._lerpBone(this._spineLower, 0.1 * slamPhase, 0, -0.04 * p, 0.25);
-    this._lerpBone(this._spineUpper, -0.05 * liftPhase + 0.12 * slamPhase, 0, 0, 0.25);
-    this._lerpBone(this._chest, 0.08 * slamPhase, 0, 0, 0.25);
-    this._lerpBone(this._head, -0.1 * slamPhase, 0, 0, 0.2);
+    this._lerpBone(this._hips, 0.08 * slamPhase + mv.hipOff, 0, -0.06 * liftPhase, 0.3);
+    this._lerpBone(this._spineLower, 0.1 * slamPhase + mv.spineOff, mv.twistBias, -0.04 * p + mv.leanAngle, 0.25);
+    this._lerpBone(this._spineUpper, -0.05 * liftPhase + 0.12 * slamPhase + mv.spineOff * 0.7, 0, 0, 0.25);
+    this._lerpBone(this._chest, 0.08 * slamPhase + mv.chestOff, 0, 0, 0.25);
+    this._lerpBone(this._head, -0.1 * slamPhase + mv.headTilt, 0, 0, 0.2);
 
     // Arms raise for balance during lift, brace for impact during slam
-    this._lerpBone(this._leftUpperArm, -0.3 * liftPhase, 0.2, 0.7 + 0.3 * liftPhase, 0.25);
+    this._lerpBone(this._leftUpperArm, -0.3 * liftPhase, 0.2, 0.7 + 0.3 * liftPhase + mv.armSpread, 0.25);
     this._lerpBone(this._leftForearm, -1.0 - 0.3 * liftPhase, 0, 0, 0.25);
-    this._lerpBone(this._rightUpperArm, -0.3 * liftPhase, -0.2, -0.7 - 0.3 * liftPhase, 0.25);
+    this._lerpBone(this._rightUpperArm, -0.3 * liftPhase, -0.2, -0.7 - 0.3 * liftPhase - mv.armSpread, 0.25);
     this._lerpBone(this._rightForearm, -1.0 - 0.3 * liftPhase, 0, 0, 0.25);
     this._lerpBone(this._leftFingers, -0.6, 0, 0, 0.2);
     this._lerpBone(this._rightFingers, -0.6, 0, 0, 0.2);
 
     // Stomping leg (right) lifts high then drives down
-    this._lerpBone(this._rightThigh, legAngle, 0, -0.12, 0.35);
+    this._lerpBone(this._rightThigh, legAngle, 0, -0.12 - mv.legWidth, 0.35);
     this._lerpBone(this._rightShin, Math.max(0, 1.2 * liftPhase - 0.8 * slamPhase), 0, 0, 0.35);
     this._lerpBone(this._rightAnkle, 0.3 * liftPhase - 0.5 * slamPhase, 0, 0, 0.35);
     this._lerpBone(this._rightFoot, -0.2 * slamPhase, 0, 0, 0.35);
 
     // Plant leg — stable, slight bend to absorb impact
-    this._lerpBone(this._leftThigh, -0.2 - 0.15 * slamPhase, 0, 0.15, 0.2);
+    this._lerpBone(this._leftThigh, -0.2 - 0.15 * slamPhase, 0, 0.15 + mv.legWidth, 0.2);
     this._lerpBone(this._leftShin, 0.4 + 0.2 * slamPhase, 0, 0, 0.2);
     this._lerpBone(this._leftAnkle, -0.05, 0, 0, 0.2);
   }
 
-  private _animateHeadbuttAttack(progress: number): void {
+  private _animateHeadbuttAttack(progress: number, mv: MoveVariation): void {
     const p = progress;
 
     // Headbutt: compact body hunches forward, head thrusts
@@ -3095,74 +3123,74 @@ export class TekkenFighterRenderer {
     const thrustPhase = Math.max(0, (p - 0.3) / 0.7);
 
     // Shoulders hunch, body compacts then thrusts forward
-    this._lerpBone(this._hips, 0.08 * crunchPhase + 0.06 * thrustPhase, 0, 0, 0.35);
-    this._lerpBone(this._spineLower, 0.15 * crunchPhase + 0.1 * thrustPhase, 0, 0, 0.35);
-    this._lerpBone(this._spineUpper, 0.2 * crunchPhase - 0.05 * thrustPhase, 0, 0, 0.35);
-    this._lerpBone(this._chest, 0.25 * crunchPhase - 0.1 * thrustPhase, 0, 0, 0.35);
+    this._lerpBone(this._hips, 0.08 * crunchPhase + 0.06 * thrustPhase + mv.hipOff, 0, 0, 0.35);
+    this._lerpBone(this._spineLower, 0.15 * crunchPhase + 0.1 * thrustPhase + mv.spineOff, mv.twistBias, mv.leanAngle, 0.35);
+    this._lerpBone(this._spineUpper, 0.2 * crunchPhase - 0.05 * thrustPhase + mv.spineOff * 0.7, 0, 0, 0.35);
+    this._lerpBone(this._chest, 0.25 * crunchPhase - 0.1 * thrustPhase + mv.chestOff, 0, 0, 0.35);
 
     // Neck and head: pull back then snap forward
     this._lerpBone(this._neck, 0.2 * crunchPhase - 0.5 * thrustPhase, 0, 0, 0.4);
-    this._lerpBone(this._head, 0.15 * crunchPhase - 0.45 * thrustPhase, 0, 0, 0.4);
+    this._lerpBone(this._head, 0.15 * crunchPhase - 0.45 * thrustPhase + mv.headTilt, 0, 0, 0.4);
     this._lerpBone(this._jaw, 0.1 * thrustPhase, 0, 0, 0.3);
 
     // Arms brace and pull tight to sides
-    this._lerpBone(this._leftClavicle, 0.1 * crunchPhase, 0, 0.15, 0.3);
-    this._lerpBone(this._leftUpperArm, -0.3, 0.15, 0.5 + 0.2 * crunchPhase, 0.25);
+    this._lerpBone(this._leftClavicle, 0.1 * crunchPhase, 0, 0.15 + mv.shoulderRoll, 0.3);
+    this._lerpBone(this._leftUpperArm, -0.3, 0.15, 0.5 + 0.2 * crunchPhase + mv.armSpread, 0.25);
     this._lerpBone(this._leftForearm, -1.8 * crunchPhase, 0, 0, 0.25);
     this._lerpBone(this._leftFingers, -0.9, 0, 0, 0.25);
-    this._lerpBone(this._rightClavicle, 0.1 * crunchPhase, 0, -0.15, 0.3);
-    this._lerpBone(this._rightUpperArm, -0.3, -0.15, -0.5 - 0.2 * crunchPhase, 0.25);
+    this._lerpBone(this._rightClavicle, 0.1 * crunchPhase, 0, -0.15 - mv.shoulderRoll, 0.3);
+    this._lerpBone(this._rightUpperArm, -0.3, -0.15, -0.5 - 0.2 * crunchPhase - mv.armSpread, 0.25);
     this._lerpBone(this._rightForearm, -1.8 * crunchPhase, 0, 0, 0.25);
     this._lerpBone(this._rightFingers, -0.9, 0, 0, 0.25);
 
     // Legs: aggressive step forward
-    this._lerpBone(this._leftThigh, -0.25 - 0.15 * thrustPhase, 0, 0.12, 0.25);
+    this._lerpBone(this._leftThigh, -0.25 - 0.15 * thrustPhase, 0, 0.12 + mv.legWidth, 0.25);
     this._lerpBone(this._leftShin, 0.4 + 0.2 * thrustPhase, 0, 0, 0.25);
-    this._lerpBone(this._rightThigh, -0.15 - 0.05 * p, 0, -0.12, 0.2);
+    this._lerpBone(this._rightThigh, -0.15 - 0.05 * p, 0, -0.12 - mv.legWidth, 0.2);
     this._lerpBone(this._rightShin, 0.3, 0, 0, 0.2);
   }
 
-  private _animateShieldAttack(progress: number, isRight: boolean): void {
+  private _animateShieldAttack(progress: number, isRight: boolean, mv: MoveVariation): void {
     const p = progress;
 
     // Shield bash: lead arm forms shield wall, body drives forward behind it
     const chargePhase = p * p; // accelerating charge
 
     // Body leans into the charge
-    this._lerpBone(this._hips, 0.1 * chargePhase, 0, 0, 0.3);
-    this._lerpBone(this._spineLower, 0.15 * chargePhase, isRight ? -0.1 * p : 0.1 * p, 0, 0.3);
-    this._lerpBone(this._spineUpper, 0.1 * chargePhase, 0, 0, 0.3);
-    this._lerpBone(this._chest, 0.12 * chargePhase, 0, 0, 0.28);
-    this._lerpBone(this._head, -0.1 * p, 0, 0, 0.22);
+    this._lerpBone(this._hips, 0.1 * chargePhase + mv.hipOff, 0, 0, 0.3);
+    this._lerpBone(this._spineLower, 0.15 * chargePhase + mv.spineOff, (isRight ? -0.1 * p : 0.1 * p) + mv.twistBias, mv.leanAngle, 0.3);
+    this._lerpBone(this._spineUpper, 0.1 * chargePhase + mv.spineOff * 0.7, 0, 0, 0.3);
+    this._lerpBone(this._chest, 0.12 * chargePhase + mv.chestOff, 0, 0, 0.28);
+    this._lerpBone(this._head, -0.1 * p + mv.headTilt, 0, 0, 0.22);
 
     if (isRight) {
       // Right arm holds shield — forearm vertical, bracing for impact
-      this._lerpBone(this._rightClavicle, 0.05, 0, -0.2 * p, 0.3);
+      this._lerpBone(this._rightClavicle, 0.05, 0, -0.2 * p + mv.shoulderRoll, 0.3);
       this._lerpBone(this._rightUpperArm, -0.8 * chargePhase, -0.4 * chargePhase, -0.5 * chargePhase, 0.32);
       this._lerpBone(this._rightForearm, -1.6, 0, 0, 0.32); // vertical forearm = shield face
       this._lerpBone(this._rightHand, -0.1, 0, -0.2, 0.3);
       this._lerpBone(this._rightFingers, -0.9, 0, 0, 0.3);
       // Left arm braces behind shield
-      this._lerpBone(this._leftUpperArm, -0.6 * chargePhase, 0.3, 0.5, 0.2);
+      this._lerpBone(this._leftUpperArm, -0.6 * chargePhase, 0.3, 0.5 + mv.armSpread, 0.2);
       this._lerpBone(this._leftForearm, -1.4, 0, 0, 0.2);
     } else {
-      this._lerpBone(this._leftClavicle, 0.05, 0, 0.2 * p, 0.3);
+      this._lerpBone(this._leftClavicle, 0.05, 0, 0.2 * p + mv.shoulderRoll, 0.3);
       this._lerpBone(this._leftUpperArm, -0.8 * chargePhase, 0.4 * chargePhase, 0.5 * chargePhase, 0.32);
       this._lerpBone(this._leftForearm, -1.6, 0, 0, 0.32);
       this._lerpBone(this._leftHand, -0.1, 0, 0.2, 0.3);
       this._lerpBone(this._leftFingers, -0.9, 0, 0, 0.3);
-      this._lerpBone(this._rightUpperArm, -0.6 * chargePhase, -0.3, -0.5, 0.2);
+      this._lerpBone(this._rightUpperArm, -0.6 * chargePhase, -0.3, -0.5 - mv.armSpread, 0.2);
       this._lerpBone(this._rightForearm, -1.4, 0, 0, 0.2);
     }
 
     // Legs: driving charge forward, wide base
-    this._lerpBone(this._leftThigh, -0.3 * chargePhase, 0, 0.16, 0.25);
+    this._lerpBone(this._leftThigh, -0.3 * chargePhase, 0, 0.16 + mv.legWidth, 0.25);
     this._lerpBone(this._leftShin, 0.4 + 0.25 * chargePhase, 0, 0, 0.25);
-    this._lerpBone(this._rightThigh, -0.15 - 0.1 * chargePhase, 0, -0.16, 0.2);
+    this._lerpBone(this._rightThigh, -0.15 - 0.1 * chargePhase, 0, -0.16 - mv.legWidth, 0.2);
     this._lerpBone(this._rightShin, 0.3 + 0.1 * chargePhase, 0, 0, 0.2);
   }
 
-  private _animatePalmAttack(progress: number, isRight: boolean): void {
+  private _animatePalmAttack(progress: number, isRight: boolean, mv: MoveVariation): void {
     const p = progress;
 
     // Palm strike: open hand, arm extends from center with wrist extension
@@ -3170,44 +3198,44 @@ export class TekkenFighterRenderer {
     const strikPhase = Math.max(0, (p - 0.2) / 0.8);
 
     // Rooted stance, chi gathered then released
-    this._lerpBone(this._hips, 0.04 * gatherPhase, 0, 0, 0.28);
-    this._lerpBone(this._spineLower, 0.06 * gatherPhase, isRight ? -0.2 * strikPhase : 0.2 * strikPhase, 0, 0.28);
-    this._lerpBone(this._spineUpper, 0.04 * p, isRight ? -0.15 * strikPhase : 0.15 * strikPhase, 0, 0.28);
-    this._lerpBone(this._chest, 0.08 * strikPhase, 0, 0, 0.25);
-    this._lerpBone(this._head, -0.04, 0, 0, 0.2);
+    this._lerpBone(this._hips, 0.04 * gatherPhase + mv.hipOff, 0, 0, 0.28);
+    this._lerpBone(this._spineLower, 0.06 * gatherPhase + mv.spineOff, (isRight ? -0.2 * strikPhase : 0.2 * strikPhase) + mv.twistBias, mv.leanAngle, 0.28);
+    this._lerpBone(this._spineUpper, 0.04 * p + mv.spineOff * 0.7, isRight ? -0.15 * strikPhase : 0.15 * strikPhase, 0, 0.28);
+    this._lerpBone(this._chest, 0.08 * strikPhase + mv.chestOff, 0, 0, 0.25);
+    this._lerpBone(this._head, -0.04 + mv.headTilt, 0, 0, 0.2);
 
     if (isRight) {
       // Right palm — fingers spread, wrist extended back (open hand)
-      this._lerpBone(this._rightClavicle, -0.05 * p, 0, -0.15 * strikPhase, 0.3);
+      this._lerpBone(this._rightClavicle, -0.05 * p, 0, -0.15 * strikPhase + mv.shoulderRoll, 0.3);
       this._lerpBone(this._rightUpperArm, -0.95 * strikPhase, -0.3 * strikPhase, -0.15 * (1 - strikPhase), 0.32);
       this._lerpBone(this._rightForearm, -0.5 * (1 - strikPhase), 0, -0.1 * p, 0.32);
       this._lerpBone(this._rightHand, 0.35 * strikPhase, 0, 0, 0.32); // wrist extends back = palm face
       this._lerpBone(this._rightFingers, 0.1, 0, 0, 0.3); // open fingers, not clenched
       this._lerpBone(this._rightThumb, 0.2, -0.3, 0, 0.3);
       // Guard arm tucked at waist (martial arts style)
-      this._lerpBone(this._leftUpperArm, 0.1 * gatherPhase, 0.1, 0.6, 0.2);
+      this._lerpBone(this._leftUpperArm, 0.1 * gatherPhase, 0.1, 0.6 + mv.armSpread, 0.2);
       this._lerpBone(this._leftForearm, -1.8, 0, 0, 0.2);
       this._lerpBone(this._leftFingers, -0.9, 0, 0, 0.2);
     } else {
-      this._lerpBone(this._leftClavicle, -0.05 * p, 0, 0.15 * strikPhase, 0.3);
+      this._lerpBone(this._leftClavicle, -0.05 * p, 0, 0.15 * strikPhase + mv.shoulderRoll, 0.3);
       this._lerpBone(this._leftUpperArm, -0.95 * strikPhase, 0.3 * strikPhase, 0.15 * (1 - strikPhase), 0.32);
       this._lerpBone(this._leftForearm, -0.5 * (1 - strikPhase), 0, 0.1 * p, 0.32);
       this._lerpBone(this._leftHand, 0.35 * strikPhase, 0, 0, 0.32);
       this._lerpBone(this._leftFingers, 0.1, 0, 0, 0.3);
       this._lerpBone(this._leftThumb, 0.2, 0.3, 0, 0.3);
-      this._lerpBone(this._rightUpperArm, 0.1 * gatherPhase, -0.1, -0.6, 0.2);
+      this._lerpBone(this._rightUpperArm, 0.1 * gatherPhase, -0.1, -0.6 - mv.armSpread, 0.2);
       this._lerpBone(this._rightForearm, -1.8, 0, 0, 0.2);
       this._lerpBone(this._rightFingers, -0.9, 0, 0, 0.2);
     }
 
     // Legs: rooted horse stance, lower center of gravity
-    this._lerpBone(this._leftThigh, -0.3 - 0.1 * gatherPhase, 0, 0.22, 0.22);
+    this._lerpBone(this._leftThigh, -0.3 - 0.1 * gatherPhase, 0, 0.22 + mv.legWidth, 0.22);
     this._lerpBone(this._leftShin, 0.55, 0, 0, 0.22);
-    this._lerpBone(this._rightThigh, -0.3 - 0.1 * gatherPhase, 0, -0.22, 0.22);
+    this._lerpBone(this._rightThigh, -0.3 - 0.1 * gatherPhase, 0, -0.22 - mv.legWidth, 0.22);
     this._lerpBone(this._rightShin, 0.55, 0, 0, 0.22);
   }
 
-  private _animateDiveAttack(progress: number, frame: number): void {
+  private _animateDiveAttack(progress: number, frame: number, mv: MoveVariation): void {
     // Dive: body rises then crashes down — two-phase cinematic
     const phase = frame < 10 ? 0 : 1; // rise phase, then dive phase
 
@@ -3216,51 +3244,51 @@ export class TekkenFighterRenderer {
       const rp = Math.min(frame / 10, 1);
       const rise = rp * rp * (3 - 2 * rp);
 
-      this._lerpBone(this._hips, -0.15 * rise, 0, 0, 0.35);
-      this._lerpBone(this._spineLower, -0.2 * rise, 0, 0, 0.35);
-      this._lerpBone(this._spineUpper, -0.15 * rise, 0, 0, 0.35);
-      this._lerpBone(this._chest, -0.1 * rise, 0, 0, 0.3);
-      this._lerpBone(this._head, -0.1 * rise, 0, 0, 0.25);
+      this._lerpBone(this._hips, -0.15 * rise + mv.hipOff, 0, 0, 0.35);
+      this._lerpBone(this._spineLower, -0.2 * rise + mv.spineOff, mv.twistBias, mv.leanAngle, 0.35);
+      this._lerpBone(this._spineUpper, -0.15 * rise + mv.spineOff * 0.7, 0, 0, 0.35);
+      this._lerpBone(this._chest, -0.1 * rise + mv.chestOff, 0, 0, 0.3);
+      this._lerpBone(this._head, -0.1 * rise + mv.headTilt, 0, 0, 0.25);
 
       // Arms spread wide during ascent
-      this._lerpBone(this._leftUpperArm, -0.4 * rise, 0.3 * rise, 1.0 * rise, 0.3);
+      this._lerpBone(this._leftUpperArm, -0.4 * rise, 0.3 * rise, 1.0 * rise + mv.armSpread, 0.3);
       this._lerpBone(this._leftForearm, -0.5, 0, 0, 0.3);
-      this._lerpBone(this._rightUpperArm, -0.4 * rise, -0.3 * rise, -1.0 * rise, 0.3);
+      this._lerpBone(this._rightUpperArm, -0.4 * rise, -0.3 * rise, -1.0 * rise - mv.armSpread, 0.3);
       this._lerpBone(this._rightForearm, -0.5, 0, 0, 0.3);
 
       // Legs tuck under body
-      this._lerpBone(this._leftThigh, -0.6 * rise, 0, 0.15, 0.3);
+      this._lerpBone(this._leftThigh, -0.6 * rise, 0, 0.15 + mv.legWidth, 0.3);
       this._lerpBone(this._leftShin, 1.0 * rise, 0, 0, 0.3);
-      this._lerpBone(this._rightThigh, -0.6 * rise, 0, -0.15, 0.3);
+      this._lerpBone(this._rightThigh, -0.6 * rise, 0, -0.15 - mv.legWidth, 0.3);
       this._lerpBone(this._rightShin, 1.0 * rise, 0, 0, 0.3);
     } else {
       // Dive down — body tilts forward, arms drive downward, legs extend
       const dp = Math.min((frame - 10) / 8, 1);
       const dive = dp * dp; // accelerating dive
 
-      this._lerpBone(this._hips, 0.3 * dive, 0, 0, 0.4);
-      this._lerpBone(this._spineLower, 0.4 * dive, 0, 0, 0.4);
-      this._lerpBone(this._spineUpper, 0.35 * dive, 0, 0, 0.4);
-      this._lerpBone(this._chest, 0.3 * dive, 0, 0, 0.38);
-      this._lerpBone(this._head, 0.15 * dive, 0, 0, 0.3);
+      this._lerpBone(this._hips, 0.3 * dive + mv.hipOff, 0, 0, 0.4);
+      this._lerpBone(this._spineLower, 0.4 * dive + mv.spineOff, mv.twistBias, mv.leanAngle, 0.4);
+      this._lerpBone(this._spineUpper, 0.35 * dive + mv.spineOff * 0.7, 0, 0, 0.4);
+      this._lerpBone(this._chest, 0.3 * dive + mv.chestOff, 0, 0, 0.38);
+      this._lerpBone(this._head, 0.15 * dive + mv.headTilt, 0, 0, 0.3);
 
       // Arms drive downward/forward for impact
-      this._lerpBone(this._leftUpperArm, -1.2 * dive, 0.2 * (1 - dive), 0.3 * (1 - dive), 0.4);
+      this._lerpBone(this._leftUpperArm, -1.2 * dive, 0.2 * (1 - dive), 0.3 * (1 - dive) + mv.armSpread, 0.4);
       this._lerpBone(this._leftForearm, -0.4 * (1 - dive), 0, 0, 0.4);
       this._lerpBone(this._leftFingers, -0.9, 0, 0, 0.4);
-      this._lerpBone(this._rightUpperArm, -1.2 * dive, -0.2 * (1 - dive), -0.3 * (1 - dive), 0.4);
+      this._lerpBone(this._rightUpperArm, -1.2 * dive, -0.2 * (1 - dive), -0.3 * (1 - dive) - mv.armSpread, 0.4);
       this._lerpBone(this._rightForearm, -0.4 * (1 - dive), 0, 0, 0.4);
       this._lerpBone(this._rightFingers, -0.9, 0, 0, 0.4);
 
       // Legs extend behind as body dives
-      this._lerpBone(this._leftThigh, -0.3 + 0.6 * dive, 0, 0.12, 0.35);
+      this._lerpBone(this._leftThigh, -0.3 + 0.6 * dive, 0, 0.12 + mv.legWidth, 0.35);
       this._lerpBone(this._leftShin, 0.6 * (1 - dive), 0, 0, 0.35);
-      this._lerpBone(this._rightThigh, -0.3 + 0.6 * dive, 0, -0.12, 0.35);
+      this._lerpBone(this._rightThigh, -0.3 + 0.6 * dive, 0, -0.12 - mv.legWidth, 0.35);
       this._lerpBone(this._rightShin, 0.6 * (1 - dive), 0, 0, 0.35);
     }
   }
 
-  private _animateBackhandAttack(progress: number, isRight: boolean): void {
+  private _animateBackhandAttack(progress: number, isRight: boolean, mv: MoveVariation): void {
     const p = progress;
     const s = isRight ? -1 : 1;
 
@@ -3269,36 +3297,36 @@ export class TekkenFighterRenderer {
     const swingPhase = Math.max(0, (p - 0.2) / 0.8);
 
     // Torso rotates opposite of normal punch — opening up
-    this._lerpBone(this._hips, 0, s * 0.15 * swingPhase, 0, 0.3);
-    this._lerpBone(this._spineLower, 0.04, s * (0.2 * windPhase + 0.2 * swingPhase), 0, 0.3);
-    this._lerpBone(this._spineUpper, 0, s * (0.15 * windPhase + 0.15 * swingPhase), 0, 0.3);
-    this._lerpBone(this._chest, 0.05, s * 0.1 * swingPhase, 0, 0.28);
-    this._lerpBone(this._head, 0.03, s * -0.1 * swingPhase, 0, 0.2);
+    this._lerpBone(this._hips, mv.hipOff, s * 0.15 * swingPhase, 0, 0.3);
+    this._lerpBone(this._spineLower, 0.04 + mv.spineOff, s * (0.2 * windPhase + 0.2 * swingPhase) + mv.twistBias, mv.leanAngle, 0.3);
+    this._lerpBone(this._spineUpper, mv.spineOff * 0.7, s * (0.15 * windPhase + 0.15 * swingPhase), 0, 0.3);
+    this._lerpBone(this._chest, 0.05 + mv.chestOff, s * 0.1 * swingPhase, 0, 0.28);
+    this._lerpBone(this._head, 0.03 + mv.headTilt, s * -0.1 * swingPhase, 0, 0.2);
 
     if (isRight) {
       // Right arm crosses body then swings back outward
-      this._lerpBone(this._rightClavicle, 0, 0, 0.1 * windPhase - 0.25 * swingPhase, 0.3);
+      this._lerpBone(this._rightClavicle, 0, 0, 0.1 * windPhase - 0.25 * swingPhase + mv.shoulderRoll, 0.3);
       this._lerpBone(this._rightUpperArm, -0.6 * windPhase - 0.3 * swingPhase, 0.4 * windPhase - 0.8 * swingPhase, -0.3, 0.32);
       this._lerpBone(this._rightForearm, -0.8 * windPhase + 0.3 * swingPhase, 0, 0, 0.32);
       this._lerpBone(this._rightHand, -0.2, -0.15 * swingPhase, 0, 0.3);
       this._lerpBone(this._rightFingers, -0.7, 0, 0, 0.3);
       // Left arm guards
-      this._lerpBone(this._leftUpperArm, -0.45, 0.1, 0.75, 0.18);
+      this._lerpBone(this._leftUpperArm, -0.45, 0.1, 0.75 + mv.armSpread, 0.18);
       this._lerpBone(this._leftForearm, -1.4, 0, 0, 0.18);
     } else {
-      this._lerpBone(this._leftClavicle, 0, 0, -0.1 * windPhase + 0.25 * swingPhase, 0.3);
+      this._lerpBone(this._leftClavicle, 0, 0, -0.1 * windPhase + 0.25 * swingPhase + mv.shoulderRoll, 0.3);
       this._lerpBone(this._leftUpperArm, -0.6 * windPhase - 0.3 * swingPhase, -0.4 * windPhase + 0.8 * swingPhase, 0.3, 0.32);
       this._lerpBone(this._leftForearm, -0.8 * windPhase + 0.3 * swingPhase, 0, 0, 0.32);
       this._lerpBone(this._leftHand, -0.2, 0.15 * swingPhase, 0, 0.3);
       this._lerpBone(this._leftFingers, -0.7, 0, 0, 0.3);
-      this._lerpBone(this._rightUpperArm, -0.45, -0.1, -0.75, 0.18);
+      this._lerpBone(this._rightUpperArm, -0.45, -0.1, -0.75 - mv.armSpread, 0.18);
       this._lerpBone(this._rightForearm, -1.4, 0, 0, 0.18);
     }
 
     // Legs: pivot stance
-    this._lerpBone(this._leftThigh, -0.2 - 0.06 * swingPhase, 0, 0.14, 0.2);
+    this._lerpBone(this._leftThigh, -0.2 - 0.06 * swingPhase, 0, 0.14 + mv.legWidth, 0.2);
     this._lerpBone(this._leftShin, 0.35, 0, 0, 0.2);
-    this._lerpBone(this._rightThigh, -0.18, 0, -0.14, 0.2);
+    this._lerpBone(this._rightThigh, -0.18, 0, -0.14 - mv.legWidth, 0.2);
     this._lerpBone(this._rightShin, 0.32 + 0.05 * swingPhase, 0, 0, 0.2);
   }
 
