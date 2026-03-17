@@ -5,11 +5,12 @@
 import { SB } from "../config/SettlersBalance";
 import { BUILDING_DEFS, SettlersBuildingType } from "../config/SettlersBuildingDefs";
 import { FOOD_TYPES } from "../config/SettlersResourceDefs";
-import { Biome, inBounds, tileIdx } from "../state/SettlersMap";
+import { Biome, getHeightAt, inBounds, tileIdx } from "../state/SettlersMap";
 import type { SettlersBuilding } from "../state/SettlersBuilding";
 import type { SettlersState } from "../state/SettlersState";
 import { nextId } from "../state/SettlersState";
 import type { SettlersFlag } from "../state/SettlersRoad";
+import type { SettlersWorker } from "../state/SettlersUnit";
 import { playResourceCollected } from "./SettlersAudioSystem";
 
 // ---------------------------------------------------------------------------
@@ -187,7 +188,8 @@ export function updateConstruction(state: SettlersState, dt: number): void {
           const player = state.players.get(building.owner);
           if (player && player.availableWorkers > 0) {
             player.availableWorkers--;
-            building.workerId = "worker";
+            const worker = spawnWorker(state, building);
+            building.workerId = worker.id;
           }
         }
       }
@@ -223,9 +225,30 @@ export function demolishBuilding(state: SettlersState, buildingId: string): bool
       }
     }
 
-    // Return worker
+    // Return worker – send them walking back to HQ
     if (building.workerId) {
-      player.availableWorkers++;
+      const worker = state.workers.get(building.workerId);
+      if (worker) {
+        // Find nearest HQ/storehouse to walk back to
+        const hqPos = _findNearestHQPosition(state, building.owner);
+        if (hqPos) {
+          worker.state = "walking_to_hq";
+          worker.assignedBuildingId = null;
+          worker.start.x = worker.position.x;
+          worker.start.y = worker.position.y;
+          worker.start.z = worker.position.z;
+          worker.target.x = hqPos.x;
+          worker.target.y = hqPos.y;
+          worker.target.z = hqPos.z;
+          worker.pathProgress = 0;
+        } else {
+          // No HQ found, just remove worker and add back to pool
+          state.workers.delete(building.workerId);
+          player.availableWorkers++;
+        }
+      } else {
+        player.availableWorkers++;
+      }
     }
   }
 
@@ -367,6 +390,111 @@ export function updateProduction(state: SettlersState, dt: number): void {
           }
         }
       }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Worker entity management
+// ---------------------------------------------------------------------------
+
+/** Spawn a visible worker that walks from nearest HQ/storehouse to the building */
+function spawnWorker(state: SettlersState, building: SettlersBuilding): SettlersWorker {
+  const id = nextId(state);
+  const def = BUILDING_DEFS[building.type];
+
+  // Target position: building center
+  const bx = (building.tileX + def.footprint.w * 0.5) * SB.TILE_SIZE;
+  const bz = (building.tileZ + def.footprint.h * 0.5) * SB.TILE_SIZE;
+  const by = getHeightAt(state.map, bx, bz) + SB.WORKER_HEIGHT * 0.5;
+
+  // Start position: nearest HQ/storehouse
+  const hqPos = _findNearestHQPosition(state, building.owner);
+  const sx = hqPos ? hqPos.x : bx;
+  const sy = hqPos ? hqPos.y : by;
+  const sz = hqPos ? hqPos.z : bz;
+
+  const worker: SettlersWorker = {
+    id,
+    owner: building.owner,
+    position: { x: sx, y: sy, z: sz },
+    target: { x: bx, y: by, z: bz },
+    start: { x: sx, y: sy, z: sz },
+    pathProgress: 0,
+    state: "walking_to_building",
+    speed: SB.WORKER_SPEED,
+    assignedBuildingId: building.id,
+  };
+
+  state.workers.set(id, worker);
+  return worker;
+}
+
+/** Find the world position of the nearest HQ or storehouse for a player */
+function _findNearestHQPosition(
+  state: SettlersState,
+  owner: string,
+): { x: number; y: number; z: number } | null {
+  const player = state.players.get(owner);
+  if (!player) return null;
+
+  const hq = state.buildings.get(player.hqId);
+  if (hq) {
+    const def = BUILDING_DEFS[hq.type];
+    const x = (hq.tileX + def.footprint.w * 0.5) * SB.TILE_SIZE;
+    const z = (hq.tileZ + def.footprint.h * 0.5) * SB.TILE_SIZE;
+    const y = getHeightAt(state.map, x, z) + SB.WORKER_HEIGHT * 0.5;
+    return { x, y, z };
+  }
+  return null;
+}
+
+/** Update all worker entities (movement toward building or HQ) */
+export function updateWorkers(state: SettlersState, dt: number): void {
+  for (const [id, worker] of state.workers) {
+    if (worker.state === "working" || worker.state === "idle") continue;
+
+    // Move toward target
+    const dx = worker.target.x - worker.start.x;
+    const dz = worker.target.z - worker.start.z;
+    const dist = Math.sqrt(dx * dx + dz * dz);
+    if (dist < 0.1) {
+      // Already at target
+      if (worker.state === "walking_to_building") {
+        worker.state = "working";
+        worker.position.x = worker.target.x;
+        worker.position.y = worker.target.y;
+        worker.position.z = worker.target.z;
+      } else if (worker.state === "walking_to_hq") {
+        // Arrived back at HQ – remove and return to pool
+        const player = state.players.get(worker.owner);
+        if (player) player.availableWorkers++;
+        state.workers.delete(id);
+      }
+      continue;
+    }
+
+    const progressPerTick = (worker.speed * SB.TILE_SIZE * dt) / dist;
+    worker.pathProgress += progressPerTick;
+
+    if (worker.pathProgress >= 1) {
+      worker.pathProgress = 1;
+      worker.position.x = worker.target.x;
+      worker.position.y = worker.target.y;
+      worker.position.z = worker.target.z;
+
+      if (worker.state === "walking_to_building") {
+        worker.state = "working";
+      } else if (worker.state === "walking_to_hq") {
+        const player = state.players.get(worker.owner);
+        if (player) player.availableWorkers++;
+        state.workers.delete(id);
+      }
+    } else {
+      const t = worker.pathProgress;
+      worker.position.x = worker.start.x + (worker.target.x - worker.start.x) * t;
+      worker.position.z = worker.start.z + (worker.target.z - worker.start.z) * t;
+      worker.position.y = getHeightAt(state.map, worker.position.x, worker.position.z) + SB.WORKER_HEIGHT * 0.5;
     }
   }
 }

@@ -4,6 +4,31 @@
 
 import { ResourceType } from "../config/SettlersResourceDefs";
 
+export type WorkerState = "walking_to_building" | "working" | "walking_to_hq" | "idle";
+
+export interface SettlersWorker {
+  id: string;
+  owner: string;
+
+  /** Current world position (interpolated for rendering) */
+  position: { x: number; y: number; z: number };
+
+  /** Target position the worker is walking toward */
+  target: { x: number; y: number; z: number };
+
+  /** Starting position (for interpolation) */
+  start: { x: number; y: number; z: number };
+
+  /** 0..1 progress toward target */
+  pathProgress: number;
+
+  state: WorkerState;
+  speed: number;
+
+  /** Building this worker is assigned to */
+  assignedBuildingId: string | null;
+}
+
 export interface SettlersCarrier {
   id: string;
   owner: string;

@@ -7,12 +7,12 @@ import type { SettlersBuildingType } from "../config/SettlersBuildingDefs";
 import type { SettlersMap } from "./SettlersMap";
 import type { SettlersBuilding } from "./SettlersBuilding";
 import type { SettlersFlag, SettlersRoadSegment } from "./SettlersRoad";
-import type { SettlersCarrier, SettlersSoldier, SettlersCombat } from "./SettlersUnit";
+import type { SettlersCarrier, SettlersSoldier, SettlersCombat, SettlersWorker } from "./SettlersUnit";
 import type { SettlersPlayer } from "./SettlersPlayer";
 
 // Re-export for convenience
 export type { SettlersMap, SettlersBuilding, SettlersFlag, SettlersRoadSegment };
-export type { SettlersCarrier, SettlersSoldier, SettlersCombat, SettlersPlayer };
+export type { SettlersCarrier, SettlersSoldier, SettlersCombat, SettlersPlayer, SettlersWorker };
 
 export type SettlersTool = "select" | "build" | "road" | "flag" | "demolish" | "attack";
 export type SettlersDifficulty = "easy" | "normal" | "hard";
@@ -29,6 +29,7 @@ export interface SettlersState {
   flags: Map<string, SettlersFlag>;
   roads: Map<string, SettlersRoadSegment>;
   carriers: Map<string, SettlersCarrier>;
+  workers: Map<string, SettlersWorker>;
   soldiers: Map<string, SettlersSoldier>;
   combats: SettlersCombat[];
 
@@ -39,6 +40,7 @@ export interface SettlersState {
   selectedBuildingType: SettlersBuildingType | null;
   hoveredTile: { x: number; z: number } | null;
   selectedBuildingId: string | null;
+  selectedRoadId: string | null;
 
   // Road drawing mode
   roadDrawing: {
@@ -95,6 +97,7 @@ export function createSettlersState(screenW: number, screenH: number): SettlersS
     flags: new Map(),
     roads: new Map(),
     carriers: new Map(),
+    workers: new Map(),
     soldiers: new Map(),
     combats: [],
     nextId: 1,
@@ -102,6 +105,7 @@ export function createSettlersState(screenW: number, screenH: number): SettlersS
     selectedBuildingType: null,
     hoveredTile: null,
     selectedBuildingId: null,
+    selectedRoadId: null,
     roadDrawing: { active: false, startFlagId: null, path: [] },
     screenW,
     screenH,

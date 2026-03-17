@@ -7,6 +7,7 @@ import { RESOURCE_META, ResourceType } from "../config/SettlersResourceDefs";
 import { Biome, Deposit } from "../state/SettlersMap";
 import { SB } from "../config/SettlersBalance";
 import type { SettlersState, SettlersTool } from "../state/SettlersState";
+import { getNextRoadQuality, getRoadUpgradeCost } from "../systems/SettlersRoadSystem";
 import { calculateScore } from "../systems/SettlersMilitarySystem";
 import {
   setMasterVolume, getMasterVolume,
@@ -64,6 +65,7 @@ export class SettlersHUD {
   onMinimapClick: ((worldX: number, worldZ: number) => void) | null = null;
   onQueueAdd: ((buildingId: string, itemType: string) => void) | null = null;
   onQueueRemove: ((buildingId: string, index: number) => void) | null = null;
+  onRoadUpgrade: ((roadId: string) => void) | null = null;
 
   build(): void {
     this._root = document.createElement("div");
@@ -516,7 +518,13 @@ export class SettlersHUD {
           html += `<span style="color:${hexColor}">${meta.label}:${count}</span> `;
         }
       }
-      html += `<span style="color:#88aacc">Workers:${player.availableWorkers}</span>`;
+      // Count total workers: idle + assigned (walking or working)
+      let assignedWorkers = 0;
+      for (const [, w] of state.workers) {
+        if (w.owner === player.id) assignedWorkers++;
+      }
+      const totalWorkers = player.availableWorkers + assignedWorkers;
+      html += `<span style="color:#88aacc">Workers:${player.availableWorkers} idle / ${totalWorkers} total</span>`;
       html += ` <span style="color:#cc8888">Soldiers:${player.freeSoldiers}</span>`;
       const score = calculateScore(state, "p0");
       html += ` <span style="color:#ffd700">Score:${score}</span>`;
@@ -838,6 +846,56 @@ export class SettlersHUD {
       } else {
         this._infoPanel.style.display = "none";
       }
+    } else if (state.selectedRoadId) {
+      const road = state.roads.get(state.selectedRoadId);
+      if (road && road.owner === "p0") {
+        this._infoPanel.style.display = "block";
+        const qualityLabel = road.quality === "paved" ? "Paved" : road.quality === "stone" ? "Stone" : "Dirt";
+        const speedMult = road.quality === "paved" ? "2x" : road.quality === "stone" ? "1.5x" : "1x";
+        const qualityColor = road.quality === "paved" ? "#ddddff" : road.quality === "stone" ? "#bbbbbb" : "#b09868";
+
+        let html = `<div style="font-size:14px;color:#ffd700;margin-bottom:2px;font-weight:bold;">Road Segment</div>`;
+        html += `<div style="font-size:11px;margin-bottom:6px;">Quality: <span style="color:${qualityColor};font-weight:bold;">${qualityLabel}</span></div>`;
+        html += `<div style="font-size:11px;margin-bottom:4px;">Carrier Speed: <span style="color:#88cc44;">${speedMult}</span></div>`;
+        html += `<div style="font-size:11px;margin-bottom:6px;">Length: ${road.path.length} tiles</div>`;
+
+        const nextQuality = getNextRoadQuality(road.quality);
+        if (nextQuality) {
+          const cost = getRoadUpgradeCost(nextQuality);
+          const nextLabel = nextQuality === "paved" ? "Paved" : "Stone";
+          const player = state.players.get("p0");
+          const stoneAvail = player ? (player.storage.get(ResourceType.STONE) || 0) : 0;
+          const ironAvail = player ? (player.storage.get(ResourceType.IRON) || 0) : 0;
+          const canAfford = stoneAvail >= cost.stone && ironAvail >= cost.iron;
+          const costStr = cost.iron > 0
+            ? `${cost.stone} Stone + ${cost.iron} Iron`
+            : `${cost.stone} Stone`;
+
+          html += `<div style="margin-top:8px;border-top:1px solid #444;padding-top:6px;">`;
+          html += `<div style="color:#aaa;font-size:11px;margin-bottom:4px;">Upgrade to ${nextLabel}: ${costStr}</div>`;
+          html += `<button id="settlers-road-upgrade" style="
+            width:100%;padding:5px 8px;
+            background:${canAfford ? "#2a4a3a" : "#3a2a2a"};
+            color:${canAfford ? "#88ccaa" : "#887766"};
+            border:1px solid ${canAfford ? "#3a6a4a" : "#553333"};
+            border-radius:4px;cursor:${canAfford ? "pointer" : "not-allowed"};
+            font-family:monospace;font-size:12px;
+          "${canAfford ? "" : " disabled"}>Upgrade to ${nextLabel}</button>`;
+          html += `</div>`;
+        } else {
+          html += `<div style="margin-top:6px;color:#888;font-size:10px;">Maximum quality reached</div>`;
+        }
+
+        this._infoPanel.innerHTML = html;
+
+        // Wire up road upgrade button
+        const upgradeBtn = document.getElementById("settlers-road-upgrade");
+        if (upgradeBtn) {
+          upgradeBtn.onclick = () => this.onRoadUpgrade?.(state.selectedRoadId!);
+        }
+      } else {
+        this._infoPanel.style.display = "none";
+      }
     } else {
       this._infoPanel.style.display = "none";
     }
@@ -1027,6 +1085,7 @@ export class SettlersHUD {
     this.onMinimapClick = null;
     this.onQueueAdd = null;
     this.onQueueRemove = null;
+    this.onRoadUpgrade = null;
     this._root.remove();
   }
 }

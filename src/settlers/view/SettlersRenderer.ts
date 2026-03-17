@@ -9,7 +9,7 @@ import { BUILDING_DEFS, SettlersBuildingType } from "../config/SettlersBuildingD
 import { RESOURCE_META } from "../config/SettlersResourceDefs";
 import type { SettlersState } from "../state/SettlersState";
 import type { SettlersBuilding } from "../state/SettlersBuilding";
-import type { SettlersFlag } from "../state/SettlersRoad";
+import type { SettlersFlag, RoadQuality } from "../state/SettlersRoad";
 
 // ---------------------------------------------------------------------------
 // Biome colors – base + variation pairs
@@ -64,8 +64,11 @@ export class SettlersRenderer {
   private _buildingMeshes = new Map<string, THREE.Group>();
   private _flagMeshes = new Map<string, THREE.Group>();
   private _carrierMeshes = new Map<string, THREE.Group>();
+  private _workerMeshes = new Map<string, THREE.Group>();
   private _soldierMeshes = new Map<string, THREE.Group>();
   private _roadMeshes = new Map<string, THREE.Mesh>();
+  /** Track road quality so we know when to rebuild road meshes */
+  private _roadQualities = new Map<string, string>();
 
   // Tile highlight
   private _tileHighlight!: THREE.Mesh;
@@ -352,6 +355,7 @@ export class SettlersRenderer {
     this._syncFlags(state, t);
     this._syncRoads(state);
     this._syncCarriers(state, t);
+    this._syncWorkers(state, t);
     this._syncSoldiers(state, t);
     this._syncTerritory(state);
 
@@ -473,6 +477,7 @@ export class SettlersRenderer {
     for (const [, m] of this._buildingMeshes) this.scene.remove(m);
     for (const [, m] of this._flagMeshes) this.scene.remove(m);
     for (const [, m] of this._carrierMeshes) this.scene.remove(m);
+    for (const [, m] of this._workerMeshes) this.scene.remove(m);
     for (const [, m] of this._soldierMeshes) this.scene.remove(m);
     for (const [, m] of this._roadMeshes) this.scene.remove(m);
     for (const [, m] of this._scaffoldMeshes) this.scene.remove(m);
@@ -480,8 +485,10 @@ export class SettlersRenderer {
     this._buildingMeshes.clear();
     this._flagMeshes.clear();
     this._carrierMeshes.clear();
+    this._workerMeshes.clear();
     this._soldierMeshes.clear();
     this._roadMeshes.clear();
+    this._roadQualities.clear();
     this._scaffoldMeshes.clear();
     this._spinnerMeshes.clear();
 
@@ -541,13 +548,16 @@ export class SettlersRenderer {
     for (const [, mesh] of this._flagMeshes) disposeMesh(mesh);
     for (const [, mesh] of this._roadMeshes) disposeMesh(mesh);
     for (const [, mesh] of this._carrierMeshes) disposeMesh(mesh);
+    for (const [, mesh] of this._workerMeshes) disposeMesh(mesh);
     for (const [, mesh] of this._soldierMeshes) disposeMesh(mesh);
     for (const [, mesh] of this._scaffoldMeshes) disposeMesh(mesh);
     for (const [, mesh] of this._spinnerMeshes) disposeMesh(mesh);
     this._buildingMeshes.clear();
     this._flagMeshes.clear();
     this._roadMeshes.clear();
+    this._roadQualities.clear();
     this._carrierMeshes.clear();
+    this._workerMeshes.clear();
     this._soldierMeshes.clear();
     this._scaffoldMeshes.clear();
     this._spinnerMeshes.clear();
@@ -2501,12 +2511,18 @@ export class SettlersRenderer {
       if (!state.roads.has(id)) {
         this.scene.remove(mesh);
         this._roadMeshes.delete(id);
+        this._roadQualities.delete(id);
       }
     }
     for (const [id, road] of state.roads) {
-      if (!this._roadMeshes.has(id)) {
-        const mesh = this._createRoadMesh(road.path, state);
+      const prevQuality = this._roadQualities.get(id);
+      if (!this._roadMeshes.has(id) || prevQuality !== road.quality) {
+        // Remove old mesh if quality changed
+        const oldMesh = this._roadMeshes.get(id);
+        if (oldMesh) this.scene.remove(oldMesh);
+        const mesh = this._createRoadMesh(road.path, state, road.quality);
         this._roadMeshes.set(id, mesh);
+        this._roadQualities.set(id, road.quality);
         this.scene.add(mesh);
       }
     }
@@ -2515,6 +2531,7 @@ export class SettlersRenderer {
   private _createRoadMesh(
     path: { x: number; z: number }[],
     state: SettlersState,
+    quality: RoadQuality = "dirt",
   ): THREE.Mesh {
     const points: THREE.Vector3[] = [];
     for (const p of path) {
@@ -2529,14 +2546,25 @@ export class SettlersRenderer {
       return new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ visible: false }));
     }
 
-    // Build ribbon with vertex colors (darker edges, lighter center)
+    // Build ribbon with vertex colors – color varies by road quality
     const positions: number[] = [];
     const indices: number[] = [];
     const colors: number[] = [];
     const hw = SB.ROAD_WIDTH * 0.5;
 
-    const edgeColor = new THREE.Color(0x7a6a4a);
-    const centerColor = new THREE.Color(0xb09868);
+    // Road colors by quality: dirt = brown, stone = gray, paved = light gray/white
+    let edgeColor: THREE.Color;
+    let centerColor: THREE.Color;
+    if (quality === "paved") {
+      edgeColor = new THREE.Color(0x999999);
+      centerColor = new THREE.Color(0xd8d8d0);
+    } else if (quality === "stone") {
+      edgeColor = new THREE.Color(0x6a6a62);
+      centerColor = new THREE.Color(0x9a9a90);
+    } else {
+      edgeColor = new THREE.Color(0x7a6a4a);
+      centerColor = new THREE.Color(0xb09868);
+    }
 
     for (let i = 0; i < points.length; i++) {
       const cur = points[i];
@@ -3008,6 +3036,121 @@ export class SettlersRenderer {
 
     // === SHADOW (simple circle on ground) ===
     const shadowGeo = new THREE.CircleGeometry(h * 0.15, 8);
+    const shadowMat = new THREE.MeshBasicMaterial({
+      color: 0x000000, transparent: true, opacity: 0.2, depthWrite: false,
+    });
+    const shadow = new THREE.Mesh(shadowGeo, shadowMat);
+    shadow.rotation.x = -Math.PI * 0.5;
+    shadow.position.y = -h * 0.35;
+    g.add(shadow);
+
+    g.castShadow = true;
+    return g;
+  }
+
+  // -----------------------------------------------------------------------
+  // Workers (visible building workers)
+  // -----------------------------------------------------------------------
+
+  private _syncWorkers(state: SettlersState, t: number): void {
+    for (const [id, mesh] of this._workerMeshes) {
+      if (!state.workers.has(id)) {
+        this.scene.remove(mesh);
+        this._workerMeshes.delete(id);
+      }
+    }
+    for (const [id, worker] of state.workers) {
+      let mesh = this._workerMeshes.get(id);
+      if (!mesh) {
+        mesh = this._createWorkerMesh(state, worker.owner);
+        this._workerMeshes.set(id, mesh);
+        this.scene.add(mesh);
+      }
+      mesh.position.set(worker.position.x, worker.position.y, worker.position.z);
+
+      const isWalking = worker.state === "walking_to_building" || worker.state === "walking_to_hq";
+
+      if (isWalking) {
+        // Face movement direction
+        const dx = worker.target.x - worker.start.x;
+        const dz = worker.target.z - worker.start.z;
+        if (dx !== 0 || dz !== 0) {
+          mesh.rotation.y = Math.atan2(dx, dz);
+        }
+
+        // Walk animation
+        const walkPhase = t * 6 + worker.pathProgress * 15;
+        const legSwing = Math.sin(walkPhase) * 0.4;
+        const leftLeg = mesh.getObjectByName("leftLeg") as THREE.Object3D | undefined;
+        const rightLeg = mesh.getObjectByName("rightLeg") as THREE.Object3D | undefined;
+        if (leftLeg) leftLeg.rotation.x = legSwing;
+        if (rightLeg) rightLeg.rotation.x = -legSwing;
+        const bob = Math.abs(Math.sin(walkPhase)) * 0.02;
+        mesh.position.y = worker.position.y + bob;
+      } else {
+        // Idle: subtle breathing
+        const leftLeg = mesh.getObjectByName("leftLeg") as THREE.Object3D | undefined;
+        const rightLeg = mesh.getObjectByName("rightLeg") as THREE.Object3D | undefined;
+        if (leftLeg) leftLeg.rotation.x = 0;
+        if (rightLeg) rightLeg.rotation.x = 0;
+        mesh.position.y = worker.position.y + Math.sin(t * 2) * 0.003;
+      }
+    }
+  }
+
+  private _createWorkerMesh(state: SettlersState, owner: string): THREE.Group {
+    const g = new THREE.Group();
+    const playerColor = this._getPlayerColor(owner, state);
+    const h = SB.WORKER_HEIGHT;
+
+    // Workers are simpler than carriers – green-ish tunic to distinguish
+    const workerColor = new THREE.Color(playerColor).lerp(new THREE.Color(0x44aa44), 0.4).getHex();
+    const tunicMat = new THREE.MeshStandardMaterial({ color: workerColor, roughness: 0.8 });
+    const skinMat = new THREE.MeshStandardMaterial({ color: 0xf0ccaa, roughness: 0.7 });
+    const pantMat = new THREE.MeshStandardMaterial({ color: 0x6a5a3a, roughness: 0.85 });
+    const bootMat = new THREE.MeshStandardMaterial({ color: 0x4a2e16, roughness: 0.9 });
+
+    // Body
+    const body = new THREE.Group();
+    body.name = "body";
+    g.add(body);
+
+    // Torso
+    const torsoGeo = new THREE.CylinderGeometry(h * 0.14, h * 0.17, h * 0.28, 6);
+    const torso = new THREE.Mesh(torsoGeo, tunicMat);
+    torso.position.y = h * 0.55;
+    body.add(torso);
+
+    // Head
+    const headGeo = new THREE.SphereGeometry(h * 0.08, 8, 6);
+    const head = new THREE.Mesh(headGeo, skinMat);
+    head.position.y = h * 0.82;
+    body.add(head);
+
+    // Left leg
+    const legGeo = new THREE.CylinderGeometry(h * 0.05, h * 0.045, h * 0.22, 5);
+    const leftLeg = new THREE.Mesh(legGeo, pantMat);
+    leftLeg.name = "leftLeg";
+    leftLeg.position.set(-h * 0.07, h * 0.25, 0);
+    g.add(leftLeg);
+
+    // Right leg
+    const rightLeg = new THREE.Mesh(legGeo, pantMat);
+    rightLeg.name = "rightLeg";
+    rightLeg.position.set(h * 0.07, h * 0.25, 0);
+    g.add(rightLeg);
+
+    // Boots
+    const bootGeo = new THREE.BoxGeometry(h * 0.07, h * 0.05, h * 0.1);
+    const lBoot = new THREE.Mesh(bootGeo, bootMat);
+    lBoot.position.set(-h * 0.07, h * 0.12, h * 0.01);
+    g.add(lBoot);
+    const rBoot = new THREE.Mesh(bootGeo, bootMat);
+    rBoot.position.set(h * 0.07, h * 0.12, h * 0.01);
+    g.add(rBoot);
+
+    // Shadow
+    const shadowGeo = new THREE.CircleGeometry(h * 0.12, 6);
     const shadowMat = new THREE.MeshBasicMaterial({
       color: 0x000000, transparent: true, opacity: 0.2, depthWrite: false,
     });
@@ -3540,6 +3683,13 @@ export class SettlersRenderer {
 
     // Cull carrier meshes
     for (const [, mesh] of this._carrierMeshes) {
+      _pos.copy(mesh.position);
+      _sphere.set(_pos, 1.5);
+      mesh.visible = this._frustum.intersectsSphere(_sphere);
+    }
+
+    // Cull worker meshes
+    for (const [, mesh] of this._workerMeshes) {
       _pos.copy(mesh.position);
       _sphere.set(_pos, 1.5);
       mesh.visible = this._frustum.intersectsSphere(_sphere);

@@ -7,6 +7,7 @@ import { BUILDING_DEFS } from "../config/SettlersBuildingDefs";
 import { getHeightAt } from "../state/SettlersMap";
 import type { SettlersState } from "../state/SettlersState";
 import type { SettlersCarrier } from "../state/SettlersUnit";
+import { getRoadSpeedMultiplier } from "./SettlersRoadSystem";
 import { playResourceDelivered } from "./SettlersAudioSystem";
 
 export function updateCarriers(state: SettlersState, dt: number): void {
@@ -21,9 +22,10 @@ export function updateCarriers(state: SettlersState, dt: number): void {
     const path = road.path;
     if (path.length < 2) continue;
 
-    // Calculate total path length in tiles
+    // Calculate total path length in tiles, applying road quality multiplier
     const totalLen = path.length - 1;
-    const progressPerTick = (carrier.speed * dt) / (totalLen * SB.TILE_SIZE);
+    const qualityMult = getRoadSpeedMultiplier(road.quality);
+    const progressPerTick = (carrier.speed * qualityMult * dt) / (totalLen * SB.TILE_SIZE);
 
     // Move along path
     if (carrier.direction === 1) {

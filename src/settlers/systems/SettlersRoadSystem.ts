@@ -5,6 +5,7 @@
 import { SB } from "../config/SettlersBalance";
 import { inBounds, tileIdx } from "../state/SettlersMap";
 import type { SettlersFlag, SettlersRoadSegment } from "../state/SettlersRoad";
+import type { RoadQuality } from "../state/SettlersRoad";
 import type { SettlersState } from "../state/SettlersState";
 import { nextId } from "../state/SettlersState";
 import { BUILDING_DEFS } from "../config/SettlersBuildingDefs";
@@ -75,6 +76,7 @@ export function createRoad(
     flagA: flagAId,
     flagB: flagBId,
     path: [...path],
+    quality: "dirt",
     carrierId: null,
   };
 
@@ -424,4 +426,54 @@ function _dispatchFromStorage(state: SettlersState): void {
       }
     }
   }
+}
+
+// ---------------------------------------------------------------------------
+// Road quality upgrade
+// ---------------------------------------------------------------------------
+
+/** Get the next quality tier for a road, or null if already max */
+export function getNextRoadQuality(current: RoadQuality): RoadQuality | null {
+  if (current === "dirt") return "stone";
+  if (current === "stone") return "paved";
+  return null;
+}
+
+/** Get the resource cost for upgrading to the given quality */
+export function getRoadUpgradeCost(targetQuality: RoadQuality): { stone: number; iron: number } {
+  if (targetQuality === "stone") return { stone: SB.ROAD_UPGRADE_STONE_COST, iron: 0 };
+  if (targetQuality === "paved") return { stone: SB.ROAD_UPGRADE_PAVED_STONE_COST, iron: SB.ROAD_UPGRADE_PAVED_IRON_COST };
+  return { stone: 0, iron: 0 };
+}
+
+/** Get the speed multiplier for a road quality */
+export function getRoadSpeedMultiplier(quality: RoadQuality): number {
+  if (quality === "stone") return SB.ROAD_QUALITY_STONE_SPEED;
+  if (quality === "paved") return SB.ROAD_QUALITY_PAVED_SPEED;
+  return SB.ROAD_QUALITY_DIRT_SPEED;
+}
+
+/** Attempt to upgrade a road segment. Returns true on success. */
+export function upgradeRoad(state: SettlersState, roadId: string): boolean {
+  const road = state.roads.get(roadId);
+  if (!road) return false;
+
+  const nextQuality = getNextRoadQuality(road.quality);
+  if (!nextQuality) return false;
+
+  const player = state.players.get(road.owner);
+  if (!player) return false;
+
+  const cost = getRoadUpgradeCost(nextQuality);
+  const stoneAvail = player.storage.get(ResourceType.STONE) || 0;
+  const ironAvail = player.storage.get(ResourceType.IRON) || 0;
+
+  if (stoneAvail < cost.stone || ironAvail < cost.iron) return false;
+
+  // Deduct resources
+  if (cost.stone > 0) player.storage.set(ResourceType.STONE, stoneAvail - cost.stone);
+  if (cost.iron > 0) player.storage.set(ResourceType.IRON, ironAvail - cost.iron);
+
+  road.quality = nextQuality;
+  return true;
 }

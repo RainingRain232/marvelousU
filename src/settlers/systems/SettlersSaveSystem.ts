@@ -5,7 +5,7 @@
 import type { SettlersState } from "../state/SettlersState";
 import type { SettlersBuilding } from "../state/SettlersBuilding";
 import type { SettlersPlayer } from "../state/SettlersPlayer";
-import type { SettlersCarrier, SettlersSoldier, SettlersCombat } from "../state/SettlersUnit";
+import type { SettlersCarrier, SettlersSoldier, SettlersCombat, SettlersWorker } from "../state/SettlersUnit";
 import type { SettlersFlag, SettlersRoadSegment } from "../state/SettlersRoad";
 import type { ResourceType } from "../config/SettlersResourceDefs";
 
@@ -47,6 +47,7 @@ interface SerializedState {
   flags: Record<string, SerializedFlag>;
   roads: Record<string, SettlersRoadSegment>;
   carriers: Record<string, SettlersCarrier>;
+  workers?: Record<string, SettlersWorker>;
   soldiers: Record<string, SettlersSoldier>;
   combats: SettlersCombat[];
 }
@@ -107,6 +108,9 @@ function serializeState(state: SettlersState): SerializedState {
   const carriers: Record<string, SettlersCarrier> = {};
   for (const [id, c] of state.carriers) carriers[id] = c;
 
+  const workers: Record<string, SettlersWorker> = {};
+  for (const [id, w] of state.workers) workers[id] = w;
+
   const soldiers: Record<string, SettlersSoldier> = {};
   for (const [id, s] of state.soldiers) soldiers[id] = s;
 
@@ -136,6 +140,7 @@ function serializeState(state: SettlersState): SerializedState {
     flags,
     roads,
     carriers,
+    workers,
     soldiers,
     combats: state.combats,
   };
@@ -207,10 +212,19 @@ function deserializeState(s: SerializedState): SettlersState {
   }
 
   const roads = new Map<string, SettlersRoadSegment>();
-  for (const [id, r] of Object.entries(s.roads)) roads.set(id, r);
+  for (const [id, r] of Object.entries(s.roads)) {
+    const road = r as SettlersRoadSegment;
+    if (!road.quality) road.quality = "dirt"; // backwards compat with old saves
+    roads.set(id, road);
+  }
 
   const carriers = new Map<string, SettlersCarrier>();
   for (const [id, c] of Object.entries(s.carriers)) carriers.set(id, c);
+
+  const workers = new Map<string, SettlersWorker>();
+  if (s.workers) {
+    for (const [id, w] of Object.entries(s.workers)) workers.set(id, w as SettlersWorker);
+  }
 
   const soldiers = new Map<string, SettlersSoldier>();
   for (const [id, sol] of Object.entries(s.soldiers)) soldiers.set(id, sol);
@@ -226,6 +240,7 @@ function deserializeState(s: SerializedState): SettlersState {
     flags,
     roads,
     carriers,
+    workers,
     soldiers,
     combats: s.combats,
     nextId: s.nextId,
@@ -233,6 +248,7 @@ function deserializeState(s: SerializedState): SettlersState {
     selectedBuildingType: null,
     hoveredTile: null,
     selectedBuildingId: null,
+    selectedRoadId: null,
     roadDrawing: { active: false, startFlagId: null, path: [] },
     screenW: s.screenW,
     screenH: s.screenH,
