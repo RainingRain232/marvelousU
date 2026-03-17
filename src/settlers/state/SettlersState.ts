@@ -18,6 +18,23 @@ export type { SettlersCarrier, SettlersSoldier, SettlersCombat, SettlersPlayer, 
 export type SettlersTool = "select" | "build" | "road" | "flag" | "demolish" | "attack";
 export type SettlersDifficulty = "easy" | "normal" | "hard";
 export type SettlersMapMode = "CONTINENTAL" | "ARCHIPELAGO" | "MOUNTAIN_PASS" | "LAKES";
+export type SettlersMapSize = "small" | "normal" | "large";
+export type SettlersStartingResources = "low" | "normal" | "high";
+export type SettlersWinCondition = "military" | "economic" | "both";
+
+export interface SettlersSkirmishSettings {
+  mapSize: SettlersMapSize;
+  difficulty: SettlersDifficulty;
+  startingResources: SettlersStartingResources;
+  winCondition: SettlersWinCondition;
+}
+
+/** Tracking data for bottleneck warnings per building */
+export interface BottleneckInfo {
+  idleSeconds: number;
+  warned: boolean;
+  missingResource: string | null;
+}
 
 export interface SettlersState {
   tick: number;
@@ -71,6 +88,15 @@ export interface SettlersState {
 
   /** Random terrain events state */
   eventState: SettlersEventState | null;
+
+  /** Skirmish settings (pre-game configuration) */
+  skirmishSettings: SettlersSkirmishSettings;
+
+  /** Bottleneck tracking per building id */
+  bottlenecks: Map<string, BottleneckInfo>;
+
+  /** Set of flag IDs already warned as nearly full (reset when flag empties) */
+  flagWarnings: Set<string>;
 }
 
 /** Generate a unique ID */
@@ -130,5 +156,13 @@ export function createSettlersState(screenW: number, screenH: number): SettlersS
     fogDirty: true,
     mapMode: "CONTINENTAL",
     eventState: null,
+    skirmishSettings: {
+      mapSize: "normal",
+      difficulty: "normal",
+      startingResources: "normal",
+      winCondition: "both",
+    },
+    bottlenecks: new Map(),
+    flagWarnings: new Set(),
   };
 }

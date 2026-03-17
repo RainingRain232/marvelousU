@@ -282,6 +282,14 @@ function deserializeState(s: SerializedState): SettlersState {
     gameSpeed: (s as any).gameSpeed || 1,
     mapMode: (s as any).mapMode || "CONTINENTAL",
     eventState: (s as any).eventState || null,
+    skirmishSettings: (s as any).skirmishSettings || {
+      mapSize: "normal",
+      difficulty: "normal",
+      startingResources: "normal",
+      winCondition: "both",
+    },
+    bottlenecks: new Map(),
+    flagWarnings: new Set(),
   };
 }
 

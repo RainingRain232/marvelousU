@@ -110,6 +110,16 @@ export class SettlersRenderer {
   private _frustum = new THREE.Frustum();
   private _projScreenMatrix = new THREE.Matrix4();
 
+  // Building placement preview overlays
+  private _placementPreviewGroup = new THREE.Group();
+  private _territoryRadiusPreview: THREE.Mesh | null = null;
+  private _placementTileOverlays: THREE.Mesh[] = [];
+  private _resourceHighlights: THREE.Mesh[] = [];
+  private _lastPreviewKey = "";
+
+  // Bottleneck warning icons (floating yellow triangles above idle buildings)
+  private _warningIcons = new Map<string, THREE.Group>();
+
   // Road preview line (shown while drawing a road)
   private _roadPreviewLine: THREE.Line | null = null;
 
@@ -226,6 +236,7 @@ export class SettlersRenderer {
     this.scene.add(this._cloudGroup);
     this.scene.add(this._depositsGroup);
     this.scene.add(this._healthBarGroup);
+    this.scene.add(this._placementPreviewGroup);
 
     // Resize handler (stored for cleanup)
     this._resizeHandler = () => {
@@ -541,6 +552,12 @@ export class SettlersRenderer {
     // Road preview
     this._updateRoadPreview(state);
 
+    // Building placement preview
+    this._updatePlacementPreview(state);
+
+    // Bottleneck warning icons
+    this._updateWarningIcons(state, t);
+
     // Health bars + combat effects
     this._updateHealthBars(state);
     this._updateCombatFlashes(state, _dt);
@@ -675,6 +692,13 @@ export class SettlersRenderer {
       this._territoryLine = null;
     }
 
+    // Clear placement preview and warning icons
+    this._clearPlacementPreview();
+    for (const [, icon] of this._warningIcons) {
+      this.scene.remove(icon);
+    }
+    this._warningIcons.clear();
+
     // Rebuild terrain + fog
     if (this._terrainMesh) this.scene.remove(this._terrainMesh);
     if (this._waterMesh) this.scene.remove(this._waterMesh);
@@ -745,6 +769,19 @@ export class SettlersRenderer {
     this._soldierMeshes.clear();
     this._scaffoldMeshes.clear();
     this._spinnerMeshes.clear();
+
+    // Dispose placement preview
+    this._clearPlacementPreview();
+
+    // Dispose warning icons
+    for (const [, icon] of this._warningIcons) {
+      this.scene.remove(icon);
+      icon.traverse((c: any) => {
+        if (c.geometry) c.geometry.dispose();
+        if (c.material) c.material.dispose();
+      });
+    }
+    this._warningIcons.clear();
 
     // Dispose combat flashes
     for (const f of this._combatFlashes) {
@@ -4218,6 +4255,259 @@ export class SettlersRenderer {
 
     g.castShadow = true;
     return g;
+  }
+
+  // -----------------------------------------------------------------------
+  // Building placement preview overlays
+  // -----------------------------------------------------------------------
+
+  private _updatePlacementPreview(state: SettlersState): void {
+    // Only show when in build mode with a building type selected and hovering a tile
+    if (state.selectedTool !== "build" || !state.selectedBuildingType || !state.hoveredTile) {
+      this._clearPlacementPreview();
+      return;
+    }
+
+    const bType = state.selectedBuildingType;
+    const hx = state.hoveredTile.x;
+    const hz = state.hoveredTile.z;
+    const previewKey = `${bType}_${hx}_${hz}`;
+    if (previewKey === this._lastPreviewKey) return;
+    this._lastPreviewKey = previewKey;
+
+    this._clearPlacementPreview();
+
+    const def = BUILDING_DEFS[bType];
+    const map = state.map;
+    const ts = SB.TILE_SIZE;
+
+    // 1. Show green/red overlay on tiles indicating valid/invalid placement
+    for (let dz = 0; dz < def.footprint.h; dz++) {
+      for (let dx = 0; dx < def.footprint.w; dx++) {
+        const tx = hx + dx;
+        const tz = hz + dz;
+        if (tx < 0 || tx >= map.width || tz < 0 || tz >= map.height) continue;
+
+        const idx = tileIdx(map, tx, tz);
+        const playerIdx = 0; // p0
+        const isInTerritory = map.territory[idx] === playerIdx;
+        const isUnoccupied = map.occupied[idx] === "";
+        const sizeNum = def.size === "small" ? 1 : def.size === "medium" ? 2 : 3;
+        const isBuildable = map.buildable[idx] >= sizeNum;
+        const isValid = isInTerritory && isUnoccupied && isBuildable;
+
+        const tileGeo = new THREE.PlaneGeometry(ts * 0.9, ts * 0.9);
+        const tileMat = new THREE.MeshBasicMaterial({
+          color: isValid ? 0x44cc44 : 0xcc4444,
+          transparent: true,
+          opacity: 0.3,
+          side: THREE.DoubleSide,
+          depthWrite: false,
+        });
+        const tileMesh = new THREE.Mesh(tileGeo, tileMat);
+        tileMesh.rotation.x = -Math.PI / 2;
+        const wx = (tx + 0.5) * ts;
+        const wz = (tz + 0.5) * ts;
+        tileMesh.position.set(wx, getHeightAt(map, wx, wz) + 0.08, wz);
+        this._placementPreviewGroup.add(tileMesh);
+        this._placementTileOverlays.push(tileMesh);
+      }
+    }
+
+    // 2. Territory radius for military buildings
+    if (def.territoryRadius > 0) {
+      const radiusWorld = def.territoryRadius * ts;
+      const circleGeo = new THREE.CircleGeometry(radiusWorld, 48);
+      const circleMat = new THREE.MeshBasicMaterial({
+        color: 0x3388ff,
+        transparent: true,
+        opacity: 0.12,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+      });
+      const circle = new THREE.Mesh(circleGeo, circleMat);
+      circle.rotation.x = -Math.PI / 2;
+      const centerX = (hx + def.footprint.w / 2) * ts;
+      const centerZ = (hz + def.footprint.h / 2) * ts;
+      circle.position.set(centerX, getHeightAt(map, centerX, centerZ) + 0.06, centerZ);
+      this._placementPreviewGroup.add(circle);
+      this._territoryRadiusPreview = circle;
+
+      // Also draw a border ring
+      const ringGeo = new THREE.RingGeometry(radiusWorld - 0.15, radiusWorld + 0.15, 48);
+      const ringMat = new THREE.MeshBasicMaterial({
+        color: 0x5599ff,
+        transparent: true,
+        opacity: 0.35,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+      });
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.rotation.x = -Math.PI / 2;
+      ring.position.copy(circle.position);
+      ring.position.y += 0.01;
+      this._placementPreviewGroup.add(ring);
+    }
+
+    // 3. When placing a mine, highlight nearby resource deposits in range
+    if (def.requiresTerrain === "mountain" &&
+        (bType === SettlersBuildingType.IRON_MINE ||
+         bType === SettlersBuildingType.GOLD_MINE ||
+         bType === SettlersBuildingType.COAL_MINE)) {
+      const targetDeposit = bType === SettlersBuildingType.IRON_MINE ? Deposit.IRON
+        : bType === SettlersBuildingType.GOLD_MINE ? Deposit.GOLD
+        : Deposit.COAL;
+      const searchRange = 3;
+      for (let dz = -searchRange; dz <= def.footprint.h + searchRange; dz++) {
+        for (let dx = -searchRange; dx <= def.footprint.w + searchRange; dx++) {
+          const tx = hx + dx;
+          const tz = hz + dz;
+          if (tx < 0 || tx >= map.width || tz < 0 || tz >= map.height) continue;
+          const deposit = map.deposits[tileIdx(map, tx, tz)];
+          if (deposit === targetDeposit) {
+            const hlGeo = new THREE.PlaneGeometry(ts * 0.8, ts * 0.8);
+            const hlMat = new THREE.MeshBasicMaterial({
+              color: 0xffdd44,
+              transparent: true,
+              opacity: 0.4,
+              side: THREE.DoubleSide,
+              depthWrite: false,
+            });
+            const hl = new THREE.Mesh(hlGeo, hlMat);
+            hl.rotation.x = -Math.PI / 2;
+            const wx = (tx + 0.5) * ts;
+            const wz = (tz + 0.5) * ts;
+            hl.position.set(wx, getHeightAt(map, wx, wz) + 0.1, wz);
+            this._placementPreviewGroup.add(hl);
+            this._resourceHighlights.push(hl);
+          }
+        }
+      }
+    }
+  }
+
+  private _clearPlacementPreview(): void {
+    if (this._lastPreviewKey === "") return;
+    this._lastPreviewKey = "";
+
+    // Remove all preview overlays
+    for (const m of this._placementTileOverlays) {
+      this._placementPreviewGroup.remove(m);
+      m.geometry.dispose();
+      (m.material as THREE.Material).dispose();
+    }
+    this._placementTileOverlays.length = 0;
+
+    for (const m of this._resourceHighlights) {
+      this._placementPreviewGroup.remove(m);
+      m.geometry.dispose();
+      (m.material as THREE.Material).dispose();
+    }
+    this._resourceHighlights.length = 0;
+
+    if (this._territoryRadiusPreview) {
+      this._placementPreviewGroup.remove(this._territoryRadiusPreview);
+      this._territoryRadiusPreview.geometry.dispose();
+      (this._territoryRadiusPreview.material as THREE.Material).dispose();
+      this._territoryRadiusPreview = null;
+    }
+
+    // Clear any remaining children (border rings, etc.)
+    while (this._placementPreviewGroup.children.length > 0) {
+      const child = this._placementPreviewGroup.children[0];
+      this._placementPreviewGroup.remove(child);
+      child.traverse((c: any) => {
+        if (c.geometry) c.geometry.dispose();
+        if (c.material) {
+          if (Array.isArray(c.material)) c.material.forEach((m: THREE.Material) => m.dispose());
+          else c.material.dispose();
+        }
+      });
+    }
+  }
+
+  // -----------------------------------------------------------------------
+  // Bottleneck warning icons (floating yellow triangles)
+  // -----------------------------------------------------------------------
+
+  private _updateWarningIcons(state: SettlersState, t: number): void {
+    // Remove icons for buildings that no longer have warnings
+    for (const [id, icon] of this._warningIcons) {
+      const info = state.bottlenecks.get(id);
+      if (!info || !info.warned || !state.buildings.has(id)) {
+        this.scene.remove(icon);
+        icon.traverse((c: any) => {
+          if (c.geometry) c.geometry.dispose();
+          if (c.material) c.material.dispose();
+        });
+        this._warningIcons.delete(id);
+      }
+    }
+
+    // Add icons for warned buildings
+    for (const [id, info] of state.bottlenecks) {
+      if (!info.warned) continue;
+      if (this._warningIcons.has(id)) {
+        // Animate existing icon (float up/down)
+        const icon = this._warningIcons.get(id)!;
+        const building = state.buildings.get(id);
+        if (building) {
+          const def = BUILDING_DEFS[building.type];
+          const ts = SB.TILE_SIZE;
+          const bw = def.footprint.w * ts;
+          const cx = (building.tileX + def.footprint.w / 2) * ts;
+          const cz = (building.tileZ + def.footprint.h / 2) * ts;
+          const baseH = getHeightAt(state.map, cx, cz);
+          const buildH = def.size === "large" ? bw * 1.1 : def.size === "medium" ? bw * 0.85 : bw * 0.7;
+          icon.position.set(cx, baseH + buildH + 0.5 + Math.sin(t * 3) * 0.15, cz);
+          icon.rotation.y = t * 2;
+        }
+        continue;
+      }
+
+      const building = state.buildings.get(id);
+      if (!building || building.owner !== "p0") continue;
+
+      // Create warning icon: small yellow triangle
+      const g = new THREE.Group();
+
+      // Triangle shape
+      const triShape = new THREE.Shape();
+      triShape.moveTo(0, 0.25);
+      triShape.lineTo(-0.15, -0.1);
+      triShape.lineTo(0.15, -0.1);
+      triShape.closePath();
+
+      const triGeo = new THREE.ShapeGeometry(triShape);
+      const triMat = new THREE.MeshBasicMaterial({
+        color: 0xffcc00,
+        transparent: true,
+        opacity: 0.85,
+        side: THREE.DoubleSide,
+        depthTest: false,
+      });
+      const tri = new THREE.Mesh(triGeo, triMat);
+      g.add(tri);
+
+      // Exclamation mark
+      const excGeo = new THREE.PlaneGeometry(0.04, 0.15);
+      const excMat = new THREE.MeshBasicMaterial({
+        color: 0x000000,
+        side: THREE.DoubleSide,
+        depthTest: false,
+      });
+      const exc = new THREE.Mesh(excGeo, excMat);
+      exc.position.set(0, 0.1, 0.01);
+      g.add(exc);
+
+      const dotGeo = new THREE.PlaneGeometry(0.04, 0.04);
+      const dot = new THREE.Mesh(dotGeo, excMat);
+      dot.position.set(0, -0.02, 0.01);
+      g.add(dot);
+
+      this.scene.add(g);
+      this._warningIcons.set(id, g);
+    }
   }
 
   // -----------------------------------------------------------------------

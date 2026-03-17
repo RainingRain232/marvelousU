@@ -3,11 +3,11 @@
 // ---------------------------------------------------------------------------
 
 import { BUILDING_DEFS, SettlersBuildingType } from "../config/SettlersBuildingDefs";
-import { RESOURCE_META, ResourceType } from "../config/SettlersResourceDefs";
+import { RESOURCE_META, ResourceType, FOOD_TYPES } from "../config/SettlersResourceDefs";
 import { canUpgradeBuilding, getUpgradeCost, getEffectiveProductionTime, TRADEABLE_RESOURCES } from "../systems/SettlersBuildingSystem";
 import { Biome, Deposit, Visibility } from "../state/SettlersMap";
 import { SB } from "../config/SettlersBalance";
-import type { SettlersState, SettlersTool } from "../state/SettlersState";
+import type { SettlersState, SettlersTool, SettlersSkirmishSettings } from "../state/SettlersState";
 import { AI_PERSONALITY_LABELS, AI_PERSONALITY_DESCRIPTIONS } from "../state/SettlersPlayer";
 import { getNextRoadQuality, getRoadUpgradeCost } from "../systems/SettlersRoadSystem";
 import { calculateScore } from "../systems/SettlersMilitarySystem";
@@ -52,6 +52,11 @@ export class SettlersHUD {
   private _audioPanelVisible = false;
   private _muteBtn!: HTMLButtonElement;
   private _aiPersonalityIndicator!: HTMLDivElement;
+  private _skirmishOverlay!: HTMLDivElement;
+  private _chainsPanel!: HTMLDivElement;
+  private _chainsPanelVisible = false;
+  private _minimapLegend!: HTMLDivElement;
+  private _minimapLegendVisible = false;
 
   // Camera info for minimap viewport indicator
   private _cameraTargetX = 0;
@@ -72,6 +77,7 @@ export class SettlersHUD {
   onUpgrade: ((buildingId: string) => void) | null = null;
   onMarketTrade: ((buildingId: string, sell: ResourceType | null, buy: ResourceType | null) => void) | null = null;
   onRoadUpgrade: ((roadId: string) => void) | null = null;
+  onStartGame: ((settings: SettlersSkirmishSettings) => void) | null = null;
 
   build(): void {
     this._root = document.createElement("div");
@@ -231,6 +237,63 @@ export class SettlersHUD {
     `;
     this._root.appendChild(this._toast);
 
+    // --- Skirmish settings overlay ---
+    this._buildSkirmishOverlay();
+
+    // --- Production chains panel ---
+    this._chainsPanel = document.createElement("div");
+    this._chainsPanel.style.cssText = `
+      position: absolute; top: 90px; left: 12px; width: 340px; max-height: 500px;
+      background: linear-gradient(135deg, rgba(20,18,48,0.96), rgba(14,12,35,0.96));
+      border-radius: 10px; padding: 14px;
+      pointer-events: auto; font-size: 11px; display: none; overflow-y: auto;
+      border: 1px solid rgba(180,160,100,0.25);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      backdrop-filter: blur(8px);
+    `;
+    this._root.appendChild(this._chainsPanel);
+
+    // --- Minimap legend ---
+    this._minimapLegend = document.createElement("div");
+    this._minimapLegend.style.cssText = `
+      position: absolute; bottom: 345px; left: 10px; width: 156px;
+      background: rgba(12,10,30,0.95); border: 1px solid rgba(180,160,100,0.25);
+      border-radius: 6px; padding: 8px; pointer-events: auto; font-size: 10px;
+      display: none; color: #c8c0b0;
+    `;
+    this._minimapLegend.innerHTML = `
+      <div style="color:#ffd700;font-size:11px;margin-bottom:4px;font-weight:bold;">Minimap Legend</div>
+      <div style="display:flex;align-items:center;gap:4px;margin:2px 0;"><span style="display:inline-block;width:8px;height:8px;background:#7a7a7a;border-radius:50%;"></span> Iron Deposit</div>
+      <div style="display:flex;align-items:center;gap:4px;margin:2px 0;"><span style="display:inline-block;width:8px;height:8px;background:#ffd700;border-radius:50%;"></span> Gold Deposit</div>
+      <div style="display:flex;align-items:center;gap:4px;margin:2px 0;"><span style="display:inline-block;width:8px;height:8px;background:#333;border-radius:50%;border:1px solid #666;"></span> Coal Deposit</div>
+      <div style="display:flex;align-items:center;gap:4px;margin:2px 0;"><span style="display:inline-block;width:8px;height:8px;background:#999;border-radius:50%;"></span> Stone Deposit</div>
+      <div style="display:flex;align-items:center;gap:4px;margin:2px 0;"><span style="display:inline-block;width:8px;height:8px;background:#5599bb;border-radius:50%;"></span> Fish</div>
+      <div style="margin-top:4px;border-top:1px solid rgba(255,255,255,0.1);padding-top:4px;">
+        <div style="display:flex;align-items:center;gap:4px;margin:2px 0;"><span style="display:inline-block;width:8px;height:8px;background:#4488ff;border-radius:50%;"></span> Your Building</div>
+        <div style="display:flex;align-items:center;gap:4px;margin:2px 0;"><span style="display:inline-block;width:8px;height:8px;background:#ff4444;border-radius:50%;"></span> Enemy Building</div>
+        <div style="display:flex;align-items:center;gap:4px;margin:2px 0;"><span style="display:inline-block;width:6px;height:6px;background:#88ff88;border-radius:50%;"></span> Your Soldier</div>
+        <div style="display:flex;align-items:center;gap:4px;margin:2px 0;"><span style="display:inline-block;width:6px;height:6px;background:#ff6666;border-radius:50%;"></span> Enemy Soldier</div>
+        <div style="display:flex;align-items:center;gap:4px;margin:2px 0;"><span style="display:inline-block;width:10px;height:2px;background:#ff4444;"></span> Enemy Border</div>
+      </div>
+    `;
+    this._root.appendChild(this._minimapLegend);
+
+    // Minimap legend toggle (click on minimap border area)
+    const legendToggle = document.createElement("div");
+    legendToggle.style.cssText = `
+      position: absolute; bottom: 338px; left: 10px; width: 20px; height: 16px;
+      background: rgba(20,18,48,0.85); border: 1px solid rgba(180,160,100,0.3);
+      border-radius: 3px; pointer-events: auto; cursor: pointer;
+      font-size: 9px; color: #aaa; text-align: center; line-height: 16px;
+    `;
+    legendToggle.textContent = "?";
+    legendToggle.title = "Toggle minimap legend";
+    legendToggle.onclick = () => {
+      this._minimapLegendVisible = !this._minimapLegendVisible;
+      this._minimapLegend.style.display = this._minimapLegendVisible ? "block" : "none";
+    };
+    this._root.appendChild(legendToggle);
+
     // --- Hover tooltip (for build menu buttons) ---
     this._tooltip = document.createElement("div");
     this._tooltip.style.cssText = `
@@ -355,6 +418,319 @@ export class SettlersHUD {
     this._audioPanel.appendChild(row);
   }
 
+  // -----------------------------------------------------------------------
+  // Skirmish Settings Overlay
+  // -----------------------------------------------------------------------
+
+  private _buildSkirmishOverlay(): void {
+    this._skirmishOverlay = document.createElement("div");
+    this._skirmishOverlay.style.cssText = `
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: radial-gradient(ellipse at center, rgba(16,14,40,0.98) 0%, rgba(0,0,0,0.97) 100%);
+      display: flex; align-items: center; justify-content: center; flex-direction: column;
+      pointer-events: auto; z-index: 50;
+    `;
+
+    const panel = document.createElement("div");
+    panel.style.cssText = `
+      background: linear-gradient(135deg, rgba(28,24,58,0.98), rgba(18,15,40,0.98));
+      border: 1px solid rgba(180,160,100,0.35); border-radius: 12px;
+      padding: 28px 36px; min-width: 380px; max-width: 440px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.7);
+    `;
+
+    panel.innerHTML = `
+      <div style="text-align:center;margin-bottom:20px;">
+        <div style="font-size:28px;color:#ffd700;text-shadow:0 0 12px rgba(255,215,0,0.3);letter-spacing:2px;font-weight:bold;">SETTLERS</div>
+        <div style="font-size:14px;color:#998866;margin-top:4px;">Skirmish Setup</div>
+      </div>
+
+      <div style="margin-bottom:14px;">
+        <label style="color:#aaddff;font-size:12px;display:block;margin-bottom:4px;">Map Size</label>
+        <select id="skirmish-map-size" style="width:100%;padding:6px 10px;background:#1a1838;color:#e0d8c8;border:1px solid rgba(180,160,100,0.3);border-radius:5px;font-size:13px;font-family:inherit;cursor:pointer;">
+          <option value="small">Small (48 x 48)</option>
+          <option value="normal" selected>Normal (64 x 64)</option>
+          <option value="large">Large (96 x 96)</option>
+        </select>
+      </div>
+
+      <div style="margin-bottom:14px;">
+        <label style="color:#aaddff;font-size:12px;display:block;margin-bottom:4px;">Difficulty</label>
+        <select id="skirmish-difficulty" style="width:100%;padding:6px 10px;background:#1a1838;color:#e0d8c8;border:1px solid rgba(180,160,100,0.3);border-radius:5px;font-size:13px;font-family:inherit;cursor:pointer;">
+          <option value="easy">Easy</option>
+          <option value="normal" selected>Normal</option>
+          <option value="hard">Hard</option>
+        </select>
+      </div>
+
+      <div style="margin-bottom:14px;">
+        <label style="color:#aaddff;font-size:12px;display:block;margin-bottom:4px;">Starting Resources</label>
+        <select id="skirmish-resources" style="width:100%;padding:6px 10px;background:#1a1838;color:#e0d8c8;border:1px solid rgba(180,160,100,0.3);border-radius:5px;font-size:13px;font-family:inherit;cursor:pointer;">
+          <option value="low">Low</option>
+          <option value="normal" selected>Normal</option>
+          <option value="high">High</option>
+        </select>
+      </div>
+
+      <div style="margin-bottom:20px;">
+        <label style="color:#aaddff;font-size:12px;display:block;margin-bottom:4px;">Win Condition</label>
+        <select id="skirmish-win" style="width:100%;padding:6px 10px;background:#1a1838;color:#e0d8c8;border:1px solid rgba(180,160,100,0.3);border-radius:5px;font-size:13px;font-family:inherit;cursor:pointer;">
+          <option value="military">Military Only (destroy enemy HQ)</option>
+          <option value="economic">Economic Only (50 gold)</option>
+          <option value="both" selected>Both (military or economic)</option>
+        </select>
+      </div>
+
+      <button id="skirmish-start-btn" style="
+        width:100%;padding:12px;font-size:18px;font-family:inherit;
+        background:linear-gradient(180deg, #3a5a2a, #2a4a1a);color:#ccffaa;
+        border:1px solid rgba(120,180,80,0.5);border-radius:8px;cursor:pointer;
+        letter-spacing:1px;font-weight:bold;transition:all 0.2s;
+        text-shadow:0 1px 3px rgba(0,0,0,0.5);
+      ">Start Game</button>
+    `;
+
+    this._skirmishOverlay.appendChild(panel);
+    this._root.appendChild(this._skirmishOverlay);
+
+    // Wire up start button
+    const startBtn = panel.querySelector("#skirmish-start-btn") as HTMLButtonElement;
+    startBtn.onmouseenter = () => { startBtn.style.background = "linear-gradient(180deg, #4a7a3a, #3a6a2a)"; };
+    startBtn.onmouseleave = () => { startBtn.style.background = "linear-gradient(180deg, #3a5a2a, #2a4a1a)"; };
+    startBtn.onclick = () => {
+      const mapSize = (panel.querySelector("#skirmish-map-size") as HTMLSelectElement).value as SettlersSkirmishSettings["mapSize"];
+      const difficulty = (panel.querySelector("#skirmish-difficulty") as HTMLSelectElement).value as SettlersSkirmishSettings["difficulty"];
+      const startingResources = (panel.querySelector("#skirmish-resources") as HTMLSelectElement).value as SettlersSkirmishSettings["startingResources"];
+      const winCondition = (panel.querySelector("#skirmish-win") as HTMLSelectElement).value as SettlersSkirmishSettings["winCondition"];
+      this._skirmishOverlay.style.display = "none";
+      this.onStartGame?.({ mapSize, difficulty, startingResources, winCondition });
+      playUIClick();
+    };
+  }
+
+  /** Show the skirmish overlay (called before game starts) */
+  showSkirmishSettings(): void {
+    this._skirmishOverlay.style.display = "flex";
+  }
+
+  /** Hide the skirmish overlay */
+  hideSkirmishSettings(): void {
+    this._skirmishOverlay.style.display = "none";
+  }
+
+  // -----------------------------------------------------------------------
+  // Production Chains Panel
+  // -----------------------------------------------------------------------
+
+  toggleChainsPanel(): void {
+    this._chainsPanelVisible = !this._chainsPanelVisible;
+    this._chainsPanel.style.display = this._chainsPanelVisible ? "block" : "none";
+    if (this._chainsPanelVisible && this._wikiVisible) {
+      this._wikiVisible = false;
+      this._wikiPanel.style.display = "none";
+    }
+    playUIClick();
+  }
+
+  private _updateChainsPanel(state: SettlersState): void {
+    if (!this._chainsPanelVisible) return;
+
+    // Gather production stats per building type for the player
+    const typeStats = new Map<SettlersBuildingType, { count: number; active: number; producing: number }>();
+
+    for (const [, building] of state.buildings) {
+      if (building.owner !== "p0") continue;
+      const def = BUILDING_DEFS[building.type];
+      if (def.productionTime <= 0) continue;
+
+      let entry = typeStats.get(building.type);
+      if (!entry) { entry = { count: 0, active: 0, producing: 0 }; typeStats.set(building.type, entry); }
+      entry.count++;
+      if (building.active && building.constructionProgress >= 1) {
+        entry.active++;
+        // Check if it's actually producing (has inputs or no inputs needed)
+        const hasInputs = def.inputs.length === 0 || building.inputStorage.some(s => s.amount > 0);
+        if (hasInputs) entry.producing++;
+      }
+    }
+
+    if (typeStats.size === 0) {
+      this._chainsPanel.innerHTML = `
+        <div style="font-size:14px;color:#ffd700;margin-bottom:8px;">Active Production Chains</div>
+        <div style="color:#888;font-style:italic;">No production buildings yet.</div>
+        <div style="margin-top:8px;color:#666;font-size:10px;">Build economy buildings to see production chain stats here.</div>
+      `;
+      return;
+    }
+
+    let html = `<div style="font-size:14px;color:#ffd700;margin-bottom:10px;">Active Production Chains</div>`;
+
+    // Group by chain relationship
+    const chainGroups: { name: string; types: SettlersBuildingType[] }[] = [
+      { name: "Wood/Construction", types: [SettlersBuildingType.WOODCUTTER, SettlersBuildingType.SAWMILL, SettlersBuildingType.QUARRY] },
+      { name: "Food", types: [SettlersBuildingType.FISHER, SettlersBuildingType.HUNTER, SettlersBuildingType.FARM, SettlersBuildingType.MILL, SettlersBuildingType.BAKERY] },
+      { name: "Beer", types: [SettlersBuildingType.BREWERY] },
+      { name: "Iron", types: [SettlersBuildingType.IRON_MINE, SettlersBuildingType.COAL_MINE, SettlersBuildingType.SMELTER] },
+      { name: "Gold", types: [SettlersBuildingType.GOLD_MINE, SettlersBuildingType.MINT] },
+      { name: "Military", types: [SettlersBuildingType.SWORD_SMITH, SettlersBuildingType.SHIELD_SMITH, SettlersBuildingType.BARRACKS] },
+    ];
+
+    for (const group of chainGroups) {
+      const activeTypes = group.types.filter(t => typeStats.has(t));
+      if (activeTypes.length === 0) continue;
+
+      html += `<div style="color:#aaddff;font-weight:bold;margin-top:8px;margin-bottom:4px;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:3px;">${group.name}</div>`;
+
+      for (const bType of activeTypes) {
+        const stats = typeStats.get(bType)!;
+        const def = BUILDING_DEFS[bType];
+        const outputPerMin = def.productionTime > 0 ? (stats.producing * 60 / def.productionTime).toFixed(1) : "0";
+        const inputPerMin = def.inputs.length > 0 && def.productionTime > 0
+          ? (stats.producing * 60 / def.productionTime).toFixed(1) : "-";
+
+        // Detect bottleneck: more consumers than producers for the needed resource
+        let isBottleneck = false;
+        if (def.inputs.length > 0 && stats.active > 0 && stats.producing < stats.active) {
+          isBottleneck = true;
+        }
+
+        const statusColor = isBottleneck ? "#ff6644" : stats.producing > 0 ? "#88cc44" : "#888";
+        const bgColor = isBottleneck ? "rgba(180,60,40,0.15)" : "transparent";
+
+        html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:3px 6px;margin:1px 0;border-radius:4px;background:${bgColor};">`;
+        html += `<div style="flex:1;">`;
+        html += `<span style="color:#d0c8b0;">${def.label}</span>`;
+        html += `<span style="color:#777;font-size:10px;"> x${stats.count}</span>`;
+        if (stats.producing < stats.active) {
+          html += `<span style="color:#ff8844;font-size:10px;"> (${stats.active - stats.producing} idle)</span>`;
+        }
+        html += `</div>`;
+        html += `<div style="text-align:right;font-size:10px;">`;
+        if (def.outputs.length > 0) {
+          html += `<span style="color:${statusColor};">${outputPerMin}/min</span>`;
+        }
+        if (def.inputs.length > 0) {
+          html += `<span style="color:#999;margin-left:6px;">needs ${inputPerMin}/min</span>`;
+        }
+        html += `</div></div>`;
+
+        // Show flow arrows for inputs/outputs
+        if (isBottleneck) {
+          const missing = def.inputs
+            .map(i => RESOURCE_META[i.type].label)
+            .join(", ");
+          html += `<div style="color:#ff6644;font-size:10px;padding-left:12px;margin-bottom:2px;">Bottleneck: waiting for ${missing}</div>`;
+        }
+      }
+
+      // Draw simple flow arrows between related building types
+      if (activeTypes.length > 1) {
+        const flowParts: string[] = [];
+        for (const bType of activeTypes) {
+          const def = BUILDING_DEFS[bType];
+          const outputNames = def.outputs.map(o => RESOURCE_META[o.type].label);
+          if (outputNames.length > 0) {
+            flowParts.push(`${def.label} -> ${outputNames.join(", ")}`);
+          }
+        }
+        if (flowParts.length > 0) {
+          html += `<div style="color:#666;font-size:9px;padding-left:8px;margin-top:2px;">Flow: ${flowParts.join(" -> ")}</div>`;
+        }
+      }
+    }
+
+    html += `<div style="margin-top:10px;color:#666;font-size:10px;">Red = bottleneck (consumption > production)</div>`;
+    this._chainsPanel.innerHTML = html;
+  }
+
+  // -----------------------------------------------------------------------
+  // Bottleneck Warnings
+  // -----------------------------------------------------------------------
+
+  private _updateBottleneckWarnings(state: SettlersState): void {
+    const dt = 1 / 60; // approximate frame dt
+
+    for (const [id, building] of state.buildings) {
+      if (building.owner !== "p0") continue;
+      if (!building.active || building.constructionProgress < 1) continue;
+
+      const def = BUILDING_DEFS[building.type];
+      if (def.productionTime <= 0) continue;
+      if (def.type === SettlersBuildingType.BARRACKS) continue;
+
+      // Check if building is idle (has inputs required but none available)
+      if (def.inputs.length > 0) {
+        let hasAllInputs = true;
+        let missingResource: string | null = null;
+        for (const input of def.inputs) {
+          const isMine = def.type === SettlersBuildingType.IRON_MINE ||
+                         def.type === SettlersBuildingType.GOLD_MINE ||
+                         def.type === SettlersBuildingType.COAL_MINE;
+          if (isMine && FOOD_TYPES.has(input.type)) {
+            const hasFood = building.inputStorage.some(
+              (s) => FOOD_TYPES.has(s.type) && s.amount >= input.amount,
+            );
+            if (!hasFood) { hasAllInputs = false; missingResource = "food"; }
+          } else {
+            const stored = building.inputStorage.find((s) => s.type === input.type);
+            if (!stored || stored.amount < input.amount) {
+              hasAllInputs = false;
+              missingResource = RESOURCE_META[input.type].label;
+            }
+          }
+        }
+
+        let info = state.bottlenecks.get(id);
+        if (!info) {
+          info = { idleSeconds: 0, warned: false, missingResource: null };
+          state.bottlenecks.set(id, info);
+        }
+
+        if (!hasAllInputs) {
+          info.idleSeconds += dt;
+          info.missingResource = missingResource;
+
+          if (info.idleSeconds >= SB.BOTTLENECK_IDLE_THRESHOLD && !info.warned) {
+            info.warned = true;
+            this.showToast(`Your ${def.label} has been idle - missing ${missingResource}!`, true);
+          }
+        } else {
+          // Building is producing - reset
+          if (info.warned) {
+            info.warned = false;
+          }
+          info.idleSeconds = 0;
+          info.missingResource = null;
+        }
+      }
+    }
+
+    // Check flag capacity warnings
+    for (const [, building] of state.buildings) {
+      if (building.owner !== "p0") continue;
+      const flag = state.flags.get(building.flagId);
+      if (!flag) continue;
+
+      if (flag.inventory.length >= SB.FLAG_NEAR_FULL_THRESHOLD) {
+        if (!state.flagWarnings.has(flag.id)) {
+          state.flagWarnings.add(flag.id);
+          const def = BUILDING_DEFS[building.type];
+          this.showToast(`Flag near ${def.label} is almost full!`, true);
+        }
+      } else if (flag.inventory.length < SB.FLAG_NEAR_FULL_THRESHOLD - 2) {
+        // Reset warning when flag empties a bit
+        state.flagWarnings.delete(flag.id);
+      }
+    }
+
+    // Clean up bottleneck entries for demolished buildings
+    for (const [id] of state.bottlenecks) {
+      if (!state.buildings.has(id)) {
+        state.bottlenecks.delete(id);
+      }
+    }
+  }
+
   private _buildBuildMenu(): void {
     // Tool buttons
     const tools: { tool: SettlersTool; label: string; key: string }[] = [
@@ -380,11 +756,12 @@ export class SettlersHUD {
       this._buildMenu.appendChild(btn);
     }
 
-    // Save/Load/Wiki buttons
+    // Save/Load/Wiki/Chains buttons
     const utilBtns: { label: string; action: () => void }[] = [
       { label: "[F5] Save", action: () => this.onSave?.() },
       { label: "[F9] Load", action: () => this.onLoad?.() },
       { label: "[H] Wiki", action: () => this.toggleWiki() },
+      { label: "Chains", action: () => this.toggleChainsPanel() },
       { label: "[M] Audio", action: () => this.toggleAudioPanel() },
     ];
     for (const u of utilBtns) {
@@ -713,6 +1090,16 @@ export class SettlersHUD {
     // Minimap (every 15 ticks to save perf)
     if (state.tick % 15 === 0) {
       this._updateMinimap(state);
+    }
+
+    // Bottleneck warnings (every 60 ticks ~ 1 second)
+    if (state.tick % 60 === 0 && !state.paused && !state.gameOver) {
+      this._updateBottleneckWarnings(state);
+    }
+
+    // Production chains panel (every 30 ticks)
+    if (state.tick % 30 === 0) {
+      this._updateChainsPanel(state);
     }
   }
 
@@ -1121,23 +1508,55 @@ export class SettlersHUD {
           ctx.fillRect(tx * sx, tz * sz, sx + 0.5, sz + 0.5);
         }
 
-        // Resource deposit indicators (visible or explored)
+        // Resource deposit indicators
         const deposit = map.deposits[idx];
         if (deposit !== Deposit.NONE) {
           let dColor: string;
           switch (deposit) {
-            case Deposit.IRON: dColor = "#7a4e2e"; break;
-            case Deposit.GOLD: dColor = "#ffd700"; break;
-            case Deposit.COAL: dColor = "#333"; break;
-            case Deposit.STONE: dColor = "#999"; break;
-            case Deposit.FISH: dColor = "#5599bb"; break;
+            case Deposit.IRON: dColor = "#7a7a7a"; break;   // gray
+            case Deposit.GOLD: dColor = "#ffd700"; break;   // yellow
+            case Deposit.COAL: dColor = "#222222"; break;   // black
+            case Deposit.STONE: dColor = "#999999"; break;  // light gray
+            case Deposit.FISH: dColor = "#5599bb"; break;   // blue
             default: dColor = "#fff"; break;
           }
           ctx.fillStyle = dColor;
-          ctx.fillRect(tx * sx + 0.5, tz * sz + 0.5, Math.max(1, sx - 1), Math.max(1, sz - 1));
+          const dotRadius = Math.max(1.2, sx * 0.6);
+          ctx.beginPath();
+          ctx.arc(tx * sx + sx / 2, tz * sz + sz / 2, dotRadius, 0, Math.PI * 2);
+          ctx.fill();
         }
       }
     }
+
+    // Draw enemy territory borders (red outline for enemy territory edges)
+    ctx.strokeStyle = "rgba(255,60,60,0.7)";
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    for (let tz = 0; tz < map.height; tz++) {
+      for (let tx = 0; tx < map.width; tx++) {
+        const idx = tz * map.width + tx;
+        const owner = map.territory[idx];
+        if (owner !== 1) continue;
+
+        const px = tx * sx;
+        const pz = tz * sz;
+
+        if (tz === 0 || map.territory[(tz - 1) * map.width + tx] !== 1) {
+          ctx.moveTo(px, pz); ctx.lineTo(px + sx, pz);
+        }
+        if (tz === map.height - 1 || map.territory[(tz + 1) * map.width + tx] !== 1) {
+          ctx.moveTo(px, pz + sz); ctx.lineTo(px + sx, pz + sz);
+        }
+        if (tx === 0 || map.territory[tz * map.width + tx - 1] !== 1) {
+          ctx.moveTo(px, pz); ctx.lineTo(px, pz + sz);
+        }
+        if (tx === map.width - 1 || map.territory[tz * map.width + tx + 1] !== 1) {
+          ctx.moveTo(px + sx, pz); ctx.lineTo(px + sx, pz + sz);
+        }
+      }
+    }
+    ctx.stroke();
 
     // Draw buildings (own = always; enemy = only if tile is EXPLORED or VISIBLE)
     for (const [, building] of state.buildings) {
@@ -1155,29 +1574,30 @@ export class SettlersHUD {
       );
     }
 
-    // Draw soldiers (own = always; enemy = only VISIBLE tiles)
+    // Draw soldiers as colored dots (fog-aware: enemy only visible in VISIBLE tiles)
     for (const [, soldier] of state.soldiers) {
       if (soldier.state === "garrisoned") continue;
       const stx = soldier.position.x / SB.TILE_SIZE;
       const stz = soldier.position.z / SB.TILE_SIZE;
-      const sTileX = Math.floor(stx);
-      const sTileZ = Math.floor(stz);
       if (soldier.owner !== "p0") {
-        const sIdx = sTileZ * map.width + sTileX;
+        const sIdx = Math.floor(stz) * map.width + Math.floor(stx);
         if (sIdx < 0 || sIdx >= vis.length || vis[sIdx] !== Visibility.VISIBLE) continue;
       }
-      ctx.fillStyle = soldier.owner === "p0" ? "#88bbff" : "#ff8888";
-      ctx.fillRect(stx * sx - 1, stz * sz - 1, 2, 2);
+      const isFriendly = soldier.owner === "p0";
+      ctx.fillStyle = isFriendly ? "#88ff88" : "#ff6666";
+      ctx.beginPath();
+      ctx.arc(stx * sx, stz * sz, isFriendly ? 1.8 : 1.5, 0, Math.PI * 2);
+      ctx.fill();
     }
 
-    // Draw flags (own = always; enemy = only EXPLORED or VISIBLE)
+    // Draw flags (fog-aware: enemy only in EXPLORED or VISIBLE)
     for (const [, flag] of state.flags) {
       if (flag.owner !== "p0") {
         const fIdx = flag.tileZ * map.width + flag.tileX;
         if (fIdx < 0 || fIdx >= vis.length || vis[fIdx] === Visibility.HIDDEN) continue;
       }
-      ctx.fillStyle = flag.owner === "p0" ? "#aaccff" : "#ffaaaa";
-      ctx.fillRect(flag.tileX * sx - 0.5, flag.tileZ * sz - 0.5, 2, 2);
+      ctx.fillStyle = flag.owner === "p0" ? "rgba(170,204,255,0.6)" : "rgba(255,170,170,0.5)";
+      ctx.fillRect(flag.tileX * sx - 0.3, flag.tileZ * sz - 0.3, 1.2, 1.2);
     }
 
     // Draw camera viewport indicator
@@ -1286,6 +1706,7 @@ export class SettlersHUD {
     this.onUpgrade = null;
     this.onMarketTrade = null;
     this.onRoadUpgrade = null;
+    this.onStartGame = null;
     this._root.remove();
   }
 }
