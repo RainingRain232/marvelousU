@@ -140,13 +140,14 @@ export class EagleFlightRenderer {
 
   init(sw: number, sh: number): void {
     // Renderer
-    this._renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    this._renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
     this._renderer.setSize(sw, sh);
     this._renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this._renderer.shadowMap.enabled = true;
     this._renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this._renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this._renderer.toneMappingExposure = 1.1;
+    this._renderer.toneMappingExposure = 1.0;
+    this._renderer.outputColorSpace = THREE.SRGBColorSpace;
     this._canvas = this._renderer.domElement;
     this._canvas.style.position = "absolute";
     this._canvas.style.top = "0";
@@ -193,12 +194,12 @@ export class EagleFlightRenderer {
   // ---------------------------------------------------------------------------
 
   private _buildLighting(): void {
-    // Warm ambient for golden-hour feel
-    this._ambientLight = new THREE.AmbientLight(0x8899bb, 0.5);
+    // Soft ambient base
+    this._ambientLight = new THREE.AmbientLight(0x7788aa, 0.35);
     this._scene.add(this._ambientLight);
 
     // Main sun — warm directional with high-quality shadows
-    this._sunLight = new THREE.DirectionalLight(0xffeedd, 1.6);
+    this._sunLight = new THREE.DirectionalLight(0xfff0dd, 1.8);
     this._sunLight.position.set(80, 120, -60);
     this._sunLight.castShadow = true;
     this._sunLight.shadow.mapSize.set(4096, 4096);
@@ -208,24 +209,30 @@ export class EagleFlightRenderer {
     this._sunLight.shadow.camera.right = 250;
     this._sunLight.shadow.camera.top = 250;
     this._sunLight.shadow.camera.bottom = -250;
-    this._sunLight.shadow.bias = -0.0005;
-    this._sunLight.shadow.normalBias = 0.02;
+    this._sunLight.shadow.bias = -0.001;
+    this._sunLight.shadow.normalBias = 0.03;
+    this._sunLight.shadow.radius = 2;
     this._scene.add(this._sunLight);
     this._scene.add(this._sunLight.target);
 
-    // Hemisphere — sky blue to warm ground bounce
-    const hemiLight = new THREE.HemisphereLight(0x8ab4e8, 0x6a7a44, 0.55);
+    // Hemisphere — sky blue to earthy ground bounce (natural outdoor feel)
+    const hemiLight = new THREE.HemisphereLight(0x87b5e0, 0x5a6a3a, 0.6);
     this._scene.add(hemiLight);
 
-    // Warm fill from opposite side of sun
-    const fillLight = new THREE.DirectionalLight(0xffd4aa, 0.35);
+    // Warm fill from opposite side (simulates bounce light from terrain)
+    const fillLight = new THREE.DirectionalLight(0xffe8cc, 0.2);
     fillLight.position.set(-60, 40, 80);
     this._scene.add(fillLight);
 
-    // Cool rim light from behind for dramatic edge
-    const rimLight = new THREE.DirectionalLight(0x99aacc, 0.25);
+    // Cool rim/back light for depth separation
+    const rimLight = new THREE.DirectionalLight(0x8899bb, 0.15);
     rimLight.position.set(0, 30, 100);
     this._scene.add(rimLight);
+
+    // Subtle ground bounce (warm uplight)
+    const bounceLight = new THREE.DirectionalLight(0x998866, 0.1);
+    bounceLight.position.set(0, -20, 0);
+    this._scene.add(bounceLight);
   }
 
   // ---------------------------------------------------------------------------
@@ -282,39 +289,47 @@ export class EagleFlightRenderer {
           vec3 dir = normalize(vWorldPos);
           float h = dir.y * 0.5 + 0.5;
 
-          // Multi-band sky gradient
-          vec3 col = mix(horizonColor, midColor, smoothstep(0.0, 0.25, h));
-          col = mix(col, topColor, smoothstep(0.25, 0.75, h));
+          // Rayleigh-inspired sky gradient (deeper blue zenith, warmer horizon)
+          vec3 col = mix(horizonColor, midColor, smoothstep(0.0, 0.3, h));
+          col = mix(col, topColor, smoothstep(0.3, 0.8, h));
 
-          // Warm horizon band
-          float horizonBand = exp(-pow((h - 0.48) * 8.0, 2.0));
-          col = mix(col, vec3(0.95, 0.85, 0.7), horizonBand * 0.3);
+          // Warm golden-hour horizon band
+          float horizonBand = exp(-pow((h - 0.48) * 7.0, 2.0));
+          col = mix(col, vec3(0.95, 0.82, 0.65), horizonBand * 0.35);
 
-          // Sun disc + glow
+          // Sun disc + realistic multi-layer glow
           float sunDot = max(dot(dir, sunDir), 0.0);
-          col += sunColor * pow(sunDot, 400.0) * 4.0;  // sharp core
-          col += sunColor * pow(sunDot, 80.0) * 1.0;   // inner glow
-          col += sunColor * pow(sunDot, 12.0) * 0.2;   // outer glow
-          col += vec3(1.0, 0.7, 0.4) * pow(sunDot, 3.0) * 0.08; // atmospheric scatter
+          col += sunColor * pow(sunDot, 800.0) * 5.0;  // tight bright core
+          col += sunColor * pow(sunDot, 200.0) * 1.5;  // inner corona
+          col += sunColor * pow(sunDot, 40.0) * 0.5;   // mid glow
+          col += sunColor * pow(sunDot, 8.0) * 0.12;   // outer glow
+          col += vec3(1.0, 0.6, 0.3) * pow(sunDot, 3.0) * 0.1; // Mie scattering
 
-          // Horizon haze
-          float haze = 1.0 - smoothstep(0.0, 0.15, abs(dir.y));
-          col = mix(col, vec3(0.82, 0.87, 0.92), haze * 0.4);
+          // Horizon haze / aerial perspective
+          float haze = 1.0 - smoothstep(0.0, 0.18, abs(dir.y));
+          col = mix(col, vec3(0.80, 0.85, 0.90), haze * 0.5);
 
-          // Animated procedural cirrus clouds
+          // Animated procedural cirrus clouds (3 layers for depth)
           vec2 cloudUV = dir.xz / max(dir.y, 0.01) * 3.0;
           float cirrus = fbm(cloudUV + time * 0.02);
           cirrus = smoothstep(0.4, 0.7, cirrus);
           cirrus *= smoothstep(0.5, 0.65, h) * (1.0 - smoothstep(0.7, 0.9, h));
-          // Lit by sun
-          float cirrusLit = 0.9 + pow(sunDot, 2.0) * 0.15;
-          col = mix(col, vec3(0.95, 0.93, 0.9) * cirrusLit, cirrus * 0.2);
+          // Sun-lit cloud coloring
+          float cirrusLit = 0.85 + pow(sunDot, 2.0) * 0.2;
+          vec3 cloudCol = mix(vec3(0.9, 0.9, 0.92), vec3(1.0, 0.95, 0.85), pow(sunDot, 3.0));
+          col = mix(col, cloudCol * cirrusLit, cirrus * 0.25);
 
-          // Second cloud layer (lower altitude wisps)
+          // Lower wispy cloud layer
           float wisps = fbm(cloudUV * 0.5 - time * 0.015);
           wisps = smoothstep(0.45, 0.65, wisps);
           wisps *= smoothstep(0.35, 0.5, h) * (1.0 - smoothstep(0.55, 0.7, h));
-          col = mix(col, vec3(0.92, 0.9, 0.88), wisps * 0.12);
+          col = mix(col, vec3(0.92, 0.90, 0.87), wisps * 0.15);
+
+          // Very high altitude thin haze layer
+          float highHaze = fbm(cloudUV * 0.2 + time * 0.008);
+          highHaze = smoothstep(0.5, 0.7, highHaze);
+          highHaze *= smoothstep(0.65, 0.8, h) * (1.0 - smoothstep(0.85, 0.95, h));
+          col = mix(col, vec3(0.88, 0.9, 0.95), highHaze * 0.08);
 
           gl_FragColor = vec4(col, 1.0);
         }
@@ -426,12 +441,14 @@ export class EagleFlightRenderer {
 
     const terrainMat = new THREE.MeshStandardMaterial({
       vertexColors: true,
-      roughness: 0.92,
+      roughness: 0.88,
       metalness: 0.0,
-      flatShading: true,
+      flatShading: false,
+      envMapIntensity: 0.3,
     });
     const ground = new THREE.Mesh(groundGeo, terrainMat);
     ground.receiveShadow = true;
+    ground.castShadow = true;
     this._terrainGroup.add(ground);
 
     // City ground — brown mud with brick road strips
@@ -6555,23 +6572,31 @@ export class EagleFlightRenderer {
         void main() {
           float n = noise(vWorldPos.xz * 0.03 + time * 0.08);
           float n2 = noise(vWorldPos.xz * 0.08 - time * 0.05);
-          float density = (n * 0.6 + n2 * 0.4);
-          // Fade at edges
-          float edgeFade = smoothstep(0.0, 0.2, vUv.x) * smoothstep(1.0, 0.8, vUv.x)
-                         * smoothstep(0.0, 0.2, vUv.y) * smoothstep(1.0, 0.8, vUv.y);
-          float alpha = density * edgeFade * 0.25;
-          gl_FragColor = vec4(0.85, 0.88, 0.92, alpha);
+          float n3 = noise(vWorldPos.xz * 0.15 + time * 0.03);
+          float density = (n * 0.5 + n2 * 0.3 + n3 * 0.2);
+          // Soft edge fade
+          float edgeFade = smoothstep(0.0, 0.3, vUv.x) * smoothstep(1.0, 0.7, vUv.x)
+                         * smoothstep(0.0, 0.3, vUv.y) * smoothstep(1.0, 0.7, vUv.y);
+          float alpha = density * edgeFade * 0.3;
+          // Slightly warm-tinted fog
+          vec3 fogCol = mix(vec3(0.82, 0.86, 0.92), vec3(0.88, 0.85, 0.80), n * 0.5);
+          gl_FragColor = vec4(fogCol, alpha);
         }
       `,
     });
 
-    // Fog patches near river and in low areas
+    // Fog patches in valleys and low areas
     const fogPositions = [
-      { x: 0, z: -15, w: 120, d: 30 },    // Along river center
-      { x: -100, z: -30, w: 80, d: 40 },   // River west
-      { x: 100, z: -20, w: 80, d: 35 },    // River east
-      { x: -150, z: 50, w: 60, d: 50 },    // Valley
-      { x: 180, z: -80, w: 50, d: 40 },    // Valley
+      { x: 0, z: -15, w: 120, d: 30 },     // City center low area
+      { x: -100, z: -30, w: 80, d: 40 },    // West valley
+      { x: 100, z: -20, w: 80, d: 35 },     // East valley
+      { x: -150, z: 50, w: 60, d: 50 },     // NW valley
+      { x: 180, z: -80, w: 50, d: 40 },     // SE valley
+      { x: -300, z: 200, w: 100, d: 60 },   // Far NW
+      { x: 300, z: -250, w: 80, d: 50 },    // Near wizard tower
+      { x: -350, z: -150, w: 70, d: 45 },   // SW lowland
+      { x: 250, z: 150, w: 60, d: 40 },     // NE lowland
+      { x: 0, z: 200, w: 90, d: 50 },       // North field
     ];
 
     for (const fp of fogPositions) {
@@ -7546,30 +7571,51 @@ export class EagleFlightRenderer {
     const sunY = Math.sin(state.sunAngle);
     const sunX = Math.cos(state.sunAngle) * 0.5;
     const daylight = Math.max(0, sunY); // 0 at night, 1 at noon
-    // Sun position
+    // Sun position follows player
     this._sunLight.position.set(
       p.position.x + sunX * 100,
       sunY * 120 + 10,
       p.position.z - 60,
     );
-    this._sunLight.intensity = 0.3 + daylight * 1.3;
-    this._ambientLight.intensity = Math.max(this._ambientLight.intensity, 0.15 + daylight * 0.4);
-    // Warm colors at dawn/dusk
-    const duskFactor = Math.max(0, 1 - Math.abs(sunY) * 5);
+    this._sunLight.target.position.set(p.position.x, 0, p.position.z);
+    this._sunLight.intensity = 0.2 + daylight * 1.6;
+    this._ambientLight.intensity = Math.max(this._ambientLight.intensity, 0.1 + daylight * 0.3);
+    // Realistic sun color: warm white at noon, deep orange at dawn/dusk, cool at night
+    const duskFactor = Math.max(0, 1 - Math.abs(sunY) * 4);
+    const dawnGlow = duskFactor * duskFactor; // quadratic for richer sunsets
     const sunR = 1.0;
-    const sunG = 0.85 + daylight * 0.15 - duskFactor * 0.2;
-    const sunB = 0.7 + daylight * 0.3 - duskFactor * 0.4;
-    this._sunLight.color.setRGB(sunR, sunG, sunB);
-    // Fog color shifts with time of day
-    const fogR = 0.65 + daylight * 0.2 + duskFactor * 0.15;
-    const fogG = 0.72 + daylight * 0.15 - duskFactor * 0.05;
-    const fogB = 0.8 + daylight * 0.1 - duskFactor * 0.1;
+    const sunG = 0.9 + daylight * 0.1 - dawnGlow * 0.35;
+    const sunB = 0.75 + daylight * 0.25 - dawnGlow * 0.55;
+    this._sunLight.color.setRGB(sunR, Math.max(0.4, sunG), Math.max(0.2, sunB));
+    // Fog color: blueish by day, warm orange at dusk, dark blue at night
+    const fogR = 0.55 + daylight * 0.25 + dawnGlow * 0.2;
+    const fogG = 0.60 + daylight * 0.2 - dawnGlow * 0.05;
+    const fogB = 0.72 + daylight * 0.12 - dawnGlow * 0.15;
     (this._scene.fog as THREE.FogExp2).color.setRGB(fogR, fogG, fogB);
+    // Sky shader uniforms update for time-of-day
+    if (this._skyMesh) {
+      const skyMat = this._skyMesh.material as THREE.ShaderMaterial;
+      skyMat.uniforms.sunDir.value.set(sunX, sunY, -0.4).normalize();
+      skyMat.uniforms.time.value = t;
+      // Shift sky colors with daylight
+      skyMat.uniforms.topColor.value.setRGB(
+        0.04 + daylight * 0.04,
+        0.08 + daylight * 0.1,
+        0.2 + daylight * 0.1,
+      );
+      skyMat.uniforms.horizonColor.value.setRGB(
+        0.6 + daylight * 0.2 + dawnGlow * 0.2,
+        0.65 + daylight * 0.2 - dawnGlow * 0.1,
+        0.75 + daylight * 0.15 - dawnGlow * 0.2,
+      );
+    }
     // Torch lights brighten at night
     const nightFactor = 1 - daylight;
     for (const tl of this._torchLights) {
       tl.intensity = (tl.intensity * 0.3) + nightFactor * 1.5 + 0.3;
     }
+    // Exposure adapts to lighting conditions
+    const duskExposure = dawnGlow * 0.15; // slightly brighter during golden hour
 
     // --- Update checkpoint rings ---
     for (let i = 0; i < this._checkpointMeshes.length && i < state.checkpoints.length; i++) {
@@ -7693,9 +7739,9 @@ export class EagleFlightRenderer {
     const fogDensity = 0.0004 + Math.max(0, (50 - p.position.y) / 50) * 0.0006;
     (this._scene.fog as THREE.FogExp2).density = fogDensity;
 
-    // --- Tone mapping exposure based on altitude (brighter high up) ---
-    const targetExposure = 1.0 + Math.min(0.3, p.position.y / 500);
-    this._renderer.toneMappingExposure += (targetExposure - this._renderer.toneMappingExposure) * dt;
+    // --- Tone mapping exposure (altitude + time of day) ---
+    const targetExposure = 0.9 + Math.min(0.25, p.position.y / 600) + duskExposure;
+    this._renderer.toneMappingExposure += (targetExposure - this._renderer.toneMappingExposure) * 2 * dt;
 
     // --- Render ---
     this._renderer.render(this._scene, this._camera);

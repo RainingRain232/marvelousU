@@ -6,8 +6,8 @@ import { viewManager } from "@view/ViewManager";
 import { TB } from "./config/TerrariaBalance";
 import { createTerrariaState, addMessage, getWorldBlock, setWorldBlock } from "./state/TerrariaState";
 import type { TerrariaState } from "./state/TerrariaState";
-import { BlockType } from "./config/TerrariaBlockDefs";
-import { addToInventory, calcArmorDefense, tryEquipArmor, ItemCategory } from "./state/TerrariaInventory";
+import { BlockType, BLOCK_DEFS } from "./config/TerrariaBlockDefs";
+import { addToInventory, calcArmorDefense, tryEquipArmor, ItemCategory, createBlockItem } from "./state/TerrariaInventory";
 import { makeExcaliburItem, makeGrailItem } from "./config/TerrariaItemDefs";
 
 // Systems
@@ -47,6 +47,13 @@ export class TerrariaGame {
   private _rafId: number | null = null;
   private _lastTime = 0;
   private _saveTimer = 0;
+  private _tutorialStep = 0;
+  private _tutorialTimer = 0;
+  // fall damage tracking
+  private _fallStartY = 0;
+  private _wasFalling = false;
+  private _dodgeTimer = 0;
+  private _dodgeCooldown = 0;
 
   // -----------------------------------------------------------------------
   // Boot
@@ -276,9 +283,23 @@ export class TerrariaGame {
     // Handle window resize
     window.addEventListener("resize", this._onResize);
 
-    // Welcome message
+    // Starter items (give player basic tools to skip the "punch trees" phase)
+    if (!creative) {
+      addToInventory(this._state.player.inventory, createBlockItem(BlockType.TORCH, "Torch", 0xFFAA00, 10));
+      addToInventory(this._state.player.inventory, createBlockItem(BlockType.OAK_LOG, "Oak Log", 0x6B4226, 8));
+      addToInventory(this._state.player.inventory, createBlockItem(BlockType.PLANKS, "Planks", 0xC4A35A, 12));
+    }
+
+    // Welcome + tutorial hints
     addMessage(this._state, "Welcome to Camelot Dig!", 0xFFD700);
-    addMessage(this._state, creative ? "Creative mode — infinite resources" : "Mine, build, and seek the Holy Grail!", 0xC0A060);
+    if (creative) {
+      addMessage(this._state, "Creative mode — infinite resources.", 0xC0A060);
+    } else {
+      addMessage(this._state, "Tip: Mine trees for wood. Craft a Round Table to unlock recipes!", 0x88CC66);
+      addMessage(this._state, "Press F1 for controls. Press E to open inventory.", 0x666666);
+    }
+    this._tutorialStep = 0;
+    this._tutorialTimer = 0;
 
     // Start game loop
     this._lastTime = performance.now();
@@ -431,23 +452,94 @@ export class TerrariaGame {
     }
 
     if (!this._state.paused && !this._state.gameOver) {
-      // Player movement
       const p = this._state.player;
-      const speed = input.sprint ? TB.PLAYER_SPEED * TB.PLAYER_SPRINT_MULT : TB.PLAYER_SPEED;
-      if (input.left) { p.vx = -speed; p.facingRight = false; }
-      else if (input.right) { p.vx = speed; p.facingRight = true; }
-      else { p.vx *= TB.FRICTION; }
-      if (input.jump && p.onGround) { p.vy = TB.JUMP_VELOCITY; }
+
+      // Dodge roll (double-tap direction or Shift+A/D)
+      if (this._dodgeCooldown > 0) this._dodgeCooldown -= dt;
+      if (this._dodgeTimer > 0) {
+        this._dodgeTimer -= dt;
+        p.invulnTimer = Math.max(p.invulnTimer, TB.DODGE_INVULN);
+      } else {
+        // Normal movement
+        const inWater = this._isPlayerInWater();
+        const speed = inWater ? TB.SWIM_SPEED : (input.sprint ? TB.PLAYER_SPEED * TB.PLAYER_SPRINT_MULT : TB.PLAYER_SPEED);
+        if (input.left) { p.vx = -speed; p.facingRight = false; }
+        else if (input.right) { p.vx = speed; p.facingRight = true; }
+        else { p.vx *= TB.FRICTION; }
+
+        // Jump / swim
+        if (input.jump) {
+          if (inWater) {
+            p.vy = TB.SWIM_BOOST;
+          } else if (p.onGround) {
+            p.vy = TB.JUMP_VELOCITY;
+          }
+        }
+
+        // Dodge roll trigger (Shift + A/D while on ground)
+        if (input.sprint && (input.left || input.right) && p.onGround && this._dodgeCooldown <= 0) {
+          // Only trigger on fresh sprint press (not held)
+          // Simplified: dodge on sprint + direction if cooldown ready
+          if (Math.abs(p.vx) > TB.PLAYER_SPEED * 1.4) {
+            this._dodgeTimer = TB.DODGE_DURATION;
+            this._dodgeCooldown = TB.DODGE_COOLDOWN;
+            p.vx = (input.left ? -1 : 1) * TB.DODGE_SPEED;
+            this._fx.spawnMiningParticles(p.x, p.y - 0.5, 0xCCCCCC, 4);
+          }
+        }
+      }
+
+      // Track fall start for fall damage
+      if (!p.onGround && p.vy < 0) {
+        if (!this._wasFalling) {
+          this._fallStartY = p.y;
+          this._wasFalling = true;
+        }
+      }
 
       // Physics
       updatePlayerPhysics(this._state, dt);
       updateMobPhysics(this._state, dt);
       updateDroppedItemPhysics(this._state, dt);
 
-      // Mining / placing
-      if (!this._state.inventoryOpen) {
-        updateMining(this._state, input, this._camera, dt);
+      // Fall damage check (after physics resolved landing)
+      if (p.onGround && this._wasFalling) {
+        const fallDist = this._fallStartY - p.y;
+        if (fallDist > TB.FALL_DAMAGE_THRESHOLD && !this._state.creativeMode && !this._isPlayerInWater()) {
+          const dmg = Math.floor((fallDist - TB.FALL_DAMAGE_THRESHOLD) * TB.FALL_DAMAGE_MULT);
+          if (dmg > 0) {
+            p.hp -= dmg;
+            p.invulnTimer = TB.INVULN_TIME;
+            this._camera.shake(2 + dmg * 0.1, 0.15);
+            this._fx.spawnMiningParticles(p.x, p.y - 0.3, 0x888888, 6);
+            this._renderer.addFloatingText(p.x, p.y + 1, String(dmg), 0xFF8844);
+            if (p.hp <= 0) {
+              p.hp = 0;
+              this._state.gameOver = true;
+              addMessage(this._state, "You fell to your death!", 0xFF4444);
+            }
+          }
+        }
+        this._wasFalling = false;
       }
+
+      // Mining / placing (with progress particles)
+      if (!this._state.inventoryOpen) {
+        const prevMining = p.miningTarget?.progress ?? 0;
+        updateMining(this._state, input, this._camera, dt);
+        // Mining progress particles
+        if (p.miningTarget && p.miningTarget.progress > prevMining) {
+          const mt = p.miningTarget;
+          if (Math.floor(p.miningTarget.progress * 4) > Math.floor(prevMining * 4)) {
+            const bt = getWorldBlock(this._state, mt.wx, mt.wy);
+            const def = BLOCK_DEFS[bt];
+            if (def) this._fx.spawnMiningParticles(mt.wx + 0.5, mt.wy + 0.5, def.color, 3);
+          }
+        }
+      }
+
+      // Tutorial hints (contextual, time-based)
+      this._updateTutorial(dt);
 
       // Day/night
       updateDayNight(this._state, dt);
@@ -503,13 +595,23 @@ export class TerrariaGame {
       if (p.invulnTimer > 0) p.invulnTimer -= dt;
       if (p.attackTimer > 0) p.attackTimer -= dt;
 
-      // Pickup dropped items (with auto-equip for armor)
+      // Pickup dropped items (magnet pull + auto-equip for armor)
       for (let i = this._state.droppedItems.length - 1; i >= 0; i--) {
         const di = this._state.droppedItems[i];
         if (di.pickupDelay > 0) continue;
         const ddx = di.x - p.x;
         const ddy = di.y - p.y;
-        if (Math.sqrt(ddx * ddx + ddy * ddy) < 1.5) {
+        const dist = Math.sqrt(ddx * ddx + ddy * ddy);
+
+        // Magnet pull: items within magnet range drift toward player
+        if (dist < TB.PICKUP_MAGNET_RANGE && dist > TB.PICKUP_RANGE) {
+          const pull = TB.PICKUP_MAGNET_SPEED * dt;
+          di.x -= (ddx / dist) * pull;
+          di.y -= (ddy / dist) * pull;
+        }
+
+        // Actual pickup
+        if (dist < TB.PICKUP_RANGE) {
           let picked = false;
           if (di.item.category === ItemCategory.ARMOR) {
             picked = tryEquipArmor(p.inventory, di.item);
@@ -517,7 +619,7 @@ export class TerrariaGame {
           }
           if (!picked) picked = addToInventory(p.inventory, di.item);
           if (picked) {
-            this._fx.spawnMiningParticles(di.x, di.y, di.item.color, 4);
+            this._fx.spawnPickupParticles(di.x, di.y, di.item.color);
             this._state.droppedItems.splice(i, 1);
           }
         }
@@ -562,6 +664,49 @@ export class TerrariaGame {
 
     // Continue loop
     this._rafId = requestAnimationFrame((t) => this._gameLoop(t));
+  }
+
+  // -----------------------------------------------------------------------
+  // Helpers
+  // -----------------------------------------------------------------------
+
+  private _isPlayerInWater(): boolean {
+    const p = this._state.player;
+    const bt = getWorldBlock(this._state, Math.floor(p.x), Math.floor(p.y));
+    return bt === BlockType.WATER;
+  }
+
+  private _updateTutorial(dt: number): void {
+    if (this._state.creativeMode) return;
+    this._tutorialTimer += dt;
+    const p = this._state.player;
+
+    // Step 0: after 15s, hint about mining
+    if (this._tutorialStep === 0 && this._tutorialTimer > 15 && p.blocksMined === 0) {
+      addMessage(this._state, "Hint: Left-click on blocks to mine them. Start with trees!", 0x88AA66);
+      this._tutorialStep = 1;
+    }
+    // Step 1: after first block mined, hint about crafting
+    if (this._tutorialStep <= 1 && p.blocksMined >= 1 && this._tutorialTimer > 20) {
+      addMessage(this._state, "Hint: Press E to open inventory. Craft a Round Table from planks!", 0x88AA66);
+      this._tutorialStep = 2;
+    }
+    // Step 2: after placing a Round Table, hint about using it
+    if (this._tutorialStep === 2 && p.blocksPlaced >= 1 && this._tutorialTimer > 40) {
+      addMessage(this._state, "Hint: Right-click a Round Table to access crafting recipes.", 0x88AA66);
+      this._tutorialStep = 3;
+    }
+    // Step 3: after crafting, hint about going underground
+    if (this._tutorialStep === 3 && this._state.quests[1]?.completed) {
+      addMessage(this._state, "Hint: Dig down to find iron ore. Place torches to light the way!", 0x88AA66);
+      this._tutorialStep = 4;
+    }
+    // Step 4: after finding iron, hint about forge
+    if (this._tutorialStep === 4 && this._state.quests[2]?.completed) {
+      addMessage(this._state, "Hint: Build a Forge (8 cobblestone + 2 logs at Round Table) for advanced recipes.", 0x88AA66);
+      this._tutorialStep = 5;
+    }
+    // No more hints after step 5
   }
 
   // -----------------------------------------------------------------------

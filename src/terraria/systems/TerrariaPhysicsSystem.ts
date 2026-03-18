@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import { TB } from "../config/TerrariaBalance";
-import { BLOCK_DEFS } from "../config/TerrariaBlockDefs";
+import { BLOCK_DEFS, BlockType } from "../config/TerrariaBlockDefs";
 import type { TerrariaState } from "../state/TerrariaState";
 import { getWorldBlock } from "../state/TerrariaState";
 
@@ -47,10 +47,20 @@ export function updatePhysicsBody(body: PhysicsBody, state: TerrariaState, dt: n
   const hw = body.width / 2;
   const hh = body.height / 2;
 
-  // Apply gravity
+  // Check if body is in water
+  const inWater = _isInWater(body, state);
+
+  // Apply gravity (reduced in water for buoyancy)
   if (applyGravity) {
-    body.vy -= TB.GRAVITY * dt;
-    if (body.vy < -TB.MAX_FALL_SPEED) body.vy = -TB.MAX_FALL_SPEED;
+    const grav = inWater ? TB.GRAVITY * 0.25 : TB.GRAVITY;
+    body.vy -= grav * dt;
+    const maxFall = inWater ? TB.MAX_FALL_SPEED * 0.3 : TB.MAX_FALL_SPEED;
+    if (body.vy < -maxFall) body.vy = -maxFall;
+    // Water drag
+    if (inWater) {
+      body.vx *= 0.95;
+      body.vy *= 0.95;
+    }
   }
 
   // Move X
@@ -61,6 +71,13 @@ export function updatePhysicsBody(body: PhysicsBody, state: TerrariaState, dt: n
   body.y += body.vy * dt;
   body.onGround = false;
   _resolveY(body, state, hw, hh);
+}
+
+function _isInWater(body: PhysicsBody, state: TerrariaState): boolean {
+  const bx = Math.floor(body.x);
+  const by = Math.floor(body.y);
+  if (bx < 0 || bx >= state.worldWidth || by < 0 || by >= TB.WORLD_HEIGHT) return false;
+  return getWorldBlock(state, bx, by) === BlockType.WATER;
 }
 
 function _resolveX(body: PhysicsBody, state: TerrariaState, hw: number, hh: number): void {

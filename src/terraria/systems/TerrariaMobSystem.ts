@@ -180,12 +180,16 @@ export function damageMob(state: TerrariaState, mob: MobInstance, amount: number
   const def = MOB_DEFS[mob.type];
   const dmg = Math.max(1, amount - (def?.defense ?? 0));
   mob.hp -= dmg;
-  mob.hurtTimer = 0.3;
+  mob.hurtTimer = TB.MOB_KNOCKBACK_STUN; // stunned during knockback recovery
 
-  // Knockback from player
+  // Knockback from player (bosses resist more)
+  const kbResist = mob.isBoss ? 0.3 : 0.7;
   const kbDir = Math.sign(mob.x - state.player.x) || 1;
-  mob.vx += kbDir * TB.KNOCKBACK_STRENGTH * 0.6;
-  mob.vy += TB.KNOCKBACK_UP * 0.5;
+  mob.vx += kbDir * TB.KNOCKBACK_STRENGTH * kbResist;
+  mob.vy += TB.KNOCKBACK_UP * kbResist * 0.7;
+  // Force idle state briefly (stun)
+  mob.aiState = "idle";
+  mob.aiTimer = TB.MOB_KNOCKBACK_STUN;
 
   if (mob.hp <= 0) {
     state.player.mobsKilled++;

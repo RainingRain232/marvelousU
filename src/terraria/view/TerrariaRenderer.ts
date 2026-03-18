@@ -147,63 +147,83 @@ export class TerrariaRenderer {
 
   private _drawSky(state: TerrariaState, sw: number, sh: number): void {
     const t = state.timeOfDay;
-    // dayness: 0 at midnight, 1 at noon
     const dayness = Math.max(0, Math.min(1, Math.sin(t * Math.PI * 2 - Math.PI / 2) * 0.5 + 0.5));
-    // dawn/dusk warmth (peaks near 0.25 and 0.75)
     const sunAngle = t * Math.PI * 2 - Math.PI / 2;
-    const horizonness = Math.max(0, 1 - Math.abs(Math.sin(sunAngle)) * 2.5); // strong near horizon
+    const horizonness = Math.max(0, 1 - Math.abs(Math.sin(sunAngle)) * 2.5);
+    const time = state.totalTime;
+    const g = this._skyGfx;
+    g.clear();
 
-    this._skyGfx.clear();
-
-    // --- Sky gradient (4 horizontal bands blended) ---
-    const bands = 8;
+    // --- Sky gradient (16 bands for smooth transition) ---
+    const bands = 16;
     const bandH = sh / bands;
     for (let i = 0; i < bands; i++) {
-      const frac = i / bands; // 0=top, 1=bottom
-      // Top of sky: deeper blue / darker at night
-      // Bottom of sky: lighter / horizon glow
-      const nightR = 0x06 + frac * 0x08;
-      const nightG = 0x06 + frac * 0x0C;
-      const nightB = 0x18 + frac * 0x10;
-      const dayR = 0x40 + frac * 0x47;
-      const dayG = 0x80 + frac * 0x4E;
-      const dayB = 0xE0 + frac * 0x0B;
-      // Sunset/sunrise tint
-      const dawnR = 0xCC - frac * 0x30;
-      const dawnG = 0x66 + frac * 0x30;
-      const dawnB = 0x33 + frac * 0x44;
-
-      let r = _lerp(nightR, dayR, dayness);
-      let g = _lerp(nightG, dayG, dayness);
-      let b = _lerp(nightB, dayB, dayness);
-      // Blend in dawn/dusk warmth at horizon bands
-      if (horizonness > 0.05 && frac > 0.4) {
-        const warmBlend = horizonness * Math.min(1, (frac - 0.4) * 3) * 0.7;
-        r = _lerp(r, dawnR, warmBlend);
-        g = _lerp(g, dawnG, warmBlend);
-        b = _lerp(b, dawnB, warmBlend);
+      const frac = i / bands;
+      const nightR = 0x04 + frac * 0x0A; const nightG = 0x04 + frac * 0x0E; const nightB = 0x14 + frac * 0x14;
+      const dayR = 0x38 + frac * 0x50; const dayG = 0x78 + frac * 0x58; const dayB = 0xD0 + frac * 0x1B;
+      const dawnR = 0xDD - frac * 0x40; const dawnG = 0x55 + frac * 0x40; const dawnB = 0x22 + frac * 0x55;
+      let r = _lerp(nightR, dayR, dayness), gr = _lerp(nightG, dayG, dayness), b = _lerp(nightB, dayB, dayness);
+      if (horizonness > 0.05 && frac > 0.35) {
+        const w = horizonness * Math.min(1, (frac - 0.35) * 2.5) * 0.75;
+        r = _lerp(r, dawnR, w); gr = _lerp(gr, dawnG, w); b = _lerp(b, dawnB, w);
       }
-      const color = (_clamp8(r) << 16) | (_clamp8(g) << 8) | _clamp8(b);
-      this._skyGfx.rect(0, i * bandH, sw, bandH + 1);
-      this._skyGfx.fill(color);
+      g.rect(0, i * bandH, sw, bandH + 1);
+      g.fill((_clamp8(r) << 16) | (_clamp8(gr) << 8) | _clamp8(b));
     }
 
-    // --- Stars (visible at night) ---
+    // --- Milky Way nebula (night only) ---
+    if (dayness < 0.35) {
+      const nebulaAlpha = Math.min(1, (0.35 - dayness) * 4) * 0.12;
+      const nebulaY = sh * 0.15;
+      // Broad nebula band (diagonal across sky)
+      for (let i = 0; i < 30; i++) {
+        const nx = _pseudoRand(9000 + i) * sw;
+        const ny = nebulaY + Math.sin(nx * 0.003 + 1.5) * sh * 0.15 + (_pseudoRand(9100 + i) - 0.5) * 50;
+        const nw = 20 + _pseudoRand(9200 + i) * 60;
+        const nh = 8 + _pseudoRand(9300 + i) * 20;
+        const nc = i % 3 === 0 ? 0x6644AA : i % 3 === 1 ? 0x4466BB : 0x885599;
+        g.ellipse(nx, ny, nw, nh);
+        g.fill({ color: nc, alpha: nebulaAlpha * (0.5 + _pseudoRand(9400 + i) * 0.5) });
+      }
+      // Dense star clusters in nebula
+      for (let i = 0; i < 40; i++) {
+        const sx2 = _pseudoRand(9500 + i) * sw;
+        const sy2 = nebulaY + Math.sin(sx2 * 0.003 + 1.5) * sh * 0.12 + (_pseudoRand(9600 + i) - 0.5) * 30;
+        g.circle(sx2, sy2, 0.5 + _pseudoRand(9700 + i) * 0.8);
+        g.fill({ color: 0xDDDDFF, alpha: nebulaAlpha * 3 });
+      }
+    }
+
+    // --- Stars (120 with varied colors and sizes) ---
     if (dayness < 0.5) {
       const starAlpha = Math.min(1, (0.5 - dayness) * 2.5);
       const starSeed = 12345;
-      for (let i = 0; i < 80; i++) {
-        const sx = _pseudoRand(starSeed + i * 3) * sw;
-        const sy = _pseudoRand(starSeed + i * 3 + 1) * sh * 0.7;
-        const size = 1 + _pseudoRand(starSeed + i * 3 + 2) * 1.5;
-        const twinkle = 0.5 + Math.sin(state.totalTime * (1.5 + i * 0.1) + i) * 0.5;
-        this._skyGfx.circle(sx, sy, size);
-        this._skyGfx.fill({ color: 0xFFFFFF, alpha: starAlpha * twinkle * 0.8 });
+      const starColors = [0xFFFFFF, 0xFFEECC, 0xCCDDFF, 0xFFCCCC, 0xCCFFCC, 0xFFFFDD];
+      for (let i = 0; i < 120; i++) {
+        const sx2 = _pseudoRand(starSeed + i * 3) * sw;
+        const sy2 = _pseudoRand(starSeed + i * 3 + 1) * sh * 0.7;
+        const size = 0.5 + _pseudoRand(starSeed + i * 3 + 2) * 2;
+        const twinkle = 0.4 + Math.sin(time * (1.2 + i * 0.07) + i * 0.5) * 0.6;
+        const sc = starColors[i % starColors.length];
+        g.circle(sx2, sy2, size);
+        g.fill({ color: sc, alpha: starAlpha * twinkle * 0.8 });
+        // Bright stars get cross-shaped diffraction spikes
+        if (size > 1.8 && twinkle > 0.7) {
+          const spikeLen = size * 2.5;
+          g.moveTo(sx2 - spikeLen, sy2); g.lineTo(sx2 + spikeLen, sy2);
+          g.stroke({ color: sc, width: 0.4, alpha: starAlpha * twinkle * 0.3 });
+          g.moveTo(sx2, sy2 - spikeLen); g.lineTo(sx2, sy2 + spikeLen);
+          g.stroke({ color: sc, width: 0.4, alpha: starAlpha * twinkle * 0.3 });
+        }
       }
-      // Constellations (connect a few stars with dim lines)
-      if (starAlpha > 0.3) {
+      // Constellations with more complex shapes
+      if (starAlpha > 0.25) {
         const constellations = [
-          [0, 3, 7, 12, 8], [20, 24, 27, 30], [40, 43, 46, 49, 44],
+          [0, 3, 7, 12, 8, 3], // pentagon
+          [20, 24, 27, 30, 27, 24], // back-and-forth
+          [40, 43, 46, 49, 44, 40], // loop
+          [60, 63, 67, 70], // line
+          [80, 85, 82, 88, 84], // W shape
         ];
         for (const group of constellations) {
           for (let j = 1; j < group.length; j++) {
@@ -211,61 +231,136 @@ export class TerrariaRenderer {
             const ay = _pseudoRand(starSeed + group[j - 1] * 3 + 1) * sh * 0.7;
             const bx = _pseudoRand(starSeed + group[j] * 3) * sw;
             const by = _pseudoRand(starSeed + group[j] * 3 + 1) * sh * 0.7;
-            this._skyGfx.moveTo(ax, ay);
-            this._skyGfx.lineTo(bx, by);
-            this._skyGfx.stroke({ color: 0x8888CC, width: 0.5, alpha: starAlpha * 0.25 });
+            g.moveTo(ax, ay); g.lineTo(bx, by);
+            g.stroke({ color: 0x7788BB, width: 0.5, alpha: starAlpha * 0.2 });
           }
+        }
+      }
+
+      // --- Shooting star (occasional) ---
+      const shootPhase = Math.floor(time * 0.15);
+      const shootFrac = (time * 0.15) - shootPhase;
+      if (_pseudoRand(shootPhase * 17) < 0.3 && shootFrac < 0.3) {
+        const ssx = _pseudoRand(shootPhase * 31) * sw;
+        const ssy = _pseudoRand(shootPhase * 37) * sh * 0.4;
+        const trailLen = 40 + _pseudoRand(shootPhase * 41) * 60;
+        const angle = 0.3 + _pseudoRand(shootPhase * 43) * 0.5;
+        const progress = shootFrac / 0.3;
+        const headX = ssx + Math.cos(angle) * trailLen * progress;
+        const headY = ssy + Math.sin(angle) * trailLen * progress;
+        const tailX = ssx + Math.cos(angle) * trailLen * Math.max(0, progress - 0.4);
+        const tailY = ssy + Math.sin(angle) * trailLen * Math.max(0, progress - 0.4);
+        g.moveTo(tailX, tailY); g.lineTo(headX, headY);
+        g.stroke({ color: 0xFFFFFF, width: 1.5, alpha: starAlpha * (1 - progress) * 0.8 });
+        g.circle(headX, headY, 1.5);
+        g.fill({ color: 0xFFFFFF, alpha: starAlpha * (1 - progress) });
+      }
+
+      // --- Aurora Borealis (rare, high in sky) ---
+      const auroraPhase = Math.sin(time * 0.05);
+      if (auroraPhase > 0.3 && dayness < 0.2) {
+        const auroraAlpha = (auroraPhase - 0.3) * 0.15;
+        for (let i = 0; i < 12; i++) {
+          const ax = (i / 12) * sw;
+          const wave1 = Math.sin(time * 0.4 + i * 0.8) * 25;
+          const wave2 = Math.sin(time * 0.25 + i * 1.2 + 2) * 15;
+          const ay = sh * 0.08 + wave1 + wave2;
+          const ah = 15 + Math.sin(time * 0.6 + i) * 8;
+          const ac = i % 2 === 0 ? 0x44FF88 : 0x4488FF;
+          g.rect(ax, ay, sw / 12 + 4, ah);
+          g.fill({ color: ac, alpha: auroraAlpha * (0.5 + Math.sin(time * 0.8 + i * 0.6) * 0.5) });
         }
       }
     }
 
-    // --- Sun / Moon ---
+    // --- Sun with corona and lens flare ---
     const celestialX = sw * 0.5 + Math.cos(sunAngle) * sw * 0.4;
     const celestialY = sh * 0.35 - Math.sin(sunAngle) * sh * 0.3;
 
-    if (dayness > 0.15) {
-      // Sun
-      const sunAlpha = Math.min(1, (dayness - 0.15) * 3);
-      // Sun glow (large soft circle)
-      this._skyGfx.circle(celestialX, celestialY, 28);
-      this._skyGfx.fill({ color: 0xFFDD44, alpha: sunAlpha * 0.15 });
-      this._skyGfx.circle(celestialX, celestialY, 18);
-      this._skyGfx.fill({ color: 0xFFEE66, alpha: sunAlpha * 0.3 });
+    if (dayness > 0.12) {
+      const sunAlpha = Math.min(1, (dayness - 0.12) * 3);
+      // Outer corona
+      g.circle(celestialX, celestialY, 40);
+      g.fill({ color: 0xFFDD44, alpha: sunAlpha * 0.06 });
+      // Mid corona
+      g.circle(celestialX, celestialY, 26);
+      g.fill({ color: 0xFFEE66, alpha: sunAlpha * 0.12 });
+      // Inner glow
+      g.circle(celestialX, celestialY, 16);
+      g.fill({ color: 0xFFEE88, alpha: sunAlpha * 0.25 });
       // Sun body
-      this._skyGfx.circle(celestialX, celestialY, 10);
-      this._skyGfx.fill({ color: 0xFFFF88, alpha: sunAlpha });
-      // Sun rays
-      for (let r = 0; r < 8; r++) {
-        const angle = r * Math.PI / 4 + state.totalTime * 0.15;
-        const inner = 12;
-        const outer = 18 + Math.sin(state.totalTime * 2 + r) * 3;
-        this._skyGfx.moveTo(
-          celestialX + Math.cos(angle) * inner,
-          celestialY + Math.sin(angle) * inner,
-        );
-        this._skyGfx.lineTo(
-          celestialX + Math.cos(angle) * outer,
-          celestialY + Math.sin(angle) * outer,
-        );
-        this._skyGfx.stroke({ color: 0xFFEE66, width: 1.5, alpha: sunAlpha * 0.5 });
+      g.circle(celestialX, celestialY, 10);
+      g.fill({ color: 0xFFFFA0, alpha: sunAlpha });
+      // Sun surface detail (darker spots)
+      g.circle(celestialX - 2, celestialY + 1, 2);
+      g.fill({ color: 0xEEDD66, alpha: sunAlpha * 0.3 });
+      g.circle(celestialX + 3, celestialY - 1, 1.5);
+      g.fill({ color: 0xEEDD66, alpha: sunAlpha * 0.2 });
+      // Corona rays (12 tapered triangles)
+      for (let r = 0; r < 12; r++) {
+        const angle = r * Math.PI / 6 + time * 0.12;
+        const inner = 11;
+        const outer = 20 + Math.sin(time * 2.5 + r * 1.3) * 5;
+        const spread = 0.08 + Math.sin(time * 1.5 + r) * 0.03;
+        g.moveTo(celestialX + Math.cos(angle - spread) * inner, celestialY + Math.sin(angle - spread) * inner);
+        g.lineTo(celestialX + Math.cos(angle) * outer, celestialY + Math.sin(angle) * outer);
+        g.lineTo(celestialX + Math.cos(angle + spread) * inner, celestialY + Math.sin(angle + spread) * inner);
+        g.closePath();
+        g.fill({ color: 0xFFEE66, alpha: sunAlpha * 0.25 });
+      }
+      // Lens flare (line of dots extending from sun toward center)
+      if (sunAlpha > 0.5) {
+        const flareAngle = Math.atan2(sh / 2 - celestialY, sw / 2 - celestialX);
+        for (let i = 1; i <= 4; i++) {
+          const fd = 30 + i * 25;
+          const fx = celestialX + Math.cos(flareAngle) * fd;
+          const fy = celestialY + Math.sin(flareAngle) * fd;
+          const fr = 4 - i * 0.5;
+          const fc = i % 2 === 0 ? 0xFFDD88 : 0xAABBFF;
+          g.circle(fx, fy, fr);
+          g.fill({ color: fc, alpha: sunAlpha * 0.08 });
+        }
       }
     }
+
+    // --- Moon with earthshine, crescent, and surface detail ---
     if (dayness < 0.45) {
-      // Moon (opposite side of the sky from sun)
       const moonX = sw * 0.5 - Math.cos(sunAngle) * sw * 0.4;
       const moonY = sh * 0.3 + Math.sin(sunAngle) * sh * 0.25;
       const moonAlpha = Math.min(1, (0.45 - dayness) * 3);
-      // Moon glow
-      this._skyGfx.circle(moonX, moonY, 16);
-      this._skyGfx.fill({ color: 0xCCCCFF, alpha: moonAlpha * 0.12 });
-      // Moon body
-      this._skyGfx.circle(moonX, moonY, 8);
-      this._skyGfx.fill({ color: 0xEEEEFF, alpha: moonAlpha * 0.9 });
-      // Craters
-      this._skyGfx.circle(moonX - 2, moonY - 1, 2);
-      this._skyGfx.fill({ color: 0xCCCCDD, alpha: moonAlpha * 0.5 });
-      this._skyGfx.circle(moonX + 3, moonY + 2, 1.5);
-      this._skyGfx.fill({ color: 0xCCCCDD, alpha: moonAlpha * 0.4 });
+      const moonR = 10;
+      // Moonlight glow (wide)
+      g.circle(moonX, moonY, moonR * 3);
+      g.fill({ color: 0xBBBBEE, alpha: moonAlpha * 0.06 });
+      g.circle(moonX, moonY, moonR * 2);
+      g.fill({ color: 0xCCCCFF, alpha: moonAlpha * 0.1 });
+      // Moon body (full circle)
+      g.circle(moonX, moonY, moonR);
+      g.fill({ color: 0xEEEEFF, alpha: moonAlpha * 0.85 });
+      // Crescent shadow (simulate phase with overlapping dark circle)
+      const phaseOffset = Math.sin(time * 0.01) * 3 + 4;
+      g.circle(moonX + phaseOffset, moonY - 1, moonR * 0.9);
+      g.fill({ color: _lerpColor(0x060610, 0x1a1a30, dayness), alpha: moonAlpha * 0.7 });
+      // Earthshine on dark side (faint illumination)
+      g.circle(moonX + phaseOffset * 0.3, moonY, moonR * 0.85);
+      g.fill({ color: 0x334466, alpha: moonAlpha * 0.08 });
+      // Mare (dark patches on lit surface)
+      g.ellipse(moonX - 3, moonY - 1, 3, 2);
+      g.fill({ color: 0xBBBBCC, alpha: moonAlpha * 0.25 });
+      g.circle(moonX - 1, moonY + 2, 2);
+      g.fill({ color: 0xBBBBCC, alpha: moonAlpha * 0.2 });
+      g.circle(moonX + 1, moonY - 3, 1.2);
+      g.fill({ color: 0xBBBBCC, alpha: moonAlpha * 0.15 });
+      // Craters (small circles)
+      g.circle(moonX - 4, moonY + 1, 1);
+      g.fill({ color: 0xAAAABB, alpha: moonAlpha * 0.35 });
+      g.circle(moonX - 2, moonY - 2, 0.8);
+      g.fill({ color: 0xAAAABB, alpha: moonAlpha * 0.3 });
+      g.circle(moonX + 2, moonY + 3, 1.2);
+      g.fill({ color: 0xAAAABB, alpha: moonAlpha * 0.25 });
+      // Crater highlights (tiny bright dots on crater rims)
+      g.circle(moonX - 4.5, moonY + 0.5, 0.4);
+      g.fill({ color: 0xFFFFFF, alpha: moonAlpha * 0.3 });
     }
   }
 
@@ -274,237 +369,342 @@ export class TerrariaRenderer {
   // ---------------------------------------------------------------------------
 
   private _drawParallax(state: TerrariaState, camera: TerrariaCamera, sw: number, sh: number): void {
-    this._parallaxGfx.clear();
-    const t = state.timeOfDay;
-    const dayness = Math.max(0, Math.min(1, Math.sin(t * Math.PI * 2 - Math.PI / 2) * 0.5 + 0.5));
+    const g = this._parallaxGfx;
+    g.clear();
+    const dayness = Math.max(0, Math.min(1, Math.sin(state.timeOfDay * Math.PI * 2 - Math.PI / 2) * 0.5 + 0.5));
+    const time = state.totalTime;
 
-    // === LAYER 1: Far mountains (very slow, ~0.05x camera) ===
+    // Helper: generate mountain ridge Y at x with harmonics
+    const ridge = (x: number, seed: number, scale: number) =>
+      Math.sin((x + seed) * 0.15) * 55 * scale +
+      Math.sin((x + seed) * 0.37 + 1.7) * 30 * scale +
+      Math.sin((x + seed) * 0.73 + 0.3) * 18 * scale +
+      Math.sin((x + seed) * 1.51 + 2.1) * 8 * scale +
+      Math.sin((x + seed) * 2.7 + 0.9) * 4 * scale;
+
+    // ========= LAYER 1: Far mountain range (0.04x) =========
     {
-      const ox = ((-camera.x * 0.05 * TS) % (sw * 3) + sw * 3) % (sw * 3) - sw;
-      const baseY = sh * 0.50;
-      const g = this._parallaxGfx;
-      // Two overlapping mountain ranges
-      for (let pass = 0; pass < 2; pass++) {
-        const seed = pass * 50 + 7;
-        const heightMult = pass === 0 ? 1.0 : 0.7;
-        const alpha = pass === 0 ? 0.25 : 0.18;
-        const color = pass === 0
-          ? _lerpColor(0x1A2A3A, 0x2A4A3A, dayness)
-          : _lerpColor(0x152535, 0x354A35, dayness);
-        const passOx = ox + pass * 80;
-
-        g.moveTo(passOx, baseY);
-        // Generate jagged peaks with multiple sine harmonics
-        const steps = 60;
-        for (let i = 0; i <= steps; i++) {
-          const fx = passOx + (i / steps) * sw * 3;
-          const n = i + seed;
-          const peak =
-            Math.sin(n * 0.15) * 55 * heightMult +
-            Math.sin(n * 0.37 + 1.7) * 30 * heightMult +
-            Math.sin(n * 0.73 + 0.3) * 18 * heightMult +
-            Math.sin(n * 1.51 + 2.1) * 8 * heightMult;
-          g.lineTo(fx, baseY - 40 * heightMult - peak);
+      const ox = ((-camera.x * 0.04 * TS) % (sw * 3) + sw * 3) % (sw * 3) - sw;
+      const by = sh * 0.48;
+      for (let pass = 0; pass < 3; pass++) {
+        const s = pass * 50 + 7;
+        const hm = [1.0, 0.75, 0.55][pass];
+        const al = [0.22, 0.18, 0.14][pass];
+        const c = _lerpColor([0x1A2A3A, 0x152535, 0x101A25][pass], [0x2A4A3A, 0x354A35, 0x2A402A][pass], dayness);
+        const pox = ox + pass * 60;
+        g.moveTo(pox, by);
+        for (let i = 0; i <= 80; i++) {
+          g.lineTo(pox + (i / 80) * sw * 3, by - 35 * hm - ridge(i, s, hm));
         }
-        g.lineTo(passOx + sw * 3, sh);
-        g.lineTo(passOx, sh);
-        g.closePath();
-        g.fill({ color, alpha });
+        g.lineTo(pox + sw * 3, sh); g.lineTo(pox, sh); g.closePath();
+        g.fill({ color: c, alpha: al });
       }
-    }
-
-    // === LAYER 2: Mid mountains (0.12x camera) ===
-    {
-      const ox = ((-camera.x * 0.12 * TS) % (sw * 2.5) + sw * 2.5) % (sw * 2.5) - sw * 0.5;
-      const baseY = sh * 0.58;
-      const g = this._parallaxGfx;
-      const color = _lerpColor(0x1E3020, 0x3A5A30, dayness);
-
-      g.moveTo(ox, baseY);
-      const steps = 50;
-      for (let i = 0; i <= steps; i++) {
-        const fx = ox + (i / steps) * sw * 2.5;
-        const n = i + 100;
-        const peak =
-          Math.sin(n * 0.2 + 0.5) * 45 +
-          Math.sin(n * 0.53 + 2.2) * 25 +
-          Math.sin(n * 1.1 + 1.0) * 12 +
-          Math.sin(n * 2.3) * 5;
-        g.lineTo(fx, baseY - 30 - peak);
-      }
-      g.lineTo(ox + sw * 2.5, sh);
-      g.lineTo(ox, sh);
-      g.closePath();
-      g.fill({ color, alpha: 0.35 });
-
-      // Snow caps on the tallest peaks
-      g.moveTo(ox, baseY);
-      for (let i = 0; i <= steps; i++) {
-        const fx = ox + (i / steps) * sw * 2.5;
-        const n = i + 100;
-        const peak =
-          Math.sin(n * 0.2 + 0.5) * 45 +
-          Math.sin(n * 0.53 + 2.2) * 25 +
-          Math.sin(n * 1.1 + 1.0) * 12 +
-          Math.sin(n * 2.3) * 5;
-        const peakY = baseY - 30 - peak;
-        // Only draw snow on peaks above a threshold
-        if (peak > 50) {
+      // Snow caps
+      const snowC = _lerpColor(0x888899, 0xDDDDEE, dayness);
+      const pox0 = ox;
+      for (let i = 0; i <= 80; i++) {
+        const fx = pox0 + (i / 80) * sw * 3;
+        const pk = ridge(i, 7, 1.0);
+        if (pk > 55) {
+          const peakY = by - 35 - pk;
+          g.moveTo(fx - 3, peakY + 5);
           g.lineTo(fx, peakY);
-        } else {
-          g.lineTo(fx, peakY + 6); // skip below snow line
+          g.lineTo(fx + 3, peakY + 5);
+          g.closePath();
+          g.fill({ color: snowC, alpha: dayness * 0.2 });
         }
       }
-      g.lineTo(ox + sw * 2.5, baseY);
-      g.lineTo(ox, baseY);
-      g.closePath();
-      g.fill({ color: 0xDDDDEE, alpha: dayness * 0.15 });
     }
 
-    // === LAYER 3: Near hills with trees silhouettes (0.2x camera) ===
+    // ========= LAYER 2: Mid mountains with cliffs (0.1x) =========
     {
-      const ox = ((-camera.x * 0.2 * TS) % (sw * 2) + sw * 2) % (sw * 2) - sw * 0.3;
-      const baseY = sh * 0.65;
-      const g = this._parallaxGfx;
-      const color = _lerpColor(0x14261A, 0x2A4A28, dayness);
-
-      // Rolling hills
-      g.moveTo(ox, baseY);
-      const steps = 70;
+      const ox = ((-camera.x * 0.1 * TS) % (sw * 2.5) + sw * 2.5) % (sw * 2.5) - sw * 0.5;
+      const by = sh * 0.56;
+      const c = _lerpColor(0x1A3020, 0x3A5A30, dayness);
+      const cliffC = _lerpColor(0x22281A, 0x4A5A38, dayness);
+      g.moveTo(ox, by);
+      const steps = 60;
       for (let i = 0; i <= steps; i++) {
-        const fx = ox + (i / steps) * sw * 2;
-        const n = i + 200;
-        const hill =
-          Math.sin(n * 0.12) * 35 +
-          Math.sin(n * 0.31 + 1.5) * 20 +
-          Math.sin(n * 0.7 + 0.8) * 10;
-        g.lineTo(fx, baseY - 20 - hill);
+        const fx = ox + (i / steps) * sw * 2.5;
+        const pk = ridge(i, 100, 0.85);
+        g.lineTo(fx, by - 25 - pk);
       }
-      g.lineTo(ox + sw * 2, sh);
-      g.lineTo(ox, sh);
-      g.closePath();
-      g.fill({ color, alpha: 0.4 });
+      g.lineTo(ox + sw * 2.5, sh); g.lineTo(ox, sh); g.closePath();
+      g.fill({ color: c, alpha: 0.32 });
+      // Cliff faces (vertical rock surfaces on steep slopes)
+      for (let i = 1; i <= steps; i++) {
+        const pk0 = ridge(i - 1, 100, 0.85);
+        const pk1 = ridge(i, 100, 0.85);
+        if (pk1 - pk0 > 8) { // steep upslope = cliff face
+          const fx = ox + (i / steps) * sw * 2.5;
+          const top = by - 25 - pk1;
+          const bot = by - 25 - pk0;
+          g.rect(fx - 2, top, 4, bot - top);
+          g.fill({ color: cliffC, alpha: 0.2 });
+        }
+      }
+      // Waterfall (on one steep cliff)
+      const wfIdx = 18;
+      const wfPk = ridge(wfIdx, 100, 0.85);
+      if (wfPk > 40) {
+        const wfX = ox + (wfIdx / steps) * sw * 2.5;
+        const wfTop = by - 25 - wfPk;
+        const wfBot = by - 5;
+        // Water stream
+        for (let wy = 0; wy < wfBot - wfTop; wy += 3) {
+          const wobble = Math.sin(time * 3 + wy * 0.3) * 1;
+          g.rect(wfX + wobble - 1, wfTop + wy, 2, 3);
+          g.fill({ color: 0x88BBFF, alpha: 0.15 + Math.sin(time * 4 + wy) * 0.05 });
+        }
+        // Splash pool
+        g.ellipse(wfX, wfBot, 6, 2);
+        g.fill({ color: 0x88BBFF, alpha: 0.1 });
+      }
+    }
 
-      // Tree silhouettes on the hills
-      const treeColor = _lerpColor(0x0A1A0E, 0x1A3A18, dayness);
-      for (let i = 0; i < 40; i++) {
+    // ========= LAYER 3: Near hills with varied trees and structures (0.18x) =========
+    {
+      const ox = ((-camera.x * 0.18 * TS) % (sw * 2) + sw * 2) % (sw * 2) - sw * 0.3;
+      const by = sh * 0.64;
+      const hillC = _lerpColor(0x14261A, 0x2A4A28, dayness);
+      const treeC = _lerpColor(0x0A1A0E, 0x1A3A18, dayness);
+      const treeCLight = _lerpColor(0x102A14, 0x2A5A2A, dayness);
+
+      // Hill polygon
+      const steps = 80;
+      const hillAt = (i: number) => Math.sin((i + 200) * 0.12) * 35 + Math.sin((i + 200) * 0.31 + 1.5) * 20 + Math.sin((i + 200) * 0.7 + 0.8) * 10 + Math.sin((i + 200) * 1.4 + 0.3) * 5;
+      g.moveTo(ox, by);
+      for (let i = 0; i <= steps; i++) g.lineTo(ox + (i / steps) * sw * 2, by - 18 - hillAt(i));
+      g.lineTo(ox + sw * 2, sh); g.lineTo(ox, sh); g.closePath();
+      g.fill({ color: hillC, alpha: 0.4 });
+
+      // Trees: mix of conifers, round oaks, and tall pines
+      for (let i = 0; i < 60; i++) {
         const tx = ox + _pseudoRand(300 + i) * sw * 2;
-        const n = Math.floor((tx - ox) / (sw * 2) * steps) + 200;
-        const hill =
-          Math.sin(n * 0.12) * 35 +
-          Math.sin(n * 0.31 + 1.5) * 20 +
-          Math.sin(n * 0.7 + 0.8) * 10;
-        const treeBaseY = baseY - 20 - hill;
-        const th = 8 + _pseudoRand(400 + i) * 14;
-        const tw = 4 + _pseudoRand(500 + i) * 8;
+        const ti = Math.floor((tx - ox) / (sw * 2) * steps);
+        const hillY = by - 18 - hillAt(ti);
+        const treeType = Math.floor(_pseudoRand(350 + i) * 3);
+        const th = 6 + _pseudoRand(400 + i) * 16;
+        const tw = 3 + _pseudoRand(500 + i) * 8;
+        const tc = i % 3 === 0 ? treeCLight : treeC;
 
         // Trunk
-        g.rect(tx - 1, treeBaseY - th, 2, th);
-        g.fill({ color: treeColor, alpha: 0.5 });
-        // Canopy (triangle)
-        g.moveTo(tx - tw / 2, treeBaseY - th + 3);
-        g.lineTo(tx, treeBaseY - th - tw * 0.6);
-        g.lineTo(tx + tw / 2, treeBaseY - th + 3);
-        g.closePath();
-        g.fill({ color: treeColor, alpha: 0.45 });
-      }
-    }
+        g.rect(tx - 0.8, hillY - th, 1.6, th);
+        g.fill({ color: treeC, alpha: 0.45 });
 
-    // === LAYER 4: Atmospheric haze (horizon band) ===
-    {
-      const g = this._parallaxGfx;
-      const hazeY = sh * 0.6;
-      const hazeH = sh * 0.15;
-      for (let i = 0; i < 4; i++) {
-        const frac = i / 4;
-        const hazeAlpha = dayness > 0.3 ? 0.08 - frac * 0.02 : 0.03;
-        g.rect(0, hazeY + frac * hazeH, sw, hazeH / 4);
-        g.fill({ color: dayness > 0.3 ? 0xCCDDEE : 0x334466, alpha: hazeAlpha });
-      }
-    }
-
-    // === CLOUDS (layered, varied shapes) ===
-    {
-      const g = this._parallaxGfx;
-      const cloudAlpha = dayness > 0.2 ? 0.3 : 0.1;
-      const cloudColor = dayness > 0.2 ? 0xFFFFFF : 0x8888AA;
-
-      // Slow cloud layer
-      const cloudOx1 = ((state.totalTime * 5) % (sw * 2.5));
-      for (let i = 0; i < 10; i++) {
-        const seed = 600 + i;
-        const cx = ((_pseudoRand(seed) * sw * 2.5 - cloudOx1) % (sw * 2.5) + sw * 2.5) % (sw * 2.5) - sw * 0.3;
-        const cy = 30 + _pseudoRand(seed + 1) * sh * 0.18;
-        const cw = 50 + _pseudoRand(seed + 2) * 80;
-        const ch = 12 + _pseudoRand(seed + 3) * 10;
-        // Multi-ellipse cloud
-        const puffs = 2 + Math.floor(_pseudoRand(seed + 4) * 3);
-        for (let p = 0; p < puffs; p++) {
-          const pox = (p - puffs / 2) * cw * 0.3;
-          const poy = _pseudoRand(seed + 10 + p) * 4 - 2;
-          const pw = cw * (0.4 + _pseudoRand(seed + 20 + p) * 0.3);
-          const ph = ch * (0.6 + _pseudoRand(seed + 30 + p) * 0.4);
-          g.ellipse(cx + pox, cy + poy, pw, ph);
-          g.fill({ color: cloudColor, alpha: cloudAlpha * (0.6 + _pseudoRand(seed + 40 + p) * 0.4) });
+        if (treeType === 0) {
+          // Conifer (layered triangles)
+          for (let layer = 0; layer < 3; layer++) {
+            const ly = hillY - th + layer * th * 0.2;
+            const lw = tw * (1 - layer * 0.2);
+            g.moveTo(tx - lw / 2, ly + th * 0.25);
+            g.lineTo(tx, ly);
+            g.lineTo(tx + lw / 2, ly + th * 0.25);
+            g.closePath();
+            g.fill({ color: tc, alpha: 0.4 + layer * 0.05 });
+          }
+        } else if (treeType === 1) {
+          // Round oak (ellipse canopy)
+          g.ellipse(tx, hillY - th - tw * 0.3, tw * 0.6, tw * 0.5);
+          g.fill({ color: tc, alpha: 0.42 });
+          // Highlight
+          g.ellipse(tx - tw * 0.15, hillY - th - tw * 0.4, tw * 0.25, tw * 0.2);
+          g.fill({ color: treeCLight, alpha: 0.12 });
+        } else {
+          // Tall pine (narrow triangle)
+          g.moveTo(tx - tw * 0.3, hillY);
+          g.lineTo(tx, hillY - th - tw * 0.4);
+          g.lineTo(tx + tw * 0.3, hillY);
+          g.closePath();
+          g.fill({ color: tc, alpha: 0.4 });
         }
       }
 
-      // Faster wispy clouds (higher, thinner)
-      const cloudOx2 = ((state.totalTime * 12) % (sw * 3));
-      for (let i = 0; i < 6; i++) {
-        const seed = 800 + i;
-        const cx = ((_pseudoRand(seed) * sw * 3 - cloudOx2) % (sw * 3) + sw * 3) % (sw * 3) - sw * 0.2;
-        const cy = 15 + _pseudoRand(seed + 1) * 40;
-        const cw = 80 + _pseudoRand(seed + 2) * 120;
-        const ch = 3 + _pseudoRand(seed + 3) * 5;
-        g.ellipse(cx, cy, cw, ch);
-        g.fill({ color: cloudColor, alpha: cloudAlpha * 0.35 });
+      // Distant village/ruins silhouette (one per screen width)
+      const villageOx = ox + sw * 0.4;
+      const vi = Math.floor((villageOx - ox) / (sw * 2) * steps);
+      const villageY = by - 18 - hillAt(vi);
+      const vAlpha = dayness < 0.3 ? 0.1 : 0.06;
+      const vColor = _lerpColor(0x0A1510, 0x2A3528, dayness);
+      // Small houses (rectangles with triangle roofs)
+      for (let h = 0; h < 4; h++) {
+        const hx = villageOx + h * 12 - 24;
+        const hh = 6 + _pseudoRand(1500 + h) * 5;
+        const hw2 = 4 + _pseudoRand(1600 + h) * 4;
+        g.rect(hx - hw2 / 2, villageY - hh, hw2, hh);
+        g.fill({ color: vColor, alpha: vAlpha });
+        // Roof
+        g.moveTo(hx - hw2 / 2 - 1, villageY - hh);
+        g.lineTo(hx, villageY - hh - hw2 * 0.4);
+        g.lineTo(hx + hw2 / 2 + 1, villageY - hh);
+        g.closePath();
+        g.fill({ color: vColor, alpha: vAlpha * 1.2 });
+        // Window glow at night
+        if (dayness < 0.3) {
+          g.rect(hx - 1, villageY - hh + 2, 2, 2);
+          g.fill({ color: 0xFFAA44, alpha: 0.15 });
+        }
+      }
+      // Church spire
+      g.rect(villageOx + 20, villageY - 16, 4, 16);
+      g.fill({ color: vColor, alpha: vAlpha });
+      g.moveTo(villageOx + 18, villageY - 16);
+      g.lineTo(villageOx + 22, villageY - 24);
+      g.lineTo(villageOx + 26, villageY - 16);
+      g.closePath();
+      g.fill({ color: vColor, alpha: vAlpha * 1.3 });
+
+      // River/stream polygon (winding through hills)
+      const riverColor = _lerpColor(0x223355, 0x4488BB, dayness);
+      g.moveTo(ox + sw * 0.1, by);
+      g.bezierCurveTo(ox + sw * 0.3, by - 8, ox + sw * 0.5, by - 3, ox + sw * 0.7, by);
+      g.bezierCurveTo(ox + sw * 0.85, by + 3, ox + sw * 1.0, by - 5, ox + sw * 1.2, by);
+      g.lineTo(ox + sw * 1.2, by + 3);
+      g.bezierCurveTo(ox + sw * 1.0, by - 2, ox + sw * 0.85, by + 6, ox + sw * 0.7, by + 3);
+      g.bezierCurveTo(ox + sw * 0.5, by, ox + sw * 0.3, by - 5, ox + sw * 0.1, by + 3);
+      g.closePath();
+      g.fill({ color: riverColor, alpha: 0.12 });
+
+      // Flying birds (small V shapes)
+      for (let i = 0; i < 5; i++) {
+        const bx = ox + ((time * 15 + i * sw * 0.4) % (sw * 2));
+        const birdY = by - 50 - _pseudoRand(700 + i) * 40 + Math.sin(time * 2 + i * 2) * 5;
+        const wingPhase = Math.sin(time * 6 + i * 3) * 3;
+        g.moveTo(bx - 4, birdY + wingPhase);
+        g.lineTo(bx, birdY);
+        g.lineTo(bx + 4, birdY + wingPhase);
+        g.stroke({ color: _lerpColor(0x111111, 0x333333, dayness), width: 0.8, alpha: 0.3 });
       }
     }
 
-    // === Castle silhouette on far horizon (Easter egg landmark) ===
+    // ========= LAYER 4: Atmospheric haze =========
     {
-      const g = this._parallaxGfx;
-      const castleOx = ((-camera.x * 0.08 * TS) % (sw * 3) + sw * 3) % (sw * 3);
-      const castleX = castleOx + sw * 0.7;
-      const castleY = sh * 0.49;
-      const castleAlpha = dayness < 0.3 ? 0.12 : 0.08;
-      const castleColor = _lerpColor(0x0A1520, 0x2A3530, dayness);
-
-      // Main keep
-      g.rect(castleX - 8, castleY - 25, 16, 25);
-      g.fill({ color: castleColor, alpha: castleAlpha });
-      // Towers
-      g.rect(castleX - 16, castleY - 30, 8, 30);
-      g.fill({ color: castleColor, alpha: castleAlpha });
-      g.rect(castleX + 8, castleY - 30, 8, 30);
-      g.fill({ color: castleColor, alpha: castleAlpha });
-      // Tower caps (triangles)
-      g.moveTo(castleX - 18, castleY - 30);
-      g.lineTo(castleX - 12, castleY - 38);
-      g.lineTo(castleX - 6, castleY - 30);
-      g.closePath();
-      g.fill({ color: castleColor, alpha: castleAlpha });
-      g.moveTo(castleX + 6, castleY - 30);
-      g.lineTo(castleX + 12, castleY - 38);
-      g.lineTo(castleX + 18, castleY - 30);
-      g.closePath();
-      g.fill({ color: castleColor, alpha: castleAlpha });
-      // Battlements
-      for (let b = -7; b <= 7; b += 3) {
-        g.rect(castleX + b - 1, castleY - 27, 2, 3);
-        g.fill({ color: castleColor, alpha: castleAlpha });
+      const hazeY = sh * 0.58;
+      const hazeH = sh * 0.18;
+      for (let i = 0; i < 6; i++) {
+        const frac = i / 6;
+        const hazeAlpha = dayness > 0.3 ? 0.06 - frac * 0.01 : 0.025;
+        g.rect(0, hazeY + frac * hazeH, sw, hazeH / 6 + 2);
+        g.fill({ color: dayness > 0.3 ? 0xCCDDEE : 0x223344, alpha: hazeAlpha });
       }
-      // Flag
-      const flagWave = Math.sin(state.totalTime * 3) * 2;
-      g.moveTo(castleX, castleY - 38);
-      g.lineTo(castleX, castleY - 45);
-      g.stroke({ color: castleColor, width: 1, alpha: castleAlpha });
-      g.moveTo(castleX, castleY - 45);
-      g.lineTo(castleX + 6 + flagWave, castleY - 43);
-      g.lineTo(castleX, castleY - 41);
-      g.closePath();
-      g.fill({ color: 0xCC2222, alpha: castleAlpha * 1.5 });
+    }
+
+    // ========= FOG BANK (low rolling fog patches) =========
+    {
+      const fogY = sh * 0.68;
+      const fogAlpha = dayness < 0.3 ? 0.08 : 0.04;
+      const fogOx = (time * 3) % (sw * 1.5);
+      for (let i = 0; i < 8; i++) {
+        const fx = ((i * sw * 0.2 - fogOx) % (sw * 1.5) + sw * 1.5) % (sw * 1.5) - sw * 0.2;
+        const fw = 60 + _pseudoRand(1000 + i) * 100;
+        const fh = 8 + _pseudoRand(1100 + i) * 12;
+        g.ellipse(fx, fogY + Math.sin(time * 0.5 + i) * 3, fw, fh);
+        g.fill({ color: 0xCCCCDD, alpha: fogAlpha * (0.5 + _pseudoRand(1200 + i) * 0.5) });
+      }
+    }
+
+    // ========= CLOUDS (3 layers) =========
+    {
+      const cloudAlpha = dayness > 0.2 ? 0.28 : 0.1;
+      const cloudColor = dayness > 0.2 ? 0xFFFFFF : 0x7788AA;
+      const sunsetCloudColor = _lerpColor(cloudColor, 0xFF9966, Math.max(0, 1 - Math.abs(Math.sin(state.timeOfDay * Math.PI * 2 - Math.PI / 2)) * 3));
+
+      // High wispy cirrus
+      const co3 = (time * 14) % (sw * 3);
+      for (let i = 0; i < 8; i++) {
+        const s = 850 + i;
+        const cx2 = ((_pseudoRand(s) * sw * 3 - co3) % (sw * 3) + sw * 3) % (sw * 3) - sw * 0.2;
+        const cy2 = 10 + _pseudoRand(s + 1) * 35;
+        const cw2 = 60 + _pseudoRand(s + 2) * 140;
+        // Wisp as bezier curve
+        g.moveTo(cx2 - cw2 / 2, cy2);
+        g.bezierCurveTo(cx2 - cw2 * 0.2, cy2 - 3, cx2 + cw2 * 0.2, cy2 + 2, cx2 + cw2 / 2, cy2);
+        g.bezierCurveTo(cx2 + cw2 * 0.2, cy2 + 4, cx2 - cw2 * 0.2, cy2 + 5, cx2 - cw2 / 2, cy2);
+        g.closePath();
+        g.fill({ color: cloudColor, alpha: cloudAlpha * 0.25 });
+      }
+
+      // Mid cumulus (fluffy multi-puff)
+      const co1 = (time * 5) % (sw * 2.5);
+      for (let i = 0; i < 12; i++) {
+        const s = 600 + i;
+        const cx2 = ((_pseudoRand(s) * sw * 2.5 - co1) % (sw * 2.5) + sw * 2.5) % (sw * 2.5) - sw * 0.3;
+        const cy2 = 25 + _pseudoRand(s + 1) * sh * 0.15;
+        const cw2 = 40 + _pseudoRand(s + 2) * 90;
+        const ch2 = 10 + _pseudoRand(s + 3) * 12;
+        const puffs = 3 + Math.floor(_pseudoRand(s + 4) * 3);
+        // Shadow underneath
+        g.ellipse(cx2, cy2 + ch2 * 0.4, cw2 * 0.8, ch2 * 0.3);
+        g.fill({ color: 0x888899, alpha: cloudAlpha * 0.08 });
+        // Puffs
+        for (let p = 0; p < puffs; p++) {
+          const pox = (p - puffs / 2) * cw2 * 0.28;
+          const poy = _pseudoRand(s + 10 + p) * 4 - 2;
+          const pw = cw2 * (0.35 + _pseudoRand(s + 20 + p) * 0.3);
+          const ph2 = ch2 * (0.5 + _pseudoRand(s + 30 + p) * 0.5);
+          g.ellipse(cx2 + pox, cy2 + poy, pw, ph2);
+          g.fill({ color: sunsetCloudColor, alpha: cloudAlpha * (0.55 + _pseudoRand(s + 40 + p) * 0.45) });
+        }
+        // Top highlight
+        g.ellipse(cx2 - cw2 * 0.1, cy2 - ch2 * 0.3, cw2 * 0.35, ch2 * 0.2);
+        g.fill({ color: 0xFFFFFF, alpha: cloudAlpha * 0.12 });
+      }
+    }
+
+    // ========= CASTLE SILHOUETTE (detailed with windows, bridge, walls) =========
+    {
+      const castleOx = ((-camera.x * 0.07 * TS) % (sw * 3) + sw * 3) % (sw * 3);
+      const cx2 = castleOx + sw * 0.7;
+      const cy2 = sh * 0.47;
+      const ca = dayness < 0.3 ? 0.14 : 0.07;
+      const cc = _lerpColor(0x080F18, 0x283830, dayness);
+      const ccLit = _lerpColor(0x0A1520, 0x3A4540, dayness);
+
+      // Curtain wall
+      g.rect(cx2 - 35, cy2 - 8, 70, 8 + (sh - cy2)); g.fill({ color: cc, alpha: ca * 0.7 });
+      // Wall battlements
+      for (let b = -35; b <= 35; b += 5) {
+        g.rect(cx2 + b, cy2 - 11, 3, 3); g.fill({ color: cc, alpha: ca });
+      }
+      // Main keep
+      g.rect(cx2 - 10, cy2 - 30, 20, 30); g.fill({ color: cc, alpha: ca });
+      g.rect(cx2 - 12, cy2 - 32, 24, 3); g.fill({ color: ccLit, alpha: ca * 0.8 });
+      // Keep windows
+      for (let wy2 = 0; wy2 < 3; wy2++) {
+        for (let wx2 = 0; wx2 < 2; wx2++) {
+          const winX = cx2 - 5 + wx2 * 10;
+          const winY = cy2 - 26 + wy2 * 8;
+          g.rect(winX, winY, 3, 4); g.fill({ color: dayness < 0.3 ? 0xFFAA44 : 0x000000, alpha: dayness < 0.3 ? 0.15 : ca * 0.5 });
+        }
+      }
+      // Left tower (round = octagon)
+      g.rect(cx2 - 22, cy2 - 38, 10, 38); g.fill({ color: cc, alpha: ca });
+      g.moveTo(cx2 - 24, cy2 - 38); g.lineTo(cx2 - 17, cy2 - 48); g.lineTo(cx2 - 10, cy2 - 38);
+      g.closePath(); g.fill({ color: cc, alpha: ca });
+      // Right tower
+      g.rect(cx2 + 12, cy2 - 38, 10, 38); g.fill({ color: cc, alpha: ca });
+      g.moveTo(cx2 + 10, cy2 - 38); g.lineTo(cx2 + 17, cy2 - 48); g.lineTo(cx2 + 24, cy2 - 38);
+      g.closePath(); g.fill({ color: cc, alpha: ca });
+      // Gate arch
+      g.moveTo(cx2 - 4, cy2); g.lineTo(cx2 - 4, cy2 - 6);
+      g.quadraticCurveTo(cx2, cy2 - 10, cx2 + 4, cy2 - 6);
+      g.lineTo(cx2 + 4, cy2); g.closePath(); g.fill({ color: 0x000000, alpha: ca });
+      // Drawbridge
+      g.moveTo(cx2 - 4, cy2); g.lineTo(cx2 - 6, cy2 + 4); g.lineTo(cx2 + 6, cy2 + 4);
+      g.lineTo(cx2 + 4, cy2); g.closePath(); g.fill({ color: 0x5A3A1A, alpha: ca * 0.8 });
+      // Flags on towers
+      for (const fx of [cx2 - 17, cx2 + 17]) {
+        const fw = Math.sin(time * 3.5 + fx) * 2;
+        g.moveTo(fx, cy2 - 48); g.lineTo(fx, cy2 - 54);
+        g.stroke({ color: cc, width: 0.8, alpha: ca });
+        g.moveTo(fx, cy2 - 54); g.lineTo(fx + 5 + fw, cy2 - 52); g.lineTo(fx, cy2 - 50);
+        g.closePath(); g.fill({ color: 0xCC2222, alpha: ca * 1.5 });
+      }
+      // Torch glow at gate (night)
+      if (dayness < 0.3) {
+        g.circle(cx2 - 6, cy2 - 5, 3); g.fill({ color: 0xFFAA44, alpha: 0.08 });
+        g.circle(cx2 + 6, cy2 - 5, 3); g.fill({ color: 0xFFAA44, alpha: 0.08 });
+      }
     }
   }
 

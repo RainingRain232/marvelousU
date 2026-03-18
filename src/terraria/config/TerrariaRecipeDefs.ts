@@ -126,7 +126,7 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
   {
     id: "wood_sword", station: "round_table",
     inputs: [blockInput(BlockType.PLANKS, 5), blockInput(BlockType.OAK_LOG, 2)],
-    output: createToolItem(ToolType.SWORD, ToolMaterial.WOOD, "Wooden Sword", 0xC4A35A, 5),
+    output: createToolItem(ToolType.SWORD, ToolMaterial.WOOD, "Wooden Sword", 0xC4A35A, 8),
   },
   {
     id: "wood_hammer", station: "round_table",
@@ -148,7 +148,7 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
   {
     id: "stone_sword", station: "round_table",
     inputs: [blockInput(BlockType.COBBLESTONE, 5), blockInput(BlockType.OAK_LOG, 2)],
-    output: createToolItem(ToolType.SWORD, ToolMaterial.STONE, "Stone Sword", 0x808080, 8),
+    output: createToolItem(ToolType.SWORD, ToolMaterial.STONE, "Stone Sword", 0x808080, 12),
   },
 
   // Iron tools (require forge smelted iron ingots = iron ore at forge)

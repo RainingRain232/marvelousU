@@ -29,7 +29,7 @@ export const MOB_DEFS: Record<string, MobDef> = {
   // Surface enemies
   slime: {
     type: "slime", name: "Slime",
-    hp: 14, damage: 5, defense: 0, speed: 2,
+    hp: 12, damage: 3, defense: 0, speed: 2,
     width: 0.8, height: 0.8, color: 0x44CC44,
     xpDrop: 2, detectRange: 8, attackRange: 1,
     hostile: true, isBoss: false, nightOnly: false,
@@ -37,7 +37,7 @@ export const MOB_DEFS: Record<string, MobDef> = {
   },
   saxon_warrior: {
     type: "saxon_warrior", name: "Saxon Warrior",
-    hp: 28, damage: 8, defense: 2, speed: 3,
+    hp: 24, damage: 6, defense: 2, speed: 3,
     width: 0.8, height: 1.5, color: 0x884422,
     xpDrop: 5, detectRange: 12, attackRange: 1.5,
     hostile: true, isBoss: false, nightOnly: true,
