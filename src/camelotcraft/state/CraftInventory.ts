@@ -6,6 +6,13 @@ import { CB } from "../config/CraftBalance";
 import { BlockType, BLOCK_DEFS } from "../config/CraftBlockDefs";
 import { ItemType, type ItemStack } from "../config/CraftRecipeDefs";
 
+export interface ArmorSlots {
+  helmet: ItemStack | null;
+  chestplate: ItemStack | null;
+  leggings: ItemStack | null;
+  boots: ItemStack | null;
+}
+
 export interface CraftInventory {
   /** Hotbar: first HOTBAR_SLOTS items. */
   hotbar: (ItemStack | null)[];
@@ -17,6 +24,8 @@ export interface CraftInventory {
   craftGrid: (ItemStack | null)[];
   /** Crafting result slot. */
   craftResult: ItemStack | null;
+  /** Armor equipment slots. */
+  armor: ArmorSlots;
 }
 
 /** Create a fresh inventory with starter items. */
@@ -31,6 +40,7 @@ export function createInventory(): CraftInventory {
     selectedSlot: 0,
     craftGrid,
     craftResult: null,
+    armor: { helmet: null, chestplate: null, leggings: null, boots: null },
   };
 }
 

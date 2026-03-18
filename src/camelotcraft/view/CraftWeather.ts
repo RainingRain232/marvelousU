@@ -57,21 +57,18 @@ export class CraftWeather {
   // Rain system
   private rainGeometry!: THREE.BufferGeometry;
   private rainMaterial!: THREE.LineBasicMaterial;
-  private _rainLines!: THREE.LineSegments;
   private rainPositions!: Float32Array;
   private rainVelocities!: Float32Array;
 
   // Storm rain (separate, denser set)
   private stormGeometry!: THREE.BufferGeometry;
   private stormMaterial!: THREE.LineBasicMaterial;
-  private _stormLines!: THREE.LineSegments;
   private stormPositions!: Float32Array;
   private stormVelocities!: Float32Array;
 
   // Snow system
   private snowGeometry!: THREE.BufferGeometry;
   private snowMaterial!: THREE.PointsMaterial;
-  private _snowPoints!: THREE.Points;
   private snowPositions!: Float32Array;
   private snowDriftPhases!: Float32Array;
 
@@ -259,13 +256,13 @@ export class CraftWeather {
     if (isStorm) {
       this.stormGeometry = geometry;
       this.stormMaterial = material;
-      this.stormLines = lines;
+      // lines stored in group
       this.stormPositions = positions;
       this.stormVelocities = velocities;
     } else {
       this.rainGeometry = geometry;
       this.rainMaterial = material;
-      this._rainLines = lines;
+      // lines stored in group
       this.rainPositions = positions;
       this.rainVelocities = velocities;
     }
@@ -305,7 +302,7 @@ export class CraftWeather {
 
     this.snowGeometry = geometry;
     this.snowMaterial = material;
-    this.snowPoints = points;
+    // points stored in group
     this.snowPositions = positions;
     this.snowDriftPhases = driftPhases;
 

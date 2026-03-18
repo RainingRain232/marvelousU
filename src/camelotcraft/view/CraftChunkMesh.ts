@@ -143,15 +143,50 @@ export function buildChunkMesh(chunk: CraftChunk, state: CraftState): THREE.Mesh
     group.add(mesh);
   }
 
-  // Create transparent mesh
+  // Create transparent mesh (water uses animated shader)
   if (tPositions.length > 0) {
     const geo = new THREE.BufferGeometry();
     geo.setAttribute("position", new THREE.Float32BufferAttribute(tPositions, 3));
     geo.setAttribute("color", new THREE.Float32BufferAttribute(tColors, 3));
     geo.setAttribute("normal", new THREE.Float32BufferAttribute(tNormals, 3));
 
-    const mat = new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true, opacity: 0.7, side: THREE.DoubleSide });
+    const mat = new THREE.ShaderMaterial({
+      transparent: true,
+      side: THREE.DoubleSide,
+      uniforms: {
+        uTime: { value: 0 },
+      },
+      vertexShader: /* glsl */ `
+        attribute vec3 color;
+        varying vec3 vColor;
+        varying vec3 vWorldPos;
+        uniform float uTime;
+        void main() {
+          vColor = color;
+          vec3 pos = position;
+          // Wave animation on Y for water surfaces (top faces)
+          if (normal.y > 0.5) {
+            pos.y += sin(pos.x * 2.0 + uTime * 1.5) * 0.04 + cos(pos.z * 2.5 + uTime * 1.2) * 0.03;
+          }
+          vWorldPos = pos;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+        }
+      `,
+      fragmentShader: /* glsl */ `
+        varying vec3 vColor;
+        varying vec3 vWorldPos;
+        uniform float uTime;
+        void main() {
+          vec3 col = vColor;
+          // Subtle shimmer
+          float shimmer = sin(vWorldPos.x * 4.0 + uTime * 2.0) * cos(vWorldPos.z * 4.0 + uTime * 1.5) * 0.08;
+          col += shimmer;
+          gl_FragColor = vec4(col, 0.65);
+        }
+      `,
+    });
     const mesh = new THREE.Mesh(geo, mat);
+    mesh.name = "water";
     group.add(mesh);
   }
 

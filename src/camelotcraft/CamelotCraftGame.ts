@@ -5,10 +5,12 @@
 import * as THREE from "three";
 import { CB } from "./config/CraftBalance";
 import { ItemType, WEAPON_DAMAGE } from "./config/CraftRecipeDefs";
-import { createCraftState, type CraftState, addMessage } from "./state/CraftState";
+import { createCraftState, type CraftState, addMessage, getWorldBlock } from "./state/CraftState";
 import { CraftChunk, chunkKey, worldToChunk } from "./state/CraftChunk";
 import { getHeldItem, addToInventory } from "./state/CraftInventory";
 import { generateChunkTerrain } from "./systems/CraftTerrainSystem";
+import { decorateChunkStructures } from "./systems/CraftStructureSystem";
+import { getBiome } from "./config/CraftBiomeDefs";
 import { raycastBlock, startMining, updateMining, placeBlock } from "./systems/CraftBlockSystem";
 import { matchRecipe } from "./systems/CraftCraftingSystem";
 import { spawnMobs, updateMobs, damageMob } from "./systems/CraftMobSystem";
@@ -19,6 +21,11 @@ import { BLOCK_DEFS } from "./config/CraftBlockDefs";
 import { initAudio, playBlockBreak, playBlockPlace, playPickup, playHurt, playFootstep, playChestOpen, playAmbient, stopAmbient, destroyAudio, playQuestComplete, playLevelUp } from "./systems/CraftAudioSystem";
 import { updateQuests, onBlockPlaced, onItemCrafted, onMobKilled, checkVictory } from "./systems/CraftQuestSystem";
 import { updateFurnaces, getContainerInteraction, type ContainerInteraction } from "./systems/CraftContainerSystem";
+import { interactWithNPC } from "./systems/CraftNPCSystem";
+import { getMobsNear } from "./systems/CraftMobSystem";
+import { MobType, MOB_DEFS } from "./config/CraftMobDefs";
+import { updateDroppedItems } from "./systems/CraftItemDropSystem";
+import { initMusic, updateMusic, stopMusic, destroyMusic } from "./systems/CraftMusicSystem";
 import { CraftRenderer } from "./view/CraftRenderer";
 import { CraftHUD } from "./view/CraftHUD";
 
@@ -132,40 +139,111 @@ export class CamelotCraftGame {
     this._state.screenW = window.innerWidth;
     this._state.screenH = window.innerHeight;
 
+    // Show loading screen
+    const loadingEl = document.createElement("div");
+    loadingEl.id = "cc-loading";
+    loadingEl.style.cssText = `
+      position:fixed;top:0;left:0;width:100%;height:100%;z-index:150;
+      background:linear-gradient(180deg,#1a0a2e,#2d1b4e);
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      font-family:Georgia,serif;color:#FFD700;
+    `;
+    loadingEl.innerHTML = `
+      <div style="font-size:28px;margin-bottom:16px;">Forging the Realm...</div>
+      <div id="cc-load-bar" style="width:300px;height:6px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden;">
+        <div id="cc-load-fill" style="width:0%;height:100%;background:#FFD700;border-radius:3px;transition:width 0.2s;"></div>
+      </div>
+      <div id="cc-load-tip" style="font-size:12px;color:#C0A060;margin-top:16px;font-style:italic;">
+        Tip: Build shelter before your first nightfall to survive!
+      </div>
+    `;
+    document.body.appendChild(loadingEl);
+
+    const tips = [
+      "Tip: Build shelter before your first nightfall to survive!",
+      "Tip: Mine deep for enchanted crystals — they glow purple.",
+      "Tip: The Lady of the Lake knows where Excalibur rests.",
+      "Tip: Right-click chests and furnaces to interact with them.",
+      "Tip: Mushroom stew restores more hunger than raw food.",
+      "Tip: Saxon raiders grow bolder at night. Arm thyself!",
+      "Tip: Build a Round Table to recruit Knights to your cause.",
+    ];
+    const tipEl = loadingEl.querySelector("#cc-load-tip")!;
+    tipEl.textContent = tips[Math.floor(Math.random() * tips.length)];
+
     // Build view
     this._renderer.build();
     this._hud.build();
 
     // Init input
     this._input.init();
-    this._input.requestPointerLock();
 
-    // Init audio
+    // Init audio & music
     initAudio();
+    initMusic();
 
-    // Generate initial chunks around spawn
+    // Generate initial chunks with progress
     this._ensureChunksAround(
       Math.floor(this._state.player.position.x),
       Math.floor(this._state.player.position.z),
     );
 
-    // Find valid spawn position (on top of terrain)
-    if (!loadSave) {
-      this._findSpawnPosition();
-    }
+    // Process all queued chunks with progress bar
+    const totalChunks = this._chunkGenQueue.length;
+    let processed = 0;
+    const fillEl = loadingEl.querySelector("#cc-load-fill") as HTMLDivElement;
 
-    // Welcome message
-    if (!loadSave) {
-      addMessage(this._state, "Welcome to Camelot Craft! Build thy kingdom.", 0xFFD700);
-      addMessage(this._state, "Seek wood to craft tools. Build shelter before nightfall!", 0xC0A060);
-    }
+    const processChunksAsync = (): Promise<void> => {
+      return new Promise((resolve) => {
+        const step = () => {
+          const batch = 4;
+          for (let i = 0; i < batch && this._chunkGenQueue.length > 0; i++) {
+            const [cx, cz] = this._chunkGenQueue.shift()!;
+            const key = chunkKey(cx, cz);
+            const chunk = this._state.chunks.get(key);
+            if (chunk && !chunk.populated) {
+              generateChunkTerrain(chunk, this._state.seed);
+              decorateChunkStructures(chunk, this._state.seed, getBiome(0.5, 0.5));
+              chunk.populated = true;
+              chunk.rebuildHeightMap();
+              chunk.dirty = true;
+            }
+            processed++;
+          }
+          if (fillEl) fillEl.style.width = `${Math.min(100, (processed / totalChunks) * 100)}%`;
+          if (this._chunkGenQueue.length > 0) {
+            requestAnimationFrame(step);
+          } else {
+            resolve();
+          }
+        };
+        requestAnimationFrame(step);
+      });
+    };
 
-    // HUD callbacks
-    this._hud.onCraftResultClick = () => this._onCraftResult();
+    processChunksAsync().then(() => {
+      // Find valid spawn position
+      if (!loadSave) {
+        this._findSpawnPosition();
+      }
 
-    // Start game loop
-    this._lastTime = performance.now();
-    this._loop(this._lastTime);
+      // Remove loading screen
+      loadingEl.remove();
+      this._input.requestPointerLock();
+
+      // Welcome message
+      if (!loadSave) {
+        addMessage(this._state, "Welcome to Camelot Craft! Build thy kingdom.", 0xFFD700);
+        addMessage(this._state, "Seek wood to craft tools. Build shelter before nightfall!", 0xC0A060);
+      }
+
+      // HUD callbacks
+      this._hud.onCraftResultClick = () => this._onCraftResult();
+
+      // Start game loop
+      this._lastTime = performance.now();
+      this._loop(this._lastTime);
+    });
 
     // Pause on ESC
     document.addEventListener("keydown", this._onKeyDown);
@@ -426,6 +504,9 @@ export class CamelotCraftGame {
       playLevelUp();
     }
 
+    // --- Dragon boss ---
+    this._checkDragonSpawn(dt);
+
     // --- Quests ---
     updateQuests(this._state);
 
@@ -436,8 +517,12 @@ export class CamelotCraftGame {
       playQuestComplete();
     }
 
-    // --- Ambient audio ---
+    // --- Dropped items ---
+    updateDroppedItems(this._state, dt);
+
+    // --- Ambient audio & music ---
     playAmbient(this._state.timeOfDay);
+    updateMusic(this._state.timeOfDay, dt);
 
     // --- Render ---
     this._renderer.render(this._state, dt);
@@ -451,7 +536,7 @@ export class CamelotCraftGame {
   // Block interaction (mining / placing)
   // =========================================================================
 
-  private _prevMiningTarget: { wx: number; wy: number; wz: number } | null = null;
+  private _prevMiningTarget: { wx: number; wy: number; wz: number; color: number } | null = null;
 
   private _handleBlockInteraction(_dt: number): void {
     if (this._state.inventoryOpen || this._state.craftingOpen) return;
@@ -464,17 +549,25 @@ export class CamelotCraftGame {
     // Detect when mining completes (target disappears after being set)
     const mt = this._state.player.miningTarget;
     if (this._prevMiningTarget && !mt) {
-      // Mining just completed — emit break particles
-      const { wx, wy, wz } = this._prevMiningTarget;
-      particles.emitBlockBreak(wx, wy, wz, 0x808080);
+      const { wx, wy, wz, color } = this._prevMiningTarget;
+      particles.emitBlockBreak(wx, wy, wz, color);
       playBlockBreak();
       this._state.player.blocksMined++;
     }
-    this._prevMiningTarget = mt ? { wx: mt.wx, wy: mt.wy, wz: mt.wz } : null;
+    // Track mining target with its block color
+    if (mt) {
+      const block = getWorldBlock(this._state, mt.wx, mt.wy, mt.wz);
+      const blockColor = BLOCK_DEFS[block]?.color ?? 0x808080;
+      this._prevMiningTarget = { wx: mt.wx, wy: mt.wy, wz: mt.wz, color: blockColor };
+    } else {
+      this._prevMiningTarget = null;
+    }
 
-    // Emit mining dust while actively mining
+    // Emit mining dust while actively mining (with correct block color)
     if (mt && mt.progress > 0) {
-      particles.emitMiningDust(mt.wx, mt.wy, mt.wz, 0x808080);
+      const block = getWorldBlock(this._state, mt.wx, mt.wy, mt.wz);
+      const dustColor = BLOCK_DEFS[block]?.color ?? 0x808080;
+      particles.emitMiningDust(mt.wx, mt.wy, mt.wz, dustColor);
     }
 
     const hit = raycastBlock(this._state, origin, dir, CB.PLAYER_REACH);
@@ -524,6 +617,12 @@ export class CamelotCraftGame {
     } else {
       this._renderer.hideSelection();
       this._state.player.miningTarget = null;
+
+      // Right-click on NPC (no block hit)
+      if (this._input.mouseDown.right) {
+        this._input.mouseDown.right = false;
+        this._tryInteractNPC(origin, dir);
+      }
     }
 
     // Attack mobs with left click
@@ -573,6 +672,99 @@ export class CamelotCraftGame {
         break;
       }
     }
+  }
+
+  // =========================================================================
+  // NPC Interaction (right-click on friendly mobs)
+  // =========================================================================
+
+  private _tryInteractNPC(origin: THREE.Vector3, dir: THREE.Vector3): void {
+    const nearby = getMobsNear(this._state, origin, CB.PLAYER_REACH + 1);
+    for (const mob of nearby) {
+      const def = MOB_DEFS[mob.type];
+      if (def.behavior !== "friendly" && def.behavior !== "passive") continue;
+
+      const toMob = mob.position.clone().sub(origin);
+      const dot = toMob.normalize().dot(dir);
+      if (dot > 0.6) {
+        const result = interactWithNPC(this._state, mob);
+        if (result) {
+          // Show dialog overlay briefly
+          this._showNPCDialog(result.message);
+        }
+        break;
+      }
+    }
+  }
+
+  private _showNPCDialog(message: string): void {
+    const dialog = document.createElement("div");
+    dialog.style.cssText = `
+      position:fixed;bottom:200px;left:50%;transform:translateX(-50%);
+      max-width:500px;background:rgba(30,20,10,0.9);border:2px solid #8B6914;
+      border-radius:8px;padding:16px 24px;color:#E0D0A0;font-size:14px;
+      font-family:Georgia,serif;text-align:center;z-index:30;
+      box-shadow:0 0 20px rgba(139,105,20,0.3);
+      animation:fadeIn 0.3s ease;
+    `;
+    dialog.textContent = message;
+    document.body.appendChild(dialog);
+    setTimeout(() => {
+      dialog.style.opacity = "0";
+      dialog.style.transition = "opacity 0.5s";
+      setTimeout(() => dialog.remove(), 500);
+    }, 4000);
+  }
+
+  // =========================================================================
+  // Dragon Boss Spawning
+  // =========================================================================
+
+  private _dragonSpawnTimer = 0;
+  private _dragonSpawned = false;
+
+  private _checkDragonSpawn(dt: number): void {
+    if (this._dragonSpawned) return;
+
+    // Dragon spawns after day 5 and player has Excalibur
+    if (this._state.dayNumber < 5) return;
+
+    this._dragonSpawnTimer += dt;
+    if (this._dragonSpawnTimer < CB.SAXON_RAID_INTERVAL) return;
+    this._dragonSpawnTimer = 0;
+
+    // 20% chance per check interval
+    if (Math.random() > 0.2) return;
+
+    // Spawn dragon at distance
+    const p = this._state.player.position;
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 40 + Math.random() * 20;
+    const spawnPos = new THREE.Vector3(
+      p.x + Math.cos(angle) * dist,
+      p.y + 15,
+      p.z + Math.sin(angle) * dist,
+    );
+
+    const dragon = {
+      id: this._state.nextMobId++,
+      type: MobType.DRAGON,
+      position: spawnPos,
+      velocity: new THREE.Vector3(),
+      hp: MOB_DEFS[MobType.DRAGON].hp,
+      maxHp: MOB_DEFS[MobType.DRAGON].hp,
+      yaw: Math.atan2(p.x - spawnPos.x, p.z - spawnPos.z),
+      target: null,
+      attackTimer: 0,
+      hurtTimer: 0,
+      despawnTimer: 0,
+      aiState: "chase" as const,
+      aiTimer: 0,
+    };
+
+    this._state.mobs.push(dragon);
+    this._dragonSpawned = true;
+    addMessage(this._state, "A DRAGON approaches! The earth trembles!", 0xFF4444);
   }
 
   // =========================================================================
@@ -866,6 +1058,8 @@ export class CamelotCraftGame {
       const chunk = this._state.chunks.get(key);
       if (chunk && !chunk.populated) {
         generateChunkTerrain(chunk, this._state.seed);
+        // Decorate with structures (ruins, caves, villages)
+        decorateChunkStructures(chunk, this._state.seed, getBiome(0.5, 0.5));
         chunk.populated = true;
         chunk.rebuildHeightMap();
         chunk.dirty = true;
@@ -908,7 +1102,9 @@ export class CamelotCraftGame {
     this._renderer.destroy();
     this._hud.destroy();
     stopAmbient();
+    stopMusic();
     destroyAudio();
+    destroyMusic();
 
     // Remove any leftover overlays
     document.getElementById("camelot-craft-title")?.remove();

@@ -28,6 +28,9 @@ export class CraftHUD {
   private _waterOverlay!: HTMLDivElement;
   private _damageFlash!: HTMLDivElement;
   private _lastHp = 20;
+  private _compassEl!: HTMLDivElement;
+  private _weatherEl!: HTMLDivElement;
+  private _armorEl!: HTMLDivElement;
 
   /** Callbacks */
   onCraftSlotClick?: (slotIndex: number) => void;
@@ -52,6 +55,9 @@ export class CraftHUD {
     this._buildMinimap();
     this._buildWaterOverlay();
     this._buildDamageFlash();
+    this._buildCompass();
+    this._buildWeatherIndicator();
+    this._buildArmorDisplay();
   }
 
   // --- Hotbar ---
@@ -285,6 +291,8 @@ export class CraftHUD {
     this._updateMinimap(state);
     this._updateWaterOverlay(state);
     this._updateDamageFlash(state);
+    this._updateCompass(state);
+    this._updateArmorDisplay(state);
 
     // Inventory overlay visibility
     if (state.inventoryOpen || state.craftingOpen) {
@@ -607,6 +615,94 @@ export class CraftHUD {
     if (state.player.hp <= 4 && state.player.hp > 0) {
       const pulse = Math.sin(state.totalTime * 3) * 0.1 + 0.15;
       this._damageFlash.style.background = `rgba(229,57,53,${pulse})`;
+    }
+  }
+
+  // --- Compass ---
+  private _buildCompass(): void {
+    this._compassEl = document.createElement("div");
+    this._compassEl.style.cssText = `
+      position:absolute; top:30px; left:50%; transform:translateX(-50%);
+      color:white; font-size:11px; text-shadow:1px 1px 2px black;
+      letter-spacing:8px; opacity:0.6;
+    `;
+    this._root.appendChild(this._compassEl);
+  }
+
+  private _updateCompass(state: CraftState): void {
+    const yaw = state.player.yaw;
+    const deg = ((yaw * 180 / Math.PI) % 360 + 360) % 360;
+    const dirs = ["S", "SW", "W", "NW", "N", "NE", "E", "SE"];
+    const idx = Math.round(deg / 45) % 8;
+    const compass = dirs.map((d, i) => {
+      const active = i === idx;
+      return `<span style="color:${active ? (d === "N" ? "#e53935" : "#FFD700") : "#666"};font-weight:${active ? "bold" : "normal"}">${d}</span>`;
+    }).join(" ");
+    this._compassEl.innerHTML = compass;
+  }
+
+  // --- Weather indicator ---
+  private _buildWeatherIndicator(): void {
+    this._weatherEl = document.createElement("div");
+    this._weatherEl.style.cssText = `
+      position:absolute; top:8px; right:8px;
+      color:white; font-size:18px; text-shadow:1px 1px 2px black; opacity:0.7;
+    `;
+    this._root.appendChild(this._weatherEl);
+  }
+
+  setWeather(weather: string): void {
+    const icons: Record<string, string> = {
+      clear: "☀", rain: "🌧", snow: "❄", storm: "⛈",
+    };
+    this._weatherEl.textContent = icons[weather] ?? "☀";
+  }
+
+  // --- Armor display ---
+  private _buildArmorDisplay(): void {
+    this._armorEl = document.createElement("div");
+    this._armorEl.style.cssText = `
+      position:absolute; bottom:70px; right:8px;
+      display:flex; flex-direction:column; gap:2px; opacity:0.8;
+    `;
+    const slots = ["helmet", "chestplate", "leggings", "boots"];
+    const icons = ["⛑", "🛡", "👖", "👢"];
+    for (let i = 0; i < 4; i++) {
+      const slot = document.createElement("div");
+      slot.id = `armor-${slots[i]}`;
+      slot.style.cssText = `
+        width:28px; height:28px; border:1px solid #555; background:rgba(0,0,0,0.4);
+        display:flex; align-items:center; justify-content:center;
+        font-size:14px; border-radius:3px;
+      `;
+      slot.textContent = icons[i];
+      slot.title = slots[i];
+      this._armorEl.appendChild(slot);
+    }
+    this._root.appendChild(this._armorEl);
+  }
+
+  private _updateArmorDisplay(state: CraftState): void {
+    const armor = state.player.inventory.armor;
+    const slots = [
+      { key: "helmet", item: armor.helmet },
+      { key: "chestplate", item: armor.chestplate },
+      { key: "leggings", item: armor.leggings },
+      { key: "boots", item: armor.boots },
+    ];
+    for (const { key, item } of slots) {
+      const el = document.getElementById(`armor-${key}`);
+      if (!el) continue;
+      if (item) {
+        const c = item.color;
+        const r = (c >> 16) & 0xFF, g = (c >> 8) & 0xFF, b = c & 0xFF;
+        el.style.background = `rgba(${r},${g},${b},0.5)`;
+        el.style.borderColor = "#FFD700";
+        el.title = item.displayName;
+      } else {
+        el.style.background = "rgba(0,0,0,0.4)";
+        el.style.borderColor = "#555";
+      }
     }
   }
 
