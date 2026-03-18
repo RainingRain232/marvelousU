@@ -12,6 +12,9 @@ import type { MobInstance } from "../state/TerrariaEntity";
 let _spawnTimer = 0;
 
 export function updateMobs(state: TerrariaState, dt: number): void {
+  // Don't spawn or update AI when game over
+  if (state.gameOver) return;
+
   _spawnTimer += dt;
   if (_spawnTimer >= TB.MOB_SPAWN_INTERVAL) {
     _spawnTimer -= TB.MOB_SPAWN_INTERVAL;
@@ -41,12 +44,9 @@ export function updateMobs(state: TerrariaState, dt: number): void {
     // Facing direction
     if (Math.abs(mob.vx) > 0.1) mob.facingRight = mob.vx > 0;
 
-    // Despawn check
-    if (dist > TB.MOB_DESPAWN_RADIUS && !mob.isBoss) {
-      mob.despawnTimer -= dt;
-    } else {
-      mob.despawnTimer = 30;
-    }
+    // Despawn: distance-based timer + absolute lifetime cap (120s)
+    mob.despawnTimer -= dt * (dist > TB.MOB_DESPAWN_RADIUS && !mob.isBoss ? 3 : 0);
+    if (!mob.isBoss) mob.despawnTimer -= dt * 0.02; // slow drain even when close
   }
 
   // Remove dead and despawned mobs

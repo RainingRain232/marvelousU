@@ -4,9 +4,11 @@
 
 import { viewManager } from "@view/ViewManager";
 import { TB } from "./config/TerrariaBalance";
-import { createTerrariaState, addMessage } from "./state/TerrariaState";
+import { createTerrariaState, addMessage, getWorldBlock, setWorldBlock } from "./state/TerrariaState";
 import type { TerrariaState } from "./state/TerrariaState";
+import { BlockType } from "./config/TerrariaBlockDefs";
 import { addToInventory } from "./state/TerrariaInventory";
+import { makeExcaliburItem, makeGrailItem } from "./config/TerrariaItemDefs";
 
 // Systems
 import { initTerrain, generateChunk, placeSpecialStructures, getSurfaceHeight } from "./systems/TerrariaTerrainSystem";
@@ -17,8 +19,8 @@ import { updateDayNight } from "./systems/TerrariaDayNightSystem";
 import { recalcLighting } from "./systems/TerrariaLightingSystem";
 import { updateCombat } from "./systems/TerrariaCombatSystem";
 import { updateMobs } from "./systems/TerrariaMobSystem";
-import { updateNPCs } from "./systems/TerrariaNPCSystem";
-import { updateQuests } from "./systems/TerrariaQuestSystem";
+import { updateNPCs, interactWithNPC } from "./systems/TerrariaNPCSystem";
+import { updateQuests, onDragonKilled, onIronMined } from "./systems/TerrariaQuestSystem";
 // Crafting (used by HUD callbacks, imported for future use)
 // import { craftRecipe } from "./systems/TerrariaCraftingSystem";
 import { saveTerrariaWorld, loadTerrariaWorld, hasSave } from "./systems/TerrariaSaveSystem";
@@ -212,6 +214,7 @@ export class TerrariaGame {
     // Init HUD
     this._hud.build();
     this._hud.onExit = () => this.destroy();
+    this._hud.onRespawn = () => this._respawnPlayer();
     this._hud.setResumeCallback(() => {
       this._state.paused = false;
     });
@@ -257,6 +260,7 @@ export class TerrariaGame {
 
     this._hud.build();
     this._hud.onExit = () => this.destroy();
+    this._hud.onRespawn = () => this._respawnPlayer();
     this._hud.setResumeCallback(() => { this._state.paused = false; });
 
     initInput();
@@ -265,6 +269,64 @@ export class TerrariaGame {
 
     this._lastTime = performance.now();
     this._rafId = requestAnimationFrame((t) => this._gameLoop(t));
+  }
+
+  // -----------------------------------------------------------------------
+  // Respawn
+  // -----------------------------------------------------------------------
+
+  private _respawnPlayer(): void {
+    if (!this._state) return;
+    const p = this._state.player;
+    const spawnX = Math.floor(TB.WORLD_WIDTH / 2);
+    const surfaceY = getSurfaceHeight(spawnX);
+    p.x = spawnX + 0.5;
+    p.y = surfaceY + 3;
+    p.vx = 0;
+    p.vy = 0;
+    p.hp = Math.floor(p.maxHp / 2); // respawn at half HP
+    p.mana = p.maxMana;
+    p.invulnTimer = 2; // 2s grace period
+    this._state.gameOver = false;
+    addMessage(this._state, "You respawned at the surface.", 0xFFD700);
+  }
+
+  // -----------------------------------------------------------------------
+  // Special block interaction (Excalibur / Grail detection)
+  // -----------------------------------------------------------------------
+
+  private _checkSpecialBlocks(): void {
+    const p = this._state.player;
+    const px = Math.floor(p.x);
+    const py = Math.floor(p.y);
+
+    // Check 3x3 area around player for special blocks
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        const wx = px + dx;
+        const wy = py + dy;
+        const bt = getWorldBlock(this._state, wx, wy);
+
+        if (bt === BlockType.GRAIL_PEDESTAL) {
+          // Excalibur shrine (in caverns layer) or Grail chamber (in underworld)
+          if (!p.hasExcalibur && wy > TB.CAVERN_Y - 5 && wy < TB.UNDERGROUND_Y) {
+            p.hasExcalibur = true;
+            addToInventory(p.inventory, makeExcaliburItem());
+            setWorldBlock(this._state, wx, wy, BlockType.AIR);
+            addMessage(this._state, "You found EXCALIBUR!", 0xFFD700);
+            addMessage(this._state, "The legendary blade hums with power.", 0xFFFFCC);
+            this._camera.shake(4, 0.5);
+          } else if (!p.hasGrail && wy < TB.CAVERN_Y) {
+            p.hasGrail = true;
+            addToInventory(p.inventory, makeGrailItem());
+            setWorldBlock(this._state, wx, wy, BlockType.AIR);
+            addMessage(this._state, "THE HOLY GRAIL IS FOUND!", 0xFFD700);
+            addMessage(this._state, "Camelot's greatest quest is complete!", 0xFFFFCC);
+            this._camera.shake(6, 1.0);
+          }
+        }
+      }
+    }
   }
 
   // -----------------------------------------------------------------------
@@ -346,6 +408,21 @@ export class TerrariaGame {
       // Mobs & NPCs
       updateMobs(this._state, dt);
       updateNPCs(this._state, dt);
+
+      // Special block detection (Excalibur, Grail)
+      this._checkSpecialBlocks();
+
+      // NPC interaction (up key near NPC)
+      if (input.up && !this._state.inventoryOpen) {
+        interactWithNPC(this._state);
+      }
+
+      // Track dragon kills
+      for (const mob of this._state.mobs) {
+        if (mob.hp <= 0 && mob.type === "dragon") {
+          onDragonKilled(this._state);
+        }
+      }
 
       // Quests
       updateQuests(this._state);

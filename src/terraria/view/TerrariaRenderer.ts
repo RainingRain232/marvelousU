@@ -179,6 +179,7 @@ export class TerrariaRenderer {
     const camY = state.camY;
 
     for (let lx = 0; lx < CW; lx++) {
+      const wx = cx * CW + lx;
       const minY = Math.max(0, bounds.minY);
       const maxY = Math.min(WH - 1, bounds.maxY);
       for (let y = minY; y <= maxY; y++) {
@@ -188,18 +189,63 @@ export class TerrariaRenderer {
         if (!def) continue;
 
         const px = lx * TS;
-        // Y flipped: world Y-up, screen Y-down
         const py = (camY - y) * TS + screenH / 2 - TS;
 
-        gfx.rect(px, py, TS, TS);
-        gfx.fill(def.color);
+        // Depth-based color darkening (deeper = slightly darker)
+        let color = def.color;
+        if (def.solid && y < TB.SURFACE_Y) {
+          const depthFactor = Math.max(0.55, 1 - (TB.SURFACE_Y - y) / (TB.SURFACE_Y * 1.5));
+          color = _darkenColor(color, depthFactor);
+        }
 
-        // Add subtle edge shading for depth
+        gfx.rect(px, py, TS, TS);
+        gfx.fill(color);
+
+        // Block detail texturing
         if (def.solid && !def.transparent) {
+          // Top highlight
           gfx.rect(px, py, TS, 1);
-          gfx.fill({ color: 0xFFFFFF, alpha: 0.12 });
+          gfx.fill({ color: 0xFFFFFF, alpha: 0.1 });
+          // Bottom shadow
           gfx.rect(px, py + TS - 1, TS, 1);
-          gfx.fill({ color: 0x000000, alpha: 0.15 });
+          gfx.fill({ color: 0x000000, alpha: 0.18 });
+          // Left edge
+          gfx.rect(px, py, 1, TS);
+          gfx.fill({ color: 0xFFFFFF, alpha: 0.05 });
+
+          // Procedural noise detail for stone/dirt (subtle pixel dots)
+          if (bt === BlockType.STONE || bt === BlockType.COBBLESTONE || bt === BlockType.DIRT) {
+            const hash = ((wx * 374761393 + y * 668265263) >>> 0) % 100;
+            if (hash < 20) {
+              const dotX = px + (hash % 4) * 4 + 2;
+              const dotY = py + ((hash * 7) % 4) * 4 + 2;
+              gfx.rect(dotX, dotY, 2, 2);
+              gfx.fill({ color: hash < 10 ? 0xFFFFFF : 0x000000, alpha: 0.08 });
+            }
+          }
+
+          // Grass top decoration
+          if (bt === BlockType.GRASS) {
+            // Little grass blades on top
+            for (let gx = 0; gx < TS; gx += 3) {
+              const gh = 1 + ((wx * 31 + gx * 17) >>> 0) % 3;
+              gfx.rect(px + gx, py - gh, 1, gh);
+              gfx.fill({ color: 0x5CBF55, alpha: 0.6 });
+            }
+          }
+        }
+
+        // Special block glow effects
+        if (def.lightEmit > 4) {
+          gfx.rect(px - 1, py - 1, TS + 2, TS + 2);
+          gfx.fill({ color: def.color, alpha: 0.15 });
+        }
+
+        // Liquid shimmer
+        if (def.liquid) {
+          const shimmer = Math.sin((state.totalTime ?? 0) * 2 + wx * 0.5 + y * 0.3) * 0.1;
+          gfx.rect(px, py, TS, 2);
+          gfx.fill({ color: 0xFFFFFF, alpha: Math.max(0, 0.1 + shimmer) });
         }
       }
     }
