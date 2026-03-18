@@ -318,6 +318,12 @@ const GAME_MODES: GameModeEntry[] = [
     desc: "Minecraft-style voxel sandbox — build Camelot, seek the Grail",
     skipSetup: true,
   },
+  {
+    mode: GameMode.EAGLE_FLIGHT,
+    label: "EAGLE FLIGHT",
+    desc: "Merlin soars on an eagle over the city of Camelot — flight simulator",
+    skipSetup: true,
+  },
 ];
 
 // ---------------------------------------------------------------------------

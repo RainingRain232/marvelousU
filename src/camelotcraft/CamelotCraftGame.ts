@@ -658,8 +658,9 @@ export class CamelotCraftGame {
         damageMob(this._state, mob.id, dmg, kb);
         playHurt();
 
-        // Hit particles
+        // Hit particles + screen shake
         this._renderer.particles.emitHit(mob.position, 0xFF4444);
+        this._renderer.cameraCtrl.shake(0.15);
 
         // Set attack cooldown
         p.attackTimer = CB.PLAYER_ATTACK_COOLDOWN;

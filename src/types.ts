@@ -679,6 +679,7 @@ export enum GameMode {
   RIFT_WIZARD = "rift_wizard",
   SETTLERS = "settlers",
   CAMELOT_CRAFT = "camelot_craft",
+  EAGLE_FLIGHT = "eagle_flight",
 }
 
 // ---------------------------------------------------------------------------

@@ -9,7 +9,7 @@ import { MOB_DEFS } from "../config/CraftMobDefs";
 import type { CraftState } from "../state/CraftState";
 import { getWorldBlock } from "../state/CraftState";
 import { chunkKey, worldToChunk } from "../state/CraftChunk";
-import { buildChunkMesh, disposeChunkMesh } from "./CraftChunkMesh";
+import { buildChunkMesh, disposeChunkMesh, updateTerrainUniforms } from "./CraftChunkMesh";
 import { CraftCameraController } from "./CraftCameraController";
 import { CraftSkybox } from "./CraftSkybox";
 import { getSunlight, getSunAngle, getFogColor } from "../systems/CraftDayNightSystem";
@@ -17,6 +17,7 @@ import { getDroppedItems } from "../systems/CraftItemDropSystem";
 import { CraftParticles } from "./CraftParticles";
 import { CraftMobRenderer } from "./CraftMobRenderer";
 import { CraftWeather } from "./CraftWeather";
+import { CraftPostProcessing } from "./CraftPostProcessing";
 
 export class CraftRenderer {
   private _renderer!: THREE.WebGLRenderer;
@@ -26,6 +27,7 @@ export class CraftRenderer {
   private _particles = new CraftParticles();
   private _mobRenderer = new CraftMobRenderer();
   private _weather = new CraftWeather();
+  private _postProcess!: CraftPostProcessing;
 
   /** Chunk meshes keyed by chunk key. */
   private _chunkMeshes = new Map<string, THREE.Object3D>();
@@ -78,13 +80,17 @@ export class CraftRenderer {
     this._renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
     this._renderer.setSize(window.innerWidth, window.innerHeight);
     this._renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this._renderer.shadowMap.enabled = false;
+    this._renderer.shadowMap.enabled = true;
+    this._renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this._renderer.setClearColor(0x87CEEB);
     document.body.appendChild(this._renderer.domElement);
     this._renderer.domElement.style.position = "fixed";
     this._renderer.domElement.style.top = "0";
     this._renderer.domElement.style.left = "0";
     this._renderer.domElement.style.zIndex = "0";
+
+    // Post-processing
+    this._postProcess = new CraftPostProcessing(this._renderer, window.innerWidth, window.innerHeight);
 
     // Scene
     this._scene = new THREE.Scene();
@@ -99,7 +105,9 @@ export class CraftRenderer {
 
     this._dirLight = new THREE.DirectionalLight(0xFFEECC, 0.8);
     this._dirLight.position.set(100, 200, 50);
+    this._dirLight.castShadow = true;
     this._scene.add(this._dirLight);
+    this._scene.add(this._dirLight.target);
 
     // Skybox
     this._skybox.build();
@@ -154,6 +162,7 @@ export class CraftRenderer {
     const h = window.innerHeight;
     this._renderer.setSize(w, h);
     this._cameraCtrl.resize(w, h);
+    this._postProcess.resize(w, h);
   };
 
   /** Main render call. */
@@ -176,6 +185,27 @@ export class CraftRenderer {
     // Sun color shifts
     const sunHorizon = Math.abs(Math.sin(sunAngle));
     this._dirLight.color.setHex(sunHorizon < 0.3 ? 0xFF8844 : 0xFFEECC);
+
+    // Update terrain PBR shader uniforms
+    const sunDirVec = new THREE.Vector3(
+      Math.cos(sunAngle) * 200, Math.sin(sunAngle) * 200, 50,
+    ).normalize();
+    const sunCol = new THREE.Color(sunHorizon < 0.3 ? 0xFF8844 : 0xFFEECC);
+    updateTerrainUniforms(sunDirVec, sunCol, 0.15 + sunlight * 0.35, this._waterTime);
+
+    // Enable shadow mapping
+    this._dirLight.castShadow = true;
+    this._dirLight.shadow.mapSize.set(1024, 1024);
+    this._dirLight.shadow.camera.near = 1;
+    this._dirLight.shadow.camera.far = 200;
+    const shadowSize = 60;
+    this._dirLight.shadow.camera.left = -shadowSize;
+    this._dirLight.shadow.camera.right = shadowSize;
+    this._dirLight.shadow.camera.top = shadowSize;
+    this._dirLight.shadow.camera.bottom = -shadowSize;
+    // Center shadow camera on player
+    this._dirLight.target.position.copy(state.player.position);
+    this._dirLight.position.copy(state.player.position).add(sunDirVec.clone().multiplyScalar(100));
 
     // Fog updates
     const fogColor = getFogColor(state.timeOfDay, 0xC8D8E8);
@@ -225,8 +255,8 @@ export class CraftRenderer {
     this._fog.density = 0.008 * this._weather.getWeatherFogMultiplier();
     this._ambientLight.intensity = (0.15 + sunlight * 0.55) * this._weather.getAmbientDimming();
 
-    // Render
-    this._renderer.render(this._scene, this._cameraCtrl.camera);
+    // Render with post-processing (SSAO, bloom, tone mapping, vignette)
+    this._postProcess.render(this._scene, this._cameraCtrl.camera, dt);
   }
 
   private _updateChunks(state: CraftState): void {
@@ -452,9 +482,10 @@ export class CraftRenderer {
     }
     this._mobMeshes.clear();
 
-    // Particles & Weather
+    // Particles, Weather & Post-processing
     this._particles.destroy();
     this._weather.destroy();
+    this._postProcess.destroy();
 
     // Skybox
     this._skybox.destroy();

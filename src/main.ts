@@ -139,6 +139,7 @@ import { ArthurianRPGGame } from "./arthurianrpg/ArthurianRPGGame";
 import { SettlersGame } from "./settlers/SettlersGame";
 import type { SettlersMapMode } from "./settlers/state/SettlersState";
 import { CamelotCraftGame } from "./camelotcraft/CamelotCraftGame";
+import { EagleFlightGame } from "./eagleflight/EagleFlightGame";
 import { camelotHubScreen } from "@view/ui/CamelotHubScreen";
 
 // World mode imports
@@ -333,6 +334,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     [GameMode.ARTHURIAN_RPG]: 22,
     [GameMode.SETTLERS]: 23,
     [GameMode.CAMELOT_CRAFT]: 24,
+    [GameMode.EAGLE_FLIGHT]: 25,
   };
   // Modes that need the setup screen (not skipSetup)
   const NEEDS_SETUP = new Set([GameMode.STANDARD, GameMode.DEATHMATCH, GameMode.BATTLEFIELD, GameMode.ROGUELIKE, GameMode.WAVE]);
@@ -472,6 +474,11 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     if (menuScreen.selectedGameMode === GameMode.CAMELOT_CRAFT) {
       menuScreen.hide();
       _bootCamelotCraftGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.EAGLE_FLIGHT) {
+      menuScreen.hide();
+      _bootEagleFlightGame();
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.WORLD) {
@@ -3141,6 +3148,31 @@ async function _bootCamelotCraftGame(): Promise<void> {
     menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
   window.addEventListener("camelotCraftExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Eagle Flight (flight simulator) boot
+// ---------------------------------------------------------------------------
+
+let _eagleFlightGame: EagleFlightGame | null = null;
+
+async function _bootEagleFlightGame(): Promise<void> {
+  if (_eagleFlightGame) {
+    _eagleFlightGame.destroy();
+    _eagleFlightGame = null;
+  }
+  viewManager.clearWorld();
+  _eagleFlightGame = new EagleFlightGame();
+  await _eagleFlightGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("eagleFlightExit", _onExit);
+    if (_eagleFlightGame) {
+      _eagleFlightGame.destroy();
+      _eagleFlightGame = null;
+    }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("eagleFlightExit", _onExit);
 }
 
 // ---------------------------------------------------------------------------
