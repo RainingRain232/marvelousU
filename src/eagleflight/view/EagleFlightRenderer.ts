@@ -155,10 +155,10 @@ export class EagleFlightRenderer {
 
     // Scene — subtle blue-tinted atmospheric fog
     this._scene = new THREE.Scene();
-    this._scene.fog = new THREE.FogExp2(0xc0d4e8, 0.0014);
+    this._scene.fog = new THREE.FogExp2(0xc0d4e8, 0.0007);
 
     // Camera
-    this._camera = new THREE.PerspectiveCamera(65, sw / sh, 0.5, 800);
+    this._camera = new THREE.PerspectiveCamera(65, sw / sh, 0.5, 1600);
     this._camera.position.set(0, 70, -100);
     this._camera.lookAt(0, 40, 0);
     this._camPos.copy(this._camera.position);
@@ -203,11 +203,11 @@ export class EagleFlightRenderer {
     this._sunLight.castShadow = true;
     this._sunLight.shadow.mapSize.set(4096, 4096);
     this._sunLight.shadow.camera.near = 1;
-    this._sunLight.shadow.camera.far = 400;
-    this._sunLight.shadow.camera.left = -150;
-    this._sunLight.shadow.camera.right = 150;
-    this._sunLight.shadow.camera.top = 150;
-    this._sunLight.shadow.camera.bottom = -150;
+    this._sunLight.shadow.camera.far = 600;
+    this._sunLight.shadow.camera.left = -250;
+    this._sunLight.shadow.camera.right = 250;
+    this._sunLight.shadow.camera.top = 250;
+    this._sunLight.shadow.camera.bottom = -250;
     this._sunLight.shadow.bias = -0.0005;
     this._sunLight.shadow.normalBias = 0.02;
     this._scene.add(this._sunLight);
@@ -330,7 +330,7 @@ export class EagleFlightRenderer {
 
   private _buildTerrain(): void {
     // High-res terrain with procedural shader for multi-biome blending
-    const groundGeo = new THREE.PlaneGeometry(800, 800, 300, 300);
+    const groundGeo = new THREE.PlaneGeometry(1600, 1600, 400, 400);
     groundGeo.rotateX(-Math.PI / 2);
     const posAttr = groundGeo.getAttribute("position");
     const rng = seededRandom(42);
@@ -3358,9 +3358,9 @@ export class EagleFlightRenderer {
     ];
 
     // Mixed trees — deciduous and pine (dense forest)
-    for (let i = 0; i < 600; i++) {
+    for (let i = 0; i < 1200; i++) {
       const angle = rng() * Math.PI * 2;
-      const dist = 95 + rng() * 220;
+      const dist = 95 + rng() * 500;
       const tx = Math.cos(angle) * dist;
       const tz = Math.sin(angle) * dist;
       if (Math.abs(tz + 15) < 15 && dist < 200) continue;
@@ -3412,7 +3412,7 @@ export class EagleFlightRenderer {
     const fenceMat = new THREE.MeshStandardMaterial({ color: 0x665533, roughness: 0.9 });
     for (let i = 0; i < 16; i++) {
       const angle = rng() * Math.PI * 2;
-      const dist = 120 + rng() * 100;
+      const dist = 120 + rng() * 350;
       const fx = Math.cos(angle) * dist;
       const fz = Math.sin(angle) * dist;
       const fw = 15 + rng() * 25;
@@ -3448,7 +3448,7 @@ export class EagleFlightRenderer {
     const stoneWallMat = new THREE.MeshStandardMaterial({ color: 0x888877, roughness: 0.9 });
     for (let i = 0; i < 8; i++) {
       const angle = rng() * Math.PI * 2;
-      const dist = 130 + rng() * 80;
+      const dist = 130 + rng() * 300;
       const wx = Math.cos(angle) * dist;
       const wz = Math.sin(angle) * dist;
       const wLen = 15 + rng() * 25;
@@ -3464,10 +3464,10 @@ export class EagleFlightRenderer {
     const sheepFaceMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.9 });
     for (let i = 0; i < 55; i++) {
       const angle = rng() * Math.PI * 2;
-      const dist = 100 + rng() * 120;
+      const dist = 100 + rng() * 400;
       const sx = Math.cos(angle) * dist;
       const sz = Math.sin(angle) * dist;
-      if (Math.abs(sz + 15) < 15) continue;
+      if (Math.abs(sz + 15) < 15 && dist < 200) continue;
 
       const sheep = new THREE.Group();
       // Woolly body (multiple spheres for fluffiness)
@@ -3524,7 +3524,7 @@ export class EagleFlightRenderer {
     const flowerMeadowColors = [0xff6688, 0xffaa44, 0xaa66ff, 0xffff55, 0xff88cc, 0x66aaff];
     for (let i = 0; i < 8; i++) {
       const angle = rng() * Math.PI * 2;
-      const dist = 100 + rng() * 120;
+      const dist = 100 + rng() * 400;
       const mx = Math.cos(angle) * dist;
       const mz = Math.sin(angle) * dist;
       for (let f = 0; f < 25; f++) {
@@ -3557,6 +3557,14 @@ export class EagleFlightRenderer {
     this._buildWindmill(140, -60);
     this._buildWindmill(-120, 90);
     this._buildWindmill(200, 50);
+
+    // Distant village
+    this._buildVillage(-400, 300, rng);
+    this._buildWindmill(-380, 320);
+    this._buildRuins(-420, 340, rng);
+
+    // Wizard tower (far from city)
+    this._buildWizardTower(450, -350);
   }
 
   private _buildRuins(x: number, z: number, rng: () => number): void {
@@ -4035,6 +4043,303 @@ export class EagleFlightRenderer {
   }
 
   // ---------------------------------------------------------------------------
+  // Wizard Tower — half-open ruined tower with landing platform
+  // ---------------------------------------------------------------------------
+
+  private _buildWizardTower(x: number, z: number): void {
+    const group = new THREE.Group();
+    const stoneMat = new THREE.MeshStandardMaterial({ color: 0x887766, roughness: 0.85 });
+    const darkStoneMat = new THREE.MeshStandardMaterial({ color: 0x665544, roughness: 0.9 });
+    const mossMat = new THREE.MeshStandardMaterial({ color: 0x445533, roughness: 0.95 });
+    const woodMat = new THREE.MeshStandardMaterial({ color: 0x553322, roughness: 0.9 });
+    const arcaneGlowMat = new THREE.MeshStandardMaterial({
+      color: 0x4466ff, emissive: 0x2244cc, emissiveIntensity: 0.6,
+    });
+    const crystalMat = new THREE.MeshStandardMaterial({
+      color: 0x88aaff, emissive: 0x4488ff, emissiveIntensity: 0.8,
+      transparent: true, opacity: 0.85,
+    });
+
+    // --- Foundation (circular stone base) ---
+    const foundation = new THREE.Mesh(
+      new THREE.CylinderGeometry(7, 8, 2, 24),
+      darkStoneMat,
+    );
+    foundation.position.y = 1;
+    foundation.castShadow = true;
+    group.add(foundation);
+
+    // --- Tower body (intact side, ~240 degrees) ---
+    const towerRadius = 5;
+    const towerHeight = 28;
+    const towerBody = new THREE.Mesh(
+      new THREE.CylinderGeometry(towerRadius, towerRadius + 0.8, towerHeight, 24, 6, true, 0, Math.PI * 1.35),
+      stoneMat,
+    );
+    towerBody.position.y = 2 + towerHeight / 2;
+    towerBody.castShadow = true;
+    group.add(towerBody);
+
+    // Inner wall (slightly smaller, same arc)
+    const innerWall = new THREE.Mesh(
+      new THREE.CylinderGeometry(towerRadius - 0.5, towerRadius + 0.3, towerHeight, 24, 6, true, 0, Math.PI * 1.35),
+      darkStoneMat,
+    );
+    innerWall.position.y = 2 + towerHeight / 2;
+    group.add(innerWall);
+
+    // --- Broken side (partial walls at varying heights) ---
+    // Left broken edge
+    const brokenLeft = new THREE.Mesh(
+      new THREE.CylinderGeometry(towerRadius, towerRadius + 0.8, towerHeight * 0.7, 8, 4, true, Math.PI * 1.35, Math.PI * 0.2),
+      stoneMat,
+    );
+    brokenLeft.position.y = 2 + towerHeight * 0.35;
+    brokenLeft.castShadow = true;
+    group.add(brokenLeft);
+
+    // Right broken edge (shorter)
+    const brokenRight = new THREE.Mesh(
+      new THREE.CylinderGeometry(towerRadius, towerRadius + 0.8, towerHeight * 0.45, 8, 3, true, Math.PI * 1.75, Math.PI * 0.25),
+      stoneMat,
+    );
+    brokenRight.position.y = 2 + towerHeight * 0.225;
+    brokenRight.castShadow = true;
+    group.add(brokenRight);
+
+    // --- Brick mortar rings on tower ---
+    for (let br = 0; br < 18; br++) {
+      const ringY = 3 + br * 1.5;
+      if (ringY > towerHeight + 1) break;
+      const brickRing = new THREE.Mesh(
+        new THREE.TorusGeometry(towerRadius + 0.05, 0.08, 8, 28, Math.PI * 1.35),
+        darkStoneMat,
+      );
+      brickRing.position.y = ringY;
+      brickRing.rotation.x = Math.PI / 2;
+      group.add(brickRing);
+    }
+
+    // --- Spiral staircase (visible through the open side) ---
+    const stairMat = new THREE.MeshStandardMaterial({ color: 0x776655, roughness: 0.85 });
+    for (let s = 0; s < 30; s++) {
+      const sa = (s / 30) * Math.PI * 4; // 2 full turns
+      const sy = 2.5 + s * 0.9;
+      if (sy > towerHeight) break;
+      const stairStep = new THREE.Mesh(
+        new THREE.BoxGeometry(2.5, 0.25, 0.8),
+        stairMat,
+      );
+      stairStep.position.set(
+        Math.cos(sa) * (towerRadius - 2),
+        sy,
+        Math.sin(sa) * (towerRadius - 2),
+      );
+      stairStep.rotation.y = -sa;
+      group.add(stairStep);
+    }
+
+    // Central column for staircase
+    const centralPillar = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.4, 0.5, towerHeight - 2, 12),
+      darkStoneMat,
+    );
+    centralPillar.position.y = 2 + (towerHeight - 2) / 2;
+    group.add(centralPillar);
+
+    // --- Floor platforms ---
+    // Mid-level floor
+    const midFloor = new THREE.Mesh(
+      new THREE.CylinderGeometry(towerRadius - 0.6, towerRadius - 0.6, 0.4, 20, 1, false, 0, Math.PI * 1.35),
+      woodMat,
+    );
+    midFloor.position.y = 16;
+    group.add(midFloor);
+
+    // --- Landing platform at top (full circle, slightly larger) ---
+    const landingPlatform = new THREE.Mesh(
+      new THREE.CylinderGeometry(6.5, 6, 0.6, 24),
+      stoneMat,
+    );
+    landingPlatform.position.y = towerHeight + 2.3;
+    landingPlatform.castShadow = true;
+    group.add(landingPlatform);
+
+    // Platform rim
+    const platformRim = new THREE.Mesh(
+      new THREE.TorusGeometry(6.3, 0.2, 8, 28),
+      darkStoneMat,
+    );
+    platformRim.position.y = towerHeight + 2.8;
+    platformRim.rotation.x = Math.PI / 2;
+    group.add(platformRim);
+
+    // Low wall around intact portion of platform
+    const parapet = new THREE.Mesh(
+      new THREE.CylinderGeometry(6.3, 6.3, 1.2, 20, 1, true, 0, Math.PI * 1.35),
+      stoneMat,
+    );
+    parapet.position.y = towerHeight + 3.2;
+    group.add(parapet);
+
+    // --- Half roof (covers intact side only) ---
+    const halfRoof = new THREE.Mesh(
+      new THREE.ConeGeometry(6.5, 6, 16, 1, false, 0, Math.PI),
+      new THREE.MeshStandardMaterial({ color: 0x334455, roughness: 0.8 }),
+    );
+    halfRoof.position.y = towerHeight + 6;
+    halfRoof.rotation.y = Math.PI * 0.25;
+    group.add(halfRoof);
+
+    // --- Rubble at base of open side ---
+    const rubbleRng = seededRandom(777);
+    for (let r = 0; r < 20; r++) {
+      const rAngle = Math.PI * 1.35 + rubbleRng() * Math.PI * 0.65;
+      const rDist = towerRadius + 1 + rubbleRng() * 5;
+      const rSize = 0.3 + rubbleRng() * 0.8;
+      const rubble = new THREE.Mesh(
+        new THREE.BoxGeometry(rSize, rSize * 0.6, rSize * 0.8),
+        rubbleRng() > 0.5 ? stoneMat : darkStoneMat,
+      );
+      rubble.position.set(
+        Math.cos(rAngle) * rDist,
+        rSize * 0.3,
+        Math.sin(rAngle) * rDist,
+      );
+      rubble.rotation.set(rubbleRng() * 0.5, rubbleRng() * Math.PI, rubbleRng() * 0.5);
+      group.add(rubble);
+    }
+
+    // --- Moss/vine patches on walls ---
+    for (let m = 0; m < 12; m++) {
+      const mAngle = rubbleRng() * Math.PI * 1.35;
+      const mY = 3 + rubbleRng() * (towerHeight - 4);
+      const mossPatch = new THREE.Mesh(
+        new THREE.PlaneGeometry(1.5 + rubbleRng() * 2, 1 + rubbleRng() * 1.5),
+        mossMat,
+      );
+      mossPatch.position.set(
+        Math.cos(mAngle) * (towerRadius + 0.1),
+        mY,
+        Math.sin(mAngle) * (towerRadius + 0.1),
+      );
+      mossPatch.rotation.y = mAngle + Math.PI / 2;
+      group.add(mossPatch);
+    }
+
+    // --- Arcane details ---
+    // Crystal orb on pedestal at top
+    const pedestal = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.4, 0.5, 1.5, 10),
+      darkStoneMat,
+    );
+    pedestal.position.y = towerHeight + 3.4;
+    group.add(pedestal);
+
+    const crystal = new THREE.Mesh(
+      new THREE.OctahedronGeometry(0.5, 1),
+      crystalMat,
+    );
+    crystal.position.y = towerHeight + 4.5;
+    group.add(crystal);
+
+    // Magical point light
+    const magicLight = new THREE.PointLight(0x4488ff, 3, 30);
+    magicLight.position.y = towerHeight + 4.5;
+    group.add(magicLight);
+
+    // Glowing rune stones on floor
+    for (let rs = 0; rs < 6; rs++) {
+      const rsAngle = (rs / 6) * Math.PI * 2;
+      const rune = new THREE.Mesh(
+        new THREE.BoxGeometry(0.6, 0.15, 0.6),
+        arcaneGlowMat,
+      );
+      rune.position.set(
+        Math.cos(rsAngle) * 3,
+        towerHeight + 2.7,
+        Math.sin(rsAngle) * 3,
+      );
+      rune.rotation.y = rsAngle;
+      group.add(rune);
+    }
+
+    // --- Bookshelves on inner wall (mid level) ---
+    for (let bs = 0; bs < 4; bs++) {
+      const bsAngle = 0.3 + (bs / 4) * Math.PI * 0.9;
+      const shelf = new THREE.Mesh(
+        new THREE.BoxGeometry(1.8, 2.5, 0.5),
+        woodMat,
+      );
+      shelf.position.set(
+        Math.cos(bsAngle) * (towerRadius - 0.8),
+        15.5,
+        Math.sin(bsAngle) * (towerRadius - 0.8),
+      );
+      shelf.rotation.y = bsAngle + Math.PI / 2;
+      group.add(shelf);
+
+      // Books (colored strips)
+      const bookColors = [0x882222, 0x224488, 0x228844, 0x884422, 0x442288];
+      for (let b = 0; b < 5; b++) {
+        const book = new THREE.Mesh(
+          new THREE.BoxGeometry(0.25, 0.35, 0.4),
+          new THREE.MeshStandardMaterial({ color: bookColors[b] }),
+        );
+        book.position.set(
+          Math.cos(bsAngle) * (towerRadius - 0.6),
+          14.8 + b * 0.5,
+          Math.sin(bsAngle) * (towerRadius - 0.6) + (b - 2) * 0.05,
+        );
+        book.rotation.y = bsAngle + Math.PI / 2;
+        group.add(book);
+      }
+    }
+
+    // --- Standing stones around tower base ---
+    for (let ss = 0; ss < 8; ss++) {
+      const ssAngle = (ss / 8) * Math.PI * 2;
+      const ssDist = 12 + (ss % 2) * 1.5;
+      const ssHeight = 2.5 + (ss % 3) * 1;
+      const stone = new THREE.Mesh(
+        new THREE.BoxGeometry(0.8, ssHeight, 0.5),
+        darkStoneMat,
+      );
+      stone.position.set(
+        Math.cos(ssAngle) * ssDist,
+        ssHeight / 2,
+        Math.sin(ssAngle) * ssDist,
+      );
+      stone.rotation.y = ssAngle + 0.2;
+      stone.rotation.z = (ss % 2 === 0 ? 0.05 : -0.03);
+      stone.castShadow = true;
+      group.add(stone);
+    }
+
+    // --- Windows (arched, with warm glow on intact side) ---
+    for (let floor = 0; floor < 4; floor++) {
+      const wy = 6 + floor * 5.5;
+      for (let w = 0; w < 3; w++) {
+        const wa = 0.4 + (w / 3) * Math.PI * 0.8;
+        const winMat = new THREE.MeshStandardMaterial({
+          color: 0xddcc88, emissive: 0x886633, emissiveIntensity: 0.2,
+        });
+        const win = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 1.5), winMat);
+        win.position.set(
+          Math.cos(wa) * (towerRadius + 0.1),
+          wy,
+          Math.sin(wa) * (towerRadius + 0.1),
+        );
+        win.rotation.y = wa + Math.PI / 2;
+        group.add(win);
+      }
+    }
+
+    group.position.set(x, 0, z);
+    this._terrainGroup.add(group);
+  }
+
+  // ---------------------------------------------------------------------------
   // Clouds
   // ---------------------------------------------------------------------------
 
@@ -4099,9 +4404,9 @@ export class EagleFlightRenderer {
     for (const layer of layers) {
       for (let i = 0; i < layer.count; i++) {
         const cloudCluster = new THREE.Group();
-        const cx = (rng() - 0.5) * 600;
+        const cx = (rng() - 0.5) * 1200;
         const cy = layer.minY + rng() * (layer.maxY - layer.minY);
-        const cz = (rng() - 0.5) * 600;
+        const cz = (rng() - 0.5) * 1200;
 
         const puffCount = layer.puffs[0] + Math.floor(rng() * (layer.puffs[1] - layer.puffs[0]));
         for (let p = 0; p < puffCount; p++) {
@@ -5920,7 +6225,7 @@ export class EagleFlightRenderer {
 
     // --- Dynamic fog density based on altitude ---
     // Thicker fog at low altitude, thinner high up
-    const fogDensity = 0.0008 + Math.max(0, (50 - p.position.y) / 50) * 0.001;
+    const fogDensity = 0.0004 + Math.max(0, (50 - p.position.y) / 50) * 0.0006;
     (this._scene.fog as THREE.FogExp2).density = fogDensity;
 
     // --- Tone mapping exposure based on altitude (brighter high up) ---

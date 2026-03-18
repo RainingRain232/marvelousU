@@ -6,16 +6,28 @@ import { viewManager } from "@view/ViewManager";
 import { TB } from "./config/TerrariaBalance";
 import { createTerrariaState, addMessage } from "./state/TerrariaState";
 import type { TerrariaState } from "./state/TerrariaState";
+import { addToInventory } from "./state/TerrariaInventory";
+
+// Systems
 import { initTerrain, generateChunk, placeSpecialStructures, getSurfaceHeight } from "./systems/TerrariaTerrainSystem";
 import { initInput, destroyInput, pollInput } from "./systems/TerrariaInputSystem";
 import { updatePlayerPhysics, updateMobPhysics, updateDroppedItemPhysics } from "./systems/TerrariaPhysicsSystem";
 import { updateMining } from "./systems/TerrariaBlockSystem";
 import { updateDayNight } from "./systems/TerrariaDayNightSystem";
-import { addToInventory } from "./state/TerrariaInventory";
 import { recalcLighting } from "./systems/TerrariaLightingSystem";
+import { updateCombat } from "./systems/TerrariaCombatSystem";
+import { updateMobs } from "./systems/TerrariaMobSystem";
+import { updateNPCs } from "./systems/TerrariaNPCSystem";
+import { updateQuests } from "./systems/TerrariaQuestSystem";
+// Crafting (used by HUD callbacks, imported for future use)
+// import { craftRecipe } from "./systems/TerrariaCraftingSystem";
+import { saveTerrariaWorld, loadTerrariaWorld, hasSave } from "./systems/TerrariaSaveSystem";
 
+// View
 import { TerrariaRenderer } from "./view/TerrariaRenderer";
 import { TerrariaPlayerView } from "./view/TerrariaPlayerView";
+import { TerrariaMobView } from "./view/TerrariaMobView";
+import { TerrariaFX } from "./view/TerrariaFX";
 import { TerrariaCamera } from "./view/TerrariaCamera";
 import { TerrariaHUD } from "./view/TerrariaHUD";
 
@@ -25,11 +37,14 @@ export class TerrariaGame {
   private _state!: TerrariaState;
   private _renderer = new TerrariaRenderer();
   private _playerView = new TerrariaPlayerView();
+  private _mobView = new TerrariaMobView();
+  private _fx = new TerrariaFX();
   private _camera = new TerrariaCamera();
   private _hud = new TerrariaHUD();
 
   private _rafId: number | null = null;
   private _lastTime = 0;
+  private _saveTimer = 0;
 
   // -----------------------------------------------------------------------
   // Boot
@@ -93,6 +108,20 @@ export class TerrariaGame {
       this._startGame(seed, false);
     };
     btnContainer.appendChild(newBtn);
+
+    // Continue button (only if save exists)
+    if (hasSave()) {
+      const continueBtn = document.createElement("button");
+      continueBtn.textContent = "Continue";
+      continueBtn.style.cssText = btnStyle + "background:#1a1a2a;color:#88AAFF;";
+      continueBtn.onmouseenter = () => { continueBtn.style.background = "#2a2a3a"; };
+      continueBtn.onmouseleave = () => { continueBtn.style.background = "#1a1a2a"; };
+      continueBtn.onclick = () => {
+        overlay.remove();
+        this._loadAndStartGame();
+      };
+      btnContainer.appendChild(continueBtn);
+    }
 
     // Creative button
     const creativeBtn = document.createElement("button");
@@ -172,6 +201,8 @@ export class TerrariaGame {
     this._renderer.init();
     viewManager.addToLayer("units", this._renderer.worldLayer);
     this._renderer.entityLayer.addChild(this._playerView.container);
+    this._renderer.entityLayer.addChild(this._mobView.container);
+    this._renderer.entityLayer.addChild(this._fx.container);
 
     // Init camera
     this._camera.setScreenSize(this._state.screenW, this._state.screenH);
@@ -196,6 +227,42 @@ export class TerrariaGame {
     addMessage(this._state, creative ? "Creative mode — infinite resources" : "Mine, build, and seek the Holy Grail!", 0xC0A060);
 
     // Start game loop
+    this._lastTime = performance.now();
+    this._rafId = requestAnimationFrame((t) => this._gameLoop(t));
+  }
+
+  private _loadAndStartGame(): void {
+    const loaded = loadTerrariaWorld();
+    if (!loaded) {
+      this._startGame();
+      return;
+    }
+    viewManager.clearWorld();
+    this._state = loaded;
+    this._state.screenW = viewManager.screenWidth;
+    this._state.screenH = viewManager.screenHeight;
+
+    initTerrain(this._state.seed);
+    recalcLighting(this._state);
+
+    this._renderer.init();
+    viewManager.addToLayer("units", this._renderer.worldLayer);
+    this._renderer.entityLayer.addChild(this._playerView.container);
+    this._renderer.entityLayer.addChild(this._mobView.container);
+    this._renderer.entityLayer.addChild(this._fx.container);
+
+    this._camera.setScreenSize(this._state.screenW, this._state.screenH);
+    this._camera.x = this._state.player.x;
+    this._camera.y = this._state.player.y;
+
+    this._hud.build();
+    this._hud.onExit = () => this.destroy();
+    this._hud.setResumeCallback(() => { this._state.paused = false; });
+
+    initInput();
+    window.addEventListener("resize", this._onResize);
+    addMessage(this._state, "World loaded!", 0xFFD700);
+
     this._lastTime = performance.now();
     this._rafId = requestAnimationFrame((t) => this._gameLoop(t));
   }
@@ -271,6 +338,18 @@ export class TerrariaGame {
       // Day/night
       updateDayNight(this._state, dt);
 
+      // Combat
+      if (!this._state.inventoryOpen) {
+        updateCombat(this._state, input, this._camera, dt);
+      }
+
+      // Mobs & NPCs
+      updateMobs(this._state, dt);
+      updateNPCs(this._state, dt);
+
+      // Quests
+      updateQuests(this._state);
+
       // Timers
       if (p.invulnTimer > 0) p.invulnTimer -= dt;
       if (p.attackTimer > 0) p.attackTimer -= dt;
@@ -288,12 +367,22 @@ export class TerrariaGame {
         }
       }
 
+      // FX update
+      this._fx.update(dt);
+
       // Recalc lighting if needed
       let needsLightRecalc = false;
       for (const chunk of this._state.chunks.values()) {
         if (chunk.lightDirty) { needsLightRecalc = true; break; }
       }
       if (needsLightRecalc) recalcLighting(this._state);
+
+      // Auto-save
+      this._saveTimer += dt;
+      if (this._saveTimer >= TB.AUTOSAVE_INTERVAL) {
+        this._saveTimer = 0;
+        saveTerrariaWorld(this._state);
+      }
     }
 
     // Camera
@@ -305,6 +394,8 @@ export class TerrariaGame {
     // Render
     this._renderer.draw(this._state, this._camera);
     this._playerView.draw(this._state, this._camera, dt);
+    this._mobView.draw(this._state, this._camera, dt);
+    this._fx.draw(this._camera);
     this._hud.update(this._state);
 
     // Continue loop
@@ -334,8 +425,14 @@ export class TerrariaGame {
     }
     window.removeEventListener("resize", this._onResize);
     destroyInput();
+    // Save before exit
+    if (this._state && !this._state.gameOver) {
+      saveTerrariaWorld(this._state);
+    }
     this._renderer.cleanup();
     this._playerView.destroy();
+    this._mobView.destroy();
+    this._fx.destroy();
     this._hud.cleanup();
     viewManager.clearWorld();
 
