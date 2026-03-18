@@ -44,6 +44,10 @@ function blockInput(bt: BlockType, count: number): RecipeInput {
   return { category: ItemCategory.BLOCK, blockType: bt, count };
 }
 
+function _armor(name: string, defense: number, color: number, slot: string): ItemStack {
+  return { category: ItemCategory.ARMOR, specialId: `armor_${slot}_${name.toLowerCase().replace(/\s/g, "_")}`, count: 1, displayName: name, color, defense };
+}
+
 // ---------------------------------------------------------------------------
 // Crafting recipes
 // ---------------------------------------------------------------------------
@@ -214,6 +218,44 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
     inputs: [blockInput(BlockType.COBBLESTONE, 4), blockInput(BlockType.SAND, 2)],
     output: createBlockItem(BlockType.MARBLE, "Marble", 0xE8E8E0, 4),
   },
+
+  // --- Armor recipes ---
+  // Leather (basic, from wood)
+  { id: "leather_helm", station: "round_table", inputs: [blockInput(BlockType.OAK_LOG, 5)], output: _armor("Leather Cap", 1, 0x8B6914, "helmet") },
+  { id: "leather_chest", station: "round_table", inputs: [blockInput(BlockType.OAK_LOG, 8)], output: _armor("Leather Tunic", 2, 0x8B6914, "chest") },
+  { id: "leather_legs", station: "round_table", inputs: [blockInput(BlockType.OAK_LOG, 6)], output: _armor("Leather Leggings", 1, 0x8B6914, "legs") },
+  { id: "leather_boots", station: "round_table", inputs: [blockInput(BlockType.OAK_LOG, 4)], output: _armor("Leather Boots", 1, 0x8B6914, "boots") },
+
+  // Iron Knight armor
+  { id: "knight_helm", station: "forge", inputs: [blockInput(BlockType.IRON_ORE, 8)], output: _armor("Knight's Helm", 3, 0xB0B0B0, "helmet") },
+  { id: "knight_chest", station: "forge", inputs: [blockInput(BlockType.IRON_ORE, 12)], output: _armor("Knight's Chestplate", 5, 0xB0B0B0, "chest") },
+  { id: "knight_legs", station: "forge", inputs: [blockInput(BlockType.IRON_ORE, 10)], output: _armor("Knight's Greaves", 3, 0xB0B0B0, "legs") },
+  { id: "knight_boots", station: "forge", inputs: [blockInput(BlockType.IRON_ORE, 6)], output: _armor("Knight's Sabatons", 2, 0xB0B0B0, "boots") },
+
+  // Gold Royal armor
+  { id: "gold_helm", station: "forge", inputs: [blockInput(BlockType.GOLD_ORE, 10)], output: _armor("Royal Crown", 4, 0xFFD700, "helmet") },
+  { id: "gold_chest", station: "forge", inputs: [blockInput(BlockType.GOLD_ORE, 16)], output: _armor("Royal Breastplate", 6, 0xFFD700, "chest") },
+  { id: "gold_legs", station: "forge", inputs: [blockInput(BlockType.GOLD_ORE, 12)], output: _armor("Royal Cuisses", 4, 0xFFD700, "legs") },
+  { id: "gold_boots", station: "forge", inputs: [blockInput(BlockType.GOLD_ORE, 8)], output: _armor("Royal Greaves", 3, 0xFFD700, "boots") },
+
+  // Crystal armor
+  { id: "crystal_helm", station: "forge", inputs: [blockInput(BlockType.CRYSTAL_ORE, 12), blockInput(BlockType.IRON_ORE, 4)], output: _armor("Crystal Circlet", 5, 0xAA44FF, "helmet") },
+  { id: "crystal_chest", station: "forge", inputs: [blockInput(BlockType.CRYSTAL_ORE, 18), blockInput(BlockType.IRON_ORE, 6)], output: _armor("Crystal Mail", 8, 0xAA44FF, "chest") },
+  { id: "crystal_legs", station: "forge", inputs: [blockInput(BlockType.CRYSTAL_ORE, 14), blockInput(BlockType.IRON_ORE, 4)], output: _armor("Crystal Greaves", 5, 0xAA44FF, "legs") },
+  { id: "crystal_boots", station: "forge", inputs: [blockInput(BlockType.CRYSTAL_ORE, 10), blockInput(BlockType.IRON_ORE, 3)], output: _armor("Crystal Sabatons", 4, 0xAA44FF, "boots") },
+
+  // Dragon bone armor (endgame)
+  { id: "dragon_helm", station: "forge", inputs: [blockInput(BlockType.DRAGON_BONE_ORE, 10), blockInput(BlockType.CRYSTAL_ORE, 5)], output: _armor("Dragon Helm", 7, 0xCC2222, "helmet") },
+  { id: "dragon_chest", station: "forge", inputs: [blockInput(BlockType.DRAGON_BONE_ORE, 16), blockInput(BlockType.CRYSTAL_ORE, 8)], output: _armor("Dragon Mail", 10, 0xCC2222, "chest") },
+  { id: "dragon_legs", station: "forge", inputs: [blockInput(BlockType.DRAGON_BONE_ORE, 12), blockInput(BlockType.CRYSTAL_ORE, 6)], output: _armor("Dragon Greaves", 7, 0xCC2222, "legs") },
+  { id: "dragon_boots", station: "forge", inputs: [blockInput(BlockType.DRAGON_BONE_ORE, 8), blockInput(BlockType.CRYSTAL_ORE, 4)], output: _armor("Dragon Boots", 5, 0xCC2222, "boots") },
+
+  // Bow
+  { id: "wood_bow", station: "round_table", inputs: [blockInput(BlockType.OAK_LOG, 4), blockInput(BlockType.PLANKS, 2)], output: createToolItem(ToolType.BOW, ToolMaterial.WOOD, "Wooden Bow", 0xC4A35A, 6) },
+  { id: "iron_bow", station: "forge", inputs: [blockInput(BlockType.IRON_ORE, 6), blockInput(BlockType.OAK_LOG, 3)], output: createToolItem(ToolType.BOW, ToolMaterial.IRON, "Iron Bow", 0xB0B0B0, 10) },
+
+  // Staff
+  { id: "wood_staff", station: "round_table", inputs: [blockInput(BlockType.OAK_LOG, 6), blockInput(BlockType.CRYSTAL_ORE, 1)], output: createToolItem(ToolType.STAFF, ToolMaterial.WOOD, "Apprentice Staff", 0xC4A35A, 8) },
 ];
 
 // ---------------------------------------------------------------------------

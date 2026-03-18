@@ -7,7 +7,7 @@ import { TB } from "./config/TerrariaBalance";
 import { createTerrariaState, addMessage, getWorldBlock, setWorldBlock } from "./state/TerrariaState";
 import type { TerrariaState } from "./state/TerrariaState";
 import { BlockType } from "./config/TerrariaBlockDefs";
-import { addToInventory } from "./state/TerrariaInventory";
+import { addToInventory, calcArmorDefense, tryEquipArmor, ItemCategory } from "./state/TerrariaInventory";
 import { makeExcaliburItem, makeGrailItem } from "./config/TerrariaItemDefs";
 
 // Systems
@@ -200,11 +200,15 @@ export class TerrariaGame {
   // Start Game
   // -----------------------------------------------------------------------
 
-  private _startGame(seed?: number, creative = false, _worldSize = "medium", _difficulty = "normal"): void {
+  private _startGame(seed?: number, creative = false, worldSize = "medium", difficulty = "normal"): void {
     viewManager.clearWorld();
 
-    // Create state
-    this._state = createTerrariaState(seed);
+    // Map world size selection to block width
+    const sizeMap: Record<string, number> = { small: 200, medium: 400, large: 800 };
+    const worldWidth = sizeMap[worldSize] ?? 400;
+
+    // Create state with dynamic world size and difficulty
+    this._state = createTerrariaState(seed, worldWidth, difficulty);
     this._state.creativeMode = creative;
     this._state.screenW = viewManager.screenWidth;
     this._state.screenH = viewManager.screenHeight;
@@ -214,18 +218,28 @@ export class TerrariaGame {
       this._state.player.maxHp = 9999;
     }
 
+    // Apply difficulty modifiers
+    if (difficulty === "easy") {
+      this._state.player.maxHp = 150;
+      this._state.player.hp = 150;
+      this._state.player.defense = 3;
+    } else if (difficulty === "hard") {
+      this._state.player.maxHp = 80;
+      this._state.player.hp = 80;
+    }
+
     // Generate world
     initTerrain(this._state.seed);
-    const numChunks = Math.ceil(TB.WORLD_WIDTH / TB.CHUNK_W);
+    const numChunks = Math.ceil(worldWidth / TB.CHUNK_W);
     for (let cx = 0; cx < numChunks; cx++) {
       this._state.chunks.set(cx, generateChunk(cx));
     }
 
     // Place special structures
-    placeSpecialStructures(this._state.chunks, this._state.seed);
+    placeSpecialStructures(this._state.chunks, this._state.seed, worldWidth);
 
     // Place player at surface
-    const spawnX = Math.floor(TB.WORLD_WIDTH / 2);
+    const spawnX = Math.floor(worldWidth / 2);
     const surfaceY = getSurfaceHeight(spawnX);
     this._state.player.x = spawnX + 0.5;
     this._state.player.y = surfaceY + 3;
@@ -244,6 +258,7 @@ export class TerrariaGame {
 
     // Init camera
     this._camera.setScreenSize(this._state.screenW, this._state.screenH);
+    this._camera.worldWidth = this._state.worldWidth;
     this._camera.x = this._state.player.x;
     this._camera.y = this._state.player.y;
 
@@ -291,6 +306,7 @@ export class TerrariaGame {
     this._renderer.entityLayer.addChild(this._fx.container);
 
     this._camera.setScreenSize(this._state.screenW, this._state.screenH);
+    this._camera.worldWidth = this._state.worldWidth;
     this._camera.x = this._state.player.x;
     this._camera.y = this._state.player.y;
 
@@ -436,9 +452,29 @@ export class TerrariaGame {
       // Day/night
       updateDayNight(this._state, dt);
 
-      // Combat
+      // Combat (track mob HP for damage numbers)
+      const mobHpBefore = new Map<number, number>();
+      for (const mob of this._state.mobs) mobHpBefore.set(mob.id, mob.hp);
+
       if (!this._state.inventoryOpen) {
         updateCombat(this._state, input, this._camera, dt);
+      }
+
+      // Spawn floating damage numbers + death effects for mobs
+      for (const mob of this._state.mobs) {
+        const prev = mobHpBefore.get(mob.id) ?? mob.hp;
+        const dmg = prev - mob.hp;
+        if (dmg > 0) {
+          this._renderer.addFloatingText(mob.x, mob.y + mob.height * 0.5 + 0.5, String(Math.ceil(dmg)), 0xFF4444);
+          this._fx.spawnHitParticles(mob.x, mob.y);
+          this._camera.shake(1.5, 0.08);
+        }
+        // Death poof
+        if (mob.hp <= 0 && prev > 0) {
+          this._fx.spawnMiningParticles(mob.x, mob.y, 0xFFFFFF, 12);
+          this._fx.spawnHitParticles(mob.x, mob.y, 15);
+          this._camera.shake(3, 0.2);
+        }
       }
 
       // Mobs & NPCs
@@ -467,21 +503,33 @@ export class TerrariaGame {
       if (p.invulnTimer > 0) p.invulnTimer -= dt;
       if (p.attackTimer > 0) p.attackTimer -= dt;
 
-      // Pickup dropped items
+      // Pickup dropped items (with auto-equip for armor)
       for (let i = this._state.droppedItems.length - 1; i >= 0; i--) {
         const di = this._state.droppedItems[i];
         if (di.pickupDelay > 0) continue;
         const ddx = di.x - p.x;
         const ddy = di.y - p.y;
         if (Math.sqrt(ddx * ddx + ddy * ddy) < 1.5) {
-          if (addToInventory(p.inventory, di.item)) {
+          let picked = false;
+          if (di.item.category === ItemCategory.ARMOR) {
+            picked = tryEquipArmor(p.inventory, di.item);
+            if (picked) addMessage(this._state, `Equipped ${di.item.displayName}!`, 0x44AAFF);
+          }
+          if (!picked) picked = addToInventory(p.inventory, di.item);
+          if (picked) {
+            this._fx.spawnMiningParticles(di.x, di.y, di.item.color, 4);
             this._state.droppedItems.splice(i, 1);
           }
         }
       }
 
+      // Recalculate armor defense
+      const baseDef = this._state.difficulty === "easy" ? 3 : 0;
+      p.defense = baseDef + calcArmorDefense(p.inventory);
+
       // FX update
       this._fx.update(dt);
+      this._fx.updateAmbient(this._state, this._camera, dt);
 
       // Recalc lighting if needed
       let needsLightRecalc = false;
@@ -505,6 +553,7 @@ export class TerrariaGame {
     this._state.camY = this._camera.y;
 
     // Render
+    this._renderer.updateFloatingTexts(dt);
     this._renderer.draw(this._state, this._camera);
     this._playerView.draw(this._state, this._camera, dt);
     this._mobView.draw(this._state, this._camera, dt);

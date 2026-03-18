@@ -5,10 +5,11 @@
 import { TB } from "../config/TerrariaBalance";
 
 export class TerrariaCamera {
-  x = 0;  // world position (blocks) that camera centers on
+  x = 0;
   y = 0;
   screenW = 0;
   screenH = 0;
+  worldWidth: number = TB.WORLD_WIDTH;
 
   private _shakeAmount = 0;
   private _shakeTimer = 0;
@@ -29,7 +30,7 @@ export class TerrariaCamera {
     // Clamp to world bounds
     const halfW = (this.screenW / TB.TILE_SIZE) / 2;
     const halfH = (this.screenH / TB.TILE_SIZE) / 2;
-    this.x = Math.max(halfW, Math.min(TB.WORLD_WIDTH - halfW, this.x));
+    this.x = Math.max(halfW, Math.min(this.worldWidth - halfW, this.x));
     this.y = Math.max(halfH, Math.min(TB.WORLD_HEIGHT - halfH, this.y));
   }
 

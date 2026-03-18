@@ -7,7 +7,9 @@ import { MOB_DEFS, getSpawnableMobs } from "../config/TerrariaMobDefs";
 import type { MobDef } from "../config/TerrariaMobDefs";
 import type { TerrariaState } from "../state/TerrariaState";
 import { isSolid, addMessage } from "../state/TerrariaState";
-import type { MobInstance } from "../state/TerrariaEntity";
+import type { MobInstance, DroppedItem } from "../state/TerrariaEntity";
+import { BlockType } from "../config/TerrariaBlockDefs";
+import { createBlockItem } from "../state/TerrariaInventory";
 
 let _spawnTimer = 0;
 
@@ -156,7 +158,9 @@ function _updatePassiveAI(mob: MobInstance, def: MobDef, _state: TerrariaState, 
 function _damagePlayer(state: TerrariaState, amount: number, mob: MobInstance): void {
   const p = state.player;
   if (p.invulnTimer > 0) return;
-  const dmg = Math.max(1, amount - p.defense);
+  // Difficulty scaling
+  const diffMult = state.difficulty === "easy" ? 0.6 : state.difficulty === "hard" ? 1.5 : 1.0;
+  const dmg = Math.max(1, Math.floor(amount * diffMult) - p.defense);
   p.hp -= dmg;
   p.invulnTimer = TB.INVULN_TIME;
 
@@ -186,7 +190,74 @@ export function damageMob(state: TerrariaState, mob: MobInstance, amount: number
   if (mob.hp <= 0) {
     state.player.mobsKilled++;
     addMessage(state, `Defeated ${def?.name ?? "mob"}!`, 0xFFD700);
+    _dropLoot(state, mob);
   }
+}
+
+function _dropLoot(state: TerrariaState, mob: MobInstance): void {
+  const def = MOB_DEFS[mob.type];
+  if (!def) return;
+
+  const drops: DroppedItem[] = [];
+  const id = () => state.nextEntityId++;
+
+  // Every mob drops cobblestone or resources based on type
+  const lootTable: Record<string, Array<{ item: () => ReturnType<typeof createBlockItem>; chance: number }>> = {
+    slime: [
+      { item: () => createBlockItem(BlockType.MUD, "Mud", 0x5C4033, 1 + Math.floor(Math.random() * 3)), chance: 0.7 },
+    ],
+    saxon_warrior: [
+      { item: () => createBlockItem(BlockType.IRON_ORE, "Iron Ore", 0xB87333, 1 + Math.floor(Math.random() * 2)), chance: 0.5 },
+      { item: () => createBlockItem(BlockType.COBBLESTONE, "Cobblestone", 0x6B6B6B, 2 + Math.floor(Math.random() * 3)), chance: 0.8 },
+    ],
+    wolf: [
+      { item: () => createBlockItem(BlockType.OAK_LOG, "Leather", 0x8B6914, 1 + Math.floor(Math.random() * 2)), chance: 0.6 },
+    ],
+    cave_spider: [
+      { item: () => createBlockItem(BlockType.COBBLESTONE, "Cobblestone", 0x6B6B6B, 1 + Math.floor(Math.random() * 2)), chance: 0.5 },
+    ],
+    skeleton: [
+      { item: () => createBlockItem(BlockType.IRON_ORE, "Iron Ore", 0xB87333, 1 + Math.floor(Math.random() * 3)), chance: 0.6 },
+      { item: () => createBlockItem(BlockType.COBBLESTONE, "Bone", 0xDDDDAA, 2), chance: 0.4 },
+    ],
+    dark_knight: [
+      { item: () => createBlockItem(BlockType.IRON_ORE, "Iron Ore", 0xB87333, 3 + Math.floor(Math.random() * 3)), chance: 0.7 },
+      { item: () => createBlockItem(BlockType.GOLD_ORE, "Gold Ore", 0xFFD700, 1), chance: 0.3 },
+    ],
+    wraith: [
+      { item: () => createBlockItem(BlockType.CRYSTAL_ORE, "Crystal", 0xAA44FF, 1 + Math.floor(Math.random() * 2)), chance: 0.5 },
+      { item: () => createBlockItem(BlockType.ENCHANTED_TORCH, "Enchanted Torch", 0xAA55FF, 2), chance: 0.3 },
+    ],
+    construct: [
+      { item: () => createBlockItem(BlockType.CRYSTAL_ORE, "Crystal", 0xAA44FF, 2 + Math.floor(Math.random() * 3)), chance: 0.6 },
+      { item: () => createBlockItem(BlockType.ENCHANTED_STONE, "Enchanted Stone", 0x9966FF, 1), chance: 0.2 },
+    ],
+    dragon: [
+      { item: () => createBlockItem(BlockType.DRAGON_BONE_ORE, "Dragon Bone", 0xCC2222, 8 + Math.floor(Math.random() * 5)), chance: 1.0 },
+      { item: () => createBlockItem(BlockType.GOLD_ORE, "Gold Ore", 0xFFD700, 5 + Math.floor(Math.random() * 5)), chance: 1.0 },
+      { item: () => createBlockItem(BlockType.CRYSTAL_ORE, "Crystal", 0xAA44FF, 3 + Math.floor(Math.random() * 4)), chance: 0.8 },
+    ],
+    mordred: [
+      { item: () => createBlockItem(BlockType.DRAGON_BONE_ORE, "Dragon Bone", 0xCC2222, 5), chance: 1.0 },
+      { item: () => createBlockItem(BlockType.CRYSTAL_ORE, "Crystal", 0xAA44FF, 5), chance: 1.0 },
+    ],
+    deer: [
+      { item: () => createBlockItem(BlockType.OAK_LOG, "Leather", 0x8B6914, 1), chance: 0.8 },
+    ],
+  };
+
+  const mobLoot = lootTable[mob.type] ?? [];
+  for (const entry of mobLoot) {
+    if (Math.random() < entry.chance) {
+      const item = entry.item();
+      drops.push({
+        id: id(), x: mob.x + (Math.random() - 0.5) * 1.5, y: mob.y + 0.5,
+        vy: 3 + Math.random() * 3, item, lifetime: 60, pickupDelay: 0.5,
+      });
+    }
+  }
+
+  state.droppedItems.push(...drops);
 }
 
 // ---------------------------------------------------------------------------

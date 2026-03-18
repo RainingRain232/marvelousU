@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Terraria – HUD overlay (health, mana, hotbar, inventory, crafting, quests)
+// Terraria – HUD, Menus & Overlays (polished)
 // ---------------------------------------------------------------------------
 
 import { TB } from "../config/TerrariaBalance";
@@ -9,133 +9,235 @@ import { getHeldItem } from "../state/TerrariaInventory";
 import { BLOCK_DEFS } from "../config/TerrariaBlockDefs";
 import { getAvailableRecipes, craftRecipe } from "../systems/TerrariaCraftingSystem";
 import { onCrafted } from "../systems/TerrariaQuestSystem";
-// CraftingRecipe type used in _rebuildInventoryUI click handlers
+
+// ---------------------------------------------------------------------------
+// Shared CSS injected once
+// ---------------------------------------------------------------------------
+
+const HUD_CSS = `
+  @keyframes td-pulse{0%,100%{opacity:1}50%{opacity:0.5}}
+  @keyframes td-slideIn{from{opacity:0;transform:translate(-50%,-50%) scale(0.95)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+  @keyframes td-glow{0%,100%{box-shadow:0 0 8px rgba(255,215,0,0.3)}50%{box-shadow:0 0 16px rgba(255,215,0,0.5)}}
+  .td-panel{background:linear-gradient(180deg,rgba(25,15,8,0.95),rgba(15,8,4,0.97));border:1px solid #5a4010;border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,0.6),inset 0 1px 0 rgba(255,255,255,0.04)}
+  .td-bar{height:12px;background:#151010;border:1px solid #333;border-radius:6px;overflow:hidden;position:relative}
+  .td-bar-fill{height:100%;border-radius:5px;transition:width 0.3s ease-out}
+  .td-bar-label{position:absolute;top:0;left:0;right:0;height:100%;display:flex;align-items:center;justify-content:center;font-size:9px;color:rgba(255,255,255,0.8);text-shadow:0 1px 2px rgba(0,0,0,0.8);font-family:'Segoe UI',sans-serif;letter-spacing:0.5px}
+  .td-bar-shine{position:absolute;top:0;left:0;right:0;height:45%;background:linear-gradient(180deg,rgba(255,255,255,0.1),transparent);border-radius:5px 5px 0 0;pointer-events:none}
+  .td-slot{width:42px;height:42px;background:linear-gradient(180deg,rgba(50,35,18,0.7),rgba(30,20,10,0.8));border:1px solid #444;border-radius:5px;display:flex;align-items:center;justify-content:center;position:relative;box-shadow:inset 0 1px 3px rgba(0,0,0,0.3)}
+  .td-slot-sel{border-color:#daa520;background:linear-gradient(180deg,rgba(80,60,20,0.5),rgba(50,35,10,0.6));animation:td-glow 2s infinite;box-shadow:inset 0 1px 3px rgba(0,0,0,0.2),0 0 8px rgba(255,215,0,0.2)}
+  .td-btn2{padding:10px 24px;font-family:Georgia,serif;font-size:15px;border:1px solid #5a4010;border-radius:8px;cursor:pointer;transition:all 0.2s;min-width:200px;text-align:center;position:relative;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.3);letter-spacing:0.5px}
+  .td-btn2:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,0.4);border-color:#aa8030;filter:brightness(1.1)}
+  .td-btn2:active{transform:translateY(1px)}
+  .td-btn2::after{content:'';position:absolute;top:0;left:0;right:0;height:45%;background:linear-gradient(180deg,rgba(255,255,255,0.05),transparent);pointer-events:none}
+  .td-recipe-row{display:flex;align-items:center;gap:8px;padding:7px 10px;margin-bottom:3px;background:rgba(40,28,14,0.5);border:1px solid rgba(80,60,20,0.3);border-radius:6px;cursor:pointer;transition:all 0.15s}
+  .td-recipe-row:hover{background:rgba(70,50,20,0.6);border-color:#8B6914;transform:translateX(2px)}
+  .td-section{font-size:10px;color:#6a5a30;text-transform:uppercase;letter-spacing:2px;margin:10px 0 5px;padding-bottom:3px;border-bottom:1px solid rgba(100,80,30,0.2)}
+`;
+
+let _cssInjected = false;
+function _injectCSS(): void {
+  if (_cssInjected) return;
+  _cssInjected = true;
+  const style = document.createElement("style");
+  style.textContent = HUD_CSS;
+  document.head.appendChild(style);
+}
+
+// ---------------------------------------------------------------------------
 
 export class TerrariaHUD {
-  private _overlay: HTMLDivElement | null = null;
-  private _hotbarEl: HTMLDivElement | null = null;
-  private _healthEl: HTMLDivElement | null = null;
-  private _manaEl: HTMLDivElement | null = null;
-  private _defenseEl: HTMLDivElement | null = null;
-  private _messageEl: HTMLDivElement | null = null;
-  private _questEl: HTMLDivElement | null = null;
-  private _inventoryEl: HTMLDivElement | null = null;
-  private _pauseEl: HTMLDivElement | null = null;
-  private _depthEl: HTMLDivElement | null = null;
-  private _timeEl: HTMLDivElement | null = null;
-  private _tooltipEl: HTMLDivElement | null = null;
-  private _gameOverEl: HTMLDivElement | null = null;
-  private _minimapEl: HTMLCanvasElement | null = null;
-  private _minimapCtx: CanvasRenderingContext2D | null = null;
-  private _crosshairEl: HTMLDivElement | null = null;
+  private _el: HTMLDivElement | null = null;
 
+  // HUD elements
+  private _barsEl: HTMLDivElement | null = null;
+  private _hotbarEl: HTMLDivElement | null = null;
+  private _tooltipEl: HTMLDivElement | null = null;
+  private _msgEl: HTMLDivElement | null = null;
+  private _questEl: HTMLDivElement | null = null;
+  private _infoEl: HTMLDivElement | null = null;
+  private _minimapCanvas: HTMLCanvasElement | null = null;
+  private _minimapCtx: CanvasRenderingContext2D | null = null;
+
+  // Overlay panels
+  private _invEl: HTMLDivElement | null = null;
+  private _pauseEl: HTMLDivElement | null = null;
+  private _gameOverEl: HTMLDivElement | null = null;
+  private _helpEl: HTMLDivElement | null = null;
+
+  // Callbacks
   onExit: (() => void) | null = null;
   onRespawn: (() => void) | null = null;
-  private _resumeCallback: (() => void) | null = null;
+  private _resumeCb: (() => void) | null = null;
 
-  setResumeCallback(cb: () => void): void { this._resumeCallback = cb; }
+  setResumeCallback(cb: () => void): void { this._resumeCb = cb; }
+
+  // Track help key
+  private _helpKeyHandler: ((e: KeyboardEvent) => void) | null = null;
+
+  // ---------------------------------------------------------------------------
+  // Build
+  // ---------------------------------------------------------------------------
 
   build(): void {
-    this._overlay = document.createElement("div");
-    this._overlay.id = "terraria-hud";
-    this._overlay.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:10;font-family:monospace;";
+    _injectCSS();
+    this._el = document.createElement("div");
+    this._el.id = "terraria-hud";
+    this._el.style.cssText = "position:fixed;inset:0;pointer-events:none;z-index:10;font-family:'Segoe UI',Arial,sans-serif;";
 
-    // Health bar
-    this._healthEl = document.createElement("div");
-    this._healthEl.style.cssText = "position:absolute;top:10px;left:10px;";
-    this._overlay.appendChild(this._healthEl);
+    // ---- Top-left: HP / Mana / Defense ----
+    this._barsEl = document.createElement("div");
+    this._barsEl.style.cssText = "position:absolute;top:12px;left:12px;width:180px;";
+    this._el.appendChild(this._barsEl);
 
-    // Mana bar
-    this._manaEl = document.createElement("div");
-    this._manaEl.style.cssText = "position:absolute;top:36px;left:10px;";
-    this._overlay.appendChild(this._manaEl);
-
-    // Defense display
-    this._defenseEl = document.createElement("div");
-    this._defenseEl.style.cssText = "position:absolute;top:60px;left:10px;color:#AAAAAA;font-size:11px;text-shadow:1px 1px 2px #000;";
-    this._overlay.appendChild(this._defenseEl);
-
-    // Time/depth display
-    this._timeEl = document.createElement("div");
-    this._timeEl.style.cssText = "position:absolute;top:10px;right:90px;color:#FFD700;font-size:12px;text-align:right;text-shadow:1px 1px 2px #000;";
-    this._overlay.appendChild(this._timeEl);
-
-    this._depthEl = document.createElement("div");
-    this._depthEl.style.cssText = "position:absolute;top:28px;right:90px;color:#AAAAAA;font-size:11px;text-align:right;text-shadow:1px 1px 2px #000;";
-    this._overlay.appendChild(this._depthEl);
+    // ---- Top-right: Time, Depth, Minimap ----
+    this._infoEl = document.createElement("div");
+    this._infoEl.style.cssText = "position:absolute;top:12px;right:12px;text-align:right;";
+    this._el.appendChild(this._infoEl);
 
     // Minimap
-    this._minimapEl = document.createElement("canvas");
-    this._minimapEl.width = 80;
-    this._minimapEl.height = 80;
-    this._minimapEl.style.cssText = "position:absolute;top:8px;right:6px;border:1px solid #8B6914;border-radius:4px;image-rendering:pixelated;background:#111;";
-    this._minimapCtx = this._minimapEl.getContext("2d");
-    this._overlay.appendChild(this._minimapEl);
+    this._minimapCanvas = document.createElement("canvas");
+    this._minimapCanvas.width = 120;
+    this._minimapCanvas.height = 80;
+    this._minimapCanvas.style.cssText = "border:1px solid #5a4010;border-radius:6px;image-rendering:pixelated;background:#0a0a0a;margin-bottom:6px;box-shadow:0 2px 8px rgba(0,0,0,0.4);";
+    this._minimapCtx = this._minimapCanvas.getContext("2d");
+    this._infoEl.appendChild(this._minimapCanvas);
 
-    // Hotbar
+    // ---- Bottom-center: Hotbar ----
     this._hotbarEl = document.createElement("div");
-    this._hotbarEl.style.cssText = "position:absolute;bottom:10px;left:50%;transform:translateX(-50%);display:flex;gap:2px;";
-    this._overlay.appendChild(this._hotbarEl);
+    this._hotbarEl.style.cssText = "position:absolute;bottom:12px;left:50%;transform:translateX(-50%);display:flex;gap:3px;padding:6px 10px;background:rgba(10,6,3,0.6);border:1px solid rgba(90,64,16,0.3);border-radius:10px;backdrop-filter:blur(4px);";
+    this._el.appendChild(this._hotbarEl);
 
-    // Item tooltip
+    // ---- Bottom-center above hotbar: Tooltip ----
     this._tooltipEl = document.createElement("div");
-    this._tooltipEl.style.cssText = "position:absolute;bottom:56px;left:50%;transform:translateX(-50%);color:#FFD700;font-size:11px;text-align:center;text-shadow:1px 1px 2px #000;pointer-events:none;";
-    this._overlay.appendChild(this._tooltipEl);
+    this._tooltipEl.style.cssText = "position:absolute;bottom:68px;left:50%;transform:translateX(-50%);text-align:center;pointer-events:none;transition:opacity 0.2s;";
+    this._el.appendChild(this._tooltipEl);
 
-    // Crosshair
-    this._crosshairEl = document.createElement("div");
-    this._crosshairEl.style.cssText = "position:fixed;top:50%;left:50%;width:2px;height:2px;background:white;transform:translate(-50%,-50%);pointer-events:none;opacity:0.4;box-shadow:0 -4px 0 white,0 4px 0 white,-4px 0 0 white,4px 0 0 white;";
-    this._overlay.appendChild(this._crosshairEl);
+    // ---- Bottom-left: Messages ----
+    this._msgEl = document.createElement("div");
+    this._msgEl.style.cssText = "position:absolute;bottom:72px;left:12px;max-width:380px;";
+    this._el.appendChild(this._msgEl);
 
-    // Messages
-    this._messageEl = document.createElement("div");
-    this._messageEl.style.cssText = "position:absolute;bottom:60px;left:10px;color:#FFFFFF;font-size:12px;text-shadow:1px 1px 2px #000;max-width:400px;";
-    this._overlay.appendChild(this._messageEl);
-
-    // Quest tracker
+    // ---- Right side: Quests ----
     this._questEl = document.createElement("div");
-    this._questEl.style.cssText = "position:absolute;top:95px;right:6px;color:#FFD700;font-size:10px;text-align:right;text-shadow:1px 1px 2px #000;max-width:180px;";
-    this._overlay.appendChild(this._questEl);
+    this._questEl.style.cssText = "position:absolute;top:110px;right:12px;max-width:170px;";
+    this._el.appendChild(this._questEl);
 
-    // Inventory overlay (hidden by default)
-    this._inventoryEl = document.createElement("div");
-    this._inventoryEl.style.cssText = "position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(20,10,5,0.95);border:2px solid #8B6914;border-radius:8px;padding:16px;display:none;pointer-events:auto;min-width:500px;max-height:80vh;overflow-y:auto;";
-    this._overlay.appendChild(this._inventoryEl);
+    // ---- Inventory overlay ----
+    this._invEl = document.createElement("div");
+    this._invEl.className = "td-panel";
+    this._invEl.style.cssText += ";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);padding:20px 24px;display:none;pointer-events:auto;min-width:540px;max-height:82vh;overflow-y:auto;animation:td-slideIn 0.2s ease-out;";
+    this._el.appendChild(this._invEl);
 
-    // Game over overlay
+    // ---- Game over overlay ----
     this._gameOverEl = document.createElement("div");
-    this._gameOverEl.style.cssText = "position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(40,0,0,0.75);display:none;flex-direction:column;align-items:center;justify-content:center;pointer-events:auto;";
+    this._gameOverEl.style.cssText = "position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;pointer-events:auto;overflow:hidden;";
     this._gameOverEl.innerHTML = `
-      <div style="color:#FF4444;font-size:48px;font-family:Georgia,serif;text-shadow:0 0 20px rgba(255,0,0,0.5);">YOU HAVE FALLEN</div>
-      <p style="color:#CC8888;font-size:14px;margin:12px 0 30px;font-style:italic;">The quest for the Grail continues...</p>
-      <div style="display:flex;gap:12px;">
-        <button id="terraria-respawn" style="padding:10px 32px;background:#2a1a0a;color:#FFD700;border:1px solid #8B6914;border-radius:4px;cursor:pointer;font-family:Georgia,serif;font-size:16px;">Respawn</button>
-        <button id="terraria-gameover-exit" style="padding:10px 32px;background:#2a0a0a;color:#FF6644;border:1px solid #8B6914;border-radius:4px;cursor:pointer;font-family:Georgia,serif;font-size:16px;">Exit</button>
-      </div>
-    `;
-    this._overlay.appendChild(this._gameOverEl);
+      <div style="position:absolute;inset:0;background:radial-gradient(ellipse at center,rgba(60,0,0,0.7) 0%,rgba(20,0,0,0.9) 100%);"></div>
+      <div style="position:relative;text-align:center;animation:td-fadeIn 0.6s ease-out;">
+        <div style="font-size:56px;color:#CC2222;font-family:Georgia,serif;text-shadow:0 0 30px rgba(200,0,0,0.5),0 4px 8px rgba(0,0,0,0.6);letter-spacing:4px;">YOU HAVE FALLEN</div>
+        <div style="width:200px;height:1px;background:linear-gradient(90deg,transparent,#882222,transparent);margin:14px auto;"></div>
+        <p style="color:#996666;font-size:14px;font-style:italic;font-family:Georgia,serif;margin:0 0 8px;">The quest for the Grail continues...</p>
+        <div id="td-death-stats" style="color:#664444;font-size:12px;margin-bottom:28px;"></div>
+        <div style="display:flex;gap:14px;justify-content:center;">
+          <button class="td-btn2" id="td-respawn" style="background:linear-gradient(180deg,#3a2a12,#2a1a08);color:#FFD700;">Respawn</button>
+          <button class="td-btn2" id="td-go-exit" style="background:linear-gradient(180deg,#2a1212,#1a0808);color:#CC7766;">Exit</button>
+        </div>
+      </div>`;
+    this._el.appendChild(this._gameOverEl);
 
-    // Pause overlay
+    // ---- Pause overlay ----
     this._pauseEl = document.createElement("div");
-    this._pauseEl.style.cssText = "position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);display:none;flex-direction:column;align-items:center;justify-content:center;pointer-events:auto;";
+    this._pauseEl.style.cssText = "position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;pointer-events:auto;background:rgba(0,0,0,0.55);backdrop-filter:blur(3px);";
     this._pauseEl.innerHTML = `
-      <div style="color:#FFD700;font-size:36px;font-family:Georgia,serif;text-shadow:0 0 10px rgba(255,215,0,0.5);">PAUSED</div>
-      <div style="margin-top:30px;display:flex;flex-direction:column;gap:12px;">
-        <button id="terraria-resume" style="padding:8px 32px;background:#2a1a0a;color:#FFD700;border:1px solid #8B6914;border-radius:4px;cursor:pointer;font-family:Georgia,serif;font-size:16px;">Resume</button>
-        <button id="terraria-save-quit" style="padding:8px 32px;background:#1a1a2a;color:#88AAFF;border:1px solid #8B6914;border-radius:4px;cursor:pointer;font-family:Georgia,serif;font-size:16px;">Save & Quit</button>
-        <button id="terraria-exit" style="padding:8px 32px;background:#2a1a0a;color:#FF6644;border:1px solid #8B6914;border-radius:4px;cursor:pointer;font-family:Georgia,serif;font-size:16px;">Exit without Saving</button>
+      <div class="td-panel" style="padding:28px 36px;text-align:center;min-width:280px;animation:td-slideIn 0.2s ease-out;">
+        <div style="font-size:28px;color:#FFD700;font-family:Georgia,serif;text-shadow:0 0 12px rgba(255,215,0,0.3);letter-spacing:3px;">PAUSED</div>
+        <div style="width:120px;height:1px;background:linear-gradient(90deg,transparent,#5a4010,transparent);margin:12px auto 20px;"></div>
+        <div style="display:flex;flex-direction:column;gap:10px;align-items:center;">
+          <button class="td-btn2" id="td-resume" style="background:linear-gradient(180deg,#2a2010,#1a1408);color:#FFD700;">Resume</button>
+          <button class="td-btn2" id="td-help-btn" style="background:linear-gradient(180deg,#1a1a28,#101018);color:#8899CC;">Controls & Help</button>
+          <div style="width:100%;height:1px;background:rgba(90,64,16,0.2);margin:4px 0;"></div>
+          <button class="td-btn2" id="td-save-quit" style="background:linear-gradient(180deg,#1a2020,#101818);color:#88AAAA;">Save & Exit</button>
+          <button class="td-btn2" id="td-exit-nosave" style="background:linear-gradient(180deg,#281414,#180c0c);color:#AA7766;font-size:13px;">Exit without Saving</button>
+        </div>
+        <div id="td-pause-stats" style="margin-top:18px;padding-top:12px;border-top:1px solid rgba(90,64,16,0.15);font-size:11px;color:#555;text-align:left;"></div>
+      </div>`;
+    this._el.appendChild(this._pauseEl);
+
+    // ---- Help overlay ----
+    this._helpEl = document.createElement("div");
+    this._helpEl.className = "td-panel";
+    this._helpEl.style.cssText += ";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);padding:24px 32px;display:none;pointer-events:auto;min-width:460px;max-height:80vh;overflow-y:auto;animation:td-slideIn 0.2s ease-out;";
+    this._helpEl.innerHTML = `
+      <div style="text-align:center;margin-bottom:16px;">
+        <div style="font-size:20px;color:#FFD700;font-family:Georgia,serif;letter-spacing:2px;">Controls & Help</div>
+        <div style="width:100px;height:1px;background:linear-gradient(90deg,transparent,#5a4010,transparent);margin:8px auto;"></div>
       </div>
-    `;
-    this._overlay.appendChild(this._pauseEl);
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;font-size:12px;">
+        <div>
+          <div class="td-section">Movement</div>
+          ${_helpRow("A / D or Arrows", "Move left / right")}
+          ${_helpRow("Space or W", "Jump")}
+          ${_helpRow("Shift", "Sprint")}
+        </div>
+        <div>
+          <div class="td-section">Actions</div>
+          ${_helpRow("Left Mouse", "Mine / Attack")}
+          ${_helpRow("Right Mouse", "Place block / Interact")}
+          ${_helpRow("W or Up near NPC", "Talk to NPC")}
+        </div>
+        <div>
+          <div class="td-section">Inventory</div>
+          ${_helpRow("E", "Open / Close inventory")}
+          ${_helpRow("1 – 9", "Select hotbar slot")}
+          ${_helpRow("Scroll Wheel", "Cycle hotbar")}
+        </div>
+        <div>
+          <div class="td-section">System</div>
+          ${_helpRow("Escape", "Pause / Close menus")}
+          ${_helpRow("F1", "Toggle this help")}
+        </div>
+      </div>
+      <div style="margin-top:18px;padding-top:12px;border-top:1px solid rgba(90,64,16,0.15);">
+        <div class="td-section">Crafting Stations</div>
+        <div style="font-size:11px;color:#888;line-height:1.6;">
+          <b style="color:#A0785A;">Round Table</b> — basic crafting (tools, building materials)<br>
+          <b style="color:#8B4513;">Forge</b> — smelting ores, advanced weapons & armor<br>
+          <b style="color:#aaa;">Hand</b> — planks, torches, basic items (no station needed)
+        </div>
+      </div>
+      <div style="margin-top:14px;padding-top:10px;border-top:1px solid rgba(90,64,16,0.15);">
+        <div class="td-section">Quest Progression</div>
+        <div style="font-size:11px;color:#888;line-height:1.6;">
+          Build shelter → Craft tools → Mine iron → Find Excalibur → Build Camelot → Recruit knights → Defeat the Dragon → <span style="color:#FFD700;">Find the Holy Grail</span>
+        </div>
+      </div>
+      <div style="text-align:center;margin-top:16px;">
+        <button class="td-btn2" id="td-help-close" style="background:linear-gradient(180deg,#2a2010,#1a1408);color:#FFD700;min-width:120px;font-size:13px;">Close</button>
+      </div>`;
+    this._el.appendChild(this._helpEl);
 
-    document.body.appendChild(this._overlay);
+    document.body.appendChild(this._el);
 
-    // Button listeners
-    document.getElementById("terraria-resume")?.addEventListener("click", () => this._resumeCallback?.());
-    document.getElementById("terraria-save-quit")?.addEventListener("click", () => this.onExit?.());
-    document.getElementById("terraria-exit")?.addEventListener("click", () => this.onExit?.());
-    document.getElementById("terraria-respawn")?.addEventListener("click", () => this.onRespawn?.());
-    document.getElementById("terraria-gameover-exit")?.addEventListener("click", () => this.onExit?.());
+    // --- Wire button listeners ---
+    document.getElementById("td-resume")?.addEventListener("click", () => this._resumeCb?.());
+    document.getElementById("td-help-btn")?.addEventListener("click", () => this._toggleHelp(true));
+    document.getElementById("td-help-close")?.addEventListener("click", () => this._toggleHelp(false));
+    document.getElementById("td-save-quit")?.addEventListener("click", () => this.onExit?.());
+    document.getElementById("td-exit-nosave")?.addEventListener("click", () => this.onExit?.());
+    document.getElementById("td-respawn")?.addEventListener("click", () => this.onRespawn?.());
+    document.getElementById("td-go-exit")?.addEventListener("click", () => this.onExit?.());
+
+    // F1 help key
+    this._helpKeyHandler = (e: KeyboardEvent) => {
+      if (e.code === "F1") { e.preventDefault(); this._toggleHelp(); }
+    };
+    window.addEventListener("keydown", this._helpKeyHandler);
+  }
+
+  private _toggleHelp(show?: boolean): void {
+    if (!this._helpEl) return;
+    const visible = this._helpEl.style.display !== "none";
+    this._helpEl.style.display = (show ?? !visible) ? "block" : "none";
   }
 
   // ---------------------------------------------------------------------------
@@ -143,135 +245,132 @@ export class TerrariaHUD {
   // ---------------------------------------------------------------------------
 
   update(state: TerrariaState): void {
-    if (!this._overlay) return;
+    if (!this._el) return;
 
-    // Health
-    if (this._healthEl) {
-      const hp = Math.ceil(state.player.hp);
-      const pct = hp / state.player.maxHp;
-      const low = pct < 0.3;
-      this._healthEl.innerHTML = `
-        <div style="font-size:11px;color:${low ? "#FF2222" : "#FF4444"};margin-bottom:2px;${low ? "animation:blink 0.5s infinite;" : ""}">HP ${hp}/${state.player.maxHp}</div>
-        <div style="width:160px;height:10px;background:#222;border:1px solid #444;border-radius:4px;overflow:hidden;">
-          <div style="width:${pct * 100}%;height:100%;background:linear-gradient(90deg,#880000,${low ? "#FF2222" : "#CC3333"});transition:width 0.2s;"></div>
-        </div>
-      `;
-    }
-
-    // Mana
-    if (this._manaEl) {
-      const mp = Math.ceil(state.player.mana);
-      const pct = mp / state.player.maxMana;
-      this._manaEl.innerHTML = `
-        <div style="font-size:11px;color:#4488FF;margin-bottom:2px;">MP ${mp}/${state.player.maxMana}</div>
-        <div style="width:160px;height:10px;background:#222;border:1px solid #444;border-radius:4px;overflow:hidden;">
-          <div style="width:${pct * 100}%;height:100%;background:linear-gradient(90deg,#112266,#3366CC);transition:width 0.2s;"></div>
-        </div>
-      `;
-    }
-
-    // Defense
-    if (this._defenseEl) {
-      const def = state.player.defense;
-      this._defenseEl.textContent = def > 0 ? `Defense: ${def}` : "";
-    }
-
-    // Time
-    if (this._timeEl) {
-      const t = state.timeOfDay;
-      const hours = Math.floor(t * 24);
-      const mins = Math.floor((t * 24 - hours) * 60);
-      const period = hours >= 12 ? "PM" : "AM";
-      const h12 = hours % 12 || 12;
-      const isNight = t > 0.75 || t < 0.25;
-      this._timeEl.innerHTML = `<span style="color:${isNight ? "#8888CC" : "#FFD700"};">Day ${state.dayNumber}  ${h12}:${mins.toString().padStart(2, "0")} ${period}</span>`;
-    }
-
-    // Depth
-    if (this._depthEl) {
-      const y = Math.floor(state.player.y);
-      const depth = TB.SEA_LEVEL - y;
-      let layer: string, layerColor: string;
-      if (y < TB.UNDERWORLD_Y) { layer = "Underworld"; layerColor = "#FF4444"; }
-      else if (y < TB.CAVERN_Y) { layer = "Caverns"; layerColor = "#AA66FF"; }
-      else if (y < TB.UNDERGROUND_Y) { layer = "Underground"; layerColor = "#AAAAAA"; }
-      else if (y < TB.SURFACE_Y) { layer = "Shallow"; layerColor = "#88AA88"; }
-      else { layer = "Surface"; layerColor = "#88CC44"; }
-      this._depthEl.innerHTML = depth > 0
-        ? `<span style="color:${layerColor};">${depth}ft deep — ${layer}</span>`
-        : `<span style="color:${layerColor};">${-depth}ft high — ${layer}</span>`;
-    }
-
-    // Hotbar with durability bars and item names
+    this._updateBars(state);
+    this._updateInfo(state);
     this._updateHotbar(state);
-
-    // Held item tooltip
-    if (this._tooltipEl) {
-      const held = getHeldItem(state.player.inventory);
-      if (held) {
-        let tip = held.displayName;
-        if (held.damage) tip += ` (${held.damage} dmg)`;
-        if (held.defense) tip += ` (${held.defense} def)`;
-        if (held.durability !== undefined && held.maxDurability) {
-          const pct = Math.floor((held.durability / held.maxDurability) * 100);
-          tip += ` [${pct}%]`;
-        }
-        this._tooltipEl.textContent = tip;
-      } else {
-        this._tooltipEl.textContent = "";
-      }
-    }
-
-    // Messages
-    if (this._messageEl) {
-      const recent = state.messages.slice(-6);
-      this._messageEl.innerHTML = recent.map(m => {
-        const age = state.totalTime - m.time;
-        const alpha = Math.max(0, 1 - age / 8);
-        if (alpha < 0.01) return "";
-        const color = `#${m.color.toString(16).padStart(6, "0")}`;
-        return `<div style="opacity:${alpha.toFixed(2)};color:${color};margin-bottom:2px;font-size:12px;">${m.text}</div>`;
-      }).join("");
-    }
-
-    // Quest tracker
-    if (this._questEl) {
-      const active = state.quests.filter(q => q.unlocked && !q.completed).slice(0, 3);
-      if (active.length > 0) {
-        this._questEl.innerHTML = `<div style="color:#8B6914;font-size:9px;margin-bottom:4px;border-bottom:1px solid #333;padding-bottom:2px;">QUESTS</div>` +
-          active.map(q => {
-            const pct = Math.floor((q.progress / q.goal) * 100);
-            return `<div style="margin-bottom:6px;">
-              <div style="color:#C0A060;font-size:10px;">${q.name}</div>
-              <div style="width:80px;height:3px;background:#333;border-radius:2px;margin-top:2px;">
-                <div style="width:${pct}%;height:100%;background:#8B6914;border-radius:2px;"></div>
-              </div>
-              <div style="color:#666;font-size:9px;">${q.progress}/${q.goal}</div>
-            </div>`;
-          }).join("");
-      }
-    }
-
-    // Minimap
-    this._drawMinimap(state);
+    this._updateTooltip(state);
+    this._updateMessages(state);
+    this._updateQuests(state);
+    this._updateMinimap(state);
 
     // Game over
     if (this._gameOverEl) {
       this._gameOverEl.style.display = state.gameOver ? "flex" : "none";
-    }
-
-    // Pause menu
-    if (this._pauseEl) {
-      this._pauseEl.style.display = state.paused ? "flex" : "none";
-    }
-
-    // Victory banner
-    if (state.victory && !state.gameOver && !state.paused) {
-      // Show victory glow effect on quest panel
-      if (this._questEl) {
-        this._questEl.innerHTML = `<div style="color:#FFD700;font-size:14px;font-family:Georgia,serif;text-shadow:0 0 10px rgba(255,215,0,0.5);">THE HOLY GRAIL<br>IS FOUND!</div>`;
+      if (state.gameOver) {
+        const stats = document.getElementById("td-death-stats");
+        if (stats) stats.innerHTML = `Day ${state.dayNumber} &nbsp;|&nbsp; ${state.player.blocksMined} blocks mined &nbsp;|&nbsp; ${state.player.mobsKilled} mobs slain`;
       }
     }
+
+    // Pause
+    if (this._pauseEl) {
+      this._pauseEl.style.display = state.paused ? "flex" : "none";
+      if (state.paused) {
+        const stats = document.getElementById("td-pause-stats");
+        if (stats) {
+          const mins = Math.floor(state.totalTime / 60);
+          const secs = Math.floor(state.totalTime % 60);
+          stats.innerHTML = `
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;">
+              <span style="color:#777;">Playtime</span><span style="color:#aaa;">${mins}m ${secs}s</span>
+              <span style="color:#777;">Day</span><span style="color:#aaa;">${state.dayNumber}</span>
+              <span style="color:#777;">Blocks mined</span><span style="color:#aaa;">${state.player.blocksMined}</span>
+              <span style="color:#777;">Blocks placed</span><span style="color:#aaa;">${state.player.blocksPlaced}</span>
+              <span style="color:#777;">Mobs slain</span><span style="color:#aaa;">${state.player.mobsKilled}</span>
+              <span style="color:#777;">Knights</span><span style="color:#aaa;">${state.player.knightsRecruited}</span>
+            </div>`;
+        }
+      }
+    }
+
+    // Victory
+    if (state.victory && !state.gameOver && !state.paused && this._questEl) {
+      this._questEl.innerHTML = `<div style="text-align:center;padding:8px;background:rgba(40,30,10,0.6);border:1px solid #5a4010;border-radius:8px;">
+        <div style="font-size:14px;color:#FFD700;font-family:Georgia,serif;text-shadow:0 0 10px rgba(255,215,0,0.4);animation:td-pulse 2s infinite;">THE HOLY GRAIL<br>IS FOUND!</div>
+      </div>`;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // HP / Mana / Defense bars
+  // ---------------------------------------------------------------------------
+
+  private _updateBars(state: TerrariaState): void {
+    if (!this._barsEl) return;
+    const p = state.player;
+    const hp = Math.ceil(p.hp);
+    const hpPct = hp / p.maxHp;
+    const mp = Math.ceil(p.mana);
+    const mpPct = mp / p.maxMana;
+    const low = hpPct < 0.3;
+
+    let html = `
+      <!-- HP -->
+      <div class="td-bar" style="margin-bottom:6px;">
+        <div class="td-bar-fill" style="width:${hpPct * 100}%;background:linear-gradient(90deg,#881111,${low ? "#dd2222" : "#cc3333"});${low ? "animation:td-pulse 0.6s infinite;" : ""}"></div>
+        <div class="td-bar-shine"></div>
+        <div class="td-bar-label">${hp} / ${p.maxHp}</div>
+      </div>
+      <!-- Mana -->
+      <div class="td-bar" style="margin-bottom:6px;">
+        <div class="td-bar-fill" style="width:${mpPct * 100}%;background:linear-gradient(90deg,#112266,#3366CC);"></div>
+        <div class="td-bar-shine"></div>
+        <div class="td-bar-label">${mp} / ${p.maxMana}</div>
+      </div>`;
+    if (p.defense > 0) {
+      html += `<div style="font-size:11px;color:#8899AA;text-shadow:0 1px 2px rgba(0,0,0,0.6);">
+        <span style="color:#6688AA;">&#9632;</span> Defense: ${p.defense}
+      </div>`;
+    }
+    this._barsEl.innerHTML = html;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Time / Depth info
+  // ---------------------------------------------------------------------------
+
+  private _updateInfo(state: TerrariaState): void {
+    if (!this._infoEl) return;
+    const t = state.timeOfDay;
+    const hours = Math.floor(t * 24);
+    const mins = Math.floor((t * 24 - hours) * 60);
+    const period = hours >= 12 ? "PM" : "AM";
+    const h12 = hours % 12 || 12;
+    const isNight = t > 0.75 || t < 0.25;
+
+    const y = Math.floor(state.player.y);
+    const depth = TB.SEA_LEVEL - y;
+    let layer: string, lc: string;
+    if (y < TB.UNDERWORLD_Y) { layer = "Underworld"; lc = "#FF4444"; }
+    else if (y < TB.CAVERN_Y) { layer = "Caverns"; lc = "#AA66FF"; }
+    else if (y < TB.UNDERGROUND_Y) { layer = "Underground"; lc = "#999"; }
+    else if (y < TB.SURFACE_Y) { layer = "Shallow"; lc = "#88AA88"; }
+    else { layer = "Surface"; lc = "#88CC44"; }
+
+    // Only update the text nodes below minimap (canvas is preserved)
+    const infoHTML = `
+      <div style="font-size:12px;color:${isNight ? "#8888CC" : "#daa520"};text-shadow:0 1px 3px rgba(0,0,0,0.6);margin-bottom:2px;">
+        Day ${state.dayNumber} &nbsp; ${h12}:${mins.toString().padStart(2, "0")} ${period}
+      </div>
+      <div style="font-size:11px;text-shadow:0 1px 3px rgba(0,0,0,0.6);">
+        <span style="color:${lc};">${depth > 0 ? `${depth}ft deep` : `${-depth}ft high`} — ${layer}</span>
+      </div>`;
+
+    // Preserve minimap canvas
+    if (this._minimapCanvas && !this._infoEl.contains(this._minimapCanvas)) {
+      this._infoEl.innerHTML = "";
+      this._infoEl.appendChild(this._minimapCanvas);
+    }
+    // Update or create text container
+    let textEl = this._infoEl.querySelector(".td-info-text") as HTMLDivElement;
+    if (!textEl) {
+      textEl = document.createElement("div");
+      textEl.className = "td-info-text";
+      this._infoEl.appendChild(textEl);
+    }
+    textEl.innerHTML = infoHTML;
   }
 
   // ---------------------------------------------------------------------------
@@ -283,44 +382,103 @@ export class TerrariaHUD {
     this._hotbarEl.innerHTML = "";
     for (let i = 0; i < 9; i++) {
       const slot = state.player.inventory.hotbar[i];
-      const selected = i === state.player.inventory.selectedSlot;
+      const sel = i === state.player.inventory.selectedSlot;
       const div = document.createElement("div");
-      div.style.cssText = `width:40px;height:40px;background:${selected ? "rgba(255,215,0,0.25)" : "rgba(10,5,2,0.7)"};border:${selected ? "2px solid #FFD700" : "1px solid #555"};border-radius:4px;display:flex;align-items:center;justify-content:center;position:relative;flex-direction:column;`;
-
+      div.className = sel ? "td-slot td-slot-sel" : "td-slot";
+      let inner = `<span style="position:absolute;top:2px;left:3px;font-size:9px;color:${sel ? "#daa520" : "#555"};font-weight:${sel ? "bold" : "normal"};text-shadow:0 1px 1px rgba(0,0,0,0.5);">${i + 1}</span>`;
       if (slot) {
-        const color = `#${slot.color.toString(16).padStart(6, "0")}`;
-        let icon = `<div style="width:22px;height:22px;background:${color};border-radius:2px;border:1px solid rgba(255,255,255,0.15);"></div>`;
-        div.innerHTML = icon;
-        if (slot.count > 1) {
-          div.innerHTML += `<span style="position:absolute;bottom:1px;right:3px;font-size:9px;color:white;text-shadow:1px 1px 1px #000;font-weight:bold;">${slot.count}</span>`;
-        }
-        // Durability bar
+        const c = `#${slot.color.toString(16).padStart(6, "0")}`;
+        inner += `<div style="width:24px;height:24px;background:${c};border-radius:3px;border:1px solid rgba(255,255,255,0.1);box-shadow:inset 0 -2px 4px rgba(0,0,0,0.2);"></div>`;
+        if (slot.count > 1) inner += `<span style="position:absolute;bottom:2px;right:3px;font-size:10px;color:#eee;text-shadow:0 1px 2px rgba(0,0,0,0.8);font-weight:bold;">${slot.count}</span>`;
         if (slot.durability !== undefined && slot.maxDurability) {
-          const durPct = slot.durability / slot.maxDurability;
-          const durColor = durPct > 0.5 ? "#44CC44" : durPct > 0.2 ? "#CCAA22" : "#CC2222";
-          div.innerHTML += `<div style="position:absolute;bottom:0;left:2px;right:2px;height:2px;background:#333;border-radius:1px;"><div style="width:${durPct * 100}%;height:100%;background:${durColor};border-radius:1px;"></div></div>`;
+          const dp = slot.durability / slot.maxDurability;
+          const dc = dp > 0.5 ? "#44CC44" : dp > 0.2 ? "#CCAA22" : "#CC2222";
+          inner += `<div style="position:absolute;bottom:1px;left:3px;right:3px;height:2px;background:#1a1a1a;border-radius:1px;"><div style="width:${dp * 100}%;height:100%;background:${dc};border-radius:1px;"></div></div>`;
         }
       }
-      div.innerHTML += `<span style="position:absolute;top:1px;left:3px;font-size:8px;color:#666;">${i + 1}</span>`;
+      div.innerHTML = inner;
       this._hotbarEl.appendChild(div);
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Tooltip
+  // ---------------------------------------------------------------------------
+
+  private _updateTooltip(state: TerrariaState): void {
+    if (!this._tooltipEl) return;
+    const held = getHeldItem(state.player.inventory);
+    if (!held) { this._tooltipEl.innerHTML = ""; return; }
+    let tip = `<span style="color:#daa520;font-size:13px;font-family:Georgia,serif;text-shadow:0 1px 3px rgba(0,0,0,0.7);">${held.displayName}</span>`;
+    const details: string[] = [];
+    if (held.damage) details.push(`<span style="color:#dd6644;">${held.damage} dmg</span>`);
+    if (held.defense) details.push(`<span style="color:#6688aa;">${held.defense} def</span>`);
+    if (held.durability !== undefined && held.maxDurability) {
+      const p = Math.floor((held.durability / held.maxDurability) * 100);
+      const c = p > 50 ? "#6a6" : p > 20 ? "#aa8" : "#a44";
+      details.push(`<span style="color:${c};">${p}%</span>`);
+    }
+    if (details.length) tip += `<br><span style="font-size:10px;">${details.join(" &nbsp; ")}</span>`;
+    this._tooltipEl.innerHTML = tip;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Messages
+  // ---------------------------------------------------------------------------
+
+  private _updateMessages(state: TerrariaState): void {
+    if (!this._msgEl) return;
+    const recent = state.messages.slice(-7);
+    this._msgEl.innerHTML = recent.map(m => {
+      const age = state.totalTime - m.time;
+      const alpha = Math.max(0, 1 - age / 10);
+      if (alpha < 0.01) return "";
+      const c = `#${m.color.toString(16).padStart(6, "0")}`;
+      return `<div style="opacity:${alpha.toFixed(2)};color:${c};font-size:12px;margin-bottom:3px;text-shadow:0 1px 3px rgba(0,0,0,0.7);transition:opacity 0.3s;">${m.text}</div>`;
+    }).join("");
+  }
+
+  // ---------------------------------------------------------------------------
+  // Quest tracker
+  // ---------------------------------------------------------------------------
+
+  private _updateQuests(state: TerrariaState): void {
+    if (!this._questEl || state.victory) return;
+    const active = state.quests.filter(q => q.unlocked && !q.completed).slice(0, 3);
+    if (!active.length) { this._questEl.innerHTML = ""; return; }
+    let html = `<div style="padding:8px 10px;background:rgba(15,10,5,0.6);border:1px solid rgba(90,64,16,0.2);border-radius:8px;">
+      <div style="font-size:9px;color:#5a4a20;text-transform:uppercase;letter-spacing:2px;margin-bottom:6px;">Quests</div>`;
+    for (const q of active) {
+      const pct = Math.min(100, Math.floor((q.progress / q.goal) * 100));
+      html += `<div style="margin-bottom:7px;">
+        <div style="font-size:10px;color:#c0a060;margin-bottom:2px;">${q.name}</div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <div style="flex:1;height:4px;background:#1a1510;border-radius:2px;overflow:hidden;">
+            <div style="width:${pct}%;height:100%;background:linear-gradient(90deg,#5a4010,#8B6914);border-radius:2px;transition:width 0.4s;"></div>
+          </div>
+          <span style="font-size:9px;color:#666;min-width:28px;text-align:right;">${q.progress}/${q.goal}</span>
+        </div>
+      </div>`;
+    }
+    html += `</div>`;
+    this._questEl.innerHTML = html;
   }
 
   // ---------------------------------------------------------------------------
   // Minimap
   // ---------------------------------------------------------------------------
 
-  private _drawMinimap(state: TerrariaState): void {
-    if (!this._minimapCtx || !this._minimapEl) return;
+  private _updateMinimap(state: TerrariaState): void {
+    if (!this._minimapCtx || !this._minimapCanvas) return;
     const ctx = this._minimapCtx;
-    const mw = this._minimapEl.width;
-    const mh = this._minimapEl.height;
+    const mw = this._minimapCanvas.width;
+    const mh = this._minimapCanvas.height;
     const scale = mw / state.worldWidth;
 
-    ctx.fillStyle = "#111";
+    ctx.fillStyle = "#080808";
     ctx.fillRect(0, 0, mw, mh);
 
-    // Draw terrain outline (just surface)
+    // Terrain
     for (let wx = 0; wx < state.worldWidth; wx++) {
       const cx = Math.floor(wx / TB.CHUNK_W);
       const chunk = state.chunks.get(cx);
@@ -329,143 +487,154 @@ export class TerrariaHUD {
       const h = chunk.heightMap[lx];
       const mx = wx * scale;
       const my = mh - (h / state.worldHeight) * mh;
-      ctx.fillStyle = h > TB.SURFACE_Y ? "#3a5a2a" : h > TB.UNDERGROUND_Y ? "#5a4a3a" : "#4a4a4a";
+      ctx.fillStyle = h > TB.SURFACE_Y ? "#3a6a2a" : h > TB.UNDERGROUND_Y ? "#6a5a3a" : "#5a5a5a";
       ctx.fillRect(mx, my, Math.max(1, scale), mh - my);
     }
 
-    // Player dot
+    // Mobs (red dots)
+    ctx.fillStyle = "#ff4444";
+    for (const mob of state.mobs) {
+      const mx = mob.x * scale;
+      const my = mh - (mob.y / state.worldHeight) * mh;
+      ctx.fillRect(mx, my, 1, 1);
+    }
+
+    // NPCs (green dots)
+    ctx.fillStyle = "#44ff44";
+    for (const npc of state.npcs) {
+      const mx = npc.x * scale;
+      const my = mh - (npc.y / state.worldHeight) * mh;
+      ctx.fillRect(mx - 1, my - 1, 2, 2);
+    }
+
+    // Player (gold dot)
+    ctx.fillStyle = "#FFD700";
     const px = state.player.x * scale;
     const py = mh - (state.player.y / state.worldHeight) * mh;
-    ctx.fillStyle = "#FFD700";
     ctx.fillRect(px - 1, py - 1, 3, 3);
+
+    // Border frame
+    ctx.strokeStyle = "#3a2810";
+    ctx.strokeRect(0, 0, mw, mh);
   }
 
   // ---------------------------------------------------------------------------
-  // Inventory + Crafting
+  // Inventory & Crafting
   // ---------------------------------------------------------------------------
 
   showInventory(state: TerrariaState): void {
-    if (!this._inventoryEl) return;
-    this._inventoryEl.style.display = "block";
-    this._rebuildInventoryUI(state);
+    if (!this._invEl) return;
+    this._invEl.style.display = "block";
+    this._rebuildInventory(state);
   }
 
   hideInventory(): void {
-    if (!this._inventoryEl) return;
-    this._inventoryEl.style.display = "none";
+    if (!this._invEl) return;
+    this._invEl.style.display = "none";
   }
 
   refreshInventory(state: TerrariaState): void {
-    if (this._inventoryEl?.style.display !== "none") {
-      this._rebuildInventoryUI(state);
-    }
+    if (this._invEl?.style.display !== "none") this._rebuildInventory(state);
   }
 
-  private _rebuildInventoryUI(state: TerrariaState): void {
-    if (!this._inventoryEl) return;
+  private _rebuildInventory(state: TerrariaState): void {
+    if (!this._invEl) return;
     const inv = state.player.inventory;
+    const station = state.craftingStation;
+    const stationName = station === "forge" ? "Forge" : station === "round_table" ? "Round Table" : "Hand Craft";
+    const stationIcon = station === "forge" ? "&#128293;" : station === "round_table" ? "&#9878;" : "&#9995;";
 
-    let html = `<div style="display:flex;gap:20px;">`;
+    let html = `<div style="display:flex;gap:24px;">`;
 
-    // LEFT PANEL: Inventory
+    // === LEFT: Inventory ===
     html += `<div style="flex:1;">`;
-    html += `<div style="color:#FFD700;font-size:16px;font-family:Georgia,serif;margin-bottom:10px;text-align:center;">Inventory</div>`;
+    html += `<div style="text-align:center;margin-bottom:12px;"><span style="font-size:18px;color:#daa520;font-family:Georgia,serif;letter-spacing:2px;">Inventory</span></div>`;
 
-    // Armor slots
-    html += `<div style="display:flex;gap:4px;margin-bottom:10px;justify-content:center;">`;
+    // Armor
+    html += `<div style="display:flex;gap:4px;margin-bottom:12px;justify-content:center;">`;
     const armorSlots = [inv.armor.helmet, inv.armor.chestplate, inv.armor.leggings, inv.armor.boots];
-    const armorLabels = ["Helm", "Chest", "Legs", "Boots"];
-    const armorIcons = ["👑", "🛡", "⚔", "👢"];
+    const armorLabels = ["Helmet", "Chest", "Greaves", "Boots"];
     for (let i = 0; i < 4; i++) {
       const slot = armorSlots[i];
-      html += `<div style="width:40px;height:40px;background:rgba(50,30,10,0.8);border:1px solid #8B6914;border-radius:3px;display:flex;align-items:center;justify-content:center;position:relative;" title="${armorLabels[i]}">`;
+      html += `<div class="td-slot" style="width:44px;height:44px;border-color:#5a4010;" title="${armorLabels[i]}">`;
       if (slot) {
-        html += `<div style="width:24px;height:24px;background:#${slot.color.toString(16).padStart(6, "0")};border-radius:2px;border:1px solid rgba(255,255,255,0.1);"></div>`;
-        html += `<span style="position:absolute;bottom:0;font-size:7px;color:#888;">${slot.defense ?? 0}</span>`;
+        html += `<div style="width:26px;height:26px;background:#${slot.color.toString(16).padStart(6, "0")};border-radius:3px;border:1px solid rgba(255,255,255,0.1);"></div>`;
+        if (slot.defense) html += `<span style="position:absolute;bottom:1px;right:2px;font-size:8px;color:#6688aa;">+${slot.defense}</span>`;
       } else {
-        html += `<span style="font-size:14px;opacity:0.3;">${armorIcons[i]}</span>`;
+        html += `<span style="font-size:8px;color:#3a3020;">${armorLabels[i]}</span>`;
       }
       html += `</div>`;
     }
     html += `</div>`;
 
     // Hotbar
-    html += this._renderSlotRow(inv.hotbar, "Hotbar");
+    html += `<div class="td-section">Hotbar</div>`;
+    html += this._slotRow(inv.hotbar);
 
-    // Main inventory
-    for (let row = 0; row < 3; row++) {
-      const slots = inv.main.slice(row * 9, row * 9 + 9);
-      html += this._renderSlotRow(slots, row === 0 ? "Inventory" : "");
-    }
+    // Main
+    html += `<div class="td-section">Backpack</div>`;
+    for (let r = 0; r < 3; r++) html += this._slotRow(inv.main.slice(r * 9, r * 9 + 9));
     html += `</div>`;
 
-    // RIGHT PANEL: Crafting recipes
-    html += `<div style="min-width:200px;border-left:1px solid #333;padding-left:16px;">`;
-    const station = state.craftingStation;
-    const stationName = station === "forge" ? "Forge" : station === "round_table" ? "Round Table" : "Hand Craft";
-    html += `<div style="color:#FFD700;font-size:14px;font-family:Georgia,serif;margin-bottom:8px;text-align:center;">${stationName}</div>`;
+    // === RIGHT: Crafting ===
+    html += `<div style="min-width:210px;border-left:1px solid rgba(90,64,16,0.15);padding-left:20px;">`;
+    html += `<div style="text-align:center;margin-bottom:10px;">
+      <span style="font-size:16px;color:#daa520;font-family:Georgia,serif;">${stationIcon} ${stationName}</span>
+    </div>`;
 
     const recipes = getAvailableRecipes(state);
-    if (recipes.length === 0) {
-      html += `<div style="color:#666;font-size:11px;text-align:center;margin-top:20px;">No recipes available.<br><span style="font-size:9px;">Gather materials or use a crafting station.</span></div>`;
+    if (!recipes.length) {
+      html += `<div style="text-align:center;padding:24px 0;color:#555;font-size:12px;">
+        No recipes available.<br><span style="font-size:10px;color:#444;">Gather materials or<br>use a crafting station.</span>
+      </div>`;
     } else {
-      html += `<div style="max-height:300px;overflow-y:auto;">`;
+      html += `<div style="max-height:320px;overflow-y:auto;padding-right:4px;">`;
       for (const recipe of recipes) {
-        const outColor = `#${recipe.output.color.toString(16).padStart(6, "0")}`;
-        const inputsStr = recipe.inputs.map(inp => {
+        const oc = `#${recipe.output.color.toString(16).padStart(6, "0")}`;
+        const inputs = recipe.inputs.map(inp => {
           const name = inp.blockType !== undefined ? (BLOCK_DEFS[inp.blockType]?.name ?? "?") : "?";
-          return `${inp.count}x ${name}`;
+          return `<span style="color:#888;">${inp.count}x</span> <span style="color:#aa9060;">${name}</span>`;
         }).join(", ");
-
-        html += `<div class="td-recipe" data-recipe-id="${recipe.id}" style="display:flex;align-items:center;gap:8px;padding:6px 8px;margin-bottom:3px;background:rgba(50,30,10,0.5);border:1px solid #333;border-radius:4px;cursor:pointer;transition:all 0.15s;" onmouseenter="this.style.background='rgba(80,50,20,0.7)';this.style.borderColor='#8B6914';" onmouseleave="this.style.background='rgba(50,30,10,0.5)';this.style.borderColor='#333';">`;
-        html += `<div style="width:24px;height:24px;background:${outColor};border-radius:3px;border:1px solid rgba(255,255,255,0.15);flex-shrink:0;"></div>`;
-        html += `<div style="flex:1;min-width:0;">`;
-        html += `<div style="color:#DDCCAA;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${recipe.output.displayName}${recipe.output.count > 1 ? ` x${recipe.output.count}` : ""}</div>`;
-        html += `<div style="color:#777;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${inputsStr}</div>`;
-        html += `</div></div>`;
+        html += `<div class="td-recipe-row" data-rid="${recipe.id}">
+          <div style="width:26px;height:26px;background:${oc};border-radius:4px;border:1px solid rgba(255,255,255,0.1);flex-shrink:0;box-shadow:inset 0 -2px 4px rgba(0,0,0,0.2);"></div>
+          <div style="flex:1;min-width:0;">
+            <div style="color:#ddccaa;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${recipe.output.displayName}${recipe.output.count > 1 ? ` <span style="color:#888;">x${recipe.output.count}</span>` : ""}</div>
+            <div style="font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${inputs}</div>
+          </div>
+        </div>`;
       }
       html += `</div>`;
     }
-    html += `</div>`;
-    html += `</div>`;
+    html += `</div></div>`;
+    html += `<div style="text-align:center;margin-top:14px;font-size:10px;color:#3a3020;">Press <span style="color:#5a4a20;">E</span> or <span style="color:#5a4a20;">ESC</span> to close</div>`;
 
-    // Close hint
-    html += `<div style="text-align:center;margin-top:10px;color:#555;font-size:9px;">Press E or ESC to close</div>`;
+    this._invEl.innerHTML = html;
 
-    this._inventoryEl.innerHTML = html;
-
-    // Wire craft click handlers
-    const recipeEls = this._inventoryEl.querySelectorAll(".td-recipe");
-    recipeEls.forEach(el => {
+    // Wire craft clicks
+    this._invEl.querySelectorAll(".td-recipe-row").forEach(el => {
       el.addEventListener("click", () => {
-        const id = (el as HTMLElement).dataset.recipeId;
+        const id = (el as HTMLElement).dataset.rid;
         const recipe = recipes.find(r => r.id === id);
-        if (recipe) {
-          if (craftRecipe(state, recipe)) {
-            onCrafted(state);
-            this._rebuildInventoryUI(state); // refresh
-          }
+        if (recipe && craftRecipe(state, recipe)) {
+          onCrafted(state);
+          this._rebuildInventory(state);
         }
       });
     });
   }
 
-  private _renderSlotRow(slots: (ItemStack | null)[], label: string): string {
-    let html = "";
-    if (label) html += `<div style="color:#777;font-size:9px;margin:6px 0 2px;text-transform:uppercase;letter-spacing:1px;">${label}</div>`;
-    html += `<div style="display:flex;gap:2px;">`;
+  private _slotRow(slots: (ItemStack | null)[]): string {
+    let html = `<div style="display:flex;gap:3px;margin-bottom:3px;">`;
     for (const slot of slots) {
-      html += `<div style="width:36px;height:36px;background:rgba(40,25,10,0.6);border:1px solid #444;border-radius:3px;display:flex;align-items:center;justify-content:center;position:relative;">`;
+      html += `<div class="td-slot">`;
       if (slot) {
         const c = `#${slot.color.toString(16).padStart(6, "0")}`;
-        html += `<div style="width:20px;height:20px;background:${c};border-radius:2px;border:1px solid rgba(255,255,255,0.1);" title="${slot.displayName}"></div>`;
-        if (slot.count > 1) {
-          html += `<span style="position:absolute;bottom:0;right:2px;font-size:9px;color:white;text-shadow:1px 1px 1px #000;">${slot.count}</span>`;
-        }
+        html += `<div style="width:22px;height:22px;background:${c};border-radius:3px;border:1px solid rgba(255,255,255,0.08);box-shadow:inset 0 -2px 3px rgba(0,0,0,0.2);" title="${slot.displayName}${slot.damage ? ` (${slot.damage} dmg)` : ""}${slot.defense ? ` (${slot.defense} def)` : ""}"></div>`;
+        if (slot.count > 1) html += `<span style="position:absolute;bottom:1px;right:2px;font-size:9px;color:#ddd;text-shadow:0 1px 2px #000;">${slot.count}</span>`;
         if (slot.durability !== undefined && slot.maxDurability) {
           const dp = slot.durability / slot.maxDurability;
           const dc = dp > 0.5 ? "#4a4" : dp > 0.2 ? "#aa8" : "#a44";
-          html += `<div style="position:absolute;bottom:0;left:1px;right:1px;height:2px;background:#222;"><div style="width:${dp * 100}%;height:100%;background:${dc};"></div></div>`;
+          html += `<div style="position:absolute;bottom:1px;left:2px;right:2px;height:2px;background:#111;border-radius:1px;"><div style="width:${dp * 100}%;height:100%;background:${dc};border-radius:1px;"></div></div>`;
         }
       }
       html += `</div>`;
@@ -474,10 +643,23 @@ export class TerrariaHUD {
     return html;
   }
 
+  // ---------------------------------------------------------------------------
+  // Cleanup
+  // ---------------------------------------------------------------------------
+
   cleanup(): void {
-    if (this._overlay) {
-      this._overlay.remove();
-      this._overlay = null;
-    }
+    if (this._helpKeyHandler) window.removeEventListener("keydown", this._helpKeyHandler);
+    if (this._el) { this._el.remove(); this._el = null; }
   }
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function _helpRow(key: string, desc: string): string {
+  return `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(60,40,15,0.15);">
+    <span style="color:#aa9050;font-size:11px;">${key}</span>
+    <span style="color:#777;font-size:11px;">${desc}</span>
+  </div>`;
 }

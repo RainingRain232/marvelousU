@@ -28,6 +28,7 @@ export interface TerrariaPlayer {
   invulnTimer: number;
   attackTimer: number;
   miningTarget: { wx: number; wy: number; progress: number } | null;
+  hoverTarget: { wx: number; wy: number; canPlace: boolean } | null;
 
   hasExcalibur: boolean;
   hasGrail: boolean;
@@ -91,6 +92,7 @@ export interface TerrariaState {
   screenW: number;
   screenH: number;
   creativeMode: boolean;
+  difficulty: "easy" | "normal" | "hard";
   gameOver: boolean;
   victory: boolean;
   messages: { text: string; time: number; color: number }[];
@@ -138,13 +140,15 @@ export function addMessage(state: TerrariaState, text: string, color = 0xFFFFFF)
 // Factory
 // ---------------------------------------------------------------------------
 
-export function createTerrariaState(seed?: number): TerrariaState {
+export function createTerrariaState(seed?: number, worldWidth?: number, difficulty?: string): TerrariaState {
   const s = seed ?? Math.floor(Math.random() * 999999);
+  const ww = worldWidth ?? TB.WORLD_WIDTH;
+  const diff = (difficulty === "easy" || difficulty === "hard") ? difficulty : "normal";
   return {
     chunks: new Map(),
     player: {
-      x: TB.WORLD_WIDTH / 2,
-      y: TB.SEA_LEVEL + 10,  // spawn above surface
+      x: ww / 2,
+      y: TB.SEA_LEVEL + 10,
       vx: 0, vy: 0,
       facingRight: true,
       onGround: false,
@@ -157,6 +161,7 @@ export function createTerrariaState(seed?: number): TerrariaState {
       invulnTimer: 0,
       attackTimer: 0,
       miningTarget: null,
+      hoverTarget: null,
       hasExcalibur: false,
       hasGrail: false,
       knightsRecruited: 0,
@@ -182,12 +187,13 @@ export function createTerrariaState(seed?: number): TerrariaState {
     screenW: window.innerWidth,
     screenH: window.innerHeight,
     creativeMode: false,
+    difficulty: diff as "easy" | "normal" | "hard",
     gameOver: false,
     victory: false,
     messages: [],
-    worldWidth: TB.WORLD_WIDTH,
+    worldWidth: ww,
     worldHeight: TB.WORLD_HEIGHT,
-    camX: TB.WORLD_WIDTH / 2,
+    camX: ww / 2,
     camY: TB.SEA_LEVEL + 10,
   };
 }

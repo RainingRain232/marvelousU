@@ -76,37 +76,74 @@ export class TerrariaMobView {
       this._npc(g, sx, sy, pw, ph, d, npc.type, t);
     }
 
-    // ---- PROJECTILES ----
+    // ---- PROJECTILES WITH TRAILS ----
     for (const proj of state.projectiles) {
       const { sx, sy } = camera.worldToScreen(proj.x, proj.y);
+      const speed = Math.sqrt(proj.vx * proj.vx + proj.vy * proj.vy);
+      const a = Math.atan2(-proj.vy, proj.vx);
+
       if (proj.gravity) {
-        // Arrow with fletching
-        const a = Math.atan2(-proj.vy, proj.vx);
+        // Arrow with motion trail
         const len = 6;
         const tx = sx + Math.cos(a) * len; const ty = sy - Math.sin(a) * len;
         const bx = sx - Math.cos(a) * len; const by = sy + Math.sin(a) * len;
+
+        // Motion trail (fading line behind arrow)
+        const trailLen = Math.min(speed * 0.4, 20);
+        const trailX = sx - Math.cos(a) * trailLen;
+        const trailY = sy + Math.sin(a) * trailLen;
+        g.moveTo(bx, by); g.lineTo(trailX, trailY);
+        g.stroke({ color: 0x8B6914, width: 0.5, alpha: 0.3 });
+
         // Shaft
         g.moveTo(bx, by); g.lineTo(tx, ty);
         g.stroke({ color: 0x8B6914, width: 1.5 });
-        // Head
-        const px = Math.sin(a) * 2; const py = Math.cos(a) * 2;
-        g.moveTo(tx + px, ty + py); g.lineTo(tx + Math.cos(a) * 3, ty - Math.sin(a) * 3);
-        g.lineTo(tx - px, ty - py); g.closePath(); g.fill(0xCCCCCC);
+        // Arrowhead
+        const px2 = Math.sin(a) * 2.5; const py2 = Math.cos(a) * 2.5;
+        g.moveTo(tx + px2, ty + py2);
+        g.lineTo(tx + Math.cos(a) * 4, ty - Math.sin(a) * 4);
+        g.lineTo(tx - px2, ty - py2); g.closePath(); g.fill(0xCCCCCC);
+        // Metallic highlight on head
+        g.moveTo(tx, ty);
+        g.lineTo(tx + Math.cos(a) * 3, ty - Math.sin(a) * 3);
+        g.stroke({ color: 0xFFFFFF, width: 0.5, alpha: 0.4 });
         // Fletching
-        g.moveTo(bx + px * 0.8, by + py * 0.8);
-        g.lineTo(bx - Math.cos(a) * 2, by + Math.sin(a) * 2);
-        g.lineTo(bx - px * 0.8, by - py * 0.8);
-        g.closePath(); g.fill({ color: 0xCC2222, alpha: 0.6 });
+        g.moveTo(bx + px2 * 0.7, by + py2 * 0.7);
+        g.lineTo(bx - Math.cos(a) * 3, by + Math.sin(a) * 3);
+        g.lineTo(bx - px2 * 0.7, by - py2 * 0.7);
+        g.closePath(); g.fill({ color: 0xCC2222, alpha: 0.7 });
       } else {
-        // Magic orb with trailing glow
-        g.circle(sx, sy, 5); g.fill({ color: proj.color, alpha: 0.2 });
-        g.circle(sx, sy, 3.5); g.fill({ color: proj.color, alpha: 0.4 });
-        g.circle(sx, sy, 2); g.fill({ color: 0xFFFFFF, alpha: 0.8 });
-        // Sparkle ring
-        for (let i = 0; i < 4; i++) {
-          const sa = t * 5 + i * Math.PI / 2;
-          g.circle(sx + Math.cos(sa) * 4, sy + Math.sin(sa) * 4, 0.8);
+        // Magic orb with enhanced trail
+        // Trail (fading circles behind projectile)
+        for (let i = 1; i <= 4; i++) {
+          const trailDist = i * 3;
+          const tx2 = sx - Math.cos(a) * trailDist;
+          const ty2 = sy + Math.sin(a) * trailDist;
+          const trailAlpha = 0.2 - i * 0.04;
+          const trailSize = 3 - i * 0.5;
+          g.circle(tx2, ty2, trailSize);
+          g.fill({ color: proj.color, alpha: trailAlpha });
+        }
+        // Outer glow
+        g.circle(sx, sy, 7);
+        g.fill({ color: proj.color, alpha: 0.12 });
+        // Mid glow
+        g.circle(sx, sy, 4.5);
+        g.fill({ color: proj.color, alpha: 0.35 });
+        // Bright core
+        g.circle(sx, sy, 2);
+        g.fill({ color: 0xFFFFFF, alpha: 0.9 });
+        // Sparkle ring (rotating)
+        for (let i = 0; i < 6; i++) {
+          const sa = t * 6 + i * Math.PI / 3;
+          const sr = 5 + Math.sin(t * 3 + i) * 1.5;
+          g.circle(sx + Math.cos(sa) * sr, sy + Math.sin(sa) * sr, 0.7);
           g.fill({ color: proj.color, alpha: 0.5 });
+        }
+        // Inner sparkle flash
+        if (Math.sin(t * 12) > 0.5) {
+          g.circle(sx, sy, 1);
+          g.fill({ color: 0xFFFFFF, alpha: 1 });
         }
       }
     }
@@ -403,7 +440,7 @@ export class TerrariaMobView {
   // ===========================================================================
   // DEER — graceful with detailed antlers
   // ===========================================================================
-  private _deer(g: Graphics, sx: number, sy: number, pw: number, ph: number, c: number, ls: number, d: number, wp: number): void {
+  private _deer(g: Graphics, sx: number, sy: number, pw: number, ph: number, c: number, ls: number, d: number, _wp: number): void {
     // Body
     g.ellipse(sx, sy - ph * 0.38, pw * 0.45, ph * 0.28); g.fill(c);
     // White belly
@@ -458,7 +495,7 @@ export class TerrariaMobView {
   // ===========================================================================
   // SKELETON — bones, ribcage, skull, glowing eyes, sword
   // ===========================================================================
-  private _skeleton(g: Graphics, sx: number, sy: number, pw: number, ph: number, c: number, ls: number, d: number, atk: boolean, wp: number): void {
+  private _skeleton(g: Graphics, sx: number, sy: number, pw: number, ph: number, _c: number, ls: number, d: number, atk: boolean, wp: number): void {
     const hw = pw / 2;
     const boneColor = 0xDDDDAA;
     const boneShade = 0xBBBB88;
@@ -524,7 +561,7 @@ export class TerrariaMobView {
   // ===========================================================================
   // MORDRED — dark armored knight with glowing red eyes, dark sword
   // ===========================================================================
-  private _mordred(g: Graphics, sx: number, sy: number, pw: number, ph: number, c: number, ls: number, d: number, atk: boolean, wp: number): void {
+  private _mordred(g: Graphics, sx: number, sy: number, pw: number, ph: number, _c: number, ls: number, d: number, atk: boolean, wp: number): void {
     const hw = pw / 2;
     const armor = 0x222233; const armorHi = 0x3A3A55; const visor = 0x111122;
     // Cape (dark, tattered)

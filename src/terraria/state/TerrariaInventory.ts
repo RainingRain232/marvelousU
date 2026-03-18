@@ -129,3 +129,34 @@ export function createToolItem(toolType: ToolType, material: ToolMaterial, name:
     durability: dur, maxDurability: dur,
   };
 }
+
+/** Try to auto-equip an armor piece into the appropriate slot. Returns true if equipped. */
+export function tryEquipArmor(inv: TerrariaInventory, item: ItemStack): boolean {
+  if (item.category !== ItemCategory.ARMOR) return false;
+  const id = item.specialId ?? "";
+  let slot: keyof ArmorSlots;
+  if (id.includes("helmet") || id.includes("helm") || id.includes("cap") || id.includes("crown") || id.includes("circlet") || id.includes("hood")) slot = "helmet";
+  else if (id.includes("chest") || id.includes("tunic") || id.includes("mail") || id.includes("breastplate") || id.includes("robe")) slot = "chestplate";
+  else if (id.includes("legs") || id.includes("leggings") || id.includes("greaves") || id.includes("cuisses")) slot = "leggings";
+  else if (id.includes("boots") || id.includes("sabatons") || id.includes("sandals")) slot = "boots";
+  else return false;
+
+  // If slot is empty or new item has higher defense, equip it
+  const current = inv.armor[slot];
+  if (!current || (item.defense ?? 0) > (current.defense ?? 0)) {
+    // Put old armor back in inventory if present
+    if (current) addToInventory(inv, current);
+    inv.armor[slot] = { ...item, count: 1 };
+    return true;
+  }
+  return false;
+}
+
+/** Calculate total defense from equipped armor. */
+export function calcArmorDefense(inv: TerrariaInventory): number {
+  let total = 0;
+  for (const slot of [inv.armor.helmet, inv.armor.chestplate, inv.armor.leggings, inv.armor.boots]) {
+    if (slot?.defense) total += slot.defense;
+  }
+  return total;
+}

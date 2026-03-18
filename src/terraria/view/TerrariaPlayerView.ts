@@ -250,7 +250,7 @@ export class TerrariaPlayerView {
 
   // ---- Arm drawing helpers ----
 
-  private _drawSwingArm(g: Graphics, ax: number, ay: number, bodyH: number, dir: number, timer: number, held: ReturnType<typeof getHeldItem>): void {
+  private _drawSwingArm(g: Graphics, ax: number, ay: number, _bodyH: number, dir: number, timer: number, held: ReturnType<typeof getHeldItem>): void {
     const pct = 1 - timer / TB.ATTACK_COOLDOWN;
     const angle = (pct * Math.PI * 0.9 - Math.PI * 0.35) * dir;
     const armLen = TS * 1.5;
@@ -307,7 +307,7 @@ export class TerrariaPlayerView {
     }
   }
 
-  private _drawMiningArm(g: Graphics, ax: number, ay: number, bodyH: number, dir: number, progress: number, held: ReturnType<typeof getHeldItem>): void {
+  private _drawMiningArm(g: Graphics, ax: number, ay: number, _bodyH: number, dir: number, progress: number, held: ReturnType<typeof getHeldItem>): void {
     const angle = (Math.sin(progress * Math.PI * 6) * 0.5 - 0.3) * dir;
     const armLen = TS * 1.3;
     const hx = ax + Math.cos(angle) * armLen;

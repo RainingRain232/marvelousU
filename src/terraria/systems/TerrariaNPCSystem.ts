@@ -2,7 +2,6 @@
 // Terraria – NPC spawning and interaction
 // ---------------------------------------------------------------------------
 
-import { TB } from "../config/TerrariaBalance";
 import type { TerrariaState } from "../state/TerrariaState";
 import { addMessage } from "../state/TerrariaState";
 import type { NPCInstance } from "../state/TerrariaEntity";
@@ -81,9 +80,16 @@ export function updateNPCs(state: TerrariaState, dt: number): void {
     _npcCheckTimer = 0;
 
     for (const def of NPC_DEFS) {
-      // Check if already spawned
+      // Knights can spawn multiple times (up to 6 for quest)
+      if (def.type === "knight_recruit") {
+        const knightCount = state.npcs.filter(n => n.type === "knight_recruit").length;
+        if (knightCount < 6 && def.spawnCondition(state)) {
+          _spawnNPC(state, def);
+        }
+        continue;
+      }
+      // Other NPCs: only one of each type
       if (state.npcs.some(n => n.type === def.type)) continue;
-
       if (def.spawnCondition(state)) {
         _spawnNPC(state, def);
       }
@@ -106,7 +112,7 @@ export function updateNPCs(state: TerrariaState, dt: number): void {
 function _spawnNPC(state: TerrariaState, def: NPCDef): void {
   // Spawn near player on the surface
   const px = Math.floor(state.player.x) + Math.floor(Math.random() * 20 - 10);
-  const clampedX = Math.max(5, Math.min(TB.WORLD_WIDTH - 5, px));
+  const clampedX = Math.max(5, Math.min(state.worldWidth - 5, px));
   const surfaceY = getSurfaceHeight(clampedX);
 
   const npc: NPCInstance = {

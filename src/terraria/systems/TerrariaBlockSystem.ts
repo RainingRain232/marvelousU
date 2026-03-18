@@ -34,6 +34,16 @@ export function updateMining(state: TerrariaState, input: InputState, camera: Te
   // Update facing direction based on mouse
   p.facingRight = rawWX > p.x;
 
+  // Update hover target for placement preview
+  if (inReach && !state.inventoryOpen) {
+    const bt = getWorldBlock(state, targetX, targetY);
+    const held = getHeldItem(p.inventory);
+    const canPlace = bt === BlockType.AIR && held !== null && held.category === ItemCategory.BLOCK && held.blockType !== undefined && _hasAdjacentSolid(state, targetX, targetY);
+    p.hoverTarget = { wx: targetX, wy: targetY, canPlace };
+  } else {
+    p.hoverTarget = null;
+  }
+
   if (input.attack && inReach && !state.inventoryOpen && !state.paused) {
     const bt = getWorldBlock(state, targetX, targetY);
     if (bt !== BlockType.AIR) {
@@ -105,8 +115,12 @@ export function updateMining(state: TerrariaState, input: InputState, camera: Te
         const playerMaxX = p.x + TB.PLAYER_WIDTH / 2;
         const playerMinY = p.y - TB.PLAYER_HEIGHT / 2;
         const playerMaxY = p.y + TB.PLAYER_HEIGHT / 2;
-        if (targetX + 1 <= playerMinX || targetX >= playerMaxX ||
-            targetY + 1 <= playerMinY || targetY >= playerMaxY) {
+        const insidePlayer = !(targetX + 1 <= playerMinX || targetX >= playerMaxX ||
+            targetY + 1 <= playerMinY || targetY >= playerMaxY);
+        // Must have an adjacent solid block (can't place in midair)
+        const hasAdjacent = _hasAdjacentSolid(state, targetX, targetY);
+
+        if (!insidePlayer && hasAdjacent) {
           setWorldBlock(state, targetX, targetY, held.blockType);
           recalcLightingLocal(state, targetX, targetY);
           removeFromSlot(p.inventory, true, p.inventory.selectedSlot);
@@ -126,4 +140,24 @@ export function updateMining(state: TerrariaState, input: InputState, camera: Te
       }
     }
   }
+
+  // Store placement preview info for renderer
+  state.player.miningTarget = state.player.miningTarget; // keep mining target
+  // Placement preview is handled via camera.screenToWorld in renderer
+}
+
+/** Check if a target position has at least one adjacent solid block. */
+function _hasAdjacentSolid(state: TerrariaState, wx: number, wy: number): boolean {
+  const dirs: [number, number][] = [[0, 1], [0, -1], [1, 0], [-1, 0]];
+  for (const [dx, dy] of dirs) {
+    const nx = wx + dx;
+    const ny = wy + dy;
+    if (nx < 0 || nx >= state.worldWidth || ny < 0 || ny >= state.worldHeight) continue;
+    const bt = getWorldBlock(state, nx, ny);
+    if (bt !== BlockType.AIR) {
+      const def = getBlockDef(bt);
+      if (def.solid) return true;
+    }
+  }
+  return false;
 }

@@ -242,9 +242,9 @@ function _placeTree(chunk: TerrariaChunk, lx: number, baseY: number, logType = B
 // Special structure placement (called once after all chunks generated)
 // ---------------------------------------------------------------------------
 
-export function placeSpecialStructures(chunks: Map<number, TerrariaChunk>, seed: number): { excaliburX: number; excaliburY: number; grailX: number; grailY: number } {
+export function placeSpecialStructures(chunks: Map<number, TerrariaChunk>, seed: number, worldWidth: number = TB.WORLD_WIDTH): { excaliburX: number; excaliburY: number; grailX: number; grailY: number } {
   // Excalibur shrine: deep underground (y ~ 60-80), somewhere in middle third of world
-  const excX = Math.floor(TB.WORLD_WIDTH * 0.3 + hashPos(seed + 2000, 0, 0) * TB.WORLD_WIDTH * 0.4);
+  const excX = Math.floor(worldWidth * 0.3 + hashPos(seed + 2000, 0, 0) * worldWidth * 0.4);
   const excY = Math.floor(TB.CAVERN_Y + 10 + hashPos(seed + 2001, 0, 0) * 20);
 
   // Place a small shrine room (7 wide x 5 tall)
@@ -254,7 +254,7 @@ export function placeSpecialStructures(chunks: Map<number, TerrariaChunk>, seed:
   _setBlock(chunks, excX + 1, excY + 1, BlockType.ENCHANTED_TORCH);
 
   // Grail chamber: very deep (y ~ 20-35)
-  const grailX = Math.floor(TB.WORLD_WIDTH * 0.5 + hashPos(seed + 3000, 0, 0) * TB.WORLD_WIDTH * 0.3);
+  const grailX = Math.floor(worldWidth * 0.5 + hashPos(seed + 3000, 0, 0) * worldWidth * 0.3);
   const grailY = Math.floor(TB.UNDERWORLD_Y + 5 + hashPos(seed + 3001, 0, 0) * 15);
 
   _placeRoom(chunks, grailX - 4, grailY, 9, 6, BlockType.ENCHANTED_STONE);
@@ -263,7 +263,102 @@ export function placeSpecialStructures(chunks: Map<number, TerrariaChunk>, seed:
   _setBlock(chunks, grailX + 2, grailY + 1, BlockType.ENCHANTED_TORCH);
   _setBlock(chunks, grailX, grailY + 3, BlockType.THRONE);
 
+  // --- Scatter additional structures throughout the underground ---
+  _placeUndergroundStructures(chunks, seed, worldWidth);
+
   return { excaliburX: excX, excaliburY: excY + 1, grailX, grailY: grailY + 1 };
+}
+
+function _placeUndergroundStructures(chunks: Map<number, TerrariaChunk>, seed: number, worldWidth: number): void {
+  // Treasure rooms (small rooms with chests and torches)
+  const numTreasure = Math.floor(worldWidth / 40);
+  for (let i = 0; i < numTreasure; i++) {
+    const tx = Math.floor(hashPos(seed + 4000 + i, i, 0) * (worldWidth - 20) + 10);
+    const ty = Math.floor(TB.CAVERN_Y + hashPos(seed + 4100 + i, i, 0) * (TB.UNDERGROUND_Y - TB.CAVERN_Y - 10));
+    _placeRoom(chunks, tx - 3, ty, 7, 5, BlockType.STONE_BRICKS);
+    _setBlock(chunks, tx, ty + 1, BlockType.CHEST);
+    _setBlock(chunks, tx - 1, ty + 3, BlockType.TORCH);
+    _setBlock(chunks, tx + 1, ty + 3, BlockType.TORCH);
+  }
+
+  // Mushroom caves (larger caverns with mushrooms and glowing crystals)
+  const numMushroom = Math.floor(worldWidth / 80);
+  for (let i = 0; i < numMushroom; i++) {
+    const mx = Math.floor(hashPos(seed + 5000 + i, i, 0) * (worldWidth - 30) + 15);
+    const my = Math.floor(TB.UNDERGROUND_Y - 10 + hashPos(seed + 5100 + i, i, 0) * 20);
+    const rw = 9 + Math.floor(hashPos(seed + 5200 + i, i, 0) * 6);
+    const rh = 6 + Math.floor(hashPos(seed + 5300 + i, i, 0) * 3);
+    _placeRoom(chunks, mx - Math.floor(rw / 2), my, rw, rh, BlockType.MOSS_STONE);
+    // Mushrooms on floor
+    for (let dx = 2; dx < rw - 2; dx++) {
+      if (hashPos(seed + 5400 + i * 10 + dx, my, 0) < 0.4) {
+        _setBlock(chunks, mx - Math.floor(rw / 2) + dx, my + 1, BlockType.MUSHROOM);
+      }
+    }
+    // Glow crystals on ceiling
+    for (let dx = 1; dx < rw - 1; dx += 2) {
+      if (hashPos(seed + 5500 + i * 10 + dx, my, 0) < 0.3) {
+        _setBlock(chunks, mx - Math.floor(rw / 2) + dx, my + rh - 2, BlockType.CRYSTAL_ORE);
+      }
+    }
+  }
+
+  // Dungeon corridors (long horizontal tunnels with stone brick walls)
+  const numDungeons = Math.floor(worldWidth / 100);
+  for (let i = 0; i < numDungeons; i++) {
+    const dx = Math.floor(hashPos(seed + 6000 + i, i, 0) * (worldWidth - 50) + 25);
+    const dy = Math.floor(TB.CAVERN_Y + 5 + hashPos(seed + 6100 + i, i, 0) * 30);
+    const corridorLen = 15 + Math.floor(hashPos(seed + 6200 + i, i, 0) * 20);
+    for (let cx = 0; cx < corridorLen; cx++) {
+      _setBlock(chunks, dx + cx, dy, BlockType.STONE_BRICKS);
+      _setBlock(chunks, dx + cx, dy + 1, BlockType.AIR);
+      _setBlock(chunks, dx + cx, dy + 2, BlockType.AIR);
+      _setBlock(chunks, dx + cx, dy + 3, BlockType.AIR);
+      _setBlock(chunks, dx + cx, dy + 4, BlockType.STONE_BRICKS);
+    }
+    // Torches every 5 blocks
+    for (let cx = 2; cx < corridorLen - 2; cx += 5) {
+      _setBlock(chunks, dx + cx, dy + 3, BlockType.TORCH);
+    }
+    // Occasional room branching off corridor
+    if (hashPos(seed + 6300 + i, i, 0) < 0.6) {
+      const roomX = dx + Math.floor(corridorLen * 0.5);
+      _placeRoom(chunks, roomX - 3, dy + 4, 7, 5, BlockType.CASTLE_WALL);
+      _setBlock(chunks, roomX, dy + 5, BlockType.CHEST);
+      _setBlock(chunks, roomX - 2, dy + 7, BlockType.ENCHANTED_TORCH);
+    }
+  }
+
+  // Lava pools in underworld
+  const numLavaPools = Math.floor(worldWidth / 30);
+  for (let i = 0; i < numLavaPools; i++) {
+    const lx = Math.floor(hashPos(seed + 7000 + i, i, 0) * (worldWidth - 10) + 5);
+    const ly = Math.floor(2 + hashPos(seed + 7100 + i, i, 0) * (TB.UNDERWORLD_Y - 4));
+    const lw = 3 + Math.floor(hashPos(seed + 7200 + i, i, 0) * 6);
+    for (let dx = 0; dx < lw; dx++) {
+      _setBlock(chunks, lx + dx, ly, BlockType.LAVA);
+      _setBlock(chunks, lx + dx, ly + 1, BlockType.LAVA);
+    }
+  }
+
+  // Surface ruins (scattered cobblestone structures)
+  const numRuins = Math.floor(worldWidth / 60);
+  for (let i = 0; i < numRuins; i++) {
+    const rx = Math.floor(hashPos(seed + 8000 + i, i, 0) * (worldWidth - 20) + 10);
+    const ry = getSurfaceHeight(rx);
+    // Small ruined walls
+    const wallH = 3 + Math.floor(hashPos(seed + 8100 + i, i, 0) * 3);
+    for (let dy = 1; dy <= wallH; dy++) {
+      if (hashPos(seed + 8200 + i, dy, 0) < 0.7) {
+        _setBlock(chunks, rx, ry + dy, BlockType.COBBLESTONE);
+      }
+      if (hashPos(seed + 8300 + i, dy, 0) < 0.5) {
+        _setBlock(chunks, rx + 4, ry + dy, BlockType.COBBLESTONE);
+      }
+    }
+    // Chest inside
+    _setBlock(chunks, rx + 2, ry + 1, BlockType.CHEST);
+  }
 }
 
 function _placeRoom(chunks: Map<number, TerrariaChunk>, startX: number, startY: number, w: number, h: number, wallBlock: BlockType): void {
