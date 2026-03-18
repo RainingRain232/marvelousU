@@ -316,6 +316,12 @@ const GAME_MODES: GameModeEntry[] = [
     desc: "Merlin soars on an eagle over the city of Camelot — flight simulator",
     skipSetup: true,
   },
+  {
+    mode: GameMode.TERRARIA,
+    label: "CAMELOT DIG",
+    desc: "2D sandbox — dig deep, build Camelot, seek the Holy Grail underground",
+    skipSetup: true,
+  },
 ];
 
 // ---------------------------------------------------------------------------

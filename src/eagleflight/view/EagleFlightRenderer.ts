@@ -952,12 +952,26 @@ export class EagleFlightRenderer {
       // Brick course rings on wall towers
       for (let br = 0; br < 7; br++) {
         const brickRing = new THREE.Mesh(
-          new THREE.TorusGeometry(towerRadius + 0.02 - br * 0.01, 0.04, 8, 28),
+          new THREE.TorusGeometry(towerRadius + 0.02 - br * 0.01, 0.08, 8, 28),
           mortarMat,
         );
         brickRing.position.set(tx, 2 + br * 2, tz);
         brickRing.rotation.x = Math.PI / 2;
         this._wallsGroup.add(brickRing);
+        // Vertical brick joints (staggered per row)
+        const jointCount = 8;
+        for (let bj = 0; bj < jointCount; bj++) {
+          const ja = ((bj + (br % 2 === 0 ? 0 : 0.5)) / jointCount) * Math.PI * 2;
+          const jx = tx + Math.cos(ja) * (towerRadius + 0.04);
+          const jz = tz + Math.sin(ja) * (towerRadius + 0.04);
+          const joint = new THREE.Mesh(
+            new THREE.BoxGeometry(0.06, 1.8, 0.06),
+            mortarMat,
+          );
+          joint.position.set(jx, 2 + br * 2 + 1, jz);
+          joint.rotation.y = ja;
+          this._wallsGroup.add(joint);
+        }
       }
 
       // Tower parapet with individual merlons
@@ -1376,7 +1390,7 @@ export class EagleFlightRenderer {
       // Stone course rings on tower (major)
       for (let sr = 0; sr < 4; sr++) {
         const stoneRing = new THREE.Mesh(
-          new THREE.TorusGeometry(4.15 - sr * 0.05, 0.12, 8, 28),
+          new THREE.TorusGeometry(4.15 - sr * 0.05, 0.18, 8, 28),
           darkStoneMat,
         );
         stoneRing.position.set(co.x, 5 + sr * 5, co.z);
@@ -1386,12 +1400,26 @@ export class EagleFlightRenderer {
       // Fine brick mortar rings on castle corner towers
       for (let br = 0; br < 14; br++) {
         const brickRing = new THREE.Mesh(
-          new THREE.TorusGeometry(4.08, 0.04, 8, 28),
+          new THREE.TorusGeometry(4.08, 0.08, 8, 28),
           darkStoneMat,
         );
         brickRing.position.set(co.x, 4 + br * 1.4, co.z);
         brickRing.rotation.x = Math.PI / 2;
         this._castleGroup.add(brickRing);
+        // Vertical brick joints (staggered per row)
+        const jointCount = 10;
+        for (let bj = 0; bj < jointCount; bj++) {
+          const ja = ((bj + (br % 2 === 0 ? 0 : 0.5)) / jointCount) * Math.PI * 2;
+          const jx = co.x + Math.cos(ja) * 4.1;
+          const jz = co.z + Math.sin(ja) * 4.1;
+          const joint = new THREE.Mesh(
+            new THREE.BoxGeometry(0.06, 1.3, 0.06),
+            darkStoneMat,
+          );
+          joint.position.set(jx, 4 + br * 1.4 + 0.7, jz);
+          joint.rotation.y = ja;
+          this._castleGroup.add(joint);
+        }
       }
 
       // Tower upper parapet ring
@@ -2540,11 +2568,7 @@ export class EagleFlightRenderer {
     roof.castShadow = true;
     group.add(roof);
 
-    // Ridge beam on top of roof
-    const ridgeMat = new THREE.MeshStandardMaterial({ color: 0x553322, roughness: 0.85 });
-    const ridge = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, d + 0.5), ridgeMat);
-    ridge.position.y = h + roofH + 0.6;
-    group.add(ridge);
+    // Ridge beam removed
 
     // Roof eaves (overhang detail)
     const eavesMat = new THREE.MeshStandardMaterial({ color: 0x664433, roughness: 0.85 });

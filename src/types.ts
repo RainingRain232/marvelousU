@@ -680,6 +680,7 @@ export enum GameMode {
   SETTLERS = "settlers",
   CAMELOT_CRAFT = "camelot_craft",
   EAGLE_FLIGHT = "eagle_flight",
+  TERRARIA = "terraria",
 }
 
 // ---------------------------------------------------------------------------

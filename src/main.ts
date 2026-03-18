@@ -139,6 +139,7 @@ import { ArthurianRPGGame } from "./arthurianrpg/ArthurianRPGGame";
 import { SettlersGame } from "./settlers/SettlersGame";
 import type { SettlersMapMode } from "./settlers/state/SettlersState";
 import { CamelotCraftGame } from "./camelotcraft/CamelotCraftGame";
+import { TerrariaGame } from "./terraria/TerrariaGame";
 import { EagleFlightGame } from "./eagleflight/EagleFlightGame";
 import { camelotHubScreen } from "@view/ui/CamelotHubScreen";
 
@@ -335,6 +336,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     [GameMode.SETTLERS]: 23,
     [GameMode.CAMELOT_CRAFT]: 24,
     [GameMode.EAGLE_FLIGHT]: 25,
+    [GameMode.TERRARIA]: 26,
   };
   // Modes that need the setup screen (not skipSetup)
   const NEEDS_SETUP = new Set([GameMode.STANDARD, GameMode.DEATHMATCH, GameMode.BATTLEFIELD, GameMode.ROGUELIKE, GameMode.WAVE]);
@@ -479,6 +481,11 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     if (menuScreen.selectedGameMode === GameMode.EAGLE_FLIGHT) {
       menuScreen.hide();
       _bootEagleFlightGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.TERRARIA) {
+      menuScreen.hide();
+      _bootTerrariaGame();
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.WORLD) {
@@ -3173,6 +3180,31 @@ async function _bootEagleFlightGame(): Promise<void> {
     menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
   window.addEventListener("eagleFlightExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Terraria (2D sandbox) boot
+// ---------------------------------------------------------------------------
+
+let _terrariaGame: TerrariaGame | null = null;
+
+async function _bootTerrariaGame(): Promise<void> {
+  if (_terrariaGame) {
+    _terrariaGame.destroy();
+    _terrariaGame = null;
+  }
+  viewManager.clearWorld();
+  _terrariaGame = new TerrariaGame();
+  await _terrariaGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("terrariaExit", _onExit);
+    if (_terrariaGame) {
+      _terrariaGame.destroy();
+      _terrariaGame = null;
+    }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("terrariaExit", _onExit);
 }
 
 // ---------------------------------------------------------------------------
