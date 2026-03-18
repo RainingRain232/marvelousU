@@ -606,24 +606,25 @@ export class MenuScreen {
     this._loadWaveBtnSlot.removeChildren();
 
     const CW = this._screen1CardW;
+    const padX = 24;
     let bottomY = this._loadWaveBtnSlotY;
 
     if (this.hasWaveSave) {
-      const loadW = CW - 40;
+      const loadW = CW - padX * 2;
       const loadWaveBtn = makeActionBtn(loadW, this._s1UtilBtnH, "LOAD WAVE GAME", 0x1a2a2a, 0x44aaaa, 0x88ffff, () => this.onLoadWaveGame?.());
-      loadWaveBtn.position.set(20, bottomY);
+      loadWaveBtn.position.set(padX, bottomY);
       this._loadWaveBtnSlot.addChild(loadWaveBtn);
       this._s1NavItems.push({ container: loadWaveBtn, action: () => this.onLoadWaveGame?.() });
       bottomY += this._s1UtilBtnH + this._s1UtilGap;
     }
 
     // Reposition settings and back-to-map buttons, then resize card
-    this._s1SettingsBtn.position.set(20, bottomY);
+    this._s1SettingsBtn.position.set(padX, bottomY);
     bottomY += this._s1UtilBtnH + this._s1UtilGap;
-    this._s1BackMapBtn.position.set(20, bottomY);
+    this._s1BackMapBtn.position.set(padX, bottomY);
     bottomY += this._s1UtilBtnH + this._s1UtilGap;
 
-    this._screen1CardH = bottomY + 8;
+    this._screen1CardH = bottomY + 16;
 
     const bg = this._screen1Card.getChildAt(0) as Graphics;
     bg.clear();
@@ -673,192 +674,302 @@ export class MenuScreen {
   }
 
   private _buildScreen1(): void {
-    const CW = this._screen1CardW;
+    const CW = this._screen1CardW; // 820
+    const padX = 24;
+    const hcx = CW / 2;
     this._screen1 = new Container();
     this.container.addChild(this._screen1);
 
-    const card = makePanel(CW, 600); // will resize
+    const card = makePanel(CW, 600); // will resize at bottom
     this._screen1.addChild(card);
     this._screen1Card = card;
 
+    // ── ORNATE HEADER ──────────────────────────────────────────
+    const headerGfx = new Graphics();
+    // Left ornamental line with end caps
+    headerGfx.moveTo(30, 30).lineTo(hcx - 140, 30)
+      .stroke({ color: BORDER_COLOR, alpha: 0.25, width: 1 });
+    // Right ornamental line
+    headerGfx.moveTo(hcx + 140, 30).lineTo(CW - 30, 30)
+      .stroke({ color: BORDER_COLOR, alpha: 0.25, width: 1 });
+    // Small diamonds at line ends
+    for (const dx of [30, CW - 30]) {
+      headerGfx.moveTo(dx, 27).lineTo(dx + 3, 30).lineTo(dx, 33).lineTo(dx - 3, 30).closePath()
+        .fill({ color: BORDER_COLOR, alpha: 0.3 });
+    }
+    // Outer corner accents (small L-shapes in gold)
+    for (const [ox, oy, sx, sy] of [[8, 8, 1, 1], [CW - 8, 8, -1, 1], [8, -1, 1, -1], [CW - 8, -1, -1, -1]] as [number, number, number, number][]) {
+      headerGfx.moveTo(ox, oy).lineTo(ox + sx * 18, oy).stroke({ color: BORDER_COLOR, alpha: 0.15, width: 1 });
+      headerGfx.moveTo(ox, oy).lineTo(ox, oy + sy * 18).stroke({ color: BORDER_COLOR, alpha: 0.15, width: 1 });
+    }
+    // Center diamond (larger)
+    headerGfx.moveTo(hcx, 22).lineTo(hcx + 8, 30).lineTo(hcx, 38).lineTo(hcx - 8, 30).closePath()
+      .fill({ color: BORDER_COLOR, alpha: 0.4 })
+      .stroke({ color: BORDER_COLOR, alpha: 0.6, width: 1 });
+    // Inner diamond
+    headerGfx.moveTo(hcx, 26).lineTo(hcx + 4, 30).lineTo(hcx, 34).lineTo(hcx - 4, 30).closePath()
+      .fill({ color: 0xfff8e0, alpha: 0.7 });
+    card.addChild(headerGfx);
+
     // Title
-    const title = new Text({ text: t("menu.select_mode"), style: STYLE_TITLE });
+    const title = new Text({ text: t("menu.select_mode"), style: new TextStyle({
+      fontFamily: "monospace", fontSize: 26, fill: 0xffd700, fontWeight: "bold", letterSpacing: 6,
+      dropShadow: { color: 0x000000, blur: 6, distance: 0, alpha: 0.7 },
+    }) });
     title.anchor.set(0.5, 0);
-    title.position.set(CW / 2, 18);
+    title.position.set(hcx, 44);
     card.addChild(title);
 
-    // Divider
-    card.addChild(
-      new Graphics()
-        .rect(20, 58, CW - 40, 1)
-        .fill({ color: BORDER_COLOR, alpha: 0.2 }),
-    );
+    // Sub-flourish below title
+    const subGfx = new Graphics();
+    subGfx.moveTo(hcx - 100, 76).lineTo(hcx - 20, 76).stroke({ color: BORDER_COLOR, alpha: 0.2, width: 1 });
+    subGfx.moveTo(hcx + 20, 76).lineTo(hcx + 100, 76).stroke({ color: BORDER_COLOR, alpha: 0.2, width: 1 });
+    subGfx.circle(hcx, 76, 2).fill({ color: BORDER_COLOR, alpha: 0.4 });
+    // Tiny dots along the sub-flourish
+    for (const dx of [-80, -60, -40, 40, 60, 80]) {
+      subGfx.circle(hcx + dx, 76, 1).fill({ color: BORDER_COLOR, alpha: 0.15 });
+    }
+    card.addChild(subGfx);
 
-    // Mode buttons — single column, full width
-    const mbW = CW - 40;
-    const mbH = 38;
-    const modeGap = 5;
-    const modeStartY = 70;
+    // ── CATEGORY GRID ──────────────────────────────────────────
+    const categories: { title: string; color: number; indices: number[] }[] = [
+      { title: "STRATEGY & TACTICS", color: 0xffd700, indices: [0, 1, 2, 3, 4, 5, 6] },
+      { title: "ADVENTURE & RPG", color: 0x44ddaa, indices: [7, 22, 19, 23, 8, 9, 10] },
+      { title: "3D ACTION & COMBAT", color: 0xff7744, indices: [11, 16, 12, 13, 14, 15, 17, 18] },
+      { title: "WORLDS & SPORTS", color: 0x6699ff, indices: [20, 21, 24, 25, 26] },
+    ];
 
+    const COLS = 3;
+    const gapX = 10;
+    const gapY = 8;
+    const tileW = Math.floor((CW - padX * 2 - gapX * (COLS - 1)) / COLS);
+    const tileH = 56;
+
+    let curY = 90;
     this._s1NavItems = [];
 
-    for (let i = 0; i < GAME_MODES.length; i++) {
-      const entry = GAME_MODES[i];
-      const modeBtn = new Container();
-      modeBtn.eventMode = "static";
-      modeBtn.cursor = entry.disabled ? "default" : "pointer";
-      modeBtn.position.set(20, modeStartY + i * (mbH + modeGap));
+    for (const cat of categories) {
+      curY += 6;
 
-      const modeBg = new Graphics();
-      modeBtn.addChild(modeBg);
+      // ── Category ornamental header ──
+      const catGfx = new Graphics();
+      // Leading accent line
+      catGfx.moveTo(padX, curY + 7).lineTo(padX + 14, curY + 7)
+        .stroke({ color: cat.color, alpha: 0.6, width: 2 });
+      // Small diamond
+      const dOff = padX + 20;
+      catGfx.moveTo(dOff, curY + 4).lineTo(dOff + 3, curY + 7).lineTo(dOff, curY + 10).lineTo(dOff - 3, curY + 7).closePath()
+        .fill({ color: cat.color, alpha: 0.6 });
+      card.addChild(catGfx);
 
-      const mLabel = new Text({ text: entry.label, style: STYLE_MODE_INACTIVE });
-      mLabel.anchor.set(0, 0.5);
-      mLabel.position.set(12, mbH / 2);
-      modeBtn.addChild(mLabel);
+      const catLabel = new Text({ text: cat.title, style: new TextStyle({
+        fontFamily: "monospace", fontSize: 10, fill: cat.color, fontWeight: "bold", letterSpacing: 3,
+      }) });
+      catLabel.position.set(padX + 28, curY);
+      card.addChild(catLabel);
 
-      const dLabel = new Text({ text: entry.desc, style: STYLE_LABEL });
-      dLabel.anchor.set(1, 0.5);
-      dLabel.position.set(mbW - 12, mbH / 2);
-      modeBtn.addChild(dLabel);
+      // Right-side ornamental line extending from after the text
+      const rightLineStart = padX + 28 + cat.title.length * 7.5 + 10;
+      const catLineRight = new Graphics();
+      catLineRight.moveTo(rightLineStart, curY + 7).lineTo(CW - padX, curY + 7)
+        .stroke({ color: cat.color, alpha: 0.12, width: 1 });
+      // End diamond on right
+      catLineRight.moveTo(CW - padX, curY + 4).lineTo(CW - padX + 3, curY + 7).lineTo(CW - padX, curY + 10).lineTo(CW - padX - 3, curY + 7).closePath()
+        .fill({ color: cat.color, alpha: 0.2 });
+      card.addChild(catLineRight);
 
-      // Draw bg
-      const drawBg = (selected: boolean) => {
-        modeBg.clear();
-        if (entry.disabled) {
-          modeBg
-            .roundRect(0, 0, mbW, mbH, 4)
-            .fill({ color: 0x0d0d1a })
-            .roundRect(0, 0, mbW, mbH, 4)
-            .stroke({ color: 0x223333, width: 1 });
-          mLabel.style = STYLE_MODE_DISABLED;
-          dLabel.style = STYLE_MODE_DISABLED;
-        } else if (selected) {
-          modeBg
-            .roundRect(0, 0, mbW, mbH, 4)
-            .fill({ color: 0x1a1e2e })
-            .roundRect(0, 0, mbW, mbH, 4)
-            .stroke({ color: 0xffd700, width: 1.5 });
-          mLabel.style = STYLE_MODE_ACTIVE;
-        } else {
-          modeBg
-            .roundRect(0, 0, mbW, mbH, 4)
-            .fill({ color: 0x12121e })
-            .roundRect(0, 0, mbW, mbH, 4)
-            .stroke({ color: 0x334455, width: 1 });
-          mLabel.style = STYLE_MODE_INACTIVE;
-        }
-      };
+      curY += 22;
 
-      drawBg(i === this._selectedModeIndex);
+      // ── Mode tiles in grid ──
+      for (let j = 0; j < cat.indices.length; j++) {
+        const modeIdx = cat.indices[j];
+        const entry = GAME_MODES[modeIdx];
+        const col = j % COLS;
+        const row = Math.floor(j / COLS);
+        const tx = padX + col * (tileW + gapX);
+        const ty = curY + row * (tileH + gapY);
 
-      const idx = i;
-      if (!entry.disabled) {
-        modeBtn.on("pointerover", () => {
-          modeBg.clear();
-          modeBg
-            .roundRect(0, 0, mbW, mbH, 4)
-            .fill({ color: 0x1a2a3a })
-            .roundRect(0, 0, mbW, mbH, 4)
-            .stroke({ color: 0x6688aa, width: 1.5 });
-        });
-        modeBtn.on("pointerout", () => {
-          drawBg(idx === this._selectedModeIndex);
-        });
-        modeBtn.on("pointerdown", () => {
-          this._selectedModeIndex = idx;
-          if (entry.skipSetup) {
-            this.onContinue?.();
+        const tile = new Container();
+        tile.eventMode = "static";
+        tile.cursor = entry.disabled ? "default" : "pointer";
+        tile.position.set(tx, ty);
+
+        // Tile background
+        const tileBg = new Graphics();
+        tile.addChild(tileBg);
+
+        // Top accent line (colored)
+        const accentGfx = new Graphics();
+        accentGfx.roundRect(4, 0, tileW - 8, 2, 1).fill({ color: cat.color, alpha: 0.45 });
+        tile.addChild(accentGfx);
+
+        // Mode name
+        const nameText = new Text({ text: entry.label, style: new TextStyle({
+          fontFamily: "monospace", fontSize: 12, fill: 0xddddee, fontWeight: "bold", letterSpacing: 1,
+        }) });
+        nameText.anchor.set(0.5, 0);
+        nameText.position.set(tileW / 2, 8);
+        tile.addChild(nameText);
+
+        // Description
+        const descText = new Text({ text: entry.desc, style: new TextStyle({
+          fontFamily: "monospace", fontSize: 9, fill: 0x556677, letterSpacing: 0.5,
+          wordWrap: true, wordWrapWidth: tileW - 16,
+        }) });
+        descText.anchor.set(0.5, 0);
+        descText.position.set(tileW / 2, 26);
+        tile.addChild(descText);
+
+        // Draw tile background based on state
+        const catColor = cat.color;
+        const drawTileBg = (state: "normal" | "hover" | "disabled") => {
+          tileBg.clear();
+          accentGfx.clear();
+          if (state === "disabled") {
+            tileBg.roundRect(0, 0, tileW, tileH, 5)
+              .fill({ color: 0x0d0d1a })
+              .roundRect(0, 0, tileW, tileH, 5)
+              .stroke({ color: 0x1a1a2a, width: 1 });
+            nameText.style.fill = 0x445566;
+            descText.style.fill = 0x334455;
+            accentGfx.roundRect(4, 0, tileW - 8, 2, 1).fill({ color: 0x334455, alpha: 0.3 });
+          } else if (state === "hover") {
+            tileBg.roundRect(0, 0, tileW, tileH, 5)
+              .fill({ color: 0x1a2a3a })
+              .roundRect(0, 0, tileW, tileH, 5)
+              .stroke({ color: catColor, alpha: 0.8, width: 1.5 });
+            // Subtle inner glow
+            tileBg.roundRect(1, 1, tileW - 2, tileH - 2, 4)
+              .stroke({ color: catColor, alpha: 0.15, width: 1 });
+            nameText.style.fill = 0xffffff;
+            descText.style.fill = 0x8899aa;
+            accentGfx.roundRect(2, 0, tileW - 4, 2, 1).fill({ color: catColor, alpha: 0.9 });
           } else {
-            this._showScreen2();
+            tileBg.roundRect(0, 0, tileW, tileH, 5)
+              .fill({ color: 0x12121e })
+              .roundRect(0, 0, tileW, tileH, 5)
+              .stroke({ color: 0x2a2a3a, width: 1 });
+            nameText.style.fill = 0xddddee;
+            descText.style.fill = 0x556677;
+            accentGfx.roundRect(4, 0, tileW - 8, 2, 1).fill({ color: catColor, alpha: 0.45 });
           }
-        });
+        };
 
-        // Register for keyboard navigation
-        this._s1NavItems.push({
-          container: modeBtn,
-          action: () => {
+        drawTileBg(entry.disabled ? "disabled" : "normal");
+
+        if (!entry.disabled) {
+          const idx = modeIdx;
+          tile.on("pointerover", () => drawTileBg("hover"));
+          tile.on("pointerout", () => drawTileBg("normal"));
+          tile.on("pointerdown", () => {
             this._selectedModeIndex = idx;
             if (entry.skipSetup) {
               this.onContinue?.();
             } else {
               this._showScreen2();
             }
-          },
-        });
+          });
+
+          this._s1NavItems.push({
+            container: tile,
+            action: () => {
+              this._selectedModeIndex = idx;
+              if (entry.skipSetup) {
+                this.onContinue?.();
+              } else {
+                this._showScreen2();
+              }
+            },
+          });
+        }
+
+        card.addChild(tile);
       }
 
-      card.addChild(modeBtn);
+      const rows = Math.ceil(cat.indices.length / COLS);
+      curY += rows * (tileH + gapY);
     }
 
-    // Divider after modes
-    const modesEndY = modeStartY + GAME_MODES.length * (mbH + modeGap);
-    card.addChild(
-      new Graphics()
-        .rect(20, modesEndY, CW - 40, 1)
-        .fill({ color: BORDER_COLOR, alpha: 0.2 }),
-    );
+    // ── BOTTOM ORNAMENTAL DIVIDER ──
+    curY += 4;
+    const botDiv = new Graphics();
+    botDiv.moveTo(padX, curY).lineTo(CW - padX, curY)
+      .stroke({ color: BORDER_COLOR, alpha: 0.15, width: 1 });
+    // Center ornament
+    botDiv.moveTo(hcx - 5, curY).lineTo(hcx, curY - 5).lineTo(hcx + 5, curY).lineTo(hcx, curY + 5).closePath()
+      .fill({ color: BORDER_COLOR, alpha: 0.3 });
+    // Small side dots
+    for (const dx of [-30, -20, 20, 30]) {
+      botDiv.circle(hcx + dx, curY, 1).fill({ color: BORDER_COLOR, alpha: 0.2 });
+    }
+    card.addChild(botDiv);
+    curY += 16;
 
-    // Utility buttons — compact row layout
-    const utilY = modesEndY + 12;
+    // ── UTILITY BUTTONS ──────────────────────────────────────
     const utilBtnH = 34;
     const utilGap = 6;
 
-    // Row 1: Wiki button (full width)
-    const fullW = CW - 40;
-    const wikiBtn = makeActionBtn(fullW, utilBtnH, "WIKI", 0x1a1a3a, 0x4488cc, 0x88bbff, () => this.onWiki?.());
-    wikiBtn.position.set(20, utilY);
+    // Row 1: Wiki | Quickplay | Multiplayer (3 across)
+    const btn3W = Math.floor((CW - padX * 2 - utilGap * 2) / 3);
+
+    const wikiBtn = makeActionBtn(btn3W, utilBtnH, "WIKI", 0x1a1a3a, 0x4488cc, 0x88bbff, () => this.onWiki?.());
+    wikiBtn.position.set(padX, curY);
     card.addChild(wikiBtn);
     this._s1NavItems.push({ container: wikiBtn, action: () => this.onWiki?.() });
 
-    // Row 2: Quickplay + Multiplayer
-    const halfW = Math.floor((CW - 40 - utilGap) / 2);
-    const row2Y = utilY + utilBtnH + utilGap;
-
-    const qpBtn = makeActionBtn(halfW, utilBtnH, "QUICKPLAY >>", 0x2a1a0a, 0xcc8833, 0xffcc66, () => this.onQuickPlay?.());
-    qpBtn.position.set(20, row2Y);
+    const qpBtn = makeActionBtn(btn3W, utilBtnH, "QUICKPLAY", 0x2a1a0a, 0xcc8833, 0xffcc66, () => this.onQuickPlay?.());
+    qpBtn.position.set(padX + btn3W + utilGap, curY);
     card.addChild(qpBtn);
     this._s1NavItems.push({ container: qpBtn, action: () => this.onQuickPlay?.() });
 
-    const mpBtn = makeActionBtn(halfW, utilBtnH, "MULTIPLAYER", 0x1a1a3a, 0x6666cc, 0x9999ff, () => this.onMultiplayer?.());
-    mpBtn.position.set(20 + halfW + utilGap, row2Y);
+    const mpBtn = makeActionBtn(btn3W, utilBtnH, "MULTIPLAYER", 0x1a1a3a, 0x6666cc, 0x9999ff, () => this.onMultiplayer?.());
+    mpBtn.position.set(padX + (btn3W + utilGap) * 2, curY);
     card.addChild(mpBtn);
     this._s1NavItems.push({ container: mpBtn, action: () => this.onMultiplayer?.() });
 
-    let bottomY = row2Y + utilBtnH + utilGap;
+    curY += utilBtnH + utilGap;
 
     // Optional: Load World Game
     if (hasWorldSave()) {
-      const loadW = CW - 40;
-      const loadBtn = makeActionBtn(loadW, utilBtnH, "LOAD WORLD GAME", 0x2a2a1a, 0xaaaa44, 0xdddd66, () => this.onLoadWorldGame?.());
-      loadBtn.position.set(20, bottomY);
+      const loadBtn = makeActionBtn(CW - padX * 2, utilBtnH, "LOAD WORLD GAME", 0x2a2a1a, 0xaaaa44, 0xdddd66, () => this.onLoadWorldGame?.());
+      loadBtn.position.set(padX, curY);
       card.addChild(loadBtn);
       this._s1NavItems.push({ container: loadBtn, action: () => this.onLoadWorldGame?.() });
-      bottomY += utilBtnH + utilGap;
+      curY += utilBtnH + utilGap;
     }
 
     // Dynamic slot: Load Wave Game (rebuilt on show())
     this._loadWaveBtnSlot = new Container();
-    this._loadWaveBtnSlotY = bottomY;
+    this._loadWaveBtnSlotY = curY;
     this._loadWaveBtnSlot.position.set(0, 0);
     card.addChild(this._loadWaveBtnSlot);
 
     // Settings button (repositioned dynamically by _rebuildLoadWaveButton)
-    const settingsW = CW - 40;
-    const settingsBtn = makeActionBtn(settingsW, utilBtnH, "SETTINGS", 0x1a1a1a, 0x666666, 0xaaaaaa, () => this.onSettings?.());
-    settingsBtn.position.set(20, bottomY);
+    const settingsBtn = makeActionBtn(CW - padX * 2, utilBtnH, "SETTINGS", 0x1a1a1a, 0x666666, 0xaaaaaa, () => this.onSettings?.());
+    settingsBtn.position.set(padX, curY);
     card.addChild(settingsBtn);
     this._s1NavItems.push({ container: settingsBtn, action: () => this.onSettings?.() });
-    bottomY += utilBtnH + utilGap;
+    curY += utilBtnH + utilGap;
 
     // Back to Map button
-    const backMapBtn = makeActionBtn(CW - 40, utilBtnH, "\u25c0 BACK TO MAP", 0x1a2a1a, 0x55aa55, 0x88dd88, () => this.onBackToMap?.());
-    backMapBtn.position.set(20, bottomY);
+    const backMapBtn = makeActionBtn(CW - padX * 2, utilBtnH, "\u25c0 BACK TO MAP", 0x1a2a1a, 0x55aa55, 0x88dd88, () => this.onBackToMap?.());
+    backMapBtn.position.set(padX, curY);
     card.addChild(backMapBtn);
     this._s1NavItems.push({ container: backMapBtn, action: () => this.onBackToMap?.() });
-    bottomY += utilBtnH + utilGap;
+    curY += utilBtnH + utilGap;
 
-    this._screen1CardH = bottomY + 8;
+    // ── BOTTOM FLOURISH ──
+    const footGfx = new Graphics();
+    footGfx.moveTo(30, curY + 4).lineTo(hcx - 12, curY + 4)
+      .stroke({ color: BORDER_COLOR, alpha: 0.15, width: 1 });
+    footGfx.moveTo(hcx + 12, curY + 4).lineTo(CW - 30, curY + 4)
+      .stroke({ color: BORDER_COLOR, alpha: 0.15, width: 1 });
+    footGfx.moveTo(hcx, curY).lineTo(hcx + 4, curY + 4).lineTo(hcx, curY + 8).lineTo(hcx - 4, curY + 4).closePath()
+      .fill({ color: BORDER_COLOR, alpha: 0.25 });
+    card.addChild(footGfx);
+    curY += 16;
+
+    this._screen1CardH = curY;
 
     // Store refs for dynamic repositioning
     this._s1SettingsBtn = settingsBtn;
@@ -874,7 +985,7 @@ export class MenuScreen {
       .roundRect(0, 0, CW, this._screen1CardH, 8)
       .stroke({ color: BORDER_COLOR, alpha: 0.4, width: 1.5 });
 
-    // Focus border for keyboard navigation (rendered on top of everything)
+    // Focus border for keyboard navigation
     this._s1FocusBorder = new Graphics();
     this._s1FocusBorder.visible = false;
     card.addChild(this._s1FocusBorder);
@@ -887,25 +998,21 @@ export class MenuScreen {
     // Animated castle renderer beside the card
     this._buildingContainer = new Container();
     this._screen1.addChild(this._buildingContainer);
-
-    // Dark preview backdrop
     this._buildingPreviewGfx = new Graphics();
     this._buildingContainer.addChild(this._buildingPreviewGfx);
-
-    // Create the castle renderer
     this._buildingRenderer = new House1Renderer(null);
     this._buildingContainer.addChild(this._buildingRenderer.container);
 
-    // Keyboard listener
+    // Keyboard listener (supports grid: left/right + up/down)
     this._onKeydown = (e: KeyboardEvent) => {
       if (!this.container.visible || !this._screen1.visible) return;
       if (this._s1NavItems.length === 0) return;
 
-      if (e.key === "ArrowDown") {
+      if (e.key === "ArrowDown" || e.key === "ArrowRight") {
         e.preventDefault();
         this._s1FocusIndex = (this._s1FocusIndex + 1) % this._s1NavItems.length;
         this._updateS1Focus();
-      } else if (e.key === "ArrowUp") {
+      } else if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
         e.preventDefault();
         this._s1FocusIndex = (this._s1FocusIndex - 1 + this._s1NavItems.length) % this._s1NavItems.length;
         this._updateS1Focus();
@@ -2158,9 +2265,12 @@ export class MenuScreen {
     this._particles.resize(sw, sh);
 
     if (this._screen1?.visible) {
-      // Offset card slightly left to make room for the building renderer
-      const cardX = Math.floor((sw - this._screen1CardW) / 2) - 80;
-      const cardY = Math.floor((sh - this._screen1CardH) / 2);
+      // Center the wide card, or offset if there's room for the building renderer
+      const hasRoom = sw > this._screen1CardW + 260;
+      const cardX = hasRoom
+        ? Math.floor((sw - this._screen1CardW) / 2) - 100
+        : Math.floor((sw - this._screen1CardW) / 2);
+      const cardY = Math.max(8, Math.floor((sh - this._screen1CardH) / 2));
       this._screen1Card.position.set(cardX, cardY);
 
       // Position building renderer to the right of the card
@@ -2170,14 +2280,12 @@ export class MenuScreen {
         const bx = cardX + this._screen1CardW + 30;
         const by = cardY + Math.floor((this._screen1CardH - previewH) / 2);
 
-        // Dark backdrop with gold border
         this._buildingPreviewGfx.clear()
           .roundRect(0, 0, previewW, previewH, 8)
           .fill({ color: 0x0a0a18, alpha: 0.9 })
           .roundRect(0, 0, previewW, previewH, 8)
           .stroke({ color: BORDER_COLOR, alpha: 0.3, width: 1.5 });
 
-        // Ground plane
         const groundY = previewH * 0.72;
         this._buildingPreviewGfx
           .rect(0, groundY, previewW, previewH - groundY)
@@ -2186,11 +2294,8 @@ export class MenuScreen {
           .moveTo(0, groundY).lineTo(previewW, groundY)
           .stroke({ color: 0x4a6a2a, width: 1, alpha: 0.5 });
 
-        // "MAIN MENU" label below the preview
-        // (use a Graphics text approach — will be added as Text in init, but for simplicity redraw)
         this._buildingContainer.position.set(bx, by);
 
-        // Scale and center the castle renderer inside the preview
         if (this._buildingRenderer) {
           const rc = this._buildingRenderer.container;
           const bounds = rc.getLocalBounds();
@@ -2204,8 +2309,7 @@ export class MenuScreen {
           rc.y = (previewH - bh * scale) / 2 - bounds.y * scale;
         }
 
-        // Only show if there's enough room (screen wider than ~700px)
-        this._buildingContainer.visible = sw > 700;
+        this._buildingContainer.visible = hasRoom;
       }
     }
 
