@@ -168,7 +168,7 @@ export class EagleFlightRenderer {
     this._buildSky();
     this._buildGodRays();
     this._buildTerrain();
-    this._buildRiver();
+    // this._buildRiver();
     this._buildCityWalls();
     this._buildCastle();
     this._buildCity();
@@ -367,9 +367,9 @@ export class EagleFlightRenderer {
     // Terrain — use MeshStandardMaterial with vertex colors for reliable rendering
     // Compute vertex colors based on slope, height, and city proximity
     const vColors = new Float32Array(posAttr.count * 3);
-    const grassBase = new THREE.Color(0x4a7a3a);
-    const grassLight = new THREE.Color(0x5a9a4a);
-    const grassDark = new THREE.Color(0x3a6628);
+    const grassBase = new THREE.Color(0x3d5e30);
+    const grassLight = new THREE.Color(0x4a7038);
+    const grassDark = new THREE.Color(0x2e4c1e);
     const dirtColor = new THREE.Color(0x6a5a3a);
     const mudColor = new THREE.Color(0x5a4a30);
     const rockColor = new THREE.Color(0x7a7a6a);
@@ -545,7 +545,7 @@ export class EagleFlightRenderer {
       const dist = 30 + rng() * 260;
       const gx = Math.cos(angle) * dist;
       const gz = Math.sin(angle) * dist;
-      if (Math.abs(gz + 15) < 20 && dist < 200) continue;
+      // River exclusion zone removed (no river)
       if (Math.abs(gx) < 85 && Math.abs(gz) < 85) continue;
 
       const mat = grassMats[rng() > 0.5 ? 0 : 1];
@@ -3527,8 +3527,7 @@ export class EagleFlightRenderer {
     this._buildVillage(150, 40, rng);
     this._buildVillage(-130, -60, rng);
 
-    // Harbor/docks at river edge
-    this._buildHarbor(-180, -25);
+    // Harbor/docks removed (no river)
 
     // Windmills
     this._buildWindmill(140, -60);
