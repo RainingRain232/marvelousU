@@ -5,7 +5,8 @@
 import * as THREE from "three";
 import { CB } from "./config/CraftBalance";
 import { ItemType, WEAPON_DAMAGE } from "./config/CraftRecipeDefs";
-import { createCraftState, type CraftState, addMessage, getWorldBlock } from "./state/CraftState";
+import { createCraftState, type CraftState, addMessage, getWorldBlock, setWorldBlock } from "./state/CraftState";
+import { BlockType } from "./config/CraftBlockDefs";
 import { CraftChunk, chunkKey, worldToChunk } from "./state/CraftChunk";
 import { getHeldItem, addToInventory } from "./state/CraftInventory";
 import { generateChunkTerrain } from "./systems/CraftTerrainSystem";
@@ -24,10 +25,20 @@ import { updateFurnaces, getContainerInteraction, type ContainerInteraction } fr
 import { interactWithNPC } from "./systems/CraftNPCSystem";
 import { getMobsNear } from "./systems/CraftMobSystem";
 import { MobType, MOB_DEFS } from "./config/CraftMobDefs";
-import { updateDroppedItems } from "./systems/CraftItemDropSystem";
+import { updateDroppedItems, dropItem } from "./systems/CraftItemDropSystem";
 import { initMusic, updateMusic, stopMusic, destroyMusic } from "./systems/CraftMusicSystem";
+import { createMountState, tryMount, dismount, updateMount } from "./systems/CraftMountSystem";
+import { toggleDoor, isDoor } from "./systems/CraftDoorSystem";
 import { CraftRenderer } from "./view/CraftRenderer";
 import { CraftHUD } from "./view/CraftHUD";
+
+function hashString(str: string): number {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) {
+    h = ((h << 5) - h + str.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h);
+}
 
 export class CamelotCraftGame {
   private _state!: CraftState;
@@ -39,7 +50,12 @@ export class CamelotCraftGame {
   private _lastTime = 0;
   private _chunkGenQueue: [number, number][] = [];
 
-  // (no additional fields)
+  private _customSeed?: number;
+  private _isCreative = false;
+  private _isNewWorld = false;
+  private _tutorialStep = 0;
+  private _tutorialTimer = 0;
+  private _mount = createMountState();
 
   async boot(): Promise<void> {
     // --- Title / loading screen ---
@@ -64,6 +80,13 @@ export class CamelotCraftGame {
         <p style="font-size:16px;color:#C0A060;margin:8px 0 40px;font-style:italic;">
           Build thy kingdom. Seek the Grail. Forge thy legend.
         </p>
+        <div style="margin-bottom:20px;">
+          <label style="font-size:12px;color:#C0A060;">World Seed (optional):</label><br>
+          <input id="cc-seed-input" type="text" placeholder="Leave blank for random"
+            style="width:200px;padding:6px 10px;margin-top:4px;background:rgba(0,0,0,0.4);
+            border:1px solid #8B6914;border-radius:4px;color:#FFD700;font-size:14px;
+            text-align:center;font-family:Georgia,serif;">
+        </div>
         <div id="cc-menu-buttons" style="display:flex;flex-direction:column;gap:12px;align-items:center;"></div>
         <div style="margin-top:40px;font-size:12px;opacity:0.4;">
           WASD = Move | Mouse = Look | Left Click = Mine | Right Click = Place<br>
@@ -79,10 +102,24 @@ export class CamelotCraftGame {
     // New World button
     const newBtn = this._createMenuButton("⚔ New World", "#FFD700");
     newBtn.onclick = () => {
+      const seedInput = document.getElementById("cc-seed-input") as HTMLInputElement;
+      const seedVal = seedInput?.value?.trim();
+      this._customSeed = seedVal ? hashString(seedVal) : undefined;
       overlay.remove();
       this._startGame(false);
     };
     btnContainer.appendChild(newBtn);
+
+    const creativeBtn = this._createMenuButton("Creative Mode", "#4CAF50");
+    creativeBtn.onclick = () => {
+      const seedInput = document.getElementById("cc-seed-input") as HTMLInputElement;
+      const seedVal = seedInput?.value?.trim();
+      this._customSeed = seedVal ? hashString(seedVal) : undefined;
+      this._isCreative = true;
+      overlay.remove();
+      this._startGame(false);
+    };
+    btnContainer.appendChild(creativeBtn);
 
     // Continue button (if save exists)
     if (hasCraftSave()) {
@@ -133,11 +170,18 @@ export class CamelotCraftGame {
         this._state = createCraftState();
       }
     } else {
-      this._state = createCraftState();
+      this._state = createCraftState(this._customSeed);
+      this._isNewWorld = true;
     }
 
     this._state.screenW = window.innerWidth;
     this._state.screenH = window.innerHeight;
+
+    if (this._isCreative) {
+      this._state.creativeMode = true;
+      // Give starter items in creative
+      addMessage(this._state, "Creative Mode enabled! Fly with Space, infinite blocks.", 0x4CAF50);
+    }
 
     // Show loading screen
     const loadingEl = document.createElement("div");
@@ -235,6 +279,10 @@ export class CamelotCraftGame {
       if (!loadSave) {
         addMessage(this._state, "Welcome to Camelot Craft! Build thy kingdom.", 0xFFD700);
         addMessage(this._state, "Seek wood to craft tools. Build shelter before nightfall!", 0xC0A060);
+
+        // Tutorial hints (show progressively)
+        this._tutorialStep = 0;
+        this._tutorialTimer = 0;
       }
 
       // HUD callbacks
@@ -448,17 +496,44 @@ export class CamelotCraftGame {
     this._state.screenW = window.innerWidth;
     this._state.screenH = window.innerHeight;
 
+    // --- Creative mode: prevent death ---
+    if (this._state.creativeMode) {
+      this._state.player.hp = this._state.player.maxHp;
+    }
+
     // --- Death check ---
     if (this._state.player.hp <= 0 && !this._state.gameOver) {
       this._handleDeath();
       return;
     }
 
-    // --- Input & player physics ---
-    this._input.update(this._state, dt);
+    // --- Mount system ---
+    if (this._mount.mounted) {
+      updateMount(this._state, this._mount, dt, this._input.keys);
+      // F key to dismount
+      if (this._input.keys["KeyF"] && this._mount.dismountCd <= 0) {
+        dismount(this._state, this._mount);
+      }
+    } else {
+      // F key to mount nearby horse
+      if (this._input.keys["KeyF"]) {
+        tryMount(this._state, this._mount);
+      }
+    }
+
+    // --- Input & player physics (skip if mounted — mount handles movement) ---
+    if (!this._mount.mounted) {
+      this._input.update(this._state, dt);
+    } else {
+      // Still need mouse look while mounted
+      const p = this._state.player;
+      p.yaw -= this._input.mouseDelta.x * 0.002;
+      p.pitch -= this._input.mouseDelta.y * 0.002;
+      p.pitch = Math.max(-1.5, Math.min(1.5, p.pitch));
+    }
 
     // --- Hunger drain ---
-    this._updateHunger(dt);
+    if (!this._state.creativeMode) this._updateHunger(dt);
 
     // --- Invulnerability timer ---
     if (this._state.player.invulnTimer > 0) {
@@ -510,15 +585,22 @@ export class CamelotCraftGame {
     // --- Quests ---
     updateQuests(this._state);
 
+    // --- Tutorial hints ---
+    if (this._isNewWorld) this._updateTutorial(dt);
+
     // --- Victory check ---
     if (checkVictory(this._state) && !this._state.victory) {
       this._state.victory = true;
-      addMessage(this._state, "THE HOLY GRAIL IS FOUND! Camelot stands eternal!", 0xFFD700);
       playQuestComplete();
+      setTimeout(() => this._showVictoryScreen(), 2000);
     }
 
     // --- Dropped items ---
     updateDroppedItems(this._state, dt);
+
+    // --- Ambient atmosphere particles ---
+    const pp = this._state.player.position;
+    this._renderer.particles.emitAmbient(pp.x, pp.y, pp.z, this._state.timeOfDay);
 
     // --- Ambient audio & music ---
     playAmbient(this._state.timeOfDay);
@@ -572,6 +654,15 @@ export class CamelotCraftGame {
 
     const hit = raycastBlock(this._state, origin, dir, CB.PLAYER_REACH);
 
+    // Ghost preview for block placement
+    const heldItem = getHeldItem(this._state.player.inventory);
+    if (hit && heldItem && heldItem.itemType === ItemType.BLOCK && heldItem.blockType !== undefined) {
+      const gx = hit.wx + hit.nx, gy = hit.wy + hit.ny, gz = hit.wz + hit.nz;
+      this._renderer.showGhost(gx, gy, gz, BLOCK_DEFS[heldItem.blockType]?.color ?? 0xFFFFFF);
+    } else {
+      this._renderer.hideGhost();
+    }
+
     if (hit) {
       this._renderer.showSelection(hit.wx, hit.wy, hit.wz);
 
@@ -593,7 +684,11 @@ export class CamelotCraftGame {
       if (this._input.mouseDown.right) {
         this._input.mouseDown.right = false;
 
-        // Check for container interaction first (chest, furnace)
+        // Check for special block interactions
+        const hitBlock = getWorldBlock(this._state, hit.wx, hit.wy, hit.wz);
+        if (this._handleSpecialBlock(hitBlock, hit.wx, hit.wy, hit.wz)) return;
+
+        // Check for container interaction (chest, furnace)
         const container = getContainerInteraction(this._state, hit.wx, hit.wy, hit.wz);
         if (container) {
           this._openContainer(container);
@@ -718,6 +813,87 @@ export class CamelotCraftGame {
   }
 
   // =========================================================================
+  // Special Block Interactions (Excalibur, Grail, Bed, Crafting Table)
+  // =========================================================================
+
+  private _handleSpecialBlock(block: BlockType, wx: number, wy: number, wz: number): boolean {
+    const p = this._state.player;
+
+    // --- Excalibur (Crystal Block on Gold Block = Excalibur pedestal) ---
+    if (block === BlockType.CRYSTAL_BLOCK || block === BlockType.ENCHANTED_CRYSTAL_ORE) {
+      const below = getWorldBlock(this._state, wx, wy - 1, wz);
+      if (below === BlockType.GOLD_BLOCK && !p.hasExcalibur) {
+        p.hasExcalibur = true;
+        setWorldBlock(this._state, wx, wy, wz, BlockType.AIR);
+
+        // Add Excalibur to inventory as a weapon
+        const excaliburItem: import("./config/CraftRecipeDefs").ItemStack = {
+          itemType: ItemType.WEAPON,
+          specialId: "excalibur",
+          count: 1,
+          displayName: "Excalibur",
+          color: 0xFFD700,
+          durability: 9999,
+          maxDurability: 9999,
+        };
+        addToInventory(p.inventory, excaliburItem);
+
+        addMessage(this._state, "You draw EXCALIBUR from the crystal! The blade sings with ancient power!", 0xFFD700);
+        this._showNPCDialog("EXCALIBUR IS YOURS! You are the true King of Camelot. Mining speed greatly increased.");
+        playQuestComplete();
+        this._renderer.cameraCtrl.shake(0.4);
+        this._renderer.particles.emitBlockBreak(wx, wy, wz, 0xFFD700);
+        this._renderer.particles.emitBlockBreak(wx, wy, wz, 0x9C27B0);
+        return true;
+      }
+    }
+
+    // --- Holy Grail (Grail Pedestal) ---
+    if (block === BlockType.GRAIL_PEDESTAL && !p.hasGrail) {
+      p.hasGrail = true;
+      addMessage(this._state, "You have found THE HOLY GRAIL! The quest is complete!", 0xFFD700);
+      this._showNPCDialog("THE HOLY GRAIL! A divine light fills the chamber. Camelot shall stand eternal!");
+      playQuestComplete();
+      this._renderer.cameraCtrl.shake(0.5);
+      // Golden particle explosion
+      for (let i = 0; i < 5; i++) {
+        this._renderer.particles.emitBlockBreak(wx, wy, wz, 0xFFD700);
+      }
+      return true;
+    }
+
+    // --- Crafting Table (open crafting grid) ---
+    if (block === BlockType.CRAFTING_TABLE) {
+      this._state.inventoryOpen = true;
+      this._state.craftingOpen = true;
+      document.exitPointerLock?.();
+      return true;
+    }
+
+    // --- Bed (set spawn point — using Banner Block as bed substitute) ---
+    if (block === BlockType.BANNER_BLOCK) {
+      p.spawnPoint.set(wx, wy + 1, wz);
+      addMessage(this._state, "Spawn point set!", 0x4CAF50);
+
+      // Skip night if it's dark
+      if (this._state.timeOfDay > 0.75 || this._state.timeOfDay < 0.25) {
+        this._state.timeOfDay = 0.3; // set to morning
+        this._state.dayNumber++;
+        addMessage(this._state, `You slept through the night. Day ${this._state.dayNumber} dawns.`, 0xC0A060);
+      }
+      return true;
+    }
+
+    // --- Door toggle ---
+    if (isDoor(block)) {
+      toggleDoor(this._state, wx, wy, wz);
+      return true;
+    }
+
+    return false;
+  }
+
+  // =========================================================================
   // Dragon Boss Spawning
   // =========================================================================
 
@@ -776,6 +952,9 @@ export class CamelotCraftGame {
     this._state.gameOver = true;
     document.exitPointerLock?.();
 
+    // Drop all inventory items at death location
+    this._dropAllItems();
+
     const overlay = document.createElement("div");
     overlay.id = "cc-death";
     overlay.style.cssText = `
@@ -810,6 +989,79 @@ export class CamelotCraftGame {
     overlay.appendChild(quitBtn);
 
     document.body.appendChild(overlay);
+  }
+
+  private _showVictoryScreen(): void {
+    this._state.paused = true;
+    document.exitPointerLock?.();
+
+    const overlay = document.createElement("div");
+    overlay.id = "cc-victory";
+    overlay.style.cssText = `
+      position:fixed;top:0;left:0;width:100%;height:100%;z-index:200;
+      background:linear-gradient(180deg,rgba(0,0,0,0.3),rgba(50,30,0,0.8));
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      font-family:Georgia,serif;animation:fadeIn 1s ease;
+    `;
+    overlay.innerHTML = `
+      <div style="font-size:72px;margin-bottom:8px;">🏆</div>
+      <h1 style="font-size:48px;color:#FFD700;margin:0;text-shadow:0 0 30px rgba(255,215,0,0.6);">
+        VICTORY
+      </h1>
+      <h2 style="font-size:24px;color:#E0D0A0;margin:8px 0;font-weight:normal;">
+        The Holy Grail Has Been Found
+      </h2>
+      <p style="color:#C0A060;font-size:14px;max-width:400px;text-align:center;line-height:1.6;">
+        Through valor and wisdom, thou hast united the Knights of the Round Table,
+        forged Camelot from the wilderness, wielded the legendary Excalibur,
+        and claimed the Holy Grail. Thy name shall echo through the ages.
+      </p>
+      <div style="margin-top:16px;color:#888;font-size:12px;">
+        Day ${this._state.dayNumber} | Level ${this._state.player.level} |
+        Blocks placed: ${this._state.player.blocksPlaced} |
+        Blocks mined: ${this._state.player.blocksMined}
+      </div>
+    `;
+
+    const continueBtn = this._createMenuButton("Continue Playing", "#FFD700");
+    continueBtn.style.marginTop = "24px";
+    continueBtn.onclick = () => {
+      overlay.remove();
+      this._state.paused = false;
+      this._input.requestPointerLock();
+    };
+    overlay.appendChild(continueBtn);
+
+    const quitBtn = this._createMenuButton("Return to Menu", "#999");
+    quitBtn.style.marginTop = "12px";
+    quitBtn.onclick = () => {
+      saveCraftWorld(this._state);
+      overlay.remove();
+      this.destroy();
+      window.dispatchEvent(new Event("camelotCraftExit"));
+    };
+    overlay.appendChild(quitBtn);
+
+    document.body.appendChild(overlay);
+  }
+
+  private _dropAllItems(): void {
+    const inv = this._state.player.inventory;
+    const pos = this._state.player.position;
+
+    const dropSlots = (slots: (import("./config/CraftRecipeDefs").ItemStack | null)[]) => {
+      for (let i = 0; i < slots.length; i++) {
+        if (slots[i] && slots[i]!.count > 0) {
+          const angle = Math.random() * Math.PI * 2;
+          const vel = new THREE.Vector3(Math.cos(angle) * 3, 4 + Math.random() * 2, Math.sin(angle) * 3);
+          dropItem({ ...slots[i]! }, new THREE.Vector3(pos.x, pos.y + 1, pos.z), vel);
+          slots[i] = null;
+        }
+      }
+    };
+
+    dropSlots(inv.hotbar);
+    dropSlots(inv.main);
   }
 
   private _respawn(): void {
@@ -867,6 +1119,30 @@ export class CamelotCraftGame {
         this._hungerTimer -= 5;
         p.hp = Math.min(p.maxHp, p.hp + 1);
       }
+    }
+  }
+
+  // =========================================================================
+  // Tutorial hints
+  // =========================================================================
+
+  private _updateTutorial(dt: number): void {
+    if (!this._isNewWorld || this._tutorialStep >= 6) return;
+    this._tutorialTimer += dt;
+
+    const hints = [
+      { time: 5, msg: "Hint: Punch trees (left click) to get wood. Wood is essential!", color: 0x90CAF9 },
+      { time: 30, msg: "Hint: Open inventory (E) and craft planks from logs.", color: 0x90CAF9 },
+      { time: 60, msg: "Hint: Make a Crafting Table (4 planks) for advanced recipes.", color: 0x90CAF9 },
+      { time: 120, msg: "Hint: Build a shelter before night! Mobs spawn in darkness.", color: 0xFF9800 },
+      { time: 240, msg: "Hint: Mine stone for better tools. Iron is found deep underground.", color: 0x90CAF9 },
+      { time: 400, msg: "Hint: Seek the Lady of the Lake for clues about Excalibur.", color: 0xCE93D8 },
+    ];
+
+    if (this._tutorialStep < hints.length && this._tutorialTimer >= hints[this._tutorialStep].time) {
+      const hint = hints[this._tutorialStep];
+      addMessage(this._state, hint.msg, hint.color);
+      this._tutorialStep++;
     }
   }
 

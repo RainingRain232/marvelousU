@@ -11,18 +11,23 @@ export interface Vec3 {
 
 export interface EFPlayer {
   position: Vec3;
-  /** Euler angles in radians: pitch (nose up/down), yaw (heading), roll (banking) */
   pitch: number;
   yaw: number;
   roll: number;
-  /** Current forward speed */
   speed: number;
-  /** Target speed (throttle) */
   targetSpeed: number;
-  /** Eagle wing flap phase for animation */
   flapPhase: number;
-  /** Eagle bank angle (visual smoothing) */
   bankAngle: number;
+
+  // Boost
+  boostActive: boolean;
+  boostTimer: number;
+  boostCooldown: number;
+
+  // Camera
+  freeLook: boolean;
+  freeLookYaw: number;
+  freeLookPitch: number;
 }
 
 export interface EagleFlightState {
@@ -32,9 +37,12 @@ export interface EagleFlightState {
   paused: boolean;
   gameTime: number;
   dayPhase: number;
-  /** Wind direction & strength for atmosphere */
   windAngle: number;
   windStrength: number;
+
+  // Camera shake
+  shakeTimer: number;
+  shakeMag: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -45,6 +53,7 @@ export const EFBalance = {
   SIM_TICK_MS: 16,
   MIN_SPEED: 8,
   MAX_SPEED: 45,
+  BOOST_SPEED: 65,
   CRUISE_SPEED: 22,
   ACCELERATION: 12,
   PITCH_RATE: 1.4,
@@ -52,14 +61,13 @@ export const EFBalance = {
   ROLL_RATE: 2.8,
   ROLL_RETURN_RATE: 2.0,
   MAX_PITCH: Math.PI * 0.4,
-  /** World bounds — the city area */
   WORLD_RADIUS: 320,
-  /** Minimum altitude (ground collision) */
   MIN_ALT: 3,
-  /** Maximum altitude */
   MAX_ALT: 200,
-  /** Starting altitude */
   START_ALT: 60,
+  BOOST_DURATION: 2.0,
+  BOOST_COOLDOWN: 5.0,
+  MOUSE_SENSITIVITY: 0.003,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -77,6 +85,12 @@ export function createEagleFlightState(sw: number, sh: number): EagleFlightState
       targetSpeed: EFBalance.CRUISE_SPEED,
       flapPhase: 0,
       bankAngle: 0,
+      boostActive: false,
+      boostTimer: 0,
+      boostCooldown: 0,
+      freeLook: false,
+      freeLookYaw: 0,
+      freeLookPitch: 0,
     },
     screenW: sw,
     screenH: sh,
@@ -85,5 +99,7 @@ export function createEagleFlightState(sw: number, sh: number): EagleFlightState
     dayPhase: 0.25,
     windAngle: Math.PI * 0.3,
     windStrength: 2,
+    shakeTimer: 0,
+    shakeMag: 0,
   };
 }

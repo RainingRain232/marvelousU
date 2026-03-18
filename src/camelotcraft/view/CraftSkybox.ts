@@ -191,6 +191,13 @@ export class CraftSkybox {
   private _cloudMesh!: THREE.Mesh;
   private _cloudMaterial!: THREE.ShaderMaterial;
 
+  /* aurora mesh */
+  private _auroraMesh!: THREE.Mesh;
+  private _auroraMaterial!: THREE.ShaderMaterial;
+
+  /* twinkle timer */
+  private _time = 0;
+
   /* directional light reference (optional, for cloud shadow) */
   private _directionalLight: THREE.DirectionalLight | null = null;
   private _baseLightIntensity = 1.0;
@@ -210,6 +217,7 @@ export class CraftSkybox {
   // -----------------------------------------------------------------------
   build(): void {
     this._buildSkyDome();
+    this._buildAurora();
     this._buildSun();
     this._buildMoon();
     this._buildStars();
@@ -236,6 +244,69 @@ export class CraftSkybox {
     });
     this._skyMesh = new THREE.Mesh(skyGeo, this._skyMaterial);
     this.group.add(this._skyMesh);
+  }
+
+  // ---- aurora (night-only wavy bands) ------------------------------------
+
+  private _buildAurora(): void {
+    const auroraVert = /* glsl */ `
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `;
+
+    const auroraFrag = /* glsl */ `
+      uniform float uTime;
+      uniform float uSunlight;
+
+      varying vec2 vUv;
+
+      ${NOISE_GLSL}
+
+      void main() {
+        // Only visible at night
+        float nightFactor = 1.0 - smoothstep(0.0, 0.3, uSunlight);
+        if (nightFactor < 0.01) discard;
+
+        // Wavy vertical bands using noise
+        float wave1 = sin(vUv.x * 8.0 + uTime * 0.3 + fbm(vUv * 3.0 + uTime * 0.1) * 4.0);
+        float wave2 = sin(vUv.x * 12.0 - uTime * 0.2 + fbm(vUv * 5.0 - uTime * 0.15) * 3.0);
+        float band = smoothstep(0.0, 0.6, wave1 * 0.5 + 0.5) * smoothstep(0.0, 0.5, wave2 * 0.5 + 0.5);
+
+        // Vertical fade: strongest in center of plane
+        float vFade = smoothstep(0.0, 0.3, vUv.y) * smoothstep(1.0, 0.7, vUv.y);
+
+        // Color: green/cyan aurora
+        vec3 col1 = vec3(0.1, 0.9, 0.4); // green
+        vec3 col2 = vec3(0.1, 0.6, 0.9); // cyan
+        vec3 col = mix(col1, col2, fbm(vUv * 2.0 + uTime * 0.05));
+
+        float alpha = band * vFade * nightFactor * 0.35;
+        if (alpha < 0.01) discard;
+
+        gl_FragColor = vec4(col, alpha);
+      }
+    `;
+
+    const auroraGeo = new THREE.PlaneGeometry(300, 80);
+    this._auroraMaterial = new THREE.ShaderMaterial({
+      transparent: true,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      uniforms: {
+        uTime: { value: 0.0 },
+        uSunlight: { value: 1.0 },
+      },
+      vertexShader: auroraVert,
+      fragmentShader: auroraFrag,
+    });
+
+    this._auroraMesh = new THREE.Mesh(auroraGeo, this._auroraMaterial);
+    this._auroraMesh.position.set(0, 250, -100);
+    this._auroraMesh.rotation.x = -Math.PI / 6; // tilt slightly
+    this.group.add(this._auroraMesh);
   }
 
   // ---- sun ---------------------------------------------------------------
@@ -278,6 +349,7 @@ export class CraftSkybox {
       color: 0xffffff,
       size: 1.5,
       sizeAttenuation: true,
+      transparent: true,
     });
     this._starField = new THREE.Points(starGeo, starMat);
     this.group.add(this._starField);
@@ -337,6 +409,14 @@ export class CraftSkybox {
     (this._starField.material as THREE.PointsMaterial).transparent = true;
     this._starField.visible = starOpacity > 0.01;
 
+    // Twinkle stars
+    if (this._starField.visible) {
+      const twinkle = 0.7 + Math.sin(this._time * 0.5) * 0.15 + Math.sin(this._time * 1.3) * 0.1;
+      (this._starField.material as THREE.PointsMaterial).opacity = starOpacity * twinkle;
+      (this._starField.material as THREE.PointsMaterial).size = 1.5 + Math.sin(this._time * 0.8) * 0.3;
+    }
+    this._time += 0.016;
+
     // ---- Sky colors ----
     const topColorHex = getSkyColor(timeOfDay, this._baseSkyColor);
     const bottomColorHex = getFogColor(timeOfDay, this._baseFogColor);
@@ -381,6 +461,10 @@ export class CraftSkybox {
       this._cloudMaterial.uniforms.uCloudCover.value * (0.5 + 0.5 * sunlight);
     this._cloudMaterial.uniforms.uCloudCover.value = effectiveCover;
     // (restore base next frame via setWeather or external control)
+
+    // ---- Aurora ----
+    this._auroraMaterial.uniforms.uTime.value = this._time;
+    this._auroraMaterial.uniforms.uSunlight.value = sunlight;
 
     // ---- Cloud shadow on directional light ----
     if (this._directionalLight) {

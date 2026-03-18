@@ -97,94 +97,170 @@ const TERRAIN_FRAG = /* glsl */ `
   uniform vec3 uSunColor;
   uniform float uAmbient;
   uniform float uTime;
+  uniform float uWetness; // 0-1, from weather system
 
-  // Simple hash for procedural texture
-  float hash(vec2 p) {
-    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
-  }
+  // --- Noise functions ---
+  float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123); }
+  float hash3(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453123); }
 
-  float hash3(vec3 p) {
-    return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453123);
-  }
-
-  // Value noise 2D
   float noise2D(vec2 p) {
-    vec2 i = floor(p);
-    vec2 f = fract(p);
+    vec2 i = floor(p), f = fract(p);
     f = f * f * (3.0 - 2.0 * f);
-    float a = hash(i);
-    float b = hash(i + vec2(1.0, 0.0));
-    float c = hash(i + vec2(0.0, 1.0));
-    float d = hash(i + vec2(1.0, 1.0));
+    float a = hash(i), b = hash(i + vec2(1.0, 0.0));
+    float c = hash(i + vec2(0.0, 1.0)), d = hash(i + vec2(1.0, 1.0));
     return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
   }
 
-  // FBM for texture detail
   float fbm(vec2 p) {
-    float v = 0.0;
-    v += noise2D(p * 1.0) * 0.5;
-    v += noise2D(p * 2.0) * 0.25;
-    v += noise2D(p * 4.0) * 0.125;
-    return v;
+    return noise2D(p) * 0.5 + noise2D(p * 2.0) * 0.25 + noise2D(p * 4.0) * 0.125 + noise2D(p * 8.0) * 0.0625;
+  }
+
+  // --- PBR helpers ---
+  float distributionGGX(float NdotH, float roughness) {
+    float a = roughness * roughness;
+    float a2 = a * a;
+    float d = NdotH * NdotH * (a2 - 1.0) + 1.0;
+    return a2 / (3.14159 * d * d + 0.0001);
+  }
+
+  float geometrySmith(float NdotV, float NdotL, float roughness) {
+    float r = roughness + 1.0;
+    float k = r * r / 8.0;
+    float g1 = NdotV / (NdotV * (1.0 - k) + k);
+    float g2 = NdotL / (NdotL * (1.0 - k) + k);
+    return g1 * g2;
+  }
+
+  vec3 fresnelSchlick(float cosTheta, vec3 F0) {
+    return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
   }
 
   void main() {
     vec3 baseColor = vColor;
 
-    // --- Procedural texture based on world position ---
-    // Project UV based on face normal (triplanar-ish)
+    // --- Triplanar UV projection ---
     vec2 uv;
-    if (abs(vNormal.y) > 0.5) {
-      uv = vWorldPos.xz; // top/bottom face
-    } else if (abs(vNormal.x) > 0.5) {
-      uv = vWorldPos.yz; // side X
-    } else {
-      uv = vWorldPos.xy; // side Z
-    }
+    if (abs(vNormal.y) > 0.5) uv = vWorldPos.xz;
+    else if (abs(vNormal.x) > 0.5) uv = vWorldPos.yz;
+    else uv = vWorldPos.xy;
 
-    // Noise-based texture variation
-    float texNoise = fbm(uv * 2.0) * 0.15 - 0.075;
+    // --- Procedural texture with 4-octave FBM ---
+    float texNoise = fbm(uv * 2.0) * 0.18 - 0.09;
     baseColor += texNoise;
 
-    // Per-block hash for subtle color variation (no two blocks identical)
+    // Per-block hash variation
     vec3 blockPos = floor(vWorldPos + 0.001);
     float blockVar = hash3(blockPos) * 0.08 - 0.04;
     baseColor += blockVar;
 
-    // Edge darkening (within each block face, darken near edges)
+    // Edge darkening (mortar lines between blocks)
     vec2 blockUV = fract(uv);
     float edgeDist = min(min(blockUV.x, 1.0 - blockUV.x), min(blockUV.y, 1.0 - blockUV.y));
-    float edgeDarken = smoothstep(0.0, 0.08, edgeDist) * 0.15 + 0.85;
+    float edgeDarken = smoothstep(0.0, 0.06, edgeDist) * 0.2 + 0.8;
     baseColor *= edgeDarken;
 
-    // --- Lighting ---
-    // Diffuse (half-Lambert for softer look)
-    float NdotL = dot(vNormal, uSunDir);
-    float diffuse = NdotL * 0.5 + 0.5; // half-Lambert
-    diffuse = diffuse * diffuse; // squared for contrast
+    // --- Per-block material properties ---
+    // Determine roughness and metalness from block ID
+    float roughness = 0.85; // default: rough stone
+    float metalness = 0.0;
+    float subsurface = 0.0; // for foliage/grass
 
-    // Specular (Blinn-Phong)
-    vec3 viewDir = normalize(cameraPosition - vWorldPos);
-    vec3 halfDir = normalize(uSunDir + viewDir);
-    float spec = pow(max(dot(vNormal, halfDir), 0.0), 32.0) * 0.15;
+    // Grass/leaves: subsurface scattering, low roughness
+    float bid = vBlockId;
+    if (bid == 3.0 || bid == 5.0 || bid == 45.0 || bid == 51.0 || bid == 53.0 || bid == 54.0) {
+      roughness = 0.7;
+      subsurface = 0.4;
+    }
+    // Stone/cobblestone: rough
+    if (bid == 1.0 || bid == 8.0 || bid == 19.0 || bid == 25.0) {
+      roughness = 0.9;
+    }
+    // Metal ores/blocks: slightly metallic
+    if (bid == 10.0 || bid == 11.0 || bid == 29.0 || bid == 30.0) {
+      roughness = 0.4;
+      metalness = 0.6;
+    }
+    // Crystal/enchanted: low roughness, slight metalness
+    if (bid == 12.0 || bid == 26.0 || bid == 31.0) {
+      roughness = 0.2;
+      metalness = 0.3;
+    }
+    // Gold block: very metallic
+    if (bid == 30.0) {
+      roughness = 0.3;
+      metalness = 0.9;
+    }
 
-    // Fresnel rim light
-    float fresnel = pow(1.0 - max(dot(vNormal, viewDir), 0.0), 3.0) * 0.1;
+    // --- Wet surface darkening from rain ---
+    if (uWetness > 0.0 && vNormal.y > 0.3) {
+      baseColor *= (1.0 - uWetness * 0.3); // darken when wet
+      roughness *= (1.0 - uWetness * 0.5);  // wet = smoother/shinier
+    }
 
-    // Combine lighting
-    vec3 lit = baseColor * (uAmbient + diffuse * uSunColor * 0.7) + spec * uSunColor + fresnel * uSunColor * 0.3;
+    // --- PBR Lighting ---
+    vec3 N = normalize(vNormal);
+    vec3 V = normalize(cameraPosition - vWorldPos);
+    vec3 L = normalize(uSunDir);
+    vec3 H = normalize(V + L);
+
+    float NdotL = max(dot(N, L), 0.0);
+    float NdotV = max(dot(N, V), 0.001);
+    float NdotH = max(dot(N, H), 0.0);
+    float HdotV = max(dot(H, V), 0.0);
+
+    // F0: reflectance at normal incidence
+    vec3 F0 = mix(vec3(0.04), baseColor, metalness);
+
+    // Cook-Torrance specular BRDF
+    float D = distributionGGX(NdotH, roughness);
+    float G = geometrySmith(NdotV, NdotL, roughness);
+    vec3 F = fresnelSchlick(HdotV, F0);
+
+    vec3 specular = (D * G * F) / (4.0 * NdotV * NdotL + 0.001);
+
+    // Diffuse (energy conservation)
+    vec3 kD = (vec3(1.0) - F) * (1.0 - metalness);
+
+    // Half-Lambert diffuse for softer shadows
+    float diffuseWrap = NdotL * 0.5 + 0.5;
+    diffuseWrap *= diffuseWrap;
+
+    vec3 diffuse = kD * baseColor / 3.14159;
+
+    // --- Subsurface scattering for foliage ---
+    float sss = 0.0;
+    if (subsurface > 0.0) {
+      // Light passing through thin surfaces (leaves, grass)
+      float backLight = max(dot(-N, L), 0.0);
+      sss = backLight * subsurface * 0.6;
+      // Add warm tint to subsurface
+      diffuse += baseColor * sss * vec3(1.2, 1.0, 0.6);
+    }
+
+    // Combine
+    vec3 Lo = (diffuse * diffuseWrap + specular) * uSunColor * 1.2;
+
+    // Ambient: hemisphere sky light (blue from above, brown from below)
+    vec3 skyAmbient = mix(vec3(0.05, 0.04, 0.03), vec3(0.15, 0.2, 0.3), N.y * 0.5 + 0.5);
+    vec3 ambient = skyAmbient * baseColor * uAmbient * 2.0;
+
+    vec3 color = ambient + Lo;
 
     // Apply ambient occlusion
-    lit *= vAO;
+    color *= vAO;
 
-    // Height-based atmospheric fade (distant blocks fade to fog)
-    float heightFog = smoothstep(0.0, 8.0, vWorldPos.y) * 0.15 + 0.85;
-    lit *= heightFog;
+    // Height-based atmospheric scatter
+    float heightFog = smoothstep(0.0, 10.0, vWorldPos.y) * 0.12 + 0.88;
+    color *= heightFog;
 
-    // Clamp
-    lit = clamp(lit, 0.0, 1.0);
+    // Distance fade to fog color
+    float dist = length(cameraPosition - vWorldPos);
+    float fogFactor = 1.0 - exp(-dist * 0.012);
+    color = mix(color, uSunColor * 0.3, fogFactor * 0.3);
 
-    gl_FragColor = vec4(lit, 1.0);
+    color = clamp(color, 0.0, 1.5); // allow slight HDR for bloom
+
+    gl_FragColor = vec4(color, 1.0);
   }
 `;
 
@@ -201,6 +277,7 @@ export function getTerrainMaterial(): THREE.ShaderMaterial {
         uSunColor: { value: new THREE.Color(1.0, 0.95, 0.85) },
         uAmbient: { value: 0.35 },
         uTime: { value: 0 },
+        uWetness: { value: 0 },
       },
     });
   }
@@ -208,12 +285,13 @@ export function getTerrainMaterial(): THREE.ShaderMaterial {
 }
 
 /** Update terrain material uniforms each frame. */
-export function updateTerrainUniforms(sunDir: THREE.Vector3, sunColor: THREE.Color, ambient: number, time: number): void {
+export function updateTerrainUniforms(sunDir: THREE.Vector3, sunColor: THREE.Color, ambient: number, time: number, wetness = 0): void {
   const mat = getTerrainMaterial();
   mat.uniforms.uSunDir.value.copy(sunDir).normalize();
   mat.uniforms.uSunColor.value.copy(sunColor);
   mat.uniforms.uAmbient.value = ambient;
   mat.uniforms.uTime.value = time;
+  mat.uniforms.uWetness.value = wetness;
 }
 
 // ---------------------------------------------------------------------------

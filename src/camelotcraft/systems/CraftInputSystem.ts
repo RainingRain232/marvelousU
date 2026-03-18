@@ -6,6 +6,8 @@ import { CB } from "../config/CraftBalance";
 import type { CraftState } from "../state/CraftState";
 import { isWorldSolid, getWorldBlock, addMessage } from "../state/CraftState";
 import { BlockType } from "../config/CraftBlockDefs";
+import { dropItem } from "./CraftItemDropSystem";
+import * as THREE from "three";
 
 const MAX_PITCH = 89 * (Math.PI / 180);
 
@@ -98,8 +100,25 @@ export class CraftInputSystem {
     const mag = Math.sqrt(mx * mx + mz * mz);
     if (mag > 0) { mx /= mag; mz /= mag; }
 
-    p.sprinting = !!(this.keys["ShiftLeft"] || this.keys["ShiftRight"]);
-    let speed = CB.PLAYER_SPEED * (p.sprinting ? CB.PLAYER_SPRINT_MULT : 1);
+    // --- Crouch (Ctrl) ---
+    p.crouching = !!(this.keys["ControlLeft"] || this.keys["ControlRight"]);
+
+    // Sprint (Shift) — can't sprint while crouching
+    p.sprinting = !p.crouching && !!(this.keys["ShiftLeft"] || this.keys["ShiftRight"]);
+
+    // --- Creative mode flying ---
+    if (state.creativeMode) {
+      p.flying = true;
+      // Space = fly up, Ctrl = fly down
+      if (this.keys["Space"]) vel.y = 8;
+      else if (this.keys["ControlLeft"] || this.keys["ControlRight"]) vel.y = -8;
+      else vel.y = 0;
+      // No gravity in creative
+    }
+
+    let speed = CB.PLAYER_SPEED;
+    if (p.crouching) speed *= 0.4; // slow while crouching
+    else if (p.sprinting) speed *= CB.PLAYER_SPRINT_MULT;
 
     // Water slows movement
     if (p.inWater) speed *= 0.5;
@@ -111,25 +130,29 @@ export class CraftInputSystem {
     const vz = mz * speed;
 
     // --- Jump / Swim ---
-    if (this.keys["Space"]) {
-      if (p.inWater) {
-        // Swimming: float upward
-        vel.y = 3.5;
-        p.swimming = true;
-      } else if (p.onGround) {
-        vel.y = CB.PLAYER_JUMP_VELOCITY;
-        p.onGround = false;
+    if (!state.creativeMode) {
+      if (this.keys["Space"]) {
+        if (p.inWater) {
+          // Swimming: float upward
+          vel.y = 3.5;
+          p.swimming = true;
+        } else if (p.onGround) {
+          vel.y = CB.PLAYER_JUMP_VELOCITY;
+          p.onGround = false;
+        }
+      } else {
+        p.swimming = false;
       }
-    } else {
-      p.swimming = false;
     }
 
     // --- Gravity (reduced in water for buoyancy) ---
-    if (p.inWater) {
-      vel.y += CB.PLAYER_GRAVITY * 0.15 * dt; // much weaker gravity in water
-      vel.y *= 0.92; // water drag
-    } else {
-      vel.y += CB.PLAYER_GRAVITY * dt;
+    if (!state.creativeMode) {
+      if (p.inWater) {
+        vel.y += CB.PLAYER_GRAVITY * 0.15 * dt; // much weaker gravity in water
+        vel.y *= 0.92; // water drag
+      } else {
+        vel.y += CB.PLAYER_GRAVITY * dt;
+      }
     }
 
     // --- Integrate with collision + step-up ---
@@ -171,7 +194,7 @@ export class CraftInputSystem {
         vel.y = 0;
 
         // --- Fall damage ---
-        if (this._wasFalling && !p.inWater) {
+        if (!state.creativeMode && this._wasFalling && !p.inWater) {
           const fallDist = this._fallStartY - pos.y;
           if (fallDist > 3) { // 3+ blocks = damage
             const dmg = Math.floor(fallDist - 3);
@@ -241,9 +264,24 @@ export class CraftInputSystem {
       this._tryEatFood(state);
     }
     if (!this.keys["KeyQ"]) this._eatCd = false;
+
+    // --- Drop/throw item (G key) ---
+    if (this.keys["KeyG"] && !this._dropCd) {
+      this._dropCd = true;
+      this._tryDropItem(state);
+    }
+    if (!this.keys["KeyG"]) this._dropCd = false;
+
+    // --- Shield blocking (hold right mouse while having weapon) ---
+    const pInv = p.inventory;
+    const heldForBlock = pInv.hotbar[pInv.selectedSlot];
+    p.blocking = this._pointerLocked && this.mouseDown.right &&
+      heldForBlock !== null &&
+      (heldForBlock.itemType === "weapon" || heldForBlock.specialId === "iron_shield");
   }
 
   private _eatCd = false;
+  private _dropCd = false;
 
   private _tryEatFood(state: CraftState): void {
     const inv = state.player.inventory;
@@ -253,6 +291,27 @@ export class CraftInputSystem {
       held.count--;
       if (held.count <= 0) inv.hotbar[inv.selectedSlot] = null;
     }
+  }
+
+  private _tryDropItem(state: CraftState): void {
+    const inv = state.player.inventory;
+    const held = inv.hotbar[inv.selectedSlot];
+    if (!held || held.count <= 0) return;
+
+    // Drop 1 item in the direction the player is facing
+    const sinY = Math.sin(state.player.yaw);
+    const cosY = Math.cos(state.player.yaw);
+    const dropPos = new THREE.Vector3(
+      state.player.position.x - sinY * 1.5,
+      state.player.position.y + CB.PLAYER_EYE_HEIGHT,
+      state.player.position.z - cosY * 1.5,
+    );
+    const throwVel = new THREE.Vector3(-sinY * 5, 2, -cosY * 5);
+    dropItem({ ...held, count: 1 }, dropPos, throwVel);
+
+    held.count--;
+    if (held.count <= 0) inv.hotbar[inv.selectedSlot] = null;
+    addMessage(state, `Dropped ${held.displayName}`, 0xAAAAAA);
   }
 
   resetDeltas(): void {

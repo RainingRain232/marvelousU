@@ -83,6 +83,14 @@ export class CraftWeather {
     thunderDelay: 0,
   };
 
+  // Splash particles
+  private splashGeometry!: THREE.BufferGeometry;
+  private splashMaterial!: THREE.PointsMaterial;
+  private splashPositions!: Float32Array;
+  private splashLifetimes!: Float32Array;
+  private splashIndex: number = 0;
+  private static readonly SPLASH_COUNT = 50;
+
   // Audio
   private audioCtx: AudioContext | null = null;
 
@@ -102,6 +110,7 @@ export class CraftWeather {
     this.buildRain(RAIN_COUNT, false);
     this.buildRain(STORM_RAIN_COUNT, true);
     this.buildSnow();
+    this.buildSplashes();
     this.buildLightning();
     this.applyVisibility();
   }
@@ -191,6 +200,9 @@ export class CraftWeather {
     if (effective === WeatherType.SNOW) {
       this.updateSnowParticles(dt, playerPos);
     }
+
+    // Update rain splashes (decays even after rain stops)
+    this.updateSplashes(dt);
   }
 
   /** Dispose of all GPU resources. */
@@ -201,6 +213,8 @@ export class CraftWeather {
     this.stormMaterial.dispose();
     this.snowGeometry.dispose();
     this.snowMaterial.dispose();
+    this.splashGeometry.dispose();
+    this.splashMaterial.dispose();
 
     this.group.clear();
 
@@ -309,6 +323,46 @@ export class CraftWeather {
     this.group.add(points);
   }
 
+  private buildSplashes(): void {
+    const count = CraftWeather.SPLASH_COUNT;
+    const positions = new Float32Array(count * 3);
+    const lifetimes = new Float32Array(count);
+
+    // Initialize all splashes offscreen / inactive
+    for (let i = 0; i < count; i++) {
+      const i3 = i * 3;
+      positions[i3] = 0;
+      positions[i3 + 1] = -999; // hidden below ground
+      positions[i3 + 2] = 0;
+      lifetimes[i] = 0;
+    }
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute(
+      "position",
+      new THREE.BufferAttribute(positions, 3),
+    );
+
+    const material = new THREE.PointsMaterial({
+      color: 0xccddee,
+      size: 0.2,
+      transparent: true,
+      opacity: 0.6,
+      depthWrite: false,
+      sizeAttenuation: true,
+    });
+
+    const points = new THREE.Points(geometry, material);
+    points.frustumCulled = false;
+
+    this.splashGeometry = geometry;
+    this.splashMaterial = material;
+    this.splashPositions = positions;
+    this.splashLifetimes = lifetimes;
+
+    this.group.add(points);
+  }
+
   private buildLightning(): void {
     this.lightningLight = new THREE.DirectionalLight(0xccccff, 0);
     this.lightningLight.position.set(50, 80, 30);
@@ -391,6 +445,9 @@ export class CraftWeather {
 
       // Reset when below ground
       if (positions[vi + 1] < -1) {
+        // Emit splash at impact position
+        this.emitSplash(positions[vi], 0.05, positions[vi + 2]);
+
         const x =
           playerPos.x + (Math.random() - 0.5) * area;
         const z =
@@ -511,6 +568,72 @@ export class CraftWeather {
       const next = this.pickRandomWeather();
       this.setWeather(next);
     }
+  }
+
+  // ─── Splash helpers ──────────────────────────────────────────────
+
+  private emitSplash(x: number, y: number, z: number): void {
+    const idx = this.splashIndex;
+    const i3 = idx * 3;
+    this.splashPositions[i3] = x + (Math.random() - 0.5) * 0.3;
+    this.splashPositions[i3 + 1] = y;
+    this.splashPositions[i3 + 2] = z + (Math.random() - 0.5) * 0.3;
+    this.splashLifetimes[idx] = 0.15 + Math.random() * 0.1; // short-lived
+    this.splashIndex = (this.splashIndex + 1) % CraftWeather.SPLASH_COUNT;
+  }
+
+  private updateSplashes(dt: number): void {
+    let anyActive = false;
+    for (let i = 0; i < CraftWeather.SPLASH_COUNT; i++) {
+      if (this.splashLifetimes[i] > 0) {
+        this.splashLifetimes[i] -= dt;
+        if (this.splashLifetimes[i] <= 0) {
+          // Hide expired splash
+          this.splashPositions[i * 3 + 1] = -999;
+        } else {
+          // Move splash slightly upward to simulate bounce
+          this.splashPositions[i * 3 + 1] += 1.5 * dt;
+          anyActive = true;
+        }
+      }
+    }
+    if (anyActive) {
+      const attr = this.splashGeometry.getAttribute(
+        "position",
+      ) as THREE.BufferAttribute;
+      attr.needsUpdate = true;
+    }
+  }
+
+  // ─── Public: Wetness ──────────────────────────────────────────────
+
+  /** Returns 0-1 wetness factor based on current weather (for terrain wet darkening). */
+  public getWetness(): number {
+    const effective = this.transitionProgress >= 1.0
+      ? this.currentWeather
+      : this.targetWeather;
+
+    let targetWetness: number;
+    switch (effective) {
+      case WeatherType.RAIN:
+        targetWetness = 0.3;
+        break;
+      case WeatherType.STORM:
+        targetWetness = 0.5;
+        break;
+      default:
+        targetWetness = 0;
+        break;
+    }
+
+    // Smooth based on transition progress
+    if (this.transitionProgress < 1.0) {
+      const fromWetness =
+        this.currentWeather === WeatherType.RAIN ? 0.3 :
+        this.currentWeather === WeatherType.STORM ? 0.5 : 0;
+      return THREE.MathUtils.lerp(fromWetness, targetWetness, this.transitionProgress);
+    }
+    return targetWetness;
   }
 
   // ─── Private: Audio ────────────────────────────────────────────────

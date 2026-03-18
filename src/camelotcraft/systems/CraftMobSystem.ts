@@ -5,7 +5,7 @@
 import * as THREE from "three";
 import { MobType, MOB_DEFS, type MobDef } from "../config/CraftMobDefs";
 import type { CraftState, MobInstance } from "../state/CraftState";
-import { addMessage } from "../state/CraftState";
+import { addMessage, isWorldSolid } from "../state/CraftState";
 import { CB } from "../config/CraftBalance";
 
 // ---------------------------------------------------------------------------
@@ -134,7 +134,7 @@ export function updateMobs(state: CraftState, dt: number): void {
           break;
         }
         if (mob.target) {
-          moveToward(mob, mob.target, def.speed * dt);
+          moveToward(mob, mob.target, def.speed * dt, state);
           if (dist2D(mob.position, mob.target) < 0.5) {
             mob.aiState = "idle";
             mob.aiTimer = rand(1, 4);
@@ -153,7 +153,7 @@ export function updateMobs(state: CraftState, dt: number): void {
           mob.aiTimer = rand(1, 3);
           break;
         }
-        moveToward(mob, playerPos, def.speed * dt);
+        moveToward(mob, playerPos, def.speed * dt, state);
         if (distToPlayer <= def.attackRange) {
           mob.aiState = "attack";
         }
@@ -166,9 +166,25 @@ export function updateMobs(state: CraftState, dt: number): void {
         }
         if (mob.attackTimer <= 0 && def.damage > 0) {
           if (state.player.invulnTimer <= 0) {
-            state.player.hp = Math.max(0, state.player.hp - def.damage);
+            let dmg = def.damage;
+            // Shield blocking reduces damage by 60%
+            if (state.player.blocking) {
+              dmg = Math.ceil(dmg * 0.4);
+              addMessage(state, `Blocked! ${def.name} deals ${dmg} damage.`, 0x90CAF9);
+            } else {
+              addMessage(state, `${def.name} strikes you for ${dmg} damage!`, 0xFF4444);
+            }
+            // Armor reduces damage
+            const armorSlots = state.player.inventory.armor;
+            let armorDef = 0;
+            if (armorSlots.helmet) armorDef += 1;
+            if (armorSlots.chestplate) armorDef += 3;
+            if (armorSlots.leggings) armorDef += 2;
+            if (armorSlots.boots) armorDef += 1;
+            dmg = Math.max(1, dmg - Math.floor(armorDef * 0.4));
+
+            state.player.hp = Math.max(0, state.player.hp - dmg);
             state.player.invulnTimer = CB.INVULNERABILITY_TIME;
-            addMessage(state, `${def.name} strikes you for ${def.damage} damage!`, 0xFF4444);
           }
           mob.attackTimer = def.attackCooldown;
         }
@@ -177,7 +193,7 @@ export function updateMobs(state: CraftState, dt: number): void {
       case "flee": {
         const away = new THREE.Vector3().subVectors(mob.position, playerPos).normalize();
         const fleeTgt = mob.position.clone().addScaledVector(away, 8);
-        moveToward(mob, fleeTgt, def.speed * 1.3 * dt);
+        moveToward(mob, fleeTgt, def.speed * 1.3 * dt, state);
         if (mob.aiTimer <= 0 || distToPlayer > def.detectionRange) {
           mob.aiState = "idle";
           mob.aiTimer = rand(2, 5);
@@ -192,12 +208,69 @@ export function updateMobs(state: CraftState, dt: number): void {
   }
 }
 
-function moveToward(mob: MobInstance, target: THREE.Vector3, step: number): void {
+function moveToward(mob: MobInstance, target: THREE.Vector3, step: number, state?: CraftState): void {
   const dir = new THREE.Vector3().subVectors(target, mob.position).setY(0);
-  if (dir.length() > 0.01) {
-    dir.normalize();
+  if (dir.length() < 0.01) return;
+  dir.normalize();
+
+  // If no state provided, fall back to simple movement (no collision)
+  if (!state) {
     mob.position.addScaledVector(dir, step);
     mob.yaw = Math.atan2(-dir.x, -dir.z);
+    return;
+  }
+
+  const pos = mob.position;
+  const footY = Math.floor(pos.y);
+  const headY = footY + 1;
+
+  // Helper: check if a position is blocked at foot or head height
+  const isBlocked = (x: number, z: number): boolean => {
+    return isWorldSolid(state, x, footY, z) || isWorldSolid(state, x, headY, z);
+  };
+
+  // Try 1: direct movement
+  const nextX = pos.x + dir.x * step;
+  const nextZ = pos.z + dir.z * step;
+
+  if (!isBlocked(nextX, nextZ)) {
+    pos.x = nextX;
+    pos.z = nextZ;
+    mob.yaw = Math.atan2(-dir.x, -dir.z);
+    return;
+  }
+
+  // Try 2: slide along X axis only
+  if (Math.abs(dir.x) > 0.01) {
+    const slideX = pos.x + dir.x * step;
+    if (!isBlocked(slideX, pos.z)) {
+      pos.x = slideX;
+      mob.yaw = Math.atan2(-dir.x, 0);
+      return;
+    }
+  }
+
+  // Try 3: slide along Z axis only
+  if (Math.abs(dir.z) > 0.01) {
+    const slideZ = pos.z + dir.z * step;
+    if (!isBlocked(pos.x, slideZ)) {
+      pos.z = slideZ;
+      mob.yaw = Math.atan2(0, -dir.z);
+      return;
+    }
+  }
+
+  // Try 4: random perpendicular direction
+  const sign = Math.random() < 0.5 ? 1 : -1;
+  const perpX = -dir.z * sign;
+  const perpZ = dir.x * sign;
+  const perpNextX = pos.x + perpX * step;
+  const perpNextZ = pos.z + perpZ * step;
+
+  if (!isBlocked(perpNextX, perpNextZ)) {
+    pos.x = perpNextX;
+    pos.z = perpNextZ;
+    mob.yaw = Math.atan2(-perpX, -perpZ);
   }
 }
 

@@ -8,6 +8,9 @@ import { TOOL_SPEED } from "../config/CraftRecipeDefs";
 import type { CraftState } from "../state/CraftState";
 import { getWorldBlock, setWorldBlock, isWorldSolid, addMessage } from "../state/CraftState";
 import { blockStack, addToInventory, getHeldItem, consumeDurability } from "../state/CraftInventory";
+import { getChestContents, removeChest, getFurnaceState, removeFurnace } from "./CraftContainerSystem";
+import { dropItem } from "./CraftItemDropSystem";
+import * as THREE from "three";
 
 // ---------------------------------------------------------------------------
 // Ray-cast
@@ -110,6 +113,25 @@ export function updateMining(state: CraftState, dt: number): void {
 
   if (target.progress >= 1.0) {
     // Mining complete
+
+    // Drop container contents before destroying block
+    if (block === BlockType.CHEST) {
+      const contents = getChestContents(wx, wy, wz);
+      for (const item of contents) {
+        if (item && item.count > 0) {
+          dropItem({ ...item }, new THREE.Vector3(wx + 0.5, wy + 1, wz + 0.5));
+        }
+      }
+      removeChest(wx, wy, wz);
+    } else if (block === BlockType.FURNACE) {
+      const furnace = getFurnaceState(wx, wy, wz);
+      const dropPos = new THREE.Vector3(wx + 0.5, wy + 1, wz + 0.5);
+      if (furnace.inputSlot) dropItem({ ...furnace.inputSlot }, dropPos.clone());
+      if (furnace.fuelSlot) dropItem({ ...furnace.fuelSlot }, dropPos.clone());
+      if (furnace.outputSlot) dropItem({ ...furnace.outputSlot }, dropPos.clone());
+      removeFurnace(wx, wy, wz);
+    }
+
     setWorldBlock(state, wx, wy, wz, BlockType.AIR);
 
     const dropType = getBlockDrop(block);

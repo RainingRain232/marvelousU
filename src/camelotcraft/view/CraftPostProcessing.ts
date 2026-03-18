@@ -181,19 +181,48 @@ const BLOOM_COMPOSITE_FRAG = /* glsl */ `
 uniform sampler2D uSceneTex;
 uniform sampler2D uBloomTex;
 uniform float uBloomIntensity;
+uniform float uTime;
 varying vec2 vUv;
 
 void main() {
   vec3 scene = texture2D(uSceneTex, vUv).rgb;
-  vec3 bloom = texture2D(uBloomTex, vUv).rgb;
-  gl_FragColor = vec4(scene + bloom * uBloomIntensity, 1.0);
+  vec3 bloomColor = texture2D(uBloomTex, vUv).rgb;
+
+  // Lens dirt - adds glow patterns where bloom is bright
+  float lensPattern = 0.5 + 0.5 * sin(vUv.x * 10.0 + uTime) * sin(vUv.y * 8.0 + uTime * 0.7);
+  bloomColor *= (1.0 + lensPattern * 0.3);
+
+  gl_FragColor = vec4(scene + bloomColor * uBloomIntensity, 1.0);
+}
+`;
+
+// ---- Sharpening (unsharp mask) -------------------------------------------
+
+const SHARPEN_FRAG = /* glsl */ `
+uniform sampler2D tDiffuse;
+uniform vec2 resolution;
+uniform float uSharpness;
+varying vec2 vUv;
+
+void main() {
+  // Sharpening via unsharp mask
+  vec2 texelSize = 1.0 / resolution;
+  vec3 center = texture2D(tDiffuse, vUv).rgb;
+  vec3 blur = (
+    texture2D(tDiffuse, vUv + vec2(-texelSize.x, 0.0)).rgb +
+    texture2D(tDiffuse, vUv + vec2(texelSize.x, 0.0)).rgb +
+    texture2D(tDiffuse, vUv + vec2(0.0, -texelSize.y)).rgb +
+    texture2D(tDiffuse, vUv + vec2(0.0, texelSize.y)).rgb
+  ) * 0.25;
+  vec3 sharp = center + (center - blur) * uSharpness;
+  gl_FragColor = vec4(sharp, 1.0);
 }
 `;
 
 // ---- Tone mapping + Color grading -----------------------------------------
 
 const TONEMAP_FRAG = /* glsl */ `
-uniform sampler2D uSceneTex;
+uniform sampler2D tDiffuse;
 uniform float uTime;
 uniform float uVignetteIntensity;
 varying vec2 vUv;
@@ -214,15 +243,23 @@ float rand(vec2 co) {
 }
 
 void main() {
-  vec3 color = texture2D(uSceneTex, vUv).rgb;
+  // Chromatic aberration
+  vec2 center = vec2(0.5);
+  vec2 dir = vUv - center;
+  float dist = length(dir);
+  float aberration = dist * 0.003; // subtle
+  float rr = texture2D(tDiffuse, vUv + dir * aberration).r;
+  float gg = texture2D(tDiffuse, vUv).g;
+  float bb = texture2D(tDiffuse, vUv - dir * aberration).b;
+  vec3 color = vec3(rr, gg, bb);
 
   // ACES tone mapping
   color = acesFilm(color);
 
   // Vignette – darken edges
-  vec2 center = vUv - 0.5;
-  float dist = length(center);
-  float vig = smoothstep(0.7, 0.4, dist);
+  vec2 vigDir = vUv - 0.5;
+  float vigDist = length(vigDir);
+  float vig = smoothstep(0.7, 0.4, vigDist);
   color *= mix(1.0, vig, uVignetteIntensity);
 
   // Subtle film grain
@@ -335,6 +372,7 @@ export class CraftPostProcessing {
   private _brightPassMat: THREE.ShaderMaterial;
   private _blurMat: THREE.ShaderMaterial;
   private _bloomCompositeMat: THREE.ShaderMaterial;
+  private _sharpenMat: THREE.ShaderMaterial;
   private _tonemapMat: THREE.ShaderMaterial;
   private _dofMat: THREE.ShaderMaterial;
   private _copyMat: THREE.ShaderMaterial;
@@ -343,6 +381,7 @@ export class CraftPostProcessing {
   private _bloomIntensity = 0.35;
   private _ssaoIntensity = 0.6;
   private _vignetteIntensity = 0.4;
+  private _sharpness = 0.3;
   private _dofEnabled = false;
   private _time = 0;
 
@@ -414,11 +453,19 @@ export class CraftPostProcessing {
       uSceneTex: { value: null },
       uBloomTex: { value: null },
       uBloomIntensity: { value: this._bloomIntensity },
+      uTime: { value: 0 },
+    });
+
+    // Sharpening -------------------------------------------------------------
+    this._sharpenMat = makePassMaterial(SHARPEN_FRAG, {
+      tDiffuse: { value: null },
+      resolution: { value: new THREE.Vector2(width, height) },
+      uSharpness: { value: this._sharpness },
     });
 
     // Tone mapping -----------------------------------------------------------
     this._tonemapMat = makePassMaterial(TONEMAP_FRAG, {
-      uSceneTex: { value: null },
+      tDiffuse: { value: null },
       uTime: { value: 0 },
       uVignetteIntensity: { value: this._vignetteIntensity },
     });
@@ -511,6 +558,7 @@ export class CraftPostProcessing {
       this._bloomCompositeMat.uniforms.uSceneTex.value = currentRT.texture;
       this._bloomCompositeMat.uniforms.uBloomTex.value = this._rtBloomHalf.texture;
       this._bloomCompositeMat.uniforms.uBloomIntensity.value = this._bloomIntensity;
+      this._bloomCompositeMat.uniforms.uTime.value = this._time;
 
       // Write to a target that is NOT currentRT
       const compositeTarget = currentRT === this._rtPingA ? this._rtPingB : this._rtPingA;
@@ -518,9 +566,19 @@ export class CraftPostProcessing {
       currentRT = compositeTarget;
     }
 
-    // ----- Pass 3: Tone mapping + Color grading ----------------------------
+    // ----- Pass 3: Sharpening (unsharp mask) --------------------------------
     {
-      this._tonemapMat.uniforms.uSceneTex.value = currentRT.texture;
+      this._sharpenMat.uniforms.tDiffuse.value = currentRT.texture;
+      this._sharpenMat.uniforms.uSharpness.value = this._sharpness;
+
+      const sharpTarget = currentRT === this._rtPingA ? this._rtPingB : this._rtPingA;
+      this._renderPass(this._sharpenMat, sharpTarget);
+      currentRT = sharpTarget;
+    }
+
+    // ----- Pass 4: Tone mapping + Color grading ----------------------------
+    {
+      this._tonemapMat.uniforms.tDiffuse.value = currentRT.texture;
       this._tonemapMat.uniforms.uTime.value = this._time;
       this._tonemapMat.uniforms.uVignetteIntensity.value = this._vignetteIntensity;
 
@@ -529,7 +587,7 @@ export class CraftPostProcessing {
       currentRT = tmTarget;
     }
 
-    // ----- Pass 4: DOF (optional) ------------------------------------------
+    // ----- Pass 5: DOF (optional) ------------------------------------------
     if (this._dofEnabled) {
       this._dofMat.uniforms.uSceneTex.value = currentRT.texture;
       this._dofMat.uniforms.uDepthTex.value = this._rtDepth.texture;
@@ -562,6 +620,7 @@ export class CraftPostProcessing {
     this._ssaoMat.uniforms.uResolution.value.copy(res);
     this._aoBlurMat.uniforms.uResolution.value.copy(res);
     this._dofMat.uniforms.uResolution.value.copy(res);
+    this._sharpenMat.uniforms.resolution.value.copy(res);
   }
 
   setBloomIntensity(v: number): void {
@@ -574,6 +633,10 @@ export class CraftPostProcessing {
 
   setDOFEnabled(enabled: boolean): void {
     this._dofEnabled = enabled;
+  }
+
+  setSharpness(v: number): void {
+    this._sharpness = Math.max(0, v);
   }
 
   setVignetteIntensity(v: number): void {
@@ -595,6 +658,7 @@ export class CraftPostProcessing {
     this._brightPassMat.dispose();
     this._blurMat.dispose();
     this._bloomCompositeMat.dispose();
+    this._sharpenMat.dispose();
     this._tonemapMat.dispose();
     this._dofMat.dispose();
     this._copyMat.dispose();

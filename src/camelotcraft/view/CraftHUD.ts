@@ -8,6 +8,8 @@ import type { ItemStack } from "../config/CraftRecipeDefs";
 import type { CraftState } from "../state/CraftState";
 import { getWorldBlock } from "../state/CraftState";
 import { worldToChunk } from "../state/CraftChunk";
+import { matchRecipe } from "../systems/CraftCraftingSystem";
+import { RECIPES } from "../config/CraftRecipeDefs";
 
 export class CraftHUD {
   private _root!: HTMLDivElement;
@@ -31,16 +33,102 @@ export class CraftHUD {
   private _compassEl!: HTMLDivElement;
   private _weatherEl!: HTMLDivElement;
   private _armorEl!: HTMLDivElement;
+  private _itemNameEl!: HTMLDivElement;
+  private _crosshairV!: HTMLDivElement;
+  private _crosshairH!: HTMLDivElement;
+  private _lastSelectedSlot = -1;
+  private _itemNameTimer = 0;
+  private _recipeBook!: HTMLDivElement;
+  private _recipeBookOpen = false;
 
   /** Callbacks */
   onCraftSlotClick?: (slotIndex: number) => void;
   onInventorySlotClick?: (section: "hotbar" | "main", index: number) => void;
   onCraftResultClick?: () => void;
 
+  /** Cursor item for drag-and-drop in inventory. */
+  private _cursorItem: ItemStack | null = null;
+  private _cursorEl!: HTMLDivElement;
+
+  /** Get/set the cursor item for external use. */
+  getCursorItem(): ItemStack | null { return this._cursorItem; }
+
+  /** Handle inventory slot click: pick up or swap items. */
+  handleSlotClick(slots: (ItemStack | null)[], index: number): void {
+    if (this._cursorItem === null) {
+      // Pick up item
+      if (slots[index]) {
+        this._cursorItem = slots[index];
+        slots[index] = null;
+      }
+    } else {
+      // Put down or swap
+      if (slots[index] === null) {
+        slots[index] = this._cursorItem;
+        this._cursorItem = null;
+      } else if (
+        slots[index]!.blockType !== undefined &&
+        this._cursorItem.blockType !== undefined &&
+        slots[index]!.blockType === this._cursorItem.blockType &&
+        slots[index]!.count < 64
+      ) {
+        // Stack matching items
+        const space = 64 - slots[index]!.count;
+        const transfer = Math.min(space, this._cursorItem.count);
+        slots[index]!.count += transfer;
+        this._cursorItem.count -= transfer;
+        if (this._cursorItem.count <= 0) this._cursorItem = null;
+      } else {
+        // Swap
+        const temp = slots[index];
+        slots[index] = this._cursorItem;
+        this._cursorItem = temp;
+      }
+    }
+  }
+
+  /** Shift-click: move item between hotbar and main inventory. */
+  handleShiftClick(state: CraftState, section: "hotbar" | "main", index: number): void {
+    const inv = state.player.inventory;
+    const from = section === "hotbar" ? inv.hotbar : inv.main;
+    const to = section === "hotbar" ? inv.main : inv.hotbar;
+    const item = from[index];
+    if (!item) return;
+
+    // Find first empty slot in target, or stack
+    for (let i = 0; i < to.length; i++) {
+      if (to[i] === null) {
+        to[i] = item;
+        from[index] = null;
+        return;
+      }
+    }
+  }
+
   build(): void {
+    // Inject global CSS animations
+    if (!document.getElementById("cc-style")) {
+      const style = document.createElement("style");
+      style.id = "cc-style";
+      style.textContent = `
+        @keyframes ccFadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes ccSlideIn { from { opacity:0; transform:translateX(20px); } to { opacity:1; transform:translateX(0); } }
+        @keyframes ccPulse { 0%,100% { opacity:0.7; } 50% { opacity:1; } }
+        @keyframes ccGlow { 0%,100% { box-shadow:0 0 4px rgba(255,215,0,0.3); } 50% { box-shadow:0 0 12px rgba(255,215,0,0.6); } }
+        @keyframes ccBounce { 0%,100% { transform:scale(1); } 50% { transform:scale(1.1); } }
+        .cc-btn { transition: all 0.2s ease !important; }
+        .cc-btn:hover { transform: scale(1.05) !important; filter: brightness(1.2) !important; box-shadow: 0 0 15px rgba(255,215,0,0.3) !important; }
+        .cc-panel { animation: ccFadeIn 0.3s ease; }
+        .cc-slide { animation: ccSlideIn 0.3s ease; }
+        .cc-hotbar-sel { animation: ccGlow 1.5s ease infinite; }
+        #craft-hud * { font-family: Georgia, 'Segoe UI', sans-serif; }
+      `;
+      document.head.appendChild(style);
+    }
+
     this._root = document.createElement("div");
     this._root.id = "craft-hud";
-    this._root.style.cssText = `position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:5;font-family:'Segoe UI',sans-serif;`;
+    this._root.style.cssText = `position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:5;font-family:Georgia,'Segoe UI',sans-serif;`;
     document.body.appendChild(this._root);
 
     this._buildHotbar();
@@ -58,6 +146,10 @@ export class CraftHUD {
     this._buildCompass();
     this._buildWeatherIndicator();
     this._buildArmorDisplay();
+    this._buildRecipeBook();
+    this._buildCursorItem();
+    this._buildItemNameDisplay();
+    this._buildDynamicCrosshair();
   }
 
   // --- Hotbar ---
@@ -202,6 +294,23 @@ export class CraftHUD {
         </div>
       </div>
     `;
+
+    const recipeBtn = document.createElement("button");
+    recipeBtn.textContent = "Recipe Book";
+    recipeBtn.style.cssText = `
+      display:block;margin:12px auto 0;padding:8px 20px;
+      background:rgba(0,0,0,0.4);color:#4CAF50;border:1px solid #4CAF50;
+      border-radius:4px;cursor:pointer;font-size:14px;font-family:Georgia,serif;
+      pointer-events:auto;letter-spacing:1px;
+    `;
+    recipeBtn.onmouseenter = () => { recipeBtn.style.background = "rgba(76,175,80,0.2)"; };
+    recipeBtn.onmouseleave = () => { recipeBtn.style.background = "rgba(0,0,0,0.4)"; };
+    recipeBtn.onclick = () => {
+      this._recipeBookOpen = !this._recipeBookOpen;
+      this._recipeBook.style.display = this._recipeBookOpen ? "block" : "none";
+    };
+    card.appendChild(recipeBtn);
+
     this._inventoryOverlay.appendChild(card);
     this._root.appendChild(this._inventoryOverlay);
   }
@@ -293,6 +402,8 @@ export class CraftHUD {
     this._updateDamageFlash(state);
     this._updateCompass(state);
     this._updateArmorDisplay(state);
+    this._updateItemName(state);
+    this._updateCrosshair(state);
 
     // Inventory overlay visibility
     if (state.inventoryOpen || state.craftingOpen) {
@@ -300,6 +411,10 @@ export class CraftHUD {
       this._updateInventoryOverlay(state);
     } else {
       this._inventoryOverlay.style.display = "none";
+      if (this._recipeBookOpen) {
+        this._recipeBookOpen = false;
+        this._recipeBook.style.display = "none";
+      }
     }
   }
 
@@ -312,7 +427,11 @@ export class CraftHUD {
       const isSelected = i === inv.selectedSlot;
 
       slot.style.borderColor = isSelected ? "#FFD700" : "#555";
-      slot.style.boxShadow = isSelected ? "0 0 8px rgba(255,215,0,0.5)" : "none";
+      slot.style.boxShadow = isSelected ? "0 0 12px rgba(255,215,0,0.5)" : "none";
+      slot.style.transform = isSelected ? "scale(1.08)" : "scale(1)";
+      slot.style.transition = "all 0.15s ease";
+      if (isSelected) slot.classList.add("cc-hotbar-sel");
+      else slot.classList.remove("cc-hotbar-sel");
 
       // Clear previous item display (keep slot number)
       while (slot.children.length > 1) slot.removeChild(slot.lastChild!);
@@ -325,6 +444,7 @@ export class CraftHUD {
           width:32px;height:32px;background:rgb(${r},${g},${b});
           border-radius:3px;border:1px solid rgba(255,255,255,0.2);
         `;
+        itemDiv.title = item.displayName; // Tooltip on hover
         slot.appendChild(itemDiv);
 
         if (item.count > 1) {
@@ -439,7 +559,7 @@ export class CraftHUD {
   private _updateInventoryOverlay(state: CraftState): void {
     const inv = state.player.inventory;
 
-    // Crafting grid
+    // Crafting grid — click to place/pickup items
     const gridEl = this._inventoryOverlay.querySelector("#craft-grid") as HTMLDivElement;
     gridEl.innerHTML = "";
     for (let i = 0; i < 9; i++) {
@@ -447,33 +567,63 @@ export class CraftHUD {
       slot.style.pointerEvents = "auto";
       slot.style.cursor = "pointer";
       const idx = i;
-      slot.onclick = () => this.onCraftSlotClick?.(idx);
+      slot.onclick = (e) => {
+        if (e.shiftKey && inv.craftGrid[idx]) {
+          // Shift-click: move back to inventory
+          this.handleShiftClick(state, "main", -1); // dummy, handled below
+          const item = inv.craftGrid[idx];
+          if (item) {
+            for (let j = 0; j < inv.hotbar.length; j++) {
+              if (!inv.hotbar[j]) { inv.hotbar[j] = item; inv.craftGrid[idx] = null; break; }
+            }
+            if (inv.craftGrid[idx]) { // still not moved
+              for (let j = 0; j < inv.main.length; j++) {
+                if (!inv.main[j]) { inv.main[j] = item; inv.craftGrid[idx] = null; break; }
+              }
+            }
+          }
+        } else {
+          this.handleSlotClick(inv.craftGrid, idx);
+        }
+        // Live-update crafting result
+        inv.craftResult = matchRecipe(inv.craftGrid, 3);
+      };
       gridEl.appendChild(slot);
     }
 
-    // Craft result
+    // Craft result — click to take crafted item
     const resultEl = this._inventoryOverlay.querySelector("#craft-result") as HTMLDivElement;
     resultEl.innerHTML = "";
     if (inv.craftResult) {
       resultEl.appendChild(this._makeItemDisplay(inv.craftResult));
+      resultEl.style.pointerEvents = "auto";
+      resultEl.style.cursor = "pointer";
       resultEl.onclick = () => this.onCraftResultClick?.();
     }
 
-    // Main inventory
+    // Main inventory (click = pick up / place, shift-click = move to hotbar)
     const mainEl = this._inventoryOverlay.querySelector("#inv-main") as HTMLDivElement;
     mainEl.innerHTML = "";
     for (let i = 0; i < inv.main.length; i++) {
       const slot = this._makeSlot(inv.main[i]);
-      slot.onclick = () => this.onInventorySlotClick?.("main", i);
+      const idx = i;
+      slot.onclick = (e) => {
+        if (e.shiftKey) this.handleShiftClick(state, "main", idx);
+        else this.handleSlotClick(inv.main, idx);
+      };
       mainEl.appendChild(slot);
     }
 
-    // Hotbar in overlay
+    // Hotbar in overlay (click = pick up / place, shift-click = move to main)
     const hotbarEl = this._inventoryOverlay.querySelector("#inv-hotbar") as HTMLDivElement;
     hotbarEl.innerHTML = "";
     for (let i = 0; i < inv.hotbar.length; i++) {
       const slot = this._makeSlot(inv.hotbar[i]);
-      slot.onclick = () => this.onInventorySlotClick?.("hotbar", i);
+      const idx = i;
+      slot.onclick = (e) => {
+        if (e.shiftKey) this.handleShiftClick(state, "hotbar", idx);
+        else this.handleSlotClick(inv.hotbar, idx);
+      };
       hotbarEl.appendChild(slot);
     }
   }
@@ -602,20 +752,155 @@ export class CraftHUD {
   }
 
   private _updateDamageFlash(state: CraftState): void {
-    if (state.player.hp < this._lastHp) {
-      // Took damage — flash red
-      this._damageFlash.style.background = "rgba(229,57,53,0.4)";
-      setTimeout(() => {
-        this._damageFlash.style.background = "rgba(229,57,53,0.0)";
-      }, 200);
-    }
-    this._lastHp = state.player.hp;
+    const p = state.player;
 
-    // Low HP vignette
-    if (state.player.hp <= 4 && state.player.hp > 0) {
-      const pulse = Math.sin(state.totalTime * 3) * 0.1 + 0.15;
-      this._damageFlash.style.background = `rgba(229,57,53,${pulse})`;
+    if (p.hp < this._lastHp) {
+      // Took damage — red flash with radial vignette
+      this._damageFlash.style.background = `radial-gradient(ellipse at center, rgba(229,57,53,0.0) 40%, rgba(229,57,53,0.5) 100%)`;
+      setTimeout(() => {
+        if (p.hp > 4) this._damageFlash.style.background = "rgba(229,57,53,0.0)";
+      }, 250);
     }
+    this._lastHp = p.hp;
+
+    // Low HP: pulsing red vignette that intensifies as HP drops
+    if (p.hp <= 6 && p.hp > 0) {
+      const intensity = (1 - p.hp / 6) * 0.4; // 0 at 6hp, 0.4 at 1hp
+      const pulse = Math.sin(state.totalTime * 3) * intensity * 0.4 + intensity;
+      this._damageFlash.style.background =
+        `radial-gradient(ellipse at center, rgba(229,57,53,0.0) 30%, rgba(229,57,53,${pulse}) 100%)`;
+    } else if (p.hp > 6) {
+      // Ensure it's clear when HP is fine
+      if (!this._damageFlash.style.background.includes("0.0)")) {
+        this._damageFlash.style.background = "rgba(229,57,53,0.0)";
+      }
+    }
+
+    // Near-death heartbeat visual (screen pulse at very low HP)
+    if (p.hp <= 3 && p.hp > 0) {
+      const beat = Math.abs(Math.sin(state.totalTime * 4));
+      this._damageFlash.style.transform = `scale(${1 + beat * 0.01})`;
+    } else {
+      this._damageFlash.style.transform = "scale(1)";
+    }
+  }
+
+  // --- Recipe Book ---
+  private _buildRecipeBook(): void {
+    this._recipeBook = document.createElement("div");
+    this._recipeBook.style.cssText = `
+      position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:110;
+      background:rgba(30,20,10,0.95);border:2px solid #4CAF50;border-radius:8px;
+      padding:20px;color:white;font-family:'Segoe UI',sans-serif;
+      max-height:70vh;max-width:500px;overflow-y:auto;display:none;
+      box-shadow:0 0 30px rgba(76,175,80,0.3);pointer-events:auto;
+    `;
+
+    const header = document.createElement("div");
+    header.style.cssText = `display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;`;
+    header.innerHTML = `<h3 style="color:#4CAF50;margin:0;font-size:18px;">Recipe Book</h3>`;
+    const closeBtn = document.createElement("button");
+    closeBtn.textContent = "X";
+    closeBtn.style.cssText = `background:none;border:1px solid #666;color:#aaa;padding:2px 8px;cursor:pointer;border-radius:3px;font-size:14px;`;
+    closeBtn.onclick = () => {
+      this._recipeBookOpen = false;
+      this._recipeBook.style.display = "none";
+    };
+    header.appendChild(closeBtn);
+    this._recipeBook.appendChild(header);
+
+    // Group recipes by type
+    const shaped = RECIPES.filter(r => r.type === "shaped");
+    const shapeless = RECIPES.filter(r => r.type === "shapeless");
+    const smelting = RECIPES.filter(r => r.type === "smelt");
+
+    const addSection = (title: string, recipes: typeof RECIPES) => {
+      if (recipes.length === 0) return;
+      const sec = document.createElement("div");
+      sec.style.cssText = `margin-bottom:12px;`;
+      sec.innerHTML = `<div style="color:#FFD700;font-size:13px;font-weight:bold;margin-bottom:6px;border-bottom:1px solid #333;padding-bottom:4px;">${title}</div>`;
+
+      for (const recipe of recipes) {
+        const row = document.createElement("div");
+        row.style.cssText = `display:flex;align-items:center;gap:8px;margin-bottom:6px;padding:4px;border-radius:3px;background:rgba(255,255,255,0.03);`;
+
+        // Result icon
+        const resultColor = recipe.result.color;
+        const rr = (resultColor >> 16) & 0xFF, rg = (resultColor >> 8) & 0xFF, rb = resultColor & 0xFF;
+        const resultIcon = document.createElement("div");
+        resultIcon.style.cssText = `width:24px;height:24px;background:rgb(${rr},${rg},${rb});border-radius:3px;border:1px solid rgba(255,255,255,0.2);flex-shrink:0;`;
+        resultIcon.title = recipe.result.displayName;
+
+        // Result name
+        const resultName = document.createElement("span");
+        resultName.style.cssText = `color:#E0D0A0;font-size:12px;min-width:120px;`;
+        resultName.textContent = recipe.result.displayName + (recipe.result.count > 1 ? ` x${recipe.result.count}` : "");
+
+        // Ingredients
+        const ingredients = document.createElement("span");
+        ingredients.style.cssText = `color:#888;font-size:11px;`;
+
+        if (recipe.type === "shaped") {
+          const blocks = recipe.pattern.flat().filter(b => b !== null);
+          const counts = new Map<string, number>();
+          for (const b of blocks) {
+            const name = BLOCK_DEFS[b!]?.name ?? `Block#${b}`;
+            counts.set(name, (counts.get(name) ?? 0) + 1);
+          }
+          ingredients.textContent = [...counts.entries()].map(([n, c]) => c > 1 ? `${n} x${c}` : n).join(", ");
+        } else if (recipe.type === "shapeless") {
+          const counts = new Map<string, number>();
+          for (const b of recipe.ingredients) {
+            const name = BLOCK_DEFS[b]?.name ?? `Block#${b}`;
+            counts.set(name, (counts.get(name) ?? 0) + 1);
+          }
+          ingredients.textContent = [...counts.entries()].map(([n, c]) => c > 1 ? `${n} x${c}` : n).join(", ");
+        } else if (recipe.type === "smelt") {
+          const name = BLOCK_DEFS[recipe.input]?.name ?? `Block#${recipe.input}`;
+          ingredients.textContent = `${name} (smelt ${recipe.time}s)`;
+        }
+
+        row.appendChild(resultIcon);
+        row.appendChild(resultName);
+        row.appendChild(ingredients);
+        sec.appendChild(row);
+      }
+
+      this._recipeBook.appendChild(sec);
+    };
+
+    addSection("Crafting Recipes", shaped);
+    addSection("Shapeless Recipes", shapeless);
+    addSection("Smelting Recipes", smelting);
+
+    document.body.appendChild(this._recipeBook);
+  }
+
+  // --- Cursor item (drag-and-drop) ---
+  private _buildCursorItem(): void {
+    this._cursorEl = document.createElement("div");
+    this._cursorEl.style.cssText = `
+      position:fixed; pointer-events:none; z-index:100;
+      width:32px; height:32px; display:none;
+    `;
+    document.body.appendChild(this._cursorEl);
+
+    // Track mouse for cursor item position
+    document.addEventListener("mousemove", (e) => {
+      if (this._cursorItem) {
+        this._cursorEl.style.left = `${e.clientX - 16}px`;
+        this._cursorEl.style.top = `${e.clientY - 16}px`;
+        this._cursorEl.style.display = "block";
+        const c = this._cursorItem.color;
+        const r = (c >> 16) & 0xFF, g = (c >> 8) & 0xFF, b = c & 0xFF;
+        this._cursorEl.style.background = `rgb(${r},${g},${b})`;
+        this._cursorEl.style.borderRadius = "4px";
+        this._cursorEl.style.border = "2px solid rgba(255,255,255,0.5)";
+        this._cursorEl.style.boxShadow = "0 0 8px rgba(0,0,0,0.5)";
+      } else {
+        this._cursorEl.style.display = "none";
+      }
+    });
   }
 
   // --- Compass ---
@@ -706,7 +991,98 @@ export class CraftHUD {
     }
   }
 
+  // --- Selected item name display ---
+  private _buildItemNameDisplay(): void {
+    this._itemNameEl = document.createElement("div");
+    this._itemNameEl.style.cssText = `
+      position:absolute; bottom:68px; left:50%; transform:translateX(-50%);
+      color:#FFD700; font-size:13px; text-shadow:1px 1px 3px black, 0 0 8px rgba(255,215,0,0.3);
+      font-family:Georgia,serif; letter-spacing:1px; opacity:0;
+      transition:opacity 0.3s ease; white-space:nowrap;
+    `;
+    this._root.appendChild(this._itemNameEl);
+  }
+
+  private _updateItemName(state: CraftState): void {
+    const slot = state.player.inventory.selectedSlot;
+    const item = state.player.inventory.hotbar[slot];
+
+    if (slot !== this._lastSelectedSlot) {
+      this._lastSelectedSlot = slot;
+      this._itemNameTimer = 3;
+      if (item) {
+        this._itemNameEl.textContent = item.displayName;
+        this._itemNameEl.style.opacity = "1";
+      } else {
+        this._itemNameEl.style.opacity = "0";
+      }
+    }
+
+    if (this._itemNameTimer > 0) {
+      this._itemNameTimer -= 0.016;
+      if (this._itemNameTimer <= 0.5) {
+        this._itemNameEl.style.opacity = String(Math.max(0, this._itemNameTimer / 0.5));
+      }
+    }
+  }
+
+  // --- Dynamic crosshair ---
+  private _buildDynamicCrosshair(): void {
+    this._crosshairV = document.createElement("div");
+    this._crosshairV.style.cssText = `
+      position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+      width:2px; height:16px; background:rgba(255,255,255,0.9); pointer-events:none; z-index:10;
+      transition: all 0.15s ease; border-radius:1px;
+      box-shadow: 0 0 4px rgba(0,0,0,0.8);
+    `;
+    document.body.appendChild(this._crosshairV);
+
+    this._crosshairH = document.createElement("div");
+    this._crosshairH.style.cssText = `
+      position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+      width:16px; height:2px; background:rgba(255,255,255,0.9); pointer-events:none; z-index:10;
+      transition: all 0.15s ease; border-radius:1px;
+      box-shadow: 0 0 4px rgba(0,0,0,0.8);
+    `;
+    document.body.appendChild(this._crosshairH);
+  }
+
+  private _updateCrosshair(state: CraftState): void {
+    if (!this._crosshairV || !this._crosshairH) return;
+
+    const target = state.player.miningTarget;
+    const held = state.player.inventory.hotbar[state.player.inventory.selectedSlot];
+
+    if (target && target.progress > 0) {
+      // Mining: expand + orange
+      const sp = 4 + target.progress * 10;
+      this._crosshairV.style.height = `${16 + sp * 2}px`;
+      this._crosshairH.style.width = `${16 + sp * 2}px`;
+      this._crosshairV.style.background = this._crosshairH.style.background = "#FF9800";
+    } else if (state.player.blocking) {
+      this._crosshairV.style.height = this._crosshairH.style.width = "10px";
+      this._crosshairV.style.background = this._crosshairH.style.background = "#42A5F5";
+    } else if (held?.itemType === "weapon") {
+      this._crosshairV.style.height = this._crosshairH.style.width = "20px";
+      this._crosshairV.style.background = this._crosshairH.style.background = "#e53935";
+    } else if (held?.itemType === "block") {
+      this._crosshairV.style.height = this._crosshairH.style.width = "12px";
+      this._crosshairV.style.background = this._crosshairH.style.background = "#4CAF50";
+    } else {
+      this._crosshairV.style.height = this._crosshairH.style.width = "16px";
+      this._crosshairV.style.background = this._crosshairH.style.background = "rgba(255,255,255,0.9)";
+    }
+
+    const vis = (state.inventoryOpen || state.craftingOpen) ? "none" : "block";
+    this._crosshairV.style.display = this._crosshairH.style.display = vis;
+  }
+
   destroy(): void {
     this._root.remove();
+    this._recipeBook?.remove();
+    this._crosshairV?.remove();
+    this._crosshairH?.remove();
+    this._cursorEl?.remove();
+    document.getElementById("cc-style")?.remove();
   }
 }

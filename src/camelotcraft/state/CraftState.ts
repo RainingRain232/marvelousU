@@ -40,6 +40,12 @@ export interface CraftPlayer {
   knightsRecruited: number;
   /** Player attack cooldown timer. */
   attackTimer: number;
+  /** Whether crouching/sneaking. */
+  crouching: boolean;
+  /** Whether blocking with shield (right-click while holding weapon). */
+  blocking: boolean;
+  /** Whether flying (creative mode). */
+  flying: boolean;
   /** Whether player is submerged in water. */
   inWater: boolean;
   /** Whether player is swimming (in water + pressing space). */
@@ -72,6 +78,9 @@ export function createPlayer(): CraftPlayer {
     hasExcalibur: false,
     hasGrail: false,
     attackTimer: 0,
+    crouching: false,
+    blocking: false,
+    flying: false,
     inWater: false,
     swimming: false,
     spawnPoint: new THREE.Vector3(8, 40, 8),
@@ -164,6 +173,9 @@ export interface CraftState {
   screenW: number;
   screenH: number;
 
+  /** Creative mode: flying, infinite blocks, no damage. */
+  creativeMode: boolean;
+
   /** Game over flag. */
   gameOver: boolean;
   victory: boolean;
@@ -188,6 +200,7 @@ export function createCraftState(seed?: number): CraftState {
     craftingOpen: false,
     screenW: window.innerWidth,
     screenH: window.innerHeight,
+    creativeMode: false,
     gameOver: false,
     victory: false,
     messages: [],

@@ -112,6 +112,63 @@ function generateTree(chunk: CraftChunk, lx: number, ly: number, lz: number, log
 }
 
 // ---------------------------------------------------------------------------
+// River carving
+// ---------------------------------------------------------------------------
+
+function carveRivers(
+  chunk: CraftChunk, seed: number, heights: number[], biomes: BiomeType[],
+): void {
+  const cx = chunk.worldX;
+  const cz = chunk.worldZ;
+
+  // Use chunk Z coordinate to determine if a river crosses this chunk (~15% chance)
+  const chunkZIdx = Math.floor(cz / S);
+  const riverRoll = hashPos(seed + 777, 0, 0, chunkZIdx);
+  if (riverRoll > 0.15) return;
+
+  // River seed determines the sinusoidal offset
+  const riverSeed = hashPos(seed + 888, 0, 0, chunkZIdx) * Math.PI * 2 * 100;
+
+  // River width varies between 2-4 blocks
+  const riverWidth = 2 + Math.floor(hashPos(seed + 999, 0, 0, chunkZIdx) * 3); // 2, 3, or 4
+
+  for (let lx = 0; lx < S; lx++) {
+    const wx = cx + lx;
+
+    // Sinusoidal river path across the chunk in X direction
+    const centerZ = S / 2 + Math.sin(wx * 0.05 + riverSeed) * 4;
+
+    for (let lz = 0; lz < S; lz++) {
+      const distFromCenter = Math.abs(lz - centerZ);
+      if (distFromCenter > riverWidth / 2) continue;
+
+      const idx = lx * S + lz;
+      const height = heights[idx];
+
+      // Don't generate rivers below sea level
+      if (height <= CB.SEA_LEVEL) continue;
+
+      const biomeDef = BIOME_DEFS[biomes[idx]];
+
+      // Carve the river: set surface and 2 blocks below to water
+      for (let dy = 0; dy <= 2; dy++) {
+        const ly = height - dy;
+        if (ly < 1 || ly >= H) continue;
+        chunk.setBlock(lx, ly, lz, biomeDef.waterBlock);
+      }
+
+      // Carve banks down: the blocks just outside the river center get carved 1 block
+      if (distFromCenter > riverWidth / 2 - 1) {
+        const bankY = height;
+        if (bankY >= 1 && bankY < H) {
+          chunk.setBlock(lx, bankY, lz, biomeDef.waterBlock);
+        }
+      }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Main generation
 // ---------------------------------------------------------------------------
 
@@ -153,6 +210,49 @@ export function generateChunkTerrain(chunk: CraftChunk, seed: number): void {
       const height = heights[idx];
       const biomeDef = BIOME_DEFS[biomes[idx]];
 
+      // Smooth biome transitions: check if adjacent columns (±2) have different biomes
+      let surfaceBlock = biomeDef.surfaceBlock;
+      if (height > CB.SEA_LEVEL) {
+        let hasTransition = false;
+        for (const off of [-2, 2]) {
+          const adjX = lx + off;
+          const adjZ = lz + off;
+          if (adjX >= 0 && adjX < S) {
+            const adjIdx = adjX * S + lz;
+            if (biomes[adjIdx] !== biomes[idx]) { hasTransition = true; break; }
+          }
+          if (adjZ >= 0 && adjZ < S) {
+            const adjIdx = lx * S + adjZ;
+            if (biomes[adjIdx] !== biomes[idx]) { hasTransition = true; break; }
+          }
+        }
+        if (hasTransition) {
+          // 50% chance to use a neighboring biome's surface block
+          const blendRoll = hashPos(seed + 53, wx, 0, wz);
+          if (blendRoll < 0.5) {
+            // Pick the first different neighbor's surface block
+            for (const off of [-2, 2]) {
+              const adjX = lx + off;
+              const adjZ = lz + off;
+              if (adjX >= 0 && adjX < S) {
+                const adjIdx = adjX * S + lz;
+                if (biomes[adjIdx] !== biomes[idx]) {
+                  surfaceBlock = BIOME_DEFS[biomes[adjIdx]].surfaceBlock;
+                  break;
+                }
+              }
+              if (adjZ >= 0 && adjZ < S) {
+                const adjIdx = lx * S + adjZ;
+                if (biomes[adjIdx] !== biomes[idx]) {
+                  surfaceBlock = BIOME_DEFS[biomes[adjIdx]].surfaceBlock;
+                  break;
+                }
+              }
+            }
+          }
+        }
+      }
+
       for (let ly = 0; ly < H; ly++) {
         if (ly === 0) { chunk.setBlock(lx, ly, lz, BlockType.BEDROCK); continue; }
 
@@ -165,7 +265,7 @@ export function generateChunkTerrain(chunk: CraftChunk, seed: number): void {
         } else if (isCave) {
           chunk.setBlock(lx, ly, lz, BlockType.AIR);
         } else if (ly === height) {
-          chunk.setBlock(lx, ly, lz, height <= CB.SEA_LEVEL ? biomeDef.subsurfaceBlock : biomeDef.surfaceBlock);
+          chunk.setBlock(lx, ly, lz, height <= CB.SEA_LEVEL ? biomeDef.subsurfaceBlock : surfaceBlock);
         } else if (ly > height - 4) {
           chunk.setBlock(lx, ly, lz, biomeDef.subsurfaceBlock);
         } else {
@@ -181,6 +281,9 @@ export function generateChunkTerrain(chunk: CraftChunk, seed: number): void {
       }
     }
   }
+
+  // River carving pass
+  carveRivers(chunk, seed, heights, biomes);
 
   // Decoration: trees & foliage
   for (let lx = 2; lx < S - 2; lx++) {

@@ -63,6 +63,10 @@ export class CraftRenderer {
   private _dropMeshes = new Map<number, THREE.Mesh>();
   private _dropGeo = new THREE.BoxGeometry(0.3, 0.3, 0.3);
 
+  /** Block placement ghost preview. */
+  private _ghostMesh!: THREE.Mesh;
+  private _ghostMaterial!: THREE.MeshBasicMaterial;
+
   get camera(): THREE.PerspectiveCamera {
     return this._cameraCtrl.camera;
   }
@@ -99,9 +103,13 @@ export class CraftRenderer {
     this._fog = new THREE.FogExp2(0xC8D8E8, 0.008);
     this._scene.fog = this._fog;
 
-    // Lighting
-    this._ambientLight = new THREE.AmbientLight(0xFFFFFF, 0.5);
+    // Lighting: hemisphere light for realistic sky/ground ambient
+    this._ambientLight = new THREE.AmbientLight(0xFFFFFF, 0.15);
     this._scene.add(this._ambientLight);
+
+    // Hemisphere light: blue sky from above, warm brown from below
+    const hemiLight = new THREE.HemisphereLight(0x87CEEB, 0x8B6914, 0.4);
+    this._scene.add(hemiLight);
 
     this._dirLight = new THREE.DirectionalLight(0xFFEECC, 0.8);
     this._dirLight.position.set(100, 200, 50);
@@ -120,6 +128,16 @@ export class CraftRenderer {
     this._selectionBox.visible = false;
     this._scene.add(this._selectionBox);
 
+    // Block placement ghost preview
+    const ghostGeo = new THREE.BoxGeometry(1.0, 1.0, 1.0);
+    this._ghostMaterial = new THREE.MeshBasicMaterial({
+      color: 0xFFFFFF, transparent: true, opacity: 0.3,
+      depthWrite: false, wireframe: false,
+    });
+    this._ghostMesh = new THREE.Mesh(ghostGeo, this._ghostMaterial);
+    this._ghostMesh.visible = false;
+    this._scene.add(this._ghostMesh);
+
     // Particle system
     this._scene.add(this._particles.group);
 
@@ -136,22 +154,7 @@ export class CraftRenderer {
     this._crackMesh.visible = false;
     this._scene.add(this._crackMesh);
 
-    // Crosshair
-    this._crosshair = document.createElement("div");
-    this._crosshair.style.cssText = `
-      position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
-      width:2px; height:20px; background:white; pointer-events:none; z-index:10;
-      box-shadow: 0 0 2px rgba(0,0,0,0.5);
-    `;
-    document.body.appendChild(this._crosshair);
-
-    const crossH = document.createElement("div");
-    crossH.style.cssText = `
-      position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
-      width:20px; height:2px; background:white; pointer-events:none; z-index:10;
-      box-shadow: 0 0 2px rgba(0,0,0,0.5);
-    `;
-    document.body.appendChild(crossH);
+    // Crosshair is now managed by CraftHUD (dynamic, context-aware)
 
     // Resize handler
     window.addEventListener("resize", this._onResize);
@@ -191,7 +194,8 @@ export class CraftRenderer {
       Math.cos(sunAngle) * 200, Math.sin(sunAngle) * 200, 50,
     ).normalize();
     const sunCol = new THREE.Color(sunHorizon < 0.3 ? 0xFF8844 : 0xFFEECC);
-    updateTerrainUniforms(sunDirVec, sunCol, 0.15 + sunlight * 0.35, this._waterTime);
+    const wetness = this._weather.getWetness?.() ?? 0;
+    updateTerrainUniforms(sunDirVec, sunCol, 0.15 + sunlight * 0.35, this._waterTime, wetness);
 
     // Enable shadow mapping
     this._dirLight.castShadow = true;
@@ -452,6 +456,17 @@ export class CraftRenderer {
         }
       }
     }
+  }
+
+  /** Show block placement ghost preview at world position with given color. */
+  showGhost(wx: number, wy: number, wz: number, color: number): void {
+    this._ghostMesh.position.set(wx + 0.5, wy + 0.5, wz + 0.5);
+    this._ghostMaterial.color.setHex(color);
+    this._ghostMesh.visible = true;
+  }
+
+  hideGhost(): void {
+    this._ghostMesh.visible = false;
   }
 
   /** Show selection box at world position. */

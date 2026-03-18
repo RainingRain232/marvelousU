@@ -429,6 +429,75 @@ export const RECIPES: CraftRecipe[] = [
     result: weaponItem("crystal_sword", "Crystal Sword", 0xCE93D8, 500),
   },
 
+  // ===== Armor =====
+  // Iron Helmet
+  {
+    type: "shaped",
+    pattern: [
+      [BlockType.IRON_ORE, BlockType.IRON_ORE, BlockType.IRON_ORE],
+      [BlockType.IRON_ORE, _, BlockType.IRON_ORE],
+    ],
+    result: { itemType: ItemType.SPECIAL, specialId: "iron_helmet", count: 1, displayName: "Iron Helmet", color: 0xC0C0C0, durability: 165, maxDurability: 165 },
+  },
+  // Iron Chestplate
+  {
+    type: "shaped",
+    pattern: [
+      [BlockType.IRON_ORE, _, BlockType.IRON_ORE],
+      [BlockType.IRON_ORE, BlockType.IRON_ORE, BlockType.IRON_ORE],
+      [BlockType.IRON_ORE, BlockType.IRON_ORE, BlockType.IRON_ORE],
+    ],
+    result: { itemType: ItemType.SPECIAL, specialId: "iron_chestplate", count: 1, displayName: "Iron Chestplate", color: 0xC0C0C0, durability: 240, maxDurability: 240 },
+  },
+  // Iron Leggings
+  {
+    type: "shaped",
+    pattern: [
+      [BlockType.IRON_ORE, BlockType.IRON_ORE, BlockType.IRON_ORE],
+      [BlockType.IRON_ORE, _, BlockType.IRON_ORE],
+      [BlockType.IRON_ORE, _, BlockType.IRON_ORE],
+    ],
+    result: { itemType: ItemType.SPECIAL, specialId: "iron_leggings", count: 1, displayName: "Iron Leggings", color: 0xC0C0C0, durability: 225, maxDurability: 225 },
+  },
+  // Iron Boots
+  {
+    type: "shaped",
+    pattern: [
+      [BlockType.IRON_ORE, _, BlockType.IRON_ORE],
+      [BlockType.IRON_ORE, _, BlockType.IRON_ORE],
+    ],
+    result: { itemType: ItemType.SPECIAL, specialId: "iron_boots", count: 1, displayName: "Iron Boots", color: 0xC0C0C0, durability: 195, maxDurability: 195 },
+  },
+  // Crystal Helmet
+  {
+    type: "shaped",
+    pattern: [
+      [BlockType.ENCHANTED_CRYSTAL_ORE, BlockType.ENCHANTED_CRYSTAL_ORE, BlockType.ENCHANTED_CRYSTAL_ORE],
+      [BlockType.ENCHANTED_CRYSTAL_ORE, _, BlockType.ENCHANTED_CRYSTAL_ORE],
+    ],
+    result: { itemType: ItemType.SPECIAL, specialId: "crystal_helmet", count: 1, displayName: "Crystal Helmet", color: 0xCE93D8, durability: 363, maxDurability: 363 },
+  },
+  // Crystal Chestplate
+  {
+    type: "shaped",
+    pattern: [
+      [BlockType.ENCHANTED_CRYSTAL_ORE, _, BlockType.ENCHANTED_CRYSTAL_ORE],
+      [BlockType.ENCHANTED_CRYSTAL_ORE, BlockType.ENCHANTED_CRYSTAL_ORE, BlockType.ENCHANTED_CRYSTAL_ORE],
+      [BlockType.ENCHANTED_CRYSTAL_ORE, BlockType.ENCHANTED_CRYSTAL_ORE, BlockType.ENCHANTED_CRYSTAL_ORE],
+    ],
+    result: { itemType: ItemType.SPECIAL, specialId: "crystal_chestplate", count: 1, displayName: "Crystal Chestplate", color: 0xCE93D8, durability: 528, maxDurability: 528 },
+  },
+  // Shield (iron + planks)
+  {
+    type: "shaped",
+    pattern: [
+      [_, BlockType.IRON_ORE, _],
+      [BlockType.IRON_ORE, BlockType.OAK_PLANKS, BlockType.IRON_ORE],
+      [_, BlockType.IRON_ORE, _],
+    ],
+    result: { itemType: ItemType.SPECIAL, specialId: "iron_shield", count: 1, displayName: "Iron Shield", color: 0xB0B0B0, durability: 336, maxDurability: 336 },
+  },
+
   // ===== Smelting =====
   { type: "smelt", input: BlockType.IRON_ORE, result: blockItem(BlockType.IRON_BLOCK, 1, "Iron Ingot", 0xC0C0C0), time: 10 },
   { type: "smelt", input: BlockType.GOLD_ORE, result: blockItem(BlockType.GOLD_BLOCK, 1, "Gold Ingot", 0xFFD700), time: 10 },

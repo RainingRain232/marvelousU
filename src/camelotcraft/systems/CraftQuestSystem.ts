@@ -79,12 +79,17 @@ export function updateQuests(state: CraftState): void {
         }
         break;
 
-      // Simplified castle detection: the world must contain at least one
-      // THRONE, one ROUND_TABLE, and enough CASTLE_WALL blocks.
+      // Castle detection: requires throne, round table, banner, and castle walls.
+      // Each 30 castle wall blocks counts as one "room". Throne + Round Table
+      // + Banner each count as a room. Total rooms must reach goal.
       case QuestId.BUILD_CASTLE: {
         let hasThrone = false;
         let hasRoundTable = false;
+        let hasBanner = false;
         let wallCount = 0;
+        let battlementCount = 0;
+        let torchCount = 0;
+        let doorCount = 0;
 
         for (const chunk of state.chunks.values()) {
           const data = chunk.blocks;
@@ -92,23 +97,25 @@ export function updateQuests(state: CraftState): void {
             const bt = data[i];
             if (bt === BlockType.THRONE) hasThrone = true;
             else if (bt === BlockType.ROUND_TABLE) hasRoundTable = true;
+            else if (bt === BlockType.BANNER_BLOCK) hasBanner = true;
             else if (bt === BlockType.CASTLE_WALL) wallCount++;
+            else if (bt === BlockType.CASTLE_BATTLEMENT) battlementCount++;
+            else if (bt === BlockType.TORCH || bt === BlockType.ENCHANTED_TORCH) torchCount++;
+            else if (bt === BlockType.WOODEN_DOOR || bt === BlockType.IRON_DOOR) doorCount++;
           }
         }
 
-        // Progress: count how many of the three conditions are met.
-        // Each condition is one "room-equivalent" toward the goal.
-        let met = 0;
-        if (hasThrone) met++;
-        if (hasRoundTable) met++;
-        // Require a healthy amount of castle wall (roughly 50 per room)
-        const roomsFromWalls = Math.min(
-          quest.goal - 2, // remaining slots after throne + table
-          Math.floor(wallCount / 50),
-        );
-        met += roomsFromWalls;
+        // Score: special blocks give 1 room each, walls give rooms in chunks of 30
+        let rooms = 0;
+        if (hasThrone) rooms++;
+        if (hasRoundTable) rooms++;
+        if (hasBanner) rooms++;
+        rooms += Math.floor(wallCount / 30);
+        // Bonus: battlements (every 20 = +1), doors (every 2 = +1)
+        rooms += Math.floor(battlementCount / 20);
+        rooms += Math.floor(doorCount / 2);
 
-        quest.progress = Math.min(met, quest.goal);
+        quest.progress = Math.min(rooms, quest.goal);
         if (quest.progress >= quest.goal) {
           completeQuest(state, quest);
         }

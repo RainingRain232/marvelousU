@@ -95,7 +95,15 @@ export class CraftParticles {
   emitHit(pos: THREE.Vector3, color: number = 0xff0000): void {
     const count = 6 + Math.floor(Math.random() * 4);
     for (let i = 0; i < count; i++) {
-      const mesh = this.makeBoxMesh(color, 0.08);
+      const hitGeo = new THREE.BoxGeometry(0.08, 0.08, 0.08);
+      const hitMat = new THREE.MeshBasicMaterial({
+        color,
+        transparent: true,
+        opacity: 1,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      });
+      const mesh = new THREE.Mesh(hitGeo, hitMat);
       mesh.position.copy(pos).add(
         _tempVec.set(
           (Math.random() - 0.5) * 0.3,
@@ -128,10 +136,13 @@ export class CraftParticles {
   emitXPOrb(from: THREE.Vector3, to: THREE.Vector3, amount: number): void {
     const count = Math.min(Math.max(1, amount), 10);
     for (let i = 0; i < count; i++) {
+      const color = Math.random() > 0.5 ? 0x7fff00 : 0xffff00;
       const mat = new THREE.MeshBasicMaterial({
-        color: Math.random() > 0.5 ? 0x7fff00 : 0xffff00,
+        color,
         transparent: true,
-        opacity: 1,
+        opacity: 0.9,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
       });
       const mesh = new THREE.Mesh(this.xpSphereGeo, mat);
       mesh.position.copy(from).add(
@@ -184,6 +195,66 @@ export class CraftParticles {
         life: 0.4 + Math.random() * 0.2,
         maxLife: 0.6,
         gravity: 1.5,
+      });
+    }
+  }
+
+  /**
+   * Emit ambient atmosphere particles near the player.
+   * Call once per frame. Spawns dust motes during day, fireflies at night.
+   */
+  emitAmbient(playerX: number, playerY: number, playerZ: number, timeOfDay: number): void {
+    if (this.particles.length > 150) return; // don't overwhelm
+
+    const isNight = timeOfDay > 0.75 || timeOfDay < 0.25;
+
+    // Spawn rate: ~1 particle per 3 frames
+    if (Math.random() > 0.35) return;
+
+    const range = 12;
+    const x = playerX + (Math.random() - 0.5) * range * 2;
+    const y = playerY + Math.random() * 6 - 1;
+    const z = playerZ + (Math.random() - 0.5) * range * 2;
+
+    if (isNight) {
+      // Fireflies: small green/yellow glowing spheres
+      const color = Math.random() > 0.5 ? 0x7FFF00 : 0xFFFF00;
+      const mat = new THREE.MeshBasicMaterial({
+        color, transparent: true, opacity: 0.8,
+        blending: THREE.AdditiveBlending, depthWrite: false,
+      });
+      const mesh = new THREE.Mesh(this.sphereGeo, mat);
+      mesh.position.set(x, y, z);
+      this.group.add(mesh);
+      this.particles.push({
+        mesh, velocity: new THREE.Vector3(
+          (Math.random() - 0.5) * 0.3,
+          Math.sin(Math.random() * 6) * 0.2,
+          (Math.random() - 0.5) * 0.3,
+        ),
+        life: 4 + Math.random() * 4,
+        maxLife: 8,
+        gravity: -0.05, // float upward gently
+      });
+    } else {
+      // Dust motes: tiny white/tan particles floating gently
+      const color = Math.random() > 0.5 ? 0xE8DCC8 : 0xFFFFFF;
+      const mat = new THREE.MeshBasicMaterial({
+        color, transparent: true, opacity: 0.3,
+      });
+      const mesh = new THREE.Mesh(this.sphereGeo, mat);
+      mesh.scale.setScalar(0.5);
+      mesh.position.set(x, y, z);
+      this.group.add(mesh);
+      this.particles.push({
+        mesh, velocity: new THREE.Vector3(
+          (Math.random() - 0.5) * 0.1,
+          (Math.random() - 0.5) * 0.05,
+          (Math.random() - 0.5) * 0.1,
+        ),
+        life: 5 + Math.random() * 5,
+        maxLife: 10,
+        gravity: 0.01, // barely falls
       });
     }
   }
