@@ -155,26 +155,30 @@ export class EagleFlightGame {
 
         EagleFlightInputSystem.update(this._state, DT);
 
-        // --- Wind drift ---
-        const windX = Math.cos(this._state.windAngle) * this._state.windStrength * DT;
-        const windZ = Math.sin(this._state.windAngle) * this._state.windStrength * DT;
-        this._state.player.position.x += windX * 0.15;
-        this._state.player.position.z += windZ * 0.15;
+        // --- Wind drift (only when flying) ---
+        if (this._state.player.mounted) {
+          const windX = Math.cos(this._state.windAngle) * this._state.windStrength * DT;
+          const windZ = Math.sin(this._state.windAngle) * this._state.windStrength * DT;
+          this._state.player.position.x += windX * 0.15;
+          this._state.player.position.z += windZ * 0.15;
+        }
         // Slowly shift wind direction
         this._state.windAngle += Math.sin(this._state.gameTime * 0.1) * 0.001;
 
-        // --- Thermals ---
+        // --- Thermals (only when flying) ---
         this._state.thermalBoost = 0;
         const px = this._state.player.position.x;
         const pz = this._state.player.position.z;
-        for (const th of THERMALS) {
-          const dx = px - th.x;
-          const dz = pz - th.z;
-          const dist = Math.sqrt(dx * dx + dz * dz);
-          if (dist < th.radius) {
-            const strength = (1 - dist / th.radius) * th.strength;
-            this._state.player.position.y += strength * DT;
-            this._state.thermalBoost = Math.max(this._state.thermalBoost, strength / th.strength);
+        if (this._state.player.mounted) {
+          for (const th of THERMALS) {
+            const dx = px - th.x;
+            const dz = pz - th.z;
+            const dist = Math.sqrt(dx * dx + dz * dz);
+            if (dist < th.radius) {
+              const strength = (1 - dist / th.radius) * th.strength;
+              this._state.player.position.y += strength * DT;
+              this._state.thermalBoost = Math.max(this._state.thermalBoost, strength / th.strength);
+            }
           }
         }
 

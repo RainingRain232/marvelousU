@@ -43,6 +43,17 @@ export class EagleFlightRenderer {
   private _eagleHead!: THREE.Mesh;
   private _merlinGroup = new THREE.Group();
 
+  // Walking Merlin (dismounted)
+  private _walkingMerlinGroup = new THREE.Group();
+  private _walkMerlinLegL!: THREE.Group;
+  private _walkMerlinLegR!: THREE.Group;
+  private _walkMerlinArmL!: THREE.Group;
+  private _walkMerlinArmR!: THREE.Group;
+  private _walkMerlinRobeSkirt!: THREE.Mesh;
+
+  // Mount/dismount particles
+  private _mountParticles: { mesh: THREE.Mesh; vx: number; vy: number; vz: number; life: number }[] = [];
+
   // City elements
   private _castleGroup = new THREE.Group();
   private _cityGroup = new THREE.Group();
@@ -164,6 +175,7 @@ export class EagleFlightRenderer {
     this._buildOutskirts();
     this._buildClouds();
     this._buildPlayer();
+    this._buildWalkingMerlin();
     this._buildDustParticles();
     this._buildBirds();
     this._buildEagleTrail();
@@ -4376,6 +4388,209 @@ export class EagleFlightRenderer {
   }
 
   // ---------------------------------------------------------------------------
+  // Walking Merlin (dismounted form)
+  // ---------------------------------------------------------------------------
+
+  private _buildWalkingMerlin(): void {
+    const robeMat = new THREE.MeshStandardMaterial({ color: 0x1a2888, roughness: 0.65 });
+    const robeAccentMat = new THREE.MeshStandardMaterial({ color: 0x3344aa, roughness: 0.6 });
+    const skinMat = new THREE.MeshStandardMaterial({ color: 0xddbbaa, roughness: 0.75 });
+    const hatMat = new THREE.MeshStandardMaterial({ color: 0x1a2888, roughness: 0.65 });
+    const staffMat = new THREE.MeshStandardMaterial({ color: 0x5a3a18, roughness: 0.7 });
+    const glowMat = new THREE.MeshStandardMaterial({
+      color: 0x44aaff,
+      emissive: 0x2288ff,
+      emissiveIntensity: 1.0,
+    });
+    const starMat = new THREE.MeshStandardMaterial({
+      color: 0xccbb44,
+      emissive: 0x887722,
+      emissiveIntensity: 0.4,
+    });
+    const beardMat = new THREE.MeshStandardMaterial({ color: 0xeeeeee, roughness: 0.85 });
+    const beltMat = new THREE.MeshStandardMaterial({ color: 0x553311, roughness: 0.7 });
+    const buckleMat = new THREE.MeshStandardMaterial({ color: 0xccaa44, metalness: 0.7, roughness: 0.3 });
+    const bootMat = new THREE.MeshStandardMaterial({ color: 0x443322, roughness: 0.8 });
+
+    // --- Torso ---
+    const torso = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.2, 0.5), robeMat);
+    torso.position.y = 1.8;
+    this._walkingMerlinGroup.add(torso);
+
+    // Shoulders
+    const shoulders = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.28, 0.6), robeAccentMat);
+    shoulders.position.y = 2.45;
+    this._walkingMerlinGroup.add(shoulders);
+
+    // --- Head ---
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.32, 8, 6), skinMat);
+    head.position.set(0, 2.72, 0);
+    this._walkingMerlinGroup.add(head);
+
+    // Eyes
+    for (const side of [-1, 1]) {
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.04, 5, 4), new THREE.MeshStandardMaterial({ color: 0x334488 }));
+      eye.position.set(side * 0.12, 2.75, -0.28);
+      this._walkingMerlinGroup.add(eye);
+    }
+
+    // Nose
+    const nose = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.12, 4), skinMat);
+    nose.position.set(0, 2.68, -0.32);
+    nose.rotation.x = -Math.PI / 2;
+    this._walkingMerlinGroup.add(nose);
+
+    // --- Wizard hat (taller for standing) ---
+    const hat = new THREE.Mesh(new THREE.ConeGeometry(0.42, 1.2, 8), hatMat);
+    hat.position.set(0, 3.4, 0);
+    hat.rotation.z = 0.12;
+    hat.rotation.x = -0.05;
+    this._walkingMerlinGroup.add(hat);
+    // Hat brim
+    const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.07, 10), hatMat);
+    brim.position.set(0, 2.88, 0);
+    this._walkingMerlinGroup.add(brim);
+    // Stars on hat
+    for (let i = 0; i < 3; i++) {
+      const star = new THREE.Mesh(new THREE.SphereGeometry(0.05, 4, 3), starMat);
+      star.position.set(
+        Math.cos(i * 2.1) * 0.28,
+        3.1 + i * 0.22,
+        Math.sin(i * 2.1) * 0.28,
+      );
+      this._walkingMerlinGroup.add(star);
+    }
+
+    // --- Beard (longer for standing) ---
+    const beardUpper = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.25, 0.18), beardMat);
+    beardUpper.position.set(0, 2.5, -0.22);
+    this._walkingMerlinGroup.add(beardUpper);
+    const beardMid = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.6, 5), beardMat);
+    beardMid.position.set(0, 2.1, -0.28);
+    beardMid.rotation.x = Math.PI;
+    this._walkingMerlinGroup.add(beardMid);
+    const beardTip = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.4, 4), beardMat);
+    beardTip.position.set(0, 1.75, -0.3);
+    beardTip.rotation.x = Math.PI;
+    this._walkingMerlinGroup.add(beardTip);
+
+    // --- Belt with buckle ---
+    const belt = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.12, 0.55), beltMat);
+    belt.position.y = 1.25;
+    this._walkingMerlinGroup.add(belt);
+    const buckle = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 0.08), buckleMat);
+    buckle.position.set(0, 1.25, -0.3);
+    this._walkingMerlinGroup.add(buckle);
+
+    // --- Robe skirt (flows around legs) ---
+    this._walkMerlinRobeSkirt = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.25, 0.55, 1.0, 8),
+      robeMat,
+    );
+    this._walkMerlinRobeSkirt.position.y = 0.7;
+    this._walkingMerlinGroup.add(this._walkMerlinRobeSkirt);
+
+    // Robe hem
+    const hem = new THREE.Mesh(new THREE.CylinderGeometry(0.56, 0.58, 0.08, 10), robeAccentMat);
+    hem.position.y = 0.22;
+    this._walkingMerlinGroup.add(hem);
+
+    // --- Staff (held at side, taller) ---
+    const staff = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.09, 3.5, 6), staffMat);
+    staff.position.set(0.55, 1.8, 0);
+    this._walkingMerlinGroup.add(staff);
+    // Staff knot
+    const knot = new THREE.Mesh(new THREE.SphereGeometry(0.12, 5, 4), staffMat);
+    knot.position.set(0.55, 3.0, 0);
+    this._walkingMerlinGroup.add(knot);
+
+    // Staff crystal (larger glow)
+    const crystalInner = new THREE.Mesh(new THREE.OctahedronGeometry(0.15, 0), glowMat);
+    crystalInner.position.set(0.55, 3.5, 0);
+    this._walkingMerlinGroup.add(crystalInner);
+    const crystalOuter = new THREE.Mesh(
+      new THREE.OctahedronGeometry(0.25, 0),
+      new THREE.MeshStandardMaterial({
+        color: 0x44aaff,
+        emissive: 0x2288ff,
+        emissiveIntensity: 0.5,
+        transparent: true,
+        opacity: 0.4,
+      }),
+    );
+    crystalOuter.position.copy(crystalInner.position);
+    this._walkingMerlinGroup.add(crystalOuter);
+
+    // Staff light
+    const staffLight = new THREE.PointLight(0x4488ff, 4, 25);
+    staffLight.position.copy(crystalInner.position);
+    this._walkingMerlinGroup.add(staffLight);
+
+    // --- Arms (animatable groups) ---
+    // Left arm
+    this._walkMerlinArmL = new THREE.Group();
+    const upperArmL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.55, 0.2), robeMat);
+    upperArmL.position.set(0, -0.25, 0);
+    this._walkMerlinArmL.add(upperArmL);
+    const forearmL = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.5, 0.17), robeAccentMat);
+    forearmL.position.set(0, -0.7, -0.05);
+    this._walkMerlinArmL.add(forearmL);
+    const handL = new THREE.Mesh(new THREE.SphereGeometry(0.09, 5, 4), skinMat);
+    handL.position.set(0, -0.95, -0.08);
+    this._walkMerlinArmL.add(handL);
+    this._walkMerlinArmL.position.set(-0.58, 2.4, 0);
+    this._walkingMerlinGroup.add(this._walkMerlinArmL);
+
+    // Right arm (holding staff)
+    this._walkMerlinArmR = new THREE.Group();
+    const upperArmR = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.55, 0.2), robeMat);
+    upperArmR.position.set(0, -0.25, 0);
+    this._walkMerlinArmR.add(upperArmR);
+    const forearmR = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.5, 0.17), robeAccentMat);
+    forearmR.position.set(0, -0.7, -0.05);
+    this._walkMerlinArmR.add(forearmR);
+    const handR = new THREE.Mesh(new THREE.SphereGeometry(0.09, 5, 4), skinMat);
+    handR.position.set(0, -0.95, -0.08);
+    this._walkMerlinArmR.add(handR);
+    this._walkMerlinArmR.position.set(0.58, 2.4, 0);
+    this._walkingMerlinGroup.add(this._walkMerlinArmR);
+
+    // --- Legs (animatable groups) ---
+    // Left leg
+    this._walkMerlinLegL = new THREE.Group();
+    const thighL = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.5, 0.22), robeMat);
+    thighL.position.y = -0.25;
+    this._walkMerlinLegL.add(thighL);
+    const shinL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.45, 0.2), robeMat);
+    shinL.position.y = -0.65;
+    this._walkMerlinLegL.add(shinL);
+    const bootL = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.2, 0.35), bootMat);
+    bootL.position.set(0, -0.9, -0.05);
+    this._walkMerlinLegL.add(bootL);
+    this._walkMerlinLegL.position.set(-0.2, 1.15, 0);
+    this._walkingMerlinGroup.add(this._walkMerlinLegL);
+
+    // Right leg
+    this._walkMerlinLegR = new THREE.Group();
+    const thighR = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.5, 0.22), robeMat);
+    thighR.position.y = -0.25;
+    this._walkMerlinLegR.add(thighR);
+    const shinR = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.45, 0.2), robeMat);
+    shinR.position.y = -0.65;
+    this._walkMerlinLegR.add(shinR);
+    const bootR = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.2, 0.35), bootMat);
+    bootR.position.set(0, -0.9, -0.05);
+    this._walkMerlinLegR.add(bootR);
+    this._walkMerlinLegR.position.set(0.2, 1.15, 0);
+    this._walkingMerlinGroup.add(this._walkMerlinLegR);
+
+    // Scale to match world
+    this._walkingMerlinGroup.scale.set(1.8, 1.8, 1.8);
+    this._walkingMerlinGroup.visible = false;
+    this._scene.add(this._walkingMerlinGroup);
+  }
+
+  // ---------------------------------------------------------------------------
   // God rays
   // ---------------------------------------------------------------------------
 
@@ -4891,88 +5106,225 @@ export class EagleFlightRenderer {
     const p = state.player;
     const t = state.gameTime;
 
-    // --- Update eagle position and rotation ---
-    this._eagleGroup.position.set(p.position.x, p.position.y, p.position.z);
-    const euler = new THREE.Euler(p.pitch, p.yaw, p.roll, "YXZ");
-    this._eagleGroup.setRotationFromEuler(euler);
+    // --- Mount/Dismount visibility ---
+    const isMounted = p.mounted;
+    const inTransition = p.mountTransition < 1;
+    const transT = p.mountTransition; // 0→1
 
-    // Wing flap animation — more organic with speed-based amplitude
-    const speedRatio = p.speed / 45;
-    const flapAmp = 0.15 + (1 - speedRatio) * 0.25; // flap more when slow
-    const flapAngle = Math.sin(p.flapPhase) * flapAmp;
-    if (this._eagleWingL) {
-      this._eagleWingL.rotation.z = flapAngle + 0.05;
-      this._eagleWingL.rotation.x = Math.sin(p.flapPhase * 0.7) * 0.05;
-    }
-    if (this._eagleWingR) {
-      this._eagleWingR.rotation.z = -flapAngle - 0.05;
-      this._eagleWingR.rotation.x = Math.sin(p.flapPhase * 0.7) * 0.05;
-    }
-    if (this._eagleTail) {
-      this._eagleTail.rotation.x = p.pitch * 0.3;
-      this._eagleTail.rotation.y = Math.sin(t * 2) * 0.05;
+    this._eagleGroup.visible = isMounted || (inTransition && p.mountTransitionDir === 1);
+    this._walkingMerlinGroup.visible = !isMounted || (inTransition && p.mountTransitionDir === -1);
+
+    // --- Mount/dismount magic particle effects ---
+    if (inTransition && Math.random() < 0.6) {
+      const sparkMat = new THREE.MeshStandardMaterial({
+        color: p.mountTransitionDir === 1 ? 0x44aaff : 0xffaa44,
+        emissive: p.mountTransitionDir === 1 ? 0x2288ff : 0xff8822,
+        emissiveIntensity: 1.5,
+        transparent: true,
+        opacity: 0.9,
+      });
+      const spark = new THREE.Mesh(new THREE.SphereGeometry(0.1 + Math.random() * 0.15, 4, 3), sparkMat);
+      spark.position.set(
+        p.position.x + (Math.random() - 0.5) * 4,
+        p.position.y + Math.random() * 3,
+        p.position.z + (Math.random() - 0.5) * 4,
+      );
+      this._scene.add(spark);
+      this._mountParticles.push({
+        mesh: spark,
+        vx: (Math.random() - 0.5) * 6,
+        vy: 2 + Math.random() * 4,
+        vz: (Math.random() - 0.5) * 6,
+        life: 0.6 + Math.random() * 0.4,
+      });
     }
 
-    // --- Merlin staff crystal pulsing glow ---
-    if (this._merlinGroup.children.length > 0) {
-      // Crystal is near the end of the children list — pulse its scale
-      const crystalScale = 1.0 + Math.sin(t * 4) * 0.15;
-      // Pulse the staff light intensity
-      const staffChildren = this._merlinGroup.children;
-      for (const child of staffChildren) {
+    // Update mount particles
+    for (let i = this._mountParticles.length - 1; i >= 0; i--) {
+      const mp = this._mountParticles[i];
+      mp.life -= dt;
+      if (mp.life <= 0) {
+        this._scene.remove(mp.mesh);
+        mp.mesh.geometry.dispose();
+        this._mountParticles.splice(i, 1);
+        continue;
+      }
+      mp.mesh.position.x += mp.vx * dt;
+      mp.mesh.position.y += mp.vy * dt;
+      mp.mesh.position.z += mp.vz * dt;
+      mp.vy -= 5 * dt; // gravity
+      const mat = mp.mesh.material as THREE.MeshStandardMaterial;
+      mat.opacity = mp.life;
+      mp.mesh.scale.setScalar(mp.life * 1.5);
+    }
+
+    if (isMounted) {
+      // --- Update eagle position and rotation ---
+      this._eagleGroup.position.set(p.position.x, p.position.y, p.position.z);
+      const euler = new THREE.Euler(p.pitch, p.yaw, p.roll, "YXZ");
+      this._eagleGroup.setRotationFromEuler(euler);
+
+      // Mount transition: eagle swoops in from above
+      if (inTransition && p.mountTransitionDir === 1) {
+        const swoopOffset = (1 - transT) * 15;
+        this._eagleGroup.position.y += swoopOffset;
+        this._eagleGroup.scale.setScalar(1.5 * transT);
+      } else {
+        this._eagleGroup.scale.setScalar(1.5);
+      }
+
+      // Wing flap animation
+      const speedRatio = p.speed / 45;
+      const flapAmp = 0.15 + (1 - speedRatio) * 0.25;
+      const flapAngle = Math.sin(p.flapPhase) * flapAmp;
+      if (this._eagleWingL) {
+        this._eagleWingL.rotation.z = flapAngle + 0.05;
+        this._eagleWingL.rotation.x = Math.sin(p.flapPhase * 0.7) * 0.05;
+      }
+      if (this._eagleWingR) {
+        this._eagleWingR.rotation.z = -flapAngle - 0.05;
+        this._eagleWingR.rotation.x = Math.sin(p.flapPhase * 0.7) * 0.05;
+      }
+      if (this._eagleTail) {
+        this._eagleTail.rotation.x = p.pitch * 0.3;
+        this._eagleTail.rotation.y = Math.sin(t * 2) * 0.05;
+      }
+
+      // Merlin staff crystal pulsing glow (on eagle)
+      if (this._merlinGroup.children.length > 0) {
+        const crystalScale = 1.0 + Math.sin(t * 4) * 0.15;
+        const staffChildren = this._merlinGroup.children;
+        for (const child of staffChildren) {
+          if (child instanceof THREE.PointLight) {
+            child.intensity = 2.5 + Math.sin(t * 3) * 1.0 + Math.sin(t * 7) * 0.3;
+          }
+          if (child instanceof THREE.Mesh && child.geometry instanceof THREE.OctahedronGeometry) {
+            child.rotation.y = t * 1.5;
+            child.rotation.x = Math.sin(t * 0.8) * 0.3;
+            child.scale.setScalar(crystalScale);
+          }
+        }
+      }
+    } else {
+      // --- Walking Merlin update ---
+      this._walkingMerlinGroup.position.set(p.position.x, p.position.y - 1.5, p.position.z);
+      this._walkingMerlinGroup.rotation.y = p.yaw;
+
+      // Dismount transition: Merlin fades in / drops from eagle height
+      if (inTransition && p.mountTransitionDir === -1) {
+        const dropOffset = (1 - transT) * 8;
+        this._walkingMerlinGroup.position.y += dropOffset;
+        this._walkingMerlinGroup.scale.setScalar(1.8 * (0.5 + transT * 0.5));
+      } else {
+        this._walkingMerlinGroup.scale.setScalar(1.8);
+      }
+
+      // Walking animation
+      const walkPhase = p.walkPhase;
+      const isWalking = p.speed > 0.5;
+      const walkAmp = isWalking ? 0.4 : 0;
+
+      // Leg swing
+      if (this._walkMerlinLegL) {
+        this._walkMerlinLegL.rotation.x = Math.sin(walkPhase) * walkAmp;
+      }
+      if (this._walkMerlinLegR) {
+        this._walkMerlinLegR.rotation.x = -Math.sin(walkPhase) * walkAmp;
+      }
+
+      // Arm swing (opposite to legs)
+      if (this._walkMerlinArmL) {
+        this._walkMerlinArmL.rotation.x = -Math.sin(walkPhase) * walkAmp * 0.6;
+      }
+      if (this._walkMerlinArmR) {
+        this._walkMerlinArmR.rotation.x = Math.sin(walkPhase) * walkAmp * 0.3; // less arm swing on staff side
+      }
+
+      // Slight body bob
+      if (isWalking) {
+        this._walkingMerlinGroup.position.y += Math.abs(Math.sin(walkPhase * 2)) * 0.08;
+      }
+
+      // Robe skirt sway
+      if (this._walkMerlinRobeSkirt) {
+        this._walkMerlinRobeSkirt.rotation.x = Math.sin(walkPhase) * walkAmp * 0.1;
+      }
+
+      // Staff crystal glow (walking)
+      for (const child of this._walkingMerlinGroup.children) {
         if (child instanceof THREE.PointLight) {
-          child.intensity = 2.5 + Math.sin(t * 3) * 1.0 + Math.sin(t * 7) * 0.3;
+          child.intensity = 3.0 + Math.sin(t * 3) * 1.2 + Math.sin(t * 7) * 0.4;
         }
         if (child instanceof THREE.Mesh && child.geometry instanceof THREE.OctahedronGeometry) {
           child.rotation.y = t * 1.5;
           child.rotation.x = Math.sin(t * 0.8) * 0.3;
-          child.scale.setScalar(crystalScale);
+          child.scale.setScalar(1.0 + Math.sin(t * 4) * 0.15);
         }
       }
+
+      // Hide eagle off-screen during walk
+      this._eagleGroup.position.set(p.position.x, p.position.y + 500, p.position.z);
     }
 
-    // --- Camera follow with boost FOV and free look ---
-    // Camera distance adapts: closer at low altitude for intimacy, further at boost
-    const altFactor = Math.min(1, p.position.y / 40); // 0 at ground, 1 at 40+
-    const baseDist = 14 + altFactor * 4; // 14-18 based on altitude
-    const camDist = p.boostActive ? baseDist + 6 : baseDist;
-    const camHeight = p.boostActive ? 3 : (4 + altFactor * 2);
-    const forward = new THREE.Vector3(0, 0, -1).applyEuler(euler);
-    const up = new THREE.Vector3(0, 1, 0).applyEuler(euler);
-
+    // --- Camera follow ---
+    const euler = new THREE.Euler(p.pitch, p.yaw, p.roll, "YXZ");
     let targetCamPos: THREE.Vector3;
     let targetLookAt: THREE.Vector3;
 
-    if (p.freeLook) {
-      // Free look: camera orbits around eagle based on mouse
-      const flYaw = p.yaw + p.freeLookYaw;
-      const flPitch = p.freeLookPitch;
-      const flForward = new THREE.Vector3(
-        -Math.sin(flYaw) * Math.cos(flPitch),
-        Math.sin(flPitch),
-        -Math.cos(flYaw) * Math.cos(flPitch),
-      );
+    if (!isMounted) {
+      // Third-person walking camera: behind and above Merlin
+      const walkCamDist = 8;
+      const walkCamHeight = 4;
+      const walkForward = new THREE.Vector3(-Math.sin(p.yaw), 0, -Math.cos(p.yaw));
       targetCamPos = new THREE.Vector3(
-        p.position.x - flForward.x * camDist,
-        p.position.y - flForward.y * camDist + camHeight,
-        p.position.z - flForward.z * camDist,
-      );
-      targetLookAt = new THREE.Vector3(p.position.x, p.position.y, p.position.z);
-    } else {
-      targetCamPos = new THREE.Vector3(
-        p.position.x - forward.x * camDist + up.x * camHeight,
-        p.position.y - forward.y * camDist + up.y * camHeight,
-        p.position.z - forward.z * camDist + up.z * camHeight,
+        p.position.x - walkForward.x * walkCamDist,
+        p.position.y + walkCamHeight,
+        p.position.z - walkForward.z * walkCamDist,
       );
       targetLookAt = new THREE.Vector3(
-        p.position.x + forward.x * 20,
-        p.position.y + forward.y * 10,
-        p.position.z + forward.z * 20,
+        p.position.x + walkForward.x * 5,
+        p.position.y + 1,
+        p.position.z + walkForward.z * 5,
       );
+    } else {
+      // Flight camera
+      const altFactor = Math.min(1, p.position.y / 40);
+      const baseDist = 14 + altFactor * 4;
+      const camDist = p.boostActive ? baseDist + 6 : baseDist;
+      const camHeight = p.boostActive ? 3 : (4 + altFactor * 2);
+      const forward = new THREE.Vector3(0, 0, -1).applyEuler(euler);
+      const up = new THREE.Vector3(0, 1, 0).applyEuler(euler);
+
+      if (p.freeLook) {
+        const flYaw = p.yaw + p.freeLookYaw;
+        const flPitch = p.freeLookPitch;
+        const flForward = new THREE.Vector3(
+          -Math.sin(flYaw) * Math.cos(flPitch),
+          Math.sin(flPitch),
+          -Math.cos(flYaw) * Math.cos(flPitch),
+        );
+        targetCamPos = new THREE.Vector3(
+          p.position.x - flForward.x * camDist,
+          p.position.y - flForward.y * camDist + camHeight,
+          p.position.z - flForward.z * camDist,
+        );
+        targetLookAt = new THREE.Vector3(p.position.x, p.position.y, p.position.z);
+      } else {
+        targetCamPos = new THREE.Vector3(
+          p.position.x - forward.x * camDist + up.x * camHeight,
+          p.position.y - forward.y * camDist + up.y * camHeight,
+          p.position.z - forward.z * camDist + up.z * camHeight,
+        );
+        targetLookAt = new THREE.Vector3(
+          p.position.x + forward.x * 20,
+          p.position.y + forward.y * 10,
+          p.position.z + forward.z * 20,
+        );
+      }
     }
 
-    // Speed-dependent camera smoothing: snappier at high speed, lazier at cruise
-    const speedSmooth = 0.01 + (p.speed / 65) * 0.03; // 0.01 to 0.04
+    // Camera smoothing
+    const speedSmooth = isMounted ? (0.01 + (p.speed / 65) * 0.03) : 0.04;
     const smoothFactor = 1 - Math.pow(speedSmooth, dt);
     this._camPos.lerp(targetCamPos, smoothFactor);
     this._camTarget.lerp(targetLookAt, smoothFactor);
@@ -4988,8 +5340,8 @@ export class EagleFlightRenderer {
       this._camera.position.y += (Math.random() - 0.5) * shakeStr * 0.2;
     }
 
-    // Boost FOV effect
-    const targetFov = p.boostActive ? 78 : 65;
+    // FOV: narrower when walking, wider when boosting
+    const targetFov = !isMounted ? 60 : (p.boostActive ? 78 : 65);
     const currentFov = this._camera.fov;
     this._camera.fov += (targetFov - currentFov) * 3 * dt;
     this._camera.updateProjectionMatrix();

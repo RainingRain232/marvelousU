@@ -91,6 +91,9 @@ export class EagleFlightHUD {
   // Trick score
   private _trickScoreEl!: HTMLDivElement;
 
+  // Mount indicator
+  private _mountEl!: HTMLDivElement;
+
   build(sw: number, sh: number): void {
     this._root = document.createElement("div");
     this._root.style.cssText = `
@@ -387,6 +390,17 @@ export class EagleFlightHUD {
     this._thermalEl.textContent = "THERMAL UPDRAFT";
     this._root.appendChild(this._thermalEl);
 
+    // --- Mount/Dismount indicator ---
+    this._mountEl = document.createElement("div");
+    this._mountEl.style.cssText = `
+      position:absolute;bottom:90px;left:50%;transform:translateX(-50%);
+      color:rgba(255,255,255,0.4);font-size:11px;letter-spacing:2px;
+      text-shadow:0 0 6px rgba(0,0,0,0.8);
+      transition:opacity 0.3s,color 0.3s;
+    `;
+    this._mountEl.textContent = "[M] DISMOUNT";
+    this._root.appendChild(this._mountEl);
+
     // --- Notification popup (center screen) ---
     this._notifEl = document.createElement("div");
     this._notifEl.style.cssText = `
@@ -511,7 +525,7 @@ export class EagleFlightHUD {
     const p = state.player;
 
     // --- Speed gauge ---
-    const speedKnots = Math.round(p.speed * 2.5);
+    const speedKnots = p.mounted ? Math.round(p.speed * 2.5) : Math.round(p.speed);
     this._speedEl.textContent = `${speedKnots}`;
     const speedPct = ((p.speed - EFBalance.MIN_SPEED) / (EFBalance.MAX_SPEED - EFBalance.MIN_SPEED)) * 100;
     this._speedBarFill.style.width = `${speedPct}%`;
@@ -619,6 +633,17 @@ export class EagleFlightHUD {
 
     // --- Thermal indicator ---
     this._thermalEl.style.opacity = `${state.thermalBoost > 0.1 ? Math.min(1, state.thermalBoost) : 0}`;
+
+    // --- Mount/Dismount indicator ---
+    if (p.mounted) {
+      this._mountEl.textContent = "[M] DISMOUNT";
+      this._mountEl.style.color = "rgba(255,255,255,0.4)";
+    } else {
+      this._mountEl.textContent = "[M] SUMMON EAGLE";
+      this._mountEl.style.color = "rgba(68,170,255,0.7)";
+    }
+    // Hide during intro
+    this._mountEl.style.opacity = state.introActive ? "0" : "1";
 
     // --- Notification popup ---
     if (state.notificationTimer > 0) {

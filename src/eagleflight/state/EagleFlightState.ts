@@ -50,6 +50,12 @@ export interface EFPlayer {
   // Spells
   spellCooldowns: [number, number, number]; // firework, lightning, trail
   magicTrailActive: boolean;
+
+  // Mount/dismount
+  mounted: boolean;
+  mountTransition: number; // 0-1, animation progress for mount/dismount
+  mountTransitionDir: 1 | -1; // 1 = mounting, -1 = dismounting
+  walkPhase: number; // walking animation phase
 }
 
 export interface EFCheckpoint {
@@ -145,6 +151,10 @@ export const EFBalance = {
   INTRO_DURATION: 8.0,
   COMBO_WINDOW: 3.0,
   SPELL_COOLDOWNS: [3, 5, 0] as readonly number[],
+  WALK_SPEED: 6,
+  WALK_RUN_SPEED: 12,
+  WALK_TURN_RATE: 3.0,
+  MOUNT_TRANSITION_TIME: 0.8,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -300,6 +310,10 @@ export function createEagleFlightState(sw: number, sh: number): EagleFlightState
       lastComboScore: 0,
       spellCooldowns: [0, 0, 0],
       magicTrailActive: false,
+      mounted: true,
+      mountTransition: 1,
+      mountTransitionDir: 1,
+      walkPhase: 0,
     },
     screenW: sw,
     screenH: sh,

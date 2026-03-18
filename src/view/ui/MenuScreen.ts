@@ -55,14 +55,6 @@ const STYLE_SIZE_INACTIVE = new TextStyle({
   letterSpacing: 1,
 });
 
-const STYLE_MODE_ACTIVE = new TextStyle({
-  fontFamily: "monospace",
-  fontSize: 11,
-  fill: 0xffd700,
-  fontWeight: "bold",
-  letterSpacing: 1,
-});
-
 const STYLE_MODE_INACTIVE = new TextStyle({
   fontFamily: "monospace",
   fontSize: 11,
@@ -562,7 +554,7 @@ export class MenuScreen {
     this.container.addChild(this._bg);
 
     // Ambient floating particles
-    this._particles = new AmbientParticles(120);
+    this._particles = new AmbientParticles(160);
     this.container.addChild(this._particles.container);
 
     this._buildScreen1();

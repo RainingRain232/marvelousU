@@ -16,6 +16,7 @@ let _mouseDX = 0;
 let _mouseDY = 0;
 let _pointerLocked = false;
 let _skipIntroCb: (() => void) | null = null;
+let _mountTogglePressed = false;
 
 function _onKeyDown(e: KeyboardEvent): void {
   _keys.add(e.code);
@@ -84,6 +85,83 @@ export const EagleFlightInputSystem = {
   },
 
   update(state: EagleFlightState, dt: number): void {
+    const p = state.player;
+
+    // --- Mount/Dismount toggle (M key) ---
+    if (_keys.has("KeyM")) {
+      if (!_mountTogglePressed && p.mountTransition >= 1) {
+        _mountTogglePressed = true;
+        if (p.mounted) {
+          // Start dismount
+          p.mounted = false;
+          p.mountTransition = 0;
+          p.mountTransitionDir = -1;
+          // Land at current position
+          p.pitch = 0;
+          p.roll = 0;
+          p.speed = 0;
+          p.targetSpeed = 0;
+          p.boostActive = false;
+          state.notification = "DISMOUNTED";
+          state.notificationTimer = 1.5;
+        } else {
+          // Start mount — summon eagle
+          p.mounted = true;
+          p.mountTransition = 0;
+          p.mountTransitionDir = 1;
+          p.speed = EFBalance.CRUISE_SPEED;
+          p.targetSpeed = EFBalance.CRUISE_SPEED;
+          p.position.y = Math.max(p.position.y + 15, 20);
+          state.notification = "EAGLE SUMMONED";
+          state.notificationTimer = 1.5;
+          state.shakeTimer = 0.3;
+          state.shakeMag = 1.0;
+        }
+      }
+    } else {
+      _mountTogglePressed = false;
+    }
+
+    // --- Mount transition animation ---
+    if (p.mountTransition < 1) {
+      p.mountTransition = Math.min(1, p.mountTransition + dt / EFBalance.MOUNT_TRANSITION_TIME);
+    }
+
+    // --- Branch: Flying vs Walking ---
+    if (p.mounted) {
+      this._updateFlying(state, dt);
+    } else {
+      this._updateWalking(state, dt);
+    }
+
+    // --- Photo mode toggle (P key) ---
+    if (_keys.has("KeyP")) {
+      if (!state.photoMode) {
+        state.photoMode = true;
+      }
+    } else {
+      if (state.photoMode) {
+        state.photoMode = false;
+      }
+    }
+
+    // Reset mouse deltas
+    _mouseDX = 0;
+    _mouseDY = 0;
+
+    // --- Notification timer decay ---
+    if (state.notificationTimer > 0) {
+      state.notificationTimer -= dt;
+    }
+
+    // --- Camera shake decay ---
+    if (state.shakeTimer > 0) {
+      state.shakeTimer -= dt;
+    }
+  },
+
+  // --- Flying controls (mounted) ---
+  _updateFlying(state: EagleFlightState, dt: number): void {
     const p = state.player;
 
     // --- Pitch (W = nose down / dive, S = nose up / climb) ---
@@ -205,21 +283,6 @@ export const EagleFlightInputSystem = {
       p.roll = p.barrelRollDirection * rollProgress * Math.PI * 2;
     }
 
-    // --- Photo mode toggle (P key) ---
-    if (_keys.has("KeyP")) {
-      if (!state.photoMode) {
-        state.photoMode = true;
-      }
-    } else {
-      if (state.photoMode) {
-        state.photoMode = false;
-      }
-    }
-
-    // Reset mouse deltas
-    _mouseDX = 0;
-    _mouseDY = 0;
-
     // --- Move player along forward direction ---
     const cosP = Math.cos(p.pitch);
     const sinP = Math.sin(p.pitch);
@@ -236,10 +299,8 @@ export const EagleFlightInputSystem = {
 
     // --- Gravity assist: diving speeds you up, climbing slows ---
     if (p.pitch > 0.05) {
-      // Diving — gain speed
       p.speed += p.pitch * 3 * dt;
     } else if (p.pitch < -0.05) {
-      // Climbing — lose speed
       p.speed += p.pitch * 2 * dt;
     }
     p.speed = Math.max(EFBalance.MIN_SPEED, Math.min(p.boostActive ? EFBalance.BOOST_SPEED : EFBalance.MAX_SPEED, p.speed));
@@ -248,7 +309,6 @@ export const EagleFlightInputSystem = {
     if (p.position.y < EFBalance.MIN_ALT) {
       p.position.y = EFBalance.MIN_ALT;
       if (p.pitch > 0) p.pitch *= 0.5;
-      // Ground skim shake
       state.shakeTimer = 0.15;
       state.shakeMag = 0.5;
     }
@@ -299,7 +359,6 @@ export const EagleFlightInputSystem = {
 
     // --- Sustained low flight trick ---
     if (p.position.y < 5 && p.speed > 25) {
-      // "Nape of earth" — award points periodically
       if (Math.random() < dt * 2) {
         p.trickScore += 5 * p.comboMultiplier;
         p.comboTimer = Math.max(p.comboTimer, 1);
@@ -308,14 +367,12 @@ export const EagleFlightInputSystem = {
 
     // --- Near-ground / water detection ---
     state.nearGround = p.position.y < 8;
-    // Near water = low altitude + near river path (z ~ -15 to 20, roughly)
     const nearRiverZ = Math.abs(p.position.z + 5) < 25;
     state.nearWater = p.position.y < 5 && nearRiverZ;
 
-    // Near-miss detection (flying through gates — check if near wall radius at gate angles)
+    // Near-miss detection
     const playerDist = Math.sqrt(p.position.x ** 2 + p.position.z ** 2);
     if (Math.abs(playerDist - 85) < 5 && p.position.y < 12) {
-      // Near a gate — check cardinal directions
       const playerAngle = Math.atan2(p.position.x, p.position.z);
       const gateAngles = [0, Math.PI / 2, Math.PI, -Math.PI / 2];
       for (const ga of gateAngles) {
@@ -332,16 +389,76 @@ export const EagleFlightInputSystem = {
         }
       }
     }
+  },
 
-    // --- Notification timer decay ---
-    if (state.notificationTimer > 0) {
-      state.notificationTimer -= dt;
+  // --- Walking controls (dismounted) ---
+  _updateWalking(state: EagleFlightState, dt: number): void {
+    const p = state.player;
+
+    // --- Yaw (A/D or mouse) ---
+    let yawInput = 0;
+    if (_keys.has("KeyA") || _keys.has("ArrowLeft")) yawInput += 1;
+    if (_keys.has("KeyD") || _keys.has("ArrowRight")) yawInput -= 1;
+    if (_pointerLocked) {
+      yawInput += -_mouseDX * EFBalance.MOUSE_SENSITIVITY * 10;
+    }
+    p.yaw += yawInput * EFBalance.WALK_TURN_RATE * dt;
+
+    // No pitch or roll when walking
+    p.pitch = 0;
+    p.roll = 0;
+
+    // --- Movement (W/S) ---
+    let moveInput = 0;
+    if (_keys.has("KeyW") || _keys.has("ArrowUp")) moveInput += 1;
+    if (_keys.has("KeyS") || _keys.has("ArrowDown")) moveInput -= 1;
+
+    const isRunning = _keys.has("ShiftLeft") || _keys.has("ShiftRight");
+    const walkSpeed = isRunning ? EFBalance.WALK_RUN_SPEED : EFBalance.WALK_SPEED;
+
+    // Strafe (Q/E)
+    let strafeInput = 0;
+    if (_keys.has("KeyQ")) strafeInput -= 1;
+    if (_keys.has("KeyE")) strafeInput += 1;
+
+    const cosY = Math.cos(p.yaw);
+    const sinY = Math.sin(p.yaw);
+
+    // Forward/backward
+    p.position.x += -sinY * moveInput * walkSpeed * dt;
+    p.position.z += -cosY * moveInput * walkSpeed * dt;
+
+    // Strafe
+    p.position.x += -cosY * strafeInput * walkSpeed * 0.7 * dt;
+    p.position.z += sinY * strafeInput * walkSpeed * 0.7 * dt;
+
+    // Keep on ground (y = ground level ~1.5 for Merlin's height)
+    p.position.y = 1.5;
+
+    // Track speed for display
+    const isMoving = moveInput !== 0 || strafeInput !== 0;
+    p.speed = isMoving ? walkSpeed : 0;
+
+    // Walking animation phase
+    if (isMoving) {
+      const walkAnimSpeed = isRunning ? 10 : 6;
+      p.walkPhase += dt * walkAnimSpeed;
     }
 
-    // --- Camera shake decay ---
-    if (state.shakeTimer > 0) {
-      state.shakeTimer -= dt;
+    // --- Soft world boundary ---
+    const wr = EFBalance.WORLD_RADIUS;
+    const dist = Math.sqrt(p.position.x ** 2 + p.position.z ** 2);
+    if (dist > wr) {
+      const nx = -p.position.x / dist;
+      const nz = -p.position.z / dist;
+      p.position.x += nx * 2;
+      p.position.z += nz * 2;
     }
+
+    // Near-ground / water detection
+    state.nearGround = true;
+    const nearRiverZ = Math.abs(p.position.z + 5) < 25;
+    state.nearWater = nearRiverZ;
   },
 
   destroy(): void {
