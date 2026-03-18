@@ -5009,7 +5009,7 @@ export class EagleFlightRenderer {
       depthWrite: false,
       uniforms: {
         time: { value: 0 },
-        color: { value: new THREE.Color(0x44ffaa) },
+        color: { value: new THREE.Color(0x229966) },
         collected: { value: 0 },
       },
       vertexShader: `
@@ -5653,10 +5653,10 @@ export class EagleFlightRenderer {
     // Firework (spell 1) — spawn burst particles when cooldown just started
     if (p.spellCooldowns[0] > 2.8 && p.spellCooldowns[0] < 3) {
       for (let fw = 0; fw < 30; fw++) {
-        const colors = [0xff4444, 0xffaa22, 0x44ff44, 0x4444ff, 0xff44ff, 0xffff44];
+        const colors = [0xff4444, 0xffaa22, 0x228833, 0x4444ff, 0xff44ff, 0xffff44];
         const fwColor = colors[Math.floor(Math.random() * colors.length)];
         const fwMat = new THREE.MeshStandardMaterial({
-          color: fwColor, emissive: fwColor, emissiveIntensity: 1.0,
+          color: fwColor, emissive: fwColor, emissiveIntensity: 0.6,
           transparent: true, opacity: 1.0,
         });
         const particle = new THREE.Mesh(new THREE.SphereGeometry(0.12, 4, 3), fwMat);
@@ -5790,9 +5790,9 @@ export class EagleFlightRenderer {
         // Spawn celebration particles
         for (let sp = 0; sp < 20; sp++) {
           const sparkMat = new THREE.MeshStandardMaterial({
-            color: 0x44ffaa,
-            emissive: 0x22cc66,
-            emissiveIntensity: 1.0,
+            color: 0x229966,
+            emissive: 0x116633,
+            emissiveIntensity: 0.5,
             transparent: true,
             opacity: 0.9,
           });
