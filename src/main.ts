@@ -138,6 +138,7 @@ import { GrailManagerGame } from "./grailmanager/GrailManagerGame";
 import { ArthurianRPGGame } from "./arthurianrpg/ArthurianRPGGame";
 import { SettlersGame } from "./settlers/SettlersGame";
 import type { SettlersMapMode } from "./settlers/state/SettlersState";
+import { CamelotCraftGame } from "./camelotcraft/CamelotCraftGame";
 import { camelotHubScreen } from "@view/ui/CamelotHubScreen";
 
 // World mode imports
@@ -331,6 +332,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     [GameMode.GRAIL_MANAGER]: 21,
     [GameMode.ARTHURIAN_RPG]: 22,
     [GameMode.SETTLERS]: 23,
+    [GameMode.CAMELOT_CRAFT]: 24,
   };
   // Modes that need the setup screen (not skipSetup)
   const NEEDS_SETUP = new Set([GameMode.STANDARD, GameMode.DEATHMATCH, GameMode.BATTLEFIELD, GameMode.ROGUELIKE, GameMode.WAVE]);
@@ -465,6 +467,11 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     if (menuScreen.selectedGameMode === GameMode.SETTLERS) {
       menuScreen.hide();
       _showSettlersMapModeSelect();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.CAMELOT_CRAFT) {
+      menuScreen.hide();
+      _bootCamelotCraftGame();
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.WORLD) {
@@ -3109,6 +3116,31 @@ async function _bootSettlersGame(mapMode: SettlersMapMode = "CONTINENTAL"): Prom
     menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
   window.addEventListener("settlersExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Camelot Craft (Minecraft-style voxel mode) boot
+// ---------------------------------------------------------------------------
+
+let _camelotCraftGame: CamelotCraftGame | null = null;
+
+async function _bootCamelotCraftGame(): Promise<void> {
+  if (_camelotCraftGame) {
+    _camelotCraftGame.destroy();
+    _camelotCraftGame = null;
+  }
+  viewManager.clearWorld();
+  _camelotCraftGame = new CamelotCraftGame();
+  await _camelotCraftGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("camelotCraftExit", _onExit);
+    if (_camelotCraftGame) {
+      _camelotCraftGame.destroy();
+      _camelotCraftGame = null;
+    }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("camelotCraftExit", _onExit);
 }
 
 // ---------------------------------------------------------------------------

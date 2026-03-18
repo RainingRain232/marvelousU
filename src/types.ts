@@ -678,6 +678,7 @@ export enum GameMode {
   ARTHURIAN_RPG = "arthurian_rpg",
   RIFT_WIZARD = "rift_wizard",
   SETTLERS = "settlers",
+  CAMELOT_CRAFT = "camelot_craft",
 }
 
 // ---------------------------------------------------------------------------

@@ -93,20 +93,48 @@ export class GTAHUDView {
   private buildStatusPanel(): void {
     this.statusPanel.removeChildren();
     const panelW = 220, panelH = 110;
+
+    // Inner shadow (slightly darker rect inside border)
+    const innerShadow = new Graphics();
+    innerShadow.roundRect(1, 1, panelW - 2, panelH - 2, 5).fill({ color: 0x0d0d1e, alpha: 0.5 });
     const bg = new Graphics();
     bg.roundRect(0, 0, panelW, panelH, 6).fill({ color: PANEL_BG, alpha: PANEL_ALPHA });
     bg.roundRect(0, 0, panelW, panelH, 6).stroke({ color: GOLD_COLOR, width: 1.5, alpha: 0.7 });
     this.statusPanel.addChild(bg);
+    this.statusPanel.addChild(innerShadow);
     this.statusPanel.position.set(12, 12);
 
+    // Decorative gold top border (gradient-like using multiple rects)
+    const topBorder = new Graphics();
+    topBorder.rect(30, 1, panelW - 60, 1).fill({ color: GOLD_COLOR, alpha: 0.8 });
+    topBorder.rect(15, 1, 15, 1).fill({ color: GOLD_COLOR, alpha: 0.4 });
+    topBorder.rect(panelW - 30, 1, 15, 1).fill({ color: GOLD_COLOR, alpha: 0.4 });
+    this.statusPanel.addChild(topBorder);
+
+    // Ornamental diamond row
+    const ornaments = new Graphics();
+    const diamondCx = panelW / 2;
+    for (let d = -2; d <= 2; d++) {
+      const dx = diamondCx + d * 14;
+      const dy = 5;
+      const ds = d === 0 ? 2.5 : 1.8;
+      const da = d === 0 ? 0.8 : 0.5;
+      ornaments.poly([dx, dy - ds, dx + ds, dy, dx, dy + ds, dx - ds, dy]).fill({ color: GOLD_COLOR, alpha: da });
+    }
+    this.statusPanel.addChild(ornaments);
+
     // HP bar
-    const hpY = 12;
+    const hpY = 14;
     const hpLabel = new Text({ text: "HP", style: medievalStyle(10, 0xFF6666, true) });
     hpLabel.position.set(10, hpY);
     this.statusPanel.addChild(hpLabel);
 
     this.hpBarBg = new Graphics();
     this.hpBarBg.roundRect(35, hpY, 130, 12, 3).fill({ color: 0x331111 });
+    // Tick marks at 25%, 50%, 75%
+    for (const pct of [0.25, 0.5, 0.75]) {
+      this.hpBarBg.rect(35 + 130 * pct, hpY, 1, 12).fill({ color: 0x000000, alpha: 0.4 });
+    }
     this.statusPanel.addChild(this.hpBarBg);
 
     this.hpBarFill = new Graphics();
@@ -117,13 +145,17 @@ export class GTAHUDView {
     this.statusPanel.addChild(this.hpText);
 
     // Stamina bar
-    const staY = 30;
+    const staY = 32;
     const staLabel = new Text({ text: "STA", style: medievalStyle(10, 0x66FF66, true) });
     staLabel.position.set(6, staY);
     this.statusPanel.addChild(staLabel);
 
     this.staBarBg = new Graphics();
     this.staBarBg.roundRect(35, staY, 130, 12, 3).fill({ color: 0x113311 });
+    // Tick marks
+    for (const pct of [0.25, 0.5, 0.75]) {
+      this.staBarBg.rect(35 + 130 * pct, staY, 1, 12).fill({ color: 0x000000, alpha: 0.4 });
+    }
     this.statusPanel.addChild(this.staBarBg);
 
     this.staBarFill = new Graphics();
@@ -136,8 +168,15 @@ export class GTAHUDView {
     // Gold
     const goldY = 52;
     this.goldIcon = new Graphics();
+    // Outer rim
+    this.goldIcon.circle(16, goldY + 7, 7).fill({ color: 0xB8860B });
+    this.goldIcon.circle(16, goldY + 7, 7).stroke({ color: 0x8B6500, width: 1 });
+    // Main coin face
     this.goldIcon.circle(16, goldY + 7, 6).fill({ color: 0xDAA520 });
-    this.goldIcon.circle(16, goldY + 7, 6).stroke({ color: 0xAA8800, width: 1 });
+    // Inner ring
+    this.goldIcon.circle(16, goldY + 7, 4.5).stroke({ color: 0xCCA030, width: 0.5 });
+    // Radial shine highlight (top-left)
+    this.goldIcon.circle(14.5, goldY + 5.5, 2.5).fill({ color: 0xFFE878, alpha: 0.35 });
     // G letter on coin
     const gText = new Text({ text: "G", style: medievalStyle(7, 0x8B6914, true) });
     gText.anchor.set(0.5, 0.5);
@@ -149,30 +188,59 @@ export class GTAHUDView {
     this.goldText.position.set(28, goldY + 1);
     this.statusPanel.addChild(this.goldText);
 
-    // Weapon display
+    // Weapon display — proper sword with crossguard, grip, and pommel
     const weapY = 74;
     const weapIcon = new Graphics();
-    // Sword icon
-    weapIcon.moveTo(10, weapY + 4).lineTo(26, weapY + 4).stroke({ color: 0xBBBBBB, width: 2 });
-    weapIcon.moveTo(16, weapY + 1).lineTo(16, weapY + 7).stroke({ color: 0x8B6914, width: 1.5 });
+    // Blade
+    weapIcon.moveTo(10, weapY + 4).lineTo(24, weapY + 4).stroke({ color: 0xCCCCDD, width: 2.5 });
+    // Blade edge highlight
+    weapIcon.moveTo(10, weapY + 3).lineTo(22, weapY + 3).stroke({ color: 0xEEEEFF, width: 0.5, alpha: 0.4 });
+    // Blade tip
+    weapIcon.moveTo(24, weapY + 4).lineTo(27, weapY + 4).stroke({ color: 0xAAAABB, width: 1.5 });
+    // Crossguard
+    weapIcon.moveTo(9, weapY + 1).lineTo(9, weapY + 7).stroke({ color: 0xDAA520, width: 2 });
+    // Crossguard tips
+    weapIcon.circle(9, weapY + 1, 0.8).fill({ color: 0xDAA520 });
+    weapIcon.circle(9, weapY + 7, 0.8).fill({ color: 0xDAA520 });
+    // Grip
+    weapIcon.moveTo(5, weapY + 4).lineTo(9, weapY + 4).stroke({ color: 0x8B6914, width: 2 });
+    // Grip wrap lines
+    weapIcon.moveTo(6, weapY + 3).lineTo(6, weapY + 5).stroke({ color: 0x6B5210, width: 0.5 });
+    weapIcon.moveTo(7.5, weapY + 3).lineTo(7.5, weapY + 5).stroke({ color: 0x6B5210, width: 0.5 });
+    // Pommel
+    weapIcon.circle(4, weapY + 4, 1.5).fill({ color: 0xDAA520 });
+    weapIcon.circle(4, weapY + 4, 1.5).stroke({ color: 0xAA8800, width: 0.5 });
     this.statusPanel.addChild(weapIcon);
 
     this.weaponText = new Text({ text: "Fists", style: medievalStyle(11, 0xCCCCCC) });
     this.weaponText.position.set(32, weapY);
     this.statusPanel.addChild(this.weaponText);
 
-    // Decorative corners
-    const cornerSize = 6;
+    // Decorative corners with extended flourishes
+    const cornerSize = 8;
     const corners = new Graphics();
     // Top-left corner flourish
     corners.moveTo(0, cornerSize).lineTo(0, 0).lineTo(cornerSize, 0).stroke({ color: GOLD_COLOR, width: 2 });
+    corners.moveTo(cornerSize, 0).lineTo(cornerSize + 4, 2).stroke({ color: GOLD_COLOR, width: 1, alpha: 0.5 });
+    corners.moveTo(0, cornerSize).lineTo(2, cornerSize + 4).stroke({ color: GOLD_COLOR, width: 1, alpha: 0.5 });
+    // Small diamond at corner intersection
+    corners.poly([2, 2, 4, 0.5, 6, 2, 4, 3.5]).fill({ color: GOLD_COLOR, alpha: 0.6 });
     // Top-right
     corners.moveTo(panelW - cornerSize, 0).lineTo(panelW, 0).lineTo(panelW, cornerSize).stroke({ color: GOLD_COLOR, width: 2 });
+    corners.moveTo(panelW - cornerSize, 0).lineTo(panelW - cornerSize - 4, 2).stroke({ color: GOLD_COLOR, width: 1, alpha: 0.5 });
+    corners.poly([panelW - 6, 2, panelW - 4, 0.5, panelW - 2, 2, panelW - 4, 3.5]).fill({ color: GOLD_COLOR, alpha: 0.6 });
     // Bottom-left
     corners.moveTo(0, panelH - cornerSize).lineTo(0, panelH).lineTo(cornerSize, panelH).stroke({ color: GOLD_COLOR, width: 2 });
+    corners.poly([2, panelH - 2, 4, panelH - 3.5, 6, panelH - 2, 4, panelH - 0.5]).fill({ color: GOLD_COLOR, alpha: 0.6 });
     // Bottom-right
     corners.moveTo(panelW - cornerSize, panelH).lineTo(panelW, panelH).lineTo(panelW, panelH - cornerSize).stroke({ color: GOLD_COLOR, width: 2 });
+    corners.poly([panelW - 6, panelH - 2, panelW - 4, panelH - 3.5, panelW - 2, panelH - 2, panelW - 4, panelH - 0.5]).fill({ color: GOLD_COLOR, alpha: 0.6 });
     this.statusPanel.addChild(corners);
+
+    // Bottom decorative line
+    const bottomBorder = new Graphics();
+    bottomBorder.rect(30, panelH - 2, panelW - 60, 1).fill({ color: GOLD_COLOR, alpha: 0.4 });
+    this.statusPanel.addChild(bottomBorder);
   }
 
   private buildWantedPanel(screenW: number): void {
@@ -181,8 +249,18 @@ export class GTAHUDView {
     this.wantedPanel.position.set(screenW - 200, 12);
 
     const bg = new Graphics();
-    bg.roundRect(0, 0, 185, 45, 5).fill({ color: PANEL_BG, alpha: PANEL_ALPHA });
-    bg.roundRect(0, 0, 185, 45, 5).stroke({ color: GOLD_COLOR, width: 1, alpha: 0.5 });
+    bg.roundRect(0, 0, 185, 48, 5).fill({ color: PANEL_BG, alpha: PANEL_ALPHA });
+    bg.roundRect(0, 0, 185, 48, 5).stroke({ color: GOLD_COLOR, width: 1, alpha: 0.5 });
+    // Top border line
+    bg.rect(25, 1, 135, 1).fill({ color: GOLD_COLOR, alpha: 0.5 });
+    // Bottom border line
+    bg.rect(25, 46, 135, 1).fill({ color: GOLD_COLOR, alpha: 0.3 });
+    // Corner flourishes
+    for (const [cx, cy] of [[0, 0], [185, 0], [0, 48], [185, 48]]) {
+      const sx = cx === 0 ? 1 : -1;
+      const sy = cy === 0 ? 1 : -1;
+      bg.moveTo(cx, cy + sy * 5).lineTo(cx, cy).lineTo(cx + sx * 5, cy).stroke({ color: GOLD_COLOR, width: 1.5 });
+    }
     this.wantedPanel.addChild(bg);
 
     this.wantedLabel = new Text({ text: "", style: medievalStyle(10, 0xFF3333, true) });
@@ -193,7 +271,7 @@ export class GTAHUDView {
     // 5 shield shapes
     for (let i = 0; i < 5; i++) {
       const shield = new Graphics();
-      shield.position.set(18 + i * 33, 18);
+      shield.position.set(18 + i * 33, 19);
       this.wantedShields.push(shield);
       this.wantedPanel.addChild(shield);
     }
@@ -203,16 +281,32 @@ export class GTAHUDView {
     g.clear();
     const color = filled ? 0xCC2222 : 0x444444;
     const alpha = filled ? 1 : 0.4;
+
+    // Glow behind filled shields
+    if (filled) {
+      g.circle(7, 9, 12).fill({ color: 0xFF2200, alpha: 0.12 });
+    }
+
     // Shield shape (pointed bottom)
     g.poly([0, 0, 14, 0, 14, 12, 7, 20, 0, 12]).fill({ color, alpha });
+    // Shield border
     g.poly([0, 0, 14, 0, 14, 12, 7, 20, 0, 12]).stroke({ color: filled ? 0xFF4444 : 0x555555, width: 1 });
+    // Rim highlight (inner border)
+    g.poly([1.5, 1.5, 12.5, 1.5, 12.5, 11, 7, 18, 1.5, 11]).stroke({ color: filled ? 0xFF8866 : 0x666666, width: 0.5, alpha: 0.4 });
+
     if (filled) {
-      // Cross emblem
-      g.rect(5, 2, 4, 12).fill({ color: 0xFFCC00, alpha: 0.8 });
-      g.rect(2, 5, 10, 4).fill({ color: 0xFFCC00, alpha: 0.8 });
+      // Cross emblem (slightly more detailed)
+      g.rect(5.5, 2.5, 3, 11).fill({ color: 0xFFCC00, alpha: 0.85 });
+      g.rect(2.5, 5.5, 9, 3).fill({ color: 0xFFCC00, alpha: 0.85 });
+      // Cross center gem
+      g.circle(7, 7, 1.2).fill({ color: 0xFFFFFF, alpha: 0.5 });
+      // Top stud
+      g.circle(7, 1.5, 1).fill({ color: 0xFFDD44, alpha: 0.7 });
+      // Inner shadow at bottom
+      g.poly([2, 11, 12, 11, 7, 18]).fill({ color: 0x000000, alpha: 0.15 });
     }
     if (pulsing) {
-      g.poly([0, 0, 14, 0, 14, 12, 7, 20, 0, 12]).fill({ color: 0xFF0000, alpha: 0.2 });
+      g.poly([-1, -1, 15, -1, 15, 13, 7, 21, -1, 13]).fill({ color: 0xFF0000, alpha: 0.2 });
     }
   }
 
@@ -245,12 +339,27 @@ export class GTAHUDView {
     const by = screenH - boxH - 60;
 
     const bg = new Graphics();
+    // Parchment-like layered background
+    bg.roundRect(bx - 1, by - 1, boxW + 2, boxH + 2, 7).fill({ color: 0x22203a, alpha: 0.5 });
     // Double border
     bg.roundRect(bx - 4, by - 4, boxW + 8, boxH + 8, 8).stroke({ color: GOLD_COLOR, width: 2 });
     bg.roundRect(bx, by, boxW, boxH, 6).fill({ color: PANEL_BG, alpha: 0.92 });
+    // Parchment texture layers (subtle color variations)
+    bg.roundRect(bx + 2, by + 2, boxW - 4, boxH - 4, 4).fill({ color: 0x1e1e34, alpha: 0.3 });
     bg.roundRect(bx, by, boxW, boxH, 6).stroke({ color: GOLD_COLOR, width: 1.5, alpha: 0.8 });
     // Inner decorative line
     bg.roundRect(bx + 6, by + 6, boxW - 12, boxH - 12, 3).stroke({ color: GOLD_COLOR, width: 0.5, alpha: 0.3 });
+    // Corner ornaments
+    for (const [cx, cy] of [[bx, by], [bx + boxW, by], [bx, by + boxH], [bx + boxW, by + boxH]]) {
+      const sx = cx === bx ? 1 : -1;
+      const sy = cy === by ? 1 : -1;
+      bg.poly([cx + sx * 4, cy + sy * 4, cx + sx * 7, cy + sy * 2, cx + sx * 10, cy + sy * 4, cx + sx * 7, cy + sy * 6]).fill({ color: GOLD_COLOR, alpha: 0.4 });
+    }
+    // Quill icon in top-left
+    bg.moveTo(bx + 14, by + 8).lineTo(bx + 10, by + 22).stroke({ color: GOLD_COLOR, width: 1.5, alpha: 0.5 });
+    bg.moveTo(bx + 14, by + 8).lineTo(bx + 16, by + 6).lineTo(bx + 18, by + 8).lineTo(bx + 14, by + 14).fill({ color: GOLD_COLOR, alpha: 0.3 });
+    // Nib
+    bg.circle(bx + 10, by + 22, 0.8).fill({ color: GOLD_COLOR, alpha: 0.5 });
     this.dialogBox.addChild(bg);
 
     // Name text
@@ -347,11 +456,50 @@ export class GTAHUDView {
     overlay.rect(0, 0, screenW, screenH).fill({ color: 0x110000, alpha: 0.75 });
     this.gameOverOverlay.addChild(overlay);
 
-    // Blood drip vignette effect
+    // Red vignette — darkened corners/edges
     const vignette = new Graphics();
-    vignette.rect(0, 0, screenW, 40).fill({ color: 0x660000, alpha: 0.4 });
-    vignette.rect(0, screenH - 40, screenW, 40).fill({ color: 0x660000, alpha: 0.4 });
+    // Top edge
+    vignette.rect(0, 0, screenW, 60).fill({ color: 0x660000, alpha: 0.5 });
+    vignette.rect(0, 0, screenW, 30).fill({ color: 0x440000, alpha: 0.3 });
+    // Bottom edge
+    vignette.rect(0, screenH - 60, screenW, 60).fill({ color: 0x660000, alpha: 0.5 });
+    vignette.rect(0, screenH - 30, screenW, 30).fill({ color: 0x440000, alpha: 0.3 });
+    // Side edges
+    vignette.rect(0, 0, 40, screenH).fill({ color: 0x440000, alpha: 0.25 });
+    vignette.rect(screenW - 40, 0, 40, screenH).fill({ color: 0x440000, alpha: 0.25 });
     this.gameOverOverlay.addChild(vignette);
+
+    // Decorative skull icon
+    const skull = new Graphics();
+    const sx = screenW / 2, sy = screenH / 2 - 75;
+    // Skull cranium
+    skull.circle(sx, sy, 14).fill({ color: 0x886655, alpha: 0.7 });
+    skull.circle(sx, sy, 14).stroke({ color: 0xAA8877, width: 1 });
+    // Eye sockets
+    skull.circle(sx - 5, sy - 1, 3).fill({ color: 0x220000 });
+    skull.circle(sx + 5, sy - 1, 3).fill({ color: 0x220000 });
+    // Eye glow
+    skull.circle(sx - 5, sy - 1, 1.5).fill({ color: 0xFF2200, alpha: 0.6 });
+    skull.circle(sx + 5, sy - 1, 1.5).fill({ color: 0xFF2200, alpha: 0.6 });
+    // Nose
+    skull.poly([sx - 1.5, sy + 4, sx, sy + 2, sx + 1.5, sy + 4]).fill({ color: 0x330000 });
+    // Jaw
+    skull.moveTo(sx - 8, sy + 7).lineTo(sx + 8, sy + 7).stroke({ color: 0xAA8877, width: 1 });
+    // Teeth
+    for (let t = -3; t <= 3; t++) {
+      skull.rect(sx + t * 2 - 0.5, sy + 7, 1, 3).fill({ color: 0x886655, alpha: 0.6 });
+    }
+    // Crossed bones behind skull
+    skull.moveTo(sx - 18, sy - 18).lineTo(sx + 18, sy + 18).stroke({ color: 0x886655, width: 2, alpha: 0.5 });
+    skull.moveTo(sx + 18, sy - 18).lineTo(sx - 18, sy + 18).stroke({ color: 0x886655, width: 2, alpha: 0.5 });
+    this.gameOverOverlay.addChild(skull);
+
+    // Ornamental divider above death text
+    const divAbove = new Graphics();
+    const dy = screenH / 2 - 48;
+    divAbove.moveTo(screenW / 2 - 100, dy).lineTo(screenW / 2 + 100, dy).stroke({ color: 0x880000, width: 1, alpha: 0.5 });
+    divAbove.poly([screenW / 2 - 3, dy, screenW / 2, dy - 3, screenW / 2 + 3, dy, screenW / 2, dy + 3]).fill({ color: 0x880000, alpha: 0.6 });
+    this.gameOverOverlay.addChild(divAbove);
 
     const diedText = new Text({
       text: "YOU DIED",
@@ -365,6 +513,13 @@ export class GTAHUDView {
     diedText.position.set(screenW / 2, screenH / 2 - 20);
     this.gameOverOverlay.addChild(diedText);
 
+    // Ornamental divider below death text
+    const divBelow = new Graphics();
+    const dy2 = screenH / 2 + 10;
+    divBelow.moveTo(screenW / 2 - 80, dy2).lineTo(screenW / 2 + 80, dy2).stroke({ color: 0x880000, width: 1, alpha: 0.5 });
+    divBelow.poly([screenW / 2 - 3, dy2, screenW / 2, dy2 - 3, screenW / 2 + 3, dy2, screenW / 2, dy2 + 3]).fill({ color: 0x880000, alpha: 0.6 });
+    this.gameOverOverlay.addChild(divBelow);
+
     const restartText = new Text({
       text: "Press R to restart",
       style: medievalStyle(16, 0x996666),
@@ -372,15 +527,23 @@ export class GTAHUDView {
     restartText.anchor.set(0.5, 0.5);
     restartText.position.set(screenW / 2, screenH / 2 + 40);
     this.gameOverOverlay.addChild(restartText);
+
+    // Pulsing glow behind restart text
+    const restartGlow = new Graphics();
+    restartGlow.roundRect(screenW / 2 - 110, screenH / 2 + 28, 220, 24, 4).fill({ color: 0x880000, alpha: 0.1 });
+    restartGlow.roundRect(screenW / 2 - 110, screenH / 2 + 28, 220, 24, 4).stroke({ color: 0x880000, width: 0.5, alpha: 0.3 });
+    restartGlow.name = "restartGlow";
+    this.gameOverOverlay.addChild(restartGlow);
   }
 
   private buildPauseMenu(screenW: number, screenH: number): void {
     this.pauseMenuOverlay.removeChildren();
     this.pauseMenuOverlay.visible = false;
 
-    // Dark overlay
+    // Frosted glass overlay (layered for depth)
     const overlay = new Graphics();
-    overlay.rect(0, 0, screenW, screenH).fill({ color: 0x000011, alpha: 0.7 });
+    overlay.rect(0, 0, screenW, screenH).fill({ color: 0x000011, alpha: 0.6 });
+    overlay.rect(0, 0, screenW, screenH).fill({ color: 0x111133, alpha: 0.15 });
     this.pauseMenuOverlay.addChild(overlay);
 
     // Panel
@@ -393,7 +556,33 @@ export class GTAHUDView {
     panel.roundRect(px, py, panelW, panelH, 8).stroke({ color: GOLD_COLOR, width: 2 });
     // Inner border
     panel.roundRect(px + 4, py + 4, panelW - 8, panelH - 8, 6).stroke({ color: GOLD_COLOR, width: 0.5, alpha: 0.3 });
+    // Top gold gradient border
+    panel.rect(px + 40, py + 1, panelW - 80, 1.5).fill({ color: GOLD_COLOR, alpha: 0.7 });
+    panel.rect(px + 20, py + 1, 20, 1).fill({ color: GOLD_COLOR, alpha: 0.3 });
+    panel.rect(px + panelW - 40, py + 1, 20, 1).fill({ color: GOLD_COLOR, alpha: 0.3 });
     this.pauseMenuOverlay.addChild(panel);
+
+    // Medieval corner ornaments on panel
+    const ornaments = new Graphics();
+    for (const [cx, cy] of [[px, py], [px + panelW, py], [px, py + panelH], [px + panelW, py + panelH]]) {
+      const sx = cx === px ? 1 : -1;
+      const sy = cy === py ? 1 : -1;
+      // Extended L-brackets
+      ornaments.moveTo(cx, cy + sy * 12).lineTo(cx, cy).lineTo(cx + sx * 12, cy).stroke({ color: GOLD_COLOR, width: 2.5 });
+      // Diamond at corner
+      ornaments.poly([cx + sx * 3, cy + sy * 3, cx + sx * 6, cy + sy * 1, cx + sx * 9, cy + sy * 3, cx + sx * 6, cy + sy * 5]).fill({ color: GOLD_COLOR, alpha: 0.5 });
+    }
+    this.pauseMenuOverlay.addChild(ornaments);
+
+    // Shield icon above title
+    const shieldIcon = new Graphics();
+    const six = screenW / 2, siy = py + 5;
+    shieldIcon.poly([six - 8, siy, six + 8, siy, six + 8, siy + 10, six, siy + 16, six - 8, siy + 10]).fill({ color: GOLD_COLOR, alpha: 0.3 });
+    shieldIcon.poly([six - 8, siy, six + 8, siy, six + 8, siy + 10, six, siy + 16, six - 8, siy + 10]).stroke({ color: GOLD_COLOR, width: 1, alpha: 0.6 });
+    // Cross on shield
+    shieldIcon.rect(six - 1, siy + 2, 2, 10).fill({ color: GOLD_COLOR, alpha: 0.5 });
+    shieldIcon.rect(six - 4, siy + 5, 8, 2).fill({ color: GOLD_COLOR, alpha: 0.5 });
+    this.pauseMenuOverlay.addChild(shieldIcon);
 
     // Title
     const title = new Text({
@@ -404,12 +593,13 @@ export class GTAHUDView {
       }),
     });
     title.anchor.set(0.5, 0);
-    title.position.set(screenW / 2, py + 16);
+    title.position.set(screenW / 2, py + 22);
     this.pauseMenuOverlay.addChild(title);
 
-    // Divider
+    // Divider with diamond accent
     const divider = new Graphics();
-    divider.rect(px + 20, py + 52, panelW - 40, 1).fill({ color: GOLD_COLOR, alpha: 0.3 });
+    divider.moveTo(px + 20, py + 56).lineTo(px + panelW - 20, py + 56).stroke({ color: GOLD_COLOR, width: 1, alpha: 0.3 });
+    divider.poly([screenW / 2 - 3, py + 56, screenW / 2, py + 53, screenW / 2 + 3, py + 56, screenW / 2, py + 59]).fill({ color: GOLD_COLOR, alpha: 0.4 });
     this.pauseMenuOverlay.addChild(divider);
 
     // Controls section
@@ -579,6 +769,13 @@ export class GTAHUDView {
 
     // --- Game Over ---
     this.gameOverOverlay.visible = state.gameOver;
+    // Pulsing glow around restart prompt
+    if (state.gameOver) {
+      const glowChild = this.gameOverOverlay.children.find(c => c.name === "restartGlow");
+      if (glowChild) {
+        glowChild.alpha = 0.5 + Math.sin(state.tick * 0.08) * 0.4;
+      }
+    }
 
     // --- Pause Menu ---
     this.pauseMenuOverlay.visible = !!state.showPauseMenu;
@@ -589,14 +786,24 @@ export class GTAHUDView {
   }
 
   private updateBars(hp: number, maxHp: number, stamina: number): void {
+    const hpY = 14, staY = 32, barW = 130, barH = 12;
+
     // HP
     const hpPct = Math.max(0, hp / maxHp);
     this.hpBarFill.clear();
     const hpColor = hpPct > 0.5 ? 0xCC3333 : hpPct > 0.25 ? 0xCC6633 : 0xCC2222;
+    const hpBright = hpPct > 0.5 ? 0xEE5555 : hpPct > 0.25 ? 0xEE8855 : 0xEE4444;
     if (hpPct > 0) {
-      this.hpBarFill.roundRect(35, 12, 130 * hpPct, 12, 3).fill({ color: hpColor });
-      // Shine
-      this.hpBarFill.roundRect(35, 12, 130 * hpPct, 5, 3).fill({ color: 0xFFFFFF, alpha: 0.1 });
+      const fillW = barW * hpPct;
+      this.hpBarFill.roundRect(35, hpY, fillW, barH, 3).fill({ color: hpColor });
+      // Gloss highlight (top 40%)
+      this.hpBarFill.roundRect(35, hpY, fillW, barH * 0.4, 3).fill({ color: hpBright, alpha: 0.3 });
+      // Top edge shine
+      this.hpBarFill.roundRect(35 + 1, hpY + 1, fillW - 2, 1.5, 1).fill({ color: 0xFFFFFF, alpha: 0.12 });
+    }
+    // Low HP danger pulse
+    if (hpPct < 0.25 && hpPct > 0) {
+      this.hpBarFill.roundRect(33, hpY - 2, barW + 4, barH + 4, 5).fill({ color: 0xFF0000, alpha: 0.08 });
     }
     this.hpText.text = `${Math.ceil(hp)}/${maxHp}`;
 
@@ -604,8 +811,12 @@ export class GTAHUDView {
     const staPct = Math.max(0, stamina / 100);
     this.staBarFill.clear();
     if (staPct > 0) {
-      this.staBarFill.roundRect(35, 30, 130 * staPct, 12, 3).fill({ color: 0x44AA44 });
-      this.staBarFill.roundRect(35, 30, 130 * staPct, 5, 3).fill({ color: 0xFFFFFF, alpha: 0.1 });
+      const fillW = barW * staPct;
+      this.staBarFill.roundRect(35, staY, fillW, barH, 3).fill({ color: 0x44AA44 });
+      // Gloss highlight
+      this.staBarFill.roundRect(35, staY, fillW, barH * 0.4, 3).fill({ color: 0x66DD66, alpha: 0.3 });
+      // Top edge shine
+      this.staBarFill.roundRect(35 + 1, staY + 1, fillW - 2, 1.5, 1).fill({ color: 0xFFFFFF, alpha: 0.12 });
     }
     this.staText.text = `${Math.ceil(stamina)}`;
   }

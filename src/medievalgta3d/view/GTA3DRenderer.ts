@@ -11,7 +11,7 @@ import type {
 import { GTA3D } from "../config/GTA3DConfig";
 
 // ─── Shared Geometries ───────────────────────────────────────────────
-const _sphere = new THREE.SphereGeometry(0.5, 12, 10);
+const _sphere = new THREE.SphereGeometry(0.5, 16, 14);
 
 // ─── Colour helpers ──────────────────────────────────────────────────
 function col(hex: number) {
@@ -607,13 +607,13 @@ export class GTA3DRenderer {
         bracket.position.z = 0.2;
         torchHolder.add(bracket);
         const torchPole = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.03, 0.03, 0.5, 4),
+          new THREE.CylinderGeometry(0.025, 0.035, 0.5, 10),
           MAT_WOOD_DARK
         );
         torchPole.position.set(0, 0.25, 0.4);
         torchHolder.add(torchPole);
         const flame = new THREE.Mesh(
-          new THREE.SphereGeometry(0.08, 6, 4),
+          new THREE.ConeGeometry(0.06, 0.15, 10),
           MAT_GLOW_ORANGE
         );
         flame.position.set(0, 0.55, 0.4);
@@ -649,14 +649,14 @@ export class GTA3DRenderer {
 
     // Foundation ring
     const foundation = new THREE.Mesh(
-      new THREE.CylinderGeometry(2.5, 2.7, 0.6, 10),
+      new THREE.CylinderGeometry(2.5, 2.7, 0.6, 20),
       mat(0x665544, { roughness: 1 })
     );
     foundation.position.y = 0.3;
     g.add(foundation);
 
     // Main tower cylinder (slightly tapered)
-    const base = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.5, tH, 10), MAT_STONE);
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.5, tH, 20), MAT_STONE);
     base.position.y = tH / 2;
     base.castShadow = true;
     base.receiveShadow = true;
@@ -664,7 +664,7 @@ export class GTA3DRenderer {
 
     // Mid-height stone band
     const midBand = new THREE.Mesh(
-      new THREE.CylinderGeometry(2.3, 2.3, 0.15, 10),
+      new THREE.CylinderGeometry(2.3, 2.3, 0.15, 20),
       mat(0x776655)
     );
     midBand.position.y = tH * 0.45;
@@ -672,23 +672,26 @@ export class GTA3DRenderer {
 
     // Platform at top
     const platform = new THREE.Mesh(
-      new THREE.CylinderGeometry(2.6, 2.6, 0.15, 10),
+      new THREE.CylinderGeometry(2.6, 2.6, 0.15, 20),
       mat(0x777766)
     );
     platform.position.y = tH;
     platform.receiveShadow = true;
     g.add(platform);
 
-    // Cone roof
-    const roof = new THREE.Mesh(new THREE.ConeGeometry(2.8, 3, 8), MAT_ROOF_TILE);
+    // Cone roof — smooth
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(2.8, 3, 20), MAT_ROOF_TILE);
     roof.position.y = tH + 1.5;
     roof.castShadow = true;
     g.add(roof);
 
-    // Roof tip finial (gold sphere)
-    const finial = new THREE.Mesh(new THREE.SphereGeometry(0.15, 6, 4), MAT_GOLD_MAT);
+    // Roof tip finial (gold sphere with spike)
+    const finial = new THREE.Mesh(new THREE.SphereGeometry(0.15, 14, 12), MAT_GOLD_MAT);
     finial.position.y = tH + 3.1;
     g.add(finial);
+    const finialSpike = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.2, 10), MAT_GOLD_MAT);
+    finialSpike.position.y = tH + 3.3;
+    g.add(finialSpike);
 
     // Crenellations with caps
     for (let i = 0; i < 8; i++) {
@@ -730,7 +733,7 @@ export class GTA3DRenderer {
     bracketMesh.position.set(2.35, tH * 0.35, 0);
     g.add(bracketMesh);
     const flameMesh = new THREE.Mesh(
-      new THREE.SphereGeometry(0.1, 6, 4),
+      new THREE.ConeGeometry(0.08, 0.2, 12),
       MAT_GLOW_ORANGE
     );
     flameMesh.position.set(2.55, tH * 0.4, 0);
@@ -748,8 +751,8 @@ export class GTA3DRenderer {
   private _createCornerTower(x: number, z: number): void {
     const g = new THREE.Group();
     const h = GTA3D.WALL_HEIGHT + 2;
-    // Slightly tapered base
-    const base = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 2.1, h, 10), MAT_STONE);
+    // Slightly tapered base — smoother
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 2.1, h, 20), MAT_STONE);
     base.position.y = h / 2;
     base.castShadow = true;
     base.receiveShadow = true;
@@ -757,7 +760,7 @@ export class GTA3DRenderer {
 
     // Stone foundation ring
     const foundRing = new THREE.Mesh(
-      new THREE.CylinderGeometry(2.15, 2.3, 0.5, 10),
+      new THREE.CylinderGeometry(2.15, 2.3, 0.5, 20),
       mat(0x665544, { roughness: 1 })
     );
     foundRing.position.y = 0.25;
@@ -765,7 +768,7 @@ export class GTA3DRenderer {
 
     // Mid-height stone band
     const midBand = new THREE.Mesh(
-      new THREE.CylinderGeometry(1.9, 1.9, 0.12, 10),
+      new THREE.CylinderGeometry(1.9, 1.9, 0.12, 20),
       mat(0x776655)
     );
     midBand.position.y = h * 0.5;
@@ -773,7 +776,7 @@ export class GTA3DRenderer {
 
     // Walkway platform on top
     const platform = new THREE.Mesh(
-      new THREE.CylinderGeometry(2.2, 2.2, 0.15, 10),
+      new THREE.CylinderGeometry(2.2, 2.2, 0.15, 20),
       mat(0x777766)
     );
     platform.position.y = h;
@@ -827,16 +830,29 @@ export class GTA3DRenderer {
       // Skip if on river
       if (x > ws * 0.30 && x < ws * 0.40) continue;
 
-      const h = 0.3 + Math.random() * 0.2;
-      const blade = new THREE.Mesh(
-        new THREE.ConeGeometry(0.08, h, 4),
-        mat(0x3A6A2A + Math.floor(Math.random() * 0x112200))
-      );
-      blade.position.set(x, h * 0.5, z);
-      blade.rotation.x = (Math.random() - 0.5) * 0.3;
-      blade.rotation.z = (Math.random() - 0.5) * 0.3;
-      this._grassGroup.add(blade);
-      this._grassBlades.push(blade);
+      const tufts = new THREE.Group();
+      const grassColor = 0x3A6A2A + Math.floor(Math.random() * 0x112200);
+      // 3 blades per tuft for more fullness
+      const bladeCount = 2 + Math.floor(Math.random() * 2);
+      for (let b = 0; b < bladeCount; b++) {
+        const h = 0.25 + Math.random() * 0.25;
+        const blade = new THREE.Mesh(
+          new THREE.ConeGeometry(0.06, h, 10),
+          mat(grassColor + Math.floor(Math.random() * 0x050500))
+        );
+        blade.position.set(
+          (Math.random() - 0.5) * 0.12,
+          h * 0.5,
+          (Math.random() - 0.5) * 0.12
+        );
+        blade.rotation.x = (Math.random() - 0.5) * 0.4;
+        blade.rotation.z = (Math.random() - 0.5) * 0.4;
+        tufts.add(blade);
+      }
+      tufts.position.set(x, 0, z);
+      this._grassGroup.add(tufts);
+      // Track first blade for animation
+      this._grassBlades.push(tufts.children[0] as THREE.Mesh);
     }
   }
 
@@ -847,7 +863,7 @@ export class GTA3DRenderer {
     const bridgeGroup = new THREE.Group();
 
     // Arch base (torus segment underneath)
-    const archGeo = new THREE.TorusGeometry(3, 0.6, 8, 12, Math.PI);
+    const archGeo = new THREE.TorusGeometry(3, 0.6, 14, 20, Math.PI);
     const arch = new THREE.Mesh(archGeo, MAT_STONE);
     arch.rotation.x = Math.PI / 2;
     arch.rotation.z = Math.PI / 2;
@@ -916,27 +932,48 @@ export class GTA3DRenderer {
     const positions = torchPositions.slice(0, 12);
     for (const [tx, tz] of positions) {
       const torchGroup = new THREE.Group();
-      // Wooden pole
+      // Wooden pole — smooth
       const pole = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.08, 0.1, 3, 6),
+        new THREE.CylinderGeometry(0.07, 0.1, 3, 14),
         MAT_WOOD_DARK
       );
       pole.position.y = 1.5;
       pole.castShadow = true;
       torchGroup.add(pole);
+      // Iron bracket holding the flame dish
+      const bracket = new THREE.Mesh(
+        new THREE.BoxGeometry(0.04, 0.04, 0.2),
+        MAT_IRON
+      );
+      bracket.position.set(0, 2.95, 0.08);
+      torchGroup.add(bracket);
+      // Flame dish
+      const dish = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.12, 0.08, 0.06, 14),
+        MAT_IRON
+      );
+      dish.position.y = 3.0;
+      torchGroup.add(dish);
 
-      // Orange emissive flame cube
+      // Flame — cone shape instead of box
       const flameMat = new THREE.MeshBasicMaterial({
         color: 0xFF8833,
         transparent: true,
-        opacity: 0.9,
+        opacity: 0.85,
       });
       const flame = new THREE.Mesh(
-        new THREE.BoxGeometry(0.2, 0.25, 0.2),
+        new THREE.ConeGeometry(0.1, 0.3, 12),
         flameMat
       );
-      flame.position.y = 3.15;
+      flame.position.y = 3.2;
       torchGroup.add(flame);
+      // Inner flame (brighter core)
+      const innerFlame = new THREE.Mesh(
+        new THREE.ConeGeometry(0.05, 0.2, 10),
+        new THREE.MeshBasicMaterial({ color: 0xFFCC44, transparent: true, opacity: 0.7 })
+      );
+      innerFlame.position.y = 3.15;
+      torchGroup.add(innerFlame);
       this._torchFlames.push(flame);
 
       // Point light
@@ -958,7 +995,7 @@ export class GTA3DRenderer {
         // Barrels near tavern and blacksmith
         for (let i = 0; i < 4; i++) {
           const barrel = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.3, 0.35, 0.7, 8),
+            new THREE.CylinderGeometry(0.3, 0.35, 0.7, 14),
             mat(0x6B4226)
           );
           barrel.position.set(
@@ -1004,7 +1041,7 @@ export class GTA3DRenderer {
         // Two support posts
         for (let side = -1; side <= 1; side += 2) {
           const post = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.06, 0.06, 1.8, 6),
+            new THREE.CylinderGeometry(0.06, 0.06, 1.8, 12),
             MAT_WOOD_DARK
           );
           post.position.set(side * 0.6, 1.7, 0);
@@ -1021,7 +1058,7 @@ export class GTA3DRenderer {
 
         // Roof
         const wellRoof = new THREE.Mesh(
-          new THREE.ConeGeometry(1.0, 0.6, 4),
+          new THREE.ConeGeometry(1.0, 0.6, 14),
           MAT_ROOF_TILE
         );
         wellRoof.position.y = 3.0;
@@ -1056,33 +1093,84 @@ export class GTA3DRenderer {
 
   private _createTree(x: number, z: number, height: number): void {
     const g = new THREE.Group();
-    // Trunk
+    // Trunk — tapered with bark-like irregularity
     const trunk = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.2, 0.3, height * 0.5, 6),
+      new THREE.CylinderGeometry(0.18, 0.32, height * 0.5, 12),
       MAT_WOOD_DARK
     );
     trunk.position.y = height * 0.25;
     trunk.castShadow = true;
     g.add(trunk);
 
-    // Canopy — randomize cone vs sphere
+    // Root flare at base
+    const rootFlare = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.32, 0.45, height * 0.1, 12),
+      MAT_WOOD_DARK
+    );
+    rootFlare.position.y = height * 0.02;
+    g.add(rootFlare);
+
+    // Exposed roots (2-3)
+    const rootCount = 2 + Math.floor(Math.random() * 2);
+    for (let r = 0; r < rootCount; r++) {
+      const ra = (r / rootCount) * Math.PI * 2 + Math.random() * 0.5;
+      const root = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.04, 0.08, 0.5, 12),
+        MAT_WOOD_DARK
+      );
+      root.position.set(Math.cos(ra) * 0.35, 0.05, Math.sin(ra) * 0.35);
+      root.rotation.z = Math.cos(ra) * 0.8;
+      root.rotation.x = Math.sin(ra) * 0.8;
+      g.add(root);
+    }
+
+    // Main branch (one or two visible from trunk)
+    const branchAngle = Math.random() * Math.PI * 2;
+    const branch = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.04, 0.1, height * 0.3, 12),
+      MAT_WOOD_DARK
+    );
+    branch.position.set(
+      Math.cos(branchAngle) * 0.25,
+      height * 0.4,
+      Math.sin(branchAngle) * 0.25
+    );
+    branch.rotation.z = Math.cos(branchAngle) * 0.7;
+    branch.rotation.x = Math.sin(branchAngle) * 0.7;
+    g.add(branch);
+
+    // Canopy — randomize cone vs sphere, higher segments
     const useCone = Math.random() > 0.4;
     let canopy: THREE.Mesh;
+    const canopyColor = mat(0x2E7D32 + Math.floor(Math.random() * 0x112200));
     if (useCone) {
       canopy = new THREE.Mesh(
-        new THREE.ConeGeometry(height * 0.45, height * 0.65, 7),
-        mat(0x2E7D32 + Math.floor(Math.random() * 0x112200))
+        new THREE.ConeGeometry(height * 0.45, height * 0.65, 16),
+        canopyColor
       );
     } else {
       canopy = new THREE.Mesh(
-        new THREE.SphereGeometry(height * 0.4, 7, 6),
-        mat(0x337733 + Math.floor(Math.random() * 0x112200))
+        new THREE.SphereGeometry(height * 0.4, 16, 12),
+        canopyColor
       );
     }
     canopy.position.y = height * 0.55 + height * 0.2;
     canopy.castShadow = true;
     g.add(canopy);
     this._treeCanopies.push(canopy);
+
+    // Secondary smaller canopy cluster for fullness
+    const subCanopy = new THREE.Mesh(
+      new THREE.SphereGeometry(height * 0.25, 12, 10),
+      canopyColor
+    );
+    subCanopy.position.set(
+      Math.cos(branchAngle) * height * 0.2,
+      height * 0.5 + height * 0.15,
+      Math.sin(branchAngle) * height * 0.2
+    );
+    subCanopy.castShadow = true;
+    g.add(subCanopy);
 
     g.position.set(x, 0, z);
     this._forestGroup.add(g);
@@ -1133,16 +1221,24 @@ export class GTA3DRenderer {
     keep.receiveShadow = true;
     g.add(keep);
 
-    // Central tower (taller)
+    // Central tower (taller) — smooth
     const centralH = h * 1.5;
-    const central = new THREE.Mesh(new THREE.CylinderGeometry(w * 0.12, w * 0.14, centralH, 8), mat(0x888877));
+    const central = new THREE.Mesh(new THREE.CylinderGeometry(w * 0.12, w * 0.14, centralH, 20), mat(0x888877));
     central.position.y = centralH / 2;
     central.castShadow = true;
     g.add(central);
-    // Central cone roof
-    const centralRoof = new THREE.Mesh(new THREE.ConeGeometry(w * 0.16, 3, 8), MAT_ROOF_TILE);
+    // Stone band around central tower mid-height
+    const centralBand = new THREE.Mesh(new THREE.CylinderGeometry(w * 0.145, w * 0.145, 0.2, 20), mat(0x777766));
+    centralBand.position.y = centralH * 0.5;
+    g.add(centralBand);
+    // Central cone roof — smooth
+    const centralRoof = new THREE.Mesh(new THREE.ConeGeometry(w * 0.16, 3, 20), MAT_ROOF_TILE);
     centralRoof.position.y = centralH + 1.5;
     g.add(centralRoof);
+    // Finial on central tower
+    const centralFinial = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 10), MAT_GOLD_MAT);
+    centralFinial.position.y = centralH + 3.05;
+    g.add(centralFinial);
 
     // 4 Corner towers
     const corners = [
@@ -1153,14 +1249,22 @@ export class GTA3DRenderer {
     ];
     for (const [cx, cz] of corners) {
       const towerH = h * 1.15;
-      const tower = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.7, towerH, 8), mat(0x888877));
+      const tower = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.7, towerH, 20), mat(0x888877));
       tower.position.set(cx, towerH / 2, cz);
       tower.castShadow = true;
       g.add(tower);
+      // Stone band
+      const tBand = new THREE.Mesh(new THREE.CylinderGeometry(1.55, 1.55, 0.15, 20), mat(0x777766));
+      tBand.position.set(cx, towerH * 0.5, cz);
+      g.add(tBand);
 
-      const tRoof = new THREE.Mesh(new THREE.ConeGeometry(2, 2.5, 8), MAT_RED);
+      const tRoof = new THREE.Mesh(new THREE.ConeGeometry(2, 2.5, 20), MAT_RED);
       tRoof.position.set(cx, towerH + 1.25, cz);
       g.add(tRoof);
+      // Finial
+      const tFinial = new THREE.Mesh(new THREE.SphereGeometry(0.1, 14, 12), MAT_GOLD_MAT);
+      tFinial.position.set(cx, towerH + 2.55, cz);
+      g.add(tFinial);
 
       // Crenellations
       for (let i = 0; i < 6; i++) {
@@ -1253,7 +1357,7 @@ export class GTA3DRenderer {
     g.add(tower);
 
     // Pyramid top
-    const pyTop = new THREE.Mesh(new THREE.ConeGeometry(towerW * 0.75, 2.5, 4), MAT_ROOF_TILE);
+    const pyTop = new THREE.Mesh(new THREE.ConeGeometry(towerW * 0.75, 2.5, 12), MAT_ROOF_TILE);
     pyTop.position.set(0, towerH + 1.25, -d / 2 + towerW / 2);
     pyTop.rotation.y = Math.PI / 4;
     g.add(pyTop);
@@ -1414,7 +1518,7 @@ export class GTA3DRenderer {
 
     // Support posts
     for (const px of [-w / 2 + 0.2, w / 2 - 0.2]) {
-      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, h, 6), MAT_WOOD_DARK);
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.13, h, 14), MAT_WOOD_DARK);
       post.position.set(px, h / 2, d / 2 - 0.3);
       g.add(post);
     }
@@ -1464,7 +1568,7 @@ export class GTA3DRenderer {
       [-w / 2, d / 2], [w / 2, d / 2],
     ];
     for (const [px, pz] of posts) {
-      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, postH, 6), MAT_WOOD);
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, postH, 14), MAT_WOOD);
       post.position.set(px, postH / 2, pz);
       post.castShadow = true;
       g.add(post);
@@ -1530,7 +1634,7 @@ export class GTA3DRenderer {
     // Support posts along open front
     for (let i = 0; i < 4; i++) {
       const px = -w / 2 + 0.15 + i * (w / 3);
-      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, h, 6), MAT_WOOD_DARK);
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, h, 14), MAT_WOOD_DARK);
       post.position.set(px, h / 2, d / 2);
       g.add(post);
     }
@@ -1639,7 +1743,7 @@ export class GTA3DRenderer {
         const dormer = new THREE.Mesh(new THREE.BoxGeometry(1, 0.9, 0.8), wallMat);
         dormer.position.set(dx, h + h * 0.15, d / 2 + 0.1);
         g.add(dormer);
-        const dormerRoof = new THREE.Mesh(new THREE.ConeGeometry(0.7, 0.5, 4), MAT_ROOF_TILE);
+        const dormerRoof = new THREE.Mesh(new THREE.ConeGeometry(0.7, 0.5, 12), MAT_ROOF_TILE);
         dormerRoof.position.set(dx, h + h * 0.15 + 0.7, d / 2 + 0.1);
         dormerRoof.rotation.y = Math.PI / 4;
         g.add(dormerRoof);
@@ -1655,7 +1759,7 @@ export class GTA3DRenderer {
     const h = b.size.y;
     const r = Math.max(b.size.x, b.size.z) * 0.4;
 
-    const tower = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 1.1, h, 10), MAT_STONE);
+    const tower = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 1.1, h, 20), MAT_STONE);
     tower.position.y = h / 2;
     tower.castShadow = true;
     g.add(tower);
@@ -1684,32 +1788,71 @@ export class GTA3DRenderer {
     const g = new THREE.Group();
     const r = Math.max(b.size.x, b.size.z) * 0.4;
 
-    // Basin (torus)
-    const basin = new THREE.Mesh(new THREE.TorusGeometry(r, 0.3, 8, 24), MAT_STONE_LIGHT);
+    // Stepped base platform
+    const baseStep = new THREE.Mesh(new THREE.CylinderGeometry(r + 0.5, r + 0.6, 0.2, 24), MAT_STONE_LIGHT);
+    baseStep.position.y = 0.1;
+    g.add(baseStep);
+    const upperStep = new THREE.Mesh(new THREE.CylinderGeometry(r + 0.2, r + 0.4, 0.2, 24), MAT_STONE_LIGHT);
+    upperStep.position.y = 0.3;
+    g.add(upperStep);
+
+    // Basin (torus) — smooth
+    const basin = new THREE.Mesh(new THREE.TorusGeometry(r, 0.3, 16, 32), MAT_STONE_LIGHT);
     basin.position.y = 0.8;
     basin.rotation.x = Math.PI / 2;
     g.add(basin);
+    // Basin inner lip
+    const basinLip = new THREE.Mesh(new THREE.TorusGeometry(r - 0.15, 0.08, 10, 28), MAT_STONE);
+    basinLip.position.y = 0.85;
+    basinLip.rotation.x = Math.PI / 2;
+    g.add(basinLip);
 
     // Water surface inside basin
-    const water = new THREE.Mesh(new THREE.CircleGeometry(r - 0.1, 24), MAT_WATER);
-    water.position.y = 0.75;
+    const water = new THREE.Mesh(new THREE.CircleGeometry(r - 0.1, 32), MAT_WATER);
+    water.position.y = 0.72;
     water.rotation.x = -Math.PI / 2;
     g.add(water);
 
-    // Base pedestal
-    const pedestal = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.3, r * 0.4, 0.8, 8), MAT_STONE_LIGHT);
+    // Base pedestal — fluted column base
+    const pedestal = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.3, r * 0.42, 0.8, 20), MAT_STONE_LIGHT);
     pedestal.position.y = 0.4;
     g.add(pedestal);
+    // Pedestal molding ring
+    const pedestalRing = new THREE.Mesh(new THREE.TorusGeometry(r * 0.35, 0.04, 8, 20), MAT_STONE);
+    pedestalRing.position.y = 0.8;
+    pedestalRing.rotation.x = Math.PI / 2;
+    g.add(pedestalRing);
 
-    // Central pillar
-    const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 2, 8), MAT_STONE);
-    pillar.position.y = 1.5;
+    // Central pillar — smooth with capital and base
+    const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.16, 1.6, 18), MAT_STONE);
+    pillar.position.y = 1.6;
     g.add(pillar);
+    // Pillar base molding
+    const pillarBase = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.22, 0.12, 16), MAT_STONE);
+    pillarBase.position.y = 0.86;
+    g.add(pillarBase);
+    // Pillar capital (wider top)
+    const pillarCap = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.16, 0.15, 16), MAT_STONE);
+    pillarCap.position.y = 2.45;
+    g.add(pillarCap);
 
-    // Top decoration (sphere)
-    const topDec = new THREE.Mesh(new THREE.SphereGeometry(0.25, 8, 6), MAT_STONE);
+    // Top decoration — ornate sphere with water spout arms
+    const topDec = new THREE.Mesh(new THREE.SphereGeometry(0.25, 18, 14), MAT_STONE);
     topDec.position.y = 2.7;
     g.add(topDec);
+    // 4 water spout arms
+    for (let sp = 0; sp < 4; sp++) {
+      const spAngle = (sp / 4) * Math.PI * 2;
+      const spout = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.05, 0.35, 10), MAT_STONE);
+      spout.position.set(Math.cos(spAngle) * 0.2, 2.55, Math.sin(spAngle) * 0.2);
+      spout.rotation.z = Math.cos(spAngle) * 0.8;
+      spout.rotation.x = Math.sin(spAngle) * 0.8;
+      g.add(spout);
+    }
+    // Finial spike
+    const finial = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.25, 12), MAT_STONE);
+    finial.position.y = 2.98;
+    g.add(finial);
 
     return g;
   }
@@ -1724,23 +1867,23 @@ export class GTA3DRenderer {
       const tz = (Math.random() - 0.5) * spread * 2;
       const th = 2.5 + Math.random() * 3.5;
 
-      // Trunk
+      // Trunk — smooth
       const trunk = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.18, 0.25, th * 0.5, 6),
+        new THREE.CylinderGeometry(0.16, 0.27, th * 0.5, 12),
         MAT_WOOD_DARK
       );
       trunk.position.set(tx, th * 0.25, tz);
       trunk.castShadow = true;
       g.add(trunk);
 
-      // Canopy
+      // Canopy — higher segments
       const useCone = Math.random() > 0.3;
       const greenShade = 0x2E7D32 + Math.floor(Math.random() * 0x112200);
       let canopy: THREE.Mesh;
       if (useCone) {
-        canopy = new THREE.Mesh(new THREE.ConeGeometry(th * 0.4, th * 0.6, 7), mat(greenShade));
+        canopy = new THREE.Mesh(new THREE.ConeGeometry(th * 0.4, th * 0.6, 14), mat(greenShade));
       } else {
-        canopy = new THREE.Mesh(new THREE.SphereGeometry(th * 0.38, 7, 6), mat(greenShade));
+        canopy = new THREE.Mesh(new THREE.SphereGeometry(th * 0.38, 14, 10), mat(greenShade));
       }
       canopy.position.set(tx, th * 0.55 + th * 0.2, tz);
       canopy.castShadow = true;
@@ -1849,7 +1992,7 @@ export class GTA3DRenderer {
       crossGroup.add(armG);
     }
     // Hub
-    const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.2, 8), MAT_IRON);
+    const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.2, 14), MAT_IRON);
     hub.rotation.x = Math.PI / 2;
     crossGroup.add(hub);
 
@@ -1930,44 +2073,124 @@ export class GTA3DRenderer {
     tunicSkirt.castShadow = true;
     this._playerGroup.add(tunicSkirt);
 
-    // ── Head — slightly elongated sphere + face details ──
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 10), MAT_SKIN);
+    // ── Head — smooth sphere with detailed face ──
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 24, 20), MAT_SKIN);
     head.position.y = 2.0;
-    head.scale.set(1, 1.08, 0.95); // slightly taller, less deep
+    head.scale.set(1, 1.08, 0.95);
     head.castShadow = true;
     this._playerGroup.add(head);
 
-    // Eyes (two tiny dark spheres)
+    // Eyes — white sclera + iris + pupil
     for (const side of [-1, 1]) {
-      const eye = new THREE.Mesh(
-        new THREE.SphereGeometry(0.03, 6, 4),
-        mat(0x222222)
+      const eyeWhite = new THREE.Mesh(
+        new THREE.SphereGeometry(0.032, 14, 12),
+        mat(0xEEEEDD)
       );
-      eye.position.set(side * 0.08, 2.03, 0.18);
-      this._playerGroup.add(eye);
+      eyeWhite.position.set(side * 0.08, 2.03, 0.17);
+      eyeWhite.scale.set(1, 0.7, 0.5);
+      this._playerGroup.add(eyeWhite);
+      const iris = new THREE.Mesh(
+        new THREE.SphereGeometry(0.018, 12, 10),
+        mat(0x4477AA)
+      );
+      iris.position.set(side * 0.08, 2.03, 0.19);
+      this._playerGroup.add(iris);
+      const pupil = new THREE.Mesh(
+        new THREE.SphereGeometry(0.009, 12, 10),
+        mat(0x111111)
+      );
+      pupil.position.set(side * 0.08, 2.03, 0.195);
+      this._playerGroup.add(pupil);
+      // Eyelid crease
+      const lid = new THREE.Mesh(
+        new THREE.BoxGeometry(0.04, 0.006, 0.01),
+        mat(0xBB9977)
+      );
+      lid.position.set(side * 0.08, 2.055, 0.18);
+      this._playerGroup.add(lid);
     }
 
-    // Nose (tiny cone pointing forward)
+    // Eyebrows
+    for (const side of [-1, 1]) {
+      const brow = new THREE.Mesh(
+        new THREE.BoxGeometry(0.05, 0.012, 0.015),
+        mat(0x3A2718)
+      );
+      brow.position.set(side * 0.08, 2.065, 0.18);
+      brow.rotation.z = side * -0.15;
+      this._playerGroup.add(brow);
+    }
+
+    // Nose — smooth rounded shape
     const nose = new THREE.Mesh(
-      new THREE.ConeGeometry(0.025, 0.06, 4),
+      new THREE.ConeGeometry(0.025, 0.06, 12),
       MAT_SKIN
     );
     nose.position.set(0, 1.97, 0.22);
     nose.rotation.x = -Math.PI / 2;
     this._playerGroup.add(nose);
+    // Nose bridge
+    const noseBridge = new THREE.Mesh(
+      new THREE.BoxGeometry(0.02, 0.04, 0.02),
+      MAT_SKIN
+    );
+    noseBridge.position.set(0, 2.0, 0.2);
+    this._playerGroup.add(noseBridge);
 
-    // Hair (cap on top/back of head)
+    // Mouth
+    const mouth = new THREE.Mesh(
+      new THREE.BoxGeometry(0.06, 0.008, 0.01),
+      mat(0xAA6655)
+    );
+    mouth.position.set(0, 1.93, 0.2);
+    this._playerGroup.add(mouth);
+
+    // Chin
+    const chin = new THREE.Mesh(
+      new THREE.SphereGeometry(0.05, 12, 10),
+      MAT_SKIN
+    );
+    chin.position.set(0, 1.9, 0.14);
+    chin.scale.set(1.2, 0.5, 0.8);
+    this._playerGroup.add(chin);
+
+    // Ears
+    for (const side of [-1, 1]) {
+      const ear = new THREE.Mesh(
+        new THREE.SphereGeometry(0.035, 14, 12),
+        MAT_SKIN
+      );
+      ear.position.set(side * 0.21, 2.0, 0);
+      ear.scale.set(0.4, 0.8, 0.6);
+      this._playerGroup.add(ear);
+    }
+
+    // Hair — smooth cap with fringe
     const hair = new THREE.Mesh(
-      new THREE.SphereGeometry(0.23, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.55),
+      new THREE.SphereGeometry(0.235, 20, 16, 0, Math.PI * 2, 0, Math.PI * 0.55),
       mat(0x4A3728)
     );
     hair.position.y = 2.04;
     hair.scale.set(1, 1.05, 1.05);
     this._playerGroup.add(hair);
+    // Hair fringe over forehead
+    const fringe = new THREE.Mesh(
+      new THREE.BoxGeometry(0.28, 0.03, 0.08),
+      mat(0x4A3728)
+    );
+    fringe.position.set(0, 2.12, 0.14);
+    this._playerGroup.add(fringe);
+    // Hair back/sides covering ears
+    const hairBack = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.14, 0.08, 0.18, 12),
+      mat(0x4A3728)
+    );
+    hairBack.position.set(0, 1.9, -0.12);
+    this._playerGroup.add(hairBack);
 
-    // Neck
+    // Neck — smooth
     const neck = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.08, 0.1, 0.15, 8),
+      new THREE.CylinderGeometry(0.08, 0.1, 0.15, 16),
       MAT_SKIN
     );
     neck.position.y = 1.78;
@@ -1987,23 +2210,45 @@ export class GTA3DRenderer {
       forearm.position.y = -0.45;
       forearm.castShadow = true;
       armGroup.add(forearm);
-      // Hand (small sphere)
-      const hand = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 4), MAT_SKIN);
+      // Hand (smooth sphere)
+      const hand = new THREE.Mesh(new THREE.SphereGeometry(0.06, 14, 12), MAT_SKIN);
       hand.position.y = -0.65;
       armGroup.add(hand);
+      // Fingers hint (subtle bumps on front of hand)
+      const fingers = new THREE.Mesh(
+        new THREE.BoxGeometry(0.08, 0.03, 0.04),
+        MAT_SKIN
+      );
+      fingers.position.set(0, -0.71, 0.03);
+      armGroup.add(fingers);
       armGroup.position.set(side * 0.38, 1.6, 0);
       this._playerGroup.add(armGroup);
     }
 
-    // Shoulder pauldrons (metal half-spheres)
+    // Shoulder pauldrons (smooth metal domes with rim)
     for (const side of [-1, 1]) {
       const pauldron = new THREE.Mesh(
-        new THREE.SphereGeometry(0.13, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.5),
+        new THREE.SphereGeometry(0.13, 20, 16, 0, Math.PI * 2, 0, Math.PI * 0.5),
         MAT_GREY_ARMOR
       );
       pauldron.position.set(side * 0.38, 1.72, 0);
       pauldron.castShadow = true;
       this._playerGroup.add(pauldron);
+      // Pauldron rim
+      const rim = new THREE.Mesh(
+        new THREE.TorusGeometry(0.12, 0.015, 8, 20),
+        MAT_GREY_ARMOR
+      );
+      rim.position.set(side * 0.38, 1.68, 0);
+      rim.rotation.x = Math.PI / 2;
+      this._playerGroup.add(rim);
+      // Decorative rivet on pauldron
+      const rivet = new THREE.Mesh(
+        new THREE.SphereGeometry(0.02, 14, 12),
+        MAT_GOLD_MAT
+      );
+      rivet.position.set(side * 0.38, 1.75, 0.1);
+      this._playerGroup.add(rivet);
     }
 
     // ── Legs — upper thigh + lower shin ──
@@ -2043,18 +2288,35 @@ export class GTA3DRenderer {
     belt.position.set(0, 0.93, 0);
     this._playerGroup.add(belt);
     const buckle = new THREE.Mesh(
-      new THREE.BoxGeometry(0.1, 0.1, 0.02),
+      new THREE.CylinderGeometry(0.05, 0.05, 0.02, 16),
       MAT_GOLD_MAT
     );
     buckle.position.set(0, 0.93, 0.2);
+    buckle.rotation.x = Math.PI / 2;
     this._playerGroup.add(buckle);
-    // Belt pouch
+    // Buckle center detail
+    const buckleInner = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.02, 0.02, 0.025, 10),
+      mat(0xBB8822)
+    );
+    buckleInner.position.set(0, 0.93, 0.21);
+    buckleInner.rotation.x = Math.PI / 2;
+    this._playerGroup.add(buckleInner);
+    // Belt pouch (rounded)
     const pouch = new THREE.Mesh(
-      new THREE.BoxGeometry(0.12, 0.12, 0.1),
+      new THREE.SphereGeometry(0.07, 12, 10),
       mat(0x5A3E1B)
     );
-    pouch.position.set(0.22, 0.88, 0.18);
+    pouch.position.set(0.22, 0.9, 0.18);
+    pouch.scale.set(0.9, 0.8, 0.7);
     this._playerGroup.add(pouch);
+    // Pouch flap
+    const pouchFlap = new THREE.Mesh(
+      new THREE.BoxGeometry(0.1, 0.03, 0.08),
+      mat(0x5A3E1B)
+    );
+    pouchFlap.position.set(0.22, 0.95, 0.18);
+    this._playerGroup.add(pouchFlap);
 
     // Cape (attached at shoulders, flowing down back)
     this._playerCape = new THREE.Mesh(
@@ -2074,7 +2336,7 @@ export class GTA3DRenderer {
 
     // Cape collar (small ring at neck)
     const collar = new THREE.Mesh(
-      new THREE.TorusGeometry(0.12, 0.03, 6, 12, Math.PI),
+      new THREE.TorusGeometry(0.12, 0.03, 10, 16, Math.PI),
       mat(0x1A1A55)
     );
     collar.position.set(0, 1.73, -0.12);
@@ -2166,80 +2428,172 @@ export class GTA3DRenderer {
 
     switch (weapon) {
       case "sword": {
-        // Blade
-        const blade = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.8, 0.02), MAT_GREY_ARMOR);
+        // Blade — tapered
+        const blade = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.03, 0.8, 12), MAT_GREY_ARMOR);
         blade.position.y = 0.4;
         this._playerWeapon.add(blade);
-        // Guard
-        const guard = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.04, 0.06), MAT_GOLD_MAT);
+        // Blade edge highlight
+        const bladeEdge = new THREE.Mesh(new THREE.BoxGeometry(0.002, 0.7, 0.05), mat(0xDDDDEE, { metalness: 1.0, roughness: 0.0 }));
+        bladeEdge.position.y = 0.38;
+        this._playerWeapon.add(bladeEdge);
+        // Fuller (central groove)
+        const fuller = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.5, 0.008), mat(0x777788));
+        fuller.position.set(0, 0.35, 0);
+        this._playerWeapon.add(fuller);
+        // Guard — swept curves
+        const guard = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.015, 0.2, 12), MAT_GOLD_MAT);
         guard.position.y = 0;
+        guard.rotation.z = Math.PI / 2;
         this._playerWeapon.add(guard);
-        // Handle
-        const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.2, 6), MAT_WOOD_DARK);
+        // Guard tips
+        for (const side of [-1, 1]) {
+          const gTip = new THREE.Mesh(new THREE.SphereGeometry(0.015, 12, 10), MAT_GOLD_MAT);
+          gTip.position.set(side * 0.1, 0, 0);
+          this._playerWeapon.add(gTip);
+        }
+        // Handle — wrapped grip
+        const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.028, 0.2, 14), MAT_WOOD_DARK);
         handle.position.y = -0.12;
         this._playerWeapon.add(handle);
+        // Grip wraps
+        for (let gw = 0; gw < 4; gw++) {
+          const wrap = new THREE.Mesh(new THREE.TorusGeometry(0.028, 0.004, 8, 14), MAT_WOOD_DARK);
+          wrap.position.y = -0.06 - gw * 0.04;
+          wrap.rotation.x = Math.PI / 2;
+          this._playerWeapon.add(wrap);
+        }
+        // Pommel
+        const pommel = new THREE.Mesh(new THREE.SphereGeometry(0.03, 12, 10), MAT_GOLD_MAT);
+        pommel.position.y = -0.24;
+        this._playerWeapon.add(pommel);
         break;
       }
       case "axe": {
-        // Handle
-        const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.7, 6), MAT_WOOD);
+        // Handle — smooth wood
+        const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.7, 14), MAT_WOOD);
         handle.position.y = 0.1;
         this._playerWeapon.add(handle);
-        // Axe head (box + triangle approximation)
-        const head = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.3, 0.05), MAT_IRON);
-        head.position.set(0.1, 0.45, 0);
+        // Axe head — curved blade
+        const headGeo = new THREE.CylinderGeometry(0.14, 0.14, 0.05, 16, 1, false, 0, Math.PI);
+        const head = new THREE.Mesh(headGeo, MAT_IRON);
+        head.position.set(0.08, 0.45, 0);
+        head.rotation.z = Math.PI / 2;
         this._playerWeapon.add(head);
+        // Axe eye (hole where handle goes through)
+        const eye = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.06, 10), MAT_WOOD);
+        eye.position.set(0, 0.45, 0);
+        eye.rotation.x = Math.PI / 2;
+        this._playerWeapon.add(eye);
+        // Blade edge
+        const edge = new THREE.Mesh(new THREE.BoxGeometry(0.002, 0.22, 0.055), mat(0xCCCCDD, { metalness: 1.0, roughness: 0.0 }));
+        edge.position.set(0.2, 0.45, 0);
+        this._playerWeapon.add(edge);
         break;
       }
       case "mace": {
         // Handle
-        const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.6, 6), MAT_WOOD);
+        const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.6, 14), MAT_WOOD);
         handle.position.y = 0.1;
         this._playerWeapon.add(handle);
-        // Sphere head
-        const headM = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), MAT_IRON);
+        // Sphere head — smooth
+        const headM = new THREE.Mesh(new THREE.SphereGeometry(0.12, 20, 16), MAT_IRON);
         headM.position.y = 0.5;
         this._playerWeapon.add(headM);
+        // Crown ring around head
+        const crown = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.012, 8, 20), MAT_IRON);
+        crown.position.y = 0.5;
+        crown.rotation.x = Math.PI / 2;
+        this._playerWeapon.add(crown);
+        // Flanges (6 radial spikes)
+        for (let f = 0; f < 6; f++) {
+          const fa = (f / 6) * Math.PI * 2;
+          const flange = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.02, 0.08, 12), MAT_IRON);
+          flange.position.set(Math.cos(fa) * 0.08, 0.5, Math.sin(fa) * 0.08);
+          flange.rotation.z = Math.PI / 2;
+          flange.rotation.y = fa;
+          this._playerWeapon.add(flange);
+        }
+        // Pommel
+        const pommel = new THREE.Mesh(new THREE.SphereGeometry(0.025, 14, 12), MAT_IRON);
+        pommel.position.y = -0.2;
+        this._playerWeapon.add(pommel);
         break;
       }
       case "spear": {
         // Long shaft
-        const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1.5, 6), MAT_WOOD);
+        const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 1.5, 14), MAT_WOOD);
         shaft.position.y = 0.4;
         this._playerWeapon.add(shaft);
-        // Tip
-        const tip = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.2, 6), MAT_GREY_ARMOR);
-        tip.position.y = 1.2;
+        // Spearhead — leaf-shaped
+        const tip = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.25, 12), MAT_GREY_ARMOR);
+        tip.position.y = 1.22;
         this._playerWeapon.add(tip);
+        // Socket (connects head to shaft)
+        const socket = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.025, 0.08, 12), MAT_GREY_ARMOR);
+        socket.position.y = 1.08;
+        this._playerWeapon.add(socket);
+        // Butt cap
+        const butt = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.03, 0.04, 10), MAT_IRON);
+        butt.position.y = -0.37;
+        this._playerWeapon.add(butt);
         break;
       }
       case "bow": {
-        // Bow arc (torus arc)
-        const bowGeo = new THREE.TorusGeometry(0.4, 0.02, 6, 12, Math.PI);
+        // Bow arc — smooth torus
+        const bowGeo = new THREE.TorusGeometry(0.4, 0.02, 12, 24, Math.PI);
         const bowMesh = new THREE.Mesh(bowGeo, MAT_WOOD_DARK);
         bowMesh.position.y = 0.2;
         bowMesh.rotation.z = Math.PI / 2;
         this._playerWeapon.add(bowMesh);
-        // String (thin cylinder)
-        const str = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.8, 4), mat(0xCCCCBB));
-        str.position.set(-0.0, 0.2, 0);
+        // Bow tips (nocks)
+        for (const yOff of [-0.2, 0.6]) {
+          const nock = new THREE.Mesh(new THREE.SphereGeometry(0.015, 12, 10), MAT_WOOD_DARK);
+          nock.position.set(-0.4, yOff, 0);
+          this._playerWeapon.add(nock);
+        }
+        // Grip wrapping in center
+        const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.12, 10), mat(0x6B4226));
+        grip.position.set(0, 0.2, 0);
+        this._playerWeapon.add(grip);
+        // String (smooth)
+        const str = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.8, 10), mat(0xCCCCBB));
+        str.position.set(0, 0.2, 0);
         this._playerWeapon.add(str);
         break;
       }
       case "crossbow": {
-        // Stock
-        const stock = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.5, 0.06), MAT_WOOD);
+        // Stock — tapered
+        const stock = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.5, 0.06), MAT_WOOD);
         stock.position.y = 0.1;
         this._playerWeapon.add(stock);
-        // Cross piece
-        const cross = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.04, 0.04), MAT_WOOD_DARK);
-        cross.position.y = 0.35;
-        this._playerWeapon.add(cross);
-        // String
-        const str = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.5, 4), mat(0xCCCCBB));
+        // Stock butt plate
+        const buttPlate = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.06, 0.08), mat(0x4A3020));
+        buttPlate.position.y = -0.16;
+        this._playerWeapon.add(buttPlate);
+        // Cross piece (limbs) — slightly curved
+        const limb = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.015, 0.5, 10), MAT_WOOD_DARK);
+        limb.position.y = 0.35;
+        limb.rotation.z = Math.PI / 2;
+        this._playerWeapon.add(limb);
+        // Limb tips
+        for (const side of [-1, 1]) {
+          const limbTip = new THREE.Mesh(new THREE.SphereGeometry(0.012, 12, 10), MAT_WOOD_DARK);
+          limbTip.position.set(side * 0.25, 0.35, 0);
+          this._playerWeapon.add(limbTip);
+        }
+        // String (smooth)
+        const str = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.5, 10), mat(0xCCCCBB));
         str.position.y = 0.35;
         str.rotation.z = Math.PI / 2;
         this._playerWeapon.add(str);
+        // Trigger mechanism
+        const trigger = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.06, 0.03), MAT_IRON);
+        trigger.position.set(0, 0.2, -0.04);
+        this._playerWeapon.add(trigger);
+        // Bolt rail groove
+        const rail = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.25, 0.01), MAT_IRON);
+        rail.position.set(0, 0.28, 0.035);
+        this._playerWeapon.add(rail);
         break;
       }
       case "fists":
@@ -2394,7 +2748,7 @@ export class GTA3DRenderer {
       g.add(dressTop);
       // Skirt (wider cone-like shape)
       const skirt = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.15 * s, 0.42 * s, 0.8 * s, 8),
+        new THREE.CylinderGeometry(0.15 * s, 0.42 * s, 0.8 * s, 16),
         bodyMat
       );
       skirt.position.y = 0.55 * s;
@@ -2428,7 +2782,7 @@ export class GTA3DRenderer {
 
     // Neck
     const neckMesh = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.07 * s, 0.09 * s, 0.12, 6),
+      new THREE.CylinderGeometry(0.07 * s, 0.09 * s, 0.12, 12),
       skinTone
     );
     neckMesh.position.y = 1.68 * s;
@@ -2436,7 +2790,7 @@ export class GTA3DRenderer {
 
     // ── Head — with face ──
     const headMesh = new THREE.Mesh(
-      new THREE.SphereGeometry(0.2 * s, 10, 8),
+      new THREE.SphereGeometry(0.2 * s, 20, 16),
       skinTone
     );
     headMesh.position.y = 1.85 * s;
@@ -2444,47 +2798,99 @@ export class GTA3DRenderer {
     headMesh.castShadow = true;
     g.add(headMesh);
 
-    // Eyes
+    // Eyes — white sclera + dark iris
     for (const side of [-1, 1]) {
-      const eye = new THREE.Mesh(
-        new THREE.SphereGeometry(0.025 * s, 5, 4),
-        mat(0x222222)
+      const eyeWhite = new THREE.Mesh(
+        new THREE.SphereGeometry(0.028 * s, 12, 10),
+        mat(0xEEEEDD)
       );
-      eye.position.set(side * 0.07 * s, 1.88 * s, 0.16 * s);
-      g.add(eye);
+      eyeWhite.position.set(side * 0.07 * s, 1.88 * s, 0.155 * s);
+      eyeWhite.scale.set(1, 0.7, 0.5);
+      g.add(eyeWhite);
+      const iris = new THREE.Mesh(
+        new THREE.SphereGeometry(0.016 * s, 14, 12),
+        mat(0x3A2818)
+      );
+      iris.position.set(side * 0.07 * s, 1.88 * s, 0.17 * s);
+      g.add(iris);
+      // Pupil
+      const pupil = new THREE.Mesh(
+        new THREE.SphereGeometry(0.008 * s, 12, 10),
+        mat(0x111111)
+      );
+      pupil.position.set(side * 0.07 * s, 1.88 * s, 0.175 * s);
+      g.add(pupil);
     }
 
-    // Nose
+    // Nose — smooth rounded shape
     const noseMesh = new THREE.Mesh(
-      new THREE.ConeGeometry(0.02 * s, 0.05, 4),
+      new THREE.ConeGeometry(0.022 * s, 0.05, 10),
       skinTone
     );
     noseMesh.position.set(0, 1.83 * s, 0.19 * s);
     noseMesh.rotation.x = -Math.PI / 2;
     g.add(noseMesh);
 
+    // Mouth line
+    const mouthMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(0.06 * s, 0.008 * s, 0.01),
+      mat(0x995544)
+    );
+    mouthMesh.position.set(0, 1.78 * s, 0.18 * s);
+    g.add(mouthMesh);
+
+    // Chin
+    const chinMesh = new THREE.Mesh(
+      new THREE.SphereGeometry(0.04 * s, 14, 12),
+      skinTone
+    );
+    chinMesh.position.set(0, 1.75 * s, 0.12 * s);
+    chinMesh.scale.set(1.2, 0.6, 0.8);
+    g.add(chinMesh);
+
+    // Ears
+    for (const side of [-1, 1]) {
+      const ear = new THREE.Mesh(
+        new THREE.SphereGeometry(0.03 * s, 12, 10),
+        skinTone
+      );
+      ear.position.set(side * 0.19 * s, 1.85 * s, 0);
+      ear.scale.set(0.4, 0.8, 0.6);
+      g.add(ear);
+    }
+
     // Hair (varies by type)
     if (headType === "bare") {
       const hairColors = [0x4A3728, 0x2A1B0E, 0x6B4423, 0x1A1A1A, 0x8B7355];
       const hairColor = hairColors[npc.colorVariant % hairColors.length];
       if (useDressShape) {
-        // Longer hair for women — sphere cap + back plane
+        // Longer hair for women — sphere cap + flowing back
         const hairTop = new THREE.Mesh(
-          new THREE.SphereGeometry(0.22 * s, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.55),
+          new THREE.SphereGeometry(0.22 * s, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.55),
           mat(hairColor)
         );
         hairTop.position.y = 1.89 * s;
         g.add(hairTop);
+        // Hair flowing down back (tapered cylinder instead of flat plane)
         const hairBack = new THREE.Mesh(
-          new THREE.PlaneGeometry(0.3 * s, 0.5 * s),
-          mat(hairColor, { side: THREE.DoubleSide })
+          new THREE.CylinderGeometry(0.12 * s, 0.06 * s, 0.5 * s, 10),
+          mat(hairColor)
         );
-        hairBack.position.set(0, 1.6 * s, -0.17 * s);
+        hairBack.position.set(0, 1.6 * s, -0.15 * s);
         g.add(hairBack);
+        // Side locks
+        for (const side of [-1, 1]) {
+          const lock = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.03 * s, 0.02 * s, 0.25 * s, 12),
+            mat(hairColor)
+          );
+          lock.position.set(side * 0.17 * s, 1.72 * s, 0.02 * s);
+          g.add(lock);
+        }
       } else {
         // Short hair cap
         const hairCap = new THREE.Mesh(
-          new THREE.SphereGeometry(0.21 * s, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.5),
+          new THREE.SphereGeometry(0.21 * s, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.5),
           mat(hairColor)
         );
         hairCap.position.y = 1.89 * s;
@@ -2496,7 +2902,7 @@ export class GTA3DRenderer {
     switch (headType) {
       case "helmet": {
         const helmet = new THREE.Mesh(
-          new THREE.SphereGeometry(0.23 * s, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.6),
+          new THREE.SphereGeometry(0.23 * s, 20, 16, 0, Math.PI * 2, 0, Math.PI * 0.6),
           MAT_GREY_ARMOR
         );
         helmet.position.y = 1.9 * s;
@@ -2528,15 +2934,22 @@ export class GTA3DRenderer {
       }
       case "hood": {
         const hood = new THREE.Mesh(
-          new THREE.SphereGeometry(0.24 * s, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.6),
+          new THREE.SphereGeometry(0.24 * s, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.6),
           mat(bodyColor)
         );
         hood.position.y = 1.88 * s;
         hood.scale.set(1, 1.1, 1.1);
         g.add(hood);
+        // Hood draping down back
+        const hoodBack = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.18 * s, 0.12 * s, 0.3 * s, 12),
+          mat(bodyColor)
+        );
+        hoodBack.position.set(0, 1.75 * s, -0.12);
+        g.add(hoodBack);
         // Hood point
         const hoodTip = new THREE.Mesh(
-          new THREE.ConeGeometry(0.08 * s, 0.2 * s, 6),
+          new THREE.ConeGeometry(0.08 * s, 0.2 * s, 12),
           mat(bodyColor)
         );
         hoodTip.position.set(0, 2.12 * s, -0.08);
@@ -2547,13 +2960,13 @@ export class GTA3DRenderer {
       case "hat": {
         // Wide brimmed hat
         const brim = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.35, 0.36, 0.04, 10),
+          new THREE.CylinderGeometry(0.35, 0.36, 0.04, 20),
           mat(0x554422)
         );
         brim.position.y = 2.05 * s;
         g.add(brim);
         const crown = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.14, 0.18, 0.22, 8),
+          new THREE.CylinderGeometry(0.14, 0.18, 0.22, 16),
           mat(0x554422)
         );
         crown.position.y = 2.16 * s;
@@ -2618,7 +3031,7 @@ export class GTA3DRenderer {
       forearm.position.y = -0.38;
       armGroup.add(forearm);
       // Hand
-      const hand = new THREE.Mesh(new THREE.SphereGeometry(0.05 * s, 5, 4), skinTone);
+      const hand = new THREE.Mesh(new THREE.SphereGeometry(0.05 * s, 12, 10), skinTone);
       hand.position.y = -0.55;
       armGroup.add(hand);
       armGroup.position.set(side * 0.34 * s, 1.55 * s, 0);
@@ -2628,7 +3041,7 @@ export class GTA3DRenderer {
     // Shield (disc on left arm)
     if (hasShield) {
       const shield = new THREE.Mesh(
-        new THREE.CircleGeometry(0.25 * s, 8),
+        new THREE.CircleGeometry(0.25 * s, 20),
         mat(0x663322, { side: THREE.DoubleSide })
       );
       shield.position.set(-0.5 * s, 1.2 * s, 0.1);
@@ -2648,7 +3061,7 @@ export class GTA3DRenderer {
 
     // Bow on back
     if (hasBow) {
-      const bowGeo = new THREE.TorusGeometry(0.3, 0.015, 6, 10, Math.PI);
+      const bowGeo = new THREE.TorusGeometry(0.3, 0.015, 10, 16, Math.PI);
       const bow = new THREE.Mesh(bowGeo, MAT_WOOD_DARK);
       bow.position.set(0, 1.4 * s, -0.22);
       bow.rotation.z = Math.PI / 2;
@@ -2665,7 +3078,7 @@ export class GTA3DRenderer {
     // Merchant wider body adjustment
     if (npc.type === "merchant") {
       const belly = new THREE.Mesh(
-        new THREE.SphereGeometry(0.3, 8, 6),
+        new THREE.SphereGeometry(0.3, 14, 12),
         mat(bodyColor)
       );
       belly.position.y = 1.0;
@@ -2675,7 +3088,7 @@ export class GTA3DRenderer {
 
     // Alert indicator (red sphere floating above)
     const alertSphere = new THREE.Mesh(
-      new THREE.SphereGeometry(0.12, 6, 4),
+      new THREE.SphereGeometry(0.12, 14, 12),
       basicMat(0xFF0000)
     );
     alertSphere.position.y = 2.6;
@@ -2773,36 +3186,76 @@ export class GTA3DRenderer {
     }
     const horseMat = mat(baseColor);
 
-    // Body (elongated box)
-    const body = new THREE.Mesh(
-      new THREE.BoxGeometry(0.9, 0.8, 1.8),
+    // Body — rounded barrel shape instead of box
+    const bodyMain = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.42, 0.38, 1.7, 16),
       horseMat
     );
-    body.position.y = 1.2;
-    body.castShadow = true;
-    g.add(body);
+    bodyMain.position.y = 1.2;
+    bodyMain.rotation.x = Math.PI / 2;
+    bodyMain.castShadow = true;
+    g.add(bodyMain);
+    // Chest (front bulge)
+    const chest = new THREE.Mesh(
+      new THREE.SphereGeometry(0.4, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.6),
+      horseMat
+    );
+    chest.position.set(0, 1.25, -0.75);
+    chest.rotation.x = 0.3;
+    g.add(chest);
+    // Hindquarters (rear bulge)
+    const hind = new THREE.Mesh(
+      new THREE.SphereGeometry(0.42, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.6),
+      horseMat
+    );
+    hind.position.set(0, 1.25, 0.7);
+    hind.rotation.x = Math.PI - 0.3;
+    g.add(hind);
 
-    // Legs
+    // Legs — with knee joints and hooves
     const legsGroup = new THREE.Group();
     legsGroup.name = "horse_legs";
     const legPositions: [number, number][] = [
-      [-0.3, -0.65], [0.3, -0.65],
-      [-0.3, 0.65], [0.3, 0.65],
+      [-0.25, -0.6], [0.25, -0.6],
+      [-0.25, 0.6], [0.25, 0.6],
     ];
     for (const [lx, lz] of legPositions) {
-      const leg = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.08, 0.06, 1.0, 6),
+      // Upper leg
+      const upperLeg = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.09, 0.07, 0.55, 12),
         horseMat
       );
-      leg.position.set(lx, 0.5, lz);
-      leg.castShadow = true;
-      legsGroup.add(leg);
+      upperLeg.position.set(lx, 0.75, lz);
+      upperLeg.castShadow = true;
+      legsGroup.add(upperLeg);
+      // Knee joint
+      const knee = new THREE.Mesh(
+        new THREE.SphereGeometry(0.07, 14, 12),
+        horseMat
+      );
+      knee.position.set(lx, 0.5, lz);
+      legsGroup.add(knee);
+      // Lower leg
+      const lowerLeg = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.06, 0.04, 0.45, 12),
+        horseMat
+      );
+      lowerLeg.position.set(lx, 0.25, lz);
+      lowerLeg.castShadow = true;
+      legsGroup.add(lowerLeg);
+      // Hoof
+      const hoof = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.055, 0.06, 0.06, 12),
+        mat(0x333333)
+      );
+      hoof.position.set(lx, 0.02, lz);
+      legsGroup.add(hoof);
     }
     g.add(legsGroup);
 
-    // Neck
+    // Neck — smooth curved cylinder
     const neck = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.2, 0.25, 0.8, 8),
+      new THREE.CylinderGeometry(0.18, 0.28, 0.85, 14),
       horseMat
     );
     neck.position.set(0, 1.6, -0.8);
@@ -2810,83 +3263,147 @@ export class GTA3DRenderer {
     neck.castShadow = true;
     g.add(neck);
 
-    // Head
-    const head = new THREE.Mesh(
-      new THREE.BoxGeometry(0.3, 0.35, 0.55),
+    // Head — elongated ellipsoid instead of box
+    const headMain = new THREE.Mesh(
+      new THREE.SphereGeometry(0.2, 16, 12),
       horseMat
     );
-    head.position.set(0, 1.85, -1.15);
-    head.castShadow = true;
-    g.add(head);
+    headMain.position.set(0, 1.88, -1.1);
+    headMain.scale.set(0.75, 0.85, 1.4);
+    headMain.castShadow = true;
+    g.add(headMain);
+    // Muzzle
+    const muzzle = new THREE.Mesh(
+      new THREE.SphereGeometry(0.12, 12, 10),
+      horseMat
+    );
+    muzzle.position.set(0, 1.82, -1.35);
+    muzzle.scale.set(0.8, 0.7, 1.0);
+    g.add(muzzle);
+    // Nostrils
+    for (const side of [-1, 1]) {
+      const nostril = new THREE.Mesh(
+        new THREE.SphereGeometry(0.02, 12, 10),
+        mat(0x222222)
+      );
+      nostril.position.set(side * 0.06, 1.8, -1.44);
+      g.add(nostril);
+    }
 
-    // Ears (two small cones on top of head, pointing up)
+    // Ears — smooth cones
     for (const side of [-1, 1]) {
       const ear = new THREE.Mesh(
-        new THREE.ConeGeometry(0.04, 0.15, 6),
+        new THREE.ConeGeometry(0.04, 0.15, 12),
         horseMat
       );
       ear.position.set(side * 0.1, 2.1, -1.05);
       g.add(ear);
     }
 
-    // Eyes (two tiny dark spheres on sides of head)
+    // Eyes — proper with whites and iris
     for (const side of [-1, 1]) {
-      const eye = new THREE.Mesh(
-        new THREE.SphereGeometry(0.035, 6, 4),
-        mat(0x111111)
+      const eyeWhite = new THREE.Mesh(
+        new THREE.SphereGeometry(0.04, 12, 10),
+        mat(0xEEEEDD)
       );
-      eye.position.set(side * 0.16, 1.9, -1.25);
-      g.add(eye);
+      eyeWhite.position.set(side * 0.15, 1.92, -1.18);
+      eyeWhite.scale.set(0.5, 0.7, 0.5);
+      g.add(eyeWhite);
+      const eyeIris = new THREE.Mesh(
+        new THREE.SphereGeometry(0.02, 14, 12),
+        mat(0x3A2211)
+      );
+      eyeIris.position.set(side * 0.16, 1.92, -1.2);
+      g.add(eyeIris);
     }
 
-    // Reins (thin cylinder from head to body)
+    // Reins — smooth cylinder
     const rein = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.01, 0.01, 0.9, 4),
+      new THREE.CylinderGeometry(0.012, 0.012, 0.9, 10),
       mat(0x443322)
     );
     rein.position.set(0, 1.55, -0.7);
     rein.rotation.x = -0.5;
     g.add(rein);
+    // Bridle on head
+    const bridle = new THREE.Mesh(
+      new THREE.TorusGeometry(0.16, 0.01, 8, 16),
+      mat(0x443322)
+    );
+    bridle.position.set(0, 1.85, -1.2);
+    bridle.rotation.y = Math.PI / 2;
+    g.add(bridle);
 
-    // Stirrups (small torus on each side of body)
+    // Stirrups
     for (const side of [-1, 1]) {
       const stirrup = new THREE.Mesh(
-        new THREE.TorusGeometry(0.06, 0.015, 6, 8),
+        new THREE.TorusGeometry(0.06, 0.015, 8, 16),
         MAT_GREY_ARMOR
       );
-      stirrup.position.set(side * 0.5, 0.9, 0);
+      stirrup.position.set(side * 0.48, 0.9, 0);
       stirrup.rotation.y = Math.PI / 2;
       g.add(stirrup);
     }
 
-    // Mane (small dark boxes along neck)
+    // Mane — flowing strips instead of boxes
     const maneColor = horse.color === "white" ? 0xBBBBAA : 0x222211;
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 7; i++) {
       const mane = new THREE.Mesh(
-        new THREE.BoxGeometry(0.05, 0.2, 0.12),
+        new THREE.CylinderGeometry(0.01, 0.03, 0.18, 12),
         mat(maneColor)
       );
-      const t = i / 4;
-      mane.position.set(0, 1.5 + t * 0.3, -0.5 - t * 0.45);
+      const t = i / 6;
+      mane.position.set((Math.random() - 0.5) * 0.06, 1.5 + t * 0.35, -0.5 - t * 0.45);
+      mane.rotation.z = (Math.random() - 0.5) * 0.4;
       g.add(mane);
     }
 
-    // Tail
-    const tail = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.03, 0.05, 0.6, 6),
+    // Tail — multi-strand
+    const tailBase = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.04, 0.06, 0.2, 12),
       mat(maneColor)
     );
-    tail.position.set(0, 1.1, 0.95);
-    tail.rotation.x = 0.5;
-    g.add(tail);
+    tailBase.position.set(0, 1.15, 0.88);
+    tailBase.rotation.x = 0.4;
+    g.add(tailBase);
+    for (let t = 0; t < 4; t++) {
+      const strand = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.008, 0.02, 0.45, 12),
+        mat(maneColor)
+      );
+      strand.position.set((Math.random() - 0.5) * 0.04, 0.95 - t * 0.02, 1.0 + t * 0.04);
+      strand.rotation.x = 0.6 + t * 0.1;
+      g.add(strand);
+    }
 
-    // Saddle
-    const saddle = new THREE.Mesh(
-      new THREE.BoxGeometry(0.6, 0.1, 0.5),
+    // Saddle — with pommel and cantle
+    const saddleSeat = new THREE.Mesh(
+      new THREE.BoxGeometry(0.55, 0.08, 0.45),
       mat(0x3A2211)
     );
-    saddle.position.set(0, 1.65, 0);
-    g.add(saddle);
+    saddleSeat.position.set(0, 1.65, 0);
+    g.add(saddleSeat);
+    // Pommel (front rise)
+    const pommel = new THREE.Mesh(
+      new THREE.SphereGeometry(0.08, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.5),
+      mat(0x3A2211)
+    );
+    pommel.position.set(0, 1.72, -0.18);
+    g.add(pommel);
+    // Cantle (back rise)
+    const cantle = new THREE.Mesh(
+      new THREE.BoxGeometry(0.4, 0.12, 0.04),
+      mat(0x3A2211)
+    );
+    cantle.position.set(0, 1.72, 0.2);
+    g.add(cantle);
+    // Saddle blanket
+    const blanket = new THREE.Mesh(
+      new THREE.BoxGeometry(0.7, 0.03, 0.6),
+      mat(0x882222)
+    );
+    blanket.position.set(0, 1.6, 0);
+    g.add(blanket);
 
     return g;
   }
@@ -2924,61 +3441,141 @@ export class GTA3DRenderer {
     const g = new THREE.Group();
 
     if (item.type === "gold" || item.type === "gold_pile") {
-      // Cluster of small gold spheres
+      // Proper coin shapes (flat cylinders) instead of spheres
       const count = Math.min(item.amount, 5);
       for (let i = 0; i < count; i++) {
         const coin = new THREE.Mesh(
-          new THREE.SphereGeometry(0.1, 6, 4),
+          new THREE.CylinderGeometry(0.09, 0.09, 0.02, 16),
           MAT_GOLD_MAT
         );
         coin.position.set(
-          (Math.random() - 0.5) * 0.3,
-          i * 0.08,
-          (Math.random() - 0.5) * 0.3
+          (Math.random() - 0.5) * 0.25,
+          i * 0.03 + 0.01,
+          (Math.random() - 0.5) * 0.25
         );
+        coin.rotation.x = Math.random() * 0.3;
+        coin.rotation.z = Math.random() * 0.3;
         g.add(coin);
+        // Coin rim detail
+        if (i === count - 1) {
+          const rimRing = new THREE.Mesh(
+            new THREE.TorusGeometry(0.085, 0.005, 8, 16),
+            MAT_GOLD_MAT
+          );
+          rimRing.position.copy(coin.position);
+          rimRing.position.y += 0.01;
+          g.add(rimRing);
+        }
       }
+      // Small sparkle sphere
+      const sparkle = new THREE.Mesh(
+        new THREE.SphereGeometry(0.04, 14, 12),
+        mat(0xFFFF88, { transparent: true, opacity: 0.4, emissive: 0xFFDD44, emissiveIntensity: 1.0 })
+      );
+      sparkle.position.y = count * 0.04;
+      g.add(sparkle);
     } else if (item.type === "health_potion") {
-      // Red cylinder with sphere cap
+      // Smooth potion bottle
       const bottle = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.08, 0.1, 0.3, 8),
+        new THREE.CylinderGeometry(0.07, 0.1, 0.25, 14),
         MAT_POTION_RED
       );
       g.add(bottle);
-      const cap = new THREE.Mesh(
-        new THREE.SphereGeometry(0.06, 6, 4),
+      // Bottle neck
+      const neck = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.035, 0.065, 0.08, 12),
         MAT_POTION_RED
       );
-      cap.position.y = 0.18;
-      g.add(cap);
+      neck.position.y = 0.16;
+      g.add(neck);
+      // Cork
+      const cork = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.03, 0.035, 0.04, 10),
+        mat(0x8B6914)
+      );
+      cork.position.y = 0.22;
+      g.add(cork);
+      // Liquid glow
+      const glow = new THREE.Mesh(
+        new THREE.SphereGeometry(0.06, 14, 12),
+        mat(0xFF4444, { transparent: true, opacity: 0.3, emissive: 0xFF2222, emissiveIntensity: 0.8 })
+      );
+      glow.position.y = 0.0;
+      g.add(glow);
     } else if (item.type === "treasure_chest") {
-      // Brown box with gold trim
-      const chest = new THREE.Mesh(
-        new THREE.BoxGeometry(0.5, 0.3, 0.3),
+      // Brown box with rounded lid, gold trim, and lock
+      const chestBase = new THREE.Mesh(
+        new THREE.BoxGeometry(0.5, 0.2, 0.3),
         MAT_WOOD
       );
-      g.add(chest);
-      // Gold trim
-      const trim = new THREE.Mesh(
-        new THREE.BoxGeometry(0.52, 0.04, 0.32),
+      chestBase.position.y = -0.05;
+      g.add(chestBase);
+      // Arched lid
+      const lid = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.15, 0.15, 0.5, 12, 1, false, 0, Math.PI),
+        MAT_WOOD
+      );
+      lid.position.y = 0.05;
+      lid.rotation.z = Math.PI / 2;
+      g.add(lid);
+      // Gold trim bands
+      for (const tz of [-0.1, 0, 0.1]) {
+        const trim = new THREE.Mesh(
+          new THREE.BoxGeometry(0.52, 0.03, 0.04),
+          MAT_GOLD_MAT
+        );
+        trim.position.set(0, 0.05, tz);
+        g.add(trim);
+      }
+      // Lock
+      const lock = new THREE.Mesh(
+        new THREE.BoxGeometry(0.04, 0.05, 0.02),
         MAT_GOLD_MAT
       );
-      trim.position.y = 0.1;
-      g.add(trim);
+      lock.position.set(0, 0, 0.16);
+      g.add(lock);
+      // Keyhole
+      const keyhole = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.008, 0.008, 0.025, 12),
+        mat(0x111111)
+      );
+      keyhole.position.set(0, -0.01, 0.175);
+      keyhole.rotation.x = Math.PI / 2;
+      g.add(keyhole);
     } else if (item.type.includes("sword") || item.type.includes("axe") || item.type.includes("mace") || item.type.includes("spear") || item.type.includes("bow") || item.type.includes("crossbow")) {
-      // Miniature weapon floating
-      const wpn = new THREE.Mesh(
-        new THREE.BoxGeometry(0.08, 0.5, 0.04),
+      // Miniature weapon with proper blade + handle
+      const blade = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.01, 0.025, 0.35, 10),
         MAT_GREY_ARMOR
       );
-      g.add(wpn);
+      blade.position.y = 0.1;
+      g.add(blade);
+      // Handle
+      const handle = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.02, 0.02, 0.12, 10),
+        mat(0x6B4226)
+      );
+      handle.position.y = -0.12;
+      g.add(handle);
+      // Guard
+      const guard = new THREE.Mesh(
+        new THREE.BoxGeometry(0.1, 0.015, 0.025),
+        MAT_GOLD_MAT
+      );
+      guard.position.y = -0.05;
+      g.add(guard);
     } else {
-      // Generic pickup
+      // Generic pickup — smooth sphere with glow
       const generic = new THREE.Mesh(
-        new THREE.SphereGeometry(0.15, 6, 4),
+        new THREE.SphereGeometry(0.15, 16, 12),
         MAT_GOLD_MAT
       );
       g.add(generic);
+      const glow = new THREE.Mesh(
+        new THREE.SphereGeometry(0.2, 12, 10),
+        mat(0xFFDD44, { transparent: true, opacity: 0.15 })
+      );
+      g.add(glow);
     }
 
     return g;
@@ -3017,29 +3614,37 @@ export class GTA3DRenderer {
 
   private _createProjectileMesh(): THREE.Group {
     const g = new THREE.Group();
-    // Arrow shaft
+    // Arrow shaft — smooth cylinder
     const shaft = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.015, 0.015, 0.6, 4),
+      new THREE.CylinderGeometry(0.012, 0.015, 0.6, 10),
       MAT_ARROW
     );
     shaft.rotation.x = Math.PI / 2;
     g.add(shaft);
-    // Arrow tip
+    // Arrow tip — sharp cone
     const tip = new THREE.Mesh(
-      new THREE.ConeGeometry(0.03, 0.1, 4),
+      new THREE.ConeGeometry(0.025, 0.1, 10),
       MAT_ARROW_TIP
     );
     tip.position.z = -0.35;
     tip.rotation.x = -Math.PI / 2;
     g.add(tip);
-    // Fletching
+    // Nock (back end notch)
+    const nock = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.008, 0.012, 0.03, 12),
+      mat(0x332211)
+    );
+    nock.position.z = 0.31;
+    nock.rotation.x = Math.PI / 2;
+    g.add(nock);
+    // Fletching — angled vanes
     for (let i = 0; i < 3; i++) {
       const fletch = new THREE.Mesh(
         new THREE.BoxGeometry(0.04, 0.08, 0.01),
         mat(0xCCCCCC)
       );
       const fa = (i / 3) * Math.PI * 2;
-      fletch.position.set(Math.cos(fa) * 0.02, Math.sin(fa) * 0.02, 0.28);
+      fletch.position.set(Math.cos(fa) * 0.02, Math.sin(fa) * 0.02, 0.24);
       fletch.rotation.z = fa;
       g.add(fletch);
     }

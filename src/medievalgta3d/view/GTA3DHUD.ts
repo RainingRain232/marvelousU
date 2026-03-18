@@ -115,6 +115,33 @@ export class GTA3DHUD {
         0%, 100% { filter: drop-shadow(0 0 3px rgba(218,165,32,0.4)); }
         50% { filter: drop-shadow(0 0 8px rgba(218,165,32,0.8)); }
       }
+      @keyframes gta3d-bar-shine {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(200%); }
+      }
+      @keyframes gta3d-compass-pulse {
+        0%, 100% { border-color: rgba(218,165,32,0.4); }
+        50% { border-color: rgba(218,165,32,0.7); }
+      }
+      @keyframes gta3d-panel-breathe {
+        0%, 100% { border-color: rgba(218,165,32,0.7); }
+        50% { border-color: rgba(218,165,32,1.0); }
+      }
+      @keyframes gta3d-gold-shimmer {
+        0%, 100% { filter: brightness(1) drop-shadow(0 0 3px rgba(218,165,32,0.2)); }
+        50% { filter: brightness(1.15) drop-shadow(0 0 6px rgba(218,165,32,0.5)); }
+      }
+      .gta3d-bar-fill::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 40%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
+        animation: gta3d-bar-shine 2.5s ease-in-out infinite;
+        pointer-events: none;
+      }
     `;
     document.head.appendChild(this._styleEl);
 
@@ -142,7 +169,8 @@ export class GTA3DHUD {
   private _buildStatusPanel(): void {
     const panel = document.createElement("div");
     // panel is used locally below
-    panel.style.cssText = `position:absolute;top:12px;left:12px;width:230px;padding:0;background:${PANEL_GRADIENT};border:1.5px solid ${GOLD};border-radius:6px;box-shadow:inset 0 0 20px rgba(218,165,32,0.06), 0 4px 16px rgba(0,0,0,0.5);overflow:hidden;`;
+    const dotSvg = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12"><circle cx="6" cy="6" r="0.5" fill="rgba(218,165,32,0.08)"/></svg>')}`;
+    panel.style.cssText = `position:absolute;top:12px;left:12px;width:230px;padding:0;background:${PANEL_GRADIENT};border:1.5px solid ${GOLD};border-radius:6px;box-shadow:inset 0 0 20px rgba(218,165,32,0.06), 0 4px 16px rgba(0,0,0,0.5);overflow:hidden;background-image:url("${dotSvg}");background-repeat:repeat;animation:gta3d-panel-breathe 4s ease-in-out infinite;`;
     this._root.appendChild(panel);
 
     // Decorative gold top border
@@ -153,7 +181,7 @@ export class GTA3DHUD {
     // Ornamental pattern strip
     const ornament = document.createElement("div");
     ornament.style.cssText = `text-align:center;font-size:8px;color:${GOLD};opacity:0.5;letter-spacing:4px;line-height:10px;margin-bottom:2px;`;
-    ornament.textContent = "\u2666 \u2666 \u2666 \u2666 \u2666";
+    ornament.textContent = "\u25C6 \u25C7 \u25C6 \u25C7 \u25C6";
     panel.appendChild(ornament);
 
     const inner = document.createElement("div");
@@ -176,7 +204,7 @@ export class GTA3DHUD {
     goldRow.style.cssText = "display:flex;align-items:center;margin-top:8px;";
     goldRow.innerHTML = `<span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:radial-gradient(circle at 40% 35%, #FFD700, #DAA520, #B8860B);border:1px solid #AA8800;text-align:center;line-height:16px;font-size:9px;color:#6B4914;font-weight:bold;box-shadow:0 0 6px rgba(218,165,32,0.4);">G</span>`;
     this._goldText = document.createElement("span");
-    this._goldText.style.cssText = `margin-left:8px;color:${GOLD};font-weight:bold;font-size:14px;font-family:${FONT_MONO};text-shadow:0 0 6px rgba(218,165,32,0.3);`;
+    this._goldText.style.cssText = `margin-left:8px;color:${GOLD};font-weight:bold;font-size:14px;font-family:${FONT_MONO};text-shadow:0 0 6px rgba(218,165,32,0.3);animation:gta3d-gold-shimmer 3s ease-in-out infinite;`;
     this._goldText.textContent = "50";
     goldRow.appendChild(this._goldText);
     inner.appendChild(goldRow);
@@ -209,6 +237,11 @@ export class GTA3DHUD {
     hint.style.cssText = `margin-top:6px;font-size:9px;color:#555;font-family:${FONT_MONO};`;
     hint.textContent = "1-7 weapons | E interact | F steal | J missions";
     inner.appendChild(hint);
+
+    // Decorative gold bottom border
+    const bottomBorder = document.createElement("div");
+    bottomBorder.style.cssText = `height:3px;background:linear-gradient(90deg, transparent 0%, ${GOLD} 15%, #FFD700 50%, ${GOLD} 85%, transparent 100%);margin-top:2px;`;
+    panel.appendChild(bottomBorder);
   }
 
   private _makeBarRow(parent: HTMLElement, label: string, fillGradient: string, bgColor: string) {
@@ -226,7 +259,8 @@ export class GTA3DHUD {
 
     // Fill bar
     const fill = document.createElement("div");
-    fill.style.cssText = `height:100%;width:100%;background:${fillGradient};border-radius:3px;transition:width 0.1s;position:relative;`;
+    fill.className = "gta3d-bar-fill";
+    fill.style.cssText = `height:100%;width:100%;background:${fillGradient};border-radius:3px;transition:width 0.1s;position:relative;overflow:hidden;`;
     bg.appendChild(fill);
 
     // Shine overlay
@@ -257,6 +291,11 @@ export class GTA3DHUD {
     this._wantedPanel.style.cssText = `position:absolute;top:12px;right:12px;padding:8px 14px;background:${PANEL_GRADIENT};border:1px solid ${GOLD};border-radius:5px;text-align:center;box-shadow:inset 0 0 15px rgba(218,165,32,0.05), 0 4px 12px rgba(0,0,0,0.4);`;
     this._root.appendChild(this._wantedPanel);
 
+    // Decorative top border
+    const wantedTopBorder = document.createElement("div");
+    wantedTopBorder.style.cssText = `height:2px;background:linear-gradient(90deg, transparent 0%, ${GOLD} 20%, #FFD700 50%, ${GOLD} 80%, transparent 100%);margin-bottom:4px;`;
+    this._wantedPanel.appendChild(wantedTopBorder);
+
     this._wantedLabel = document.createElement("div");
     this._wantedLabel.style.cssText = `font-size:11px;font-weight:bold;color:#FF3333;letter-spacing:3px;margin-bottom:5px;height:14px;font-family:${FONT_LABEL};text-shadow:0 0 6px rgba(255,50,50,0.4);`;
     this._wantedPanel.appendChild(this._wantedLabel);
@@ -269,10 +308,21 @@ export class GTA3DHUD {
     for (let i = 0; i < 5; i++) {
       const shield = document.createElement("div");
       shield.style.cssText = "width:28px;height:34px;position:relative;";
-      shield.innerHTML = `<svg viewBox="0 0 20 26" width="28" height="34"><path d="M0,0 L20,0 L20,16 L10,26 L0,16 Z" fill="#444" stroke="#555" stroke-width="1"/></svg>`;
+      shield.innerHTML = `<svg viewBox="0 0 20 26" width="28" height="34">
+        <path d="M0,0 L20,0 L20,16 L10,26 L0,16 Z" fill="#444" stroke="#555" stroke-width="1"/>
+        <path d="M1.5,1.5 L18.5,1.5 L18.5,15.2 L10,24 L1.5,15.2 Z" fill="none" stroke="#666" stroke-width="0.5" opacity="0.5"/>
+        <line x1="10" y1="4" x2="10" y2="20" stroke="#555" stroke-width="0.8" opacity="0.4"/>
+        <line x1="4" y1="10" x2="16" y2="10" stroke="#555" stroke-width="0.8" opacity="0.4"/>
+        <circle cx="10" cy="1.5" r="1.2" fill="#555" opacity="0.6"/>
+      </svg>`;
       this._wantedShields.push(shield);
       shieldRow.appendChild(shield);
     }
+
+    // Decorative bottom border
+    const wantedBottomBorder = document.createElement("div");
+    wantedBottomBorder.style.cssText = `height:2px;background:linear-gradient(90deg, transparent 0%, ${GOLD} 20%, #FFD700 50%, ${GOLD} 80%, transparent 100%);margin-top:6px;`;
+    this._wantedPanel.appendChild(wantedBottomBorder);
   }
 
   private _buildLocationLabel(): void {
@@ -282,9 +332,19 @@ export class GTA3DHUD {
   }
 
   private _buildCompass(): void {
+    // Wrapper for compass + indicator
+    const compassWrapper = document.createElement("div");
+    compassWrapper.style.cssText = "position:absolute;top:12px;left:50%;transform:translateX(-50%);width:240px;display:flex;flex-direction:column;align-items:center;";
+    this._root.appendChild(compassWrapper);
+
     this._compassBar = document.createElement("div");
-    this._compassBar.style.cssText = `position:absolute;top:12px;left:50%;transform:translateX(-50%);width:240px;height:28px;background:rgba(15,12,30,0.75);border:1px solid rgba(218,165,32,0.4);border-radius:4px;overflow:hidden;font-family:${FONT_LABEL};font-size:11px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.4);`;
-    this._root.appendChild(this._compassBar);
+    this._compassBar.style.cssText = `width:240px;height:28px;background:rgba(15,12,30,0.75);border:1px solid rgba(218,165,32,0.4);border-radius:4px;overflow:hidden;font-family:${FONT_LABEL};font-size:11px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.4), 0 0 6px rgba(218,165,32,0.15);animation:gta3d-compass-pulse 4s ease-in-out infinite;position:relative;`;
+    compassWrapper.appendChild(this._compassBar);
+
+    // Small triangle indicator pointing down below compass center
+    const indicator = document.createElement("div");
+    indicator.style.cssText = `width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid ${GOLD};opacity:0.7;margin-top:1px;`;
+    compassWrapper.appendChild(indicator);
   }
 
   private _buildNotifications(): void {
@@ -302,6 +362,11 @@ export class GTA3DHUD {
     title.style.cssText = `text-align:center;font-size:9px;font-weight:bold;color:${GOLD};letter-spacing:3px;margin-bottom:2px;font-family:${FONT_LABEL};`;
     title.textContent = "CAMELOT";
     wrapper.appendChild(title);
+
+    // Decorative divider between title and map
+    const mapDivider = document.createElement("div");
+    mapDivider.style.cssText = `height:1px;background:linear-gradient(90deg, transparent 0%, ${GOLD} 20%, #FFD700 50%, ${GOLD} 80%, transparent 100%);margin:2px 4px 4px 4px;opacity:0.6;`;
+    wrapper.appendChild(mapDivider);
 
     // Container for canvas + compass labels
     const mapContainer = document.createElement("div");
@@ -331,20 +396,56 @@ export class GTA3DHUD {
     this._minimapCanvas = document.createElement("canvas");
     this._minimapCanvas.width = 180;
     this._minimapCanvas.height = 180;
-    this._minimapCanvas.style.cssText = "display:block;border:1px solid rgba(218,165,32,0.3);border-radius:3px;";
+    this._minimapCanvas.style.cssText = "display:block;border:1px solid rgba(218,165,32,0.3);border-radius:3px;outline:1px solid rgba(218,165,32,0.15);outline-offset:2px;box-shadow:inset 0 0 20px rgba(0,0,0,0.5);";
     mapContainer.appendChild(this._minimapCanvas);
     this._minimapCtx = this._minimapCanvas.getContext("2d")!;
+
+    // Corner ornaments (L-shaped gold brackets)
+    const bracketSize = 14;
+    const bracketThickness = 2;
+    const bracketColor = GOLD;
+    const corners = [
+      { top: "6px", left: "6px", borderTop: `${bracketThickness}px solid ${bracketColor}`, borderLeft: `${bracketThickness}px solid ${bracketColor}` },
+      { top: "6px", right: "6px", borderTop: `${bracketThickness}px solid ${bracketColor}`, borderRight: `${bracketThickness}px solid ${bracketColor}` },
+      { bottom: "6px", left: "6px", borderBottom: `${bracketThickness}px solid ${bracketColor}`, borderLeft: `${bracketThickness}px solid ${bracketColor}` },
+      { bottom: "6px", right: "6px", borderBottom: `${bracketThickness}px solid ${bracketColor}`, borderRight: `${bracketThickness}px solid ${bracketColor}` },
+    ];
+    for (const c of corners) {
+      const bracket = document.createElement("div");
+      let css = `position:absolute;width:${bracketSize}px;height:${bracketSize}px;pointer-events:none;opacity:0.7;`;
+      if (c.top) css += `top:${c.top};`;
+      if (c.bottom) css += `bottom:${c.bottom};`;
+      if (c.left) css += `left:${c.left};`;
+      if (c.right) css += `right:${c.right};`;
+      if (c.borderTop) css += `border-top:${c.borderTop};`;
+      if (c.borderBottom) css += `border-bottom:${c.borderBottom};`;
+      if (c.borderLeft) css += `border-left:${c.borderLeft};`;
+      if (c.borderRight) css += `border-right:${c.borderRight};`;
+      bracket.style.cssText = css;
+      mapContainer.appendChild(bracket);
+    }
   }
 
   private _buildCrosshair(): void {
     this._crosshair = document.createElement("div");
-    this._crosshair.style.cssText = "position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:24px;height:24px;pointer-events:none;";
-    this._crosshair.innerHTML = `<svg viewBox="0 0 24 24" width="24" height="24">
-      <line x1="12" y1="4" x2="12" y2="10" stroke="rgba(255,255,255,0.5)" stroke-width="1.5"/>
-      <line x1="12" y1="14" x2="12" y2="20" stroke="rgba(255,255,255,0.5)" stroke-width="1.5"/>
-      <line x1="4" y1="12" x2="10" y2="12" stroke="rgba(255,255,255,0.5)" stroke-width="1.5"/>
-      <line x1="14" y1="12" x2="20" y2="12" stroke="rgba(255,255,255,0.5)" stroke-width="1.5"/>
-      <circle cx="12" cy="12" r="2" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+    this._crosshair.style.cssText = "position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:32px;height:32px;pointer-events:none;filter:drop-shadow(0 0 3px rgba(255,255,255,0.15));";
+    this._crosshair.innerHTML = `<svg viewBox="0 0 32 32" width="32" height="32">
+      <!-- Outer cross lines -->
+      <line x1="16" y1="4" x2="16" y2="12" stroke="rgba(255,255,255,0.5)" stroke-width="1.5"/>
+      <line x1="16" y1="20" x2="16" y2="28" stroke="rgba(255,255,255,0.5)" stroke-width="1.5"/>
+      <line x1="4" y1="16" x2="12" y2="16" stroke="rgba(255,255,255,0.5)" stroke-width="1.5"/>
+      <line x1="20" y1="16" x2="28" y2="16" stroke="rgba(255,255,255,0.5)" stroke-width="1.5"/>
+      <!-- Outer circle -->
+      <circle cx="16" cy="16" r="10" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="0.8"/>
+      <!-- Inner circle -->
+      <circle cx="16" cy="16" r="4" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="0.8"/>
+      <!-- Tick marks at 12/3/6/9 -->
+      <line x1="16" y1="2" x2="16" y2="4" stroke="rgba(255,255,255,0.4)" stroke-width="1"/>
+      <line x1="16" y1="28" x2="16" y2="30" stroke="rgba(255,255,255,0.4)" stroke-width="1"/>
+      <line x1="2" y1="16" x2="4" y2="16" stroke="rgba(255,255,255,0.4)" stroke-width="1"/>
+      <line x1="28" y1="16" x2="30" y2="16" stroke="rgba(255,255,255,0.4)" stroke-width="1"/>
+      <!-- Center dot -->
+      <circle cx="16" cy="16" r="1" fill="rgba(255,255,255,0.6)"/>
     </svg>`;
     this._root.appendChild(this._crosshair);
   }
@@ -418,23 +519,53 @@ export class GTA3DHUD {
     this._gameOverOverlay = document.createElement("div");
     this._gameOverOverlay.style.cssText = `position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(15,0,0,0.8);display:none;flex-direction:column;align-items:center;justify-content:center;pointer-events:auto;`;
 
-    const content = document.createElement("div");
-    content.style.cssText = "display:flex;flex-direction:column;align-items:center;animation:gta3d-gameover-fadein 1.2s ease-out;";
+    // Animated blood drip at top
+    const bloodDrip = document.createElement("div");
+    bloodDrip.style.cssText = "position:absolute;top:0;left:0;width:100%;height:60px;background:linear-gradient(180deg, rgba(120,0,0,0.6) 0%, rgba(80,0,0,0.3) 30%, transparent 100%);pointer-events:none;";
+    this._gameOverOverlay.appendChild(bloodDrip);
 
-    // Skull / crossed swords decoration
+    const content = document.createElement("div");
+    content.style.cssText = "display:flex;flex-direction:column;align-items:center;animation:gta3d-gameover-fadein 1.2s ease-out;position:relative;padding:40px 60px;border:2px solid rgba(136,0,0,0.5);border-radius:8px;background:rgba(10,0,0,0.4);";
+
+    // Corner ornaments on the frame
+    const frameCorners = [
+      { top: "-4px", left: "-4px" },
+      { top: "-4px", right: "-4px" },
+      { bottom: "-4px", left: "-4px" },
+      { bottom: "-4px", right: "-4px" },
+    ];
+    for (const fc of frameCorners) {
+      const corner = document.createElement("div");
+      let css = "position:absolute;width:16px;height:16px;pointer-events:none;";
+      if (fc.top) css += `top:${fc.top};`;
+      if (fc.bottom) css += `bottom:${fc.bottom};`;
+      if (fc.left) css += `left:${fc.left};border-top:2px solid #880000;border-left:2px solid #880000;`;
+      if (fc.right) css += `right:${fc.right};border-top:2px solid #880000;border-right:2px solid #880000;`;
+      if (fc.bottom && fc.left) css = css.replace("border-top:2px solid #880000;border-left:2px solid #880000;", "border-bottom:2px solid #880000;border-left:2px solid #880000;");
+      if (fc.bottom && fc.right) css = css.replace("border-top:2px solid #880000;border-right:2px solid #880000;", "border-bottom:2px solid #880000;border-right:2px solid #880000;");
+      corner.style.cssText = css;
+      content.appendChild(corner);
+    }
+
+    // Skull / crossed swords decoration — more elaborate
     const decoration = document.createElement("div");
-    decoration.style.cssText = "font-size:40px;color:#880000;opacity:0.7;margin-bottom:8px;text-shadow:0 0 10px #440000;";
-    decoration.textContent = "\u2620 \u2694\uFE0F \u2620";
+    decoration.style.cssText = "font-size:40px;color:#880000;opacity:0.7;margin-bottom:8px;text-shadow:0 0 10px #440000, 0 0 20px #330000;";
+    decoration.innerHTML = `<span style="font-size:24px;vertical-align:middle;margin-right:4px;">\u2694</span> \u2620 <span style="font-size:24px;vertical-align:middle;margin-left:4px;">\u2694</span>`;
     content.appendChild(decoration);
+
+    // Ornamental divider above title
+    const dividerTop = document.createElement("div");
+    dividerTop.style.cssText = "width:260px;height:1px;background:linear-gradient(90deg, transparent, #880000, #CC3333, #880000, transparent);margin-bottom:12px;";
+    content.appendChild(dividerTop);
 
     const title = document.createElement("div");
     title.style.cssText = `font-size:56px;font-weight:bold;color:#880000;letter-spacing:10px;text-shadow:0 0 30px #440000, 0 0 60px #220000;font-family:${FONT_LABEL};`;
     title.textContent = "YOU DIED";
     content.appendChild(title);
 
-    // Decorative divider
+    // Ornamental divider below title
     const divider = document.createElement("div");
-    divider.style.cssText = `width:200px;height:1px;background:linear-gradient(90deg, transparent, #880000, transparent);margin:16px 0;`;
+    divider.style.cssText = "width:260px;height:1px;background:linear-gradient(90deg, transparent, #880000, #CC3333, #880000, transparent);margin:16px 0;";
     content.appendChild(divider);
 
     // Stats container
@@ -443,8 +574,13 @@ export class GTA3DHUD {
     this._gameOverStats.innerHTML = "";
     content.appendChild(this._gameOverStats);
 
+    // Ornamental divider above restart
+    const dividerBottom = document.createElement("div");
+    dividerBottom.style.cssText = "width:180px;height:1px;background:linear-gradient(90deg, transparent, #660000, #880000, #660000, transparent);margin:16px 0 8px 0;";
+    content.appendChild(dividerBottom);
+
     const restart = document.createElement("div");
-    restart.style.cssText = `font-size:16px;color:#996666;margin-top:24px;font-family:${FONT_LABEL};letter-spacing:2px;animation:gta3d-pulse-text 2s ease-in-out infinite;`;
+    restart.style.cssText = `font-size:16px;color:#996666;margin-top:8px;font-family:${FONT_LABEL};letter-spacing:2px;animation:gta3d-pulse-text 2s ease-in-out infinite;`;
     restart.textContent = "Press R to restart";
     content.appendChild(restart);
 
@@ -623,8 +759,12 @@ export class GTA3DHUD {
     if (level > 0) {
       this._wantedLabel.textContent = "WANTED";
       this._wantedLabel.style.opacity = level >= 4 ? `${0.7 + Math.sin(tick * 0.15) * 0.3}` : "1";
+      // Red inner glow when wanted
+      const glowIntensity = Math.min(level * 4, 20);
+      this._wantedPanel.style.boxShadow = `inset 0 0 ${glowIntensity}px rgba(255,30,30,${0.1 + level * 0.06}), 0 4px 12px rgba(0,0,0,0.4)`;
     } else {
       this._wantedLabel.textContent = "";
+      this._wantedPanel.style.boxShadow = "inset 0 0 15px rgba(218,165,32,0.05), 0 4px 12px rgba(0,0,0,0.4)";
     }
 
     const highWanted = level >= 4;
@@ -633,14 +773,20 @@ export class GTA3DHUD {
       const filled = i < level;
       const fillColor = filled ? "#CC2222" : "#444";
       const strokeColor = filled ? "#FF4444" : "#555";
-      const emblem = filled ? `<path d="M7,3 L7,15 M4,7 L10,7" stroke="#FFCC00" stroke-width="1.5" opacity="0.8"/>` : "";
+      const rimColor = filled ? "#FF6666" : "#666";
+      const crossColor = filled ? "#FFCC00" : "#555";
+      const crossOpacity = filled ? "0.8" : "0.4";
+      const studColor = filled ? "#FFDD44" : "#555";
       // Golden glow behind filled shields
       const glow = filled ? `<defs><filter id="glow${i}"><feGaussianBlur stdDeviation="2" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>` : "";
       const glowFilter = filled ? ` filter="url(#glow${i})"` : "";
       this._wantedShields[i].innerHTML = `<svg viewBox="0 0 20 26" width="28" height="34">
         ${glow}
         <path d="M0,0 L20,0 L20,16 L10,26 L0,16 Z" fill="${fillColor}" stroke="${strokeColor}" stroke-width="1"${glowFilter}/>
-        ${emblem}
+        <path d="M1.5,1.5 L18.5,1.5 L18.5,15.2 L10,24 L1.5,15.2 Z" fill="none" stroke="${rimColor}" stroke-width="0.5" opacity="0.5"/>
+        <line x1="10" y1="4" x2="10" y2="20" stroke="${crossColor}" stroke-width="1.2" opacity="${crossOpacity}"/>
+        <line x1="4" y1="10" x2="16" y2="10" stroke="${crossColor}" stroke-width="1.2" opacity="${crossOpacity}"/>
+        <circle cx="10" cy="1.5" r="1.2" fill="${studColor}" opacity="0.7"/>
       </svg>`;
       // Animated fire/glow for wanted level 4-5
       if (highWanted && filled) {
@@ -1040,6 +1186,17 @@ export class GTA3DHUD {
       const fontWeight = isCardinal ? "bold" : "normal";
 
       html += `<span style="position:absolute;left:${xPos}px;top:50%;transform:translate(-50%,-50%);color:${color};font-size:${fontSize};font-weight:${fontWeight};font-family:${FONT_LABEL};">${d.label}</span>`;
+    }
+
+    // Tick marks along the compass at regular intervals
+    for (let tickAngle = 0; tickAngle < Math.PI * 2; tickAngle += Math.PI / 8) {
+      let tickDiff = tickAngle - rot;
+      while (tickDiff > Math.PI) tickDiff -= Math.PI * 2;
+      while (tickDiff < -Math.PI) tickDiff += Math.PI * 2;
+      const maxAngleT = Math.PI * 0.5;
+      if (Math.abs(tickDiff) > maxAngleT) continue;
+      const tickXPos = (tickDiff / maxAngleT) * (barWidth / 2) + barWidth / 2;
+      html += `<div style="position:absolute;left:${tickXPos}px;bottom:0;transform:translateX(-50%);width:1px;height:4px;background:rgba(218,165,32,0.25);pointer-events:none;"></div>`;
     }
 
     // Center tick mark

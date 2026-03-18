@@ -301,14 +301,33 @@ export class GTACharacterRenderer {
   private drawDeadPlayer(p: GTAPlayer): void {
     const g = this.gfx;
     const px = p.pos.x, py = p.pos.y;
-    // Flattened body
+    // Blood pool (slowly expanded via state)
+    g.ellipse(px - 1, py + 2, 10, 5).fill({ color: 0x661111, alpha: 0.35 });
+    g.ellipse(px + 2, py + 1, 6, 3).fill({ color: 0x881111, alpha: 0.25 });
+    // Flattened body — torso
     g.ellipse(px, py, 12, 5).fill({ color: 0x1a2255, alpha: 0.6 });
+    // Body shading
+    g.ellipse(px + 1, py + 1, 10, 4).fill({ color: 0x111133, alpha: 0.2 });
+    // Legs
+    g.ellipse(px - 8, py - 1, 5, 2.5).fill({ color: 0x333344, alpha: 0.5 });
+    g.ellipse(px - 10, py + 2, 4, 2).fill({ color: 0x333344, alpha: 0.45 });
     // Head
     g.circle(px + 9, py, 3.5).fill({ color: 0xAA8866, alpha: 0.5 });
-    // Arm sprawled
-    g.ellipse(px - 6, py + 4, 4, 2).fill({ color: 0xDDB088, alpha: 0.4 });
+    // Hair
+    g.circle(px + 9.5, py - 1, 2.5).fill({ color: 0x4A3728, alpha: 0.4 });
+    // Arms sprawled
+    g.ellipse(px - 6, py + 4, 4.5, 2).fill({ color: 0xDDB088, alpha: 0.4 });
+    g.ellipse(px + 5, py - 4, 3.5, 1.8).fill({ color: 0xDDB088, alpha: 0.35 });
+    // Hands (small circles at end of arms)
+    g.circle(px - 10, py + 4.5, 1.5).fill({ color: 0xDDB088, alpha: 0.35 });
+    g.circle(px + 8.5, py - 5, 1.3).fill({ color: 0xDDB088, alpha: 0.3 });
     // Sword on ground
-    g.moveTo(px + 3, py + 5).lineTo(px + 15, py + 8).stroke({ color: 0x999999, width: 1.5, alpha: 0.4 });
+    g.moveTo(px + 3, py + 5).lineTo(px + 16, py + 8).stroke({ color: 0xAAAABB, width: 1.5, alpha: 0.4 });
+    // Sword guard
+    g.moveTo(px + 3, py + 3).lineTo(px + 3, py + 7).stroke({ color: 0x886633, width: 1, alpha: 0.35 });
+    // Shield fallen nearby
+    g.ellipse(px - 4, py - 5, 4, 3).fill({ color: 0x663322, alpha: 0.3 });
+    g.ellipse(px - 4, py - 5, 4, 3).stroke({ color: 0x553322, width: 0.5, alpha: 0.25 });
   }
 
   // ===================== NPC =====================
@@ -927,52 +946,110 @@ export class GTACharacterRenderer {
       }
       case 'sword': {
         g.ellipse(px, py + 3, 8, 2).fill({ color: 0x000000, alpha: 0.1 });
-        g.moveTo(px - 7, py + 7).lineTo(px + 7, py - 7).stroke({ color: 0xCCCCCC, width: 2.5 });
-        g.moveTo(px - 6, py + 6).lineTo(px + 6, py - 6).stroke({ color: 0xEEEEEE, width: 0.5, alpha: 0.5 });
-        g.moveTo(px - 3, py - 1).lineTo(px + 1, py - 5).stroke({ color: 0x8B6914, width: 2.5 });
-        g.circle(px - 4, py + 0.5, 2).fill({ color: 0xDAA520 });
+        // Blade — main with edge highlight
+        g.moveTo(px - 8, py + 8).lineTo(px + 7, py - 7).stroke({ color: 0xBBBBCC, width: 3 });
+        g.moveTo(px - 7, py + 7).lineTo(px + 6, py - 6).stroke({ color: 0xDDDDEE, width: 1, alpha: 0.5 });
+        // Blade tip shimmer
+        g.moveTo(px + 6, py - 6).lineTo(px + 8, py - 8).stroke({ color: 0xEEEEFF, width: 1.5 });
+        // Fuller (groove)
+        g.moveTo(px - 5, py + 5).lineTo(px + 4, py - 4).stroke({ color: 0x999AAA, width: 0.5 });
+        // Crossguard
+        g.moveTo(px - 5, py - 1).lineTo(px + 0.5, py - 6.5).stroke({ color: 0xDAA520, width: 3 });
+        // Crossguard tips
+        g.circle(px - 5.5, py - 0.5, 1.2).fill({ color: 0xDAA520 });
+        g.circle(px + 1, py - 7, 1.2).fill({ color: 0xDAA520 });
+        // Grip with leather wrap lines
+        g.moveTo(px - 4, py + 0.5).lineTo(px - 1.5, py - 2).stroke({ color: 0x6B4226, width: 2.5 });
+        g.moveTo(px - 3.5, py + 0.2).lineTo(px - 3, py - 0.3).stroke({ color: 0x5A3520, width: 0.5 });
+        g.moveTo(px - 2.8, py - 0.5).lineTo(px - 2.3, py - 1).stroke({ color: 0x5A3520, width: 0.5 });
+        // Pommel
+        g.circle(px - 4.5, py + 1, 2).fill({ color: 0xDAA520 });
+        g.circle(px - 4.5, py + 1, 2).stroke({ color: 0xBB8811, width: 0.5 });
+        g.circle(px - 4.5, py + 1, 0.8).fill({ color: 0xFFDD44, alpha: 0.5 });
         break;
       }
       case 'bow': {
         g.ellipse(px, py + 3, 6, 2).fill({ color: 0x000000, alpha: 0.1 });
-        g.moveTo(px - 4, py - 7).arc(px + 2, py, 8, -Math.PI * 0.7, Math.PI * 0.7).stroke({ color: 0x6B4226, width: 2 });
-        g.moveTo(px - 4, py - 7).lineTo(px - 4, py + 7).stroke({ color: 0xAA9966, width: 0.8 });
+        // Bow limb — thicker with grip
+        g.moveTo(px - 4, py - 7 + floatY).arc(px + 2, py + floatY, 8, -Math.PI * 0.7, Math.PI * 0.7).stroke({ color: 0x6B4226, width: 2.5 });
+        // Inner limb edge (lighter)
+        g.moveTo(px - 3.5, py - 6 + floatY).arc(px + 1.5, py + floatY, 7, -Math.PI * 0.65, Math.PI * 0.65).stroke({ color: 0x8B5530, width: 0.8, alpha: 0.5 });
+        // String
+        g.moveTo(px - 4, py - 7 + floatY).lineTo(px - 4, py + 7 + floatY).stroke({ color: 0xAA9966, width: 0.8 });
+        // Grip wrapping (center)
+        g.moveTo(px - 4, py - 1 + floatY).lineTo(px - 4, py + 1 + floatY).stroke({ color: 0x443322, width: 3 });
+        // Nock tips
+        g.circle(px - 3.5, py - 7 + floatY, 0.8).fill({ color: 0x6B4226 });
+        g.circle(px - 3.5, py + 7 + floatY, 0.8).fill({ color: 0x6B4226 });
         break;
       }
       case 'supply_crate': {
-        g.ellipse(px, py + 6, 6, 2).fill({ color: 0x000000, alpha: 0.12 });
-        g.rect(px - 6, py - 6, 12, 12).fill({ color: 0x8B6914 });
-        g.rect(px - 6, py - 6, 12, 12).stroke({ color: 0x6B4226, width: 1 });
-        g.moveTo(px - 6, py).lineTo(px + 6, py).stroke({ color: 0x6B4226, width: 1 });
-        g.moveTo(px, py - 6).lineTo(px, py + 6).stroke({ color: 0x6B4226, width: 1 });
-        // Nails
-        g.circle(px - 5, py - 5, 0.8).fill({ color: 0x888888 });
-        g.circle(px + 5, py - 5, 0.8).fill({ color: 0x888888 });
-        g.circle(px - 5, py + 5, 0.8).fill({ color: 0x888888 });
-        g.circle(px + 5, py + 5, 0.8).fill({ color: 0x888888 });
+        g.ellipse(px, py + 6, 7, 2).fill({ color: 0x000000, alpha: 0.12 });
+        // Crate body
+        g.rect(px - 6, py - 6 + floatY, 12, 12).fill({ color: 0x8B6914 });
+        g.rect(px - 6, py - 6 + floatY, 12, 12).stroke({ color: 0x6B4226, width: 1 });
+        // Plank lines
+        g.moveTo(px - 6, py - 2 + floatY).lineTo(px + 6, py - 2 + floatY).stroke({ color: 0x7A5818, width: 0.5, alpha: 0.5 });
+        g.moveTo(px - 6, py + 2 + floatY).lineTo(px + 6, py + 2 + floatY).stroke({ color: 0x7A5818, width: 0.5, alpha: 0.5 });
+        // Cross bracing bands
+        g.moveTo(px - 6, py + floatY).lineTo(px + 6, py + floatY).stroke({ color: 0x6B4226, width: 1.2 });
+        g.moveTo(px, py - 6 + floatY).lineTo(px, py + 6 + floatY).stroke({ color: 0x6B4226, width: 1.2 });
+        // Diagonal brace
+        g.moveTo(px - 5, py - 5 + floatY).lineTo(px + 5, py + 5 + floatY).stroke({ color: 0x6B4226, width: 0.5, alpha: 0.4 });
+        // Nails with highlights
+        for (const [nx, ny] of [[-5, -5], [5, -5], [-5, 5], [5, 5]]) {
+          g.circle(px + nx, py + ny + floatY, 1).fill({ color: 0x888888 });
+          g.circle(px + nx - 0.3, py + ny - 0.3 + floatY, 0.3).fill({ color: 0xAAAAAA, alpha: 0.5 });
+        }
+        // Rope handle on top
+        g.moveTo(px - 3, py - 6 + floatY).lineTo(px - 3, py - 8 + floatY).lineTo(px + 3, py - 8 + floatY).lineTo(px + 3, py - 6 + floatY).stroke({ color: 0x887766, width: 1 });
         break;
       }
       case 'key': {
         g.ellipse(px, py + 4, 4, 1.5).fill({ color: 0x000000, alpha: 0.1 });
         const ky = floatY;
-        g.circle(px, py - 3 + ky, 3.5).stroke({ color: 0xDAA520, width: 2 });
-        g.circle(px, py - 3 + ky, 3.5).fill({ color: 0xDAA520, alpha: 0.2 });
-        g.moveTo(px, py + ky).lineTo(px, py + 6 + ky).stroke({ color: 0xDAA520, width: 2 });
-        g.moveTo(px, py + 3 + ky).lineTo(px + 3, py + 3 + ky).stroke({ color: 0xDAA520, width: 1.5 });
-        g.moveTo(px, py + 5 + ky).lineTo(px + 2.5, py + 5 + ky).stroke({ color: 0xDAA520, width: 1.5 });
+        // Key bow (ornate ring)
+        g.circle(px, py - 3 + ky, 4).stroke({ color: 0xDAA520, width: 2 });
+        g.circle(px, py - 3 + ky, 4).fill({ color: 0xDAA520, alpha: 0.15 });
+        g.circle(px, py - 3 + ky, 2.5).stroke({ color: 0xEECC44, width: 0.5, alpha: 0.4 });
+        // Gem in bow center
+        g.circle(px, py - 3 + ky, 1.2).fill({ color: 0xCC2222 });
+        g.circle(px - 0.3, py - 3.3 + ky, 0.5).fill({ color: 0xFF6666, alpha: 0.4 });
+        // Key shaft
+        g.moveTo(px, py + 1 + ky).lineTo(px, py + 7 + ky).stroke({ color: 0xDAA520, width: 2 });
+        // Shaft ridge
+        g.moveTo(px - 0.5, py + 1 + ky).lineTo(px - 0.5, py + 5 + ky).stroke({ color: 0xEECC44, width: 0.3, alpha: 0.4 });
+        // Teeth (bit) — more elaborate
+        g.moveTo(px, py + 3.5 + ky).lineTo(px + 3, py + 3.5 + ky).stroke({ color: 0xDAA520, width: 1.5 });
+        g.moveTo(px + 3, py + 3.5 + ky).lineTo(px + 3, py + 4.5 + ky).stroke({ color: 0xDAA520, width: 1 });
+        g.moveTo(px, py + 5.5 + ky).lineTo(px + 2.5, py + 5.5 + ky).stroke({ color: 0xDAA520, width: 1.5 });
+        g.moveTo(px + 2.5, py + 5.5 + ky).lineTo(px + 2.5, py + 6.5 + ky).stroke({ color: 0xDAA520, width: 1 });
+        g.moveTo(px, py + 7 + ky).lineTo(px + 2, py + 7 + ky).stroke({ color: 0xDAA520, width: 1.5 });
         break;
       }
       case 'letter': {
         g.ellipse(px, py + 4, 6, 1.5).fill({ color: 0x000000, alpha: 0.1 });
-        g.rect(px - 6, py - 4, 12, 8).fill({ color: 0xEEDDCC });
-        g.rect(px - 6, py - 4, 12, 8).stroke({ color: 0xAA9988, width: 0.5 });
-        // Fold lines
-        g.moveTo(px - 6, py).lineTo(px + 6, py).stroke({ color: 0xCCBBAA, width: 0.5 });
+        // Parchment envelope
+        g.rect(px - 6, py - 4 + floatY, 12, 8).fill({ color: 0xEEDDCC });
+        g.rect(px - 6, py - 4 + floatY, 12, 8).stroke({ color: 0xAA9988, width: 0.5 });
+        // Parchment texture (faint horizontal lines)
+        for (let l = 0; l < 3; l++) {
+          g.moveTo(px - 5, py - 2 + l * 2.5 + floatY).lineTo(px + 5, py - 2 + l * 2.5 + floatY).stroke({ color: 0xDDCCBB, width: 0.3, alpha: 0.4 });
+        }
+        // Fold lines (envelope flap)
+        g.moveTo(px - 6, py - 4 + floatY).lineTo(px, py + floatY).lineTo(px + 6, py - 4 + floatY).stroke({ color: 0xCCBBAA, width: 0.5 });
+        // Corner fold (slight dog-ear)
+        g.poly([px + 4, py + 4 + floatY, px + 6, py + 2 + floatY, px + 6, py + 4 + floatY]).fill({ color: 0xDDCCBB });
         // Wax seal
-        g.circle(px, py + 1, 2.5).fill({ color: 0xCC2222 });
-        g.circle(px, py + 1, 2.5).stroke({ color: 0xAA1111, width: 0.3 });
-        // Seal imprint
-        g.circle(px, py + 1, 1).fill({ color: 0xDD3333 });
+        g.circle(px, py + 1 + floatY, 2.8).fill({ color: 0xCC2222 });
+        g.circle(px, py + 1 + floatY, 2.8).stroke({ color: 0xAA1111, width: 0.5 });
+        // Seal imprint (cross pattern)
+        g.moveTo(px - 1.2, py + 1 + floatY).lineTo(px + 1.2, py + 1 + floatY).stroke({ color: 0xDD3333, width: 0.8 });
+        g.moveTo(px, py - 0.2 + floatY).lineTo(px, py + 2.2 + floatY).stroke({ color: 0xDD3333, width: 0.8 });
+        g.circle(px, py + 1 + floatY, 0.6).fill({ color: 0xEE4444 });
+        // Ribbon under seal
+        g.moveTo(px - 1, py + 2.5 + floatY).lineTo(px - 2, py + 4 + floatY).stroke({ color: 0xCC2222, width: 0.8 });
+        g.moveTo(px + 1, py + 2.5 + floatY).lineTo(px + 2, py + 4 + floatY).stroke({ color: 0xCC2222, width: 0.8 });
         break;
       }
       case 'treasure_chest': {
@@ -1011,25 +1088,51 @@ export class GTACharacterRenderer {
     const speed = Math.sqrt(proj.vel.x * proj.vel.x + proj.vel.y * proj.vel.y);
     const dx = speed > 0 ? proj.vel.x / speed : 1;
     const dy = speed > 0 ? proj.vel.y / speed : 0;
-    // Arrow shaft
-    const tailX = px - dx * 10;
-    const tailY = py - dy * 10;
-    g.moveTo(tailX, tailY).lineTo(px, py).stroke({ color: 0x5C3A1E, width: 1.5 });
-    // Arrowhead
     const perpX = -dy;
     const perpY = dx;
-    const tipX = px + dx * 3;
-    const tipY = py + dy * 3;
+
+    const tailX = px - dx * 12;
+    const tailY = py - dy * 12;
+
+    // Motion blur trail (fading)
+    g.moveTo(tailX - dx * 8, tailY - dy * 8).lineTo(tailX - dx * 3, tailY - dy * 3).stroke({ color: 0xCCBB99, width: 0.5, alpha: 0.15 });
+    g.moveTo(tailX - dx * 4, tailY - dy * 4).lineTo(tailX, tailY).stroke({ color: 0xCCBB99, width: 0.8, alpha: 0.25 });
+
+    // Shadow on ground (offset slightly)
+    g.moveTo(tailX + 2, tailY + 2).lineTo(px + 2, py + 2).stroke({ color: 0x000000, width: 1, alpha: 0.1 });
+
+    // Arrow shaft (two-tone — darker base, lighter toward tip)
+    g.moveTo(tailX, tailY).lineTo(px - dx * 3, py - dy * 3).stroke({ color: 0x5C3A1E, width: 1.5 });
+    g.moveTo(px - dx * 3, py - dy * 3).lineTo(px, py).stroke({ color: 0x6B4A2E, width: 1.2 });
+
+    // Nock (small notch at tail end)
+    g.moveTo(tailX + perpX * 1, tailY + perpY * 1).lineTo(tailX - perpX * 1, tailY - perpY * 1).stroke({ color: 0x5C3A1E, width: 1 });
+
+    // Fletching — 3 vanes (two sides + center)
+    const fBaseX = tailX + dx * 2, fBaseY = tailY + dy * 2;
+    // Left feather
+    g.moveTo(tailX, tailY).lineTo(fBaseX + perpX * 3, fBaseY + perpY * 3).stroke({ color: 0xDDDDCC, width: 0.8 });
+    g.moveTo(fBaseX + perpX * 3, fBaseY + perpY * 3).lineTo(fBaseX + dx * 3, fBaseY + dy * 3).stroke({ color: 0xCCCCBB, width: 0.6 });
+    // Right feather
+    g.moveTo(tailX, tailY).lineTo(fBaseX - perpX * 3, fBaseY - perpY * 3).stroke({ color: 0xDDDDCC, width: 0.8 });
+    g.moveTo(fBaseX - perpX * 3, fBaseY - perpY * 3).lineTo(fBaseX + dx * 3, fBaseY + dy * 3).stroke({ color: 0xCCCCBB, width: 0.6 });
+    // Center spine of fletching
+    g.moveTo(tailX, tailY).lineTo(tailX + dx * 4, tailY + dy * 4).stroke({ color: 0xBBBBAA, width: 0.4 });
+
+    // Arrowhead — sharper diamond shape
+    const tipX = px + dx * 4;
+    const tipY = py + dy * 4;
+    const neckX = px - dx * 1;
+    const neckY = py - dy * 1;
     g.poly([
       tipX, tipY,
-      px + perpX * 2, py + perpY * 2,
-      px - perpX * 2, py - perpY * 2,
-    ]).fill({ color: 0x888888 });
-    // Fletching
-    g.moveTo(tailX, tailY).lineTo(tailX + perpX * 2.5, tailY + perpY * 2.5).stroke({ color: 0xCCCCCC, width: 0.7 });
-    g.moveTo(tailX, tailY).lineTo(tailX - perpX * 2.5, tailY - perpY * 2.5).stroke({ color: 0xCCCCCC, width: 0.7 });
-    // Motion blur
-    g.moveTo(tailX - dx * 5, tailY - dy * 5).lineTo(tailX, tailY).stroke({ color: 0xCCBB99, width: 0.5, alpha: 0.3 });
+      neckX + perpX * 2.5, neckY + perpY * 2.5,
+      neckX - dx * 1, neckY - dy * 1,
+      neckX - perpX * 2.5, neckY - perpY * 2.5,
+    ]).fill({ color: 0x999999 });
+    // Arrowhead edge highlight
+    g.moveTo(tipX, tipY).lineTo(neckX + perpX * 2.5, neckY + perpY * 2.5).stroke({ color: 0xBBBBBB, width: 0.5 });
+    g.moveTo(tipX, tipY).lineTo(neckX - perpX * 2.5, neckY - perpY * 2.5).stroke({ color: 0x777777, width: 0.5 });
   }
 }
 

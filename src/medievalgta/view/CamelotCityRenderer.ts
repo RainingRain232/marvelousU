@@ -744,33 +744,72 @@ export class CamelotCityRenderer {
     // Main building
     g.rect(x, y, w, h).fill({ color: 0x7A7060 });
     g.rect(x, y, w, h).stroke({ color: 0x554433, width: 2 });
-    // Roof
-    g.rect(x - 3, y - 3, w + 6, h * 0.15).fill({ color: 0x6B2020 });
+    // Stone texture
+    for (let sy = y + 6; sy < y + h; sy += 10) {
+      g.moveTo(x, sy).lineTo(x + w, sy).stroke({ color: 0x6A6050, width: 0.5, alpha: 0.3 });
+    }
+    // Roof with red tile pattern
+    g.rect(x - 3, y - 4, w + 6, h * 0.16).fill({ color: 0x6B2020 });
+    g.rect(x - 3, y - 4, w + 6, h * 0.16).stroke({ color: 0x5A1818, width: 0.5 });
+    // Roof tile lines
+    for (let rx = x; rx < x + w; rx += 8) {
+      g.rect(rx, y - 3, 0.5, h * 0.14).fill({ color: 0x5A1818, alpha: 0.3 });
+    }
     g.rect(x - 3, y + h - h * 0.1, w + 6, h * 0.13).fill({ color: 0x6B2020 });
-    // Windows
+    // Windows with iron bars
     for (let wx = x + 25; wx < x + w - 20; wx += 50) {
+      g.rect(wx - 1, y + h * 0.3 - 1, 12, 16).fill({ color: 0x554433 });
       g.rect(wx, y + h * 0.3, 10, 14).fill({ color: 0x333333 });
       g.rect(wx, y + h * 0.3, 10, 14).stroke({ color: 0x554433, width: 1 });
+      // Window bars
+      g.moveTo(wx + 5, y + h * 0.3).lineTo(wx + 5, y + h * 0.3 + 14).stroke({ color: 0x555555, width: 0.8 });
+      g.moveTo(wx, y + h * 0.3 + 7).lineTo(wx + 10, y + h * 0.3 + 7).stroke({ color: 0x555555, width: 0.8 });
     }
     // Training yard (south of building)
     const yardY = y + h + 5;
-    // Training dummies
+    // Training ground (slightly different ground color)
+    g.rect(x - 10, yardY - 2, w + 20, 35).fill({ color: 0x8A7A5A, alpha: 0.2 });
+    // Training dummies — more detailed
     for (let d = 0; d < 3; d++) {
       const dx = x + 40 + d * 60;
-      g.rect(dx - 1, yardY, 2, 20).fill({ color: 0x8B6914 }); // pole
-      g.circle(dx, yardY, 5).fill({ color: 0xBBA880 }); // head
-      g.moveTo(dx - 8, yardY + 8).lineTo(dx + 8, yardY + 8).stroke({ color: 0x8B6914, width: 2 }); // arms
+      // Base
+      g.rect(dx - 4, yardY + 18, 8, 4).fill({ color: 0x6B4226 });
+      // Pole
+      g.rect(dx - 1, yardY - 2, 2, 22).fill({ color: 0x8B6914 });
+      // Head (straw-stuffed)
+      g.circle(dx, yardY - 2, 5).fill({ color: 0xBBA880 });
+      g.circle(dx, yardY - 2, 5).stroke({ color: 0xAA9870, width: 0.5 });
+      // Face X marks
+      g.moveTo(dx - 2, yardY - 3).lineTo(dx + 2, yardY - 1).stroke({ color: 0x887766, width: 0.8 });
+      g.moveTo(dx + 2, yardY - 3).lineTo(dx - 2, yardY - 1).stroke({ color: 0x887766, width: 0.8 });
+      // Arms (crossbar)
+      g.moveTo(dx - 10, yardY + 6).lineTo(dx + 10, yardY + 6).stroke({ color: 0x8B6914, width: 2 });
+      // Shield on arm
+      g.ellipse(dx - 8, yardY + 8, 3, 4).fill({ color: 0x663322, alpha: 0.6 });
     }
-    // Weapon rack
+    // Weapon rack — with visible weapons
     const rackX = x + w - 60;
     g.rect(rackX, yardY + 2, 30, 4).fill({ color: 0x6B4226 });
-    g.moveTo(rackX + 5, yardY + 6).lineTo(rackX + 5, yardY - 10).stroke({ color: 0x888888, width: 2 });
-    g.moveTo(rackX + 15, yardY + 6).lineTo(rackX + 15, yardY - 12).stroke({ color: 0x888888, width: 2 });
-    g.moveTo(rackX + 25, yardY + 6).lineTo(rackX + 25, yardY - 8).stroke({ color: 0x888888, width: 2 });
+    g.rect(rackX, yardY + 2, 30, 4).stroke({ color: 0x5A3520, width: 0.5 });
+    // Sword
+    g.moveTo(rackX + 5, yardY + 6).lineTo(rackX + 5, yardY - 12).stroke({ color: 0x999999, width: 2 });
+    g.moveTo(rackX + 2, yardY - 3).lineTo(rackX + 8, yardY - 3).stroke({ color: 0xDAA520, width: 1.5 });
+    // Spear
+    g.moveTo(rackX + 15, yardY + 6).lineTo(rackX + 15, yardY - 14).stroke({ color: 0x8B6914, width: 1.5 });
+    g.poly([rackX + 13, yardY - 14, rackX + 15, yardY - 18, rackX + 17, yardY - 14]).fill({ color: 0x888888 });
+    // Axe
+    g.moveTo(rackX + 25, yardY + 6).lineTo(rackX + 25, yardY - 10).stroke({ color: 0x8B6914, width: 1.5 });
+    g.poly([rackX + 25, yardY - 10, rackX + 30, yardY - 8, rackX + 30, yardY - 4, rackX + 25, yardY - 3]).fill({ color: 0x777777 });
 
-    // Red military banners
-    g.rect(x + 10, y + 5, 2, 20).fill({ color: 0x8B6914 });
-    g.poly([x + 12, y + 5, x + 26, y + 12, x + 12, y + 20]).fill({ color: 0xCC2222 });
+    // Red military banners (2)
+    for (const bx of [x + 10, x + w - 25]) {
+      g.rect(bx, y + 4, 2, 22).fill({ color: 0x8B6914 });
+      g.poly([bx + 2, y + 5, bx + 16, y + 12, bx + 2, y + 20]).fill({ color: 0xCC2222 });
+      g.poly([bx + 2, y + 5, bx + 16, y + 12, bx + 2, y + 20]).stroke({ color: 0xAA1818, width: 0.5 });
+      // Cross on banner
+      g.moveTo(bx + 6, y + 9).lineTo(bx + 6, y + 17).stroke({ color: 0xFFDD44, width: 0.8 });
+      g.moveTo(bx + 3, y + 12).lineTo(bx + 10, y + 12).stroke({ color: 0xFFDD44, width: 0.8 });
+    }
 
     if (b.label) {
       const label = new Text({
@@ -944,33 +983,65 @@ export class CamelotCityRenderer {
     // Dark stone/wood building
     g.rect(x, y, w, h).fill({ color: 0x5A5040 });
     g.rect(x, y, w, h).stroke({ color: 0x3A3020, width: 2 });
-    // Roof
-    g.rect(x - 3, y - 3, w + 6, 8).fill({ color: 0x443322 });
+    // Stone texture lines
+    for (let sy = y + 8; sy < y + h; sy += 12) {
+      g.moveTo(x, sy).lineTo(x + w, sy).stroke({ color: 0x4A4030, width: 0.5, alpha: 0.3 });
+    }
+    // Roof with overhang
+    g.rect(x - 4, y - 4, w + 8, 9).fill({ color: 0x443322 });
+    g.rect(x - 4, y - 4, w + 8, 9).stroke({ color: 0x332211, width: 0.5 });
 
-    // Chimney with glow
-    g.rect(x + w - 30, y - 20, 16, 22).fill({ color: 0x444444 });
-    g.rect(x + w - 30, y - 20, 16, 22).stroke({ color: 0x333333, width: 1 });
-    // Fire glow at chimney top
-    g.circle(x + w - 22, y - 22, 10).fill({ color: 0xFF4400, alpha: 0.3 });
-    g.circle(x + w - 22, y - 22, 6).fill({ color: 0xFF6600, alpha: 0.4 });
+    // Chimney with glow and smoke suggestion
+    g.rect(x + w - 30, y - 22, 16, 24).fill({ color: 0x444444 });
+    g.rect(x + w - 30, y - 22, 16, 24).stroke({ color: 0x333333, width: 1 });
+    // Chimney cap
+    g.rect(x + w - 32, y - 24, 20, 3).fill({ color: 0x3A3A3A });
+    // Fire glow at chimney top (layered)
+    g.circle(x + w - 22, y - 26, 12).fill({ color: 0xFF4400, alpha: 0.15 });
+    g.circle(x + w - 22, y - 25, 8).fill({ color: 0xFF4400, alpha: 0.3 });
+    g.circle(x + w - 22, y - 24, 5).fill({ color: 0xFF6600, alpha: 0.4 });
+    // Smoke wisps
+    g.circle(x + w - 20, y - 30, 3).fill({ color: 0x666666, alpha: 0.15 });
+    g.circle(x + w - 23, y - 35, 4).fill({ color: 0x555555, alpha: 0.1 });
 
-    // Forge window (orange glow)
+    // Forge window (orange glow) with frame
+    g.rect(x + 14, y + h * 0.3 - 1, 18, 14).fill({ color: 0x3A3020 });
     g.rect(x + 15, y + h * 0.3, 16, 12).fill({ color: 0xFF6600, alpha: 0.6 });
     g.rect(x + 15, y + h * 0.3, 16, 12).stroke({ color: 0x3A3020, width: 1 });
+    // Window cross-bar (iron)
+    g.moveTo(x + 23, y + h * 0.3).lineTo(x + 23, y + h * 0.3 + 12).stroke({ color: 0x3A3020, width: 1 });
 
-    // Anvil (outside)
+    // Anvil (outside) — more detailed
     const anvX = x + w + 10, anvY = y + h / 2;
-    g.moveTo(anvX, anvY).lineTo(anvX + 16, anvY).lineTo(anvX + 14, anvY - 8)
+    g.moveTo(anvX, anvY).lineTo(anvX + 18, anvY).lineTo(anvX + 16, anvY - 8)
       .lineTo(anvX + 2, anvY - 8).lineTo(anvX, anvY).fill({ color: 0x444444 });
-    // Anvil base
-    g.rect(anvX + 4, anvY, 8, 6).fill({ color: 0x333333 });
+    // Anvil horn
+    g.moveTo(anvX + 18, anvY - 2).lineTo(anvX + 22, anvY - 5).lineTo(anvX + 18, anvY - 6).fill({ color: 0x444444 });
+    // Anvil base (wider block)
+    g.rect(anvX + 2, anvY, 14, 8).fill({ color: 0x333333 });
+    g.rect(anvX, anvY + 8, 18, 3).fill({ color: 0x2A2A2A });
+    // Anvil highlight
+    g.rect(anvX + 3, anvY - 7, 12, 1).fill({ color: 0x555555, alpha: 0.4 });
+    // Hammer on anvil
+    g.rect(anvX + 6, anvY - 10, 2, 8).fill({ color: 0x6B4226 });
+    g.rect(anvX + 4, anvY - 12, 6, 3).fill({ color: 0x555555 });
 
-    // Bucket of water
-    g.rect(x - 10, y + h - 15, 8, 10).fill({ color: 0x555555 });
-    g.rect(x - 10, y + h - 15, 8, 3).fill({ color: 0x4488BB, alpha: 0.6 });
+    // Bucket of water with handle
+    g.rect(x - 12, y + h - 16, 10, 12).fill({ color: 0x555555 });
+    g.rect(x - 12, y + h - 16, 10, 12).stroke({ color: 0x444444, width: 0.5 });
+    g.rect(x - 11, y + h - 15, 8, 3).fill({ color: 0x4488BB, alpha: 0.6 });
+    // Bucket handle
+    g.moveTo(x - 11, y + h - 16).lineTo(x - 7, y + h - 20).lineTo(x - 3, y + h - 16).stroke({ color: 0x555555, width: 1 });
 
-    // Door
-    g.rect(x + w / 2 - 10, y + h - 20, 20, 20).fill({ color: 0x3A2010 });
+    // Tongs leaning against wall
+    g.moveTo(x - 5, y + h - 2).lineTo(x - 3, y + h - 18).stroke({ color: 0x555555, width: 1.5 });
+    g.moveTo(x - 3, y + h - 2).lineTo(x - 1, y + h - 18).stroke({ color: 0x555555, width: 1.5 });
+
+    // Door with iron band
+    g.rect(x + w / 2 - 10, y + h - 22, 20, 22).fill({ color: 0x3A2010 });
+    g.rect(x + w / 2 - 10, y + h - 22, 20, 22).stroke({ color: 0x2A1808, width: 0.5 });
+    g.rect(x + w / 2 - 10, y + h - 14, 20, 2).fill({ color: 0x444444 });
+    g.circle(x + w / 2 + 6, y + h - 11, 1.5).fill({ color: 0x555555 });
 
     if (b.label) {
       const label = new Text({
@@ -993,13 +1064,18 @@ export class CamelotCityRenderer {
     for (let px = x; px < x + w; px += 10) {
       g.rect(px, y, 1, h).fill({ color: 0x6B4226, alpha: 0.5 });
     }
+    // Horizontal beam across middle
+    g.rect(x, y + h * 0.45, w, 3).fill({ color: 0x6B4226 });
     g.rect(x, y, w, h).stroke({ color: 0x6B4226, width: 2 });
 
-    // Open front (south side) — stall dividers
+    // Open front (south side) — stall dividers with arched tops
     g.rect(x, y + h - 8, w, 8).fill({ color: 0x6B4226 });
     for (let s = 0; s < 4; s++) {
       const sx = x + 10 + s * (w - 20) / 3;
       g.rect(sx, y + h * 0.5, 3, h * 0.5).fill({ color: 0x6B4226 });
+      // Stall gate hinge
+      g.circle(sx + 1.5, y + h * 0.55, 1.5).fill({ color: 0x555555 });
+      g.circle(sx + 1.5, y + h * 0.75, 1.5).fill({ color: 0x555555 });
     }
 
     // Hay scattered
@@ -1010,15 +1086,32 @@ export class CamelotCityRenderer {
       g.rect(hx, hy, 4 + rng() * 4, 2).fill({ color: 0xCCBB55, alpha: 0.6 });
     }
 
-    // Roof
+    // Roof with thatch lines
     g.poly([x - 5, y, x + w / 2, y - 18, x + w + 5, y]).fill({ color: 0x8B6914 });
     g.poly([x - 5, y, x + w / 2, y - 18, x + w + 5, y]).stroke({ color: 0x6B4226, width: 1 });
+    for (let rx = x; rx < x + w / 2; rx += 6) {
+      const ratio = (rx - x) / (w / 2);
+      g.moveTo(rx, y).lineTo(rx + 1, y - 16 * ratio + 2).stroke({ color: 0x7A5818, width: 0.5, alpha: 0.3 });
+    }
+    // Ridge line
+    g.moveTo(x + w * 0.25, y - 9).lineTo(x + w * 0.75, y - 9).stroke({ color: 0x7A5818, width: 1 });
 
-    // Fence around yard (south)
+    // Horse shoe on wall (decorative)
+    g.moveTo(x + 15, y + 12).arc(x + 20, y + 12, 5, Math.PI, 0).stroke({ color: 0x666666, width: 1.5 });
+
+    // Water trough outside
+    g.rect(x + w + 5, y + h - 20, 18, 8).fill({ color: 0x5A3A1A });
+    g.rect(x + w + 5, y + h - 20, 18, 8).stroke({ color: 0x4A2A10, width: 0.5 });
+    g.rect(x + w + 6, y + h - 19, 16, 4).fill({ color: 0x4488BB, alpha: 0.5 });
+
+    // Fence around yard (south) with cross-rails
     const fenceY = y + h + 10;
     g.rect(x - 20, fenceY, w + 40, 2).fill({ color: 0x8B6914 });
+    g.rect(x - 20, fenceY - 12, w + 40, 2).fill({ color: 0x8B6914, alpha: 0.7 });
     for (let fp = x - 20; fp < x + w + 20; fp += 15) {
-      g.rect(fp, fenceY - 8, 2, 10).fill({ color: 0x8B6914 });
+      g.rect(fp, fenceY - 14, 2, 16).fill({ color: 0x8B6914 });
+      // Post cap
+      g.rect(fp - 0.5, fenceY - 15, 3, 2).fill({ color: 0x7A5818 });
     }
 
     if (b.label) {
@@ -1039,6 +1132,8 @@ export class CamelotCityRenderer {
     // Dark stone building
     g.rect(x, y, w, h).fill({ color: 0x444444 });
     g.rect(x, y, w, h).stroke({ color: 0x333333, width: 3 });
+    // Inner wall shadow
+    g.rect(x + 2, y + 2, w - 4, h - 4).fill({ color: 0x3A3A3A, alpha: 0.2 });
     // Stone block texture
     for (let row = 0; row < Math.ceil(h / 12); row++) {
       const offset = (row % 2) * 10;
@@ -1050,22 +1145,40 @@ export class CamelotCityRenderer {
       }
     }
 
-    // Tiny barred windows
+    // Roof (flat stone with watchtower corner)
+    g.rect(x - 2, y - 3, w + 4, 5).fill({ color: 0x3A3A3A });
+    // Crenellations along roof
+    for (let cx = x; cx < x + w; cx += 12) {
+      g.rect(cx, y - 7, 6, 5).fill({ color: 0x444444 });
+      g.rect(cx, y - 7, 6, 5).stroke({ color: 0x3A3A3A, width: 0.5 });
+    }
+
+    // Tiny barred windows with frames and inner darkness
     for (let wi = 0; wi < 3; wi++) {
       const wx = x + 30 + wi * (w - 60) / 2;
       const wy = y + 20;
-      g.rect(wx, wy, 8, 10).fill({ color: 0x222222 });
-      // Bars
-      g.moveTo(wx + 2, wy).lineTo(wx + 2, wy + 10).stroke({ color: 0x555555, width: 1 });
-      g.moveTo(wx + 4, wy).lineTo(wx + 4, wy + 10).stroke({ color: 0x555555, width: 1 });
-      g.moveTo(wx + 6, wy).lineTo(wx + 6, wy + 10).stroke({ color: 0x555555, width: 1 });
+      // Stone frame
+      g.rect(wx - 1, wy - 1, 10, 12).fill({ color: 0x3A3A3A });
+      g.rect(wx, wy, 8, 10).fill({ color: 0x111111 });
+      // Bars (vertical)
+      for (let bar = 0; bar < 4; bar++) {
+        g.moveTo(wx + 2 * bar + 1, wy).lineTo(wx + 2 * bar + 1, wy + 10).stroke({ color: 0x555555, width: 1 });
+      }
+      // Horizontal cross-bar
+      g.moveTo(wx, wy + 5).lineTo(wx + 8, wy + 5).stroke({ color: 0x555555, width: 0.8 });
     }
 
-    // Heavy iron door
+    // Heavy iron door with arch
     const doorX = x + w / 2 - 12;
-    g.rect(doorX, y + h - 28, 24, 28).fill({ color: 0x333333 });
-    g.rect(doorX, y + h - 28, 24, 28).stroke({ color: 0x222222, width: 2 });
-    // Rivets
+    g.roundRect(doorX, y + h - 30, 24, 30, 3).fill({ color: 0x333333 });
+    g.roundRect(doorX, y + h - 30, 24, 30, 3).stroke({ color: 0x222222, width: 2 });
+    // Door bands (horizontal iron strips)
+    g.rect(doorX + 1, y + h - 25, 22, 2).fill({ color: 0x444444 });
+    g.rect(doorX + 1, y + h - 15, 22, 2).fill({ color: 0x444444 });
+    // Door viewing slit
+    g.rect(doorX + 9, y + h - 28, 6, 4).fill({ color: 0x111111 });
+    g.rect(doorX + 9, y + h - 28, 6, 4).stroke({ color: 0x444444, width: 0.5 });
+    // Rivets with highlights
     const rivetPos = [
       [doorX + 4, y + h - 24], [doorX + 20, y + h - 24],
       [doorX + 4, y + h - 12], [doorX + 20, y + h - 12],
@@ -1073,11 +1186,26 @@ export class CamelotCityRenderer {
     ];
     for (const [rx, ry] of rivetPos) {
       g.circle(rx, ry, 2).fill({ color: 0x555555 });
+      g.circle(rx - 0.4, ry - 0.4, 0.8).fill({ color: 0x666666, alpha: 0.5 });
     }
+    // Lock
+    g.rect(doorX + 10, y + h - 10, 4, 4).fill({ color: 0x444444 });
+    g.circle(doorX + 12, y + h - 8, 0.8).fill({ color: 0x222222 });
 
-    // Guard post
+    // Guard post with roof
     g.rect(x + w + 5, y + h - 30, 15, 30).fill({ color: 0x555555 });
-    g.rect(x + w + 5, y + h - 35, 15, 5).fill({ color: 0x444444 });
+    g.rect(x + w + 5, y + h - 30, 15, 30).stroke({ color: 0x444444, width: 0.5 });
+    g.rect(x + w + 3, y + h - 35, 19, 5).fill({ color: 0x444444 });
+    // Guard post window
+    g.rect(x + w + 8, y + h - 25, 6, 6).fill({ color: 0x333333 });
+    // Torch on guard post
+    g.rect(x + w + 20, y + h - 20, 2, 10).fill({ color: 0x6B4226 });
+    g.circle(x + w + 21, y + h - 22, 3).fill({ color: 0xFF8833, alpha: 0.5 });
+
+    // Chains on exterior wall (decorative)
+    g.moveTo(x + 8, y + h * 0.35).lineTo(x + 8, y + h * 0.55).stroke({ color: 0x555555, width: 1 });
+    g.moveTo(x + 8, y + h * 0.4).lineTo(x + 12, y + h * 0.4).stroke({ color: 0x555555, width: 1 });
+    g.moveTo(x + 8, y + h * 0.5).lineTo(x + 12, y + h * 0.5).stroke({ color: 0x555555, width: 1 });
 
     if (b.label) {
       const label = new Text({
@@ -1275,12 +1403,38 @@ export class CamelotCityRenderer {
   // ---- Well ----
   private drawWell(g: Graphics, b: GTABuilding): void {
     const cx = b.x + b.w / 2, cy = b.y + b.h / 2;
-    g.circle(cx, cy, 12).fill({ color: 0x777770 });
-    g.circle(cx, cy, 12).stroke({ color: 0x555550, width: 2 });
-    g.circle(cx, cy, 8).fill({ color: 0x223344 });
-    // Wooden frame
-    g.rect(cx - 14, cy - 2, 28, 4).fill({ color: 0x6B4226 });
-    g.rect(cx - 1, cy - 12, 2, 10).fill({ color: 0x6B4226 });
+    // Shadow
+    g.ellipse(cx + 1, cy + 2, 14, 10).fill({ color: 0x000000, alpha: 0.2 });
+    // Stone rim (outer)
+    g.circle(cx, cy, 13).fill({ color: 0x888880 });
+    g.circle(cx, cy, 13).stroke({ color: 0x666660, width: 1.5 });
+    // Stone texture — individual stones around rim
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      g.circle(cx + Math.cos(a) * 10.5, cy + Math.sin(a) * 10.5, 2.5).fill({ color: 0x999990, alpha: 0.5 });
+      g.circle(cx + Math.cos(a) * 10.5, cy + Math.sin(a) * 10.5, 2.5).stroke({ color: 0x777770, width: 0.5 });
+    }
+    // Inner rim
+    g.circle(cx, cy, 9).fill({ color: 0x666660 });
+    g.circle(cx, cy, 9).stroke({ color: 0x555550, width: 1 });
+    // Water surface
+    g.circle(cx, cy, 7).fill({ color: 0x223344 });
+    g.circle(cx, cy + 1, 4).fill({ color: 0x334455, alpha: 0.3 }); // reflection highlight
+    // Wooden frame posts
+    g.rect(cx - 14, cy - 2.5, 28, 3).fill({ color: 0x6B4226 });
+    g.rect(cx - 14, cy - 2.5, 28, 3).stroke({ color: 0x5A3520, width: 0.5 });
+    // Vertical posts
+    g.rect(cx - 14, cy - 14, 2.5, 12).fill({ color: 0x6B4226 });
+    g.rect(cx + 12, cy - 14, 2.5, 12).fill({ color: 0x6B4226 });
+    // Roof beam
+    g.rect(cx - 15, cy - 15, 30, 2).fill({ color: 0x7B5230 });
+    // Bucket rope
+    g.moveTo(cx, cy - 14).lineTo(cx, cy - 4).stroke({ color: 0x887766, width: 1 });
+    // Bucket
+    g.rect(cx - 2, cy - 5, 4, 3).fill({ color: 0x6B4226 });
+    g.rect(cx - 2, cy - 5, 4, 3).stroke({ color: 0x5A3520, width: 0.5 });
+    // Crank handle
+    g.moveTo(cx + 13, cy - 13).lineTo(cx + 17, cy - 16).stroke({ color: 0x5A3520, width: 1.5 });
   }
 
   // ---- Tree Cluster ----
@@ -1299,49 +1453,188 @@ export class CamelotCityRenderer {
 
   // ---- Cart ----
   private drawCart(g: Graphics, b: GTABuilding): void {
+    // Shadow
+    g.ellipse(b.x + b.w / 2, b.y + b.h + 2, b.w / 2 + 3, 4).fill({ color: 0x000000, alpha: 0.15 });
+    // Cart bed
     g.rect(b.x, b.y, b.w, b.h).fill({ color: 0x8B6914 });
     g.rect(b.x, b.y, b.w, b.h).stroke({ color: 0x6B4226, width: 1 });
-    // Wheels
-    g.circle(b.x + 4, b.y + b.h, 4).stroke({ color: 0x5C3A1E, width: 2 });
-    g.circle(b.x + b.w - 4, b.y + b.h, 4).stroke({ color: 0x5C3A1E, width: 2 });
-    // Handle
-    g.moveTo(b.x + b.w, b.y + b.h / 2).lineTo(b.x + b.w + 10, b.y + b.h / 2 + 5).stroke({ color: 0x6B4226, width: 2 });
+    // Plank lines across the bed
+    for (let p = 1; p < 4; p++) {
+      g.moveTo(b.x + p * b.w / 4, b.y).lineTo(b.x + p * b.w / 4, b.y + b.h).stroke({ color: 0x7A5818, width: 0.5 });
+    }
+    // Side rails
+    g.rect(b.x, b.y - 2, b.w, 2).fill({ color: 0x7A5818 });
+    g.rect(b.x, b.y + b.h, b.w, 2).fill({ color: 0x7A5818 });
+    // Wheels with spokes
+    for (const wx of [b.x + 4, b.x + b.w - 4]) {
+      const wy = b.y + b.h + 1;
+      // Wheel rim
+      g.circle(wx, wy, 5).stroke({ color: 0x5C3A1E, width: 2 });
+      // Hub
+      g.circle(wx, wy, 1.5).fill({ color: 0x5C3A1E });
+      // Spokes
+      for (let s = 0; s < 4; s++) {
+        const sa = (s / 4) * Math.PI * 2;
+        g.moveTo(wx, wy).lineTo(wx + Math.cos(sa) * 4, wy + Math.sin(sa) * 4).stroke({ color: 0x5C3A1E, width: 0.8 });
+      }
+    }
+    // Axle between wheels
+    g.moveTo(b.x + 4, b.y + b.h + 1).lineTo(b.x + b.w - 4, b.y + b.h + 1).stroke({ color: 0x4A2A10, width: 1.5 });
+    // Handle/shafts (two parallel bars)
+    g.moveTo(b.x + b.w, b.y + b.h * 0.3).lineTo(b.x + b.w + 12, b.y + b.h * 0.3 + 3).stroke({ color: 0x6B4226, width: 1.5 });
+    g.moveTo(b.x + b.w, b.y + b.h * 0.7).lineTo(b.x + b.w + 12, b.y + b.h * 0.7 + 3).stroke({ color: 0x6B4226, width: 1.5 });
+    // Cross-bar at end of handle
+    g.moveTo(b.x + b.w + 11, b.y + b.h * 0.3 + 2).lineTo(b.x + b.w + 11, b.y + b.h * 0.7 + 4).stroke({ color: 0x6B4226, width: 1.5 });
   }
 
   // ---- Hay Bale ----
   private drawHayBale(g: Graphics, b: GTABuilding): void {
-    g.ellipse(b.x + b.w / 2, b.y + b.h / 2, b.w / 2, b.h / 2).fill({ color: 0xCCBB55 });
-    g.ellipse(b.x + b.w / 2, b.y + b.h / 2, b.w / 2, b.h / 2).stroke({ color: 0xAA9944, width: 1 });
-    // Straw texture
-    g.moveTo(b.x + 3, b.y + b.h / 2).lineTo(b.x + b.w - 3, b.y + b.h / 2).stroke({ color: 0xBBAA44, width: 1 });
+    const cx = b.x + b.w / 2, cy = b.y + b.h / 2;
+    // Shadow
+    g.ellipse(cx + 1, cy + 2, b.w / 2 + 1, b.h / 2 - 1).fill({ color: 0x000000, alpha: 0.15 });
+    // Main bale body
+    g.ellipse(cx, cy, b.w / 2, b.h / 2).fill({ color: 0xCCBB55 });
+    // Shading — darker bottom half
+    g.ellipse(cx, cy + b.h * 0.15, b.w / 2 - 1, b.h / 2 - 2).fill({ color: 0xBBAA44, alpha: 0.4 });
+    // Highlight — lighter top
+    g.ellipse(cx - b.w * 0.1, cy - b.h * 0.15, b.w / 3, b.h / 4).fill({ color: 0xDDCC66, alpha: 0.3 });
+    g.ellipse(cx, cy, b.w / 2, b.h / 2).stroke({ color: 0xAA9944, width: 1 });
+    // Binding straps (2 horizontal bands)
+    g.moveTo(b.x + 2, cy - b.h * 0.15).lineTo(b.x + b.w - 2, cy - b.h * 0.15).stroke({ color: 0x886633, width: 1.5 });
+    g.moveTo(b.x + 2, cy + b.h * 0.15).lineTo(b.x + b.w - 2, cy + b.h * 0.15).stroke({ color: 0x886633, width: 1.5 });
+    // Straw texture lines (multiple wispy lines)
+    for (let s = 0; s < 5; s++) {
+      const sy = cy - b.h * 0.3 + s * b.h * 0.15;
+      const sx = b.x + 3 + s * 2;
+      g.moveTo(sx, sy).lineTo(sx + b.w * 0.4, sy + (s % 2 === 0 ? 1 : -1)).stroke({ color: 0xBBAA44, width: 0.5, alpha: 0.6 });
+    }
+    // Loose straw strands poking out
+    g.moveTo(b.x + b.w - 1, cy - 2).lineTo(b.x + b.w + 4, cy - 4).stroke({ color: 0xCCBB55, width: 0.8 });
+    g.moveTo(b.x + b.w - 1, cy + 1).lineTo(b.x + b.w + 3, cy + 3).stroke({ color: 0xCCBB55, width: 0.8 });
+    g.moveTo(b.x + 1, cy).lineTo(b.x - 3, cy - 2).stroke({ color: 0xCCBB55, width: 0.8 });
   }
 
   // ---- Farm Field ----
   private drawFarmField(g: Graphics, b: GTABuilding): void {
+    // Tilled soil base
     g.rect(b.x, b.y, b.w, b.h).fill({ color: 0x8B7355, alpha: 0.4 });
+    g.rect(b.x, b.y, b.w, b.h).stroke({ color: 0x6B5335, width: 0.5, alpha: 0.3 });
     const rowH = b.h / 8;
     const colors = [0x6B8E23, 0x7B9C33];
     for (let r = 0; r < 8; r++) {
+      // Soil furrow (dark line)
+      g.rect(b.x + 2, b.y + r * rowH, b.w - 4, 1).fill({ color: 0x5A4A30, alpha: 0.4 });
+      // Crop row
       g.rect(b.x + 3, b.y + r * rowH + 2, b.w - 6, rowH - 3).fill({ color: colors[r % 2], alpha: 0.6 });
+      // Individual crop tufts along the row
+      const tufts = Math.floor(b.w / 8);
+      for (let t = 0; t < tufts; t++) {
+        const tx = b.x + 5 + t * (b.w - 10) / tufts;
+        const ty = b.y + r * rowH + rowH * 0.4;
+        g.circle(tx, ty, 1.5 + (t + r) % 2).fill({ color: colors[(r + t) % 2], alpha: 0.4 });
+      }
     }
+    // Fence posts on two sides
+    for (let f = 0; f < 3; f++) {
+      const fy = b.y + f * b.h / 2;
+      g.rect(b.x - 1, fy, 1.5, 4).fill({ color: 0x6B4226, alpha: 0.5 });
+      g.rect(b.x + b.w - 0.5, fy, 1.5, 4).fill({ color: 0x6B4226, alpha: 0.5 });
+    }
+    // Fence rail
+    g.moveTo(b.x - 0.5, b.y + 2).lineTo(b.x - 0.5, b.y + b.h - 2).stroke({ color: 0x6B4226, width: 0.5, alpha: 0.4 });
   }
 
   // ---- Farmhouse ----
   private drawFarmhouse(g: Graphics, b: GTABuilding): void {
+    // Shadow
+    g.rect(b.x + 2, b.y + 2, b.w, b.h).fill({ color: 0x000000, alpha: 0.12 });
+    // Walls
     g.rect(b.x, b.y, b.w, b.h).fill({ color: 0x8B6914 });
-    g.poly([b.x - 3, b.y, b.x + b.w / 2, b.y - 12, b.x + b.w + 3, b.y]).fill({ color: 0xA08050 });
-    g.rect(b.x + b.w / 2 - 5, b.y + b.h - 12, 10, 12).fill({ color: 0x4A2810 });
+    g.rect(b.x, b.y, b.w, b.h).stroke({ color: 0x7A5810, width: 0.8 });
+    // Wall planks (horizontal lines)
+    for (let p = 1; p < 4; p++) {
+      g.moveTo(b.x, b.y + p * b.h / 4).lineTo(b.x + b.w, b.y + p * b.h / 4).stroke({ color: 0x7A5810, width: 0.5, alpha: 0.4 });
+    }
+    // Roof with overhang
+    g.poly([b.x - 4, b.y, b.x + b.w / 2, b.y - 14, b.x + b.w + 4, b.y]).fill({ color: 0xA08050 });
+    g.poly([b.x - 4, b.y, b.x + b.w / 2, b.y - 14, b.x + b.w + 4, b.y]).stroke({ color: 0x8A7040, width: 0.5 });
+    // Thatch lines on roof
+    g.moveTo(b.x + 2, b.y - 3).lineTo(b.x + b.w / 2, b.y - 11).stroke({ color: 0x907040, width: 0.5, alpha: 0.5 });
+    g.moveTo(b.x + b.w - 2, b.y - 3).lineTo(b.x + b.w / 2, b.y - 11).stroke({ color: 0x907040, width: 0.5, alpha: 0.5 });
+    // Ridge line
+    g.moveTo(b.x + b.w / 2 - 3, b.y - 13).lineTo(b.x + b.w / 2 + 3, b.y - 13).stroke({ color: 0x906840, width: 1 });
+    // Door
+    g.rect(b.x + b.w / 2 - 5, b.y + b.h - 13, 10, 13).fill({ color: 0x4A2810 });
+    g.rect(b.x + b.w / 2 - 5, b.y + b.h - 13, 10, 13).stroke({ color: 0x3A1E0A, width: 0.5 });
+    // Door handle
+    g.circle(b.x + b.w / 2 + 3, b.y + b.h - 7, 1).fill({ color: 0xAA8844 });
+    // Door plank line
+    g.moveTo(b.x + b.w / 2, b.y + b.h - 12).lineTo(b.x + b.w / 2, b.y + b.h).stroke({ color: 0x3A1E0A, width: 0.3 });
+    // Window
+    g.rect(b.x + 3, b.y + 3, 6, 5).fill({ color: 0x334455 });
+    g.rect(b.x + 3, b.y + 3, 6, 5).stroke({ color: 0x6B4226, width: 0.8 });
+    // Window cross-bar
+    g.moveTo(b.x + 6, b.y + 3).lineTo(b.x + 6, b.y + 8).stroke({ color: 0x6B4226, width: 0.5 });
+    g.moveTo(b.x + 3, b.y + 5.5).lineTo(b.x + 9, b.y + 5.5).stroke({ color: 0x6B4226, width: 0.5 });
+    // Chimney (if wide enough)
+    if (b.w > 20) {
+      g.rect(b.x + b.w - 8, b.y - 12, 4, 8).fill({ color: 0x777770 });
+      g.rect(b.x + b.w - 8, b.y - 12, 4, 8).stroke({ color: 0x666660, width: 0.5 });
+    }
   }
 
   // ---- Mill ----
   private drawMill(g: Graphics, b: GTABuilding): void {
+    // Shadow
+    g.rect(b.x + 2, b.y + 2, b.w, b.h).fill({ color: 0x000000, alpha: 0.12 });
+    // Stone base
     g.rect(b.x, b.y, b.w, b.h).fill({ color: 0x9A8060 });
-    g.poly([b.x - 3, b.y, b.x + b.w / 2, b.y - 18, b.x + b.w + 3, b.y]).fill({ color: 0x705030 });
-    const cx = b.x + b.w / 2, cy = b.y - 10;
-    g.moveTo(cx, cy).lineTo(cx - 25, cy - 25).stroke({ color: 0x5C3A1E, width: 2 });
-    g.moveTo(cx, cy).lineTo(cx + 25, cy - 25).stroke({ color: 0x5C3A1E, width: 2 });
-    g.moveTo(cx, cy).lineTo(cx - 25, cy + 25).stroke({ color: 0x5C3A1E, width: 2 });
-    g.moveTo(cx, cy).lineTo(cx + 25, cy + 25).stroke({ color: 0x5C3A1E, width: 2 });
+    g.rect(b.x, b.y, b.w, b.h).stroke({ color: 0x7A6040, width: 0.8 });
+    // Stone texture lines
+    for (let p = 1; p < 3; p++) {
+      g.moveTo(b.x, b.y + p * b.h / 3).lineTo(b.x + b.w, b.y + p * b.h / 3).stroke({ color: 0x8A7050, width: 0.5, alpha: 0.4 });
+    }
+    // Roof
+    g.poly([b.x - 4, b.y, b.x + b.w / 2, b.y - 20, b.x + b.w + 4, b.y]).fill({ color: 0x705030 });
+    g.poly([b.x - 4, b.y, b.x + b.w / 2, b.y - 20, b.x + b.w + 4, b.y]).stroke({ color: 0x604020, width: 0.5 });
+    // Thatch lines
+    g.moveTo(b.x + 3, b.y - 4).lineTo(b.x + b.w / 2, b.y - 17).stroke({ color: 0x806040, width: 0.5, alpha: 0.4 });
+    g.moveTo(b.x + b.w - 3, b.y - 4).lineTo(b.x + b.w / 2, b.y - 17).stroke({ color: 0x806040, width: 0.5, alpha: 0.4 });
+    // Windmill hub
+    const cx = b.x + b.w / 2, cy = b.y - 12;
+    g.circle(cx, cy, 3).fill({ color: 0x5C3A1E });
+    g.circle(cx, cy, 3).stroke({ color: 0x4A2A10, width: 1 });
+    // Windmill blades (4) with sail panels
+    for (let bl = 0; bl < 4; bl++) {
+      const ba = (bl / 4) * Math.PI * 2;
+      const bx2 = cx + Math.cos(ba) * 24;
+      const by2 = cy + Math.sin(ba) * 24;
+      // Main arm
+      g.moveTo(cx, cy).lineTo(bx2, by2).stroke({ color: 0x5C3A1E, width: 2.5 });
+      // Sail panel (offset to one side of the arm)
+      const perpX = Math.cos(ba + Math.PI / 2) * 5;
+      const perpY = Math.sin(ba + Math.PI / 2) * 5;
+      const midX = cx + Math.cos(ba) * 12;
+      const midY = cy + Math.sin(ba) * 12;
+      g.poly([
+        midX, midY,
+        midX + perpX, midY + perpY,
+        bx2 + perpX * 0.6, by2 + perpY * 0.6,
+        bx2, by2,
+      ]).fill({ color: 0xCCBBAA, alpha: 0.5 });
+      g.poly([
+        midX, midY,
+        midX + perpX, midY + perpY,
+        bx2 + perpX * 0.6, by2 + perpY * 0.6,
+        bx2, by2,
+      ]).stroke({ color: 0x5C3A1E, width: 0.5, alpha: 0.4 });
+    }
+    // Door
+    g.rect(b.x + b.w / 2 - 4, b.y + b.h - 10, 8, 10).fill({ color: 0x4A2810 });
+    g.rect(b.x + b.w / 2 - 4, b.y + b.h - 10, 8, 10).stroke({ color: 0x3A1E0A, width: 0.5 });
+    // Window
+    g.rect(b.x + 3, b.y + 3, 5, 4).fill({ color: 0x334455 });
+    g.rect(b.x + 3, b.y + 3, 5, 4).stroke({ color: 0x6B4226, width: 0.5 });
   }
 
   // ===================== UPDATE =====================

@@ -312,6 +312,12 @@ const GAME_MODES: GameModeEntry[] = [
     desc: "3D Settlers II — roads, carriers & production chains",
     skipSetup: true,
   },
+  {
+    mode: GameMode.CAMELOT_CRAFT,
+    label: "CAMELOT CRAFT",
+    desc: "Minecraft-style voxel sandbox — build Camelot, seek the Grail",
+    skipSetup: true,
+  },
 ];
 
 // ---------------------------------------------------------------------------

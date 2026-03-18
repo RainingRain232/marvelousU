@@ -577,7 +577,7 @@ export class DragoonHUD {
   private _waveText = new Text({ text: "Wave 1", style: STYLE_WAVE });
   private _comboText = new Text({ text: "", style: STYLE_COMBO });
   private _skillBg = new Graphics();
-  private _skillTexts: { name: Text; key: Text; cooldown: Graphics }[] = [];
+  private _skillTexts: { name: Text; key: Text; cooldown: Graphics; manaCost: Text }[] = [];
   private _bossHpBg = new Graphics();
   private _bossHpFill = new Graphics();
   private _bossNameText = new Text({ text: "", style: STYLE_WAVE });
@@ -647,6 +647,7 @@ export class DragoonHUD {
   }) });
 
   private _lastSkillIds: string = "";
+  private _lastDisplayHp: number = 1;
 
   build(sw: number, sh: number): void {
     this.container.removeChildren();
@@ -766,6 +767,7 @@ export class DragoonHUD {
       st.name.destroy();
       st.key.destroy();
       st.cooldown.destroy();
+      st.manaCost.destroy();
     }
     this._skillTexts = [];
 
@@ -790,11 +792,19 @@ export class DragoonHUD {
 
       const cooldown = new Graphics();
 
+      // Mana cost text below the skill name
+      const manaCost = new Text({ text: cfg.manaCost > 0 ? `${cfg.manaCost}` : "", style: new TextStyle({
+        fontFamily: "Georgia, serif", fontSize: 8, fill: 0x6699ff,
+      }) });
+      manaCost.anchor.set(0.5, 0);
+      manaCost.position.set(x + slotW / 2, y + slotH + 13);
+
       this.container.addChild(name);
       this.container.addChild(key);
       this.container.addChild(cooldown);
+      this.container.addChild(manaCost);
 
-      this._skillTexts.push({ name, key, cooldown });
+      this._skillTexts.push({ name, key, cooldown, manaCost });
     }
   }
 
@@ -837,7 +847,23 @@ export class DragoonHUD {
       // Card background
       const card = new Graphics();
       card.roundRect(x, cardY, cardW, cardH, 8).fill({ color: 0x0a0a1a, alpha: 0.9 });
+      // Inner vignette/gradient — darker at edges
+      card.roundRect(x + 1, cardY + 1, cardW - 2, 20, 6).fill({ color: 0x111130, alpha: 0.3 });
+      card.roundRect(x + 1, cardY + cardH - 21, cardW - 2, 20, 6).fill({ color: 0x000008, alpha: 0.4 });
+      card.roundRect(x + 1, cardY + 1, 12, cardH - 2, 6).fill({ color: 0x000008, alpha: 0.2 });
+      card.roundRect(x + cardW - 13, cardY + 1, 12, cardH - 2, 6).fill({ color: 0x000008, alpha: 0.2 });
+      // Pulsing border glow (time-based, staggered per card index)
+      const cardGlowAlpha = 0.15 + Math.sin(Date.now() * 0.003 + i * 1.5) * 0.1;
+      card.roundRect(x - 2, cardY - 2, cardW + 4, cardH + 4, 10).stroke({ color: def.color, width: 2, alpha: cardGlowAlpha });
       card.roundRect(x, cardY, cardW, cardH, 8).stroke({ color: def.color, width: 2 });
+      // Corner ornaments — small diamonds at each corner
+      const cornerOff = 12;
+      for (const [cox, coy] of [[x + cornerOff, cardY + cornerOff], [x + cardW - cornerOff, cardY + cornerOff],
+        [x + cornerOff, cardY + cardH - cornerOff], [x + cardW - cornerOff, cardY + cardH - cornerOff]] as [number, number][]) {
+        const cs = 3;
+        card.moveTo(cox, coy - cs).lineTo(cox + cs, coy).lineTo(cox, coy + cs).lineTo(cox - cs, coy).closePath()
+          .fill({ color: def.color, alpha: 0.35 });
+      }
       this._classSelectContainer.addChild(card);
 
       // Class color orb
@@ -858,6 +884,16 @@ export class DragoonHUD {
       nameText.anchor.set(0.5, 0);
       nameText.position.set(x + cardW / 2, cardY + 82);
       this._classSelectContainer.addChild(nameText);
+
+      // Decorative divider line between name and description
+      const divG = new Graphics();
+      const divCx = x + cardW / 2;
+      const divY2 = cardY + 106;
+      divG.moveTo(divCx - 40, divY2).lineTo(divCx + 40, divY2).stroke({ color: def.color, width: 0.8, alpha: 0.4 });
+      // Small diamond in center of divider
+      divG.moveTo(divCx, divY2 - 2.5).lineTo(divCx + 2.5, divY2).lineTo(divCx, divY2 + 2.5).lineTo(divCx - 2.5, divY2).closePath()
+        .fill({ color: def.color, alpha: 0.5 });
+      this._classSelectContainer.addChild(divG);
 
       // Description
       const descText = new Text({ text: def.description, style: STYLE_CLASS_DESC });
@@ -1150,8 +1186,26 @@ export class DragoonHUD {
     this._hpBarBg.roundRect(hpX, hpY, hpW, hpH, 4).fill({ color: 0x220000 });
     this._hpBarBg.roundRect(hpX, hpY, hpW, hpH, 4).stroke({ color: 0x884444, width: 1.5 });
     this._hpBarBg.roundRect(hpX + 1, hpY + 1, hpW - 2, 3, 2).fill({ color: 0x000000, alpha: 0.2 });
+    // Tick marks at 25%, 50%, 75%
+    for (const pctMark of [0.25, 0.5, 0.75]) {
+      const tickX = hpX + hpW * pctMark;
+      this._hpBarBg.rect(tickX - 0.5, hpY + 1, 1, hpH - 2).fill({ color: 0x000000, alpha: 0.4 });
+      this._hpBarBg.rect(tickX - 0.5, hpY, 1, 3).fill({ color: 0xaa6666, alpha: 0.6 });
+      this._hpBarBg.rect(tickX - 0.5, hpY + hpH - 3, 1, 3).fill({ color: 0xaa6666, alpha: 0.6 });
+    }
     this._hpBarFill.clear();
     const hpPct = p.hp / p.maxHp;
+    // Ghost bar trailing effect — lerp _lastDisplayHp toward current
+    const lerpSpeed = 1.5 * dt;
+    if (this._lastDisplayHp > hpPct) {
+      this._lastDisplayHp = Math.max(hpPct, this._lastDisplayHp - lerpSpeed);
+    } else {
+      this._lastDisplayHp = hpPct;
+    }
+    const ghostW = (hpW - 2) * this._lastDisplayHp;
+    if (this._lastDisplayHp > hpPct + 0.002) {
+      this._hpBarFill.roundRect(hpX + 1, hpY + 1, ghostW, hpH - 2, 3).fill({ color: 0xcc4444, alpha: 0.35 });
+    }
     const hpColor = hpPct > 0.5 ? 0x44cc44 : hpPct > 0.25 ? 0xccaa22 : 0xcc2222;
     const hpColorBright = hpPct > 0.5 ? 0x66ee66 : hpPct > 0.25 ? 0xeedd44 : 0xee4444;
     const fillW = (hpW - 2) * hpPct;
@@ -1167,9 +1221,19 @@ export class DragoonHUD {
       this._hpBarFill.roundRect(hpX - 2, hpY - 2, hpW + 4, hpH + 4, 6).fill({ color: 0xff0000, alpha: pulseAlpha });
       this._hpBarFill.roundRect(hpX, hpY, hpW, hpH, 4).stroke({ color: 0xff4444, width: 1, alpha: pulseAlpha * 2 });
     }
-    this._hpBarBg.circle(hpX - 8, hpY + hpH / 2 - 1, 3).fill({ color: 0xff4444, alpha: 0.7 });
-    this._hpBarBg.circle(hpX - 5, hpY + hpH / 2 - 1, 3).fill({ color: 0xff4444, alpha: 0.7 });
-    this._hpBarBg.moveTo(hpX - 10, hpY + hpH / 2).lineTo(hpX - 6.5, hpY + hpH / 2 + 4).lineTo(hpX - 3, hpY + hpH / 2).fill({ color: 0xff4444, alpha: 0.7 });
+    // Shield emblem to the left of HP bar (medieval shield outline)
+    const shX = hpX - 7, shY = hpY + hpH / 2;
+    this._hpBarBg.moveTo(shX, shY - 6).lineTo(shX + 5, shY - 7).lineTo(shX + 7, shY - 4)
+      .lineTo(shX + 5, shY + 3).lineTo(shX, shY + 6).lineTo(shX - 5, shY + 3)
+      .lineTo(shX - 7, shY - 4).lineTo(shX - 5, shY - 7).closePath()
+      .fill({ color: 0xcc3333, alpha: 0.7 });
+    this._hpBarBg.moveTo(shX, shY - 6).lineTo(shX + 5, shY - 7).lineTo(shX + 7, shY - 4)
+      .lineTo(shX + 5, shY + 3).lineTo(shX, shY + 6).lineTo(shX - 5, shY + 3)
+      .lineTo(shX - 7, shY - 4).lineTo(shX - 5, shY - 7).closePath()
+      .stroke({ color: 0xff6666, width: 1, alpha: 0.8 });
+    // Shield cross detail
+    this._hpBarBg.moveTo(shX, shY - 4).lineTo(shX, shY + 3).stroke({ color: 0xffffff, width: 1, alpha: 0.3 });
+    this._hpBarBg.moveTo(shX - 3, shY - 1).lineTo(shX + 3, shY - 1).stroke({ color: 0xffffff, width: 1, alpha: 0.3 });
 
     // Mana bar
     const manaX = 20, manaY = hpY + hpH + 6, manaW = 180, manaH = 12;
@@ -1178,13 +1242,46 @@ export class DragoonHUD {
     this._manaBarBg.roundRect(manaX, manaY, manaW, manaH, 3).fill({ color: 0x000022 });
     this._manaBarBg.roundRect(manaX, manaY, manaW, manaH, 3).stroke({ color: 0x4444aa, width: 1.5 });
     this._manaBarBg.roundRect(manaX + 1, manaY + 1, manaW - 2, 2, 1).fill({ color: 0x000000, alpha: 0.2 });
+    // Tick marks at 25%, 50%, 75%
+    for (const pctMark of [0.25, 0.5, 0.75]) {
+      const tickMX = manaX + manaW * pctMark;
+      this._manaBarBg.rect(tickMX - 0.5, manaY + 1, 1, manaH - 2).fill({ color: 0x000000, alpha: 0.4 });
+      this._manaBarBg.rect(tickMX - 0.5, manaY, 1, 2).fill({ color: 0x6666cc, alpha: 0.6 });
+      this._manaBarBg.rect(tickMX - 0.5, manaY + manaH - 2, 1, 2).fill({ color: 0x6666cc, alpha: 0.6 });
+    }
     this._manaBarFill.clear();
     const manaPct = p.mana / p.maxMana;
     const manaFillW = (manaW - 2) * manaPct;
     this._manaBarFill.roundRect(manaX + 1, manaY + 1, manaFillW, manaH - 2, 2).fill({ color: 0x4488ff });
     this._manaBarFill.roundRect(manaX + 1, manaY + 1, manaFillW, (manaH - 2) * 0.4, 2).fill({ color: 0x66aaff, alpha: 0.4 });
     this._manaBarFill.roundRect(manaX + 2, manaY + 2, manaFillW - 2, 1.5, 1).fill({ color: 0xffffff, alpha: 0.12 });
-    this._manaBarBg.moveTo(manaX - 6.5, manaY + manaH / 2).lineTo(manaX - 3, manaY + 1).lineTo(manaX + 0.5, manaY + manaH / 2).lineTo(manaX - 3, manaY + manaH - 1).fill({ color: 0x4488ff, alpha: 0.7 });
+    // Inner glow when mana > 80%
+    if (manaPct > 0.8) {
+      const manaGlowAlpha = 0.08 + Math.sin(state.gameTime * 3) * 0.04;
+      this._manaBarFill.roundRect(manaX + 2, manaY + 2, manaFillW - 2, manaH - 4, 2).fill({ color: 0x88ccff, alpha: manaGlowAlpha });
+      this._manaBarFill.roundRect(manaX, manaY, manaW, manaH, 3).stroke({ color: 0x66aaff, width: 1, alpha: manaGlowAlpha * 1.5 });
+    }
+    // Crystal/gem icon to the left of mana bar (faceted gem shape)
+    const gemX = manaX - 4, gemY = manaY + manaH / 2;
+    // Gem top facet
+    this._manaBarBg.moveTo(gemX, gemY - 5).lineTo(gemX + 3, gemY - 3).lineTo(gemX + 2, gemY - 1)
+      .lineTo(gemX - 2, gemY - 1).lineTo(gemX - 3, gemY - 3).closePath()
+      .fill({ color: 0x66aaff, alpha: 0.8 });
+    // Gem bottom facet
+    this._manaBarBg.moveTo(gemX - 3, gemY - 1).lineTo(gemX + 3, gemY - 1).lineTo(gemX, gemY + 5).closePath()
+      .fill({ color: 0x3366cc, alpha: 0.8 });
+    // Gem left/right bottom facets
+    this._manaBarBg.moveTo(gemX - 3, gemY - 1).lineTo(gemX - 2, gemY + 1).lineTo(gemX, gemY + 5).closePath()
+      .fill({ color: 0x2244aa, alpha: 0.6 });
+    this._manaBarBg.moveTo(gemX + 3, gemY - 1).lineTo(gemX + 2, gemY + 1).lineTo(gemX, gemY + 5).closePath()
+      .fill({ color: 0x5588dd, alpha: 0.6 });
+    // Gem outline
+    this._manaBarBg.moveTo(gemX, gemY - 5).lineTo(gemX + 3, gemY - 3).lineTo(gemX + 3, gemY - 1)
+      .lineTo(gemX, gemY + 5).lineTo(gemX - 3, gemY - 1).lineTo(gemX - 3, gemY - 3).closePath()
+      .stroke({ color: 0x88ccff, width: 0.8, alpha: 0.7 });
+    // Gem highlight
+    this._manaBarBg.moveTo(gemX - 1, gemY - 3).lineTo(gemX, gemY - 4).lineTo(gemX + 1, gemY - 3)
+      .stroke({ color: 0xffffff, width: 0.8, alpha: 0.5 });
 
     // XP bar (below mana)
     const xpX = 20, xpY = manaY + manaH + 5, xpW = 180, xpH = 6;
@@ -1263,8 +1360,14 @@ export class DragoonHUD {
     const barY = sh - slotH - 15;
 
     this._skillBg.clear();
-    this._skillBg.roundRect(startX - 12, barY - 7, totalW + 24, slotH + 29, 8).fill({ color: 0x050510, alpha: 0.8 });
-    this._skillBg.roundRect(startX - 12, barY - 7, totalW + 24, slotH + 29, 8).stroke({ color: 0x334466, width: 1.5 });
+    // Skill bar background with gradient overlay (lighter top, darker bottom)
+    const sbX = startX - 12, sbY = barY - 7, sbW = totalW + 24, sbH = slotH + 29;
+    this._skillBg.roundRect(sbX, sbY, sbW, sbH, 8).fill({ color: 0x050510, alpha: 0.8 });
+    // Subtle gradient: lighter strip at top
+    this._skillBg.roundRect(sbX + 2, sbY + 1, sbW - 4, sbH * 0.35, 6).fill({ color: 0x1a2040, alpha: 0.3 });
+    // Darker strip at bottom
+    this._skillBg.roundRect(sbX + 2, sbY + sbH * 0.65, sbW - 4, sbH * 0.33, 6).fill({ color: 0x000005, alpha: 0.3 });
+    this._skillBg.roundRect(sbX, sbY, sbW, sbH, 8).stroke({ color: 0x334466, width: 1.5 });
     this._skillBg.roundRect(startX - 10, barY - 6, totalW + 20, 1, 4).fill({ color: 0x556688, alpha: 0.3 });
 
     for (let i = 0; i < skills.length; i++) {
@@ -1281,7 +1384,17 @@ export class DragoonHUD {
       this._skillBg.roundRect(x - 1, barY - 1, slotW + 2, slotH + 2, 5).fill({ color: 0x000000, alpha: 0.3 });
       this._skillBg.roundRect(x, barY, slotW, slotH, 4).fill({ color: slotColor });
       this._skillBg.roundRect(x + 1, barY + 1, slotW - 2, 2, 2).fill({ color: 0xffffff, alpha: 0.04 });
+      // Beveled inner shadow at bottom of slot
+      this._skillBg.roundRect(x + 2, barY + slotH - 8, slotW - 4, 6, 2).fill({ color: 0x000000, alpha: 0.25 });
+      this._skillBg.roundRect(x + 3, barY + slotH - 6, slotW - 6, 3, 1).fill({ color: 0x000000, alpha: 0.15 });
       this._skillBg.roundRect(x, barY, slotW, slotH, 4).stroke({ color: borderColor, width: skillState.active ? 2.5 : 1 });
+      // Mana cost decorative diamond below slot (next to mana cost text)
+      if (cfg.manaCost > 0) {
+        const mcX = x + slotW / 2 - 12;
+        const mcY = barY + slotH + 17;
+        this._skillBg.moveTo(mcX, mcY - 2).lineTo(mcX + 2, mcY).lineTo(mcX, mcY + 2).lineTo(mcX - 2, mcY).closePath()
+          .fill({ color: 0x4488ff, alpha: 0.5 });
+      }
 
       const cd = this._skillTexts[i]?.cooldown;
       if (cd) {
@@ -1306,6 +1419,17 @@ export class DragoonHUD {
       if (hasEnough && !onCooldown && !skillState.active) {
         const readyGlow = 0.03 + Math.sin(state.gameTime * 2 + i * 1.5) * 0.015;
         this._skillBg.roundRect(x, barY, slotW, slotH, 4).fill({ color: cfg.color, alpha: readyGlow });
+        // Animated "ready" sparkle — rotating diamond at top-right corner
+        const sparkleAngle = state.gameTime * 3 + i * 1.2;
+        const sparkleR = 3;
+        const spkX = x + slotW - 6, spkY = barY + 6;
+        const sparkleAlpha = 0.5 + Math.sin(state.gameTime * 4 + i) * 0.3;
+        this._skillBg.moveTo(spkX + Math.cos(sparkleAngle) * sparkleR, spkY + Math.sin(sparkleAngle) * sparkleR)
+          .lineTo(spkX + Math.cos(sparkleAngle + Math.PI / 2) * sparkleR * 0.5, spkY + Math.sin(sparkleAngle + Math.PI / 2) * sparkleR * 0.5)
+          .lineTo(spkX + Math.cos(sparkleAngle + Math.PI) * sparkleR, spkY + Math.sin(sparkleAngle + Math.PI) * sparkleR)
+          .lineTo(spkX + Math.cos(sparkleAngle + Math.PI * 1.5) * sparkleR * 0.5, spkY + Math.sin(sparkleAngle + Math.PI * 1.5) * sparkleR * 0.5)
+          .closePath().fill({ color: 0xffffff, alpha: sparkleAlpha * 0.6 });
+        this._skillBg.circle(spkX, spkY, 1.2).fill({ color: 0xffffff, alpha: sparkleAlpha * 0.4 });
       }
     }
 
@@ -1370,22 +1494,46 @@ export class DragoonHUD {
       this._bossHpBg.roundRect(bx, by, bw, bh, 4).fill({ color: 0x220000 });
       this._bossHpBg.roundRect(bx + 1, by + 1, bw - 2, 3, 2).fill({ color: 0x000000, alpha: 0.3 });
       this._bossHpBg.roundRect(bx, by, bw, bh, 4).stroke({ color: 0xaa2222, width: 1.5 });
+      // Pulsing red border — faster as boss HP gets lower
+      const bossHpPct = boss.hp / boss.maxHp;
+      const bossPulseSpeed = 3 + (1 - bossHpPct) * 10;
+      const bossBorderAlpha = 0.25 + Math.sin(state.gameTime * bossPulseSpeed) * 0.2;
+      this._bossHpBg.roundRect(bx - 2, by - 2, bw + 4, bh + 4, 5).stroke({ color: 0xff2222, width: 1.5, alpha: bossBorderAlpha });
       this._bossHpBg.roundRect(bx - 1, by - 1, bw + 2, bh + 2, 5).stroke({ color: 0x661111, width: 0.5, alpha: 0.5 });
-      for (const cx of [bx - 2, bx + bw + 2]) {
-        this._bossHpBg.moveTo(cx, by + bh / 2).lineTo(cx + 3, by + bh / 2 - 3).lineTo(cx + 6, by + bh / 2).lineTo(cx + 3, by + bh / 2 + 3).fill({ color: 0xcc3333, alpha: 0.5 });
+      // Decorative skull/horn motifs at ends of bar frame
+      for (const side of [-1, 1]) {
+        const endX = side < 0 ? bx - 4 : bx + bw + 4;
+        const ecy = by + bh / 2;
+        // Horn curving outward
+        this._bossHpBg.moveTo(endX, ecy - 5).quadraticCurveTo(endX + side * 8, ecy - 8, endX + side * 6, ecy - 2)
+          .stroke({ color: 0xcc3333, width: 1.5, alpha: 0.7 });
+        this._bossHpBg.moveTo(endX, ecy + 5).quadraticCurveTo(endX + side * 8, ecy + 8, endX + side * 6, ecy + 2)
+          .stroke({ color: 0xcc3333, width: 1.5, alpha: 0.7 });
+        // Small skull circle at the base
+        this._bossHpBg.circle(endX + side * 1, ecy, 3).fill({ color: 0x441111, alpha: 0.8 });
+        this._bossHpBg.circle(endX + side * 1, ecy, 3).stroke({ color: 0xcc3333, width: 0.8, alpha: 0.6 });
+        // Eye dots
+        this._bossHpBg.circle(endX + side * 0, ecy - 1, 0.7).fill({ color: 0xff4444, alpha: 0.7 });
+        this._bossHpBg.circle(endX + side * 2, ecy - 1, 0.7).fill({ color: 0xff4444, alpha: 0.7 });
       }
 
       this._bossHpFill.clear();
-      const bossHpPct = boss.hp / boss.maxHp;
       const bossFillW = (bw - 2) * bossHpPct;
       this._bossHpFill.roundRect(bx + 1, by + 1, bossFillW, bh - 2, 3).fill({ color: 0xcc1111 });
       this._bossHpFill.roundRect(bx + 1, by + 1, bossFillW, (bh - 2) * 0.4, 3).fill({ color: 0xff4444, alpha: 0.4 });
       this._bossHpFill.roundRect(bx + 2, by + 2, bossFillW - 2, 2, 1).fill({ color: 0xffffff, alpha: 0.12 });
       const bossGlow = 0.06 + Math.sin(state.gameTime * 4) * 0.03;
       this._bossHpFill.roundRect(bx - 1, by - 2, bw + 2, bh + 4, 5).fill({ color: 0xff0000, alpha: bossGlow });
-      for (let seg = 1; seg < 4; seg++) {
-        const segX = bx + bw * seg * 0.25;
-        this._bossHpBg.rect(segX - 0.5, by + 1, 1, bh - 2).fill({ color: 0x000000, alpha: 0.3 });
+      // Phase markers at 75%, 50%, 25% — diamond markers on the bar
+      for (const phasePct of [0.75, 0.5, 0.25]) {
+        const phaseX = bx + bw * phasePct;
+        this._bossHpBg.rect(phaseX - 0.5, by + 1, 1, bh - 2).fill({ color: 0x000000, alpha: 0.3 });
+        // Diamond phase marker
+        const dSize = 3;
+        this._bossHpBg.moveTo(phaseX, by - dSize).lineTo(phaseX + dSize, by).lineTo(phaseX, by + dSize).lineTo(phaseX - dSize, by).closePath()
+          .fill({ color: 0xffcc00, alpha: 0.6 });
+        this._bossHpBg.moveTo(phaseX, by - dSize).lineTo(phaseX + dSize, by).lineTo(phaseX, by + dSize).lineTo(phaseX - dSize, by).closePath()
+          .stroke({ color: 0xffdd44, width: 0.5, alpha: 0.8 });
       }
 
       this._bossNameText.position.set(sw / 2, by - 6);
@@ -1604,6 +1752,7 @@ export class DragoonHUD {
       st.name.destroy();
       st.key.destroy();
       st.cooldown.destroy();
+      st.manaCost.destroy();
     }
     this._skillTexts = [];
     this._lastSkillIds = "";

@@ -626,7 +626,55 @@ export class GTAInteriorRenderer {
   // ── Generic fallback room ────────────────────────────────────────────────
 
   private drawGenericRoom(g: Graphics, rx: number, ry: number): void {
+    // Stone tile floor with pattern
     this.drawFloor(g, rx, ry, 0x888877);
+    // Floor tile grid
+    const tileSize = 30;
+    for (let ty = ry + WALL_THICK; ty < ry + ROOM_H - WALL_THICK; ty += tileSize) {
+      for (let tx = rx + WALL_THICK; tx < rx + ROOM_W - WALL_THICK; tx += tileSize) {
+        g.rect(tx, ty, tileSize - 1, tileSize - 1).stroke({ color: 0x777766, width: 0.5, alpha: 0.3 });
+      }
+    }
+    // Stone walls
     this.drawWalls(g, rx, ry, 0x666655);
+    this.drawWallTrim(g, rx, ry, 0x555544);
+
+    // Simple wooden table in center
+    const tableX = rx + ROOM_W / 2 - 40, tableY = ry + ROOM_H / 2 - 20;
+    g.rect(tableX, tableY, 80, 40).fill({ color: 0x6B4226 });
+    g.rect(tableX, tableY, 80, 40).stroke({ color: 0x5A3520, width: 1 });
+    // Table planks
+    g.moveTo(tableX, tableY + 13).lineTo(tableX + 80, tableY + 13).stroke({ color: 0x5A3520, width: 0.5, alpha: 0.4 });
+    g.moveTo(tableX, tableY + 27).lineTo(tableX + 80, tableY + 27).stroke({ color: 0x5A3520, width: 0.5, alpha: 0.4 });
+
+    // Wooden stool near table
+    g.rect(rx + ROOM_W / 2 + 50, tableY + 10, 16, 16).fill({ color: 0x5A3A1A });
+    g.rect(rx + ROOM_W / 2 + 50, tableY + 10, 16, 16).stroke({ color: 0x4A2A10, width: 0.5 });
+
+    // Barrel in corner
+    const bx = rx + ROOM_W - WALL_THICK - 40, by = ry + WALL_THICK + 15;
+    g.ellipse(bx, by, 15, 10).fill({ color: 0x5A3A1A });
+    g.ellipse(bx, by, 15, 10).stroke({ color: 0x4A2A10, width: 1 });
+    // Barrel bands
+    g.ellipse(bx, by - 3, 14, 9).stroke({ color: 0x666666, width: 1 });
+    g.ellipse(bx, by + 3, 14, 9).stroke({ color: 0x666666, width: 1 });
+
+    // Torch on wall (left side)
+    const torchX = rx + WALL_THICK + 6, torchY = ry + ROOM_H / 2;
+    g.rect(torchX, torchY, 3, 18).fill({ color: 0x5A3A1A });
+    // Flame
+    g.circle(torchX + 1.5, torchY - 2, 4).fill({ color: 0xFF8833, alpha: 0.6 });
+    g.circle(torchX + 1.5, torchY - 1, 2.5).fill({ color: 0xFFCC44, alpha: 0.4 });
+    // Glow
+    g.circle(torchX + 1.5, torchY, 15).fill({ color: 0xFF8833, alpha: 0.05 });
+
+    // Crate in other corner
+    g.rect(rx + WALL_THICK + 10, ry + ROOM_H - WALL_THICK - 35, 22, 22).fill({ color: 0x8B6914 });
+    g.rect(rx + WALL_THICK + 10, ry + ROOM_H - WALL_THICK - 35, 22, 22).stroke({ color: 0x6B4226, width: 0.8 });
+    g.moveTo(rx + WALL_THICK + 10, ry + ROOM_H - WALL_THICK - 24).lineTo(rx + WALL_THICK + 32, ry + ROOM_H - WALL_THICK - 24).stroke({ color: 0x6B4226, width: 0.5 });
+
+    // Dusty floor marks
+    g.ellipse(rx + ROOM_W * 0.3, ry + ROOM_H * 0.6, 20, 12).fill({ color: 0x777766, alpha: 0.1 });
+    g.ellipse(rx + ROOM_W * 0.65, ry + ROOM_H * 0.4, 15, 10).fill({ color: 0x777766, alpha: 0.08 });
   }
 }
