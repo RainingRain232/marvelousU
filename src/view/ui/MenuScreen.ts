@@ -400,7 +400,7 @@ export class MenuScreen {
   // --- Screen 1: mode select ---
   private _screen1!: Container;
   private _screen1Card!: Container;
-  private _screen1CardW = 380;
+  private _screen1CardW = 820;
   private _screen1CardH = 0; // computed
 
   // --- Screen 2: match setup ---

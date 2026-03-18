@@ -798,6 +798,8 @@ export class EagleFlightRenderer {
 
   private _buildCityWalls(): void {
     const wallMat = new THREE.MeshStandardMaterial({ color: 0xaa9977, roughness: 0.85 });
+    const mortarMat = new THREE.MeshStandardMaterial({ color: 0x887766, roughness: 0.95 });
+    const brickDarkMat = new THREE.MeshStandardMaterial({ color: 0x998866, roughness: 0.9 });
     const wallHeight = 8;
     const wallThick = 2;
     const wallRadius = 85;
@@ -833,6 +835,61 @@ export class EagleFlightRenderer {
       wall.castShadow = true;
       wall.receiveShadow = true;
       this._wallsGroup.add(wall);
+
+      // Horizontal mortar lines (brick coursing) on both faces
+      const brickRows = 6;
+      for (let row = 0; row < brickRows; row++) {
+        const mortarY = 1 + row * (wallHeight / brickRows);
+        for (const face of [-1, 1]) {
+          const mortarLine = new THREE.Mesh(
+            new THREE.BoxGeometry(0.02, 0.06, len + 0.1),
+            mortarMat,
+          );
+          mortarLine.position.set(mx, mortarY, mz);
+          const faceOffset = new THREE.Vector3(face * (wallThick / 2 + 0.01), 0, 0);
+          faceOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), angle);
+          mortarLine.position.add(faceOffset);
+          mortarLine.rotation.y = angle;
+          this._wallsGroup.add(mortarLine);
+        }
+        // Vertical brick joints (staggered per row)
+        const jointCount = Math.floor(len / 2.5);
+        for (let j = 0; j < jointCount; j++) {
+          const jt = (j + (row % 2 === 0 ? 0 : 0.5) + 0.5) / jointCount - 0.5;
+          if (Math.abs(jt) > 0.48) continue;
+          for (const face of [-1, 1]) {
+            const joint = new THREE.Mesh(
+              new THREE.BoxGeometry(0.02, wallHeight / brickRows - 0.06, 0.06),
+              mortarMat,
+            );
+            joint.position.set(mx, mortarY + wallHeight / brickRows / 2, mz);
+            const fo = new THREE.Vector3(face * (wallThick / 2 + 0.01), 0, jt * len);
+            fo.applyAxisAngle(new THREE.Vector3(0, 1, 0), angle);
+            joint.position.add(fo);
+            joint.rotation.y = angle;
+            this._wallsGroup.add(joint);
+          }
+        }
+      }
+
+      // Occasional darker bricks for variation
+      const brickRng = seededRandom(Math.floor(mx * 100 + mz * 10));
+      for (let db = 0; db < 6; db++) {
+        const dbY = 1 + brickRng() * (wallHeight - 1.5);
+        const dbT = (brickRng() - 0.5) * 0.9;
+        for (const face of [-1, 1]) {
+          const darkBrick = new THREE.Mesh(
+            new THREE.BoxGeometry(0.04, 0.8, 1.8),
+            brickDarkMat,
+          );
+          darkBrick.position.set(mx, dbY, mz);
+          const fo = new THREE.Vector3(face * (wallThick / 2 + 0.01), 0, dbT * len);
+          fo.applyAxisAngle(new THREE.Vector3(0, 1, 0), angle);
+          darkBrick.position.add(fo);
+          darkBrick.rotation.y = angle;
+          this._wallsGroup.add(darkBrick);
+        }
+      }
 
       // Crenellations on top
       const crenCount = Math.floor(len / 2);
@@ -879,6 +936,17 @@ export class EagleFlightRenderer {
       tower.position.set(tx, towerHeight / 2, tz);
       tower.castShadow = true;
       this._wallsGroup.add(tower);
+
+      // Brick course rings on wall towers
+      for (let br = 0; br < 7; br++) {
+        const brickRing = new THREE.Mesh(
+          new THREE.TorusGeometry(towerRadius + 0.02 - br * 0.01, 0.04, 4, 20),
+          mortarMat,
+        );
+        brickRing.position.set(tx, 2 + br * 2, tz);
+        brickRing.rotation.x = Math.PI / 2;
+        this._wallsGroup.add(brickRing);
+      }
 
       // Tower parapet with individual merlons
       const parapetRing = new THREE.Mesh(new THREE.CylinderGeometry(towerRadius + 0.3, towerRadius + 0.3, 1, 16), wallMat);
@@ -1005,6 +1073,8 @@ export class EagleFlightRenderer {
     const group = new THREE.Group();
     const roofMat = new THREE.MeshStandardMaterial({ color: 0x553322, roughness: 0.8 });
 
+    const ghMortarMat = new THREE.MeshStandardMaterial({ color: 0x887766, roughness: 0.95 });
+
     // Two tower pillars
     for (const side of [-1, 1]) {
       const pillar = new THREE.Mesh(
@@ -1014,6 +1084,30 @@ export class EagleFlightRenderer {
       pillar.position.set(side * 4, 7, 0);
       pillar.castShadow = true;
       group.add(pillar);
+
+      // Brick mortar lines on gatehouse pillars
+      for (let br = 0; br < 10; br++) {
+        const mortarY = 1 + br * 1.3;
+        if (mortarY > 13) break;
+        // Front and back faces
+        for (const fb of [-1, 1]) {
+          const mLine = new THREE.Mesh(
+            new THREE.BoxGeometry(3.04, 0.05, 0.04),
+            ghMortarMat,
+          );
+          mLine.position.set(side * 4, mortarY, fb * 2.01);
+          group.add(mLine);
+        }
+        // Side faces
+        for (const lr of [-1, 1]) {
+          const mLine = new THREE.Mesh(
+            new THREE.BoxGeometry(0.04, 0.05, 4.04),
+            ghMortarMat,
+          );
+          mLine.position.set(side * 4 + lr * 1.51, mortarY, 0);
+          group.add(mLine);
+        }
+      }
 
       // Tower roof
       const roof = new THREE.Mesh(
@@ -1140,6 +1234,60 @@ export class EagleFlightRenderer {
       }
     }
 
+    // Brick mortar lines on keep (finer detail between course ledges)
+    const keepMortarMat = new THREE.MeshStandardMaterial({ color: 0xaa9988, roughness: 0.95 });
+    const keepBrickDarkMat = new THREE.MeshStandardMaterial({ color: 0xbbaa99, roughness: 0.85 });
+    for (let row = 0; row < 20; row++) {
+      const mortarY = 4 + row * 1.4;
+      if (mortarY > 32) break;
+      for (let face = 0; face < 4; face++) {
+        const faceAngle = (face / 4) * Math.PI * 2;
+        const nx = Math.sin(faceAngle) * 9.08;
+        const nz = Math.cos(faceAngle) * 9.08;
+        const mortarLine = new THREE.Mesh(
+          new THREE.BoxGeometry(face % 2 === 0 ? 18.2 : 0.04, 0.05, face % 2 === 0 ? 0.04 : 18.2),
+          keepMortarMat,
+        );
+        mortarLine.position.set(face % 2 === 0 ? 0 : nx, mortarY, face % 2 === 0 ? nz : 0);
+        this._castleGroup.add(mortarLine);
+
+        // Vertical brick joints on this row (staggered)
+        const bricksPerRow = 8;
+        for (let bj = 0; bj < bricksPerRow; bj++) {
+          const bjt = (bj + (row % 2 === 0 ? 0 : 0.5)) / bricksPerRow - 0.5;
+          if (Math.abs(bjt) > 0.47) continue;
+          const joint = new THREE.Mesh(
+            new THREE.BoxGeometry(face % 2 === 0 ? 0.04 : 0.04, 1.3, face % 2 === 0 ? 0.04 : 0.04),
+            keepMortarMat,
+          );
+          const jx = face % 2 === 0 ? bjt * 18 : nx;
+          const jz = face % 2 === 0 ? nz : bjt * 18;
+          joint.position.set(jx, mortarY + 0.7, jz);
+          this._castleGroup.add(joint);
+        }
+      }
+    }
+
+    // Scattered darker bricks on keep for variation
+    const keepBrickRng = seededRandom(555);
+    for (let face = 0; face < 4; face++) {
+      const faceAngle = (face / 4) * Math.PI * 2;
+      for (let db = 0; db < 8; db++) {
+        const dbY = 5 + keepBrickRng() * 25;
+        const dbPos = (keepBrickRng() - 0.5) * 16;
+        const darkBrick = new THREE.Mesh(
+          new THREE.BoxGeometry(face % 2 === 0 ? 1.8 : 0.06, 1.0, face % 2 === 0 ? 0.06 : 1.8),
+          keepBrickDarkMat,
+        );
+        darkBrick.position.set(
+          face % 2 === 0 ? dbPos : Math.sin(faceAngle) * 9.1,
+          dbY,
+          face % 2 === 0 ? Math.cos(faceAngle) * 9.1 : dbPos,
+        );
+        this._castleGroup.add(darkBrick);
+      }
+    }
+
     // Keep upper parapet
     const keepParapet = new THREE.Mesh(new THREE.BoxGeometry(19, 2, 19, 2, 1, 2), stoneMat);
     keepParapet.position.set(0, 33.5, 0);
@@ -1213,7 +1361,7 @@ export class EagleFlightRenderer {
       tower.castShadow = true;
       this._castleGroup.add(tower);
 
-      // Stone course rings on tower
+      // Stone course rings on tower (major)
       for (let sr = 0; sr < 4; sr++) {
         const stoneRing = new THREE.Mesh(
           new THREE.TorusGeometry(4.15 - sr * 0.05, 0.12, 4, 20),
@@ -1222,6 +1370,16 @@ export class EagleFlightRenderer {
         stoneRing.position.set(co.x, 5 + sr * 5, co.z);
         stoneRing.rotation.x = Math.PI / 2;
         this._castleGroup.add(stoneRing);
+      }
+      // Fine brick mortar rings on castle corner towers
+      for (let br = 0; br < 14; br++) {
+        const brickRing = new THREE.Mesh(
+          new THREE.TorusGeometry(4.08, 0.04, 4, 20),
+          darkStoneMat,
+        );
+        brickRing.position.set(co.x, 4 + br * 1.4, co.z);
+        brickRing.rotation.x = Math.PI / 2;
+        this._castleGroup.add(brickRing);
       }
 
       // Tower upper parapet ring
@@ -1294,6 +1452,43 @@ export class EagleFlightRenderer {
       cw.castShadow = true;
       this._castleGroup.add(cw);
 
+      // Brick mortar lines on castle connecting walls
+      const cwMortarMat = new THREE.MeshStandardMaterial({ color: 0xaa9988, roughness: 0.95 });
+      for (let row = 0; row < 8; row++) {
+        const mortarY = 4 + row * 1.4;
+        if (mortarY > 14) break;
+        for (const face of [-1, 1]) {
+          const mLine = new THREE.Mesh(
+            new THREE.BoxGeometry(0.04, 0.05, len - 8),
+            cwMortarMat,
+          );
+          mLine.position.set(mx, mortarY, mz);
+          const fo = new THREE.Vector3(face * 1.01, 0, 0);
+          fo.applyAxisAngle(new THREE.Vector3(0, 1, 0), angle);
+          mLine.position.add(fo);
+          mLine.rotation.y = angle;
+          this._castleGroup.add(mLine);
+        }
+        // Vertical joints
+        const jointCount = Math.floor((len - 8) / 2.5);
+        for (let j = 0; j < jointCount; j++) {
+          const jt = (j + (row % 2 === 0 ? 0 : 0.5) + 0.5) / jointCount - 0.5;
+          if (Math.abs(jt) > 0.47) continue;
+          for (const face of [-1, 1]) {
+            const joint = new THREE.Mesh(
+              new THREE.BoxGeometry(0.04, 1.3, 0.05),
+              cwMortarMat,
+            );
+            joint.position.set(mx, mortarY + 0.7, mz);
+            const fo = new THREE.Vector3(face * 1.01, 0, jt * (len - 8));
+            fo.applyAxisAngle(new THREE.Vector3(0, 1, 0), angle);
+            joint.position.add(fo);
+            joint.rotation.y = angle;
+            this._castleGroup.add(joint);
+          }
+        }
+      }
+
       // Crenellations
       const crenCount = Math.floor((len - 8) / 2.5);
       for (let i = 0; i < crenCount; i++) {
@@ -1316,6 +1511,31 @@ export class EagleFlightRenderer {
     hall.position.set(-12, 9, 0);
     hall.castShadow = true;
     this._castleGroup.add(hall);
+
+    // Brick mortar lines on Great Hall
+    const hallMortarMat = new THREE.MeshStandardMaterial({ color: 0xaa9988, roughness: 0.95 });
+    for (let row = 0; row < 8; row++) {
+      const mortarY = 4 + row * 1.4;
+      if (mortarY > 14) break;
+      // Front and back faces (z-facing)
+      for (const fb of [-1, 1]) {
+        const mLine = new THREE.Mesh(
+          new THREE.BoxGeometry(22.04, 0.05, 0.04),
+          hallMortarMat,
+        );
+        mLine.position.set(-12, mortarY, fb * 7.01);
+        this._castleGroup.add(mLine);
+      }
+      // Side faces (x-facing)
+      for (const lr of [-1, 1]) {
+        const mLine = new THREE.Mesh(
+          new THREE.BoxGeometry(0.04, 0.05, 14.04),
+          hallMortarMat,
+        );
+        mLine.position.set(-12 + lr * 11.01, mortarY, 0);
+        this._castleGroup.add(mLine);
+      }
+    }
 
     // Great Hall pitched roof
     const hallRoofGeo = new THREE.BoxGeometry(24, 1.5, 16);

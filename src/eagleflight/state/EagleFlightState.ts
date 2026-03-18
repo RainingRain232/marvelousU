@@ -125,11 +125,11 @@ export interface EagleFlightState {
 
 export const EFBalance = {
   SIM_TICK_MS: 16,
-  MIN_SPEED: 8,
-  MAX_SPEED: 45,
-  BOOST_SPEED: 65,
-  CRUISE_SPEED: 22,
-  ACCELERATION: 12,
+  MIN_SPEED: 4,
+  MAX_SPEED: 22,
+  BOOST_SPEED: 32,
+  CRUISE_SPEED: 11,
+  ACCELERATION: 6,
   PITCH_RATE: 1.4,
   YAW_RATE: 1.6,
   ROLL_RATE: 2.8,
