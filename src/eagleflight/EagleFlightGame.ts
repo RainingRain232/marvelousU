@@ -6,8 +6,8 @@
 // ---------------------------------------------------------------------------
 
 import { audioManager } from "@audio/AudioManager";
-import { createEagleFlightState, EFBalance } from "./state/EagleFlightState";
-import type { EagleFlightState } from "./state/EagleFlightState";
+import { createEagleFlightState, EFBalance, LANDMARKS, getTerrainHeight } from "./state/EagleFlightState";
+import type { EagleFlightState, WeatherType } from "./state/EagleFlightState";
 import { EagleFlightInputSystem } from "./systems/EagleFlightInputSystem";
 import { EagleFlightRenderer } from "./view/EagleFlightRenderer";
 import { EagleFlightHUD } from "./view/EagleFlightHUD";
@@ -155,20 +155,116 @@ export class EagleFlightGame {
 
         EagleFlightInputSystem.update(this._state, DT);
 
-        // --- Wind drift (only when flying) ---
+        const px = this._state.player.position.x;
+        const pz = this._state.player.position.z;
+
+        // --- Wind drift with gusts (only when flying) ---
         if (this._state.player.mounted) {
+          // Base wind
           const windX = Math.cos(this._state.windAngle) * this._state.windStrength * DT;
           const windZ = Math.sin(this._state.windAngle) * this._state.windStrength * DT;
           this._state.player.position.x += windX * 0.15;
           this._state.player.position.z += windZ * 0.15;
+
+          // Wind gusts (periodic strong pushes)
+          this._state.gustTimer -= DT;
+          if (this._state.gustTimer <= 0) {
+            this._state.gustStrength = 3 + Math.random() * 5;
+            this._state.gustAngle = this._state.windAngle + (Math.random() - 0.5) * 1.5;
+            this._state.gustTimer = 4 + Math.random() * 8;
+            if (this._state.gustStrength > 5) {
+              this._state.notification = "STRONG GUST!";
+              this._state.notificationTimer = 1;
+            }
+          }
+          if (this._state.gustStrength > 0) {
+            const gx = Math.cos(this._state.gustAngle) * this._state.gustStrength * DT;
+            const gz = Math.sin(this._state.gustAngle) * this._state.gustStrength * DT;
+            this._state.player.position.x += gx * 0.3;
+            this._state.player.position.z += gz * 0.3;
+            this._state.gustStrength *= 0.97; // decay
+            if (this._state.gustStrength < 0.1) this._state.gustStrength = 0;
+          }
+
+          // Updrafts near steep terrain (cliff updrafts)
+          const terrH = getTerrainHeight(px, pz);
+          const terrHNorth = getTerrainHeight(px, pz - 5);
+          const terrHSouth = getTerrainHeight(px, pz + 5);
+          const terrHEast = getTerrainHeight(px + 5, pz);
+          const terrHWest = getTerrainHeight(px - 5, pz);
+          const maxSlope = Math.max(
+            Math.abs(terrH - terrHNorth), Math.abs(terrH - terrHSouth),
+            Math.abs(terrH - terrHEast), Math.abs(terrH - terrHWest),
+          );
+          if (maxSlope > 3 && this._state.player.position.y < terrH + 30) {
+            this._state.player.position.y += maxSlope * 0.3 * DT;
+          }
+
+          // Storm wind (stronger during storms)
+          if (this._state.weather === "storm") {
+            this._state.player.position.x += Math.sin(this._state.gameTime * 2) * 0.15;
+            this._state.player.position.z += Math.cos(this._state.gameTime * 1.7) * 0.12;
+            // Random lightning shake
+            if (Math.random() < DT * 0.3) {
+              this._state.shakeTimer = 0.3;
+              this._state.shakeMag = 1.5;
+            }
+          }
         }
         // Slowly shift wind direction
         this._state.windAngle += Math.sin(this._state.gameTime * 0.1) * 0.001;
+        // Increase wind in storms
+        if (this._state.weather === "storm") {
+          this._state.windStrength = 4 + Math.sin(this._state.gameTime) * 2;
+        } else if (this._state.weather === "rain") {
+          this._state.windStrength = 2.5;
+        } else {
+          this._state.windStrength = 1.5 + Math.sin(this._state.gameTime * 0.05) * 0.5;
+        }
+
+        // --- Weather system ---
+        this._state.weatherTimer -= DT;
+        if (this._state.weatherTimer <= 0) {
+          const weathers: WeatherType[] = ["clear", "clear", "clear", "rain", "storm", "fog"];
+          const newWeather = weathers[Math.floor(Math.random() * weathers.length)];
+          this._state.weather = newWeather;
+          this._state.weatherTimer = 45 + Math.random() * 90;
+          if (newWeather !== "clear") {
+            this._state.notification = newWeather === "rain" ? "RAIN APPROACHING" : newWeather === "storm" ? "THUNDERSTORM!" : "FOG ROLLING IN";
+            this._state.notificationTimer = 2;
+          }
+        }
+        // Weather intensity ramp
+        const targetIntensity = this._state.weather === "clear" ? 0 : 1;
+        this._state.weatherIntensity += (targetIntensity - this._state.weatherIntensity) * DT * 0.5;
+
+        // --- Stall mechanics ---
+        if (this._state.player.mounted) {
+          const p2 = this._state.player;
+          const stallAngle = -0.6; // steep climb angle threshold
+          if (p2.pitch < stallAngle && p2.speed < 8) {
+            p2.isStalling = true;
+            this._state.stalling = true;
+            this._state.stallTimer += DT;
+            // Force nose down, reduce speed
+            p2.pitch += DT * 1.5; // nose drops
+            p2.speed = Math.max(EFBalance.MIN_SPEED, p2.speed - DT * 3);
+            // Shake
+            this._state.shakeTimer = 0.1;
+            this._state.shakeMag = 0.8;
+            if (this._state.stallTimer > 0.5 && !this._state.notification.includes("STALL")) {
+              this._state.notification = "STALL WARNING!";
+              this._state.notificationTimer = 1.5;
+            }
+          } else {
+            p2.isStalling = false;
+            this._state.stalling = false;
+            this._state.stallTimer = 0;
+          }
+        }
 
         // --- Thermals (only when flying) ---
         this._state.thermalBoost = 0;
-        const px = this._state.player.position.x;
-        const pz = this._state.player.position.z;
         if (this._state.player.mounted) {
           for (const th of THERMALS) {
             const dx = px - th.x;
@@ -246,7 +342,30 @@ export class EagleFlightGame {
 
         // --- NPC AI ---
         const py = this._state.player.position.y;
+        const sunY2 = Math.sin(this._state.sunAngle);
+        const isNight = sunY2 < 0.1;
         for (const npc of this._state.npcs) {
+          // Scared behavior (from firework spell)
+          if (npc.scared) {
+            npc.scareTimer -= DT;
+            // Run away from scare source
+            const speedMult = npc.type === "sheep" ? 4 : 2.5;
+            const ndx2 = npc.targetX - npc.position.x;
+            const ndz2 = npc.targetZ - npc.position.z;
+            const nd2 = Math.sqrt(ndx2 * ndx2 + ndz2 * ndz2);
+            if (nd2 > 0.5) {
+              npc.position.x += (ndx2 / nd2) * npc.speed * speedMult * DT;
+              npc.position.z += (ndz2 / nd2) * npc.speed * speedMult * DT;
+            }
+            if (npc.scareTimer <= 0) { npc.scared = false; }
+            continue;
+          }
+
+          // Day/night behavior: non-sheep NPCs slow down / stop at night
+          if (isNight && npc.type !== "sheep" && npc.type !== "knight") {
+            continue; // villagers stay put at night
+          }
+
           // Move toward target
           const ndx = npc.targetX - npc.position.x;
           const ndz = npc.targetZ - npc.position.z;
@@ -255,7 +374,6 @@ export class EagleFlightGame {
             npc.position.x += (ndx / ndist) * npc.speed * DT;
             npc.position.z += (ndz / ndist) * npc.speed * DT;
           } else {
-            // Pick new target within patrol radius
             npc.targetX = npc.position.x + (Math.random() - 0.5) * 15;
             npc.targetZ = npc.position.z + (Math.random() - 0.5) * 15;
           }
@@ -270,6 +388,213 @@ export class EagleFlightGame {
           if (npc.lookTimer > 0) {
             npc.lookTimer -= DT;
             if (npc.lookTimer <= 0) npc.lookingUp = false;
+          }
+        }
+
+        // --- Firework spell scare effect ---
+        if (this._state.fireworkScareActive) {
+          this._state.fireworkScareTimer -= DT;
+          if (this._state.fireworkScareTimer <= 0) {
+            this._state.fireworkScareActive = false;
+          }
+        }
+
+        // --- Lightning spell ground strike ---
+        if (this._state.lightningTimer > 0) {
+          this._state.lightningTimer -= DT;
+          if (this._state.lightningTimer <= 0) {
+            this._state.lightningStrikePos = null;
+          }
+        }
+
+        // --- Dragon AI ---
+        for (const dragon of this._state.dragons) {
+          // Circle patrol
+          dragon.circleAngle += DT * 0.3;
+          dragon.position.x = dragon.circleCenter.x + Math.cos(dragon.circleAngle) * dragon.circleRadius;
+          dragon.position.z = dragon.circleCenter.z + Math.sin(dragon.circleAngle) * dragon.circleRadius;
+          dragon.position.y = dragon.circleCenter.y + Math.sin(dragon.circleAngle * 2) * 10;
+          dragon.yaw = dragon.circleAngle + Math.PI / 2;
+
+          // Fire at player if close
+          const ddx2 = px - dragon.position.x;
+          const ddz2 = pz - dragon.position.z;
+          const ddy2 = py - dragon.position.y;
+          const dDist = Math.sqrt(ddx2 * ddx2 + ddz2 * ddz2 + ddy2 * ddy2);
+          dragon.fireCooldown = Math.max(0, dragon.fireCooldown - DT);
+          if (dDist < 60 && dragon.fireCooldown <= 0) {
+            dragon.fireActive = true;
+            dragon.fireTimer = 1.5;
+            dragon.fireCooldown = 6;
+          }
+          if (dragon.fireActive) {
+            dragon.fireTimer -= DT;
+            // Damage/push player if very close and fire active
+            if (dDist < 15) {
+              this._state.shakeTimer = 0.2;
+              this._state.shakeMag = 2;
+              this._state.player.speed = Math.max(EFBalance.MIN_SPEED, this._state.player.speed - DT * 5);
+              // Push away
+              if (dDist > 0.1) {
+                this._state.player.position.x += (ddx2 / dDist) * 3 * DT;
+                this._state.player.position.z += (ddz2 / dDist) * 3 * DT;
+              }
+            }
+            if (dragon.fireTimer <= 0) dragon.fireActive = false;
+          }
+          // Achievement: survive being near a dragon
+          if (dDist < 30) {
+            this._unlockAchievement("dragon_dodger");
+          }
+        }
+
+        // --- Bird flock AI ---
+        for (const flock of this._state.birdFlocks) {
+          const fdx = px - flock.center.x;
+          const fdy = py - flock.center.y;
+          const fdz = pz - flock.center.z;
+          const fDist = Math.sqrt(fdx * fdx + fdy * fdy + fdz * fdz);
+
+          if (!flock.scattered && fDist < 15) {
+            // Scatter!
+            flock.scattered = true;
+            flock.scatterTimer = 5;
+            this._awardTrickScore(30, "FLOCK SCATTERED!");
+            this._unlockAchievement("flock_scatter");
+            for (const bird of flock.birds) {
+              bird.vx = (Math.random() - 0.5) * 20;
+              bird.vy = 5 + Math.random() * 10;
+              bird.vz = (Math.random() - 0.5) * 20;
+            }
+          }
+          if (flock.scattered) {
+            flock.scatterTimer -= DT;
+            for (const bird of flock.birds) {
+              bird.x += bird.vx * DT;
+              bird.y += bird.vy * DT;
+              bird.z += bird.vz * DT;
+              bird.vy -= 3 * DT; // gentle gravity
+              bird.vx *= 0.99;
+              bird.vz *= 0.99;
+            }
+            if (flock.scatterTimer <= 0) {
+              // Reform flock
+              flock.scattered = false;
+              for (const bird of flock.birds) {
+                bird.x = flock.center.x + (Math.random() - 0.5) * 10;
+                bird.y = flock.center.y + (Math.random() - 0.5) * 5;
+                bird.z = flock.center.z + (Math.random() - 0.5) * 10;
+                bird.vx = 0; bird.vy = 0; bird.vz = 0;
+              }
+            }
+          } else {
+            // Gentle circling when not scattered
+            for (const bird of flock.birds) {
+              const bAngle = this._state.gameTime * 0.5 + Math.atan2(bird.z - flock.center.z, bird.x - flock.center.x);
+              bird.x += Math.cos(bAngle) * 0.5 * DT;
+              bird.z += Math.sin(bAngle) * 0.5 * DT;
+              bird.y = flock.center.y + Math.sin(this._state.gameTime + bird.x * 0.1) * 2;
+            }
+          }
+        }
+
+        // --- Delivery quest ---
+        if (this._state.delivery.active) {
+          const del = this._state.delivery;
+          del.timeRemaining -= DT;
+          if (del.timeRemaining <= 0) {
+            del.active = false;
+            this._state.notification = "DELIVERY FAILED!";
+            this._state.notificationTimer = 2;
+          } else if (!del.pickedUp) {
+            const pdx = px - del.pickupPos.x;
+            const pdz = pz - del.pickupPos.z;
+            const pdy = py - del.pickupPos.y;
+            if (Math.sqrt(pdx * pdx + pdy * pdy + pdz * pdz) < 15) {
+              del.pickedUp = true;
+              this._state.notification = `PACKAGE PICKED UP! Deliver to ${del.deliverLabel}`;
+              this._state.notificationTimer = 2;
+            }
+          } else {
+            const ddx3 = px - del.deliverPos.x;
+            const ddz3 = pz - del.deliverPos.z;
+            if (Math.sqrt(ddx3 * ddx3 + ddz3 * ddz3) < 30) {
+              del.active = false;
+              this._awardTrickScore(del.reward, "DELIVERY COMPLETE!");
+              this._unlockAchievement("delivery_complete");
+            }
+          }
+        }
+
+        // --- Race system ---
+        if (this._state.race.active && !this._state.race.finished) {
+          const race = this._state.race;
+          race.timeElapsed += DT;
+          const wp = race.waypoints[race.currentWaypoint];
+          const rwdx = px - wp.x;
+          const rwdy = py - wp.y;
+          const rwdz = pz - wp.z;
+          if (Math.sqrt(rwdx * rwdx + rwdy * rwdy + rwdz * rwdz) < 12) {
+            race.currentWaypoint++;
+            if (race.currentWaypoint >= race.waypoints.length) {
+              race.finished = true;
+              if (race.timeElapsed <= race.goldTime) {
+                race.medal = "gold";
+                this._awardTrickScore(1000, "GOLD MEDAL!");
+                this._unlockAchievement("race_gold");
+              } else if (race.timeElapsed <= race.silverTime) {
+                race.medal = "silver";
+                this._awardTrickScore(500, "SILVER MEDAL!");
+              } else if (race.timeElapsed <= race.bronzeTime) {
+                race.medal = "bronze";
+                this._awardTrickScore(250, "BRONZE MEDAL!");
+              } else {
+                this._state.notification = "RACE COMPLETE!";
+                this._state.notificationTimer = 2;
+              }
+            } else {
+              this._state.notification = `WAYPOINT ${race.currentWaypoint}/${race.waypoints.length}`;
+              this._state.notificationTimer = 1;
+            }
+          }
+        }
+
+        // --- Landmark discovery ---
+        for (const lm of LANDMARKS) {
+          if (!this._state.discoveredLandmarks.has(lm.name)) {
+            const ldx = px - lm.x;
+            const ldz = pz - lm.z;
+            if (Math.sqrt(ldx * ldx + ldz * ldz) < lm.radius) {
+              this._state.discoveredLandmarks.add(lm.name);
+              this._state.landmarkCount++;
+              this._state.notification = `DISCOVERED: ${lm.name}`;
+              this._state.notificationTimer = 2;
+              if (this._state.landmarkCount >= 10) this._unlockAchievement("explorer");
+              if (this._state.landmarkCount >= this._state.totalLandmarks) this._unlockAchievement("full_map");
+            }
+          }
+        }
+
+        // --- Achievement checks ---
+        if (this._state.gameTime > 5) this._unlockAchievement("first_flight");
+        if (this._state.player.speed > 30) this._unlockAchievement("speed_demon");
+        if (this._state.player.position.y < 5 && this._state.player.mounted) this._unlockAchievement("low_rider");
+        if (this._state.player.position.y > 300) this._unlockAchievement("high_flyer");
+        if (isNight && this._state.player.mounted) this._unlockAchievement("night_owl");
+        if (this._state.weather === "storm" && this._state.player.mounted) this._unlockAchievement("storm_rider");
+        if (this._state.player.comboMultiplier >= 5) this._unlockAchievement("combo_5");
+        if (this._state.player.checkpointsHit >= this._state.checkpoints.length) this._unlockAchievement("ring_master");
+        if (this._state.player.orbsCollected >= 20) this._unlockAchievement("orb_collector");
+
+        // --- Landing detection ---
+        if (this._state.player.mounted) {
+          const terrH2 = getTerrainHeight(px, pz);
+          if (py < terrH2 + 5 && this._state.player.speed < 8) {
+            this._state.isLanding = true;
+            this._state.landingTimer = Math.min(this._state.landingTimer + DT, 1);
+          } else {
+            this._state.isLanding = false;
+            this._state.landingTimer = Math.max(this._state.landingTimer - DT * 2, 0);
           }
         }
 
@@ -303,6 +628,15 @@ export class EagleFlightGame {
     this._state.notificationTimer = 1.5;
     this._state.shakeTimer = 0.15;
     this._state.shakeMag = 0.5;
+  }
+
+  private _unlockAchievement(id: string): void {
+    const ach = this._state.achievements.find((a) => a.id === id);
+    if (ach && !ach.unlocked) {
+      ach.unlocked = true;
+      this._state.notification = `ACHIEVEMENT: ${ach.name}`;
+      this._state.notificationTimer = 3;
+    }
   }
 
   private _endIntro(): void {

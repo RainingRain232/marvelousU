@@ -56,6 +56,9 @@ export interface EFPlayer {
   mountTransition: number; // 0-1, animation progress for mount/dismount
   mountTransitionDir: 1 | -1; // 1 = mounting, -1 = dismounting
   walkPhase: number; // walking animation phase
+
+  // Stall
+  isStalling: boolean;
 }
 
 export interface EFCheckpoint {
@@ -79,7 +82,62 @@ export interface EFNPC {
   type: "peasant" | "knight" | "merchant" | "sheep";
   lookingUp: boolean;
   lookTimer: number;
+  scared: boolean;
+  scareTimer: number;
 }
+
+export interface EFDragon {
+  position: Vec3;
+  targetX: number;
+  targetZ: number;
+  speed: number;
+  yaw: number;
+  fireTimer: number;
+  fireCooldown: number;
+  fireActive: boolean;
+  circleCenter: Vec3;
+  circleRadius: number;
+  circleAngle: number;
+}
+
+export interface EFDelivery {
+  active: boolean;
+  pickupPos: Vec3;
+  deliverPos: Vec3;
+  pickupLabel: string;
+  deliverLabel: string;
+  pickedUp: boolean;
+  timeLimit: number;
+  timeRemaining: number;
+  reward: number;
+}
+
+export interface EFRace {
+  active: boolean;
+  waypoints: Vec3[];
+  currentWaypoint: number;
+  timeElapsed: number;
+  goldTime: number;
+  silverTime: number;
+  bronzeTime: number;
+  finished: boolean;
+  medal: "" | "gold" | "silver" | "bronze";
+}
+
+export interface EFAchievement {
+  id: string;
+  name: string;
+  unlocked: boolean;
+}
+
+export interface EFBirdFlock {
+  center: Vec3;
+  birds: { x: number; y: number; z: number; vx: number; vy: number; vz: number }[];
+  scattered: boolean;
+  scatterTimer: number;
+}
+
+export type WeatherType = "clear" | "rain" | "storm" | "fog";
 
 export interface EagleFlightState {
   player: EFPlayer;
@@ -123,6 +181,52 @@ export interface EagleFlightState {
 
   // Day cycle (0-1: 0=midnight, 0.25=dawn, 0.5=noon, 0.75=dusk)
   sunAngle: number;
+
+  // Weather
+  weather: WeatherType;
+  weatherTimer: number;
+  weatherIntensity: number;
+  rainDrops: { x: number; y: number; z: number }[];
+
+  // Wind gusts
+  gustTimer: number;
+  gustStrength: number;
+  gustAngle: number;
+
+  // Stall
+  stalling: boolean;
+  stallTimer: number;
+
+  // Dragons
+  dragons: EFDragon[];
+
+  // Delivery quests
+  delivery: EFDelivery;
+
+  // Race
+  race: EFRace;
+
+  // Achievements
+  achievements: EFAchievement[];
+
+  // Bird flocks
+  birdFlocks: EFBirdFlock[];
+
+  // Landmark discovery
+  discoveredLandmarks: Set<string>;
+  landmarkCount: number;
+  totalLandmarks: number;
+
+  // Landing
+  isLanding: boolean;
+  landingTimer: number;
+
+  // Spell effects
+  lightningStrikePos: Vec3 | null;
+  lightningTimer: number;
+  fireworkScareActive: boolean;
+  fireworkScareTimer: number;
+  fireworkScarePos: Vec3 | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -238,6 +342,116 @@ const ORB_POSITIONS: Vec3[] = [
 ];
 
 // ---------------------------------------------------------------------------
+// Landmarks for discovery system
+// ---------------------------------------------------------------------------
+
+export const LANDMARKS: { name: string; x: number; z: number; radius: number }[] = [
+  { name: "Camelot Castle", x: 0, z: 30, radius: 40 },
+  { name: "Cathedral", x: 35, z: -30, radius: 25 },
+  { name: "Market Square", x: -30, z: -35, radius: 20 },
+  { name: "The Prancing Pony", x: 45, z: 10, radius: 15 },
+  { name: "Blacksmith", x: -45, z: 5, radius: 15 },
+  { name: "Training Yard", x: -50, z: 45, radius: 20 },
+  { name: "Cemetery", x: 50, z: -55, radius: 15 },
+  { name: "Noble Quarter", x: 25, z: 0, radius: 20 },
+  { name: "Wizard Tower", x: 450, z: -350, radius: 30 },
+  { name: "Distant Village", x: -400, z: 300, radius: 35 },
+  { name: "Windmill Hill", x: 140, z: -60, radius: 20 },
+  { name: "Western Windmill", x: -120, z: 90, radius: 20 },
+  { name: "Southern Ruins", x: 180, z: 80, radius: 20 },
+  { name: "Northern Ruins", x: -160, z: -100, radius: 20 },
+  { name: "Stone Circle", x: 450, z: -350, radius: 20 },
+  { name: "Eastern Village", x: 150, z: 40, radius: 20 },
+  { name: "Western Village", x: -130, z: -60, radius: 20 },
+];
+
+// ---------------------------------------------------------------------------
+// Achievement definitions
+// ---------------------------------------------------------------------------
+
+const ACHIEVEMENT_DEFS: { id: string; name: string }[] = [
+  { id: "first_flight", name: "First Flight" },
+  { id: "speed_demon", name: "Speed Demon (30+ knots)" },
+  { id: "low_rider", name: "Low Rider (fly under 5ft)" },
+  { id: "explorer", name: "Explorer (discover 10 landmarks)" },
+  { id: "full_map", name: "Cartographer (all landmarks)" },
+  { id: "ring_master", name: "Ring Master (all rings)" },
+  { id: "orb_collector", name: "Orb Collector (20 orbs)" },
+  { id: "dragon_dodger", name: "Dragon Dodger (survive dragon)" },
+  { id: "delivery_complete", name: "Express Delivery" },
+  { id: "race_gold", name: "Gold Medal Racer" },
+  { id: "barrel_roll", name: "Do a Barrel Roll!" },
+  { id: "high_flyer", name: "High Flyer (300+ altitude)" },
+  { id: "night_owl", name: "Night Owl (fly at night)" },
+  { id: "storm_rider", name: "Storm Rider (fly in storm)" },
+  { id: "flock_scatter", name: "Bird Watcher (scatter flock)" },
+  { id: "combo_5", name: "Combo Master (5x combo)" },
+];
+
+// ---------------------------------------------------------------------------
+// Race course waypoints
+// ---------------------------------------------------------------------------
+
+const RACE_WAYPOINTS: Vec3[] = [
+  { x: 0, y: 60, z: -80 },
+  { x: 80, y: 50, z: -40 },
+  { x: 120, y: 40, z: 30 },
+  { x: 60, y: 55, z: 80 },
+  { x: -40, y: 45, z: 60 },
+  { x: -100, y: 50, z: 0 },
+  { x: -60, y: 60, z: -60 },
+  { x: 0, y: 65, z: -80 },
+];
+
+// ---------------------------------------------------------------------------
+// Bird flock spawn positions
+// ---------------------------------------------------------------------------
+
+function _createBirdFlocks(rng: () => number): EFBirdFlock[] {
+  const flocks: EFBirdFlock[] = [];
+  for (let f = 0; f < 8; f++) {
+    const angle = rng() * Math.PI * 2;
+    const dist = 80 + rng() * 400;
+    const cx = Math.cos(angle) * dist;
+    const cz = Math.sin(angle) * dist;
+    const cy = 30 + rng() * 60;
+    const birds: EFBirdFlock["birds"] = [];
+    const count = 6 + Math.floor(rng() * 8);
+    for (let b = 0; b < count; b++) {
+      birds.push({
+        x: cx + (rng() - 0.5) * 10,
+        y: cy + (rng() - 0.5) * 5,
+        z: cz + (rng() - 0.5) * 10,
+        vx: 0, vy: 0, vz: 0,
+      });
+    }
+    flocks.push({ center: { x: cx, y: cy, z: cz }, birds, scattered: false, scatterTimer: 0 });
+  }
+  return flocks;
+}
+
+// ---------------------------------------------------------------------------
+// Dragon spawn data
+// ---------------------------------------------------------------------------
+
+function _createDragons(): EFDragon[] {
+  return [
+    {
+      position: { x: 350, y: 80, z: -200 },
+      targetX: 350, targetZ: -200, speed: 15, yaw: 0,
+      fireTimer: 0, fireCooldown: 0, fireActive: false,
+      circleCenter: { x: 350, y: 80, z: -200 }, circleRadius: 80, circleAngle: 0,
+    },
+    {
+      position: { x: -300, y: 90, z: 200 },
+      targetX: -300, targetZ: 200, speed: 12, yaw: Math.PI,
+      fireTimer: 0, fireCooldown: 0, fireActive: false,
+      circleCenter: { x: -300, y: 90, z: 200 }, circleRadius: 100, circleAngle: Math.PI,
+    },
+  ];
+}
+
+// ---------------------------------------------------------------------------
 // NPC spawn data
 // ---------------------------------------------------------------------------
 
@@ -265,6 +479,8 @@ function _createNPCs(): EFNPC[] {
       type: types[Math.floor(rng() * types.length)],
       lookingUp: false,
       lookTimer: 0,
+      scared: false,
+      scareTimer: 0,
     });
   }
   // Market crowd
@@ -277,6 +493,8 @@ function _createNPCs(): EFNPC[] {
       type: "merchant",
       lookingUp: false,
       lookTimer: 0,
+      scared: false,
+      scareTimer: 0,
     });
   }
   // Wall patrol guards
@@ -290,6 +508,8 @@ function _createNPCs(): EFNPC[] {
       type: "knight",
       lookingUp: false,
       lookTimer: 0,
+      scared: false,
+      scareTimer: 0,
     });
   }
   // Travelling sheep flocks across the countryside
@@ -308,6 +528,8 @@ function _createNPCs(): EFNPC[] {
         type: "sheep",
         lookingUp: false,
         lookTimer: 0,
+        scared: false,
+        scareTimer: 0,
       });
     }
   }
@@ -353,6 +575,7 @@ export function createEagleFlightState(sw: number, sh: number): EagleFlightState
       mountTransition: 1,
       mountTransitionDir: 1,
       walkPhase: 0,
+      isStalling: false,
     },
     screenW: sw,
     screenH: sh,
@@ -385,5 +608,71 @@ export function createEagleFlightState(sw: number, sh: number): EagleFlightState
     })),
     npcs: _createNPCs(),
     sunAngle: 0.8, // start at golden hour
+
+    // Weather
+    weather: "clear" as WeatherType,
+    weatherTimer: 60 + Math.random() * 120, // first weather change in 1-3 min
+    weatherIntensity: 0,
+    rainDrops: [],
+
+    // Wind gusts
+    gustTimer: 5 + Math.random() * 10,
+    gustStrength: 0,
+    gustAngle: 0,
+
+    // Stall
+    stalling: false,
+    stallTimer: 0,
+
+    // Dragons
+    dragons: _createDragons(),
+
+    // Delivery quests
+    delivery: {
+      active: false,
+      pickupPos: { x: 450, y: 35, z: -350 },
+      deliverPos: { x: 0, y: 10, z: 0 },
+      pickupLabel: "Wizard Tower",
+      deliverLabel: "Camelot",
+      pickedUp: false,
+      timeLimit: 90,
+      timeRemaining: 90,
+      reward: 500,
+    },
+
+    // Race
+    race: {
+      active: false,
+      waypoints: RACE_WAYPOINTS,
+      currentWaypoint: 0,
+      timeElapsed: 0,
+      goldTime: 30,
+      silverTime: 45,
+      bronzeTime: 60,
+      finished: false,
+      medal: "",
+    },
+
+    // Achievements
+    achievements: ACHIEVEMENT_DEFS.map((a) => ({ ...a, unlocked: false })),
+
+    // Bird flocks
+    birdFlocks: _createBirdFlocks(_seededRng(7777)),
+
+    // Landmark discovery
+    discoveredLandmarks: new Set<string>(),
+    landmarkCount: 0,
+    totalLandmarks: LANDMARKS.length,
+
+    // Landing
+    isLanding: false,
+    landingTimer: 0,
+
+    // Spell effects
+    lightningStrikePos: null,
+    lightningTimer: 0,
+    fireworkScareActive: false,
+    fireworkScareTimer: 0,
+    fireworkScarePos: null,
   };
 }

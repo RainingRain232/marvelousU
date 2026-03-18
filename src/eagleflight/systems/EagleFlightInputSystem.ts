@@ -13,6 +13,8 @@ const _keys = new Set<string>();
 let _pauseCb: PauseCallback | null = null;
 let _bound = false;
 let _mouseDX = 0;
+let _deliveryTogglePressed = false;
+let _raceTogglePressed = false;
 let _mouseDY = 0;
 let _pointerLocked = false;
 let _skipIntroCb: (() => void) | null = null;
@@ -144,6 +146,34 @@ export const EagleFlightInputSystem = {
         state.photoMode = false;
       }
     }
+
+    // --- Delivery quest toggle (T key) ---
+    if (_keys.has("KeyT") && !_deliveryTogglePressed) {
+      _deliveryTogglePressed = true;
+      if (!state.delivery.active && !state.race.active) {
+        state.delivery.active = true;
+        state.delivery.pickedUp = false;
+        state.delivery.timeRemaining = state.delivery.timeLimit;
+        state.notification = `DELIVERY: Pick up at ${state.delivery.pickupLabel}`;
+        state.notificationTimer = 3;
+      }
+    }
+    if (!_keys.has("KeyT")) _deliveryTogglePressed = false;
+
+    // --- Race start (G key) ---
+    if (_keys.has("KeyG") && !_raceTogglePressed) {
+      _raceTogglePressed = true;
+      if (!state.race.active && !state.delivery.active) {
+        state.race.active = true;
+        state.race.currentWaypoint = 0;
+        state.race.timeElapsed = 0;
+        state.race.finished = false;
+        state.race.medal = "";
+        state.notification = "RACE STARTED! Follow the waypoints!";
+        state.notificationTimer = 2;
+      }
+    }
+    if (!_keys.has("KeyG")) _raceTogglePressed = false;
 
     // Reset mouse deltas
     _mouseDX = 0;
@@ -345,13 +375,35 @@ export const EagleFlightInputSystem = {
       state.notificationTimer = 1;
       state.shakeTimer = 0.1;
       state.shakeMag = 0.3;
+      // Scare nearby NPCs/sheep
+      state.fireworkScareActive = true;
+      state.fireworkScareTimer = 3;
+      state.fireworkScarePos = { x: p.position.x, y: p.position.y, z: p.position.z };
+      for (const npc of state.npcs) {
+        const sdx = p.position.x - npc.position.x;
+        const sdz = p.position.z - npc.position.z;
+        if (Math.sqrt(sdx * sdx + sdz * sdz) < 40) {
+          npc.scared = true;
+          npc.scareTimer = 3 + Math.random() * 2;
+          // Run away from firework
+          npc.targetX = npc.position.x - sdx * 2 + (Math.random() - 0.5) * 10;
+          npc.targetZ = npc.position.z - sdz * 2 + (Math.random() - 0.5) * 10;
+        }
+      }
     }
     if (_keys.has("Digit2") && p.spellCooldowns[1] <= 0) {
       p.spellCooldowns[1] = 5;
-      state.notification = "LIGHTNING!";
+      state.notification = "LIGHTNING STRIKE!";
       state.notificationTimer = 1;
-      state.shakeTimer = 0.2;
-      state.shakeMag = 1.0;
+      state.shakeTimer = 0.3;
+      state.shakeMag = 2.0;
+      // Lightning strikes ground below player
+      state.lightningStrikePos = {
+        x: p.position.x + (Math.random() - 0.5) * 10,
+        y: getTerrainHeight(p.position.x, p.position.z),
+        z: p.position.z + (Math.random() - 0.5) * 10,
+      };
+      state.lightningTimer = 3;
     }
     if (_keys.has("Digit3")) {
       p.magicTrailActive = true;

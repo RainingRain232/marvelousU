@@ -17,6 +17,10 @@ const LANDMARKS = [
   { x: 140, z: -60, label: "Windmill", icon: "mill" },
   { x: -120, z: 90, label: "Windmill", icon: "mill" },
   { x: 0, z: 0, label: "City Center", icon: "flag" },
+  { x: 450, z: -350, label: "Wizard Tower", icon: "tower" },
+  { x: -400, z: 300, label: "Distant Village", icon: "village" },
+  { x: 150, z: 40, label: "Eastern Village", icon: "village" },
+  { x: -130, z: -60, label: "Western Village", icon: "village" },
 ];
 
 export class EagleFlightHUD {
@@ -71,6 +75,15 @@ export class EagleFlightHUD {
 
   // Crosshair
   private _crosshairEl!: HTMLDivElement;
+
+  // New HUD elements
+  private _weatherEl!: HTMLDivElement;
+  private _deliveryEl!: HTMLDivElement;
+  private _raceEl!: HTMLDivElement;
+  private _achievementEl!: HTMLDivElement;
+  private _landmarkCountEl!: HTMLDivElement;
+  private _stallWarningEl!: HTMLDivElement;
+  private _rainOverlay!: HTMLDivElement;
 
   // Flight stats
   private _statsEl!: HTMLDivElement;
@@ -358,7 +371,9 @@ export class EagleFlightHUD {
       <span style="color:#88bbff">3</span> Magic Trail<br>
       <span style="color:#88bbff">M</span> Mount/Dismount &nbsp;&nbsp;
       <span style="color:#88bbff">P</span> Photo &nbsp;&nbsp;
-      <span style="color:#88bbff">ESC</span> Pause
+      <span style="color:#88bbff">ESC</span> Pause<br>
+      <span style="color:#88bbff">T</span> Delivery Quest &nbsp;&nbsp;
+      <span style="color:#88bbff">G</span> Race
     `;
     this._root.appendChild(this._controlsEl);
 
@@ -379,6 +394,84 @@ export class EagleFlightHUD {
       text-shadow:0 0 6px rgba(68,255,170,0.4);
     `;
     this._root.appendChild(this._checkpointEl);
+
+    // --- Landmark discovery counter ---
+    this._landmarkCountEl = document.createElement("div");
+    this._landmarkCountEl.style.cssText = `
+      position:absolute;top:118px;left:20px;
+      color:#ffcc44;font-size:11px;letter-spacing:1px;
+      text-shadow:0 0 6px rgba(255,204,68,0.4);
+    `;
+    this._root.appendChild(this._landmarkCountEl);
+
+    // --- Weather indicator ---
+    this._weatherEl = document.createElement("div");
+    this._weatherEl.style.cssText = `
+      position:absolute;top:138px;left:20px;
+      color:rgba(200,220,255,0.6);font-size:10px;letter-spacing:1px;
+      text-shadow:0 0 4px rgba(0,0,0,0.8);
+    `;
+    this._root.appendChild(this._weatherEl);
+
+    // --- Delivery quest HUD ---
+    this._deliveryEl = document.createElement("div");
+    this._deliveryEl.style.cssText = `
+      position:absolute;top:160px;left:20px;
+      color:#ffaa44;font-size:12px;font-weight:bold;letter-spacing:1px;
+      text-shadow:0 0 6px rgba(255,170,68,0.4);
+      display:none;
+    `;
+    this._root.appendChild(this._deliveryEl);
+
+    // --- Race HUD ---
+    this._raceEl = document.createElement("div");
+    this._raceEl.style.cssText = `
+      position:absolute;top:160px;left:20px;
+      color:#44aaff;font-size:12px;font-weight:bold;letter-spacing:1px;
+      text-shadow:0 0 6px rgba(68,170,255,0.4);
+      display:none;
+    `;
+    this._root.appendChild(this._raceEl);
+
+    // --- Stall warning ---
+    this._stallWarningEl = document.createElement("div");
+    this._stallWarningEl.style.cssText = `
+      position:absolute;top:45%;left:50%;transform:translate(-50%,-50%);
+      color:#ff4444;font-size:36px;font-weight:bold;letter-spacing:8px;
+      text-shadow:0 0 20px rgba(255,68,68,0.8);
+      opacity:0;pointer-events:none;
+    `;
+    this._stallWarningEl.textContent = "STALL";
+    this._root.appendChild(this._stallWarningEl);
+
+    // --- Rain overlay ---
+    this._rainOverlay = document.createElement("div");
+    this._rainOverlay.style.cssText = `
+      position:absolute;top:0;left:0;width:100%;height:100%;
+      pointer-events:none;opacity:0;
+      background:repeating-linear-gradient(
+        transparent,transparent 4px,
+        rgba(180,200,220,0.03) 4px,rgba(180,200,220,0.03) 5px
+      );
+      animation:rainMove 0.15s linear infinite;
+    `;
+    this._root.appendChild(this._rainOverlay);
+    // Rain animation CSS
+    const rainStyle = document.createElement("style");
+    rainStyle.textContent = `@keyframes rainMove { from { background-position: 0 0; } to { background-position: -3px 10px; } }`;
+    document.head.appendChild(rainStyle);
+
+    // --- Achievement popup ---
+    this._achievementEl = document.createElement("div");
+    this._achievementEl.style.cssText = `
+      position:absolute;top:20px;right:20px;
+      background:rgba(0,0,0,0.7);border:1px solid #ffcc44;border-radius:6px;
+      padding:8px 16px;color:#ffcc44;font-size:13px;font-weight:bold;
+      letter-spacing:1px;text-shadow:0 0 6px rgba(255,204,68,0.4);
+      opacity:0;transition:opacity 0.3s;pointer-events:none;
+      backdrop-filter:blur(4px);
+    `;
+    this._root.appendChild(this._achievementEl);
 
     // --- Thermal indicator (center-bottom) ---
     this._thermalEl = document.createElement("div");
@@ -693,6 +786,58 @@ export class EagleFlightHUD {
       }
     }
 
+    // --- Weather HUD ---
+    const weatherNames = { clear: "CLEAR", rain: "RAIN", storm: "STORM", fog: "FOG" };
+    this._weatherEl.textContent = `WEATHER: ${weatherNames[state.weather] || "CLEAR"}`;
+    if (state.weather === "storm") this._weatherEl.style.color = "rgba(255,100,100,0.8)";
+    else if (state.weather === "rain") this._weatherEl.style.color = "rgba(150,180,220,0.8)";
+    else if (state.weather === "fog") this._weatherEl.style.color = "rgba(200,200,180,0.8)";
+    else this._weatherEl.style.color = "rgba(200,220,255,0.6)";
+
+    // --- Rain overlay ---
+    this._rainOverlay.style.opacity = state.weather === "rain" ? `${state.weatherIntensity * 0.4}` : state.weather === "storm" ? `${state.weatherIntensity * 0.6}` : "0";
+
+    // --- Landmark discovery ---
+    this._landmarkCountEl.textContent = `LANDMARKS ${state.landmarkCount}/${state.totalLandmarks}`;
+
+    // --- Delivery quest ---
+    if (state.delivery.active) {
+      this._deliveryEl.style.display = "block";
+      if (!state.delivery.pickedUp) {
+        this._deliveryEl.textContent = `DELIVERY: Pick up at ${state.delivery.pickupLabel} [${Math.ceil(state.delivery.timeRemaining)}s]`;
+      } else {
+        this._deliveryEl.textContent = `DELIVERY: Deliver to ${state.delivery.deliverLabel} [${Math.ceil(state.delivery.timeRemaining)}s]`;
+      }
+      if (state.delivery.timeRemaining < 15) this._deliveryEl.style.color = "#ff4444";
+      else this._deliveryEl.style.color = "#ffaa44";
+    } else {
+      this._deliveryEl.style.display = "none";
+    }
+
+    // --- Race ---
+    if (state.race.active) {
+      this._raceEl.style.display = "block";
+      if (state.race.finished) {
+        this._raceEl.textContent = `RACE FINISHED: ${state.race.timeElapsed.toFixed(1)}s — ${state.race.medal.toUpperCase() || "NO MEDAL"}`;
+      } else {
+        this._raceEl.textContent = `RACE WP ${state.race.currentWaypoint + 1}/${state.race.waypoints.length} | ${state.race.timeElapsed.toFixed(1)}s`;
+      }
+    } else {
+      this._raceEl.style.display = "none";
+    }
+
+    // --- Stall warning ---
+    this._stallWarningEl.style.opacity = state.stalling ? `${0.5 + Math.sin(state.gameTime * 8) * 0.3}` : "0";
+
+    // --- Achievement popup ---
+    const lastAch = state.achievements.find((a) => a.unlocked && state.notification.includes(a.name));
+    if (lastAch && state.notificationTimer > 0) {
+      this._achievementEl.textContent = `🏆 ${lastAch.name}`;
+      this._achievementEl.style.opacity = `${Math.min(1, state.notificationTimer)}`;
+    } else {
+      this._achievementEl.style.opacity = `${Math.max(0, parseFloat(this._achievementEl.style.opacity || "0") - dt * 2)}`;
+    }
+
     // --- Vignette intensifies at low altitude or high speed ---
     const lowAlt = Math.max(0, 1 - p.position.y / 20);
     const vignetteIntensity = 0.35 + lowAlt * 0.2 + boostRatio * 0.1;
@@ -871,6 +1016,82 @@ export class EagleFlightHUD {
       ctx.stroke();
     }
 
+    // Dragon markers (red triangles)
+    for (const dragon of state.dragons) {
+      const dx = (dragon.position.x - px) * scale;
+      const dz = (dragon.position.z - pz) * scale;
+      if (Math.abs(dx) > r + 5 || Math.abs(dz) > r + 5) continue;
+      ctx.fillStyle = "#ff4444";
+      ctx.beginPath();
+      ctx.moveTo(dx, dz - 4);
+      ctx.lineTo(dx - 3, dz + 3);
+      ctx.lineTo(dx + 3, dz + 3);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // Race waypoints (blue diamonds)
+    if (state.race.active && !state.race.finished) {
+      for (let wi = state.race.currentWaypoint; wi < state.race.waypoints.length; wi++) {
+        const wp = state.race.waypoints[wi];
+        const wx = (wp.x - px) * scale;
+        const wz = (wp.z - pz) * scale;
+        if (Math.abs(wx) > r + 5 || Math.abs(wz) > r + 5) continue;
+        ctx.fillStyle = wi === state.race.currentWaypoint ? "#44aaff" : "rgba(68,170,255,0.4)";
+        ctx.beginPath();
+        ctx.moveTo(wx, wz - 4);
+        ctx.lineTo(wx + 3, wz);
+        ctx.lineTo(wx, wz + 4);
+        ctx.lineTo(wx - 3, wz);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+
+    // Delivery markers
+    if (state.delivery.active) {
+      const dp = state.delivery.pickedUp ? state.delivery.deliverPos : state.delivery.pickupPos;
+      const dpx = (dp.x - px) * scale;
+      const dpz = (dp.z - pz) * scale;
+      if (Math.abs(dpx) < r + 5 && Math.abs(dpz) < r + 5) {
+        ctx.fillStyle = "#ffaa44";
+        ctx.fillRect(dpx - 3, dpz - 3, 6, 6);
+        ctx.strokeStyle = "#ffaa44";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(dpx - 5, dpz - 5, 10, 10);
+      }
+    }
+
+    ctx.restore();
+
+    // Fog-of-war overlay (darken undiscovered areas)
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.fillStyle = "rgba(0,0,0,0.5)";
+    ctx.fillRect(0, 0, w, h);
+    // Cut out discovered areas as bright circles
+    ctx.globalCompositeOperation = "destination-out";
+    // Player's current visible area
+    ctx.beginPath();
+    ctx.arc(cx, cy, 30, 0, Math.PI * 2);
+    ctx.fill();
+    // Discovered landmarks
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(yaw);
+    for (const lmName of Array.from(state.discoveredLandmarks)) {
+      const lm = LANDMARKS.find((l) => l.label === lmName);
+      if (!lm) continue;
+      const lx = (lm.x - px) * scale;
+      const lz = (lm.z - pz) * scale;
+      ctx.beginPath();
+      ctx.arc(lx, lz, 18, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+    ctx.globalCompositeOperation = "source-over";
     ctx.restore();
 
     // Player triangle (always center, pointing up)

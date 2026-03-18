@@ -250,12 +250,34 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
   { id: "dragon_legs", station: "forge", inputs: [blockInput(BlockType.DRAGON_BONE_ORE, 12), blockInput(BlockType.CRYSTAL_ORE, 6)], output: _armor("Dragon Greaves", 7, 0xCC2222, "legs") },
   { id: "dragon_boots", station: "forge", inputs: [blockInput(BlockType.DRAGON_BONE_ORE, 8), blockInput(BlockType.CRYSTAL_ORE, 4)], output: _armor("Dragon Boots", 5, 0xCC2222, "boots") },
 
-  // Bow
+  // --- Missing tool tier recipes ---
+  // Stone hammer
+  { id: "stone_hammer", station: "round_table", inputs: [blockInput(BlockType.COBBLESTONE, 4), blockInput(BlockType.OAK_LOG, 2)], output: createToolItem(ToolType.HAMMER, ToolMaterial.STONE, "Stone Hammer", 0x808080, 6) },
+  // Iron tools (full set)
+  { id: "iron_hammer", station: "forge", inputs: [blockInput(BlockType.IRON_ORE, 6), blockInput(BlockType.OAK_LOG, 2)], output: createToolItem(ToolType.HAMMER, ToolMaterial.IRON, "Iron Hammer", 0xB0B0B0, 9) },
+  { id: "iron_shovel", station: "forge", inputs: [blockInput(BlockType.IRON_ORE, 4), blockInput(BlockType.OAK_LOG, 2)], output: createToolItem(ToolType.SHOVEL, ToolMaterial.IRON, "Iron Shovel", 0xB0B0B0, 5) },
+  // Gold tools
+  { id: "gold_axe", station: "forge", inputs: [blockInput(BlockType.GOLD_ORE, 8), blockInput(BlockType.OAK_LOG, 2)], output: createToolItem(ToolType.AXE, ToolMaterial.GOLD, "Gold Axe", 0xFFD700, 8) },
+  { id: "gold_hammer", station: "forge", inputs: [blockInput(BlockType.GOLD_ORE, 8), blockInput(BlockType.OAK_LOG, 2)], output: createToolItem(ToolType.HAMMER, ToolMaterial.GOLD, "Gold Hammer", 0xFFD700, 8) },
+  // Crystal tools
+  { id: "crystal_axe", station: "forge", inputs: [blockInput(BlockType.CRYSTAL_ORE, 10), blockInput(BlockType.IRON_ORE, 4)], output: createToolItem(ToolType.AXE, ToolMaterial.CRYSTAL, "Crystal Axe", 0xAA44FF, 14) },
+  { id: "crystal_hammer", station: "forge", inputs: [blockInput(BlockType.CRYSTAL_ORE, 10), blockInput(BlockType.IRON_ORE, 4)], output: createToolItem(ToolType.HAMMER, ToolMaterial.CRYSTAL, "Crystal Hammer", 0xAA44FF, 14) },
+  // Dragon Bone weapons (endgame)
+  { id: "dragon_sword", station: "forge", inputs: [blockInput(BlockType.DRAGON_BONE_ORE, 14), blockInput(BlockType.CRYSTAL_ORE, 6)], output: createToolItem(ToolType.SWORD, ToolMaterial.CRYSTAL, "Dragon Bone Sword", 0xCC2222, 28) },
+  { id: "dragon_pickaxe", station: "forge", inputs: [blockInput(BlockType.DRAGON_BONE_ORE, 12), blockInput(BlockType.CRYSTAL_ORE, 4)], output: createToolItem(ToolType.PICKAXE, ToolMaterial.CRYSTAL, "Dragon Bone Pickaxe", 0xCC2222, 16) },
+  { id: "dragon_hammer", station: "forge", inputs: [blockInput(BlockType.DRAGON_BONE_ORE, 10), blockInput(BlockType.CRYSTAL_ORE, 4)], output: createToolItem(ToolType.HAMMER, ToolMaterial.CRYSTAL, "Dragon Bone Hammer", 0xCC2222, 16) },
+
+  // Bows (full tier)
   { id: "wood_bow", station: "round_table", inputs: [blockInput(BlockType.OAK_LOG, 4), blockInput(BlockType.PLANKS, 2)], output: createToolItem(ToolType.BOW, ToolMaterial.WOOD, "Wooden Bow", 0xC4A35A, 6) },
   { id: "iron_bow", station: "forge", inputs: [blockInput(BlockType.IRON_ORE, 6), blockInput(BlockType.OAK_LOG, 3)], output: createToolItem(ToolType.BOW, ToolMaterial.IRON, "Iron Bow", 0xB0B0B0, 10) },
+  { id: "gold_bow", station: "forge", inputs: [blockInput(BlockType.GOLD_ORE, 8), blockInput(BlockType.OAK_LOG, 3)], output: createToolItem(ToolType.BOW, ToolMaterial.GOLD, "Gold Bow", 0xFFD700, 12) },
+  { id: "crystal_bow", station: "forge", inputs: [blockInput(BlockType.CRYSTAL_ORE, 10), blockInput(BlockType.IRON_ORE, 3)], output: createToolItem(ToolType.BOW, ToolMaterial.CRYSTAL, "Crystal Bow", 0xAA44FF, 18) },
 
-  // Staff
+  // Staves (full tier)
   { id: "wood_staff", station: "round_table", inputs: [blockInput(BlockType.OAK_LOG, 6), blockInput(BlockType.CRYSTAL_ORE, 1)], output: createToolItem(ToolType.STAFF, ToolMaterial.WOOD, "Apprentice Staff", 0xC4A35A, 8) },
+  { id: "iron_staff", station: "forge", inputs: [blockInput(BlockType.IRON_ORE, 6), blockInput(BlockType.CRYSTAL_ORE, 3)], output: createToolItem(ToolType.STAFF, ToolMaterial.IRON, "Enchanted Staff", 0xB0B0B0, 14) },
+  { id: "crystal_staff_adv", station: "forge", inputs: [blockInput(BlockType.CRYSTAL_ORE, 15), blockInput(BlockType.GOLD_ORE, 5)], output: createToolItem(ToolType.STAFF, ToolMaterial.CRYSTAL, "Archmage Staff", 0xAA44FF, 24) },
+  { id: "dragon_staff", station: "forge", inputs: [blockInput(BlockType.DRAGON_BONE_ORE, 12), blockInput(BlockType.CRYSTAL_ORE, 8)], output: createToolItem(ToolType.STAFF, ToolMaterial.CRYSTAL, "Dragon Staff", 0xCC2222, 32) },
 ];
 
 // ---------------------------------------------------------------------------

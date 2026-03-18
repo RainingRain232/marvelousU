@@ -6,8 +6,7 @@ import { TB } from "../config/TerrariaBalance";
 import type { TerrariaState } from "../state/TerrariaState";
 import type { ItemStack } from "../state/TerrariaInventory";
 import { getHeldItem } from "../state/TerrariaInventory";
-import { BLOCK_DEFS } from "../config/TerrariaBlockDefs";
-import { getAvailableRecipes, craftRecipe } from "../systems/TerrariaCraftingSystem";
+import { getAllStationRecipes, hasIngredients, getIngredientStatus, getInputName, craftRecipe } from "../systems/TerrariaCraftingSystem";
 import { onCrafted } from "../systems/TerrariaQuestSystem";
 
 // ---------------------------------------------------------------------------
@@ -582,23 +581,40 @@ export class TerrariaHUD {
       <span style="font-size:16px;color:#daa520;font-family:Georgia,serif;">${stationIcon} ${stationName}</span>
     </div>`;
 
-    const recipes = getAvailableRecipes(state);
-    if (!recipes.length) {
+    const allRecipes = getAllStationRecipes(state);
+    if (!allRecipes.length) {
       html += `<div style="text-align:center;padding:24px 0;color:#555;font-size:12px;">
-        No recipes available.<br><span style="font-size:10px;color:#444;">Gather materials or<br>use a crafting station.</span>
+        No recipes at this station.<br><span style="font-size:10px;color:#444;">Use a Round Table<br>or Forge for more.</span>
       </div>`;
     } else {
-      html += `<div style="max-height:320px;overflow-y:auto;padding-right:4px;">`;
-      for (const recipe of recipes) {
+      // Craftable first, then unavailable
+      const craftable = allRecipes.filter(r => hasIngredients(inv, r));
+      const unavailable = allRecipes.filter(r => !hasIngredients(inv, r));
+      const sorted = [...craftable, ...unavailable];
+
+      html += `<div style="max-height:340px;overflow-y:auto;padding-right:4px;">`;
+      let shownDivider = false;
+      for (const recipe of sorted) {
+        const canCraft = hasIngredients(inv, recipe);
+        if (!canCraft && !shownDivider && craftable.length > 0) {
+          html += `<div style="margin:6px 0;height:1px;background:rgba(90,64,16,0.2);"></div>`;
+          html += `<div style="font-size:8px;color:#4a3a20;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Need Materials</div>`;
+          shownDivider = true;
+        }
         const oc = `#${recipe.output.color.toString(16).padStart(6, "0")}`;
         const inputs = recipe.inputs.map(inp => {
-          const name = inp.blockType !== undefined ? (BLOCK_DEFS[inp.blockType]?.name ?? "?") : "?";
-          return `<span style="color:#888;">${inp.count}x</span> <span style="color:#aa9060;">${name}</span>`;
+          const name = getInputName(inp);
+          const { have, need } = getIngredientStatus(inv, inp);
+          const enough = have >= need;
+          const haveColor = enough ? "#66aa55" : "#aa4444";
+          return `<span style="color:${haveColor};">${have}/${need}</span> <span style="color:${canCraft ? "#aa9060" : "#665540"};">${name}</span>`;
         }).join(", ");
-        html += `<div class="td-recipe-row" data-rid="${recipe.id}">
-          <div style="width:26px;height:26px;background:${oc};border-radius:4px;border:1px solid rgba(255,255,255,0.1);flex-shrink:0;box-shadow:inset 0 -2px 4px rgba(0,0,0,0.2);"></div>
+        const rowAlpha = canCraft ? "1" : "0.5";
+        const cursor = canCraft ? "cursor:pointer;" : "cursor:default;opacity:0.6;";
+        html += `<div class="${canCraft ? "td-recipe-row" : ""}" data-rid="${recipe.id}" data-craftable="${canCraft}" style="display:flex;align-items:center;gap:8px;padding:7px 10px;margin-bottom:3px;background:rgba(40,28,14,${canCraft ? "0.5" : "0.25"});border:1px solid rgba(80,60,20,${canCraft ? "0.3" : "0.1"});border-radius:6px;${cursor}">
+          <div style="width:26px;height:26px;background:${oc};border-radius:4px;border:1px solid rgba(255,255,255,${canCraft ? "0.1" : "0.04"});flex-shrink:0;box-shadow:inset 0 -2px 4px rgba(0,0,0,0.2);opacity:${rowAlpha};"></div>
           <div style="flex:1;min-width:0;">
-            <div style="color:#ddccaa;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${recipe.output.displayName}${recipe.output.count > 1 ? ` <span style="color:#888;">x${recipe.output.count}</span>` : ""}</div>
+            <div style="color:${canCraft ? "#ddccaa" : "#776650"};font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${recipe.output.displayName}${recipe.output.count > 1 ? ` <span style="color:#888;">x${recipe.output.count}</span>` : ""}</div>
             <div style="font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${inputs}</div>
           </div>
         </div>`;
@@ -610,11 +626,11 @@ export class TerrariaHUD {
 
     this._invEl.innerHTML = html;
 
-    // Wire craft clicks
-    this._invEl.querySelectorAll(".td-recipe-row").forEach(el => {
+    // Wire craft clicks (only on craftable rows)
+    this._invEl.querySelectorAll("[data-craftable='true']").forEach(el => {
       el.addEventListener("click", () => {
         const id = (el as HTMLElement).dataset.rid;
-        const recipe = recipes.find(r => r.id === id);
+        const recipe = allRecipes.find(r => r.id === id);
         if (recipe && craftRecipe(state, recipe)) {
           onCrafted(state);
           this._rebuildInventory(state);

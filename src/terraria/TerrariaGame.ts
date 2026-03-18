@@ -351,16 +351,23 @@ export class TerrariaGame {
   private _respawnPlayer(): void {
     if (!this._state) return;
     const p = this._state.player;
-    const spawnX = Math.floor(TB.WORLD_WIDTH / 2);
+    const spawnX = Math.floor(this._state.worldWidth / 2);
     const surfaceY = getSurfaceHeight(spawnX);
     p.x = spawnX + 0.5;
     p.y = surfaceY + 3;
     p.vx = 0;
     p.vy = 0;
-    p.hp = Math.floor(p.maxHp / 2); // respawn at half HP
+    p.hp = Math.floor(p.maxHp / 2);
     p.mana = p.maxMana;
-    p.invulnTimer = 2; // 2s grace period
+    p.invulnTimer = 2;
+    p.miningTarget = null;
+    p.hoverTarget = null;
     this._state.gameOver = false;
+    // Reset fall/dodge tracking
+    this._wasFalling = false;
+    this._fallStartY = 0;
+    this._dodgeTimer = 0;
+    this._dodgeCooldown = 0;
     addMessage(this._state, "You respawned at the surface.", 0xFFD700);
   }
 
@@ -476,16 +483,12 @@ export class TerrariaGame {
           }
         }
 
-        // Dodge roll trigger (Shift + A/D while on ground)
+        // Dodge roll trigger (Shift + direction while on ground, cooldown ready)
         if (input.sprint && (input.left || input.right) && p.onGround && this._dodgeCooldown <= 0) {
-          // Only trigger on fresh sprint press (not held)
-          // Simplified: dodge on sprint + direction if cooldown ready
-          if (Math.abs(p.vx) > TB.PLAYER_SPEED * 1.4) {
-            this._dodgeTimer = TB.DODGE_DURATION;
-            this._dodgeCooldown = TB.DODGE_COOLDOWN;
-            p.vx = (input.left ? -1 : 1) * TB.DODGE_SPEED;
-            this._fx.spawnMiningParticles(p.x, p.y - 0.5, 0xCCCCCC, 4);
-          }
+          this._dodgeTimer = TB.DODGE_DURATION;
+          this._dodgeCooldown = TB.DODGE_COOLDOWN;
+          p.vx = (input.left ? -1 : 1) * TB.DODGE_SPEED;
+          this._fx.spawnMiningParticles(p.x, p.y - 0.5, 0xCCCCCC, 5);
         }
       }
 
@@ -523,10 +526,17 @@ export class TerrariaGame {
         this._wasFalling = false;
       }
 
-      // Mining / placing (with progress particles)
+      // Mining / placing (with progress particles + placement FX)
       if (!this._state.inventoryOpen) {
         const prevMining = p.miningTarget?.progress ?? 0;
+        const prevPlaced = p.blocksPlaced;
         updateMining(this._state, input, this._camera, dt);
+        // Block placement particles
+        if (p.blocksPlaced > prevPlaced && p.hoverTarget) {
+          const bt = getWorldBlock(this._state, p.hoverTarget.wx, p.hoverTarget.wy);
+          const def = BLOCK_DEFS[bt];
+          if (def) this._fx.spawnBlockPlaceParticles(p.hoverTarget.wx + 0.5, p.hoverTarget.wy + 0.5, def.color);
+        }
         // Mining progress particles
         if (p.miningTarget && p.miningTarget.progress > prevMining) {
           const mt = p.miningTarget;

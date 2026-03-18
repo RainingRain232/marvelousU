@@ -130,6 +130,18 @@ export class EagleFlightRenderer {
   private _camPos = new THREE.Vector3();
   private _camTarget = new THREE.Vector3();
 
+  // Dragon meshes
+  private _dragonGroups: THREE.Group[] = [];
+
+  // Bird flock meshes
+  private _birdMeshes: THREE.Mesh[][] = [];
+
+  // Lightning scorch
+  private _scorchMeshes: THREE.Mesh[] = [];
+
+  // Weather fog overlay
+  private _weatherFogDensity = 0;
+
   get canvas(): HTMLCanvasElement {
     return this._canvas;
   }
@@ -187,6 +199,8 @@ export class EagleFlightRenderer {
     this._buildOrbs();
     this._buildNPCs();
     this._buildMagicTrail();
+    this._buildDragons();
+    this._buildBirdFlocks();
   }
 
   // ---------------------------------------------------------------------------
@@ -6820,6 +6834,277 @@ export class EagleFlightRenderer {
   // Checkpoint rings (glowing torus rings in the air)
   // ---------------------------------------------------------------------------
 
+  // ---------------------------------------------------------------------------
+  // Dragons
+  // ---------------------------------------------------------------------------
+
+  private _buildDragons(): void {
+    const dragonScaleMat = new THREE.MeshStandardMaterial({ color: 0x3a2a1a, roughness: 0.6, metalness: 0.15 });
+    const dragonDarkMat = new THREE.MeshStandardMaterial({ color: 0x2a1a0a, roughness: 0.7 });
+    const dragonWingMembraneMat = new THREE.MeshStandardMaterial({ color: 0x553322, roughness: 0.8, side: THREE.DoubleSide, transparent: true, opacity: 0.85 });
+    const dragonBellyMat = new THREE.MeshStandardMaterial({ color: 0x886644, roughness: 0.6 });
+    const hornMat = new THREE.MeshStandardMaterial({ color: 0x222211, roughness: 0.5, metalness: 0.2 });
+    const clawMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.4, metalness: 0.3 });
+
+    for (let d = 0; d < 2; d++) {
+      const group = new THREE.Group();
+
+      // --- Main body (elongated, muscular) ---
+      const body = new THREE.Mesh(new THREE.SphereGeometry(2.2, 16, 12), dragonScaleMat);
+      body.scale.set(1, 0.7, 2.5);
+      body.castShadow = true;
+      group.add(body);
+      // Chest/front body
+      const chest = new THREE.Mesh(new THREE.SphereGeometry(1.8, 14, 10), dragonScaleMat);
+      chest.position.set(0, 0.2, -2);
+      chest.scale.set(1, 0.8, 1.2);
+      group.add(chest);
+      // Belly (lighter underside)
+      const belly = new THREE.Mesh(new THREE.SphereGeometry(1.6, 12, 8), dragonBellyMat);
+      belly.position.set(0, -0.6, -0.5);
+      belly.scale.set(0.8, 0.4, 2);
+      group.add(belly);
+      // Spine ridges
+      for (let sr = 0; sr < 8; sr++) {
+        const ridge = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.6, 4), hornMat);
+        ridge.position.set(0, 1.2 - sr * 0.05, -2 + sr * 0.9);
+        ridge.rotation.x = -0.2;
+        group.add(ridge);
+      }
+
+      // --- Neck (segmented) ---
+      for (let ns = 0; ns < 4; ns++) {
+        const neckSeg = new THREE.Mesh(new THREE.SphereGeometry(0.8 - ns * 0.1, 10, 8), dragonScaleMat);
+        neckSeg.position.set(0, 0.4 + ns * 0.3, -3.5 - ns * 0.8);
+        neckSeg.scale.set(1, 0.9, 1.2);
+        group.add(neckSeg);
+      }
+
+      // --- Head ---
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.9, 14, 10), dragonScaleMat);
+      head.position.set(0, 1.6, -6.5);
+      head.scale.set(0.9, 0.8, 1.3);
+      group.add(head);
+      // Jaw
+      const jaw = new THREE.Mesh(new THREE.SphereGeometry(0.6, 10, 8), dragonDarkMat);
+      jaw.position.set(0, 1.1, -6.8);
+      jaw.scale.set(0.8, 0.4, 1.2);
+      group.add(jaw);
+      // Snout
+      const snout = new THREE.Mesh(new THREE.ConeGeometry(0.45, 1.8, 10), dragonScaleMat);
+      snout.position.set(0, 1.4, -7.8);
+      snout.rotation.x = Math.PI / 2;
+      group.add(snout);
+      // Nostrils
+      for (const nx of [-0.2, 0.2]) {
+        const nostril = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 4), dragonDarkMat);
+        nostril.position.set(nx, 1.5, -8.5);
+        group.add(nostril);
+      }
+      // Eyes (glowing, slitted)
+      for (const ex of [-0.45, 0.45]) {
+        const eyeSocket = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 6), dragonDarkMat);
+        eyeSocket.position.set(ex, 1.9, -6.6);
+        group.add(eyeSocket);
+        const eyeGlow = new THREE.Mesh(
+          new THREE.SphereGeometry(0.14, 8, 6),
+          new THREE.MeshStandardMaterial({ color: 0xff6600, emissive: 0xff4400, emissiveIntensity: 0.8 }),
+        );
+        eyeGlow.position.set(ex, 1.9, -6.55);
+        group.add(eyeGlow);
+        // Slit pupil
+        const pupil = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.2, 0.02), new THREE.MeshStandardMaterial({ color: 0x111111 }));
+        pupil.position.set(ex, 1.9, -6.5);
+        group.add(pupil);
+      }
+      // Horns
+      for (const hx of [-0.5, 0.5]) {
+        const horn = new THREE.Mesh(new THREE.ConeGeometry(0.12, 1.2, 6), hornMat);
+        horn.position.set(hx, 2.4, -6);
+        horn.rotation.x = -0.4;
+        horn.rotation.z = hx * 0.3;
+        group.add(horn);
+        // Secondary smaller horn
+        const horn2 = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.7, 5), hornMat);
+        horn2.position.set(hx * 0.7, 2.2, -5.5);
+        horn2.rotation.x = -0.3;
+        horn2.rotation.z = hx * 0.4;
+        group.add(horn2);
+      }
+      // Teeth (visible from jaw)
+      for (let ti = 0; ti < 6; ti++) {
+        const tooth = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.2, 4), new THREE.MeshStandardMaterial({ color: 0xeeddcc }));
+        tooth.position.set((ti - 2.5) * 0.15, 1.05, -7.2 - ti * 0.1);
+        tooth.rotation.x = Math.PI;
+        group.add(tooth);
+      }
+
+      // --- Wings (multi-segment with membrane) ---
+      for (const side of [-1, 1]) {
+        const wingGroup = new THREE.Group();
+        // Wing arm (bone structure)
+        const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.12, 3, 8), dragonScaleMat);
+        upperArm.rotation.z = side * Math.PI / 2;
+        upperArm.position.set(side * 1.5, 0.8, 0);
+        wingGroup.add(upperArm);
+        // Forearm
+        const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.08, 4, 8), dragonScaleMat);
+        forearm.rotation.z = side * Math.PI / 2.5;
+        forearm.position.set(side * 4.5, 1.2, -0.3);
+        wingGroup.add(forearm);
+        // Wing fingers (3 segments radiating outward)
+        for (let f = 0; f < 3; f++) {
+          const finger = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.04, 2.5, 6), dragonScaleMat);
+          const fAngle = (f - 1) * 0.25;
+          finger.rotation.z = side * (Math.PI / 3 + fAngle);
+          finger.position.set(side * (6.5 + f * 0.3), 1.5 - f * 0.2, -0.5 + f * 0.8);
+          wingGroup.add(finger);
+          // Claw at finger tip
+          const claw = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.15, 4), clawMat);
+          claw.position.set(side * (7.5 + f * 0.4), 2 - f * 0.3, -0.5 + f * 0.8);
+          wingGroup.add(claw);
+        }
+        // Membrane (large triangular planes between fingers)
+        const membrane1 = new THREE.Mesh(new THREE.PlaneGeometry(5, 3, 3, 2), dragonWingMembraneMat);
+        membrane1.position.set(side * 4, 0.8, 0);
+        membrane1.rotation.z = side * 0.05;
+        wingGroup.add(membrane1);
+        const membrane2 = new THREE.Mesh(new THREE.PlaneGeometry(3.5, 2.5, 2, 2), dragonWingMembraneMat);
+        membrane2.position.set(side * 6.5, 1.2, 0.3);
+        membrane2.rotation.z = side * 0.1;
+        wingGroup.add(membrane2);
+
+        wingGroup.name = side === -1 ? "wingL" : "wingR";
+        group.add(wingGroup);
+      }
+
+      // --- Tail (multi-segment, curved) ---
+      for (let ts = 0; ts < 6; ts++) {
+        const tailSeg = new THREE.Mesh(
+          new THREE.SphereGeometry(0.6 - ts * 0.08, 8, 6),
+          dragonScaleMat,
+        );
+        tailSeg.position.set(0, -0.1 - ts * 0.1, 3 + ts * 1.2);
+        tailSeg.scale.set(0.8, 0.6, 1.2);
+        group.add(tailSeg);
+      }
+      // Tail spade
+      const tailSpade = new THREE.Mesh(new THREE.ConeGeometry(0.5, 0.8, 4), hornMat);
+      tailSpade.position.set(0, -0.6, 10);
+      tailSpade.rotation.x = Math.PI / 2;
+      tailSpade.rotation.z = Math.PI / 4;
+      group.add(tailSpade);
+
+      // --- Legs (4 legs) ---
+      for (const lz of [-1, 1.5]) {
+        for (const lx of [-1.2, 1.2]) {
+          const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.18, 1.5, 8), dragonScaleMat);
+          thigh.position.set(lx, -0.8, lz);
+          thigh.rotation.z = lx > 0 ? 0.3 : -0.3;
+          group.add(thigh);
+          const shin = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.1, 1.2, 8), dragonScaleMat);
+          shin.position.set(lx * 1.2, -1.8, lz);
+          group.add(shin);
+          // Claws
+          for (let c = 0; c < 3; c++) {
+            const claw = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.3, 4), clawMat);
+            claw.position.set(lx * 1.2 + (c - 1) * 0.1, -2.3, lz + 0.1);
+            claw.rotation.x = 0.3;
+            group.add(claw);
+          }
+        }
+      }
+
+      // --- Fire breath (layered for depth) ---
+      const fireGroup = new THREE.Group();
+      fireGroup.name = "fire";
+      const fireMat1 = new THREE.MeshStandardMaterial({ color: 0xff6600, emissive: 0xff4400, emissiveIntensity: 1.2, transparent: true, opacity: 0.7 });
+      const fireMat2 = new THREE.MeshStandardMaterial({ color: 0xff2200, emissive: 0xff0000, emissiveIntensity: 1, transparent: true, opacity: 0.5 });
+      const fireMat3 = new THREE.MeshStandardMaterial({ color: 0xffaa00, emissive: 0xff8800, emissiveIntensity: 0.8, transparent: true, opacity: 0.4 });
+      const fireCore = new THREE.Mesh(new THREE.ConeGeometry(0.8, 10, 12), fireMat1);
+      fireCore.rotation.x = Math.PI / 2;
+      fireCore.position.z = -12;
+      fireGroup.add(fireCore);
+      const fireMid = new THREE.Mesh(new THREE.ConeGeometry(1.5, 8, 10), fireMat2);
+      fireMid.rotation.x = Math.PI / 2;
+      fireMid.position.z = -10;
+      fireGroup.add(fireMid);
+      const fireOuter = new THREE.Mesh(new THREE.ConeGeometry(2.5, 6, 8), fireMat3);
+      fireOuter.rotation.x = Math.PI / 2;
+      fireOuter.position.z = -9;
+      fireGroup.add(fireOuter);
+      // Fire light
+      const fireLight = new THREE.PointLight(0xff4400, 5, 25);
+      fireLight.position.set(0, 0, -10);
+      fireGroup.add(fireLight);
+      fireGroup.visible = false;
+      group.add(fireGroup);
+
+      // Dragon glow light (ambient presence)
+      const dragonGlow = new THREE.PointLight(0xff6622, 1, 20);
+      dragonGlow.position.set(0, 0, -6);
+      group.add(dragonGlow);
+
+      group.scale.setScalar(1.8);
+      group.castShadow = true;
+      this._scene.add(group);
+      this._dragonGroups.push(group);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Bird Flocks
+  // ---------------------------------------------------------------------------
+
+  private _buildBirdFlocks(): void {
+    const birdBodyMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.8 });
+    const birdWingMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.8, side: THREE.DoubleSide });
+    const birdBellyMat = new THREE.MeshStandardMaterial({ color: 0x555544, roughness: 0.8 });
+    // Create mesh pools for 8 flocks, up to 14 birds each
+    for (let f = 0; f < 8; f++) {
+      const flockMeshes: THREE.Mesh[] = [];
+      for (let b = 0; b < 14; b++) {
+        // Use a Group as the "mesh" (cast to Mesh for array compatibility)
+        const birdGroup = new THREE.Group();
+        // Body (elongated ellipsoid)
+        const body = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 6), birdBodyMat);
+        body.scale.set(0.8, 0.7, 1.5);
+        birdGroup.add(body);
+        // Head
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 4), birdBodyMat);
+        head.position.set(0, 0.05, -0.2);
+        birdGroup.add(head);
+        // Beak
+        const beak = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.08, 4), new THREE.MeshStandardMaterial({ color: 0xddaa44 }));
+        beak.position.set(0, 0.04, -0.28);
+        beak.rotation.x = Math.PI / 2;
+        birdGroup.add(beak);
+        // Wings
+        for (const side of [-1, 1]) {
+          const wing = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.15), birdWingMat);
+          wing.position.set(side * 0.25, 0.05, 0);
+          wing.name = side === -1 ? "bwL" : "bwR";
+          birdGroup.add(wing);
+        }
+        // Tail
+        const tail = new THREE.Mesh(new THREE.PlaneGeometry(0.1, 0.12), birdBodyMat);
+        tail.position.set(0, 0, 0.2);
+        tail.rotation.x = -0.2;
+        birdGroup.add(tail);
+        // Belly highlight
+        const bellySpot = new THREE.Mesh(new THREE.SphereGeometry(0.1, 6, 4), birdBellyMat);
+        bellySpot.position.set(0, -0.06, 0);
+        bellySpot.scale.set(0.7, 0.3, 1.2);
+        birdGroup.add(bellySpot);
+
+        birdGroup.visible = false;
+        this._scene.add(birdGroup);
+        flockMeshes.push(birdGroup as unknown as THREE.Mesh);
+      }
+      this._birdMeshes.push(flockMeshes);
+    }
+  }
+
   private _buildCheckpointRings(): void {
     const ringMat = new THREE.ShaderMaterial({
       transparent: true,
@@ -7403,7 +7688,9 @@ export class EagleFlightRenderer {
     for (let i = this._smokeParticles.length - 1; i >= 0; i--) {
       const sp = this._smokeParticles[i];
       sp.mesh.position.y += sp.vy * dt;
-      sp.mesh.position.x += Math.sin(t * 2 + i) * 0.02;
+      // Drift with wind direction
+      sp.mesh.position.x += Math.cos(state.windAngle) * state.windStrength * 0.3 * dt + Math.sin(t * 2 + i) * 0.02;
+      sp.mesh.position.z += Math.sin(state.windAngle) * state.windStrength * 0.3 * dt;
       sp.mesh.scale.addScalar(dt * 0.3);
       sp.life -= dt;
       const mat = sp.mesh.material as THREE.MeshStandardMaterial;
@@ -7742,6 +8029,144 @@ export class EagleFlightRenderer {
     // --- Tone mapping exposure (altitude + time of day) ---
     const targetExposure = 0.9 + Math.min(0.25, p.position.y / 600) + duskExposure;
     this._renderer.toneMappingExposure += (targetExposure - this._renderer.toneMappingExposure) * 2 * dt;
+
+    // --- Update dragons ---
+    for (let di = 0; di < this._dragonGroups.length && di < state.dragons.length; di++) {
+      const dragon = state.dragons[di];
+      const dg = this._dragonGroups[di];
+      dg.position.set(dragon.position.x, dragon.position.y, dragon.position.z);
+      dg.rotation.y = dragon.yaw;
+      // Gentle body undulation
+      dg.rotation.x = Math.sin(t * 1.5) * 0.05;
+      // Wing flap animation (find named wing groups)
+      const wingL = dg.getObjectByName("wingL");
+      const wingR = dg.getObjectByName("wingR");
+      if (wingL) wingL.rotation.z = -(0.15 + Math.sin(t * 2.5) * 0.35);
+      if (wingR) wingR.rotation.z = 0.15 + Math.sin(t * 2.5) * 0.35;
+      // Fire breath visibility + animation
+      const fire = dg.getObjectByName("fire");
+      if (fire) {
+        fire.visible = dragon.fireActive;
+        if (dragon.fireActive) {
+          // Pulsing fire scale
+          const fireScale = 0.8 + Math.sin(t * 15) * 0.2;
+          fire.scale.set(fireScale, fireScale, 1 + Math.sin(t * 8) * 0.15);
+        }
+      }
+    }
+
+    // --- Update bird flocks ---
+    for (let fi = 0; fi < this._birdMeshes.length && fi < state.birdFlocks.length; fi++) {
+      const flock = state.birdFlocks[fi];
+      const meshes = this._birdMeshes[fi];
+      for (let bi = 0; bi < meshes.length; bi++) {
+        if (bi < flock.birds.length) {
+          const bird = flock.birds[bi];
+          meshes[bi].visible = true;
+          meshes[bi].position.set(bird.x, bird.y, bird.z);
+          // Face movement direction when scattered
+          if (flock.scattered && (bird.vx !== 0 || bird.vz !== 0)) {
+            meshes[bi].rotation.y = Math.atan2(bird.vx, bird.vz);
+          }
+          // Wing flap animation
+          const bGroup = meshes[bi] as unknown as THREE.Group;
+          if (bGroup.children) {
+            const bwL = bGroup.getObjectByName("bwL");
+            const bwR = bGroup.getObjectByName("bwR");
+            const flapSpeed = flock.scattered ? 18 : 8;
+            const flapAmp = flock.scattered ? 0.6 : 0.3;
+            if (bwL) bwL.rotation.z = -Math.sin(t * flapSpeed + bi * 1.3) * flapAmp;
+            if (bwR) bwR.rotation.z = Math.sin(t * flapSpeed + bi * 1.3) * flapAmp;
+          }
+        } else {
+          meshes[bi].visible = false;
+        }
+      }
+    }
+
+    // --- Weather fog density ---
+    if (state.weather === "fog") {
+      this._weatherFogDensity += (0.003 - this._weatherFogDensity) * dt;
+    } else if (state.weather === "storm") {
+      this._weatherFogDensity += (0.0015 - this._weatherFogDensity) * dt;
+    } else if (state.weather === "rain") {
+      this._weatherFogDensity += (0.001 - this._weatherFogDensity) * dt;
+    } else {
+      this._weatherFogDensity += (0 - this._weatherFogDensity) * dt * 0.5;
+    }
+    const baseFog = fogDensity;
+    (this._scene.fog as THREE.FogExp2).density = baseFog + this._weatherFogDensity;
+
+    // --- Lightning scorch mark ---
+    if (state.lightningStrikePos && state.lightningTimer > 2.5) {
+      const sx = state.lightningStrikePos.x;
+      const sy = state.lightningStrikePos.y;
+      const sz = state.lightningStrikePos.z;
+      // Main scorch circle (dark burn)
+      const scorchMat = new THREE.MeshStandardMaterial({
+        color: 0x1a1a0a, transparent: true, opacity: 0.7, depthWrite: false,
+      });
+      const scR = 2 + Math.random() * 2;
+      const scorch = new THREE.Mesh(new THREE.CircleGeometry(scR, 16), scorchMat);
+      scorch.position.set(sx, sy + 0.1, sz);
+      scorch.rotation.x = -Math.PI / 2;
+      this._scene.add(scorch);
+      this._scorchMeshes.push(scorch);
+      // Charred ring around scorch
+      const ringMat = new THREE.MeshStandardMaterial({
+        color: 0x332211, transparent: true, opacity: 0.5, depthWrite: false,
+      });
+      const scorchRing = new THREE.Mesh(new THREE.RingGeometry(scR, scR + 0.8, 16), ringMat);
+      scorchRing.position.set(sx, sy + 0.08, sz);
+      scorchRing.rotation.x = -Math.PI / 2;
+      this._scene.add(scorchRing);
+      this._scorchMeshes.push(scorchRing);
+      // Lightning branching lines radiating outward
+      for (let lb = 0; lb < 5; lb++) {
+        const lbAngle = Math.random() * Math.PI * 2;
+        const lbLen = 1.5 + Math.random() * 3;
+        const lbMat = new THREE.MeshStandardMaterial({
+          color: 0x221100, transparent: true, opacity: 0.5, depthWrite: false,
+        });
+        const lbMesh = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.02, lbLen), lbMat);
+        lbMesh.position.set(
+          sx + Math.cos(lbAngle) * (scR + lbLen / 2),
+          sy + 0.09,
+          sz + Math.sin(lbAngle) * (scR + lbLen / 2),
+        );
+        lbMesh.rotation.y = -lbAngle + Math.PI / 2;
+        this._scene.add(lbMesh);
+        this._scorchMeshes.push(lbMesh);
+      }
+      // Embers/glow (fading point light)
+      const emberLight = new THREE.PointLight(0xff4400, 3, 8);
+      emberLight.position.set(sx, sy + 1, sz);
+      this._scene.add(emberLight);
+      // Fade ember after 2 seconds
+      setTimeout(() => { this._scene.remove(emberLight); }, 2000);
+      // Keep max 30 scorch elements (10 strikes worth)
+      while (this._scorchMeshes.length > 30) {
+        const old = this._scorchMeshes.shift()!;
+        this._scene.remove(old);
+        old.geometry.dispose();
+        (old.material as THREE.Material).dispose();
+      }
+    }
+
+    // --- Landing animation: flare eagle wings + tail ---
+    if (state.isLanding && state.landingTimer > 0.3) {
+      const flareAmount = state.landingTimer * 0.4;
+      if (this._eagleWingL) {
+        this._eagleWingL.rotation.z = -(0.3 + flareAmount);
+      }
+      if (this._eagleWingR) {
+        this._eagleWingR.rotation.z = 0.3 + flareAmount;
+      }
+      // Fan tail feathers on landing
+      if (this._eagleTail) {
+        this._eagleTail.rotation.x = -0.2 * state.landingTimer;
+      }
+    }
 
     // --- Render ---
     this._renderer.render(this._scene, this._camera);

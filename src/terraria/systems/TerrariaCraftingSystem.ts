@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import { CRAFTING_RECIPES } from "../config/TerrariaRecipeDefs";
+import { BLOCK_DEFS } from "../config/TerrariaBlockDefs";
 import type { CraftingRecipe, RecipeInput } from "../config/TerrariaRecipeDefs";
 import type { TerrariaState } from "../state/TerrariaState";
 import { addMessage } from "../state/TerrariaState";
@@ -13,15 +14,31 @@ import type { ItemStack, TerrariaInventory } from "../state/TerrariaInventory";
 // Get available recipes
 // ---------------------------------------------------------------------------
 
+/** Returns only craftable recipes (player has materials). */
 export function getAvailableRecipes(state: TerrariaState): CraftingRecipe[] {
+  return getAllStationRecipes(state).filter(r => hasIngredients(state.player.inventory, r));
+}
+
+/** Returns ALL recipes for the current station, regardless of materials. */
+export function getAllStationRecipes(state: TerrariaState): CraftingRecipe[] {
   const station = state.craftingStation;
   return CRAFTING_RECIPES.filter(r => {
-    // Check station requirement
     if (r.station === "round_table" && station !== "round_table" && station !== "forge") return false;
     if (r.station === "forge" && station !== "forge") return false;
-    // Check if player has enough materials
-    return hasIngredients(state.player.inventory, r);
+    return true;
   });
+}
+
+/** For a recipe input, return how many the player has / needs. */
+export function getIngredientStatus(inv: TerrariaInventory, input: RecipeInput): { have: number; need: number } {
+  return { have: countMatching(inv, input), need: input.count };
+}
+
+/** Get display name for a recipe input. */
+export function getInputName(input: RecipeInput): string {
+  if (input.blockType !== undefined) return BLOCK_DEFS[input.blockType]?.name ?? "?";
+  if (input.displayName) return input.displayName;
+  return "?";
 }
 
 export function hasIngredients(inv: TerrariaInventory, recipe: CraftingRecipe): boolean {
