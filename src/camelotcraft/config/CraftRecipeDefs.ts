@@ -508,6 +508,23 @@ export const RECIPES: CraftRecipe[] = [
   // ===== Food (shapeless) =====
   { type: "shapeless", ingredients: [BlockType.OAK_LEAVES], result: foodItem("apple", "Apple", 0xE53935, 1) },
   { type: "shapeless", ingredients: [BlockType.MUSHROOM, BlockType.MUSHROOM], result: foodItem("stew", "Mushroom Stew", 0x8D6E63, 1) },
+  // Bread (3 wheat/grass → bread)
+  { type: "shaped", pattern: [[BlockType.TALL_GRASS, BlockType.TALL_GRASS, BlockType.TALL_GRASS]],
+    result: foodItem("bread", "Bread", 0xD4A574, 2) },
+  // Golden Apple (apple + gold = powerful healing)
+  { type: "shapeless", ingredients: [BlockType.OAK_LEAVES, BlockType.GOLD_ORE],
+    result: foodItem("golden_apple", "Golden Apple", 0xFFD700, 1) },
+  // Roast Meat (cook raw food in furnace — smelting recipe)
+  { type: "smelt", input: BlockType.OAK_LOG, // simplified: log → charcoal → use as fuel
+    result: { itemType: ItemType.SPECIAL, specialId: "charcoal", count: 1, displayName: "Charcoal", color: 0x333333 }, time: 5 },
+  // Enchanted Berry (enchanted flower → magic food)
+  { type: "shapeless", ingredients: [BlockType.ENCHANTED_FLOWER],
+    result: foodItem("enchanted_berry", "Enchanted Berry", 0xE040FB, 1) },
+  // Feast (mushroom stew + bread + apple → full feast)
+  { type: "shaped", pattern: [
+    [BlockType.MUSHROOM, BlockType.OAK_LEAVES, BlockType.MUSHROOM],
+    [_, BlockType.TALL_GRASS, _],
+  ], result: foodItem("feast", "Royal Feast", 0xDAA520, 1) },
 ];
 
 // ---------------------------------------------------------------------------

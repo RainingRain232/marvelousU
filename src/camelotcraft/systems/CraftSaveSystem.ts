@@ -5,8 +5,7 @@
 import { createCraftState, createPlayer, type CraftState, type QuestState } from "../state/CraftState";
 import { CraftChunk, chunkKey } from "../state/CraftChunk";
 import type { CraftInventory } from "../state/CraftInventory";
-import { getChestContents, setChestSlot, getFurnaceState } from "./CraftContainerSystem";
-import type { ItemStack } from "../config/CraftRecipeDefs";
+import { getAllChestData, getAllFurnaceData, restoreChestData, restoreFurnaceData } from "./CraftContainerSystem";
 
 const SAVE_KEY = "camelotcraft_save";
 
@@ -57,6 +56,11 @@ export function saveCraftWorld(state: CraftState): void {
     },
     chunks: savedChunks,
     quests: state.quests,
+    creativeMode: state.creativeMode ?? false,
+    containers: {
+      chests: getAllChestData(),
+      furnaces: getAllFurnaceData(),
+    },
   };
 
   try {
@@ -80,6 +84,13 @@ export function loadCraftWorld(): CraftState | null {
     state.timeOfDay = d.timeOfDay ?? 0.3;
     state.dayNumber = d.dayNumber ?? 1;
     state.quests = (d.quests ?? []) as QuestState[];
+    state.creativeMode = d.creativeMode ?? false;
+
+    // Restore containers
+    if (d.containers) {
+      if (d.containers.chests) restoreChestData(d.containers.chests);
+      if (d.containers.furnaces) restoreFurnaceData(d.containers.furnaces);
+    }
 
     // Player
     const sp = d.player;

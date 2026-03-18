@@ -492,7 +492,7 @@ export function updateTerrainUniforms(sunDir: THREE.Vector3, sunColor: THREE.Col
 // Mesh builder
 // ---------------------------------------------------------------------------
 
-export function buildChunkMesh(chunk: CraftChunk, state: CraftState): THREE.Mesh | null {
+export function buildChunkMesh(chunk: CraftChunk, state: CraftState, lodLevel = SUBDIV): THREE.Mesh | null {
   const positions: number[] = [];
   const colors: number[] = [];
   const normals: number[] = [];
@@ -554,7 +554,7 @@ export function buildChunkMesh(chunk: CraftChunk, state: CraftState): THREE.Mesh
             : { p: positions, c: colors, n: normals };
 
           // Subdivided face: SUBDIV x SUBDIV grid of quads
-          const subdiv = isBlockTransparent ? 1 : SUBDIV; // don't subdivide water/leaves
+          const subdiv = isBlockTransparent ? 1 : lodLevel; // LOD: lower for distant chunks
           const step = 1.0 / subdiv;
 
           // Determine the two tangent axes for this face

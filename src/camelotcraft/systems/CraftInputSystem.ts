@@ -303,7 +303,20 @@ export class CraftInputSystem {
     const inv = state.player.inventory;
     const held = inv.hotbar[inv.selectedSlot];
     if (held && held.itemType === "food" && state.player.hunger < state.player.maxHunger) {
-      state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 4);
+      // Different foods restore different amounts
+      const foodValues: Record<string, { hunger: number; hp?: number }> = {
+        apple: { hunger: 4 },
+        stew: { hunger: 6, hp: 2 },
+        bread: { hunger: 5 },
+        golden_apple: { hunger: 8, hp: 6 },
+        enchanted_berry: { hunger: 3, hp: 4 },
+        feast: { hunger: 12, hp: 4 },
+      };
+      const fv = foodValues[held.specialId ?? ""] ?? { hunger: 4 };
+      state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + fv.hunger);
+      if (fv.hp) state.player.hp = Math.min(state.player.maxHp, state.player.hp + fv.hp);
+
+      addMessage(state, `Ate ${held.displayName} (+${fv.hunger} hunger${fv.hp ? `, +${fv.hp} HP` : ""})`, 0x4CAF50);
       held.count--;
       if (held.count <= 0) inv.hotbar[inv.selectedSlot] = null;
     }

@@ -164,6 +164,32 @@ export function removeFurnace(wx: number, wy: number, wz: number): void {
 }
 
 // ---------------------------------------------------------------------------
+// Serialization helpers (for save system)
+// ---------------------------------------------------------------------------
+
+export function getAllChestData(): [string, (ItemStack | null)[]][] {
+  return Array.from(_chestContents.entries());
+}
+
+export function getAllFurnaceData(): [string, FurnaceState][] {
+  return Array.from(_furnaces.entries());
+}
+
+export function restoreChestData(entries: [string, (ItemStack | null)[]][]): void {
+  _chestContents.clear();
+  for (const [key, contents] of entries) {
+    _chestContents.set(key, contents);
+  }
+}
+
+export function restoreFurnaceData(entries: [string, FurnaceState][]): void {
+  _furnaces.clear();
+  for (const [key, state] of entries) {
+    _furnaces.set(key, state);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Interaction dispatcher
 // ---------------------------------------------------------------------------
 

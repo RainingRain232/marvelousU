@@ -181,6 +181,41 @@ export const EagleFlightInputSystem = {
       p.freeLookPitch = Math.max(-1.2, Math.min(1.2, p.freeLookPitch));
     }
 
+    // --- Barrel roll (R key) ---
+    if (p.barrelRollCooldown > 0) p.barrelRollCooldown -= dt;
+    if (_keys.has("KeyR") && p.barrelRollTimer <= 0 && p.barrelRollCooldown <= 0) {
+      p.barrelRollTimer = 0.6;
+      p.barrelRollCooldown = 2.0;
+      p.barrelRollDirection = rollInput >= 0 ? 1 : -1;
+      // Combo scoring
+      const rollScore = 100 * p.comboMultiplier;
+      p.trickScore += rollScore;
+      p.comboTimer = 3;
+      p.comboMultiplier++;
+      p.lastComboScore = rollScore;
+      state.shakeTimer = 0.15;
+      state.shakeMag = 0.6;
+      state.notification = p.comboMultiplier > 2 ? `BARREL ROLL! x${p.comboMultiplier - 1}` : "BARREL ROLL!";
+      state.notificationTimer = 1.5;
+    }
+    if (p.barrelRollTimer > 0) {
+      p.barrelRollTimer -= dt;
+      // Override roll with full 360 spin
+      const rollProgress = 1 - p.barrelRollTimer / 0.6;
+      p.roll = p.barrelRollDirection * rollProgress * Math.PI * 2;
+    }
+
+    // --- Photo mode toggle (P key) ---
+    if (_keys.has("KeyP")) {
+      if (!state.photoMode) {
+        state.photoMode = true;
+      }
+    } else {
+      if (state.photoMode) {
+        state.photoMode = false;
+      }
+    }
+
     // Reset mouse deltas
     _mouseDX = 0;
     _mouseDY = 0;
@@ -240,6 +275,68 @@ export const EagleFlightInputSystem = {
     // --- Bank angle visual ---
     const targetBank = -yawInput * 0.5 + rollInput * 0.3;
     p.bankAngle += (targetBank - p.bankAngle) * 4 * dt;
+
+    // --- Spellcasting (1=firework, 2=lightning, 3=magic trail) ---
+    if (_keys.has("Digit1") && p.spellCooldowns[0] <= 0) {
+      p.spellCooldowns[0] = 3;
+      state.notification = "FIREWORK!";
+      state.notificationTimer = 1;
+      state.shakeTimer = 0.1;
+      state.shakeMag = 0.3;
+    }
+    if (_keys.has("Digit2") && p.spellCooldowns[1] <= 0) {
+      p.spellCooldowns[1] = 5;
+      state.notification = "LIGHTNING!";
+      state.notificationTimer = 1;
+      state.shakeTimer = 0.2;
+      state.shakeMag = 1.0;
+    }
+    if (_keys.has("Digit3")) {
+      p.magicTrailActive = true;
+    } else {
+      p.magicTrailActive = false;
+    }
+
+    // --- Sustained low flight trick ---
+    if (p.position.y < 5 && p.speed > 25) {
+      // "Nape of earth" — award points periodically
+      if (Math.random() < dt * 2) {
+        p.trickScore += 5 * p.comboMultiplier;
+        p.comboTimer = Math.max(p.comboTimer, 1);
+      }
+    }
+
+    // --- Near-ground / water detection ---
+    state.nearGround = p.position.y < 8;
+    // Near water = low altitude + near river path (z ~ -15 to 20, roughly)
+    const nearRiverZ = Math.abs(p.position.z + 5) < 25;
+    state.nearWater = p.position.y < 5 && nearRiverZ;
+
+    // Near-miss detection (flying through gates — check if near wall radius at gate angles)
+    const playerDist = Math.sqrt(p.position.x ** 2 + p.position.z ** 2);
+    if (Math.abs(playerDist - 85) < 5 && p.position.y < 12) {
+      // Near a gate — check cardinal directions
+      const playerAngle = Math.atan2(p.position.x, p.position.z);
+      const gateAngles = [0, Math.PI / 2, Math.PI, -Math.PI / 2];
+      for (const ga of gateAngles) {
+        let diff = Math.abs(playerAngle - ga);
+        if (diff > Math.PI) diff = Math.PI * 2 - diff;
+        if (diff < 0.15) {
+          p.nearMisses++;
+          p.trickScore += 50;
+          state.notification = "GATE THREADING!";
+          state.notificationTimer = 1.5;
+          state.shakeTimer = 0.1;
+          state.shakeMag = 0.4;
+          break;
+        }
+      }
+    }
+
+    // --- Notification timer decay ---
+    if (state.notificationTimer > 0) {
+      state.notificationTimer -= dt;
+    }
 
     // --- Camera shake decay ---
     if (state.shakeTimer > 0) {

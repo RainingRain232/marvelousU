@@ -191,9 +191,21 @@ export function generateChunkTerrain(chunk: CraftChunk, seed: number): void {
       const wz = cz + lz;
       const idx = lx * S + lz;
 
+      // Base terrain height from fractal noise
       const raw = fractal2D(perm, wx, wz, 1 / CB.TERRAIN_SCALE);
       const norm = (raw + 1) * 0.5;
-      heights[idx] = Math.floor(norm * (H * 0.6)) + Math.floor(H * 0.15);
+      let height = Math.floor(norm * (H * 0.5)) + Math.floor(H * 0.15);
+
+      // Mountain layer: sharp peaks using ridged noise
+      const mountainNoise = Math.abs(noise2D(perm, wx * 0.008, wz * 0.008));
+      const ridged = 1.0 - mountainNoise; // ridged noise: peaks where noise = 0
+      const mountainHeight = Math.pow(ridged, 3) * 20; // sharp peaks up to +20 blocks
+      height += Math.floor(mountainHeight);
+
+      // Guarantee minimum ground level: every column is at least SEA_LEVEL
+      height = Math.max(CB.SEA_LEVEL, Math.min(H - 3, height));
+
+      heights[idx] = height;
 
       const temp = (noise2D(permTemp, wx * CB.BIOME_SCALE, wz * CB.BIOME_SCALE) + 1) * 0.5;
       const moist = (noise2D(permMoist, wx * CB.BIOME_SCALE, wz * CB.BIOME_SCALE) + 1) * 0.5;

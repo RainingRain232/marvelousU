@@ -303,7 +303,10 @@ export class CraftRenderer {
             disposeChunkMesh(old);
           }
 
-          const mesh = buildChunkMesh(chunk, state);
+          // LOD: high detail nearby, low detail far away
+          const chunkDist = Math.sqrt(dx * dx + dz * dz);
+          const lod = chunkDist <= 2 ? 3 : chunkDist <= 4 ? 2 : 1;
+          const mesh = buildChunkMesh(chunk, state, lod);
           if (mesh) {
             // Fade-in: start slightly below and scale up
             mesh.position.y = -0.5;

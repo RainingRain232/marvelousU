@@ -25,6 +25,38 @@ function getQuest(state: CraftState, id: QuestId): QuestState | undefined {
   return state.quests.find((q) => q.id === id);
 }
 
+/** Unlock next chapter of quests when previous chapter is complete. */
+function unlockNextChapter(state: CraftState): void {
+  const q = (id: QuestId) => state.quests.find(qq => qq.id === id);
+
+  // Chapter 2 unlocks when Chapter 1 is done (shelter + tool)
+  const ch1Done = q(QuestId.BUILD_SHELTER)?.completed && q(QuestId.CRAFT_FIRST_TOOL)?.completed;
+  if (ch1Done) {
+    const iron = q(QuestId.MINE_IRON);
+    const excal = q(QuestId.FIND_EXCALIBUR);
+    if (iron && !iron.unlocked) { iron.unlocked = true; addMessage(state, "Chapter II unlocked: Seek iron and the legendary blade!", 0xFFD700); }
+    if (excal && !excal.unlocked) excal.unlocked = true;
+  }
+
+  // Chapter 3 unlocks when Excalibur is found
+  const ch2Done = q(QuestId.FIND_EXCALIBUR)?.completed;
+  if (ch2Done) {
+    const castle = q(QuestId.BUILD_CASTLE);
+    const knights = q(QuestId.RECRUIT_KNIGHTS);
+    if (castle && !castle.unlocked) { castle.unlocked = true; addMessage(state, "Chapter III unlocked: Found thy kingdom and rally thy knights!", 0xFFD700); }
+    if (knights && !knights.unlocked) knights.unlocked = true;
+  }
+
+  // Chapter 4 unlocks when castle + knights are done
+  const ch3Done = q(QuestId.BUILD_CASTLE)?.completed && q(QuestId.RECRUIT_KNIGHTS)?.completed;
+  if (ch3Done) {
+    const dragon = q(QuestId.DEFEAT_DRAGON);
+    const grail = q(QuestId.FIND_GRAIL);
+    if (dragon && !dragon.unlocked) { dragon.unlocked = true; addMessage(state, "Chapter IV unlocked: Destiny awaits — slay the dragon and claim the Grail!", 0xFFD700); }
+    if (grail && !grail.unlocked) grail.unlocked = true;
+  }
+}
+
 /** Mark a quest complete, announce it, and clamp progress to goal. */
 function completeQuest(state: CraftState, quest: QuestState): void {
   if (quest.completed) return;
@@ -42,8 +74,11 @@ function completeQuest(state: CraftState, quest: QuestState): void {
  * purely event-driven but depend on world / player state.
  */
 export function updateQuests(state: CraftState): void {
+  // --- Sequential unlock: check chapter progression ---
+  unlockNextChapter(state);
+
   for (const quest of state.quests) {
-    if (quest.completed) continue;
+    if (quest.completed || !quest.unlocked) continue;
 
     switch (quest.id) {
       // BUILD_SHELTER progress is driven by onBlockPlaced; just clamp-check.

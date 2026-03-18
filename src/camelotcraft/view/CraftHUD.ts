@@ -612,7 +612,7 @@ export class CraftHUD {
   }
 
   private _updateQuests(state: CraftState): void {
-    const active = state.quests.filter((q) => !q.completed).slice(0, 4);
+    const active = state.quests.filter((q) => !q.completed && q.unlocked).slice(0, 4);
     if (active.length === 0) {
       this._questPanel.innerHTML = `<div style="color:#FFD700;font-weight:bold;">⚔ All Quests Complete! ⚔</div>`;
       return;

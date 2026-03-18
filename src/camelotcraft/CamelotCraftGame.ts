@@ -28,6 +28,7 @@ import { MobType, MOB_DEFS } from "./config/CraftMobDefs";
 import { updateDroppedItems, dropItem } from "./systems/CraftItemDropSystem";
 import { initMusic, updateMusic, stopMusic, destroyMusic } from "./systems/CraftMusicSystem";
 import { createMountState, tryMount, dismount, updateMount } from "./systems/CraftMountSystem";
+import { checkAchievements } from "./systems/CraftAchievementSystem";
 import { toggleDoor, isDoor } from "./systems/CraftDoorSystem";
 import { CraftRenderer } from "./view/CraftRenderer";
 import { CraftHUD } from "./view/CraftHUD";
@@ -57,6 +58,8 @@ export class CamelotCraftGame {
   private _tutorialTimer = 0;
   private _mount = createMountState();
   private _mobSoundTimer = 0;
+  private _achTimer = 0;
+  private _discoveredBiomes = new Set<string>();
 
   async boot(): Promise<void> {
     // --- Title / loading screen ---
@@ -328,6 +331,14 @@ export class CamelotCraftGame {
         return;
       }
       this._togglePause();
+    }
+    // F5 = toggle camera mode (first-person → third-person → orbit)
+    if (e.key === "F5") {
+      e.preventDefault();
+      this._renderer.cameraCtrl.toggleMode();
+      const mode = this._renderer.cameraCtrl.mode;
+      const names = { first: "First Person", third: "Third Person", orbit: "Cinematic Orbit" };
+      addMessage(this._state, `Camera: ${names[mode]}`, 0x90CAF9);
     }
   };
 
@@ -626,6 +637,10 @@ export class CamelotCraftGame {
     // --- Dropped items ---
     updateDroppedItems(this._state, dt);
 
+    // --- Achievements (check every 2 seconds) ---
+    this._achTimer = (this._achTimer ?? 0) + dt;
+    if (this._achTimer > 2) { this._achTimer = 0; checkAchievements(this._state); }
+
     // --- Biome name display ---
     this._checkBiomeChange();
 
@@ -787,16 +802,55 @@ export class CamelotCraftGame {
       if (dot > 0.7) {
         const held = getHeldItem(p.inventory);
         let dmg: number = CB.PLAYER_ATTACK_DAMAGE;
+        let kbMult = 1.0;
+        let sweepRange = 0; // hit nearby mobs too
+        let lifesteal = 0;
+        let extraMsg = "";
+
         if (held?.itemType === ItemType.WEAPON) {
           dmg = WEAPON_DAMAGE[held.specialId ?? ""] ?? dmg;
+
+          // Weapon special abilities
+          const wid = held.specialId ?? "";
+          if (wid === "crystal_sword") {
+            // Crystal: sweep attack hits nearby mobs
+            sweepRange = 3;
+            extraMsg = " [Sweep!]";
+          } else if (wid === "excalibur") {
+            // Excalibur: lifesteal + massive knockback + golden particles
+            lifesteal = Math.ceil(dmg * 0.3);
+            kbMult = 2.0;
+            this._renderer.particles.emitBlockBreak(mob.position.x, mob.position.y + 1, mob.position.z, 0xFFD700);
+            extraMsg = " [Holy Smite!]";
+          } else if (wid.includes("stone")) {
+            // Stone: extra knockback
+            kbMult = 1.5;
+          } else if (wid.includes("iron")) {
+            // Iron: armor piercing (ignore 50% armor)
+            extraMsg = " [Pierce!]";
+          }
         }
-        // Tool bonus damage
-        if (held?.itemType === ItemType.TOOL) {
-          dmg += 2;
+        if (held?.itemType === ItemType.TOOL) dmg += 2;
+
+        const kb = dir.clone().multiplyScalar(CB.KNOCKBACK_FORCE * kbMult);
+        damageMob(this._state, mob.id, dmg, kb);
+
+        // Sweep attack: damage nearby mobs too
+        if (sweepRange > 0) {
+          for (const nearMob of this._state.mobs) {
+            if (nearMob.id === mob.id) continue;
+            if (nearMob.position.distanceTo(mob.position) < sweepRange) {
+              damageMob(this._state, nearMob.id, Math.ceil(dmg * 0.5), kb.clone().multiplyScalar(0.5));
+            }
+          }
         }
 
-        const kb = dir.clone().multiplyScalar(CB.KNOCKBACK_FORCE);
-        damageMob(this._state, mob.id, dmg, kb);
+        // Lifesteal
+        if (lifesteal > 0) {
+          p.hp = Math.min(p.maxHp, p.hp + lifesteal);
+        }
+
+        if (extraMsg) addMessage(this._state, `${dmg} damage${extraMsg}`, 0xFFD700);
         playHurt();
 
         // Hit particles + screen shake
@@ -960,48 +1014,64 @@ export class CamelotCraftGame {
   private _dragonSpawnTimer = 0;
   private _dragonSpawned = false;
 
+  private _dragonWarningStage = 0;
+
   private _checkDragonSpawn(dt: number): void {
     if (this._dragonSpawned) return;
 
-    // Dragon spawns after day 5 and player has Excalibur
-    if (this._state.dayNumber < 5) return;
+    // Dragon quest must be unlocked (Chapter 4)
+    const dragonQuest = this._state.quests.find(q => q.id === "defeat_dragon");
+    if (!dragonQuest || !dragonQuest.unlocked) return;
 
     this._dragonSpawnTimer += dt;
-    if (this._dragonSpawnTimer < CB.SAXON_RAID_INTERVAL) return;
-    this._dragonSpawnTimer = 0;
 
-    // 20% chance per check interval
-    if (Math.random() > 0.2) return;
+    // Progressive warnings before spawn
+    if (this._dragonWarningStage === 0 && this._dragonSpawnTimer > 30) {
+      this._dragonWarningStage = 1;
+      addMessage(this._state, "The ground trembles beneath your feet...", 0xFF6600);
+      this._renderer.cameraCtrl.shake(0.1);
+    }
+    if (this._dragonWarningStage === 1 && this._dragonSpawnTimer > 60) {
+      this._dragonWarningStage = 2;
+      addMessage(this._state, "A distant roar echoes across the mountains!", 0xFF4444);
+      this._renderer.cameraCtrl.shake(0.2);
+      playMobSound("dragon");
+    }
+    if (this._dragonWarningStage === 2 && this._dragonSpawnTimer > 90) {
+      this._dragonWarningStage = 3;
+      addMessage(this._state, "SHADOW FALLS! THE DRAGON APPROACHES!", 0xFF0000);
+      this._renderer.cameraCtrl.shake(0.4);
 
-    // Spawn dragon at distance
-    const p = this._state.player.position;
-    const angle = Math.random() * Math.PI * 2;
-    const dist = 40 + Math.random() * 20;
-    const spawnPos = new THREE.Vector3(
-      p.x + Math.cos(angle) * dist,
-      p.y + 15,
-      p.z + Math.sin(angle) * dist,
-    );
+      // Spawn dragon dramatically
+      const p = this._state.player.position;
+      const angle = Math.random() * Math.PI * 2;
+      const dist = 50;
+      const spawnPos = new THREE.Vector3(
+        p.x + Math.cos(angle) * dist,
+        p.y + 25, // high in the sky
+        p.z + Math.sin(angle) * dist,
+      );
 
-    const dragon = {
-      id: this._state.nextMobId++,
-      type: MobType.DRAGON,
-      position: spawnPos,
-      velocity: new THREE.Vector3(),
-      hp: MOB_DEFS[MobType.DRAGON].hp,
-      maxHp: MOB_DEFS[MobType.DRAGON].hp,
-      yaw: Math.atan2(p.x - spawnPos.x, p.z - spawnPos.z),
-      target: null,
-      attackTimer: 0,
-      hurtTimer: 0,
-      despawnTimer: 0,
-      aiState: "chase" as const,
-      aiTimer: 0,
-    };
+      const dragon = {
+        id: this._state.nextMobId++,
+        type: MobType.DRAGON,
+        position: spawnPos,
+        velocity: new THREE.Vector3(),
+        hp: MOB_DEFS[MobType.DRAGON].hp,
+        maxHp: MOB_DEFS[MobType.DRAGON].hp,
+        yaw: Math.atan2(p.x - spawnPos.x, p.z - spawnPos.z),
+        target: null,
+        attackTimer: 0,
+        hurtTimer: 0,
+        despawnTimer: 0,
+        aiState: "chase" as const,
+        aiTimer: 0,
+      };
 
-    this._state.mobs.push(dragon);
-    this._dragonSpawned = true;
-    addMessage(this._state, "A DRAGON approaches! The earth trembles!", 0xFF4444);
+      this._state.mobs.push(dragon);
+      this._dragonSpawned = true;
+      addMessage(this._state, "A DRAGON approaches! The earth trembles!", 0xFF4444);
+    }
   }
 
   // =========================================================================
@@ -1175,6 +1245,16 @@ export class CamelotCraftGame {
       const def = BIOME_DEFS[biome];
       if (def) {
         addMessage(this._state, `Entering: ${def.name}`, 0xC0A060);
+
+        // Biome discovery reward: XP + exploration bonus on first visit
+        if (!this._discoveredBiomes.has(biome)) {
+          this._discoveredBiomes.add(biome);
+          this._state.player.xp += 5;
+          addMessage(this._state, `New biome discovered! +5 XP (${this._discoveredBiomes.size}/8)`, 0x4CAF50);
+          // Particles celebration
+          const pp = this._state.player.position;
+          this._renderer.particles.emitBlockBreak(pp.x, pp.y + 1, pp.z, def.fogColor);
+        }
       }
     }
     this._lastBiome = biome;

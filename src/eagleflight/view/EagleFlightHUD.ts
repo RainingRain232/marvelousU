@@ -85,6 +85,12 @@ export class EagleFlightHUD {
   // Checkpoint counter
   private _checkpointEl!: HTMLDivElement;
 
+  // Notification popup
+  private _notifEl!: HTMLDivElement;
+
+  // Trick score
+  private _trickScoreEl!: HTMLDivElement;
+
   build(sw: number, sh: number): void {
     this._root = document.createElement("div");
     this._root.style.cssText = `
@@ -342,7 +348,12 @@ export class EagleFlightHUD {
       <span style="color:#88bbff">Shift</span> Throttle Up &nbsp;&nbsp;
       <span style="color:#88bbff">Ctrl</span> Throttle Down<br>
       <span style="color:#88bbff">Space</span> Boost &nbsp;&nbsp;
-      <span style="color:#88bbff">F</span> Free Look &nbsp;&nbsp;
+      <span style="color:#88bbff">R</span> Barrel Roll &nbsp;&nbsp;
+      <span style="color:#88bbff">F</span> Free Look<br>
+      <span style="color:#88bbff">1</span> Firework &nbsp;&nbsp;
+      <span style="color:#88bbff">2</span> Lightning &nbsp;&nbsp;
+      <span style="color:#88bbff">3</span> Magic Trail &nbsp;&nbsp;
+      <span style="color:#88bbff">P</span> Photo &nbsp;&nbsp;
       <span style="color:#88bbff">ESC</span> Pause
     `;
     this._root.appendChild(this._controlsEl);
@@ -375,6 +386,26 @@ export class EagleFlightHUD {
     `;
     this._thermalEl.textContent = "THERMAL UPDRAFT";
     this._root.appendChild(this._thermalEl);
+
+    // --- Notification popup (center screen) ---
+    this._notifEl = document.createElement("div");
+    this._notifEl.style.cssText = `
+      position:absolute;top:35%;left:50%;transform:translate(-50%,-50%);
+      color:#44ffaa;font-size:28px;font-weight:bold;letter-spacing:6px;
+      text-shadow:0 0 20px rgba(68,255,170,0.6),0 0 40px rgba(68,255,170,0.3);
+      opacity:0;transition:opacity 0.15s;pointer-events:none;
+      text-align:center;
+    `;
+    this._root.appendChild(this._notifEl);
+
+    // --- Trick score (right side) ---
+    this._trickScoreEl = document.createElement("div");
+    this._trickScoreEl.style.cssText = `
+      position:absolute;bottom:160px;right:20px;
+      color:rgba(255,255,255,0.3);font-size:11px;letter-spacing:1px;
+      text-shadow:0 0 4px rgba(0,0,0,0.8);text-align:right;
+    `;
+    this._root.appendChild(this._trickScoreEl);
 
     // --- Intro cinematic overlay ---
     this._introOverlay = document.createElement("div");
@@ -518,7 +549,7 @@ export class EagleFlightHUD {
     this._drawHorizon(p.pitch, p.roll);
 
     // --- Minimap ---
-    this._drawMinimap(p.position.x, p.position.z, p.yaw);
+    this._drawMinimap(p.position.x, p.position.z, p.yaw, state);
 
     // --- Landmark labels ---
     this._updateLandmarkLabel(p.position.x, p.position.z, dt);
@@ -561,13 +592,59 @@ export class EagleFlightHUD {
     const topSpeedKts = Math.round(p.topSpeed * 2.5);
     this._statsEl.textContent = `${minutes}:${seconds.toString().padStart(2, "0")}  |  ${distKm} km  |  TOP ${topSpeedKts} kts`;
 
-    // --- Checkpoint counter ---
+    // --- Checkpoint counter + orb counter ---
     const totalCp = state.checkpoints.length;
     const hitCp = p.checkpointsHit;
-    this._checkpointEl.textContent = hitCp > 0 ? `RINGS ${hitCp}/${totalCp}` : "";
+    const totalOrbs = state.orbs.length;
+    const hitOrbs = p.orbsCollected;
+    let collectText = "";
+    if (hitCp > 0) collectText += `RINGS ${hitCp}/${totalCp}`;
+    if (hitOrbs > 0) collectText += `${collectText ? "  |  " : ""}ORBS ${hitOrbs}/${totalOrbs}`;
+    this._checkpointEl.textContent = collectText;
+
+    // --- Combo display ---
+    if (p.comboTimer > 0 && p.comboMultiplier > 1) {
+      this._notifEl.style.color = p.comboMultiplier > 4 ? "#ff4444" : p.comboMultiplier > 2 ? "#ffcc44" : "#44ffaa";
+    } else {
+      this._notifEl.style.color = "#44ffaa";
+    }
+
+    // --- Spell cooldown display in trick score ---
+    const s1 = p.spellCooldowns[0] > 0 ? `${p.spellCooldowns[0].toFixed(0)}s` : "RDY";
+    const s2 = p.spellCooldowns[1] > 0 ? `${p.spellCooldowns[1].toFixed(0)}s` : "RDY";
+    const s3 = p.magicTrailActive ? "ON" : "3";
+    this._trickScoreEl.textContent = `SCORE ${p.trickScore}`;
+    if (p.nearMisses > 0) this._trickScoreEl.textContent += ` | THREADS ${p.nearMisses}`;
+    this._trickScoreEl.textContent += `\n1:${s1} 2:${s2} ${s3}:Trail`;
 
     // --- Thermal indicator ---
     this._thermalEl.style.opacity = `${state.thermalBoost > 0.1 ? Math.min(1, state.thermalBoost) : 0}`;
+
+    // --- Notification popup ---
+    if (state.notificationTimer > 0) {
+      this._notifEl.textContent = state.notification;
+      this._notifEl.style.opacity = `${Math.min(1, state.notificationTimer * 2)}`;
+      // Scale pulse on appear
+      const scale = 1 + Math.max(0, (state.notificationTimer - 1)) * 0.3;
+      this._notifEl.style.transform = `translate(-50%,-50%) scale(${scale})`;
+    } else {
+      this._notifEl.style.opacity = "0";
+    }
+
+    // --- Trick score ---
+    if (p.trickScore > 0) {
+      this._trickScoreEl.textContent = `TRICKS ${p.trickScore}`;
+      if (p.nearMisses > 0) {
+        this._trickScoreEl.textContent += ` | THREADS ${p.nearMisses}`;
+      }
+    }
+
+    // --- Photo mode: hide most HUD elements ---
+    if (state.photoMode) {
+      this._root.style.opacity = "0.05";
+    } else {
+      this._root.style.opacity = "1";
+    }
 
     // --- Intro overlay ---
     if (state.introActive) {
@@ -682,7 +759,7 @@ export class EagleFlightHUD {
     ctx.stroke();
   }
 
-  private _drawMinimap(px: number, pz: number, yaw: number): void {
+  private _drawMinimap(px: number, pz: number, yaw: number, state: EagleFlightState): void {
     const ctx = this._minimapCtx;
     const w = 140;
     const h = 140;
@@ -737,6 +814,35 @@ export class EagleFlightHUD {
       ctx.beginPath();
       ctx.arc(lx, lz, lm.icon === "castle" ? 3 : 2, 0, Math.PI * 2);
       ctx.fill();
+    }
+
+    // Checkpoint rings on minimap
+    for (const cp of state.checkpoints) {
+      if (cp.collected) continue;
+      const cpx = (cp.position.x - px) * scale;
+      const cpz = (cp.position.z - pz) * scale;
+      if (Math.abs(cpx) > r + 5 || Math.abs(cpz) > r + 5) continue;
+      ctx.strokeStyle = "#44ffaa";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(cpx, cpz, 3.5, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // Thermal zones (subtle orange circles)
+    const thermals = [
+      { x: 0, z: 30, r: 20 }, { x: 140, z: -60, r: 15 }, { x: -120, z: 90, r: 15 },
+      { x: -45, z: 5, r: 10 }, { x: 180, z: 80, r: 25 }, { x: -160, z: -100, r: 20 },
+    ];
+    ctx.strokeStyle = "rgba(255,180,80,0.25)";
+    ctx.lineWidth = 1;
+    for (const th of thermals) {
+      const tx = (th.x - px) * scale;
+      const tz = (th.z - pz) * scale;
+      if (Math.abs(tx) > r + 10 || Math.abs(tz) > r + 10) continue;
+      ctx.beginPath();
+      ctx.arc(tx, tz, th.r * scale, 0, Math.PI * 2);
+      ctx.stroke();
     }
 
     ctx.restore();

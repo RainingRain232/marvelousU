@@ -81,9 +81,27 @@ export class EagleFlightRenderer {
 
   // Checkpoint rings
   private _checkpointMeshes: THREE.Mesh[] = [];
+  // Checkpoint collection particles
+  private _collectParticles: { mesh: THREE.Mesh; vx: number; vy: number; vz: number; life: number }[] = [];
 
   // Thermal shimmer meshes
   private _thermalShimmers: THREE.Mesh[] = [];
+
+  // Ground effect particles (dust kick-up, water spray)
+  private _groundEffectParticles: { mesh: THREE.Mesh; vy: number; life: number }[] = [];
+
+  // Magic orb meshes
+  private _orbMeshes: THREE.Mesh[] = [];
+
+  // NPC meshes
+  private _npcGroups: THREE.Group[] = [];
+
+  // Spell effect particles
+  private _spellParticles: { mesh: THREE.Mesh; vx: number; vy: number; vz: number; life: number }[] = [];
+
+  // Magic trail ribbon
+  private _magicTrailPoints: THREE.Vector3[] = [];
+  private _magicTrailMesh!: THREE.Line;
 
   // Ground fog
   private _groundFogMeshes: THREE.Mesh[] = [];
@@ -153,6 +171,9 @@ export class EagleFlightRenderer {
     this._buildLensFlare();
     this._buildCheckpointRings();
     this._buildThermalShimmers();
+    this._buildOrbs();
+    this._buildNPCs();
+    this._buildMagicTrail();
   }
 
   // ---------------------------------------------------------------------------
@@ -331,171 +352,127 @@ export class EagleFlightRenderer {
     }
     groundGeo.setAttribute("aSlope", new THREE.BufferAttribute(slopes, 1));
 
-    // Procedural terrain shader — blends grass/dirt/rock by height + slope
-    const terrainMat = new THREE.ShaderMaterial({
-      lights: true,
-      uniforms: {
-        ...THREE.UniformsLib.lights,
-        ...THREE.UniformsLib.fog,
-        grassColor: { value: new THREE.Color(0x4a7a3a) },
-        grassColor2: { value: new THREE.Color(0x5a9a4a) },
-        dirtColor: { value: new THREE.Color(0x6a5a3a) },
-        rockColor: { value: new THREE.Color(0x7a7a6a) },
-        pathColor: { value: new THREE.Color(0x8a7a6a) },
-      },
-      vertexShader: `
-        #include <common>
-        #include <fog_pars_vertex>
-        #include <shadowmap_pars_vertex>
-        attribute float aSlope;
-        varying vec3 vWorldPos;
-        varying vec3 vNormal;
-        varying float vSlope;
-        varying float vHeight;
-        void main() {
-          vec4 wp = modelMatrix * vec4(position, 1.0);
-          vWorldPos = wp.xyz;
-          vNormal = normalize(normalMatrix * normal);
-          vSlope = aSlope;
-          vHeight = position.y;
-          gl_Position = projectionMatrix * viewMatrix * wp;
-          #include <fog_vertex>
-          #include <shadowmap_vertex>
-        }
-      `,
-      fragmentShader: `
-        #include <common>
-        #include <packing>
-        #include <fog_pars_fragment>
-        #include <lights_pars_begin>
-        #include <shadowmap_pars_fragment>
-        #include <shadowmask_pars_fragment>
-        uniform vec3 grassColor;
-        uniform vec3 grassColor2;
-        uniform vec3 dirtColor;
-        uniform vec3 rockColor;
-        uniform vec3 pathColor;
-        varying vec3 vWorldPos;
-        varying vec3 vNormal;
-        varying float vSlope;
-        varying float vHeight;
+    // Terrain — use MeshStandardMaterial with vertex colors for reliable rendering
+    // Compute vertex colors based on slope, height, and city proximity
+    const vColors = new Float32Array(posAttr.count * 3);
+    const grassBase = new THREE.Color(0x4a7a3a);
+    const grassLight = new THREE.Color(0x5a9a4a);
+    const grassDark = new THREE.Color(0x3a6628);
+    const dirtColor = new THREE.Color(0x6a5a3a);
+    const mudColor = new THREE.Color(0x5a4a30);
+    const rockColor = new THREE.Color(0x7a7a6a);
+    const cityMudColor = new THREE.Color(0x7a6a50);
+    const tmpCol = new THREE.Color();
+    const rng2 = seededRandom(77);
 
-        // Simple noise
-        float hash(vec2 p) {
-          return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
-        }
-        float noise(vec2 p) {
-          vec2 i = floor(p);
-          vec2 f = fract(p);
-          f = f * f * (3.0 - 2.0 * f);
-          float a = hash(i);
-          float b = hash(i + vec2(1.0, 0.0));
-          float c = hash(i + vec2(0.0, 1.0));
-          float d = hash(i + vec2(1.0, 1.0));
-          return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
-        }
+    for (let i = 0; i < posAttr.count; i++) {
+      const vx = posAttr.getX(i);
+      const vy = posAttr.getY(i);
+      const vz = posAttr.getZ(i);
+      const slope = slopes[i];
+      const dist2 = Math.sqrt(vx * vx + vz * vz);
+      const noise = rng2();
 
-        void main() {
-          // Procedural noise for texture variation
-          float n1 = noise(vWorldPos.xz * 0.15);
-          float n2 = noise(vWorldPos.xz * 0.5);
-          float n3 = noise(vWorldPos.xz * 2.0);
-          float detailNoise = n1 * 0.5 + n2 * 0.3 + n3 * 0.2;
+      // Base: grass with variation
+      if (noise < 0.35) tmpCol.copy(grassDark);
+      else if (noise < 0.7) tmpCol.copy(grassBase);
+      else tmpCol.copy(grassLight);
 
-          // Grass blend between two tones
-          vec3 grass = mix(grassColor, grassColor2, detailNoise);
+      // Slope: blend to dirt then rock
+      if (slope > 0.15) {
+        const dirtFactor = Math.min(1, (slope - 0.15) / 0.25);
+        tmpCol.lerp(dirtColor, dirtFactor * 0.7);
+      }
+      if (slope > 0.35) {
+        const rockFactor = Math.min(1, (slope - 0.35) / 0.25);
+        tmpCol.lerp(rockColor, rockFactor * 0.6);
+      }
 
-          // Dirt on slopes and paths
-          float slopeFactor = smoothstep(0.15, 0.4, vSlope);
-          vec3 col = mix(grass, dirtColor, slopeFactor);
+      // City center: brown mud/dirt ground
+      if (dist2 < 90) {
+        const cityFactor = 1 - Math.min(1, dist2 / 90);
+        tmpCol.lerp(cityMudColor, cityFactor * 0.7);
+        // Add mud variation in city
+        if (noise > 0.6) tmpCol.lerp(mudColor, cityFactor * 0.3);
+      }
 
-          // Rock on steep slopes
-          float rockFactor = smoothstep(0.35, 0.6, vSlope);
-          col = mix(col, rockColor, rockFactor);
+      // Low areas near water: darker
+      if (vy < 1) {
+        tmpCol.lerp(mudColor, Math.max(0, (1 - vy)) * 0.4);
+      }
 
-          // City center path area
-          float dist = length(vWorldPos.xz);
-          float cityMask = 1.0 - smoothstep(75.0, 90.0, dist);
-          col = mix(col, pathColor, cityMask * 0.6);
+      // Height: slightly lighter at altitude
+      if (vy > 5) {
+        tmpCol.lerp(grassLight, Math.min(0.2, (vy - 5) * 0.01));
+      }
 
-          // Height-based darkening in low areas (near water)
-          float lowMask = 1.0 - smoothstep(-1.0, 2.0, vHeight);
-          col = mix(col, dirtColor * 0.7, lowMask * 0.4);
+      vColors[i * 3] = tmpCol.r;
+      vColors[i * 3 + 1] = tmpCol.g;
+      vColors[i * 3 + 2] = tmpCol.b;
+    }
+    groundGeo.setAttribute("color", new THREE.BufferAttribute(vColors, 3));
 
-          // Subtle grass stripe pattern
-          float stripes = sin(vWorldPos.x * 1.5 + vWorldPos.z * 0.8) * 0.5 + 0.5;
-          stripes *= (1.0 - cityMask);
-          col = mix(col, col * 1.08, stripes * 0.15 * (1.0 - slopeFactor));
-
-          // Lighting
-          vec3 lightDir = normalize(vec3(0.3, 0.55, -0.4));
-          float NdotL = max(dot(vNormal, lightDir), 0.0);
-          float shadow = getShadowMask();
-          vec3 ambient = col * 0.35;
-          vec3 diffuse = col * NdotL * 1.2 * shadow;
-
-          // Subsurface scattering hint for grass
-          float sss = pow(max(dot(vNormal, -lightDir), 0.0), 3.0) * 0.08;
-          vec3 sssColor = grass * sss * (1.0 - slopeFactor);
-
-          vec3 finalColor = ambient + diffuse + sssColor;
-
-          gl_FragColor = vec4(finalColor, 1.0);
-          #include <fog_fragment>
-        }
-      `,
-      fog: true,
+    const terrainMat = new THREE.MeshStandardMaterial({
+      vertexColors: true,
+      roughness: 0.92,
+      metalness: 0.0,
+      flatShading: true,
     });
     const ground = new THREE.Mesh(groundGeo, terrainMat);
     ground.receiveShadow = true;
     this._terrainGroup.add(ground);
 
-    // Cobblestone area — procedural pattern
-    const cobbleGeo = new THREE.PlaneGeometry(180, 180, 1, 1);
-    cobbleGeo.rotateX(-Math.PI / 2);
-    const cobbleMat = new THREE.ShaderMaterial({
-      uniforms: {
-        ...THREE.UniformsLib.fog,
-      },
-      vertexShader: `
-        #include <fog_pars_vertex>
-        varying vec2 vUv;
-        varying vec3 vWorldPos;
-        void main() {
-          vUv = uv;
-          vec4 wp = modelMatrix * vec4(position, 1.0);
-          vWorldPos = wp.xyz;
-          gl_Position = projectionMatrix * viewMatrix * wp;
-          #include <fog_vertex>
-        }
-      `,
-      fragmentShader: `
-        #include <fog_pars_fragment>
-        varying vec2 vUv;
-        varying vec3 vWorldPos;
-        float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1,311.7))) * 43758.5453); }
-        void main() {
-          // Procedural cobblestone pattern
-          vec2 cell = floor(vWorldPos.xz * 0.8);
-          float h = hash(cell);
-          float edge = smoothstep(0.0, 0.08, fract(vWorldPos.x * 0.8)) *
-                       smoothstep(0.0, 0.08, fract(vWorldPos.z * 0.8));
-          vec3 stoneBase = vec3(0.48, 0.44, 0.38);
-          vec3 col = stoneBase + (h - 0.5) * 0.12;
-          col = mix(col * 0.7, col, edge); // darken mortar lines
-          // Worn center path
-          float center = 1.0 - smoothstep(0.0, 40.0, length(vWorldPos.xz));
-          col = mix(col, col * 0.9, center * 0.2);
-          gl_FragColor = vec4(col, 1.0);
-          #include <fog_fragment>
-        }
-      `,
-      fog: true,
+    // City ground — brown mud with brick road strips
+    // Main city ground (mud/packed earth, not cobblestone everywhere)
+    const cityGroundGeo = new THREE.PlaneGeometry(180, 180, 18, 18);
+    cityGroundGeo.rotateX(-Math.PI / 2);
+    const cityGroundPos = cityGroundGeo.getAttribute("position");
+    const cityColors = new Float32Array(cityGroundPos.count * 3);
+    const rng3 = seededRandom(88);
+    const mudBase = new THREE.Color(0x6a5a40);
+    const mudDark = new THREE.Color(0x554430);
+    const mudLight = new THREE.Color(0x7a6a50);
+    const brickColor = new THREE.Color(0x887060);
+    const tmpCol2 = new THREE.Color();
+
+    for (let i = 0; i < cityGroundPos.count; i++) {
+      const cx = cityGroundPos.getX(i);
+      const cz = cityGroundPos.getZ(i);
+      const n = rng3();
+
+      // Base mud/earth
+      if (n < 0.3) tmpCol2.copy(mudDark);
+      else if (n < 0.7) tmpCol2.copy(mudBase);
+      else tmpCol2.copy(mudLight);
+
+      // Brick roads along main streets (cardinal directions)
+      const isMainStreet =
+        (Math.abs(cx) < 3 && Math.abs(cz) > 10) ||  // N-S street
+        (Math.abs(cz) < 3 && Math.abs(cx) > 10);     // E-W street
+      if (isMainStreet) {
+        tmpCol2.lerp(brickColor, 0.7);
+      }
+
+      // Market area — more worn/darker
+      const marketDist = Math.sqrt((cx + 30) ** 2 + (cz + 35) ** 2);
+      if (marketDist < 15) {
+        tmpCol2.lerp(mudDark, 0.3);
+      }
+
+      cityColors[i * 3] = tmpCol2.r;
+      cityColors[i * 3 + 1] = tmpCol2.g;
+      cityColors[i * 3 + 2] = tmpCol2.b;
+    }
+    cityGroundGeo.setAttribute("color", new THREE.BufferAttribute(cityColors, 3));
+    const cityGroundMat = new THREE.MeshStandardMaterial({
+      vertexColors: true,
+      roughness: 0.95,
+      metalness: 0.0,
     });
-    const cobble = new THREE.Mesh(cobbleGeo, cobbleMat);
-    cobble.position.y = 0.06;
-    cobble.receiveShadow = true;
-    this._terrainGroup.add(cobble);
+    const cityGround = new THREE.Mesh(cityGroundGeo, cityGroundMat);
+    cityGround.position.y = 0.06;
+    cityGround.receiveShadow = true;
+    this._terrainGroup.add(cityGround);
 
     // Grass tufts
     this._buildGrassTufts(rng);
@@ -1141,11 +1118,27 @@ export class EagleFlightRenderer {
     this._castleGroup.add(base);
 
     // Main keep — tall central tower (multi-tier)
-    const keepGeo = new THREE.BoxGeometry(18, 30, 18, 3, 4, 3);
+    const keepGeo = new THREE.BoxGeometry(18, 30, 18, 4, 6, 4);
     const keep = new THREE.Mesh(keepGeo, stoneMat);
     keep.position.set(0, 18, 0);
     keep.castShadow = true;
     this._castleGroup.add(keep);
+
+    // Stone course ledges on keep (horizontal bands for realism)
+    for (let ledge = 0; ledge < 5; ledge++) {
+      const ledgeY = 6 + ledge * 6;
+      for (let face = 0; face < 4; face++) {
+        const faceAngle = (face / 4) * Math.PI * 2;
+        const lx = Math.sin(faceAngle) * 9.15;
+        const lz = Math.cos(faceAngle) * 9.15;
+        const ledgeMesh = new THREE.Mesh(
+          new THREE.BoxGeometry(face % 2 === 0 ? 18.5 : 0.4, 0.3, face % 2 === 0 ? 0.4 : 18.5),
+          darkStoneMat,
+        );
+        ledgeMesh.position.set(face % 2 === 0 ? 0 : lx, ledgeY, face % 2 === 0 ? lz : 0);
+        this._castleGroup.add(ledgeMesh);
+      }
+    }
 
     // Keep upper parapet
     const keepParapet = new THREE.Mesh(new THREE.BoxGeometry(19, 2, 19, 2, 1, 2), stoneMat);
@@ -1214,11 +1207,22 @@ export class EagleFlightRenderer {
     ];
     for (const co of cornerOffsets) {
       // Tower body (high poly)
-      const tGeo = new THREE.CylinderGeometry(4, 4.5, 22, 16, 3);
+      const tGeo = new THREE.CylinderGeometry(4, 4.5, 22, 20, 4);
       const tower = new THREE.Mesh(tGeo, stoneMat);
       tower.position.set(co.x, 14, co.z);
       tower.castShadow = true;
       this._castleGroup.add(tower);
+
+      // Stone course rings on tower
+      for (let sr = 0; sr < 4; sr++) {
+        const stoneRing = new THREE.Mesh(
+          new THREE.TorusGeometry(4.15 - sr * 0.05, 0.12, 4, 20),
+          darkStoneMat,
+        );
+        stoneRing.position.set(co.x, 5 + sr * 5, co.z);
+        stoneRing.rotation.x = Math.PI / 2;
+        this._castleGroup.add(stoneRing);
+      }
 
       // Tower upper parapet ring
       const tParapet = new THREE.Mesh(new THREE.CylinderGeometry(4.3, 4.3, 1.5, 16), stoneMat);
@@ -2288,7 +2292,7 @@ export class EagleFlightRenderer {
     step.position.set(0, 0.08, d / 2 + 0.3);
     group.add(step);
 
-    // Pitched roof
+    // Pitched roof (higher poly)
     const roofW = w + 1;
     const roofD = d + 1;
     const roofH = h * 0.5;
@@ -2296,18 +2300,38 @@ export class EagleFlightRenderer {
       Math.max(roofW, roofD) * 0.7,
       roofH,
       4,
+      2,
     );
     const roof = new THREE.Mesh(roofGeo, roofMat);
-    roof.position.y = h + roofH / 2;
+    roof.position.y = h + roofH / 2 + 0.6;
     roof.rotation.y = Math.PI / 4;
     roof.castShadow = true;
     group.add(roof);
 
-    // Door
+    // Ridge beam on top of roof
+    const ridgeMat = new THREE.MeshStandardMaterial({ color: 0x553322, roughness: 0.85 });
+    const ridge = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, d + 0.5), ridgeMat);
+    ridge.position.y = h + roofH + 0.6;
+    group.add(ridge);
+
+    // Roof eaves (overhang detail)
+    const eavesMat = new THREE.MeshStandardMaterial({ color: 0x664433, roughness: 0.85 });
+    for (const fz2 of [1, -1]) {
+      const eave = new THREE.Mesh(new THREE.BoxGeometry(w + 1.5, 0.1, 0.4), eavesMat);
+      eave.position.set(0, h + 0.6, fz2 * (d / 2 + 0.5));
+      group.add(eave);
+    }
+
+    // Door with arch frame
     const doorMat = new THREE.MeshStandardMaterial({ color: 0x443322, roughness: 0.9 });
     const door = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 2.2), doorMat);
-    door.position.set(0, 1.1, d / 2 + 0.06);
+    door.position.set(0, 1.7, d / 2 + 0.06);
     group.add(door);
+    // Door arch
+    const doorArchMat = new THREE.MeshStandardMaterial({ color: 0x776655, roughness: 0.85 });
+    const doorFrame = new THREE.Mesh(new THREE.BoxGeometry(1.4, 2.4, 0.1), doorArchMat);
+    doorFrame.position.set(0, 1.7, d / 2 + 0.05);
+    group.add(doorFrame);
 
     // Window(s) with warm glow and shutters
     const windowMat = new THREE.MeshStandardMaterial({
@@ -4424,6 +4448,122 @@ export class EagleFlightRenderer {
   }
 
   // ---------------------------------------------------------------------------
+  // Magic orbs
+  // ---------------------------------------------------------------------------
+
+  private _buildOrbs(): void {
+    const orbMat = new THREE.ShaderMaterial({
+      transparent: true,
+      depthWrite: false,
+      uniforms: {
+        time: { value: 0 },
+        collected: { value: 0 },
+      },
+      vertexShader: `
+        varying vec3 vNormal;
+        void main() {
+          vNormal = normalize(normalMatrix * normal);
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform float time;
+        uniform float collected;
+        varying vec3 vNormal;
+        void main() {
+          if (collected > 0.5) discard;
+          float rim = 1.0 - abs(dot(vNormal, vec3(0.0, 0.0, 1.0)));
+          float pulse = 0.7 + sin(time * 4.0) * 0.3;
+          vec3 col = mix(vec3(0.2, 0.5, 1.0), vec3(0.8, 0.9, 1.0), rim);
+          float glow = pulse * (0.5 + rim * 0.5);
+          gl_FragColor = vec4(col * 1.5, glow * 0.8);
+        }
+      `,
+    });
+
+    for (let i = 0; i < 40; i++) {
+      const geo = new THREE.SphereGeometry(0.6, 10, 8);
+      const mat = orbMat.clone();
+      const orb = new THREE.Mesh(geo, mat);
+      this._scene.add(orb);
+      this._orbMeshes.push(orb);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // NPCs (simple low-poly figures)
+  // ---------------------------------------------------------------------------
+
+  private _buildNPCs(): void {
+    const peasantMat = new THREE.MeshStandardMaterial({ color: 0x886644, roughness: 0.9 });
+    const knightMat = new THREE.MeshStandardMaterial({ color: 0x556677, metalness: 0.3, roughness: 0.6 });
+    const merchantMat = new THREE.MeshStandardMaterial({ color: 0x668844, roughness: 0.8 });
+    const skinMat = new THREE.MeshStandardMaterial({ color: 0xddbbaa, roughness: 0.8 });
+
+    for (let i = 0; i < 44; i++) {
+      const group = new THREE.Group();
+      const mat = i < 30 ? peasantMat : i < 36 ? knightMat : merchantMat;
+
+      // Body
+      const body = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.7, 0.25), mat);
+      body.position.y = 0.7;
+      group.add(body);
+      // Head
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.13, 5, 4), skinMat);
+      head.position.y = 1.2;
+      group.add(head);
+      // Legs
+      for (const side of [-1, 1]) {
+        const leg = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.4, 0.12), mat);
+        leg.position.set(side * 0.1, 0.2, 0);
+        group.add(leg);
+      }
+
+      // Knights get helmet
+      if (i >= 30 && i < 36) {
+        const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.15, 5, 3, 0, Math.PI * 2, 0, Math.PI * 0.6), knightMat);
+        helmet.position.y = 1.25;
+        group.add(helmet);
+        // Spear
+        const spear = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.5, 3), new THREE.MeshStandardMaterial({ color: 0x664422 }));
+        spear.position.set(0.2, 1, 0);
+        group.add(spear);
+      }
+
+      group.visible = false; // will be positioned in update
+      this._scene.add(group);
+      this._npcGroups.push(group);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Magic trail (spell 3)
+  // ---------------------------------------------------------------------------
+
+  private _buildMagicTrail(): void {
+    const maxPts = 200;
+    const positions = new Float32Array(maxPts * 3);
+    const colors = new Float32Array(maxPts * 3);
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+    geo.setDrawRange(0, 0);
+    const mat = new THREE.LineBasicMaterial({
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.7,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    this._magicTrailMesh = new THREE.Line(geo, mat);
+    this._magicTrailMesh.frustumCulled = false;
+    this._scene.add(this._magicTrailMesh);
+    for (let i = 0; i < maxPts; i++) {
+      this._magicTrailPoints.push(new THREE.Vector3());
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // Checkpoint rings (glowing torus rings in the air)
   // ---------------------------------------------------------------------------
 
@@ -4886,6 +5026,186 @@ export class EagleFlightRenderer {
       }
     }
 
+    // --- Update magic orbs ---
+    for (let i = 0; i < this._orbMeshes.length && i < state.orbs.length; i++) {
+      const orb = state.orbs[i];
+      const mesh = this._orbMeshes[i];
+      mesh.position.set(orb.position.x, orb.position.y + Math.sin(t * 2 + orb.phase) * 0.5, orb.position.z);
+      mesh.rotation.y = t * 2 + orb.phase;
+      const mat = mesh.material as THREE.ShaderMaterial;
+      mat.uniforms.time.value = t;
+      mat.uniforms.collected.value = orb.collected ? 1 : 0;
+      // Spawn particles on newly collected orbs
+      if (orb.collected && mesh.visible) {
+        for (let sp = 0; sp < 10; sp++) {
+          const sMat = new THREE.MeshStandardMaterial({
+            color: 0x4488ff, emissive: 0x2266dd, emissiveIntensity: 0.8,
+            transparent: true, opacity: 0.8,
+          });
+          const spark = new THREE.Mesh(new THREE.SphereGeometry(0.1, 4, 3), sMat);
+          spark.position.copy(mesh.position);
+          this._scene.add(spark);
+          this._spellParticles.push({
+            mesh: spark,
+            vx: (Math.random() - 0.5) * 8,
+            vy: (Math.random() - 0.5) * 6 + 2,
+            vz: (Math.random() - 0.5) * 8,
+            life: 0.8,
+          });
+        }
+        mesh.visible = false;
+      }
+    }
+
+    // --- Update NPCs ---
+    for (let i = 0; i < this._npcGroups.length && i < state.npcs.length; i++) {
+      const npc = state.npcs[i];
+      const group = this._npcGroups[i];
+      group.visible = true;
+      group.position.set(npc.position.x, npc.position.y, npc.position.z);
+      // Face movement direction
+      const dx2 = npc.targetX - npc.position.x;
+      const dz2 = npc.targetZ - npc.position.z;
+      group.rotation.y = Math.atan2(dx2, dz2);
+      // Look up at eagle if nearby
+      if (npc.lookingUp && group.children.length >= 2) {
+        group.children[1].rotation.x = -0.5; // tilt head up
+      } else if (group.children.length >= 2) {
+        group.children[1].rotation.x = 0;
+      }
+      // Walk animation — bob up and down
+      group.position.y = npc.position.y + Math.abs(Math.sin(t * npc.speed * 3 + i)) * 0.05;
+    }
+
+    // --- Spell effects ---
+    // Firework (spell 1) — spawn burst particles when cooldown just started
+    if (p.spellCooldowns[0] > 2.8 && p.spellCooldowns[0] < 3) {
+      for (let fw = 0; fw < 30; fw++) {
+        const colors = [0xff4444, 0xffaa22, 0x44ff44, 0x4444ff, 0xff44ff, 0xffff44];
+        const fwColor = colors[Math.floor(Math.random() * colors.length)];
+        const fwMat = new THREE.MeshStandardMaterial({
+          color: fwColor, emissive: fwColor, emissiveIntensity: 1.0,
+          transparent: true, opacity: 1.0,
+        });
+        const particle = new THREE.Mesh(new THREE.SphereGeometry(0.12, 4, 3), fwMat);
+        particle.position.set(p.position.x, p.position.y + 5, p.position.z);
+        this._scene.add(particle);
+        const angle = Math.random() * Math.PI * 2;
+        const upV = 5 + Math.random() * 10;
+        const outV = 3 + Math.random() * 5;
+        this._spellParticles.push({
+          mesh: particle,
+          vx: Math.cos(angle) * outV,
+          vy: upV,
+          vz: Math.sin(angle) * outV,
+          life: 1.5 + Math.random(),
+        });
+      }
+    }
+
+    // Lightning (spell 2) — flash + bolt meshes when cooldown just started
+    if (p.spellCooldowns[1] > 4.7 && p.spellCooldowns[1] < 5) {
+      // Screen flash
+      this._ambientLight.intensity = 3;
+      setTimeout(() => { this._ambientLight.intensity = 0.5; }, 100);
+      // Lightning bolt line
+      const boltGeo = new THREE.BufferGeometry();
+      const boltPts: number[] = [];
+      let bx = p.position.x;
+      let by = p.position.y;
+      let bz = p.position.z;
+      for (let seg = 0; seg < 12; seg++) {
+        boltPts.push(bx, by, bz);
+        bx += (Math.random() - 0.5) * 6;
+        by -= 5;
+        bz += (Math.random() - 0.5) * 6;
+      }
+      boltGeo.setAttribute("position", new THREE.Float32BufferAttribute(boltPts, 3));
+      const boltMat = new THREE.LineBasicMaterial({ color: 0xaaccff, transparent: true, opacity: 0.9 });
+      const bolt = new THREE.Line(boltGeo, boltMat);
+      this._scene.add(bolt);
+      // Remove after 300ms
+      setTimeout(() => { this._scene.remove(bolt); boltGeo.dispose(); boltMat.dispose(); }, 300);
+    }
+
+    // Magic trail (spell 3) — persistent colored ribbon
+    if (p.magicTrailActive && this._magicTrailMesh) {
+      for (let i = this._magicTrailPoints.length - 1; i > 0; i--) {
+        this._magicTrailPoints[i].copy(this._magicTrailPoints[i - 1]);
+      }
+      this._magicTrailPoints[0].set(p.position.x, p.position.y, p.position.z);
+      const mtPos = this._magicTrailMesh.geometry.getAttribute("position");
+      const mtCol = this._magicTrailMesh.geometry.getAttribute("color");
+      let drawCount = 0;
+      for (let i = 0; i < this._magicTrailPoints.length; i++) {
+        mtPos.setXYZ(i, this._magicTrailPoints[i].x, this._magicTrailPoints[i].y, this._magicTrailPoints[i].z);
+        const fade = 1 - i / this._magicTrailPoints.length;
+        // Rainbow color cycling
+        const hue = (t * 0.5 + i * 0.02) % 1;
+        const r = Math.abs(hue * 6 - 3) - 1;
+        const g = 2 - Math.abs(hue * 6 - 2);
+        const b = 2 - Math.abs(hue * 6 - 4);
+        mtCol.setXYZ(i,
+          Math.max(0, Math.min(1, r)) * fade,
+          Math.max(0, Math.min(1, g)) * fade,
+          Math.max(0, Math.min(1, b)) * fade,
+        );
+        if (i > 0 && this._magicTrailPoints[i].distanceTo(this._magicTrailPoints[0]) < 0.01) break;
+        drawCount++;
+      }
+      mtPos.needsUpdate = true;
+      mtCol.needsUpdate = true;
+      this._magicTrailMesh.geometry.setDrawRange(0, drawCount);
+    }
+
+    // Update spell particles (firework, orb, etc.)
+    for (let i = this._spellParticles.length - 1; i >= 0; i--) {
+      const sp = this._spellParticles[i];
+      sp.mesh.position.x += sp.vx * dt;
+      sp.mesh.position.y += sp.vy * dt;
+      sp.mesh.position.z += sp.vz * dt;
+      sp.vy -= 6 * dt; // gravity
+      sp.life -= dt;
+      const sMat = sp.mesh.material as THREE.MeshStandardMaterial;
+      sMat.opacity = Math.max(0, sp.life);
+      sp.mesh.scale.setScalar(Math.max(0.1, sp.life));
+      if (sp.life <= 0) {
+        this._scene.remove(sp.mesh);
+        sp.mesh.geometry.dispose();
+        sMat.dispose();
+        this._spellParticles.splice(i, 1);
+      }
+    }
+
+    // --- Day/night cycle lighting ---
+    const sunY = Math.sin(state.sunAngle);
+    const sunX = Math.cos(state.sunAngle) * 0.5;
+    const daylight = Math.max(0, sunY); // 0 at night, 1 at noon
+    // Sun position
+    this._sunLight.position.set(
+      p.position.x + sunX * 100,
+      sunY * 120 + 10,
+      p.position.z - 60,
+    );
+    this._sunLight.intensity = 0.3 + daylight * 1.3;
+    this._ambientLight.intensity = Math.max(this._ambientLight.intensity, 0.15 + daylight * 0.4);
+    // Warm colors at dawn/dusk
+    const duskFactor = Math.max(0, 1 - Math.abs(sunY) * 5);
+    const sunR = 1.0;
+    const sunG = 0.85 + daylight * 0.15 - duskFactor * 0.2;
+    const sunB = 0.7 + daylight * 0.3 - duskFactor * 0.4;
+    this._sunLight.color.setRGB(sunR, sunG, sunB);
+    // Fog color shifts with time of day
+    const fogR = 0.65 + daylight * 0.2 + duskFactor * 0.15;
+    const fogG = 0.72 + daylight * 0.15 - duskFactor * 0.05;
+    const fogB = 0.8 + daylight * 0.1 - duskFactor * 0.1;
+    (this._scene.fog as THREE.FogExp2).color.setRGB(fogR, fogG, fogB);
+    // Torch lights brighten at night
+    const nightFactor = 1 - daylight;
+    for (const tl of this._torchLights) {
+      tl.intensity = (tl.intensity * 0.3) + nightFactor * 1.5 + 0.3;
+    }
+
     // --- Update checkpoint rings ---
     for (let i = 0; i < this._checkpointMeshes.length && i < state.checkpoints.length; i++) {
       const cp = state.checkpoints[i];
@@ -4893,12 +5213,104 @@ export class EagleFlightRenderer {
       ring.position.set(cp.position.x, cp.position.y, cp.position.z);
       const mat = ring.material as THREE.ShaderMaterial;
       mat.uniforms.time.value = t;
+      // Detect newly collected (was not collected, now is)
+      if (cp.collected && mat.uniforms.collected.value < 0.5) {
+        // Spawn celebration particles
+        for (let sp = 0; sp < 20; sp++) {
+          const sparkMat = new THREE.MeshStandardMaterial({
+            color: 0x44ffaa,
+            emissive: 0x22cc66,
+            emissiveIntensity: 1.0,
+            transparent: true,
+            opacity: 0.9,
+          });
+          const spark = new THREE.Mesh(new THREE.SphereGeometry(0.15 + Math.random() * 0.15, 5, 4), sparkMat);
+          spark.position.set(cp.position.x, cp.position.y, cp.position.z);
+          this._scene.add(spark);
+          this._collectParticles.push({
+            mesh: spark,
+            vx: (Math.random() - 0.5) * 15,
+            vy: (Math.random() - 0.5) * 10 + 3,
+            vz: (Math.random() - 0.5) * 15,
+            life: 1.0 + Math.random() * 0.5,
+          });
+        }
+      }
       mat.uniforms.collected.value = cp.collected ? 1 : 0;
       if (!cp.collected) {
-        // Gentle bob
         ring.position.y += Math.sin(t * 1.5 + i) * 0.5;
-        // Slow rotation
         ring.rotation.z = Math.sin(t * 0.5 + i * 0.7) * 0.15;
+      }
+    }
+
+    // Update collection particles
+    for (let i = this._collectParticles.length - 1; i >= 0; i--) {
+      const cp2 = this._collectParticles[i];
+      cp2.mesh.position.x += cp2.vx * dt;
+      cp2.mesh.position.y += cp2.vy * dt;
+      cp2.mesh.position.z += cp2.vz * dt;
+      cp2.vy -= 8 * dt; // gravity
+      cp2.life -= dt;
+      const cpMat = cp2.mesh.material as THREE.MeshStandardMaterial;
+      cpMat.opacity = Math.max(0, cp2.life);
+      cp2.mesh.scale.setScalar(cp2.life);
+      if (cp2.life <= 0) {
+        this._scene.remove(cp2.mesh);
+        cp2.mesh.geometry.dispose();
+        cpMat.dispose();
+        this._collectParticles.splice(i, 1);
+      }
+    }
+
+    // --- Near-ground dust kick-up ---
+    if (state.nearGround && Math.random() < dt * 12) {
+      const dustMat = new THREE.MeshStandardMaterial({
+        color: 0xbbaa88,
+        transparent: true,
+        opacity: 0.25,
+        depthWrite: false,
+      });
+      const dust = new THREE.Mesh(new THREE.SphereGeometry(0.2 + Math.random() * 0.3, 4, 3), dustMat);
+      dust.position.set(
+        p.position.x + (Math.random() - 0.5) * 4,
+        0.5 + Math.random() * 1,
+        p.position.z + (Math.random() - 0.5) * 4,
+      );
+      this._scene.add(dust);
+      this._groundEffectParticles.push({ mesh: dust, vy: 1 + Math.random() * 2, life: 1.5 + Math.random() });
+    }
+
+    // --- Water spray when near river ---
+    if (state.nearWater && Math.random() < dt * 15) {
+      const sprayMat = new THREE.MeshStandardMaterial({
+        color: 0xaaddff,
+        transparent: true,
+        opacity: 0.4,
+        depthWrite: false,
+      });
+      const spray = new THREE.Mesh(new THREE.SphereGeometry(0.1 + Math.random() * 0.2, 4, 3), sprayMat);
+      spray.position.set(
+        p.position.x + (Math.random() - 0.5) * 3,
+        0.3 + Math.random() * 0.5,
+        p.position.z + (Math.random() - 0.5) * 3,
+      );
+      this._scene.add(spray);
+      this._groundEffectParticles.push({ mesh: spray, vy: 2 + Math.random() * 3, life: 0.8 + Math.random() * 0.5 });
+    }
+
+    // Update ground effect particles
+    for (let i = this._groundEffectParticles.length - 1; i >= 0; i--) {
+      const gep = this._groundEffectParticles[i];
+      gep.mesh.position.y += gep.vy * dt;
+      gep.mesh.scale.addScalar(dt * 0.8);
+      gep.life -= dt;
+      const gMat = gep.mesh.material as THREE.MeshStandardMaterial;
+      gMat.opacity = Math.max(0, gep.life * 0.2);
+      if (gep.life <= 0) {
+        this._scene.remove(gep.mesh);
+        gep.mesh.geometry.dispose();
+        gMat.dispose();
+        this._groundEffectParticles.splice(i, 1);
       }
     }
 
@@ -4908,8 +5320,8 @@ export class EagleFlightRenderer {
       sMat.uniforms.time.value = t;
     }
 
-    // --- Intro overlay text (fade "Press any key") ---
-    // Handled by HUD, just pass intro state
+    // --- Photo mode: hide eagle at ultra-close distances, slow time feel ---
+    // (Handled by HUD visibility toggle)
 
     // --- Dynamic fog density based on altitude ---
     // Thicker fog at low altitude, thinner high up

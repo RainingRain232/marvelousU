@@ -188,10 +188,85 @@ export class EagleFlightGame {
           if (cdist < cp.radius) {
             cp.collected = true;
             this._state.player.checkpointsHit++;
-            this._state.shakeTimer = 0.2;
-            this._state.shakeMag = 0.8;
+            const total = this._state.checkpoints.length;
+            const hit = this._state.player.checkpointsHit;
+            if (hit >= total) {
+              this._awardTrickScore(500, "ALL RINGS COLLECTED!");
+            } else {
+              this._awardTrickScore(200, `RING ${hit}/${total}`);
+            }
+            this._state.shakeTimer = 0.25;
+            this._state.shakeMag = 1.0;
           }
           cp.glowPhase += DT * 2;
+        }
+
+        // --- Magic orb collection ---
+        for (const orb of this._state.orbs) {
+          if (orb.collected) continue;
+          const odx = px - orb.position.x;
+          const ody = this._state.player.position.y - orb.position.y;
+          const odz = pz - orb.position.z;
+          const odist = Math.sqrt(odx * odx + ody * ody + odz * odz);
+          if (odist < 4) {
+            orb.collected = true;
+            this._state.player.orbsCollected++;
+            this._awardTrickScore(25, "MAGIC ORB!");
+          }
+          orb.phase += DT * 3;
+        }
+
+        // --- Combo timer decay ---
+        if (this._state.player.comboTimer > 0) {
+          this._state.player.comboTimer -= DT;
+          if (this._state.player.comboTimer <= 0) {
+            // Combo ended
+            if (this._state.player.comboMultiplier > 1) {
+              this._state.notification = `x${this._state.player.comboMultiplier} COMBO!`;
+              this._state.notificationTimer = 1.5;
+            }
+            this._state.player.comboMultiplier = 1;
+          }
+        }
+
+        // --- Spell cooldown decay ---
+        for (let si = 0; si < 3; si++) {
+          if (this._state.player.spellCooldowns[si] > 0) {
+            this._state.player.spellCooldowns[si] -= DT;
+          }
+        }
+
+        // --- Day/night cycle ---
+        this._state.sunAngle += DT * 0.015; // full cycle ~7 minutes
+        if (this._state.sunAngle > Math.PI * 2) this._state.sunAngle -= Math.PI * 2;
+
+        // --- NPC AI ---
+        const py = this._state.player.position.y;
+        for (const npc of this._state.npcs) {
+          // Move toward target
+          const ndx = npc.targetX - npc.position.x;
+          const ndz = npc.targetZ - npc.position.z;
+          const ndist = Math.sqrt(ndx * ndx + ndz * ndz);
+          if (ndist > 0.5) {
+            npc.position.x += (ndx / ndist) * npc.speed * DT;
+            npc.position.z += (ndz / ndist) * npc.speed * DT;
+          } else {
+            // Pick new target within patrol radius
+            npc.targetX = npc.position.x + (Math.random() - 0.5) * 15;
+            npc.targetZ = npc.position.z + (Math.random() - 0.5) * 15;
+          }
+          // React to eagle overhead
+          const edx = px - npc.position.x;
+          const edz = pz - npc.position.z;
+          const eDist = Math.sqrt(edx * edx + edz * edz);
+          if (eDist < 20 && py < 15) {
+            npc.lookingUp = true;
+            npc.lookTimer = 2;
+          }
+          if (npc.lookTimer > 0) {
+            npc.lookTimer -= DT;
+            if (npc.lookTimer <= 0) npc.lookingUp = false;
+          }
         }
 
         // --- Distance and top speed tracking ---
@@ -211,6 +286,19 @@ export class EagleFlightGame {
     this._hud.update(this._state, rawDt);
 
     this._rafId = requestAnimationFrame((t2) => this._gameLoop(t2));
+  }
+
+  private _awardTrickScore(base: number, notif: string): void {
+    const p = this._state.player;
+    const score = base * p.comboMultiplier;
+    p.trickScore += score;
+    p.lastComboScore = score;
+    p.comboTimer = EFBalance.COMBO_WINDOW;
+    p.comboMultiplier++;
+    this._state.notification = p.comboMultiplier > 2 ? `${notif} x${p.comboMultiplier - 1}` : notif;
+    this._state.notificationTimer = 1.5;
+    this._state.shakeTimer = 0.15;
+    this._state.shakeMag = 0.5;
   }
 
   private _endIntro(): void {

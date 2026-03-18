@@ -8,6 +8,65 @@ import { CB } from "../config/CraftBalance";
 import { BlockType } from "../config/CraftBlockDefs";
 import { BiomeType } from "../config/CraftBiomeDefs";
 import { CraftChunk } from "../state/CraftChunk";
+import { getChestContents } from "./CraftContainerSystem";
+import { ItemType, type ItemStack } from "../config/CraftRecipeDefs";
+
+// ---------------------------------------------------------------------------
+// Loot tables for structure chests
+// ---------------------------------------------------------------------------
+
+function populateChestLoot(wx: number, wy: number, wz: number, tier: "common" | "rare" | "epic", seed: number): void {
+  const contents = getChestContents(wx, wy, wz);
+  const rng = (i: number) => {
+    let h = seed ^ (wx * 374761 + wy * 668265 + wz * 127412 + i * 99991);
+    h = Math.imul(h ^ (h >>> 13), 1103515245);
+    return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+  };
+
+  const blockItem = (bt: BlockType, count: number, name: string, color: number): ItemStack => ({
+    itemType: ItemType.BLOCK, blockType: bt, count, displayName: name, color,
+  });
+  const toolItem = (id: string, name: string, color: number, dur: number): ItemStack => ({
+    itemType: ItemType.TOOL, specialId: id, count: 1, displayName: name, color, durability: dur, maxDurability: dur,
+  });
+  const weaponItem = (id: string, name: string, color: number, dur: number): ItemStack => ({
+    itemType: ItemType.WEAPON, specialId: id, count: 1, displayName: name, color, durability: dur, maxDurability: dur,
+  });
+
+  const commonLoot: (() => ItemStack)[] = [
+    () => blockItem(BlockType.OAK_PLANKS, 4 + Math.floor(rng(50) * 12), "Oak Planks", 0xB8860B),
+    () => blockItem(BlockType.COBBLESTONE, 6 + Math.floor(rng(51) * 16), "Cobblestone", 0x6B6B6B),
+    () => blockItem(BlockType.TORCH, 3 + Math.floor(rng(52) * 6), "Torch", 0xFFA726),
+    () => blockItem(BlockType.IRON_ORE, 2 + Math.floor(rng(53) * 4), "Iron Ore", 0xA0826D),
+    () => ({ itemType: ItemType.FOOD, specialId: "apple", count: 2 + Math.floor(rng(54) * 3), displayName: "Apple", color: 0xE53935 }),
+    () => blockItem(BlockType.OAK_LOG, 3 + Math.floor(rng(55) * 8), "Oak Log", 0x6B4226),
+  ];
+
+  const rareLoot: (() => ItemStack)[] = [
+    ...commonLoot,
+    () => blockItem(BlockType.GOLD_ORE, 2 + Math.floor(rng(60) * 4), "Gold Ore", 0xD4AF37),
+    () => toolItem("iron_pickaxe", "Iron Pickaxe", 0xC0C0C0, 251),
+    () => weaponItem("iron_sword", "Iron Sword", 0xC0C0C0, 251),
+    () => blockItem(BlockType.ENCHANTED_CRYSTAL_ORE, 1 + Math.floor(rng(61) * 3), "Enchanted Crystal", 0x9C27B0),
+    () => ({ itemType: ItemType.SPECIAL, specialId: "iron_helmet", count: 1, displayName: "Iron Helmet", color: 0xC0C0C0, durability: 165, maxDurability: 165 }),
+  ];
+
+  const epicLoot: (() => ItemStack)[] = [
+    ...rareLoot,
+    () => blockItem(BlockType.DRAGON_BONE_ORE, 1 + Math.floor(rng(70) * 2), "Dragon Bone", 0xE0D8C8),
+    () => weaponItem("crystal_sword", "Crystal Sword", 0xCE93D8, 500),
+    () => ({ itemType: ItemType.SPECIAL, specialId: "crystal_chestplate", count: 1, displayName: "Crystal Chestplate", color: 0xCE93D8, durability: 528, maxDurability: 528 }),
+    () => blockItem(BlockType.ENCHANTED_TORCH, 4 + Math.floor(rng(71) * 8), "Enchanted Torch", 0xAB47BC),
+  ];
+
+  const pool = tier === "epic" ? epicLoot : tier === "rare" ? rareLoot : commonLoot;
+  const numItems = tier === "epic" ? 4 + Math.floor(rng(80) * 3) : tier === "rare" ? 3 + Math.floor(rng(80) * 3) : 2 + Math.floor(rng(80) * 2);
+
+  for (let i = 0; i < numItems && i < contents.length; i++) {
+    const idx = Math.floor(rng(100 + i) * pool.length);
+    contents[i] = pool[idx]();
+  }
+}
 
 const S = CB.CHUNK_SIZE;
 const H = CB.CHUNK_HEIGHT;
@@ -180,6 +239,7 @@ function generateAncientRuins(
   if (chestLx >= 0 && chestLx < S && chestLz >= 0 && chestLz < S) {
     const cs = getSurfaceY(chunk, chestLx, chestLz);
     safeSet(chunk, chestLx, cs + 1, chestLz, BlockType.CHEST);
+    populateChestLoot(chunk.worldX + chestLx, cs + 1, chunk.worldZ + chestLz, "rare", seed);
   }
 
   // Second chest if hash permits
@@ -189,6 +249,7 @@ function generateAncientRuins(
     if (c2x >= 0 && c2x < S && c2z >= 0 && c2z < S) {
       const cs2 = getSurfaceY(chunk, c2x, c2z);
       safeSet(chunk, c2x, cs2 + 1, c2z, BlockType.CHEST);
+      populateChestLoot(chunk.worldX + c2x, cs2 + 1, chunk.worldZ + c2z, "common", seed);
     }
   }
 }
@@ -705,8 +766,9 @@ function buildVillageHouse(
     safeSet(chunk, cx + 1, baseY, cz + 1, BlockType.CRAFTING_TABLE);
     safeSet(chunk, cx + 2, baseY, cz + 1, BlockType.FURNACE);
   } else if (index === 1) {
-    // Chest house
+    // Chest house with loot
     safeSet(chunk, cx + 1, baseY, cz + 1, BlockType.CHEST);
+    populateChestLoot(chunk.worldX + cx + 1, baseY, chunk.worldZ + cz + 1, "common", index * 7919);
   } else {
     // Torch inside
     safeSet(chunk, cx + 2, baseY, cz + 2, BlockType.TORCH);

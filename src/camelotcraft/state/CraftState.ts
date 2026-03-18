@@ -130,6 +130,7 @@ export interface QuestState {
   name: string;
   description: string;
   completed: boolean;
+  unlocked: boolean; // Only show when unlocked
   progress: number;
   goal: number;
 }
@@ -209,45 +210,45 @@ export function createCraftState(seed?: number): CraftState {
 
 function createInitialQuests(): QuestState[] {
   return [
-    {
-      id: QuestId.BUILD_SHELTER, name: "A Roof Over Thy Head",
+    { // Chapter 1: Survival — unlocked immediately
+      id: QuestId.BUILD_SHELTER, name: "Chapter I: A Roof Over Thy Head",
       description: "Place 20 blocks to build your first shelter before nightfall.",
-      completed: false, progress: 0, goal: 20,
+      completed: false, unlocked: true, progress: 0, goal: 20,
     },
     {
-      id: QuestId.CRAFT_FIRST_TOOL, name: "The Smith's Apprentice",
+      id: QuestId.CRAFT_FIRST_TOOL, name: "Chapter I: The Smith's Apprentice",
       description: "Craft your first tool at a crafting table.",
-      completed: false, progress: 0, goal: 1,
+      completed: false, unlocked: true, progress: 0, goal: 1,
+    },
+    { // Chapter 2: Exploration — unlocks after first tool
+      id: QuestId.MINE_IRON, name: "Chapter II: Iron Will",
+      description: "Mine 10 iron ore from deep underground.",
+      completed: false, unlocked: false, progress: 0, goal: 10,
     },
     {
-      id: QuestId.MINE_IRON, name: "Iron Will",
-      description: "Mine 10 iron ore from the earth.",
-      completed: false, progress: 0, goal: 10,
+      id: QuestId.FIND_EXCALIBUR, name: "Chapter II: The Sword in the Stone",
+      description: "Seek the Lady of the Lake for clues, then find Excalibur in a crystal cave.",
+      completed: false, unlocked: false, progress: 0, goal: 1,
+    },
+    { // Chapter 3: Kingdom — unlocks after Excalibur
+      id: QuestId.BUILD_CASTLE, name: "Chapter III: The Founding of Camelot",
+      description: "Build a castle worthy of a king — throne, round table, and at least 5 rooms.",
+      completed: false, unlocked: false, progress: 0, goal: CB.CAMELOT_MIN_ROOMS,
     },
     {
-      id: QuestId.FIND_EXCALIBUR, name: "The Sword in the Stone",
-      description: "Find Excalibur hidden deep within a crystal cave.",
-      completed: false, progress: 0, goal: 1,
+      id: QuestId.RECRUIT_KNIGHTS, name: "Chapter III: Knights of the Round Table",
+      description: `Recruit ${CB.ROUND_TABLE_KNIGHTS_NEEDED} knights to join your noble cause.`,
+      completed: false, unlocked: false, progress: 0, goal: CB.ROUND_TABLE_KNIGHTS_NEEDED,
+    },
+    { // Chapter 4: Destiny — unlocks after castle + knights
+      id: QuestId.DEFEAT_DRAGON, name: "Chapter IV: The Dragon's Bane",
+      description: "A great dragon terrorizes the land. Only Excalibur can fell the beast.",
+      completed: false, unlocked: false, progress: 0, goal: 1,
     },
     {
-      id: QuestId.BUILD_CASTLE, name: "The Founding of Camelot",
-      description: "Build a castle with a throne room, great hall, and at least 5 rooms.",
-      completed: false, progress: 0, goal: CB.CAMELOT_MIN_ROOMS,
-    },
-    {
-      id: QuestId.RECRUIT_KNIGHTS, name: "Knights of the Round Table",
-      description: `Recruit ${CB.ROUND_TABLE_KNIGHTS_NEEDED} knights to join your cause.`,
-      completed: false, progress: 0, goal: CB.ROUND_TABLE_KNIGHTS_NEEDED,
-    },
-    {
-      id: QuestId.DEFEAT_DRAGON, name: "The Dragon's Bane",
-      description: "Slay the great dragon terrorizing the realm.",
-      completed: false, progress: 0, goal: 1,
-    },
-    {
-      id: QuestId.FIND_GRAIL, name: "The Holy Grail",
-      description: "Find the Holy Grail in the depths of the enchanted dungeon.",
-      completed: false, progress: 0, goal: 1,
+      id: QuestId.FIND_GRAIL, name: "Chapter IV: The Holy Grail",
+      description: "Descend into the Dark Caverns and claim the Holy Grail to save Camelot.",
+      completed: false, unlocked: false, progress: 0, goal: 1,
     },
   ];
 }
