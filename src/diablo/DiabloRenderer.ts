@@ -1,4 +1,7 @@
 import * as THREE from 'three';
+import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import {
   DiabloState,
   DiabloMapId,
@@ -115,12 +118,17 @@ export class DiabloRenderer {
 
   // Water surface meshes for animation
   private _waterMeshes: THREE.Mesh[] = [];
+  private _waterOriginalY: Map<THREE.Mesh, number> = new Map();
+  private _waterDetected: boolean = false;
 
-  // Player status effect overlay meshes
+  // Player status effect overlay meshes — pooled per effect type
   private _playerStatusFxGroup: THREE.Group | null = null;
+  private _playerStatusFxPools: Map<string, THREE.Group> = new Map();
+  private _playerActiveEffects: Set<string> = new Set();
 
   // Dodge roll animation state
   private _dodgeRollAngle: number = 0;
+  private _dodgeDirection: number = 0;
   private _wasDodging: boolean = false;
 
   // Loot drop animation tracking (id -> spawn time)
@@ -130,7 +138,7 @@ export class DiabloRenderer {
   private _bossWarningRings: Map<string, THREE.Group> = new Map();
 
   // Post-processing
-  private _bloomComposer: any = null;
+  private _bloomComposer: EffectComposer | null = null;
 
   init(w: number, h: number): void {
     this._renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -227,6 +235,18 @@ export class DiabloRenderer {
       this._scene.add(mesh);
       this._particleMeshPool.push(mesh);
     }
+
+    // Post-processing: bloom for magic effects, loot beams, emissive surfaces
+    const renderPass = new RenderPass(this._scene, this._camera);
+    const bloomPass = new UnrealBloomPass(
+      new THREE.Vector2(w, h),
+      0.35,  // strength — subtle so it enhances without washing out
+      0.4,   // radius
+      0.85   // threshold — only bright emissives bloom
+    );
+    this._bloomComposer = new EffectComposer(this._renderer);
+    this._bloomComposer.addPass(renderPass);
+    this._bloomComposer.addPass(bloomPass);
   }
 
   /** Re-color the terrain mesh with height-based blending between two colors.
@@ -492,6 +512,43 @@ export class DiabloRenderer {
       case DiabloMapId.CAMELOT:
         this._buildCamelot(cfg.width, cfg.depth);
         break;
+    }
+
+    // Auto-detect water surfaces after map is built
+    this._detectWaterMeshes();
+  }
+
+  /** Scan scene for water-like meshes (transparent, low roughness, blue-tinted). Called once per map build. */
+  private _detectWaterMeshes(): void {
+    this._waterMeshes = [];
+    this._waterOriginalY.clear();
+    this._waterDetected = true;
+
+    const isWater = (child: THREE.Object3D): child is THREE.Mesh => {
+      if (!(child instanceof THREE.Mesh)) return false;
+      if (!(child.material instanceof THREE.MeshStandardMaterial)) return false;
+      const m = child.material;
+      if (!m.transparent || m.opacity < 0.3 || m.opacity > 0.75) return false;
+      if (m.roughness > 0.35) return false;
+      const c = m.color;
+      // Blue-ish or teal (blue channel dominant or close to dominant)
+      return c.b > 0.25 && c.b >= c.r * 0.8;
+    };
+
+    this._envGroup.traverse((child) => {
+      if (isWater(child)) {
+        this._waterMeshes.push(child);
+        this._waterOriginalY.set(child, child.position.y);
+      }
+    });
+
+    // Also scan scene root for water added directly by map builders
+    for (const child of this._scene.children) {
+      if (child === this._envGroup) continue; // already scanned
+      if (isWater(child)) {
+        this._waterMeshes.push(child);
+        this._waterOriginalY.set(child, child.position.y);
+      }
     }
   }
 
@@ -12563,193 +12620,549 @@ export class DiabloRenderer {
       }
       case DiabloClass.PALADIN: {
         // --- PALADIN CLASS GEAR ---
-        // Golden pauldrons
-        const pauldronMat = new THREE.MeshStandardMaterial({ color: 0xccaa44, metalness: 0.9, roughness: 0.15, emissive: 0x332200, emissiveIntensity: 0.3 });
+        const palGoldMat = new THREE.MeshStandardMaterial({ color: 0xccaa44, metalness: 0.9, roughness: 0.15, emissive: 0x332200, emissiveIntensity: 0.3 });
+        const palSteelMat = new THREE.MeshStandardMaterial({ color: 0xbbbbcc, metalness: 0.85, roughness: 0.2 });
+        const palLeatherMat = new THREE.MeshStandardMaterial({ color: 0x8B7355, roughness: 0.7 });
+        const palHolyMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffcc, emissiveIntensity: 0.8 });
+        const palGlowMat = new THREE.MeshStandardMaterial({ color: 0xffeeaa, emissive: 0xffcc44, emissiveIntensity: 1.5, transparent: true, opacity: 0.6 });
+
+        // Golden pauldrons with layered plates and rim spikes
         for (const side of [-1, 1]) {
-          const paulGeo = new THREE.SphereGeometry(0.1, 8, 8);
-          const paul = new THREE.Mesh(paulGeo, pauldronMat);
-          paul.position.set(side * 0.32, 1.45, 0);
-          paul.scale.set(1.2, 0.8, 1.0);
-          paul.castShadow = true;
-          this._playerGroup.add(paul);
+          // Main dome
+          const paulMain = new THREE.Mesh(new THREE.SphereGeometry(0.11, 32, 24), palGoldMat);
+          paulMain.position.set(side * 0.32, 1.45, 0);
+          paulMain.scale.set(1.2, 0.8, 1.0);
+          paulMain.castShadow = true;
+          this._playerGroup.add(paulMain);
+          // Edge rim
+          const paulRim = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.015, 16, 32), palGoldMat);
+          paulRim.position.set(side * 0.32, 1.42, 0);
+          paulRim.rotation.x = Math.PI / 2;
+          paulRim.scale.set(1.2, 1.0, 0.8);
+          this._playerGroup.add(paulRim);
+          // Under-plate armor layer
+          const paulUnder = new THREE.Mesh(new THREE.SphereGeometry(0.09, 24, 18, 0, Math.PI * 2, 0, Math.PI * 0.6), palSteelMat);
+          paulUnder.position.set(side * 0.32, 1.44, 0);
+          paulUnder.scale.set(1.3, 0.5, 1.1);
+          this._playerGroup.add(paulUnder);
+          // Ornamental spike on top
+          const spike = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.08, 16), palGoldMat);
+          spike.position.set(side * 0.32, 1.52, 0);
+          this._playerGroup.add(spike);
+          // Holy gem inset
+          const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.018, 2), palGlowMat);
+          gem.position.set(side * 0.34, 1.47, 0.08);
+          this._playerGroup.add(gem);
         }
 
-        // Holy mace (weapon arm)
-        const maceHandleMat = new THREE.MeshStandardMaterial({ color: 0x8B7355, roughness: 0.7 });
-        const maceHeadMat = new THREE.MeshStandardMaterial({ color: 0xddcc55, metalness: 0.9, roughness: 0.1, emissive: 0xffcc00, emissiveIntensity: 0.5 });
+        // Chest plate with layered armor
+        const chestPlate = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.22, 0.06), palSteelMat);
+        chestPlate.position.set(0, 1.28, 0.12);
+        this._playerGroup.add(chestPlate);
+        // Rounded breastplate contour over chest
+        const breastContour = new THREE.Mesh(new THREE.SphereGeometry(0.18, 24, 16, 0, Math.PI * 2, 0, Math.PI * 0.4), palSteelMat);
+        breastContour.position.set(0, 1.3, 0.1);
+        breastContour.rotation.x = -0.2;
+        this._playerGroup.add(breastContour);
+        // Cross emblem on chest (raised)
+        const chestCrossMat = new THREE.MeshStandardMaterial({ color: 0xffeedd, emissive: 0xffcc88, emissiveIntensity: 0.4 });
+        const cv = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.18, 0.015), chestCrossMat);
+        cv.position.set(0, 1.28, 0.16);
+        this._playerGroup.add(cv);
+        const ch = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.04, 0.015), chestCrossMat);
+        ch.position.set(0, 1.32, 0.16);
+        this._playerGroup.add(ch);
+        // Holy glow behind cross
+        const crossGlow = new THREE.Mesh(new THREE.SphereGeometry(0.06, 16, 12), palGlowMat);
+        crossGlow.position.set(0, 1.3, 0.15);
+        this._playerGroup.add(crossGlow);
 
-        const maceHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.7, 8), maceHandleMat);
+        // Tassets (hip armor plates)
+        for (const side of [-1, 0, 1]) {
+          const tasset = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.14, 0.04), palSteelMat);
+          tasset.position.set(side * 0.1, 0.95, 0.1);
+          tasset.rotation.x = 0.15;
+          this._playerGroup.add(tasset);
+          // Gold trim on bottom edge
+          const trim = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.015, 0.045), palGoldMat);
+          trim.position.set(side * 0.1, 0.885, 0.1);
+          this._playerGroup.add(trim);
+        }
+
+        // Belt with ornate buckle
+        const belt = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.05, 0.28), palLeatherMat);
+        belt.position.set(0, 1.02, 0);
+        this._playerGroup.add(belt);
+        const buckle = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.02, 24), palGoldMat);
+        buckle.position.set(0, 1.02, 0.14);
+        buckle.rotation.x = Math.PI / 2;
+        this._playerGroup.add(buckle);
+        // Buckle gem
+        const buckleGem = new THREE.Mesh(new THREE.SphereGeometry(0.012, 12, 10), palGlowMat);
+        buckleGem.position.set(0, 1.02, 0.155);
+        this._playerGroup.add(buckleGem);
+
+        // Knee guards
+        for (const side of [-1, 1]) {
+          const kneeGuard = new THREE.Mesh(new THREE.SphereGeometry(0.04, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.5), palSteelMat);
+          kneeGuard.position.set(side * 0.12, 0.62, 0.08);
+          kneeGuard.rotation.x = -0.3;
+          this._playerGroup.add(kneeGuard);
+        }
+
+        // Holy mace (weapon arm) — high-poly
+        const maceHeadMat = new THREE.MeshStandardMaterial({ color: 0xddcc55, metalness: 0.9, roughness: 0.1, emissive: 0xffcc00, emissiveIntensity: 0.5 });
+        // Handle with grip wrapping
+        const maceHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.024, 0.7, 24), palLeatherMat);
         maceHandle.position.set(0, -0.1, 0);
         this._weaponArmGroup.add(maceHandle);
-
-        const maceHead = new THREE.Mesh(new THREE.DodecahedronGeometry(0.08, 0), maceHeadMat);
+        // Leather grip wraps
+        for (let g = 0; g < 5; g++) {
+          const wrap = new THREE.Mesh(new THREE.TorusGeometry(0.025, 0.005, 8, 16), palLeatherMat);
+          wrap.position.set(0, 0.05 - g * 0.06, 0);
+          wrap.rotation.x = Math.PI / 2;
+          this._weaponArmGroup.add(wrap);
+        }
+        // Pommel
+        const pommel = new THREE.Mesh(new THREE.SphereGeometry(0.03, 20, 16), palGoldMat);
+        pommel.position.set(0, 0.26, 0);
+        this._weaponArmGroup.add(pommel);
+        // Mace head — smooth sphere
+        const maceHead = new THREE.Mesh(new THREE.SphereGeometry(0.08, 32, 24), maceHeadMat);
         maceHead.position.set(0, -0.5, 0);
         maceHead.castShadow = true;
         this._weaponArmGroup.add(maceHead);
-
-        // Flanges on mace
-        for (let i = 0; i < 4; i++) {
-          const flangeGeo = new THREE.BoxGeometry(0.03, 0.1, 0.12);
-          const flange = new THREE.Mesh(flangeGeo, maceHeadMat);
-          flange.position.set(0, -0.5, 0);
-          flange.rotation.y = (i * Math.PI) / 2;
+        // Crown ring around mace head
+        const maceCrown = new THREE.Mesh(new THREE.TorusGeometry(0.075, 0.012, 12, 32), maceHeadMat);
+        maceCrown.position.set(0, -0.5, 0);
+        maceCrown.rotation.x = Math.PI / 2;
+        this._weaponArmGroup.add(maceCrown);
+        // 6 smooth flanges radiating outward
+        for (let i = 0; i < 6; i++) {
+          const flangeAngle = (i / 6) * Math.PI * 2;
+          // Each flange: tapered cylinder
+          const flange = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.025, 0.12, 12), maceHeadMat);
+          flange.position.set(
+            Math.cos(flangeAngle) * 0.06, -0.5, Math.sin(flangeAngle) * 0.06
+          );
+          flange.rotation.z = Math.PI / 2;
+          flange.rotation.y = flangeAngle;
           this._weaponArmGroup.add(flange);
         }
+        // Holy glow orb inside mace head
+        const maceGlow = new THREE.Mesh(new THREE.SphereGeometry(0.05, 16, 12), palGlowMat);
+        maceGlow.position.set(0, -0.5, 0);
+        this._weaponArmGroup.add(maceGlow);
 
-        // Golden shield on left arm
+        // Golden shield on left arm — rounded kite shape
         const shieldMat = new THREE.MeshStandardMaterial({ color: 0xddcc55, metalness: 0.8, roughness: 0.2, emissive: 0x554400, emissiveIntensity: 0.2 });
-        const shieldGeo = new THREE.BoxGeometry(0.04, 0.35, 0.28);
-        const shield = new THREE.Mesh(shieldGeo, shieldMat);
-        shield.position.set(0, -0.15, 0.08);
-        this._leftArmGroup!.add(shield);
+        // Shield body (rounded box)
+        const shieldBody = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.1, 0.35, 6, 1), shieldMat);
+        shieldBody.position.set(0.02, -0.15, 0.08);
+        shieldBody.rotation.x = Math.PI / 2;
+        shieldBody.rotation.z = Math.PI / 6;
+        shieldBody.castShadow = true;
+        this._leftArmGroup!.add(shieldBody);
+        // Shield boss (central dome)
+        const shieldBoss = new THREE.Mesh(new THREE.SphereGeometry(0.04, 24, 18, 0, Math.PI * 2, 0, Math.PI * 0.5), palGoldMat);
+        shieldBoss.position.set(0.04, -0.15, 0.2);
+        shieldBoss.rotation.x = -Math.PI / 2;
+        this._leftArmGroup!.add(shieldBoss);
+        // Shield rim
+        const shieldRim = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.01, 8, 32), palGoldMat);
+        shieldRim.position.set(0.02, -0.13, 0.08);
+        this._leftArmGroup!.add(shieldRim);
+        // Cross emblem on shield (raised 3D)
+        const sCrossV = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.18, 0.03), palHolyMat);
+        sCrossV.position.set(0.04, -0.15, 0.17);
+        this._leftArmGroup!.add(sCrossV);
+        const sCrossH = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.03, 0.12), palHolyMat);
+        sCrossH.position.set(0.04, -0.12, 0.17);
+        this._leftArmGroup!.add(sCrossH);
+        // Rivets around shield
+        for (let r = 0; r < 6; r++) {
+          const ra = (r / 6) * Math.PI * 2;
+          const rivet = new THREE.Mesh(new THREE.SphereGeometry(0.008, 10, 8), palGoldMat);
+          rivet.position.set(0.02, -0.15 + Math.sin(ra) * 0.11, 0.08 + Math.cos(ra) * 0.11);
+          this._leftArmGroup!.add(rivet);
+        }
 
-        // Cross emblem on shield
-        const crossMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffcc, emissiveIntensity: 0.8 });
-        const crossV = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.2, 0.04), crossMat);
-        crossV.position.set(0.025, -0.15, 0.08);
-        this._leftArmGroup!.add(crossV);
-        const crossH = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.04, 0.14), crossMat);
-        crossH.position.set(0.025, -0.12, 0.08);
-        this._leftArmGroup!.add(crossH);
-
-        // Chest plate cross
-        const chestCross = new THREE.MeshStandardMaterial({ color: 0xffeedd, emissive: 0xffcc88, emissiveIntensity: 0.4 });
-        const cv = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.18, 0.01), chestCross);
-        cv.position.set(0, 1.28, 0.16);
-        this._playerGroup.add(cv);
-        const ch = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.04, 0.01), chestCross);
-        ch.position.set(0, 1.32, 0.16);
-        this._playerGroup.add(ch);
+        // Short cape from back of neck
+        const capeMat = new THREE.MeshStandardMaterial({ color: 0xddddff, roughness: 0.6, side: THREE.DoubleSide });
+        const cape = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.45, 0.02), capeMat);
+        cape.position.set(0, 1.1, -0.16);
+        cape.rotation.x = 0.15;
+        this._playerGroup.add(cape);
+        // Gold trim at cape bottom
+        const capeTrim = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.02, 0.025), palGoldMat);
+        capeTrim.position.set(0, 0.88, -0.16);
+        this._playerGroup.add(capeTrim);
 
         this._weaponMesh = maceHead;
         break;
       }
       case DiabloClass.NECROMANCER: {
         // --- NECROMANCER CLASS GEAR ---
-        // Tattered shoulder cloth
-        const clothMat = new THREE.MeshStandardMaterial({ color: 0x220033, roughness: 0.95 });
+        const necClothMat = new THREE.MeshStandardMaterial({ color: 0x220033, roughness: 0.95, side: THREE.DoubleSide });
+        const necBoneMat = new THREE.MeshStandardMaterial({ color: 0xddccaa, roughness: 0.6 });
+        const necStaffMat = new THREE.MeshStandardMaterial({ color: 0x3a2a1a, roughness: 0.8 });
+        const necGlowMat = new THREE.MeshStandardMaterial({ color: 0x44ff44, emissive: 0x22cc22, emissiveIntensity: 1.5, transparent: true, opacity: 0.9 });
+        const necDarkMat = new THREE.MeshStandardMaterial({ color: 0x110022, roughness: 0.95 });
+        const necShadowMat = new THREE.MeshStandardMaterial({ color: 0x220044, emissive: 0x110033, emissiveIntensity: 0.5, transparent: true, opacity: 0.4 });
+
+        // Tattered shoulder cloth with layered panels
         for (const side of [-1, 1]) {
-          const capeGeo = new THREE.BoxGeometry(0.15, 0.3, 0.12);
-          const cape = new THREE.Mesh(capeGeo, clothMat);
-          cape.position.set(side * 0.28, 1.3, -0.05);
-          cape.rotation.z = side * 0.3;
-          this._playerGroup.add(cape);
+          // Main cloth piece
+          const capeMain = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.28, 0.11), necClothMat);
+          capeMain.position.set(side * 0.28, 1.3, -0.05);
+          capeMain.rotation.z = side * 0.3;
+          this._playerGroup.add(capeMain);
+          // Tattered lower fringe (3 dangling strips)
+          for (let f = 0; f < 3; f++) {
+            const fringeLen = 0.1 + Math.random() * 0.08;
+            const fringe = new THREE.Mesh(new THREE.BoxGeometry(0.04, fringeLen, 0.02), necClothMat);
+            fringe.position.set(side * 0.28 + (f - 1) * 0.04, 1.15 - fringeLen * 0.5, -0.05);
+            fringe.rotation.z = side * (0.2 + f * 0.1);
+            this._playerGroup.add(fringe);
+          }
+          // Bone clasp on shoulder
+          const clasp = new THREE.Mesh(new THREE.SphereGeometry(0.02, 12, 10), necBoneMat);
+          clasp.position.set(side * 0.3, 1.44, 0.02);
+          this._playerGroup.add(clasp);
         }
 
-        // Skull staff (weapon arm)
-        const staffMat = new THREE.MeshStandardMaterial({ color: 0x3a2a1a, roughness: 0.8 });
-        const staffGlowMat = new THREE.MeshStandardMaterial({ color: 0x44ff44, emissive: 0x22cc22, emissiveIntensity: 1.5, transparent: true, opacity: 0.9 });
-
-        const staffPole = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 1.4, 8), staffMat);
-        staffPole.position.set(0, -0.25, 0);
-        this._weaponArmGroup.add(staffPole);
-
-        // Skull on top
-        const skullMat = new THREE.MeshStandardMaterial({ color: 0xccbbaa, roughness: 0.5 });
-        const skull = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), skullMat);
-        skull.position.set(0, -0.95, 0);
-        skull.scale.set(1.0, 1.1, 0.9);
-        this._weaponArmGroup.add(skull);
-
-        // Glowing eyes
-        for (const sx of [-0.025, 0.025]) {
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.012, 6, 6), staffGlowMat);
-          eye.position.set(sx, -0.93, 0.04);
-          this._weaponArmGroup.add(eye);
-        }
-
-        // Glowing orb above skull
-        const orb = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), staffGlowMat);
-        orb.position.set(0, -1.05, 0);
-        this._weaponArmGroup.add(orb);
-
-        // Bone necklace
-        const boneMat = new THREE.MeshStandardMaterial({ color: 0xddccaa, roughness: 0.6 });
-        for (let i = 0; i < 5; i++) {
-          const bone = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.04, 6), boneMat);
-          const boneAngle = (i / 5) * Math.PI - Math.PI * 0.5;
-          bone.position.set(Math.sin(boneAngle) * 0.2, 1.4, Math.cos(boneAngle) * 0.15 + 0.05);
-          bone.rotation.z = boneAngle;
-          this._playerGroup.add(bone);
-        }
-
-        // Hood
-        const hoodMat = new THREE.MeshStandardMaterial({ color: 0x110022, roughness: 0.95 });
-        const hoodGeo = new THREE.SphereGeometry(0.14, 8, 8, 0, Math.PI * 2, 0, Math.PI * 0.7);
-        const hood = new THREE.Mesh(hoodGeo, hoodMat);
+        // Hood — smooth high-poly
+        const hood = new THREE.Mesh(
+          new THREE.SphereGeometry(0.15, 32, 24, 0, Math.PI * 2, 0, Math.PI * 0.7),
+          necDarkMat
+        );
         hood.position.set(0, 1.62, -0.02);
         this._playerGroup.add(hood);
+        // Hood brim overhang (shadowy front)
+        const hoodBrim = new THREE.Mesh(new THREE.SphereGeometry(0.13, 24, 12, -Math.PI * 0.4, Math.PI * 0.8, 0, Math.PI * 0.35), necDarkMat);
+        hoodBrim.position.set(0, 1.64, 0.06);
+        hoodBrim.rotation.x = 0.3;
+        this._playerGroup.add(hoodBrim);
+        // Shadow veil under hood
+        const veil = new THREE.Mesh(new THREE.SphereGeometry(0.1, 16, 12), necShadowMat);
+        veil.position.set(0, 1.58, 0.04);
+        this._playerGroup.add(veil);
+
+        // Robe (long tattered skirt)
+        const robe = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.5, 24, 1, true), necClothMat);
+        robe.position.set(0, 0.75, 0);
+        this._playerGroup.add(robe);
+        // Robe tattered bottom edges
+        for (let t = 0; t < 8; t++) {
+          const ta = (t / 8) * Math.PI * 2;
+          const tLen = 0.06 + Math.random() * 0.06;
+          const tatter = new THREE.Mesh(new THREE.BoxGeometry(0.05, tLen, 0.015), necClothMat);
+          tatter.position.set(Math.cos(ta) * 0.2, 0.52 - tLen * 0.5, Math.sin(ta) * 0.2);
+          this._playerGroup.add(tatter);
+        }
+
+        // Bone necklace — proper bones with joints
+        for (let i = 0; i < 7; i++) {
+          const boneAngle = (i / 7) * Math.PI * 1.2 - Math.PI * 0.6;
+          // Bone shaft
+          const bone = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.01, 0.04, 12), necBoneMat);
+          bone.position.set(Math.sin(boneAngle) * 0.19, 1.4, Math.cos(boneAngle) * 0.15 + 0.05);
+          bone.rotation.z = boneAngle;
+          this._playerGroup.add(bone);
+          // Joint knobs on each bone end
+          const knob = new THREE.Mesh(new THREE.SphereGeometry(0.009, 10, 8), necBoneMat);
+          knob.position.set(
+            Math.sin(boneAngle) * 0.19 + Math.cos(boneAngle) * 0.02,
+            1.4 + 0.02, Math.cos(boneAngle) * 0.15 + 0.05
+          );
+          this._playerGroup.add(knob);
+        }
+        // Central skull pendant on necklace
+        const pendant = new THREE.Mesh(new THREE.SphereGeometry(0.02, 16, 12), necBoneMat);
+        pendant.position.set(0, 1.37, 0.2);
+        pendant.scale.set(1.0, 1.2, 0.8);
+        this._playerGroup.add(pendant);
+        // Pendant eye sockets
+        for (const sx of [-0.008, 0.008]) {
+          const socket = new THREE.Mesh(new THREE.SphereGeometry(0.005, 8, 6), necGlowMat);
+          socket.position.set(sx, 1.375, 0.22);
+          this._playerGroup.add(socket);
+        }
+
+        // Belt with vials
+        const necBeltMat = new THREE.MeshStandardMaterial({ color: 0x332211, roughness: 0.8 });
+        const beltMesh = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.04, 0.26), necBeltMat);
+        beltMesh.position.set(0, 1.0, 0);
+        this._playerGroup.add(beltMesh);
+        // Potion vials on belt
+        const vialMat = new THREE.MeshStandardMaterial({ color: 0x44ff44, emissive: 0x22aa22, emissiveIntensity: 0.8, transparent: true, opacity: 0.7 });
+        for (let v = 0; v < 3; v++) {
+          const vial = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.06, 12), vialMat);
+          vial.position.set(-0.06 + v * 0.06, 0.98, 0.13);
+          this._playerGroup.add(vial);
+          // Cork
+          const cork = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.012, 0.015, 8), necBeltMat);
+          cork.position.set(-0.06 + v * 0.06, 1.015, 0.13);
+          this._playerGroup.add(cork);
+        }
+
+        // Skull staff (weapon arm) — high-poly
+        const staffPole = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.024, 1.4, 24), necStaffMat);
+        staffPole.position.set(0, -0.25, 0);
+        this._weaponArmGroup.add(staffPole);
+        // Gnarled grip rings
+        for (let g = 0; g < 4; g++) {
+          const grip = new THREE.Mesh(new THREE.TorusGeometry(0.026, 0.005, 8, 16), necStaffMat);
+          grip.position.set(0, 0.0 - g * 0.08, 0);
+          grip.rotation.x = Math.PI / 2;
+          this._weaponArmGroup.add(grip);
+        }
+
+        // Skull on top — smooth, anatomical
+        const skullMat = new THREE.MeshStandardMaterial({ color: 0xccbbaa, roughness: 0.5 });
+        const skull = new THREE.Mesh(new THREE.SphereGeometry(0.065, 32, 24), skullMat);
+        skull.position.set(0, -0.95, 0);
+        skull.scale.set(1.0, 1.15, 0.9);
+        this._weaponArmGroup.add(skull);
+        // Jaw
+        const jaw = new THREE.Mesh(new THREE.SphereGeometry(0.04, 20, 14, 0, Math.PI * 2, Math.PI * 0.4, Math.PI * 0.4), skullMat);
+        jaw.position.set(0, -0.98, 0.02);
+        this._weaponArmGroup.add(jaw);
+        // Teeth
+        for (let t = 0; t < 5; t++) {
+          const ta = (t / 5) * Math.PI * 0.8 - Math.PI * 0.4;
+          const tooth = new THREE.Mesh(new THREE.ConeGeometry(0.004, 0.015, 8), skullMat);
+          tooth.position.set(Math.sin(ta) * 0.035, -0.985, Math.cos(ta) * 0.035 + 0.015);
+          tooth.rotation.x = Math.PI;
+          this._weaponArmGroup.add(tooth);
+        }
+        // Glowing eyes in skull sockets
+        for (const sx of [-0.025, 0.025]) {
+          const eyeSocket = new THREE.Mesh(new THREE.SphereGeometry(0.015, 16, 12), necGlowMat);
+          eyeSocket.position.set(sx, -0.93, 0.045);
+          this._weaponArmGroup.add(eyeSocket);
+          // Glow haze around eye
+          const eyeHaze = new THREE.Mesh(new THREE.SphereGeometry(0.025, 12, 8), new THREE.MeshStandardMaterial({
+            color: 0x44ff44, emissive: 0x22ff22, emissiveIntensity: 1.0, transparent: true, opacity: 0.2
+          }));
+          eyeHaze.position.set(sx, -0.93, 0.05);
+          this._weaponArmGroup.add(eyeHaze);
+        }
+
+        // Glowing orb above skull with inner crystal
+        const orb = new THREE.Mesh(new THREE.SphereGeometry(0.045, 24, 18), necGlowMat);
+        orb.position.set(0, -1.06, 0);
+        this._weaponArmGroup.add(orb);
+        const orbInner = new THREE.Mesh(new THREE.IcosahedronGeometry(0.025, 2), new THREE.MeshStandardMaterial({
+          color: 0x88ff88, emissive: 0x44ff44, emissiveIntensity: 3.0
+        }));
+        orbInner.position.set(0, -1.06, 0);
+        this._weaponArmGroup.add(orbInner);
+        // Spectral wisps rising from orb
+        for (let w = 0; w < 3; w++) {
+          const wisp = new THREE.Mesh(new THREE.SphereGeometry(0.012, 10, 8), new THREE.MeshStandardMaterial({
+            color: 0x66ff66, emissive: 0x44ff44, emissiveIntensity: 2.0, transparent: true, opacity: 0.35
+          }));
+          const wa = (w / 3) * Math.PI * 2;
+          wisp.position.set(Math.cos(wa) * 0.03, -1.12 - w * 0.03, Math.sin(wa) * 0.03);
+          this._weaponArmGroup.add(wisp);
+        }
+        // Bone prongs cradling the orb (3 curved)
+        for (let p = 0; p < 3; p++) {
+          const pa = (p / 3) * Math.PI * 2;
+          const prong = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.004, 0.08, 10), skullMat);
+          prong.position.set(Math.cos(pa) * 0.035, -1.02, Math.sin(pa) * 0.035);
+          prong.rotation.z = Math.cos(pa) * 0.4;
+          prong.rotation.x = Math.sin(pa) * 0.4;
+          this._weaponArmGroup.add(prong);
+        }
 
         this._weaponMesh = staffPole;
         break;
       }
       case DiabloClass.ASSASSIN: {
         // --- ASSASSIN CLASS GEAR ---
-        // Leather shoulder guards
-        const leatherMat = new THREE.MeshStandardMaterial({ color: 0x2a2a2a, roughness: 0.75 });
-        const metalAccent = new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.7, roughness: 0.3 });
+        const assLeatherMat = new THREE.MeshStandardMaterial({ color: 0x2a2a2a, roughness: 0.75 });
+        const assMetalMat = new THREE.MeshStandardMaterial({ color: 0x555566, metalness: 0.8, roughness: 0.25 });
+        const assBladeMat = new THREE.MeshStandardMaterial({ color: 0x99aabc, metalness: 0.95, roughness: 0.05 });
+        const assHiltMat = new THREE.MeshStandardMaterial({ color: 0x3a2a1a, roughness: 0.7 });
+        const assPoisonMat = new THREE.MeshStandardMaterial({ color: 0x66ff66, emissive: 0x22aa22, emissiveIntensity: 1.0, transparent: true, opacity: 0.5 });
+        const assDarkLeather = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.85 });
+
+        // Layered leather shoulder guards with studs and buckles
         for (const side of [-1, 1]) {
-          const shoulderGeo = new THREE.BoxGeometry(0.12, 0.06, 0.1);
-          const shoulder = new THREE.Mesh(shoulderGeo, leatherMat);
-          shoulder.position.set(side * 0.3, 1.43, 0);
-          shoulder.castShadow = true;
-          this._playerGroup.add(shoulder);
-          // Metal stud
-          const stud = new THREE.Mesh(new THREE.SphereGeometry(0.015, 6, 6), metalAccent);
-          stud.position.set(side * 0.3, 1.46, 0.04);
-          this._playerGroup.add(stud);
+          // Main shoulder plate
+          const shoulderMain = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.06, 0.11), assLeatherMat);
+          shoulderMain.position.set(side * 0.3, 1.43, 0);
+          shoulderMain.castShadow = true;
+          this._playerGroup.add(shoulderMain);
+          // Under-layer
+          const shoulderUnder = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.04, 0.12), assDarkLeather);
+          shoulderUnder.position.set(side * 0.3, 1.40, 0);
+          this._playerGroup.add(shoulderUnder);
+          // Metal studs — 3 per shoulder, smooth spheres
+          for (let s = 0; s < 3; s++) {
+            const stud = new THREE.Mesh(new THREE.SphereGeometry(0.012, 12, 10), assMetalMat);
+            stud.position.set(side * 0.3 + (s - 1) * 0.04, 1.46, 0.05);
+            this._playerGroup.add(stud);
+          }
+          // Buckle strap running down from shoulder
+          const strap = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.2, 0.015), assLeatherMat);
+          strap.position.set(side * 0.26, 1.32, 0.1);
+          this._playerGroup.add(strap);
+          const buckle = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.015, 16), assMetalMat);
+          buckle.position.set(side * 0.26, 1.25, 0.11);
+          buckle.rotation.x = Math.PI / 2;
+          this._playerGroup.add(buckle);
         }
 
-        // Main dagger (weapon arm)
-        const bladeMat = new THREE.MeshStandardMaterial({ color: 0x888899, metalness: 0.9, roughness: 0.1 });
-        const hiltMat = new THREE.MeshStandardMaterial({ color: 0x3a2a1a, roughness: 0.7 });
+        // Chest harness with crossing leather straps
+        const strapCross1 = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.35, 0.015), assLeatherMat);
+        strapCross1.position.set(0, 1.2, 0.14);
+        strapCross1.rotation.z = 0.3;
+        this._playerGroup.add(strapCross1);
+        const strapCross2 = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.35, 0.015), assLeatherMat);
+        strapCross2.position.set(0, 1.2, 0.14);
+        strapCross2.rotation.z = -0.3;
+        this._playerGroup.add(strapCross2);
+        // Center clasp where straps cross
+        const centerClasp = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.015, 20), assMetalMat);
+        centerClasp.position.set(0, 1.2, 0.15);
+        centerClasp.rotation.x = Math.PI / 2;
+        this._playerGroup.add(centerClasp);
 
-        const daggerBlade = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.35, 0.04), bladeMat);
+        // Face mask / cowl — smooth wrap around lower face
+        const cowl = new THREE.Mesh(
+          new THREE.SphereGeometry(0.12, 24, 16, -Math.PI * 0.5, Math.PI, Math.PI * 0.35, Math.PI * 0.35),
+          assDarkLeather
+        );
+        cowl.position.set(0, 1.55, 0.05);
+        this._playerGroup.add(cowl);
+        // Eye slit opening
+        const eyeSlit = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.02, 0.01), new THREE.MeshStandardMaterial({
+          color: 0x000000, roughness: 1.0
+        }));
+        eyeSlit.position.set(0, 1.58, 0.13);
+        this._playerGroup.add(eyeSlit);
+
+        // Belt with pouches and vials
+        const belt = new THREE.Mesh(new THREE.BoxGeometry(0.33, 0.04, 0.27), assLeatherMat);
+        belt.position.set(0, 0.95, 0);
+        this._playerGroup.add(belt);
+        // Belt pouches — rounded
+        for (const side of [-1, 1]) {
+          const pouch = new THREE.Mesh(new THREE.SphereGeometry(0.035, 16, 12), assLeatherMat);
+          pouch.position.set(side * 0.22, 0.93, 0.12);
+          pouch.scale.set(0.9, 0.8, 0.7);
+          this._playerGroup.add(pouch);
+          // Pouch flap
+          const flap = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.02, 0.04), assLeatherMat);
+          flap.position.set(side * 0.22, 0.96, 0.12);
+          this._playerGroup.add(flap);
+        }
+        // Poison vial on belt
+        const vial = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.05, 12), assPoisonMat);
+        vial.position.set(0.08, 0.93, 0.13);
+        this._playerGroup.add(vial);
+        const vialCork = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.01, 0.012, 8), assHiltMat);
+        vialCork.position.set(0.08, 0.96, 0.13);
+        this._playerGroup.add(vialCork);
+
+        // Throwing knives on belt (back) — proper blade shapes
+        for (let i = 0; i < 4; i++) {
+          // Blade
+          const knife = new THREE.Mesh(new THREE.CylinderGeometry(0.002, 0.012, 0.1, 12), assBladeMat);
+          knife.position.set(-0.12 + i * 0.055, 0.93, -0.14);
+          knife.rotation.z = 0.1;
+          this._playerGroup.add(knife);
+          // Mini grip
+          const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.03, 8), assHiltMat);
+          grip.position.set(-0.12 + i * 0.055, 0.99, -0.14);
+          grip.rotation.z = 0.1;
+          this._playerGroup.add(grip);
+        }
+
+        // Leg wraps / shin guards
+        for (const side of [-1, 1]) {
+          const shinGuard = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.04, 0.15, 16, 1, true), assLeatherMat);
+          shinGuard.position.set(side * 0.12, 0.45, 0.02);
+          this._playerGroup.add(shinGuard);
+          // Straps on shin guards
+          for (let s = 0; s < 2; s++) {
+            const shinStrap = new THREE.Mesh(new THREE.TorusGeometry(0.046, 0.005, 6, 16), assLeatherMat);
+            shinStrap.position.set(side * 0.12, 0.4 + s * 0.1, 0.02);
+            shinStrap.rotation.x = Math.PI / 2;
+            this._playerGroup.add(shinStrap);
+          }
+        }
+
+        // Main dagger (weapon arm) — detailed curved blade
+        const daggerBlade = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.02, 0.35, 16), assBladeMat);
         daggerBlade.position.set(0, -0.3, 0);
         daggerBlade.castShadow = true;
         this._weaponArmGroup.add(daggerBlade);
-
-        const daggerHilt = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.1, 8), hiltMat);
+        // Blade edge highlight
+        const bladeEdge = new THREE.Mesh(new THREE.BoxGeometry(0.002, 0.3, 0.035), new THREE.MeshStandardMaterial({
+          color: 0xddeeff, metalness: 1.0, roughness: 0.0
+        }));
+        bladeEdge.position.set(0, -0.28, 0);
+        this._weaponArmGroup.add(bladeEdge);
+        // Poison drip on blade
+        const drip = new THREE.Mesh(new THREE.SphereGeometry(0.008, 10, 8), assPoisonMat);
+        drip.position.set(0, -0.46, 0.01);
+        drip.scale.set(0.8, 1.5, 0.8);
+        this._weaponArmGroup.add(drip);
+        // Hilt — wrapped grip
+        const daggerHilt = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.018, 0.1, 20), assHiltMat);
         daggerHilt.position.set(0, -0.1, 0);
         this._weaponArmGroup.add(daggerHilt);
+        // Grip wraps
+        for (let g = 0; g < 3; g++) {
+          const wrap = new THREE.Mesh(new THREE.TorusGeometry(0.019, 0.003, 6, 12), assHiltMat);
+          wrap.position.set(0, -0.07 - g * 0.03, 0);
+          wrap.rotation.x = Math.PI / 2;
+          this._weaponArmGroup.add(wrap);
+        }
+        // Cross-guard with swept curves
+        const guard = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.006, 0.07, 12), assMetalMat);
+        guard.position.set(0, -0.15, 0);
+        guard.rotation.z = Math.PI / 2;
+        this._weaponArmGroup.add(guard);
+        // Pommel
+        const daggerPommel = new THREE.Mesh(new THREE.SphereGeometry(0.012, 12, 10), assMetalMat);
+        daggerPommel.position.set(0, -0.05, 0);
+        this._weaponArmGroup.add(daggerPommel);
 
-        const daggerGuard = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.015, 0.03), metalAccent);
-        daggerGuard.position.set(0, -0.15, 0);
-        this._weaponArmGroup.add(daggerGuard);
-
-        // Off-hand dagger (left arm)
-        const offBlade = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.3, 0.035), bladeMat);
+        // Off-hand dagger (left arm) — matching style
+        const offBlade = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.018, 0.3, 16), assBladeMat);
         offBlade.position.set(0, -0.25, 0);
         offBlade.castShadow = true;
         this._leftArmGroup!.add(offBlade);
-
-        const offHilt = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.08, 8), hiltMat);
+        const offEdge = new THREE.Mesh(new THREE.BoxGeometry(0.002, 0.25, 0.03), new THREE.MeshStandardMaterial({
+          color: 0xddeeff, metalness: 1.0, roughness: 0.0
+        }));
+        offEdge.position.set(0, -0.23, 0);
+        this._leftArmGroup!.add(offEdge);
+        const offHilt = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.016, 0.08, 20), assHiltMat);
         offHilt.position.set(0, -0.08, 0);
         this._leftArmGroup!.add(offHilt);
-
-        const offGuard = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.012, 0.025), metalAccent);
+        const offGuard = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.005, 0.06, 12), assMetalMat);
         offGuard.position.set(0, -0.12, 0);
+        offGuard.rotation.z = Math.PI / 2;
         this._leftArmGroup!.add(offGuard);
 
-        // Face mask / cowl
-        const cowlMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.85 });
-        const cowl = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.08, 0.12), cowlMat);
-        cowl.position.set(0, 1.55, 0.06);
-        this._playerGroup.add(cowl);
-
-        // Belt pouches
-        for (const side of [-1, 1]) {
-          const pouch = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.05), leatherMat);
-          pouch.position.set(side * 0.22, 0.92, 0.12);
-          this._playerGroup.add(pouch);
-        }
-
-        // Throwing knives on belt
-        for (let i = 0; i < 3; i++) {
-          const knife = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.1, 0.02), bladeMat);
-          knife.position.set(-0.15 + i * 0.06, 0.92, -0.15);
-          knife.rotation.z = 0.1;
-          this._playerGroup.add(knife);
+        // Short shadow cloak from back
+        const cloakMat = new THREE.MeshStandardMaterial({ color: 0x111115, roughness: 0.9, side: THREE.DoubleSide });
+        const cloak = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.35, 0.015), cloakMat);
+        cloak.position.set(0, 1.15, -0.15);
+        cloak.rotation.x = 0.1;
+        this._playerGroup.add(cloak);
+        // Tattered cloak edges
+        for (let t = 0; t < 5; t++) {
+          const tLen = 0.04 + Math.random() * 0.06;
+          const tatter = new THREE.Mesh(new THREE.BoxGeometry(0.04, tLen, 0.01), cloakMat);
+          tatter.position.set(-0.1 + t * 0.05, 0.97 - tLen * 0.5, -0.15);
+          this._playerGroup.add(tatter);
         }
 
         this._weaponMesh = daggerBlade;
@@ -27105,8 +27518,12 @@ export class DiabloRenderer {
       if (this._renderer.toneMappingExposure !== 1.0) this._renderer.toneMappingExposure = 1.0;
     }
 
-    // Render
-    this._renderer.render(this._scene, this._camera);
+    // Render with bloom post-processing
+    if (this._bloomComposer) {
+      this._bloomComposer.render();
+    } else {
+      this._renderer.render(this._scene, this._camera);
+    }
   }
 
   private _syncEnemies(state: DiabloState): void {
@@ -27240,36 +27657,48 @@ export class DiabloRenderer {
         if (!dyingAnim) {
           dyingAnim = { timer: 0, sinkY: 0, initialY: enemy.y, scattered: false };
           this._dyingAnims.set(enemy.id, dyingAnim);
+          // One-time setup: mark all materials as transparent for fading
+          mesh.traverse((child) => {
+            if (child instanceof THREE.Mesh && child.material instanceof THREE.MeshStandardMaterial) {
+              child.material.transparent = true;
+            }
+          });
         }
         const dt2 = enemy.deathTimer; // how far into death (increases)
         const phase = Math.min(dt2 * 2, 1.0); // 0→1 over 0.5s
+        const prevPhase = dyingAnim.timer;
+        dyingAnim.timer = phase;
 
         // Phase 1: Collapse — tilt forward/sideways and shrink
         const collapseT = Math.min(phase * 2, 1.0);
-        mesh.rotation.x = collapseT * 1.2; // fall forward
-        mesh.rotation.z = collapseT * 0.4 * (enemy.id.charCodeAt(0) % 2 === 0 ? 1 : -1); // lean to a side
+        mesh.rotation.x = collapseT * 1.2;
+        mesh.rotation.z = collapseT * 0.4 * (enemy.id.charCodeAt(0) % 2 === 0 ? 1 : -1);
         const baseScale = enemy.scale || 1;
-        const scaleY = baseScale * (1.0 - collapseT * 0.5); // flatten vertically
+        const scaleY = baseScale * (1.0 - collapseT * 0.5);
         mesh.scale.set(baseScale * (1.0 + collapseT * 0.15), scaleY, baseScale * (1.0 + collapseT * 0.15));
 
         // Phase 2: Sink into ground
         const sinkT = Math.max(0, (phase - 0.3) / 0.7);
         mesh.position.y = enemy.y - sinkT * 0.8;
 
-        // Phase 3: Dissolve/fade
+        // Phase 3: Dissolve/fade — only traverse when opacity actually changes
         const fadeT = Math.max(0, (phase - 0.2) / 0.8);
         const fade = Math.max(0, 1.0 - fadeT);
-        mesh.traverse((child) => {
-          if (child instanceof THREE.Mesh && child.material instanceof THREE.MeshStandardMaterial) {
-            child.material.transparent = true;
-            child.material.opacity = fade;
-            // Red flash at death start
-            if (phase < 0.2) {
-              child.material.emissive.setHex(0xff2200);
-              child.material.emissiveIntensity = (1.0 - phase * 5) * 2.0;
+        const prevFadeT = Math.max(0, (prevPhase - 0.2) / 0.8);
+        // Only update materials when fade value has meaningfully changed (>0.02)
+        if (Math.abs(fadeT - prevFadeT) > 0.02 || phase < 0.2) {
+          const isFlash = phase < 0.2;
+          const flashIntensity = isFlash ? (1.0 - phase * 5) * 2.0 : 0;
+          mesh.traverse((child) => {
+            if (child instanceof THREE.Mesh && child.material instanceof THREE.MeshStandardMaterial) {
+              child.material.opacity = fade;
+              if (isFlash) {
+                child.material.emissive.setHex(0xff2200);
+                child.material.emissiveIntensity = flashIntensity;
+              }
             }
-          }
-        });
+          });
+        }
       } else {
         // Clean up dying anim tracking if enemy is no longer dying
         this._dyingAnims.delete(enemy.id);
@@ -29781,46 +30210,6 @@ export class DiabloRenderer {
       }
     }
 
-    // Auto-detect and register water meshes from environment (run once per map)
-    if (this._waterMeshes.length === 0) {
-      this._envGroup.traverse((child) => {
-        if (
-          child instanceof THREE.Mesh &&
-          child.material instanceof THREE.MeshStandardMaterial &&
-          child.material.transparent &&
-          child.material.opacity >= 0.3 &&
-          child.material.opacity <= 0.75 &&
-          child.material.roughness <= 0.35 &&
-          child.material.color.getHex() !== 0x000000
-        ) {
-          // Likely a water surface (transparent, low roughness)
-          const c = child.material.color;
-          const b = c.b;
-          const r = c.r;
-          // Must be blue-ish or teal (blue channel dominant or close to it)
-          if (b > 0.25 && b >= r * 0.8) {
-            this._waterMeshes.push(child);
-          }
-        }
-      });
-      // Also scan scene root for water added directly
-      this._scene.traverse((child) => {
-        if (
-          child instanceof THREE.Mesh &&
-          this._waterMeshes.indexOf(child) === -1 &&
-          child.material instanceof THREE.MeshStandardMaterial &&
-          child.material.transparent &&
-          child.material.opacity >= 0.3 &&
-          child.material.opacity <= 0.75 &&
-          child.material.roughness <= 0.35
-        ) {
-          const c = child.material.color;
-          if (c.b > 0.25 && c.b >= c.r * 0.8) {
-            this._waterMeshes.push(child);
-          }
-        }
-      });
-    }
   }
 
   getClickTarget(
@@ -51047,10 +51436,11 @@ export class DiabloRenderer {
     const activePets = state.player.pets.filter(p => p.isSummoned);
     const currentIds = new Set(activePets.map(p => p.id));
 
-    // Remove meshes for despawned pets
+    // Remove meshes for despawned pets (with proper disposal)
     for (const [id, mesh] of this._petMeshes) {
       if (!currentIds.has(id)) {
         this._scene.remove(mesh);
+        this._disposeObject3D(mesh);
         this._petMeshes.delete(id);
       }
     }
@@ -51091,7 +51481,9 @@ export class DiabloRenderer {
           child.rotation.y = Math.sin(this._time * 5 + petOffset) * 0.4;
         }
         if (child.name === 'pet_flame') {
-          child.position.y += Math.sin(this._time * 10 + child.position.x * 10) * 0.003;
+          // Use userData for base position to avoid Y drift from +=
+          if (child.userData.baseY === undefined) child.userData.baseY = child.position.y;
+          child.position.y = child.userData.baseY + Math.sin(this._time * 10 + child.position.x * 10) * 0.04;
           const mat = (child as THREE.Mesh).material as THREE.MeshStandardMaterial;
           mat.opacity = 0.4 + Math.sin(this._time * 12 + child.position.z * 10) * 0.3;
         }
@@ -51206,137 +51598,277 @@ export class DiabloRenderer {
   private _syncPlayerStatusEffects(state: DiabloState): void {
     const effects = state.player.statusEffects;
 
-    if (effects.length === 0) {
-      if (this._playerStatusFxGroup) {
-        this._playerStatusFxGroup.visible = false;
-      }
-      return;
-    }
-
     if (!this._playerStatusFxGroup) {
       this._playerStatusFxGroup = new THREE.Group();
       this._scene.add(this._playerStatusFxGroup);
     }
 
-    this._playerStatusFxGroup.visible = true;
+    if (effects.length === 0) {
+      // Hide all pooled effect groups
+      for (const [, grp] of this._playerStatusFxPools) {
+        grp.visible = false;
+      }
+      this._playerActiveEffects.clear();
+      return;
+    }
+
     this._playerStatusFxGroup.position.set(state.player.x, state.player.y, state.player.z);
 
-    // Clear existing children and rebuild based on current effects
-    while (this._playerStatusFxGroup.children.length > 0) {
-      const child = this._playerStatusFxGroup.children[0];
-      this._playerStatusFxGroup.remove(child);
+    // Determine which effects are currently active
+    const currentEffects = new Set<string>();
+    for (const fx of effects) {
+      currentEffects.add(fx.effect);
+    }
+
+    // Hide pools for effects that are no longer active
+    for (const [key, grp] of this._playerStatusFxPools) {
+      if (!currentEffects.has(key)) {
+        grp.visible = false;
+      }
     }
 
     for (const fx of effects) {
-      switch (fx.effect) {
-        case StatusEffect.BURNING: {
-          // Fire particles swirling around player
-          for (let i = 0; i < 4; i++) {
-            const angle = (i / 4) * Math.PI * 2 + this._time * 3;
-            const flame = new THREE.Mesh(
-              new THREE.ConeGeometry(0.08, 0.3, 8),
-              new THREE.MeshStandardMaterial({
-                color: 0xff6600, emissive: 0xff4400, emissiveIntensity: 3.0,
-                transparent: true, opacity: 0.5 + Math.sin(this._time * 8 + i) * 0.2
-              })
-            );
-            flame.position.set(Math.cos(angle) * 0.6, 0.3 + Math.sin(this._time * 5 + i) * 0.2, Math.sin(angle) * 0.6);
-            this._playerStatusFxGroup.add(flame);
-          }
-          break;
+      const key = fx.effect;
+      let pool = this._playerStatusFxPools.get(key);
+
+      // Create pool group once per effect type, reuse every frame
+      if (!pool) {
+        pool = this._buildStatusFxPool(fx.effect);
+        this._playerStatusFxGroup.add(pool);
+        this._playerStatusFxPools.set(key, pool);
+      }
+
+      pool.visible = true;
+
+      // Animate the pooled meshes (position/rotation/opacity only — no allocations)
+      this._animateStatusFxPool(pool, fx.effect);
+    }
+
+    this._playerActiveEffects = currentEffects;
+  }
+
+  /** Build a reusable group of meshes for one status effect type. Created once. */
+  private _buildStatusFxPool(effect: StatusEffect): THREE.Group {
+    const grp = new THREE.Group();
+
+    switch (effect) {
+      case StatusEffect.BURNING: {
+        for (let i = 0; i < 4; i++) {
+          const flame = new THREE.Mesh(
+            new THREE.ConeGeometry(0.08, 0.3, 8),
+            new THREE.MeshStandardMaterial({
+              color: 0xff6600, emissive: 0xff4400, emissiveIntensity: 3.0,
+              transparent: true, opacity: 0.5
+            })
+          );
+          flame.userData.index = i;
+          grp.add(flame);
         }
-        case StatusEffect.FROZEN: {
-          // Ice crystal shell around player
-          const iceMat = new THREE.MeshStandardMaterial({
+        break;
+      }
+      case StatusEffect.FROZEN: {
+        const iceShell = new THREE.Mesh(
+          new THREE.IcosahedronGeometry(0.7, 1),
+          new THREE.MeshStandardMaterial({
             color: 0x88ccff, emissive: 0x4488cc, emissiveIntensity: 1.0,
-            transparent: true, opacity: 0.3 + Math.sin(this._time * 2) * 0.1
-          });
-          const iceShell = new THREE.Mesh(new THREE.IcosahedronGeometry(0.7, 1), iceMat);
-          iceShell.position.y = 0.8;
-          iceShell.rotation.y = this._time * 0.3;
-          this._playerStatusFxGroup.add(iceShell);
-          break;
-        }
-        case StatusEffect.SHOCKED: {
-          // Lightning bolts flickering around player
-          for (let i = 0; i < 3; i++) {
-            const boltMat = new THREE.MeshStandardMaterial({
+            transparent: true, opacity: 0.3
+          })
+        );
+        iceShell.position.y = 0.8;
+        grp.add(iceShell);
+        break;
+      }
+      case StatusEffect.SHOCKED: {
+        for (let i = 0; i < 3; i++) {
+          const bolt = new THREE.Mesh(
+            new THREE.BoxGeometry(0.02, 0.6, 0.02),
+            new THREE.MeshStandardMaterial({
               color: 0xffff44, emissive: 0xffff00, emissiveIntensity: 4.0,
-              transparent: true, opacity: Math.random() > 0.3 ? 0.7 : 0.0
-            });
-            const bolt = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.5 + Math.random() * 0.3, 0.02), boltMat);
-            const a = Math.random() * Math.PI * 2;
-            bolt.position.set(Math.cos(a) * 0.5, 0.5 + Math.random() * 0.5, Math.sin(a) * 0.5);
-            bolt.rotation.set(Math.random() * 0.8, 0, Math.random() * 1.5 - 0.75);
-            this._playerStatusFxGroup.add(bolt);
-          }
-          break;
+              transparent: true, opacity: 0.7
+            })
+          );
+          bolt.userData.index = i;
+          bolt.userData.seedAngle = (i / 3) * Math.PI * 2;
+          grp.add(bolt);
         }
-        case StatusEffect.POISONED: {
-          // Green toxic cloud
-          for (let i = 0; i < 5; i++) {
-            const cloudMat = new THREE.MeshStandardMaterial({
+        break;
+      }
+      case StatusEffect.POISONED: {
+        for (let i = 0; i < 5; i++) {
+          const cloud = new THREE.Mesh(
+            new THREE.SphereGeometry(0.15, 8, 6),
+            new THREE.MeshStandardMaterial({
               color: 0x44ff44, emissive: 0x22aa22, emissiveIntensity: 1.5,
-              transparent: true, opacity: 0.2 + Math.sin(this._time * 3 + i) * 0.1
-            });
-            const cloud = new THREE.Mesh(new THREE.SphereGeometry(0.15 + Math.random() * 0.1, 8, 6), cloudMat);
-            const a = (i / 5) * Math.PI * 2 + this._time * 1.5;
-            cloud.position.set(Math.cos(a) * 0.5, 0.3 + Math.sin(this._time * 2 + i) * 0.3, Math.sin(a) * 0.5);
-            this._playerStatusFxGroup.add(cloud);
-          }
-          break;
+              transparent: true, opacity: 0.2
+            })
+          );
+          cloud.userData.index = i;
+          grp.add(cloud);
         }
-        case StatusEffect.BLEEDING: {
-          // Red drip particles falling
-          for (let i = 0; i < 4; i++) {
-            const dropMat = new THREE.MeshStandardMaterial({
+        break;
+      }
+      case StatusEffect.BLEEDING: {
+        for (let i = 0; i < 4; i++) {
+          const drop = new THREE.Mesh(
+            new THREE.SphereGeometry(0.03, 6, 4),
+            new THREE.MeshStandardMaterial({
               color: 0xff2222, emissive: 0xaa0000, emissiveIntensity: 1.0,
               transparent: true, opacity: 0.6
-            });
-            const drop = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 4), dropMat);
-            const phase = (this._time * 3 + i * 1.5) % 2.0;
-            const a = (i / 4) * Math.PI * 2;
-            drop.position.set(Math.cos(a) * 0.3, 1.5 - phase * 0.8, Math.sin(a) * 0.3);
-            this._playerStatusFxGroup.add(drop);
-          }
-          break;
+            })
+          );
+          drop.userData.index = i;
+          grp.add(drop);
         }
-        case StatusEffect.SLOWED: {
-          // Blue chains/tendrils at feet
-          const slowMat = new THREE.MeshStandardMaterial({
+        break;
+      }
+      case StatusEffect.SLOWED: {
+        const slowRing = new THREE.Mesh(
+          new THREE.TorusGeometry(0.5, 0.04, 8, 24),
+          new THREE.MeshStandardMaterial({
             color: 0x6666ff, emissive: 0x3333aa, emissiveIntensity: 1.0,
-            transparent: true, opacity: 0.4 + Math.sin(this._time * 2) * 0.1
-          });
-          const slowRing = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.04, 8, 24), slowMat);
-          slowRing.rotation.x = -Math.PI / 2;
-          slowRing.position.y = 0.1;
-          this._playerStatusFxGroup.add(slowRing);
-          break;
-        }
-        case StatusEffect.STUNNED: {
-          // Circling stars above head
-          for (let i = 0; i < 3; i++) {
-            const starMat = new THREE.MeshStandardMaterial({
+            transparent: true, opacity: 0.4
+          })
+        );
+        slowRing.rotation.x = -Math.PI / 2;
+        slowRing.position.y = 0.1;
+        grp.add(slowRing);
+        break;
+      }
+      case StatusEffect.STUNNED: {
+        for (let i = 0; i < 3; i++) {
+          const star = new THREE.Mesh(
+            new THREE.OctahedronGeometry(0.04, 0),
+            new THREE.MeshStandardMaterial({
               color: 0xffff88, emissive: 0xffff44, emissiveIntensity: 2.0
-            });
-            const star = new THREE.Mesh(new THREE.OctahedronGeometry(0.04, 0), starMat);
-            const a = (i / 3) * Math.PI * 2 + this._time * 4;
-            star.position.set(Math.cos(a) * 0.3, 2.0 + Math.sin(a * 2) * 0.05, Math.sin(a) * 0.3);
-            this._playerStatusFxGroup.add(star);
-          }
-          break;
+            })
+          );
+          star.userData.index = i;
+          grp.add(star);
         }
-        case StatusEffect.WEAKENED: {
-          // Dark aura
-          const weakMat = new THREE.MeshStandardMaterial({
+        break;
+      }
+      case StatusEffect.WEAKENED: {
+        const aura = new THREE.Mesh(
+          new THREE.SphereGeometry(0.8, 12, 10),
+          new THREE.MeshStandardMaterial({
             color: 0x444444, emissive: 0x222222, emissiveIntensity: 0.5,
-            transparent: true, opacity: 0.2 + Math.sin(this._time * 2) * 0.08
-          });
-          const aura = new THREE.Mesh(new THREE.SphereGeometry(0.8, 12, 10), weakMat);
-          aura.position.y = 0.8;
-          this._playerStatusFxGroup.add(aura);
-          break;
+            transparent: true, opacity: 0.2
+          })
+        );
+        aura.position.y = 0.8;
+        grp.add(aura);
+        break;
+      }
+    }
+
+    return grp;
+  }
+
+  /** Animate pooled status effect meshes — position/rotation/opacity only, zero allocations. */
+  private _animateStatusFxPool(pool: THREE.Group, effect: StatusEffect): void {
+    const t = this._time;
+    const children = pool.children;
+
+    switch (effect) {
+      case StatusEffect.BURNING: {
+        for (let ci = 0; ci < children.length; ci++) {
+          const child = children[ci];
+          const i = child.userData.index;
+          const angle = (i / 4) * Math.PI * 2 + t * 3;
+          child.position.set(
+            Math.cos(angle) * 0.6,
+            0.3 + Math.sin(t * 5 + i) * 0.2,
+            Math.sin(angle) * 0.6
+          );
+          const mat = (child as THREE.Mesh).material as THREE.MeshStandardMaterial;
+          mat.opacity = 0.5 + Math.sin(t * 8 + i) * 0.2;
         }
+        break;
+      }
+      case StatusEffect.FROZEN: {
+        if (children.length > 0) {
+          children[0].rotation.y = t * 0.3;
+          const mat = (children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial;
+          mat.opacity = 0.3 + Math.sin(t * 2) * 0.1;
+        }
+        break;
+      }
+      case StatusEffect.SHOCKED: {
+        for (let ci = 0; ci < children.length; ci++) {
+          const child = children[ci];
+          const i = child.userData.index;
+          // Randomized flicker by using sin with high frequency + seed
+          const flicker = Math.sin(t * 20 + i * 7.3) > 0.0;
+          const a = child.userData.seedAngle + Math.sin(t * 4 + i * 2) * 1.5;
+          child.position.set(
+            Math.cos(a) * 0.5,
+            0.5 + Math.sin(t * 6 + i * 3) * 0.4,
+            Math.sin(a) * 0.5
+          );
+          child.rotation.set(
+            Math.sin(t * 3 + i) * 0.8,
+            0,
+            Math.cos(t * 5 + i * 2) * 1.2
+          );
+          const mat = (child as THREE.Mesh).material as THREE.MeshStandardMaterial;
+          mat.opacity = flicker ? 0.7 : 0.0;
+        }
+        break;
+      }
+      case StatusEffect.POISONED: {
+        for (let ci = 0; ci < children.length; ci++) {
+          const child = children[ci];
+          const i = child.userData.index;
+          const a = (i / 5) * Math.PI * 2 + t * 1.5;
+          child.position.set(
+            Math.cos(a) * 0.5,
+            0.3 + Math.sin(t * 2 + i) * 0.3,
+            Math.sin(a) * 0.5
+          );
+          const mat = (child as THREE.Mesh).material as THREE.MeshStandardMaterial;
+          mat.opacity = 0.2 + Math.sin(t * 3 + i) * 0.1;
+        }
+        break;
+      }
+      case StatusEffect.BLEEDING: {
+        for (let ci = 0; ci < children.length; ci++) {
+          const child = children[ci];
+          const i = child.userData.index;
+          const phase = (t * 3 + i * 1.5) % 2.0;
+          const a = (i / 4) * Math.PI * 2;
+          child.position.set(Math.cos(a) * 0.3, 1.5 - phase * 0.8, Math.sin(a) * 0.3);
+          const mat = (child as THREE.Mesh).material as THREE.MeshStandardMaterial;
+          mat.opacity = 0.6 * (1.0 - phase / 2.0); // fade as drop falls
+        }
+        break;
+      }
+      case StatusEffect.SLOWED: {
+        if (children.length > 0) {
+          const mat = (children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial;
+          mat.opacity = 0.4 + Math.sin(t * 2) * 0.1;
+          children[0].rotation.z = t * 0.5; // slow rotation
+        }
+        break;
+      }
+      case StatusEffect.STUNNED: {
+        for (let ci = 0; ci < children.length; ci++) {
+          const child = children[ci];
+          const i = child.userData.index;
+          const a = (i / 3) * Math.PI * 2 + t * 4;
+          child.position.set(
+            Math.cos(a) * 0.3,
+            2.0 + Math.sin(a * 2) * 0.05,
+            Math.sin(a) * 0.3
+          );
+        }
+        break;
+      }
+      case StatusEffect.WEAKENED: {
+        if (children.length > 0) {
+          const mat = (children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial;
+          mat.opacity = 0.2 + Math.sin(t * 2) * 0.08;
+        }
+        break;
       }
     }
   }
@@ -51348,35 +51880,47 @@ export class DiabloRenderer {
   private _updateDodgeRoll(state: DiabloState, dt: number): void {
     if (state.player.isDodging) {
       if (!this._wasDodging) {
-        // Just started dodging — capture the roll direction
+        // Just started dodging — capture roll direction from dodge velocity
         this._dodgeRollAngle = 0;
         this._wasDodging = true;
+        // Compute dodge direction from dodge velocity vector
+        const dvx = state.player.dodgeVx;
+        const dvz = state.player.dodgeVz;
+        if (Math.abs(dvx) > 0.01 || Math.abs(dvz) > 0.01) {
+          this._dodgeDirection = Math.atan2(dvx, dvz);
+        } else {
+          this._dodgeDirection = state.player.angle;
+        }
       }
 
-      // Roll the player mesh forward (full 360 rotation over dodge duration ~0.3s)
-      this._dodgeRollAngle += dt * 12; // ~2 full rotations in 0.3s
+      // Roll the player mesh (one full rotation over dodge duration ~0.3s)
+      this._dodgeRollAngle += dt * 10;
       const rollAngle = Math.min(this._dodgeRollAngle, Math.PI * 2);
+      const rollT = rollAngle / (Math.PI * 2); // 0→1 over the roll
 
-      // Apply roll rotation along the movement direction
-      this._playerGroup.rotation.x = Math.sin(state.player.angle) * rollAngle * 0.8;
-      this._playerGroup.rotation.z = -Math.cos(state.player.angle) * rollAngle * 0.8;
+      // Apply roll rotation perpendicular to dodge direction
+      const dirSin = Math.sin(this._dodgeDirection);
+      const dirCos = Math.cos(this._dodgeDirection);
+      this._playerGroup.rotation.x = dirSin * Math.sin(rollAngle) * 1.2;
+      this._playerGroup.rotation.z = -dirCos * Math.sin(rollAngle) * 1.2;
 
-      // Squash and stretch during roll
-      const squashPhase = Math.sin(rollAngle);
+      // Squash and stretch — peaks at mid-roll
+      const squash = Math.sin(rollAngle);
       this._playerGroup.scale.set(
-        1.0 + squashPhase * 0.15,
-        1.0 - Math.abs(squashPhase) * 0.2,
-        1.0 + squashPhase * 0.15
+        1.0 + squash * 0.12,
+        1.0 - Math.abs(squash) * 0.18,
+        1.0 + squash * 0.12
       );
 
-      // Lower to ground during roll
-      this._playerGroup.position.y -= Math.abs(Math.sin(rollAngle)) * 0.3;
+      // Lower to ground during mid-roll, smooth in/out
+      this._playerGroup.position.y -= Math.sin(rollT * Math.PI) * 0.3;
 
     } else if (this._wasDodging) {
-      // Just stopped dodging — snap back
+      // Just stopped dodging — explicitly reset all transforms
       this._wasDodging = false;
       this._playerGroup.scale.set(1, 1, 1);
-      // rotation.x and rotation.z will be naturally cleared by the idle/walk code
+      this._playerGroup.rotation.x = 0;
+      this._playerGroup.rotation.z = 0;
     }
   }
 
@@ -51390,40 +51934,34 @@ export class DiabloRenderer {
   }
 
   private _animateWater(_dt: number): void {
-    for (const water of this._waterMeshes) {
+    for (let wi = 0; wi < this._waterMeshes.length; wi++) {
+      const water = this._waterMeshes[wi];
       if (!water.parent) {
-        // Water mesh was removed from scene — skip
+        // Water mesh was removed from scene — prune it
+        this._waterMeshes.splice(wi, 1);
+        this._waterOriginalY.delete(water);
+        wi--;
         continue;
       }
       const mat = water.material as THREE.MeshStandardMaterial;
       if (!mat) continue;
 
-      // Subtle opacity ripple
-      mat.opacity = 0.45 + Math.sin(this._time * 1.8 + water.position.x * 0.5) * 0.08
-        + Math.sin(this._time * 2.5 + water.position.z * 0.7) * 0.05;
-
-      // Gentle Y bob (simulates waves)
-      water.position.y += Math.sin(this._time * 2.0 + water.position.x) * 0.0003;
-
-      // Vertex displacement for wave effect (only for sufficiently detailed meshes)
-      const geo = water.geometry;
-      if (geo && geo.attributes.position && geo.attributes.position.count > 10) {
-        const posAttr = geo.attributes.position as THREE.BufferAttribute;
-        for (let i = 0; i < posAttr.count; i++) {
-          const x = posAttr.getX(i);
-          const z = posAttr.getZ(i);
-          // Small wave displacement on Y
-          const wave = Math.sin(this._time * 2.5 + x * 2.0 + z * 1.5) * 0.015
-            + Math.sin(this._time * 1.8 + x * 1.2 - z * 2.0) * 0.01;
-          posAttr.setY(i, wave);
-        }
-        posAttr.needsUpdate = true;
-        geo.computeVertexNormals();
+      // Store original Y on first encounter
+      if (!this._waterOriginalY.has(water)) {
+        this._waterOriginalY.set(water, water.position.y);
       }
+      const baseY = this._waterOriginalY.get(water)!;
+
+      // Subtle opacity ripple
+      mat.opacity = 0.45 + Math.sin(this._time * 1.8 + baseY * 3 + wi * 1.7) * 0.08
+        + Math.sin(this._time * 2.5 + wi * 2.3) * 0.05;
+
+      // Gentle Y bob from original position (no drift)
+      water.position.y = baseY + Math.sin(this._time * 2.0 + wi * 1.3) * 0.02;
 
       // Emissive shimmer
       if (mat.emissive) {
-        const shimmer = Math.sin(this._time * 3 + water.position.x) * 0.15 + 0.2;
+        const shimmer = Math.sin(this._time * 3 + wi * 2.1) * 0.15 + 0.2;
         mat.emissiveIntensity = shimmer;
       }
     }
@@ -51502,7 +52040,6 @@ export class DiabloRenderer {
 
         tGroup.traverse((child) => {
           if (child.name === 'telegraph_outer') {
-            (child as THREE.Mesh).material = (child as THREE.Mesh).material;
             ((child as THREE.Mesh).material as THREE.MeshBasicMaterial).opacity = pulse;
           }
           if (child.name === 'telegraph_inner') {
@@ -51528,46 +52065,6 @@ export class DiabloRenderer {
       } else {
         const tGroup = this._bossWarningRings.get(key);
         if (tGroup) tGroup.visible = false;
-      }
-    }
-
-    // Also keep the old simple telegraph meshes working
-    for (const enemy of state.enemies) {
-      if (!enemy.isBoss) continue;
-      if (enemy.state === 'DEAD' || enemy.state === 'DYING') continue;
-      const key = `telegraph_${enemy.id}`;
-
-      if (enemy.state === 'ATTACK' && enemy.attackTimer < 1.0) {
-        let tMesh = this._telegraphMeshes.get(key);
-        if (!tMesh) {
-          const geo = new THREE.RingGeometry(0.5, enemy.attackRange * 1.2, 32);
-          geo.rotateX(-Math.PI / 2);
-          const mat = new THREE.MeshBasicMaterial({
-            color: 0xff0000, transparent: true, opacity: 0.3, side: THREE.DoubleSide
-          });
-          tMesh = new THREE.Mesh(geo, mat);
-          this._scene.add(tMesh);
-          this._telegraphMeshes.set(key, tMesh);
-        }
-        tMesh.position.set(enemy.x, enemy.y + 0.1, enemy.z);
-        tMesh.visible = true;
-        const pulse = 0.3 + Math.sin(this._time * 8) * 0.15;
-        (tMesh.material as THREE.MeshBasicMaterial).opacity = pulse;
-      } else {
-        const tMesh = this._telegraphMeshes.get(key);
-        if (tMesh) tMesh.visible = false;
-      }
-    }
-
-    // Clean up old telegraphs
-    for (const [key, mesh] of this._telegraphMeshes) {
-      const id = key.replace('telegraph_', '');
-      const enemy = state.enemies.find(e => e.id === id);
-      if (!enemy || enemy.state === 'DEAD' || enemy.state === 'DYING') {
-        this._scene.remove(mesh);
-        mesh.geometry.dispose();
-        (mesh.material as THREE.Material).dispose();
-        this._telegraphMeshes.delete(key);
       }
     }
 
@@ -51647,21 +52144,31 @@ export class DiabloRenderer {
 
     for (const [, mesh] of this._petMeshes) {
       this._scene.remove(mesh);
+      this._disposeObject3D(mesh);
     }
     this._petMeshes.clear();
 
     this._dyingAnims.clear();
     this._lootSpawnTimes.clear();
     this._waterMeshes = [];
+    this._waterOriginalY.clear();
+    this._waterDetected = false;
 
     if (this._castEffectGroup) {
       this._scene.remove(this._castEffectGroup);
+      this._disposeObject3D(this._castEffectGroup);
       this._castEffectGroup = null;
     }
     if (this._playerStatusFxGroup) {
       this._scene.remove(this._playerStatusFxGroup);
+      this._disposeObject3D(this._playerStatusFxGroup);
       this._playerStatusFxGroup = null;
     }
+    for (const [, grp] of this._playerStatusFxPools) {
+      this._disposeObject3D(grp);
+    }
+    this._playerStatusFxPools.clear();
+    this._playerActiveEffects.clear();
 
     for (const [, grp] of this._bossWarningRings) {
       this._scene.remove(grp);
@@ -51674,6 +52181,12 @@ export class DiabloRenderer {
     }
     this._particleMeshPool = [];
 
+    if (this._bloomComposer) {
+      this._bloomComposer.renderTarget1.dispose();
+      this._bloomComposer.renderTarget2.dispose();
+      this._bloomComposer = null;
+    }
+
     this._renderer.dispose();
   }
 
@@ -51681,6 +52194,9 @@ export class DiabloRenderer {
     this._renderer.setSize(w, h);
     this._camera.aspect = w / h;
     this._camera.updateProjectionMatrix();
+    if (this._bloomComposer) {
+      this._bloomComposer.setSize(w, h);
+    }
   }
 
   applyTimeOfDay(tod: TimeOfDay, mapId: DiabloMapId): void {

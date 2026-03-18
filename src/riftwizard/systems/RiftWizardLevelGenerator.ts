@@ -9,6 +9,7 @@ import {
   getRoomCount,
   getEnemyCountForLevel,
   isBossLevel,
+  type Difficulty,
 } from "../config/RiftWizardConfig";
 import {
   ENEMY_DEFS,
@@ -259,10 +260,11 @@ function createEnemy(
   col: number,
   row: number,
   levelNum: number,
+  difficulty: Difficulty = "normal",
 ): RWEnemyInstance {
   const def = ENEMY_DEFS[defId];
   if (!def) throw new Error(`Unknown enemy def: ${defId}`);
-  const scaled = scaleEnemyStats(def, levelNum);
+  const scaled = scaleEnemyStats(def, levelNum, difficulty);
   return {
     id: nextId(),
     defId,
@@ -293,6 +295,7 @@ function createEnemy(
 export function generateLevel(
   levelNum: number,
   startingEntityId: number,
+  difficulty: Difficulty = "normal",
 ): LevelState {
   _nextId = startingEntityId;
   setSeed(Date.now() + levelNum * 7919);
@@ -368,7 +371,7 @@ export function generateLevel(
     if (!pos) continue;
     occupied.push(pos);
     const defId = pick(enemyPool);
-    enemies.push(createEnemy(defId, pos.col, pos.row, levelNum));
+    enemies.push(createEnemy(defId, pos.col, pos.row, levelNum, difficulty));
   }
 
   // Place boss
@@ -377,7 +380,7 @@ export function generateLevel(
     const bossPos = roomCenter(bossRoom);
     // Clear any existing enemy at boss position
     const bossDefId = getBossForLevel(levelNum);
-    enemies.push(createEnemy(bossDefId, bossPos.col, bossPos.row, levelNum));
+    enemies.push(createEnemy(bossDefId, bossPos.col, bossPos.row, levelNum, difficulty));
     occupied.push(bossPos);
   }
 

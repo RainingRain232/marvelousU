@@ -18,8 +18,8 @@ import {
   executeTurn,
   advanceToNextLevel,
 } from "./systems/RiftWizardTurnSystem";
-import { castSpell, canCastSpell, createSpellInstance } from "./systems/RiftWizardCombatSystem";
-import { RWBalance } from "./config/RiftWizardConfig";
+import { castSpell, canCastSpell, createSpellInstance, computeSpellStats } from "./systems/RiftWizardCombatSystem";
+import { RWBalance, DIFFICULTY_MULTIPLIERS } from "./config/RiftWizardConfig";
 import { RiftWizardRenderer } from "./view/RiftWizardRenderer";
 import { RiftWizardHUD } from "./view/RiftWizardHUD";
 import { RiftWizardSpellSelectUI } from "./view/RiftWizardSpellSelectUI";
@@ -28,64 +28,19 @@ import { RiftWizardSpellSelectUI } from "./view/RiftWizardSpellSelectUI";
 import { rwEventBus, RWEvent } from "./systems/RiftWizardEventBus";
 import type { RWEventData } from "./systems/RiftWizardEventBus";
 import {
-  createRunStats,
   recordDamageDealt,
   recordDamageTaken,
   recordEnemyKilled,
   recordSpellCast,
   recordFloorCleared,
   recordTurn,
-  type RWRunStats,
 } from "./systems/RiftWizardRunStats";
-import { saveGame, loadGame, hasSave, deleteSave } from "./systems/RiftWizardSaveSystem";
-
-// These modules will be created separately — import stubs
-// Audio system
-import type { RiftWizardAudioSystem } from "./systems/RiftWizardAudioSystem";
-let rwAudio: RiftWizardAudioSystem | null = null;
-try {
-  // Dynamic import pattern — module may not exist yet
-  const audioMod = require("./systems/RiftWizardAudioSystem");
-  rwAudio = audioMod.rwAudio ?? null;
-} catch {
-  // Audio system not yet available
-}
-
-// Tutorial UI
-let RiftWizardTutorial: (new () => any) | null = null;
-try {
-  const tutorialMod = require("./view/RiftWizardTutorial");
-  RiftWizardTutorial = tutorialMod.RiftWizardTutorial ?? null;
-} catch {
-  // Tutorial not yet available
-}
-
-// Codex / Bestiary UI
-let RiftWizardCodex: (new () => any) | null = null;
-try {
-  const codexMod = require("./view/RiftWizardCodex");
-  RiftWizardCodex = codexMod.RiftWizardCodex ?? null;
-} catch {
-  // Codex not yet available
-}
-
-// Leaderboard
-let saveToLeaderboard: ((entry: Record<string, unknown>) => void) | null = null;
-try {
-  const lbMod = require("./systems/RiftWizardLeaderboard");
-  saveToLeaderboard = lbMod.saveToLeaderboard ?? null;
-} catch {
-  // Leaderboard not yet available
-}
-
-// Spell synergies
-let getActiveSynergies: ((spells: unknown[]) => { id: string; bonuses: Record<string, number> }[]) | null = null;
-try {
-  const synMod = require("./config/RiftWizardSpellSynergies");
-  getActiveSynergies = synMod.getActiveSynergies ?? null;
-} catch {
-  // Synergies config not yet available
-}
+import { saveGame, loadGame } from "./systems/RiftWizardSaveSystem";
+import { rwAudio } from "./systems/RiftWizardAudioSystem";
+import { RiftWizardTutorial } from "./view/RiftWizardTutorial";
+import { RiftWizardCodex } from "./view/RiftWizardCodex";
+import { saveScore, computeScore } from "./systems/RiftWizardLeaderboard";
+import { getActiveSynergies, type SpellSynergy } from "./config/RiftWizardSynergyDefs";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -142,7 +97,6 @@ function clearJustPressed(): void {
 
 export class RiftWizardGame {
   private _state!: RiftWizardState;
-  private _runStats!: RWRunStats;
   private _undoSnapshot: string | null = null;
   private _tickerCb: ((ticker: Ticker) => void) | null = null;
 
@@ -158,6 +112,9 @@ export class RiftWizardGame {
   private _tutorialFirstTurnShown = false;
   private _tutorialFirstSpellShown = false;
   private _tutorialFirstInteractShown = false;
+
+  // Spell synergies (computed, not stored in state)
+  private _activeSynergies: SpellSynergy[] = [];
 
   // EventBus unsubscribe handles
   private _eventUnsubscribers: (() => void)[] = [];
@@ -187,25 +144,27 @@ export class RiftWizardGame {
     this._state = createRiftWizardState();
 
     // --- Run seed ---
-    (this._state as any).runSeed = Date.now();
+    this._state.runSeed = Date.now();
 
     // --- Difficulty default ---
-    (this._state as any).difficulty = "normal";
+    this._state.difficulty = "normal";
 
     // --- Encountered enemies tracking ---
-    (this._state as any).encounteredEnemies = new Set<string>();
-
-    // --- Run stats ---
-    this._runStats = createRunStats();
+    this._state.encounteredEnemies = [];
 
     // Give the wizard 2 starting spells
     this._state.spells.push(createSpellInstance("magic_missile"));
     this._state.spells.push(createSpellInstance("fireball"));
     this._state.skillPoints = 5; // starting SP for first shop visit
 
+    // Apply difficulty to wizard HP
+    const diffMult = DIFFICULTY_MULTIPLIERS[this._state.difficulty];
+    this._state.wizard.maxHp = Math.floor(this._state.wizard.maxHp * diffMult.wizardHpMult);
+    this._state.wizard.hp = this._state.wizard.maxHp;
+
     // Generate first level (using run seed)
-    setSeed((this._state as any).runSeed);
-    this._state.level = generateLevel(0, this._state.nextEntityId);
+    setSeed(this._state.runSeed);
+    this._state.level = generateLevel(0, this._state.nextEntityId, this._state.difficulty);
     this._state.nextEntityId = getNextEntityId();
     this._state.wizard.col = this._state.level.entrancePos.col;
     this._state.wizard.row = this._state.level.entrancePos.row;
@@ -244,7 +203,10 @@ export class RiftWizardGame {
     };
     (this._hud as any).onPauseLoad = () => {
       const saved = loadGame();
-      if (saved) Object.assign(this._state, saved);
+      if (saved) {
+        Object.assign(this._state, saved);
+        this._computeSpellSynergies();
+      }
     };
 
     viewManager.addToLayer("ui", this._hud.container);
@@ -314,7 +276,7 @@ export class RiftWizardGame {
 
     // Portal enter -> Level Summary phase
     const unsubPortal = rwEventBus.on(RWEvent.PORTAL_ENTER, () => {
-      (this._state as any).phase = "level_summary";
+      this._state.phase = RWPhase.LEVEL_SUMMARY;
     });
     this._eventUnsubscribers.push(unsubPortal);
 
@@ -344,7 +306,7 @@ export class RiftWizardGame {
   }
 
   private _routeEventToStats(data: RWEventData): void {
-    const stats = this._runStats;
+    const stats = this._state.runStats;
     switch (data.type) {
       case RWEvent.SPELL_HIT:
         recordDamageDealt(stats, (data.amount as number) ?? 0, data.school as string | undefined);
@@ -408,11 +370,12 @@ export class RiftWizardGame {
   // -------------------------------------------------------------------------
 
   private _trackEncounteredEnemies(): void {
-    const encountered: Set<string> = (this._state as any).encounteredEnemies ?? new Set<string>();
+    const encountered = this._state.encounteredEnemies;
     for (const enemy of this._state.level.enemies) {
-      encountered.add(enemy.defId);
+      if (!encountered.includes(enemy.defId)) {
+        encountered.push(enemy.defId);
+      }
     }
-    (this._state as any).encounteredEnemies = encountered;
   }
 
   // -------------------------------------------------------------------------
@@ -420,19 +383,26 @@ export class RiftWizardGame {
   // -------------------------------------------------------------------------
 
   private _computeSpellSynergies(): void {
-    if (!getActiveSynergies) return;
-    const synergies = getActiveSynergies(this._state.spells);
-    // Store active synergies on state for HUD display
-    (this._state as any).activeSynergies = synergies;
-    // Apply bonuses to spells
+    // Reset spells to base stats first (prevents stacking on repeated calls)
+    for (const spell of this._state.spells) {
+      computeSpellStats(spell);
+    }
+
+    const schools = new Set(this._state.spells.map(s => s.school));
+    const synergies = getActiveSynergies(schools);
+    this._activeSynergies = synergies;
+
     for (const syn of synergies) {
-      if (!syn.bonuses) continue;
+      const eff = syn.effect;
+      if (eff.type === "max_hp") {
+        // Only apply if not already applied (track applied synergies)
+        continue; // HP bonuses should be one-time, not on recalc
+      }
       for (const spell of this._state.spells) {
-        // Each synergy definition determines which spells it affects;
-        // here we apply global bonuses across all spells
-        if (syn.bonuses.damage) spell.damage += syn.bonuses.damage;
-        if (syn.bonuses.range) spell.range += syn.bonuses.range;
-        if (syn.bonuses.aoeRadius) spell.aoeRadius += syn.bonuses.aoeRadius;
+        if (eff.type === "damage_bonus") spell.damage += Math.floor(spell.damage * eff.amount / 100);
+        if (eff.type === "range_bonus") spell.range += eff.amount;
+        if (eff.type === "aoe_bonus") spell.aoeRadius += eff.amount;
+        if (eff.type === "charge_bonus") { spell.maxCharges += eff.amount; spell.charges = Math.min(spell.charges, spell.maxCharges); }
       }
     }
   }
@@ -442,24 +412,19 @@ export class RiftWizardGame {
   // -------------------------------------------------------------------------
 
   private _saveToLeaderboard(victory: boolean): void {
-    if (!saveToLeaderboard) return;
-    saveToLeaderboard({
-      seed: (this._state as any).runSeed,
-      victory,
-      level: this._state.currentLevel,
-      score: this._computeScore(victory),
-      stats: { ...this._runStats },
-      difficulty: (this._state as any).difficulty ?? "normal",
-      timestamp: Date.now(),
+    const stats = this._state.runStats;
+    const score = computeScore(stats, stats.floorsCleared, victory);
+    saveScore({
+      score,
+      floorsCleared: stats.floorsCleared,
+      enemiesKilled: stats.enemiesKilled,
+      difficulty: this._state.difficulty,
+      seed: this._state.runSeed,
+      date: Date.now(),
+      duration: `${Math.floor((Date.now() - stats.startTime) / 60000)}m`,
+      spellsLearned: stats.spellsLearned,
+      won: victory,
     });
-  }
-
-  private _computeScore(victory: boolean): number {
-    const base = this._state.currentLevel * 100;
-    const killBonus = this._runStats.enemiesKilled * 10;
-    const bossBonus = this._runStats.bossesKilled * 200;
-    const victoryBonus = victory ? 1000 : 0;
-    return base + killBonus + bossBonus + victoryBonus;
   }
 
   // -------------------------------------------------------------------------
@@ -498,7 +463,10 @@ export class RiftWizardGame {
     // --- Codex / Bestiary toggle ---
     if (consumeJustPressed("b") || consumeJustPressed("B")) {
       if (this._codex && typeof this._codex.toggle === "function") {
-        this._codex.toggle((this._state as any).encounteredEnemies);
+        this._codex.toggle(
+          [...this._state.encounteredEnemies],
+          this._state.spells.map(s => s.defId)
+        );
         clearJustPressed();
         return;
       }
@@ -523,7 +491,7 @@ export class RiftWizardGame {
         break;
       default:
         // --- Level Summary phase ---
-        if ((state as any).phase === "level_summary") {
+        if (state.phase === RWPhase.LEVEL_SUMMARY) {
           this._handleLevelSummary();
         }
         break;
@@ -617,7 +585,7 @@ export class RiftWizardGame {
         const restored = JSON.parse(this._undoSnapshot);
         Object.assign(this._state, restored);
         this._undoSnapshot = null;  // Can only undo once
-        this._runStats.timesUndone++;
+        this._state.runStats.timesUndone++;
       } catch {}
       return;
     }
@@ -654,8 +622,8 @@ export class RiftWizardGame {
 
           // --- Tutorial: first spell select ---
           if (!this._tutorialFirstSpellShown && this._tutorial) {
-            if (typeof this._tutorial.showTip === "function") {
-              this._tutorial.showTip("spell_targeting", "Use arrow keys to move the cursor, then SPACE/Enter to cast. ESC to cancel.");
+            if (typeof this._tutorial.tryShow === "function") {
+              this._tutorial.tryShow("first_spell_select");
             }
             this._tutorialFirstSpellShown = true;
           }
@@ -721,8 +689,8 @@ export class RiftWizardGame {
         // Check if interact is available by looking for adjacent interactable
         const hasInteractable = this._checkInteractAvailable(state);
         if (hasInteractable) {
-          if (typeof this._tutorial.showTip === "function") {
-            this._tutorial.showTip("interact", "Press E near shrines, items, and portals to interact.");
+          if (typeof this._tutorial.tryShow === "function") {
+            this._tutorial.tryShow("first_interact_available");
           }
           this._tutorialFirstInteractShown = true;
         }
@@ -874,8 +842,8 @@ export class RiftWizardGame {
     executeTurn(state);
 
     // --- Process telegraphed tiles ---
-    const telegraphed: any[] = (state as any).telegraphedTiles ?? [];
-    const remaining: any[] = [];
+    const telegraphed = state.telegraphedTiles;
+    const remaining: typeof state.telegraphedTiles = [];
     for (const tile of telegraphed) {
       tile.turnDelay--;
       if (tile.turnDelay <= 0) {
@@ -901,7 +869,7 @@ export class RiftWizardGame {
         remaining.push(tile);
       }
     }
-    (state as any).telegraphedTiles = remaining;
+    state.telegraphedTiles = remaining;
   }
 
   // -------------------------------------------------------------------------
@@ -913,8 +881,8 @@ export class RiftWizardGame {
 
     // First turn tip
     if (!this._tutorialFirstTurnShown && state.turnNumber === 0) {
-      if (typeof this._tutorial.showTip === "function") {
-        this._tutorial.showTip("movement", "Use WASD or arrow keys to move. Press 1-9 to select spells. E to interact.");
+      if (typeof this._tutorial.tryShow === "function") {
+        this._tutorial.tryShow("first_turn");
       }
       this._tutorialFirstTurnShown = true;
     }
@@ -922,8 +890,8 @@ export class RiftWizardGame {
     // First interact available
     if (!this._tutorialFirstInteractShown) {
       const hasInteractable = this._checkInteractAvailable(state);
-      if (hasInteractable && typeof this._tutorial.showTip === "function") {
-        this._tutorial.showTip("interact_hint", "An interactable object is nearby! Press E to interact.");
+      if (hasInteractable && typeof this._tutorial.tryShow === "function") {
+        this._tutorial.tryShow("first_interact_available");
         this._tutorialFirstInteractShown = true;
       }
     }
@@ -963,6 +931,7 @@ export class RiftWizardGame {
     const sh = viewManager.screenHeight;
     this._renderer.draw(this._state, sw, sh, dt);
     const hoverGrid = this._mouseToGrid();
+    (this._state as any).activeSynergies = this._activeSynergies;
     this._hud.update(this._state, sw, sh, hoverGrid);
   }
 

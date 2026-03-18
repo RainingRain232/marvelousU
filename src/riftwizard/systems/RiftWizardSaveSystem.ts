@@ -1,6 +1,7 @@
 // Save/Load system for Rift Wizard — persists game state to localStorage
 
 import type { RiftWizardState } from "../state/RiftWizardState";
+import { createRunStats } from "./RiftWizardRunStats";
 
 const SAVE_KEY = "rift_wizard_save";
 const SETTINGS_KEY = "rift_wizard_settings";
@@ -47,7 +48,12 @@ export function loadGame(): Partial<RiftWizardState> | null {
     if (!raw) return null;
     const saveData = JSON.parse(raw);
     if (!saveData || saveData.version !== 1) return null;
-    return saveData.state as Partial<RiftWizardState>;
+    const state = saveData.state as Partial<RiftWizardState>;
+    // Ensure runStats has all fields by merging with defaults (handles old saves missing new fields)
+    if (state.runStats) {
+      state.runStats = { ...createRunStats(), ...state.runStats };
+    }
+    return state;
   } catch (e) {
     console.warn("Failed to load game:", e);
     return null;
@@ -103,10 +109,16 @@ export function loadSettings(): RWSettings {
 
 // Internal serialization helper - strips out anything non-serializable
 function serializeState(state: RiftWizardState): Record<string, unknown> {
-  // Deep clone via JSON round-trip, which naturally strips functions/symbols
-  // The animationQueue can be dropped since it's transient
+  // Deep clone via JSON round-trip, which naturally strips functions/symbols.
+  // RWRunStats is all plain data (numbers, Records, startTime timestamp),
+  // so JSON round-trip preserves it correctly including startTime.
+  // The animationQueue can be dropped since it's transient.
   const clone = JSON.parse(JSON.stringify(state));
   // Clear transient data
   if (clone.animationQueue) clone.animationQueue = [];
+  // Ensure runStats is explicitly included in the serialized output
+  if (state.runStats) {
+    clone.runStats = JSON.parse(JSON.stringify(state.runStats));
+  }
   return clone;
 }

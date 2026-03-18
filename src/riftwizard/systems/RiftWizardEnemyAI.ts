@@ -11,6 +11,7 @@ import {
 } from "../state/RiftWizardState";
 import { RWBalance } from "../config/RiftWizardConfig";
 import { SPELL_DEFS } from "../config/RiftWizardSpellDefs";
+import { ENEMY_DEFS } from "../config/RiftWizardEnemyDefs";
 import {
   tileDistance,
   chebyshevDistance,
@@ -311,13 +312,21 @@ function bossAI(
 ): void {
   // Boss phase transitions at HP thresholds
   const hpPercent = enemy.hp / enemy.maxHp;
-  if (hpPercent < 0.5 && enemy.bossPhase === 0) {
+  if (hpPercent <= 0.5 && enemy.bossPhase === 0) {
     enemy.bossPhase = 1;
     enemy.damage = Math.floor(enemy.damage * 1.3); // enrage
+
+    // Phase 2 entry: summon 1-2 weak minions adjacent to the boss
+    _bossSummonMinions(state, enemy, 1 + Math.floor(Math.random() * 2));
   }
   if (hpPercent < 0.25 && enemy.bossPhase === 1) {
     enemy.bossPhase = 2;
     enemy.damage = Math.floor(enemy.damage * 1.2); // further enrage
+  }
+
+  // Telegraph mechanic: in phase 2+, every 4 turns create telegraphed tiles near wizard
+  if (enemy.bossPhase >= 1 && state.turnNumber % 4 === 0) {
+    _bossTelegraphTiles(state, enemy);
   }
 
   // Boss uses caster AI with melee fallback
@@ -359,6 +368,102 @@ function bossAI(
 
   // Move towards
   moveTowards(state, enemy, wizPos);
+}
+
+/** Boss telegraph: pick 2-3 random floor tiles near the wizard (within range 3) and add them as telegraphed tiles. */
+function _bossTelegraphTiles(state: RiftWizardState, boss: RWEnemyInstance): void {
+  const wizPos: GridPos = { col: state.wizard.col, row: state.wizard.row };
+  const candidates: GridPos[] = [];
+
+  for (let dy = -3; dy <= 3; dy++) {
+    for (let dx = -3; dx <= 3; dx++) {
+      const c = wizPos.col + dx;
+      const r = wizPos.row + dy;
+      if (c < 0 || r < 0 || c >= state.level.width || r >= state.level.height) continue;
+      const t = state.level.tiles[r][c];
+      if (
+        t === RWTileType.FLOOR ||
+        t === RWTileType.CORRIDOR ||
+        t === RWTileType.ICE ||
+        t === RWTileType.SHRINE ||
+        t === RWTileType.SPELL_CIRCLE
+      ) {
+        candidates.push({ col: c, row: r });
+      }
+    }
+  }
+
+  const count = Math.min(2 + Math.floor(Math.random() * 2), candidates.length); // 2-3 tiles
+  // Shuffle and pick
+  for (let i = candidates.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+  }
+
+  for (let i = 0; i < count; i++) {
+    state.telegraphedTiles.push({
+      col: candidates[i].col,
+      row: candidates[i].row,
+      turnDelay: 2,
+      damage: boss.damage,
+      school: boss.school,
+    });
+  }
+}
+
+/** Boss summon minions: spawn weak enemies adjacent to the boss. */
+function _bossSummonMinions(state: RiftWizardState, boss: RWEnemyInstance, count: number): void {
+  const offsets: GridPos[] = [
+    { col: 1, row: 0 },
+    { col: -1, row: 0 },
+    { col: 0, row: 1 },
+    { col: 0, row: -1 },
+    { col: 1, row: 1 },
+    { col: -1, row: -1 },
+    { col: 1, row: -1 },
+    { col: -1, row: 1 },
+  ];
+
+  let placed = 0;
+  for (const off of offsets) {
+    if (placed >= count) break;
+    const sc = boss.col + off.col;
+    const sr = boss.row + off.row;
+    if (sc < 0 || sr < 0 || sc >= state.level.width || sr >= state.level.height) continue;
+    if (!isWalkableTile(state, sc, sr)) continue;
+    // Check no entity at pos
+    const blocked =
+      state.level.enemies.some((e) => e.alive && e.col === sc && e.row === sr) ||
+      (state.wizard.col === sc && state.wizard.row === sr);
+    if (blocked) continue;
+
+    // Spawn a weak minion based on boss's school
+    const def = ENEMY_DEFS[boss.defId];
+    const minionHp = Math.floor((def?.hp ?? 30) * 0.3);
+    const minionDmg = Math.floor((def?.damage ?? 8) * 0.4);
+    state.level.enemies.push({
+      id: state.nextEntityId++,
+      defId: boss.defId,
+      unitType: boss.unitType,
+      col: sc,
+      row: sr,
+      hp: minionHp,
+      maxHp: minionHp,
+      damage: minionDmg,
+      range: def?.range ?? 1,
+      moveSpeed: def?.moveSpeed ?? 1,
+      aiType: RWEnemyAIType.MELEE,
+      school: boss.school,
+      abilities: [],
+      abilityCooldowns: [],
+      alive: true,
+      statusEffects: [],
+      stunTurns: 0,
+      isBoss: false,
+      bossPhase: 0,
+    });
+    placed++;
+  }
 }
 
 // ---------------------------------------------------------------------------

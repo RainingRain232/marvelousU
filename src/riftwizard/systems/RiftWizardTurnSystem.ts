@@ -255,7 +255,7 @@ export function advanceToNextLevel(state: RiftWizardState): void {
   state.wizard.shields = 0;
 
   // Generate new level
-  state.level = generateLevel(state.currentLevel, state.nextEntityId);
+  state.level = generateLevel(state.currentLevel, state.nextEntityId, state.difficulty);
   state.nextEntityId = getNextEntityId();
 
   // Place wizard at entrance

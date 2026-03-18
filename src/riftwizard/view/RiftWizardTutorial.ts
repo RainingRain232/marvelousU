@@ -62,7 +62,6 @@ export class RiftWizardTutorial {
   readonly container = new Container();
   private _seenTips: Set<string>;
   private _activeTip: TutorialTip | null = null;
-  private _dismissed = false;
   private _enabled = true;
 
   constructor() {
@@ -83,7 +82,7 @@ export class RiftWizardTutorial {
     const tip = TIPS.find((t) => t.condition === condition && !this._seenTips.has(t.id));
     if (!tip) return false;
     this._activeTip = tip;
-    this._dismissed = false;
+    // tip activated
     return true;
   }
 
@@ -93,7 +92,7 @@ export class RiftWizardTutorial {
       this._seenTips.add(this._activeTip.id);
       localStorage.setItem(TUTORIAL_KEY, JSON.stringify([...this._seenTips]));
       this._activeTip = null;
-      this._dismissed = true;
+      // tip dismissed
     }
   }
 

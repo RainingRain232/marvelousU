@@ -22,8 +22,11 @@ import {
 } from "../systems/RiftWizardProgressionSystem";
 import { ABILITY_DEFS } from "../config/RiftWizardAbilityDefs";
 import { drawOrnateFrame, drawTitleDivider, drawOrnateButton } from "@view/fx/OrnateFrame";
+import { formatRunSummary } from "../systems/RiftWizardRunStats";
+import { getLeaderboard } from "../systems/RiftWizardLeaderboard";
+import { getActiveSynergies } from "../config/RiftWizardSynergyDefs";
 
-export type PauseSubMenu = "main" | "controls" | "instructions" | "spells" | "buy" | "abilities";
+export type PauseSubMenu = "main" | "controls" | "instructions" | "spells" | "buy" | "abilities" | "leaderboard";
 
 // ---------------------------------------------------------------------------
 // Styles
@@ -215,6 +218,12 @@ export class RiftWizardHUD {
   onPauseResume: (() => void) | null = null;
   onPauseRestart: (() => void) | null = null;
   onPauseExit: (() => void) | null = null;
+  onPauseSave: (() => void) | null = null;
+  onPauseLoad: (() => void) | null = null;
+  onPauseCodex: (() => void) | null = null;
+
+  /** Tutorial toggle state (persisted by caller) */
+  tutorialEnabled = true;
 
   constructor() {
     this._infoText = new Text({ text: "", style: INFO_STYLE });
@@ -445,7 +454,8 @@ export class RiftWizardHUD {
     this._infoText.y = hpBarY + 1;
 
     // --- Level info with decorative frame polygon ---
-    this._levelText.text = `Level ${state.currentLevel + 1}/25`;
+    const diffLabel = state.difficulty.charAt(0).toUpperCase() + state.difficulty.slice(1);
+    this._levelText.text = `Level ${state.currentLevel + 1}/25  [${diffLabel}]`;
     this._levelText.x = leftX;
     this._levelText.y = hudY + 32;
 
@@ -560,101 +570,307 @@ export class RiftWizardHUD {
     // --- Center message ---
     this._msgText.text = "";
     if (state.phase === RWPhase.VICTORY) {
-      this._msgText.text = "VICTORY! You conquered all 25 levels!";
-      this._msgText.style = new TextStyle({
-        fontFamily: "monospace",
-        fontSize: 22,
-        fill: 0xffdd44,
-        fontWeight: "bold",
-        stroke: { color: 0x000000, width: 4 },
-      });
-      // Victory visual effects
-      // Golden particle rain effect (deterministic, based on position)
+      // --- Ornate Victory Screen ---
+      this._msgText.text = "";
+      // Full-screen dark overlay
+      this._bg.rect(0, 0, screenWidth, screenHeight - hudH);
+      this._bg.fill({ color: 0x000000, alpha: 0.75 });
+
+      // Golden particle rain
       for (let i = 0; i < 30; i++) {
         const px = (i * 37 + Math.floor(Date.now() / 50) * (i % 3 + 1)) % screenWidth;
         const py = (i * 53 + Math.floor(Date.now() / 30) * 2) % (screenHeight - 100);
         this._bg.star(px, py, 4, 3, 1.5);
         this._bg.fill({ color: i % 3 === 0 ? 0xffdd44 : 0xffffaa, alpha: 0.3 + (i % 5) * 0.1 });
       }
-      // Trophy silhouette in center
-      const trophyX = Math.floor(screenWidth / 2);
-      const trophyY = Math.floor(screenHeight / 2) - 30;
-      // Cup body
-      this._bg.moveTo(trophyX - 25, trophyY - 15);
-      this._bg.lineTo(trophyX - 20, trophyY + 15);
-      this._bg.lineTo(trophyX + 20, trophyY + 15);
-      this._bg.lineTo(trophyX + 25, trophyY - 15);
-      this._bg.closePath();
-      this._bg.fill({ color: 0xffcc44, alpha: 0.15 });
-      this._bg.stroke({ color: 0xffdd66, width: 2, alpha: 0.3 });
-      // Cup handles
-      this._bg.moveTo(trophyX - 25, trophyY - 10);
-      this._bg.lineTo(trophyX - 32, trophyY - 5);
-      this._bg.lineTo(trophyX - 30, trophyY + 5);
-      this._bg.lineTo(trophyX - 22, trophyY + 8);
-      this._bg.stroke({ color: 0xffdd66, width: 1.5, alpha: 0.25 });
-      this._bg.moveTo(trophyX + 25, trophyY - 10);
-      this._bg.lineTo(trophyX + 32, trophyY - 5);
-      this._bg.lineTo(trophyX + 30, trophyY + 5);
-      this._bg.lineTo(trophyX + 22, trophyY + 8);
-      this._bg.stroke({ color: 0xffdd66, width: 1.5, alpha: 0.25 });
-      // Base
-      this._bg.rect(trophyX - 15, trophyY + 15, 30, 5);
-      this._bg.fill({ color: 0xffcc44, alpha: 0.12 });
-      this._bg.rect(trophyX - 20, trophyY + 20, 40, 4);
-      this._bg.fill({ color: 0xffcc44, alpha: 0.1 });
+
+      const vcPanelW = 420;
+      const vcPanelH = 480;
+      const vcPanelX = Math.floor((screenWidth - vcPanelW) / 2);
+      const vcPanelY = Math.floor((screenHeight - vcPanelH) / 2) - 20;
+
+      // Panel bg
+      this._bg.rect(vcPanelX + 4, vcPanelY + 4, vcPanelW, vcPanelH);
+      this._bg.fill({ color: 0x000000, alpha: 0.4 });
+      this._bg.rect(vcPanelX, vcPanelY, vcPanelW, vcPanelH);
+      this._bg.fill({ color: 0x0a0a18, alpha: 0.96 });
+      drawOrnateFrame(this._bg, vcPanelX, vcPanelY, vcPanelW, vcPanelH, {
+        color: 0xccaa44,
+        highlight: 0xffdd66,
+      });
+
+      // "VICTORY!" title
+      const vicTitle = new Text({
+        text: "VICTORY!",
+        style: new TextStyle({
+          fontFamily: "Georgia, serif",
+          fontSize: 36,
+          fill: 0xffdd44,
+          fontWeight: "bold",
+          letterSpacing: 6,
+          stroke: { color: 0x000000, width: 4 },
+          dropShadow: { color: 0xccaa00, blur: 12, distance: 0, alpha: 0.5 },
+        }),
+      });
+      vicTitle.x = vcPanelX + vcPanelW / 2;
+      vicTitle.anchor.set(0.5, 0);
+      vicTitle.y = vcPanelY + 18;
+      this.container.addChild(vicTitle);
+      this._spellTexts.push(vicTitle);
+
+      // Divider
+      const vicDivY = vcPanelY + 64;
+      drawTitleDivider(this._bg, vcPanelX, vcPanelW, vicDivY);
+
+      // Run summary stats
+      let vicY = vicDivY + 14;
+      const summaryLines = formatRunSummary(state.runStats);
+      for (const line of summaryLines) {
+        const lt = new Text({
+          text: line,
+          style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 11, fill: 0xbbbbcc }),
+        });
+        lt.x = vcPanelX + 24;
+        lt.y = vicY;
+        this.container.addChild(lt);
+        this._spellTexts.push(lt);
+        vicY += 16;
+      }
+
+      vicY += 8;
+      // Learned spells list
+      const spellListHeader = new Text({
+        text: "Spells Learned:",
+        style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 12, fill: 0xccccff, fontWeight: "bold" }),
+      });
+      spellListHeader.x = vcPanelX + 24;
+      spellListHeader.y = vicY;
+      this.container.addChild(spellListHeader);
+      this._spellTexts.push(spellListHeader);
+      vicY += 18;
+
+      for (const spell of state.spells) {
+        const sDef = SPELL_DEFS[spell.defId];
+        const sColor = SCHOOL_COLORS[spell.school] ?? 0x888888;
+        const st = new Text({
+          text: `  ${sDef?.name ?? spell.defId} (${spell.school})`,
+          style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 10, fill: sColor }),
+        });
+        st.x = vcPanelX + 28;
+        st.y = vicY;
+        this.container.addChild(st);
+        this._spellTexts.push(st);
+        vicY += 14;
+      }
+
+      vicY += 10;
+      // Difficulty + seed
+      const diffSeedT = new Text({
+        text: `Difficulty: ${state.difficulty.charAt(0).toUpperCase() + state.difficulty.slice(1)}  |  Seed: ${state.runSeed}`,
+        style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 10, fill: 0x888899 }),
+      });
+      diffSeedT.x = vcPanelX + vcPanelW / 2;
+      diffSeedT.anchor.set(0.5, 0);
+      diffSeedT.y = vicY;
+      this.container.addChild(diffSeedT);
+      this._spellTexts.push(diffSeedT);
+
+      // Footer
+      const vicFooter = new Text({
+        text: "R: Restart  |  ESC: Exit",
+        style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 12, fill: 0xffcc44, fontWeight: "bold" }),
+      });
+      vicFooter.x = vcPanelX + vcPanelW / 2;
+      vicFooter.anchor.set(0.5, 0);
+      vicFooter.y = vcPanelY + vcPanelH - 32;
+      this.container.addChild(vicFooter);
+      this._spellTexts.push(vicFooter);
+
       // Glow ring
+      const trophyX = Math.floor(screenWidth / 2);
+      const trophyY = vcPanelY - 10;
       const glowPulse = 0.5 + 0.3 * Math.sin(Date.now() / 300);
       this._bg.circle(trophyX, trophyY, 45);
-      this._bg.stroke({ color: 0xffdd44, width: 2, alpha: glowPulse * 0.2 });
+      this._bg.stroke({ color: 0xffdd44, width: 2, alpha: glowPulse * 0.15 });
     } else if (state.phase === RWPhase.GAME_OVER) {
-      this._msgText.text = "GAME OVER — [R] Restart  [Esc] Exit";
-      this._msgText.style = new TextStyle({
-        fontFamily: "monospace",
-        fontSize: 18,
-        fill: 0xff4444,
-        fontWeight: "bold",
-        stroke: { color: 0x000000, width: 4 },
-      });
-      // Game over visual effects
-      // Screen crack lines radiating from center
-      const crackX = Math.floor(screenWidth / 2);
-      const crackY = Math.floor(screenHeight / 2);
-      for (let i = 0; i < 8; i++) {
-        const angle = (i * Math.PI / 4) + 0.2;
-        const len = 80 + (i * 17) % 60;
-        // Main crack
-        this._bg.moveTo(crackX, crackY);
-        const midX = crackX + Math.cos(angle) * len * 0.5 + ((i * 7) % 10 - 5);
-        const midY = crackY + Math.sin(angle) * len * 0.5 + ((i * 11) % 10 - 5);
-        this._bg.lineTo(midX, midY);
-        this._bg.lineTo(crackX + Math.cos(angle) * len, crackY + Math.sin(angle) * len);
-        this._bg.stroke({ color: 0xff2222, width: 2, alpha: 0.15 });
-        // Branch cracks
-        const branchAngle = angle + ((i % 2 === 0) ? 0.5 : -0.5);
-        this._bg.moveTo(midX, midY);
-        this._bg.lineTo(midX + Math.cos(branchAngle) * 30, midY + Math.sin(branchAngle) * 30);
-        this._bg.stroke({ color: 0xcc0000, width: 1, alpha: 0.1 });
-      }
+      // --- Enhanced Game Over Screen ---
+      this._msgText.text = "";
+      // Full-screen dark overlay
+      this._bg.rect(0, 0, screenWidth, screenHeight - hudH);
+      this._bg.fill({ color: 0x0a0000, alpha: 0.7 });
+
       // Red vignette
       this._bg.rect(0, 0, screenWidth, 50);
       this._bg.fill({ color: 0x330000, alpha: 0.3 });
       this._bg.rect(0, screenHeight - 140, screenWidth, 50);
       this._bg.fill({ color: 0x330000, alpha: 0.3 });
-      // Skull in center (below text)
-      const skullY = crackY + 20;
-      this._bg.circle(crackX, skullY, 18);
-      this._bg.stroke({ color: 0xff2222, width: 1.5, alpha: 0.12 });
-      // Eye sockets
-      this._bg.circle(crackX - 6, skullY - 4, 4);
-      this._bg.fill({ color: 0x220000, alpha: 0.15 });
-      this._bg.circle(crackX + 6, skullY - 4, 4);
-      this._bg.fill({ color: 0x220000, alpha: 0.15 });
-      // Jaw
-      this._bg.moveTo(crackX - 10, skullY + 6);
-      this._bg.lineTo(crackX, skullY + 14);
-      this._bg.lineTo(crackX + 10, skullY + 6);
-      this._bg.stroke({ color: 0xff2222, width: 1, alpha: 0.1 });
+
+      // Screen crack lines
+      const crackX = Math.floor(screenWidth / 2);
+      const crackY = Math.floor(screenHeight / 2);
+      for (let i = 0; i < 8; i++) {
+        const angle = (i * Math.PI / 4) + 0.2;
+        const len = 80 + (i * 17) % 60;
+        this._bg.moveTo(crackX, crackY);
+        const midCX = crackX + Math.cos(angle) * len * 0.5 + ((i * 7) % 10 - 5);
+        const midCY = crackY + Math.sin(angle) * len * 0.5 + ((i * 11) % 10 - 5);
+        this._bg.lineTo(midCX, midCY);
+        this._bg.lineTo(crackX + Math.cos(angle) * len, crackY + Math.sin(angle) * len);
+        this._bg.stroke({ color: 0xff2222, width: 2, alpha: 0.15 });
+        const branchAngle = angle + ((i % 2 === 0) ? 0.5 : -0.5);
+        this._bg.moveTo(midCX, midCY);
+        this._bg.lineTo(midCX + Math.cos(branchAngle) * 30, midCY + Math.sin(branchAngle) * 30);
+        this._bg.stroke({ color: 0xcc0000, width: 1, alpha: 0.1 });
+      }
+
+      const goPanelW = 380;
+      const goPanelH = 380;
+      const goPanelX = Math.floor((screenWidth - goPanelW) / 2);
+      const goPanelY = Math.floor((screenHeight - goPanelH) / 2) - 20;
+
+      // Panel bg
+      this._bg.rect(goPanelX + 4, goPanelY + 4, goPanelW, goPanelH);
+      this._bg.fill({ color: 0x000000, alpha: 0.4 });
+      this._bg.rect(goPanelX, goPanelY, goPanelW, goPanelH);
+      this._bg.fill({ color: 0x0a0a18, alpha: 0.96 });
+      drawOrnateFrame(this._bg, goPanelX, goPanelY, goPanelW, goPanelH, {
+        color: 0x882222,
+        highlight: 0xcc4444,
+      });
+
+      // "GAME OVER" title
+      const goTitle = new Text({
+        text: "GAME OVER",
+        style: new TextStyle({
+          fontFamily: "Georgia, serif",
+          fontSize: 30,
+          fill: 0xff4444,
+          fontWeight: "bold",
+          letterSpacing: 4,
+          stroke: { color: 0x000000, width: 4 },
+          dropShadow: { color: 0xcc0000, blur: 10, distance: 0, alpha: 0.4 },
+        }),
+      });
+      goTitle.x = goPanelX + goPanelW / 2;
+      goTitle.anchor.set(0.5, 0);
+      goTitle.y = goPanelY + 18;
+      this.container.addChild(goTitle);
+      this._spellTexts.push(goTitle);
+
+      const goDivY = goPanelY + 58;
+      drawTitleDivider(this._bg, goPanelX, goPanelW, goDivY);
+
+      // Floor reached
+      let goY = goDivY + 14;
+      const floorT = new Text({
+        text: `Floor Reached: ${state.currentLevel + 1}/25`,
+        style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 14, fill: 0xffaa66, fontWeight: "bold" }),
+      });
+      floorT.x = goPanelX + goPanelW / 2;
+      floorT.anchor.set(0.5, 0);
+      floorT.y = goY;
+      this.container.addChild(floorT);
+      this._spellTexts.push(floorT);
+      goY += 24;
+
+      // Run summary stats
+      const goSummary = formatRunSummary(state.runStats);
+      for (const line of goSummary) {
+        const lt = new Text({
+          text: line,
+          style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 10, fill: 0x999999 }),
+        });
+        lt.x = goPanelX + 24;
+        lt.y = goY;
+        this.container.addChild(lt);
+        this._spellTexts.push(lt);
+        goY += 15;
+      }
+
+      // Footer
+      const goFooter = new Text({
+        text: "R: Restart  |  ESC: Exit",
+        style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 12, fill: 0xffcc44, fontWeight: "bold" }),
+      });
+      goFooter.x = goPanelX + goPanelW / 2;
+      goFooter.anchor.set(0.5, 0);
+      goFooter.y = goPanelY + goPanelH - 32;
+      this.container.addChild(goFooter);
+      this._spellTexts.push(goFooter);
+    } else if (state.phase === RWPhase.LEVEL_SUMMARY) {
+      // --- Level Summary Screen ---
+      this._msgText.text = "";
+      // Overlay
+      this._bg.rect(0, 0, screenWidth, screenHeight - hudH);
+      this._bg.fill({ color: 0x000000, alpha: 0.7 });
+
+      const lsPanelW = 380;
+      const lsPanelH = 280;
+      const lsPanelX = Math.floor((screenWidth - lsPanelW) / 2);
+      const lsPanelY = Math.floor((screenHeight - lsPanelH) / 2) - 20;
+
+      // Panel bg
+      this._bg.rect(lsPanelX + 4, lsPanelY + 4, lsPanelW, lsPanelH);
+      this._bg.fill({ color: 0x000000, alpha: 0.4 });
+      this._bg.rect(lsPanelX, lsPanelY, lsPanelW, lsPanelH);
+      this._bg.fill({ color: 0x0a0a18, alpha: 0.96 });
+      drawOrnateFrame(this._bg, lsPanelX, lsPanelY, lsPanelW, lsPanelH, {
+        color: 0x44aa44,
+        highlight: 0x66dd66,
+      });
+
+      // Title
+      const lsTitle = new Text({
+        text: `Level ${state.currentLevel + 1} Complete!`,
+        style: new TextStyle({
+          fontFamily: "Georgia, serif",
+          fontSize: 24,
+          fill: 0x44ff88,
+          fontWeight: "bold",
+          letterSpacing: 3,
+          stroke: { color: 0x000000, width: 3 },
+          dropShadow: { color: 0x22aa44, blur: 8, distance: 0, alpha: 0.4 },
+        }),
+      });
+      lsTitle.x = lsPanelX + lsPanelW / 2;
+      lsTitle.anchor.set(0.5, 0);
+      lsTitle.y = lsPanelY + 18;
+      this.container.addChild(lsTitle);
+      this._spellTexts.push(lsTitle);
+
+      const lsDivY = lsPanelY + 56;
+      drawTitleDivider(this._bg, lsPanelX, lsPanelW, lsDivY);
+
+      // Level stats (derived from run stats as best approximation)
+      let lsY = lsDivY + 14;
+      const levelStatLines = [
+        `Enemies Killed: ${state.runStats.enemiesKilled}`,
+        `Turns Played: ${state.runStats.turnsPlayed}`,
+        `Total Damage Dealt: ${state.runStats.totalDamageDealt}`,
+        `Floors Cleared: ${state.runStats.floorsCleared}/25`,
+      ];
+      for (const line of levelStatLines) {
+        const lt = new Text({
+          text: line,
+          style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 12, fill: 0xbbbbcc }),
+        });
+        lt.x = lsPanelX + 30;
+        lt.y = lsY;
+        this.container.addChild(lt);
+        this._spellTexts.push(lt);
+        lsY += 20;
+      }
+
+      // Footer
+      const lsFooter = new Text({
+        text: "SPACE / Enter to continue to Spell Shop",
+        style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 12, fill: 0xffcc44, fontWeight: "bold" }),
+      });
+      lsFooter.x = lsPanelX + lsPanelW / 2;
+      lsFooter.anchor.set(0.5, 0);
+      lsFooter.y = lsPanelY + lsPanelH - 36;
+      this.container.addChild(lsFooter);
+      this._spellTexts.push(lsFooter);
     } else if (state.level.cleared && state.currentLevel < 24) {
       this._msgText.text = "Level Cleared! Walk to a rift portal.";
       this._msgText.style = new TextStyle({
@@ -1005,6 +1221,96 @@ export class RiftWizardHUD {
       }
     }
 
+    // --- Run Seed display (bottom-right corner) ---
+    {
+      const seedStr = `Seed: ${state.runSeed}`;
+      const seedText = new Text({
+        text: seedStr,
+        style: new TextStyle({
+          fontFamily: "Georgia, serif",
+          fontSize: 9,
+          fill: 0x555577,
+        }),
+      });
+      seedText.x = screenWidth - seedText.width - 8;
+      seedText.y = screenHeight - 14;
+      this.container.addChild(seedText);
+      this._spellTexts.push(seedText);
+    }
+
+    // --- Spell Preview Info Panel (TARGETING phase) ---
+    if (state.phase === RWPhase.TARGETING) {
+      const spell = state.spells[state.selectedSpellIndex];
+      if (spell) {
+        const def = SPELL_DEFS[spell.defId];
+        if (def) {
+          const schoolColor = SCHOOL_COLORS[spell.school] ?? 0xffffff;
+          const spPanelW = 280;
+          const spPanelH = 70;
+          const spPanelX = Math.floor((screenWidth - spPanelW) / 2);
+          const spPanelY = hudY - spPanelH - 8;
+
+          // Panel background
+          this._bg.rect(spPanelX, spPanelY, spPanelW, spPanelH);
+          this._bg.fill({ color: 0x0a0a18, alpha: 0.92 });
+          this._bg.rect(spPanelX, spPanelY, spPanelW, spPanelH);
+          this._bg.stroke({ color: schoolColor, width: 1.5, alpha: 0.7 });
+          // Top accent
+          this._bg.rect(spPanelX, spPanelY, spPanelW, 2);
+          this._bg.fill({ color: schoolColor, alpha: 0.6 });
+
+          const spInfoLines: string[] = [
+            `${def.name} (${spell.school})`,
+            `Dmg: ${spell.damage}  Range: ${spell.range}  AoE: ${spell.aoeRadius}  Charges: ${spell.charges}/${spell.maxCharges}`,
+          ];
+
+          // Check for enemy under cursor for projected damage
+          if (state.targetCursor) {
+            const tc = state.targetCursor;
+            const targetEnemy = state.level.enemies.find(e => e.alive && e.col === tc.col && e.row === tc.row);
+            if (targetEnemy) {
+              const eDef = ENEMY_DEFS[targetEnemy.defId];
+              spInfoLines.push(`Target: ${eDef?.name ?? targetEnemy.defId} (${targetEnemy.hp}HP) — Projected: ${spell.damage} dmg`);
+            }
+          }
+
+          for (let li = 0; li < spInfoLines.length; li++) {
+            const spLineT = new Text({
+              text: spInfoLines[li],
+              style: new TextStyle({
+                fontFamily: "Georgia, serif",
+                fontSize: li === 0 ? 12 : 10,
+                fill: li === 0 ? schoolColor : 0xaaaacc,
+                fontWeight: li === 0 ? "bold" : "normal",
+              }),
+            });
+            spLineT.x = spPanelX + 10;
+            spLineT.y = spPanelY + 8 + li * 16;
+            this.container.addChild(spLineT);
+            this._spellTexts.push(spLineT);
+          }
+
+          // Show active synergies for this spell
+          const spellSchools = new Set(state.spells.map(s => s.school));
+          const activeSynergies = getActiveSynergies(spellSchools);
+          const relevantSynergies = activeSynergies.filter(syn =>
+            syn.schools[0] === spell.school || syn.schools[1] === spell.school
+          );
+          if (relevantSynergies.length > 0) {
+            const synY = spPanelY + 8 + spInfoLines.length * 16;
+            const synT = new Text({
+              text: `Synergies: ${relevantSynergies.map(s => s.name).join(", ")}`,
+              style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 9, fill: 0xccaa44 }),
+            });
+            synT.x = spPanelX + 10;
+            synT.y = synY;
+            this.container.addChild(synT);
+            this._spellTexts.push(synT);
+          }
+        }
+      }
+    }
+
     // --- Pause menu overlay ---
     this._updatePauseMenu(state, screenWidth, screenHeight);
 
@@ -1117,6 +1423,9 @@ export class RiftWizardHUD {
         break;
       case "abilities":
         this._drawPauseAbilities(state, screenWidth, screenHeight);
+        break;
+      case "leaderboard":
+        this._drawPauseLeaderboard(state, screenWidth, screenHeight);
         break;
     }
   }
@@ -1251,7 +1560,7 @@ export class RiftWizardHUD {
 
   private _drawPauseMain(_state: RiftWizardState, screenWidth: number, screenHeight: number): void {
     const panelW = 340;
-    const panelH = 420;
+    const panelH = 580;
     const { panelX, panelY } = this._drawPausePanel(screenWidth, screenHeight, panelW, panelH);
 
     let yOff = this._addPauseTitle(panelX, panelW, panelY + 16, "PAUSED");
@@ -1260,7 +1569,19 @@ export class RiftWizardHUD {
     this._addPauseButton(panelX, yOff, panelW, "Resume", 0x228844, () => {
       if (this.onPauseResume) this.onPauseResume();
     });
-    yOff += 40;
+    yOff += 36;
+
+    // Save Game
+    this._addPauseButton(panelX, yOff, panelW, "Save Game", 0x446688, () => {
+      if (this.onPauseSave) this.onPauseSave();
+    });
+    yOff += 32;
+
+    // Load Game
+    this._addPauseButton(panelX, yOff, panelW, "Load Game", 0x446688, () => {
+      if (this.onPauseLoad) this.onPauseLoad();
+    });
+    yOff += 36;
 
     yOff = this._addPauseDivider(panelX, panelW, yOff);
 
@@ -1268,19 +1589,19 @@ export class RiftWizardHUD {
     this._addPauseButton(panelX, yOff, panelW, "Controls", 0x445588, () => {
       this.pauseSubMenu = "controls";
     });
-    yOff += 36;
+    yOff += 32;
 
     // Instructions
     this._addPauseButton(panelX, yOff, panelW, "Instructions", 0x555588, () => {
       this.pauseSubMenu = "instructions";
     });
-    yOff += 36;
+    yOff += 32;
 
     // Spells
     this._addPauseButton(panelX, yOff, panelW, "Spells", 0x664488, () => {
       this.pauseSubMenu = "spells";
     });
-    yOff += 36;
+    yOff += 32;
 
     // Buy Spells
     this._addPauseButton(panelX, yOff, panelW, "Buy Spells / Upgrades", 0x886644, () => {
@@ -1288,14 +1609,34 @@ export class RiftWizardHUD {
       this._buySelectedIndex = 0;
       this._buyViewingUpgrades = false;
     });
-    yOff += 36;
+    yOff += 32;
 
     // Abilities
     this._addPauseButton(panelX, yOff, panelW, "Abilities", 0x448866, () => {
       this.pauseSubMenu = "abilities";
       this._abilitiesSelectedIndex = 0;
     });
-    yOff += 40;
+    yOff += 32;
+
+    // Codex
+    this._addPauseButton(panelX, yOff, panelW, "Codex", 0x885588, () => {
+      if (this.onPauseCodex) this.onPauseCodex();
+    });
+    yOff += 32;
+
+    // Leaderboard
+    this._addPauseButton(panelX, yOff, panelW, "Leaderboard", 0x888844, () => {
+      this.pauseSubMenu = "leaderboard";
+    });
+    yOff += 36;
+
+    yOff = this._addPauseDivider(panelX, panelW, yOff);
+
+    // Tutorial Toggle
+    this._addPauseButton(panelX, yOff, panelW, `Tutorial: ${this.tutorialEnabled ? "ON" : "OFF"}`, 0x556655, () => {
+      this.tutorialEnabled = !this.tutorialEnabled;
+    });
+    yOff += 36;
 
     yOff = this._addPauseDivider(panelX, panelW, yOff);
 
@@ -1575,7 +1916,38 @@ export class RiftWizardHUD {
           yOff += 6;
         }
 
-        if (yOff > panelY + panelH - 50) break;
+        if (yOff > panelY + panelH - 100) break;
+      }
+    }
+
+    // Active Synergies in spells view
+    if (state.spells.length > 0) {
+      const spellSchools = new Set(state.spells.map(s => s.school));
+      const activeSynergies = getActiveSynergies(spellSchools);
+      if (activeSynergies.length > 0 && yOff < panelY + panelH - 80) {
+        yOff += 4;
+        yOff = this._addPauseDivider(panelX, panelW, yOff);
+        const synHeader = new Text({
+          text: "Active Synergies:",
+          style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 11, fill: 0xccaa44, fontWeight: "bold" }),
+        });
+        synHeader.x = panelX + 20;
+        synHeader.y = yOff;
+        this._pauseContainer.addChild(synHeader);
+        this._pauseTexts.push(synHeader);
+        yOff += 16;
+        for (const syn of activeSynergies) {
+          if (yOff > panelY + panelH - 50) break;
+          const synT = new Text({
+            text: `${syn.name}: ${syn.description}`,
+            style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 9, fill: 0xbbaa66 }),
+          });
+          synT.x = panelX + 28;
+          synT.y = yOff;
+          this._pauseContainer.addChild(synT);
+          this._pauseTexts.push(synT);
+          yOff += 14;
+        }
       }
     }
 
@@ -2000,6 +2372,37 @@ export class RiftWizardHUD {
       this._pauseTexts.push(hint);
     }
 
+    // --- Active Synergies Display ---
+    {
+      const spellSchools = new Set(state.spells.map(s => s.school));
+      const activeSynergies = getActiveSynergies(spellSchools);
+      if (activeSynergies.length > 0) {
+        yOff += 16;
+        yOff = this._addPauseDivider(panelX, panelW, yOff);
+        const synHeader = new Text({
+          text: "Active Synergies:",
+          style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 12, fill: 0xccaa44, fontWeight: "bold" }),
+        });
+        synHeader.x = panelX + 20;
+        synHeader.y = yOff;
+        this._pauseContainer.addChild(synHeader);
+        this._pauseTexts.push(synHeader);
+        yOff += 18;
+
+        for (const syn of activeSynergies) {
+          const synT = new Text({
+            text: `${syn.name}: ${syn.description}`,
+            style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 10, fill: 0xbbaa66 }),
+          });
+          synT.x = panelX + 28;
+          synT.y = yOff;
+          this._pauseContainer.addChild(synT);
+          this._pauseTexts.push(synT);
+          yOff += 16;
+        }
+      }
+    }
+
     // Back button at bottom
     const backY = panelY + panelH - 40;
     this._addPauseButton(panelX, backY, panelW, "Back", 0x444466, () => {
@@ -2196,6 +2599,86 @@ export class RiftWizardHUD {
     // Back button
     const backY = panelY + panelH - 40;
     this._addPauseButton(panelX, backY, panelW, "Back", 0x444466, () => {
+      this.pauseSubMenu = "main";
+    });
+  }
+
+  // -------------------------------------------------------------------------
+  // Pause sub-menu: Leaderboard
+  // -------------------------------------------------------------------------
+
+  private _drawPauseLeaderboard(_state: RiftWizardState, screenWidth: number, screenHeight: number): void {
+    const panelW = 520;
+    const panelH = 440;
+    const { panelX, panelY } = this._drawPausePanel(screenWidth, screenHeight, panelW, panelH);
+
+    let yOff = this._addPauseTitle(panelX, panelW, panelY + 16, "LEADERBOARD");
+
+    const entries = getLeaderboard();
+    const top10 = entries.slice(0, 10);
+
+    if (top10.length === 0) {
+      const noScores = new Text({
+        text: "No scores recorded yet.",
+        style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 12, fill: 0x666688 }),
+      });
+      noScores.x = panelX + panelW / 2;
+      noScores.anchor.set(0.5, 0);
+      noScores.y = yOff;
+      this._pauseContainer.addChild(noScores);
+      this._pauseTexts.push(noScores);
+      yOff += 30;
+    } else {
+      // Table header
+      const headerStr = "#   Score    Floors  Kills  Diff       Seed      Won";
+      const headerT = new Text({
+        text: headerStr,
+        style: new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: 0xccccff, fontWeight: "bold" }),
+      });
+      headerT.x = panelX + 16;
+      headerT.y = yOff;
+      this._pauseContainer.addChild(headerT);
+      this._pauseTexts.push(headerT);
+      yOff += 16;
+
+      // Divider line under header
+      this._pauseBg.moveTo(panelX + 16, yOff);
+      this._pauseBg.lineTo(panelX + panelW - 16, yOff);
+      this._pauseBg.stroke({ color: 0x333355, width: 0.5, alpha: 0.5 });
+      yOff += 4;
+
+      for (let i = 0; i < top10.length; i++) {
+        const e = top10[i];
+        const rank = `${i + 1}`.padStart(2);
+        const score = `${e.score}`.padStart(7);
+        const floors = `${e.floorsCleared}/25`.padStart(6);
+        const kills = `${e.enemiesKilled}`.padStart(5);
+        const diff = e.difficulty.padEnd(8);
+        const seed = `${e.seed}`.padStart(8);
+        const won = e.won ? "YES" : " - ";
+        const rowStr = `${rank}  ${score}  ${floors}  ${kills}  ${diff}  ${seed}   ${won}`;
+
+        const rowColor = e.won ? 0xffdd44 : i === 0 ? 0xcccccc : 0x999999;
+        // Row highlight for rank 1
+        if (i === 0) {
+          this._pauseBg.rect(panelX + 14, yOff - 1, panelW - 28, 16);
+          this._pauseBg.fill({ color: 0x222244, alpha: 0.5 });
+        }
+
+        const rowT = new Text({
+          text: rowStr,
+          style: new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: rowColor }),
+        });
+        rowT.x = panelX + 16;
+        rowT.y = yOff;
+        this._pauseContainer.addChild(rowT);
+        this._pauseTexts.push(rowT);
+        yOff += 18;
+      }
+    }
+
+    yOff += 12;
+    this._addPauseButton(panelX, Math.min(yOff, panelY + panelH - 40), panelW, "Back", 0x444466, () => {
       this.pauseSubMenu = "main";
     });
   }

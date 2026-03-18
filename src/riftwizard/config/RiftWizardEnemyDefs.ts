@@ -4,6 +4,7 @@
 
 import { UnitType } from "@/types";
 import { SpellSchool, RWEnemyAIType } from "../state/RiftWizardState";
+import { DIFFICULTY_MULTIPLIERS, type Difficulty } from "./RiftWizardConfig";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -457,10 +458,12 @@ export function getEnemyPoolForLevel(levelNum: number): string[] {
 export function scaleEnemyStats(
   def: RWEnemyDef,
   levelNum: number,
+  difficulty: Difficulty = "normal",
 ): { hp: number; damage: number } {
   const scale = 1 + levelNum * 0.06; // +6% per level
+  const mult = DIFFICULTY_MULTIPLIERS[difficulty];
   return {
-    hp: Math.floor(def.hp * scale),
-    damage: Math.floor(def.damage * scale),
+    hp: Math.floor(def.hp * scale * mult.enemyHp),
+    damage: Math.floor(def.damage * scale * mult.enemyDmg),
   };
 }

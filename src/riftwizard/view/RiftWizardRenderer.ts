@@ -16,7 +16,6 @@ import {
   RWTileType,
   RWAnimationType,
   RWPhase,
-  SpellSchool,
   type AnimationEvent,
 } from "../state/RiftWizardState";
 import { RWBalance } from "../config/RiftWizardConfig";
@@ -350,6 +349,76 @@ export class RiftWizardRenderer {
           this._staticTileGfx.fill({ color: 0x0a0a18, alpha: 0.15 });
           this._staticTileGfx.rect(x + 4, y + 4, TS - 8, TS - 8);
           this._staticTileGfx.fill({ color: 0x0a0a18, alpha: 0.1 });
+
+          // Irregular stone outlines: on some bricks, draw slightly irregular polygon outlines
+          const wallHash = tileHash(col, row, 100);
+          if (wallHash > 0.55) {
+            // Pick a brick position based on hash
+            const ibRow = Math.floor(tileHash(col, row, 101) * 3);
+            const ibOff = (ibRow % 2 === 0) ? 0 : TS / 4;
+            const ibx = x + ibOff + Math.floor(tileHash(col, row, 102) * 2) * (TS / 2);
+            const iby = y + ibRow * 8;
+            const ibw = TS / 2 - 1;
+            const ibh = 7;
+            // Irregular polygon (6 vertices instead of 4 for a non-rectangular stone)
+            const jt1 = (tileHash(col, row, 103) - 0.5) * 3;
+            const jt2 = (tileHash(col, row, 104) - 0.5) * 2;
+            this._staticTileGfx.moveTo(ibx + 1 + jt1, iby + 1);
+            this._staticTileGfx.lineTo(ibx + ibw * 0.5, iby + jt2);
+            this._staticTileGfx.lineTo(ibx + ibw - 1, iby + 1 - jt1);
+            this._staticTileGfx.lineTo(ibx + ibw - 1 + jt2, iby + ibh - 1);
+            this._staticTileGfx.lineTo(ibx + ibw * 0.5, iby + ibh - jt2);
+            this._staticTileGfx.lineTo(ibx + 1, iby + ibh - 1 + jt1);
+            this._staticTileGfx.closePath();
+            this._staticTileGfx.stroke({ color: 0x222244, width: 0.7, alpha: 0.5 });
+          }
+
+          // Cracks: on occasional bricks, draw a branching crack (zigzag line that splits)
+          if (wallHash > 0.78) {
+            const crackStartX = x + 4 + tileHash(col, row, 110) * (TS - 8);
+            const crackStartY = y + 4 + tileHash(col, row, 111) * (TS - 8);
+            const crackAngle = tileHash(col, row, 112) * Math.PI;
+            const crackLen = 4 + tileHash(col, row, 113) * 5;
+            const crMidX = crackStartX + Math.cos(crackAngle) * crackLen * 0.5 + (tileHash(col, row, 114) - 0.5) * 3;
+            const crMidY = crackStartY + Math.sin(crackAngle) * crackLen * 0.5;
+            const crEndX = crackStartX + Math.cos(crackAngle) * crackLen;
+            const crEndY = crackStartY + Math.sin(crackAngle) * crackLen;
+            // Main crack
+            this._staticTileGfx.moveTo(crackStartX, crackStartY);
+            this._staticTileGfx.lineTo(crMidX, crMidY);
+            this._staticTileGfx.lineTo(crEndX, crEndY);
+            this._staticTileGfx.stroke({ color: 0x080810, width: 0.8, alpha: 0.6 });
+            // Branch split
+            const brAngle = crackAngle + (tileHash(col, row, 115) > 0.5 ? 0.7 : -0.7);
+            const brLen = crackLen * 0.4;
+            this._staticTileGfx.moveTo(crMidX, crMidY);
+            this._staticTileGfx.lineTo(crMidX + Math.cos(brAngle) * brLen, crMidY + Math.sin(brAngle) * brLen);
+            this._staticTileGfx.stroke({ color: 0x080810, width: 0.5, alpha: 0.4 });
+          }
+
+          // Moss patches: on walls adjacent to floor, draw small green cluster polygons near bottom
+          {
+            let hasFloorBelow = false;
+            if (row + 1 < state.level.height) {
+              const belowTile = state.level.tiles[row + 1][col];
+              if (belowTile === RWTileType.FLOOR || belowTile === RWTileType.CORRIDOR) {
+                hasFloorBelow = true;
+              }
+            }
+            if (hasFloorBelow && tileHash(col, row, 120) > 0.4) {
+              const mossCount = 2 + Math.floor(tileHash(col, row, 121) * 3);
+              for (let mi = 0; mi < mossCount; mi++) {
+                const mx = x + 3 + tileHash(col, row, 122 + mi) * (TS - 6);
+                const my = y + TS - 3 - tileHash(col, row, 130 + mi) * 4;
+                const mr = 1.5 + tileHash(col, row, 140 + mi) * 1.5;
+                // Irregular oval/circle cluster
+                this._staticTileGfx.circle(mx, my, mr);
+                this._staticTileGfx.fill({ color: 0x2a5522, alpha: 0.4 });
+                this._staticTileGfx.circle(mx + 1.2, my - 0.8, mr * 0.7);
+                this._staticTileGfx.fill({ color: 0x336622, alpha: 0.3 });
+              }
+            }
+          }
 
           this._drawWallEdges(state, col, row, x, y);
 
@@ -772,27 +841,148 @@ export class RiftWizardRenderer {
       this._tileGfx.circle(ix, iy + bounce, TS * 0.3);
       this._tileGfx.fill({ color: ITEM_COLOR, alpha: 0.15 });
 
-      // Outer item outline star (slightly larger, semi-transparent)
-      this._tileGfx.star(ix, iy + bounce, 4, TS * 0.19, TS * 0.1);
-      this._tileGfx.stroke({ color: ITEM_COLOR, width: 1, alpha: 0.4 });
+      const ig = this._tileGfx;
+      const iby = iy + bounce;
 
-      // Original item shape
-      this._tileGfx.star(ix, iy + bounce, 4, TS * 0.15, TS * 0.08);
-      this._tileGfx.fill(ITEM_COLOR);
-
-      // Inner bright core
-      this._tileGfx.star(ix, iy + bounce, 4, TS * 0.07, TS * 0.04);
-      this._tileGfx.fill({ color: 0xffffff, alpha: 0.5 });
+      if (item.type === "health_potion") {
+        // Flask/bottle shape: cork, narrow neck, rounded top, wider body
+        const bw = TS * 0.16; // body half-width
+        const bh = TS * 0.22; // body height
+        const nw = TS * 0.06; // neck half-width
+        const nh = TS * 0.08; // neck height
+        const bodyTop = iby - bh * 0.2;
+        const bodyBot = iby + bh;
+        const neckTop = bodyTop - nh;
+        // Cork (small rect at top)
+        ig.rect(ix - nw * 1.2, neckTop - 3, nw * 2.4, 3);
+        ig.fill(0x997744);
+        ig.rect(ix - nw * 1.2, neckTop - 3, nw * 2.4, 3);
+        ig.stroke({ color: 0x664422, width: 0.5 });
+        // Neck
+        ig.rect(ix - nw, neckTop, nw * 2, nh);
+        ig.fill(0xddddcc);
+        ig.rect(ix - nw, neckTop, nw * 2, nh);
+        ig.stroke({ color: 0xaaaaaa, width: 0.5 });
+        // Bottle body (pentagon-ish with rounded top via segments)
+        ig.moveTo(ix - nw, bodyTop);
+        ig.lineTo(ix - bw, bodyTop + bh * 0.2);
+        ig.lineTo(ix - bw, bodyBot);
+        ig.lineTo(ix + bw, bodyBot);
+        ig.lineTo(ix + bw, bodyTop + bh * 0.2);
+        ig.lineTo(ix + nw, bodyTop);
+        ig.closePath();
+        ig.fill(0xddddcc);
+        ig.moveTo(ix - nw, bodyTop);
+        ig.lineTo(ix - bw, bodyTop + bh * 0.2);
+        ig.lineTo(ix - bw, bodyBot);
+        ig.lineTo(ix + bw, bodyBot);
+        ig.lineTo(ix + bw, bodyTop + bh * 0.2);
+        ig.lineTo(ix + nw, bodyTop);
+        ig.closePath();
+        ig.stroke({ color: 0x999999, width: 0.7 });
+        // Red liquid fill inside (smaller polygon)
+        const liqTop = bodyTop + bh * 0.45;
+        ig.moveTo(ix - bw + 1, liqTop);
+        ig.lineTo(ix - bw + 1, bodyBot - 1);
+        ig.lineTo(ix + bw - 1, bodyBot - 1);
+        ig.lineTo(ix + bw - 1, liqTop);
+        // Wavy liquid surface
+        ig.lineTo(ix + bw * 0.3, liqTop - 1);
+        ig.lineTo(ix - bw * 0.3, liqTop + 1);
+        ig.closePath();
+        ig.fill({ color: 0xcc2222, alpha: 0.85 });
+        // Glass highlight
+        ig.moveTo(ix - bw + 2, bodyTop + bh * 0.3);
+        ig.lineTo(ix - bw + 2, bodyBot - 2);
+        ig.stroke({ color: 0xffffff, width: 0.5, alpha: 0.3 });
+      } else if (item.type === "charge_scroll") {
+        // Scroll shape: rolled cylinders at top/bottom, parchment body
+        const sw = TS * 0.14; // scroll half-width
+        const sh = TS * 0.22; // scroll height
+        const rollR = 2.5;
+        // Parchment body (rectangle with slightly curved short edges)
+        ig.rect(ix - sw, iby - sh + rollR, sw * 2, sh * 2 - rollR * 2);
+        ig.fill(0xeeddaa);
+        ig.rect(ix - sw, iby - sh + rollR, sw * 2, sh * 2 - rollR * 2);
+        ig.stroke({ color: 0xaa9966, width: 0.5 });
+        // Top roll (ellipse as polygon)
+        for (let ri = 0; ri <= 10; ri++) {
+          const ra = (ri / 10) * Math.PI * 2;
+          const rx = ix + Math.cos(ra) * (sw + 1);
+          const ry = iby - sh + rollR + Math.sin(ra) * rollR;
+          if (ri === 0) ig.moveTo(rx, ry);
+          else ig.lineTo(rx, ry);
+        }
+        ig.closePath();
+        ig.fill(0xddcc88);
+        ig.stroke({ color: 0xaa9966, width: 0.5 });
+        // Bottom roll (ellipse as polygon)
+        for (let ri = 0; ri <= 10; ri++) {
+          const ra = (ri / 10) * Math.PI * 2;
+          const rx = ix + Math.cos(ra) * (sw + 1);
+          const ry = iby + sh - rollR + Math.sin(ra) * rollR;
+          if (ri === 0) ig.moveTo(rx, ry);
+          else ig.lineTo(rx, ry);
+        }
+        ig.closePath();
+        ig.fill(0xddcc88);
+        ig.stroke({ color: 0xaa9966, width: 0.5 });
+        // Tiny rune lines inside
+        for (let rl = 0; rl < 4; rl++) {
+          const rly = iby - sh * 0.5 + rl * sh * 0.3;
+          ig.moveTo(ix - sw * 0.6, rly);
+          ig.lineTo(ix + sw * 0.6, rly);
+          ig.stroke({ color: 0x6644aa, width: 0.5, alpha: 0.5 });
+        }
+      } else if (item.type === "shield_scroll") {
+        // Shield shape: 5-point shield polygon (curved top, pointed bottom)
+        const shW = TS * 0.16;
+        const shH = TS * 0.28;
+        ig.moveTo(ix, iby + shH); // bottom point
+        ig.lineTo(ix - shW, iby + shH * 0.15);
+        ig.lineTo(ix - shW, iby - shH * 0.4);
+        // Curved top (arc segments)
+        ig.lineTo(ix - shW * 0.6, iby - shH * 0.7);
+        ig.lineTo(ix, iby - shH * 0.8);
+        ig.lineTo(ix + shW * 0.6, iby - shH * 0.7);
+        ig.lineTo(ix + shW, iby - shH * 0.4);
+        ig.lineTo(ix + shW, iby + shH * 0.15);
+        ig.closePath();
+        ig.fill(0xddddcc);
+        ig.moveTo(ix, iby + shH);
+        ig.lineTo(ix - shW, iby + shH * 0.15);
+        ig.lineTo(ix - shW, iby - shH * 0.4);
+        ig.lineTo(ix - shW * 0.6, iby - shH * 0.7);
+        ig.lineTo(ix, iby - shH * 0.8);
+        ig.lineTo(ix + shW * 0.6, iby - shH * 0.7);
+        ig.lineTo(ix + shW, iby - shH * 0.4);
+        ig.lineTo(ix + shW, iby + shH * 0.15);
+        ig.closePath();
+        ig.stroke({ color: 0x8888aa, width: 0.7 });
+        // Cross emblem inside shield
+        ig.moveTo(ix, iby - shH * 0.5);
+        ig.lineTo(ix, iby + shH * 0.4);
+        ig.stroke({ color: 0x4466cc, width: 1.5, alpha: 0.7 });
+        ig.moveTo(ix - shW * 0.5, iby - shH * 0.1);
+        ig.lineTo(ix + shW * 0.5, iby - shH * 0.1);
+        ig.stroke({ color: 0x4466cc, width: 1.5, alpha: 0.7 });
+      } else {
+        // Fallback: original star shape
+        ig.star(ix, iby, 4, TS * 0.15, TS * 0.08);
+        ig.fill(ITEM_COLOR);
+        ig.star(ix, iby, 4, TS * 0.07, TS * 0.04);
+        ig.fill({ color: 0xffffff, alpha: 0.5 });
+      }
 
       // Sparkle (original + extras)
-      this._tileGfx.circle(ix + 3, iy + bounce - 3, 1.5);
+      this._tileGfx.circle(ix + 3, iby - 3, 1.5);
       this._tileGfx.fill({ color: 0xffffff, alpha: 0.8 });
       // Second sparkle
-      this._tileGfx.circle(ix - 2, iy + bounce + 2, 1);
+      this._tileGfx.circle(ix - 2, iby + 2, 1);
       this._tileGfx.fill({ color: 0xffffff, alpha: 0.5 * itemPulse });
 
       // Ring outline around item
-      this._tileGfx.circle(ix, iy + bounce, TS * 0.22);
+      this._tileGfx.circle(ix, iby, TS * 0.22);
       this._tileGfx.stroke({ color: ITEM_COLOR, width: 1, alpha: 0.3 });
     }
   }
@@ -1220,25 +1410,95 @@ export class RiftWizardRenderer {
       const portalColor = SCHOOL_COLORS[portal.theme] ?? 0x9933ff;
       const pulse = 0.6 + 0.4 * Math.sin(this._time * 3);
 
+      const pg = this._entityGfx;
+      const pLeft = portal.col * TS;
+      const pTop = portal.row * TS;
+      const pillarW = 4;
+      const archInnerW = TS - pillarW * 2 - 4;
+
       // Outer glow
-      this._entityGfx.circle(px, py, TS * 0.55);
-      this._entityGfx.fill({ color: portalColor, alpha: 0.15 * pulse });
-      // Portal body
-      this._entityGfx.rect(portal.col * TS + 2, portal.row * TS + 2, TS - 4, TS - 4);
-      this._entityGfx.fill({ color: portalColor, alpha: 0.6 });
-      // Inner bright core
-      this._entityGfx.rect(portal.col * TS + 6, portal.row * TS + 6, TS - 12, TS - 12);
-      this._entityGfx.fill({ color: 0xffffff, alpha: 0.2 * pulse });
-      // Border
-      this._entityGfx.rect(portal.col * TS + 2, portal.row * TS + 2, TS - 4, TS - 4);
-      this._entityGfx.stroke({ color: 0xffffff, width: 1, alpha: 0.5 });
+      pg.circle(px, py, TS * 0.55);
+      pg.fill({ color: portalColor, alpha: 0.15 * pulse });
+
+      // Left pillar polygon
+      pg.rect(pLeft + 2, pTop + 4, pillarW, TS - 5);
+      pg.fill({ color: portalColor, alpha: 0.8 });
+      pg.rect(pLeft + 2, pTop + 4, pillarW, TS - 5);
+      pg.stroke({ color: 0xffffff, width: 0.5, alpha: 0.4 });
+      // Right pillar polygon
+      pg.rect(pLeft + TS - pillarW - 2, pTop + 4, pillarW, TS - 5);
+      pg.fill({ color: portalColor, alpha: 0.8 });
+      pg.rect(pLeft + TS - pillarW - 2, pTop + 4, pillarW, TS - 5);
+      pg.stroke({ color: 0xffffff, width: 0.5, alpha: 0.4 });
+
+      // Curved arch top (multi-segment arc connecting pillars)
+      const archCx = px;
+      const archCy = pTop + 6;
+      const archRx = archInnerW * 0.5 + pillarW * 0.5;
+      const archRy = TS * 0.35;
+      pg.moveTo(pLeft + 2 + pillarW * 0.5, pTop + 6);
+      for (let ai = 0; ai <= 12; ai++) {
+        const aa = Math.PI + (ai / 12) * Math.PI;
+        pg.lineTo(archCx + Math.cos(aa) * archRx, archCy + Math.sin(aa) * archRy);
+      }
+      pg.stroke({ color: portalColor, width: 2, alpha: 0.9 });
+
+      // Rune symbols on pillars (diamond + triangle pairs)
+      for (const side of [-1, 1]) {
+        const rpx = px + side * (TS * 0.5 - pillarW * 0.5 - 2);
+        // Diamond rune
+        const rd = 2;
+        pg.moveTo(rpx, pTop + 12);
+        pg.lineTo(rpx + rd, pTop + 12 + rd);
+        pg.lineTo(rpx, pTop + 12 + rd * 2);
+        pg.lineTo(rpx - rd, pTop + 12 + rd);
+        pg.closePath();
+        pg.fill({ color: 0xffffff, alpha: 0.5 * pulse });
+        // Triangle rune below
+        pg.moveTo(rpx, pTop + 20);
+        pg.lineTo(rpx + rd, pTop + 20 + rd * 1.5);
+        pg.lineTo(rpx - rd, pTop + 20 + rd * 1.5);
+        pg.closePath();
+        pg.fill({ color: 0xffffff, alpha: 0.4 * pulse });
+      }
+
+      // Swirling energy inside: concentric irregular polygons that rotate
+      for (let ri = 0; ri < 3; ri++) {
+        const swirlR = (3 - ri) * TS * 0.1 + 2;
+        const swirlPts = 5 + ri;
+        const swirlAngle = this._time * (2 + ri * 0.7) * (ri % 2 === 0 ? 1 : -1);
+        pg.moveTo(
+          px + Math.cos(swirlAngle) * swirlR,
+          py + Math.sin(swirlAngle) * swirlR * 0.8,
+        );
+        for (let si = 1; si <= swirlPts; si++) {
+          const sa = swirlAngle + (si / swirlPts) * Math.PI * 2;
+          const wobble = 1 + 0.2 * Math.sin(this._time * 3 + si + ri);
+          pg.lineTo(
+            px + Math.cos(sa) * swirlR * wobble,
+            py + Math.sin(sa) * swirlR * 0.8 * wobble,
+          );
+        }
+        pg.closePath();
+        pg.stroke({ color: portalColor, width: 1, alpha: (0.5 - ri * 0.12) * pulse });
+      }
+
+      // Inner bright core fill
+      pg.circle(px, py, TS * 0.18);
+      pg.fill({ color: 0xffffff, alpha: 0.15 * pulse });
+
+      // Glowing threshold at the bottom (bright line)
+      pg.moveTo(pLeft + 2 + pillarW, pTop + TS - 2);
+      pg.lineTo(pLeft + TS - 2 - pillarW, pTop + TS - 2);
+      pg.stroke({ color: 0xffffff, width: 2, alpha: 0.6 * pulse });
+
       // Rotating particles around portal
       for (let i = 0; i < 3; i++) {
         const angle = this._time * 2 + (i * Math.PI * 2 / 3);
         const dx = Math.cos(angle) * TS * 0.35;
         const dy = Math.sin(angle) * TS * 0.35;
-        this._entityGfx.circle(px + dx, py + dy, 2);
-        this._entityGfx.fill({ color: 0xffffff, alpha: 0.7 });
+        pg.circle(px + dx, py + dy, 2);
+        pg.fill({ color: 0xffffff, alpha: 0.7 });
       }
     }
 
@@ -1528,66 +1788,181 @@ export class RiftWizardRenderer {
       g.fill({ color: 0xff4444, alpha: 0.9 });
 
     } else if (enemy.defId === "swordsman") {
-      // --- Swordsman: humanoid with sword ---
+      // --- Swordsman: armored humanoid with helm, shield, sword ---
       const r = TS * 0.3;
-      // Head (circle)
-      g.circle(ex, ey - r * 0.9, r * 0.35);
-      g.fill(color);
-      g.circle(ex, ey - r * 0.9, r * 0.35);
-      g.stroke({ color: 0x000000, width: 1 });
-      // Body (rect)
+
+      // Body (rect) with chainmail crosshatch pattern
       g.rect(ex - r * 0.4, ey - r * 0.55, r * 0.8, r * 1.1);
       g.fill(color);
       g.rect(ex - r * 0.4, ey - r * 0.55, r * 0.8, r * 1.1);
       g.stroke({ color: 0x000000, width: 1 });
-      // Left leg (triangle)
+      // Chainmail crosshatch diagonal lines
+      for (let ci = 0; ci < 5; ci++) {
+        const cxOff = -r * 0.35 + ci * r * 0.18;
+        g.moveTo(ex + cxOff, ey - r * 0.5);
+        g.lineTo(ex + cxOff + r * 0.3, ey + r * 0.5);
+        g.stroke({ color: 0x000000, width: 0.4, alpha: 0.3 });
+        g.moveTo(ex + cxOff + r * 0.3, ey - r * 0.5);
+        g.lineTo(ex + cxOff, ey + r * 0.5);
+        g.stroke({ color: 0x000000, width: 0.4, alpha: 0.3 });
+      }
+
+      // Helmet polygon (flat-top with cheek guards and nasal bar)
+      const helmTop = ey - r * 1.2;
+      const helmBot = ey - r * 0.55;
+      const helmW = r * 0.42;
+      g.moveTo(ex - helmW, helmBot);
+      g.lineTo(ex - helmW - 2, helmTop + 4); // left cheek guard
+      g.lineTo(ex - helmW + 1, helmTop);      // left top corner
+      g.lineTo(ex + helmW - 1, helmTop);      // flat top
+      g.lineTo(ex + helmW + 2, helmTop + 4);  // right top corner
+      g.lineTo(ex + helmW, helmBot);           // right cheek guard
+      g.closePath();
+      g.fill(color);
+      g.moveTo(ex - helmW, helmBot);
+      g.lineTo(ex - helmW - 2, helmTop + 4);
+      g.lineTo(ex - helmW + 1, helmTop);
+      g.lineTo(ex + helmW - 1, helmTop);
+      g.lineTo(ex + helmW + 2, helmTop + 4);
+      g.lineTo(ex + helmW, helmBot);
+      g.closePath();
+      g.stroke({ color: 0x000000, width: 1 });
+      // Nasal bar (vertical line down center of helm)
+      g.moveTo(ex, helmTop);
+      g.lineTo(ex, helmBot - 1);
+      g.stroke({ color: 0x000000, width: 1.2, alpha: 0.6 });
+      // Eye slit (thin horizontal line)
+      g.moveTo(ex - helmW + 3, ey - r * 0.9);
+      g.lineTo(ex + helmW - 3, ey - r * 0.9);
+      g.stroke({ color: 0xffff88, width: 1.5 });
+
+      // Left leg with boot (trapezoid boot shape)
       g.moveTo(ex - r * 0.35, ey + r * 0.55);
       g.lineTo(ex - r * 0.1, ey + r * 0.55);
-      g.lineTo(ex - r * 0.45, ey + r * 1.2);
+      g.lineTo(ex - r * 0.15, ey + r * 0.95);
+      g.lineTo(ex - r * 0.55, ey + r * 0.95);
+      g.lineTo(ex - r * 0.55, ey + r * 1.15);
+      g.lineTo(ex - r * 0.1, ey + r * 1.15);
+      g.lineTo(ex - r * 0.1, ey + r * 0.95);
       g.closePath();
-      g.fill({ color, alpha: 0.85 });
-      // Right leg (triangle)
+      g.fill({ color: 0x333333, alpha: 0.9 });
+      // Right leg with boot
       g.moveTo(ex + r * 0.1, ey + r * 0.55);
       g.lineTo(ex + r * 0.35, ey + r * 0.55);
-      g.lineTo(ex + r * 0.45, ey + r * 1.2);
+      g.lineTo(ex + r * 0.4, ey + r * 0.95);
+      g.lineTo(ex + r * 0.55, ey + r * 0.95);
+      g.lineTo(ex + r * 0.55, ey + r * 1.15);
+      g.lineTo(ex + r * 0.15, ey + r * 1.15);
+      g.lineTo(ex + r * 0.15, ey + r * 0.95);
       g.closePath();
-      g.fill({ color, alpha: 0.85 });
-      // Sword (tall thin triangle) from right side
-      g.moveTo(ex + r * 0.5, ey - r * 0.3);
-      g.lineTo(ex + r * 0.55, ey - r * 1.4);
-      g.lineTo(ex + r * 0.7, ey - r * 0.3);
+      g.fill({ color: 0x333333, alpha: 0.9 });
+
+      // Kite shield polygon on left arm (pointed bottom, rounded top)
+      const shX = ex - r * 0.7;
+      const shY = ey - r * 0.1;
+      g.moveTo(shX, shY - r * 0.55);
+      g.lineTo(shX + r * 0.35, shY - r * 0.45);
+      g.lineTo(shX + r * 0.35, shY + r * 0.1);
+      g.lineTo(shX, shY + r * 0.6);
+      g.lineTo(shX - r * 0.35, shY + r * 0.1);
+      g.lineTo(shX - r * 0.35, shY - r * 0.45);
+      g.closePath();
+      g.fill(0x884444);
+      g.moveTo(shX, shY - r * 0.55);
+      g.lineTo(shX + r * 0.35, shY - r * 0.45);
+      g.lineTo(shX + r * 0.35, shY + r * 0.1);
+      g.lineTo(shX, shY + r * 0.6);
+      g.lineTo(shX - r * 0.35, shY + r * 0.1);
+      g.lineTo(shX - r * 0.35, shY - r * 0.45);
+      g.closePath();
+      g.stroke({ color: 0x000000, width: 0.7 });
+      // Shield boss (small circle)
+      g.circle(shX, shY, 2);
+      g.fill(0xccaa44);
+
+      // Sword blade: elongated diamond/leaf shape (4-point) instead of triangle
+      const swTipY = ey - r * 1.5;
+      const swBaseY = ey - r * 0.3;
+      const swMidY = (swTipY + swBaseY) * 0.5;
+      const swHalf = r * 0.15;
+      g.moveTo(ex + r * 0.6, swTipY);       // tip
+      g.lineTo(ex + r * 0.6 + swHalf, swMidY - r * 0.15); // right bulge upper
+      g.lineTo(ex + r * 0.6 + swHalf, swMidY + r * 0.15); // right bulge lower
+      g.lineTo(ex + r * 0.6, swBaseY);       // base
+      g.lineTo(ex + r * 0.6 - swHalf, swMidY + r * 0.15);
+      g.lineTo(ex + r * 0.6 - swHalf, swMidY - r * 0.15);
       g.closePath();
       g.fill(0xcccccc);
-      g.moveTo(ex + r * 0.5, ey - r * 0.3);
-      g.lineTo(ex + r * 0.55, ey - r * 1.4);
-      g.lineTo(ex + r * 0.7, ey - r * 0.3);
+      g.moveTo(ex + r * 0.6, swTipY);
+      g.lineTo(ex + r * 0.6 + swHalf, swMidY - r * 0.15);
+      g.lineTo(ex + r * 0.6 + swHalf, swMidY + r * 0.15);
+      g.lineTo(ex + r * 0.6, swBaseY);
+      g.lineTo(ex + r * 0.6 - swHalf, swMidY + r * 0.15);
+      g.lineTo(ex + r * 0.6 - swHalf, swMidY - r * 0.15);
       g.closePath();
       g.stroke({ color: 0x888888, width: 0.5 });
+      // Fuller line down center of blade
+      g.moveTo(ex + r * 0.6, swTipY + 2);
+      g.lineTo(ex + r * 0.6, swBaseY - 2);
+      g.stroke({ color: 0xaaaaaa, width: 0.5, alpha: 0.5 });
       // Sword handle
       g.rect(ex + r * 0.5, ey - r * 0.3, r * 0.2, r * 0.35);
       g.fill(0x885533);
       // Cross-guard
       g.rect(ex + r * 0.4, ey - r * 0.35, r * 0.4, 2);
       g.fill(0xaaaa44);
-      // Eyes
-      g.circle(ex - 2, ey - r * 0.95, 1);
-      g.fill(0xffff88);
-      g.circle(ex + 2, ey - r * 0.95, 1);
-      g.fill(0xffff88);
 
     } else if (enemy.defId === "archer") {
-      // --- Archer: humanoid with bow and arrow ---
+      // --- Archer: hooded figure with recurve bow, quiver, cloak ---
       const r = TS * 0.3;
-      // Head
-      g.circle(ex, ey - r * 0.9, r * 0.35);
-      g.fill(color);
-      g.circle(ex, ey - r * 0.9, r * 0.35);
-      g.stroke({ color: 0x000000, width: 1 });
+
+      // Cloak draping polygon behind the figure
+      g.moveTo(ex - r * 0.3, ey - r * 0.7);
+      g.lineTo(ex + r * 0.4, ey - r * 0.6);
+      g.lineTo(ex + r * 0.5, ey + r * 0.8);
+      g.lineTo(ex + r * 0.3, ey + r * 1.0);
+      g.lineTo(ex + r * 0.1, ey + r * 0.85);
+      g.lineTo(ex - r * 0.1, ey + r * 0.95);
+      g.lineTo(ex - r * 0.35, ey + r * 0.7);
+      g.closePath();
+      g.fill({ color: 0x2a3322, alpha: 0.7 });
+
       // Body (rect)
       g.rect(ex - r * 0.35, ey - r * 0.55, r * 0.7, r * 1.0);
       g.fill(color);
       g.rect(ex - r * 0.35, ey - r * 0.55, r * 0.7, r * 1.0);
       g.stroke({ color: 0x000000, width: 1 });
+
+      // Hood polygon (triangular top with draped sides) replacing circle head
+      const hoodTip = ey - r * 1.35;
+      g.moveTo(ex, hoodTip);
+      g.lineTo(ex + r * 0.45, ey - r * 0.65);
+      g.lineTo(ex + r * 0.35, ey - r * 0.45);
+      g.lineTo(ex - r * 0.35, ey - r * 0.45);
+      g.lineTo(ex - r * 0.45, ey - r * 0.65);
+      g.closePath();
+      g.fill(color);
+      g.moveTo(ex, hoodTip);
+      g.lineTo(ex + r * 0.45, ey - r * 0.65);
+      g.lineTo(ex + r * 0.35, ey - r * 0.45);
+      g.lineTo(ex - r * 0.35, ey - r * 0.45);
+      g.lineTo(ex - r * 0.45, ey - r * 0.65);
+      g.closePath();
+      g.stroke({ color: 0x000000, width: 1 });
+      // Shadow inside hood
+      g.moveTo(ex - r * 0.2, ey - r * 0.55);
+      g.lineTo(ex + r * 0.2, ey - r * 0.55);
+      g.lineTo(ex + r * 0.25, ey - r * 0.45);
+      g.lineTo(ex - r * 0.25, ey - r * 0.45);
+      g.closePath();
+      g.fill({ color: 0x000000, alpha: 0.4 });
+
+      // Eyes glowing inside hood
+      g.circle(ex - 2, ey - r * 0.55, 1);
+      g.fill(0xffff88);
+      g.circle(ex + 2, ey - r * 0.55, 1);
+      g.fill(0xffff88);
+
       // Left leg
       g.moveTo(ex - r * 0.3, ey + r * 0.45);
       g.lineTo(ex - r * 0.05, ey + r * 0.45);
@@ -1600,20 +1975,51 @@ export class RiftWizardRenderer {
       g.lineTo(ex + r * 0.4, ey + r * 1.15);
       g.closePath();
       g.fill({ color, alpha: 0.85 });
-      // Bow on left side (curved arc)
+
+      // Quiver on back (small rectangle with 3 arrow tips poking out)
+      const qx = ex + r * 0.3;
+      const qy = ey - r * 0.4;
+      g.rect(qx - 2, qy, 4, r * 0.8);
+      g.fill(0x664422);
+      g.rect(qx - 2, qy, 4, r * 0.8);
+      g.stroke({ color: 0x553311, width: 0.5 });
+      // Arrow tips poking out
+      for (let qi = 0; qi < 3; qi++) {
+        const aqx = qx - 1.5 + qi * 1.5;
+        g.moveTo(aqx, qy);
+        g.lineTo(aqx - 1, qy - 3);
+        g.lineTo(aqx + 1, qy - 3);
+        g.closePath();
+        g.fill(0xcccccc);
+      }
+
+      // Recurve bow on left side (more arc segments with distinct limb tips)
       const bowCx = ex - r * 0.9;
-      for (let bi = 0; bi < 8; bi++) {
-        const a1 = -Math.PI * 0.4 + (bi / 8) * Math.PI * 0.8;
-        const a2 = -Math.PI * 0.4 + ((bi + 1) / 8) * Math.PI * 0.8;
-        const br = r * 0.8;
+      const br = r * 0.8;
+      // Main bow curve (12 segments for smoother arc)
+      for (let bi = 0; bi < 12; bi++) {
+        const a1 = -Math.PI * 0.4 + (bi / 12) * Math.PI * 0.8;
+        const a2 = -Math.PI * 0.4 + ((bi + 1) / 12) * Math.PI * 0.8;
         g.moveTo(bowCx + Math.cos(a1) * br, ey + Math.sin(a1) * br);
         g.lineTo(bowCx + Math.cos(a2) * br, ey + Math.sin(a2) * br);
         g.stroke({ color: 0x885533, width: 2 });
       }
+      // Recurve tips (small curves at ends going outward)
+      const tipLen = r * 0.2;
+      const topA = -Math.PI * 0.4;
+      const botA = Math.PI * 0.4;
+      g.moveTo(bowCx + Math.cos(topA) * br, ey + Math.sin(topA) * br);
+      g.lineTo(bowCx + Math.cos(topA) * br - tipLen * 0.3, ey + Math.sin(topA) * br - tipLen);
+      g.stroke({ color: 0x885533, width: 1.5 });
+      g.moveTo(bowCx + Math.cos(botA) * br, ey + Math.sin(botA) * br);
+      g.lineTo(bowCx + Math.cos(botA) * br - tipLen * 0.3, ey + Math.sin(botA) * br + tipLen);
+      g.stroke({ color: 0x885533, width: 1.5 });
+
       // Bowstring
-      g.moveTo(bowCx + Math.cos(-Math.PI * 0.4) * r * 0.8, ey + Math.sin(-Math.PI * 0.4) * r * 0.8);
-      g.lineTo(bowCx + Math.cos(Math.PI * 0.4) * r * 0.8, ey + Math.sin(Math.PI * 0.4) * r * 0.8);
+      g.moveTo(bowCx + Math.cos(-Math.PI * 0.4) * br - tipLen * 0.3, ey + Math.sin(-Math.PI * 0.4) * br - tipLen);
+      g.lineTo(bowCx + Math.cos(Math.PI * 0.4) * br - tipLen * 0.3, ey + Math.sin(Math.PI * 0.4) * br + tipLen);
       g.stroke({ color: 0xcccccc, width: 0.5 });
+
       // Arrow on right side (thin line with triangle tip)
       g.moveTo(ex + r * 0.2, ey);
       g.lineTo(ex + r * 1.4, ey);
@@ -1624,11 +2030,17 @@ export class RiftWizardRenderer {
       g.lineTo(ex + r * 1.6, ey + 2);
       g.closePath();
       g.fill(0xcccccc);
-      // Eyes
-      g.circle(ex - 2, ey - r * 0.95, 1);
-      g.fill(0xffff88);
-      g.circle(ex + 2, ey - r * 0.95, 1);
-      g.fill(0xffff88);
+      // Fletching: small V-shaped polygon at the tail end of arrow
+      g.moveTo(ex + r * 0.25, ey);
+      g.lineTo(ex + r * 0.1, ey - 2.5);
+      g.lineTo(ex + r * 0.35, ey);
+      g.closePath();
+      g.fill({ color: 0xcc4444, alpha: 0.7 });
+      g.moveTo(ex + r * 0.25, ey);
+      g.lineTo(ex + r * 0.1, ey + 2.5);
+      g.lineTo(ex + r * 0.35, ey);
+      g.closePath();
+      g.fill({ color: 0xcc4444, alpha: 0.7 });
 
     } else if (enemy.defId === "bat") {
       // --- Bat: small circle body with large triangular scalloped wings ---
@@ -1762,13 +2174,35 @@ export class RiftWizardRenderer {
       g.fill({ color: orbColor, alpha: 0.9 });
 
     } else if (enemy.defId === "goblin") {
-      // --- Goblin: small squat body, big ears, club weapon ---
+      // --- Goblin: hunched, toothy, with spiked club and loincloth ---
       const r = TS * 0.3;
-      // Wide squat body (rect)
-      g.rect(ex - r * 0.55, ey - r * 0.35, r * 1.1, r * 0.9);
+
+      // Hunched asymmetric body polygon (wider on right, slightly tilted)
+      g.moveTo(ex - r * 0.45, ey - r * 0.25);
+      g.lineTo(ex + r * 0.6, ey - r * 0.4);
+      g.lineTo(ex + r * 0.65, ey + r * 0.5);
+      g.lineTo(ex + r * 0.5, ey + r * 0.55);
+      g.lineTo(ex - r * 0.5, ey + r * 0.55);
+      g.lineTo(ex - r * 0.55, ey + r * 0.45);
+      g.closePath();
       g.fill(color);
-      g.rect(ex - r * 0.55, ey - r * 0.35, r * 1.1, r * 0.9);
+      g.moveTo(ex - r * 0.45, ey - r * 0.25);
+      g.lineTo(ex + r * 0.6, ey - r * 0.4);
+      g.lineTo(ex + r * 0.65, ey + r * 0.5);
+      g.lineTo(ex + r * 0.5, ey + r * 0.55);
+      g.lineTo(ex - r * 0.5, ey + r * 0.55);
+      g.lineTo(ex - r * 0.55, ey + r * 0.45);
+      g.closePath();
       g.stroke({ color: 0x000000, width: 1 });
+
+      // Warts/bumps: 3 small circles on body for texture
+      g.circle(ex - r * 0.15, ey + r * 0.1, 1.3);
+      g.fill({ color: 0x000000, alpha: 0.25 });
+      g.circle(ex + r * 0.3, ey - r * 0.1, 1);
+      g.fill({ color: 0x000000, alpha: 0.2 });
+      g.circle(ex + r * 0.1, ey + r * 0.35, 1.1);
+      g.fill({ color: 0x000000, alpha: 0.2 });
+
       // Head (slightly smaller rect on top)
       g.rect(ex - r * 0.35, ey - r * 0.75, r * 0.7, r * 0.45);
       g.fill(color);
@@ -1787,108 +2221,191 @@ export class RiftWizardRenderer {
         g.closePath();
         g.stroke({ color: 0x000000, width: 0.5 });
       }
+
       // Short legs
       for (const side of [-1, 1]) {
         g.rect(ex + side * r * 0.2 - 2, ey + r * 0.55, 4, r * 0.4);
         g.fill({ color, alpha: 0.85 });
       }
+
+      // Ragged loincloth polygon (3-4 irregular triangular points hanging from waist)
+      g.moveTo(ex - r * 0.4, ey + r * 0.5);
+      g.lineTo(ex - r * 0.3, ey + r * 0.75);
+      g.lineTo(ex - r * 0.1, ey + r * 0.6);
+      g.lineTo(ex + r * 0.05, ey + r * 0.8);
+      g.lineTo(ex + r * 0.2, ey + r * 0.65);
+      g.lineTo(ex + r * 0.35, ey + r * 0.78);
+      g.lineTo(ex + r * 0.45, ey + r * 0.5);
+      g.closePath();
+      g.fill({ color: 0x554422, alpha: 0.8 });
+      g.moveTo(ex - r * 0.4, ey + r * 0.5);
+      g.lineTo(ex - r * 0.3, ey + r * 0.75);
+      g.lineTo(ex - r * 0.1, ey + r * 0.6);
+      g.lineTo(ex + r * 0.05, ey + r * 0.8);
+      g.lineTo(ex + r * 0.2, ey + r * 0.65);
+      g.lineTo(ex + r * 0.35, ey + r * 0.78);
+      g.lineTo(ex + r * 0.45, ey + r * 0.5);
+      g.closePath();
+      g.stroke({ color: 0x443311, width: 0.5 });
+
       // Club weapon (thick line with circle end) on right side
       g.moveTo(ex + r * 0.55, ey - r * 0.1);
       g.lineTo(ex + r * 1.3, ey - r * 0.5);
       g.stroke({ color: 0x885533, width: 3 });
-      // Club head (circle at end)
-      g.circle(ex + r * 1.3, ey - r * 0.5, 3.5);
+      // Club head (circle at end) with spikes
+      const clubX = ex + r * 1.3;
+      const clubY = ey - r * 0.5;
+      g.circle(clubX, clubY, 3.5);
       g.fill(0x664422);
-      g.circle(ex + r * 1.3, ey - r * 0.5, 3.5);
+      g.circle(clubX, clubY, 3.5);
       g.stroke({ color: 0x553311, width: 1 });
+      // Spikes on club head (small triangle polygons around the circle)
+      for (let sp = 0; sp < 5; sp++) {
+        const spAngle = (sp / 5) * Math.PI * 2 + 0.3;
+        const spBase = 3.5;
+        const spLen = 3;
+        const bx1 = clubX + Math.cos(spAngle - 0.4) * spBase;
+        const by1 = clubY + Math.sin(spAngle - 0.4) * spBase;
+        const bx2 = clubX + Math.cos(spAngle + 0.4) * spBase;
+        const by2 = clubY + Math.sin(spAngle + 0.4) * spBase;
+        const tx = clubX + Math.cos(spAngle) * (spBase + spLen);
+        const ty = clubY + Math.sin(spAngle) * (spBase + spLen);
+        g.moveTo(bx1, by1);
+        g.lineTo(tx, ty);
+        g.lineTo(bx2, by2);
+        g.closePath();
+        g.fill(0x553311);
+      }
+
       // Eyes (beady)
       g.circle(ex - 2, ey - r * 0.6, 1.2);
       g.fill(0xffff44);
       g.circle(ex + 2, ey - r * 0.6, 1.2);
       g.fill(0xffff44);
-      // Wide grin
-      g.moveTo(ex - 3, ey - r * 0.4);
-      g.lineTo(ex + 3, ey - r * 0.4);
-      g.stroke({ color: 0x000000, width: 1 });
+      // Teeth: white zigzag polygon line for the grin
+      g.moveTo(ex - 4, ey - r * 0.4);
+      g.lineTo(ex - 2.5, ey - r * 0.35);
+      g.lineTo(ex - 1, ey - r * 0.42);
+      g.lineTo(ex + 0.5, ey - r * 0.34);
+      g.lineTo(ex + 2, ey - r * 0.43);
+      g.lineTo(ex + 3.5, ey - r * 0.36);
+      g.lineTo(ex + 4, ey - r * 0.4);
+      g.stroke({ color: 0xffffff, width: 1, alpha: 0.85 });
 
     } else {
-      // --- Unrecognized enemy: default hexagon body ---
+      // --- Unrecognized enemy: armored warrior silhouette ---
       const r = TS * 0.3;
-      g.moveTo(ex + r, ey);
-      for (let i = 1; i <= 6; i++) {
-        const a = (i / 6) * Math.PI * 2;
-        g.lineTo(ex + Math.cos(a) * r, ey + Math.sin(a) * r);
-      }
+
+      // Irregular warrior polygon (wider shoulders, narrower waist, armored legs)
+      g.moveTo(ex, ey - r * 1.05);          // head top
+      g.lineTo(ex + r * 0.35, ey - r * 0.85); // head right
+      g.lineTo(ex + r * 0.8, ey - r * 0.6);  // right shoulder
+      g.lineTo(ex + r * 0.7, ey - r * 0.1);  // right arm
+      g.lineTo(ex + r * 0.45, ey + r * 0.1); // right waist
+      g.lineTo(ex + r * 0.55, ey + r * 0.6); // right leg out
+      g.lineTo(ex + r * 0.35, ey + r * 1.0); // right foot
+      g.lineTo(ex + r * 0.1, ey + r * 0.7);  // inner right leg
+      g.lineTo(ex - r * 0.1, ey + r * 0.7);  // inner left leg
+      g.lineTo(ex - r * 0.35, ey + r * 1.0); // left foot
+      g.lineTo(ex - r * 0.55, ey + r * 0.6); // left leg out
+      g.lineTo(ex - r * 0.45, ey + r * 0.1); // left waist
+      g.lineTo(ex - r * 0.7, ey - r * 0.1);  // left arm
+      g.lineTo(ex - r * 0.8, ey - r * 0.6);  // left shoulder
+      g.lineTo(ex - r * 0.35, ey - r * 0.85); // head left
       g.closePath();
       g.fill(color);
-      g.moveTo(ex + r, ey);
-      for (let i = 1; i <= 6; i++) {
-        const a = (i / 6) * Math.PI * 2;
-        g.lineTo(ex + Math.cos(a) * r, ey + Math.sin(a) * r);
-      }
+      // Re-draw for stroke
+      g.moveTo(ex, ey - r * 1.05);
+      g.lineTo(ex + r * 0.35, ey - r * 0.85);
+      g.lineTo(ex + r * 0.8, ey - r * 0.6);
+      g.lineTo(ex + r * 0.7, ey - r * 0.1);
+      g.lineTo(ex + r * 0.45, ey + r * 0.1);
+      g.lineTo(ex + r * 0.55, ey + r * 0.6);
+      g.lineTo(ex + r * 0.35, ey + r * 1.0);
+      g.lineTo(ex + r * 0.1, ey + r * 0.7);
+      g.lineTo(ex - r * 0.1, ey + r * 0.7);
+      g.lineTo(ex - r * 0.35, ey + r * 1.0);
+      g.lineTo(ex - r * 0.55, ey + r * 0.6);
+      g.lineTo(ex - r * 0.45, ey + r * 0.1);
+      g.lineTo(ex - r * 0.7, ey - r * 0.1);
+      g.lineTo(ex - r * 0.8, ey - r * 0.6);
+      g.lineTo(ex - r * 0.35, ey - r * 0.85);
       g.closePath();
       g.stroke({ color: 0x000000, width: 1 });
 
-      // Armor plates: 2 overlapping angled rects on body
+      // Armor plates on torso
       for (let pi = 0; pi < 2; pi++) {
-        const py = ey - 2 + pi * 5;
-        g.moveTo(ex - r * 0.5, py - 2);
-        g.lineTo(ex + r * 0.5, py - 3);
-        g.lineTo(ex + r * 0.55, py + 1);
-        g.lineTo(ex - r * 0.55, py + 2);
+        const py = ey - r * 0.4 + pi * r * 0.4;
+        g.moveTo(ex - r * 0.4, py - 2);
+        g.lineTo(ex + r * 0.4, py - 3);
+        g.lineTo(ex + r * 0.45, py + 1);
+        g.lineTo(ex - r * 0.45, py + 2);
         g.closePath();
         g.fill({ color: 0xffffff, alpha: 0.1 });
-        g.moveTo(ex - r * 0.5, py - 2);
-        g.lineTo(ex + r * 0.5, py - 3);
-        g.lineTo(ex + r * 0.55, py + 1);
-        g.lineTo(ex - r * 0.55, py + 2);
+        g.moveTo(ex - r * 0.4, py - 2);
+        g.lineTo(ex + r * 0.4, py - 3);
+        g.lineTo(ex + r * 0.45, py + 1);
+        g.lineTo(ex - r * 0.45, py + 2);
         g.closePath();
         g.stroke({ color: 0xffffff, width: 0.5, alpha: 0.15 });
       }
 
-      // Shoulder guards: small triangles on top sides
-      for (const side of [-1, 1]) {
-        g.moveTo(ex + side * r * 0.6, ey - r * 0.7);
-        g.lineTo(ex + side * r * 1.0, ey - r * 0.9);
-        g.lineTo(ex + side * r * 1.0, ey - r * 0.4);
-        g.closePath();
-        g.fill({ color, alpha: 0.8 });
-        g.moveTo(ex + side * r * 0.6, ey - r * 0.7);
-        g.lineTo(ex + side * r * 1.0, ey - r * 0.9);
-        g.lineTo(ex + side * r * 1.0, ey - r * 0.4);
-        g.closePath();
-        g.stroke({ color: 0x000000, width: 0.5 });
-      }
+      // Short tattered cape polygon (3-4 ragged bottom points)
+      g.moveTo(ex - r * 0.5, ey - r * 0.55);
+      g.lineTo(ex + r * 0.5, ey - r * 0.55);
+      g.lineTo(ex + r * 0.6, ey + r * 0.15);
+      g.lineTo(ex + r * 0.4, ey + r * 0.35);
+      g.lineTo(ex + r * 0.15, ey + r * 0.2);
+      g.lineTo(ex - r * 0.1, ey + r * 0.38);
+      g.lineTo(ex - r * 0.35, ey + r * 0.22);
+      g.lineTo(ex - r * 0.6, ey + r * 0.3);
+      g.closePath();
+      g.fill({ color: 0x000000, alpha: 0.25 });
 
-      // Face: angular eye slits + mouth line
-      for (const side of [-1, 1]) {
-        g.moveTo(ex + side * 2, ey - 3);
-        g.lineTo(ex + side * 5, ey - 4);
-        g.stroke({ color: 0xffff88, width: 1.5 });
-      }
-      // Mouth line
-      g.moveTo(ex - 3, ey + 2);
-      g.lineTo(ex + 3, ey + 2);
-      g.stroke({ color: 0x000000, width: 1 });
+      // Angular visor eye slit (thin horizontal polygon)
+      g.moveTo(ex - r * 0.3, ey - r * 0.88);
+      g.lineTo(ex + r * 0.3, ey - r * 0.92);
+      g.lineTo(ex + r * 0.28, ey - r * 0.84);
+      g.lineTo(ex - r * 0.28, ey - r * 0.82);
+      g.closePath();
+      g.fill({ color: 0xffff88, alpha: 0.8 });
 
-      // Weapon: small sword extending from right side
-      // Blade (triangle)
-      g.moveTo(ex + r + 2, ey - 1);
-      g.lineTo(ex + r + 10, ey - 3);
-      g.lineTo(ex + r + 10, ey + 1);
+      // Halberd/spear weapon: long shaft with complex blade polygon
+      const halbX = ex + r + 3;
+      const halbTopY = ey - r * 1.5;
+      const halbBotY = ey + r * 0.8;
+      // Shaft
+      g.moveTo(halbX, halbBotY);
+      g.lineTo(halbX, halbTopY);
+      g.stroke({ color: 0x886644, width: 2 });
+      // Complex blade: axe + spike shape at top
+      g.moveTo(halbX, halbTopY - 3);           // spike tip
+      g.lineTo(halbX + 1.5, halbTopY);         // right of spike
+      g.lineTo(halbX + 6, halbTopY + 2);       // axe blade right tip
+      g.lineTo(halbX + 5, halbTopY + 5);       // axe blade bottom right
+      g.lineTo(halbX + 1.5, halbTopY + 4);     // axe inner right
+      g.lineTo(halbX + 1, halbTopY + 7);       // lower hook
+      g.lineTo(halbX - 1, halbTopY + 7);       // lower hook left
+      g.lineTo(halbX - 1.5, halbTopY + 4);     // left inner
+      g.lineTo(halbX - 1.5, halbTopY);         // left of spike
       g.closePath();
       g.fill(0xcccccc);
-      // Handle (thin rect)
-      g.rect(ex + r - 1, ey - 1, 4, 2);
-      g.fill(0x885533);
-      // Cross-guard
-      g.rect(ex + r + 1, ey - 3, 1.5, 6);
-      g.fill(0xaaaa44);
+      g.moveTo(halbX, halbTopY - 3);
+      g.lineTo(halbX + 1.5, halbTopY);
+      g.lineTo(halbX + 6, halbTopY + 2);
+      g.lineTo(halbX + 5, halbTopY + 5);
+      g.lineTo(halbX + 1.5, halbTopY + 4);
+      g.lineTo(halbX + 1, halbTopY + 7);
+      g.lineTo(halbX - 1, halbTopY + 7);
+      g.lineTo(halbX - 1.5, halbTopY + 4);
+      g.lineTo(halbX - 1.5, halbTopY);
+      g.closePath();
+      g.stroke({ color: 0x888888, width: 0.5 });
 
       // Feet: two small trapezoids below body
       for (const side of [-1, 1]) {
         const fx = ex + side * 4;
-        const fy = ey + r + 1;
+        const fy = ey + r * 0.95;
         g.moveTo(fx - 3, fy);
         g.lineTo(fx + 3, fy);
         g.lineTo(fx + 4, fy + 4);
@@ -1989,32 +2506,87 @@ export class RiftWizardRenderer {
     const wx = state.wizard.col * TS + TS / 2;
     const wy = state.wizard.row * TS + TS / 2;
     const g = this._entityGfx;
+    const t = this._time;
 
     // Magical aura: 2-3 concentric semi-transparent rings pulsing with time
     for (let ri = 0; ri < 3; ri++) {
       const auraR = TS * (0.42 + ri * 0.08);
-      const auraAlpha = (0.12 - ri * 0.03) * (0.6 + 0.4 * Math.sin(this._time * 3 + ri * 1.5));
+      const auraAlpha = (0.12 - ri * 0.03) * (0.6 + 0.4 * Math.sin(t * 3 + ri * 1.5));
       g.circle(wx, wy, auraR);
       g.stroke({ color: WIZARD_COLOR, width: 1.5, alpha: auraAlpha });
     }
 
-    // Robes: trapezoid body wider at bottom with fold lines
+    // Cape/cloak: billowing polygon behind the wizard with wavy animated bottom
+    const capeTopY = wy - TS * 0.10;
+    const capeBotY = wy + TS * 0.40;
+    const capeW = TS * 0.34;
+    g.moveTo(wx - capeW * 0.5, capeTopY);
+    g.lineTo(wx + capeW * 0.5, capeTopY);
+    g.lineTo(wx + capeW * 0.7, capeBotY - 4);
+    // Wavy bottom edge with 8 points
+    const capePoints = 8;
+    for (let ci = capePoints; ci >= 0; ci--) {
+      const frac = ci / capePoints;
+      const cpx = wx - capeW * 0.7 + frac * capeW * 1.4;
+      const waveOff = Math.sin(t * 2.5 + ci * 0.9) * 2.5;
+      const cpy = capeBotY + waveOff + (ci % 2 === 0 ? 1.5 : -1);
+      g.lineTo(cpx, cpy);
+    }
+    g.closePath();
+    g.fill({ color: 0x1a2266, alpha: 0.85 });
+    // Cape edge highlight
+    for (let ci = 0; ci <= capePoints; ci++) {
+      const frac = ci / capePoints;
+      const cpx = wx - capeW * 0.7 + frac * capeW * 1.4;
+      const waveOff = Math.sin(t * 2.5 + ci * 0.9) * 2.5;
+      const cpy = capeBotY + waveOff + (ci % 2 === 0 ? 1.5 : -1);
+      if (ci === 0) g.moveTo(cpx, cpy);
+      else g.lineTo(cpx, cpy);
+    }
+    g.stroke({ color: 0x4466aa, width: 0.7, alpha: 0.6 });
+
+    // Inner dark robe layer (slightly narrower, darker)
     const robeTop = wy - TS * 0.12;
     const robeBot = wy + TS * 0.38;
     const topHalf = TS * 0.16;
     const botHalf = TS * 0.28;
+    const innerInset = 2;
+    g.moveTo(wx - topHalf + innerInset, robeTop + 1);
+    g.lineTo(wx + topHalf - innerInset, robeTop + 1);
+    g.lineTo(wx + botHalf - innerInset, robeBot - 1);
+    g.lineTo(wx - botHalf + innerInset, robeBot - 1);
+    g.closePath();
+    g.fill({ color: 0x223388, alpha: 0.7 });
+
+    // Outer robes: multi-point polygon with flowing wavy hem
     g.moveTo(wx - topHalf, robeTop);
     g.lineTo(wx + topHalf, robeTop);
-    g.lineTo(wx + botHalf, robeBot);
-    g.lineTo(wx - botHalf, robeBot);
+    g.lineTo(wx + botHalf, robeBot - 3);
+    // Wavy hem bottom edge (10 points for organic look)
+    const hemPts = 10;
+    for (let hi = hemPts; hi >= 0; hi--) {
+      const frac = hi / hemPts;
+      const hx = wx - botHalf + frac * botHalf * 2;
+      const hemWave = Math.sin(t * 2 + hi * 1.2) * 1.5;
+      const hy = robeBot + hemWave + (hi % 2 === 0 ? 1 : -0.5);
+      g.lineTo(hx, hy);
+    }
     g.closePath();
     g.fill(WIZARD_COLOR);
+    // Robe outline
     g.moveTo(wx - topHalf, robeTop);
     g.lineTo(wx + topHalf, robeTop);
-    g.lineTo(wx + botHalf, robeBot);
-    g.lineTo(wx - botHalf, robeBot);
+    g.lineTo(wx + botHalf, robeBot - 3);
+    for (let hi = hemPts; hi >= 0; hi--) {
+      const frac = hi / hemPts;
+      const hx = wx - botHalf + frac * botHalf * 2;
+      const hemWave = Math.sin(t * 2 + hi * 1.2) * 1.5;
+      const hy = robeBot + hemWave + (hi % 2 === 0 ? 1 : -0.5);
+      g.lineTo(hx, hy);
+    }
     g.closePath();
     g.stroke({ color: 0x6699ff, width: 1 });
+
     // Vertical fold lines on robes
     for (let fi = -1; fi <= 1; fi++) {
       const fx = wx + fi * (topHalf * 0.5);
@@ -2024,62 +2596,100 @@ export class RiftWizardRenderer {
       g.stroke({ color: 0x3366cc, width: 0.7, alpha: 0.4 });
     }
 
-    // Belt: horizontal line across midsection with buckle
+    // Belt: horizontal line across midsection
     const beltY = wy + TS * 0.08;
     const beltLeftX = wx - (topHalf + (botHalf - topHalf) * 0.4);
     const beltRightX = wx + (topHalf + (botHalf - topHalf) * 0.4);
     g.moveTo(beltLeftX, beltY);
     g.lineTo(beltRightX, beltY);
     g.stroke({ color: 0x886633, width: 1.5 });
-    // Belt buckle
-    g.rect(wx - 2, beltY - 2, 4, 4);
+    // Belt buckle polygon (small ornate octagon)
+    const bkS = 2.5;
+    g.moveTo(wx - bkS, beltY - bkS * 0.5);
+    g.lineTo(wx - bkS * 0.5, beltY - bkS);
+    g.lineTo(wx + bkS * 0.5, beltY - bkS);
+    g.lineTo(wx + bkS, beltY - bkS * 0.5);
+    g.lineTo(wx + bkS, beltY + bkS * 0.5);
+    g.lineTo(wx + bkS * 0.5, beltY + bkS);
+    g.lineTo(wx - bkS * 0.5, beltY + bkS);
+    g.lineTo(wx - bkS, beltY + bkS * 0.5);
+    g.closePath();
     g.fill(0xccaa44);
-    g.rect(wx - 2, beltY - 2, 4, 4);
+    g.moveTo(wx - bkS, beltY - bkS * 0.5);
+    g.lineTo(wx - bkS * 0.5, beltY - bkS);
+    g.lineTo(wx + bkS * 0.5, beltY - bkS);
+    g.lineTo(wx + bkS, beltY - bkS * 0.5);
+    g.lineTo(wx + bkS, beltY + bkS * 0.5);
+    g.lineTo(wx + bkS * 0.5, beltY + bkS);
+    g.lineTo(wx - bkS * 0.5, beltY + bkS);
+    g.lineTo(wx - bkS, beltY + bkS * 0.5);
+    g.closePath();
     g.stroke({ color: 0xeedd66, width: 0.5 });
 
-    // Shoulders: small angled polygon shapes on each side
+    // Shoulders: pauldron polygons on each side (6-point armored shape)
     for (const side of [-1, 1]) {
       const shx = wx + side * topHalf;
       const shy = robeTop;
-      g.moveTo(shx, shy);
-      g.lineTo(shx + side * 5, shy - 3);
-      g.lineTo(shx + side * 6, shy + 2);
+      g.moveTo(shx, shy - 1);
+      g.lineTo(shx + side * 3, shy - 4);
+      g.lineTo(shx + side * 6, shy - 3);
+      g.lineTo(shx + side * 7, shy + 0);
+      g.lineTo(shx + side * 6, shy + 3);
       g.lineTo(shx + side * 1, shy + 3);
       g.closePath();
-      g.fill({ color: 0x3366bb, alpha: 0.8 });
-      g.moveTo(shx, shy);
-      g.lineTo(shx + side * 5, shy - 3);
-      g.lineTo(shx + side * 6, shy + 2);
+      g.fill({ color: 0x3366bb, alpha: 0.85 });
+      g.moveTo(shx, shy - 1);
+      g.lineTo(shx + side * 3, shy - 4);
+      g.lineTo(shx + side * 6, shy - 3);
+      g.lineTo(shx + side * 7, shy + 0);
+      g.lineTo(shx + side * 6, shy + 3);
       g.lineTo(shx + side * 1, shy + 3);
       g.closePath();
       g.stroke({ color: 0x6699ff, width: 0.5 });
+      // Pauldron inner ridge line
+      g.moveTo(shx + side * 2, shy - 2);
+      g.lineTo(shx + side * 5, shy + 1);
+      g.stroke({ color: 0x4477cc, width: 0.5, alpha: 0.5 });
     }
 
-    // Face: lighter area with glowing eye dots
+    // Face: lighter area with glowing eye dots and thin beard
     const faceY = wy - TS * 0.2;
     g.circle(wx, faceY, 5);
     g.fill({ color: 0xddccaa, alpha: 0.7 });
     // Glowing eyes
-    const eyeGlow = 0.7 + 0.3 * Math.sin(this._time * 4);
+    const eyeGlow = 0.7 + 0.3 * Math.sin(t * 4);
     g.circle(wx - 2.5, faceY - 0.5, 1.2);
     g.fill({ color: 0x88ddff, alpha: eyeGlow });
     g.circle(wx + 2.5, faceY - 0.5, 1.2);
     g.fill({ color: 0x88ddff, alpha: eyeGlow });
+    // Thin beard: 3 small downward lines
+    for (let bi = -1; bi <= 1; bi++) {
+      g.moveTo(wx + bi * 1.5, faceY + 3);
+      g.lineTo(wx + bi * 1.8, faceY + 6);
+      g.stroke({ color: 0xaaaaaa, width: 0.6, alpha: 0.5 });
+    }
 
-    // Hat: wide brim + tall pointed cone
+    // Hat: pointed wizard hat with curved brim arc, hat band, star buckle
     const hatBrimY = wy - TS * 0.28;
     const hatTipY = wy - TS * 0.62;
-    // Brim (horizontal line extending beyond head)
-    g.moveTo(wx - TS * 0.28, hatBrimY);
-    g.lineTo(wx + TS * 0.28, hatBrimY);
-    g.stroke({ color: WIZARD_COLOR, width: 2 });
-    // Hat cone
-    g.moveTo(wx, hatTipY);
+    // Curved brim (arc of small segments instead of flat line)
+    const brimHalf = TS * 0.28;
+    const brimSegs = 10;
+    g.moveTo(wx - brimHalf, hatBrimY);
+    for (let bi = 1; bi <= brimSegs; bi++) {
+      const frac = bi / brimSegs;
+      const bx = wx - brimHalf + frac * brimHalf * 2;
+      const by = hatBrimY - Math.sin(frac * Math.PI) * 2;
+      g.lineTo(bx, by);
+    }
+    g.stroke({ color: WIZARD_COLOR, width: 2.5 });
+    // Hat cone body
+    g.moveTo(wx + 2, hatTipY);
     g.lineTo(wx + TS * 0.18, hatBrimY);
     g.lineTo(wx - TS * 0.18, hatBrimY);
     g.closePath();
     g.fill(WIZARD_COLOR);
-    g.moveTo(wx, hatTipY);
+    g.moveTo(wx + 2, hatTipY);
     g.lineTo(wx + TS * 0.18, hatBrimY);
     g.lineTo(wx - TS * 0.18, hatBrimY);
     g.closePath();
@@ -2088,31 +2698,93 @@ export class RiftWizardRenderer {
     const bandY = hatBrimY - 3;
     g.moveTo(wx - TS * 0.14, bandY);
     g.lineTo(wx + TS * 0.14, bandY);
-    g.stroke({ color: 0x886633, width: 1.5 });
-    // Star buckle on hat
-    g.star(wx, bandY, 4, 2.5, 1.2);
+    g.stroke({ color: 0x886633, width: 2 });
+    // Star buckle polygon on hat band (6-point star polygon)
+    const starCx = wx;
+    const starCy = bandY;
+    const starOuter = 3;
+    const starInner = 1.4;
+    g.moveTo(starCx, starCy - starOuter);
+    for (let si = 1; si < 12; si++) {
+      const sa = (si / 12) * Math.PI * 2 - Math.PI / 2;
+      const sr = si % 2 === 0 ? starOuter : starInner;
+      g.lineTo(starCx + Math.cos(sa) * sr, starCy + Math.sin(sa) * sr);
+    }
+    g.closePath();
     g.fill(0xffff88);
+    g.moveTo(starCx, starCy - starOuter);
+    for (let si = 1; si < 12; si++) {
+      const sa = (si / 12) * Math.PI * 2 - Math.PI / 2;
+      const sr = si % 2 === 0 ? starOuter : starInner;
+      g.lineTo(starCx + Math.cos(sa) * sr, starCy + Math.sin(sa) * sr);
+    }
+    g.closePath();
+    g.stroke({ color: 0xffdd44, width: 0.4 });
 
-    // Staff: diagonal line extending upward from left side with crystal
-    const staffBaseX = wx - topHalf - 2;
+    // Staff: vertical line with ornate crescent moon + glowing faceted gem
+    const staffBaseX = wx - topHalf - 3;
     const staffBaseY = robeBot - 2;
-    const staffTopX = wx - topHalf - 6;
-    const staffTopY = wy - TS * 0.55;
+    const staffTopX = wx - topHalf - 3;
+    const staffTopY = wy - TS * 0.58;
+    // Staff shaft
     g.moveTo(staffBaseX, staffBaseY);
     g.lineTo(staffTopX, staffTopY);
-    g.stroke({ color: 0x886644, width: 2 });
-    // Crystal diamond on top of staff
-    const crx = staffTopX;
-    const cry = staffTopY - 4;
-    g.moveTo(crx, cry - 4);
-    g.lineTo(crx + 3, cry);
-    g.lineTo(crx, cry + 4);
-    g.lineTo(crx - 3, cry);
+    g.stroke({ color: 0x886644, width: 2.5 });
+    // Staff shaft highlight
+    g.moveTo(staffBaseX + 1, staffBaseY);
+    g.lineTo(staffTopX + 1, staffTopY + 2);
+    g.stroke({ color: 0xaa8866, width: 0.5, alpha: 0.4 });
+
+    // Crescent moon polygon at staff top
+    const moonCx = staffTopX;
+    const moonCy = staffTopY - 3;
+    const moonR = 5;
+    // Outer arc of crescent (left side)
+    g.moveTo(moonCx, moonCy - moonR);
+    for (let mi = 1; mi <= 8; mi++) {
+      const ma = -Math.PI / 2 + (mi / 8) * Math.PI;
+      g.lineTo(moonCx + Math.cos(ma) * moonR, moonCy + Math.sin(ma) * moonR);
+    }
+    // Inner arc (makes it a crescent)
+    for (let mi = 8; mi >= 0; mi--) {
+      const ma = -Math.PI / 2 + (mi / 8) * Math.PI;
+      g.lineTo(moonCx + Math.cos(ma) * moonR * 0.5 + moonR * 0.3, moonCy + Math.sin(ma) * moonR * 0.7);
+    }
+    g.closePath();
+    g.fill({ color: 0xccddff, alpha: 0.85 });
+    g.moveTo(moonCx, moonCy - moonR);
+    for (let mi = 1; mi <= 8; mi++) {
+      const ma = -Math.PI / 2 + (mi / 8) * Math.PI;
+      g.lineTo(moonCx + Math.cos(ma) * moonR, moonCy + Math.sin(ma) * moonR);
+    }
+    for (let mi = 8; mi >= 0; mi--) {
+      const ma = -Math.PI / 2 + (mi / 8) * Math.PI;
+      g.lineTo(moonCx + Math.cos(ma) * moonR * 0.5 + moonR * 0.3, moonCy + Math.sin(ma) * moonR * 0.7);
+    }
+    g.closePath();
+    g.stroke({ color: 0x88aaff, width: 0.5 });
+
+    // Faceted diamond gem at center of crescent
+    const gemCx = moonCx + 1;
+    const gemCy = moonCy;
+    g.moveTo(gemCx, gemCy - 3.5);
+    g.lineTo(gemCx + 2.5, gemCy - 1);
+    g.lineTo(gemCx + 2.5, gemCy + 1);
+    g.lineTo(gemCx, gemCy + 3.5);
+    g.lineTo(gemCx - 2.5, gemCy + 1);
+    g.lineTo(gemCx - 2.5, gemCy - 1);
     g.closePath();
     g.fill({ color: 0xaaddff, alpha: 0.9 });
-    // Crystal glow circle
-    const crystalGlow = 0.3 + 0.3 * Math.sin(this._time * 5);
-    g.circle(crx, cry, 5);
+    // Gem facet lines
+    g.moveTo(gemCx, gemCy - 3.5);
+    g.lineTo(gemCx, gemCy + 3.5);
+    g.stroke({ color: 0xffffff, width: 0.3, alpha: 0.4 });
+    g.moveTo(gemCx - 2.5, gemCy);
+    g.lineTo(gemCx + 2.5, gemCy);
+    g.stroke({ color: 0xffffff, width: 0.3, alpha: 0.3 });
+    // Gem glow
+    const crystalGlow = 0.3 + 0.3 * Math.sin(t * 5);
+    g.circle(gemCx, gemCy, 5);
     g.fill({ color: 0x88ccff, alpha: crystalGlow });
   }
 
@@ -2523,8 +3195,6 @@ export class RiftWizardRenderer {
       const tx = tile.col * TS;
       const ty = tile.row * TS;
       const cx = tx + TS / 2;
-      const cy = ty + TS / 2;
-
       // Alpha based on turnDelay: more opaque = about to trigger
       const urgency = Math.max(0.2, 1 - (tile.turnDelay - 1) * 0.25);
       const pulseRate = 3 + (1 - urgency) * 2; // faster pulse when about to trigger
@@ -4031,6 +4701,8 @@ export class RiftWizardRenderer {
     this._spriteLayer.destroy();
     this._fxGfx.destroy();
     this._fxParticleGfx.destroy();
+    this._statusOverlayGfx.destroy();
+    this._telegraphGfx.destroy();
     this._cursorGfx.destroy();
   }
 }

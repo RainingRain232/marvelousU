@@ -86,10 +86,17 @@ export const DIFFICULTY_MULTIPLIERS = {
 export type Difficulty = "easy" | "normal" | "hard";
 
 // SP awarded for clearing a level
-export function getSPForLevel(levelNum: number): number {
-  if (levelNum < 5) return RWBalance.SP_PER_LEVEL_EARLY;
-  if (levelNum < 15) return RWBalance.SP_PER_LEVEL_MID;
-  return RWBalance.SP_PER_LEVEL_LATE;
+export function getSPForLevel(levelNum: number, difficulty?: Difficulty): number {
+  let sp: number;
+  if (levelNum < 5) sp = RWBalance.SP_PER_LEVEL_EARLY;
+  else if (levelNum < 15) sp = RWBalance.SP_PER_LEVEL_MID;
+  else sp = RWBalance.SP_PER_LEVEL_LATE;
+
+  if (difficulty === "easy") {
+    sp += DIFFICULTY_MULTIPLIERS.easy.spBonus;
+  }
+
+  return sp;
 }
 
 // Enemy count for a level

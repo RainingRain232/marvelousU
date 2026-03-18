@@ -130,6 +130,9 @@ export function applyDamageToEnemy(
   if (enemy.hp <= 0) {
     enemy.alive = false;
     rwEventBus.emit(RWEvent.ENEMY_DEATH, { enemyDefId: enemy.defId, isBoss: enemy.isBoss, school });
+    if (enemy.isBoss) {
+      rwEventBus.emit(RWEvent.BOSS_DEATH, { enemyDefId: enemy.defId, school });
+    }
     state.animationQueue.push({
       type: RWAnimationType.DEATH,
       fromCol: enemy.col,
