@@ -59,97 +59,133 @@ export class TerrariaGame {
   private _showTitleScreen(): void {
     const overlay = document.createElement("div");
     overlay.id = "terraria-title";
-    overlay.style.cssText = `
-      position:fixed;top:0;left:0;width:100%;height:100%;z-index:100;
-      background:linear-gradient(180deg,#0a1628 0%,#1a2a18 40%,#2a3a1a 100%);
-      display:flex;flex-direction:column;align-items:center;justify-content:center;
-      font-family:'Segoe UI',sans-serif;color:white;
+    const css = `
+      @keyframes td-shimmer { 0%,100%{text-shadow:0 0 15px rgba(255,215,0,0.4),0 2px 4px rgba(0,0,0,0.5)} 50%{text-shadow:0 0 30px rgba(255,215,0,0.7),0 0 60px rgba(255,180,0,0.3),0 2px 4px rgba(0,0,0,0.5)} }
+      @keyframes td-float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+      @keyframes td-fadeIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+      @keyframes td-stars { 0%{opacity:0.3} 50%{opacity:1} 100%{opacity:0.3} }
+      .td-btn{padding:12px 0;font-size:17px;font-family:Georgia,serif;border:1px solid #5a4010;border-radius:8px;cursor:pointer;width:260px;transition:all 0.25s;text-align:center;letter-spacing:1px;position:relative;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.3)}
+      .td-btn:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,0.4);border-color:#aa8030}
+      .td-btn:active{transform:translateY(1px);box-shadow:0 1px 4px rgba(0,0,0,0.3)}
+      .td-btn::after{content:'';position:absolute;top:0;left:0;right:0;height:50%;background:linear-gradient(180deg,rgba(255,255,255,0.06),transparent);pointer-events:none}
+      .td-select{background:rgba(0,0,0,0.35);border:1px solid #5a4010;border-radius:6px;color:#daa520;padding:6px 12px;font-family:Georgia,serif;font-size:13px;cursor:pointer;min-width:130px;text-align:center;appearance:none;-webkit-appearance:none}
+      .td-select:focus{outline:none;border-color:#aa8030}
+      .td-label{font-size:11px;color:#8a7040;text-transform:uppercase;letter-spacing:2px;margin-bottom:5px}
     `;
+    overlay.style.cssText = `position:fixed;top:0;left:0;width:100%;height:100%;z-index:100;background:#080c14;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Segoe UI',sans-serif;color:white;overflow:hidden;`;
+    // Animated background with particles
+    let bgCanvas = "";
+    for (let i = 0; i < 40; i++) {
+      const x = Math.random() * 100;
+      const y = Math.random() * 100;
+      const s = 1 + Math.random() * 2;
+      const d = 2 + Math.random() * 5;
+      const dl = Math.random() * 3;
+      bgCanvas += `<div style="position:absolute;left:${x}%;top:${y}%;width:${s}px;height:${s}px;background:#ffd700;border-radius:50%;animation:td-stars ${d}s ${dl}s infinite ease-in-out;opacity:0.3"></div>`;
+    }
 
-    overlay.innerHTML = `
-      <div style="text-align:center;">
-        <div style="font-size:56px;margin-bottom:8px;">⚒️🏰⚔️</div>
-        <h1 style="font-size:42px;color:#FFD700;margin:0;text-shadow:0 0 20px rgba(255,215,0,0.5);
-            font-family:Georgia,serif;letter-spacing:4px;">CAMELOT DIG</h1>
-        <p style="font-size:16px;color:#C0A060;margin:8px 0 40px;font-style:italic;">
-          Dig deep. Build thy kingdom. Seek the Holy Grail.
-        </p>
-        <div style="margin-bottom:20px;">
-          <label style="font-size:12px;color:#C0A060;">World Seed (optional):</label><br>
-          <input id="td-seed-input" type="text" placeholder="Leave blank for random"
-            style="width:200px;padding:6px 10px;margin-top:4px;background:rgba(0,0,0,0.4);
-            border:1px solid #8B6914;border-radius:4px;color:#FFD700;font-size:14px;
-            text-align:center;font-family:Georgia,serif;">
+    overlay.innerHTML = `<style>${css}</style>
+      <div style="position:absolute;inset:0;background:linear-gradient(180deg,#060a18 0%,#0c1a10 35%,#1a2a14 65%,#14200a 100%);"></div>
+      <div style="position:absolute;inset:0;overflow:hidden;pointer-events:none">${bgCanvas}</div>
+      <!-- Decorative border frame -->
+      <div style="position:absolute;inset:20px;border:1px solid rgba(138,105,20,0.2);border-radius:16px;pointer-events:none"></div>
+      <div style="position:absolute;inset:24px;border:1px solid rgba(138,105,20,0.08);border-radius:14px;pointer-events:none"></div>
+      <!-- Content -->
+      <div style="position:relative;text-align:center;animation:td-fadeIn 0.8s ease-out;">
+        <!-- Logo area -->
+        <div style="animation:td-float 4s ease-in-out infinite;margin-bottom:6px;">
+          <div style="font-size:14px;letter-spacing:6px;color:#5a4a30;text-transform:uppercase;margin-bottom:8px;">— An Arthurian Saga —</div>
+          <h1 style="font-size:52px;color:#FFD700;margin:0;font-family:Georgia,serif;letter-spacing:6px;animation:td-shimmer 3s ease-in-out infinite;">CAMELOT DIG</h1>
+          <div style="width:200px;height:1px;background:linear-gradient(90deg,transparent,#8B6914,transparent);margin:10px auto;"></div>
+          <p style="font-size:15px;color:#a08850;font-style:italic;margin:0;font-family:Georgia,serif;">
+            Dig deep. Build thy kingdom. Seek the Holy Grail.
+          </p>
         </div>
-        <div id="td-menu-buttons" style="display:flex;flex-direction:column;gap:12px;align-items:center;"></div>
-        <div style="margin-top:40px;font-size:12px;opacity:0.4;">
-          A/D or ←/→ = Move | Space/W = Jump | Left Click = Mine | Right Click = Place<br>
-          E = Inventory | 1-9 = Hotbar | Shift = Sprint | ESC = Pause
+        <!-- World setup -->
+        <div style="margin:30px 0 24px;display:flex;gap:20px;justify-content:center;align-items:flex-start;flex-wrap:wrap;">
+          <div style="text-align:center;">
+            <div class="td-label">World Seed</div>
+            <input id="td-seed-input" type="text" placeholder="Random"
+              style="width:140px;padding:7px 12px;background:rgba(0,0,0,0.35);border:1px solid #5a4010;border-radius:6px;color:#daa520;font-size:13px;text-align:center;font-family:Georgia,serif;">
+          </div>
+          <div style="text-align:center;">
+            <div class="td-label">World Size</div>
+            <select id="td-world-size" class="td-select">
+              <option value="small">Small (200)</option>
+              <option value="medium" selected>Medium (400)</option>
+              <option value="large">Large (800)</option>
+            </select>
+          </div>
+          <div style="text-align:center;">
+            <div class="td-label">Difficulty</div>
+            <select id="td-difficulty" class="td-select">
+              <option value="easy">Journey</option>
+              <option value="normal" selected>Classic</option>
+              <option value="hard">Expert</option>
+            </select>
+          </div>
+        </div>
+        <!-- Buttons -->
+        <div id="td-menu-buttons" style="display:flex;flex-direction:column;gap:10px;align-items:center;"></div>
+        <!-- Controls hint -->
+        <div style="margin-top:32px;padding:12px 24px;background:rgba(0,0,0,0.2);border-radius:8px;border:1px solid rgba(138,105,20,0.1);display:inline-block;">
+          <div style="font-size:10px;color:#5a4a30;text-transform:uppercase;letter-spacing:2px;margin-bottom:6px;">Controls</div>
+          <div style="font-size:11px;color:#665a40;line-height:1.6;">
+            <span style="color:#8a7a50;">A/D</span> Move &nbsp;
+            <span style="color:#8a7a50;">Space</span> Jump &nbsp;
+            <span style="color:#8a7a50;">LMB</span> Mine &nbsp;
+            <span style="color:#8a7a50;">RMB</span> Place &nbsp;
+            <span style="color:#8a7a50;">E</span> Inventory &nbsp;
+            <span style="color:#8a7a50;">1-9</span> Hotbar &nbsp;
+            <span style="color:#8a7a50;">Shift</span> Sprint &nbsp;
+            <span style="color:#8a7a50;">F1</span> Help
+          </div>
         </div>
       </div>
     `;
-
     document.body.appendChild(overlay);
 
     const btnContainer = overlay.querySelector("#td-menu-buttons")!;
-
-    const btnStyle = `padding:10px 40px;font-size:18px;font-family:Georgia,serif;
-      border:1px solid #8B6914;border-radius:6px;cursor:pointer;min-width:220px;
-      transition:all 0.2s;`;
-
-    // New World button
-    const newBtn = document.createElement("button");
-    newBtn.textContent = "New World";
-    newBtn.style.cssText = btnStyle + "background:#2a1a0a;color:#FFD700;";
-    newBtn.onmouseenter = () => { newBtn.style.background = "#3a2a1a"; };
-    newBtn.onmouseleave = () => { newBtn.style.background = "#2a1a0a"; };
-    newBtn.onclick = () => {
-      const seedInput = (overlay.querySelector("#td-seed-input") as HTMLInputElement).value.trim();
-      const seed = seedInput ? this._hashString(seedInput) : undefined;
-      overlay.remove();
-      this._startGame(seed, false);
+    const mkBtn = (label: string, bg: string, fg: string, onClick: () => void) => {
+      const btn = document.createElement("button");
+      btn.className = "td-btn";
+      btn.textContent = label;
+      btn.style.cssText += `background:${bg};color:${fg};`;
+      btn.onclick = onClick;
+      btnContainer.appendChild(btn);
+      return btn;
     };
-    btnContainer.appendChild(newBtn);
 
-    // Continue button (only if save exists)
+    const getSetup = () => {
+      const seedVal = (overlay.querySelector("#td-seed-input") as HTMLInputElement).value.trim();
+      const sizeVal = (overlay.querySelector("#td-world-size") as HTMLSelectElement).value;
+      const diffVal = (overlay.querySelector("#td-difficulty") as HTMLSelectElement).value;
+      return { seed: seedVal ? this._hashString(seedVal) : undefined, size: sizeVal, difficulty: diffVal };
+    };
+
+    mkBtn("New World", "linear-gradient(180deg,#3a2a12,#2a1a0a)", "#FFD700", () => {
+      const s = getSetup();
+      overlay.remove();
+      this._startGame(s.seed, false, s.size, s.difficulty);
+    });
+
     if (hasSave()) {
-      const continueBtn = document.createElement("button");
-      continueBtn.textContent = "Continue";
-      continueBtn.style.cssText = btnStyle + "background:#1a1a2a;color:#88AAFF;";
-      continueBtn.onmouseenter = () => { continueBtn.style.background = "#2a2a3a"; };
-      continueBtn.onmouseleave = () => { continueBtn.style.background = "#1a1a2a"; };
-      continueBtn.onclick = () => {
+      mkBtn("Continue Saved World", "linear-gradient(180deg,#1a2040,#121830)", "#88AAFF", () => {
         overlay.remove();
         this._loadAndStartGame();
-      };
-      btnContainer.appendChild(continueBtn);
+      });
     }
 
-    // Creative button
-    const creativeBtn = document.createElement("button");
-    creativeBtn.textContent = "Creative Mode";
-    creativeBtn.style.cssText = btnStyle + "background:#1a2a1a;color:#88DD88;";
-    creativeBtn.onmouseenter = () => { creativeBtn.style.background = "#2a3a2a"; };
-    creativeBtn.onmouseleave = () => { creativeBtn.style.background = "#1a2a1a"; };
-    creativeBtn.onclick = () => {
-      const seedInput = (overlay.querySelector("#td-seed-input") as HTMLInputElement).value.trim();
-      const seed = seedInput ? this._hashString(seedInput) : undefined;
+    mkBtn("Creative Mode", "linear-gradient(180deg,#1a3020,#102818)", "#88DD88", () => {
+      const s = getSetup();
       overlay.remove();
-      this._startGame(seed, true);
-    };
-    btnContainer.appendChild(creativeBtn);
+      this._startGame(s.seed, true, s.size, s.difficulty);
+    });
 
-    // Back button
-    const backBtn = document.createElement("button");
-    backBtn.textContent = "Back to Menu";
-    backBtn.style.cssText = btnStyle + "background:#1a0a0a;color:#FF8866;margin-top:12px;";
-    backBtn.onmouseenter = () => { backBtn.style.background = "#2a1a1a"; };
-    backBtn.onmouseleave = () => { backBtn.style.background = "#1a0a0a"; };
-    backBtn.onclick = () => {
+    mkBtn("Back to Menu", "linear-gradient(180deg,#2a1414,#1a0c0c)", "#CC7766", () => {
       overlay.remove();
       this.destroy();
-    };
-    btnContainer.appendChild(backBtn);
+    });
   }
 
   private _hashString(str: string): number {
@@ -164,7 +200,7 @@ export class TerrariaGame {
   // Start Game
   // -----------------------------------------------------------------------
 
-  private _startGame(seed?: number, creative = false): void {
+  private _startGame(seed?: number, creative = false, _worldSize = "medium", _difficulty = "normal"): void {
     viewManager.clearWorld();
 
     // Create state

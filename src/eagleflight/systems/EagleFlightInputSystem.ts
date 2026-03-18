@@ -5,7 +5,7 @@
 // ---------------------------------------------------------------------------
 
 import type { EagleFlightState } from "../state/EagleFlightState";
-import { EFBalance } from "../state/EagleFlightState";
+import { EFBalance, getTerrainHeight } from "../state/EagleFlightState";
 
 type PauseCallback = (paused: boolean) => void;
 
@@ -305,9 +305,11 @@ export const EagleFlightInputSystem = {
     }
     p.speed = Math.max(EFBalance.MIN_SPEED, Math.min(p.boostActive ? EFBalance.BOOST_SPEED : EFBalance.MAX_SPEED, p.speed));
 
-    // --- Clamp altitude ---
-    if (p.position.y < EFBalance.MIN_ALT) {
-      p.position.y = EFBalance.MIN_ALT;
+    // --- Clamp altitude (terrain-aware) ---
+    const terrainH = getTerrainHeight(p.position.x, p.position.z);
+    const minAlt = Math.max(EFBalance.MIN_ALT, terrainH + EFBalance.MIN_ALT);
+    if (p.position.y < minAlt) {
+      p.position.y = minAlt;
       if (p.pitch > 0) p.pitch *= 0.5;
       state.shakeTimer = 0.15;
       state.shakeMag = 0.5;
@@ -366,7 +368,7 @@ export const EagleFlightInputSystem = {
     }
 
     // --- Near-ground / water detection ---
-    state.nearGround = p.position.y < 8;
+    state.nearGround = p.position.y < terrainH + 8;
     const nearRiverZ = Math.abs(p.position.z + 5) < 25;
     state.nearWater = p.position.y < 5 && nearRiverZ;
 
@@ -432,8 +434,8 @@ export const EagleFlightInputSystem = {
     p.position.x += -cosY * strafeInput * walkSpeed * 0.7 * dt;
     p.position.z += sinY * strafeInput * walkSpeed * 0.7 * dt;
 
-    // Keep on ground (y = ground level ~1.5 for Merlin's height)
-    p.position.y = 1.5;
+    // Keep on ground (terrain height + Merlin's height)
+    p.position.y = getTerrainHeight(p.position.x, p.position.z) + 1.5;
 
     // Track speed for display
     const isMoving = moveInput !== 0 || strafeInput !== 0;

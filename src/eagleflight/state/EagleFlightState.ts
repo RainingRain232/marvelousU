@@ -158,6 +158,26 @@ export const EFBalance = {
 } as const;
 
 // ---------------------------------------------------------------------------
+// Terrain height sampling (matches _buildTerrain procedural formula)
+// ---------------------------------------------------------------------------
+
+/** Returns approximate terrain height at world (x, z). */
+export function getTerrainHeight(x: number, z: number): number {
+  const dist = Math.sqrt(x * x + z * z);
+  let h = 0;
+  if (dist > 100) {
+    h += (dist - 100) * 0.05 * (Math.sin(x * 0.02) * Math.cos(z * 0.03) + 0.5);
+    h += Math.sin(x * 0.01 + z * 0.015) * 8;
+    h += Math.sin(x * 0.035 + z * 0.02) * 4;
+    h += Math.sin(x * 0.06 - z * 0.04) * 2;
+    h += 1; // average of rng()*2 noise
+  }
+  h += Math.sin(x * 0.1) * Math.cos(z * 0.1) * 0.5;
+  h += Math.sin(x * 0.05 + z * 0.07) * 1.5;
+  return h;
+}
+
+// ---------------------------------------------------------------------------
 // Checkpoint positions
 // ---------------------------------------------------------------------------
 

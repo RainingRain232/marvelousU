@@ -3477,6 +3477,7 @@ export class EagleFlightRenderer {
       const sx = Math.cos(angle) * dist;
       const sz = Math.sin(angle) * dist;
       if (Math.abs(sz + 15) < 15 && dist < 200) continue;
+      if (_excl(sx, sz)) continue;
 
       const sheep = new THREE.Group();
       // Woolly body (multiple spheres for fluffiness)
@@ -3536,6 +3537,7 @@ export class EagleFlightRenderer {
       const dist = 100 + rng() * 400;
       const mx = Math.cos(angle) * dist;
       const mz = Math.sin(angle) * dist;
+      if (_excl(mx, mz)) continue;
       for (let f = 0; f < 25; f++) {
         const fMat = new THREE.MeshStandardMaterial({
           color: flowerMeadowColors[Math.floor(rng() * flowerMeadowColors.length)],
