@@ -76,7 +76,7 @@ export interface EFNPC {
   targetX: number;
   targetZ: number;
   speed: number;
-  type: "peasant" | "knight" | "merchant";
+  type: "peasant" | "knight" | "merchant" | "sheep";
   lookingUp: boolean;
   lookTimer: number;
 }
@@ -271,6 +271,25 @@ function _createNPCs(): EFNPC[] {
       lookingUp: false,
       lookTimer: 0,
     });
+  }
+  // Travelling sheep flocks across the countryside
+  for (let flock = 0; flock < 6; flock++) {
+    const flockAngle = rng() * Math.PI * 2;
+    const flockDist = 150 + rng() * 350;
+    const fx = Math.cos(flockAngle) * flockDist;
+    const fz = Math.sin(flockAngle) * flockDist;
+    const flockSize = 4 + Math.floor(rng() * 5);
+    for (let s = 0; s < flockSize; s++) {
+      npcs.push({
+        position: { x: fx + (rng() - 0.5) * 8, y: 0, z: fz + (rng() - 0.5) * 8 },
+        targetX: fx + (rng() - 0.5) * 40,
+        targetZ: fz + (rng() - 0.5) * 40,
+        speed: 0.4 + rng() * 0.6,
+        type: "sheep",
+        lookingUp: false,
+        lookTimer: 0,
+      });
+    }
   }
   return npcs;
 }

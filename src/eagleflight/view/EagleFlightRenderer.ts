@@ -6655,38 +6655,99 @@ export class EagleFlightRenderer {
     const knightMat = new THREE.MeshStandardMaterial({ color: 0x556677, metalness: 0.3, roughness: 0.6 });
     const merchantMat = new THREE.MeshStandardMaterial({ color: 0x668844, roughness: 0.8 });
     const skinMat = new THREE.MeshStandardMaterial({ color: 0xddbbaa, roughness: 0.8 });
+    const woolMat = new THREE.MeshStandardMaterial({ color: 0xeeeedd, roughness: 0.95 });
+    const sheepFaceMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.9 });
+    const sheepLegMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.9 });
 
-    for (let i = 0; i < 44; i++) {
+    // Build mesh for each NPC type. Order must match _createNPCs():
+    // 30 city peasant/knight/merchant, 8 market merchants, 6 wall knights, then ~36 sheep
+    const npcTypes: ("peasant" | "knight" | "merchant" | "sheep")[] = [];
+    // City streets (30): mixed types
+    for (let ci = 0; ci < 30; ci++) npcTypes.push(["peasant", "knight", "merchant"][ci % 3] as "peasant" | "knight" | "merchant");
+    // Market (8)
+    for (let mi = 0; mi < 8; mi++) npcTypes.push("merchant");
+    // Wall guards (6)
+    for (let gi = 0; gi < 6; gi++) npcTypes.push("knight");
+    // Sheep flocks (6 flocks * ~6 avg = ~36 sheep, build 50 to be safe)
+    for (let si = 0; si < 50; si++) npcTypes.push("sheep");
+    const npcCount = npcTypes.length;
+
+    for (let i = 0; i < npcCount; i++) {
+      const npcType = npcTypes[i];
       const group = new THREE.Group();
-      const mat = i < 30 ? peasantMat : i < 36 ? knightMat : merchantMat;
 
-      // Body
-      const body = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.7, 0.25), mat);
-      body.position.y = 0.7;
-      group.add(body);
-      // Head
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 8), skinMat);
-      head.position.y = 1.2;
-      group.add(head);
-      // Legs
-      for (const side of [-1, 1]) {
-        const leg = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.4, 0.12), mat);
-        leg.position.set(side * 0.1, 0.2, 0);
-        group.add(leg);
+      if (npcType === "sheep") {
+        // Woolly body
+        const sheepBody = new THREE.Mesh(new THREE.SphereGeometry(0.5, 10, 8), woolMat);
+        sheepBody.position.y = 0.5;
+        sheepBody.scale.set(0.8, 0.7, 1.1);
+        group.add(sheepBody);
+        // Fluffy top wool
+        const topWool = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 6), woolMat);
+        topWool.position.set(0, 0.75, 0);
+        group.add(topWool);
+        // Head
+        const sheepHead = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 6), sheepFaceMat);
+        sheepHead.position.set(0, 0.55, -0.55);
+        group.add(sheepHead);
+        // Ears
+        for (const ex of [-1, 1]) {
+          const ear = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.1, 0.04), sheepFaceMat);
+          ear.position.set(ex * 0.18, 0.6, -0.5);
+          ear.rotation.z = ex * 0.4;
+          group.add(ear);
+        }
+        // Eyes
+        for (const ex of [-1, 1]) {
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 4), new THREE.MeshStandardMaterial({ color: 0x111111 }));
+          eye.position.set(ex * 0.1, 0.58, -0.68);
+          group.add(eye);
+        }
+        // Snout
+        const snout = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 4), new THREE.MeshStandardMaterial({ color: 0x444444 }));
+        snout.position.set(0, 0.48, -0.7);
+        group.add(snout);
+        // Legs
+        for (const lx of [-0.2, 0.2]) {
+          for (const lz of [-0.3, 0.3]) {
+            const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.35, 6), sheepLegMat);
+            leg.position.set(lx, 0.17, lz);
+            group.add(leg);
+          }
+        }
+        // Tail
+        const tail = new THREE.Mesh(new THREE.SphereGeometry(0.1, 6, 4), woolMat);
+        tail.position.set(0, 0.55, 0.5);
+        group.add(tail);
+      } else {
+        // Human NPC
+        const mat = npcType === "peasant" ? peasantMat : npcType === "knight" ? knightMat : merchantMat;
+        // Body
+        const body = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.7, 0.25), mat);
+        body.position.y = 0.7;
+        group.add(body);
+        // Head
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 8), skinMat);
+        head.position.y = 1.2;
+        group.add(head);
+        // Legs
+        for (const side of [-1, 1]) {
+          const leg = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.4, 0.12), mat);
+          leg.position.set(side * 0.1, 0.2, 0);
+          group.add(leg);
+        }
+        // Knights get helmet
+        if (npcType === "knight") {
+          const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.15, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.6), knightMat);
+          helmet.position.y = 1.25;
+          group.add(helmet);
+          const spear = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.5, 8), new THREE.MeshStandardMaterial({ color: 0x664422 }));
+          spear.position.set(0.2, 1, 0);
+          group.add(spear);
+        }
       }
 
-      // Knights get helmet
-      if (i >= 30 && i < 36) {
-        const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.15, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.6), knightMat);
-        helmet.position.y = 1.25;
-        group.add(helmet);
-        // Spear
-        const spear = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.5, 8), new THREE.MeshStandardMaterial({ color: 0x664422 }));
-        spear.position.set(0.2, 1, 0);
-        group.add(spear);
-      }
-
-      group.visible = false; // will be positioned in update
+      group.visible = false;
       this._scene.add(group);
       this._npcGroups.push(group);
     }

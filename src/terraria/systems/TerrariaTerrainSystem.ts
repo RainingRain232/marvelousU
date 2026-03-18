@@ -3,9 +3,10 @@
 // ---------------------------------------------------------------------------
 
 import { TB } from "../config/TerrariaBalance";
-import { BlockType } from "../config/TerrariaBlockDefs";
-import { WallType } from "../config/TerrariaBlockDefs";
+import { BlockType, WallType } from "../config/TerrariaBlockDefs";
 import { TerrariaChunk } from "../state/TerrariaChunk";
+import { getBiomeAt } from "../config/TerrariaBiomeDefs";
+import type { BiomeDef } from "../config/TerrariaBiomeDefs";
 
 const CW = TB.CHUNK_W;
 const WH = TB.WORLD_HEIGHT;
@@ -79,9 +80,16 @@ export function initTerrain(seed: number): void {
   _perm = buildPerm(seed);
 }
 
+/** Get the biome at a world X position. */
+export function getBiome(wx: number): BiomeDef {
+  const biomeNoise = noise2D(_perm, wx * 0.005 + 500, 100);
+  return getBiomeAt(biomeNoise);
+}
+
 export function getSurfaceHeight(wx: number): number {
+  const biome = getBiome(wx);
   const n = fractal2D(_perm, wx, 0, 1 / TB.TERRAIN_SCALE);
-  return Math.round(TB.SEA_LEVEL + n * TB.TERRAIN_HEIGHT_RANGE);
+  return Math.round(TB.SEA_LEVEL + biome.heightMod + n * TB.TERRAIN_HEIGHT_RANGE * biome.heightScale);
 }
 
 export function generateChunk(cx: number): TerrariaChunk {
@@ -92,6 +100,7 @@ export function generateChunk(cx: number): TerrariaChunk {
     const wx = baseX + lx;
     if (wx < 0 || wx >= TB.WORLD_WIDTH) continue;
 
+    const biome = getBiome(wx);
     const surfaceY = getSurfaceHeight(wx);
 
     for (let y = 0; y < WH; y++) {
@@ -100,10 +109,7 @@ export function generateChunk(cx: number): TerrariaChunk {
         continue;
       }
 
-      if (y > surfaceY + 1) {
-        // Sky - leave as air
-        continue;
-      }
+      if (y > surfaceY + 1) continue; // Sky
 
       // Cave carving
       const caveVal = noise2D(_perm, wx * TB.CAVE_SCALE, y * TB.CAVE_SCALE);
@@ -111,39 +117,38 @@ export function generateChunk(cx: number): TerrariaChunk {
       const isCave = y < surfaceY - 2 && (caveVal > TB.CAVE_THRESHOLD || (y < TB.CAVERN_Y && largeCaveVal > TB.LARGE_CAVE_THRESHOLD));
 
       if (isCave) {
-        // Underground caves get natural walls
-        if (y < surfaceY - 4) {
-          chunk.setWall(lx, y, WallType.STONE_WALL);
+        if (y < surfaceY - 4) chunk.setWall(lx, y, WallType.STONE_WALL);
+        // Puddles at cave floors
+        if (y > 1 && !isCave) {
+          const belowCave = noise2D(_perm, wx * TB.CAVE_SCALE, (y - 1) * TB.CAVE_SCALE) > TB.CAVE_THRESHOLD;
+          if (!belowCave && hashPos(_seed + 900, wx, y) < 0.1) {
+            chunk.setBlock(lx, y, BlockType.WATER);
+          }
         }
         continue;
       }
 
-      // Surface layer
+      // Surface layer — use biome blocks
       if (y === surfaceY) {
-        chunk.setBlock(lx, y, BlockType.GRASS);
+        chunk.setBlock(lx, y, biome.surfaceBlock);
       } else if (y > surfaceY - 4 && y < surfaceY) {
-        chunk.setBlock(lx, y, BlockType.DIRT);
+        chunk.setBlock(lx, y, biome.subsurfaceBlock);
         if (y < surfaceY - 2) chunk.setWall(lx, y, WallType.DIRT_WALL);
       } else if (y <= surfaceY - 4) {
-        // Underground stone with ore distribution
+        // Underground: depth-based ore distribution
         let block = BlockType.STONE;
 
-        // Ore generation based on depth
         if (y < TB.UNDERWORLD_Y) {
-          // Underworld
           if (hashPos(_seed + 400, wx, y) < 0.01) block = BlockType.DRAGON_BONE_ORE;
           else if (y < 5 && hashPos(_seed + 500, wx, y) < 0.3) block = BlockType.LAVA;
         } else if (y < TB.CAVERN_Y) {
-          // Cavern layer
           if (hashPos(_seed + 300, wx, y) < 0.003) block = BlockType.CRYSTAL_ORE;
           else if (hashPos(_seed + 200, wx, y) < 0.008) block = BlockType.GOLD_ORE;
           else if (hashPos(_seed + 100, wx, y) < 0.02) block = BlockType.IRON_ORE;
         } else if (y < TB.UNDERGROUND_Y) {
-          // Underground
           if (hashPos(_seed + 200, wx, y) < 0.005) block = BlockType.GOLD_ORE;
           else if (hashPos(_seed + 100, wx, y) < 0.02) block = BlockType.IRON_ORE;
         } else {
-          // Shallow underground
           if (hashPos(_seed + 100, wx, y) < 0.01) block = BlockType.IRON_ORE;
         }
 
@@ -153,27 +158,38 @@ export function generateChunk(cx: number): TerrariaChunk {
     }
   }
 
-  // Trees
+  // Trees (biome-dependent)
   for (let lx = 2; lx < CW - 2; lx++) {
     const wx = baseX + lx;
     if (wx < 2 || wx >= TB.WORLD_WIDTH - 2) continue;
+    const biome = getBiome(wx);
     const surfaceY = getSurfaceHeight(wx);
-    if (hashPos(_seed + 700, wx, surfaceY) < TB.TREE_CHANCE) {
-      _placeTree(chunk, lx, surfaceY + 1);
+    if (hashPos(_seed + 700, wx, surfaceY) < TB.TREE_CHANCE * biome.treeDensity) {
+      _placeTree(chunk, lx, surfaceY + 1, biome.treeLog, biome.treeLeaves);
     }
   }
 
-  // Surface decorations
+  // Surface decorations (biome-aware)
   for (let lx = 0; lx < CW; lx++) {
     const wx = baseX + lx;
     if (wx < 0 || wx >= TB.WORLD_WIDTH) continue;
+    const biome = getBiome(wx);
     const surfaceY = getSurfaceHeight(wx);
     const above = surfaceY + 1;
-    if (above < WH && chunk.getBlock(lx, above) === BlockType.AIR && chunk.getBlock(lx, surfaceY) === BlockType.GRASS) {
+    const surfBlock = chunk.getBlock(lx, surfaceY);
+    if (above < WH && chunk.getBlock(lx, above) === BlockType.AIR &&
+        (surfBlock === BlockType.GRASS || surfBlock === BlockType.MUD || surfBlock === BlockType.SNOW)) {
       const r = hashPos(_seed + 800, wx, surfaceY);
-      if (r < 0.15) chunk.setBlock(lx, above, BlockType.TALL_GRASS);
-      else if (r < 0.18) chunk.setBlock(lx, above, BlockType.RED_FLOWER);
-      else if (r < 0.20) chunk.setBlock(lx, above, BlockType.BLUE_FLOWER);
+      if (surfBlock === BlockType.SNOW) {
+        // Snow biome: no flowers, just occasional snow-covered rocks
+      } else if (surfBlock === BlockType.MUD) {
+        if (r < 0.1) chunk.setBlock(lx, above, BlockType.MUSHROOM);
+        else if (r < 0.2) chunk.setBlock(lx, above, BlockType.TALL_GRASS);
+      } else {
+        if (r < 0.15) chunk.setBlock(lx, above, BlockType.TALL_GRASS);
+        else if (r < 0.18) chunk.setBlock(lx, above, BlockType.RED_FLOWER);
+        else if (r < 0.21) chunk.setBlock(lx, above, BlockType.BLUE_FLOWER);
+      }
     }
   }
 
@@ -197,14 +213,14 @@ export function generateChunk(cx: number): TerrariaChunk {
   return chunk;
 }
 
-function _placeTree(chunk: TerrariaChunk, lx: number, baseY: number): void {
+function _placeTree(chunk: TerrariaChunk, lx: number, baseY: number, logType = BlockType.OAK_LOG, leafType = BlockType.OAK_LEAVES): void {
   const height = 4 + Math.floor(hashPos(_seed + 701, chunk.cx * CW + lx, baseY) * 4);
 
   // Trunk
   for (let dy = 0; dy < height; dy++) {
     const y = baseY + dy;
     if (y >= WH) break;
-    chunk.setBlock(lx, y, BlockType.OAK_LOG);
+    chunk.setBlock(lx, y, logType);
   }
 
   // Canopy (leaves)
@@ -218,7 +234,7 @@ function _placeTree(chunk: TerrariaChunk, lx: number, baseY: number): void {
       // Circular-ish shape
       if (Math.abs(dx) === 2 && dy === 2) continue;
       if (Math.abs(dx) === 2 && dy === -1) continue;
-      chunk.setBlock(tx, ty, BlockType.OAK_LEAVES);
+      chunk.setBlock(tx, ty, leafType);
     }
   }
 }

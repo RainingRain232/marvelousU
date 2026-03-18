@@ -9,6 +9,7 @@ import { getWorldBlock, setWorldBlock, addMessage } from "../state/TerrariaState
 import { getHeldItem, addToInventory, createBlockItem, removeFromSlot } from "../state/TerrariaInventory";
 import { ItemCategory } from "../state/TerrariaInventory";
 import { recalcLightingLocal } from "./TerrariaLightingSystem";
+import { onIronMined } from "./TerrariaQuestSystem";
 import type { InputState } from "./TerrariaInputSystem";
 import type { TerrariaCamera } from "../view/TerrariaCamera";
 
@@ -70,6 +71,9 @@ export function updateMining(state: TerrariaState, input: InputState, camera: Te
         const item = createBlockItem(dropType, dropDef.name, dropDef.color);
         addToInventory(p.inventory, item);
         p.blocksMined++;
+
+        // Track iron mining for quest
+        if (bt === BlockType.IRON_ORE) onIronMined(state);
 
         // Degrade tool
         if (held && held.durability !== undefined) {
