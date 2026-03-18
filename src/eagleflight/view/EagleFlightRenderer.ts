@@ -233,7 +233,7 @@ export class EagleFlightRenderer {
   // ---------------------------------------------------------------------------
 
   private _buildSky(): void {
-    const skyGeo = new THREE.SphereGeometry(400, 48, 24);
+    const skyGeo = new THREE.SphereGeometry(400, 64, 32);
     const skyMat = new THREE.ShaderMaterial({
       side: THREE.BackSide,
       depthWrite: false,
@@ -330,7 +330,7 @@ export class EagleFlightRenderer {
 
   private _buildTerrain(): void {
     // High-res terrain with procedural shader for multi-biome blending
-    const groundGeo = new THREE.PlaneGeometry(800, 800, 160, 160);
+    const groundGeo = new THREE.PlaneGeometry(800, 800, 300, 300);
     groundGeo.rotateX(-Math.PI / 2);
     const posAttr = groundGeo.getAttribute("position");
     const rng = seededRandom(42);
@@ -436,7 +436,7 @@ export class EagleFlightRenderer {
 
     // City ground — brown mud with brick road strips
     // Main city ground (mud/packed earth, not cobblestone everywhere)
-    const cityGroundGeo = new THREE.PlaneGeometry(180, 180, 18, 18);
+    const cityGroundGeo = new THREE.PlaneGeometry(180, 180, 36, 36);
     cityGroundGeo.rotateX(-Math.PI / 2);
     const cityGroundPos = cityGroundGeo.getAttribute("position");
     const cityColors = new Float32Array(cityGroundPos.count * 3);
@@ -725,7 +725,7 @@ export class EagleFlightRenderer {
 
     // Arches (higher poly)
     for (let i = -1; i <= 1; i++) {
-      const archGeo = new THREE.TorusGeometry(3, 0.6, 8, 16, Math.PI);
+      const archGeo = new THREE.TorusGeometry(3, 0.6, 12, 24, Math.PI);
       const arch = new THREE.Mesh(archGeo, stoneMat);
       arch.position.set(0, 0.5, i * 6);
       arch.rotation.y = Math.PI / 2;
@@ -744,7 +744,7 @@ export class EagleFlightRenderer {
       pier.castShadow = true;
       bridgeGroup.add(pier);
       // Pier cutwater (triangular front)
-      const cutwater = new THREE.Mesh(new THREE.ConeGeometry(1, 3, 3), stoneMat);
+      const cutwater = new THREE.Mesh(new THREE.ConeGeometry(1, 3, 8), stoneMat);
       cutwater.position.set(4, 0, pierZ);
       cutwater.rotation.z = Math.PI / 2;
       cutwater.rotation.y = Math.PI / 6;
@@ -764,7 +764,7 @@ export class EagleFlightRenderer {
       // Individual baluster posts
       for (let bp = -9; bp <= 9; bp++) {
         const baluster = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.06, 0.08, 0.8, 6),
+          new THREE.CylinderGeometry(0.06, 0.08, 0.8, 12),
           stoneMat,
         );
         baluster.position.set(side * 3.8, 3.1, bp);
@@ -776,7 +776,7 @@ export class EagleFlightRenderer {
         endPost.position.set(side * 3.8, 3.2, endZ);
         bridgeGroup.add(endPost);
         // Finial on end post
-        const finial = new THREE.Mesh(new THREE.SphereGeometry(0.2, 6, 5), stoneMat);
+        const finial = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), stoneMat);
         finial.position.set(side * 3.8, 3.9, endZ);
         bridgeGroup.add(finial);
       }
@@ -787,13 +787,13 @@ export class EagleFlightRenderer {
     const lanternGlow = new THREE.MeshStandardMaterial({ color: 0xff9944, emissive: 0xff8833, emissiveIntensity: 0.5 });
     for (const lz of [-5, 5]) {
       for (const side of [-1, 1]) {
-        const lPost = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.5, 5), lanternMat);
+        const lPost = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.5, 10), lanternMat);
         lPost.position.set(side * 3.8, 4.2, lz);
         bridgeGroup.add(lPost);
         const lBox = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.4, 0.3), lanternMat);
         lBox.position.set(side * 3.8, 4.8, lz);
         bridgeGroup.add(lBox);
-        const lGlow = new THREE.Mesh(new THREE.SphereGeometry(0.1, 4, 3), lanternGlow);
+        const lGlow = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), lanternGlow);
         lGlow.position.set(side * 3.8, 4.8, lz);
         bridgeGroup.add(lGlow);
       }
@@ -952,7 +952,7 @@ export class EagleFlightRenderer {
       // Brick course rings on wall towers
       for (let br = 0; br < 7; br++) {
         const brickRing = new THREE.Mesh(
-          new THREE.TorusGeometry(towerRadius + 0.02 - br * 0.01, 0.04, 4, 20),
+          new THREE.TorusGeometry(towerRadius + 0.02 - br * 0.01, 0.04, 8, 28),
           mortarMat,
         );
         brickRing.position.set(tx, 2 + br * 2, tz);
@@ -961,7 +961,7 @@ export class EagleFlightRenderer {
       }
 
       // Tower parapet with individual merlons
-      const parapetRing = new THREE.Mesh(new THREE.CylinderGeometry(towerRadius + 0.3, towerRadius + 0.3, 1, 16), wallMat);
+      const parapetRing = new THREE.Mesh(new THREE.CylinderGeometry(towerRadius + 0.3, towerRadius + 0.3, 1, 24), wallMat);
       parapetRing.position.set(tx, towerHeight + 0.5, tz);
       this._wallsGroup.add(parapetRing);
       for (let m = 0; m < 8; m++) {
@@ -978,7 +978,7 @@ export class EagleFlightRenderer {
       }
 
       // Tower roof (higher poly cone)
-      const roofGeo = new THREE.ConeGeometry(towerRadius * 1.3, 5, 16);
+      const roofGeo = new THREE.ConeGeometry(towerRadius * 1.3, 5, 24);
       const roofMat = new THREE.MeshStandardMaterial({ color: 0x553322, roughness: 0.8 });
       const roof = new THREE.Mesh(roofGeo, roofMat);
       roof.position.set(tx, towerHeight + 3, tz);
@@ -1022,7 +1022,7 @@ export class EagleFlightRenderer {
         tl.position.set(tx, towerHeight + 1, tz);
         this._wallsGroup.add(tl);
         this._torchLights.push(tl);
-        const flame = new THREE.Mesh(new THREE.SphereGeometry(0.25, 4, 3), torchFireMat);
+        const flame = new THREE.Mesh(new THREE.SphereGeometry(0.25, 8, 6), torchFireMat);
         flame.position.set(tx, towerHeight + 0.5, tz);
         this._wallsGroup.add(flame);
         this._torchMeshes.push(flame);
@@ -1054,18 +1054,18 @@ export class EagleFlightRenderer {
       body.position.y = 0.4;
       guard.add(body);
       // Head
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 5, 4), guardSkinMat);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 10, 8), guardSkinMat);
       head.position.y = 0.95;
       guard.add(head);
       // Helmet
-      const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.17, 5, 4, 0, Math.PI * 2, 0, Math.PI * 0.6), guardHelmetMat);
+      const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.17, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.6), guardHelmetMat);
       helmet.position.y = 1.0;
       guard.add(helmet);
       // Spear
-      const spear = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 2, 3), new THREE.MeshStandardMaterial({ color: 0x664422 }));
+      const spear = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 2, 8), new THREE.MeshStandardMaterial({ color: 0x664422 }));
       spear.position.set(0.25, 0.8, 0);
       guard.add(spear);
-      const spearTip = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.2, 3), guardHelmetMat);
+      const spearTip = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.2, 8), guardHelmetMat);
       spearTip.position.set(0.25, 1.9, 0);
       guard.add(spearTip);
       guard.position.set(gx, towerHeight + 1.5, gz);
@@ -1090,7 +1090,7 @@ export class EagleFlightRenderer {
     // Two tower pillars
     for (const side of [-1, 1]) {
       const pillar = new THREE.Mesh(
-        new THREE.BoxGeometry(3, 14, 4, 1, 2, 1),
+        new THREE.BoxGeometry(3, 14, 4, 2, 4, 2),
         mat,
       );
       pillar.position.set(side * 4, 7, 0);
@@ -1123,7 +1123,7 @@ export class EagleFlightRenderer {
 
       // Tower roof
       const roof = new THREE.Mesh(
-        new THREE.ConeGeometry(2.5, 5, 8),
+        new THREE.ConeGeometry(2.5, 5, 16),
         roofMat,
       );
       roof.position.set(side * 4, 16.5, 0);
@@ -1168,7 +1168,7 @@ export class EagleFlightRenderer {
     group.add(arch);
     // Arch top (rounded)
     const archTop = new THREE.Mesh(
-      new THREE.TorusGeometry(2.5, 0.3, 6, 12, Math.PI),
+      new THREE.TorusGeometry(2.5, 0.3, 10, 20, Math.PI),
       mat,
     );
     archTop.position.set(0, 8, 0);
@@ -1177,13 +1177,13 @@ export class EagleFlightRenderer {
     // Iron grate bars
     const ironMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.7, roughness: 0.4 });
     for (let gb = -3; gb <= 3; gb++) {
-      const gBar = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 7, 4), ironMat);
+      const gBar = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 7, 10), ironMat);
       gBar.position.set(gb * 0.7, 3.5, 0.3);
       group.add(gBar);
     }
     // Horizontal bars
     for (let hb = 0; hb < 4; hb++) {
-      const hBar = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 5, 4), ironMat);
+      const hBar = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 5, 10), ironMat);
       hBar.position.set(0, 1.5 + hb * 1.8, 0.3);
       hBar.rotation.z = Math.PI / 2;
       group.add(hBar);
@@ -1224,7 +1224,7 @@ export class EagleFlightRenderer {
     this._castleGroup.add(base);
 
     // Main keep — tall central tower (multi-tier)
-    const keepGeo = new THREE.BoxGeometry(18, 30, 18, 4, 6, 4);
+    const keepGeo = new THREE.BoxGeometry(18, 30, 18, 6, 8, 6);
     const keep = new THREE.Mesh(keepGeo, stoneMat);
     keep.position.set(0, 18, 0);
     keep.castShadow = true;
@@ -1301,7 +1301,7 @@ export class EagleFlightRenderer {
     }
 
     // Keep upper parapet
-    const keepParapet = new THREE.Mesh(new THREE.BoxGeometry(19, 2, 19, 2, 1, 2), stoneMat);
+    const keepParapet = new THREE.Mesh(new THREE.BoxGeometry(19, 2, 19, 3, 2, 3), stoneMat);
     keepParapet.position.set(0, 33.5, 0);
     keepParapet.castShadow = true;
     this._castleGroup.add(keepParapet);
@@ -1309,11 +1309,11 @@ export class EagleFlightRenderer {
     // Keep corner turrets (4 small cylinders on keep top)
     for (const cx2 of [-8, 8]) {
       for (const cz2 of [-8, 8]) {
-        const turret = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.8, 8, 12), stoneMat);
+        const turret = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.8, 8, 20), stoneMat);
         turret.position.set(cx2, 30, cz2);
         turret.castShadow = true;
         this._castleGroup.add(turret);
-        const turretRoof = new THREE.Mesh(new THREE.ConeGeometry(2, 3, 12), blueRoofMat);
+        const turretRoof = new THREE.Mesh(new THREE.ConeGeometry(2, 3, 20), blueRoofMat);
         turretRoof.position.set(cx2, 35.5, cz2);
         turretRoof.castShadow = true;
         this._castleGroup.add(turretRoof);
@@ -1328,7 +1328,7 @@ export class EagleFlightRenderer {
     }
 
     // Keep roof
-    const keepRoofGeo = new THREE.ConeGeometry(15, 12, 8);
+    const keepRoofGeo = new THREE.ConeGeometry(15, 12, 16);
     const keepRoof = new THREE.Mesh(keepRoofGeo, blueRoofMat);
     keepRoof.position.set(0, 39, 0);
     keepRoof.rotation.y = Math.PI / 4;
@@ -1336,11 +1336,11 @@ export class EagleFlightRenderer {
     this._castleGroup.add(keepRoof);
 
     // Gold spire on top with orb
-    const spireGeo = new THREE.ConeGeometry(0.8, 8, 12);
+    const spireGeo = new THREE.ConeGeometry(0.8, 8, 20);
     const spire = new THREE.Mesh(spireGeo, goldMat);
     spire.position.set(0, 49, 0);
     this._castleGroup.add(spire);
-    const spireOrb = new THREE.Mesh(new THREE.SphereGeometry(0.5, 12, 10), goldMat);
+    const spireOrb = new THREE.Mesh(new THREE.SphereGeometry(0.5, 18, 14), goldMat);
     spireOrb.position.set(0, 53.5, 0);
     this._castleGroup.add(spireOrb);
 
@@ -1367,7 +1367,7 @@ export class EagleFlightRenderer {
     ];
     for (const co of cornerOffsets) {
       // Tower body (high poly)
-      const tGeo = new THREE.CylinderGeometry(4, 4.5, 22, 20, 4);
+      const tGeo = new THREE.CylinderGeometry(4, 4.5, 22, 32, 4);
       const tower = new THREE.Mesh(tGeo, stoneMat);
       tower.position.set(co.x, 14, co.z);
       tower.castShadow = true;
@@ -1376,7 +1376,7 @@ export class EagleFlightRenderer {
       // Stone course rings on tower (major)
       for (let sr = 0; sr < 4; sr++) {
         const stoneRing = new THREE.Mesh(
-          new THREE.TorusGeometry(4.15 - sr * 0.05, 0.12, 4, 20),
+          new THREE.TorusGeometry(4.15 - sr * 0.05, 0.12, 8, 28),
           darkStoneMat,
         );
         stoneRing.position.set(co.x, 5 + sr * 5, co.z);
@@ -1386,7 +1386,7 @@ export class EagleFlightRenderer {
       // Fine brick mortar rings on castle corner towers
       for (let br = 0; br < 14; br++) {
         const brickRing = new THREE.Mesh(
-          new THREE.TorusGeometry(4.08, 0.04, 4, 20),
+          new THREE.TorusGeometry(4.08, 0.04, 8, 28),
           darkStoneMat,
         );
         brickRing.position.set(co.x, 4 + br * 1.4, co.z);
@@ -1395,7 +1395,7 @@ export class EagleFlightRenderer {
       }
 
       // Tower upper parapet ring
-      const tParapet = new THREE.Mesh(new THREE.CylinderGeometry(4.3, 4.3, 1.5, 16), stoneMat);
+      const tParapet = new THREE.Mesh(new THREE.CylinderGeometry(4.3, 4.3, 1.5, 24), stoneMat);
       tParapet.position.set(co.x, 25.5, co.z);
       this._castleGroup.add(tParapet);
 
@@ -1413,7 +1413,7 @@ export class EagleFlightRenderer {
       }
 
       // Tower roof (higher poly)
-      const trGeo = new THREE.ConeGeometry(5, 8, 16);
+      const trGeo = new THREE.ConeGeometry(5, 8, 24);
       const tRoof = new THREE.Mesh(trGeo, blueRoofMat);
       tRoof.position.set(co.x, 31, co.z);
       tRoof.castShadow = true;
@@ -1433,7 +1433,7 @@ export class EagleFlightRenderer {
       }
 
       // Pennant pole + banner
-      const poleGeo = new THREE.CylinderGeometry(0.12, 0.12, 8, 6);
+      const poleGeo = new THREE.CylinderGeometry(0.12, 0.12, 8, 12);
       const pole = new THREE.Mesh(poleGeo, darkStoneMat);
       pole.position.set(co.x, 39, co.z);
       this._castleGroup.add(pole);
@@ -1575,19 +1575,19 @@ export class EagleFlightRenderer {
     }
 
     // Courtyard well
-    const wellGeo = new THREE.CylinderGeometry(1.5, 1.5, 2, 12);
+    const wellGeo = new THREE.CylinderGeometry(1.5, 1.5, 2, 20);
     const well = new THREE.Mesh(wellGeo, darkStoneMat);
     well.position.set(8, 4, -8);
     this._castleGroup.add(well);
 
     // Well roof
-    const wellRoofGeo = new THREE.ConeGeometry(2.5, 2, 6);
+    const wellRoofGeo = new THREE.ConeGeometry(2.5, 2, 12);
     const wellRoof = new THREE.Mesh(wellRoofGeo, roofMat);
     wellRoof.position.set(8, 6.5, -8);
     this._castleGroup.add(wellRoof);
 
     // --- Castle moat ---
-    const moatGeo = new THREE.TorusGeometry(34, 3, 6, 32);
+    const moatGeo = new THREE.TorusGeometry(34, 3, 10, 40);
     const moatMat = new THREE.MeshStandardMaterial({
       color: 0x1a4466,
       roughness: 0.2,
@@ -1608,7 +1608,7 @@ export class EagleFlightRenderer {
     // Chains
     const chainMat = new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.8, roughness: 0.3 });
     for (const side of [-1, 1]) {
-      const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 6, 4), chainMat);
+      const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 6, 10), chainMat);
       chain.position.set(side * 2.5, 4, -30);
       chain.rotation.z = side * 0.4;
       this._castleGroup.add(chain);
@@ -1635,7 +1635,7 @@ export class EagleFlightRenderer {
           emissive: flowerColors[Math.floor(gardenRng() * flowerColors.length)],
           emissiveIntensity: 0.1,
         });
-        const flower = new THREE.Mesh(new THREE.SphereGeometry(0.25, 5, 4), flowerMat);
+        const flower = new THREE.Mesh(new THREE.SphereGeometry(0.25, 10, 8), flowerMat);
         flower.position.set(
           gp.x + (gardenRng() - 0.5) * 6,
           3.6,
@@ -1644,7 +1644,7 @@ export class EagleFlightRenderer {
         this._castleGroup.add(flower);
         // Stem
         const stem = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.03, 0.03, 0.4, 3),
+          new THREE.CylinderGeometry(0.03, 0.03, 0.4, 8),
           new THREE.MeshStandardMaterial({ color: 0x2a6618 }),
         );
         stem.position.set(flower.position.x, 3.4, flower.position.z);
@@ -1663,7 +1663,7 @@ export class EagleFlightRenderer {
       torchLight.position.set(co.x, 26, co.z);
       this._castleGroup.add(torchLight);
       this._torchLights.push(torchLight);
-      const torchFlame = new THREE.Mesh(new THREE.SphereGeometry(0.3, 5, 4), torchMat);
+      const torchFlame = new THREE.Mesh(new THREE.SphereGeometry(0.3, 10, 8), torchMat);
       torchFlame.position.set(co.x, 25.5, co.z);
       this._castleGroup.add(torchFlame);
       this._torchMeshes.push(torchFlame);
@@ -1687,7 +1687,7 @@ export class EagleFlightRenderer {
     barracks.position.set(18, 6, -5);
     barracks.castShadow = true;
     this._castleGroup.add(barracks);
-    const barracksRoof = new THREE.Mesh(new THREE.ConeGeometry(10, 3, 4), roofMat);
+    const barracksRoof = new THREE.Mesh(new THREE.ConeGeometry(10, 3, 8), roofMat);
     barracksRoof.position.set(18, 10, -5);
     barracksRoof.rotation.y = Math.PI / 4;
     this._castleGroup.add(barracksRoof);
@@ -1697,7 +1697,7 @@ export class EagleFlightRenderer {
     chapelBody.position.set(-18, 7, 8);
     chapelBody.castShadow = true;
     this._castleGroup.add(chapelBody);
-    const chapelRoof = new THREE.Mesh(new THREE.ConeGeometry(6, 4, 4), blueRoofMat);
+    const chapelRoof = new THREE.Mesh(new THREE.ConeGeometry(6, 4, 8), blueRoofMat);
     chapelRoof.position.set(-18, 13, 8);
     chapelRoof.rotation.y = Math.PI / 4;
     this._castleGroup.add(chapelRoof);
@@ -1890,7 +1890,7 @@ export class EagleFlightRenderer {
     ];
     for (const lp of lampPositions) {
       // Post
-      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, 4, 5), lampMat);
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, 4, 10), lampMat);
       post.position.set(lp.x, 2, lp.z);
       this._cityGroup.add(post);
       // Bracket
@@ -1902,7 +1902,7 @@ export class EagleFlightRenderer {
       lantern.position.set(lp.x + 0.7, 3.6, lp.z);
       this._cityGroup.add(lantern);
       // Glow
-      const glow = new THREE.Mesh(new THREE.SphereGeometry(0.12, 4, 3), lampGlowMat);
+      const glow = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), lampGlowMat);
       glow.position.set(lp.x + 0.7, 3.6, lp.z);
       this._cityGroup.add(glow);
       // Light
@@ -1923,14 +1923,14 @@ export class EagleFlightRenderer {
       if (Math.sqrt(bx * bx + (bz - 30) ** 2) < 30) continue;
 
       const barrel = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.4, 0.45, 0.9, 8),
+        new THREE.CylinderGeometry(0.4, 0.45, 0.9, 16),
         darkWoodMat,
       );
       barrel.position.set(bx, 0.45, bz);
       this._cityGroup.add(barrel);
       // Metal band
       const band = new THREE.Mesh(
-        new THREE.TorusGeometry(0.42, 0.03, 4, 8),
+        new THREE.TorusGeometry(0.42, 0.03, 8, 16),
         metalMat,
       );
       band.position.set(bx, 0.5, bz);
@@ -1954,7 +1954,7 @@ export class EagleFlightRenderer {
       const hx = 20 + (rng() - 0.5) * 15;
       const hz = 15 + (rng() - 0.5) * 10;
       const hay = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.6, 0.6, 0.8, 8),
+        new THREE.CylinderGeometry(0.6, 0.6, 0.8, 16),
         hayMat,
       );
       hay.position.set(hx, 0.4, hz);
@@ -1986,15 +1986,15 @@ export class EagleFlightRenderer {
 
     // Water well in city
     const wellMat = new THREE.MeshStandardMaterial({ color: 0x999988, roughness: 0.85 });
-    const wellBody = new THREE.Mesh(new THREE.CylinderGeometry(1, 1.1, 1.5, 10), wellMat);
+    const wellBody = new THREE.Mesh(new THREE.CylinderGeometry(1, 1.1, 1.5, 16), wellMat);
     wellBody.position.set(15, 0.75, -15);
     this._cityGroup.add(wellBody);
-    const wellRoof = new THREE.Mesh(new THREE.ConeGeometry(1.5, 1.5, 6), woodMat);
+    const wellRoof = new THREE.Mesh(new THREE.ConeGeometry(1.5, 1.5, 12), woodMat);
     wellRoof.position.set(15, 3, -15);
     this._cityGroup.add(wellRoof);
     // Well posts
     for (const side of [-1, 1]) {
-      const wellPost = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 2.5, 4), woodMat);
+      const wellPost = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 2.5, 10), woodMat);
       wellPost.position.set(15 + side * 0.8, 2, -15);
       this._cityGroup.add(wellPost);
     }
@@ -2006,20 +2006,20 @@ export class EagleFlightRenderer {
     cartGroup.add(cartBed);
     // Wheels
     for (const side of [-1, 1]) {
-      const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.45, 0.08, 6, 12), darkWoodMat);
+      const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.45, 0.08, 10, 20), darkWoodMat);
       wheel.position.set(side * 0.8, 0.5, 0.9);
       wheel.rotation.y = Math.PI / 2;
       cartGroup.add(wheel);
     }
     // Cargo (cloth sacks)
     for (let s = 0; s < 3; s++) {
-      const sack = new THREE.Mesh(new THREE.SphereGeometry(0.3, 5, 4), clothMat);
+      const sack = new THREE.Mesh(new THREE.SphereGeometry(0.3, 10, 8), clothMat);
       sack.position.set(-0.5 + s * 0.5, 1.2, 0);
       sack.scale.y = 0.7;
       cartGroup.add(sack);
     }
     // Handles
-    const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.5, 4), woodMat);
+    const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.5, 10), woodMat);
     handle.position.set(0, 0.9, -1.5);
     handle.rotation.x = 0.3;
     cartGroup.add(handle);
@@ -2052,7 +2052,7 @@ export class EagleFlightRenderer {
       const group = new THREE.Group();
 
       // Main body (larger than regular houses)
-      const body = new THREE.Mesh(new THREE.BoxGeometry(8, 7, 6, 2, 2, 1), mansionMat);
+      const body = new THREE.Mesh(new THREE.BoxGeometry(8, 7, 6, 3, 3, 2), mansionMat);
       body.position.y = 3.5;
       body.castShadow = true;
       group.add(body);
@@ -2064,14 +2064,14 @@ export class EagleFlightRenderer {
       group.add(wing);
 
       // Tall roof
-      const roof = new THREE.Mesh(new THREE.ConeGeometry(7, 5, 4), mansionRoofMat);
+      const roof = new THREE.Mesh(new THREE.ConeGeometry(7, 5, 8), mansionRoofMat);
       roof.position.y = 9.5;
       roof.rotation.y = Math.PI / 4;
       roof.castShadow = true;
       group.add(roof);
 
       // Wing roof
-      const wingRoof = new THREE.Mesh(new THREE.ConeGeometry(5, 3.5, 4), mansionRoofMat);
+      const wingRoof = new THREE.Mesh(new THREE.ConeGeometry(5, 3.5, 8), mansionRoofMat);
       wingRoof.position.set(5, 8, -1);
       wingRoof.rotation.y = Math.PI / 4;
       group.add(wingRoof);
@@ -2081,7 +2081,7 @@ export class EagleFlightRenderer {
         const dormer = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.5, 1.5), mansionMat);
         dormer.position.set(d * 2, 8, 3.2);
         group.add(dormer);
-        const dormerRoof = new THREE.Mesh(new THREE.ConeGeometry(1.2, 1, 4), mansionRoofMat);
+        const dormerRoof = new THREE.Mesh(new THREE.ConeGeometry(1.2, 1, 8), mansionRoofMat);
         dormerRoof.position.set(d * 2, 9, 3.2);
         dormerRoof.rotation.y = Math.PI / 4;
         group.add(dormerRoof);
@@ -2111,12 +2111,12 @@ export class EagleFlightRenderer {
 
       // Grand entrance with columns
       for (const side of [-1, 1]) {
-        const col = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.18, 3, 8), new THREE.MeshStandardMaterial({ color: 0xbbbbaa }));
+        const col = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.18, 3, 16), new THREE.MeshStandardMaterial({ color: 0xbbbbaa }));
         col.position.set(side * 1, 1.5, 3.3);
         group.add(col);
       }
       // Entrance pediment (triangle)
-      const pediment = new THREE.Mesh(new THREE.ConeGeometry(1.5, 0.8, 3), mansionMat);
+      const pediment = new THREE.Mesh(new THREE.ConeGeometry(1.5, 0.8, 8), mansionMat);
       pediment.position.set(0, 3.5, 3.3);
       pediment.rotation.x = Math.PI / 2;
       group.add(pediment);
@@ -2127,7 +2127,7 @@ export class EagleFlightRenderer {
         chim.position.set(-2 + ch * 6, 10, -1);
         group.add(chim);
         // Chimney pot
-        const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 0.6, 6), new THREE.MeshStandardMaterial({ color: 0x884422 }));
+        const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 0.6, 12), new THREE.MeshStandardMaterial({ color: 0x884422 }));
         pot.position.set(-2 + ch * 6, 11.8, -1);
         group.add(pot);
       }
@@ -2163,15 +2163,15 @@ export class EagleFlightRenderer {
     for (let i = 0; i < 5; i++) {
       const dummyGroup = new THREE.Group();
       // Post
-      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, 2.5, 5), woodMat);
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, 2.5, 10), woodMat);
       post.position.y = 1.25;
       dummyGroup.add(post);
       // Straw body
-      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.35, 1.2, 8), straw);
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.35, 1.2, 16), straw);
       body.position.y = 2;
       dummyGroup.add(body);
       // Straw head
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 6, 5), straw);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), straw);
       head.position.y = 2.8;
       dummyGroup.add(head);
       // Cross arm
@@ -2179,7 +2179,7 @@ export class EagleFlightRenderer {
       arm.position.y = 2.2;
       dummyGroup.add(arm);
       // Shield on one side
-      const shield = new THREE.Mesh(new THREE.CircleGeometry(0.3, 8), metalMat);
+      const shield = new THREE.Mesh(new THREE.CircleGeometry(0.3, 16), metalMat);
       shield.position.set(-0.5, 2.0, 0.2);
       dummyGroup.add(shield);
 
@@ -2192,10 +2192,10 @@ export class EagleFlightRenderer {
     for (let r = 0; r < 2; r++) {
       const rack = new THREE.Group();
       // Frame
-      const frameL = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 2, 4), woodMat);
+      const frameL = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 2, 10), woodMat);
       frameL.position.set(-1, 1, 0);
       rack.add(frameL);
-      const frameR = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 2, 4), woodMat);
+      const frameR = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 2, 10), woodMat);
       frameR.position.set(1, 1, 0);
       rack.add(frameR);
       const crossbar = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.1, 0.1), woodMat);
@@ -2220,7 +2220,7 @@ export class EagleFlightRenderer {
     const redMat = new THREE.MeshStandardMaterial({ color: 0xcc3333, roughness: 0.8 });
     for (let t = 0; t < 3; t++) {
       const targetGroup = new THREE.Group();
-      const backing = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 0.15, 12), targetMat);
+      const backing = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 0.15, 20), targetMat);
       backing.rotation.x = Math.PI / 2;
       backing.position.y = 1.5;
       targetGroup.add(backing);
@@ -2228,11 +2228,11 @@ export class EagleFlightRenderer {
       const ring1 = new THREE.Mesh(new THREE.RingGeometry(0.5, 0.7, 12), redMat);
       ring1.position.set(0, 1.5, 0.08);
       targetGroup.add(ring1);
-      const bullseye = new THREE.Mesh(new THREE.CircleGeometry(0.15, 8), redMat);
+      const bullseye = new THREE.Mesh(new THREE.CircleGeometry(0.15, 16), redMat);
       bullseye.position.set(0, 1.5, 0.09);
       targetGroup.add(bullseye);
       // Post
-      const tPost = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 2, 4), woodMat);
+      const tPost = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 2, 10), woodMat);
       tPost.position.y = 1;
       targetGroup.add(tPost);
 
@@ -2277,7 +2277,7 @@ export class EagleFlightRenderer {
         stone.rotation.y = (rng2() - 0.5) * 0.15;
         group.add(stone);
         // Rounded top
-        const top = new THREE.Mesh(new THREE.SphereGeometry(0.3, 6, 3, 0, Math.PI * 2, 0, Math.PI / 2), mat);
+        const top = new THREE.Mesh(new THREE.SphereGeometry(0.3, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), mat);
         top.position.set(gx, 1 + rng2() * 0.3, gz);
         group.add(top);
       } else {
@@ -2317,10 +2317,10 @@ export class EagleFlightRenderer {
       const tx2 = (t % 2 === 0 ? -1 : 1) * 7;
       const tz2 = (t < 2 ? -1 : 1) * 5;
       const trunkH = 3;
-      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, trunkH, 5), new THREE.MeshStandardMaterial({ color: 0x3a2a1a }));
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, trunkH, 10), new THREE.MeshStandardMaterial({ color: 0x3a2a1a }));
       trunk.position.set(tx2, trunkH / 2, tz2);
       group.add(trunk);
-      const canopy = new THREE.Mesh(new THREE.ConeGeometry(1.5, 4, 8), yewMat);
+      const canopy = new THREE.Mesh(new THREE.ConeGeometry(1.5, 4, 16), yewMat);
       canopy.position.set(tx2, 5, tz2);
       canopy.castShadow = true;
       group.add(canopy);
@@ -2348,7 +2348,7 @@ export class EagleFlightRenderer {
       const pillarH = 8 + Math.sin(t * Math.PI) * 3;
 
       // Pillar
-      const pillar = new THREE.Mesh(new THREE.BoxGeometry(1.5, pillarH, 1.5, 1, 2, 1), stoneMat);
+      const pillar = new THREE.Mesh(new THREE.BoxGeometry(1.5, pillarH, 1.5, 2, 4, 2), stoneMat);
       pillar.position.set(px, pillarH / 2, pz);
       pillar.castShadow = true;
       this._cityGroup.add(pillar);
@@ -2367,7 +2367,7 @@ export class EagleFlightRenderer {
         const archAngle = Math.atan2(endX - startX, endZ - startZ);
 
         const arch = new THREE.Mesh(
-          new THREE.TorusGeometry(archSpan / 2 * 0.8, 0.4, 6, 10, Math.PI),
+          new THREE.TorusGeometry(archSpan / 2 * 0.8, 0.4, 10, 20, Math.PI),
           stoneMat,
         );
         arch.position.set(ax, pillarH - 1.5, az);
@@ -2410,17 +2410,17 @@ export class EagleFlightRenderer {
     ];
     for (const tp of treePositions) {
       // Trunk
-      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 3, 6), treeTrunkMat);
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 3, 12), treeTrunkMat);
       trunk.position.set(tp.x, 1.5, tp.z);
       trunk.castShadow = true;
       this._cityGroup.add(trunk);
       // Trimmed spherical canopy
-      const canopy = new THREE.Mesh(new THREE.SphereGeometry(1.5, 8, 6), leafMat);
+      const canopy = new THREE.Mesh(new THREE.SphereGeometry(1.5, 14, 10), leafMat);
       canopy.position.set(tp.x, 3.8, tp.z);
       canopy.castShadow = true;
       this._cityGroup.add(canopy);
       // Stone planter base
-      const planter = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.7, 0.5, 8), planterMat);
+      const planter = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.7, 0.5, 16), planterMat);
       planter.position.set(tp.x, 0.25, tp.z);
       this._cityGroup.add(planter);
     }
@@ -2611,7 +2611,7 @@ export class EagleFlightRenderer {
           const fMat = new THREE.MeshStandardMaterial({
             color: flowerBoxColors[Math.floor(rng() * flowerBoxColors.length)],
           });
-          const fl = new THREE.Mesh(new THREE.SphereGeometry(0.08, 3, 2), fMat);
+          const fl = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), fMat);
           fl.position.set(
             sx * (w / 2 - 1.2) + (f - 1) * 0.25,
             h * 0.55 - 0.4,
@@ -2650,34 +2650,34 @@ export class EagleFlightRenderer {
     });
 
     // Main nave
-    const naveGeo = new THREE.BoxGeometry(12, 14, 24, 2, 2, 3);
+    const naveGeo = new THREE.BoxGeometry(12, 14, 24, 3, 3, 4);
     const nave = new THREE.Mesh(naveGeo, stoneMat);
     nave.position.set(0, 7, 0);
     nave.castShadow = true;
     group.add(nave);
 
     // Transept (cross-shaped wing)
-    const transept = new THREE.Mesh(new THREE.BoxGeometry(24, 12, 8, 3, 2, 1), stoneMat);
+    const transept = new THREE.Mesh(new THREE.BoxGeometry(24, 12, 8, 4, 3, 2), stoneMat);
     transept.position.set(0, 6, -4);
     transept.castShadow = true;
     group.add(transept);
-    const transeptRoof = new THREE.Mesh(new THREE.ConeGeometry(14, 4, 4), roofMat);
+    const transeptRoof = new THREE.Mesh(new THREE.ConeGeometry(14, 4, 8), roofMat);
     transeptRoof.position.set(0, 14, -4);
     transeptRoof.rotation.y = Math.PI / 4;
     group.add(transeptRoof);
 
     // Apse (rounded end, semicircular)
-    const apse = new THREE.Mesh(new THREE.CylinderGeometry(6, 6, 12, 12, 1, false, 0, Math.PI), stoneMat);
+    const apse = new THREE.Mesh(new THREE.CylinderGeometry(6, 6, 12, 20, 1, false, 0, Math.PI), stoneMat);
     apse.position.set(0, 6, -16);
     apse.rotation.y = Math.PI;
     apse.castShadow = true;
     group.add(apse);
-    const apseRoof = new THREE.Mesh(new THREE.SphereGeometry(6, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), roofMat);
+    const apseRoof = new THREE.Mesh(new THREE.SphereGeometry(6, 18, 12, 0, Math.PI * 2, 0, Math.PI / 2), roofMat);
     apseRoof.position.set(0, 12, -16);
     group.add(apseRoof);
 
     // Nave roof
-    const naveRoofGeo = new THREE.ConeGeometry(10, 6, 4);
+    const naveRoofGeo = new THREE.ConeGeometry(10, 6, 8);
     const naveRoof = new THREE.Mesh(naveRoofGeo, roofMat);
     naveRoof.position.set(0, 17, 0);
     naveRoof.rotation.y = Math.PI / 4;
@@ -2686,13 +2686,13 @@ export class EagleFlightRenderer {
 
     // Nave ridge ornaments
     for (let r = -3; r <= 3; r++) {
-      const ornament = new THREE.Mesh(new THREE.ConeGeometry(0.3, 1.2, 6), stoneMat);
+      const ornament = new THREE.Mesh(new THREE.ConeGeometry(0.3, 1.2, 12), stoneMat);
       ornament.position.set(0, 20.5, r * 3);
       group.add(ornament);
     }
 
     // Bell tower (taller, more detailed)
-    const towerGeo = new THREE.BoxGeometry(6, 32, 6, 1, 4, 1);
+    const towerGeo = new THREE.BoxGeometry(6, 32, 6, 2, 6, 2);
     const tower = new THREE.Mesh(towerGeo, stoneMat);
     tower.position.set(0, 16, 14);
     tower.castShadow = true;
@@ -2715,7 +2715,7 @@ export class EagleFlightRenderer {
       bellWin.rotation.y = ba + Math.PI / 2;
       group.add(bellWin);
       // Arch above window
-      const arch = new THREE.Mesh(new THREE.TorusGeometry(0.75, 0.15, 6, 8, Math.PI), stoneMat);
+      const arch = new THREE.Mesh(new THREE.TorusGeometry(0.75, 0.15, 10, 16, Math.PI), stoneMat);
       arch.position.set(bx2, 37.5, bz2);
       arch.rotation.y = ba + Math.PI / 2;
       arch.rotation.x = Math.PI / 2;
@@ -2723,7 +2723,7 @@ export class EagleFlightRenderer {
     }
 
     // Bell tower spire (octagonal, taller)
-    const spireGeo = new THREE.ConeGeometry(3.5, 14, 8);
+    const spireGeo = new THREE.ConeGeometry(3.5, 14, 16);
     const spire = new THREE.Mesh(spireGeo, roofMat);
     spire.position.set(0, 47, 14);
     spire.castShadow = true;
@@ -2746,7 +2746,7 @@ export class EagleFlightRenderer {
     const roseOuter = new THREE.Mesh(new THREE.RingGeometry(1.5, 3, 24), roseMat);
     roseOuter.position.set(0, 11, -22.05);
     group.add(roseOuter);
-    const roseInner = new THREE.Mesh(new THREE.CircleGeometry(1.5, 16), new THREE.MeshStandardMaterial({
+    const roseInner = new THREE.Mesh(new THREE.CircleGeometry(1.5, 24), new THREE.MeshStandardMaterial({
       color: 0x4433aa,
       emissive: 0x221155,
       emissiveIntensity: 0.6,
@@ -2765,7 +2765,7 @@ export class EagleFlightRenderer {
     // Pinnacles on transept corners
     for (const px of [-12, 12]) {
       for (const pz of [-8, 0]) {
-        const pinnacle = new THREE.Mesh(new THREE.ConeGeometry(0.5, 4, 8), stoneMat);
+        const pinnacle = new THREE.Mesh(new THREE.ConeGeometry(0.5, 4, 16), stoneMat);
         pinnacle.position.set(px, 14, pz - 4);
         pinnacle.castShadow = true;
         group.add(pinnacle);
@@ -2787,7 +2787,7 @@ export class EagleFlightRenderer {
         buttArch.rotation.z = side * 0.25;
         group.add(buttArch);
         // Pinnacle on top
-        const buttPin = new THREE.Mesh(new THREE.ConeGeometry(0.4, 2.5, 6), stoneMat);
+        const buttPin = new THREE.Mesh(new THREE.ConeGeometry(0.4, 2.5, 12), stoneMat);
         buttPin.position.set(side * 8.5, 13.5, fbz);
         group.add(buttPin);
       }
@@ -2808,7 +2808,7 @@ export class EagleFlightRenderer {
         win.rotation.y = side > 0 ? -Math.PI / 2 : Math.PI / 2;
         group.add(win);
         // Pointed arch above each window
-        const winArch = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.1, 4, 8, Math.PI), stoneMat);
+        const winArch = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.1, 8, 16, Math.PI), stoneMat);
         winArch.position.set(side * 6.04, 11, i * 3);
         winArch.rotation.y = side > 0 ? -Math.PI / 2 : Math.PI / 2;
         winArch.rotation.z = Math.PI;
@@ -2818,7 +2818,7 @@ export class EagleFlightRenderer {
 
     // Transept windows
     for (const side of [-1, 1]) {
-      const tWin = new THREE.Mesh(new THREE.CircleGeometry(2, 12), roseMat);
+      const tWin = new THREE.Mesh(new THREE.CircleGeometry(2, 20), roseMat);
       tWin.position.set(side * 12.05, 9, -4);
       tWin.rotation.y = side > 0 ? -Math.PI / 2 : Math.PI / 2;
       group.add(tWin);
@@ -2848,7 +2848,7 @@ export class EagleFlightRenderer {
       for (const px of [-1.5, 1.5]) {
         for (const pz of [-1, 1]) {
           const post = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.15, 0.15, 3, 4),
+            new THREE.CylinderGeometry(0.15, 0.15, 3, 10),
             woodMat,
           );
           post.position.set(px, 1.5, pz);
@@ -2880,7 +2880,7 @@ export class EagleFlightRenderer {
         if (merchType === 0) {
           // Small pots/jugs
           const pot = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.12, 0.15, 0.3, 6),
+            new THREE.CylinderGeometry(0.12, 0.15, 0.3, 12),
             new THREE.MeshStandardMaterial({ color: 0x884422, roughness: 0.8 }),
           );
           pot.position.set(mx, 1.3, 0);
@@ -2888,7 +2888,7 @@ export class EagleFlightRenderer {
         } else if (merchType === 1) {
           // Fruit/food spheres
           const fruit = new THREE.Mesh(
-            new THREE.SphereGeometry(0.08, 4, 3),
+            new THREE.SphereGeometry(0.08, 8, 6),
             new THREE.MeshStandardMaterial({ color: [0xcc3322, 0xffaa22, 0x44aa33][Math.floor(merchRng() * 3)] }),
           );
           fruit.position.set(mx, 1.24, 0);
@@ -2896,7 +2896,7 @@ export class EagleFlightRenderer {
         } else {
           // Cloth/fabric roll
           const roll = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.08, 0.08, 0.4, 5),
+            new THREE.CylinderGeometry(0.08, 0.08, 0.4, 10),
             new THREE.MeshStandardMaterial({ color: [0xcc6644, 0x4466aa, 0x886644][Math.floor(merchRng() * 3)], roughness: 0.8 }),
           );
           roll.position.set(mx, 1.24, 0);
@@ -2911,7 +2911,7 @@ export class EagleFlightRenderer {
       lantern.position.set(0, 2.6, -0.5);
       stall.add(lantern);
       const glow = new THREE.Mesh(
-        new THREE.SphereGeometry(0.06, 4, 3),
+        new THREE.SphereGeometry(0.06, 8, 6),
         new THREE.MeshStandardMaterial({ color: 0xff9944, emissive: 0xff8833, emissiveIntensity: 0.5 }),
       );
       glow.position.set(0, 2.6, -0.5);
@@ -2927,45 +2927,45 @@ export class EagleFlightRenderer {
     const goldFountainMat = new THREE.MeshStandardMaterial({ color: 0xccaa44, metalness: 0.6, roughness: 0.3 });
 
     // Base steps (octagonal)
-    const step1 = new THREE.Mesh(new THREE.CylinderGeometry(5, 5.5, 0.5, 8), fountainMat);
+    const step1 = new THREE.Mesh(new THREE.CylinderGeometry(5, 5.5, 0.5, 16), fountainMat);
     step1.position.y = 0.25;
     group.add(step1);
-    const step2 = new THREE.Mesh(new THREE.CylinderGeometry(4.2, 4.5, 0.4, 8), fountainMat);
+    const step2 = new THREE.Mesh(new THREE.CylinderGeometry(4.2, 4.5, 0.4, 16), fountainMat);
     step2.position.y = 0.7;
     group.add(step2);
 
     // Main basin
-    const basin = new THREE.Mesh(new THREE.CylinderGeometry(3.5, 3.8, 1.2, 16), fountainMat);
+    const basin = new THREE.Mesh(new THREE.CylinderGeometry(3.5, 3.8, 1.2, 24), fountainMat);
     basin.position.y = 1.5;
     group.add(basin);
     // Basin rim
-    const basinRim = new THREE.Mesh(new THREE.TorusGeometry(3.6, 0.15, 6, 16), fountainMat);
+    const basinRim = new THREE.Mesh(new THREE.TorusGeometry(3.6, 0.15, 10, 24), fountainMat);
     basinRim.position.y = 2.1;
     basinRim.rotation.x = Math.PI / 2;
     group.add(basinRim);
 
     // Central column with decorative rings
-    const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.5, 3.5, 10), fountainMat);
+    const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.5, 3.5, 16), fountainMat);
     pillar.position.y = 3.8;
     group.add(pillar);
     for (let ring = 0; ring < 3; ring++) {
-      const decorRing = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.08, 6, 12), fountainMat);
+      const decorRing = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.08, 10, 20), fountainMat);
       decorRing.position.y = 2.5 + ring * 1;
       decorRing.rotation.x = Math.PI / 2;
       group.add(decorRing);
     }
 
     // Upper basin
-    const topBasin = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 1.2, 0.6, 12), fountainMat);
+    const topBasin = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 1.2, 0.6, 20), fountainMat);
     topBasin.position.y = 5.8;
     group.add(topBasin);
 
     // Top figure (small statue — dragon or angel)
     const figureMat = new THREE.MeshStandardMaterial({ color: 0xbbbbaa, roughness: 0.4, metalness: 0.3 });
-    const figureBody = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 1.2, 8), figureMat);
+    const figureBody = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 1.2, 16), figureMat);
     figureBody.position.y = 6.7;
     group.add(figureBody);
-    const figureHead = new THREE.Mesh(new THREE.SphereGeometry(0.18, 6, 5), figureMat);
+    const figureHead = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 8), figureMat);
     figureHead.position.y = 7.4;
     group.add(figureHead);
     // Wings
@@ -2982,10 +2982,10 @@ export class EagleFlightRenderer {
       transparent: true,
       opacity: 0.6,
     });
-    const water = new THREE.Mesh(new THREE.CylinderGeometry(3.3, 3.3, 0.08, 16), waterMat);
+    const water = new THREE.Mesh(new THREE.CylinderGeometry(3.3, 3.3, 0.08, 24), waterMat);
     water.position.y = 2;
     group.add(water);
-    const waterUpper = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, 0.06, 12), waterMat);
+    const waterUpper = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, 0.06, 20), waterMat);
     waterUpper.position.y = 6;
     group.add(waterUpper);
 
@@ -3013,7 +3013,7 @@ export class EagleFlightRenderer {
     group.add(foundation);
 
     // Main building ground floor
-    const body = new THREE.Mesh(new THREE.BoxGeometry(10, 7, 8, 2, 2, 1), wallMat);
+    const body = new THREE.Mesh(new THREE.BoxGeometry(10, 7, 8, 3, 3, 2), wallMat);
     body.position.y = 4.5;
     body.castShadow = true;
     group.add(body);
@@ -3053,7 +3053,7 @@ export class EagleFlightRenderer {
     }
 
     // Roof with dormers
-    const roof = new THREE.Mesh(new THREE.ConeGeometry(10, 5, 4), roofMat);
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(10, 5, 8), roofMat);
     roof.position.y = 14.5;
     roof.rotation.y = Math.PI / 4;
     roof.castShadow = true;
@@ -3062,7 +3062,7 @@ export class EagleFlightRenderer {
     const dormer = new THREE.Mesh(new THREE.BoxGeometry(2, 1.5, 1.5), wallMat);
     dormer.position.set(0, 13.5, 5);
     group.add(dormer);
-    const dormerRoof = new THREE.Mesh(new THREE.ConeGeometry(1.5, 1, 4), roofMat);
+    const dormerRoof = new THREE.Mesh(new THREE.ConeGeometry(1.5, 1, 8), roofMat);
     dormerRoof.position.set(0, 14.5, 5);
     dormerRoof.rotation.y = Math.PI / 4;
     group.add(dormerRoof);
@@ -3086,7 +3086,7 @@ export class EagleFlightRenderer {
     door.position.set(0, 2.4, 4.03);
     group.add(door);
     // Door frame arch
-    const doorArch = new THREE.Mesh(new THREE.TorusGeometry(0.9, 0.12, 4, 8, Math.PI), timberMat);
+    const doorArch = new THREE.Mesh(new THREE.TorusGeometry(0.9, 0.12, 8, 16, Math.PI), timberMat);
     doorArch.position.set(0, 3.8, 4.04);
     doorArch.rotation.x = Math.PI / 2;
     group.add(doorArch);
@@ -3095,10 +3095,10 @@ export class EagleFlightRenderer {
     const signBracket = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.08, 0.08), metalMat);
     signBracket.position.set(5.9, 5.5, 4);
     group.add(signBracket);
-    const signChain1 = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.8, 3), metalMat);
+    const signChain1 = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.8, 8), metalMat);
     signChain1.position.set(5.2, 5.1, 4);
     group.add(signChain1);
-    const signChain2 = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.8, 3), metalMat);
+    const signChain2 = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.8, 8), metalMat);
     signChain2.position.set(6.6, 5.1, 4);
     group.add(signChain2);
     const signBoard = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.2, 0.12), new THREE.MeshStandardMaterial({ color: 0x663311 }));
@@ -3106,7 +3106,7 @@ export class EagleFlightRenderer {
     group.add(signBoard);
     // Tavern icon on sign (ale mug = small cylinder)
     const mugMat = new THREE.MeshStandardMaterial({ color: 0xccaa55, emissive: 0x664422, emissiveIntensity: 0.15 });
-    const mug = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.4, 6), mugMat);
+    const mug = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.4, 12), mugMat);
     mug.position.set(5.9, 4.7, 4.08);
     mug.rotation.x = Math.PI / 2;
     group.add(mug);
@@ -3116,7 +3116,7 @@ export class EagleFlightRenderer {
     const chimney1 = new THREE.Mesh(new THREE.BoxGeometry(1.2, 4, 1.2), chimMat);
     chimney1.position.set(-3, 14, -2);
     group.add(chimney1);
-    const chimPot1 = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.3, 0.5, 6), chimMat);
+    const chimPot1 = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.3, 0.5, 12), chimMat);
     chimPot1.position.set(-3, 16.2, -2);
     group.add(chimPot1);
     const chimney2 = new THREE.Mesh(new THREE.BoxGeometry(0.9, 3.5, 0.9), chimMat);
@@ -3154,7 +3154,7 @@ export class EagleFlightRenderer {
     railTop.position.set(0, 9, 6.4);
     group.add(railTop);
     for (let bp = -5; bp <= 5; bp++) {
-      const baluster = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1, 4), railMat);
+      const baluster = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1, 10), railMat);
       baluster.position.set(bp * 0.55, 8.5, 6.4);
       group.add(baluster);
     }
@@ -3193,7 +3193,7 @@ export class EagleFlightRenderer {
     backRoom.position.set(0, 3, -6);
     backRoom.castShadow = true;
     group.add(backRoom);
-    const backRoof = new THREE.Mesh(new THREE.ConeGeometry(5, 3, 4), roofMat);
+    const backRoof = new THREE.Mesh(new THREE.ConeGeometry(5, 3, 8), roofMat);
     backRoof.position.set(0, 7.5, -6);
     backRoof.rotation.y = Math.PI / 4;
     group.add(backRoof);
@@ -3207,11 +3207,11 @@ export class EagleFlightRenderer {
     group.add(roof);
     // Support posts
     for (const px of [-4.5, 4.5]) {
-      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.18, 5.5, 6), woodMat);
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.18, 5.5, 12), woodMat);
       post.position.set(px, 2.75, 5);
       group.add(post);
     }
-    const midPost = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.18, 5.5, 6), woodMat);
+    const midPost = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.18, 5.5, 12), woodMat);
     midPost.position.set(0, 2.75, 5);
     group.add(midPost);
 
@@ -3226,7 +3226,7 @@ export class EagleFlightRenderer {
     anvilTop.position.set(2, 1.7, 5);
     group.add(anvilTop);
     // Horn (tapered end)
-    const horn = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.8, 6), metalMat);
+    const horn = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.8, 12), metalMat);
     horn.position.set(3.2, 1.7, 5);
     horn.rotation.z = Math.PI / 2;
     group.add(horn);
@@ -3234,7 +3234,7 @@ export class EagleFlightRenderer {
     const hammerHead = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.25, 0.25), metalMat);
     hammerHead.position.set(2.3, 2, 5.2);
     group.add(hammerHead);
-    const hammerHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1, 4), woodMat);
+    const hammerHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1, 10), woodMat);
     hammerHandle.position.set(2, 2, 5.2);
     hammerHandle.rotation.z = Math.PI / 2;
     group.add(hammerHandle);
@@ -3244,10 +3244,10 @@ export class EagleFlightRenderer {
     const forgeBase = new THREE.Mesh(new THREE.BoxGeometry(2.5, 1.5, 2.5), stoneMat);
     forgeBase.position.set(-2, 0.75, 5);
     group.add(forgeBase);
-    const forgeBowl = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1, 0.6, 10), stoneMat);
+    const forgeBowl = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1, 0.6, 16), stoneMat);
     forgeBowl.position.set(-2, 1.8, 5);
     group.add(forgeBowl);
-    const embers = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 0.15, 10), forgeMat);
+    const embers = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 0.15, 16), forgeMat);
     embers.position.set(-2, 2.15, 5);
     group.add(embers);
     // Forge glow light
@@ -3257,10 +3257,10 @@ export class EagleFlightRenderer {
     this._torchLights.push(forgeLight);
     this._torchMeshes.push(embers);
     // Hood / chimney
-    const hood = new THREE.Mesh(new THREE.ConeGeometry(1.5, 2, 8), stoneMat);
+    const hood = new THREE.Mesh(new THREE.ConeGeometry(1.5, 2, 16), stoneMat);
     hood.position.set(-2, 3.5, 5);
     group.add(hood);
-    const chimney = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.8, 5, 8), stoneMat);
+    const chimney = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.8, 5, 16), stoneMat);
     chimney.position.set(-2, 6, 5);
     group.add(chimney);
 
@@ -3269,7 +3269,7 @@ export class EagleFlightRenderer {
     const bellowsBody = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.4, 1), bellowsMat);
     bellowsBody.position.set(-0.5, 1.8, 5);
     group.add(bellowsBody);
-    const bellowsNozzle = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.5, 4), metalMat);
+    const bellowsNozzle = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.5, 8), metalMat);
     bellowsNozzle.position.set(-0.8, 1.8, 5);
     bellowsNozzle.rotation.z = Math.PI / 2;
     group.add(bellowsNozzle);
@@ -3297,13 +3297,13 @@ export class EagleFlightRenderer {
 
     // Horseshoe rack
     for (let h = 0; h < 3; h++) {
-      const horseshoe = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.04, 4, 8, Math.PI), metalMat);
+      const horseshoe = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.04, 8, 16, Math.PI), metalMat);
       horseshoe.position.set(3.5, 2 + h * 0.5, -3.4);
       group.add(horseshoe);
     }
 
     // Wheel leaning against wall
-    const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.08, 6, 12), woodMat);
+    const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.08, 10, 20), woodMat);
     wheel.position.set(4, 0.7, 2);
     wheel.rotation.y = 0.3;
     group.add(wheel);
@@ -3344,7 +3344,7 @@ export class EagleFlightRenderer {
       const isPine = rng() > 0.6;
       const trunkH = isPine ? 5 + rng() * 6 : 3 + rng() * 5;
       const trunk = new THREE.Mesh(
-        new THREE.CylinderGeometry(isPine ? 0.2 : 0.3, isPine ? 0.35 : 0.5, trunkH, 5),
+        new THREE.CylinderGeometry(isPine ? 0.2 : 0.3, isPine ? 0.35 : 0.5, trunkH, 10),
         isPine ? pineTrunkMat : treeTrunkMat,
       );
       trunk.position.set(tx, trunkH / 2, tz);
@@ -3357,7 +3357,7 @@ export class EagleFlightRenderer {
         for (let layer = 0; layer < 3; layer++) {
           const coneR = 2.5 - layer * 0.6;
           const coneH = 3 - layer * 0.5;
-          const cone = new THREE.Mesh(new THREE.ConeGeometry(coneR, coneH, 6), pineMat);
+          const cone = new THREE.Mesh(new THREE.ConeGeometry(coneR, coneH, 12), pineMat);
           cone.position.set(tx, trunkH - 1 + layer * 2, tz);
           cone.castShadow = true;
           this._terrainGroup.add(cone);
@@ -3368,7 +3368,7 @@ export class EagleFlightRenderer {
         const clusters = 1 + Math.floor(rng() * 3);
         for (let c = 0; c < clusters; c++) {
           const leafR = 1.5 + rng() * 2.5;
-          const leaves = new THREE.Mesh(new THREE.SphereGeometry(leafR, 7, 5), leafMat);
+          const leaves = new THREE.Mesh(new THREE.SphereGeometry(leafR, 14, 8), leafMat);
           const lx = tx + (rng() - 0.5) * 2;
           const ly = trunkH + leafR * 0.5 + c * 0.8;
           const lz = tz + (rng() - 0.5) * 2;
@@ -3447,13 +3447,13 @@ export class EagleFlightRenderer {
 
       const sheep = new THREE.Group();
       // Woolly body (multiple spheres for fluffiness)
-      const body = new THREE.Mesh(new THREE.SphereGeometry(0.5, 8, 6), woolMat);
+      const body = new THREE.Mesh(new THREE.SphereGeometry(0.5, 14, 10), woolMat);
       body.position.y = 0.5;
       body.scale.set(1, 0.8, 1.3);
       sheep.add(body);
       // Wool tufts
       for (let tuft = 0; tuft < 4; tuft++) {
-        const woolTuft = new THREE.Mesh(new THREE.SphereGeometry(0.2, 5, 4), woolMat);
+        const woolTuft = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), woolMat);
         woolTuft.position.set(
           (rng() - 0.5) * 0.5,
           0.55 + rng() * 0.15,
@@ -3462,7 +3462,7 @@ export class EagleFlightRenderer {
         sheep.add(woolTuft);
       }
       // Head
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 6, 5), sheepFaceMat);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 8), sheepFaceMat);
       head.position.set(0, 0.55, -0.65);
       sheep.add(head);
       // Ears
@@ -3474,20 +3474,20 @@ export class EagleFlightRenderer {
       }
       // Eyes
       for (const side of [-1, 1]) {
-        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.03, 4, 3), new THREE.MeshStandardMaterial({ color: 0x111111 }));
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.03, 8, 6), new THREE.MeshStandardMaterial({ color: 0x111111 }));
         eye.position.set(side * 0.1, 0.58, -0.8);
         sheep.add(eye);
       }
       // Legs
       for (const lx of [-0.2, 0.2]) {
         for (const lz of [-0.3, 0.3]) {
-          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.4, 4), sheepFaceMat);
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.4, 10), sheepFaceMat);
           leg.position.set(lx, 0.1, lz);
           sheep.add(leg);
         }
       }
       // Tail
-      const tail = new THREE.Mesh(new THREE.SphereGeometry(0.08, 4, 3), woolMat);
+      const tail = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), woolMat);
       tail.position.set(0, 0.5, 0.6);
       sheep.add(tail);
 
@@ -3509,7 +3509,7 @@ export class EagleFlightRenderer {
           emissive: 0x221111,
           emissiveIntensity: 0.1,
         });
-        const flower = new THREE.Mesh(new THREE.SphereGeometry(0.15 + rng() * 0.1, 4, 3), fMat);
+        const flower = new THREE.Mesh(new THREE.SphereGeometry(0.15 + rng() * 0.1, 8, 6), fMat);
         flower.position.set(
           mx + (rng() - 0.5) * 12,
           0.3 + rng() * 0.2,
@@ -3562,7 +3562,7 @@ export class EagleFlightRenderer {
     }
 
     // Broken arch
-    const arch = new THREE.Mesh(new THREE.TorusGeometry(2.5, 0.4, 6, 12, Math.PI * 0.7), ruinMat);
+    const arch = new THREE.Mesh(new THREE.TorusGeometry(2.5, 0.4, 10, 20, Math.PI * 0.7), ruinMat);
     arch.position.set(x, 2.5, z);
     arch.rotation.x = -Math.PI / 2;
     arch.castShadow = true;
@@ -3578,7 +3578,7 @@ export class EagleFlightRenderer {
     // Multiple columns (colonnade remnant)
     for (let c = 0; c < 4; c++) {
       const ch = 2 + rng() * 4;
-      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.45, ch, 10), ruinMat);
+      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.45, ch, 16), ruinMat);
       col.position.set(x - 6 + c * 3, ch / 2, z + 5);
       col.castShadow = true;
       this._terrainGroup.add(col);
@@ -3593,7 +3593,7 @@ export class EagleFlightRenderer {
     // Fallen columns
     for (let fc = 0; fc < 2; fc++) {
       const fcLen = 3 + rng() * 3;
-      const fallen = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, fcLen, 8), ruinMat);
+      const fallen = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, fcLen, 16), ruinMat);
       fallen.position.set(x + (rng() - 0.5) * 10, 0.35, z + (rng() - 0.5) * 10);
       fallen.rotation.z = Math.PI / 2 - 0.1;
       fallen.rotation.y = rng() * Math.PI;
@@ -3721,7 +3721,7 @@ export class EagleFlightRenderer {
     const ropeMat = new THREE.MeshStandardMaterial({ color: 0x998866, roughness: 0.95 });
 
     // Main dock platform (L-shaped)
-    const dock1 = new THREE.Mesh(new THREE.BoxGeometry(24, 0.5, 6, 4, 1, 1), woodMat);
+    const dock1 = new THREE.Mesh(new THREE.BoxGeometry(24, 0.5, 6, 6, 2, 2), woodMat);
     dock1.position.set(x, 1.5, z);
     dock1.castShadow = true;
     this._terrainGroup.add(dock1);
@@ -3734,7 +3734,7 @@ export class EagleFlightRenderer {
     // Dock pilings (more)
     for (let i = -5; i <= 6; i++) {
       for (const side of [-1, 1]) {
-        const pile = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.25, 3.5, 6), darkWoodMat);
+        const pile = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.25, 3.5, 12), darkWoodMat);
         pile.position.set(x + i * 2, 0.3, z + side * 2.8);
         this._terrainGroup.add(pile);
       }
@@ -3745,7 +3745,7 @@ export class EagleFlightRenderer {
     whBody.position.set(x - 6, 2.5, z + 6);
     whBody.castShadow = true;
     this._terrainGroup.add(whBody);
-    const whRoof = new THREE.Mesh(new THREE.ConeGeometry(6, 3, 4), new THREE.MeshStandardMaterial({ color: 0x664433, roughness: 0.8 }));
+    const whRoof = new THREE.Mesh(new THREE.ConeGeometry(6, 3, 8), new THREE.MeshStandardMaterial({ color: 0x664433, roughness: 0.8 }));
     whRoof.position.set(x - 6, 6, z + 6);
     whRoof.rotation.y = Math.PI / 4;
     this._terrainGroup.add(whRoof);
@@ -3756,7 +3756,7 @@ export class EagleFlightRenderer {
 
     // Crane
     const craneGroup = new THREE.Group();
-    const cranePost = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 6, 6), woodMat);
+    const cranePost = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 6, 12), woodMat);
     cranePost.position.y = 3;
     craneGroup.add(cranePost);
     const craneArm = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 5), woodMat);
@@ -3764,15 +3764,15 @@ export class EagleFlightRenderer {
     craneArm.rotation.x = -0.15;
     craneGroup.add(craneArm);
     // Pulley
-    const pulley = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.04, 4, 8), metalMat);
+    const pulley = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.04, 8, 16), metalMat);
     pulley.position.set(0, 5.6, -4.2);
     craneGroup.add(pulley);
     // Rope
-    const rope = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 4, 3), ropeMat);
+    const rope = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 4, 8), ropeMat);
     rope.position.set(0, 3.6, -4.2);
     craneGroup.add(rope);
     // Hook
-    const hook = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.03, 4, 6, Math.PI * 1.5), metalMat);
+    const hook = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.03, 8, 16, Math.PI * 1.5), metalMat);
     hook.position.set(0, 1.5, -4.2);
     craneGroup.add(hook);
     // Counterweight
@@ -3794,7 +3794,7 @@ export class EagleFlightRenderer {
       hullUpper.position.y = 0.6;
       boat.add(hullUpper);
       // Bow (pointed front)
-      const bow = new THREE.Mesh(new THREE.ConeGeometry(0.6, 1.2, 4), darkWoodMat);
+      const bow = new THREE.Mesh(new THREE.ConeGeometry(0.6, 1.2, 8), darkWoodMat);
       bow.position.set(0, 0.5, -2);
       bow.rotation.x = Math.PI / 2;
       boat.add(bow);
@@ -3806,11 +3806,11 @@ export class EagleFlightRenderer {
       gunwale2.position.set(0, 0.85, -0.75);
       boat.add(gunwale2);
       // Mast
-      const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 3.5, 5), woodMat);
+      const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 3.5, 10), woodMat);
       mast.position.y = 2.5;
       boat.add(mast);
       // Boom
-      const boom = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 2.5, 4), woodMat);
+      const boom = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 2.5, 10), woodMat);
       boom.position.set(0, 2, 0);
       boom.rotation.z = 0.3;
       boom.rotation.y = 0.5;
@@ -3820,7 +3820,7 @@ export class EagleFlightRenderer {
       sail.position.set(0.6, 2.8, 0);
       boat.add(sail);
       // Rope rigging
-      const rig1 = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 3, 3), ropeMat);
+      const rig1 = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 3, 8), ropeMat);
       rig1.position.set(0, 2.5, 0.5);
       rig1.rotation.z = 0.4;
       boat.add(rig1);
@@ -3831,7 +3831,7 @@ export class EagleFlightRenderer {
       // Oars (one pair for rowboats)
       if (i > 1) {
         for (const side of [-1, 1]) {
-          const oar = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 2.5, 3), woodMat);
+          const oar = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 2.5, 8), woodMat);
           oar.position.set(side * 0.8, 0.8, 0.3);
           oar.rotation.z = side * 0.5;
           oar.rotation.x = 0.3;
@@ -3846,11 +3846,11 @@ export class EagleFlightRenderer {
 
     // Mooring posts with rope coils
     for (let i = 0; i < 5; i++) {
-      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.18, 2, 6), woodMat);
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.18, 2, 12), woodMat);
       post.position.set(x - 10 + i * 5, 2, z + 2.8);
       this._terrainGroup.add(post);
       // Rope coil on post
-      const coil = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.04, 4, 8), ropeMat);
+      const coil = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.04, 8, 16), ropeMat);
       coil.position.set(x - 10 + i * 5, 2.5, z + 2.8);
       coil.rotation.x = Math.PI / 2;
       this._terrainGroup.add(coil);
@@ -3859,10 +3859,10 @@ export class EagleFlightRenderer {
     // Fishing nets drying
     const netMat = new THREE.MeshStandardMaterial({ color: 0x998877, roughness: 0.95, side: THREE.DoubleSide, transparent: true, opacity: 0.6 });
     const netFrame = new THREE.Group();
-    const netPost1 = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 3, 4), woodMat);
+    const netPost1 = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 3, 10), woodMat);
     netPost1.position.set(0, 1.5, 0);
     netFrame.add(netPost1);
-    const netPost2 = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 3, 4), woodMat);
+    const netPost2 = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 3, 10), woodMat);
     netPost2.position.set(3, 1.5, 0);
     netFrame.add(netPost2);
     const net = new THREE.Mesh(new THREE.PlaneGeometry(3, 2.5), netMat);
@@ -3874,7 +3874,7 @@ export class EagleFlightRenderer {
 
     // Barrels and crates on dock
     for (let b = 0; b < 6; b++) {
-      const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.45, 0.9, 8), darkWoodMat);
+      const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.45, 0.9, 16), darkWoodMat);
       barrel.position.set(x + 3 + b * 1.2, 2, z + 1);
       this._terrainGroup.add(barrel);
     }
@@ -3894,19 +3894,19 @@ export class EagleFlightRenderer {
     const roofMat2 = new THREE.MeshStandardMaterial({ color: 0x554433, roughness: 0.8 });
 
     // Stone foundation
-    const foundation = new THREE.Mesh(new THREE.CylinderGeometry(4.5, 5, 1, 12), darkStoneMat4);
+    const foundation = new THREE.Mesh(new THREE.CylinderGeometry(4.5, 5, 1, 20), darkStoneMat4);
     foundation.position.y = 0.5;
     group.add(foundation);
 
     // Tower body (higher poly tapered cylinder)
-    const body = new THREE.Mesh(new THREE.CylinderGeometry(3, 4, 12, 16, 2), stoneMat);
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(3, 4, 12, 24, 2), stoneMat);
     body.position.y = 7;
     body.castShadow = true;
     group.add(body);
 
     // Stone band decorations on tower
     for (let b = 0; b < 3; b++) {
-      const band = new THREE.Mesh(new THREE.TorusGeometry(3.3 - b * 0.2, 0.12, 4, 16), darkStoneMat4);
+      const band = new THREE.Mesh(new THREE.TorusGeometry(3.3 - b * 0.2, 0.12, 8, 24), darkStoneMat4);
       band.position.y = 4 + b * 4;
       band.rotation.x = Math.PI / 2;
       group.add(band);
@@ -3918,7 +3918,7 @@ export class EagleFlightRenderer {
     door.position.set(0, 2.5, 4.05);
     group.add(door);
     // Door arch
-    const doorArch = new THREE.Mesh(new THREE.TorusGeometry(0.75, 0.1, 4, 8, Math.PI), stoneMat);
+    const doorArch = new THREE.Mesh(new THREE.TorusGeometry(0.75, 0.1, 8, 16, Math.PI), stoneMat);
     doorArch.position.set(0, 3.75, 4.04);
     doorArch.rotation.x = Math.PI / 2;
     group.add(doorArch);
@@ -3936,31 +3936,31 @@ export class EagleFlightRenderer {
     }
 
     // Gallery / balcony around tower top
-    const galleryFloor = new THREE.Mesh(new THREE.TorusGeometry(3.8, 0.4, 4, 16), woodMat);
+    const galleryFloor = new THREE.Mesh(new THREE.TorusGeometry(3.8, 0.4, 8, 24), woodMat);
     galleryFloor.position.y = 12.5;
     galleryFloor.rotation.x = Math.PI / 2;
     group.add(galleryFloor);
     // Gallery railing posts
     for (let gp = 0; gp < 8; gp++) {
       const ga = (gp / 8) * Math.PI * 2;
-      const grPost = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1, 4), woodMat);
+      const grPost = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1, 10), woodMat);
       grPost.position.set(Math.sin(ga) * 3.8, 13, Math.cos(ga) * 3.8);
       group.add(grPost);
     }
     // Gallery railing ring
-    const railRing = new THREE.Mesh(new THREE.TorusGeometry(3.8, 0.06, 4, 16), woodMat);
+    const railRing = new THREE.Mesh(new THREE.TorusGeometry(3.8, 0.06, 8, 24), woodMat);
     railRing.position.y = 13.5;
     railRing.rotation.x = Math.PI / 2;
     group.add(railRing);
 
     // Conical roof (higher poly)
-    const roof = new THREE.Mesh(new THREE.ConeGeometry(4, 4.5, 12), roofMat2);
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(4, 4.5, 20), roofMat2);
     roof.position.y = 15.5;
     roof.castShadow = true;
     group.add(roof);
 
     // Blade hub (center disc)
-    const hubDisc = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.3, 8), woodMat);
+    const hubDisc = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.3, 16), woodMat);
     hubDisc.position.set(0, 12, 4);
     hubDisc.rotation.x = Math.PI / 2;
     group.add(hubDisc);
@@ -4000,7 +4000,7 @@ export class EagleFlightRenderer {
     // Grain sacks at base
     const sackMat = new THREE.MeshStandardMaterial({ color: 0xaa9966, roughness: 0.95 });
     for (let s = 0; s < 3; s++) {
-      const sack = new THREE.Mesh(new THREE.SphereGeometry(0.35, 5, 4), sackMat);
+      const sack = new THREE.Mesh(new THREE.SphereGeometry(0.35, 10, 8), sackMat);
       sack.position.set(1.5 + s * 0.7, 0.3, 3);
       sack.scale.y = 0.7;
       group.add(sack);
@@ -4083,7 +4083,7 @@ export class EagleFlightRenderer {
         for (let p = 0; p < puffCount; p++) {
           const r = layer.radius[0] + rng() * (layer.radius[1] - layer.radius[0]);
           const puff = new THREE.Mesh(
-            new THREE.SphereGeometry(r, 10, 7),
+            new THREE.SphereGeometry(r, 16, 12),
             cloudShaderMat,
           );
           puff.position.set(
@@ -4121,20 +4121,20 @@ export class EagleFlightRenderer {
     });
 
     // Body — elongated oval
-    const bodyGeo = new THREE.SphereGeometry(1.2, 12, 8);
+    const bodyGeo = new THREE.SphereGeometry(1.2, 18, 12);
     this._eagleBody = new THREE.Mesh(bodyGeo, featherMat);
     this._eagleBody.scale.set(1.1, 0.65, 2.0);
     this._eagleGroup.add(this._eagleBody);
 
     // Breast feathers (lighter)
-    const breastGeo = new THREE.SphereGeometry(0.9, 8, 6);
+    const breastGeo = new THREE.SphereGeometry(0.9, 14, 10);
     const breast = new THREE.Mesh(breastGeo, goldenFeatherMat);
     breast.scale.set(0.8, 0.5, 1.2);
     breast.position.set(0, -0.15, -0.5);
     this._eagleGroup.add(breast);
 
     // Head (white-feathered)
-    this._eagleHead = new THREE.Mesh(new THREE.SphereGeometry(0.5, 8, 6), whiteFeatherMat);
+    this._eagleHead = new THREE.Mesh(new THREE.SphereGeometry(0.5, 14, 10), whiteFeatherMat);
     this._eagleHead.position.set(0, 0.35, -1.9);
     this._eagleHead.scale.set(1, 0.9, 1.1);
     this._eagleGroup.add(this._eagleHead);
@@ -4148,24 +4148,24 @@ export class EagleFlightRenderer {
     }
 
     // Beak — upper and lower
-    const beakUpper = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.7, 5), beakMat);
+    const beakUpper = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.7, 10), beakMat);
     beakUpper.position.set(0, 0.28, -2.5);
     beakUpper.rotation.x = Math.PI / 2 + 0.1;
     this._eagleGroup.add(beakUpper);
-    const beakLower = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.4, 4), beakMat);
+    const beakLower = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.4, 8), beakMat);
     beakLower.position.set(0, 0.15, -2.35);
     beakLower.rotation.x = Math.PI / 2 - 0.15;
     this._eagleGroup.add(beakLower);
 
     // Eyes with iris
     for (const side of [-1, 1]) {
-      const eyeWhite = new THREE.Mesh(new THREE.SphereGeometry(0.1, 6, 5), whiteFeatherMat);
+      const eyeWhite = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), whiteFeatherMat);
       eyeWhite.position.set(side * 0.32, 0.42, -2.05);
       this._eagleGroup.add(eyeWhite);
-      const iris = new THREE.Mesh(new THREE.SphereGeometry(0.06, 5, 4), eyeIrisMat);
+      const iris = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8), eyeIrisMat);
       iris.position.set(side * 0.35, 0.42, -2.12);
       this._eagleGroup.add(iris);
-      const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.035, 4, 3), eyeMat);
+      const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 6), eyeMat);
       pupil.position.set(side * 0.36, 0.42, -2.15);
       this._eagleGroup.add(pupil);
     }
@@ -4223,18 +4223,18 @@ export class EagleFlightRenderer {
     for (const side of [-1, 1]) {
       const legGroup = new THREE.Group();
       // Leg
-      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.6, 4), talonMat);
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.6, 10), talonMat);
       leg.position.y = -0.3;
       legGroup.add(leg);
       // Toes
       for (let t = -1; t <= 1; t++) {
-        const toe = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.35, 3), talonMat);
+        const toe = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.35, 8), talonMat);
         toe.position.set(t * 0.1, -0.7, -0.1);
         toe.rotation.x = -0.3;
         legGroup.add(toe);
       }
       // Back toe
-      const backToe = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.3, 3), talonMat);
+      const backToe = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.3, 8), talonMat);
       backToe.position.set(0, -0.65, 0.15);
       backToe.rotation.x = 0.4;
       legGroup.add(backToe);
@@ -4270,23 +4270,23 @@ export class EagleFlightRenderer {
     this._merlinGroup.add(shoulders);
 
     // Head
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 6), skinMat);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 14, 10), skinMat);
     head.position.set(0, 1.98, 0);
     this._merlinGroup.add(head);
 
     // Wizard hat — taller, slightly bent
-    const hat = new THREE.Mesh(new THREE.ConeGeometry(0.38, 1.0, 8), hatMat);
+    const hat = new THREE.Mesh(new THREE.ConeGeometry(0.38, 1.0, 16), hatMat);
     hat.position.set(0, 2.6, 0);
     hat.rotation.z = 0.12;
     hat.rotation.x = -0.05;
     this._merlinGroup.add(hat);
     // Hat brim (wider)
-    const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.06, 10), hatMat);
+    const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.06, 16), hatMat);
     brim.position.set(0, 2.15, 0);
     this._merlinGroup.add(brim);
     // Stars on hat
     for (let i = 0; i < 3; i++) {
-      const star = new THREE.Mesh(new THREE.SphereGeometry(0.04, 4, 3), starMat);
+      const star = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 6), starMat);
       star.position.set(
         Math.cos(i * 2.1) * 0.25,
         2.35 + i * 0.2,
@@ -4300,23 +4300,23 @@ export class EagleFlightRenderer {
     const beardUpper = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.2, 0.15), beardMat2);
     beardUpper.position.set(0, 1.75, -0.2);
     this._merlinGroup.add(beardUpper);
-    const beardMid = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.5, 5), beardMat2);
+    const beardMid = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.5, 10), beardMat2);
     beardMid.position.set(0, 1.45, -0.25);
     beardMid.rotation.x = Math.PI;
     this._merlinGroup.add(beardMid);
-    const beardTip = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.3, 4), beardMat2);
+    const beardTip = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.3, 8), beardMat2);
     beardTip.position.set(0, 1.15, -0.28);
     beardTip.rotation.x = Math.PI;
     this._merlinGroup.add(beardTip);
 
     // Staff (thicker, gnarled)
-    const staff = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.08, 2.8, 6), staffMat);
+    const staff = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.08, 2.8, 12), staffMat);
     staff.position.set(0.5, 1.9, -0.2);
     staff.rotation.z = -0.25;
     staff.rotation.x = 0.15;
     this._merlinGroup.add(staff);
     // Staff knot
-    const knot = new THREE.Mesh(new THREE.SphereGeometry(0.1, 5, 4), staffMat);
+    const knot = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), staffMat);
     knot.position.set(0.58, 2.4, -0.22);
     this._merlinGroup.add(knot);
 
@@ -4355,7 +4355,7 @@ export class EagleFlightRenderer {
       forearm.rotation.z = side * 0.4;
       this._merlinGroup.add(forearm);
       // Hand
-      const hand = new THREE.Mesh(new THREE.SphereGeometry(0.08, 5, 4), skinMat);
+      const hand = new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 8), skinMat);
       hand.position.set(side * 0.65, 0.95, -0.08);
       this._merlinGroup.add(hand);
     }
@@ -4422,36 +4422,36 @@ export class EagleFlightRenderer {
     this._walkingMerlinGroup.add(shoulders);
 
     // --- Head ---
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.32, 8, 6), skinMat);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.32, 14, 10), skinMat);
     head.position.set(0, 2.72, 0);
     this._walkingMerlinGroup.add(head);
 
     // Eyes
     for (const side of [-1, 1]) {
-      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.04, 5, 4), new THREE.MeshStandardMaterial({ color: 0x334488 }));
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.04, 10, 8), new THREE.MeshStandardMaterial({ color: 0x334488 }));
       eye.position.set(side * 0.12, 2.75, -0.28);
       this._walkingMerlinGroup.add(eye);
     }
 
     // Nose
-    const nose = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.12, 4), skinMat);
+    const nose = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.12, 8), skinMat);
     nose.position.set(0, 2.68, -0.32);
     nose.rotation.x = -Math.PI / 2;
     this._walkingMerlinGroup.add(nose);
 
     // --- Wizard hat (taller for standing) ---
-    const hat = new THREE.Mesh(new THREE.ConeGeometry(0.42, 1.2, 8), hatMat);
+    const hat = new THREE.Mesh(new THREE.ConeGeometry(0.42, 1.2, 16), hatMat);
     hat.position.set(0, 3.4, 0);
     hat.rotation.z = 0.12;
     hat.rotation.x = -0.05;
     this._walkingMerlinGroup.add(hat);
     // Hat brim
-    const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.07, 10), hatMat);
+    const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.07, 16), hatMat);
     brim.position.set(0, 2.88, 0);
     this._walkingMerlinGroup.add(brim);
     // Stars on hat
     for (let i = 0; i < 3; i++) {
-      const star = new THREE.Mesh(new THREE.SphereGeometry(0.05, 4, 3), starMat);
+      const star = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), starMat);
       star.position.set(
         Math.cos(i * 2.1) * 0.28,
         3.1 + i * 0.22,
@@ -4464,11 +4464,11 @@ export class EagleFlightRenderer {
     const beardUpper = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.25, 0.18), beardMat);
     beardUpper.position.set(0, 2.5, -0.22);
     this._walkingMerlinGroup.add(beardUpper);
-    const beardMid = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.6, 5), beardMat);
+    const beardMid = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.6, 10), beardMat);
     beardMid.position.set(0, 2.1, -0.28);
     beardMid.rotation.x = Math.PI;
     this._walkingMerlinGroup.add(beardMid);
-    const beardTip = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.4, 4), beardMat);
+    const beardTip = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.4, 8), beardMat);
     beardTip.position.set(0, 1.75, -0.3);
     beardTip.rotation.x = Math.PI;
     this._walkingMerlinGroup.add(beardTip);
@@ -4483,23 +4483,23 @@ export class EagleFlightRenderer {
 
     // --- Robe skirt (flows around legs) ---
     this._walkMerlinRobeSkirt = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.25, 0.55, 1.0, 8),
+      new THREE.CylinderGeometry(0.25, 0.55, 1.0, 16),
       robeMat,
     );
     this._walkMerlinRobeSkirt.position.y = 0.7;
     this._walkingMerlinGroup.add(this._walkMerlinRobeSkirt);
 
     // Robe hem
-    const hem = new THREE.Mesh(new THREE.CylinderGeometry(0.56, 0.58, 0.08, 10), robeAccentMat);
+    const hem = new THREE.Mesh(new THREE.CylinderGeometry(0.56, 0.58, 0.08, 16), robeAccentMat);
     hem.position.y = 0.22;
     this._walkingMerlinGroup.add(hem);
 
     // --- Staff (held at side, taller) ---
-    const staff = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.09, 3.5, 6), staffMat);
+    const staff = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.09, 3.5, 12), staffMat);
     staff.position.set(0.55, 1.8, 0);
     this._walkingMerlinGroup.add(staff);
     // Staff knot
-    const knot = new THREE.Mesh(new THREE.SphereGeometry(0.12, 5, 4), staffMat);
+    const knot = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), staffMat);
     knot.position.set(0.55, 3.0, 0);
     this._walkingMerlinGroup.add(knot);
 
@@ -4534,7 +4534,7 @@ export class EagleFlightRenderer {
     const forearmL = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.5, 0.17), robeAccentMat);
     forearmL.position.set(0, -0.7, -0.05);
     this._walkMerlinArmL.add(forearmL);
-    const handL = new THREE.Mesh(new THREE.SphereGeometry(0.09, 5, 4), skinMat);
+    const handL = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 8), skinMat);
     handL.position.set(0, -0.95, -0.08);
     this._walkMerlinArmL.add(handL);
     this._walkMerlinArmL.position.set(-0.58, 2.4, 0);
@@ -4548,7 +4548,7 @@ export class EagleFlightRenderer {
     const forearmR = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.5, 0.17), robeAccentMat);
     forearmR.position.set(0, -0.7, -0.05);
     this._walkMerlinArmR.add(forearmR);
-    const handR = new THREE.Mesh(new THREE.SphereGeometry(0.09, 5, 4), skinMat);
+    const handR = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 8), skinMat);
     handR.position.set(0, -0.95, -0.08);
     this._walkMerlinArmR.add(handR);
     this._walkMerlinArmR.position.set(0.58, 2.4, 0);
@@ -4681,22 +4681,22 @@ export class EagleFlightRenderer {
       const birdScale = 0.7 + rng() * 0.6;
 
       // Body (elongated)
-      const body = new THREE.Mesh(new THREE.SphereGeometry(0.2, 6, 4), birdMat);
+      const body = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), birdMat);
       body.scale.set(1, 0.5, 2.2);
       birdGroup.add(body);
       // Head
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.1, 5, 4), birdMat);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), birdMat);
       head.position.set(0, 0.05, -0.4);
       birdGroup.add(head);
       // Beak
       const beakMat = new THREE.MeshStandardMaterial({ color: 0xddaa22, roughness: 0.5 });
-      const beak = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.15, 3), beakMat);
+      const beak = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.15, 8), beakMat);
       beak.position.set(0, 0.03, -0.55);
       beak.rotation.x = Math.PI / 2;
       birdGroup.add(beak);
       // Eye
       const eyeMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
-      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.02, 3, 2), eyeMat);
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.02, 8, 6), eyeMat);
       eye.position.set(0.06, 0.08, -0.42);
       birdGroup.add(eye);
       // Tail
@@ -4714,7 +4714,7 @@ export class EagleFlightRenderer {
       }
       // White breast for some species
       if (i % 3 === 0) {
-        const breast = new THREE.Mesh(new THREE.SphereGeometry(0.12, 4, 3), whiteMat);
+        const breast = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), whiteMat);
         breast.position.set(0, -0.06, -0.15);
         breast.scale.set(0.8, 0.5, 1);
         birdGroup.add(breast);
@@ -4842,7 +4842,7 @@ export class EagleFlightRenderer {
     ];
 
     for (const fp of fogPositions) {
-      const fogGeo = new THREE.PlaneGeometry(fp.w, fp.d, 4, 4);
+      const fogGeo = new THREE.PlaneGeometry(fp.w, fp.d, 8, 8);
       fogGeo.rotateX(-Math.PI / 2);
       const fog = new THREE.Mesh(fogGeo, fogMat.clone());
       fog.position.set(fp.x, 1.5, fp.z);
@@ -4873,7 +4873,7 @@ export class EagleFlightRenderer {
         depthTest: false,
         blending: THREE.AdditiveBlending,
       });
-      const geo = new THREE.CircleGeometry(f.size, 16);
+      const geo = new THREE.CircleGeometry(f.size, 24);
       const mesh = new THREE.Mesh(geo, mat);
       mesh.renderOrder = 999;
       this._lensFlareGroup.add(mesh);
@@ -4916,7 +4916,7 @@ export class EagleFlightRenderer {
     });
 
     for (let i = 0; i < 40; i++) {
-      const geo = new THREE.SphereGeometry(0.6, 10, 8);
+      const geo = new THREE.SphereGeometry(0.6, 16, 12);
       const mat = orbMat.clone();
       const orb = new THREE.Mesh(geo, mat);
       this._scene.add(orb);
@@ -4943,7 +4943,7 @@ export class EagleFlightRenderer {
       body.position.y = 0.7;
       group.add(body);
       // Head
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.13, 5, 4), skinMat);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 8), skinMat);
       head.position.y = 1.2;
       group.add(head);
       // Legs
@@ -4955,11 +4955,11 @@ export class EagleFlightRenderer {
 
       // Knights get helmet
       if (i >= 30 && i < 36) {
-        const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.15, 5, 3, 0, Math.PI * 2, 0, Math.PI * 0.6), knightMat);
+        const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.15, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.6), knightMat);
         helmet.position.y = 1.25;
         group.add(helmet);
         // Spear
-        const spear = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.5, 3), new THREE.MeshStandardMaterial({ color: 0x664422 }));
+        const spear = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.5, 8), new THREE.MeshStandardMaterial({ color: 0x664422 }));
         spear.position.set(0.2, 1, 0);
         group.add(spear);
       }
@@ -5040,7 +5040,7 @@ export class EagleFlightRenderer {
 
     // Create 10 checkpoint rings (will be positioned from state)
     for (let i = 0; i < 10; i++) {
-      const geo = new THREE.TorusGeometry(8, 0.4, 8, 24);
+      const geo = new THREE.TorusGeometry(8, 0.4, 12, 32);
       const mat = ringMat.clone();
       const ring = new THREE.Mesh(geo, mat);
       ring.rotation.x = Math.PI / 2;
@@ -5089,7 +5089,7 @@ export class EagleFlightRenderer {
       { x: -45, z: 5 }, { x: 180, z: 80 }, { x: -160, z: -100 },
     ];
     for (const tp of thermalPos) {
-      const geo = new THREE.CylinderGeometry(10, 15, 40, 8, 8, true);
+      const geo = new THREE.CylinderGeometry(10, 15, 40, 16, 8, true);
       const shimmer = new THREE.Mesh(geo, shimmerMat.clone());
       shimmer.position.set(tp.x, 20, tp.z);
       this._scene.add(shimmer);
@@ -5613,7 +5613,7 @@ export class EagleFlightRenderer {
             color: 0x4488ff, emissive: 0x2266dd, emissiveIntensity: 0.8,
             transparent: true, opacity: 0.8,
           });
-          const spark = new THREE.Mesh(new THREE.SphereGeometry(0.1, 4, 3), sMat);
+          const spark = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), sMat);
           spark.position.copy(mesh.position);
           this._scene.add(spark);
           this._spellParticles.push({
