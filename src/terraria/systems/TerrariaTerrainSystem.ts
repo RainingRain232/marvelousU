@@ -173,7 +173,6 @@ export function generateChunk(cx: number): TerrariaChunk {
   for (let lx = 0; lx < CW; lx++) {
     const wx = baseX + lx;
     if (wx < 0 || wx >= TB.WORLD_WIDTH) continue;
-    const biome = getBiome(wx);
     const surfaceY = getSurfaceHeight(wx);
     const above = surfaceY + 1;
     const surfBlock = chunk.getBlock(lx, surfaceY);

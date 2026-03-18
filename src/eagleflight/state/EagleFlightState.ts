@@ -301,9 +301,9 @@ function _createNPCs(): EFNPC[] {
 export function createEagleFlightState(sw: number, sh: number): EagleFlightState {
   return {
     player: {
-      position: { x: 0, y: EFBalance.START_ALT, z: -80 },
+      position: { x: 490, y: EFBalance.START_ALT, z: -380 },
       pitch: 0,
-      yaw: 0,
+      yaw: Math.atan2(-490, 380),
       roll: 0,
       speed: EFBalance.CRUISE_SPEED,
       targetSpeed: EFBalance.CRUISE_SPEED,

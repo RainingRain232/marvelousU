@@ -9,7 +9,7 @@ import { getHeldItem } from "../state/TerrariaInventory";
 import { BLOCK_DEFS } from "../config/TerrariaBlockDefs";
 import { getAvailableRecipes, craftRecipe } from "../systems/TerrariaCraftingSystem";
 import { onCrafted } from "../systems/TerrariaQuestSystem";
-import type { CraftingRecipe } from "../config/TerrariaRecipeDefs";
+// CraftingRecipe type used in _rebuildInventoryUI click handlers
 
 export class TerrariaHUD {
   private _overlay: HTMLDivElement | null = null;
@@ -31,10 +31,8 @@ export class TerrariaHUD {
 
   onExit: (() => void) | null = null;
   onRespawn: (() => void) | null = null;
-  private _craftCallback: ((recipe: CraftingRecipe) => void) | null = null;
   private _resumeCallback: (() => void) | null = null;
 
-  setCraftCallback(cb: (recipe: CraftingRecipe) => void): void { this._craftCallback = cb; }
   setResumeCallback(cb: () => void): void { this._resumeCallback = cb; }
 
   build(): void {

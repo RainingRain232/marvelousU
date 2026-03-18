@@ -3410,6 +3410,13 @@ export class EagleFlightRenderer {
     // Farm fields
     const fieldColors = [0x88aa44, 0xaacc55, 0x99bb33, 0xbbaa44, 0x77aa33, 0xccbb55];
     const fenceMat = new THREE.MeshStandardMaterial({ color: 0x665533, roughness: 0.9 });
+    // Exclusion zones: wizard tower (450,-350) and distant village (-400,300)
+    const _excl = (px: number, pz: number) => {
+      const d1 = Math.sqrt((px - 450) ** 2 + (pz + 350) ** 2);
+      const d2 = Math.sqrt((px + 400) ** 2 + (pz - 300) ** 2);
+      return d1 < 60 || d2 < 60;
+    };
+
     for (let i = 0; i < 16; i++) {
       const angle = rng() * Math.PI * 2;
       const dist = 120 + rng() * 350;
@@ -3417,6 +3424,7 @@ export class EagleFlightRenderer {
       const fz = Math.sin(angle) * dist;
       const fw = 15 + rng() * 25;
       const fd = 10 + rng() * 18;
+      if (_excl(fx, fz)) continue;
 
       const fieldGeo = new THREE.PlaneGeometry(fw, fd);
       fieldGeo.rotateX(-Math.PI / 2);
@@ -3451,6 +3459,7 @@ export class EagleFlightRenderer {
       const dist = 130 + rng() * 300;
       const wx = Math.cos(angle) * dist;
       const wz = Math.sin(angle) * dist;
+      if (_excl(wx, wz)) continue;
       const wLen = 15 + rng() * 25;
       const wall = new THREE.Mesh(new THREE.BoxGeometry(wLen, 1.2, 0.6), stoneWallMat);
       wall.position.set(wx, 0.6, wz);

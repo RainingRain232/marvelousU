@@ -20,7 +20,7 @@ import { recalcLighting } from "./systems/TerrariaLightingSystem";
 import { updateCombat } from "./systems/TerrariaCombatSystem";
 import { updateMobs } from "./systems/TerrariaMobSystem";
 import { updateNPCs, interactWithNPC } from "./systems/TerrariaNPCSystem";
-import { updateQuests, onDragonKilled, onIronMined } from "./systems/TerrariaQuestSystem";
+import { updateQuests, onDragonKilled } from "./systems/TerrariaQuestSystem";
 // Crafting (used by HUD callbacks, imported for future use)
 // import { craftRecipe } from "./systems/TerrariaCraftingSystem";
 import { saveTerrariaWorld, loadTerrariaWorld, hasSave } from "./systems/TerrariaSaveSystem";
