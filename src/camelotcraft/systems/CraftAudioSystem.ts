@@ -87,29 +87,81 @@ export function initAudio(): void {
  * Short percussive crunch — block breaking.
  * Uses a burst of filtered noise with a fast exponential decay.
  */
-export function playBlockBreak(): void {
+/**
+ * Material-aware block break sound.
+ * @param material "stone"|"wood"|"metal"|"glass"|"dirt"|"default"
+ */
+export function playBlockBreak(material: string = "default"): void {
   const c = ensureCtx();
   const now = c.currentTime;
-  const duration = 0.12;
 
-  const buf = noiseBuffer(duration);
-  const src = c.createBufferSource();
-  src.buffer = buf;
-
-  const filter = c.createBiquadFilter();
-  filter.type = "bandpass";
-  filter.frequency.setValueAtTime(800, now);
-  filter.frequency.exponentialRampToValueAtTime(200, now + duration);
-  filter.Q.value = 1.5;
-
+  // Different sounds per material
   const gain = sfxGain();
   gain.gain.setValueAtTime(CB.SFX_VOLUME, now);
-  gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
 
-  src.connect(filter);
-  filter.connect(gain);
-  src.start(now);
-  src.stop(now + duration);
+  if (material === "wood") {
+    // Woody crack: short square wave + noise
+    const osc = c.createOscillator();
+    osc.type = "square";
+    osc.frequency.setValueAtTime(180, now);
+    osc.frequency.exponentialRampToValueAtTime(60, now + 0.1);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+    osc.connect(gain);
+    osc.start(now); osc.stop(now + 0.12);
+  } else if (material === "metal") {
+    // Metallic clang: high sine + overtones
+    const osc = c.createOscillator();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(1200, now);
+    osc.frequency.exponentialRampToValueAtTime(400, now + 0.2);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+    osc.connect(gain);
+    osc.start(now); osc.stop(now + 0.25);
+    // Overtone
+    const osc2 = c.createOscillator();
+    osc2.type = "sine";
+    osc2.frequency.setValueAtTime(2400, now);
+    const g2 = sfxGain();
+    g2.gain.setValueAtTime(CB.SFX_VOLUME * 0.3, now);
+    g2.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+    osc2.connect(g2);
+    osc2.start(now); osc2.stop(now + 0.15);
+  } else if (material === "glass") {
+    // Glass shatter: high noise burst
+    const buf = noiseBuffer(0.15);
+    const src = c.createBufferSource();
+    src.buffer = buf;
+    const filter = c.createBiquadFilter();
+    filter.type = "highpass";
+    filter.frequency.value = 3000;
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+    src.connect(filter).connect(gain);
+    src.start(now); src.stop(now + 0.15);
+  } else if (material === "dirt") {
+    // Soft thud: low filtered noise
+    const buf = noiseBuffer(0.1);
+    const src = c.createBufferSource();
+    src.buffer = buf;
+    const filter = c.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.value = 400;
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+    src.connect(filter).connect(gain);
+    src.start(now); src.stop(now + 0.1);
+  } else {
+    // Default stone: bandpass noise crunch
+    const buf = noiseBuffer(0.12);
+    const src = c.createBufferSource();
+    src.buffer = buf;
+    const filter = c.createBiquadFilter();
+    filter.type = "bandpass";
+    filter.frequency.setValueAtTime(800, now);
+    filter.frequency.exponentialRampToValueAtTime(200, now + 0.12);
+    filter.Q.value = 1.5;
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+    src.connect(filter).connect(gain);
+    src.start(now); src.stop(now + 0.12);
+  }
 }
 
 /**
@@ -255,6 +307,64 @@ export function playMobDeath(): void {
   filter.connect(gain);
   osc.start(now);
   osc.stop(now + duration);
+}
+
+/**
+ * Mob-specific ambient sounds. Call when a mob is near the player.
+ */
+export function playMobSound(mobType: string): void {
+  const c = ensureCtx();
+  const now = c.currentTime;
+  const gain = sfxGain();
+  gain.gain.setValueAtTime(CB.SFX_VOLUME * 0.3, now);
+
+  if (mobType.includes("wolf")) {
+    // Wolf growl: low sawtooth with vibrato
+    const osc = c.createOscillator();
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(100, now);
+    osc.frequency.linearRampToValueAtTime(150, now + 0.3);
+    osc.frequency.linearRampToValueAtTime(80, now + 0.6);
+    const filter = c.createBiquadFilter();
+    filter.type = "lowpass"; filter.frequency.value = 500;
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+    osc.connect(filter).connect(gain);
+    osc.start(now); osc.stop(now + 0.6);
+  } else if (mobType.includes("dragon")) {
+    // Dragon roar: deep rumble + high screech
+    const osc = c.createOscillator();
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(60, now);
+    osc.frequency.linearRampToValueAtTime(200, now + 0.5);
+    osc.frequency.linearRampToValueAtTime(40, now + 1.0);
+    gain.gain.setValueAtTime(CB.SFX_VOLUME * 0.7, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 1.0);
+    osc.connect(gain);
+    osc.start(now); osc.stop(now + 1.0);
+  } else if (mobType.includes("skeleton")) {
+    // Skeleton rattle: short clicks
+    for (let i = 0; i < 4; i++) {
+      const osc = c.createOscillator();
+      osc.type = "square";
+      osc.frequency.value = 2000 + Math.random() * 1000;
+      const g = sfxGain();
+      g.gain.setValueAtTime(CB.SFX_VOLUME * 0.15, now + i * 0.05);
+      g.gain.exponentialRampToValueAtTime(0.001, now + i * 0.05 + 0.03);
+      osc.connect(g);
+      osc.start(now + i * 0.05); osc.stop(now + i * 0.05 + 0.03);
+    }
+  } else if (mobType.includes("saxon") || mobType.includes("knight")) {
+    // War cry: rising sawtooth
+    const osc = c.createOscillator();
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(200, now);
+    osc.frequency.linearRampToValueAtTime(400, now + 0.3);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+    const filter = c.createBiquadFilter();
+    filter.type = "bandpass"; filter.frequency.value = 800;
+    osc.connect(filter).connect(gain);
+    osc.start(now); osc.stop(now + 0.4);
+  }
 }
 
 /**

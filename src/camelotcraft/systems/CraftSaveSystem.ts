@@ -5,6 +5,8 @@
 import { createCraftState, createPlayer, type CraftState, type QuestState } from "../state/CraftState";
 import { CraftChunk, chunkKey } from "../state/CraftChunk";
 import type { CraftInventory } from "../state/CraftInventory";
+import { getChestContents, setChestSlot, getFurnaceState } from "./CraftContainerSystem";
+import type { ItemStack } from "../config/CraftRecipeDefs";
 
 const SAVE_KEY = "camelotcraft_save";
 

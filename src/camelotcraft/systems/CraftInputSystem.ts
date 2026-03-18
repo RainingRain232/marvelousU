@@ -222,6 +222,22 @@ export class CraftInputSystem {
       this._wasFalling = false;
     }
 
+    // --- Mob collision (push player away from mobs) ---
+    for (const mob of state.mobs) {
+      const dx = pos.x - mob.position.x;
+      const dz = pos.z - mob.position.z;
+      const dy = pos.y - mob.position.y;
+      const distSq = dx * dx + dz * dz;
+      const mobRadius = 0.5;
+      if (distSq < mobRadius * mobRadius && Math.abs(dy) < 1.8) {
+        const dist = Math.sqrt(distSq) || 0.01;
+        const pushX = (dx / dist) * (mobRadius - dist) * 0.5;
+        const pushZ = (dz / dist) * (mobRadius - dist) * 0.5;
+        pos.x += pushX;
+        pos.z += pushZ;
+      }
+    }
+
     // --- Fall into void: respawn ---
     if (pos.y < -10) {
       pos.copy(p.spawnPoint);

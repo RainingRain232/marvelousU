@@ -312,10 +312,32 @@ export class CraftSkybox {
   // ---- sun ---------------------------------------------------------------
 
   private _buildSun(): void {
+    // Sun core — bright enough for bloom to catch
     const sunGeo = new THREE.SphereGeometry(8, 16, 8);
-    const sunMat = new THREE.MeshBasicMaterial({ color: 0xffdd44 });
+    const sunMat = new THREE.MeshBasicMaterial({ color: 0xFFFF88 }); // brighter for bloom
     this._sunMesh = new THREE.Mesh(sunGeo, sunMat);
     this.group.add(this._sunMesh);
+
+    // Sun corona ring (outer glow disc)
+    const coronaGeo = new THREE.RingGeometry(9, 22, 32);
+    const coronaMat = new THREE.MeshBasicMaterial({
+      color: 0xFFCC44, transparent: true, opacity: 0.25,
+      side: THREE.DoubleSide, depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
+    const corona = new THREE.Mesh(coronaGeo, coronaMat);
+    corona.name = "corona";
+    this._sunMesh.add(corona);
+
+    // Inner glow sphere
+    const glowGeo = new THREE.SphereGeometry(12, 16, 8);
+    const glowMat = new THREE.MeshBasicMaterial({
+      color: 0xFFDD66, transparent: true, opacity: 0.15,
+      depthWrite: false, blending: THREE.AdditiveBlending,
+    });
+    const glow = new THREE.Mesh(glowGeo, glowMat);
+    glow.name = "sunGlow";
+    this._sunMesh.add(glow);
   }
 
   // ---- moon --------------------------------------------------------------
@@ -398,6 +420,9 @@ export class CraftSkybox {
     const sunY = Math.sin(sunAngle) * sunDist;
     this._sunMesh.position.set(sunX, sunY, 0);
     this._sunMesh.visible = sunY > -20;
+    // Corona faces camera
+    const corona = this._sunMesh.getObjectByName("corona");
+    if (corona) corona.lookAt(playerPos);
 
     // ---- Moon (opposite of sun) ----
     this._moonMesh.position.set(-sunX, -sunY, 0);

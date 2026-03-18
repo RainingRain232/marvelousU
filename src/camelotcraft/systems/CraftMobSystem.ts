@@ -174,13 +174,26 @@ export function updateMobs(state: CraftState, dt: number): void {
             } else {
               addMessage(state, `${def.name} strikes you for ${dmg} damage!`, 0xFF4444);
             }
-            // Armor reduces damage
+            // Armor reduces damage + degrades
             const armorSlots = state.player.inventory.armor;
             let armorDef = 0;
-            if (armorSlots.helmet) armorDef += 1;
-            if (armorSlots.chestplate) armorDef += 3;
-            if (armorSlots.leggings) armorDef += 2;
-            if (armorSlots.boots) armorDef += 1;
+            const armorPieces = [armorSlots.helmet, armorSlots.chestplate, armorSlots.leggings, armorSlots.boots] as const;
+            const armorKeys = ["helmet", "chestplate", "leggings", "boots"] as const;
+            const armorValues = [1, 3, 2, 1];
+            for (let ai = 0; ai < 4; ai++) {
+              const piece = armorPieces[ai];
+              if (piece) {
+                armorDef += armorValues[ai];
+                // Degrade armor durability
+                if (piece.durability !== undefined) {
+                  piece.durability--;
+                  if (piece.durability <= 0) {
+                    armorSlots[armorKeys[ai]] = null;
+                    addMessage(state, `Your ${piece.displayName} broke!`, 0xFF6600);
+                  }
+                }
+              }
+            }
             dmg = Math.max(1, dmg - Math.floor(armorDef * 0.4));
 
             state.player.hp = Math.max(0, state.player.hp - dmg);

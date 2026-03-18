@@ -10,6 +10,7 @@ import { getWorldBlock } from "../state/CraftState";
 import { worldToChunk } from "../state/CraftChunk";
 import { matchRecipe } from "../systems/CraftCraftingSystem";
 import { RECIPES } from "../config/CraftRecipeDefs";
+import { addToInventory } from "../state/CraftInventory";
 
 export class CraftHUD {
   private _root!: HTMLDivElement;
@@ -38,6 +39,7 @@ export class CraftHUD {
   private _crosshairH!: HTMLDivElement;
   private _lastSelectedSlot = -1;
   private _itemNameTimer = 0;
+  private _invRefreshCounter = 0;
   private _recipeBook!: HTMLDivElement;
   private _recipeBookOpen = false;
 
@@ -45,6 +47,24 @@ export class CraftHUD {
   onCraftSlotClick?: (slotIndex: number) => void;
   onInventorySlotClick?: (section: "hotbar" | "main", index: number) => void;
   onCraftResultClick?: () => void;
+  private _unequipArmor?: (slot: "helmet" | "chestplate" | "leggings" | "boots") => void;
+
+  /** Set the state reference for armor unequip. */
+  setUnequipHandler(state: CraftState): void {
+    this._unequipArmor = (slot) => {
+      const armor = state.player.inventory.armor;
+      const item = armor[slot];
+      if (!item) return;
+      // Put into first empty hotbar or main slot
+      const inv = state.player.inventory;
+      for (let i = 0; i < inv.hotbar.length; i++) {
+        if (!inv.hotbar[i]) { inv.hotbar[i] = item; armor[slot] = null; return; }
+      }
+      for (let i = 0; i < inv.main.length; i++) {
+        if (!inv.main[i]) { inv.main[i] = item; armor[slot] = null; return; }
+      }
+    };
+  }
 
   /** Cursor item for drag-and-drop in inventory. */
   private _cursorItem: ItemStack | null = null;
@@ -52,6 +72,37 @@ export class CraftHUD {
 
   /** Get/set the cursor item for external use. */
   getCursorItem(): ItemStack | null { return this._cursorItem; }
+
+  /** Right-click: split stack in half or place one item. */
+  handleRightClick(slots: (ItemStack | null)[], index: number): void {
+    if (this._cursorItem === null) {
+      // Pick up half the stack
+      const item = slots[index];
+      if (item && item.count > 1) {
+        const half = Math.ceil(item.count / 2);
+        this._cursorItem = { ...item, count: half };
+        item.count -= half;
+      } else if (item) {
+        this._cursorItem = item;
+        slots[index] = null;
+      }
+    } else {
+      // Place one item from cursor into slot
+      if (slots[index] === null) {
+        slots[index] = { ...this._cursorItem, count: 1 };
+        this._cursorItem.count--;
+        if (this._cursorItem.count <= 0) this._cursorItem = null;
+      } else if (
+        slots[index]!.blockType !== undefined &&
+        this._cursorItem.blockType === slots[index]!.blockType &&
+        slots[index]!.count < 64
+      ) {
+        slots[index]!.count++;
+        this._cursorItem.count--;
+        if (this._cursorItem.count <= 0) this._cursorItem = null;
+      }
+    }
+  }
 
   /** Handle inventory slot click: pick up or swap items. */
   handleSlotClick(slots: (ItemStack | null)[], index: number): void {
@@ -95,6 +146,9 @@ export class CraftHUD {
     const item = from[index];
     if (!item) return;
 
+    // Check if item is armor — auto-equip instead of moving
+    if (item.specialId && this._tryEquipArmor(inv, item, from, index)) return;
+
     // Find first empty slot in target, or stack
     for (let i = 0; i < to.length; i++) {
       if (to[i] === null) {
@@ -103,6 +157,28 @@ export class CraftHUD {
         return;
       }
     }
+  }
+
+  /** Try to equip an armor item. Returns true if equipped. */
+  private _tryEquipArmor(
+    inv: import("../state/CraftInventory").CraftInventory,
+    item: ItemStack,
+    fromSlots: (ItemStack | null)[],
+    fromIndex: number,
+  ): boolean {
+    const id = item.specialId ?? "";
+    let slot: "helmet" | "chestplate" | "leggings" | "boots" | null = null;
+    if (id.includes("helmet")) slot = "helmet";
+    else if (id.includes("chestplate")) slot = "chestplate";
+    else if (id.includes("leggings")) slot = "leggings";
+    else if (id.includes("boots")) slot = "boots";
+    if (!slot) return false;
+
+    // Swap with currently equipped armor
+    const current = inv.armor[slot];
+    inv.armor[slot] = item;
+    fromSlots[fromIndex] = current; // put old armor back (or null)
+    return true;
   }
 
   build(): void {
@@ -405,12 +481,21 @@ export class CraftHUD {
     this._updateItemName(state);
     this._updateCrosshair(state);
 
-    // Inventory overlay visibility
+    // Inventory overlay visibility (throttle rebuild to every 5 frames for perf + drag stability)
     if (state.inventoryOpen || state.craftingOpen) {
       this._inventoryOverlay.style.display = "flex";
-      this._updateInventoryOverlay(state);
+      this._invRefreshCounter = (this._invRefreshCounter ?? 0) + 1;
+      if (this._invRefreshCounter % 5 === 0) {
+        this._updateInventoryOverlay(state);
+      }
     } else {
       this._inventoryOverlay.style.display = "none";
+      this._invRefreshCounter = 0;
+      // Return cursor item to inventory if closing while holding
+      if (this._cursorItem && this._cursorItem.count > 0) {
+        addToInventory(state.player.inventory, this._cursorItem);
+        this._cursorItem = null;
+      }
       if (this._recipeBookOpen) {
         this._recipeBookOpen = false;
         this._recipeBook.style.display = "none";
@@ -611,6 +696,7 @@ export class CraftHUD {
         if (e.shiftKey) this.handleShiftClick(state, "main", idx);
         else this.handleSlotClick(inv.main, idx);
       };
+      slot.oncontextmenu = (e) => { e.preventDefault(); this.handleRightClick(inv.main, idx); };
       mainEl.appendChild(slot);
     }
 
@@ -624,6 +710,7 @@ export class CraftHUD {
         if (e.shiftKey) this.handleShiftClick(state, "hotbar", idx);
         else this.handleSlotClick(inv.hotbar, idx);
       };
+      slot.oncontextmenu = (e) => { e.preventDefault(); this.handleRightClick(inv.hotbar, idx); };
       hotbarEl.appendChild(slot);
     }
   }
@@ -748,7 +835,19 @@ export class CraftHUD {
   }
 
   private _updateWaterOverlay(state: CraftState): void {
-    this._waterOverlay.style.display = state.player.inWater ? "block" : "none";
+    if (state.player.inWater) {
+      this._waterOverlay.style.display = "block";
+      // Underwater distortion: wobbly edge via animated border-radius + blur
+      const t = state.totalTime;
+      const wobble = Math.sin(t * 2) * 3 + Math.cos(t * 1.3) * 2;
+      this._waterOverlay.style.backdropFilter = `blur(${1 + wobble * 0.3}px)`;
+      this._waterOverlay.style.background = `radial-gradient(ellipse at center,
+        rgba(33,150,243,0.15) 0%,
+        rgba(13,71,161,0.35) 100%)`;
+    } else {
+      this._waterOverlay.style.display = "none";
+      this._waterOverlay.style.backdropFilter = "none";
+    }
   }
 
   private _updateDamageFlash(state: CraftState): void {
@@ -961,7 +1060,11 @@ export class CraftHUD {
         font-size:14px; border-radius:3px;
       `;
       slot.textContent = icons[i];
-      slot.title = slots[i];
+      slot.title = `${slots[i]} (click to unequip)`;
+      slot.style.cursor = "pointer";
+      slot.style.pointerEvents = "auto";
+      const slotName = slots[i] as "helmet" | "chestplate" | "leggings" | "boots";
+      slot.onclick = () => this._unequipArmor?.(slotName);
       this._armorEl.appendChild(slot);
     }
     this._root.appendChild(this._armorEl);

@@ -28,6 +28,18 @@ export interface EFPlayer {
   freeLook: boolean;
   freeLookYaw: number;
   freeLookPitch: number;
+
+  // Stats
+  distanceFlown: number;
+  topSpeed: number;
+  checkpointsHit: number;
+}
+
+export interface EFCheckpoint {
+  position: Vec3;
+  radius: number;
+  collected: boolean;
+  glowPhase: number;
 }
 
 export interface EagleFlightState {
@@ -43,6 +55,17 @@ export interface EagleFlightState {
   // Camera shake
   shakeTimer: number;
   shakeMag: number;
+
+  // Intro cinematic
+  introActive: boolean;
+  introTimer: number;
+  introDuration: number;
+
+  // Thermals
+  thermalBoost: number;
+
+  // Checkpoints
+  checkpoints: EFCheckpoint[];
 }
 
 // ---------------------------------------------------------------------------
@@ -64,11 +87,29 @@ export const EFBalance = {
   WORLD_RADIUS: 320,
   MIN_ALT: 3,
   MAX_ALT: 200,
-  START_ALT: 60,
+  START_ALT: 80,
   BOOST_DURATION: 2.0,
   BOOST_COOLDOWN: 5.0,
   MOUSE_SENSITIVITY: 0.003,
+  INTRO_DURATION: 8.0,
 } as const;
+
+// ---------------------------------------------------------------------------
+// Checkpoint positions (rings to fly through)
+// ---------------------------------------------------------------------------
+
+const CHECKPOINT_POSITIONS: Vec3[] = [
+  { x: 0, y: 55, z: 30 },     // Above castle
+  { x: 35, y: 40, z: -30 },   // Cathedral spire
+  { x: -85, y: 30, z: 0 },    // West gate
+  { x: 0, y: 25, z: -85 },    // South gate
+  { x: 85, y: 35, z: 0 },     // East gate
+  { x: 140, y: 20, z: -60 },  // Windmill
+  { x: -120, y: 25, z: 90 },  // Windmill 2
+  { x: -180, y: 15, z: -25 }, // Harbor
+  { x: 0, y: 70, z: 0 },      // High above center
+  { x: 60, y: 45, z: 50 },    // Noble quarter
+];
 
 // ---------------------------------------------------------------------------
 // Factory
@@ -91,6 +132,9 @@ export function createEagleFlightState(sw: number, sh: number): EagleFlightState
       freeLook: false,
       freeLookYaw: 0,
       freeLookPitch: 0,
+      distanceFlown: 0,
+      topSpeed: 0,
+      checkpointsHit: 0,
     },
     screenW: sw,
     screenH: sh,
@@ -101,5 +145,15 @@ export function createEagleFlightState(sw: number, sh: number): EagleFlightState
     windStrength: 2,
     shakeTimer: 0,
     shakeMag: 0,
+    introActive: true,
+    introTimer: 0,
+    introDuration: EFBalance.INTRO_DURATION,
+    thermalBoost: 0,
+    checkpoints: CHECKPOINT_POSITIONS.map((p) => ({
+      position: { ...p },
+      radius: 8,
+      collected: false,
+      glowPhase: Math.random() * Math.PI * 2,
+    })),
   };
 }

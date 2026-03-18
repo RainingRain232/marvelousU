@@ -203,6 +203,29 @@ export class CraftParticles {
    * Emit ambient atmosphere particles near the player.
    * Call once per frame. Spawns dust motes during day, fireflies at night.
    */
+  emitTorchFlame(x: number, y: number, z: number, color: number): void {
+    if (this.particles.length > 180) return;
+    const mat = new THREE.MeshBasicMaterial({
+      color, transparent: true, opacity: 0.7,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    });
+    const mesh = new THREE.Mesh(this.sphereGeo, mat);
+    mesh.scale.setScalar(0.4 + Math.random() * 0.3);
+    mesh.position.set(
+      x + (Math.random() - 0.5) * 0.15,
+      y + Math.random() * 0.1,
+      z + (Math.random() - 0.5) * 0.15,
+    );
+    this.group.add(mesh);
+    this.particles.push({
+      mesh,
+      velocity: new THREE.Vector3((Math.random() - 0.5) * 0.2, 0.8 + Math.random() * 0.5, (Math.random() - 0.5) * 0.2),
+      life: 0.3 + Math.random() * 0.3,
+      maxLife: 0.6,
+      gravity: -0.5, // floats upward
+    });
+  }
+
   emitAmbient(playerX: number, playerY: number, playerZ: number, timeOfDay: number): void {
     if (this.particles.length > 150) return; // don't overwhelm
 

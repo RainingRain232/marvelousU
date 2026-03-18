@@ -46,9 +46,6 @@ export class CraftRenderer {
   private _crackMesh!: THREE.Mesh;
   private _crackMaterial!: THREE.MeshBasicMaterial;
 
-  /** Crosshair element. */
-  private _crosshair!: HTMLDivElement;
-
   /** Fog reference. */
   private _fog!: THREE.FogExp2;
 
@@ -79,9 +76,13 @@ export class CraftRenderer {
     return this._particles;
   }
 
+  get weather(): CraftWeather {
+    return this._weather;
+  }
+
   build(): void {
     // WebGL renderer
-    this._renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
+    this._renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
     this._renderer.setSize(window.innerWidth, window.innerHeight);
     this._renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this._renderer.shadowMap.enabled = true;
@@ -235,6 +236,17 @@ export class CraftRenderer {
       light.intensity = 0.8 + Math.random() * 0.4; // subtle flicker
     }
 
+    // Chunk fade-in animation
+    for (const [, mesh] of this._chunkMeshes) {
+      const age = (mesh as any)._fadeAge;
+      if (age !== undefined && age < 1) {
+        (mesh as any)._fadeAge = Math.min(1, age + dt * 3); // 0.33s fade
+        const t = (mesh as any)._fadeAge;
+        mesh.position.y = (1 - t) * -0.3;
+        mesh.scale.setScalar(0.98 + t * 0.02);
+      }
+    }
+
     // Update water animation time
     this._waterTime += dt;
     for (const [, mesh] of this._chunkMeshes) {
@@ -293,6 +305,10 @@ export class CraftRenderer {
 
           const mesh = buildChunkMesh(chunk, state);
           if (mesh) {
+            // Fade-in: start slightly below and scale up
+            mesh.position.y = -0.5;
+            mesh.scale.setScalar(0.98);
+            (mesh as any)._fadeAge = 0;
             this._scene.add(mesh);
             this._chunkMeshes.set(key, mesh);
           } else {
@@ -321,8 +337,14 @@ export class CraftRenderer {
       let mesh = this._mobMeshes.get(mob.id);
 
       if (!mesh) {
-        // Create multi-part mob mesh
+        // Create multi-part mob mesh with shadow casting
         const group = this._mobRenderer.createMobMesh(mob.type);
+        group.traverse((child) => {
+          if (child instanceof THREE.Mesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+          }
+        });
         this._scene.add(group);
         this._mobMeshes.set(mob.id, group as unknown as THREE.Mesh);
         mesh = group as unknown as THREE.Mesh;
@@ -336,6 +358,35 @@ export class CraftRenderer {
 
       // Animate limbs
       this._mobRenderer.animateMob(mesh as unknown as THREE.Group, mob, dt);
+
+      // Health bar (only show for damaged hostile mobs)
+      let hpBar = mesh.getObjectByName("hpBar") as THREE.Mesh | undefined;
+      if (def.behavior === "hostile" && mob.hp < mob.maxHp && mob.hp > 0) {
+        if (!hpBar) {
+          const barGeo = new THREE.PlaneGeometry(0.8, 0.06);
+          const barMat = new THREE.MeshBasicMaterial({ color: 0x44FF44, side: THREE.DoubleSide, depthTest: false });
+          hpBar = new THREE.Mesh(barGeo, barMat);
+          hpBar.name = "hpBar";
+          mesh.add(hpBar);
+          // Background bar
+          const bgGeo = new THREE.PlaneGeometry(0.82, 0.08);
+          const bgMat = new THREE.MeshBasicMaterial({ color: 0x333333, side: THREE.DoubleSide, depthTest: false });
+          const bgBar = new THREE.Mesh(bgGeo, bgMat);
+          bgBar.name = "hpBg";
+          bgBar.position.z = -0.001;
+          hpBar.add(bgBar);
+        }
+        const hpPct = mob.hp / mob.maxHp;
+        hpBar.scale.x = Math.max(0.01, hpPct);
+        hpBar.position.set((hpPct - 1) * 0.4, def.bodyHeight * 0.6, 0);
+        (hpBar.material as THREE.MeshBasicMaterial).color.setHex(
+          hpPct > 0.5 ? 0x44FF44 : hpPct > 0.25 ? 0xFFAA00 : 0xFF4444
+        );
+        hpBar.lookAt(this._cameraCtrl.camera.position);
+        hpBar.visible = true;
+      } else if (hpBar) {
+        hpBar.visible = false;
+      }
 
       // Flash when hurt
       if (mob.hurtTimer > 0) {
@@ -452,6 +503,11 @@ export class CraftRenderer {
             light.position.set(wx + 0.5, wy + 0.5, wz + 0.5);
             this._scene.add(light);
             this._torchLights.push(light);
+
+            // Torch flame particles (only for torch blocks, not holy stone)
+            if ((block === BlockType.TORCH || block === BlockType.ENCHANTED_TORCH) && Math.random() < 0.3) {
+              this._particles.emitTorchFlame(wx + 0.5, wy + 0.7, wz + 0.5, color);
+            }
           }
         }
       }
@@ -515,13 +571,9 @@ export class CraftRenderer {
     this._renderer.dispose();
     this._renderer.domElement.remove();
 
-    // Crosshair
-    this._crosshair?.remove();
-    // Remove the horizontal crosshair too
-    document.querySelectorAll("div").forEach((el) => {
-      if (el.style.width === "20px" && el.style.height === "2px" && el.style.position === "fixed") {
-        el.remove();
-      }
+    // Crosshair is managed by HUD now
+    document.querySelectorAll("[data-cc-crosshair]").forEach((el) => {
+      el.remove();
     });
   }
 }

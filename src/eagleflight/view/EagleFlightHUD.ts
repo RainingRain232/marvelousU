@@ -62,6 +62,29 @@ export class EagleFlightHUD {
   // Speed line effects
   private _speedLinesEl!: HTMLDivElement;
 
+  // Boost indicator
+  private _boostEl!: HTMLDivElement;
+  private _boostBarFill!: HTMLDivElement;
+
+  // Altitude warning
+  private _altWarningEl!: HTMLDivElement;
+
+  // Crosshair
+  private _crosshairEl!: HTMLDivElement;
+
+  // Flight stats
+  private _statsEl!: HTMLDivElement;
+
+  // Intro overlay
+  private _introOverlay!: HTMLDivElement;
+  private _introText!: HTMLDivElement;
+
+  // Thermal indicator
+  private _thermalEl!: HTMLDivElement;
+
+  // Checkpoint counter
+  private _checkpointEl!: HTMLDivElement;
+
   build(sw: number, sh: number): void {
     this._root = document.createElement("div");
     this._root.style.cssText = `
@@ -234,6 +257,54 @@ export class EagleFlightHUD {
     `;
     this._root.appendChild(this._landmarkEl);
 
+    // --- Crosshair (center) ---
+    this._crosshairEl = document.createElement("div");
+    this._crosshairEl.style.cssText = `
+      position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+      width:24px;height:24px;pointer-events:none;opacity:0.35;
+    `;
+    this._crosshairEl.innerHTML = `
+      <svg width="24" height="24" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="3" fill="none" stroke="white" stroke-width="1"/>
+        <line x1="0" y1="12" x2="8" y2="12" stroke="white" stroke-width="1"/>
+        <line x1="16" y1="12" x2="24" y2="12" stroke="white" stroke-width="1"/>
+        <line x1="12" y1="0" x2="12" y2="8" stroke="white" stroke-width="1"/>
+        <line x1="12" y1="16" x2="12" y2="24" stroke="white" stroke-width="1"/>
+      </svg>
+    `;
+    this._root.appendChild(this._crosshairEl);
+
+    // --- Boost indicator (bottom-center) ---
+    this._boostEl = document.createElement("div");
+    this._boostEl.style.cssText = `
+      position:absolute;bottom:20px;left:50%;transform:translateX(-50%);
+      width:120px;text-align:center;
+      background:rgba(0,0,0,0.3);border-radius:8px;padding:6px 10px;
+      border:1px solid rgba(255,255,255,0.1);backdrop-filter:blur(4px);
+    `;
+    const boostLabel = document.createElement("div");
+    boostLabel.style.cssText = `color:rgba(255,255,255,0.5);font-size:9px;letter-spacing:2px;margin-bottom:4px;`;
+    boostLabel.textContent = "BOOST";
+    this._boostEl.appendChild(boostLabel);
+    const boostBarOuter = document.createElement("div");
+    boostBarOuter.style.cssText = `width:100%;height:4px;background:rgba(255,255,255,0.15);border-radius:2px;overflow:hidden;`;
+    this._boostEl.appendChild(boostBarOuter);
+    this._boostBarFill = document.createElement("div");
+    this._boostBarFill.style.cssText = `height:100%;width:100%;background:linear-gradient(90deg,#44ddff,#88eeff);border-radius:2px;transition:width 0.1s;`;
+    boostBarOuter.appendChild(this._boostBarFill);
+    this._root.appendChild(this._boostEl);
+
+    // --- Altitude warning (center, hidden by default) ---
+    this._altWarningEl = document.createElement("div");
+    this._altWarningEl.style.cssText = `
+      position:absolute;bottom:50%;left:50%;transform:translateX(-50%);
+      color:#ff4444;font-size:18px;font-weight:bold;letter-spacing:3px;
+      text-shadow:0 0 12px rgba(255,0,0,0.6);
+      opacity:0;transition:opacity 0.2s;
+    `;
+    this._altWarningEl.textContent = "PULL UP";
+    this._root.appendChild(this._altWarningEl);
+
     // --- Title banner (top-left) ---
     const title = document.createElement("div");
     title.style.cssText = `
@@ -275,6 +346,71 @@ export class EagleFlightHUD {
       <span style="color:#88bbff">ESC</span> Pause
     `;
     this._root.appendChild(this._controlsEl);
+
+    // --- Flight stats (top-left, below title) ---
+    this._statsEl = document.createElement("div");
+    this._statsEl.style.cssText = `
+      position:absolute;top:55px;left:20px;
+      color:rgba(255,255,255,0.4);font-size:10px;letter-spacing:1px;
+      text-shadow:0 0 4px rgba(0,0,0,0.8);line-height:1.6;
+    `;
+    this._root.appendChild(this._statsEl);
+
+    // --- Checkpoint counter (top-left, below stats) ---
+    this._checkpointEl = document.createElement("div");
+    this._checkpointEl.style.cssText = `
+      position:absolute;top:100px;left:20px;
+      color:#44ffaa;font-size:12px;font-weight:bold;letter-spacing:1px;
+      text-shadow:0 0 6px rgba(68,255,170,0.4);
+    `;
+    this._root.appendChild(this._checkpointEl);
+
+    // --- Thermal indicator (center-bottom) ---
+    this._thermalEl = document.createElement("div");
+    this._thermalEl.style.cssText = `
+      position:absolute;bottom:55px;left:50%;transform:translateX(-50%);
+      color:#ffcc44;font-size:13px;font-weight:bold;letter-spacing:2px;
+      text-shadow:0 0 8px rgba(255,204,68,0.5);
+      opacity:0;transition:opacity 0.3s;
+    `;
+    this._thermalEl.textContent = "THERMAL UPDRAFT";
+    this._root.appendChild(this._thermalEl);
+
+    // --- Intro cinematic overlay ---
+    this._introOverlay = document.createElement("div");
+    this._introOverlay.style.cssText = `
+      position:absolute;top:0;left:0;width:100%;height:100%;
+      pointer-events:none;display:flex;flex-direction:column;
+      align-items:center;justify-content:flex-end;padding-bottom:80px;
+    `;
+    // Cinematic black bars
+    const topBar = document.createElement("div");
+    topBar.style.cssText = `position:absolute;top:0;left:0;width:100%;height:60px;background:#000;`;
+    this._introOverlay.appendChild(topBar);
+    const botBar = document.createElement("div");
+    botBar.style.cssText = `position:absolute;bottom:0;left:0;width:100%;height:60px;background:#000;`;
+    this._introOverlay.appendChild(botBar);
+    // Title text
+    const introTitle = document.createElement("div");
+    introTitle.style.cssText = `
+      color:#ffdd88;font-size:32px;font-weight:bold;letter-spacing:8px;
+      text-shadow:0 0 20px rgba(255,221,136,0.4);margin-bottom:10px;
+    `;
+    introTitle.textContent = "CAMELOT";
+    this._introOverlay.appendChild(introTitle);
+    const introSub = document.createElement("div");
+    introSub.style.cssText = `
+      color:rgba(255,255,255,0.5);font-size:14px;letter-spacing:3px;margin-bottom:20px;
+    `;
+    introSub.textContent = "The Legendary City of King Arthur";
+    this._introOverlay.appendChild(introSub);
+    this._introText = document.createElement("div");
+    this._introText.style.cssText = `
+      color:rgba(255,255,255,0.35);font-size:11px;letter-spacing:2px;
+    `;
+    this._introText.textContent = "Press any key to begin flight";
+    this._introOverlay.appendChild(this._introText);
+    this._root.appendChild(this._introOverlay);
 
     // --- Pause overlay (hidden) ---
     this._pauseOverlay = document.createElement("div");
@@ -386,6 +522,62 @@ export class EagleFlightHUD {
 
     // --- Landmark labels ---
     this._updateLandmarkLabel(p.position.x, p.position.z, dt);
+
+    // --- Boost indicator ---
+    if (p.boostActive) {
+      const pct = (p.boostTimer / 2.0) * 100;
+      this._boostBarFill.style.width = `${pct}%`;
+      this._boostBarFill.style.background = "linear-gradient(90deg,#ff8844,#ffcc44)";
+      this._boostEl.style.borderColor = "rgba(255,200,100,0.4)";
+    } else if (p.boostCooldown > 0) {
+      const pct = (1 - p.boostCooldown / 5.0) * 100;
+      this._boostBarFill.style.width = `${pct}%`;
+      this._boostBarFill.style.background = "linear-gradient(90deg,#444466,#6666aa)";
+      this._boostEl.style.borderColor = "rgba(255,255,255,0.1)";
+    } else {
+      this._boostBarFill.style.width = "100%";
+      this._boostBarFill.style.background = "linear-gradient(90deg,#44ddff,#88eeff)";
+      this._boostEl.style.borderColor = "rgba(68,221,255,0.3)";
+    }
+
+    // --- Altitude warning ---
+    if (p.position.y < 10 && p.pitch > 0.05) {
+      this._altWarningEl.style.opacity = `${Math.min(1, (10 - p.position.y) / 7)}`;
+    } else {
+      this._altWarningEl.style.opacity = "0";
+    }
+
+    // --- Crosshair pulse during boost ---
+    if (p.boostActive) {
+      this._crosshairEl.style.opacity = `${0.5 + Math.sin(state.gameTime * 10) * 0.15}`;
+    } else {
+      this._crosshairEl.style.opacity = "0.3";
+    }
+
+    // --- Flight stats ---
+    const minutes = Math.floor(state.gameTime / 60);
+    const seconds = Math.floor(state.gameTime % 60);
+    const distKm = (p.distanceFlown * 0.01).toFixed(1);
+    const topSpeedKts = Math.round(p.topSpeed * 2.5);
+    this._statsEl.textContent = `${minutes}:${seconds.toString().padStart(2, "0")}  |  ${distKm} km  |  TOP ${topSpeedKts} kts`;
+
+    // --- Checkpoint counter ---
+    const totalCp = state.checkpoints.length;
+    const hitCp = p.checkpointsHit;
+    this._checkpointEl.textContent = hitCp > 0 ? `RINGS ${hitCp}/${totalCp}` : "";
+
+    // --- Thermal indicator ---
+    this._thermalEl.style.opacity = `${state.thermalBoost > 0.1 ? Math.min(1, state.thermalBoost) : 0}`;
+
+    // --- Intro overlay ---
+    if (state.introActive) {
+      this._introOverlay.style.display = "flex";
+      // Pulse the "press any key" text
+      const pulse = 0.3 + Math.sin(state.gameTime * 3) * 0.15;
+      this._introText.style.opacity = `${pulse}`;
+    } else {
+      this._introOverlay.style.display = "none";
+    }
 
     // --- Controls hint fade ---
     if (this._controlsTimer > 0) {

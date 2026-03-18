@@ -11,7 +11,7 @@ import { CraftChunk, chunkKey, worldToChunk } from "./state/CraftChunk";
 import { getHeldItem, addToInventory } from "./state/CraftInventory";
 import { generateChunkTerrain } from "./systems/CraftTerrainSystem";
 import { decorateChunkStructures } from "./systems/CraftStructureSystem";
-import { getBiome } from "./config/CraftBiomeDefs";
+import { getBiome, BIOME_DEFS } from "./config/CraftBiomeDefs";
 import { raycastBlock, startMining, updateMining, placeBlock } from "./systems/CraftBlockSystem";
 import { matchRecipe } from "./systems/CraftCraftingSystem";
 import { spawnMobs, updateMobs, damageMob } from "./systems/CraftMobSystem";
@@ -19,8 +19,8 @@ import { updateDayNight } from "./systems/CraftDayNightSystem";
 import { CraftInputSystem } from "./systems/CraftInputSystem";
 import { saveCraftWorld, loadCraftWorld, hasCraftSave } from "./systems/CraftSaveSystem";
 import { BLOCK_DEFS } from "./config/CraftBlockDefs";
-import { initAudio, playBlockBreak, playBlockPlace, playPickup, playHurt, playFootstep, playChestOpen, playAmbient, stopAmbient, destroyAudio, playQuestComplete, playLevelUp } from "./systems/CraftAudioSystem";
-import { updateQuests, onBlockPlaced, onItemCrafted, onMobKilled, checkVictory } from "./systems/CraftQuestSystem";
+import { initAudio, playBlockBreak, playBlockPlace, playPickup, playHurt, playFootstep, playChestOpen, playMobSound, playAmbient, stopAmbient, destroyAudio, playQuestComplete, playLevelUp } from "./systems/CraftAudioSystem";
+import { updateQuests, onBlockPlaced, onBlockMined, onItemCrafted, onMobKilled, checkVictory } from "./systems/CraftQuestSystem";
 import { updateFurnaces, getContainerInteraction, type ContainerInteraction } from "./systems/CraftContainerSystem";
 import { interactWithNPC } from "./systems/CraftNPCSystem";
 import { getMobsNear } from "./systems/CraftMobSystem";
@@ -56,6 +56,7 @@ export class CamelotCraftGame {
   private _tutorialStep = 0;
   private _tutorialTimer = 0;
   private _mount = createMountState();
+  private _mobSoundTimer = 0;
 
   async boot(): Promise<void> {
     // --- Title / loading screen ---
@@ -287,6 +288,7 @@ export class CamelotCraftGame {
 
       // HUD callbacks
       this._hud.onCraftResultClick = () => this._onCraftResult();
+      this._hud.setUnequipHandler(this._state);
 
       // Start game loop
       this._lastTime = performance.now();
@@ -296,13 +298,26 @@ export class CamelotCraftGame {
     // Pause on ESC
     document.addEventListener("keydown", this._onKeyDown);
 
-    // Save periodically
+    // Pause when tab loses focus
+    document.addEventListener("visibilitychange", this._onVisChange);
+
+    // Save periodically with indicator
     this._autoSaveInterval = window.setInterval(() => {
-      if (!this._state.paused) saveCraftWorld(this._state);
+      if (!this._state.paused) {
+        saveCraftWorld(this._state);
+        addMessage(this._state, "World saved.", 0x888888);
+      }
     }, 60000);
   }
 
   private _autoSaveInterval = 0;
+
+  private _onVisChange = (): void => {
+    if (document.hidden && !this._state.paused) {
+      this._state.paused = true;
+      this._showPauseMenu();
+    }
+  };
 
   private _onKeyDown = (e: KeyboardEvent): void => {
     if (e.key === "Escape") {
@@ -560,6 +575,19 @@ export class CamelotCraftGame {
     spawnMobs(this._state, dt);
     updateMobs(this._state, dt);
 
+    // --- Mob ambient sounds (occasional) ---
+    this._mobSoundTimer += dt;
+    if (this._mobSoundTimer > 5) { // every 5 seconds
+      this._mobSoundTimer = 0;
+      const nearMobs = getMobsNear(this._state, this._state.player.position, 16);
+      for (const mob of nearMobs) {
+        if (Math.random() < 0.15) { // 15% chance per nearby mob
+          playMobSound(mob.type);
+          break; // only one sound at a time
+        }
+      }
+    }
+
     // --- Furnaces ---
     updateFurnaces(this._state, dt);
 
@@ -598,6 +626,15 @@ export class CamelotCraftGame {
     // --- Dropped items ---
     updateDroppedItems(this._state, dt);
 
+    // --- Biome name display ---
+    this._checkBiomeChange();
+
+    // --- Sync weather HUD indicator ---
+    try {
+      const currentWeather = this._renderer.weather?.getCurrentWeather?.() ?? "clear";
+      this._hud.setWeather(currentWeather);
+    } catch { /* weather not available */ }
+
     // --- Ambient atmosphere particles ---
     const pp = this._state.player.position;
     this._renderer.particles.emitAmbient(pp.x, pp.y, pp.z, this._state.timeOfDay);
@@ -618,7 +655,7 @@ export class CamelotCraftGame {
   // Block interaction (mining / placing)
   // =========================================================================
 
-  private _prevMiningTarget: { wx: number; wy: number; wz: number; color: number } | null = null;
+  private _prevMiningTarget: { wx: number; wy: number; wz: number; color: number; blockType: BlockType } | null = null;
 
   private _handleBlockInteraction(_dt: number): void {
     if (this._state.inventoryOpen || this._state.craftingOpen) return;
@@ -631,16 +668,25 @@ export class CamelotCraftGame {
     // Detect when mining completes (target disappears after being set)
     const mt = this._state.player.miningTarget;
     if (this._prevMiningTarget && !mt) {
-      const { wx, wy, wz, color } = this._prevMiningTarget;
+      const { wx, wy, wz, color, blockType: minedType } = this._prevMiningTarget;
       particles.emitBlockBreak(wx, wy, wz, color);
-      playBlockBreak();
+      // Material-aware break sound
+      const blockName = BLOCK_DEFS[minedType]?.name.toLowerCase() ?? "";
+      const material = blockName.includes("log") || blockName.includes("plank") || blockName.includes("door") ? "wood"
+        : blockName.includes("iron") || blockName.includes("gold") || blockName.includes("anvil") ? "metal"
+        : blockName.includes("glass") || blockName.includes("crystal") || blockName.includes("ice") ? "glass"
+        : blockName.includes("dirt") || blockName.includes("grass") || blockName.includes("sand") || blockName.includes("clay") ? "dirt"
+        : "stone";
+      playBlockBreak(material);
       this._state.player.blocksMined++;
+      // Track quest progress for mined block
+      onBlockMined(this._state, minedType);
     }
-    // Track mining target with its block color
+    // Track mining target with its block color and type
     if (mt) {
       const block = getWorldBlock(this._state, mt.wx, mt.wy, mt.wz);
       const blockColor = BLOCK_DEFS[block]?.color ?? 0x808080;
-      this._prevMiningTarget = { wx: mt.wx, wy: mt.wy, wz: mt.wz, color: blockColor };
+      this._prevMiningTarget = { wx: mt.wx, wy: mt.wy, wz: mt.wz, color: blockColor, blockType: block };
     } else {
       this._prevMiningTarget = null;
     }
@@ -757,11 +803,25 @@ export class CamelotCraftGame {
         this._renderer.particles.emitHit(mob.position, 0xFF4444);
         this._renderer.cameraCtrl.shake(0.15);
 
-        // Set attack cooldown
+        // Set attack cooldown + consume weapon durability
         p.attackTimer = CB.PLAYER_ATTACK_COOLDOWN;
+        if (held && held.durability !== undefined) {
+          held.durability--;
+          if (held.durability <= 0) {
+            p.inventory.hotbar[p.inventory.selectedSlot] = null;
+            addMessage(this._state, `${held.displayName} broke!`, 0xFF6600);
+          }
+        }
 
         if (mob.hp <= 0) {
           onMobKilled(this._state, mob.type);
+          // XP orb particles flying from mob to player
+          const xpAmount = MOB_DEFS[mob.type]?.xpDrop ?? 3;
+          this._renderer.particles.emitXPOrb(
+            mob.position.clone(),
+            this._state.player.position.clone().add(new THREE.Vector3(0, 1, 0)),
+            Math.min(xpAmount, 5),
+          );
         }
 
         this._input.mouseDown.left = false;
@@ -1049,12 +1109,30 @@ export class CamelotCraftGame {
     const inv = this._state.player.inventory;
     const pos = this._state.player.position;
 
+    // Find safe drop height (surface level above current position or at spawn)
+    let dropY = pos.y + 1;
+    // If underground or in invalid position, use spawn point
+    if (dropY < 1 || dropY > CB.CHUNK_HEIGHT - 2) {
+      dropY = this._state.player.spawnPoint.y + 1;
+    }
+    // Clamp to reasonable range
+    dropY = Math.max(2, Math.min(CB.CHUNK_HEIGHT - 5, dropY));
+
+    const dropPos = new THREE.Vector3(pos.x, dropY, pos.z);
+
+    // Store death location for recovery message
+    addMessage(this._state,
+      `Items dropped at X:${Math.floor(pos.x)} Y:${Math.floor(dropY)} Z:${Math.floor(pos.z)}`,
+      0xFF9800);
+
     const dropSlots = (slots: (import("./config/CraftRecipeDefs").ItemStack | null)[]) => {
       for (let i = 0; i < slots.length; i++) {
         if (slots[i] && slots[i]!.count > 0) {
           const angle = Math.random() * Math.PI * 2;
-          const vel = new THREE.Vector3(Math.cos(angle) * 3, 4 + Math.random() * 2, Math.sin(angle) * 3);
-          dropItem({ ...slots[i]! }, new THREE.Vector3(pos.x, pos.y + 1, pos.z), vel);
+          const vel = new THREE.Vector3(Math.cos(angle) * 3, 5, Math.sin(angle) * 3);
+          dropItem({ ...slots[i]! }, dropPos.clone().add(new THREE.Vector3(
+            (Math.random() - 0.5) * 2, 0, (Math.random() - 0.5) * 2,
+          )), vel);
           slots[i] = null;
         }
       }
@@ -1083,6 +1161,24 @@ export class CamelotCraftGame {
   // =========================================================================
 
   private _hungerTimer = 0;
+  private _lastBiome = "";
+
+  private _checkBiomeChange(): void {
+    const px = Math.floor(this._state.player.position.x);
+    const pz = Math.floor(this._state.player.position.z);
+    // Simple biome check using noise (same as terrain gen)
+    const biome = getBiome(
+      (Math.sin(px * 0.004) + 1) * 0.5,
+      (Math.cos(pz * 0.004) + 1) * 0.5,
+    );
+    if (biome !== this._lastBiome && this._lastBiome !== "") {
+      const def = BIOME_DEFS[biome];
+      if (def) {
+        addMessage(this._state, `Entering: ${def.name}`, 0xC0A060);
+      }
+    }
+    this._lastBiome = biome;
+  }
 
   private _updateHunger(dt: number): void {
     const p = this._state.player;
@@ -1220,9 +1316,10 @@ export class CamelotCraftGame {
       card.appendChild(grid);
     } else if (container.type === "furnace") {
       const f = container.furnace;
-      const burnPct = f.burnTimeTotal > 0 ? (f.burnTimeLeft / f.burnTimeTotal * 100) : 0;
-      const smeltPct = f.smeltProgress * 100;
-      card.innerHTML = `
+      const renderFurnace = () => {
+        const burnPct = f.burnTimeTotal > 0 ? (f.burnTimeLeft / f.burnTimeTotal * 100) : 0;
+        const smeltPct = f.smeltProgress * 100;
+        card.innerHTML = `
         <h3 style="color:#FFD700;margin:0 0 12px;text-align:center;">Furnace</h3>
         <div style="display:flex;gap:16px;align-items:center;justify-content:center;">
           <div style="text-align:center;">
@@ -1252,22 +1349,42 @@ export class CamelotCraftGame {
           </div>
         </div>
       `;
+        // Re-add close button
+        const cb = document.createElement("button");
+        cb.textContent = "Close";
+        cb.className = "cc-btn";
+        cb.style.cssText = `display:block;margin:12px auto 0;padding:8px 24px;background:rgba(0,0,0,0.4);color:#FFD700;border:1px solid #FFD700;border-radius:4px;cursor:pointer;font-size:14px;`;
+        cb.onclick = () => {
+          clearInterval(furnaceInterval);
+          overlay.remove();
+          this._containerOverlay = null;
+          this._state.inventoryOpen = false;
+          this._input.requestPointerLock();
+        };
+        card.appendChild(cb);
+      };
+      renderFurnace();
+      // Live update every 200ms
+      const furnaceInterval = setInterval(renderFurnace, 200);
     }
 
-    // Close button
-    const closeBtn = document.createElement("button");
-    closeBtn.textContent = "Close";
-    closeBtn.style.cssText = `
-      display:block;margin:12px auto 0;padding:8px 24px;background:rgba(0,0,0,0.4);
-      color:#FFD700;border:1px solid #FFD700;border-radius:4px;cursor:pointer;font-size:14px;
-    `;
-    closeBtn.onclick = () => {
-      overlay.remove();
-      this._containerOverlay = null;
-      this._state.inventoryOpen = false;
-      this._input.requestPointerLock();
-    };
-    card.appendChild(closeBtn);
+    if (container.type !== "furnace") {
+      // Close button for non-furnace containers
+      const closeBtn = document.createElement("button");
+      closeBtn.textContent = "Close";
+      closeBtn.className = "cc-btn";
+      closeBtn.style.cssText = `
+        display:block;margin:12px auto 0;padding:8px 24px;background:rgba(0,0,0,0.4);
+        color:#FFD700;border:1px solid #FFD700;border-radius:4px;cursor:pointer;font-size:14px;
+      `;
+      closeBtn.onclick = () => {
+        overlay.remove();
+        this._containerOverlay = null;
+        this._state.inventoryOpen = false;
+        this._input.requestPointerLock();
+      };
+      card.appendChild(closeBtn);
+    }
     overlay.appendChild(card);
 
     // ESC to close
@@ -1374,6 +1491,7 @@ export class CamelotCraftGame {
 
     clearInterval(this._autoSaveInterval);
     document.removeEventListener("keydown", this._onKeyDown);
+    document.removeEventListener("visibilitychange", this._onVisChange);
 
     this._input.destroy();
     this._renderer.destroy();

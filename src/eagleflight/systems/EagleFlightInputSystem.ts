@@ -15,9 +15,16 @@ let _bound = false;
 let _mouseDX = 0;
 let _mouseDY = 0;
 let _pointerLocked = false;
+let _skipIntroCb: (() => void) | null = null;
 
 function _onKeyDown(e: KeyboardEvent): void {
   _keys.add(e.code);
+  // Skip intro on any key
+  if (_skipIntroCb) {
+    _skipIntroCb();
+    _skipIntroCb = null;
+    return;
+  }
   if (e.code === "Escape") {
     if (_pointerLocked) {
       document.exitPointerLock();
@@ -66,6 +73,14 @@ export const EagleFlightInputSystem = {
 
   setPauseCallback(cb: PauseCallback): void {
     _pauseCb = cb;
+  },
+
+  setSkipIntroCallback(cb: () => void): void {
+    _skipIntroCb = cb;
+  },
+
+  clearSkipIntro(): void {
+    _skipIntroCb = null;
   },
 
   update(state: EagleFlightState, dt: number): void {
