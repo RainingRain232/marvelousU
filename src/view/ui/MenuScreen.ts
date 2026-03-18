@@ -485,6 +485,14 @@ export class MenuScreen {
   private _s1FocusBorder!: Graphics;
   private _onKeydown: ((e: KeyboardEvent) => void) | null = null;
 
+  // Animated decorations (screen 1)
+  private _s1GlowGfx!: Graphics;
+  private _s1GlowPhase = 0;
+  private _s1ArcaneGfx!: Graphics;
+  private _s1ArcanePhase = 0;
+  private _s1InnerFrame!: Graphics;
+  private _s1DragonSprite: Sprite | null = null;
+
   // Building renderer decoration (castle on screen 1)
   private _buildingRenderer: House1Renderer | null = null;
   private _buildingContainer!: Container;
@@ -575,6 +583,14 @@ export class MenuScreen {
         if (this._buildingRenderer && this._screen1.visible) {
           this._buildingRenderer.tick(dt, GamePhase.PREP);
         }
+        if (this._s1ArcaneGfx && this._screen1?.visible) {
+          this._s1ArcanePhase += dt * 0.12;
+          this._s1ArcaneGfx.rotation = this._s1ArcanePhase;
+        }
+        if (this._s1GlowGfx && this._screen1?.visible) {
+          this._s1GlowPhase += dt;
+          this._s1GlowGfx.alpha = 0.15 + Math.sin(this._s1GlowPhase * 1.5) * 0.1;
+        }
       }
     });
   }
@@ -599,6 +615,7 @@ export class MenuScreen {
 
     const CW = this._screen1CardW;
     const padX = 24;
+    const btn2W = Math.floor((CW - padX * 2 - this._s1UtilGap) / 2);
     let bottomY = this._loadWaveBtnSlotY;
 
     if (this.hasWaveSave) {
@@ -610,20 +627,30 @@ export class MenuScreen {
       bottomY += this._s1UtilBtnH + this._s1UtilGap;
     }
 
-    // Reposition settings and back-to-map buttons, then resize card
+    // Reposition settings and back-to-map buttons (side by side)
     this._s1SettingsBtn.position.set(padX, bottomY);
-    bottomY += this._s1UtilBtnH + this._s1UtilGap;
-    this._s1BackMapBtn.position.set(padX, bottomY);
+    this._s1BackMapBtn.position.set(padX + btn2W + this._s1UtilGap, bottomY);
     bottomY += this._s1UtilBtnH + this._s1UtilGap;
 
-    this._screen1CardH = bottomY + 16;
+    this._screen1CardH = bottomY + 18;
 
     const bg = this._screen1Card.getChildAt(0) as Graphics;
     bg.clear();
-    bg.roundRect(0, 0, CW, this._screen1CardH, 8)
+    bg.roundRect(0, 0, CW, this._screen1CardH, 10)
       .fill({ color: 0x10102a, alpha: 0.95 })
-      .roundRect(0, 0, CW, this._screen1CardH, 8)
-      .stroke({ color: BORDER_COLOR, alpha: 0.4, width: 1.5 });
+      .roundRect(0, 0, CW, this._screen1CardH, 10)
+      .stroke({ color: BORDER_COLOR, alpha: 0.35, width: 2 });
+
+    // Redraw inner frame and glow
+    this._drawS1InnerFrame(CW, this._screen1CardH);
+    this._s1GlowGfx.clear();
+    this._s1GlowGfx.roundRect(-1, -1, CW + 2, this._screen1CardH + 2, 11)
+      .stroke({ color: BORDER_COLOR, alpha: 1, width: 1.5 });
+
+    // Reposition dragon watermark
+    if (this._s1DragonSprite) {
+      this._s1DragonSprite.position.set(CW / 2, this._screen1CardH * 0.45);
+    }
 
     this._runes1.build(CW, this._screen1CardH);
   }
@@ -676,37 +703,104 @@ export class MenuScreen {
     this._screen1.addChild(card);
     this._screen1Card = card;
 
-    // ── ORNATE HEADER ──────────────────────────────────────────
+    // ── DRAGON WATERMARK ─────────────────────────────────────
+    const dragonSprite = Sprite.from(dragonImgUrl);
+    dragonSprite.anchor.set(0.5, 0.5);
+    dragonSprite.position.set(hcx, 320);
+    dragonSprite.alpha = 0.035;
+    dragonSprite.scale.set(0.9);
+    dragonSprite.tint = BORDER_COLOR;
+    card.addChild(dragonSprite);
+    this._s1DragonSprite = dragonSprite;
+
+    // ── ARCANE CIRCLE (animated rotation) ────────────────────
+    const arcaneGfx = new Graphics();
+    this._s1ArcaneGfx = arcaneGfx;
+    const arcR = 85;
+    // Outer ring
+    arcaneGfx.circle(0, 0, arcR).stroke({ color: BORDER_COLOR, alpha: 0.06, width: 1 });
+    // Middle ring
+    arcaneGfx.circle(0, 0, arcR * 0.72).stroke({ color: BORDER_COLOR, alpha: 0.08, width: 0.8 });
+    // Inner ring
+    arcaneGfx.circle(0, 0, arcR * 0.42).stroke({ color: BORDER_COLOR, alpha: 0.1, width: 0.5 });
+    // 24 tick marks around outer ring
+    for (let i = 0; i < 24; i++) {
+      const a = (i * Math.PI * 2) / 24;
+      const r1 = arcR - (i % 6 === 0 ? 8 : 4);
+      arcaneGfx.moveTo(Math.cos(a) * r1, Math.sin(a) * r1)
+        .lineTo(Math.cos(a) * arcR, Math.sin(a) * arcR)
+        .stroke({ color: BORDER_COLOR, alpha: i % 6 === 0 ? 0.12 : 0.06, width: 0.5 });
+    }
+    // Hexagon inscribed in middle ring
+    for (let i = 0; i < 6; i++) {
+      const a1 = (i * Math.PI) / 3;
+      const a2 = ((i + 1) * Math.PI) / 3;
+      const hr = arcR * 0.58;
+      arcaneGfx.moveTo(Math.cos(a1) * hr, Math.sin(a1) * hr)
+        .lineTo(Math.cos(a2) * hr, Math.sin(a2) * hr)
+        .stroke({ color: BORDER_COLOR, alpha: 0.05, width: 0.5 });
+    }
+    // Triangle inscribed
+    for (let i = 0; i < 3; i++) {
+      const a1 = (i * Math.PI * 2) / 3 - Math.PI / 2;
+      const a2 = ((i + 1) * Math.PI * 2) / 3 - Math.PI / 2;
+      const tr = arcR * 0.68;
+      arcaneGfx.moveTo(Math.cos(a1) * tr, Math.sin(a1) * tr)
+        .lineTo(Math.cos(a2) * tr, Math.sin(a2) * tr)
+        .stroke({ color: BORDER_COLOR, alpha: 0.04, width: 0.5 });
+    }
+    // Cardinal cross lines
+    for (let i = 0; i < 4; i++) {
+      const a = (i * Math.PI) / 2;
+      arcaneGfx.moveTo(Math.cos(a) * arcR * 0.2, Math.sin(a) * arcR * 0.2)
+        .lineTo(Math.cos(a) * arcR * 0.68, Math.sin(a) * arcR * 0.68)
+        .stroke({ color: BORDER_COLOR, alpha: 0.06, width: 0.5 });
+    }
+    // Small dots at cardinal points on outer ring
+    for (let i = 0; i < 4; i++) {
+      const a = (i * Math.PI) / 2;
+      arcaneGfx.circle(Math.cos(a) * arcR, Math.sin(a) * arcR, 2)
+        .fill({ color: BORDER_COLOR, alpha: 0.15 });
+    }
+    arcaneGfx.position.set(hcx, 52);
+    card.addChild(arcaneGfx);
+
+    // ── ORNATE HEADER ────────────────────────────────────────
     const headerGfx = new Graphics();
-    // Left ornamental line with end caps
-    headerGfx.moveTo(30, 30).lineTo(hcx - 140, 30)
-      .stroke({ color: BORDER_COLOR, alpha: 0.25, width: 1 });
-    // Right ornamental line
-    headerGfx.moveTo(hcx + 140, 30).lineTo(CW - 30, 30)
-      .stroke({ color: BORDER_COLOR, alpha: 0.25, width: 1 });
-    // Small diamonds at line ends
+    // Left ornamental double-line
+    headerGfx.moveTo(30, 29).lineTo(hcx - 140, 29)
+      .stroke({ color: BORDER_COLOR, alpha: 0.2, width: 1 });
+    headerGfx.moveTo(40, 32).lineTo(hcx - 130, 32)
+      .stroke({ color: BORDER_COLOR, alpha: 0.1, width: 0.5 });
+    // Right ornamental double-line
+    headerGfx.moveTo(hcx + 140, 29).lineTo(CW - 30, 29)
+      .stroke({ color: BORDER_COLOR, alpha: 0.2, width: 1 });
+    headerGfx.moveTo(hcx + 130, 32).lineTo(CW - 40, 32)
+      .stroke({ color: BORDER_COLOR, alpha: 0.1, width: 0.5 });
+    // End-cap diamonds
     for (const dx of [30, CW - 30]) {
-      headerGfx.moveTo(dx, 27).lineTo(dx + 3, 30).lineTo(dx, 33).lineTo(dx - 3, 30).closePath()
-        .fill({ color: BORDER_COLOR, alpha: 0.3 });
+      headerGfx.moveTo(dx, 25).lineTo(dx + 4, 30).lineTo(dx, 35).lineTo(dx - 4, 30).closePath()
+        .fill({ color: BORDER_COLOR, alpha: 0.25 })
+        .stroke({ color: BORDER_COLOR, alpha: 0.4, width: 0.5 });
     }
-    // Outer corner accents (small L-shapes in gold)
-    for (const [ox, oy, sx, sy] of [[8, 8, 1, 1], [CW - 8, 8, -1, 1], [8, -1, 1, -1], [CW - 8, -1, -1, -1]] as [number, number, number, number][]) {
-      headerGfx.moveTo(ox, oy).lineTo(ox + sx * 18, oy).stroke({ color: BORDER_COLOR, alpha: 0.15, width: 1 });
-      headerGfx.moveTo(ox, oy).lineTo(ox, oy + sy * 18).stroke({ color: BORDER_COLOR, alpha: 0.15, width: 1 });
+    // Intermediate diamonds along the lines
+    for (const dx of [80, 160, CW - 80, CW - 160]) {
+      headerGfx.moveTo(dx, 28).lineTo(dx + 2, 30).lineTo(dx, 32).lineTo(dx - 2, 30).closePath()
+        .fill({ color: BORDER_COLOR, alpha: 0.12 });
     }
-    // Center diamond (larger)
-    headerGfx.moveTo(hcx, 22).lineTo(hcx + 8, 30).lineTo(hcx, 38).lineTo(hcx - 8, 30).closePath()
-      .fill({ color: BORDER_COLOR, alpha: 0.4 })
+    // Center diamond cluster
+    headerGfx.moveTo(hcx, 19).lineTo(hcx + 10, 30).lineTo(hcx, 41).lineTo(hcx - 10, 30).closePath()
+      .fill({ color: BORDER_COLOR, alpha: 0.3 })
       .stroke({ color: BORDER_COLOR, alpha: 0.6, width: 1 });
-    // Inner diamond
-    headerGfx.moveTo(hcx, 26).lineTo(hcx + 4, 30).lineTo(hcx, 34).lineTo(hcx - 4, 30).closePath()
-      .fill({ color: 0xfff8e0, alpha: 0.7 });
+    headerGfx.moveTo(hcx, 24).lineTo(hcx + 5, 30).lineTo(hcx, 36).lineTo(hcx - 5, 30).closePath()
+      .fill({ color: 0xfff8e0, alpha: 0.5 });
+    headerGfx.circle(hcx, 30, 2).fill({ color: 0xffffff, alpha: 0.6 });
     card.addChild(headerGfx);
 
     // Title
     const title = new Text({ text: t("menu.select_mode"), style: new TextStyle({
       fontFamily: "monospace", fontSize: 26, fill: 0xffd700, fontWeight: "bold", letterSpacing: 6,
-      dropShadow: { color: 0x000000, blur: 6, distance: 0, alpha: 0.7 },
+      dropShadow: { color: 0x000000, blur: 8, distance: 0, alpha: 0.8 },
     }) });
     title.anchor.set(0.5, 0);
     title.position.set(hcx, 44);
@@ -714,21 +808,39 @@ export class MenuScreen {
 
     // Sub-flourish below title
     const subGfx = new Graphics();
-    subGfx.moveTo(hcx - 100, 76).lineTo(hcx - 20, 76).stroke({ color: BORDER_COLOR, alpha: 0.2, width: 1 });
-    subGfx.moveTo(hcx + 20, 76).lineTo(hcx + 100, 76).stroke({ color: BORDER_COLOR, alpha: 0.2, width: 1 });
-    subGfx.circle(hcx, 76, 2).fill({ color: BORDER_COLOR, alpha: 0.4 });
-    // Tiny dots along the sub-flourish
-    for (const dx of [-80, -60, -40, 40, 60, 80]) {
-      subGfx.circle(hcx + dx, 76, 1).fill({ color: BORDER_COLOR, alpha: 0.15 });
+    // Left decorative line with curve hints
+    subGfx.moveTo(hcx - 160, 78).lineTo(hcx - 20, 78).stroke({ color: BORDER_COLOR, alpha: 0.18, width: 1 });
+    subGfx.moveTo(hcx + 20, 78).lineTo(hcx + 160, 78).stroke({ color: BORDER_COLOR, alpha: 0.18, width: 1 });
+    // Central ornament
+    subGfx.moveTo(hcx, 74).lineTo(hcx + 4, 78).lineTo(hcx, 82).lineTo(hcx - 4, 78).closePath()
+      .fill({ color: BORDER_COLOR, alpha: 0.35 });
+    // Spaced dots along the lines
+    for (const dx of [-140, -120, -100, -80, -60, -40, 40, 60, 80, 100, 120, 140]) {
+      subGfx.circle(hcx + dx, 78, Math.abs(dx) > 100 ? 0.8 : 1).fill({ color: BORDER_COLOR, alpha: 0.12 });
+    }
+    // Wing-tip ornaments at line ends
+    for (const sx of [-1, 1]) {
+      const wx = hcx + sx * 160;
+      subGfx.moveTo(wx, 76).lineTo(wx + sx * 4, 78).lineTo(wx, 80).closePath()
+        .fill({ color: BORDER_COLOR, alpha: 0.15 });
     }
     card.addChild(subGfx);
 
-    // ── CATEGORY GRID ──────────────────────────────────────────
-    const categories: { title: string; color: number; indices: number[] }[] = [
-      { title: "STRATEGY & TACTICS", color: 0xffd700, indices: [0, 1, 2, 3, 4, 5, 6] },
-      { title: "ADVENTURE & RPG", color: 0x44ddaa, indices: [7, 22, 19, 23, 8, 9, 10] },
-      { title: "3D ACTION & COMBAT", color: 0xff7744, indices: [11, 16, 12, 13, 14, 15, 17, 18] },
-      { title: "WORLDS & SPORTS", color: 0x6699ff, indices: [20, 21, 24, 25, 26] },
+    // ── INNER BORDER FRAME (drawn after card height known) ──
+    this._s1InnerFrame = new Graphics();
+    card.addChild(this._s1InnerFrame);
+
+    // ── ANIMATED GLOW BORDER ─────────────────────────────────
+    this._s1GlowGfx = new Graphics();
+    this._s1GlowGfx.alpha = 0.15;
+    card.addChild(this._s1GlowGfx);
+
+    // ── CATEGORY GRID ────────────────────────────────────────
+    const categories: { title: string; color: number; accent: number; indices: number[] }[] = [
+      { title: "STRATEGY & TACTICS", color: 0xffd700, accent: 0x332a00, indices: [0, 1, 2, 3, 4, 5, 6] },
+      { title: "ADVENTURE & RPG", color: 0x44ddaa, accent: 0x0a2a1a, indices: [7, 22, 19, 23, 8, 9, 10] },
+      { title: "3D ACTION & COMBAT", color: 0xff7744, accent: 0x2a1408, indices: [11, 16, 12, 13, 14, 15, 17, 18] },
+      { title: "WORLDS & SPORTS", color: 0x6699ff, accent: 0x0a1a2a, indices: [20, 21, 24, 25, 26] },
     ];
 
     const COLS = 3;
@@ -737,40 +849,63 @@ export class MenuScreen {
     const tileW = Math.floor((CW - padX * 2 - gapX * (COLS - 1)) / COLS);
     const tileH = 56;
 
-    let curY = 90;
+    let curY = 92;
     this._s1NavItems = [];
 
     for (const cat of categories) {
       curY += 6;
-
       // ── Category ornamental header ──
       const catGfx = new Graphics();
-      // Leading accent line
-      catGfx.moveTo(padX, curY + 7).lineTo(padX + 14, curY + 7)
-        .stroke({ color: cat.color, alpha: 0.6, width: 2 });
-      // Small diamond
-      const dOff = padX + 20;
-      catGfx.moveTo(dOff, curY + 4).lineTo(dOff + 3, curY + 7).lineTo(dOff, curY + 10).lineTo(dOff - 3, curY + 7).closePath()
-        .fill({ color: cat.color, alpha: 0.6 });
+      // Leading accent bar
+      catGfx.roundRect(padX, curY + 5, 16, 4, 2).fill({ color: cat.color, alpha: 0.5 });
+      // Diamond after bar
+      const dOff = padX + 22;
+      catGfx.moveTo(dOff, curY + 3).lineTo(dOff + 4, curY + 7).lineTo(dOff, curY + 11).lineTo(dOff - 4, curY + 7).closePath()
+        .fill({ color: cat.color, alpha: 0.55 })
+        .stroke({ color: cat.color, alpha: 0.3, width: 0.5 });
       card.addChild(catGfx);
 
       const catLabel = new Text({ text: cat.title, style: new TextStyle({
         fontFamily: "monospace", fontSize: 10, fill: cat.color, fontWeight: "bold", letterSpacing: 3,
+        dropShadow: { color: 0x000000, blur: 4, distance: 0, alpha: 0.5 },
       }) });
-      catLabel.position.set(padX + 28, curY);
+      catLabel.position.set(padX + 30, curY);
       card.addChild(catLabel);
 
       // Right-side ornamental line extending from after the text
-      const rightLineStart = padX + 28 + cat.title.length * 7.5 + 10;
+      const rightLineStart = padX + 30 + cat.title.length * 7.5 + 12;
       const catLineRight = new Graphics();
-      catLineRight.moveTo(rightLineStart, curY + 7).lineTo(CW - padX, curY + 7)
-        .stroke({ color: cat.color, alpha: 0.12, width: 1 });
+      // Main line
+      catLineRight.moveTo(rightLineStart, curY + 7).lineTo(CW - padX - 8, curY + 7)
+        .stroke({ color: cat.color, alpha: 0.1, width: 1 });
+      // Secondary faint line below
+      catLineRight.moveTo(rightLineStart + 20, curY + 10).lineTo(CW - padX - 16, curY + 10)
+        .stroke({ color: cat.color, alpha: 0.05, width: 0.5 });
       // End diamond on right
-      catLineRight.moveTo(CW - padX, curY + 4).lineTo(CW - padX + 3, curY + 7).lineTo(CW - padX, curY + 10).lineTo(CW - padX - 3, curY + 7).closePath()
-        .fill({ color: cat.color, alpha: 0.2 });
+      const rex = CW - padX - 4;
+      catLineRight.moveTo(rex, curY + 3).lineTo(rex + 4, curY + 7).lineTo(rex, curY + 11).lineTo(rex - 4, curY + 7).closePath()
+        .fill({ color: cat.color, alpha: 0.18 });
+      // Evenly spaced tiny diamonds along the line
+      const lineLen = CW - padX - 8 - rightLineStart;
+      for (let d = 0; d < 3; d++) {
+        const lx = rightLineStart + lineLen * (0.25 + d * 0.25);
+        catLineRight.moveTo(lx, curY + 6).lineTo(lx + 2, curY + 7).lineTo(lx, curY + 8).lineTo(lx - 2, curY + 7).closePath()
+          .fill({ color: cat.color, alpha: 0.08 });
+      }
       card.addChild(catLineRight);
 
-      curY += 22;
+      curY += 24;
+
+      // ── Tinted category section background ──
+      const catRows = Math.ceil(cat.indices.length / COLS);
+      const catSectionH = catRows * (tileH + gapY) - gapY;
+      const catBgGfx = new Graphics();
+      catBgGfx.roundRect(padX - 6, curY - 4, CW - padX * 2 + 12, catSectionH + 8, 6)
+        .fill({ color: cat.accent, alpha: 0.35 });
+      // Subtle border on the section bg
+      catBgGfx.roundRect(padX - 6, curY - 4, CW - padX * 2 + 12, catSectionH + 8, 6)
+        .stroke({ color: cat.color, alpha: 0.06, width: 1 });
+      card.addChild(catBgGfx);
 
       // ── Mode tiles in grid ──
       for (let j = 0; j < cat.indices.length; j++) {
@@ -790,10 +925,13 @@ export class MenuScreen {
         const tileBg = new Graphics();
         tile.addChild(tileBg);
 
-        // Top accent line (colored)
+        // Top accent line (colored, with rounded ends)
         const accentGfx = new Graphics();
-        accentGfx.roundRect(4, 0, tileW - 8, 2, 1).fill({ color: cat.color, alpha: 0.45 });
         tile.addChild(accentGfx);
+
+        // Bottom accent line (thin)
+        const bottomAccent = new Graphics();
+        tile.addChild(bottomAccent);
 
         // Mode name
         const nameText = new Text({ text: entry.label, style: new TextStyle({
@@ -812,11 +950,20 @@ export class MenuScreen {
         descText.position.set(tileW / 2, 26);
         tile.addChild(descText);
 
+        // Corner dots (tiny ornamental dots at tile corners)
+        const cornerDots = new Graphics();
+        for (const [cx, cy] of [[3, 3], [tileW - 3, 3], [3, tileH - 3], [tileW - 3, tileH - 3]]) {
+          cornerDots.circle(cx, cy, 1).fill({ color: cat.color, alpha: 0.2 });
+        }
+        tile.addChild(cornerDots);
+
         // Draw tile background based on state
         const catColor = cat.color;
         const drawTileBg = (state: "normal" | "hover" | "disabled") => {
           tileBg.clear();
           accentGfx.clear();
+          bottomAccent.clear();
+          cornerDots.alpha = 1;
           if (state === "disabled") {
             tileBg.roundRect(0, 0, tileW, tileH, 5)
               .fill({ color: 0x0d0d1a })
@@ -824,18 +971,24 @@ export class MenuScreen {
               .stroke({ color: 0x1a1a2a, width: 1 });
             nameText.style.fill = 0x445566;
             descText.style.fill = 0x334455;
-            accentGfx.roundRect(4, 0, tileW - 8, 2, 1).fill({ color: 0x334455, alpha: 0.3 });
+            accentGfx.roundRect(6, 0, tileW - 12, 2, 1).fill({ color: 0x334455, alpha: 0.2 });
+            cornerDots.alpha = 0.3;
           } else if (state === "hover") {
+            // Outer glow rect
+            tileBg.roundRect(-2, -2, tileW + 4, tileH + 4, 7)
+              .fill({ color: catColor, alpha: 0.06 });
             tileBg.roundRect(0, 0, tileW, tileH, 5)
               .fill({ color: 0x1a2a3a })
               .roundRect(0, 0, tileW, tileH, 5)
-              .stroke({ color: catColor, alpha: 0.8, width: 1.5 });
-            // Subtle inner glow
-            tileBg.roundRect(1, 1, tileW - 2, tileH - 2, 4)
-              .stroke({ color: catColor, alpha: 0.15, width: 1 });
+              .stroke({ color: catColor, alpha: 0.85, width: 1.5 });
+            // Inner glow
+            tileBg.roundRect(2, 2, tileW - 4, tileH - 4, 3)
+              .stroke({ color: catColor, alpha: 0.12, width: 1 });
             nameText.style.fill = 0xffffff;
-            descText.style.fill = 0x8899aa;
+            descText.style.fill = 0x99aabb;
             accentGfx.roundRect(2, 0, tileW - 4, 2, 1).fill({ color: catColor, alpha: 0.9 });
+            bottomAccent.roundRect(8, tileH - 2, tileW - 16, 2, 1).fill({ color: catColor, alpha: 0.4 });
+            cornerDots.alpha = 1;
           } else {
             tileBg.roundRect(0, 0, tileW, tileH, 5)
               .fill({ color: 0x12121e })
@@ -843,7 +996,8 @@ export class MenuScreen {
               .stroke({ color: 0x2a2a3a, width: 1 });
             nameText.style.fill = 0xddddee;
             descText.style.fill = 0x556677;
-            accentGfx.roundRect(4, 0, tileW - 8, 2, 1).fill({ color: catColor, alpha: 0.45 });
+            accentGfx.roundRect(6, 0, tileW - 12, 2, 1).fill({ color: catColor, alpha: 0.4 });
+            bottomAccent.roundRect(12, tileH - 1, tileW - 24, 1, 0.5).fill({ color: catColor, alpha: 0.1 });
           }
         };
 
@@ -878,23 +1032,53 @@ export class MenuScreen {
         card.addChild(tile);
       }
 
-      const rows = Math.ceil(cat.indices.length / COLS);
-      curY += rows * (tileH + gapY);
+      curY += catRows * (tileH + gapY);
     }
 
-    // ── BOTTOM ORNAMENTAL DIVIDER ──
-    curY += 4;
+    // ── BOTTOM ORNAMENTAL DIVIDER ────────────────────────────
+    curY += 6;
     const botDiv = new Graphics();
+    // Main line
     botDiv.moveTo(padX, curY).lineTo(CW - padX, curY)
       .stroke({ color: BORDER_COLOR, alpha: 0.15, width: 1 });
-    // Center ornament
-    botDiv.moveTo(hcx - 5, curY).lineTo(hcx, curY - 5).lineTo(hcx + 5, curY).lineTo(hcx, curY + 5).closePath()
+    // Secondary thin line
+    botDiv.moveTo(padX + 20, curY + 3).lineTo(CW - padX - 20, curY + 3)
+      .stroke({ color: BORDER_COLOR, alpha: 0.06, width: 0.5 });
+    // Center ornament: triple diamond
+    botDiv.moveTo(hcx, curY - 7).lineTo(hcx + 7, curY).lineTo(hcx, curY + 7).lineTo(hcx - 7, curY).closePath()
+      .fill({ color: BORDER_COLOR, alpha: 0.15 })
+      .stroke({ color: BORDER_COLOR, alpha: 0.25, width: 0.5 });
+    botDiv.moveTo(hcx, curY - 4).lineTo(hcx + 4, curY).lineTo(hcx, curY + 4).lineTo(hcx - 4, curY).closePath()
       .fill({ color: BORDER_COLOR, alpha: 0.3 });
-    // Small side dots
-    for (const dx of [-30, -20, 20, 30]) {
-      botDiv.circle(hcx + dx, curY, 1).fill({ color: BORDER_COLOR, alpha: 0.2 });
+    botDiv.circle(hcx, curY, 1.5).fill({ color: 0xffffff, alpha: 0.4 });
+    // Side ornaments
+    for (const sx of [-1, 1]) {
+      for (const dx of [40, 70, 100]) {
+        const ox = hcx + sx * dx;
+        botDiv.circle(ox, curY, dx > 80 ? 0.8 : 1).fill({ color: BORDER_COLOR, alpha: 0.12 });
+      }
+      // Small side diamonds
+      const sdx = hcx + sx * 130;
+      botDiv.moveTo(sdx, curY - 3).lineTo(sdx + 3, curY).lineTo(sdx, curY + 3).lineTo(sdx - 3, curY).closePath()
+        .fill({ color: BORDER_COLOR, alpha: 0.1 });
     }
     card.addChild(botDiv);
+    curY += 18;
+
+    // ── UTILITY SECTION HEADER ───────────────────────────────
+    const utilHeader = new Graphics();
+    const utilLabelText = new Text({ text: "ACTIONS", style: new TextStyle({
+      fontFamily: "monospace", fontSize: 9, fill: 0x556677, fontWeight: "bold", letterSpacing: 4,
+    }) });
+    utilLabelText.anchor.set(0.5, 0);
+    utilLabelText.position.set(hcx, curY);
+    card.addChild(utilLabelText);
+    // Lines flanking the label
+    utilHeader.moveTo(padX, curY + 5).lineTo(hcx - 40, curY + 5)
+      .stroke({ color: 0x334455, alpha: 0.3, width: 0.5 });
+    utilHeader.moveTo(hcx + 40, curY + 5).lineTo(CW - padX, curY + 5)
+      .stroke({ color: 0x334455, alpha: 0.3, width: 0.5 });
+    card.addChild(utilHeader);
     curY += 16;
 
     // ── UTILITY BUTTONS ──────────────────────────────────────
@@ -921,6 +1105,9 @@ export class MenuScreen {
 
     curY += utilBtnH + utilGap;
 
+    // Row 2: Settings | Back to Map (2 across)
+    const btn2W = Math.floor((CW - padX * 2 - utilGap) / 2);
+
     // Optional: Load World Game
     if (hasWorldSave()) {
       const loadBtn = makeActionBtn(CW - padX * 2, utilBtnH, "LOAD WORLD GAME", 0x2a2a1a, 0xaaaa44, 0xdddd66, () => this.onLoadWorldGame?.());
@@ -937,29 +1124,39 @@ export class MenuScreen {
     card.addChild(this._loadWaveBtnSlot);
 
     // Settings button (repositioned dynamically by _rebuildLoadWaveButton)
-    const settingsBtn = makeActionBtn(CW - padX * 2, utilBtnH, "SETTINGS", 0x1a1a1a, 0x666666, 0xaaaaaa, () => this.onSettings?.());
+    const settingsBtn = makeActionBtn(btn2W, utilBtnH, "SETTINGS", 0x1a1a1a, 0x666666, 0xaaaaaa, () => this.onSettings?.());
     settingsBtn.position.set(padX, curY);
     card.addChild(settingsBtn);
     this._s1NavItems.push({ container: settingsBtn, action: () => this.onSettings?.() });
-    curY += utilBtnH + utilGap;
 
     // Back to Map button
-    const backMapBtn = makeActionBtn(CW - padX * 2, utilBtnH, "\u25c0 BACK TO MAP", 0x1a2a1a, 0x55aa55, 0x88dd88, () => this.onBackToMap?.());
-    backMapBtn.position.set(padX, curY);
+    const backMapBtn = makeActionBtn(btn2W, utilBtnH, "\u25c0 BACK TO MAP", 0x1a2a1a, 0x55aa55, 0x88dd88, () => this.onBackToMap?.());
+    backMapBtn.position.set(padX + btn2W + utilGap, curY);
     card.addChild(backMapBtn);
     this._s1NavItems.push({ container: backMapBtn, action: () => this.onBackToMap?.() });
     curY += utilBtnH + utilGap;
 
-    // ── BOTTOM FLOURISH ──
+    // ── BOTTOM FLOURISH ──────────────────────────────────────
     const footGfx = new Graphics();
-    footGfx.moveTo(30, curY + 4).lineTo(hcx - 12, curY + 4)
+    // Double lines converging to center
+    footGfx.moveTo(30, curY + 3).lineTo(hcx - 14, curY + 3)
       .stroke({ color: BORDER_COLOR, alpha: 0.15, width: 1 });
-    footGfx.moveTo(hcx + 12, curY + 4).lineTo(CW - 30, curY + 4)
+    footGfx.moveTo(hcx + 14, curY + 3).lineTo(CW - 30, curY + 3)
       .stroke({ color: BORDER_COLOR, alpha: 0.15, width: 1 });
-    footGfx.moveTo(hcx, curY).lineTo(hcx + 4, curY + 4).lineTo(hcx, curY + 8).lineTo(hcx - 4, curY + 4).closePath()
-      .fill({ color: BORDER_COLOR, alpha: 0.25 });
+    footGfx.moveTo(50, curY + 6).lineTo(hcx - 24, curY + 6)
+      .stroke({ color: BORDER_COLOR, alpha: 0.06, width: 0.5 });
+    footGfx.moveTo(hcx + 24, curY + 6).lineTo(CW - 50, curY + 6)
+      .stroke({ color: BORDER_COLOR, alpha: 0.06, width: 0.5 });
+    // Center diamond
+    footGfx.moveTo(hcx, curY - 1).lineTo(hcx + 5, curY + 4).lineTo(hcx, curY + 9).lineTo(hcx - 5, curY + 4).closePath()
+      .fill({ color: BORDER_COLOR, alpha: 0.2 });
+    footGfx.circle(hcx, curY + 4, 1.5).fill({ color: BORDER_COLOR, alpha: 0.35 });
+    // End dots
+    for (const dx of [30, CW - 30]) {
+      footGfx.circle(dx, curY + 3, 1.5).fill({ color: BORDER_COLOR, alpha: 0.15 });
+    }
     card.addChild(footGfx);
-    curY += 16;
+    curY += 18;
 
     this._screen1CardH = curY;
 
@@ -972,10 +1169,21 @@ export class MenuScreen {
     // Redraw card background to final height
     const bg = card.getChildAt(0) as Graphics;
     bg.clear();
-    bg.roundRect(0, 0, CW, this._screen1CardH, 8)
+    bg.roundRect(0, 0, CW, this._screen1CardH, 10)
       .fill({ color: 0x10102a, alpha: 0.95 })
-      .roundRect(0, 0, CW, this._screen1CardH, 8)
-      .stroke({ color: BORDER_COLOR, alpha: 0.4, width: 1.5 });
+      .roundRect(0, 0, CW, this._screen1CardH, 10)
+      .stroke({ color: BORDER_COLOR, alpha: 0.35, width: 2 });
+
+    // ── INNER BORDER FRAME with L-brackets and edge diamonds ──
+    this._drawS1InnerFrame(CW, this._screen1CardH);
+
+    // ── ANIMATED GLOW BORDER ──
+    this._s1GlowGfx.clear();
+    this._s1GlowGfx.roundRect(-1, -1, CW + 2, this._screen1CardH + 2, 11)
+      .stroke({ color: BORDER_COLOR, alpha: 1, width: 1.5 });
+
+    // Reposition dragon watermark vertically centered
+    dragonSprite.position.set(hcx, this._screen1CardH * 0.45);
 
     // Focus border for keyboard navigation
     this._s1FocusBorder = new Graphics();
@@ -1016,6 +1224,57 @@ export class MenuScreen {
       }
     };
     window.addEventListener("keydown", this._onKeydown);
+  }
+
+  /** Draw the inner border frame with L-brackets and edge midpoint diamonds. */
+  private _drawS1InnerFrame(w: number, h: number): void {
+    const g = this._s1InnerFrame;
+    g.clear();
+    const inset = 7;
+    const bracketLen = 28;
+
+    // L-bracket corners
+    const corners = [
+      { x: inset, y: inset, dx: 1, dy: 1 },
+      { x: w - inset, y: inset, dx: -1, dy: 1 },
+      { x: inset, y: h - inset, dx: 1, dy: -1 },
+      { x: w - inset, y: h - inset, dx: -1, dy: -1 },
+    ];
+    for (const c of corners) {
+      // Outer bracket
+      g.moveTo(c.x, c.y + c.dy * bracketLen)
+        .lineTo(c.x, c.y)
+        .lineTo(c.x + c.dx * bracketLen, c.y)
+        .stroke({ color: BORDER_COLOR, alpha: 0.12, width: 1 });
+      // Inner bracket (shorter, fainter)
+      g.moveTo(c.x + c.dx * 3, c.y + c.dy * 3 + c.dy * (bracketLen - 8))
+        .lineTo(c.x + c.dx * 3, c.y + c.dy * 3)
+        .lineTo(c.x + c.dx * 3 + c.dx * (bracketLen - 8), c.y + c.dy * 3)
+        .stroke({ color: BORDER_COLOR, alpha: 0.06, width: 0.5 });
+      // Corner dot
+      g.circle(c.x + c.dx * 2, c.y + c.dy * 2, 1.5)
+        .fill({ color: BORDER_COLOR, alpha: 0.2 });
+    }
+
+    // Edge midpoint diamonds
+    const hcx = w / 2;
+    const hcy = h / 2;
+    const edgeMids: [number, number][] = [
+      [hcx, inset],
+      [hcx, h - inset],
+      [inset, hcy],
+      [w - inset, hcy],
+    ];
+    for (const [mx, my] of edgeMids) {
+      const ds = 5;
+      g.moveTo(mx, my - ds).lineTo(mx + ds, my).lineTo(mx, my + ds).lineTo(mx - ds, my).closePath()
+        .fill({ color: BORDER_COLOR, alpha: 0.1 })
+        .stroke({ color: BORDER_COLOR, alpha: 0.2, width: 0.5 });
+      // Tiny inner diamond
+      const ids = 2;
+      g.moveTo(mx, my - ids).lineTo(mx + ids, my).lineTo(mx, my + ids).lineTo(mx - ids, my).closePath()
+        .fill({ color: BORDER_COLOR, alpha: 0.25 });
+    }
   }
 
   private _updateS1Focus(): void {
