@@ -355,7 +355,8 @@ export class EagleFlightHUD {
       <span style="color:#88bbff">F</span> Free Look<br>
       <span style="color:#88bbff">1</span> Firework &nbsp;&nbsp;
       <span style="color:#88bbff">2</span> Lightning &nbsp;&nbsp;
-      <span style="color:#88bbff">3</span> Magic Trail &nbsp;&nbsp;
+      <span style="color:#88bbff">3</span> Magic Trail<br>
+      <span style="color:#88bbff">M</span> Mount/Dismount &nbsp;&nbsp;
       <span style="color:#88bbff">P</span> Photo &nbsp;&nbsp;
       <span style="color:#88bbff">ESC</span> Pause
     `;
