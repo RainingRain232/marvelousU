@@ -44,11 +44,7 @@ export function updateMining(state: TerrariaState, input: InputState, camera: Te
     p.hoverTarget = null;
   }
 
-  // Only mine when holding a tool, block, or empty hand (not weapons)
-  const heldItem = getHeldItem(p.inventory);
-  const holdingWeapon = heldItem !== null && heldItem.category === ItemCategory.WEAPON;
-
-  if (input.attack && inReach && !state.inventoryOpen && !state.paused && !holdingWeapon) {
+  if (input.attack && inReach && !state.inventoryOpen && !state.paused) {
     const bt = getWorldBlock(state, targetX, targetY);
     if (bt !== BlockType.AIR) {
       const def = getBlockDef(bt);
@@ -145,8 +141,6 @@ export function updateMining(state: TerrariaState, input: InputState, camera: Te
     }
   }
 
-  // Clear mining target when holding a weapon
-  if (holdingWeapon && p.miningTarget) p.miningTarget = null;
 }
 
 /** Check if a target position has at least one adjacent solid block. */

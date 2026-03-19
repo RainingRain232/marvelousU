@@ -76,7 +76,7 @@ export class TerrariaPlayerView {
 
     // Layout
     const headH = pw * 1.0;
-    const headTop = sy - ph + breath;
+    const headTop = sy + breath;
     const bodyTop = headTop + headH;
     const bodyH = ph * 0.36;
     const legTop = bodyTop + bodyH;

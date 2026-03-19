@@ -6,9 +6,9 @@ import { viewManager } from "@view/ViewManager";
 import { TB } from "./config/TerrariaBalance";
 import { createTerrariaState, addMessage, getWorldBlock, setWorldBlock } from "./state/TerrariaState";
 import type { TerrariaState } from "./state/TerrariaState";
-import { BlockType, BLOCK_DEFS } from "./config/TerrariaBlockDefs";
+import { BlockType, BLOCK_DEFS, ToolMaterial } from "./config/TerrariaBlockDefs";
 import { addToInventory, calcArmorDefense, tryEquipArmor, ItemCategory, createBlockItem } from "./state/TerrariaInventory";
-import { makeExcaliburItem, makeGrailItem } from "./config/TerrariaItemDefs";
+import { makeExcaliburItem, makeGrailItem, makeSwordItem } from "./config/TerrariaItemDefs";
 
 // Systems
 import { initTerrain, generateChunk, placeSpecialStructures, getSurfaceHeight } from "./systems/TerrariaTerrainSystem";
@@ -34,6 +34,8 @@ import { TerrariaCamera } from "./view/TerrariaCamera";
 import { TerrariaHUD } from "./view/TerrariaHUD";
 
 // ---------------------------------------------------------------------------
+
+const TERRARIA_ZOOM = 1.2;
 
 export class TerrariaGame {
   private _state!: TerrariaState;
@@ -258,6 +260,7 @@ export class TerrariaGame {
 
     // Init renderer
     this._renderer.init();
+    this._renderer.worldLayer.scale.set(TERRARIA_ZOOM);
     viewManager.addToLayer("units", this._renderer.worldLayer);
     this._renderer.entityLayer.addChild(this._playerView.container);
     this._renderer.entityLayer.addChild(this._mobView.container);
@@ -265,6 +268,10 @@ export class TerrariaGame {
 
     // Disable global camera keyboard panning (Terraria has its own camera)
     viewManager.camera.keyboardEnabled = false;
+
+    // Adjust screen dimensions for zoom (camera sees a smaller area, scaled up)
+    this._state.screenW = Math.ceil(this._state.screenW / TERRARIA_ZOOM);
+    this._state.screenH = Math.ceil(this._state.screenH / TERRARIA_ZOOM);
 
     // Init camera
     this._camera.setScreenSize(this._state.screenW, this._state.screenH);
@@ -288,6 +295,7 @@ export class TerrariaGame {
 
     // Starter items (give player basic tools to skip the "punch trees" phase)
     if (!creative) {
+      addToInventory(this._state.player.inventory, makeSwordItem(ToolMaterial.WOOD));
       addToInventory(this._state.player.inventory, createBlockItem(BlockType.TORCH, "Torch", 0xFFAA00, 10));
       addToInventory(this._state.player.inventory, createBlockItem(BlockType.OAK_LOG, "Oak Log", 0x6B4226, 8));
       addToInventory(this._state.player.inventory, createBlockItem(BlockType.PLANKS, "Planks", 0xC4A35A, 12));
@@ -324,6 +332,7 @@ export class TerrariaGame {
     recalcLighting(this._state);
 
     this._renderer.init();
+    this._renderer.worldLayer.scale.set(TERRARIA_ZOOM);
     viewManager.addToLayer("units", this._renderer.worldLayer);
     this._renderer.entityLayer.addChild(this._playerView.container);
     this._renderer.entityLayer.addChild(this._mobView.container);
@@ -331,6 +340,10 @@ export class TerrariaGame {
 
     // Disable global camera keyboard panning (Terraria has its own camera)
     viewManager.camera.keyboardEnabled = false;
+
+    // Adjust screen dimensions for zoom
+    this._state.screenW = Math.ceil(this._state.screenW / TERRARIA_ZOOM);
+    this._state.screenH = Math.ceil(this._state.screenH / TERRARIA_ZOOM);
 
     this._camera.setScreenSize(this._state.screenW, this._state.screenH);
     this._camera.worldWidth = this._state.worldWidth;
@@ -731,8 +744,8 @@ export class TerrariaGame {
 
   private _onResize = (): void => {
     if (!this._state) return;
-    this._state.screenW = window.innerWidth;
-    this._state.screenH = window.innerHeight;
+    this._state.screenW = Math.ceil(window.innerWidth / TERRARIA_ZOOM);
+    this._state.screenH = Math.ceil(window.innerHeight / TERRARIA_ZOOM);
     this._camera.setScreenSize(this._state.screenW, this._state.screenH);
     this._renderer.markAllDirty(this._state);
   };

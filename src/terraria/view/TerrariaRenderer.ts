@@ -75,9 +75,6 @@ export class TerrariaRenderer {
     // Sky background
     this._drawSky(state, sw, sh);
 
-    // Parallax mountains
-    this._drawParallax(state, camera, sw, sh);
-
     // Determine visible chunks
     const minCX = worldToChunkX(Math.max(0, bounds.minX));
     const maxCX = worldToChunkX(Math.min(TB.WORLD_WIDTH - 1, bounds.maxX));
@@ -743,11 +740,9 @@ export class TerrariaRenderer {
         const py = (camY - y) * TS + screenH / 2 - TS;
         const h = _tileHash(wx, y);
 
-        // Depth-based darkening
+        // Solid opaque blocks are rendered here (foreground layer)
+
         let color = def.color;
-        if (def.solid && y < TB.SURFACE_Y) {
-          color = _darkenColor(color, Math.max(0.5, 1 - (TB.SURFACE_Y - y) / (TB.SURFACE_Y * 1.4)));
-        }
 
         // ---- LIQUID RENDERING (water/lava) ----
         if (def.liquid) {
@@ -1240,23 +1235,12 @@ export class TerrariaRenderer {
     this._screenFx.rect(sw - vigSize * 0.5, 0, vigSize * 0.5, sh);
     this._screenFx.fill({ color: 0x000000, alpha: vignetteAlpha * 0.2 });
 
-    // --- Night surface darkness (radial falloff from player) ---
+    // --- Night surface darkness ---
     const dayness = Math.max(0, Math.min(1, Math.sin(state.timeOfDay * Math.PI * 2 - Math.PI / 2) * 0.5 + 0.5));
     if (dayness < 0.4 && playerY >= TB.SURFACE_Y - 10) {
       const nightAlpha = (0.4 - dayness) * 0.5;
       this._screenFx.rect(0, 0, sw, sh);
       this._screenFx.fill({ color: 0x0a0a20, alpha: nightAlpha });
-      // Radial light around player (punch a hole)
-      const { sx: psx, sy: psy } = camera.worldToScreen(state.player.x, state.player.y + TB.PLAYER_HEIGHT / 2);
-      const lightR = 120;
-      // Draw concentric rings to fake radial gradient (lighter near player)
-      for (let r = lightR; r > 20; r -= 15) {
-        this._screenFx.circle(psx, psy, r);
-        this._screenFx.fill({ color: 0x0a0a20, alpha: -nightAlpha * 0.12 }); // negative won't work, but we clear area
-      }
-      // Bright area near player
-      this._screenFx.circle(psx, psy, lightR);
-      this._screenFx.fill({ color: 0xFFEEDD, alpha: nightAlpha * 0.04 });
     }
   }
 

@@ -4,10 +4,10 @@
 
 export const TB = {
   // World
-  WORLD_WIDTH: 400,
+  WORLD_WIDTH: 1200,
   WORLD_HEIGHT: 256,
   CHUNK_W: 16,
-  TILE_SIZE: 19,
+  TILE_SIZE: 16,
 
   // Depth layers (Y values, Y=0 is bottom)
   SURFACE_Y: 180,
