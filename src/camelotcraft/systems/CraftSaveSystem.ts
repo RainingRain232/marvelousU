@@ -24,17 +24,60 @@ function base64ToUint8(b64: string): Uint8Array {
   return out;
 }
 
+// --- RLE compression for chunk block data ---
+// Encodes runs of identical bytes: [value, count_hi, count_lo] (count as 16-bit)
+
+function rleEncode(data: Uint8Array): Uint8Array {
+  const out: number[] = [];
+  let i = 0;
+  while (i < data.length) {
+    const val = data[i];
+    let count = 1;
+    while (i + count < data.length && data[i + count] === val && count < 65535) {
+      count++;
+    }
+    out.push(val, (count >> 8) & 0xff, count & 0xff);
+    i += count;
+  }
+  return new Uint8Array(out);
+}
+
+function rleDecode(rle: Uint8Array, expectedLen: number): Uint8Array {
+  const out = new Uint8Array(expectedLen);
+  let oi = 0;
+  let ri = 0;
+  while (ri + 2 < rle.length && oi < expectedLen) {
+    const val = rle[ri];
+    const count = (rle[ri + 1] << 8) | rle[ri + 2];
+    const end = Math.min(oi + count, expectedLen);
+    for (let j = oi; j < end; j++) out[j] = val;
+    oi = end;
+    ri += 3;
+  }
+  return out;
+}
+
 // --- Save ---
 
 export function saveCraftWorld(state: CraftState): void {
-  const savedChunks: { cx: number; cz: number; b64: string }[] = [];
+  const savedChunks: { cx: number; cz: number; b64: string; rle?: boolean }[] = [];
+
+  // Only save chunks near the player to avoid quota issues
+  const playerCX = Math.floor(state.player.position.x / 16);
+  const playerCZ = Math.floor(state.player.position.z / 16);
+  const saveRadius = 4; // save fewer chunks than render distance
 
   state.chunks.forEach((chunk) => {
     if (!chunk.populated) return;
+    // Only save chunks within save radius of player
+    if (Math.abs(chunk.cx - playerCX) > saveRadius || Math.abs(chunk.cz - playerCZ) > saveRadius) return;
+    // Use RLE compression to reduce size
+    const compressed = rleEncode(chunk.blocks);
     savedChunks.push({
       cx: chunk.cx,
       cz: chunk.cz,
-      b64: uint8ToBase64(chunk.blocks),
+      b64: uint8ToBase64(compressed),
+      rle: true,
     });
   });
 
@@ -64,9 +107,17 @@ export function saveCraftWorld(state: CraftState): void {
   };
 
   try {
-    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+    const json = JSON.stringify(data);
+    localStorage.setItem(SAVE_KEY, json);
   } catch (e) {
-    console.warn("[CraftSave] save failed", e);
+    // Quota exceeded — clear old save and retry
+    console.warn("[CraftSave] quota exceeded, clearing old save and retrying...");
+    try {
+      localStorage.removeItem(SAVE_KEY);
+      localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+    } catch (e2) {
+      console.warn("[CraftSave] save failed even after clearing", e2);
+    }
   }
 }
 
@@ -114,7 +165,9 @@ export function loadCraftWorld(): CraftState | null {
     // Chunks
     for (const sc of d.chunks ?? []) {
       const chunk = new CraftChunk(sc.cx, sc.cz);
-      const data = base64ToUint8(sc.b64);
+      const raw = base64ToUint8(sc.b64);
+      // Support both RLE-compressed and legacy uncompressed formats
+      const data = sc.rle ? rleDecode(raw, chunk.blocks.length) : raw;
       chunk.blocks.set(data.subarray(0, chunk.blocks.length));
       chunk.populated = true;
       chunk.dirty = true;

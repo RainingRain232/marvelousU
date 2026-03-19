@@ -157,6 +157,7 @@ const TERRAIN_FRAG = /* glsl */ `
   varying vec3 vNormal;
   varying float vAO;
   varying float vBlockId;
+  varying vec2 vBlockUV;
 
   uniform vec3 uSunDir;
   uniform vec3 uSunColor;

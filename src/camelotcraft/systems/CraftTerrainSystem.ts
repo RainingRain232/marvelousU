@@ -268,9 +268,15 @@ export function generateChunkTerrain(chunk: CraftChunk, seed: number): void {
       for (let ly = 0; ly < H; ly++) {
         if (ly === 0) { chunk.setBlock(lx, ly, lz, BlockType.BEDROCK); continue; }
 
-        // Cave carving
+        // Bedrock layer (y 1-3: always solid)
+        if (ly <= 3) {
+          chunk.setBlock(lx, ly, lz, BlockType.BEDROCK);
+          continue;
+        }
+
+        // Cave carving — only well below surface, never within 5 blocks of it
         const caveVal = Math.abs(noise3D(permCave, wx * CB.CAVE_SCALE, ly * CB.CAVE_SCALE, wz * CB.CAVE_SCALE));
-        const isCave = caveVal < CB.CAVE_THRESHOLD && ly > 1 && ly < height - 2;
+        const isCave = caveVal < CB.CAVE_THRESHOLD && ly > 4 && ly < height - 5;
 
         if (ly > height) {
           chunk.setBlock(lx, ly, lz, ly <= CB.SEA_LEVEL ? biomeDef.waterBlock : BlockType.AIR);
