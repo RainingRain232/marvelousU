@@ -4,7 +4,7 @@
 
 import { CB } from "../config/CraftBalance";
 import { BLOCK_DEFS, BlockType } from "../config/CraftBlockDefs";
-import type { ItemStack } from "../config/CraftRecipeDefs";
+import { ItemType, type ItemStack } from "../config/CraftRecipeDefs";
 import type { CraftState } from "../state/CraftState";
 import { getWorldBlock } from "../state/CraftState";
 import { worldToChunk } from "../state/CraftChunk";
@@ -47,7 +47,7 @@ export class CraftHUD {
   onCraftSlotClick?: (slotIndex: number) => void;
   onInventorySlotClick?: (section: "hotbar" | "main", index: number) => void;
   onCraftResultClick?: () => void;
-  private _unequipArmor?: (slot: "helmet" | "chestplate" | "leggings" | "boots") => void;
+  private _unequipArmor?: (slot: "helmet" | "chestplate" | "leggings" | "boots" | "weapon") => void;
 
   /** Set the state reference for armor unequip. */
   setUnequipHandler(state: CraftState): void {
@@ -159,7 +159,7 @@ export class CraftHUD {
     }
   }
 
-  /** Try to equip an armor item. Returns true if equipped. */
+  /** Try to equip an armor or weapon item. Returns true if equipped. */
   private _tryEquipArmor(
     inv: import("../state/CraftInventory").CraftInventory,
     item: ItemStack,
@@ -167,17 +167,18 @@ export class CraftHUD {
     fromIndex: number,
   ): boolean {
     const id = item.specialId ?? "";
-    let slot: "helmet" | "chestplate" | "leggings" | "boots" | null = null;
+    let slot: "helmet" | "chestplate" | "leggings" | "boots" | "weapon" | null = null;
     if (id.includes("helmet")) slot = "helmet";
     else if (id.includes("chestplate")) slot = "chestplate";
     else if (id.includes("leggings")) slot = "leggings";
     else if (id.includes("boots")) slot = "boots";
+    else if (item.itemType === ItemType.WEAPON) slot = "weapon";
     if (!slot) return false;
 
-    // Swap with currently equipped armor
+    // Swap with currently equipped item
     const current = inv.armor[slot];
     inv.armor[slot] = item;
-    fromSlots[fromIndex] = current; // put old armor back (or null)
+    fromSlots[fromIndex] = current; // put old item back (or null)
     return true;
   }
 
@@ -367,6 +368,15 @@ export class CraftHUD {
           <div id="inv-main" style="display:grid;grid-template-columns:repeat(${CB.INVENTORY_COLS},48px);gap:2px;margin-bottom:12px;"></div>
           <div style="font-size:12px;color:#aaa;margin-bottom:4px;">Hotbar</div>
           <div id="inv-hotbar" style="display:grid;grid-template-columns:repeat(${CB.HOTBAR_SLOTS},48px);gap:2px;"></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;min-width:52px;">
+          <div style="font-size:12px;color:#aaa;margin-bottom:4px;text-align:center;">Equipment</div>
+          <div id="equip-helmet" class="equip-slot" title="Helmet" style="width:48px;height:48px;border:1px solid #555;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:3px;font-size:16px;">⛑</div>
+          <div id="equip-chestplate" class="equip-slot" title="Chestplate" style="width:48px;height:48px;border:1px solid #555;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:3px;font-size:16px;">🛡</div>
+          <div id="equip-leggings" class="equip-slot" title="Leggings" style="width:48px;height:48px;border:1px solid #555;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:3px;font-size:16px;">👖</div>
+          <div id="equip-boots" class="equip-slot" title="Boots" style="width:48px;height:48px;border:1px solid #555;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:3px;font-size:16px;">👢</div>
+          <div style="height:8px;"></div>
+          <div id="equip-weapon" class="equip-slot" title="Weapon" style="width:48px;height:48px;border:1px solid #555;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:3px;font-size:16px;">⚔</div>
         </div>
       </div>
     `;
@@ -713,6 +723,37 @@ export class CraftHUD {
       slot.oncontextmenu = (e) => { e.preventDefault(); this.handleRightClick(inv.hotbar, idx); };
       hotbarEl.appendChild(slot);
     }
+
+    // Equipment slots
+    const equipSlots: Array<{ key: "helmet" | "chestplate" | "leggings" | "boots" | "weapon"; icon: string }> = [
+      { key: "helmet", icon: "⛑" },
+      { key: "chestplate", icon: "🛡" },
+      { key: "leggings", icon: "👖" },
+      { key: "boots", icon: "👢" },
+      { key: "weapon", icon: "⚔" },
+    ];
+    for (const { key, icon } of equipSlots) {
+      const el = this._inventoryOverlay.querySelector(`#equip-${key}`) as HTMLDivElement;
+      if (!el) continue;
+      const equipped = inv.armor[key];
+      el.innerHTML = "";
+      if (equipped) {
+        el.appendChild(this._makeItemDisplay(equipped));
+        const c = equipped.color;
+        const r = (c >> 16) & 0xFF, g = (c >> 8) & 0xFF, b = c & 0xFF;
+        el.style.background = `rgba(${r},${g},${b},0.3)`;
+        el.style.borderColor = "#FFD700";
+        el.title = equipped.displayName;
+      } else {
+        el.textContent = icon;
+        el.style.background = "rgba(0,0,0,0.5)";
+        el.style.borderColor = "#555";
+        el.title = key.charAt(0).toUpperCase() + key.slice(1);
+      }
+      el.style.pointerEvents = "auto";
+      el.style.cursor = "pointer";
+      el.onclick = () => this._unequipArmor?.(key);
+    }
   }
 
   private _makeSlot(item: ItemStack | null): HTMLDivElement {
@@ -1049,9 +1090,9 @@ export class CraftHUD {
       position:absolute; bottom:70px; right:8px;
       display:flex; flex-direction:column; gap:2px; opacity:0.8;
     `;
-    const slots = ["helmet", "chestplate", "leggings", "boots"];
-    const icons = ["⛑", "🛡", "👖", "👢"];
-    for (let i = 0; i < 4; i++) {
+    const slots = ["helmet", "chestplate", "leggings", "boots", "weapon"];
+    const icons = ["⛑", "🛡", "👖", "👢", "⚔"];
+    for (let i = 0; i < 5; i++) {
       const slot = document.createElement("div");
       slot.id = `armor-${slots[i]}`;
       slot.style.cssText = `
@@ -1063,7 +1104,7 @@ export class CraftHUD {
       slot.title = `${slots[i]} (click to unequip)`;
       slot.style.cursor = "pointer";
       slot.style.pointerEvents = "auto";
-      const slotName = slots[i] as "helmet" | "chestplate" | "leggings" | "boots";
+      const slotName = slots[i] as "helmet" | "chestplate" | "leggings" | "boots" | "weapon";
       slot.onclick = () => this._unequipArmor?.(slotName);
       this._armorEl.appendChild(slot);
     }
@@ -1077,6 +1118,7 @@ export class CraftHUD {
       { key: "chestplate", item: armor.chestplate },
       { key: "leggings", item: armor.leggings },
       { key: "boots", item: armor.boots },
+      { key: "weapon", item: armor.weapon },
     ];
     for (const { key, item } of slots) {
       const el = document.getElementById(`armor-${key}`);

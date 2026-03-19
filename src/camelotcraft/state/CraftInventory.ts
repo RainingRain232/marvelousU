@@ -11,6 +11,7 @@ export interface ArmorSlots {
   chestplate: ItemStack | null;
   leggings: ItemStack | null;
   boots: ItemStack | null;
+  weapon: ItemStack | null;
 }
 
 export interface CraftInventory {
@@ -34,20 +35,13 @@ export function createInventory(): CraftInventory {
   const main: (ItemStack | null)[] = new Array(CB.INVENTORY_ROWS * CB.INVENTORY_COLS).fill(null);
   const craftGrid: (ItemStack | null)[] = new Array(CB.CRAFT_GRID_SIZE * CB.CRAFT_GRID_SIZE).fill(null);
 
-  // Starting weapon: wooden sword
-  hotbar[0] = {
-    itemType: ItemType.WEAPON, specialId: "wooden_sword",
-    count: 1, displayName: "Wooden Sword", color: 0xA0522D,
-    durability: 60, maxDurability: 60,
-  };
-
   return {
     hotbar,
     main,
     selectedSlot: 0,
     craftGrid,
     craftResult: null,
-    armor: { helmet: null, chestplate: null, leggings: null, boots: null },
+    armor: { helmet: null, chestplate: null, leggings: null, boots: null, weapon: null },
   };
 }
 

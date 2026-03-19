@@ -944,6 +944,34 @@ export class CamelotCraftGame {
   private _handleSpecialBlock(block: BlockType, wx: number, wy: number, wz: number): boolean {
     const p = this._state.player;
 
+    // --- Sword in Stone (spawn sword) ---
+    if (block === BlockType.ENCHANTED_STONE && this._swordStonePos &&
+        wx === this._swordStonePos.x && wy === this._swordStonePos.y && wz === this._swordStonePos.z) {
+      // Remove the stone
+      setWorldBlock(this._state, wx, wy, wz, BlockType.AIR);
+      this._swordStonePos = null;
+
+      // Give Iron Excalibur
+      const swordItem: import("./config/CraftRecipeDefs").ItemStack = {
+        itemType: ItemType.WEAPON,
+        specialId: "iron_sword",
+        count: 1,
+        displayName: "Iron Excalibur",
+        color: 0xC8C8E0,
+        durability: 500,
+        maxDurability: 500,
+      };
+      addToInventory(p.inventory, swordItem);
+
+      addMessage(this._state, "You pull the blade from the stone... Your long-lost Iron Excalibur is retrieved!", 0xFFD700);
+      addMessage(this._state, "This ancient blade still hums with power. Wield it well, knight.", 0xC0A060);
+      playQuestComplete();
+      this._renderer.cameraCtrl.shake(0.3);
+      this._renderer.particles.emitBlockBreak(wx, wy, wz, 0xC8C8E0);
+      this._renderer.particles.emitBlockBreak(wx, wy, wz, 0x7B68EE);
+      return true;
+    }
+
     // --- Excalibur (Crystal Block on Gold Block = Excalibur pedestal) ---
     if (block === BlockType.CRYSTAL_BLOCK || block === BlockType.ENCHANTED_CRYSTAL_ORE) {
       const below = getWorldBlock(this._state, wx, wy - 1, wz);
@@ -1568,7 +1596,22 @@ export class CamelotCraftGame {
       // Default spawn
       p.position.set(8, CB.SEA_LEVEL + 10, 8);
     }
+
+    // Place Sword-in-Stone 2 blocks in front of spawn (player faces +Z by default)
+    const stoneX = 8;
+    const stoneZ = 10;
+    const sCx = worldToChunk(stoneX);
+    const sCz = worldToChunk(stoneZ);
+    const sChunk = this._state.chunks.get(chunkKey(sCx, sCz));
+    if (sChunk && sChunk.populated) {
+      const sHeight = sChunk.getHeight(stoneX & 15, stoneZ & 15);
+      setWorldBlock(this._state, stoneX, sHeight + 1, stoneZ, BlockType.ENCHANTED_STONE);
+      this._swordStonePos = { x: stoneX, y: sHeight + 1, z: stoneZ };
+    }
   }
+
+  /** Position of the sword-in-stone (null if claimed or not placed). */
+  private _swordStonePos: { x: number; y: number; z: number } | null = null;
 
   // =========================================================================
   // Cleanup
