@@ -145,8 +145,11 @@ function carveRivers(
       const idx = lx * S + lz;
       const height = heights[idx];
 
-      // Don't generate rivers below sea level
+      // Don't generate rivers below sea level or in spawn flat area
       if (height <= CB.SEA_LEVEL) continue;
+      const rzz = cz + lz;
+      const spawnDistRiver = Math.sqrt((wx - 8) * (wx - 8) + (rzz - 8) * (rzz - 8));
+      if (spawnDistRiver < 16) continue;
 
       const biomeDef = BIOME_DEFS[biomes[idx]];
 
@@ -204,6 +207,22 @@ export function generateChunkTerrain(chunk: CraftChunk, seed: number): void {
 
       // Guarantee minimum ground level: every column is at least SEA_LEVEL
       height = Math.max(CB.SEA_LEVEL, Math.min(H - 3, height));
+
+      // Flatten spawn area: create a flat platform around spawn (8, 8)
+      const SPAWN_FLAT_RADIUS = 12;
+      const SPAWN_BLEND_RADIUS = 16;
+      const SPAWN_HEIGHT = CB.SEA_LEVEL + 5;
+      const spawnDist = Math.sqrt((wx - 8) * (wx - 8) + (wz - 8) * (wz - 8));
+      if (spawnDist < SPAWN_BLEND_RADIUS) {
+        if (spawnDist <= SPAWN_FLAT_RADIUS) {
+          height = SPAWN_HEIGHT;
+        } else {
+          // Smooth blend between flat area and natural terrain
+          const t = (spawnDist - SPAWN_FLAT_RADIUS) / (SPAWN_BLEND_RADIUS - SPAWN_FLAT_RADIUS);
+          const smooth = t * t * (3 - 2 * t); // smoothstep
+          height = Math.floor(SPAWN_HEIGHT + (height - SPAWN_HEIGHT) * smooth);
+        }
+      }
 
       heights[idx] = height;
 
@@ -314,6 +333,10 @@ export function generateChunkTerrain(chunk: CraftChunk, seed: number): void {
 
       if (height <= CB.SEA_LEVEL) continue;
       const surfY = height + 1;
+
+      // No trees or foliage in spawn flat area
+      const spawnDistDeco = Math.sqrt((wx - 8) * (wx - 8) + (wz - 8) * (wz - 8));
+      if (spawnDistDeco < 14) continue;
 
       // Trees
       const treeRoll = hashPos(seed + 7, wx, 0, wz);

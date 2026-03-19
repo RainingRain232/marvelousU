@@ -394,7 +394,10 @@ export class Camera {
     this._dragStartY = e.clientY;
     this._camStartX = this.x;
     this._camStartY = this.y;
-    (e.currentTarget as HTMLCanvasElement).setPointerCapture(e.pointerId);
+    const target = e.currentTarget as HTMLCanvasElement | null;
+    if (target) {
+      try { target.setPointerCapture(e.pointerId); } catch { /* ignore if element is unavailable */ }
+    }
   }
 
   private _handlePointerMove(e: PointerEvent): void {

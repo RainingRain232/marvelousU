@@ -45,9 +45,9 @@ export const CB = {
   MAX_STACK_SIZE: 64,
 
   // --- Block mining ---
-  MINE_BASE_TIME: 1.0, // seconds for bare-hand mining of stone
-  MINE_TOOL_MULT: 0.25, // multiplier when using correct tool
-  MINE_EXCALIBUR_MULT: 0.1, // Excalibur instant-mines almost everything
+  MINE_BASE_TIME: 0.333, // seconds for bare-hand mining of stone (3x faster)
+  MINE_TOOL_MULT: 0.083, // multiplier when using correct tool (3x faster)
+  MINE_EXCALIBUR_MULT: 0.033, // Excalibur instant-mines almost everything (3x faster)
 
   // --- Day / night ---
   DAY_LENGTH: 600, // seconds for a full day cycle

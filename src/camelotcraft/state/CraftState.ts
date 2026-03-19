@@ -60,7 +60,7 @@ export interface CraftPlayer {
 
 export function createPlayer(): CraftPlayer {
   return {
-    position: new THREE.Vector3(0, 40, 0),
+    position: new THREE.Vector3(8, 27, 8),
     velocity: new THREE.Vector3(0, 0, 0),
     yaw: 0,
     pitch: 0,
@@ -83,7 +83,7 @@ export function createPlayer(): CraftPlayer {
     flying: false,
     inWater: false,
     swimming: false,
-    spawnPoint: new THREE.Vector3(8, 40, 8),
+    spawnPoint: new THREE.Vector3(8, 27, 8),
     blocksPlaced: 0,
     blocksMined: 0,
     knightsRecruited: 0,
