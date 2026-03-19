@@ -93,11 +93,11 @@ export function destroyInput(): void {
 
 export function pollInput(): InputState {
   const state: InputState = {
-    left: _keys.has("KeyA") || _keys.has("ArrowLeft"),
-    right: _keys.has("KeyD") || _keys.has("ArrowRight"),
-    up: _keys.has("KeyW") || _keys.has("ArrowUp"),
-    down: _keys.has("KeyS") || _keys.has("ArrowDown"),
-    jump: _keys.has("Space") || _keys.has("KeyW") || _keys.has("ArrowUp"),
+    left: _keys.has("ArrowLeft"),
+    right: _keys.has("ArrowRight"),
+    up: _keys.has("ArrowUp"),
+    down: _keys.has("ArrowDown"),
+    jump: _keys.has("Space") || _keys.has("ArrowUp"),
     sprint: _keys.has("ShiftLeft") || _keys.has("ShiftRight"),
     attack: _mouseDown,
     place: _rightMouseDown,

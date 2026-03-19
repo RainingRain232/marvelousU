@@ -231,7 +231,6 @@ function _placeSurfaceFeatures(chunk: TerrariaChunk, baseX: number): void {
         }
       }
       // Sand border at water edges
-      if (dy === 0) {} // just the water fill above
       const belowY = surfY - lakeDepth;
       if (belowY > 0) chunk.setBlock(lx, belowY, BlockType.SAND);
     }

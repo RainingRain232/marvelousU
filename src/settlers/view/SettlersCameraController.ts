@@ -56,10 +56,10 @@ export class SettlersCameraController {
 
   onKeyDown(code: string): void {
     switch (code) {
-      case "KeyW": case "ArrowUp":    this._keys.w = true; break;
-      case "KeyA": case "ArrowLeft":  this._keys.a = true; break;
-      case "KeyS": case "ArrowDown":  this._keys.s = true; break;
-      case "KeyD": case "ArrowRight": this._keys.d = true; break;
+      case "KeyW": this._keys.w = true; break;
+      case "KeyA": this._keys.a = true; break;
+      case "KeyS": this._keys.s = true; break;
+      case "KeyD": this._keys.d = true; break;
       case "KeyQ": this._keys.q = true; break;
       case "KeyE": this._keys.e = true; break;
     }
@@ -67,10 +67,10 @@ export class SettlersCameraController {
 
   onKeyUp(code: string): void {
     switch (code) {
-      case "KeyW": case "ArrowUp":    this._keys.w = false; break;
-      case "KeyA": case "ArrowLeft":  this._keys.a = false; break;
-      case "KeyS": case "ArrowDown":  this._keys.s = false; break;
-      case "KeyD": case "ArrowRight": this._keys.d = false; break;
+      case "KeyW": this._keys.w = false; break;
+      case "KeyA": this._keys.a = false; break;
+      case "KeyS": this._keys.s = false; break;
+      case "KeyD": this._keys.d = false; break;
       case "KeyQ": this._keys.q = false; break;
       case "KeyE": this._keys.e = false; break;
     }

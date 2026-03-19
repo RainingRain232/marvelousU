@@ -429,19 +429,15 @@ export class Camera {
   private _setKey(code: string, down: boolean): void {
     switch (code) {
       case "KeyA":
-      case "ArrowLeft":
         this._keys.left = down;
         break;
       case "KeyD":
-      case "ArrowRight":
         this._keys.right = down;
         break;
       case "KeyW":
-      case "ArrowUp":
         this._keys.up = down;
         break;
       case "KeyS":
-      case "ArrowDown":
         this._keys.down = down;
         break;
       case "Equal":       // + / = key

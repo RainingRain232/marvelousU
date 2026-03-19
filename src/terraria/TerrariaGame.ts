@@ -263,6 +263,9 @@ export class TerrariaGame {
     this._renderer.entityLayer.addChild(this._mobView.container);
     this._renderer.entityLayer.addChild(this._fx.container);
 
+    // Disable global camera keyboard panning (Terraria has its own camera)
+    viewManager.camera.keyboardEnabled = false;
+
     // Init camera
     this._camera.setScreenSize(this._state.screenW, this._state.screenH);
     this._camera.worldWidth = this._state.worldWidth;
@@ -325,6 +328,9 @@ export class TerrariaGame {
     this._renderer.entityLayer.addChild(this._playerView.container);
     this._renderer.entityLayer.addChild(this._mobView.container);
     this._renderer.entityLayer.addChild(this._fx.container);
+
+    // Disable global camera keyboard panning (Terraria has its own camera)
+    viewManager.camera.keyboardEnabled = false;
 
     this._camera.setScreenSize(this._state.screenW, this._state.screenH);
     this._camera.worldWidth = this._state.worldWidth;
@@ -742,6 +748,8 @@ export class TerrariaGame {
     }
     window.removeEventListener("resize", this._onResize);
     destroyInput();
+    // Re-enable global camera keyboard panning
+    viewManager.camera.keyboardEnabled = true;
     // Save before exit
     if (this._state && !this._state.gameOver) {
       saveTerrariaWorld(this._state);
