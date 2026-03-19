@@ -3,17 +3,12 @@
 // ---------------------------------------------------------------------------
 
 import { CB } from "../config/CaesarBalance";
-import { CaesarBuildingType, HOUSING_REQUIREMENTS, type CaesarServiceType } from "../config/CaesarBuildingDefs";
+import { CaesarBuildingType, HOUSING_REQUIREMENTS, CAESAR_BUILDING_DEFS, type CaesarServiceType } from "../config/CaesarBuildingDefs";
+import { CaesarResourceType } from "../config/CaesarResourceDefs";
 import type { CaesarState } from "../state/CaesarState";
 import type { CaesarBuilding } from "../state/CaesarBuilding";
 import { tileAt, inBounds } from "../state/CaesarMap";
 
-const SERVICE_DURATION = 30; // seconds a service "lasts" after walker visit
-
-/**
- * Check what services a housing plot currently has access to
- * based on tile service coverage timers.
- */
 function getHousingServices(state: CaesarState, b: CaesarBuilding): Set<CaesarServiceType> {
   const services = new Set<CaesarServiceType>();
   const tile = tileAt(state.map, b.tileX, b.tileY);
@@ -30,21 +25,33 @@ function getHousingServices(state: CaesarState, b: CaesarBuilding): Set<CaesarSe
 }
 
 /**
- * Determine the maximum tier this housing can reach based on current services
+ * Check if the required goods for a tier are available globally.
  */
-function getMaxTierForServices(services: Set<CaesarServiceType>, desirability: number): number {
+function hasRequiredGoods(state: CaesarState, tier: number): boolean {
+  const req = HOUSING_REQUIREMENTS[tier];
+  if (!req) return true;
+  for (const good of req.requiresGoods) {
+    if (good === "cloth" && (state.resources.get(CaesarResourceType.CLOTH) ?? 0) <= 0) return false;
+    if (good === "tools" && (state.resources.get(CaesarResourceType.TOOLS) ?? 0) <= 0) return false;
+  }
+  return true;
+}
+
+function getMaxTierForServices(state: CaesarState, services: Set<CaesarServiceType>, desirability: number): number {
   for (let tier = HOUSING_REQUIREMENTS.length - 1; tier >= 0; tier--) {
     const req = HOUSING_REQUIREMENTS[tier];
     if (desirability < req.minDesirability) continue;
     const hasAll = req.services.every((s) => services.has(s));
-    if (hasAll) return tier;
+    if (!hasAll) continue;
+    // Check goods availability for evolving TO this tier
+    if (!hasRequiredGoods(state, tier)) continue;
+    return tier;
   }
   return 0;
 }
 
 /**
  * Update housing evolution / devolution.
- * Called periodically (every HOUSING_EVOLVE_CHECK seconds).
  */
 export function updateHousing(state: CaesarState, dt: number): void {
   // Decay service timers on tiles
@@ -57,7 +64,6 @@ export function updateHousing(state: CaesarState, dt: number): void {
     if (tile.serviceWater > 0) tile.serviceWater = Math.max(0, tile.serviceWater - dt);
   }
 
-  // Process each housing building
   for (const b of state.buildings.values()) {
     if (b.type !== CaesarBuildingType.HOUSING) continue;
     if (!b.built) continue;
@@ -67,22 +73,23 @@ export function updateHousing(state: CaesarState, dt: number): void {
 
     const tile = tileAt(state.map, b.tileX, b.tileY);
     const desirability = tile ? tile.desirability : 0;
-    const maxTier = getMaxTierForServices(services, desirability);
+    const maxTier = getMaxTierForServices(state, services, desirability);
+
+    if (b.evolveCooldown > 0) {
+      b.evolveCooldown = Math.max(0, b.evolveCooldown - dt);
+    }
 
     if (maxTier > b.housingTier) {
-      // Evolve!
-      b.housingTier = Math.min(b.housingTier + 1, maxTier);
-      b.devolveTimer = 0;
-      // Update capacity
-      const newCap = CB.HOUSING_CAPACITY[b.housingTier];
-      // Residents stay, but capacity increases allowing immigration
+      if (b.evolveCooldown <= 0) {
+        b.housingTier = Math.min(b.housingTier + 1, 4);
+        b.evolveCooldown = CB.HOUSING_EVOLVE_COOLDOWN;
+        b.devolveTimer = 0;
+      }
     } else if (maxTier < b.housingTier) {
-      // Start devolve countdown
       b.devolveTimer += dt;
       if (b.devolveTimer >= CB.HOUSING_DEVOLVE_DELAY) {
         b.housingTier = Math.max(maxTier, b.housingTier - 1);
         b.devolveTimer = 0;
-        // Evict excess residents
         const cap = CB.HOUSING_CAPACITY[b.housingTier];
         if (b.residents > cap) {
           const evicted = b.residents - cap;
@@ -103,6 +110,29 @@ export function updateHousing(state: CaesarState, dt: number): void {
     }
   }
   state.maxPopulation = maxPop;
+}
+
+/**
+ * Consume cloth/tools for high-tier housing. Called periodically from economy system.
+ */
+export function consumeHousingGoods(state: CaesarState): void {
+  let clothNeeded = 0;
+  let toolsNeeded = 0;
+
+  for (const b of state.buildings.values()) {
+    if (b.type !== CaesarBuildingType.HOUSING || !b.built || b.residents === 0) continue;
+    if (b.housingTier >= 3) clothNeeded += CB.HOUSING_CLOTH_PER_MANOR;
+    if (b.housingTier >= 4) toolsNeeded += CB.HOUSING_TOOLS_PER_ESTATE;
+  }
+
+  if (clothNeeded > 0) {
+    const cloth = state.resources.get(CaesarResourceType.CLOTH) ?? 0;
+    state.resources.set(CaesarResourceType.CLOTH, Math.max(0, cloth - clothNeeded));
+  }
+  if (toolsNeeded > 0) {
+    const tools = state.resources.get(CaesarResourceType.TOOLS) ?? 0;
+    state.resources.set(CaesarResourceType.TOOLS, Math.max(0, tools - toolsNeeded));
+  }
 }
 
 /**
@@ -129,12 +159,12 @@ export function applyServiceCoverage(
       if (!tile) continue;
 
       switch (service) {
-        case "food": tile.serviceFood = SERVICE_DURATION; break;
-        case "religion": tile.serviceReligion = SERVICE_DURATION; break;
-        case "safety": tile.serviceSafety = SERVICE_DURATION; break;
-        case "entertainment": tile.serviceEntertainment = SERVICE_DURATION; break;
-        case "commerce": tile.serviceCommerce = SERVICE_DURATION; break;
-        case "water": tile.serviceWater = SERVICE_DURATION; break;
+        case "food": tile.serviceFood = CB.SERVICE_DURATION; break;
+        case "religion": tile.serviceReligion = CB.SERVICE_DURATION; break;
+        case "safety": tile.serviceSafety = CB.SERVICE_DURATION; break;
+        case "entertainment": tile.serviceEntertainment = CB.SERVICE_DURATION; break;
+        case "commerce": tile.serviceCommerce = CB.SERVICE_DURATION; break;
+        case "water": tile.serviceWater = CB.SERVICE_DURATION; break;
       }
     }
   }

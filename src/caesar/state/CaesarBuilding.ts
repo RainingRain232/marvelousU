@@ -12,22 +12,23 @@ export interface CaesarBuilding {
   tileY: number;
 
   // Construction
-  built: boolean;             // false while under construction
+  built: boolean;
   constructionProgress: number; // 0-1
 
   // Production
-  productionTimer: number;    // seconds accumulated
+  productionTimer: number;
   inputStorage: Map<CaesarResourceType, number>;
   outputStorage: Map<CaesarResourceType, number>;
 
   // Housing-specific
   housingTier: number;        // 0-4 (Hovel..Estate)
-  residents: number;          // current population in this house
-  services: Set<CaesarServiceType>; // services currently received
-  devolveTimer: number;       // seconds until devolve if services lost
+  residents: number;
+  services: Set<CaesarServiceType>;
+  devolveTimer: number;
+  evolveCooldown: number;
 
   // Walker spawning
-  walkerTimer: number;        // seconds until next walker spawn
+  walkerTimer: number;
 
   // Health
   hp: number;
@@ -35,6 +36,19 @@ export interface CaesarBuilding {
 
   // Workers assigned
   workers: number;
+  workerPriority: "high" | "normal" | "low";
+
+  // Tower attack timer
+  attackTimer: number;
+
+  // Building level (upgrades)
+  level: number;              // 1-3
+  upgrading: boolean;
+  upgradeProgress: number;    // 0-1
+
+  // Fire
+  onFire: boolean;
+  fireTimer: number;          // seconds remaining
 }
 
 export function createBuilding(
@@ -55,9 +69,17 @@ export function createBuilding(
     residents: 0,
     services: new Set(),
     devolveTimer: 0,
+    evolveCooldown: 0,
     walkerTimer: 0,
     hp: maxHp,
     maxHp,
     workers: 0,
+    workerPriority: "normal",
+    attackTimer: 0,
+    level: 1,
+    upgrading: false,
+    upgradeProgress: 0,
+    onFire: false,
+    fireTimer: 0,
   };
 }

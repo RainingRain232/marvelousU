@@ -3,123 +3,138 @@
 // ---------------------------------------------------------------------------
 
 import { CB } from "../config/CaesarBalance";
-import { CaesarBuildingType, HOUSING_TIER_NAMES, CAESAR_BUILDING_DEFS } from "../config/CaesarBuildingDefs";
+import { CaesarBuildingType, CAESAR_BUILDING_DEFS } from "../config/CaesarBuildingDefs";
 import { CaesarResourceType } from "../config/CaesarResourceDefs";
 import type { CaesarState } from "../state/CaesarState";
 
-/**
- * Recalculate all ratings. Called once per second or so.
- */
 export function updateRatings(state: CaesarState): void {
   updateProsperity(state);
   updateCulture(state);
   updatePeace(state);
-  // Favor is updated by tribute system, but clamp it
   state.ratings.favor = Math.max(0, Math.min(100, state.ratings.favor));
 }
 
+/**
+ * OVERHAULED Prosperity: rewards active economic management.
+ * - Housing quality (20 pts): avg tier, but weighted by occupied housing only
+ * - Employment (20 pts): employment rate matters
+ * - Trade activity (20 pts): gold earned from caravan trades
+ * - Goods production (20 pts): total goods produced over time
+ * - Building variety (20 pts): variety of building types built
+ */
 function updateProsperity(state: CaesarState): void {
-  if (state.population === 0) {
-    state.ratings.prosperity = 0;
-    return;
-  }
+  if (state.population === 0) { state.ratings.prosperity = 0; return; }
 
-  // Based on: average housing tier, gold reserves, employment
-  let totalTier = 0;
-  let houseCount = 0;
+  // Housing quality (0-20)
+  let totalTier = 0, houses = 0;
   for (const b of state.buildings.values()) {
     if (b.type === CaesarBuildingType.HOUSING && b.built && b.residents > 0) {
-      totalTier += b.housingTier;
-      houseCount++;
+      totalTier += b.housingTier; houses++;
     }
   }
+  const avgTier = houses > 0 ? totalTier / houses : 0;
+  const housingScore = (avgTier / 4) * 20;
 
-  const avgTier = houseCount > 0 ? totalTier / houseCount : 0;
-  const tierScore = (avgTier / 4) * 50; // 0-50 from housing quality
+  // Employment (0-20)
+  const employRate = state.population > 0 ? 1 - (state.unemployed / state.population) : 0;
+  const employScore = employRate * 20;
 
-  const gold = state.resources.get(CaesarResourceType.GOLD) ?? 0;
-  const goldScore = Math.min(25, (gold / 5000) * 25); // 0-25 from gold
+  // Trade activity (0-20): based on cumulative trade profit
+  const tradeScore = Math.min(20, (state.tradeProfit / 2000) * 20);
 
-  const employRate = state.population > 0
-    ? 1 - (state.unemployed / state.population)
-    : 0;
-  const employScore = employRate * 25; // 0-25 from employment
+  // Goods production (0-20): based on cumulative production output
+  const goodsScore = Math.min(20, (state.goodsProduced / 500) * 20);
 
-  const target = tierScore + goldScore + employScore;
-  // Smooth toward target
-  state.ratings.prosperity += (target - state.ratings.prosperity) * 0.05;
+  // Building variety (0-20): how many distinct building types exist
+  const builtTypes = new Set<string>();
+  for (const b of state.buildings.values()) {
+    if (b.built && b.type !== CaesarBuildingType.ROAD) builtTypes.add(b.type);
+  }
+  const varietyScore = Math.min(20, (builtTypes.size / 15) * 20); // 15 types = max
+
+  const target = housingScore + employScore + tradeScore + goodsScore + varietyScore;
+  state.ratings.prosperity += (target - state.ratings.prosperity) * 0.04;
   state.ratings.prosperity = Math.max(0, Math.min(100, state.ratings.prosperity));
 }
 
+/**
+ * Culture: religion + entertainment coverage + building quality.
+ */
 function updateCulture(state: CaesarState): void {
-  if (state.population === 0) {
-    state.ratings.culture = 0;
-    return;
-  }
+  if (state.population === 0) { state.ratings.culture = 0; return; }
 
-  // Based on: religion coverage, entertainment coverage, building variety
-  let religionBuildings = 0;
-  let entertainmentBuildings = 0;
-  let coveredHouses = 0;
-  let totalHouses = 0;
+  let religionCount = 0, entertainmentCount = 0;
+  let coveredHouses = 0, totalHouses = 0;
+  let upgradedCulturalBuildings = 0;
 
   for (const b of state.buildings.values()) {
     if (!b.built) continue;
     const bdef = CAESAR_BUILDING_DEFS[b.type];
-    if (bdef.category === "religion") religionBuildings++;
-    if (bdef.category === "entertainment") entertainmentBuildings++;
+    if (bdef.category === "religion") { religionCount++; if (b.level > 1) upgradedCulturalBuildings++; }
+    if (bdef.category === "entertainment") { entertainmentCount++; if (b.level > 1) upgradedCulturalBuildings++; }
     if (b.type === CaesarBuildingType.HOUSING && b.residents > 0) {
       totalHouses++;
-      if (b.services.has("religion") || b.services.has("entertainment")) {
-        coveredHouses++;
-      }
+      // Require BOTH religion AND entertainment for full coverage credit
+      if (b.services.has("religion") && b.services.has("entertainment")) coveredHouses += 1;
+      else if (b.services.has("religion") || b.services.has("entertainment")) coveredHouses += 0.5;
     }
   }
 
+  // Coverage (0-35): percentage of houses with religion+entertainment
   const coverageRate = totalHouses > 0 ? coveredHouses / totalHouses : 0;
-  const coverageScore = coverageRate * 50; // 0-50
+  const coverageScore = coverageRate * 35;
 
-  const buildingScore = Math.min(30, (religionBuildings * 8 + entertainmentBuildings * 6));
-  const popScale = Math.min(20, (state.population / 200) * 20); // 0-20
+  // Building count (0-30): more religion/entertainment buildings = higher culture
+  const buildingScore = Math.min(30, religionCount * 7 + entertainmentCount * 5);
 
-  const target = coverageScore + buildingScore + popScale;
-  state.ratings.culture += (target - state.ratings.culture) * 0.05;
+  // Building quality (0-15): upgraded cultural buildings
+  const qualityScore = Math.min(15, upgradedCulturalBuildings * 5);
+
+  // Morale bonus (0-20): happy people = more cultured
+  const moraleBonus = Math.min(20, (state.morale / 100) * 20);
+
+  const target = coverageScore + buildingScore + qualityScore + moraleBonus;
+  state.ratings.culture += (target - state.ratings.culture) * 0.04;
   state.ratings.culture = Math.max(0, Math.min(100, state.ratings.culture));
 }
 
+/**
+ * Peace: military readiness + raid defense + citizen safety.
+ */
 function updatePeace(state: CaesarState): void {
-  // Starts at 100, decreases during raids, increases with military
-  let militaryBuildings = 0;
-  let walls = 0;
-
+  let militaryBuildings = 0, walls = 0, towers = 0;
   for (const b of state.buildings.values()) {
     if (!b.built) continue;
-    if (b.type === CaesarBuildingType.WATCHPOST || b.type === CaesarBuildingType.BARRACKS) {
-      militaryBuildings++;
-    }
-    if (b.type === CaesarBuildingType.WALL || b.type === CaesarBuildingType.TOWER) {
-      walls++;
-    }
+    if (b.type === CaesarBuildingType.WATCHPOST || b.type === CaesarBuildingType.BARRACKS) militaryBuildings++;
+    if (b.type === CaesarBuildingType.WALL) walls++;
+    if (b.type === CaesarBuildingType.TOWER) towers++;
   }
 
-  // Active bandits reduce peace
-  let activeBandits = 0;
+  let activeBandits = 0, fires = 0;
   for (const w of state.walkers.values()) {
     if (w.walkerType === "bandit" && w.alive) activeBandits++;
   }
+  for (const b of state.buildings.values()) {
+    if (b.onFire) fires++;
+  }
 
-  const militaryScore = Math.min(40, militaryBuildings * 10 + walls * 2);
-  const raidPenalty = activeBandits * 15;
-  const defeatBonus = Math.min(20, state.raidsDefeated * 5);
+  // Military readiness (0-30)
+  const milScore = Math.min(30, militaryBuildings * 8 + towers * 5 + walls);
 
-  const target = 50 + militaryScore + defeatBonus - raidPenalty;
-  state.ratings.peace += (target - state.ratings.peace) * 0.05;
+  // Raid defense record (0-25)
+  const defenseScore = Math.min(25, state.raidsDefeated * 4);
+
+  // Active threats penalty (-0 to -50)
+  const threatPenalty = activeBandits * 12 + fires * 5;
+
+  // Base safety (from morale)
+  const safetyBase = state.morale > 50 ? 15 : 5;
+
+  const target = safetyBase + milScore + defenseScore - threatPenalty;
+  state.ratings.peace += (target - state.ratings.peace) * 0.04;
   state.ratings.peace = Math.max(0, Math.min(100, state.ratings.peace));
 }
 
-/**
- * Check if all goals are met (victory condition).
- */
 export function checkVictory(state: CaesarState): boolean {
   if (state.population < state.goals.population) return false;
   if (state.ratings.prosperity < state.goals.prosperity) return false;
@@ -129,18 +144,11 @@ export function checkVictory(state: CaesarState): boolean {
   return true;
 }
 
-/**
- * Check if the player has lost (population 0 with no housing, or favor at 0).
- */
 export function checkDefeat(state: CaesarState): boolean {
   if (state.ratings.favor <= 0 && state.tributesMissed >= 3) return true;
-  // Check if player has any housing left
   let hasHousing = false;
   for (const b of state.buildings.values()) {
-    if (b.type === CaesarBuildingType.HOUSING && b.built) {
-      hasHousing = true;
-      break;
-    }
+    if (b.type === CaesarBuildingType.HOUSING && b.built) { hasHousing = true; break; }
   }
   if (!hasHousing && state.population === 0 && state.gameTick > 60 * CB.SIM_TPS) return true;
   return false;

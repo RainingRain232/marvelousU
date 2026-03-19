@@ -9,6 +9,7 @@ import { nextEntityId } from "../state/CaesarState";
 import { createServiceWalker, type CaesarWalker } from "../state/CaesarWalker";
 import { tileAt, inBounds } from "../state/CaesarMap";
 import { applyServiceCoverage } from "./CaesarHousingSystem";
+import { isBuildingRoadConnected } from "./CaesarBuildingSystem";
 
 // ---- Walker spawning from service buildings ----
 
@@ -18,6 +19,9 @@ export function updateWalkerSpawning(state: CaesarState, dt: number): void {
 
     const bdef = CAESAR_BUILDING_DEFS[b.type];
     if (!bdef.walkerService) continue;
+
+    // Don't spawn walkers from road-disconnected buildings
+    if (!isBuildingRoadConnected(state, b)) continue;
 
     b.walkerTimer += dt;
     if (b.walkerTimer >= CB.WALKER_SPAWN_INTERVAL) {
@@ -56,8 +60,8 @@ export function updateWalkerSpawning(state: CaesarState, dt: number): void {
 }
 
 /**
- * Generate a random path along roads from a starting tile.
- * Walker follows roads randomly, like in Caesar.
+ * Generate a path along roads from a starting tile.
+ * Uses weighted random to prefer paths near housing (smarter service delivery).
  */
 function generateRandomRoadPath(
   state: CaesarState,
@@ -71,11 +75,18 @@ function generateRandomRoadPath(
   let cy = startY;
   visited.add(`${cx},${cy}`);
 
+  // Build a set of housing positions for proximity scoring
+  const housingPositions: { x: number; y: number }[] = [];
+  for (const b of state.buildings.values()) {
+    if (b.type === CaesarBuildingType.HOUSING && b.built && b.residents > 0) {
+      housingPositions.push({ x: b.tileX, y: b.tileY });
+    }
+  }
+
   const dirs = [[-1, 0], [1, 0], [0, -1], [0, 1]];
 
   for (let step = 0; step < maxSteps; step++) {
-    // Find adjacent road tiles not yet visited
-    const candidates: { x: number; y: number }[] = [];
+    const candidates: { x: number; y: number; weight: number }[] = [];
     for (const [dx, dy] of dirs) {
       const nx = cx + dx;
       const ny = cy + dy;
@@ -83,7 +94,6 @@ function generateRandomRoadPath(
       if (visited.has(key)) continue;
       if (!inBounds(state.map, nx, ny)) continue;
 
-      // Check if there's a road here
       let isRoad = false;
       for (const b of state.buildings.values()) {
         if ((b.type === CaesarBuildingType.ROAD || b.type === CaesarBuildingType.GATE) &&
@@ -92,19 +102,34 @@ function generateRandomRoadPath(
           break;
         }
       }
-      if (isRoad) {
-        candidates.push({ x: nx, y: ny });
+      if (!isRoad) continue;
+
+      // Weight: higher if near housing (proximity scoring)
+      let weight = 1;
+      for (const hp of housingPositions) {
+        const dist = Math.abs(hp.x - nx) + Math.abs(hp.y - ny);
+        if (dist <= 3) weight += 4;
+        else if (dist <= 6) weight += 2;
       }
+
+      candidates.push({ x: nx, y: ny, weight });
     }
 
     if (candidates.length === 0) break;
 
-    // Pick random direction
-    const next = candidates[Math.floor(Math.random() * candidates.length)];
-    path.push({ x: next.x + 0.5, y: next.y + 0.5 });
-    visited.add(`${next.x},${next.y}`);
-    cx = next.x;
-    cy = next.y;
+    // Weighted random pick
+    const totalWeight = candidates.reduce((s, c) => s + c.weight, 0);
+    let roll = Math.random() * totalWeight;
+    let chosen = candidates[0];
+    for (const c of candidates) {
+      roll -= c.weight;
+      if (roll <= 0) { chosen = c; break; }
+    }
+
+    path.push({ x: chosen.x + 0.5, y: chosen.y + 0.5 });
+    visited.add(`${chosen.x},${chosen.y}`);
+    cx = chosen.x;
+    cy = chosen.y;
   }
 
   return path;
