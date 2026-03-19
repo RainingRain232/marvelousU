@@ -63,6 +63,7 @@ interface SavedSettings {
   critEnabled?: boolean;
   blockEnabled?: boolean;
   manualControl?: boolean;
+  showIntro?: boolean;
 }
 
 const GAME_SPEEDS = [1, 1.5, 2, 3];
@@ -199,6 +200,7 @@ export class SettingsScreen {
   private _critEnabled = true;
   private _blockEnabled = true;
   private _manualControlEnabled = false;
+  private _showIntroEnabled = false;
 
   // UI references for volume row
   private _volValueLabel!: Text;
@@ -213,6 +215,7 @@ export class SettingsScreen {
   private _critBtns: SelectorBtn[] = [];
   private _blockBtns: SelectorBtn[] = [];
   private _manualControlBtns: SelectorBtn[] = [];
+  private _showIntroBtns: SelectorBtn[] = [];
 
   // Callbacks
   onBack: (() => void) | null = null;
@@ -243,6 +246,10 @@ export class SettingsScreen {
 
   get manualControlEnabled(): boolean {
     return this._manualControlEnabled;
+  }
+
+  get showIntroEnabled(): boolean {
+    return this._showIntroEnabled;
   }
 
   // ---------------------------------------------------------------------------
@@ -314,6 +321,9 @@ export class SettingsScreen {
       if (typeof saved.manualControl === "boolean") {
         this._manualControlEnabled = saved.manualControl;
       }
+      if (typeof saved.showIntro === "boolean") {
+        this._showIntroEnabled = saved.showIntro;
+      }
     } catch {
       // Corrupted localStorage — use defaults silently
     }
@@ -327,6 +337,7 @@ export class SettingsScreen {
       critEnabled: this._critEnabled,
       blockEnabled: this._blockEnabled,
       manualControl: this._manualControlEnabled,
+      showIntro: this._showIntroEnabled,
     };
     localStorage.setItem(LS_KEY, JSON.stringify(data));
   }
@@ -442,6 +453,21 @@ export class SettingsScreen {
     // --- Manual Control toggle ---
     curY = this._buildToggleRow(card, CW, curY, t("settings.manual_control"), this._manualControlEnabled, this._manualControlBtns, (enabled) => {
       this._manualControlEnabled = enabled;
+      this._saveToStorage();
+    });
+    curY += 12;
+
+    // Divider
+    card.addChild(
+      new Graphics()
+        .rect(20, curY, CW - 40, 1)
+        .fill({ color: BORDER_COLOR, alpha: 0.15 }),
+    );
+    curY += 14;
+
+    // --- Show Intro & Start Screen toggle ---
+    curY = this._buildToggleRow(card, CW, curY, t("settings.show_intro"), this._showIntroEnabled, this._showIntroBtns, (enabled) => {
+      this._showIntroEnabled = enabled;
       this._saveToStorage();
     });
     curY += 16;

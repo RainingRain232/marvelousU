@@ -301,8 +301,12 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
   if (_returnToCampaign) {
     sessionStorage.removeItem("returnToCampaign");
     startScreen.hide();
-  } else {
+  } else if (settingsScreen.showIntroEnabled) {
     startScreen.show();
+  } else {
+    // Skip start screen & intro — go straight to hub
+    startScreen.hide();
+    camelotHubScreen.show();
   }
 
   // Start menu music as soon as the app is interactive

@@ -26,6 +26,7 @@ export const nl: Record<string, string> = {
   "settings.critical_hits": "KRITIEKE TREFFERS",
   "settings.block_chance": "BLOKKANS",
   "settings.manual_control": "HANDMATIGE BESTURING",
+  "settings.show_intro": "TOON INTRO & STARTSCHERM",
   "settings.scroll_slow": "Langzaam",
   "settings.scroll_normal": "Normaal",
   "settings.scroll_fast": "Snel",

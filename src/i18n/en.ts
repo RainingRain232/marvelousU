@@ -26,6 +26,7 @@ export const en: Record<string, string> = {
   "settings.critical_hits": "CRITICAL HITS",
   "settings.block_chance": "BLOCK CHANCE",
   "settings.manual_control": "MANUAL CONTROL",
+  "settings.show_intro": "SHOW INTRO & START SCREEN",
   "settings.scroll_slow": "Slow",
   "settings.scroll_normal": "Normal",
   "settings.scroll_fast": "Fast",
