@@ -787,6 +787,9 @@ export class TerrariaRenderer {
           continue;
         }
 
+        // ---- SPECIAL TRANSPARENT BLOCK POLYGONS ----
+        if (_drawSpecialBlock(gfx, bt, px, py, color, h, time, wx)) continue;
+
         // ---- SOLID BLOCK RENDERING ----
         gfx.rect(px, py, TS, TS);
         gfx.fill(color);
@@ -949,23 +952,7 @@ export class TerrariaRenderer {
           gfx.fill({ color: glowColor, alpha: 0.08 });
         }
 
-        // ---- TORCH flame animation ----
-        if (bt === BlockType.TORCH || bt === BlockType.ENCHANTED_TORCH) {
-          const flameColor = bt === BlockType.ENCHANTED_TORCH ? 0xAA55FF : 0xFFAA00;
-          const flicker = Math.sin(time * 8 + wx * 3) * 1.5;
-          // Torch stick
-          gfx.rect(px + TS / 2 - 1, py + TS * 0.3, 2, TS * 0.7);
-          gfx.fill(0x8B6914);
-          // Flame
-          gfx.moveTo(px + TS / 2 - 2, py + TS * 0.35);
-          gfx.lineTo(px + TS / 2 + flicker * 0.3, py - 1 + flicker);
-          gfx.lineTo(px + TS / 2 + 2, py + TS * 0.35);
-          gfx.closePath();
-          gfx.fill({ color: flameColor, alpha: 0.8 });
-          // Inner flame
-          gfx.circle(px + TS / 2 + flicker * 0.2, py + TS * 0.2 + flicker * 0.3, 1.5);
-          gfx.fill({ color: 0xFFFF88, alpha: 0.6 });
-        }
+        // (Torch rendering handled by _drawSpecialBlock above)
       }
     }
   }
@@ -1128,18 +1115,22 @@ export class TerrariaRenderer {
       }
     }
 
-    // Placement preview (ghost block)
+    // Placement preview (ghost block) — always visible, color indicates state
     const hover = p.hoverTarget;
     if (hover && !mt) {
       const { sx: hsx, sy: hsy } = camera.worldToScreen(hover.wx, hover.wy + 1);
-      if (hover.canPlace && held && held.color) {
-        // Ghost block preview
+      if (hover.canPlace && hover.canReach && held && held.color) {
+        // Valid placement: green ghost
         this._cursorGfx.rect(hsx + 1, hsy + 1, TS - 2, TS - 2);
         this._cursorGfx.fill({ color: held.color, alpha: 0.35 });
         this._cursorGfx.rect(hsx, hsy, TS, TS);
         this._cursorGfx.stroke({ color: 0x44FF44, width: 1, alpha: 0.6 });
+      } else if (!hover.canReach) {
+        // Out of reach: dim white dashed outline
+        this._cursorGfx.rect(hsx, hsy, TS, TS);
+        this._cursorGfx.stroke({ color: 0xFFFFFF, width: 0.8, alpha: 0.15 });
       } else {
-        // Can't place here - red outline
+        // In reach but can't place: red outline
         this._cursorGfx.rect(hsx, hsy, TS, TS);
         this._cursorGfx.stroke({ color: 0xFF4444, width: 1, alpha: 0.4 });
       }
@@ -1303,6 +1294,347 @@ function _pseudoRand(seed: number): number {
   let h = (seed * 374761393 + 1234567) | 0;
   h = ((h ^ (h >> 13)) * 1274126177) | 0;
   return ((h ^ (h >> 16)) >>> 0) / 4294967296;
+}
+
+// ---------------------------------------------------------------------------
+// Special block polygon renderers (transparent/decorative blocks)
+// Returns true if block was drawn (skip default rect renderer)
+// ---------------------------------------------------------------------------
+
+function _drawSpecialBlock(g: Graphics, bt: number, px: number, py: number, color: number, h: number, time: number, wx: number): boolean {
+  const cx = px + TS / 2;
+  const cy = py + TS / 2;
+
+  // ---- TORCH / ENCHANTED TORCH ----
+  if (bt === BlockType.TORCH || bt === BlockType.ENCHANTED_TORCH) {
+    const enchanted = bt === BlockType.ENCHANTED_TORCH;
+    const flameC = enchanted ? 0xAA55FF : 0xFFAA00;
+    const innerC = enchanted ? 0xDDBBFF : 0xFFFF88;
+    const f1 = Math.sin(time * 8 + wx * 3) * 1.5;
+    const f2 = Math.sin(time * 10 + wx * 5 + 1) * 1;
+    // Wall mount bracket
+    g.rect(cx - 3, py + TS * 0.55, 6, 2);
+    g.fill(0x555555);
+    // Stick
+    g.moveTo(cx - 1, py + TS * 0.3); g.lineTo(cx + 1, py + TS * 0.3);
+    g.lineTo(cx + 1, py + TS); g.lineTo(cx - 1, py + TS); g.closePath();
+    g.fill(0x8B6914);
+    // Wood grain line
+    g.moveTo(cx, py + TS * 0.4); g.lineTo(cx, py + TS * 0.9);
+    g.stroke({ color: 0x6B4226, width: 0.5, alpha: 0.3 });
+    // Outer flame (5-point organic shape)
+    g.moveTo(cx - 3, py + TS * 0.35);
+    g.quadraticCurveTo(cx - 3.5 + f2, py + TS * 0.15, cx - 1 + f1 * 0.3, py - 2 + f1);
+    g.quadraticCurveTo(cx + f1 * 0.2, py - 3 + f1 * 0.7, cx + 1 - f2 * 0.3, py - 1 + f1 * 0.5);
+    g.quadraticCurveTo(cx + 3.5 + f2, py + TS * 0.15, cx + 3, py + TS * 0.35);
+    g.closePath();
+    g.fill({ color: flameC, alpha: 0.75 });
+    // Mid flame
+    g.moveTo(cx - 1.5, py + TS * 0.3);
+    g.quadraticCurveTo(cx + f1 * 0.15, py + TS * 0.05 + f1 * 0.3, cx + 1.5, py + TS * 0.3);
+    g.closePath();
+    g.fill({ color: innerC, alpha: 0.5 });
+    // Hot core
+    g.circle(cx + f1 * 0.1, py + TS * 0.22 + f1 * 0.2, 1.2);
+    g.fill({ color: 0xFFFFCC, alpha: 0.7 });
+    // Glow
+    g.circle(cx, py + TS * 0.2, 6);
+    g.fill({ color: flameC, alpha: 0.08 });
+    return true;
+  }
+
+  // ---- RED FLOWER ----
+  if (bt === BlockType.RED_FLOWER) {
+    // Stem
+    g.moveTo(cx, py + TS); g.quadraticCurveTo(cx - 1, py + TS * 0.55, cx, py + TS * 0.4);
+    g.stroke({ color: 0x337722, width: 1.2 });
+    // Leaf on stem
+    g.moveTo(cx, py + TS * 0.65); g.quadraticCurveTo(cx + 3, py + TS * 0.55, cx + 1, py + TS * 0.7);
+    g.fill({ color: 0x448833, alpha: 0.7 });
+    // 5 petals (star pattern)
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2 - Math.PI / 2;
+      const pr = 3.5;
+      const ppx = cx + Math.cos(a) * pr;
+      const ppy = py + TS * 0.35 + Math.sin(a) * pr;
+      g.ellipse(ppx, ppy, 2.2, 1.5);
+      g.fill({ color: 0xDD3333, alpha: 0.85 });
+    }
+    // Center
+    g.circle(cx, py + TS * 0.35, 1.5);
+    g.fill(0xFFDD44);
+    return true;
+  }
+
+  // ---- BLUE FLOWER ----
+  if (bt === BlockType.BLUE_FLOWER) {
+    // Stem
+    g.moveTo(cx, py + TS); g.quadraticCurveTo(cx + 1, py + TS * 0.5, cx - 0.5, py + TS * 0.35);
+    g.stroke({ color: 0x337722, width: 1.2 });
+    // 6 petals
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2 - Math.PI / 2;
+      const pr = 3;
+      const ppx = cx - 0.5 + Math.cos(a) * pr;
+      const ppy = py + TS * 0.3 + Math.sin(a) * pr;
+      g.ellipse(ppx, ppy, 2, 1.3);
+      g.fill({ color: 0x4488FF, alpha: 0.85 });
+    }
+    // Center
+    g.circle(cx - 0.5, py + TS * 0.3, 1.2);
+    g.fill(0xFFFFAA);
+    return true;
+  }
+
+  // ---- MUSHROOM ----
+  if (bt === BlockType.MUSHROOM) {
+    // Stem
+    g.moveTo(cx - 1.5, py + TS); g.lineTo(cx - 1, py + TS * 0.5);
+    g.lineTo(cx + 1, py + TS * 0.5); g.lineTo(cx + 1.5, py + TS); g.closePath();
+    g.fill(0xDDDDBB);
+    // Cap (dome polygon)
+    g.moveTo(cx - 5, py + TS * 0.52);
+    g.quadraticCurveTo(cx - 5, py + TS * 0.2, cx - 2, py + TS * 0.15);
+    g.quadraticCurveTo(cx, py + TS * 0.08, cx + 2, py + TS * 0.15);
+    g.quadraticCurveTo(cx + 5, py + TS * 0.2, cx + 5, py + TS * 0.52);
+    g.closePath();
+    g.fill(0xCC8844);
+    // Cap spots
+    g.circle(cx - 1.5, py + TS * 0.28, 1); g.fill({ color: 0xFFDDAA, alpha: 0.5 });
+    g.circle(cx + 2, py + TS * 0.32, 0.8); g.fill({ color: 0xFFDDAA, alpha: 0.4 });
+    // Cap highlight
+    g.ellipse(cx - 1, py + TS * 0.22, 2.5, 1);
+    g.fill({ color: 0xFFFFFF, alpha: 0.1 });
+    return true;
+  }
+
+  // ---- TALL GRASS ----
+  if (bt === BlockType.TALL_GRASS) {
+    const sway = Math.sin(time * 1.5 + wx * 0.6) * 1.5;
+    // 4-5 grass blades of varying height
+    for (let i = 0; i < 5; i++) {
+      const bx = px + 1 + i * 3 + (h + i) % 2;
+      const bh = 6 + ((h * (i + 1) * 7) % 6);
+      const tipSway = sway * (0.5 + i * 0.15);
+      const baseY = py + TS;
+      g.moveTo(bx - 0.5, baseY);
+      g.quadraticCurveTo(bx + tipSway * 0.4, baseY - bh * 0.5, bx + tipSway, baseY - bh);
+      g.quadraticCurveTo(bx + tipSway * 0.4 + 1, baseY - bh * 0.5, bx + 1, baseY);
+      g.closePath();
+      const gc = i % 2 === 0 ? 0x5BAF50 : 0x4A9A42;
+      g.fill({ color: gc, alpha: 0.75 });
+    }
+    return true;
+  }
+
+  // ---- CHEST ----
+  if (bt === BlockType.CHEST) {
+    const cw = TS * 0.8;
+    const ch2 = TS * 0.6;
+    const clx = cx - cw / 2;
+    const cly = py + TS - ch2;
+    // Body (front face)
+    g.rect(clx, cly, cw, ch2);
+    g.fill(0xB8860B);
+    // Top edge (lid)
+    g.rect(clx - 1, cly - 2, cw + 2, 3);
+    g.fill(0xD4A030);
+    // Lid top surface (lighter)
+    g.rect(clx, cly - 4, cw, 3);
+    g.fill(0xC49820);
+    // Front panel lines
+    g.rect(clx + 1, cly + 2, cw - 2, 1); g.fill({ color: 0x000000, alpha: 0.12 });
+    g.rect(clx + 1, cly + ch2 - 3, cw - 2, 1); g.fill({ color: 0x000000, alpha: 0.12 });
+    // Metal clasp (center)
+    g.rect(cx - 2, cly, 4, ch2); g.fill({ color: 0x8B6914, alpha: 0.3 });
+    // Lock
+    g.rect(cx - 1.5, cly + ch2 * 0.3, 3, 3); g.fill(0xFFD700);
+    g.rect(cx - 0.5, cly + ch2 * 0.3 + 1, 1, 1); g.fill(0x000000);
+    // Highlight
+    g.rect(clx + 1, cly - 3, cw * 0.4, 1); g.fill({ color: 0xFFFFFF, alpha: 0.15 });
+    // Shadow
+    g.rect(clx, cly + ch2, cw, 1); g.fill({ color: 0x000000, alpha: 0.2 });
+    return true;
+  }
+
+  // ---- WOODEN DOOR ----
+  if (bt === BlockType.WOODEN_DOOR) {
+    const dw = TS * 0.5;
+    const dlx = cx - dw / 2;
+    // Door frame
+    g.rect(dlx - 1, py, dw + 2, TS); g.fill(0x6B4226);
+    // Door panels (4 panels)
+    g.rect(dlx, py + 1, dw, TS * 0.45); g.fill(0x8B6914);
+    g.rect(dlx, py + TS * 0.55, dw, TS * 0.43); g.fill(0x8B6914);
+    // Panel insets
+    g.rect(dlx + 1, py + 2, dw - 2, TS * 0.4); g.fill({ color: 0x7A5A10, alpha: 0.6 });
+    g.rect(dlx + 1, py + TS * 0.57, dw - 2, TS * 0.38); g.fill({ color: 0x7A5A10, alpha: 0.6 });
+    // Handle
+    g.circle(dlx + dw - 2, cy, 1.2); g.fill(0xCCAA44);
+    // Highlight
+    g.rect(dlx, py, 1, TS); g.fill({ color: 0xFFFFFF, alpha: 0.08 });
+    return true;
+  }
+
+  // ---- IRON DOOR ----
+  if (bt === BlockType.IRON_DOOR) {
+    const dw = TS * 0.5;
+    const dlx = cx - dw / 2;
+    // Frame
+    g.rect(dlx - 1, py, dw + 2, TS); g.fill(0x666666);
+    // Door face
+    g.rect(dlx, py + 1, dw, TS - 2); g.fill(0x999999);
+    // Rivets
+    for (let ry = 0; ry < 3; ry++) {
+      g.circle(dlx + 2, py + 3 + ry * 5, 0.8); g.fill(0xBBBBBB);
+      g.circle(dlx + dw - 2, py + 3 + ry * 5, 0.8); g.fill(0xBBBBBB);
+    }
+    // Cross brace
+    g.moveTo(dlx, py + 1); g.lineTo(dlx + dw, py + TS - 1);
+    g.stroke({ color: 0x777777, width: 1, alpha: 0.3 });
+    // Handle
+    g.rect(dlx + dw - 3, cy - 1, 2, 3); g.fill(0xCCCCCC);
+    // Highlight
+    g.rect(dlx, py, 1, TS); g.fill({ color: 0xFFFFFF, alpha: 0.06 });
+    return true;
+  }
+
+  // ---- ROUND TABLE (workbench) ----
+  if (bt === BlockType.ROUND_TABLE) {
+    const tw = TS * 0.85;
+    const tlx = cx - tw / 2;
+    // Legs
+    g.rect(tlx + 1, py + TS * 0.45, 2, TS * 0.55); g.fill(0x7A5A20);
+    g.rect(tlx + tw - 3, py + TS * 0.45, 2, TS * 0.55); g.fill(0x7A5A20);
+    // Cross brace between legs
+    g.moveTo(tlx + 2, py + TS * 0.7); g.lineTo(tlx + tw - 2, py + TS * 0.7);
+    g.stroke({ color: 0x6A4A18, width: 1 });
+    // Table top (thick plank)
+    g.rect(tlx - 1, py + TS * 0.3, tw + 2, 4); g.fill(0xA0785A);
+    // Top surface
+    g.rect(tlx, py + TS * 0.22, tw, 3); g.fill(0xB08868);
+    // Woodgrain on top
+    g.moveTo(tlx + 2, py + TS * 0.27); g.lineTo(tlx + tw - 2, py + TS * 0.27);
+    g.stroke({ color: 0x8A6840, width: 0.5, alpha: 0.3 });
+    // Item on table (small tool hint)
+    g.rect(cx - 1, py + TS * 0.15, 2, 4); g.fill({ color: 0xCCAA44, alpha: 0.4 });
+    // Shadow under table
+    g.ellipse(cx, py + TS - 1, tw * 0.4, 1.5); g.fill({ color: 0x000000, alpha: 0.1 });
+    return true;
+  }
+
+  // ---- FORGE ----
+  if (bt === BlockType.FORGE) {
+    // Stone body
+    g.rect(px + 1, py + TS * 0.3, TS - 2, TS * 0.7); g.fill(0x666666);
+    // Stone bricks
+    g.rect(px + 1, py + TS * 0.3, (TS - 2) / 2, TS * 0.35); g.fill(0x5A5A5A);
+    g.rect(px + TS / 2, py + TS * 0.65, (TS - 2) / 2, TS * 0.35); g.fill(0x5A5A5A);
+    // Chimney
+    g.rect(cx + 1, py, 4, TS * 0.35); g.fill(0x555555);
+    // Fire opening (arch)
+    g.moveTo(cx - 3, py + TS); g.lineTo(cx - 3, py + TS * 0.55);
+    g.quadraticCurveTo(cx, py + TS * 0.4, cx + 3, py + TS * 0.55);
+    g.lineTo(cx + 3, py + TS); g.closePath();
+    g.fill(0x111111);
+    // Fire inside
+    const ff = Math.sin(time * 6 + wx * 2) * 1;
+    g.moveTo(cx - 2, py + TS);
+    g.quadraticCurveTo(cx + ff * 0.3, py + TS * 0.55 + ff, cx + 2, py + TS);
+    g.closePath();
+    g.fill({ color: 0xFF6600, alpha: 0.7 });
+    g.circle(cx + ff * 0.2, py + TS * 0.75 + ff * 0.3, 1.2);
+    g.fill({ color: 0xFFDD44, alpha: 0.5 });
+    // Smoke from chimney
+    if (Math.sin(time * 3 + wx) > 0) {
+      g.circle(cx + 3 + Math.sin(time * 2) * 1.5, py - 2 + Math.sin(time * 1.5) * 1, 1.5);
+      g.fill({ color: 0x888888, alpha: 0.15 });
+    }
+    return true;
+  }
+
+  // ---- BANNER ----
+  if (bt === BlockType.BANNER) {
+    const bw = TS * 0.45;
+    const sway = Math.sin(time * 2 + wx * 0.8) * 1;
+    // Pole
+    g.rect(cx - 0.5, py, 1, TS); g.fill(0x8B6914);
+    // Banner cloth (flowing polygon)
+    g.moveTo(cx + 0.5, py + 2);
+    g.lineTo(cx + bw + sway, py + 3);
+    g.quadraticCurveTo(cx + bw + sway * 1.2, py + TS * 0.5, cx + bw * 0.8 + sway, py + TS * 0.8);
+    g.lineTo(cx + bw * 0.3 + sway * 0.5, py + TS * 0.85);
+    g.lineTo(cx + 0.5, py + TS * 0.7);
+    g.closePath();
+    g.fill(0xCC0000);
+    // Heraldic cross
+    g.rect(cx + bw * 0.35 + sway * 0.5, py + TS * 0.2, bw * 0.3, 1); g.fill({ color: 0xFFD700, alpha: 0.5 });
+    g.rect(cx + bw * 0.45 + sway * 0.5, py + TS * 0.1, 1, TS * 0.3); g.fill({ color: 0xFFD700, alpha: 0.5 });
+    return true;
+  }
+
+  // ---- THRONE ----
+  if (bt === BlockType.THRONE) {
+    // Seat
+    g.rect(px + 2, py + TS * 0.55, TS - 4, TS * 0.45); g.fill(0x6A2A6A);
+    // Back (tall)
+    g.rect(px + 2, py, TS * 0.25, TS * 0.6); g.fill(0x7A3A7A);
+    // Crown ornament on top
+    g.moveTo(px + 2, py); g.lineTo(px + 4, py - 3); g.lineTo(px + 6, py);
+    g.closePath(); g.fill(0xFFD700);
+    // Cushion
+    g.rect(px + 4, py + TS * 0.55, TS - 8, 3); g.fill(0xAA4444);
+    // Armrest
+    g.rect(px + TS - 4, py + TS * 0.4, 2, TS * 0.2); g.fill(0x6A2A6A);
+    // Gold trim
+    g.rect(px + 2, py + TS * 0.54, TS - 4, 1); g.fill({ color: 0xFFD700, alpha: 0.4 });
+    return true;
+  }
+
+  // ---- GRAIL PEDESTAL ----
+  if (bt === BlockType.GRAIL_PEDESTAL) {
+    // Base
+    g.rect(px + 2, py + TS * 0.7, TS - 4, TS * 0.3); g.fill(0xCCBB88);
+    // Column
+    g.rect(cx - 2, py + TS * 0.3, 4, TS * 0.4); g.fill(0xDDCCA0);
+    // Top plate
+    g.rect(px + 3, py + TS * 0.25, TS - 6, 2); g.fill(0xEEDDB0);
+    // Glowing grail/item on top
+    const glow = 0.5 + Math.sin(time * 2) * 0.3;
+    g.circle(cx, py + TS * 0.15, 4); g.fill({ color: 0xFFD700, alpha: glow * 0.2 });
+    // Cup shape
+    g.moveTo(cx - 2.5, py + TS * 0.22); g.lineTo(cx - 1.5, py + TS * 0.05);
+    g.lineTo(cx + 1.5, py + TS * 0.05); g.lineTo(cx + 2.5, py + TS * 0.22);
+    g.lineTo(cx + 1, py + TS * 0.24); g.lineTo(cx - 1, py + TS * 0.24); g.closePath();
+    g.fill(0xFFD700);
+    // Cup highlight
+    g.circle(cx - 0.5, py + TS * 0.12, 0.8); g.fill({ color: 0xFFFFFF, alpha: 0.4 });
+    return true;
+  }
+
+  // ---- LEAVES (all types) ----
+  if (bt === BlockType.OAK_LEAVES || bt === BlockType.WILLOW_LEAVES || bt === BlockType.DARK_OAK_LEAVES) {
+    // Draw as organic cluster of overlapping ellipses
+    g.rect(px, py, TS, TS); g.fill(color);
+    // Leaf cluster detail
+    for (let i = 0; i < 4; i++) {
+      const lx2 = px + ((h * (i + 1) * 11) % (TS - 4)) + 2;
+      const ly2 = py + ((h * (i + 1) * 13) % (TS - 4)) + 2;
+      g.ellipse(lx2, ly2, 2.5, 1.8);
+      g.fill({ color: 0xFFFFFF, alpha: 0.06 });
+    }
+    // Darker veins
+    g.moveTo(px + 2, py + TS / 2); g.lineTo(px + TS - 2, py + TS / 2 + 1);
+    g.stroke({ color: 0x000000, width: 0.5, alpha: 0.08 });
+    // Small gap holes (transparency effect)
+    if (h % 5 === 0) {
+      g.rect(px + (h % (TS - 2)), py + ((h * 3) % (TS - 2)), 2, 2);
+      g.fill({ color: 0x000000, alpha: 0.15 });
+    }
+    return false; // still apply bevel edges
+  }
+
+  return false; // not a special block, use default renderer
 }
 
 /** Fast deterministic tile hash for procedural patterns. Returns 0-255. */

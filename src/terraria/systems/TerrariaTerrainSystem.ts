@@ -205,11 +205,136 @@ export function generateChunk(cx: number): TerrariaChunk {
     }
   }
 
+  // === Surface structures (per-chunk) ===
+  _placeSurfaceFeatures(chunk, baseX);
+
   chunk.rebuildHeightMap();
   chunk.populated = true;
   chunk.dirty = true;
   chunk.lightDirty = true;
   return chunk;
+}
+
+function _placeSurfaceFeatures(chunk: TerrariaChunk, baseX: number): void {
+  // Surface lake (1 per ~6 chunks)
+  if (hashPos(_seed + 1100, baseX, 0) < 0.16) {
+    const lakeStart = 2 + Math.floor(hashPos(_seed + 1101, baseX, 0) * 6);
+    const lakeW = 4 + Math.floor(hashPos(_seed + 1102, baseX, 0) * 5);
+    const lakeDepth = 2 + Math.floor(hashPos(_seed + 1103, baseX, 0) * 2);
+    for (let lx = lakeStart; lx < Math.min(lakeStart + lakeW, CW - 1); lx++) {
+      const wx = baseX + lx;
+      const surfY = getSurfaceHeight(wx);
+      for (let dy = 0; dy < lakeDepth; dy++) {
+        const y = surfY - dy;
+        if (y > 0) {
+          chunk.setBlock(lx, y, BlockType.WATER);
+        }
+      }
+      // Sand border at water edges
+      if (dy === 0) {} // just the water fill above
+      const belowY = surfY - lakeDepth;
+      if (belowY > 0) chunk.setBlock(lx, belowY, BlockType.SAND);
+    }
+  }
+
+  // Boulder cluster (1 per ~5 chunks)
+  if (hashPos(_seed + 1200, baseX, 0) < 0.2) {
+    const bx = 3 + Math.floor(hashPos(_seed + 1201, baseX, 0) * (CW - 6));
+    const wx = baseX + bx;
+    const surfY = getSurfaceHeight(wx);
+    const boulderW = 2 + Math.floor(hashPos(_seed + 1202, baseX, 0) * 3);
+    const boulderH = 2 + Math.floor(hashPos(_seed + 1203, baseX, 0) * 2);
+    for (let dx = 0; dx < boulderW; dx++) {
+      for (let dy = 0; dy < boulderH; dy++) {
+        const tlx = bx + dx;
+        if (tlx >= 0 && tlx < CW) {
+          // Round the top corners
+          if (dy === boulderH - 1 && (dx === 0 || dx === boulderW - 1)) continue;
+          chunk.setBlock(tlx, surfY + 1 + dy, BlockType.COBBLESTONE);
+        }
+      }
+    }
+    // Occasional moss on boulders
+    if (hashPos(_seed + 1204, baseX, 0) < 0.5 && bx < CW) {
+      chunk.setBlock(bx, surfY + boulderH + 1, BlockType.MOSS_STONE);
+    }
+  }
+
+  // Exposed ore vein on surface (1 per ~8 chunks)
+  if (hashPos(_seed + 1300, baseX, 0) < 0.12) {
+    const ox = 2 + Math.floor(hashPos(_seed + 1301, baseX, 0) * (CW - 4));
+    const wx = baseX + ox;
+    const surfY = getSurfaceHeight(wx);
+    const oreLen = 2 + Math.floor(hashPos(_seed + 1302, baseX, 0) * 3);
+    for (let dx = 0; dx < oreLen; dx++) {
+      const tlx = ox + dx;
+      if (tlx >= 0 && tlx < CW) {
+        // Place ore just below surface (visible on cliff face)
+        chunk.setBlock(tlx, surfY - 1, BlockType.IRON_ORE);
+        if (hashPos(_seed + 1303 + dx, baseX, 0) < 0.3) {
+          chunk.setBlock(tlx, surfY - 2, BlockType.IRON_ORE);
+        }
+      }
+    }
+  }
+
+  // Stone cliff/overhang (1 per ~10 chunks) — creates a horizontal ledge
+  if (hashPos(_seed + 1400, baseX, 0) < 0.1) {
+    const clx = 1 + Math.floor(hashPos(_seed + 1401, baseX, 0) * (CW - 4));
+    const wx = baseX + clx;
+    const surfY = getSurfaceHeight(wx);
+    const ledgeLen = 3 + Math.floor(hashPos(_seed + 1402, baseX, 0) * 4);
+    const ledgeH = surfY + 3 + Math.floor(hashPos(_seed + 1403, baseX, 0) * 2);
+    for (let dx = 0; dx < ledgeLen; dx++) {
+      const tlx = clx + dx;
+      if (tlx >= 0 && tlx < CW) {
+        chunk.setBlock(tlx, ledgeH, BlockType.STONE);
+        chunk.setBlock(tlx, ledgeH + 1, BlockType.GRASS);
+        // Support column on edges
+        if (dx === 0 || dx === ledgeLen - 1) {
+          for (let dy = surfY + 1; dy < ledgeH; dy++) {
+            chunk.setBlock(tlx, dy, BlockType.STONE);
+          }
+        }
+      }
+    }
+  }
+
+  // Small surface ruin (1 per ~8 chunks)
+  if (hashPos(_seed + 1500, baseX, 0) < 0.12) {
+    const rx = 2 + Math.floor(hashPos(_seed + 1501, baseX, 0) * (CW - 8));
+    const wx = baseX + rx;
+    const surfY = getSurfaceHeight(wx);
+    const wallH = 2 + Math.floor(hashPos(_seed + 1502, baseX, 0) * 3);
+    // Left wall (partially broken)
+    for (let dy = 1; dy <= wallH; dy++) {
+      if (rx < CW && hashPos(_seed + 1503 + dy, baseX, 0) < 0.75) {
+        chunk.setBlock(rx, surfY + dy, BlockType.COBBLESTONE);
+      }
+    }
+    // Right wall
+    const rw = 3 + Math.floor(hashPos(_seed + 1504, baseX, 0) * 3);
+    for (let dy = 1; dy <= wallH; dy++) {
+      const rlx = rx + rw;
+      if (rlx < CW && hashPos(_seed + 1505 + dy, baseX, 0) < 0.6) {
+        chunk.setBlock(rlx, surfY + dy, BlockType.COBBLESTONE);
+      }
+    }
+    // Floor
+    for (let dx = 1; dx < rw; dx++) {
+      if (rx + dx < CW) {
+        chunk.setBlock(rx + dx, surfY, BlockType.STONE_BRICKS);
+      }
+    }
+    // Chest inside
+    if (rx + Math.floor(rw / 2) < CW) {
+      chunk.setBlock(rx + Math.floor(rw / 2), surfY + 1, BlockType.CHEST);
+    }
+    // Torch on wall
+    if (rx + 1 < CW) {
+      chunk.setBlock(rx + 1, surfY + wallH, BlockType.TORCH);
+    }
+  }
 }
 
 function _placeTree(chunk: TerrariaChunk, lx: number, baseY: number, logType = BlockType.OAK_LOG, leafType = BlockType.OAK_LEAVES): void {

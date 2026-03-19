@@ -82,32 +82,78 @@ export class TerrariaPlayerView {
     const legTop = bodyTop + bodyH;
     const legH = ph - headH - bodyH;
 
-    // ===== CAPE (behind everything) =====
+    // ===== CAPE (behind everything, multi-fold) =====
     const capeX = sx - dir * hw * 0.2;
     const capeTop = bodyTop + 1;
-    const capeBottom = legTop + legH * 0.5;
-    g.moveTo(capeX - 4, capeTop);
-    g.lineTo(capeX + 4, capeTop);
+    const capeBottom = legTop + legH * 0.6;
+    const capeMid = capeTop + (capeBottom - capeTop) * 0.5;
+    const cw2 = capeWave;
+    const cw3 = Math.sin(this._capePhase * 0.7 + 1) * 2;
+
+    // Outer cape shape (main silhouette)
+    g.moveTo(capeX - 5, capeTop);
+    g.lineTo(capeX + 5, capeTop);
     g.bezierCurveTo(
-      capeX + 5 - dir * capeWave, capeTop + (capeBottom - capeTop) * 0.4,
-      capeX + 6 - dir * capeWave * 1.5, capeTop + (capeBottom - capeTop) * 0.7,
-      capeX + 3 - dir * capeWave * 2, capeBottom,
+      capeX + 6 - dir * cw2, capeTop + (capeBottom - capeTop) * 0.3,
+      capeX + 7 - dir * cw2 * 1.5, capeTop + (capeBottom - capeTop) * 0.65,
+      capeX + 4 - dir * cw2 * 2, capeBottom,
     );
-    g.lineTo(capeX - 3 - dir * capeWave * 1.5, capeBottom);
+    // Tattered bottom edge (zig-zag)
+    g.lineTo(capeX + 2 - dir * cw2 * 1.8, capeBottom - 1);
+    g.lineTo(capeX - dir * cw2 * 1.5, capeBottom + 1);
+    g.lineTo(capeX - 2 - dir * cw2 * 1.2, capeBottom - 1);
+    g.lineTo(capeX - 4 - dir * cw2, capeBottom);
     g.bezierCurveTo(
-      capeX - 6 - dir * capeWave, capeTop + (capeBottom - capeTop) * 0.6,
-      capeX - 5, capeTop + (capeBottom - capeTop) * 0.3,
-      capeX - 4, capeTop,
+      capeX - 7 - dir * cw3, capeTop + (capeBottom - capeTop) * 0.55,
+      capeX - 6, capeTop + (capeBottom - capeTop) * 0.25,
+      capeX - 5, capeTop,
     );
     g.closePath();
     g.fill(CAPE);
-    // Cape inner shade
-    g.moveTo(capeX - 2, capeTop + 2);
-    g.lineTo(capeX + 2, capeTop + 2);
-    g.lineTo(capeX + 1 - dir * capeWave * 1.5, capeBottom - 2);
-    g.lineTo(capeX - 1 - dir * capeWave, capeBottom - 2);
+
+    // Inner fold #1 (dark shadow stripe)
+    g.moveTo(capeX - 1, capeTop + 3);
+    g.bezierCurveTo(
+      capeX - 2 - dir * cw2 * 0.5, capeMid - 2,
+      capeX - 1 - dir * cw2, capeMid + 5,
+      capeX - 2 - dir * cw2 * 1.3, capeBottom - 3,
+    );
+    g.lineTo(capeX + 1 - dir * cw2 * 1.1, capeBottom - 3);
+    g.bezierCurveTo(
+      capeX + 1 - dir * cw2 * 0.8, capeMid + 3,
+      capeX - dir * cw2 * 0.3, capeMid - 4,
+      capeX + 2, capeTop + 3,
+    );
     g.closePath();
-    g.fill({ color: CAPE_SHADE, alpha: 0.5 });
+    g.fill({ color: CAPE_SHADE, alpha: 0.45 });
+
+    // Inner fold #2 (highlight stripe)
+    g.moveTo(capeX + 3, capeTop + 4);
+    g.bezierCurveTo(
+      capeX + 4 - dir * cw3, capeMid,
+      capeX + 3 - dir * cw2 * 0.7, capeMid + 6,
+      capeX + 2 - dir * cw2 * 1.5, capeBottom - 4,
+    );
+    g.lineTo(capeX + 4 - dir * cw2 * 1.3, capeBottom - 4);
+    g.bezierCurveTo(
+      capeX + 5 - dir * cw2 * 0.9, capeMid + 4,
+      capeX + 5 - dir * cw3, capeMid - 2,
+      capeX + 5, capeTop + 4,
+    );
+    g.closePath();
+    g.fill({ color: 0xCC4444, alpha: 0.25 });
+
+    // Gold trim along cape bottom edge
+    g.moveTo(capeX - 4 - dir * cw2, capeBottom);
+    g.lineTo(capeX - 2 - dir * cw2 * 1.2, capeBottom - 1);
+    g.lineTo(capeX - dir * cw2 * 1.5, capeBottom + 1);
+    g.lineTo(capeX + 2 - dir * cw2 * 1.8, capeBottom - 1);
+    g.lineTo(capeX + 4 - dir * cw2 * 2, capeBottom);
+    g.stroke({ color: BUCKLE, width: 0.6, alpha: 0.35 });
+
+    // Cape clasp at neck
+    g.circle(capeX, capeTop + 1, 1.5);
+    g.fill(BUCKLE);
 
     // ===== BACK ARM =====
     {

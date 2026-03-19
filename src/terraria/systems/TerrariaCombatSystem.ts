@@ -24,7 +24,7 @@ export function updateCombat(state: TerrariaState, input: InputState, camera: Te
   // Melee attack
   if (input.attack && p.attackTimer <= 0 && !state.inventoryOpen && !state.paused) {
     const held = getHeldItem(p.inventory);
-    if (held && (held.category === ItemCategory.WEAPON || held.category === ItemCategory.TOOL)) {
+    if (held && held.category === ItemCategory.WEAPON) {
       const isSword = held.toolType === ToolType.SWORD;
       const damage = held.damage ?? 5;
       const reach = isSword ? 2.5 : 1.5;
@@ -135,8 +135,11 @@ function _updateProjectiles(state: TerrariaState, dt: number): void {
     proj.y += proj.vy * dt;
     proj.lifetime -= dt;
 
-    // Check collision with blocks
-    if (isSolid(state, Math.floor(proj.x), Math.floor(proj.y))) {
+    // Check collision with blocks (check 2x2 area around projectile)
+    const bx = Math.floor(proj.x);
+    const by = Math.floor(proj.y);
+    if (isSolid(state, bx, by) || isSolid(state, bx + (proj.vx > 0 ? 1 : -1), by) ||
+        isSolid(state, bx, by + (proj.vy > 0 ? 1 : -1))) {
       proj.lifetime = 0;
       continue;
     }

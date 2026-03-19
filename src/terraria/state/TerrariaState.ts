@@ -28,7 +28,7 @@ export interface TerrariaPlayer {
   invulnTimer: number;
   attackTimer: number;
   miningTarget: { wx: number; wy: number; progress: number } | null;
-  hoverTarget: { wx: number; wy: number; canPlace: boolean } | null;
+  hoverTarget: { wx: number; wy: number; canPlace: boolean; canReach: boolean } | null;
 
   hasExcalibur: boolean;
   hasGrail: boolean;

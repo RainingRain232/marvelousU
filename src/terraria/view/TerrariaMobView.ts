@@ -113,37 +113,53 @@ export class TerrariaMobView {
         g.lineTo(bx - px2 * 0.7, by - py2 * 0.7);
         g.closePath(); g.fill({ color: 0xCC2222, alpha: 0.7 });
       } else {
-        // Magic orb with enhanced trail
-        // Trail (fading circles behind projectile)
-        for (let i = 1; i <= 4; i++) {
-          const trailDist = i * 3;
-          const tx2 = sx - Math.cos(a) * trailDist;
-          const ty2 = sy + Math.sin(a) * trailDist;
-          const trailAlpha = 0.2 - i * 0.04;
-          const trailSize = 3 - i * 0.5;
-          g.circle(tx2, ty2, trailSize);
-          g.fill({ color: proj.color, alpha: trailAlpha });
+        // Magic orb with star sparkles and diamond trail
+        // Trail (diamond shapes fading behind projectile)
+        for (let i = 1; i <= 5; i++) {
+          const td = i * 3.5;
+          const tx2 = sx - Math.cos(a) * td;
+          const ty2 = sy + Math.sin(a) * td;
+          const ta = 0.22 - i * 0.04;
+          const ts2 = 2.5 - i * 0.4;
+          // Diamond shape
+          g.moveTo(tx2, ty2 - ts2); g.lineTo(tx2 + ts2 * 0.7, ty2);
+          g.lineTo(tx2, ty2 + ts2); g.lineTo(tx2 - ts2 * 0.7, ty2); g.closePath();
+          g.fill({ color: proj.color, alpha: ta });
         }
-        // Outer glow
-        g.circle(sx, sy, 7);
-        g.fill({ color: proj.color, alpha: 0.12 });
+        // Outer glow ring
+        g.circle(sx, sy, 8); g.fill({ color: proj.color, alpha: 0.08 });
         // Mid glow
-        g.circle(sx, sy, 4.5);
-        g.fill({ color: proj.color, alpha: 0.35 });
-        // Bright core
-        g.circle(sx, sy, 2);
-        g.fill({ color: 0xFFFFFF, alpha: 0.9 });
-        // Sparkle ring (rotating)
-        for (let i = 0; i < 6; i++) {
-          const sa = t * 6 + i * Math.PI / 3;
-          const sr = 5 + Math.sin(t * 3 + i) * 1.5;
-          g.circle(sx + Math.cos(sa) * sr, sy + Math.sin(sa) * sr, 0.7);
-          g.fill({ color: proj.color, alpha: 0.5 });
+        g.circle(sx, sy, 5); g.fill({ color: proj.color, alpha: 0.3 });
+        // Faceted inner orb (octagon)
+        for (let i = 0; i < 8; i++) {
+          const oa = (i / 8) * Math.PI * 2;
+          const ox2 = sx + Math.cos(oa) * 2.5;
+          const oy = sy + Math.sin(oa) * 2.5;
+          g.moveTo(sx, sy); g.lineTo(ox2, oy);
+          g.lineTo(sx + Math.cos(oa + Math.PI / 8) * 2.5, sy + Math.sin(oa + Math.PI / 8) * 2.5);
+          g.closePath();
+          g.fill({ color: i % 2 === 0 ? proj.color : 0xFFFFFF, alpha: i % 2 === 0 ? 0.5 : 0.3 });
         }
-        // Inner sparkle flash
-        if (Math.sin(t * 12) > 0.5) {
-          g.circle(sx, sy, 1);
-          g.fill({ color: 0xFFFFFF, alpha: 1 });
+        // Bright core
+        g.circle(sx, sy, 1.5); g.fill({ color: 0xFFFFFF, alpha: 0.95 });
+        // 6-pointed star sparkles (rotating)
+        for (let i = 0; i < 6; i++) {
+          const sa = t * 5 + i * Math.PI / 3;
+          const sr = 6 + Math.sin(t * 3 + i * 1.5) * 2;
+          const spx = sx + Math.cos(sa) * sr;
+          const spy = sy + Math.sin(sa) * sr;
+          const ss = 1.2 + Math.sin(t * 8 + i) * 0.4;
+          // 4-point star
+          g.moveTo(spx, spy - ss); g.lineTo(spx + ss * 0.3, spy);
+          g.lineTo(spx, spy + ss); g.lineTo(spx - ss * 0.3, spy); g.closePath();
+          g.fill({ color: proj.color, alpha: 0.6 });
+          g.moveTo(spx - ss, spy); g.lineTo(spx, spy + ss * 0.3);
+          g.lineTo(spx + ss, spy); g.lineTo(spx, spy - ss * 0.3); g.closePath();
+          g.fill({ color: 0xFFFFFF, alpha: 0.25 });
+        }
+        // Pulse flash
+        if (Math.sin(t * 12) > 0.6) {
+          g.circle(sx, sy, 3); g.fill({ color: 0xFFFFFF, alpha: 0.4 });
         }
       }
     }

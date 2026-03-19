@@ -34,17 +34,21 @@ export function updateMining(state: TerrariaState, input: InputState, camera: Te
   // Update facing direction based on mouse
   p.facingRight = rawWX > p.x;
 
-  // Update hover target for placement preview
-  if (inReach && !state.inventoryOpen) {
+  // Update hover target for placement preview (always show, even out of reach)
+  if (!state.inventoryOpen && !state.paused) {
     const bt = getWorldBlock(state, targetX, targetY);
-    const held = getHeldItem(p.inventory);
-    const canPlace = bt === BlockType.AIR && held !== null && held.category === ItemCategory.BLOCK && held.blockType !== undefined && _hasAdjacentSolid(state, targetX, targetY);
-    p.hoverTarget = { wx: targetX, wy: targetY, canPlace };
+    const heldForPlace = getHeldItem(p.inventory);
+    const canPlace = inReach && bt === BlockType.AIR && heldForPlace !== null && heldForPlace.category === ItemCategory.BLOCK && heldForPlace.blockType !== undefined && _hasAdjacentSolid(state, targetX, targetY);
+    p.hoverTarget = { wx: targetX, wy: targetY, canPlace, canReach: inReach };
   } else {
     p.hoverTarget = null;
   }
 
-  if (input.attack && inReach && !state.inventoryOpen && !state.paused) {
+  // Only mine when holding a tool, block, or empty hand (not weapons)
+  const heldItem = getHeldItem(p.inventory);
+  const holdingWeapon = heldItem !== null && heldItem.category === ItemCategory.WEAPON;
+
+  if (input.attack && inReach && !state.inventoryOpen && !state.paused && !holdingWeapon) {
     const bt = getWorldBlock(state, targetX, targetY);
     if (bt !== BlockType.AIR) {
       const def = getBlockDef(bt);
@@ -141,9 +145,8 @@ export function updateMining(state: TerrariaState, input: InputState, camera: Te
     }
   }
 
-  // Store placement preview info for renderer
-  state.player.miningTarget = state.player.miningTarget; // keep mining target
-  // Placement preview is handled via camera.screenToWorld in renderer
+  // Clear mining target when holding a weapon
+  if (holdingWeapon && p.miningTarget) p.miningTarget = null;
 }
 
 /** Check if a target position has at least one adjacent solid block. */

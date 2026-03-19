@@ -74,10 +74,17 @@ export function updatePhysicsBody(body: PhysicsBody, state: TerrariaState, dt: n
 }
 
 function _isInWater(body: PhysicsBody, state: TerrariaState): boolean {
-  const bx = Math.floor(body.x);
-  const by = Math.floor(body.y);
-  if (bx < 0 || bx >= state.worldWidth || by < 0 || by >= TB.WORLD_HEIGHT) return false;
-  return getWorldBlock(state, bx, by) === BlockType.WATER;
+  // Check 3 points: center, feet, head
+  const points: [number, number][] = [
+    [Math.floor(body.x), Math.floor(body.y)],
+    [Math.floor(body.x), Math.floor(body.y - body.height * 0.4)],
+    [Math.floor(body.x), Math.floor(body.y + body.height * 0.4)],
+  ];
+  for (const [bx, by] of points) {
+    if (bx < 0 || bx >= state.worldWidth || by < 0 || by >= TB.WORLD_HEIGHT) continue;
+    if (getWorldBlock(state, bx, by) === BlockType.WATER) return true;
+  }
+  return false;
 }
 
 function _resolveX(body: PhysicsBody, state: TerrariaState, hw: number, hh: number): void {
