@@ -347,9 +347,10 @@ export class CamelotCraftGame {
     if (this._state.paused) {
       this._showPauseMenu();
     } else {
+      // Request pointer lock BEFORE removing overlay so the user gesture is still valid
+      this._input.requestPointerLock();
       const pauseEl = document.getElementById("cc-pause");
       pauseEl?.remove();
-      this._input.requestPointerLock();
     }
   }
 
@@ -377,6 +378,16 @@ export class CamelotCraftGame {
     settingsBtn.style.marginTop = "12px";
     settingsBtn.onclick = () => this._showSettings(overlay);
     overlay.appendChild(settingsBtn);
+
+    const inventoryBtn = this._createMenuButton("Inventory", "#CE93D8");
+    inventoryBtn.style.marginTop = "12px";
+    inventoryBtn.onclick = () => {
+      this._state.paused = false;
+      this._state.inventoryOpen = true;
+      this._state.craftingOpen = false;
+      overlay.remove();
+    };
+    overlay.appendChild(inventoryBtn);
 
     const helpBtn = this._createMenuButton("Controls", "#A0A0A0");
     helpBtn.style.marginTop = "12px";

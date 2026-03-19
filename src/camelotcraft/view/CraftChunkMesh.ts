@@ -126,7 +126,9 @@ const TERRAIN_VERT = /* glsl */ `
     }
 
     if (dispAmount > 0.0) {
-      float disp = vHash(pos * 7.3) * dispAmount;
+      // Suppress displacement at block edges to prevent gaps between adjacent blocks
+      float edgeFade = smoothstep(0.0, 0.15, min(min(vBlockUV.x, 1.0 - vBlockUV.x), min(vBlockUV.y, 1.0 - vBlockUV.y)));
+      float disp = vHash(pos * 7.3) * dispAmount * edgeFade;
       pos += normal * disp;
     }
 

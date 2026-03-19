@@ -32,7 +32,7 @@ export class CraftInputSystem {
   init(): void {
     this._onKeyDownFn = (e) => {
       this.keys[e.code] = true;
-      if (["Space", "Tab", "KeyE"].includes(e.code)) e.preventDefault();
+      if (["Space", "Tab", "KeyE", "KeyI"].includes(e.code)) e.preventDefault();
     };
     this._onKeyUpFn = (e) => { this.keys[e.code] = false; };
     this._onMouseDownFn = (e) => {
@@ -64,7 +64,13 @@ export class CraftInputSystem {
   }
 
   requestPointerLock(): void {
-    (document.querySelector("canvas") || document.body).requestPointerLock();
+    const el = document.querySelector("canvas") || document.body;
+    try {
+      const result = el.requestPointerLock();
+      if (result && typeof (result as any).catch === "function") {
+        (result as any).catch(() => { /* user exited lock or request was denied */ });
+      }
+    } catch (_) { /* ignore */ }
   }
 
   update(state: CraftState, dt: number): void {
@@ -263,7 +269,7 @@ export class CraftInputSystem {
 
     // --- Inventory toggle (E) ---
     this._invToggleCd -= dt;
-    if (this.keys["KeyE"] && this._invToggleCd <= 0) {
+    if ((this.keys["KeyE"] || this.keys["KeyI"]) && this._invToggleCd <= 0) {
       state.inventoryOpen = !state.inventoryOpen;
       state.craftingOpen = state.inventoryOpen;
       this._invToggleCd = 0.3;
