@@ -305,6 +305,12 @@ const GAME_MODES: GameModeEntry[] = [
     skipSetup: true,
   },
   {
+    mode: GameMode.CAESAR,
+    label: "MEDIEVAL CAESAR",
+    desc: "Caesar-style city builder — grow a medieval town, evolve housing, please the King",
+    skipSetup: true,
+  },
+  {
     mode: GameMode.CAMELOT_CRAFT,
     label: "CAMELOT CRAFT",
     desc: "Minecraft-style voxel sandbox — build Camelot, seek the Grail",

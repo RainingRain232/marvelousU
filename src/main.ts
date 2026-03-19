@@ -137,6 +137,7 @@ import { GrailBallGame } from "./grailball/GrailBallGame";
 import { GrailManagerGame } from "./grailmanager/GrailManagerGame";
 import { ArthurianRPGGame } from "./arthurianrpg/ArthurianRPGGame";
 import { SettlersGame } from "./settlers/SettlersGame";
+import { CaesarGame } from "./caesar/CaesarGame";
 import type { SettlersMapMode } from "./settlers/state/SettlersState";
 import { CamelotCraftGame } from "./camelotcraft/CamelotCraftGame";
 import { TerrariaGame } from "./terraria/TerrariaGame";
@@ -341,6 +342,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     [GameMode.CAMELOT_CRAFT]: 24,
     [GameMode.EAGLE_FLIGHT]: 25,
     [GameMode.TERRARIA]: 26,
+    [GameMode.CAESAR]: 27,
   };
   // Modes that need the setup screen (not skipSetup)
   const NEEDS_SETUP = new Set([GameMode.STANDARD, GameMode.DEATHMATCH, GameMode.BATTLEFIELD, GameMode.ROGUELIKE, GameMode.WAVE]);
@@ -475,6 +477,11 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     if (menuScreen.selectedGameMode === GameMode.SETTLERS) {
       menuScreen.hide();
       _showSettlersMapModeSelect();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.CAESAR) {
+      menuScreen.hide();
+      _bootCaesarGame();
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.CAMELOT_CRAFT) {
@@ -3134,6 +3141,31 @@ async function _bootSettlersGame(mapMode: SettlersMapMode = "CONTINENTAL"): Prom
     menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
   window.addEventListener("settlersExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Medieval Caesar (city builder mode) boot
+// ---------------------------------------------------------------------------
+
+let _caesarGame: CaesarGame | null = null;
+
+async function _bootCaesarGame(): Promise<void> {
+  if (_caesarGame) {
+    _caesarGame.destroy();
+    _caesarGame = null;
+  }
+  viewManager.clearWorld();
+  _caesarGame = new CaesarGame();
+  await _caesarGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("caesarExit", _onExit);
+    if (_caesarGame) {
+      _caesarGame.destroy();
+      _caesarGame = null;
+    }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("caesarExit", _onExit);
 }
 
 // ---------------------------------------------------------------------------
