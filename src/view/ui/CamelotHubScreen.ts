@@ -159,6 +159,7 @@ const MAP_BUILDINGS: MapBuilding[] = [
   { id: "eagle_roost", x: 950, y: 160, w: 140, h: 120, label: "The Eagle Roost", mode: GameMode.DRAGOON, type: "tower" },
   { id: "arcane_arena", x: 180, y: 480, w: 140, h: 110, label: "Arcane Battlegrounds", mode: GameMode.MAGE_WARS, type: "tower" },
   { id: "mineshaft", x: 780, y: 460, w: 120, h: 90, label: "The Mineshaft", mode: GameMode.TERRARIA, type: "forge" },
+  { id: "throne_room", x: 560, y: 200, w: 130, h: 100, label: "The Throne Room", mode: GameMode.CIVILIZATION, type: "library" },
 ];
 
 const CITY = { x: 250, y: 150, w: 700, h: 580 };

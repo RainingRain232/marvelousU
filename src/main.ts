@@ -142,6 +142,7 @@ import type { SettlersMapMode } from "./settlers/state/SettlersState";
 import { CamelotCraftGame } from "./camelotcraft/CamelotCraftGame";
 import { TerrariaGame } from "./terraria/TerrariaGame";
 import { EagleFlightGame } from "./eagleflight/EagleFlightGame";
+import { CivGame } from "./civilization/CivGame";
 import { camelotHubScreen } from "@view/ui/CamelotHubScreen";
 
 // World mode imports
@@ -497,6 +498,11 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     if (menuScreen.selectedGameMode === GameMode.TERRARIA) {
       menuScreen.hide();
       _bootTerrariaGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.CIVILIZATION) {
+      menuScreen.hide();
+      _bootCivGame();
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.WORLD) {
@@ -3241,6 +3247,31 @@ async function _bootTerrariaGame(): Promise<void> {
     menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
   window.addEventListener("terrariaExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Civilization (Civ 2-style 4X) boot
+// ---------------------------------------------------------------------------
+
+let _civGame: CivGame | null = null;
+
+async function _bootCivGame(): Promise<void> {
+  if (_civGame) {
+    _civGame.destroy();
+    _civGame = null;
+  }
+  viewManager.clearWorld();
+  _civGame = new CivGame();
+  await _civGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("civExit", _onExit);
+    if (_civGame) {
+      _civGame.destroy();
+      _civGame = null;
+    }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("civExit", _onExit);
 }
 
 // ---------------------------------------------------------------------------

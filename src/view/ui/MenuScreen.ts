@@ -328,6 +328,12 @@ const GAME_MODES: GameModeEntry[] = [
     desc: "2D sandbox — dig deep, build Camelot, seek the Holy Grail underground",
     skipSetup: true,
   },
+  {
+    mode: GameMode.CIVILIZATION,
+    label: "ARTHURIAN CIV",
+    desc: "Civ 2-style 4X strategy — build an Arthurian kingdom, research lore, seek the Holy Grail",
+    skipSetup: true,
+  },
 ];
 
 // ---------------------------------------------------------------------------
