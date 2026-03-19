@@ -363,6 +363,11 @@ export const LANDMARKS: { name: string; x: number; z: number; radius: number }[]
   { name: "Stone Circle", x: 450, z: -350, radius: 20 },
   { name: "Eastern Village", x: 150, z: 40, radius: 20 },
   { name: "Western Village", x: -130, z: -60, radius: 20 },
+  { name: "Northern Hamlet", x: 50, z: -300, radius: 25 },
+  { name: "Southern Settlement", x: -80, z: 350, radius: 25 },
+  { name: "Far East Village", x: 380, z: 150, radius: 25 },
+  { name: "Riverside Village", x: -250, z: -200, radius: 25 },
+  { name: "Hilltop Village", x: 300, z: -250, radius: 25 },
 ];
 
 // ---------------------------------------------------------------------------

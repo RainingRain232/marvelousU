@@ -6,6 +6,7 @@
 // ---------------------------------------------------------------------------
 
 import * as THREE from "three";
+import { getTerrainHeight } from "../state/EagleFlightState";
 import type { EagleFlightState } from "../state/EagleFlightState";
 
 // Seeded random for deterministic city generation
@@ -2703,6 +2704,62 @@ export class EagleFlightRenderer {
       roughness: 0.3,
       metalness: 0.7,
     });
+    const mortarMat = new THREE.MeshStandardMaterial({ color: 0xb0b0a0, roughness: 0.9 });
+    const brickAltMat = new THREE.MeshStandardMaterial({ color: 0xc0bfae, roughness: 0.75 });
+
+    // Helper: add brick mortar lines to a rectangular surface
+    const addBrickLines = (
+      cx: number, cy: number, cz: number,
+      w: number, h: number,
+      faceDir: "x" | "z",
+      rows: number,
+    ) => {
+      const rowH = h / rows;
+      for (let r = 1; r < rows; r++) {
+        const lineY = cy - h / 2 + r * rowH;
+        // Horizontal mortar line
+        if (faceDir === "z") {
+          const line = new THREE.Mesh(new THREE.BoxGeometry(w + 0.02, 0.06, 0.06), mortarMat);
+          line.position.set(cx, lineY, cz);
+          group.add(line);
+        } else {
+          const line = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, w + 0.02), mortarMat);
+          line.position.set(cx, lineY, cz);
+          group.add(line);
+        }
+        // Vertical brick seams (offset every other row)
+        const seams = Math.floor(w / 2);
+        const offset = r % 2 === 0 ? 0 : 1;
+        for (let s = 0; s < seams; s++) {
+          const sx = -w / 2 + (s + 0.5 + offset * 0.5) * (w / seams);
+          if (Math.abs(sx) > w / 2 - 0.2) continue;
+          if (faceDir === "z") {
+            const seam = new THREE.Mesh(new THREE.BoxGeometry(0.05, rowH - 0.02, 0.06), mortarMat);
+            seam.position.set(cx + sx, lineY - rowH / 2, cz);
+            group.add(seam);
+          } else {
+            const seam = new THREE.Mesh(new THREE.BoxGeometry(0.06, rowH - 0.02, 0.05), mortarMat);
+            seam.position.set(cx, lineY - rowH / 2, cz + sx);
+            group.add(seam);
+          }
+        }
+      }
+      // Alternating brick accent blocks (subtle color variation)
+      for (let r = 0; r < rows; r += 3) {
+        const lineY = cy - h / 2 + (r + 0.5) * rowH;
+        const bw = w * 0.3;
+        const brickOff = (r % 6 === 0) ? -w * 0.25 : w * 0.25;
+        if (faceDir === "z") {
+          const accent = new THREE.Mesh(new THREE.BoxGeometry(bw, rowH * 0.9, 0.08), brickAltMat);
+          accent.position.set(cx + brickOff, lineY, cz);
+          group.add(accent);
+        } else {
+          const accent = new THREE.Mesh(new THREE.BoxGeometry(0.08, rowH * 0.9, bw), brickAltMat);
+          accent.position.set(cx, lineY, cz + brickOff);
+          group.add(accent);
+        }
+      }
+    };
 
     // Main nave
     const naveGeo = new THREE.BoxGeometry(12, 14, 24, 3, 3, 4);
@@ -2711,11 +2768,27 @@ export class EagleFlightRenderer {
     nave.castShadow = true;
     group.add(nave);
 
+    // Nave brick lines (both sides)
+    for (const side of [-1, 1]) {
+      addBrickLines(side * 6.01, 7, 0, 24, 14, "x", 14);
+    }
+    // Nave front and back
+    addBrickLines(0, 7, 12.01, 12, 14, "z", 14);
+    addBrickLines(0, 7, -12.01, 12, 14, "z", 14);
+
     // Transept (cross-shaped wing)
     const transept = new THREE.Mesh(new THREE.BoxGeometry(24, 12, 8, 4, 3, 2), stoneMat);
     transept.position.set(0, 6, -4);
     transept.castShadow = true;
     group.add(transept);
+
+    // Transept brick lines (front/back)
+    addBrickLines(0, 6, -8.01, 24, 12, "z", 12);
+    addBrickLines(0, 6, 0.01, 24, 12, "z", 12);
+    // Transept brick lines (sides)
+    for (const side of [-1, 1]) {
+      addBrickLines(side * 12.01, 6, -4, 8, 12, "x", 12);
+    }
     const transeptRoof = new THREE.Mesh(new THREE.ConeGeometry(14, 4, 16), roofMat);
     transeptRoof.position.set(0, 14, -4);
     transeptRoof.rotation.y = Math.PI / 4;
@@ -2753,11 +2826,23 @@ export class EagleFlightRenderer {
     tower.castShadow = true;
     group.add(tower);
 
+    // Bell tower brick lines (all 4 sides)
+    for (const side of [-1, 1]) {
+      addBrickLines(side * 3.01, 16, 14, 6, 32, "x", 32);
+      addBrickLines(0, 16, 14 + side * 3.01, 6, 32, "z", 32);
+    }
+
     // Bell tower upper stage (slightly narrower)
     const towerUpper = new THREE.Mesh(new THREE.BoxGeometry(5, 8, 5), stoneMat);
     towerUpper.position.set(0, 36, 14);
     towerUpper.castShadow = true;
     group.add(towerUpper);
+
+    // Upper stage brick lines
+    for (const side of [-1, 1]) {
+      addBrickLines(side * 2.51, 36, 14, 5, 8, "x", 8);
+      addBrickLines(0, 36, 14 + side * 2.51, 5, 8, "z", 8);
+    }
 
     // Bell openings (arched windows on tower)
     const bellOpeningMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.9 });
@@ -3441,12 +3526,15 @@ export class EagleFlightRenderer {
     // Farm fields
     const fieldColors = [0x88aa44, 0xaacc55, 0x99bb33, 0xbbaa44, 0x77aa33, 0xccbb55];
     const fenceMat = new THREE.MeshStandardMaterial({ color: 0x665533, roughness: 0.9 });
-    // Exclusion zones: wizard tower (450,-350) and distant village (-400,300)
-    const _excl = (px: number, pz: number) => {
-      const d1 = Math.sqrt((px - 450) ** 2 + (pz + 350) ** 2);
-      const d2 = Math.sqrt((px + 400) ** 2 + (pz - 300) ** 2);
-      return d1 < 60 || d2 < 60;
-    };
+    // Exclusion zones: wizard tower, villages
+    const _exclZones = [
+      { x: 450, z: -350 }, { x: -400, z: 300 },
+      { x: 150, z: 40 }, { x: -130, z: -60 },
+      { x: 50, z: -300 }, { x: -80, z: 350 },
+      { x: 380, z: 150 }, { x: -250, z: -200 }, { x: 300, z: -250 },
+    ];
+    const _excl = (px: number, pz: number) =>
+      _exclZones.some(({ x: ex, z: ez }) => Math.sqrt((px - ex) ** 2 + (pz - ez) ** 2) < 60);
 
     for (let i = 0; i < 16; i++) {
       const angle = rng() * Math.PI * 2;
@@ -3605,6 +3693,25 @@ export class EagleFlightRenderer {
     this._buildWindmill(-380, 320);
     this._buildRuins(-420, 340, rng);
 
+    // Northern hamlet
+    this._buildVillage(50, -300, rng);
+    this._buildWindmill(30, -320);
+
+    // Southern settlement
+    this._buildVillage(-80, 350, rng);
+    this._buildWindmill(-60, 370);
+
+    // Far east village
+    this._buildVillage(380, 150, rng);
+    this._buildWindmill(400, 130);
+
+    // Riverside village
+    this._buildVillage(-250, -200, rng);
+
+    // Hilltop village
+    this._buildVillage(300, -250, rng);
+    this._buildWindmill(320, -270);
+
     // Wizard tower (far from city)
     this._buildWizardTower(450, -350);
   }
@@ -3729,12 +3836,12 @@ export class EagleFlightRenderer {
     const pathGeo = new THREE.PlaneGeometry(40, 3);
     pathGeo.rotateX(-Math.PI / 2);
     const path1 = new THREE.Mesh(pathGeo, dirtPathMat);
-    path1.position.set(x, 0.05, z);
+    path1.position.set(x, getTerrainHeight(x, z) + 0.05, z);
     path1.receiveShadow = true;
     this._terrainGroup.add(path1);
     const path2 = new THREE.Mesh(new THREE.PlaneGeometry(3, 30), dirtPathMat);
     path2.rotateX(-Math.PI / 2);
-    path2.position.set(x, 0.05, z);
+    path2.position.set(x, getTerrainHeight(x, z) + 0.05, z);
     path2.receiveShadow = true;
     this._terrainGroup.add(path2);
 
@@ -3764,7 +3871,7 @@ export class EagleFlightRenderer {
     const bucket = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.12, 0.25, 16), darkTimberMat);
     bucket.position.set(0.3, 2, 0);
     wellGroup.add(bucket);
-    wellGroup.position.set(x, 0, z);
+    wellGroup.position.set(x, getTerrainHeight(x, z), z);
     this._terrainGroup.add(wellGroup);
 
     // --- Cottages (12 houses, more spread) ---
@@ -4004,7 +4111,7 @@ export class EagleFlightRenderer {
         }
       }
 
-      cottage.position.set(hx, 0, hz);
+      cottage.position.set(hx, getTerrainHeight(hx, hz), hz);
       cottage.rotation.y = rot;
       this._terrainGroup.add(cottage);
     }
@@ -4017,22 +4124,25 @@ export class EagleFlightRenderer {
     const signBoard = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.6, 0.06), darkTimberMat);
     signBoard.position.set(0.4, 2.8, 0);
     signGroup.add(signBoard);
-    signGroup.position.set(x + 5, 0, z + 5);
+    signGroup.position.set(x + 5, getTerrainHeight(x + 5, z + 5), z + 5);
     this._terrainGroup.add(signGroup);
 
     // --- Haystacks scattered around ---
     for (let h = 0; h < 3; h++) {
+      const hayX = x + (rng() - 0.5) * 40;
+      const hayZ = z + (rng() - 0.5) * 30;
+      const hayY = getTerrainHeight(hayX, hayZ);
       const hay = new THREE.Mesh(
         new THREE.CylinderGeometry(1, 1.2, 1.5, 16),
         thatchMat,
       );
-      hay.position.set(x + (rng() - 0.5) * 40, 0.75, z + (rng() - 0.5) * 30);
+      hay.position.set(hayX, hayY + 0.75, hayZ);
       hay.castShadow = true;
       this._terrainGroup.add(hay);
       // Hay dome top
       const hayTop = new THREE.Mesh(new THREE.SphereGeometry(1.1, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2), thatchMat);
       hayTop.position.copy(hay.position);
-      hayTop.position.y = 1.5;
+      hayTop.position.y = hayY + 1.5;
       this._terrainGroup.add(hayTop);
     }
 
@@ -4066,7 +4176,7 @@ export class EagleFlightRenderer {
     shaft.position.set(2, 0.5, 0);
     shaft.rotation.z = -0.15;
     cartGroup.add(shaft);
-    cartGroup.position.set(x + 12, 0, z - 8);
+    cartGroup.position.set(x + 12, getTerrainHeight(x + 12, z - 8), z - 8);
     cartGroup.rotation.y = rng() * Math.PI;
     this._terrainGroup.add(cartGroup);
 
@@ -4074,17 +4184,20 @@ export class EagleFlightRenderer {
     for (let lt = 0; lt < 6; lt++) {
       const lAngle = (lt / 6) * Math.PI * 2 + 0.4;
       const lDist = 8 + rng() * 5;
+      const lx = x + Math.cos(lAngle) * lDist;
+      const lz = z + Math.sin(lAngle) * lDist;
+      const ly = getTerrainHeight(lx, lz);
       const lanternPost = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 3, 16), timberMat);
-      lanternPost.position.set(x + Math.cos(lAngle) * lDist, 1.5, z + Math.sin(lAngle) * lDist);
+      lanternPost.position.set(lx, ly + 1.5, lz);
       this._terrainGroup.add(lanternPost);
       const lanternBox = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.4, 0.3), ironMat);
-      lanternBox.position.set(x + Math.cos(lAngle) * lDist, 3.2, z + Math.sin(lAngle) * lDist);
+      lanternBox.position.set(lx, ly + 3.2, lz);
       this._terrainGroup.add(lanternBox);
       const lanternGlow = new THREE.Mesh(
         new THREE.SphereGeometry(0.12, 16, 12),
         new THREE.MeshStandardMaterial({ color: 0xff9944, emissive: 0xff8833, emissiveIntensity: 0.5 }),
       );
-      lanternGlow.position.set(x + Math.cos(lAngle) * lDist, 3.2, z + Math.sin(lAngle) * lDist);
+      lanternGlow.position.set(lx, ly + 3.2, lz);
       this._terrainGroup.add(lanternGlow);
     }
 
@@ -4190,7 +4303,7 @@ export class EagleFlightRenderer {
       chapelGroup.add(sideWall);
     }
 
-    chapelGroup.position.set(x - 18, 0, z + 12);
+    chapelGroup.position.set(x - 18, getTerrainHeight(x - 18, z + 12), z + 12);
     chapelGroup.rotation.y = rng() * 0.3;
     this._terrainGroup.add(chapelGroup);
 
@@ -4275,7 +4388,7 @@ export class EagleFlightRenderer {
       smithGroup.add(horseshoe);
     }
 
-    smithGroup.position.set(x + 18, 0, z - 5);
+    smithGroup.position.set(x + 18, getTerrainHeight(x + 18, z - 5), z - 5);
     smithGroup.rotation.y = rng() * Math.PI;
     this._terrainGroup.add(smithGroup);
 
@@ -4402,7 +4515,7 @@ export class EagleFlightRenderer {
     troughHay.position.set(3, 0.38, 0);
     penGroup.add(troughHay);
 
-    penGroup.position.set(x + 15, 0, z + 15);
+    penGroup.position.set(x + 15, getTerrainHeight(x + 15, z + 15), z + 15);
     penGroup.rotation.y = rng() * Math.PI;
     this._terrainGroup.add(penGroup);
 
@@ -4432,7 +4545,7 @@ export class EagleFlightRenderer {
     const mFinial = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 12), chapelStoneMat);
     mFinial.position.y = 6.1;
     marketCross.add(mFinial);
-    marketCross.position.set(x + 3, 0, z - 3);
+    marketCross.position.set(x + 3, getTerrainHeight(x + 3, z - 3), z - 3);
     this._terrainGroup.add(marketCross);
 
     // --- Water trough for animals / travellers ---
@@ -4453,7 +4566,7 @@ export class EagleFlightRenderer {
     );
     wtWater.position.set(0, 0.78, 0);
     waterTroughGroup.add(wtWater);
-    waterTroughGroup.position.set(x - 8, 0, z - 6);
+    waterTroughGroup.position.set(x - 8, getTerrainHeight(x - 8, z - 6), z - 6);
     waterTroughGroup.rotation.y = rng() * Math.PI;
     this._terrainGroup.add(waterTroughGroup);
 
@@ -4474,7 +4587,7 @@ export class EagleFlightRenderer {
       stake.position.set(ws, 0.4, 0);
       woodpileGroup.add(stake);
     }
-    woodpileGroup.position.set(x - 12, 0, z + 3);
+    woodpileGroup.position.set(x - 12, getTerrainHeight(x - 12, z + 3), z + 3);
     woodpileGroup.rotation.y = rng() * Math.PI;
     this._terrainGroup.add(woodpileGroup);
 
@@ -4501,7 +4614,7 @@ export class EagleFlightRenderer {
       cloth.rotation.z = (rng() - 0.5) * 0.15;
       clothGroup.add(cloth);
     }
-    clothGroup.position.set(x - 6, 0, z + 18);
+    clothGroup.position.set(x - 6, getTerrainHeight(x - 6, z + 18), z + 18);
     clothGroup.rotation.y = rng() * Math.PI;
     this._terrainGroup.add(clothGroup);
 
@@ -4530,7 +4643,9 @@ export class EagleFlightRenderer {
     const scShirt = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.8, 0.2), new THREE.MeshStandardMaterial({ color: 0x886655, side: THREE.DoubleSide }));
     scShirt.position.y = 1.8;
     scarecrow.add(scShirt);
-    scarecrow.position.set(x + (rng() - 0.5) * 30, 0, z + 20 + rng() * 10);
+    const scX = x + (rng() - 0.5) * 30;
+    const scZ = z + 20 + rng() * 10;
+    scarecrow.position.set(scX, getTerrainHeight(scX, scZ), scZ);
     this._terrainGroup.add(scarecrow);
   }
 

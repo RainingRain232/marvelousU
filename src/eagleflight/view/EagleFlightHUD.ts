@@ -591,6 +591,58 @@ export class EagleFlightHUD {
     resumeBtn.addEventListener("mouseleave", () => { resumeBtn.style.background = "rgba(255,255,255,0.08)"; resumeBtn.style.borderColor = "rgba(255,255,255,0.2)"; });
     this._pauseOverlay.appendChild(resumeBtn);
 
+    // Controls button + panel
+    const controlsBtn = document.createElement("div");
+    controlsBtn.style.cssText = btnStyle;
+    controlsBtn.textContent = "Controls";
+    controlsBtn.addEventListener("mouseenter", () => { controlsBtn.style.background = "rgba(255,255,255,0.15)"; controlsBtn.style.borderColor = "rgba(255,221,136,0.4)"; });
+    controlsBtn.addEventListener("mouseleave", () => { controlsBtn.style.background = "rgba(255,255,255,0.08)"; controlsBtn.style.borderColor = "rgba(255,255,255,0.2)"; });
+    this._pauseOverlay.appendChild(controlsBtn);
+
+    const controlsPanel = document.createElement("div");
+    controlsPanel.style.cssText = `
+      display:none;margin-top:16px;padding:20px 30px;
+      background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.15);
+      border-radius:10px;max-width:420px;width:90%;
+    `;
+    const controlsGrid = [
+      ["W / S", "Pitch up / down"],
+      ["A / D", "Yaw left / right"],
+      ["Q / E", "Roll left / right"],
+      ["Shift", "Throttle up"],
+      ["Ctrl", "Throttle down"],
+      ["Space", "Boost"],
+      ["F", "Toggle free-look"],
+      ["Mouse", "Free-look camera"],
+      ["G", "Mount / dismount"],
+      ["1 / 2 / 3", "Cast spells"],
+      ["R", "Start race"],
+      ["T", "Accept delivery"],
+      ["Esc", "Pause"],
+    ];
+    const heading = document.createElement("div");
+    heading.style.cssText = "color:#ffdd88;font-size:16px;font-weight:bold;margin-bottom:12px;letter-spacing:3px;text-align:center;";
+    heading.textContent = "CONTROLS";
+    controlsPanel.appendChild(heading);
+    for (const [key, action] of controlsGrid) {
+      const row = document.createElement("div");
+      row.style.cssText = "display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.06);";
+      const keyEl = document.createElement("span");
+      keyEl.style.cssText = "color:#ffdd88;font-size:13px;font-family:monospace;min-width:100px;";
+      keyEl.textContent = key;
+      const actionEl = document.createElement("span");
+      actionEl.style.cssText = "color:rgba(255,255,255,0.7);font-size:13px;text-align:right;";
+      actionEl.textContent = action;
+      row.appendChild(keyEl);
+      row.appendChild(actionEl);
+      controlsPanel.appendChild(row);
+    }
+    this._pauseOverlay.appendChild(controlsPanel);
+
+    controlsBtn.addEventListener("click", () => {
+      controlsPanel.style.display = controlsPanel.style.display === "none" ? "block" : "none";
+    });
+
     const quitBtn = document.createElement("div");
     quitBtn.style.cssText = btnStyle;
     quitBtn.textContent = "Return to Menu";
