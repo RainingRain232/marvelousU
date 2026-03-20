@@ -26,6 +26,7 @@ export class TerrariaRenderer {
   private _entityLayer = new Container();
   private _lightOverlay = new Graphics();
   private _cursorGfx = new Graphics();
+  private _particleGfx = new Graphics();   // ambient particles (fireflies, dust, rain)
   private _screenFx = new Graphics();     // damage flash, underwater tint, weather
   private _dmgNumbers = new Graphics();    // floating damage numbers
 
@@ -38,6 +39,10 @@ export class TerrariaRenderer {
   private _healFlash = 0;
   private _prevHp = -1;
 
+  // Ambient particles
+  private _particles: { x: number; y: number; vx: number; vy: number; life: number; maxLife: number; color: number; size: number; type: 'firefly' | 'dust' | 'rain' | 'leaf' | 'butterfly' | 'spore' | 'ember' }[] = [];
+  private _particleTimer = 0;
+
   // Floating damage/heal numbers
   private _floatingTexts: { x: number; y: number; text: string; color: number; life: number }[] = [];
 
@@ -48,6 +53,7 @@ export class TerrariaRenderer {
     this.worldLayer.addChild(this._blockLayer);
     this.worldLayer.addChild(this._entityLayer);
     this.worldLayer.addChild(this._lightOverlay);
+    this.worldLayer.addChild(this._particleGfx);
     this.worldLayer.addChild(this._cursorGfx);
     this.worldLayer.addChild(this._dmgNumbers);
     this.worldLayer.addChild(this._screenFx);
@@ -74,6 +80,9 @@ export class TerrariaRenderer {
 
     // Sky background
     this._drawSky(state, sw, sh);
+
+    // Parallax background layers (mountains, castles, trees, clouds)
+    this._drawParallax(state, camera, sw, sh);
 
     // Determine visible chunks
     const minCX = worldToChunkX(Math.max(0, bounds.minX));
@@ -113,6 +122,9 @@ export class TerrariaRenderer {
 
     // Light overlay
     this._drawLightOverlay(state, camera, bounds);
+
+    // Ambient particles
+    this._updateAndDrawParticles(state, camera, sw, sh);
 
     // Block cursor
     this._drawCursor(state, camera);
@@ -744,40 +756,125 @@ export class TerrariaRenderer {
 
         let color = def.color;
 
+        // Depth-based tinting: blocks get slightly bluer/darker underground
+        if (y < TB.SURFACE_Y && !def.liquid && def.lightEmit === 0) {
+          const depthFrac = Math.min(1, (TB.SURFACE_Y - y) / (TB.SURFACE_Y - TB.UNDERWORLD_Y));
+          const depthTint = depthFrac * 0.25;
+          const cr = ((color >> 16) & 0xFF);
+          const cg = ((color >> 8) & 0xFF);
+          const cb = (color & 0xFF);
+          const nr = Math.floor(cr * (1 - depthTint));
+          const ng = Math.floor(cg * (1 - depthTint * 0.7));
+          const nb = Math.min(255, Math.floor(cb * (1 - depthTint * 0.3) + depthTint * 15));
+          color = (nr << 16) | (ng << 8) | nb;
+        }
+
         // ---- LIQUID RENDERING (water/lava) ----
         if (def.liquid) {
           const isLava = bt === BlockType.LAVA;
           const aboveIsAir = y < WH - 1 && chunk.getBlock(lx, y + 1) === BlockType.AIR;
-          const waveOffset = aboveIsAir ? Math.sin(wx * 0.4 + time * 2.5) * 2 + Math.sin(wx * 0.9 + time * 1.8) * 1 : 0;
-
-          // Base liquid body
-          gfx.rect(px, py + waveOffset, TS, TS - waveOffset);
-          gfx.fill({ color, alpha: isLava ? 0.9 : 0.65 });
+          const leftIsAir = lx > 0 ? chunk.getBlock(lx - 1, y) === BlockType.AIR : false;
+          const rightIsAir = lx < CW - 1 ? chunk.getBlock(lx + 1, y) === BlockType.AIR : false;
+          const wave1 = Math.sin(wx * 0.4 + time * 2.5) * 2;
+          const wave2 = Math.sin(wx * 0.9 + time * 1.8) * 1;
+          const waveOffset = aboveIsAir ? wave1 + wave2 : 0;
 
           if (!isLava) {
-            // Water gradient: lighter on top, darker below
-            gfx.rect(px, py + waveOffset, TS, 3);
-            gfx.fill({ color: 0x88BBFF, alpha: 0.2 });
-            gfx.rect(px, py + TS - 3, TS, 3);
-            gfx.fill({ color: 0x001133, alpha: 0.15 });
-            // Shimmer
-            const shimX = px + ((h * 7) % (TS - 3));
-            const shimW = 2 + (h % 3);
-            gfx.rect(shimX, py + waveOffset + 1, shimW, 1);
-            gfx.fill({ color: 0xFFFFFF, alpha: 0.15 + Math.sin(time * 3 + wx) * 0.08 });
-          } else {
-            // Lava: molten surface with bubbles
-            gfx.rect(px, py + waveOffset, TS, 2);
-            gfx.fill({ color: 0xFFAA00, alpha: 0.3 });
-            // Bubbles
-            if (aboveIsAir && Math.sin(time * 4 + wx * 1.7 + y * 0.3) > 0.6) {
-              const bx = px + 3 + (h % (TS - 6));
-              gfx.circle(bx, py + waveOffset + 2, 1.5);
-              gfx.fill({ color: 0xFFDD44, alpha: 0.4 });
+            // Water depth: count water blocks above for deeper color
+            let waterDepth = 0;
+            for (let dy = 1; dy <= 8; dy++) {
+              if (y + dy < WH && chunk.getBlock(lx, y + dy) === BlockType.WATER) waterDepth++;
+              else break;
             }
-            // Inner glow
-            gfx.rect(px + 2, py + 4, TS - 4, TS - 6);
-            gfx.fill({ color: 0xFF6600, alpha: 0.15 + Math.sin(time * 2 + wx * 0.5) * 0.08 });
+            const depthT = Math.min(1, waterDepth / 6);
+
+            // Base water body with depth-based color
+            const baseR = Math.floor(0x22 + (1 - depthT) * 0x33);
+            const baseG = Math.floor(0x66 + (1 - depthT) * 0x33);
+            const baseB = Math.floor(0xAA + (1 - depthT) * 0x22);
+            const waterColor = (baseR << 16) | (baseG << 8) | baseB;
+            gfx.rect(px, py + waveOffset, TS, TS - waveOffset);
+            gfx.fill({ color: waterColor, alpha: 0.55 + depthT * 0.15 });
+
+            // Surface effects (top of water)
+            if (aboveIsAir) {
+              // Foam/froth line at surface
+              gfx.rect(px, py + waveOffset, TS, 1.5);
+              gfx.fill({ color: 0xCCDDFF, alpha: 0.35 });
+              // Ripple highlights
+              const rip1 = Math.sin(time * 2.2 + wx * 0.7) * 0.5 + 0.5;
+              const rip2 = Math.sin(time * 3.1 + wx * 1.3 + 2) * 0.5 + 0.5;
+              gfx.rect(px + rip1 * (TS - 4), py + waveOffset + 1, 3, 0.8);
+              gfx.fill({ color: 0xFFFFFF, alpha: 0.18 });
+              gfx.rect(px + rip2 * (TS - 3) + 1, py + waveOffset + 2.5, 2, 0.6);
+              gfx.fill({ color: 0xFFFFFF, alpha: 0.12 });
+              // Reflection shimmer (larger, animated)
+              const shimPhase = Math.sin(time * 1.5 + wx * 0.3);
+              if (shimPhase > 0.3) {
+                const shimAlpha = (shimPhase - 0.3) * 0.3;
+                gfx.rect(px + 2, py + waveOffset + 0.5, TS - 4, 1);
+                gfx.fill({ color: 0xFFFFFF, alpha: shimAlpha });
+              }
+            }
+            // Bottom darkening
+            gfx.rect(px, py + TS - 3, TS, 3);
+            gfx.fill({ color: 0x001133, alpha: 0.18 + depthT * 0.08 });
+            // Caustic light patterns (animated)
+            if (waterDepth < 4) {
+              const cx1 = px + ((Math.floor(Math.sin(time * 1.8 + wx * 0.5) * 4) + TS / 2) % (TS - 2));
+              const cy1 = py + ((Math.floor(Math.cos(time * 1.3 + y * 0.7) * 3) + TS / 2) % (TS - 2));
+              gfx.moveTo(cx1, cy1);
+              gfx.lineTo(cx1 + 3, cy1 + 1);
+              gfx.lineTo(cx1 + 1, cy1 + 3);
+              gfx.closePath();
+              gfx.fill({ color: 0x88CCFF, alpha: 0.08 });
+            }
+            // Edge foam where water meets solid blocks on sides
+            if (leftIsAir || rightIsAir) {
+              const edgeX = leftIsAir ? px : px + TS - 1;
+              for (let ey = 0; ey < TS; ey += 3) {
+                const bubble = Math.sin(time * 3 + y * 2 + ey) * 0.5 + 0.5;
+                if (bubble > 0.4) {
+                  gfx.circle(edgeX + (leftIsAir ? -1 : 1), py + ey + 1, 0.6);
+                  gfx.fill({ color: 0xDDEEFF, alpha: 0.2 });
+                }
+              }
+            }
+          } else {
+            // Lava base with molten gradient
+            gfx.rect(px, py + waveOffset, TS, TS - waveOffset);
+            gfx.fill({ color, alpha: 0.9 });
+            // Molten core (brighter center)
+            gfx.rect(px + 2, py + waveOffset + 2, TS - 4, TS - waveOffset - 4);
+            gfx.fill({ color: 0xFF6600, alpha: 0.2 + Math.sin(time * 2 + wx * 0.5) * 0.1 });
+            // Surface crust (dark patches that float)
+            if (aboveIsAir) {
+              gfx.rect(px, py + waveOffset, TS, 2);
+              gfx.fill({ color: 0xFFAA00, alpha: 0.35 });
+              // Crusted spots
+              const crust1 = (h * 3 + Math.floor(time * 0.5)) % (TS - 4);
+              const crust2 = (h * 7 + Math.floor(time * 0.3)) % (TS - 3);
+              gfx.rect(px + crust1, py + waveOffset, 3, 1.5);
+              gfx.fill({ color: 0x442200, alpha: 0.3 });
+              gfx.rect(px + crust2 + 1, py + waveOffset + 0.5, 2, 1);
+              gfx.fill({ color: 0x331100, alpha: 0.25 });
+            }
+            // Bubbles (multiple, animated)
+            for (let bi = 0; bi < 2; bi++) {
+              const bubPhase = Math.sin(time * (3 + bi) + wx * 1.7 + y * 0.3 + bi * 2);
+              if (aboveIsAir && bubPhase > 0.5) {
+                const bx = px + 2 + ((h + bi * 5) % (TS - 4));
+                const bSize = 1 + (bubPhase - 0.5) * 2;
+                gfx.circle(bx, py + waveOffset + 1 + bi, bSize);
+                gfx.fill({ color: 0xFFDD44, alpha: 0.35 });
+                // Bubble highlight
+                gfx.circle(bx - 0.3, py + waveOffset + 0.5 + bi, bSize * 0.3);
+                gfx.fill({ color: 0xFFFFAA, alpha: 0.25 });
+              }
+            }
+            // Heat distortion glow
+            gfx.circle(px + TS / 2, py + TS / 2, TS * 0.7);
+            gfx.fill({ color: 0xFF4400, alpha: 0.06 + Math.sin(time * 1.5 + wx) * 0.03 });
           }
           continue;
         }
@@ -789,44 +886,140 @@ export class TerrariaRenderer {
         gfx.rect(px, py, TS, TS);
         gfx.fill(color);
 
-        // 3D bevel edges (top-left highlight, bottom-right shadow)
+        // 3D bevel edges (only where block faces air/transparent — smart connectivity)
         if (def.solid && !def.transparent) {
-          // Top highlight
-          gfx.rect(px, py, TS - 1, 1);
-          gfx.fill({ color: 0xFFFFFF, alpha: 0.12 });
+          const topAir = y < WH - 1 && (chunk.getBlock(lx, y + 1) === BlockType.AIR || (BLOCK_DEFS[chunk.getBlock(lx, y + 1)]?.transparent ?? false));
+          const botAir = y > 0 && (chunk.getBlock(lx, y - 1) === BlockType.AIR || (BLOCK_DEFS[chunk.getBlock(lx, y - 1)]?.transparent ?? false));
+          const leftAir = lx > 0 && (chunk.getBlock(lx - 1, y) === BlockType.AIR || (BLOCK_DEFS[chunk.getBlock(lx - 1, y)]?.transparent ?? false));
+          const rightAir = lx < CW - 1 && (chunk.getBlock(lx + 1, y) === BlockType.AIR || (BLOCK_DEFS[chunk.getBlock(lx + 1, y)]?.transparent ?? false));
+          // Top highlight (only if air above)
+          if (topAir) {
+            gfx.rect(px, py, TS, 1);
+            gfx.fill({ color: 0xFFFFFF, alpha: 0.15 });
+          }
           // Left highlight
-          gfx.rect(px, py + 1, 1, TS - 2);
-          gfx.fill({ color: 0xFFFFFF, alpha: 0.07 });
-          // Bottom shadow
-          gfx.rect(px + 1, py + TS - 1, TS - 1, 1);
-          gfx.fill({ color: 0x000000, alpha: 0.2 });
+          if (leftAir) {
+            gfx.rect(px, py, 1, TS);
+            gfx.fill({ color: 0xFFFFFF, alpha: 0.09 });
+          }
+          // Bottom shadow (only if air below)
+          if (botAir) {
+            gfx.rect(px, py + TS - 1, TS, 1);
+            gfx.fill({ color: 0x000000, alpha: 0.22 });
+          }
           // Right shadow
-          gfx.rect(px + TS - 1, py, 1, TS - 1);
-          gfx.fill({ color: 0x000000, alpha: 0.1 });
+          if (rightAir) {
+            gfx.rect(px + TS - 1, py, 1, TS);
+            gfx.fill({ color: 0x000000, alpha: 0.12 });
+          }
+          // Inner ambient occlusion (darken corners that touch air on two sides)
+          if (topAir && leftAir) {
+            gfx.rect(px, py, 3, 3);
+            gfx.fill({ color: 0xFFFFFF, alpha: 0.06 });
+          }
+          if (botAir && rightAir) {
+            gfx.rect(px + TS - 3, py + TS - 3, 3, 3);
+            gfx.fill({ color: 0x000000, alpha: 0.08 });
+          }
         }
 
         // ---- PER-BLOCK-TYPE TEXTURE PATTERNS ----
         if (bt === BlockType.STONE) {
-          // Diagonal crack lines
-          for (let i = 0; i < 2; i++) {
-            const cx1 = px + ((h + i * 37) % (TS - 4)) + 2;
-            const cy1 = py + ((h * 3 + i * 53) % (TS - 4)) + 2;
-            gfx.moveTo(cx1, cy1);
-            gfx.lineTo(cx1 + 3, cy1 + 2);
-            gfx.stroke({ color: 0x000000, width: 0.6, alpha: 0.12 });
-          }
-          // Subtle speckles
-          if (h % 3 === 0) {
-            gfx.rect(px + (h % (TS - 2)), py + ((h * 5) % (TS - 2)), 2, 1);
-            gfx.fill({ color: 0xFFFFFF, alpha: 0.06 });
-          }
-        } else if (bt === BlockType.DIRT) {
-          // Dirt speckle pattern
+          // Organic crack network (branching cracks)
+          const crackSeed = (h * 7 + 3) & 0xFF;
           for (let i = 0; i < 3; i++) {
+            const cx1 = px + ((crackSeed + i * 37) % (TS - 4)) + 2;
+            const cy1 = py + ((crackSeed * 3 + i * 53) % (TS - 4)) + 2;
+            const dx1 = ((crackSeed + i * 11) % 5) - 2;
+            const dy1 = ((crackSeed + i * 7) % 4) - 1;
+            gfx.moveTo(cx1, cy1);
+            gfx.lineTo(cx1 + dx1 + 2, cy1 + dy1 + 1.5);
+            gfx.stroke({ color: 0x000000, width: 0.5, alpha: 0.1 });
+            // Branch
+            if (i === 0) {
+              gfx.moveTo(cx1 + dx1 + 1, cy1 + dy1 + 1);
+              gfx.lineTo(cx1 + dx1 + 3, cy1 + dy1 + 3);
+              gfx.stroke({ color: 0x000000, width: 0.4, alpha: 0.07 });
+            }
+          }
+          // Mineral speckles (varied sizes and colors)
+          for (let i = 0; i < 4; i++) {
+            const sx2 = px + ((h * (i + 2) * 11) % (TS - 2));
+            const sy2 = py + ((h * (i + 3) * 7) % (TS - 2));
+            const spColor = (i % 3 === 0) ? 0xFFFFFF : (i % 3 === 1) ? 0x999999 : 0xAAAAAA;
+            gfx.rect(sx2, sy2, 1 + (i % 2), 1);
+            gfx.fill({ color: spColor, alpha: 0.05 + (i % 2) * 0.02 });
+          }
+          // Subtle gradient variation (top lighter)
+          gfx.rect(px, py, TS, 2);
+          gfx.fill({ color: 0xFFFFFF, alpha: 0.02 });
+        } else if (bt === BlockType.DIRT) {
+          // Dirt texture: pebbles, root fragments, organic matter
+          for (let i = 0; i < 5; i++) {
             const dx = (h * (i + 1) * 13) % (TS - 2);
             const dy = (h * (i + 1) * 17) % (TS - 2);
-            gfx.rect(px + dx, py + dy, 1, 1);
-            gfx.fill({ color: (h + i) % 2 === 0 ? 0xFFFFFF : 0x000000, alpha: 0.08 });
+            if (i < 2) {
+              // Pebbles (small rounded)
+              gfx.ellipse(px + dx + 0.5, py + dy + 0.5, 1 + (h + i) % 2, 0.8);
+              gfx.fill({ color: 0x888877, alpha: 0.1 });
+            } else if (i < 4) {
+              // Dark organic spots
+              gfx.rect(px + dx, py + dy, 1, 1);
+              gfx.fill({ color: 0x3A2510, alpha: 0.1 });
+            } else {
+              // Light clay speck
+              gfx.rect(px + dx, py + dy, 1, 1);
+              gfx.fill({ color: 0xBB9966, alpha: 0.06 });
+            }
+          }
+          // Root fragment (rare)
+          if (h % 11 === 0) {
+            const rx = px + (h % (TS - 4)) + 2;
+            const ry = py + ((h * 5) % (TS - 4)) + 2;
+            gfx.moveTo(rx, ry);
+            gfx.quadraticCurveTo(rx + 2, ry + 1, rx + 4, ry - 0.5);
+            gfx.stroke({ color: 0x5A3A1A, width: 0.6, alpha: 0.12 });
+          }
+        } else if (bt === BlockType.GRAVEL) {
+          // Gravel: many small pebbles of varying shades
+          for (let i = 0; i < 7; i++) {
+            const gx = px + ((h * (i + 1) * 11) % (TS - 3)) + 1;
+            const gy = py + ((h * (i + 1) * 13) % (TS - 3)) + 1;
+            const gs = 1 + (h + i) % 2;
+            const gColors = [0xB0B0B0, 0x8A8A8A, 0x7A7A7A, 0xA0A0A0, 0x959595];
+            gfx.ellipse(gx, gy, gs, gs * 0.7);
+            gfx.fill({ color: gColors[i % gColors.length], alpha: 0.2 });
+          }
+          // Pebble highlights
+          if (h % 3 === 0) {
+            const hx = px + (h % (TS - 2)) + 1;
+            const hy = py + ((h * 3) % (TS - 2)) + 1;
+            gfx.ellipse(hx, hy, 1, 0.5);
+            gfx.fill({ color: 0xFFFFFF, alpha: 0.06 });
+          }
+        } else if (bt === BlockType.CLAY) {
+          // Clay: smooth with subtle cracks and color bands
+          gfx.rect(px, py, TS, 3);
+          gfx.fill({ color: 0xC09070, alpha: 0.08 });
+          gfx.rect(px, py + 6, TS, 3);
+          gfx.fill({ color: 0x906050, alpha: 0.06 });
+          // Fine cracks
+          if (h % 5 < 2) {
+            const crx = px + (h % (TS - 3)) + 1;
+            const cry = py + ((h * 5) % (TS - 2));
+            gfx.moveTo(crx, cry);
+            gfx.lineTo(crx + 2, cry + 3);
+            gfx.stroke({ color: 0x000000, width: 0.4, alpha: 0.08 });
+          }
+        } else if (bt === BlockType.MUD) {
+          // Mud: wet sheen and bubble holes
+          gfx.rect(px, py, TS, 1);
+          gfx.fill({ color: 0xFFFFFF, alpha: 0.04 });
+          for (let i = 0; i < 3; i++) {
+            const mx = px + ((h * (i + 2) * 7) % (TS - 2));
+            const my = py + ((h * (i + 3) * 11) % (TS - 2));
+            gfx.circle(mx, my, 0.8);
+            gfx.fill({ color: 0x000000, alpha: 0.08 });
           }
         } else if (bt === BlockType.COBBLESTONE || bt === BlockType.STONE_BRICKS || bt === BlockType.CASTLE_WALL) {
           // Mortar grid pattern
@@ -845,18 +1038,91 @@ export class TerrariaRenderer {
               gfx.fill({ color: 0x000000, alpha: 0.1 });
             }
           }
-        } else if (bt === BlockType.PLANKS || bt === BlockType.OAK_LOG || bt === BlockType.WILLOW_LOG || bt === BlockType.DARK_OAK_LOG) {
-          // Wood grain pattern (horizontal lines)
-          for (let gy = 2; gy < TS; gy += 3) {
-            const waveX = Math.sin(gy * 0.8 + h * 0.3) * 1;
-            gfx.moveTo(px + waveX, py + gy);
-            gfx.lineTo(px + TS + waveX, py + gy);
-            gfx.stroke({ color: 0x000000, width: 0.5, alpha: 0.12 });
-          }
-          // Knot
-          if (h % 7 === 0) {
-            gfx.circle(px + (h % (TS - 4)) + 2, py + ((h * 3) % (TS - 4)) + 2, 1.5);
+        } else if (bt === BlockType.PLANKS) {
+          // Planks: individual plank lines with nails
+          for (let gy = 0; gy < TS; gy += 4) {
+            gfx.rect(px, py + gy, TS, 1);
             gfx.fill({ color: 0x000000, alpha: 0.1 });
+            // Plank grain within each plank
+            const grainY = py + gy + 2;
+            const wv = Math.sin((gy + h) * 0.6) * 0.8;
+            gfx.moveTo(px + wv, grainY);
+            gfx.lineTo(px + TS + wv, grainY);
+            gfx.stroke({ color: 0x000000, width: 0.3, alpha: 0.06 });
+          }
+          // Nail heads
+          if (h % 4 < 2) {
+            const nx = px + (h % (TS - 2)) + 1;
+            const ny = py + ((h * 5) % (TS - 2)) + 1;
+            gfx.circle(nx, ny, 0.6);
+            gfx.fill({ color: 0x888888, alpha: 0.15 });
+          }
+        } else if (bt === BlockType.OAK_LOG) {
+          // Oak: vertical bark with rough edges
+          for (let gx = 2; gx < TS; gx += 3) {
+            const wv = Math.sin(gx * 0.7 + h * 0.4) * 0.8;
+            gfx.moveTo(px + gx, py + wv);
+            gfx.lineTo(px + gx, py + TS + wv);
+            gfx.stroke({ color: 0x000000, width: 0.6, alpha: 0.1 });
+          }
+          // Bark texture ridges
+          for (let i = 0; i < 3; i++) {
+            const rx = px + ((h * (i + 1) * 7) % (TS - 2));
+            const ry = py + ((h * (i + 2) * 5) % (TS - 4)) + 2;
+            gfx.moveTo(rx, ry);
+            gfx.quadraticCurveTo(rx + 1, ry + 2, rx - 0.5, ry + 4);
+            gfx.stroke({ color: 0x4A2A10, width: 0.7, alpha: 0.1 });
+          }
+          // Knot hole
+          if (h % 8 === 0) {
+            gfx.circle(px + (h % (TS - 4)) + 2, py + ((h * 3) % (TS - 4)) + 2, 1.5);
+            gfx.fill({ color: 0x3A1A08, alpha: 0.12 });
+            gfx.circle(px + (h % (TS - 4)) + 2, py + ((h * 3) % (TS - 4)) + 2, 0.6);
+            gfx.fill({ color: 0x000000, alpha: 0.08 });
+          }
+        } else if (bt === BlockType.WILLOW_LOG) {
+          // Willow: smooth, lighter bark with peeling strips
+          for (let gy = 2; gy < TS; gy += 4) {
+            const wv = Math.sin(gy * 0.5 + h * 0.2) * 1.2;
+            gfx.moveTo(px + wv, py + gy);
+            gfx.lineTo(px + TS + wv, py + gy);
+            gfx.stroke({ color: 0x000000, width: 0.4, alpha: 0.08 });
+          }
+          // Peeling bark strip (lighter color hanging)
+          if (h % 6 < 2) {
+            const sx2 = px + (h % (TS - 3)) + 1;
+            gfx.moveTo(sx2, py);
+            gfx.quadraticCurveTo(sx2 + 1.5, py + TS * 0.5, sx2 + 0.5, py + TS);
+            gfx.stroke({ color: 0x7A6A50, width: 1, alpha: 0.1 });
+          }
+          // Lichen patches
+          if (h % 9 === 0) {
+            gfx.ellipse(px + (h % (TS - 3)) + 1, py + ((h * 3) % (TS - 3)) + 1, 2, 1.5);
+            gfx.fill({ color: 0x6A8A5A, alpha: 0.1 });
+          }
+        } else if (bt === BlockType.DARK_OAK_LOG) {
+          // Dark oak: thick, deeply furrowed bark
+          for (let gx = 1; gx < TS; gx += 2) {
+            const wv1 = Math.sin(gx * 1.2 + h * 0.5) * 0.5;
+            const wv2 = Math.sin(gx * 0.6 + h * 0.3 + 1) * 0.3;
+            gfx.moveTo(px + gx + wv1, py);
+            gfx.bezierCurveTo(px + gx + wv2, py + TS * 0.3, px + gx + wv1, py + TS * 0.7, px + gx + wv2, py + TS);
+            gfx.stroke({ color: 0x000000, width: 0.7, alpha: 0.12 });
+          }
+          // Deep furrows
+          for (let i = 0; i < 2; i++) {
+            const fx = px + ((h + i * 7) % (TS - 2));
+            gfx.rect(fx, py, 1.5, TS);
+            gfx.fill({ color: 0x1A0A04, alpha: 0.08 });
+          }
+          // Shelf fungus (rare)
+          if (h % 11 === 0) {
+            const fy = py + ((h * 3) % (TS - 4)) + 2;
+            gfx.moveTo(px + TS, fy);
+            gfx.quadraticCurveTo(px + TS + 2, fy + 1, px + TS + 1, fy + 3);
+            gfx.lineTo(px + TS, fy + 3);
+            gfx.closePath();
+            gfx.fill({ color: 0x8A6A4A, alpha: 0.15 });
           }
         } else if (bt === BlockType.MARBLE) {
           // Marble veining
@@ -873,11 +1139,105 @@ export class TerrariaRenderer {
             gfx.rect(sx2, sy2, 1, 1);
             gfx.fill({ color: 0xFFFFFF, alpha: 0.06 });
           }
-        } else if (bt === BlockType.SNOW || bt === BlockType.ICE) {
+        } else if (bt === BlockType.SNOW) {
+          // Snow: crystalline sparkles and subtle blue shadows
+          for (let si = 0; si < 2; si++) {
+            if (Math.sin(time * (2 + si * 0.7) + wx * 3 + y * 2 + si * 1.5) > 0.7) {
+              const spx = px + ((h + si * 5) % (TS - 2)) + 1;
+              const spy = py + (((h * 3 + si * 7)) % (TS - 2)) + 1;
+              // Cross-shaped sparkle
+              gfx.moveTo(spx - 1.2, spy); gfx.lineTo(spx + 1.2, spy);
+              gfx.stroke({ color: 0xFFFFFF, width: 0.6, alpha: 0.35 });
+              gfx.moveTo(spx, spy - 1.2); gfx.lineTo(spx, spy + 1.2);
+              gfx.stroke({ color: 0xFFFFFF, width: 0.6, alpha: 0.35 });
+            }
+          }
+          // Subtle blue shadow on lower half
+          gfx.rect(px, py + TS * 0.6, TS, TS * 0.4);
+          gfx.fill({ color: 0x8888CC, alpha: 0.04 });
+        } else if (bt === BlockType.ICE) {
+          // Ice: refractive lines, deep blue tint, cracks
+          // Refractive diagonal lines
+          for (let i = 0; i < 3; i++) {
+            const ix = px + ((h + i * 3) % (TS - 1));
+            gfx.moveTo(ix, py);
+            gfx.lineTo(ix + 4, py + TS);
+            gfx.stroke({ color: 0xBBDDFF, width: 0.5, alpha: 0.12 });
+          }
+          // Inner blue depth
+          gfx.rect(px + 2, py + 2, TS - 4, TS - 4);
+          gfx.fill({ color: 0x4488CC, alpha: 0.06 });
           // Sparkle
-          if (Math.sin(time * 2 + wx * 3 + y * 2) > 0.7) {
-            gfx.circle(px + (h % (TS - 2)) + 1, py + ((h * 3) % (TS - 2)) + 1, 0.8);
-            gfx.fill({ color: 0xFFFFFF, alpha: 0.3 });
+          if (Math.sin(time * 2.5 + wx * 3 + y * 2) > 0.75) {
+            const spx = px + (h % (TS - 2)) + 1;
+            const spy = py + ((h * 3) % (TS - 2)) + 1;
+            gfx.circle(spx, spy, 1);
+            gfx.fill({ color: 0xFFFFFF, alpha: 0.4 });
+          }
+          // Air bubble trapped inside
+          if (h % 7 === 0) {
+            const bx = px + (h % (TS - 4)) + 2;
+            const by = py + ((h * 5) % (TS - 4)) + 2;
+            gfx.ellipse(bx, by, 1.5, 1);
+            gfx.fill({ color: 0xDDEEFF, alpha: 0.12 });
+            gfx.ellipse(bx - 0.3, by - 0.3, 0.5, 0.3);
+            gfx.fill({ color: 0xFFFFFF, alpha: 0.15 });
+          }
+        } else if (bt === BlockType.HOLY_STONE) {
+          // Holy stone: warm golden glow, sacred patterns
+          const holyPulse = Math.sin(time * 1.5 + wx * 0.5 + y * 0.3) * 0.5 + 0.5;
+          // Sacred circle pattern
+          gfx.circle(px + TS / 2, py + TS / 2, TS * 0.35);
+          gfx.stroke({ color: 0xFFDD88, width: 0.6, alpha: 0.08 + holyPulse * 0.04 });
+          // Cross mark
+          gfx.moveTo(px + TS * 0.3, py + TS * 0.5);
+          gfx.lineTo(px + TS * 0.7, py + TS * 0.5);
+          gfx.moveTo(px + TS * 0.5, py + TS * 0.3);
+          gfx.lineTo(px + TS * 0.5, py + TS * 0.7);
+          gfx.stroke({ color: 0xFFEEAA, width: 0.5, alpha: 0.1 + holyPulse * 0.05 });
+          // Golden speckles
+          for (let i = 0; i < 3; i++) {
+            const sx2 = px + ((h * (i + 1) * 11) % (TS - 2));
+            const sy2 = py + ((h * (i + 1) * 7) % (TS - 2));
+            gfx.rect(sx2, sy2, 1, 1);
+            gfx.fill({ color: 0xFFDD88, alpha: 0.08 });
+          }
+        } else if (bt === BlockType.ENCHANTED_STONE) {
+          // Enchanted stone: purple arcane runes, pulsing energy
+          const enchPulse = Math.sin(time * 2 + wx * 0.8 + y * 0.5) * 0.5 + 0.5;
+          // Arcane rune lines
+          const rx = px + (h % (TS - 4)) + 2;
+          const ry = py + ((h * 3) % (TS - 4)) + 2;
+          gfx.moveTo(rx, ry);
+          gfx.lineTo(rx + 3, ry - 2);
+          gfx.lineTo(rx + 5, ry + 1);
+          gfx.lineTo(rx + 2, ry + 3);
+          gfx.closePath();
+          gfx.stroke({ color: 0xAA66FF, width: 0.7, alpha: 0.12 + enchPulse * 0.08 });
+          // Energy vein
+          gfx.moveTo(px + 1, py + (h % TS));
+          gfx.bezierCurveTo(px + TS * 0.3, py + ((h * 5) % TS), px + TS * 0.7, py + ((h * 7) % TS), px + TS - 1, py + ((h * 11) % TS));
+          gfx.stroke({ color: 0x8844DD, width: 0.5, alpha: 0.1 + enchPulse * 0.06 });
+          // Sparkle
+          if (enchPulse > 0.7) {
+            gfx.circle(px + (h % (TS - 2)) + 1, py + ((h * 3) % (TS - 2)) + 1, 1);
+            gfx.fill({ color: 0xCC88FF, alpha: (enchPulse - 0.7) * 0.6 });
+          }
+        } else if (bt === BlockType.MOSS_STONE) {
+          // Moss stone: stone base with green moss patches
+          // Stone cracks
+          const cx1 = px + ((h + 37) % (TS - 4)) + 2;
+          const cy1 = py + ((h * 3 + 53) % (TS - 4)) + 2;
+          gfx.moveTo(cx1, cy1);
+          gfx.lineTo(cx1 + 3, cy1 + 2);
+          gfx.stroke({ color: 0x000000, width: 0.5, alpha: 0.1 });
+          // Moss patches (green splotches)
+          for (let i = 0; i < 3; i++) {
+            const mx = px + ((h * (i + 2) * 7) % (TS - 3)) + 1;
+            const my = py + ((h * (i + 3) * 11) % (TS - 3)) + 1;
+            const mSize = 1.5 + (h + i) % 2;
+            gfx.ellipse(mx, my, mSize, mSize * 0.7);
+            gfx.fill({ color: 0x3A7A2A, alpha: 0.2 });
           }
         }
 
@@ -917,15 +1277,39 @@ export class TerrariaRenderer {
         if (bt === BlockType.GRASS || bt === BlockType.SNOW || bt === BlockType.MUD) {
           const grassColor = bt === BlockType.SNOW ? 0xE8E8FF : bt === BlockType.MUD ? 0x4A3828 : 0x4CAF50;
           const bladeColor = bt === BlockType.SNOW ? 0xF8F8FF : bt === BlockType.MUD ? 0x5C4033 : 0x5CBF55;
-          // Grass blades on top
+          const bladeColorDark = bt === BlockType.SNOW ? 0xDDDDEE : bt === BlockType.MUD ? 0x4A3020 : 0x3A8A35;
+          // Grass blades on top (more varied, denser)
           const aboveAir = y < WH - 1 && chunk.getBlock(lx, y + 1) === BlockType.AIR;
           if (aboveAir) {
-            for (let gx = 0; gx < TS; gx += 2) {
-              const gh = 1 + ((wx * 31 + gx * 17) >>> 0) % 4;
-              const sway = Math.sin(time * 1.5 + wx * 0.5 + gx * 0.3) * 0.5;
+            for (let gx = 0; gx < TS; gx += 1) {
+              const seed2 = ((wx * 31 + gx * 17) >>> 0);
+              const gh = 1 + seed2 % 5;
+              const sway = Math.sin(time * 1.5 + wx * 0.5 + gx * 0.3) * (0.3 + gh * 0.15);
+              const bc = (seed2 % 3 === 0) ? bladeColorDark : bladeColor;
               gfx.moveTo(px + gx + sway, py - gh);
-              gfx.lineTo(px + gx, py);
-              gfx.stroke({ color: bladeColor, width: 1, alpha: 0.7 });
+              gfx.quadraticCurveTo(px + gx + sway * 0.3, py - gh * 0.4, px + gx, py);
+              gfx.stroke({ color: bc, width: 0.8, alpha: 0.65 });
+            }
+            // Side grass: blades extending off left/right edges
+            const leftAir = lx > 0 ? chunk.getBlock(lx - 1, y) === BlockType.AIR : false;
+            const rightAir = lx < CW - 1 ? chunk.getBlock(lx + 1, y) === BlockType.AIR : false;
+            if (leftAir && h % 3 === 0) {
+              for (let gy = 0; gy < 3; gy++) {
+                const bladeH = 2 + (h + gy) % 3;
+                const by2 = py + 2 + gy * 4;
+                gfx.moveTo(px, by2);
+                gfx.lineTo(px - bladeH, by2 - 1);
+                gfx.stroke({ color: bladeColor, width: 0.7, alpha: 0.4 });
+              }
+            }
+            if (rightAir && h % 3 === 1) {
+              for (let gy = 0; gy < 3; gy++) {
+                const bladeH = 2 + (h + gy) % 3;
+                const by2 = py + 2 + gy * 4;
+                gfx.moveTo(px + TS, by2);
+                gfx.lineTo(px + TS + bladeH, by2 - 1);
+                gfx.stroke({ color: bladeColor, width: 0.7, alpha: 0.4 });
+              }
             }
           }
           // Overhang: draw grass color 2px into block below
@@ -934,6 +1318,116 @@ export class TerrariaRenderer {
             const belowPy = py + TS;
             gfx.rect(px, belowPy, TS, 2);
             gfx.fill({ color: grassColor, alpha: 0.35 });
+          }
+        }
+
+        // ---- VINE DECORATIONS (hanging from blocks above air underground) ----
+        if (bt === BlockType.STONE || bt === BlockType.MOSS_STONE || bt === BlockType.DIRT) {
+          if (y > 1 && y < TB.SURFACE_Y - 2 && h % 9 < 2) {
+            const belowBt2 = chunk.getBlock(lx, y - 1);
+            if (belowBt2 === BlockType.AIR) {
+              const vineLen = 2 + h % 4;
+              const vineX = px + 3 + (h % (TS - 6));
+              const vineBase = py + TS;
+              const vineSway = Math.sin(time * 0.8 + wx * 0.4) * 0.8;
+              // Vine segments
+              for (let vi = 0; vi < vineLen; vi++) {
+                const vy2 = vineBase + vi * 3;
+                const vSway = vineSway * (vi + 1) * 0.3;
+                gfx.moveTo(vineX + vSway, vy2);
+                gfx.lineTo(vineX + vSway, vy2 + 3);
+                gfx.stroke({ color: 0x2A6A1A, width: 1, alpha: 0.5 });
+                // Small leaves on vine
+                if (vi % 2 === 0) {
+                  const leafDir = (vi % 4 < 2) ? 1 : -1;
+                  gfx.moveTo(vineX + vSway, vy2 + 1);
+                  gfx.lineTo(vineX + vSway + leafDir * 2.5, vy2 + 2.5);
+                  gfx.lineTo(vineX + vSway + leafDir * 0.5, vy2 + 3);
+                  gfx.closePath();
+                  gfx.fill({ color: 0x3A8A2A, alpha: 0.45 });
+                }
+              }
+            }
+          }
+        }
+
+        // ---- BLOCK TRANSITION BLENDING (where different block types meet) ----
+        if (def.solid && !def.transparent && !def.liquid) {
+          // Blend edges where this block meets a different solid block
+          const neighbors: [number, number, number, number, number][] = [ // [nlx, ny, edgeX, edgeY, size]
+            [lx, y + 1, px, py, TS],        // top neighbor -> blend on our top edge
+            [lx, y - 1, px, py + TS - 2, TS], // bottom
+            [lx - 1, y, px, py, 2],          // left
+            [lx + 1, y, px + TS - 2, py, 2], // right
+          ];
+          for (let ni = 0; ni < 2; ni++) { // Only top and bottom for perf
+            const [nlx2, ny2, ex, ey, ew] = neighbors[ni];
+            if (nlx2 < 0 || nlx2 >= CW || ny2 < 0 || ny2 >= WH) continue;
+            const nbt = chunk.getBlock(nlx2, ny2);
+            if (nbt === BlockType.AIR || nbt === bt) continue;
+            const ndef = BLOCK_DEFS[nbt];
+            if (!ndef || !ndef.solid || ndef.transparent || ndef.liquid) continue;
+            // Draw a thin gradient of the neighbor's color at the edge
+            const ncolor = ndef.color;
+            if (ni === 0) { // Top edge: neighbor above is different
+              gfx.rect(ex, ey, ew, 2);
+              gfx.fill({ color: ncolor, alpha: 0.08 });
+              gfx.rect(ex, ey + 2, ew, 1);
+              gfx.fill({ color: ncolor, alpha: 0.03 });
+            } else { // Bottom edge
+              gfx.rect(ex, ey, ew, 2);
+              gfx.fill({ color: ncolor, alpha: 0.08 });
+              gfx.rect(ex, ey - 1, ew, 1);
+              gfx.fill({ color: ncolor, alpha: 0.03 });
+            }
+          }
+        }
+
+        // ---- CAVE DETAILS: stalactites, moss, dripping water ----
+        if (def.solid && !def.transparent && y < TB.SURFACE_Y - 3) {
+          // Stalactites hanging from cave ceilings (stone below air)
+          if ((bt === BlockType.STONE || bt === BlockType.COBBLESTONE) && y > 1) {
+            const belowBt = chunk.getBlock(lx, y - 1);
+            if (belowBt === BlockType.AIR) {
+              const stalH = 2 + (h % 4);
+              const stalW = 0.8 + (h % 3) * 0.4;
+              if (h % 5 < 2) {
+                // Stalactite (triangle hanging down)
+                const stalPy = py + TS;
+                gfx.moveTo(px + (h % (TS - 4)) + 2 - stalW, stalPy);
+                gfx.lineTo(px + (h % (TS - 4)) + 2, stalPy + stalH);
+                gfx.lineTo(px + (h % (TS - 4)) + 2 + stalW, stalPy);
+                gfx.closePath();
+                gfx.fill({ color: 0x777788, alpha: 0.6 });
+                // Drip at tip
+                if (Math.sin(time * 2.5 + wx * 1.3 + y * 0.7) > 0.85) {
+                  const dripY = stalPy + stalH + Math.sin(time * 3 + wx) * 2 + 2;
+                  gfx.circle(px + (h % (TS - 4)) + 2, dripY, 0.8);
+                  gfx.fill({ color: 0x6699CC, alpha: 0.4 });
+                }
+              }
+            }
+          }
+          // Moss patches on cave walls (stone next to air on sides)
+          if (bt === BlockType.STONE && h % 7 < 2) {
+            const leftAir = lx > 0 && chunk.getBlock(lx - 1, y) === BlockType.AIR;
+            const rightAir = lx < CW - 1 && chunk.getBlock(lx + 1, y) === BlockType.AIR;
+            if (leftAir) {
+              for (let mi = 0; mi < 3; mi++) {
+                const my2 = py + 2 + ((h + mi * 5) % (TS - 4));
+                const mw = 1.5 + (h + mi) % 2;
+                gfx.rect(px, my2, mw, 1);
+                gfx.fill({ color: 0x3A6A2A, alpha: 0.35 });
+              }
+            }
+            if (rightAir) {
+              for (let mi = 0; mi < 3; mi++) {
+                const my2 = py + 2 + ((h + mi * 7) % (TS - 4));
+                const mw = 1.5 + (h + mi) % 2;
+                gfx.rect(px + TS - mw, my2, mw, 1);
+                gfx.fill({ color: 0x3A6A2A, alpha: 0.35 });
+              }
+            }
           }
         }
 
@@ -975,6 +1469,8 @@ export class TerrariaRenderer {
       [WallType.CASTLE_WALL]: 0x505060,
     };
 
+    const time = state.totalTime ?? 0;
+
     for (let lx = 0; lx < CW; lx++) {
       const wx = cx * CW + lx;
       const minY = Math.max(0, bounds.minY);
@@ -987,41 +1483,141 @@ export class TerrariaRenderer {
 
         const px = lx * TS;
         const py = (camY - y) * TS + screenH / 2 - TS;
-        const color = wallColors[wt] ?? 0x333333;
+        const h = _tileHash(wx, y);
+        let color = wallColors[wt] ?? 0x333333;
+
+        // Depth-based wall tinting (deeper = darker, bluer)
+        if (y < TB.SURFACE_Y) {
+          const depthFrac = Math.min(1, (TB.SURFACE_Y - y) / (TB.SURFACE_Y - TB.UNDERWORLD_Y));
+          const cr = ((color >> 16) & 0xFF);
+          const cg = ((color >> 8) & 0xFF);
+          const cb = (color & 0xFF);
+          const dt2 = depthFrac * 0.3;
+          color = (Math.floor(cr * (1 - dt2)) << 16) | (Math.floor(cg * (1 - dt2 * 0.6)) << 8) | Math.min(255, Math.floor(cb * (1 - dt2 * 0.2) + dt2 * 10));
+        }
+
+        // Per-tile color variation for natural look
+        const varR = ((h * 3) % 7) - 3;
+        const varG = ((h * 5) % 7) - 3;
+        const varB = ((h * 7) % 7) - 3;
+        const vr = Math.max(0, Math.min(255, ((color >> 16) & 0xFF) + varR));
+        const vg = Math.max(0, Math.min(255, ((color >> 8) & 0xFF) + varG));
+        const vb = Math.max(0, Math.min(255, (color & 0xFF) + varB));
+        color = (vr << 16) | (vg << 8) | vb;
 
         gfx.rect(px, py, TS, TS);
         gfx.fill({ color, alpha: 0.65 });
 
         // Wall texture pattern
         if (wt === WallType.STONE_WALL) {
-          // Subtle brick pattern
+          // Brick pattern with mortar lines
           const offRow = y % 2 === 0 ? 4 : 0;
           for (let gx = offRow; gx < TS; gx += 8) {
             gfx.rect(px + gx, py, 1, TS);
-            gfx.fill({ color: 0x000000, alpha: 0.06 });
+            gfx.fill({ color: 0x000000, alpha: 0.08 });
           }
           for (let gy = 0; gy < TS; gy += 4) {
             gfx.rect(px, py + gy, TS, 1);
-            gfx.fill({ color: 0x000000, alpha: 0.06 });
+            gfx.fill({ color: 0x000000, alpha: 0.08 });
+          }
+          // Per-brick variation (alternating slightly lighter/darker)
+          const brickIdx = (Math.floor(wx / 1) + y * 3) & 3;
+          if (brickIdx === 0) {
+            gfx.rect(px + 1, py + 1, 6, 3);
+            gfx.fill({ color: 0xFFFFFF, alpha: 0.03 });
+          } else if (brickIdx === 2) {
+            gfx.rect(px + 1, py + 1, 6, 3);
+            gfx.fill({ color: 0x000000, alpha: 0.03 });
+          }
+          // Cracks (rare)
+          if (h % 13 === 0) {
+            const crx = px + (h % (TS - 3)) + 1;
+            const cry = py + ((h * 3) % (TS - 3)) + 1;
+            gfx.moveTo(crx, cry);
+            gfx.lineTo(crx + 2, cry + 1.5);
+            gfx.lineTo(crx + 1, cry + 3);
+            gfx.stroke({ color: 0x000000, width: 0.5, alpha: 0.12 });
+          }
+          // Glowing fungi on stone walls (rare, animated)
+          if (h % 19 === 0 && y < TB.UNDERGROUND_Y) {
+            const fgx = px + (h % (TS - 4)) + 2;
+            const fgy = py + ((h * 5) % (TS - 4)) + 2;
+            const glowPulse = 0.3 + Math.sin(time * 1.5 + wx * 0.7 + y * 0.5) * 0.15;
+            // Tiny mushroom shape
+            gfx.circle(fgx, fgy, 1.5);
+            gfx.fill({ color: 0x44DDAA, alpha: glowPulse });
+            gfx.rect(fgx - 0.3, fgy + 1, 0.6, 2);
+            gfx.fill({ color: 0x338866, alpha: glowPulse * 0.7 });
+            // Glow halo
+            gfx.circle(fgx, fgy, 4);
+            gfx.fill({ color: 0x44FFAA, alpha: glowPulse * 0.06 });
+          }
+          // Crystal veins on deep walls
+          if (h % 23 === 0 && y < TB.CAVERN_Y) {
+            const cvx = px + (h % (TS - 2));
+            const cvy = py + ((h * 7) % (TS - 2));
+            const cvLen = 3 + h % 4;
+            const cvAngle = (h % 6) * 0.5;
+            gfx.moveTo(cvx, cvy);
+            gfx.lineTo(cvx + Math.cos(cvAngle) * cvLen, cvy + Math.sin(cvAngle) * cvLen);
+            gfx.stroke({ color: 0x8866DD, width: 0.8, alpha: 0.2 + Math.sin(time * 2 + wx + y) * 0.08 });
           }
         } else if (wt === WallType.WOOD_WALL) {
-          // Plank lines
+          // Plank lines with variation
           for (let gy = 3; gy < TS; gy += 5) {
             gfx.rect(px, py + gy, TS, 1);
             gfx.fill({ color: 0x000000, alpha: 0.08 });
           }
-        } else if (wt === WallType.DIRT_WALL) {
-          // Speckles
-          const h = _tileHash(wx, y);
-          if (h % 4 === 0) {
-            gfx.rect(px + (h % (TS - 1)), py + ((h * 3) % (TS - 1)), 1, 1);
+          // Wood grain (wavy lines)
+          const grainOff = (h % 3) * 2;
+          gfx.moveTo(px, py + grainOff + 1);
+          gfx.quadraticCurveTo(px + TS / 2, py + grainOff + 2 + (h % 2), px + TS, py + grainOff + 1);
+          gfx.stroke({ color: 0x000000, width: 0.4, alpha: 0.06 });
+          // Knot hole (rare)
+          if (h % 11 === 0) {
+            gfx.circle(px + (h % (TS - 4)) + 2, py + ((h * 3) % (TS - 4)) + 2, 1.2);
             gfx.fill({ color: 0x000000, alpha: 0.08 });
+            gfx.circle(px + (h % (TS - 4)) + 2, py + ((h * 3) % (TS - 4)) + 2, 0.6);
+            gfx.fill({ color: 0x000000, alpha: 0.06 });
+          }
+        } else if (wt === WallType.DIRT_WALL) {
+          // Dirt speckles and root tendrils
+          for (let si = 0; si < 3; si++) {
+            const sx2 = px + ((h * (si + 1) * 11) % (TS - 1));
+            const sy2 = py + ((h * (si + 1) * 13) % (TS - 1));
+            gfx.rect(sx2, sy2, 1, 1);
+            gfx.fill({ color: (si % 2 === 0) ? 0x5A4020 : 0x3A2010, alpha: 0.1 });
+          }
+          // Root tendrils (near surface)
+          if (y > TB.SURFACE_Y - 15 && h % 8 < 2) {
+            const rx = px + (h % (TS - 2));
+            gfx.moveTo(rx, py);
+            gfx.quadraticCurveTo(rx + 2, py + TS * 0.5, rx - 1, py + TS);
+            gfx.stroke({ color: 0x4A3018, width: 0.6, alpha: 0.12 });
+          }
+          // Worm holes (tiny dark spots)
+          if (h % 15 === 0) {
+            gfx.circle(px + (h % (TS - 2)) + 1, py + ((h * 3) % (TS - 2)) + 1, 0.8);
+            gfx.fill({ color: 0x000000, alpha: 0.12 });
+          }
+        } else if (wt === WallType.CASTLE_WALL) {
+          // Castle wall with large bricks and mortar
+          const offRow = y % 2 === 0 ? 0 : 8;
+          gfx.rect(px + offRow, py, 1, TS);
+          gfx.fill({ color: 0x000000, alpha: 0.07 });
+          gfx.rect(px, py + 8, TS, 1);
+          gfx.fill({ color: 0x000000, alpha: 0.07 });
+          // Moss in joints (occasional)
+          if (h % 7 === 0) {
+            gfx.rect(px + (h % (TS - 3)), py + 7, 3, 2);
+            gfx.fill({ color: 0x2A4A1A, alpha: 0.15 });
           }
         }
 
-        // Depth fade
+        // Depth fade (stronger for deeper walls)
+        const depthFade = y < TB.SURFACE_Y ? 0.08 + Math.min(0.08, (TB.SURFACE_Y - y) * 0.0005) : 0.06;
         gfx.rect(px, py, TS, TS);
-        gfx.fill({ color: 0x000000, alpha: 0.08 });
+        gfx.fill({ color: 0x000000, alpha: depthFade });
       }
     }
   }
@@ -1157,6 +1753,203 @@ export class TerrariaRenderer {
   }
 
   // ---------------------------------------------------------------------------
+  // Ambient particles
+  // ---------------------------------------------------------------------------
+
+  private _updateAndDrawParticles(state: TerrariaState, camera: TerrariaCamera, sw: number, sh: number): void {
+    const dt = 1 / 60;
+    const time = state.totalTime ?? 0;
+    const dayness = Math.max(0, Math.min(1, Math.sin(state.timeOfDay * Math.PI * 2 - Math.PI / 2) * 0.5 + 0.5));
+    const px = state.player.x;
+    const py = state.player.y;
+    const isUnderground = py < TB.SURFACE_Y - 5;
+    const isNight = dayness < 0.3;
+
+    this._particleTimer += dt;
+
+    // Spawn particles
+    if (this._particleTimer > 0.06 && this._particles.length < 120) {
+      this._particleTimer = 0;
+
+      if (isNight && !isUnderground) {
+        // Fireflies near surface at night
+        const fx = px + (Math.random() - 0.5) * 30;
+        const fy = py + (Math.random() - 0.5) * 15;
+        this._particles.push({
+          x: fx, y: fy,
+          vx: (Math.random() - 0.5) * 1.5,
+          vy: (Math.random() - 0.5) * 0.8,
+          life: 3 + Math.random() * 4, maxLife: 3 + Math.random() * 4,
+          color: 0xAAFF44, size: 1.5, type: 'firefly',
+        });
+      }
+
+      if (isUnderground) {
+        // Dust motes floating in caves
+        const dx = px + (Math.random() - 0.5) * 25;
+        const dy = py + (Math.random() - 0.5) * 12;
+        this._particles.push({
+          x: dx, y: dy,
+          vx: (Math.random() - 0.5) * 0.3,
+          vy: -0.1 + Math.random() * 0.2,
+          life: 4 + Math.random() * 3, maxLife: 4 + Math.random() * 3,
+          color: 0x886644, size: 0.8, type: 'dust',
+        });
+        // Glowing spores (deep underground)
+        if (py < TB.UNDERGROUND_Y && Math.random() < 0.3) {
+          const spx = px + (Math.random() - 0.5) * 20;
+          const spy = py + (Math.random() - 0.5) * 10;
+          const sporeColors = [0x44DDAA, 0x66BBDD, 0xAA88FF, 0x88FFAA];
+          this._particles.push({
+            x: spx, y: spy,
+            vx: (Math.random() - 0.5) * 0.4,
+            vy: 0.1 + Math.random() * 0.3,
+            life: 5 + Math.random() * 4, maxLife: 5 + Math.random() * 4,
+            color: sporeColors[Math.floor(Math.random() * sporeColors.length)],
+            size: 1, type: 'spore',
+          });
+        }
+        // Embers near lava (underworld)
+        if (py < TB.UNDERWORLD_Y + 15 && Math.random() < 0.4) {
+          this._particles.push({
+            x: px + (Math.random() - 0.5) * 20,
+            y: py + (Math.random() - 0.5) * 8,
+            vx: (Math.random() - 0.5) * 1.5,
+            vy: 0.5 + Math.random() * 1.5,
+            life: 1.5 + Math.random() * 2, maxLife: 1.5 + Math.random() * 2,
+            color: Math.random() > 0.5 ? 0xFF6622 : 0xFFAA00, size: 1, type: 'ember',
+          });
+        }
+      }
+
+      if (!isUnderground) {
+        // Falling leaves (surface, daytime)
+        const lx = px + (Math.random() - 0.5) * 30;
+        const ly = py + 8 + Math.random() * 5;
+        this._particles.push({
+          x: lx, y: ly,
+          vx: 0.5 + Math.random() * 1,
+          vy: -0.3 - Math.random() * 0.5,
+          life: 4 + Math.random() * 3, maxLife: 4 + Math.random() * 3,
+          color: dayness > 0.3 ? 0x55AA33 : 0x447722, size: 1.2, type: 'leaf',
+        });
+        // Butterflies (daytime, surface, rarer)
+        if (dayness > 0.3 && Math.random() < 0.15) {
+          const bColors = [0xFF8844, 0x44AAFF, 0xFFFF44, 0xFF44AA, 0xAAFF44];
+          this._particles.push({
+            x: px + (Math.random() - 0.5) * 25,
+            y: py + 3 + Math.random() * 8,
+            vx: (Math.random() - 0.5) * 2,
+            vy: (Math.random() - 0.5) * 0.5,
+            life: 6 + Math.random() * 5, maxLife: 6 + Math.random() * 5,
+            color: bColors[Math.floor(Math.random() * bColors.length)],
+            size: 1.8, type: 'butterfly',
+          });
+        }
+      }
+    }
+
+    // Update and draw
+    this._particleGfx.clear();
+    const alive: typeof this._particles = [];
+    for (const p of this._particles) {
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.life -= dt;
+      if (p.life <= 0) continue;
+
+      const { sx, sy } = camera.worldToScreen(p.x, p.y);
+      if (sx < -20 || sx > sw + 20 || sy < -20 || sy > sh + 20) continue;
+
+      alive.push(p);
+      const lifeFrac = p.life / p.maxLife;
+      const fadeAlpha = Math.min(1, lifeFrac * 3) * Math.min(1, p.life * 2);
+
+      if (p.type === 'firefly') {
+        const glow = 0.3 + Math.sin(time * 5 + p.x * 2) * 0.3;
+        // Wander
+        p.vx += (Math.sin(time * 2 + p.x) - 0.5) * dt * 3;
+        p.vy += (Math.cos(time * 1.5 + p.y) - 0.5) * dt * 2;
+        // Glow halo
+        this._particleGfx.circle(sx, sy, p.size * 3);
+        this._particleGfx.fill({ color: p.color, alpha: fadeAlpha * glow * 0.15 });
+        // Core
+        this._particleGfx.circle(sx, sy, p.size);
+        this._particleGfx.fill({ color: 0xFFFFAA, alpha: fadeAlpha * (0.4 + glow * 0.5) });
+      } else if (p.type === 'dust') {
+        // Gentle drift
+        p.vx += Math.sin(time * 0.8 + p.y * 0.5) * dt * 0.2;
+        this._particleGfx.circle(sx, sy, p.size);
+        this._particleGfx.fill({ color: p.color, alpha: fadeAlpha * 0.2 });
+      } else if (p.type === 'leaf') {
+        // Leaf drifts and tumbles
+        p.vx += Math.sin(time * 1.2 + p.x) * dt * 0.5;
+        const rot = time * 2 + p.x * 3;
+        const lw = p.size * 1.5 * Math.abs(Math.cos(rot));
+        this._particleGfx.ellipse(sx, sy, lw, p.size * 0.5);
+        this._particleGfx.fill({ color: p.color, alpha: fadeAlpha * 0.45 });
+        // Leaf vein line
+        this._particleGfx.moveTo(sx - lw * 0.7, sy);
+        this._particleGfx.lineTo(sx + lw * 0.7, sy);
+        this._particleGfx.stroke({ color: p.color, width: 0.3, alpha: fadeAlpha * 0.2 });
+      } else if (p.type === 'butterfly') {
+        // Erratic fluttering motion
+        p.vx += (Math.sin(time * 4 + p.x * 3) - 0.3) * dt * 4;
+        p.vy += (Math.cos(time * 3 + p.y * 2) - 0.3) * dt * 2;
+        p.vx = Math.max(-3, Math.min(3, p.vx));
+        p.vy = Math.max(-1.5, Math.min(1.5, p.vy));
+        const wingPhase = Math.sin(time * 12 + p.x * 5);
+        const wingW = p.size * 2 * (0.3 + Math.abs(wingPhase) * 0.7);
+        const wingH = p.size * 1.2;
+        // Left wing
+        this._particleGfx.ellipse(sx - wingW * 0.4, sy - wingH * 0.2, wingW, wingH);
+        this._particleGfx.fill({ color: p.color, alpha: fadeAlpha * 0.55 });
+        // Right wing
+        this._particleGfx.ellipse(sx + wingW * 0.4, sy - wingH * 0.2, wingW, wingH);
+        this._particleGfx.fill({ color: p.color, alpha: fadeAlpha * 0.55 });
+        // Body
+        this._particleGfx.ellipse(sx, sy, 0.5, p.size * 0.6);
+        this._particleGfx.fill({ color: 0x222222, alpha: fadeAlpha * 0.6 });
+        // Wing pattern dots
+        this._particleGfx.circle(sx - wingW * 0.3, sy - wingH * 0.15, wingW * 0.2);
+        this._particleGfx.fill({ color: 0xFFFFFF, alpha: fadeAlpha * 0.2 });
+        this._particleGfx.circle(sx + wingW * 0.3, sy - wingH * 0.15, wingW * 0.2);
+        this._particleGfx.fill({ color: 0xFFFFFF, alpha: fadeAlpha * 0.2 });
+      } else if (p.type === 'spore') {
+        // Float upward with gentle spiral
+        p.vx += Math.sin(time * 1.5 + p.y * 0.8) * dt * 0.3;
+        p.vy += 0.02 * dt;
+        const glow = 0.4 + Math.sin(time * 3 + p.x * 1.5 + p.y * 0.5) * 0.3;
+        // Outer glow
+        this._particleGfx.circle(sx, sy, p.size * 3.5);
+        this._particleGfx.fill({ color: p.color, alpha: fadeAlpha * glow * 0.08 });
+        // Mid glow
+        this._particleGfx.circle(sx, sy, p.size * 2);
+        this._particleGfx.fill({ color: p.color, alpha: fadeAlpha * glow * 0.15 });
+        // Core
+        this._particleGfx.circle(sx, sy, p.size);
+        this._particleGfx.fill({ color: 0xFFFFFF, alpha: fadeAlpha * glow * 0.4 });
+      } else if (p.type === 'ember') {
+        // Rise and flicker
+        p.vy += 0.5 * dt;
+        p.vx += (Math.random() - 0.5) * dt * 3;
+        const flicker = 0.5 + Math.sin(time * 8 + p.x * 5) * 0.5;
+        // Glow
+        this._particleGfx.circle(sx, sy, p.size * 2);
+        this._particleGfx.fill({ color: p.color, alpha: fadeAlpha * flicker * 0.12 });
+        // Core
+        this._particleGfx.circle(sx, sy, p.size * (0.5 + flicker * 0.5));
+        this._particleGfx.fill({ color: 0xFFDD66, alpha: fadeAlpha * flicker * 0.7 });
+        // Trail
+        this._particleGfx.moveTo(sx, sy);
+        this._particleGfx.lineTo(sx - p.vx * 0.15, sy - p.vy * 0.15);
+        this._particleGfx.stroke({ color: p.color, width: 0.6, alpha: fadeAlpha * flicker * 0.3 });
+      }
+    }
+    this._particles = alive;
+  }
+
+  // ---------------------------------------------------------------------------
   // Screen-space FX
   // ---------------------------------------------------------------------------
 
@@ -1186,6 +1979,7 @@ export class TerrariaRenderer {
     }
 
     // --- Underwater tint ---
+    const time = state.totalTime ?? 0;
     const playerY = state.player.y;
     if (playerY < TB.SEA_LEVEL) {
       // Check if player is surrounded by water (approximate: just check player block)
@@ -1200,7 +1994,6 @@ export class TerrariaRenderer {
           this._screenFx.rect(0, 0, sw, sh);
           this._screenFx.fill({ color: 0x1144AA, alpha: 0.2 });
           // Animated caustic lines
-          const time = state.totalTime;
           for (let i = 0; i < 8; i++) {
             const cx2 = Math.sin(time * 1.2 + i * 1.7) * sw * 0.4 + sw * 0.5;
             const cy2 = Math.sin(time * 0.9 + i * 2.3) * sh * 0.3 + sh * 0.5;
@@ -1219,6 +2012,33 @@ export class TerrariaRenderer {
       }
     }
 
+    // --- Rain weather (cyclic, surface only) ---
+    const rainPhase = Math.sin(time * 0.03 + 2.5);
+    if (rainPhase > 0.4 && playerY >= TB.SURFACE_Y - 15) {
+      const rainIntensity = (rainPhase - 0.4) * 1.6;
+      const rainCount = Math.floor(rainIntensity * 50);
+      // Rain streaks
+      for (let i = 0; i < rainCount; i++) {
+        const rx = ((time * 80 + i * 37 + _pseudoRand(2000 + i) * sw * 3) % sw);
+        const ry = ((time * 350 + i * 73 + _pseudoRand(2100 + i) * sh * 3) % sh);
+        const rLen = 6 + _pseudoRand(2200 + i) * 8;
+        this._screenFx.moveTo(rx, ry);
+        this._screenFx.lineTo(rx - 1.5, ry + rLen);
+        this._screenFx.stroke({ color: 0x8899BB, width: 0.8, alpha: 0.2 * rainIntensity });
+      }
+      // Splashes at bottom of screen
+      for (let i = 0; i < Math.floor(rainCount * 0.3); i++) {
+        const sx2 = _pseudoRand(2300 + i + Math.floor(time * 5)) * sw;
+        const sy2 = sh * 0.7 + _pseudoRand(2400 + i) * sh * 0.25;
+        const splashR = 1 + _pseudoRand(2500 + i) * 2;
+        this._screenFx.circle(sx2, sy2, splashR);
+        this._screenFx.stroke({ color: 0x8899BB, width: 0.5, alpha: 0.12 * rainIntensity });
+      }
+      // Overall rain fog
+      this._screenFx.rect(0, 0, sw, sh);
+      this._screenFx.fill({ color: 0x889AAA, alpha: 0.03 * rainIntensity });
+    }
+
     // --- Vignette (subtle darkening at screen edges) ---
     const vignetteAlpha = 0.2;
     const vigSize = Math.max(sw, sh) * 0.4;
@@ -1235,8 +2055,53 @@ export class TerrariaRenderer {
     this._screenFx.rect(sw - vigSize * 0.5, 0, vigSize * 0.5, sh);
     this._screenFx.fill({ color: 0x000000, alpha: vignetteAlpha * 0.2 });
 
-    // --- Night surface darkness ---
+    // --- Sun rays (god rays) on surface during day ---
     const dayness = Math.max(0, Math.min(1, Math.sin(state.timeOfDay * Math.PI * 2 - Math.PI / 2) * 0.5 + 0.5));
+    if (dayness > 0.4 && playerY >= TB.SURFACE_Y - 10 && rainPhase < 0.3) {
+      const sunAngle = state.timeOfDay * Math.PI * 2 - Math.PI / 2;
+      const sunX = sw * 0.5 + Math.cos(sunAngle) * sw * 0.4;
+      const rayAlpha = (dayness - 0.4) * 0.08;
+      // Diagonal light shafts from sun direction
+      for (let i = 0; i < 5; i++) {
+        const rx = sunX + (i - 2) * sw * 0.12;
+        const rw = 15 + _pseudoRand(3000 + i) * 25;
+        const rAngle = 0.15 + _pseudoRand(3100 + i) * 0.2;
+        const drift = Math.sin(time * 0.3 + i * 1.5) * 20;
+        this._screenFx.moveTo(rx + drift, 0);
+        this._screenFx.lineTo(rx + drift + rw, 0);
+        this._screenFx.lineTo(rx + drift + rw * 0.5 + Math.tan(rAngle) * sh, sh);
+        this._screenFx.lineTo(rx + drift - rw * 0.5 + Math.tan(rAngle) * sh, sh);
+        this._screenFx.closePath();
+        this._screenFx.fill({ color: 0xFFEEAA, alpha: rayAlpha * (0.5 + _pseudoRand(3200 + i) * 0.5) });
+      }
+    }
+
+    // --- Underground atmosphere (depth-based color overlay) ---
+    if (playerY < TB.SURFACE_Y - 5) {
+      const depthFrac = Math.min(1, (TB.SURFACE_Y - playerY) / (TB.SURFACE_Y - TB.UNDERWORLD_Y));
+      // Cavern fog (subtle, depth-tinted)
+      if (depthFrac > 0.1) {
+        const fogAlpha = depthFrac * 0.06;
+        const fogColor = depthFrac > 0.7 ? 0x220808 : depthFrac > 0.4 ? 0x111828 : 0x0A1420;
+        this._screenFx.rect(0, 0, sw, sh);
+        this._screenFx.fill({ color: fogColor, alpha: fogAlpha });
+      }
+      // Deep underworld heat shimmer
+      if (playerY < TB.UNDERWORLD_Y + 20) {
+        const heatFrac = Math.min(1, (TB.UNDERWORLD_Y + 20 - playerY) / 20);
+        this._screenFx.rect(0, 0, sw, sh);
+        this._screenFx.fill({ color: 0xFF2200, alpha: heatFrac * 0.06 });
+        // Ember-like particles at edges
+        for (let i = 0; i < Math.floor(heatFrac * 6); i++) {
+          const ex = _pseudoRand(3300 + i + Math.floor(time * 2)) * sw;
+          const ey = sh - _pseudoRand(3400 + i) * sh * 0.3;
+          this._screenFx.circle(ex, ey, 1 + _pseudoRand(3500 + i));
+          this._screenFx.fill({ color: 0xFF6622, alpha: heatFrac * 0.15 * (Math.sin(time * 4 + i * 2) * 0.5 + 0.5) });
+        }
+      }
+    }
+
+    // --- Night surface darkness ---
     if (dayness < 0.4 && playerY >= TB.SURFACE_Y - 10) {
       const nightAlpha = (0.4 - dayness) * 0.5;
       this._screenFx.rect(0, 0, sw, sh);
@@ -1294,150 +2159,305 @@ function _drawSpecialBlock(g: Graphics, bt: number, px: number, py: number, colo
     const enchanted = bt === BlockType.ENCHANTED_TORCH;
     const flameC = enchanted ? 0xAA55FF : 0xFFAA00;
     const innerC = enchanted ? 0xDDBBFF : 0xFFFF88;
+    const sparkC = enchanted ? 0xCC88FF : 0xFFDD44;
     const f1 = Math.sin(time * 8 + wx * 3) * 1.5;
     const f2 = Math.sin(time * 10 + wx * 5 + 1) * 1;
+    const f3 = Math.sin(time * 12 + wx * 7 + 2) * 0.8;
+    // Outer glow (larger, softer)
+    g.circle(cx, py + TS * 0.15, 10);
+    g.fill({ color: flameC, alpha: 0.05 });
     // Wall mount bracket
     g.rect(cx - 3, py + TS * 0.55, 6, 2);
     g.fill(0x555555);
-    // Stick
-    g.moveTo(cx - 1, py + TS * 0.3); g.lineTo(cx + 1, py + TS * 0.3);
-    g.lineTo(cx + 1, py + TS); g.lineTo(cx - 1, py + TS); g.closePath();
+    g.rect(cx - 3, py + TS * 0.55, 6, 0.5);
+    g.fill({ color: 0xFFFFFF, alpha: 0.06 });
+    // Stick (tapered)
+    g.moveTo(cx - 1.2, py + TS * 0.28); g.lineTo(cx + 1.2, py + TS * 0.28);
+    g.lineTo(cx + 0.8, py + TS); g.lineTo(cx - 0.8, py + TS); g.closePath();
     g.fill(0x8B6914);
-    // Wood grain line
-    g.moveTo(cx, py + TS * 0.4); g.lineTo(cx, py + TS * 0.9);
-    g.stroke({ color: 0x6B4226, width: 0.5, alpha: 0.3 });
-    // Outer flame (5-point organic shape)
-    g.moveTo(cx - 3, py + TS * 0.35);
-    g.quadraticCurveTo(cx - 3.5 + f2, py + TS * 0.15, cx - 1 + f1 * 0.3, py - 2 + f1);
-    g.quadraticCurveTo(cx + f1 * 0.2, py - 3 + f1 * 0.7, cx + 1 - f2 * 0.3, py - 1 + f1 * 0.5);
-    g.quadraticCurveTo(cx + 3.5 + f2, py + TS * 0.15, cx + 3, py + TS * 0.35);
+    // Wood grain
+    g.moveTo(cx - 0.2, py + TS * 0.35); g.lineTo(cx + 0.2, py + TS * 0.85);
+    g.stroke({ color: 0x6B4226, width: 0.4, alpha: 0.25 });
+    // Charred tip
+    g.rect(cx - 1.2, py + TS * 0.26, 2.4, 3);
+    g.fill({ color: 0x222222, alpha: 0.3 });
+    // Smoke wisps (rising from flame)
+    for (let si = 0; si < 3; si++) {
+      const smokeT = (time * 1.5 + si * 1.2) % 3;
+      const smokeY = py + TS * 0.1 - smokeT * 6;
+      const smokeX = cx + Math.sin(time * 2 + si * 2 + smokeT) * (1 + smokeT * 0.5);
+      const smokeAlpha = Math.max(0, 0.08 - smokeT * 0.025);
+      if (smokeAlpha > 0.01) {
+        g.circle(smokeX, smokeY, 1.5 + smokeT * 0.8);
+        g.fill({ color: 0x888888, alpha: smokeAlpha });
+      }
+    }
+    // Outer flame (organic, multi-point)
+    g.moveTo(cx - 3.5, py + TS * 0.35);
+    g.quadraticCurveTo(cx - 4 + f2, py + TS * 0.12, cx - 1.5 + f1 * 0.3, py - 3 + f1);
+    g.quadraticCurveTo(cx + f1 * 0.15, py - 4 + f1 * 0.6, cx + f3, py - 2 + f1 * 0.4);
+    g.quadraticCurveTo(cx + 1.5 - f2 * 0.2, py - 3 + f3 * 0.8, cx + 2 - f2 * 0.3, py - 1 + f1 * 0.5);
+    g.quadraticCurveTo(cx + 4 + f2, py + TS * 0.12, cx + 3.5, py + TS * 0.35);
     g.closePath();
-    g.fill({ color: flameC, alpha: 0.75 });
-    // Mid flame
-    g.moveTo(cx - 1.5, py + TS * 0.3);
-    g.quadraticCurveTo(cx + f1 * 0.15, py + TS * 0.05 + f1 * 0.3, cx + 1.5, py + TS * 0.3);
+    g.fill({ color: flameC, alpha: 0.7 });
+    // Mid flame (hotter zone)
+    g.moveTo(cx - 2, py + TS * 0.32);
+    g.quadraticCurveTo(cx - 1 + f1 * 0.1, py + TS * 0.05 + f1 * 0.2, cx + f3 * 0.3, py - 1 + f1 * 0.3);
+    g.quadraticCurveTo(cx + 1 + f2 * 0.1, py + TS * 0.05 + f2 * 0.2, cx + 2, py + TS * 0.32);
     g.closePath();
     g.fill({ color: innerC, alpha: 0.5 });
-    // Hot core
-    g.circle(cx + f1 * 0.1, py + TS * 0.22 + f1 * 0.2, 1.2);
-    g.fill({ color: 0xFFFFCC, alpha: 0.7 });
-    // Glow
-    g.circle(cx, py + TS * 0.2, 6);
-    g.fill({ color: flameC, alpha: 0.08 });
+    // Hot core (white-hot center)
+    g.ellipse(cx + f1 * 0.08, py + TS * 0.22 + f1 * 0.15, 1.5, 2);
+    g.fill({ color: 0xFFFFEE, alpha: 0.65 });
+    g.circle(cx + f1 * 0.05, py + TS * 0.2 + f1 * 0.1, 0.8);
+    g.fill({ color: 0xFFFFFF, alpha: 0.5 });
+    // Flying sparks (tiny bright dots)
+    for (let si = 0; si < 2; si++) {
+      const sparkPhase = (time * 4 + si * 1.5 + wx) % 2;
+      if (sparkPhase < 1) {
+        const sparkX = cx + Math.sin(time * 6 + si * 3) * 3 + f1 * 0.5;
+        const sparkY = py + TS * 0.1 - sparkPhase * 8;
+        g.circle(sparkX, sparkY, 0.5);
+        g.fill({ color: sparkC, alpha: (1 - sparkPhase) * 0.6 });
+      }
+    }
+    // Inner glow
+    g.circle(cx, py + TS * 0.18, 6);
+    g.fill({ color: flameC, alpha: 0.1 });
     return true;
   }
 
   // ---- RED FLOWER ----
   if (bt === BlockType.RED_FLOWER) {
-    // Stem
-    g.moveTo(cx, py + TS); g.quadraticCurveTo(cx - 1, py + TS * 0.55, cx, py + TS * 0.4);
-    g.stroke({ color: 0x337722, width: 1.2 });
-    // Leaf on stem
-    g.moveTo(cx, py + TS * 0.65); g.quadraticCurveTo(cx + 3, py + TS * 0.55, cx + 1, py + TS * 0.7);
+    const sway = Math.sin(time * 1.2 + wx * 0.5) * 0.8;
+    // Stem (curved, swaying)
+    g.moveTo(cx, py + TS);
+    g.quadraticCurveTo(cx - 1 + sway * 0.3, py + TS * 0.6, cx + sway, py + TS * 0.35);
+    g.stroke({ color: 0x337722, width: 1.3 });
+    // Leaves on stem (two, opposite sides)
+    g.moveTo(cx - 0.5 + sway * 0.2, py + TS * 0.65);
+    g.quadraticCurveTo(cx + 3.5, py + TS * 0.52, cx + 0.5, py + TS * 0.7);
     g.fill({ color: 0x448833, alpha: 0.7 });
-    // 5 petals (star pattern)
+    g.moveTo(cx + sway * 0.15, py + TS * 0.78);
+    g.quadraticCurveTo(cx - 3, py + TS * 0.7, cx - 0.5, py + TS * 0.82);
+    g.fill({ color: 0x3A7728, alpha: 0.6 });
+    // 5 petals (layered - back petals darker)
+    const flowerCx = cx + sway;
+    const flowerCy = py + TS * 0.32;
     for (let i = 0; i < 5; i++) {
       const a = (i / 5) * Math.PI * 2 - Math.PI / 2;
-      const pr = 3.5;
-      const ppx = cx + Math.cos(a) * pr;
-      const ppy = py + TS * 0.35 + Math.sin(a) * pr;
-      g.ellipse(ppx, ppy, 2.2, 1.5);
-      g.fill({ color: 0xDD3333, alpha: 0.85 });
+      const pr = 3.8;
+      const ppx = flowerCx + Math.cos(a) * pr;
+      const ppy = flowerCy + Math.sin(a) * pr;
+      g.ellipse(ppx, ppy, 2.4, 1.6);
+      g.fill({ color: i < 2 ? 0xBB2222 : 0xDD3333, alpha: 0.85 });
     }
-    // Center
-    g.circle(cx, py + TS * 0.35, 1.5);
+    // Petal highlights
+    for (let i = 0; i < 3; i++) {
+      const a = (i / 5) * Math.PI * 2 - Math.PI / 2;
+      const ppx = flowerCx + Math.cos(a) * 2.5;
+      const ppy = flowerCy + Math.sin(a) * 2.5;
+      g.ellipse(ppx, ppy, 1, 0.6);
+      g.fill({ color: 0xFF6666, alpha: 0.25 });
+    }
+    // Center (pistil)
+    g.circle(flowerCx, flowerCy, 1.8);
     g.fill(0xFFDD44);
+    g.circle(flowerCx - 0.3, flowerCy - 0.3, 0.8);
+    g.fill({ color: 0xFFFFAA, alpha: 0.4 });
+    // Tiny pollen dots
+    g.circle(flowerCx + 1.2, flowerCy - 0.5, 0.3);
+    g.fill({ color: 0xFFEE66, alpha: 0.5 });
+    g.circle(flowerCx - 0.8, flowerCy + 0.8, 0.3);
+    g.fill({ color: 0xFFEE66, alpha: 0.5 });
     return true;
   }
 
   // ---- BLUE FLOWER ----
   if (bt === BlockType.BLUE_FLOWER) {
-    // Stem
-    g.moveTo(cx, py + TS); g.quadraticCurveTo(cx + 1, py + TS * 0.5, cx - 0.5, py + TS * 0.35);
-    g.stroke({ color: 0x337722, width: 1.2 });
-    // 6 petals
+    const sway = Math.sin(time * 1.4 + wx * 0.7 + 0.5) * 0.7;
+    const flowerCx = cx - 0.5 + sway;
+    const flowerCy = py + TS * 0.28;
+    // Stem (curved with sway)
+    g.moveTo(cx, py + TS);
+    g.quadraticCurveTo(cx + 1 + sway * 0.3, py + TS * 0.55, flowerCx, flowerCy + 3);
+    g.stroke({ color: 0x337722, width: 1.3 });
+    // Leaf on stem
+    g.moveTo(cx + 0.5 + sway * 0.15, py + TS * 0.7);
+    g.quadraticCurveTo(cx - 3, py + TS * 0.6, cx - 0.5, py + TS * 0.74);
+    g.fill({ color: 0x3A7A28, alpha: 0.6 });
+    // 6 petals (layered, back darker)
     for (let i = 0; i < 6; i++) {
       const a = (i / 6) * Math.PI * 2 - Math.PI / 2;
-      const pr = 3;
-      const ppx = cx - 0.5 + Math.cos(a) * pr;
-      const ppy = py + TS * 0.3 + Math.sin(a) * pr;
-      g.ellipse(ppx, ppy, 2, 1.3);
-      g.fill({ color: 0x4488FF, alpha: 0.85 });
+      const pr = 3.3;
+      const ppx = flowerCx + Math.cos(a) * pr;
+      const ppy = flowerCy + Math.sin(a) * pr;
+      g.ellipse(ppx, ppy, 2.2, 1.4);
+      g.fill({ color: i < 3 ? 0x3366DD : 0x4488FF, alpha: 0.85 });
     }
-    // Center
-    g.circle(cx - 0.5, py + TS * 0.3, 1.2);
+    // Petal inner highlights
+    for (let i = 0; i < 6; i += 2) {
+      const a = (i / 6) * Math.PI * 2 - Math.PI / 2;
+      const ppx = flowerCx + Math.cos(a) * 2;
+      const ppy = flowerCy + Math.sin(a) * 2;
+      g.ellipse(ppx, ppy, 1, 0.6);
+      g.fill({ color: 0x88BBFF, alpha: 0.2 });
+    }
+    // Center with stamen detail
+    g.circle(flowerCx, flowerCy, 1.6);
     g.fill(0xFFFFAA);
+    g.circle(flowerCx - 0.3, flowerCy - 0.2, 0.6);
+    g.fill({ color: 0xFFFFDD, alpha: 0.5 });
+    // Pollen dots
+    g.circle(flowerCx + 0.8, flowerCy - 0.6, 0.25);
+    g.fill({ color: 0xFFFF88, alpha: 0.6 });
+    g.circle(flowerCx - 0.6, flowerCy + 0.7, 0.25);
+    g.fill({ color: 0xFFFF88, alpha: 0.6 });
     return true;
   }
 
   // ---- MUSHROOM ----
   if (bt === BlockType.MUSHROOM) {
-    // Stem
-    g.moveTo(cx - 1.5, py + TS); g.lineTo(cx - 1, py + TS * 0.5);
-    g.lineTo(cx + 1, py + TS * 0.5); g.lineTo(cx + 1.5, py + TS); g.closePath();
-    g.fill(0xDDDDBB);
-    // Cap (dome polygon)
-    g.moveTo(cx - 5, py + TS * 0.52);
-    g.quadraticCurveTo(cx - 5, py + TS * 0.2, cx - 2, py + TS * 0.15);
-    g.quadraticCurveTo(cx, py + TS * 0.08, cx + 2, py + TS * 0.15);
-    g.quadraticCurveTo(cx + 5, py + TS * 0.2, cx + 5, py + TS * 0.52);
+    // Ground shadow
+    g.ellipse(cx, py + TS - 0.5, 4, 1);
+    g.fill({ color: 0x000000, alpha: 0.12 });
+    // Stem with slight curve
+    g.moveTo(cx - 1.5, py + TS);
+    g.quadraticCurveTo(cx - 1.8, py + TS * 0.6, cx - 0.8, py + TS * 0.48);
+    g.lineTo(cx + 0.8, py + TS * 0.48);
+    g.quadraticCurveTo(cx + 1.2, py + TS * 0.6, cx + 1.5, py + TS);
+    g.closePath();
+    g.fill(0xEEEECC);
+    // Stem shadow
+    g.moveTo(cx + 0.3, py + TS * 0.5); g.lineTo(cx + 0.8, py + TS);
+    g.stroke({ color: 0x000000, width: 0.5, alpha: 0.08 });
+    // Cap (fuller dome)
+    g.moveTo(cx - 5.5, py + TS * 0.52);
+    g.quadraticCurveTo(cx - 6, py + TS * 0.3, cx - 3.5, py + TS * 0.16);
+    g.quadraticCurveTo(cx - 1, py + TS * 0.06, cx + 1, py + TS * 0.06);
+    g.quadraticCurveTo(cx + 3.5, py + TS * 0.16, cx + 6, py + TS * 0.3);
+    g.quadraticCurveTo(cx + 5.5, py + TS * 0.52, cx + 5.5, py + TS * 0.52);
     g.closePath();
     g.fill(0xCC8844);
-    // Cap spots
-    g.circle(cx - 1.5, py + TS * 0.28, 1); g.fill({ color: 0xFFDDAA, alpha: 0.5 });
-    g.circle(cx + 2, py + TS * 0.32, 0.8); g.fill({ color: 0xFFDDAA, alpha: 0.4 });
-    // Cap highlight
-    g.ellipse(cx - 1, py + TS * 0.22, 2.5, 1);
-    g.fill({ color: 0xFFFFFF, alpha: 0.1 });
+    // Cap shading (darker underside)
+    g.moveTo(cx - 5, py + TS * 0.48);
+    g.quadraticCurveTo(cx, py + TS * 0.56, cx + 5, py + TS * 0.48);
+    g.lineTo(cx + 5.5, py + TS * 0.52);
+    g.quadraticCurveTo(cx, py + TS * 0.58, cx - 5.5, py + TS * 0.52);
+    g.closePath();
+    g.fill({ color: 0x885522, alpha: 0.35 });
+    // Cap spots (multiple, varied)
+    g.circle(cx - 2.5, py + TS * 0.25, 1.2); g.fill({ color: 0xFFDDAA, alpha: 0.5 });
+    g.circle(cx + 1.5, py + TS * 0.22, 0.9); g.fill({ color: 0xFFDDAA, alpha: 0.45 });
+    g.circle(cx + 3, py + TS * 0.35, 0.7); g.fill({ color: 0xFFDDAA, alpha: 0.35 });
+    g.circle(cx - 0.5, py + TS * 0.33, 1); g.fill({ color: 0xFFDDAA, alpha: 0.4 });
+    // Cap highlight (glossy)
+    g.ellipse(cx - 1.5, py + TS * 0.18, 2.5, 1.2);
+    g.fill({ color: 0xFFFFFF, alpha: 0.14 });
+    // Tiny glow (bioluminescence hint)
+    g.circle(cx, py + TS * 0.3, 5);
+    g.fill({ color: 0xFFCC88, alpha: 0.04 });
     return true;
   }
 
   // ---- TALL GRASS ----
   if (bt === BlockType.TALL_GRASS) {
     const sway = Math.sin(time * 1.5 + wx * 0.6) * 1.5;
-    // 4-5 grass blades of varying height
-    for (let i = 0; i < 5; i++) {
-      const bx = px + 1 + i * 3 + (h + i) % 2;
-      const bh = 6 + ((h * (i + 1) * 7) % 6);
-      const tipSway = sway * (0.5 + i * 0.15);
-      const baseY = py + TS;
-      g.moveTo(bx - 0.5, baseY);
-      g.quadraticCurveTo(bx + tipSway * 0.4, baseY - bh * 0.5, bx + tipSway, baseY - bh);
-      g.quadraticCurveTo(bx + tipSway * 0.4 + 1, baseY - bh * 0.5, bx + 1, baseY);
+    const sway2 = Math.sin(time * 2.1 + wx * 0.9 + 1.5) * 0.8;
+    const bladeCount = 6 + (h % 3);
+    const baseY = py + TS;
+    // Background blades (darker, shorter)
+    for (let i = 0; i < 3; i++) {
+      const bx = px + 2 + ((h + i * 5) % (TS - 4));
+      const bh = 4 + ((h * (i + 3)) % 4);
+      const tipSway2 = (sway + sway2) * (0.3 + i * 0.1);
+      g.moveTo(bx - 0.3, baseY);
+      g.quadraticCurveTo(bx + tipSway2 * 0.3, baseY - bh * 0.5, bx + tipSway2, baseY - bh);
+      g.quadraticCurveTo(bx + tipSway2 * 0.3 + 0.8, baseY - bh * 0.5, bx + 0.8, baseY);
       g.closePath();
-      const gc = i % 2 === 0 ? 0x5BAF50 : 0x4A9A42;
-      g.fill({ color: gc, alpha: 0.75 });
+      g.fill({ color: 0x3A7A32, alpha: 0.45 });
+    }
+    // Main blades (varied greens, taller)
+    for (let i = 0; i < bladeCount; i++) {
+      const bx = px + 0.5 + ((i * TS) / bladeCount) + (h + i) % 2;
+      const bh = 6 + ((h * (i + 1) * 7) % 7);
+      const tipSway2 = sway * (0.4 + i * 0.12) + sway2 * (i % 2 === 0 ? 0.3 : -0.2);
+      g.moveTo(bx - 0.5, baseY);
+      g.quadraticCurveTo(bx + tipSway2 * 0.4, baseY - bh * 0.5, bx + tipSway2, baseY - bh);
+      g.quadraticCurveTo(bx + tipSway2 * 0.4 + 1, baseY - bh * 0.5, bx + 1, baseY);
+      g.closePath();
+      const greens = [0x5BAF50, 0x4A9A42, 0x6AC060, 0x3E8836];
+      g.fill({ color: greens[i % greens.length], alpha: 0.7 });
+      // Blade highlight (one side lighter)
+      if (i % 3 === 0) {
+        g.moveTo(bx, baseY);
+        g.quadraticCurveTo(bx + tipSway2 * 0.35, baseY - bh * 0.5, bx + tipSway2 * 0.8, baseY - bh * 0.7);
+        g.stroke({ color: 0x88DD77, width: 0.4, alpha: 0.3 });
+      }
+    }
+    // Tiny flower specks at blade tips (occasional)
+    if (h % 5 === 0) {
+      const fi = h % bladeCount;
+      const fbx = px + 0.5 + ((fi * TS) / bladeCount) + (h + fi) % 2;
+      const fbh = 6 + ((h * (fi + 1) * 7) % 7);
+      const fSway = sway * (0.4 + fi * 0.12);
+      const flowerColors = [0xFFDD44, 0xFFAAFF, 0xAADDFF];
+      g.circle(fbx + fSway, baseY - fbh, 1);
+      g.fill({ color: flowerColors[h % 3], alpha: 0.6 });
     }
     return true;
   }
 
   // ---- CHEST ----
   if (bt === BlockType.CHEST) {
-    const cw = TS * 0.8;
-    const ch2 = TS * 0.6;
+    const cw = TS * 0.82;
+    const ch2 = TS * 0.62;
     const clx = cx - cw / 2;
     const cly = py + TS - ch2;
-    // Body (front face)
+    // Ground shadow
+    g.ellipse(cx, py + TS, cw * 0.5, 1.5);
+    g.fill({ color: 0x000000, alpha: 0.15 });
+    // Body (front face with gradient feel)
     g.rect(clx, cly, cw, ch2);
     g.fill(0xB8860B);
-    // Top edge (lid)
-    g.rect(clx - 1, cly - 2, cw + 2, 3);
+    // Body bottom half darker
+    g.rect(clx, cly + ch2 * 0.5, cw, ch2 * 0.5);
+    g.fill({ color: 0x000000, alpha: 0.08 });
+    // Side face (3D effect - right)
+    g.moveTo(clx + cw, cly); g.lineTo(clx + cw + 2, cly - 1);
+    g.lineTo(clx + cw + 2, cly + ch2 - 1); g.lineTo(clx + cw, cly + ch2);
+    g.closePath(); g.fill(0x9A7208);
+    // Lid (curved top with 3D beveled edge)
+    g.rect(clx - 1, cly - 2.5, cw + 2, 3);
     g.fill(0xD4A030);
-    // Lid top surface (lighter)
-    g.rect(clx, cly - 4, cw, 3);
+    // Lid top surface (lighter, slight curve implied)
+    g.rect(clx, cly - 5, cw, 3.5);
     g.fill(0xC49820);
-    // Front panel lines
-    g.rect(clx + 1, cly + 2, cw - 2, 1); g.fill({ color: 0x000000, alpha: 0.12 });
-    g.rect(clx + 1, cly + ch2 - 3, cw - 2, 1); g.fill({ color: 0x000000, alpha: 0.12 });
-    // Metal clasp (center)
-    g.rect(cx - 2, cly, 4, ch2); g.fill({ color: 0x8B6914, alpha: 0.3 });
-    // Lock
-    g.rect(cx - 1.5, cly + ch2 * 0.3, 3, 3); g.fill(0xFFD700);
-    g.rect(cx - 0.5, cly + ch2 * 0.3 + 1, 1, 1); g.fill(0x000000);
-    // Highlight
-    g.rect(clx + 1, cly - 3, cw * 0.4, 1); g.fill({ color: 0xFFFFFF, alpha: 0.15 });
-    // Shadow
-    g.rect(clx, cly + ch2, cw, 1); g.fill({ color: 0x000000, alpha: 0.2 });
+    // Lid 3D top
+    g.moveTo(clx, cly - 5); g.lineTo(clx + 1, cly - 6);
+    g.lineTo(clx + cw + 1, cly - 6); g.lineTo(clx + cw, cly - 5);
+    g.closePath(); g.fill(0xD5AA38);
+    // Metal bands (horizontal)
+    g.rect(clx, cly + 2, cw, 1.5); g.fill({ color: 0x8B6914, alpha: 0.35 });
+    g.rect(clx, cly + ch2 - 3.5, cw, 1.5); g.fill({ color: 0x8B6914, alpha: 0.35 });
+    // Metal clasp (center vertical)
+    g.rect(cx - 1.5, cly, 3, ch2); g.fill({ color: 0x8B6914, alpha: 0.25 });
+    // Lock plate
+    g.roundRect(cx - 2.5, cly + ch2 * 0.25, 5, 4, 0.5); g.fill(0xFFD700);
+    // Lock keyhole
+    g.circle(cx, cly + ch2 * 0.32, 0.8); g.fill(0x332200);
+    g.rect(cx - 0.3, cly + ch2 * 0.35, 0.6, 1.5); g.fill(0x332200);
+    // Corner rivets
+    g.circle(clx + 2, cly + 2, 0.7); g.fill({ color: 0xEEC060, alpha: 0.5 });
+    g.circle(clx + cw - 2, cly + 2, 0.7); g.fill({ color: 0xEEC060, alpha: 0.5 });
+    g.circle(clx + 2, cly + ch2 - 2, 0.7); g.fill({ color: 0xEEC060, alpha: 0.5 });
+    g.circle(clx + cw - 2, cly + ch2 - 2, 0.7); g.fill({ color: 0xEEC060, alpha: 0.5 });
+    // Lid highlight
+    g.rect(clx + 1, cly - 5, cw * 0.5, 1); g.fill({ color: 0xFFFFFF, alpha: 0.18 });
+    // Subtle shimmer (treasure glow)
+    const chestGlow = Math.sin(time * 2 + wx * 1.5) * 0.5 + 0.5;
+    g.circle(cx, cly + ch2 * 0.4, 6);
+    g.fill({ color: 0xFFDD44, alpha: chestGlow * 0.05 });
     return true;
   }
 
@@ -1597,24 +2617,261 @@ function _drawSpecialBlock(g: Graphics, bt: number, px: number, py: number, colo
   }
 
   // ---- LEAVES (all types) ----
+  // ---- LADDER ----
+  if (bt === BlockType.LADDER) {
+    // Two vertical rails
+    g.rect(px + 2, py, 1.5, TS); g.fill(0x8B6914);
+    g.rect(px + TS - 3.5, py, 1.5, TS); g.fill(0x8B6914);
+    // Rungs
+    for (let gy = 2; gy < TS; gy += 4) {
+      g.rect(px + 3.5, py + gy, TS - 7, 1.5); g.fill(0xA07840);
+      // Rung highlight
+      g.rect(px + 3.5, py + gy, TS - 7, 0.5); g.fill({ color: 0xFFFFFF, alpha: 0.08 });
+    }
+    // Rail highlights
+    g.rect(px + 2, py, 0.5, TS); g.fill({ color: 0xFFFFFF, alpha: 0.06 });
+    return true;
+  }
+
+  // ---- ROPE ----
+  if (bt === BlockType.ROPE) {
+    const sway = Math.sin(time * 1 + wx * 0.5) * 0.8;
+    g.moveTo(cx + sway * 0.2, py);
+    g.bezierCurveTo(cx + sway * 0.5, py + TS * 0.3, cx + sway, py + TS * 0.7, cx + sway * 0.3, py + TS);
+    g.stroke({ color: 0xAA8844, width: 2 });
+    // Fibers
+    g.moveTo(cx + sway * 0.2 + 0.5, py);
+    g.bezierCurveTo(cx + sway * 0.5 + 0.5, py + TS * 0.3, cx + sway + 0.5, py + TS * 0.7, cx + sway * 0.3 + 0.5, py + TS);
+    g.stroke({ color: 0xBB9955, width: 0.5, alpha: 0.4 });
+    return true;
+  }
+
+  // ---- CAMPFIRE ----
+  if (bt === BlockType.CAMPFIRE) {
+    // Logs (crossed)
+    g.moveTo(px + 2, py + TS); g.lineTo(px + TS - 2, py + TS - 3);
+    g.stroke({ color: 0x6B4226, width: 2.5 });
+    g.moveTo(px + TS - 2, py + TS); g.lineTo(px + 2, py + TS - 3);
+    g.stroke({ color: 0x5A3A1A, width: 2.5 });
+    // Stones (ring around base)
+    for (let i = 0; i < 5; i++) {
+      const sx2 = px + 1 + i * (TS - 2) / 5;
+      g.ellipse(sx2 + 1, py + TS - 1, 1.8, 1.2);
+      g.fill(0x777777);
+    }
+    // Fire (animated, layered)
+    const f1 = Math.sin(time * 7 + wx * 3) * 2;
+    const f2 = Math.sin(time * 9 + wx * 5 + 1) * 1.5;
+    // Outer flame
+    g.moveTo(px + 3, py + TS - 3);
+    g.quadraticCurveTo(cx + f1, py + TS * 0.15 + f2, px + TS - 3, py + TS - 3);
+    g.closePath();
+    g.fill({ color: 0xFF6622, alpha: 0.7 });
+    // Inner flame
+    g.moveTo(px + 5, py + TS - 3);
+    g.quadraticCurveTo(cx + f2, py + TS * 0.3 + f1, px + TS - 5, py + TS - 3);
+    g.closePath();
+    g.fill({ color: 0xFFAA22, alpha: 0.6 });
+    // Core
+    g.moveTo(px + 6, py + TS - 3);
+    g.quadraticCurveTo(cx + f1 * 0.3, py + TS * 0.45 + f2 * 0.5, px + TS - 6, py + TS - 3);
+    g.closePath();
+    g.fill({ color: 0xFFFF88, alpha: 0.5 });
+    // Sparks
+    for (let si = 0; si < 3; si++) {
+      const sp = (time * 3 + si * 1.5) % 2;
+      if (sp < 1) {
+        const spx = cx + Math.sin(time * 5 + si * 2) * 3;
+        const spy = py + TS * 0.3 - sp * 8;
+        g.circle(spx, spy, 0.5);
+        g.fill({ color: 0xFFDD44, alpha: (1 - sp) * 0.5 });
+      }
+    }
+    // Smoke
+    for (let si = 0; si < 2; si++) {
+      const smokeT = (time * 1.2 + si * 1.5) % 3;
+      const smokeY = py + TS * 0.1 - smokeT * 5;
+      const smokeX = cx + Math.sin(time * 1.5 + si * 2 + smokeT) * 2;
+      if (smokeT < 2.5) {
+        g.circle(smokeX, smokeY, 1.5 + smokeT * 0.5);
+        g.fill({ color: 0x888888, alpha: Math.max(0, 0.06 - smokeT * 0.02) });
+      }
+    }
+    // Glow
+    g.circle(cx, py + TS * 0.5, 8);
+    g.fill({ color: 0xFF6622, alpha: 0.06 });
+    return true;
+  }
+
+  // ---- BED ----
+  if (bt === BlockType.BED) {
+    const bw = TS * 0.9;
+    const bh = TS * 0.45;
+    const blx = cx - bw / 2;
+    const bly = py + TS - bh;
+    // Bed frame (dark wood)
+    g.rect(blx - 1, bly - 1, bw + 2, bh + 1); g.fill(0x5A3A1A);
+    // Mattress
+    g.rect(blx, bly, bw, bh); g.fill(0xCC4444);
+    // Pillow
+    g.rect(blx + 1, bly - 2, bw * 0.3, 3); g.fill(0xDDDDCC);
+    g.rect(blx + 1, bly - 2, bw * 0.3, 0.5); g.fill({ color: 0xFFFFFF, alpha: 0.15 });
+    // Blanket fold
+    g.rect(blx + bw * 0.3, bly, bw * 0.7, 1.5); g.fill({ color: 0xAA2222, alpha: 0.3 });
+    // Headboard
+    g.rect(blx - 1, bly - 4, 2, 5); g.fill(0x4A2A10);
+    // Footboard
+    g.rect(blx + bw - 1, bly - 2, 2, 3); g.fill(0x4A2A10);
+    // Legs
+    g.rect(blx, py + TS - 2, 2, 2); g.fill(0x4A2A10);
+    g.rect(blx + bw - 2, py + TS - 2, 2, 2); g.fill(0x4A2A10);
+    return true;
+  }
+
+  // ---- ALCHEMY LAB ----
+  if (bt === BlockType.ALCHEMY_LAB) {
+    // Table surface
+    g.rect(px + 1, py + TS * 0.45, TS - 2, 2); g.fill(0x5A5A5A);
+    // Legs
+    g.rect(px + 2, py + TS * 0.47, 1.5, TS * 0.53); g.fill(0x444444);
+    g.rect(px + TS - 3.5, py + TS * 0.47, 1.5, TS * 0.53); g.fill(0x444444);
+    // Flask (left)
+    g.moveTo(px + 3, py + TS * 0.45);
+    g.lineTo(px + 3, py + TS * 0.25);
+    g.lineTo(px + 2, py + TS * 0.15);
+    g.lineTo(px + 6, py + TS * 0.15);
+    g.lineTo(px + 5, py + TS * 0.25);
+    g.lineTo(px + 5, py + TS * 0.45);
+    g.closePath(); g.fill({ color: 0x88DDBB, alpha: 0.5 });
+    g.rect(px + 2.5, py + TS * 0.13, 3, 1); g.fill(0x666666);
+    // Bubbling flask (right, animated)
+    const bubY = py + TS * 0.3 + Math.sin(time * 4 + wx) * 1;
+    g.moveTo(px + TS - 6, py + TS * 0.45);
+    g.lineTo(px + TS - 6, py + TS * 0.28);
+    g.quadraticCurveTo(px + TS - 4, py + TS * 0.15, px + TS - 2, py + TS * 0.28);
+    g.lineTo(px + TS - 2, py + TS * 0.45);
+    g.closePath(); g.fill({ color: 0xAA44DD, alpha: 0.5 });
+    // Bubbles
+    g.circle(px + TS - 4.5, bubY, 0.6); g.fill({ color: 0xCC66FF, alpha: 0.4 });
+    g.circle(px + TS - 3.5, bubY - 1.5, 0.4); g.fill({ color: 0xCC66FF, alpha: 0.3 });
+    // Book on table
+    g.rect(px + 6, py + TS * 0.38, 3, 2); g.fill(0x5A2A0A);
+    g.rect(px + 6, py + TS * 0.38, 3, 0.5); g.fill({ color: 0xFFDD44, alpha: 0.2 });
+    // Glow
+    g.circle(cx, py + TS * 0.3, 5);
+    g.fill({ color: 0x44AA88, alpha: 0.05 });
+    return true;
+  }
+
+  // ---- SPIKE TRAP ----
+  if (bt === BlockType.SPIKE_TRAP) {
+    // Base plate
+    g.rect(px + 1, py + TS - 2, TS - 2, 2);
+    g.fill(0x666666);
+    // Spikes (5 pointed triangles)
+    for (let i = 0; i < 5; i++) {
+      const sx2 = px + 1.5 + i * (TS - 3) / 5;
+      g.moveTo(sx2, py + TS - 2);
+      g.lineTo(sx2 + (TS - 3) / 10, py + TS * 0.3);
+      g.lineTo(sx2 + (TS - 3) / 5, py + TS - 2);
+      g.closePath();
+      g.fill(0x999999);
+      // Spike tip highlight
+      g.moveTo(sx2 + (TS - 3) / 10 - 0.3, py + TS * 0.35);
+      g.lineTo(sx2 + (TS - 3) / 10, py + TS * 0.3);
+      g.lineTo(sx2 + (TS - 3) / 10 + 0.3, py + TS * 0.35);
+      g.stroke({ color: 0xDDDDDD, width: 0.4, alpha: 0.4 });
+    }
+    // Blood stain (occasional)
+    if (h % 4 === 0) {
+      g.circle(px + (h % (TS - 3)) + 2, py + TS - 3, 1);
+      g.fill({ color: 0x882222, alpha: 0.2 });
+    }
+    return true;
+  }
+
+  // ---- COBWEB ----
+  if (bt === BlockType.COBWEB) {
+    const webAlpha = 0.35;
+    // Cross threads (corner to corner)
+    g.moveTo(px, py); g.lineTo(px + TS, py + TS);
+    g.stroke({ color: 0xDDDDDD, width: 0.5, alpha: webAlpha });
+    g.moveTo(px + TS, py); g.lineTo(px, py + TS);
+    g.stroke({ color: 0xDDDDDD, width: 0.5, alpha: webAlpha });
+    // Vertical and horizontal
+    g.moveTo(cx, py); g.lineTo(cx, py + TS);
+    g.stroke({ color: 0xDDDDDD, width: 0.4, alpha: webAlpha * 0.7 });
+    g.moveTo(px, cy); g.lineTo(px + TS, cy);
+    g.stroke({ color: 0xDDDDDD, width: 0.4, alpha: webAlpha * 0.7 });
+    // Spiral rings (concentric arcs)
+    for (let r = 2; r <= 6; r += 2) {
+      g.moveTo(cx - r, cy);
+      g.quadraticCurveTo(cx - r, cy - r * 0.7, cx, cy - r);
+      g.quadraticCurveTo(cx + r * 0.7, cy - r, cx + r, cy);
+      g.stroke({ color: 0xDDDDDD, width: 0.3, alpha: webAlpha * 0.5 });
+      g.moveTo(cx + r, cy);
+      g.quadraticCurveTo(cx + r, cy + r * 0.7, cx, cy + r);
+      g.quadraticCurveTo(cx - r * 0.7, cy + r, cx - r, cy);
+      g.stroke({ color: 0xDDDDDD, width: 0.3, alpha: webAlpha * 0.5 });
+    }
+    // Dew drops
+    if (h % 5 < 2) {
+      const dx2 = px + (h % (TS - 2)) + 1;
+      const dy2 = py + ((h * 3) % (TS - 2)) + 1;
+      g.circle(dx2, dy2, 0.7);
+      g.fill({ color: 0xFFFFFF, alpha: 0.2 });
+    }
+    return true;
+  }
+
   if (bt === BlockType.OAK_LEAVES || bt === BlockType.WILLOW_LEAVES || bt === BlockType.DARK_OAK_LEAVES) {
-    // Draw as organic cluster of overlapping ellipses
+    // Base fill
     g.rect(px, py, TS, TS); g.fill(color);
-    // Leaf cluster detail
-    for (let i = 0; i < 4; i++) {
-      const lx2 = px + ((h * (i + 1) * 11) % (TS - 4)) + 2;
-      const ly2 = py + ((h * (i + 1) * 13) % (TS - 4)) + 2;
-      g.ellipse(lx2, ly2, 2.5, 1.8);
-      g.fill({ color: 0xFFFFFF, alpha: 0.06 });
+    // Animated rustle offset (subtle movement)
+    const rustleX = Math.sin(time * 2 + wx * 0.4 + h * 0.2) * 0.3;
+    const rustleY = Math.cos(time * 1.7 + wx * 0.3 + h * 0.15) * 0.2;
+    // Leaf cluster detail (overlapping ellipses, more varied)
+    const leafColors = bt === BlockType.DARK_OAK_LEAVES
+      ? [0x1A4A18, 0x2A5A22, 0x1A3A14]
+      : bt === BlockType.WILLOW_LEAVES
+      ? [0x5AAA48, 0x6ABB55, 0x4A9A3A]
+      : [0x4AAA38, 0x5ABB45, 0x3A9A2A];
+    for (let i = 0; i < 6; i++) {
+      const lx2 = px + ((h * (i + 1) * 11) % (TS - 3)) + 1.5 + rustleX * (i % 2 === 0 ? 1 : -1);
+      const ly2 = py + ((h * (i + 1) * 13) % (TS - 3)) + 1.5 + rustleY * (i % 3 === 0 ? 1 : -1);
+      const lr = 2 + (h + i) % 2;
+      g.ellipse(lx2, ly2, lr, lr * 0.7);
+      g.fill({ color: leafColors[i % leafColors.length], alpha: 0.25 });
     }
-    // Darker veins
-    g.moveTo(px + 2, py + TS / 2); g.lineTo(px + TS - 2, py + TS / 2 + 1);
-    g.stroke({ color: 0x000000, width: 0.5, alpha: 0.08 });
-    // Small gap holes (transparency effect)
-    if (h % 5 === 0) {
-      g.rect(px + (h % (TS - 2)), py + ((h * 3) % (TS - 2)), 2, 2);
-      g.fill({ color: 0x000000, alpha: 0.15 });
+    // Dappled light (sunlight filtering through)
+    const dapple = Math.sin(time * 0.8 + wx * 0.7 + h) * 0.5 + 0.5;
+    if (dapple > 0.5 && h % 3 < 2) {
+      const dx = px + (h % (TS - 4)) + 2 + rustleX * 2;
+      const dy = py + ((h * 3) % (TS - 4)) + 2 + rustleY * 2;
+      g.ellipse(dx, dy, 2 + dapple, 1.5 + dapple * 0.5);
+      g.fill({ color: 0xFFFFCC, alpha: (dapple - 0.5) * 0.12 });
     }
+    // Darker veins (multiple, organic)
+    g.moveTo(px + 2, py + TS * 0.4);
+    g.quadraticCurveTo(px + TS * 0.5, py + TS * 0.45 + rustleY, px + TS - 2, py + TS * 0.42);
+    g.stroke({ color: 0x000000, width: 0.5, alpha: 0.06 });
+    g.moveTo(px + 3, py + TS * 0.7);
+    g.quadraticCurveTo(px + TS * 0.4, py + TS * 0.68, px + TS - 3, py + TS * 0.72);
+    g.stroke({ color: 0x000000, width: 0.4, alpha: 0.05 });
+    // Sky-holes (gaps where sky peeks through, more natural shapes)
+    if (h % 4 === 0) {
+      const gx = px + (h % (TS - 3)) + 1;
+      const gy = py + ((h * 3) % (TS - 3)) + 1;
+      g.ellipse(gx, gy, 1.5 + (h % 2), 1);
+      g.fill({ color: 0x88BBDD, alpha: 0.12 });
+    }
+    if (h % 6 === 0) {
+      const gx2 = px + ((h * 7) % (TS - 2)) + 1;
+      const gy2 = py + ((h * 11) % (TS - 2)) + 1;
+      g.circle(gx2, gy2, 1);
+      g.fill({ color: 0x88BBDD, alpha: 0.08 });
+    }
+    // Leaf edge irregularity (subtle outer bumps)
     return false; // still apply bevel edges
   }
 

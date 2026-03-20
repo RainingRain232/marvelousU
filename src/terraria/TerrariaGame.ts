@@ -4,7 +4,7 @@
 
 import { viewManager } from "@view/ViewManager";
 import { TB } from "./config/TerrariaBalance";
-import { createTerrariaState, addMessage, getWorldBlock, setWorldBlock } from "./state/TerrariaState";
+import { createTerrariaState, addMessage, getWorldBlock, setWorldBlock, isSolid } from "./state/TerrariaState";
 import type { TerrariaState } from "./state/TerrariaState";
 import { BlockType, BLOCK_DEFS, ToolMaterial } from "./config/TerrariaBlockDefs";
 import { addToInventory, calcArmorDefense, tryEquipArmor, ItemCategory, createBlockItem } from "./state/TerrariaInventory";
@@ -19,7 +19,8 @@ import { updateDayNight } from "./systems/TerrariaDayNightSystem";
 import { recalcLighting } from "./systems/TerrariaLightingSystem";
 import { updateCombat } from "./systems/TerrariaCombatSystem";
 import { updateMobs } from "./systems/TerrariaMobSystem";
-import { updateNPCs, interactWithNPC } from "./systems/TerrariaNPCSystem";
+import { updateNPCs, interactWithNPC, buyFromNPC, updateKnightCombat } from "./systems/TerrariaNPCSystem";
+import { applyStatusEffect } from "./systems/TerrariaCombatSystem";
 import { updateQuests, onDragonKilled } from "./systems/TerrariaQuestSystem";
 // Crafting (used by HUD callbacks, imported for future use)
 // import { craftRecipe } from "./systems/TerrariaCraftingSystem";
@@ -36,6 +37,13 @@ import { TerrariaHUD } from "./view/TerrariaHUD";
 // ---------------------------------------------------------------------------
 
 const TERRARIA_ZOOM = 1.2;
+
+// Block type constants for ladder/rope/campfire/bed checks
+const _BT_LADDER = BlockType.LADDER;
+const _BT_ROPE = BlockType.ROPE;
+const _BT_CAMPFIRE = BlockType.CAMPFIRE;
+const _BT_BED = BlockType.BED;
+const _BT_ALCHEMY = BlockType.ALCHEMY_LAB;
 
 export class TerrariaGame {
   private _state!: TerrariaState;
@@ -56,6 +64,12 @@ export class TerrariaGame {
   private _wasFalling = false;
   private _dodgeTimer = 0;
   private _dodgeCooldown = 0;
+  private _hasDoubleJumped = false;
+  private _wallSlideDir = 0;
+  private _coyoteTimer = 0;
+  private _respawnX = 0;
+  private _respawnY = 0;
+  private _lastInput: import("./systems/TerrariaInputSystem").InputState | null = null;
 
   // -----------------------------------------------------------------------
   // Boot
@@ -406,6 +420,26 @@ export class TerrariaGame {
         const wy = py + dy;
         const bt = getWorldBlock(this._state, wx, wy);
 
+        // Campfire: slow healing while nearby
+        if (bt === _BT_CAMPFIRE) {
+          if (p.hp < p.maxHp) {
+            p.hp = Math.min(p.maxHp, p.hp + 0.5 * (1/60)); // ~0.5 HP/s
+          }
+        }
+
+        // Bed: set respawn point on interact
+        if (bt === _BT_BED && (this._lastInput?.interact)) {
+          this._respawnX = wx + 0.5;
+          this._respawnY = wy + 1;
+          addMessage(this._state, "Respawn point set!", 0x88CCFF);
+        }
+
+        // Alchemy Lab: opens crafting with alchemy station
+        if (bt === _BT_ALCHEMY && (this._lastInput?.interact)) {
+          this._state.craftingOpen = true;
+          this._state.craftingStation = "alchemy_lab" as any;
+        }
+
         if (bt === BlockType.GRAIL_PEDESTAL) {
           // Excalibur shrine (in caverns layer) or Grail chamber (in underworld)
           if (!p.hasExcalibur && wy > TB.CAVERN_Y - 5 && wy < TB.UNDERGROUND_Y) {
@@ -441,6 +475,7 @@ export class TerrariaGame {
 
     // Poll input
     const input = pollInput();
+    this._lastInput = input;
 
     // Handle hotbar selection
     if (input.hotbar >= 0) {
@@ -486,24 +521,71 @@ export class TerrariaGame {
         this._dodgeTimer -= dt;
         p.invulnTimer = Math.max(p.invulnTimer, TB.DODGE_INVULN);
       } else {
+        // Check if player is on ladder/rope
+        const playerBlock = getWorldBlock(this._state, Math.floor(p.x), Math.floor(p.y));
+        const onLadder = playerBlock === _BT_LADDER || playerBlock === _BT_ROPE;
+
         // Normal movement
         const inWater = this._isPlayerInWater();
         const speed = inWater ? TB.SWIM_SPEED : (input.sprint ? TB.PLAYER_SPEED * TB.PLAYER_SPRINT_MULT : TB.PLAYER_SPEED);
-        if (input.left) { p.vx = -speed; p.facingRight = false; }
-        else if (input.right) { p.vx = speed; p.facingRight = true; }
+        if (input.left) { p.vx = -speed * (onLadder ? 0.5 : 1); p.facingRight = false; }
+        else if (input.right) { p.vx = speed * (onLadder ? 0.5 : 1); p.facingRight = true; }
         else { p.vx *= TB.FRICTION; }
 
-        // Jump / swim
-        if (input.jump) {
-          if (inWater) {
-            p.vy = TB.SWIM_BOOST;
-          } else if (p.onGround) {
-            p.vy = TB.JUMP_VELOCITY;
+        // Ladder/rope climbing
+        if (onLadder) {
+          if (input.up) { p.vy = 5; }
+          else if (input.down) { p.vy = -5; }
+          else { p.vy *= 0.5; } // hover on ladder
+        }
+
+        // Coyote time (grace period after leaving ground)
+        if (p.onGround) {
+          this._coyoteTimer = 0.1;
+          this._hasDoubleJumped = false;
+        } else {
+          this._coyoteTimer -= dt;
+        }
+
+        // Wall slide detection
+        this._wallSlideDir = 0;
+        if (!p.onGround && p.vy < 0) {
+          const leftWall = isSolid(this._state, Math.floor(p.x - TB.PLAYER_WIDTH / 2 - 0.1), Math.floor(p.y));
+          const rightWall = isSolid(this._state, Math.floor(p.x + TB.PLAYER_WIDTH / 2 + 0.1), Math.floor(p.y));
+          if (leftWall && input.left) {
+            this._wallSlideDir = -1;
+            p.vy = Math.max(p.vy, -TB.MAX_FALL_SPEED * 0.3); // slow fall
+          } else if (rightWall && input.right) {
+            this._wallSlideDir = 1;
+            p.vy = Math.max(p.vy, -TB.MAX_FALL_SPEED * 0.3);
           }
         }
 
-        // Dodge roll trigger (Shift + direction while on ground, cooldown ready)
-        if (input.sprint && (input.left || input.right) && p.onGround && this._dodgeCooldown <= 0) {
+        // Jump / swim / wall jump / double jump
+        if (input.jump) {
+          if (inWater) {
+            p.vy = TB.SWIM_BOOST;
+          } else if (p.onGround || this._coyoteTimer > 0) {
+            p.vy = TB.JUMP_VELOCITY;
+            this._coyoteTimer = 0;
+          } else if (this._wallSlideDir !== 0) {
+            // Wall jump: kick off the wall
+            p.vy = TB.JUMP_VELOCITY * 0.85;
+            p.vx = -this._wallSlideDir * TB.PLAYER_SPEED * 1.2;
+            p.facingRight = this._wallSlideDir < 0;
+            this._hasDoubleJumped = false;
+            this._fx.spawnMiningParticles(p.x + this._wallSlideDir * 0.5, p.y, 0xCCCCCC, 4);
+          } else if (!this._hasDoubleJumped) {
+            // Double jump (smaller boost)
+            p.vy = TB.JUMP_VELOCITY * 0.7;
+            this._hasDoubleJumped = true;
+            this._fx.spawnMiningParticles(p.x, p.y - 0.5, 0xAADDFF, 4);
+          }
+        }
+
+        // Dodge roll trigger (Q key or Shift + direction while on ground, cooldown ready)
+        const dodgeTrigger = (input.dodge || (input.sprint && (input.left || input.right))) && p.onGround && this._dodgeCooldown <= 0;
+        if (dodgeTrigger && (input.left || input.right)) {
           this._dodgeTimer = TB.DODGE_DURATION;
           this._dodgeCooldown = TB.DODGE_COOLDOWN;
           p.vx = (input.left ? -1 : 1) * TB.DODGE_SPEED;
@@ -601,13 +683,87 @@ export class TerrariaGame {
       // Mobs & NPCs
       updateMobs(this._state, dt);
       updateNPCs(this._state, dt);
+      updateKnightCombat(this._state, dt);
 
       // Special block detection (Excalibur, Grail)
       this._checkSpecialBlocks();
 
-      // NPC interaction (up key near NPC)
-      if (input.up && !this._state.inventoryOpen) {
+      // NPC interaction (F key or up key near NPC)
+      if ((input.interact || input.up) && !this._state.inventoryOpen) {
         interactWithNPC(this._state);
+      }
+
+      // NPC trade (T key near NPC with shop)
+      if (input.trade && !this._state.inventoryOpen) {
+        // Give player a random item from the shop
+        buyFromNPC(this._state, Math.floor(Math.random() * 4));
+      }
+
+      // Use consumable (R key — use held item if it's a consumable/food)
+      if (input.use && !this._state.inventoryOpen) {
+        const held = p.inventory.hotbar[p.inventory.selectedSlot];
+        if (held && held.count > 0) {
+          let consumed = false;
+          // Healing mushroom
+          if (held.displayName === "Mushroom" || held.displayName === "Healing Mushroom") {
+            if (p.hp < p.maxHp) {
+              p.hp = Math.min(p.maxHp, p.hp + 15);
+              addMessage(this._state, "Healed 15 HP!", 0x44FF44);
+              consumed = true;
+            }
+          }
+          // Healing potion (stronger)
+          if (held.displayName === "Healing Potion") {
+            if (p.hp < p.maxHp) {
+              p.hp = Math.min(p.maxHp, p.hp + 40);
+              addMessage(this._state, "Healed 40 HP!", 0x44FF88);
+              consumed = true;
+            }
+          }
+          // Fire resistance potion
+          if (held.displayName === "Fire Resistance Potion") {
+            applyStatusEffect(p.statusEffects, { type: "regen", duration: 10, tickTimer: 0, strength: 2 });
+            addMessage(this._state, "Fire resistance! Regen for 10s!", 0xFF6644);
+            consumed = true;
+          }
+          // Speed potion
+          if (held.displayName === "Speed Potion") {
+            applyStatusEffect(p.statusEffects, { type: "speed", duration: 15, tickTimer: 0, strength: 0.4 });
+            addMessage(this._state, "Speed boost for 15s!", 0x4488FF);
+            consumed = true;
+          }
+          // Herbal remedy (cures negative effects)
+          if (held.displayName === "Herbal Remedy") {
+            const negatives = p.statusEffects.filter(e => e.type === "poison" || e.type === "fire" || e.type === "freeze" || e.type === "weakness");
+            if (negatives.length > 0) {
+              for (const e of negatives) e.duration = 0;
+              addMessage(this._state, "Ailments cured!", 0x55DD44);
+              consumed = true;
+            }
+          }
+          // Strength elixir (crit chance + damage buff)
+          if (held.displayName === "Strength Elixir") {
+            p.critChance = Math.min(0.35, p.critChance + 0.1);
+            applyStatusEffect(p.statusEffects, { type: "speed", duration: 20, tickTimer: 0, strength: 0.25 });
+            addMessage(this._state, "Strength surges through you! +10% crit, speed boost!", 0xFF8844);
+            consumed = true;
+          }
+          // Food items (generic: Red Flower = healing, Blue Flower = mana)
+          if (!consumed && held.displayName === "Red Flower" && p.hp < p.maxHp) {
+            p.hp = Math.min(p.maxHp, p.hp + 5);
+            addMessage(this._state, "Healed 5 HP!", 0xFF4444);
+            consumed = true;
+          }
+          if (!consumed && held.displayName === "Blue Flower" && p.mana < p.maxMana) {
+            p.mana = Math.min(p.maxMana, p.mana + 15);
+            addMessage(this._state, "Restored 15 Mana!", 0x4488FF);
+            consumed = true;
+          }
+          if (consumed) {
+            held.count--;
+            if (held.count <= 0) p.inventory.hotbar[p.inventory.selectedSlot] = null;
+          }
+        }
       }
 
       // Track dragon kills
@@ -678,7 +834,7 @@ export class TerrariaGame {
     }
 
     // Camera
-    this._camera.follow(this._state.player.x, this._state.player.y, dt);
+    this._camera.follow(this._state.player.x, this._state.player.y, dt, this._state.player.vx, this._state.player.vy);
     this._camera.update(dt);
     this._state.camX = this._camera.x;
     this._state.camY = this._camera.y;

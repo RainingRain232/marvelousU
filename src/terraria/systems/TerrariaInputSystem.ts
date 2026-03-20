@@ -17,6 +17,10 @@ export interface InputState {
   escape: boolean;
   hotbar: number;       // -1 = no change, 0-8 = slot select
   scrollDelta: number;
+  dodge: boolean;       // Q key
+  interact: boolean;    // F key
+  trade: boolean;       // T key
+  use: boolean;         // R key (use consumable)
 }
 
 const _keys = new Set<string>();
@@ -28,11 +32,19 @@ let _scrollDelta = 0;
 let _inventoryToggle = false;
 let _escapeToggle = false;
 let _hotbarPress = -1;
+let _dodgePress = false;
+let _interactPress = false;
+let _tradePress = false;
+let _usePress = false;
 
 function _onKeyDown(e: KeyboardEvent): void {
   _keys.add(e.code);
   if (e.code === "KeyE") _inventoryToggle = true;
   if (e.code === "Escape") _escapeToggle = true;
+  if (e.code === "KeyQ") _dodgePress = true;
+  if (e.code === "KeyF") _interactPress = true;
+  if (e.code === "KeyT") _tradePress = true;
+  if (e.code === "KeyR") _usePress = true;
   if (e.code >= "Digit1" && e.code <= "Digit9") _hotbarPress = parseInt(e.code[5]) - 1;
   // Prevent browser defaults for game keys
   if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "KeyW", "KeyA", "KeyS", "KeyD"].includes(e.code)) {
@@ -93,11 +105,11 @@ export function destroyInput(): void {
 
 export function pollInput(): InputState {
   const state: InputState = {
-    left: _keys.has("ArrowLeft"),
-    right: _keys.has("ArrowRight"),
-    up: _keys.has("ArrowUp"),
-    down: _keys.has("ArrowDown"),
-    jump: _keys.has("Space") || _keys.has("ArrowUp"),
+    left: _keys.has("ArrowLeft") || _keys.has("KeyA"),
+    right: _keys.has("ArrowRight") || _keys.has("KeyD"),
+    up: _keys.has("ArrowUp") || _keys.has("KeyW"),
+    down: _keys.has("ArrowDown") || _keys.has("KeyS"),
+    jump: _keys.has("Space") || _keys.has("ArrowUp") || _keys.has("KeyW"),
     sprint: _keys.has("ShiftLeft") || _keys.has("ShiftRight"),
     attack: _mouseDown,
     place: _rightMouseDown,
@@ -107,11 +119,19 @@ export function pollInput(): InputState {
     escape: _escapeToggle,
     hotbar: _hotbarPress,
     scrollDelta: _scrollDelta,
+    dodge: _dodgePress,
+    interact: _interactPress,
+    trade: _tradePress,
+    use: _usePress,
   };
   // Reset one-shot states
   _inventoryToggle = false;
   _escapeToggle = false;
   _hotbarPress = -1;
   _scrollDelta = 0;
+  _dodgePress = false;
+  _interactPress = false;
+  _tradePress = false;
+  _usePress = false;
   return state;
 }

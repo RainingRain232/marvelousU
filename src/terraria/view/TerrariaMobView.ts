@@ -45,6 +45,9 @@ export class TerrariaMobView {
       else if (mob.type === "wolf") this._wolf(g, sx, sy, pw, ph, c, ls, d, wp);
       else if (mob.type === "skeleton") this._skeleton(g, sx, sy, pw, ph, c, ls, d, mob.aiState === "attack", wp);
       else if (mob.type === "mordred") this._mordred(g, sx, sy, pw, ph, c, ls, d, mob.aiState === "attack", wp);
+      else if (mob.type === "saxon_warrior") this._saxonWarrior(g, sx, sy, pw, ph, c, ls, d, mob.aiState === "attack", wp);
+      else if (mob.type === "dark_knight") this._darkKnight(g, sx, sy, pw, ph, c, ls, d, mob.aiState === "attack", wp);
+      else if (mob.type === "construct") this._construct(g, sx, sy, pw, ph, c, ls, d, mob.aiState === "attack", wp, t);
       else this._humanoid(g, sx, sy, pw, ph, c, ls, d, mob.aiState === "attack", def);
 
       // HP bar
@@ -56,6 +59,39 @@ export class TerrariaMobView {
         const pct = mob.hp / mob.maxHp;
         const hpColor = mob.isBoss ? 0xFF2222 : pct > 0.6 ? 0x44CC44 : pct > 0.3 ? 0xCCAA22 : 0xCC2222;
         g.rect(bx, by, bw * pct, 3); g.fill(hpColor);
+      }
+      // Status effect indicators
+      if (mob.statusEffects && mob.statusEffects.length > 0) {
+        let fxIdx = 0;
+        for (const fx of mob.statusEffects) {
+          const fxX = sx - 6 + fxIdx * 6;
+          const fxY = sy - ph - 4;
+          if (fx.type === "poison") {
+            // Green bubbles
+            g.circle(fxX, fxY + Math.sin(t * 4 + fxIdx) * 1, 2);
+            g.fill({ color: 0x44DD44, alpha: 0.6 });
+            g.circle(fxX + 1, fxY - 1, 0.8);
+            g.fill({ color: 0x88FF88, alpha: 0.4 });
+          } else if (fx.type === "fire") {
+            // Flame lick
+            const f1 = Math.sin(t * 8 + fxIdx) * 1;
+            g.moveTo(fxX - 1.5, fxY + 2);
+            g.quadraticCurveTo(fxX + f1, fxY - 2, fxX + 1.5, fxY + 2);
+            g.closePath();
+            g.fill({ color: 0xFF6622, alpha: 0.7 });
+            g.circle(fxX + f1 * 0.5, fxY - 0.5, 0.8);
+            g.fill({ color: 0xFFDD44, alpha: 0.5 });
+          } else if (fx.type === "freeze") {
+            // Ice crystal
+            g.moveTo(fxX, fxY - 2.5); g.lineTo(fxX + 2, fxY);
+            g.lineTo(fxX, fxY + 2.5); g.lineTo(fxX - 2, fxY);
+            g.closePath();
+            g.fill({ color: 0x88CCFF, alpha: 0.6 });
+            g.circle(fxX, fxY, 0.8);
+            g.fill({ color: 0xFFFFFF, alpha: 0.4 });
+          }
+          fxIdx++;
+        }
       }
       // Boss crown
       if (mob.isBoss) {
@@ -169,14 +205,65 @@ export class TerrariaMobView {
       const { sx, sy } = camera.worldToScreen(di.x, di.y);
       const bob = Math.sin(t * 3 + di.id) * 2;
       const pulse = 0.25 + Math.sin(t * 4 + di.id) * 0.15;
-      // Glow
-      g.circle(sx, sy + bob, 7); g.fill({ color: di.item.color, alpha: pulse });
-      // Item body
-      g.moveTo(sx, sy - 5 + bob); g.lineTo(sx + 4, sy + bob);
-      g.lineTo(sx, sy + 5 + bob); g.lineTo(sx - 4, sy + bob);
-      g.closePath(); g.fill(di.item.color);
-      // Specular
-      g.circle(sx - 1, sy - 1 + bob, 1.5); g.fill({ color: 0xFFFFFF, alpha: 0.3 });
+      const rot = Math.sin(t * 1.5 + di.id * 2) * 0.15;
+      const ic = di.item.color;
+      // Ground shadow
+      g.ellipse(sx, sy + 4, 4, 1.2);
+      g.fill({ color: 0x000000, alpha: 0.12 });
+      // Pickup glow ring (pulsing)
+      g.circle(sx, sy + bob, 8);
+      g.fill({ color: ic, alpha: pulse * 0.6 });
+      g.circle(sx, sy + bob, 5.5);
+      g.fill({ color: ic, alpha: pulse * 0.3 });
+
+      // Item shape varies by category
+      const cat = di.item.category;
+      if (cat === 0 /* BLOCK */) {
+        // Mini block (3D cube)
+        const bs = 4;
+        const bx = sx - bs / 2;
+        const by = sy - bs / 2 + bob;
+        // Top face
+        g.moveTo(bx, by); g.lineTo(bx + bs, by);
+        g.lineTo(bx + bs + 1.5, by - 1.5); g.lineTo(bx + 1.5, by - 1.5);
+        g.closePath(); g.fill({ color: _lighten(ic, 0.2), alpha: 0.9 });
+        // Front face
+        g.rect(bx, by, bs, bs); g.fill(ic);
+        // Right face
+        g.moveTo(bx + bs, by); g.lineTo(bx + bs + 1.5, by - 1.5);
+        g.lineTo(bx + bs + 1.5, by + bs - 1.5); g.lineTo(bx + bs, by + bs);
+        g.closePath(); g.fill({ color: _darken2(ic, 0.2), alpha: 0.9 });
+        // Highlight
+        g.rect(bx, by, bs, 1); g.fill({ color: 0xFFFFFF, alpha: 0.12 });
+      } else if (cat === 1 /* TOOL */ || cat === 2 /* WEAPON */) {
+        // Tool/weapon shape (handle + head)
+        const len = 6;
+        const angle = -Math.PI * 0.25 + rot;
+        const tipX = sx + Math.cos(angle) * len;
+        const tipY = sy + bob - Math.sin(angle) * len;
+        // Handle
+        g.moveTo(sx, sy + bob); g.lineTo(tipX, tipY);
+        g.stroke({ color: 0x8B6914, width: 1.5 });
+        // Head
+        const perpX = Math.sin(angle) * 3;
+        const perpY = Math.cos(angle) * 3;
+        g.moveTo(tipX - perpX, tipY - perpY);
+        g.lineTo(tipX + Math.cos(angle) * 2, tipY - Math.sin(angle) * 2);
+        g.lineTo(tipX + perpX, tipY + perpY);
+        g.closePath(); g.fill(ic);
+        // Specular on head
+        g.circle(tipX, tipY, 1); g.fill({ color: 0xFFFFFF, alpha: 0.25 });
+      } else {
+        // Default diamond shape (materials, misc)
+        g.moveTo(sx, sy - 5 + bob); g.lineTo(sx + 4, sy + bob);
+        g.lineTo(sx, sy + 5 + bob); g.lineTo(sx - 4, sy + bob);
+        g.closePath(); g.fill(ic);
+        // Facet highlight
+        g.moveTo(sx, sy - 5 + bob); g.lineTo(sx + 4, sy + bob); g.lineTo(sx, sy + bob);
+        g.closePath(); g.fill({ color: 0xFFFFFF, alpha: 0.12 });
+        // Specular
+        g.circle(sx - 1, sy - 1.5 + bob, 1.2); g.fill({ color: 0xFFFFFF, alpha: 0.3 });
+      }
     }
   }
 
@@ -185,26 +272,69 @@ export class TerrariaMobView {
   // ===========================================================================
   private _slime(g: Graphics, sx: number, sy: number, pw: number, ph: number, c: number, wp: number): void {
     const sq = 1 + Math.sin(wp * 2) * 0.18;
-    const w = pw * sq * 0.55; const h = ph * 0.55 / sq;
-    // Shadow
-    g.ellipse(sx, sy, w * 0.8, 2); g.fill({ color: 0x000000, alpha: 0.15 });
-    // Body
-    g.ellipse(sx, sy - h, w, h); g.fill(c);
-    // Inner highlight
-    g.ellipse(sx - w * 0.2, sy - h * 1.3, w * 0.35, h * 0.3);
-    g.fill({ color: 0xFFFFFF, alpha: 0.2 });
-    // Nucleus (darker core)
-    g.ellipse(sx + w * 0.1, sy - h * 0.7, w * 0.25, h * 0.25);
+    const jiggle = Math.sin(wp * 3.7) * 0.08;
+    const w = pw * (sq + jiggle) * 0.55; const h = ph * 0.55 / (sq + jiggle * 0.5);
+    // Ground shadow (deforms with body)
+    g.ellipse(sx, sy, w * 0.85, 2.5); g.fill({ color: 0x000000, alpha: 0.15 });
+    // Slime trail (behind body)
+    g.ellipse(sx - Math.sign(Math.sin(wp)) * 3, sy + 0.5, w * 0.6, 1.2);
+    g.fill({ color: c, alpha: 0.08 });
+    // Body (main shape with slight deformation)
+    g.moveTo(sx - w, sy);
+    g.quadraticCurveTo(sx - w * 1.05, sy - h * 0.8, sx - w * 0.5, sy - h * 1.6 + jiggle * 3);
+    g.quadraticCurveTo(sx, sy - h * 1.8 + jiggle * 5, sx + w * 0.5, sy - h * 1.6 + jiggle * 3);
+    g.quadraticCurveTo(sx + w * 1.05, sy - h * 0.8, sx + w, sy);
+    g.closePath(); g.fill(c);
+    // Body edge highlight (rim light)
+    g.moveTo(sx - w * 0.8, sy - h * 0.3);
+    g.quadraticCurveTo(sx - w * 0.9, sy - h * 1.2, sx - w * 0.3, sy - h * 1.6);
+    g.stroke({ color: 0xFFFFFF, width: 1, alpha: 0.12 });
+    // Internal membrane layers
+    g.ellipse(sx - w * 0.1, sy - h * 0.9, w * 0.7, h * 0.6);
+    g.fill({ color: 0xFFFFFF, alpha: 0.06 });
+    g.ellipse(sx + w * 0.05, sy - h * 0.7, w * 0.5, h * 0.4);
+    g.fill({ color: 0xFFFFFF, alpha: 0.04 });
+    // Inner highlight (top-left specular)
+    g.ellipse(sx - w * 0.25, sy - h * 1.35, w * 0.35, h * 0.25);
+    g.fill({ color: 0xFFFFFF, alpha: 0.22 });
+    g.ellipse(sx - w * 0.2, sy - h * 1.4, w * 0.15, h * 0.1);
+    g.fill({ color: 0xFFFFFF, alpha: 0.15 });
+    // Nucleus (darker core organ, floating)
+    const nucX = sx + w * 0.1 + Math.sin(wp * 1.5) * w * 0.1;
+    const nucY = sy - h * 0.7 + Math.cos(wp * 1.2) * h * 0.1;
+    g.ellipse(nucX, nucY, w * 0.22, h * 0.22);
     g.fill({ color: 0x000000, alpha: 0.12 });
-    // Eyes
-    g.ellipse(sx - w * 0.25, sy - h * 1.05, 2, 2.5); g.fill(0xFFFFFF);
-    g.circle(sx - w * 0.25 + 0.5, sy - h * 1.05, 1); g.fill(0x111111);
-    g.ellipse(sx + w * 0.15, sy - h * 1.05, 2, 2.5); g.fill(0xFFFFFF);
-    g.circle(sx + w * 0.15 + 0.5, sy - h * 1.05, 1); g.fill(0x111111);
-    // Mouth
-    g.moveTo(sx - w * 0.15, sy - h * 0.8);
-    g.quadraticCurveTo(sx, sy - h * 0.65, sx + w * 0.15, sy - h * 0.8);
-    g.stroke({ color: 0x000000, width: 0.8, alpha: 0.3 });
+    g.ellipse(nucX - 1, nucY - 1, w * 0.08, h * 0.08);
+    g.fill({ color: 0x000000, alpha: 0.06 });
+    // Small organelles (floating particles inside body)
+    for (let i = 0; i < 4; i++) {
+      const ox = sx + Math.sin(wp * 0.8 + i * 1.5) * w * 0.3;
+      const oy = sy - h * (0.4 + i * 0.25) + Math.cos(wp * 0.6 + i * 2) * h * 0.1;
+      g.circle(ox, oy, 1 + (i % 2) * 0.5);
+      g.fill({ color: 0x000000, alpha: 0.05 });
+    }
+    // Eyes (with iris and pupil detail)
+    const blinkSq = Math.sin(wp * 0.15) > 0.95 ? 0.2 : 1; // occasional blink
+    for (const [ex, ew] of [[-0.25, 2.2], [0.15, 2]] as [number, number][]) {
+      const eyeX = sx + w * ex;
+      const eyeY = sy - h * 1.05;
+      g.ellipse(eyeX, eyeY, ew, 2.5 * blinkSq); g.fill(0xFFFFFF);
+      if (blinkSq > 0.5) {
+        g.circle(eyeX + 0.5, eyeY, 1.1 * blinkSq); g.fill(0x222244);
+        g.circle(eyeX + 0.7, eyeY, 0.5 * blinkSq); g.fill(0x111111);
+        g.circle(eyeX + 0.2, eyeY - 0.5 * blinkSq, 0.3); g.fill({ color: 0xFFFFFF, alpha: 0.4 });
+      }
+    }
+    // Mouth (varies with state)
+    g.moveTo(sx - w * 0.15, sy - h * 0.78);
+    g.quadraticCurveTo(sx, sy - h * 0.63, sx + w * 0.15, sy - h * 0.78);
+    g.stroke({ color: 0x000000, width: 0.8, alpha: 0.25 });
+    // Drool drop
+    if (Math.sin(wp * 0.4) > 0.5) {
+      const droolY = sy - h * 0.6 + Math.sin(wp * 2) * 1;
+      g.circle(sx + w * 0.05, droolY, 0.8);
+      g.fill({ color: c, alpha: 0.3 });
+    }
   }
 
   // ===========================================================================
@@ -214,14 +344,43 @@ export class TerrariaMobView {
     const bw = pw * 0.4; const bh = ph * 0.35;
     const hw = pw * 0.22; const hh = ph * 0.22;
     const headX = sx + d * pw * 0.32;
-    // Abdomen
+    // Shadow
+    g.ellipse(sx, sy, pw * 0.4, 1.5); g.fill({ color: 0x000000, alpha: 0.12 });
+    // Spinnerets (at rear of abdomen)
+    const spX = sx - d * pw * 0.35;
+    g.moveTo(spX, sy - bh * 0.3);
+    g.lineTo(spX - d * 2, sy - bh * 0.1);
+    g.stroke({ color: c, width: 1 });
+    g.moveTo(spX, sy - bh * 0.4);
+    g.lineTo(spX - d * 3, sy - bh * 0.3);
+    g.stroke({ color: c, width: 0.8 });
+    // Silk thread trailing
+    g.moveTo(spX - d * 3, sy - bh * 0.3);
+    g.bezierCurveTo(spX - d * 6, sy - bh * 0.1, spX - d * 8, sy, spX - d * 10, sy + 2);
+    g.stroke({ color: 0xDDDDDD, width: 0.4, alpha: 0.15 });
+    // Abdomen (larger, textured)
     g.ellipse(sx - d * pw * 0.1, sy - bh, bw, bh); g.fill(c);
-    // Abdomen pattern
-    g.ellipse(sx - d * pw * 0.1, sy - bh * 1.1, bw * 0.3, bh * 0.2);
-    g.fill({ color: 0xFF0000, alpha: 0.2 });
-    // Cephalothorax
+    // Abdomen markings (hourglass/skull pattern)
+    g.ellipse(sx - d * pw * 0.1, sy - bh * 1.15, bw * 0.2, bh * 0.15);
+    g.fill({ color: 0xFF2222, alpha: 0.3 });
+    g.ellipse(sx - d * pw * 0.1, sy - bh * 0.85, bw * 0.15, bh * 0.1);
+    g.fill({ color: 0xFF2222, alpha: 0.2 });
+    // Abdomen texture (fine hairs)
+    for (let i = 0; i < 6; i++) {
+      const hx2 = sx - d * pw * 0.1 + Math.cos(i * 1.05) * bw * 0.7;
+      const hy2 = sy - bh + Math.sin(i * 1.05) * bh * 0.7;
+      g.moveTo(hx2, hy2);
+      g.lineTo(hx2 + Math.cos(i * 1.05) * 1.5, hy2 + Math.sin(i * 1.05) * 1.5);
+      g.stroke({ color: c, width: 0.4, alpha: 0.3 });
+    }
+    // Abdomen highlight
+    g.ellipse(sx - d * pw * 0.15, sy - bh * 1.25, bw * 0.25, bh * 0.15);
+    g.fill({ color: 0xFFFFFF, alpha: 0.08 });
+    // Cephalothorax (head segment)
     g.ellipse(headX, sy - hh * 0.8, hw, hh); g.fill(c);
-    // 4 leg pairs with knee joints
+    g.ellipse(headX - d * 1, sy - hh * 1.0, hw * 0.4, hh * 0.3);
+    g.fill({ color: 0xFFFFFF, alpha: 0.06 });
+    // 4 leg pairs with knee joints + hair spines
     for (let i = 0; i < 4; i++) {
       const baseX = sx + (i - 1.5) * pw * 0.18;
       const lp = wp * 3 + i * 0.9;
@@ -231,29 +390,59 @@ export class TerrariaMobView {
         const kneeY = sy - ph * 0.25 - Math.abs(Math.sin(lp + side)) * 2;
         const footX = kneeX + side * pw * 0.15;
         const footY = sy + footDy;
-        // Upper segment
+        // Upper segment (coxa)
         g.moveTo(baseX, sy - bh * 0.5);
         g.lineTo(kneeX, kneeY);
-        g.stroke({ color: c, width: 1.2 });
-        // Lower segment
+        g.stroke({ color: c, width: 1.5 });
+        // Lower segment (tarsus)
         g.moveTo(kneeX, kneeY);
         g.lineTo(footX, footY);
-        g.stroke({ color: c, width: 1 });
+        g.stroke({ color: c, width: 1.2 });
+        // Knee joint
+        g.circle(kneeX, kneeY, 1); g.fill(c);
+        // Hair spines on legs
+        const midX = (baseX + kneeX) / 2;
+        const midY = (sy - bh * 0.5 + kneeY) / 2;
+        g.moveTo(midX, midY);
+        g.lineTo(midX + side * 1.5, midY - 1.5);
+        g.stroke({ color: c, width: 0.5, alpha: 0.4 });
+        // Foot claw
+        g.moveTo(footX, footY);
+        g.lineTo(footX + side * 1, footY + 1);
+        g.stroke({ color: 0x333333, width: 0.6 });
       }
     }
-    // Fangs
-    g.moveTo(headX + d * hw * 0.3, sy - hh * 0.3);
-    g.lineTo(headX + d * hw * 0.6, sy + 1);
-    g.stroke({ color: 0xDDDDCC, width: 1 });
-    g.moveTo(headX + d * hw * 0.1, sy - hh * 0.3);
-    g.lineTo(headX + d * hw * 0.3, sy + 1);
-    g.stroke({ color: 0xDDDDCC, width: 1 });
-    // Eyes (multiple)
-    for (let i = 0; i < 3; i++) {
-      const ex = headX + d * (hw * 0.2 + i * 2);
-      const ey = sy - hh * 1.0 - i * 0.5;
-      g.circle(ex, ey, 1.2 - i * 0.2); g.fill(0xFF0000);
+    // Chelicerae (fangs - polygon shapes, not just lines)
+    for (const fx of [-1, 1]) {
+      const fangX = headX + d * hw * (0.2 + fx * 0.15);
+      g.moveTo(fangX, sy - hh * 0.4);
+      g.lineTo(fangX + d * 0.5, sy - hh * 0.2);
+      g.lineTo(fangX + d * hw * 0.2, sy + 1.5);
+      g.lineTo(fangX - d * 0.5, sy - hh * 0.2);
+      g.closePath();
+      g.fill(0xDDDDCC);
+      // Venom droplet at tip
+      g.circle(fangX + d * hw * 0.15, sy + 1, 0.6);
+      g.fill({ color: 0x44DD44, alpha: 0.3 });
     }
+    // Eyes (6 — two rows of 3)
+    for (let row = 0; row < 2; row++) {
+      for (let i = 0; i < 3; i++) {
+        const ex = headX + d * (hw * 0.05 + i * 1.8);
+        const ey = sy - hh * (0.95 + row * 0.25) - i * 0.3;
+        const eSize = 1.3 - row * 0.3 - i * 0.1;
+        g.circle(ex, ey, eSize); g.fill(0xFF0000);
+        g.circle(ex - 0.2, ey - 0.2, eSize * 0.3);
+        g.fill({ color: 0xFFFFFF, alpha: 0.3 });
+      }
+    }
+    // Pedipalps (small feelers near mouth)
+    g.moveTo(headX + d * hw * 0.4, sy - hh * 0.5);
+    g.lineTo(headX + d * hw * 0.6, sy - hh * 0.6);
+    g.stroke({ color: c, width: 0.8 });
+    g.moveTo(headX + d * hw * 0.35, sy - hh * 0.4);
+    g.lineTo(headX + d * hw * 0.55, sy - hh * 0.55);
+    g.stroke({ color: c, width: 0.8 });
   }
 
   // ===========================================================================
@@ -417,40 +606,111 @@ export class TerrariaMobView {
   // ===========================================================================
   private _wolf(g: Graphics, sx: number, sy: number, pw: number, ph: number, c: number, ls: number, d: number, wp: number): void {
     const tailWag = Math.sin(wp * 4) * 3;
-    // Tail
+    const breathe = Math.sin(wp * 1.5) * 0.5;
+    // Shadow
+    g.ellipse(sx, sy, pw * 0.4, 1.5); g.fill({ color: 0x000000, alpha: 0.12 });
+    // Tail (fluffy, multi-stroke)
     const tx = sx - d * pw * 0.45;
     g.moveTo(tx, sy - ph * 0.35);
-    g.quadraticCurveTo(tx - d * pw * 0.2, sy - ph * 0.6 + tailWag, tx - d * pw * 0.35, sy - ph * 0.45 + tailWag);
-    g.stroke({ color: c, width: 3 });
-    // Body
-    g.ellipse(sx, sy - ph * 0.35, pw * 0.45, ph * 0.28); g.fill(c);
-    // Chest (lighter)
-    g.ellipse(sx + d * pw * 0.15, sy - ph * 0.3, pw * 0.15, ph * 0.15);
+    g.bezierCurveTo(tx - d * pw * 0.15, sy - ph * 0.55 + tailWag, tx - d * pw * 0.25, sy - ph * 0.6 + tailWag, tx - d * pw * 0.35, sy - ph * 0.45 + tailWag);
+    g.stroke({ color: c, width: 4 });
+    // Tail fluff (lighter tip)
+    g.moveTo(tx - d * pw * 0.3, sy - ph * 0.5 + tailWag);
+    g.lineTo(tx - d * pw * 0.38, sy - ph * 0.42 + tailWag);
+    g.stroke({ color: 0xFFFFFF, width: 2, alpha: 0.15 });
+    // Back legs (behind body)
+    for (const lx of [-0.15, 0.05]) {
+      const legX = sx + lx * pw - d * pw * 0.05;
+      const swing = lx < 0 ? -ls * 0.6 : ls * 0.6;
+      g.moveTo(legX, sy - ph * 0.1);
+      g.lineTo(legX + swing * 0.3, sy - ph * 0.05);
+      g.lineTo(legX + swing * 0.4, sy);
+      g.stroke({ color: _darken2(c, 0.15), width: 2.5 });
+      // Paw
+      g.ellipse(legX + swing * 0.4, sy, 2, 1); g.fill(_darken2(c, 0.1));
+    }
+    // Body (muscular, slightly larger with breathing)
+    g.ellipse(sx, sy - ph * 0.35 + breathe, pw * 0.47, ph * (0.28 + breathe * 0.02)); g.fill(c);
+    // Back ridge (fur line)
+    g.moveTo(sx - pw * 0.3, sy - ph * 0.6);
+    g.bezierCurveTo(sx - pw * 0.1, sy - ph * 0.65, sx + pw * 0.1, sy - ph * 0.63, sx + d * pw * 0.3, sy - ph * 0.55);
+    g.stroke({ color: _darken2(c, 0.2), width: 1, alpha: 0.3 });
+    // Belly (lighter)
+    g.ellipse(sx, sy - ph * 0.22, pw * 0.3, ph * 0.1);
+    g.fill({ color: 0xDDCCBB, alpha: 0.15 });
+    // Chest ruff (lighter, fluffy)
+    g.ellipse(sx + d * pw * 0.2, sy - ph * 0.35, pw * 0.18, ph * 0.18);
     g.fill({ color: 0xFFFFFF, alpha: 0.12 });
+    // Fur texture strokes on body
+    for (let i = 0; i < 5; i++) {
+      const fx = sx - pw * 0.2 + i * pw * 0.1;
+      const fy = sy - ph * 0.45 + (i % 2) * ph * 0.05;
+      g.moveTo(fx, fy); g.lineTo(fx + d * 1.5, fy + 1.5);
+      g.stroke({ color: _darken2(c, 0.15), width: 0.5, alpha: 0.2 });
+    }
+    // Front legs
+    for (const lx of [-0.2, 0.2]) {
+      const legX = sx + lx * pw + d * pw * 0.05;
+      const swing = lx < 0 ? ls : -ls;
+      // Upper leg
+      g.moveTo(legX, sy - ph * 0.12);
+      g.lineTo(legX + swing * 0.3, sy - ph * 0.05);
+      g.stroke({ color: c, width: 3 });
+      // Lower leg
+      g.moveTo(legX + swing * 0.3, sy - ph * 0.05);
+      g.lineTo(legX + swing * 0.4, sy);
+      g.stroke({ color: c, width: 2.5 });
+      // Paw pad
+      g.ellipse(legX + swing * 0.4, sy, 2.2, 1.2); g.fill(c);
+      // Toe pads
+      g.circle(legX + swing * 0.4 - 1, sy + 0.3, 0.5); g.fill({ color: 0x222222, alpha: 0.15 });
+      g.circle(legX + swing * 0.4 + 1, sy + 0.3, 0.5); g.fill({ color: 0x222222, alpha: 0.15 });
+    }
+    // Neck (thick, muscular)
+    g.moveTo(sx + d * pw * 0.25, sy - ph * 0.5);
+    g.quadraticCurveTo(sx + d * pw * 0.35, sy - ph * 0.52, sx + d * pw * 0.4, sy - ph * 0.55);
+    g.stroke({ color: c, width: 4 });
     // Head
     const hx = sx + d * pw * 0.4; const hy = sy - ph * 0.55;
     g.ellipse(hx, hy, pw * 0.2, ph * 0.17); g.fill(c);
-    // Muzzle
-    g.ellipse(hx + d * pw * 0.18, hy + ph * 0.04, pw * 0.1, ph * 0.08); g.fill(c);
-    g.circle(hx + d * pw * 0.25, hy + ph * 0.02, 1.2); g.fill(0x222222); // nose
-    // Ears (triangles)
-    g.moveTo(hx - pw * 0.05, hy - ph * 0.15);
-    g.lineTo(hx - pw * 0.1, hy - ph * 0.3);
-    g.lineTo(hx + pw * 0.02, hy - ph * 0.15); g.closePath(); g.fill(c);
-    g.moveTo(hx + pw * 0.05, hy - ph * 0.15);
-    g.lineTo(hx + pw * 0.1, hy - ph * 0.3);
-    g.lineTo(hx + pw * 0.15, hy - ph * 0.15); g.closePath(); g.fill(c);
-    // Eye
-    g.circle(hx + d * pw * 0.08, hy - ph * 0.03, 1.5); g.fill(0xFFCC00);
-    g.circle(hx + d * pw * 0.08, hy - ph * 0.03, 0.7); g.fill(0x111100);
-    // Legs
-    for (const lx of [-0.2, 0.2]) {
-      const legX = sx + lx * pw;
-      const swing = lx < 0 ? ls : -ls;
-      g.moveTo(legX, sy - ph * 0.1);
-      g.lineTo(legX + swing * 0.5, sy);
-      g.stroke({ color: c, width: 2.5 });
+    // Brow ridge
+    g.moveTo(hx - pw * 0.12, hy - ph * 0.08);
+    g.quadraticCurveTo(hx, hy - ph * 0.1, hx + pw * 0.12, hy - ph * 0.08);
+    g.stroke({ color: _darken2(c, 0.2), width: 1, alpha: 0.2 });
+    // Muzzle (tapered)
+    g.moveTo(hx + d * pw * 0.1, hy + ph * 0.08);
+    g.lineTo(hx + d * pw * 0.28, hy + ph * 0.02);
+    g.lineTo(hx + d * pw * 0.1, hy - ph * 0.03);
+    g.closePath(); g.fill(c);
+    // Muzzle lighter underside
+    g.ellipse(hx + d * pw * 0.2, hy + ph * 0.05, pw * 0.06, ph * 0.03);
+    g.fill({ color: 0xDDCCBB, alpha: 0.2 });
+    // Nose (detailed)
+    g.ellipse(hx + d * pw * 0.27, hy + ph * 0.01, 1.5, 1.2); g.fill(0x222222);
+    g.circle(hx + d * pw * 0.27 - 0.3, hy + ph * 0.005, 0.4); g.fill({ color: 0x444444, alpha: 0.5 });
+    // Mouth line
+    g.moveTo(hx + d * pw * 0.27, hy + ph * 0.025);
+    g.lineTo(hx + d * pw * 0.18, hy + ph * 0.06);
+    g.stroke({ color: 0x000000, width: 0.5, alpha: 0.2 });
+    // Ears (triangles with inner detail)
+    for (const [eox, eiox] of [[- 0.05, 0.02], [0.05, 0.15]] as [number, number][]) {
+      g.moveTo(hx + pw * eox, hy - ph * 0.15);
+      g.lineTo(hx + pw * (eox - 0.03), hy - ph * 0.32);
+      g.lineTo(hx + pw * eiox, hy - ph * 0.15);
+      g.closePath(); g.fill(c);
+      // Ear inner (pink)
+      g.moveTo(hx + pw * (eox + 0.01), hy - ph * 0.17);
+      g.lineTo(hx + pw * (eox - 0.01), hy - ph * 0.27);
+      g.lineTo(hx + pw * (eiox - 0.02), hy - ph * 0.17);
+      g.closePath(); g.fill({ color: 0xCC9999, alpha: 0.15 });
     }
+    // Eye (detailed amber with slit pupil)
+    g.ellipse(hx + d * pw * 0.08, hy - ph * 0.03, 2, 1.8); g.fill(0xFFCC00);
+    g.ellipse(hx + d * pw * 0.08, hy - ph * 0.03, 0.6, 1.5); g.fill(0x111100);
+    g.circle(hx + d * pw * 0.07, hy - ph * 0.05, 0.4); g.fill({ color: 0xFFFFFF, alpha: 0.3 });
+    // Whisker dots on muzzle
+    g.circle(hx + d * pw * 0.22, hy + ph * 0.01, 0.3); g.fill({ color: 0x000000, alpha: 0.15 });
+    g.circle(hx + d * pw * 0.22, hy + ph * 0.03, 0.3); g.fill({ color: 0x000000, alpha: 0.15 });
   }
 
   // ===========================================================================
@@ -649,6 +909,278 @@ export class TerrariaMobView {
   // ===========================================================================
   // GENERIC HUMANOID — saxon warrior, dark knight, construct
   // ===========================================================================
+  // ===========================================================================
+  // SAXON WARRIOR — bearded viking with round shield and axe
+  // ===========================================================================
+  private _saxonWarrior(g: Graphics, sx: number, sy: number, pw: number, ph: number, c: number, ls: number, d: number, atk: boolean, wp: number): void {
+    const hw = pw / 2;
+    // Shadow
+    g.ellipse(sx, sy, hw * 0.6, 1.5); g.fill({ color: 0x000000, alpha: 0.12 });
+    // Legs (fur-wrapped)
+    for (const [lx, sw] of [[-0.25, ls], [0.1, -ls]] as [number, number][]) {
+      const legX = sx + lx * pw;
+      g.moveTo(legX, sy - ph * 0.3); g.lineTo(legX + pw * 0.22, sy - ph * 0.3);
+      g.lineTo(legX + pw * 0.2 + sw, sy); g.lineTo(legX + pw * 0.02 + sw, sy);
+      g.closePath(); g.fill(0x5A4018);
+      // Fur wrapping
+      g.rect(legX + sw * 0.3 - 1, sy - ph * 0.18, pw * 0.24, 3);
+      g.fill({ color: 0x8B7533, alpha: 0.4 });
+      // Boot
+      g.rect(legX + sw - 1.5, sy - 3, pw * 0.26, 3);
+      g.fill(0x4A3010);
+    }
+    // Chainmail tunic
+    g.moveTo(sx - hw * 0.55, sy - ph * 0.65);
+    g.lineTo(sx + hw * 0.55, sy - ph * 0.65);
+    g.lineTo(sx + hw * 0.45, sy - ph * 0.28);
+    g.lineTo(sx - hw * 0.45, sy - ph * 0.28);
+    g.closePath(); g.fill(c);
+    // Chainmail texture
+    for (let my = 0; my < 4; my++) {
+      const row = sy - ph * 0.6 + my * 3;
+      for (let mx = -2; mx <= 2; mx++) {
+        g.circle(sx + mx * 2.5 + (my % 2) * 1.2, row, 0.7);
+        g.stroke({ color: 0x000000, width: 0.3, alpha: 0.08 });
+      }
+    }
+    // Belt with buckle
+    g.rect(sx - hw * 0.45, sy - ph * 0.3, hw * 0.9, 3);
+    g.fill(0x6A4A14);
+    g.rect(sx - 1.5, sy - ph * 0.3, 3, 3); g.fill(0xCCAA44);
+    // Round shield (back arm)
+    const shieldX = sx - d * hw * 0.55;
+    g.circle(shieldX, sy - ph * 0.42, 6);
+    g.fill(0x8B6914);
+    g.circle(shieldX, sy - ph * 0.42, 4.5);
+    g.fill(c);
+    g.circle(shieldX, sy - ph * 0.42, 1.5);
+    g.fill(0xCCAA44);
+    // Cross on shield
+    g.rect(shieldX - 0.5, sy - ph * 0.42 - 3, 1, 6);
+    g.fill({ color: 0xCCAA44, alpha: 0.5 });
+    g.rect(shieldX - 3, sy - ph * 0.42 - 0.5, 6, 1);
+    g.fill({ color: 0xCCAA44, alpha: 0.5 });
+    // Head
+    const headY = sy - ph * 0.82;
+    g.ellipse(sx, headY, hw * 0.38, ph * 0.1); g.fill(0xDDBB99);
+    // Leather cap with horn
+    g.moveTo(sx - hw * 0.4, headY + 1);
+    g.lineTo(sx - hw * 0.4, headY - ph * 0.06);
+    g.quadraticCurveTo(sx, headY - ph * 0.1, sx + hw * 0.4, headY - ph * 0.06);
+    g.lineTo(sx + hw * 0.4, headY + 1);
+    g.closePath(); g.fill(0x6A4A1A);
+    // Horns on helmet
+    g.moveTo(sx - hw * 0.35, headY - ph * 0.04);
+    g.quadraticCurveTo(sx - hw * 0.5, headY - ph * 0.18, sx - hw * 0.6, headY - ph * 0.12);
+    g.stroke({ color: 0xDDCCAA, width: 1.5 });
+    g.moveTo(sx + hw * 0.35, headY - ph * 0.04);
+    g.quadraticCurveTo(sx + hw * 0.5, headY - ph * 0.18, sx + hw * 0.6, headY - ph * 0.12);
+    g.stroke({ color: 0xDDCCAA, width: 1.5 });
+    // Eyes
+    g.circle(sx + d * hw * 0.12, headY + ph * 0.01, 1.2); g.fill(0xFFFFFF);
+    g.circle(sx + d * hw * 0.15, headY + ph * 0.01, 0.5); g.fill(0x332211);
+    // Bushy beard
+    g.moveTo(sx - hw * 0.25, headY + ph * 0.07);
+    g.bezierCurveTo(sx - hw * 0.3, headY + ph * 0.18, sx, headY + ph * 0.2, sx + hw * 0.25, headY + ph * 0.07);
+    g.closePath(); g.fill(0x8B6533);
+    // Front arm + axe
+    const armX = sx + d * hw * 0.4;
+    if (atk) {
+      const swingAngle = Math.sin(wp * 4) * 0.5;
+      const tipX = armX + d * 8; const tipY = sy - ph * 0.65 + swingAngle * 5;
+      g.moveTo(armX, sy - ph * 0.55); g.lineTo(tipX, tipY);
+      g.stroke({ color: 0xDDBB99, width: 2.5 });
+      // Axe head
+      g.moveTo(tipX, tipY - 3); g.lineTo(tipX + d * 5, tipY);
+      g.lineTo(tipX, tipY + 3); g.closePath(); g.fill(0xAAAAAA);
+      g.moveTo(tipX, tipY - 3); g.lineTo(tipX + d * 5, tipY);
+      g.stroke({ color: 0xDDDDDD, width: 0.4, alpha: 0.3 });
+    } else {
+      g.moveTo(armX, sy - ph * 0.55); g.lineTo(armX, sy - ph * 0.3);
+      g.stroke({ color: 0xDDBB99, width: 2.5 });
+    }
+  }
+
+  // ===========================================================================
+  // DARK KNIGHT — full plate armor, great sword, menacing visor
+  // ===========================================================================
+  private _darkKnight(g: Graphics, sx: number, sy: number, pw: number, ph: number, _c: number, ls: number, d: number, atk: boolean, wp: number): void {
+    const hw = pw / 2;
+    g.ellipse(sx, sy, hw * 0.6, 1.5); g.fill({ color: 0x000000, alpha: 0.15 });
+    // Armored legs
+    for (const [lx, sw] of [[-0.22, ls], [0.08, -ls]] as [number, number][]) {
+      const legX = sx + lx * pw;
+      // Greave (shin armor)
+      g.moveTo(legX, sy - ph * 0.3); g.lineTo(legX + pw * 0.22, sy - ph * 0.3);
+      g.lineTo(legX + pw * 0.2 + sw, sy); g.lineTo(legX + pw * 0.02 + sw, sy);
+      g.closePath(); g.fill(0x333344);
+      // Knee guard
+      g.ellipse(legX + pw * 0.11, sy - ph * 0.28, 2.5, 2);
+      g.fill(0x444466);
+      // Sabaton (foot armor)
+      g.moveTo(legX + sw - 2, sy - 2); g.lineTo(legX + sw + pw * 0.28, sy - 2);
+      g.lineTo(legX + sw + pw * 0.3, sy); g.lineTo(legX + sw - 2, sy);
+      g.closePath(); g.fill(0x222233);
+    }
+    // Body plate armor (multiple pieces)
+    // Cuirass (chest)
+    g.moveTo(sx - hw * 0.55, sy - ph * 0.65);
+    g.lineTo(sx + hw * 0.55, sy - ph * 0.65);
+    g.lineTo(sx + hw * 0.48, sy - ph * 0.3);
+    g.lineTo(sx - hw * 0.48, sy - ph * 0.3);
+    g.closePath(); g.fill(0x333344);
+    // Chest plate highlight
+    g.moveTo(sx - hw * 0.3, sy - ph * 0.63);
+    g.lineTo(sx + hw * 0.3, sy - ph * 0.63);
+    g.lineTo(sx + hw * 0.2, sy - ph * 0.45);
+    g.lineTo(sx - hw * 0.2, sy - ph * 0.45);
+    g.closePath(); g.fill({ color: 0x555577, alpha: 0.5 });
+    // Dark emblem on chest (skull)
+    g.circle(sx, sy - ph * 0.5, 2.5); g.fill({ color: 0x111122, alpha: 0.4 });
+    g.circle(sx - 1, sy - ph * 0.51, 0.6); g.fill({ color: 0xAA2222, alpha: 0.5 });
+    g.circle(sx + 1, sy - ph * 0.51, 0.6); g.fill({ color: 0xAA2222, alpha: 0.5 });
+    // Pauldrons (shoulder armor)
+    g.ellipse(sx - hw * 0.55, sy - ph * 0.6, 4, 3); g.fill(0x444466);
+    g.ellipse(sx + hw * 0.55, sy - ph * 0.6, 4, 3); g.fill(0x444466);
+    // Spikes on pauldrons
+    g.moveTo(sx - hw * 0.55, sy - ph * 0.63); g.lineTo(sx - hw * 0.6, sy - ph * 0.72);
+    g.stroke({ color: 0x555577, width: 1.5 });
+    g.moveTo(sx + hw * 0.55, sy - ph * 0.63); g.lineTo(sx + hw * 0.6, sy - ph * 0.72);
+    g.stroke({ color: 0x555577, width: 1.5 });
+    // Fauld (waist armor)
+    g.rect(sx - hw * 0.5, sy - ph * 0.32, hw * 1, 3);
+    g.fill(0x444466);
+    // Great helm
+    const headY = sy - ph * 0.82;
+    g.moveTo(sx - hw * 0.42, headY + ph * 0.05);
+    g.lineTo(sx - hw * 0.45, headY - ph * 0.06);
+    g.quadraticCurveTo(sx, headY - ph * 0.12, sx + hw * 0.45, headY - ph * 0.06);
+    g.lineTo(sx + hw * 0.42, headY + ph * 0.05);
+    g.closePath(); g.fill(0x333344);
+    // Visor slit (menacing red glow)
+    g.rect(sx - hw * 0.28, headY - ph * 0.01, hw * 0.56, 2.5);
+    g.fill(0x111111);
+    g.rect(sx - hw * 0.25, headY, hw * 0.5, 1.5);
+    g.fill({ color: 0xFF2222, alpha: 0.4 });
+    // Helmet crest
+    g.moveTo(sx, headY - ph * 0.1);
+    g.lineTo(sx, headY - ph * 0.2);
+    g.stroke({ color: 0x555577, width: 2 });
+    // Plume
+    g.moveTo(sx, headY - ph * 0.2);
+    g.bezierCurveTo(sx - d * 4, headY - ph * 0.22, sx - d * 6, headY - ph * 0.15, sx - d * 7, headY - ph * 0.1);
+    g.stroke({ color: 0x881111, width: 2 });
+    // Great sword
+    if (atk) {
+      const swA = Math.sin(wp * 3) * 0.6;
+      const swordTipX = sx + d * pw * 0.8;
+      const swordTipY = sy - ph * 0.7 + swA * 8;
+      g.moveTo(sx + d * hw * 0.4, sy - ph * 0.55);
+      g.lineTo(swordTipX, swordTipY);
+      g.stroke({ color: 0x777799, width: 3 });
+      // Blade width
+      const perpX = Math.sin(swA) * 1.5;
+      const perpY = Math.cos(swA) * 1.5;
+      g.moveTo(swordTipX + perpX, swordTipY + perpY);
+      g.lineTo(swordTipX + d * 3, swordTipY - 1);
+      g.lineTo(swordTipX - perpX, swordTipY - perpY);
+      g.closePath(); g.fill(0x888899);
+      // Edge gleam
+      g.moveTo(sx + d * hw * 0.4, sy - ph * 0.55);
+      g.lineTo(swordTipX, swordTipY);
+      g.stroke({ color: 0xCCCCDD, width: 0.5, alpha: 0.3 });
+    } else {
+      // Sword at rest on shoulder
+      g.moveTo(sx + d * hw * 0.35, sy - ph * 0.4);
+      g.lineTo(sx + d * hw * 0.1, sy - ph * 0.85);
+      g.stroke({ color: 0x777799, width: 2.5 });
+    }
+  }
+
+  // ===========================================================================
+  // CONSTRUCT — magical golem with rune-inscribed stone body
+  // ===========================================================================
+  private _construct(g: Graphics, sx: number, sy: number, pw: number, ph: number, c: number, ls: number, d: number, atk: boolean, wp: number, t: number): void {
+    const hw = pw / 2;
+    const pulse = Math.sin(t * 2) * 0.15 + 0.85;
+    g.ellipse(sx, sy, hw * 0.7, 2); g.fill({ color: 0x000000, alpha: 0.18 });
+    // Legs (thick stone pillars)
+    for (const [lx, sw] of [[-0.2, ls * 0.5], [0.1, -ls * 0.5]] as [number, number][]) {
+      const legX = sx + lx * pw;
+      g.moveTo(legX - 1, sy - ph * 0.35);
+      g.lineTo(legX + pw * 0.25 + 1, sy - ph * 0.35);
+      g.lineTo(legX + pw * 0.27 + sw, sy);
+      g.lineTo(legX - 2 + sw, sy);
+      g.closePath(); g.fill(0x553388);
+      // Rune on leg
+      g.circle(legX + pw * 0.12, sy - ph * 0.2, 1.5);
+      g.stroke({ color: 0xAA66FF, width: 0.6, alpha: pulse * 0.4 });
+    }
+    // Massive body (wide, angular)
+    g.moveTo(sx - hw * 0.65, sy - ph * 0.7);
+    g.lineTo(sx + hw * 0.65, sy - ph * 0.7);
+    g.lineTo(sx + hw * 0.7, sy - ph * 0.35);
+    g.lineTo(sx - hw * 0.7, sy - ph * 0.35);
+    g.closePath(); g.fill(c);
+    // Stone texture cracks
+    g.moveTo(sx - hw * 0.3, sy - ph * 0.68); g.lineTo(sx - hw * 0.1, sy - ph * 0.5);
+    g.lineTo(sx + hw * 0.15, sy - ph * 0.55);
+    g.stroke({ color: 0x000000, width: 0.6, alpha: 0.15 });
+    // Glowing rune circle on chest
+    g.circle(sx, sy - ph * 0.5, 4);
+    g.stroke({ color: 0xAA66FF, width: 1, alpha: pulse * 0.5 });
+    g.circle(sx, sy - ph * 0.5, 2);
+    g.fill({ color: 0xCC88FF, alpha: pulse * 0.3 });
+    // Rune lines (cross pattern)
+    g.moveTo(sx, sy - ph * 0.56); g.lineTo(sx, sy - ph * 0.44);
+    g.stroke({ color: 0xAA66FF, width: 0.7, alpha: pulse * 0.4 });
+    g.moveTo(sx - 3, sy - ph * 0.5); g.lineTo(sx + 3, sy - ph * 0.5);
+    g.stroke({ color: 0xAA66FF, width: 0.7, alpha: pulse * 0.4 });
+    // Shoulder pauldrons (stone blocks)
+    g.rect(sx - hw * 0.75, sy - ph * 0.72, 5, 5); g.fill(0x664499);
+    g.rect(sx + hw * 0.55, sy - ph * 0.72, 5, 5); g.fill(0x664499);
+    // Arms (thick, segmented)
+    const armSwing = atk ? Math.sin(wp * 4) * 6 : 0;
+    for (const side of [-1, 1] as const) {
+      const ax = sx + side * hw * 0.7;
+      const ay = sy - ph * 0.6;
+      // Upper arm
+      g.rect(ax - 2.5, ay, 5, ph * 0.15); g.fill(0x553388);
+      // Forearm
+      const faY = ay + ph * 0.15;
+      g.rect(ax - 3, faY + (side === d ? armSwing : 0), 6, ph * 0.12); g.fill(c);
+      // Fist (large, glowing)
+      const fistY = faY + ph * 0.12 + (side === d ? armSwing : 0);
+      g.circle(ax, fistY + 2, 4); g.fill(0x553388);
+      g.circle(ax, fistY + 2, 2);
+      g.fill({ color: 0xAA66FF, alpha: pulse * 0.25 });
+    }
+    // Head (angular, crystalline)
+    const headY = sy - ph * 0.85;
+    g.moveTo(sx - hw * 0.35, headY + ph * 0.08);
+    g.lineTo(sx - hw * 0.25, headY - ph * 0.05);
+    g.lineTo(sx + hw * 0.25, headY - ph * 0.05);
+    g.lineTo(sx + hw * 0.35, headY + ph * 0.08);
+    g.closePath(); g.fill(c);
+    // Glowing eyes
+    g.circle(sx - hw * 0.12, headY + ph * 0.01, 2);
+    g.fill({ color: 0xAA44FF, alpha: pulse });
+    g.circle(sx + hw * 0.12, headY + ph * 0.01, 2);
+    g.fill({ color: 0xAA44FF, alpha: pulse });
+    // Inner eye glow
+    g.circle(sx - hw * 0.12, headY + ph * 0.01, 3.5);
+    g.fill({ color: 0xAA44FF, alpha: pulse * 0.15 });
+    g.circle(sx + hw * 0.12, headY + ph * 0.01, 3.5);
+    g.fill({ color: 0xAA44FF, alpha: pulse * 0.15 });
+    // Crystal crown
+    g.moveTo(sx - 3, headY - ph * 0.05);
+    g.lineTo(sx - 2, headY - ph * 0.14);
+    g.lineTo(sx, headY - ph * 0.08);
+    g.lineTo(sx + 2, headY - ph * 0.14);
+    g.lineTo(sx + 3, headY - ph * 0.05);
+    g.stroke({ color: 0xBB88FF, width: 1, alpha: pulse * 0.6 });
+  }
+
   private _humanoid(g: Graphics, sx: number, sy: number, pw: number, ph: number, c: number, ls: number, d: number, atk: boolean, def: { name: string }): void {
     const hw = pw / 2;
     const isDark = def.name.includes("Dark Knight");
@@ -816,6 +1348,71 @@ export class TerrariaMobView {
       // Legs
       g.rect(sx - hw * 0.25, sy - ph * 0.1, pw * 0.2, ph * 0.1); g.fill(0x5A4018);
       g.rect(sx + hw * 0.05, sy - ph * 0.1, pw * 0.2, ph * 0.1); g.fill(0x5A4018);
+    } else if (type === "herbalist") {
+      // Forest herbalist — green robes, herb pouch, flower crown
+      // Flowing green robe
+      g.moveTo(sx - hw * 0.45, sy - ph * 0.55);
+      g.lineTo(sx + hw * 0.45, sy - ph * 0.55);
+      g.bezierCurveTo(sx + hw * 0.55, sy - ph * 0.2, sx + hw * 0.5, sy, sx + hw * 0.45, sy);
+      g.lineTo(sx - hw * 0.45, sy);
+      g.bezierCurveTo(sx - hw * 0.5, sy, sx - hw * 0.55, sy - ph * 0.2, sx - hw * 0.45, sy - ph * 0.55);
+      g.closePath(); g.fill(0x337733);
+      // Lighter inner robe
+      g.moveTo(sx - hw * 0.15, sy - ph * 0.55);
+      g.lineTo(sx + hw * 0.15, sy - ph * 0.55);
+      g.lineTo(sx + hw * 0.1, sy);
+      g.lineTo(sx - hw * 0.1, sy);
+      g.closePath(); g.fill(0x448844);
+      // Leaf pattern on robe
+      for (let i = 0; i < 4; i++) {
+        const lx2 = sx + (i - 1.5) * 3;
+        const ly2 = sy - ph * 0.35 + (i % 2) * 3;
+        g.ellipse(lx2, ly2, 1.5, 1); g.fill({ color: 0x55AA44, alpha: 0.3 });
+      }
+      // Herb pouch at waist
+      g.ellipse(sx + d * hw * 0.35, sy - ph * 0.22, 3, 2.5);
+      g.fill(0x8B6914);
+      g.ellipse(sx + d * hw * 0.35, sy - ph * 0.22, 2, 1.5);
+      g.fill(0xAA8844);
+      // Herbs peeking out of pouch
+      g.moveTo(sx + d * hw * 0.3, sy - ph * 0.25);
+      g.lineTo(sx + d * hw * 0.25, sy - ph * 0.32);
+      g.stroke({ color: 0x44AA33, width: 0.8 });
+      g.moveTo(sx + d * hw * 0.38, sy - ph * 0.25);
+      g.lineTo(sx + d * hw * 0.42, sy - ph * 0.31);
+      g.stroke({ color: 0x55BB44, width: 0.8 });
+      // Head
+      g.ellipse(sx, sy - ph * 0.7, hw * 0.32, ph * 0.1); g.fill(0xFFCC99);
+      // Hair (braided, brown)
+      g.moveTo(sx - hw * 0.3, sy - ph * 0.72);
+      g.bezierCurveTo(sx - hw * 0.35, sy - ph * 0.55, sx - hw * 0.25, sy - ph * 0.4, sx - hw * 0.15, sy - ph * 0.35);
+      g.stroke({ color: 0x664422, width: 1.5 });
+      g.moveTo(sx + hw * 0.3, sy - ph * 0.72);
+      g.bezierCurveTo(sx + hw * 0.35, sy - ph * 0.55, sx + hw * 0.25, sy - ph * 0.4, sx + hw * 0.15, sy - ph * 0.35);
+      g.stroke({ color: 0x664422, width: 1.5 });
+      // Flower crown
+      const crownY = sy - ph * 0.8;
+      for (let i = 0; i < 5; i++) {
+        const fx = sx - 4 + i * 2;
+        const flowerColor = [0xFF6666, 0xFFDD44, 0xFF88CC, 0x66BBFF, 0xFFAA44][i];
+        g.circle(fx, crownY + Math.sin(i) * 0.5, 1.2);
+        g.fill({ color: flowerColor, alpha: 0.7 });
+      }
+      // Green vine connecting flowers
+      g.moveTo(sx - 4, crownY); g.quadraticCurveTo(sx, crownY - 1, sx + 4, crownY);
+      g.stroke({ color: 0x338833, width: 0.6 });
+      // Eyes
+      g.circle(sx + d * 2, sy - ph * 0.69, 1); g.fill(0x337733);
+      // Gentle smile
+      g.moveTo(sx - 1, sy - ph * 0.64);
+      g.quadraticCurveTo(sx + d, sy - ph * 0.62, sx + d * 2, sy - ph * 0.64);
+      g.stroke({ color: 0xBB8866, width: 0.6 });
+      // Mortar & pestle in hand
+      g.ellipse(sx - d * hw * 0.4, sy - ph * 0.42, 2.5, 2);
+      g.fill(0x888888);
+      g.moveTo(sx - d * hw * 0.4 + 1, sy - ph * 0.42);
+      g.lineTo(sx - d * hw * 0.4 + 2.5, sy - ph * 0.52);
+      g.stroke({ color: 0x666666, width: 1.2 });
     } else {
       // Knight recruit — shiny armor
       g.rect(sx - hw * 0.4, sy - ph * 0.3, pw * 0.4, ph * 0.3); g.fill(0x888888);
@@ -839,4 +1436,18 @@ export class TerrariaMobView {
   }
 
   destroy(): void { this.container.destroy({ children: true }); }
+}
+
+function _lighten(color: number, amount: number): number {
+  const r = Math.min(255, ((color >> 16) & 0xFF) + Math.floor(255 * amount));
+  const g = Math.min(255, ((color >> 8) & 0xFF) + Math.floor(255 * amount));
+  const b = Math.min(255, (color & 0xFF) + Math.floor(255 * amount));
+  return (r << 16) | (g << 8) | b;
+}
+
+function _darken2(color: number, amount: number): number {
+  const r = Math.max(0, Math.floor(((color >> 16) & 0xFF) * (1 - amount)));
+  const g = Math.max(0, Math.floor(((color >> 8) & 0xFF) * (1 - amount)));
+  const b = Math.max(0, Math.floor((color & 0xFF) * (1 - amount)));
+  return (r << 16) | (g << 8) | b;
 }

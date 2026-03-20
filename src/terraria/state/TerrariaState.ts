@@ -7,7 +7,7 @@ import { BlockType, BLOCK_DEFS } from "../config/TerrariaBlockDefs";
 import { TerrariaChunk, worldToChunkX, worldToLocalX } from "./TerrariaChunk";
 import type { TerrariaInventory } from "./TerrariaInventory";
 import { createInventory } from "./TerrariaInventory";
-import type { MobInstance, Projectile, DroppedItem, NPCInstance } from "./TerrariaEntity";
+import type { MobInstance, Projectile, DroppedItem, NPCInstance, StatusEffect } from "./TerrariaEntity";
 
 // ---------------------------------------------------------------------------
 // Player
@@ -36,6 +36,12 @@ export interface TerrariaPlayer {
   blocksPlaced: number;
   blocksMined: number;
   mobsKilled: number;
+
+  // Status effects
+  statusEffects: StatusEffect[];
+  // Combat stats
+  critChance: number;    // 0-1, default 0.05
+  speedMult: number;     // movement speed multiplier from effects
 }
 
 // ---------------------------------------------------------------------------
@@ -96,6 +102,11 @@ export interface TerrariaState {
   gameOver: boolean;
   victory: boolean;
   messages: { text: string; time: number; color: number }[];
+
+  // World events
+  activeEvent: "none" | "blood_moon" | "goblin_invasion" | "meteor_shower";
+  eventTimer: number;
+  eventData: { spawnCount?: number; meteorX?: number; meteorY?: number };
 
   worldWidth: number;
   worldHeight: number;
@@ -168,6 +179,9 @@ export function createTerrariaState(seed?: number, worldWidth?: number, difficul
       blocksPlaced: 0,
       blocksMined: 0,
       mobsKilled: 0,
+      statusEffects: [],
+      critChance: 0.05,
+      speedMult: 1.0,
     },
     mobs: [],
     npcs: [],
@@ -191,6 +205,9 @@ export function createTerrariaState(seed?: number, worldWidth?: number, difficul
     gameOver: false,
     victory: false,
     messages: [],
+    activeEvent: "none",
+    eventTimer: 0,
+    eventData: {},
     worldWidth: ww,
     worldHeight: TB.WORLD_HEIGHT,
     camX: ww / 2,

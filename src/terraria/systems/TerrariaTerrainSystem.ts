@@ -114,7 +114,11 @@ export function generateChunk(cx: number): TerrariaChunk {
       // Cave carving
       const caveVal = noise2D(_perm, wx * TB.CAVE_SCALE, y * TB.CAVE_SCALE);
       const largeCaveVal = noise2D(_perm, wx * TB.LARGE_CAVE_SCALE, y * TB.LARGE_CAVE_SCALE);
-      const isCave = y < surfaceY - 2 && (caveVal > TB.CAVE_THRESHOLD || (y < TB.CAVERN_Y && largeCaveVal > TB.LARGE_CAVE_THRESHOLD));
+      // Near-surface caves for more openings in the play layer
+      const surfCaveVal = noise2D(_perm, wx * TB.SURFACE_CAVE_SCALE, y * TB.SURFACE_CAVE_SCALE);
+      const isDeepCave = y < surfaceY - 2 && (caveVal > TB.CAVE_THRESHOLD || (y < TB.CAVERN_Y && largeCaveVal > TB.LARGE_CAVE_THRESHOLD));
+      const isSurfaceCave = y < surfaceY - 1 && y > surfaceY - 15 && surfCaveVal > TB.SURFACE_CAVE_THRESHOLD;
+      const isCave = isDeepCave || isSurfaceCave;
 
       if (isCave) {
         if (y < surfaceY - 4) chunk.setWall(lx, y, WallType.STONE_WALL);
@@ -188,6 +192,55 @@ export function generateChunk(cx: number): TerrariaChunk {
         if (r < 0.15) chunk.setBlock(lx, above, BlockType.TALL_GRASS);
         else if (r < 0.18) chunk.setBlock(lx, above, BlockType.RED_FLOWER);
         else if (r < 0.21) chunk.setBlock(lx, above, BlockType.BLUE_FLOWER);
+      }
+    }
+  }
+
+  // Play-layer plants and treasure chests (in near-surface caves/openings)
+  for (let lx = 0; lx < CW; lx++) {
+    const wx = baseX + lx;
+    if (wx < 0 || wx >= TB.WORLD_WIDTH) continue;
+    const surfaceY = getSurfaceHeight(wx);
+    // Scan the near-surface underground for air pockets (cave openings)
+    for (let y = surfaceY - 15; y < surfaceY - 1; y++) {
+      if (y < 1) continue;
+      const block = chunk.getBlock(lx, y);
+      const blockBelow = chunk.getBlock(lx, y - 1);
+      // Place on cave floors (air above solid)
+      if (block === BlockType.AIR && blockBelow !== BlockType.AIR && blockBelow !== BlockType.WATER) {
+        const r = hashPos(_seed + 1600, wx, y);
+        if (r < 0.06) chunk.setBlock(lx, y, BlockType.MUSHROOM);
+        else if (r < 0.12) chunk.setBlock(lx, y, BlockType.TALL_GRASS);
+        else if (r < 0.15) chunk.setBlock(lx, y, BlockType.RED_FLOWER);
+        else if (r < 0.17) chunk.setBlock(lx, y, BlockType.BLUE_FLOWER);
+        else if (r < 0.185) chunk.setBlock(lx, y, BlockType.CHEST);
+      }
+    }
+  }
+
+  // Underground hazards: spike traps and cobwebs in deeper caves
+  for (let lx = 0; lx < CW; lx++) {
+    const wx = baseX + lx;
+    if (wx < 0 || wx >= TB.WORLD_WIDTH) continue;
+    for (let y = 1; y < TB.UNDERGROUND_Y; y++) {
+      const block = chunk.getBlock(lx, y);
+      if (block !== BlockType.AIR) continue;
+
+      const blockBelow = chunk.getBlock(lx, y - 1);
+      const blockAbove = y < WH - 1 ? chunk.getBlock(lx, y + 1) : BlockType.AIR;
+      const r = hashPos(_seed + 2500, wx, y);
+
+      // Spike traps on cave floors
+      if (blockBelow !== BlockType.AIR && blockBelow !== BlockType.WATER && r < 0.015) {
+        chunk.setBlock(lx, y, BlockType.SPIKE_TRAP);
+      }
+      // Cobwebs in narrow spaces (solid above and below nearby)
+      if (blockAbove !== BlockType.AIR && blockBelow !== BlockType.AIR && r > 0.98) {
+        chunk.setBlock(lx, y, BlockType.COBWEB);
+      }
+      // Cobwebs near cave spiders spawn areas
+      if (y < TB.UNDERGROUND_Y - 10 && blockAbove !== BlockType.AIR && r > 0.965) {
+        chunk.setBlock(lx, y, BlockType.COBWEB);
       }
     }
   }
@@ -394,31 +447,24 @@ export function placeSpecialStructures(chunks: Map<number, TerrariaChunk>, seed:
 }
 
 function _placeUndergroundStructures(chunks: Map<number, TerrariaChunk>, seed: number, worldWidth: number): void {
-  // Treasure rooms (small rooms with chests and torches)
+  // Treasure rooms (small rooms with torches, no chests — chests are in the play layer now)
   const numTreasure = Math.floor(worldWidth / 40);
   for (let i = 0; i < numTreasure; i++) {
     const tx = Math.floor(hashPos(seed + 4000 + i, i, 0) * (worldWidth - 20) + 10);
     const ty = Math.floor(TB.CAVERN_Y + hashPos(seed + 4100 + i, i, 0) * (TB.UNDERGROUND_Y - TB.CAVERN_Y - 10));
     _placeRoom(chunks, tx - 3, ty, 7, 5, BlockType.STONE_BRICKS);
-    _setBlock(chunks, tx, ty + 1, BlockType.CHEST);
     _setBlock(chunks, tx - 1, ty + 3, BlockType.TORCH);
     _setBlock(chunks, tx + 1, ty + 3, BlockType.TORCH);
   }
 
-  // Mushroom caves (larger caverns with mushrooms and glowing crystals)
-  const numMushroom = Math.floor(worldWidth / 80);
-  for (let i = 0; i < numMushroom; i++) {
+  // Underground caverns (larger open spaces with glowing crystals, no mushrooms)
+  const numCaverns = Math.floor(worldWidth / 80);
+  for (let i = 0; i < numCaverns; i++) {
     const mx = Math.floor(hashPos(seed + 5000 + i, i, 0) * (worldWidth - 30) + 15);
     const my = Math.floor(TB.UNDERGROUND_Y - 10 + hashPos(seed + 5100 + i, i, 0) * 20);
     const rw = 9 + Math.floor(hashPos(seed + 5200 + i, i, 0) * 6);
     const rh = 6 + Math.floor(hashPos(seed + 5300 + i, i, 0) * 3);
     _placeRoom(chunks, mx - Math.floor(rw / 2), my, rw, rh, BlockType.MOSS_STONE);
-    // Mushrooms on floor
-    for (let dx = 2; dx < rw - 2; dx++) {
-      if (hashPos(seed + 5400 + i * 10 + dx, my, 0) < 0.4) {
-        _setBlock(chunks, mx - Math.floor(rw / 2) + dx, my + 1, BlockType.MUSHROOM);
-      }
-    }
     // Glow crystals on ceiling
     for (let dx = 1; dx < rw - 1; dx += 2) {
       if (hashPos(seed + 5500 + i * 10 + dx, my, 0) < 0.3) {
@@ -448,8 +494,8 @@ function _placeUndergroundStructures(chunks: Map<number, TerrariaChunk>, seed: n
     if (hashPos(seed + 6300 + i, i, 0) < 0.6) {
       const roomX = dx + Math.floor(corridorLen * 0.5);
       _placeRoom(chunks, roomX - 3, dy + 4, 7, 5, BlockType.CASTLE_WALL);
-      _setBlock(chunks, roomX, dy + 5, BlockType.CHEST);
       _setBlock(chunks, roomX - 2, dy + 7, BlockType.ENCHANTED_TORCH);
+      _setBlock(chunks, roomX + 2, dy + 7, BlockType.ENCHANTED_TORCH);
     }
   }
 
@@ -480,8 +526,8 @@ function _placeUndergroundStructures(chunks: Map<number, TerrariaChunk>, seed: n
         _setBlock(chunks, rx + 4, ry + dy, BlockType.COBBLESTONE);
       }
     }
-    // Chest inside
-    _setBlock(chunks, rx + 2, ry + 1, BlockType.CHEST);
+    // Torch inside
+    _setBlock(chunks, rx + 2, ry + 1, BlockType.TORCH);
   }
 }
 

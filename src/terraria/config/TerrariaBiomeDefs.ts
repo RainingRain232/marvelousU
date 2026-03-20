@@ -10,6 +10,9 @@ export enum BiomeType {
   MISTY_MARSHLANDS,
   SNOW_PEAKS,
   SAXON_WASTES,
+  CRYSTAL_CAVERNS,
+  VOLCANIC_BADLANDS,
+  ANCIENT_RUINS,
 }
 
 export interface BiomeDef {
@@ -80,6 +83,39 @@ export const BIOME_DEFS: BiomeDef[] = [
     treeLog: BlockType.OAK_LOG,
     treeLeaves: BlockType.OAK_LEAVES,
     skyTint: 0x3a2a1a,
+  },
+  {
+    type: BiomeType.CRYSTAL_CAVERNS,
+    name: "Crystal Caverns",
+    surfaceBlock: BlockType.STONE,
+    subsurfaceBlock: BlockType.STONE,
+    heightMod: -6, heightScale: 1.5,
+    treeDensity: 0.0,
+    treeLog: BlockType.OAK_LOG,
+    treeLeaves: BlockType.OAK_LEAVES,
+    skyTint: 0x2a1a3a,
+  },
+  {
+    type: BiomeType.VOLCANIC_BADLANDS,
+    name: "Volcanic Badlands",
+    surfaceBlock: BlockType.GRAVEL,
+    subsurfaceBlock: BlockType.STONE,
+    heightMod: 4, heightScale: 2.0,
+    treeDensity: 0.0,
+    treeLog: BlockType.DARK_OAK_LOG,
+    treeLeaves: BlockType.DARK_OAK_LEAVES,
+    skyTint: 0x3a1a0a,
+  },
+  {
+    type: BiomeType.ANCIENT_RUINS,
+    name: "Ancient Ruins",
+    surfaceBlock: BlockType.COBBLESTONE,
+    subsurfaceBlock: BlockType.STONE_BRICKS,
+    heightMod: 1, heightScale: 0.7,
+    treeDensity: 0.3,
+    treeLog: BlockType.DARK_OAK_LOG,
+    treeLeaves: BlockType.DARK_OAK_LEAVES,
+    skyTint: 0x2a2a1a,
   },
 ];
 

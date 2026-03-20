@@ -5,7 +5,7 @@
 import { TB } from "../config/TerrariaBalance";
 import { BLOCK_DEFS, BlockType } from "../config/TerrariaBlockDefs";
 import type { TerrariaState } from "../state/TerrariaState";
-import { getWorldBlock } from "../state/TerrariaState";
+import { getWorldBlock, addMessage } from "../state/TerrariaState";
 
 // ---------------------------------------------------------------------------
 // AABB helper
@@ -142,8 +142,12 @@ function _resolveY(body: PhysicsBody, state: TerrariaState, hw: number, hh: numb
 
 export function updatePlayerPhysics(state: TerrariaState, dt: number): void {
   const p = state.player;
+
+  // Apply speed multiplier from status effects
+  const speedMult = p.speedMult ?? 1;
+
   const body: PhysicsBody = {
-    x: p.x, y: p.y, vx: p.vx, vy: p.vy,
+    x: p.x, y: p.y, vx: p.vx * speedMult, vy: p.vy,
     width: TB.PLAYER_WIDTH, height: TB.PLAYER_HEIGHT,
     onGround: p.onGround,
   };
@@ -151,6 +155,59 @@ export function updatePlayerPhysics(state: TerrariaState, dt: number): void {
   p.x = body.x; p.y = body.y;
   p.vx = body.vx; p.vy = body.vy;
   p.onGround = body.onGround;
+
+  // Ladder/rope climbing
+  const climbBlock = _getBlock(state, Math.floor(p.x), Math.floor(p.y));
+  if (climbBlock === BlockType.LADDER || climbBlock === BlockType.ROPE) {
+    // Negate gravity while on ladder/rope
+    if (p.vy < 0) p.vy = Math.max(p.vy, -2); // slow fall
+    p.vx *= 0.6; // reduced horizontal movement
+    // Climb up/down based on intent (vy is set by input before physics)
+    // Allow hovering on ladder
+  }
+
+  // Environmental hazard checks
+  const px = Math.floor(p.x);
+  const py = Math.floor(p.y);
+  const playerBlock = _getBlock(state, px, py);
+  const feetBlock = _getBlock(state, px, py - 1);
+
+  // Spike trap damage
+  if ((playerBlock === BlockType.SPIKE_TRAP || feetBlock === BlockType.SPIKE_TRAP) && p.invulnTimer <= 0) {
+    const dmg = Math.max(1, 8 - p.defense);
+    p.hp -= dmg;
+    p.invulnTimer = TB.INVULN_TIME;
+    p.vy += 5; // bounce up
+    addMessage(state, "Ouch! Spikes!", 0xFF4444);
+    if (p.hp <= 0) {
+      p.hp = 0;
+      state.gameOver = true;
+      addMessage(state, "Impaled on spikes!", 0xFF4444);
+    }
+  }
+
+  // Cobweb slows movement drastically
+  if (playerBlock === BlockType.COBWEB) {
+    p.vx *= 0.3;
+    p.vy *= 0.3;
+  }
+
+  // Lava damage
+  if (playerBlock === BlockType.LAVA && p.invulnTimer <= 0) {
+    const dmg = Math.max(1, 15 - p.defense);
+    p.hp -= dmg;
+    p.invulnTimer = TB.INVULN_TIME * 0.3;
+    p.vy += 3;
+    if (p.hp <= 0) {
+      p.hp = 0;
+      state.gameOver = true;
+      addMessage(state, "Burned in lava!", 0xFF4400);
+    }
+  }
+}
+
+function _getBlock(state: TerrariaState, wx: number, wy: number): number {
+  return getWorldBlock(state, wx, wy);
 }
 
 export function updateMobPhysics(state: TerrariaState, dt: number): void {

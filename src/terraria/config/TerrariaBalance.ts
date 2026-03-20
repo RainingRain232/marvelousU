@@ -4,7 +4,7 @@
 
 export const TB = {
   // World
-  WORLD_WIDTH: 1200,
+  WORLD_WIDTH: 2400,
   WORLD_HEIGHT: 256,
   CHUNK_W: 16,
   TILE_SIZE: 16,
@@ -23,9 +23,12 @@ export const TB = {
   TERRAIN_LACUNARITY: 2.0,
   TERRAIN_HEIGHT_RANGE: 20,
   CAVE_SCALE: 0.06,
-  CAVE_THRESHOLD: 0.55,
+  CAVE_THRESHOLD: 0.42,
   LARGE_CAVE_SCALE: 0.03,
-  LARGE_CAVE_THRESHOLD: 0.62,
+  LARGE_CAVE_THRESHOLD: 0.50,
+  // Near-surface caves (play layer openings)
+  SURFACE_CAVE_SCALE: 0.08,
+  SURFACE_CAVE_THRESHOLD: 0.48,
   TREE_CHANCE: 0.08,
 
   // Player physics

@@ -176,25 +176,33 @@ function _damagePlayer(state: TerrariaState, amount: number, mob: MobInstance): 
   }
 }
 
-export function damageMob(state: TerrariaState, mob: MobInstance, amount: number): void {
+export function damageMob(state: TerrariaState, mob: MobInstance, amount: number, isCrit = false): void {
   const def = MOB_DEFS[mob.type];
   const dmg = Math.max(1, amount - (def?.defense ?? 0));
   mob.hp -= dmg;
-  mob.hurtTimer = TB.MOB_KNOCKBACK_STUN; // stunned during knockback recovery
+  mob.hurtTimer = TB.MOB_KNOCKBACK_STUN;
 
-  // Knockback from player (bosses resist more)
+  // Knockback from player (bosses resist more, crits knock harder)
   const kbResist = mob.isBoss ? 0.3 : 0.7;
+  const critMult = isCrit ? 1.5 : 1;
   const kbDir = Math.sign(mob.x - state.player.x) || 1;
-  mob.vx += kbDir * TB.KNOCKBACK_STRENGTH * kbResist;
-  mob.vy += TB.KNOCKBACK_UP * kbResist * 0.7;
-  // Force idle state briefly (stun)
+  mob.vx += kbDir * TB.KNOCKBACK_STRENGTH * kbResist * critMult;
+  mob.vy += TB.KNOCKBACK_UP * kbResist * 0.7 * critMult;
   mob.aiState = "idle";
-  mob.aiTimer = TB.MOB_KNOCKBACK_STUN;
+  mob.aiTimer = TB.MOB_KNOCKBACK_STUN * (isCrit ? 1.5 : 1);
 
   if (mob.hp <= 0) {
     state.player.mobsKilled++;
     addMessage(state, `Defeated ${def?.name ?? "mob"}!`, 0xFFD700);
     _dropLoot(state, mob);
+
+    // Killing bosses grants buffs
+    if (mob.isBoss) {
+      state.player.maxHp = Math.min(200, state.player.maxHp + 20);
+      state.player.hp = Math.min(state.player.hp + 20, state.player.maxHp);
+      state.player.critChance = Math.min(0.25, state.player.critChance + 0.03);
+      addMessage(state, "Boss defeated! Max HP increased! Crit chance up!", 0xFFDD00);
+    }
   }
 }
 

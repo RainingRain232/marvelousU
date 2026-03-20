@@ -10,6 +10,13 @@ import type { ItemStack } from "./TerrariaInventory";
 
 export type MobAIState = "idle" | "patrol" | "chase" | "attack" | "flee";
 
+export interface StatusEffect {
+  type: "poison" | "fire" | "freeze" | "speed" | "regen" | "weakness";
+  duration: number;
+  tickTimer: number;
+  strength: number;  // damage per tick or multiplier
+}
+
 export interface MobInstance {
   id: number;
   type: string;
@@ -26,6 +33,9 @@ export interface MobInstance {
   width: number;
   height: number;
   isBoss: boolean;
+  statusEffects?: StatusEffect[];
+  specialTimer?: number;  // cooldown for special abilities
+  phase?: number;         // boss phase tracking
 }
 
 // ---------------------------------------------------------------------------

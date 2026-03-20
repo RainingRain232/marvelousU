@@ -63,6 +63,17 @@ export enum BlockType {
   BLUE_FLOWER,
   MUSHROOM,
 
+  // Hazards
+  SPIKE_TRAP,
+  COBWEB,
+
+  // Functional (new)
+  LADDER,
+  CAMPFIRE,
+  BED,
+  ALCHEMY_LAB,
+  ROPE,
+
   // Background walls (used in wall layer, not block layer)
   // ... walls are separate, using WallType enum
 
@@ -173,6 +184,17 @@ export const BLOCK_DEFS: Record<number, BlockDef> = {
   [BlockType.RED_FLOWER]:       { id: BlockType.RED_FLOWER, name: "Red Flower", hardness: 0, bestTool: ToolType.NONE, transparent: true, solid: false, lightEmit: 0, color: 0xFF4444, stackable: true },
   [BlockType.BLUE_FLOWER]:      { id: BlockType.BLUE_FLOWER, name: "Blue Flower", hardness: 0, bestTool: ToolType.NONE, transparent: true, solid: false, lightEmit: 0, color: 0x4488FF, stackable: true },
   [BlockType.MUSHROOM]:         { id: BlockType.MUSHROOM, name: "Mushroom", hardness: 0, bestTool: ToolType.NONE, transparent: true, solid: false, lightEmit: 0, color: 0xCC8844, stackable: true },
+
+  // Hazards
+  [BlockType.SPIKE_TRAP]:       { id: BlockType.SPIKE_TRAP, name: "Spike Trap", hardness: 1.0, bestTool: ToolType.PICKAXE, transparent: true, solid: false, lightEmit: 0, color: 0x888888, stackable: true },
+  [BlockType.COBWEB]:           { id: BlockType.COBWEB, name: "Cobweb", hardness: 0.2, bestTool: ToolType.SWORD, transparent: true, solid: false, lightEmit: 0, color: 0xDDDDDD, stackable: true },
+
+  // Functional (new)
+  [BlockType.LADDER]:           { id: BlockType.LADDER, name: "Ladder", hardness: 0.5, bestTool: ToolType.AXE, transparent: true, solid: false, lightEmit: 0, color: 0x8B6914, stackable: true },
+  [BlockType.CAMPFIRE]:         { id: BlockType.CAMPFIRE, name: "Campfire", hardness: 0.8, bestTool: ToolType.AXE, transparent: true, solid: false, lightEmit: 14, color: 0xFF6622, stackable: true },
+  [BlockType.BED]:              { id: BlockType.BED, name: "Bed", hardness: 0.6, bestTool: ToolType.AXE, transparent: true, solid: true, lightEmit: 0, color: 0xAA3333, stackable: true },
+  [BlockType.ALCHEMY_LAB]:      { id: BlockType.ALCHEMY_LAB, name: "Alchemy Lab", hardness: 1.2, bestTool: ToolType.PICKAXE, transparent: true, solid: true, lightEmit: 4, color: 0x44AA88, stackable: true },
+  [BlockType.ROPE]:             { id: BlockType.ROPE, name: "Rope", hardness: 0.1, bestTool: ToolType.SWORD, transparent: true, solid: false, lightEmit: 0, color: 0xAA8844, stackable: true },
 };
 
 export function getBlockDef(bt: BlockType): BlockDef {

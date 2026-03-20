@@ -37,6 +37,7 @@ export function saveTerrariaWorld(state: TerrariaState): void {
         blocksPlaced: state.player.blocksPlaced,
         blocksMined: state.player.blocksMined,
         mobsKilled: state.player.mobsKilled,
+        critChance: state.player.critChance,
         selectedSlot: state.player.inventory.selectedSlot,
         hotbar: state.player.inventory.hotbar,
         main: state.player.inventory.main,
@@ -44,6 +45,9 @@ export function saveTerrariaWorld(state: TerrariaState): void {
       },
       chunks: [],
       quests: state.quests,
+      difficulty: state.difficulty,
+      activeEvent: state.activeEvent,
+      eventTimer: state.eventTimer,
     };
 
     // Encode chunks
@@ -100,6 +104,7 @@ export function loadTerrariaWorld(): TerrariaState | null {
     p.blocksPlaced = data.player.blocksPlaced;
     p.blocksMined = data.player.blocksMined;
     p.mobsKilled = data.player.mobsKilled;
+    p.critChance = (data.player as any).critChance ?? 0.05;
     p.inventory.selectedSlot = data.player.selectedSlot;
     p.inventory.hotbar = data.player.hotbar as typeof p.inventory.hotbar;
     p.inventory.main = data.player.main as typeof p.inventory.main;
@@ -130,6 +135,11 @@ export function loadTerrariaWorld(): TerrariaState | null {
 
     // Restore quests
     state.quests = data.quests as typeof state.quests;
+
+    // Restore new fields (with defaults for old saves)
+    state.difficulty = ((data as any).difficulty ?? "normal") as typeof state.difficulty;
+    state.activeEvent = (data as any).activeEvent ?? "none";
+    state.eventTimer = (data as any).eventTimer ?? 0;
 
     return state;
   } catch (e) {
@@ -168,6 +178,7 @@ interface SaveData {
     blocksPlaced: number;
     blocksMined: number;
     mobsKilled: number;
+    critChance?: number;
     selectedSlot: number;
     hotbar: unknown[];
     main: unknown[];
@@ -175,4 +186,7 @@ interface SaveData {
   };
   chunks: { cx: number; b64Blocks: string; b64Walls: string }[];
   quests: unknown[];
+  difficulty?: string;
+  activeEvent?: string;
+  eventTimer?: number;
 }

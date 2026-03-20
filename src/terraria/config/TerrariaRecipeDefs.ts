@@ -15,7 +15,7 @@ export interface CraftingRecipe {
   id: string;
   inputs: RecipeInput[];
   output: ItemStack;
-  station: "none" | "round_table" | "forge";
+  station: "none" | "round_table" | "forge" | "alchemy_lab";
 }
 
 export interface RecipeInput {
@@ -278,6 +278,20 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
   { id: "iron_staff", station: "forge", inputs: [blockInput(BlockType.IRON_ORE, 6), blockInput(BlockType.CRYSTAL_ORE, 3)], output: createToolItem(ToolType.STAFF, ToolMaterial.IRON, "Enchanted Staff", 0xB0B0B0, 14) },
   { id: "crystal_staff_adv", station: "forge", inputs: [blockInput(BlockType.CRYSTAL_ORE, 15), blockInput(BlockType.GOLD_ORE, 5)], output: createToolItem(ToolType.STAFF, ToolMaterial.CRYSTAL, "Archmage Staff", 0xAA44FF, 24) },
   { id: "dragon_staff", station: "forge", inputs: [blockInput(BlockType.DRAGON_BONE_ORE, 12), blockInput(BlockType.CRYSTAL_ORE, 8)], output: createToolItem(ToolType.STAFF, ToolMaterial.CRYSTAL, "Dragon Staff", 0xCC2222, 32) },
+
+  // --- New functional blocks ---
+  { id: "ladder", station: "round_table", inputs: [blockInput(BlockType.PLANKS, 3)], output: createBlockItem(BlockType.LADDER, "Ladder", 0x8B6914, 8) },
+  { id: "rope", station: "none", inputs: [blockInput(BlockType.TALL_GRASS, 5)], output: createBlockItem(BlockType.ROPE, "Rope", 0xAA8844, 6) },
+  { id: "campfire", station: "none", inputs: [blockInput(BlockType.OAK_LOG, 3), blockInput(BlockType.COBBLESTONE, 5)], output: createBlockItem(BlockType.CAMPFIRE, "Campfire", 0xFF6622, 1) },
+  { id: "bed", station: "round_table", inputs: [blockInput(BlockType.PLANKS, 8), blockInput(BlockType.OAK_LOG, 2)], output: createBlockItem(BlockType.BED, "Bed", 0xAA3333, 1) },
+  { id: "alchemy_lab", station: "round_table", inputs: [blockInput(BlockType.COBBLESTONE, 10), blockInput(BlockType.CRYSTAL_ORE, 3), blockInput(BlockType.IRON_ORE, 5)], output: createBlockItem(BlockType.ALCHEMY_LAB, "Alchemy Lab", 0x44AA88, 1) },
+
+  // --- Potion recipes (alchemy lab) ---
+  { id: "healing_potion", station: "alchemy_lab" as any, inputs: [blockInput(BlockType.MUSHROOM, 3), blockInput(BlockType.RED_FLOWER, 1)], output: createBlockItem(BlockType.WATER, "Healing Potion", 0x44FF44, 2) },
+  { id: "speed_potion", station: "alchemy_lab" as any, inputs: [blockInput(BlockType.BLUE_FLOWER, 2), blockInput(BlockType.TALL_GRASS, 3)], output: createBlockItem(BlockType.BLUE_FLOWER, "Speed Potion", 0x4488FF, 2) },
+  { id: "fire_resist_potion", station: "alchemy_lab" as any, inputs: [blockInput(BlockType.RED_FLOWER, 3), blockInput(BlockType.IRON_ORE, 1)], output: createBlockItem(BlockType.RED_FLOWER, "Fire Resistance Potion", 0xFF4444, 2) },
+  { id: "herbal_remedy", station: "alchemy_lab" as any, inputs: [blockInput(BlockType.MUSHROOM, 2), blockInput(BlockType.TALL_GRASS, 2), blockInput(BlockType.BLUE_FLOWER, 1)], output: createBlockItem(BlockType.TALL_GRASS, "Herbal Remedy", 0x5BAF50, 3) },
+  { id: "strength_elixir", station: "alchemy_lab" as any, inputs: [blockInput(BlockType.CRYSTAL_ORE, 2), blockInput(BlockType.MUSHROOM, 3)], output: createBlockItem(BlockType.CRYSTAL_ORE, "Strength Elixir", 0xFF8844, 1) },
 ];
 
 // ---------------------------------------------------------------------------
