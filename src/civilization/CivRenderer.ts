@@ -58,7 +58,7 @@ const S_TINY = new TextStyle({ fontSize: 7, fill: 0xFFFFFF, stroke: { color: 0x0
 // Terrain decoration configs
 // ---------------------------------------------------------------------------
 
-interface Deco { trees?: number; hills?: number; peak?: boolean; waves?: number; reeds?: boolean; pillars?: boolean; glow?: number; sparkle?: boolean; river?: boolean; grass?: boolean; flowers?: boolean; rocks?: boolean; }
+interface Deco { trees?: number; hills?: number; peak?: boolean; waves?: number; reeds?: boolean; pillars?: boolean; glow?: number; sparkle?: boolean; river?: boolean; grass?: boolean; flowers?: boolean; rocks?: boolean; deadTree?: boolean; lilyPads?: boolean; }
 
 const DECO: Record<string, Deco> = {
   forest:           { trees: 4 },
@@ -67,11 +67,11 @@ const DECO: Record<string, Deco> = {
   mountains:        { peak: true },
   ocean:            { waves: 3 },
   lake:             { waves: 2 },
-  swamp:            { reeds: true, waves: 1 },
+  swamp:            { reeds: true, waves: 1, lilyPads: true },
   roman_ruins:      { pillars: true },
   holy_spring:      { glow: 0x88CCFF, sparkle: true, waves: 1 },
   river:            { river: true },
-  wasteland:        { rocks: true },
+  wasteland:        { rocks: true, deadTree: true },
   plains:           { grass: true },
   grassland:        { grass: true, flowers: true },
 };
@@ -254,6 +254,55 @@ export class CivRenderer {
         // ── Grid border ──
         this._hexOut(g, px, py, HEX_SIZE, darken(bc, 0.3), 0.4, 0.7);
 
+        // ── Coastline foam on land tiles adjacent to water ──
+        if (td.passable && tile.terrain !== "ocean" && tile.terrain !== "lake") {
+          const DIRS_E = [[+1, 0], [0, -1], [-1, -1], [-1, 0], [-1, +1], [0, +1]];
+          const DIRS_O = [[+1, 0], [+1, -1], [0, -1], [-1, 0], [0, +1], [+1, +1]];
+          const dirs = (hy & 1) === 0 ? DIRS_E : DIRS_O;
+          const pts2 = hexPts(px, py, HEX_SIZE);
+          for (let ei = 0; ei < 6; ei++) {
+            const [dx, dy] = dirs[ei];
+            const nx = hx + dx, ny = hy + dy;
+            if (nx >= 0 && nx < state.mapWidth && ny >= 0 && ny < state.mapHeight) {
+              const nt = state.tiles[ny][nx].terrain;
+              if (nt === "ocean" || nt === "lake") {
+                const ni = (ei + 1) % 6;
+                const x1 = pts2[ei * 2], y1 = pts2[ei * 2 + 1];
+                const x2 = pts2[ni * 2], y2 = pts2[ni * 2 + 1];
+                // Sandy beach strip
+                const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+                g.moveTo(x1, y1); g.quadraticCurveTo(mx + (px - mx) * 0.15, my + (py - my) * 0.15, x2, y2);
+                g.stroke({ color: 0xD4C8A0, alpha: 0.5, width: 3 });
+                // White foam
+                g.moveTo(x1, y1); g.lineTo(x2, y2);
+                g.stroke({ color: 0xFFFFFF, alpha: 0.25, width: 1.5 });
+              }
+            }
+          }
+        }
+
+        // ── Subtle terrain transition at edges ──
+        if (tile.terrain === "grassland" || tile.terrain === "plains") {
+          const DIRS_E = [[+1, 0], [0, -1], [-1, -1], [-1, 0], [-1, +1], [0, +1]];
+          const DIRS_O = [[+1, 0], [+1, -1], [0, -1], [-1, 0], [0, +1], [+1, +1]];
+          const dirs = (hy & 1) === 0 ? DIRS_E : DIRS_O;
+          const pts3 = hexPts(px, py, HEX_SIZE * 0.85);
+          for (let ei = 0; ei < 6; ei++) {
+            const [dx, dy] = dirs[ei];
+            const nx = hx + dx, ny = hy + dy;
+            if (nx >= 0 && nx < state.mapWidth && ny >= 0 && ny < state.mapHeight) {
+              const nt = state.tiles[ny][nx].terrain;
+              if (nt === "forest" || nt === "enchanted_forest") {
+                const ni = (ei + 1) % 6;
+                const x1 = pts3[ei * 2], y1 = pts3[ei * 2 + 1];
+                const x2 = pts3[ni * 2], y2 = pts3[ni * 2 + 1];
+                g.moveTo(x1, y1); g.lineTo(x2, y2);
+                g.stroke({ color: 0x2D5A1E, alpha: 0.15, width: 4 });
+              }
+            }
+          }
+        }
+
         // ── Deco (static only — water/sparkles animated separately) ──
         const deco = DECO[tile.terrain];
         if (deco) this._deco(px, py, deco, h, h2, bc);
@@ -309,28 +358,55 @@ export class CivRenderer {
         const tx = Math.cos(angle) * dist;
         const ty = Math.sin(angle) * dist;
         const sz = 5 + h2 * 4 + i * 0.5;
+        const isConifer = (h + i * 0.37) % 1 > 0.5;
 
         // Shadow
-        g.ellipse(tx + 1, ty + 1, sz * 0.4, 2);
-        g.fill({ color: 0x000000, alpha: 0.15 });
-
-        // Trunk
-        g.rect(tx - 1, ty - 1, 2, sz * 0.5);
-        g.fill({ color: 0x5A3A1A });
+        g.ellipse(tx + 1.5, ty + 2, sz * 0.45, 2.5);
+        g.fill({ color: 0x000000, alpha: 0.12 });
 
         const leafColor = d.glow ? lerpColor(0x1A5A2A, d.glow, 0.35) : lerpColor(0x1A5A2A, 0x2D6B1E, h2);
-        // Two canopy layers for fullness
-        g.moveTo(tx - sz * 0.55, ty - 1);
-        g.lineTo(tx, ty - sz * 0.8);
-        g.lineTo(tx + sz * 0.55, ty - 1);
-        g.closePath();
-        g.fill({ color: darken(leafColor, 0.1), alpha: 0.95 });
 
-        g.moveTo(tx - sz * 0.4, ty - sz * 0.3);
-        g.lineTo(tx, ty - sz);
-        g.lineTo(tx + sz * 0.4, ty - sz * 0.3);
-        g.closePath();
-        g.fill({ color: leafColor, alpha: 0.9 });
+        if (isConifer) {
+          // Pine tree — trunk + 3 layered triangles
+          g.rect(tx - 1.2, ty - 1, 2.4, sz * 0.55);
+          g.fill({ color: 0x5A3A1A });
+          for (let layer = 0; layer < 3; layer++) {
+            const layerY = ty - 1 - layer * sz * 0.25;
+            const layerW = sz * (0.6 - layer * 0.12);
+            const layerH = sz * 0.35;
+            g.moveTo(tx - layerW, layerY);
+            g.lineTo(tx, layerY - layerH);
+            g.lineTo(tx + layerW, layerY);
+            g.closePath();
+            g.fill({ color: darken(leafColor, 0.05 + layer * 0.05), alpha: 0.92 });
+          }
+        } else {
+          // Deciduous tree — trunk + round canopy with highlight
+          g.rect(tx - 1.5, ty - 1, 3, sz * 0.5);
+          g.fill({ color: 0x5A3A1A });
+          g.rect(tx - 0.8, ty - 1, 1.6, sz * 0.5);
+          g.fill({ color: 0x6A4A2A, alpha: 0.5 }); // trunk highlight
+
+          // Main canopy (rounded blob)
+          const cr = sz * 0.45;
+          const cy2 = ty - sz * 0.45;
+          g.circle(tx, cy2, cr);
+          g.fill({ color: leafColor, alpha: 0.9 });
+          // Canopy shadow (bottom)
+          g.ellipse(tx, cy2 + cr * 0.3, cr * 0.9, cr * 0.5);
+          g.fill({ color: darken(leafColor, 0.2), alpha: 0.3 });
+          // Canopy highlight (top-left)
+          g.circle(tx - cr * 0.25, cy2 - cr * 0.25, cr * 0.5);
+          g.fill({ color: lighten(leafColor, 0.2), alpha: 0.25 });
+          // Small leaf clusters at edges
+          for (let lc = 0; lc < 3; lc++) {
+            const la = (lc / 3) * Math.PI * 2 + h * 3;
+            const lx = tx + Math.cos(la) * cr * 0.7;
+            const ly = cy2 + Math.sin(la) * cr * 0.6;
+            g.circle(lx, ly, cr * 0.3);
+            g.fill({ color: lerpColor(leafColor, lighten(leafColor, 0.15), h2), alpha: 0.5 });
+          }
+        }
       }
     }
 
@@ -362,54 +438,184 @@ export class CivRenderer {
       }
     }
 
+    // ── Dead tree (wasteland) ──
+    if (d.deadTree) {
+      // Cracked earth lines
+      for (let ci = 0; ci < 6; ci++) {
+        const ca = (ci / 6) * Math.PI * 2 + h * 3;
+        const cl = S * (0.15 + h * 0.2);
+        g.moveTo(0, 0);
+        g.lineTo(Math.cos(ca) * cl, Math.sin(ca) * cl);
+        g.stroke({ color: darken(bc, 0.25), alpha: 0.35, width: 0.8 });
+        // Branch crack
+        if (ci % 2 === 0) {
+          const bca = ca + (h2 - 0.5) * 0.8;
+          g.moveTo(Math.cos(ca) * cl * 0.6, Math.sin(ca) * cl * 0.6);
+          g.lineTo(Math.cos(bca) * cl * 0.9, Math.sin(bca) * cl * 0.9);
+          g.stroke({ color: darken(bc, 0.2), alpha: 0.25, width: 0.6 });
+        }
+      }
+      // Dead tree trunk
+      const dtx = h * S * 0.2 - S * 0.1;
+      g.moveTo(dtx, 2); g.lineTo(dtx - 1, -6); g.lineTo(dtx + 1.5, -8);
+      g.stroke({ color: 0x4A3A2A, alpha: 0.7, width: 2 });
+      // Dead branches
+      g.moveTo(dtx, -4); g.lineTo(dtx - 4, -7);
+      g.stroke({ color: 0x4A3A2A, alpha: 0.5, width: 1 });
+      g.moveTo(dtx + 1, -6); g.lineTo(dtx + 5, -9);
+      g.stroke({ color: 0x4A3A2A, alpha: 0.5, width: 1 });
+      g.moveTo(dtx + 4, -8); g.lineTo(dtx + 6, -6);
+      g.stroke({ color: 0x4A3A2A, alpha: 0.4, width: 0.8 });
+    }
+
+    // ── Lily pads (swamp) ──
+    if (d.lilyPads) {
+      for (let lp = 0; lp < 3; lp++) {
+        const lpx = (h * 50 + lp * 19) % (S * 0.8) - S * 0.4;
+        const lpy = (h2 * 35 + lp * 23) % (S * 0.6) - S * 0.2;
+        const lpr = 2.5 + h * 1.5;
+        // Pad (circle with wedge cut)
+        g.moveTo(lpx, lpy);
+        g.arc(lpx, lpy, lpr, 0.2, Math.PI * 2 - 0.2);
+        g.closePath();
+        g.fill({ color: 0x3A6A2A, alpha: 0.6 });
+        // Pad vein
+        g.moveTo(lpx, lpy); g.lineTo(lpx + lpr * 0.7, lpy - lpr * 0.3);
+        g.stroke({ color: 0x2A5A1A, alpha: 0.3, width: 0.5 });
+        // Flower on first pad
+        if (lp === 0) {
+          g.circle(lpx + lpr * 0.3, lpy - lpr * 0.2, 1.5);
+          g.fill({ color: 0xFFAACC, alpha: 0.7 });
+          g.circle(lpx + lpr * 0.3, lpy - lpr * 0.2, 0.7);
+          g.fill({ color: 0xFFFFDD, alpha: 0.6 });
+        }
+      }
+      // Murky pool highlight
+      g.circle(h * S * 0.3, h2 * S * 0.2, S * 0.15);
+      g.fill({ color: lighten(bc, 0.08), alpha: 0.2 });
+    }
+
     // ── Mountain (detailed with face shading + snow) ──
     if (d.peak) {
       const mh = S * 0.72;
-      // Shadow/dark face
-      g.moveTo(0, S * 0.2); g.lineTo(0, -mh); g.lineTo(S * 0.35, S * 0.2); g.closePath();
-      g.fill({ color: 0x555555, alpha: 0.85 });
-      // Lit face
-      g.moveTo(0, S * 0.2); g.lineTo(0, -mh); g.lineTo(-S * 0.32, S * 0.2); g.closePath();
-      g.fill({ color: 0x8A8A8A, alpha: 0.85 });
-      // Snow cap
-      g.moveTo(-S * 0.1, -mh * 0.55); g.lineTo(0, -mh); g.lineTo(S * 0.1, -mh * 0.55); g.closePath();
-      g.fill({ color: 0xEEEEFF, alpha: 0.92 });
-      // Snow drip
-      g.moveTo(-S * 0.12, -mh * 0.5); g.quadraticCurveTo(-S * 0.06, -mh * 0.42, -S * 0.02, -mh * 0.47);
-      g.stroke({ color: 0xDDDDEE, alpha: 0.6, width: 1.5 });
-      // Secondary peak
-      g.moveTo(-S * 0.15, S * 0.15); g.lineTo(-S * 0.05, -mh * 0.45); g.lineTo(S * 0.05, S * 0.12); g.closePath();
-      g.fill({ color: 0x6A6A6A, alpha: 0.5 });
+      const mw = S * 0.35;
+      // Scree / base rubble
+      for (let si = 0; si < 5; si++) {
+        const sx = (h * 40 + si * 11) % (S * 0.7) - S * 0.35;
+        const sy = S * 0.12 + (h2 * 20 + si * 7) % 5;
+        const ss = 1.5 + h * 1.5;
+        g.circle(sx, sy, ss);
+        g.fill({ color: 0x666658, alpha: 0.4 });
+      }
+      // Main peak — shadow face (right)
+      g.moveTo(0, S * 0.2); g.lineTo(0, -mh); g.lineTo(mw, S * 0.2); g.closePath();
+      g.fill({ color: 0x505050, alpha: 0.88 });
+      // Lit face (left)
+      g.moveTo(0, S * 0.2); g.lineTo(0, -mh); g.lineTo(-mw + 1, S * 0.2); g.closePath();
+      g.fill({ color: 0x8A8A8A, alpha: 0.88 });
+      // Mid-mountain ridge line
+      g.moveTo(-mw * 0.3, S * 0.1); g.lineTo(-mw * 0.05, -mh * 0.6);
+      g.stroke({ color: 0x6A6A6A, alpha: 0.5, width: 0.8 });
+      // Snow cap (larger, with drip)
+      g.moveTo(-S * 0.12, -mh * 0.5); g.lineTo(0, -mh); g.lineTo(S * 0.12, -mh * 0.5);
+      g.closePath();
+      g.fill({ color: 0xEEEEFF, alpha: 0.93 });
+      // Snow drip left
+      g.moveTo(-S * 0.13, -mh * 0.48);
+      g.quadraticCurveTo(-S * 0.08, -mh * 0.38, -S * 0.04, -mh * 0.44);
+      g.stroke({ color: 0xDDDDEE, alpha: 0.55, width: 1.5 });
+      // Snow drip right
+      g.moveTo(S * 0.1, -mh * 0.47);
+      g.quadraticCurveTo(S * 0.06, -mh * 0.4, S * 0.03, -mh * 0.44);
+      g.stroke({ color: 0xDDDDEE, alpha: 0.4, width: 1 });
+      // Secondary peak (smaller, offset)
+      const mh2 = mh * 0.55;
+      g.moveTo(-S * 0.18, S * 0.15); g.lineTo(-S * 0.08, -mh2); g.lineTo(S * 0.02, S * 0.12);
+      g.closePath();
+      g.fill({ color: 0x6A6A6A, alpha: 0.55 });
+      // Tiny tertiary peak
+      g.moveTo(S * 0.1, S * 0.15); g.lineTo(S * 0.18, -mh * 0.3); g.lineTo(S * 0.28, S * 0.15);
+      g.closePath();
+      g.fill({ color: 0x5A5A5A, alpha: 0.35 });
+      // Cliff shadow detail lines
+      g.moveTo(S * 0.05, -mh * 0.2); g.lineTo(S * 0.15, -mh * 0.05);
+      g.stroke({ color: 0x444444, alpha: 0.3, width: 0.7 });
+      g.moveTo(S * 0.1, -mh * 0.35); g.lineTo(S * 0.2, -mh * 0.15);
+      g.stroke({ color: 0x444444, alpha: 0.25, width: 0.6 });
     }
 
     // (Water waves, reeds, and sparkles are animated in _animateWater for performance)
 
     // ── Roman ruin pillars ──
     if (d.pillars) {
+      // Mosaic floor remnant
+      g.rect(-S * 0.3, -2, S * 0.6, 5);
+      g.fill({ color: 0x998866, alpha: 0.3 });
+      // Mosaic pattern
+      for (let mi = 0; mi < 4; mi++) {
+        const mx = -S * 0.25 + mi * S * 0.15;
+        g.rect(mx, -1, S * 0.1, 3);
+        g.fill({ color: [0xBB9966, 0x886644, 0xAA8855, 0x997755][mi], alpha: 0.25 });
+      }
+
+      // Pillars (3, some broken)
       for (let i = 0; i < 3; i++) {
         const rx = (i - 1) * 9;
         const rh = 7 + h * 6;
         const broken = h2 + i * 0.3 > 0.8;
-        const actualH = broken ? rh * 0.6 : rh;
-        // Pillar body
+        const actualH = broken ? rh * 0.5 + h * 2 : rh;
+        // Pillar shadow
+        g.ellipse(rx + 1.5, 1, 2.5, 1);
+        g.fill({ color: 0x000000, alpha: 0.1 });
+        // Pillar body with fluting (vertical lines)
         g.rect(rx - 2, -actualH, 4, actualH);
         g.fill({ color: 0xBBAA88 });
+        g.moveTo(rx - 0.5, -actualH); g.lineTo(rx - 0.5, 0);
+        g.stroke({ color: 0xAA9977, alpha: 0.4, width: 0.5 });
+        g.moveTo(rx + 0.5, -actualH); g.lineTo(rx + 0.5, 0);
+        g.stroke({ color: 0xCCBB99, alpha: 0.3, width: 0.5 });
+        g.rect(rx - 2, -actualH, 4, actualH);
         g.stroke({ color: 0x998877, width: 0.5 });
-        // Capital
-        g.rect(rx - 3, -actualH - 2, 6, 2.5);
+        // Ionic capital (scroll detail)
+        g.rect(rx - 3.5, -actualH - 2.5, 7, 3);
         g.fill({ color: 0xCCBB99 });
+        g.circle(rx - 3, -actualH - 1, 1.5);
+        g.fill({ color: 0xBBAA88 });
+        g.circle(rx + 3, -actualH - 1, 1.5);
+        g.fill({ color: 0xBBAA88 });
         // Base
-        g.rect(rx - 3, -1, 6, 2);
+        g.rect(rx - 3, -1, 6, 2.5);
         g.fill({ color: 0xAA9977 });
-        // Cracks
+        // Cracks on broken pillars
         if (broken) {
-          g.moveTo(rx - 1, -actualH); g.lineTo(rx + 1, -actualH + 3);
-          g.stroke({ color: 0x887766, width: 0.7 });
+          g.moveTo(rx - 1.5, -actualH); g.lineTo(rx + 0.5, -actualH + 4);
+          g.stroke({ color: 0x887766, alpha: 0.6, width: 0.8 });
+          g.moveTo(rx + 1, -actualH + 1); g.lineTo(rx - 0.5, -actualH + 5);
+          g.stroke({ color: 0x887766, alpha: 0.4, width: 0.5 });
+        }
+        // Ivy on some pillars
+        if (!broken && i === 1) {
+          for (let iv = 0; iv < 4; iv++) {
+            const iy = -actualH + iv * (actualH / 4) + 2;
+            const ix = rx + (iv % 2 === 0 ? 2 : -2);
+            g.circle(ix, iy, 1.5);
+            g.fill({ color: 0x448833, alpha: 0.5 });
+            g.circle(ix + (iv % 2 === 0 ? 1 : -1), iy + 1, 1);
+            g.fill({ color: 0x55AA44, alpha: 0.4 });
+          }
         }
       }
-      // Fallen stone block
+      // Broken arch between pillars 0 and 1
+      g.moveTo(-9, -8 - h * 5);
+      g.quadraticCurveTo(-4.5, -14 - h * 4, 0, -8 - h * 5);
+      g.stroke({ color: 0xBBAA88, alpha: 0.5, width: 2 });
+      // Fallen stone blocks
       g.rect(4, 2, 5, 3);
-      g.fill({ color: 0xAA9977, alpha: 0.6 });
+      g.fill({ color: 0xAA9977, alpha: 0.5 });
+      g.rect(6, 4, 3, 2.5);
+      g.fill({ color: 0x998866, alpha: 0.4 });
+      g.moveTo(4, 2); g.lineTo(9, 2); g.lineTo(9, 5); g.lineTo(4, 5); g.closePath();
+      g.stroke({ color: 0x887766, alpha: 0.3, width: 0.5 });
     }
 
     // ── River (static base — animation in _animateWater) ──
@@ -530,6 +736,27 @@ export class CivRenderer {
         this._hex(g, px, py, HEX_SIZE * 0.92, fc, 0.05);
       }
     }
+
+    // Draw trade route lines between trading cities
+    for (const city of state.cities) {
+      for (const routeId of (city.tradeRoutes ?? [])) {
+        if (routeId <= city.id) continue; // avoid drawing twice
+        const partner = state.cities.find(c => c.id === routeId);
+        if (!partner) continue;
+        const from = this.hexToPixel(city.x, city.y);
+        const to = this.hexToPixel(partner.x, partner.y);
+        // Dashed gold line
+        const dx = to.px - from.px, dy = to.py - from.py;
+        const len = Math.sqrt(dx * dx + dy * dy);
+        const segments = Math.floor(len / 8);
+        for (let si = 0; si < segments; si += 2) {
+          const t1 = si / segments, t2 = Math.min(1, (si + 1) / segments);
+          g.moveTo(from.px + dx * t1, from.py + dy * t1);
+          g.lineTo(from.px + dx * t2, from.py + dy * t2);
+          g.stroke({ color: 0xFFD700, alpha: 0.4, width: 1.5 });
+        }
+      }
+    }
   }
 
   // ── Overlays ─────────────────────────────────────────────────────────────
@@ -560,6 +787,25 @@ export class CivRenderer {
         sw.alpha = pulse; this.decoC.addChild(sw);
       }
       this.dirty = true;
+    }
+
+    // Highlight outer ring of reachable tiles
+    if (state.reachableTiles && state.reachableTiles.length > 0) {
+      const reachSet = new Set(state.reachableTiles.map(t => `${t.x},${t.y}`));
+      for (const t of state.reachableTiles) {
+        // Check if any neighbor is NOT reachable — this is an edge tile
+        let isEdge = false;
+        const DIRS = (t.y & 1) === 0
+          ? [[+1, 0], [0, -1], [-1, -1], [-1, 0], [-1, +1], [0, +1]]
+          : [[+1, 0], [+1, -1], [0, -1], [-1, 0], [0, +1], [+1, +1]];
+        for (const [dx, dy] of DIRS) {
+          if (!reachSet.has(`${t.x + dx},${t.y + dy}`)) { isEdge = true; break; }
+        }
+        if (isEdge) {
+          const { px, py } = this.hexToPixel(t.x, t.y);
+          this._hexOut(g, px, py, HEX_SIZE - 2, 0x88FF88, 0.5, 2);
+        }
+      }
     }
 
     // Combat flashes
@@ -632,6 +878,14 @@ export class CivRenderer {
 
     // City size scaling — bigger cities get bigger castles
     const scale = 0.85 + Math.min(city.population, 10) * 0.02;
+
+    // Moat for fortified cities
+    if (city.defense > 8) {
+      g.ellipse(0, 2, (w / 2 + 9) * scale, 7 * scale);
+      g.fill({ color: 0x3A6FB5, alpha: 0.2 });
+      g.ellipse(0, 2, (w / 2 + 9) * scale, 7 * scale);
+      g.stroke({ color: 0x4A8FC2, alpha: 0.25, width: 1 });
+    }
 
     // Outer walls (if defense > base)
     if (city.defense > 6) {
@@ -707,6 +961,20 @@ export class CivRenderer {
       g.fill({ color: 0xFFDD66, alpha: 0.75 });
       g.rect((wx + 0.5) * scale, (top + 4.5) * scale, 2 * scale, 2.5 * scale);
       g.fill({ color: 0xFFEE88, alpha: 0.5 });
+    }
+
+    // Chimney
+    g.rect(5 * scale, (top + 1) * scale, 3 * scale, -5 * scale);
+    g.fill({ color: 0x6A5A4A });
+    g.stroke({ color: 0x5A4A3A, width: 0.5 });
+
+    // Smoke puffs (static — for animated smoke, would use particles)
+    for (let si = 0; si < 3; si++) {
+      const sx = 6.5 * scale + Math.sin(city.id + si * 2) * 2;
+      const sy = (top - 2 - si * 4) * scale;
+      const sr = 2 + si * 0.8;
+      g.circle(sx, sy, sr);
+      g.fill({ color: 0xBBBBAA, alpha: 0.15 - si * 0.03 });
     }
 
     p.addChild(g);
@@ -822,8 +1090,41 @@ export class CivRenderer {
 
     p.addChild(g);
 
-    // Unit class icon
+    // Unit type silhouette behind label
+    const sg = new Graphics();
     const def = CIV_UNIT_DEFS[u.type];
+    if (def) {
+      switch (def.unitClass) {
+        case "melee":
+          // Crossed swords
+          sg.moveTo(-4, -5); sg.lineTo(4, 5); sg.stroke({ color: 0xFFFFFF, alpha: 0.2, width: 1.5 });
+          sg.moveTo(4, -5); sg.lineTo(-4, 5); sg.stroke({ color: 0xFFFFFF, alpha: 0.2, width: 1.5 });
+          break;
+        case "cavalry":
+          // Horse head silhouette (simplified)
+          sg.moveTo(-3, 3); sg.quadraticCurveTo(-5, -2, -2, -5);
+          sg.quadraticCurveTo(1, -6, 4, -3); sg.lineTo(5, 0);
+          sg.stroke({ color: 0xFFFFFF, alpha: 0.2, width: 1.2 });
+          break;
+        case "ranged":
+          // Bow
+          sg.moveTo(-4, 4); sg.quadraticCurveTo(-6, 0, -4, -4);
+          sg.stroke({ color: 0xFFFFFF, alpha: 0.2, width: 1.2 });
+          sg.moveTo(-4, 4); sg.lineTo(4, -2);
+          sg.stroke({ color: 0xFFFFFF, alpha: 0.15, width: 0.8 });
+          break;
+        case "siege":
+          // Wheel
+          sg.circle(0, 0, 5);
+          sg.stroke({ color: 0xFFFFFF, alpha: 0.15, width: 1 });
+          sg.moveTo(-5, 0); sg.lineTo(5, 0);
+          sg.stroke({ color: 0xFFFFFF, alpha: 0.1, width: 0.8 });
+          break;
+      }
+    }
+    p.addChild(sg);
+
+    // Unit class icon
     const icons: Record<string, string> = { melee: "⚔", ranged: "➶", cavalry: "♞", siege: "⚙", naval: "⚓", hero: "♛", settler: "⌂", worker: "⚒", scout: "◉", special: "✦" };
     const icon = icons[def?.unitClass ?? ""] ?? "";
     if (icon) {
@@ -884,6 +1185,30 @@ export class CivRenderer {
         }
       }
     }
+
+    // Soft fog edges — draw larger, more transparent hexes at fog boundaries
+    for (let hy2 = 0; hy2 < state.mapHeight; hy2++) {
+      for (let hx2 = 0; hx2 < state.mapWidth; hx2++) {
+        const v2 = vis[hy2]?.[hx2] ?? 0;
+        if (v2 !== 1) continue; // only at explored-but-dark boundaries
+        const { px: px2, py: py2 } = this.hexToPixel(hx2, hy2);
+        if (px2 < vl || px2 > vr || py2 < vt || py2 > vb) continue;
+        // Check if any neighbor is fully visible (v=2) — that's a fog edge
+        const DIRS = (hy2 & 1) === 0
+          ? [[+1, 0], [0, -1], [-1, -1], [-1, 0], [-1, +1], [0, +1]]
+          : [[+1, 0], [+1, -1], [0, -1], [-1, 0], [0, +1], [+1, +1]];
+        for (const [dx, dy] of DIRS) {
+          const nx2 = hx2 + dx, ny2 = hy2 + dy;
+          if (nx2 >= 0 && nx2 < state.mapWidth && ny2 >= 0 && ny2 < state.mapHeight) {
+            if ((vis[ny2]?.[nx2] ?? 0) === 2) {
+              // This is a fog edge — draw soft outer glow
+              this._hex(g, px2, py2, HEX_SIZE * 1.2, 0x0A0A18, 0.12);
+              break;
+            }
+          }
+        }
+      }
+    }
   }
 
   // ── Selection ────────────────────────────────────────────────────────────
@@ -913,6 +1238,27 @@ export class CivRenderer {
           for (const t of c.tiles) {
             const tp = this.hexToPixel(t.x, t.y);
             this._hexOut(g, tp.px, tp.py, HEX_SIZE - 2, 0xFFDD00, 0.12, 1);
+          }
+          // Show yield icons on worked tiles
+          for (let ti = 0; ti < Math.min(c.tiles.length, c.population + 1); ti++) {
+            const wt = c.tiles[ti];
+            const { px: wpx, py: wpy } = this.hexToPixel(wt.x, wt.y);
+            const terrain = TERRAIN_TYPES[state.tiles[wt.y]?.[wt.x]?.terrain ?? ""];
+            if (terrain) {
+              // Tiny yield indicators
+              if (terrain.food > 0) {
+                g.circle(wpx - 6, wpy + HEX_SIZE * 0.45, 2);
+                g.fill({ color: 0x44CC44, alpha: 0.7 });
+              }
+              if (terrain.production > 0) {
+                g.circle(wpx, wpy + HEX_SIZE * 0.45, 2);
+                g.fill({ color: 0xCC8833, alpha: 0.7 });
+              }
+              if (terrain.gold > 0) {
+                g.circle(wpx + 6, wpy + HEX_SIZE * 0.45, 2);
+                g.fill({ color: 0xFFDD44, alpha: 0.7 });
+              }
+            }
           }
         }
         this.dirty = true;

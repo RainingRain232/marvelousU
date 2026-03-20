@@ -33,6 +33,7 @@ export class CaesarHUD {
   private _selectedCategory: CaesarBuildingCategory = "food";
   private _toolButtons: Map<string, HTMLButtonElement> = new Map();
   private _helpOverlay: HTMLDivElement | null = null;
+  private _statsOverlay: HTMLDivElement | null = null;
 
   // Callbacks
   onSelectTool: ((tool: CaesarTool) => void) | null = null;
@@ -46,6 +47,7 @@ export class CaesarHUD {
   onSetPriority: ((buildingId: number, priority: "high" | "normal" | "low") => void) | null = null;
   onCaravanBuy: ((index: number) => void) | null = null;
   onCaravanSell: ((index: number) => void) | null = null;
+  onUndo: (() => void) | null = null;
 
   build(): void {
     this._root = document.createElement("div");
@@ -100,6 +102,8 @@ export class CaesarHUD {
         · <b style="color:#ddd;">1-4</b>: tools (select/build/road/demolish)<br>
         · <b style="color:#ddd;">Shift+drag</b>: pan &nbsp;|&nbsp; <b style="color:#ddd;">F5</b>: save &nbsp;|&nbsp; <b style="color:#ddd;">F9</b>: load<br>
         · <b style="color:#ddd;">0</b>: pause &nbsp; <b style="color:#ddd;">-</b>: normal &nbsp; <b style="color:#ddd;">=</b>: fast &nbsp; <b style="color:#ddd;">+</b>: fastest<br>
+        · <b style="color:#ddd;">Ctrl+Z</b>: undo last build &nbsp;|&nbsp; <b style="color:#ddd;">Tab</b>: town statistics<br>
+        · <b style="color:#ddd;">Click+drag</b>: place roads/housing continuously<br>
         · <b style="color:#ddd;">Escape</b>: deselect tool &nbsp;|&nbsp; <b style="color:#ddd;">?</b>: show this help in-game
       </div>
       <div style="margin-bottom:12px;">
@@ -292,6 +296,11 @@ export class CaesarHUD {
     buildRow.style.cssText = `display: none; gap: 4px; flex-wrap: wrap; max-height: 64px; overflow-y: auto;`;
     this._bottomBar.appendChild(buildRow);
 
+    const shortcutHint = document.createElement("div");
+    shortcutHint.style.cssText = "font-size:9px; color:#8a7a60; text-align:center; margin-top:2px;";
+    shortcutHint.textContent = "1:Select 2:Build 3:Road 4:Demolish | ?:Help Tab:Stats Ctrl+Z:Undo";
+    this._bottomBar.appendChild(shortcutHint);
+
     // Info panel
     this._infoPanel = document.createElement("div");
     this._infoPanel.style.cssText = `
@@ -342,6 +351,7 @@ export class CaesarHUD {
       if (e.key === "2") this.onSelectTool?.("build");
       if (e.key === "3") this.onSelectTool?.("road");
       if (e.key === "4") this.onSelectTool?.("demolish");
+      if (e.key === "Delete" || e.key === "Backspace") this.onSelectTool?.("demolish");
       if (e.key === "Escape") { this.onSelectTool?.("select"); this._hideHelpOverlay(); }
       if (e.key === "?" || e.key === "/") { this._showHelpOverlay(); }
       if (e.key === "F5") { e.preventDefault(); this.onSave?.(); }
@@ -350,6 +360,8 @@ export class CaesarHUD {
       if (e.key === "-") this.onSpeedChange?.(1); // normal speed
       if (e.key === "=") this.onSpeedChange?.(2); // fast
       if (e.key === "+") this.onSpeedChange?.(3); // fastest
+      if ((e.ctrlKey || e.metaKey) && e.key === "z") { e.preventDefault(); this.onUndo?.(); }
+      if (e.key === "Tab") { e.preventDefault(); this._toggleStatsOverlay(); }
     });
   }
 
@@ -409,6 +421,8 @@ export class CaesarHUD {
         · <b>1</b>: Select &nbsp; <b>2</b>: Build &nbsp; <b>3</b>: Road &nbsp; <b>4</b>: Demolish<br>
         · <b>F5</b>: Save &nbsp;|&nbsp; <b>F9</b>: Load &nbsp;|&nbsp; <b>Esc</b>: Deselect/Close<br>
         · <b>0</b>: Pause &nbsp; <b>-</b>: Normal &nbsp; <b>=</b>: Fast &nbsp; <b>+</b>: Fastest<br>
+        · <b>Ctrl+Z</b>: Undo last placement &nbsp;|&nbsp; <b>Tab</b>: Town statistics<br>
+        · <b>Click+drag</b>: Place roads/housing continuously<br>
         · <b>?</b>: Show this help<br><br>
 
         <b style="color:#ffd700;">Tips:</b><br>
@@ -442,6 +456,31 @@ export class CaesarHUD {
     this._helpOverlay = null;
   }
 
+  private _toggleStatsOverlay(): void {
+    if (this._statsOverlay) { this._hideStatsOverlay(); return; }
+    this._statsOverlay = document.createElement("div");
+    this._statsOverlay.style.cssText = `
+      position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      background: #2a1f14; border: 2px solid #8b6914; border-radius: 10px;
+      padding: 24px 32px; z-index: 250; pointer-events: all; min-width: 350px;
+      color: #f0e6d2; font-family: serif;
+    `;
+    this._statsOverlay.innerHTML = `
+      <h2 style="margin:0 0 12px; color:#ffd700; text-align:center;">Town Statistics</h2>
+      <div id="caesar-stats-body" style="font-size:13px; line-height:1.8;"></div>
+      <div style="text-align:center; margin-top:12px;">
+        <button id="caesar-stats-close" style="padding:6px 20px; background:#8b6914; color:#fff; border:none; border-radius:4px; cursor:pointer;">Close (Tab)</button>
+      </div>
+    `;
+    this._statsOverlay.querySelector("#caesar-stats-close")!.addEventListener("click", () => this._hideStatsOverlay());
+    this._root!.appendChild(this._statsOverlay);
+  }
+
+  private _hideStatsOverlay(): void {
+    if (this._statsOverlay?.parentNode) this._statsOverlay.parentNode.removeChild(this._statsOverlay);
+    this._statsOverlay = null;
+  }
+
   showHelpPanel(): void { this._showHelpOverlay(); }
   hideHelpPanel(): void { this._hideHelpOverlay(); }
 
@@ -455,6 +494,7 @@ export class CaesarHUD {
     this._updateTooltip(state);
     this._updateEventBanner(state);
     this._updateGameOver(state);
+    this._updateStatsOverlay(state);
   }
 
   private _updateTopBar(state: CaesarState): void {
@@ -485,7 +525,11 @@ export class CaesarHUD {
       const cap = state.resourceCaps.get(rt) ?? 999;
       const atCap = rt !== CaesarResourceType.GOLD && amount >= cap;
       const capStr = rt !== CaesarResourceType.GOLD ? `/${cap}` : "";
-      resHTML += `<span style="color:${atCap ? "#f44336" : meta.color}">${meta.label}: ${amount}${capStr}</span>`;
+      let tooltip = "";
+      if (rt === CaesarResourceType.GOLD) {
+        tooltip = ` title="Income: ${state.monthlyIncome}/month&#10;Expenses: ${state.monthlyExpense}/month&#10;Net: ${state.monthlyIncome - state.monthlyExpense}/month"`;
+      }
+      resHTML += `<span${tooltip} style="color:${atCap ? "#f44336" : meta.color}">${meta.label}: ${amount}${capStr}</span>`;
     }
 
     // Population with color
@@ -513,11 +557,16 @@ export class CaesarHUD {
     if (this._ratingPanel) {
       const r = state.ratings;
       const g = state.goals;
+      const ratingColor = (current: number, goal: number) => {
+        if (current >= goal) return "#44ff44"; // goal met
+        if (current >= goal * 0.7) return "#ffcc44"; // close
+        return "#ff6644"; // far
+      };
       this._ratingPanel.innerHTML = `
-        <span style="color:${r.prosperity >= g.prosperity ? '#4caf50' : '#ff9800'}">Pros: ${Math.floor(r.prosperity)}/${g.prosperity}</span>
-        <span style="color:${r.culture >= g.culture ? '#4caf50' : '#ff9800'}">Cult: ${Math.floor(r.culture)}/${g.culture}</span>
-        <span style="color:${r.peace >= g.peace ? '#4caf50' : '#ff9800'}">Peace: ${Math.floor(r.peace)}/${g.peace}</span>
-        <span style="color:${r.favor >= g.favor ? '#4caf50' : '#ff9800'}">Favor: ${Math.floor(r.favor)}/${g.favor}</span>
+        <span style="color:${ratingColor(r.prosperity, g.prosperity)}">Pros: ${Math.floor(r.prosperity)}/${g.prosperity}</span>
+        <span style="color:${ratingColor(r.culture, g.culture)}">Cult: ${Math.floor(r.culture)}/${g.culture}</span>
+        <span style="color:${ratingColor(r.peace, g.peace)}">Peace: ${Math.floor(r.peace)}/${g.peace}</span>
+        <span style="color:${ratingColor(r.favor, g.favor)}">Favor: ${Math.floor(r.favor)}/${g.favor}</span>
         <span style="color:#aaa">Tribute: ${Math.floor(state.tributeTimer)}s</span>
       `;
     }
@@ -586,7 +635,9 @@ export class CaesarHUD {
 
     const btn = document.createElement("button");
     btn.textContent = `${bdef.label} (${costStr})`;
-    btn.title = `${bdef.label}\nCost: ${bdef.cost} gold${bdef.woodCost > 0 ? `, ${bdef.woodCost} wood` : ""}${bdef.stoneCost > 0 ? `, ${bdef.stoneCost} stone` : ""}${maint > 0 ? `\nMaintenance: ${maint}g/tax` : ""}\nWorkers: ${bdef.maxWorkers || 0}\n${bdef.description}`;
+    const produces = bdef.outputs.length > 0 ? `\nProduces: ${bdef.outputs.map(o => RESOURCE_META[o.type].label).join(", ")}` : "";
+    const requires = bdef.inputs.length > 0 ? `\nRequires: ${bdef.inputs.map(i => RESOURCE_META[i.type].label).join(", ")}` : "";
+    btn.title = `${bdef.label}${produces}${requires}\nCost: ${bdef.cost} gold${bdef.woodCost > 0 ? `, ${bdef.woodCost} wood` : ""}${bdef.stoneCost > 0 ? `, ${bdef.stoneCost} stone` : ""}${maint > 0 ? `\nMaintenance: ${maint}g/tax` : ""}\nWorkers: ${bdef.maxWorkers || 0}\n${bdef.description}`;
     btn.style.cssText = `
       padding: 3px 8px; font-size: 11px;
       background: ${canAfford ? "#3a2a15" : "#2a1a0a"};
@@ -596,6 +647,20 @@ export class CaesarHUD {
     `;
     btn.addEventListener("click", () => {
       if (canAfford) this.onSelectBuildingType?.(type);
+    });
+    btn.addEventListener("mouseenter", (e) => {
+      if (this._tooltip) {
+        this._tooltip.textContent = btn.title;
+        this._tooltip.style.display = "block";
+        this._tooltip.style.left = (e.clientX + 10) + "px";
+        this._tooltip.style.top = (e.clientY - 30) + "px";
+        this._tooltip.style.transform = "none";
+        this._tooltip.style.bottom = "auto";
+        this._tooltip.style.whiteSpace = "pre-line";
+      }
+    });
+    btn.addEventListener("mouseleave", () => {
+      if (this._tooltip) this._tooltip.style.display = "none";
     });
     container.appendChild(btn);
   }
@@ -617,7 +682,13 @@ export class CaesarHUD {
     this._infoPanel.style.display = "block";
     const bdef = CAESAR_BUILDING_DEFS[b.type];
 
-    let html = `<b style="color:#ffd700">${bdef.label}</b>`;
+    const categoryIcons: Record<string, string> = {
+      housing: "\u{1F3E0}", infrastructure: "\u{1F6E4}\uFE0F", food: "\u{1F33E}", industry: "\u2692\uFE0F",
+      religion: "\u26EA", safety: "\u2694\uFE0F", entertainment: "\u{1F3AD}", commerce: "\u{1F4B0}",
+    };
+    const catIcon = categoryIcons[bdef.category] ?? "";
+
+    let html = `<b style="color:#ffd700">${catIcon} ${bdef.label}</b>`;
     html += `<br><span style="color:#aa9977">${bdef.description}</span>`;
 
     if (!b.built) {
@@ -678,7 +749,8 @@ export class CaesarHUD {
 
     // Fire!
     if (b.onFire) {
-      html += `<br><span style="color:#ff4444;font-weight:bold">ON FIRE! (${Math.ceil(b.fireTimer)}s)</span>`;
+      html += `<br><span style="color:#ff4444;font-weight:bold;font-size:14px">ON FIRE! (${Math.ceil(b.fireTimer)}s)</span>`;
+      html += `<br><span style="color:#ff6644;font-size:11px">Click to extinguish (-20g)</span>`;
     }
 
     // Level and upgrade
@@ -833,6 +905,17 @@ export class CaesarHUD {
       div.textContent = `[${icon}] ${msg.text}`;
       this._advisorPanel.appendChild(div);
     }
+
+    // Building count summary
+    const buildingCount = state.buildings.size;
+    const housingCount = Array.from(state.buildings.values()).filter(b => b.type === CaesarBuildingType.HOUSING).length;
+    const summaryDiv = document.createElement("div");
+    summaryDiv.style.cssText = `
+      background: rgba(26,18,8,0.85); border: 1px solid #3a2a15; border-radius: 4px;
+      padding: 4px 8px; font-size: 11px; color: #aa9977; line-height: 1.3;
+    `;
+    summaryDiv.textContent = `Buildings: ${buildingCount} (${housingCount} housing) | Pop: ${state.population}/${state.maxPopulation}`;
+    this._advisorPanel.appendChild(summaryDiv);
   }
 
   private _updateTooltip(state: CaesarState): void {
@@ -848,8 +931,20 @@ export class CaesarHUD {
   private _updateEventBanner(state: CaesarState): void {
     if (!this._eventBanner) return;
     if (state.activeEvent) {
+      // Color based on event type
+      let eventColor = "#f0e6d2"; // default
+      let borderColor = "#ffd700";
+      switch (state.activeEvent.type) {
+        case "plague": eventColor = "#ff4444"; borderColor = "#cc2222"; break;
+        case "drought": eventColor = "#cc8844"; borderColor = "#aa6622"; break;
+        case "bountiful_harvest": case "royal_festival": eventColor = "#44cc44"; borderColor = "#22aa22"; break;
+        case "bandit_ambush": eventColor = "#ff6644"; borderColor = "#cc4422"; break;
+        case "merchant_caravan": eventColor = "#44aaff"; borderColor = "#2288dd"; break;
+      }
       this._eventBanner.textContent = `${state.activeEvent.message} (${Math.ceil(state.activeEvent.timer)}s)`;
       this._eventBanner.style.display = "block";
+      this._eventBanner.style.color = eventColor;
+      this._eventBanner.style.borderColor = borderColor;
     } else {
       this._eventBanner.style.display = "none";
     }
@@ -887,6 +982,27 @@ export class CaesarHUD {
           border:none; border-radius:4px; cursor:pointer; margin-top:16px;
         ">Return to Menu</button>
       </div>
+    `;
+  }
+
+  private _updateStatsOverlay(state: CaesarState): void {
+    if (!this._statsOverlay) return;
+    const body = this._statsOverlay.querySelector("#caesar-stats-body");
+    if (!body) return;
+    const gold = state.resources.get(CaesarResourceType.GOLD) ?? 0;
+    const food = state.resources.get(CaesarResourceType.FOOD) ?? 0;
+    const buildingCount = state.buildings.size;
+    const housingCount = Array.from(state.buildings.values()).filter(b => b.type === CaesarBuildingType.HOUSING).length;
+    body.innerHTML = `
+      Population: ${state.population} / ${state.maxPopulation}<br>
+      Employed: ${state.population - state.unemployed} &middot; Idle: ${state.unemployed}<br>
+      Buildings: ${buildingCount} (${housingCount} housing)<br>
+      Gold: ${Math.floor(gold)}<br>
+      Food: ${Math.floor(food)}<br>
+      Morale: ${Math.floor(state.morale)}%<br>
+      Tributes Paid: ${state.tributesPaid} &middot; Missed: ${state.tributesMissed}<br>
+      Trade Profit: ${Math.floor(state.tradeProfit)}<br>
+      Raids Defeated: ${state.raidsDefeated}<br>
     `;
   }
 

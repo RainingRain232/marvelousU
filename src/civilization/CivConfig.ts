@@ -431,8 +431,9 @@ export const CIV_BUILDING_DEFS: Record<string, BuildingDef> = {
   alchemist:        { id: "alchemist",        name: "Alchemist",        cost: 120, maintenance: 2, requiresTech: "hedge_magic",   effects: { research: 2, gold: 2, production: 1 },             description: "A laboratory where natural philosophers transmute base knowledge into practical wonders." },
   round_table_hall: { id: "round_table_hall", name: "Round Table",      cost: 600, maintenance: 4, requiresTech: "round_table",   effects: { happiness: 6, culture: 5, gold: 2 },               description: "The legendary Round Table — a world wonder that unites the realm under justice and fellowship." },
   guild_hall:       { id: "guild_hall",       name: "Guild Hall",       cost: 105, maintenance: 1, requiresTech: "guilds",        effects: { production: 3, gold: 2 },                          description: "A hall where craftsmen organise, boosting manufacturing and commerce." },
-  abbey:            { id: "abbey",            name: "Abbey",            cost: 150, maintenance: 2, requiresTech: "monasticism",   effects: { research: 2, culture: 1 },                         description: "A fortified monastery where monks pray, heal, and preserve learning." },
+  abbey:            { id: "abbey",            name: "Abbey",            cost: 80,  maintenance: 2, requiresTech: "monasticism",   effects: { research: 2, happiness: 2, culture: 2 },           description: "A place of learning, prayer, and healing." },
   curtain_wall:     { id: "curtain_wall",     name: "Curtain Wall",     cost: 225, maintenance: 2, requiresTech: "siege_craft",   effects: { defense: 12 },                                     description: "A concentric ring of tall stone walls with towers -- the pinnacle of fortification." },
+  tournament_field: { id: "tournament_field", name: "Tournament Field", cost: 50,  maintenance: 1, requiresTech: "jousting",      effects: { happiness: 3, culture: 1 },                        description: "Knights compete in jousting and melee for glory." },
 };
 
 // Legacy alias used by CivAI.ts
@@ -478,6 +479,7 @@ export const CIV_TECH_TREE: Record<string, TechDef> = {
   diplomacy:       { id: "diplomacy",       name: "Diplomacy",        branch: "statecraft", cost: 160, prerequisites: ["guilds"],                    unlocks: [],                                                                 description: "Formal embassies and treaties between kingdoms, enabling alliances and pacts.",    era: 2 },
   law_of_the_land: { id: "law_of_the_land", name: "Law of the Land",  branch: "statecraft", cost: 180, prerequisites: ["diplomacy"],                 unlocks: [],                                                                 description: "A codified legal system that reduces corruption and unrest across the realm.",    era: 3 },
   royal_mint:      { id: "royal_mint",      name: "Royal Mint",       branch: "statecraft", cost: 220, prerequisites: ["taxation", "guilds"],         unlocks: [],                                                                 description: "A central mint striking standardised coinage, enriching all cities.",             era: 3 },
+  royal_decree:    { id: "royal_decree",    name: "Royal Decree",     branch: "statecraft", cost: 200, prerequisites: ["diplomacy"],                    unlocks: [],                                                                 description: "The king's word is absolute law.",                                                era: 4 },
 
   // ---- FAITH BRANCH (10 techs) ----
   piety:           { id: "piety",           name: "Piety",            branch: "faith",      cost: 40,  prerequisites: [],                           unlocks: ["chapel"],                                                         description: "Simple Christian devotion that calms the populace and stirs the soul.",           era: 1 },
@@ -506,7 +508,7 @@ export const CIV_WONDERS: Record<string, WonderDef> = {
     cost: 150,
     requiresTech: "feudalism",
     effects: { happiness: 3, culture: 3, legitimacy: 10 },
-    description: "Whosoever pulleth this sword from this stone is rightwise born king. Grants unshakeable legitimacy and inspires all troops.",
+    description: "Whoever pulls this sword shall be rightful King of all Britain. (+3 happiness everywhere)",
   },
   the_round_table: {
     id: "the_round_table",
@@ -522,7 +524,7 @@ export const CIV_WONDERS: Record<string, WonderDef> = {
     cost: 200,
     requiresTech: "enchantment",
     effects: { attack: 3, defense: 2, magicResistance: 3 },
-    description: "The Lady of the Lake's gift -- a blade that shines with the light of thirty torches and whose scabbard prevents all bleeding.",
+    description: "The Lady of the Lake bestows her gift — a blade that cleaves through any armor. (+3 attack to all units)",
   },
   the_holy_grail: {
     id: "the_holy_grail",
@@ -538,7 +540,7 @@ export const CIV_WONDERS: Record<string, WonderDef> = {
     cost: 350,
     requiresTech: "fae_pact",
     effects: { research: 5, culture: 3, heroHealing: 5, freeFaeWarrior: true },
-    description: "The Isle of Apples, hidden behind enchanted mists. A place of healing and ancient power where wounded heroes are restored.",
+    description: "The mystical isle where Arthur sleeps — the wounded are healed, the weary restored. (Heals all units 2 HP/turn)",
   },
   stonehenge: {
     id: "stonehenge",
@@ -858,6 +860,23 @@ export const CHIVALRY_EVENTS: ChivalryEvent[] = [
       { label: "Ignore it -- idle gossip is beneath a king", chivalryChange: 0, effects: { corruption: 2 } },
     ],
   },
+  { id: "evt_spy_network", name: "Spy Network Exposed", description: "Your spymaster reports that enemy agents have infiltrated your court.",
+    choices: [
+      { label: "Purge the court (-15 gold, +3 chivalry)", chivalryChange: 3, goldChange: -15 },
+      { label: "Set a counter-trap (+2 chivalry)", chivalryChange: 2 },
+      { label: "Ignore it — they'll learn nothing useful", chivalryChange: 0 },
+    ] },
+  { id: "evt_merchant_caravan", name: "Merchant Caravan", description: "A wealthy merchant caravan from distant lands seeks passage through your territory.",
+    choices: [
+      { label: "Grant safe passage and trade (+30 gold, +2 chivalry)", chivalryChange: 2, goldChange: 30 },
+      { label: "Tax them heavily (+50 gold, -3 chivalry)", chivalryChange: -3, goldChange: 50 },
+      { label: "Rob them (+80 gold, -8 chivalry)", chivalryChange: -8, goldChange: 80 },
+    ] },
+  { id: "evt_ancient_prophecy", name: "Ancient Prophecy", description: "An old hermit claims to have found a prophecy in the ruins: 'The king who seeks the Grail shall find it, but only through sacrifice.'",
+    choices: [
+      { label: "Heed the prophecy (+5 chivalry, +10 culture)", chivalryChange: 5, cultureChange: 10 },
+      { label: "Dismiss the ravings of a madman", chivalryChange: -1 },
+    ] },
 ];
 
 // ---------------------------------------------------------------------------

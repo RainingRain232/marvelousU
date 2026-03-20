@@ -49,6 +49,7 @@ export class CaesarGame {
   private _lastDragTileX = -1;
   private _lastDragTileY = -1;
   private _lastAutosave = performance.now();
+  private _lastPlacedBuildingId: number | null = null;
 
   async boot(): Promise<void> {
     this._hud.build();
@@ -131,6 +132,22 @@ export class CaesarGame {
         this._hud.showNotification("Game saved!");
       } else {
         this._hud.showNotification("Save failed!");
+      }
+    };
+    this._hud.onUndo = () => {
+      if (this._lastPlacedBuildingId !== null) {
+        const b = this._state.buildings.get(this._lastPlacedBuildingId);
+        if (b) {
+          const def = CAESAR_BUILDING_DEFS[b.type];
+          if (def) {
+            this._state.resources.set(CaesarResourceType.GOLD,
+              (this._state.resources.get(CaesarResourceType.GOLD) ?? 0) + def.cost);
+          }
+          this._state.buildings.delete(this._lastPlacedBuildingId);
+          this._lastPlacedBuildingId = null;
+          this._renderer.markTerrainDirty();
+          this._hud.showNotification("Undo: building removed, cost refunded");
+        }
       }
     };
     this._hud.onLoad = () => {
@@ -251,6 +268,7 @@ export class CaesarGame {
         if (!state.selectedBuildingType) break;
         const result = placeBuilding(state, state.selectedBuildingType, tx, ty);
         if (result) {
+          this._lastPlacedBuildingId = result.id;
           this._renderer.markTerrainDirty();
           this._storageDirtyTimer = 0; // recompute storage caps
         } else if (!state.isDragging) {
@@ -260,7 +278,7 @@ export class CaesarGame {
       }
       case "road": {
         const result = placeBuilding(state, CaesarBuildingType.ROAD, tx, ty);
-        if (result) this._renderer.markTerrainDirty();
+        if (result) { this._lastPlacedBuildingId = result.id; this._renderer.markTerrainDirty(); }
         break;
       }
       case "demolish": {
@@ -284,6 +302,19 @@ export class CaesarGame {
               ty >= b.tileY && ty < b.tileY + bdef.footprint.h) {
             state.selectedBuildingId = b.id;
             break;
+          }
+        }
+        // Auto-fight fire on clicked burning building
+        const clickedBuilding = state.buildings.get(state.selectedBuildingId ?? -1);
+        if (clickedBuilding?.onFire) {
+          const gold = state.resources.get(CaesarResourceType.GOLD) ?? 0;
+          if (gold >= 20) {
+            state.resources.set(CaesarResourceType.GOLD, gold - 20);
+            clickedBuilding.onFire = false;
+            clickedBuilding.fireTimer = 0;
+            this._hud.showNotification("Fire extinguished! (-20 gold)");
+          } else {
+            this._hud.showNotification("Not enough gold to fight the fire (need 20).");
           }
         }
         break;

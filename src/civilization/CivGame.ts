@@ -16,7 +16,10 @@ import {
   setResearch, getAvailableTechs, processEndTurn, advanceTurn,
   updateFogOfWar, setDiplomacyRelation, isAtWar, addEvent,
   startImprovement, recruitHero, getAvailableHeroes,
-  useHeroAbility,
+  useHeroAbility, autoExploreUnit,
+  saveGame, loadGame, hasSavedGame,
+  getNeighbors, stealTech, sabotageCity,
+  establishTradeRoute,
 } from "./CivState";
 import { CivRenderer } from "./CivRenderer";
 import { CivHUD } from "./CivHUD";
@@ -493,6 +496,31 @@ export class CivGame {
     this.setupContainer.addChild(summaryText);
     rightY += 100;
 
+    // Load saved game button (if save exists)
+    if (hasSavedGame()) {
+      const loadBtn = new Container();
+      loadBtn.x = rightX + 50;
+      loadBtn.y = rightY + 10;
+      const loadBg = new Graphics();
+      loadBg.roundRect(0, 0, 280, 36, 6);
+      loadBg.fill({ color: 0x2A4A2A, alpha: 0.9 });
+      loadBg.roundRect(0, 0, 280, 36, 6);
+      loadBg.stroke({ color: 0x44AA44, width: 1.5 });
+      loadBtn.addChild(loadBg);
+      const loadTxt = new Text({ text: "Load Saved Game", style: new TextStyle({ fontFamily: "serif", fontSize: 15, fontWeight: "bold", fill: 0x88DD88 }) });
+      loadTxt.anchor.set(0.5, 0.5); loadTxt.position.set(140, 18);
+      loadBtn.addChild(loadTxt);
+      loadBtn.eventMode = "static"; loadBtn.cursor = "pointer";
+      loadBtn.on("pointerover", () => { loadBg.tint = 0xCCFFCC; });
+      loadBtn.on("pointerout", () => { loadBg.tint = 0xFFFFFF; });
+      loadBtn.on("pointerdown", () => {
+        const saved = loadGame();
+        if (saved) { this._clearSetupScreen(); this._bootFromState(saved); }
+      });
+      this.setupContainer.addChild(loadBtn);
+      rightY += 50;
+    }
+
     // START GAME button
     const startBtn = new Container();
     const startBtnW = 280;
@@ -951,6 +979,15 @@ export class CivGame {
             this.hud.showHelpPanel();
             break;
 
+          case "F5":
+            e.preventDefault();
+            if (this.state) { saveGame(this.state); this.hud.showNotification("Game saved!"); }
+            break;
+          case "F9":
+            e.preventDefault();
+            this._loadSavedGame();
+            break;
+
           case "Escape":
             this.hud.hideTechPanel();
             this.hud.hideBuildMenu();
@@ -1200,6 +1237,10 @@ export class CivGame {
           // Check if new city needs a build order
           const tile = this.state.tiles[unit.y]?.[unit.x];
           if (tile && tile.cityId >= 0) {
+            // Auto-select new city
+            this.state.selectedCityId = tile.cityId;
+            this.state.selectedUnitId = -1;
+            this.renderer.centerOn(unit.x, unit.y);
             const newCity = getCity(this.state, tile.cityId);
             if (newCity && newCity.buildQueue.length === 0) {
               this.hud.showBuildMenu(this.state, newCity.id);
@@ -1215,6 +1256,58 @@ export class CivGame {
         unit.sleeping = false;
         unit.fortified = false;
         break;
+
+      case "explore":
+        unit.autoExplore = true;
+        autoExploreUnit(this.state, unit);
+        this.hud.showNotification("Scout set to auto-explore.");
+        break;
+
+      case "steal_tech": {
+        // Find nearest enemy player in adjacent territory
+        if (!this.state) break;
+        const spyTile = this.state.tiles[unit.y]?.[unit.x];
+        let targetIdx = -1;
+        if (spyTile && spyTile.owner >= 0 && spyTile.owner !== 0) {
+          targetIdx = spyTile.owner;
+        } else {
+          // Check adjacent tiles for enemy territory
+          const adj = getNeighbors(unit.x, unit.y, this.state.mapWidth, this.state.mapHeight);
+          for (const n of adj) {
+            const nt = this.state.tiles[n.y]?.[n.x];
+            if (nt && nt.owner >= 0 && nt.owner !== 0) { targetIdx = nt.owner; break; }
+          }
+        }
+        if (targetIdx >= 0) {
+          const result = stealTech(this.state, unit.id, targetIdx);
+          this.hud.showNotification(result.message);
+          if (result.success) this.renderer.addFloatingText(unit.x, unit.y, "📜 Tech stolen!", 0x44FF44);
+        } else {
+          this.hud.showNotification("No enemy territory nearby for espionage.");
+        }
+        break;
+      }
+      case "sabotage": {
+        if (!this.state) break;
+        // Find nearest enemy city adjacent to spy
+        const adj2 = getNeighbors(unit.x, unit.y, this.state.mapWidth, this.state.mapHeight);
+        let targetCity2: number | null = null;
+        for (const n of adj2) {
+          const nt = this.state.tiles[n.y]?.[n.x];
+          if (nt && nt.cityId >= 0) {
+            const c = getCity(this.state, nt.cityId);
+            if (c && c.owner !== 0) { targetCity2 = c.id; break; }
+          }
+        }
+        if (targetCity2 !== null) {
+          const result = sabotageCity(this.state, unit.id, targetCity2);
+          this.hud.showNotification(result.message);
+          if (result.success) this.renderer.addCombatFlash(unit.x, unit.y, 0xFF8800);
+        } else {
+          this.hud.showNotification("No enemy city adjacent to sabotage.");
+        }
+        break;
+      }
 
       case "improve_farm":
       case "improve_mine":
@@ -1268,10 +1361,75 @@ export class CivGame {
         setDiplomacyRelation(this.state, 0, targetPlayer, "peace");
         addEvent(this.state, 0, `Alliance with ${name} dissolved.`);
         break;
+      case "trade": {
+        // Establish trade between nearest cities
+        if (!this.state) break;
+        const human = this.state.players[0];
+        const target = this.state.players[targetPlayer];
+        if (!human || !target) break;
+        let established = false;
+        for (const hcid of human.cityIds) {
+          if (established) break;
+          for (const tcid of target.cityIds) {
+            if (establishTradeRoute(this.state, hcid, tcid)) {
+              established = true;
+              this.hud.showNotification(`Trade route established with ${target.factionDef.name}!`);
+              break;
+            }
+          }
+        }
+        if (!established) this.hud.showNotification("Cannot establish trade route (need Trade Routes tech, at peace, max 3 per city).");
+        break;
+      }
     }
 
     this.hud.hideDiplomacyPanel();
     this._refresh();
+  }
+
+  // -------------------------------------------------------------------------
+  // Save / Load helpers
+  // -------------------------------------------------------------------------
+
+  private _loadSavedGame(): void {
+    const saved = loadGame();
+    if (!saved) {
+      this.hud.showNotification("No saved game found.");
+      return;
+    }
+    this.state = saved;
+    this.renderer.markDirty();
+    updateFogOfWar(this.state, this.state.humanPlayerIndex);
+    this.hud.showNotification("Game loaded!");
+    this._selectUnit(-1);
+    this._selectNextUnit();
+    this._refresh();
+  }
+
+  private _bootFromState(state: CivGameState): void {
+    this.state = state;
+    this.renderer.init(this.state);
+    this.hud.init();
+    const humanPlayer = this.state.players[0];
+    if (humanPlayer.unitIds.length > 0) {
+      const firstUnit = getUnit(this.state, humanPlayer.unitIds[0]);
+      if (firstUnit) this.renderer.centerOn(firstUnit.x, firstUnit.y);
+    }
+    // Wire callbacks (same as _startGame)
+    this.hud.onEndTurn = () => this._endTurn();
+    this.hud.onTechSelect = (techId: string) => { if (!this.state) return; setResearch(this.state, 0, techId); this.hud.hideTechPanel(); this._refresh(); };
+    this.hud.onBuildSelect = (cityId: number, itemId: string) => { if (!this.state) return; const city = getCity(this.state, cityId); if (city) { city.buildQueue = [itemId]; city.productionAccum = 0; } this.hud.hideBuildMenu(); this._refresh(); this._showNextIdleCity(); };
+    this.hud.onUnitAction = (action: string, unitId: number) => this._handleUnitAction(action, unitId);
+    this.hud.onDiplomacyAction = (action: string, target: number) => this._handleDiplomacy(action, target);
+    this.hud.onExitGame = () => this._exit();
+    this.hud.onMinimapClick = (hx: number, hy: number) => { if (this.state && hx >= 0 && hx < this.state.mapWidth && hy >= 0 && hy < this.state.mapHeight) { this.renderer.centerOn(hx, hy); this._refresh(); } };
+    this._setupInput();
+    this.tickerFn = (ticker) => this._tick(ticker.deltaTime);
+    viewManager.app.ticker.add(this.tickerFn);
+    updateFogOfWar(this.state, this.state.humanPlayerIndex);
+    this._selectNextUnit();
+    this._refresh();
+    this.hud.showNotification("Game loaded!");
   }
 
   // -------------------------------------------------------------------------
@@ -1358,11 +1516,29 @@ export class CivGame {
     }
     this._showNextIdleCity();
 
+    // Autosave every 10 turns
+    if (this.state.turn % 10 === 0) {
+      saveGame(this.state);
+      this.hud.showNotification(`Autosaved (Turn ${this.state.turn})`);
+    }
+
     // Auto-prompt research selection if needed
     const human = this.state.players[0];
     if (!human.currentTech && human.alive) {
       const available = getAvailableTechs(human);
       if (available.length > 0) this.hud.showTechPanel(this.state);
+    }
+
+    // Auto-explore scouts
+    for (const uid of this.state.players[0].unitIds) {
+      const u = getUnit(this.state, uid);
+      if (u && u.autoExplore && u.movement > 0) {
+        autoExploreUnit(this.state, u);
+      }
+    }
+
+    if (this.state.players[0].goldenAgeTurns > 0) {
+      this.hud.showNotification(`Golden Age! ${this.state.players[0].goldenAgeTurns} turns remaining.`);
     }
 
     // Deselect and auto-select next moveable unit

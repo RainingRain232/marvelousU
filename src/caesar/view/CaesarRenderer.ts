@@ -378,6 +378,38 @@ export class CaesarRenderer {
               d.stroke({ color: 0x88bbee, width: 0.3, alpha: 0.3 });
             }
           }
+
+          // Depth gradient — deeper water toward center vs shoreline
+          let nearLand = false;
+          for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+            const nx2 = x + dx, ny2 = y + dy;
+            if (nx2 >= 0 && nx2 < map.width && ny2 >= 0 && ny2 < map.height) {
+              const nt = map.tiles[ny2 * map.width + nx2].terrain;
+              if (nt !== "water") nearLand = true;
+            }
+          }
+          if (nearLand) {
+            // Shallow water — lighter, sandy undertone
+            d.rect(px + 2, py + 2, ts - 4, ts - 4);
+            d.fill({ color: 0x4A90C8, alpha: 0.15 });
+            // Sand edge toward neighboring land
+            for (let dy2 = -1; dy2 <= 1; dy2++) for (let dx2 = -1; dx2 <= 1; dx2++) {
+              const nx3 = x + dx2, ny3 = y + dy2;
+              if (nx3 >= 0 && nx3 < map.width && ny3 >= 0 && ny3 < map.height) {
+                const nt2 = map.tiles[ny3 * map.width + nx3].terrain;
+                if (nt2 !== "water") {
+                  const ex = dx2 > 0 ? ts - 3 : (dx2 < 0 ? 0 : ts / 2 - 2);
+                  const ey = dy2 > 0 ? ts - 3 : (dy2 < 0 ? 0 : ts / 2 - 2);
+                  d.rect(px + ex, py + ey, 4, 4);
+                  d.fill({ color: 0xC8B888, alpha: 0.2 });
+                }
+              }
+            }
+          } else {
+            // Deep water — darker overlay
+            d.rect(px + 1, py + 1, ts - 2, ts - 2);
+            d.fill({ color: 0x1A3A7A, alpha: 0.15 });
+          }
         }
 
         // ---- Hills: layered rocks with facets ----
@@ -546,9 +578,13 @@ export class CaesarRenderer {
       const px = b.tileX * ts, py = b.tileY * ts;
       const pw = bdef.footprint.w * ts, ph = bdef.footprint.h * ts;
 
-      // Shadow
+      // Enhanced shadow
       const sh = new PIXI.Graphics();
-      sh.roundRect(px + 2, py + 2, pw - 1, ph - 1, 2); sh.fill(0x000000);
+      const shX = px + 3, shY = py + 3;
+      // Softer outer shadow
+      sh.roundRect(shX + 1, shY + 1, pw + 2, ph + 2, 3); sh.fill({ color: 0x000000, alpha: 0.35 });
+      // Main shadow
+      sh.roundRect(shX, shY, pw, ph, 2); sh.fill({ color: 0x000000, alpha: 0.7 });
       this._shadowLayer.addChild(sh);
 
       const g = new PIXI.Graphics();
@@ -736,6 +772,13 @@ export class CaesarRenderer {
       g.circle(dx, dy, 0.5 + rng() * 0.6); g.fill({ color: ROAD_EDGE, alpha: 0.2 + rng() * 0.3 });
     }
     if (rng() < 0.3) { const cx2 = px + 4 + rng() * (ts - 8); const cy2 = py + 4 + rng() * (ts - 8); g.moveTo(cx2, cy2); g.lineTo(cx2 + rng() * 5 - 2.5, cy2 + rng() * 5 - 2.5); g.stroke({ color: ROAD_CRACK, width: 0.4, alpha: 0.3 }); }
+    // Road wear marks
+    if (rng() < 0.3) {
+      const wx = px + rng() * ts * 0.6 + ts * 0.2;
+      const wy = py + rng() * ts * 0.6 + ts * 0.2;
+      g.circle(wx, wy, 1 + rng());
+      g.fill({ color: ROAD_CRACK, alpha: 0.3 });
+    }
   }
 
   private _hasRoad(s: CaesarState, tx: number, ty: number): boolean {
@@ -775,6 +818,16 @@ export class CaesarRenderer {
     const dw = Math.max(3, pw * 0.16), dh = (ph - roofH) * 0.52;
     g.roundRect(px + pw / 2 - dw / 2, py + ph - m - dh, dw, dh, dw * 0.3); g.fill(0x5d4037);
     g.circle(px + pw / 2 + dw * 0.25, py + ph - m - dh * 0.45, 0.5); g.fill(0xffd700); // doorknob
+
+    // Warm door glow for occupied housing
+    if (b.residents > 0) {
+      const doorX = px + pw / 2;
+      const doorY = py + ph - 2;
+      g.circle(doorX, doorY, 4);
+      g.fill({ color: 0xFFCC44, alpha: 0.08 });
+      g.circle(doorX, doorY, 2);
+      g.fill({ color: 0xFFDD66, alpha: 0.12 });
+    }
 
     // Windows
     const ws = Math.max(2, pw * 0.11);
@@ -826,16 +879,35 @@ export class CaesarRenderer {
   }
 
   private _drawWall(g: PIXI.Graphics, b: CaesarBuilding, px: number, py: number, ts: number, rng: () => number): void {
-    g.rect(px + 1, py + 1, ts - 2, ts - 2); g.fill(0x757575);
+    const pw = ts, ph = ts;
+    const m = 1;
+    // Main wall body with stone texture
+    g.rect(px + m, py + m, pw - m * 2, ph - m * 2); g.fill(0x8a8070);
     // Stone block pattern
-    for (let by = 0; by < 3; by++) for (let bx = 0; bx < 2; bx++) {
-      const ox = (by % 2) * (ts * 0.25);
-      g.rect(px + 1 + bx * (ts * 0.5) + ox, py + 1 + by * (ts * 0.3), ts * 0.48, ts * 0.28);
-      g.stroke({ color: 0x555555, width: 0.4 });
+    for (let row = 0; row < 3; row++) {
+      const ry = py + m + row * (ph - m * 2) / 3;
+      const offset = row % 2 === 0 ? 0 : (pw - m * 2) / 6;
+      for (let col = 0; col < 3; col++) {
+        const rx = px + m + offset + col * (pw - m * 2) / 3;
+        g.rect(rx + 0.5, ry + 0.5, (pw - m * 2) / 3 - 1, (ph - m * 2) / 3 - 1);
+        g.stroke({ color: 0x6a6050, alpha: 0.4, width: 0.5 });
+      }
     }
-    // Crenellations
-    const cw = ts / 5;
-    for (let i = 0; i < 5; i++) if (i % 2 === 0) { g.rect(px + 1 + i * cw, py, cw, ts * 0.18); g.fill(0x888888); }
+    // Battlements on top
+    const batCount = Math.max(2, Math.floor(pw / 5));
+    const batW = (pw - m * 2) / (batCount * 2);
+    for (let i = 0; i < batCount; i++) {
+      g.rect(px + m + i * batW * 2, py - 2, batW, 3);
+      g.fill(0x8a8070);
+      g.rect(px + m + i * batW * 2, py - 2, batW, 3);
+      g.stroke({ color: 0x6a6050, alpha: 0.5, width: 0.4 });
+    }
+    // Top edge highlight
+    g.moveTo(px + m, py + m); g.lineTo(px + pw - m, py + m);
+    g.stroke({ color: 0x9a9080, alpha: 0.5, width: 1 });
+    // Shadow at bottom
+    g.moveTo(px + m, py + ph - m); g.lineTo(px + pw - m, py + ph - m);
+    g.stroke({ color: 0x5a5040, alpha: 0.4, width: 1.5 });
   }
 
   private _drawGate(g: PIXI.Graphics, px: number, py: number, ts: number): void {
@@ -968,13 +1040,24 @@ export class CaesarRenderer {
   private _drawButcher(g: PIXI.Graphics, px: number, py: number, pw: number, ph: number, ts: number): void {
     const m = 2, roofH = ph * 0.28;
     g.roundRect(px + m, py + roofH, pw - m * 2, ph - roofH - m, 2); g.fill(0xc04040);
+    // Darker half for depth
+    g.roundRect(px + pw / 2, py + roofH, pw / 2 - m, ph - roofH - m, 2); g.fill({ color: 0xa03030, alpha: 0.3 });
     g.roundRect(px + m - 1, py + m, pw - m * 2 + 2, roofH, 2); g.fill(0x8b2020);
-    g.roundRect(px + pw / 2 - 2, py + ph - m - 5, 4, 5, 1); g.fill(0x5d4037);
-    // Hanging meat
-    g.moveTo(px + pw * 0.3, py + roofH + 2); g.lineTo(px + pw * 0.3, py + roofH + 6); g.stroke({ color: 0x8b4040, width: 1.5 });
-    g.moveTo(px + pw * 0.7, py + roofH + 2); g.lineTo(px + pw * 0.7, py + roofH + 6); g.stroke({ color: 0x8b4040, width: 1.5 });
+    // Door
+    g.roundRect(px + pw / 2 - 2, py + ph - m - 6, 4, 6, 1); g.fill(0x5d2020);
+    // Hanging meat hooks
+    for (let hi = 0; hi < 3; hi++) {
+      const hx = px + pw * (0.2 + hi * 0.3);
+      g.moveTo(hx, py + roofH + 1); g.lineTo(hx, py + roofH + 3); g.stroke({ color: 0x999999, width: 0.8 });
+      g.ellipse(hx, py + roofH + 5, 1.5, 2); g.fill(0xcc6666);
+    }
+    // Blood drip stain
+    g.circle(px + pw * 0.3, py + ph - m - 1, 1.5); g.fill({ color: 0x880000, alpha: 0.3 });
+    // Cleaver sign
+    g.moveTo(px + pw - m - 4, py + roofH + 2); g.lineTo(px + pw - m - 2, py + roofH + 5);
+    g.stroke({ color: 0xaaaaaa, width: 1.2 });
     const t = new PIXI.Text({ text: "But", style: { fontSize: 7, fill: 0xffffff, fontFamily: "monospace", stroke: { color: 0x000000, width: 2 } } });
-    t.position.set(px + pw / 2 - t.width / 2, py + ph / 2 - t.height / 2); g.addChild(t);
+    t.position.set(px + pw / 2 - t.width / 2, py + ph * 0.45); g.addChild(t);
   }
 
   private _drawMarket(g: PIXI.Graphics, px: number, py: number, pw: number, ph: number, ts: number, rng: () => number): void {
@@ -1006,16 +1089,29 @@ export class CaesarRenderer {
 
   private _drawGranary(g: PIXI.Graphics, px: number, py: number, pw: number, ph: number, ts: number, rng: () => number): void {
     g.roundRect(px + 2, py + ph * 0.2, pw - 4, ph * 0.8 - 2, 2); g.fill(0xa08060);
+    // Lit face
+    g.roundRect(px + 2, py + ph * 0.2, (pw - 4) * 0.5, ph * 0.8 - 2, 2); g.fill({ color: 0xb09070, alpha: 0.3 });
     g.roundRect(px + 1, py + 2, pw - 2, ph * 0.22, 2); g.fill(0x8b6b50);
-    // Grain sacks
-    for (let i = 0; i < 4; i++) {
-      const sx = px + 5 + i * (pw - 10) / 4 + rng() * 3;
-      const sy = py + ph * 0.5 + rng() * (ph * 0.25);
+    // Large barn door
+    g.roundRect(px + pw / 2 - 4, py + ph - 4 - 8, 8, 8, 1); g.fill(0x6a5040);
+    g.moveTo(px + pw / 2, py + ph - 4 - 8); g.lineTo(px + pw / 2, py + ph - 4);
+    g.stroke({ color: 0x5a4030, width: 0.5 });
+    // Grain sacks (more detailed)
+    for (let i = 0; i < 5; i++) {
+      const sx = px + 5 + i * (pw - 10) / 5 + rng() * 2;
+      const sy = py + ph * 0.45 + rng() * (ph * 0.2);
       g.ellipse(sx, sy, 3, 2.5); g.fill(0xc8b080);
-      g.ellipse(sx, sy - 1, 2, 1); g.fill({ color: 0xffffff, alpha: 0.06 });
+      g.ellipse(sx, sy - 0.5, 2, 1.2); g.fill({ color: 0xddc090, alpha: 0.3 });
+      // Tied top
+      g.moveTo(sx - 0.5, sy - 2.5); g.lineTo(sx + 0.5, sy - 3);
+      g.stroke({ color: 0x8a7050, width: 0.5 });
     }
+    // Wheat sheaf decoration
+    g.moveTo(px + 4, py + ph * 0.25); g.lineTo(px + 4, py + ph * 0.35);
+    g.stroke({ color: 0xdaa520, width: 1 });
+    g.circle(px + 4, py + ph * 0.24, 1.5); g.fill(0xdaa520);
     const t = new PIXI.Text({ text: "Grn", style: { fontSize: 8, fill: 0xffffff, fontFamily: "monospace", stroke: { color: 0x000000, width: 2 } } });
-    t.position.set(px + pw / 2 - t.width / 2, py + ph * 0.3); g.addChild(t);
+    t.position.set(px + pw / 2 - t.width / 2, py + ph * 0.28); g.addChild(t);
   }
 
   private _drawWarehouse(g: PIXI.Graphics, px: number, py: number, pw: number, ph: number, ts: number, rng: () => number): void {
@@ -1104,15 +1200,25 @@ export class CaesarRenderer {
     const m = 2, roofH = ph * 0.28;
     g.roundRect(px + m, py + roofH, pw - m * 2, ph - roofH - m, 2); g.fill(0xc090d0);
     g.roundRect(px + m - 1, py + m, pw - m * 2 + 2, roofH, 2); g.fill(0x9060a0);
-    // Loom (grid pattern)
-    const lx = px + pw * 0.25, ly = py + ph * 0.4, lw = pw * 0.5, lh = ph * 0.3;
+    // Loom frame
+    const lx = px + pw * 0.2, ly = py + ph * 0.38, lw = pw * 0.55, lh = ph * 0.32;
     g.rect(lx, ly, lw, lh); g.fill(0x5d4037);
-    g.setStrokeStyle({ width: 0.4, color: 0xe1bee7, alpha: 0.6 });
-    for (let i = 0; i < 6; i++) { g.moveTo(lx + 1 + i * lw / 6, ly); g.lineTo(lx + 1 + i * lw / 6, ly + lh); g.stroke(); }
-    for (let i = 0; i < 4; i++) { g.moveTo(lx, ly + 1 + i * lh / 4); g.lineTo(lx + lw, ly + 1 + i * lh / 4); g.stroke(); }
-    // Cloth rolls
-    g.ellipse(px + pw * 0.8, py + ph * 0.75, 2, 3); g.fill(0xe1bee7);
+    g.rect(lx, ly, lw, lh); g.stroke({ color: 0x4a3028, width: 0.5 });
+    // Warp threads (vertical)
+    for (let i = 0; i < 8; i++) { g.moveTo(lx + 1 + i * lw / 8, ly); g.lineTo(lx + 1 + i * lw / 8, ly + lh); g.stroke({ color: 0xe1bee7, alpha: 0.5, width: 0.4 }); }
+    // Weft threads (horizontal, colored)
+    const weftColors = [0xe1bee7, 0xce93d8, 0xba68c8, 0xab47bc];
+    for (let i = 0; i < 5; i++) { g.moveTo(lx, ly + 2 + i * lh / 5); g.lineTo(lx + lw, ly + 2 + i * lh / 5); g.stroke({ color: weftColors[i % 4], alpha: 0.6, width: 0.6 }); }
+    // Cloth rolls (multiple)
+    g.ellipse(px + pw * 0.82, py + ph * 0.65, 2, 3.5); g.fill(0xe1bee7);
+    g.ellipse(px + pw * 0.82, py + ph * 0.65, 1.5, 2.5); g.fill({ color: 0xf0d0f0, alpha: 0.3 });
+    g.ellipse(px + pw * 0.85, py + ph * 0.78, 1.8, 2.5); g.fill(0xce93d8);
+    // Door
     g.roundRect(px + pw / 2 - 2, py + ph - m - 5, 4, 5, 1); g.fill(0x5d4037);
+    // Scissors sign
+    g.moveTo(px + m + 2, py + roofH + 2); g.lineTo(px + m + 5, py + roofH + 5);
+    g.moveTo(px + m + 5, py + roofH + 2); g.lineTo(px + m + 2, py + roofH + 5);
+    g.stroke({ color: 0x888888, width: 0.8 });
   }
 
   private _drawReligion(g: PIXI.Graphics, b: CaesarBuilding, px: number, py: number, pw: number, ph: number, ts: number, rng: () => number): void {
@@ -1158,16 +1264,31 @@ export class CaesarRenderer {
   }
 
   private _drawWatchpost(g: PIXI.Graphics, px: number, py: number, pw: number, ph: number, ts: number): void {
-    g.roundRect(px + 2, py + ph * 0.3, pw - 4, ph * 0.7 - 2, 1); g.fill(0xb83030);
-    // Peaked roof
-    g.poly([px + 1, py + ph * 0.32, px + pw / 2, py + 2, px + pw - 1, py + ph * 0.32]); g.fill(0x8b2020);
-    // Banner
-    g.moveTo(px + pw * 0.8, py + 2); g.lineTo(px + pw * 0.8, py - 5); g.stroke({ color: 0x5d4037, width: 1 });
-    g.poly([px + pw * 0.8, py - 5, px + pw * 0.8 + 5, py - 3, px + pw * 0.8, py - 1]); g.fill(0xd32f2f);
-    // Torch
-    g.rect(px + 3, py + ph * 0.4, 1.5, 5); g.fill(0x5d4037);
-    g.circle(px + 3.75, py + ph * 0.38, 2); g.fill({ color: 0xff8800, alpha: 0.5 });
-    g.circle(px + 3.75, py + ph * 0.38, 1); g.fill({ color: 0xffcc00, alpha: 0.6 });
+    const m = 2, towerW = pw * 0.5, towerH = ph * 0.8;
+    const tx2 = px + (pw - towerW) / 2;
+    // Tower base (wider)
+    g.roundRect(px + m, py + ph * 0.6, pw - m * 2, ph * 0.4 - m, 2); g.fill(0x7a7060);
+    // Tower body
+    g.rect(tx2, py + ph * 0.15, towerW, towerH); g.fill(0x8a8070);
+    // Lit face
+    g.rect(tx2, py + ph * 0.15, towerW * 0.5, towerH); g.fill({ color: 0x9a9080, alpha: 0.3 });
+    // Battlements
+    for (let i = 0; i < 3; i++) {
+      g.rect(tx2 + i * towerW / 3, py + ph * 0.1, towerW / 3 - 1, 3); g.fill(0x8a8070);
+    }
+    // Pointed cap
+    g.poly([tx2 - 1, py + ph * 0.15, tx2 + towerW / 2, py + m, tx2 + towerW + 1, py + ph * 0.15]); g.fill(0xaa3333);
+    // Window slit
+    g.rect(tx2 + towerW / 2 - 1, py + ph * 0.35, 2, 5); g.fill(0x333333);
+    // Torch glow
+    g.circle(tx2 + towerW / 2, py + ph * 0.3, 3); g.fill({ color: 0xff8800, alpha: 0.15 });
+    // Flag pole
+    g.moveTo(tx2 + towerW / 2, py + m); g.lineTo(tx2 + towerW / 2, py - 3);
+    g.stroke({ color: 0x444444, width: 1 });
+    // Small flag
+    g.poly([tx2 + towerW / 2, py - 3, tx2 + towerW / 2 + 5, py - 1.5, tx2 + towerW / 2, py]); g.fill(0xcc2222);
+    const t = new PIXI.Text({ text: "Wch", style: { fontSize: 7, fill: 0xffffff, fontFamily: "monospace", stroke: { color: 0x000000, width: 2 } } });
+    t.position.set(px + pw / 2 - t.width / 2, py + ph * 0.65); g.addChild(t);
   }
 
   private _drawBarracks(g: PIXI.Graphics, px: number, py: number, pw: number, ph: number, ts: number, rng: () => number): void {
@@ -1195,80 +1316,143 @@ export class CaesarRenderer {
 
   private _drawTavern(g: PIXI.Graphics, px: number, py: number, pw: number, ph: number, ts: number): void {
     const m = 2, roofH = ph * 0.3;
-    g.roundRect(px + m, py + roofH, pw - m * 2, ph - roofH - m, 2); g.fill(0xd09030);
-    g.poly([px + m - 1, py + roofH + 1, px + pw / 2, py + m, px + pw - m + 1, py + roofH + 1]); g.fill(0x8b4513);
-    // Hanging sign
-    g.rect(px + pw * 0.8, py + roofH + 2, 1, 4); g.fill(0x5d4037);
-    g.roundRect(px + pw * 0.7, py + roofH + 6, pw * 0.22, 4, 1); g.fill(0x5d4037);
-    g.circle(px + pw * 0.81, py + roofH + 8, 1.2); g.fill(0xffcc00); // beer mug icon
-    // Warm light from windows
-    g.rect(px + pw * 0.2, py + roofH + (ph - roofH) * 0.2, 3, 3); g.fill(0xffcc66);
-    g.rect(px + pw * 0.6, py + roofH + (ph - roofH) * 0.2, 3, 3); g.fill(0xffcc66);
-    // Door
-    g.roundRect(px + pw / 2 - 2.5, py + ph - m - 6, 5, 6, 1); g.fill(0x5d4037);
-  }
-
-  private _drawFestival(g: PIXI.Graphics, px: number, py: number, pw: number, ph: number, ts: number, rng: () => number): void {
-    g.roundRect(px + 1, py + 1, pw - 2, ph - 2, 2); g.fill(0x6d9b2a);
-    // Tent poles with pennants
-    const poles = [[px + pw * 0.2, py + 4], [px + pw * 0.5, py + 4], [px + pw * 0.8, py + 4]];
-    for (const [polx, poly] of poles) {
-      g.moveTo(polx, poly + ph * 0.8); g.lineTo(polx, poly); g.stroke({ color: 0x5d4037, width: 1.2 });
-      // Pennant
-      const pc = [0xd32f2f, 0x1565c0, 0xffd700][Math.floor(rng() * 3)];
-      g.poly([polx, poly, polx + 5, poly + 2, polx, poly + 4]); g.fill(pc);
+    // Main body
+    g.roundRect(px + m, py + roofH, pw - m * 2, ph - roofH - m, 2); g.fill(0xa07848);
+    // Thatched roof
+    g.poly([px, py + roofH, px + pw / 2, py + m, px + pw, py + roofH]); g.fill(0x8b7355);
+    // Roof thatch lines
+    for (let i = 0; i < 5; i++) {
+      const t2 = i / 5;
+      g.moveTo(px + pw * t2, py + roofH - (roofH - m) * Math.min(t2 * 2, 2 - t2 * 2));
+      g.lineTo(px + pw * t2, py + roofH);
+      g.stroke({ color: 0x7a6345, alpha: 0.4, width: 0.5 });
     }
-    // Tent canopy connecting poles
-    g.poly([poles[0][0], poles[0][1] + 2, poles[1][0], poles[1][1], poles[2][0], poles[2][1] + 2, poles[2][0], poles[2][1] + ph * 0.3, poles[0][0], poles[0][1] + ph * 0.3]);
-    g.fill({ color: 0xffffff, alpha: 0.2 });
-    // Stage/platform
-    g.roundRect(px + pw * 0.15, py + ph * 0.6, pw * 0.7, ph * 0.25, 2); g.fill(0x8b7355);
-    const t = new PIXI.Text({ text: "Fest", style: { fontSize: 8, fill: 0xffffff, fontFamily: "monospace", stroke: { color: 0x000000, width: 2 } } });
+    // Door
+    g.roundRect(px + pw / 2 - 3, py + ph - m - 7, 6, 7, 1); g.fill(0x5d3a20);
+    // Door handle
+    g.circle(px + pw / 2 + 1, py + ph - m - 3, 0.8); g.fill(0xccaa44);
+    // Windows with warm glow
+    g.rect(px + m + 3, py + roofH + 4, 4, 4); g.fill(0xffcc44); g.fill({ color: 0xffee88, alpha: 0.3 });
+    g.rect(px + pw - m - 7, py + roofH + 4, 4, 4); g.fill(0xffcc44); g.fill({ color: 0xffee88, alpha: 0.3 });
+    // Window panes
+    g.moveTo(px + m + 5, py + roofH + 4); g.lineTo(px + m + 5, py + roofH + 8); g.stroke({ color: 0x5d4037, width: 0.5 });
+    g.moveTo(px + m + 3, py + roofH + 6); g.lineTo(px + m + 7, py + roofH + 6); g.stroke({ color: 0x5d4037, width: 0.5 });
+    // Signboard
+    g.rect(px + pw - m - 3, py + roofH - 2, 5, 4); g.fill(0x5d4037);
+    g.moveTo(px + pw - m - 0.5, py + roofH - 2); g.lineTo(px + pw - m - 0.5, py + roofH - 5);
+    g.stroke({ color: 0x5d4037, width: 1 });
+    // Beer mug icon on sign
+    g.circle(px + pw - m - 1, py + roofH - 0.5, 1.5); g.fill(0xdaa520);
+    const t = new PIXI.Text({ text: "Tav", style: { fontSize: 7, fill: 0xffffff, fontFamily: "monospace", stroke: { color: 0x000000, width: 2 } } });
     t.position.set(px + pw / 2 - t.width / 2, py + ph * 0.45); g.addChild(t);
   }
 
+  private _drawFestival(g: PIXI.Graphics, px: number, py: number, pw: number, ph: number, ts: number, rng: () => number): void {
+    const m = 2;
+    // Open arena / fairground
+    g.roundRect(px + m, py + m, pw - m * 2, ph - m * 2, 3); g.fill(0xc8a870);
+    g.roundRect(px + m + 2, py + m + 2, pw - m * 2 - 4, ph - m * 2 - 4, 2); g.fill(0xd4b880);
+    // Stage platform
+    g.rect(px + pw * 0.15, py + ph * 0.2, pw * 0.7, ph * 0.15); g.fill(0x8b6914);
+    g.rect(px + pw * 0.15, py + ph * 0.2, pw * 0.7, 2); g.fill(0xa07a24);
+    // Colorful bunting/pennants
+    const pennantColors = [0xff4444, 0x4488ff, 0xffdd44, 0x44cc44, 0xff88cc];
+    for (let pi = 0; pi < 5; pi++) {
+      const ppx = px + pw * 0.15 + pi * pw * 0.14 + 3;
+      g.poly([ppx, py + ph * 0.18, ppx + 3, py + ph * 0.18, ppx + 1.5, py + ph * 0.25]);
+      g.fill(pennantColors[pi]);
+    }
+    // Bunting line
+    g.moveTo(px + pw * 0.1, py + ph * 0.18); g.lineTo(px + pw * 0.9, py + ph * 0.18);
+    g.stroke({ color: 0x666666, width: 0.5 });
+    // Audience dots
+    for (let ai = 0; ai < 8; ai++) {
+      const ax = px + pw * 0.1 + ai * pw * 0.1 + rng() * 4;
+      const ay = py + ph * 0.55 + rng() * (ph * 0.25);
+      g.circle(ax, ay, 1.5); g.fill([0xf0d0a0, 0xd4a070, 0xe0c090][ai % 3]);
+    }
+    // Maypole
+    g.rect(px + pw / 2 - 0.5, py + ph * 0.35, 1, ph * 0.3); g.fill(0x5d4037);
+    // Ribbons from pole top
+    for (let ri = 0; ri < 4; ri++) {
+      const a2 = (ri / 4) * Math.PI * 2;
+      g.moveTo(px + pw / 2, py + ph * 0.35);
+      g.lineTo(px + pw / 2 + Math.cos(a2) * 6, py + ph * 0.35 + Math.sin(a2) * 4 + 3);
+      g.stroke({ color: pennantColors[ri], alpha: 0.6, width: 0.8 });
+    }
+    const t = new PIXI.Text({ text: "Fst", style: { fontSize: 7, fill: 0xffffff, fontFamily: "monospace", stroke: { color: 0x000000, width: 2 } } });
+    t.position.set(px + pw / 2 - t.width / 2, py + ph * 0.42); g.addChild(t);
+  }
+
   private _drawJousting(g: PIXI.Graphics, px: number, py: number, pw: number, ph: number, ts: number, rng: () => number): void {
-    g.roundRect(px + 1, py + 1, pw - 2, ph - 2, 2); g.fill(0x6d8b2a);
-    // Arena fence
-    g.roundRect(px + 3, py + 3, pw - 6, ph - 6, 3); g.stroke({ color: 0x5d4037, width: 1.5 });
-    // Jousting rail
-    g.rect(px + pw * 0.1, py + ph * 0.48, pw * 0.8, 2); g.fill(0x5d4037);
-    // Stands on both sides
-    g.roundRect(px + 3, py + 3, pw * 0.2, ph * 0.3, 1); g.fill(0x8b7355);
-    g.roundRect(px + pw - 3 - pw * 0.2, py + 3, pw * 0.2, ph * 0.3, 1); g.fill(0x8b7355);
-    // Spectator dots
-    for (let i = 0; i < 6; i++) { g.circle(px + 6 + rng() * pw * 0.15, py + 6 + rng() * ph * 0.2, 1); g.fill(0xf0d0a0); }
-    for (let i = 0; i < 6; i++) { g.circle(px + pw - 8 + rng() * pw * 0.1, py + 6 + rng() * ph * 0.2, 1); g.fill(0xf0d0a0); }
-    // Banner poles
-    g.moveTo(px + 5, py + 3); g.lineTo(px + 5, py - 4); g.stroke({ color: 0x5d4037, width: 1 });
-    g.poly([px + 5, py - 4, px + 10, py - 2, px + 5, py]); g.fill(0x1565c0);
-    g.moveTo(px + pw - 5, py + 3); g.lineTo(px + pw - 5, py - 4); g.stroke({ color: 0x5d4037, width: 1 });
-    g.poly([px + pw - 5, py - 4, px + pw - 10, py - 2, px + pw - 5, py]); g.fill(0xd32f2f);
+    const m = 2;
+    // Arena ground
+    g.roundRect(px + m, py + m, pw - m * 2, ph - m * 2, 3); g.fill(0xa08050);
+    // Sand/dirt lane
+    g.rect(px + pw * 0.15, py + ph * 0.35, pw * 0.7, ph * 0.3); g.fill(0xc0a870);
+    // Central barrier (tilt)
+    g.rect(px + pw / 2 - 0.5, py + ph * 0.3, 1, ph * 0.4); g.fill(0x5d4037);
+    // Fence posts
+    for (let fi = 0; fi < 4; fi++) {
+      const fx = px + pw * 0.1 + fi * pw * 0.27;
+      g.rect(fx, py + ph * 0.3, 1.5, ph * 0.4); g.fill(0x5d4037);
+      g.rect(fx - 0.5, py + ph * 0.3, 2.5, 1.5); g.fill(0x6a5038);
+    }
+    // Spectator stands (left)
+    g.rect(px + m, py + ph * 0.1, pw * 0.1, ph * 0.55); g.fill(0x7a6040);
+    g.rect(px + pw - m - pw * 0.1, py + ph * 0.1, pw * 0.1, ph * 0.55); g.fill(0x7a6040);
+    // Royal box
+    g.rect(px + pw - m - pw * 0.12, py + ph * 0.08, pw * 0.14, ph * 0.18); g.fill(0x8b1a1a);
+    g.rect(px + pw - m - pw * 0.12, py + ph * 0.08, pw * 0.14, 2); g.fill(0xffd700);
+    // Flags at corners
+    for (const [fx2, fy2] of [[px + m + 2, py + m], [px + pw - m - 3, py + m]]) {
+      g.moveTo(fx2, fy2 + 8); g.lineTo(fx2, fy2); g.stroke({ color: 0x444444, width: 0.8 });
+      g.poly([fx2, fy2, fx2 + 4, fy2 + 2, fx2, fy2 + 4]); g.fill(0xcc2222);
+    }
+    const t = new PIXI.Text({ text: "Jst", style: { fontSize: 7, fill: 0xffffff, fontFamily: "monospace", stroke: { color: 0x000000, width: 2 } } });
+    t.position.set(px + pw / 2 - t.width / 2, py + ph * 0.78); g.addChild(t);
   }
 
   private _drawGuild(g: PIXI.Graphics, px: number, py: number, pw: number, ph: number, ts: number): void {
     const m = 2, roofH = ph * 0.3;
-    g.roundRect(px + m, py + roofH, pw - m * 2, ph - roofH - m, 2); g.fill(0x3060a0);
-    g.roundRect(px + m - 1, py + m, pw - m * 2 + 2, roofH, 2); g.fill(0x204080);
-    // Gold crest/shield
-    g.roundRect(px + pw / 2 - 3, py + roofH + 3, 6, 7, 1); g.fill(0xffd700);
-    g.rect(px + pw / 2 - 1, py + roofH + 4.5, 2, 4); g.fill(0x3060a0);
-    g.rect(px + pw / 2 - 2, py + roofH + 5.5, 4, 1.5); g.fill(0x3060a0);
-    // Door
-    g.roundRect(px + pw / 2 - 3, py + ph - m - 7, 6, 7, 2); g.fill(0x1a3060);
+    g.roundRect(px + m, py + roofH, pw - m * 2, ph - roofH - m, 2); g.fill(0x8b6914);
+    g.roundRect(px + m - 1, py + m, pw - m * 2 + 2, roofH, 2); g.fill(0x6b4a0a);
+    // Ornate facade
+    g.rect(px + pw * 0.15, py + roofH + 2, pw * 0.7, 2); g.fill(0xdaa520);
     // Columns
-    g.rect(px + m + 2, py + roofH, 2, ph - roofH - m); g.fill(0x4a80c0);
-    g.rect(px + pw - m - 4, py + roofH, 2, ph - roofH - m); g.fill(0x4a80c0);
-    const t = new PIXI.Text({ text: "Guild", style: { fontSize: 7, fill: 0xffffff, fontFamily: "monospace", stroke: { color: 0x000000, width: 2 } } });
-    t.position.set(px + pw / 2 - t.width / 2, py + ph * 0.65); g.addChild(t);
+    g.rect(px + m + 2, py + roofH + 4, 2, ph * 0.55); g.fill(0xa08040);
+    g.rect(px + pw - m - 4, py + roofH + 4, 2, ph * 0.55); g.fill(0xa08040);
+    // Grand door
+    g.roundRect(px + pw / 2 - 4, py + ph - m - 8, 8, 8, 2); g.fill(0x4a3010);
+    g.circle(px + pw / 2, py + ph - m - 4, 0.8); g.fill(0xdaa520); // door handle
+    // Guild emblem (circle with tools)
+    g.circle(px + pw / 2, py + ph * 0.42, 4); g.fill(0x6b4a0a);
+    g.circle(px + pw / 2, py + ph * 0.42, 3.5); g.fill(0xdaa520);
+    g.circle(px + pw / 2, py + ph * 0.42, 2); g.fill(0x8b6914);
+    // Coin stacks
+    for (let ci = 0; ci < 3; ci++) {
+      g.rect(px + pw * 0.2 + ci * 4, py + ph * 0.65, 3, 2); g.fill(0xffd700);
+      g.rect(px + pw * 0.2 + ci * 4, py + ph * 0.63, 3, 2); g.fill(0xffdd44);
+    }
+    const t = new PIXI.Text({ text: "Gld", style: { fontSize: 7, fill: 0xffffff, fontFamily: "monospace", stroke: { color: 0x000000, width: 2 } } });
+    t.position.set(px + pw / 2 - t.width / 2, py + ph * 0.28); g.addChild(t);
   }
 
   private _drawGeneric(g: PIXI.Graphics, b: CaesarBuilding, px: number, py: number, pw: number, ph: number, ts: number): void {
     const bdef = CAESAR_BUILDING_DEFS[b.type];
     const col = this._getCol(b);
     const m = 2, roofH = ph * 0.25;
+    // Body
     g.roundRect(px + m, py + roofH, pw - m * 2, ph - roofH - m, 2); g.fill(col);
+    // Roof
     g.roundRect(px + m - 1, py + m, pw - m * 2 + 2, roofH, 2); g.fill(shadeColor(col, 0.7));
+    // Door
+    g.roundRect(px + pw / 2 - 2, py + ph - m - 6, 4, 6, 1); g.fill(0x5d4037);
+    // Window
+    g.rect(px + m + 3, py + roofH + 3, 3, 3); g.fill(0xffdd88);
+    // Shadow
+    g.moveTo(px + m, py + ph - m); g.lineTo(px + pw - m, py + ph - m);
+    g.stroke({ color: 0x000000, alpha: 0.1, width: 1 });
     const t = new PIXI.Text({ text: bdef.label.substring(0, 3), style: { fontSize: Math.min(9, ts * 0.4), fill: 0xffffff, fontFamily: "monospace", stroke: { color: 0x000000, width: 2 } } });
     t.position.set(px + pw / 2 - t.width / 2, py + ph / 2 - t.height / 2 + 1); g.addChild(t);
   }
@@ -1501,8 +1685,8 @@ export class CaesarRenderer {
     }
 
     // ---- Environmental particles (leaves, dust, butterflies) ----
-    // Spawn new particles occasionally
-    if (Math.random() < 0.04) {
+    // Spawn new particles occasionally (increased rate for ambient atmosphere)
+    if (Math.random() < 0.1) {
       const mapW = map.width * ts, mapH = map.height * ts;
       const epx = Math.random() * mapW;
       const epy = Math.random() * mapH * 0.3; // spawn in upper portion
@@ -1520,7 +1704,7 @@ export class CaesarRenderer {
       });
     }
     // Cap env particles
-    while (this._envParticles.length > 30) this._envParticles.shift();
+    while (this._envParticles.length > 60) this._envParticles.shift();
 
     for (let i = this._envParticles.length - 1; i >= 0; i--) {
       const p = this._envParticles[i]; p.age += dt;

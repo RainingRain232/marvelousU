@@ -398,9 +398,10 @@ export class CivHUD {
     this.factionText.text = human.factionDef.name;
     this.factionText.x = cx;
 
+    const gaText = human.goldenAgeTurns > 0 ? `✨ GOLDEN AGE (${human.goldenAgeTurns}t) ✨  ·  ` : "";
     const goldSign = human.goldPerTurn >= 0 ? "+" : "";
     const goldColor = human.gold < 0 ? "🔴" : "💰";
-    this.resourceText.text =
+    this.resourceText.text = gaText +
       `${goldColor} ${Math.floor(human.gold)} (${goldSign}${human.goldPerTurn}/t)` +
       `  ·  📜 ${human.researchPerTurn}/t` +
       `  ·  ♛ ${human.chivalry}` +
@@ -607,6 +608,14 @@ export class CivHUD {
       actions.push({ label: "Found City", action: "found_city" });
     }
 
+    if (unitDef?.unitClass === "scout") {
+      actions.push({ label: "Explore", action: "explore" });
+    }
+    // Spy actions
+    if (unitDef?.id === "spy") {
+      actions.push({ label: "Steal Tech", action: "steal_tech" });
+      actions.push({ label: "Sabotage", action: "sabotage" });
+    }
     actions.push({ label: "Move", action: "move" });
     actions.push({ label: "Fortify", action: "fortify" });
     actions.push({ label: "Sleep", action: "sleep" });
@@ -1414,6 +1423,11 @@ export class CivHUD {
           if (this.onDiplomacyAction) this.onDiplomacyAction("form_alliance", dipEntry.targetPlayer);
           this.hideDiplomacyPanel();
         });
+        // Trade route button
+        drawButton(this.diplomacyPanel, btnX + 110, ly + 6, 70, 20, "Trade", () => {
+          if (this.onDiplomacyAction) this.onDiplomacyAction("trade", dipEntry.targetPlayer);
+          this.hideDiplomacyPanel();
+        });
       } else if (dipEntry.relation === "war") {
         drawButton(this.diplomacyPanel, btnX, ly + 6, 100, 20, "Offer Peace", () => {
           if (this.onDiplomacyAction) this.onDiplomacyAction("offer_peace", dipEntry.targetPlayer);
@@ -1426,6 +1440,11 @@ export class CivHUD {
         });
         drawButton(this.diplomacyPanel, btnX, ly + 30, 100, 20, "Declare War", () => {
           if (this.onDiplomacyAction) this.onDiplomacyAction("declare_war", dipEntry.targetPlayer);
+          this.hideDiplomacyPanel();
+        });
+        // Trade route button (alliance)
+        drawButton(this.diplomacyPanel, btnX + 110, ly + 6, 70, 20, "Trade", () => {
+          if (this.onDiplomacyAction) this.onDiplomacyAction("trade", dipEntry.targetPlayer);
           this.hideDiplomacyPanel();
         });
       }
@@ -1532,7 +1551,7 @@ export class CivHUD {
     this.helpPanel.addChild(title);
 
     const sections = [
-      { header: "Controls", text: "WASD/Arrows: Pan camera\nScroll: Zoom\nClick: Select unit/city\nEnter: End turn\nT: Tech tree\nD: Diplomacy\nB: Build menu\nH: Recruit hero\nF: Fortify\nSpace: Skip unit\nEsc: Close panels" },
+      { header: "Controls", text: "WASD/Arrows: Pan camera\nScroll: Zoom\nClick: Select unit/city\nEnter: End turn\nT: Tech tree\nD: Diplomacy\nB: Build menu\nH: Recruit hero\nF: Fortify\nSpace: Skip unit\nEsc: Close panels\nF5: Quick save  |  F9: Quick load" },
       { header: "Victory Conditions", text: "Conquest: Eliminate all other factions\nHoly Grail: Build the Holy Grail wonder\nRound Table: Alliance with all living factions\nSurvival: Highest score at turn 200" },
       { header: "Chivalry", text: "Your chivalry rating (-100 to 100) affects:\n\u2022 City happiness (+2 if >60, -2 if <20)\n\u2022 Diplomacy (AI trusts chivalrous leaders)\n\u2022 Mordred's Rebellion (triggers if <30 and 5+ cities)\nRandom events let you choose chivalrous or pragmatic actions." },
       { header: "Heroes", text: "Recruit heroes for 100 gold at your capital.\nEach hero has unique abilities:\n\u2022 Merlin: Teleport, Prophecy (reveal map), Lightning\n\u2022 Lancelot: Charge (2x damage), Inspire (+2 ATK nearby)\n\u2022 Morgana: Curse (-3 DEF enemies), Heal nearby allies\n\u2022 Tristan: Stealth (+3 movement)" },

@@ -53,6 +53,7 @@ export interface CivCity {
   tiles: { x: number; y: number }[];
   isCapital: boolean;
   defense: number;
+  tradeRoutes: number[]; // city IDs this city trades with
 }
 
 export interface CivUnit {
@@ -79,6 +80,7 @@ export interface CivUnit {
   pendingPromotion: boolean;
   improvementProgress: number;
   improvementTarget: string | null;
+  autoExplore: boolean;
 }
 
 export interface CivPlayer {
@@ -102,6 +104,7 @@ export interface CivPlayer {
   score: number;
   taxRate: number;
   cityNameIndex: number;
+  goldenAgeTurns: number; // turns remaining of golden age (0 = none)
 }
 
 export interface GameEvent {
@@ -311,7 +314,7 @@ export function createCivGameState(config: CreateGameConfig): CivGameState {
       index: i, faction: faction.id, factionDef: faction, isHuman: i === 0,
       gold: 30, goldPerTurn: 0, researchPerTurn: 0, researchAccum: 0,
       currentTech: null, techs: [], wonders: [], heroes: [], chivalry: 50,
-      cityIds: [], unitIds: [], alive: true, diplomacy: diplo, score: 0, taxRate: 0.5, cityNameIndex: 0,
+      cityIds: [], unitIds: [], alive: true, diplomacy: diplo, score: 0, taxRate: 0.5, cityNameIndex: 0, goldenAgeTurns: 0,
     });
   }
 
@@ -357,7 +360,7 @@ export function addUnit(state: CivGameState, owner: number, type: string, x: num
     attack: hero ? hero.attack : (def?.attack ?? 1), defense: hero ? hero.defense : (def?.defense ?? 1),
     turnBuilt: state.turn,
     promotions: [], pendingPromotion: false,
-    improvementProgress: 0, improvementTarget: null,
+    improvementProgress: 0, improvementTarget: null, autoExplore: false,
   };
   state.units.push(unit);
   state.players[owner].unitIds.push(unit.id);
@@ -420,6 +423,7 @@ export function foundCity(state: CivGameState, owner: number, x: number, y: numb
     production: 0, productionAccum: 0, gold: 0, research: 0, culture: 0, happiness: 5,
     buildings: ["great_hall"], buildQueue: ["warband"],
     tiles: workTiles, isCapital, defense: CITY_BASE_DEFENSE,
+    tradeRoutes: [],
   };
   state.cities.push(city);
   player.cityIds.push(city.id);
@@ -493,11 +497,19 @@ export function calculateCityYields(state: CivGameState, city: CivCity): { food:
     const bdef = CIV_BUILDING_DEFS[bid];
     if (bdef) { food += bdef.effects.food ?? 0; production += bdef.effects.production ?? 0; gold += bdef.effects.gold ?? 0; research += bdef.effects.research ?? 0; culture += bdef.effects.culture ?? 0; }
   }
+  // Trade route income
+  gold += getTradeIncome(state, city);
   const fb = player.factionDef.bonuses;
   gold = Math.floor(gold * (1 + fb.goldBonus));
   research = Math.floor(research * (1 + fb.researchBonus));
   food = Math.floor(food * (1 + fb.growthBonus));
   production = Math.floor(production * bonus);
+  // Golden age bonus
+  if (player.goldenAgeTurns > 0) {
+    production = Math.floor(production * 1.5);
+    gold = Math.floor(gold * 1.3);
+    research = Math.floor(research * 1.3);
+  }
   return { food, production, gold, research, culture };
 }
 
@@ -510,6 +522,21 @@ function processCityTurn(state: CivGameState, city: CivCity): void {
     city.population++; city.food -= city.foodNeeded;
     city.foodNeeded = BASE_FOOD_NEEDED + city.population * FOOD_PER_POP;
     addEvent(state, city.owner, `${city.name} grows to size ${city.population}!`);
+    // Auto-expand worked tiles when city grows
+    const newTiles: { x: number; y: number; score: number }[] = [];
+    for (const t of city.tiles) {
+      for (const n of getNeighbors(t.x, t.y, state.mapWidth, state.mapHeight)) {
+        const nt = state.tiles[n.y]?.[n.x];
+        if (!nt || nt.owner !== city.owner) continue;
+        if (city.tiles.some(ct => ct.x === n.x && ct.y === n.y)) continue;
+        const terrain = TERRAIN_TYPES[nt.terrain];
+        if (terrain && terrain.passable) newTiles.push({ x: n.x, y: n.y, score: terrain.food + terrain.production + terrain.gold });
+      }
+    }
+    if (newTiles.length > 0) {
+      newTiles.sort((a, b) => b.score - a.score);
+      city.tiles.push({ x: newTiles[0].x, y: newTiles[0].y });
+    }
   }
   if (city.food < 0) { if (city.population > 1) { city.population--; city.food = 0; addEvent(state, city.owner, `Famine in ${city.name}!`); } else city.food = 0; }
   city.production = yields.production; city.gold = yields.gold; city.research = yields.research; city.culture += yields.culture;
@@ -1016,6 +1043,46 @@ export function addEvent(state: CivGameState, player: number, message: string): 
   if (state.events.length > 100) state.events.shift();
 }
 
+export function triggerGoldenAge(state: CivGameState, playerIndex: number, turns: number = 10): void {
+  const player = state.players[playerIndex];
+  if (!player) return;
+  player.goldenAgeTurns = turns;
+  addEvent(state, playerIndex, `${player.factionDef.name} enters a GOLDEN AGE! (+50% production for ${turns} turns)`);
+}
+
+export function autoExploreUnit(state: CivGameState, unit: CivUnit): void {
+  if (unit.movement <= 0) return;
+  // Find the nearest unexplored tile visible from our position
+  const vis = state.visibility[unit.owner];
+  if (!vis) return;
+  let bestTile: { x: number; y: number } | null = null;
+  let bestDist = 999;
+  // Search in expanding rings
+  for (let r = 1; r <= 8; r++) {
+    for (let dy = -r; dy <= r; dy++) {
+      for (let dx = -r; dx <= r; dx++) {
+        const tx = unit.x + dx, ty = unit.y + dy;
+        if (tx < 0 || tx >= state.mapWidth || ty < 0 || ty >= state.mapHeight) continue;
+        if (vis[ty][tx] !== 0) continue; // already explored
+        const terrain = TERRAIN_TYPES[state.tiles[ty][tx].terrain];
+        if (!terrain?.passable) continue;
+        const d = hexDistance(unit.x, unit.y, tx, ty);
+        if (d < bestDist) { bestDist = d; bestTile = { x: tx, y: ty }; }
+      }
+    }
+    if (bestTile) break;
+  }
+  if (!bestTile) return;
+  const target = bestTile!;
+  const path = findPath(state, unit, target.x, target.y);
+  if (path && path.length > 0) {
+    for (const step of path) {
+      if (unit.movement <= 0) break;
+      moveUnitTo(state, unit.id, step.x, step.y);
+    }
+  }
+}
+
 // ── Victory ────────────────────────────────────────────────────────────────
 
 export function checkVictory(state: CivGameState): { winner: number; type: string } | null {
@@ -1119,6 +1186,14 @@ export function processEndTurn(state: CivGameState, playerIndex: number): void {
     }
   }
   processResearch(state, player);
+  if (player.goldenAgeTurns > 0) {
+    player.goldenAgeTurns--;
+    if (player.goldenAgeTurns === 0) addEvent(state, playerIndex, `${player.factionDef.name}'s Golden Age has ended.`);
+  }
+  // Trigger golden age on high chivalry
+  if (player.goldenAgeTurns === 0 && player.chivalry >= 80 && player.techs.length >= 4) {
+    if (Math.random() < 0.1) triggerGoldenAge(state, playerIndex, 8);
+  }
   for (const uid of player.unitIds) {
     const u = getUnit(state, uid); if (!u) continue;
     u.movement = u.maxMovement;
@@ -1137,8 +1212,18 @@ export function processEndTurn(state: CivGameState, playerIndex: number): void {
     }
   }
   for (const d of player.diplomacy) { if (d.relation === "war") d.turnsAtWar++; else d.turnsAtPeace++; }
+  // Cancel trade routes with enemies
+  for (const cid of player.cityIds) {
+    const city2 = getCity(state, cid);
+    if (!city2) continue;
+    city2.tradeRoutes = city2.tradeRoutes.filter(rid => {
+      const partner = getCity(state, rid);
+      return partner && !isAtWar(state, playerIndex, partner.owner);
+    });
+  }
   updateFogOfWar(state, playerIndex);
-  player.score = player.cityIds.length * 100 + player.techs.length * 20 + player.wonders.length * 50 + player.unitIds.length * 5 + player.gold;
+  player.score = player.cityIds.length * 100 + player.techs.length * 20 + player.wonders.length * 150
+    + player.unitIds.length * 5 + Math.floor(player.gold) + player.chivalry * 2 + player.heroes.length * 50;
   if (player.cityIds.length === 0 && !player.unitIds.some(uid => { const u = getUnit(state, uid); return u && CIV_UNIT_DEFS[u.type]?.canFoundCity; })) {
     player.alive = false; addEvent(state, playerIndex, `${player.factionDef.name} eliminated!`);
   }
@@ -1178,7 +1263,7 @@ export function spawnBarbarians(state: CivGameState): void {
         factionDef: { id: "barbarian", name: "Barbarians", leader: "None", color: 0x666666, bonuses: { attackBonus: 0, defenseBonus: 0, goldBonus: 0, researchBonus: 0, movementBonus: 0, growthBonus: 0 }, uniqueUnit: "", description: "Wild raiders.", aiPersonality: "aggressive", cityNames: [] },
         isHuman: false, gold: 0, goldPerTurn: 0, researchPerTurn: 0, researchAccum: 0,
         currentTech: null, techs: [], wonders: [], heroes: [], chivalry: 0,
-        cityIds: [], unitIds: [], alive: true, diplomacy: [], score: 0, taxRate: 0, cityNameIndex: 0,
+        cityIds: [], unitIds: [], alive: true, diplomacy: [], score: 0, taxRate: 0, cityNameIndex: 0, goldenAgeTurns: 0,
       });
       // Set all players at war with barbarians
       for (let i = 0; i < state.players.length - 1; i++) {
@@ -1471,4 +1556,168 @@ export function applyPromotion(unit: CivUnit, promoId: string): boolean {
   if (promo.effect.movement) { unit.movement += promo.effect.movement; unit.maxMovement += promo.effect.movement; }
   if (promo.effect.hp) { unit.maxHp += promo.effect.hp; unit.hp += promo.effect.hp; }
   return true;
+}
+
+// ── Espionage ──────────────────────────────────────────────────────────────
+
+export function stealTech(state: CivGameState, spyUnitId: number, targetPlayer: number): { success: boolean; message: string } {
+  const spy = getUnit(state, spyUnitId);
+  if (!spy || spy.type !== "spy") return { success: false, message: "Not a spy unit." };
+  if (spy.movement <= 0) return { success: false, message: "No movement remaining." };
+
+  // Must be adjacent to or inside enemy territory
+  const tile = state.tiles[spy.y]?.[spy.x];
+  if (!tile || tile.owner !== targetPlayer) {
+    // Check if adjacent to their territory
+    const adj = getNeighbors(spy.x, spy.y, state.mapWidth, state.mapHeight);
+    const inRange = adj.some(n => state.tiles[n.y]?.[n.x]?.owner === targetPlayer);
+    if (!inRange) return { success: false, message: "Must be in or adjacent to enemy territory." };
+  }
+
+  spy.movement = 0;
+
+  // 40% base chance, modified by level
+  const chance = 0.4 + spy.level * 0.1;
+  if (Math.random() > chance) {
+    // Failed — spy might be caught (30% chance of death)
+    if (Math.random() < 0.3) {
+      addEvent(state, spy.owner, `Our spy was caught and executed by ${state.players[targetPlayer].factionDef.name}!`);
+      removeUnit(state, spyUnitId);
+      return { success: false, message: "Spy caught and executed!" };
+    }
+    return { success: false, message: "Espionage failed. Spy escaped undetected." };
+  }
+
+  // Success — steal a random tech the target has that we don't
+  const ourPlayer = state.players[spy.owner];
+  const theirPlayer = state.players[targetPlayer];
+  const stealable = theirPlayer.techs.filter(t => !ourPlayer.techs.includes(t));
+
+  if (stealable.length === 0) return { success: true, message: "Nothing to steal — they know nothing we don't." };
+
+  const stolen = stealable[Math.floor(Math.random() * stealable.length)];
+  ourPlayer.techs.push(stolen);
+  const techName = CIV_TECH_TREE[stolen]?.name ?? stolen;
+  addEvent(state, spy.owner, `Our spy stole the secret of ${techName}!`);
+
+  // Chivalry penalty for espionage
+  ourPlayer.chivalry = Math.max(-100, ourPlayer.chivalry - 5);
+
+  return { success: true, message: `Stole technology: ${techName}!` };
+}
+
+export function sabotageCity(state: CivGameState, spyUnitId: number, targetCityId: number): { success: boolean; message: string } {
+  const spy = getUnit(state, spyUnitId);
+  if (!spy || spy.type !== "spy") return { success: false, message: "Not a spy unit." };
+  if (spy.movement <= 0) return { success: false, message: "No movement remaining." };
+
+  const city = getCity(state, targetCityId);
+  if (!city || city.owner === spy.owner) return { success: false, message: "Cannot sabotage own city." };
+
+  // Must be adjacent to city
+  if (hexDistance(spy.x, spy.y, city.x, city.y) > 1) return { success: false, message: "Must be adjacent to the city." };
+
+  spy.movement = 0;
+
+  const chance = 0.35 + spy.level * 0.1;
+  if (Math.random() > chance) {
+    if (Math.random() < 0.4) {
+      addEvent(state, spy.owner, `Our spy was caught sabotaging ${city.name}!`);
+      removeUnit(state, spyUnitId);
+      return { success: false, message: "Spy caught and killed!" };
+    }
+    return { success: false, message: "Sabotage failed." };
+  }
+
+  // Success — destroy production progress
+  city.productionAccum = 0;
+  city.happiness -= 3;
+  addEvent(state, spy.owner, `Spy sabotaged ${city.name}! Production destroyed.`);
+  addEvent(state, city.owner, `${city.name} has been sabotaged! A fire destroyed our workshops.`);
+  state.players[spy.owner].chivalry = Math.max(-100, state.players[spy.owner].chivalry - 8);
+
+  return { success: true, message: `${city.name} sabotaged! Production reset.` };
+}
+
+// ── Trade Routes ───────────────────────────────────────────────────────────
+
+export function canEstablishTradeRoute(state: CivGameState, fromCityId: number, toCityId: number): boolean {
+  const from = getCity(state, fromCityId);
+  const to = getCity(state, toCityId);
+  if (!from || !to) return false;
+  if (from.owner === to.owner) return false; // must be between different players
+  if (from.tradeRoutes.includes(toCityId)) return false; // already trading
+  if (from.tradeRoutes.length >= 3) return false; // max 3 routes per city
+  // Must not be at war
+  if (isAtWar(state, from.owner, to.owner)) return false;
+  // Must have trade_routes tech
+  if (!state.players[from.owner].techs.includes("trade_routes")) return false;
+  return true;
+}
+
+export function establishTradeRoute(state: CivGameState, fromCityId: number, toCityId: number): boolean {
+  if (!canEstablishTradeRoute(state, fromCityId, toCityId)) return false;
+  const from = getCity(state, fromCityId)!;
+  const to = getCity(state, toCityId)!;
+  from.tradeRoutes.push(toCityId);
+  to.tradeRoutes.push(fromCityId);
+  addEvent(state, from.owner, `Trade route established between ${from.name} and ${to.name}!`);
+  addEvent(state, to.owner, `${state.players[from.owner].factionDef.name} establishes trade with ${to.name}.`);
+  return true;
+}
+
+export function getTradeIncome(state: CivGameState, city: CivCity): number {
+  let income = 0;
+  for (const routeId of city.tradeRoutes) {
+    const partner = getCity(state, routeId);
+    if (!partner) continue;
+    // Check if still valid (not at war, partner still exists)
+    if (isAtWar(state, city.owner, partner.owner)) continue;
+    // Gold based on both cities' populations
+    income += Math.floor((city.population + partner.population) * 0.5);
+  }
+  return income;
+}
+
+// ── Save / Load ────────────────────────────────────────────────────────────
+
+const SAVE_KEY = "arthurian_civ_save";
+
+export function saveGame(state: CivGameState): void {
+  try {
+    // Strip non-serializable fields (factionDef references)
+    const data = JSON.stringify(state, (key, value) => {
+      if (key === "factionDef") return undefined; // reconstructed on load
+      return value;
+    });
+    localStorage.setItem(SAVE_KEY, data);
+  } catch (e) {
+    console.error("Save failed:", e);
+  }
+}
+
+export function loadGame(): CivGameState | null {
+  try {
+    const data = localStorage.getItem(SAVE_KEY);
+    if (!data) return null;
+    const state: CivGameState = JSON.parse(data);
+    // Reconstruct factionDef references
+    for (const player of state.players) {
+      const faction = CIV_FACTIONS.find(f => f.id === player.faction);
+      if (faction) (player as any).factionDef = faction;
+      else (player as any).factionDef = CIV_FACTIONS[0];
+    }
+    return state;
+  } catch (e) {
+    console.error("Load failed:", e);
+    return null;
+  }
+}
+
+export function hasSavedGame(): boolean {
+  return localStorage.getItem(SAVE_KEY) !== null;
+}
+
+export function deleteSave(): void {
+  localStorage.removeItem(SAVE_KEY);
 }

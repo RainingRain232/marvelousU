@@ -15,7 +15,7 @@ import {
   resolveCombat, isAtWar, setDiplomacyRelation, getDiplomacy,
   processEndTurn, addEvent,
   buildImprovement, getValidImprovements,
-  getAvailableHeroes, recruitHero,
+  getAvailableHeroes, recruitHero, autoExploreUnit,
 } from "./CivState";
 
 // ---------------------------------------------------------------------------
@@ -418,6 +418,8 @@ export class CivAI {
       if (def.unitClass === "settler") {
         CivAI._handleSettler(state, player, unit, rng);
       } else if (def.unitClass === "scout") {
+        unit.autoExplore = true;
+        autoExploreUnit(state, unit);
         CivAI._handleScout(state, player, unit, rng);
       } else if (def.unitClass === "worker") {
         // Workers: just move toward unimproved tiles near owned cities (simplified)
