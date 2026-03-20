@@ -217,6 +217,10 @@ export class GameGame {
       case GamePhase.ARTIFACT_LORE:
         this._handleArtifactLore();
         break;
+
+      case GamePhase.ESCAPE_MENU:
+        this._handleEscapeMenu();
+        break;
     }
   }
 
@@ -747,17 +751,10 @@ export class GameGame {
       }
     }
 
-    // ESC double-tap to exit (with confirmation)
-    if (this._escConfirmTimer > 0) this._escConfirmTimer -= dt;
+    // ESC opens the escape menu
     if (_justPressed("Escape")) {
-      if (this._escConfirmTimer > 0) {
-        // Second press within window — actually exit
-        window.dispatchEvent(new Event("gameExit"));
-      } else {
-        // First press — show warning, start confirmation window
-        this._escConfirmTimer = 2.0;
-        this._hud.showNotification("Press ESC again to quit", 0xff8844, 2);
-      }
+      this._state.prevPhase = this._state.phase;
+      this._state.phase = GamePhase.ESCAPE_MENU;
     }
 
     // Toggle help overlay (H key)
@@ -875,10 +872,45 @@ export class GameGame {
   // Paused
   // -------------------------------------------------------------------------
   private _handlePaused(): void {
-    if (_justPressed("KeyP")) {
+    if (_justPressed("KeyP") || _justPressed("Escape")) {
       this._state.phase = this._state.prevPhase;
     }
+  }
+
+  // -------------------------------------------------------------------------
+  // Escape Menu — full menu with controls, goals, inventory, etc.
+  // -------------------------------------------------------------------------
+  private _handleEscapeMenu(): void {
+    // ESC closes the menu
     if (_justPressed("Escape")) {
+      this._state.phase = this._state.prevPhase;
+      return;
+    }
+    // Number keys for menu options
+    if (_justPressed("Digit1")) {
+      // Resume game
+      this._state.phase = this._state.prevPhase;
+    } else if (_justPressed("Digit2")) {
+      // Controls
+      this._showingHelp = true;
+      this._state.phase = this._state.prevPhase;
+    } else if (_justPressed("Digit3")) {
+      // Inventory
+      this._state.phase = GamePhase.INVENTORY;
+    } else if (_justPressed("Digit4")) {
+      // Artifacts
+      this._state.phase = GamePhase.ARTIFACT_LORE;
+    } else if (_justPressed("Digit5")) {
+      // Goal / Quest info — show as help with notification
+      this._state.phase = this._state.prevPhase;
+      const genre = this._state.genre;
+      const floor = this._state.currentFloor + 1;
+      const goalMsg = genre
+        ? `Quest: ${genre.label} — Floor ${floor}/${genre.floorCount}. ${genre.desc}`
+        : `Descend through 10 dungeon floors and find the Holy Grail!`;
+      this._hud.showNotification(goalMsg, 0xFFDD44, 5);
+    } else if (_justPressed("Digit6")) {
+      // Back to main menu
       window.dispatchEvent(new Event("gameExit"));
     }
   }

@@ -169,6 +169,9 @@ export class GameHUD {
     if (state.phase === GamePhase.PAUSED) {
       this._drawPaused(sw, sh);
     }
+    if (state.phase === GamePhase.ESCAPE_MENU) {
+      this._drawEscapeMenu(state, sw, sh);
+    }
     if (state.phase === GamePhase.CRAFTING) {
       this._drawCraftingScreen(state, sw, sh);
     }
@@ -2333,6 +2336,95 @@ export class GameHUD {
 
     this._addText("PAUSED", sw / 2, sh / 2 - 8, 26, 0x3a2a15, true);
     this._addText("Press P to resume  |  ESC to exit", sw / 2, sh / 2 + 22, 12, 0x7a6a50, true);
+  }
+
+  // =========================================================================
+  //  ESCAPE MENU — full pause menu with options
+  // =========================================================================
+
+  private _drawEscapeMenu(state: GrailGameState, sw: number, sh: number): void {
+    const g = this._gfx;
+    g.rect(0, 0, sw, sh).fill({ color: 0x000000, alpha: 0.7 });
+
+    const panelW = 340;
+    const panelH = 380;
+    const px = (sw - panelW) / 2;
+    const py = (sh - panelH) / 2;
+
+    this._drawParchmentBG(px, py, panelW, panelH);
+    this._drawOrnateFrame(px, py, panelW, panelH, GOLD_DARK, 2, 8);
+
+    // Title
+    this._addText("⚜ MENU ⚜", sw / 2, py + 22, 22, GOLD_COLOR, true);
+
+    // Decorative line under title
+    g.moveTo(px + 40, py + 42);
+    g.lineTo(px + panelW - 40, py + 42);
+    g.stroke({ color: GOLD_DARK, alpha: 0.5, width: 1 });
+
+    // Menu options
+    const options = [
+      { key: "1", label: "Resume Game",    icon: "▶", color: 0x88CC88 },
+      { key: "2", label: "Controls",       icon: "⌨", color: 0xCCBB88 },
+      { key: "3", label: "Inventory",      icon: "🎒", color: 0xBB88CC },
+      { key: "4", label: "Artifacts",      icon: "✦", color: 0xFFDD44 },
+      { key: "5", label: "Quest Goal",     icon: "📜", color: 0x88BBDD },
+      { key: "6", label: "Back to Menu",   icon: "✕", color: 0xCC6644 },
+    ];
+
+    const optStartY = py + 58;
+    const optH = 42;
+
+    for (let i = 0; i < options.length; i++) {
+      const opt = options[i];
+      const oy = optStartY + i * optH;
+      const mx = px + 20;
+      const mw = panelW - 40;
+
+      // Button background
+      g.roundRect(mx, oy, mw, optH - 6, 5);
+      g.fill({ color: 0x1A150F, alpha: 0.6 });
+      // Left highlight
+      g.roundRect(mx, oy, mw, (optH - 6) * 0.35, 5);
+      g.fill({ color: 0xFFFFFF, alpha: 0.03 });
+      // Border
+      g.roundRect(mx, oy, mw, optH - 6, 5);
+      g.stroke({ color: opt.color, alpha: 0.4, width: 1 });
+
+      // Key badge
+      g.roundRect(mx + 6, oy + 6, 22, 22, 4);
+      g.fill({ color: opt.color, alpha: 0.2 });
+      g.roundRect(mx + 6, oy + 6, 22, 22, 4);
+      g.stroke({ color: opt.color, alpha: 0.6, width: 1 });
+      this._addText(opt.key, mx + 17, oy + 17, 12, opt.color, true);
+
+      // Icon
+      this._addText(opt.icon, mx + 42, oy + 17, 14, opt.color, true);
+
+      // Label
+      this._addText(opt.label, mx + 62, oy + 10, 13, 0xE8D5B5);
+    }
+
+    // Current status info at bottom
+    const infoY = optStartY + options.length * optH + 8;
+    g.moveTo(px + 40, infoY - 4);
+    g.lineTo(px + panelW - 40, infoY - 4);
+    g.stroke({ color: GOLD_DARK, alpha: 0.3, width: 0.5 });
+
+    const p = state.player;
+    const floor = state.currentFloor + 1;
+    const genre = state.genre?.label ?? "Classic";
+    this._addText(
+      `${p.knightDef.name} — Lv${p.level}  |  Floor ${floor}  |  ${genre}`,
+      sw / 2, infoY + 6, 10, 0x887766, true
+    );
+    this._addText(
+      `HP: ${p.hp}/${p.maxHp}  |  Gold: ${p.gold}  |  Kills: ${state.totalKills}`,
+      sw / 2, infoY + 22, 10, 0x887766, true
+    );
+
+    // ESC hint
+    this._addText("Press ESC or 1 to resume", sw / 2, py + panelH - 18, 9, 0x665544, true);
   }
 
   // =========================================================================

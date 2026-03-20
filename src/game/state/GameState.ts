@@ -296,6 +296,7 @@ export enum GamePhase {
   ENCHANTING = "enchanting",
   PUZZLE = "puzzle",
   ARTIFACT_LORE = "artifact_lore",
+  ESCAPE_MENU = "escape_menu",
 }
 
 export interface GrailGameState {

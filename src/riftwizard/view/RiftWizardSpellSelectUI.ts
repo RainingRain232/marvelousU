@@ -165,8 +165,13 @@ export class RiftWizardSpellSelectUI {
     state: RiftWizardState, key: string,
     screenWidth: number, screenHeight: number,
   ): boolean {
-    if (key === "Enter" || key === "Escape") {
+    if (key === "Escape") {
       this.onConfirm?.();
+      return true;
+    }
+    if (key === "Enter") {
+      this._tryBuySelected(state);
+      this._render(state, screenWidth, screenHeight);
       return true;
     }
 
@@ -199,7 +204,12 @@ export class RiftWizardSpellSelectUI {
     }
 
     if (key === "ArrowDown") {
-      this._selectedIndex++;
+      // Get the count of items for the current mode to properly clamp
+      let maxIdx = 0;
+      if (this._mode === "buy") maxIdx = getAvailableSpells(state).length - 1;
+      else if (this._mode === "abilities") maxIdx = getAvailableAbilities(state).length - 1;
+      else { const sp = state.spells[this._upgradeSpellIndex]; maxIdx = sp ? getAvailableUpgrades(sp).length - 1 : 0; }
+      this._selectedIndex = Math.min(Math.max(0, maxIdx), this._selectedIndex + 1);
       this._ensureVisible();
       this._render(state, screenWidth, screenHeight);
       return true;
