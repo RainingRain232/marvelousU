@@ -97,6 +97,8 @@ export class CivRenderer {
 
   private cam = { x: 0, y: 0, z: 1 };
   private dirty = true;
+  private terrainDirty = true; // only redraw terrain when camera/state changes
+  private lastCamX = -999; private lastCamY = -999; private lastCamZ = -1;
   private f = 0; // frame counter
 
   private anims: Map<number, { fx: number; fy: number; tx: number; ty: number; p: number }> = new Map();
@@ -104,6 +106,8 @@ export class CivRenderer {
   private floatingTexts: { x: number; y: number; text: string; color: number; t: number }[] = [];
   private cityObjs: Map<number, Container> = new Map();
   private unitObjs: Map<string, Container> = new Map();
+  // Cached animated elements (avoid per-frame allocation)
+  private waterGfx: Graphics | null = null;
 
   // ── Lifecycle ────────────────────────────────────────────────────────────
 
@@ -160,7 +164,7 @@ export class CivRenderer {
     this.cam.x = px - s.width / (2 * this.cam.z); this.cam.y = py - s.height / (2 * this.cam.z);
     this.dirty = true;
   }
-  markDirty(): void { this.dirty = true; }
+  markDirty(): void { this.dirty = true; this.terrainDirty = true; }
 
   animateUnitMove(uid: number, fx: number, fy: number, tx: number, ty: number): void {
     this.anims.set(uid, { fx, fy, tx, ty, p: 0 }); this.dirty = true;
@@ -186,6 +190,7 @@ export class CivRenderer {
     if (!this.dirty) return;
     this.dirty = false;
 
+    // Camera transform
     this.world.position.set(-this.cam.x * this.cam.z, -this.cam.y * this.cam.z);
     this.world.scale.set(this.cam.z);
 
@@ -194,13 +199,25 @@ export class CivRenderer {
     const vl = this.cam.x - 3 * HEX_W, vt = this.cam.y - 3 * HEX_H;
     const vr = this.cam.x + scr.width * inv + 3 * HEX_W, vb = this.cam.y + scr.height * inv + 3 * HEX_H;
 
-    this._terrain(state, hp, vl, vt, vr, vb);
-    this._borders(state, vl, vt, vr, vb);
+    // Only redraw expensive terrain when camera moves significantly
+    const camDx = Math.abs(this.cam.x - this.lastCamX);
+    const camDy = Math.abs(this.cam.y - this.lastCamY);
+    if (this.terrainDirty || camDx > HEX_W * 0.5 || camDy > HEX_H * 0.5 || this.cam.z !== this.lastCamZ) {
+      this._terrain(state, hp, vl, vt, vr, vb);
+      this._borders(state, vl, vt, vr, vb);
+      this._fog(state, hp, vl, vt, vr, vb);
+      this.lastCamX = this.cam.x; this.lastCamY = this.cam.y; this.lastCamZ = this.cam.z;
+      this.terrainDirty = false;
+    }
+
+    // Animate water/sparkles cheaply (reuse Graphics)
+    this._animateWater(state, vl, vt, vr, vb);
+
+    // Always update dynamic layers
     this._overlay(state);
     this._cities(state, hp);
     this._units(state, hp);
     this._ambient(state);
-    this._fog(state, hp, vl, vt, vr, vb);
     this._selection(state);
   }
 
@@ -237,7 +254,7 @@ export class CivRenderer {
         // ── Grid border ──
         this._hexOut(g, px, py, HEX_SIZE, darken(bc, 0.3), 0.4, 0.7);
 
-        // ── Deco ──
+        // ── Deco (static only — water/sparkles animated separately) ──
         const deco = DECO[tile.terrain];
         if (deco) this._deco(px, py, deco, h, h2, bc);
 
@@ -365,38 +382,7 @@ export class CivRenderer {
       g.fill({ color: 0x6A6A6A, alpha: 0.5 });
     }
 
-    // ── Water waves (animated) ──
-    if (d.waves) {
-      const phase = (this.f * 0.035 + h * 6.28) % (Math.PI * 2);
-      for (let i = 0; i < d.waves; i++) {
-        const wy = (i - (d.waves - 1) * 0.5) * 7;
-        const amp = 2.5 + Math.sin(phase * 0.5 + i) * 1;
-        // Main wave
-        g.moveTo(-S * 0.35, wy);
-        g.bezierCurveTo(-S * 0.15, wy + Math.sin(phase) * amp, S * 0.05, wy - Math.sin(phase + 1) * amp, S * 0.35, wy);
-        g.stroke({ color: lighten(bc, 0.22), alpha: 0.45, width: 1.8 });
-        // Foam highlight
-        g.moveTo(-S * 0.2, wy - 0.5);
-        g.bezierCurveTo(-S * 0.08, wy + Math.sin(phase) * amp * 0.6 - 1, S * 0.08, wy - Math.sin(phase + 1) * amp * 0.6 - 1, S * 0.2, wy - 0.5);
-        g.stroke({ color: lighten(bc, 0.4), alpha: 0.2, width: 0.8 });
-      }
-      this.dirty = true;
-    }
-
-    // ── Swamp reeds ──
-    if (d.reeds) {
-      for (let i = 0; i < 5; i++) {
-        const rx = (h * 50 + i * 11) % S - S / 2;
-        const ry = ((h2 * 30 + i * 17) % S) * 0.35 - S * 0.1;
-        const rh = 6 + h * 4;
-        const sway = Math.sin(this.f * 0.02 + i * 1.3) * 1.5;
-        g.moveTo(rx, ry); g.quadraticCurveTo(rx + sway, ry - rh * 0.5, rx + sway * 0.5, ry - rh);
-        g.stroke({ color: 0x667744, width: 1.3 });
-        g.circle(rx + sway * 0.5, ry - rh - 1, 1.5);
-        g.fill({ color: 0x554422 });
-      }
-      this.dirty = true;
-    }
+    // (Water waves, reeds, and sparkles are animated in _animateWater for performance)
 
     // ── Roman ruin pillars ──
     if (d.pillars) {
@@ -426,44 +412,86 @@ export class CivRenderer {
       g.fill({ color: 0xAA9977, alpha: 0.6 });
     }
 
-    // ── River ──
+    // ── River (static base — animation in _animateWater) ──
     if (d.river) {
-      const phase = (this.f * 0.02 + h * 3) % (Math.PI * 2);
-      // Main stream
       g.moveTo(-S * 0.45, -1);
-      g.bezierCurveTo(-S * 0.15, 5 + Math.sin(phase) * 2, S * 0.15, -3 - Math.sin(phase) * 2, S * 0.45, 0);
-      g.stroke({ color: 0x4488BB, alpha: 0.8, width: 4 });
-      // Lighter center
+      g.bezierCurveTo(-S * 0.15, 4, S * 0.15, -2, S * 0.45, 0);
+      g.stroke({ color: 0x4488BB, alpha: 0.7, width: 4 });
       g.moveTo(-S * 0.4, 0);
-      g.bezierCurveTo(-S * 0.12, 4 + Math.sin(phase) * 1.5, S * 0.12, -2 - Math.sin(phase) * 1.5, S * 0.4, 0.5);
-      g.stroke({ color: 0x66AADD, alpha: 0.5, width: 2 });
-      // Sparkle
-      g.circle(Math.sin(phase) * S * 0.15, Math.cos(phase * 0.7) * 2, 1);
-      g.fill({ color: 0xFFFFFF, alpha: 0.3 + Math.sin(phase * 2) * 0.2 });
-      this.dirty = true;
+      g.bezierCurveTo(-S * 0.12, 3, S * 0.12, -1, S * 0.4, 0.5);
+      g.stroke({ color: 0x66AADD, alpha: 0.4, width: 2 });
     }
 
-    // ── Sparkles / glow ──
+    // ── Sparkle glow base (animation in _animateWater) ──
     if (d.sparkle && d.glow) {
-      const p = (this.f * 0.025 + h * 10) % (Math.PI * 2);
-      // Glow aura
       g.circle(0, 0, S * 0.3);
-      g.fill({ color: d.glow, alpha: 0.06 + Math.sin(p) * 0.03 });
-      // Individual sparkles
-      for (let i = 0; i < 5; i++) {
-        const sx = Math.cos(p + i * 1.26) * S * (0.2 + Math.sin(p * 0.5 + i) * 0.1);
-        const sy = Math.sin(p + i * 1.26) * S * (0.15 + Math.cos(p * 0.5 + i) * 0.08);
-        const sa = 0.2 + Math.sin(p + i * 2.1) * 0.3;
-        const sr = 1 + Math.sin(p * 2 + i) * 0.5;
-        // 4-point star sparkle
-        g.moveTo(sx, sy - sr * 1.5); g.lineTo(sx + sr * 0.3, sy); g.lineTo(sx, sy + sr * 1.5); g.lineTo(sx - sr * 0.3, sy); g.closePath();
-        g.fill({ color: d.glow, alpha: Math.max(0, sa) });
-      }
-      this.dirty = true;
+      g.fill({ color: d.glow, alpha: 0.05 });
     }
 
     g.position.set(px, py);
     this.decoC.addChild(g);
+  }
+
+  // ── Animated water/sparkle overlay (cheap per-frame) ────────────────────
+
+  private _animateWater(state: CivGameState, vl: number, vt: number, vr: number, vb: number): void {
+    if (!this.waterGfx) { this.waterGfx = new Graphics(); this.waterGfx.zIndex = 1.5; this.world.addChild(this.waterGfx); }
+    const g = this.waterGfx;
+    g.clear();
+    const S = HEX_SIZE;
+    let hasAnimated = false;
+
+    for (let hy = 0; hy < state.mapHeight; hy++) {
+      for (let hx = 0; hx < state.mapWidth; hx++) {
+        const { px, py } = this.hexToPixel(hx, hy);
+        if (px < vl || px > vr || py < vt || py > vb) continue;
+        const terrain = state.tiles[hy][hx].terrain;
+        const h = th(hx, hy);
+        const deco = DECO[terrain];
+        if (!deco) continue;
+
+        // Animated waves
+        if (deco.waves) {
+          const phase = (this.f * 0.035 + h * 6.28) % (Math.PI * 2);
+          const bc = TERRAIN_TYPES[terrain]?.color ?? 0x1A4F7A;
+          for (let i = 0; i < deco.waves; i++) {
+            const wy = py + (i - (deco.waves - 1) * 0.5) * 7;
+            g.moveTo(px - S * 0.35, wy);
+            g.bezierCurveTo(px - S * 0.15, wy + Math.sin(phase) * 2.5, px + S * 0.05, wy - Math.sin(phase + 1) * 2.5, px + S * 0.35, wy);
+            g.stroke({ color: lighten(bc, 0.22), alpha: 0.4, width: 1.5 });
+          }
+          hasAnimated = true;
+        }
+
+        // Animated sparkles
+        if (deco.sparkle && deco.glow) {
+          const p = (this.f * 0.025 + h * 10) % (Math.PI * 2);
+          for (let i = 0; i < 4; i++) {
+            const sx = px + Math.cos(p + i * 1.57) * S * 0.25;
+            const sy = py + Math.sin(p + i * 1.57) * S * 0.18;
+            const sa = 0.2 + Math.sin(p + i * 2.1) * 0.25;
+            g.circle(sx, sy, 1.2);
+            g.fill({ color: deco.glow, alpha: Math.max(0, sa) });
+          }
+          hasAnimated = true;
+        }
+
+        // Swaying reeds
+        if (deco.reeds) {
+          for (let i = 0; i < 4; i++) {
+            const rx = px + (h * 50 + i * 11) % S - S / 2;
+            const ry = py + ((th2(hx, hy) * 30 + i * 17) % S) * 0.35 - S * 0.1;
+            const sway = Math.sin(this.f * 0.02 + i * 1.3) * 1.5;
+            g.moveTo(rx, ry);
+            g.lineTo(rx + sway * 0.5, ry - 6 - h * 4);
+            g.stroke({ color: 0x667744, width: 1.2 });
+          }
+          hasAnimated = true;
+        }
+      }
+    }
+
+    if (hasAnimated) this.dirty = true; // keep rendering but skip expensive terrain
   }
 
   // ── Territory borders ────────────────────────────────────────────────────
@@ -665,7 +693,7 @@ export class CivRenderer {
     g.lineTo(flagX, flagTop + 5);
     g.closePath();
     g.fill({ color: fc });
-    this.dirty = true; // flag always waves
+    // Flag waves — animation handled by city redraw on dirty
 
     // Arched door
     g.moveTo(-3 * scale, 0); g.lineTo(-3 * scale, (top + h - 7) * scale);

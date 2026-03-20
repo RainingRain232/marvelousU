@@ -959,6 +959,20 @@ export function isAtWar(state: CivGameState, a: number, b: number): boolean {
   return getDiplomacy(state, a, b)?.relation === "war";
 }
 
+export function tradeGold(state: CivGameState, from: number, to: number, amount: number): boolean {
+  const fromP = state.players[from];
+  const toP = state.players[to];
+  if (!fromP || !toP || fromP.gold < amount || amount <= 0) return false;
+  fromP.gold -= amount;
+  toP.gold += amount;
+  addEvent(state, from, `Sent ${amount} gold to ${toP.factionDef.name}.`);
+  addEvent(state, to, `Received ${amount} gold from ${fromP.factionDef.name}.`);
+  // Improve relations
+  const dip = getDiplomacy(state, to, from);
+  if (dip) dip.attitude = Math.min(100, dip.attitude + Math.floor(amount / 10));
+  return true;
+}
+
 // ── Hero recruitment ──────────────────────────────────────────────────────
 
 export function getAvailableHeroes(state: CivGameState, playerIndex: number): string[] {

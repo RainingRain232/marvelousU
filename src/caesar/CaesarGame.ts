@@ -48,6 +48,7 @@ export class CaesarGame {
   private _storageDirtyTimer = 0;
   private _lastDragTileX = -1;
   private _lastDragTileY = -1;
+  private _lastAutosave = performance.now();
 
   async boot(): Promise<void> {
     this._hud.build();
@@ -239,6 +240,7 @@ export class CaesarGame {
       this._state.selectedTool = "select";
       this._state.selectedBuildingType = null;
       this._state.selectedBuildingId = null;
+      this._hud.clearInfoPanel();
     });
   }
 
@@ -305,6 +307,13 @@ export class CaesarGame {
         this._simAccumulator -= tickMs;
         this._simTick(tickMs / 1000);
       }
+    }
+
+    // Autosave every 5 minutes of wall-clock time
+    if (performance.now() - this._lastAutosave > 300000) {
+      this._lastAutosave = performance.now();
+      this._hud.onSave?.();
+      this._hud.showNotification("Game autosaved");
     }
 
     this._renderer.render(state, frameMs / 1000);

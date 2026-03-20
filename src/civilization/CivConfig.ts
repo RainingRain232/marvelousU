@@ -811,6 +811,53 @@ export const CHIVALRY_EVENTS: ChivalryEvent[] = [
       { label: "Offer him a place at your court", chivalryChange: 4, goldChange: -15, effects: { freeManAtArms: true } },
     ],
   },
+  {
+    id: "evt_dragon_sighting",
+    name: "Dragon Sighting!",
+    description: "A great wyrm has been seen circling the mountains near your borders.",
+    choices: [
+      { label: "Send knights to slay it", chivalryChange: 4, goldChange: -25, effects: { heroExperience: 5 } },
+      { label: "Offer it tribute", chivalryChange: -2, goldChange: -50 },
+      { label: "Ignore the reports", chivalryChange: 0 },
+    ],
+  },
+  {
+    id: "evt_round_table_debate",
+    name: "Debate at Court",
+    description: "Your advisors argue whether to expand the army or invest in learning.",
+    choices: [
+      { label: "Fund the military", chivalryChange: -1, goldChange: -20, effects: { production: 2 } },
+      { label: "Fund the scholars", chivalryChange: 2, goldChange: -20, effects: { research: 10 } },
+    ],
+  },
+  {
+    id: "evt_enchanted_sword",
+    name: "An Enchanted Sword",
+    description: "A mysterious blade is found embedded in an ancient oak tree.",
+    choices: [
+      { label: "Claim it for the crown", chivalryChange: -1, goldChange: 30 },
+      { label: "Return it to the fae", chivalryChange: 4, effects: { faith: 3 } },
+    ],
+  },
+  {
+    id: "evt_harvest_festival",
+    name: "Harvest Festival",
+    description: "The autumn harvest is bountiful. The people wish to celebrate.",
+    choices: [
+      { label: "Throw a grand feast", chivalryChange: 3, goldChange: -30, effects: { happiness: 4 } },
+      { label: "Store the surplus", chivalryChange: -1, goldChange: 20 },
+    ],
+  },
+  {
+    id: "evt_mordred_conspiracy",
+    name: "Mordred's Whisper",
+    description: "Rumours spread of a shadowy figure sowing discord among your lords. Some say it is Mordred himself, risen from legend.",
+    choices: [
+      { label: "Root out the traitors with an inquisition", chivalryChange: -5, goldChange: -20, effects: { espionage: 5, happiness: -2 } },
+      { label: "Rally your knights with a speech of unity", chivalryChange: 6, effects: { happiness: 2 } },
+      { label: "Ignore it -- idle gossip is beneath a king", chivalryChange: 0, effects: { corruption: 2 } },
+    ],
+  },
 ];
 
 // ---------------------------------------------------------------------------

@@ -118,6 +118,8 @@ export class CivGame {
   private mouseHandler: ((e: MouseEvent) => void) | null = null;
   private wheelHandler: ((e: WheelEvent) => void) | null = null;
   private keysDown = new Set<string>();
+  private lastClickTime = 0;
+  private lastClickUnitId = -1;
   private idleCityQueue: number[] = [];
 
   // Setup screen state
@@ -553,6 +555,25 @@ export class CivGame {
 
     this.setupContainer.addChild(startBtn);
 
+    // "How to Play" button
+    const helpBtn = new Container();
+    helpBtn.x = centerX - 90;
+    helpBtn.y = screen.height - 80;
+    const helpBg = new Graphics();
+    helpBg.roundRect(0, 0, 180, 30, 5);
+    helpBg.fill({ color: 0x2A3A2A, alpha: 0.9 });
+    helpBg.roundRect(0, 0, 180, 30, 5);
+    helpBg.stroke({ color: 0x44AA44, alpha: 0.7, width: 1.5 });
+    helpBtn.addChild(helpBg);
+    const helpTxt = new Text({ text: "? How to Play", style: new TextStyle({ fontFamily: "serif", fontSize: 13, fontWeight: "bold", fill: 0x88DD88 }) });
+    helpTxt.anchor.set(0.5, 0.5); helpTxt.position.set(90, 15);
+    helpBtn.addChild(helpTxt);
+    helpBtn.eventMode = "static"; helpBtn.cursor = "pointer";
+    helpBtn.on("pointerover", () => { helpBg.tint = 0xCCFFCC; });
+    helpBtn.on("pointerout", () => { helpBg.tint = 0xFFFFFF; });
+    helpBtn.on("pointerdown", () => { this._showSetupHowToPlay(); });
+    this.setupContainer.addChild(helpBtn);
+
     // Decorative bottom divider
     const bottomDiv = new Graphics();
     bottomDiv.moveTo(centerX - 250, screen.height - 40);
@@ -562,7 +583,7 @@ export class CivGame {
 
     // Version / credits at bottom
     const credits = new Text({
-      text: "A game of chivalry, conquest, and legend",
+      text: "A game of chivalry, conquest, and legend  ·  Press ? in-game for help",
       style: new TextStyle({
         fontFamily: "serif",
         fontSize: 12,
@@ -580,6 +601,86 @@ export class CivGame {
     // Tear down the old setup container and rebuild from scratch
     this._clearSetupScreen();
     this._showSetupScreen();
+  }
+
+  private _showSetupHowToPlay(): void {
+    if (!this.setupContainer) return;
+    // Overlay on top of setup screen
+    const overlay = new Container();
+    overlay.zIndex = 100;
+    const scr = viewManager.app.screen;
+
+    const bd = new Graphics();
+    bd.rect(0, 0, scr.width, scr.height);
+    bd.fill({ color: 0x000000, alpha: 0.7 });
+    bd.eventMode = "static";
+    overlay.addChild(bd);
+
+    const pw = 620, ph = 520;
+    const px = (scr.width - pw) / 2, py = (scr.height - ph) / 2;
+
+    const panel = new Graphics();
+    panel.roundRect(px, py, pw, ph, 10);
+    panel.fill({ color: 0x1A150F, alpha: 0.97 });
+    panel.roundRect(px, py, pw, ph, 10);
+    panel.stroke({ color: 0xC4A265, width: 2 });
+    panel.roundRect(px + 4, py + 4, pw - 8, ph - 8, 8);
+    panel.stroke({ color: 0x665522, alpha: 0.4, width: 1 });
+    overlay.addChild(panel);
+
+    const title = new Text({ text: "⚜ How to Play ⚜", style: new TextStyle({ fontFamily: "serif", fontSize: 22, fontWeight: "bold", fill: 0xFFD700 }) });
+    title.anchor.set(0.5, 0); title.position.set(scr.width / 2, py + 15);
+    overlay.addChild(title);
+
+    const sections = [
+      ["Getting Started", "Select a faction, difficulty, and map size, then click START.\nYou begin with a Settler, Warband, and Scout.\nSelect your Settler and click 'Found City' to build your capital."],
+      ["Controls", "WASD / Arrows: Pan camera  |  Scroll: Zoom  |  Click: Select\nEnter: End turn  |  T: Tech tree  |  D: Diplomacy  |  B: Build\nH: Recruit hero  |  F: Fortify  |  Space: Skip  |  ?: Help"],
+      ["Economy", "Cities produce Food, Production, Gold, Research, and Culture.\nWorkers build improvements (Farm, Mine, Road) on tiles.\nResearch technologies to unlock new units, buildings, and wonders."],
+      ["Combat", "Move units next to enemies, then click the red-highlighted tile.\nRanged units strike without taking counter-damage.\nHeroes have special abilities (click ability buttons when selected)."],
+      ["Victory", "Conquest: Eliminate all rivals  |  Holy Grail: Build the Grail wonder\nRound Table: Alliance with all factions  |  Survival: Best score at turn 200"],
+      ["Chivalry", "Your choices in random events affect your Chivalry rating.\nHigh chivalry = happy cities, better diplomacy.\nLow chivalry (<30) risks Mordred's Rebellion!"],
+    ];
+
+    let ly = py + 50;
+    for (const [header, text] of sections) {
+      const h = new Text({ text: header, style: new TextStyle({ fontFamily: "serif", fontSize: 14, fontWeight: "bold", fill: 0xC4A265 }) });
+      h.position.set(px + 20, ly); overlay.addChild(h); ly += 19;
+      const t = new Text({ text, style: new TextStyle({ fontFamily: "serif", fontSize: 11, fill: 0xE8D5B5, wordWrap: true, wordWrapWidth: pw - 50, lineHeight: 15 }) });
+      t.position.set(px + 20, ly); overlay.addChild(t); ly += t.height + 12;
+    }
+
+    // Close button
+    const closeBtn = new Container();
+    closeBtn.x = scr.width / 2 - 50; closeBtn.y = py + ph - 42;
+    const cbg = new Graphics();
+    cbg.roundRect(0, 0, 100, 30, 5);
+    cbg.fill({ color: 0x4A3728 });
+    cbg.roundRect(0, 0, 100, 30, 5);
+    cbg.stroke({ color: 0xC4A265, width: 1.2 });
+    closeBtn.addChild(cbg);
+    const ctxt = new Text({ text: "Close (Esc)", style: new TextStyle({ fontFamily: "serif", fontSize: 12, fontWeight: "bold", fill: 0xE8D5B5 }) });
+    ctxt.anchor.set(0.5, 0.5); ctxt.position.set(50, 15);
+    closeBtn.addChild(ctxt);
+    closeBtn.eventMode = "static"; closeBtn.cursor = "pointer";
+    closeBtn.on("pointerdown", () => { overlay.destroy({ children: true }); });
+    overlay.addChild(closeBtn);
+
+    // Escape key to close
+    const escHandler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        window.removeEventListener("keydown", escHandler);
+        if (overlay.parent) overlay.destroy({ children: true });
+      }
+    };
+    window.addEventListener("keydown", escHandler);
+
+    // Also close on backdrop click
+    bd.on("pointerdown", () => {
+      window.removeEventListener("keydown", escHandler);
+      overlay.destroy({ children: true });
+    });
+
+    this.setupContainer.addChild(overlay);
   }
 
   private _clearSetupScreen(): void {
@@ -702,10 +803,16 @@ export class CivGame {
     // Update fog of war for initial visibility
     updateFogOfWar(this.state, this.state.humanPlayerIndex);
 
-    // Auto-show tech selection if no research
+    // Show help on first game start
+    this.hud.showHelpPanel();
+
+    // Auto-show tech selection if no research (after help is dismissed)
     if (!humanPlayer.currentTech) {
       const available = getAvailableTechs(humanPlayer);
-      if (available.length > 0) this.hud.showTechPanel(this.state);
+      if (available.length > 0) {
+        // Delay tech panel until help is closed
+        setTimeout(() => { if (this.state && !this.state.players[0].currentTech) this.hud.showTechPanel(this.state); }, 500);
+      }
     }
 
     this._refresh();
@@ -848,6 +955,8 @@ export class CivGame {
             this.hud.hideTechPanel();
             this.hud.hideBuildMenu();
             this.hud.hideDiplomacyPanel();
+            this.hud.hideHelpPanel();
+            this.hud.hideEventDialog();
             this._selectUnit(-1);
             this.state.selectedCityId = -1;
             this._refresh();
@@ -865,11 +974,19 @@ export class CivGame {
 
     this.mouseHandler = (e: MouseEvent) => {
       if (e.type === "pointerdown" && this.state) {
+        if ((e as PointerEvent).button === 2) {
+          // Right-click: deselect everything
+          this._selectUnit(-1);
+          this.state.selectedCityId = -1;
+          this._refresh();
+          return;
+        }
         const tile = this.renderer.getTileAtScreen(e.clientX, e.clientY);
         if (!tile) return;
         this._handleTileClick(tile.x, tile.y);
       }
     };
+    viewManager.app.canvas.addEventListener("contextmenu", (e) => e.preventDefault());
     viewManager.app.canvas.addEventListener("pointerdown", this.mouseHandler as EventListener);
 
     this.wheelHandler = (e: WheelEvent) => {
@@ -954,6 +1071,14 @@ export class CivGame {
       return u && u.owner === state.humanPlayerIndex;
     });
     if (ownUnit !== undefined) {
+      const now = Date.now();
+      if (ownUnit === this.lastClickUnitId && now - this.lastClickTime < 400) {
+        // Double-click: center camera on unit
+        const u = getUnit(state, ownUnit);
+        if (u) this.renderer.centerOn(u.x, u.y);
+      }
+      this.lastClickTime = now;
+      this.lastClickUnitId = ownUnit;
       this._selectUnit(ownUnit);
       state.selectedCityId = -1;
       this._refresh();

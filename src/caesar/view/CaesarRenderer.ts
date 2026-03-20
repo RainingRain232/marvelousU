@@ -664,6 +664,10 @@ export class CaesarRenderer {
       if (b.built && !b.onFire && bdef.productionTime > 0 && b.workers > 0 && Math.random() < 0.015) {
         this._smoke.push({ x: px + pw * 0.6 + Math.random() * 4 - 2, y: py + 2, age: 0, life: 1.5 + Math.random(), vx: (Math.random() - 0.5) * 3, vy: -6 - Math.random() * 4, sz: 1.5 + Math.random() });
       }
+      // Extra thick smoke from bakery ovens
+      if (b.built && !b.onFire && b.type === CaesarBuildingType.BAKERY && b.workers > 0 && Math.random() < 0.04) {
+        this._smoke.push({ x: px + pw * 0.7 + Math.random() * 3 - 1.5, y: py + 1, age: 0, life: 2 + Math.random(), vx: 1 + Math.random() * 2, vy: -8 - Math.random() * 5, sz: 2 + Math.random() * 1.5 });
+      }
       // Forge sparks
       if (b.built && b.type === CaesarBuildingType.BLACKSMITH && b.workers > 0 && Math.random() < 0.04) {
         for (let i = 0; i < 3; i++) this._sparks.push({ x: px + pw * 0.5, y: py + ph * 0.6, age: 0, life: 0.4 + Math.random() * 0.3, vx: (Math.random() - 0.5) * 20, vy: -10 - Math.random() * 15, c: Math.random() > 0.5 ? 0xff8800 : 0xffcc00 });
@@ -690,6 +694,16 @@ export class CaesarRenderer {
     for (let i = 0; i < braces; i++) {
       const ly = py + ph - 2 - (bH / 5) * (i + 1);
       g.moveTo(px + 3, ly); g.lineTo(px + pw - 3, ly); g.stroke();
+    }
+    // Diagonal warning stripes on construction site
+    g.setStrokeStyle({ width: 0.7, color: 0xffa000, alpha: 0.25 });
+    const stripeGap = 6;
+    for (let i = -ph; i < pw + ph; i += stripeGap) {
+      const x0 = px + 2 + i, y0 = py + 2;
+      const x1 = x0 - ph + 4, y1 = py + ph - 2;
+      g.moveTo(Math.max(px + 2, Math.min(px + pw - 2, x0)), y0);
+      g.lineTo(Math.max(px + 2, Math.min(px + pw - 2, x1)), y1);
+      g.stroke();
     }
     // Progress bar
     g.roundRect(px + 4, py + ph - 5, pw - 8, 3, 1); g.fill(0x333333);
@@ -936,6 +950,10 @@ export class CaesarRenderer {
     const m = 2, roofH = ph * 0.28;
     g.roundRect(px + m, py + roofH, pw - m * 2, ph - roofH - m, 2); g.fill(0xd4a057);
     g.roundRect(px + m - 1, py + m, pw - m * 2 + 2, roofH, 2); g.fill(0xa05828);
+    // Chimney
+    const chX = px + pw * 0.7, chW = 3, chH = 6;
+    g.rect(chX - chW / 2, py + m - chH, chW, chH); g.fill(0x6d4c41);
+    g.rect(chX - chW / 2 - 0.5, py + m - chH, chW + 1, 1.5); g.fill(0x5d4037);
     // Oven glow
     g.circle(px + pw * 0.7, py + ph * 0.6, pw * 0.12); g.fill({ color: 0xff6600, alpha: 0.4 });
     g.circle(px + pw * 0.7, py + ph * 0.6, pw * 0.07); g.fill({ color: 0xffaa00, alpha: 0.5 });

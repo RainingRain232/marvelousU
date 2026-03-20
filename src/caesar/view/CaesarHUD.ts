@@ -32,6 +32,7 @@ export class CaesarHUD {
   private _notifyTimeout: number | null = null;
   private _selectedCategory: CaesarBuildingCategory = "food";
   private _toolButtons: Map<string, HTMLButtonElement> = new Map();
+  private _helpOverlay: HTMLDivElement | null = null;
 
   // Callbacks
   onSelectTool: ((tool: CaesarTool) => void) | null = null;
@@ -82,16 +83,24 @@ export class CaesarHUD {
       <p style="font-size:13px; margin:0 0 16px; color:#cdb891;">
         Build a thriving medieval town for the King.
       </p>
-      <div style="text-align:left; font-size:12px; color:#aa9977; margin-bottom:12px; padding:8px; background:#1a1208; border-radius:4px;">
-        <b style="color:#cdb891;">How to play:</b><br>
-        - Place roads, then buildings adjacent to roads<br>
-        - Build farms → mills → bakeries for food chains<br>
-        - Markets deliver food, chapels deliver religion<br>
-        - Housing evolves with services + cloth/tools for high tiers<br>
-        - Build granaries/warehouses to increase storage capacity<br>
-        - Guild halls trade surplus cloth/tools for gold<br>
-        - Pay the King's tribute to maintain favor<br>
-        <b style="color:#cdb891;">Controls:</b> WASD pan, scroll zoom, shift+drag pan, 1-4 tools, F5 save, F9 load
+      <div style="text-align:left; font-size:12px; color:#aa9977; margin-bottom:12px; padding:10px; background:#1a1208; border-radius:6px; border:1px solid #332a14; line-height:1.6;">
+        <b style="color:#ffd700; font-size:13px;">⚜ How to Play ⚜</b><br><br>
+        <b style="color:#cdb891;">Building Your Town:</b><br>
+        · Place <b style="color:#ddd;">roads</b> first — buildings must be adjacent to roads<br>
+        · Build <b style="color:#8c8;">farms</b> → <b style="color:#8c8;">mills</b> → <b style="color:#8c8;">bakeries</b> for food production chains<br>
+        · <b style="color:#8c8;">Markets</b> deliver food to housing, <b style="color:#88c;">chapels</b> deliver religion<br>
+        · Housing evolves with services + cloth/tools for higher tiers<br><br>
+        <b style="color:#cdb891;">Economy & Resources:</b><br>
+        · Build <b style="color:#cc8;">granaries</b> and <b style="color:#cc8;">warehouses</b> to increase storage capacity<br>
+        · <b style="color:#cc8;">Guild halls</b> trade surplus cloth/tools for gold<br>
+        · Pay the King's tribute each year to maintain favor<br>
+        · Trade caravans arrive periodically — buy and sell resources<br><br>
+        <b style="color:#cdb891;">Controls:</b><br>
+        · <b style="color:#ddd;">WASD</b> / arrows: pan camera &nbsp;|&nbsp; <b style="color:#ddd;">Scroll</b>: zoom<br>
+        · <b style="color:#ddd;">1-4</b>: tools (select/build/road/demolish)<br>
+        · <b style="color:#ddd;">Shift+drag</b>: pan &nbsp;|&nbsp; <b style="color:#ddd;">F5</b>: save &nbsp;|&nbsp; <b style="color:#ddd;">F9</b>: load<br>
+        · <b style="color:#ddd;">0</b>: pause &nbsp; <b style="color:#ddd;">-</b>: normal &nbsp; <b style="color:#ddd;">=</b>: fast &nbsp; <b style="color:#ddd;">+</b>: fastest<br>
+        · <b style="color:#ddd;">Escape</b>: deselect tool &nbsp;|&nbsp; <b style="color:#ddd;">?</b>: show this help in-game
       </div>
       <div style="margin-bottom:12px;">
         <label style="font-size:14px;">Scenario:</label><br>
@@ -168,9 +177,9 @@ export class CaesarHUD {
     this._topBar = document.createElement("div");
     this._topBar.style.cssText = `
       position: absolute; top: 0; left: 0; right: 0; height: 36px;
-      background: linear-gradient(180deg, rgba(26,18,8,0.95), rgba(26,18,8,0.8));
+      background: linear-gradient(180deg, #2a1f14 0%, #1a150f 100%);
       display: flex; align-items: center; padding: 0 12px; gap: 16px;
-      font-size: 13px; pointer-events: all; border-bottom: 1px solid #5a4020;
+      font-size: 13px; pointer-events: all; border-bottom: 2px solid #8b6914;
     `;
     this._root!.appendChild(this._topBar);
 
@@ -192,8 +201,8 @@ export class CaesarHUD {
     this._bottomBar = document.createElement("div");
     this._bottomBar.style.cssText = `
       position: absolute; bottom: 0; left: 0; right: 200px;
-      background: linear-gradient(0deg, rgba(26,18,8,0.95), rgba(26,18,8,0.8));
-      padding: 6px 12px; pointer-events: all; border-top: 1px solid #5a4020;
+      background: linear-gradient(0deg, #1a150f 0%, #2a1f14 100%);
+      padding: 6px 12px; pointer-events: all; border-top: 2px solid #8b6914;
     `;
     this._root!.appendChild(this._bottomBar);
 
@@ -333,14 +342,23 @@ export class CaesarHUD {
       if (e.key === "2") this.onSelectTool?.("build");
       if (e.key === "3") this.onSelectTool?.("road");
       if (e.key === "4") this.onSelectTool?.("demolish");
-      if (e.key === "Escape") this.onSelectTool?.("select");
+      if (e.key === "Escape") { this.onSelectTool?.("select"); this._hideHelpOverlay(); }
+      if (e.key === "?" || e.key === "/") { this._showHelpOverlay(); }
       if (e.key === "F5") { e.preventDefault(); this.onSave?.(); }
       if (e.key === "F9") { e.preventDefault(); this.onLoad?.(); }
+      if (e.key === "0") this.onSpeedChange?.(0); // pause
+      if (e.key === "-") this.onSpeedChange?.(1); // normal speed
+      if (e.key === "=") this.onSpeedChange?.(2); // fast
+      if (e.key === "+") this.onSpeedChange?.(3); // fastest
     });
   }
 
   private _forceBuildMenuUpdate = false;
   private _lastBuildCat: CaesarBuildingCategory | null = null;
+
+  clearInfoPanel(): void {
+    if (this._infoPanel) this._infoPanel.style.display = "none";
+  }
 
   showNotification(msg: string): void {
     if (!this._notification) return;
@@ -351,6 +369,81 @@ export class CaesarHUD {
       if (this._notification) this._notification.style.display = "none";
     }, 2500);
   }
+
+  private _showHelpOverlay(): void {
+    if (this._helpOverlay) return; // already showing
+    this._helpOverlay = document.createElement("div");
+    this._helpOverlay.style.cssText = `
+      position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.8); pointer-events: all; z-index: 300;
+    `;
+    const box = document.createElement("div");
+    box.style.cssText = `
+      background: #2a1f14; border: 2px solid #8b6914; border-radius: 10px;
+      padding: 28px 36px; max-width: 580px; max-height: 80vh; overflow-y: auto;
+      box-shadow: 0 0 40px rgba(0,0,0,0.5);
+    `;
+    box.innerHTML = `
+      <h2 style="margin:0 0 12px; color:#ffd700; font-family:serif; text-align:center; font-size:22px;">⚜ Medieval Caesar — How to Play ⚜</h2>
+      <div style="font-size:12px; color:#cdb891; line-height:1.7;">
+        <b style="color:#ffd700;">Building Your Town:</b><br>
+        · Place <b>roads</b> first — all buildings must touch a road<br>
+        · Build <b>farms → mills → bakeries</b> for food chains<br>
+        · <b>Markets</b> distribute food to housing<br>
+        · <b>Chapels/churches</b> provide religion services<br>
+        · Housing evolves when services + resources are available<br><br>
+
+        <b style="color:#ffd700;">Economy:</b><br>
+        · <b>Granaries/warehouses</b> increase storage capacity<br>
+        · <b>Guild halls</b> convert cloth/tools into gold<br>
+        · Trade with <b>caravans</b> that visit periodically<br>
+        · Pay the <b>King's tribute</b> each year to maintain favor<br><br>
+
+        <b style="color:#ffd700;">Housing Evolution:</b><br>
+        · Tent → Shack → Cottage → House → Villa → Mansion<br>
+        · Each tier requires more services and resources<br>
+        · Higher tiers = more population = more workers<br><br>
+
+        <b style="color:#ffd700;">Controls:</b><br>
+        · <b>WASD</b> / arrows: pan &nbsp;|&nbsp; <b>Scroll</b>: zoom &nbsp;|&nbsp; <b>Shift+drag</b>: pan<br>
+        · <b>1</b>: Select &nbsp; <b>2</b>: Build &nbsp; <b>3</b>: Road &nbsp; <b>4</b>: Demolish<br>
+        · <b>F5</b>: Save &nbsp;|&nbsp; <b>F9</b>: Load &nbsp;|&nbsp; <b>Esc</b>: Deselect/Close<br>
+        · <b>0</b>: Pause &nbsp; <b>-</b>: Normal &nbsp; <b>=</b>: Fast &nbsp; <b>+</b>: Fastest<br>
+        · <b>?</b>: Show this help<br><br>
+
+        <b style="color:#ffd700;">Tips:</b><br>
+        · Keep unemployment low — idle workers reduce housing desirability<br>
+        · Build wells and fountains to boost desirability<br>
+        · Watch your gold — running out means you can't pay tribute!
+      </div>
+      <div style="text-align:center; margin-top:16px;">
+        <button id="caesar-help-close" style="
+          padding:8px 28px; font-size:14px; background:#8b6914; color:#fff;
+          border:none; border-radius:4px; cursor:pointer;
+        ">Close (Esc)</button>
+      </div>
+    `;
+    this._helpOverlay.appendChild(box);
+
+    // Close on backdrop click
+    this._helpOverlay.addEventListener("click", (e) => {
+      if (e.target === this._helpOverlay) this._hideHelpOverlay();
+    });
+
+    this._root!.appendChild(this._helpOverlay);
+
+    box.querySelector("#caesar-help-close")!.addEventListener("click", () => this._hideHelpOverlay());
+  }
+
+  private _hideHelpOverlay(): void {
+    if (this._helpOverlay && this._helpOverlay.parentNode) {
+      this._helpOverlay.parentNode.removeChild(this._helpOverlay);
+    }
+    this._helpOverlay = null;
+  }
+
+  showHelpPanel(): void { this._showHelpOverlay(); }
+  hideHelpPanel(): void { this._hideHelpOverlay(); }
 
   update(state: CaesarState): void {
     this._updateTopBar(state);
@@ -397,7 +490,10 @@ export class CaesarHUD {
 
     // Population with color
     const popColor = state.population >= state.goals.population ? "#4caf50" : "#f0e6d2";
+    const employed = state.population - state.unemployed;
+    const idleColor = state.unemployed > state.population * 0.3 ? "#f44336" : "#aa9977";
     resHTML += `<span style="color:${popColor}">Pop: ${state.population}/${state.maxPopulation}</span>`;
+    resHTML += `<span style="color:${idleColor}">(${employed} working, ${state.unemployed} idle)</span>`;
 
     // Income/expense
     const net = state.monthlyIncome - state.monthlyExpense;
@@ -457,6 +553,7 @@ export class CaesarHUD {
       el.style.background = active ? "#5a4020" : "#2a1f14";
       el.style.color = active ? "#ffd700" : "#aa9977";
       el.style.borderColor = active ? "#8b6914" : "#3a2a15";
+      el.style.borderBottom = active ? "3px solid #ffd700" : "1px solid #3a2a15";
     }
 
     // Only rebuild buttons when category changes
@@ -489,7 +586,7 @@ export class CaesarHUD {
 
     const btn = document.createElement("button");
     btn.textContent = `${bdef.label} (${costStr})`;
-    btn.title = `${bdef.description}${maint > 0 ? `\nMaintenance: ${maint}g/tax` : ""}${bdef.woodCost > 0 ? `\nWood: ${bdef.woodCost}` : ""}${bdef.stoneCost > 0 ? `\nStone: ${bdef.stoneCost}` : ""}`;
+    btn.title = `${bdef.label}\nCost: ${bdef.cost} gold${bdef.woodCost > 0 ? `, ${bdef.woodCost} wood` : ""}${bdef.stoneCost > 0 ? `, ${bdef.stoneCost} stone` : ""}${maint > 0 ? `\nMaintenance: ${maint}g/tax` : ""}\nWorkers: ${bdef.maxWorkers || 0}\n${bdef.description}`;
     btn.style.cssText = `
       padding: 3px 8px; font-size: 11px;
       background: ${canAfford ? "#3a2a15" : "#2a1a0a"};

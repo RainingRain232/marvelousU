@@ -942,6 +942,10 @@ export class CivAI {
         // Turns at peace reduce war likelihood initially
         if (diplo.turnsAtPeace < 15) warChance -= 0.03;
 
+        // Bonus if target is already fighting someone else (opportunistic)
+        const targetAtWar = other.diplomacy.some(d => d.relation === "war" && d.targetPlayer !== player.index);
+        if (targetAtWar) warChance += 0.15;
+
         // Late game aggression — more wars after turn 80
         if (state.turn > 80) warChance += 0.08;
         if (state.turn > 120) warChance += 0.06;

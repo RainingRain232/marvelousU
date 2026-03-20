@@ -965,6 +965,18 @@ export class CivHUD {
     const techBoxPositions = new Map<string, {x: number, y: number, w: number, h: number}>();
     const allTechs: TechDef[] = [];
 
+    // Era legend
+    const eraLabels = ["Era I", "Era II", "Era III", "Era IV"];
+    const eraLColors = [0x66AA44, 0x4488CC, 0xAA44CC, 0xFFAA22];
+    for (let ei = 0; ei < 4; ei++) {
+      const ex = pw - 200 + ei * 48;
+      bg.rect(ex, 12, 12, 12);
+      bg.fill({ color: eraLColors[ei], alpha: 0.7 });
+      const el = new Text(eraLabels[ei], makeStyle(9, 0xAA9988));
+      el.x = ex + 15; el.y = 13;
+      this.techPanel.addChild(el);
+    }
+
     for (let ci = 0; ci < branches.length; ci++) {
       const bx = 10 + ci * colW;
       const branch = branches[ci];
@@ -1024,10 +1036,15 @@ export class CivHUD {
         techBg.fill({ color: boxColor, alpha: 0.4 });
         techBg.roundRect(0, 0, bw, bh, 3);
         techBg.stroke({ color: boxColor, alpha: 0.8, width: 1 });
+        // Era color strip on left edge
+        const eraColors = [0x66AA44, 0x4488CC, 0xAA44CC, 0xFFAA22]; // era 1-4
+        const eraC = eraColors[Math.min(3, (tech.era ?? 1) - 1)];
+        techBg.rect(0, 0, 4, bh);
+        techBg.fill({ color: eraC, alpha: 0.8 });
         techBox.addChild(techBg);
 
         const techName = new Text(tech.name, makeStyle(10, textColor, isResearched));
-        techName.x = 4;
+        techName.x = 10;
         techName.y = 2;
         techBox.addChild(techName);
 
@@ -1035,7 +1052,7 @@ export class CivHUD {
           isResearched ? "✓" : `${tech.cost}`,
           makeStyle(9, textColor)
         );
-        costText.x = 4;
+        costText.x = 10;
         costText.y = 15;
         techBox.addChild(costText);
 
@@ -1335,6 +1352,12 @@ export class CivHUD {
       circle.x = 28;
       circle.y = ly + rowH / 2;
       this.diplomacyPanel.addChild(circle);
+
+      // Faction initial letter inside circle
+      const initial = new Text(targetPlayer.factionDef.name.charAt(0), new TextStyle({ fontFamily: "serif", fontSize: 12, fontWeight: "bold", fill: 0xFFFFFF }));
+      initial.anchor.set(0.5, 0.5);
+      initial.position.set(28, ly + rowH / 2);
+      this.diplomacyPanel.addChild(initial);
 
       // Faction name + leader
       const factionName = new Text(
@@ -1683,6 +1706,11 @@ export class CivHUD {
     bg.fill({ color: PANEL_BG, alpha: 0.95 });
     bg.roundRect(0, 0, 500, 40, 8);
     bg.stroke({ color: ACCENT, width: 2 });
+    // Side flourishes
+    bg.moveTo(15, 20); bg.lineTo(25, 15); bg.lineTo(25, 25); bg.closePath();
+    bg.fill({ color: ACCENT, alpha: 0.5 });
+    bg.moveTo(485, 20); bg.lineTo(475, 15); bg.lineTo(475, 25); bg.closePath();
+    bg.fill({ color: ACCENT, alpha: 0.5 });
     this.notificationBanner.addChild(bg);
 
     this.notificationText = new Text("", makeStyle(14, 0xFFD700, true));
