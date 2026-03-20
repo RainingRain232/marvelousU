@@ -8,8 +8,9 @@
 import { Container, Graphics, Text, TextStyle } from "pixi.js";
 import {
   GameBalance, TileType, FLOOR_THEMES, QUEST_GENRE_DEFS, KNIGHT_DEFS,
-  ItemType, ItemRarity, SHOP_ITEMS,
+  ItemType, ItemRarity, SHOP_ITEMS, ITEM_DEFS,
 } from "../config/GameConfig";
+
 import {
   CRAFTING_MATERIALS, CRAFTING_RECIPES, ENCHANTMENT_DEFS,
 } from "../config/GameCraftingDefs";
@@ -110,7 +111,7 @@ export class GameHUD {
   // -------------------------------------------------------------------------
   // Update each frame
   // -------------------------------------------------------------------------
-  update(state: GrailGameState, sw: number, sh: number, dt: number): void {
+  update(state: GrailGameState, sw: number, sh: number, dt: number, showHelp = false, _floorTransitionTimer = 0): void {
     const g = this._gfx;
     g.clear();
 
@@ -196,6 +197,11 @@ export class GameHUD {
     // Artifact count indicator
     if (state.artifacts.length > 0 && (state.phase === GamePhase.PLAYING)) {
       this._drawArtifactCount(state, sw, sh);
+    }
+
+    // Controls help overlay
+    if (showHelp) {
+      this._drawHelpOverlay(sw, sh);
     }
   }
 
@@ -1578,6 +1584,28 @@ export class GameHUD {
         this._drawCoinIcon(px + panelW - 80, iy + 8, 12);
         this._addText(`${item.cost}`, px + panelW - 65, iy + 3, 11, costColor);
 
+        // Stat comparison for gear items
+        if (item.type === "gear" && item.itemId) {
+          const itemDef = ITEM_DEFS[item.itemId];
+          if (itemDef && (itemDef.type === "weapon" || itemDef.type === "armor" || itemDef.type === "relic")) {
+            const equipped = itemDef.type === "weapon" ? p.equippedWeapon
+              : itemDef.type === "armor" ? p.equippedArmor : p.equippedRelic;
+            const compX = px + panelW - 130;
+            if (itemDef.attackBonus > 0) {
+              const diff = itemDef.attackBonus - (equipped?.attackBonus ?? 0);
+              const diffColor = diff > 0 ? 0x44cc44 : diff < 0 ? 0xcc4444 : 0x888888;
+              const diffStr = diff > 0 ? `+${diff}` : `${diff}`;
+              this._addText(`ATK${diffStr}`, compX, iy + 14, 8, diffColor);
+            }
+            if (itemDef.defenseBonus > 0) {
+              const diff = itemDef.defenseBonus - (equipped?.defenseBonus ?? 0);
+              const diffColor = diff > 0 ? 0x44cc44 : diff < 0 ? 0xcc4444 : 0x888888;
+              const diffStr = diff > 0 ? `+${diff}` : `${diff}`;
+              this._addText(`DEF${diffStr}`, compX + 50, iy + 14, 8, diffColor);
+            }
+          }
+        }
+
         // Affordable indicator (small green checkmark dot)
         if (canAfford) {
           g.circle(px + panelW - 35, iy + 9, 3).fill({ color: 0x44cc44, alpha: 0.3 });
@@ -2315,8 +2343,8 @@ export class GameHUD {
     const g = this._gfx;
     g.rect(0, 0, sw, sh).fill({ color: 0x000000, alpha: 0.8 });
 
-    const panelW = 360;
-    const panelH = 200;
+    const panelW = 400;
+    const panelH = 310;
     const px = (sw - panelW) / 2;
     const py = (sh - panelH) / 2;
 
@@ -2352,6 +2380,30 @@ export class GameHUD {
     const hpPct = Math.floor((p.hp / p.maxHp) * 100);
     const hpColor = hpPct > 60 ? 0x44aa44 : hpPct > 30 ? 0xaaaa22 : 0xaa3322;
     this._addText("HP:", statX, sy, 13, statColor); this._addText(`${Math.ceil(p.hp)} / ${p.maxHp} (${hpPct}%)`, statValX, sy, 13, hpColor);
+    sy += 20;
+
+    // Equipment summary
+    this._addText("ATK:", statX, sy, 13, statColor); this._addText(`${p.attack}${p.equippedWeapon ? ` (+${p.equippedWeapon.attackBonus})` : ""}`, statValX, sy, 13, 0xcc4444);
+    sy += 20;
+    this._addText("DEF:", statX, sy, 13, statColor); this._addText(`${p.defense}${p.equippedArmor ? ` (+${p.equippedArmor.defenseBonus})` : ""}`, statValX, sy, 13, 0x4488cc);
+    sy += 20;
+
+    // Divider
+    g.moveTo(px + 30, sy).lineTo(px + panelW - 30, sy)
+      .stroke({ color: GOLD_DARK, width: 1, alpha: 0.3 });
+    sy += 12;
+
+    // Equipment names
+    const equipColor = 0x5a4a30;
+    if (p.equippedWeapon) this._addText(`Weapon: ${p.equippedWeapon.name}`, sw / 2, sy, 11, equipColor, true);
+    sy += 16;
+    if (p.equippedArmor) this._addText(`Armor: ${p.equippedArmor.name}`, sw / 2, sy, 11, equipColor, true);
+    sy += 16;
+    if (p.equippedRelic) this._addText(`Relic: ${p.equippedRelic.name}`, sw / 2, sy, 11, equipColor, true);
+
+    // Skip prompt
+    const blinkAlpha = 0.4 + Math.sin(this._anim.time * 3) * 0.3;
+    this._addText("Press ENTER to continue", sw / 2, py + panelH - 18, 11, lerpColor(0x3a2a15, PARCHMENT, 1 - blinkAlpha), true);
   }
 
   // =========================================================================
@@ -2874,6 +2926,59 @@ export class GameHUD {
     const x = sw - 110;
     const y = sh - 40;
     this._addText(`Artifacts: ${found}  [L] lore`, x, y, 8, GOLD_COLOR, false, FONT);
+  }
+
+  // =========================================================================
+  //  CONTROLS HELP OVERLAY
+  // =========================================================================
+
+  private _drawHelpOverlay(sw: number, sh: number): void {
+    const g = this._gfx;
+    g.rect(0, 0, sw, sh).fill({ color: 0x000000, alpha: 0.75 });
+
+    const panelW = 360;
+    const panelH = 380;
+    const px = (sw - panelW) / 2;
+    const py = (sh - panelH) / 2;
+
+    this._drawParchmentBG(px, py, panelW, panelH);
+    this._drawOrnateFrame(px, py, panelW, panelH, GOLD_COLOR, 2, 8);
+
+    this._addText("Controls", sw / 2, py + 24, 22, 0x3a2a15, true);
+
+    g.moveTo(px + 30, py + 44).lineTo(px + panelW - 30, py + 44)
+      .stroke({ color: GOLD_DARK, width: 1, alpha: 0.5 });
+
+    const lx = px + 40;
+    const rx = px + panelW - 40;
+    let y = py + 60;
+    const hdrColor = 0x3a2a15;
+    const txtColor = 0x5a4a30;
+    const step = 22;
+
+    const controls: [string, string][] = [
+      ["WASD", "Move"],
+      ["SPACE", "Attack"],
+      ["Q", "Special Ability"],
+      ["SHIFT", "Dash (i-frames)"],
+      ["E", "Interact (chests, stairs, NPCs)"],
+      ["I", "Inventory"],
+      ["P", "Pause"],
+      ["B", "Toggle Companion Behavior"],
+      ["L", "View Artifact Lore"],
+      ["H", "Toggle this Help"],
+      ["TAB", "Toggle Buy/Sell in Shop"],
+      ["Arrow Keys", "Pan Camera"],
+      ["ESC x2", "Quit to Menu"],
+    ];
+
+    for (const [key, desc] of controls) {
+      this._addText(key, lx, y, 12, hdrColor);
+      this._addText(desc, rx, y, 12, txtColor);
+      y += step;
+    }
+
+    this._addText("Press H to close", sw / 2, py + panelH - 18, 11, 0x7a6a50, true);
   }
 
   // =========================================================================

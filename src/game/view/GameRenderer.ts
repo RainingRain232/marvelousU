@@ -74,6 +74,8 @@ export class GameRenderer {
   floorFogWisps: { x: number; y: number; vx: number; phase: number; width: number; alpha: number; life: number }[] = [];
   // Dust motes in light beams
   dustMotes: { x: number; y: number; vx: number; vy: number; size: number; alpha: number; life: number; maxLife: number }[] = [];
+  // Dash afterimage trail
+  dashTrail: { x: number; y: number; color: number; alpha: number; facing: number; life: number }[] = [];
 
   // Boss phase flash
   pendingBossFlash: { color: number; t: number } | null = null;
@@ -3566,21 +3568,51 @@ export class GameRenderer {
   // ABILITY VFX — per-knight visual effects
   // -------------------------------------------------------------------------
   private _drawDashTrail(state: GrailGameState): void {
-    if (state.dashTimer <= 0) return;
     const g = this._fxGfx;
     const p = state.player;
-    const trailLen = 4;
-    const alpha = state.dashTimer / 0.12; // fade with dash duration
 
-    for (let i = 1; i <= trailLen; i++) {
-      const t = i / trailLen;
-      const tx = p.x - state.dashDx * i * 8;
-      const ty = p.y - state.dashDy * i * 8;
-      const a = alpha * (1 - t) * 0.5;
-      g.circle(tx, ty, 6 - t * 2).fill({ color: 0x44ccff, alpha: a });
+    // Spawn afterimage ghosts during dash
+    if (state.dashTimer > 0) {
+      this.dashTrail.push({
+        x: p.x, y: p.y,
+        color: p.knightDef.color,
+        alpha: 0.6,
+        facing: p.facing,
+        life: 0.25,
+      });
     }
-    // Dash flash on player
-    g.circle(p.x, p.y, 10).fill({ color: 0x88eeff, alpha: alpha * 0.3 });
+
+    // Update and draw afterimages
+    for (let i = this.dashTrail.length - 1; i >= 0; i--) {
+      const ghost = this.dashTrail[i];
+      ghost.life -= 0.016;
+      ghost.alpha *= 0.88;
+      if (ghost.life <= 0) {
+        this.dashTrail.splice(i, 1);
+        continue;
+      }
+      // Ghost silhouette (simplified knight shape)
+      const a = ghost.alpha;
+      const ghostColor = blendColor(ghost.color, 0x44ccff, 0.5);
+      g.circle(ghost.x, ghost.y - 4, 7).fill({ color: ghostColor, alpha: a * 0.4 });
+      g.roundRect(ghost.x - 5, ghost.y - 10, 10, 14, 2).fill({ color: ghostColor, alpha: a * 0.3 });
+    }
+
+    // Active dash effects
+    if (state.dashTimer > 0) {
+      const alpha = state.dashTimer / 0.12;
+      const trailLen = 6;
+      for (let i = 1; i <= trailLen; i++) {
+        const t = i / trailLen;
+        const tx = p.x - state.dashDx * i * 10;
+        const ty = p.y - state.dashDy * i * 10;
+        const a = alpha * (1 - t) * 0.4;
+        g.circle(tx, ty, 5 - t * 2).fill({ color: 0x44ccff, alpha: a });
+      }
+      // Dash flash ring on player
+      g.circle(p.x, p.y, 12 + (1 - alpha) * 8).stroke({ color: 0x88eeff, width: 2, alpha: alpha * 0.4 });
+      g.circle(p.x, p.y, 8).fill({ color: 0x88eeff, alpha: alpha * 0.2 });
+    }
   }
 
   private _drawAbilityVFX(state: GrailGameState): void {

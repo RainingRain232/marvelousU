@@ -106,6 +106,25 @@ export const GameCombatSystem = {
     target.hp -= damage;
     _onHit?.(target.x, target.y, damage, isCrit);
 
+    // Knockback on critical hits (non-boss enemies)
+    if (isCrit && !target.def.isBoss) {
+      const kbDist = TS * 0.6;
+      const dx = target.x - p.x;
+      const dy = target.y - p.y;
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      const kbX = target.x + (dx / dist) * kbDist;
+      const kbY = target.y + (dy / dist) * kbDist;
+      const kbCol = Math.floor(kbX / TS);
+      const kbRow = Math.floor(kbY / TS);
+      if (kbCol >= 0 && kbCol < state.floor.width && kbRow >= 0 && kbRow < state.floor.height &&
+          state.floor.tiles[kbRow][kbCol] !== TileType.WALL) {
+        target.x = kbX;
+        target.y = kbY;
+      }
+      // Brief stagger on knockback
+      if (target.stunTurns <= 0) target.stunTurns = 0.3;
+    }
+
     if (target.def.isBoss) {
       checkBossPhaseTransition(state, target);
     }
@@ -146,7 +165,7 @@ export const GameCombatSystem = {
         const dx = e.x - p.x;
         const dy = e.y - p.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
-        return dist <= (range > 0 ? range * TS : TS * 2);
+        return dist <= (range > 0 ? range : TS * 2);
       });
 
       for (const t of targets) {

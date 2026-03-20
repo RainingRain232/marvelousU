@@ -78,6 +78,8 @@ export class GameGame {
   private _camOffsetX = 0;
   private _camOffsetY = 0;
   private _floorTransitionTimer = 0;
+  private _escConfirmTimer = 0;       // seconds remaining for ESC double-tap window
+  private _showingHelp = false;       // controls help overlay visible
 
   // -------------------------------------------------------------------------
   // Boot
@@ -657,6 +659,16 @@ export class GameGame {
     if (p.attackCooldown > 0) p.attackCooldown -= dt * 1000;
     if (p.abilityCooldownMs > 0) p.abilityCooldownMs -= dt * 1000;
 
+    // Stun & confusion timers
+    if (p.stunTimer > 0) {
+      p.stunTimer -= dt;
+      if (p.stunTimer < 0) p.stunTimer = 0;
+    }
+    if (p.confusionTimer > 0) {
+      p.confusionTimer -= dt;
+      if (p.confusionTimer < 0) p.confusionTimer = 0;
+    }
+
     // Decrease ability cooldown over time (represents turns passing)
     // Each second of real play counts as roughly 1 turn
     if (p.abilityCooldown > 0) {
@@ -735,9 +747,22 @@ export class GameGame {
       }
     }
 
-    // ESC to exit
+    // ESC double-tap to exit (with confirmation)
+    if (this._escConfirmTimer > 0) this._escConfirmTimer -= dt;
     if (_justPressed("Escape")) {
-      window.dispatchEvent(new Event("gameExit"));
+      if (this._escConfirmTimer > 0) {
+        // Second press within window — actually exit
+        window.dispatchEvent(new Event("gameExit"));
+      } else {
+        // First press — show warning, start confirmation window
+        this._escConfirmTimer = 2.0;
+        this._hud.showNotification("Press ESC again to quit", 0xff8844, 2);
+      }
+    }
+
+    // Toggle help overlay (H key)
+    if (_justPressed("KeyH")) {
+      this._showingHelp = !this._showingHelp;
     }
   }
 
@@ -863,6 +888,10 @@ export class GameGame {
   // -------------------------------------------------------------------------
   private _handleFloorTransition(dt: number): void {
     this._floorTransitionTimer -= dt;
+    // Allow skipping with Enter/Space
+    if (_justPressed("Enter") || _justPressed("Space")) {
+      this._floorTransitionTimer = 0;
+    }
     if (this._floorTransitionTimer <= 0) {
       this._startFloor(this._state.currentFloor + 1);
     }
@@ -1111,7 +1140,7 @@ export class GameGame {
       this._renderer.draw(state, sw, sh);
     }
 
-    this._hud.update(state, sw, sh, dt);
+    this._hud.update(state, sw, sh, dt, this._showingHelp, this._floorTransitionTimer);
   }
 
   // -------------------------------------------------------------------------
