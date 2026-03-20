@@ -226,7 +226,7 @@ export class CivRenderer {
   private _terrain(state: CivGameState, _hp: number, vl: number, vt: number, vr: number, vb: number): void {
     const g = this.terrainGfx;
     g.clear();
-    while (this.decoC.children.length > 0) this.decoC.removeChildAt(0);
+    for (const ch of this.decoC.removeChildren()) ch.destroy();
 
     for (let hy = 0; hy < state.mapHeight; hy++) {
       for (let hx = 0; hx < state.mapWidth; hx++) {
@@ -834,7 +834,7 @@ export class CivRenderer {
   // ── Ambient (floating particles, damage numbers) ─────────────────────────
 
   private _ambient(_state: CivGameState): void {
-    while (this.ambientC.children.length > 0) this.ambientC.removeChildAt(0);
+    for (const ch of this.ambientC.removeChildren()) ch.destroy();
 
     // Floating texts (damage numbers, event text)
     for (let i = this.floatingTexts.length - 1; i >= 0; i--) {
@@ -859,7 +859,7 @@ export class CivRenderer {
       if (hp >= 0 && state.visibility[hp]) { if ((state.visibility[hp][city.y]?.[city.x] ?? 0) === 0) continue; }
       let c = this.cityObjs.get(city.id);
       if (!c) { c = new Container(); this.cityC.addChild(c); this.cityObjs.set(city.id, c); }
-      c.removeChildren();
+      for (const ch of c.removeChildren()) ch.destroy();
       const { px, py } = this.hexToPixel(city.x, city.y);
       c.position.set(px, py);
       const fc = city.owner >= 0 && city.owner < CIV_FACTIONS.length ? CIV_FACTIONS[city.owner].color : 0x888888;
@@ -1020,7 +1020,7 @@ export class CivRenderer {
   // ── Units ────────────────────────────────────────────────────────────────
 
   private _units(state: CivGameState, hp: number): void {
-    this.unitC.removeChildren(); this.unitObjs.clear();
+    for (const ch of this.unitC.removeChildren()) ch.destroy(); this.unitObjs.clear();
     const tm = new Map<string, CivUnit[]>();
     for (const u of state.units) {
       if (hp >= 0 && state.visibility[hp]) { if ((state.visibility[hp][u.y]?.[u.x] ?? 0) < 2) continue; }

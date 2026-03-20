@@ -266,10 +266,40 @@ export class CivHUD {
   // update — Refresh all panels based on current game state
   // ══════════════════════════════════════════════════════════════════════════
 
+  // Dirty flag — set true when game state changes (end turn, selection, action)
+  private _hudDirty = true;
+  private _lastSelectedUnit = -1;
+  private _lastSelectedCity = -1;
+  private _lastTurn = -1;
+
+  /** Call this from CivGame whenever the game state changes (selection, end turn, action) */
+  markDirty(): void { this._hudDirty = true; }
+
   update(state: CivGameState): void {
     this.sw = viewManager.app.screen.width;
     this.sh = viewManager.app.screen.height;
     this.lastState = state;
+
+    // Notification fade runs every frame (lightweight)
+    this.updateNotification();
+
+    // End turn button position
+    this.endTurnBtn.x = this.sw - 155;
+    this.endTurnBtn.y = this.sh - 60;
+
+    // Detect if anything changed since last update
+    const selUnit = state.selectedUnitId;
+    const selCity = state.selectedCityId;
+    if (selUnit !== this._lastSelectedUnit || selCity !== this._lastSelectedCity || state.turn !== this._lastTurn) {
+      this._hudDirty = true;
+      this._lastSelectedUnit = selUnit;
+      this._lastSelectedCity = selCity;
+      this._lastTurn = state.turn;
+    }
+
+    // Only rebuild heavy panels when something changed
+    if (!this._hudDirty) return;
+    this._hudDirty = false;
 
     const human = state.players[state.humanPlayerIndex];
     if (!human) return;
@@ -308,13 +338,6 @@ export class CivHUD {
 
     // Event log
     this.updateEventLog(state);
-
-    // Notification fade
-    this.updateNotification();
-
-    // End turn button position
-    this.endTurnBtn.x = this.sw - 155;
-    this.endTurnBtn.y = this.sh - 60;
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -537,8 +560,8 @@ export class CivHUD {
   }
 
   private updateUnitPanel(_state: CivGameState, unit: CivUnit): void {
-    // Clear and rebuild each frame
-    this.unitPanel.removeChildren();
+    // Destroy old children to prevent memory leak, then rebuild
+    for (const c of this.unitPanel.removeChildren()) c.destroy();
     this.unitPanelGfx = new Graphics();
     this.unitPanel.addChild(this.unitPanelGfx);
 
@@ -687,7 +710,7 @@ export class CivHUD {
   }
 
   private updateCityPanel(state: CivGameState, city: CivCity): void {
-    this.cityPanel.removeChildren();
+    for (const c of this.cityPanel.removeChildren()) c.destroy();
     this.cityPanelGfx = new Graphics();
     this.cityPanel.addChild(this.cityPanelGfx);
 
@@ -897,7 +920,7 @@ export class CivHUD {
   // ══════════════════════════════════════════════════════════════════════════
 
   showTechPanel(state: CivGameState): void {
-    this.techPanel.removeChildren();
+    for (const c of this.techPanel.removeChildren()) c.destroy();
     this.techPanel.visible = true;
     this.techPanel.zIndex = 50;
 
@@ -1116,7 +1139,7 @@ export class CivHUD {
 
   hideTechPanel(): void {
     this.techPanel.visible = false;
-    this.techPanel.removeChildren();
+    for (const c of this.techPanel.removeChildren()) c.destroy();
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -1124,7 +1147,7 @@ export class CivHUD {
   // ══════════════════════════════════════════════════════════════════════════
 
   showBuildMenu(state: CivGameState, cityId: number): void {
-    this.buildMenu.removeChildren();
+    for (const c of this.buildMenu.removeChildren()) c.destroy();
     this.buildMenu.visible = true;
     this.buildMenu.zIndex = 50;
 
@@ -1291,7 +1314,7 @@ export class CivHUD {
 
   hideBuildMenu(): void {
     this.buildMenu.visible = false;
-    this.buildMenu.removeChildren();
+    for (const c of this.buildMenu.removeChildren()) c.destroy();
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -1299,7 +1322,7 @@ export class CivHUD {
   // ══════════════════════════════════════════════════════════════════════════
 
   showDiplomacyPanel(state: CivGameState): void {
-    this.diplomacyPanel.removeChildren();
+    for (const c of this.diplomacyPanel.removeChildren()) c.destroy();
     this.diplomacyPanel.visible = true;
     this.diplomacyPanel.zIndex = 50;
 
@@ -1471,7 +1494,7 @@ export class CivHUD {
 
   hideDiplomacyPanel(): void {
     this.diplomacyPanel.visible = false;
-    this.diplomacyPanel.removeChildren();
+    for (const c of this.diplomacyPanel.removeChildren()) c.destroy();
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -1479,7 +1502,7 @@ export class CivHUD {
   // ══════════════════════════════════════════════════════════════════════════
 
   showEventDialog(event: { id: string; name: string; description: string; choices: { label: string; chivalryChange: number; goldChange?: number; cultureChange?: number }[] }): void {
-    this.eventDialog.removeChildren();
+    for (const c of this.eventDialog.removeChildren()) c.destroy();
     this.eventDialogGfx = new Graphics();
     this.eventDialog.addChild(this.eventDialogGfx);
 
@@ -1517,7 +1540,7 @@ export class CivHUD {
 
   hideEventDialog(): void {
     this.eventDialog.visible = false;
-    this.eventDialog.removeChildren();
+    for (const c of this.eventDialog.removeChildren()) c.destroy();
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -1525,7 +1548,7 @@ export class CivHUD {
   // ══════════════════════════════════════════════════════════════════════════
 
   showHelpPanel(): void {
-    this.helpPanel.removeChildren();
+    for (const c of this.helpPanel.removeChildren()) c.destroy();
     this.helpPanel.visible = true;
     this.helpPanel.zIndex = 60;
 
@@ -1579,7 +1602,7 @@ export class CivHUD {
 
   hideHelpPanel(): void {
     this.helpPanel.visible = false;
-    this.helpPanel.removeChildren();
+    for (const c of this.helpPanel.removeChildren()) c.destroy();
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -1660,7 +1683,7 @@ export class CivHUD {
   }
 
   private updateEventLog(state: CivGameState): void {
-    this.eventLog.removeChildren();
+    for (const c of this.eventLog.removeChildren()) c.destroy();
     this.eventLogGfx = new Graphics();
     this.eventLog.addChild(this.eventLogGfx);
 
@@ -1781,7 +1804,7 @@ export class CivHUD {
   // ══════════════════════════════════════════════════════════════════════════
 
   showVictoryScreen(type: string, score: number): void {
-    this.victoryScreen.removeChildren();
+    for (const c of this.victoryScreen.removeChildren()) c.destroy();
     this.victoryScreen.visible = true;
     this.victoryScreen.zIndex = 100;
     this.victoryScreen.x = 0;

@@ -104,8 +104,10 @@ export class CaesarRenderer {
 
   async init(sw: number, sh: number): Promise<void> {
     this._app = new PIXI.Application();
-    await this._app.init({ width: sw, height: sh, backgroundColor: 0x1a1a2e, antialias: true, resolution: window.devicePixelRatio || 1, autoDensity: true });
-    document.body.appendChild(this._app.canvas as HTMLCanvasElement);
+    await this._app.init({ width: sw, height: sh, backgroundColor: 0x4a7a2c, antialias: true, resolution: window.devicePixelRatio || 1, autoDensity: true });
+    const canvas = this._app.canvas as HTMLCanvasElement;
+    canvas.style.zIndex = "1";
+    document.body.appendChild(canvas);
     const s = this._app.stage;
     s.addChild(this._terrainLayer); s.addChild(this._decorLayer); s.addChild(this._gridLayer);
     s.addChild(this._shadowLayer); s.addChild(this._buildingLayer); s.addChild(this._walkerLayer);
@@ -118,14 +120,14 @@ export class CaesarRenderer {
 
   private _setupInput(): void {
     const c = this._app!.canvas as HTMLCanvasElement;
-    c.addEventListener("wheel", (e) => { e.preventDefault(); const wx = e.clientX / this._zoom + this._cameraX; const wy = e.clientY / this._zoom + this._cameraY; this._zoom = Math.max(0.3, Math.min(3, this._zoom * (e.deltaY > 0 ? 0.9 : 1.1))); this._cameraX = wx - e.clientX / this._zoom; this._cameraY = wy - e.clientY / this._zoom; });
+    c.addEventListener("wheel", (e) => { e.preventDefault(); const wx = e.clientX / this._zoom + this._cameraX; const wy = e.clientY / this._zoom + this._cameraY; this._zoom = Math.max(0.3, Math.min(3, this._zoom * (e.deltaY > 0 ? 0.9 : 1.1))); this._cameraX = wx - e.clientX / this._zoom; this._cameraY = wy - e.clientY / this._zoom; this._clampCamera(); });
     c.addEventListener("mousedown", (e) => { if (e.button === 1 || e.button === 2 || (e.button === 0 && e.shiftKey)) { this._isDragging = true; this._dragStartX = e.clientX; this._dragStartY = e.clientY; this._camStartX = this._cameraX; this._camStartY = this._cameraY; } });
-    c.addEventListener("mousemove", (e) => { if (this._isDragging) { this._cameraX = this._camStartX - (e.clientX - this._dragStartX) / this._zoom; this._cameraY = this._camStartY - (e.clientY - this._dragStartY) / this._zoom; } });
+    c.addEventListener("mousemove", (e) => { if (this._isDragging) { this._cameraX = this._camStartX - (e.clientX - this._dragStartX) / this._zoom; this._cameraY = this._camStartY - (e.clientY - this._dragStartY) / this._zoom; this._clampCamera(); } });
     c.addEventListener("mouseup", () => { this._isDragging = false; });
     window.addEventListener("keydown", (e) => this._keys.add(e.key.toLowerCase()));
     window.addEventListener("keyup", (e) => this._keys.delete(e.key.toLowerCase()));
     const sp = 8;
-    const pan = (): void => { if (this._keys.has("a") || this._keys.has("arrowleft")) this._cameraX -= sp / this._zoom; if (this._keys.has("d") || this._keys.has("arrowright")) this._cameraX += sp / this._zoom; if (this._keys.has("w") || this._keys.has("arrowup")) this._cameraY -= sp / this._zoom; if (this._keys.has("s") || this._keys.has("arrowdown")) this._cameraY += sp / this._zoom; this._panRAF = requestAnimationFrame(pan); };
+    const pan = (): void => { if (this._keys.has("a") || this._keys.has("arrowleft")) this._cameraX -= sp / this._zoom; if (this._keys.has("d") || this._keys.has("arrowright")) this._cameraX += sp / this._zoom; if (this._keys.has("w") || this._keys.has("arrowup")) this._cameraY -= sp / this._zoom; if (this._keys.has("s") || this._keys.has("arrowdown")) this._cameraY += sp / this._zoom; this._clampCamera(); this._panRAF = requestAnimationFrame(pan); };
     this._panRAF = requestAnimationFrame(pan);
   }
 
@@ -137,7 +139,21 @@ export class CaesarRenderer {
   }
 
   screenToTile(sx: number, sy: number) { return { x: Math.floor((sx / this._zoom + this._cameraX) / CB.TILE_SIZE), y: Math.floor((sy / this._zoom + this._cameraY) / CB.TILE_SIZE) }; }
-  centerOn(tx: number, ty: number) { const sw = this._app?.screen.width ?? 800; const sh = this._app?.screen.height ?? 600; this._cameraX = tx * CB.TILE_SIZE - sw / (2 * this._zoom); this._cameraY = ty * CB.TILE_SIZE - sh / (2 * this._zoom); }
+  centerOn(tx: number, ty: number) { const sw = this._app?.screen.width ?? 800; const sh = this._app?.screen.height ?? 600; this._cameraX = tx * CB.TILE_SIZE - sw / (2 * this._zoom); this._cameraY = ty * CB.TILE_SIZE - sh / (2 * this._zoom); this._clampCamera(); }
+
+  private _clampCamera(): void {
+    const sw = this._app?.screen.width ?? 800;
+    const sh = this._app?.screen.height ?? 600;
+    const mapPxW = CB.MAP_WIDTH * CB.TILE_SIZE;
+    const mapPxH = CB.MAP_HEIGHT * CB.TILE_SIZE;
+    const viewW = sw / this._zoom;
+    const viewH = sh / this._zoom;
+    // Clamp so camera never shows beyond map edges
+    const maxX = Math.max(0, mapPxW - viewW);
+    const maxY = Math.max(0, mapPxH - viewH);
+    this._cameraX = Math.max(0, Math.min(maxX, this._cameraX));
+    this._cameraY = Math.max(0, Math.min(maxY, this._cameraY));
+  }
   markTerrainDirty() { this._terrainDirty = true; this._minimapDirty = true; }
 
   render(state: CaesarState, dt: number): void {
@@ -508,9 +524,8 @@ export class CaesarRenderer {
     }
 
     // Grid
-    gr.setStrokeStyle({ width: 0.5, color: 0x000000, alpha: 0.05 });
-    for (let y = 0; y <= map.height; y++) { gr.moveTo(0, y * ts); gr.lineTo(map.width * ts, y * ts); gr.stroke(); }
-    for (let x = 0; x <= map.width; x++) { gr.moveTo(x * ts, 0); gr.lineTo(x * ts, map.height * ts); gr.stroke(); }
+    for (let y = 0; y <= map.height; y++) { gr.moveTo(0, y * ts); gr.lineTo(map.width * ts, y * ts); gr.stroke({ width: 0.5, color: 0x000000, alpha: 0.05 }); }
+    for (let x = 0; x <= map.width; x++) { gr.moveTo(x * ts, 0); gr.lineTo(x * ts, map.height * ts); gr.stroke({ width: 0.5, color: 0x000000, alpha: 0.05 }); }
 
     this._terrainGfx = g; this._decorGfx = d; this._gridGfx = gr;
     this._terrainLayer.addChild(g); this._decorLayer.addChild(d); this._gridLayer.addChild(gr);
@@ -569,8 +584,8 @@ export class CaesarRenderer {
   // BUILDINGS
   // ==================================================================
   private _renderBuildings(state: CaesarState, dt: number): void {
-    this._buildingLayer.removeChildren();
-    this._shadowLayer.removeChildren();
+    for (const c of this._buildingLayer.removeChildren()) c.destroy();
+    for (const c of this._shadowLayer.removeChildren()) c.destroy();
     const ts = CB.TILE_SIZE;
 
     for (const b of state.buildings.values()) {
@@ -722,24 +737,22 @@ export class CaesarRenderer {
     // Rising walls
     if (p > 0.15) { g.rect(px + 3, py + ph - 2 - bH, pw - 6, bH - ph * 0.15); g.fill(0xc2a882); }
     // Scaffold poles
-    g.setStrokeStyle({ width: 1, color: 0x5d4037, alpha: 0.7 });
-    g.moveTo(px + 3, py + 2); g.lineTo(px + 3, py + ph - 2); g.stroke();
-    g.moveTo(px + pw - 3, py + 2); g.lineTo(px + pw - 3, py + ph - 2); g.stroke();
+    g.moveTo(px + 3, py + 2); g.lineTo(px + 3, py + ph - 2); g.stroke({ color: 0x5d4037, width: 1, alpha: 0.7 });
+    g.moveTo(px + pw - 3, py + 2); g.lineTo(px + pw - 3, py + ph - 2); g.stroke({ color: 0x5d4037, width: 1, alpha: 0.7 });
     // Cross braces
     const braces = Math.floor(p * 5);
     for (let i = 0; i < braces; i++) {
       const ly = py + ph - 2 - (bH / 5) * (i + 1);
-      g.moveTo(px + 3, ly); g.lineTo(px + pw - 3, ly); g.stroke();
+      g.moveTo(px + 3, ly); g.lineTo(px + pw - 3, ly); g.stroke({ color: 0x5d4037, width: 1, alpha: 0.7 });
     }
     // Diagonal warning stripes on construction site
-    g.setStrokeStyle({ width: 0.7, color: 0xffa000, alpha: 0.25 });
     const stripeGap = 6;
     for (let i = -ph; i < pw + ph; i += stripeGap) {
       const x0 = px + 2 + i, y0 = py + 2;
       const x1 = x0 - ph + 4, y1 = py + ph - 2;
       g.moveTo(Math.max(px + 2, Math.min(px + pw - 2, x0)), y0);
       g.lineTo(Math.max(px + 2, Math.min(px + pw - 2, x1)), y1);
-      g.stroke();
+      g.stroke({ color: 0xffa000, width: 0.7, alpha: 0.25 });
     }
     // Progress bar
     g.roundRect(px + 4, py + ph - 5, pw - 8, 3, 1); g.fill(0x333333);
@@ -801,9 +814,8 @@ export class CaesarRenderer {
 
     // Timber framing for tier 2+
     if (t >= 2) {
-      g.setStrokeStyle({ width: 0.8, color: 0x5d4037, alpha: 0.3 });
-      g.moveTo(px + m + 1, py + roofH + (ph - roofH) * 0.5); g.lineTo(px + pw - m - 1, py + roofH + (ph - roofH) * 0.5); g.stroke();
-      g.moveTo(px + pw * 0.5, py + roofH); g.lineTo(px + pw * 0.5, py + ph - 2); g.stroke();
+      g.moveTo(px + m + 1, py + roofH + (ph - roofH) * 0.5); g.lineTo(px + pw - m - 1, py + roofH + (ph - roofH) * 0.5); g.stroke({ width: 0.8, color: 0x5d4037, alpha: 0.3 });
+      g.moveTo(px + pw * 0.5, py + roofH); g.lineTo(px + pw * 0.5, py + ph - 2); g.stroke({ width: 0.8, color: 0x5d4037, alpha: 0.3 });
     }
 
     // Roof
@@ -851,16 +863,14 @@ export class CaesarRenderer {
     // Garden fence for tier 3+
     if (t >= 3) {
       const fy = py + ph - 1;
-      g.setStrokeStyle({ width: 0.6, color: 0x8b7355, alpha: 0.5 });
-      for (let fx = px + 1; fx < px + pw - 1; fx += 3) { g.moveTo(fx, fy); g.lineTo(fx, fy + 2); g.stroke(); }
-      g.moveTo(px + 1, fy + 1); g.lineTo(px + pw - 1, fy + 1); g.stroke();
+      for (let fx = px + 1; fx < px + pw - 1; fx += 3) { g.moveTo(fx, fy); g.lineTo(fx, fy + 2); g.stroke({ width: 0.6, color: 0x8b7355, alpha: 0.5 }); }
+      g.moveTo(px + 1, fy + 1); g.lineTo(px + pw - 1, fy + 1); g.stroke({ width: 0.6, color: 0x8b7355, alpha: 0.5 });
     }
 
     // Balcony for tier 4
     if (t >= 4) {
       g.roundRect(px + pw * 0.3, py + roofH + 1, pw * 0.4, 3, 1); g.fill(0x8b7355);
-      g.setStrokeStyle({ width: 0.5, color: 0x6a5a44 });
-      for (let bx = px + pw * 0.32; bx < px + pw * 0.68; bx += 2.5) { g.moveTo(bx, py + roofH + 1); g.lineTo(bx, py + roofH + 4); g.stroke(); }
+      for (let bx = px + pw * 0.32; bx < px + pw * 0.68; bx += 2.5) { g.moveTo(bx, py + roofH + 1); g.lineTo(bx, py + roofH + 4); g.stroke({ width: 0.5, color: 0x6a5a44 }); }
     }
 
     // Pop label
@@ -915,10 +925,9 @@ export class CaesarRenderer {
     const aw = ts * 0.6, ah = ts * 0.72;
     g.roundRect(px + (ts - aw) / 2, py + ts - ah, aw, ah, aw / 2); g.fill(0x4a3828);
     // Portcullis grid
-    g.setStrokeStyle({ width: 0.8, color: 0x555555, alpha: 0.6 });
     const gx = px + (ts - aw) / 2;
-    for (let i = 1; i < 4; i++) { g.moveTo(gx + aw * i / 4, py + ts - ah + 4); g.lineTo(gx + aw * i / 4, py + ts - 1); g.stroke(); }
-    for (let i = 1; i < 4; i++) { g.moveTo(gx + 2, py + ts - ah + ah * i / 4); g.lineTo(gx + aw - 2, py + ts - ah + ah * i / 4); g.stroke(); }
+    for (let i = 1; i < 4; i++) { g.moveTo(gx + aw * i / 4, py + ts - ah + 4); g.lineTo(gx + aw * i / 4, py + ts - 1); g.stroke({ width: 0.8, color: 0x555555, alpha: 0.6 }); }
+    for (let i = 1; i < 4; i++) { g.moveTo(gx + 2, py + ts - ah + ah * i / 4); g.lineTo(gx + aw - 2, py + ts - ah + ah * i / 4); g.stroke({ width: 0.8, color: 0x555555, alpha: 0.6 }); }
   }
 
   private _drawTower(g: PIXI.Graphics, px: number, py: number, pw: number, ph: number, ts: number, rng: () => number): void {
@@ -1473,7 +1482,7 @@ export class CaesarRenderer {
   // WALKERS — detailed humanoid with limbs
   // ==================================================================
   private _renderWalkers(state: CaesarState): void {
-    this._walkerLayer.removeChildren();
+    for (const c of this._walkerLayer.removeChildren()) c.destroy();
     const ts = CB.TILE_SIZE;
 
     for (const w of state.walkers.values()) {
@@ -1575,7 +1584,7 @@ export class CaesarRenderer {
   // FX
   // ==================================================================
   private _renderFX(state: CaesarState, dt: number): void {
-    this._fxLayer.removeChildren();
+    for (const c of this._fxLayer.removeChildren()) c.destroy();
     const g = new PIXI.Graphics();
     const ts = CB.TILE_SIZE;
     const T = this._time;
@@ -1624,63 +1633,54 @@ export class CaesarRenderer {
       g.stroke({ color: p.c, width: 0.5, alpha: (1 - t) * 0.5 });
     }
 
-    // ---- Animated wheat swaying on farm tiles ----
-    for (const b of state.buildings.values()) {
-      if (b.type !== CaesarBuildingType.FARM || !b.built) continue;
-      const bdef = CAESAR_BUILDING_DEFS[b.type];
-      const fpx = b.tileX * ts, fpy = b.tileY * ts;
-      const fpw = bdef.footprint.w * ts, fph = bdef.footprint.h * ts;
-      const rng = mulberry32(b.id * 4217);
-      // Sway wheat stalks
-      const rows = Math.floor(fph / 3.5);
-      for (let r = 2; r < rows; r++) {
-        const ry = fpy + 6 + r * 3.5;
-        for (let s = 0; s < Math.floor((fpw - 10) / 3); s++) {
-          const sx = fpx + 5 + s * 3 + rng() * 1.5;
-          const sway = Math.sin(T * 2.5 + sx * 0.15 + ry * 0.1) * 1.2;
-          const sh = 2.5 + rng() * 1.5;
-          g.moveTo(sx, ry); g.lineTo(sx + sway, ry - sh);
-          g.stroke({ color: 0x8aaa3a, width: 0.7, alpha: 0.6 });
-          // Wheat head sways
-          g.ellipse(sx + sway, ry - sh - 0.5, 0.7, 1.1);
-          g.fill({ color: 0xdde040, alpha: 0.7 });
+    // ---- Animated wheat swaying on farm tiles (viewport-culled) ----
+    {
+      const fxVl = this._cameraX - ts;
+      const fxVt = this._cameraY - ts;
+      const fxSw = this._app?.screen.width ?? 800;
+      const fxSh = this._app?.screen.height ?? 600;
+      const fxVr = this._cameraX + fxSw / this._zoom + ts;
+      const fxVb = this._cameraY + fxSh / this._zoom + ts;
+      for (const b of state.buildings.values()) {
+        if (b.type !== CaesarBuildingType.FARM || !b.built) continue;
+        const bdef = CAESAR_BUILDING_DEFS[b.type];
+        const fpx = b.tileX * ts, fpy = b.tileY * ts;
+        const fpw = bdef.footprint.w * ts, fph = bdef.footprint.h * ts;
+        // Skip farms outside viewport
+        if (fpx + fpw < fxVl || fpx > fxVr || fpy + fph < fxVt || fpy > fxVb) continue;
+        const rng = mulberry32(b.id * 4217);
+        const rows = Math.floor(fph / 3.5);
+        for (let r = 2; r < rows; r++) {
+          const ry = fpy + 6 + r * 3.5;
+          for (let s = 0; s < Math.floor((fpw - 10) / 3); s++) {
+            const sx = fpx + 5 + s * 3 + rng() * 1.5;
+            const sway = Math.sin(T * 2.5 + sx * 0.15 + ry * 0.1) * 1.2;
+            const shh = 2.5 + rng() * 1.5;
+            g.moveTo(sx, ry); g.lineTo(sx + sway, ry - shh);
+            g.stroke({ color: 0x8aaa3a, width: 0.7, alpha: 0.6 });
+            g.ellipse(sx + sway, ry - shh - 0.5, 0.7, 1.1);
+            g.fill({ color: 0xdde040, alpha: 0.7 });
+          }
         }
       }
     }
 
-    // ---- Water shimmer with depth gradient ----
+    // ---- Water shimmer — only animate a few visible water tiles, not entire map ----
     const map = state.map;
-    for (let y = 0; y < map.height; y++) for (let x = 0; x < map.width; x++) {
+    const vl = Math.max(0, Math.floor(this._cameraX / ts) - 1);
+    const vt2 = Math.max(0, Math.floor(this._cameraY / ts) - 1);
+    const sw2 = this._app?.screen.width ?? 800;
+    const sh2 = this._app?.screen.height ?? 600;
+    const vr = Math.min(map.width, Math.ceil((this._cameraX + sw2 / this._zoom) / ts) + 1);
+    const vb = Math.min(map.height, Math.ceil((this._cameraY + sh2 / this._zoom) / ts) + 1);
+    for (let y = vt2; y < vb; y++) for (let x = vl; x < vr; x++) {
       const tile = map.tiles[y * map.width + x];
-      if (tile.terrain !== "water") continue;
+      if (!tile || tile.terrain !== "water") continue;
       const px = x * ts, py = y * ts;
-
-      // Depth: water tiles not near shore are darker
-      let nearShore = false;
-      for (const [ddx, ddy] of [[-1,0],[1,0],[0,-1],[0,1]]) {
-        const nt = tileAt(map, x + ddx, y + ddy);
-        if (nt && nt.terrain !== "water") { nearShore = true; break; }
-      }
-      if (!nearShore) {
-        g.rect(px, py, ts, ts);
-        g.fill({ color: 0x1a4488, alpha: 0.12 }); // deeper water darker
-      }
-
-      // Multiple wave bands
       const phase1 = Math.sin(T * 2.5 + x * 0.4 + y * 0.3);
-      const phase2 = Math.sin(T * 1.8 + x * 0.6 - y * 0.4);
-      const phase3 = Math.sin(T * 3.2 - x * 0.3 + y * 0.5);
       if (phase1 > 0.5) {
         g.rect(px + 2, py + ts * 0.2 + phase1 * ts * 0.2, ts - 4, 1.2);
         g.fill({ color: WATER_HI, alpha: (phase1 - 0.5) * 0.45 });
-      }
-      if (phase2 > 0.6) {
-        g.rect(px + 4, py + ts * 0.5 + phase2 * ts * 0.15, ts - 8, 0.8);
-        g.fill({ color: WATER_HI, alpha: (phase2 - 0.6) * 0.3 });
-      }
-      if (phase3 > 0.65) {
-        g.rect(px + 3, py + ts * 0.7 + phase3 * ts * 0.1, ts - 6, 0.6);
-        g.fill({ color: 0x88ccff, alpha: (phase3 - 0.65) * 0.25 });
       }
     }
 
@@ -1739,23 +1739,7 @@ export class CaesarRenderer {
       }
     }
 
-    // ---- Ambient light: terrain edge shadows (AO between different terrain types) ----
-    for (let y = 0; y < map.height; y++) for (let x = 0; x < map.width; x++) {
-      const tile = map.tiles[y * map.width + x];
-      if (tile.terrain === "water") continue;
-      const px = x * ts, py = y * ts;
-      // Check if neighbor to the right or below is different elevation
-      const tR = tileAt(map, x + 1, y);
-      const tB = tileAt(map, x, y + 1);
-      if (tR && Math.abs(tR.elevation - tile.elevation) > 0.15) {
-        g.rect(px + ts - 1, py, 1, ts);
-        g.fill({ color: tR.elevation > tile.elevation ? 0x000000 : 0xffffff, alpha: 0.06 });
-      }
-      if (tB && Math.abs(tB.elevation - tile.elevation) > 0.15) {
-        g.rect(px, py + ts - 1, ts, 1);
-        g.fill({ color: tB.elevation > tile.elevation ? 0x000000 : 0xffffff, alpha: 0.06 });
-      }
-    }
+    // AO terrain edge shadows moved to _renderTerrain (static, only needs redraw on terrain change)
 
     this._fxLayer.addChild(g);
   }
@@ -1787,8 +1771,20 @@ export class CaesarRenderer {
   // ==================================================================
   // MINIMAP
   // ==================================================================
+  private _minimapThrottle = 0;
   private _renderMinimap(state: CaesarState): void {
     if (!this._minimapCanvas) return;
+    // Only redraw minimap every 10 frames to avoid per-frame full-map iteration
+    this._minimapThrottle++;
+    if (this._minimapThrottle % 10 !== 0 && !this._terrainDirty) {
+      // Still draw viewport rect cheaply
+      const ctx2 = this._minimapCanvas.getContext("2d"); if (!ctx2) return;
+      const sw3 = this._app?.screen.width ?? 800, sh3 = this._app?.screen.height ?? 600;
+      const sx3 = this._minimapCanvas.width / state.map.width, sy3 = this._minimapCanvas.height / state.map.height;
+      ctx2.strokeStyle = "#ffdd44"; ctx2.lineWidth = 1.5;
+      ctx2.strokeRect((this._cameraX / CB.TILE_SIZE) * sx3, (this._cameraY / CB.TILE_SIZE) * sy3, (sw3 / (CB.TILE_SIZE * this._zoom)) * sx3, (sh3 / (CB.TILE_SIZE * this._zoom)) * sy3);
+      return;
+    }
     const ctx = this._minimapCanvas.getContext("2d"); if (!ctx) return;
     const map = state.map, mw = this._minimapCanvas.width, mh = this._minimapCanvas.height;
     const sx = mw / map.width, sy = mh / map.height;

@@ -1579,6 +1579,7 @@ export class CivGame {
 
   private _refresh(): void {
     this.renderer.markDirty();
+    this.hud.markDirty();
   }
 
   private _exit(): void {

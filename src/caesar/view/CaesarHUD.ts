@@ -826,8 +826,16 @@ export class CaesarHUD {
     panel.style.display = "block";
     const c = state.activeCaravan;
 
+    // Only rebuild DOM when caravan first appears (timer near max) or panel is empty
+    // Update only the timer text each frame to avoid destroying click handlers
+    const timerSpan = panel.querySelector("#caesar-caravan-timer") as HTMLElement | null;
+    if (timerSpan) {
+      timerSpan.textContent = `(${Math.ceil(c.timer)}s remaining)`;
+      return;
+    }
+
     let html = `<div style="color:#ffd700;font-size:14px;font-weight:bold;margin-bottom:6px;">
-      Merchant Caravan <span style="color:#aa9977;font-size:11px">(${Math.ceil(c.timer)}s remaining)</span>
+      Merchant Caravan <span id="caesar-caravan-timer" style="color:#aa9977;font-size:11px">(${Math.ceil(c.timer)}s remaining)</span>
     </div>`;
 
     if (c.selling.length > 0) {
@@ -955,10 +963,14 @@ export class CaesarHUD {
 
     if (!state.gameOver) {
       this._gameOverOverlay.style.display = "none";
+      this._gameOverOverlay.dataset.built = "";
       return;
     }
 
     this._gameOverOverlay.style.display = "flex";
+    // Only rebuild if content changed (avoid resetting innerHTML every frame)
+    if (this._gameOverOverlay.dataset.built === "1") return;
+    this._gameOverOverlay.dataset.built = "1";
     const date = getGameDateString(state);
     this._gameOverOverlay.innerHTML = `
       <div style="background:#2a1f14; border:2px solid ${state.victory ? '#4caf50' : '#f44336'};
@@ -977,12 +989,13 @@ export class CaesarHUD {
           Peace: ${Math.floor(state.ratings.peace)} | Favor: ${Math.floor(state.ratings.favor)}<br>
           Raids defeated: ${state.raidsDefeated} | Tributes paid: ${state.tributesPaid}
         </p>
-        <button onclick="window.dispatchEvent(new Event('caesarExit'))" style="
-          padding:10px 28px; font-size:16px; background:#8b6914; color:#fff;
-          border:none; border-radius:4px; cursor:pointer; margin-top:16px;
-        ">Return to Menu</button>
       </div>
     `;
+    const btn = document.createElement("button");
+    btn.textContent = "Return to Menu";
+    btn.style.cssText = "padding:10px 28px; font-size:16px; background:#8b6914; color:#fff; border:none; border-radius:4px; cursor:pointer; margin-top:16px;";
+    btn.addEventListener("click", () => window.dispatchEvent(new Event("caesarExit")));
+    this._gameOverOverlay.querySelector("div")!.appendChild(btn);
   }
 
   private _updateStatsOverlay(state: CaesarState): void {
