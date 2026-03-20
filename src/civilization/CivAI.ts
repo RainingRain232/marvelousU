@@ -127,6 +127,9 @@ function closestEnemyCity(
 
 export class CivAI {
 
+  // Cached per-turn threat evaluation to avoid O(n^3) per-unit scanning
+  private static _cachedThreatenedCity: CivCity | null = null;
+
   // =========================================================================
   // Public entry point — called once per AI player per turn
   // =========================================================================
@@ -404,6 +407,48 @@ export class CivAI {
   private static _manageUnits(
     state: CivGameState, player: CivPlayer, rng: () => number,
   ): void {
+    // Compute threatened cities ONCE per turn (not per unit)
+    CivAI._cachedThreatenedCity = null;
+    let worstThreatScore = -Infinity;
+    for (const cid of player.cityIds) {
+      const city = getCity(state, cid);
+      if (!city) continue;
+      const tile = state.tiles[city.y]?.[city.x];
+      const defenders = tile ? tile.unitIds.filter(uid => {
+        const u = getUnit(state, uid);
+        return u && u.owner === player.index;
+      }).length : 0;
+      if (defenders >= 2) continue;
+      // Count threats within 3 tiles of this city
+      let threats = 0;
+      const neighbors = getNeighbors(city.x, city.y, state.mapWidth, state.mapHeight);
+      for (const nb of neighbors) {
+        const nbTile = state.tiles[nb.y]?.[nb.x];
+        if (!nbTile) continue;
+        for (const uid of nbTile.unitIds) {
+          const u = getUnit(state, uid);
+          if (u && u.owner !== player.index && isAtWar(state, player.index, u.owner)) threats++;
+        }
+      }
+      // Also check 2-ring and 3-ring with simpler approach
+      for (let dy = -3; dy <= 3; dy++) {
+        for (let dx = -3; dx <= 3; dx++) {
+          const tx = city.x + dx, ty = city.y + dy;
+          if (tx < 0 || ty < 0 || tx >= state.mapWidth || ty >= state.mapHeight) continue;
+          if (hexDistance(city.x, city.y, tx, ty) > 3 || hexDistance(city.x, city.y, tx, ty) <= 1) continue;
+          const t = state.tiles[ty][tx];
+          for (const uid of t.unitIds) {
+            const u = getUnit(state, uid);
+            if (u && u.owner !== player.index && isAtWar(state, player.index, u.owner)) threats++;
+          }
+        }
+      }
+      if (threats > 0) {
+        const score = threats * 3 - defenders;
+        if (score > worstThreatScore) { worstThreatScore = score; CivAI._cachedThreatenedCity = city; }
+      }
+    }
+
     // Copy the id list since we may modify it during iteration (e.g. founding city removes settler)
     const unitIds = [...player.unitIds];
 
@@ -420,7 +465,7 @@ export class CivAI {
       } else if (def.unitClass === "scout") {
         unit.autoExplore = true;
         autoExploreUnit(state, unit);
-        CivAI._handleScout(state, player, unit, rng);
+        // Don't also call _handleScout — autoExplore already moves the unit
       } else if (def.unitClass === "worker") {
         // Workers: just move toward unimproved tiles near owned cities (simplified)
         CivAI._handleWorker(state, player, unit, rng);
@@ -500,45 +545,6 @@ export class CivAI {
     if (state.tiles[y][x].cityId > 0) return false;
 
     return true;
-  }
-
-  // --- Scout logic ---
-
-  private static _handleScout(
-    state: CivGameState, player: CivPlayer, unit: CivUnit, rng: () => number,
-  ): void {
-    const visibility = state.visibility[player.index];
-    const reachable = getReachableTiles(state, unit);
-    if (reachable.length === 0) return;
-
-    // Prefer tiles that reveal unexplored areas
-    let bestTile: { x: number; y: number } | null = null;
-    let bestUnexplored = -1;
-
-    for (const tile of reachable) {
-      // Count unexplored neighbors around this tile
-      const neighbors = getNeighbors(tile.x, tile.y, state.mapWidth, state.mapHeight);
-      let unexplored = 0;
-      for (const nb of neighbors) {
-        if (visibility && visibility[nb.y] && visibility[nb.y][nb.x] === 0) {
-          unexplored++;
-        }
-      }
-      // Add a bit of distance preference to spread out exploration
-      unexplored += rng() * 0.5;
-
-      if (unexplored > bestUnexplored) {
-        bestUnexplored = unexplored;
-        bestTile = tile;
-      }
-    }
-
-    if (bestTile && bestUnexplored > 0) {
-      moveUnitTo(state, unit.id, bestTile.x, bestTile.y);
-    } else {
-      // Nothing unexplored nearby — wander toward map edges
-      CivAI._moveRandomly(state, unit, rng);
-    }
   }
 
   // --- Worker logic — build improvements on owned tiles ---
@@ -722,37 +728,11 @@ export class CivAI {
       }
     }
 
-    // 1b. Defend threatened own cities — redirect if a city has enemies within 3 tiles and < 2 defenders
-    let threatenedCity: CivCity | null = null;
-    let worstThreatScore = -Infinity;
-    for (const cid of player.cityIds) {
-      const city = getCity(state, cid);
-      if (!city) continue;
-      const threats = state.units.filter(u =>
-        u.owner !== player.index &&
-        isAtWar(state, player.index, u.owner) &&
-        hexDistance(u.x, u.y, city.x, city.y) <= 3
-      );
-      if (threats.length === 0) continue;
-      const tile = state.tiles[city.y]?.[city.x];
-      const defenders = tile ? tile.unitIds.filter(uid => {
-        const u = getUnit(state, uid);
-        return u && u.owner === player.index;
-      }).length : 0;
-      if (defenders < 2) {
-        const threatScore = threats.length * 3 - defenders;
-        if (threatScore > worstThreatScore) {
-          worstThreatScore = threatScore;
-          threatenedCity = city;
-        }
-      }
-    }
-
-    if (threatenedCity) {
-      const distToThreat = hexDistance(unit.x, unit.y, threatenedCity.x, threatenedCity.y);
-      // Only redirect units that are reasonably close (within 8 tiles)
+    // 1b. Defend threatened own cities — use cached threat data
+    if (CivAI._cachedThreatenedCity) {
+      const distToThreat = hexDistance(unit.x, unit.y, CivAI._cachedThreatenedCity.x, CivAI._cachedThreatenedCity.y);
       if (distToThreat <= 8) {
-        CivAI._moveToward(state, unit, threatenedCity.x, threatenedCity.y);
+        CivAI._moveToward(state, unit, CivAI._cachedThreatenedCity.x, CivAI._cachedThreatenedCity.y);
         return;
       }
     }

@@ -894,22 +894,32 @@ export function updateFogOfWar(state: CivGameState, playerIndex: number): void {
 
 // ── Pathfinding ────────────────────────────────────────────────────────────
 
-export function findPath(state: CivGameState, unit: CivUnit, endX: number, endY: number): { x: number; y: number }[] | null {
+export function findPath(state: CivGameState, unit: CivUnit, endX: number, endY: number, maxIterations = 500): { x: number; y: number }[] | null {
   if (unit.x === endX && unit.y === endY) return [];
+  // Quick check: if destination is impassable, bail immediately
+  const destTerrain = TERRAIN_TYPES[state.tiles[endY]?.[endX]?.terrain ?? "ocean"];
+  if (!destTerrain || !destTerrain.passable) return null;
   const key = (x: number, y: number) => `${x},${y}`;
+  // Simple binary-heap-like insertion sort for the open list
   const open: { x: number; y: number; g: number; f: number }[] = [{ x: unit.x, y: unit.y, g: 0, f: hexDistance(unit.x, unit.y, endX, endY) }];
   const cameFrom = new Map<string, { x: number; y: number }>();
   const gScore = new Map<string, number>();
   gScore.set(key(unit.x, unit.y), 0);
+  let iterations = 0;
   while (open.length > 0) {
-    open.sort((a, b) => a.f - b.f);
-    const current = open.shift()!;
+    if (++iterations > maxIterations) return null; // prevent freeze on large/unreachable paths
+    // Find minimum f-score without sorting entire array
+    let minIdx = 0;
+    for (let i = 1; i < open.length; i++) { if (open[i].f < open[minIdx].f) minIdx = i; }
+    const current = open[minIdx];
+    open[minIdx] = open[open.length - 1]; open.pop();
     if (current.x === endX && current.y === endY) {
       const path: { x: number; y: number }[] = [];
       let k = key(endX, endY);
       while (cameFrom.has(k)) { const p = k.split(",").map(Number); path.unshift({ x: p[0], y: p[1] }); const prev = cameFrom.get(k)!; k = key(prev.x, prev.y); }
       return path;
     }
+    const ck = key(current.x, current.y);
     for (const n of getNeighbors(current.x, current.y, state.mapWidth, state.mapHeight)) {
       const terrain = TERRAIN_TYPES[state.tiles[n.y]?.[n.x]?.terrain ?? "ocean"];
       if (!terrain || !terrain.passable) continue;
@@ -917,11 +927,11 @@ export function findPath(state: CivGameState, unit: CivUnit, endX: number, endY:
       const tile = state.tiles[n.y][n.x];
       const hasEnemy = tile.unitIds.some(uid => { const u = getUnit(state, uid); return u && u.owner !== unit.owner; });
       if (hasEnemy && !(n.x === endX && n.y === endY)) continue;
-      const tentG = (gScore.get(key(current.x, current.y)) ?? Infinity) + cost;
+      const tentG = (gScore.get(ck) ?? Infinity) + cost;
       const nk = key(n.x, n.y);
       if (tentG < (gScore.get(nk) ?? Infinity)) {
         cameFrom.set(nk, { x: current.x, y: current.y }); gScore.set(nk, tentG);
-        if (!open.some(o => o.x === n.x && o.y === n.y)) open.push({ x: n.x, y: n.y, g: tentG, f: tentG + hexDistance(n.x, n.y, endX, endY) });
+        open.push({ x: n.x, y: n.y, g: tentG, f: tentG + hexDistance(n.x, n.y, endX, endY) });
       }
     }
   }
@@ -1052,34 +1062,26 @@ export function triggerGoldenAge(state: CivGameState, playerIndex: number, turns
 
 export function autoExploreUnit(state: CivGameState, unit: CivUnit): void {
   if (unit.movement <= 0) return;
-  // Find the nearest unexplored tile visible from our position
   const vis = state.visibility[unit.owner];
   if (!vis) return;
+  // Simple approach: check reachable tiles and pick the one revealing the most unexplored
+  const reachable = getReachableTiles(state, unit);
+  if (reachable.length === 0) return;
   let bestTile: { x: number; y: number } | null = null;
-  let bestDist = 999;
-  // Search in expanding rings
-  for (let r = 1; r <= 8; r++) {
-    for (let dy = -r; dy <= r; dy++) {
-      for (let dx = -r; dx <= r; dx++) {
-        const tx = unit.x + dx, ty = unit.y + dy;
-        if (tx < 0 || tx >= state.mapWidth || ty < 0 || ty >= state.mapHeight) continue;
-        if (vis[ty][tx] !== 0) continue; // already explored
-        const terrain = TERRAIN_TYPES[state.tiles[ty][tx].terrain];
-        if (!terrain?.passable) continue;
-        const d = hexDistance(unit.x, unit.y, tx, ty);
-        if (d < bestDist) { bestDist = d; bestTile = { x: tx, y: ty }; }
-      }
+  let bestScore = -1;
+  for (const tile of reachable) {
+    let score = 0;
+    for (const nb of getNeighbors(tile.x, tile.y, state.mapWidth, state.mapHeight)) {
+      if (vis[nb.y]?.[nb.x] === 0) score++;
     }
-    if (bestTile) break;
+    if (score > bestScore) { bestScore = score; bestTile = tile; }
   }
-  if (!bestTile) return;
-  const target = bestTile!;
-  const path = findPath(state, unit, target.x, target.y);
-  if (path && path.length > 0) {
-    for (const step of path) {
-      if (unit.movement <= 0) break;
-      moveUnitTo(state, unit.id, step.x, step.y);
-    }
+  if (bestTile && bestScore > 0) {
+    moveUnitTo(state, unit.id, bestTile.x, bestTile.y);
+  } else if (reachable.length > 0) {
+    // Nothing unexplored nearby, move toward map edge
+    const target = reachable[Math.floor(Math.random() * reachable.length)];
+    moveUnitTo(state, unit.id, target.x, target.y);
   }
 }
 
@@ -1221,7 +1223,8 @@ export function processEndTurn(state: CivGameState, playerIndex: number): void {
       return partner && !isAtWar(state, playerIndex, partner.owner);
     });
   }
-  updateFogOfWar(state, playerIndex);
+  // Only update fog for human player (AI doesn't need fog rendering; called once in _endTurn)
+  if (state.players[playerIndex].isHuman) updateFogOfWar(state, playerIndex);
   player.score = player.cityIds.length * 100 + player.techs.length * 20 + player.wonders.length * 150
     + player.unitIds.length * 5 + Math.floor(player.gold) + player.chivalry * 2 + player.heroes.length * 50;
   if (player.cityIds.length === 0 && !player.unitIds.some(uid => { const u = getUnit(state, uid); return u && CIV_UNIT_DEFS[u.type]?.canFoundCity; })) {
@@ -1339,12 +1342,18 @@ function moveBarbarians(state: CivGameState): void {
       }
     }
 
-    // Move toward target
-    const path = findPath(state, unit, bestTarget.x, bestTarget.y);
-    if (path && path.length > 0) {
-      const step = path[0];
-      moveUnitTo(state, unit.id, step.x, step.y);
+    // Move toward target using simple neighbor stepping (no expensive pathfinding)
+    const neighbors2 = getNeighbors(unit.x, unit.y, state.mapWidth, state.mapHeight);
+    let bestStep: { x: number; y: number } | null = null;
+    let bestStepDist = hexDistance(unit.x, unit.y, bestTarget.x, bestTarget.y);
+    for (const nb of neighbors2) {
+      const t = TERRAIN_TYPES[state.tiles[nb.y]?.[nb.x]?.terrain ?? ""];
+      if (!t?.passable) continue;
+      if (state.tiles[nb.y][nb.x].unitIds.length > 0) continue;
+      const d = hexDistance(nb.x, nb.y, bestTarget.x, bestTarget.y);
+      if (d < bestStepDist) { bestStepDist = d; bestStep = nb; }
     }
+    if (bestStep) moveUnitTo(state, unit.id, bestStep.x, bestStep.y);
   }
 }
 
@@ -1402,7 +1411,7 @@ export function advanceTurn(state: CivGameState): void {
   // Move barbarian units toward nearest non-barbarian unit or city
   moveBarbarians(state);
   checkMordredRebellion(state);
-  updateFogOfWar(state, state.humanPlayerIndex);
+  // Fog of war update is handled by the caller (_endTurn in CivGame.ts)
   const vic = checkVictory(state);
   if (vic) { state.victoryType = vic.type; state.phase = vic.winner === state.humanPlayerIndex ? "victory" : "defeat"; }
 }
