@@ -927,214 +927,386 @@ export class CivHUD {
     const human = state.players[state.humanPlayerIndex];
     if (!human) return;
 
-    const pw = 700;
-    const ph = 500;
+    // Full-screen tech panel for proper tree visualization
+    const pw = Math.min(this.sw - 40, 960);
+    const ph = Math.min(this.sh - 40, 640);
     const px = (this.sw - pw) / 2;
     const py = (this.sh - ph) / 2;
     this.techPanel.x = px;
     this.techPanel.y = py;
 
-    // Backdrop
+    // Dim backdrop
     const backdrop = new Graphics();
     backdrop.rect(-px, -py, this.sw, this.sh);
-    backdrop.fill({ color: 0x000000, alpha: 0.5 });
+    backdrop.fill({ color: 0x000000, alpha: 0.6 });
     backdrop.eventMode = "static";
     this.techPanel.addChild(backdrop);
 
-    // Panel background
+    // Main panel with richer styling
     const bg = new Graphics();
+    // Outer glow
+    bg.roundRect(-4, -4, pw + 8, ph + 8, 12);
+    bg.fill({ color: 0x000000, alpha: 0.3 });
     drawPanel(bg, 0, 0, pw, ph);
+    // Subtle parchment texture — horizontal grain lines
+    for (let gy = 10; gy < ph - 10; gy += 7) {
+      bg.moveTo(8, gy);
+      bg.lineTo(pw - 8, gy);
+      bg.stroke({ color: 0x3A2F24, alpha: 0.08, width: 0.5 });
+    }
     this.techPanel.addChild(bg);
 
-    // Title
-    const title = new Text("Lore & Legend", STYLE_TITLE);
+    // ── Title banner ──
+    const bannerG = new Graphics();
+    bannerG.roundRect(pw / 2 - 160, 6, 320, 32, 5);
+    bannerG.fill({ color: 0x1A150F, alpha: 0.7 });
+    bannerG.roundRect(pw / 2 - 160, 6, 320, 32, 5);
+    bannerG.stroke({ color: ACCENT, alpha: 0.6, width: 1.5 });
+    // Banner ribbon tails
+    bannerG.moveTo(pw / 2 - 160, 22); bannerG.lineTo(pw / 2 - 175, 14); bannerG.lineTo(pw / 2 - 160, 28);
+    bannerG.fill({ color: 0x1A150F, alpha: 0.5 });
+    bannerG.moveTo(pw / 2 + 160, 22); bannerG.lineTo(pw / 2 + 175, 14); bannerG.lineTo(pw / 2 + 160, 28);
+    bannerG.fill({ color: 0x1A150F, alpha: 0.5 });
+    this.techPanel.addChild(bannerG);
+
+    const title = new Text("⚜ Lore & Legend ⚜", makeStyle(16, ACCENT, true));
     title.anchor.set(0.5, 0);
     title.x = pw / 2;
-    title.y = 10;
+    title.y = 11;
     this.techPanel.addChild(title);
 
-    // Current research + progress
+    // ── Current research bar ──
+    const resBarY = 44;
     if (human.currentTech) {
       const techDef = CIV_TECH_TREE[human.currentTech];
       if (techDef) {
-        const resLabel = new Text(
-          `Researching: ${techDef.name}`,
-          makeStyle(12, ACCENT, true)
-        );
-        resLabel.x = 15;
-        resLabel.y = 35;
-        this.techPanel.addChild(resLabel);
+        const resG = new Graphics();
+        resG.roundRect(12, resBarY, pw - 24, 22, 4);
+        resG.fill({ color: 0x1A150F, alpha: 0.5 });
+        resG.roundRect(12, resBarY, pw - 24, 22, 4);
+        resG.stroke({ color: 0x4A6688, alpha: 0.5, width: 1 });
+        this.techPanel.addChild(resG);
 
         const resFill = techDef.cost > 0 ? human.researchAccum / techDef.cost : 0;
-        drawBar(bg, 15, 52, 300, 10, resFill, 0x6688CC);
+        const fillW = Math.max(0, Math.min(1, resFill)) * (pw - 28);
+        if (fillW > 0) {
+          resG.roundRect(14, resBarY + 2, fillW, 18, 3);
+          resG.fill({ color: 0x4477AA, alpha: 0.7 });
+          resG.roundRect(14, resBarY + 2, fillW, 9, 3);
+          resG.fill({ color: 0x88BBDD, alpha: 0.15 });
+        }
 
-        const resPct = new Text(
-          `${Math.floor(human.researchAccum)}/${techDef.cost}`,
-          makeStyle(10, TEXT_COLOR)
+        const resLabel = new Text(
+          `📜 Researching: ${techDef.name}  (${Math.floor(human.researchAccum)}/${techDef.cost})  — ${human.researchPerTurn}/turn`,
+          makeStyle(10, 0xCCDDFF, true)
         );
-        resPct.x = 320;
-        resPct.y = 49;
-        this.techPanel.addChild(resPct);
+        resLabel.x = 20;
+        resLabel.y = resBarY + 4;
+        this.techPanel.addChild(resLabel);
       }
     } else {
-      const noRes = new Text("No research selected", makeStyle(12, 0xCC8833));
-      noRes.x = 15;
-      noRes.y = 35;
+      const noRes = new Text("⚠ No research selected — click an available tech below", makeStyle(11, 0xDD9944));
+      noRes.x = 20;
+      noRes.y = resBarY + 4;
       this.techPanel.addChild(noRes);
     }
 
-    // Column headers
-    const branches: { key: string; label: string }[] = [
-      { key: "chivalry", label: "Chivalry" },
-      { key: "sorcery", label: "Sorcery" },
-      { key: "statecraft", label: "Statecraft" },
-      { key: "faith", label: "Faith" },
-    ];
-
-    const colW = (pw - 20) / 4;
-    const startY = 72;
-    const headerHeight = startY + 22;
-    const techBoxPositions = new Map<string, {x: number, y: number, w: number, h: number}>();
-    const allTechs: TechDef[] = [];
-
-    // Era legend
-    const eraLabels = ["Era I", "Era II", "Era III", "Era IV"];
-    const eraLColors = [0x66AA44, 0x4488CC, 0xAA44CC, 0xFFAA22];
+    // ── Era labels across top ──
+    const eraNames = ["I — Dark Ages", "II — High Middle Ages", "III — Age of Legends", "IV — Twilight"];
+    const eraColors = [0x66AA44, 0x4488CC, 0xAA44CC, 0xFFAA22];
+    const treeTop = 72;
+    const eraW = (pw - 24) / 4;
     for (let ei = 0; ei < 4; ei++) {
-      const ex = pw - 200 + ei * 48;
-      bg.rect(ex, 12, 12, 12);
-      bg.fill({ color: eraLColors[ei], alpha: 0.7 });
-      const el = new Text(eraLabels[ei], makeStyle(9, 0xAA9988));
-      el.x = ex + 15; el.y = 13;
-      this.techPanel.addChild(el);
+      const ex = 12 + ei * eraW;
+      bg.rect(ex, treeTop, eraW, 18);
+      bg.fill({ color: eraColors[ei], alpha: 0.12 });
+      bg.moveTo(ex, treeTop); bg.lineTo(ex, treeTop + 18);
+      bg.stroke({ color: eraColors[ei], alpha: 0.25, width: 1 });
+      const eLabel = new Text(eraNames[ei], makeStyle(9, eraColors[ei], true));
+      eLabel.x = ex + 6;
+      eLabel.y = treeTop + 2;
+      this.techPanel.addChild(eLabel);
     }
 
-    for (let ci = 0; ci < branches.length; ci++) {
-      const bx = 10 + ci * colW;
-      const branch = branches[ci];
+    // ── Branch labels + icons on left ──
+    const branches = [
+      { key: "chivalry",   label: "⚔ Chivalry",   color: 0xDD8833 },
+      { key: "sorcery",    label: "✦ Sorcery",     color: 0x8855DD },
+      { key: "statecraft", label: "🏰 Statecraft", color: 0x5588BB },
+      { key: "faith",      label: "✝ Faith",       color: 0xDDCC44 },
+    ];
 
-      // Column header
-      const colHeader = new Text(branch.label, makeStyle(13, ACCENT, true));
-      colHeader.anchor.set(0.5, 0);
-      colHeader.x = bx + colW / 2;
-      colHeader.y = startY;
-      this.techPanel.addChild(colHeader);
+    const treeLeft = 12;
+    const treeW = pw - 24;
+    const rowH = (ph - treeTop - 90) / 4; // 4 rows for 4 branches
+    const nodeW = 120;
+    const nodeH = 36;
+    const techBoxPositions = new Map<string, { x: number; y: number; w: number; h: number }>();
+    const allTechs: TechDef[] = [];
 
-      // Separator line
-      bg.moveTo(bx + colW, startY);
-      bg.lineTo(bx + colW, ph - 10);
-      bg.stroke({ color: PANEL_BORDER, alpha: 0.4, width: 1 });
+    // ── Draw tech nodes per branch (horizontal layout: eras left→right) ──
+    for (let bi = 0; bi < branches.length; bi++) {
+      const branch = branches[bi];
+      const rowY = treeTop + 24 + bi * rowH;
 
-      // Collect techs for this branch
+      // Branch label
+      const brLabel = new Text(branch.label, makeStyle(11, branch.color, true));
+      brLabel.x = 6;
+      brLabel.y = rowY + rowH / 2 - 7;
+      brLabel.anchor.set(0, 0.5);
+      this.techPanel.addChild(brLabel);
+
+      // Branch background stripe
+      bg.rect(treeLeft, rowY, treeW, rowH);
+      bg.fill({ color: branch.color, alpha: 0.03 });
+      // Bottom separator
+      bg.moveTo(treeLeft, rowY + rowH);
+      bg.lineTo(treeLeft + treeW, rowY + rowH);
+      bg.stroke({ color: PANEL_BORDER, alpha: 0.15, width: 0.5 });
+
+      // Group techs by era
       const branchTechs = Object.values(CIV_TECH_TREE).filter(
         (t: TechDef) => t.branch === branch.key
       );
+      // Sort by era then cost
+      branchTechs.sort((a, b) => (a.era ?? 1) - (b.era ?? 1) || a.cost - b.cost);
 
-      let ty = startY + 22 - this.techScrollOffset * 25;
       for (const tech of branchTechs) {
         allTechs.push(tech);
-        if (ty < headerHeight) { ty += 32; continue; }
-        if (ty > ph - 60) { ty += 32; continue; }
+      }
 
-        const isResearched = human.techs.includes(tech.id);
-        const isAvailable = !isResearched && tech.prerequisites.every(
-          (p: string) => human.techs.includes(p)
-        );
-        const isCurrent = human.currentTech === tech.id;
+      // Place nodes — distribute within each era column
+      const eraGroups: TechDef[][] = [[], [], [], []];
+      for (const t of branchTechs) {
+        eraGroups[Math.min(3, (t.era ?? 1) - 1)].push(t);
+      }
 
-        let boxColor = 0x555544; // locked
-        let textColor = 0x666655;
-        if (isResearched) {
-          boxColor = 0xC4A265; // gold = done
-          textColor = 0xFFEECC;
-        } else if (isAvailable) {
-          boxColor = 0x888877; // white-ish = available
-          textColor = 0xEEEEDD;
+      for (let ei = 0; ei < 4; ei++) {
+        const techs = eraGroups[ei];
+        const eraX = treeLeft + 80 + ei * eraW; // offset for branch labels
+        for (let ti = 0; ti < techs.length; ti++) {
+          const tech = techs[ti];
+          const nodeX = eraX + (ti % 2) * (nodeW + 4);
+          const nodeY = rowY + 4 + Math.floor(ti / 2) * (nodeH + 3);
+          // Clamp within row
+          const ny = Math.min(nodeY, rowY + rowH - nodeH - 2);
+
+          const isResearched = human.techs.includes(tech.id);
+          const isAvailable = !isResearched && tech.prerequisites.every(
+            (p: string) => human.techs.includes(p)
+          );
+          const isCurrent = human.currentTech === tech.id;
+
+          techBoxPositions.set(tech.id, { x: nodeX, y: ny, w: nodeW, h: nodeH });
+
+          const techBox = new Container();
+          techBox.x = nodeX;
+          techBox.y = ny;
+
+          const techBg = new Graphics();
+
+          // Node style based on state
+          let fillColor = 0x2A2520; // locked dark
+          let borderColor = 0x444433;
+          let textCol = 0x665544;
+          let fillAlpha = 0.7;
+
+          if (isResearched) {
+            fillColor = 0x3A3020;
+            borderColor = 0xC4A265;
+            textCol = 0xFFEECC;
+            fillAlpha = 0.85;
+          } else if (isCurrent) {
+            fillColor = 0x1A2A3A;
+            borderColor = 0x6699CC;
+            textCol = 0xCCDDFF;
+            fillAlpha = 0.85;
+          } else if (isAvailable) {
+            fillColor = 0x2A2A22;
+            borderColor = 0xAABB88;
+            textCol = 0xDDDDCC;
+            fillAlpha = 0.8;
+          }
+
+          // Node shape — rounded rect with gradient feel
+          techBg.roundRect(0, 0, nodeW, nodeH, 5);
+          techBg.fill({ color: fillColor, alpha: fillAlpha });
+          // Top highlight
+          techBg.roundRect(0, 0, nodeW, nodeH * 0.4, 5);
+          techBg.fill({ color: 0xFFFFFF, alpha: 0.04 });
+          // Border
+          techBg.roundRect(0, 0, nodeW, nodeH, 5);
+          techBg.stroke({ color: borderColor, alpha: 0.9, width: isResearched ? 2 : isCurrent ? 2 : 1 });
+
+          // Era color left strip
+          const eraC = eraColors[ei];
+          techBg.roundRect(0, 0, 4, nodeH, 3);
+          techBg.fill({ color: eraC, alpha: 0.8 });
+
+          // Researched checkmark icon
+          if (isResearched) {
+            techBg.circle(nodeW - 10, 10, 6);
+            techBg.fill({ color: 0x44AA44, alpha: 0.8 });
+          }
+          // Current: pulsing glow via a simple bright border
+          if (isCurrent) {
+            techBg.roundRect(-2, -2, nodeW + 4, nodeH + 4, 6);
+            techBg.stroke({ color: 0x6699CC, alpha: 0.4, width: 2 });
+          }
+
+          techBox.addChild(techBg);
+
+          // Tech name
+          const nameText = new Text(tech.name, makeStyle(10, textCol, isResearched || isCurrent));
+          nameText.x = 8;
+          nameText.y = 3;
+          if (nameText.width > nodeW - 20) nameText.scale.set(Math.min(1, (nodeW - 20) / nameText.width));
+          techBox.addChild(nameText);
+
+          // Cost or checkmark
+          const costStr = isResearched ? "✓ Done" : isCurrent ? `⏳ ${Math.floor(human.researchAccum)}/${tech.cost}` : `📜 ${tech.cost}`;
+          const costText = new Text(costStr, makeStyle(8, isResearched ? 0x88AA66 : isCurrent ? 0x88AADD : textCol));
+          costText.x = 8;
+          costText.y = nodeH - 14;
+          techBox.addChild(costText);
+
+          // Unlocks info (small)
+          if (tech.unlocks && tech.unlocks.length > 0 && !isResearched) {
+            const unlockStr = tech.unlocks.slice(0, 2).join(", ").replace(/_/g, " ");
+            const unlockText = new Text(`→ ${unlockStr}`, makeStyle(7, 0x888877));
+            unlockText.x = nodeW * 0.4;
+            unlockText.y = nodeH - 13;
+            if (unlockText.width > nodeW * 0.55) unlockText.scale.set(Math.min(1, (nodeW * 0.55) / unlockText.width));
+            techBox.addChild(unlockText);
+          }
+
+          // Click to research
+          if (isAvailable && !isCurrent) {
+            techBox.eventMode = "static";
+            techBox.cursor = "pointer";
+            techBox.on("pointerover", () => {
+              techBg.tint = 0xDDCCBB;
+              // Show tooltip
+              this._showTechTooltip(tech, nodeX + px, ny + py + nodeH + 4);
+            });
+            techBox.on("pointerout", () => {
+              techBg.tint = 0xFFFFFF;
+              this._hideTechTooltip();
+            });
+            techBox.on("pointerdown", () => {
+              if (this.onTechSelect) this.onTechSelect(tech.id);
+              this._hideTechTooltip();
+              this.hideTechPanel();
+            });
+          } else if (isResearched || isCurrent) {
+            // Hover for description only
+            techBox.eventMode = "static";
+            techBox.on("pointerover", () => {
+              this._showTechTooltip(tech, nodeX + px, ny + py + nodeH + 4);
+            });
+            techBox.on("pointerout", () => {
+              this._hideTechTooltip();
+            });
+          }
+
+          this.techPanel.addChild(techBox);
         }
-        if (isCurrent) {
-          boxColor = 0x6688CC;
-          textColor = 0xCCDDFF;
-        }
-
-        const bw = colW - 12;
-        const bh = 28;
-        const techBox = new Container();
-        techBox.x = bx + 4;
-        techBox.y = ty;
-        techBoxPositions.set(tech.id, { x: bx + 4, y: ty, w: bw, h: bh });
-
-        const techBg = new Graphics();
-        techBg.roundRect(0, 0, bw, bh, 3);
-        techBg.fill({ color: boxColor, alpha: 0.4 });
-        techBg.roundRect(0, 0, bw, bh, 3);
-        techBg.stroke({ color: boxColor, alpha: 0.8, width: 1 });
-        // Era color strip on left edge
-        const eraColors = [0x66AA44, 0x4488CC, 0xAA44CC, 0xFFAA22]; // era 1-4
-        const eraC = eraColors[Math.min(3, (tech.era ?? 1) - 1)];
-        techBg.rect(0, 0, 4, bh);
-        techBg.fill({ color: eraC, alpha: 0.8 });
-        techBox.addChild(techBg);
-
-        const techName = new Text(tech.name, makeStyle(10, textColor, isResearched));
-        techName.x = 10;
-        techName.y = 2;
-        techBox.addChild(techName);
-
-        const costText = new Text(
-          isResearched ? "✓" : `${tech.cost}`,
-          makeStyle(9, textColor)
-        );
-        costText.x = 10;
-        costText.y = 15;
-        techBox.addChild(costText);
-
-        // Click to select if available
-        if (isAvailable && !isCurrent) {
-          techBox.eventMode = "static";
-          techBox.cursor = "pointer";
-          techBox.on("pointerover", () => { techBg.tint = 0xDDCCBB; });
-          techBox.on("pointerout", () => { techBg.tint = 0xFFFFFF; });
-          techBox.on("pointerdown", () => {
-            if (this.onTechSelect) this.onTechSelect(tech.id);
-            this.hideTechPanel();
-          });
-        }
-
-        this.techPanel.addChild(techBox);
-        ty += 32;
       }
     }
 
-    // Draw prerequisite lines
+    // ── Draw prerequisite connection lines with curves ──
+    const lineG = new Graphics();
     for (const tech of allTechs) {
-      const fromBox = techBoxPositions.get(tech.id);
-      if (!fromBox) continue;
+      const toBox = techBoxPositions.get(tech.id);
+      if (!toBox) continue;
       for (const prereq of tech.prerequisites) {
-        const toBox = techBoxPositions.get(prereq);
-        if (!toBox) continue;
-        const lineG = new Graphics();
-        lineG.moveTo(toBox.x + toBox.w, toBox.y + toBox.h / 2);
-        lineG.lineTo(fromBox.x, fromBox.y + fromBox.h / 2);
-        lineG.stroke({ color: 0x887766, width: 1.5, alpha: 0.6 });
-        this.techPanel.addChild(lineG);
+        const fromBox = techBoxPositions.get(prereq);
+        if (!fromBox) continue;
+        const x1 = fromBox.x + fromBox.w;
+        const y1 = fromBox.y + fromBox.h / 2;
+        const x2 = toBox.x;
+        const y2 = toBox.y + toBox.h / 2;
+        const isComplete = human.techs.includes(prereq);
+        const lineColor = isComplete ? 0xAA9966 : 0x554433;
+        const lineAlpha = isComplete ? 0.7 : 0.35;
+        // Bezier curve for smooth connection
+        const cpx = (x1 + x2) / 2;
+        lineG.moveTo(x1, y1);
+        lineG.bezierCurveTo(cpx, y1, cpx, y2, x2, y2);
+        lineG.stroke({ color: lineColor, width: isComplete ? 2 : 1.2, alpha: lineAlpha });
+        // Arrow head at destination
+        if (isComplete) {
+          lineG.circle(x2, y2, 2.5);
+          lineG.fill({ color: lineColor, alpha: lineAlpha });
+        }
       }
     }
+    this.techPanel.addChild(lineG);
 
-    // Scroll up
-    drawButton(this.techPanel, pw - 60, ph - 28, 25, 22, "▲", () => {
-      this.techScrollOffset = Math.max(0, this.techScrollOffset - 3);
-      this.showTechPanel(state);
-    });
-    // Scroll down
-    drawButton(this.techPanel, pw - 30, ph - 28, 25, 22, "▼", () => {
-      this.techScrollOffset += 3;
-      this.showTechPanel(state);
-    });
+    // ── Bottom bar: stats + close ──
+    const bottomG = new Graphics();
+    bottomG.rect(0, ph - 36, pw, 36);
+    bottomG.fill({ color: 0x1A150F, alpha: 0.5 });
+    bottomG.moveTo(8, ph - 36);
+    bottomG.lineTo(pw - 8, ph - 36);
+    bottomG.stroke({ color: PANEL_BORDER, alpha: 0.3, width: 1 });
+    this.techPanel.addChild(bottomG);
 
-    // Close button
-    drawButton(this.techPanel, pw - 150, ph - 35, 70, 26, "Close", () => {
+    const totalTechs = Object.keys(CIV_TECH_TREE).length;
+    const researched = human.techs.length;
+    const statsText = new Text(
+      `Techs: ${researched}/${totalTechs}  |  Research: ${human.researchPerTurn}/turn  |  Scroll: ▲▼ keys`,
+      makeStyle(10, 0xAA9988)
+    );
+    statsText.x = 15;
+    statsText.y = ph - 28;
+    this.techPanel.addChild(statsText);
+
+    drawButton(this.techPanel, pw - 90, ph - 32, 80, 26, "Close (Esc)", () => {
+      this._hideTechTooltip();
       this.hideTechPanel();
     });
+  }
+
+  // ── Tech tooltip ──
+  private _techTooltip: Container | null = null;
+
+  private _showTechTooltip(tech: TechDef, screenX: number, screenY: number): void {
+    this._hideTechTooltip();
+    const tt = new Container();
+    tt.zIndex = 100;
+    const maxW = 240;
+    const g = new Graphics();
+
+    const descText = new Text(tech.description ?? "", makeStyle(9, TEXT_COLOR));
+    descText.style.wordWrapWidth = maxW - 16;
+    descText.x = 8;
+    descText.y = 8;
+
+    const ttH = Math.max(40, descText.height + 16);
+    g.roundRect(0, 0, maxW, ttH, 4);
+    g.fill({ color: 0x1A150F, alpha: 0.95 });
+    g.roundRect(0, 0, maxW, ttH, 4);
+    g.stroke({ color: ACCENT, alpha: 0.6, width: 1 });
+
+    tt.addChild(g);
+    tt.addChild(descText);
+    // Position relative to tech panel
+    tt.x = screenX - this.techPanel.x;
+    tt.y = screenY - this.techPanel.y;
+    // Clamp to screen
+    if (tt.x + maxW > this.sw - 20) tt.x = this.sw - 20 - maxW - this.techPanel.x;
+    if (tt.y + ttH > this.sh - 20) tt.y = screenY - this.techPanel.y - ttH - 8;
+
+    this.techPanel.addChild(tt);
+    this._techTooltip = tt;
+  }
+
+  private _hideTechTooltip(): void {
+    if (this._techTooltip) {
+      this._techTooltip.destroy({ children: true });
+      this._techTooltip = null;
+    }
   }
 
   hideTechPanel(): void {

@@ -1102,15 +1102,32 @@ export class CivGame {
       }
     }
 
-    // Click on own unit — select it
+    // Click on own unit — select it (or toggle to city on double-click)
     const ownUnit = tile.unitIds.find(uid => {
       const u = getUnit(state, uid);
       return u && u.owner === state.humanPlayerIndex;
     });
     if (ownUnit !== undefined) {
       const now = Date.now();
-      if (ownUnit === this.lastClickUnitId && now - this.lastClickTime < 400) {
-        // Double-click: center camera on unit
+      const isDoubleClick = ownUnit === this.lastClickUnitId && now - this.lastClickTime < 400;
+
+      if (isDoubleClick && tile.cityId >= 0) {
+        // Double-click on unit in a city tile: select the city instead
+        const city = getCity(state, tile.cityId);
+        if (city && city.owner === state.humanPlayerIndex) {
+          state.selectedCityId = city.id;
+          this._selectUnit(-1);
+          if (city.buildQueue.length === 0) {
+            this.hud.showBuildMenu(state, city.id);
+          }
+          this.lastClickTime = 0;
+          this._refresh();
+          return;
+        }
+      }
+
+      if (isDoubleClick) {
+        // Double-click on unit (no city): center camera
         const u = getUnit(state, ownUnit);
         if (u) this.renderer.centerOn(u.x, u.y);
       }
@@ -1127,9 +1144,7 @@ export class CivGame {
       const city = getCity(state, tile.cityId);
       if (city && city.owner === state.humanPlayerIndex) {
         state.selectedCityId = city.id;
-        state.selectedUnitId = -1;
-        state.reachableTiles = [];
-        state.attackableTiles = [];
+        this._selectUnit(-1);
         // Show build menu if city has no build queue
         if (city.buildQueue.length === 0) {
           this.hud.showBuildMenu(state, city.id);
