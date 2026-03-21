@@ -36,6 +36,12 @@ import {
   BOSS_TELEPORT_COOLDOWN, BOSS_DARK_BARRAGE_COUNT, BOSS_SUMMON_COUNT,
   WATER_SPEED_MULT, WATER_NOISE_RADIUS, FIRE_DAMAGE_PER_SEC,
   DIFFICULTY_MULTS,
+  DODGE_ROLL_COST, DODGE_ROLL_DURATION, DODGE_ROLL_SPEED, DODGE_ROLL_COOLDOWN,
+  DETECTION_LINGER,
+  ENV_KILL_WATER_STUN, GUARD_PUSH_RANGE, GUARD_PUSH_FORCE,
+  ARTIFACT_BONUS_DURATION,
+  BODY_HIDE_RANGE, BODY_HIDE_DURATION,
+  SPELL_INTERRUPT_STUN,
 } from "./MorganConfig";
 
 import {
@@ -254,6 +260,49 @@ export function tickPlayer(state: MorganGameState, dt: number): void {
   // Backstab cooldown
   if (p.backstabCooldown > 0) p.backstabCooldown -= dt;
 
+  // Dodge roll
+  if (p.dodgeRollCooldown > 0) p.dodgeRollCooldown -= dt;
+  if (p.dodgeRolling) {
+    p.dodgeRollTimer -= dt;
+    // Move in dodge direction at high speed
+    const rollDx = p.dodgeRollDir.x * DODGE_ROLL_SPEED * dt;
+    const rollDz = p.dodgeRollDir.z * DODGE_ROLL_SPEED * dt;
+    if (canWalk(state, p.pos.x + rollDx, p.pos.z)) p.pos.x += rollDx;
+    if (canWalk(state, p.pos.x, p.pos.z + rollDz)) p.pos.z += rollDz;
+    if (p.dodgeRollTimer <= 0) {
+      p.dodgeRolling = false;
+    }
+  }
+
+  // Body hiding
+  if (p.hidingBody) {
+    p.hideBodyTimer -= dt;
+    if (p.hideBodyTimer <= 0) {
+      p.hidingBody = false;
+      // Find and hide the nearest corpse
+      let closestCorpse: typeof state.corpses[0] | null = null;
+      let closestDist = BODY_HIDE_RANGE + 1;
+      for (const c of state.corpses) {
+        if (c.hidden) continue;
+        const d = v2Dist(p.pos, c.pos);
+        if (d < closestDist) { closestDist = d; closestCorpse = c; }
+      }
+      if (closestCorpse) {
+        closestCorpse.hidden = true;
+        pushMessage(state, "Body hidden", "#44aa66");
+      }
+    }
+  }
+
+  // Artifact bonus timers
+  for (let i = p.artifactBonuses.length - 1; i >= 0; i--) {
+    p.artifactBonuses[i].timer -= dt;
+    if (p.artifactBonuses[i].timer <= 0) {
+      pushMessage(state, `${p.artifactBonuses[i].type} bonus expired`);
+      p.artifactBonuses.splice(i, 1);
+    }
+  }
+
   // Spell casting
   if (justPressed("Digit1")) p.selectedSpell = 0;
   if (justPressed("Digit2")) p.selectedSpell = 1;
@@ -285,6 +334,41 @@ export function tickPlayer(state: MorganGameState, dt: number): void {
     tryDistraction(state);
   }
 
+  // Dodge roll: C key
+  if (justPressed("KeyC") && !p.dodgeRolling && p.dodgeRollCooldown <= 0 && p.stamina >= DODGE_ROLL_COST) {
+    p.stamina -= DODGE_ROLL_COST;
+    p.dodgeRolling = true;
+    p.dodgeRollTimer = DODGE_ROLL_DURATION;
+    p.dodgeRollCooldown = DODGE_ROLL_COOLDOWN;
+    // Roll in movement direction, or forward if standing still
+    if (p.moving) {
+      let moveDir = 0;
+      if (isDown("ArrowUp") || isDown("KeyW")) moveDir = 1;
+      if (isDown("ArrowDown") || isDown("KeyS")) moveDir = -1;
+      p.dodgeRollDir = { x: Math.sin(p.angle) * (moveDir || 1), z: Math.cos(p.angle) * (moveDir || 1) };
+    } else {
+      p.dodgeRollDir = { x: Math.sin(p.angle), z: Math.cos(p.angle) };
+    }
+    pushMessage(state, "Dodge!", "#66aaff");
+  }
+
+  // Hide body: H key
+  if (justPressed("KeyH") && !p.hidingBody) {
+    const nearbyCorpse = state.corpses.find(c => !c.hidden && v2Dist(p.pos, c.pos) < BODY_HIDE_RANGE);
+    if (nearbyCorpse) {
+      p.hidingBody = true;
+      p.hideBodyTimer = BODY_HIDE_DURATION;
+      pushMessage(state, "Hiding body...", "#668844");
+    } else {
+      pushMessage(state, "No body nearby to hide");
+    }
+  }
+
+  // Push guard: V key (environmental kills)
+  if (justPressed("KeyV")) {
+    tryPushGuard(state);
+  }
+
   // Tutorial hints (first level only)
   if (state.level === 1) {
     if (!state.tutorialShown.has("sneak") && state.time > 2 && state.time < 3) {
@@ -298,6 +382,18 @@ export function tickPlayer(state: MorganGameState, dt: number): void {
     if (!state.tutorialShown.has("backstab") && state.guards.some(g => g.hp > 0 && v2Dist(p.pos, g.pos) < 6)) {
       pushMessage(state, "Tip: Press F behind a guard for a backstab", "#887799");
       state.tutorialShown.add("backstab");
+    }
+    if (!state.tutorialShown.has("dodge") && state.time > 8 && state.time < 9) {
+      pushMessage(state, "Tip: Press C to dodge roll — grants brief invulnerability", "#887799");
+      state.tutorialShown.add("dodge");
+    }
+    if (!state.tutorialShown.has("push") && state.guards.some(g => g.hp > 0 && g.state === GuardState.STUNNED)) {
+      pushMessage(state, "Tip: Press V to push stunned guards — into fire for instant kills!", "#887799");
+      state.tutorialShown.add("push");
+    }
+    if (!state.tutorialShown.has("hide") && state.corpses.some(c => !c.hidden)) {
+      pushMessage(state, "Tip: Press H near a body to hide it — prevents guard alerts", "#887799");
+      state.tutorialShown.add("hide");
     }
   }
 
@@ -336,6 +432,32 @@ export function tickPlayer(state: MorganGameState, dt: number): void {
       state.totalXP += 50;
       pushMessage(state, `Collected ${art.type}! (${p.artifacts}/${state.artifacts.length})`, "#ffd700");
       state.screenFlash = { color: "rgba(255,215,0,0.2)", timer: 0.4 };
+      // Artifact type bonuses
+      switch (art.type) {
+        case "crystal":
+          p.artifactBonuses.push({ type: "Mana Surge", timer: ARTIFACT_BONUS_DURATION });
+          p.mana = Math.min(p.maxMana, p.mana + 30);
+          pushMessage(state, "Crystal: Mana Surge! +30 mana", "#4466ff");
+          break;
+        case "chalice":
+          p.artifactBonuses.push({ type: "Vitality", timer: ARTIFACT_BONUS_DURATION });
+          p.hp = Math.min(p.maxHp, p.hp + 25);
+          pushMessage(state, "Chalice: Vitality! +25 HP", "#44cc44");
+          break;
+        case "tome":
+          p.artifactBonuses.push({ type: "Arcane Power", timer: ARTIFACT_BONUS_DURATION });
+          pushMessage(state, "Tome: Arcane Power! Spells deal +25% damage", "#cc88ff");
+          break;
+        case "scroll":
+          p.artifactBonuses.push({ type: "Shadow Walk", timer: ARTIFACT_BONUS_DURATION });
+          pushMessage(state, "Scroll: Shadow Walk! Detection reduced", "#6644aa");
+          break;
+        case "amulet":
+          p.artifactBonuses.push({ type: "Fortune", timer: ARTIFACT_BONUS_DURATION });
+          p.gold += 100;
+          pushMessage(state, "Amulet: Fortune! +100 gold", "#ffd700");
+          break;
+      }
       if (state.artifacts.every(a => a.collected)) {
         state.exitOpen = true;
         pushMessage(state, "All artifacts collected! Find the exit!", "#00ff88");
@@ -500,7 +622,7 @@ function tryBackstab(state: MorganGameState): void {
         p.guardsKilled++;
         state.levelStats.guardsKilled++;
         // Leave corpse + loot
-        state.corpses.push({ pos: { ...guard.pos }, discovered: false, guardType: guard.guardType });
+        state.corpses.push({ pos: { ...guard.pos }, discovered: false, hidden: false, guardType: guard.guardType });
         spawnLoot(state, guard.pos);
         if (!state.detected) {
           p.ghostKills++;
@@ -581,6 +703,77 @@ function tryDistraction(state: MorganGameState): void {
   pushMessage(state, "Distraction thrown!", "#aaaacc");
 }
 
+// --- Push guard (environmental kill potential) ---
+function tryPushGuard(state: MorganGameState): void {
+  const p = state.player;
+  for (const guard of state.guards) {
+    if (guard.hp <= 0) continue;
+    const dist = v2Dist(p.pos, guard.pos);
+    if (dist > GUARD_PUSH_RANGE) continue;
+    // Can only push stunned/sleeping guards, or from behind
+    const helpless = guard.state === GuardState.SLEEPING || guard.state === GuardState.STUNNED;
+    if (!helpless) {
+      const angleToPlayer = Math.atan2(p.pos.x - guard.pos.x, p.pos.z - guard.pos.z);
+      let angleDiff = angleToPlayer - guard.angle;
+      while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+      while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+      if (Math.abs(Math.abs(angleDiff) - Math.PI) >= BACKSTAB_ANGLE) continue;
+    }
+    // Push in player's facing direction
+    const pushDir = v2(Math.sin(p.angle), Math.cos(p.angle));
+    const newX = guard.pos.x + pushDir.x * GUARD_PUSH_FORCE;
+    const newZ = guard.pos.z + pushDir.z * GUARD_PUSH_FORCE;
+    // Check what they land on
+    const landTile = getTile(state, newX, newZ);
+    if (landTile === TileType.FIRE_GRATE) {
+      // Environmental kill!
+      guard.hp = 0;
+      state.corpses.push({ pos: v2(newX, newZ), discovered: false, guardType: guard.guardType, hidden: false });
+      spawnLoot(state, guard.pos);
+      p.guardsKilled++;
+      p.environmentalKills++;
+      state.levelStats.guardsKilled++;
+      p.comboCount++;
+      p.comboTimer = COMBO_WINDOW;
+      const comboMul = 1 + (p.comboCount - 1) * COMBO_MULTIPLIER_PER_STACK;
+      p.score += Math.round(200 * comboMul);
+      p.xp += Math.round(100 * comboMul);
+      state.totalXP += Math.round(100 * comboMul);
+      pushMessage(state, "Environmental Kill! Pushed into fire!", "#ff6600");
+      state.screenFlash = { color: "rgba(255,100,0,0.3)", timer: 0.4 };
+      emitSound(state, v2(newX, newZ), SOUND_COMBAT_RADIUS);
+    } else if (landTile === TileType.WATER) {
+      // Stun in water
+      guard.pos = v2(newX, newZ);
+      guard.stunTimer = ENV_KILL_WATER_STUN;
+      guard.state = GuardState.STUNNED;
+      pushMessage(state, "Guard pushed into water!", "#4466aa");
+    } else if (canWalk(state, newX, newZ)) {
+      // Normal push
+      guard.pos = v2(newX, newZ);
+      guard.stunTimer = 1.5;
+      guard.state = GuardState.STUNNED;
+      pushMessage(state, "Guard pushed!", "#aaaacc");
+    } else {
+      // Pushed into wall - extra stun
+      guard.stunTimer = 2.5;
+      guard.state = GuardState.STUNNED;
+      guard.hp -= 30;
+      pushMessage(state, "Guard slammed into wall!", "#ccaa44");
+      if (guard.hp <= 0) {
+        state.corpses.push({ pos: { ...guard.pos }, discovered: false, guardType: guard.guardType, hidden: false });
+        spawnLoot(state, guard.pos);
+        p.guardsKilled++;
+        p.environmentalKills++;
+        state.levelStats.guardsKilled++;
+        pushMessage(state, "Killed by wall impact!", "#ff4444");
+      }
+    }
+    return;
+  }
+  pushMessage(state, "No guard to push");
+}
+
 // --- Spell casting ---
 function castSpell(state: MorganGameState): void {
   const p = state.player;
@@ -612,7 +805,7 @@ function castSpell(state: MorganGameState): void {
       if (p.mana >= DARK_BOLT_COST) {
         p.mana -= DARK_BOLT_COST;
         p.spellCooldowns[spell] = SPELL_COOLDOWNS[spell];
-        const dmg = DARK_BOLT_DAMAGE * (hasUpgrade(1) ? 1.5 : 1);
+        const dmg = DARK_BOLT_DAMAGE * (hasUpgrade(1) ? 1.5 : 1) * (state.player.artifactBonuses.some(b => b.type === "Arcane Power") ? 1.25 : 1);
         const dir = v2(Math.sin(p.angle), Math.cos(p.angle));
         state.darkBolts.push({
           pos: { ...p.pos },
@@ -651,7 +844,8 @@ function castSpell(state: MorganGameState): void {
     case MorganSpell.BLINK: {
       if (p.mana >= BLINK_COST) {
         const range = BLINK_RANGE + (hasUpgrade(1) ? 4 : 0);
-        const throughWalls = hasUpgrade(2);
+        const phaseStrike = hasUpgrade(2);
+        const throughWalls = false; // Phase Strike no longer goes through walls
         const target = v2(
           p.pos.x + Math.sin(p.angle) * range,
           p.pos.z + Math.cos(p.angle) * range,
@@ -660,6 +854,19 @@ function castSpell(state: MorganGameState): void {
           p.mana -= BLINK_COST;
           p.spellCooldowns[spell] = SPELL_COOLDOWNS[spell];
           p.pos = target;
+          // Phase Strike: stun guards you blink through
+          if (phaseStrike) {
+            for (const guard of state.guards) {
+              if (guard.hp <= 0) continue;
+              // Check if guard is between old position and new position
+              const guardDist = v2Dist(guard.pos, target);
+              if (guardDist < 2.5) {
+                guard.stunTimer = 2.0;
+                guard.state = GuardState.STUNNED;
+                pushMessage(state, "Phase Strike stun!", "#aa66ff");
+              }
+            }
+          }
           state.screenFlash = { color: "rgba(100,50,200,0.2)", timer: 0.2 };
           pushMessage(state, "Blink!", "#8844ff");
         } else {
@@ -780,6 +987,7 @@ export function tickGuards(state: MorganGameState, dt: number): void {
 
     let detectionMul = state.player.stealthBonus; // base from stat upgrades
     if (state.player.sneaking) detectionMul *= 0.4;
+    if (state.player.artifactBonuses.some(b => b.type === "Shadow Walk")) detectionMul *= 0.6;
     if (isInShadow(state, state.player.pos)) detectionMul *= SHADOW_ZONE_STEALTH_BONUS;
     if (guard.guardType === GuardType.HOUND) detectionMul *= HOUND_DETECTION_MUL;
     // Hounds also detect by proximity (no LOS needed)
@@ -787,14 +995,20 @@ export function tickGuards(state: MorganGameState, dt: number): void {
 
     if (playerVisible || houndSmell) {
       guard.detection = Math.min(1, guard.detection + DETECTION_RATE_VISIBLE * detectionMul * dt);
+      guard.detectionLinger = DETECTION_LINGER;
       if (!chasingDecoy) guard.lastKnownPlayerPos = { ...state.player.pos };
     } else {
-      guard.detection = Math.max(0, guard.detection - DETECTION_DECAY * dt);
+      // Detection lingers briefly before decaying (can't instantly reset by breaking LOS)
+      if (guard.detectionLinger > 0) {
+        guard.detectionLinger -= dt;
+      } else {
+        guard.detection = Math.max(0, guard.detection - DETECTION_DECAY * dt);
+      }
     }
 
     // Corpse discovery
     for (const corpse of state.corpses) {
-      if (corpse.discovered) continue;
+      if (corpse.discovered || corpse.hidden) continue;
       if (v2Dist(guard.pos, corpse.pos) < 3 && hasLineOfSight(state, guard.pos, corpse.pos)) {
         corpse.discovered = true;
         guard.state = GuardState.ALERT;
@@ -821,7 +1035,11 @@ export function tickGuards(state: MorganGameState, dt: number): void {
       if (guard.state !== GuardState.ALERT) {
         state.player.timesDetected++;
         state.levelStats.timesDetected++;
-        guardBark(guard, GUARD_BARKS.spotPlayer);
+        if (guard.guardType === GuardType.HOUND) {
+          guardBark(guard, GUARD_BARKS.houndAlert);
+        } else {
+          guardBark(guard, GUARD_BARKS.spotPlayer);
+        }
         // Guard communication: call nearby allies
         for (const ally of state.guards) {
           if (ally === guard || ally.hp <= 0) continue;
@@ -889,7 +1107,7 @@ export function tickGuards(state: MorganGameState, dt: number): void {
     // Melee attack
     const diffMult = DIFFICULTY_MULTS[state.difficulty];
     const meleeDamage = (guard.guardType === GuardType.HEAVY ? HEAVY_GUARD_DAMAGE : 15) * diffMult.guardDmg;
-    if (guard.state === GuardState.ALERT && distToPlayer < 2.0 && !state.player.dead && !chasingDecoy) {
+    if (guard.state === GuardState.ALERT && distToPlayer < 2.0 && !state.player.dead && !chasingDecoy && !state.player.dodgeRolling) {
       state.player.hp -= meleeDamage * dt;
       if (state.player.hp <= 0) {
         state.player.hp = 0;
@@ -897,6 +1115,11 @@ export function tickGuards(state: MorganGameState, dt: number): void {
         state.phase = "game_over";
         pushMessage(state, "Morgan has fallen!");
       }
+    }
+
+    // Track mage casting state
+    if (guard.guardType === GuardType.MAGE) {
+      guard.isCasting = guard.mageFireCooldown > 0 && guard.mageFireCooldown < 0.5;
     }
 
     // Mage ranged attack
@@ -976,6 +1199,10 @@ function tickGuardSearching(state: MorganGameState, guard: Guard, speed: number,
       guard.lastKnownPlayerPos.z + Math.cos(state.time * 2 + guard.id) * 4,
     );
     moveToward(state, guard, wanderTarget, speed, dt);
+    // Occasional searching bark
+    if (Math.random() < dt * 0.3 && !guard.bark) {
+      guardBark(guard, GUARD_BARKS.searching);
+    }
   }
 }
 
@@ -1034,6 +1261,12 @@ export function tickProjectiles(state: MorganGameState, dt: number): void {
         guard.hp -= bolt.damage;
         guard.stunTimer = 1.5;
         guard.state = GuardState.STUNNED;
+        // Interrupt mage casting
+        if (guard.guardType === GuardType.MAGE && guard.isCasting) {
+          guard.stunTimer = SPELL_INTERRUPT_STUN;
+          guard.isCasting = false;
+          pushMessage(state, "Spell interrupted!", "#8844ff");
+        }
         emitSound(state, bolt.pos, SOUND_COMBAT_RADIUS);
         if (guard.hp <= 0) {
           state.player.comboCount++;
@@ -1048,7 +1281,7 @@ export function tickProjectiles(state: MorganGameState, dt: number): void {
           state.totalXP += xp;
           state.player.guardsKilled++;
           state.levelStats.guardsKilled++;
-          state.corpses.push({ pos: { ...guard.pos }, discovered: false, guardType: guard.guardType });
+          state.corpses.push({ pos: { ...guard.pos }, discovered: false, hidden: false, guardType: guard.guardType });
           spawnLoot(state, guard.pos);
         }
         // Chain lightning: hit up to 2 nearby guards
@@ -1068,7 +1301,7 @@ export function tickProjectiles(state: MorganGameState, dt: number): void {
                 state.totalXP += 50;
                 state.player.guardsKilled++;
                 state.levelStats.guardsKilled++;
-                state.corpses.push({ pos: { ...g2.pos }, discovered: false, guardType: g2.guardType });
+                state.corpses.push({ pos: { ...g2.pos }, discovered: false, hidden: false, guardType: g2.guardType });
                 spawnLoot(state, g2.pos);
               }
             }
@@ -1093,7 +1326,7 @@ export function tickProjectiles(state: MorganGameState, dt: number): void {
       continue;
     }
 
-    if (v2Dist(fb.pos, state.player.pos) < 1.0 && !state.player.dead) {
+    if (v2Dist(fb.pos, state.player.pos) < 1.0 && !state.player.dead && !state.player.dodgeRolling) {
       state.player.hp -= fb.damage;
       state.screenFlash = { color: "rgba(255,100,0,0.3)", timer: 0.3 };
       pushMessage(state, `Hit by fireball! (-${fb.damage})`, "#ff6600");
@@ -1182,16 +1415,49 @@ export function tickBoss(state: MorganGameState, dt: number): void {
                 isBoss: false, investigateTarget: null, mageFireCooldown: 0,
                 waitTimer: 0, bark: "For Mordred!", barkTimer: 2,
                 bossPhase: 0, bossShockwaveCooldown: 0, bossTeleportCooldown: 0,
+                detectionLinger: 0, isCasting: false,
               } satisfies Guard;
               state.guards.push(summon);
             }
           }
+          // Create fire zones around the arena
+          const bossRoom = { x: Math.floor(guard.pos.x / CELL_SIZE), z: Math.floor(guard.pos.z / CELL_SIZE) };
+          for (let fz = 0; fz < 4; fz++) {
+            const fx = bossRoom.x + Math.floor(Math.random() * 5) - 2;
+            const fzz = bossRoom.z + Math.floor(Math.random() * 5) - 2;
+            if (fx >= 0 && fx < FLOOR_W && fzz >= 0 && fzz < FLOOR_H && state.tiles[fzz][fx] === TileType.FLOOR) {
+              state.tiles[fzz][fx] = TileType.FIRE_GRATE;
+            }
+          }
+          pushMessage(state, "The floor erupts in flame!", "#ff4400");
           emitSound(state, guard.pos, 20);
           break;
         case 3:
           pushMessage(state, "Mordred: \"ENOUGH! Feel my wrath!\"", "#ff0000");
           state.screenFlash = { color: "rgba(255,0,0,0.5)", timer: 0.8 };
           // Rage: speed boost (handled via bossPhase check in getGuardSpeed)
+          // Summon more reinforcements in phase 3
+          for (let i = 0; i < BOSS_SUMMON_COUNT + 1; i++) {
+            const angle2 = Math.random() * Math.PI * 2;
+            const dist2 = 5 + Math.random() * 4;
+            const pos2 = v2(guard.pos.x + Math.cos(angle2) * dist2, guard.pos.z + Math.sin(angle2) * dist2);
+            if (canWalk(state, pos2.x, pos2.z)) {
+              const mageGuard = {
+                id: Date.now() + 100 + i,
+                pos: pos2, angle: 0, hp: 60, maxHp: 60,
+                state: GuardState.ALERT, guardType: GuardType.MAGE,
+                alertTimer: 30, sleepTimer: 0, stunTimer: 0,
+                patrolPath: [pos2], patrolIndex: 0, patrolForward: true,
+                detection: 1, lastKnownPlayerPos: { ...state.player.pos },
+                isBoss: false, investigateTarget: null, mageFireCooldown: 1,
+                waitTimer: 0, bark: "The master calls!", barkTimer: 2,
+                bossPhase: 0, bossShockwaveCooldown: 0, bossTeleportCooldown: 0,
+                detectionLinger: 0, isCasting: false,
+              } satisfies Guard;
+              state.guards.push(mageGuard);
+            }
+          }
+          pushMessage(state, "Mordred summons his dark mages!", "#ff2222");
           break;
       }
     }

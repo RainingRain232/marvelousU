@@ -19,8 +19,8 @@ export const MORGAN_TURN_SPEED = 2.2;
 export const MAX_STAMINA = 100;
 export const MAX_MANA = 100;
 export const STAMINA_REGEN = 12; // per second
-export const SPRINT_DRAIN = 25; // per second
-export const MANA_REGEN = 6; // per second
+export const SPRINT_DRAIN = 18; // per second
+export const MANA_REGEN = 8; // per second
 
 // Spell costs
 export const SHADOW_CLOAK_COST = 30;
@@ -28,12 +28,12 @@ export const SHADOW_CLOAK_DURATION = 5; // seconds
 export const DARK_BOLT_COST = 20;
 export const DARK_BOLT_RANGE = 15;
 export const DARK_BOLT_DAMAGE = 40;
-export const SLEEP_MIST_COST = 35;
+export const SLEEP_MIST_COST = 28;
 export const SLEEP_MIST_RADIUS = 4;
 export const SLEEP_MIST_DURATION = 8;
 export const BLINK_COST = 25;
 export const BLINK_RANGE = 8;
-export const DECOY_COST = 20;
+export const DECOY_COST = 15;
 export const DECOY_DURATION = 8;
 
 // Guard AI
@@ -47,13 +47,13 @@ export const GUARD_HP = 100;
 
 // Guard types
 export const HEAVY_GUARD_HP = 200;
-export const HEAVY_GUARD_SPEED = 2.0;
+export const HEAVY_GUARD_SPEED = 2.5;
 export const HEAVY_GUARD_DAMAGE = 25;
 export const MAGE_GUARD_HP = 60;
 export const MAGE_GUARD_RANGE = 12;
-export const MAGE_GUARD_COOLDOWN = 3; // seconds between fireballs
+export const MAGE_GUARD_COOLDOWN = 2.5; // seconds between fireballs
 export const HOUND_DETECTION_MUL = 2.5;
-export const HOUND_SPEED = 5.0;
+export const HOUND_SPEED = 5.5;
 export const HOUND_HP = 50;
 
 // Detection
@@ -135,6 +135,31 @@ export const TIME_MEDIUM_XP = 100;
 
 // Pacifist bonus
 export const PACIFIST_XP = 400;
+
+// Dodge roll
+export const DODGE_ROLL_COST = 20; // stamina cost
+export const DODGE_ROLL_DURATION = 0.35; // seconds of i-frames
+export const DODGE_ROLL_SPEED = 12; // movement speed during roll
+export const DODGE_ROLL_COOLDOWN = 1.0; // seconds
+
+// Detection persistence
+export const DETECTION_LINGER = 2.0; // seconds detection stays after losing sight
+
+// Environmental kills
+export const ENV_KILL_FIRE_DAMAGE = 200; // instant kill from fire grate push
+export const ENV_KILL_WATER_STUN = 4; // seconds stunned in water
+export const GUARD_PUSH_RANGE = 2.0; // range for pushing guards
+export const GUARD_PUSH_FORCE = 5.0; // knockback distance
+
+// Artifact bonuses
+export const ARTIFACT_BONUS_DURATION = 30; // seconds each artifact bonus lasts
+
+// Body hiding
+export const BODY_HIDE_RANGE = 2.0;
+export const BODY_HIDE_DURATION = 1.5; // seconds to hide a body
+
+// Dark bolt interrupts mage casting
+export const SPELL_INTERRUPT_STUN = 2.5; // extra stun when interrupting a mage mid-cast
 
 export enum MorganSpell {
   SHADOW_CLOAK = "shadow_cloak",
@@ -222,7 +247,7 @@ export const SPELL_UPGRADES: SpellUpgrade[] = [
   { spell: MorganSpell.SLEEP_MIST,   tier: 1, name: "Deep Slumber",     desc: "+5s sleep duration",     cost: 200 },
   { spell: MorganSpell.SLEEP_MIST,   tier: 2, name: "Expanding Cloud",  desc: "+50% radius",            cost: 500 },
   { spell: MorganSpell.BLINK,        tier: 1, name: "Far Step",         desc: "+4 range",               cost: 200 },
-  { spell: MorganSpell.BLINK,        tier: 2, name: "Phase Shift",      desc: "Blink through walls",    cost: 500 },
+  { spell: MorganSpell.BLINK,        tier: 2, name: "Phase Strike",     desc: "Blink through guards, stunning them", cost: 500 },
   { spell: MorganSpell.DECOY,        tier: 1, name: "Lasting Image",    desc: "+5s duration",           cost: 200 },
   { spell: MorganSpell.DECOY,        tier: 2, name: "Explosive Decoy",  desc: "Stuns guards when it fades", cost: 500 },
 ];
@@ -251,7 +276,7 @@ export const SPELL_COOLDOWNS: Record<MorganSpell, number> = {
   [MorganSpell.DARK_BOLT]: 0.8,
   [MorganSpell.SLEEP_MIST]: 6,
   [MorganSpell.BLINK]: 3,
-  [MorganSpell.DECOY]: 10,
+  [MorganSpell.DECOY]: 7,
 };
 
 // Boss fight
@@ -314,5 +339,11 @@ export const GUARD_BARKS = {
   ],
   returnToPatrol: [
     "Must have been the wind.", "Back to patrol.", "False alarm.", "Nothing here.",
+  ],
+  searching: [
+    "She was just here...", "Check behind the pillars!", "I can feel her presence...", "She's using magic...",
+  ],
+  houndAlert: [
+    "*snarling*", "*growling intensely*", "*howling*",
   ],
 };

@@ -61,6 +61,15 @@ export interface MorganPlayer {
   manaRegenBonus: number;
   stealthBonus: number; // detection reduction multiplier (0.85 = 15% less)
   speedBonus: number;
+  dodgeRolling: boolean;
+  dodgeRollTimer: number;
+  dodgeRollCooldown: number;
+  dodgeRollDir: Vec2;
+  hidingBody: boolean;
+  hideBodyTimer: number;
+  artifactBonuses: { type: string; timer: number }[];
+  totalKills: number;
+  environmentalKills: number;
   statUpgrades: Record<string, number>; // stat_id -> tier
 }
 
@@ -90,12 +99,15 @@ export interface Guard {
   bossPhase: number; // 1, 2, 3 for boss; 0 for non-boss
   bossShockwaveCooldown: number;
   bossTeleportCooldown: number;
+  detectionLinger: number; // time since player was last visible to this guard
+  isCasting: boolean; // mage is in the process of casting
 }
 
 // --- Guard corpse ---
 export interface Corpse {
   pos: Vec2;
   discovered: boolean;
+  hidden: boolean;
   guardType: GuardType;
 }
 
@@ -256,6 +268,8 @@ export function createGuard(pos: Vec2, patrolPath: Vec2[], isBoss = false, guard
     bossPhase: isBoss ? 1 : 0,
     bossShockwaveCooldown: 0,
     bossTeleportCooldown: 0,
+    detectionLinger: 0,
+    isCasting: false,
   };
 }
 
@@ -307,6 +321,15 @@ export function createPlayer(): MorganPlayer {
     manaRegenBonus: 0,
     stealthBonus: 1.0,
     speedBonus: 0,
+    dodgeRolling: false,
+    dodgeRollTimer: 0,
+    dodgeRollCooldown: 0,
+    dodgeRollDir: { x: 0, z: 0 },
+    hidingBody: false,
+    hideBodyTimer: 0,
+    artifactBonuses: [],
+    totalKills: 0,
+    environmentalKills: 0,
     statUpgrades: {},
   };
 }

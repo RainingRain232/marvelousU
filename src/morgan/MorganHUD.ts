@@ -281,6 +281,106 @@ export class MorganHUD {
       }
     }
 
+    // Active artifact bonuses
+    let bonusEl = document.getElementById("morgan-bonuses");
+    if (!bonusEl) {
+      bonusEl = document.createElement("div");
+      bonusEl.id = "morgan-bonuses";
+      bonusEl.style.cssText = "position:absolute;top:60px;left:12px;font-size:11px;";
+      this._container.appendChild(bonusEl);
+    }
+    if (p.artifactBonuses.length > 0) {
+      bonusEl.innerHTML = p.artifactBonuses.map(b => {
+        const timeLeft = Math.ceil(b.timer);
+        const colors: Record<string, string> = {
+          "Mana Surge": "#4466ff", "Vitality": "#44cc44", "Arcane Power": "#cc88ff",
+          "Shadow Walk": "#6644aa", "Fortune": "#ffd700",
+        };
+        return `<div style="color:${colors[b.type] || '#aaa'};margin-bottom:3px;
+          text-shadow:0 0 4px rgba(0,0,0,0.8);">
+          \u2726 ${b.type} (${timeLeft}s)</div>`;
+      }).join("");
+    } else {
+      bonusEl.innerHTML = "";
+    }
+
+    // Dodge roll cooldown indicator
+    let dodgeEl = document.getElementById("morgan-dodge");
+    if (!dodgeEl) {
+      dodgeEl = document.createElement("div");
+      dodgeEl.id = "morgan-dodge";
+      dodgeEl.style.cssText = "position:absolute;bottom:55px;left:240px;font-size:10px;";
+      this._container.appendChild(dodgeEl);
+    }
+    if (p.dodgeRolling) {
+      dodgeEl.innerHTML = '<span style="color:#66aaff;">DODGING</span>';
+    } else if (p.dodgeRollCooldown > 0) {
+      dodgeEl.innerHTML = `<span style="color:#555;">Dodge ${p.dodgeRollCooldown.toFixed(1)}s</span>`;
+    } else {
+      dodgeEl.innerHTML = '<span style="color:#336688;">[C] Dodge Ready</span>';
+    }
+
+    // Guard detection proximity warning
+    let warnEl = document.getElementById("morgan-detection-warn");
+    if (!warnEl) {
+      warnEl = document.createElement("div");
+      warnEl.id = "morgan-detection-warn";
+      warnEl.style.cssText = "position:absolute;top:45px;right:12px;font-size:12px;text-align:right;";
+      this._container.appendChild(warnEl);
+    }
+    // Find highest detection level among guards
+    let maxDetection = 0;
+    let detectingGuardType = "";
+    for (const guard of state.guards) {
+      if (guard.hp <= 0) continue;
+      if (guard.detection > maxDetection) {
+        maxDetection = guard.detection;
+        detectingGuardType = guard.guardType;
+      }
+    }
+    if (maxDetection > 0.1 && maxDetection < 1.0) {
+      const pct = Math.round(maxDetection * 100);
+      const color = maxDetection > 0.7 ? "#ff4444" : maxDetection > 0.4 ? "#ccaa33" : "#666";
+      const label = detectingGuardType === "hound" ? "Scent detected" : "Being watched";
+      warnEl.innerHTML = `<div style="color:${color};text-shadow:0 0 6px rgba(0,0,0,0.8);">
+        ${label}: ${pct}%
+        <div style="background:rgba(40,20,20,0.6);border-radius:3px;height:4px;width:80px;margin-top:2px;margin-left:auto;">
+          <div style="background:${color};height:100%;width:${pct}%;border-radius:3px;transition:width 0.15s;"></div>
+        </div>
+      </div>`;
+    } else {
+      warnEl.innerHTML = "";
+    }
+
+    // Body hiding hint
+    if (p.hidingBody) {
+      let hideEl = document.getElementById("morgan-hiding");
+      if (!hideEl) {
+        hideEl = document.createElement("div");
+        hideEl.id = "morgan-hiding";
+        hideEl.style.cssText = "position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:16px;color:#668844;text-shadow:0 0 8px rgba(0,0,0,0.8);";
+        this._container.appendChild(hideEl);
+      }
+      hideEl.innerHTML = "Hiding body...";
+      hideEl.style.display = "block";
+    } else {
+      const hideEl = document.getElementById("morgan-hiding");
+      if (hideEl) hideEl.style.display = "none";
+    }
+
+    // Kill stats in score area
+    if (p.environmentalKills > 0) {
+      const envKillEl = document.getElementById("morgan-env-kills");
+      if (!envKillEl) {
+        const el = document.createElement("div");
+        el.id = "morgan-env-kills";
+        el.style.cssText = "position:absolute;top:75px;left:50%;transform:translateX(-50%);font-size:11px;color:#ff8844;";
+        this._container.appendChild(el);
+      }
+      const ek = document.getElementById("morgan-env-kills");
+      if (ek) ek.textContent = `\u2620 Environmental Kills: ${p.environmentalKills}`;
+    }
+
     // Controls hint (hide after 15 seconds)
     const ctrlEl = document.getElementById("morgan-controls");
     if (ctrlEl) {
@@ -289,7 +389,8 @@ export class MorganHUD {
           WASD: Move | Q/E: Strafe | Shift: Sneak<br>
           Ctrl: Sprint | F: Backstab | R: Interact<br>
           1-5: Spell | Space: Cast | Tab: Objectives<br>
-          G: Extinguish Torch | T: Throw Distraction
+          G: Extinguish | T: Distraction | C: Dodge<br>
+          H: Hide Body | V: Push Guard
         `;
         ctrlEl.style.opacity = `${Math.max(0, 1 - (state.time - 10) / 5)}`;
       } else {
@@ -509,6 +610,9 @@ export class MorganHUD {
           <tr><td style="padding:4px 0;color:#ddd;">G</td><td>Extinguish nearby torch (10 mana)</td></tr>
           <tr><td style="padding:4px 0;color:#ddd;">T</td><td>Throw distraction (free, no mana)</td></tr>
           <tr><td style="padding:4px 0;color:#ddd;">Tab</td><td>Show objectives</td></tr>
+          <tr><td style="padding:4px 0;color:#ddd;">C</td><td>Dodge roll (20 stamina, brief invulnerability)</td></tr>
+          <tr><td style="padding:4px 0;color:#ddd;">H</td><td>Hide nearby corpse (prevents guard alert)</td></tr>
+          <tr><td style="padding:4px 0;color:#ddd;">V</td><td>Push guard (into fire/water/walls for bonus)</td></tr>
           <tr><td style="padding:4px 0;color:#ddd;">Esc</td><td>Pause menu</td></tr>
         </table>
 
