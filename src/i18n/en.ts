@@ -59,8 +59,6 @@ export const en: Record<string, string> = {
   "mode.skirmish_desc": "10000 gold start",
   "mode.battlefield": "BATTLEFIELD",
   "mode.battlefield_desc": "No buildings, last unit wins",
-  "mode.roguelike": "ROGUELIKE",
-  "mode.roguelike_desc": "50% buildings disabled",
   "mode.world": "WORLD",
   "mode.world_desc": "Hex-based strategy",
   "mode.wave": "WAVE MODE",

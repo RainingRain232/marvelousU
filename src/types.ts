@@ -656,7 +656,7 @@ export enum GameMode {
   DEATHMATCH = "deathmatch",
   BATTLEFIELD = "battlefield",
   CAMPAIGN = "campaign",
-  ROGUELIKE = "roguelike",
+
   WORLD = "world",
   WAVE = "wave",
   RPG = "rpg",
@@ -914,28 +914,6 @@ export enum CampaignAchievementCondition {
   NO_BUILDINGS_LOST = "no_buildings_lost",
   NO_UNITS_LOST = "no_units_lost",
   GOLD_HOARDER = "gold_hoarder",
-}
-
-// ---------------------------------------------------------------------------
-// Roguelike wave event types
-// ---------------------------------------------------------------------------
-
-export enum RoguelikeWaveEventType {
-  MERCENARY = "mercenary",
-  SUPPLY_DROP = "supply_drop",
-  RITUAL = "ritual",
-  CHAMPION = "champion",
-}
-
-// ---------------------------------------------------------------------------
-// Roguelike enemy tier
-// ---------------------------------------------------------------------------
-
-export enum RoguelikeEnemyTier {
-  BASIC = "basic",
-  INTERMEDIATE = "intermediate",
-  ADVANCED = "advanced",
-  CHAOS = "chaos",
 }
 
 // ---------------------------------------------------------------------------

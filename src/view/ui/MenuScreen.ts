@@ -179,11 +179,7 @@ const GAME_MODES: GameModeEntry[] = [
     desc: t("mode.battlefield_desc"),
     hidePlayerSetup: true,
   },
-  {
-    mode: GameMode.ROGUELIKE,
-    label: t("mode.roguelike"),
-    desc: t("mode.roguelike_desc"),
-  },
+
   {
     mode: GameMode.WORLD,
     label: t("mode.world"),

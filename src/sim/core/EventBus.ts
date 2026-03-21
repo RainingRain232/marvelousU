@@ -51,10 +51,7 @@ export interface SimEvents {
 
   // Game flow
   phaseChanged: { phase: GamePhase };
-  roguelikeDisabledBuildingsChanged: { disabled: string[] };
-  roguelikeCursedBuildingsChanged: { cursed: string[] };
-  roguelikeWaveEvent: { eventType: string; round: number; description: string };
-  roguelikeRoundChanged: { round: number };
+
   campaignAchievementEarned: { achievementId: string; title: string; reward: string };
 
   // Deathmatch / Battlefield mode events

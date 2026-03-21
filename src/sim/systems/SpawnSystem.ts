@@ -10,7 +10,6 @@ import { getLeader } from "@sim/config/LeaderDefs";
 import { UpgradeSystem } from "@sim/systems/UpgradeSystem";
 import { getArmoryItem } from "@sim/config/ArmoryItemDefs";
 import { getCampaignDifficultyModifiers } from "@sim/config/DifficultyConfig";
-import { getRoguelikeEnemyStatBonus } from "@sim/systems/PhaseSystem";
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -142,30 +141,7 @@ function _spawnUnits(
       }
     }
 
-    // Roguelike: apply round-tier enemy stat bonuses for AI units
-    if (state.gameMode === GameMode.ROGUELIKE && ownerPlayer?.isAI) {
-      const statBonus = getRoguelikeEnemyStatBonus(state.roguelikeRound);
-      if (statBonus > 0) {
-        const hpBonus = Math.floor(unit.maxHp * statBonus);
-        unit.maxHp += hpBonus;
-        unit.hp += hpBonus;
-        unit.atk += Math.floor(unit.atk * statBonus);
-      }
-    }
 
-    // Roguelike: apply champion buff to player units of the buffed type
-    if (
-      state.gameMode === GameMode.ROGUELIKE &&
-      owner === "p1" &&
-      state.roguelikeChampionBuff &&
-      unit.type === state.roguelikeChampionBuff.unitType
-    ) {
-      const champBonus = 0.25; // +25% stats
-      const hpBonus = Math.floor(unit.maxHp * champBonus);
-      unit.maxHp += hpBonus;
-      unit.hp += hpBonus;
-      unit.atk += Math.floor(unit.atk * champBonus);
-    }
 
     state.units.set(unit.id, unit);
     spawnedIds.push(unit.id);

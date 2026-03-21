@@ -144,7 +144,7 @@ const MAP_BUILDINGS: MapBuilding[] = [
   { id: "mage_tower", x: 870, y: 300, w: 70, h: 90, label: "Mage Tower", mode: GameMode.WAVE, type: "tower" },
   { id: "tavern", x: 640, y: 500, w: 140, h: 100, label: "The Prancing Pony", mode: GameMode.SURVIVOR, type: "tavern" },
   { id: "docks", x: 850, y: 750, w: 160, h: 70, label: "River Docks", mode: GameMode.WORLD, type: "docks" },
-  { id: "training", x: 1000, y: 300, w: 140, h: 110, label: "Training Grounds", mode: GameMode.ROGUELIKE, type: "training" },
+  { id: "training", x: 1000, y: 300, w: 140, h: 110, label: "Training Grounds", mode: null, type: "training" },
   { id: "church", x: 300, y: 400, w: 100, h: 150, label: "Cathedral", mode: null, type: "church" },
   { id: "grail_pitch", x: 750, y: 580, w: 140, h: 100, label: "Grail Ball Arena", mode: GameMode.GRAIL_BALL, type: "colosseum" },
   { id: "prison", x: 270, y: 560, w: 110, h: 90, label: "The Dungeon", mode: null, type: "prison" },
@@ -842,7 +842,7 @@ export class CamelotHubScreen {
       [GameMode.WAVE]: "Wave",
       [GameMode.SURVIVOR]: "Survivor",
       [GameMode.WORLD]: "World",
-      [GameMode.ROGUELIKE]: "Roguelike",
+
       [GameMode.WARBAND]: "Warband",
       [GameMode.DRAGOON]: "Panzer Dragoon",
       [GameMode.THREE_DRAGON]: "3Dragon",

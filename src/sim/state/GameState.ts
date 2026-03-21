@@ -28,16 +28,6 @@ export interface GameState {
   phaseTimer: number; // Countdown (seconds) until current phase ends; -1 = no timer
   eventTimer: number; // Countdown (seconds) until the next random event fires during BATTLE
   winnerId: string | null; // PlayerId of the winner set during RESOLVE, null otherwise
-  /** For ROGUELIKE: building type IDs that are disabled this round (50% random subset). */
-  roguelikeDisabledBuildings: string[];
-  /** For ROGUELIKE: building types that are cursed this round (cost +50%). */
-  roguelikeCursedBuildings: string[];
-  /** For ROGUELIKE: current round number (increments each RESOLVE→PREP transition). */
-  roguelikeRound: number;
-  /** For ROGUELIKE: active wave event for this round, null if none. */
-  roguelikeActiveEvent: string | null;
-  /** For ROGUELIKE: champion buff — strongest unit ID and remaining rounds. */
-  roguelikeChampionBuff: { unitType: string; remainingRounds: number } | null;
   /** For CAMPAIGN: difficulty tier selected for this session. */
   campaignDifficulty: CampaignDifficulty;
   /** For CAMPAIGN: elapsed battle time in seconds (used for achievement checking). */
@@ -121,11 +111,7 @@ export function createGameState(
     phaseTimer: BalanceConfig.PREP_DURATION,
     eventTimer: BalanceConfig.RANDOM_EVENT_INTERVAL,
     winnerId: null,
-    roguelikeDisabledBuildings: [],
-    roguelikeCursedBuildings: [],
-    roguelikeRound: 0,
-    roguelikeActiveEvent: null,
-    roguelikeChampionBuff: null,
+
     campaignDifficulty: CampaignDifficulty.NORMAL,
     campaignBattleTime: 0,
     campaignBuildingsLost: 0,

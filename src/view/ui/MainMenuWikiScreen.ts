@@ -562,7 +562,7 @@ export class MainMenuWikiScreen {
     // CORE CONCEPTS
     // =========================================================================
     heading("CORE CONCEPTS — HOW THE GAME WORKS");
-    body("If you're new to the game, start here. These fundamentals apply to Standard, Skirmish, Roguelike, and Campaign modes. Other modes (Wave, Survivor, World, RPG) are covered in their own sections below.");
+    body("If you're new to the game, start here. These fundamentals apply to Standard, Skirmish, and Campaign modes. Other modes (Wave, Survivor, World, RPG) are covered in their own sections below.");
 
     subheading("PREP PHASE vs BATTLE PHASE");
     body("Every match is divided into two alternating phases. During the PREP phase, the battlefield is paused — units do not move or fight. You use this time to build structures, spend gold, research upgrades, and position defences. When the PREP phase ends (either by pressing the Ready button, or automatically after a countdown), the BATTLE phase begins. Units march, fight, and die. Once the battle ends, you return to PREP.");
@@ -842,19 +842,6 @@ export class MainMenuWikiScreen {
 
     divider();
 
-    // =========================================================================
-    // ROGUELIKE MODE
-    // =========================================================================
-    heading("ROGUELIKE MODE — ADAPTIVE STRATEGY");
-    body("Roguelike mode uses the same rules as Standard mode, but with a twist: at the start of the match, 50% of all building types are randomly disabled. You cannot build or use those buildings. This forces you to abandon fixed strategies and adapt to whatever tools you have available.");
-    bullet("Check which buildings are enabled before committing to a strategy.");
-    bullet("If your favourite unit type is disabled, its counters are probably weaker too — exploit that.");
-    bullet("Disabled buildings mean disabled counters. A world with no Mage Towers is a world where cavalry can dominate.");
-    bullet("If the Town Hall is disabled, focus purely on military — income will be tight.");
-    bullet("Creature Den disabled? Focus on human units. Stables disabled? Go heavy infantry and ranged.");
-    note("Tip: Roguelike mode is the most replayable mode in the game. No two matches play out the same way.");
-
-    divider();
 
     // =========================================================================
     // CAMPAIGN MODE
@@ -931,10 +918,7 @@ export class MainMenuWikiScreen {
         name: "BATTLEFIELD",
         desc: "No buildings allowed. Both sides start with pre-built armies and fight to the last unit standing. Pure tactical combat with no economy or construction phase.",
       },
-      {
-        name: "ROGUELIKE",
-        desc: "50% of buildings are randomly disabled each match. Forces creative adaptation and prevents reliance on a single strategy. Every game plays differently.",
-      },
+
       {
         name: "CAMPAIGN",
         desc: "A guided tutorial and story progression mode. Play through a series of increasingly difficult scenarios that teach the game's mechanics step by step. Recommended for new players learning the basics of combat, building, and unit management.",

@@ -326,7 +326,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
   // Hub screen: clicking a building selects that game mode
   const HUB_MODE_INDEX: Record<string, number> = {
     [GameMode.CAMPAIGN]: 0, [GameMode.STANDARD]: 1, [GameMode.DEATHMATCH]: 2,
-    [GameMode.BATTLEFIELD]: 3, [GameMode.ROGUELIKE]: 4, [GameMode.WORLD]: 5,
+    [GameMode.BATTLEFIELD]: 3, [GameMode.WORLD]: 5,
     [GameMode.WAVE]: 6, [GameMode.RPG]: 7, [GameMode.SURVIVOR]: 8,
     [GameMode.COLOSSEUM]: 9, [GameMode.DUEL]: 10, [GameMode.MEDIEVAL_GTA]: 11,
     [GameMode.WARBAND]: 12,
@@ -347,7 +347,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     [GameMode.CAESAR]: 27,
   };
   // Modes that need the setup screen (not skipSetup)
-  const NEEDS_SETUP = new Set([GameMode.STANDARD, GameMode.DEATHMATCH, GameMode.BATTLEFIELD, GameMode.ROGUELIKE, GameMode.WAVE]);
+  const NEEDS_SETUP = new Set([GameMode.STANDARD, GameMode.DEATHMATCH, GameMode.BATTLEFIELD, GameMode.WAVE]);
 
   camelotHubScreen.onSelectMode = (mode) => {
     camelotHubScreen.hide();
@@ -2245,33 +2245,7 @@ function _setupScenario23_dragons(state: GameState, mapW: number, mapH: number):
   }
 }
 
-/**
- * ROGUELIKE mode: randomly disable 50% of non-castle building types.
- * Mirrors PhaseSystem logic but runs at boot for the first round.
- */
-function _rollRoguelikeDisabledBuildings(state: GameState): void {
-  const allTypes = Object.values(BuildingType).filter(
-    (t) => t !== BuildingType.CASTLE && t !== BuildingType.FIREPIT,
-  );
-  const shuffled = [...allTypes];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  const half = Math.floor(shuffled.length / 2);
-  state.roguelikeDisabledBuildings = shuffled.slice(0, half);
 
-  // Apply the filter to castle buildings immediately
-  const disabledSet = new Set(state.roguelikeDisabledBuildings);
-  for (const building of state.buildings.values()) {
-    if (building.type === BuildingType.CASTLE) {
-      const fullBlueprints = [
-        ...BUILDING_DEFINITIONS[BuildingType.CASTLE].blueprints,
-      ];
-      building.blueprints = fullBlueprints.filter((t) => !disabledSet.has(t));
-    }
-  }
-}
 
 /**
  * Apply the P1 leader's passive bonus to the game state at boot.
@@ -7401,7 +7375,7 @@ async function _bootGame(
     (gameMode === GameMode.CAMPAIGN && scenarioType === "battlefield");
 
   if (!isBattlefieldSetup && gameMode !== GameMode.DEATHMATCH) {
-    // Standard, roguelike, standard-campaign have towns/neutral buildings
+    // Standard, standard-campaign have towns/neutral buildings
     // Deathmatch skips neutral buildings entirely for a faster, purer combat mode
     _spawnTowns(state, mapSize.width, mapSize.height);
     _spawnNeutralExtras(state, mapSize.width, mapSize.height, mapSize.label);
@@ -7473,10 +7447,6 @@ async function _bootGame(
     state.eventTimer = Infinity;
   }
 
-  if (gameMode === GameMode.ROGUELIKE) {
-    // Roll initial disabled buildings
-    _rollRoguelikeDisabledBuildings(state);
-  }
 
   if (gameMode === GameMode.CAMPAIGN && scenarioNum !== undefined) {
     // Store the scenario number on state so CampaignVictoryScreen can read it

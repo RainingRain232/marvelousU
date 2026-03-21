@@ -59,8 +59,6 @@ export const nl: Record<string, string> = {
   "mode.skirmish_desc": "10000 goud start",
   "mode.battlefield": "SLAGVELD",
   "mode.battlefield_desc": "Geen gebouwen, laatste eenheid wint",
-  "mode.roguelike": "ROGUELIKE",
-  "mode.roguelike_desc": "50% gebouwen uitgeschakeld",
   "mode.world": "WERELD",
   "mode.world_desc": "Hex-gebaseerde strategie",
   "mode.wave": "GOLFMODUS",
