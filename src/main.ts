@@ -345,6 +345,9 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     [GameMode.EAGLE_FLIGHT]: 25,
     [GameMode.TERRARIA]: 26,
     [GameMode.CAESAR]: 27,
+    [GameMode.RIFT_WIZARD]: 28,
+    [GameMode.CIVILIZATION]: 29,
+    [GameMode.MORGAN]: 30,
   };
   // Modes that need the setup screen (not skipSetup)
   const NEEDS_SETUP = new Set([GameMode.STANDARD, GameMode.DEATHMATCH, GameMode.BATTLEFIELD, GameMode.WAVE]);
