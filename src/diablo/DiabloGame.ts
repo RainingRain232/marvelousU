@@ -6902,6 +6902,10 @@ export class DiabloGame {
   //  HELPER: Add floating text
   // ──────────────────────────────────────────────────────────────
   private _addFloatingText(x: number, y: number, z: number, text: string, color: string): void {
+    // Cap floating texts to prevent GPU memory pressure from mass AOE hits
+    if (this._state.floatingTexts.length >= 40) {
+      this._state.floatingTexts.shift();
+    }
     this._state.floatingTexts.push({
       id: this._genId(),
       text,

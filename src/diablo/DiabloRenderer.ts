@@ -30044,6 +30044,10 @@ export class DiabloRenderer {
     for (const [id, sprite] of this._floatTextSprites) {
       if (!currentIds.has(id)) {
         this._scene.remove(sprite);
+        if (sprite.material instanceof THREE.SpriteMaterial) {
+          if (sprite.material.map) sprite.material.map.dispose();
+          sprite.material.dispose();
+        }
         this._floatTextSprites.delete(id);
       }
     }
@@ -52182,6 +52186,12 @@ export class DiabloRenderer {
     this._lootMeshes.clear();
     this._chestMeshes.clear();
     this._aoeMeshes.clear();
+    for (const [, sprite] of this._floatTextSprites) {
+      if (sprite.material instanceof THREE.SpriteMaterial) {
+        if (sprite.material.map) sprite.material.map.dispose();
+        sprite.material.dispose();
+      }
+    }
     this._floatTextSprites.clear();
     for (const [, mesh] of this._vendorMeshes) {
       this._scene.remove(mesh);
