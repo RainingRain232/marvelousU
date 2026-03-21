@@ -863,7 +863,7 @@ export class MenuScreen {
     const categories: { title: string; color: number; accent: number; indices: number[] }[] = [
       { title: "STRATEGY & TACTICS", color: 0xffd700, accent: 0x332a00, indices: [0, 1, 2, 3, 4, 29, 5, 6] },
       { title: "ADVENTURE & RPG", color: 0x44ddaa, accent: 0x0a2a1a, indices: [7, 22, 19, 23, 8, 9, 10] },
-      { title: "3D ACTION & COMBAT", color: 0xff7744, accent: 0x2a1408, indices: [11, 16, 12, 13, 14, 15, 17, 18] },
+      { title: "3D ACTION & COMBAT", color: 0xff7744, accent: 0x2a1408, indices: [11, 16, 12, 13, 14, 15, 17, 18, 30] },
       { title: "WORLDS & SPORTS", color: 0x6699ff, accent: 0x0a1a2a, indices: [20, 21, 24, 25, 26, 27, 28] },
     ];
 

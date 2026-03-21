@@ -13,7 +13,7 @@ export const FLOOR_H = 32;
 export const MORGAN_SPEED = 4.5;
 export const MORGAN_SNEAK_SPEED = 2.0;
 export const MORGAN_SPRINT_SPEED = 7.5;
-export const MORGAN_TURN_SPEED = 5.0;
+export const MORGAN_TURN_SPEED = 2.2;
 
 // Stamina / mana
 export const MAX_STAMINA = 100;
@@ -68,10 +68,10 @@ export const SOUND_SPELL_RADIUS = 10;
 export const SOUND_COMBAT_RADIUS = 14;
 export const SOUND_WALK_RADIUS = 3;
 
-// Camera
-export const CAM_HEIGHT = 12;
-export const CAM_DISTANCE = 14;
-export const CAM_LERP = 4.0;
+// Camera — 3rd-person behind/above player, INSIDE the rooms (below ceiling)
+export const CAM_HEIGHT = 2.2;    // just below ceiling (ceiling is at y=3)
+export const CAM_DISTANCE = 5;    // close behind the player
+export const CAM_LERP = 6.0;     // snappier follow
 
 // Lighting
 export const TORCH_RANGE = 6;

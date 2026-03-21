@@ -141,8 +141,8 @@ export function tickPlayer(state: MorganGameState, dt: number): void {
 
   // Rotation
   let turnInput = 0;
-  if (isDown("ArrowLeft") || isDown("KeyA")) turnInput -= 1;
-  if (isDown("ArrowRight") || isDown("KeyD")) turnInput += 1;
+  if (isDown("ArrowLeft") || isDown("KeyA")) turnInput += 1;
+  if (isDown("ArrowRight") || isDown("KeyD")) turnInput -= 1;
   p.angle += turnInput * MORGAN_TURN_SPEED * dt;
 
   // Movement

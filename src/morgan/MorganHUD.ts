@@ -454,17 +454,114 @@ export class MorganHUD {
     `;
     div.innerHTML = `
       <h2 style="font-size:28px;color:#8844ff;margin-bottom:30px;text-shadow:0 0 12px rgba(136,68,255,0.5);">PAUSED</h2>
-      <button id="morgan-resume" style="padding:12px 40px;margin:8px;font-size:16px;
+      <button id="morgan-resume" class="morgan-pause-btn" style="padding:12px 40px;margin:6px;font-size:16px;
         border:1px solid #8844ff;border-radius:8px;background:rgba(60,30,100,0.4);
         color:#ddd;cursor:pointer;font-family:inherit;pointer-events:auto;">Resume</button>
-      <button id="morgan-quit" style="padding:12px 40px;margin:8px;font-size:16px;
+      <button id="morgan-controls-btn" class="morgan-pause-btn" style="padding:12px 40px;margin:6px;font-size:16px;
+        border:1px solid #6688aa;border-radius:8px;background:rgba(30,40,60,0.4);
+        color:#aac;cursor:pointer;font-family:inherit;pointer-events:auto;">Controls & Instructions</button>
+      <button id="morgan-quit" class="morgan-pause-btn" style="padding:12px 40px;margin:6px;font-size:16px;
         border:1px solid #555;border-radius:8px;background:rgba(40,20,20,0.4);
         color:#aaa;cursor:pointer;font-family:inherit;pointer-events:auto;">Quit to Menu</button>
     `;
     const container = document.getElementById("pixi-container");
     if (container) container.appendChild(div);
     document.getElementById("morgan-resume")?.addEventListener("click", () => { div.remove(); onResume(); });
+    document.getElementById("morgan-controls-btn")?.addEventListener("click", () => {
+      div.remove();
+      this.showControlsScreen(() => this.showPauseMenu(onResume, onExit));
+    });
     document.getElementById("morgan-quit")?.addEventListener("click", () => { div.remove(); onExit(); });
+  }
+
+  showControlsScreen(onBack: () => void): void {
+    const div = document.createElement("div");
+    div.id = "morgan-controls-screen";
+    div.style.cssText = `
+      position:absolute;top:0;left:0;width:100%;height:100%;
+      background:rgba(5,5,15,0.92);z-index:20;overflow-y:auto;
+      display:flex;flex-direction:column;align-items:center;
+      font-family:'Cinzel',serif;color:#ddd;padding:30px 20px;
+    `;
+    div.innerHTML = `
+      <h2 style="font-size:26px;color:#8844ff;margin-bottom:20px;
+        text-shadow:0 0 12px rgba(136,68,255,0.4);">Controls & Instructions</h2>
+
+      <div style="max-width:600px;width:100%;text-align:left;">
+
+        <h3 style="color:#aa88dd;font-size:15px;margin:18px 0 8px;border-bottom:1px solid #333;padding-bottom:4px;">MOVEMENT</h3>
+        <table style="width:100%;font-size:13px;color:#bbb;border-collapse:collapse;">
+          <tr><td style="padding:4px 0;color:#ddd;width:140px;">W / \u2191</td><td>Move forward</td></tr>
+          <tr><td style="padding:4px 0;color:#ddd;">S / \u2193</td><td>Move backward</td></tr>
+          <tr><td style="padding:4px 0;color:#ddd;">A / \u2190</td><td>Turn left</td></tr>
+          <tr><td style="padding:4px 0;color:#ddd;">D / \u2192</td><td>Turn right</td></tr>
+          <tr><td style="padding:4px 0;color:#ddd;">Q / E</td><td>Strafe left / right</td></tr>
+          <tr><td style="padding:4px 0;color:#ddd;">Shift</td><td>Sneak (quiet, slow, harder to detect)</td></tr>
+          <tr><td style="padding:4px 0;color:#ddd;">Ctrl</td><td>Sprint (fast, noisy, drains stamina)</td></tr>
+        </table>
+
+        <h3 style="color:#aa88dd;font-size:15px;margin:18px 0 8px;border-bottom:1px solid #333;padding-bottom:4px;">ACTIONS</h3>
+        <table style="width:100%;font-size:13px;color:#bbb;border-collapse:collapse;">
+          <tr><td style="padding:4px 0;color:#ddd;width:140px;">Space</td><td>Cast selected spell</td></tr>
+          <tr><td style="padding:4px 0;color:#ddd;">1-5</td><td>Select spell (or scroll wheel)</td></tr>
+          <tr><td style="padding:4px 0;color:#ddd;">F</td><td>Backstab (behind a guard) / Execute (sleeping/stunned)</td></tr>
+          <tr><td style="padding:4px 0;color:#ddd;">R</td><td>Interact (unlock doors with keys)</td></tr>
+          <tr><td style="padding:4px 0;color:#ddd;">G</td><td>Extinguish nearby torch (10 mana)</td></tr>
+          <tr><td style="padding:4px 0;color:#ddd;">T</td><td>Throw distraction (free, no mana)</td></tr>
+          <tr><td style="padding:4px 0;color:#ddd;">Tab</td><td>Show objectives</td></tr>
+          <tr><td style="padding:4px 0;color:#ddd;">Esc</td><td>Pause menu</td></tr>
+        </table>
+
+        <h3 style="color:#aa88dd;font-size:15px;margin:18px 0 8px;border-bottom:1px solid #333;padding-bottom:4px;">SPELLS</h3>
+        <table style="width:100%;font-size:13px;color:#bbb;border-collapse:collapse;">
+          <tr><td style="padding:4px 0;color:#8844ff;width:140px;">[1] Shadow Cloak</td><td>Become invisible for 5s (30 mana)</td></tr>
+          <tr><td style="padding:4px 0;color:#8844ff;">[2] Dark Bolt</td><td>Ranged projectile that stuns & damages (20 mana)</td></tr>
+          <tr><td style="padding:4px 0;color:#8844ff;">[3] Sleep Mist</td><td>AoE cloud that puts guards to sleep (35 mana)</td></tr>
+          <tr><td style="padding:4px 0;color:#8844ff;">[4] Blink</td><td>Short-range teleport (25 mana)</td></tr>
+          <tr><td style="padding:4px 0;color:#8844ff;">[5] Decoy</td><td>Shadow phantom that lures guards (20 mana)</td></tr>
+        </table>
+
+        <h3 style="color:#aa88dd;font-size:15px;margin:18px 0 8px;border-bottom:1px solid #333;padding-bottom:4px;">STEALTH TIPS</h3>
+        <ul style="font-size:13px;color:#999;line-height:1.8;padding-left:20px;">
+          <li>Stay in <span style="color:#6644aa;">shadow zones</span> (dark floor tiles) to reduce detection</li>
+          <li><span style="color:#ff8844;">Extinguish torches</span> (G) to create new shadow zones</li>
+          <li>Guards have a <span style="color:#ffff44;">vision cone</span> — stay behind them or out of sight</li>
+          <li><span style="color:#885522;">Hound guards</span> can smell you at close range even without line of sight</li>
+          <li><span style="color:#4444cc;">Mage guards</span> shoot fireballs — dodge or use Blink to escape</li>
+          <li>Sleeping/stunned guards can be <span style="color:#cc88ff;">executed</span> with F (no angle needed)</li>
+          <li><span style="color:#ffd700;">Backstab</span> the boss for reduced damage — he can't be one-shot</li>
+          <li>Press T to throw a <span style="color:#aaaacc;">distraction</span> — free, no mana, lures guards</li>
+        </ul>
+
+        <h3 style="color:#aa88dd;font-size:15px;margin:18px 0 8px;border-bottom:1px solid #333;padding-bottom:4px;">SCORING BADGES</h3>
+        <table style="width:100%;font-size:13px;color:#bbb;border-collapse:collapse;">
+          <tr><td style="padding:4px 0;color:#ffd700;width:140px;">GHOST</td><td>Complete level with 0 detections (+300 XP)</td></tr>
+          <tr><td style="padding:4px 0;color:#cc88ff;">SHADOW</td><td>Complete with \u22642 detections (+150 XP)</td></tr>
+          <tr><td style="padding:4px 0;color:#44ffaa;">PACIFIST</td><td>Complete without killing any guards (+400 XP)</td></tr>
+          <tr><td style="padding:4px 0;color:#ffaa00;">SPEEDRUN</td><td>Complete in under 1 minute (+200 XP)</td></tr>
+          <tr><td style="padding:4px 0;color:#ccaa44;">SWIFT</td><td>Complete in under 2 minutes (+100 XP)</td></tr>
+          <tr><td style="padding:4px 0;color:#44cccc;">UNTOUCHED</td><td>Complete without triggering any traps (+100 XP)</td></tr>
+        </table>
+
+        <h3 style="color:#aa88dd;font-size:15px;margin:18px 0 8px;border-bottom:1px solid #333;padding-bottom:4px;">HUD ELEMENTS</h3>
+        <ul style="font-size:13px;color:#999;line-height:1.8;padding-left:20px;">
+          <li><span style="color:#ff6666;">HP bar</span> (bottom-left) — your health, game over when empty</li>
+          <li><span style="color:#6666ff;">Mana bar</span> — used to cast spells, regenerates over time</li>
+          <li><span style="color:#ffcc33;">Stamina bar</span> — drained by sprinting, regenerates when not sprinting</li>
+          <li><span style="color:#ffaa00;">VIS meter</span> (left) — how visible you are to guards</li>
+          <li><span style="color:#44cc44;">SND meter</span> (left) — how much noise you're making</li>
+          <li><span style="color:#44cc44;">HIDDEN</span> / <span style="color:#ccaa33;">SUSPICIOUS</span> / <span style="color:#ff4444;">ALERT</span> (top-right) — global alert state</li>
+          <li><span style="color:#8844ff;">Minimap</span> (bottom-right) — shows layout, guards, artifacts, pickups</li>
+        </ul>
+      </div>
+
+      <button id="morgan-controls-back" style="margin-top:25px;padding:12px 40px;font-size:15px;
+        border:1px solid #8844ff;border-radius:8px;background:rgba(60,30,100,0.4);
+        color:#ddd;cursor:pointer;font-family:inherit;pointer-events:auto;">Back</button>
+    `;
+    const container = document.getElementById("pixi-container");
+    if (container) container.appendChild(div);
+    document.getElementById("morgan-controls-back")?.addEventListener("click", () => { div.remove(); onBack(); });
   }
 
   showLevelComplete(state: MorganGameState, onNext: () => void, onUpgrade: () => void): void {
@@ -704,7 +801,7 @@ export class MorganHUD {
 
   destroy(): void {
     this._container?.remove();
-    for (const id of ["morgan-pause", "morgan-level-complete", "morgan-gameover", "morgan-victory", "morgan-upgrade-screen"]) {
+    for (const id of ["morgan-pause", "morgan-level-complete", "morgan-gameover", "morgan-victory", "morgan-upgrade-screen", "morgan-controls-screen"]) {
       document.getElementById(id)?.remove();
     }
   }

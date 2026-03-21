@@ -100,6 +100,8 @@ export class MorganGame {
         </div>
       </div>
       <button class="morgan-menu-btn" id="morgan-start">Begin Infiltration</button>
+      <button class="morgan-menu-btn" id="morgan-how-to-play" style="border-color:#6688aa;color:#aac;
+        background:rgba(30,40,60,0.3);">Controls & Instructions</button>
       <button class="morgan-menu-btn" id="morgan-back" style="border-color:#444;color:#888;
         background:rgba(30,20,30,0.3);">Back to Menu</button>
 
@@ -131,6 +133,14 @@ export class MorganGame {
     document.getElementById("morgan-start")?.addEventListener("click", () => {
       this._removeMainMenu();
       this._startGame();
+    });
+    document.getElementById("morgan-how-to-play")?.addEventListener("click", () => {
+      this._removeMainMenu();
+      // Create a temporary HUD just for the controls screen
+      const tempHud = new MorganHUD();
+      tempHud.showControlsScreen(() => {
+        this._showMainMenu();
+      });
     });
     document.getElementById("morgan-back")?.addEventListener("click", () => {
       this._removeMainMenu();

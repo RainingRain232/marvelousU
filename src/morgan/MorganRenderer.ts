@@ -124,29 +124,7 @@ function createFloorTexture(): THREE.CanvasTexture {
   return tex;
 }
 
-function createCeilingTexture(): THREE.CanvasTexture {
-  const c = document.createElement("canvas");
-  c.width = 64; c.height = 64;
-  const ctx = c.getContext("2d")!;
-  ctx.fillStyle = "#121218";
-  ctx.fillRect(0, 0, 64, 64);
-  // Wooden beam pattern
-  for (let i = 0; i < 3; i++) {
-    ctx.fillStyle = `rgb(${30 + Math.random() * 10},${22 + Math.random() * 8},${15 + Math.random() * 6})`;
-    ctx.fillRect(0, i * 22, 64, 4);
-  }
-  // Cobweb hints
-  for (let i = 0; i < 8; i++) {
-    ctx.strokeStyle = `rgba(80,80,90,${Math.random() * 0.15})`;
-    ctx.beginPath();
-    ctx.moveTo(Math.random() * 64, Math.random() * 64);
-    ctx.lineTo(Math.random() * 64, Math.random() * 64);
-    ctx.stroke();
-  }
-  const tex = new THREE.CanvasTexture(c);
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  return tex;
-}
+
 
 // ---------------------------------------------------------------------------
 // Combined post-processing shader: vignette + chromatic aberration + color grading
@@ -256,7 +234,7 @@ export class MorganRenderer {
   private _wallNormal!: THREE.CanvasTexture;
   private _floorTex!: THREE.CanvasTexture;
   private _floorNormal!: THREE.CanvasTexture;
-  private _ceilTex!: THREE.CanvasTexture;
+  // (ceiling removed — camera is inside dungeon)
 
   // Player
   private _playerMesh!: THREE.Group;
@@ -354,20 +332,20 @@ export class MorganRenderer {
     this._renderer.shadowMap.enabled = true;
     this._renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this._renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this._renderer.toneMappingExposure = 0.7;
+    this._renderer.toneMappingExposure = 1.0;
 
     this._scene = new THREE.Scene();
-    this._scene.background = new THREE.Color(0x030308);
-    this._scene.fog = new THREE.FogExp2(0x030308, 0.038);
+    this._scene.background = new THREE.Color(0x080815);
+    this._scene.fog = new THREE.FogExp2(0x080815, 0.022);
 
-    this._camera = new THREE.PerspectiveCamera(52, window.innerWidth / window.innerHeight, 0.3, 200);
+    this._camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 200);
 
     // Generate textures
     this._wallTex = createStoneTexture(128, 128, 42, 42, 58);
     this._wallNormal = createNormalMapFromCanvas(this._wallTex, 3);
     this._floorTex = createFloorTexture();
     this._floorNormal = createNormalMapFromCanvas(this._floorTex, 2);
-    this._ceilTex = createCeilingTexture();
+    // (ceiling texture removed — no ceiling mesh)
 
     // Post-processing
     this._composer = new EffectComposer(this._renderer);
@@ -379,13 +357,12 @@ export class MorganRenderer {
     this._composer.addPass(this._finalPass);
     this._composer.addPass(new OutputPass());
 
-    // Lighting
-    this._scene.add(new THREE.AmbientLight(0x0a0a22, 0.2));
-    const moon = new THREE.DirectionalLight(0x334488, 0.08);
+    // Lighting — brighter ambient so dungeon is visible
+    this._scene.add(new THREE.AmbientLight(0x1a1a44, 0.5));
+    const moon = new THREE.DirectionalLight(0x4466aa, 0.2);
     moon.position.set(20, 40, 10);
     this._scene.add(moon);
-    // Hemisphere for subtle indirect fill
-    this._scene.add(new THREE.HemisphereLight(0x111133, 0x050510, 0.12));
+    this._scene.add(new THREE.HemisphereLight(0x222244, 0x0a0a15, 0.3));
 
     this._scene.add(this._mapGroup);
     this._scene.add(this._propsGroup);
@@ -523,7 +500,7 @@ export class MorganRenderer {
     this._playerMesh.add(this._staffCrystal);
 
     // Player light
-    this._playerLight = new THREE.PointLight(0x6633cc, 0.6, 7);
+    this._playerLight = new THREE.PointLight(0x6633cc, 1.0, 10);
     this._playerLight.position.y = 2.0;
     this._playerMesh.add(this._playerLight);
 
@@ -771,21 +748,14 @@ export class MorganRenderer {
     const shadowFloorMat = new THREE.MeshStandardMaterial({
       map: this._floorTex, normalMap: this._floorNormal, normalScale: new THREE.Vector2(0.6, 0.6),
       roughness: 0.95, color: 0x666688 }); // tinted darker
-    const ceilMat = new THREE.MeshStandardMaterial({
-      map: this._ceilTex, roughness: 0.95, side: THREE.DoubleSide });
     const doorMat = new THREE.MeshStandardMaterial({ color: 0x4a3520, roughness: 0.6, metalness: 0.05 });
     const lockedDoorMat = new THREE.MeshStandardMaterial({ color: 0x886633, roughness: 0.4, metalness: 0.35 });
 
-    const wallGeo = new THREE.BoxGeometry(CELL_SIZE, 3, CELL_SIZE, 3, 4, 3);
+    const wallGeo = new THREE.BoxGeometry(CELL_SIZE, 2.5, CELL_SIZE, 3, 4, 3);
     const floorGeo = new THREE.BoxGeometry(CELL_SIZE, 0.2, CELL_SIZE, 3, 1, 3);
     const doorGeo = new THREE.BoxGeometry(CELL_SIZE * 0.15, 2.5, CELL_SIZE, 2, 4, 3);
 
-    // Ceiling
-    const ceil = new THREE.Mesh(
-      new THREE.PlaneGeometry(FLOOR_W * CELL_SIZE, FLOOR_H * CELL_SIZE, 8, 8), ceilMat);
-    ceil.rotation.x = Math.PI / 2;
-    ceil.position.set(FLOOR_W * CELL_SIZE / 2, 3, FLOOR_H * CELL_SIZE / 2);
-    this._mapGroup.add(ceil);
+    // No ceiling mesh — camera is inside the dungeon looking at rooms from above/behind
 
     for (let y = 0; y < FLOOR_H; y++) {
       for (let x = 0; x < FLOOR_W; x++) {
@@ -796,7 +766,7 @@ export class MorganRenderer {
         switch (tile) {
           case TileType.WALL: {
             const m = new THREE.Mesh(wallGeo, wallMat);
-            m.position.set(wx, 1.5, wz);
+            m.position.set(wx, 1.25, wz);
             m.castShadow = true; m.receiveShadow = true;
             this._mapGroup.add(m);
             break;
@@ -916,7 +886,7 @@ export class MorganRenderer {
           }
           case TileType.TORCH: {
             const w2 = new THREE.Mesh(wallGeo, wallMat);
-            w2.position.set(wx, 1.5, wz);
+            w2.position.set(wx, 1.25, wz);
             this._mapGroup.add(w2);
             // Bracket
             const bracket = new THREE.Mesh(
@@ -940,7 +910,7 @@ export class MorganRenderer {
             this._mapGroup.add(flame1, flame2);
             this._torchFlames.push(flame1, flame2);
             // Torch light
-            const light = new THREE.PointLight(0xff8844, 1.4, TORCH_RANGE * 1.6, 2);
+            const light = new THREE.PointLight(0xff8844, 2.0, TORCH_RANGE * 2.0, 2);
             light.position.set(wx, 2.35, wz);
             light.castShadow = true;
             light.shadow.mapSize.set(256, 256);
@@ -969,6 +939,15 @@ export class MorganRenderer {
 
     this._placeProps(state);
     this._exitMarker.position.set(state.exitPos.x, 0, state.exitPos.z);
+
+    // Snap camera to player position immediately (no lerp lag on first frame)
+    const p = state.player;
+    const snapCamX = p.pos.x - Math.sin(p.angle) * CAM_DISTANCE;
+    const snapCamZ = p.pos.z - Math.cos(p.angle) * CAM_DISTANCE;
+    this._camPos.set(snapCamX, CAM_HEIGHT, snapCamZ);
+    this._camTarget.set(p.pos.x + Math.sin(p.angle) * 1.5, 1.2, p.pos.z + Math.cos(p.angle) * 1.5);
+    this._camera.position.copy(this._camPos);
+    this._camera.lookAt(this._camTarget);
 
     for (const guard of state.guards) this._createGuardMesh(guard);
     for (const art of state.artifacts) this._createArtifactMesh(art);
@@ -1484,7 +1463,7 @@ export class MorganRenderer {
     cloakMat.opacity = p.cloaked ? 0.12 + Math.sin(this._time * 4) * 0.08 : 0.88;
     cloakMat.color.set(p.cloaked ? PLAYER_CLOAK_COLOR : 0x1a0033);
     if (p.moving) this._playerCloak.rotation.z = Math.sin(this._time * 3) * 0.05;
-    this._playerLight.intensity = p.cloaked ? 0.08 : 0.6;
+    this._playerLight.intensity = p.cloaked ? 0.15 : 1.0;
 
     // Staff crystal pulse
     if (this._staffCrystal) {
@@ -1910,9 +1889,11 @@ export class MorganRenderer {
     (this._sparkParticles.geometry.attributes.position as THREE.BufferAttribute).needsUpdate = true;
 
     // Camera with shake
-    const camTargetX = p.pos.x - Math.sin(p.angle) * 2;
-    const camTargetZ = p.pos.z - Math.cos(p.angle) * 2;
-    this._camTarget.lerp(new THREE.Vector3(camTargetX, 1.5, camTargetZ), CAM_LERP * dt);
+    // Camera: look slightly ahead of the player at chest height
+    const camTargetX = p.pos.x + Math.sin(p.angle) * 1.5;
+    const camTargetZ = p.pos.z + Math.cos(p.angle) * 1.5;
+    this._camTarget.lerp(new THREE.Vector3(camTargetX, 1.2, camTargetZ), CAM_LERP * dt);
+    // Camera positioned behind and above the player
     const idealCamX = p.pos.x - Math.sin(p.angle) * CAM_DISTANCE;
     const idealCamZ = p.pos.z - Math.cos(p.angle) * CAM_DISTANCE;
     this._camPos.lerp(new THREE.Vector3(idealCamX, CAM_HEIGHT, idealCamZ), CAM_LERP * dt);
