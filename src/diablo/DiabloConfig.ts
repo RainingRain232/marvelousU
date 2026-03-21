@@ -38,6 +38,8 @@ import {
   SkillRuneEffect,
   LegendaryEffectDef,
   RunewordDef,
+  Achievement,
+  CosmeticItem,
 } from './DiabloTypes';
 
 // ---------------------------------------------------------------------------
@@ -10181,4 +10183,87 @@ export const RUNEWORD_DEFS: RunewordDef[] = [
     specialEffect: '+40 flat damage, ignore target armor',
     legendaryEffectId: 'explode_on_kill',
   },
+];
+
+// ---------------------------------------------------------------------------
+//  TALENT SYNERGIES
+// ---------------------------------------------------------------------------
+export const TALENT_SYNERGIES: { talentA: string; talentB: string; bonus: string; value: number }[] = [
+  // Warrior: Savage Blows + Keen Edge = bonus crit damage
+  { talentA: 'w_b0t0', talentB: 'w_b0t1', bonus: 'critDamage', value: 0.15 },
+  // Warrior: Toughness + Iron Skin = bonus armor
+  { talentA: 'w_b1t0', talentB: 'w_b1t1', bonus: 'armor', value: 10 },
+  // Mage: Ignition + Mana Well = bonus mana regen
+  { talentA: 'm_b0t0', talentB: 'm_b1t1', bonus: 'maxMana', value: 30 },
+  // Mage: Quick Cast + Charged Strikes = bonus attack speed
+  { talentA: 'm_b2t0', talentB: 'm_b2t2', bonus: 'attackSpeed', value: 0.1 },
+  // Ranger: Steady Aim + Precision = bonus crit damage
+  { talentA: 'r_b0t0', talentB: 'r_b0t1', bonus: 'critDamage', value: 0.15 },
+  // Ranger: Thick Hide + Fleet Footed = bonus move speed
+  { talentA: 'r_b1t0', talentB: 'r_b1t3', bonus: 'moveSpeed', value: 0.5 },
+  // Paladin: Holy Smite + Righteous Strike = bonus strength
+  { talentA: 'p_b0t0', talentB: 'p_b0t1', bonus: 'strength', value: 10 },
+  // Necromancer: Bone Spike + Sanguine Drain = bonus life steal (stored as critDamage for simplicity)
+  { talentA: 'n_b0t0', talentB: 'n_b1t1', bonus: 'critDamage', value: 0.1 },
+  // Assassin: Keen Blades + Twist the Knife = bonus crit chance
+  { talentA: 'a_b0t0', talentB: 'a_b0t1', bonus: 'critChance', value: 0.03 },
+];
+
+// ---------------------------------------------------------------------------
+//  ACHIEVEMENT DEFINITIONS
+// ---------------------------------------------------------------------------
+
+export const ACHIEVEMENT_DEFS: Omit<Achievement, 'progress' | 'unlocked'>[] = [
+  // Combat
+  { id: 'first_blood', name: 'First Blood', description: 'Kill your first enemy.', icon: '🗡️', category: 'combat', requirement: 1, reward: { gold: 50 } },
+  { id: 'centurion', name: 'Centurion', description: 'Kill 100 enemies.', icon: '⚔️', category: 'combat', requirement: 100, reward: { gold: 500 } },
+  { id: 'slayer', name: 'Slayer', description: 'Kill 1,000 enemies.', icon: '💀', category: 'combat', requirement: 1000, reward: { gold: 2000, cosmeticId: 'trail_blood' } },
+  { id: 'massacre', name: 'Massacre', description: 'Kill 10,000 enemies.', icon: '☠️', category: 'combat', requirement: 10000, reward: { gold: 10000, cosmeticId: 'aura_death' } },
+  { id: 'boss_slayer', name: 'Boss Slayer', description: 'Defeat 10 bosses.', icon: '👑', category: 'combat', requirement: 10, reward: { gold: 1000 } },
+  { id: 'boss_hunter', name: 'Boss Hunter', description: 'Defeat 50 bosses.', icon: '🏆', category: 'combat', requirement: 50, reward: { gold: 5000, cosmeticId: 'trail_gold' } },
+  { id: 'crit_master', name: 'Critical Master', description: 'Land 500 critical hits.', icon: '💥', category: 'combat', requirement: 500, reward: { gold: 1000 } },
+  { id: 'untouchable', name: 'Untouchable', description: 'Dodge 100 times.', icon: '💨', category: 'combat', requirement: 100, reward: { gold: 500 } },
+  // Exploration
+  { id: 'explorer', name: 'Explorer', description: 'Clear 5 maps.', icon: '🗺️', category: 'exploration', requirement: 5, reward: { gold: 500 } },
+  { id: 'world_walker', name: 'World Walker', description: 'Clear 20 maps.', icon: '🌍', category: 'exploration', requirement: 20, reward: { gold: 3000, cosmeticId: 'trail_stars' } },
+  { id: 'completionist', name: 'Completionist', description: 'Clear all 39 maps.', icon: '✨', category: 'exploration', requirement: 39, reward: { gold: 10000, cosmeticId: 'aura_celestial' } },
+  { id: 'night_stalker', name: 'Night Stalker', description: 'Defeat 10 night bosses.', icon: '🌙', category: 'exploration', requirement: 10, reward: { gold: 2000 } },
+  // Collection
+  { id: 'collector', name: 'Collector', description: 'Find 50 items.', icon: '🎒', category: 'collection', requirement: 50, reward: { gold: 300 } },
+  { id: 'legendary_hunter', name: 'Legendary Hunter', description: 'Find 10 legendary items.', icon: '🌟', category: 'collection', requirement: 10, reward: { gold: 2000 } },
+  { id: 'pet_collector', name: 'Pet Collector', description: 'Collect 5 pets.', icon: '🐾', category: 'collection', requirement: 5, reward: { gold: 1000, cosmeticId: 'trail_paws' } },
+  { id: 'gold_hoarder', name: 'Gold Hoarder', description: 'Accumulate 50,000 gold.', icon: '💰', category: 'collection', requirement: 50000, reward: { cosmeticId: 'aura_gold' } },
+  { id: 'set_collector', name: 'Set Collector', description: 'Complete 5 item sets.', icon: '🏅', category: 'collection', requirement: 5, reward: { gold: 5000 } },
+  // Challenge
+  { id: 'rift_runner', name: 'Rift Runner', description: 'Complete Greater Rift 10.', icon: '🌀', category: 'challenge', requirement: 10, reward: { gold: 2000 } },
+  { id: 'rift_master', name: 'Rift Master', description: 'Complete Greater Rift 50.', icon: '🔥', category: 'challenge', requirement: 50, reward: { gold: 5000, cosmeticId: 'trail_fire' } },
+  { id: 'rift_legend', name: 'Rift Legend', description: 'Complete Greater Rift 100.', icon: '⭐', category: 'challenge', requirement: 100, reward: { gold: 20000, cosmeticId: 'aura_rift' } },
+  { id: 'level_cap', name: 'Max Level', description: 'Reach level 20.', icon: '📈', category: 'challenge', requirement: 20, reward: { gold: 1000 } },
+  { id: 'paragon_10', name: 'Paragon Warrior', description: 'Reach Paragon level 10.', icon: '💎', category: 'challenge', requirement: 10, reward: { gold: 3000 } },
+  { id: 'paragon_50', name: 'Paragon Elite', description: 'Reach Paragon level 50.', icon: '👑', category: 'challenge', requirement: 50, reward: { gold: 10000, cosmeticId: 'aura_paragon' } },
+  { id: 'deathless', name: 'Deathless', description: 'Clear a map without dying.', icon: '🛡️', category: 'challenge', requirement: 1, reward: { gold: 1000 } },
+  // Quest
+  { id: 'quest_complete_5', name: 'Errand Runner', description: 'Complete 5 quests.', icon: '📋', category: 'quest', requirement: 5, reward: { gold: 500 } },
+  { id: 'quest_complete_20', name: 'Champion', description: 'Complete 20 quests.', icon: '🏆', category: 'quest', requirement: 20, reward: { gold: 2000 } },
+  { id: 'excalibur', name: 'The Blade Reborn', description: 'Reforge Excalibur.', icon: '⚔️', category: 'quest', requirement: 1, reward: { gold: 10000, cosmeticId: 'aura_excalibur' } },
+  { id: 'mordred', name: 'Oathbreaker\'s End', description: 'Defeat Mordred.', icon: '👑', category: 'quest', requirement: 1, reward: { gold: 20000, cosmeticId: 'trail_royal' } },
+];
+
+// ---------------------------------------------------------------------------
+//  COSMETIC DEFINITIONS
+// ---------------------------------------------------------------------------
+
+export const COSMETIC_DEFS: CosmeticItem[] = [
+  { id: 'trail_blood', name: 'Blood Trail', type: 'trail', description: 'Leave a trail of crimson.', icon: '🩸' },
+  { id: 'trail_fire', name: 'Fire Trail', type: 'trail', description: 'Footsteps burn with flame.', icon: '🔥' },
+  { id: 'trail_gold', name: 'Golden Trail', type: 'trail', description: 'A shimmering golden path.', icon: '✨' },
+  { id: 'trail_stars', name: 'Starlight Trail', type: 'trail', description: 'Stardust in your wake.', icon: '⭐' },
+  { id: 'trail_paws', name: 'Paw Prints', type: 'trail', description: 'Tiny paw prints follow you.', icon: '🐾' },
+  { id: 'trail_royal', name: 'Royal Carpet', type: 'trail', description: 'Walk on crimson and gold.', icon: '👑' },
+  { id: 'aura_death', name: 'Death Shroud', type: 'aura', description: 'Dark wisps surround you.', icon: '💀' },
+  { id: 'aura_celestial', name: 'Celestial Glow', type: 'aura', description: 'Heavenly light radiates.', icon: '✨' },
+  { id: 'aura_gold', name: 'Midas Touch', type: 'aura', description: 'Everything you touch glitters.', icon: '💰' },
+  { id: 'aura_rift', name: 'Rift Walker', type: 'aura', description: 'Void energy crackles around you.', icon: '🌀' },
+  { id: 'aura_paragon', name: 'Paragon Radiance', type: 'aura', description: 'Pure power made visible.', icon: '💎' },
+  { id: 'aura_excalibur', name: 'Excalibur\'s Light', type: 'aura', description: 'The blade\'s divine light.', icon: '⚔️' },
 ];

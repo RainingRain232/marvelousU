@@ -1135,6 +1135,61 @@ export interface DiabloInventorySlot {
   item: DiabloItem | null;
 }
 
+export interface Achievement {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  category: 'combat' | 'exploration' | 'collection' | 'challenge' | 'quest';
+  requirement: number;
+  progress: number;
+  unlocked: boolean;
+  reward?: { gold?: number; xp?: number; cosmeticId?: string };
+}
+
+export interface DailyChallenge {
+  id: string;
+  name: string;
+  description: string;
+  type: 'kill' | 'clear_map' | 'gr_level' | 'boss_kill' | 'collect_gold';
+  target: number;
+  progress: number;
+  completed: boolean;
+  reward: { gold: number; xp: number; keystones?: number };
+  generatedDate: string; // ISO date string
+}
+
+export interface CosmeticItem {
+  id: string;
+  name: string;
+  type: 'trail' | 'aura' | 'title';
+  description: string;
+  icon: string;
+}
+
+export interface PlayerStats {
+  totalKills: number;
+  totalBossKills: number;
+  totalDeaths: number;
+  totalDamageDealt: number;
+  totalDamageTaken: number;
+  totalGoldEarned: number;
+  totalGoldSpent: number;
+  totalItemsFound: number;
+  totalLegendariesFound: number;
+  totalCritsLanded: number;
+  totalDodges: number;
+  totalPotionsUsed: number;
+  totalQuestsCompleted: number;
+  totalMapsCleared: number;
+  highestCrit: number;
+  longestKillStreak: number;
+  currentKillStreak: number;
+  timePlayed: number; // seconds
+  favoriteClass: string;
+  classPlayTime: Record<string, number>;
+}
+
 export interface DiabloPlayerState {
   x: number;
   y: number;
@@ -1215,6 +1270,23 @@ export interface DiabloPlayerState {
   // Custom loot filters
   customLootFilters: CustomLootFilter[];
   activeFilterIndex: number;
+  // Excalibur quest
+  excaliburFragments: string[]; // collected fragment IDs (map IDs)
+  excaliburReforged: boolean;
+  mordredDefeated: boolean;
+  // Achievement system
+  achievements: Achievement[];
+  achievementNotifications: string[]; // recently unlocked achievement IDs
+  // Daily challenges
+  dailyChallenges: DailyChallenge[];
+  dailyStreak: number;
+  lastDailyDate: string;
+  // Cosmetic system
+  unlockedCosmetics: string[];
+  activeTrail: string | null;
+  activeAura: string | null;
+  activeTitle: string | null;
+  stats: PlayerStats;
 }
 
 export interface DiabloEnemy {
@@ -1996,6 +2068,33 @@ export function createDefaultPlayer(cls: DiabloClass): DiabloPlayerState {
       { name: 'Legendary Only', showRarities: [ItemRarity.LEGENDARY, ItemRarity.MYTHIC, ItemRarity.DIVINE], showItemTypes: Object.values(ItemType), minLevel: 0, highlightSets: true, autoSalvageBelow: ItemRarity.EPIC },
     ],
     activeFilterIndex: 0,
+    excaliburFragments: [],
+    excaliburReforged: false,
+    mordredDefeated: false,
+    // Achievement system
+    achievements: [],
+    achievementNotifications: [],
+    // Daily challenges
+    dailyChallenges: [],
+    dailyStreak: 0,
+    lastDailyDate: '',
+    // Cosmetic system
+    unlockedCosmetics: [],
+    activeTrail: null,
+    activeAura: null,
+    activeTitle: null,
+    stats: {
+      totalKills: 0, totalBossKills: 0, totalDeaths: 0,
+      totalDamageDealt: 0, totalDamageTaken: 0,
+      totalGoldEarned: 0, totalGoldSpent: 0,
+      totalItemsFound: 0, totalLegendariesFound: 0,
+      totalCritsLanded: 0, totalDodges: 0,
+      totalPotionsUsed: 0, totalQuestsCompleted: 0,
+      totalMapsCleared: 0, highestCrit: 0,
+      longestKillStreak: 0, currentKillStreak: 0,
+      timePlayed: 0, favoriteClass: '',
+      classPlayTime: {},
+    },
   };
 }
 
