@@ -683,6 +683,7 @@ export enum GameMode {
   EAGLE_FLIGHT = "eagle_flight",
   TERRARIA = "terraria",
   CIVILIZATION = "civilization",
+  MORGAN = "morgan",
 }
 
 // ---------------------------------------------------------------------------

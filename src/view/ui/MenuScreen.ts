@@ -334,6 +334,12 @@ const GAME_MODES: GameModeEntry[] = [
     desc: "Civ 2-style 4X strategy — build an Arthurian kingdom, research lore, seek the Holy Grail",
     skipSetup: true,
   },
+  {
+    mode: GameMode.MORGAN,
+    label: "MORGAN",
+    desc: "3D stealth-sorcery — play as Morgan le Fay, infiltrate Mordred's castle with dark magic",
+    skipSetup: true,
+  },
 ];
 
 // ---------------------------------------------------------------------------

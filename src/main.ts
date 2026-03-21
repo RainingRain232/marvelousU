@@ -143,6 +143,7 @@ import { CamelotCraftGame } from "./camelotcraft/CamelotCraftGame";
 import { TerrariaGame } from "./terraria/TerrariaGame";
 import { EagleFlightGame } from "./eagleflight/EagleFlightGame";
 import { CivGame } from "./civilization/CivGame";
+import { MorganGame } from "./morgan/MorganGame";
 import { camelotHubScreen } from "@view/ui/CamelotHubScreen";
 
 // World mode imports
@@ -498,6 +499,11 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     if (menuScreen.selectedGameMode === GameMode.TERRARIA) {
       menuScreen.hide();
       _bootTerrariaGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.MORGAN) {
+      menuScreen.hide();
+      _bootMorganGame();
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.CIVILIZATION) {
@@ -3272,6 +3278,30 @@ async function _bootCivGame(): Promise<void> {
     menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
   window.addEventListener("civExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Morgan stealth-sorcery mode boot
+// ---------------------------------------------------------------------------
+
+let _morganGame: MorganGame | null = null;
+
+async function _bootMorganGame(): Promise<void> {
+  if (_morganGame) {
+    _morganGame.destroy();
+    _morganGame = null;
+  }
+  _morganGame = new MorganGame();
+  await _morganGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("morganExit", _onExit);
+    if (_morganGame) {
+      _morganGame.destroy();
+      _morganGame = null;
+    }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("morganExit", _onExit);
 }
 
 // ---------------------------------------------------------------------------
