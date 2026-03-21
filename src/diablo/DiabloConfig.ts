@@ -34,6 +34,8 @@ import {
   CraftingStationType,
   MaterialType,
   CraftingMaterial,
+  RuneType,
+  SkillRuneEffect,
 } from './DiabloTypes';
 
 // ---------------------------------------------------------------------------
@@ -9936,3 +9938,81 @@ export const ADVANCED_CRAFTING_RECIPES: AdvancedCraftingRecipe[] = [
     successChance: 0.25, levelRequired: 20, isDiscovered: false, icon: '\uD83D\uDCA0',
   },
 ];
+
+// ---------------------------------------------------------------------------
+//  GREATER RIFT CONFIGURATION
+// ---------------------------------------------------------------------------
+
+export const GREATER_RIFT_CONFIG = {
+  baseTimeLimit: 300, // 5 minutes base
+  timeBonusPerLevel: -5, // less time at higher levels (min 120s)
+  minTimeLimit: 120,
+  hpScalePerLevel: 0.15, // +15% HP per GR level
+  damageScalePerLevel: 0.10, // +10% damage per GR level
+  xpScalePerLevel: 0.12, // +12% XP per GR level
+  lootScalePerLevel: 0.08, // +8% loot bonus per GR level
+  baseKillsRequired: 80,
+  killsPerLevel: 5,
+  maxLevel: 150,
+  keystoneDropChance: 0.15, // 15% chance from map bosses
+};
+
+// ---------------------------------------------------------------------------
+//  SKILL RUNE DEFINITIONS
+// ---------------------------------------------------------------------------
+
+export const SKILL_RUNES: Partial<Record<SkillId, SkillRuneEffect[]>> = {
+  // ── Warrior Runes ──
+  [SkillId.CLEAVE]: [
+    { runeType: RuneType.RUNE_A, name: 'Brutal Cleave', description: 'Increased damage, slower swing.', icon: '\u{1F5E1}\uFE0F', damageMultiplierMod: 1.0, cooldownMod: 1, manaCostMod: 5, unlocksAtLevel: 5 },
+    { runeType: RuneType.RUNE_B, name: 'Sweeping Cleave', description: 'Much wider arc, hits more enemies.', icon: '\u{1F30A}', damageMultiplierMod: -0.2, cooldownMod: 0, manaCostMod: 10, aoeRadiusMod: 3, unlocksAtLevel: 8 },
+    { runeType: RuneType.RUNE_C, name: 'Vampiric Cleave', description: 'Heals for 15% of damage dealt.', icon: '\u{1FA78}', damageMultiplierMod: 0, cooldownMod: 0, manaCostMod: 5, leechPercent: 15, unlocksAtLevel: 12 },
+    { runeType: RuneType.RUNE_D, name: 'Flame Cleave', description: 'Sets enemies ablaze.', icon: '\u{1F525}', damageMultiplierMod: 0.3, cooldownMod: 0, manaCostMod: 8, replaceDamageType: DamageType.FIRE, replaceStatusEffect: StatusEffect.BURNING, unlocksAtLevel: 15 },
+    { runeType: RuneType.RUNE_E, name: 'Executioner\'s Cleave', description: 'Massive damage to targets below 30% HP.', icon: '\u26B0\uFE0F', damageMultiplierMod: 2.0, cooldownMod: 2, manaCostMod: 15, unlocksAtLevel: 18 },
+  ],
+  [SkillId.WHIRLWIND]: [
+    { runeType: RuneType.RUNE_A, name: 'Hurricane', description: 'Pulls enemies inward while spinning.', icon: '\u{1F32A}\uFE0F', damageMultiplierMod: 0.5, cooldownMod: 0, manaCostMod: 10, aoeRadiusMod: 2, unlocksAtLevel: 6 },
+    { runeType: RuneType.RUNE_B, name: 'Dust Devil', description: 'Spawns tornadoes that persist.', icon: '\u{1F4A8}', damageMultiplierMod: -0.5, cooldownMod: -2, manaCostMod: 0, extraProjectiles: 3, unlocksAtLevel: 10 },
+    { runeType: RuneType.RUNE_C, name: 'Blood Funnel', description: 'Heals while spinning.', icon: '\u2764\uFE0F', damageMultiplierMod: 0, cooldownMod: 0, manaCostMod: 5, leechPercent: 10, unlocksAtLevel: 14 },
+    { runeType: RuneType.RUNE_D, name: 'Lightning Spin', description: 'Shocks enemies hit.', icon: '\u26A1', damageMultiplierMod: 0.3, cooldownMod: 0, manaCostMod: 8, replaceDamageType: DamageType.LIGHTNING, replaceStatusEffect: StatusEffect.SHOCKED, unlocksAtLevel: 16 },
+    { runeType: RuneType.RUNE_E, name: 'Endless Tempest', description: 'No cooldown but drains mana over time.', icon: '\u267E\uFE0F', damageMultiplierMod: -0.5, cooldownMod: -8, manaCostMod: 20, unlocksAtLevel: 20 },
+  ],
+  // ── Mage Runes ──
+  [SkillId.FIREBALL]: [
+    { runeType: RuneType.RUNE_A, name: 'Molten Impact', description: 'Bigger explosion, more damage.', icon: '\u{1F4A5}', damageMultiplierMod: 1.5, cooldownMod: 1, manaCostMod: 10, aoeRadiusMod: 2, unlocksAtLevel: 4 },
+    { runeType: RuneType.RUNE_B, name: 'Split Fireball', description: 'Splits into 3 on impact.', icon: '\u{1F531}', damageMultiplierMod: -0.5, cooldownMod: 0, manaCostMod: 5, extraProjectiles: 3, unlocksAtLevel: 7 },
+    { runeType: RuneType.RUNE_C, name: 'Seeking Flame', description: 'Slight homing, faster projectile.', icon: '\u{1F3AF}', damageMultiplierMod: 0.3, cooldownMod: -0.5, manaCostMod: 5, rangeMod: 5, unlocksAtLevel: 10 },
+    { runeType: RuneType.RUNE_D, name: 'Frost Bolt', description: 'Converts to ice damage, freezes.', icon: '\u2744\uFE0F', damageMultiplierMod: -0.3, cooldownMod: 0, manaCostMod: 0, replaceDamageType: DamageType.ICE, replaceStatusEffect: StatusEffect.FROZEN, unlocksAtLevel: 13 },
+    { runeType: RuneType.RUNE_E, name: 'Meteor Strike', description: 'Massive delayed explosion.', icon: '\u2604\uFE0F', damageMultiplierMod: 3.0, cooldownMod: 5, manaCostMod: 30, aoeRadiusMod: 4, unlocksAtLevel: 18 },
+  ],
+  [SkillId.CHAIN_LIGHTNING]: [
+    { runeType: RuneType.RUNE_A, name: 'Arc Lightning', description: 'Chains to 3 more targets.', icon: '\u26C8\uFE0F', damageMultiplierMod: 0.5, cooldownMod: 0, manaCostMod: 10, chainTargets: 3, unlocksAtLevel: 8 },
+    { runeType: RuneType.RUNE_B, name: 'Ball Lightning', description: 'Slow moving ball that zaps nearby enemies.', icon: '\u{1F52E}', damageMultiplierMod: 0.2, cooldownMod: -2, manaCostMod: 5, aoeRadiusMod: 4, unlocksAtLevel: 12 },
+    { runeType: RuneType.RUNE_C, name: 'Static Charge', description: 'Enemies take 20% more damage for 5s.', icon: '\u{1F4A1}', damageMultiplierMod: -0.5, cooldownMod: -1, manaCostMod: 0, replaceStatusEffect: StatusEffect.WEAKENED, unlocksAtLevel: 15 },
+  ],
+  // ── Ranger Runes ──
+  [SkillId.MULTI_SHOT]: [
+    { runeType: RuneType.RUNE_A, name: 'Arsenal', description: 'Fires 10 arrows instead of 5.', icon: '\u{1F3F9}', damageMultiplierMod: -0.3, cooldownMod: 1, manaCostMod: 10, extraProjectiles: 5, unlocksAtLevel: 5 },
+    { runeType: RuneType.RUNE_B, name: 'Fire at Will', description: 'Much faster, lower damage.', icon: '\u26A1', damageMultiplierMod: -0.5, cooldownMod: -2, manaCostMod: -5, unlocksAtLevel: 9 },
+    { runeType: RuneType.RUNE_C, name: 'Toxic Volley', description: 'Arrows coated in poison.', icon: '\u2620\uFE0F', damageMultiplierMod: 0, cooldownMod: 0, manaCostMod: 5, replaceDamageType: DamageType.POISON, replaceStatusEffect: StatusEffect.POISONED, unlocksAtLevel: 13 },
+    { runeType: RuneType.RUNE_D, name: 'Windforce', description: 'Arrows knock enemies back.', icon: '\u{1F4A8}', damageMultiplierMod: 0.5, cooldownMod: 0, manaCostMod: 8, replaceStatusEffect: StatusEffect.STUNNED, unlocksAtLevel: 16 },
+  ],
+  // ── Paladin Runes ──
+  [SkillId.HOLY_STRIKE]: [
+    { runeType: RuneType.RUNE_A, name: 'Smiting Blow', description: 'Extra damage to undead.', icon: '\u271D\uFE0F', damageMultiplierMod: 1.0, cooldownMod: 0, manaCostMod: 5, unlocksAtLevel: 5 },
+    { runeType: RuneType.RUNE_B, name: 'Healing Strike', description: 'Heals you for 20% of damage.', icon: '\u{1F49A}', damageMultiplierMod: -0.3, cooldownMod: 0, manaCostMod: 5, leechPercent: 20, unlocksAtLevel: 10 },
+    { runeType: RuneType.RUNE_C, name: 'Thunderous Strike', description: 'Adds lightning damage and stun.', icon: '\u26A1', damageMultiplierMod: 0.5, cooldownMod: 1, manaCostMod: 10, replaceDamageType: DamageType.LIGHTNING, replaceStatusEffect: StatusEffect.STUNNED, unlocksAtLevel: 15 },
+  ],
+  // ── Necromancer Runes ──
+  [SkillId.BONE_SPEAR]: [
+    { runeType: RuneType.RUNE_A, name: 'Bone Pillar', description: 'Pierces all enemies in line.', icon: '\u{1F9B4}', damageMultiplierMod: 0.5, cooldownMod: 1, manaCostMod: 5, rangeMod: 10, unlocksAtLevel: 5 },
+    { runeType: RuneType.RUNE_B, name: 'Teeth', description: 'Splits into many bone fragments.', icon: '\u{1F480}', damageMultiplierMod: -0.5, cooldownMod: -1, manaCostMod: 0, extraProjectiles: 5, unlocksAtLevel: 10 },
+    { runeType: RuneType.RUNE_C, name: 'Blood Spear', description: 'Costs HP instead of mana, more damage.', icon: '\u{1FA78}', damageMultiplierMod: 1.5, cooldownMod: 0, manaCostMod: -15, unlocksAtLevel: 15 },
+  ],
+  // ── Assassin Runes ──
+  [SkillId.FAN_OF_KNIVES]: [
+    { runeType: RuneType.RUNE_A, name: 'Bladed Storm', description: 'More blades, bigger radius.', icon: '\u{1F300}', damageMultiplierMod: 0.3, cooldownMod: 0, manaCostMod: 10, aoeRadiusMod: 3, unlocksAtLevel: 5 },
+    { runeType: RuneType.RUNE_B, name: 'Poison Blades', description: 'Coated in venom.', icon: '\u2620\uFE0F', damageMultiplierMod: 0, cooldownMod: 0, manaCostMod: 5, replaceDamageType: DamageType.POISON, replaceStatusEffect: StatusEffect.POISONED, unlocksAtLevel: 10 },
+    { runeType: RuneType.RUNE_C, name: 'Knives of Shadow', description: 'Makes you invisible for 2s after use.', icon: '\u{1F47B}', damageMultiplierMod: -0.3, cooldownMod: 2, manaCostMod: 10, unlocksAtLevel: 15 },
+  ],
+};

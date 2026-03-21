@@ -10,9 +10,11 @@ import {
   DiabloQuest, QuestType, CraftType,
   TalentEffectType,
   ParticleType, Weather,
-  MapModifier, LootFilterLevel,
+  MapModifier, LootFilterLevel, GreaterRiftState, GreaterRiftData,
   PetType, PetSpecies, PetAIState, DiabloPet,
   CraftingStationType, MaterialType, AdvancedCraftingRecipe,
+  DungeonRoom, DungeonCorridor, DungeonLayout,
+  RuneType, SkillRuneEffect,
   createDefaultPlayer, createDefaultState
 } from "./DiabloTypes";
 import {
@@ -35,6 +37,8 @@ import {
   MAP_MODIFIER_DEFS, ELEMENTAL_REACTIONS, PARAGON_XP_TABLE,
   PET_DEFS, PET_DROP_TABLE, PET_XP_TABLE,
   ADVANCED_CRAFTING_RECIPES, CRAFTING_MATERIALS, MATERIAL_DROP_TABLE,
+  GREATER_RIFT_CONFIG,
+  SKILL_RUNES,
 } from "./DiabloConfig";
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -540,6 +544,9 @@ export class DiabloGame {
   private _goldEarnedTotal: number = 0;
   private _totalKills: number = 0;
 
+  // Greater Rift HUD
+  private _riftHud: HTMLDivElement | null = null;
+
   // Safe zone (enemy-free spawn area)
   // @ts-ignore assigned but value never read (reserved for future use)
   private _safeZoneX: number = 0;
@@ -661,7 +668,27 @@ export class DiabloGame {
   private _onKeyDown(e: KeyboardEvent): void {
     this._keys.add(e.code);
     if (this._state.phase === DiabloPhase.PLAYING) {
-      if (e.code === "Digit1") this._activateSkill(0);
+      // Shift+Digit cycles runes for the skill in that slot
+      if (e.shiftKey) {
+        const slotMap: Record<string, number> = { 'Digit1': 0, 'Digit2': 1, 'Digit3': 2, 'Digit4': 3, 'Digit5': 4, 'Digit6': 5 };
+        const slotIdx = slotMap[e.code];
+        if (slotIdx !== undefined && slotIdx < this._state.player.skills.length) {
+          const skillId = this._state.player.skills[slotIdx];
+          const runes = SKILL_RUNES[skillId];
+          if (runes && runes.length > 0) {
+            const current = this._state.player.activeRunes[skillId] || RuneType.NONE;
+            const allRunes = [RuneType.NONE, ...runes.filter(r => {
+              const key = `${skillId}_${r.runeType}`;
+              return this._state.player.unlockedRunes.includes(key);
+            }).map(r => r.runeType)];
+            const idx = allRunes.indexOf(current);
+            const nextIdx = (idx + 1) % allRunes.length;
+            this._state.player.activeRunes[skillId] = allRunes[nextIdx];
+            const runeName = allRunes[nextIdx] === RuneType.NONE ? 'No Rune' : runes.find(r => r.runeType === allRunes[nextIdx])?.name || '';
+            this._addFloatingText(this._state.player.x, this._state.player.y + 2, this._state.player.z, runeName, '#aa44ff');
+          }
+        }
+      } else if (e.code === "Digit1") this._activateSkill(0);
       else if (e.code === "Digit2") this._activateSkill(1);
       else if (e.code === "Digit3") this._activateSkill(2);
       else if (e.code === "Digit4") this._activateSkill(3);
@@ -1795,7 +1822,46 @@ export class DiabloGame {
         </div>
 
         <div style="display:flex;gap:20px;flex-wrap:wrap;justify-content:center;max-width:95vw;overflow-y:auto;max-height:60vh;padding:10px;">${cardsHtml}</div>
+
+        <!-- Greater Rift Section -->
+        <div style="display:flex;align-items:center;gap:12px;margin-top:16px;margin-bottom:8px;">
+          <div style="width:80px;height:1px;background:linear-gradient(to right,transparent,#ff8800);"></div>
+          <span style="color:#ff8800;font-size:14px;">&#9884;</span>
+          <span style="color:#ff8800;font-size:12px;letter-spacing:2px;font-family:'Georgia',serif;">GREATER RIFTS</span>
+          <span style="color:#ff8800;font-size:14px;">&#9884;</span>
+          <div style="width:80px;height:1px;background:linear-gradient(to left,transparent,#ff8800);"></div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:center;justify-content:center;">
+          <button id="gr-start-btn" style="
+            cursor:pointer;padding:12px 24px;font-size:15px;border-radius:8px;
+            background:linear-gradient(135deg,rgba(60,30,0,0.9),rgba(40,20,0,0.9));
+            border:2px solid #ff8800;color:#ffd700;font-family:'Georgia',serif;
+            transition:0.2s;
+          " ${this._state.greaterRift.keystones <= 0 ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : ''}>
+            \uD83D\uDD25 Enter Greater Rift (GR ${this._state.greaterRift.bestRiftLevel + 1})
+          </button>
+          <span style="color:#00ffff;font-size:13px;font-family:monospace;">
+            \uD83D\uDD11 ${this._state.greaterRift.keystones} Keystones | Best: GR ${this._state.greaterRift.bestRiftLevel}
+          </span>
+        </div>
       </div>`;
+
+    // Wire up Greater Rift button
+    const grBtn = this._menuEl.querySelector("#gr-start-btn") as HTMLButtonElement;
+    if (grBtn && this._state.greaterRift.keystones > 0) {
+      grBtn.addEventListener("mouseenter", () => {
+        grBtn.style.borderColor = "#ffaa00";
+        grBtn.style.boxShadow = "0 0 20px rgba(255,136,0,0.4)";
+      });
+      grBtn.addEventListener("mouseleave", () => {
+        grBtn.style.borderColor = "#ff8800";
+        grBtn.style.boxShadow = "none";
+      });
+      grBtn.addEventListener("click", () => {
+        const level = this._state.greaterRift.bestRiftLevel + 1;
+        this._startGreaterRift(level);
+      });
+    }
 
     // Wire up time-of-day buttons
     const todBtns = this._menuEl.querySelectorAll(".tod-btn") as NodeListOf<HTMLButtonElement>;
@@ -1936,7 +2002,8 @@ export class DiabloGame {
     }
 
     if (mapId === DiabloMapId.CAMELOT) {
-      // Camelot is a safe hub: no enemies or chests, spawn vendors instead
+      // Camelot is a safe hub: no enemies, no dungeon
+      this._state.dungeonLayout = null;
       // Place town portal near the entrance of Camelot
       this._portalX = 0;
       this._portalZ = gridD / 2 - 5;
@@ -1964,6 +2031,21 @@ export class DiabloGame {
       this._portalX = gridW / 2;
       this._portalZ = gridD / 2;
       this._portalActive = true;
+
+      // Generate procedural dungeon for non-town maps
+      const mapDepth = (mapCfg as any).depth || (mapCfg as any).height || mapCfg.width;
+      const dungeon = this._generateDungeon(mapCfg.width, mapDepth);
+      this._state.dungeonLayout = dungeon;
+
+      // Place player in spawn room
+      if (dungeon.rooms.length > 0) {
+        const spawnRoom = dungeon.rooms[dungeon.spawnRoom];
+        this._state.player.x = spawnRoom.x + spawnRoom.width / 2;
+        this._state.player.z = spawnRoom.z + spawnRoom.height / 2;
+        this._safeZoneX = this._state.player.x;
+        this._safeZoneZ = this._state.player.z;
+      }
+
       this._spawnInitialEnemies();
       this._spawnInitialChests();
     }
@@ -5603,6 +5685,29 @@ export class DiabloGame {
       const names: Record<string, string> = { SHOW_ALL: 'Show All', HIDE_COMMON: 'Hide Common', RARE_PLUS: 'Rare+', EPIC_PLUS: 'Epic+' };
       filterLabel.textContent = `Filter: ${names[this._lootFilterLevel] || 'Show All'} (Tab)`;
     }
+
+    // Greater Rift HUD
+    const rift = this._state.greaterRift;
+    if (rift.state !== GreaterRiftState.NOT_ACTIVE) {
+      if (!this._riftHud) {
+        this._riftHud = document.createElement('div');
+        this._riftHud.style.cssText = 'position:absolute;top:10px;left:50%;transform:translateX(-50%);color:#fff;font-size:14px;font-family:monospace;text-align:center;background:rgba(0,0,0,0.7);padding:8px 16px;border:1px solid #ff8800;border-radius:4px;pointer-events:none;z-index:20;';
+        this._hud.appendChild(this._riftHud);
+      }
+      const mins = Math.floor(rift.timeRemaining / 60);
+      const secs = Math.floor(rift.timeRemaining % 60);
+      const timeStr = `${mins}:${secs.toString().padStart(2, '0')}`;
+      const barWidth = Math.floor(rift.progressBar * 2);
+      const barFill = '\u2588'.repeat(Math.floor(barWidth / 10));
+      const barEmpty = '\u2591'.repeat(20 - Math.floor(barWidth / 10));
+      const stateLabel = rift.state === GreaterRiftState.BOSS_SPAWNED ? ' \u26A0 GUARDIAN!' : '';
+      this._riftHud.innerHTML = `<span style="color:#ff8800">GR ${rift.level}</span> | ${timeStr} | [${barFill}${barEmpty}] ${Math.floor(rift.progressBar)}%${stateLabel}`;
+      this._riftHud.style.display = 'block';
+      if (rift.timeRemaining < 30) this._riftHud.style.borderColor = '#ff2222';
+      else this._riftHud.style.borderColor = '#ff8800';
+    } else if (this._riftHud) {
+      this._riftHud.style.display = 'none';
+    }
   }
 
   // ──────────────────────────────────────────────────────────────
@@ -5642,6 +5747,7 @@ export class DiabloGame {
         this._updateTownfolk(scaledDt);
         this._updatePets(scaledDt);
         this._updateCraftingQueue(scaledDt);
+        this._updateGreaterRift(scaledDt);
         this._updatePetBuffs(scaledDt);
         this._checkMapClear();
         this._revealAroundPlayer(this._state.player.x, this._state.player.z);
@@ -5798,6 +5904,8 @@ export class DiabloGame {
   // ──────────────────────────────────────────────────────────────
   private _processInput(dt: number): void {
     const p = this._state.player;
+    const prevX = p.x;
+    const prevZ = p.z;
 
     if (this._firstPerson && this._pointerLocked) {
       // FPS mouse look
@@ -5888,6 +5996,12 @@ export class DiabloGame {
       }
     }
 
+    // Dungeon boundary check - revert if moved outside walkable area
+    if (this._state.dungeonLayout && !this._isInDungeon(p.x, p.z)) {
+      p.x = prevX;
+      p.z = prevZ;
+    }
+
     // Clamp to map bounds
     const mapCfg = MAP_CONFIGS[this._state.currentMap];
     const halfW = mapCfg.width / 2;
@@ -5957,6 +6071,29 @@ export class DiabloGame {
         p.dodgeVz = 0;
       }
       return; // Skip other updates during dodge
+    }
+
+    // Environmental hazard damage
+    if (this._state.dungeonLayout) {
+      for (const hazard of this._state.dungeonLayout.hazards) {
+        const hDist = Math.sqrt((p.x - hazard.x) ** 2 + (p.z - hazard.z) ** 2);
+        if (hDist < hazard.radius) {
+          let hazardDmg = 0;
+          let effect: StatusEffect | null = null;
+          switch (hazard.type) {
+            case 'lava': hazardDmg = 15 * dt; effect = StatusEffect.BURNING; break;
+            case 'spikes': hazardDmg = 25 * dt; effect = StatusEffect.BLEEDING; break;
+            case 'poison': hazardDmg = 10 * dt; effect = StatusEffect.POISONED; break;
+            case 'ice': hazardDmg = 8 * dt; effect = StatusEffect.FROZEN; break;
+          }
+          p.hp -= hazardDmg;
+          if (effect && Math.random() < 0.05) { // 5% chance per frame to apply status
+            if (!p.statusEffects.some(e => e.effect === effect)) {
+              p.statusEffects.push({ effect, duration: 3, source: 'hazard' });
+            }
+          }
+        }
+      }
     }
 
     // Process queued skill
@@ -6058,6 +6195,18 @@ export class DiabloGame {
           p.unlockedSkills.push(entry.skillId);
           const def = SKILL_DEFS[entry.skillId];
           this._addFloatingText(p.x, p.y + 4, p.z, `NEW SKILL: ${def.name}!`, "#44ffff");
+        }
+      }
+
+      // Unlock runes based on level
+      for (const [skillIdStr, runes] of Object.entries(SKILL_RUNES)) {
+        if (!runes) continue;
+        for (const rune of runes) {
+          const runeKey = `${skillIdStr}_${rune.runeType}`;
+          if (p.level >= rune.unlocksAtLevel && !p.unlockedRunes.includes(runeKey)) {
+            p.unlockedRunes.push(runeKey);
+            this._addFloatingText(p.x, p.y + 4.5, p.z, `RUNE: ${rune.name}!`, '#aa44ff');
+          }
         }
       }
     }
@@ -6461,6 +6610,21 @@ export class DiabloGame {
       this._grantPetXp(Math.floor(target.xpReward * 0.5));
       this._rollPetDrop(target.isBoss);
       this._rollMaterialDrop();
+
+      // Greater Rift tracking
+      if (this._state.greaterRift.state !== GreaterRiftState.NOT_ACTIVE) {
+        if (target.bossName?.startsWith('Rift Guardian')) {
+          this._onRiftGuardianKill();
+        } else {
+          this._onRiftEnemyKill();
+        }
+      }
+
+      // Greater Rift keystone drop from bosses
+      if (target.isBoss && Math.random() < GREATER_RIFT_CONFIG.keystoneDropChance) {
+        this._state.greaterRift.keystones++;
+        this._addFloatingText(target.x, target.y + 3, target.z, '+1 Rift Keystone!', '#00ffff');
+      }
     } else {
       // Stagger
       if (!target.isBoss && Math.random() < 0.3) {
@@ -6537,8 +6701,26 @@ export class DiabloGame {
     const p = this._state.player;
     if (idx >= p.skills.length) return;
     const skillId = p.skills[idx];
-    const def = SKILL_DEFS[skillId];
-    if (!def) return;
+    const baseDef = SKILL_DEFS[skillId];
+    if (!baseDef) return;
+
+    // Apply active rune modifications
+    let runeEffect: SkillRuneEffect | undefined;
+    const activeRune = p.activeRunes[skillId];
+    if (activeRune && activeRune !== RuneType.NONE) {
+      const runes = SKILL_RUNES[skillId];
+      runeEffect = runes?.find(r => r.runeType === activeRune);
+    }
+    const def: typeof baseDef = runeEffect ? {
+      ...baseDef,
+      damageMultiplier: baseDef.damageMultiplier + runeEffect.damageMultiplierMod,
+      cooldown: Math.max(0.5, baseDef.cooldown + runeEffect.cooldownMod),
+      manaCost: Math.max(0, baseDef.manaCost + runeEffect.manaCostMod),
+      aoeRadius: (baseDef.aoeRadius || 0) + (runeEffect.aoeRadiusMod || 0),
+      range: baseDef.range + (runeEffect.rangeMod || 0),
+      damageType: runeEffect.replaceDamageType || baseDef.damageType,
+      statusEffect: runeEffect.replaceStatusEffect || baseDef.statusEffect,
+    } : baseDef;
 
     const cd = p.skillCooldowns.get(skillId) || 0;
     if (cd > 0) {
@@ -6546,6 +6728,8 @@ export class DiabloGame {
       return;
     }
     const branchMods = this._getSkillBranchModifiers(skillId);
+    // Add rune extra projectiles to branch mods
+    if (runeEffect?.extraProjectiles) branchMods.extraProjectiles += runeEffect.extraProjectiles;
     if (p.mana < Math.ceil(def.manaCost * branchMods.manaCostMult)) return;
 
     p.mana -= Math.ceil(def.manaCost * branchMods.manaCostMult);
@@ -7094,6 +7278,13 @@ export class DiabloGame {
         break;
       }
     }
+
+    // Apply rune leech healing
+    if (runeEffect?.leechPercent && modDmg > 0) {
+      const leechHeal = Math.round(modDmg * runeEffect.leechPercent / 100);
+      p.hp = Math.min(p.maxHp, p.hp + leechHeal);
+      this._addFloatingText(p.x, p.y + 3.5, p.z, `+${leechHeal} HP`, "#44ff44");
+    }
   }
 
   // ──────────────────────────────────────────────────────────────
@@ -7537,6 +7728,166 @@ export class DiabloGame {
   }
 
   // ──────────────────────────────────────────────────────────────
+  //  GREATER RIFT SYSTEM
+  // ──────────────────────────────────────────────────────────────
+  private _startGreaterRift(level: number): void {
+    const rift = this._state.greaterRift;
+    if (rift.keystones <= 0) return;
+
+    rift.keystones--;
+    rift.level = level;
+    rift.state = GreaterRiftState.IN_PROGRESS;
+    rift.progressBar = 0;
+    rift.currentKills = 0;
+
+    const cfg = GREATER_RIFT_CONFIG;
+    rift.timeLimit = Math.max(cfg.minTimeLimit, cfg.baseTimeLimit + level * cfg.timeBonusPerLevel);
+    rift.timeRemaining = rift.timeLimit;
+    rift.killsForProgress = cfg.baseKillsRequired + level * cfg.killsPerLevel;
+    rift.enemyHpMultiplier = 1 + level * cfg.hpScalePerLevel;
+    rift.enemyDamageMultiplier = 1 + level * cfg.damageScalePerLevel;
+    rift.xpMultiplier = 1 + level * cfg.xpScalePerLevel;
+    rift.lootBonusMultiplier = 1 + level * cfg.lootScalePerLevel;
+
+    // Start a random map
+    const riftableMaps = Object.values(DiabloMapId).filter(
+      id => id !== DiabloMapId.CAMELOT && id !== DiabloMapId.CITY && id !== DiabloMapId.CITY_RUINS
+    );
+    const randomMap = riftableMaps[Math.floor(Math.random() * riftableMaps.length)];
+    this._state.currentMap = randomMap;
+    this._startMap(randomMap);
+  }
+
+  private _updateGreaterRift(dt: number): void {
+    const rift = this._state.greaterRift;
+    if (rift.state === GreaterRiftState.NOT_ACTIVE) return;
+
+    if (rift.state === GreaterRiftState.IN_PROGRESS || rift.state === GreaterRiftState.BOSS_SPAWNED) {
+      rift.timeRemaining -= dt;
+
+      if (rift.timeRemaining <= 0) {
+        rift.state = GreaterRiftState.FAILED;
+        this._addFloatingText(this._state.player.x, this._state.player.y + 3, this._state.player.z, 'RIFT FAILED!', '#ff2222');
+        return;
+      }
+    }
+
+    if (rift.state === GreaterRiftState.IN_PROGRESS) {
+      rift.progressBar = Math.min(100, (rift.currentKills / rift.killsForProgress) * 100);
+
+      if (rift.progressBar >= 100) {
+        rift.state = GreaterRiftState.BOSS_SPAWNED;
+        this._addFloatingText(this._state.player.x, this._state.player.y + 4, this._state.player.z, 'RIFT GUARDIAN APPROACHES!', '#ff8800');
+        // Spawn a super-boss
+        this._spawnRiftGuardian();
+      }
+    }
+  }
+
+  private _spawnRiftGuardian(): void {
+    const p = this._state.player;
+    const rift = this._state.greaterRift;
+    const mapCfg = MAP_CONFIGS[this._state.currentMap];
+    const enemyTypes = mapCfg.enemyTypes;
+    const bossType = enemyTypes[enemyTypes.length - 1]; // Use the strongest enemy type
+
+    // Spawn at a distance from the player
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 15 + Math.random() * 10;
+    const bx = p.x + Math.sin(angle) * dist;
+    const bz = p.z + Math.cos(angle) * dist;
+
+    const enemyDef = ENEMY_DEFS[bossType];
+    const baseHp = (enemyDef?.hp || 500) * rift.enemyHpMultiplier * 5; // 5x for guardian
+    const baseDmg = (enemyDef?.damage || 30) * rift.enemyDamageMultiplier * 3;
+
+    const guardian: DiabloEnemy = {
+      id: `rift-guardian-${this._nextId++}`,
+      type: bossType,
+      x: bx, y: 0, z: bz,
+      angle: 0,
+      hp: baseHp,
+      maxHp: baseHp,
+      damage: baseDmg,
+      damageType: DamageType.PHYSICAL,
+      armor: 20 + rift.level * 2,
+      speed: 3.5,
+      state: EnemyState.CHASE,
+      targetId: null,
+      attackTimer: 0,
+      attackRange: 3,
+      aggroRange: 50, // Always aggro
+      xpReward: Math.floor(500 * rift.xpMultiplier),
+      lootTable: [],
+      deathTimer: 0,
+      stateTimer: 0,
+      patrolTarget: null,
+      statusEffects: [],
+      isBoss: true,
+      bossName: `Rift Guardian (GR ${rift.level})`,
+      scale: 2.5,
+      level: Math.min(100, 20 + rift.level),
+      behavior: EnemyBehavior.MELEE_BASIC,
+      bossPhase: 0,
+      bossAbilityCooldown: 0,
+      bossEnraged: false,
+      bossShieldTimer: 0,
+    };
+
+    this._state.enemies.push(guardian);
+  }
+
+  private _onRiftEnemyKill(): void {
+    const rift = this._state.greaterRift;
+    if (rift.state === GreaterRiftState.IN_PROGRESS) {
+      rift.currentKills++;
+    }
+  }
+
+  private _onRiftGuardianKill(): void {
+    const rift = this._state.greaterRift;
+    if (rift.state === GreaterRiftState.BOSS_SPAWNED) {
+      rift.state = GreaterRiftState.COMPLETED;
+      if (rift.level > rift.bestRiftLevel) {
+        rift.bestRiftLevel = rift.level;
+      }
+      // Reward keystones
+      rift.keystones += 2;
+
+      this._addFloatingText(
+        this._state.player.x, this._state.player.y + 4, this._state.player.z,
+        `GR ${rift.level} CLEARED! +2 Keystones`, '#ffd700'
+      );
+
+      // Bonus loot shower
+      for (let i = 0; i < 3 + Math.floor(rift.level / 10); i++) {
+        const lootAngle = Math.random() * Math.PI * 2;
+        const lootDist = 1 + Math.random() * 3;
+        const lx = this._state.player.x + Math.sin(lootAngle) * lootDist;
+        const lz = this._state.player.z + Math.cos(lootAngle) * lootDist;
+        const lootLevel = Math.min(20 + rift.level, 100);
+        const lootItems = this._rollLoot({
+          type: EnemyType.SKELETON,
+          level: lootLevel,
+          isBoss: true,
+          lootTable: [],
+        } as DiabloEnemy);
+        for (const item of lootItems) {
+          const loot: DiabloLoot = {
+            id: this._genId(),
+            item,
+            x: lx + (Math.random() * 2 - 1),
+            y: 0,
+            z: lz + (Math.random() * 2 - 1),
+            timer: 0,
+          };
+          this._state.loot.push(loot);
+        }
+      }
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────
   //  CHECK MAP CLEAR
   // ──────────────────────────────────────────────────────────────
   private _checkMapClear(): void {
@@ -7719,6 +8070,13 @@ export class DiabloGame {
       behavior: def.behavior,
     };
 
+    // Greater Rift scaling
+    if (this._state.greaterRift.state !== GreaterRiftState.NOT_ACTIVE) {
+      enemy.hp *= this._state.greaterRift.enemyHpMultiplier;
+      enemy.maxHp = enemy.hp;
+      enemy.damage *= this._state.greaterRift.enemyDamageMultiplier;
+    }
+
     this._state.enemies.push(enemy);
     this._state.totalEnemiesSpawned++;
   }
@@ -7795,6 +8153,21 @@ export class DiabloGame {
     this._grantPetXp(Math.floor(enemy.xpReward * 0.5));
     this._rollPetDrop(enemy.isBoss);
     this._rollMaterialDrop();
+
+    // Greater Rift tracking
+    if (this._state.greaterRift.state !== GreaterRiftState.NOT_ACTIVE) {
+      if (enemy.bossName?.startsWith('Rift Guardian')) {
+        this._onRiftGuardianKill();
+      } else {
+        this._onRiftEnemyKill();
+      }
+    }
+
+    // Greater Rift keystone drop from bosses
+    if (enemy.isBoss && Math.random() < GREATER_RIFT_CONFIG.keystoneDropChance) {
+      this._state.greaterRift.keystones++;
+      this._addFloatingText(enemy.x, enemy.y + 3, enemy.z, '+1 Rift Keystone!', '#00ffff');
+    }
   }
 
   // ──────────────────────────────────────────────────────────────
@@ -8294,6 +8667,187 @@ export class DiabloGame {
   }
 
   // ──────────────────────────────────────────────────────────────
+  //  PROCEDURAL DUNGEON GENERATION (BSP)
+  // ──────────────────────────────────────────────────────────────
+  private _generateDungeon(mapWidth: number, mapDepth: number): DungeonLayout {
+    const rooms: DungeonRoom[] = [];
+    const corridors: DungeonCorridor[] = [];
+    const walls: { x: number; z: number; w: number; h: number }[] = [];
+    const hazards: { x: number; z: number; radius: number; type: 'lava' | 'spikes' | 'poison' | 'ice' }[] = [];
+
+    // BSP tree node
+    interface BSPNode {
+      x: number;
+      z: number;
+      w: number;
+      h: number;
+      left?: BSPNode;
+      right?: BSPNode;
+      room?: DungeonRoom;
+    }
+
+    const MIN_ROOM_SIZE = 8;
+    const MAX_ROOM_SIZE = 18;
+    const PADDING = 2;
+
+    // Recursive BSP split
+    const split = (node: BSPNode, depth: number): void => {
+      if (depth <= 0 || (node.w < MIN_ROOM_SIZE * 2.5 && node.h < MIN_ROOM_SIZE * 2.5)) {
+        // Create a room in this leaf
+        const rw = MIN_ROOM_SIZE + Math.floor(Math.random() * Math.min(MAX_ROOM_SIZE - MIN_ROOM_SIZE, node.w - PADDING * 2 - MIN_ROOM_SIZE));
+        const rh = MIN_ROOM_SIZE + Math.floor(Math.random() * Math.min(MAX_ROOM_SIZE - MIN_ROOM_SIZE, node.h - PADDING * 2 - MIN_ROOM_SIZE));
+        const rx = node.x + PADDING + Math.floor(Math.random() * Math.max(1, node.w - rw - PADDING * 2));
+        const rz = node.z + PADDING + Math.floor(Math.random() * Math.max(1, node.h - rh - PADDING * 2));
+
+        node.room = {
+          x: rx, z: rz, width: rw, height: rh,
+          type: 'normal', connected: [], enemies: 3 + Math.floor(Math.random() * 5),
+          cleared: false,
+        };
+        rooms.push(node.room);
+        return;
+      }
+
+      // Split horizontally or vertically
+      const splitH = node.w < node.h ? true : node.h < node.w ? false : Math.random() > 0.5;
+
+      if (splitH) {
+        const splitAt = Math.floor(node.h * (0.35 + Math.random() * 0.3));
+        node.left = { x: node.x, z: node.z, w: node.w, h: splitAt };
+        node.right = { x: node.x, z: node.z + splitAt, w: node.w, h: node.h - splitAt };
+      } else {
+        const splitAt = Math.floor(node.w * (0.35 + Math.random() * 0.3));
+        node.left = { x: node.x, z: node.z, w: splitAt, h: node.h };
+        node.right = { x: node.x + splitAt, z: node.z, w: node.w - splitAt, h: node.h };
+      }
+
+      split(node.left, depth - 1);
+      split(node.right, depth - 1);
+
+      // Connect rooms from left and right subtrees with a corridor
+      const getRoom = (n: BSPNode): DungeonRoom | undefined => {
+        if (n.room) return n.room;
+        if (n.left) return getRoom(n.left);
+        if (n.right) return getRoom(n.right);
+        return undefined;
+      };
+
+      const leftRoom = getRoom(node.left);
+      const rightRoom = node.right ? getRoom(node.right) : undefined;
+
+      if (leftRoom && rightRoom) {
+        const cx1 = leftRoom.x + leftRoom.width / 2;
+        const cz1 = leftRoom.z + leftRoom.height / 2;
+        const cx2 = rightRoom.x + rightRoom.width / 2;
+        const cz2 = rightRoom.z + rightRoom.height / 2;
+
+        const li = rooms.indexOf(leftRoom);
+        const ri = rooms.indexOf(rightRoom);
+        leftRoom.connected.push(ri);
+        rightRoom.connected.push(li);
+
+        // L-shaped corridor
+        if (Math.random() > 0.5) {
+          corridors.push({ x1: cx1, z1: cz1, x2: cx2, z2: cz1, width: 3 });
+          corridors.push({ x1: cx2, z1: cz1, x2: cx2, z2: cz2, width: 3 });
+        } else {
+          corridors.push({ x1: cx1, z1: cz1, x2: cx1, z2: cz2, width: 3 });
+          corridors.push({ x1: cx1, z1: cz2, x2: cx2, z2: cz2, width: 3 });
+        }
+      }
+    };
+
+    const halfW = mapWidth / 2;
+    const halfD = mapDepth / 2;
+    const root: BSPNode = { x: -halfW + 2, z: -halfD + 2, w: mapWidth - 4, h: mapDepth - 4 };
+    split(root, 4);
+
+    // Assign special room types
+    if (rooms.length > 0) {
+      rooms[0].type = 'start';
+      rooms[0].enemies = 0;
+      rooms[rooms.length - 1].type = 'boss';
+      rooms[rooms.length - 1].enemies = 1; // boss handled separately
+
+      // Random treasure room
+      if (rooms.length > 3) {
+        const treasureIdx = 1 + Math.floor(Math.random() * (rooms.length - 2));
+        rooms[treasureIdx].type = 'treasure';
+        rooms[treasureIdx].enemies = 2;
+      }
+
+      // Random secret room (10% chance per room)
+      for (let i = 1; i < rooms.length - 1; i++) {
+        if (rooms[i].type === 'normal' && Math.random() < 0.1) {
+          rooms[i].type = 'secret';
+          rooms[i].enemies = 1;
+        }
+      }
+    }
+
+    // Generate wall segments around rooms and corridors (for colliders)
+    // Walls are the areas NOT covered by rooms or corridors
+    for (const room of rooms) {
+      // Add walls around room perimeter (as thin colliders)
+      const wallThickness = 0.5;
+      // Top wall
+      walls.push({ x: room.x + room.width / 2, z: room.z - wallThickness / 2, w: room.width + wallThickness, h: wallThickness });
+      // Bottom wall
+      walls.push({ x: room.x + room.width / 2, z: room.z + room.height + wallThickness / 2, w: room.width + wallThickness, h: wallThickness });
+      // Left wall
+      walls.push({ x: room.x - wallThickness / 2, z: room.z + room.height / 2, w: wallThickness, h: room.height + wallThickness });
+      // Right wall
+      walls.push({ x: room.x + room.width + wallThickness / 2, z: room.z + room.height / 2, w: wallThickness, h: room.height + wallThickness });
+    }
+
+    // Add environmental hazards in some rooms
+    const hazardTypes: ('lava' | 'spikes' | 'poison' | 'ice')[] = ['lava', 'spikes', 'poison', 'ice'];
+    for (const room of rooms) {
+      if (room.type === 'normal' && Math.random() < 0.25) {
+        const hx = room.x + room.width * (0.3 + Math.random() * 0.4);
+        const hz = room.z + room.height * (0.3 + Math.random() * 0.4);
+        hazards.push({
+          x: hx, z: hz,
+          radius: 1.5 + Math.random() * 2,
+          type: hazardTypes[Math.floor(Math.random() * hazardTypes.length)],
+        });
+      }
+    }
+
+    return {
+      rooms, corridors, walls, hazards,
+      spawnRoom: 0,
+      bossRoom: rooms.length - 1,
+    };
+  }
+
+  // Check if a point is inside the walkable dungeon area
+  private _isInDungeon(x: number, z: number): boolean {
+    const layout = this._state.dungeonLayout;
+    if (!layout) return true; // No dungeon = open map
+
+    // Check rooms
+    for (const room of layout.rooms) {
+      if (x >= room.x && x <= room.x + room.width && z >= room.z && z <= room.z + room.height) {
+        return true;
+      }
+    }
+
+    // Check corridors
+    for (const corridor of layout.corridors) {
+      const minX = Math.min(corridor.x1, corridor.x2) - corridor.width / 2;
+      const maxX = Math.max(corridor.x1, corridor.x2) + corridor.width / 2;
+      const minZ = Math.min(corridor.z1, corridor.z2) - corridor.width / 2;
+      const maxZ = Math.max(corridor.z1, corridor.z2) + corridor.width / 2;
+      if (x >= minX && x <= maxX && z >= minZ && z <= maxZ) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  // ──────────────────────────────────────────────────────────────
   //  HELPER: Spawn initial enemies (extracted from _startMap)
   // ──────────────────────────────────────────────────────────────
   private _spawnInitialEnemies(): void {
@@ -8568,6 +9122,8 @@ export class DiabloGame {
       lanternOn: save.player.lanternOn || false,
       skillBranches: save.player.skillBranches || {},
       unlockedSkills: save.player.unlockedSkills || [],
+      activeRunes: save.player.activeRunes || {},
+      unlockedRunes: save.player.unlockedRunes || [],
     };
     this._state.difficulty = save.difficulty || DiabloDifficulty.DAGGER;
     this._state.persistentInventory = save.persistentInventory;
@@ -8603,6 +9159,8 @@ export class DiabloGame {
       lanternOn: save.player.lanternOn || false,
       skillBranches: save.player.skillBranches || {},
       unlockedSkills: save.player.unlockedSkills || [],
+      activeRunes: save.player.activeRunes || {},
+      unlockedRunes: save.player.unlockedRunes || [],
     };
     // Restore lantern light if it was on
     if (this._state.player.lanternOn && this._state.player.equipment.lantern) {

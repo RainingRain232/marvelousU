@@ -684,6 +684,15 @@ export enum SkillId {
   EXECUTE = 'EXECUTE',
 }
 
+export enum RuneType {
+  NONE = 'NONE',
+  RUNE_A = 'RUNE_A', // Damage variant
+  RUNE_B = 'RUNE_B', // AoE variant
+  RUNE_C = 'RUNE_C', // Utility variant
+  RUNE_D = 'RUNE_D', // Element variant
+  RUNE_E = 'RUNE_E', // Ultimate variant
+}
+
 export enum DamageType {
   PHYSICAL = 'PHYSICAL',
   FIRE = 'FIRE',
@@ -838,6 +847,16 @@ export enum LootFilterLevel {
   HIDE_COMMON = 'HIDE_COMMON',
   RARE_PLUS = 'RARE_PLUS',
   EPIC_PLUS = 'EPIC_PLUS',
+}
+
+// ── Greater Rift System ──────────────────────────────────────
+
+export enum GreaterRiftState {
+  NOT_ACTIVE = 'NOT_ACTIVE',
+  IN_PROGRESS = 'IN_PROGRESS',
+  BOSS_SPAWNED = 'BOSS_SPAWNED',
+  COMPLETED = 'COMPLETED',
+  FAILED = 'FAILED',
 }
 
 // ── Pet System Enums ─────────────────────────────────────────
@@ -999,6 +1018,24 @@ export interface DiabloSkillDef {
   class: DiabloClass;
 }
 
+export interface SkillRuneEffect {
+  runeType: RuneType;
+  name: string;
+  description: string;
+  icon: string;
+  damageMultiplierMod: number; // added to base multiplier
+  cooldownMod: number; // added to base cooldown (can be negative)
+  manaCostMod: number; // added to base mana cost
+  aoeRadiusMod?: number; // added to base aoe radius
+  rangeMod?: number; // added to base range
+  replaceDamageType?: DamageType; // changes damage type
+  replaceStatusEffect?: StatusEffect; // changes status effect
+  extraProjectiles?: number; // splits into multiple projectiles
+  chainTargets?: number; // bounces to additional targets
+  leechPercent?: number; // % of damage returned as healing
+  unlocksAtLevel: number;
+}
+
 export interface DiabloItemStats {
   strength?: number;
   dexterity?: number;
@@ -1132,6 +1169,9 @@ export interface DiabloPlayerState {
   movePath: { x: number; z: number }[];
   movePathIndex: number;
   isMovingToTarget: boolean;
+  // Skill Rune system
+  activeRunes: Record<string, RuneType>; // key is SkillId, value is active rune
+  unlockedRunes: string[]; // "FIREBALL_RUNE_A" format
 }
 
 export interface DiabloEnemy {
@@ -1396,6 +1436,36 @@ export interface AdvancedCraftingRecipe {
   icon: string;
 }
 
+// ── Procedural Dungeon Generation ────────────────────────────
+
+export interface DungeonRoom {
+  x: number;
+  z: number;
+  width: number;
+  height: number;
+  type: 'normal' | 'start' | 'boss' | 'treasure' | 'secret';
+  connected: number[]; // indices of connected rooms
+  enemies: number; // number of enemies to spawn
+  cleared: boolean;
+}
+
+export interface DungeonCorridor {
+  x1: number;
+  z1: number;
+  x2: number;
+  z2: number;
+  width: number;
+}
+
+export interface DungeonLayout {
+  rooms: DungeonRoom[];
+  corridors: DungeonCorridor[];
+  walls: { x: number; z: number; w: number; h: number }[];
+  hazards: { x: number; z: number; radius: number; type: 'lava' | 'spikes' | 'poison' | 'ice' }[];
+  spawnRoom: number; // index of the spawn room
+  bossRoom: number; // index of the boss room
+}
+
 export interface CraftingState {
   discoveredRecipes: string[];
   craftingLevel: number;
@@ -1404,6 +1474,24 @@ export interface CraftingState {
   materials: Record<MaterialType, number>;
   activeStation: CraftingStationType | null;
   craftingQueue: { recipeId: string; progress: number; duration: number }[];
+}
+
+// ── Greater Rift System ──────────────────────────────────────
+
+export interface GreaterRiftData {
+  level: number;
+  state: GreaterRiftState;
+  progressBar: number; // 0-100, boss spawns at 100
+  timeLimit: number; // seconds
+  timeRemaining: number; // seconds
+  enemyHpMultiplier: number;
+  enemyDamageMultiplier: number;
+  xpMultiplier: number;
+  lootBonusMultiplier: number;
+  killsForProgress: number;
+  currentKills: number;
+  bestRiftLevel: number;
+  keystones: number; // rift keystones in inventory
 }
 
 export interface DiabloState {
@@ -1456,6 +1544,8 @@ export interface DiabloState {
   hitFreezeTimer: number;
   slowMotionTimer: number;
   slowMotionScale: number;
+  dungeonLayout: DungeonLayout | null;
+  greaterRift: GreaterRiftData;
 }
 
 // ── Rarity color map (for UI rendering) ──────────────────────
@@ -1722,6 +1812,8 @@ export function createDefaultPlayer(cls: DiabloClass): DiabloPlayerState {
     movePath: [],
     movePathIndex: 0,
     isMovingToTarget: false,
+    activeRunes: {},
+    unlockedRunes: [],
   };
 }
 
@@ -1776,5 +1868,21 @@ export function createDefaultState(): DiabloState {
     hitFreezeTimer: 0,
     slowMotionTimer: 0,
     slowMotionScale: 1,
+    dungeonLayout: null,
+    greaterRift: {
+      level: 0,
+      state: GreaterRiftState.NOT_ACTIVE,
+      progressBar: 0,
+      timeLimit: 0,
+      timeRemaining: 0,
+      enemyHpMultiplier: 1,
+      enemyDamageMultiplier: 1,
+      xpMultiplier: 1,
+      lootBonusMultiplier: 1,
+      killsForProgress: 0,
+      currentKills: 0,
+      bestRiftLevel: 0,
+      keystones: 3,
+    },
   };
 }
