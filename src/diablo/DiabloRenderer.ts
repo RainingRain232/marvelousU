@@ -87,6 +87,9 @@ export class DiabloRenderer {
   private _particlePoolSize: number = 500;
   private _particleMat!: THREE.MeshStandardMaterial;
 
+  /** Axis-aligned collision boxes for buildings: [centerX, centerZ, halfWidth, halfDepth] */
+  buildingColliders: [number, number, number, number][] = [];
+
   private _shakeIntensity: number = 0;
   private _shakeDuration: number = 0;
   private _shakeTimer: number = 0;
@@ -386,6 +389,7 @@ export class DiabloRenderer {
     this._dirLight.position.set(15, 25, 10);
 
     this._currentMap = mapId;
+    this.buildingColliders = [];
 
     this._rngSeed = Date.now();
     const propVariation = 0.7 + this._seededRandom() * 0.6;
@@ -8759,6 +8763,9 @@ export class DiabloRenderer {
       const anx = (Math.random() - 0.5) * w * 0.4; const anz = (Math.random() - 0.5) * d * 0.4;
       animal.position.set(anx, 0, anz); animal.rotation.y = Math.random() * Math.PI * 2; this._envGroup.add(animal);
     }
+
+    // Register building colliders for Camelot
+    this.buildingColliders = buildingPositions.map(([x, z, bw, bd]) => [x, z, bw / 2 + 0.5, bd / 2 + 0.5] as [number, number, number, number]);
   }
 
   // ════════════════════════════════════════════════════════════════════
@@ -33203,6 +33210,16 @@ export class DiabloRenderer {
       grassClump.position.set(gx, getTerrainHeight(gx, gz, 1.4), gz);
       this._scene.add(grassClump);
     }
+
+    // ── Building colliders for player collision ──
+    this.buildingColliders = [
+      [hw * 0.3, -hd * 0.35, 3, 3],                       // Farmhouse
+      [hw * 0.3 + 9, -hd * 0.35 - 2, 4, 3],               // Barn
+      [hw * 0.3 + 14, -hd * 0.35 - 3, 1.5, 1.5],          // Silo
+      [-hw * 0.35, hd * 0.3, 2.2, 2.2],                    // Windmill
+      [hw * 0.3 - 4, -hd * 0.35 + 4, 1.2, 1],             // Chicken coop
+      [hw * 0.3 + 9 - 3.8, -hd * 0.35 - 2 - 2.8, 1.2, 1.2], // Tool shed
+    ];
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

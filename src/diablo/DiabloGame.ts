@@ -363,6 +363,63 @@ const NIGHT_BOSS_MAP: Partial<Record<DiabloMapId, EnemyType>> = {
   [DiabloMapId.CITY]: EnemyType.NIGHT_CITY_SHADOW_MAGISTRATE,
 };
 
+// ────────────────────────────────────────────────────────────────────────────
+// Lore discovery points — flavor text near landmarks
+// ────────────────────────────────────────────────────────────────────────────
+interface LorePoint { x: number; z: number; radius: number; title: string; text: string; }
+const MAP_LORE_POINTS: Partial<Record<DiabloMapId, LorePoint[]>> = {
+  [DiabloMapId.EMERALD_GRASSLANDS]: [
+    { x: -22, z: 19, radius: 8, title: "The Old Windmill", text: "This mill once ground grain for three villages. When the miller's daughter vanished one harvest moon, the blades stopped turning. Locals say you can still hear grinding stones on windless nights." },
+    { x: 25, z: -22, radius: 8, title: "Thornfield Farmstead", text: "The Thornfield family farmed this land for seven generations. They abandoned it overnight when their cattle began speaking in tongues. The barn door has never been opened since." },
+    { x: 0, z: -10, radius: 6, title: "The Stone Bridge", text: "Built by dwarven masons in the Third Age, this bridge has survived floods, wars, and a dragon's tantrum. The runes carved beneath it are said to ward off river spirits." },
+    { x: 8, z: 13, radius: 6, title: "The Campfire Ring", text: "Wandering knights gather here to trade stories and sharpen blades. The ashes never fully cool — some say a fire elemental sleeps beneath the stones, keeping travelers warm." },
+  ],
+  [DiabloMapId.FOREST]: [
+    { x: 0, z: 0, radius: 10, title: "The Heart of Darkwood", text: "At the forest's center stands an oak so ancient its roots drink from underground rivers. Druids once held council here before the corruption spread through the soil." },
+    { x: -30, z: -20, radius: 8, title: "Poacher's Camp", text: "Discarded traps and weathered tents mark where the Blackthorn poachers operated. They hunted everything — until the forest began hunting them back." },
+    { x: 25, z: 30, radius: 8, title: "The Whispering Clearing", text: "Trees lean inward here as if sharing a secret. Those who rest in this clearing report dreams of a silver stag leading them deeper into the wood." },
+  ],
+  [DiabloMapId.SUNSCORCH_DESERT]: [
+    { x: 0, z: 0, radius: 10, title: "The Buried Colossus", text: "A hand of carved stone rises from the dunes — the only visible remnant of a titan that fell in battle ages ago. Sand traders use it as a landmark, though its fingers seem to shift between visits." },
+    { x: -30, z: 20, radius: 8, title: "Oasis of False Promise", text: "This waterhole appears clear and inviting, but its waters carry a subtle venom. Desert nomads know to drink only after boiling. Many a careless traveler has met their end here." },
+  ],
+  [DiabloMapId.NECROPOLIS_DUNGEON]: [
+    { x: 0, z: 0, radius: 8, title: "The Ossuary Gate", text: "Ten thousand skulls line the entrance hall, each belonging to a soldier of the Last Crusade. Their eye sockets glow faintly on moonless nights, as if still standing watch." },
+    { x: -20, z: -15, radius: 8, title: "The Embalmer's Chamber", text: "Jars of preserving fluid still line the shelves, each labeled in a language predating the kingdom. Whatever lies in the sealed sarcophagi was meant to stay preserved — not to rise again." },
+  ],
+  [DiabloMapId.VOLCANIC_WASTES]: [
+    { x: 10, z: -20, radius: 8, title: "The Crucible", text: "Blacksmiths once forged legendary weapons in this natural furnace. The last sword made here — Ashbringer — shattered upon striking a demon lord and released a wildfire that still burns." },
+    { x: -25, z: 15, radius: 8, title: "Obsidian Flow", text: "This river of cooled glass formed when two volcanoes erupted simultaneously. Alchemists prize its shards, claiming they can trap souls within the glassy surface." },
+  ],
+  [DiabloMapId.ELVEN_VILLAGE]: [
+    { x: 0, z: 0, radius: 10, title: "The Crystal Spires", text: "These towers once channeled moonlight into pure arcane energy. When the corruption came, the light turned inward, and the elves who remained were transformed into something between living and shadow." },
+    { x: 20, z: -20, radius: 8, title: "The Singing Fountain", text: "Enchanted water still flows here, humming melodies that change with the seasons. The elves believed it foretold the future — its current song is a dirge." },
+  ],
+  [DiabloMapId.ABYSSAL_RIFT]: [
+    { x: 0, z: 0, radius: 10, title: "The Rift Scar", text: "When the Archmage Nihilus tore reality apart, this wound in the world refused to heal. Time flows differently here — a moment inside can be an hour outside, or the reverse." },
+  ],
+  [DiabloMapId.DRAGONS_SANCTUM]: [
+    { x: 0, z: 0, radius: 10, title: "The Hoard Plateau", text: "Mountains of gold stretch as far as the eye can see, accumulated over millennia by the Elder Dragons. Each coin bears the face of a conquered king — there are thousands of different faces." },
+  ],
+  [DiabloMapId.CRYSTAL_CAVERNS]: [
+    { x: 0, z: 15, radius: 8, title: "The Resonance Chamber", text: "Strike any crystal here and the entire cavern hums in harmony. The dwarves discovered that certain melodies could grow new crystals, others could shatter them — and one forbidden chord could collapse the mountain." },
+  ],
+  [DiabloMapId.FROZEN_TUNDRA]: [
+    { x: -20, z: 0, radius: 8, title: "The Frozen Legion", text: "An entire army stands encased in ice, swords raised mid-charge. No one knows what froze them so instantly. Their faces show not fear, but surprise — whatever struck them, they never saw it coming." },
+  ],
+  [DiabloMapId.HAUNTED_CATHEDRAL]: [
+    { x: 0, z: 0, radius: 8, title: "The Desecrated Altar", text: "Holy symbols have been inverted, prayer books rewritten in blood. The archbishop who turned claimed he heard God speak from below the crypt. The voice still whispers to those who kneel." },
+  ],
+  [DiabloMapId.CITY_RUINS]: [
+    { x: 0, z: 0, radius: 10, title: "The Broken Gate", text: "The city fell in a single night. The gate, forged from blessed iron, was torn apart from the inside. Whatever destroyed this city did not invade — it was already within the walls." },
+    { x: 20, z: 20, radius: 8, title: "The Clocktower", text: "The great clock stopped at midnight and has never been repaired. Scavengers avoid it, claiming the bell tolls on its own when death walks nearby." },
+  ],
+  [DiabloMapId.CITY]: [
+    { x: 0, z: 0, radius: 10, title: "Market Square", text: "Thornwall's market was once the busiest in the realm. Now the stalls are empty but for the garrison's enforcers, who tax the air itself. Merchants whisper of a resistance gathering in the sewers below." },
+    { x: -15, z: -20, radius: 8, title: "The Warden's Tower", text: "Commander Blackthorn watches from the highest window, day and night, never sleeping. Guards speak in hushed tones of the deal he struck — eternal vigilance in exchange for something far worse than death." },
+  ],
+};
+
 const DAY_BOSS_MAP: Partial<Record<DiabloMapId, EnemyType>> = {
   [DiabloMapId.FOREST]: EnemyType.DAY_FOREST_STAG_GUARDIAN,
   [DiabloMapId.ELVEN_VILLAGE]: EnemyType.DAY_ELVEN_CORRUPTED_SENTINEL,
@@ -402,6 +459,7 @@ export class DiabloGame {
   private _mouseDown: boolean = false;
   private _nextId: number = 1;
   private _targetEnemyId: string | null = null;
+  private _discoveredLore: Set<string> = new Set();
   private _phaseBeforeOverlay: DiabloPhase = DiabloPhase.CLASS_SELECT;
 
   // First-person mode
@@ -4752,6 +4810,7 @@ export class DiabloGame {
         this._updateSpawning(scaledDt);
         this._updateStatusEffects(scaledDt);
         this._updateFloatingText(scaledDt);
+        this._checkLoreDiscovery();
         this._updateTownfolk(scaledDt);
         this._updatePets(scaledDt);
         this._updateCraftingQueue(scaledDt);
@@ -4851,6 +4910,22 @@ export class DiabloGame {
     const halfD = ((mapCfg as any).depth || (mapCfg as any).height || mapCfg.width) / 2;
     p.x = Math.max(-halfW, Math.min(halfW, p.x));
     p.z = Math.max(-halfD, Math.min(halfD, p.z));
+
+    // Building collision — push player out of buildings
+    const playerR = 0.4;
+    for (const [cx, cz, chw, chd] of this._renderer.buildingColliders) {
+      const overlapX = (chw + playerR) - Math.abs(p.x - cx);
+      const overlapZ = (chd + playerR) - Math.abs(p.z - cz);
+      if (overlapX > 0 && overlapZ > 0) {
+        // Push out along the axis of least penetration
+        if (overlapX < overlapZ) {
+          p.x += p.x < cx ? -overlapX : overlapX;
+        } else {
+          p.z += p.z < cz ? -overlapZ : overlapZ;
+        }
+      }
+    }
+
     p.y = getTerrainHeight(p.x, p.z);
 
     // Update camera target to follow player
@@ -6595,9 +6670,9 @@ export class DiabloGame {
     const def = ENEMY_DEFS[chosenType];
     if (!def) return;
 
-    // Random position 30-50 units from player, within map bounds
+    // Random position 40-60 units from player, within map bounds
     const angle = Math.random() * Math.PI * 2;
-    const dist = 30 + Math.random() * 20;
+    const dist = 40 + Math.random() * 20;
     const halfW = mapCfg.width / 2 - 2;
     const halfD = ((mapCfg as any).depth || (mapCfg as any).height || mapCfg.width) / 2 - 2;
 
@@ -6916,6 +6991,23 @@ export class DiabloGame {
       timer: 0,
       vy: 2,
     });
+  }
+
+  private _checkLoreDiscovery(): void {
+    const lorePoints = MAP_LORE_POINTS[this._state.currentMap];
+    if (!lorePoints) return;
+    const p = this._state.player;
+    for (const lp of lorePoints) {
+      const key = `${this._state.currentMap}:${lp.title}`;
+      if (this._discoveredLore.has(key)) continue;
+      const dist = this._dist(p.x, p.z, lp.x, lp.z);
+      if (dist <= lp.radius) {
+        this._discoveredLore.add(key);
+        this._showQuestPopup(lp.title, lp.text, null, 8);
+        this._addFloatingText(p.x, p.y + 3, p.z, "Lore Discovered", "#c8a84e");
+        break; // Only one discovery per frame
+      }
+    }
   }
 
   private _questPopupTimer: number = 0;
