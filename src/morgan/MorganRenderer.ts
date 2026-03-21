@@ -3142,7 +3142,12 @@ export class MorganRenderer {
       }
       this._prevGuardHPs.set(guard.id, guard.hp);
 
-      if (guard.hp <= 0) { mesh.visible = false; continue; }
+      if (guard.hp <= 0) {
+        mesh.visible = false;
+        const deadBar = this._guardDetectionBars.get(guard.id);
+        if (deadBar && deadBar.parent) deadBar.parent.visible = false;
+        continue;
+      }
       mesh.visible = true;
       mesh.position.set(guard.pos.x, 0, guard.pos.z);
       mesh.rotation.y = guard.angle;

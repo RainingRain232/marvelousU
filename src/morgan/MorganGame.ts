@@ -397,7 +397,16 @@ export class MorganGame {
   private _onEscKey = (e: KeyboardEvent): void => {
     if (e.code !== "Escape") return;
     if (this._state.phase !== "playing" && !this._paused) return;
-    if (this._paused) return;
+
+    if (this._paused) {
+      // Close pause menu
+      const pauseEl = document.getElementById("morgan-pause");
+      if (pauseEl) pauseEl.remove();
+      const ctrlEl = document.getElementById("morgan-controls-screen");
+      if (ctrlEl) ctrlEl.remove();
+      this._paused = false;
+      return;
+    }
 
     this._paused = true;
     this._hud.showPauseMenu(
