@@ -26,7 +26,7 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - run: npx vite build
+      - run: npx vite build --emptyOutDir
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
