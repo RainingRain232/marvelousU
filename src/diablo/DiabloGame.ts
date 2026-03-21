@@ -405,6 +405,7 @@ export class DiabloGame {
   private _goldText!: HTMLDivElement;
   private _levelText!: HTMLDivElement;
   private _killText!: HTMLDivElement;
+  private _topRightPanel!: HTMLDivElement;
   private _hpText!: HTMLDivElement;
   private _mpText!: HTMLDivElement;
   private _skillSlots: HTMLDivElement[] = [];
@@ -581,6 +582,7 @@ export class DiabloGame {
       else if (e.code === "KeyI") {
         this._phaseBeforeOverlay = DiabloPhase.PLAYING;
         this._state.phase = DiabloPhase.INVENTORY;
+        if (this._firstPerson && document.pointerLockElement) document.exitPointerLock();
         this._showInventory();
       } else if (e.code === "Escape") {
         this._state.phase = DiabloPhase.PAUSED;
@@ -588,10 +590,12 @@ export class DiabloGame {
       } else if (e.code === "KeyJ") {
         this._phaseBeforeOverlay = DiabloPhase.PLAYING;
         this._state.phase = DiabloPhase.INVENTORY;
+        if (this._firstPerson && document.pointerLockElement) document.exitPointerLock();
         this._showQuestBoard();
       } else if (e.code === "KeyT") {
         this._phaseBeforeOverlay = DiabloPhase.PLAYING;
         this._state.phase = DiabloPhase.INVENTORY;
+        if (this._firstPerson && document.pointerLockElement) document.exitPointerLock();
         this._showTalentTree();
       } else if (e.code === "Space") { e.preventDefault(); } // dodge handled in processInput
       else if (e.code === "Tab") {
@@ -653,12 +657,14 @@ export class DiabloGame {
       } else if (e.code === "KeyK") {
         this._phaseBeforeOverlay = DiabloPhase.PLAYING;
         this._state.phase = DiabloPhase.INVENTORY;
+        if (this._firstPerson && document.pointerLockElement) document.exitPointerLock();
         this._showSkillSwapMenu();
       } else if (e.code === "KeyF") {
         this._openNearestChest();
       } else if (e.code === "KeyC") {
         this._phaseBeforeOverlay = DiabloPhase.PLAYING;
         this._state.phase = DiabloPhase.INVENTORY;
+        if (this._firstPerson && document.pointerLockElement) document.exitPointerLock();
         this._showCharacterOverview();
       } else if (e.code === "KeyV") {
         this._firstPerson = !this._firstPerson;
@@ -673,14 +679,17 @@ export class DiabloGame {
       } else if (e.code === "KeyN") {
         this._phaseBeforeOverlay = DiabloPhase.PLAYING;
         this._state.phase = DiabloPhase.INVENTORY;
+        if (this._firstPerson && document.pointerLockElement) document.exitPointerLock();
         this._showCollection();
       } else if (e.code === "KeyG") {
         this._phaseBeforeOverlay = DiabloPhase.PLAYING;
         this._state.phase = DiabloPhase.INVENTORY;
+        if (this._firstPerson && document.pointerLockElement) document.exitPointerLock();
         this._showPetManagement();
       } else if (e.code === "KeyB") {
         this._phaseBeforeOverlay = DiabloPhase.PLAYING;
         this._state.phase = DiabloPhase.INVENTORY;
+        if (this._firstPerson && document.pointerLockElement) document.exitPointerLock();
         this._showAdvancedCraftingUI();
       }
     } else if (this._state.phase === DiabloPhase.INVENTORY) {
@@ -1076,7 +1085,7 @@ export class DiabloGame {
         const raw = localStorage.getItem("diablo_save");
         if (raw) {
           const save = JSON.parse(raw);
-          this._state.persistentStash = save.persistentStash || Array.from({ length: 100 }, () => ({ item: null }));
+          this._state.persistentStash = (() => { const s = save.persistentStash || []; while (s.length < 150) s.push({ item: null }); return s; })();
           this._state.player = { ...save.player, skillCooldowns: new Map(Object.entries(save.player.skillCooldowns)) };
           this._state.persistentGold = save.persistentGold;
         }
@@ -1127,18 +1136,19 @@ export class DiabloGame {
         difficulty: "Safe Zone",
         isSafe: true,
       },
-      {
-        id: DiabloMapId.SUNSCORCH_DESERT,
-        icon: "\uD83C\uDFDC\uFE0F",
-        name: "Sunscorch Desert",
-        desc: "Sun-blasted dunes and ancient ruins half-buried in sand. Scorpions and bandits prey on travelers.",
-        difficulty: "\u2B50",
-      },
+      // ── 1 star ──
       {
         id: DiabloMapId.EMERALD_GRASSLANDS,
         icon: "\uD83C\uDF3F",
         name: "Emerald Grasslands",
         desc: "Rolling green hills dotted with wildflowers. Raiders and wild beasts roam the open plains.",
+        difficulty: "\u2B50",
+      },
+      {
+        id: DiabloMapId.SUNSCORCH_DESERT,
+        icon: "\uD83C\uDFDC\uFE0F",
+        name: "Sunscorch Desert",
+        desc: "Sun-blasted dunes and ancient ruins half-buried in sand. Scorpions and bandits prey on travelers.",
         difficulty: "\u2B50",
       },
       {
@@ -1149,47 +1159,26 @@ export class DiabloGame {
         difficulty: "\u2B50",
       },
       {
-        id: DiabloMapId.ELVEN_VILLAGE,
-        icon: "\u2728",
-        name: "Aelindor",
-        desc: "A once-peaceful elven settlement, now corrupted by dark magic. Shadows stir between the crystal spires.",
-        difficulty: "\u2B50\u2B50",
-      },
-      {
-        id: DiabloMapId.NECROPOLIS_DUNGEON,
-        icon: "\uD83D\uDC80",
-        name: "Necropolis Depths",
-        desc: "The catacombs beneath a fallen fortress. The dead do not rest here.",
-        difficulty: "\u2B50\u2B50\u2B50",
-      },
-      {
-        id: DiabloMapId.VOLCANIC_WASTES,
-        icon: "\uD83C\uDF0B",
-        name: "Volcanic Wastes",
-        desc: "A scorched hellscape of molten rivers and ash storms. Demons forged in flame roam the ruins.",
-        difficulty: "\u2B50\u2B50\u2B50\u2B50",
-      },
-      {
-        id: DiabloMapId.ABYSSAL_RIFT,
-        icon: "\uD83C\uDF0C",
-        name: "Abyssal Rift",
-        desc: "A tear in reality. Eldritch horrors drift between shattered islands of stone above the void.",
-        difficulty: "\u2B50\u2B50\u2B50\u2B50\u2B50",
-      },
-      {
-        id: DiabloMapId.DRAGONS_SANCTUM,
-        icon: "\uD83D\uDC09",
-        name: "Dragon's Sanctum",
-        desc: "The ancient lair of the Elder Dragons. Gold-encrusted caverns echo with primordial fury.",
-        difficulty: "\u2B50\u2B50\u2B50\u2B50\u2B50\u2B50",
-      },
-      // ── New maps wave 2 ──
-      {
         id: DiabloMapId.MOONLIT_GROVE,
         icon: "\uD83C\uDF19",
         name: "Moonlit Grove",
         desc: "A mystical clearing bathed in eternal moonlight. Fey creatures dance among silver-leafed trees.",
         difficulty: "\u2B50",
+      },
+      {
+        id: DiabloMapId.SHATTERED_COLOSSEUM,
+        icon: "\uD83C\uDFDF\uFE0F",
+        name: "Shattered Colosseum",
+        desc: "A ruined gladiatorial arena where spectral fighters battle for an audience of ghosts.",
+        difficulty: "\u2B50",
+      },
+      // ── 2 stars ──
+      {
+        id: DiabloMapId.ELVEN_VILLAGE,
+        icon: "\u2728",
+        name: "Aelindor",
+        desc: "A once-peaceful elven settlement, now corrupted by dark magic. Shadows stir between the crystal spires.",
+        difficulty: "\u2B50\u2B50",
       },
       {
         id: DiabloMapId.CORAL_DEPTHS,
@@ -1206,63 +1195,6 @@ export class DiabloGame {
         difficulty: "\u2B50\u2B50",
       },
       {
-        id: DiabloMapId.JADE_TEMPLE,
-        icon: "\uD83C\uDFDB\uFE0F",
-        name: "Jade Temple",
-        desc: "A crumbling jungle temple where jade constructs guard forgotten rituals. Tribal shamans have awakened the old gods.",
-        difficulty: "\u2B50\u2B50\u2B50",
-      },
-      {
-        id: DiabloMapId.ASHEN_BATTLEFIELD,
-        icon: "\u2694\uFE0F",
-        name: "Ashen Battlefield",
-        desc: "Scarred remnants of a cataclysmic war. Ghostly soldiers fight an endless battle among shattered siege engines.",
-        difficulty: "\u2B50\u2B50\u2B50",
-      },
-      {
-        id: DiabloMapId.FUNGAL_DEPTHS,
-        icon: "\uD83C\uDF44",
-        name: "Fungal Depths",
-        desc: "Cavernous tunnels choked with towering bioluminescent mushrooms. The air is thick with toxic spores.",
-        difficulty: "\u2B50\u2B50\u2B50\u2B50",
-      },
-      {
-        id: DiabloMapId.OBSIDIAN_FORTRESS,
-        icon: "\uD83C\uDFF0",
-        name: "Obsidian Fortress",
-        desc: "A fortress carved from volcanic glass reflecting hellfire. Demonic legions drill in its courtyards.",
-        difficulty: "\u2B50\u2B50\u2B50\u2B50",
-      },
-      {
-        id: DiabloMapId.CELESTIAL_RUINS,
-        icon: "\u2B50",
-        name: "Celestial Ruins",
-        desc: "Shattered temples floating among the stars. Fallen cosmic guardians patrol bridges of pure light.",
-        difficulty: "\u2B50\u2B50\u2B50\u2B50\u2B50",
-      },
-      {
-        id: DiabloMapId.INFERNAL_THRONE,
-        icon: "\uD83D\uDD25",
-        name: "Infernal Throne",
-        desc: "The seat of demonic power. Rivers of molten souls flow beneath a throne of compressed agony.",
-        difficulty: "\u2B50\u2B50\u2B50\u2B50\u2B50",
-      },
-      {
-        id: DiabloMapId.ASTRAL_VOID,
-        icon: "\uD83C\uDF0C",
-        name: "Astral Void",
-        desc: "The space between dimensions where reality unravels. Entities older than creation drift through fractured timelines.",
-        difficulty: "\u2B50\u2B50\u2B50\u2B50\u2B50\u2B50",
-      },
-      // ── New maps wave 3 ──
-      {
-        id: DiabloMapId.SHATTERED_COLOSSEUM,
-        icon: "\uD83C\uDFDF\uFE0F",
-        name: "Shattered Colosseum",
-        desc: "A ruined gladiatorial arena where spectral fighters battle for an audience of ghosts.",
-        difficulty: "\u2B50",
-      },
-      {
         id: DiabloMapId.PETRIFIED_GARDEN,
         icon: "\uD83E\uDEA8",
         name: "Petrified Garden",
@@ -1275,6 +1207,35 @@ export class DiabloGame {
         name: "Sunken Citadel",
         desc: "A grand fortress dragged beneath the waves. Drowned knights patrol flooded corridors lit by bioluminescent algae.",
         difficulty: "\u2B50\u2B50",
+      },
+      {
+        id: DiabloMapId.CITY_RUINS,
+        icon: "\uD83C\uDFDA\uFE0F",
+        name: "City Ruins",
+        desc: "The shattered remains of a once-great city. Corrupted watchmen still patrol their forgotten posts.",
+        difficulty: "\u2B50\u2B50",
+      },
+      // ── 3 stars ──
+      {
+        id: DiabloMapId.NECROPOLIS_DUNGEON,
+        icon: "\uD83D\uDC80",
+        name: "Necropolis Depths",
+        desc: "The catacombs beneath a fallen fortress. The dead do not rest here.",
+        difficulty: "\u2B50\u2B50\u2B50",
+      },
+      {
+        id: DiabloMapId.JADE_TEMPLE,
+        icon: "\uD83C\uDFDB\uFE0F",
+        name: "Jade Temple",
+        desc: "A crumbling jungle temple where jade constructs guard forgotten rituals. Tribal shamans have awakened the old gods.",
+        difficulty: "\u2B50\u2B50\u2B50",
+      },
+      {
+        id: DiabloMapId.ASHEN_BATTLEFIELD,
+        icon: "\u2694\uFE0F",
+        name: "Ashen Battlefield",
+        desc: "Scarred remnants of a cataclysmic war. Ghostly soldiers fight an endless battle among shattered siege engines.",
+        difficulty: "\u2B50\u2B50\u2B50",
       },
       {
         id: DiabloMapId.WYRMSCAR_CANYON,
@@ -1291,6 +1252,35 @@ export class DiabloGame {
         difficulty: "\u2B50\u2B50\u2B50",
       },
       {
+        id: DiabloMapId.CITY,
+        icon: "\uD83C\uDFE0",
+        name: "City of Thornwall",
+        desc: "A walled city under the grip of a corrupt garrison. Armored enforcers patrol the market squares and shadowy alleyways.",
+        difficulty: "\u2B50\u2B50\u2B50",
+      },
+      // ── 4 stars ──
+      {
+        id: DiabloMapId.VOLCANIC_WASTES,
+        icon: "\uD83C\uDF0B",
+        name: "Volcanic Wastes",
+        desc: "A scorched hellscape of molten rivers and ash storms. Demons forged in flame roam the ruins.",
+        difficulty: "\u2B50\u2B50\u2B50\u2B50",
+      },
+      {
+        id: DiabloMapId.FUNGAL_DEPTHS,
+        icon: "\uD83C\uDF44",
+        name: "Fungal Depths",
+        desc: "Cavernous tunnels choked with towering bioluminescent mushrooms. The air is thick with toxic spores.",
+        difficulty: "\u2B50\u2B50\u2B50\u2B50",
+      },
+      {
+        id: DiabloMapId.OBSIDIAN_FORTRESS,
+        icon: "\uD83C\uDFF0",
+        name: "Obsidian Fortress",
+        desc: "A fortress carved from volcanic glass reflecting hellfire. Demonic legions drill in its courtyards.",
+        difficulty: "\u2B50\u2B50\u2B50\u2B50",
+      },
+      {
         id: DiabloMapId.ETHEREAL_SANCTUM,
         icon: "\uD83D\uDD2E",
         name: "Ethereal Sanctum",
@@ -1303,6 +1293,28 @@ export class DiabloGame {
         name: "Iron Wastes",
         desc: "A blasted wasteland of rusting war machines. Self-repairing automatons build ever-deadlier forms from the wreckage.",
         difficulty: "\u2B50\u2B50\u2B50\u2B50",
+      },
+      // ── 5 stars ──
+      {
+        id: DiabloMapId.ABYSSAL_RIFT,
+        icon: "\uD83C\uDF0C",
+        name: "Abyssal Rift",
+        desc: "A tear in reality. Eldritch horrors drift between shattered islands of stone above the void.",
+        difficulty: "\u2B50\u2B50\u2B50\u2B50\u2B50",
+      },
+      {
+        id: DiabloMapId.CELESTIAL_RUINS,
+        icon: "\u2B50",
+        name: "Celestial Ruins",
+        desc: "Shattered temples floating among the stars. Fallen cosmic guardians patrol bridges of pure light.",
+        difficulty: "\u2B50\u2B50\u2B50\u2B50\u2B50",
+      },
+      {
+        id: DiabloMapId.INFERNAL_THRONE,
+        icon: "\uD83D\uDD25",
+        name: "Infernal Throne",
+        desc: "The seat of demonic power. Rivers of molten souls flow beneath a throne of compressed agony.",
+        difficulty: "\u2B50\u2B50\u2B50\u2B50\u2B50",
       },
       {
         id: DiabloMapId.BLIGHTED_THRONE,
@@ -1317,6 +1329,21 @@ export class DiabloGame {
         name: "Chrono Labyrinth",
         desc: "A maze where corridors loop through fractured timelines. Past and future collide with every step.",
         difficulty: "\u2B50\u2B50\u2B50\u2B50\u2B50",
+      },
+      // ── 6 stars ──
+      {
+        id: DiabloMapId.DRAGONS_SANCTUM,
+        icon: "\uD83D\uDC09",
+        name: "Dragon's Sanctum",
+        desc: "The ancient lair of the Elder Dragons. Gold-encrusted caverns echo with primordial fury.",
+        difficulty: "\u2B50\u2B50\u2B50\u2B50\u2B50\u2B50",
+      },
+      {
+        id: DiabloMapId.ASTRAL_VOID,
+        icon: "\uD83C\uDF0C",
+        name: "Astral Void",
+        desc: "The space between dimensions where reality unravels. Entities older than creation drift through fractured timelines.",
+        difficulty: "\u2B50\u2B50\u2B50\u2B50\u2B50\u2B50",
       },
       {
         id: DiabloMapId.ELDRITCH_NEXUS,
@@ -2262,6 +2289,9 @@ export class DiabloGame {
     } else {
       this._state.phase = DiabloPhase.PLAYING;
       this._menuEl.innerHTML = "";
+      if (this._firstPerson) {
+        this._renderer.canvas.requestPointerLock();
+      }
     }
   }
 
@@ -3007,32 +3037,33 @@ export class DiabloGame {
       </div>`;
 
     // Section 2: Base Stats (2x grid)
+    const tt = (tip: string) => `cursor:help;border-bottom:1px dotted #666;`;
     const sec2 = `
       ${sectionHeader("BASE STATS")}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;font-size:14px;">
-        <div>STR: <span style="color:${statColor(stats.strength, baseCls.str)};font-weight:bold;">${stats.strength}</span></div>
-        <div>DEX: <span style="color:${statColor(stats.dexterity, baseCls.dex)};font-weight:bold;">${stats.dexterity}</span></div>
-        <div>INT: <span style="color:${statColor(stats.intelligence, baseCls.int)};font-weight:bold;">${stats.intelligence}</span></div>
-        <div>VIT: <span style="color:${statColor(stats.vitality, baseCls.vit)};font-weight:bold;">${stats.vitality}</span></div>
-        <div style="color:#aaa;">Armor: <span style="color:#fff;">${stats.armor}</span></div>
-        <div style="color:#aaa;">Crit Chance: <span style="color:#ff8;">${(stats.critChance * 100).toFixed(1)}%</span></div>
-        <div style="color:#aaa;">Crit Damage: <span style="color:#ff8;">${(stats.critDamage * 100).toFixed(0)}%</span></div>
-        <div style="color:#aaa;">Move Speed: <span style="color:#fff;">${stats.moveSpeed.toFixed(1)}</span></div>
-        <div style="color:#aaa;">Attack Speed: <span style="color:#fff;">${stats.attackSpeed.toFixed(2)}</span></div>
+        <div style="${tt("")}" title="Increases melee damage. Warriors gain 1.5x STR as bonus damage.">STR: <span style="color:${statColor(stats.strength, baseCls.str)};font-weight:bold;">${stats.strength}</span></div>
+        <div style="${tt("")}" title="Increases ranged damage and dodge. Rangers gain 1.3x DEX as bonus damage.">DEX: <span style="color:${statColor(stats.dexterity, baseCls.dex)};font-weight:bold;">${stats.dexterity}</span></div>
+        <div style="${tt("")}" title="Increases spell damage and max mana (+0.8 per level per point). Mages gain 1.2x INT as bonus damage.">INT: <span style="color:${statColor(stats.intelligence, baseCls.int)};font-weight:bold;">${stats.intelligence}</span></div>
+        <div style="${tt("")}" title="Increases max HP (+2 per level per point). Higher vitality means more survivability.">VIT: <span style="color:${statColor(stats.vitality, baseCls.vit)};font-weight:bold;">${stats.vitality}</span></div>
+        <div style="color:#aaa;${tt("")}" title="Reduces incoming damage. Damage reduction = armor / (armor + 200).">Armor: <span style="color:#fff;">${stats.armor}</span></div>
+        <div style="color:#aaa;${tt("")}" title="Chance for attacks to critically strike, dealing bonus damage.">Crit Chance: <span style="color:#ff8;">${(stats.critChance * 100).toFixed(1)}%</span></div>
+        <div style="color:#aaa;${tt("")}" title="Bonus damage multiplier when a critical hit occurs.">Crit Damage: <span style="color:#ff8;">${(stats.critDamage * 100).toFixed(0)}%</span></div>
+        <div style="color:#aaa;${tt("")}" title="How fast your character moves across the map.">Move Speed: <span style="color:#fff;">${stats.moveSpeed.toFixed(1)}</span></div>
+        <div style="color:#aaa;${tt("")}" title="Number of attacks per second. Higher means faster combat.">Attack Speed: <span style="color:#fff;">${stats.attackSpeed.toFixed(2)}</span></div>
       </div>`;
 
     // Section 3: Defensive Stats
     const sec3 = `
       ${sectionHeader("DEFENSIVE STATS")}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;font-size:14px;">
-        <div style="color:#e44;">HP: <span style="color:#fff;">${Math.floor(p.hp)} / ${p.maxHp}</span></div>
-        <div style="color:#48f;">Mana: <span style="color:#fff;">${Math.floor(p.mana)} / ${p.maxMana}</span></div>
-        <div style="color:#f84;">Fire Resist: <span style="color:#fff;">${fireResist}</span> <span style="color:#888;font-size:11px;">(${(fireResist / (fireResist + 100) * 100).toFixed(1)}% red.)</span></div>
-        <div style="color:#8df;">Ice Resist: <span style="color:#fff;">${iceResist}</span> <span style="color:#888;font-size:11px;">(${(iceResist / (iceResist + 100) * 100).toFixed(1)}% red.)</span></div>
-        <div style="color:#ff4;">Lightning Resist: <span style="color:#fff;">${lightningResist}</span> <span style="color:#888;font-size:11px;">(${(lightningResist / (lightningResist + 100) * 100).toFixed(1)}% red.)</span></div>
-        <div style="color:#4f4;">Poison Resist: <span style="color:#fff;">${poisonResist}</span> <span style="color:#888;font-size:11px;">(${(poisonResist / (poisonResist + 100) * 100).toFixed(1)}% red.)</span></div>
-        <div style="color:#f88;">Life Steal: <span style="color:#fff;">${lifeSteal}%</span></div>
-        <div style="color:#8af;">Mana Regen: <span style="color:#fff;">${manaRegen}</span></div>
+        <div style="color:#e44;${tt("")}" title="Hit Points. When HP reaches 0 you die. Increased by Vitality.">HP: <span style="color:#fff;">${Math.floor(p.hp)} / ${p.maxHp}</span></div>
+        <div style="color:#48f;${tt("")}" title="Mana pool for casting skills. Increased by Intelligence. Regenerates over time.">Mana: <span style="color:#fff;">${Math.floor(p.mana)} / ${p.maxMana}</span></div>
+        <div style="color:#f84;${tt("")}" title="Reduces fire damage taken. Reduction = resist / (resist + 100).">Fire Resist: <span style="color:#fff;">${fireResist}</span> <span style="color:#888;font-size:11px;">(${(fireResist / (fireResist + 100) * 100).toFixed(1)}% red.)</span></div>
+        <div style="color:#8df;${tt("")}" title="Reduces ice damage taken. Reduction = resist / (resist + 100).">Ice Resist: <span style="color:#fff;">${iceResist}</span> <span style="color:#888;font-size:11px;">(${(iceResist / (iceResist + 100) * 100).toFixed(1)}% red.)</span></div>
+        <div style="color:#ff4;${tt("")}" title="Reduces lightning damage taken. Reduction = resist / (resist + 100).">Lightning Resist: <span style="color:#fff;">${lightningResist}</span> <span style="color:#888;font-size:11px;">(${(lightningResist / (lightningResist + 100) * 100).toFixed(1)}% red.)</span></div>
+        <div style="color:#4f4;${tt("")}" title="Reduces poison damage taken. Reduction = resist / (resist + 100).">Poison Resist: <span style="color:#fff;">${poisonResist}</span> <span style="color:#888;font-size:11px;">(${(poisonResist / (poisonResist + 100) * 100).toFixed(1)}% red.)</span></div>
+        <div style="color:#f88;${tt("")}" title="Percentage of damage dealt that is recovered as HP.">Life Steal: <span style="color:#fff;">${lifeSteal}%</span></div>
+        <div style="color:#8af;${tt("")}" title="Mana recovered per second passively.">Mana Regen: <span style="color:#fff;">${manaRegen}</span></div>
       </div>`;
 
     // Section 4: Skill Details
@@ -3867,7 +3898,9 @@ export class DiabloGame {
       box-shadow:0 4px 12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(200,168,78,0.15),
         inset 0 -1px 0 rgba(0,0,0,0.3), 0 0 1px rgba(200,168,78,0.2),
         inset 0 0 0 1px rgba(200,168,78,0.08), 0 0 0 1px rgba(0,0,0,0.3);
+      transition:border-color 0.3s, box-shadow 0.3s;
     `;
+    this._topRightPanel = topRight;
     // Top ornament for the panel
     const panelOrnament = document.createElement("div");
     panelOrnament.style.cssText = `
@@ -4519,6 +4552,15 @@ export class DiabloGame {
     this._levelText.innerHTML = `\u2694 Level ${p.level}`;
     this._killText.innerHTML = `\u2620 ${this._state.killCount} Kills` +
       (this._state.deathCount > 0 ? `  &nbsp;\u2620 ${this._state.deathCount} Deaths` : "");
+
+    // Glow border when talent points are available
+    if (p.talentPoints > 0) {
+      this._topRightPanel.style.borderColor = "#ffd700";
+      this._topRightPanel.style.boxShadow = "0 4px 12px rgba(0,0,0,0.5), 0 0 12px rgba(255,215,0,0.5), 0 0 24px rgba(255,215,0,0.25), inset 0 0 8px rgba(255,215,0,0.1)";
+    } else {
+      this._topRightPanel.style.borderColor = "#7a6a3a";
+      this._topRightPanel.style.boxShadow = "0 4px 12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(200,168,78,0.15), inset 0 -1px 0 rgba(0,0,0,0.3), 0 0 1px rgba(200,168,78,0.2), inset 0 0 0 1px rgba(200,168,78,0.08), 0 0 0 1px rgba(0,0,0,0.3)";
+    }
 
     // Potion slots (ad1a2850)
     for (let i = 0; i < 4; i++) {
@@ -6862,14 +6904,13 @@ export class DiabloGame {
     p.attackSpeed = base.attackSpeed;
     p.critChance = base.critChance;
     p.critDamage = base.critDamage;
-    p.maxHp = base.maxHp + (p.level - 1) * Math.floor(p.vitality * 2);
-    p.maxMana = base.maxMana + (p.level - 1) * Math.floor(p.intelligence * 0.8);
-
     // Apply equipment stats
     const equipKeys: (keyof DiabloEquipment)[] = [
       "helmet", "body", "gauntlets", "legs", "feet", "accessory1", "accessory2", "weapon", "lantern",
     ];
     const equippedNames: string[] = [];
+    let bonusHealthFromGear = 0;
+    let bonusManaFromGear = 0;
 
     for (const key of equipKeys) {
       const item = p.equipment[key];
@@ -6885,8 +6926,8 @@ export class DiabloGame {
       if (stats.critDamage) p.critDamage += stats.critDamage / 100;
       if (stats.attackSpeed) p.attackSpeed += stats.attackSpeed / 100;
       if (stats.moveSpeed || stats.speed) p.moveSpeed += (stats.moveSpeed || stats.speed || 0);
-      if (stats.bonusHealth) p.maxHp += stats.bonusHealth;
-      if (stats.bonusMana) p.maxMana += stats.bonusMana;
+      if (stats.bonusHealth) bonusHealthFromGear += stats.bonusHealth;
+      if (stats.bonusMana) bonusManaFromGear += stats.bonusMana;
     }
 
     // Check set bonuses
@@ -6911,6 +6952,10 @@ export class DiabloGame {
         if (bs.lifeSteal) { /* applied in damage calc */ }
       }
     }
+
+    // Calculate maxHp/maxMana AFTER all vitality/intelligence bonuses are applied
+    p.maxHp = base.maxHp + (p.level - 1) * Math.floor(p.vitality * 2) + bonusHealthFromGear;
+    p.maxMana = base.maxMana + (p.level - 1) * Math.floor(p.intelligence * 0.8) + bonusManaFromGear;
 
     // Apply talent effects
     const talentBonuses = this._getTalentBonuses();
@@ -7317,7 +7362,7 @@ export class DiabloGame {
     this._state.persistentGold = save.persistentGold;
     this._state.persistentLevel = save.persistentLevel;
     this._state.persistentXp = save.persistentXp;
-    this._state.persistentStash = save.persistentStash || Array.from({ length: 100 }, () => ({ item: null }));
+    this._state.persistentStash = (() => { const s = save.persistentStash || []; while (s.length < 150) s.push({ item: null }); return s; })();
     this._state.mapCleared = save.mapCleared;
     this._state.difficulty = save.difficulty || DiabloDifficulty.DAGGER;
     this._state.activeQuests = save.activeQuests || [];
@@ -7390,7 +7435,7 @@ export class DiabloGame {
         ">${content}</div>`;
     }
 
-    // Build stash grid (10x10 = 100 slots)
+    // Build stash grid (10x15 = 150 slots)
     let stashHtml = "";
     for (let i = 0; i < stash.length; i++) {
       const slot = stash[i];
@@ -7427,7 +7472,7 @@ export class DiabloGame {
           <!-- Stash Panel -->
           <div>
             <div style="color:#c8a84e;font-size:14px;margin-bottom:8px;text-align:center;font-weight:bold;">STASH</div>
-            <div style="display:grid;grid-template-columns:repeat(10,55px);grid-template-rows:repeat(10,55px);gap:3px;max-height:600px;overflow-y:auto;">
+            <div style="display:grid;grid-template-columns:repeat(10,55px);gap:3px;max-height:700px;overflow-y:auto;">
               ${stashHtml}
             </div>
           </div>
@@ -8008,7 +8053,7 @@ export class DiabloGame {
     const pmy = toMy(p.z);
     ctx.save();
     ctx.translate(pmx, pmy);
-    ctx.rotate(-p.angle + Math.PI);
+    ctx.rotate(this._firstPerson ? -p.angle : -p.angle + Math.PI);
     ctx.fillStyle = "#44ff44";
     ctx.beginPath();
     ctx.moveTo(0, -5);

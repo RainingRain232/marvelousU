@@ -31910,15 +31910,58 @@ export class DiabloRenderer {
     archSupport.position.set(bridgeX, 0.2, bridgeZ);
     this._scene.add(archSupport);
 
-    // ── Hay bales ──
+    // ── Hay bales (round & rectangular with detail) ──
+    const hayDarkMat = new THREE.MeshStandardMaterial({ color: 0xb89930, roughness: 0.92 });
+    const hayLightMat = new THREE.MeshStandardMaterial({ color: 0xddbb55, roughness: 0.88 });
+    const twineMat = new THREE.MeshStandardMaterial({ color: 0x887755, roughness: 0.8 });
     for (let i = 0; i < 15; i++) {
-      const hay = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.8, 27), hayMat);
-      hay.rotation.x = Math.PI / 2;
       const hayX = (Math.random() - 0.5) * w * 0.7;
       const hayZ = (Math.random() - 0.5) * d * 0.7;
-      hay.position.set(hayX, getTerrainHeight(hayX, hayZ, 1.4) + 0.4, hayZ);
-      hay.rotation.z = Math.random() * Math.PI;
-      this._scene.add(hay);
+      const baseY = getTerrainHeight(hayX, hayZ, 1.4);
+      const baleGroup = new THREE.Group();
+      if (i % 3 !== 0) {
+        // Round bale
+        const bale = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.8, 18), i % 2 === 0 ? hayMat : hayDarkMat);
+        bale.rotation.z = Math.PI / 2;
+        bale.castShadow = true;
+        baleGroup.add(bale);
+        // Twine bands
+        for (const tx of [-0.2, 0.2]) {
+          const band = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.012, 6, 14), twineMat);
+          band.position.x = tx;
+          band.rotation.y = Math.PI / 2;
+          baleGroup.add(band);
+        }
+        // Straw wisps
+        for (let sw = 0; sw < 4; sw++) {
+          const straw = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.002, 0.08 + Math.random() * 0.06, 3), hayLightMat);
+          straw.position.set((Math.random() - 0.5) * 0.5, (Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 0.5);
+          straw.rotation.set(Math.random() * Math.PI, 0, Math.random() * Math.PI);
+          baleGroup.add(straw);
+        }
+        baleGroup.position.set(hayX, baseY + 0.5, hayZ);
+      } else {
+        // Rectangular bale
+        const bale = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.3, 0.35), i % 4 === 0 ? hayMat : hayDarkMat);
+        bale.castShadow = true;
+        baleGroup.add(bale);
+        // Twine binding straps
+        for (const tx of [-0.15, 0.15]) {
+          const strap = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.31, 0.36), twineMat);
+          strap.position.x = tx;
+          baleGroup.add(strap);
+        }
+        // Straw wisps
+        for (let sw = 0; sw < 3; sw++) {
+          const straw = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.002, 0.06, 3), hayLightMat);
+          straw.position.set((Math.random() - 0.5) * 0.4, 0.15, (Math.random() - 0.5) * 0.3);
+          straw.rotation.z = Math.random() * Math.PI;
+          baleGroup.add(straw);
+        }
+        baleGroup.position.set(hayX, baseY + 0.15, hayZ);
+      }
+      baleGroup.rotation.y = Math.random() * Math.PI;
+      this._scene.add(baleGroup);
     }
 
     // ── Farmstead (detailed buildings + fences) ──
@@ -32487,13 +32530,14 @@ export class DiabloRenderer {
       for (let r = 0; r < cnt; r++) {
         const rh = 0.6 + Math.random() * 2;
         const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(rh, 2), stoneMat);
-        rock.scale.set(0.7 + Math.random() * 0.6, 0.5 + Math.random() * 0.5, 0.7 + Math.random() * 0.6);
-        rock.position.set((Math.random() - 0.5) * 2, rh * 0.3, (Math.random() - 0.5) * 2);
+        const yScale = 0.5 + Math.random() * 0.5;
+        rock.scale.set(0.7 + Math.random() * 0.6, yScale, 0.7 + Math.random() * 0.6);
+        rock.position.set((Math.random() - 0.5) * 2, rh * yScale * 0.35, (Math.random() - 0.5) * 2);
         rockGroup.add(rock);
       }
       const roX = (Math.random() - 0.5) * w * 0.85;
       const roZ = (Math.random() - 0.5) * d * 0.85;
-      rockGroup.position.set(roX, getTerrainHeight(roX, roZ, 1.4), roZ);
+      rockGroup.position.set(roX, getTerrainHeight(roX, roZ, 1.4) - 0.2, roZ);
       this._scene.add(rockGroup);
     }
 
@@ -32516,7 +32560,7 @@ export class DiabloRenderer {
     // ── Windmill ──
     const wmX = -hw * 0.35, wmZ = hd * 0.3;
     const wmBase = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 2, 6, 27), new THREE.MeshStandardMaterial({ color: 0xccbb99, roughness: 0.7 }));
-    wmBase.position.set(wmX, 8, wmZ);
+    wmBase.position.set(wmX, 3, wmZ);
     this._scene.add(wmBase);
     const wmRoof = new THREE.Mesh(new THREE.ConeGeometry(2, 2, 27), new THREE.MeshStandardMaterial({ color: 0x885533, roughness: 0.8 }));
     wmRoof.position.set(wmX, 7, wmZ);

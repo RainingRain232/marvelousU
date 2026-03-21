@@ -1731,7 +1731,7 @@ export function createDefaultState(): DiabloState {
     persistentLevel: 1,
     persistentXp: 0,
     timeOfDay: TimeOfDay.DAY,
-    persistentStash: Array.from({ length: 100 }, () => ({ item: null })),
+    persistentStash: Array.from({ length: 150 }, () => ({ item: null })),
     mapCleared: [false, false, false, false, false, false, false],
     difficulty: DiabloDifficulty.DAGGER,
     deathCount: 0,
