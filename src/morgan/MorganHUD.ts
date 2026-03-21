@@ -635,6 +635,10 @@ export class MorganHUD {
           <li>Sleeping/stunned guards can be <span style="color:#cc88ff;">executed</span> with F (no angle needed)</li>
           <li><span style="color:#ffd700;">Backstab</span> the boss for reduced damage — he can't be one-shot</li>
           <li>Press T to throw a <span style="color:#aaaacc;">distraction</span> — free, no mana, lures guards</li>
+          <li><span style="color:#66aaff;">Dodge roll</span> (C) grants brief invulnerability to melee and fireballs</li>
+          <li><span style="color:#668844;">Hide bodies</span> (H) near corpses to prevent guards from discovering them</li>
+          <li><span style="color:#ff6600;">Push stunned guards</span> (V) into fire grates for instant environmental kills</li>
+          <li>Different <span style="color:#ffd700;">artifacts</span> grant temporary bonuses: Tome = damage, Scroll = stealth, Crystal = mana</li>
         </ul>
 
         <h3 style="color:#aa88dd;font-size:15px;margin:18px 0 8px;border-bottom:1px solid #333;padding-bottom:4px;">SCORING BADGES</h3>
