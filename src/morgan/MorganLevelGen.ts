@@ -75,6 +75,24 @@ export function generateLevel(def: LevelDef): GeneratedLevel {
         tiles[ry][rx] = TileType.FLOOR;
       }
     }
+      // L-shaped extension (30% chance for larger rooms)
+      if (room.w >= 5 && room.h >= 5 && Math.random() < 0.3 && rooms.length > 2) {
+        const extW = rng(3, Math.min(5, room.w - 1));
+        const extH = rng(3, Math.min(5, room.h - 1));
+        const extX = room.x + (Math.random() < 0.5 ? room.w : -extW);
+        const extY = room.y + rng(0, room.h - extH);
+        if (extX >= 2 && extX + extW < FLOOR_W - 2 && extY >= 2 && extY + extH < FLOOR_H - 2) {
+          const extRoom: Room = { x: extX, y: extY, w: extW, h: extH, cx: extX + Math.floor(extW / 2), cy: extY + Math.floor(extH / 2) };
+          if (!rooms.some(r => r !== room && roomsOverlap(r, extRoom))) {
+            // Carve extension
+            for (let ey = extRoom.y; ey < extRoom.y + extRoom.h; ey++) {
+              for (let ex = extRoom.x; ex < extRoom.x + extRoom.w; ex++) {
+                tiles[ey][ex] = TileType.FLOOR;
+              }
+            }
+          }
+        }
+      }
   }
 
   // Sort rooms by position for corridor connectivity
@@ -126,6 +144,25 @@ export function generateLevel(def: LevelDef): GeneratedLevel {
         tiles[sy][sx] = TileType.SHADOW;
       }
     }
+
+      // Wall alcoves (hiding spots) - indent single tiles from walls
+      if (Math.random() < 0.25 && room.w >= 5) {
+        const alcoveCount = rng(1, 2);
+        for (let al = 0; al < alcoveCount; al++) {
+          // Find a wall-adjacent floor tile
+          const wallSide = rng(0, 3); // 0=top, 1=right, 2=bottom, 3=left
+          let ax: number, ay: number;
+          switch (wallSide) {
+            case 0: ax = room.x + rng(1, room.w - 2); ay = room.y - 1; break;
+            case 1: ax = room.x + room.w; ay = room.y + rng(1, room.h - 2); break;
+            case 2: ax = room.x + rng(1, room.w - 2); ay = room.y + room.h; break;
+            default: ax = room.x - 1; ay = room.y + rng(1, room.h - 2); break;
+          }
+          if (ax >= 1 && ax < FLOOR_W - 1 && ay >= 1 && ay < FLOOR_H - 1 && tiles[ay][ax] === TileType.WALL) {
+            tiles[ay][ax] = TileType.SHADOW;
+          }
+        }
+      }
   }
 
   // Place torches
@@ -202,6 +239,16 @@ export function generateLevel(def: LevelDef): GeneratedLevel {
     }
   }
 
+  // Extra mana potions on later levels
+  if (def.level >= 4) {
+    const extraManaRooms = shuffle([...rooms]).slice(0, 2);
+    for (const room of extraManaRooms) {
+      const mx = room.cx * CELL_SIZE + CELL_SIZE / 2 + (Math.random() - 0.5) * 2;
+      const mz = room.cy * CELL_SIZE + CELL_SIZE / 2 + (Math.random() - 0.5) * 2;
+      pickups.push(createPickup(v2(mx, mz), PickupType.MANA_POTION));
+    }
+  }
+
   // Place traps
   const traps: Trap[] = [];
   const trapRooms = shuffle(rooms.slice(1, -1));
@@ -265,24 +312,25 @@ export function generateLevel(def: LevelDef): GeneratedLevel {
     const gy = room.y + rng(1, Math.max(1, room.h - 2));
     // Patrol path: some guards patrol corridors (multi-room), others stay in room
     const patrolPath: Vec2[] = [];
+    const jitter = () => (Math.random() - 0.5) * 2;
     const corridorPatrol = Math.random() < 0.3 && i < guardRooms.length - 1;
     if (corridorPatrol) {
       // Patrol between two rooms
       const nextRoom = guardRooms[(i + 1) % guardRooms.length];
       patrolPath.push(v2(
-        room.cx * CELL_SIZE + CELL_SIZE / 2,
-        room.cy * CELL_SIZE + CELL_SIZE / 2,
+        room.cx * CELL_SIZE + CELL_SIZE / 2 + jitter(),
+        room.cy * CELL_SIZE + CELL_SIZE / 2 + jitter(),
       ));
       patrolPath.push(v2(
-        nextRoom.cx * CELL_SIZE + CELL_SIZE / 2,
-        nextRoom.cy * CELL_SIZE + CELL_SIZE / 2,
+        nextRoom.cx * CELL_SIZE + CELL_SIZE / 2 + jitter(),
+        nextRoom.cy * CELL_SIZE + CELL_SIZE / 2 + jitter(),
       ));
     } else {
       const numWaypoints = rng(2, 4);
       for (let w = 0; w < numWaypoints; w++) {
         patrolPath.push(v2(
-          (room.x + rng(1, Math.max(1, room.w - 2))) * CELL_SIZE + CELL_SIZE / 2,
-          (room.y + rng(1, Math.max(1, room.h - 2))) * CELL_SIZE + CELL_SIZE / 2,
+          (room.x + rng(1, Math.max(1, room.w - 2))) * CELL_SIZE + CELL_SIZE / 2 + jitter(),
+          (room.y + rng(1, Math.max(1, room.h - 2))) * CELL_SIZE + CELL_SIZE / 2 + jitter(),
         ));
       }
     }

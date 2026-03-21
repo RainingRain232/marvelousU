@@ -403,6 +403,224 @@ export class MorganAudio {
     }
   }
 
+  playDodgeRoll(): void {
+    const ctx = this._ensure();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    // Quick swoosh
+    const bufSize = Math.floor(ctx.sampleRate * 0.15);
+    const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < bufSize; i++) {
+      d[i] = (Math.random() * 2 - 1) * Math.sin((i / bufSize) * Math.PI) * 0.8;
+    }
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const filter = ctx.createBiquadFilter();
+    filter.type = "bandpass";
+    filter.frequency.setValueAtTime(2000, now);
+    filter.frequency.exponentialRampToValueAtTime(500, now + 0.15);
+    filter.Q.value = 2;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.2, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+    src.connect(filter); filter.connect(gain); gain.connect(this._sfxGain);
+    src.start(now);
+  }
+
+  playPushGuard(): void {
+    const ctx = this._ensure();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    // Heavy thud impact
+    const osc = ctx.createOscillator();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(120, now);
+    osc.frequency.exponentialRampToValueAtTime(40, now + 0.2);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.3, now);
+    g.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+    osc.connect(g); g.connect(this._sfxGain);
+    osc.start(now); osc.stop(now + 0.25);
+    // Impact noise
+    const bufSize = Math.floor(ctx.sampleRate * 0.1);
+    const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < bufSize; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / bufSize);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const filter = ctx.createBiquadFilter();
+    filter.type = "lowpass"; filter.frequency.value = 600;
+    const gain2 = ctx.createGain();
+    gain2.gain.setValueAtTime(0.15, now);
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+    src.connect(filter); filter.connect(gain2); gain2.connect(this._sfxGain);
+    src.start(now);
+  }
+
+  playEnvironmentalKill(): void {
+    const ctx = this._ensure();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    // Sizzle + scream-like descending tone
+    const osc = ctx.createOscillator();
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(600, now);
+    osc.frequency.exponentialRampToValueAtTime(100, now + 0.5);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.15, now);
+    g.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+    osc.connect(g); g.connect(this._sfxGain);
+    osc.start(now); osc.stop(now + 0.6);
+    // Fire sizzle noise
+    const bufSize = Math.floor(ctx.sampleRate * 0.4);
+    const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < bufSize; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / bufSize) * 0.5;
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const filter = ctx.createBiquadFilter();
+    filter.type = "highpass"; filter.frequency.value = 3000;
+    const gain2 = ctx.createGain();
+    gain2.gain.setValueAtTime(0.12, now);
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+    src.connect(filter); filter.connect(gain2); gain2.connect(this._sfxGain);
+    src.start(now);
+  }
+
+  playBodyHide(): void {
+    const ctx = this._ensure();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    // Soft dragging sound
+    const bufSize = Math.floor(ctx.sampleRate * 0.3);
+    const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < bufSize; i++) {
+      d[i] = (Math.random() * 2 - 1) * 0.3 * Math.sin((i / bufSize) * Math.PI);
+    }
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const filter = ctx.createBiquadFilter();
+    filter.type = "lowpass"; filter.frequency.value = 300;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.1, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+    src.connect(filter); filter.connect(gain); gain.connect(this._sfxGain);
+    src.start(now);
+  }
+
+  playArtifactBonus(): void {
+    const ctx = this._ensure();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    // Magical sparkle ascending arpeggio
+    const notes = [523, 659, 784, 1047]; // C5 E5 G5 C6
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0, now + i * 0.08);
+      g.gain.linearRampToValueAtTime(0.1, now + i * 0.08 + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.001, now + i * 0.08 + 0.3);
+      osc.connect(g); g.connect(this._sfxGain);
+      osc.start(now + i * 0.08); osc.stop(now + i * 0.08 + 0.3);
+    });
+    // Shimmer overlay
+    const shimBuf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.5), ctx.sampleRate);
+    const shimData = shimBuf.getChannelData(0);
+    for (let i = 0; i < shimData.length; i++) {
+      shimData[i] = (Math.random() * 2 - 1) * Math.sin((i / shimData.length) * Math.PI) * 0.3;
+    }
+    const shimSrc = ctx.createBufferSource();
+    shimSrc.buffer = shimBuf;
+    const shimFilter = ctx.createBiquadFilter();
+    shimFilter.type = "bandpass"; shimFilter.frequency.value = 6000; shimFilter.Q.value = 3;
+    const shimGain = ctx.createGain();
+    shimGain.gain.setValueAtTime(0.05, now);
+    shimGain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+    shimSrc.connect(shimFilter); shimFilter.connect(shimGain); shimGain.connect(this._sfxGain);
+    shimSrc.start(now);
+  }
+
+  playSpellInterrupt(): void {
+    const ctx = this._ensure();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    // Sharp crack + descending warble
+    const osc = ctx.createOscillator();
+    osc.type = "square";
+    osc.frequency.setValueAtTime(3000, now);
+    osc.frequency.exponentialRampToValueAtTime(200, now + 0.12);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.12, now);
+    g.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+    osc.connect(g); g.connect(this._sfxGain);
+    osc.start(now); osc.stop(now + 0.15);
+  }
+
+  playWallSlam(): void {
+    const ctx = this._ensure();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    // Heavy bass impact
+    const osc = ctx.createOscillator();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(80, now);
+    osc.frequency.exponentialRampToValueAtTime(30, now + 0.15);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.35, now);
+    g.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+    osc.connect(g); g.connect(this._sfxGain);
+    osc.start(now); osc.stop(now + 0.2);
+    // Stone crumble noise
+    const bufSize = Math.floor(ctx.sampleRate * 0.15);
+    const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < bufSize; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / bufSize) * 0.6;
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const filter = ctx.createBiquadFilter();
+    filter.type = "lowpass"; filter.frequency.value = 800;
+    const gain2 = ctx.createGain();
+    gain2.gain.value = 0.12;
+    src.connect(filter); filter.connect(gain2); gain2.connect(this._sfxGain);
+    src.start(now);
+  }
+
+  playWaterSplash(): void {
+    const ctx = this._ensure();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    // Splash noise
+    const bufSize = Math.floor(ctx.sampleRate * 0.25);
+    const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < bufSize; i++) {
+      d[i] = (Math.random() * 2 - 1) * Math.sin((i / bufSize) * Math.PI) * 0.7;
+    }
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const filter = ctx.createBiquadFilter();
+    filter.type = "bandpass"; filter.frequency.value = 1500; filter.Q.value = 1;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.18, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+    src.connect(filter); filter.connect(gain); gain.connect(this._sfxGain);
+    src.start(now);
+    // Low bubble
+    const osc = ctx.createOscillator();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(200, now + 0.05);
+    osc.frequency.exponentialRampToValueAtTime(80, now + 0.2);
+    const g2 = ctx.createGain();
+    g2.gain.setValueAtTime(0.08, now + 0.05);
+    g2.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+    osc.connect(g2); g2.connect(this._sfxGain);
+    osc.start(now + 0.05); osc.stop(now + 0.25);
+  }
+
   destroy(): void {
     if (this._heartbeatInterval) {
       clearInterval(this._heartbeatInterval);

@@ -434,7 +434,9 @@ export class MorganHUD {
           Guards: ${guards.length} alive (${sleeping} sleeping)<br>
           Detections: ${state.levelStats.timesDetected}<br>
           Kills: ${state.levelStats.guardsKilled}<br>
+          Environmental Kills: ${state.player.environmentalKills}<br>
           Keys: ${state.player.keys}<br>
+          Bodies Hidden: ${state.corpses.filter(c => c.hidden).length}<br>
           Time: ${Math.floor(state.time / 60)}:${Math.floor(state.time % 60).toString().padStart(2, '0')}
         </div>
         <div style="font-size:11px;color:#665588;margin-top:12px;text-align:center;">
@@ -522,6 +524,15 @@ export class MorganHUD {
         ctx.lineTo(gx + Math.sin(guard.angle) * 4, gz + Math.cos(guard.angle) * 4);
         ctx.stroke();
       }
+    }
+
+    // Corpses
+    for (const corpse of state.corpses) {
+      if (corpse.hidden) continue;
+      ctx.fillStyle = corpse.discovered ? "#663333" : "#444444";
+      const cx = corpse.pos.x / CELL_SIZE * scale;
+      const cz = corpse.pos.z / CELL_SIZE * scale;
+      ctx.fillRect(cx - 1, cz - 1, 2, 2);
     }
 
     // Player
@@ -620,9 +631,9 @@ export class MorganHUD {
         <table style="width:100%;font-size:13px;color:#bbb;border-collapse:collapse;">
           <tr><td style="padding:4px 0;color:#8844ff;width:140px;">[1] Shadow Cloak</td><td>Become invisible for 5s (30 mana)</td></tr>
           <tr><td style="padding:4px 0;color:#8844ff;">[2] Dark Bolt</td><td>Ranged projectile that stuns & damages (20 mana)</td></tr>
-          <tr><td style="padding:4px 0;color:#8844ff;">[3] Sleep Mist</td><td>AoE cloud that puts guards to sleep (35 mana)</td></tr>
+          <tr><td style="padding:4px 0;color:#8844ff;">[3] Sleep Mist</td><td>AoE cloud that puts guards to sleep (28 mana)</td></tr>
           <tr><td style="padding:4px 0;color:#8844ff;">[4] Blink</td><td>Short-range teleport (25 mana)</td></tr>
-          <tr><td style="padding:4px 0;color:#8844ff;">[5] Decoy</td><td>Shadow phantom that lures guards (20 mana)</td></tr>
+          <tr><td style="padding:4px 0;color:#8844ff;">[5] Decoy</td><td>Shadow phantom that lures guards (15 mana)</td></tr>
         </table>
 
         <h3 style="color:#aa88dd;font-size:15px;margin:18px 0 8px;border-bottom:1px solid #333;padding-bottom:4px;">STEALTH TIPS</h3>
@@ -686,6 +697,7 @@ export class MorganHUD {
     if (time < 60) badges.push({ label: "SPEEDRUN", color: "#ffaa00" });
     else if (time < 120) badges.push({ label: "SWIFT", color: "#ccaa44" });
     if (stats.trapsTriggered === 0) badges.push({ label: "UNTOUCHED", color: "#44cccc" });
+    if (state.player.environmentalKills >= 3) badges.push({ label: "EXECUTIONER", color: "#ff6600" });
     if (badges.length === 0) badges.push({ label: "COMPLETED", color: "#888" });
 
     const div = document.createElement("div");
@@ -710,6 +722,7 @@ export class MorganHUD {
         Kills: ${stats.guardsKilled}<br>
         Traps triggered: ${stats.trapsTriggered} \u2022
         Ghost kills: ${stats.ghostKills} \u2022
+        Env. kills: ${state.player.environmentalKills} \u2022
         Gold: ${state.player.gold}
       </div>
       <div style="font-size:20px;margin-bottom:8px;">Score: ${state.player.score}</div>
