@@ -214,6 +214,8 @@ export class RiftWizardHUD {
   private _buyUpgradeSpellIndex = 0;
   /** Selected index within abilities sub-menu */
   private _abilitiesSelectedIndex = 0;
+  /** Index of spell slot being hovered by mouse (-1 = none) */
+  private _hoveredSpellIndex = -1;
 
   onPauseResume: (() => void) | null = null;
   onPauseRestart: (() => void) | null = null;
@@ -266,7 +268,7 @@ export class RiftWizardHUD {
     this.container.addChild(this._pauseContainer);
   }
 
-  update(state: RiftWizardState, screenWidth: number, screenHeight: number, hoverGrid?: { col: number; row: number } | null): void {
+  update(state: RiftWizardState, screenWidth: number, screenHeight: number, hoverGrid?: { col: number; row: number } | null, mouseX?: number, mouseY?: number): void {
     const hudH = 90;
     const hudY = screenHeight - hudH;
 
@@ -534,7 +536,7 @@ export class RiftWizardHUD {
     this._tooltipText.y = hudY + 42;
 
     // --- Right section: Spell bar ---
-    this._updateSpellBar(state, screenWidth, hudY);
+    this._updateSpellBar(state, screenWidth, hudY, mouseX, mouseY);
 
     // Threat direction arrows for nearby enemies
     if (state.phase === RWPhase.PLAYING) {
@@ -2734,6 +2736,8 @@ export class RiftWizardHUD {
     state: RiftWizardState,
     screenWidth: number,
     hudY: number,
+    mouseX?: number,
+    mouseY?: number,
   ): void {
     this._spellBar.clear();
 
@@ -2913,6 +2917,103 @@ export class RiftWizardHUD {
       miniText.y = slotY + 26;
       this.container.addChild(miniText);
       this._spellTexts.push(miniText);
+    }
+
+    // ── Spell slot hover detection ──
+    this._hoveredSpellIndex = -1;
+    if (mouseX !== undefined && mouseY !== undefined) {
+      for (let hi = 0; hi < state.spells.length && hi < 9; hi++) {
+        const hsx = spellBarX + hi * (slotW + slotGap);
+        if (mouseX >= hsx && mouseX <= hsx + slotW && mouseY >= slotY && mouseY <= slotY + slotH) {
+          this._hoveredSpellIndex = hi;
+          break;
+        }
+      }
+    }
+
+    // ── Hover tooltip above spell bar ──
+    if (this._hoveredSpellIndex >= 0 && this._hoveredSpellIndex < state.spells.length) {
+      const hovSpell = state.spells[this._hoveredSpellIndex];
+      const hovDef = SPELL_DEFS[hovSpell.defId];
+      if (hovDef) {
+        const sc = SCHOOL_COLORS[hovSpell.school] ?? 0x666666;
+        const tooltipLines: { text: string; color: number; bold?: boolean }[] = [];
+        tooltipLines.push({ text: hovDef.name, color: sc, bold: true });
+        tooltipLines.push({ text: `School: ${hovSpell.school}`, color: sc });
+        tooltipLines.push({ text: `Damage: ${hovSpell.damage}    Range: ${hovSpell.range || '∞'}    AoE: ${hovSpell.aoeRadius || 'none'}`, color: 0xcccccc });
+        tooltipLines.push({ text: `Charges: ${hovSpell.charges}/${hovSpell.maxCharges}`, color: hovSpell.charges > 0 ? 0x88cc88 : 0x663333 });
+        if (hovSpell.maxBounces > 0) tooltipLines.push({ text: `Bounces: ${hovSpell.maxBounces}`, color: 0xaaaa88 });
+        if (hovSpell.summonCount > 0) tooltipLines.push({ text: `Summons: ${hovSpell.summonCount}${hovDef.summonUnitType ? ' ' + hovDef.summonUnitType : ''}`, color: 0x44cc44 });
+        if (hovDef.slowDuration) tooltipLines.push({ text: `Slow: ${hovDef.slowDuration} turns (×${hovDef.slowFactor ?? 0.5})`, color: 0x44ccff });
+        tooltipLines.push({ text: '', color: 0 }); // spacer
+        tooltipLines.push({ text: hovDef.description, color: 0x888899 });
+        // Show applied upgrades
+        if (hovSpell.upgrades.length > 0) {
+          tooltipLines.push({ text: '', color: 0 }); // spacer
+          tooltipLines.push({ text: 'Upgrades:', color: 0x6666aa, bold: true });
+          for (const uid of hovSpell.upgrades) {
+            const uDef = hovDef.upgrades.find(u => u.id === uid);
+            if (uDef) tooltipLines.push({ text: `  · ${uDef.name}`, color: 0x8888cc });
+          }
+        }
+
+        const lineH = 14;
+        const ttPad = 8;
+        const ttW = 280;
+        // Filter out empty spacer lines for height calc but keep them for rendering
+        const ttH = tooltipLines.length * lineH + ttPad * 2;
+        const hovSlotX = spellBarX + this._hoveredSpellIndex * (slotW + slotGap);
+        const ttX = Math.max(4, Math.min(screenWidth - ttW - 4, hovSlotX - ttW / 2 + slotW / 2));
+        const ttY = slotY - ttH - 8;
+
+        // Drop shadow
+        this._spellBar.rect(ttX + 2, ttY + 2, ttW, ttH);
+        this._spellBar.fill({ color: 0x000000, alpha: 0.35 });
+        // Background
+        this._spellBar.rect(ttX - 1, ttY - 1, ttW + 2, ttH + 2);
+        this._spellBar.fill({ color: 0x000000, alpha: 0.4 });
+        this._spellBar.rect(ttX, ttY, ttW, ttH);
+        this._spellBar.fill({ color: 0x0a0a18, alpha: 0.94 });
+        // Double border
+        this._spellBar.rect(ttX, ttY, ttW, ttH);
+        this._spellBar.stroke({ color: sc, width: 1.5 });
+        this._spellBar.rect(ttX + 2, ttY + 2, ttW - 4, ttH - 4);
+        this._spellBar.stroke({ color: sc, width: 0.5, alpha: 0.3 });
+        // Top accent glow
+        this._spellBar.rect(ttX, ttY, ttW, 2);
+        this._spellBar.fill({ color: sc, alpha: 0.6 });
+        // Corner bevels
+        const bv = 6;
+        this._spellBar.moveTo(ttX, ttY + bv); this._spellBar.lineTo(ttX + bv, ttY);
+        this._spellBar.stroke({ color: sc, width: 0.8, alpha: 0.4 });
+        this._spellBar.moveTo(ttX + ttW - bv, ttY); this._spellBar.lineTo(ttX + ttW, ttY + bv);
+        this._spellBar.stroke({ color: sc, width: 0.8, alpha: 0.4 });
+        this._spellBar.moveTo(ttX, ttY + ttH - bv); this._spellBar.lineTo(ttX + bv, ttY + ttH);
+        this._spellBar.stroke({ color: sc, width: 0.8, alpha: 0.4 });
+        this._spellBar.moveTo(ttX + ttW - bv, ttY + ttH); this._spellBar.lineTo(ttX + ttW, ttY + ttH - bv);
+        this._spellBar.stroke({ color: sc, width: 0.8, alpha: 0.4 });
+        // School color accent on left
+        this._spellBar.rect(ttX, ttY, 3, ttH);
+        this._spellBar.fill({ color: sc, alpha: 0.8 });
+
+        for (let li = 0; li < tooltipLines.length; li++) {
+          const line = tooltipLines[li];
+          if (!line.text) continue; // skip spacer
+          const lineT = new Text({
+            text: line.text,
+            style: new TextStyle({
+              fontFamily: "monospace",
+              fontSize: line.bold ? 12 : 10,
+              fill: line.color,
+              fontWeight: line.bold ? "bold" : "normal",
+            }),
+          });
+          lineT.x = ttX + ttPad + 4;
+          lineT.y = ttY + ttPad + li * lineH;
+          this.container.addChild(lineT);
+          this._spellTexts.push(lineT);
+        }
+      }
     }
 
     // Selected spell detail row below spell bar

@@ -66,6 +66,10 @@ let _mouseX = 0;
 let _mouseY = 0;
 
 function _onKeyDown(e: KeyboardEvent): void {
+  // Prevent browser default for arrow keys and space (scrolling)
+  if (e.key === "ArrowUp" || e.key === "ArrowDown" || e.key === "ArrowLeft" || e.key === "ArrowRight" || e.key === " ") {
+    e.preventDefault();
+  }
   if (!_keys[e.key]) {
     _justPressed[e.key] = true;
   }
@@ -932,7 +936,7 @@ export class RiftWizardGame {
     this._renderer.draw(this._state, sw, sh, dt);
     const hoverGrid = this._mouseToGrid();
     (this._state as any).activeSynergies = this._activeSynergies;
-    this._hud.update(this._state, sw, sh, hoverGrid);
+    this._hud.update(this._state, sw, sh, hoverGrid, _mouseX, _mouseY);
   }
 
   // -------------------------------------------------------------------------
