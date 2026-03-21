@@ -2097,7 +2097,7 @@ export class RiftWizardHUD {
       if (key === "ArrowUp") {
         this._buySelectedIndex = Math.max(0, this._buySelectedIndex - 1);
       } else if (key === "ArrowDown") {
-        this._buySelectedIndex = Math.min(upgrades.length - 1, this._buySelectedIndex);
+        this._buySelectedIndex = Math.min(upgrades.length - 1, this._buySelectedIndex + 1);
       } else if (key === "Enter" || key === " ") {
         const upg = upgrades[this._buySelectedIndex];
         if (upg) {
@@ -2114,7 +2114,7 @@ export class RiftWizardHUD {
       if (key === "ArrowUp") {
         this._buySelectedIndex = Math.max(0, this._buySelectedIndex - 1);
       } else if (key === "ArrowDown") {
-        this._buySelectedIndex = Math.min(totalItems - 1, this._buySelectedIndex);
+        this._buySelectedIndex = Math.min(totalItems - 1, this._buySelectedIndex + 1);
       } else if (key === "Enter" || key === " ") {
         if (this._buySelectedIndex < available.length) {
           // Buy new spell

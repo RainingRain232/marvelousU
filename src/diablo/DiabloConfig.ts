@@ -1575,6 +1575,26 @@ export const MAP_CONFIGS: Record<DiabloMapId, DiabloMapConfig> = {
     ambientColor: '#0a050a', groundColor: '#110a11', fogDensity: 0.045, fogColor: '#150f15',
     backgroundMusic: 'eldritch_nexus',
   },
+  [DiabloMapId.CITY_RUINS]: {
+    id: DiabloMapId.CITY_RUINS,
+    name: 'City Ruins',
+    description: 'The shattered remains of a once-great city. Crumbling buildings lean against each other over narrow alleyways choked with rubble and ash. Corrupted watchmen still patrol their forgotten posts.',
+    width: 130, depth: 130,
+    enemyTypes: [EnemyType.RUINS_WATCHMAN, EnemyType.FALLEN_SENTINEL, EnemyType.RUBBLE_LURKER, EnemyType.ALLEY_STALKER, EnemyType.RUINED_CAPTAIN, EnemyType.COLLAPSED_GOLEM, EnemyType.GUTTER_RAT_SWARM, EnemyType.TOWER_SHADE],
+    maxEnemies: 20, spawnInterval: 6, treasureCount: 3,
+    ambientColor: '#3a3530', groundColor: '#5c5550', fogDensity: 0.012, fogColor: '#8a8580',
+    backgroundMusic: 'city_ruins_ambient',
+  },
+  [DiabloMapId.CITY]: {
+    id: DiabloMapId.CITY,
+    name: 'City of Thornwall',
+    description: 'A walled city under the grip of a corrupt garrison. Narrow streets wind between tall stone buildings while armored enforcers patrol the market squares and shadowy alleyways.',
+    width: 120, depth: 120,
+    enemyTypes: [EnemyType.CORRUPT_GUARD, EnemyType.GATE_ENFORCER, EnemyType.ROOFTOP_ARCHER, EnemyType.ALLEY_THUG, EnemyType.CITY_WARDEN, EnemyType.MARKET_BRUTE, EnemyType.SEWER_CREEPER, EnemyType.BELL_TOWER_SENTINEL],
+    maxEnemies: 22, spawnInterval: 5.5, treasureCount: 3,
+    ambientColor: '#2e3038', groundColor: '#4a4e58', fogDensity: 0.01, fogColor: '#6e7280',
+    backgroundMusic: 'city_ambient',
+  },
   [DiabloMapId.CAMELOT]: {
     id: DiabloMapId.CAMELOT,
     name: 'Camelot',
@@ -3801,6 +3821,89 @@ export const ENEMY_DEFS: Record<
     attackRange: 10, aggroRange: 18, xpReward: 80, isBoss: false, scale: 0.7, level: 16,
     behavior: EnemyBehavior.RANGED,
   },
+  // -- City Ruins enemies --
+  [EnemyType.RUINS_WATCHMAN]: {
+    name: 'Ruins Watchman', hp: 90, damage: 14, armor: 8, speed: 3.0,
+    attackRange: 2, aggroRange: 10, xpReward: 28, isBoss: false, scale: 1.0, level: 2,
+  },
+  [EnemyType.FALLEN_SENTINEL]: {
+    name: 'Fallen Sentinel', hp: 150, damage: 18, armor: 14, speed: 2.2,
+    attackRange: 2, aggroRange: 9, xpReward: 40, isBoss: false, scale: 1.2, level: 3,
+    behavior: EnemyBehavior.SHIELDED,
+  },
+  [EnemyType.RUBBLE_LURKER]: {
+    name: 'Rubble Lurker', hp: 70, damage: 16, armor: 4, speed: 4.0,
+    attackRange: 1.5, aggroRange: 8, xpReward: 22, isBoss: false, scale: 0.8, level: 2,
+    behavior: EnemyBehavior.FLANKER,
+  },
+  [EnemyType.ALLEY_STALKER]: {
+    name: 'Alley Stalker', hp: 60, damage: 20, armor: 3, speed: 5.0,
+    attackRange: 1.5, aggroRange: 11, xpReward: 30, isBoss: false, scale: 0.9, level: 3,
+    behavior: EnemyBehavior.FLANKER,
+  },
+  [EnemyType.RUINED_CAPTAIN]: {
+    name: 'Ruined Captain', hp: 300, damage: 28, armor: 18, speed: 2.8,
+    attackRange: 2.5, aggroRange: 14, xpReward: 100, isBoss: true, scale: 1.4, level: 5,
+  },
+  [EnemyType.COLLAPSED_GOLEM]: {
+    name: 'Collapsed Golem', hp: 180, damage: 22, armor: 20, speed: 1.8,
+    attackRange: 2, aggroRange: 8, xpReward: 45, isBoss: false, scale: 1.5, level: 4,
+  },
+  [EnemyType.GUTTER_RAT_SWARM]: {
+    name: 'Gutter Rat Swarm', hp: 50, damage: 10, armor: 1, speed: 4.5,
+    attackRange: 1.5, aggroRange: 7, xpReward: 18, isBoss: false, scale: 0.6, level: 1,
+  },
+  [EnemyType.TOWER_SHADE]: {
+    name: 'Tower Shade', hp: 75, damage: 15, armor: 2, speed: 3.5,
+    attackRange: 8, aggroRange: 14, xpReward: 32, isBoss: false, scale: 1.0, level: 3,
+    behavior: EnemyBehavior.RANGED,
+  },
+  // -- City enemies --
+  [EnemyType.CORRUPT_GUARD]: {
+    name: 'Corrupt Guard', hp: 100, damage: 15, armor: 10, speed: 3.2,
+    attackRange: 2, aggroRange: 11, xpReward: 30, isBoss: false, scale: 1.0, level: 2,
+  },
+  [EnemyType.GATE_ENFORCER]: {
+    name: 'Gate Enforcer', hp: 180, damage: 20, armor: 18, speed: 2.0,
+    attackRange: 2, aggroRange: 9, xpReward: 45, isBoss: false, scale: 1.3, level: 4,
+    behavior: EnemyBehavior.SHIELDED,
+  },
+  [EnemyType.ROOFTOP_ARCHER]: {
+    name: 'Rooftop Archer', hp: 65, damage: 18, armor: 4, speed: 3.0,
+    attackRange: 12, aggroRange: 16, xpReward: 32, isBoss: false, scale: 0.9, level: 3,
+    behavior: EnemyBehavior.RANGED,
+  },
+  [EnemyType.ALLEY_THUG]: {
+    name: 'Alley Thug', hp: 80, damage: 22, armor: 5, speed: 4.2,
+    attackRange: 1.5, aggroRange: 10, xpReward: 28, isBoss: false, scale: 1.0, level: 2,
+    behavior: EnemyBehavior.FLANKER,
+  },
+  [EnemyType.CITY_WARDEN]: {
+    name: 'City Warden', hp: 350, damage: 30, armor: 20, speed: 2.5,
+    attackRange: 2.5, aggroRange: 14, xpReward: 110, isBoss: true, scale: 1.5, level: 5,
+  },
+  [EnemyType.MARKET_BRUTE]: {
+    name: 'Market Brute', hp: 160, damage: 25, armor: 12, speed: 2.6,
+    attackRange: 2, aggroRange: 8, xpReward: 38, isBoss: false, scale: 1.3, level: 3,
+  },
+  [EnemyType.SEWER_CREEPER]: {
+    name: 'Sewer Creeper', hp: 70, damage: 14, armor: 3, speed: 4.0,
+    attackRange: 1.5, aggroRange: 9, xpReward: 24, isBoss: false, scale: 0.7, level: 2,
+  },
+  [EnemyType.BELL_TOWER_SENTINEL]: {
+    name: 'Bell Tower Sentinel', hp: 110, damage: 16, armor: 8, speed: 2.8,
+    attackRange: 10, aggroRange: 15, xpReward: 35, isBoss: false, scale: 1.1, level: 3,
+    behavior: EnemyBehavior.RANGED,
+  },
+  // -- Night bosses (city maps) --
+  [EnemyType.NIGHT_RUINS_REVENANT_KING]: {
+    name: 'The Revenant King', hp: 2000, damage: 65, armor: 35, speed: 3.5,
+    attackRange: 3, aggroRange: 25, xpReward: 500, isBoss: true, scale: 2.2, level: 10,
+  },
+  [EnemyType.NIGHT_CITY_SHADOW_MAGISTRATE]: {
+    name: 'Shadow Magistrate', hp: 2200, damage: 70, armor: 30, speed: 3.8,
+    attackRange: 3, aggroRange: 25, xpReward: 550, isBoss: true, scale: 2.0, level: 10,
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -4595,6 +4698,18 @@ export const ITEM_DATABASE: DiabloItem[] = [
   { id: nextId(), name: 'Elder Sign Sealed Legguards', icon: '🦑', rarity: ItemRarity.EPIC, type: ItemType.LEG_ARMOR, slot: ItemSlot.LEGS, level: 41, value: 3900, stats: { armor: 48, vitality: 30, intelligence: 26, poisonResist: 20, lightningResist: 20, bonusMana: 100 }, description: 'Tentacle-shaped clasps bind these legguards shut.', setName: 'Elder Sign Ward' },
   { id: nextId(), name: 'Elder Sign Sanity Lantern', icon: '🏮', rarity: ItemRarity.EPIC, type: ItemType.LANTERN, slot: ItemSlot.LANTERN, level: 43, value: 4100, stats: { intelligence: 28, manaRegen: 14, bonusDamage: 18, fireResist: 18, iceResist: 18, lightningResist: 18, poisonResist: 18 }, description: 'A lantern burning with the light of pure reason.', setName: 'Elder Sign Ward' },
   { id: nextId(), name: "Yith'garath, the Unnameable Edge", icon: '🌀', rarity: ItemRarity.LEGENDARY, type: ItemType.DAGGER, slot: ItemSlot.WEAPON, level: 44, value: 7800, stats: { dexterity: 38, intelligence: 28, bonusDamage: 58, critChance: 14, critDamage: 32, lifeSteal: 6 }, description: 'A blade whose shape cannot be fully perceived by mortal minds.', legendaryAbility: '20% chance to open a Rift Wound, summoning a tentacle that grapples for 3 seconds at 75% weapon damage/sec. On kill, gain +25% all damage and +20% crit chance for 6 seconds.' },
+
+  // ── CITY_RUINS (level 3-6) ── Ruined Garrison Set ──
+  { id: nextId(), name: "Ruined Garrison Helm", icon: '⛑️', rarity: ItemRarity.UNCOMMON, type: ItemType.HELMET, slot: ItemSlot.HELMET, level: 3, value: 60, stats: { armor: 8, vitality: 4, strength: 3 }, description: 'A dented helm still bearing the crest of the fallen city guard.', setName: 'Ruined Garrison' },
+  { id: nextId(), name: "Ruined Garrison Chestplate", icon: '🛡️', rarity: ItemRarity.UNCOMMON, type: ItemType.CHEST_ARMOR, slot: ItemSlot.BODY, level: 4, value: 75, stats: { armor: 12, vitality: 5, strength: 4 }, description: 'Battered plate armor scarred by the siege that destroyed the city.', setName: 'Ruined Garrison' },
+  { id: nextId(), name: "Ruined Garrison Signet", icon: '💍', rarity: ItemRarity.UNCOMMON, type: ItemType.RING, slot: ItemSlot.ACCESSORY_1, level: 3, value: 55, stats: { strength: 3, critChance: 2, bonusDamage: 4 }, description: 'The captain\'s ring, tarnished but still warm with fading authority.', setName: 'Ruined Garrison' },
+  { id: nextId(), name: "Oathbreaker, the Captain's Last Blade", icon: '⚔️', rarity: ItemRarity.RARE, type: ItemType.SWORD, slot: ItemSlot.WEAPON, level: 5, value: 120, stats: { bonusDamage: 16, strength: 6, critChance: 3 }, description: 'The captain\'s sword. Its edge is chipped but still deadly.', legendaryAbility: 'On kill, gain +10% damage and +5% armor for 5 seconds.' },
+
+  // ── CITY (level 3-6) ── Thornwall Watch Set ──
+  { id: nextId(), name: "Thornwall Watch Hauberk", icon: '🛡️', rarity: ItemRarity.UNCOMMON, type: ItemType.CHEST_ARMOR, slot: ItemSlot.BODY, level: 4, value: 80, stats: { armor: 14, vitality: 5, dexterity: 3 }, description: 'Standard issue armor of the Thornwall city watch, polished to a dark sheen.', setName: "Thornwall Watch" },
+  { id: nextId(), name: "Thornwall Watch Greaves", icon: '🦿', rarity: ItemRarity.UNCOMMON, type: ItemType.LEG_ARMOR, slot: ItemSlot.LEGS, level: 3, value: 65, stats: { armor: 10, dexterity: 4, moveSpeed: 3 }, description: 'Heavy greaves built for long patrols through cobblestone streets.', setName: "Thornwall Watch" },
+  { id: nextId(), name: "Thornwall Watch Badge", icon: '📛', rarity: ItemRarity.UNCOMMON, type: ItemType.AMULET, slot: ItemSlot.ACCESSORY_2, level: 4, value: 70, stats: { strength: 4, dexterity: 3, bonusHealth: 15 }, description: 'An iron badge of authority. Enemies hesitate when they see it.', setName: "Thornwall Watch" },
+  { id: nextId(), name: "Magistrate's Verdict", icon: '⚖️', rarity: ItemRarity.RARE, type: ItemType.MACE, slot: ItemSlot.WEAPON, level: 5, value: 130, stats: { bonusDamage: 18, strength: 5, critDamage: 8 }, description: 'The magistrate\'s ceremonial mace, heavier than it looks.', legendaryAbility: 'Attacks have a 15% chance to stun enemies for 1.5 seconds.' },
 
   // ── Lanterns ──────────────────────────────────────────────────────
   {
@@ -5427,6 +5542,8 @@ export const SET_BONUSES: DiabloSetBonus[] = [
   { setName: 'Blighted Crown Regalia', pieces: 3, bonusDescription: 'Enemies have healing reduced 60%. Kills grant Corruption stacks (+5% DMG).', bonusStats: { bonusDamage: 28, lifeSteal: 6, critChance: 8 } },
   { setName: "Chronomancer's Paradox", pieces: 3, bonusDescription: 'Cooldowns recover 30% faster. Every 15s, Temporal Echo repeats last 3 attacks.', bonusStats: { attackSpeed: 14, intelligence: 28, manaRegen: 14 } },
   { setName: 'Elder Sign Ward', pieces: 3, bonusDescription: 'Debuff immunity 2s every 12s. All resistances increased by 20%.', bonusStats: { bonusHealth: 300, armor: 40, manaRegen: 12 } },
+  { setName: 'Ruined Garrison', pieces: 3, bonusDescription: 'Stand your ground. +15% armor when stationary. Attacks taunt nearby enemies.', bonusStats: { armor: 12, strength: 6, vitality: 5 } },
+  { setName: 'Thornwall Watch', pieces: 3, bonusDescription: 'City patrol instincts. +10% movement speed. Flanking attacks deal 20% bonus.', bonusStats: { dexterity: 8, moveSpeed: 5, critChance: 4 } },
 
 ];
 
@@ -5473,6 +5590,8 @@ export const MAP_SPECIFIC_ITEMS: Record<string, string[]> = {
   'BLIGHTED_THRONE': ['Blighted Crown of the False King', 'Blighted Bulwark of Ruined Oaths', 'Blighted Signet of the Usurper', 'Ruingrasp, Scepter of the Fallen Throne'],
   'CHRONO_LABYRINTH': ["Chronomancer's Paradox Hood", "Chronomancer's Timeskip Treads", "Chronomancer's M\u00f6bius Amulet", "Epoch's End, the Moment Eater"],
   'ELDRITCH_NEXUS': ['Elder Sign Warded Vestments', 'Elder Sign Sealed Legguards', 'Elder Sign Sanity Lantern', "Yith'garath, the Unnameable Edge"],
+  'CITY_RUINS': ['Ruined Garrison Helm', 'Ruined Garrison Chestplate', 'Ruined Garrison Signet', "Oathbreaker, the Captain's Last Blade"],
+  'CITY': ['Thornwall Watch Hauberk', 'Thornwall Watch Greaves', 'Thornwall Watch Badge', "Magistrate's Verdict"],
 };
 
 
@@ -7615,6 +7734,107 @@ export const LOOT_TABLES: Record<EnemyType, { rarity: ItemRarity; chance: number
     { rarity: ItemRarity.LEGENDARY, chance: 0.012 },
     { rarity: ItemRarity.MYTHIC, chance: 0.002 },
   ],
+  // -- City Ruins enemies --
+  [EnemyType.RUINS_WATCHMAN]: [
+    { rarity: ItemRarity.COMMON, chance: 0.5 },
+    { rarity: ItemRarity.UNCOMMON, chance: 0.15 },
+    { rarity: ItemRarity.RARE, chance: 0.02 },
+  ],
+  [EnemyType.FALLEN_SENTINEL]: [
+    { rarity: ItemRarity.COMMON, chance: 0.55 },
+    { rarity: ItemRarity.UNCOMMON, chance: 0.2 },
+    { rarity: ItemRarity.RARE, chance: 0.04 },
+    { rarity: ItemRarity.EPIC, chance: 0.005 },
+  ],
+  [EnemyType.RUBBLE_LURKER]: [
+    { rarity: ItemRarity.COMMON, chance: 0.45 },
+    { rarity: ItemRarity.UNCOMMON, chance: 0.12 },
+    { rarity: ItemRarity.RARE, chance: 0.02 },
+  ],
+  [EnemyType.ALLEY_STALKER]: [
+    { rarity: ItemRarity.COMMON, chance: 0.5 },
+    { rarity: ItemRarity.UNCOMMON, chance: 0.18 },
+    { rarity: ItemRarity.RARE, chance: 0.03 },
+  ],
+  [EnemyType.RUINED_CAPTAIN]: [
+    { rarity: ItemRarity.COMMON, chance: 0.6 },
+    { rarity: ItemRarity.UNCOMMON, chance: 0.4 },
+    { rarity: ItemRarity.RARE, chance: 0.2 },
+    { rarity: ItemRarity.EPIC, chance: 0.08 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.03 },
+    { rarity: ItemRarity.MYTHIC, chance: 0.005 },
+  ],
+  [EnemyType.COLLAPSED_GOLEM]: [
+    { rarity: ItemRarity.COMMON, chance: 0.5 },
+    { rarity: ItemRarity.UNCOMMON, chance: 0.2 },
+    { rarity: ItemRarity.RARE, chance: 0.04 },
+    { rarity: ItemRarity.EPIC, chance: 0.005 },
+  ],
+  [EnemyType.GUTTER_RAT_SWARM]: [
+    { rarity: ItemRarity.COMMON, chance: 0.4 },
+    { rarity: ItemRarity.UNCOMMON, chance: 0.1 },
+  ],
+  [EnemyType.TOWER_SHADE]: [
+    { rarity: ItemRarity.COMMON, chance: 0.45 },
+    { rarity: ItemRarity.UNCOMMON, chance: 0.15 },
+    { rarity: ItemRarity.RARE, chance: 0.03 },
+  ],
+  // -- City enemies --
+  [EnemyType.CORRUPT_GUARD]: [
+    { rarity: ItemRarity.COMMON, chance: 0.5 },
+    { rarity: ItemRarity.UNCOMMON, chance: 0.18 },
+    { rarity: ItemRarity.RARE, chance: 0.03 },
+  ],
+  [EnemyType.GATE_ENFORCER]: [
+    { rarity: ItemRarity.COMMON, chance: 0.55 },
+    { rarity: ItemRarity.UNCOMMON, chance: 0.22 },
+    { rarity: ItemRarity.RARE, chance: 0.05 },
+    { rarity: ItemRarity.EPIC, chance: 0.008 },
+  ],
+  [EnemyType.ROOFTOP_ARCHER]: [
+    { rarity: ItemRarity.COMMON, chance: 0.45 },
+    { rarity: ItemRarity.UNCOMMON, chance: 0.15 },
+    { rarity: ItemRarity.RARE, chance: 0.03 },
+  ],
+  [EnemyType.ALLEY_THUG]: [
+    { rarity: ItemRarity.COMMON, chance: 0.5 },
+    { rarity: ItemRarity.UNCOMMON, chance: 0.16 },
+    { rarity: ItemRarity.RARE, chance: 0.02 },
+  ],
+  [EnemyType.CITY_WARDEN]: [
+    { rarity: ItemRarity.COMMON, chance: 0.6 },
+    { rarity: ItemRarity.UNCOMMON, chance: 0.4 },
+    { rarity: ItemRarity.RARE, chance: 0.2 },
+    { rarity: ItemRarity.EPIC, chance: 0.08 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.03 },
+    { rarity: ItemRarity.MYTHIC, chance: 0.005 },
+  ],
+  [EnemyType.MARKET_BRUTE]: [
+    { rarity: ItemRarity.COMMON, chance: 0.5 },
+    { rarity: ItemRarity.UNCOMMON, chance: 0.2 },
+    { rarity: ItemRarity.RARE, chance: 0.04 },
+  ],
+  [EnemyType.SEWER_CREEPER]: [
+    { rarity: ItemRarity.COMMON, chance: 0.4 },
+    { rarity: ItemRarity.UNCOMMON, chance: 0.12 },
+    { rarity: ItemRarity.RARE, chance: 0.02 },
+  ],
+  [EnemyType.BELL_TOWER_SENTINEL]: [
+    { rarity: ItemRarity.COMMON, chance: 0.5 },
+    { rarity: ItemRarity.UNCOMMON, chance: 0.18 },
+    { rarity: ItemRarity.RARE, chance: 0.03 },
+  ],
+  // -- Night bosses (city maps) --
+  [EnemyType.NIGHT_RUINS_REVENANT_KING]: [
+    { rarity: ItemRarity.EPIC, chance: 1.0 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.5 },
+    { rarity: ItemRarity.MYTHIC, chance: 0.1 },
+  ],
+  [EnemyType.NIGHT_CITY_SHADOW_MAGISTRATE]: [
+    { rarity: ItemRarity.EPIC, chance: 1.0 },
+    { rarity: ItemRarity.LEGENDARY, chance: 0.5 },
+    { rarity: ItemRarity.MYTHIC, chance: 0.1 },
+  ],
 };
 
 // ---------------------------------------------------------------------------
@@ -8126,6 +8346,26 @@ export const ENEMY_SPAWN_WEIGHTS: Record<DiabloMapId, { type: EnemyType; weight:
     { type: EnemyType.GIBBERING_MOUTHER, weight: 10 },
     { type: EnemyType.PSYCHIC_LEECH, weight: 10 },
   ],
+  [DiabloMapId.CITY_RUINS]: [
+    { type: EnemyType.RUINS_WATCHMAN, weight: 25 },
+    { type: EnemyType.RUBBLE_LURKER, weight: 20 },
+    { type: EnemyType.ALLEY_STALKER, weight: 18 },
+    { type: EnemyType.FALLEN_SENTINEL, weight: 12 },
+    { type: EnemyType.RUINED_CAPTAIN, weight: 5 },
+    { type: EnemyType.COLLAPSED_GOLEM, weight: 10 },
+    { type: EnemyType.GUTTER_RAT_SWARM, weight: 15 },
+    { type: EnemyType.TOWER_SHADE, weight: 10 },
+  ],
+  [DiabloMapId.CITY]: [
+    { type: EnemyType.CORRUPT_GUARD, weight: 25 },
+    { type: EnemyType.ALLEY_THUG, weight: 20 },
+    { type: EnemyType.ROOFTOP_ARCHER, weight: 15 },
+    { type: EnemyType.GATE_ENFORCER, weight: 12 },
+    { type: EnemyType.CITY_WARDEN, weight: 5 },
+    { type: EnemyType.MARKET_BRUTE, weight: 12 },
+    { type: EnemyType.SEWER_CREEPER, weight: 14 },
+    { type: EnemyType.BELL_TOWER_SENTINEL, weight: 10 },
+  ],
   [DiabloMapId.CAMELOT]: [],
 };
 
@@ -8471,6 +8711,16 @@ export const BOSS_PHASE_CONFIGS: Record<DiabloMapId, BossPhaseConfig[]> = {
     { hpThreshold: 1.0, name: 'Phase 1', damageMultiplier: 1.0, speedMultiplier: 1.0, abilities: [BossAbility.METEOR_RAIN, BossAbility.CHARGE, BossAbility.SHIELD, BossAbility.GROUND_SLAM] },
     { hpThreshold: 0.66, name: 'Phase 2', damageMultiplier: 2.2, speedMultiplier: 1.8, abilities: [BossAbility.METEOR_RAIN, BossAbility.CHARGE, BossAbility.SHIELD, BossAbility.GROUND_SLAM, BossAbility.SUMMON_ADDS] },
     { hpThreshold: 0.33, name: 'Phase 3', damageMultiplier: 3.0, speedMultiplier: 2.2, abilities: [BossAbility.METEOR_RAIN, BossAbility.CHARGE, BossAbility.SHIELD, BossAbility.GROUND_SLAM, BossAbility.SUMMON_ADDS, BossAbility.ENRAGE] },
+  ],
+  [DiabloMapId.CITY_RUINS]: [
+    { hpThreshold: 1.0, name: 'Phase 1', damageMultiplier: 1.0, speedMultiplier: 1.0, abilities: [BossAbility.CHARGE] },
+    { hpThreshold: 0.66, name: 'Phase 2', damageMultiplier: 1.2, speedMultiplier: 1.2, abilities: [BossAbility.CHARGE, BossAbility.SUMMON_ADDS] },
+    { hpThreshold: 0.33, name: 'Phase 3', damageMultiplier: 1.5, speedMultiplier: 1.4, abilities: [BossAbility.CHARGE, BossAbility.SUMMON_ADDS, BossAbility.ENRAGE] },
+  ],
+  [DiabloMapId.CITY]: [
+    { hpThreshold: 1.0, name: 'Phase 1', damageMultiplier: 1.0, speedMultiplier: 1.0, abilities: [BossAbility.GROUND_SLAM] },
+    { hpThreshold: 0.66, name: 'Phase 2', damageMultiplier: 1.2, speedMultiplier: 1.2, abilities: [BossAbility.GROUND_SLAM, BossAbility.CHARGE] },
+    { hpThreshold: 0.33, name: 'Phase 3', damageMultiplier: 1.5, speedMultiplier: 1.4, abilities: [BossAbility.GROUND_SLAM, BossAbility.CHARGE, BossAbility.ENRAGE] },
   ],
   [DiabloMapId.CAMELOT]: [],
 };
@@ -8946,6 +9196,12 @@ export const ENEMY_DAMAGE_TYPES: Partial<Record<EnemyType, DamageType>> = {
   [EnemyType.TENTACLE_HORROR]: DamageType.SHADOW,
   [EnemyType.GIBBERING_MOUTHER]: DamageType.SHADOW,
   [EnemyType.PSYCHIC_LEECH]: DamageType.ARCANE,
+  // City Ruins enemies
+  [EnemyType.TOWER_SHADE]: DamageType.SHADOW,
+  [EnemyType.NIGHT_RUINS_REVENANT_KING]: DamageType.SHADOW,
+  // City enemies
+  [EnemyType.SEWER_CREEPER]: DamageType.POISON,
+  [EnemyType.NIGHT_CITY_SHADOW_MAGISTRATE]: DamageType.SHADOW,
 };
 
 // ---------------------------------------------------------------------------
@@ -8968,6 +9224,16 @@ export const QUEST_DATABASE: Omit<DiabloQuest, 'progress' | 'isComplete' | 'isAc
     id: 'q_grassland_patrol', name: 'Grassland Patrol', description: 'Eliminate raiders and beasts roaming the Emerald Grasslands.',
     type: QuestType.KILL_COUNT, target: { mapId: DiabloMapId.EMERALD_GRASSLANDS }, required: 15, mapId: DiabloMapId.EMERALD_GRASSLANDS,
     rewards: { gold: 150, xp: 300 },
+  },
+  {
+    id: 'q_ruins_patrol', name: 'Ruins Patrol', description: 'Clear the corrupted guards from the City Ruins.',
+    type: QuestType.KILL_COUNT, target: { mapId: DiabloMapId.CITY_RUINS }, required: 15, mapId: DiabloMapId.CITY_RUINS,
+    rewards: { gold: 150, xp: 300 },
+  },
+  {
+    id: 'q_city_liberation', name: 'Liberate Thornwall', description: 'Break the corrupt garrison\'s hold on the City of Thornwall.',
+    type: QuestType.KILL_COUNT, target: { mapId: DiabloMapId.CITY }, required: 15, mapId: DiabloMapId.CITY,
+    rewards: { gold: 175, xp: 350 },
   },
   {
     id: 'q_spider_slayer', name: 'Spider Slayer', description: 'Kill venomous spiders lurking in the forest.',
@@ -9116,6 +9382,8 @@ export const MAP_COMPLETION_REWARDS: Partial<Record<DiabloMapId, MapCompletionRe
   [DiabloMapId.BLIGHTED_THRONE]: { gold: 2200, xp: 5500, guaranteedDropRarity: ItemRarity.LEGENDARY, bonusMessage: 'The crown shatters and the blight withers to nothing.' },
   [DiabloMapId.CHRONO_LABYRINTH]: { gold: 3500, xp: 8000, guaranteedDropRarity: ItemRarity.LEGENDARY, bonusMessage: 'Time straightens. The labyrinth unravels into open space.' },
   [DiabloMapId.ELDRITCH_NEXUS]: { gold: 6000, xp: 15000, guaranteedDropRarity: ItemRarity.LEGENDARY, bonusMessage: 'The nexus collapses. Every dark dimension severs its link.' },
+  [DiabloMapId.CITY_RUINS]: { gold: 150, xp: 350, guaranteedDropRarity: ItemRarity.UNCOMMON, bonusMessage: 'The ruined streets fall silent. The dead guards rest at last.' },
+  [DiabloMapId.CITY]: { gold: 175, xp: 400, guaranteedDropRarity: ItemRarity.UNCOMMON, bonusMessage: 'The corrupt garrison is dismantled. Thornwall breathes free.' },
 };
 
 // ---------------------------------------------------------------------------

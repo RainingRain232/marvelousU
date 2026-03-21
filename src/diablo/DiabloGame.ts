@@ -169,6 +169,8 @@ const MAP_KILL_TARGET: Record<DiabloMapId, number> = {
   [DiabloMapId.BLIGHTED_THRONE]: 95,
   [DiabloMapId.CHRONO_LABYRINTH]: 110,
   [DiabloMapId.ELDRITCH_NEXUS]: 140,
+  [DiabloMapId.CITY_RUINS]: 30,
+  [DiabloMapId.CITY]: 35,
   [DiabloMapId.CAMELOT]: 0,
 };
 
@@ -214,6 +216,8 @@ const BOSS_NAMES: Record<DiabloMapId, string[]> = {
   [DiabloMapId.BLIGHTED_THRONE]: ["King Malachar the Rotting", "Crown of Pestilence", "The Undying Court"],
   [DiabloMapId.CHRONO_LABYRINTH]: ["Chronarch Tempus", "The Paradox Engine", "Time Eater Ouroboros"],
   [DiabloMapId.ELDRITCH_NEXUS]: ["Overmind Xul'tharax", "The Convergence", "Elder Brain Infinitus"],
+  [DiabloMapId.CITY_RUINS]: ["Captain Harren the Undying", "The Rubble Colossus", "Gatekeeper Voss"],
+  [DiabloMapId.CITY]: ["Warden-Commander Blackthorn", "The Iron Magistrate", "Sergeant Grieves"],
   [DiabloMapId.CAMELOT]: [],
 };
 
@@ -355,6 +359,8 @@ const NIGHT_BOSS_MAP: Partial<Record<DiabloMapId, EnemyType>> = {
   [DiabloMapId.STORMSPIRE_PEAK]: EnemyType.NIGHT_STORMSPIRE_THUNDER_GOD,
   [DiabloMapId.SHADOW_REALM]: EnemyType.NIGHT_SHADOW_DREAM_EATER,
   [DiabloMapId.PRIMORDIAL_ABYSS]: EnemyType.NIGHT_ABYSS_WORLD_ENDER,
+  [DiabloMapId.CITY_RUINS]: EnemyType.NIGHT_RUINS_REVENANT_KING,
+  [DiabloMapId.CITY]: EnemyType.NIGHT_CITY_SHADOW_MAGISTRATE,
 };
 
 // ────────────────────────────────────────────────────────────────────────────
