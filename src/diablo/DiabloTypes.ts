@@ -729,6 +729,13 @@ export enum BossAbility {
   ENRAGE = 'ENRAGE',
   SHIELD = 'SHIELD',
   METEOR_RAIN = 'METEOR_RAIN',
+  // New abilities
+  FIRE_WALL = 'FIRE_WALL',
+  ARENA_SHRINK = 'ARENA_SHRINK',
+  MINION_FRENZY = 'MINION_FRENZY',
+  DEATH_BEAM = 'DEATH_BEAM',
+  TELEPORT_STRIKE = 'TELEPORT_STRIKE',
+  PHASE_TRANSITION = 'PHASE_TRANSITION',
 }
 
 export interface BossPhaseConfig {
@@ -847,6 +854,15 @@ export enum LootFilterLevel {
   HIDE_COMMON = 'HIDE_COMMON',
   RARE_PLUS = 'RARE_PLUS',
   EPIC_PLUS = 'EPIC_PLUS',
+}
+
+export interface CustomLootFilter {
+  name: string;
+  showRarities: ItemRarity[];
+  showItemTypes: ItemType[];
+  minLevel: number;
+  highlightSets: boolean;
+  autoSalvageBelow: ItemRarity | null;
 }
 
 // ── Greater Rift System ──────────────────────────────────────
@@ -1036,6 +1052,28 @@ export interface SkillRuneEffect {
   unlocksAtLevel: number;
 }
 
+export interface LegendaryEffectDef {
+  id: string;
+  name: string;
+  description: string;
+  triggerType: 'on_hit' | 'on_kill' | 'on_skill' | 'on_crit' | 'on_take_damage' | 'passive';
+  procChance: number; // 0-1
+  effect: {
+    damageMultiplier?: number;
+    aoeRadius?: number;
+    damageType?: DamageType;
+    statusEffect?: StatusEffect;
+    healPercent?: number;
+    manaRestorePercent?: number;
+    summonCount?: number;
+    bonusDamagePercent?: number;
+    shieldAmount?: number;
+    cooldownReduction?: number;
+    speedBoost?: number;
+    speedBoostDuration?: number;
+  };
+}
+
 export interface DiabloItemStats {
   strength?: number;
   dexterity?: number;
@@ -1068,6 +1106,8 @@ export interface DiabloItem {
   description: string;
   setName?: string;
   legendaryAbility?: string;
+  sockets?: GemSocket[];
+  maxSockets?: number;
   icon: string;
   value: number;
 }
@@ -1172,6 +1212,9 @@ export interface DiabloPlayerState {
   // Skill Rune system
   activeRunes: Record<string, RuneType>; // key is SkillId, value is active rune
   unlockedRunes: string[]; // "FIREBALL_RUNE_A" format
+  // Custom loot filters
+  customLootFilters: CustomLootFilter[];
+  activeFilterIndex: number;
 }
 
 export interface DiabloEnemy {
@@ -1464,6 +1507,12 @@ export interface DungeonLayout {
   hazards: { x: number; z: number; radius: number; type: 'lava' | 'spikes' | 'poison' | 'ice' }[];
   spawnRoom: number; // index of the spawn room
   bossRoom: number; // index of the boss room
+}
+
+export interface GemSocket {
+  gemType: DamageType | null; // fire gem, ice gem, etc.
+  gemTier: number; // 1-5
+  bonusStats: DiabloItemStats;
 }
 
 export interface CraftingState {
@@ -1814,6 +1863,14 @@ export function createDefaultPlayer(cls: DiabloClass): DiabloPlayerState {
     isMovingToTarget: false,
     activeRunes: {},
     unlockedRunes: [],
+    customLootFilters: [
+      { name: 'Show All', showRarities: Object.values(ItemRarity), showItemTypes: Object.values(ItemType), minLevel: 0, highlightSets: false, autoSalvageBelow: null },
+      { name: 'No Common', showRarities: [ItemRarity.UNCOMMON, ItemRarity.RARE, ItemRarity.EPIC, ItemRarity.LEGENDARY, ItemRarity.MYTHIC, ItemRarity.DIVINE], showItemTypes: Object.values(ItemType), minLevel: 0, highlightSets: true, autoSalvageBelow: null },
+      { name: 'Rare+', showRarities: [ItemRarity.RARE, ItemRarity.EPIC, ItemRarity.LEGENDARY, ItemRarity.MYTHIC, ItemRarity.DIVINE], showItemTypes: Object.values(ItemType), minLevel: 0, highlightSets: true, autoSalvageBelow: ItemRarity.UNCOMMON },
+      { name: 'Epic+', showRarities: [ItemRarity.EPIC, ItemRarity.LEGENDARY, ItemRarity.MYTHIC, ItemRarity.DIVINE], showItemTypes: Object.values(ItemType), minLevel: 0, highlightSets: true, autoSalvageBelow: ItemRarity.RARE },
+      { name: 'Legendary Only', showRarities: [ItemRarity.LEGENDARY, ItemRarity.MYTHIC, ItemRarity.DIVINE], showItemTypes: Object.values(ItemType), minLevel: 0, highlightSets: true, autoSalvageBelow: ItemRarity.EPIC },
+    ],
+    activeFilterIndex: 0,
   };
 }
 

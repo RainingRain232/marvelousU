@@ -36,6 +36,7 @@ import {
   CraftingMaterial,
   RuneType,
   SkillRuneEffect,
+  LegendaryEffectDef,
 } from './DiabloTypes';
 
 // ---------------------------------------------------------------------------
@@ -9548,28 +9549,8 @@ export const MAP_MODIFIER_DEFS: Record<string, {
 };
 
 // ---------------------------------------------------------------------------
-//  LEGENDARY SPECIAL EFFECTS
+//  LEGACY LEGENDARY SPECIAL EFFECTS (superseded by LEGENDARY_EFFECTS at end of file)
 // ---------------------------------------------------------------------------
-export const LEGENDARY_EFFECTS: Record<string, {
-  trigger: 'ON_HIT' | 'ON_KILL' | 'ON_CRIT' | 'ON_SKILL' | 'PASSIVE';
-  chance: number;
-  effect: string;
-  value: number;
-  description: string;
-}> = {
-  'Fireball Split': { trigger: 'ON_SKILL', chance: 1.0, effect: 'SPLIT_PROJECTILE', value: 3, description: 'Fireball splits into 3 on impact' },
-  'Frozen Nova on Kill': { trigger: 'ON_KILL', chance: 0.3, effect: 'ICE_NOVA', value: 50, description: 'Killing a frozen enemy triggers Ice Nova' },
-  'Chain Lightning Strike': { trigger: 'ON_CRIT', chance: 0.25, effect: 'CHAIN_LIGHTNING', value: 40, description: '25% chance on crit to unleash chain lightning' },
-  'Vampiric Touch': { trigger: 'ON_HIT', chance: 1.0, effect: 'LIFE_STEAL_BONUS', value: 5, description: 'Every hit heals 5% of damage dealt' },
-  'Berserker Rage': { trigger: 'ON_KILL', chance: 1.0, effect: 'DAMAGE_BUFF', value: 15, description: 'Gain 15% damage for 5s on kill (stacks 3x)' },
-  'Meteor Strike': { trigger: 'ON_CRIT', chance: 0.15, effect: 'METEOR', value: 200, description: '15% chance on crit to call down a meteor' },
-  'Soul Harvest': { trigger: 'ON_KILL', chance: 1.0, effect: 'MANA_RESTORE', value: 20, description: 'Restore 20 mana on kill' },
-  'Thundergod Wrath': { trigger: 'ON_HIT', chance: 0.1, effect: 'LIGHTNING_BURST', value: 80, description: '10% chance to unleash lightning burst on hit' },
-  'Phoenix Rebirth': { trigger: 'PASSIVE', chance: 1.0, effect: 'REVIVE', value: 50, description: 'Once per map: revive with 50% HP on death' },
-  'Whirlwind Mastery': { trigger: 'ON_SKILL', chance: 1.0, effect: 'EXTENDED_DURATION', value: 2, description: 'Whirlwind lasts 2s longer' },
-  'Every 5th Strike': { trigger: 'ON_HIT', chance: 1.0, effect: 'NTH_HIT_BONUS', value: 300, description: 'Every 5th hit deals 300% damage' },
-  'Frost Armor': { trigger: 'PASSIVE', chance: 1.0, effect: 'FREEZE_ATTACKER', value: 20, description: '20% chance to freeze attackers for 2s' },
-};
 
 // ---------------------------------------------------------------------------
 //  ELEMENTAL REACTIONS
@@ -10015,4 +9996,101 @@ export const SKILL_RUNES: Partial<Record<SkillId, SkillRuneEffect[]>> = {
     { runeType: RuneType.RUNE_B, name: 'Poison Blades', description: 'Coated in venom.', icon: '\u2620\uFE0F', damageMultiplierMod: 0, cooldownMod: 0, manaCostMod: 5, replaceDamageType: DamageType.POISON, replaceStatusEffect: StatusEffect.POISONED, unlocksAtLevel: 10 },
     { runeType: RuneType.RUNE_C, name: 'Knives of Shadow', description: 'Makes you invisible for 2s after use.', icon: '\u{1F47B}', damageMultiplierMod: -0.3, cooldownMod: 2, manaCostMod: 10, unlocksAtLevel: 15 },
   ],
+};
+
+// ---------------------------------------------------------------------------
+//  LEGENDARY EFFECT DEFINITIONS
+// ---------------------------------------------------------------------------
+
+export const LEGENDARY_EFFECTS: Record<string, LegendaryEffectDef> = {
+  'fireball_split': {
+    id: 'fireball_split', name: 'Infernal Cascade',
+    description: 'Fireball splits into 3 on impact.',
+    triggerType: 'on_skill', procChance: 1.0,
+    effect: { aoeRadius: 2, damageType: DamageType.FIRE },
+  },
+  'whirlwind_pull': {
+    id: 'whirlwind_pull', name: 'Gravitational Vortex',
+    description: 'Whirlwind pulls enemies inward.',
+    triggerType: 'on_skill', procChance: 1.0,
+    effect: { aoeRadius: 6 },
+  },
+  'frozen_nova_on_kill': {
+    id: 'frozen_nova_on_kill', name: 'Frozen Death',
+    description: 'Killing a frozen enemy triggers Ice Nova.',
+    triggerType: 'on_kill', procChance: 1.0,
+    effect: { aoeRadius: 5, damageType: DamageType.ICE, statusEffect: StatusEffect.FROZEN, damageMultiplier: 1.5 },
+  },
+  'chain_lightning_proc': {
+    id: 'chain_lightning_proc', name: 'Storm Conduit',
+    description: '20% chance on hit to trigger chain lightning.',
+    triggerType: 'on_hit', procChance: 0.20,
+    effect: { damageMultiplier: 0.8, damageType: DamageType.LIGHTNING, statusEffect: StatusEffect.SHOCKED },
+  },
+  'life_steal_on_crit': {
+    id: 'life_steal_on_crit', name: 'Vampiric Fury',
+    description: 'Critical hits heal for 15% of damage dealt.',
+    triggerType: 'on_crit', procChance: 1.0,
+    effect: { healPercent: 15 },
+  },
+  'mana_on_kill': {
+    id: 'mana_on_kill', name: 'Soul Harvest',
+    description: 'Killing enemies restores 8% max mana.',
+    triggerType: 'on_kill', procChance: 1.0,
+    effect: { manaRestorePercent: 8 },
+  },
+  'fire_trail': {
+    id: 'fire_trail', name: 'Infernal Footsteps',
+    description: 'Leave a trail of fire that burns enemies.',
+    triggerType: 'passive', procChance: 1.0,
+    effect: { damageType: DamageType.FIRE, statusEffect: StatusEffect.BURNING, damageMultiplier: 0.5 },
+  },
+  'shield_on_hit': {
+    id: 'shield_on_hit', name: 'Aegis Reaction',
+    description: '10% chance when hit to gain a 200 HP shield for 5s.',
+    triggerType: 'on_take_damage', procChance: 0.10,
+    effect: { shieldAmount: 200 },
+  },
+  'speed_on_kill': {
+    id: 'speed_on_kill', name: 'Bloodrush',
+    description: 'Killing enemies grants 30% speed boost for 3s.',
+    triggerType: 'on_kill', procChance: 1.0,
+    effect: { speedBoost: 0.3, speedBoostDuration: 3 },
+  },
+  'explode_on_kill': {
+    id: 'explode_on_kill', name: 'Corpse Bomb',
+    description: 'Enemies explode on death dealing 50% of their max HP as AoE.',
+    triggerType: 'on_kill', procChance: 0.35,
+    effect: { aoeRadius: 4, damageMultiplier: 0.5 },
+  },
+  'bonus_damage_low_hp': {
+    id: 'bonus_damage_low_hp', name: 'Berserker\'s Wrath',
+    description: 'Deal 40% more damage when below 30% HP.',
+    triggerType: 'passive', procChance: 1.0,
+    effect: { bonusDamagePercent: 40 },
+  },
+  'double_strike': {
+    id: 'double_strike', name: 'Echo Strike',
+    description: '25% chance to strike twice.',
+    triggerType: 'on_hit', procChance: 0.25,
+    effect: { damageMultiplier: 0.7 },
+  },
+  'poison_cloud_on_hit': {
+    id: 'poison_cloud_on_hit', name: 'Plague Bearer',
+    description: '15% chance on hit to create a poison cloud.',
+    triggerType: 'on_hit', procChance: 0.15,
+    effect: { aoeRadius: 3, damageType: DamageType.POISON, statusEffect: StatusEffect.POISONED, damageMultiplier: 0.6 },
+  },
+  'holy_retribution': {
+    id: 'holy_retribution', name: 'Divine Retribution',
+    description: 'When hit, 20% chance to deal holy damage to all nearby enemies.',
+    triggerType: 'on_take_damage', procChance: 0.20,
+    effect: { aoeRadius: 5, damageType: DamageType.HOLY, damageMultiplier: 1.0 },
+  },
+  'cooldown_on_kill': {
+    id: 'cooldown_on_kill', name: 'Rapid Recharge',
+    description: 'Kills reduce all cooldowns by 1 second.',
+    triggerType: 'on_kill', procChance: 1.0,
+    effect: { cooldownReduction: 1 },
+  },
 };

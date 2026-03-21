@@ -15,6 +15,8 @@ import {
   CraftingStationType, MaterialType, AdvancedCraftingRecipe,
   DungeonRoom, DungeonCorridor, DungeonLayout,
   RuneType, SkillRuneEffect,
+  LegendaryEffectDef,
+  ItemSlot, ItemType, DiabloItemStats,
   createDefaultPlayer, createDefaultState
 } from "./DiabloTypes";
 import {
@@ -39,6 +41,7 @@ import {
   ADVANCED_CRAFTING_RECIPES, CRAFTING_MATERIALS, MATERIAL_DROP_TABLE,
   GREATER_RIFT_CONFIG,
   SKILL_RUNES,
+  LEGENDARY_EFFECTS,
 } from "./DiabloConfig";
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -719,8 +722,11 @@ export class DiabloGame {
         const curIdx = levels.indexOf(this._lootFilterLevel);
         this._lootFilterLevel = levels[(curIdx + 1) % levels.length];
         this._state.player.lootFilter = this._lootFilterLevel;
-        const names = ['Show All', 'Hide Common', 'Rare+', 'Epic+'];
-        this._addFloatingText(this._state.player.x, this._state.player.y + 3, this._state.player.z, `Filter: ${names[(curIdx + 1) % levels.length]}`, '#ffdd00');
+        // Also cycle custom loot filter
+        const pf = this._state.player;
+        pf.activeFilterIndex = (pf.activeFilterIndex + 1) % pf.customLootFilters.length;
+        const filter = pf.customLootFilters[pf.activeFilterIndex];
+        this._addFloatingText(pf.x, pf.y + 3, pf.z, `Filter: ${filter.name}`, '#ffdd00');
       }
       else if (e.code === "KeyH") {
         // Toggle DPS display
@@ -782,7 +788,10 @@ export class DiabloGame {
         this._showSkillSwapMenu();
       } else if (e.code === "KeyF") {
         this._openNearestChest();
-      } else if (e.code === "KeyC") {
+      } else if (e.code === "KeyC" && e.shiftKey) {
+        // Quick salvage selected item
+        this._quickSalvageSelectedItem();
+      } else if (e.code === "KeyC" && !e.shiftKey) {
         this._phaseBeforeOverlay = DiabloPhase.PLAYING;
         this._state.phase = DiabloPhase.INVENTORY;
         if (this._firstPerson && document.pointerLockElement) document.exitPointerLock();
@@ -812,6 +821,24 @@ export class DiabloGame {
         this._state.phase = DiabloPhase.INVENTORY;
         if (this._firstPerson && document.pointerLockElement) document.exitPointerLock();
         this._showAdvancedCraftingUI();
+      } else if (e.code === "KeyY") {
+        // Quick pet summon/cycle
+        const pp = this._state.player;
+        if (pp.pets.length > 0) {
+          if (pp.activePetId) {
+            const currentIdx = pp.pets.findIndex(pet => pet.id === pp.activePetId);
+            const nextIdx = (currentIdx + 1) % pp.pets.length;
+            if (nextIdx === currentIdx) {
+              // Only one pet, toggle summon
+              this._summonPet(pp.activePetId);
+            } else {
+              this._summonPet(pp.pets[nextIdx].id);
+            }
+          } else {
+            // Summon first pet
+            this._summonPet(pp.pets[0].id);
+          }
+        }
       }
     } else if (this._state.phase === DiabloPhase.INVENTORY) {
       if (e.code === "Escape" || e.code === "KeyI" || e.code === "KeyT" || e.code === "KeyC" || e.code === "KeyN") {
@@ -5682,8 +5709,9 @@ export class DiabloGame {
     // Loot filter label update
     const filterLabel = this._hud.querySelector("#loot-filter-label") as HTMLDivElement;
     if (filterLabel) {
-      const names: Record<string, string> = { SHOW_ALL: 'Show All', HIDE_COMMON: 'Hide Common', RARE_PLUS: 'Rare+', EPIC_PLUS: 'Epic+' };
-      filterLabel.textContent = `Filter: ${names[this._lootFilterLevel] || 'Show All'} (Tab)`;
+      const customFilter = p.customLootFilters[p.activeFilterIndex];
+      const filterName = customFilter ? customFilter.name : 'Show All';
+      filterLabel.textContent = `Filter: ${filterName} (Tab)`;
     }
 
     // Greater Rift HUD
@@ -6415,6 +6443,9 @@ export class DiabloGame {
                 }
                 this._renderer.spawnParticles(ParticleType.BLOOD, p.x, p.y + 1, p.z, 3 + Math.floor(Math.random() * 3), this._state.particles);
 
+                // Trigger legendary on_take_damage effects
+                this._triggerLegendaryEffects('on_take_damage', { targetX: p.x, targetZ: p.z, damage: mitigated });
+
                 if (p.hp <= 0) {
                   p.hp = 0;
                   this._triggerDeath();
@@ -6527,6 +6558,10 @@ export class DiabloGame {
       if (buff.type === PotionType.STRENGTH) baseDamage *= (1 + buff.value / 100);
     }
 
+    // Legendary passive damage bonus
+    const legendaryBonusPct = this._getPassiveLegendaryBonusDamage();
+    if (legendaryBonusPct > 0) baseDamage *= (1 + legendaryBonusPct / 100);
+
     // Crit check
     const isCrit = Math.random() < p.critChance;
     if (isCrit) baseDamage *= p.critDamage;
@@ -6556,6 +6591,12 @@ export class DiabloGame {
     }
 
     this._spawnHitParticles(target, DamageType.PHYSICAL);
+
+    // Trigger legendary on_hit effects
+    this._triggerLegendaryEffects('on_hit', { targetX: target.x, targetZ: target.z, damage: finalDamage });
+    if (isCrit) {
+      this._triggerLegendaryEffects('on_crit', { targetX: target.x, targetZ: target.z, damage: finalDamage });
+    }
 
     // Life steal
     const lifeStealPct = this._getLifeSteal();
@@ -6590,6 +6631,12 @@ export class DiabloGame {
       this._totalKills++;
       this._targetEnemyId = null;
 
+      // Trigger legendary on_kill effects
+      this._triggerLegendaryEffects('on_kill', {
+        targetX: target.x, targetZ: target.z, damage: 0, enemyMaxHp: target.maxHp,
+        enemyStatusEffects: target.statusEffects
+      });
+
       this._renderer.spawnParticles(ParticleType.DUST, target.x, target.y + 0.5, target.z, 8 + Math.floor(Math.random() * 5), this._state.particles);
 
       // Roll loot
@@ -6604,6 +6651,26 @@ export class DiabloGame {
           timer: 0,
         };
         this._state.loot.push(loot);
+      }
+
+      // Guaranteed extra boss loot
+      if (target.isBoss) {
+        const isRiftGuardian = target.bossName?.includes('Rift Guardian');
+        const minRarity = isRiftGuardian ? ItemRarity.LEGENDARY : ItemRarity.RARE;
+        for (let i = 0; i < 2; i++) {
+          const bossItem = this._pickRandomItemOfRarity(minRarity);
+          if (bossItem) {
+            const bossLoot: DiabloLoot = {
+              id: this._genId(),
+              item: { ...bossItem, id: this._genId(), level: target.level },
+              x: target.x + (Math.random() * 4 - 2),
+              y: 0,
+              z: target.z + (Math.random() * 4 - 2),
+              timer: 0,
+            };
+            this._state.loot.push(bossLoot);
+          }
+        }
       }
 
       // Pet XP and drops
@@ -6632,6 +6699,129 @@ export class DiabloGame {
         target.stateTimer = 0;
       }
     }
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  //  LEGENDARY EFFECT PROCESSING
+  // ──────────────────────────────────────────────────────────────
+  private _getEquippedLegendaryEffects(): LegendaryEffectDef[] {
+    const effects: LegendaryEffectDef[] = [];
+    const equipment = this._state.player.equipment;
+    const slots = ['helmet', 'body', 'gauntlets', 'legs', 'feet', 'accessory1', 'accessory2', 'weapon', 'lantern'] as const;
+    for (const slot of slots) {
+      const item = equipment[slot];
+      if (item && item.legendaryAbility && LEGENDARY_EFFECTS[item.legendaryAbility]) {
+        effects.push(LEGENDARY_EFFECTS[item.legendaryAbility]);
+      }
+    }
+    return effects;
+  }
+
+  private _triggerLegendaryEffects(trigger: 'on_hit' | 'on_kill' | 'on_skill' | 'on_crit' | 'on_take_damage', context: {
+    targetX?: number; targetZ?: number; damage?: number; enemyMaxHp?: number; skillId?: SkillId;
+    enemyStatusEffects?: { effect: StatusEffect; duration: number; source: string }[];
+  }): void {
+    const effects = this._getEquippedLegendaryEffects();
+    const p = this._state.player;
+
+    for (const legendaryEffect of effects) {
+      if (legendaryEffect.triggerType !== trigger) continue;
+      if (Math.random() > legendaryEffect.procChance) continue;
+
+      const eff = legendaryEffect.effect;
+      const tx = context.targetX ?? p.x;
+      const tz = context.targetZ ?? p.z;
+
+      // Healing effects
+      if (eff.healPercent && context.damage) {
+        const heal = context.damage * eff.healPercent / 100;
+        p.hp = Math.min(p.maxHp, p.hp + heal);
+        this._addFloatingText(p.x, p.y + 2, p.z, `+${Math.round(heal)} HP`, '#44ff44');
+      }
+
+      // Mana restore
+      if (eff.manaRestorePercent) {
+        const restore = p.maxMana * eff.manaRestorePercent / 100;
+        p.mana = Math.min(p.maxMana, p.mana + restore);
+        this._addFloatingText(p.x, p.y + 2.5, p.z, `+${Math.round(restore)} MP`, '#4488ff');
+      }
+
+      // AoE damage
+      if (eff.aoeRadius && eff.damageMultiplier) {
+        const baseDmg = (context.damage || p.strength * 1.5) * eff.damageMultiplier;
+
+        // Deal damage to enemies in range
+        for (const enemy of this._state.enemies) {
+          if (enemy.state === EnemyState.DYING || enemy.state === EnemyState.DEAD) continue;
+          const dist = Math.sqrt((enemy.x - tx) ** 2 + (enemy.z - tz) ** 2);
+          if (dist <= eff.aoeRadius) {
+            enemy.hp -= baseDmg;
+            this._addFloatingText(enemy.x, enemy.y + 2, enemy.z, `${Math.round(baseDmg)}`, '#ff8800');
+            if (eff.statusEffect) {
+              if (!enemy.statusEffects.some(e => e.effect === eff.statusEffect)) {
+                enemy.statusEffects.push({ effect: eff.statusEffect!, duration: 3, source: legendaryEffect.id });
+              }
+            }
+          }
+        }
+      }
+
+      // Shield
+      if (eff.shieldAmount) {
+        p.invulnTimer = Math.max(p.invulnTimer, 5);
+        this._addFloatingText(p.x, p.y + 3, p.z, `SHIELD!`, '#ffd700');
+      }
+
+      // Speed boost
+      if (eff.speedBoost && eff.speedBoostDuration) {
+        if (!p.statusEffects.some(e => e.source === legendaryEffect.id)) {
+          p.statusEffects.push({ effect: StatusEffect.SLOWED, duration: eff.speedBoostDuration, source: legendaryEffect.id });
+          this._addFloatingText(p.x, p.y + 2, p.z, 'SPEED BOOST!', '#44ffff');
+        }
+      }
+
+      // Cooldown reduction
+      if (eff.cooldownReduction) {
+        for (const [skillId, cd] of p.skillCooldowns) {
+          if (cd > 0) {
+            p.skillCooldowns.set(skillId, Math.max(0, cd - eff.cooldownReduction));
+          }
+        }
+      }
+
+      // Double strike (on_hit with damageMultiplier and no aoe)
+      if (trigger === 'on_hit' && eff.damageMultiplier && !eff.aoeRadius && context.damage) {
+        // Deal extra hit
+        const extraDmg = context.damage * eff.damageMultiplier;
+        // Find nearest enemy to target position
+        let nearest: DiabloEnemy | null = null;
+        let nearestDist = 5;
+        for (const enemy of this._state.enemies) {
+          if (enemy.state === EnemyState.DYING || enemy.state === EnemyState.DEAD) continue;
+          const d = Math.sqrt((enemy.x - tx) ** 2 + (enemy.z - tz) ** 2);
+          if (d < nearestDist) { nearestDist = d; nearest = enemy; }
+        }
+        if (nearest) {
+          nearest.hp -= extraDmg;
+          this._addFloatingText(nearest.x, nearest.y + 2.5, nearest.z, `ECHO ${Math.round(extraDmg)}`, '#ffaa00');
+        }
+      }
+    }
+  }
+
+  private _getPassiveLegendaryBonusDamage(): number {
+    const effects = this._getEquippedLegendaryEffects();
+    const p = this._state.player;
+    let bonus = 0;
+    for (const eff of effects) {
+      if (eff.triggerType === 'passive' && eff.effect.bonusDamagePercent) {
+        // Berserker's Wrath: bonus when below 30% HP
+        if (eff.id === 'bonus_damage_low_hp' && p.hp / p.maxHp <= 0.3) {
+          bonus += eff.effect.bonusDamagePercent;
+        }
+      }
+    }
+    return bonus;
   }
 
   private _checkElementalReaction(enemy: DiabloEnemy, newEffect: StatusEffect): void {
@@ -7279,6 +7469,9 @@ export class DiabloGame {
       }
     }
 
+    // Trigger legendary on_skill effects
+    this._triggerLegendaryEffects('on_skill', { targetX: worldMouse.x, targetZ: worldMouse.z, damage: modDmg, skillId: skillId });
+
     // Apply rune leech healing
     if (runeEffect?.leechPercent && modDmg > 0) {
       const leechHeal = Math.round(modDmg * runeEffect.leechPercent / 100);
@@ -7494,16 +7687,32 @@ export class DiabloGame {
     for (const loot of this._state.loot) {
       loot.timer += dt;
 
-      // Loot filter: hide filtered items
+      // Loot filter: hide filtered items (legacy filter)
       const rarityOrder = [ItemRarity.COMMON, ItemRarity.UNCOMMON, ItemRarity.RARE, ItemRarity.EPIC, ItemRarity.LEGENDARY, ItemRarity.MYTHIC, ItemRarity.DIVINE];
       const minRarityIdx = this._lootFilterLevel === LootFilterLevel.HIDE_COMMON ? 1 :
         this._lootFilterLevel === LootFilterLevel.RARE_PLUS ? 2 :
         this._lootFilterLevel === LootFilterLevel.EPIC_PLUS ? 3 : 0;
       if (rarityOrder.indexOf(loot.item.rarity) < minRarityIdx) continue;
 
+      // Custom loot filter check
+      if (!this._shouldShowLoot(loot.item)) continue;
+
       // Auto-pickup within 2 units
       const dist = this._dist(p.x, p.z, loot.x, loot.z);
       if (dist < 2) {
+        // Auto-salvage check
+        if (this._shouldAutoSalvage(loot.item)) {
+          const salvageYields: Record<string, number> = {
+            [ItemRarity.COMMON]: 1, [ItemRarity.UNCOMMON]: 2, [ItemRarity.RARE]: 5,
+            [ItemRarity.EPIC]: 10, [ItemRarity.LEGENDARY]: 25,
+          };
+          const salvageMats = salvageYields[loot.item.rarity] || 1;
+          p.salvageMaterials += salvageMats;
+          this._addFloatingText(p.x, p.y + 2, p.z, `Auto-salvage: +${salvageMats}`, '#888888');
+          toRemove.push(loot.id);
+          continue;
+        }
+
         const emptyIdx = p.inventory.findIndex((s) => s.item === null);
         if (emptyIdx >= 0) {
           p.inventory[emptyIdx].item = { ...loot.item, id: this._genId() };
@@ -7955,6 +8164,16 @@ export class DiabloGame {
       }
     }
 
+    // Assign legendary effect for legendary+ items
+    const effectIds = Object.keys(LEGENDARY_EFFECTS);
+    for (const item of items) {
+      if (item.rarity === ItemRarity.LEGENDARY || item.rarity === ItemRarity.MYTHIC || item.rarity === ItemRarity.DIVINE) {
+        if (!item.legendaryAbility) {
+          item.legendaryAbility = effectIds[Math.floor(Math.random() * effectIds.length)];
+        }
+      }
+    }
+
     return items;
   }
 
@@ -8116,6 +8335,12 @@ export class DiabloGame {
     this._goldEarnedTotal += goldEarned;
     this._state.killCount++;
     this._totalKills++;
+
+    // Trigger legendary on_kill effects
+    this._triggerLegendaryEffects('on_kill', {
+      targetX: enemy.x, targetZ: enemy.z, damage: 0, enemyMaxHp: enemy.maxHp,
+      enemyStatusEffects: enemy.statusEffects
+    });
 
     // Roll loot
     const lootItems = this._rollLoot(enemy);
@@ -10158,6 +10383,121 @@ export class DiabloGame {
           this._addFloatingText(enemy.x, enemy.y + 3, enemy.z, "METEOR RAIN!", "#ff4400");
           break;
         }
+        case BossAbility.FIRE_WALL: {
+          const numWalls = 3;
+          for (let w = 0; w < numWalls; w++) {
+            const wallAngle = (this._state.time * 0.5) + (w * Math.PI * 2 / numWalls);
+            const wallDist = 5 + Math.sin(this._state.time) * 2;
+            const wx = enemy.x + Math.sin(wallAngle) * wallDist;
+            const wz = enemy.z + Math.cos(wallAngle) * wallDist;
+            const distToWall = Math.sqrt((p.x - wx) ** 2 + (p.z - wz) ** 2);
+            if (distToWall < 2) {
+              p.hp -= 20 * dt;
+              if (!p.statusEffects.some(e => e.effect === StatusEffect.BURNING)) {
+                p.statusEffects.push({ effect: StatusEffect.BURNING, duration: 3, source: 'fire_wall' });
+              }
+              if (p.hp <= 0) { p.hp = 0; this._triggerDeath(); }
+            }
+          }
+          this._renderer.spawnParticles(ParticleType.FIRE, enemy.x, enemy.y + 1, enemy.z, 15, this._state.particles);
+          this._addFloatingText(enemy.x, enemy.y + 3, enemy.z, "FIRE WALL!", "#ff4400");
+          break;
+        }
+        case BossAbility.TELEPORT_STRIKE: {
+          const behindAngle = p.angle + Math.PI;
+          enemy.x = p.x + Math.sin(behindAngle) * 3;
+          enemy.z = p.z + Math.cos(behindAngle) * 3;
+          const tsDist = this._dist(enemy.x, enemy.z, p.x, p.z);
+          if (tsDist < 4) {
+            const dmg = enemy.damage * 2;
+            if (p.invulnTimer <= 0) {
+              p.hp -= dmg;
+              this._addFloatingText(p.x, p.y + 2, p.z, `AMBUSH! ${Math.round(dmg)}`, '#ff4444');
+              if (p.hp <= 0) { p.hp = 0; this._triggerDeath(); }
+            }
+          }
+          this._renderer.spawnParticles(ParticleType.LIGHTNING, enemy.x, enemy.y + 1, enemy.z, 20, this._state.particles);
+          this._addFloatingText(enemy.x, enemy.y + 3, enemy.z, "TELEPORT STRIKE!", "#aa44ff");
+          break;
+        }
+        case BossAbility.DEATH_BEAM: {
+          const beamDx = p.x - enemy.x;
+          const beamDz = p.z - enemy.z;
+          const beamLen = Math.sqrt(beamDx * beamDx + beamDz * beamDz);
+          if (beamLen < 15) {
+            const beamAngle = Math.atan2(beamDx, beamDz);
+            const angleDiff = Math.abs(beamAngle - enemy.angle);
+            if (angleDiff < 0.3 || angleDiff > Math.PI * 2 - 0.3) {
+              p.hp -= 40 * dt;
+              this._addFloatingText(p.x, p.y + 2, p.z, `${Math.round(40 * dt)}`, '#ff0000');
+              if (p.hp <= 0) { p.hp = 0; this._triggerDeath(); }
+            }
+          }
+          enemy.angle = Math.atan2(beamDx, beamDz);
+          this._renderer.spawnParticles(ParticleType.FIRE, enemy.x, enemy.y + 1.5, enemy.z, 10, this._state.particles);
+          this._addFloatingText(enemy.x, enemy.y + 3, enemy.z, "DEATH BEAM!", "#ff0000");
+          break;
+        }
+        case BossAbility.ARENA_SHRINK: {
+          for (let i = 0; i < 8; i++) {
+            const asAngle = (i / 8) * Math.PI * 2;
+            const asDist = 20 + Math.random() * 10;
+            const ax = enemy.x + Math.sin(asAngle) * asDist;
+            const az = enemy.z + Math.cos(asAngle) * asDist;
+            this._state.aoeEffects.push({
+              id: `arena-shrink-${this._nextId++}`,
+              x: ax, y: 0, z: az,
+              radius: 4,
+              damage: 15,
+              damageType: DamageType.FIRE,
+              duration: 8,
+              timer: 0,
+              ownerId: enemy.id,
+              tickInterval: 1,
+              lastTickTimer: 0,
+              statusEffect: StatusEffect.BURNING,
+            });
+          }
+          this._renderer.shakeCamera(0.3, 0.5);
+          this._addFloatingText(enemy.x, enemy.y + 3, enemy.z, "ARENA SHRINK!", "#ff8844");
+          break;
+        }
+        case BossAbility.MINION_FRENZY: {
+          let buffCount = 0;
+          for (const ally of this._state.enemies) {
+            if (ally.id === enemy.id || ally.isBoss) continue;
+            if (ally.state === EnemyState.DYING || ally.state === EnemyState.DEAD) continue;
+            const allyDist = Math.sqrt((ally.x - enemy.x) ** 2 + (ally.z - enemy.z) ** 2);
+            if (allyDist < 15) {
+              ally.damage *= 1.5;
+              ally.speed *= 1.3;
+              buffCount++;
+            }
+          }
+          this._renderer.spawnParticles(ParticleType.FIRE, enemy.x, enemy.y + 1, enemy.z, 20, this._state.particles);
+          this._addFloatingText(enemy.x, enemy.y + 3, enemy.z, `MINION FRENZY! (${buffCount})`, "#ff4444");
+          break;
+        }
+        case BossAbility.PHASE_TRANSITION: {
+          enemy.bossShieldTimer = 3.0;
+          enemy.hp = Math.min(enemy.maxHp, enemy.hp + enemy.maxHp * 0.1);
+          this._renderer.spawnParticles(ParticleType.ICE, enemy.x, enemy.y + 1, enemy.z, 25, this._state.particles);
+          this._renderer.shakeCamera(0.5, 0.8);
+          this._addFloatingText(enemy.x, enemy.y + 3, enemy.z, "PHASE TRANSITION!", "#00ffff");
+          break;
+        }
+      }
+
+      // Boss enrage timer (gets stronger over time)
+      if (enemy.isBoss && !enemy.bossEnraged) {
+        const fightDuration = enemy.stateTimer;
+        if (fightDuration > 60) {
+          enemy.bossEnraged = true;
+          enemy.damage *= 2;
+          enemy.speed *= 1.5;
+          this._addFloatingText(enemy.x, enemy.y + 3, enemy.z, 'ENRAGED!', '#ff0000');
+          this._renderer.shakeCamera(0.6, 1.0);
+        }
       }
     }
   }
@@ -11343,22 +11683,36 @@ export class DiabloGame {
   /** Summon / dismiss a pet. Only one can be active at a time. */
   private _summonPet(petId: string): void {
     const p = this._state.player;
-    // Dismiss currently active pet
-    for (const pet of p.pets) {
-      if (pet.isSummoned) {
-        pet.isSummoned = false;
-        pet.aiState = PetAIState.IDLE;
-      }
-    }
     const pet = p.pets.find(pt => pt.id === petId);
     if (!pet) return;
+
+    // If this pet is already summoned, dismiss it (toggle behavior)
+    if (pet.isSummoned) {
+      pet.isSummoned = false;
+      pet.aiState = PetAIState.IDLE;
+      p.activePetId = null;
+      this._addFloatingText(p.x, p.y + 2, p.z, `${pet.customName} dismissed`, '#aaaaaa');
+      return;
+    }
+
+    // Dismiss currently active pet if different
+    if (p.activePetId && p.activePetId !== petId) {
+      const activePet = p.pets.find(pt => pt.id === p.activePetId);
+      if (activePet) {
+        activePet.isSummoned = false;
+        activePet.aiState = PetAIState.IDLE;
+      }
+    }
+
+    // Summon the new pet
     pet.isSummoned = true;
     pet.aiState = PetAIState.FOLLOWING;
+    pet.x = p.x + (Math.random() * 4 - 2);
+    pet.z = p.z + (Math.random() * 4 - 2);
+    pet.y = getTerrainHeight(pet.x, pet.z);
     pet.hp = pet.maxHp;
-    pet.x = p.x + 2;
-    pet.z = p.z + 2;
     p.activePetId = pet.id;
-    this._addFloatingText(p.x, p.y + 3, p.z, `${pet.customName} summoned!`, "#44ffff");
+    this._addFloatingText(p.x, p.y + 2, p.z, `${pet.customName} summoned!`, '#44ff44');
   }
 
   private _dismissPet(): void {
@@ -11372,173 +11726,273 @@ export class DiabloGame {
     p.activePetId = null;
   }
 
-  /** Award XP to the active pet. */
+  /** Award XP to all summoned pets. */
   private _grantPetXp(amount: number): void {
     const p = this._state.player;
-    const pet = p.pets.find(pt => pt.id === p.activePetId && pt.isSummoned);
-    if (!pet) return;
-    pet.xp += amount;
-    while (pet.xp >= pet.xpToNext && pet.level < 50) {
-      pet.xp -= pet.xpToNext;
-      pet.level++;
-      const def = PET_DEFS[pet.species];
-      pet.maxHp = def.baseHp + def.hpPerLevel * (pet.level - 1);
-      pet.hp = pet.maxHp;
-      pet.damage = def.baseDamage + def.damagePerLevel * (pet.level - 1);
-      pet.armor = def.baseArmor + def.armorPerLevel * (pet.level - 1);
-      pet.xpToNext = PET_XP_TABLE[Math.min(pet.level - 1, PET_XP_TABLE.length - 1)];
-      if (pet.loyalty < 100) pet.loyalty = Math.min(100, pet.loyalty + 5);
-      this._addFloatingText(p.x, p.y + 4, p.z, `${pet.customName} LEVEL ${pet.level}!`, "#44ff44");
+    for (const pet of p.pets) {
+      if (!pet.isSummoned) continue;
+      pet.xp += amount;
+      while (pet.xp >= pet.xpToNext && pet.level < 50) {
+        pet.xp -= pet.xpToNext;
+        pet.level++;
+        const def = PET_DEFS[pet.species];
+        pet.maxHp = def.baseHp + def.hpPerLevel * (pet.level - 1);
+        pet.hp = pet.maxHp;
+        pet.damage = def.baseDamage + def.damagePerLevel * (pet.level - 1);
+        pet.armor = def.baseArmor + def.armorPerLevel * (pet.level - 1);
+        pet.xpToNext = PET_XP_TABLE[Math.min(pet.level - 1, PET_XP_TABLE.length - 1)];
+        if (pet.loyalty < 100) pet.loyalty = Math.min(100, pet.loyalty + 5);
+        this._addFloatingText(pet.x, pet.y + 2, pet.z, `${pet.customName} LEVEL ${pet.level}!`, "#ffd700");
+      }
     }
   }
 
   /** Main pet AI update each frame. */
   private _updatePets(dt: number): void {
     const p = this._state.player;
-    const pet = p.pets.find(pt => pt.id === p.activePetId && pt.isSummoned);
-    if (!pet) return;
 
-    // Reduce ability cooldowns
-    for (const key of Object.keys(pet.abilityCooldowns)) {
-      if (pet.abilityCooldowns[key] > 0) pet.abilityCooldowns[key] -= dt;
-    }
-    pet.attackTimer = Math.max(0, pet.attackTimer - dt);
+    for (const pet of p.pets) {
+      if (!pet.isSummoned) continue;
 
-    // Pet regeneration (slow)
-    if (pet.hp < pet.maxHp) {
-      pet.hp = Math.min(pet.maxHp, pet.hp + pet.maxHp * 0.005 * dt);
-    }
-
-    const distToPlayer = this._dist(pet.x, pet.z, p.x, p.z);
-
-    // Loot collection for loot pets
-    if (pet.petType === PetType.LOOT && pet.lootPickupRange > 0) {
-      const pickupRange = pet.lootPickupRange;
-      for (let i = this._state.loot.length - 1; i >= 0; i--) {
-        const loot = this._state.loot[i];
-        const lootDist = this._dist(pet.x, pet.z, loot.x, loot.z);
-        if (lootDist < pickupRange) {
-          // Pick up loot for the player
-          const emptySlot = p.inventory.findIndex(s => s.item === null);
-          if (emptySlot >= 0) {
-            p.inventory[emptySlot].item = { ...loot.item, id: this._genId() };
-            this._addFloatingText(loot.x, loot.y + 1, loot.z, `${pet.customName} picked up ${loot.item.name}`, "#44ffff");
-            this._state.loot.splice(i, 1);
-            pet.aiState = PetAIState.COLLECTING_LOOT;
-            // Brief state then back to following
-            setTimeout(() => { if (pet.isSummoned) pet.aiState = PetAIState.FOLLOWING; }, 500);
-          }
+      // Update ability cooldowns
+      for (const key of Object.keys(pet.abilityCooldowns)) {
+        if (pet.abilityCooldowns[key] > 0) {
+          pet.abilityCooldowns[key] = Math.max(0, pet.abilityCooldowns[key] - dt);
         }
       }
-    }
+      pet.attackTimer = Math.max(0, pet.attackTimer - dt);
 
-    // Combat AI for combat pets
-    if (pet.petType === PetType.COMBAT && pet.aggroRange > 0) {
-      let nearestEnemy: DiabloEnemy | null = null;
-      let nearestEnemyDist = pet.aggroRange;
-      for (const enemy of this._state.enemies) {
-        if (enemy.state === EnemyState.DEAD) continue;
-        const d = this._dist(pet.x, pet.z, enemy.x, enemy.z);
-        if (d < nearestEnemyDist) {
-          nearestEnemyDist = d;
-          nearestEnemy = enemy;
-        }
+      // Pet regeneration (slow)
+      if (pet.hp < pet.maxHp) {
+        pet.hp = Math.min(pet.maxHp, pet.hp + pet.maxHp * 0.005 * dt);
       }
 
-      if (nearestEnemy && nearestEnemyDist < pet.aggroRange) {
-        pet.aiState = PetAIState.ATTACKING;
-        pet.targetId = nearestEnemy.id;
-        // Move toward enemy
-        const dx = nearestEnemy.x - pet.x;
-        const dz = nearestEnemy.z - pet.z;
-        const dist = Math.hypot(dx, dz);
-        pet.angle = Math.atan2(dx, dz);
+      const distToPlayer = this._dist(pet.x, pet.z, p.x, p.z);
 
-        if (dist > pet.attackRange) {
-          pet.x += (dx / dist) * pet.moveSpeed * dt;
-          pet.z += (dz / dist) * pet.moveSpeed * dt;
-        } else if (pet.attackTimer <= 0) {
-          // Attack!
-          const loyaltyMult = 0.5 + (pet.loyalty / 100) * 0.5;
-          const dmg = pet.damage * loyaltyMult;
-          nearestEnemy.hp -= dmg;
-          pet.attackTimer = 1 / pet.attackSpeed;
-          this._addFloatingText(nearestEnemy.x, nearestEnemy.y + 2, nearestEnemy.z, String(Math.round(dmg)), "#44ffff");
-
-          // Try to use abilities
-          const def = PET_DEFS[pet.species];
-          for (const ability of def.abilities) {
-            if (ability.unlocksAtLevel > pet.level) continue;
-            if ((pet.abilityCooldowns[ability.id] || 0) > 0) continue;
-            if (ability.damageMultiplier && ability.damageMultiplier > 0) {
-              const abilDmg = pet.damage * ability.damageMultiplier * loyaltyMult;
-              nearestEnemy.hp -= abilDmg;
-              pet.abilityCooldowns[ability.id] = ability.cooldown;
-              this._addFloatingText(nearestEnemy.x, nearestEnemy.y + 3, nearestEnemy.z, `${ability.name}! ${Math.round(abilDmg)}`, "#ff8800");
-              break; // one ability per frame
-            }
-            if (ability.buffType) {
-              this._applyPetBuff(ability);
-              pet.abilityCooldowns[ability.id] = ability.cooldown;
-              break;
-            }
-          }
-        }
-      } else {
+      // Teleport to player if too far
+      if (distToPlayer > 25) {
+        pet.x = p.x + (Math.random() * 4 - 2);
+        pet.z = p.z + (Math.random() * 4 - 2);
+        pet.y = getTerrainHeight(pet.x, pet.z);
         pet.aiState = PetAIState.FOLLOWING;
-        pet.targetId = null;
+        continue;
       }
-    }
 
-    // Utility pet abilities (auto-use)
-    if (pet.petType === PetType.UTILITY) {
-      const def = PET_DEFS[pet.species];
-      for (const ability of def.abilities) {
-        if (ability.unlocksAtLevel > pet.level) continue;
-        if ((pet.abilityCooldowns[ability.id] || 0) > 0) continue;
-        // Auto heal when owner is low
-        if (ability.healAmount && ability.healAmount > 0 && p.hp < p.maxHp * 0.5) {
-          const healVal = ability.healAmount * p.maxHp;
-          p.hp = Math.min(p.maxHp, p.hp + healVal);
-          pet.abilityCooldowns[ability.id] = ability.cooldown;
-          this._addFloatingText(p.x, p.y + 3, p.z, `${ability.name}! +${Math.round(healVal)} HP`, "#44ff44");
-          break;
-        }
-        // Auto buff
-        if (ability.buffType && ability.buffDuration && ability.buffDuration > 0) {
-          // Only auto-use certain buffs when conditions warrant
-          const shouldBuff =
-            (ability.buffType === 'cleanse' && p.statusEffects.length > 0) ||
-            (ability.buffType === 'cooldownReduce') ||
-            (ability.buffType === 'damageReduction' && p.hp < p.maxHp * 0.4) ||
-            (ability.buffType === 'taunt' && this._state.enemies.filter(e => e.state !== EnemyState.DEAD && this._dist(e.x, e.z, p.x, p.z) < 8).length >= 3);
-          if (shouldBuff) {
-            this._applyPetBuff(ability);
-            pet.abilityCooldowns[ability.id] = ability.cooldown;
+      // Pet takes damage from enemy AoE effects
+      for (const aoe of this._state.aoeEffects) {
+        // Skip player-owned AoEs (only damage pet from enemy AoEs)
+        if (aoe.ownerId === 'player') continue;
+        const distToAoe = this._dist(pet.x, pet.z, aoe.x, aoe.z);
+        if (distToAoe < aoe.radius) {
+          const aoeDmg = aoe.damage * 0.3 * dt;
+          const effectiveArmor = pet.armor * 0.5;
+          const reduction = effectiveArmor / (effectiveArmor + 50);
+          pet.hp -= aoeDmg * (1 - reduction);
+          if (pet.hp <= 0) {
+            pet.hp = 0;
+            pet.isSummoned = false;
+            pet.aiState = PetAIState.IDLE;
+            if (p.activePetId === pet.id) p.activePetId = null;
+            this._addFloatingText(pet.x, pet.y + 2, pet.z, `${pet.customName} fainted!`, '#ff4444');
             break;
           }
         }
       }
-    }
+      if (!pet.isSummoned) continue;
 
-    // Following behavior (return to player if too far)
-    if (pet.aiState === PetAIState.FOLLOWING || distToPlayer > 25) {
-      if (distToPlayer > 3) {
-        const dx = p.x - pet.x;
-        const dz = p.z - pet.z;
-        const dist = Math.hypot(dx, dz);
-        const speed = distToPlayer > 15 ? pet.moveSpeed * 2 : pet.moveSpeed;
-        pet.x += (dx / dist) * speed * dt;
-        pet.z += (dz / dist) * speed * dt;
-        pet.angle = Math.atan2(dx, dz);
+      switch (pet.aiState) {
+        case PetAIState.FOLLOWING: {
+          // Follow player at a distance
+          if (distToPlayer > 3) {
+            const dx = p.x - pet.x;
+            const dz = p.z - pet.z;
+            const len = Math.hypot(dx, dz);
+            if (len > 0) {
+              const speed = distToPlayer > 15 ? pet.moveSpeed * 2 : pet.moveSpeed;
+              pet.x += (dx / len) * speed * dt;
+              pet.z += (dz / len) * speed * dt;
+              pet.angle = Math.atan2(dx, dz);
+            }
+          }
+
+          // Combat pets: look for enemies to attack
+          if (pet.petType === PetType.COMBAT && pet.aggroRange > 0) {
+            let nearestEnemy: DiabloEnemy | null = null;
+            let nearestDist = pet.aggroRange;
+            for (const enemy of this._state.enemies) {
+              if (enemy.state === EnemyState.DYING || enemy.state === EnemyState.DEAD) continue;
+              const d = this._dist(enemy.x, enemy.z, pet.x, pet.z);
+              if (d < nearestDist) { nearestDist = d; nearestEnemy = enemy; }
+            }
+            if (nearestEnemy) {
+              pet.targetId = nearestEnemy.id;
+              pet.aiState = PetAIState.ATTACKING;
+            }
+          }
+
+          // Loot pets: look for loot to collect
+          if (pet.petType === PetType.LOOT && pet.lootPickupRange > 0) {
+            let nearestLoot: DiabloLoot | null = null;
+            let nearestDist = pet.lootPickupRange;
+            for (const loot of this._state.loot) {
+              const d = this._dist(loot.x, loot.z, pet.x, pet.z);
+              if (d < nearestDist) { nearestDist = d; nearestLoot = loot; }
+            }
+            if (nearestLoot) {
+              pet.targetId = nearestLoot.id;
+              pet.aiState = PetAIState.COLLECTING_LOOT;
+            }
+          }
+
+          // Utility pet abilities (auto-use while following)
+          if (pet.petType === PetType.UTILITY) {
+            const petDef = PET_DEFS[pet.species];
+            for (const ability of petDef.abilities) {
+              if (ability.unlocksAtLevel > pet.level) continue;
+              if ((pet.abilityCooldowns[ability.id] || 0) > 0) continue;
+              // Auto heal when owner is low
+              if (ability.healAmount && ability.healAmount > 0 && p.hp < p.maxHp * 0.5) {
+                const healVal = ability.healAmount * p.maxHp;
+                p.hp = Math.min(p.maxHp, p.hp + healVal);
+                pet.abilityCooldowns[ability.id] = ability.cooldown;
+                this._addFloatingText(p.x, p.y + 3, p.z, `${ability.name}! +${Math.round(healVal)} HP`, "#44ff44");
+                break;
+              }
+              // Auto buff
+              if (ability.buffType && ability.buffDuration && ability.buffDuration > 0) {
+                const shouldBuff =
+                  (ability.buffType === 'cleanse' && p.statusEffects.length > 0) ||
+                  (ability.buffType === 'cooldownReduce') ||
+                  (ability.buffType === 'damageReduction' && p.hp < p.maxHp * 0.4) ||
+                  (ability.buffType === 'taunt' && this._state.enemies.filter(e => e.state !== EnemyState.DEAD && this._dist(e.x, e.z, p.x, p.z) < 8).length >= 3);
+                if (shouldBuff) {
+                  this._applyPetBuff(ability);
+                  pet.abilityCooldowns[ability.id] = ability.cooldown;
+                  break;
+                }
+              }
+            }
+          }
+          break;
+        }
+
+        case PetAIState.ATTACKING: {
+          const target = this._state.enemies.find(e => e.id === pet.targetId);
+          if (!target || target.state === EnemyState.DYING || target.state === EnemyState.DEAD) {
+            pet.targetId = null;
+            pet.aiState = PetAIState.RETURNING;
+            break;
+          }
+
+          const distToTarget = this._dist(target.x, target.z, pet.x, pet.z);
+
+          if (distToTarget > pet.attackRange) {
+            // Move toward target
+            const dx = target.x - pet.x;
+            const dz = target.z - pet.z;
+            const len = Math.hypot(dx, dz);
+            if (len > 0) {
+              pet.x += (dx / len) * pet.moveSpeed * dt;
+              pet.z += (dz / len) * pet.moveSpeed * dt;
+              pet.angle = Math.atan2(dx, dz);
+            }
+          } else if (pet.attackTimer <= 0) {
+            // Attack!
+            const loyaltyMult = 0.5 + (pet.loyalty / 100) * 0.5;
+            const dmg = pet.damage * loyaltyMult;
+            target.hp -= dmg;
+            pet.attackTimer = 1 / pet.attackSpeed;
+            this._addFloatingText(target.x, target.y + 2, target.z, String(Math.round(dmg)), "#88ff88");
+
+            // Try to use abilities
+            const petDef = PET_DEFS[pet.species];
+            for (const ability of petDef.abilities) {
+              if (ability.unlocksAtLevel > pet.level) continue;
+              if ((pet.abilityCooldowns[ability.id] || 0) > 0) continue;
+              if (ability.damageMultiplier && ability.damageMultiplier > 0) {
+                const abilDmg = pet.damage * ability.damageMultiplier * loyaltyMult;
+                target.hp -= abilDmg;
+                pet.abilityCooldowns[ability.id] = ability.cooldown;
+                this._addFloatingText(target.x, target.y + 3, target.z, `${ability.name}! ${Math.round(abilDmg)}`, "#ff8800");
+                break; // one ability per frame
+              }
+              if (ability.buffType) {
+                this._applyPetBuff(ability);
+                pet.abilityCooldowns[ability.id] = ability.cooldown;
+                break;
+              }
+            }
+
+            // Check if target died
+            if (target.hp <= 0) {
+              pet.targetId = null;
+              pet.aiState = PetAIState.RETURNING;
+            }
+          }
+
+          // Don't stray too far from player
+          if (distToPlayer > 15) {
+            pet.targetId = null;
+            pet.aiState = PetAIState.RETURNING;
+          }
+          break;
+        }
+
+        case PetAIState.COLLECTING_LOOT: {
+          const loot = this._state.loot.find(l => l.id === pet.targetId);
+          if (!loot) {
+            pet.targetId = null;
+            pet.aiState = PetAIState.RETURNING;
+            break;
+          }
+
+          const distToLoot = this._dist(loot.x, loot.z, pet.x, pet.z);
+          if (distToLoot > 1) {
+            const dx = loot.x - pet.x;
+            const dz = loot.z - pet.z;
+            const len = Math.hypot(dx, dz);
+            if (len > 0) {
+              pet.x += (dx / len) * pet.moveSpeed * 1.5 * dt;
+              pet.z += (dz / len) * pet.moveSpeed * 1.5 * dt;
+              pet.angle = Math.atan2(dx, dz);
+            }
+          } else {
+            // Pick up loot - add to player inventory
+            const lootName = loot.item.name;
+            this._pickupLoot(loot.id);
+            this._addFloatingText(pet.x, pet.y + 1, pet.z, `${pet.customName} picked up ${lootName}`, "#44ffff");
+            pet.targetId = null;
+            pet.aiState = PetAIState.RETURNING;
+          }
+          break;
+        }
+
+        case PetAIState.RETURNING: {
+          if (distToPlayer < 4) {
+            pet.aiState = PetAIState.FOLLOWING;
+          } else {
+            const dx = p.x - pet.x;
+            const dz = p.z - pet.z;
+            const len = Math.hypot(dx, dz);
+            if (len > 0) {
+              pet.x += (dx / len) * pet.moveSpeed * 1.2 * dt;
+              pet.z += (dz / len) * pet.moveSpeed * 1.2 * dt;
+              pet.angle = Math.atan2(dx, dz);
+            }
+          }
+          break;
+        }
+
+        case PetAIState.IDLE:
+          pet.aiState = PetAIState.FOLLOWING;
+          break;
       }
-      // Teleport if really far
-      if (distToPlayer > 40) {
-        pet.x = p.x + 2;
-        pet.z = p.z + 2;
-      }
+
+      // Update pet Y position (terrain height)
+      pet.y = getTerrainHeight(pet.x, pet.z);
     }
   }
+
 
   /** Apply a pet buff to the player. */
   private _applyPetBuff(ability: { id: string; name: string; buffType?: string; buffDuration?: number; healAmount?: number }): void {
@@ -11606,12 +12060,33 @@ export class DiabloGame {
     }
   }
 
-  /** Update pet buff timers. */
+  /** Update pet buff timers and apply passive pet buffs. */
   private _updatePetBuffs(dt: number): void {
+    // Tick down active buff timers
     for (let i = this._petBuffs.length - 1; i >= 0; i--) {
       this._petBuffs[i].remaining -= dt;
       if (this._petBuffs[i].remaining <= 0) {
         this._petBuffs.splice(i, 1);
+      }
+    }
+
+    // Passive utility pet buffs (continuous while summoned)
+    const p = this._state.player;
+    for (const pet of p.pets) {
+      if (!pet.isSummoned) continue;
+
+      if (pet.petType === PetType.UTILITY) {
+        // Healing Wisp: passive HP regen
+        if (pet.species === PetSpecies.HEALING_WISP) {
+          const healPerSec = 2 + pet.level * 0.5;
+          p.hp = Math.min(p.maxHp, p.hp + healPerSec * dt);
+        }
+        // Mana Sprite: passive mana regen
+        if (pet.species === PetSpecies.MANA_SPRITE) {
+          const manaPerSec = 3 + pet.level * 0.8;
+          p.mana = Math.min(p.maxMana, p.mana + manaPerSec * dt);
+        }
+        // Shield Golem: passive armor buff is handled in stat recalculation
       }
     }
   }
@@ -11937,6 +12412,271 @@ export class DiabloGame {
     for (const mat of recipe.materials) {
       cs.materials[mat.type] -= mat.count;
     }
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  //  CRAFTING SYSTEM
+  // ──────────────────────────────────────────────────────────────
+  private _craftItem(recipeId: string): boolean {
+    const p = this._state.player;
+    const recipe = CRAFTING_RECIPES.find(r => r.id === recipeId);
+    if (!recipe) return false;
+
+    // Check gold cost
+    if (p.gold < recipe.cost) {
+      this._addFloatingText(p.x, p.y + 2, p.z, 'Not enough gold!', '#ff2222');
+      return false;
+    }
+
+    // Check material cost
+    if (recipe.materialCost && p.salvageMaterials < recipe.materialCost) {
+      this._addFloatingText(p.x, p.y + 2, p.z, 'Not enough materials!', '#ff2222');
+      return false;
+    }
+
+    // Check success
+    p.gold -= recipe.cost;
+    if (recipe.materialCost) p.salvageMaterials -= recipe.materialCost;
+
+    if (Math.random() > recipe.successChance) {
+      this._addFloatingText(p.x, p.y + 2, p.z, 'Craft Failed!', '#ff4444');
+      return false;
+    }
+
+    this._addFloatingText(p.x, p.y + 2, p.z, 'Craft Success!', '#44ff44');
+
+    // Apply craft effect based on type
+    const slot = this._state.selectedInventorySlot;
+    switch (recipe.type) {
+      case CraftType.UPGRADE_RARITY: {
+        if (slot >= 0 && slot < p.inventory.length && p.inventory[slot].item) {
+          const item = p.inventory[slot].item!;
+          const rarities = [ItemRarity.COMMON, ItemRarity.UNCOMMON, ItemRarity.RARE, ItemRarity.EPIC, ItemRarity.LEGENDARY, ItemRarity.MYTHIC, ItemRarity.DIVINE];
+          const currentIdx = rarities.indexOf(item.rarity);
+          if (currentIdx < rarities.length - 1) {
+            item.rarity = rarities[currentIdx + 1];
+            // Boost stats by 20%
+            for (const key of Object.keys(item.stats) as (keyof DiabloItemStats)[]) {
+              if (typeof item.stats[key] === 'number') {
+                (item.stats as any)[key] = Math.floor((item.stats[key] as number) * 1.2);
+              }
+            }
+          }
+        }
+        break;
+      }
+      case CraftType.REROLL_STATS: {
+        if (slot >= 0 && slot < p.inventory.length && p.inventory[slot].item) {
+          const item = p.inventory[slot].item!;
+          const statKeys: (keyof DiabloItemStats)[] = ['strength', 'dexterity', 'intelligence', 'vitality', 'armor', 'critChance', 'critDamage', 'attackSpeed', 'moveSpeed'];
+          // Reroll 2-4 random stats
+          const numStats = 2 + Math.floor(Math.random() * 3);
+          item.stats = {};
+          for (let i = 0; i < numStats; i++) {
+            const key = statKeys[Math.floor(Math.random() * statKeys.length)];
+            const baseValue = 5 + Math.floor(Math.random() * (item.level * 3));
+            (item.stats as any)[key] = baseValue;
+          }
+        }
+        break;
+      }
+      case CraftType.SOCKET_GEM: {
+        if (slot >= 0 && slot < p.inventory.length && p.inventory[slot].item) {
+          const item = p.inventory[slot].item!;
+          if (!item.sockets) item.sockets = [];
+          if (!item.maxSockets) item.maxSockets = Math.min(3, Math.floor(item.level / 5) + 1);
+          if (item.sockets.length < item.maxSockets) {
+            const gemTypes = [DamageType.FIRE, DamageType.ICE, DamageType.LIGHTNING, DamageType.POISON, DamageType.HOLY];
+            const gemType = gemTypes[Math.floor(Math.random() * gemTypes.length)];
+            const gemTier = 1 + Math.floor(Math.random() * 3);
+            const bonusStats: DiabloItemStats = {};
+            switch (gemType) {
+              case DamageType.FIRE: bonusStats.bonusDamage = gemTier * 5; break;
+              case DamageType.ICE: bonusStats.armor = gemTier * 3; break;
+              case DamageType.LIGHTNING: bonusStats.critChance = gemTier * 0.02; break;
+              case DamageType.POISON: bonusStats.lifeSteal = gemTier * 1; break;
+              case DamageType.HOLY: bonusStats.bonusHealth = gemTier * 15; break;
+            }
+            item.sockets.push({ gemType, gemTier, bonusStats });
+            this._addFloatingText(p.x, p.y + 3, p.z, `Gem socketed!`, '#ffd700');
+          }
+        }
+        break;
+      }
+      case CraftType.SALVAGE: {
+        if (slot >= 0 && slot < p.inventory.length && p.inventory[slot].item) {
+          const item = p.inventory[slot].item!;
+          const yields: Record<string, number> = {
+            [ItemRarity.COMMON]: 1,
+            [ItemRarity.UNCOMMON]: 2,
+            [ItemRarity.RARE]: 5,
+            [ItemRarity.EPIC]: 10,
+            [ItemRarity.LEGENDARY]: 25,
+            [ItemRarity.MYTHIC]: 50,
+            [ItemRarity.DIVINE]: 100,
+          };
+          const mats = yields[item.rarity] || 1;
+          p.salvageMaterials += mats;
+          // Also add crafting materials
+          const matTypes = Object.values(MaterialType);
+          const matType = matTypes[Math.floor(Math.random() * matTypes.length)];
+          p.crafting.materials[matType] = (p.crafting.materials[matType] || 0) + Math.ceil(mats / 3);
+          p.inventory[slot].item = null;
+          this._addFloatingText(p.x, p.y + 2, p.z, `+${mats} materials`, '#44ff44');
+
+          // Crafting XP
+          this._grantCraftingXp(mats * 5);
+        }
+        break;
+      }
+    }
+
+    return true;
+  }
+
+  private _advancedCraft(recipeId: string): boolean {
+    const p = this._state.player;
+    const recipe = ADVANCED_CRAFTING_RECIPES.find((r: AdvancedCraftingRecipe) => r.id === recipeId);
+    if (!recipe) return false;
+
+    if (p.gold < recipe.goldCost) {
+      this._addFloatingText(p.x, p.y + 2, p.z, 'Not enough gold!', '#ff2222');
+      return false;
+    }
+
+    if (p.crafting.craftingLevel < recipe.levelRequired) {
+      this._addFloatingText(p.x, p.y + 2, p.z, 'Crafting level too low!', '#ff2222');
+      return false;
+    }
+
+    // Check materials
+    for (const mat of recipe.materials) {
+      if ((p.crafting.materials[mat.type] || 0) < mat.count) {
+        this._addFloatingText(p.x, p.y + 2, p.z, 'Missing materials!', '#ff2222');
+        return false;
+      }
+    }
+
+    // Consume resources
+    p.gold -= recipe.goldCost;
+    for (const mat of recipe.materials) {
+      p.crafting.materials[mat.type] -= mat.count;
+    }
+
+    if (Math.random() > recipe.successChance) {
+      this._addFloatingText(p.x, p.y + 2, p.z, 'Advanced craft failed!', '#ff4444');
+      return false;
+    }
+
+    // Generate output item
+    if (recipe.outputRarity && recipe.outputSlot) {
+      const item = this._generateCraftedItem(recipe);
+      if (item) {
+        const emptySlot = p.inventory.findIndex(s => !s.item);
+        if (emptySlot >= 0) {
+          p.inventory[emptySlot].item = item;
+          this._addFloatingText(p.x, p.y + 3, p.z, `Crafted: ${item.name}!`, '#ffd700');
+        }
+      }
+    }
+
+    // Crafting XP
+    this._grantCraftingXp(50 + recipe.levelRequired * 10);
+
+    return true;
+  }
+
+  private _generateCraftedItem(recipe: AdvancedCraftingRecipe): DiabloItem | null {
+    const rarity = recipe.outputRarity || ItemRarity.RARE;
+    const slot = recipe.outputSlot || ItemSlot.WEAPON;
+
+    // Determine item type based on slot
+    const slotToType: Record<string, ItemType> = {
+      [ItemSlot.WEAPON]: ItemType.SWORD,
+      [ItemSlot.HELMET]: ItemType.HELMET,
+      [ItemSlot.BODY]: ItemType.CHEST_ARMOR,
+      [ItemSlot.GAUNTLETS]: ItemType.GAUNTLETS,
+      [ItemSlot.LEGS]: ItemType.LEG_ARMOR,
+      [ItemSlot.FEET]: ItemType.BOOTS,
+      [ItemSlot.ACCESSORY_1]: ItemType.RING,
+      [ItemSlot.ACCESSORY_2]: ItemType.AMULET,
+    };
+
+    const itemType = slotToType[slot] || ItemType.SWORD;
+    const level = this._state.player.level;
+
+    const stats: DiabloItemStats = {};
+    const numStats = 3 + Math.floor(Math.random() * 3);
+    const statKeys: (keyof DiabloItemStats)[] = ['strength', 'dexterity', 'intelligence', 'vitality', 'armor', 'critChance', 'critDamage', 'attackSpeed'];
+    for (let i = 0; i < numStats; i++) {
+      const key = statKeys[Math.floor(Math.random() * statKeys.length)];
+      (stats as any)[key] = 5 + Math.floor(Math.random() * level * 2);
+    }
+
+    return {
+      id: `crafted-${this._nextId++}`,
+      name: `Crafted ${recipe.name}`,
+      type: itemType,
+      slot,
+      rarity,
+      level,
+      stats,
+      description: recipe.description,
+      icon: recipe.icon,
+      value: 100 + level * 20,
+    };
+  }
+
+  private _quickSalvageSelectedItem(): void {
+    const p = this._state.player;
+    const slot = this._state.selectedInventorySlot;
+    if (slot < 0 || slot >= p.inventory.length || !p.inventory[slot].item) return;
+
+    const item = p.inventory[slot].item!;
+    const yields: Record<string, number> = {
+      [ItemRarity.COMMON]: 1,
+      [ItemRarity.UNCOMMON]: 2,
+      [ItemRarity.RARE]: 5,
+      [ItemRarity.EPIC]: 10,
+      [ItemRarity.LEGENDARY]: 25,
+      [ItemRarity.MYTHIC]: 50,
+      [ItemRarity.DIVINE]: 100,
+    };
+    const mats = yields[item.rarity] || 1;
+    p.salvageMaterials += mats;
+    const matTypes = Object.values(MaterialType);
+    const matType = matTypes[Math.floor(Math.random() * matTypes.length)];
+    p.crafting.materials[matType] = (p.crafting.materials[matType] || 0) + Math.ceil(mats / 3);
+    p.inventory[slot].item = null;
+    this._addFloatingText(p.x, p.y + 2, p.z, `Salvaged: +${mats} materials`, '#44ff44');
+    this._grantCraftingXp(mats * 5);
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  //  LOOT FILTER SYSTEM
+  // ──────────────────────────────────────────────────────────────
+  private _shouldShowLoot(item: DiabloItem): boolean {
+    const p = this._state.player;
+    const filter = p.customLootFilters[p.activeFilterIndex];
+    if (!filter) return true;
+
+    if (!filter.showRarities.includes(item.rarity)) return false;
+    if (!filter.showItemTypes.includes(item.type)) return false;
+    if (item.level < filter.minLevel) return false;
+
+    return true;
+  }
+
+  private _shouldAutoSalvage(item: DiabloItem): boolean {
+    const p = this._state.player;
+    const filter = p.customLootFilters[p.activeFilterIndex];
+    if (!filter || !filter.autoSalvageBelow) return false;
+
+    const rarityOrder = [ItemRarity.COMMON, ItemRarity.UNCOMMON, ItemRarity.RARE, ItemRarity.EPIC, ItemRarity.LEGENDARY, ItemRarity.MYTHIC, ItemRarity.DIVINE];
+    const itemIdx = rarityOrder.indexOf(item.rarity);
+    const thresholdIdx = rarityOrder.indexOf(filter.autoSalvageBelow);
+
+    return itemIdx <= thresholdIdx;
   }
 
   // ──────────────────────────────────────────────────────────────
