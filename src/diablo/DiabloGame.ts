@@ -19,6 +19,7 @@ import {
   LegendaryEffectDef,
   ItemSlot, ItemType, DiabloItemStats,
   MultiplayerState,
+  GRLeaderboardEntry, KeyBindings, DEFAULT_KEYBINDINGS,
   createDefaultPlayer, createDefaultState
 } from "./DiabloTypes";
 import {
@@ -44,6 +45,7 @@ import {
   GREATER_RIFT_CONFIG,
   SKILL_RUNES,
   LEGENDARY_EFFECTS,
+  RUNEWORD_DEFS,
 } from "./DiabloConfig";
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -565,6 +567,17 @@ export class DiabloGame {
   // @ts-ignore assigned but value never read (reserved for future use)
   private _safeZoneRadius: number = 20;
 
+  // Procedural audio system
+  private _audioCtx: AudioContext | null = null;
+  private _audioMuted: boolean = false;
+  private _audioVolume: number = 0.3;
+
+  // Death tracking
+  private _lastDeathCause: string = '';
+  private _deathLocationX: number = 0;
+  private _deathLocationZ: number = 0;
+  private _deathGoldDrop: number = 0;
+
   // Hit freeze & slow motion
   private _hitFreezeTimer: number = 0;
   private _slowMotionTimer: number = 0;
@@ -596,11 +609,139 @@ export class DiabloGame {
   // @ts-ignore used by crafting UI state
   private _craftingUIOpen: boolean = false;
 
+  // Greater Rift Leaderboard
+  private _grLeaderboard: GRLeaderboardEntry[] = [];
+
+  // Keyboard rebinding
+  private _keyBindings: KeyBindings = { ...DEFAULT_KEYBINDINGS };
+
+
+  // ──────────────────────────────────────────────────────────────
+  //  LEADERBOARD
+  // ──────────────────────────────────────────────────────────────
+  private _loadLeaderboard(): void {
+    try {
+      const raw = localStorage.getItem('diablo_gr_leaderboard');
+      this._grLeaderboard = raw ? JSON.parse(raw) : [];
+    } catch { this._grLeaderboard = []; }
+  }
+
+  private _saveLeaderboard(): void {
+    localStorage.setItem('diablo_gr_leaderboard', JSON.stringify(this._grLeaderboard));
+  }
+
+  private _addLeaderboardEntry(entry: GRLeaderboardEntry): void {
+    this._grLeaderboard.push(entry);
+    this._grLeaderboard.sort((a, b) => b.grLevel - a.grLevel || b.timeRemaining - a.timeRemaining);
+    this._grLeaderboard = this._grLeaderboard.slice(0, 10);
+    this._saveLeaderboard();
+  }
+
+  private _showLeaderboard(): void {
+    this._menuEl.innerHTML = '';
+    const panel = document.createElement('div');
+    panel.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(20,15,10,0.95);border:2px solid #8b6914;border-radius:8px;padding:20px;color:#fff;font-family:Georgia,serif;min-width:450px;z-index:100;';
+
+    const title = document.createElement('h2');
+    title.style.cssText = 'text-align:center;color:#ffd700;margin:0 0 15px;';
+    title.textContent = 'Greater Rift Leaderboard';
+    panel.appendChild(title);
+
+    if (this._grLeaderboard.length === 0) {
+      const empty = document.createElement('p');
+      empty.style.cssText = 'text-align:center;color:#888;';
+      empty.textContent = 'No records yet. Complete a Greater Rift!';
+      panel.appendChild(empty);
+    } else {
+      const table = document.createElement('div');
+      table.style.cssText = 'font-size:13px;';
+      table.innerHTML = '<div style="display:flex;padding:4px 0;border-bottom:1px solid #555;color:#ffd700;"><span style="flex:0.5;">#</span><span style="flex:2;">Player</span><span style="flex:1;">Class</span><span style="flex:0.5;">Lv</span><span style="flex:0.5;">GR</span><span style="flex:1;">Time</span><span style="flex:1;">Date</span></div>';
+
+      for (let i = 0; i < this._grLeaderboard.length; i++) {
+        const e = this._grLeaderboard[i];
+        const mins = Math.floor(e.timeRemaining / 60);
+        const secs = Math.floor(e.timeRemaining % 60);
+        const medalColor = i === 0 ? '#ffd700' : i === 1 ? '#c0c0c0' : i === 2 ? '#cd7f32' : '#aaa';
+        table.innerHTML += `<div style="display:flex;padding:3px 0;border-bottom:1px solid #333;"><span style="flex:0.5;color:${medalColor};">${i + 1}</span><span style="flex:2;">${e.playerName}</span><span style="flex:1;">${e.class}</span><span style="flex:0.5;">${e.level}</span><span style="flex:0.5;color:#ff8800;">${e.grLevel}</span><span style="flex:1;">${mins}:${secs.toString().padStart(2, '0')}</span><span style="flex:1;color:#888;">${e.date}</span></div>`;
+      }
+      panel.appendChild(table);
+    }
+
+    const closeBtn = document.createElement('button');
+    closeBtn.style.cssText = 'display:block;margin:15px auto 0;padding:8px 20px;background:#555;color:#fff;border:1px solid #888;border-radius:4px;cursor:pointer;font-family:Georgia,serif;';
+    closeBtn.textContent = 'Close';
+    closeBtn.addEventListener('click', () => this._showMapSelect());
+    panel.appendChild(closeBtn);
+
+    this._menuEl.appendChild(panel);
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  //  KEY BINDINGS
+  // ──────────────────────────────────────────────────────────────
+  private _loadKeyBindings(): void {
+    try {
+      const raw = localStorage.getItem('diablo_keybindings');
+      if (raw) this._keyBindings = { ...DEFAULT_KEYBINDINGS, ...JSON.parse(raw) };
+    } catch { /* use defaults */ }
+  }
+
+  private _saveKeyBindings(): void {
+    localStorage.setItem('diablo_keybindings', JSON.stringify(this._keyBindings));
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  //  TOOLTIP HELPERS
+  // ──────────────────────────────────────────────────────────────
+  private _getEquippedInSlot(slot: ItemSlot): DiabloItem | null {
+    const key = resolveEquipKey(slot as string);
+    if (!key) return null;
+    return this._state.player.equipment[key];
+  }
+
+  private _countEquippedSetPieces(setName: string): number {
+    let count = 0;
+    const eq = this._state.player.equipment;
+    const slots = ['helmet', 'body', 'gauntlets', 'legs', 'feet', 'accessory1', 'accessory2', 'weapon', 'lantern'] as const;
+    for (const slot of slots) {
+      if (eq[slot]?.setName === setName) count++;
+    }
+    return count;
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  //  STASH SORTING
+  // ──────────────────────────────────────────────────────────────
+  private _sortStash(sortBy: 'rarity' | 'type' | 'level'): void {
+    const stash = this._state.persistentStash;
+    const items = stash.filter(s => s.item !== null).map(s => s.item!);
+
+    items.sort((a, b) => {
+      switch (sortBy) {
+        case 'rarity': {
+          const rarityOrder = [ItemRarity.COMMON, ItemRarity.UNCOMMON, ItemRarity.RARE, ItemRarity.EPIC, ItemRarity.LEGENDARY, ItemRarity.MYTHIC, ItemRarity.DIVINE];
+          return rarityOrder.indexOf(b.rarity) - rarityOrder.indexOf(a.rarity);
+        }
+        case 'type':
+          return a.type.localeCompare(b.type) || b.level - a.level;
+        case 'level':
+          return b.level - a.level;
+        default:
+          return 0;
+      }
+    });
+
+    for (let i = 0; i < stash.length; i++) {
+      stash[i].item = i < items.length ? items[i] : null;
+    }
+  }
   // ──────────────────────────────────────────────────────────────
   //  BOOT
   // ──────────────────────────────────────────────────────────────
   async boot(): Promise<void> {
     this._state = createDefaultState();
+    this._loadLeaderboard();
+    this._loadKeyBindings();
     const w = window.innerWidth;
     const h = window.innerHeight;
     this._renderer = new DiabloRenderer();
@@ -698,13 +839,13 @@ export class DiabloGame {
             this._addFloatingText(this._state.player.x, this._state.player.y + 2, this._state.player.z, runeName, '#aa44ff');
           }
         }
-      } else if (e.code === "Digit1") this._activateSkill(0);
-      else if (e.code === "Digit2") this._activateSkill(1);
-      else if (e.code === "Digit3") this._activateSkill(2);
-      else if (e.code === "Digit4") this._activateSkill(3);
-      else if (e.code === "Digit5") this._activateSkill(4);
-      else if (e.code === "Digit6") this._activateSkill(5);
-      else if (e.code === "KeyI") {
+      } else if (e.code === this._keyBindings.skill1) this._activateSkill(0);
+      else if (e.code === this._keyBindings.skill2) this._activateSkill(1);
+      else if (e.code === this._keyBindings.skill3) this._activateSkill(2);
+      else if (e.code === this._keyBindings.skill4) this._activateSkill(3);
+      else if (e.code === this._keyBindings.skill5) this._activateSkill(4);
+      else if (e.code === this._keyBindings.skill6) this._activateSkill(5);
+      else if (e.code === this._keyBindings.inventory) {
         this._phaseBeforeOverlay = DiabloPhase.PLAYING;
         this._state.phase = DiabloPhase.INVENTORY;
         if (this._firstPerson && document.pointerLockElement) document.exitPointerLock();
@@ -722,8 +863,8 @@ export class DiabloGame {
         this._state.phase = DiabloPhase.INVENTORY;
         if (this._firstPerson && document.pointerLockElement) document.exitPointerLock();
         this._showTalentTree();
-      } else if (e.code === "Space") { e.preventDefault(); } // dodge handled in processInput
-      else if (e.code === "Tab") {
+      } else if (e.code === this._keyBindings.dodge) { e.preventDefault(); } // dodge handled in processInput
+      else if (e.code === this._keyBindings.lootFilter) {
         e.preventDefault();
         const levels = [LootFilterLevel.SHOW_ALL, LootFilterLevel.HIDE_COMMON, LootFilterLevel.RARE_PLUS, LootFilterLevel.EPIC_PLUS];
         const curIdx = levels.indexOf(this._lootFilterLevel);
@@ -741,25 +882,25 @@ export class DiabloGame {
       }
       else if (e.code === "KeyQ") {
         this._useQuickPotion(PotionType.HEALTH);
-      } else if (e.code === "KeyE" && this._state.currentMap !== DiabloMapId.CAMELOT) {
+      } else if (e.code === this._keyBindings.interact && this._state.currentMap !== DiabloMapId.CAMELOT) {
         if (this._portalActive && this._dist(this._state.player.x, this._state.player.z, this._portalX, this._portalZ) < 4) {
           this._useTownPortal();
         } else {
           this._useQuickPotion(PotionType.MANA);
         }
-      } else if (e.code === "F1") {
+      } else if (e.code === this._keyBindings.potion1) {
         e.preventDefault();
         this._usePotionSlot(0);
-      } else if (e.code === "F2") {
+      } else if (e.code === this._keyBindings.potion2) {
         e.preventDefault();
         this._usePotionSlot(1);
-      } else if (e.code === "F3") {
+      } else if (e.code === this._keyBindings.potion3) {
         e.preventDefault();
         this._usePotionSlot(2);
-      } else if (e.code === "F4") {
+      } else if (e.code === this._keyBindings.potion4) {
         e.preventDefault();
         this._usePotionSlot(3);
-      } else if (e.code === "KeyE" && this._state.currentMap === DiabloMapId.CAMELOT) {
+      } else if (e.code === this._keyBindings.interact && this._state.currentMap === DiabloMapId.CAMELOT) {
         const p = this._state.player;
         let nearestVendor: DiabloVendor | null = null;
         let nearestDist = 4;
@@ -781,12 +922,17 @@ export class DiabloGame {
         } else if (this._portalActive && this._dist(p.x, p.z, this._portalX, this._portalZ) < 4) {
           this._useTownPortal();
         }
-      } else if (e.code === "KeyM") {
+      } else if (e.code === this._keyBindings.map) {
         this._fullmapVisible = !this._fullmapVisible;
         this._fullmapCanvas.style.display = this._fullmapVisible ? "block" : "none";
-      } else if (e.code === "Space") {
+      } else if (e.code === this._keyBindings.dodge) {
         this._doDodgeRoll();
-      } else if (e.code === "KeyP" || e.code === "KeyL") {
+      } else if (e.code === "KeyP" && e.shiftKey) {
+        this._phaseBeforeOverlay = DiabloPhase.PLAYING;
+        this._state.phase = DiabloPhase.INVENTORY;
+        if (this._firstPerson && document.pointerLockElement) document.exitPointerLock();
+        this._showPetPanel();
+      } else if ((e.code === "KeyP" && !e.shiftKey) || e.code === "KeyL") {
         this._toggleLantern();
       } else if (e.code === "KeyK") {
         this._phaseBeforeOverlay = DiabloPhase.PLAYING;
@@ -828,7 +974,7 @@ export class DiabloGame {
         this._state.phase = DiabloPhase.INVENTORY;
         if (this._firstPerson && document.pointerLockElement) document.exitPointerLock();
         this._showAdvancedCraftingUI();
-      } else if (e.code === "KeyY") {
+      } else if (e.code === this._keyBindings.petSummon) {
         // Quick pet summon/cycle
         const pp = this._state.player;
         if (pp.pets.length > 0) {
@@ -856,8 +1002,11 @@ export class DiabloGame {
     } else if (this._state.phase === DiabloPhase.CLASS_SELECT) {
       // no-op: class select handles its own UI
     } else if (this._state.phase === DiabloPhase.MAP_SELECT) {
+      if (e.code === "KeyL") {
+        this._showLeaderboard();
+      }
       // Multiplayer: N to toggle connect (for development/testing)
-      if (e.code === "KeyN") {
+      else if (e.code === "KeyN") {
         if (this._state.multiplayer.state === MultiplayerState.DISCONNECTED) {
           // Try to connect to local dev server
           const wsUrl = `ws://${window.location.hostname}:3001`;
@@ -1723,16 +1872,23 @@ export class DiabloGame {
       },
     ];
 
+    // Map completion counter
+    const completedCount = Object.values(this._state.completedMaps).filter(Boolean).length;
+    const totalMaps = maps.filter(m => !m.isSafe).length;
+
     let cardsHtml = "";
     for (const m of maps) {
+      // Check if any difficulty variant of this map has been completed
+      const isCompleted = Object.keys(this._state.completedMaps).some(k => k.startsWith(m.id) && this._state.completedMaps[k]);
+      const completionBadge = isCompleted ? `<span style="color:#44ff44;margin-left:6px;font-size:16px;">\u2713</span>` : '';
       cardsHtml += `
         <div class="diablo-map-card" data-map="${m.id}" style="
-          width:220px;background:rgba(20,15,10,0.95);border:2px solid #5a4a2a;
+          width:220px;background:rgba(20,15,10,0.95);border:2px solid ${isCompleted ? '#44ff44' : '#5a4a2a'};
           border-radius:12px;padding:30px;cursor:pointer;text-align:center;
           transition:border-color 0.3s,box-shadow 0.3s;
         ">
           <div style="font-size:64px;margin-bottom:12px;">${m.icon}</div>
-          <div style="font-size:22px;color:#c8a84e;font-weight:bold;letter-spacing:2px;margin-bottom:12px;">${m.name}</div>
+          <div style="font-size:22px;color:#c8a84e;font-weight:bold;letter-spacing:2px;margin-bottom:12px;">${m.name}${completionBadge}</div>
           <p style="color:#aaa;font-size:14px;line-height:1.5;margin-bottom:16px;">${m.desc}</p>
           <div style="font-size:20px;color:${m.isSafe ? '#44ff44' : '#ff8'};">Difficulty: ${m.difficulty}</div>
         </div>`;
@@ -1824,6 +1980,7 @@ export class DiabloGame {
             ">SELECT YOUR DESTINATION</h1>
             <div style="color:#8a7a4a;font-size:14px;letter-spacing:6px;margin-top:6px;font-family:'Georgia',serif;
               text-shadow:0 0 10px rgba(200,168,78,0.2);">&#10038; Chart Your Path &#10038;</div>
+            <div style="color:#44ff44;font-size:13px;margin-top:4px;letter-spacing:2px;font-family:'Georgia',serif;">Maps Cleared: ${completedCount}/${totalMaps} | Press <span style="display:inline-block;background:rgba(60,50,30,0.8);border:1px solid #888;border-radius:4px;padding:0 6px;font-family:monospace;color:#ffd700;">L</span> for Leaderboard</div>
           </div>
           <div style="font-size:32px;animation:ms-flame-flicker 0.6s ease-in-out infinite 0.3s;color:#ff6600;">&#x1F525;</div>
         </div>
@@ -2095,6 +2252,10 @@ export class DiabloGame {
 
       this._spawnInitialEnemies();
       this._spawnInitialChests();
+    }
+
+    if (this._state.dungeonLayout) {
+      this._renderer.renderDungeonLayout(this._state.dungeonLayout);
     }
 
     this._state.phase = DiabloPhase.PLAYING;
@@ -2388,6 +2549,7 @@ export class DiabloGame {
           if (cfg) this._renderer.setPlayerLantern(true, cfg.intensity, cfg.distance, cfg.color);
         }
         this._recalculatePlayerStats();
+        this._checkRunewords();
         this._showInventory();
       });
       el.addEventListener("contextmenu", (ev) => {
@@ -2502,11 +2664,46 @@ export class DiabloGame {
 
     let legendaryLine = "";
     if (item.legendaryAbility) {
-      legendaryLine = `<div style="color:#ff8800;margin-top:6px;font-style:italic;border-left:2px solid #ff880060;padding-left:6px;">${item.legendaryAbility}</div>`;
+      const effect = LEGENDARY_EFFECTS[item.legendaryAbility];
+      if (effect) {
+        legendaryLine = `<div style="color:#ff8800;margin-top:6px;font-style:italic;border-left:2px solid #ff880060;padding-left:6px;">${effect.description}</div>`;
+      } else {
+        legendaryLine = `<div style="color:#ff8800;margin-top:6px;font-style:italic;border-left:2px solid #ff880060;padding-left:6px;">${item.legendaryAbility}</div>`;
+      }
     }
     let setLine = "";
     if ((item as any).setName) {
-      setLine = `<div style="color:#44ff44;margin-top:4px;font-size:12px;">Set: ${(item as any).setName}</div>`;
+      const sn = (item as any).setName as string;
+      const equippedSetCount = this._countEquippedSetPieces(sn);
+      const setBonuses = SET_BONUSES.filter(sb => sb.setName === sn);
+      setLine = `<div style="color:#44ff44;margin-top:4px;font-size:12px;">Set: ${sn} (${equippedSetCount} equipped)</div>`;
+      for (const sb of setBonuses) {
+        const active = equippedSetCount >= sb.pieces;
+        setLine += `<div style="color:${active ? '#44ff44' : '#666'};font-size:11px;padding:1px 0;margin-left:8px;">(${sb.pieces}) ${sb.bonusDescription || ''}</div>`;
+      }
+    }
+    // Socket display
+    let socketLine = "";
+    if (item.sockets && item.sockets.length > 0) {
+      let socketIcons = "";
+      for (const socket of item.sockets) {
+        if (socket.gemType) {
+          const gemLabel = socket.gemType + ' T' + socket.gemTier;
+          socketIcons += `<span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:#aa44ff;border:1px solid #cc66ff;margin:1px;font-size:10px;text-align:center;line-height:16px;" title="${gemLabel}">${String(socket.gemType).charAt(0)}</span>`;
+        } else {
+          socketIcons += `<span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:#222;border:1px solid #555;margin:1px;"></span>`;
+        }
+      }
+      socketLine = `<div style="margin-top:4px;font-size:12px;color:#aaa;">Sockets: ${socketIcons}</div>`;
+    }
+    // DPS calculation for weapons
+    let dpsLine = "";
+    if (stats.damage && stats.speed) {
+      const dps = (stats.damage * stats.speed).toFixed(1);
+      dpsLine = `<div style="color:#ffdd44;font-size:12px;margin-top:2px;font-weight:bold;">${dps} DPS</div>`;
+    } else if (stats.damage && stats.attackSpeed) {
+      const dps = (stats.damage * (1 + stats.attackSpeed)).toFixed(1);
+      dpsLine = `<div style="color:#ffdd44;font-size:12px;margin-top:2px;font-weight:bold;">${dps} DPS</div>`;
     }
 
     const stars = "\u2605".repeat(RARITY_TIER[item.rarity]);
@@ -2543,8 +2740,10 @@ export class DiabloGame {
         ${statsLines}
         ${comparisonLines}
         ${lanternLines}
+        ${dpsLine}
         ${legendaryLine}
         ${setLine}
+        ${socketLine}
         <!-- Separator with diamond ornaments before description -->
         <div style="display:flex;align-items:center;gap:6px;margin:8px 0 6px;">
           <div style="flex:1;height:1px;background:linear-gradient(to right,transparent,#5a4a2a60);"></div>
@@ -5319,6 +5518,7 @@ export class DiabloGame {
       <div style="font-size:48px;font-family:'Georgia',serif;color:#cc2222;
         text-shadow:0 0 30px rgba(200,30,30,0.6);letter-spacing:4px;">YOU HAVE DIED</div>
       <div id="diablo-respawn-timer" style="font-size:20px;color:#c8a84e;margin-top:16px;"></div>
+      <div id="diablo-death-recap" style="font-size:14px;color:#aaa;margin-top:10px;text-align:center;"></div>
       <div id="diablo-gold-loss" style="font-size:16px;color:#ff8888;margin-top:8px;"></div>
     `;
     this._hud.appendChild(this._deathOverlay);
@@ -6091,10 +6291,10 @@ export class DiabloGame {
       // WASD relative to facing direction
       let forward = 0;
       let strafe = 0;
-      if (this._keys.has("KeyW") || this._keys.has("ArrowUp")) forward = 1;
-      if (this._keys.has("KeyS") || this._keys.has("ArrowDown")) forward = -1;
-      if (this._keys.has("KeyA") || this._keys.has("ArrowLeft")) strafe = -1;
-      if (this._keys.has("KeyD") || this._keys.has("ArrowRight")) strafe = 1;
+      if (this._keys.has(this._keyBindings.moveUp) || this._keys.has("ArrowUp")) forward = 1;
+      if (this._keys.has(this._keyBindings.moveDown) || this._keys.has("ArrowDown")) forward = -1;
+      if (this._keys.has(this._keyBindings.moveLeft) || this._keys.has("ArrowLeft")) strafe = -1;
+      if (this._keys.has(this._keyBindings.moveRight) || this._keys.has("ArrowRight")) strafe = 1;
 
       const len = Math.sqrt(forward * forward + strafe * strafe);
       if (len > 0) {
@@ -6114,10 +6314,10 @@ export class DiabloGame {
     } else {
       let dx = 0;
       let dz = 0;
-      if (this._keys.has("KeyW") || this._keys.has("ArrowUp")) dz -= 1;
-      if (this._keys.has("KeyS") || this._keys.has("ArrowDown")) dz += 1;
-      if (this._keys.has("KeyA") || this._keys.has("ArrowLeft")) dx -= 1;
-      if (this._keys.has("KeyD") || this._keys.has("ArrowRight")) dx += 1;
+      if (this._keys.has(this._keyBindings.moveUp) || this._keys.has("ArrowUp")) dz -= 1;
+      if (this._keys.has(this._keyBindings.moveDown) || this._keys.has("ArrowDown")) dz += 1;
+      if (this._keys.has(this._keyBindings.moveLeft) || this._keys.has("ArrowLeft")) dx -= 1;
+      if (this._keys.has(this._keyBindings.moveRight) || this._keys.has("ArrowRight")) dx += 1;
 
       const len = Math.sqrt(dx * dx + dz * dz);
       if (len > 0) {
@@ -6204,12 +6404,13 @@ export class DiabloGame {
       p.dodgeTimer = 0.3; // 300ms roll duration
       p.dodgeCooldown = 1.5; // 1.5s cooldown
       p.invulnTimer = 0.3; // i-frames during roll
+      this._playSound('dodge');
       // Roll in movement direction or facing direction
       let dx = 0, dz = 0;
-      if (this._keys.has("KeyW") || this._keys.has("ArrowUp")) dz -= 1;
-      if (this._keys.has("KeyS") || this._keys.has("ArrowDown")) dz += 1;
-      if (this._keys.has("KeyA") || this._keys.has("ArrowLeft")) dx -= 1;
-      if (this._keys.has("KeyD") || this._keys.has("ArrowRight")) dx += 1;
+      if (this._keys.has(this._keyBindings.moveUp) || this._keys.has("ArrowUp")) dz -= 1;
+      if (this._keys.has(this._keyBindings.moveDown) || this._keys.has("ArrowDown")) dz += 1;
+      if (this._keys.has(this._keyBindings.moveLeft) || this._keys.has("ArrowLeft")) dx -= 1;
+      if (this._keys.has(this._keyBindings.moveRight) || this._keys.has("ArrowRight")) dx += 1;
       const len = Math.sqrt(dx * dx + dz * dz);
       if (len > 0) { dx /= len; dz /= len; }
       else { dx = Math.sin(p.angle); dz = Math.cos(p.angle); }
@@ -6257,6 +6458,28 @@ export class DiabloGame {
             if (!p.statusEffects.some(e => e.effect === effect)) {
               p.statusEffects.push({ effect, duration: 3, source: 'hazard' });
             }
+          }
+        }
+      }
+    }
+
+    // Check room entry for dungeon spawning
+    if (this._state.dungeonLayout) {
+      for (const room of this._state.dungeonLayout.rooms) {
+        if (room.cleared) continue;
+        const inRoom = p.x >= room.x && p.x <= room.x + room.width &&
+                       p.z >= room.z && p.z <= room.z + room.height;
+        if (inRoom && room.enemies > 0) {
+          const count = room.enemies;
+          for (let i = 0; i < count; i++) {
+            this._spawnEnemyInRoom(room);
+          }
+          room.enemies = 0; // Prevent re-spawning
+
+          if (room.type === 'boss') {
+            this._addFloatingText(p.x, p.y + 3, p.z, 'BOSS ROOM!', '#ff4444');
+          } else if (room.type === 'treasure') {
+            this._addFloatingText(p.x, p.y + 3, p.z, 'Treasure Room!', '#ffd700');
           }
         }
       }
@@ -6334,6 +6557,7 @@ export class DiabloGame {
       p.talentPoints += 1;
 
       this._addFloatingText(p.x, p.y + 3, p.z, "LEVEL UP!", "#ffd700");
+      this._playSound('levelup');
       this._renderer.spawnParticles(ParticleType.LEVEL_UP, p.x, p.y + 0.5, p.z, 20 + Math.floor(Math.random() * 11), this._state.particles);
       this._renderer.shakeCamera(0.2, 0.3);
       this._recalculatePlayerStats();
@@ -6586,6 +6810,7 @@ export class DiabloGame {
 
                 if (p.hp <= 0) {
                   p.hp = 0;
+                  this._lastDeathCause = enemy.bossName || (enemy.type as string).replace(/_/g, ' ');
                   this._triggerDeath();
                   return;
                 }
@@ -6723,13 +6948,15 @@ export class DiabloGame {
 
     this._combatLog.push({ time: performance.now(), damage: finalDamage });
 
-    // Floating text
+    // Floating text + sound
     if (isCrit) {
       this._addFloatingText(target.x, target.y + 2.5, target.z, `CRIT! ${Math.round(finalDamage)}`, "#ff4444");
       this._renderer.shakeCamera(0.15, 0.2);
       this._hitFreezeTimer = 0.04; // 40ms freeze frame on crit
+      this._playSound('crit');
     } else {
       this._addFloatingText(target.x, target.y + 2, target.z, `${Math.round(finalDamage)}`, "#ffff44");
+      this._playSound('hit');
     }
 
     this._spawnHitParticles(target, DamageType.PHYSICAL);
@@ -6768,6 +6995,7 @@ export class DiabloGame {
       p.xp += Math.floor(target.xpReward * meleeXpMult);
       const goldFromKill = Math.floor(5 + Math.random() * 10 * target.level);
       p.gold += goldFromKill;
+      this._playSound('gold');
       this._goldEarnedTotal += goldFromKill;
       this._state.killCount++;
       this._totalKills++;
@@ -7065,6 +7293,7 @@ export class DiabloGame {
     if (p.mana < Math.ceil(def.manaCost * branchMods.manaCostMult)) return;
 
     p.mana -= Math.ceil(def.manaCost * branchMods.manaCostMult);
+    this._playSound('skill');
     const talentBonusesCd = this._getTalentBonuses();
     const cdReduction = talentBonusesCd[TalentEffectType.SKILL_COOLDOWN_REDUCTION] || 0;
     const effectiveCooldown = def.cooldown * branchMods.cooldownMult * (1 - cdReduction / 100);
@@ -7614,6 +7843,35 @@ export class DiabloGame {
     // Trigger legendary on_skill effects
     this._triggerLegendaryEffects('on_skill', { targetX: worldMouse.x, targetZ: worldMouse.z, damage: modDmg, skillId: skillId });
 
+    // Rune visual feedback
+    if (runeEffect) {
+      this._addFloatingText(p.x, p.y + 1.5, p.z, runeEffect.name, '#aa44ff');
+    }
+
+    // Extra projectiles from rune (for non-projectile skills that don't already handle extraProjectiles)
+    if (runeEffect && runeEffect.extraProjectiles) {
+      for (let ep = 0; ep < runeEffect.extraProjectiles; ep++) {
+        const spreadAngle = angle + (ep - runeEffect.extraProjectiles / 2) * 0.2;
+        const extraProj: DiabloProjectile = {
+          id: this._genId(),
+          x: p.x, y: p.y + 1, z: p.z,
+          vx: Math.sin(spreadAngle),
+          vy: 0,
+          vz: Math.cos(spreadAngle),
+          speed: 15,
+          damage: modDmg * 0.6,
+          damageType: def.damageType,
+          radius: 0.3,
+          ownerId: 'player',
+          isPlayerOwned: true,
+          lifetime: 0,
+          maxLifetime: 2,
+          skillId: skillId,
+        };
+        this._state.projectiles.push(extraProj);
+      }
+    }
+
     // Apply rune leech healing
     if (runeEffect?.leechPercent && modDmg > 0) {
       const leechHeal = Math.round(modDmg * runeEffect.leechPercent / 100);
@@ -7863,6 +8121,30 @@ export class DiabloGame {
         }
       }
 
+      // Extended auto-pickup radius for gold and low-tier items
+      if (dist >= 2 && dist <= 2.5) {
+        const isGold = loot.item.name.includes('Gold') || loot.item.icon === '\uD83D\uDCB0';
+        const isLowTier = loot.item.rarity === ItemRarity.COMMON || loot.item.rarity === ItemRarity.UNCOMMON;
+        if (isGold || isLowTier) {
+          if (this._shouldAutoSalvage(loot.item)) {
+            const salvageYields: Record<string, number> = {
+              [ItemRarity.COMMON]: 1, [ItemRarity.UNCOMMON]: 2,
+            };
+            const salvageMats = salvageYields[loot.item.rarity] || 1;
+            p.salvageMaterials += salvageMats;
+            this._addFloatingText(p.x, p.y + 2, p.z, `Auto-salvage: +${salvageMats}`, '#888888');
+            toRemove.push(loot.id);
+          } else {
+            const emptyIdx = p.inventory.findIndex((s) => s.item === null);
+            if (emptyIdx >= 0) {
+              p.inventory[emptyIdx].item = { ...loot.item, id: this._genId() };
+              this._addFloatingText(p.x, p.y + 2.5, p.z, `+${loot.item.name}`, RARITY_CSS[loot.item.rarity]);
+              toRemove.push(loot.id);
+            }
+          }
+        }
+      }
+
       // Expire after 60 seconds
       if (loot.timer > 60) {
         toRemove.push(loot.id);
@@ -8076,6 +8358,26 @@ export class DiabloGame {
         }
       }
     }
+
+    // Townfolk ambient speech (rare, when player is nearby)
+    const TOWNFOLK_LINES: Record<string, string[]> = {
+      peasant: ["The crops are failing...", "I miss the old days.", "Stay safe out there."],
+      noble: ["Camelot shall endure!", "The Round Table will rise again."],
+      guard: ["The walls hold firm.", "Keep your weapon ready.", "I've seen things in the dark..."],
+      maiden: ["Bless your quest, brave one.", "The Lady of the Lake weeps."],
+      monk: ["Faith guides the blade.", "Pray for us all.", "The light endures."],
+      bard: ["\u266A The Knights ride forth... \u266A", "\u266A Steel and shadow... \u266A"],
+      child: ["Are you a real knight?", "Will you save us?"],
+    };
+    const pTf = this._state.player;
+    for (const npc of this._state.townfolk) {
+      const tfDist = this._dist(npc.x, npc.z, pTf.x, pTf.z);
+      if (tfDist < 4 && Math.random() < 0.002) {
+        const lines = TOWNFOLK_LINES[npc.role] || TOWNFOLK_LINES.peasant;
+        const tfLine = lines[Math.floor(Math.random() * lines.length)];
+        this._addFloatingText(npc.x, npc.y + 2.5, npc.z, tfLine, '#cccc88');
+      }
+    }
   }
 
   // ──────────────────────────────────────────────────────────────
@@ -8205,6 +8507,16 @@ export class DiabloGame {
       // Reward keystones
       rift.keystones += 2;
 
+      // Add leaderboard entry
+      this._addLeaderboardEntry({
+        playerName: this._state.multiplayer.playerName || 'Hero',
+        class: this._state.player.class,
+        level: this._state.player.level,
+        grLevel: rift.level,
+        timeRemaining: rift.timeRemaining,
+        date: new Date().toISOString().split('T')[0],
+      });
+
       this._addFloatingText(
         this._state.player.x, this._state.player.y + 4, this._state.player.z,
         `GR ${rift.level} CLEARED! +2 Keystones`, '#ffd700'
@@ -8218,7 +8530,7 @@ export class DiabloGame {
         const lz = this._state.player.z + Math.cos(lootAngle) * lootDist;
         const lootLevel = Math.min(20 + rift.level, 100);
         const lootItems = this._rollLoot({
-          type: EnemyType.SKELETON,
+          type: EnemyType.SKELETON_WARRIOR,
           level: lootLevel,
           isBoss: true,
           lootTable: [],
@@ -8244,6 +8556,27 @@ export class DiabloGame {
   private _checkMapClear(): void {
     if (this._state.phase !== DiabloPhase.PLAYING) return;
     if (this._state.currentMap === DiabloMapId.CAMELOT) return;
+
+    // Check room clearing
+    if (this._state.dungeonLayout) {
+      for (const room of this._state.dungeonLayout.rooms) {
+        if (room.cleared || room.enemies > 0) continue;
+        // Check if any alive enemies are still in this room
+        const enemiesInRoom = this._state.enemies.filter(e =>
+          e.state !== EnemyState.DEAD && e.state !== EnemyState.DYING &&
+          e.x >= room.x && e.x <= room.x + room.width &&
+          e.z >= room.z && e.z <= room.z + room.height
+        );
+        if (enemiesInRoom.length === 0) {
+          room.cleared = true;
+          this._addFloatingText(
+            room.x + room.width / 2, 2, room.z + room.height / 2,
+            'Room Cleared!', '#44ff44'
+          );
+        }
+      }
+    }
+
     const target = MAP_KILL_TARGET[this._state.currentMap] || 50;
     if (this._state.killCount >= target) {
       const aliveEnemies = this._state.enemies.filter(
@@ -8331,6 +8664,54 @@ export class DiabloGame {
   private _spawnEnemy(): void {
     const p = this._state.player;
     const mapCfg = MAP_CONFIGS[this._state.currentMap];
+
+    // Night boss re-spawn check (once per 10 kills at night)
+    if (this._state.timeOfDay === TimeOfDay.NIGHT && this._state.killCount > 0 && this._state.killCount % 10 === 0) {
+      this._spawnNightBoss();
+    }
+    // Day boss re-spawn check (once per 15 kills when not night)
+    if (this._state.timeOfDay !== TimeOfDay.NIGHT && this._state.killCount > 0 && this._state.killCount % 15 === 0) {
+      this._spawnDayBoss();
+    }
+
+    // Room-based spawning in dungeons
+    if (this._state.dungeonLayout) {
+      const layout = this._state.dungeonLayout;
+      for (const room of layout.rooms) {
+        if (room.cleared || room.type === 'start') continue;
+        const playerInRoom = p.x >= room.x - 2 && p.x <= room.x + room.width + 2 &&
+                             p.z >= room.z - 2 && p.z <= room.z + room.height + 2;
+        if (playerInRoom && room.enemies > 0) {
+          const count = room.enemies;
+          for (let i = 0; i < count; i++) {
+            this._spawnEnemyInRoom(room);
+          }
+          room.enemies = 0;
+          if (room.type === 'boss') {
+            this._addFloatingText(p.x, p.y + 3, p.z, 'BOSS ROOM!', '#ff4444');
+          } else if (room.type === 'treasure') {
+            this._addFloatingText(p.x, p.y + 3, p.z, 'Treasure Room!', '#ffd700');
+          }
+        }
+      }
+      return;
+    }
+
+    // Random position 40-60 units from player, within map bounds
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 40 + Math.random() * 20;
+    const halfW = mapCfg.width / 2 - 2;
+    const halfD = ((mapCfg as any).depth || (mapCfg as any).height || mapCfg.width) / 2 - 2;
+
+    let ex = p.x + Math.cos(angle) * dist;
+    let ez = p.z + Math.sin(angle) * dist;
+    ex = Math.max(-halfW, Math.min(halfW, ex));
+    ez = Math.max(-halfD, Math.min(halfD, ez));
+
+    this._spawnEnemyAt(ex, ez);
+  }
+
+  private _spawnEnemyAt(ex: number, ez: number): void {
     const weights = ENEMY_SPAWN_WEIGHTS[this._state.currentMap];
     if (!weights || weights.length === 0) return;
 
@@ -8346,15 +8727,6 @@ export class DiabloGame {
       }
     }
 
-    // Night boss re-spawn check (once per 10 kills at night)
-    if (this._state.timeOfDay === TimeOfDay.NIGHT && this._state.killCount > 0 && this._state.killCount % 10 === 0) {
-      this._spawnNightBoss();
-    }
-    // Day boss re-spawn check (once per 15 kills when not night)
-    if (this._state.timeOfDay !== TimeOfDay.NIGHT && this._state.killCount > 0 && this._state.killCount % 15 === 0) {
-      this._spawnDayBoss();
-    }
-
     // Boss spawn every 20 kills
     let isBossSpawn = false;
     if (this._state.killCount > 0 && this._state.killCount % 20 === 0 && this._state.totalEnemiesSpawned > 0) {
@@ -8366,17 +8738,6 @@ export class DiabloGame {
 
     const def = ENEMY_DEFS[chosenType];
     if (!def) return;
-
-    // Random position 40-60 units from player, within map bounds
-    const angle = Math.random() * Math.PI * 2;
-    const dist = 40 + Math.random() * 20;
-    const halfW = mapCfg.width / 2 - 2;
-    const halfD = ((mapCfg as any).depth || (mapCfg as any).height || mapCfg.width) / 2 - 2;
-
-    let ex = p.x + Math.cos(angle) * dist;
-    let ez = p.z + Math.sin(angle) * dist;
-    ex = Math.max(-halfW, Math.min(halfW, ex));
-    ez = Math.max(-halfD, Math.min(halfD, ez));
 
     const diffCfg = DIFFICULTY_CONFIGS[this._state.difficulty];
     let hpMult = (isBossSpawn ? 5 : 1) * diffCfg.hpMult;
@@ -8448,6 +8809,12 @@ export class DiabloGame {
 
     this._state.enemies.push(enemy);
     this._state.totalEnemiesSpawned++;
+  }
+
+  private _spawnEnemyInRoom(room: DungeonRoom): void {
+    const x = room.x + 1 + Math.random() * (room.width - 2);
+    const z = room.z + 1 + Math.random() * (room.height - 2);
+    this._spawnEnemyAt(x, z);
   }
 
   // ──────────────────────────────────────────────────────────────
@@ -8663,6 +9030,15 @@ export class DiabloGame {
     const dist = this._dist(p.x, p.z, loot.x, loot.z);
     if (dist > 4) return;
 
+    // Check if this is a death gold pile
+    if (loot.item.name.startsWith('Lost Gold (')) {
+      p.gold += loot.item.value;
+      this._addFloatingText(p.x, p.y + 2.5, p.z, `+${loot.item.value} Gold recovered!`, '#ffd700');
+      this._playSound('gold');
+      this._state.loot.splice(lootIdx, 1);
+      return;
+    }
+
     const emptyIdx = p.inventory.findIndex((s) => s.item === null);
     if (emptyIdx < 0) {
       this._addFloatingText(p.x, p.y + 2, p.z, "Inventory Full!", "#ff4444");
@@ -8671,6 +9047,7 @@ export class DiabloGame {
 
     p.inventory[emptyIdx].item = { ...loot.item, id: this._genId() };
     this._addFloatingText(p.x, p.y + 2.5, p.z, `+${loot.item.name}`, RARITY_CSS[loot.item.rarity]);
+    this._playSound('loot');
     this._renderer.spawnParticles(ParticleType.GOLD, loot.x, loot.y + 0.5, loot.z, 4 + Math.floor(Math.random() * 3), this._state.particles);
     this._state.loot.splice(lootIdx, 1);
 
@@ -8713,6 +9090,142 @@ export class DiabloGame {
     const halfD = ((mapCfg as any).depth || (mapCfg as any).height || mapCfg.width) / 2;
     p.x = Math.max(-halfW, Math.min(halfW, p.x));
     p.z = Math.max(-halfD, Math.min(halfD, p.z));
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  //  PROCEDURAL AUDIO
+  // ──────────────────────────────────────────────────────────────
+  private _ensureAudio(): AudioContext | null {
+    if (!this._audioCtx) {
+      try { this._audioCtx = new AudioContext(); } catch { return null; }
+    }
+    if (this._audioCtx.state === 'suspended') {
+      this._audioCtx.resume();
+    }
+    return this._audioCtx;
+  }
+
+  private _playSound(type: 'hit' | 'crit' | 'skill' | 'levelup' | 'loot' | 'death' | 'boss' | 'dodge' | 'potion' | 'gold'): void {
+    if (this._audioMuted) return;
+    const ctx = this._ensureAudio();
+    if (!ctx) return;
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    const now = ctx.currentTime;
+    const vol = this._audioVolume;
+
+    switch (type) {
+      case 'hit':
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(200, now);
+        osc.frequency.exponentialRampToValueAtTime(80, now + 0.1);
+        gain.gain.setValueAtTime(vol * 0.4, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+        osc.start(now);
+        osc.stop(now + 0.1);
+        break;
+      case 'crit': {
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(400, now);
+        osc.frequency.exponentialRampToValueAtTime(100, now + 0.15);
+        gain.gain.setValueAtTime(vol * 0.5, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+        osc.start(now);
+        osc.stop(now + 0.15);
+        const noise = ctx.createOscillator();
+        noise.type = 'sawtooth';
+        noise.frequency.setValueAtTime(800, now);
+        noise.frequency.exponentialRampToValueAtTime(200, now + 0.05);
+        const ng = ctx.createGain();
+        ng.gain.setValueAtTime(vol * 0.3, now);
+        ng.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+        noise.connect(ng);
+        ng.connect(ctx.destination);
+        noise.start(now);
+        noise.stop(now + 0.08);
+        break;
+      }
+      case 'skill':
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(600, now);
+        osc.frequency.exponentialRampToValueAtTime(300, now + 0.2);
+        gain.gain.setValueAtTime(vol * 0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+        osc.start(now);
+        osc.stop(now + 0.2);
+        break;
+      case 'levelup':
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(400, now);
+        osc.frequency.linearRampToValueAtTime(800, now + 0.2);
+        osc.frequency.linearRampToValueAtTime(1200, now + 0.5);
+        gain.gain.setValueAtTime(vol * 0.5, now);
+        gain.gain.linearRampToValueAtTime(vol * 0.3, now + 0.3);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+        osc.start(now);
+        osc.stop(now + 0.6);
+        break;
+      case 'loot':
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(800, now);
+        osc.frequency.setValueAtTime(1000, now + 0.05);
+        osc.frequency.setValueAtTime(1200, now + 0.1);
+        gain.gain.setValueAtTime(vol * 0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+        osc.start(now);
+        osc.stop(now + 0.2);
+        break;
+      case 'death':
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(300, now);
+        osc.frequency.exponentialRampToValueAtTime(50, now + 0.8);
+        gain.gain.setValueAtTime(vol * 0.5, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+        osc.start(now);
+        osc.stop(now + 0.8);
+        break;
+      case 'boss':
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(100, now);
+        osc.frequency.linearRampToValueAtTime(200, now + 0.3);
+        osc.frequency.linearRampToValueAtTime(80, now + 0.6);
+        gain.gain.setValueAtTime(vol * 0.6, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+        osc.start(now);
+        osc.stop(now + 0.8);
+        break;
+      case 'dodge':
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(500, now);
+        osc.frequency.exponentialRampToValueAtTime(200, now + 0.08);
+        gain.gain.setValueAtTime(vol * 0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+        osc.start(now);
+        osc.stop(now + 0.08);
+        break;
+      case 'potion':
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(600, now);
+        osc.frequency.linearRampToValueAtTime(900, now + 0.15);
+        gain.gain.setValueAtTime(vol * 0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+        osc.start(now);
+        osc.stop(now + 0.2);
+        break;
+      case 'gold':
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(1200, now);
+        osc.frequency.setValueAtTime(1400, now + 0.03);
+        gain.gain.setValueAtTime(vol * 0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+        osc.start(now);
+        osc.stop(now + 0.08);
+        break;
+    }
   }
 
   // ──────────────────────────────────────────────────────────────
@@ -8781,6 +9294,72 @@ export class DiabloGame {
   // ──────────────────────────────────────────────────────────────
   private _genId(): string {
     return "d" + (this._nextId++);
+  }
+
+
+  // ──────────────────────────────────────────────────────────────
+  //  RUNEWORD SYSTEM
+  // ──────────────────────────────────────────────────────────────
+  private _checkRunewords(): void {
+    const p = this._state.player;
+    const eq = p.equipment;
+    const slots = ['helmet', 'body', 'gauntlets', 'legs', 'feet', 'accessory1', 'accessory2', 'weapon', 'lantern'] as const;
+
+    for (const slotKey of slots) {
+      const item = eq[slotKey];
+      if (!item || !item.sockets || item.sockets.length < 2) continue;
+
+      // Check if item's socket rune pattern matches any runeword
+      // Map gem types to rune types (fire=A, ice=B, lightning=C, poison=D, holy=E)
+      const gemToRune: Record<string, RuneType> = {
+        [DamageType.FIRE]: RuneType.RUNE_A,
+        [DamageType.ICE]: RuneType.RUNE_B,
+        [DamageType.LIGHTNING]: RuneType.RUNE_C,
+        [DamageType.POISON]: RuneType.RUNE_D,
+        [DamageType.HOLY]: RuneType.RUNE_E,
+      };
+
+      const itemRunes = item.sockets
+        .filter(s => s.gemType !== null)
+        .map(s => gemToRune[s.gemType as string] || RuneType.NONE);
+
+      if (itemRunes.length < 2) continue;
+
+      for (const rw of RUNEWORD_DEFS) {
+        // Check slot compatibility
+        if (!rw.requiredSlots.includes(item.slot)) continue;
+
+        // Check rune pattern (must match in order, allow partial match for shorter patterns)
+        if (itemRunes.length < rw.requiredRunes.length) continue;
+
+        let matches = true;
+        for (let i = 0; i < rw.requiredRunes.length; i++) {
+          if (itemRunes[i] !== rw.requiredRunes[i]) {
+            matches = false;
+            break;
+          }
+        }
+
+        if (matches) {
+          // Apply runeword!
+          item.name = `${rw.name} ${item.name}`;
+          item.rarity = ItemRarity.LEGENDARY;
+          if (rw.legendaryEffectId) {
+            item.legendaryAbility = rw.legendaryEffectId;
+          }
+          // Add bonus stats
+          for (const [key, value] of Object.entries(rw.bonusStats)) {
+            if (typeof value === 'number') {
+              (item.stats as any)[key] = ((item.stats as any)[key] || 0) + value;
+            }
+          }
+          item.description = `${rw.specialEffect}\n${item.description || ''}`;
+          this._addFloatingText(p.x, p.y + 3, p.z, `RUNEWORD: ${rw.name}!`, '#ffd700');
+          this._recalculatePlayerStats();
+          break; // Only one runeword per item
+        }
+      }
+    }
   }
 
   // ──────────────────────────────────────────────────────────────
@@ -9315,6 +9894,7 @@ export class DiabloGame {
     const pz = this._state.player.z;
     this._addFloatingText(px, py + 4, pz, `${def.name} has awoken!`, "#ff44ff");
     this._addFloatingText(px, py + 3, pz, "A creature of the night stalks this land...", "#cc88ff");
+    this._playSound('boss');
   }
 
   private _spawnDayBoss(): void {
@@ -9448,6 +10028,10 @@ export class DiabloGame {
       chestsOpened: this._chestsOpened,
       goldEarnedTotal: this._goldEarnedTotal,
       totalKills: this._totalKills,
+      greaterRift: {
+        bestRiftLevel: this._state.greaterRift.bestRiftLevel,
+        keystones: this._state.greaterRift.keystones,
+      },
     };
     localStorage.setItem("diablo_save", JSON.stringify(save));
 
@@ -9566,6 +10150,11 @@ export class DiabloGame {
     this._chestsOpened = save.chestsOpened || 0;
     this._goldEarnedTotal = save.goldEarnedTotal || 0;
     this._totalKills = save.totalKills || 0;
+    // Restore Greater Rift progress
+    if (save.greaterRift) {
+      this._state.greaterRift.bestRiftLevel = save.greaterRift.bestRiftLevel || 0;
+      this._state.greaterRift.keystones = save.greaterRift.keystones ?? 3;
+    }
     // Rebuild the map
     this._renderer.buildMap(this._state.currentMap);
     this._renderer.buildPlayer(this._state.player.class);
@@ -9657,6 +10246,11 @@ export class DiabloGame {
           text-shadow:0 0 15px rgba(255,215,0,0.4);">
           SHARED STASH
         </h2>
+        <div id="stash-sort-bar" style="display:flex;gap:8px;margin-bottom:10px;justify-content:center;">
+          <button class="stash-sort-btn" data-sort="rarity" style="padding:4px 12px;background:#555;color:#fff;border:1px solid #888;border-radius:4px;cursor:pointer;font-family:Georgia,serif;font-size:12px;">Sort: Rarity</button>
+          <button class="stash-sort-btn" data-sort="type" style="padding:4px 12px;background:#555;color:#fff;border:1px solid #888;border-radius:4px;cursor:pointer;font-family:Georgia,serif;font-size:12px;">Sort: Type</button>
+          <button class="stash-sort-btn" data-sort="level" style="padding:4px 12px;background:#555;color:#fff;border:1px solid #888;border-radius:4px;cursor:pointer;font-family:Georgia,serif;font-size:12px;">Sort: Level</button>
+        </div>
         <div style="display:flex;gap:30px;align-items:flex-start;">
           <!-- Inventory Panel -->
           <div>
@@ -9737,6 +10331,24 @@ export class DiabloGame {
       el.addEventListener("mouseleave", () => this._hideItemTooltip());
     });
 
+    // Sort buttons
+    const sortBtns = this._menuEl.querySelectorAll(".stash-sort-btn") as NodeListOf<HTMLButtonElement>;
+    sortBtns.forEach((btn) => {
+      btn.addEventListener("mouseenter", () => {
+        btn.style.borderColor = "#c8a84e";
+        btn.style.background = "#666";
+      });
+      btn.addEventListener("mouseleave", () => {
+        btn.style.borderColor = "#888";
+        btn.style.background = "#555";
+      });
+      btn.addEventListener("click", () => {
+        const sortType = btn.getAttribute("data-sort") as 'rarity' | 'type' | 'level';
+        this._sortStash(sortType);
+        this._showStash();
+      });
+    });
+
     // Back button
     const backBtn = this._menuEl.querySelector("#stash-back-btn") as HTMLButtonElement;
     backBtn.addEventListener("mouseenter", () => {
@@ -9760,6 +10372,11 @@ export class DiabloGame {
   private _vendorDialogueIdx: Record<string, number> = {};
 
   private _showVendorShop(vendor: DiabloVendor): void {
+    // Vendor dialogue — show a floating speech line from this vendor
+    const vendorLines = VENDOR_DIALOGUE[vendor.type] || VENDOR_DIALOGUE[VendorType.GENERAL_MERCHANT];
+    const vLine = vendorLines[Math.floor(Math.random() * vendorLines.length)];
+    this._addFloatingText(vendor.x, 3, vendor.z, `"${vLine}"`, '#ffd700');
+
     const p = this._state.player;
     this._phaseBeforeOverlay = DiabloPhase.PLAYING;
     this._state.phase = DiabloPhase.INVENTORY;
@@ -10134,6 +10751,53 @@ export class DiabloGame {
     ctx.lineWidth = 1.5;
     ctx.strokeRect(toMx(-halfW), toMy(-halfD), mapW * scale, mapD * scale);
 
+    // Draw dungeon rooms on minimap
+    if (this._state.dungeonLayout) {
+      const layout = this._state.dungeonLayout;
+
+      // Draw rooms
+      for (const room of layout.rooms) {
+        let color = 'rgba(100,100,100,0.4)';
+        if (room.type === 'start') color = 'rgba(100,200,100,0.4)';
+        else if (room.type === 'boss') color = 'rgba(200,100,100,0.4)';
+        else if (room.type === 'treasure') color = 'rgba(200,200,100,0.4)';
+        else if (room.type === 'secret') color = 'rgba(100,100,200,0.4)';
+
+        ctx.fillStyle = color;
+        const rx = toMx(room.x);
+        const rz = toMy(room.z);
+        ctx.fillRect(rx, rz, room.width * scale, room.height * scale);
+
+        // Room border
+        ctx.strokeStyle = 'rgba(150,150,150,0.6)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(rx, rz, room.width * scale, room.height * scale);
+      }
+
+      // Draw corridors
+      ctx.fillStyle = 'rgba(80,80,80,0.3)';
+      for (const corridor of layout.corridors) {
+        const x1 = toMx(Math.min(corridor.x1, corridor.x2) - corridor.width / 2);
+        const z1 = toMy(Math.min(corridor.z1, corridor.z2) - corridor.width / 2);
+        const w = (Math.abs(corridor.x2 - corridor.x1) + corridor.width) * scale;
+        const h = (Math.abs(corridor.z2 - corridor.z1) + corridor.width) * scale;
+        ctx.fillRect(x1, z1, w, h);
+      }
+
+      // Draw hazards
+      for (const hazard of layout.hazards) {
+        let hColor = 'rgba(255,68,0,0.4)';
+        if (hazard.type === 'poison') hColor = 'rgba(68,255,0,0.4)';
+        else if (hazard.type === 'ice') hColor = 'rgba(68,136,255,0.4)';
+        else if (hazard.type === 'spikes') hColor = 'rgba(136,136,136,0.4)';
+
+        ctx.fillStyle = hColor;
+        ctx.beginPath();
+        ctx.arc(toMx(hazard.x), toMy(hazard.z), hazard.radius * scale, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
     // Fog of war overlay for combat maps
     const useFogOfWar = mapId !== DiabloMapId.CAMELOT && this._state.exploredGrid.length > 0;
 
@@ -10361,14 +11025,50 @@ export class DiabloGame {
     this._isDead = true;
     this._state.deathCount++;
     const p = this._state.player;
+
+    // Record death location
+    this._deathLocationX = p.x;
+    this._deathLocationZ = p.z;
+
     const goldLoss = Math.floor(p.gold * 0.1);
     p.gold -= goldLoss;
+    this._deathGoldDrop = goldLoss;
     this._state.deathGoldLoss = goldLoss;
     this._state.respawnTimer = 5.0;
+
+    this._playSound('death');
+
+    // Drop gold pile at death location
+    if (this._deathGoldDrop > 0) {
+      this._addFloatingText(p.x, p.y + 2, p.z, `-${this._deathGoldDrop} Gold`, '#ff4444');
+      const goldItem: DiabloItem = {
+        id: `death-gold-${this._nextId++}`,
+        name: `Lost Gold (${this._deathGoldDrop}g)`,
+        type: ItemType.AMULET,
+        slot: ItemSlot.ACCESSORY_1,
+        rarity: ItemRarity.COMMON,
+        level: 1,
+        stats: {},
+        description: `Your lost gold from death.`,
+        icon: '💰',
+        value: this._deathGoldDrop,
+      };
+      this._state.loot.push({
+        id: `death-loot-${this._nextId++}`,
+        item: goldItem,
+        x: this._deathLocationX,
+        y: 0,
+        z: this._deathLocationZ,
+        timer: 999,
+      });
+    }
 
     this._deathOverlay.style.display = "flex";
     const goldEl = this._deathOverlay.querySelector("#diablo-gold-loss") as HTMLDivElement;
     if (goldEl) goldEl.textContent = goldLoss > 0 ? `Lost ${goldLoss} gold` : "";
+    // Death recap
+    const recapEl = this._deathOverlay.querySelector("#diablo-death-recap") as HTMLDivElement;
+    if (recapEl) recapEl.textContent = this._lastDeathCause ? `Slain by: ${this._lastDeathCause}` : 'You have been slain.';
   }
 
   private _updateDeathRespawn(dt: number): void {
@@ -10380,19 +11080,28 @@ export class DiabloGame {
       this._isDead = false;
       this._deathOverlay.style.display = "none";
       const p = this._state.player;
-      // Respawn near a random corner of the map
-      const rMapCfg = MAP_CONFIGS[this._state.currentMap];
-      const rPadX = rMapCfg.width * 0.12;
-      const rPadZ = rMapCfg.depth * 0.12;
-      const rCorners = [
-        { x: rPadX, z: rPadZ },
-        { x: rMapCfg.width - rPadX, z: rPadZ },
-        { x: rPadX, z: rMapCfg.depth - rPadZ },
-        { x: rMapCfg.width - rPadX, z: rMapCfg.depth - rPadZ },
-      ];
-      const rCorner = rCorners[Math.floor(Math.random() * rCorners.length)];
-      p.x = rCorner.x + (Math.random() * 2 - 1);
-      p.z = rCorner.z + (Math.random() * 2 - 1);
+      // Respawn at dungeon entrance if available, otherwise map corner
+      if (this._state.dungeonLayout && this._state.dungeonLayout.rooms.length > 0) {
+        const startRoom = this._state.dungeonLayout.rooms[this._state.dungeonLayout.spawnRoom];
+        p.x = startRoom.x + startRoom.width / 2;
+        p.z = startRoom.z + startRoom.height / 2;
+      } else if (this._state.currentMap === DiabloMapId.CAMELOT) {
+        p.x = 0;
+        p.z = 0;
+      } else {
+        const rMapCfg = MAP_CONFIGS[this._state.currentMap];
+        const rPadX = rMapCfg.width * 0.12;
+        const rPadZ = rMapCfg.depth * 0.12;
+        const rCorners = [
+          { x: rPadX, z: rPadZ },
+          { x: rMapCfg.width - rPadX, z: rPadZ },
+          { x: rPadX, z: rMapCfg.depth - rPadZ },
+          { x: rMapCfg.width - rPadX, z: rMapCfg.depth - rPadZ },
+        ];
+        const rCorner = rCorners[Math.floor(Math.random() * rCorners.length)];
+        p.x = rCorner.x + (Math.random() * 2 - 1);
+        p.z = rCorner.z + (Math.random() * 2 - 1);
+      }
       p.hp = Math.floor(p.maxHp * 0.5);
       p.mana = Math.floor(p.maxMana * 0.5);
       p.invulnTimer = 3.0;
@@ -11195,6 +11904,7 @@ export class DiabloGame {
   }
 
   private _applyPotionEffect(pot: DiabloPotion): void {
+    this._playSound('potion');
     const p = this._state.player;
     switch (pot.type) {
       case PotionType.HEALTH:
@@ -12258,6 +12968,78 @@ export class DiabloGame {
     return total;
   }
 
+
+  // ──────────────────────────────────────────────────────────────
+  //  PET PANEL (Shift+P quick view)
+  // ──────────────────────────────────────────────────────────────
+  private _showPetPanel(): void {
+    const p = this._state.player;
+    this._phaseBeforeOverlay = this._phaseBeforeOverlay || DiabloPhase.PLAYING;
+    this._state.phase = DiabloPhase.INVENTORY;
+    this._menuEl.innerHTML = '';
+
+    const panel = document.createElement('div');
+    panel.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(20,15,10,0.95);border:2px solid #8b6914;border-radius:8px;padding:20px;color:#fff;font-family:Georgia,serif;min-width:500px;max-height:80vh;overflow-y:auto;z-index:100;';
+
+    const title = document.createElement('h2');
+    title.style.cssText = 'text-align:center;color:#ffd700;margin:0 0 15px;font-size:24px;';
+    title.textContent = `Companions (${p.pets.length}/${p.maxPets})`;
+    panel.appendChild(title);
+
+    if (p.pets.length === 0) {
+      const empty = document.createElement('p');
+      empty.style.cssText = 'text-align:center;color:#888;font-style:italic;';
+      empty.textContent = 'No pets found yet. Defeat enemies to find companion eggs!';
+      panel.appendChild(empty);
+    }
+
+    for (const pet of p.pets) {
+      const petRow = document.createElement('div');
+      petRow.style.cssText = 'display:flex;align-items:center;gap:12px;padding:10px;margin:5px 0;background:rgba(255,255,255,0.05);border:1px solid #555;border-radius:4px;' + (pet.isSummoned ? 'border-color:#44ff44;' : '');
+
+      const icon = document.createElement('span');
+      icon.style.cssText = 'font-size:32px;';
+      icon.textContent = pet.icon;
+      petRow.appendChild(icon);
+
+      const info = document.createElement('div');
+      info.style.cssText = 'flex:1;';
+      info.innerHTML = `
+        <div style="font-size:16px;color:#ffd700;">${pet.customName} <span style="color:#aaa;font-size:12px;">Lv.${pet.level}</span></div>
+        <div style="font-size:12px;color:#aaa;">HP: ${Math.round(pet.hp)}/${pet.maxHp} | DMG: ${Math.round(pet.damage)} | ARM: ${pet.armor}</div>
+        <div style="font-size:11px;color:#888;">XP: ${pet.xp}/${pet.xpToNext} | Loyalty: ${pet.loyalty}%</div>
+        <div style="font-size:11px;color:#888;">Type: ${pet.petType} | ${pet.isSummoned ? '<span style="color:#44ff44;">Active</span>' : 'Idle'}</div>
+      `;
+      petRow.appendChild(info);
+
+      const btn = document.createElement('button');
+      btn.style.cssText = 'padding:6px 12px;background:' + (pet.isSummoned ? '#cc4444' : '#44aa44') + ';color:#fff;border:none;border-radius:4px;cursor:pointer;font-family:Georgia,serif;';
+      btn.textContent = pet.isSummoned ? 'Dismiss' : 'Summon';
+      btn.addEventListener('click', () => {
+        if (pet.isSummoned) {
+          this._dismissPet();
+        } else {
+          this._summonPet(pet.id);
+        }
+        this._showPetPanel();
+      });
+      petRow.appendChild(btn);
+
+      panel.appendChild(petRow);
+    }
+
+    const closeBtn = document.createElement('button');
+    closeBtn.style.cssText = 'display:block;margin:15px auto 0;padding:8px 24px;background:#555;color:#fff;border:1px solid #888;border-radius:4px;cursor:pointer;font-family:Georgia,serif;font-size:14px;';
+    closeBtn.textContent = 'Close (Esc)';
+    closeBtn.addEventListener('click', () => {
+      this._state.phase = this._phaseBeforeOverlay || DiabloPhase.PLAYING;
+      this._menuEl.innerHTML = '';
+    });
+    panel.appendChild(closeBtn);
+
+    this._menuEl.appendChild(panel);
+  }
+
   // ──────────────────────────────────────────────────────────────
   //  PET MANAGEMENT UI
   // ──────────────────────────────────────────────────────────────
@@ -12657,6 +13439,7 @@ export class DiabloGame {
             }
             item.sockets.push({ gemType, gemTier, bonusStats });
             this._addFloatingText(p.x, p.y + 3, p.z, `Gem socketed!`, '#ffd700');
+            this._checkRunewords();
           }
         }
         break;

@@ -1666,6 +1666,19 @@ export type NetworkMessage =
   | { type: 'ping'; data: { timestamp: number } }
   | { type: 'pong'; data: { timestamp: number; serverTime: number } };
 
+// ── Runeword System ─────────────────────────────────────────
+
+export interface RunewordDef {
+  id: string;
+  name: string;
+  description: string;
+  requiredRunes: RuneType[]; // Runes needed in order
+  requiredSlots: ItemSlot[]; // Valid equipment slots
+  bonusStats: DiabloItemStats;
+  specialEffect: string; // Description of the special effect
+  legendaryEffectId?: string; // Links to a legendary effect
+}
+
 // ── Factory functions ────────────────────────────────────────
 
 function createEmptyEquipment(): DiabloEquipment {
@@ -1712,6 +1725,61 @@ export function createDefaultCraftingState(): CraftingState {
     craftingQueue: [],
   };
 }
+
+export interface GRLeaderboardEntry {
+  playerName: string;
+  class: DiabloClass;
+  level: number;
+  grLevel: number;
+  timeRemaining: number;
+  date: string;
+}
+
+export interface KeyBindings {
+  moveUp: string;
+  moveDown: string;
+  moveLeft: string;
+  moveRight: string;
+  skill1: string;
+  skill2: string;
+  skill3: string;
+  skill4: string;
+  skill5: string;
+  skill6: string;
+  dodge: string;
+  potion1: string;
+  potion2: string;
+  potion3: string;
+  potion4: string;
+  inventory: string;
+  map: string;
+  lootFilter: string;
+  petSummon: string;
+  interact: string;
+}
+
+export const DEFAULT_KEYBINDINGS: KeyBindings = {
+  moveUp: 'KeyW',
+  moveDown: 'KeyS',
+  moveLeft: 'KeyA',
+  moveRight: 'KeyD',
+  skill1: 'Digit1',
+  skill2: 'Digit2',
+  skill3: 'Digit3',
+  skill4: 'Digit4',
+  skill5: 'Digit5',
+  skill6: 'Digit6',
+  dodge: 'Space',
+  potion1: 'F1',
+  potion2: 'F2',
+  potion3: 'F3',
+  potion4: 'F4',
+  inventory: 'KeyI',
+  map: 'KeyM',
+  lootFilter: 'Tab',
+  petSummon: 'KeyY',
+  interact: 'KeyE',
+};
 
 export function createDefaultPlayer(cls: DiabloClass): DiabloPlayerState {
   // Base stats that vary by class

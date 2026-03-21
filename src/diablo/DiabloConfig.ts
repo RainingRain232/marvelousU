@@ -37,6 +37,7 @@ import {
   RuneType,
   SkillRuneEffect,
   LegendaryEffectDef,
+  RunewordDef,
 } from './DiabloTypes';
 
 // ---------------------------------------------------------------------------
@@ -10094,3 +10095,90 @@ export const LEGENDARY_EFFECTS: Record<string, LegendaryEffectDef> = {
     effect: { cooldownReduction: 1 },
   },
 };
+
+// ---------------------------------------------------------------------------
+//  RUNEWORD DEFINITIONS
+// ---------------------------------------------------------------------------
+
+export const RUNEWORD_DEFS: RunewordDef[] = [
+  {
+    id: 'spirit',
+    name: 'Spirit',
+    description: 'A weapon blessed with divine energy.',
+    requiredRunes: [RuneType.RUNE_A, RuneType.RUNE_C, RuneType.RUNE_B, RuneType.RUNE_D],
+    requiredSlots: [ItemSlot.WEAPON],
+    bonusStats: { strength: 15, vitality: 15, critChance: 0.05, manaRegen: 5 },
+    specialEffect: '+25% faster cast rate, +2 mana per kill',
+    legendaryEffectId: 'mana_on_kill',
+  },
+  {
+    id: 'enigma',
+    name: 'Enigma',
+    description: 'Grants the wearer teleportation.',
+    requiredRunes: [RuneType.RUNE_E, RuneType.RUNE_A, RuneType.RUNE_B],
+    requiredSlots: [ItemSlot.BODY],
+    bonusStats: { strength: 20, armor: 50, moveSpeed: 0.15 },
+    specialEffect: '+15% movement speed, +50 defense, teleport on dodge',
+    legendaryEffectId: 'speed_on_kill',
+  },
+  {
+    id: 'insight',
+    name: 'Insight',
+    description: 'Deep meditation enhances mana recovery.',
+    requiredRunes: [RuneType.RUNE_B, RuneType.RUNE_A, RuneType.RUNE_D, RuneType.RUNE_C],
+    requiredSlots: [ItemSlot.WEAPON],
+    bonusStats: { intelligence: 20, manaRegen: 10, bonusMana: 50 },
+    specialEffect: 'Massive mana regeneration, +50 max mana',
+    legendaryEffectId: 'mana_on_kill',
+  },
+  {
+    id: 'fury',
+    name: 'Fury',
+    description: 'Unbridled rage made manifest.',
+    requiredRunes: [RuneType.RUNE_E, RuneType.RUNE_D, RuneType.RUNE_A],
+    requiredSlots: [ItemSlot.WEAPON],
+    bonusStats: { strength: 30, attackSpeed: 0.2, critDamage: 0.5, bonusDamage: 20 },
+    specialEffect: '+20% attack speed, +50% crit damage',
+    legendaryEffectId: 'double_strike',
+  },
+  {
+    id: 'fortitude',
+    name: 'Fortitude',
+    description: 'An impenetrable bulwark.',
+    requiredRunes: [RuneType.RUNE_C, RuneType.RUNE_B, RuneType.RUNE_E],
+    requiredSlots: [ItemSlot.BODY],
+    bonusStats: { vitality: 30, armor: 80, bonusHealth: 100 },
+    specialEffect: '+100 max HP, +80 armor, damage reduction',
+    legendaryEffectId: 'shield_on_hit',
+  },
+  {
+    id: 'infinity',
+    name: 'Infinity',
+    description: 'Conviction aura pierces all resistances.',
+    requiredRunes: [RuneType.RUNE_D, RuneType.RUNE_E, RuneType.RUNE_A, RuneType.RUNE_B],
+    requiredSlots: [ItemSlot.WEAPON],
+    bonusStats: { intelligence: 25, bonusDamage: 30, critChance: 0.08 },
+    specialEffect: 'Enemies take 20% more damage, chain lightning on hit',
+    legendaryEffectId: 'chain_lightning_proc',
+  },
+  {
+    id: 'bramble',
+    name: 'Bramble',
+    description: 'Thorns of vengeance.',
+    requiredRunes: [RuneType.RUNE_B, RuneType.RUNE_D, RuneType.RUNE_C],
+    requiredSlots: [ItemSlot.BODY],
+    bonusStats: { armor: 40, vitality: 15, poisonResist: 30 },
+    specialEffect: 'Enemies that hit you take poison damage',
+    legendaryEffectId: 'poison_cloud_on_hit',
+  },
+  {
+    id: 'grief',
+    name: 'Grief',
+    description: 'Pure, distilled damage.',
+    requiredRunes: [RuneType.RUNE_E, RuneType.RUNE_A, RuneType.RUNE_D],
+    requiredSlots: [ItemSlot.WEAPON],
+    bonusStats: { strength: 20, dexterity: 20, bonusDamage: 40, attackSpeed: 0.15 },
+    specialEffect: '+40 flat damage, ignore target armor',
+    legendaryEffectId: 'explode_on_kill',
+  },
+];

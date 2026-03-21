@@ -24,8 +24,10 @@ import {
   PetSpecies,
   PetAIState,
   DiabloPet,
+  DungeonLayout,
+  BossAbility,
 } from './DiabloTypes';
-import { ENEMY_DEFS, MAP_CONFIGS, VENDOR_DEFS } from './DiabloConfig';
+import { ENEMY_DEFS, MAP_CONFIGS, VENDOR_DEFS, BOSS_PHASE_CONFIGS } from './DiabloConfig';
 import { RARITY_COLORS } from './DiabloTypes';
 
 /** Compute terrain elevation at world (x, z). Amplitude kept moderate for isometric view. */
@@ -137,8 +139,17 @@ export class DiabloRenderer {
   // Loot drop animation tracking (id -> spawn time)
   private _lootSpawnTimes: Map<string, number> = new Map();
 
+  // Boss arena hazard effect meshes
+  private _bossEffectMeshes: Map<string, THREE.Mesh> = new Map();
+
   // Boss telegraph enhancements
   private _bossWarningRings: Map<string, THREE.Group> = new Map();
+
+  // Remote multiplayer player meshes
+  private _remotePlayerMeshes: Map<string, THREE.Group> = new Map();
+
+  // Dungeon layout rendering
+  private _dungeonGroup: THREE.Group | null = null;
 
   // Post-processing
   private _bloomComposer: EffectComposer | null = null;
@@ -27116,6 +27127,42 @@ export class DiabloRenderer {
     this._playerGroup.position.set(state.player.x, state.player.y, state.player.z);
     this._playerGroup.rotation.y = state.player.angle;
 
+    // Render remote multiplayer players
+    if (state.multiplayer && state.multiplayer.remotePlayers) {
+      const activeIds = new Set<string>();
+      for (const rp of state.multiplayer.remotePlayers) {
+        activeIds.add(rp.id);
+        let mesh = this._remotePlayerMeshes.get(rp.id);
+        if (!mesh) {
+          // Create a simple colored capsule/cylinder for remote player
+          mesh = new THREE.Group();
+          const bodyGeo = new THREE.CylinderGeometry(0.4, 0.4, 1.6, 8);
+          const bodyMat = new THREE.MeshLambertMaterial({ color: this._getClassColor(rp.class) });
+          const body = new THREE.Mesh(bodyGeo, bodyMat);
+          body.position.y = 0.8;
+          mesh.add(body);
+          // Head
+          const headGeo = new THREE.SphereGeometry(0.3, 8, 8);
+          const head = new THREE.Mesh(headGeo, bodyMat);
+          head.position.y = 1.9;
+          mesh.add(head);
+          // Name label (using a sprite or just floating position)
+          this._scene.add(mesh);
+          this._remotePlayerMeshes.set(rp.id, mesh);
+        }
+        mesh.position.set(rp.x, rp.y, rp.z);
+        mesh.rotation.y = rp.angle;
+        mesh.visible = true;
+      }
+      // Remove meshes for disconnected players
+      for (const [id, mesh] of this._remotePlayerMeshes) {
+        if (!activeIds.has(id)) {
+          this._scene.remove(mesh);
+          this._remotePlayerMeshes.delete(id);
+        }
+      }
+    }
+
     // Invulnerability glow
     if (state.player.invulnTimer > 0) {
       if (!this._invulnMesh) {
@@ -27521,6 +27568,9 @@ export class DiabloRenderer {
 
     // -- Water surface animation --
     this._animateWater(dt);
+
+    // Boss arena hazard rendering
+    this._syncBossHazards(state, dt);
 
     // Boss attack telegraphs (enhanced)
     this._syncBossTelegraphs(state);
@@ -52043,6 +52093,76 @@ export class DiabloRenderer {
   //  BOSS TELEGRAPH VISUALS (ENHANCED)
   // ════════════════════════════════════════════════════════════════════════
 
+  private _syncBossHazards(state: DiabloState, dt: number): void {
+    // Boss arena hazard rendering
+    for (const enemy of state.enemies) {
+      if (!enemy.isBoss || enemy.state === EnemyState.DEAD) continue;
+
+      const phases = BOSS_PHASE_CONFIGS[state.currentMap as keyof typeof BOSS_PHASE_CONFIGS];
+      if (!phases) continue;
+
+      const currentPhase = phases.find((ph: any) => enemy.hp / enemy.maxHp <= ph.hpThreshold);
+      if (!currentPhase) continue;
+
+      // Fire Wall visualization
+      if (currentPhase.abilities.includes(BossAbility.FIRE_WALL)) {
+        const key = `firewall-${enemy.id}`;
+        let mesh = this._bossEffectMeshes.get(key);
+        if (!mesh) {
+          const geo = new THREE.TorusGeometry(5, 0.3, 8, 32);
+          const mat = new THREE.MeshBasicMaterial({ color: 0xff4400, transparent: true, opacity: 0.6 });
+          mesh = new THREE.Mesh(geo, mat);
+          mesh.rotation.x = Math.PI / 2;
+          this._scene.add(mesh);
+          this._bossEffectMeshes.set(key, mesh);
+        }
+        mesh.position.set(enemy.x, 1, enemy.z);
+        mesh.rotation.z += dt * 0.5; // Rotate
+        const scale = 1 + Math.sin(state.time * 2) * 0.2;
+        mesh.scale.set(scale, scale, 1);
+        mesh.visible = true;
+      }
+
+      // Death Beam visualization
+      if (currentPhase.abilities.includes(BossAbility.DEATH_BEAM)) {
+        const key = `deathbeam-${enemy.id}`;
+        let mesh = this._bossEffectMeshes.get(key);
+        if (!mesh) {
+          const geo = new THREE.CylinderGeometry(0.15, 0.15, 15, 8);
+          geo.rotateZ(Math.PI / 2);
+          const mat = new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.7 });
+          mesh = new THREE.Mesh(geo, mat);
+          this._scene.add(mesh);
+          this._bossEffectMeshes.set(key, mesh);
+        }
+        // Position beam from boss toward player
+        const p = state.player;
+        const dx = p.x - enemy.x;
+        const dz = p.z - enemy.z;
+        const beamAngle = Math.atan2(dx, dz);
+        mesh.position.set(
+          enemy.x + dx * 0.5,
+          1.5,
+          enemy.z + dz * 0.5
+        );
+        mesh.rotation.y = beamAngle;
+        const dist = Math.sqrt(dx * dx + dz * dz);
+        mesh.scale.set(1, 1, dist / 15);
+        mesh.visible = true;
+      }
+    }
+
+    // Clean up boss effect meshes for dead bosses
+    for (const [key, mesh] of this._bossEffectMeshes) {
+      const enemyId = key.split('-').slice(1).join('-');
+      const enemy = state.enemies.find(e => e.id === enemyId);
+      if (!enemy || enemy.state === EnemyState.DEAD) {
+        this._scene.remove(mesh);
+        this._bossEffectMeshes.delete(key);
+      }
+    }
+  }
+
   private _syncBossTelegraphs(state: DiabloState): void {
     for (const enemy of state.enemies) {
       if (!enemy.isBoss) continue;
@@ -55995,5 +56115,100 @@ export class DiabloRenderer {
     } else {
       this._playerLantern.intensity = 0;
     }
+  }
+
+  private _getClassColor(cls: string): number {
+    switch (cls) {
+      case 'WARRIOR': return 0xcc4444;
+      case 'MAGE': return 0x4444cc;
+      case 'RANGER': return 0x44cc44;
+      case 'PALADIN': return 0xcccc44;
+      case 'NECROMANCER': return 0x884488;
+      case 'ASSASSIN': return 0x444444;
+      default: return 0x888888;
+    }
+  }
+
+  renderDungeonLayout(layout: DungeonLayout | null): void {
+    // Remove old dungeon
+    if (this._dungeonGroup) {
+      this._scene.remove(this._dungeonGroup);
+      this._dungeonGroup = null;
+    }
+    if (!layout) return;
+
+    this._dungeonGroup = new THREE.Group();
+
+    // Render room floors as slightly raised/colored planes
+    for (const room of layout.rooms) {
+      const floorGeo = new THREE.PlaneGeometry(room.width, room.height);
+      let floorColor = 0x333333;
+      if (room.type === 'start') floorColor = 0x334433;
+      else if (room.type === 'boss') floorColor = 0x443333;
+      else if (room.type === 'treasure') floorColor = 0x443322;
+      else if (room.type === 'secret') floorColor = 0x333344;
+
+      const floorMat = new THREE.MeshLambertMaterial({ color: floorColor, transparent: true, opacity: 0.5 });
+      const floor = new THREE.Mesh(floorGeo, floorMat);
+      floor.rotation.x = -Math.PI / 2;
+      floor.position.set(room.x + room.width / 2, 0.05, room.z + room.height / 2);
+      this._dungeonGroup.add(floor);
+
+      // Room walls (thin box geometry)
+      const wallHeight = 3;
+      const wallThickness = 0.3;
+      const wallMat = new THREE.MeshLambertMaterial({ color: 0x555555 });
+
+      // Top wall
+      const topWall = new THREE.Mesh(new THREE.BoxGeometry(room.width + wallThickness, wallHeight, wallThickness), wallMat);
+      topWall.position.set(room.x + room.width / 2, wallHeight / 2, room.z);
+      this._dungeonGroup.add(topWall);
+      // Bottom wall
+      const botWall = new THREE.Mesh(new THREE.BoxGeometry(room.width + wallThickness, wallHeight, wallThickness), wallMat);
+      botWall.position.set(room.x + room.width / 2, wallHeight / 2, room.z + room.height);
+      this._dungeonGroup.add(botWall);
+      // Left wall
+      const leftWall = new THREE.Mesh(new THREE.BoxGeometry(wallThickness, wallHeight, room.height + wallThickness), wallMat);
+      leftWall.position.set(room.x, wallHeight / 2, room.z + room.height / 2);
+      this._dungeonGroup.add(leftWall);
+      // Right wall
+      const rightWall = new THREE.Mesh(new THREE.BoxGeometry(wallThickness, wallHeight, room.height + wallThickness), wallMat);
+      rightWall.position.set(room.x + room.width, wallHeight / 2, room.z + room.height / 2);
+      this._dungeonGroup.add(rightWall);
+    }
+
+    // Render corridors as floor strips
+    const corridorMat = new THREE.MeshLambertMaterial({ color: 0x2a2a2a, transparent: true, opacity: 0.5 });
+    for (const corridor of layout.corridors) {
+      const dx = Math.abs(corridor.x2 - corridor.x1);
+      const dz = Math.abs(corridor.z2 - corridor.z1);
+      const cx = (corridor.x1 + corridor.x2) / 2;
+      const cz = (corridor.z1 + corridor.z2) / 2;
+      const cw = Math.max(corridor.width, dx);
+      const ch = Math.max(corridor.width, dz);
+
+      const corrGeo = new THREE.PlaneGeometry(cw, ch);
+      const corrFloor = new THREE.Mesh(corrGeo, corridorMat);
+      corrFloor.rotation.x = -Math.PI / 2;
+      corrFloor.position.set(cx, 0.04, cz);
+      this._dungeonGroup.add(corrFloor);
+    }
+
+    // Render hazards as colored circles on the ground
+    for (const hazard of layout.hazards) {
+      let hazardColor = 0xff4400;
+      if (hazard.type === 'poison') hazardColor = 0x44ff00;
+      else if (hazard.type === 'ice') hazardColor = 0x4488ff;
+      else if (hazard.type === 'spikes') hazardColor = 0x888888;
+
+      const hazardGeo = new THREE.CircleGeometry(hazard.radius, 16);
+      const hazardMat = new THREE.MeshLambertMaterial({ color: hazardColor, transparent: true, opacity: 0.4 });
+      const hazardMesh = new THREE.Mesh(hazardGeo, hazardMat);
+      hazardMesh.rotation.x = -Math.PI / 2;
+      hazardMesh.position.set(hazard.x, 0.06, hazard.z);
+      this._dungeonGroup.add(hazardMesh);
+    }
+
+    this._scene.add(this._dungeonGroup);
   }
 }
