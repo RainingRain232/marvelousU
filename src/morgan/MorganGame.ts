@@ -173,11 +173,16 @@ export class MorganGame {
     window.addEventListener("keyup", onKeyUp);
     window.addEventListener("keydown", this._onEscKey);
 
-    // Tab for objectives
+    // Tab for objectives, P for first-person toggle
     this._tabHandler = (e: KeyboardEvent) => {
       if (e.code === "Tab") {
         e.preventDefault();
         if (!this._paused) this._hud.toggleObjectives(this._state);
+      }
+      if (e.code === "KeyP" && !this._paused && this._state.phase === "playing") {
+        const fp = this._renderer.toggleFirstPerson();
+        this._hud.setFirstPerson(fp);
+        pushMessage(this._state, fp ? "First-person view" : "Third-person view", "#66aaff");
       }
     };
     window.addEventListener("keydown", this._tabHandler);

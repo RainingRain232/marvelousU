@@ -395,6 +395,10 @@ export function tickPlayer(state: MorganGameState, dt: number): void {
       pushMessage(state, "Tip: Press H near a body to hide it — prevents guard alerts", "#887799");
       state.tutorialShown.add("hide");
     }
+    if (!state.tutorialShown.has("firstperson") && state.time > 12 && state.time < 13) {
+      pushMessage(state, "Tip: Press P to toggle first-person view", "#887799");
+      state.tutorialShown.add("firstperson");
+    }
   }
 
   // Collect pickups

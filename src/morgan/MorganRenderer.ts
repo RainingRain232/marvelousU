@@ -15,9 +15,9 @@ import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
 import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 
 import {
-  CELL_SIZE, FLOOR_W, FLOOR_H, TileType, GuardState, GuardType, PickupType,
+  CELL_SIZE, FLOOR_W, FLOOR_H, TileType, GuardState, GuardType, PickupType, MorganSpell,
   CAM_HEIGHT, CAM_DISTANCE, CAM_LERP, TORCH_RANGE,
-  SLEEP_MIST_RADIUS,
+  SLEEP_MIST_RADIUS, SPELL_COOLDOWNS,
 } from "./MorganConfig";
 import { v2Dist, type MorganGameState, type Guard, type Artifact, type Pickup, type Trap } from "./MorganState";
 
@@ -312,6 +312,13 @@ export class MorganRenderer {
   private _camPos = new THREE.Vector3();
   private _camShake = new THREE.Vector3();
   private _camShakeIntensity = 0;
+  private _firstPerson = false;
+  private _fpWeaponScene!: THREE.Scene;
+  private _fpWeaponCamera!: THREE.PerspectiveCamera;
+  private _fpStaff!: THREE.Group;
+  private _fpCrystal!: THREE.Mesh;
+  private _fpHand!: THREE.Mesh;
+  private _fpInitialized = false;
 
   private _time = 0;
   private _prevHP = 100;
@@ -394,6 +401,126 @@ export class MorganRenderer {
   // ---------------------------------------------------------------------------
   // Player mesh: detailed Morgan le Fay with animated parts
   // ---------------------------------------------------------------------------
+  private _initFPWeapon(): void {
+    if (this._fpInitialized) return;
+    this._fpInitialized = true;
+
+    this._fpWeaponScene = new THREE.Scene();
+    this._fpWeaponCamera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 10);
+    this._fpWeaponCamera.position.set(0, 0, 0);
+
+    // Ambient light for weapon view
+    this._fpWeaponScene.add(new THREE.AmbientLight(0x444466, 0.6));
+    const fpDirLight = new THREE.DirectionalLight(0xffeedd, 0.8);
+    fpDirLight.position.set(0.5, 1, 0.5);
+    this._fpWeaponScene.add(fpDirLight);
+
+    this._fpStaff = new THREE.Group();
+
+    // Staff shaft
+    const shaftMat = new THREE.MeshStandardMaterial({ color: 0x44220a, roughness: 0.7, metalness: 0.1 });
+    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.02, 1.2, 32), shaftMat);
+    shaft.position.y = -0.3;
+    this._fpStaff.add(shaft);
+
+    // Staff vine wraps
+    const vineMat2 = new THREE.MeshStandardMaterial({ color: 0x2a5522, roughness: 0.8 });
+    for (let v = 0; v < 5; v++) {
+      const vine = new THREE.Mesh(new THREE.TorusGeometry(0.018, 0.004, 8, 24), vineMat2);
+      vine.position.y = -0.6 + v * 0.15;
+      vine.rotation.x = Math.PI / 2 + v * 0.3;
+      vine.rotation.z = v * 0.4;
+      this._fpStaff.add(vine);
+    }
+
+    // Staff rings
+    const fpRingMat = new THREE.MeshStandardMaterial({ color: 0x886644, metalness: 0.6 });
+    for (let r = 0; r < 3; r++) {
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.025, 0.005, 16, 32), fpRingMat);
+      ring.position.y = 0.05 + r * 0.1;
+      ring.rotation.x = Math.PI / 2;
+      this._fpStaff.add(ring);
+    }
+
+    // Staff fork
+    const forkMat2 = new THREE.MeshStandardMaterial({ color: 0x44220a, roughness: 0.6, metalness: 0.15 });
+    const fL = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.01, 0.1, 20), forkMat2);
+    fL.position.set(-0.02, 0.38, 0); fL.rotation.z = 0.4;
+    const fR = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.01, 0.1, 20), forkMat2);
+    fR.position.set(0.02, 0.38, 0); fR.rotation.z = -0.4;
+    this._fpStaff.add(fL, fR);
+
+    // Crystal (glowing)
+    const crystalOuterMat = new THREE.MeshStandardMaterial({
+      color: 0x8844ff, emissive: 0x8844ff, emissiveIntensity: 2.5, transparent: true, opacity: 0.7 });
+    const crystalOuter = new THREE.Mesh(new THREE.OctahedronGeometry(0.06, 4), crystalOuterMat);
+    crystalOuter.position.y = 0.42;
+    this._fpStaff.add(crystalOuter);
+
+    this._fpCrystal = new THREE.Mesh(
+      new THREE.OctahedronGeometry(0.035, 4),
+      new THREE.MeshStandardMaterial({ color: 0xcc88ff, emissive: 0xaa66ff, emissiveIntensity: 4.0 }));
+    this._fpCrystal.position.y = 0.42;
+    this._fpStaff.add(this._fpCrystal);
+
+    // Crystal shards
+    const fpShardMat = new THREE.MeshStandardMaterial({ color: 0xaa66ff, emissive: 0x8844ff, emissiveIntensity: 3.0, transparent: true, opacity: 0.6 });
+    for (let s = 0; s < 3; s++) {
+      const shard = new THREE.Mesh(new THREE.OctahedronGeometry(0.01, 2), fpShardMat);
+      const a = (s / 3) * Math.PI * 2;
+      shard.position.set(Math.cos(a) * 0.04, 0.42 + Math.sin(a) * 0.02, Math.sin(a) * 0.04);
+      this._fpStaff.add(shard);
+    }
+
+    // Point light on crystal
+    const fpCrystalLight = new THREE.PointLight(0x8844ff, 0.8, 3);
+    fpCrystalLight.position.y = 0.42;
+    this._fpStaff.add(fpCrystalLight);
+
+    // Hand holding staff
+    const fpSkinMat = new THREE.MeshStandardMaterial({ color: 0xddbb99, roughness: 0.6 });
+    this._fpHand = new THREE.Mesh(new THREE.SphereGeometry(0.025, 28, 20), fpSkinMat);
+    this._fpHand.position.y = -0.15;
+    this._fpHand.scale.set(1.2, 0.8, 1.0);
+    this._fpStaff.add(this._fpHand);
+
+    // Fingers wrapped around staff
+    const fpFingerGeo = new THREE.CylinderGeometry(0.005, 0.006, 0.035, 12);
+    for (let f = 0; f < 4; f++) {
+      const finger = new THREE.Mesh(fpFingerGeo, fpSkinMat);
+      finger.position.set(0.015, -0.14 + f * 0.012, 0.015);
+      finger.rotation.z = 0.8;
+      this._fpStaff.add(finger);
+    }
+    // Thumb
+    const fpThumb = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.007, 0.03, 12), fpSkinMat);
+    fpThumb.position.set(-0.018, -0.14, 0.01);
+    fpThumb.rotation.z = -0.6;
+    this._fpStaff.add(fpThumb);
+
+    // Bracer visible on wrist
+    const fpBracerMat = new THREE.MeshStandardMaterial({ color: 0x553388, roughness: 0.5, metalness: 0.3 });
+    const fpBracer = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.03, 0.04, 32), fpBracerMat);
+    fpBracer.position.y = -0.22;
+    this._fpStaff.add(fpBracer);
+    // Bracer rune glow
+    const fpRuneLine = new THREE.Mesh(new THREE.TorusGeometry(0.03, 0.002, 8, 28),
+      new THREE.MeshStandardMaterial({ color: 0x8844ff, emissive: 0x6633cc, emissiveIntensity: 1.5 }));
+    fpRuneLine.position.y = -0.22; fpRuneLine.rotation.x = Math.PI / 2;
+    this._fpStaff.add(fpRuneLine);
+
+    // Forearm segment
+    const fpForearm = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.028, 0.15, 28), fpSkinMat);
+    fpForearm.position.y = -0.32;
+    this._fpStaff.add(fpForearm);
+
+    // Position entire weapon group in bottom-right of view
+    this._fpStaff.position.set(0.25, -0.35, -0.5);
+    this._fpStaff.rotation.set(0.15, -0.3, 0.1);
+
+    this._fpWeaponScene.add(this._fpStaff);
+  }
+
   private _createPlayerMesh(): void {
     this._playerMesh = new THREE.Group();
     const skinMat = new THREE.MeshStandardMaterial({ color: 0xddbb99, roughness: 0.6 });
@@ -3482,19 +3609,98 @@ export class MorganRenderer {
     (this._sparkParticles.geometry.attributes.position as THREE.BufferAttribute).needsUpdate = true;
 
     // Camera with shake
-    // Camera: look slightly ahead of the player at chest height
-    const camTargetX = p.pos.x + Math.sin(p.angle) * 1.5;
-    const camTargetZ = p.pos.z + Math.cos(p.angle) * 1.5;
-    this._camTarget.lerp(new THREE.Vector3(camTargetX, 1.2, camTargetZ), CAM_LERP * dt);
-    // Camera positioned behind and above the player
-    const idealCamX = p.pos.x - Math.sin(p.angle) * CAM_DISTANCE;
-    const idealCamZ = p.pos.z - Math.cos(p.angle) * CAM_DISTANCE;
-    this._camPos.lerp(new THREE.Vector3(idealCamX, CAM_HEIGHT, idealCamZ), CAM_LERP * dt);
-    this._camera.position.copy(this._camPos).add(this._camShake);
-    this._camera.lookAt(this._camTarget);
+    if (this._firstPerson) {
+      // First-person: camera at eye level, looking forward
+      const fpEyeHeight = 1.75;
+      const fpBob = p.moving ? Math.sin(this._time * (p.sprinting ? 14 : p.sneaking ? 5 : 9)) * (p.sprinting ? 0.06 : p.sneaking ? 0.01 : 0.03) : 0;
+      const fpSway = p.moving ? Math.sin(this._time * (p.sprinting ? 7 : 4.5)) * (p.sprinting ? 0.015 : 0.008) : 0;
+      const fpX = p.pos.x;
+      const fpZ = p.pos.z;
+      const fpLookX = fpX + Math.sin(p.angle) * 5;
+      const fpLookZ = fpZ + Math.cos(p.angle) * 5;
+      this._camPos.lerp(new THREE.Vector3(fpX, fpEyeHeight + fpBob, fpZ), CAM_LERP * 2 * dt);
+      this._camTarget.lerp(new THREE.Vector3(fpLookX, fpEyeHeight - 0.1 + fpBob * 0.5, fpLookZ), CAM_LERP * 2 * dt);
+      this._camera.position.copy(this._camPos).add(this._camShake);
+      this._camera.position.x += fpSway;
+      this._camera.lookAt(this._camTarget);
+      // Hide player mesh in first person (except staff crystal glow)
+      this._playerMesh.visible = false;
+      this._playerShadow.visible = false;
+      // Show staff and hands in FP view (weapon bob)
+      if (this._playerStaff) {
+        this._playerStaff.parent?.remove(this._playerStaff);
+        // Render staff in screen space by attaching near camera would be complex,
+        // so just keep it invisible for now — the crystal light still glows
+      }
+    } else {
+      // Third-person: camera behind and above
+      this._playerMesh.visible = true;
+      this._playerShadow.visible = true;
+      const camTargetX = p.pos.x + Math.sin(p.angle) * 1.5;
+      const camTargetZ = p.pos.z + Math.cos(p.angle) * 1.5;
+      this._camTarget.lerp(new THREE.Vector3(camTargetX, 1.2, camTargetZ), CAM_LERP * dt);
+      const idealCamX = p.pos.x - Math.sin(p.angle) * CAM_DISTANCE;
+      const idealCamZ = p.pos.z - Math.cos(p.angle) * CAM_DISTANCE;
+      this._camPos.lerp(new THREE.Vector3(idealCamX, CAM_HEIGHT, idealCamZ), CAM_LERP * dt);
+      this._camera.position.copy(this._camPos).add(this._camShake);
+      this._camera.lookAt(this._camTarget);
+    }
 
     this._composer.render();
+
+    // First-person weapon overlay
+    if (this._firstPerson) {
+      if (!this._fpInitialized) this._initFPWeapon();
+      // Weapon bob
+      const wpBobSpeed = p.moving ? (p.sprinting ? 12 : p.sneaking ? 4 : 8) : 1.5;
+      const wpBobAmount = p.moving ? (p.sprinting ? 0.025 : p.sneaking ? 0.005 : 0.012) : 0.003;
+      const wpSwayAmount = p.moving ? (p.sprinting ? 0.015 : 0.006) : 0.002;
+      this._fpStaff.position.set(
+        0.25 + Math.sin(this._time * wpBobSpeed * 0.5) * wpSwayAmount,
+        -0.35 + Math.sin(this._time * wpBobSpeed) * wpBobAmount,
+        -0.5,
+      );
+      // Crystal pulse
+      if (this._fpCrystal) {
+        (this._fpCrystal.material as THREE.MeshStandardMaterial).emissiveIntensity =
+          3.0 + Math.sin(this._time * 3) * 1.0;
+        this._fpCrystal.rotation.y = this._time * 1.5;
+      }
+      // Spell cast recoil
+      const spellCd = p.spellCooldowns[p.spells[p.selectedSpell]] || 0;
+      const maxCd = SPELL_COOLDOWNS[p.spells[p.selectedSpell] as MorganSpell] || 1;
+      const castRecoil = spellCd > maxCd - 0.3 ? 0.15 : 0;
+      this._fpStaff.rotation.x = 0.15 + castRecoil;
+      if (castRecoil > 0) this._fpStaff.position.z = -0.45;
+
+      // Render weapon scene on top
+      this._fpWeaponCamera.aspect = this._camera.aspect;
+      this._fpWeaponCamera.updateProjectionMatrix();
+      this._renderer.autoClear = false;
+      this._renderer.clearDepth();
+      this._renderer.render(this._fpWeaponScene, this._fpWeaponCamera);
+      this._renderer.autoClear = true;
+    }
   }
+
+  toggleFirstPerson(): boolean {
+    this._firstPerson = !this._firstPerson;
+    if (this._firstPerson) {
+      this._camera.fov = 80;
+      // Denser fog for immersive first-person
+      (this._scene.fog as THREE.FogExp2).density = 0.035;
+    } else {
+      this._camera.fov = 65;
+      (this._scene.fog as THREE.FogExp2).density = 0.022;
+      // Restore player visibility
+      this._playerMesh.visible = true;
+      this._playerShadow.visible = true;
+    }
+    this._camera.updateProjectionMatrix();
+    return this._firstPerson;
+  }
+
+  get isFirstPerson(): boolean { return this._firstPerson; }
 
   destroy(): void {
     window.removeEventListener("resize", this._onResize);
@@ -3509,6 +3715,10 @@ export class MorganRenderer {
     const w = window.innerWidth, h = window.innerHeight;
     this._camera.aspect = w / h;
     this._camera.updateProjectionMatrix();
+    if (this._fpWeaponCamera) {
+      this._fpWeaponCamera.aspect = w / h;
+      this._fpWeaponCamera.updateProjectionMatrix();
+    }
     this._renderer.setSize(w, h);
     this._composer.setSize(w, h);
   };

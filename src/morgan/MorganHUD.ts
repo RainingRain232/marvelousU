@@ -161,8 +161,38 @@ export class MorganHUD {
     this._flashDiv = document.getElementById("morgan-flash") as HTMLDivElement;
   }
 
+  private _isFirstPerson = false;
+  setFirstPerson(fp: boolean): void { this._isFirstPerson = fp; }
+
   update(state: MorganGameState): void {
     const p = state.player;
+
+    // First-person crosshair
+    let crosshairEl = document.getElementById("morgan-crosshair");
+    if (this._isFirstPerson) {
+      if (!crosshairEl) {
+        crosshairEl = document.createElement("div");
+        crosshairEl.id = "morgan-crosshair";
+        crosshairEl.style.cssText = `
+          position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+          pointer-events:none;color:rgba(136,68,255,0.5);font-size:22px;
+          text-shadow:0 0 4px rgba(136,68,255,0.3);line-height:1;
+        `;
+        this._container.appendChild(crosshairEl);
+      }
+      crosshairEl.innerHTML = `
+        <div style="position:relative;width:20px;height:20px;">
+          <div style="position:absolute;top:9px;left:0;width:7px;height:2px;background:rgba(136,68,255,0.5);"></div>
+          <div style="position:absolute;top:9px;right:0;width:7px;height:2px;background:rgba(136,68,255,0.5);"></div>
+          <div style="position:absolute;left:9px;top:0;width:2px;height:7px;background:rgba(136,68,255,0.5);"></div>
+          <div style="position:absolute;left:9px;bottom:0;width:2px;height:7px;background:rgba(136,68,255,0.5);"></div>
+          <div style="position:absolute;left:8px;top:8px;width:4px;height:4px;border-radius:50%;background:rgba(136,68,255,0.3);"></div>
+        </div>
+      `;
+      crosshairEl.style.display = "block";
+    } else if (crosshairEl) {
+      crosshairEl.style.display = "none";
+    }
 
     // Bars
     const hpBar = document.getElementById("morgan-hp-bar");
@@ -390,7 +420,7 @@ export class MorganHUD {
           Ctrl: Sprint | F: Backstab | R: Interact<br>
           1-5: Spell | Space: Cast | Tab: Objectives<br>
           G: Extinguish | T: Distraction | C: Dodge<br>
-          H: Hide Body | V: Push Guard
+          H: Hide Body | V: Push Guard | P: First Person
         `;
         ctrlEl.style.opacity = `${Math.max(0, 1 - (state.time - 10) / 5)}`;
       } else {
@@ -624,6 +654,7 @@ export class MorganHUD {
           <tr><td style="padding:4px 0;color:#ddd;">C</td><td>Dodge roll (20 stamina, brief invulnerability)</td></tr>
           <tr><td style="padding:4px 0;color:#ddd;">H</td><td>Hide nearby corpse (prevents guard alert)</td></tr>
           <tr><td style="padding:4px 0;color:#ddd;">V</td><td>Push guard (into fire/water/walls for bonus)</td></tr>
+          <tr><td style="padding:4px 0;color:#ddd;">P</td><td>Toggle first-person / third-person camera</td></tr>
           <tr><td style="padding:4px 0;color:#ddd;">Esc</td><td>Pause menu</td></tr>
         </table>
 
@@ -650,6 +681,7 @@ export class MorganHUD {
           <li><span style="color:#668844;">Hide bodies</span> (H) near corpses to prevent guards from discovering them</li>
           <li><span style="color:#ff6600;">Push stunned guards</span> (V) into fire grates for instant environmental kills</li>
           <li>Different <span style="color:#ffd700;">artifacts</span> grant temporary bonuses: Tome = damage, Scroll = stealth, Crystal = mana</li>
+          <li>Press <span style="color:#66aaff;">P</span> to toggle first-person view for an immersive dungeon-crawling experience</li>
         </ul>
 
         <h3 style="color:#aa88dd;font-size:15px;margin:18px 0 8px;border-bottom:1px solid #333;padding-bottom:4px;">SCORING BADGES</h3>
