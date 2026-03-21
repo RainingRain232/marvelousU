@@ -3904,6 +3904,27 @@ export const ENEMY_DEFS: Record<
     name: 'Shadow Magistrate', hp: 2200, damage: 70, armor: 30, speed: 3.8,
     attackRange: 3, aggroRange: 25, xpReward: 550, isBoss: true, scale: 2.0, level: 10,
   },
+  // Day bosses (weaker than night bosses)
+  [EnemyType.DAY_FOREST_STAG_GUARDIAN]: { name: 'Stag Guardian', hp: 2400, damage: 55, armor: 35, speed: 5.0, attackRange: 3, aggroRange: 25, xpReward: 1000, isBoss: true, scale: 2.2, level: 12 },
+  [EnemyType.DAY_ELVEN_CORRUPTED_SENTINEL]: { name: 'Corrupted Sentinel', hp: 2600, damage: 60, armor: 40, speed: 4.5, attackRange: 3, aggroRange: 25, xpReward: 1100, isBoss: true, scale: 2.2, level: 13 },
+  [EnemyType.DAY_NECRO_BONE_GOLEM]: { name: 'Bone Golem', hp: 3000, damage: 65, armor: 50, speed: 3.5, attackRange: 3.5, aggroRange: 25, xpReward: 1200, isBoss: true, scale: 2.5, level: 14 },
+  [EnemyType.DAY_VOLCANIC_EMBER_BRUTE]: { name: 'Ember Brute', hp: 3200, damage: 70, armor: 45, speed: 4.0, attackRange: 3, aggroRange: 25, xpReward: 1300, isBoss: true, scale: 2.4, level: 15 },
+  [EnemyType.DAY_RIFT_VOID_STALKER]: { name: 'Void Stalker', hp: 3500, damage: 75, armor: 40, speed: 5.5, attackRange: 3, aggroRange: 28, xpReward: 1400, isBoss: true, scale: 2.3, level: 16 },
+  [EnemyType.DAY_DRAGON_DRAKE_MATRIARCH]: { name: 'Drake Matriarch', hp: 4000, damage: 80, armor: 55, speed: 4.5, attackRange: 3.5, aggroRange: 28, xpReward: 1500, isBoss: true, scale: 2.6, level: 17 },
+  [EnemyType.DAY_DESERT_SAND_GOLEM]: { name: 'Sand Golem', hp: 2200, damage: 50, armor: 45, speed: 3.5, attackRange: 3, aggroRange: 22, xpReward: 900, isBoss: true, scale: 2.4, level: 10 },
+  [EnemyType.DAY_GRASSLAND_BULL_CHIEFTAIN]: { name: 'Bull Chieftain', hp: 2400, damage: 55, armor: 30, speed: 5.5, attackRange: 3, aggroRange: 22, xpReward: 950, isBoss: true, scale: 2.2, level: 11 },
+  [EnemyType.DAY_MARSH_BOG_TROLL]: { name: 'Bog Troll', hp: 2800, damage: 60, armor: 40, speed: 3.8, attackRange: 3.5, aggroRange: 22, xpReward: 1050, isBoss: true, scale: 2.5, level: 12 },
+  [EnemyType.DAY_CAVERNS_CRYSTAL_SPIDER]: { name: 'Crystal Spider', hp: 2600, damage: 58, armor: 35, speed: 5.0, attackRange: 3, aggroRange: 24, xpReward: 1000, isBoss: true, scale: 2.3, level: 12 },
+  [EnemyType.DAY_TUNDRA_FROST_BEAR]: { name: 'Frost Bear', hp: 3000, damage: 65, armor: 50, speed: 4.0, attackRange: 3.5, aggroRange: 22, xpReward: 1100, isBoss: true, scale: 2.5, level: 13 },
+  [EnemyType.DAY_CATHEDRAL_FALLEN_TEMPLAR]: { name: 'Fallen Templar', hp: 2800, damage: 62, armor: 55, speed: 4.2, attackRange: 3, aggroRange: 24, xpReward: 1050, isBoss: true, scale: 2.2, level: 13 },
+  [EnemyType.DAY_THORNWOOD_VINE_COLOSSUS]: { name: 'Vine Colossus', hp: 3200, damage: 58, armor: 60, speed: 3.0, attackRange: 4, aggroRange: 22, xpReward: 1150, isBoss: true, scale: 2.6, level: 14 },
+  [EnemyType.DAY_FOUNDRY_BRONZE_SENTINEL]: { name: 'Bronze Sentinel', hp: 3400, damage: 65, armor: 65, speed: 3.5, attackRange: 3, aggroRange: 24, xpReward: 1200, isBoss: true, scale: 2.4, level: 14 },
+  [EnemyType.DAY_CITADEL_BLOODHOUND_ALPHA]: { name: 'Bloodhound Alpha', hp: 2600, damage: 70, armor: 35, speed: 6.0, attackRange: 2.5, aggroRange: 28, xpReward: 1100, isBoss: true, scale: 2.0, level: 13 },
+  [EnemyType.DAY_STORMSPIRE_WIND_ELEMENTAL]: { name: 'Wind Elemental', hp: 2800, damage: 60, armor: 30, speed: 5.5, attackRange: 3.5, aggroRange: 26, xpReward: 1100, isBoss: true, scale: 2.3, level: 13 },
+  [EnemyType.DAY_SHADOW_SHADE_STALKER]: { name: 'Shade Stalker', hp: 3000, damage: 68, armor: 35, speed: 5.0, attackRange: 3, aggroRange: 26, xpReward: 1200, isBoss: true, scale: 2.2, level: 14 },
+  [EnemyType.DAY_ABYSS_LESSER_HORROR]: { name: 'Lesser Horror', hp: 3500, damage: 72, armor: 40, speed: 4.5, attackRange: 3.5, aggroRange: 28, xpReward: 1400, isBoss: true, scale: 2.5, level: 16 },
+  [EnemyType.DAY_RUINS_FALLEN_CAPTAIN]: { name: 'Fallen Captain', hp: 1800, damage: 45, armor: 25, speed: 4.5, attackRange: 3, aggroRange: 22, xpReward: 400, isBoss: true, scale: 1.8, level: 8 },
+  [EnemyType.DAY_CITY_CORRUPT_WARDEN]: { name: 'Corrupt Warden', hp: 2000, damage: 50, armor: 30, speed: 4.0, attackRange: 3, aggroRange: 22, xpReward: 450, isBoss: true, scale: 1.9, level: 9 },
 };
 
 // ---------------------------------------------------------------------------
@@ -7835,6 +7856,27 @@ export const LOOT_TABLES: Record<EnemyType, { rarity: ItemRarity; chance: number
     { rarity: ItemRarity.LEGENDARY, chance: 0.5 },
     { rarity: ItemRarity.MYTHIC, chance: 0.1 },
   ],
+  // Day bosses (lower loot quality than night bosses)
+  [EnemyType.DAY_FOREST_STAG_GUARDIAN]: [ { rarity: ItemRarity.RARE, chance: 1.0 }, { rarity: ItemRarity.EPIC, chance: 0.3 }, { rarity: ItemRarity.LEGENDARY, chance: 0.05 } ],
+  [EnemyType.DAY_ELVEN_CORRUPTED_SENTINEL]: [ { rarity: ItemRarity.RARE, chance: 1.0 }, { rarity: ItemRarity.EPIC, chance: 0.3 }, { rarity: ItemRarity.LEGENDARY, chance: 0.05 } ],
+  [EnemyType.DAY_NECRO_BONE_GOLEM]: [ { rarity: ItemRarity.RARE, chance: 1.0 }, { rarity: ItemRarity.EPIC, chance: 0.35 }, { rarity: ItemRarity.LEGENDARY, chance: 0.06 } ],
+  [EnemyType.DAY_VOLCANIC_EMBER_BRUTE]: [ { rarity: ItemRarity.RARE, chance: 1.0 }, { rarity: ItemRarity.EPIC, chance: 0.35 }, { rarity: ItemRarity.LEGENDARY, chance: 0.06 } ],
+  [EnemyType.DAY_RIFT_VOID_STALKER]: [ { rarity: ItemRarity.RARE, chance: 1.0 }, { rarity: ItemRarity.EPIC, chance: 0.4 }, { rarity: ItemRarity.LEGENDARY, chance: 0.08 } ],
+  [EnemyType.DAY_DRAGON_DRAKE_MATRIARCH]: [ { rarity: ItemRarity.RARE, chance: 1.0 }, { rarity: ItemRarity.EPIC, chance: 0.4 }, { rarity: ItemRarity.LEGENDARY, chance: 0.1 } ],
+  [EnemyType.DAY_DESERT_SAND_GOLEM]: [ { rarity: ItemRarity.RARE, chance: 1.0 }, { rarity: ItemRarity.EPIC, chance: 0.25 }, { rarity: ItemRarity.LEGENDARY, chance: 0.04 } ],
+  [EnemyType.DAY_GRASSLAND_BULL_CHIEFTAIN]: [ { rarity: ItemRarity.RARE, chance: 1.0 }, { rarity: ItemRarity.EPIC, chance: 0.25 }, { rarity: ItemRarity.LEGENDARY, chance: 0.04 } ],
+  [EnemyType.DAY_MARSH_BOG_TROLL]: [ { rarity: ItemRarity.RARE, chance: 1.0 }, { rarity: ItemRarity.EPIC, chance: 0.3 }, { rarity: ItemRarity.LEGENDARY, chance: 0.05 } ],
+  [EnemyType.DAY_CAVERNS_CRYSTAL_SPIDER]: [ { rarity: ItemRarity.RARE, chance: 1.0 }, { rarity: ItemRarity.EPIC, chance: 0.3 }, { rarity: ItemRarity.LEGENDARY, chance: 0.05 } ],
+  [EnemyType.DAY_TUNDRA_FROST_BEAR]: [ { rarity: ItemRarity.RARE, chance: 1.0 }, { rarity: ItemRarity.EPIC, chance: 0.3 }, { rarity: ItemRarity.LEGENDARY, chance: 0.06 } ],
+  [EnemyType.DAY_CATHEDRAL_FALLEN_TEMPLAR]: [ { rarity: ItemRarity.RARE, chance: 1.0 }, { rarity: ItemRarity.EPIC, chance: 0.3 }, { rarity: ItemRarity.LEGENDARY, chance: 0.05 } ],
+  [EnemyType.DAY_THORNWOOD_VINE_COLOSSUS]: [ { rarity: ItemRarity.RARE, chance: 1.0 }, { rarity: ItemRarity.EPIC, chance: 0.35 }, { rarity: ItemRarity.LEGENDARY, chance: 0.06 } ],
+  [EnemyType.DAY_FOUNDRY_BRONZE_SENTINEL]: [ { rarity: ItemRarity.RARE, chance: 1.0 }, { rarity: ItemRarity.EPIC, chance: 0.35 }, { rarity: ItemRarity.LEGENDARY, chance: 0.06 } ],
+  [EnemyType.DAY_CITADEL_BLOODHOUND_ALPHA]: [ { rarity: ItemRarity.RARE, chance: 1.0 }, { rarity: ItemRarity.EPIC, chance: 0.3 }, { rarity: ItemRarity.LEGENDARY, chance: 0.05 } ],
+  [EnemyType.DAY_STORMSPIRE_WIND_ELEMENTAL]: [ { rarity: ItemRarity.RARE, chance: 1.0 }, { rarity: ItemRarity.EPIC, chance: 0.3 }, { rarity: ItemRarity.LEGENDARY, chance: 0.05 } ],
+  [EnemyType.DAY_SHADOW_SHADE_STALKER]: [ { rarity: ItemRarity.RARE, chance: 1.0 }, { rarity: ItemRarity.EPIC, chance: 0.35 }, { rarity: ItemRarity.LEGENDARY, chance: 0.06 } ],
+  [EnemyType.DAY_ABYSS_LESSER_HORROR]: [ { rarity: ItemRarity.RARE, chance: 1.0 }, { rarity: ItemRarity.EPIC, chance: 0.4 }, { rarity: ItemRarity.LEGENDARY, chance: 0.08 } ],
+  [EnemyType.DAY_RUINS_FALLEN_CAPTAIN]: [ { rarity: ItemRarity.RARE, chance: 1.0 }, { rarity: ItemRarity.EPIC, chance: 0.2 }, { rarity: ItemRarity.LEGENDARY, chance: 0.03 } ],
+  [EnemyType.DAY_CITY_CORRUPT_WARDEN]: [ { rarity: ItemRarity.RARE, chance: 1.0 }, { rarity: ItemRarity.EPIC, chance: 0.2 }, { rarity: ItemRarity.LEGENDARY, chance: 0.03 } ],
 };
 
 // ---------------------------------------------------------------------------
@@ -9202,6 +9244,27 @@ export const ENEMY_DAMAGE_TYPES: Partial<Record<EnemyType, DamageType>> = {
   // City enemies
   [EnemyType.SEWER_CREEPER]: DamageType.POISON,
   [EnemyType.NIGHT_CITY_SHADOW_MAGISTRATE]: DamageType.SHADOW,
+  // Day bosses
+  [EnemyType.DAY_FOREST_STAG_GUARDIAN]: DamageType.PHYSICAL,
+  [EnemyType.DAY_ELVEN_CORRUPTED_SENTINEL]: DamageType.ARCANE,
+  [EnemyType.DAY_NECRO_BONE_GOLEM]: DamageType.SHADOW,
+  [EnemyType.DAY_VOLCANIC_EMBER_BRUTE]: DamageType.FIRE,
+  [EnemyType.DAY_RIFT_VOID_STALKER]: DamageType.ARCANE,
+  [EnemyType.DAY_DRAGON_DRAKE_MATRIARCH]: DamageType.FIRE,
+  [EnemyType.DAY_DESERT_SAND_GOLEM]: DamageType.PHYSICAL,
+  [EnemyType.DAY_GRASSLAND_BULL_CHIEFTAIN]: DamageType.PHYSICAL,
+  [EnemyType.DAY_MARSH_BOG_TROLL]: DamageType.POISON,
+  [EnemyType.DAY_CAVERNS_CRYSTAL_SPIDER]: DamageType.ICE,
+  [EnemyType.DAY_TUNDRA_FROST_BEAR]: DamageType.ICE,
+  [EnemyType.DAY_CATHEDRAL_FALLEN_TEMPLAR]: DamageType.PHYSICAL,
+  [EnemyType.DAY_THORNWOOD_VINE_COLOSSUS]: DamageType.POISON,
+  [EnemyType.DAY_FOUNDRY_BRONZE_SENTINEL]: DamageType.FIRE,
+  [EnemyType.DAY_CITADEL_BLOODHOUND_ALPHA]: DamageType.PHYSICAL,
+  [EnemyType.DAY_STORMSPIRE_WIND_ELEMENTAL]: DamageType.LIGHTNING,
+  [EnemyType.DAY_SHADOW_SHADE_STALKER]: DamageType.SHADOW,
+  [EnemyType.DAY_ABYSS_LESSER_HORROR]: DamageType.ARCANE,
+  [EnemyType.DAY_RUINS_FALLEN_CAPTAIN]: DamageType.PHYSICAL,
+  [EnemyType.DAY_CITY_CORRUPT_WARDEN]: DamageType.PHYSICAL,
 };
 
 // ---------------------------------------------------------------------------

@@ -363,6 +363,29 @@ const NIGHT_BOSS_MAP: Partial<Record<DiabloMapId, EnemyType>> = {
   [DiabloMapId.CITY]: EnemyType.NIGHT_CITY_SHADOW_MAGISTRATE,
 };
 
+const DAY_BOSS_MAP: Partial<Record<DiabloMapId, EnemyType>> = {
+  [DiabloMapId.FOREST]: EnemyType.DAY_FOREST_STAG_GUARDIAN,
+  [DiabloMapId.ELVEN_VILLAGE]: EnemyType.DAY_ELVEN_CORRUPTED_SENTINEL,
+  [DiabloMapId.NECROPOLIS_DUNGEON]: EnemyType.DAY_NECRO_BONE_GOLEM,
+  [DiabloMapId.VOLCANIC_WASTES]: EnemyType.DAY_VOLCANIC_EMBER_BRUTE,
+  [DiabloMapId.ABYSSAL_RIFT]: EnemyType.DAY_RIFT_VOID_STALKER,
+  [DiabloMapId.DRAGONS_SANCTUM]: EnemyType.DAY_DRAGON_DRAKE_MATRIARCH,
+  [DiabloMapId.SUNSCORCH_DESERT]: EnemyType.DAY_DESERT_SAND_GOLEM,
+  [DiabloMapId.EMERALD_GRASSLANDS]: EnemyType.DAY_GRASSLAND_BULL_CHIEFTAIN,
+  [DiabloMapId.WHISPERING_MARSH]: EnemyType.DAY_MARSH_BOG_TROLL,
+  [DiabloMapId.CRYSTAL_CAVERNS]: EnemyType.DAY_CAVERNS_CRYSTAL_SPIDER,
+  [DiabloMapId.FROZEN_TUNDRA]: EnemyType.DAY_TUNDRA_FROST_BEAR,
+  [DiabloMapId.HAUNTED_CATHEDRAL]: EnemyType.DAY_CATHEDRAL_FALLEN_TEMPLAR,
+  [DiabloMapId.THORNWOOD_THICKET]: EnemyType.DAY_THORNWOOD_VINE_COLOSSUS,
+  [DiabloMapId.CLOCKWORK_FOUNDRY]: EnemyType.DAY_FOUNDRY_BRONZE_SENTINEL,
+  [DiabloMapId.CRIMSON_CITADEL]: EnemyType.DAY_CITADEL_BLOODHOUND_ALPHA,
+  [DiabloMapId.STORMSPIRE_PEAK]: EnemyType.DAY_STORMSPIRE_WIND_ELEMENTAL,
+  [DiabloMapId.SHADOW_REALM]: EnemyType.DAY_SHADOW_SHADE_STALKER,
+  [DiabloMapId.PRIMORDIAL_ABYSS]: EnemyType.DAY_ABYSS_LESSER_HORROR,
+  [DiabloMapId.CITY_RUINS]: EnemyType.DAY_RUINS_FALLEN_CAPTAIN,
+  [DiabloMapId.CITY]: EnemyType.DAY_CITY_CORRUPT_WARDEN,
+};
+
 // ────────────────────────────────────────────────────────────────────────────
 // DiabloGame
 // ────────────────────────────────────────────────────────────────────────────
@@ -3378,14 +3401,14 @@ export class DiabloGame {
     this._hpOrbWrap = document.createElement("div");
     const hpOrbWrap = this._hpOrbWrap;
     hpOrbWrap.style.cssText = `
-      position:absolute;bottom:22px;left:22px;width:140px;height:140px;
+      position:absolute;bottom:22px;left:22px;width:150px;height:150px;
       display:flex;align-items:center;justify-content:center;
       filter:drop-shadow(0 0 12px rgba(180,20,20,0.35));
     `;
     // Outer decorative ring
     const hpRingOuter = document.createElement("div");
     hpRingOuter.style.cssText = `
-      position:absolute;width:136px;height:136px;border-radius:50%;
+      position:absolute;width:146px;height:146px;border-radius:50%;
       border:3px solid transparent;
       background:conic-gradient(from 0deg, #8b6914, #c8a84e, #e8d07a, #c8a84e, #8b6914, #6b4f0e, #8b6914) border-box;
       -webkit-mask:linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
@@ -3395,14 +3418,14 @@ export class DiabloGame {
     // Inner decorative ring
     const hpRingInner = document.createElement("div");
     hpRingInner.style.cssText = `
-      position:absolute;width:126px;height:126px;border-radius:50%;
+      position:absolute;width:146px;height:146px;border-radius:50%;
       border:2px solid rgba(60,5,5,0.8);
       box-shadow:0 0 6px rgba(0,0,0,0.6);
       pointer-events:none;
     `;
     const hpOrb = document.createElement("div");
     hpOrb.style.cssText = `
-      width:120px;height:120px;border-radius:50%;
+      width:130px;height:130px;border-radius:50%;
       background:radial-gradient(circle at 35% 35%, rgba(60,10,10,0.9), rgba(20,2,2,0.97));
       overflow:hidden;position:relative;
       display:flex;align-items:center;justify-content:center;
@@ -3529,14 +3552,14 @@ export class DiabloGame {
     this._mpOrbWrap = document.createElement("div");
     const mpOrbWrap = this._mpOrbWrap;
     mpOrbWrap.style.cssText = `
-      position:absolute;bottom:22px;right:22px;width:140px;height:140px;
+      position:absolute;bottom:22px;right:22px;width:150px;height:150px;
       display:flex;align-items:center;justify-content:center;
       filter:drop-shadow(0 0 12px rgba(30,30,200,0.35));
     `;
     // Outer decorative ring (silver/blue)
     const mpRingOuter = document.createElement("div");
     mpRingOuter.style.cssText = `
-      position:absolute;width:136px;height:136px;border-radius:50%;
+      position:absolute;width:146px;height:146px;border-radius:50%;
       border:3px solid transparent;
       background:conic-gradient(from 0deg, #4a5a8b, #7a8ac8, #a0b0e8, #7a8ac8, #4a5a8b, #3a4a6b, #4a5a8b) border-box;
       -webkit-mask:linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
@@ -3546,14 +3569,14 @@ export class DiabloGame {
     // Inner ring
     const mpRingInner = document.createElement("div");
     mpRingInner.style.cssText = `
-      position:absolute;width:126px;height:126px;border-radius:50%;
+      position:absolute;width:136px;height:136px;border-radius:50%;
       border:2px solid rgba(5,5,60,0.8);
       box-shadow:0 0 6px rgba(0,0,0,0.6);
       pointer-events:none;
     `;
     const mpOrb = document.createElement("div");
     mpOrb.style.cssText = `
-      width:120px;height:120px;border-radius:50%;
+      width:130px;height:130px;border-radius:50%;
       background:radial-gradient(circle at 35% 35%, rgba(10,10,60,0.9), rgba(2,2,20,0.97));
       overflow:hidden;position:relative;
       display:flex;align-items:center;justify-content:center;
@@ -3680,7 +3703,7 @@ export class DiabloGame {
     const skillBarBg = document.createElement("div");
     skillBarBg.style.cssText = `
       position:absolute;bottom:14px;left:50%;transform:translateX(-50%);
-      padding:8px 14px;display:flex;gap:6px;
+      padding:10px 18px;display:flex;gap:8px;
       background:linear-gradient(180deg, rgba(45,38,25,0.95), rgba(25,20,10,0.97), rgba(35,28,18,0.95));
       border:2px solid #8b7a4a;border-radius:8px;
       box-shadow:0 4px 16px rgba(0,0,0,0.6), inset 0 1px 0 rgba(200,168,78,0.2),
@@ -3743,11 +3766,11 @@ export class DiabloGame {
     for (let i = 0; i < 6; i++) {
       const slotWrap = document.createElement("div");
       slotWrap.style.cssText = `
-        position:relative;width:72px;height:72px;
+        position:relative;width:78px;height:78px;
       `;
       const slot = document.createElement("div");
       slot.style.cssText = `
-        width:72px;height:72px;background:linear-gradient(180deg, rgba(30,25,15,0.95), rgba(12,8,3,0.97));
+        width:78px;height:78px;background:linear-gradient(180deg, rgba(30,25,15,0.95), rgba(12,8,3,0.97));
         border:2px solid #9a8a4a;border-radius:6px;display:flex;flex-direction:column;
         align-items:center;justify-content:center;position:relative;overflow:hidden;
         box-shadow:inset 0 1px 0 rgba(200,168,78,0.2), inset 0 -1px 0 rgba(0,0,0,0.3),
@@ -3783,7 +3806,7 @@ export class DiabloGame {
       keyLabel.textContent = String(i + 1);
 
       const iconEl = document.createElement("div");
-      iconEl.style.cssText = "font-size:26px;z-index:1;";
+      iconEl.style.cssText = "font-size:30px;z-index:1;";
       iconEl.className = "skill-icon";
 
       // Inner bevel highlight (raised stone look)
@@ -4139,9 +4162,9 @@ export class DiabloGame {
     // Potion bar (ad1a2850) - ornate, enhanced with flask shapes
     const potionBarBg = document.createElement("div");
     potionBarBg.style.cssText = `
-      position:absolute;bottom:22px;left:50%;transform:translateX(250px);display:flex;gap:5px;
+      position:absolute;bottom:22px;left:50%;transform:translateX(280px);display:flex;gap:6px;
       background:linear-gradient(180deg, rgba(20,30,15,0.9), rgba(10,18,8,0.92));
-      border:2px solid #5a7a3a;border-radius:8px;padding:6px 10px;
+      border:2px solid #5a7a3a;border-radius:8px;padding:8px 12px;
       box-shadow:0 3px 10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(100,180,78,0.12),
         0 0 1px rgba(100,180,78,0.2);
     `;
@@ -4167,7 +4190,7 @@ export class DiabloGame {
     for (let i = 0; i < 4; i++) {
       const slot = document.createElement("div");
       slot.style.cssText = `
-        width:54px;height:64px;background:linear-gradient(180deg, rgba(20,28,15,0.95), rgba(8,14,4,0.97));
+        width:58px;height:70px;background:linear-gradient(180deg, rgba(20,28,15,0.95), rgba(8,14,4,0.97));
         border:2px solid #6a8a4a;display:flex;flex-direction:column;
         align-items:center;justify-content:center;position:relative;overflow:hidden;
         box-shadow:inset 0 1px 0 rgba(100,180,78,0.2), inset 0 -1px 0 rgba(0,0,0,0.3),
@@ -4340,43 +4363,75 @@ export class DiabloGame {
     lootFilterLabel.textContent = "Filter: Show All (Tab)";
     this._hud.appendChild(lootFilterLabel);
 
-    // === NEW: Animated torches flanking the skill bar ===
+    // === Animated torches flanking the skill bar ===
     const torchPositions = [
-      { side: "left", xOffset: "-280px" },
-      { side: "right", xOffset: "280px" },
+      { side: "left", xOffset: "-300px" },
+      { side: "right", xOffset: "300px" },
     ];
     for (const tp of torchPositions) {
       const torchWrap = document.createElement("div");
       torchWrap.style.cssText = `
-        position:absolute;bottom:40px;left:50%;transform:translateX(${tp.xOffset});
-        width:16px;height:40px;pointer-events:none;z-index:10;
+        position:absolute;bottom:36px;left:50%;
+        transform:translateX(calc(${tp.xOffset} - 50%));
+        width:24px;height:56px;pointer-events:none;z-index:10;
       `;
+      // Torch bracket (wall mount)
+      const bracket = document.createElement("div");
+      bracket.style.cssText = `
+        position:absolute;bottom:16px;left:50%;transform:translateX(-50%);
+        width:14px;height:6px;
+        background:linear-gradient(180deg, #8b7a4a, #5a4a2a);
+        border-radius:2px;
+        box-shadow:0 1px 2px rgba(0,0,0,0.5);
+      `;
+      torchWrap.appendChild(bracket);
       // Torch handle
       const torchHandle = document.createElement("div");
       torchHandle.style.cssText = `
-        position:absolute;bottom:0;left:50%;transform:translateX(-50%);
-        width:6px;height:24px;
-        background:linear-gradient(180deg, #6b4f0e, #4a3508, #6b4f0e);
-        border-radius:1px;
-        box-shadow:0 0 3px rgba(0,0,0,0.5);
+        position:absolute;bottom:4px;left:50%;transform:translateX(-50%);
+        width:8px;height:32px;
+        background:linear-gradient(180deg, #8b6914, #6b4f0e, #4a3508, #6b4f0e);
+        border-radius:2px 2px 3px 3px;
+        box-shadow:inset 1px 0 0 rgba(200,168,78,0.2), inset -1px 0 0 rgba(0,0,0,0.3),
+          0 0 3px rgba(0,0,0,0.5);
       `;
       torchWrap.appendChild(torchHandle);
-      // Flame
+      // Torch cup (holds fire)
+      const cup = document.createElement("div");
+      cup.style.cssText = `
+        position:absolute;bottom:32px;left:50%;transform:translateX(-50%);
+        width:16px;height:8px;
+        background:linear-gradient(180deg, #5a4a2a, #3a2a1a);
+        border-radius:2px 2px 4px 4px;
+        box-shadow:0 1px 2px rgba(0,0,0,0.4);
+      `;
+      torchWrap.appendChild(cup);
+      // Flame (centered above cup)
       const flame = document.createElement("div");
       flame.style.cssText = `
-        position:absolute;bottom:24px;left:50%;transform:translateX(-50%);
-        width:12px;height:18px;
+        position:absolute;bottom:38px;left:50%;transform:translateX(-50%);
+        width:14px;height:20px;
         background:radial-gradient(ellipse at 50% 70%, #ffdd44, #ff8800, #ff4400, transparent);
         border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;
         animation:hud-torch-flicker 0.4s ease-in-out infinite alternate;
         filter:blur(0.5px);
       `;
       torchWrap.appendChild(flame);
+      // Inner flame core
+      const flameCore = document.createElement("div");
+      flameCore.style.cssText = `
+        position:absolute;bottom:40px;left:50%;transform:translateX(-50%);
+        width:6px;height:10px;
+        background:radial-gradient(ellipse at 50% 60%, #ffffcc, #ffee66, transparent);
+        border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;
+        pointer-events:none;
+      `;
+      torchWrap.appendChild(flameCore);
       // Flame glow
       const flameGlow = document.createElement("div");
       flameGlow.style.cssText = `
-        position:absolute;bottom:26px;left:50%;transform:translateX(-50%);
-        width:8px;height:8px;border-radius:50%;
+        position:absolute;bottom:40px;left:50%;transform:translateX(-50%);
+        width:10px;height:10px;border-radius:50%;
         animation:hud-torch-glow 0.6s ease-in-out infinite alternate;
         pointer-events:none;
       `;
@@ -6523,6 +6578,10 @@ export class DiabloGame {
     if (this._state.timeOfDay === TimeOfDay.NIGHT && this._state.killCount > 0 && this._state.killCount % 10 === 0) {
       this._spawnNightBoss();
     }
+    // Day boss re-spawn check (once per 15 kills when not night)
+    if (this._state.timeOfDay !== TimeOfDay.NIGHT && this._state.killCount > 0 && this._state.killCount % 15 === 0) {
+      this._spawnDayBoss();
+    }
 
     // Boss spawn every 20 kills
     let isBossSpawn = false;
@@ -7173,9 +7232,11 @@ export class DiabloGame {
         e.y = getTerrainHeight(e.x, e.z);
       }
     }
-    // Spawn special night boss if time is NIGHT
+    // Spawn special night boss if time is NIGHT, otherwise spawn day boss
     if (this._state.timeOfDay === TimeOfDay.NIGHT) {
       this._spawnNightBoss();
+    } else {
+      this._spawnDayBoss();
     }
   }
 
@@ -7235,6 +7296,64 @@ export class DiabloGame {
     const pz = this._state.player.z;
     this._addFloatingText(px, py + 4, pz, `${def.name} has awoken!`, "#ff44ff");
     this._addFloatingText(px, py + 3, pz, "A creature of the night stalks this land...", "#cc88ff");
+  }
+
+  private _spawnDayBoss(): void {
+    const dayBossType = DAY_BOSS_MAP[this._state.currentMap];
+    if (!dayBossType) return;
+    // Don't spawn during night (night has its own boss)
+    if (this._state.timeOfDay === TimeOfDay.NIGHT) return;
+    // Check if day boss already exists
+    const existing = this._state.enemies.find(
+      (e) => e.type === dayBossType && e.state !== EnemyState.DEAD && e.state !== EnemyState.DYING
+    );
+    if (existing) return;
+
+    const def = ENEMY_DEFS[dayBossType];
+    if (!def) return;
+
+    const mapCfg = MAP_CONFIGS[this._state.currentMap];
+    const halfW = mapCfg.width / 2 - 5;
+    const halfD = ((mapCfg as any).depth || mapCfg.width) / 2 - 5;
+    const diffCfg = DIFFICULTY_CONFIGS[this._state.difficulty];
+
+    const enemy: DiabloEnemy = {
+      id: this._genId(),
+      type: dayBossType,
+      x: (Math.random() - 0.5) * halfW * 1.2,
+      y: 0,
+      z: (Math.random() - 0.5) * halfD * 1.2,
+      angle: Math.random() * Math.PI * 2,
+      hp: def.hp * diffCfg.hpMult,
+      maxHp: def.hp * diffCfg.hpMult,
+      damage: def.damage * diffCfg.damageMult,
+      damageType: ENEMY_DAMAGE_TYPES[dayBossType] || DamageType.PHYSICAL,
+      armor: def.armor * diffCfg.armorMult,
+      speed: def.speed * diffCfg.speedMult,
+      state: EnemyState.IDLE,
+      targetId: null,
+      attackTimer: 1.0,
+      attackRange: def.attackRange,
+      aggroRange: def.aggroRange,
+      xpReward: Math.round(def.xpReward * diffCfg.xpMult),
+      lootTable: [],
+      deathTimer: 0,
+      stateTimer: 0,
+      patrolTarget: null,
+      statusEffects: [],
+      isBoss: true,
+      bossName: def.name,
+      scale: def.scale,
+      level: def.level,
+    };
+
+    this._state.enemies.push(enemy);
+    this._state.totalEnemiesSpawned++;
+
+    const px = this._state.player.x;
+    const py = this._state.player.y;
+    const pz = this._state.player.z;
+    this._addFloatingText(px, py + 4, pz, `${def.name} roams this land!`, "#ffaa44");
   }
 
   // ──────────────────────────────────────────────────────────────
