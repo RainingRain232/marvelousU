@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import { resolve } from "path";
 
 export default defineConfig({
+  base: "/marvelousU/",
   resolve: {
     alias: {
       "@rpg": resolve(__dirname, "src/rpg"),
