@@ -510,6 +510,12 @@ export class DiabloGame {
   private _vendorHint!: HTMLDivElement;
   private _chestHint!: HTMLDivElement;
 
+  // Town portal (return to character select)
+  private _portalX: number = 0;
+  private _portalZ: number = 0;
+  private _portalActive: boolean = false;
+  private _portalHint!: HTMLDivElement;
+
   // Quest popup element
   private _questPopup!: HTMLDivElement;
 
@@ -532,6 +538,7 @@ export class DiabloGame {
   private _questTracker!: HTMLDivElement;
   private _chestsOpened: number = 0;
   private _goldEarnedTotal: number = 0;
+  private _totalKills: number = 0;
 
   // Safe zone (enemy-free spawn area)
   // @ts-ignore assigned but value never read (reserved for future use)
@@ -695,7 +702,11 @@ export class DiabloGame {
       else if (e.code === "KeyQ") {
         this._useQuickPotion(PotionType.HEALTH);
       } else if (e.code === "KeyE" && this._state.currentMap !== DiabloMapId.CAMELOT) {
-        this._useQuickPotion(PotionType.MANA);
+        if (this._portalActive && this._dist(this._state.player.x, this._state.player.z, this._portalX, this._portalZ) < 4) {
+          this._useTownPortal();
+        } else {
+          this._useQuickPotion(PotionType.MANA);
+        }
       } else if (e.code === "F1") {
         e.preventDefault();
         this._usePotionSlot(0);
@@ -727,6 +738,8 @@ export class DiabloGame {
           } else {
             this._showVendorShop(nearestVendor);
           }
+        } else if (this._portalActive && this._dist(p.x, p.z, this._portalX, this._portalZ) < 4) {
+          this._useTownPortal();
         }
       } else if (e.code === "KeyM") {
         this._fullmapVisible = !this._fullmapVisible;
@@ -1015,6 +1028,170 @@ export class DiabloGame {
     }
 
     const hasSave = this._hasSave();
+
+    // Parse saved character data for display
+    const classIcons: Record<string, string> = {
+      WARRIOR: "\u2694\uFE0F", MAGE: "\uD83D\uDD2E", RANGER: "\uD83C\uDFF9",
+      PALADIN: "\u{1F6E1}\uFE0F", NECROMANCER: "\uD83D\uDC80", ASSASSIN: "\uD83D\uDDE1\uFE0F",
+    };
+    const classNames: Record<string, string> = {
+      WARRIOR: "Warrior", MAGE: "Mage", RANGER: "Ranger",
+      PALADIN: "Paladin", NECROMANCER: "Necromancer", ASSASSIN: "Assassin",
+    };
+    let savedCharHtml = "";
+    if (hasSave) {
+      const raw = localStorage.getItem("diablo_save");
+      if (raw) {
+        const save = JSON.parse(raw);
+        const sp = save.player;
+        const sc = {
+          cls: sp.class as string,
+          level: sp.level || 1,
+          paragon: sp.paragonLevel || 0,
+          gold: (save.persistentGold || 0) + (sp.gold || 0),
+          killCount: save.totalKills || save.killCount || 0,
+          goldEarned: save.goldEarnedTotal || 0,
+          chestsOpened: save.chestsOpened || 0,
+          mapsCleared: Object.keys(save.completedMaps || {}).length,
+          str: sp.strength || 0,
+          dex: sp.dexterity || 0,
+          int: sp.intelligence || 0,
+          vit: sp.vitality || 0,
+          maxHp: sp.maxHp || 0,
+          maxMana: sp.maxMana || 0,
+          armor: sp.armor || 0,
+          xp: sp.xp || 0,
+          xpToNext: sp.xpToNext || 100,
+          difficulty: save.difficulty || 'DAGGER',
+          currentMap: save.currentMap || '',
+        };
+        const icon = classIcons[sc.cls] || "\u2694\uFE0F";
+        const cc = classColors[sc.cls] || "#c8a84e";
+        const displayName = classNames[sc.cls] || sc.cls;
+        const levelStr = sc.paragon > 0
+          ? `<span style="color:#ffd740;font-size:13px;">Lv.${sc.level}</span> <span style="color:#ff8800;font-size:11px;">(P${sc.paragon})</span>`
+          : `<span style="color:#ffd740;font-size:13px;">Level ${sc.level}</span>`;
+        const xpPct = Math.min(100, Math.round((sc.xp / Math.max(1, sc.xpToNext)) * 100));
+
+        // Stat bar helper matching the class card style
+        const statBarSm = (label: string, val: number, max: number, color: string) => {
+          const pct = Math.min(100, Math.round((val / max) * 100));
+          return `<div style="display:flex;align-items:center;gap:4px;margin-bottom:2px;">
+            <span style="color:${color};font-size:10px;width:24px;text-align:right;font-weight:bold;">${label}</span>
+            <div style="flex:1;height:6px;background:rgba(0,0,0,0.5);border-radius:3px;border:1px solid #3a3020;overflow:hidden;">
+              <div style="width:${pct}%;height:100%;background:linear-gradient(90deg,${color},${color}aa);border-radius:3px;box-shadow:0 0 3px ${color}80;"></div>
+            </div>
+            <span style="color:#ccc;font-size:10px;width:22px;">${val}</span>
+          </div>`;
+        };
+
+        // Count equipped items
+        const eq = sp.equipment || {};
+        const equippedCount = [eq.helmet, eq.body, eq.gauntlets, eq.legs, eq.feet, eq.accessory1, eq.accessory2, eq.weapon, eq.lantern].filter(Boolean).length;
+
+        // Difficulty display
+        const diffCfg = DIFFICULTY_CONFIGS[sc.difficulty as DiabloDifficulty];
+        const diffLabel = diffCfg ? `${diffCfg.icon} ${diffCfg.label}` : sc.difficulty;
+
+        // Stat max for bar scaling (use reasonable cap based on level)
+        const statMax = Math.max(60, sc.str, sc.dex, sc.int, sc.vit);
+
+        savedCharHtml = `
+          <!-- Divider -->
+          <div style="display:flex;align-items:center;gap:12px;margin:24px 0 14px 0;">
+            <div style="width:60px;height:1px;background:linear-gradient(to right,transparent,#5a4a2a);"></div>
+            <span style="color:#5a4a2a;font-size:10px;">&#9670;</span>
+            <div style="width:30px;height:1px;background:#5a4a2a;"></div>
+            <span style="color:#c8a84e;font-size:12px;letter-spacing:4px;font-family:'Georgia',serif;text-shadow:0 0 8px rgba(200,168,78,0.3);">CONTINUE YOUR JOURNEY</span>
+            <div style="width:30px;height:1px;background:#5a4a2a;"></div>
+            <span style="color:#5a4a2a;font-size:10px;">&#9670;</span>
+            <div style="width:60px;height:1px;background:linear-gradient(to left,transparent,#5a4a2a);"></div>
+          </div>
+          <div id="diablo-saved-char" style="
+            display:flex;align-items:stretch;gap:0;
+            background:rgba(20,15,10,0.95);
+            border:3px solid #5a4a2a;border-top-color:#8a7a4a;border-left-color:#7a6a3a;
+            border-right-color:#3a2a1a;border-bottom-color:#2a1a0a;
+            border-radius:12px;cursor:pointer;
+            transition:border-color 0.3s, box-shadow 0.3s;
+            max-width:820px;width:100%;position:relative;overflow:hidden;
+            background-image:repeating-linear-gradient(45deg,transparent,transparent 8px,rgba(200,168,78,0.015) 8px,rgba(200,168,78,0.015) 16px);
+          ">
+            <!-- Corner rivets -->
+            <div style="position:absolute;top:6px;left:6px;width:8px;height:8px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#ffd740,#8a6a20);box-shadow:0 1px 2px rgba(0,0,0,0.6);"></div>
+            <div style="position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#ffd740,#8a6a20);box-shadow:0 1px 2px rgba(0,0,0,0.6);"></div>
+            <div style="position:absolute;bottom:6px;left:6px;width:8px;height:8px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#ffd740,#8a6a20);box-shadow:0 1px 2px rgba(0,0,0,0.6);"></div>
+            <div style="position:absolute;bottom:6px;right:6px;width:8px;height:8px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#ffd740,#8a6a20);box-shadow:0 1px 2px rgba(0,0,0,0.6);"></div>
+
+            <!-- Left: Class icon + Name + Level -->
+            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px 24px;min-width:140px;
+              border-right:1px solid #3a2a1a;background:rgba(0,0,0,0.2);">
+              <div style="position:relative;display:inline-block;margin-bottom:8px;">
+                <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:80px;height:80px;border-radius:50%;
+                  background:radial-gradient(circle,${cc}30 0%,${cc}10 40%,transparent 70%);border:1px solid ${cc}30;
+                  box-shadow:0 0 20px ${cc}20;"></div>
+                <div style="font-size:52px;position:relative;z-index:1;filter:drop-shadow(0 0 8px ${cc}60);">${icon}</div>
+              </div>
+              <div style="font-size:20px;color:${cc};font-weight:bold;letter-spacing:2px;text-shadow:0 0 10px ${cc}40;font-family:'Georgia',serif;">${displayName}</div>
+              <div style="margin-top:4px;">${levelStr}</div>
+              <!-- XP bar -->
+              <div style="width:100%;margin-top:6px;">
+                <div style="height:4px;background:rgba(0,0,0,0.5);border-radius:2px;border:1px solid #3a3020;overflow:hidden;">
+                  <div style="width:${xpPct}%;height:100%;background:linear-gradient(90deg,#5080ff,#80b0ff);border-radius:2px;box-shadow:0 0 4px #5080ff80;"></div>
+                </div>
+                <div style="text-align:center;font-size:9px;color:#668;margin-top:2px;">XP: ${xpPct}%</div>
+              </div>
+            </div>
+
+            <!-- Center: Stats grid -->
+            <div style="flex:1;padding:16px 20px;display:flex;flex-direction:column;justify-content:center;gap:8px;">
+              <!-- Top row: Primary stats as bars -->
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 16px;">
+                ${statBarSm("STR", sc.str, statMax, "#e88")}
+                ${statBarSm("DEX", sc.dex, statMax, "#8e8")}
+                ${statBarSm("INT", sc.int, statMax, "#88e")}
+                ${statBarSm("VIT", sc.vit, statMax, "#ee8")}
+              </div>
+              <!-- Divider line -->
+              <div style="height:1px;background:linear-gradient(to right,transparent,#3a2a1a 20%,#3a2a1a 80%,transparent);margin:2px 0;"></div>
+              <!-- Bottom row: Secondary stats -->
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px 12px;font-size:11px;">
+                <div style="color:#c88;"><span style="color:#888;">HP</span> <span style="color:#e88;">${sc.maxHp.toLocaleString()}</span></div>
+                <div style="color:#88c;"><span style="color:#888;">Mana</span> <span style="color:#88e;">${sc.maxMana.toLocaleString()}</span></div>
+                <div style="color:#cc8;"><span style="color:#888;">Armor</span> <span style="color:#ee8;">${sc.armor}</span></div>
+              </div>
+            </div>
+
+            <!-- Right: Achievement stats + continue -->
+            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px 24px;min-width:180px;
+              border-left:1px solid #3a2a1a;background:rgba(0,0,0,0.15);gap:6px;">
+              <div style="display:grid;grid-template-columns:auto 1fr;gap:3px 8px;font-size:12px;width:100%;">
+                <span style="color:#f66;text-align:center;">\u2620</span>
+                <span style="color:#daa;"><span style="color:#f88;font-weight:bold;">${sc.killCount.toLocaleString()}</span> Enemies slain</span>
+                <span style="color:#fd0;text-align:center;">\uD83D\uDCB0</span>
+                <span style="color:#da8;"><span style="color:#ffd700;font-weight:bold;">${sc.gold.toLocaleString()}</span> Gold</span>
+                <span style="color:#4af;text-align:center;">\uD83D\uDDFA\uFE0F</span>
+                <span style="color:#aad;"><span style="color:#8af;font-weight:bold;">${sc.mapsCleared}</span> Maps cleared</span>
+                <span style="color:#4d4;text-align:center;">\uD83D\uDCE6</span>
+                <span style="color:#ada;"><span style="color:#8f8;font-weight:bold;">${sc.chestsOpened}</span> Chests opened</span>
+                <span style="color:#aaa;text-align:center;">\u2699\uFE0F</span>
+                <span style="color:#bbb;"><span style="color:#ccc;font-weight:bold;">${equippedCount}/9</span> Gear equipped</span>
+              </div>
+              <div style="height:1px;width:80%;background:linear-gradient(to right,transparent,#5a4a2a,transparent);margin:4px 0;"></div>
+              <div style="font-size:11px;color:#888;">${diffLabel}</div>
+              <div style="
+                margin-top:4px;padding:8px 24px;
+                background:linear-gradient(180deg,rgba(${cc === '#e85030' ? '180,60,30' : cc === '#5080ff' ? '50,90,200' : cc === '#40cc40' ? '40,160,40' : cc === '#ffd740' ? '200,170,40' : cc === '#b050e0' ? '140,50,180' : '160,40,160'},0.25),rgba(0,0,0,0.3));
+                border:2px solid ${cc}88;border-radius:6px;
+                color:${cc};font-size:15px;letter-spacing:3px;font-weight:bold;
+                font-family:'Georgia',serif;text-shadow:0 0 12px ${cc}40;
+                transition:all 0.2s;
+              ">CONTINUE \u25B6</div>
+            </div>
+          </div>`;
+      }
+    }
+
     const menuBtnStyle =
       "padding:12px 28px;font-size:15px;letter-spacing:2px;font-weight:bold;" +
       "background:rgba(40,30,15,0.9);border:2px solid #5a4a2a;border-radius:8px;color:#c8a84e;" +
@@ -1093,6 +1270,7 @@ export class DiabloGame {
           ${diffHtml}
         </div>
         <div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center;">${cardsHtml}</div>
+        ${savedCharHtml}
         <div style="display:flex;gap:14px;margin-top:30px;flex-wrap:wrap;justify-content:center;">
           ${saveBtns}
           <button id="diablo-cs-controls" style="${menuBtnStyle}">CONTROLS</button>
@@ -1116,6 +1294,23 @@ export class DiabloGame {
         this._showMapSelect();
       });
     });
+
+    // Wire up saved character continue button
+    const savedCharEl = this._menuEl.querySelector("#diablo-saved-char") as HTMLElement | null;
+    if (savedCharEl) {
+      savedCharEl.addEventListener("mouseenter", () => {
+        savedCharEl.style.borderColor = "#c8a84e";
+        savedCharEl.style.boxShadow = "0 0 25px rgba(200,168,78,0.35), inset 0 0 30px rgba(200,168,78,0.05)";
+      });
+      savedCharEl.addEventListener("mouseleave", () => {
+        savedCharEl.style.borderColor = "";
+        savedCharEl.style.boxShadow = "none";
+      });
+      savedCharEl.addEventListener("click", () => {
+        this._loadPlayerOnly();
+        this._showMapSelect();
+      });
+    }
 
     // Wire up difficulty buttons
     const diffBtns = this._menuEl.querySelectorAll(".diff-btn") as NodeListOf<HTMLButtonElement>;
@@ -1495,24 +1690,91 @@ export class DiabloGame {
     }
 
     this._menuEl.innerHTML = `
+      <style>
+        @keyframes ms-flame-flicker {
+          0%, 100% { text-shadow: 0 0 8px #ff6600, 0 0 16px #ff4400, 0 -4px 12px #ff8800; transform: scaleY(1); }
+          25% { text-shadow: 0 0 12px #ff8800, 0 0 20px #ff6600, 0 -6px 16px #ffaa00; transform: scaleY(1.08); }
+          50% { text-shadow: 0 0 6px #ff4400, 0 0 14px #ff2200, 0 -3px 10px #ff6600; transform: scaleY(0.95); }
+          75% { text-shadow: 0 0 10px #ff6600, 0 0 18px #ff4400, 0 -5px 14px #ff8800; transform: scaleY(1.05); }
+        }
+        @keyframes ms-title-glow {
+          0%, 100% { text-shadow: 0 0 20px rgba(200,168,78,0.5), 0 2px 4px rgba(0,0,0,0.8); }
+          50% { text-shadow: 0 0 30px rgba(200,168,78,0.7), 0 0 60px rgba(200,168,78,0.2), 0 2px 4px rgba(0,0,0,0.8); }
+        }
+      </style>
       <div style="
-        width:100%;height:100%;background:rgba(0,0,0,0.92);display:flex;flex-direction:column;
+        width:100%;height:100%;
+        background:rgba(0,0,0,0.92);
+        background-image:radial-gradient(ellipse at center,rgba(200,168,78,0.04) 0%,transparent 60%);
+        display:flex;flex-direction:column;
         align-items:center;justify-content:center;color:#fff;
+        position:relative;overflow:hidden;
       ">
-        <h1 style="
-          color:#c8a84e;font-size:42px;letter-spacing:4px;margin-bottom:30px;
-          text-shadow:0 0 20px rgba(200,168,78,0.5),0 2px 4px rgba(0,0,0,0.8);
-          font-family:'Georgia',serif;
-        ">SELECT YOUR DESTINATION</h1>
+        <!-- Ornate gothic page border -->
+        <div style="position:absolute;inset:8px;border:2px solid #5a4a2a;border-radius:4px;pointer-events:none;
+          box-shadow:inset 0 0 30px rgba(0,0,0,0.5),0 0 1px #3a2a1a;"></div>
+        <div style="position:absolute;inset:12px;border:1px solid #3a2a1a;border-radius:2px;pointer-events:none;"></div>
+        <!-- Corner diamond ornaments -->
+        <div style="position:absolute;top:14px;left:14px;color:#5a4a2a;font-size:20px;">&#9670;</div>
+        <div style="position:absolute;top:14px;right:14px;color:#5a4a2a;font-size:20px;">&#9670;</div>
+        <div style="position:absolute;bottom:14px;left:14px;color:#5a4a2a;font-size:20px;">&#9670;</div>
+        <div style="position:absolute;bottom:14px;right:14px;color:#5a4a2a;font-size:20px;">&#9670;</div>
+
+        <!-- Title with flame braziers -->
+        <div style="display:flex;align-items:center;gap:24px;margin-bottom:8px;">
+          <div style="font-size:32px;animation:ms-flame-flicker 0.6s ease-in-out infinite;color:#ff6600;">&#x1F525;</div>
+          <div style="text-align:center;">
+            <h1 style="
+              color:#c8a84e;font-size:42px;letter-spacing:4px;margin:0;
+              animation:ms-title-glow 3s ease-in-out infinite;
+              font-family:'Georgia',serif;
+            ">SELECT YOUR DESTINATION</h1>
+            <div style="color:#8a7a4a;font-size:14px;letter-spacing:6px;margin-top:6px;font-family:'Georgia',serif;
+              text-shadow:0 0 10px rgba(200,168,78,0.2);">&#10038; Chart Your Path &#10038;</div>
+          </div>
+          <div style="font-size:32px;animation:ms-flame-flicker 0.6s ease-in-out infinite 0.3s;color:#ff6600;">&#x1F525;</div>
+        </div>
+
+        <!-- Decorative divider -->
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+          <div style="width:80px;height:1px;background:linear-gradient(to right,transparent,#5a4a2a);"></div>
+          <span style="color:#c8a84e;font-size:14px;">&#9884;</span>
+          <div style="width:40px;height:1px;background:#5a4a2a;"></div>
+          <span style="color:#c8a84e;font-size:10px;">&#9830;</span>
+          <div style="width:40px;height:1px;background:#5a4a2a;"></div>
+          <span style="color:#c8a84e;font-size:14px;">&#9884;</span>
+          <div style="width:80px;height:1px;background:linear-gradient(to left,transparent,#5a4a2a);"></div>
+        </div>
+
         <div style="font-size:16px;color:${DIFFICULTY_CONFIGS[this._state.difficulty].color};margin-bottom:12px;font-family:'Georgia',serif;">
           ${DIFFICULTY_CONFIGS[this._state.difficulty].icon} ${DIFFICULTY_CONFIGS[this._state.difficulty].label} Difficulty
         </div>
-        <div style="display:flex;gap:8px;margin-bottom:20px;">${todHtml}</div>
+        <div style="display:flex;gap:8px;margin-bottom:14px;">${todHtml}</div>
+
+        <!-- Divider between time-of-day and modifiers -->
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+          <div style="width:60px;height:1px;background:linear-gradient(to right,transparent,#3a2a1a);"></div>
+          <span style="color:#5a4a2a;font-size:10px;">&#9670;</span>
+          <div style="width:60px;height:1px;background:linear-gradient(to left,transparent,#3a2a1a);"></div>
+        </div>
+
         <div style="margin-bottom:12px;text-align:center;">
-          <div style="color:#c8a84e;font-size:14px;letter-spacing:2px;margin-bottom:8px;">MAP MODIFIERS (increase drop rate)</div>
+          <div style="color:#c8a84e;font-size:14px;letter-spacing:2px;margin-bottom:8px;font-family:'Georgia',serif;">MAP MODIFIERS (increase drop rate)</div>
           <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:900px;">${modHtml}</div>
           <div id="total-drop-bonus" style="color:#4a4;font-size:13px;margin-top:6px;">Total drop rate bonus: +0%</div>
         </div>
+
+        <!-- Divider between modifiers and map cards -->
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
+          <div style="width:80px;height:1px;background:linear-gradient(to right,transparent,#5a4a2a);"></div>
+          <span style="color:#c8a84e;font-size:14px;">&#9884;</span>
+          <div style="width:40px;height:1px;background:#5a4a2a;"></div>
+          <span style="color:#c8a84e;font-size:10px;">&#9830;</span>
+          <div style="width:40px;height:1px;background:#5a4a2a;"></div>
+          <span style="color:#c8a84e;font-size:14px;">&#9884;</span>
+          <div style="width:80px;height:1px;background:linear-gradient(to left,transparent,#5a4a2a);"></div>
+        </div>
+
         <div style="display:flex;gap:20px;flex-wrap:wrap;justify-content:center;max-width:95vw;overflow-y:auto;max-height:60vh;padding:10px;">${cardsHtml}</div>
       </div>`;
 
@@ -1656,6 +1918,10 @@ export class DiabloGame {
 
     if (mapId === DiabloMapId.CAMELOT) {
       // Camelot is a safe hub: no enemies or chests, spawn vendors instead
+      // Place town portal near the entrance of Camelot
+      this._portalX = 0;
+      this._portalZ = gridD / 2 - 5;
+      this._portalActive = true;
       this._state.vendors = VENDOR_DEFS.map((vd) => ({
         id: this._genId(),
         type: vd.type,
@@ -1675,6 +1941,10 @@ export class DiabloGame {
     } else {
       this._state.vendors = [];
       this._state.townfolk = [];
+      // Place town portal at map center
+      this._portalX = gridW / 2;
+      this._portalZ = gridD / 2;
+      this._portalActive = true;
       this._spawnInitialEnemies();
       this._spawnInitialChests();
     }
@@ -2402,16 +2672,58 @@ export class DiabloGame {
     }
 
     this._menuEl.innerHTML = `
+      <style>
+        .diablo-controls-scroll::-webkit-scrollbar { width: 8px; }
+        .diablo-controls-scroll::-webkit-scrollbar-track { background: rgba(10,8,4,0.6); border-radius: 4px; }
+        .diablo-controls-scroll::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #5a4a2a, #3a2a1a); border-radius: 4px; border: 1px solid #6b5a3a; }
+        .diablo-controls-scroll::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, #7a6a4a, #5a4a2a); }
+      </style>
       <div style="
         width:100%;height:100%;background:rgba(0,0,0,0.88);display:flex;flex-direction:column;
-        align-items:center;justify-content:center;color:#fff;pointer-events:auto;
+        align-items:center;justify-content:center;color:#fff;pointer-events:auto;position:relative;overflow:hidden;
+        background-image:radial-gradient(ellipse at center,rgba(40,30,15,0.15) 0%,transparent 70%);
       ">
-        <div style="
-          max-width:700px;width:90%;background:rgba(15,10,5,0.95);border:2px solid #5a4a2a;
-          border-radius:12px;padding:30px 40px;max-height:85vh;overflow-y:auto;
-        ">
-          <h1 style="color:#c8a84e;font-size:36px;letter-spacing:4px;margin:0 0 20px 0;text-align:center;
+        <!-- Ornate gothic page border -->
+        <div style="position:absolute;inset:8px;border:2px solid #5a4a2a;border-radius:4px;pointer-events:none;
+          box-shadow:inset 0 0 30px rgba(0,0,0,0.5),0 0 1px #3a2a1a;"></div>
+        <div style="position:absolute;inset:12px;border:1px solid #3a2a1a;border-radius:2px;pointer-events:none;"></div>
+        <!-- Corner diamond ornaments -->
+        <div style="position:absolute;top:14px;left:14px;color:#5a4a2a;font-size:20px;">&#9670;</div>
+        <div style="position:absolute;top:14px;right:14px;color:#5a4a2a;font-size:20px;">&#9670;</div>
+        <div style="position:absolute;bottom:14px;left:14px;color:#5a4a2a;font-size:20px;">&#9670;</div>
+        <div style="position:absolute;bottom:14px;right:14px;color:#5a4a2a;font-size:20px;">&#9670;</div>
+
+        <!-- Scroll icon -->
+        <div style="font-size:36px;margin-bottom:4px;text-shadow:0 0 12px rgba(200,168,78,0.3);">&#x1F4DC;</div>
+
+        <!-- Title with decorative dividers -->
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px;">
+          <div style="width:80px;height:1px;background:linear-gradient(to right,transparent,#5a4a2a);"></div>
+          <div style="color:#5a4a2a;font-size:14px;">&#10038;</div>
+          <h1 style="color:#c8a84e;font-size:36px;letter-spacing:4px;margin:0;text-align:center;
             font-family:'Georgia',serif;text-shadow:0 0 15px rgba(200,168,78,0.4);">CONTROLS</h1>
+          <div style="color:#5a4a2a;font-size:14px;">&#10038;</div>
+          <div style="width:80px;height:1px;background:linear-gradient(to left,transparent,#5a4a2a);"></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+          <div style="width:120px;height:1px;background:linear-gradient(to right,transparent,#3a2a1a);"></div>
+          <div style="color:#8a7a4a;font-size:12px;letter-spacing:4px;font-family:'Georgia',serif;">KEYBINDINGS &amp; COMMANDS</div>
+          <div style="width:120px;height:1px;background:linear-gradient(to left,transparent,#3a2a1a);"></div>
+        </div>
+
+        <!-- Beveled panel frame with corner rivets -->
+        <div style="
+          max-width:700px;width:90%;background:rgba(15,10,5,0.95);
+          border:3px solid #5a4a2a;border-top-color:#8a7a4a;border-left-color:#7a6a3a;
+          border-right-color:#3a2a1a;border-bottom-color:#2a1a0a;
+          border-radius:12px;padding:30px 40px;max-height:70vh;overflow-y:auto;position:relative;
+          background-image:repeating-linear-gradient(45deg,transparent,transparent 8px,rgba(200,168,78,0.015) 8px,rgba(200,168,78,0.015) 16px);
+        " class="diablo-controls-scroll">
+          <!-- Corner rivets -->
+          <div style="position:absolute;top:6px;left:6px;width:8px;height:8px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#ffd740,#8a6a20);box-shadow:0 1px 2px rgba(0,0,0,0.6);"></div>
+          <div style="position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#ffd740,#8a6a20);box-shadow:0 1px 2px rgba(0,0,0,0.6);"></div>
+          <div style="position:absolute;bottom:6px;left:6px;width:8px;height:8px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#ffd740,#8a6a20);box-shadow:0 1px 2px rgba(0,0,0,0.6);"></div>
+          <div style="position:absolute;bottom:6px;right:6px;width:8px;height:8px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#ffd740,#8a6a20);box-shadow:0 1px 2px rgba(0,0,0,0.6);"></div>
 
           ${sectionHeader("MOVEMENT")}
           ${row("W / \u2191", "Move Forward")}
@@ -2436,6 +2748,7 @@ export class DiabloGame {
           ${sectionHeader("INTERACTION")}
           ${row("F", "Open nearby Chest")}
           ${row("E", "Interact (Vendors / Crafting in Camelot)")}
+          ${row("E", "Use Town Portal (near portal on combat maps)")}
 
           ${sectionHeader("INTERFACE")}
           ${row("I", "Open Inventory")}
@@ -2896,35 +3209,132 @@ export class DiabloGame {
       }
 
       this._menuEl.innerHTML = `
+        <style>
+          .diablo-menu-scroll::-webkit-scrollbar { width: 8px; }
+          .diablo-menu-scroll::-webkit-scrollbar-track {
+            background: rgba(10,8,4,0.6);
+            border-radius: 4px;
+            border: 1px solid #3a2a1a;
+          }
+          .diablo-menu-scroll::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, #5a4a2a, #3a2a1a);
+            border-radius: 4px;
+            border: 1px solid #6a5a3a;
+          }
+          .diablo-menu-scroll::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(180deg, #7a6a3a, #5a4a2a);
+          }
+          .diablo-menu-scroll { scrollbar-width: thin; scrollbar-color: #5a4a2a rgba(10,8,4,0.6); }
+        </style>
         <div style="
-          width:100%;height:100%;background:rgba(0,0,0,0.88);display:flex;flex-direction:column;
+          width:100%;height:100%;
+          background:radial-gradient(ellipse at center, rgba(40,25,10,0.92) 0%, rgba(0,0,0,0.94) 70%);
+          display:flex;flex-direction:column;
           align-items:center;justify-content:center;color:#fff;pointer-events:auto;
         ">
-          <div style="
-            max-width:600px;width:90%;background:rgba(15,10,5,0.95);border:2px solid #5a4a2a;
-            border-radius:12px;padding:30px;max-height:85vh;overflow-y:auto;
+          <div class="diablo-menu-scroll" style="
+            max-width:620px;width:90%;position:relative;
+            background:
+              repeating-linear-gradient(
+                135deg,
+                transparent,
+                transparent 10px,
+                rgba(60,45,20,0.04) 10px,
+                rgba(60,45,20,0.04) 20px
+              ),
+              linear-gradient(180deg, rgba(25,18,8,0.97), rgba(12,8,4,0.98));
+            border:3px solid #5a4a2a;
+            border-image:linear-gradient(180deg, #7a6a3a, #4a3a1a, #7a6a3a) 1;
+            padding:30px;max-height:85vh;overflow-y:auto;
+            box-shadow:
+              inset 0 0 30px rgba(0,0,0,0.5),
+              inset 0 0 1px 1px rgba(90,74,42,0.3),
+              0 0 40px rgba(0,0,0,0.6),
+              0 0 80px rgba(40,30,10,0.3);
           ">
-            <h1 style="color:#c8a84e;font-size:32px;letter-spacing:4px;margin:0 0 8px 0;text-align:center;
-              font-family:'Georgia',serif;text-shadow:0 0 15px rgba(200,168,78,0.4);">SWAP SKILLS</h1>
-            <p style="color:#888;font-size:13px;text-align:center;margin:0 0 20px 0;">
+            <!-- Corner rivets -->
+            <div style="position:absolute;top:6px;left:6px;width:10px;height:10px;
+              background:radial-gradient(circle, #8a7a4a, #4a3a1a);border-radius:50%;
+              box-shadow:0 0 4px rgba(138,122,74,0.5);"></div>
+            <div style="position:absolute;top:6px;right:6px;width:10px;height:10px;
+              background:radial-gradient(circle, #8a7a4a, #4a3a1a);border-radius:50%;
+              box-shadow:0 0 4px rgba(138,122,74,0.5);"></div>
+            <div style="position:absolute;bottom:6px;left:6px;width:10px;height:10px;
+              background:radial-gradient(circle, #8a7a4a, #4a3a1a);border-radius:50%;
+              box-shadow:0 0 4px rgba(138,122,74,0.5);"></div>
+            <div style="position:absolute;bottom:6px;right:6px;width:10px;height:10px;
+              background:radial-gradient(circle, #8a7a4a, #4a3a1a);border-radius:50%;
+              box-shadow:0 0 4px rgba(138,122,74,0.5);"></div>
+
+            <!-- Inner decorative border -->
+            <div style="position:absolute;top:14px;left:14px;right:14px;bottom:14px;
+              border:1px solid rgba(90,74,42,0.25);pointer-events:none;"></div>
+
+            <!-- Crossed swords icon -->
+            <div style="text-align:center;font-size:36px;margin-bottom:4px;
+              filter:drop-shadow(0 0 8px rgba(200,168,78,0.4));letter-spacing:2px;">
+              &#x2694;&#xFE0F;
+            </div>
+
+            <!-- Title with decorative dividers -->
+            <div style="text-align:center;margin-bottom:4px;">
+              <div style="display:flex;align-items:center;justify-content:center;gap:12px;">
+                <span style="color:#5a4a2a;font-size:18px;text-shadow:0 0 6px rgba(200,168,78,0.3);">
+                  &#x2500;&#x2500;&#x2500; &#x25C6; &#x2500;&#x2500;&#x2500;
+                </span>
+                <h1 style="color:#c8a84e;font-size:32px;letter-spacing:5px;margin:0;
+                  font-family:'Georgia',serif;
+                  text-shadow:0 0 15px rgba(200,168,78,0.4), 0 2px 4px rgba(0,0,0,0.8);
+                  background:linear-gradient(180deg, #e8d080, #c8a84e, #a8884e);
+                  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+                  background-clip:text;">SWAP SKILLS</h1>
+                <span style="color:#5a4a2a;font-size:18px;text-shadow:0 0 6px rgba(200,168,78,0.3);">
+                  &#x2500;&#x2500;&#x2500; &#x25C6; &#x2500;&#x2500;&#x2500;
+                </span>
+              </div>
+            </div>
+
+            <p style="color:#888;font-size:13px;text-align:center;margin:0 0 22px 0;
+              font-style:italic;letter-spacing:0.5px;">
               Click a slot, then click a skill to assign it. Press [K] to close.
             </p>
 
-            <div style="margin-bottom:20px;">
-              <div style="color:#c8a84e;font-size:14px;margin-bottom:8px;letter-spacing:2px;">ACTIVE SKILLS</div>
+            <div style="margin-bottom:22px;">
+              <div style="text-align:center;margin-bottom:10px;">
+                <div style="display:inline-flex;align-items:center;gap:8px;">
+                  <span style="color:#5a4a2a;">&#x25C6;</span>
+                  <span style="color:#c8a84e;font-size:14px;letter-spacing:3px;font-weight:bold;
+                    font-family:'Georgia',serif;">ACTIVE SKILLS</span>
+                  <span style="color:#5a4a2a;">&#x25C6;</span>
+                </div>
+                <div style="height:2px;margin-top:6px;
+                  background:linear-gradient(90deg, transparent, #5a4a2a, #c8a84e, #5a4a2a, transparent);"></div>
+              </div>
               <div style="display:flex;gap:6px;justify-content:center;">${activeHtml}</div>
             </div>
 
             <div>
-              <div style="color:#c8a84e;font-size:14px;margin-bottom:8px;letter-spacing:2px;">AVAILABLE SKILLS</div>
+              <div style="text-align:center;margin-bottom:10px;">
+                <div style="display:inline-flex;align-items:center;gap:8px;">
+                  <span style="color:#5a4a2a;">&#x25C6;</span>
+                  <span style="color:#c8a84e;font-size:14px;letter-spacing:3px;font-weight:bold;
+                    font-family:'Georgia',serif;">AVAILABLE SKILLS</span>
+                  <span style="color:#5a4a2a;">&#x25C6;</span>
+                </div>
+                <div style="height:2px;margin-top:6px;
+                  background:linear-gradient(90deg, transparent, #5a4a2a, #c8a84e, #5a4a2a, transparent);"></div>
+              </div>
               <div style="display:flex;flex-direction:column;gap:4px;">${poolHtml}</div>
             </div>
 
-            <div style="text-align:center;margin-top:20px;">
+            <div style="text-align:center;margin-top:24px;">
               <button id="diablo-swapskill-back" style="
                 width:200px;padding:12px 0;font-size:18px;letter-spacing:3px;font-weight:bold;
-                background:rgba(40,30,15,0.9);border:2px solid #5a4a2a;border-radius:8px;color:#c8a84e;
+                background:linear-gradient(180deg, rgba(50,38,18,0.95), rgba(30,22,10,0.95));
+                border:2px solid #5a4a2a;border-radius:8px;color:#c8a84e;
                 cursor:pointer;transition:all 0.2s;font-family:'Georgia',serif;pointer-events:auto;
+                box-shadow:0 2px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(90,74,42,0.3);
+                text-shadow:0 0 8px rgba(200,168,78,0.3);
               ">BACK</button>
             </div>
           </div>
@@ -3102,7 +3512,15 @@ export class DiabloGame {
 
     // Section header helper
     const sectionHeader = (title: string): string =>
-      `<div style="font-size:20px;color:#c8a84e;border-bottom:1px solid #5a4a2a;padding-bottom:4px;margin-bottom:10px;margin-top:24px;font-weight:bold;">${title}</div>`;
+      `<div style="margin-top:24px;margin-bottom:12px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="flex:1;height:1px;background:linear-gradient(to right,transparent,#5a4a2a);"></div>
+          <span style="color:#5a4a2a;font-size:8px;">&#9670;</span>
+          <span style="font-size:18px;color:#c8a84e;letter-spacing:3px;font-weight:bold;font-family:'Georgia',serif;text-shadow:0 0 8px rgba(200,168,78,0.2);">${title}</span>
+          <span style="color:#5a4a2a;font-size:8px;">&#9670;</span>
+          <div style="flex:1;height:1px;background:linear-gradient(to left,transparent,#5a4a2a);"></div>
+        </div>
+      </div>`;
 
     // Section 1: Class & Level
     const sec1 = `
@@ -3264,29 +3682,73 @@ export class DiabloGame {
     const sec6 = `${sectionHeader("SET BONUSES ACTIVE")}${activeSets}`;
 
     this._menuEl.innerHTML = `
+      <style>
+        .diablo-menu-scroll::-webkit-scrollbar { width: 8px; }
+        .diablo-menu-scroll::-webkit-scrollbar-track { background: rgba(15,10,5,0.6); border-radius: 4px; }
+        .diablo-menu-scroll::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #5a4a2a, #3a2a1a); border-radius: 4px; border: 1px solid #2a1a0a; }
+        .diablo-menu-scroll::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, #7a6a3a, #5a4a2a); }
+        .diablo-menu-scroll { scrollbar-width: thin; scrollbar-color: #5a4a2a rgba(15,10,5,0.6); }
+      </style>
       <div style="
-        width:100%;height:100%;background:rgba(0,0,0,0.88);display:flex;flex-direction:column;
+        width:100%;height:100%;
+        background:radial-gradient(ellipse at center, rgba(40,30,10,0.4) 0%, rgba(0,0,0,0.92) 70%);
+        display:flex;flex-direction:column;
         align-items:center;justify-content:center;color:#fff;pointer-events:auto;
       ">
         <div style="
-          max-width:800px;width:90%;background:rgba(15,10,5,0.95);border:2px solid #5a4a2a;
-          border-radius:12px;padding:30px 40px;max-height:85vh;overflow-y:auto;
+          position:relative;max-width:800px;width:90%;
+          background:rgba(15,10,5,0.95);
+          background-image:repeating-linear-gradient(135deg,transparent,transparent 20px,rgba(90,74,42,0.03) 20px,rgba(90,74,42,0.03) 21px);
+          border:2px solid #5a4a2a;
+          border-radius:12px;padding:0;
         ">
-          <h1 style="color:#c8a84e;font-size:36px;letter-spacing:4px;margin:0 0 10px 0;text-align:center;
-            font-family:'Georgia',serif;text-shadow:0 0 15px rgba(200,168,78,0.4);">CHARACTER OVERVIEW</h1>
-          <div style="text-align:center;color:#888;font-size:12px;margin-bottom:6px;">Press C or Escape to close</div>
-          ${sec1}${sec2}${sec3}${sec4}${sec5}${sec6}
-          <div style="text-align:center;margin-top:30px;display:flex;gap:16px;justify-content:center;">
-            <button id="diablo-char-skilltree" style="
-              width:200px;padding:12px 0;font-size:18px;letter-spacing:3px;font-weight:bold;
-              background:rgba(40,30,15,0.9);border:2px solid #5a8a2a;border-radius:8px;color:#8c8;
-              cursor:pointer;transition:all 0.2s;font-family:'Georgia',serif;pointer-events:auto;
-            ">SKILL TREE</button>
-            <button id="diablo-char-back" style="
-              width:200px;padding:12px 0;font-size:18px;letter-spacing:3px;font-weight:bold;
-              background:rgba(40,30,15,0.9);border:2px solid #5a4a2a;border-radius:8px;color:#c8a84e;
-              cursor:pointer;transition:all 0.2s;font-family:'Georgia',serif;pointer-events:auto;
-            ">BACK</button>
+          <!-- Inner decorative border -->
+          <div style="position:absolute;inset:4px;border:1px solid #3a2a1a;border-radius:9px;pointer-events:none;"></div>
+          <!-- Corner rivets -->
+          <div style="position:absolute;top:8px;left:8px;width:8px;height:8px;background:radial-gradient(circle,#7a6a3a,#3a2a1a);border-radius:50%;border:1px solid #5a4a2a;"></div>
+          <div style="position:absolute;top:8px;right:8px;width:8px;height:8px;background:radial-gradient(circle,#7a6a3a,#3a2a1a);border-radius:50%;border:1px solid #5a4a2a;"></div>
+          <div style="position:absolute;bottom:8px;left:8px;width:8px;height:8px;background:radial-gradient(circle,#7a6a3a,#3a2a1a);border-radius:50%;border:1px solid #5a4a2a;"></div>
+          <div style="position:absolute;bottom:8px;right:8px;width:8px;height:8px;background:radial-gradient(circle,#7a6a3a,#3a2a1a);border-radius:50%;border:1px solid #5a4a2a;"></div>
+          <!-- Scrollable content -->
+          <div class="diablo-menu-scroll" style="
+            padding:30px 40px;max-height:85vh;overflow-y:auto;
+          ">
+            <!-- Decorative top divider -->
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+              <div style="flex:1;height:1px;background:linear-gradient(to right,transparent,#5a4a2a);"></div>
+              <span style="color:#5a4a2a;font-size:6px;">&#9670;</span>
+              <span style="color:#5a4a2a;font-size:8px;">&#9670;</span>
+              <span style="color:#c8a84e;font-size:10px;">&#9670;</span>
+              <span style="color:#5a4a2a;font-size:8px;">&#9670;</span>
+              <span style="color:#5a4a2a;font-size:6px;">&#9670;</span>
+              <div style="flex:1;height:1px;background:linear-gradient(to left,transparent,#5a4a2a);"></div>
+            </div>
+            <h1 style="color:#c8a84e;font-size:36px;letter-spacing:4px;margin:0 0 8px 0;text-align:center;
+              font-family:'Georgia',serif;text-shadow:0 0 15px rgba(200,168,78,0.4);">CHARACTER OVERVIEW</h1>
+            <!-- Decorative bottom divider -->
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+              <div style="flex:1;height:1px;background:linear-gradient(to right,transparent,#5a4a2a);"></div>
+              <span style="color:#5a4a2a;font-size:6px;">&#9670;</span>
+              <span style="color:#5a4a2a;font-size:8px;">&#9670;</span>
+              <span style="color:#c8a84e;font-size:10px;">&#9670;</span>
+              <span style="color:#5a4a2a;font-size:8px;">&#9670;</span>
+              <span style="color:#5a4a2a;font-size:6px;">&#9670;</span>
+              <div style="flex:1;height:1px;background:linear-gradient(to left,transparent,#5a4a2a);"></div>
+            </div>
+            <div style="text-align:center;color:#888;font-size:12px;margin-bottom:6px;">Press C or Escape to close</div>
+            ${sec1}${sec2}${sec3}${sec4}${sec5}${sec6}
+            <div style="text-align:center;margin-top:30px;display:flex;gap:16px;justify-content:center;">
+              <button id="diablo-char-skilltree" style="
+                width:200px;padding:12px 0;font-size:18px;letter-spacing:3px;font-weight:bold;
+                background:rgba(40,30,15,0.9);border:2px solid #5a8a2a;border-radius:8px;color:#8c8;
+                cursor:pointer;transition:all 0.2s;font-family:'Georgia',serif;pointer-events:auto;
+              ">SKILL TREE</button>
+              <button id="diablo-char-back" style="
+                width:200px;padding:12px 0;font-size:18px;letter-spacing:3px;font-weight:bold;
+                background:rgba(40,30,15,0.9);border:2px solid #5a4a2a;border-radius:8px;color:#c8a84e;
+                cursor:pointer;transition:all 0.2s;font-family:'Georgia',serif;pointer-events:auto;
+              ">BACK</button>
+            </div>
           </div>
         </div>
       </div>`;
@@ -3330,25 +3792,189 @@ export class DiabloGame {
     this._state.phase = DiabloPhase.GAME_OVER;
     const p = this._state.player;
     this._menuEl.innerHTML = `
+      <style>
+        @keyframes go-blood-pulse {
+          0%   { text-shadow: 0 0 20px rgba(200,30,30,0.4), 0 0 60px rgba(150,0,0,0.2); }
+          50%  { text-shadow: 0 0 40px rgba(255,40,40,0.8), 0 0 80px rgba(200,0,0,0.4), 0 4px 12px rgba(120,0,0,0.6); }
+          100% { text-shadow: 0 0 20px rgba(200,30,30,0.4), 0 0 60px rgba(150,0,0,0.2); }
+        }
+        @keyframes go-skull-float {
+          0%   { transform: translateY(0px); }
+          50%  { transform: translateY(-6px); }
+          100% { transform: translateY(0px); }
+        }
+        @keyframes go-chain-sway {
+          0%   { transform: translateX(0px); }
+          25%  { transform: translateX(2px); }
+          75%  { transform: translateX(-2px); }
+          100% { transform: translateX(0px); }
+        }
+        @keyframes go-fade-in {
+          0%   { opacity: 0; transform: scale(0.95); }
+          100% { opacity: 1; transform: scale(1); }
+        }
+        #go-return-btn:hover {
+          background: rgba(60,25,25,0.95) !important;
+          border-color: #ffd740 !important;
+          color: #ffd740 !important;
+          box-shadow: 0 0 20px rgba(255,215,64,0.3), inset 0 0 20px rgba(255,215,64,0.05) !important;
+        }
+        #go-exit-btn:hover {
+          background: rgba(50,20,20,0.95) !important;
+          border-color: #ffd740 !important;
+          color: #ffd740 !important;
+          box-shadow: 0 0 20px rgba(255,215,64,0.3), inset 0 0 20px rgba(255,215,64,0.05) !important;
+        }
+      </style>
       <div style="
         width:100%;height:100%;background:rgba(0,0,0,0.92);display:flex;flex-direction:column;
-        align-items:center;justify-content:center;color:#fff;
+        align-items:center;justify-content:center;color:#fff;font-family:'Georgia',serif;
+        animation: go-fade-in 0.6s ease-out;
       ">
-        <h1 style="color:#cc2222;font-size:52px;letter-spacing:6px;margin-bottom:30px;
-          font-family:'Georgia',serif;text-shadow:0 0 30px rgba(200,30,30,0.6);">YOU HAVE FALLEN</h1>
-        <div style="background:rgba(20,10,10,0.9);border:1px solid #5a2a2a;border-radius:10px;padding:24px;margin-bottom:30px;">
-          <div style="font-size:16px;margin-bottom:8px;">Kills: <span style="color:#ff8;">${this._state.killCount}</span></div>
-          <div style="font-size:16px;margin-bottom:8px;">Gold: <span style="color:#ffd700;">${p.gold}</span></div>
-          <div style="font-size:16px;">Level: <span style="color:#8af;">${p.level}</span></div>
+        <!-- Outer stone frame -->
+        <div style="
+          position:relative;
+          background:rgba(15,8,8,0.95);
+          border:2px solid #5a4a2a;
+          border-top-color:#8a7a4a;border-left-color:#7a6a3a;
+          border-right-color:#3a2a1a;border-bottom-color:#2a1a0a;
+          border-radius:4px;
+          padding:6px;
+          min-width:420px;max-width:500px;
+          box-shadow: 0 0 40px rgba(150,0,0,0.3), inset 0 0 60px rgba(0,0,0,0.5);
+        ">
+          <!-- Corner rivets -->
+          <div style="position:absolute;top:-5px;left:-5px;width:10px;height:10px;border-radius:50%;
+            background:radial-gradient(circle at 35% 35%,#ffd740,#8a6a20);box-shadow:0 1px 3px rgba(0,0,0,0.6);"></div>
+          <div style="position:absolute;top:-5px;right:-5px;width:10px;height:10px;border-radius:50%;
+            background:radial-gradient(circle at 35% 35%,#ffd740,#8a6a20);box-shadow:0 1px 3px rgba(0,0,0,0.6);"></div>
+          <div style="position:absolute;bottom:-5px;left:-5px;width:10px;height:10px;border-radius:50%;
+            background:radial-gradient(circle at 35% 35%,#ffd740,#8a6a20);box-shadow:0 1px 3px rgba(0,0,0,0.6);"></div>
+          <div style="position:absolute;bottom:-5px;right:-5px;width:10px;height:10px;border-radius:50%;
+            background:radial-gradient(circle at 35% 35%,#ffd740,#8a6a20);box-shadow:0 1px 3px rgba(0,0,0,0.6);"></div>
+
+          <!-- Left chain -->
+          <div style="position:absolute;left:-18px;top:40px;bottom:40px;width:12px;display:flex;
+            flex-direction:column;align-items:center;gap:2px;animation:go-chain-sway 3s ease-in-out infinite;">
+            ${Array.from({length:10},()=>`<div style="width:8px;height:14px;border:2px solid #5a4a2a;border-radius:50%;
+              background:transparent;"></div>`).join("")}
+          </div>
+          <!-- Right chain -->
+          <div style="position:absolute;right:-18px;top:40px;bottom:40px;width:12px;display:flex;
+            flex-direction:column;align-items:center;gap:2px;animation:go-chain-sway 3s ease-in-out infinite reverse;">
+            ${Array.from({length:10},()=>`<div style="width:8px;height:14px;border:2px solid #5a4a2a;border-radius:50%;
+              background:transparent;"></div>`).join("")}
+          </div>
+
+          <!-- Inner decorative border -->
+          <div style="
+            border:1px solid #3a2a1a;
+            border-top-color:#5a4a2a;border-left-color:#4a3a2a;
+            border-right-color:#2a1a0a;border-bottom-color:#1a0a00;
+            padding:30px 36px;
+            display:flex;flex-direction:column;align-items:center;
+          ">
+            <!-- Skull icon -->
+            <div style="
+              font-size:64px;line-height:1;margin-bottom:8px;
+              filter:drop-shadow(0 0 12px rgba(200,30,30,0.5));
+              animation: go-skull-float 3s ease-in-out infinite;
+            ">&#9760;</div>
+
+            <!-- Title -->
+            <h1 style="
+              color:#cc2222;font-size:48px;letter-spacing:6px;margin:0 0 6px 0;
+              font-family:'Georgia',serif;
+              animation: go-blood-pulse 2.5s ease-in-out infinite;
+            ">YOU HAVE FALLEN</h1>
+
+            <!-- Decorative divider -->
+            <div style="display:flex;align-items:center;gap:10px;margin:12px 0 20px 0;width:100%;">
+              <div style="flex:1;height:1px;background:linear-gradient(to right,transparent,#5a4a2a);"></div>
+              <div style="width:8px;height:8px;background:#c8a84e;transform:rotate(45deg);box-shadow:0 0 6px rgba(200,168,78,0.4);"></div>
+              <div style="width:6px;height:6px;background:#8a6a20;transform:rotate(45deg);"></div>
+              <div style="width:8px;height:8px;background:#c8a84e;transform:rotate(45deg);box-shadow:0 0 6px rgba(200,168,78,0.4);"></div>
+              <div style="flex:1;height:1px;background:linear-gradient(to left,transparent,#5a4a2a);"></div>
+            </div>
+
+            <!-- Subtitle -->
+            <div style="color:#8a6a6a;font-size:14px;letter-spacing:3px;margin-bottom:24px;
+              font-style:italic;">THE DARKNESS CLAIMS ANOTHER SOUL</div>
+
+            <!-- Stats panel -->
+            <div style="
+              background:rgba(20,10,10,0.9);
+              border:1px solid #5a2a2a;
+              border-top-color:#6a3a3a;border-left-color:#5a3030;
+              border-right-color:#3a1a1a;border-bottom-color:#2a0a0a;
+              border-radius:4px;
+              padding:20px 28px;margin-bottom:24px;width:100%;
+              box-shadow:inset 0 0 30px rgba(0,0,0,0.4);
+            ">
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;text-align:center;">
+                <!-- Kills -->
+                <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+                  <div style="font-size:22px;filter:drop-shadow(0 0 4px rgba(255,100,100,0.4));">&#9876;</div>
+                  <div style="font-size:11px;color:#8a7a6a;letter-spacing:2px;text-transform:uppercase;">Kills</div>
+                  <div style="font-size:22px;color:#ff8;font-weight:bold;
+                    text-shadow:0 0 8px rgba(255,255,136,0.3);">${this._state.killCount}</div>
+                </div>
+                <!-- Gold -->
+                <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+                  <div style="font-size:22px;filter:drop-shadow(0 0 4px rgba(255,215,0,0.4));">&#9672;</div>
+                  <div style="font-size:11px;color:#8a7a6a;letter-spacing:2px;text-transform:uppercase;">Gold</div>
+                  <div style="font-size:22px;color:#ffd700;font-weight:bold;
+                    text-shadow:0 0 8px rgba(255,215,0,0.3);">${p.gold}</div>
+                </div>
+                <!-- Level -->
+                <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+                  <div style="font-size:22px;filter:drop-shadow(0 0 4px rgba(136,170,255,0.4));">&#9733;</div>
+                  <div style="font-size:11px;color:#8a7a6a;letter-spacing:2px;text-transform:uppercase;">Level</div>
+                  <div style="font-size:22px;color:#8af;font-weight:bold;
+                    text-shadow:0 0 8px rgba(136,170,255,0.3);">${p.level}</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Bottom decorative divider -->
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:24px;width:100%;">
+              <div style="flex:1;height:1px;background:linear-gradient(to right,transparent,#5a4a2a);"></div>
+              <div style="width:6px;height:6px;background:#c8a84e;transform:rotate(45deg);"></div>
+              <div style="flex:1;height:1px;background:linear-gradient(to left,transparent,#5a4a2a);"></div>
+            </div>
+
+            <!-- Buttons -->
+            <div style="display:flex;gap:16px;width:100%;justify-content:center;">
+              <button id="go-return-btn" style="
+                background:rgba(40,15,15,0.9);
+                border:2px solid #c8a84e;border-top-color:#dab85e;border-left-color:#b8984e;
+                border-right-color:#8a6a20;border-bottom-color:#6a4a10;
+                color:#c8a84e;font-size:16px;
+                padding:12px 28px;cursor:pointer;border-radius:4px;
+                font-family:'Georgia',serif;letter-spacing:2px;pointer-events:auto;
+                box-shadow:0 2px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,215,64,0.1);
+                transition: all 0.2s ease;
+              ">RETURN TO CHARACTER SELECT</button>
+              <button id="go-exit-btn" style="
+                background:rgba(30,12,12,0.9);
+                border:2px solid #5a4a2a;border-top-color:#7a6a3a;border-left-color:#6a5a2a;
+                border-right-color:#3a2a1a;border-bottom-color:#2a1a0a;
+                color:#8a7a6a;font-size:16px;
+                padding:12px 28px;cursor:pointer;border-radius:4px;
+                font-family:'Georgia',serif;letter-spacing:2px;pointer-events:auto;
+                box-shadow:0 2px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,215,64,0.05);
+                transition: all 0.2s ease;
+              ">EXIT</button>
+            </div>
+          </div>
         </div>
-        <button id="diablo-return-btn" style="
-          background:rgba(40,15,15,0.9);border:2px solid #c8a84e;color:#c8a84e;font-size:20px;
-          padding:14px 50px;cursor:pointer;border-radius:8px;
-          font-family:'Georgia',serif;letter-spacing:2px;pointer-events:auto;
-        ">RETURN TO MENU</button>
       </div>`;
 
-    this._menuEl.querySelector("#diablo-return-btn")!.addEventListener("click", () => {
+    this._menuEl.querySelector("#go-return-btn")!.addEventListener("click", () => {
+      this._state.phase = DiabloPhase.CLASS_SELECT;
+      this._showClassSelect();
+    });
+    this._menuEl.querySelector("#go-exit-btn")!.addEventListener("click", () => {
       window.dispatchEvent(new CustomEvent("diabloExit"));
     });
   }
@@ -3380,30 +4006,189 @@ export class DiabloGame {
     const totalMaps = 8;
 
     this._menuEl.innerHTML = `
+      <style>
+        @keyframes victory-golden-pulse {
+          0%, 100% { text-shadow:0 0 20px rgba(255,215,0,0.4), 0 0 40px rgba(255,215,0,0.2); }
+          50% { text-shadow:0 0 35px rgba(255,215,0,0.8), 0 0 70px rgba(255,215,0,0.4), 0 0 100px rgba(255,215,0,0.2); }
+        }
+        @keyframes victory-trophy-shimmer {
+          0%, 100% { filter:drop-shadow(0 0 8px rgba(255,215,0,0.5)); transform:scale(1); }
+          50% { filter:drop-shadow(0 0 22px rgba(255,215,0,0.9)) drop-shadow(0 0 44px rgba(200,168,78,0.4)); transform:scale(1.06); }
+        }
+        @keyframes victory-rivet-gleam {
+          0%, 100% { box-shadow:0 0 4px rgba(255,215,0,0.3); }
+          50% { box-shadow:0 0 10px rgba(255,215,0,0.7), 0 0 20px rgba(255,215,0,0.3); }
+        }
+        @keyframes victory-fade-in {
+          0% { opacity:0; transform:scale(0.95); }
+          100% { opacity:1; transform:scale(1); }
+        }
+        #diablo-nextmap-btn:hover {
+          background:rgba(30,50,30,0.95) !important;
+          border-color:#ffd700 !important;
+          color:#ffd700 !important;
+          box-shadow:0 0 20px rgba(255,215,0,0.4), inset 0 0 20px rgba(255,215,0,0.1) !important;
+          transform:translateY(-2px) !important;
+        }
+        #diablo-exit-btn:hover {
+          background:rgba(60,20,20,0.95) !important;
+          border-color:#ff4444 !important;
+          color:#ff6666 !important;
+          box-shadow:0 0 20px rgba(255,50,50,0.4), inset 0 0 20px rgba(255,50,50,0.1) !important;
+          transform:translateY(-2px) !important;
+        }
+        #diablo-nextmap-btn, #diablo-exit-btn {
+          transition:all 0.25s ease !important;
+        }
+      </style>
       <div style="
-        width:100%;height:100%;background:rgba(0,0,0,0.92);display:flex;flex-direction:column;
-        align-items:center;justify-content:center;color:#fff;
+        width:100%;height:100%;
+        background:radial-gradient(ellipse at 50% 40%, rgba(80,65,10,0.35) 0%, rgba(0,0,0,0.95) 65%);
+        display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;
+        font-family:'Georgia',serif;
+        animation:victory-fade-in 0.6s ease-out;
       ">
-        <h1 style="color:#ffd700;font-size:52px;letter-spacing:6px;margin-bottom:30px;
-          font-family:'Georgia',serif;text-shadow:0 0 30px rgba(255,215,0,0.5);">MAP CLEARED!</h1>
-        <div style="background:rgba(20,18,10,0.9);border:1px solid #5a4a2a;border-radius:10px;padding:24px;margin-bottom:30px;">
-          <div style="font-size:16px;margin-bottom:8px;">Kills: <span style="color:#ff8;">${this._state.killCount}</span></div>
-          <div style="font-size:16px;margin-bottom:8px;">Gold: <span style="color:#ffd700;">${p.gold}</span></div>
-          <div style="font-size:16px;margin-bottom:8px;">Level: <span style="color:#8af;">${p.level}</span></div>
-          <div style="font-size:14px;color:#888;margin-top:8px;">Maps cleared: ${clearedCount}/${totalMaps}</div>
-          ${rewardHtml}
+        <!-- Trophy/Crown Icon -->
+        <div style="
+          font-size:74px;line-height:1;margin-bottom:6px;
+          animation:victory-trophy-shimmer 2.5s ease-in-out infinite;
+        ">&#128081;</div>
+
+        <!-- Title -->
+        <h1 style="
+          color:#ffd700;font-size:54px;letter-spacing:8px;margin:0 0 6px 0;
+          font-family:'Georgia',serif;
+          animation:victory-golden-pulse 2s ease-in-out infinite;
+          text-transform:uppercase;
+        ">MAP CLEARED!</h1>
+
+        <!-- Top decorative divider -->
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
+          <div style="width:80px;height:1px;background:linear-gradient(to right,transparent,#c8a84e);"></div>
+          <div style="width:8px;height:8px;background:#c8a84e;transform:rotate(45deg);box-shadow:0 0 6px rgba(200,168,78,0.4);"></div>
+          <span style="color:#ffd700;font-size:14px;">&#9884;</span>
+          <div style="width:8px;height:8px;background:#c8a84e;transform:rotate(45deg);box-shadow:0 0 6px rgba(200,168,78,0.4);"></div>
+          <div style="width:80px;height:1px;background:linear-gradient(to left,transparent,#c8a84e);"></div>
         </div>
-        <div style="display:flex;gap:16px;">
+
+        <!-- Main Panel: stone frame -->
+        <div style="
+          position:relative;
+          background:linear-gradient(180deg, rgba(30,25,15,0.95) 0%, rgba(12,10,5,0.98) 100%);
+          border:2px solid #5a4a2a;
+          border-top-color:#8a7a4a;border-left-color:#7a6a3a;
+          border-right-color:#3a2a1a;border-bottom-color:#2a1a0a;
+          border-radius:4px;
+          padding:32px 40px;margin-bottom:24px;min-width:400px;
+          box-shadow:0 0 50px rgba(0,0,0,0.8), inset 0 1px 0 rgba(200,168,78,0.15), 0 0 90px rgba(200,168,78,0.06);
+        ">
+          <!-- Inner decorative border -->
+          <div style="position:absolute;inset:4px;border:1px solid #3a2a1a;border-top-color:#5a4a2a;border-left-color:#4a3a2a;
+            border-right-color:#2a1a0a;border-bottom-color:#1a0a00;border-radius:3px;pointer-events:none;"></div>
+
+          <!-- Corner rivets -->
+          <div style="position:absolute;top:6px;left:6px;width:10px;height:10px;border-radius:50%;
+            background:radial-gradient(circle at 35% 35%,#ffd740,#8a6a20);
+            animation:victory-rivet-gleam 3s ease-in-out infinite;"></div>
+          <div style="position:absolute;top:6px;right:6px;width:10px;height:10px;border-radius:50%;
+            background:radial-gradient(circle at 35% 35%,#ffd740,#8a6a20);
+            animation:victory-rivet-gleam 3s ease-in-out 0.5s infinite;"></div>
+          <div style="position:absolute;bottom:6px;left:6px;width:10px;height:10px;border-radius:50%;
+            background:radial-gradient(circle at 35% 35%,#ffd740,#8a6a20);
+            animation:victory-rivet-gleam 3s ease-in-out 1s infinite;"></div>
+          <div style="position:absolute;bottom:6px;right:6px;width:10px;height:10px;border-radius:50%;
+            background:radial-gradient(circle at 35% 35%,#ffd740,#8a6a20);
+            animation:victory-rivet-gleam 3s ease-in-out 1.5s infinite;"></div>
+
+          <!-- Stats Grid -->
+          <div style="
+            display:grid;grid-template-columns:1fr 1fr;gap:18px 36px;
+            padding:8px 12px;
+          ">
+            <!-- Kills -->
+            <div style="display:flex;align-items:center;gap:12px;">
+              <div style="font-size:24px;filter:drop-shadow(0 0 5px rgba(255,100,100,0.4));">&#128128;</div>
+              <div>
+                <div style="font-size:10px;color:#8a7a6a;text-transform:uppercase;letter-spacing:2px;">Kills</div>
+                <div style="font-size:24px;color:#ff8;font-weight:bold;text-shadow:0 0 10px rgba(255,255,136,0.3);">${this._state.killCount}</div>
+              </div>
+            </div>
+            <!-- Gold -->
+            <div style="display:flex;align-items:center;gap:12px;">
+              <div style="font-size:24px;filter:drop-shadow(0 0 5px rgba(255,215,0,0.4));">&#129689;</div>
+              <div>
+                <div style="font-size:10px;color:#8a7a6a;text-transform:uppercase;letter-spacing:2px;">Gold</div>
+                <div style="font-size:24px;color:#ffd700;font-weight:bold;text-shadow:0 0 10px rgba(255,215,0,0.3);">${p.gold}</div>
+              </div>
+            </div>
+            <!-- Level -->
+            <div style="display:flex;align-items:center;gap:12px;">
+              <div style="font-size:24px;filter:drop-shadow(0 0 5px rgba(136,170,255,0.4));">&#11088;</div>
+              <div>
+                <div style="font-size:10px;color:#8a7a6a;text-transform:uppercase;letter-spacing:2px;">Level</div>
+                <div style="font-size:24px;color:#8af;font-weight:bold;text-shadow:0 0 10px rgba(136,170,255,0.3);">${p.level}</div>
+              </div>
+            </div>
+            <!-- Maps Cleared -->
+            <div style="display:flex;align-items:center;gap:12px;">
+              <div style="font-size:24px;filter:drop-shadow(0 0 5px rgba(174,213,129,0.4));">&#128506;</div>
+              <div>
+                <div style="font-size:10px;color:#8a7a6a;text-transform:uppercase;letter-spacing:2px;">Maps Cleared</div>
+                <div style="font-size:24px;color:#aed581;font-weight:bold;text-shadow:0 0 10px rgba(174,213,129,0.3);">${clearedCount}<span style="font-size:14px;color:#666;">/${totalMaps}</span></div>
+              </div>
+            </div>
+          </div>
+
+          ${rewardHtml ? `
+          <!-- Reward divider -->
+          <div style="display:flex;align-items:center;gap:10px;margin:20px 0 16px 0;">
+            <div style="flex:1;height:1px;background:linear-gradient(to right,transparent,#5a4a2a);"></div>
+            <div style="width:6px;height:6px;background:#c8a84e;transform:rotate(45deg);"></div>
+            <span style="color:#c8a84e;font-size:12px;">&#9830;</span>
+            <div style="width:6px;height:6px;background:#c8a84e;transform:rotate(45deg);"></div>
+            <div style="flex:1;height:1px;background:linear-gradient(to left,transparent,#5a4a2a);"></div>
+          </div>
+          <!-- Reward message -->
+          <div style="
+            text-align:center;padding:12px 18px;
+            background:linear-gradient(90deg, transparent, rgba(200,168,78,0.1), transparent);
+            border-left:2px solid #c8a84e;border-right:2px solid #c8a84e;border-radius:2px;
+          ">
+            <div style="font-size:10px;color:#8a7a6a;text-transform:uppercase;letter-spacing:3px;margin-bottom:6px;">&#9733; Reward &#9733;</div>
+            <div style="font-size:15px;color:#ffd700;font-style:italic;text-shadow:0 0 12px rgba(255,215,0,0.3);">${rewardHtml}</div>
+          </div>
+          ` : ''}
+        </div>
+
+        <!-- Bottom decorative divider -->
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
+          <div style="width:50px;height:1px;background:linear-gradient(to right,transparent,#5a4a2a);"></div>
+          <div style="width:5px;height:5px;background:#5a4a2a;transform:rotate(45deg);"></div>
+          <div style="width:50px;height:1px;background:linear-gradient(to left,transparent,#5a4a2a);"></div>
+        </div>
+
+        <!-- Buttons -->
+        <div style="display:flex;gap:20px;">
           <button id="diablo-nextmap-btn" style="
-            background:rgba(15,30,15,0.9);border:2px solid #c8a84e;color:#c8a84e;font-size:18px;
-            padding:14px 40px;cursor:pointer;border-radius:8px;
+            background:rgba(15,30,15,0.9);
+            border:2px solid #c8a84e;border-top-color:#dab85e;border-left-color:#b8984e;
+            border-right-color:#8a6a20;border-bottom-color:#6a4a10;
+            color:#c8a84e;font-size:17px;
+            padding:14px 36px;cursor:pointer;border-radius:4px;
             font-family:'Georgia',serif;letter-spacing:2px;pointer-events:auto;
-          ">SELECT ANOTHER MAP</button>
+            box-shadow:0 2px 10px rgba(0,0,0,0.4), inset 0 1px 0 rgba(200,168,78,0.12);
+            text-shadow:0 0 8px rgba(200,168,78,0.3);
+          ">&#9876; SELECT ANOTHER MAP</button>
           <button id="diablo-exit-btn" style="
-            background:rgba(40,15,15,0.9);border:2px solid #a44;color:#e66;font-size:18px;
-            padding:14px 40px;cursor:pointer;border-radius:8px;
+            background:rgba(40,15,15,0.9);
+            border:2px solid #a44;border-top-color:#c55;border-left-color:#b44;
+            border-right-color:#833;border-bottom-color:#622;
+            color:#e66;font-size:17px;
+            padding:14px 36px;cursor:pointer;border-radius:4px;
             font-family:'Georgia',serif;letter-spacing:2px;pointer-events:auto;
-          ">EXIT</button>
+            box-shadow:0 2px 10px rgba(0,0,0,0.4), inset 0 1px 0 rgba(170,68,68,0.12);
+            text-shadow:0 0 8px rgba(230,100,100,0.3);
+          ">&#10006; EXIT</button>
         </div>
       </div>`;
 
@@ -4350,6 +5135,17 @@ export class DiabloGame {
     `;
     this._hud.appendChild(this._chestHint);
 
+    // Town portal interaction hint
+    this._portalHint = document.createElement("div");
+    this._portalHint.style.cssText = `
+      position:absolute;bottom:140px;left:50%;transform:translateX(-50%);
+      padding:8px 20px;background:rgba(10,8,20,0.9);border:1px solid #6688ff;
+      border-radius:6px;color:#88bbff;font-size:14px;font-weight:bold;
+      letter-spacing:1px;display:none;white-space:nowrap;
+      box-shadow:0 0 12px rgba(100,130,255,0.3);
+    `;
+    this._hud.appendChild(this._portalHint);
+
     // Quest popup (centered, semi-transparent parchment style)
     this._questPopup = document.createElement("div");
     this._questPopup.style.cssText = `
@@ -4758,6 +5554,19 @@ export class DiabloGame {
       this._chestHint.textContent = "Press [F] to open chest";
     } else {
       this._chestHint.style.display = "none";
+    }
+
+    // Town portal proximity hint
+    if (this._portalActive) {
+      const portalDist = this._dist(p.x, p.z, this._portalX, this._portalZ);
+      if (portalDist < 4) {
+        this._portalHint.style.display = "block";
+        this._portalHint.textContent = "\uD83C\uDF00 Press [E] to use Town Portal \u2014 Return to Character Select";
+      } else {
+        this._portalHint.style.display = "none";
+      }
+    } else {
+      this._portalHint.style.display = "none";
     }
 
     // DPS meter update
@@ -5454,6 +6263,7 @@ export class DiabloGame {
       p.gold += goldFromKill;
       this._goldEarnedTotal += goldFromKill;
       this._state.killCount++;
+      this._totalKills++;
       this._targetEnemyId = null;
 
       this._renderer.spawnParticles(ParticleType.DUST, target.x, target.y + 0.5, target.z, 8 + Math.floor(Math.random() * 5), this._state.particles);
@@ -6772,6 +7582,7 @@ export class DiabloGame {
     p.gold += goldEarned;
     this._goldEarnedTotal += goldEarned;
     this._state.killCount++;
+    this._totalKills++;
 
     // Roll loot
     const lootItems = this._rollLoot(enemy);
@@ -7524,6 +8335,7 @@ export class DiabloGame {
       completedMaps: this._state.completedMaps,
       chestsOpened: this._chestsOpened,
       goldEarnedTotal: this._goldEarnedTotal,
+      totalKills: this._totalKills,
     };
     localStorage.setItem("diablo_save", JSON.stringify(save));
 
@@ -7542,6 +8354,58 @@ export class DiabloGame {
     setTimeout(() => {
       if (notification.parentElement) notification.parentElement.removeChild(notification);
     }, 2000);
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  //  TOWN PORTAL — save & return to character select
+  // ──────────────────────────────────────────────────────────────
+  private _useTownPortal(): void {
+    this._saveGame();
+    this._hud.style.display = "none";
+    this._state.enemies = [];
+    this._state.projectiles = [];
+    this._state.loot = [];
+    this._state.treasureChests = [];
+    this._state.aoeEffects = [];
+    this._state.floatingTexts = [];
+    this._state.particles = [];
+    this._portalActive = false;
+    this._state.phase = DiabloPhase.CLASS_SELECT;
+    this._showClassSelect();
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  //  LOAD PLAYER ONLY (for continuing saved character to map select)
+  // ──────────────────────────────────────────────────────────────
+  private _loadPlayerOnly(): void {
+    const raw = localStorage.getItem("diablo_save");
+    if (!raw) return;
+    const save = JSON.parse(raw);
+    this._state.player = {
+      ...save.player,
+      skillCooldowns: new Map(Object.entries(save.player.skillCooldowns)),
+      talents: save.playerTalents || save.player.talents || {},
+      talentPoints: save.playerTalentPoints ?? save.player.talentPoints ?? 0,
+      potions: save.playerPotions || save.player.potions || [],
+      potionSlots: save.playerPotionSlots || save.player.potionSlots || [null, null, null, null],
+      potionCooldown: 0,
+      activePotionBuffs: [],
+      lanternOn: save.player.lanternOn || false,
+      skillBranches: save.player.skillBranches || {},
+      unlockedSkills: save.player.unlockedSkills || [],
+    };
+    this._state.difficulty = save.difficulty || DiabloDifficulty.DAGGER;
+    this._state.persistentInventory = save.persistentInventory;
+    this._state.persistentGold = save.persistentGold;
+    this._state.persistentLevel = save.persistentLevel;
+    this._state.persistentXp = save.persistentXp;
+    this._state.persistentStash = (() => { const s = save.persistentStash || []; while (s.length < 150) s.push({ item: null }); return s; })();
+    this._state.completedMaps = save.completedMaps || {};
+    this._chestsOpened = save.chestsOpened || 0;
+    this._goldEarnedTotal = save.goldEarnedTotal || 0;
+    this._totalKills = save.totalKills || 0;
+    this._state.activeQuests = save.activeQuests || [];
+    this._state.completedQuestIds = save.completedQuestIds || [];
   }
 
   // ──────────────────────────────────────────────────────────────
@@ -7585,6 +8449,7 @@ export class DiabloGame {
     this._state.completedMaps = save.completedMaps || {};
     this._chestsOpened = save.chestsOpened || 0;
     this._goldEarnedTotal = save.goldEarnedTotal || 0;
+    this._totalKills = save.totalKills || 0;
     // Rebuild the map
     this._renderer.buildMap(this._state.currentMap);
     this._renderer.buildPlayer(this._state.player.class);
@@ -8211,6 +9076,24 @@ export class DiabloGame {
         ctx.fillStyle = "rgba(200,190,170,0.8)";
         ctx.fillText(v.name.split(" ")[0], mx + 5, my + 3);
       }
+      // Town portal in Camelot
+      if (this._portalActive) {
+        const px = toMx(this._portalX);
+        const py = toMy(this._portalZ);
+        const t = Date.now() / 600;
+        const pulse = 3 + Math.sin(t) * 1.5;
+        ctx.fillStyle = `rgba(100,130,255,${0.3 + Math.sin(t) * 0.15})`;
+        ctx.beginPath();
+        ctx.arc(px, py, pulse + 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#88bbff";
+        ctx.beginPath();
+        ctx.arc(px, py, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "rgba(130,180,255,0.8)";
+        ctx.font = `${Math.max(7, W / 28)}px sans-serif`;
+        ctx.fillText("\uD83C\uDF00", px - 5, py - 6);
+      }
     } else {
       // Enemies
       for (const enemy of this._state.enemies) {
@@ -8243,6 +9126,25 @@ export class DiabloGame {
         ctx.beginPath();
         ctx.arc(toMx(chest.x), toMy(chest.z), 2.5, 0, Math.PI * 2);
         ctx.fill();
+      }
+
+      // Town portal marker
+      if (this._portalActive) {
+        const px = toMx(this._portalX);
+        const py = toMy(this._portalZ);
+        const t = Date.now() / 600;
+        const pulse = 3 + Math.sin(t) * 1.5;
+        ctx.fillStyle = `rgba(100,130,255,${0.3 + Math.sin(t) * 0.15})`;
+        ctx.beginPath();
+        ctx.arc(px, py, pulse + 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#88bbff";
+        ctx.beginPath();
+        ctx.arc(px, py, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "rgba(130,180,255,0.8)";
+        ctx.font = `${Math.max(7, W / 28)}px sans-serif`;
+        ctx.fillText("\uD83C\uDF00", px - 5, py - 6);
       }
 
       // Fog of war darkening
