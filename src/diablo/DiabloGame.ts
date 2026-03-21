@@ -1,4 +1,5 @@
 import { DiabloRenderer, getTerrainHeight } from "./DiabloRenderer";
+import { DiabloNetwork } from './DiabloNetwork';
 import {
   DiabloState, DiabloEnemy, DiabloProjectile, DiabloLoot,
   DiabloTreasureChest, DiabloAOE,
@@ -17,6 +18,7 @@ import {
   RuneType, SkillRuneEffect,
   LegendaryEffectDef,
   ItemSlot, ItemType, DiabloItemStats,
+  MultiplayerState,
   createDefaultPlayer, createDefaultState
 } from "./DiabloTypes";
 import {
@@ -477,6 +479,11 @@ export class DiabloGame {
   private _mouseDX: number = 0;
   private _mouseDY: number = 0;
 
+  // Multiplayer
+  private _network: DiabloNetwork = new DiabloNetwork();
+  private _networkUpdateTimer: number = 0;
+  private _multiplayerHud: HTMLDivElement | null = null;
+
   // Bound event handlers
   private _boundKeyDown!: (e: KeyboardEvent) => void;
   private _boundKeyUp!: (e: KeyboardEvent) => void;
@@ -848,6 +855,19 @@ export class DiabloGame {
       }
     } else if (this._state.phase === DiabloPhase.CLASS_SELECT) {
       // no-op: class select handles its own UI
+    } else if (this._state.phase === DiabloPhase.MAP_SELECT) {
+      // Multiplayer: N to toggle connect (for development/testing)
+      if (e.code === "KeyN") {
+        if (this._state.multiplayer.state === MultiplayerState.DISCONNECTED) {
+          // Try to connect to local dev server
+          const wsUrl = `ws://${window.location.hostname}:3001`;
+          this.connectMultiplayer(wsUrl, `Player${Math.floor(Math.random() * 999)}`);
+          this._addFloatingText(this._state.player.x, this._state.player.y + 2, this._state.player.z, 'Connecting...', '#44ffff');
+        } else {
+          this.disconnectMultiplayer();
+          this._addFloatingText(this._state.player.x, this._state.player.y + 2, this._state.player.z, 'Disconnected', '#ff4444');
+        }
+      }
     } else if (this._state.phase === DiabloPhase.PAUSED) {
       if (e.code === "Escape") {
         this._state.phase = DiabloPhase.PLAYING;
@@ -5736,6 +5756,123 @@ export class DiabloGame {
     } else if (this._riftHud) {
       this._riftHud.style.display = 'none';
     }
+
+    // Multiplayer HUD
+    if (this._state.multiplayer.state !== MultiplayerState.DISCONNECTED) {
+      if (!this._multiplayerHud) {
+        this._multiplayerHud = document.createElement('div');
+        this._multiplayerHud.style.cssText = 'position:absolute;bottom:10px;left:10px;color:#fff;font-size:12px;font-family:monospace;background:rgba(0,0,0,0.6);padding:6px 10px;border-radius:4px;pointer-events:none;z-index:20;max-height:200px;overflow:hidden;';
+        this._hud.appendChild(this._multiplayerHud);
+      }
+      const mp = this._state.multiplayer;
+      const playerCount = mp.remotePlayers.length + 1;
+      const recentChat = mp.chatMessages.slice(-5).map(m => `<span style="color:#aaa">${m.name}:</span> ${m.message}`).join('<br>');
+      this._multiplayerHud.innerHTML = `<span style="color:#44ff44">ONLINE</span> ${playerCount} players | ${mp.ping}ms${recentChat ? '<br>' + recentChat : ''}`;
+      this._multiplayerHud.style.display = 'block';
+    } else if (this._multiplayerHud) {
+      this._multiplayerHud.style.display = 'none';
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  //  MULTIPLAYER INTEGRATION
+  // ──────────────────────────────────────────────────────────────
+  private _initMultiplayer(): void {
+    this._network.onPlayerJoin = (player) => {
+      this._state.multiplayer.remotePlayers.push(player);
+      this._addFloatingText(this._state.player.x, this._state.player.y + 3, this._state.player.z,
+        `${player.name} joined!`, '#44ff44');
+    };
+
+    this._network.onPlayerLeave = (playerId) => {
+      this._state.multiplayer.remotePlayers = this._state.multiplayer.remotePlayers.filter(p => p.id !== playerId);
+      this._addFloatingText(this._state.player.x, this._state.player.y + 3, this._state.player.z,
+        'Player left', '#ff4444');
+    };
+
+    this._network.onPlayerUpdate = (player) => {
+      const idx = this._state.multiplayer.remotePlayers.findIndex(p => p.id === player.id);
+      if (idx >= 0) {
+        this._state.multiplayer.remotePlayers[idx] = player;
+      } else {
+        this._state.multiplayer.remotePlayers.push(player);
+      }
+    };
+
+    this._network.onEnemyDamage = (enemyId, damage, _sourceId) => {
+      const enemy = this._state.enemies.find(e => e.id === enemyId);
+      if (enemy) {
+        enemy.hp -= damage;
+        this._addFloatingText(enemy.x, enemy.y + 2, enemy.z, `${Math.round(damage)}`, '#88aaff');
+      }
+    };
+
+    this._network.onEnemyKill = (enemyId, _killerId) => {
+      const enemy = this._state.enemies.find(e => e.id === enemyId);
+      if (enemy && enemy.state !== EnemyState.DYING && enemy.state !== EnemyState.DEAD) {
+        enemy.hp = 0;
+        enemy.state = EnemyState.DYING;
+      }
+    };
+
+    this._network.onLootPickup = (lootId, _playerId) => {
+      this._state.loot = this._state.loot.filter(l => l.id !== lootId);
+    };
+
+    this._network.onChatMessage = (playerId, message) => {
+      const player = this._state.multiplayer.remotePlayers.find(p => p.id === playerId);
+      const name = player?.name || 'Unknown';
+      this._state.multiplayer.chatMessages.push({ name, message, time: Date.now() });
+      // Keep last 50 messages
+      if (this._state.multiplayer.chatMessages.length > 50) {
+        this._state.multiplayer.chatMessages.shift();
+      }
+    };
+  }
+
+  private _updateMultiplayer(dt: number): void {
+    if (this._state.multiplayer.state === MultiplayerState.DISCONNECTED) return;
+
+    this._network.update(dt);
+    this._state.multiplayer.ping = this._network.ping;
+
+    // Send player state at ~20Hz
+    this._networkUpdateTimer += dt;
+    if (this._networkUpdateTimer >= 0.05) {
+      this._networkUpdateTimer = 0;
+      const p = this._state.player;
+      this._network.sendPlayerUpdate({
+        id: this._state.multiplayer.playerId,
+        name: this._state.multiplayer.playerName,
+        class: p.class,
+        level: p.level,
+        x: p.x, y: p.y, z: p.z,
+        angle: p.angle,
+        hp: p.hp,
+        maxHp: p.maxHp,
+        isAttacking: p.isAttacking,
+        activeSkillId: p.activeSkillId,
+        isDodging: p.isDodging,
+      });
+    }
+
+    // Sync remote players to state
+    this._state.multiplayer.remotePlayers = this._network.remotePlayers;
+  }
+
+  connectMultiplayer(serverUrl: string, playerName: string): void {
+    this._state.multiplayer.playerName = playerName;
+    this._state.multiplayer.state = MultiplayerState.CONNECTING;
+    this._network.connect(serverUrl, playerName);
+    this._state.multiplayer.playerId = this._network.playerId;
+    this._initMultiplayer();
+  }
+
+  disconnectMultiplayer(): void {
+    this._network.disconnect();
+    this._state.multiplayer.state = MultiplayerState.DISCONNECTED;
+    this._state.multiplayer.remotePlayers = [];
+    this._state.multiplayer.lobby = null;
   }
 
   // ──────────────────────────────────────────────────────────────
@@ -5777,6 +5914,7 @@ export class DiabloGame {
         this._updateCraftingQueue(scaledDt);
         this._updateGreaterRift(scaledDt);
         this._updatePetBuffs(scaledDt);
+        this._updateMultiplayer(scaledDt);
         this._checkMapClear();
         this._revealAroundPlayer(this._state.player.x, this._state.player.z);
 
@@ -6571,6 +6709,10 @@ export class DiabloGame {
     if (target.bossShieldTimer && target.bossShieldTimer > 0) finalDamage *= 0.1;
 
     target.hp -= finalDamage;
+
+    if (this._network.isConnected) {
+      this._network.sendEnemyDamage(target.id, finalDamage);
+    }
 
     // Map modifier: Thorns
     if (this._state.activeMapModifiers.includes(MapModifier.ENEMY_THORNS)) {
@@ -8296,6 +8438,14 @@ export class DiabloGame {
       enemy.damage *= this._state.greaterRift.enemyDamageMultiplier;
     }
 
+    // Multiplayer scaling
+    const playerCount = 1 + this._state.multiplayer.remotePlayers.length;
+    if (playerCount > 1) {
+      enemy.hp *= 1 + (playerCount - 1) * 0.75;
+      enemy.maxHp = enemy.hp;
+      enemy.xpReward = Math.floor(enemy.xpReward * (1 + (playerCount - 1) * 0.3));
+    }
+
     this._state.enemies.push(enemy);
     this._state.totalEnemiesSpawned++;
   }
@@ -8308,6 +8458,10 @@ export class DiabloGame {
     enemy.hp = 0;
     enemy.state = EnemyState.DYING;
     enemy.deathTimer = 0;
+
+    if (this._network.isConnected) {
+      this._network.sendEnemyKill(enemy.id);
+    }
 
     this._renderer.spawnParticles(ParticleType.DUST, enemy.x, enemy.y + 0.5, enemy.z, 8 + Math.floor(Math.random() * 5), this._state.particles);
 
@@ -8519,6 +8673,10 @@ export class DiabloGame {
     this._addFloatingText(p.x, p.y + 2.5, p.z, `+${loot.item.name}`, RARITY_CSS[loot.item.rarity]);
     this._renderer.spawnParticles(ParticleType.GOLD, loot.x, loot.y + 0.5, loot.z, 4 + Math.floor(Math.random() * 3), this._state.particles);
     this._state.loot.splice(lootIdx, 1);
+
+    if (this._network.isConnected) {
+      this._network.sendLootPickup(lootId);
+    }
   }
 
   // ──────────────────────────────────────────────────────────────

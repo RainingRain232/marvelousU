@@ -1595,6 +1595,15 @@ export interface DiabloState {
   slowMotionScale: number;
   dungeonLayout: DungeonLayout | null;
   greaterRift: GreaterRiftData;
+  multiplayer: {
+    state: MultiplayerState;
+    playerId: string;
+    playerName: string;
+    lobby: MultiplayerLobby | null;
+    remotePlayers: NetworkPlayerData[];
+    ping: number;
+    chatMessages: { name: string; message: string; time: number }[];
+  };
 }
 
 // ── Rarity color map (for UI rendering) ──────────────────────
@@ -1608,6 +1617,54 @@ export const RARITY_COLORS: Record<ItemRarity, string> = {
   [ItemRarity.MYTHIC]: '#ff2222',
   [ItemRarity.DIVINE]: '#ffd700',
 };
+
+// ── Multiplayer Types ────────────────────────────────────────
+
+export enum MultiplayerState {
+  DISCONNECTED = 'DISCONNECTED',
+  CONNECTING = 'CONNECTING',
+  IN_LOBBY = 'IN_LOBBY',
+  IN_GAME = 'IN_GAME',
+}
+
+export interface NetworkPlayerData {
+  id: string;
+  name: string;
+  class: DiabloClass;
+  level: number;
+  x: number;
+  y: number;
+  z: number;
+  angle: number;
+  hp: number;
+  maxHp: number;
+  isAttacking: boolean;
+  activeSkillId: SkillId | null;
+  isDodging: boolean;
+}
+
+export interface MultiplayerLobby {
+  lobbyId: string;
+  hostId: string;
+  players: NetworkPlayerData[];
+  maxPlayers: number;
+  mapId: DiabloMapId;
+  difficulty: DiabloDifficulty;
+  isStarted: boolean;
+}
+
+export type NetworkMessage =
+  | { type: 'player_update'; data: NetworkPlayerData }
+  | { type: 'player_join'; data: { player: NetworkPlayerData } }
+  | { type: 'player_leave'; data: { playerId: string } }
+  | { type: 'enemy_damage'; data: { enemyId: string; damage: number; sourceId: string } }
+  | { type: 'enemy_kill'; data: { enemyId: string; killerId: string } }
+  | { type: 'loot_pickup'; data: { lootId: string; playerId: string } }
+  | { type: 'chat_message'; data: { playerId: string; message: string } }
+  | { type: 'lobby_update'; data: MultiplayerLobby }
+  | { type: 'game_start'; data: { mapId: DiabloMapId; difficulty: DiabloDifficulty } }
+  | { type: 'ping'; data: { timestamp: number } }
+  | { type: 'pong'; data: { timestamp: number; serverTime: number } };
 
 // ── Factory functions ────────────────────────────────────────
 
@@ -1940,6 +1997,15 @@ export function createDefaultState(): DiabloState {
       currentKills: 0,
       bestRiftLevel: 0,
       keystones: 3,
+    },
+    multiplayer: {
+      state: MultiplayerState.DISCONNECTED,
+      playerId: '',
+      playerName: 'Player',
+      lobby: null,
+      remotePlayers: [],
+      ping: 0,
+      chatMessages: [],
     },
   };
 }
