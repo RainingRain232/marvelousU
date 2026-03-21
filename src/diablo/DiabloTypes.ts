@@ -1127,6 +1127,11 @@ export interface DiabloPlayerState {
   maxPets: number;
   // Crafting system
   crafting: CraftingState;
+  // Click-to-move pathfinding
+  moveTarget: { x: number; z: number } | null;
+  movePath: { x: number; z: number }[];
+  movePathIndex: number;
+  isMovingToTarget: boolean;
 }
 
 export interface DiabloEnemy {
@@ -1713,6 +1718,10 @@ export function createDefaultPlayer(cls: DiabloClass): DiabloPlayerState {
     activePetId: null,
     maxPets: 5,
     crafting: createDefaultCraftingState(),
+    moveTarget: null,
+    movePath: [],
+    movePathIndex: 0,
+    isMovingToTarget: false,
   };
 }
 

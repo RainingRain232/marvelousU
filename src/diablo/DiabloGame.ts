@@ -873,6 +873,15 @@ export class DiabloGame {
         if (target) {
           if (target.type === "enemy") {
             this._targetEnemyId = target.id;
+            // Auto-move toward targeted enemy
+            const enemy = this._state.enemies.find(e => e.id === target.id);
+            if (enemy) {
+              const path = this._findPath(this._state.player.x, this._state.player.z, enemy.x, enemy.z);
+              this._state.player.moveTarget = { x: enemy.x, z: enemy.z };
+              this._state.player.movePath = path;
+              this._state.player.movePathIndex = 0;
+              this._state.player.isMovingToTarget = true;
+            }
           } else if (target.type === "chest") {
             this._openChest(target.id);
           } else if (target.type === "loot") {
@@ -891,6 +900,16 @@ export class DiabloGame {
 
   private _onContextMenu(e: MouseEvent): void {
     e.preventDefault();
+    // Right-click to move
+    if (this._state.phase === DiabloPhase.PLAYING && !this._isDead && !this._firstPerson) {
+      const worldPos = this._getMouseWorldPos();
+      const p = this._state.player;
+      const path = this._findPath(p.x, p.z, worldPos.x, worldPos.z);
+      p.moveTarget = { x: worldPos.x, z: worldPos.z };
+      p.movePath = path;
+      p.movePathIndex = 0;
+      p.isMovingToTarget = true;
+    }
   }
 
   private _onResize(): void {
@@ -5647,6 +5666,134 @@ export class DiabloGame {
   };
 
   // ──────────────────────────────────────────────────────────────
+  //  A* PATHFINDING
+  // ──────────────────────────────────────────────────────────────
+  private _findPath(startX: number, startZ: number, endX: number, endZ: number): { x: number; z: number }[] {
+    const GRID_SIZE = 2; // world units per grid cell
+    const mapCfg = MAP_CONFIGS[this._state.currentMap];
+    const halfW = mapCfg.width / 2;
+    const halfD = ((mapCfg as any).depth || (mapCfg as any).height || mapCfg.width) / 2;
+
+    // Convert world coords to grid coords
+    const toGrid = (wx: number, wz: number) => ({
+      gx: Math.floor((wx + halfW) / GRID_SIZE),
+      gz: Math.floor((wz + halfD) / GRID_SIZE),
+    });
+    const toWorld = (gx: number, gz: number) => ({
+      x: gx * GRID_SIZE - halfW + GRID_SIZE / 2,
+      z: gz * GRID_SIZE - halfD + GRID_SIZE / 2,
+    });
+
+    const gridW = Math.ceil(mapCfg.width / GRID_SIZE);
+    const gridH = Math.ceil(((mapCfg as any).depth || (mapCfg as any).height || mapCfg.width) / GRID_SIZE);
+
+    const start = toGrid(startX, startZ);
+    const end = toGrid(endX, endZ);
+
+    // Clamp to grid bounds
+    start.gx = Math.max(0, Math.min(gridW - 1, start.gx));
+    start.gz = Math.max(0, Math.min(gridH - 1, start.gz));
+    end.gx = Math.max(0, Math.min(gridW - 1, end.gx));
+    end.gz = Math.max(0, Math.min(gridH - 1, end.gz));
+
+    // Check if cell is blocked by building colliders
+    const isBlocked = (gx: number, gz: number): boolean => {
+      const w = toWorld(gx, gz);
+      for (const [cx, cz, chw, chd] of this._renderer.buildingColliders) {
+        if (Math.abs(w.x - cx) < chw + 0.5 && Math.abs(w.z - cz) < chd + 0.5) {
+          return true;
+        }
+      }
+      return false;
+    };
+
+    // A* implementation
+    const key = (gx: number, gz: number) => `${gx},${gz}`;
+    const heuristic = (ax: number, az: number, bx: number, bz: number) =>
+      Math.abs(ax - bx) + Math.abs(az - bz);
+
+    const openSet = new Map<string, { gx: number; gz: number; f: number; g: number }>();
+    const cameFrom = new Map<string, string>();
+    const gScore = new Map<string, number>();
+
+    const startKey = key(start.gx, start.gz);
+    const endKey = key(end.gx, end.gz);
+
+    gScore.set(startKey, 0);
+    openSet.set(startKey, {
+      gx: start.gx, gz: start.gz,
+      f: heuristic(start.gx, start.gz, end.gx, end.gz),
+      g: 0
+    });
+
+    const dirs = [
+      [0, 1], [1, 0], [0, -1], [-1, 0],
+      [1, 1], [1, -1], [-1, 1], [-1, -1],
+    ];
+    const dirCosts = [1, 1, 1, 1, 1.414, 1.414, 1.414, 1.414];
+
+    let iterations = 0;
+    const MAX_ITERATIONS = 2000;
+
+    while (openSet.size > 0 && iterations < MAX_ITERATIONS) {
+      iterations++;
+
+      // Find node with lowest f score
+      let bestKey = '';
+      let bestF = Infinity;
+      for (const [k, node] of openSet) {
+        if (node.f < bestF) {
+          bestF = node.f;
+          bestKey = k;
+        }
+      }
+
+      const current = openSet.get(bestKey)!;
+      openSet.delete(bestKey);
+
+      if (bestKey === endKey) {
+        // Reconstruct path
+        const path: { x: number; z: number }[] = [];
+        let ck = endKey;
+        while (ck && ck !== startKey) {
+          const [gxStr, gzStr] = ck.split(',');
+          const w = toWorld(parseInt(gxStr), parseInt(gzStr));
+          path.unshift(w);
+          ck = cameFrom.get(ck) || '';
+        }
+        return path;
+      }
+
+      for (let d = 0; d < dirs.length; d++) {
+        const ngx = current.gx + dirs[d][0];
+        const ngz = current.gz + dirs[d][1];
+
+        if (ngx < 0 || ngx >= gridW || ngz < 0 || ngz >= gridH) continue;
+        if (isBlocked(ngx, ngz)) continue;
+
+        // For diagonal movement, check that both adjacent cells are clear
+        if (d >= 4) {
+          if (isBlocked(current.gx + dirs[d][0], current.gz) ||
+              isBlocked(current.gx, current.gz + dirs[d][1])) continue;
+        }
+
+        const nKey = key(ngx, ngz);
+        const tentativeG = current.g + dirCosts[d];
+
+        if (tentativeG < (gScore.get(nKey) ?? Infinity)) {
+          cameFrom.set(nKey, bestKey);
+          gScore.set(nKey, tentativeG);
+          const f = tentativeG + heuristic(ngx, ngz, end.gx, end.gz);
+          openSet.set(nKey, { gx: ngx, gz: ngz, f, g: tentativeG });
+        }
+      }
+    }
+
+    // No path found - return direct line
+    return [{ x: endX, z: endZ }];
+  }
+
+  // ──────────────────────────────────────────────────────────────
   //  PROCESS INPUT
   // ──────────────────────────────────────────────────────────────
   private _processInput(dt: number): void {
@@ -5702,15 +5849,43 @@ export class DiabloGame {
       if (len > 0) {
         dx /= len;
         dz /= len;
+        // WASD movement cancels click-to-move
+        p.isMovingToTarget = false;
+        p.moveTarget = null;
+        p.movePath = [];
+      }
+
+      // Click-to-move path following
+      if (p.isMovingToTarget && p.movePath.length > 0 && len === 0) {
+        const waypoint = p.movePath[p.movePathIndex];
+        if (waypoint) {
+          const wx = waypoint.x - p.x;
+          const wz = waypoint.z - p.z;
+          const wDist = Math.sqrt(wx * wx + wz * wz);
+          if (wDist < 0.5) {
+            p.movePathIndex++;
+            if (p.movePathIndex >= p.movePath.length) {
+              p.isMovingToTarget = false;
+              p.moveTarget = null;
+              p.movePath = [];
+            }
+          } else {
+            dx = wx / wDist;
+            dz = wz / wDist;
+            p.angle = Math.atan2(dx, dz);
+          }
+        }
       }
 
       const speed = p.moveSpeed;
       p.x += dx * speed * dt;
       p.z += dz * speed * dt;
 
-      // Face mouse direction
-      const worldMouse = this._getMouseWorldPos();
-      p.angle = Math.atan2(worldMouse.x - p.x, worldMouse.z - p.z);
+      // Face mouse direction (only when not following a path)
+      if (!p.isMovingToTarget) {
+        const worldMouse = this._getMouseWorldPos();
+        p.angle = Math.atan2(worldMouse.x - p.x, worldMouse.z - p.z);
+      }
     }
 
     // Clamp to map bounds
