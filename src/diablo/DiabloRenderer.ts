@@ -23,7 +23,6 @@ import {
   DamageType,
   PetSpecies,
   PetAIState,
-  DiabloPet,
   DungeonLayout,
   BossAbility,
 } from './DiabloTypes';
@@ -117,14 +116,12 @@ export class DiabloRenderer {
   // Skill cast effect meshes (temporary visual bursts at player position)
   private _castEffectGroup: THREE.Group | null = null;
   private _castEffectTimer: number = 0;
-  private _castEffectClass: DiabloClass | null = null;
-  private _castEffectSkillId: SkillId | null = null;
   private _prevActiveSkillTimer: number = 0;
 
   // Water surface meshes for animation
   private _waterMeshes: THREE.Mesh[] = [];
   private _waterOriginalY: Map<THREE.Mesh, number> = new Map();
-  private _waterDetected: boolean = false;
+  private _waterMesh: THREE.Mesh | null = null;
 
   // Player status effect overlay meshes — pooled per effect type
   private _playerStatusFxGroup: THREE.Group | null = null;
@@ -538,13 +535,39 @@ export class DiabloRenderer {
 
     // Auto-detect water surfaces after map is built
     this._detectWaterMeshes();
+
+    // Water rendering for aquatic maps
+    const waterMaps = ['CORAL_DEPTHS', 'SUNKEN_CITADEL', 'WHISPERING_MARSH', 'MOONLIT_GROVE'];
+    if (waterMaps.includes(mapId)) {
+      if (this._waterMesh) {
+        this._scene.remove(this._waterMesh);
+        this._waterMesh = null;
+      }
+      const w = cfg.width;
+      const d = (cfg as any).depth || w;
+      const waterGeo = new THREE.PlaneGeometry(w * 0.8, d * 0.8, 32, 32);
+      const waterMat = new THREE.MeshLambertMaterial({
+        color: 0x2244aa,
+        transparent: true,
+        opacity: 0.4,
+        side: THREE.DoubleSide,
+      });
+      this._waterMesh = new THREE.Mesh(waterGeo, waterMat);
+      this._waterMesh.rotation.x = -Math.PI / 2;
+      this._waterMesh.position.y = -0.5; // Below terrain level
+      this._scene.add(this._waterMesh);
+    } else {
+      if (this._waterMesh) {
+        this._scene.remove(this._waterMesh);
+        this._waterMesh = null;
+      }
+    }
   }
 
   /** Scan scene for water-like meshes (transparent, low roughness, blue-tinted). Called once per map build. */
   private _detectWaterMeshes(): void {
     this._waterMeshes = [];
     this._waterOriginalY.clear();
-    this._waterDetected = true;
 
     const isWater = (child: THREE.Object3D): child is THREE.Mesh => {
       if (!(child instanceof THREE.Mesh)) return false;
@@ -27569,6 +27592,24 @@ export class DiabloRenderer {
     // -- Water surface animation --
     this._animateWater(dt);
 
+    // -- Update telegraph timers --
+    for (const [id, mesh] of this._telegraphMeshes) {
+      if ((mesh as any)._telegraphTimer !== undefined) {
+        (mesh as any)._telegraphTimer -= dt;
+        // Pulse opacity
+        const t = (mesh as any)._telegraphTimer;
+        if (mesh.material && 'opacity' in mesh.material) {
+          (mesh.material as any).opacity = 0.2 + Math.sin(t * 8) * 0.2;
+        }
+        if (t <= 0) {
+          this._scene.remove(mesh);
+          if ((mesh as any).geometry) (mesh as any).geometry.dispose();
+          if ((mesh as any).material) (mesh as any).material.dispose();
+          this._telegraphMeshes.delete(id);
+        }
+      }
+    }
+
     // Boss arena hazard rendering
     this._syncBossHazards(state, dt);
 
@@ -51710,7 +51751,6 @@ export class DiabloRenderer {
     this._scene.add(group);
     this._castEffectGroup = group;
     this._castEffectTimer = 0.6;
-    this._castEffectClass = pClass;
   }
 
   // ════════════════════════════════════════════════════════════════════════
@@ -52087,6 +52127,20 @@ export class DiabloRenderer {
         mat.emissiveIntensity = shimmer;
       }
     }
+
+    // Animate aquatic map water plane
+    if (this._waterMesh) {
+      const positions = (this._waterMesh.geometry as THREE.PlaneGeometry).attributes.position;
+      if (positions) {
+        for (let i = 0; i < positions.count; i++) {
+          const x = positions.getX(i);
+          const z = positions.getZ(i);
+          const y = Math.sin(x * 0.5 + this._time * 2) * 0.15 + Math.cos(z * 0.3 + this._time * 1.5) * 0.1;
+          positions.setY(i, y);
+        }
+        positions.needsUpdate = true;
+      }
+    }
   }
 
   // ════════════════════════════════════════════════════════════════════════
@@ -52350,7 +52404,10 @@ export class DiabloRenderer {
     this._lootSpawnTimes.clear();
     this._waterMeshes = [];
     this._waterOriginalY.clear();
-    this._waterDetected = false;
+    if (this._waterMesh) {
+      this._scene.remove(this._waterMesh);
+      this._waterMesh = null;
+    }
 
     if (this._castEffectGroup) {
       this._scene.remove(this._castEffectGroup);
@@ -56210,5 +56267,74 @@ export class DiabloRenderer {
     }
 
     this._scene.add(this._dungeonGroup);
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  //  TELEGRAPH SYSTEM FOR BOSS AOE
+  // ════════════════════════════════════════════════════════════════════════
+
+  showTelegraph(id: string, x: number, z: number, radius: number, color: number = 0xff0000, duration: number = 1.5): void {
+    let mesh = this._telegraphMeshes.get(id);
+    if (!mesh) {
+      const geo = new THREE.RingGeometry(radius - 0.1, radius, 32);
+      const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.4, side: THREE.DoubleSide });
+      mesh = new THREE.Mesh(geo, mat);
+      mesh.rotation.x = -Math.PI / 2;
+      this._scene.add(mesh);
+      this._telegraphMeshes.set(id, mesh);
+    }
+    mesh.position.set(x, 0.1, z);
+    mesh.visible = true;
+    // Store removal timer on the mesh userData
+    (mesh as any)._telegraphTimer = duration;
+  }
+
+  removeTelegraph(id: string): void {
+    const mesh = this._telegraphMeshes.get(id);
+    if (mesh) {
+      this._scene.remove(mesh);
+      if ((mesh as any).geometry) (mesh as any).geometry.dispose();
+      if ((mesh as any).material) (mesh as any).material.dispose();
+      this._telegraphMeshes.delete(id);
+    }
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  //  CAST EFFECT OVERLAY
+  // ════════════════════════════════════════════════════════════════════════
+
+  private _castOverlay: HTMLDivElement | null = null;
+
+  showCastOverlay(damageType: string, duration: number = 0.3): void {
+    if (this._castOverlay) {
+      this._castOverlay.remove();
+    }
+
+    const colors: Record<string, string> = {
+      FIRE: 'rgba(255,100,0,0.15)',
+      ICE: 'rgba(100,180,255,0.15)',
+      LIGHTNING: 'rgba(200,200,50,0.15)',
+      POISON: 'rgba(100,255,50,0.15)',
+      ARCANE: 'rgba(170,100,255,0.15)',
+      SHADOW: 'rgba(80,0,120,0.15)',
+      HOLY: 'rgba(255,255,200,0.15)',
+      PHYSICAL: 'rgba(200,200,200,0.08)',
+    };
+
+    const color = colors[damageType] || colors.PHYSICAL;
+
+    this._castOverlay = document.createElement('div');
+    this._castOverlay.style.cssText = `position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:5;box-shadow:inset 0 0 80px ${color};transition:opacity ${duration}s;opacity:1;`;
+    document.body.appendChild(this._castOverlay);
+
+    setTimeout(() => {
+      if (this._castOverlay) {
+        this._castOverlay.style.opacity = '0';
+        setTimeout(() => {
+          this._castOverlay?.remove();
+          this._castOverlay = null;
+        }, duration * 1000);
+      }
+    }, 50);
   }
 }

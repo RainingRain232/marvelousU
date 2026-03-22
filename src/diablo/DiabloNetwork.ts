@@ -20,6 +20,13 @@ export class DiabloNetwork {
   private _ping: number = 0;
   private _messageQueue: NetworkMessage[] = []; // reserved for future batching
 
+  // Reconnection state
+  private _shouldReconnect: boolean = true;
+  private _reconnectAttempts: number = 0;
+  private _maxReconnectAttempts: number = 5;
+  private _reconnectTimer: number = 0;
+  private _lastServerUrl: string = '';
+
   // Callbacks
   onPlayerJoin: ((player: NetworkPlayerData) => void) | null = null;
   onPlayerLeave: ((playerId: string) => void) | null = null;
@@ -45,12 +52,16 @@ export class DiabloNetwork {
     this._playerName = playerName;
     this._playerId = `player-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
     this._state = MultiplayerState.CONNECTING;
+    this._lastServerUrl = serverUrl;
+    this._reconnectAttempts = 0;
+    this._shouldReconnect = true;
 
     try {
       this._ws = new WebSocket(serverUrl);
 
       this._ws.onopen = () => {
         this._state = MultiplayerState.IN_LOBBY;
+        this._reconnectAttempts = 0;
         console.log('[DiabloNet] Connected to server');
       };
 
@@ -65,9 +76,23 @@ export class DiabloNetwork {
 
       this._ws.onclose = () => {
         this._state = MultiplayerState.DISCONNECTED;
-        this._remotePlayers.clear();
-        this._lobby = null;
         console.log('[DiabloNet] Disconnected');
+
+        // Auto-reconnect if we were in a game
+        if (this._shouldReconnect && this._reconnectAttempts < this._maxReconnectAttempts) {
+          this._reconnectAttempts++;
+          const delay = Math.min(1000 * Math.pow(2, this._reconnectAttempts - 1), 30000);
+          console.log(`[DiabloNet] Reconnecting in ${delay}ms (attempt ${this._reconnectAttempts})`);
+          this._state = MultiplayerState.CONNECTING;
+          this._reconnectTimer = window.setTimeout(() => {
+            if (this._lastServerUrl) {
+              this.connect(this._lastServerUrl, this._playerName);
+            }
+          }, delay);
+        } else {
+          this._remotePlayers.clear();
+          this._lobby = null;
+        }
       };
 
       this._ws.onerror = (e) => {
@@ -81,6 +106,8 @@ export class DiabloNetwork {
   }
 
   disconnect(): void {
+    this._shouldReconnect = false;
+    if (this._reconnectTimer) clearTimeout(this._reconnectTimer);
     if (this._ws) {
       this._ws.close();
       this._ws = null;

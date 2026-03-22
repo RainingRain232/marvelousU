@@ -1110,6 +1110,7 @@ export interface DiabloItem {
   maxSockets?: number;
   icon: string;
   value: number;
+  isLocked?: boolean;
 }
 
 export interface DiabloSetBonus {
@@ -1287,6 +1288,11 @@ export interface DiabloPlayerState {
   activeAura: string | null;
   activeTitle: string | null;
   stats: PlayerStats;
+  // Prestige system
+  prestigeLevel: number;
+  prestigeBonuses: { damagePercent: number; hpPercent: number; xpPercent: number; goldPercent: number };
+  // Hardcore mode
+  isHardcore: boolean;
 }
 
 export interface DiabloEnemy {
@@ -1615,6 +1621,17 @@ export interface GreaterRiftData {
   keystones: number; // rift keystones in inventory
 }
 
+export interface Bounty {
+  id: string;
+  targetName: string;
+  targetType: EnemyType;
+  mapId: DiabloMapId;
+  description: string;
+  reward: { gold: number; xp: number; keystones?: number; guaranteedRarity?: ItemRarity };
+  isComplete: boolean;
+  isActive: boolean;
+}
+
 export interface DiabloState {
   phase: DiabloPhase;
   player: DiabloPlayerState;
@@ -1667,6 +1684,9 @@ export interface DiabloState {
   slowMotionScale: number;
   dungeonLayout: DungeonLayout | null;
   greaterRift: GreaterRiftData;
+  // Bounty system
+  activeBounties: Bounty[];
+  completedBountyIds: string[];
   multiplayer: {
     state: MultiplayerState;
     playerId: string;
@@ -2095,6 +2115,11 @@ export function createDefaultPlayer(cls: DiabloClass): DiabloPlayerState {
       timePlayed: 0, favoriteClass: '',
       classPlayTime: {},
     },
+    // Prestige system
+    prestigeLevel: 0,
+    prestigeBonuses: { damagePercent: 0, hpPercent: 0, xpPercent: 0, goldPercent: 0 },
+    // Hardcore mode
+    isHardcore: false,
   };
 }
 
@@ -2165,6 +2190,9 @@ export function createDefaultState(): DiabloState {
       bestRiftLevel: 0,
       keystones: 3,
     },
+    // Bounty system
+    activeBounties: [],
+    completedBountyIds: [],
     multiplayer: {
       state: MultiplayerState.DISCONNECTED,
       playerId: '',

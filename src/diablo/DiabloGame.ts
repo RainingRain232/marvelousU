@@ -11,7 +11,7 @@ import {
   DiabloQuest, QuestType, CraftType,
   TalentEffectType,
   ParticleType, Weather,
-  MapModifier, LootFilterLevel, GreaterRiftState, GreaterRiftData,
+  MapModifier, LootFilterLevel, GreaterRiftState,
   PetType, PetSpecies, PetAIState, DiabloPet,
   CraftingStationType, MaterialType, AdvancedCraftingRecipe,
   DungeonRoom, DungeonCorridor, DungeonLayout,
@@ -20,6 +20,7 @@ import {
   ItemSlot, ItemType, DiabloItemStats,
   MultiplayerState,
   GRLeaderboardEntry, KeyBindings, DEFAULT_KEYBINDINGS,
+  Bounty,
   createDefaultPlayer, createDefaultState
 } from "./DiabloTypes";
 import {
@@ -39,7 +40,7 @@ import {
   SKILL_BRANCHES,
   UNLOCKABLE_SKILLS,
   MAP_SPECIFIC_ITEMS,
-  MAP_MODIFIER_DEFS, ELEMENTAL_REACTIONS, PARAGON_XP_TABLE,
+  MAP_MODIFIER_DEFS, PARAGON_XP_TABLE,
   PET_DEFS, PET_DROP_TABLE, PET_XP_TABLE,
   ADVANCED_CRAFTING_RECIPES, CRAFTING_MATERIALS, MATERIAL_DROP_TABLE,
   GREATER_RIFT_CONFIG,
@@ -489,6 +490,9 @@ export class DiabloGame {
   private _mouseDX: number = 0;
   private _mouseDY: number = 0;
 
+  // Help overlay
+  private _firstPlayHelpShown: boolean = false;
+
   // Multiplayer
   private _network: DiabloNetwork = new DiabloNetwork();
   private _networkUpdateTimer: number = 0;
@@ -546,6 +550,7 @@ export class DiabloGame {
   // Death overlay (ac6cb424)
   private _deathOverlay!: HTMLDivElement;
   private _isDead: boolean = false;
+  private _hardcoreLabel: HTMLDivElement | null = null;
 
   // Potion HUD slots (ad1a2850)
   private _potionHudSlots: HTMLDivElement[] = [];
@@ -585,6 +590,14 @@ export class DiabloGame {
   private _audioCtx: AudioContext | null = null;
   private _audioMuted: boolean = false;
   private _audioVolume: number = 0.3;
+
+  // Background music (ambient oscillator drones)
+  private _bgmOscillators: OscillatorNode[] = [];
+  private _bgmGains: GainNode[] = [];
+  // @ts-ignore assigned but value never read (reserved for future use)
+  private _bgmPlaying: boolean = false;
+  // @ts-ignore assigned but value never read (reserved for future use)
+  private _currentBgmMap: string = '';
 
   // Death tracking
   private _lastDeathCause: string = '';
@@ -700,19 +713,9 @@ export class DiabloGame {
     } catch { /* use defaults */ }
   }
 
-  private _saveKeyBindings(): void {
-    localStorage.setItem('diablo_keybindings', JSON.stringify(this._keyBindings));
-  }
-
   // ──────────────────────────────────────────────────────────────
   //  TOOLTIP HELPERS
   // ──────────────────────────────────────────────────────────────
-  private _getEquippedInSlot(slot: ItemSlot): DiabloItem | null {
-    const key = resolveEquipKey(slot as string);
-    if (!key) return null;
-    return this._state.player.equipment[key];
-  }
-
   private _countEquippedSetPieces(setName: string): number {
     let count = 0;
     const eq = this._state.player.equipment;
@@ -749,6 +752,105 @@ export class DiabloGame {
       stash[i].item = i < items.length ? items[i] : null;
     }
   }
+  // ──────────────────────────────────────────────────────────────
+  //  HELP OVERLAY
+  // ──────────────────────────────────────────────────────────────
+  private _showHelpOverlay(): void {
+    this._phaseBeforeOverlay = this._state.phase;
+    this._state.phase = DiabloPhase.PAUSED;
+    this._menuEl.innerHTML = '';
+
+    const panel = document.createElement('div');
+    panel.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(20,15,10,0.95);border:2px solid #8b6914;border-radius:8px;padding:20px 30px;color:#fff;font-family:Georgia,serif;min-width:550px;max-height:85vh;overflow-y:auto;z-index:100;';
+
+    panel.innerHTML = `
+      <h2 style="text-align:center;color:#ffd700;margin:0 0 15px;">Controls & Shortcuts</h2>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;font-size:13px;">
+        <div>
+          <h3 style="color:#b8860b;margin:0 0 8px;font-size:14px;">Movement</h3>
+          <div><span style="color:#ffd700;">WASD / Arrows</span> \u2014 Move</div>
+          <div><span style="color:#ffd700;">Right Click</span> \u2014 Click to move</div>
+          <div><span style="color:#ffd700;">Space</span> \u2014 Dodge roll</div>
+          <div><span style="color:#ffd700;">V</span> \u2014 Toggle first person</div>
+
+          <h3 style="color:#b8860b;margin:10px 0 8px;font-size:14px;">Combat</h3>
+          <div><span style="color:#ffd700;">Left Click</span> \u2014 Attack / Target enemy</div>
+          <div><span style="color:#ffd700;">1-6</span> \u2014 Use skill</div>
+          <div><span style="color:#ffd700;">Shift+1-6</span> \u2014 Cycle skill rune</div>
+          <div><span style="color:#ffd700;">F1-F4</span> \u2014 Use potion</div>
+          <div><span style="color:#ffd700;">E</span> \u2014 Interact</div>
+        </div>
+        <div>
+          <h3 style="color:#b8860b;margin:0 0 8px;font-size:14px;">Panels</h3>
+          <div><span style="color:#ffd700;">I</span> \u2014 Inventory</div>
+          <div><span style="color:#ffd700;">M</span> \u2014 Fullscreen map</div>
+          <div><span style="color:#ffd700;">B</span> \u2014 Advanced crafting</div>
+          <div><span style="color:#ffd700;">Tab</span> \u2014 Cycle loot filter</div>
+          <div><span style="color:#ffd700;">Y</span> \u2014 Summon/cycle pet</div>
+          <div><span style="color:#ffd700;">Shift+P</span> \u2014 Pet management</div>
+          <div><span style="color:#ffd700;">Shift+A</span> \u2014 Achievements</div>
+          <div><span style="color:#ffd700;">Shift+S</span> \u2014 Statistics</div>
+          <div><span style="color:#ffd700;">Shift+O</span> \u2014 Cosmetics</div>
+          <div><span style="color:#ffd700;">Shift+C</span> \u2014 Quick salvage</div>
+          <div><span style="color:#ffd700;">L</span> \u2014 GR Leaderboard (map select)</div>
+          <div><span style="color:#ffd700;">H / ?</span> \u2014 This help screen</div>
+
+          <h3 style="color:#b8860b;margin:10px 0 8px;font-size:14px;">Other</h3>
+          <div><span style="color:#ffd700;">T</span> \u2014 Toggle lantern</div>
+          <div><span style="color:#ffd700;">Esc</span> \u2014 Close panel / Pause</div>
+          <div><span style="color:#ffd700;">F5</span> \u2014 Save game</div>
+          <div><span style="color:#ffd700;">N</span> \u2014 Multiplayer (map select)</div>
+        </div>
+      </div>
+      <div style="text-align:center;margin-top:15px;">
+        <button id="help-close" style="padding:8px 24px;background:#555;color:#fff;border:1px solid #888;border-radius:4px;cursor:pointer;font-family:Georgia,serif;">Close (Esc)</button>
+      </div>
+    `;
+    this._menuEl.appendChild(panel);
+
+    document.getElementById('help-close')?.addEventListener('click', () => {
+      this._state.phase = this._phaseBeforeOverlay;
+      this._menuEl.innerHTML = '';
+    });
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  //  INVENTORY SORT
+  // ──────────────────────────────────────────────────────────────
+  private _sortInventory(sortBy: 'rarity' | 'type' | 'level'): void {
+    const inv = this._state.player.inventory;
+    const items = inv.filter(s => s.item !== null).map(s => s.item!);
+
+    items.sort((a, b) => {
+      switch (sortBy) {
+        case 'rarity': {
+          const order = [ItemRarity.COMMON, ItemRarity.UNCOMMON, ItemRarity.RARE, ItemRarity.EPIC, ItemRarity.LEGENDARY, ItemRarity.MYTHIC, ItemRarity.DIVINE];
+          return order.indexOf(b.rarity) - order.indexOf(a.rarity);
+        }
+        case 'type': return a.type.localeCompare(b.type) || b.level - a.level;
+        case 'level': return b.level - a.level;
+        default: return 0;
+      }
+    });
+
+    for (let i = 0; i < inv.length; i++) {
+      inv[i].item = i < items.length ? items[i] : null;
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  //  ITEM LOCK
+  // ──────────────────────────────────────────────────────────────
+  private _toggleItemLock(slotIndex: number): void {
+    const item = this._state.player.inventory[slotIndex]?.item;
+    if (item) {
+      item.isLocked = !item.isLocked;
+      this._addFloatingText(this._state.player.x, this._state.player.y + 2, this._state.player.z,
+        item.isLocked ? '\uD83D\uDD12 Item locked' : '\uD83D\uDD13 Item unlocked', '#aaaaaa');
+    }
+  }
+
+
   // ──────────────────────────────────────────────────────────────
   //  BOOT
   // ──────────────────────────────────────────────────────────────
@@ -894,7 +996,10 @@ export class DiabloGame {
         const filter = pf.customLootFilters[pf.activeFilterIndex];
         this._addFloatingText(pf.x, pf.y + 3, pf.z, `Filter: ${filter.name}`, '#ffdd00');
       }
-      else if (e.code === "KeyH") {
+      else if ((e.code === "KeyH" && !e.shiftKey) || (e.code === "Slash" && e.shiftKey)) {
+        this._showHelpOverlay();
+      }
+      else if (e.code === "KeyH" && e.shiftKey) {
         // Toggle DPS display
         this._state.player.dpsDisplayVisible = !this._state.player.dpsDisplayVisible;
       }
@@ -1047,7 +1152,8 @@ export class DiabloGame {
       }
     } else if (this._state.phase === DiabloPhase.PAUSED) {
       if (e.code === "Escape") {
-        this._state.phase = DiabloPhase.PLAYING;
+        this._state.phase = this._phaseBeforeOverlay || DiabloPhase.PLAYING;
+        this._phaseBeforeOverlay = DiabloPhase.CLASS_SELECT;
         this._menuEl.innerHTML = "";
       }
     }
@@ -1320,7 +1426,14 @@ export class DiabloGame {
     if (hasSave) {
       const raw = localStorage.getItem("diablo_save");
       if (raw) {
-        const save = JSON.parse(raw);
+        let save: any;
+        try {
+          save = JSON.parse(raw);
+        } catch (e) {
+          console.error('Failed to parse save data:', e);
+          this._showSaveRecoveryPrompt();
+          return;
+        }
         const sp = save.player;
         const sc = {
           cls: sp.class as string,
@@ -1548,6 +1661,12 @@ export class DiabloGame {
           ${diffHtml}
         </div>
         <div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center;">${cardsHtml}</div>
+        <div style="text-align:center;margin:10px 0;">
+          <label style="color:#ff4444;font-family:Georgia,serif;cursor:pointer;font-size:14px;">
+            <input type="checkbox" id="hardcore-check" style="margin-right:6px;">
+            Hardcore Mode (Permadeath)
+          </label>
+        </div>
         ${savedCharHtml}
         <div style="display:flex;gap:14px;margin-top:30px;flex-wrap:wrap;justify-content:center;">
           ${saveBtns}
@@ -1569,6 +1688,10 @@ export class DiabloGame {
       card.addEventListener("click", () => {
         const cls = card.getAttribute("data-class") as DiabloClass;
         this._state.player = createDefaultPlayer(cls);
+        const hcCheck = document.getElementById('hardcore-check') as HTMLInputElement | null;
+        if (hcCheck && hcCheck.checked) {
+          this._state.player.isHardcore = true;
+        }
         this._showMapSelect();
       });
     });
@@ -1638,7 +1761,8 @@ export class DiabloGame {
         this._phaseBeforeOverlay = DiabloPhase.CLASS_SELECT;
         const raw = localStorage.getItem("diablo_save");
         if (raw) {
-          const save = JSON.parse(raw);
+          let save: any;
+          try { save = JSON.parse(raw); } catch (e) { console.error('Failed to parse save data:', e); this._showSaveRecoveryPrompt(); return; }
           this._state.persistentStash = (() => { const s = save.persistentStash || []; while (s.length < 150) s.push({ item: null }); return s; })();
           this._state.player = { ...save.player, skillCooldowns: new Map(Object.entries(save.player.skillCooldowns)) };
           this._state.persistentGold = save.persistentGold;
@@ -1650,7 +1774,8 @@ export class DiabloGame {
         this._phaseBeforeOverlay = DiabloPhase.CLASS_SELECT;
         const raw = localStorage.getItem("diablo_save");
         if (raw) {
-          const save = JSON.parse(raw);
+          let save: any;
+          try { save = JSON.parse(raw); } catch (e) { console.error('Failed to parse save data:', e); this._showSaveRecoveryPrompt(); return; }
           this._state.player = { ...save.player, skillCooldowns: new Map(Object.entries(save.player.skillCooldowns)) };
           this._state.persistentGold = save.persistentGold;
         }
@@ -1661,7 +1786,8 @@ export class DiabloGame {
         this._phaseBeforeOverlay = DiabloPhase.CLASS_SELECT;
         const raw = localStorage.getItem("diablo_save");
         if (raw) {
-          const save = JSON.parse(raw);
+          let save: any;
+          try { save = JSON.parse(raw); } catch (e) { console.error('Failed to parse save data:', e); this._showSaveRecoveryPrompt(); return; }
           this._state.player = { ...save.player, skillCooldowns: new Map(Object.entries(save.player.skillCooldowns)) };
         }
         this._state.phase = DiabloPhase.INVENTORY;
@@ -1674,6 +1800,9 @@ export class DiabloGame {
   //  MAP SELECT SCREEN
   // ──────────────────────────────────────────────────────────────
   private _showMapSelect(): void {
+    // Stop background music when leaving a map
+    this._stopBgm();
+
     const maps: {
       id: DiabloMapId;
       icon: string;
@@ -2063,6 +2192,9 @@ export class DiabloGame {
 
         <div style="display:flex;gap:20px;flex-wrap:wrap;justify-content:center;max-width:95vw;overflow-y:auto;max-height:60vh;padding:10px;">${cardsHtml}</div>
 
+        <!-- Prestige Section -->
+        <div id="prestige-section-container"></div>
+
         <!-- Greater Rift Section -->
         <div style="display:flex;align-items:center;gap:12px;margin-top:16px;margin-bottom:8px;">
           <div style="width:80px;height:1px;background:linear-gradient(to right,transparent,#ff8800);"></div>
@@ -2101,6 +2233,34 @@ export class DiabloGame {
         const level = this._state.greaterRift.bestRiftLevel + 1;
         this._startGreaterRift(level);
       });
+    }
+
+    // Wire up prestige section
+    if (this._state.player.level >= 20 || this._state.player.mordredDefeated) {
+      const prestigeContainer = this._menuEl.querySelector('#prestige-section-container') as HTMLDivElement;
+      if (prestigeContainer) {
+        prestigeContainer.innerHTML = `
+          <div style="display:flex;align-items:center;gap:12px;margin-top:16px;margin-bottom:8px;">
+            <div style="width:80px;height:1px;background:linear-gradient(to right,transparent,#ffd700);"></div>
+            <span style="color:#ffd700;font-size:14px;">&#9884;</span>
+            <span style="color:#ffd700;font-size:12px;letter-spacing:2px;font-family:'Georgia',serif;">NEW GAME+</span>
+            <span style="color:#ffd700;font-size:14px;">&#9884;</span>
+            <div style="width:80px;height:1px;background:linear-gradient(to left,transparent,#ffd700);"></div>
+          </div>
+          <div style="text-align:center;">
+            <button id="prestige-btn" style="
+              cursor:pointer;padding:10px 20px;font-size:14px;border-radius:6px;
+              background:linear-gradient(180deg,#ffd700,#b8860b);color:#000;
+              border:2px solid #ffd700;font-family:'Georgia',serif;font-weight:bold;
+              transition:0.2s;
+            ">Prestige ${this._state.player.prestigeLevel + 1} (Current: ${this._state.player.prestigeLevel})</button>
+          </div>
+        `;
+        const prestigeBtn = this._menuEl.querySelector('#prestige-btn') as HTMLButtonElement;
+        if (prestigeBtn) {
+          prestigeBtn.addEventListener('click', () => this._showPrestigePanel());
+        }
+      }
     }
 
     // Wire up time-of-day buttons
@@ -2232,6 +2392,9 @@ export class DiabloGame {
     this._renderer.applyTimeOfDay(this._state.timeOfDay, mapId);
     this._renderer.applyWeather(this._state.weather);
 
+    // Start map-specific background music
+    this._startBgm(mapId);
+
     // Auto-enable lantern on map entry if one is equipped
     if (this._state.player.equipment.lantern) {
       const lanternCfg = LANTERN_CONFIGS[this._state.player.equipment.lantern.name];
@@ -2262,6 +2425,8 @@ export class DiabloGame {
           this._state.vendors.map((v) => ({ x: v.x, z: v.z, type: v.type, name: v.name, icon: v.icon }))
         );
       }
+      // Generate bounties in Camelot
+      this._generateBounties();
       // Spawn townfolk wandering around Camelot
       this._spawnCamelotTownfolk();
     } else {
@@ -2288,6 +2453,8 @@ export class DiabloGame {
 
       this._spawnInitialEnemies();
       this._spawnInitialChests();
+      this._generateBounties();
+      this._spawnBountyTargets();
     }
 
     if (this._state.dungeonLayout) {
@@ -2301,6 +2468,11 @@ export class DiabloGame {
     this._initAchievements();
     this._generateDailyChallenges();
     this._mapDeathCount = 0;
+
+    if (!this._firstPlayHelpShown) {
+      this._firstPlayHelpShown = true;
+      this._addFloatingText(this._state.player.x, this._state.player.y + 2, this._state.player.z, 'Press H for controls', '#aaaaaa');
+    }
 
     // Main quest popup on map entry
     if (mapId === DiabloMapId.CAMELOT) {
@@ -2409,8 +2581,11 @@ export class DiabloGame {
       const badge = item && RARITY_BADGE[item.rarity]
         ? `<div style="position:absolute;top:1px;right:2px;font-size:8px;color:${RARITY_CSS[item.rarity]};text-shadow:0 0 4px ${RARITY_CSS[item.rarity]};line-height:1;">${RARITY_BADGE[item.rarity]}</div>`
         : "";
+      const lockIcon = item && item.isLocked
+        ? `<span style="position:absolute;top:2px;right:2px;font-size:10px;">\uD83D\uDD12</span>`
+        : "";
       const content = item
-        ? `<div style="font-size:24px;">${item.icon}</div>${badge}`
+        ? `<div style="font-size:24px;">${item.icon}</div>${badge}${lockIcon}`
         : "";
       invHtml += `
         <div class="inv-slot ${anim}" data-inv-idx="${i}" style="
@@ -2500,6 +2675,11 @@ export class DiabloGame {
                 <div style="width:30px;height:1px;background:linear-gradient(to right,transparent,#5a4a2a);"></div>
                 <span style="color:#a08850;font-size:13px;letter-spacing:2px;text-transform:uppercase;">Backpack</span>
                 <div style="width:30px;height:1px;background:linear-gradient(to left,transparent,#5a4a2a);"></div>
+              </div>
+              <div style="display:flex;gap:6px;margin-bottom:6px;justify-content:center;">
+                <button class="inv-sort-btn" data-sort="rarity" style="padding:3px 10px;font-size:11px;background:rgba(50,40,20,0.8);border:1px solid #5a4a2a;border-radius:4px;color:#c8a84e;cursor:pointer;font-family:Georgia,serif;">Sort: Rarity</button>
+                <button class="inv-sort-btn" data-sort="type" style="padding:3px 10px;font-size:11px;background:rgba(50,40,20,0.8);border:1px solid #5a4a2a;border-radius:4px;color:#c8a84e;cursor:pointer;font-family:Georgia,serif;">Sort: Type</button>
+                <button class="inv-sort-btn" data-sort="level" style="padding:3px 10px;font-size:11px;background:rgba(50,40,20,0.8);border:1px solid #5a4a2a;border-radius:4px;color:#c8a84e;cursor:pointer;font-family:Georgia,serif;">Sort: Level</button>
               </div>
               <div style="display:grid;grid-template-columns:repeat(8,62px);grid-template-rows:repeat(5,62px);gap:4px;">
                 ${invHtml}
@@ -2596,6 +2776,15 @@ export class DiabloGame {
         ev.stopPropagation();
         const item = p.inventory[idx].item;
         if (!item) return;
+        if (ev.shiftKey) {
+          this._toggleItemLock(idx);
+          this._showInventory();
+          return;
+        }
+        if (item.isLocked) {
+          this._addFloatingText(p.x, p.y + 2, p.z, 'Item is locked!', '#ff4444');
+          return;
+        }
         p.inventory[idx].item = null;
         const loot: DiabloLoot = {
           id: this._genId(),
@@ -2610,6 +2799,18 @@ export class DiabloGame {
       });
       el.addEventListener("mouseenter", (ev) => this._showItemTooltip(ev, p.inventory[idx].item));
       el.addEventListener("mouseleave", () => this._hideItemTooltip());
+    });
+
+    // Sort buttons
+    const sortBtns = this._menuEl.querySelectorAll(".inv-sort-btn") as NodeListOf<HTMLButtonElement>;
+    sortBtns.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const sortBy = btn.getAttribute("data-sort") as 'rarity' | 'type' | 'level';
+        this._sortInventory(sortBy);
+        this._showInventory();
+      });
+      btn.addEventListener("mouseenter", () => { btn.style.borderColor = "#c8a84e"; btn.style.background = "rgba(70,55,25,0.9)"; });
+      btn.addEventListener("mouseleave", () => { btn.style.borderColor = "#5a4a2a"; btn.style.background = "rgba(50,40,20,0.8)"; });
     });
 
     // Stash button
@@ -5785,6 +5986,16 @@ export class DiabloGame {
   private _updateHUD(): void {
     const p = this._state.player;
 
+    // Hardcore HUD indicator
+    if (p.isHardcore) {
+      if (!this._hardcoreLabel) {
+        this._hardcoreLabel = document.createElement('div');
+        this._hardcoreLabel.style.cssText = 'position:absolute;top:5px;left:50%;transform:translateX(-50%);color:#ff4444;font-size:11px;font-family:Georgia,serif;font-weight:bold;pointer-events:none;z-index:20;text-shadow:0 0 5px #ff0000;';
+        this._hardcoreLabel.textContent = 'HARDCORE';
+        this._hud.appendChild(this._hardcoreLabel);
+      }
+    }
+
     // DPS calculation
     const now = performance.now();
     this._combatLog = this._combatLog.filter(e => now - e.time < 5000);
@@ -6056,7 +6267,11 @@ export class DiabloGame {
       const mp = this._state.multiplayer;
       const playerCount = mp.remotePlayers.length + 1;
       const recentChat = mp.chatMessages.slice(-5).map(m => `<span style="color:#aaa">${m.name}:</span> ${m.message}`).join('<br>');
-      this._multiplayerHud.innerHTML = `<span style="color:#44ff44">ONLINE</span> ${playerCount} players | ${mp.ping}ms${recentChat ? '<br>' + recentChat : ''}`;
+      if (this._state.multiplayer.state === MultiplayerState.CONNECTING) {
+        this._multiplayerHud.innerHTML = `<span style="color:#ffaa00">RECONNECTING...</span>`;
+      } else {
+        this._multiplayerHud.innerHTML = `<span style="color:#44ff44">ONLINE</span> ${playerCount} players | ${mp.ping}ms${recentChat ? '<br>' + recentChat : ''}`;
+      }
       this._multiplayerHud.style.display = 'block';
     } else if (this._multiplayerHud) {
       this._multiplayerHud.style.display = 'none';
@@ -7146,8 +7361,17 @@ export class DiabloGame {
         this._renderer.shakeCamera(0.8, 1.2);
       }
       const meleeXpMult = this._state.weather === Weather.CLEAR ? 1.1 : 1.0;
-      p.xp += Math.floor(target.xpReward * meleeXpMult);
-      const goldFromKill = Math.floor(5 + Math.random() * 10 * target.level);
+      let meleeXpAmount = Math.floor(target.xpReward * meleeXpMult);
+      // Prestige XP bonus
+      if (p.prestigeBonuses.xpPercent > 0) {
+        meleeXpAmount = Math.floor(meleeXpAmount * (1 + p.prestigeBonuses.xpPercent / 100));
+      }
+      p.xp += meleeXpAmount;
+      let goldFromKill = Math.floor(5 + Math.random() * 10 * target.level);
+      // Prestige gold bonus
+      if (p.prestigeBonuses.goldPercent > 0) {
+        goldFromKill = Math.floor(goldFromKill * (1 + p.prestigeBonuses.goldPercent / 100));
+      }
       p.gold += goldFromKill;
       this._playSound('gold');
       this._goldEarnedTotal += goldFromKill;
@@ -8096,6 +8320,9 @@ export class DiabloGame {
     // Skill cast particles at player position
     const castParticle = this._damageTypeToParticle(def.damageType);
     this._renderer.spawnParticles(castParticle, p.x, p.y + 1, p.z, 8, this._state.particles);
+
+    // Cast effect screen overlay matching damage type
+    this._renderer.showCastOverlay(def.damageType, 0.3);
   }
 
   // ──────────────────────────────────────────────────────────────
@@ -9124,9 +9351,18 @@ export class DiabloGame {
 
     const p = this._state.player;
     const xpMult = (this._state.weather === Weather.CLEAR ? 1.1 : 1.0) * (1 + this._hasPetBuff('xpBonus'));
-    p.xp += Math.floor(enemy.xpReward * xpMult);
+    let xpAmount = Math.floor(enemy.xpReward * xpMult);
+    // Prestige XP bonus
+    if (p.prestigeBonuses.xpPercent > 0) {
+      xpAmount = Math.floor(xpAmount * (1 + p.prestigeBonuses.xpPercent / 100));
+    }
+    p.xp += xpAmount;
     const goldMult = (1 + this._hasPetBuff('goldBonus'));
-    const goldEarned = Math.floor((5 + Math.random() * 10 * enemy.level) * DIFFICULTY_CONFIGS[this._state.difficulty].goldMult * goldMult);
+    let goldEarned = Math.floor((5 + Math.random() * 10 * enemy.level) * DIFFICULTY_CONFIGS[this._state.difficulty].goldMult * goldMult);
+    // Prestige gold bonus
+    if (p.prestigeBonuses.goldPercent > 0) {
+      goldEarned = Math.floor(goldEarned * (1 + p.prestigeBonuses.goldPercent / 100));
+    }
     p.gold += goldEarned;
     this._goldEarnedTotal += goldEarned;
     this._state.killCount++;
@@ -9195,6 +9431,23 @@ export class DiabloGame {
       }
     }
     this._updateQuestProgress(QuestType.COLLECT_GOLD, undefined);
+
+    // Check bounty completion
+    for (const bounty of this._state.activeBounties) {
+      if (!bounty.isComplete && enemy.id === `bounty-enemy-${bounty.id}`) {
+        bounty.isComplete = true;
+        this._state.completedBountyIds.push(bounty.id);
+        p.gold += bounty.reward.gold;
+        p.xp += bounty.reward.xp;
+        if (bounty.reward.keystones) {
+          this._state.greaterRift.keystones += bounty.reward.keystones;
+        }
+        this._addFloatingText(enemy.x, enemy.y + 4, enemy.z, `BOUNTY: ${bounty.targetName} SLAIN!`, '#ffd700');
+        this._addFloatingText(p.x, p.y + 3, p.z, `+${bounty.reward.gold}g +${bounty.reward.xp}xp`, '#44ff44');
+        this._playSound('levelup');
+        break;
+      }
+    }
 
     // Pet XP, pet egg drops, crafting material drops
     this._grantPetXp(Math.floor(enemy.xpReward * 0.5));
@@ -9903,6 +10156,70 @@ export class DiabloGame {
     return this._audioCtx;
   }
 
+  private _startBgm(mapId: DiabloMapId): void {
+    this._stopBgm();
+    const ctx = this._ensureAudio();
+    if (!ctx || this._audioMuted) return;
+
+    this._currentBgmMap = mapId;
+    this._bgmPlaying = true;
+
+    // Map biome to ambient tone parameters
+    const biomes: Record<string, { freqs: number[]; types: OscillatorType[]; vol: number }> = {
+      FOREST: { freqs: [110, 165, 220], types: ['sine', 'sine', 'triangle'], vol: 0.03 },
+      ELVEN_VILLAGE: { freqs: [220, 330, 440], types: ['sine', 'sine', 'sine'], vol: 0.025 },
+      NECROPOLIS_DUNGEON: { freqs: [55, 82, 110], types: ['sawtooth', 'sine', 'sine'], vol: 0.02 },
+      VOLCANIC_WASTES: { freqs: [65, 98, 130], types: ['sawtooth', 'sawtooth', 'sine'], vol: 0.025 },
+      FROZEN_TUNDRA: { freqs: [196, 294, 392], types: ['sine', 'sine', 'triangle'], vol: 0.02 },
+      HAUNTED_CATHEDRAL: { freqs: [82, 123, 164], types: ['sine', 'triangle', 'sine'], vol: 0.025 },
+      SHADOW_REALM: { freqs: [55, 73, 110], types: ['sawtooth', 'sine', 'sawtooth'], vol: 0.02 },
+      CAMELOT: { freqs: [196, 247, 294], types: ['sine', 'sine', 'triangle'], vol: 0.03 },
+      CRYSTAL_CAVERNS: { freqs: [330, 440, 523], types: ['sine', 'sine', 'sine'], vol: 0.02 },
+      CORAL_DEPTHS: { freqs: [130, 196, 262], types: ['sine', 'triangle', 'sine'], vol: 0.025 },
+    };
+
+    // Default dark ambient for unlisted maps
+    const params = biomes[mapId] || { freqs: [73, 110, 146], types: ['sine', 'sine', 'triangle'] as OscillatorType[], vol: 0.02 };
+
+    for (let i = 0; i < params.freqs.length; i++) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = params.types[i];
+      osc.frequency.setValueAtTime(params.freqs[i], ctx.currentTime);
+      // Slow LFO modulation for atmosphere
+      const lfoDepth = params.freqs[i] * 0.02;
+      osc.frequency.linearRampToValueAtTime(params.freqs[i] + lfoDepth, ctx.currentTime + 4 + i * 2);
+      osc.frequency.linearRampToValueAtTime(params.freqs[i] - lfoDepth, ctx.currentTime + 8 + i * 2);
+      osc.frequency.linearRampToValueAtTime(params.freqs[i], ctx.currentTime + 12 + i * 2);
+
+      gain.gain.setValueAtTime(0, ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(params.vol, ctx.currentTime + 2); // Fade in
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+
+      this._bgmOscillators.push(osc);
+      this._bgmGains.push(gain);
+    }
+  }
+
+  private _stopBgm(): void {
+    const ctx = this._audioCtx;
+    if (!ctx) return;
+
+    for (let i = 0; i < this._bgmOscillators.length; i++) {
+      try {
+        this._bgmGains[i].gain.linearRampToValueAtTime(0, ctx.currentTime + 1);
+        this._bgmOscillators[i].stop(ctx.currentTime + 1.5);
+      } catch { /* already stopped */ }
+    }
+    this._bgmOscillators = [];
+    this._bgmGains = [];
+    this._bgmPlaying = false;
+    this._currentBgmMap = '';
+  }
+
   private _playSound(type: 'hit' | 'crit' | 'skill' | 'levelup' | 'loot' | 'death' | 'boss' | 'dodge' | 'potion' | 'gold'): void {
     if (this._audioMuted) return;
     const ctx = this._ensureAudio();
@@ -10266,6 +10583,12 @@ export class DiabloGame {
       if ((p.talents[syn.talentA] || 0) > 0 && (p.talents[syn.talentB] || 0) > 0) {
         (p as any)[syn.bonus] = ((p as any)[syn.bonus] || 0) + syn.value;
       }
+    }
+
+    // Prestige bonuses
+    if (p.prestigeLevel > 0) {
+      // Damage bonus applied in combat calculations
+      p.maxHp = Math.floor(p.maxHp * (1 + p.prestigeBonuses.hpPercent / 100));
     }
 
     // Apply potion buffs
@@ -10856,6 +11179,11 @@ export class DiabloGame {
       activeAura: this._state.player.activeAura,
       activeTitle: this._state.player.activeTitle,
     };
+    // Backup previous save before overwriting
+    const prevSave = localStorage.getItem("diablo_save");
+    if (prevSave) {
+      localStorage.setItem("diablo_save_backup", prevSave);
+    }
     localStorage.setItem("diablo_save", JSON.stringify(save));
 
     // Show floating notification
@@ -10880,6 +11208,7 @@ export class DiabloGame {
   // ──────────────────────────────────────────────────────────────
   private _useTownPortal(): void {
     this._saveGame();
+    this._stopBgm();
     this._hud.style.display = "none";
     this._state.enemies = [];
     this._state.projectiles = [];
@@ -10899,7 +11228,8 @@ export class DiabloGame {
   private _loadPlayerOnly(): void {
     const raw = localStorage.getItem("diablo_save");
     if (!raw) return;
-    const save = JSON.parse(raw);
+    let save: any;
+    try { save = JSON.parse(raw); } catch (e) { console.error('Save data corrupted:', e); this._showSaveRecoveryPrompt(); return; }
     this._state.player = {
       ...save.player,
       skillCooldowns: new Map(Object.entries(save.player.skillCooldowns)),
@@ -10939,7 +11269,15 @@ export class DiabloGame {
         timePlayed: 0, favoriteClass: '',
         classPlayTime: {},
       },
+      // Prestige system
+      prestigeLevel: save.player?.prestigeLevel ?? save.prestigeLevel ?? 0,
+      prestigeBonuses: save.player?.prestigeBonuses ?? save.prestigeBonuses ?? { damagePercent: 0, hpPercent: 0, xpPercent: 0, goldPercent: 0 },
+      // Hardcore mode
+      isHardcore: save.player?.isHardcore ?? save.isHardcore ?? false,
     };
+    // Restore bounties
+    this._state.activeBounties = save.activeBounties || [];
+    this._state.completedBountyIds = save.completedBountyIds || [];
     this._state.difficulty = save.difficulty || DiabloDifficulty.DAGGER;
     this._state.persistentInventory = save.persistentInventory;
     this._state.persistentGold = save.persistentGold;
@@ -10960,7 +11298,8 @@ export class DiabloGame {
   private _loadGame(): void {
     const raw = localStorage.getItem("diablo_save");
     if (!raw) return;
-    const save = JSON.parse(raw);
+    let save: any;
+    try { save = JSON.parse(raw); } catch (e) { console.error('Save data corrupted:', e); this._showSaveRecoveryPrompt(); return; }
     // Restore player state
     this._state.player = {
       ...save.player,
@@ -10991,7 +11330,15 @@ export class DiabloGame {
         timePlayed: 0, favoriteClass: '',
         classPlayTime: {},
       },
+      // Prestige system
+      prestigeLevel: save.player?.prestigeLevel ?? save.prestigeLevel ?? 0,
+      prestigeBonuses: save.player?.prestigeBonuses ?? save.prestigeBonuses ?? { damagePercent: 0, hpPercent: 0, xpPercent: 0, goldPercent: 0 },
+      // Hardcore mode
+      isHardcore: save.player?.isHardcore ?? save.isHardcore ?? false,
     };
+    // Restore bounties
+    this._state.activeBounties = save.activeBounties || [];
+    this._state.completedBountyIds = save.completedBountyIds || [];
     // Restore lantern light if it was on
     if (this._state.player.lanternOn && this._state.player.equipment.lantern) {
       const cfg = LANTERN_CONFIGS[this._state.player.equipment.lantern.name];
@@ -11057,6 +11404,63 @@ export class DiabloGame {
     this._menuEl.innerHTML = "";
     this._hud.style.display = "block";
     this._recalculatePlayerStats();
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  //  SAVE RECOVERY PROMPT
+  // ──────────────────────────────────────────────────────────────
+  private _showSaveRecoveryPrompt(): void {
+    this._menuEl.innerHTML = '';
+    const panel = document.createElement('div');
+    panel.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(30,10,10,0.95);border:2px solid #ff4444;border-radius:8px;padding:25px;color:#fff;font-family:Georgia,serif;max-width:450px;text-align:center;z-index:200;';
+
+    const hasBackup = localStorage.getItem("diablo_save_backup") !== null;
+
+    panel.innerHTML = `
+      <h2 style="color:#ff4444;margin:0 0 15px;">Save Data Corrupted</h2>
+      <p style="color:#aaa;font-size:14px;margin-bottom:15px;">
+        Your save data could not be loaded. This may have been caused by a browser issue.
+      </p>
+      ${hasBackup ? `
+        <button id="recovery-backup" style="padding:8px 20px;background:#44aa44;color:#fff;border:1px solid #44ff44;border-radius:4px;cursor:pointer;font-family:Georgia,serif;margin:5px;display:block;width:100%;">
+          Restore Backup Save
+        </button>
+      ` : ''}
+      <button id="recovery-fresh" style="padding:8px 20px;background:#555;color:#fff;border:1px solid #888;border-radius:4px;cursor:pointer;font-family:Georgia,serif;margin:5px;display:block;width:100%;">
+        Start Fresh
+      </button>
+      <button id="recovery-export" style="padding:8px 20px;background:#335;color:#fff;border:1px solid #558;border-radius:4px;cursor:pointer;font-family:Georgia,serif;margin:5px;display:block;width:100%;">
+        Export Corrupted Data (for debug)
+      </button>
+    `;
+    this._menuEl.appendChild(panel);
+
+    if (hasBackup) {
+      document.getElementById('recovery-backup')?.addEventListener('click', () => {
+        const backup = localStorage.getItem("diablo_save_backup");
+        if (backup) {
+          localStorage.setItem("diablo_save", backup);
+          location.reload();
+        }
+      });
+    }
+
+    document.getElementById('recovery-fresh')?.addEventListener('click', () => {
+      localStorage.removeItem("diablo_save");
+      localStorage.removeItem("diablo_save_backup");
+      location.reload();
+    });
+
+    document.getElementById('recovery-export')?.addEventListener('click', () => {
+      const corrupted = localStorage.getItem("diablo_save") || '';
+      const blob = new Blob([corrupted], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'diablo_save_corrupted.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    });
   }
 
   // ──────────────────────────────────────────────────────────────
@@ -11808,6 +12212,44 @@ export class DiabloGame {
       // Landmarks as grey shapes
       ctx.fillStyle = "rgba(120,110,100,0.3)";
       ctx.fillRect(toMx(-5), toMy(-5), 10 * scale, 10 * scale);
+
+      // Quest markers on minimap
+      // Bounty targets
+      if (this._state.activeBounties) {
+        for (const bounty of this._state.activeBounties) {
+          if (bounty.isComplete || bounty.mapId !== this._state.currentMap) continue;
+          const bountyEnemy = this._state.enemies.find(e => e.id === `bounty-enemy-${bounty.id}`);
+          if (bountyEnemy) {
+            const bx = toMx(bountyEnemy.x);
+            const bz = toMy(bountyEnemy.z);
+            // Draw skull icon
+            ctx.fillStyle = '#ff4444';
+            ctx.font = '10px serif';
+            ctx.fillText('\u{1F480}', bx - 5, bz + 4);
+          }
+        }
+      }
+
+      // Boss room marker (if dungeon)
+      if (this._state.dungeonLayout) {
+        const bossRoom = this._state.dungeonLayout.rooms[this._state.dungeonLayout.bossRoom];
+        if (bossRoom && !bossRoom.cleared) {
+          const brx = toMx(bossRoom.x + bossRoom.width / 2);
+          const brz = toMy(bossRoom.z + bossRoom.height / 2);
+          ctx.fillStyle = '#ff4444';
+          ctx.font = '12px serif';
+          ctx.fillText('\u{1F451}', brx - 6, brz + 5);
+        }
+      }
+
+      // Excalibur fragment marker
+      const questInfo = EXCALIBUR_QUEST_INFO[this._state.currentMap];
+      if (questInfo && !this._state.player.excaliburFragments.includes(this._state.currentMap)) {
+        // Draw a star near center of map (fragment is from boss)
+        ctx.fillStyle = '#ffd700';
+        ctx.font = '12px serif';
+        ctx.fillText('\u2694\uFE0F', toMx(0) - 6, toMy(0) + 5);
+      }
     }
 
     // Player as green arrow/triangle
@@ -11905,6 +12347,17 @@ export class DiabloGame {
     const p = this._state.player;
     // Stat tracking: death
     p.stats.totalDeaths++;
+
+    // Hardcore permadeath
+    if (p.isHardcore) {
+      localStorage.removeItem('diablo_save');
+      this._addFloatingText(p.x, p.y + 4, p.z, 'HARDCORE DEATH - CHARACTER LOST', '#ff0000');
+      this._playSound('death');
+      setTimeout(() => {
+        this._showHardcoreDeathScreen();
+      }, 2000);
+      return; // Don't allow respawn
+    }
     p.stats.currentKillStreak = 0;
 
     // Record death location
@@ -11992,6 +12445,215 @@ export class DiabloGame {
   }
 
   // ──────────────────────────────────────────────────────────────
+
+  // ──────────────────────────────────────────────────────────────
+  //  HARDCORE DEATH SCREEN
+  // ──────────────────────────────────────────────────────────────
+  private _showHardcoreDeathScreen(): void {
+    this._menuEl.innerHTML = '';
+    const panel = document.createElement('div');
+    panel.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);display:flex;align-items:center;justify-content:center;z-index:200;';
+    panel.innerHTML = `
+      <div style="text-align:center;color:#ff4444;font-family:Georgia,serif;max-width:500px;">
+        <h1 style="font-size:48px;margin-bottom:10px;">FALLEN</h1>
+        <h2 style="color:#aaa;font-size:20px;">Your hardcore character has perished.</h2>
+        <p style="color:#888;font-size:14px;margin:15px 0;">
+          Level ${this._state.player.level} ${this._state.player.class}<br>
+          ${this._state.player.stats.totalKills} enemies slain<br>
+          Prestige ${this._state.player.prestigeLevel}
+        </p>
+        <p style="color:#666;font-style:italic;margin-bottom:20px;">The bravest warriors fall. But their legend endures.</p>
+        <button id="hc-restart" style="padding:10px 24px;background:#cc0000;color:#fff;border:2px solid #ff4444;border-radius:6px;cursor:pointer;font-family:Georgia,serif;font-size:16px;">
+          New Character
+        </button>
+      </div>
+    `;
+    this._menuEl.appendChild(panel);
+    document.getElementById('hc-restart')?.addEventListener('click', () => {
+      this._state = createDefaultState();
+      this._isDead = false;
+      this._hardcoreLabel = null;
+      this._showClassSelect();
+    });
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  //  PRESTIGE SYSTEM
+  // ──────────────────────────────────────────────────────────────
+  private _prestige(): void {
+    const p = this._state.player;
+    const oldPrestige = p.prestigeLevel;
+
+    const keepCosmetics = [...p.unlockedCosmetics];
+    const keepAchievements = [...p.achievements];
+    const keepKeystones = this._state.greaterRift.keystones;
+    const keepBestGR = this._state.greaterRift.bestRiftLevel;
+    const keepPets = [...p.pets];
+    const keepStash = [...this._state.persistentStash];
+    const keepStats = { ...p.stats };
+    const keepDailies = [...p.dailyChallenges];
+    const keepStreak = p.dailyStreak;
+    const keepLastDaily = p.lastDailyDate;
+
+    const cls = p.class;
+    const newPlayer = createDefaultPlayer(cls);
+
+    newPlayer.prestigeLevel = oldPrestige + 1;
+    newPlayer.prestigeBonuses = {
+      damagePercent: (oldPrestige + 1) * 5,
+      hpPercent: (oldPrestige + 1) * 5,
+      xpPercent: (oldPrestige + 1) * 10,
+      goldPercent: (oldPrestige + 1) * 10,
+    };
+
+    newPlayer.unlockedCosmetics = keepCosmetics;
+    newPlayer.achievements = keepAchievements;
+    newPlayer.pets = keepPets;
+    newPlayer.stats = keepStats;
+    newPlayer.dailyChallenges = keepDailies;
+    newPlayer.dailyStreak = keepStreak;
+    newPlayer.lastDailyDate = keepLastDaily;
+
+    this._state.player = newPlayer;
+    this._state.greaterRift.keystones = keepKeystones + 5;
+    this._state.greaterRift.bestRiftLevel = keepBestGR;
+    this._state.persistentStash = keepStash;
+    this._state.persistentGold = 0;
+    this._state.persistentLevel = 1;
+    this._state.persistentXp = 0;
+    this._state.completedMaps = {};
+
+    this._addFloatingText(0, 3, 0, `PRESTIGE ${newPlayer.prestigeLevel}!`, '#ffd700');
+    this._playSound('levelup');
+    this._saveGame();
+  }
+
+  private _showPrestigePanel(): void {
+    this._menuEl.innerHTML = '';
+    const p = this._state.player;
+    const nextLevel = p.prestigeLevel + 1;
+
+    const panel = document.createElement('div');
+    panel.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(10,5,0,0.95);border:3px solid #ffd700;border-radius:8px;padding:25px;color:#fff;font-family:Georgia,serif;max-width:500px;text-align:center;z-index:100;';
+
+    panel.innerHTML = `
+      <h2 style="color:#ffd700;margin:0 0 15px;">Prestige ${nextLevel}</h2>
+      <p style="color:#ddd;font-size:14px;margin-bottom:10px;">Reset your level to 1 and start anew with permanent bonuses.</p>
+      <div style="text-align:left;font-size:13px;color:#aaa;margin:10px 0;padding:10px;background:rgba(255,255,255,0.05);border-radius:4px;">
+        <div style="color:#44ff44;">Keep: Achievements, Cosmetics, Pets, Stash, Stats</div>
+        <div style="color:#44ff44;">Keep: GR Keystones (+5 bonus), Best GR Level</div>
+        <div style="color:#ff4444;">Lose: Level, Gold, Equipment, Inventory, Map Progress</div>
+        <div style="color:#ffd700;margin-top:8px;">Permanent Bonuses (Prestige ${nextLevel}):</div>
+        <div>+${nextLevel * 5}% Damage | +${nextLevel * 5}% HP</div>
+        <div>+${nextLevel * 10}% XP | +${nextLevel * 10}% Gold</div>
+      </div>
+      <button id="prestige-confirm" style="padding:10px 24px;background:linear-gradient(180deg,#ffd700,#b8860b);color:#000;border:2px solid #ffd700;border-radius:6px;cursor:pointer;font-family:Georgia,serif;font-size:16px;font-weight:bold;margin:5px;">Prestige Now</button>
+      <button id="prestige-cancel" style="padding:8px 20px;background:#555;color:#fff;border:1px solid #888;border-radius:4px;cursor:pointer;font-family:Georgia,serif;margin:5px;">Cancel</button>
+    `;
+    this._menuEl.appendChild(panel);
+
+    document.getElementById('prestige-confirm')?.addEventListener('click', () => {
+      this._prestige();
+      this._showMapSelect();
+    });
+    document.getElementById('prestige-cancel')?.addEventListener('click', () => {
+      this._showMapSelect();
+    });
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  //  BOUNTY SYSTEM
+  // ──────────────────────────────────────────────────────────────
+  private _generateBounties(): void {
+    this._state.activeBounties = this._state.activeBounties.filter(b => !b.isComplete);
+    if (this._state.activeBounties.length >= 5) return;
+
+    const bountyNames = [
+      'Grimfang the Devourer', 'Bloodclaw the Merciless', 'Shadow Fang',
+      'The Butcher of Bones', 'Venomweaver', 'Hellspawn Krul',
+      'Duskbane', 'The Iron Maiden', 'Rotgut the Festering',
+      'Stormbreaker Kael', 'Nightstalker Prime', 'The Plague Bringer',
+    ];
+
+    const maps = Object.values(DiabloMapId).filter(id =>
+      id !== DiabloMapId.CAMELOT && id !== DiabloMapId.CITY && id !== DiabloMapId.CITY_RUINS
+    );
+
+    while (this._state.activeBounties.length < 5) {
+      const map = maps[Math.floor(Math.random() * maps.length)] as DiabloMapId;
+      const mapCfg = MAP_CONFIGS[map];
+      if (!mapCfg) continue;
+      const enemyType = mapCfg.enemyTypes[Math.floor(Math.random() * mapCfg.enemyTypes.length)];
+      const name = bountyNames[Math.floor(Math.random() * bountyNames.length)];
+      const id = `bounty-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+
+      if (this._state.completedBountyIds.includes(id)) continue;
+
+      const playerLevel = this._state.player.level;
+      this._state.activeBounties.push({
+        id,
+        targetName: name,
+        targetType: enemyType,
+        mapId: map,
+        description: `Hunt down ${name} in ${mapCfg.name}.`,
+        reward: {
+          gold: 500 + playerLevel * 100,
+          xp: 200 + playerLevel * 50,
+          keystones: Math.random() < 0.3 ? 1 : undefined,
+          guaranteedRarity: Math.random() < 0.2 ? ItemRarity.LEGENDARY : ItemRarity.RARE,
+        },
+        isComplete: false,
+        isActive: true,
+      });
+    }
+  }
+
+  private _spawnBountyTargets(): void {
+    for (const bounty of this._state.activeBounties) {
+      if (bounty.isComplete || bounty.mapId !== this._state.currentMap) continue;
+
+      const mapCfg = MAP_CONFIGS[this._state.currentMap];
+      const halfW = mapCfg.width / 2;
+      const halfD = ((mapCfg as any).depth || mapCfg.width) / 2;
+      const bx = (Math.random() * 0.6 + 0.2) * mapCfg.width - halfW;
+      const bz = (Math.random() * 0.6 + 0.2) * ((mapCfg as any).depth || mapCfg.width) - halfD;
+
+      const enemyDef = ENEMY_DEFS[bounty.targetType];
+      const baseHp = (enemyDef?.hp || 200) * 3;
+      const baseDmg = (enemyDef?.damage || 20) * 2;
+
+      const bountyEnemy: DiabloEnemy = {
+        id: `bounty-enemy-${bounty.id}`,
+        type: bounty.targetType,
+        x: bx, y: 0, z: bz,
+        angle: Math.random() * Math.PI * 2,
+        hp: baseHp, maxHp: baseHp,
+        damage: baseDmg,
+        damageType: DamageType.PHYSICAL,
+        armor: 15,
+        speed: 3.5,
+        state: EnemyState.PATROL,
+        targetId: null,
+        attackTimer: 0,
+        attackRange: 2.5,
+        aggroRange: 15,
+        xpReward: bounty.reward.xp,
+        lootTable: [],
+        deathTimer: 0,
+        stateTimer: 0,
+        patrolTarget: null,
+        statusEffects: [],
+        isBoss: true,
+        bossName: bounty.targetName,
+        scale: 1.8,
+        level: this._state.player.level + 2,
+        behavior: EnemyBehavior.MELEE_BASIC,
+      };
+
+      this._state.enemies.push(bountyEnemy);
+    }
+  }
+
   //  BOSS ABILITIES
   // ──────────────────────────────────────────────────────────────
   private _updateBossAbilities(dt: number): void {
@@ -12041,6 +12703,8 @@ export class DiabloGame {
 
       switch (ability) {
         case BossAbility.GROUND_SLAM: {
+          // Show telegraph before impact
+          this._renderer.showTelegraph(`gs-${enemy.id}`, enemy.x, enemy.z, 6, 0xff4400, 1.0);
           const aoe: DiabloAOE = {
             id: this._genId(),
             x: enemy.x, y: 0, z: enemy.z,
@@ -12116,6 +12780,8 @@ export class DiabloGame {
           for (let i = 0; i < 5; i++) {
             const mx = p.x + (Math.random() * 12 - 6);
             const mz = p.z + (Math.random() * 12 - 6);
+            // Show telegraph circle for each meteor
+            this._renderer.showTelegraph(`meteor-${enemy.id}-${i}`, mx, mz, 3, 0xff2200, 1.5);
             const aoe: DiabloAOE = {
               id: this._genId(),
               x: mx, y: 0, z: mz,
@@ -12192,6 +12858,8 @@ export class DiabloGame {
             const asDist = 20 + Math.random() * 10;
             const ax = enemy.x + Math.sin(asAngle) * asDist;
             const az = enemy.z + Math.cos(asAngle) * asDist;
+            // Show telegraph for each arena shrink zone
+            this._renderer.showTelegraph(`arena-${enemy.id}-${i}`, ax, az, 4, 0xff0000, 2.0);
             this._state.aoeEffects.push({
               id: `arena-shrink-${this._nextId++}`,
               x: ax, y: 0, z: az,
@@ -12880,7 +13548,8 @@ export class DiabloGame {
   private _updateQuestTracker(): void {
     const active = this._state.activeQuests.filter(q => q.isActive && !q.isComplete);
     const dailies = this._state.player.dailyChallenges.filter(d => !d.completed);
-    if (active.length === 0 && dailies.length === 0) {
+    const bounties = this._state.activeBounties.filter(b => !b.isComplete && b.isActive);
+    if (active.length === 0 && dailies.length === 0 && bounties.length === 0 && this._state.player.prestigeLevel === 0) {
       this._questTracker.style.display = "none";
       return;
     }
@@ -12915,6 +13584,26 @@ export class DiabloGame {
           </div>`;
       }
     }
+    // Bounty tracker
+    const activeBounties = this._state.activeBounties.filter(b => !b.isComplete && b.isActive);
+    if (activeBounties.length > 0) {
+      html += `<div style="color:#ffd700;font-size:13px;font-weight:bold;margin:8px 0 6px;border-bottom:1px solid #5a4a2a;padding-bottom:4px;">BOUNTIES</div>`;
+      for (const b of activeBounties) {
+        const isOnMap = b.mapId === this._state.currentMap;
+        const mapName = MAP_CONFIGS[b.mapId]?.name || b.mapId;
+        html += `
+          <div style="margin-bottom:6px;">
+            <div style="font-size:11px;color:${isOnMap ? '#ff8800' : '#ddd'};margin-bottom:2px;">${b.targetName}</div>
+            <div style="font-size:10px;color:#888;">${mapName} | +${b.reward.gold}g +${b.reward.xp}xp${b.reward.keystones ? ' +1 key' : ''}</div>
+          </div>`;
+      }
+    }
+
+    // Prestige indicator
+    if (this._state.player.prestigeLevel > 0) {
+      html += `<div style="color:#ffd700;font-size:10px;margin-top:6px;border-top:1px solid #5a4a2a;padding-top:4px;">Prestige ${this._state.player.prestigeLevel} | +${this._state.player.prestigeBonuses.damagePercent}% DMG +${this._state.player.prestigeBonuses.hpPercent}% HP</div>`;
+    }
+
     this._questTracker.innerHTML = html;
   }
 
@@ -13329,6 +14018,10 @@ export class DiabloGame {
             ev.stopPropagation();
             const item = p.inventory[idx].item;
             if (!item) return;
+            if (item.isLocked) {
+              showStatus("Item is locked!", "#ff4444");
+              return;
+            }
             const materials = SALVAGE_MATERIAL_YIELDS[item.rarity] || 1;
             p.salvageMaterials += materials;
             p.inventory[idx].item = null;
@@ -14263,226 +14956,16 @@ export class DiabloGame {
     }
   }
 
-  // ──────────────────────────────────────────────────────────────
-  //  CRAFTING SYSTEM
-  // ──────────────────────────────────────────────────────────────
-  private _craftItem(recipeId: string): boolean {
-    const p = this._state.player;
-    const recipe = CRAFTING_RECIPES.find(r => r.id === recipeId);
-    if (!recipe) return false;
-
-    // Check gold cost
-    if (p.gold < recipe.cost) {
-      this._addFloatingText(p.x, p.y + 2, p.z, 'Not enough gold!', '#ff2222');
-      return false;
-    }
-
-    // Check material cost
-    if (recipe.materialCost && p.salvageMaterials < recipe.materialCost) {
-      this._addFloatingText(p.x, p.y + 2, p.z, 'Not enough materials!', '#ff2222');
-      return false;
-    }
-
-    // Check success
-    p.gold -= recipe.cost;
-    if (recipe.materialCost) p.salvageMaterials -= recipe.materialCost;
-
-    if (Math.random() > recipe.successChance) {
-      this._addFloatingText(p.x, p.y + 2, p.z, 'Craft Failed!', '#ff4444');
-      return false;
-    }
-
-    this._addFloatingText(p.x, p.y + 2, p.z, 'Craft Success!', '#44ff44');
-
-    // Apply craft effect based on type
-    const slot = this._state.selectedInventorySlot;
-    switch (recipe.type) {
-      case CraftType.UPGRADE_RARITY: {
-        if (slot >= 0 && slot < p.inventory.length && p.inventory[slot].item) {
-          const item = p.inventory[slot].item!;
-          const rarities = [ItemRarity.COMMON, ItemRarity.UNCOMMON, ItemRarity.RARE, ItemRarity.EPIC, ItemRarity.LEGENDARY, ItemRarity.MYTHIC, ItemRarity.DIVINE];
-          const currentIdx = rarities.indexOf(item.rarity);
-          if (currentIdx < rarities.length - 1) {
-            item.rarity = rarities[currentIdx + 1];
-            // Boost stats by 20%
-            for (const key of Object.keys(item.stats) as (keyof DiabloItemStats)[]) {
-              if (typeof item.stats[key] === 'number') {
-                (item.stats as any)[key] = Math.floor((item.stats[key] as number) * 1.2);
-              }
-            }
-          }
-        }
-        break;
-      }
-      case CraftType.REROLL_STATS: {
-        if (slot >= 0 && slot < p.inventory.length && p.inventory[slot].item) {
-          const item = p.inventory[slot].item!;
-          const statKeys: (keyof DiabloItemStats)[] = ['strength', 'dexterity', 'intelligence', 'vitality', 'armor', 'critChance', 'critDamage', 'attackSpeed', 'moveSpeed'];
-          // Reroll 2-4 random stats
-          const numStats = 2 + Math.floor(Math.random() * 3);
-          item.stats = {};
-          for (let i = 0; i < numStats; i++) {
-            const key = statKeys[Math.floor(Math.random() * statKeys.length)];
-            const baseValue = 5 + Math.floor(Math.random() * (item.level * 3));
-            (item.stats as any)[key] = baseValue;
-          }
-        }
-        break;
-      }
-      case CraftType.SOCKET_GEM: {
-        if (slot >= 0 && slot < p.inventory.length && p.inventory[slot].item) {
-          const item = p.inventory[slot].item!;
-          if (!item.sockets) item.sockets = [];
-          if (!item.maxSockets) item.maxSockets = Math.min(3, Math.floor(item.level / 5) + 1);
-          if (item.sockets.length < item.maxSockets) {
-            const gemTypes = [DamageType.FIRE, DamageType.ICE, DamageType.LIGHTNING, DamageType.POISON, DamageType.HOLY];
-            const gemType = gemTypes[Math.floor(Math.random() * gemTypes.length)];
-            const gemTier = 1 + Math.floor(Math.random() * 3);
-            const bonusStats: DiabloItemStats = {};
-            switch (gemType) {
-              case DamageType.FIRE: bonusStats.bonusDamage = gemTier * 5; break;
-              case DamageType.ICE: bonusStats.armor = gemTier * 3; break;
-              case DamageType.LIGHTNING: bonusStats.critChance = gemTier * 0.02; break;
-              case DamageType.POISON: bonusStats.lifeSteal = gemTier * 1; break;
-              case DamageType.HOLY: bonusStats.bonusHealth = gemTier * 15; break;
-            }
-            item.sockets.push({ gemType, gemTier, bonusStats });
-            this._addFloatingText(p.x, p.y + 3, p.z, `Gem socketed!`, '#ffd700');
-            this._checkRunewords();
-          }
-        }
-        break;
-      }
-      case CraftType.SALVAGE: {
-        if (slot >= 0 && slot < p.inventory.length && p.inventory[slot].item) {
-          const item = p.inventory[slot].item!;
-          const yields: Record<string, number> = {
-            [ItemRarity.COMMON]: 1,
-            [ItemRarity.UNCOMMON]: 2,
-            [ItemRarity.RARE]: 5,
-            [ItemRarity.EPIC]: 10,
-            [ItemRarity.LEGENDARY]: 25,
-            [ItemRarity.MYTHIC]: 50,
-            [ItemRarity.DIVINE]: 100,
-          };
-          const mats = yields[item.rarity] || 1;
-          p.salvageMaterials += mats;
-          // Also add crafting materials
-          const matTypes = Object.values(MaterialType);
-          const matType = matTypes[Math.floor(Math.random() * matTypes.length)];
-          p.crafting.materials[matType] = (p.crafting.materials[matType] || 0) + Math.ceil(mats / 3);
-          p.inventory[slot].item = null;
-          this._addFloatingText(p.x, p.y + 2, p.z, `+${mats} materials`, '#44ff44');
-
-          // Crafting XP
-          this._grantCraftingXp(mats * 5);
-        }
-        break;
-      }
-    }
-
-    return true;
-  }
-
-  private _advancedCraft(recipeId: string): boolean {
-    const p = this._state.player;
-    const recipe = ADVANCED_CRAFTING_RECIPES.find((r: AdvancedCraftingRecipe) => r.id === recipeId);
-    if (!recipe) return false;
-
-    if (p.gold < recipe.goldCost) {
-      this._addFloatingText(p.x, p.y + 2, p.z, 'Not enough gold!', '#ff2222');
-      return false;
-    }
-
-    if (p.crafting.craftingLevel < recipe.levelRequired) {
-      this._addFloatingText(p.x, p.y + 2, p.z, 'Crafting level too low!', '#ff2222');
-      return false;
-    }
-
-    // Check materials
-    for (const mat of recipe.materials) {
-      if ((p.crafting.materials[mat.type] || 0) < mat.count) {
-        this._addFloatingText(p.x, p.y + 2, p.z, 'Missing materials!', '#ff2222');
-        return false;
-      }
-    }
-
-    // Consume resources
-    p.gold -= recipe.goldCost;
-    for (const mat of recipe.materials) {
-      p.crafting.materials[mat.type] -= mat.count;
-    }
-
-    if (Math.random() > recipe.successChance) {
-      this._addFloatingText(p.x, p.y + 2, p.z, 'Advanced craft failed!', '#ff4444');
-      return false;
-    }
-
-    // Generate output item
-    if (recipe.outputRarity && recipe.outputSlot) {
-      const item = this._generateCraftedItem(recipe);
-      if (item) {
-        const emptySlot = p.inventory.findIndex(s => !s.item);
-        if (emptySlot >= 0) {
-          p.inventory[emptySlot].item = item;
-          this._addFloatingText(p.x, p.y + 3, p.z, `Crafted: ${item.name}!`, '#ffd700');
-        }
-      }
-    }
-
-    // Crafting XP
-    this._grantCraftingXp(50 + recipe.levelRequired * 10);
-
-    return true;
-  }
-
-  private _generateCraftedItem(recipe: AdvancedCraftingRecipe): DiabloItem | null {
-    const rarity = recipe.outputRarity || ItemRarity.RARE;
-    const slot = recipe.outputSlot || ItemSlot.WEAPON;
-
-    // Determine item type based on slot
-    const slotToType: Record<string, ItemType> = {
-      [ItemSlot.WEAPON]: ItemType.SWORD,
-      [ItemSlot.HELMET]: ItemType.HELMET,
-      [ItemSlot.BODY]: ItemType.CHEST_ARMOR,
-      [ItemSlot.GAUNTLETS]: ItemType.GAUNTLETS,
-      [ItemSlot.LEGS]: ItemType.LEG_ARMOR,
-      [ItemSlot.FEET]: ItemType.BOOTS,
-      [ItemSlot.ACCESSORY_1]: ItemType.RING,
-      [ItemSlot.ACCESSORY_2]: ItemType.AMULET,
-    };
-
-    const itemType = slotToType[slot] || ItemType.SWORD;
-    const level = this._state.player.level;
-
-    const stats: DiabloItemStats = {};
-    const numStats = 3 + Math.floor(Math.random() * 3);
-    const statKeys: (keyof DiabloItemStats)[] = ['strength', 'dexterity', 'intelligence', 'vitality', 'armor', 'critChance', 'critDamage', 'attackSpeed'];
-    for (let i = 0; i < numStats; i++) {
-      const key = statKeys[Math.floor(Math.random() * statKeys.length)];
-      (stats as any)[key] = 5 + Math.floor(Math.random() * level * 2);
-    }
-
-    return {
-      id: `crafted-${this._nextId++}`,
-      name: `Crafted ${recipe.name}`,
-      type: itemType,
-      slot,
-      rarity,
-      level,
-      stats,
-      description: recipe.description,
-      icon: recipe.icon,
-      value: 100 + level * 20,
-    };
-  }
-
   private _quickSalvageSelectedItem(): void {
     const p = this._state.player;
     const slot = this._state.selectedInventorySlot;
     if (slot < 0 || slot >= p.inventory.length || !p.inventory[slot].item) return;
 
     const item = p.inventory[slot].item!;
+    if (item.isLocked) {
+      this._addFloatingText(p.x, p.y + 2, p.z, 'Item is locked!', '#ff4444');
+      return;
+    }
     const yields: Record<string, number> = {
       [ItemRarity.COMMON]: 1,
       [ItemRarity.UNCOMMON]: 2,
@@ -14518,6 +15001,7 @@ export class DiabloGame {
   }
 
   private _shouldAutoSalvage(item: DiabloItem): boolean {
+    if (item.isLocked) return false;
     const p = this._state.player;
     const filter = p.customLootFilters[p.activeFilterIndex];
     if (!filter || !filter.autoSalvageBelow) return false;
