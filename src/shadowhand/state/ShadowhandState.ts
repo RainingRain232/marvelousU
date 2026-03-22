@@ -85,6 +85,7 @@ export interface ThiefUnit {
   disguised: boolean;
   disguiseTimer: number;
   shadowMeld: boolean;
+  shadowMeldTimer: number;
   selected: boolean;
   carryingLoot: LootDef[];
   hp: number;
@@ -125,6 +126,46 @@ export interface NoiseEvent {
   source: string; // thief id or "environment"
 }
 
+export type HeistModifier =
+  | "lockdown"        // all doors lock after 90s
+  | "elite_patrol"    // extra elite guard mid-heist
+  | "guard_rotation"  // new guards swap in at intervals
+  | "paranoid"        // alert decay is halved
+  | "fog"             // reduced vision for thieves
+  | "treasure_room"   // extra loot but more traps
+  | "inquisitor_spy"  // one guard has doubled vision range
+  | "moonless_night"  // all window light removed (darker)
+  ;
+
+export interface HeistEvent {
+  type: string;
+  triggerTime: number; // seconds into heist
+  triggered: boolean;
+  message: string;
+}
+
+export interface ComboTracker {
+  silentTakedowns: number;
+  consecutiveLootPickups: number;
+  timeInShadow: number;
+  timeTotal: number;
+  guardsAvoided: number; // passed within vision range without detection
+  doorsPickedSilently: number;
+  torchesExtinguished: number;
+  perfectEscape: boolean; // no alerts at all
+}
+
+export interface Particle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  life: number;
+  maxLife: number;
+  color: number;
+  size: number;
+}
+
 export interface HeistState {
   map: HeistMap;
   guards: Guard[];
@@ -140,19 +181,45 @@ export interface HeistState {
   allEscaped: boolean;
   paused: boolean;
   speedMult: number;
+  // New fields
+  modifiers: HeistModifier[];
+  events: HeistEvent[];
+  combo: ComboTracker;
+  particles: Particle[];
+  screenShake: number; // remaining shake intensity
+  announcements: { text: string; color: number; timer: number }[];
 }
+
+export type GuildUpgradeId =
+  | "safe_house"        // heat decays faster
+  | "training_ground"   // crew XP +50%
+  | "armory"            // equipment 20% cheaper
+  | "intel_network"     // reveals guard count before heist
+  | "escape_tunnels"    // +1 exit point on maps
+  | "fence_contact"     // loot sells for 15% more
+  | "infirmary"         // crew heal between heists
+  | "shadow_library"    // shade/alchemist abilities enhanced
+  | "thieves_cant"      // crew share vision range bonus
+  ;
 
 export interface GuildState {
   gold: number;
   reputation: number;
   tier: number;
-  heat: Map<string, number>; // region -> heat level
+  heat: Map<string, number>;
   roster: CrewMember[];
   inventory: { id: string; uses: number }[];
   completedHeists: string[];
   totalLootValue: number;
-  perfectHeists: number; // no alerts
+  perfectHeists: number;
   day: number;
+  upgrades: Set<GuildUpgradeId>;
+  achievements: Set<string>;
+  totalHeistsAttempted: number;
+  totalHeistsSucceeded: number;
+  longestStreak: number;
+  currentStreak: number;
+  guildName: string;
 }
 
 export interface ShadowhandState {
@@ -199,6 +266,13 @@ export function createShadowhandState(seed: number, difficulty: ShadowhandDiffic
       totalLootValue: 0,
       perfectHeists: 0,
       day: 1,
+      upgrades: new Set(),
+      achievements: new Set(),
+      totalHeistsAttempted: 0,
+      totalHeistsSucceeded: 0,
+      longestStreak: 0,
+      currentStreak: 0,
+      guildName: "The Shadowhand",
     },
     currentTarget: null,
     selectedCrew: [],
@@ -225,6 +299,21 @@ export function createHeistState(map: HeistMap): HeistState {
     allEscaped: false,
     paused: false,
     speedMult: 1,
+    modifiers: [],
+    events: [],
+    combo: {
+      silentTakedowns: 0,
+      consecutiveLootPickups: 0,
+      timeInShadow: 0,
+      timeTotal: 0,
+      guardsAvoided: 0,
+      doorsPickedSilently: 0,
+      torchesExtinguished: 0,
+      perfectEscape: true,
+    },
+    particles: [],
+    screenShake: 0,
+    announcements: [],
   };
 }
 

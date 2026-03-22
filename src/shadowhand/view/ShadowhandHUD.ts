@@ -190,6 +190,34 @@ export class ShadowhandHUD {
     }
     this._hintText.text = hints;
 
+    // Announcements (centered, large, fading)
+    for (const ann of heist.announcements) {
+      const alpha = Math.min(1, ann.timer / 1.5);
+      const annText = new Text({ text: ann.text, style: new TextStyle({
+        fontFamily: FONT, fontSize: 18, fill: ann.color, fontWeight: "bold",
+        letterSpacing: 2, dropShadow: true, dropShadowColor: 0x000000,
+        dropShadowDistance: 2, dropShadowAlpha: 0.8,
+      })});
+      annText.alpha = alpha;
+      annText.anchor.set(0.5, 0.5);
+      annText.position.set(sw / 2, 80 + heist.announcements.indexOf(ann) * 28);
+      this.container.addChild(annText);
+      this._crewTexts.push(annText); // reuse cleanup array
+    }
+
+    // Active modifiers (top-right corner, small)
+    if (heist.modifiers.length > 0) {
+      let my = 52;
+      for (const mod of heist.modifiers) {
+        const modText = new Text({ text: `\u26A0 ${mod.replace(/_/g, " ")}`, style: new TextStyle({ fontFamily: FONT, fontSize: 8, fill: 0xaa8844 }) });
+        modText.anchor.set(1, 0);
+        modText.position.set(sw - 10, my);
+        this.container.addChild(modText);
+        this._crewTexts.push(modText);
+        my += 12;
+      }
+    }
+
     // Log
     this._logContainer.removeChildren();
     const logStyle = new TextStyle({ fontFamily: FONT, fontSize: 9, fill: 0x779977, wordWrap: true, wordWrapWidth: 290 });

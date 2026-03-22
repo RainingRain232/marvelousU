@@ -25,6 +25,7 @@ export function createThiefUnit(crew: CrewMember, x: number, y: number): ThiefUn
     disguised: false,
     disguiseTimer: 0,
     shadowMeld: false,
+    shadowMeldTimer: 0,
     selected: false,
     carryingLoot: [],
     hp: crew.hp,
@@ -127,11 +128,29 @@ export function updateThiefMovement(heist: HeistState, dt: number): void {
         const lootItem = tile.loot;
         // Heavy loot (weight 3) requires brawler
         if (lootItem.weight >= 3 && thief.role !== "brawler") {
-          // Can't carry — skip
+          heist.announcements.push({ text: `${lootItem.name} too heavy! Need a Brawler.`, color: 0xffaa44, timer: 3 });
         } else {
           thief.carryingLoot.push(lootItem);
           heist.lootCollected.push(lootItem);
-          if (tile.type === "primary_loot") heist.primaryLootTaken = true;
+          heist.combo.consecutiveLootPickups++;
+          heist.announcements.push({ text: `+${lootItem.name} (${lootItem.value}g)`, color: 0xffd700, timer: 2 });
+          // Spawn gold particles
+          for (let pi = 0; pi < 6; pi++) {
+            heist.particles.push({
+              x: thief.x, y: thief.y,
+              vx: (Math.random() - 0.5) * 40,
+              vy: -30 - Math.random() * 30,
+              life: 0.6 + Math.random() * 0.4,
+              maxLife: 1,
+              color: 0xffd700,
+              size: 1.5 + Math.random() * 1.5,
+            });
+          }
+          if (tile.type === "primary_loot") {
+            heist.primaryLootTaken = true;
+            heist.screenShake = 2;
+            heist.announcements.push({ text: "\u2605 PRIMARY TARGET SECURED \u2605", color: 0xffd700, timer: 4 });
+          }
           tile.loot = null;
           tile.type = "floor";
         }
@@ -230,12 +249,26 @@ export function takedownGuard(heist: HeistState, thiefId: string): boolean {
 
     // Within ~120 degrees of guard's back
     if (angleDiff > Math.PI * 0.67) {
-      closest.guard.sleepTimer = 60; // Knocked out for a long time
+      closest.guard.sleepTimer = 60;
       closest.guard.alertLevel = 0;
       closest.guard.alertTimer = 0;
       closest.guard.canSeeThief = null;
       closest.guard.chasePath = [];
-      emitActionNoise(heist, thief.x, thief.y, 1.5, thief.id); // Quiet but not silent
+      emitActionNoise(heist, thief.x, thief.y, 1.5, thief.id);
+      heist.combo.silentTakedowns++;
+      heist.announcements.push({ text: `Silent takedown x${heist.combo.silentTakedowns}!`, color: 0xff4444, timer: 2 });
+      // Particles
+      for (let pi = 0; pi < 4; pi++) {
+        heist.particles.push({
+          x: closest.guard.x, y: closest.guard.y,
+          vx: (Math.random() - 0.5) * 30,
+          vy: -20 - Math.random() * 20,
+          life: 0.4 + Math.random() * 0.3,
+          maxLife: 0.7,
+          color: 0xff6644,
+          size: 2,
+        });
+      }
       return true;
     }
   }
@@ -251,8 +284,7 @@ export function shadowMeld(heist: HeistState, thiefId: string): boolean {
   if (ty >= 0 && ty < heist.map.height && tx >= 0 && tx < heist.map.width) {
     if (!heist.map.tiles[ty][tx].lit) {
       thief.shadowMeld = true;
-      // Shadow meld lasts 8 seconds or until entering light
-      setTimeout(() => { thief.shadowMeld = false; }, 8000);
+      thief.shadowMeldTimer = 8; // 8 game-seconds, tied to heist time
       return true;
     }
   }
@@ -414,6 +446,7 @@ export function extinguishTorch(heist: HeistState, x: number, y: number): boolea
     const tile = heist.map.tiles[y][x];
     if (tile.torchSource) {
       tile.torchSource = false;
+      heist.combo.torchesExtinguished++;
       const radius = Math.ceil(ShadowhandConfig.TORCH_RADIUS);
       for (let dy = -radius; dy <= radius; dy++) {
         for (let dx = -radius; dx <= radius; dx++) {
@@ -453,13 +486,42 @@ export function updateSmoke(heist: HeistState, dt: number): void {
 }
 
 /** Update shadow meld status — cancel if thief enters lit area */
-export function updateShadowMeld(heist: HeistState): void {
+export function updateShadowMeld(heist: HeistState, dt: number): void {
   for (const thief of heist.thieves) {
     if (!thief.shadowMeld) continue;
+
+    // Tick down timer
+    thief.shadowMeldTimer -= dt;
+    if (thief.shadowMeldTimer <= 0) {
+      thief.shadowMeld = false;
+      thief.shadowMeldTimer = 0;
+      heist.announcements.push({ text: "Shadow meld faded", color: 0x6644cc, timer: 2 });
+      continue;
+    }
+
+    // Cancel if entering lit area
     const tx = Math.round(thief.x), ty = Math.round(thief.y);
     if (ty >= 0 && ty < heist.map.height && tx >= 0 && tx < heist.map.width) {
       if (heist.map.tiles[ty][tx].lit) {
         thief.shadowMeld = false;
+        thief.shadowMeldTimer = 0;
+        heist.announcements.push({ text: "Shadow meld broken by light!", color: 0xff6644, timer: 2 });
+      }
+    }
+  }
+
+  // Check disguise breaks
+  for (const thief of heist.thieves) {
+    if (!thief.disguised || !thief.alive) continue;
+    // Elite guards see through disguise
+    for (const guard of heist.guards) {
+      if (!guard.isElite || guard.stunTimer > 0 || guard.sleepTimer > 0) continue;
+      const dx = guard.x - thief.x, dy = guard.y - thief.y;
+      if (dx * dx + dy * dy < 4) {
+        thief.disguised = false;
+        thief.disguiseTimer = 0;
+        heist.announcements.push({ text: "Disguise seen through by elite guard!", color: 0xff4444, timer: 3 });
+        break;
       }
     }
   }

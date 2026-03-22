@@ -8,6 +8,8 @@ import { CREW_ARCHETYPES, ALL_CREW_ROLES, type CrewRole } from "../config/CrewDe
 import { TARGET_DEFS, type TargetDef } from "../config/TargetDefs";
 import { getEquipmentForTier } from "../config/EquipmentDefs";
 import { ShadowhandConfig } from "../config/ShadowhandConfig";
+import { getAvailableUpgrades, type GuildUpgradeDef } from "../config/GuildUpgradeDefs";
+import type { GuildUpgradeId } from "../state/ShadowhandState";
 
 const FONT = "Georgia, serif";
 const COL = 0x44aa88;
@@ -19,16 +21,18 @@ export class ShadowhandGuildScreen {
   private _exitCallback: (() => void) | null = null;
   private _recruitCallback: ((role: CrewRole) => void) | null = null;
   private _buyCallback: ((equipId: string) => void) | null = null;
+  private _upgradeCallback: ((upgradeId: GuildUpgradeId) => void) | null = null;
 
   private _selectedTarget: TargetDef | null = null;
   private _selectedCrew: Set<string> = new Set();
   private _selectedEquip: Set<string> = new Set();
-  private _tab: "mission" | "roster" | "shop" = "mission";
+  private _tab: "mission" | "roster" | "shop" | "upgrades" = "mission";
 
   setHeistCallback(cb: (target: TargetDef, crewIds: string[], equipIds: string[]) => void): void { this._heistCallback = cb; }
   setExitCallback(cb: () => void): void { this._exitCallback = cb; }
   setRecruitCallback(cb: (role: CrewRole) => void): void { this._recruitCallback = cb; }
   setBuyCallback(cb: (equipId: string) => void): void { this._buyCallback = cb; }
+  setUpgradeCallback(cb: (upgradeId: GuildUpgradeId) => void): void { this._upgradeCallback = cb; }
 
   show(state: ShadowhandState, sw: number, sh: number): void {
     this.container.removeChildren();
@@ -61,9 +65,18 @@ export class ShadowhandGuildScreen {
       this._text("INQUISITION ALERT!", heatX + 35, heatY + 14, { fontSize: 8, fill: 0xff3333, fontWeight: "bold" });
     }
 
+    // Stats bar
+    const statsY = 47;
+    const streak = state.guild.currentStreak;
+    if (streak > 0) {
+      this._text(`Streak: ${streak}${streak >= 5 ? " \u{1F525}" : ""}`, sw / 2, statsY, { fontSize: 9, fill: streak >= 5 ? 0xffd700 : 0x889988 }, true);
+    }
+    // Achievements count
+    this._text(`\u2605 ${state.guild.achievements.size}`, 20, statsY, { fontSize: 9, fill: 0xffd700 });
+
     // Tabs
-    const tabs = ["mission", "roster", "shop"] as const;
-    const tabW = 100, tabGap = 5, tabX = (sw - (tabW * 3 + tabGap * 2)) / 2;
+    const tabs = ["mission", "roster", "shop", "upgrades"] as const;
+    const tabW = 90, tabGap = 5, tabX = (sw - (tabW * tabs.length + tabGap * (tabs.length - 1))) / 2;
     for (let i = 0; i < tabs.length; i++) {
       const tx = tabX + i * (tabW + tabGap);
       const sel = this._tab === tabs[i];
@@ -76,8 +89,10 @@ export class ShadowhandGuildScreen {
       this._drawMissionTab(state, sw, sh, contentY);
     } else if (this._tab === "roster") {
       this._drawRosterTab(state, sw, sh, contentY);
-    } else {
+    } else if (this._tab === "shop") {
       this._drawShopTab(state, sw, sh, contentY);
+    } else {
+      this._drawUpgradesTab(state, sw, sh, contentY);
     }
 
     // Exit button
@@ -264,6 +279,76 @@ export class ShadowhandGuildScreen {
   }
 
   // -- helpers --
+
+  private _drawUpgradesTab(state: ShadowhandState, sw: number, _sh: number, startY: number): void {
+    let y = startY;
+    this._text("Guild Upgrades", sw / 2, y, { fontSize: 14, fill: 0xccaa88, fontWeight: "bold" }, true);
+    y += 25;
+
+    // Owned upgrades
+    if (state.guild.upgrades.size > 0) {
+      this._text("Owned", 40, y, { fontSize: 12, fill: 0x44aa88, fontWeight: "bold" });
+      y += 16;
+      for (const id of state.guild.upgrades) {
+        this._text(`\u2713 ${id.replace(/_/g, " ")}`, 50, y, { fontSize: 10, fill: 0x66aa88 });
+        y += 14;
+      }
+      y += 10;
+    }
+
+    // Available upgrades
+    const available = getAvailableUpgrades(state.guild.tier, state.guild.upgrades);
+    if (available.length === 0) {
+      this._text("No upgrades available at current tier.", sw / 2, y, { fontSize: 10, fill: 0x666655 }, true);
+    } else {
+      this._text("Available", 40, y, { fontSize: 12, fill: 0xccaa88, fontWeight: "bold" });
+      y += 18;
+
+      for (const upg of available) {
+        const canAfford = state.guild.gold >= upg.cost;
+        const g = new Graphics();
+        g.roundRect(30, y, sw - 60, 44, 4).fill({ color: 0x080808, alpha: 0.7 });
+        g.roundRect(30, y, sw - 60, 44, 4).stroke({ color: canAfford ? upg.color : 0x333333, width: 1, alpha: 0.5 });
+        this.container.addChild(g);
+
+        // Color dot
+        g.circle(48, y + 15, 6).fill({ color: upg.color, alpha: canAfford ? 0.8 : 0.3 });
+
+        this._text(upg.name, 62, y + 4, { fontSize: 11, fill: canAfford ? upg.color : 0x555555, fontWeight: "bold" });
+        this._text(upg.desc, 62, y + 18, { fontSize: 8, fill: 0x778877 });
+        this._text(`${upg.cost}g`, sw - 100, y + 4, { fontSize: 11, fill: canAfford ? 0xffd700 : 0x555544, fontWeight: "bold" });
+
+        if (canAfford) {
+          this._button("BUY", sw - 70, y + 10, 40, 22, upg.color, () => this._upgradeCallback?.(upg.id));
+        }
+
+        y += 50;
+      }
+    }
+
+    y += 15;
+
+    // Stats summary
+    this._text("Guild Stats", sw / 2, y, { fontSize: 12, fill: 0xccaa88, fontWeight: "bold" }, true);
+    y += 18;
+
+    const stats: [string, string, number][] = [
+      ["Heists Attempted", `${state.guild.totalHeistsAttempted}`, 0xccddcc],
+      ["Heists Succeeded", `${state.guild.totalHeistsSucceeded}`, 0x44aa44],
+      ["Success Rate", state.guild.totalHeistsAttempted > 0 ? `${Math.round(state.guild.totalHeistsSucceeded / state.guild.totalHeistsAttempted * 100)}%` : "N/A", 0x88aaff],
+      ["Longest Streak", `${state.guild.longestStreak}`, 0xffd700],
+      ["Total Loot", `${state.guild.totalLootValue}g`, 0xffd700],
+      ["Perfect Heists", `${state.guild.perfectHeists}`, 0x44ff44],
+      ["Achievements", `${state.guild.achievements.size}`, 0xffaa44],
+    ];
+
+    for (const [label, value, color] of stats) {
+      this._text(label, 50, y, { fontSize: 9, fill: 0x778877 });
+      const vt = this._text(value, sw - 50, y, { fontSize: 9, fill: color, fontWeight: "bold" });
+      vt.anchor.set(1, 0);
+      y += 14;
+    }
+  }
 
   private _text(str: string, x: number, y: number, opts: Partial<TextStyle>, center = false): Text {
     const t = new Text({ text: str, style: new TextStyle({ fontFamily: FONT, ...opts } as any) });

@@ -12,6 +12,7 @@ import type { ShadowhandDifficulty } from "./config/ShadowhandConfig";
 import { ShadowhandConfig } from "./config/ShadowhandConfig";
 import { createCrewMember, type CrewRole } from "./config/CrewDefs";
 import { getEquipmentById } from "./config/EquipmentDefs";
+import { getUpgradeById as _getUpgradeById } from "./config/GuildUpgradeDefs";
 
 import { initHeist, updateHeist, decayHeat, consumeEquipment } from "./systems/HeistSystem";
 import {
@@ -135,6 +136,10 @@ export class ShadowhandGame {
       this._buyEquipment(equipId);
     });
 
+    this._guildScreen.setUpgradeCallback((upgradeId) => {
+      this._buyUpgrade(upgradeId);
+    });
+
     this._guildScreen.show(this._state, this._sw, this._sh);
     viewManager.addToLayer("ui", this._guildScreen.container);
   }
@@ -153,10 +158,22 @@ export class ShadowhandGame {
 
   private _buyEquipment(equipId: string): void {
     const def = getEquipmentById(equipId);
-    if (!def || this._state.guild.gold < def.cost) return;
-    this._state.guild.gold -= def.cost;
+    if (!def) return;
+    const cost = this._state.guild.upgrades.has("armory") ? Math.floor(def.cost * 0.8) : def.cost;
+    if (this._state.guild.gold < cost) return;
+    this._state.guild.gold -= cost;
     this._state.guild.inventory.push({ id: equipId, uses: def.uses });
-    addLog(this._state, `Purchased ${def.name}.`);
+    addLog(this._state, `Purchased ${def.name}${this._state.guild.upgrades.has("armory") ? " (armory discount)" : ""}.`);
+    this._guildScreen.show(this._state, this._sw, this._sh);
+  }
+
+  private _buyUpgrade(upgradeId: import("./state/ShadowhandState").GuildUpgradeId): void {
+    const def = _getUpgradeById(upgradeId);
+    if (!def || this._state.guild.gold < def.cost) return;
+    if (this._state.guild.upgrades.has(upgradeId)) return;
+    this._state.guild.gold -= def.cost;
+    this._state.guild.upgrades.add(upgradeId);
+    addLog(this._state, `Guild upgrade: ${def.name}!`);
     this._guildScreen.show(this._state, this._sw, this._sh);
   }
 

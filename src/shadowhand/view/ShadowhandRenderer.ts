@@ -182,6 +182,21 @@ export class ShadowhandRenderer {
       const alpha = Math.min(0.3, noise.timer / 2);
       g.circle(px, py, noise.radius * T).stroke({ color: 0xffff88, width: 1, alpha });
     }
+
+    // Draw particles
+    for (const p of heist.particles) {
+      const px = p.x * T + this._offsetX + T / 2;
+      const py = p.y * T + this._offsetY + T / 2;
+      const lifeRatio = p.life / p.maxLife;
+      g.circle(px, py, p.size * lifeRatio).fill({ color: p.color, alpha: lifeRatio * 0.8 });
+    }
+
+    // Draw announcements (centered on screen)
+    // These are drawn by HUD, but we also add screen shake here
+    if (heist.screenShake > 0) {
+      this._offsetX += (Math.random() - 0.5) * heist.screenShake;
+      this._offsetY += (Math.random() - 0.5) * heist.screenShake;
+    }
   }
 
   private _drawVisionCone(g: Graphics, guard: Guard): void {
