@@ -123,6 +123,15 @@ export function updateGuardMovement(heist: HeistState, dt: number): void {
     if (guard.alertLevel === AlertLevel.ALARMED) {
       speed *= 1.5;
 
+      // Alarm cooldown: if can't see thief and no last known pos, slowly de-escalate
+      if (!guard.canSeeThief && !guard.lastKnownThiefPos && !guard.investigating) {
+        guard.alertTimer -= dt * 3; // faster decay when lost
+        if (guard.alertTimer < ShadowhandConfig.ALERT_ALARMED_THRESHOLD * 0.7) {
+          guard.alertLevel = AlertLevel.SUSPICIOUS;
+          guard.alertTimer = ShadowhandConfig.ALERT_SUSPICIOUS_THRESHOLD;
+        }
+      }
+
       if (guard.canSeeThief) {
         // Can see thief — chase with A* pathfinding
         const thief = heist.thieves.find(t => t.id === guard.canSeeThief);
@@ -150,11 +159,23 @@ export function updateGuardMovement(heist: HeistState, dt: number): void {
         }
         moveTarget = getNextWaypoint(guard.chasePath, guard.x, guard.y);
         if (!moveTarget) {
-          // Arrived at last known position — search nearby
-          guard.lastKnownThiefPos = null;
+          // Arrived at last known position — search pattern (3 random nearby spots)
           guard.chasePath = [];
-          guard.investigating = { x: guard.x + (Math.random() - 0.5) * 6, y: guard.y + (Math.random() - 0.5) * 6 };
-          guard.waitTimer = 1.5; // Pause to look around
+          const searchRadius = 5 + Math.random() * 4;
+          const searchX = guard.x + (Math.random() - 0.5) * searchRadius * 2;
+          const searchY = guard.y + (Math.random() - 0.5) * searchRadius * 2;
+          guard.investigating = { x: searchX, y: searchY };
+          guard.waitTimer = 2.0 + Math.random() * 2.0; // Look around 2-4 seconds
+          // Memory decays: 50% chance to forget after each search spot
+          if (Math.random() < 0.5) {
+            guard.lastKnownThiefPos = null;
+          } else {
+            // Shift last known position slightly (fuzzy memory)
+            guard.lastKnownThiefPos = {
+              x: guard.lastKnownThiefPos.x + (Math.random() - 0.5) * 4,
+              y: guard.lastKnownThiefPos.y + (Math.random() - 0.5) * 4,
+            };
+          }
           continue;
         }
       }

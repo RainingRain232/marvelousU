@@ -206,6 +206,30 @@ export class ShadowhandResultsScreen {
       }
     }
 
+    // Game over: crew memorial
+    if (isGameOver && state.guild.roster.length > 0) {
+      y += 5;
+      const memDivG = new Graphics();
+      memDivG.moveTo(px + 60, y).lineTo(px + pw - 60, y).stroke({ color: 0xff4444, width: 0.5, alpha: 0.2 });
+      this.container.addChild(memDivG);
+      y += 10;
+      this._text("In Memoriam", sw / 2, y, { fontSize: 11, fill: 0xff6644, fontStyle: "italic" }, true);
+      y += 16;
+      for (const crew of state.guild.roster.slice(0, 6)) {
+        const status = crew.captured ? "captured" : "fallen";
+        this._text(`\u2020 ${crew.name} the ${crew.role} — ${status}`, sw / 2, y, { fontSize: 9, fill: 0x996666 }, true);
+        y += 13;
+      }
+    }
+
+    // Victory: epilogue stats
+    if (isVictory) {
+      y += 5;
+      this._text(`The Shadowhand completed ${state.guild.totalHeistsSucceeded} heists across ${state.guild.day} days.`, sw / 2, y, { fontSize: 10, fill: 0xcccc88, fontStyle: "italic" }, true);
+      y += 14;
+      this._text(`${state.guild.achievements.size} achievements earned. ${state.guild.perfectHeists} perfect heists.`, sw / 2, y, { fontSize: 9, fill: 0xaaaaaa }, true);
+    }
+
     y = py + ph - 56;
 
     // Buttons

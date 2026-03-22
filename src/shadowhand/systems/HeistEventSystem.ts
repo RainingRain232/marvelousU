@@ -194,6 +194,48 @@ export function updateHeistEvents(heist: HeistState, dt: number): void {
     }
   }
 
+  // --- Dynamic pacing: tension escalation over time ---
+  const elapsed = heist.elapsedTime;
+  // Phase 1 (0-120s): calm — guards relaxed
+  // Phase 2 (120-300s): tension rising — alert decay slows, guards check more
+  // Phase 3 (300s+): desperation — reinforcements faster, alerts sticky
+  if (elapsed > 120 && elapsed < 125) {
+    // Announce tension phase
+    if (!heist.events.find(e => e.type === "_pacing_2" && e.triggered)) {
+      heist.events.push({ type: "_pacing_2", triggerTime: -1, triggered: true, message: "" });
+      heist.announcements.push({ text: "Guards are getting restless...", color: 0xddaa22, timer: 3 });
+      // Slightly increase alert for all guards
+      for (const guard of heist.guards) {
+        guard.alertTimer = Math.max(guard.alertTimer, 5);
+      }
+    }
+  }
+  if (elapsed > 300 && elapsed < 305) {
+    if (!heist.events.find(e => e.type === "_pacing_3" && e.triggered)) {
+      heist.events.push({ type: "_pacing_3", triggerTime: -1, triggered: true, message: "" });
+      heist.announcements.push({ text: "Security is tightening! Get out soon!", color: 0xff6644, timer: 4 });
+      heist.screenShake = 2;
+      // Spawn extra patrol
+      const entry = heist.map.entryPoints[0];
+      if (entry) {
+        heist.guards.push({
+          id: `pacing_guard_${heist.guards.length}`,
+          x: entry.x, y: entry.y,
+          angle: Math.random() * Math.PI * 2,
+          patrolPath: [entry],
+          patrolIndex: 0, patrolForward: true,
+          speed: 1.8,
+          alertLevel: 1, // starts suspicious
+          alertTimer: 25,
+          stunTimer: 0, sleepTimer: 0,
+          investigating: null, canSeeThief: null,
+          isElite: false, isDog: false,
+          chasePath: [], lastKnownThiefPos: null, waitTimer: 0,
+        });
+      }
+    }
+  }
+
   // Update announcements
   for (let i = heist.announcements.length - 1; i >= 0; i--) {
     heist.announcements[i].timer -= dt;

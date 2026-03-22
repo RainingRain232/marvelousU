@@ -414,17 +414,32 @@ function completeHeist(state: ShadowhandState): void {
 }
 
 function failHeist(state: ShadowhandState): void {
-  addLog(state, "All crew lost. The heist has failed.");
+  const heist = state.heist;
   state.guild.day++;
   state.guild.currentStreak = 0;
 
   const diff = getDifficulty(state.difficulty);
   state.guild.heat.set("default", (state.guild.heat.get("default") ?? 0) + ShadowhandConfig.HEAT_PER_HEIST * 2 * diff.heatMult);
 
+  // Tally casualties
+  const captured = heist ? heist.thieves.filter(t => t.captured).length : 0;
+  const dead = heist ? heist.thieves.filter(t => !t.alive && !t.captured && !t.escaped).length : 0;
+  const escaped = heist ? heist.thieves.filter(t => t.escaped).length : 0;
+
+  if (captured > 0) addLog(state, `${captured} crew member(s) captured by the guard.`);
+  if (dead > 0) addLog(state, `${dead} crew member(s) did not make it out.`);
+  if (escaped > 0) addLog(state, `${escaped} crew member(s) escaped, but the heist failed.`);
+  addLog(state, "The heist has failed. The Shadowhand retreats into darkness.");
+
+  // Screen shake for dramatic effect
+  if (heist) heist.screenShake = 5;
+
   const aliveCrew = state.guild.roster.filter(c => c.alive && !c.captured);
   if (aliveCrew.length === 0) {
+    addLog(state, "No crew remain. The guild is finished.");
     state.phase = ShadowhandPhase.GAME_OVER;
   } else {
+    addLog(state, `${aliveCrew.length} crew remain. Regroup and try again.`);
     state.phase = ShadowhandPhase.RESULTS;
   }
 }

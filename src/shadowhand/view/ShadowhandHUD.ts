@@ -23,6 +23,7 @@ export class ShadowhandHUD {
   readonly container = new Container();
   private _alertGfx = new Graphics();
   private _crewGfx = new Graphics();
+  private _minimapGfx = new Graphics();
   private _crewTexts: Text[] = [];
   private _timerText = new Text({ text: "", style: new TextStyle({ fontFamily: FONT, fontSize: 16, fill: 0xccddcc, fontWeight: "bold" }) });
   private _alertText = new Text({ text: "", style: new TextStyle({ fontFamily: FONT, fontSize: 12, fill: 0x88aa88 }) });
@@ -97,6 +98,11 @@ export class ShadowhandHUD {
     this.container.addChild(logHeader);
     this._logContainer.position.set(8, _sh - 108);
     this.container.addChild(this._logContainer);
+
+    // Minimap (bottom-right corner)
+    this._minimapGfx = new Graphics();
+    this._minimapGfx.position.set(sw - 145, _sh - 140);
+    this.container.addChild(this._minimapGfx);
   }
 
   update(state: ShadowhandState, sw: number, _sh: number): void {
@@ -325,6 +331,66 @@ export class ShadowhandHUD {
         my += 12;
       }
     }
+
+    // Minimap
+    this._minimapGfx.clear();
+    const mmW = 130, mmH = 110;
+    const map = heist.map;
+    const sx = mmW / map.width, sy = mmH / map.height;
+    // Background
+    this._minimapGfx.roundRect(-4, -4, mmW + 8, mmH + 8, 3).fill({ color: 0x000000, alpha: 0.65 });
+    this._minimapGfx.roundRect(-4, -4, mmW + 8, mmH + 8, 3).stroke({ color: COL, width: 0.8, alpha: 0.25 });
+    // Tiles
+    for (let my = 0; my < map.height; my++) {
+      for (let mx = 0; mx < map.width; mx++) {
+        const tile = map.tiles[my][mx];
+        if (!tile.revealed) continue;
+        const mpx = mx * sx, mpy = my * sy;
+        if (tile.type === "wall" || tile.type === "secret_door") {
+          this._minimapGfx.rect(mpx, mpy, sx, sy).fill({ color: 0x333344, alpha: 0.6 });
+        } else if (tile.type === "locked_door") {
+          this._minimapGfx.rect(mpx, mpy, sx, sy).fill({ color: 0x884422, alpha: 0.7 });
+        } else if (tile.type === "door") {
+          this._minimapGfx.rect(mpx, mpy, sx, sy).fill({ color: 0x665533, alpha: 0.5 });
+        } else if (tile.type === "entry_point") {
+          this._minimapGfx.rect(mpx, mpy, sx, sy).fill({ color: 0x44aa44, alpha: 0.7 });
+        } else if (tile.type === "primary_loot") {
+          this._minimapGfx.rect(mpx, mpy, sx, sy).fill({ color: 0xffd700, alpha: 0.8 });
+        } else {
+          const litCol = tile.lit ? 0x2a2826 : 0x181618;
+          this._minimapGfx.rect(mpx, mpy, sx, sy).fill({ color: litCol, alpha: 0.4 });
+        }
+      }
+    }
+    // Exit points
+    for (const ep of map.exitPoints) {
+      this._minimapGfx.rect(ep.x * sx - 1, ep.y * sy - 1, sx + 2, sy + 2).fill({ color: 0x44ff44, alpha: 0.6 });
+    }
+    // Guards (red dots)
+    for (const guard of heist.guards) {
+      if (guard.stunTimer > 0 || guard.sleepTimer > 0) continue;
+      // Only show guards in revealed tiles
+      const gx = Math.round(guard.x), gy = Math.round(guard.y);
+      if (gx >= 0 && gx < map.width && gy >= 0 && gy < map.height && map.tiles[gy][gx].revealed) {
+        const gcol = guard.alertLevel === 0 ? 0xff6644 : guard.alertLevel === 1 ? 0xffaa22 : 0xff2222;
+        this._minimapGfx.circle(guard.x * sx, guard.y * sy, 1.5).fill({ color: gcol, alpha: 0.8 });
+      }
+    }
+    // Thieves (blue dots)
+    for (const thief of heist.thieves) {
+      if (!thief.alive) continue;
+      const tcol = thief.selected ? 0x44ffff : 0x4488ff;
+      this._minimapGfx.circle(thief.x * sx, thief.y * sy, 2).fill({ color: tcol });
+    }
+    // Rescue NPC
+    if (heist.objective.type === "rescue" && !heist.objective.rescued) {
+      const npx = heist.objective.npcX * sx, npy = heist.objective.npcY * sy;
+      this._minimapGfx.circle(npx, npy, 2).fill({ color: 0xffff44, alpha: 0.7 });
+    }
+    // Label
+    const mmLabel = new Text({ text: "MAP", style: new TextStyle({ fontFamily: FONT, fontSize: 7, fill: COL, letterSpacing: 1 }) });
+    mmLabel.position.set(mmW / 2 - 8, -12);
+    this._minimapGfx.addChild(mmLabel);
 
     // Log
     this._logContainer.removeChildren();
