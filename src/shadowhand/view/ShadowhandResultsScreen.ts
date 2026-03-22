@@ -9,17 +9,31 @@ import { ShadowhandPhase } from "../state/ShadowhandState";
 const FONT = "Georgia, serif";
 
 function drawMedal(g: Graphics, cx: number, cy: number, color: number, label: string, container: Container): void {
-  // Ribbon
-  g.moveTo(cx - 6, cy - 10).lineTo(cx - 3, cy - 3).lineTo(cx + 3, cy - 3).lineTo(cx + 6, cy - 10).closePath().fill({ color: 0x884422, alpha: 0.6 });
-  // Medal circle
+  // Ribbon tails (V-shaped with forked ends)
+  g.moveTo(cx - 7, cy - 12).lineTo(cx - 4, cy - 4).lineTo(cx, cy - 6).lineTo(cx + 4, cy - 4).lineTo(cx + 7, cy - 12).lineTo(cx + 5, cy - 12).lineTo(cx + 3, cy - 6).lineTo(cx, cy - 8).lineTo(cx - 3, cy - 6).lineTo(cx - 5, cy - 12).closePath().fill({ color: 0x884422, alpha: 0.65 });
+  // Ribbon fold highlight
+  g.moveTo(cx - 4, cy - 8).lineTo(cx, cy - 6).stroke({ color: 0xaa6633, width: 0.5, alpha: 0.3 });
+  // Medal disc (layered for depth)
+  g.circle(cx, cy + 3, 11).fill({ color: 0x222222, alpha: 0.4 }); // shadow
+  g.circle(cx, cy + 2, 11).fill({ color, alpha: 0.15 }); // outer glow
   g.circle(cx, cy + 2, 10).fill({ color, alpha: 0.7 });
-  g.circle(cx, cy + 2, 10).stroke({ color: 0xffffff, width: 1, alpha: 0.3 });
-  g.circle(cx, cy + 2, 7).stroke({ color: 0xffffff, width: 0.5, alpha: 0.15 });
-  // Star
-  g.circle(cx, cy + 2, 3).fill({ color: 0xffffff, alpha: 0.4 });
+  g.circle(cx, cy + 2, 10).stroke({ color: 0xffffff, width: 1.2, alpha: 0.35 });
+  // Inner ring
+  g.circle(cx, cy + 2, 7.5).stroke({ color: 0xffffff, width: 0.8, alpha: 0.2 });
+  // 5-pointed star (polygon, not circle)
+  for (let i = 0; i < 5; i++) {
+    const oa = -Math.PI / 2 + i * Math.PI * 2 / 5;
+    const ia = oa + Math.PI / 5;
+    if (i === 0) g.moveTo(cx + Math.cos(oa) * 5, cy + 2 + Math.sin(oa) * 5);
+    else g.lineTo(cx + Math.cos(oa) * 5, cy + 2 + Math.sin(oa) * 5);
+    g.lineTo(cx + Math.cos(ia) * 2, cy + 2 + Math.sin(ia) * 2);
+  }
+  g.closePath().fill({ color: 0xffffff, alpha: 0.4 });
+  // Shine highlight
+  g.circle(cx - 3, cy - 1, 2).fill({ color: 0xffffff, alpha: 0.15 });
   // Label
   const t = new Text({ text: label, style: new TextStyle({ fontFamily: FONT, fontSize: 7, fill: color, fontWeight: "bold" }) });
-  t.anchor.set(0.5, 0); t.position.set(cx, cy + 15);
+  t.anchor.set(0.5, 0); t.position.set(cx, cy + 16);
   container.addChild(t);
 }
 
@@ -46,15 +60,30 @@ export class ShadowhandResultsScreen {
     // Panel
     const pw = 540, ph = 520, px = (sw - pw) / 2, py = (sh - ph) / 2;
     const panel = new Graphics();
-    panel.roundRect(px, py, pw, ph, 10).fill({ color: isVictory ? 0x0a0a14 : isGameOver ? 0x140808 : 0x080a08, alpha: 0.97 });
+    const panelColor = isVictory ? 0x0a0a14 : isGameOver ? 0x140808 : 0x080a08;
+    panel.roundRect(px, py, pw, ph, 10).fill({ color: panelColor, alpha: 0.97 });
+    // Subtle stone texture inside panel
+    for (let row = 0; row < Math.ceil(ph / 20); row++) {
+      const ry = py + row * 20;
+      const offset = (row % 2) * 25;
+      panel.moveTo(px + 10, ry).lineTo(px + pw - 10, ry).stroke({ color: accent, width: 0.3, alpha: 0.03 });
+      for (let col = 0; col < Math.ceil(pw / 50) + 1; col++) {
+        const ccx = px + col * 50 + offset;
+        if (ccx > px + 8 && ccx < px + pw - 8) {
+          panel.moveTo(ccx, ry).lineTo(ccx, ry + 20).stroke({ color: accent, width: 0.2, alpha: 0.02 });
+        }
+      }
+    }
     // Triple border
     panel.roundRect(px, py, pw, ph, 10).stroke({ color: accent, width: 3, alpha: 0.6 });
     panel.roundRect(px + 3, py + 3, pw - 6, ph - 6, 9).stroke({ color: accent, width: 1, alpha: 0.15 });
     panel.roundRect(px + 6, py + 6, pw - 12, ph - 12, 8).stroke({ color: accent, width: 0.5, alpha: 0.08 });
-    // Corners
-    for (const [cx, cy] of [[px + 12, py + 12], [px + pw - 12, py + 12], [px + 12, py + ph - 12], [px + pw - 12, py + ph - 12]]) {
-      panel.circle(cx, cy, 4).fill({ color: accent, alpha: 0.4 });
-      panel.circle(cx, cy, 2).fill({ color: accent, alpha: 0.7 });
+    // Corners with L-brackets
+    for (const [ccx, ccy] of [[px + 12, py + 12], [px + pw - 12, py + 12], [px + 12, py + ph - 12], [px + pw - 12, py + ph - 12]]) {
+      panel.circle(ccx, ccy, 4).fill({ color: accent, alpha: 0.4 });
+      panel.circle(ccx, ccy, 2).fill({ color: accent, alpha: 0.7 });
+      const dx = ccx < sw / 2 ? 1 : -1, dy = ccy < sh / 2 ? 1 : -1;
+      panel.moveTo(ccx, ccy + dy * 8).lineTo(ccx, ccy).lineTo(ccx + dx * 8, ccy).stroke({ color: accent, width: 0.8, alpha: 0.2 });
     }
     // Top center accent
     panel.moveTo(px + pw / 2 - 40, py + 2).lineTo(px + pw / 2 + 40, py + 2).stroke({ color: accent, width: 2, alpha: 0.3 });

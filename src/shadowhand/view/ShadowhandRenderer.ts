@@ -318,32 +318,103 @@ export class ShadowhandRenderer {
   }
 
   private _drawWindow(g: Graphics, d: Graphics, px: number, py: number, h: number): void {
+    // Stone surround
     g.rect(px, py, T, T).fill({ color: WALL_BASE });
-    // Window frame
-    const inset = 6;
-    d.rect(px + inset, py + inset, T - inset * 2, T - inset * 2).fill({ color: WINDOW_GLASS, alpha: 0.6 });
-    d.rect(px + inset, py + inset, T - inset * 2, T - inset * 2).stroke({ color: WINDOW_FRAME, width: 1.5 });
-    // Cross mullion
-    d.moveTo(px + HT, py + inset).lineTo(px + HT, py + T - inset).stroke({ color: WINDOW_FRAME, width: 1 });
-    d.moveTo(px + inset, py + HT).lineTo(px + T - inset, py + HT).stroke({ color: WINDOW_FRAME, width: 1 });
-    // Moonlight ray
-    d.rect(px + inset + 1, py + inset + 1, T - inset * 2 - 2, T - inset * 2 - 2).fill({ color: 0x8899bb, alpha: 0.15 });
-    // Glow emanating from window
-    for (let r = 1; r <= 3; r++) {
-      d.rect(px - r * 3, py - r * 3, T + r * 6, T + r * 6).fill({ color: 0x6688aa, alpha: 0.02 });
+    const inset = 5;
+    const ww = T - inset * 2, wh = T - inset * 2;
+    const wx = px + inset, wy = py + inset;
+
+    // Window recess (darker interior)
+    d.rect(wx - 1, wy - 1, ww + 2, wh + 2).fill({ color: 0x0a0a14 });
+
+    // Stone sill (bottom ledge)
+    d.rect(wx - 2, wy + wh, ww + 4, 3).fill({ color: 0x3a3640 });
+    d.moveTo(wx - 2, wy + wh).lineTo(wx + ww + 2, wy + wh).stroke({ color: 0x4a4650, width: 0.8, alpha: 0.4 });
+
+    // Stone lintel (top)
+    d.rect(wx - 2, wy - 3, ww + 4, 3).fill({ color: 0x3a3640 });
+
+    // Leaded glass panes (4 panes with individual tint variation)
+    const pw = ww / 2 - 1, ph = wh / 2 - 1;
+    const panes = [[wx + 1, wy + 1], [wx + pw + 2, wy + 1], [wx + 1, wy + ph + 2], [wx + pw + 2, wy + ph + 2]];
+    for (let pi = 0; pi < 4; pi++) {
+      const [ppx, ppy] = panes[pi];
+      const tint = tileHash(Math.floor(px) + pi, Math.floor(py) + pi * 3);
+      const glassColor = tint < 0.3 ? 0x5577aa : tint < 0.6 ? 0x6688aa : 0x4a6a8a;
+      d.rect(ppx, ppy, pw - 1, ph - 1).fill({ color: glassColor, alpha: 0.5 + tint * 0.2 });
+      // Subtle diagonal reflection
+      d.moveTo(ppx + 1, ppy + ph - 3).lineTo(ppx + pw - 3, ppy + 1).stroke({ color: 0xaabbcc, width: 0.5, alpha: 0.15 + tint * 0.1 });
+    }
+
+    // Lead came (dividers between panes)
+    d.moveTo(wx + ww / 2, wy).lineTo(wx + ww / 2, wy + wh).stroke({ color: 0x444450, width: 2 });
+    d.moveTo(wx, wy + wh / 2).lineTo(wx + ww, wy + wh / 2).stroke({ color: 0x444450, width: 2 });
+    // Lead came highlight
+    d.moveTo(wx + ww / 2 + 0.5, wy).lineTo(wx + ww / 2 + 0.5, wy + wh).stroke({ color: 0x555560, width: 0.5, alpha: 0.3 });
+
+    // Outer frame with bevel
+    d.rect(wx - 1, wy - 1, ww + 2, wh + 2).stroke({ color: WINDOW_FRAME, width: 1.5 });
+    d.moveTo(wx - 1, wy - 1).lineTo(wx + ww + 1, wy - 1).stroke({ color: 0x5a6a7a, width: 0.5, alpha: 0.3 }); // top highlight
+
+    // Moonlight cone casting inward (directional glow polygon)
+    const glowDist = T * 1.5;
+    d.moveTo(wx, wy + wh).lineTo(wx - glowDist * 0.3, wy + wh + glowDist);
+    d.lineTo(wx + ww + glowDist * 0.3, wy + wh + glowDist).lineTo(wx + ww, wy + wh);
+    d.closePath().fill({ color: 0x6688aa, alpha: 0.03 });
+
+    // Graduated glow from window
+    for (let r = 1; r <= 4; r++) {
+      const gr = r * 4;
+      d.circle(wx + ww / 2, wy + wh / 2, gr + 4).fill({ color: 0x5577aa, alpha: 0.015 / r });
+    }
+
+    // Condensation droplets (1-2 tiny dots)
+    if (h > 0.7) {
+      d.circle(wx + 3, wy + wh - 3, 0.8).fill({ color: 0x8899bb, alpha: 0.3 });
+      d.circle(wx + ww - 5, wy + wh - 5, 0.6).fill({ color: 0x8899bb, alpha: 0.25 });
     }
   }
 
-  private _drawEntryPoint(g: Graphics, d: Graphics, px: number, py: number, h: number): void {
-    g.rect(px, py, T, T).fill({ color: 0x1a2a1a });
-    // Archway shape
-    d.moveTo(px + 4, py + T).lineTo(px + 4, py + 8).bezierCurveTo(px + 4, py + 2, px + T - 4, py + 2, px + T - 4, py + 8).lineTo(px + T - 4, py + T).stroke({ color: 0x44aa44, width: 1.5, alpha: 0.5 });
-    // Arrow pointing in
-    d.moveTo(px + HT, py + T - 4).lineTo(px + HT, py + 8).stroke({ color: 0x44ff44, width: 1, alpha: 0.4 });
-    d.moveTo(px + HT - 4, py + 14).lineTo(px + HT, py + 8).lineTo(px + HT + 4, py + 14).stroke({ color: 0x44ff44, width: 1, alpha: 0.4 });
-    // Pulsing glow
-    const pulse = 0.3 + Math.sin(Date.now() / 800) * 0.15;
-    d.circle(px + HT, py + HT, T * 0.4).fill({ color: 0x44ff44, alpha: pulse * 0.1 });
+  private _drawEntryPoint(g: Graphics, d: Graphics, px: number, py: number, _h: number): void {
+    g.rect(px, py, T, T).fill({ color: 0x141e14 });
+    const pulse = 0.4 + Math.sin(Date.now() / 800) * 0.2;
+
+    // Stone arch frame — masonry blocks
+    const archL = px + 3, archR = px + T - 3, archTop = py + 4;
+    // Left pillar blocks
+    for (let bi = 0; bi < 4; bi++) {
+      const by = py + 10 + bi * 5.5;
+      d.rect(archL - 1, by, 5, 5).fill({ color: 0x3a4a3a, alpha: 0.5 });
+      d.rect(archL - 1, by, 5, 5).stroke({ color: 0x2a3a2a, width: 0.4, alpha: 0.3 });
+    }
+    // Right pillar blocks
+    for (let bi = 0; bi < 4; bi++) {
+      const by = py + 10 + bi * 5.5;
+      d.rect(archR - 4, by, 5, 5).fill({ color: 0x3a4a3a, alpha: 0.5 });
+      d.rect(archR - 4, by, 5, 5).stroke({ color: 0x2a3a2a, width: 0.4, alpha: 0.3 });
+    }
+    // Arch curve (bezier with voussoir stones)
+    d.moveTo(archL, py + 10).bezierCurveTo(archL, archTop, archR, archTop, archR, py + 10).stroke({ color: 0x4a5a4a, width: 2, alpha: 0.6 });
+    // Inner arch curve
+    d.moveTo(archL + 2, py + 10).bezierCurveTo(archL + 2, archTop + 2, archR - 2, archTop + 2, archR - 2, py + 10).stroke({ color: 0x2a3a2a, width: 1, alpha: 0.3 });
+    // Keystone (center top — trapezoidal polygon)
+    d.moveTo(px + HT - 3, archTop + 1).lineTo(px + HT + 3, archTop + 1).lineTo(px + HT + 2, archTop - 2).lineTo(px + HT - 2, archTop - 2).closePath().fill({ color: 0x5a6a5a, alpha: 0.6 });
+    d.moveTo(px + HT - 2, archTop - 2).lineTo(px + HT + 2, archTop - 2).stroke({ color: 0x6a7a6a, width: 0.5, alpha: 0.3 }); // keystone highlight
+
+    // Dark passage interior
+    d.moveTo(archL + 3, py + 10).bezierCurveTo(archL + 3, archTop + 4, archR - 3, archTop + 4, archR - 3, py + 10).lineTo(archR - 3, py + T).lineTo(archL + 3, py + T).closePath().fill({ color: 0x0a140a, alpha: 0.5 });
+
+    // Directional arrow polygon
+    const ay = py + T - 6;
+    d.moveTo(px + HT, py + 10).lineTo(px + HT - 4, ay).lineTo(px + HT - 1.5, ay).lineTo(px + HT - 1.5, py + T - 2).lineTo(px + HT + 1.5, py + T - 2).lineTo(px + HT + 1.5, ay).lineTo(px + HT + 4, ay).closePath().fill({ color: 0x44ff44, alpha: pulse * 0.4 });
+
+    // Pulsing glow rings
+    d.circle(px + HT, py + HT, T * 0.35).fill({ color: 0x44ff44, alpha: pulse * 0.06 });
+    d.circle(px + HT, py + HT, T * 0.5).fill({ color: 0x44ff44, alpha: pulse * 0.03 });
+
+    // Moss on archway
+    d.circle(archL + 1, py + 14, 2).fill({ color: 0x2a4a2a, alpha: 0.25 });
+    d.circle(archR - 2, py + 22, 1.5).fill({ color: 0x2a4a2a, alpha: 0.2 });
   }
 
   private _drawStairs(g: Graphics, d: Graphics, px: number, py: number, up: boolean): void {
@@ -732,12 +803,46 @@ export class ShadowhandRenderer {
       }
     }
 
-    // Particles
+    // Particles — with trail effect
     for (const p of heist.particles) {
-      const px = p.x * T + this._offsetX + HT;
-      const py = p.y * T + this._offsetY + HT;
+      const ppx = p.x * T + this._offsetX + HT;
+      const ppy = p.y * T + this._offsetY + HT;
       const lr = p.life / p.maxLife;
-      g.circle(px, py, p.size * lr).fill({ color: p.color, alpha: lr * 0.8 });
+      // Trail (fainter, offset)
+      g.circle(ppx - p.vx * 0.02, ppy - p.vy * 0.02, p.size * lr * 0.6).fill({ color: p.color, alpha: lr * 0.3 });
+      // Main particle
+      g.circle(ppx, ppy, p.size * lr).fill({ color: p.color, alpha: lr * 0.8 });
+    }
+
+    // Ambient dust motes — floating particles in lit areas
+    const t = Date.now();
+    for (let mi = 0; mi < 20; mi++) {
+      const seed = mi * 7919 + 1301;
+      const phase = ((t / 4000 + (seed % 1000) / 1000) % 1);
+      const mx = ((seed * 16807) % 2147483647) / 2147483647;
+      const my = ((seed * 48271) % 2147483647) / 2147483647;
+      const dustX = mx * heist.map.width * T + this._offsetX;
+      const dustY = my * heist.map.height * T + this._offsetY;
+      const drift = Math.sin(t / 2000 + mi * 1.3) * 3;
+      const rise = Math.cos(t / 3000 + mi * 0.7) * 2;
+      const alpha = 0.08 + Math.sin(t / 1500 + mi * 2.1) * 0.04;
+      // Only show motes in roughly lit areas (check tile)
+      const tileX = Math.floor((dustX - this._offsetX) / T);
+      const tileY = Math.floor((dustY - this._offsetY) / T);
+      if (tileX >= 0 && tileX < heist.map.width && tileY >= 0 && tileY < heist.map.height) {
+        if (heist.map.tiles[tileY][tileX].lit && heist.map.tiles[tileY][tileX].revealed) {
+          g.circle(dustX + drift, dustY + rise, 0.8 + phase * 0.5).fill({ color: 0xffddaa, alpha });
+        }
+      }
+    }
+
+    // Distant torch flicker — orange glow spots that pulse at edges of visible map
+    for (let fi = 0; fi < 6; fi++) {
+      const fseed = fi * 3571 + 997;
+      const fx = ((fseed * 16807) % 2147483647) / 2147483647 * heist.map.width * T + this._offsetX;
+      const fy = ((fseed * 48271) % 2147483647) / 2147483647 * heist.map.height * T + this._offsetY;
+      const flickerAlpha = 0.02 + Math.sin(t / 300 + fi * 2.3) * 0.015;
+      g.circle(fx, fy, 15 + Math.sin(t / 400 + fi) * 5).fill({ color: 0xff8833, alpha: flickerAlpha });
     }
 
     // Screen shake

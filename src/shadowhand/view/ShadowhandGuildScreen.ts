@@ -42,16 +42,36 @@ export class ShadowhandGuildScreen {
 
     const bg = new Graphics();
     bg.rect(0, 0, sw, sh).fill({ color: 0x040606 });
-    // Subtle diagonal texture pattern
-    for (let i = 0; i < sw + sh; i += 24) {
-      bg.moveTo(i, 0).lineTo(0, i).stroke({ color: 0x0a0c0a, width: 0.5, alpha: 0.15 });
+    // Stone wall texture (horizontal brick courses)
+    for (let row = 0; row < Math.ceil(sh / 18); row++) {
+      const ry = row * 18;
+      const offset = (row % 2) * 30;
+      bg.moveTo(0, ry).lineTo(sw, ry).stroke({ color: 0x080a08, width: 0.5, alpha: 0.2 });
+      for (let col = 0; col < Math.ceil(sw / 60) + 1; col++) {
+        const cx = col * 60 + offset;
+        bg.moveTo(cx, ry).lineTo(cx, ry + 18).stroke({ color: 0x080a08, width: 0.4, alpha: 0.15 });
+      }
     }
     // Vignette
-    for (let v = 0; v < 4; v++) {
-      const inset = v * 60;
-      bg.rect(0, 0, inset, sh).fill({ color: 0x000000, alpha: 0.02 });
-      bg.rect(sw - inset, 0, inset, sh).fill({ color: 0x000000, alpha: 0.02 });
+    for (let v = 0; v < 5; v++) {
+      const inset = v * 50;
+      bg.rect(0, 0, inset, sh).fill({ color: 0x000000, alpha: 0.025 });
+      bg.rect(sw - inset, 0, inset, sh).fill({ color: 0x000000, alpha: 0.025 });
+      bg.rect(0, 0, sw, inset).fill({ color: 0x000000, alpha: 0.015 });
+      bg.rect(0, sh - inset, sw, inset).fill({ color: 0x000000, alpha: 0.015 });
     }
+    // Heraldic shield (guild crest — centered, faded)
+    const cx = sw / 2, cy = sh / 2;
+    const crestA = 0.04;
+    // Shield outline
+    bg.moveTo(cx - 40, cy - 50).lineTo(cx + 40, cy - 50).lineTo(cx + 40, cy + 10).lineTo(cx, cy + 40).lineTo(cx - 40, cy + 10).closePath().stroke({ color: COL, width: 1.5, alpha: crestA });
+    // Inner shield
+    bg.moveTo(cx - 35, cy - 45).lineTo(cx + 35, cy - 45).lineTo(cx + 35, cy + 7).lineTo(cx, cy + 35).lineTo(cx - 35, cy + 7).closePath().fill({ color: COL, alpha: crestA * 0.3 });
+    // Crossed daggers
+    bg.moveTo(cx - 15, cy - 25).lineTo(cx + 15, cy + 15).stroke({ color: COL, width: 1, alpha: crestA * 2 });
+    bg.moveTo(cx + 15, cy - 25).lineTo(cx - 15, cy + 15).stroke({ color: COL, width: 1, alpha: crestA * 2 });
+    // Guild name arc
+    bg.circle(cx, cy - 15, 25).stroke({ color: COL, width: 0.5, alpha: crestA * 1.5 });
     this.container.addChild(bg);
 
     // Header
