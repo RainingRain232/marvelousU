@@ -73,7 +73,14 @@ export class ShadowhandHUD {
 
     this.container.addChild(this._crewGfx);
 
-    this._hintText.anchor.set(0.5, 1); this._hintText.position.set(sw / 2, _sh - 8);
+    // Hint bar with framed background
+    const hintBg = new Graphics();
+    hintBg.roundRect(sw / 2 - 220, _sh - 24, 440, 20, 3).fill({ color: COL_BG, alpha: 0.5 });
+    hintBg.roundRect(sw / 2 - 220, _sh - 24, 440, 20, 3).stroke({ color: COL, width: 0.5, alpha: 0.15 });
+    hintBg.circle(sw / 2 - 218, _sh - 14, 1.5).fill({ color: COL, alpha: 0.2 });
+    hintBg.circle(sw / 2 + 218, _sh - 14, 1.5).fill({ color: COL, alpha: 0.2 });
+    this.container.addChild(hintBg);
+    this._hintText.anchor.set(0.5, 0.5); this._hintText.position.set(sw / 2, _sh - 14);
     this.container.addChild(this._hintText);
 
     // Log panel with ornamental top edge

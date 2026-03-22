@@ -251,19 +251,42 @@ export class ShadowhandGuildScreen {
       g.roundRect(30, y, sw - 60, 50, 5).stroke({ color: alive ? arch.color : 0x442222, width: 1, alpha: 0.4 });
       this.container.addChild(g);
 
-      g.circle(52, y + 25, 8).fill({ color: alive ? arch.color : 0x333333 });
+      // Role icon (polygon shape)
+      const ix = 52, iy = y + 25, ic = alive ? arch.color : 0x333333;
+      this._drawRoleIcon(g, ix, iy, 8, crew.role, ic);
 
-      this._text(crew.name, 68, y + 5, { fontSize: 12, fill: alive ? arch.color : 0x666655, fontWeight: "bold" });
-      this._text(arch.name, 68, y + 20, { fontSize: 10, fill: 0x889988 });
-      this._text(arch.desc, 68, y + 34, { fontSize: 8, fill: 0x667766 });
+      // Dead/captured: X overlay on icon
+      if (!alive) {
+        g.moveTo(ix - 5, iy - 5).lineTo(ix + 5, iy + 5).stroke({ color: 0xff4444, width: 2, alpha: 0.6 });
+        g.moveTo(ix + 5, iy - 5).lineTo(ix - 5, iy + 5).stroke({ color: 0xff4444, width: 2, alpha: 0.6 });
+      }
 
-      // Stats
-      this._text(`Lv ${crew.level}`, sw - 180, y + 5, { fontSize: 10, fill: 0xaaccaa });
-      this._text(`HP: ${crew.hp}/${crew.maxHp}`, sw - 180, y + 18, { fontSize: 9, fill: alive ? 0x88cc88 : 0x884444 });
-      this._text(`XP: ${crew.xp}/${crew.level * 200}`, sw - 180, y + 31, { fontSize: 9, fill: 0x8888cc });
+      this._text(crew.name, 70, y + 4, { fontSize: 12, fill: alive ? arch.color : 0x666655, fontWeight: "bold" });
+      this._text(`${arch.name} — ${arch.desc}`, 70, y + 19, { fontSize: 8, fill: 0x778877, wordWrap: true, wordWrapWidth: sw - 280 });
+
+      // Stats with visual bars
+      const statX = sw - 190;
+      this._text(`Lv ${crew.level}`, statX, y + 4, { fontSize: 10, fill: 0xaaccaa, fontWeight: "bold" });
+      // HP bar
+      const hpW = 80, hpH = 5;
+      g.rect(statX, y + 18, hpW, hpH).fill({ color: 0x220000 });
+      g.rect(statX, y + 18, hpW * (crew.hp / crew.maxHp), hpH).fill({ color: alive ? 0x44cc44 : 0x553333 });
+      g.rect(statX, y + 18, hpW, hpH).stroke({ color: 0x333333, width: 0.5 });
+      this._text(`${crew.hp}/${crew.maxHp}`, statX + hpW + 4, y + 16, { fontSize: 8, fill: 0x889988 });
+      // XP bar
+      const xpW = 80, xpNeeded = crew.level * 200;
+      g.rect(statX, y + 28, xpW, 4).fill({ color: 0x111122 });
+      g.rect(statX, y + 28, xpW * Math.min(1, crew.xp / xpNeeded), 4).fill({ color: 0x4444cc });
+      g.rect(statX, y + 28, xpW, 4).stroke({ color: 0x222233, width: 0.5 });
+      this._text(`XP ${crew.xp}/${xpNeeded}`, statX + xpW + 4, y + 26, { fontSize: 7, fill: 0x7777aa });
+
+      // Abilities (small text)
+      this._text(`E: ${arch.abilities[0] ?? "—"}  Q: ${arch.abilities[1] ?? "—"}`, 70, y + 36, { fontSize: 7, fill: 0x668866 });
 
       if (!alive) {
-        this._text(crew.captured ? "CAPTURED" : "DEAD", sw - 80, y + 18, { fontSize: 10, fill: 0xff4444, fontWeight: "bold" });
+        const statusColor = crew.captured ? 0xffaa44 : 0xff4444;
+        const statusText = crew.captured ? "CAPTURED" : "DEAD";
+        this._text(statusText, sw - 75, y + 4, { fontSize: 10, fill: statusColor, fontWeight: "bold" });
       }
 
       y += 56;
@@ -312,23 +335,41 @@ export class ShadowhandGuildScreen {
     this._text("Available Equipment", 40, y, { fontSize: 12, fill: 0xccaa88, fontWeight: "bold" });
     y += 18;
 
+    const SLOT_COLORS: Record<string, number> = { tool: 0xccaa44, consumable: 0x44aacc, armor: 0x8888cc, gadget: 0xcc8844 };
+    const SLOT_ICONS: Record<string, string> = { tool: "\u{1F527}", consumable: "\u{1F4A7}", armor: "\u{1F6E1}", gadget: "\u2699" };
+    const armoryDiscount = state.guild.upgrades.has("armory") ? 0.8 : 1.0;
+
     const available = getEquipmentForTier(state.guild.tier);
     for (const equip of available) {
-      const canAfford = state.guild.gold >= equip.cost;
+      const cost = Math.floor(equip.cost * armoryDiscount);
+      const canAfford = state.guild.gold >= cost;
+      const slotCol = SLOT_COLORS[equip.slot] ?? 0x888888;
       const g = new Graphics();
-      g.roundRect(30, y, sw - 60, 32, 3).fill({ color: 0x080808, alpha: 0.6 });
-      g.roundRect(30, y, sw - 60, 32, 3).stroke({ color: canAfford ? 0x444444 : 0x222222, width: 0.5 });
+      // Drop shadow
+      g.roundRect(31, y + 1, sw - 60, 38, 4).fill({ color: 0x000000, alpha: 0.15 });
+      // Card
+      g.roundRect(30, y, sw - 60, 38, 4).fill({ color: 0x080808, alpha: 0.7 });
+      g.roundRect(30, y, sw - 60, 38, 4).stroke({ color: canAfford ? slotCol : 0x222222, width: canAfford ? 1 : 0.5, alpha: canAfford ? 0.4 : 0.2 });
+      // Slot color indicator bar (left edge)
+      g.rect(30, y + 4, 3, 30).fill({ color: slotCol, alpha: canAfford ? 0.6 : 0.2 });
       this.container.addChild(g);
 
-      this._text(equip.name, 42, y + 3, { fontSize: 10, fill: canAfford ? 0xaaccaa : 0x555555, fontWeight: "bold" });
-      this._text(equip.desc, 42, y + 16, { fontSize: 8, fill: 0x667766 });
-      this._text(`${equip.cost}g`, sw - 100, y + 3, { fontSize: 10, fill: canAfford ? 0xffd700 : 0x555544, fontWeight: "bold" });
+      // Slot icon
+      this._text(SLOT_ICONS[equip.slot] ?? "\u25CF", 42, y + 5, { fontSize: 14, fill: slotCol });
+      // Name + tier badge
+      this._text(equip.name, 60, y + 3, { fontSize: 10, fill: canAfford ? 0xaaccaa : 0x555555, fontWeight: "bold" });
+      this._text(`T${equip.tier}`, 60 + equip.name.length * 6.5, y + 4, { fontSize: 7, fill: 0x888877 });
+      this._text(equip.desc, 60, y + 16, { fontSize: 8, fill: 0x778877 });
+      this._text(`Uses: ${equip.uses > 0 ? equip.uses : "\u221e"}`, 60, y + 27, { fontSize: 7, fill: 0x667766 });
+      // Cost (with discount if armory)
+      const costStr = armoryDiscount < 1 ? `${cost}g (was ${equip.cost}g)` : `${cost}g`;
+      this._text(costStr, sw - 110, y + 3, { fontSize: 10, fill: canAfford ? 0xffd700 : 0x555544, fontWeight: "bold" });
 
       if (canAfford) {
-        this._button("BUY", sw - 70, y + 2, 40, 20, 0x44aa88, () => this._buyCallback?.(equip.id));
+        this._button("BUY", sw - 70, y + 6, 40, 22, 0x44aa88, () => this._buyCallback?.(equip.id));
       }
 
-      y += 36;
+      y += 44;
     }
   }
 
@@ -404,6 +445,62 @@ export class ShadowhandGuildScreen {
     }
   }
 
+  private _drawRoleIcon(g: Graphics, cx: number, cy: number, r: number, role: string, color: number): void {
+    // Background circle
+    g.circle(cx, cy, r + 1).fill({ color: 0x111111, alpha: 0.5 });
+    switch (role) {
+      case "cutpurse": // Diamond
+        g.moveTo(cx, cy - r).lineTo(cx + r * 0.7, cy).lineTo(cx, cy + r).lineTo(cx - r * 0.7, cy).closePath().fill({ color });
+        g.moveTo(cx, cy - r).lineTo(cx + r * 0.3, cy - r * 0.3).lineTo(cx, cy).closePath().fill({ color: 0xffffff, alpha: 0.15 });
+        break;
+      case "sapmaster": // Hexagon gear
+        for (let i = 0; i < 6; i++) {
+          const a = -Math.PI / 2 + i * Math.PI / 3;
+          if (i === 0) g.moveTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+          else g.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+        }
+        g.closePath().fill({ color });
+        g.circle(cx, cy, r * 0.4).fill({ color: 0x111111 }); // keyhole center
+        break;
+      case "shade": // 5-point star
+        for (let i = 0; i < 5; i++) {
+          const oa = -Math.PI / 2 + i * Math.PI * 2 / 5;
+          const ia = oa + Math.PI / 5;
+          if (i === 0) g.moveTo(cx + Math.cos(oa) * r, cy + Math.sin(oa) * r);
+          else g.lineTo(cx + Math.cos(oa) * r, cy + Math.sin(oa) * r);
+          g.lineTo(cx + Math.cos(ia) * r * 0.4, cy + Math.sin(ia) * r * 0.4);
+        }
+        g.closePath().fill({ color });
+        break;
+      case "brawler": // Shield
+        g.moveTo(cx - r * 0.7, cy - r).lineTo(cx + r * 0.7, cy - r).lineTo(cx + r * 0.7, cy + r * 0.2);
+        g.lineTo(cx, cy + r).lineTo(cx - r * 0.7, cy + r * 0.2).closePath().fill({ color });
+        // Shield cross
+        g.moveTo(cx, cy - r * 0.6).lineTo(cx, cy + r * 0.5).stroke({ color: 0xffffff, width: 1, alpha: 0.2 });
+        g.moveTo(cx - r * 0.4, cy - r * 0.2).lineTo(cx + r * 0.4, cy - r * 0.2).stroke({ color: 0xffffff, width: 1, alpha: 0.2 });
+        break;
+      case "charlatan": // Theatre mask
+        g.circle(cx - r * 0.25, cy - r * 0.1, r * 0.5).fill({ color });
+        g.circle(cx + r * 0.25, cy - r * 0.1, r * 0.5).fill({ color });
+        g.moveTo(cx - r * 0.3, cy + r * 0.15).bezierCurveTo(cx - r * 0.1, cy + r * 0.7, cx + r * 0.1, cy + r * 0.7, cx + r * 0.3, cy + r * 0.15).fill({ color });
+        // Eye holes
+        g.circle(cx - r * 0.25, cy - r * 0.2, r * 0.15).fill({ color: 0x111111 });
+        g.circle(cx + r * 0.25, cy - r * 0.2, r * 0.15).fill({ color: 0x111111 });
+        break;
+      case "alchemist": // Flask
+        g.moveTo(cx - r * 0.2, cy - r).lineTo(cx + r * 0.2, cy - r).lineTo(cx + r * 0.2, cy - r * 0.5);
+        g.lineTo(cx + r * 0.7, cy + r * 0.3).lineTo(cx + r * 0.5, cy + r).lineTo(cx - r * 0.5, cy + r);
+        g.lineTo(cx - r * 0.7, cy + r * 0.3).lineTo(cx - r * 0.2, cy - r * 0.5).closePath().fill({ color });
+        // Liquid level
+        g.rect(cx - r * 0.4, cy + r * 0.1, r * 0.8, r * 0.6).fill({ color: 0xffffff, alpha: 0.15 });
+        break;
+      default:
+        g.circle(cx, cy, r).fill({ color });
+    }
+    // Border ring
+    g.circle(cx, cy, r + 0.5).stroke({ color, width: 1, alpha: 0.3 });
+  }
+
   private _text(str: string, x: number, y: number, opts: Partial<TextStyle>, center = false): Text {
     const t = new Text({ text: str, style: new TextStyle({ fontFamily: FONT, ...opts } as any) });
     if (center) t.anchor.set(0.5, 0);
@@ -414,19 +511,51 @@ export class ShadowhandGuildScreen {
 
   private _button(label: string, x: number, y: number, w: number, h: number, color: number, onClick: () => void): void {
     const g = new Graphics();
-    g.roundRect(x, y, w, h, 4).fill({ color: 0x0a0a0a, alpha: 0.8 });
+    // Drop shadow
+    g.roundRect(x + 1, y + 1, w, h, 4).fill({ color: 0x000000, alpha: 0.25 });
+    // Body
+    g.roundRect(x, y, w, h, 4).fill({ color: 0x0a0a0a, alpha: 0.85 });
     g.roundRect(x, y, w, h, 4).stroke({ color, width: 1.5, alpha: 0.6 });
+    // Top highlight
+    g.roundRect(x + 1, y + 1, w - 2, h / 2 - 1, 4).fill({ color: 0xffffff, alpha: 0.025 });
     g.eventMode = "static"; g.cursor = "pointer";
-    g.on("pointerdown", onClick);
+    g.on("pointerover", () => {
+      g.alpha = 1.15;
+      g.scale.set(1.02);
+      g.position.set(-x * 0.02, -y * 0.02);
+    });
+    g.on("pointerout", () => {
+      g.alpha = 1.0;
+      g.scale.set(1.0);
+      g.position.set(0, 0);
+    });
+    g.on("pointerdown", () => {
+      g.alpha = 0.85;
+      onClick();
+      setTimeout(() => { g.alpha = 1.0; }, 100);
+    });
     this.container.addChild(g);
-    this._text(label, x + w / 2, y + h / 2 - 6, { fontSize: 10, fill: color, fontWeight: "bold" }, true);
+    this._text(label, x + w / 2, y + h / 2 - 6, { fontSize: 10, fill: color, fontWeight: "bold", letterSpacing: 1 }, true);
   }
 
   private _tabButton(label: string, x: number, y: number, w: number, h: number, sel: boolean, onClick: () => void): void {
     const g = new Graphics();
-    g.roundRect(x, y, w, h, 3).fill({ color: sel ? 0x0a1a0a : 0x080808, alpha: 0.8 });
-    g.roundRect(x, y, w, h, 3).stroke({ color: sel ? COL : 0x444444, width: sel ? 2 : 1, alpha: 0.5 });
+    // Drop shadow
+    if (sel) g.roundRect(x + 1, y + 1, w, h, 3).fill({ color: 0x000000, alpha: 0.2 });
+    // Body
+    g.roundRect(x, y, w, h, 3).fill({ color: sel ? 0x0a1a0a : 0x080808, alpha: 0.85 });
+    g.roundRect(x, y, w, h, 3).stroke({ color: sel ? COL : 0x444444, width: sel ? 2 : 1, alpha: sel ? 0.6 : 0.3 });
+    // Selected: top accent bar
+    if (sel) {
+      g.moveTo(x + 6, y + 1).lineTo(x + w - 6, y + 1).stroke({ color: COL, width: 2, alpha: 0.4 });
+    }
+    // Bottom highlight line for unselected (subtle)
+    if (!sel) {
+      g.moveTo(x + 4, y + h - 1).lineTo(x + w - 4, y + h - 1).stroke({ color: 0x333333, width: 0.5, alpha: 0.2 });
+    }
     g.eventMode = "static"; g.cursor = "pointer";
+    g.on("pointerover", () => { if (!sel) g.alpha = 1.2; });
+    g.on("pointerout", () => { g.alpha = 1.0; });
     g.on("pointerdown", onClick);
     this.container.addChild(g);
     this._text(label, x + w / 2, y + h / 2 - 6, { fontSize: 10, fill: sel ? COL : 0x888877, fontWeight: sel ? "bold" : "normal", letterSpacing: 1 }, true);

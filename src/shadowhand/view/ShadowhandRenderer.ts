@@ -52,6 +52,26 @@ export class ShadowhandRenderer {
 
   init(): void {
     this.container.removeChildren();
+    // Atmospheric background layer
+    const bgGfx = new Graphics();
+    bgGfx.rect(-2000, -2000, 6000, 6000).fill({ color: 0x050508 });
+    // Distant castle wall silhouette (static backdrop)
+    for (let bx = -500; bx < 3000; bx += 120 + Math.sin(bx * 0.01) * 40) {
+      const bh = 30 + Math.sin(bx * 0.03) * 15;
+      bgGfx.rect(bx, -200 - bh, 80 + Math.sin(bx * 0.02) * 20, bh).fill({ color: 0x0a0a10, alpha: 0.3 });
+      // Battlements
+      for (let mx = bx; mx < bx + 80; mx += 12) {
+        bgGfx.rect(mx, -200 - bh - 6, 6, 6).fill({ color: 0x0a0a10, alpha: 0.25 });
+      }
+    }
+    // Fog banks at edges
+    for (let fy = -100; fy < 2000; fy += 80) {
+      const fw = 200 + Math.sin(fy * 0.02) * 100;
+      bgGfx.ellipse(-100, fy, fw, 30).fill({ color: 0x0a0a14, alpha: 0.08 });
+      bgGfx.ellipse(2500, fy, fw, 30).fill({ color: 0x0a0a14, alpha: 0.08 });
+    }
+    this.container.addChild(bgGfx);
+
     this._mapGfx = new Graphics();
     this._detailGfx = new Graphics();
     this._lightGfx = new Graphics();
@@ -1055,6 +1075,11 @@ export class ShadowhandRenderer {
       const hpRatio = thief.hp / thief.maxHp;
       const hpColor = hpRatio > 0.6 ? 0x44cc44 : hpRatio > 0.3 ? 0xccaa22 : 0xff3333;
       g.rect(bx, by, bw * hpRatio, bh).fill({ color: hpColor });
+      // Critical health pulse
+      if (hpRatio <= 0.3) {
+        const critPulse = 0.15 + Math.sin(Date.now() / 120) * 0.1;
+        g.rect(bx - 2, by - 2, bw + 4, bh + 4).fill({ color: 0xff0000, alpha: critPulse });
+      }
       // Segment lines
       for (let si = 1; si < 4; si++) {
         g.moveTo(bx + si * bw / 4, by).lineTo(bx + si * bw / 4, by + bh).stroke({ color: 0x000000, width: 0.5, alpha: 0.3 });
