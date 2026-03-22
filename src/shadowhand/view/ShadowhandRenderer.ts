@@ -412,6 +412,19 @@ export class ShadowhandRenderer {
       this._drawGuard(g, guard);
     }
 
+    // Rescue NPC (if rescue objective)
+    if (heist.objective.type === "rescue" && !heist.objective.rescued) {
+      const npx = heist.objective.npcX * T + this._offsetX + HT;
+      const npy = heist.objective.npcY * T + this._offsetY + HT;
+      const pulse = 0.5 + Math.sin(Date.now() / 500) * 0.3;
+      // Prisoner in chains
+      g.circle(npx, npy, 6).fill({ color: 0xaaaa44, alpha: pulse });
+      g.circle(npx, npy, 10).stroke({ color: 0xaaaa44, width: 1.5, alpha: pulse * 0.4 });
+      // Chains
+      g.moveTo(npx - 4, npy + 6).lineTo(npx - 8, npy + 10).stroke({ color: 0x888888, width: 1 });
+      g.moveTo(npx + 4, npy + 6).lineTo(npx + 8, npy + 10).stroke({ color: 0x888888, width: 1 });
+    }
+
     // Thieves
     for (const thief of heist.thieves) {
       if (!thief.alive) continue;

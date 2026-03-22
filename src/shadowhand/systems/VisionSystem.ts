@@ -119,6 +119,7 @@ export function calculateDetectionRate(result: VisionResult, thief: ThiefUnit): 
 export function updateGuardVision(heist: HeistState, difficulty: ShadowhandDifficulty, dt: number): VisionResult[] {
   const allSightings: VisionResult[] = [];
   const diffSettings = getDifficulty(difficulty);
+  const isParanoid = heist.modifiers.includes("paranoid");
 
   for (const guard of heist.guards) {
     let bestSighting: VisionResult | null = null;
@@ -149,10 +150,11 @@ export function updateGuardVision(heist: HeistState, difficulty: ShadowhandDiffi
         if (thief) guard.investigating = { x: thief.x, y: thief.y };
       }
     } else {
-      // Decay alert when nothing visible
+      // Decay alert when nothing visible (paranoid = halved decay)
       guard.canSeeThief = null;
       if (guard.alertTimer > 0 && guard.alertLevel !== AlertLevel.ALARMED) {
-        guard.alertTimer = Math.max(0, guard.alertTimer - ShadowhandConfig.ALERT_DECAY_RATE * dt);
+        const decayRate = ShadowhandConfig.ALERT_DECAY_RATE * (isParanoid ? 0.5 : 1.0);
+        guard.alertTimer = Math.max(0, guard.alertTimer - decayRate * dt);
         if (guard.alertTimer < ShadowhandConfig.ALERT_SUSPICIOUS_THRESHOLD) {
           guard.alertLevel = AlertLevel.UNAWARE;
           guard.investigating = null;

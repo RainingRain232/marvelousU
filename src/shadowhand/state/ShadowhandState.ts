@@ -188,7 +188,20 @@ export interface HeistState {
   particles: Particle[];
   screenShake: number; // remaining shake intensity
   announcements: { text: string; color: number; timer: number }[];
+  // Guild upgrade flags (copied from state at init for heist-level access)
+  hasShadowLibrary: boolean;
+  hasThievesCant: boolean;
+  hasIntelNetwork: boolean;
+  // Alternate objectives
+  objective: HeistObjective;
 }
+
+export type HeistObjective =
+  | { type: "steal"; desc: string }     // default: steal primary loot and escape
+  | { type: "rescue"; npcX: number; npcY: number; rescued: boolean; desc: string }
+  | { type: "sabotage"; targetsLeft: number; total: number; desc: string }
+  | { type: "timed"; timeLimit: number; desc: string }
+  ;
 
 export type GuildUpgradeId =
   | "safe_house"        // heat decays faster
@@ -314,6 +327,10 @@ export function createHeistState(map: HeistMap): HeistState {
     particles: [],
     screenShake: 0,
     announcements: [],
+    hasShadowLibrary: false,
+    hasThievesCant: false,
+    hasIntelNetwork: false,
+    objective: { type: "steal", desc: "Steal the primary loot and escape." },
   };
 }
 

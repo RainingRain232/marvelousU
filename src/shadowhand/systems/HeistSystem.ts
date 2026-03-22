@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import type { ShadowhandState } from "../state/ShadowhandState";
-import { ShadowhandPhase, AlertLevel, addLog, createHeistState } from "../state/ShadowhandState";
+import { ShadowhandPhase, AlertLevel, addLog, createHeistState, seedRng } from "../state/ShadowhandState";
 import { TARGET_DEFS, type TargetDef } from "../config/TargetDefs";
 import { ShadowhandConfig, getDifficulty } from "../config/ShadowhandConfig";
 import { getEquipmentById } from "../config/EquipmentDefs";
@@ -60,11 +60,39 @@ export function initHeist(state: ShadowhandState): void {
     const oppositeY = heist.map.height - 1 - ep.y;
     heist.map.exitPoints.push({ x: Math.max(1, oppositeX), y: Math.max(1, oppositeY) });
   }
-  if (state.guild.upgrades.has("thieves_cant")) {
-    for (const thief of heist.thieves) {
-      // +1 vision range from shared signals (handled in ThiefSystem)
+  // Thieves' Cant: +1 vision handled in ThiefSystem via modifier check
+  // Shadow Library: enhanced shade meld duration + alchemist bonus
+  if (state.guild.upgrades.has("shadow_library")) {
+    // Add extra acid vial for alchemist
+    const hasAlchemist = heist.thieves.some(t => t.role === "alchemist");
+    if (hasAlchemist) {
+      state.guild.inventory.push({ id: "acid_vial", uses: 2 });
+      addLog(state, "Shadow Library: extra acid vials for alchemist.");
     }
   }
+  // Intel Network: already shown in guild screen, also reveal more map
+  if (state.guild.upgrades.has("intel_network")) {
+    // Pre-reveal rooms near entry points
+    for (const entry of heist.map.entryPoints) {
+      for (let dy = -6; dy <= 6; dy++) {
+        for (let dx = -6; dx <= 6; dx++) {
+          const nx = entry.x + dx, ny = entry.y + dy;
+          if (nx >= 0 && nx < heist.map.width && ny >= 0 && ny < heist.map.height) {
+            heist.map.tiles[ny][nx].revealed = true;
+          }
+        }
+      }
+    }
+    addLog(state, "Intel Network: entry area pre-scouted.");
+  }
+
+  // Copy upgrade flags for heist-level access
+  heist.hasShadowLibrary = state.guild.upgrades.has("shadow_library");
+  heist.hasThievesCant = state.guild.upgrades.has("thieves_cant");
+  heist.hasIntelNetwork = state.guild.upgrades.has("intel_network");
+
+  // Select alternate objective for variety (based on target + day)
+  heist.objective = selectObjective(state, heist);
 
   state.heist = heist;
   state.phase = ShadowhandPhase.HEIST;
@@ -158,6 +186,45 @@ export function updateHeist(state: ShadowhandState, dt: number): void {
   // Spawn reinforcements if alarmed
   if (heist.globalAlert === AlertLevel.ALARMED) {
     spawnReinforcements(heist, state.seed);
+  }
+
+  // Check timed objective
+  if (heist.objective.type === "timed" && heist.elapsedTime >= heist.objective.timeLimit) {
+    heist.announcements.push({ text: "TIME'S UP!", color: 0xff4444, timer: 3 });
+    heist.screenShake = 4;
+    // Force escape — no more time
+    for (const thief of heist.thieves) {
+      if (thief.alive && !thief.captured && !thief.escaped) {
+        thief.escaped = true;
+        thief.alive = false;
+      }
+    }
+    heist.allEscaped = true;
+  }
+
+  // Check sabotage objective completion
+  if (heist.objective.type === "sabotage") {
+    let torchesRemaining = 0;
+    for (let y = 0; y < heist.map.height; y++) {
+      for (let x = 0; x < heist.map.width; x++) {
+        if (heist.map.tiles[y][x].torchSource) torchesRemaining++;
+      }
+    }
+    heist.objective.targetsLeft = torchesRemaining;
+  }
+
+  // Check rescue objective (thief near NPC position)
+  if (heist.objective.type === "rescue" && !heist.objective.rescued) {
+    for (const thief of heist.thieves) {
+      if (!thief.alive || thief.captured || thief.escaped) continue;
+      const dx = thief.x - heist.objective.npcX;
+      const dy = thief.y - heist.objective.npcY;
+      if (dx * dx + dy * dy < 2) {
+        heist.objective.rescued = true;
+        heist.announcements.push({ text: "RESCUED! Get to the exit!", color: 0x44ff44, timer: 4 });
+        heist.screenShake = 2;
+      }
+    }
   }
 
   // Check completion — all thieves escaped or otherwise no longer active
@@ -276,14 +343,14 @@ function completeHeist(state: ShadowhandState): void {
       if (cm.xp >= xpNeeded) {
         cm.xp -= xpNeeded;
         cm.level++;
-        cm.maxHp += 10;
-        cm.hp = cm.maxHp;
-        // Level-up bonuses based on role
+        // Meaningful stat gains per level
         const arch = CREW_ARCHETYPES[cm.role];
-        cm.speed = Math.min(arch.speed + cm.level * 0.05, arch.speed * 1.5);
-        cm.noiseMultiplier = Math.max(arch.noiseMultiplier - cm.level * 0.03, arch.noiseMultiplier * 0.5);
-        cm.visionRange = arch.visionRange + Math.floor(cm.level / 3);
-        addLog(state, `${cm.name} leveled up to ${cm.level}! Stats improved.`);
+        cm.maxHp += 15 + cm.level * 2; // escalating HP
+        cm.hp = cm.maxHp;
+        cm.speed = arch.speed * (1 + cm.level * 0.08); // 8% per level
+        cm.noiseMultiplier = arch.noiseMultiplier * Math.max(0.4, 1 - cm.level * 0.06); // 6% quieter per level
+        cm.visionRange = arch.visionRange + Math.floor(cm.level / 2); // +1 vision every 2 levels
+        addLog(state, `${cm.name} leveled up to ${cm.level}! HP +${15 + cm.level * 2}, Speed +8%, Stealth +6%.`);
       }
     }
   }
@@ -403,4 +470,92 @@ function checkAchievements(state: ShadowhandState, heist: HeistState, score: num
     a.add("grail_thief");
     addLog(state, "\u2605 Achievement: Grail Thief — Steal from the Grail Vault");
   }
+}
+
+// ---------------------------------------------------------------------------
+// Alternate heist objectives
+// ---------------------------------------------------------------------------
+
+function selectObjective(state: ShadowhandState, heist: HeistState): import("../state/ShadowhandState").HeistObjective {
+  const rng = seedRng(state.seed + state.guild.day * 13);
+  const roll = rng();
+  const target = state.currentTarget!;
+
+  // Default is always steal
+  if (target.tier <= 1 || roll < 0.5) {
+    return { type: "steal", desc: `Steal the ${target.primaryLoot.name} and escape.` };
+  }
+
+  // Timed heist (20% chance for tier 2+)
+  if (roll < 0.65) {
+    const timeLimit = 90 + target.tier * 30;
+    return { type: "timed", timeLimit, desc: `Complete the heist in ${Math.floor(timeLimit / 60)}:${(timeLimit % 60).toString().padStart(2, "0")}. Bonus gold for speed.` };
+  }
+
+  // Sabotage (15% chance for tier 2+)
+  if (roll < 0.8) {
+    const targets = 2 + Math.floor(target.tier / 2);
+    // Place sabotage targets on the map (marked torch sources)
+    let placed = 0;
+    for (let y = 0; y < heist.map.height && placed < targets; y++) {
+      for (let x = 0; x < heist.map.width && placed < targets; x++) {
+        if (heist.map.tiles[y][x].torchSource && rng() < 0.4) {
+          placed++;
+        }
+      }
+    }
+    return { type: "sabotage", targetsLeft: placed, total: placed, desc: `Extinguish ${placed} torches and escape. Plunge them into darkness.` };
+  }
+
+  // Rescue (20% chance for tier 3+)
+  if (target.tier >= 3) {
+    // Place rescue NPC in a deep room
+    const rooms = heist.map.rooms;
+    const deepRoom = rooms[rooms.length - 1] ?? rooms[0];
+    const npcX = deepRoom.x + Math.floor(deepRoom.w / 2);
+    const npcY = deepRoom.y + Math.floor(deepRoom.h / 2);
+    return { type: "rescue", npcX, npcY, rescued: false, desc: "Rescue a captured guild member held deep inside." };
+  }
+
+  return { type: "steal", desc: `Steal the ${target.primaryLoot.name} and escape.` };
+}
+
+// ---------------------------------------------------------------------------
+// Heat threat: Inquisition encounter check (called from guild hub)
+// ---------------------------------------------------------------------------
+
+export function checkInquisitionThreat(state: ShadowhandState): { threatened: boolean; message: string; bribeCost: number } {
+  const heat = state.guild.heat.get("default") ?? 0;
+  if (heat < ShadowhandConfig.INQUISITOR_HEAT_THRESHOLD) {
+    return { threatened: false, message: "", bribeCost: 0 };
+  }
+
+  const bribeCost = 50 + Math.floor(heat * 2);
+  return {
+    threatened: true,
+    message: `The Inquisition is investigating your guild! Heat: ${heat}. Pay ${bribeCost}g to bribe them, or risk losing a crew member.`,
+    bribeCost,
+  };
+}
+
+export function payInquisitionBribe(state: ShadowhandState, bribeCost: number): boolean {
+  if (state.guild.gold < bribeCost) return false;
+  state.guild.gold -= bribeCost;
+  const decay = state.guild.upgrades.has("safe_house") ? 30 : 20;
+  state.guild.heat.set("default", Math.max(0, (state.guild.heat.get("default") ?? 0) - decay));
+  addLog(state, `Bribed the Inquisition. Heat reduced by ${decay}.`);
+  return true;
+}
+
+export function sufferInquisitionRaid(state: ShadowhandState): void {
+  // Inquisition captures a random crew member
+  const aliveCrew = state.guild.roster.filter(c => c.alive && !c.captured);
+  if (aliveCrew.length > 0) {
+    const victim = aliveCrew[Math.floor(Math.random() * aliveCrew.length)];
+    victim.captured = true;
+    victim.alive = false;
+    addLog(state, `The Inquisition has captured ${victim.name}!`);
+  }
+  // Heat drops after raid
+  state.guild.heat.set("default", Math.max(0, (state.guild.heat.get("default") ?? 0) - 40));
 }

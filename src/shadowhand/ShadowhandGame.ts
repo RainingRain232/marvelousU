@@ -14,7 +14,7 @@ import { createCrewMember, type CrewRole } from "./config/CrewDefs";
 import { getEquipmentById } from "./config/EquipmentDefs";
 import { getUpgradeById as _getUpgradeById } from "./config/GuildUpgradeDefs";
 
-import { initHeist, updateHeist, decayHeat, consumeEquipment } from "./systems/HeistSystem";
+import { initHeist, updateHeist, decayHeat, consumeEquipment, checkInquisitionThreat, payInquisitionBribe, sufferInquisitionRaid } from "./systems/HeistSystem";
 import {
   moveThiefTo, useSmokeBomb, useSleepDart, useFlashPowder, placeCaltrops,
   unlockDoor, extinguishTorch,
@@ -112,6 +112,9 @@ export class ShadowhandGame {
     this._state.phase = ShadowhandPhase.GUILD_HUB;
     this._cleanupHeistUI();
 
+    // Check Inquisition threat before showing guild
+    this._checkInquisition();
+
     this._guildScreen.setHeistCallback((target, crewIds, equipIds) => {
       viewManager.removeFromLayer("ui", this._guildScreen.container);
       this._guildScreen.hide();
@@ -142,6 +145,20 @@ export class ShadowhandGame {
 
     this._guildScreen.show(this._state, this._sw, this._sh);
     viewManager.addToLayer("ui", this._guildScreen.container);
+  }
+
+  private _checkInquisition(): void {
+    const threat = checkInquisitionThreat(this._state);
+    if (!threat.threatened) return;
+
+    // Auto-bribe if affordable, otherwise suffer raid
+    if (this._state.guild.gold >= threat.bribeCost) {
+      payInquisitionBribe(this._state, threat.bribeCost);
+      addLog(this._state, `Inquisition averted! Bribed for ${threat.bribeCost}g.`);
+    } else {
+      sufferInquisitionRaid(this._state);
+      addLog(this._state, "The Inquisition raids your guild!");
+    }
   }
 
   private _recruitCrew(role: CrewRole): void {

@@ -131,7 +131,9 @@ export class ShadowhandGuildScreen {
       this._text(t.name, cx + cardW / 2, cy + 6, { fontSize: 12, fill: sel ? t.color : 0xaabbaa, fontWeight: "bold" }, true);
       this._text(`Tier ${t.tier}`, cx + cardW / 2, cy + 22, { fontSize: 9, fill: 0x888877 }, true);
       this._text(t.desc, cx + 8, cy + 36, { fontSize: 8, fill: 0x777766, wordWrap: true, wordWrapWidth: cardW - 16 });
-      this._text(`Guards: ${t.guardCount[0]}-${t.guardCount[1]}`, cx + 8, cy + cardH - 22, { fontSize: 8, fill: 0x888877 });
+      const hasIntel = state.guild.upgrades.has("intel_network");
+      const guardStr = hasIntel ? `Guards: ~${Math.round((t.guardCount[0] + t.guardCount[1]) / 2)}` : `Guards: ???`;
+      this._text(guardStr, cx + 8, cy + cardH - 22, { fontSize: 8, fill: hasIntel ? 0xaaaa44 : 0x666655 });
       this._text(`Prize: ${t.primaryLoot.name}`, cx + 8, cy + cardH - 10, { fontSize: 8, fill: 0xffd700 });
       if (completed) {
         this._text("\u2713", cx + cardW - 18, cy + 6, { fontSize: 14, fill: 0x44aa44 });

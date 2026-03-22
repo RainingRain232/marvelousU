@@ -104,6 +104,26 @@ export class ShadowhandHUD {
     for (const l of heist.lootCollected) totalVal += l.value;
     this._lootText.text = `Loot: ${totalVal}g${heist.primaryLootTaken ? " \u2605" : ""}`;
 
+    // Objective
+    const obj = heist.objective;
+    let objStr = "";
+    if (obj.type === "timed") {
+      const rem = Math.max(0, obj.timeLimit - heist.elapsedTime);
+      const m = Math.floor(rem / 60), s = Math.floor(rem % 60);
+      objStr = `TIME: ${m}:${s.toString().padStart(2, "0")}`;
+    } else if (obj.type === "sabotage") {
+      objStr = `Torches: ${obj.targetsLeft}/${obj.total}`;
+    } else if (obj.type === "rescue") {
+      objStr = obj.rescued ? "RESCUED! Escape!" : "Rescue the prisoner";
+    }
+    if (objStr) {
+      const objText = new Text({ text: objStr, style: new TextStyle({ fontFamily: FONT, fontSize: 11, fill: obj.type === "timed" ? 0xff6644 : 0x88aaff, fontWeight: "bold" }) });
+      objText.anchor.set(0.5, 0);
+      objText.position.set(sw / 2, 52);
+      this.container.addChild(objText);
+      this._crewTexts.push(objText);
+    }
+
     // Speed
     this._speedText.text = heist.speedMult !== 1 ? `Speed: ${heist.speedMult}x` : "";
 

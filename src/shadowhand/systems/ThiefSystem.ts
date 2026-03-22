@@ -117,8 +117,11 @@ export function updateThiefMovement(heist: HeistState, dt: number): void {
       }
     }
 
-    // Reveal tiles around thief (shade sees farther in dark)
-    const visionRange = thief.role === "shade" ? 6 : 4;
+    // Reveal tiles around thief — affected by role, fog modifier, thieves_cant upgrade
+    let visionRange = thief.role === "shade" ? 6 : 4;
+    if (heist.modifiers.includes("fog")) visionRange -= 2;
+    if (heist.hasThievesCant) visionRange += 1;
+    visionRange = Math.max(2, visionRange);
     revealAround(heist, thief.x, thief.y, visionRange);
 
     // Pick up loot automatically (brawler can carry heavy items)
@@ -284,7 +287,7 @@ export function shadowMeld(heist: HeistState, thiefId: string): boolean {
   if (ty >= 0 && ty < heist.map.height && tx >= 0 && tx < heist.map.width) {
     if (!heist.map.tiles[ty][tx].lit) {
       thief.shadowMeld = true;
-      thief.shadowMeldTimer = 8; // 8 game-seconds, tied to heist time
+      thief.shadowMeldTimer = heist.hasShadowLibrary ? 12 : 8;
       return true;
     }
   }
