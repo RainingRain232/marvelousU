@@ -380,6 +380,12 @@ const GAME_MODES: GameModeEntry[] = [
     desc: "Strategic campaign: lead your warband across the realm",
     skipSetup: true,
   },
+  {
+    mode: GameMode.SHADOWHAND,
+    label: "SHADOWHAND",
+    desc: "Stealth heist: plan the job, pick your crew, stick to the shadows",
+    skipSetup: true,
+  },
 ];
 
 // ---------------------------------------------------------------------------

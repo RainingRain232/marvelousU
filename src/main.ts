@@ -148,6 +148,7 @@ import { JoustingGame } from "./jousting/JoustingGame";
 import { ExodusGame } from "./exodus/ExodusGame";
 import { CovenGame } from "./coven/CovenGame";
 import { CaravanGame } from "./caravan/CaravanGame";
+import { ShadowhandGame } from "./shadowhand/ShadowhandGame";
 import { camelotHubScreen } from "@view/ui/CamelotHubScreen";
 
 // World mode imports
@@ -355,6 +356,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     [GameMode.EXODUS]: 31,
     [GameMode.COVEN]: 32,
     [GameMode.CARAVAN]: 33,
+    [GameMode.SHADOWHAND]: 34,
   };
   // Modes that need the setup screen (not skipSetup)
   const NEEDS_SETUP = new Set([GameMode.STANDARD, GameMode.DEATHMATCH, GameMode.BATTLEFIELD, GameMode.WAVE]);
@@ -539,6 +541,11 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     if (menuScreen.selectedGameMode === GameMode.CARAVAN) {
       menuScreen.hide();
       _bootCaravanGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.SHADOWHAND) {
+      menuScreen.hide();
+      _bootShadowhandGame();
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.WORLD) {
@@ -3388,6 +3395,24 @@ async function _bootCovenGame(): Promise<void> {
     menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
   window.addEventListener("covenExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Shadowhand mode boot
+// ---------------------------------------------------------------------------
+
+let _shadowhandGame: ShadowhandGame | null = null;
+
+async function _bootShadowhandGame(): Promise<void> {
+  if (_shadowhandGame) { _shadowhandGame.destroy(); _shadowhandGame = null; }
+  _shadowhandGame = new ShadowhandGame();
+  await _shadowhandGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("shadowhandExit", _onExit);
+    if (_shadowhandGame) { _shadowhandGame.destroy(); _shadowhandGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("shadowhandExit", _onExit);
 }
 
 // ---------------------------------------------------------------------------
