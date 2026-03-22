@@ -34,6 +34,10 @@ export class JoustingAudio {
       this._crowd = this._ctx.createGain();
       this._crowd.gain.value = 0.08;
       this._crowd.connect(this._master);
+
+      this._music = this._ctx.createGain();
+      this._music.gain.value = 0.06;
+      this._music.connect(this._master);
     } catch {
       this._enabled = false;
     }
@@ -49,6 +53,7 @@ export class JoustingAudio {
     this.stopGallop();
     this.stopMeterTone();
     this.stopCrowd();
+    this.stopMusic();
     if (this._ctx && this._ctx.state !== "closed") {
       try { this._ctx.close(); } catch { /* noop */ }
     }
@@ -362,6 +367,118 @@ export class JoustingAudio {
     if (this._crowdSource) {
       try { this._crowdSource.stop(); } catch { /* noop */ }
       this._crowdSource = null;
+    }
+  }
+
+  // =========================================================================
+  // Procedural Background Music
+  // =========================================================================
+
+  /** Start aiming phase music — low drone + arpeggiated harp. */
+  startAimingMusic(): void {
+    if (this._musicPhase === "aiming") return;
+    this.stopMusic();
+    this._musicPhase = "aiming";
+    const ctx = this._ensure();
+    if (!ctx) return;
+
+    // Low drone (D2 ~ 73 Hz)
+    this._musicDrone = ctx.createOscillator();
+    this._musicDrone.type = "sine";
+    this._musicDrone.frequency.value = 73;
+    const droneGain = ctx.createGain();
+    droneGain.gain.value = 0.12;
+    this._musicDrone.connect(droneGain);
+    droneGain.connect(this._music);
+    this._musicDrone.start();
+
+    // Arpeggiated harp pattern (D minor: D4-F4-A4-D5)
+    const notes = [293, 349, 440, 587, 440, 349]; // D4 F4 A4 D5 A4 F4
+    let noteIdx = 0;
+    this._musicArp = window.setInterval(() => {
+      const c = this._ensure();
+      if (!c) return;
+      const osc = c.createOscillator();
+      osc.type = "triangle";
+      osc.frequency.value = notes[noteIdx % notes.length];
+      const g2 = c.createGain();
+      g2.gain.setValueAtTime(0.08, c.currentTime);
+      g2.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.6);
+      osc.connect(g2);
+      g2.connect(this._music);
+      osc.start();
+      osc.stop(c.currentTime + 0.6);
+      noteIdx++;
+    }, 500);
+  }
+
+  /** Start charge phase music — accelerating drum + tension drone. */
+  startChargeMusic(): void {
+    if (this._musicPhase === "charge") return;
+    this.stopMusic();
+    this._musicPhase = "charge";
+    const ctx = this._ensure();
+    if (!ctx) return;
+
+    // Tension drone (rising pitch)
+    this._musicDrone = ctx.createOscillator();
+    this._musicDrone.type = "sawtooth";
+    this._musicDrone.frequency.value = 55;
+    this._musicDrone.frequency.linearRampToValueAtTime(110, ctx.currentTime + 3);
+    const droneGain = ctx.createGain();
+    droneGain.gain.value = 0.04;
+    const flt = ctx.createBiquadFilter();
+    flt.type = "lowpass";
+    flt.frequency.value = 200;
+    this._musicDrone.connect(flt);
+    flt.connect(droneGain);
+    droneGain.connect(this._music);
+    this._musicDrone.start();
+
+    // Accelerating drum pattern
+    let interval = 350;
+    let beat = 0;
+    const drumTick = () => {
+      const c = this._ensure();
+      if (!c || this._musicPhase !== "charge") return;
+      // Drum hit: short noise burst
+      const len = Math.floor(c.sampleRate * 0.04);
+      const buf = c.createBuffer(1, len, c.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) {
+        d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (len * 0.2));
+      }
+      const src = c.createBufferSource();
+      src.buffer = buf;
+      const g2 = c.createGain();
+      g2.gain.value = beat % 4 === 0 ? 0.12 : 0.06; // accent every 4th
+      const drumFlt = c.createBiquadFilter();
+      drumFlt.type = "lowpass";
+      drumFlt.frequency.value = beat % 4 === 0 ? 300 : 500;
+      src.connect(drumFlt);
+      drumFlt.connect(g2);
+      g2.connect(this._music);
+      src.start();
+      beat++;
+      interval = Math.max(120, interval - 8); // accelerate
+      this._musicDrum = window.setTimeout(drumTick, interval);
+    };
+    drumTick();
+  }
+
+  stopMusic(): void {
+    this._musicPhase = "none";
+    if (this._musicDrone) {
+      try { this._musicDrone.stop(); } catch { /* noop */ }
+      this._musicDrone = null;
+    }
+    if (this._musicArp !== null) {
+      clearInterval(this._musicArp);
+      this._musicArp = null;
+    }
+    if (this._musicDrum !== null) {
+      clearTimeout(this._musicDrum);
+      this._musicDrum = null;
     }
   }
 }

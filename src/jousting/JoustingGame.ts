@@ -292,7 +292,98 @@ const POTION_COST = 25;
 const FEINT_STAMINA_COST = 15;
 const FEINT_WINDOW = 0.4; // last 40% of charge
 
+// ---------------------------------------------------------------------------
+// Arena themes
+// ---------------------------------------------------------------------------
+
+type ArenaTheme = "meadow" | "courtyard" | "snow" | "night";
+
+interface ArenaColors {
+  sky: number[];
+  ground: number;
+  track: number;
+  standColor: number;
+  treeGreen: number;
+  name: string;
+}
+
+const ARENA_THEMES: Record<ArenaTheme, ArenaColors> = {
+  meadow: { sky: [0x0c1220, 0x12203a, 0x1a3050, 0x244060, 0x305570, 0x406880], ground: 0x2a4a1a, track: 0x7a5c3a, standColor: 0x3a2211, treeGreen: 0x1a3318, name: "The Meadow" },
+  courtyard: { sky: [0x141820, 0x1a2430, 0x223040, 0x2a3a50, 0x344860, 0x3e5570], ground: 0x2a3a2a, track: 0x6a5a4a, standColor: 0x3a2a1a, treeGreen: 0x1a2a18, name: "Castle Courtyard" },
+  snow: { sky: [0x1a2030, 0x2a3040, 0x3a4555, 0x4a5a6a, 0x5a6a7a, 0x6a7a8a], ground: 0x4a5a6a, track: 0x5a5045, standColor: 0x3a3030, treeGreen: 0x1a3028, name: "Winter Lists" },
+  night: { sky: [0x050810, 0x080c18, 0x0a1020, 0x0c1428, 0x0e1830, 0x101c38], ground: 0x1a2a12, track: 0x5a4830, standColor: 0x2a1808, treeGreen: 0x0a1a08, name: "Torchlit Arena" },
+};
+
+const ALL_ARENAS: ArenaTheme[] = ["meadow", "courtyard", "snow", "night"];
+
+// ---------------------------------------------------------------------------
+// AI combat personality
+// ---------------------------------------------------------------------------
+
+interface AIPersonality {
+  preferredLance: Zone | null; // zone they favor (null = balanced)
+  preferredShield: Zone | null;
+  aggressiveness: number; // 0-1, how often they go for high-risk zones
+  feintLikelihood: number; // multiplier on base feint chance
+  firstTiltBehavior: "aggressive" | "defensive" | "balanced";
+}
+
+const KNIGHT_PERSONALITIES: AIPersonality[] = [
+  { preferredLance: null, preferredShield: "mid", aggressiveness: 0.2, feintLikelihood: 0, firstTiltBehavior: "balanced" }, // Cedric: timid, defaults mid
+  { preferredLance: "mid", preferredShield: "mid", aggressiveness: 0.3, feintLikelihood: 0, firstTiltBehavior: "defensive" }, // Bors: always steady mid
+  { preferredLance: "high", preferredShield: "low", aggressiveness: 0.7, feintLikelihood: 0.5, firstTiltBehavior: "aggressive" }, // Gareth: aggressive, aims high
+  { preferredLance: null, preferredShield: null, aggressiveness: 0.5, feintLikelihood: 2.0, firstTiltBehavior: "balanced" }, // Tristan: feints constantly
+  { preferredLance: "low", preferredShield: "high", aggressiveness: 0.4, feintLikelihood: 0.5, firstTiltBehavior: "defensive" }, // Percival: defensive, aims low
+  { preferredLance: "high", preferredShield: "high", aggressiveness: 0.8, feintLikelihood: 1.0, firstTiltBehavior: "aggressive" }, // Gawain: opens aggressive, aims high
+  { preferredLance: null, preferredShield: null, aggressiveness: 0.6, feintLikelihood: 1.5, firstTiltBehavior: "balanced" }, // Lancelot: perfect adaptability
+  { preferredLance: null, preferredShield: null, aggressiveness: 0.9, feintLikelihood: 2.0, firstTiltBehavior: "aggressive" }, // Arthur: relentless
+];
+
 // Power meter defaults now in DIFFICULTY_MAP (perfectZone, goodZone, meterSpeed)
+
+// ---------------------------------------------------------------------------
+// Weather
+// ---------------------------------------------------------------------------
+
+type Weather = "sunny" | "rain" | "wind" | "fog";
+
+interface WeatherDef {
+  name: string;
+  swayMult: number; // lance sway multiplier (1 = normal)
+  unhorseMod: number; // added to unhorse chance
+  zoneRevealProgress: number; // when opponent zones are revealed (lower = later)
+  color: number;
+  desc: string;
+}
+
+const WEATHER_DEFS: Record<Weather, WeatherDef> = {
+  sunny: { name: "Clear Skies", swayMult: 1.0, unhorseMod: 0, zoneRevealProgress: 0.65, color: 0xffee88, desc: "Fair weather — no modifiers" },
+  rain: { name: "Heavy Rain", swayMult: 1.4, unhorseMod: 0.1, zoneRevealProgress: 0.65, color: 0x6688aa, desc: "Slippery saddles (+sway, +unhorse)" },
+  wind: { name: "Strong Wind", swayMult: 1.2, unhorseMod: 0, zoneRevealProgress: 0.65, color: 0x88aacc, desc: "Lance drifts in gusts (+sway)" },
+  fog: { name: "Dense Fog", swayMult: 1.0, unhorseMod: 0, zoneRevealProgress: 0.85, color: 0x778899, desc: "Opponent zones hidden longer" },
+};
+
+const ALL_WEATHER: Weather[] = ["sunny", "rain", "wind", "fog"];
+
+// ---------------------------------------------------------------------------
+// Cosmetics (unlockable via mastery milestones)
+// ---------------------------------------------------------------------------
+
+interface CosmeticUnlock {
+  id: string;
+  name: string;
+  desc: string;
+  check: (m: MasteryData) => boolean;
+  color: number; // applied to player knight
+}
+
+const COSMETIC_UNLOCKS: CosmeticUnlock[] = [
+  { id: "gold_lance", name: "Golden Lance", desc: "Win 5 matches total", color: 0xffd700, check: (m) => { let w = 0; for (const k of Object.values(m.knights)) w += k.wins; return w >= 5; } },
+  { id: "crimson_armor", name: "Crimson Armor", desc: "Unhorse 10 opponents total", color: 0xcc2222, check: (m) => { let u = 0; for (const k of Object.values(m.knights)) u += k.unhorses; return u >= 10; } },
+  { id: "royal_purple", name: "Royal Purple", desc: "Clear all 4 challenge modes", color: 0x8844cc, check: (m) => m.challengeClears.normal && m.challengeClears.ironGauntlet && m.challengeClears.flawless && m.challengeClears.handicap },
+  { id: "white_steed", name: "White Steed", desc: "Complete a full tournament clear", color: 0xeeeeff, check: (m) => m.totalWins >= 1 },
+  { id: "emerald_shield", name: "Emerald Shield", desc: "Win 3 perfect matches (all perfect timing)", color: 0x22cc66, check: (m) => { let p = 0; for (const k of Object.values(m.knights)) p += k.perfectWins; return p >= 3; } },
+];
 
 interface Particle {
   x: number; y: number; vx: number; vy: number;
@@ -412,7 +503,24 @@ interface JoustState {
   impactRecoilPlayer: number; // 0-1, how far player knight recoils backward
   impactRecoilAI: number; // 0-1, how far AI knight recoils backward
   impactZoom: number; // 0-1, brief zoom-in toward impact point
-  impactSeverity: number; // 0=block, 1=hit, 2=strong, 3=unhorse — controls effect intensity
+  impactSeverity: number;
+  // Weather
+  weather: Weather;
+  // AI tell (lance drift animation during aiming)
+  aiTellDrift: number; // -1 to 1, how much AI lance visually drifts toward their zone
+  // Cosmetics
+  unlockedCosmetics: string[];
+  activeCosmetic: string; // id of active cosmetic (affects player color)
+  // Random bracket
+  randomBracket: boolean;
+  knightOrder: number[];
+  // Arena theme
+  arenaTheme: ArenaTheme;
+  // Charge stages (progressive tension)
+  chargeStage: number; // 0-3, updated during charge based on progress
+  // Replay
+  replayActive: boolean;
+  replayTimer: number;
 }
 
 function _readBest(): number {
@@ -455,6 +563,11 @@ function createState(): JoustState {
     showOpponentZones: false, feintDodged: false,
     tiltRecoveryTimer: 0, lastTiltWinner: "draw",
     impactRecoilPlayer: 0, impactRecoilAI: 0, impactZoom: 0, impactSeverity: 0,
+    weather: "sunny", aiTellDrift: 0,
+    unlockedCosmetics: [], activeCosmetic: "",
+    randomBracket: false, knightOrder: [0, 1, 2, 3, 4, 5, 6, 7],
+    arenaTheme: "meadow", chargeStage: 0,
+    replayActive: false, replayTimer: 0,
   };
 }
 
@@ -523,10 +636,11 @@ function clearJustPressed(): void { for (const k of Object.keys(_justPressedMap)
 function chargeDuration(round: number): number {
   return Math.max(MIN_CHARGE_DURATION, BASE_CHARGE_DURATION - round * CHARGE_SPEEDUP_PER_ROUND);
 }
-function lanceSway(stamina: number, t: number, steadyBonus = false): number {
+function lanceSway(stamina: number, t: number, steadyBonus = false, weatherSway = 1.0): number {
   const missing = MAX_STAMINA - stamina;
   let a = LANCE_SWAY_BASE + missing * LANCE_SWAY_PER_MISSING_STAMINA;
-  if (steadyBonus) a *= 0.3; // steady hand reduces sway by 70%
+  if (steadyBonus) a *= 0.3;
+  a *= weatherSway;
   return Math.sin(t * 4.5) * a + Math.sin(t * 7.3) * a * 0.5;
 }
 function zoneIndex(z: Zone): number { return LANCE_ZONES.indexOf(z); }
@@ -537,6 +651,27 @@ function tiltsForRound(round: number): number {
   if (round >= 7) return 5; // Final 2 knights: best of 5
   if (round >= 4) return 5; // Mid-tier: best of 5
   return TILT_COUNT; // Early: best of 3
+}
+
+/** Get player's display color (base or cosmetic override). */
+function getPlayerColor(s: JoustState): number {
+  if (s.activeCosmetic) {
+    const cos = COSMETIC_UNLOCKS.find(c => c.id === s.activeCosmetic);
+    if (cos) return cos.color;
+  }
+  return PLAYER_COLOR;
+}
+
+/** Get current opponent knight (supports random bracket order). */
+function getOpponent(s: JoustState): Knight {
+  const idx = s.knightOrder[s.roundIndex] ?? s.roundIndex;
+  return TOURNAMENT_KNIGHTS[idx] ?? TOURNAMENT_KNIGHTS[0];
+}
+
+/** Get AI personality for current opponent. */
+function getPersonality(s: JoustState): AIPersonality {
+  const idx = s.knightOrder[s.roundIndex] ?? s.roundIndex;
+  return KNIGHT_PERSONALITIES[idx] ?? KNIGHT_PERSONALITIES[0];
 }
 
 /** Deterministic pseudo-random for seeded visuals (so trees/flowers don't jitter). */
@@ -693,13 +828,31 @@ export class JoustingGame {
     }
     if (justPressed("Space") || justPressed("Enter")) {
       s.playerAbility = SELECTABLE_ABILITIES[s.abilityCursor];
-      // Apply challenge mode effects
-      if (s.challengeMode === "handicap") {
-        s.gold = 0;
-        // handicap AI bonus applied in _decideAI via difficulty
+      if (s.challengeMode === "handicap") s.gold = 0;
+      // Random bracket: shuffle knight order
+      if (s.randomBracket) {
+        const order = [0, 1, 2, 3, 4, 5, 6, 7];
+        for (let i = order.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [order[i], order[j]] = [order[j], order[i]];
+        }
+        s.knightOrder = order;
+      }
+      // Roll weather and arena for first match
+      s.weather = ALL_WEATHER[Math.floor(Math.random() * ALL_WEATHER.length)];
+      s.arenaTheme = ALL_ARENAS[Math.floor(Math.random() * ALL_ARENAS.length)];
+      // Check cosmetic unlocks
+      s.unlockedCosmetics = COSMETIC_UNLOCKS.filter(c => c.check(s.mastery)).map(c => c.id);
+      // Apply active cosmetic if any
+      if (s.unlockedCosmetics.length > 0 && !s.activeCosmetic) {
+        s.activeCosmetic = s.unlockedCosmetics[s.unlockedCosmetics.length - 1]; // latest unlock
       }
       joustingAudio.confirm();
       s.phase = Phase.PRE_MATCH; s.timer = 3.0;
+    }
+    // Toggle random bracket with R
+    if (justPressed("KeyR") && (s.mastery.totalWins > 0 || s.bestRound >= 4)) {
+      s.randomBracket = !s.randomBracket;
     }
   }
 
@@ -748,8 +901,8 @@ export class JoustingGame {
       s.unhorseAnimTimer = 0; s.unhorsePlayerFallAngle = 0; s.unhorseAIFallAngle = 0;
       s.impactRecoilPlayer = 0; s.impactRecoilAI = 0; s.impactZoom = 0; s.impactSeverity = 0;
       s.impactFlash = 0;
-      // Start crowd ambient for match atmosphere
       joustingAudio.startCrowd();
+      joustingAudio.startAimingMusic();
       this._decideAI();
     }
   }
@@ -761,6 +914,20 @@ export class JoustingGame {
     const igBoost = (s.challengeMode === "ironGauntlet" && s.tiltIndex % 3 === 2) ? 1.25 : 1;
     s.chargeProgress += (dt / chargeDuration(s.roundIndex)) * speedMult * igBoost;
     if (s.chargeProgress > 0.5) s.crowdExcitement = Math.min(1, s.crowdExcitement + dt * 2);
+
+    // Charge stages — progressive tension
+    const prevStage = s.chargeStage;
+    if (s.chargeProgress < 0.25) s.chargeStage = 0;
+    else if (s.chargeProgress < 0.5) s.chargeStage = 1;
+    else if (s.chargeProgress < 0.75) s.chargeStage = 2;
+    else s.chargeStage = 3;
+    // Stage transition effects
+    if (s.chargeStage > prevStage) {
+      if (s.chargeStage === 2) s.crowdExcitement = Math.min(1, s.crowdExcitement + 0.2); // crowd stirs at 50%
+      if (s.chargeStage === 3) {
+        s.slowMo = 0.92; s.slowMoTimer = 0.15; // brief micro-slowdown at 75% — tension peak
+      }
+    }
 
     // Power windows — periodic brief bonus windows during charge (dt-based, no setTimeout)
     if (s.powerWindowActive) {
@@ -775,8 +942,9 @@ export class JoustingGame {
       }
     }
 
-    // Reveal opponent zones in last 35% of charge
-    s.showOpponentZones = s.chargeProgress > 0.65;
+    // Reveal opponent zones (fog delays reveal)
+    const weatherDef = WEATHER_DEFS[s.weather];
+    s.showOpponentZones = s.chargeProgress > weatherDef.zoneRevealProgress;
 
     // Power meter oscillates (sine wave 0-1) — speed from difficulty
     const diff = DIFFICULTY_MAP[s.difficulty];
@@ -838,10 +1006,11 @@ export class JoustingGame {
     }
 
     // AI feint (ability-based, or any AI in later rounds at lower chance)
-    const opp = TOURNAMENT_KNIGHTS[s.roundIndex];
+    const opp = getOpponent(s);
     const canAIFeint = opp.ability === "feinter" || opp.ability === "pendragon";
-    const lateRoundFeint = s.roundIndex >= 4 && !canAIFeint; // later knights can feint weakly
-    const feintChance = canAIFeint ? 0.08 : lateRoundFeint ? 0.03 : 0;
+    const pers = getPersonality(s);
+    const lateRoundFeint = s.roundIndex >= 4 && !canAIFeint;
+    const feintChance = (canAIFeint ? 0.08 : lateRoundFeint ? 0.03 : 0) * Math.max(1, pers.feintLikelihood);
     if (feintChance > 0 && !s.aiFeinted && s.chargeProgress > (1 - FEINT_WINDOW) && Math.random() < feintChance) {
       // AI shifts to a random different zone
       const zones: Zone[] = LANCE_ZONES.filter(z => z !== s.aiLance);
@@ -862,6 +1031,7 @@ export class JoustingGame {
       this._resolveImpact();
       joustingAudio.stopGallop();
       joustingAudio.stopMeterTone();
+      joustingAudio.stopMusic();
       // Impact freeze duration scales with severity (block=0.6s, hit=0.9s, strong=1.1s, unhorse=1.4s)
       const freezeDurations = [0.6, 0.9, 1.1, 1.4];
       s.phase = Phase.IMPACT; s.timer = freezeDurations[s.impactSeverity] ?? IMPACT_FREEZE;
@@ -872,6 +1042,11 @@ export class JoustingGame {
 
   private _updateAiming(dt: number): void {
     const s = this._state; s.aimTimer -= dt;
+    // AI tell: lance drifts toward AI's chosen zone (subtle, skill-based)
+    const opp = getOpponent(s);
+    const tellStrength = Math.max(0, 1 - opp.skill * 1.2); // lower skill = more obvious tell
+    const targetDrift = s.aiLance === "high" ? -1 : s.aiLance === "low" ? 1 : 0;
+    s.aiTellDrift += (targetDrift * tellStrength - s.aiTellDrift) * dt * 1.5; // smooth drift
     if (justPressed("ArrowUp") || justPressed("KeyW")) { const i = zoneIndex(s.playerLance); if (i > 0) s.playerLance = LANCE_ZONES[i - 1]; }
     if (justPressed("ArrowDown") || justPressed("KeyS")) { const i = zoneIndex(s.playerLance); if (i < 2) s.playerLance = LANCE_ZONES[i + 1]; }
     if (justPressed("ArrowLeft") || justPressed("KeyA")) { const i = zoneIndex(s.playerShield); if (i > 0) s.playerShield = LANCE_ZONES[i - 1]; }
@@ -888,6 +1063,7 @@ export class JoustingGame {
       joustingAudio.startGallop();
       joustingAudio.startMeterTone();
       joustingAudio.startCrowd();
+      joustingAudio.startChargeMusic();
       // Tutorial hint for first match
       if (s.isFirstRun && s.roundIndex === 0 && s.tiltIndex === 0) {
         s.showHint = true;
@@ -926,11 +1102,15 @@ export class JoustingGame {
       const tc = tiltsForRound(s.roundIndex);
       const needed = Math.ceil(tc / 2);
       if (s.playerScore >= needed || s.opponentScore >= needed || s.tiltIndex >= tc) {
-        s.phase = Phase.MATCH_RESULT; s.timer = RESULT_DISPLAY + 1.0;
-        // Match-winning slow-mo for dramatic final tilt
-        if (s.playerScore > s.opponentScore) {
+        // Instant replay of winning tilt before match result
+        if (s.playerScore > s.opponentScore && s.impactSeverity >= 1) {
+          s.replayActive = true; s.replayTimer = 1.5; // 1.5s replay
+          s.slowMo = 0.35; s.slowMoTimer = 1.5; // slow during replay
+          s.chargeProgress = 0.85; // show last 15% of charge as "replay"
+        }
+        s.phase = Phase.MATCH_RESULT; s.timer = RESULT_DISPLAY + (s.replayActive ? 1.5 : 0);
+        if (s.playerScore > s.opponentScore && !s.replayActive) {
           s.slowMo = 0.4; s.slowMoTimer = 0.6;
-          // Extra drama for final match (King Arthur)
           if (s.roundIndex === TOURNAMENT_KNIGHTS.length - 1) {
             s.slowMo = 0.2; s.slowMoTimer = 1.0;
           }
@@ -944,9 +1124,9 @@ export class JoustingGame {
         s.playerLance = "mid"; s.playerShield = "mid";
         s.playerUnhorsed = false; s.aiUnhorsed = false;
         s.unhorseAnimTimer = 0; s.unhorsePlayerFallAngle = 0; s.unhorseAIFallAngle = 0;
-        // Reset impact visuals for clean next tilt
         s.impactRecoilPlayer = 0; s.impactRecoilAI = 0; s.impactZoom = 0; s.impactSeverity = 0;
         s.impactFlash = 0;
+        joustingAudio.startAimingMusic();
         this._decideAI();
       }
     }
@@ -985,7 +1165,9 @@ export class JoustingGame {
             s.playerLanceHistory = []; s.playerShieldHistory = []; s.aiLanceHistory = []; s.aiShieldHistory = [];
             s.crowdFavor = 0; s.crowdFavorUsed = false; s.hitsTaken = 0;
             s.impactRecoilPlayer = 0; s.impactRecoilAI = 0; s.impactZoom = 0;
-            joustingAudio.startCrowd(); // keep crowd audio flowing
+            joustingAudio.startCrowd();
+            s.weather = ALL_WEATHER[Math.floor(Math.random() * ALL_WEATHER.length)];
+            s.arenaTheme = ALL_ARENAS[s.roundIndex % ALL_ARENAS.length];
             s.phase = Phase.PRE_MATCH; s.timer = 2.0;
           }
           // Random event (40% chance after each win)
@@ -1040,6 +1222,8 @@ export class JoustingGame {
         s.playerStamina = MAX_STAMINA; s.aiStamina = MAX_STAMINA;
         s.playerLanceHistory = []; s.playerShieldHistory = []; s.aiLanceHistory = []; s.aiShieldHistory = [];
         s.crowdFavor = 0; s.crowdFavorUsed = false; s.hitsTaken = 0;
+        s.weather = ALL_WEATHER[Math.floor(Math.random() * ALL_WEATHER.length)];
+        s.arenaTheme = ALL_ARENAS[s.roundIndex % ALL_ARENAS.length];
         s.phase = Phase.PRE_MATCH; s.timer = 3.0;
       }
     }
@@ -1103,23 +1287,43 @@ export class JoustingGame {
   private _decideAI(): void {
     const s = this._state;
     const handicapBoost = s.challengeMode === "handicap" ? 0.2 : 0;
-    const skill = Math.min(1, TOURNAMENT_KNIGHTS[s.roundIndex].skill * DIFFICULTY_MAP[s.difficulty].aiSkillMult + handicapBoost);
+    const skill = Math.min(1, getOpponent(s).skill * DIFFICULTY_MAP[s.difficulty].aiSkillMult + handicapBoost);
+    const personality = getPersonality(s);
     const lanceFreq: Record<Zone, number> = { high: 0, mid: 0, low: 0 };
     for (const z of s.playerLanceHistory) lanceFreq[z]++;
     const shieldFreq: Record<Zone, number> = { high: 0, mid: 0, low: 0 };
     for (const z of s.playerShieldHistory) shieldFreq[z]++;
     const histLen = s.playerLanceHistory.length;
 
+    // First tilt personality behavior
+    if (histLen === 0) {
+      if (personality.firstTiltBehavior === "aggressive") {
+        s.aiLance = personality.preferredLance ?? (Math.random() < 0.6 ? "high" : "low");
+        s.aiShield = personality.preferredShield ?? "mid";
+        return;
+      } else if (personality.firstTiltBehavior === "defensive") {
+        s.aiLance = "mid";
+        s.aiShield = personality.preferredShield ?? "mid";
+        return;
+      }
+    }
+
+    // Shield: pattern-read or personality-biased
     if (histLen >= 1 && Math.random() < skill) {
       let best: Zone = "mid"; let bestC = -1;
       for (const z of LANCE_ZONES) { const sc = lanceFreq[z] + Math.random() * 0.5; if (sc > bestC) { bestC = sc; best = z; } }
       s.aiShield = best;
+    } else if (personality.preferredShield && Math.random() < personality.aggressiveness) {
+      s.aiShield = personality.preferredShield; // personality bias
     } else { s.aiShield = LANCE_ZONES[Math.floor(Math.random() * 3)]; }
 
+    // Lance: pattern-read or personality-biased
     if (histLen >= 1 && Math.random() < skill) {
       let worst: Zone = "mid"; let worstC = Infinity;
       for (const z of LANCE_ZONES) { const sc = shieldFreq[z] + Math.random() * 0.5; if (sc < worstC) { worstC = sc; worst = z; } }
       s.aiLance = worst;
+    } else if (personality.preferredLance && Math.random() < personality.aggressiveness) {
+      s.aiLance = personality.preferredLance; // personality bias
     } else {
       const w = [0.35, 0.3, 0.35]; const r = Math.random(); let cum = 0; s.aiLance = "mid";
       for (let i = 0; i < 3; i++) { cum += w[i]; if (r < cum) { s.aiLance = LANCE_ZONES[i]; break; } }
@@ -1130,7 +1334,7 @@ export class JoustingGame {
 
   private _resolveImpact(): void {
     const s = this._state;
-    const opp = TOURNAMENT_KNIGHTS[s.roundIndex];
+    const opp = getOpponent(s);
     const ability = opp.ability;
 
     const diff = DIFFICULTY_MAP[s.difficulty];
@@ -1171,14 +1375,14 @@ export class JoustingGame {
       const isWeak = s.powerRating === "weak";
       // Lance upgrade: +unhorse chance
       const lanceBonus = s.lanceLevel * 0.1;
-      // Rage ability: +unhorse both sides
       const rageBonus = (ability === "rage" || ability === "pendragon") ? 0.15 : 0;
+      const weatherUnhorse = WEATHER_DEFS[s.weather].unhorseMod;
 
       if (isWeak && Math.random() < 0.3) {
         pp = SCORE_GLANCE; s.lastPlayerResult = "GLANCE";
       } else if (Math.random() < glance && !isPerfect) {
         pp = SCORE_GLANCE; s.lastPlayerResult = "GLANCE";
-      } else if (d >= 2 && Math.random() < 0.45 + (isPerfect ? 0.2 : 0) + lanceBonus + rageBonus) {
+      } else if (d >= 2 && Math.random() < 0.45 + (isPerfect ? 0.2 : 0) + lanceBonus + rageBonus + weatherUnhorse) {
         pp = SCORE_UNHORSE; s.aiUnhorsed = true; s.lastPlayerResult = "UNHORSED!";
       } else if (isPerfect && d >= 1 && Math.random() < 0.25 + lanceBonus) {
         pp = SCORE_UNHORSE; s.aiUnhorsed = true; s.lastPlayerResult = "UNHORSED!";
@@ -1565,22 +1769,68 @@ export class JoustingGame {
   private _renderArenaBackground(g: Graphics, sw: number, sh: number): void {
     const s = this._state;
 
-    // === SKY (polygon bands with curved horizon) ===
-    const skyColors = [0x0c1220, 0x12203a, 0x1a3050, 0x244060, 0x305570, 0x406880];
+    // === SKY (animated bands with stars and atmospheric shimmer) ===
+    const theme = ARENA_THEMES[s.weather === "fog" ? "meadow" : s.arenaTheme]; // fog always uses meadow colors
+    const skyColors = theme.sky;
     const skyH = sh * 0.42;
     const bandH = skyH / skyColors.length;
     for (let i = 0; i < skyColors.length; i++) {
       const by1 = i * bandH;
       const by2 = (i + 1) * bandH + 1;
-      // Each band has a slightly curved bottom edge
-      g.moveTo(0, by1);
-      g.lineTo(sw, by1);
+      g.moveTo(0, by1); g.lineTo(sw, by1);
       for (let bx = sw; bx >= 0; bx -= 20) {
         const curve = Math.sin(bx * 0.005 + i * 0.5) * (i * 0.5 + 0.5);
         g.lineTo(bx, by2 + curve);
       }
       g.fill(skyColors[i]);
     }
+    // Atmospheric shimmer (organic polygon shapes drifting across sky)
+    for (let si = 0; si < 3; si++) {
+      const sx2 = ((si * 400 + this._elapsed * 3) % (sw + 200)) - 100;
+      const sy2 = si * (skyH * 0.3) + 10;
+      const sAlpha = 0.015 + Math.sin(this._elapsed * 0.5 + si * 2) * 0.008;
+      const sw2 = 120, sh2 = skyH * 0.18;
+      g.moveTo(sx2 - sw2, sy2);
+      g.quadraticCurveTo(sx2 - sw2 * 0.6, sy2 - sh2, sx2 - sw2 * 0.1, sy2 - sh2 * 0.7);
+      g.quadraticCurveTo(sx2 + sw2 * 0.3, sy2 - sh2 * 1.1, sx2 + sw2 * 0.7, sy2 - sh2 * 0.5);
+      g.quadraticCurveTo(sx2 + sw2, sy2, sx2 + sw2 * 0.7, sy2 + sh2 * 0.5);
+      g.quadraticCurveTo(sx2 + sw2 * 0.2, sy2 + sh2 * 0.8, sx2 - sw2 * 0.3, sy2 + sh2 * 0.4);
+      g.quadraticCurveTo(sx2 - sw2 * 0.8, sy2 + sh2 * 0.3, sx2 - sw2, sy2);
+      g.fill({ color: 0x2244aa, alpha: sAlpha });
+    }
+    // Stars (twinkling in upper sky)
+    for (let sti = 0; sti < 20; sti++) {
+      const stx = seededRand(sti * 71) * sw;
+      const sty = seededRand(sti * 43) * (skyH * 0.6);
+      const twinkle = 0.1 + Math.sin(this._elapsed * 2 + sti * 1.7) * 0.08;
+      const stSize = 0.5 + seededRand(sti * 29) * 1.2;
+      // 4-point star polygon
+      g.moveTo(stx, sty - stSize); g.lineTo(stx + stSize * 0.3, sty);
+      g.lineTo(stx, sty + stSize); g.lineTo(stx - stSize * 0.3, sty);
+      g.fill({ color: 0xeeeeff, alpha: twinkle });
+    }
+    // Upper sky aurora/nebula streaks (fills the empty upper area)
+    for (let aui = 0; aui < 3; aui++) {
+      const aux = seededRand(aui * 89) * sw * 0.8 + sw * 0.1;
+      const auy = skyH * 0.1 + aui * (skyH * 0.15);
+      const auW = 80 + seededRand(aui * 41) * 60;
+      // Wispy nebula polygon
+      g.moveTo(aux - auW, auy);
+      g.quadraticCurveTo(aux - auW * 0.5, auy - 8 - seededRand(aui * 31) * 4, aux, auy - 5);
+      g.quadraticCurveTo(aux + auW * 0.5, auy - 10, aux + auW, auy - 3);
+      g.quadraticCurveTo(aux + auW * 0.7, auy + 4, aux + auW * 0.3, auy + 6);
+      g.quadraticCurveTo(aux - auW * 0.2, auy + 5, aux - auW * 0.6, auy + 3);
+      g.quadraticCurveTo(aux - auW * 0.9, auy + 2, aux - auW, auy);
+      g.fill({ color: [0x223366, 0x332255, 0x224455][aui], alpha: 0.025 });
+    }
+
+    // Horizon glow (warm band at the bottom of sky)
+    g.moveTo(0, skyH - 15);
+    for (let hgx = 0; hgx <= sw; hgx += 20) {
+      g.lineTo(hgx, skyH - 15 + Math.sin(hgx * 0.008 + this._elapsed * 0.2) * 3);
+    }
+    g.lineTo(sw, skyH + 5); g.lineTo(0, skyH + 5);
+    g.fill({ color: 0x443322, alpha: 0.08 });
 
     // Sun with rays
     const sunX = sw * 0.82, sunY = sh * 0.1;
@@ -1628,13 +1878,31 @@ export class JoustingGame {
     }
     g.fill({ color: 0xffffff, alpha: 0.3 });
 
-    // Clouds (bumpy polygon cumulus shapes)
+    // Clouds (two layers — distant + near, bumpy polygon cumulus)
+    // Distant cloud layer (slower, smaller, dimmer)
+    for (let i = 0; i < 4; i++) {
+      const cx = ((i * 350 + this._elapsed * 3) % (sw + 250)) - 125;
+      const cy = sh * 0.04 + i * 15;
+      const cw = 25 + seededRand(i * 91) * 20;
+      const ch = 5 + seededRand(i * 73) * 3;
+      g.moveTo(cx - cw, cy + ch * 0.3);
+      g.quadraticCurveTo(cx - cw * 0.6, cy - ch, cx, cy - ch * 0.9);
+      g.quadraticCurveTo(cx + cw * 0.6, cy - ch * 1.1, cx + cw, cy + ch * 0.3);
+      g.quadraticCurveTo(cx, cy + ch * 0.5, cx - cw, cy + ch * 0.3);
+      g.fill({ color: 0x667788, alpha: 0.06 });
+    }
+    // Near cloud layer (larger, more detailed, brighter)
     for (let i = 0; i < 5; i++) {
       const cx = ((i * 280 + this._elapsed * 6) % (sw + 200)) - 100;
       const cy = sh * 0.06 + i * 20 + Math.sin(i * 2.7) * 8;
       const cw = 35 + seededRand(i * 17) * 30;
       const ch = 8 + seededRand(i * 31) * 5;
-      // Bumpy cloud polygon with multiple lobes
+      // Shadow underneath cloud
+      g.moveTo(cx - cw * 0.8, cy + ch * 0.6);
+      g.quadraticCurveTo(cx, cy + ch * 0.9, cx + cw * 0.8, cy + ch * 0.6);
+      g.quadraticCurveTo(cx, cy + ch * 0.4, cx - cw * 0.8, cy + ch * 0.6);
+      g.fill({ color: 0x334455, alpha: 0.04 });
+      // Main cloud body
       g.moveTo(cx - cw, cy + ch * 0.3);
       g.quadraticCurveTo(cx - cw * 0.8, cy - ch, cx - cw * 0.4, cy - ch * 0.8);
       g.quadraticCurveTo(cx - cw * 0.1, cy - ch * 1.4, cx + cw * 0.2, cy - ch);
@@ -1643,23 +1911,101 @@ export class JoustingGame {
       g.quadraticCurveTo(cx + cw * 0.5, cy + ch * 0.6, cx, cy + ch * 0.4);
       g.quadraticCurveTo(cx - cw * 0.5, cy + ch * 0.6, cx - cw, cy + ch * 0.3);
       g.fill({ color: 0x889aaa, alpha: 0.12 });
-      // Highlight on top
+      // Highlight on top (sunlit edge)
       g.moveTo(cx - cw * 0.3, cy - ch * 0.6);
-      g.quadraticCurveTo(cx, cy - ch * 1.2, cx + cw * 0.3, cy - ch * 0.7);
-      g.quadraticCurveTo(cx, cy - ch * 0.4, cx - cw * 0.3, cy - ch * 0.6);
-      g.fill({ color: 0x99aabb, alpha: 0.08 });
+      g.quadraticCurveTo(cx, cy - ch * 1.3, cx + cw * 0.4, cy - ch * 0.7);
+      g.quadraticCurveTo(cx + cw * 0.2, cy - ch * 0.4, cx - cw * 0.1, cy - ch * 0.5);
+      g.quadraticCurveTo(cx - cw * 0.3, cy - ch * 0.4, cx - cw * 0.3, cy - ch * 0.6);
+      g.fill({ color: 0xaabbcc, alpha: 0.08 });
+      // Dark underside detail
+      g.moveTo(cx - cw * 0.5, cy + ch * 0.2);
+      g.quadraticCurveTo(cx, cy + ch * 0.45, cx + cw * 0.5, cy + ch * 0.2);
+      g.quadraticCurveTo(cx, cy + ch * 0.1, cx - cw * 0.5, cy + ch * 0.2);
+      g.fill({ color: 0x556677, alpha: 0.05 });
     }
 
-    // Birds
-    for (let i = 0; i < 3; i++) {
-      const bx = ((i * 400 + this._elapsed * 20 + i * 100) % (sw + 100)) - 50;
-      const by = sh * 0.05 + i * 12;
-      const wing = Math.sin(this._elapsed * 6 + i * 2) * 4;
-      g.moveTo(bx - 6, by + wing); g.lineTo(bx, by); g.lineTo(bx + 6, by + wing);
-      g.stroke({ color: 0x223344, width: 1.5 });
+    // Birds (polygon bodies with wing animation)
+    for (let i = 0; i < 5; i++) {
+      const bx = ((i * 320 + this._elapsed * 18 + i * 80) % (sw + 150)) - 75;
+      const by = sh * 0.04 + i * 10 + Math.sin(this._elapsed * 0.8 + i * 3) * 5;
+      const wing = Math.sin(this._elapsed * 6 + i * 2) * 5;
+      // Body polygon
+      g.moveTo(bx - 2, by); g.quadraticCurveTo(bx, by - 1.5, bx + 3, by);
+      g.quadraticCurveTo(bx, by + 1, bx - 2, by); g.fill(0x1a2a3a);
+      // Left wing polygon
+      g.moveTo(bx - 1, by); g.quadraticCurveTo(bx - 5, by + wing * 0.8, bx - 8, by + wing);
+      g.lineTo(bx - 6, by + wing * 0.5); g.fill(0x1a2a3a);
+      // Right wing polygon
+      g.moveTo(bx + 1, by); g.quadraticCurveTo(bx + 5, by + wing * 0.8, bx + 8, by + wing);
+      g.lineTo(bx + 6, by + wing * 0.5); g.fill(0x1a2a3a);
+    }
+
+    // === SKY-TO-LANDSCAPE TRANSITION (gradient blending) ===
+    // Atmospheric haze band between sky and landscape
+    for (let hz = 0; hz < 4; hz++) {
+      const hzy = skyH - 8 + hz * 6;
+      const hza = 0.04 - hz * 0.008;
+      g.moveTo(0, hzy);
+      for (let hzx = 0; hzx <= sw; hzx += 30) {
+        g.lineTo(hzx, hzy + Math.sin(hzx * 0.01 + hz * 2 + this._elapsed * 0.1) * 3);
+      }
+      g.lineTo(sw, hzy + 10); g.lineTo(0, hzy + 10);
+      g.fill({ color: 0x2a3a4a, alpha: hza });
     }
 
     // === DISTANT LANDSCAPE ===
+
+    // Distant mountain range (behind castle)
+    g.moveTo(0, sh * 0.32);
+    for (let mx = 0; mx <= sw; mx += 8) {
+      const mh = 25 + Math.sin(mx * 0.005 + 0.5) * 15 + Math.sin(mx * 0.012 + 2) * 8 + Math.sin(mx * 0.03) * 4;
+      g.lineTo(mx, sh * 0.32 - mh);
+    }
+    g.lineTo(sw, sh * 0.32); g.lineTo(0, sh * 0.32);
+    g.fill(0x0e1e2e);
+    // Mountain snow caps
+    for (let mx = 0; mx <= sw; mx += 8) {
+      const mh = 25 + Math.sin(mx * 0.005 + 0.5) * 15 + Math.sin(mx * 0.012 + 2) * 8 + Math.sin(mx * 0.03) * 4;
+      if (mh > 35) {
+        g.moveTo(mx - 4, sh * 0.32 - mh + 3);
+        g.lineTo(mx, sh * 0.32 - mh);
+        g.lineTo(mx + 4, sh * 0.32 - mh + 3);
+        g.fill({ color: 0xccddee, alpha: 0.15 });
+      }
+    }
+    // Mountain ridge highlights (snow/light on distant peaks)
+    g.moveTo(0, sh * 0.32);
+    for (let mx = 0; mx <= sw; mx += 8) {
+      const mh = 25 + Math.sin(mx * 0.005 + 0.5) * 15 + Math.sin(mx * 0.012 + 2) * 8 + Math.sin(mx * 0.03) * 4;
+      if (mh > 30) {
+        // Lit side highlight
+        g.moveTo(mx - 2, sh * 0.32 - mh + 5);
+        g.lineTo(mx, sh * 0.32 - mh);
+        g.lineTo(mx + 1, sh * 0.32 - mh + 4);
+        g.fill({ color: 0x3a4a5a, alpha: 0.2 });
+      }
+    }
+    // Second mountain layer (nearer, darker, with forest texture)
+    g.moveTo(0, sh * 0.33);
+    for (let mx = 0; mx <= sw; mx += 6) {
+      const mh = 15 + Math.sin(mx * 0.008 + 3) * 10 + Math.sin(mx * 0.02 + 1) * 5;
+      g.lineTo(mx, sh * 0.33 - mh);
+    }
+    g.lineTo(sw, sh * 0.33); g.lineTo(0, sh * 0.33);
+    g.fill(0x142434);
+    // Forest texture on second range (small tree-top bumps)
+    for (let mx = 10; mx < sw; mx += 12) {
+      const mh = 15 + Math.sin(mx * 0.008 + 3) * 10 + Math.sin(mx * 0.02 + 1) * 5;
+      const trH = 3 + seededRand(mx * 7) * 3;
+      g.moveTo(mx - 2, sh * 0.33 - mh);
+      g.quadraticCurveTo(mx, sh * 0.33 - mh - trH, mx + 2, sh * 0.33 - mh);
+      g.fill({ color: 0x1a3828, alpha: 0.5 });
+    }
+
+    // Mountain-to-castle haze (depth layering)
+    g.moveTo(0, sh * 0.30); g.lineTo(sw, sh * 0.30);
+    g.lineTo(sw, sh * 0.35); g.lineTo(0, sh * 0.35);
+    g.fill({ color: 0x1a2a3a, alpha: 0.06 });
 
     // Castle towers (polygon detail)
     const castleX = sw * 0.5;
@@ -1694,9 +2040,20 @@ export class JoustingGame {
     g.lineTo(castleX - 28, castleBase - 42);
     g.lineTo(castleX - 28, castleBase);
     g.fill(0x162636);
-    // Tower crenellations
+    // Tower crenellations (polygon merlons with beveled caps)
     for (let i = 0; i < 3; i++) {
-      g.rect(castleX - 52 + i * 8, castleBase - 47, 4, 6); g.fill(0x162636);
+      const mcx = castleX - 52 + i * 8;
+      g.moveTo(mcx, castleBase - 42);
+      g.lineTo(mcx, castleBase - 47);
+      g.lineTo(mcx + 0.5, castleBase - 48);
+      g.lineTo(mcx + 2, castleBase - 48.5);
+      g.lineTo(mcx + 3.5, castleBase - 48);
+      g.lineTo(mcx + 4, castleBase - 47);
+      g.lineTo(mcx + 4, castleBase - 42);
+      g.fill(0x162636);
+      // Stone line
+      g.moveTo(mcx + 0.5, castleBase - 45); g.lineTo(mcx + 3.5, castleBase - 45);
+      g.stroke({ color: 0x0e1e2e, width: 0.4 });
     }
     // Conical roof polygon
     g.moveTo(castleX - 54, castleBase - 42);
@@ -1718,7 +2075,13 @@ export class JoustingGame {
     g.lineTo(castleX + 52, castleBase);
     g.fill(0x162636);
     for (let i = 0; i < 3; i++) {
-      g.rect(castleX + 28 + i * 8, castleBase - 47, 4, 6); g.fill(0x162636);
+      const mcx = castleX + 28 + i * 8;
+      g.moveTo(mcx, castleBase - 42); g.lineTo(mcx, castleBase - 47);
+      g.lineTo(mcx + 0.5, castleBase - 48); g.lineTo(mcx + 2, castleBase - 48.5);
+      g.lineTo(mcx + 3.5, castleBase - 48); g.lineTo(mcx + 4, castleBase - 47);
+      g.lineTo(mcx + 4, castleBase - 42); g.fill(0x162636);
+      g.moveTo(mcx + 0.5, castleBase - 45); g.lineTo(mcx + 3.5, castleBase - 45);
+      g.stroke({ color: 0x0e1e2e, width: 0.4 });
     }
     g.moveTo(castleX + 26, castleBase - 42);
     g.lineTo(castleX + 40, castleBase - 62);
@@ -1731,19 +2094,64 @@ export class JoustingGame {
     g.lineTo(castleX + 48, castleBase - 65);
     g.lineTo(castleX + 40, castleBase - 63);
     g.fill(0x2244cc);
-    // Gate arch polygon
-    g.moveTo(castleX - 6, castleBase);
-    g.lineTo(castleX - 6, castleBase - 14);
-    g.quadraticCurveTo(castleX, castleBase - 20, castleX + 6, castleBase - 14);
-    g.lineTo(castleX + 6, castleBase);
+    // Curtain wall between towers (lower connecting wall)
+    g.moveTo(castleX - 28, castleBase); g.lineTo(castleX - 28, castleBase - 25);
+    g.lineTo(castleX - 20, castleBase - 25); g.fill(0x152535);
+    g.moveTo(castleX + 20, castleBase - 25); g.lineTo(castleX + 28, castleBase - 25);
+    g.lineTo(castleX + 28, castleBase); g.fill(0x152535);
+    // Wall crenellations on curtain
+    for (let wc = 0; wc < 3; wc++) {
+      g.moveTo(castleX - 27 + wc * 4, castleBase - 25);
+      g.lineTo(castleX - 27 + wc * 4, castleBase - 29);
+      g.lineTo(castleX - 25 + wc * 4, castleBase - 29);
+      g.lineTo(castleX - 25 + wc * 4, castleBase - 25);
+      g.fill(0x152535);
+    }
+    for (let wc = 0; wc < 3; wc++) {
+      g.moveTo(castleX + 21 + wc * 4, castleBase - 25);
+      g.lineTo(castleX + 21 + wc * 4, castleBase - 29);
+      g.lineTo(castleX + 23 + wc * 4, castleBase - 29);
+      g.lineTo(castleX + 23 + wc * 4, castleBase - 25);
+      g.fill(0x152535);
+    }
+    // Gate arch polygon (larger, more ornate)
+    g.moveTo(castleX - 8, castleBase);
+    g.lineTo(castleX - 8, castleBase - 16);
+    g.quadraticCurveTo(castleX - 6, castleBase - 24, castleX, castleBase - 26);
+    g.quadraticCurveTo(castleX + 6, castleBase - 24, castleX + 8, castleBase - 16);
+    g.lineTo(castleX + 8, castleBase);
     g.fill(0x0a1520);
-    // Castle windows (arched polygon)
-    for (const wx of [-12, 10]) {
-      g.moveTo(castleX + wx, castleBase - 28);
-      g.lineTo(castleX + wx, castleBase - 36);
-      g.quadraticCurveTo(castleX + wx + 2.5, castleBase - 40, castleX + wx + 5, castleBase - 36);
-      g.lineTo(castleX + wx + 5, castleBase - 28);
-      g.fill({ color: 0xffdd88, alpha: 0.4 });
+    // Gate portcullis lines
+    for (let pl = -5; pl <= 5; pl += 3) {
+      g.moveTo(castleX + pl, castleBase); g.lineTo(castleX + pl, castleBase - 14);
+      g.stroke({ color: 0x1a2530, width: 0.5 });
+    }
+    // Castle windows (arched polygon with glow)
+    for (const wx2 of [-14, -5, 5, 12]) {
+      const wby = castleBase - 30 - Math.abs(wx2) * 0.3;
+      g.moveTo(castleX + wx2, wby + 6);
+      g.lineTo(castleX + wx2, wby);
+      g.quadraticCurveTo(castleX + wx2 + 2, wby - 3, castleX + wx2 + 4, wby);
+      g.lineTo(castleX + wx2 + 4, wby + 6);
+      g.fill({ color: 0xffdd88, alpha: 0.35 });
+      // Window glow rays (polygon light spilling out)
+      const wgx = castleX + wx2 + 2, wgy = wby + 2;
+      for (let wr = 0; wr < 4; wr++) {
+        const wa = wr * (Math.PI / 2) + Math.PI * 0.25;
+        const wrl = 5 + wr * 1.5;
+        g.moveTo(wgx, wgy);
+        g.lineTo(wgx + Math.cos(wa - 0.15) * wrl, wgy + Math.sin(wa - 0.15) * wrl);
+        g.lineTo(wgx + Math.cos(wa + 0.15) * wrl, wgy + Math.sin(wa + 0.15) * wrl);
+        g.fill({ color: 0xffdd88, alpha: 0.03 });
+      }
+    }
+    // Tower windows
+    for (const twx of [-42, -38, 34, 38]) {
+      g.moveTo(castleX + twx, castleBase - 28);
+      g.lineTo(castleX + twx, castleBase - 33);
+      g.lineTo(castleX + twx + 3, castleBase - 33);
+      g.lineTo(castleX + twx + 3, castleBase - 28);
+      g.fill({ color: 0xffdd88, alpha: 0.25 });
     }
 
     // Treeline behind stands (polygon leaf clusters)
@@ -1797,16 +2205,23 @@ export class JoustingGame {
     g.fill(0x1e3a1c);
 
     // === STANDS (tiered grandstands with plank detail) ===
-    // Upper tier
-    g.rect(0, sh * 0.32, sw, sh * 0.04); g.fill(0x3a2211);
+    // Upper tier (polygon with beveled front edge)
+    g.moveTo(0, sh * 0.32); g.lineTo(sw, sh * 0.32);
+    g.lineTo(sw, sh * 0.36); g.lineTo(0, sh * 0.36); g.fill(theme.standColor);
+    // Beveled top edge highlight
+    g.moveTo(0, sh * 0.32); g.lineTo(sw, sh * 0.32);
+    g.lineTo(sw, sh * 0.322); g.lineTo(0, sh * 0.322); g.fill({ color: 0x5a3a1a, alpha: 0.5 });
     // Upper tier plank lines
     for (let plk = 0; plk < 3; plk++) {
       g.moveTo(0, sh * 0.32 + plk * (sh * 0.013));
       g.lineTo(sw, sh * 0.32 + plk * (sh * 0.013));
       g.stroke({ color: 0x2a1808, width: 0.5 });
     }
-    // Lower tier
-    g.rect(0, sh * 0.36, sw, sh * 0.06); g.fill(0x4a3322);
+    // Lower tier (polygon with beveled front)
+    g.moveTo(0, sh * 0.36); g.lineTo(sw, sh * 0.36);
+    g.lineTo(sw, sh * 0.42); g.lineTo(0, sh * 0.42); g.fill(0x4a3322);
+    g.moveTo(0, sh * 0.36); g.lineTo(sw, sh * 0.36);
+    g.lineTo(sw, sh * 0.362); g.lineTo(0, sh * 0.362); g.fill({ color: 0x6a4a2a, alpha: 0.4 });
     // Lower tier plank lines
     for (let plk = 0; plk < 4; plk++) {
       g.moveTo(0, sh * 0.36 + plk * (sh * 0.015));
@@ -1834,7 +2249,7 @@ export class JoustingGame {
     }
     // Decorative cloth drape (animated flutter with wind)
     for (let x = 0; x < sw; x += 60) {
-      const drapeColor = x < sw / 2 ? PLAYER_COLOR : (TOURNAMENT_KNIGHTS[s.roundIndex]?.color ?? 0xcc4444);
+      const drapeColor = x < sw / 2 ? PLAYER_COLOR : (getOpponent(s)?.color ?? 0xcc4444);
       const dTop = sh * 0.42;
       const dBot = sh * 0.435;
       // Wind flutter on the cloth sag
@@ -1934,13 +2349,16 @@ export class JoustingGame {
     g.lineTo(kingX + 5, kingY - 12);
     g.lineTo(kingX + 4, kingY - 9);
     g.fill(0xffd700);
-    // Crown jewel
-    g.circle(kingX, kingY - 13, 0.8); g.fill(0xff2222);
+    // Crown jewel (diamond polygon)
+    g.moveTo(kingX, kingY - 14); g.lineTo(kingX + 1, kingY - 13); g.lineTo(kingX, kingY - 12); g.lineTo(kingX - 1, kingY - 13); g.fill(0xff2222);
     // Scepter
     g.moveTo(kingX + 4, kingY - 1);
     g.lineTo(kingX + 8, kingY - 8);
     g.stroke({ color: 0xffd700, width: 1 });
-    g.circle(kingX + 8, kingY - 9, 1.5); g.fill(0xffd700);
+    // Scepter orb (polygon star)
+    g.moveTo(kingX + 8, kingY - 11); g.lineTo(kingX + 9, kingY - 9.5); g.lineTo(kingX + 10, kingY - 9);
+    g.lineTo(kingX + 9, kingY - 8); g.lineTo(kingX + 8, kingY - 7); g.lineTo(kingX + 7, kingY - 8);
+    g.lineTo(kingX + 6, kingY - 9); g.lineTo(kingX + 7, kingY - 9.5); g.fill(0xffd700);
     // Attendant figure (left)
     g.moveTo(kingX - 12, kingY - 1);
     g.quadraticCurveTo(kingX - 13, kingY - 6, kingX - 11, kingY - 7);
@@ -1954,7 +2372,7 @@ export class JoustingGame {
 
     // === ANIMATED CROWD ===
     const crowdRows = 3;
-    const crowdPerRow = 35;
+    const crowdPerRow = 55; // denser crowd
     for (let row = 0; row < crowdRows; row++) {
       for (let i = 0; i < crowdPerRow; i++) {
         const cx = (i / crowdPerRow) * sw + 8;
@@ -2000,7 +2418,7 @@ export class JoustingGame {
         }
         // Some hold small pennant flags (polygon triangle)
         if ((i * 3 + row) % 7 === 0) {
-          const flagColor = cx < sw / 2 ? PLAYER_COLOR : (TOURNAMENT_KNIGHTS[s.roundIndex]?.color ?? 0xcc4444);
+          const flagColor = cx < sw / 2 ? PLAYER_COLOR : (getOpponent(s)?.color ?? 0xcc4444);
           g.moveTo(cx + 3, cy - 7); g.lineTo(cx + 3, cy - 16); g.stroke({ color: 0x664422, width: 1 });
           // Triangle pennant polygon
           g.moveTo(cx + 3, cy - 16);
@@ -2011,6 +2429,19 @@ export class JoustingGame {
       }
     }
 
+    // === STAND-TO-GROUND TRANSITION (blend strip) ===
+    g.moveTo(0, sh * 0.44); g.lineTo(sw, sh * 0.44);
+    g.lineTo(sw, sh * 0.46); g.lineTo(0, sh * 0.46);
+    g.fill({ color: 0x2a3a1a, alpha: 0.4 }); // dark green-brown blend
+    // Scattered shadow below stands
+    for (let shdi = 0; shdi < 10; shdi++) {
+      const shdx = seededRand(shdi * 67) * sw;
+      g.moveTo(shdx - 15, sh * 0.44);
+      g.quadraticCurveTo(shdx, sh * 0.46, shdx + 15, sh * 0.44);
+      g.quadraticCurveTo(shdx, sh * 0.45, shdx - 15, sh * 0.44);
+      g.fill({ color: 0x1a2a10, alpha: 0.1 });
+    }
+
     // === GROUND (polygon with slight terrain undulation) ===
     g.moveTo(0, sh * 0.44);
     for (let gx2 = 0; gx2 <= sw; gx2 += 12) {
@@ -2018,7 +2449,7 @@ export class JoustingGame {
       g.lineTo(gx2, gy2);
     }
     g.lineTo(sw, sh); g.lineTo(0, sh);
-    g.fill(0x2a4a1a);
+    g.fill(theme.ground);
     // Ground color patches (darker/lighter polygon patches for terrain variation)
     for (let pi2 = 0; pi2 < 8; pi2++) {
       const px2 = seededRand(pi2 * 67) * sw;
@@ -2030,6 +2461,49 @@ export class JoustingGame {
       g.quadraticCurveTo(px2 + pr * 0.5, py2 + pr * 0.3, px2, py2 + pr * 0.2);
       g.quadraticCurveTo(px2 - pr * 0.5, py2 + pr * 0.3, px2 - pr, py2);
       g.fill({ color: pi2 % 2 === 0 ? 0x264218 : 0x2e5220, alpha: 0.3 });
+    }
+
+    // Track wear marks (darkened trampled areas near the jousting lane)
+    for (let tw = 0; tw < 6; tw++) {
+      const twx = sw * 0.15 + tw * (sw * 0.12);
+      const twy = sh * 0.54;
+      g.moveTo(twx - 15, twy); g.quadraticCurveTo(twx, twy + 3, twx + 15, twy);
+      g.quadraticCurveTo(twx, twy - 2, twx - 15, twy);
+      g.fill({ color: 0x1a3010, alpha: 0.2 });
+    }
+    // Scattered rocks and pebbles
+    for (let ri = 0; ri < 12; ri++) {
+      const rrx = seededRand(ri * 89) * sw;
+      const rry = sh * 0.68 + seededRand(ri * 53) * (sh * 0.28);
+      const rrSize = 1.5 + seededRand(ri * 67) * 2.5;
+      // Rock polygon (irregular pentagon)
+      g.moveTo(rrx - rrSize, rry);
+      g.lineTo(rrx - rrSize * 0.5, rry - rrSize * 0.8);
+      g.lineTo(rrx + rrSize * 0.6, rry - rrSize * 0.5);
+      g.lineTo(rrx + rrSize, rry + rrSize * 0.3);
+      g.lineTo(rrx - rrSize * 0.3, rry + rrSize * 0.6);
+      g.fill({ color: 0x556655, alpha: 0.3 });
+      // Rock highlight
+      g.moveTo(rrx - rrSize * 0.3, rry - rrSize * 0.5);
+      g.lineTo(rrx + rrSize * 0.3, rry - rrSize * 0.3);
+      g.stroke({ color: 0x778877, width: 0.5, alpha: 0.2 } as any);
+    }
+
+    // Clover/low vegetation patches (fills ground sparsity)
+    for (let ci = 0; ci < 15; ci++) {
+      const clx = seededRand(ci * 79) * sw;
+      const cly = sh * 0.68 + seededRand(ci * 51) * (sh * 0.28);
+      const clr = 5 + seededRand(ci * 33) * 6;
+      // Cluster of small leaf polygons
+      for (let lf = 0; lf < 4; lf++) {
+        const la = (lf / 4) * Math.PI * 2 + seededRand(ci * 19 + lf) * 0.5;
+        const lx2 = clx + Math.cos(la) * clr * 0.6;
+        const ly2 = cly + Math.sin(la) * clr * 0.3;
+        g.moveTo(lx2, ly2);
+        g.quadraticCurveTo(lx2 + Math.cos(la) * 3, ly2 + Math.sin(la) * 1.5 - 2, lx2 + Math.cos(la) * 5, ly2 + Math.sin(la) * 2.5);
+        g.quadraticCurveTo(lx2 + Math.cos(la) * 3, ly2 + Math.sin(la) * 1.5 + 1, lx2, ly2);
+        g.fill({ color: 0x2a5a1a + ((Math.floor(seededRand(ci * 61 + lf) * 2)) << 8), alpha: 0.3 });
+      }
     }
 
     // Grass tufts (polygon blades)
@@ -2085,9 +2559,20 @@ export class JoustingGame {
         g.quadraticCurveTo(fx + Math.cos(pa + 0.4) * pr * 0.6, fy + Math.sin(pa + 0.4) * pr * 0.6, fx, fy);
         g.fill(fc);
       }
-      // Center dot
-      g.circle(fx, fy, 0.8); g.fill(0xffdd44);
+      // Center (tiny 4-point star)
+      g.moveTo(fx, fy - 1); g.lineTo(fx + 0.8, fy); g.lineTo(fx, fy + 1); g.lineTo(fx - 0.8, fy); g.fill(0xffdd44);
     }
+
+    // === GROUND-TO-TRACK GRADIENT (worn grass edge) ===
+    g.moveTo(0, sh * 0.54);
+    for (let gtx = 0; gtx <= sw; gtx += 15) {
+      g.lineTo(gtx, sh * 0.54 + Math.sin(gtx * 0.02) * 2);
+    }
+    g.lineTo(sw, sh * 0.58);
+    for (let gtx = sw; gtx >= 0; gtx -= 15) {
+      g.lineTo(gtx, sh * 0.58 + Math.sin(gtx * 0.015 + 1) * 1.5);
+    }
+    g.fill({ color: 0x4a5a2a, alpha: 0.3 }); // worn grass/dirt blend
 
     // === DIRT TRACK (polygon with beveled edges) ===
     const trackTop = sh * 0.56;
@@ -2101,7 +2586,7 @@ export class JoustingGame {
     for (let tx2 = sw; tx2 >= 0; tx2 -= 15) {
       g.lineTo(tx2, trackBot + Math.sin(tx2 * 0.025 + 1) * 0.8);
     }
-    g.fill(0x7a5c3a);
+    g.fill(theme.track);
     // Track texture polygon patches (organic shapes instead of rect strips)
     for (let tx2 = 10; tx2 < sw; tx2 += 25) {
       const shade = seededRand(tx2 * 7) * 0.18;
@@ -2134,6 +2619,85 @@ export class JoustingGame {
     for (let bx = 0; bx <= sw; bx += 20) { g.lineTo(bx, trackBot + Math.sin(bx * 0.025 + 1) * 0.8 - 1); }
     for (let bx = sw; bx >= 0; bx -= 20) { g.lineTo(bx, trackBot + Math.sin(bx * 0.025 + 1) * 0.8 + 2); }
     g.fill(0x553311);
+
+    // === ARENA FURNITURE (polygon scene props) ===
+
+    // Hay bales near track edges (polygon rectangles with straw texture)
+    for (let hbi = 0; hbi < 4; hbi++) {
+      const hbx = sw * 0.05 + hbi * (sw * 0.28);
+      const hby = sh * 0.69;
+      // Bale body (rounded polygon)
+      g.moveTo(hbx - 8, hby + 5); g.quadraticCurveTo(hbx - 9, hby - 2, hbx - 6, hby - 5);
+      g.lineTo(hbx + 6, hby - 5); g.quadraticCurveTo(hbx + 9, hby - 2, hbx + 8, hby + 5);
+      g.lineTo(hbx - 8, hby + 5); g.fill(0x998844);
+      // Straw lines
+      g.moveTo(hbx - 5, hby - 3); g.lineTo(hbx + 5, hby - 3); g.stroke({ color: 0xbbaa55, width: 0.5 });
+      g.moveTo(hbx - 6, hby); g.lineTo(hbx + 6, hby); g.stroke({ color: 0xbbaa55, width: 0.5 });
+      g.moveTo(hbx - 5, hby + 3); g.lineTo(hbx + 5, hby + 3); g.stroke({ color: 0xbbaa55, width: 0.5 });
+      // Binding rope
+      g.moveTo(hbx, hby - 5); g.lineTo(hbx, hby + 5); g.stroke({ color: 0x664422, width: 0.8 });
+    }
+
+    // Wooden fence posts along track edges
+    for (let fpi = 0; fpi < 8; fpi++) {
+      const fpx = sw * 0.08 + fpi * (sw * 0.12);
+      const fpy = sh * 0.555;
+      // Post (tapered polygon)
+      g.moveTo(fpx - 1.5, fpy); g.lineTo(fpx - 1, fpy - 10);
+      g.lineTo(fpx + 1, fpy - 10); g.lineTo(fpx + 1.5, fpy); g.fill(0x664422);
+      // Post cap (pointed)
+      g.moveTo(fpx - 1.5, fpy - 10); g.lineTo(fpx, fpy - 13);
+      g.lineTo(fpx + 1.5, fpy - 10); g.fill(0x775533);
+    }
+
+    // Decorative shields mounted on stand front face
+    for (let dsi = 0; dsi < 5; dsi++) {
+      const dsx = sw * 0.12 + dsi * (sw * 0.2);
+      const dsy = sh * 0.43;
+      const shColor = TOURNAMENT_KNIGHTS[dsi % TOURNAMENT_KNIGHTS.length].color;
+      // Mini kite shield polygon
+      g.moveTo(dsx, dsy - 5); g.quadraticCurveTo(dsx + 4, dsy - 4, dsx + 4, dsy);
+      g.lineTo(dsx + 2, dsy + 4); g.lineTo(dsx, dsy + 6);
+      g.lineTo(dsx - 2, dsy + 4); g.lineTo(dsx - 4, dsy);
+      g.quadraticCurveTo(dsx - 4, dsy - 4, dsx, dsy - 5);
+      g.fill({ color: shColor, alpha: 0.3 });
+      g.moveTo(dsx, dsy - 5); g.quadraticCurveTo(dsx + 4, dsy - 4, dsx + 4, dsy);
+      g.lineTo(dsx + 2, dsy + 4); g.lineTo(dsx, dsy + 6);
+      g.lineTo(dsx - 2, dsy + 4); g.lineTo(dsx - 4, dsy);
+      g.quadraticCurveTo(dsx - 4, dsy - 4, dsx, dsy - 5);
+      g.stroke({ color: 0xffd700, width: 0.5 });
+    }
+
+    // Straw/debris scattered on track
+    for (let sti = 0; sti < 20; sti++) {
+      const stx = seededRand(sti * 59) * sw;
+      const sty = sh * 0.57 + seededRand(sti * 37) * (sh * 0.09);
+      const stAngle = seededRand(sti * 83) * Math.PI;
+      const stLen = 2 + seededRand(sti * 47) * 3;
+      // Small straw piece (tapered polygon)
+      const sc2 = Math.cos(stAngle), ss2 = Math.sin(stAngle);
+      g.moveTo(stx - sc2 * stLen, sty - ss2 * stLen);
+      g.lineTo(stx + sc2 * stLen, sty + ss2 * stLen);
+      g.lineTo(stx + sc2 * stLen + ss2 * 0.5, sty + ss2 * stLen - sc2 * 0.5);
+      g.lineTo(stx - sc2 * stLen + ss2 * 0.5, sty - ss2 * stLen - sc2 * 0.5);
+      g.fill({ color: 0xbbaa66, alpha: 0.15 });
+    }
+
+    // Butterflies near flowers (tiny polygon insects)
+    for (let bfi = 0; bfi < 3; bfi++) {
+      const bfx = seededRand(bfi * 71) * sw;
+      const bfy = sh * 0.68 + seededRand(bfi * 43) * (sh * 0.15);
+      const bfDx = bfx + Math.sin(this._elapsed * 1.5 + bfi * 3) * 12;
+      const bfDy = bfy + Math.sin(this._elapsed * 2 + bfi * 2) * 6;
+      const bfWing = Math.sin(this._elapsed * 8 + bfi * 2.5) * 3;
+      const bfColor = [0xffaa44, 0xff88cc, 0xaaddff][bfi];
+      // Left wing
+      g.moveTo(bfDx, bfDy); g.quadraticCurveTo(bfDx - 3, bfDy - bfWing, bfDx - 4, bfDy);
+      g.quadraticCurveTo(bfDx - 2, bfDy + 1, bfDx, bfDy); g.fill({ color: bfColor, alpha: 0.4 });
+      // Right wing
+      g.moveTo(bfDx, bfDy); g.quadraticCurveTo(bfDx + 3, bfDy - bfWing, bfDx + 4, bfDy);
+      g.quadraticCurveTo(bfDx + 2, bfDy + 1, bfDx, bfDy); g.fill({ color: bfColor, alpha: 0.4 });
+    }
 
     // === TILT BARRIER (perspective) ===
     const bTop = sh * 0.40, bBot = sh * 0.66;
@@ -2169,35 +2733,150 @@ export class JoustingGame {
     g.quadraticCurveTo(ftx - 5, fty, ftx - 4, fty - 3);
     g.quadraticCurveTo(ftx - 3, fty - 6, ftx, fty - 8);
     g.fill(0xccaa66);
-    g.circle(ftx, fty - 4, 1.5); g.fill(0xffd700);
-    // Bottom finial (larger)
+    // Top finial jewel (diamond polygon)
+    g.moveTo(ftx, fty - 6); g.lineTo(ftx + 2, fty - 4); g.lineTo(ftx, fty - 2); g.lineTo(ftx - 2, fty - 4);
+    g.fill(0xffd700);
+    // Finial cross detail
+    g.moveTo(ftx - 1, fty - 4); g.lineTo(ftx + 1, fty - 4); g.stroke({ color: 0xeebb00, width: 0.5 });
+    // Bottom finial (larger) with fleur-de-lis inspired shape
     const fby = bBot + 3;
-    g.moveTo(ftx, fby - 6);
-    g.quadraticCurveTo(ftx + 4, fby - 4, ftx + 5, fby);
-    g.quadraticCurveTo(ftx + 6, fby + 3, ftx + 4, fby + 5);
-    g.lineTo(ftx - 4, fby + 5);
-    g.quadraticCurveTo(ftx - 6, fby + 3, ftx - 5, fby);
-    g.quadraticCurveTo(ftx - 4, fby - 4, ftx, fby - 6);
+    g.moveTo(ftx, fby - 8);
+    g.quadraticCurveTo(ftx + 3, fby - 7, ftx + 5, fby - 4);
+    g.quadraticCurveTo(ftx + 6, fby - 1, ftx + 4, fby + 2);
+    g.quadraticCurveTo(ftx + 6, fby + 4, ftx + 5, fby + 6);
+    g.lineTo(ftx + 3, fby + 5);
+    g.quadraticCurveTo(ftx + 2, fby + 3, ftx, fby + 4);
+    g.quadraticCurveTo(ftx - 2, fby + 3, ftx - 3, fby + 5);
+    g.lineTo(ftx - 5, fby + 6);
+    g.quadraticCurveTo(ftx - 6, fby + 4, ftx - 4, fby + 2);
+    g.quadraticCurveTo(ftx - 6, fby - 1, ftx - 5, fby - 4);
+    g.quadraticCurveTo(ftx - 3, fby - 7, ftx, fby - 8);
     g.fill(0xccaa66);
-    g.circle(ftx, fby, 2); g.fill(0xffd700);
+    // Finial center jewel (diamond)
+    g.moveTo(ftx, fby - 2); g.lineTo(ftx + 2.5, fby + 1); g.lineTo(ftx, fby + 4); g.lineTo(ftx - 2.5, fby + 1);
+    g.fill(0xffd700);
+    g.moveTo(ftx, fby - 1); g.lineTo(ftx + 1.5, fby + 1); g.lineTo(ftx, fby + 3); g.lineTo(ftx - 1.5, fby + 1);
+    g.fill({ color: 0xffffff, alpha: 0.15 });
 
     // === PENNANT POLES WITH TORCHES ===
-    const oppColor = TOURNAMENT_KNIGHTS[s.roundIndex]?.color ?? 0xcc4444;
+    const oppColor = getOpponent(s)?.color ?? 0xcc4444;
     this._drawPennantWithTorch(g, sw * 0.05, sh * 0.24, PLAYER_COLOR);
     this._drawPennantWithTorch(g, sw * 0.15, sh * 0.22, PLAYER_COLOR);
     this._drawPennantWithTorch(g, sw * 0.85, sh * 0.22, oppColor);
     this._drawPennantWithTorch(g, sw * 0.95, sh * 0.24, oppColor);
 
+    // === WEATHER EFFECTS ===
+    const wx = this._state.weather;
+    if (wx === "rain") {
+      // Dark sky overlay for rain
+      g.rect(0, 0, sw, sh * 0.44); g.fill({ color: 0x0a1020, alpha: 0.12 });
+      // Dense rain streaks (more, varied angles)
+      for (let ri = 0; ri < 50; ri++) {
+        const rsx = ((ri * 37 + this._elapsed * 250) % (sw + 60)) - 30;
+        const rsy = ((ri * 23 + this._elapsed * 600) % (sh + 40)) - 20;
+        const rLen = 8 + seededRand(ri * 19) * 8;
+        const rWind = Math.sin(this._elapsed * 0.5) * 2;
+        g.moveTo(rsx, rsy); g.lineTo(rsx - 2 + rWind, rsy + rLen);
+        g.stroke({ color: 0x8899bb, width: 0.7 + seededRand(ri * 31) * 0.5, alpha: 0.15 + seededRand(ri * 41) * 0.1 } as any);
+      }
+      // Rain splashes on ground
+      for (let sp = 0; sp < 8; sp++) {
+        const spx = ((sp * 150 + this._elapsed * 180 + sp * 47) % sw);
+        const spy = sh * 0.55 + seededRand(sp * 83) * (sh * 0.12);
+        const spAge = (this._elapsed * 3 + sp * 1.7) % 1;
+        if (spAge < 0.3) {
+          const spR = spAge * 12;
+          // Polygon ripple (octagon)
+          g.moveTo(spx + spR, spy);
+          for (let ri = 1; ri <= 8; ri++) { g.lineTo(spx + Math.cos((ri / 8) * Math.PI * 2) * spR, spy + Math.sin((ri / 8) * Math.PI * 2) * spR * 0.4); }
+          g.stroke({ color: 0x8899bb, width: 0.5, alpha: (0.3 - spAge) * 0.5 } as any);
+        }
+      }
+      // Puddle reflections on track
+      for (let pi = 0; pi < 8; pi++) {
+        const prx = seededRand(pi * 83) * sw;
+        const prw = 10 + seededRand(pi * 37) * 12;
+        // Puddle polygon (irregular oval)
+        g.moveTo(prx - prw, sh * 0.62);
+        g.quadraticCurveTo(prx - prw * 0.5, sh * 0.62 - 2.5, prx, sh * 0.62 - 2);
+        g.quadraticCurveTo(prx + prw * 0.5, sh * 0.62 - 2.5, prx + prw, sh * 0.62);
+        g.quadraticCurveTo(prx + prw * 0.5, sh * 0.62 + 2.5, prx, sh * 0.62 + 2);
+        g.quadraticCurveTo(prx - prw * 0.5, sh * 0.62 + 2.5, prx - prw, sh * 0.62);
+        g.fill({ color: 0x6688aa, alpha: 0.06 });
+        // Ripple on puddle (polygon hexagon)
+        const ripT = (this._elapsed * 2 + pi * 0.8) % 1;
+        const rpx = prx + seededRand(pi * 61) * 6 - 3, rpr = ripT * 4;
+        g.moveTo(rpx + rpr, sh * 0.62);
+        for (let rpi = 1; rpi <= 6; rpi++) { g.lineTo(rpx + Math.cos((rpi / 6) * Math.PI * 2) * rpr, sh * 0.62 + Math.sin((rpi / 6) * Math.PI * 2) * rpr * 0.35); }
+        g.stroke({ color: 0x8899bb, width: 0.4, alpha: (1 - ripT) * 0.15 } as any);
+      }
+      // Occasional lightning flash
+      const lightningPhase = Math.sin(this._elapsed * 0.3) + Math.sin(this._elapsed * 0.7);
+      if (lightningPhase > 1.8) {
+        g.rect(0, 0, sw, sh); g.fill({ color: 0xccddff, alpha: 0.06 });
+      }
+      // Wet surface sheen on track
+      g.rect(0, sh * 0.56, sw, sh * 0.12); g.fill({ color: 0x6688aa, alpha: 0.03 });
+    } else if (wx === "wind") {
+      // Wind streaks (more, longer)
+      for (let wi = 0; wi < 14; wi++) {
+        const wsx = ((wi * 130 + this._elapsed * 150) % (sw + 150)) - 75;
+        const wsy = sh * 0.15 + seededRand(wi * 61) * (sh * 0.55);
+        const wLen = 30 + seededRand(wi * 43) * 50;
+        g.moveTo(wsx, wsy); g.lineTo(wsx + wLen, wsy + seededRand(wi * 29) * 4 - 2);
+        g.stroke({ color: 0xaabbcc, width: 0.5, alpha: 0.08 + seededRand(wi * 71) * 0.06 } as any);
+      }
+      // Blown leaves (small polygon shapes drifting)
+      for (let li = 0; li < 6; li++) {
+        const lx2 = ((li * 200 + this._elapsed * 80) % (sw + 100)) - 50;
+        const ly2 = sh * 0.25 + seededRand(li * 47) * (sh * 0.4) + Math.sin(this._elapsed * 2 + li * 3) * 15;
+        const lr = Math.sin(this._elapsed * 3 + li * 2);
+        // Leaf polygon
+        g.moveTo(lx2, ly2); g.quadraticCurveTo(lx2 + 4, ly2 - 3 * lr, lx2 + 6, ly2);
+        g.quadraticCurveTo(lx2 + 4, ly2 + 2 * lr, lx2, ly2);
+        g.fill({ color: [0x886622, 0x668833, 0xaa7722][li % 3], alpha: 0.25 });
+      }
+    } else if (wx === "fog") {
+      // Volumetric fog layers (multiple overlapping, animated)
+      for (let fl = 0; fl < 3; fl++) {
+        const fogY = sh * 0.28 + fl * (sh * 0.12);
+        const fogAlpha = 0.05 + Math.sin(this._elapsed * 0.3 + fl) * 0.015;
+        g.moveTo(0, fogY);
+        for (let fx2 = 0; fx2 <= sw; fx2 += 25) {
+          g.lineTo(fx2, fogY + Math.sin(fx2 * 0.006 + this._elapsed * 0.4 + fl * 1.5) * 12);
+        }
+        g.lineTo(sw, fogY + sh * 0.15); g.lineTo(0, fogY + sh * 0.15);
+        g.fill({ color: 0x889aaa, alpha: fogAlpha });
+      }
+      // Fog wisps (animated, drifting)
+      for (let fi = 0; fi < 6; fi++) {
+        const fwx = ((fi * 250 + this._elapsed * 12) % (sw + 250)) - 125;
+        const fwy = sh * 0.3 + fi * (sh * 0.06) + Math.sin(this._elapsed * 0.5 + fi * 2) * 8;
+        const fwW = 50 + seededRand(fi * 47) * 50;
+        g.moveTo(fwx - fwW, fwy);
+        g.quadraticCurveTo(fwx - fwW * 0.3, fwy - 10, fwx, fwy - 5);
+        g.quadraticCurveTo(fwx + fwW * 0.3, fwy - 8, fwx + fwW, fwy);
+        g.quadraticCurveTo(fwx + fwW * 0.3, fwy + 6, fwx, fwy + 4);
+        g.quadraticCurveTo(fwx - fwW * 0.3, fwy + 6, fwx - fwW, fwy);
+        g.fill({ color: 0x99aabb, alpha: 0.03 + seededRand(fi * 37) * 0.02 });
+      }
+    }
+
     // === ATMOSPHERIC DUST MOTES floating in the air ===
-    for (let dm = 0; dm < 12; dm++) {
+    for (let dm = 0; dm < 15; dm++) {
       const dmx = seededRand(dm * 97) * sw;
-      const dmy = sh * 0.2 + seededRand(dm * 53) * (sh * 0.35);
-      // Slow floating drift
-      const driftX = dmx + Math.sin(this._elapsed * 0.5 + dm * 1.7) * 15;
-      const driftY = dmy + Math.sin(this._elapsed * 0.3 + dm * 2.3) * 8;
+      const dmy = sh * 0.15 + seededRand(dm * 53) * (sh * 0.4);
+      const driftX = dmx + Math.sin(this._elapsed * 0.5 + dm * 1.7) * 18;
+      const driftY = dmy + Math.sin(this._elapsed * 0.3 + dm * 2.3) * 10;
       const moteAlpha = 0.06 + Math.sin(this._elapsed * 1.5 + dm * 3) * 0.04;
-      const moteSize = 1 + seededRand(dm * 31) * 1.5;
-      g.circle(driftX, driftY, moteSize);
+      const moteSize = 1 + seededRand(dm * 31) * 1.8;
+      // Polygon mote (4-point diamond with slight rotation)
+      const mr = this._elapsed * 0.8 + dm * 1.3;
+      const mc = Math.cos(mr), ms = Math.sin(mr);
+      g.moveTo(driftX + mc * moteSize, driftY + ms * moteSize);
+      g.lineTo(driftX - ms * moteSize * 0.5, driftY + mc * moteSize * 0.5);
+      g.lineTo(driftX - mc * moteSize, driftY - ms * moteSize);
+      g.lineTo(driftX + ms * moteSize * 0.5, driftY - mc * moteSize * 0.5);
       g.fill({ color: 0xffeedd, alpha: moteAlpha });
     }
 
@@ -2243,7 +2922,9 @@ export class JoustingGame {
     g.quadraticCurveTo(x - 4, y - 51, x - 5, y - 54);
     g.quadraticCurveTo(x - 4, y - 58, x, y - 60);
     g.fill(0xccaa66);
-    g.circle(x, y - 55, 1); g.fill(0xffd700);
+    // Finial jewel (polygon diamond)
+    g.moveTo(x, y - 57); g.lineTo(x + 1.5, y - 55); g.lineTo(x, y - 53); g.lineTo(x - 1.5, y - 55);
+    g.fill(0xffd700);
 
     // Pennant flag (waving)
     const w1 = Math.sin(this._elapsed * 3.2 + x * 0.01);
@@ -2262,12 +2943,30 @@ export class JoustingGame {
     const f1 = Math.sin(this._elapsed * 8 + x) * 2;
     const f2 = Math.sin(this._elapsed * 12 + x * 1.3) * 1.5;
     const f3 = Math.cos(this._elapsed * 10 + x * 0.7) * 1;
-    // Torch glow halo (large ambient light)
+    // Torch glow halo (polygon radial light)
     const glowR = 35 + Math.sin(this._elapsed * 5 + x) * 5;
-    g.circle(tx, ty - 8, glowR); g.fill({ color: 0xff8822, alpha: 0.04 });
-    g.circle(tx, ty - 8, glowR * 0.6); g.fill({ color: 0xffaa44, alpha: 0.06 });
-    // Ground light pool from torch
-    g.ellipse(tx, y + 58, 20 + Math.sin(this._elapsed * 3 + x) * 3, 5);
+    // Outer glow (8-sided polygon)
+    g.moveTo(tx + glowR, ty - 8);
+    for (let gi = 1; gi <= 8; gi++) {
+      const ga = (gi / 8) * Math.PI * 2;
+      const gr = glowR + Math.sin(ga * 2 + this._elapsed * 3) * 3;
+      g.lineTo(tx + Math.cos(ga) * gr, ty - 8 + Math.sin(ga) * gr);
+    }
+    g.fill({ color: 0xff8822, alpha: 0.04 });
+    // Inner glow (hexagon)
+    const igr = glowR * 0.6;
+    g.moveTo(tx + igr, ty - 8);
+    for (let gi = 1; gi <= 6; gi++) {
+      g.lineTo(tx + Math.cos((gi / 6) * Math.PI * 2) * igr, ty - 8 + Math.sin((gi / 6) * Math.PI * 2) * igr);
+    }
+    g.fill({ color: 0xffaa44, alpha: 0.06 });
+    // Ground light pool from torch (polygon)
+    const plR = 20 + Math.sin(this._elapsed * 3 + x) * 3;
+    g.moveTo(tx - plR, y + 58);
+    g.quadraticCurveTo(tx - plR * 0.5, y + 53, tx, y + 54);
+    g.quadraticCurveTo(tx + plR * 0.5, y + 53, tx + plR, y + 58);
+    g.quadraticCurveTo(tx + plR * 0.5, y + 63, tx, y + 62);
+    g.quadraticCurveTo(tx - plR * 0.5, y + 63, tx - plR, y + 58);
     g.fill({ color: 0xffaa44, alpha: 0.03 });
     const f4 = Math.sin(this._elapsed * 15 + x * 0.5) * 1;
     // Outer glow polygon
@@ -2292,8 +2991,13 @@ export class JoustingGame {
     g.quadraticCurveTo(tx - 2 + f4, ty - 5, tx + f3, ty - 10 + f1);
     g.quadraticCurveTo(tx + 2 + f4, ty - 5, tx + 1.5 + f3, ty);
     g.fill({ color: 0xffee66, alpha: 0.85 });
-    // Spark at tip
-    g.circle(tx + f1 * 0.3, ty - 17 + f2, 1); g.fill({ color: 0xffffff, alpha: 0.4 + f4 * 0.2 });
+    // Spark at tip (4-point star polygon)
+    const spkx = tx + f1 * 0.3, spky = ty - 17 + f2, spka = 0.4 + f4 * 0.2;
+    g.moveTo(spkx, spky - 1.5); g.lineTo(spkx + 0.5, spky - 0.5);
+    g.lineTo(spkx + 1.5, spky); g.lineTo(spkx + 0.5, spky + 0.5);
+    g.lineTo(spkx, spky + 1.5); g.lineTo(spkx - 0.5, spky + 0.5);
+    g.lineTo(spkx - 1.5, spky); g.lineTo(spkx - 0.5, spky - 0.5);
+    g.fill({ color: 0xffffff, alpha: spka });
   }
 
   // ---- Shield heraldry pattern --------------------------------------------
@@ -2368,22 +3072,29 @@ export class JoustingGame {
       [px + 8, py + ph - 8, 1, -1], [px + pw - 8, py + ph - 8, -1, -1],
     ];
     for (const [fx, fy, dx, dy] of corners) {
-      // Central dot
-      g.circle(fx, fy, 5); g.fill(0xffd700);
-      g.circle(fx, fy, 2.5); g.fill(0x1a1a28);
+      // Central ornament (8-point star polygon)
+      g.moveTo(fx, fy - 5); g.lineTo(fx + 2, fy - 2); g.lineTo(fx + 5, fy); g.lineTo(fx + 2, fy + 2);
+      g.lineTo(fx, fy + 5); g.lineTo(fx - 2, fy + 2); g.lineTo(fx - 5, fy); g.lineTo(fx - 2, fy - 2);
+      g.fill(0xffd700);
+      g.moveTo(fx, fy - 2.5); g.lineTo(fx + 1, fy - 1); g.lineTo(fx + 2.5, fy); g.lineTo(fx + 1, fy + 1);
+      g.lineTo(fx, fy + 2.5); g.lineTo(fx - 1, fy + 1); g.lineTo(fx - 2.5, fy); g.lineTo(fx - 1, fy - 1);
+      g.fill(0x1a1a28);
       // Curling vine arm (horizontal)
       g.moveTo(fx, fy);
       g.quadraticCurveTo(fx + dx * 18, fy + dy * 2, fx + dx * 25, fy - dy * 5);
       g.quadraticCurveTo(fx + dx * 22, fy - dy * 8, fx + dx * 15, fy - dy * 4);
       g.stroke({ color: 0xffd700, width: 1.2 });
-      // Curl tip
-      g.circle(fx + dx * 25, fy - dy * 5, 1.5); g.fill(0xffd700);
+      // Curl tip (diamond polygon)
+      const ctx2 = fx + dx * 25, cty2 = fy - dy * 5;
+      g.moveTo(ctx2, cty2 - 2); g.lineTo(ctx2 + 2, cty2); g.lineTo(ctx2, cty2 + 2); g.lineTo(ctx2 - 2, cty2);
+      g.fill(0xffd700);
       // Curling vine arm (vertical)
       g.moveTo(fx, fy);
       g.quadraticCurveTo(fx + dx * 2, fy + dy * 18, fx - dx * 5, fy + dy * 25);
       g.quadraticCurveTo(fx - dx * 8, fy + dy * 22, fx - dx * 4, fy + dy * 15);
       g.stroke({ color: 0xffd700, width: 1.2 });
-      g.circle(fx - dx * 5, fy + dy * 25, 1.5); g.fill(0xffd700);
+      const cvx = fx - dx * 5, cvy = fy + dy * 25;
+      g.moveTo(cvx, cvy - 2); g.lineTo(cvx + 2, cvy); g.lineTo(cvx, cvy + 2); g.lineTo(cvx - 2, cvy); g.fill(0xffd700);
       // Leaf polygon on vine
       g.moveTo(fx + dx * 12, fy + dy * 1);
       g.quadraticCurveTo(fx + dx * 16, fy - dy * 4, fx + dx * 20, fy - dy * 2);
@@ -2479,10 +3190,24 @@ export class JoustingGame {
 
     // Animated crossed lances (polygon shafts) with kite shield
     const cx = sw / 2, cy = py + ph * 0.28;
-    // Shield glow (pulsing light behind the shield)
+    // Shield glow (polygon radial light pattern)
     const shGlow = 0.06 + Math.sin(this._elapsed * 1.8) * 0.03;
-    g.circle(cx, cy, 30); g.fill({ color: 0xffd700, alpha: shGlow });
-    g.circle(cx, cy, 22); g.fill({ color: 0xffeeaa, alpha: shGlow * 0.7 });
+    // Outer glow (12-point polygon)
+    for (let sgi = 0; sgi < 12; sgi++) {
+      const sga1 = (sgi / 12) * Math.PI * 2;
+      const sga2 = ((sgi + 1) / 12) * Math.PI * 2;
+      const sgr = 28 + Math.sin(this._elapsed * 0.8 + sgi) * 3;
+      g.moveTo(cx, cy);
+      g.lineTo(cx + Math.cos(sga1) * sgr, cy + Math.sin(sga1) * sgr);
+      g.lineTo(cx + Math.cos(sga2) * sgr, cy + Math.sin(sga2) * sgr);
+      g.fill({ color: 0xffd700, alpha: shGlow });
+    }
+    // Inner glow (hexagon)
+    g.moveTo(cx + 20, cy);
+    for (let sgi = 1; sgi <= 6; sgi++) {
+      g.lineTo(cx + Math.cos((sgi / 6) * Math.PI * 2) * 20, cy + Math.sin((sgi / 6) * Math.PI * 2) * 20);
+    }
+    g.fill({ color: 0xffeeaa, alpha: shGlow * 0.7 });
     const wobble = Math.sin(this._elapsed * 1.2) * 3;
     // Left lance polygon (tapered shaft)
     g.moveTo(cx - 100, cy - 27 + wobble);
@@ -2535,9 +3260,14 @@ export class JoustingGame {
     for (let ki = 0; ki < TOURNAMENT_KNIGHTS.length; ki++) {
       const k = TOURNAMENT_KNIGHTS[ki];
       const kx = bpX + (ki / (TOURNAMENT_KNIGHTS.length - 1)) * bpW;
-      // Pip with knight color
-      g.circle(kx, bpY, 4); g.fill(k.color);
-      g.circle(kx, bpY, 2); g.fill({ color: 0x000000, alpha: 0.3 });
+      // Pip — mini shield polygon with knight color
+      g.moveTo(kx, bpY - 4); g.quadraticCurveTo(kx + 4, bpY - 3, kx + 4, bpY);
+      g.lineTo(kx + 2, bpY + 3); g.lineTo(kx, bpY + 5);
+      g.lineTo(kx - 2, bpY + 3); g.lineTo(kx - 4, bpY);
+      g.quadraticCurveTo(kx - 4, bpY - 3, kx, bpY - 4); g.fill(k.color);
+      // Inner highlight
+      g.moveTo(kx, bpY - 2); g.lineTo(kx + 2, bpY); g.lineTo(kx, bpY + 2); g.lineTo(kx - 2, bpY);
+      g.fill({ color: 0x000000, alpha: 0.25 });
       // Connector line
       if (ki < TOURNAMENT_KNIGHTS.length - 1) {
         const nx = bpX + ((ki + 1) / (TOURNAMENT_KNIGHTS.length - 1)) * bpW;
@@ -2554,7 +3284,11 @@ export class JoustingGame {
       // Highlight defeated pips
       for (let ki = 0; ki < best; ki++) {
         const kx = bpX + (ki / (TOURNAMENT_KNIGHTS.length - 1)) * bpW;
-        g.circle(kx, bpY, 5.5); g.stroke({ color: 0x44ff44, width: 1 });
+        // Defeated glow ring (polygon)
+        g.moveTo(kx, bpY - 6); g.quadraticCurveTo(kx + 6, bpY - 4, kx + 6, bpY + 1);
+        g.lineTo(kx + 3, bpY + 5); g.lineTo(kx, bpY + 7); g.lineTo(kx - 3, bpY + 5);
+        g.lineTo(kx - 6, bpY + 1); g.quadraticCurveTo(kx - 6, bpY - 4, kx, bpY - 6);
+        g.stroke({ color: 0x44ff44, width: 1 });
       }
     }
 
@@ -2749,7 +3483,16 @@ export class JoustingGame {
       this._addText(`Runs: ${runCount} | Clears: ${s.mastery.totalWins}`, S_STAT_LABEL, sw / 2, py + ph - 30);
     }
 
-    this._addText("W/S: Ability  |  A/D: Challenge  |  SPACE: Start", S_AIM_INACTIVE, sw / 2, py + ph - 12);
+    // Random bracket toggle + cosmetics
+    if (s.mastery.totalWins > 0 || s.bestRound >= 4) {
+      const rbStyle = new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: s.randomBracket ? 0xff8800 : 0x445566, fontWeight: s.randomBracket ? "bold" : "normal" });
+      this._addText(`[R] Random Bracket: ${s.randomBracket ? "ON" : "OFF"}`, rbStyle, sw / 2, py + ph - 28);
+    }
+    if (s.unlockedCosmetics.length > 0) {
+      const cosNames = COSMETIC_UNLOCKS.filter(c => s.unlockedCosmetics.includes(c.id)).map(c => c.name).join(", ");
+      this._addText(`Unlocked: ${cosNames}`, S_STAMINA, sw / 2, py + ph - 42);
+    }
+    this._addText("W/S: Ability  |  A/D: Challenge  |  R: Bracket  |  SPACE: Start", S_AIM_INACTIVE, sw / 2, py + ph - 12);
   }
 
   // ---- Controls Screen ----------------------------------------------------
@@ -2767,9 +3510,9 @@ export class JoustingGame {
     const hx = sw / 2, hy = py + 14;
     g.moveTo(hx - 20, hy - 4); g.lineTo(hx + 8, hy + 6); g.stroke({ color: 0xffd700, width: 1.5 });
     g.moveTo(hx + 20, hy - 4); g.lineTo(hx - 8, hy + 6); g.stroke({ color: 0xffd700, width: 1.5 });
-    // Sword pommels
-    g.circle(hx - 22, hy - 5, 2); g.fill(0xffd700);
-    g.circle(hx + 22, hy - 5, 2); g.fill(0xffd700);
+    // Sword pommels (diamond polygons)
+    g.moveTo(hx - 22, hy - 7); g.lineTo(hx - 20, hy - 5); g.lineTo(hx - 22, hy - 3); g.lineTo(hx - 24, hy - 5); g.fill(0xffd700);
+    g.moveTo(hx + 22, hy - 7); g.lineTo(hx + 24, hy - 5); g.lineTo(hx + 22, hy - 3); g.lineTo(hx + 20, hy - 5); g.fill(0xffd700);
 
     this._addText("CONTROLS & MECHANICS", S_TITLE, sw / 2, py + 30);
 
@@ -2814,9 +3557,10 @@ export class JoustingGame {
     row("SPACE", "Start charge", lx + 20, cy); cy += 20;
 
     hdr("CHARGING PHASE", lx + 80, cy, 0xff8844); cy += 16;
-    // Power meter icon
+    // Power meter icon (polygon)
     g.roundRect(lx + 3, cy - 3, 14, 6, 2); g.stroke({ color: 0xff8844, width: 1 });
-    g.rect(lx + 8, cy - 4, 2, 8); g.fill(0xff8844);
+    // Needle (triangle pointer)
+    g.moveTo(lx + 9, cy - 5); g.lineTo(lx + 11, cy); g.lineTo(lx + 9, cy + 5); g.lineTo(lx + 7, cy); g.fill(0xff8844);
     row("SPACE", "Lock timing meter", lx + 20, cy); cy += 13;
     row("W/S/A/D", "Feint (last 40%, -15 stam)", lx + 20, cy); cy += 20;
 
@@ -2829,7 +3573,9 @@ export class JoustingGame {
     hdr("SCORING", rx2 + 80, cy, 0xff4444); cy += 16;
     // Color-coded score entries
     const scoreRow = (label: string, pts: string, color: number, x: number, y: number) => {
-      g.circle(x + 3, y, 3); g.fill(color);
+      // Score pip (hexagon polygon)
+      g.moveTo(x + 3, y - 3); g.lineTo(x + 6, y - 1.5); g.lineTo(x + 6, y + 1.5);
+      g.lineTo(x + 3, y + 3); g.lineTo(x, y + 1.5); g.lineTo(x, y - 1.5); g.fill(color);
       const ls = new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: color, fontWeight: "bold" });
       this._addText(label, ls, x + 12, y, 0);
       this._addText(pts, S_AIM_INACTIVE, x + 90, y, 0);
@@ -2844,8 +3590,12 @@ export class JoustingGame {
     // Mini meter diagram
     const mDx = rx2 + 5, mDy = cy + 2;
     g.roundRect(mDx, mDy - 4, 60, 8, 3); g.fill({ color: 0x663322, alpha: 0.6 });
-    g.rect(mDx + 12, mDy - 4, 36, 8); g.fill({ color: 0x666622, alpha: 0.5 });
-    g.rect(mDx + 22, mDy - 4, 16, 8); g.fill({ color: 0x226633, alpha: 0.7 });
+    // Good zone (polygon with tapered edges)
+    g.moveTo(mDx + 12, mDy - 4); g.lineTo(mDx + 48, mDy - 4);
+    g.lineTo(mDx + 46, mDy + 4); g.lineTo(mDx + 14, mDy + 4); g.fill({ color: 0x666622, alpha: 0.5 });
+    // Perfect zone (polygon)
+    g.moveTo(mDx + 22, mDy - 4); g.lineTo(mDx + 38, mDy - 4);
+    g.lineTo(mDx + 36, mDy + 4); g.lineTo(mDx + 24, mDy + 4); g.fill({ color: 0x226633, alpha: 0.7 });
     g.roundRect(mDx, mDy - 4, 60, 8, 3); g.stroke({ color: 0x888888, width: 0.5 });
     this._addText("PERFECT = 2x dmg, +unhorse", S_AIM_INACTIVE, rx2 + 75, cy, 0); cy += 13;
     this._addText("GOOD = normal damage", S_AIM_INACTIVE, rx2 + 75, cy, 0); cy += 13;
@@ -2940,8 +3690,12 @@ export class JoustingGame {
       this._addText(`${km.wins}`, hasData ? S_STAT_VALUE : S_AIM_INACTIVE, px + pw * 0.45, cy);
       this._addText(`${km.unhorses}`, hasData ? S_STAT_VALUE : S_AIM_INACTIVE, px + pw * 0.6, cy);
       this._addText(`${km.perfectWins}`, hasData ? S_STAT_VALUE : S_AIM_INACTIVE, px + pw * 0.78, cy);
-      // Color pip for knight
-      g.circle(px + 38, cy, 3); g.fill(hasData ? k.color : 0x222233);
+      // Color pip (mini shield polygon)
+      const kpx = px + 38;
+      g.moveTo(kpx, cy - 3); g.quadraticCurveTo(kpx + 3, cy - 2, kpx + 3, cy);
+      g.lineTo(kpx + 1.5, cy + 2.5); g.lineTo(kpx, cy + 3.5);
+      g.lineTo(kpx - 1.5, cy + 2.5); g.lineTo(kpx - 3, cy);
+      g.quadraticCurveTo(kpx - 3, cy - 2, kpx, cy - 3); g.fill(hasData ? k.color : 0x222233);
       cy += 22;
     }
 
@@ -2954,6 +3708,22 @@ export class JoustingGame {
       const ab = PLAYER_ABILITIES[SELECTABLE_ABILITIES[ai]];
       const abStyle = new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: ab.color, fontWeight: "bold" });
       this._addText(`${ab.name}: ${ab.desc}`, abStyle, px + 40 + ai * (pw / 4), cy, 0);
+    }
+
+    // Cosmetic unlocks
+    cy += 20;
+    g.roundRect(px + 20, cy - 5, pw - 40, 45, 4); g.fill({ color: 0x000000, alpha: 0.3 });
+    this._addText("COSMETIC UNLOCKS", S_AIM_LABEL, sw / 2, cy + 2);
+    cy += 16;
+    for (let ci = 0; ci < COSMETIC_UNLOCKS.length; ci++) {
+      const cu = COSMETIC_UNLOCKS[ci];
+      const unlocked = cu.check(m);
+      const cuStyle = new TextStyle({ fontFamily: "monospace", fontSize: 10, fill: unlocked ? cu.color : 0x334455, fontWeight: unlocked ? "bold" : "normal" });
+      const icon = unlocked ? "\u2713" : "\u2717";
+      // Color pip
+      g.circle(px + 32 + ci * (pw / COSMETIC_UNLOCKS.length), cy + 1, 3);
+      g.fill(unlocked ? cu.color : 0x222233);
+      this._addText(`${icon} ${cu.name}`, cuStyle, px + 42 + ci * (pw / COSMETIC_UNLOCKS.length), cy, 0);
     }
 
     this._addText("ESC or SPACE to return", S_BTN, sw / 2, py + ph - 18);
@@ -2984,8 +3754,12 @@ export class JoustingGame {
         g.roundRect(px + 10, ky - 4, listW - 10, 20, 3);
         g.stroke({ color: k.color, width: 1 });
       }
-      // Color pip
-      g.circle(px + 22, ky + 6, 4); g.fill(k.color);
+      // Color pip (shield polygon)
+      const bpx = px + 22, bpy2 = ky + 6;
+      g.moveTo(bpx, bpy2 - 4); g.quadraticCurveTo(bpx + 4, bpy2 - 3, bpx + 4, bpy2);
+      g.lineTo(bpx + 2, bpy2 + 3); g.lineTo(bpx, bpy2 + 5);
+      g.lineTo(bpx - 2, bpy2 + 3); g.lineTo(bpx - 4, bpy2);
+      g.quadraticCurveTo(bpx - 4, bpy2 - 3, bpx, bpy2 - 4); g.fill(k.color);
       const nameStyle = selected ? S_SHOP_ACTIVE : S_SHOP_ITEM;
       this._addText(`${selected ? "\u25B6 " : "  "}${k.name}`, nameStyle, px + 32, ky + 6, 0);
       // Stars (condensed)
@@ -3067,10 +3841,16 @@ export class JoustingGame {
     g.roundRect(px, py, pw, ph, 10); g.stroke({ color: 0xffd700, width: 2 });
     g.roundRect(px + 4, py + 4, pw - 8, ph - 8, 7); g.stroke({ color: 0x886622, width: 0.8 });
 
-    // Pause icon (two vertical bars)
+    // Pause icon (polygon bars with beveled ends)
     const pix = sw / 2, piy = py + 20;
-    g.roundRect(pix - 8, piy - 6, 5, 14, 1); g.fill(0xffd700);
-    g.roundRect(pix + 3, piy - 6, 5, 14, 1); g.fill(0xffd700);
+    // Left bar
+    g.moveTo(pix - 8, piy - 7); g.lineTo(pix - 4, piy - 7); g.lineTo(pix - 3, piy - 5);
+    g.lineTo(pix - 3, piy + 5); g.lineTo(pix - 4, piy + 7); g.lineTo(pix - 8, piy + 7);
+    g.lineTo(pix - 9, piy + 5); g.lineTo(pix - 9, piy - 5); g.fill(0xffd700);
+    // Right bar
+    g.moveTo(pix + 3, piy - 7); g.lineTo(pix + 7, piy - 7); g.lineTo(pix + 8, piy - 5);
+    g.lineTo(pix + 8, piy + 5); g.lineTo(pix + 7, piy + 7); g.lineTo(pix + 3, piy + 7);
+    g.lineTo(pix + 2, piy + 5); g.lineTo(pix + 2, piy - 5); g.fill(0xffd700);
 
     this._addText("PAUSED", S_TITLE, sw / 2, py + 40);
 
@@ -3089,10 +3869,14 @@ export class JoustingGame {
 
     // Current match info panel
     if (s.roundIndex < TOURNAMENT_KNIGHTS.length) {
-      const opp = TOURNAMENT_KNIGHTS[s.roundIndex];
+      const opp = getOpponent(s);
       g.roundRect(px + 15, cy - 6, pw - 30, 52, 4); g.fill({ color: 0x000000, alpha: 0.3 });
-      // Opponent color pip
-      g.circle(px + 28, cy + 8, 4); g.fill(opp.color);
+      // Opponent color pip (shield polygon)
+      const opx = px + 28, opy = cy + 8;
+      g.moveTo(opx, opy - 4); g.quadraticCurveTo(opx + 4, opy - 3, opx + 4, opy);
+      g.lineTo(opx + 2, opy + 3); g.lineTo(opx, opy + 5);
+      g.lineTo(opx - 2, opy + 3); g.lineTo(opx - 4, opy);
+      g.quadraticCurveTo(opx - 4, opy - 3, opx, opy - 4); g.fill(opp.color);
       this._addText(`Facing: ${opp.name} ${opp.title}`, S_BODY, sw / 2, cy + 6); cy += 18;
       this._addText(`Score: You ${s.playerScore} - ${s.opponentScore} ${opp.name.split(" ")[1]}`, S_SCORE, sw / 2, cy + 4); cy += 16;
       this._addText(`Tilt ${s.tiltIndex + 1} of ${tiltsForRound(s.roundIndex)}`, S_AIM_INACTIVE, sw / 2, cy + 4); cy += 26;
@@ -3150,7 +3934,7 @@ export class JoustingGame {
     this._renderArenaBackground(g, sw, sh);
     g.rect(0, 0, sw, sh); g.fill({ color: 0x000000, alpha: 0.55 });
 
-    const s = this._state; const opp = TOURNAMENT_KNIGHTS[s.roundIndex];
+    const s = this._state; const opp = getOpponent(s);
 
     // Panel
     const px = sw * 0.1, py = sh * 0.05, pw = sw * 0.8, ph = sh * 0.9;
@@ -3208,7 +3992,17 @@ export class JoustingGame {
     }
 
     const tc = tiltsForRound(s.roundIndex);
-    this._addText(`Best of ${tc} tilts`, S_BODY, sw / 2, py + ph * 0.86);
+    // Weather display
+    const wd = WEATHER_DEFS[s.weather];
+    const wStyle = new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: wd.color, fontWeight: "bold" });
+    this._addText(`\u2601 ${wd.name}: ${wd.desc}`, wStyle, sw / 2, py + ph * 0.80);
+    // Arena name
+    this._addText(`\u26F3 ${ARENA_THEMES[s.arenaTheme].name}`, S_AIM_INACTIVE, sw / 2, py + ph * 0.83);
+    // Random bracket indicator
+    if (s.randomBracket) {
+      this._addText("\u2B22 Random Bracket", S_STREAK, sw / 2, py + ph * 0.86);
+    }
+    this._addText(`Best of ${tc} tilts`, S_BODY, sw / 2, py + ph * 0.89);
     const skip = this._addText("SPACE to skip", S_AIM_INACTIVE, sw / 2, py + ph * 0.92);
     skip.alpha = 0.5 + Math.sin(this._elapsed * 3) * 0.3;
   }
@@ -3240,14 +4034,16 @@ export class JoustingGame {
 
   private _renderAiming(g: Graphics, sw: number, sh: number): void {
     this._renderArenaBackground(g, sw, sh);
-    const s = this._state; const opp = TOURNAMENT_KNIGHTS[s.roundIndex];
+    const s = this._state; const opp = getOpponent(s);
 
     // Shadows
     this._drawShadow(g, sw * 0.15, sh * 0.64);
     this._drawShadow(g, sw * 0.85, sh * 0.64);
 
-    this._drawKnightFull(g, sw * 0.15, sh * 0.52, PLAYER_COLOR, PLAYER_COLOR2, PLAYER_HORSE, true, s.playerLance, 0, 0, s.playerStamina, PLAYER_HERALDRY);
-    this._drawKnightFull(g, sw * 0.85, sh * 0.52, opp.color, opp.color2, opp.horseColor, false, "mid", 0, 0, s.aiStamina, opp.heraldry);
+    this._drawKnightFull(g, sw * 0.15, sh * 0.52, getPlayerColor(s), PLAYER_COLOR2, PLAYER_HORSE, true, s.playerLance, 0, 0, s.playerStamina, PLAYER_HERALDRY);
+    // AI tell: lance drifts toward their chosen zone (subtle, skill-dependent)
+    const tellZone: Zone = s.aiTellDrift < -0.3 ? "high" : s.aiTellDrift > 0.3 ? "low" : "mid";
+    this._drawKnightFull(g, sw * 0.85, sh * 0.52, opp.color, opp.color2, opp.horseColor, false, tellZone, 0, 0, s.aiStamina, opp.heraldry);
 
     // Aiming panel
     const px = sw * 0.02, py = sh * 0.04, pw = 195, ph = 210;
@@ -3380,7 +4176,7 @@ export class JoustingGame {
 
   private _renderArena(g: Graphics, sw: number, sh: number): void {
     this._renderArenaBackground(g, sw, sh);
-    const s = this._state; const opp = TOURNAMENT_KNIGHTS[s.roundIndex]; const p = s.chargeProgress;
+    const s = this._state; const opp = getOpponent(s); const p = s.chargeProgress;
 
     // Knight positions with impact recoil (push back after collision)
     const recoilDist = 35; // max recoil distance in pixels
@@ -3403,6 +4199,47 @@ export class JoustingGame {
     } else {
       this._container.scale.set(1);
       this._container.pivot.set(0, 0);
+    }
+
+    // Instant replay during match result — re-render arena with charge animation
+    if (s.replayActive && s.phase === Phase.MATCH_RESULT) {
+      s.replayTimer -= 1 / 60; // tick in real time
+      s.chargeProgress = Math.min(1, s.chargeProgress + 0.005); // slowly advance charge
+      if (s.replayTimer <= 0) {
+        s.replayActive = false;
+        s.chargeProgress = 1;
+      }
+      // "REPLAY" label
+      const rpAlpha = 0.5 + Math.sin(this._elapsed * 4) * 0.3;
+      const rpt = this._addText("\u25B6 REPLAY", S_EVENT_TITLE, sw / 2, sh * 0.08);
+      rpt.alpha = rpAlpha;
+      // Film border effect (black bars top/bottom)
+      g.moveTo(0, 0); g.lineTo(sw, 0); g.lineTo(sw, sh * 0.04); g.lineTo(0, sh * 0.04);
+      g.fill({ color: 0x000000, alpha: 0.6 });
+      g.moveTo(0, sh * 0.96); g.lineTo(sw, sh * 0.96); g.lineTo(sw, sh); g.lineTo(0, sh);
+      g.fill({ color: 0x000000, alpha: 0.6 });
+    }
+
+    // Charge stage visual effects
+    if (s.phase === Phase.CHARGING) {
+      // Stage 1 (25%): subtle ground shake indication
+      if (s.chargeStage >= 1 && Math.random() < 0.3) {
+        this._spawnDust(playerX - 20, ky + 42, 1);
+        this._spawnDust(aiX + 20, ky + 42, 1);
+      }
+      // Stage 2 (50%): intensified dust + slight vignette
+      if (s.chargeStage >= 2) {
+        const stageVig = (s.chargeStage - 1) * 0.03;
+        g.moveTo(0, 0); g.lineTo(sw * 0.1, 0); g.lineTo(0, sh * 0.1); g.fill({ color: 0x000000, alpha: stageVig });
+        g.moveTo(sw, 0); g.lineTo(sw * 0.9, 0); g.lineTo(sw, sh * 0.1); g.fill({ color: 0x000000, alpha: stageVig });
+      }
+      // Stage 3 (75%): golden tension glow from center
+      if (s.chargeStage >= 3) {
+        const tenGlow = 0.02 + Math.sin(this._elapsed * 6) * 0.01;
+        g.moveTo(sw / 2 - 30, sh * 0.35); g.lineTo(sw / 2 + 30, sh * 0.35);
+        g.lineTo(sw / 2 + 15, sh * 0.7); g.lineTo(sw / 2 - 15, sh * 0.7);
+        g.fill({ color: 0xffdd44, alpha: tenGlow });
+      }
     }
 
     // Depth of field — fog overlay on distant elements during charge (focus on knights)
@@ -3431,33 +4268,64 @@ export class JoustingGame {
     this._drawShadow(g, playerX, sh * 0.64);
     this._drawShadow(g, aiX, sh * 0.64);
 
-    this._drawKnightFull(g, playerX, ky + bob, PLAYER_COLOR, PLAYER_COLOR2, PLAYER_HORSE, true, s.playerLance, p, s.unhorsePlayerFallAngle, s.playerStamina, PLAYER_HERALDRY);
+    this._drawKnightFull(g, playerX, ky + bob, getPlayerColor(s), PLAYER_COLOR2, PLAYER_HORSE, true, s.playerLance, p, s.unhorsePlayerFallAngle, s.playerStamina, PLAYER_HERALDRY);
     this._drawKnightFull(g, aiX, ky - bob, opp.color, opp.color2, opp.horseColor, false, s.aiLance, p, s.unhorseAIFallAngle, s.aiStamina, opp.heraldry);
 
     // Impact phase extra effects
     if (s.phase === Phase.IMPACT) {
       const impactCx = sw / 2, impactCy = sh * 0.52;
       // Continuing sparks during freeze
-      if (s.impactSeverity >= 1 && Math.random() < 0.3) {
-        this._spawnSparks(impactCx + (Math.random() - 0.5) * 30, impactCy + (Math.random() - 0.5) * 20, 2);
+      if (s.impactSeverity >= 1 && Math.random() < 0.35) {
+        this._spawnSparks(impactCx + (Math.random() - 0.5) * 40, impactCy + (Math.random() - 0.5) * 25, 2);
       }
       // Lance debris trail on strong+ hits
-      if (s.impactSeverity >= 2 && Math.random() < 0.4) {
-        this._spawnSplinters(impactCx + (Math.random() - 0.5) * 40, impactCy - 10, 1);
+      if (s.impactSeverity >= 2 && Math.random() < 0.5) {
+        this._spawnSplinters(impactCx + (Math.random() - 0.5) * 50, impactCy - 15, 2);
       }
-      // Shield flash on blocks (blue-white glow at impact point)
+      // Shield flash on blocks
       if (s.impactSeverity === 0 && s.impactZoom > 0) {
         const blockGlow = s.impactZoom * 2;
         g.circle(impactCx, impactCy, 20 * blockGlow + 10);
         g.fill({ color: 0x88aaff, alpha: blockGlow * 0.1 });
         g.circle(impactCx, impactCy, 10 * blockGlow + 5);
         g.fill({ color: 0xccddff, alpha: blockGlow * 0.15 });
+        // Shield clang rings
+        const clangR = (1 - s.impactZoom) * 30 + 10;
+        g.circle(impactCx, impactCy, clangR); g.stroke({ color: 0xaaccff, width: 1.5, alpha: s.impactZoom * 0.2 } as any);
       }
-      // Hit flash (orange glow for hits)
+      // Hit flash + armor glow on struck knight
       if (s.impactSeverity >= 1 && s.impactZoom > 0) {
         const hitGlow = s.impactZoom * 2;
         g.circle(impactCx, impactCy, 25 * hitGlow + 15);
         g.fill({ color: 0xff8844, alpha: hitGlow * 0.08 });
+        // Armor flash on the struck knight (white highlight pulse)
+        if (s.lastAIPoints > 0) {
+          // Player was hit — flash on player knight
+          g.circle(playerX, ky, 30); g.fill({ color: 0xffffff, alpha: s.impactZoom * 0.12 });
+        }
+        if (s.lastPlayerPoints > 0) {
+          // AI was hit — flash on AI knight
+          g.circle(aiX, ky, 30); g.fill({ color: 0xffffff, alpha: s.impactZoom * 0.12 });
+        }
+      }
+      // Unhorse dust cloud at fall point
+      if ((s.playerUnhorsed || s.aiUnhorsed) && Math.random() < 0.4) {
+        const dustX = s.playerUnhorsed ? playerX - 20 : aiX + 20;
+        const dustY = ky + 42;
+        this._state.particles.push({
+          x: dustX + (Math.random() - 0.5) * 20, y: dustY,
+          vx: (Math.random() - 0.5) * 30, vy: -15 - Math.random() * 20,
+          life: 0.5 + Math.random() * 0.4, maxLife: 0.9,
+          color: 0x998866, size: 5 + Math.random() * 6, type: "dust",
+        });
+      }
+      // Impact energy wave (expanding ring on strong hits)
+      if (s.impactSeverity >= 2 && s.impactZoom > 0.1) {
+        const waveR = (1 - s.impactZoom) * 60 + 15;
+        g.circle(impactCx, impactCy, waveR);
+        g.stroke({ color: 0xffdd44, width: 2, alpha: s.impactZoom * 0.15 } as any);
+        g.circle(impactCx, impactCy, waveR + 8);
+        g.stroke({ color: 0xffaa22, width: 1, alpha: s.impactZoom * 0.08 } as any);
       }
     }
 
@@ -3551,14 +4419,32 @@ export class JoustingGame {
     }
 
     // Crowd sparkle effect during excitement
-    if (s.crowdExcitement > 0.4 && Math.random() < s.crowdExcitement * 0.15) {
+    if (s.crowdExcitement > 0.3 && Math.random() < s.crowdExcitement * 0.2) {
       const sparkX = Math.random() * sw;
       const sparkY = sh * 0.32 + Math.random() * (sh * 0.1);
       this._state.particles.push({
-        x: sparkX, y: sparkY, vx: (Math.random() - 0.5) * 20, vy: -30 - Math.random() * 40,
-        life: 0.4 + Math.random() * 0.3, maxLife: 0.7,
-        color: [0xffd700, 0xffaa44, 0xffffff][Math.floor(Math.random() * 3)],
-        size: 1 + Math.random() * 2, type: "spark",
+        x: sparkX, y: sparkY, vx: (Math.random() - 0.5) * 25, vy: -35 - Math.random() * 50,
+        life: 0.4 + Math.random() * 0.4, maxLife: 0.8,
+        color: [0xffd700, 0xffaa44, 0xffffff, 0xff8844][Math.floor(Math.random() * 4)],
+        size: 1 + Math.random() * 2.5, type: "spark",
+      });
+    }
+    // Crowd excitement visual pulse — stands glow during high excitement
+    if (s.crowdExcitement > 0.5) {
+      const excGlow = (s.crowdExcitement - 0.5) * 0.08;
+      g.rect(0, sh * 0.32, sw, sh * 0.12);
+      g.fill({ color: 0xffaa44, alpha: excGlow });
+    }
+    // Thrown items during unhorse excitement
+    if (s.crowdExcitement > 0.8 && s.phase === Phase.IMPACT && Math.random() < 0.15) {
+      // Throw a hat/flower from crowd
+      this._state.particles.push({
+        x: Math.random() * sw, y: sh * 0.34,
+        vx: (Math.random() - 0.5) * 60, vy: -60 - Math.random() * 40,
+        life: 1.0 + Math.random() * 0.5, maxLife: 1.5,
+        color: [0xff4444, 0x44ff44, 0xffd700, 0xffffff][Math.floor(Math.random() * 4)],
+        size: 3 + Math.random() * 2, type: "confetti",
+        rotation: Math.random() * Math.PI * 2, rotSpeed: (Math.random() - 0.5) * 6,
       });
     }
 
@@ -3693,7 +4579,7 @@ export class JoustingGame {
   // ---- Impact/Tilt/Match/End text (same logic as v2) ----------------------
 
   private _renderImpactText(sw: number, sh: number): void {
-    const s = this._state; const opp = TOURNAMENT_KNIGHTS[s.roundIndex];
+    const s = this._state; const opp = getOpponent(s);
     const ps = s.lastPlayerResult === "UNHORSED!" ? S_UNHORSE : s.lastPlayerResult === "STRONG HIT!" ? S_HIT : s.lastPlayerResult === "HIT!" ? S_HIT : s.lastPlayerResult === "GLANCE" ? S_GLANCE : S_BLOCK;
     this._addText(`Your lance: ${s.lastPlayerResult}`, ps, sw * 0.25, sh * 0.28);
     const as2 = s.lastAIResult === "UNHORSED!" ? S_UNHORSE : s.lastAIResult === "STRONG HIT!" ? S_HIT : s.lastAIResult === "HIT!" ? S_HIT : s.lastAIResult === "GLANCE" ? S_GLANCE : S_BLOCK;
@@ -3711,7 +4597,7 @@ export class JoustingGame {
     const g = this._gfx;
     this._renderImpactText(sw, sh);
     const s = this._state;
-    const opp = TOURNAMENT_KNIGHTS[s.roundIndex];
+    const opp = getOpponent(s);
     this._addText(`Score: You ${s.playerScore} - ${s.opponentScore} ${opp.name.split(" ")[1]}`, S_RESULT, sw / 2, sh * 0.72);
 
     // Prominent stamina display after tilt
@@ -3745,17 +4631,30 @@ export class JoustingGame {
   private _renderMatchResult(g: Graphics, sw: number, sh: number): void {
     this._renderArenaBackground(g, sw, sh);
     g.rect(0, 0, sw, sh); g.fill({ color: 0x000000, alpha: 0.6 });
-    const s = this._state; const opp = TOURNAMENT_KNIGHTS[s.roundIndex]; const won = s.playerScore > s.opponentScore;
+    const s = this._state; const opp = getOpponent(s); const won = s.playerScore > s.opponentScore;
 
     const px = sw * 0.15, py = sh * 0.1, pw = sw * 0.7, ph = sh * 0.8;
     g.roundRect(px, py, pw, ph, 8); g.fill({ color: 0x0a0a18, alpha: 0.92 });
     g.roundRect(px, py, pw, ph, 8); g.stroke({ color: won ? 0xffd700 : 0x553333, width: 2 });
 
     if (won) {
-      // Victory glow halo behind text
+      // Victory glow halo (polygon radial burst)
       const glowR = 50 + Math.sin(this._elapsed * 2) * 8;
-      g.circle(sw / 2, py + ph * 0.1, glowR); g.fill({ color: 0xffd700, alpha: 0.06 });
-      g.circle(sw / 2, py + ph * 0.1, glowR * 0.6); g.fill({ color: 0xffd700, alpha: 0.04 });
+      const glowCx = sw / 2, glowCy = py + ph * 0.1;
+      for (let vgi = 0; vgi < 10; vgi++) {
+        const va1 = (vgi / 10) * Math.PI * 2;
+        const va2 = ((vgi + 1) / 10) * Math.PI * 2;
+        g.moveTo(glowCx, glowCy);
+        g.lineTo(glowCx + Math.cos(va1) * glowR, glowCy + Math.sin(va1) * glowR * 0.5);
+        g.lineTo(glowCx + Math.cos(va2) * glowR, glowCy + Math.sin(va2) * glowR * 0.5);
+        g.fill({ color: 0xffd700, alpha: 0.05 });
+      }
+      // Inner glow (hexagon)
+      g.moveTo(glowCx + glowR * 0.6, glowCy);
+      for (let vgi = 1; vgi <= 6; vgi++) {
+        g.lineTo(glowCx + Math.cos((vgi / 6) * Math.PI * 2) * glowR * 0.6, glowCy + Math.sin((vgi / 6) * Math.PI * 2) * glowR * 0.35);
+      }
+      g.fill({ color: 0xffd700, alpha: 0.04 });
       // Victory sparkles
       for (let vs = 0; vs < 6; vs++) {
         const va = this._elapsed * 2 + vs * (Math.PI / 3);
@@ -3825,12 +4724,31 @@ export class JoustingGame {
     g.roundRect(px, py, pw, ph, 10); g.fill({ color: 0x0a0a18, alpha: 0.92 });
     g.roundRect(px, py, pw, ph, 10); g.stroke({ color: ev.color, width: 2 });
 
-    // Animated aura ring pulsing around event
+    // Animated aura ring (polygon — 10-sided pulsing)
     const iconX = sw / 2, iconY = py + 55;
     const auraR = 32 + Math.sin(this._elapsed * 2) * 4;
-    g.circle(iconX, iconY, auraR); g.fill({ color: ev.color, alpha: 0.06 });
-    g.circle(iconX, iconY, auraR * 0.75); g.fill({ color: ev.color, alpha: 0.04 });
-    g.circle(iconX, iconY, auraR); g.stroke({ color: ev.color, width: 1.5, alpha: 0.3 + Math.sin(this._elapsed * 3) * 0.15 } as any);
+    // Outer aura polygon
+    g.moveTo(iconX + auraR, iconY);
+    for (let ai = 1; ai <= 10; ai++) {
+      const aa = (ai / 10) * Math.PI * 2;
+      const ar = auraR + Math.sin(this._elapsed * 1.5 + ai * 0.8) * 2;
+      g.lineTo(iconX + Math.cos(aa) * ar, iconY + Math.sin(aa) * ar);
+    }
+    g.fill({ color: ev.color, alpha: 0.06 });
+    // Inner aura polygon
+    const ir = auraR * 0.75;
+    g.moveTo(iconX + ir, iconY);
+    for (let ai = 1; ai <= 8; ai++) {
+      g.lineTo(iconX + Math.cos((ai / 8) * Math.PI * 2) * ir, iconY + Math.sin((ai / 8) * Math.PI * 2) * ir);
+    }
+    g.fill({ color: ev.color, alpha: 0.04 });
+    // Outer ring stroke (polygon)
+    g.moveTo(iconX + auraR, iconY);
+    for (let ai = 1; ai <= 12; ai++) {
+      const aa = (ai / 12) * Math.PI * 2;
+      g.lineTo(iconX + Math.cos(aa) * auraR, iconY + Math.sin(aa) * auraR);
+    }
+    g.stroke({ color: ev.color, width: 1.5, alpha: 0.3 + Math.sin(this._elapsed * 3) * 0.15 } as any);
 
     // Event icon (star burst with more detail)
     for (let i = 0; i < 8; i++) {
@@ -3908,11 +4826,16 @@ export class JoustingGame {
     // Upgrade level indicators with pips
     const lvY = py + 78;
     this._addText("Lance", S_AIM_INACTIVE, px + pw * 0.2, lvY);
-    for (let lv = 0; lv < 2; lv++) { g.circle(px + pw * 0.28 + lv * 10, lvY, 3); g.fill(lv < s.lanceLevel ? 0xffd700 : 0x222233); }
+    // Level pips (diamond polygons)
+    const drawPip = (px2: number, py2: number, filled: boolean) => {
+      g.moveTo(px2, py2 - 3); g.lineTo(px2 + 3, py2); g.lineTo(px2, py2 + 3); g.lineTo(px2 - 3, py2);
+      g.fill(filled ? 0xffd700 : 0x222233);
+    };
+    for (let lv = 0; lv < 2; lv++) drawPip(px + pw * 0.28 + lv * 10, lvY, lv < s.lanceLevel);
     this._addText("Shield", S_AIM_INACTIVE, px + pw * 0.42, lvY);
-    for (let lv = 0; lv < 2; lv++) { g.circle(px + pw * 0.52 + lv * 10, lvY, 3); g.fill(lv < s.shieldLevel ? 0xffd700 : 0x222233); }
+    for (let lv = 0; lv < 2; lv++) drawPip(px + pw * 0.52 + lv * 10, lvY, lv < s.shieldLevel);
     this._addText("Horse", S_AIM_INACTIVE, px + pw * 0.66, lvY);
-    for (let lv = 0; lv < 2; lv++) { g.circle(px + pw * 0.75 + lv * 10, lvY, 3); g.fill(lv < s.horseLevel ? 0xffd700 : 0x222233); }
+    for (let lv = 0; lv < 2; lv++) drawPip(px + pw * 0.75 + lv * 10, lvY, lv < s.horseLevel);
 
     const items = this._getShopItems();
     const itemStartY = py + 110;
@@ -3998,7 +4921,7 @@ export class JoustingGame {
 
     // Next opponent preview
     if (s.roundIndex < TOURNAMENT_KNIGHTS.length) {
-      const next = TOURNAMENT_KNIGHTS[s.roundIndex];
+      const next = getOpponent(s);
       this._addText(`Next: ${next.name} ${next.title}`, S_SUBTITLE, sw / 2, contY + 52);
       if (next.abilityName) {
         this._addText(`Ability: ${next.abilityName} — ${next.abilityDesc}`, S_ABILITY, sw / 2, contY + 70);
@@ -4017,7 +4940,13 @@ export class JoustingGame {
     g.roundRect(px, py, pw, ph, 8); g.stroke({ color: 0xffd700, width: 3 });
     g.roundRect(px + 6, py + 6, pw - 12, ph - 12, 5); g.stroke({ color: 0x886622, width: 1 });
     for (const [cx, cy] of [[px + 10, py + 10], [px + pw - 10, py + 10], [px + 10, py + ph - 10], [px + pw - 10, py + ph - 10]]) {
-      g.circle(cx, cy, 6); g.fill(0xffd700); g.circle(cx, cy, 3); g.fill(0x0a0a18);
+      // Corner ornament (8-point star polygon)
+      g.moveTo(cx, cy - 6); g.lineTo(cx + 2.5, cy - 2.5); g.lineTo(cx + 6, cy); g.lineTo(cx + 2.5, cy + 2.5);
+      g.lineTo(cx, cy + 6); g.lineTo(cx - 2.5, cy + 2.5); g.lineTo(cx - 6, cy); g.lineTo(cx - 2.5, cy - 2.5);
+      g.fill(0xffd700);
+      g.moveTo(cx, cy - 3); g.lineTo(cx + 1.5, cy - 1.5); g.lineTo(cx + 3, cy); g.lineTo(cx + 1.5, cy + 1.5);
+      g.lineTo(cx, cy + 3); g.lineTo(cx - 1.5, cy + 1.5); g.lineTo(cx - 3, cy); g.lineTo(cx - 1.5, cy - 1.5);
+      g.fill(0x0a0a18);
     }
 
     const s = this._state; const wonAll = s.roundIndex >= TOURNAMENT_KNIGHTS.length;
@@ -4082,11 +5011,19 @@ export class JoustingGame {
         g.fill(0xeebb00);
       }
 
-      // Jewels on cup
-      g.circle(cx, cy - 6, 3); g.fill(0xff2222); // ruby
-      g.circle(cx, cy - 6, 1.5); g.fill({ color: 0xffffff, alpha: 0.3 }); // ruby shine
-      g.circle(cx - 12, cy - 10, 2); g.fill(0x2244ff); // sapphire
-      g.circle(cx + 12, cy - 10, 2); g.fill(0x22cc44); // emerald
+      // Jewels on cup (polygon gem shapes)
+      // Ruby (octagon with shine)
+      g.moveTo(cx - 2, cy - 9); g.lineTo(cx + 2, cy - 9); g.lineTo(cx + 3, cy - 7);
+      g.lineTo(cx + 3, cy - 5); g.lineTo(cx + 2, cy - 3); g.lineTo(cx - 2, cy - 3);
+      g.lineTo(cx - 3, cy - 5); g.lineTo(cx - 3, cy - 7); g.fill(0xff2222);
+      g.moveTo(cx - 1, cy - 8); g.lineTo(cx + 1, cy - 8); g.lineTo(cx + 1, cy - 6); g.lineTo(cx - 1, cy - 6);
+      g.fill({ color: 0xffffff, alpha: 0.25 });
+      // Sapphire (hexagon)
+      g.moveTo(cx - 12, cy - 12); g.lineTo(cx - 10, cy - 12); g.lineTo(cx - 9, cy - 10);
+      g.lineTo(cx - 10, cy - 8); g.lineTo(cx - 12, cy - 8); g.lineTo(cx - 13, cy - 10); g.fill(0x2244ff);
+      // Emerald (hexagon)
+      g.moveTo(cx + 10, cy - 12); g.lineTo(cx + 12, cy - 12); g.lineTo(cx + 13, cy - 10);
+      g.lineTo(cx + 12, cy - 8); g.lineTo(cx + 10, cy - 8); g.lineTo(cx + 9, cy - 10); g.fill(0x22cc44);
 
       // Decorative bands on cup
       g.moveTo(cx - 18, cy - 4); g.quadraticCurveTo(cx, cy - 2, cx + 18, cy - 4);
@@ -4146,8 +5083,25 @@ export class JoustingGame {
     this._addText("Streak", S_STAT_LABEL, cols[3], statY + 6);
     this._addText(`${s.bestStreakEver}x`, S_STAT_VALUE, cols[3], statY + 20);
 
-    this._addText("PRESS SPACE to play again", S_BTN, sw / 2, py + ph * 0.88);
-    this._addText("ESC to exit", S_AIM_INACTIVE, sw / 2, py + ph * 0.94);
+    // New unlock reveal — check for newly earned cosmetics/challenges
+    const newUnlocks = COSMETIC_UNLOCKS.filter(c => c.check(s.mastery) && !s.unlockedCosmetics.includes(c.id));
+    if (newUnlocks.length > 0) {
+      const nuy = py + ph * 0.85;
+      g.roundRect(px + 30, nuy - 8, pw - 60, 22, 4); g.fill({ color: 0x224422, alpha: 0.5 });
+      g.roundRect(px + 30, nuy - 8, pw - 60, 22, 4); g.stroke({ color: 0x44ff44, width: 1 });
+      // Sparkle animation around unlock
+      for (let ui = 0; ui < 4; ui++) {
+        const ua = this._elapsed * 2 + ui * (Math.PI / 2);
+        const ux = px + pw / 2 + Math.cos(ua) * (pw * 0.3);
+        const uy2 = nuy + Math.sin(ua) * 8;
+        g.star(ux, uy2, 4, 2.5, 1); g.fill({ color: 0x44ff44, alpha: 0.3 + Math.sin(this._elapsed * 3 + ui) * 0.2 });
+      }
+      const unlockNames = newUnlocks.map(u => u.name).join(", ");
+      this._addText(`\u2B50 NEW UNLOCK: ${unlockNames}!`, S_BRACKET_WON, sw / 2, nuy + 3);
+    }
+
+    this._addText("PRESS SPACE to play again", S_BTN, sw / 2, py + ph * 0.91);
+    this._addText("ESC to exit", S_AIM_INACTIVE, sw / 2, py + ph * 0.96);
   }
 
   // ---- UI helpers ---------------------------------------------------------
@@ -4190,7 +5144,7 @@ export class JoustingGame {
   }
 
   private _renderScoreBar(g: Graphics, sw: number): void {
-    const s = this._state; const opp = TOURNAMENT_KNIGHTS[s.roundIndex];
+    const s = this._state; const opp = getOpponent(s);
     // Score bar with breathing border
     const breathe = 0.6 + Math.sin(this._elapsed * 1.5) * 0.4;
     g.roundRect(sw * 0.25, 6, sw * 0.5, 36, 6); g.fill({ color: 0x0a0a18, alpha: 0.8 });
