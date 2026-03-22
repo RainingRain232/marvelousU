@@ -36,10 +36,18 @@ export class ShadowhandHUD {
     this.container.removeChildren();
     this._crewTexts = [];
 
-    // Top bar
+    // Top bar with ornamental border
     const topBar = new Graphics();
-    topBar.rect(0, 0, sw, 52).fill({ color: COL_BG, alpha: 0.7 });
-    topBar.moveTo(0, 52).lineTo(sw, 52).stroke({ color: COL, width: 1, alpha: 0.25 });
+    topBar.rect(0, 0, sw, 52).fill({ color: COL_BG, alpha: 0.75 });
+    // Double bottom border with accent dots
+    topBar.moveTo(0, 51).lineTo(sw, 51).stroke({ color: COL, width: 1.5, alpha: 0.3 });
+    topBar.moveTo(0, 53).lineTo(sw, 53).stroke({ color: COL, width: 0.5, alpha: 0.1 });
+    for (let dx = 30; dx < sw; dx += 60) {
+      topBar.circle(dx, 51, 1.5).fill({ color: COL, alpha: 0.25 });
+    }
+    // Corner accents
+    topBar.circle(6, 6, 3).fill({ color: COL, alpha: 0.2 });
+    topBar.circle(sw - 6, 6, 3).fill({ color: COL, alpha: 0.2 });
     this.container.addChild(topBar);
 
     const title = new Text({ text: "\u2620 SHADOWHAND \u2620", style: new TextStyle({ fontFamily: FONT, fontSize: 11, fill: COL, fontWeight: "bold", letterSpacing: 3 }) });
@@ -68,10 +76,19 @@ export class ShadowhandHUD {
     this._hintText.anchor.set(0.5, 1); this._hintText.position.set(sw / 2, _sh - 8);
     this.container.addChild(this._hintText);
 
+    // Log panel with ornamental top edge
     const logBg = new Graphics();
-    logBg.roundRect(0, _sh - 120, 300, 120, 4).fill({ color: COL_BG, alpha: 0.5 });
+    logBg.roundRect(0, _sh - 125, 310, 125, 5).fill({ color: COL_BG, alpha: 0.55 });
+    logBg.moveTo(0, _sh - 125).lineTo(310, _sh - 125).stroke({ color: COL, width: 0.8, alpha: 0.2 });
+    logBg.moveTo(310, _sh - 125).lineTo(310, _sh).stroke({ color: COL, width: 0.5, alpha: 0.1 });
+    logBg.circle(4, _sh - 121, 2).fill({ color: COL, alpha: 0.15 });
+    logBg.circle(306, _sh - 121, 2).fill({ color: COL, alpha: 0.15 });
     this.container.addChild(logBg);
-    this._logContainer.position.set(5, _sh - 115);
+    // Log header
+    const logHeader = new Text({ text: "\u25B8 Activity Log", style: new TextStyle({ fontFamily: FONT, fontSize: 8, fill: COL, letterSpacing: 1 }) });
+    logHeader.position.set(8, _sh - 122);
+    this.container.addChild(logHeader);
+    this._logContainer.position.set(8, _sh - 108);
     this.container.addChild(this._logContainer);
   }
 

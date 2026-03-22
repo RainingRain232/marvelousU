@@ -108,16 +108,30 @@ export class ShadowhandRenderer {
         // Caltrops overlay
         if (tile.caltrops) this._drawCaltrops(d, px, py, h);
 
-        // Smoke overlay
+        // Smoke overlay — organic bezier blobs with drift
         if (tile.smoke > 0) {
           const sa = Math.min(0.65, tile.smoke / 4);
-          for (let si = 0; si < 3; si++) {
-            const sx = px + tileHash(x + si, y + 99) * T;
-            const sy = py + tileHash(x + 99, y + si) * T;
-            const sr = 6 + tileHash(x + si, y + si) * 10;
-            d.circle(sx, sy, sr).fill({ color: 0xbbbbbb, alpha: sa * 0.4 });
+          const t = Date.now() / 800;
+          // Base haze
+          g.rect(px, py, T, T).fill({ color: 0x999999, alpha: sa * 0.2 });
+          // Drifting cloud puffs (bezier blobs)
+          for (let si = 0; si < 4; si++) {
+            const drift = Math.sin(t + si * 1.7 + x) * 3;
+            const sx = px + tileHash(x + si, y + 99) * T + drift;
+            const sy = py + tileHash(x + 99, y + si) * T + Math.cos(t + si * 2.3) * 2;
+            const sr = 5 + tileHash(x + si, y + si) * 8;
+            // Organic blob shape
+            d.moveTo(sx - sr, sy);
+            d.bezierCurveTo(sx - sr, sy - sr * 0.8, sx + sr, sy - sr * 0.8, sx + sr, sy);
+            d.bezierCurveTo(sx + sr, sy + sr * 0.8, sx - sr, sy + sr * 0.8, sx - sr, sy);
+            d.fill({ color: si < 2 ? 0xcccccc : 0xaaaaaa, alpha: sa * 0.25 });
           }
-          g.rect(px, py, T, T).fill({ color: 0xaaaaaa, alpha: sa * 0.3 });
+          // Wispy tendrils at edges
+          if (sa > 0.3) {
+            const wx = px + HT + Math.sin(t * 1.5 + x) * 6;
+            const wy = py + Math.cos(t + y) * 4;
+            d.moveTo(wx, wy).bezierCurveTo(wx + 8, wy - 4, wx + 12, wy + 2, wx + 14, wy - 6).stroke({ color: 0xcccccc, width: 1.5, alpha: sa * 0.15 });
+          }
         }
 
         // Torch on wall
@@ -127,85 +141,160 @@ export class ShadowhandRenderer {
   }
 
   private _drawWall(g: Graphics, d: Graphics, px: number, py: number, tx: number, ty: number, map: HeistState["map"], h: number): void {
-    // Base wall
-    g.rect(px, py, T, T).fill({ color: WALL_BASE });
+    // Base wall with slight color variation per tile
+    const baseShade = h < 0.3 ? WALL_BASE : h < 0.6 ? 0x282530 : 0x2c2935;
+    g.rect(px, py, T, T).fill({ color: baseShade });
 
-    // Stone brick pattern
+    // Stone brick pattern with per-brick shading
     const brickH = T / 3;
     for (let row = 0; row < 3; row++) {
       const by = py + row * brickH;
       const offset = (row % 2) * HT;
-      // Mortar lines
-      d.moveTo(px, by).lineTo(px + T, by).stroke({ color: WALL_LO, width: 0.8, alpha: 0.4 });
-      // Vertical mortar (offset per row)
-      d.moveTo(px + offset, by).lineTo(px + offset, by + brickH).stroke({ color: WALL_LO, width: 0.6, alpha: 0.3 });
-      d.moveTo(px + offset + HT, by).lineTo(px + offset + HT, by + brickH).stroke({ color: WALL_LO, width: 0.6, alpha: 0.3 });
+      // Individual brick shade variation
+      for (let col = 0; col < 2; col++) {
+        const bx = px + offset + col * HT;
+        const bw = Math.min(HT, px + T - bx);
+        if (bw > 0) {
+          const brickShade = tileHash(tx * 3 + col, ty * 3 + row) < 0.5 ? 0x2a2730 : 0x262330;
+          d.rect(bx + 0.5, by + 0.5, bw - 1, brickH - 1).fill({ color: brickShade, alpha: 0.3 });
+        }
+      }
+      // Mortar lines (horizontal)
+      d.moveTo(px, by).lineTo(px + T, by).stroke({ color: WALL_LO, width: 0.8, alpha: 0.45 });
+      // Vertical mortar
+      d.moveTo(px + offset, by).lineTo(px + offset, by + brickH).stroke({ color: WALL_LO, width: 0.6, alpha: 0.35 });
+      if (px + offset + HT <= px + T) {
+        d.moveTo(px + offset + HT, by).lineTo(px + offset + HT, by + brickH).stroke({ color: WALL_LO, width: 0.6, alpha: 0.35 });
+      }
     }
 
-    // Highlight on top edge if adjacent to floor
-    if (ty > 0 && map.tiles[ty - 1]?.[tx]?.type !== "wall") {
-      d.moveTo(px + 1, py + 1).lineTo(px + T - 1, py + 1).stroke({ color: WALL_HI, width: 1.2, alpha: 0.35 });
+    // Edge bevels — adjacent-to-floor faces get highlight/shadow
+    const adjTop = ty > 0 && map.tiles[ty - 1]?.[tx]?.type !== "wall" && map.tiles[ty - 1]?.[tx]?.type !== "secret_door";
+    const adjBot = ty < map.height - 1 && map.tiles[ty + 1]?.[tx]?.type !== "wall" && map.tiles[ty + 1]?.[tx]?.type !== "secret_door";
+    const adjLeft = tx > 0 && map.tiles[ty]?.[tx - 1]?.type !== "wall" && map.tiles[ty]?.[tx - 1]?.type !== "secret_door";
+    const adjRight = tx < map.width - 1 && map.tiles[ty]?.[tx + 1]?.type !== "wall" && map.tiles[ty]?.[tx + 1]?.type !== "secret_door";
+
+    if (adjTop) {
+      d.moveTo(px, py + 1).lineTo(px + T, py + 1).stroke({ color: WALL_HI, width: 1.5, alpha: 0.4 });
+      d.moveTo(px, py + 2.5).lineTo(px + T, py + 2.5).stroke({ color: WALL_HI, width: 0.5, alpha: 0.15 });
     }
-    // Shadow on bottom edge
-    if (ty < map.height - 1 && map.tiles[ty + 1]?.[tx]?.type !== "wall") {
-      d.moveTo(px + 1, py + T - 1).lineTo(px + T - 1, py + T - 1).stroke({ color: 0x000000, width: 1, alpha: 0.3 });
+    if (adjBot) {
+      d.moveTo(px, py + T - 1).lineTo(px + T, py + T - 1).stroke({ color: 0x000000, width: 1.5, alpha: 0.35 });
+      d.moveTo(px, py + T - 2.5).lineTo(px + T, py + T - 2.5).stroke({ color: 0x000000, width: 0.5, alpha: 0.12 });
+    }
+    if (adjLeft) {
+      d.moveTo(px + 1, py).lineTo(px + 1, py + T).stroke({ color: WALL_HI, width: 1, alpha: 0.2 });
+    }
+    if (adjRight) {
+      d.moveTo(px + T - 1, py).lineTo(px + T - 1, py + T).stroke({ color: 0x000000, width: 1, alpha: 0.2 });
     }
 
-    // Random moss/stain
-    if (h < 0.12) {
-      d.circle(px + h * T, py + T * 0.7, 2 + h * 3).fill({ color: 0x2a3a2a, alpha: 0.25 });
+    // Corner shadow where two exposed edges meet
+    if (adjBot && adjRight) {
+      d.circle(px + T - 2, py + T - 2, 3).fill({ color: 0x000000, alpha: 0.08 });
+    }
+
+    // Weathering: moss, cracks, stains
+    if (h < 0.1) {
+      // Moss patch (organic blob)
+      const mx = px + 4 + h * 20, my = py + T * 0.6;
+      d.moveTo(mx, my).bezierCurveTo(mx - 3, my - 2, mx - 4, my + 3, mx, my + 4).bezierCurveTo(mx + 4, my + 3, mx + 3, my - 2, mx, my).fill({ color: 0x2a4a2a, alpha: 0.3 });
+    }
+    if (h > 0.88 && h < 0.95) {
+      // Crack line (bezier for organic feel)
+      const cx1 = px + 4, cy1 = py + h * 20;
+      d.moveTo(cx1, cy1).bezierCurveTo(cx1 + 6, cy1 + 3, cx1 + 10, cy1 + 8, cx1 + T * 0.6, cy1 + T * 0.4).stroke({ color: 0x1a1820, width: 0.8, alpha: 0.35 });
+    }
+    if (h > 0.4 && h < 0.45) {
+      // Water stain (dark drip)
+      d.moveTo(px + HT, py).bezierCurveTo(px + HT - 1, py + 6, px + HT + 1, py + 12, px + HT, py + T * 0.6).stroke({ color: 0x1a1a22, width: 1.5, alpha: 0.15 });
     }
   }
 
-  private _drawFloor(g: Graphics, d: Graphics, px: number, py: number, h: number, tile: MapTile): void {
-    // Varied stone floor
-    const shade = h < 0.5 ? FLOOR_BASE : FLOOR_HI;
+  private _drawFloor(g: Graphics, d: Graphics, px: number, py: number, h: number, _tile: MapTile): void {
+    // Varied stone floor — 3 shade tiers
+    const shade = h < 0.33 ? FLOOR_BASE : h < 0.66 ? FLOOR_HI : 0x3d3832;
     g.rect(px, py, T, T).fill({ color: shade });
 
-    // Stone tile edges (subtle)
-    d.rect(px + 0.5, py + 0.5, T - 1, T - 1).stroke({ color: FLOOR_LO, width: 0.5, alpha: 0.2 });
+    // Stone tile edges with bevel effect
+    d.moveTo(px + 1, py + 1).lineTo(px + T - 1, py + 1).stroke({ color: 0x454038, width: 0.6, alpha: 0.2 }); // top highlight
+    d.moveTo(px + 1, py + 1).lineTo(px + 1, py + T - 1).stroke({ color: 0x454038, width: 0.6, alpha: 0.15 }); // left highlight
+    d.moveTo(px + 1, py + T - 1).lineTo(px + T - 1, py + T - 1).stroke({ color: 0x1a1816, width: 0.6, alpha: 0.2 }); // bottom shadow
+    d.moveTo(px + T - 1, py + 1).lineTo(px + T - 1, py + T - 1).stroke({ color: 0x1a1816, width: 0.6, alpha: 0.15 }); // right shadow
 
-    // Diagonal crack
+    // Bezier crack (organic, not straight)
     if (h > 0.85) {
-      const cx = px + h * 8, cy = py + 2;
-      d.moveTo(cx, cy).lineTo(cx + 8, cy + T - 4).stroke({ color: FLOOR_LO, width: 0.5, alpha: 0.2 });
+      const cx1 = px + 3 + h * 6, cy1 = py + 2;
+      const cx2 = px + T * 0.4 + h * 4, cy2 = py + T * 0.5;
+      d.moveTo(cx1, cy1).bezierCurveTo(cx1 + 3, cy1 + 5, cx2 - 2, cy2 - 3, cx2, cy2).stroke({ color: FLOOR_LO, width: 0.7, alpha: 0.25 });
+      // Crack widens slightly at end
+      d.moveTo(cx2, cy2).bezierCurveTo(cx2 + 2, cy2 + 4, cx2 + 5, cy2 + 7, cx2 + 3, py + T - 3).stroke({ color: FLOOR_LO, width: 0.5, alpha: 0.18 });
     }
 
-    // Occasional pebble
-    if (h > 0.7 && h < 0.75) {
-      d.circle(px + 10 + h * 12, py + 8 + h * 14, 1.5).fill({ color: FLOOR_LO, alpha: 0.3 });
+    // Scattered pebbles (2-3 per tile based on hash)
+    if (h > 0.6 && h < 0.7) {
+      for (let pi = 0; pi < 2; pi++) {
+        const ph2 = tileHash(Math.floor(px) + pi, Math.floor(py) + pi);
+        const pbx = px + 4 + ph2 * (T - 8);
+        const pby = py + 4 + tileHash(Math.floor(py) + pi, Math.floor(px) + pi) * (T - 8);
+        d.ellipse(pbx, pby, 1.5 + ph2, 1 + ph2 * 0.5).fill({ color: FLOOR_LO, alpha: 0.25 });
+      }
     }
 
-    // Corner shadow for depth
-    d.moveTo(px, py + T).lineTo(px + T, py + T).stroke({ color: 0x000000, width: 0.5, alpha: 0.08 });
-    d.moveTo(px + T, py).lineTo(px + T, py + T).stroke({ color: 0x000000, width: 0.5, alpha: 0.08 });
+    // Subtle dust spots
+    if (h > 0.3 && h < 0.35) {
+      d.circle(px + HT + h * 6, py + HT - 2, 3 + h * 3).fill({ color: 0x2e2a26, alpha: 0.1 });
+    }
   }
 
-  private _drawDoor(g: Graphics, d: Graphics, px: number, py: number, h: number, locked: boolean): void {
-    // Frame
+  private _drawDoor(g: Graphics, d: Graphics, px: number, py: number, _h: number, locked: boolean): void {
+    // Stone frame with depth
     g.rect(px, py, T, T).fill({ color: DOOR_FRAME });
-    // Door panels
-    const inset = 4;
-    g.rect(px + inset, py + inset, T - inset * 2, T - inset * 2).fill({ color: locked ? DOOR_LOCK : DOOR_WOOD });
-    // Panel lines
-    d.moveTo(px + HT, py + inset + 2).lineTo(px + HT, py + T - inset - 2).stroke({ color: 0x000000, width: 0.8, alpha: 0.25 });
-    // Horizontal plank lines
-    d.moveTo(px + inset + 2, py + HT - 3).lineTo(px + T - inset - 2, py + HT - 3).stroke({ color: 0x000000, width: 0.5, alpha: 0.2 });
-    d.moveTo(px + inset + 2, py + HT + 3).lineTo(px + T - inset - 2, py + HT + 3).stroke({ color: 0x000000, width: 0.5, alpha: 0.2 });
-    // Hinges
-    d.circle(px + inset + 1, py + 8, 1.5).fill({ color: 0x555555 });
-    d.circle(px + inset + 1, py + T - 8, 1.5).fill({ color: 0x555555 });
-    // Keyhole
-    if (locked) {
-      d.circle(px + T - inset - 4, py + HT, 2).fill({ color: 0x222222 });
-      d.rect(px + T - inset - 5, py + HT + 1, 2, 4).fill({ color: 0x222222 });
-      // Lock glow
-      d.circle(px + T - inset - 4, py + HT, 4).fill({ color: 0xff4422, alpha: 0.15 });
-    } else {
-      d.circle(px + T - inset - 4, py + HT, 1.5).fill({ color: 0x333333 });
+    // Frame bevel
+    d.moveTo(px + 1, py + 1).lineTo(px + T - 1, py + 1).stroke({ color: 0x5a4a3a, width: 0.8, alpha: 0.35 });
+    d.moveTo(px + 1, py + 1).lineTo(px + 1, py + T - 1).stroke({ color: 0x5a4a3a, width: 0.8, alpha: 0.25 });
+    d.moveTo(px + 1, py + T - 1).lineTo(px + T - 1, py + T - 1).stroke({ color: 0x2a1a0a, width: 0.8, alpha: 0.3 });
+    d.moveTo(px + T - 1, py + 1).lineTo(px + T - 1, py + T - 1).stroke({ color: 0x2a1a0a, width: 0.8, alpha: 0.2 });
+
+    // Door panel with wood grain
+    const inset = 5;
+    const dw = T - inset * 2, dh = T - inset * 2;
+    g.rect(px + inset, py + inset, dw, dh).fill({ color: locked ? DOOR_LOCK : DOOR_WOOD });
+    // Wood grain lines (horizontal, slight curve via bezier)
+    for (let gi = 0; gi < 4; gi++) {
+      const gy = py + inset + 3 + gi * (dh / 4);
+      const wobble = (gi % 2 ? 1 : -1) * 1.5;
+      d.moveTo(px + inset + 2, gy).bezierCurveTo(px + HT - 3, gy + wobble, px + HT + 3, gy - wobble, px + T - inset - 2, gy).stroke({ color: 0x000000, width: 0.4, alpha: 0.15 });
     }
-    // Frame highlight
-    d.rect(px + 1, py + 1, T - 2, T - 2).stroke({ color: 0x5a4a3a, width: 0.8, alpha: 0.3 });
+    // Center panel division
+    d.moveTo(px + HT, py + inset + 1).lineTo(px + HT, py + T - inset - 1).stroke({ color: 0x000000, width: 1, alpha: 0.2 });
+    // Panel highlight (top-left edge)
+    d.moveTo(px + inset + 1, py + inset + 1).lineTo(px + T - inset - 1, py + inset + 1).stroke({ color: 0x7a6a4a, width: 0.5, alpha: 0.25 });
+
+    // Iron hinges (detailed)
+    for (const hy of [py + 8, py + T - 8]) {
+      d.rect(px + inset - 1, hy - 2, 4, 4).fill({ color: 0x444444 });
+      d.circle(px + inset + 1, hy, 1).fill({ color: 0x666666 }); // rivet
+      d.rect(px + inset - 1, hy - 2, 4, 4).stroke({ color: 0x333333, width: 0.5 });
+    }
+
+    // Lock/handle
+    if (locked) {
+      // Lock plate
+      d.roundRect(px + T - inset - 7, py + HT - 4, 6, 8, 1).fill({ color: 0x444444 });
+      d.roundRect(px + T - inset - 7, py + HT - 4, 6, 8, 1).stroke({ color: 0x333333, width: 0.5 });
+      // Keyhole
+      d.circle(px + T - inset - 4, py + HT - 1, 1.5).fill({ color: 0x111111 });
+      d.rect(px + T - inset - 5, py + HT, 2, 3).fill({ color: 0x111111 });
+      // Pulsing lock glow (magic ward)
+      const lockPulse = 0.1 + Math.sin(Date.now() / 600) * 0.06;
+      d.circle(px + T - inset - 4, py + HT, 6).fill({ color: 0xff3322, alpha: lockPulse });
+      d.circle(px + T - inset - 4, py + HT, 3).fill({ color: 0xff6644, alpha: lockPulse * 1.5 });
+    } else {
+      // Simple handle ring
+      d.circle(px + T - inset - 4, py + HT, 2.5).stroke({ color: 0x555555, width: 1 });
+      d.circle(px + T - inset - 4, py + HT, 1).fill({ color: 0x444444 });
+    }
   }
 
   private _drawWindow(g: Graphics, d: Graphics, px: number, py: number, h: number): void {
@@ -251,27 +340,60 @@ export class ShadowhandRenderer {
     d.moveTo(px + HT, ay).lineTo(px + HT, ay + dir * 8).stroke({ color: 0x8888aa, width: 1, alpha: 0.4 });
   }
 
-  private _drawTorch(d: Graphics, px: number, py: number, tx: number, ty: number, map: HeistState["map"]): void {
+  private _drawTorch(d: Graphics, px: number, py: number, tx: number, ty: number, _map: HeistState["map"]): void {
     const cx = px + HT, cy = py + HT;
-    // Torch bracket (small rect on wall side)
-    d.rect(cx - 2, cy - 5, 4, 6).fill({ color: 0x4a3a2a });
-    // Flame (layered ellipses)
-    const flicker = Math.sin(Date.now() / 150 + tx * 3 + ty * 7) * 1.5;
-    d.ellipse(cx + flicker * 0.3, cy - 6, 3, 5).fill({ color: 0xff4400, alpha: 0.9 });
-    d.ellipse(cx + flicker * 0.5, cy - 7, 2, 4).fill({ color: 0xffaa22, alpha: 0.85 });
-    d.ellipse(cx + flicker * 0.2, cy - 8, 1, 2.5).fill({ color: 0xffee88, alpha: 0.7 });
-    // Glow rings (graduated falloff)
-    for (let r = 1; r <= 5; r++) {
-      const radius = r * T * 0.7;
-      const alpha = 0.08 / r;
-      d.circle(cx, cy, radius).fill({ color: 0xff8833, alpha });
+    const t = Date.now();
+    const flicker = Math.sin(t / 150 + tx * 3 + ty * 7) * 1.5;
+    const flicker2 = Math.sin(t / 200 + tx * 5 + ty * 3) * 1.0;
+
+    // Graduated glow rings (outer to inner — warm color temperature shift)
+    const glowColors = [0x331100, 0x552200, 0x773300, 0xaa4400, 0xcc5500, 0xff7711];
+    for (let r = glowColors.length - 1; r >= 0; r--) {
+      const radius = (r + 1) * T * 0.55 + Math.sin(t / 400 + r) * 2;
+      const alpha = 0.04 + 0.01 * (glowColors.length - r);
+      d.circle(cx, cy, radius).fill({ color: glowColors[r], alpha });
     }
-    // Spark particles (2-3 random)
-    for (let i = 0; i < 2; i++) {
-      const sx = cx + (tileHash(tx + i * 7, ty + i * 13) - 0.5) * 8 + flicker;
-      const sy = cy - 10 - tileHash(tx + i * 3, ty + i * 11) * 8;
-      d.circle(sx, sy, 0.8).fill({ color: 0xffcc44, alpha: 0.4 });
+
+    // Torch bracket with iron detail
+    d.rect(cx - 2.5, cy - 4, 5, 7).fill({ color: 0x3a2a1a });
+    d.rect(cx - 2, cy - 4, 4, 1).fill({ color: 0x5a4a3a, alpha: 0.5 }); // bracket highlight
+    d.rect(cx - 1, cy + 2, 2, 2).fill({ color: 0x555555 }); // iron nail
+
+    // Flame — bezier organic shape with 4 layers
+    // Outer flame (red)
+    d.moveTo(cx - 3 + flicker * 0.2, cy - 3);
+    d.bezierCurveTo(cx - 4, cy - 8, cx - 1 + flicker * 0.5, cy - 13, cx + flicker * 0.3, cy - 14);
+    d.bezierCurveTo(cx + 1 + flicker * 0.5, cy - 13, cx + 4, cy - 8, cx + 3 + flicker * 0.2, cy - 3);
+    d.closePath();
+    d.fill({ color: 0xcc3300, alpha: 0.85 });
+    // Middle flame (orange)
+    d.moveTo(cx - 2 + flicker * 0.3, cy - 4);
+    d.bezierCurveTo(cx - 3, cy - 8, cx + flicker * 0.4, cy - 12, cx + flicker * 0.3, cy - 12);
+    d.bezierCurveTo(cx + flicker * 0.4, cy - 12, cx + 3, cy - 8, cx + 2 + flicker * 0.3, cy - 4);
+    d.closePath();
+    d.fill({ color: 0xff8822, alpha: 0.9 });
+    // Inner flame (yellow)
+    d.moveTo(cx - 1 + flicker2 * 0.2, cy - 5);
+    d.bezierCurveTo(cx - 1.5, cy - 8, cx + flicker2 * 0.3, cy - 11, cx + flicker2 * 0.2, cy - 11);
+    d.bezierCurveTo(cx + flicker2 * 0.3, cy - 11, cx + 1.5, cy - 8, cx + 1 + flicker2 * 0.2, cy - 5);
+    d.closePath();
+    d.fill({ color: 0xffcc44, alpha: 0.85 });
+    // Core (white-hot)
+    d.ellipse(cx + flicker * 0.15, cy - 7, 0.8, 2).fill({ color: 0xffeedd, alpha: 0.6 });
+
+    // Rising embers (animated, time-based positions)
+    for (let i = 0; i < 4; i++) {
+      const seed = tileHash(tx + i * 7, ty + i * 13);
+      const phase = ((t / 1200 + seed * 10) % 1); // 0-1 cycle
+      const ex = cx + (seed - 0.5) * 10 + Math.sin(t / 300 + i * 2) * 3;
+      const ey = cy - 12 - phase * 18;
+      const ea = (1 - phase) * 0.5;
+      const es = 1 - phase * 0.6;
+      d.circle(ex, ey, es).fill({ color: i < 2 ? 0xffaa33 : 0xff6622, alpha: ea });
     }
+
+    // Light pool on adjacent floor (subtle warm glow at torch base)
+    d.ellipse(cx, cy + T * 0.3, T * 0.4, T * 0.15).fill({ color: 0xff8833, alpha: 0.06 });
   }
 
   private _drawLootSparkle(d: Graphics, px: number, py: number): void {
@@ -294,20 +416,41 @@ export class ShadowhandRenderer {
   private _drawPrimaryLoot(d: Graphics, px: number, py: number): void {
     const cx = px + HT, cy = py + HT;
     const t = Date.now() / 500;
-    // Radiant glow
-    for (let r = 1; r <= 4; r++) {
-      const radius = r * 6 + Math.sin(t + r) * 2;
-      d.circle(cx, cy, radius).fill({ color: 0xffd700, alpha: 0.08 / r });
+
+    // Radiant glow with pulsing
+    for (let r = 1; r <= 6; r++) {
+      const pulse = Math.sin(t + r * 0.7) * 0.3;
+      const radius = r * 5 + Math.sin(t * 1.5 + r) * 2;
+      d.circle(cx, cy, radius).fill({ color: r < 3 ? 0xffd700 : 0xffaa00, alpha: (0.06 + pulse * 0.02) / Math.sqrt(r) });
     }
-    // Rotating light rays
-    for (let i = 0; i < 6; i++) {
-      const angle = t * 0.5 + i * Math.PI / 3;
-      d.moveTo(cx, cy).lineTo(cx + Math.cos(angle) * 12, cy + Math.sin(angle) * 12).stroke({ color: 0xffd700, width: 0.8, alpha: 0.15 });
+
+    // Rotating light rays (8 rays, varying length)
+    for (let i = 0; i < 8; i++) {
+      const angle = t * 0.4 + i * Math.PI / 4;
+      const len = 10 + Math.sin(t * 2 + i) * 4;
+      d.moveTo(cx + Math.cos(angle) * 4, cy + Math.sin(angle) * 4);
+      d.lineTo(cx + Math.cos(angle) * len, cy + Math.sin(angle) * len);
+      d.stroke({ color: 0xffd700, width: 0.6 + Math.sin(t + i) * 0.3, alpha: 0.12 });
     }
-    // Jewel
-    d.circle(cx, cy, 5).fill({ color: 0xffd700, alpha: 0.9 });
-    d.circle(cx, cy, 3).fill({ color: 0xffee88, alpha: 0.7 });
-    d.circle(cx - 1, cy - 1, 1.5).fill({ color: 0xffffff, alpha: 0.5 });
+
+    // Pedestal
+    d.rect(cx - 5, cy + 4, 10, 3).fill({ color: 0x4a4a5a, alpha: 0.6 });
+    d.moveTo(cx - 5, cy + 4).lineTo(cx + 5, cy + 4).stroke({ color: 0x6a6a7a, width: 0.5, alpha: 0.4 });
+
+    // Faceted gem (hexagonal with face shading)
+    const gemR = 6;
+    // Left face (darker)
+    d.moveTo(cx, cy - gemR).lineTo(cx - gemR * 0.87, cy - gemR * 0.3).lineTo(cx - gemR * 0.87, cy + gemR * 0.3).lineTo(cx, cy + gemR * 0.6).closePath().fill({ color: 0xcc9900, alpha: 0.9 });
+    // Right face (lighter)
+    d.moveTo(cx, cy - gemR).lineTo(cx + gemR * 0.87, cy - gemR * 0.3).lineTo(cx + gemR * 0.87, cy + gemR * 0.3).lineTo(cx, cy + gemR * 0.6).closePath().fill({ color: 0xffcc33, alpha: 0.9 });
+    // Top face (brightest)
+    d.moveTo(cx, cy - gemR).lineTo(cx - gemR * 0.5, cy - gemR * 0.5).lineTo(cx, cy - gemR * 0.2).lineTo(cx + gemR * 0.5, cy - gemR * 0.5).closePath().fill({ color: 0xffee66, alpha: 0.85 });
+    // Edge highlights
+    d.moveTo(cx, cy - gemR).lineTo(cx + gemR * 0.87, cy - gemR * 0.3).stroke({ color: 0xffffff, width: 0.8, alpha: 0.4 });
+    d.moveTo(cx, cy - gemR).lineTo(cx - gemR * 0.87, cy - gemR * 0.3).stroke({ color: 0xffffff, width: 0.5, alpha: 0.2 });
+    // Sparkle highlight
+    const sparkle = 0.3 + Math.sin(t * 3) * 0.3;
+    d.circle(cx - 2, cy - 3, 1.5).fill({ color: 0xffffff, alpha: sparkle });
   }
 
   private _drawTrap(d: Graphics, px: number, py: number): void {
@@ -345,16 +488,42 @@ export class ShadowhandRenderer {
         const py = y * T + this._offsetY;
 
         if (!tile.lit) {
-          // Cool dark shadow
-          g.rect(px, py, T, T).fill({ color: 0x050510, alpha: 0.55 });
-          // Blue-ish tint for night atmosphere
-          g.rect(px, py, T, T).fill({ color: 0x1a1a3a, alpha: 0.08 });
+          // Deep shadow with cool blue undertone
+          g.rect(px, py, T, T).fill({ color: 0x030308, alpha: 0.58 });
+          g.rect(px, py, T, T).fill({ color: 0x0a0a2a, alpha: 0.1 });
+
+          // Check proximity to lit tiles for gradient edge
+          let nearLight = false;
+          for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) {
+            const nx = x + dx, ny = y + dy;
+            if (nx >= 0 && ny >= 0 && nx < heist.map.width && ny < heist.map.height) {
+              if (heist.map.tiles[ny][nx].lit && heist.map.tiles[ny][nx].type !== "wall") {
+                nearLight = true;
+                break;
+              }
+            }
+          }
+          if (nearLight) {
+            // Penumbra — softer shadow at light/dark boundary
+            g.rect(px, py, T, T).fill({ color: 0xff8833, alpha: 0.03 });
+          }
         } else {
-          // Warm torch glow
-          g.rect(px, py, T, T).fill({ color: 0xffaa44, alpha: 0.06 });
-          // Subtle brightness variation
+          // Warm torch glow — intensity based on torch proximity
+          let torchNearby = tile.torchSource;
+          if (!torchNearby) {
+            for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0], [-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+              const nx = x + dx, ny = y + dy;
+              if (nx >= 0 && ny >= 0 && nx < heist.map.width && ny < heist.map.height) {
+                if (heist.map.tiles[ny][nx].torchSource) { torchNearby = true; break; }
+              }
+            }
+          }
           if (tile.torchSource) {
-            g.rect(px, py, T, T).fill({ color: 0xff8833, alpha: 0.04 });
+            g.rect(px, py, T, T).fill({ color: 0xffaa44, alpha: 0.1 });
+          } else if (torchNearby) {
+            g.rect(px, py, T, T).fill({ color: 0xffaa44, alpha: 0.06 });
+          } else {
+            g.rect(px, py, T, T).fill({ color: 0xffaa44, alpha: 0.03 });
           }
         }
       }

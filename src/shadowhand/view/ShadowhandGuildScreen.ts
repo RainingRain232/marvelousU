@@ -41,6 +41,16 @@ export class ShadowhandGuildScreen {
 
     const bg = new Graphics();
     bg.rect(0, 0, sw, sh).fill({ color: 0x040606 });
+    // Subtle diagonal texture pattern
+    for (let i = 0; i < sw + sh; i += 24) {
+      bg.moveTo(i, 0).lineTo(0, i).stroke({ color: 0x0a0c0a, width: 0.5, alpha: 0.15 });
+    }
+    // Vignette
+    for (let v = 0; v < 4; v++) {
+      const inset = v * 60;
+      bg.rect(0, 0, inset, sh).fill({ color: 0x000000, alpha: 0.02 });
+      bg.rect(sw - inset, 0, inset, sh).fill({ color: 0x000000, alpha: 0.02 });
+    }
     this.container.addChild(bg);
 
     // Header
@@ -122,8 +132,19 @@ export class ShadowhandGuildScreen {
       const completed = state.guild.completedHeists.includes(t.id);
 
       const g = new Graphics();
-      g.roundRect(cx, cy, cardW, cardH, 5).fill({ color: sel ? 0x0a1a0a : 0x080808, alpha: 0.8 });
-      g.roundRect(cx, cy, cardW, cardH, 5).stroke({ color: sel ? t.color : completed ? 0x334433 : 0x333333, width: sel ? 2 : 1, alpha: 0.6 });
+      // Drop shadow
+      g.roundRect(cx + 2, cy + 2, cardW, cardH, 5).fill({ color: 0x000000, alpha: 0.25 });
+      // Card body
+      g.roundRect(cx, cy, cardW, cardH, 5).fill({ color: sel ? 0x0a1a0a : 0x080808, alpha: 0.85 });
+      g.roundRect(cx, cy, cardW, cardH, 5).stroke({ color: sel ? t.color : completed ? 0x334433 : 0x333333, width: sel ? 2.5 : 1, alpha: sel ? 0.7 : 0.4 });
+      // Inner highlight on top
+      if (sel) {
+        g.moveTo(cx + 8, cy + 2).lineTo(cx + cardW - 8, cy + 2).stroke({ color: t.color, width: 1, alpha: 0.3 });
+        g.roundRect(cx + 2, cy + 2, cardW - 4, cardH - 4, 4).stroke({ color: t.color, width: 0.5, alpha: 0.1 });
+      }
+      // Tier badge
+      const tierColors = [0x555555, 0x44aa44, 0x44aacc, 0xcc8844, 0xff4444, 0xffd700];
+      g.roundRect(cx + cardW - 30, cy + 3, 26, 14, 3).fill({ color: tierColors[t.tier] ?? 0x555555, alpha: 0.3 });
       g.eventMode = "static"; g.cursor = "pointer";
       g.on("pointerdown", () => { this._selectedTarget = t; this.show(state, sw, sh); });
       this.container.addChild(g);
