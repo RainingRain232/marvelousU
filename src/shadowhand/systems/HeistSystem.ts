@@ -14,7 +14,7 @@ import { updateThiefMovement, createThiefUnit, updateSmoke, updateShadowMeld } f
 import { updateGuardVision } from "./VisionSystem";
 import { updateNoiseEvents, guardsHearNoise, updateGlobalAlert } from "./NoiseSystem";
 import { selectModifiers, applyModifiers, generateHeistEvents, updateHeistEvents, spawnParticles, MODIFIER_DISPLAY } from "./HeistEventSystem";
-import { updateCrewBonds, getCrewBondBonus } from "./ContractSystem";
+import { updateCrewBonds, getCrewBondBonus, completeContract } from "./ContractSystem";
 
 export function initHeist(state: ShadowhandState): void {
   if (!state.currentTarget) return;
@@ -33,6 +33,12 @@ export function initHeist(state: ShadowhandState): void {
     const entry = map.entryPoints[i % map.entryPoints.length];
     if (entry) {
       const thief = createThiefUnit(crew[i], entry.x, entry.y);
+
+      // Transfer injury from crew member to thief
+      if ((crew[i] as any).injured) {
+        thief.injured = true;
+        thief.injuryPenalty = (crew[i] as any).injuryPenalty ?? 0.15;
+      }
 
       // Apply equipment effects to thief
       applyEquipmentEffects(state, thief);
@@ -394,6 +400,12 @@ function completeHeist(state: ShadowhandState): void {
 
   addLog(state, `Heist complete! Earned ${goldEarned} gold. Score: ${score}`);
 
+  // Complete active contract if one was selected
+  if (state.activeContractId) {
+    completeContract(state, state.activeContractId);
+    state.activeContractId = null;
+  }
+
   if (target.id === "grail_vault") {
     state.phase = ShadowhandPhase.VICTORY;
   } else {
@@ -424,11 +436,13 @@ export function decayHeat(state: ShadowhandState): void {
     if (newVal === 0) state.guild.heat.delete(key);
     else state.guild.heat.set(key, newVal);
   }
-  // Infirmary: heal all crew between heists
+  // Infirmary: heal all crew and cure injuries between heists
   if (state.guild.upgrades.has("infirmary")) {
     for (const cm of state.guild.roster) {
       if (cm.alive && !cm.captured) {
         cm.hp = cm.maxHp;
+        (cm as any).injured = false;
+        (cm as any).injuryPenalty = 0;
       }
     }
   }

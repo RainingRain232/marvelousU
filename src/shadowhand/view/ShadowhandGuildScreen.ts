@@ -24,6 +24,7 @@ export class ShadowhandGuildScreen {
   private _upgradeCallback: ((upgradeId: GuildUpgradeId) => void) | null = null;
 
   private _selectedTarget: TargetDef | null = null;
+  private _selectedContractId: string | null = null;
   private _selectedCrew: Set<string> = new Set();
   private _selectedEquip: Set<string> = new Set();
   private _tab: "mission" | "roster" | "shop" | "upgrades" = "mission";
@@ -133,13 +134,27 @@ export class ShadowhandGuildScreen {
       for (const contract of state.guild.availableContracts.slice(0, 3)) {
         const cg = new Graphics();
         const isRescue = contract.isRescue;
-        cg.roundRect(30, y, sw - 60, 38, 4).fill({ color: isRescue ? 0x0a0808 : 0x0a0a06, alpha: 0.6 });
-        cg.roundRect(30, y, sw - 60, 38, 4).stroke({ color: isRescue ? 0xaa4444 : 0xaa8844, width: 1, alpha: 0.4 });
+        const isSel = this._selectedContractId === contract.id;
+        const borderCol = isRescue ? 0xaa4444 : 0xaa8844;
+        cg.roundRect(31, y + 1, sw - 60, 38, 4).fill({ color: 0x000000, alpha: 0.15 }); // shadow
+        cg.roundRect(30, y, sw - 60, 38, 4).fill({ color: isSel ? 0x1a1a08 : isRescue ? 0x0a0808 : 0x0a0a06, alpha: 0.7 });
+        cg.roundRect(30, y, sw - 60, 38, 4).stroke({ color: isSel ? 0xffcc44 : borderCol, width: isSel ? 2 : 1, alpha: isSel ? 0.7 : 0.4 });
+        if (isSel) cg.moveTo(36, y + 2).lineTo(sw - 66, y + 2).stroke({ color: 0xffcc44, width: 1.5, alpha: 0.3 });
+        cg.eventMode = "static"; cg.cursor = "pointer";
+        cg.on("pointerdown", () => {
+          this._selectedContractId = contract.id;
+          // Auto-select the contract's target
+          const target = TARGET_DEFS.find(t => t.id === contract.targetId);
+          if (target) this._selectedTarget = target;
+          this.show(state, sw, sh);
+        });
         this.container.addChild(cg);
-        this._text(contract.name, 42, y + 3, { fontSize: 10, fill: isRescue ? 0xff6644 : 0xccaa66, fontWeight: "bold" });
-        this._text(contract.desc, 42, y + 16, { fontSize: 8, fill: 0x889977, wordWrap: true, wordWrapWidth: sw - 120 });
+        if (isSel) this._text("\u2713", 34, y + 10, { fontSize: 14, fill: 0xffcc44 });
+        this._text(contract.name, 50, y + 3, { fontSize: 10, fill: isSel ? 0xffcc44 : isRescue ? 0xff6644 : 0xccaa66, fontWeight: "bold" });
+        this._text(contract.desc, 50, y + 16, { fontSize: 8, fill: 0x889977, wordWrap: true, wordWrapWidth: sw - 130 });
         this._text(`Day ${contract.expiresDay}`, sw - 80, y + 3, { fontSize: 8, fill: 0x888877 });
-        y += 42;
+        if (contract.bonusGold > 0) this._text(`+${contract.bonusGold}g +${contract.bonusRep}rep`, sw - 80, y + 16, { fontSize: 7, fill: 0xffd700 });
+        y += 44;
       }
       y += 8;
     }
@@ -230,6 +245,8 @@ export class ShadowhandGuildScreen {
         canLaunch ? COL : 0x555555,
         () => {
           if (canLaunch && this._selectedTarget) {
+            // Store active contract for heist completion
+            state.activeContractId = this._selectedContractId;
             this._heistCallback?.(this._selectedTarget, [...this._selectedCrew], [...this._selectedEquip]);
           }
         }
@@ -281,7 +298,24 @@ export class ShadowhandGuildScreen {
       this._text(`XP ${crew.xp}/${xpNeeded}`, statX + xpW + 4, y + 26, { fontSize: 7, fill: 0x7777aa });
 
       // Abilities (small text)
-      this._text(`E: ${arch.abilities[0] ?? "—"}  Q: ${arch.abilities[1] ?? "—"}`, 70, y + 36, { fontSize: 7, fill: 0x668866 });
+      this._text(`E: ${arch.abilities[0] ?? "\u2014"}  Q: ${arch.abilities[1] ?? "\u2014"}`, 70, y + 36, { fontSize: 7, fill: 0x668866 });
+
+      // Bonds with other crew
+      const bondStrs: string[] = [];
+      for (const other of state.guild.roster) {
+        if (other.id === crew.id) continue;
+        const key = [crew.id, other.id].sort().join("_");
+        const bond = state.guild.bonds.get(key) ?? 0;
+        if (bond > 0) bondStrs.push(`${other.name}(${bond})`);
+      }
+      if (bondStrs.length > 0) {
+        this._text(`\u2764 Bonds: ${bondStrs.join(", ")}`, 70, y + 44, { fontSize: 7, fill: 0xcc8888 });
+      }
+
+      // Injury indicator
+      if ((crew as any).injured) {
+        this._text("\u26A0 INJURED", sw - 75, y + 36, { fontSize: 8, fill: 0xff8844, fontWeight: "bold" });
+      }
 
       if (!alive) {
         const statusColor = crew.captured ? 0xffaa44 : 0xff4444;
@@ -289,7 +323,7 @@ export class ShadowhandGuildScreen {
         this._text(statusText, sw - 75, y + 4, { fontSize: 10, fill: statusColor, fontWeight: "bold" });
       }
 
-      y += 56;
+      y += 60;
     }
 
     y += 15;

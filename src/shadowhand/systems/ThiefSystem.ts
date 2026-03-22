@@ -79,7 +79,7 @@ export function updateThiefMovement(heist: HeistState, dt: number): void {
 
         if (dist > 0.1) {
           thief.moving = true;
-          let speed = thief.speed;
+          let speed = thief.speed * (1 - thief.injuryPenalty);
           if (thief.crouching) speed *= ShadowhandConfig.CROUCHING_SPEED_MULT;
 
           const step = Math.min(speed * dt, dist);

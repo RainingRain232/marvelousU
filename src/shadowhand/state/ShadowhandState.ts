@@ -267,8 +267,9 @@ export interface ShadowhandState {
   seed: number;
   guild: GuildState;
   currentTarget: TargetDef | null;
-  selectedCrew: string[]; // crew member ids
-  selectedEquipment: string[]; // equipment ids
+  selectedCrew: string[];
+  selectedEquipment: string[];
+  activeContractId: string | null;
   heist: HeistState | null;
   score: number;
   log: string[];
@@ -321,6 +322,7 @@ export function createShadowhandState(seed: number, difficulty: ShadowhandDiffic
     currentTarget: null,
     selectedCrew: [],
     selectedEquipment: [],
+    activeContractId: null,
     heist: null,
     score: 0,
     log: ["The Shadowhand guild opens its doors..."],
