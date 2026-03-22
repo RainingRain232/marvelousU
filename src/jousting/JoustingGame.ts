@@ -2295,18 +2295,127 @@ export class JoustingGame {
     g.roundRect(px, py, pw, ph, 8); g.stroke({ color: 0xffd700, width: 2 });
     g.roundRect(px + 6, py + 6, pw - 12, ph - 12, 4); g.stroke({ color: 0x886622, width: 1 });
 
-    // Corner ornaments
-    for (const [cx, cy] of [[px + 8, py + 8], [px + pw - 8, py + 8], [px + 8, py + ph - 8], [px + pw - 8, py + ph - 8]]) {
-      g.circle(cx, cy, 6); g.fill(0xffd700); g.circle(cx, cy, 3); g.fill(0x1a1a28);
+    // Corner flourishes (curling vine scroll ornaments)
+    const corners: [number, number, number, number][] = [
+      [px + 8, py + 8, 1, 1], [px + pw - 8, py + 8, -1, 1],
+      [px + 8, py + ph - 8, 1, -1], [px + pw - 8, py + ph - 8, -1, -1],
+    ];
+    for (const [fx, fy, dx, dy] of corners) {
+      // Central dot
+      g.circle(fx, fy, 5); g.fill(0xffd700);
+      g.circle(fx, fy, 2.5); g.fill(0x1a1a28);
+      // Curling vine arm (horizontal)
+      g.moveTo(fx, fy);
+      g.quadraticCurveTo(fx + dx * 18, fy + dy * 2, fx + dx * 25, fy - dy * 5);
+      g.quadraticCurveTo(fx + dx * 22, fy - dy * 8, fx + dx * 15, fy - dy * 4);
+      g.stroke({ color: 0xffd700, width: 1.2 });
+      // Curl tip
+      g.circle(fx + dx * 25, fy - dy * 5, 1.5); g.fill(0xffd700);
+      // Curling vine arm (vertical)
+      g.moveTo(fx, fy);
+      g.quadraticCurveTo(fx + dx * 2, fy + dy * 18, fx - dx * 5, fy + dy * 25);
+      g.quadraticCurveTo(fx - dx * 8, fy + dy * 22, fx - dx * 4, fy + dy * 15);
+      g.stroke({ color: 0xffd700, width: 1.2 });
+      g.circle(fx - dx * 5, fy + dy * 25, 1.5); g.fill(0xffd700);
+      // Leaf polygon on vine
+      g.moveTo(fx + dx * 12, fy + dy * 1);
+      g.quadraticCurveTo(fx + dx * 16, fy - dy * 4, fx + dx * 20, fy - dy * 2);
+      g.quadraticCurveTo(fx + dx * 16, fy + dy * 1, fx + dx * 12, fy + dy * 1);
+      g.fill({ color: 0xffd700, alpha: 0.4 });
     }
-    // Horizontal dividers
-    g.moveTo(px + 30, py + ph * 0.38); g.lineTo(px + pw - 30, py + ph * 0.38); g.stroke({ color: 0x886622, width: 1 });
 
-    this._addText("JOUSTING", S_TITLE, sw / 2, py + ph * 0.08);
-    this._addText("TOURNAMENT", S_SUBTITLE, sw / 2, py + ph * 0.15);
+    // Edge filigree (subtle scrollwork along top/bottom edges)
+    for (let fi = 0; fi < 6; fi++) {
+      const fxc = px + pw * 0.2 + fi * (pw * 0.12);
+      // Top edge scroll
+      g.moveTo(fxc, py + 4);
+      g.quadraticCurveTo(fxc + pw * 0.03, py - 2, fxc + pw * 0.06, py + 4);
+      g.stroke({ color: 0x886622, width: 0.8 });
+      // Bottom edge scroll
+      g.moveTo(fxc, py + ph - 4);
+      g.quadraticCurveTo(fxc + pw * 0.03, py + ph + 2, fxc + pw * 0.06, py + ph - 4);
+      g.stroke({ color: 0x886622, width: 0.8 });
+    }
+
+    // Crown/helmet icon above title
+    const crownX = sw / 2, crownY = py + ph * 0.03;
+    g.moveTo(crownX - 12, crownY + 6);
+    g.lineTo(crownX + 12, crownY + 6);
+    g.lineTo(crownX + 12, crownY + 2);
+    g.lineTo(crownX + 10, crownY - 2);
+    g.lineTo(crownX + 12, crownY - 6);
+    g.lineTo(crownX + 8, crownY - 4);
+    g.lineTo(crownX + 4, crownY - 8);
+    g.lineTo(crownX, crownY - 5);
+    g.lineTo(crownX - 4, crownY - 8);
+    g.lineTo(crownX - 8, crownY - 4);
+    g.lineTo(crownX - 12, crownY - 6);
+    g.lineTo(crownX - 10, crownY - 2);
+    g.lineTo(crownX - 12, crownY + 2);
+    g.fill(0xffd700);
+    // Crown jewels
+    g.circle(crownX, crownY - 5, 1); g.fill(0xff2222);
+    g.circle(crownX + 6, crownY - 3, 0.8); g.fill(0x2266ff);
+    g.circle(crownX - 6, crownY - 3, 0.8); g.fill(0x2266ff);
+
+    // Decorative scrollwork divider under title
+    const divY = py + ph * 0.19;
+    g.moveTo(px + 40, divY);
+    g.quadraticCurveTo(sw / 2 - 30, divY - 5, sw / 2 - 15, divY);
+    g.stroke({ color: 0x886622, width: 1 });
+    // Central diamond on divider
+    g.moveTo(sw / 2, divY - 5); g.lineTo(sw / 2 + 5, divY); g.lineTo(sw / 2, divY + 5); g.lineTo(sw / 2 - 5, divY);
+    g.fill(0xffd700);
+    g.moveTo(sw / 2 + 15, divY);
+    g.quadraticCurveTo(sw / 2 + 30, divY - 5, px + pw - 40, divY);
+    g.stroke({ color: 0x886622, width: 1 });
+
+    this._addText("JOUSTING", S_TITLE, sw / 2, py + ph * 0.09);
+    this._addText("TOURNAMENT", S_SUBTITLE, sw / 2, py + ph * 0.155);
+
+    // Knight silhouettes flanking the emblem
+    const silY = py + ph * 0.30;
+    // Left knight (player)
+    const lkx = px + 45;
+    // Horse body
+    g.moveTo(lkx - 18, silY + 12); g.quadraticCurveTo(lkx - 20, silY, lkx - 10, silY - 4);
+    g.quadraticCurveTo(lkx, silY - 6, lkx + 12, silY - 2);
+    g.quadraticCurveTo(lkx + 16, silY + 4, lkx + 12, silY + 14);
+    g.quadraticCurveTo(lkx, silY + 16, lkx - 18, silY + 12);
+    g.fill({ color: PLAYER_COLOR, alpha: 0.2 });
+    // Horse head
+    g.moveTo(lkx + 10, silY); g.quadraticCurveTo(lkx + 18, silY - 8, lkx + 20, silY - 2);
+    g.quadraticCurveTo(lkx + 16, silY + 2, lkx + 10, silY); g.fill({ color: PLAYER_COLOR, alpha: 0.2 });
+    // Rider
+    g.moveTo(lkx - 3, silY - 4); g.lineTo(lkx + 3, silY - 4);
+    g.lineTo(lkx + 2, silY - 18); g.lineTo(lkx - 2, silY - 18); g.fill({ color: PLAYER_COLOR, alpha: 0.25 });
+    // Helm
+    g.moveTo(lkx - 3, silY - 18); g.quadraticCurveTo(lkx, silY - 24, lkx + 3, silY - 18); g.fill({ color: PLAYER_COLOR, alpha: 0.25 });
+    // Lance pointing right
+    g.moveTo(lkx + 5, silY - 12); g.lineTo(lkx + 40, silY - 16);
+    g.lineTo(lkx + 40, silY - 14); g.lineTo(lkx + 5, silY - 10); g.fill({ color: PLAYER_COLOR, alpha: 0.15 });
+
+    // Right knight (opponent) — mirrored
+    const rkx = px + pw - 45;
+    g.moveTo(rkx + 18, silY + 12); g.quadraticCurveTo(rkx + 20, silY, rkx + 10, silY - 4);
+    g.quadraticCurveTo(rkx, silY - 6, rkx - 12, silY - 2);
+    g.quadraticCurveTo(rkx - 16, silY + 4, rkx - 12, silY + 14);
+    g.quadraticCurveTo(rkx, silY + 16, rkx + 18, silY + 12);
+    g.fill({ color: 0xcc4444, alpha: 0.2 });
+    g.moveTo(rkx - 10, silY); g.quadraticCurveTo(rkx - 18, silY - 8, rkx - 20, silY - 2);
+    g.quadraticCurveTo(rkx - 16, silY + 2, rkx - 10, silY); g.fill({ color: 0xcc4444, alpha: 0.2 });
+    g.moveTo(rkx - 3, silY - 4); g.lineTo(rkx + 3, silY - 4);
+    g.lineTo(rkx + 2, silY - 18); g.lineTo(rkx - 2, silY - 18); g.fill({ color: 0xcc4444, alpha: 0.25 });
+    g.moveTo(rkx - 3, silY - 18); g.quadraticCurveTo(rkx, silY - 24, rkx + 3, silY - 18); g.fill({ color: 0xcc4444, alpha: 0.25 });
+    g.moveTo(rkx - 5, silY - 12); g.lineTo(rkx - 40, silY - 16);
+    g.lineTo(rkx - 40, silY - 14); g.lineTo(rkx - 5, silY - 10); g.fill({ color: 0xcc4444, alpha: 0.15 });
 
     // Animated crossed lances (polygon shafts) with kite shield
     const cx = sw / 2, cy = py + ph * 0.28;
+    // Shield glow (pulsing light behind the shield)
+    const shGlow = 0.06 + Math.sin(this._elapsed * 1.8) * 0.03;
+    g.circle(cx, cy, 30); g.fill({ color: 0xffd700, alpha: shGlow });
+    g.circle(cx, cy, 22); g.fill({ color: 0xffeeaa, alpha: shGlow * 0.7 });
     const wobble = Math.sin(this._elapsed * 1.2) * 3;
     // Left lance polygon (tapered shaft)
     g.moveTo(cx - 100, cy - 27 + wobble);
@@ -2352,15 +2461,47 @@ export class JoustingGame {
 
     this._addText("Defeat 8 knights to claim the Champion's Crown", S_BODY, sw / 2, py + ph * 0.42);
 
+    // Tournament bracket preview — 8 knight color pips
+    const bpY = py + ph * 0.46;
+    const bpW = pw * 0.5;
+    const bpX = sw / 2 - bpW / 2;
+    for (let ki = 0; ki < TOURNAMENT_KNIGHTS.length; ki++) {
+      const k = TOURNAMENT_KNIGHTS[ki];
+      const kx = bpX + (ki / (TOURNAMENT_KNIGHTS.length - 1)) * bpW;
+      // Pip with knight color
+      g.circle(kx, bpY, 4); g.fill(k.color);
+      g.circle(kx, bpY, 2); g.fill({ color: 0x000000, alpha: 0.3 });
+      // Connector line
+      if (ki < TOURNAMENT_KNIGHTS.length - 1) {
+        const nx = bpX + ((ki + 1) / (TOURNAMENT_KNIGHTS.length - 1)) * bpW;
+        g.moveTo(kx + 5, bpY); g.lineTo(nx - 5, bpY);
+        g.stroke({ color: 0x445566, width: 0.8 });
+      }
+    }
+
     // High score
     const best = this._state.bestRound;
     if (best > 0) {
       const bk = best >= TOURNAMENT_KNIGHTS.length ? "ALL" : TOURNAMENT_KNIGHTS[best - 1].name;
-      this._addText(`Personal Best: ${best}/${TOURNAMENT_KNIGHTS.length} (last: ${bk})`, S_STAMINA, sw / 2, py + ph * 0.48);
+      this._addText(`Personal Best: ${best}/${TOURNAMENT_KNIGHTS.length} (last: ${bk})`, S_STAMINA, sw / 2, py + ph * 0.51);
+      // Highlight defeated pips
+      for (let ki = 0; ki < best; ki++) {
+        const kx = bpX + (ki / (TOURNAMENT_KNIGHTS.length - 1)) * bpW;
+        g.circle(kx, bpY, 5.5); g.stroke({ color: 0x44ff44, width: 1 });
+      }
     }
 
+    // Scrollwork divider above controls
+    const divY2 = py + ph * 0.54;
+    g.moveTo(px + 50, divY2);
+    for (let sc = 0; sc < 8; sc++) {
+      const scx2 = px + 50 + sc * ((pw - 100) / 8);
+      g.quadraticCurveTo(scx2 + (pw - 100) / 16, divY2 + (sc % 2 === 0 ? -3 : 3), scx2 + (pw - 100) / 8, divY2);
+    }
+    g.stroke({ color: 0x886622, width: 0.8 });
+
     // Controls in a nice box
-    const cby = py + ph * 0.55;
+    const cby = py + ph * 0.56;
     g.roundRect(px + 40, cby, pw - 80, ph * 0.28, 4); g.fill({ color: 0x000000, alpha: 0.3 });
     g.roundRect(px + 40, cby, pw - 80, ph * 0.28, 4); g.stroke({ color: 0x445566, width: 1 });
     this._addText("CONTROLS", S_AIM_LABEL, sw / 2, cby + 14);
@@ -2381,6 +2522,39 @@ export class JoustingGame {
       const label = sel ? `[\u25B6 ${d.label} \u25C0]` : d.label;
       this._addText(label, dstyle, px + 60 + di * (pw / 3), dfy + 4);
     }
+
+    // Laurel wreath around start button area
+    const lwY = py + ph * 0.95;
+    const lwX = sw / 2;
+    // Left laurel branch
+    for (let lf = 0; lf < 5; lf++) {
+      const la = -0.3 - lf * 0.22;
+      const lr = 45 + lf * 4;
+      const lfx = lwX + Math.cos(la) * lr - 15;
+      const lfy = lwY + Math.sin(la) * lr * 0.3;
+      g.moveTo(lfx, lfy);
+      g.quadraticCurveTo(lfx - 5, lfy - 4, lfx - 8, lfy - 2);
+      g.quadraticCurveTo(lfx - 5, lfy + 1, lfx, lfy);
+      g.fill({ color: 0x446622, alpha: 0.3 });
+    }
+    // Right laurel branch (mirrored)
+    for (let lf = 0; lf < 5; lf++) {
+      const la = Math.PI + 0.3 + lf * 0.22;
+      const lr = 45 + lf * 4;
+      const lfx = lwX + Math.cos(la) * lr + 15;
+      const lfy = lwY + Math.sin(la) * lr * 0.3;
+      g.moveTo(lfx, lfy);
+      g.quadraticCurveTo(lfx + 5, lfy - 4, lfx + 8, lfy - 2);
+      g.quadraticCurveTo(lfx + 5, lfy + 1, lfx, lfy);
+      g.fill({ color: 0x446622, alpha: 0.3 });
+    }
+    // Laurel stems
+    g.moveTo(lwX - 15, lwY);
+    g.quadraticCurveTo(lwX - 50, lwY - 12, lwX - 65, lwY + 2);
+    g.stroke({ color: 0x446622, width: 1, alpha: 0.3 } as any);
+    g.moveTo(lwX + 15, lwY);
+    g.quadraticCurveTo(lwX + 50, lwY - 12, lwX + 65, lwY + 2);
+    g.stroke({ color: 0x446622, width: 1, alpha: 0.3 } as any);
 
     // Menu buttons row
     const mbY = py + ph * 0.91;
