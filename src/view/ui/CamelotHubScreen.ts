@@ -149,6 +149,7 @@ const MAP_BUILDINGS: MapBuilding[] = [
   { id: "grail_pitch", x: 750, y: 580, w: 140, h: 100, label: "Grail Ball Arena", mode: GameMode.GRAIL_BALL, type: "colosseum" },
   { id: "prison", x: 270, y: 560, w: 110, h: 90, label: "The Dungeon", mode: GameMode.DIABLO, type: "prison" },
   { id: "forge", x: 660, y: 340, w: 100, h: 80, label: "Blacksmith's Forge", mode: GameMode.CAMELOT_CRAFT, type: "forge" },
+  { id: "caravan_stable", x: 850, y: 580, w: 120, h: 80, label: "Merchant Stables — Caravan", mode: GameMode.CARAVAN, type: "stable" },
   { id: "observatory", x: 100, y: 280, w: 80, h: 80, label: "Observatory — 3Dragon", mode: GameMode.THREE_DRAGON, type: "tower" },
   { id: "guild_hall", x: 420, y: 340, w: 100, h: 80, label: "Manager's Guild", mode: GameMode.GRAIL_MANAGER, type: "library" },
   { id: "grail_chapel", x: 300, y: 280, w: 100, h: 100, label: "Grail Chapel", mode: GameMode.ARTHURIAN_RPG, type: "church" },
@@ -871,6 +872,7 @@ export class CamelotHubScreen {
       [GameMode.GAME]: "Quest for the Grail",
       [GameMode.EAGLE_FLIGHT]: "Eagle Flight",
       [GameMode.MORGAN]: "Morgan",
+      [GameMode.CARAVAN]: "Caravan",
     };
     return labels[mode] || mode;
   }

@@ -362,6 +362,12 @@ const GAME_MODES: GameModeEntry[] = [
     desc: "Oregon Trail-style survival — lead your people to Avalon through perilous lands",
     skipSetup: true,
   },
+  {
+    mode: GameMode.CARAVAN,
+    label: "CARAVAN",
+    desc: "Escort & trade: protect your wagon, buy low sell high",
+    skipSetup: true,
+  },
 ];
 
 // ---------------------------------------------------------------------------

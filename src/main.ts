@@ -147,6 +147,7 @@ import { MorganGame } from "./morgan/MorganGame";
 import { JoustingGame } from "./jousting/JoustingGame";
 import { ExodusGame } from "./exodus/ExodusGame";
 import { CovenGame } from "./coven/CovenGame";
+import { CaravanGame } from "./caravan/CaravanGame";
 import { camelotHubScreen } from "@view/ui/CamelotHubScreen";
 
 // World mode imports
@@ -353,6 +354,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     [GameMode.MORGAN]: 30,
     [GameMode.EXODUS]: 31,
     [GameMode.COVEN]: 32,
+    [GameMode.CARAVAN]: 33,
   };
   // Modes that need the setup screen (not skipSetup)
   const NEEDS_SETUP = new Set([GameMode.STANDARD, GameMode.DEATHMATCH, GameMode.BATTLEFIELD, GameMode.WAVE]);
@@ -532,6 +534,11 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     if (menuScreen.selectedGameMode === GameMode.COVEN) {
       menuScreen.hide();
       _bootCovenGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.CARAVAN) {
+      menuScreen.hide();
+      _bootCaravanGame();
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.WORLD) {
@@ -2579,6 +2586,22 @@ async function _bootRPGGame(): Promise<void> {
 
   _rpgGame = new RPGGame();
   await _rpgGame.boot();
+}
+
+// ---------------------------------------------------------------------------
+// Caravan mode boot
+// ---------------------------------------------------------------------------
+
+let _caravanGame: CaravanGame | null = null;
+
+async function _bootCaravanGame(): Promise<void> {
+  if (_caravanGame) {
+    _caravanGame.destroy();
+    _caravanGame = null;
+  }
+
+  _caravanGame = new CaravanGame();
+  await _caravanGame.boot();
 }
 
 // ---------------------------------------------------------------------------
