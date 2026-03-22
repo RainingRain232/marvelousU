@@ -166,6 +166,7 @@ const MAP_BUILDINGS: MapBuilding[] = [
   { id: "aviary", x: 1100, y: 220, w: 80, h: 60, label: "The Aviary", mode: GameMode.EAGLE_FLIGHT, type: "tower" },
   { id: "witch_hut", x: 80, y: 480, w: 80, h: 60, label: "Witch's Hut", mode: GameMode.MORGAN, type: "tower" },
   { id: "exodus_gate", x: 650, y: 750, w: 120, h: 70, label: "The Exodus Gate", mode: GameMode.EXODUS, type: "gate" },
+  { id: "coven_cottage", x: 160, y: 160, w: 80, h: 70, label: "Morgan's Cottage", mode: GameMode.COVEN, type: "tower" },
 ];
 
 const CITY = { x: 250, y: 150, w: 700, h: 580 };

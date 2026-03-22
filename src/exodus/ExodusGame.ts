@@ -147,11 +147,14 @@ export class ExodusGame {
     };
     viewManager.app.ticker.add(this._tickerCb);
 
-    // Begin march phase after intro
+    // Begin march phase after intro with first-turn tutorial
     setTimeout(() => {
       if (this._state && this._state.phase === ExodusPhase.DAWN) {
         ExodusDaySystem.advancePhase(this._state);
-        this._hud.showNotification("Choose your path", 0xdddddd);
+        this._hud.showNotification("Click a glowing hex to march", 0xdddddd);
+        addLogEntry(this._state, "Click any highlighted hex on the map to move your caravan. March westward toward Avalon.", 0x88cc88);
+        addLogEntry(this._state, "Each day: March \u2192 Event \u2192 Camp \u2192 Night. Mordred pursues from the east.", 0x88cc88);
+        addLogEntry(this._state, "Manage food, supplies, morale, and hope. If hope reaches zero, the exodus fails.", 0xddaa44);
       }
     }, 2200);
   }
