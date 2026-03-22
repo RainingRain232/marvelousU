@@ -145,6 +145,7 @@ import { EagleFlightGame } from "./eagleflight/EagleFlightGame";
 import { CivGame } from "./civilization/CivGame";
 import { MorganGame } from "./morgan/MorganGame";
 import { JoustingGame } from "./jousting/JoustingGame";
+import { ExodusGame } from "./exodus/ExodusGame";
 import { camelotHubScreen } from "@view/ui/CamelotHubScreen";
 
 // World mode imports
@@ -349,6 +350,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     [GameMode.RIFT_WIZARD]: 28,
     [GameMode.CIVILIZATION]: 29,
     [GameMode.MORGAN]: 30,
+    [GameMode.EXODUS]: 31,
   };
   // Modes that need the setup screen (not skipSetup)
   const NEEDS_SETUP = new Set([GameMode.STANDARD, GameMode.DEATHMATCH, GameMode.BATTLEFIELD, GameMode.WAVE]);
@@ -518,6 +520,11 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     if (menuScreen.selectedGameMode === GameMode.JOUSTING) {
       menuScreen.hide();
       _bootJoustingGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.EXODUS) {
+      menuScreen.hide();
+      _bootExodusGame();
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.WORLD) {
@@ -3309,6 +3316,30 @@ async function _bootJoustingGame(): Promise<void> {
     menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
   window.addEventListener("joustingExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Exodus mode boot
+// ---------------------------------------------------------------------------
+
+let _exodusGame: ExodusGame | null = null;
+
+async function _bootExodusGame(): Promise<void> {
+  if (_exodusGame) {
+    _exodusGame.destroy();
+    _exodusGame = null;
+  }
+  _exodusGame = new ExodusGame();
+  await _exodusGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("exodusExit", _onExit);
+    if (_exodusGame) {
+      _exodusGame.destroy();
+      _exodusGame = null;
+    }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("exodusExit", _onExit);
 }
 
 // ---------------------------------------------------------------------------
