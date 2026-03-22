@@ -327,17 +327,28 @@ export class ShadowhandRenderer {
   }
 
   private _drawStairs(g: Graphics, d: Graphics, px: number, py: number, up: boolean): void {
-    g.rect(px, py, T, T).fill({ color: 0x3a3a4a });
+    g.rect(px, py, T, T).fill({ color: 0x343040 });
     const steps = 5;
     for (let i = 0; i < steps; i++) {
       const sy = up ? py + T - (i + 1) * (T / steps) : py + i * (T / steps);
-      const sw = T - i * 4;
-      d.rect(px + (T - sw) / 2, sy, sw, T / steps - 1).fill({ color: 0x4a4a5a, alpha: 0.6 + i * 0.08 });
+      const sw = T - i * 3;
+      const sx = px + (T - sw) / 2;
+      const sh = T / steps - 1;
+      // Step face (top surface)
+      d.rect(sx, sy, sw, sh).fill({ color: 0x4a4a5a, alpha: 0.6 + i * 0.06 });
+      // Step edge highlight (front face visible)
+      d.moveTo(sx, sy + sh).lineTo(sx + sw, sy + sh).stroke({ color: 0x5a5a6a, width: 0.8, alpha: 0.3 });
+      // Step shadow (underneath)
+      d.moveTo(sx, sy).lineTo(sx + sw, sy).stroke({ color: 0x222230, width: 0.6, alpha: 0.3 });
+      // Worn edge — subtle irregular line
+      if (i > 0) {
+        d.moveTo(sx + 2, sy + sh - 0.5).bezierCurveTo(sx + sw * 0.3, sy + sh + 0.5, sx + sw * 0.7, sy + sh - 0.5, sx + sw - 2, sy + sh + 0.3).stroke({ color: 0x3a3a4a, width: 0.5, alpha: 0.2 });
+      }
     }
-    // Arrow
-    const ay = up ? py + 6 : py + T - 6;
+    // Direction arrow polygon
+    const ay = up ? py + 5 : py + T - 5;
     const dir = up ? -1 : 1;
-    d.moveTo(px + HT, ay).lineTo(px + HT, ay + dir * 8).stroke({ color: 0x8888aa, width: 1, alpha: 0.4 });
+    d.moveTo(px + HT, ay + dir * 8).lineTo(px + HT - 3, ay + dir * 3).lineTo(px + HT - 1, ay + dir * 3).lineTo(px + HT - 1, ay).lineTo(px + HT + 1, ay).lineTo(px + HT + 1, ay + dir * 3).lineTo(px + HT + 3, ay + dir * 3).closePath().fill({ color: 0x8888aa, alpha: 0.35 });
   }
 
   private _drawTorch(d: Graphics, px: number, py: number, tx: number, ty: number, _map: HeistState["map"]): void {
@@ -399,18 +410,27 @@ export class ShadowhandRenderer {
   private _drawLootSparkle(d: Graphics, px: number, py: number): void {
     const cx = px + HT, cy = py + HT;
     const t = Date.now() / 400;
-    // Twinkling star pattern
+    // Orbiting 4-pointed star sparkles
     for (let i = 0; i < 4; i++) {
       const angle = t + i * Math.PI / 2;
-      const dist = 4 + Math.sin(t * 2 + i) * 2;
+      const dist = 5 + Math.sin(t * 2 + i) * 2;
       const sx = cx + Math.cos(angle) * dist;
       const sy = cy + Math.sin(angle) * dist;
-      const size = 1 + Math.sin(t * 3 + i * 1.5) * 0.5;
-      d.circle(sx, sy, size).fill({ color: 0xffdd44, alpha: 0.5 + Math.sin(t + i) * 0.3 });
+      const sr = 1.5 + Math.sin(t * 3 + i * 1.5) * 0.5;
+      const sa = 0.4 + Math.sin(t + i) * 0.3;
+      // 4-pointed star polygon
+      d.moveTo(sx, sy - sr * 1.5).lineTo(sx + sr * 0.4, sy - sr * 0.4).lineTo(sx + sr * 1.5, sy).lineTo(sx + sr * 0.4, sy + sr * 0.4);
+      d.lineTo(sx, sy + sr * 1.5).lineTo(sx - sr * 0.4, sy + sr * 0.4).lineTo(sx - sr * 1.5, sy).lineTo(sx - sr * 0.4, sy - sr * 0.4);
+      d.closePath().fill({ color: 0xffdd44, alpha: sa });
     }
-    // Center gem
-    d.circle(cx, cy, 3).fill({ color: 0xffdd44, alpha: 0.8 });
-    d.circle(cx, cy, 1.5).fill({ color: 0xffffff, alpha: 0.6 });
+    // Center faceted gem (diamond shape)
+    d.moveTo(cx, cy - 4).lineTo(cx + 3, cy).lineTo(cx, cy + 3).lineTo(cx - 3, cy).closePath().fill({ color: 0xffdd44, alpha: 0.8 });
+    d.moveTo(cx, cy - 4).lineTo(cx + 3, cy).lineTo(cx, cy - 0.5).closePath().fill({ color: 0xffee88, alpha: 0.5 }); // top facet highlight
+    d.moveTo(cx, cy - 4).lineTo(cx - 3, cy).lineTo(cx, cy - 0.5).closePath().fill({ color: 0xccaa22, alpha: 0.3 }); // top facet shadow
+    // Sparkle cross
+    const sc = 0.3 + Math.sin(t * 4) * 0.2;
+    d.moveTo(cx, cy - 6).lineTo(cx, cy + 6).stroke({ color: 0xffffff, width: 0.5, alpha: sc });
+    d.moveTo(cx - 5, cy).lineTo(cx + 5, cy).stroke({ color: 0xffffff, width: 0.5, alpha: sc });
   }
 
   private _drawPrimaryLoot(d: Graphics, px: number, py: number): void {
@@ -455,19 +475,43 @@ export class ShadowhandRenderer {
 
   private _drawTrap(d: Graphics, px: number, py: number): void {
     const cx = px + HT, cy = py + HT;
-    // Pressure plate lines
-    d.rect(cx - 5, cy - 5, 10, 10).stroke({ color: 0xff4444, width: 0.8, alpha: 0.35 });
-    // Inner cross
-    d.moveTo(cx - 3, cy - 3).lineTo(cx + 3, cy + 3).stroke({ color: 0xff4444, width: 0.5, alpha: 0.3 });
-    d.moveTo(cx + 3, cy - 3).lineTo(cx - 3, cy + 3).stroke({ color: 0xff4444, width: 0.5, alpha: 0.3 });
+    const pulse = 0.25 + Math.sin(Date.now() / 500) * 0.1;
+    // Circular pressure plate with teeth
+    d.circle(cx, cy, 6).stroke({ color: 0xff4444, width: 0.8, alpha: pulse });
+    d.circle(cx, cy, 4).stroke({ color: 0xff4444, width: 0.5, alpha: pulse * 0.7 });
+    // Jaw teeth (polygon spikes around edge)
+    for (let i = 0; i < 8; i++) {
+      const a = i * Math.PI / 4;
+      const ix = cx + Math.cos(a) * 4, iy = cy + Math.sin(a) * 4;
+      const ox = cx + Math.cos(a) * 7, oy = cy + Math.sin(a) * 7;
+      const la = a - 0.25, ra = a + 0.25;
+      d.moveTo(cx + Math.cos(la) * 5, cy + Math.sin(la) * 5).lineTo(ox, oy).lineTo(cx + Math.cos(ra) * 5, cy + Math.sin(ra) * 5).stroke({ color: 0xff4444, width: 0.6, alpha: pulse * 0.6 });
+    }
+    // Center trigger pin
+    d.circle(cx, cy, 1.5).fill({ color: 0xff6644, alpha: pulse });
   }
 
   private _drawCaltrops(d: Graphics, px: number, py: number, h: number): void {
-    for (let i = 0; i < 5; i++) {
-      const cx = px + 3 + tileHash(i, Math.floor(h * 1000)) * (T - 6);
-      const cy = py + 3 + tileHash(Math.floor(h * 1000), i) * (T - 6);
-      // Tiny 4-pointed star
-      d.moveTo(cx, cy - 2).lineTo(cx + 1, cy).lineTo(cx, cy + 2).lineTo(cx - 1, cy).closePath().fill({ color: 0x999999, alpha: 0.5 });
+    for (let i = 0; i < 6; i++) {
+      const cx = px + 4 + tileHash(i, Math.floor(h * 1000)) * (T - 8);
+      const cy = py + 4 + tileHash(Math.floor(h * 1000), i) * (T - 8);
+      const rot = tileHash(i * 3, Math.floor(h * 999)) * Math.PI;
+      const s = 2.5 + tileHash(i + 7, Math.floor(h * 500)) * 1.5;
+      // 4-pointed barbed caltrop (rotated polygon)
+      for (let p = 0; p < 4; p++) {
+        const a = rot + p * Math.PI / 2;
+        const tipX = cx + Math.cos(a) * s, tipY = cy + Math.sin(a) * s;
+        const la = a - 0.3, ra = a + 0.3;
+        d.moveTo(cx + Math.cos(la) * s * 0.3, cy + Math.sin(la) * s * 0.3);
+        d.lineTo(tipX, tipY);
+        d.lineTo(cx + Math.cos(ra) * s * 0.3, cy + Math.sin(ra) * s * 0.3);
+        d.stroke({ color: 0xaaaaaa, width: 0.7, alpha: 0.5 });
+      }
+      // Center junction
+      d.circle(cx, cy, 0.8).fill({ color: 0x888888, alpha: 0.5 });
+      // Metallic highlight on one spike
+      const ha = rot;
+      d.moveTo(cx, cy).lineTo(cx + Math.cos(ha) * s * 0.7, cy + Math.sin(ha) * s * 0.7).stroke({ color: 0xcccccc, width: 0.3, alpha: 0.3 });
     }
   }
 
@@ -546,16 +590,32 @@ export class ShadowhandRenderer {
         if (!heist.map.tiles[y][x].revealed) {
           g.rect(px, py, T, T).fill({ color: 0x08080c, alpha: 0.95 });
         } else {
-          // Soft fog border: check if adjacent to unrevealed
-          let adjFog = false;
-          for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) {
-            const nx = x + dx, ny = y + dy;
-            if (nx < 0 || ny < 0 || nx >= heist.map.width || ny >= heist.map.height) { adjFog = true; break; }
-            if (!heist.map.tiles[ny][nx].revealed) { adjFog = true; break; }
-          }
+          // Detect adjacent fog directions
+          const fogTop = (y <= 0 || !heist.map.tiles[y - 1][x].revealed);
+          const fogBot = (y >= heist.map.height - 1 || !heist.map.tiles[y + 1][x].revealed);
+          const fogLeft = (x <= 0 || !heist.map.tiles[y][x - 1].revealed);
+          const fogRight = (x >= heist.map.width - 1 || !heist.map.tiles[y][x + 1].revealed);
+          const adjFog = fogTop || fogBot || fogLeft || fogRight;
+
           if (adjFog) {
-            // Gradient fog edge
-            g.rect(px, py, T, T).fill({ color: 0x08080c, alpha: 0.25 });
+            // Base fog tint
+            g.rect(px, py, T, T).fill({ color: 0x08080c, alpha: 0.2 });
+            // Directional fog wisps extending from unrevealed edges
+            const h = tileHash(x, y);
+            if (fogTop) {
+              const wx = px + h * T * 0.6 + 4;
+              g.moveTo(px, py).bezierCurveTo(wx, py + 4, px + T * 0.5, py + 6, px + T, py).lineTo(px + T, py).lineTo(px, py).fill({ color: 0x08080c, alpha: 0.15 });
+            }
+            if (fogBot) {
+              const wx = px + h * T * 0.4 + 2;
+              g.moveTo(px, py + T).bezierCurveTo(wx, py + T - 5, px + T * 0.6, py + T - 7, px + T, py + T).lineTo(px + T, py + T).lineTo(px, py + T).fill({ color: 0x08080c, alpha: 0.15 });
+            }
+            if (fogLeft) {
+              g.moveTo(px, py).bezierCurveTo(px + 5, py + T * h * 0.5, px + 7, py + T * 0.6, px, py + T).lineTo(px, py).fill({ color: 0x08080c, alpha: 0.12 });
+            }
+            if (fogRight) {
+              g.moveTo(px + T, py).bezierCurveTo(px + T - 5, py + T * h * 0.4, px + T - 7, py + T * 0.5, px + T, py + T).lineTo(px + T, py + T).fill({ color: 0x08080c, alpha: 0.12 });
+            }
           }
         }
       }
@@ -581,17 +641,35 @@ export class ShadowhandRenderer {
       this._drawGuard(g, guard);
     }
 
-    // Rescue NPC (if rescue objective)
+    // Rescue NPC — kneeling prisoner figure
     if (heist.objective.type === "rescue" && !heist.objective.rescued) {
       const npx = heist.objective.npcX * T + this._offsetX + HT;
       const npy = heist.objective.npcY * T + this._offsetY + HT;
       const pulse = 0.5 + Math.sin(Date.now() / 500) * 0.3;
-      // Prisoner in chains
-      g.circle(npx, npy, 6).fill({ color: 0xaaaa44, alpha: pulse });
-      g.circle(npx, npy, 10).stroke({ color: 0xaaaa44, width: 1.5, alpha: pulse * 0.4 });
-      // Chains
-      g.moveTo(npx - 4, npy + 6).lineTo(npx - 8, npy + 10).stroke({ color: 0x888888, width: 1 });
-      g.moveTo(npx + 4, npy + 6).lineTo(npx + 8, npy + 10).stroke({ color: 0x888888, width: 1 });
+
+      // Pulsing rescue marker glow
+      g.circle(npx, npy, 14).fill({ color: 0xaaaa44, alpha: pulse * 0.05 });
+      g.circle(npx, npy, 10).stroke({ color: 0xaaaa44, width: 1.5, alpha: pulse * 0.3 });
+
+      // Kneeling body
+      g.moveTo(npx - 3, npy + 2).lineTo(npx - 2, npy - 2).lineTo(npx + 2, npy - 2).lineTo(npx + 3, npy + 2).lineTo(npx + 1, npy + 5).lineTo(npx - 1, npy + 5).closePath().fill({ color: 0x8a8a44, alpha: pulse });
+      // Head (bowed)
+      g.circle(npx, npy - 5, 3).fill({ color: 0x9a9a55, alpha: pulse });
+      // Arms behind back
+      g.moveTo(npx - 3, npy).bezierCurveTo(npx - 5, npy + 2, npx - 4, npy + 5, npx - 2, npy + 4).stroke({ color: 0x8a8a44, width: 1.5, alpha: pulse * 0.7 });
+      g.moveTo(npx + 3, npy).bezierCurveTo(npx + 5, npy + 2, npx + 4, npy + 5, npx + 2, npy + 4).stroke({ color: 0x8a8a44, width: 1.5, alpha: pulse * 0.7 });
+      // Chain links (small connected ovals)
+      for (let ci = 0; ci < 4; ci++) {
+        const clx = npx - 5 - ci * 2.5, cly = npy + 4 + ci * 1.5;
+        g.ellipse(clx, cly, 2, 1.5).stroke({ color: 0x777777, width: 0.8 });
+      }
+      for (let ci = 0; ci < 4; ci++) {
+        const crx = npx + 5 + ci * 2.5, cry = npy + 4 + ci * 1.5;
+        g.ellipse(crx, cry, 2, 1.5).stroke({ color: 0x777777, width: 0.8 });
+      }
+      // Shackle bolts
+      g.circle(npx - 3, npy + 3, 1).fill({ color: 0x666666 });
+      g.circle(npx + 3, npy + 3, 1).fill({ color: 0x666666 });
     }
 
     // Thieves
@@ -600,14 +678,38 @@ export class ShadowhandRenderer {
       this._drawThief(g, thief);
     }
 
-    // Noise events (animated rings)
+    // Noise events — expanding polygon wave rings
     for (const noise of heist.noiseEvents) {
-      const px = noise.x * T + this._offsetX + HT;
-      const py = noise.y * T + this._offsetY + HT;
+      const npx = noise.x * T + this._offsetX + HT;
+      const npy = noise.y * T + this._offsetY + HT;
       const alpha = Math.min(0.25, noise.timer / 2);
       const r = noise.radius * T;
-      g.circle(px, py, r).stroke({ color: 0xffff88, width: 1.5, alpha });
-      g.circle(px, py, r * 0.6).stroke({ color: 0xffff88, width: 0.5, alpha: alpha * 0.5 });
+      // Outer ring — polygon with slight irregularity
+      const segs = 16;
+      for (let i = 0; i < segs; i++) {
+        const a1 = (i / segs) * Math.PI * 2;
+        const a2 = ((i + 1) / segs) * Math.PI * 2;
+        const wobble1 = 1 + Math.sin(a1 * 3 + noise.timer * 4) * 0.08;
+        const wobble2 = 1 + Math.sin(a2 * 3 + noise.timer * 4) * 0.08;
+        g.moveTo(npx + Math.cos(a1) * r * wobble1, npy + Math.sin(a1) * r * wobble1);
+        g.lineTo(npx + Math.cos(a2) * r * wobble2, npy + Math.sin(a2) * r * wobble2);
+      }
+      g.stroke({ color: 0xffff88, width: 1.5, alpha });
+      // Inner ring
+      for (let i = 0; i < segs; i++) {
+        const a1 = (i / segs) * Math.PI * 2;
+        const a2 = ((i + 1) / segs) * Math.PI * 2;
+        g.moveTo(npx + Math.cos(a1) * r * 0.5, npy + Math.sin(a1) * r * 0.5);
+        g.lineTo(npx + Math.cos(a2) * r * 0.5, npy + Math.sin(a2) * r * 0.5);
+      }
+      g.stroke({ color: 0xffff88, width: 0.7, alpha: alpha * 0.4 });
+      // Sound wave peaks (radial spokes)
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        g.moveTo(npx + Math.cos(a) * r * 0.3, npy + Math.sin(a) * r * 0.3);
+        g.lineTo(npx + Math.cos(a) * r * 0.7, npy + Math.sin(a) * r * 0.7);
+        g.stroke({ color: 0xffff88, width: 0.4, alpha: alpha * 0.25 });
+      }
     }
 
     // Particles
@@ -655,81 +757,167 @@ export class ShadowhandRenderer {
     const px = guard.x * T + this._offsetX + HT;
     const py = guard.y * T + this._offsetY + HT;
     const color = ALERT_COLORS[guard.alertLevel];
+    const da = guard.angle;
+    const cos = Math.cos(da), sin = Math.sin(da);
 
     if (guard.stunTimer > 0 || guard.sleepTimer > 0) {
-      // Collapsed body
-      g.ellipse(px, py + 2, 7, 4).fill({ color: 0x444444, alpha: 0.5 });
+      // Collapsed body — sprawled figure polygon
+      g.moveTo(px - 7, py + 1).bezierCurveTo(px - 5, py - 3, px + 5, py - 3, px + 7, py + 1);
+      g.bezierCurveTo(px + 6, py + 4, px - 6, py + 4, px - 7, py + 1);
+      g.fill({ color: 0x444444, alpha: 0.5 });
+      // Head lolled to side
+      g.circle(px - 5, py - 2, 3).fill({ color: 0x555555, alpha: 0.45 });
+      // Legs sprawled
+      g.moveTo(px + 2, py + 2).lineTo(px + 7, py + 6).stroke({ color: 0x444444, width: 1.5, alpha: 0.4 });
+      g.moveTo(px + 1, py + 3).lineTo(px - 3, py + 7).stroke({ color: 0x444444, width: 1.5, alpha: 0.4 });
+
       if (guard.sleepTimer > 0) {
-        // Animated Z's
         const t = Date.now() / 600;
         for (let i = 0; i < 3; i++) {
-          const zy = py - 8 - i * 6 - Math.sin(t + i) * 2;
+          const zy = py - 8 - i * 7 - Math.sin(t + i) * 2;
           const za = 0.6 - i * 0.15;
-          const zs = 3 - i * 0.5;
-          g.moveTo(px - zs + i * 2, zy).lineTo(px + zs + i * 2, zy).lineTo(px - zs + i * 2, zy - zs).lineTo(px + zs + i * 2, zy - zs).stroke({ color: 0x8888ff, width: 1, alpha: za });
+          const zs = 3.5 - i * 0.5;
+          // Z as polygon outline
+          g.moveTo(px - zs + i * 2, zy).lineTo(px + zs + i * 2, zy).lineTo(px - zs + i * 2, zy - zs * 1.3).lineTo(px + zs + i * 2, zy - zs * 1.3).stroke({ color: 0x8888ff, width: 1.2, alpha: za });
         }
       } else {
-        // Stars (stunned)
+        // 5-pointed stars orbiting
         for (let i = 0; i < 3; i++) {
           const a = Date.now() / 400 + i * 2.1;
-          const sx = px + Math.cos(a) * 8, sy = py - 8 + Math.sin(a) * 4;
-          g.circle(sx, sy, 1.5).fill({ color: 0xffff44, alpha: 0.5 });
+          const sx = px + Math.cos(a) * 9, sy = py - 9 + Math.sin(a) * 4;
+          // 5-point star polygon
+          for (let p = 0; p < 5; p++) {
+            const pa = -Math.PI / 2 + p * Math.PI * 2 / 5;
+            const pb = pa + Math.PI / 5;
+            const or = 2.5, ir = 1;
+            if (p === 0) g.moveTo(sx + Math.cos(pa) * or, sy + Math.sin(pa) * or);
+            else g.lineTo(sx + Math.cos(pa) * or, sy + Math.sin(pa) * or);
+            g.lineTo(sx + Math.cos(pb) * ir, sy + Math.sin(pb) * ir);
+          }
+          g.closePath().fill({ color: 0xffff44, alpha: 0.5 });
         }
       }
       return;
     }
 
     if (guard.isDog) {
-      // Dog body (ellipse with legs)
-      const da = guard.angle;
-      g.ellipse(px, py, 8, 5).fill({ color });
-      // Head
-      g.circle(px + Math.cos(da) * 6, py + Math.sin(da) * 6, 3.5).fill({ color });
-      // Ears
-      const ex = px + Math.cos(da) * 9, ey = py + Math.sin(da) * 9;
-      g.circle(ex + 2, ey - 2, 1.5).fill({ color: ALERT_COLORS[guard.alertLevel] });
-      g.circle(ex - 2, ey - 2, 1.5).fill({ color: ALERT_COLORS[guard.alertLevel] });
-      // Tail
-      const tx = px - Math.cos(da) * 6, ty = py - Math.sin(da) * 6;
-      g.moveTo(tx, ty).bezierCurveTo(tx - 4, ty - 6, tx - 2, ty - 8, tx + 1, ty - 5).stroke({ color, width: 1.5 });
+      // Hound — muscular body polygon
+      const hx = px + cos * 5, hy = py + sin * 5; // head offset
+      // Body (angled polygon following direction)
+      g.moveTo(px - cos * 6 - sin * 4, py - sin * 6 + cos * 4);
+      g.bezierCurveTo(px - sin * 5, py + cos * 5, px + sin * 5, py - cos * 5, px + cos * 3 - sin * 3, py + sin * 3 + cos * 3);
+      g.bezierCurveTo(px + cos * 5, py + sin * 5, px + cos * 6 + sin * 3, py + sin * 6 - cos * 3, px + cos * 6 - sin * 3, py + sin * 6 + cos * 3);
+      g.closePath().fill({ color });
+      // Chest (lighter shade)
+      g.ellipse(px + cos * 2, py + sin * 2, 4, 3).fill({ color, alpha: 0.7 });
+      // Head — wedge-shaped snout polygon
+      g.moveTo(hx - sin * 3, hy + cos * 3).lineTo(hx + cos * 5, hy + sin * 5).lineTo(hx + sin * 3, hy - cos * 3).closePath().fill({ color });
+      // Jaw line
+      g.moveTo(hx + cos * 3 - sin * 2, hy + sin * 3 + cos * 2).lineTo(hx + cos * 5, hy + sin * 5).stroke({ color: 0x000000, width: 0.5, alpha: 0.3 });
+      // Pointed ears (triangular)
+      const ePerp = 3.5;
+      g.moveTo(hx - sin * ePerp, hy + cos * ePerp).lineTo(hx + cos * 2 - sin * (ePerp + 3), hy + sin * 2 + cos * (ePerp + 3)).lineTo(hx + cos * 1 - sin * ePerp, hy + sin * 1 + cos * ePerp).closePath().fill({ color });
+      g.moveTo(hx + sin * ePerp, hy - cos * ePerp).lineTo(hx + cos * 2 + sin * (ePerp + 3), hy + sin * 2 - cos * (ePerp + 3)).lineTo(hx + cos * 1 + sin * ePerp, hy + sin * 1 - cos * ePerp).closePath().fill({ color });
+      // Inner ear
+      g.moveTo(hx - sin * (ePerp - 1), hy + cos * (ePerp - 1)).lineTo(hx + cos * 1.5 - sin * (ePerp + 1.5), hy + sin * 1.5 + cos * (ePerp + 1.5)).lineTo(hx + cos * 0.5 - sin * (ePerp - 1), hy + sin * 0.5 + cos * (ePerp - 1)).closePath().fill({ color: 0xaa6666, alpha: 0.4 });
+      // Eyes — amber diamonds
+      const elx = hx + cos * 2 - sin * 2, ely = hy + sin * 2 + cos * 2;
+      const erx = hx + cos * 2 + sin * 2, ery = hy + sin * 2 - cos * 2;
+      g.moveTo(elx - 1, ely).lineTo(elx, ely - 1).lineTo(elx + 1, ely).lineTo(elx, ely + 1).closePath().fill({ color: 0xffaa22 });
+      g.moveTo(erx - 1, ery).lineTo(erx, ery - 1).lineTo(erx + 1, ery).lineTo(erx, ery + 1).closePath().fill({ color: 0xffaa22 });
+      // Tail — feathered bezier with fur strokes
+      const tx = px - cos * 7, ty = py - sin * 7;
+      g.moveTo(tx, ty).bezierCurveTo(tx - sin * 5, ty + cos * 5, tx - cos * 3 - sin * 8, ty - sin * 3 + cos * 8, tx - cos * 2 - sin * 6, ty - sin * 2 + cos * 6).stroke({ color, width: 2 });
+      g.moveTo(tx - cos * 1 - sin * 4, ty - sin * 1 + cos * 4).bezierCurveTo(tx - cos * 3 - sin * 6, ty - sin * 3 + cos * 6, tx - cos * 4 - sin * 7, ty - sin * 4 + cos * 7, tx - cos * 3 - sin * 5, ty - sin * 3 + cos * 5).stroke({ color, width: 1 });
+      // Legs (simple strokes)
+      g.moveTo(px - sin * 3, py + cos * 3).lineTo(px - sin * 4, py + cos * 4 + 3).stroke({ color, width: 1.5 });
+      g.moveTo(px + sin * 3, py - cos * 3).lineTo(px + sin * 4, py - cos * 4 + 3).stroke({ color, width: 1.5 });
     } else {
-      // Human guard — body silhouette
-      // Body (torso)
-      g.ellipse(px, py + 1, 5, 6).fill({ color });
-      // Head
-      g.circle(px, py - 6, 4).fill({ color });
-      // Shoulders
-      g.ellipse(px, py - 1, 7, 3).fill({ color });
+      // Human guard — armored silhouette
+      // Legs (slightly apart)
+      g.moveTo(px - 2, py + 4).lineTo(px - 3, py + 9).stroke({ color, width: 2 });
+      g.moveTo(px + 2, py + 4).lineTo(px + 3, py + 9).stroke({ color, width: 2 });
+      // Boots
+      g.ellipse(px - 3, py + 10, 2.5, 1.5).fill({ color: 0x3a2a1a });
+      g.ellipse(px + 3, py + 10, 2.5, 1.5).fill({ color: 0x3a2a1a });
+      // Torso — armored polygon (wider shoulders, narrow waist)
+      g.moveTo(px - 7, py - 2).lineTo(px - 5, py - 6).lineTo(px - 3, py - 8).lineTo(px + 3, py - 8).lineTo(px + 5, py - 6).lineTo(px + 7, py - 2).lineTo(px + 4, py + 4).lineTo(px - 4, py + 4).closePath().fill({ color });
+      // Armor plate highlight
+      g.moveTo(px - 5, py - 5).lineTo(px - 2, py - 7).lineTo(px + 2, py - 7).lineTo(px + 5, py - 5).stroke({ color: 0xffffff, width: 0.5, alpha: 0.15 });
+      // Belt
+      g.moveTo(px - 5, py + 1).lineTo(px + 5, py + 1).stroke({ color: 0x3a2a1a, width: 1.5 });
+      g.circle(px, py + 1, 1).fill({ color: 0x666644 }); // buckle
+      // Chainmail texture (short horizontal strokes on torso)
+      for (let ci = 0; ci < 3; ci++) {
+        const cy = py - 4 + ci * 2;
+        g.moveTo(px - 3, cy).lineTo(px + 3, cy).stroke({ color: 0xffffff, width: 0.3, alpha: 0.08 });
+      }
+      // Head — helmeted
+      g.circle(px, py - 10, 4).fill({ color }); // helmet base
+      // Visor slit
+      g.moveTo(px - 2.5, py - 10).lineTo(px + 2.5, py - 10).stroke({ color: 0x111111, width: 1.2 });
+      // Helmet rim
+      g.moveTo(px - 4, py - 7).bezierCurveTo(px - 5, py - 10, px - 5, py - 14, px, py - 14.5);
+      g.bezierCurveTo(px + 5, py - 14, px + 5, py - 10, px + 4, py - 7);
+      g.stroke({ color, width: 1 });
+      // Nose guard
+      g.moveTo(px, py - 14).lineTo(px, py - 9).stroke({ color, width: 1.2 });
 
-      // Helmet crest for elite
       if (guard.isElite) {
-        g.moveTo(px, py - 11).lineTo(px, py - 15).stroke({ color: 0xffffff, width: 1.5, alpha: 0.6 });
-        g.circle(px, py - 15, 1).fill({ color: 0xffffff, alpha: 0.4 });
-        g.circle(px, py, 9).stroke({ color: 0xffd700, width: 1, alpha: 0.25 });
+        // Plume — feathered crest using bezier polygon
+        g.moveTo(px, py - 14).bezierCurveTo(px - 2, py - 18, px - 1, py - 22, px + 1, py - 24);
+        g.bezierCurveTo(px + 3, py - 22, px + 4, py - 18, px + 2, py - 14);
+        g.closePath().fill({ color: 0xcc2222, alpha: 0.7 });
+        // Feather barbs
+        g.moveTo(px, py - 16).lineTo(px - 2, py - 18).stroke({ color: 0xaa1111, width: 0.5, alpha: 0.4 });
+        g.moveTo(px + 1, py - 18).lineTo(px + 3, py - 20).stroke({ color: 0xaa1111, width: 0.5, alpha: 0.4 });
+        // Gold trim on armor
+        g.moveTo(px - 7, py - 2).lineTo(px - 5, py - 6).stroke({ color: 0xffd700, width: 0.8, alpha: 0.35 });
+        g.moveTo(px + 7, py - 2).lineTo(px + 5, py - 6).stroke({ color: 0xffd700, width: 0.8, alpha: 0.35 });
+        // Star emblem on chest
+        for (let sp = 0; sp < 5; sp++) {
+          const sa = -Math.PI / 2 + sp * Math.PI * 2 / 5;
+          const sb = sa + Math.PI / 5;
+          if (sp === 0) g.moveTo(px + Math.cos(sa) * 2.5, py - 3 + Math.sin(sa) * 2.5);
+          else g.lineTo(px + Math.cos(sa) * 2.5, py - 3 + Math.sin(sa) * 2.5);
+          g.lineTo(px + Math.cos(sb) * 1, py - 3 + Math.sin(sb) * 1);
+        }
+        g.closePath().fill({ color: 0xffd700, alpha: 0.4 });
       }
 
-      // Direction indicator (spear/weapon)
-      const wx = px + Math.cos(guard.angle) * 11;
-      const wy = py + Math.sin(guard.angle) * 11;
-      g.moveTo(px + Math.cos(guard.angle) * 6, py + Math.sin(guard.angle) * 6);
-      g.lineTo(wx, wy);
-      g.stroke({ color: 0xaaaaaa, width: 1.5, alpha: 0.6 });
-      // Spear tip
-      g.circle(wx, wy, 1.5).fill({ color: 0xcccccc, alpha: 0.7 });
+      // Weapon — spear with barbed head polygon
+      const wDist = 12;
+      const wx = px + cos * wDist, wy = py + sin * wDist;
+      const wsx = px + cos * 5, wsy = py + sin * 5;
+      // Shaft
+      g.moveTo(wsx, wsy).lineTo(wx, wy).stroke({ color: 0x6a5a3a, width: 1.5 });
+      // Spearhead (diamond polygon)
+      const tipX = wx + cos * 3, tipY = wy + sin * 3;
+      g.moveTo(tipX, tipY);
+      g.lineTo(wx - sin * 2, wy + cos * 2);
+      g.lineTo(wx - cos * 1, wy - sin * 1);
+      g.lineTo(wx + sin * 2, wy - cos * 2);
+      g.closePath().fill({ color: 0xaaaaaa });
+      g.moveTo(tipX, tipY).lineTo(wx - cos * 1, wy - sin * 1).stroke({ color: 0xcccccc, width: 0.5, alpha: 0.5 }); // edge highlight
     }
 
     // Alert indicators
     if (guard.alertLevel === AlertLevel.SUSPICIOUS) {
-      // Yellow "?"
-      g.moveTo(px - 1, py - 16).bezierCurveTo(px - 1, py - 22, px + 4, py - 22, px + 2, py - 18).lineTo(px, py - 14).stroke({ color: 0xffff00, width: 2 });
-      g.circle(px, py - 12, 1.5).fill({ color: 0xffff00 });
+      // "?" — bold polygon-rendered
+      const qx = px, qy = py - 18;
+      g.moveTo(qx - 2, qy + 4).bezierCurveTo(qx - 3, qy - 2, qx + 3, qy - 4, qx + 2, qy).bezierCurveTo(qx + 1, qy + 2, qx, qy + 3, qx, qy + 5).stroke({ color: 0xffff00, width: 2.5 });
+      g.circle(qx, qy + 8, 1.5).fill({ color: 0xffff00 });
+      // Glow
+      g.circle(qx, qy + 3, 6).fill({ color: 0xffff00, alpha: 0.06 });
     } else if (guard.alertLevel === AlertLevel.ALARMED) {
-      // Red "!"
-      g.moveTo(px, py - 22).lineTo(px, py - 14).stroke({ color: 0xff0000, width: 2.5 });
-      g.circle(px, py - 12, 2).fill({ color: 0xff0000 });
-      // Pulse
-      const pulse = 0.3 + Math.sin(Date.now() / 150) * 0.2;
-      g.circle(px, py - 17, 8).fill({ color: 0xff0000, alpha: pulse * 0.1 });
+      // "!" — thick polygon with glow
+      const ex = px, ey = py - 20;
+      g.roundRect(ex - 1.5, ey, 3, 8, 1).fill({ color: 0xff0000 });
+      g.circle(ex, ey + 11, 2).fill({ color: 0xff0000 });
+      // Pulsing danger aura
+      const pulse = 0.2 + Math.sin(Date.now() / 120) * 0.15;
+      g.circle(ex, ey + 5, 10).fill({ color: 0xff0000, alpha: pulse * 0.08 });
+      g.circle(ex, ey + 5, 6).fill({ color: 0xff0000, alpha: pulse * 0.12 });
     }
   }
 
@@ -737,79 +925,143 @@ export class ShadowhandRenderer {
     const px = thief.x * T + this._offsetX + HT;
     const py = thief.y * T + this._offsetY + HT;
     const crouching = thief.crouching;
+    const t = Date.now();
 
-    // Selection ring with glow
+    // Selection — diamond-cornered polygon frame
     if (thief.selected) {
-      const pulse = 0.5 + Math.sin(Date.now() / 400) * 0.2;
-      g.circle(px, py, 13).stroke({ color: 0x44ff44, width: 1.5, alpha: pulse * 0.3 });
-      g.circle(px, py, 11).stroke({ color: 0x44ff44, width: 2, alpha: pulse });
+      const pulse = 0.5 + Math.sin(t / 400) * 0.2;
+      const sr = 13;
+      // Diamond-cornered selection frame
+      g.moveTo(px, py - sr).lineTo(px + sr * 0.7, py - sr * 0.7).lineTo(px + sr, py).lineTo(px + sr * 0.7, py + sr * 0.7);
+      g.lineTo(px, py + sr).lineTo(px - sr * 0.7, py + sr * 0.7).lineTo(px - sr, py).lineTo(px - sr * 0.7, py - sr * 0.7).closePath();
+      g.stroke({ color: 0x44ff44, width: 1.5, alpha: pulse });
+      // Corner diamonds
+      for (let ci = 0; ci < 4; ci++) {
+        const ca = -Math.PI / 2 + ci * Math.PI / 2;
+        const cdx = px + Math.cos(ca) * sr, cdy = py + Math.sin(ca) * sr;
+        g.moveTo(cdx, cdy - 2).lineTo(cdx + 2, cdy).lineTo(cdx, cdy + 2).lineTo(cdx - 2, cdy).closePath().fill({ color: 0x44ff44, alpha: pulse * 0.6 });
+      }
     }
 
     const bodyColor = thief.disguised ? 0xcc8844 : thief.shadowMeld ? 0x3322aa : 0x2266cc;
     const bodyAlpha = thief.shadowMeld ? 0.35 : 1.0;
+    const darkCloak = thief.shadowMeld ? 0x110022 : 0x1a1a2a;
 
     if (crouching) {
-      // Crouching silhouette — compact, lower profile
-      g.ellipse(px, py + 2, 6, 4).fill({ color: bodyColor, alpha: bodyAlpha });
-      g.circle(px, py - 3, 3.5).fill({ color: bodyColor, alpha: bodyAlpha });
-      // Hood
-      g.moveTo(px - 4, py - 2).bezierCurveTo(px - 4, py - 8, px + 4, py - 8, px + 4, py - 2).fill({ color: bodyColor, alpha: bodyAlpha * 0.8 });
+      // Crouching — hunched polygon figure
+      // Bent legs
+      g.moveTo(px - 4, py + 3).lineTo(px - 5, py + 6).lineTo(px - 3, py + 8).stroke({ color: bodyColor, width: 2, alpha: bodyAlpha });
+      g.moveTo(px + 2, py + 3).lineTo(px + 4, py + 6).lineTo(px + 2, py + 8).stroke({ color: bodyColor, width: 2, alpha: bodyAlpha });
+      // Hunched torso polygon
+      g.moveTo(px - 5, py + 3).lineTo(px - 4, py - 1).lineTo(px - 2, py - 3).lineTo(px + 3, py - 3).lineTo(px + 5, py - 1).lineTo(px + 4, py + 3).closePath().fill({ color: bodyColor, alpha: bodyAlpha });
+      // Hood — pointed polygon
+      g.moveTo(px - 4, py - 2).bezierCurveTo(px - 5, py - 6, px - 2, py - 10, px + 1, py - 10);
+      g.bezierCurveTo(px + 4, py - 10, px + 5, py - 6, px + 4, py - 2);
+      g.closePath().fill({ color: darkCloak, alpha: bodyAlpha * 0.85 });
+      // Hood point
+      g.moveTo(px + 1, py - 10).bezierCurveTo(px + 2, py - 12, px + 3, py - 11, px + 2, py - 9).stroke({ color: darkCloak, width: 1, alpha: bodyAlpha * 0.6 });
+      // Face shadow
+      g.ellipse(px, py - 5, 3, 2).fill({ color: 0x000000, alpha: bodyAlpha * 0.3 });
     } else {
-      // Standing silhouette
-      g.ellipse(px, py + 1, 5, 6).fill({ color: bodyColor, alpha: bodyAlpha });
-      g.circle(px, py - 6, 4).fill({ color: bodyColor, alpha: bodyAlpha });
-      // Cloak outline
-      g.moveTo(px - 6, py - 2).bezierCurveTo(px - 7, py + 4, px - 5, py + 8, px - 3, py + 8).stroke({ color: bodyColor, width: 1, alpha: bodyAlpha * 0.5 });
-      g.moveTo(px + 6, py - 2).bezierCurveTo(px + 7, py + 4, px + 5, py + 8, px + 3, py + 8).stroke({ color: bodyColor, width: 1, alpha: bodyAlpha * 0.5 });
+      // Standing — full cloaked figure
+      // Legs
+      g.moveTo(px - 2, py + 5).lineTo(px - 2, py + 10).stroke({ color: bodyColor, width: 2, alpha: bodyAlpha });
+      g.moveTo(px + 2, py + 5).lineTo(px + 2, py + 10).stroke({ color: bodyColor, width: 2, alpha: bodyAlpha });
+      // Boots (pointed)
+      g.moveTo(px - 4, py + 10).lineTo(px - 1, py + 10).lineTo(px - 2, py + 11.5).closePath().fill({ color: 0x2a2a2a, alpha: bodyAlpha });
+      g.moveTo(px + 4, py + 10).lineTo(px + 1, py + 10).lineTo(px + 2, py + 11.5).closePath().fill({ color: 0x2a2a2a, alpha: bodyAlpha });
+      // Torso
+      g.moveTo(px - 5, py - 1).lineTo(px - 3, py - 6).lineTo(px + 3, py - 6).lineTo(px + 5, py - 1).lineTo(px + 3, py + 5).lineTo(px - 3, py + 5).closePath().fill({ color: bodyColor, alpha: bodyAlpha });
+      // Cloak — flowing polygon with irregular bottom
+      g.moveTo(px - 6, py - 4);
+      g.bezierCurveTo(px - 8, py + 2, px - 7, py + 7, px - 4, py + 9);
+      g.lineTo(px - 2, py + 8).bezierCurveTo(px - 5, py + 5, px - 6, py + 0, px - 5, py - 3);
+      g.closePath().fill({ color: darkCloak, alpha: bodyAlpha * 0.6 });
+      g.moveTo(px + 6, py - 4);
+      g.bezierCurveTo(px + 8, py + 2, px + 7, py + 7, px + 4, py + 9);
+      g.lineTo(px + 2, py + 8).bezierCurveTo(px + 5, py + 5, px + 6, py + 0, px + 5, py - 3);
+      g.closePath().fill({ color: darkCloak, alpha: bodyAlpha * 0.6 });
+      // Head — hooded
+      g.circle(px, py - 8, 4).fill({ color: bodyColor, alpha: bodyAlpha });
+      // Hood polygon
+      g.moveTo(px - 5, py - 5);
+      g.bezierCurveTo(px - 6, py - 9, px - 4, py - 14, px, py - 15);
+      g.bezierCurveTo(px + 4, py - 14, px + 6, py - 9, px + 5, py - 5);
+      g.closePath().fill({ color: darkCloak, alpha: bodyAlpha * 0.8 });
+      // Hood peak
+      g.moveTo(px, py - 15).bezierCurveTo(px + 1, py - 17, px + 2, py - 16, px + 1, py - 14).stroke({ color: darkCloak, width: 1, alpha: bodyAlpha * 0.5 });
+      // Face shadow void
+      g.ellipse(px, py - 8, 3, 2.5).fill({ color: 0x000000, alpha: bodyAlpha * 0.4 });
     }
 
-    // Eyes (tiny bright dots)
+    // Eyes — almond-shaped in face shadow
     if (!thief.shadowMeld) {
-      g.circle(px - 1.5, py - 7, 0.8).fill({ color: 0xeeeeff, alpha: bodyAlpha });
-      g.circle(px + 1.5, py - 7, 0.8).fill({ color: 0xeeeeff, alpha: bodyAlpha });
+      const ey = crouching ? py - 5 : py - 8;
+      g.moveTo(px - 3, ey).bezierCurveTo(px - 2, ey - 1, px - 0.5, ey - 1, px - 0.5, ey).bezierCurveTo(px - 0.5, ey + 0.5, px - 2, ey + 0.5, px - 3, ey).fill({ color: 0xddeeff, alpha: bodyAlpha * 0.8 });
+      g.moveTo(px + 3, ey).bezierCurveTo(px + 2, ey - 1, px + 0.5, ey - 1, px + 0.5, ey).bezierCurveTo(px + 0.5, ey + 0.5, px + 2, ey + 0.5, px + 3, ey).fill({ color: 0xddeeff, alpha: bodyAlpha * 0.8 });
     }
 
-    // Disguise effect — noble clothing shimmer
+    // Disguise — noble clothing overlay polygons
     if (thief.disguised) {
-      const shimmer = 0.3 + Math.sin(Date.now() / 300) * 0.15;
-      g.circle(px, py, 10).stroke({ color: 0xcc8844, width: 1.5, alpha: shimmer });
-      g.circle(px, py, 12).stroke({ color: 0xcc8844, width: 0.5, alpha: shimmer * 0.4 });
+      const shimmer = 0.3 + Math.sin(t / 300) * 0.15;
+      // Noble collar
+      g.moveTo(px - 4, py - 5).bezierCurveTo(px - 5, py - 7, px + 5, py - 7, px + 4, py - 5).stroke({ color: 0xcc8844, width: 1.5, alpha: shimmer });
+      // Sash across chest
+      g.moveTo(px - 4, py - 3).lineTo(px + 3, py + 3).stroke({ color: 0xcc4444, width: 1.5, alpha: shimmer * 0.8 });
+      // Medallion
+      g.circle(px, py - 1, 2).fill({ color: 0xffd700, alpha: shimmer });
     }
 
-    // Shadow meld aura — dark tendrils
+    // Shadow meld — 6 dark tendrils
     if (thief.shadowMeld) {
-      const t = Date.now() / 200;
-      for (let i = 0; i < 4; i++) {
-        const a = t + i * Math.PI / 2;
-        const dist = 8 + Math.sin(t * 2 + i) * 3;
+      for (let i = 0; i < 6; i++) {
+        const a = t / 200 + i * Math.PI / 3;
+        const dist = 9 + Math.sin(t / 200 * 2 + i) * 3;
         g.moveTo(px, py);
         g.bezierCurveTo(
-          px + Math.cos(a) * dist * 0.5, py + Math.sin(a) * dist * 0.5,
-          px + Math.cos(a + 0.3) * dist * 0.8, py + Math.sin(a + 0.3) * dist * 0.8,
+          px + Math.cos(a) * dist * 0.4, py + Math.sin(a) * dist * 0.4,
+          px + Math.cos(a + 0.4) * dist * 0.7, py + Math.sin(a + 0.4) * dist * 0.7,
           px + Math.cos(a) * dist, py + Math.sin(a) * dist
         );
-        g.stroke({ color: 0x3322aa, width: 1.5, alpha: 0.2 });
+        g.stroke({ color: 0x221144, width: 2 - i * 0.2, alpha: 0.2 });
       }
     }
 
-    // Loot sack
+    // Loot sack — polygon pouch with ties
     if (thief.carryingLoot.length > 0) {
-      const sx = px + 6, sy = py - 2;
-      g.circle(sx, sy, 4).fill({ color: 0x8a7a5a, alpha: bodyAlpha * 0.9 });
-      g.moveTo(sx, sy - 4).lineTo(sx, sy - 7).stroke({ color: 0x6a5a3a, width: 1, alpha: bodyAlpha });
-      // Gold glint
-      g.circle(sx - 1, sy - 1, 1).fill({ color: 0xffd700, alpha: bodyAlpha * 0.6 });
+      const sx = px + 7, sy = py - 1;
+      // Sack body (bulging polygon)
+      g.moveTo(sx - 3, sy - 3).bezierCurveTo(sx - 5, sy, sx - 4, sy + 4, sx, sy + 4);
+      g.bezierCurveTo(sx + 4, sy + 4, sx + 5, sy, sx + 3, sy - 3).closePath().fill({ color: 0x7a6a4a, alpha: bodyAlpha * 0.9 });
+      // Rope tie
+      g.moveTo(sx - 1, sy - 3).lineTo(sx, sy - 6).lineTo(sx + 1, sy - 3).stroke({ color: 0x5a4a2a, width: 1, alpha: bodyAlpha });
+      // Bulge stitch
+      g.moveTo(sx, sy - 2).lineTo(sx, sy + 2).stroke({ color: 0x5a4a2a, width: 0.5, alpha: bodyAlpha * 0.4 });
+      // Gold coins peeking out
+      g.circle(sx - 1, sy, 1.2).fill({ color: 0xffd700, alpha: bodyAlpha * 0.6 });
+      g.circle(sx + 1, sy + 1, 1).fill({ color: 0xeebb00, alpha: bodyAlpha * 0.5 });
     }
 
-    // HP bar (only when damaged)
+    // HP bar — segmented with riveted frame
     if (thief.hp < thief.maxHp) {
       const bw = 22, bh = 3;
-      const bx = px - bw / 2, by = py - (crouching ? 10 : 14);
-      g.rect(bx - 0.5, by - 0.5, bw + 1, bh + 1).fill({ color: 0x000000, alpha: 0.5 });
-      g.rect(bx, by, bw, bh).fill({ color: 0x331111 });
+      const bx = px - bw / 2, by = py - (crouching ? 12 : 20);
+      // Frame
+      g.rect(bx - 1, by - 1, bw + 2, bh + 2).fill({ color: 0x222222, alpha: 0.7 });
+      g.rect(bx - 1, by - 1, bw + 2, bh + 2).stroke({ color: 0x444444, width: 0.5 });
+      // Background
+      g.rect(bx, by, bw, bh).fill({ color: 0x220000 });
+      // Fill
       const hpRatio = thief.hp / thief.maxHp;
       const hpColor = hpRatio > 0.6 ? 0x44cc44 : hpRatio > 0.3 ? 0xccaa22 : 0xff3333;
       g.rect(bx, by, bw * hpRatio, bh).fill({ color: hpColor });
+      // Segment lines
+      for (let si = 1; si < 4; si++) {
+        g.moveTo(bx + si * bw / 4, by).lineTo(bx + si * bw / 4, by + bh).stroke({ color: 0x000000, width: 0.5, alpha: 0.3 });
+      }
+      // Rivets
+      g.circle(bx - 0.5, by + bh / 2, 0.8).fill({ color: 0x666666 });
+      g.circle(bx + bw + 0.5, by + bh / 2, 0.8).fill({ color: 0x666666 });
     }
   }
 

@@ -165,7 +165,44 @@ export class ShadowhandHUD {
 
       const crew = state.guild.roster.find(c => c.id === thief.crewMemberId);
       const arch = CREW_ARCHETYPES[thief.role];
-      this._crewGfx.circle(16, cy + 12, 5).fill({ color: arch.color });
+      // Role-specific polygon icon
+      const ix = 16, iy = cy + 12, ic = arch.color;
+      switch (thief.role) {
+        case "cutpurse": // Diamond shape
+          this._crewGfx.moveTo(ix, iy - 5).lineTo(ix + 4, iy).lineTo(ix, iy + 5).lineTo(ix - 4, iy).closePath().fill({ color: ic });
+          break;
+        case "sapmaster": // Hexagon (gear/lock)
+          for (let hi = 0; hi < 6; hi++) {
+            const a = -Math.PI / 2 + hi * Math.PI / 3;
+            if (hi === 0) this._crewGfx.moveTo(ix + Math.cos(a) * 5, iy + Math.sin(a) * 5);
+            else this._crewGfx.lineTo(ix + Math.cos(a) * 5, iy + Math.sin(a) * 5);
+          }
+          this._crewGfx.closePath().fill({ color: ic });
+          break;
+        case "shade": // 5-pointed star
+          for (let si = 0; si < 5; si++) {
+            const oa = -Math.PI / 2 + si * Math.PI * 2 / 5;
+            const ia = oa + Math.PI / 5;
+            if (si === 0) this._crewGfx.moveTo(ix + Math.cos(oa) * 5, iy + Math.sin(oa) * 5);
+            else this._crewGfx.lineTo(ix + Math.cos(oa) * 5, iy + Math.sin(oa) * 5);
+            this._crewGfx.lineTo(ix + Math.cos(ia) * 2, iy + Math.sin(ia) * 2);
+          }
+          this._crewGfx.closePath().fill({ color: ic });
+          break;
+        case "brawler": // Shield shape
+          this._crewGfx.moveTo(ix - 4, iy - 4).lineTo(ix + 4, iy - 4).lineTo(ix + 4, iy + 1).lineTo(ix, iy + 5).lineTo(ix - 4, iy + 1).closePath().fill({ color: ic });
+          break;
+        case "charlatan": // Mask (two circles with bridge)
+          this._crewGfx.circle(ix - 2, iy - 1, 3).fill({ color: ic });
+          this._crewGfx.circle(ix + 2, iy - 1, 3).fill({ color: ic });
+          this._crewGfx.moveTo(ix - 2, iy + 1).bezierCurveTo(ix - 1, iy + 4, ix + 1, iy + 4, ix + 2, iy + 1).stroke({ color: ic, width: 1.5 });
+          break;
+        case "alchemist": // Flask/potion shape
+          this._crewGfx.moveTo(ix - 1.5, iy - 5).lineTo(ix + 1.5, iy - 5).lineTo(ix + 1.5, iy - 3).lineTo(ix + 4, iy + 2).lineTo(ix + 3, iy + 5).lineTo(ix - 3, iy + 5).lineTo(ix - 4, iy + 2).lineTo(ix - 1.5, iy - 3).closePath().fill({ color: ic });
+          break;
+        default:
+          this._crewGfx.circle(ix, iy, 5).fill({ color: ic });
+      }
 
       // Name and role
       const nameStr = crew ? `${crew.name}` : thief.role;
