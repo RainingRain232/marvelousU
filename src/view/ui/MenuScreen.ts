@@ -356,6 +356,12 @@ const GAME_MODES: GameModeEntry[] = [
     skipSetup: true,
     tag: "3D",
   },
+  {
+    mode: GameMode.EXODUS,
+    label: "EXODUS",
+    desc: "Oregon Trail-style survival — lead your people to Avalon through perilous lands",
+    skipSetup: true,
+  },
 ];
 
 // ---------------------------------------------------------------------------
