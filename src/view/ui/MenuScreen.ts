@@ -862,11 +862,15 @@ export class MenuScreen {
     card.addChild(this._s1GlowGfx);
 
     // ── CATEGORY GRID ────────────────────────────────────────
+    // IMPORTANT: When adding a new game mode to MODE_BUTTONS above, you MUST
+    // also add its index here in the appropriate category. Otherwise it won't
+    // appear on the menu. The index is the position in the MODE_BUTTONS array
+    // (0-based). Modes not listed in any category below will be invisible.
     const categories: { title: string; color: number; accent: number; indices: number[] }[] = [
       { title: "STRATEGY & TACTICS", color: 0xffd700, accent: 0x332a00, indices: [0, 1, 2, 3, 4, 28, 5, 6] },
       { title: "ADVENTURE & RPG", color: 0x44ddaa, accent: 0x0a2a1a, indices: [7, 21, 18, 22, 8, 9, 10] },
       { title: "3D ACTION & COMBAT", color: 0xff7744, accent: 0x2a1408, indices: [11, 15, 12, 13, 14, 16, 17, 29] },
-      { title: "WORLDS & SPORTS", color: 0x6699ff, accent: 0x0a1a2a, indices: [19, 20, 23, 24, 25, 26, 27] },
+      { title: "WORLDS & SPORTS", color: 0x6699ff, accent: 0x0a1a2a, indices: [19, 20, 23, 24, 25, 26, 27, 30] },
     ];
 
     const COLS = 3;
