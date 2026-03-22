@@ -408,6 +408,11 @@ interface JoustState {
   // Tilt result weight — brief stun/recovery
   tiltRecoveryTimer: number;
   lastTiltWinner: "player" | "ai" | "draw";
+  // Impact recoil
+  impactRecoilPlayer: number; // 0-1, how far player knight recoils backward
+  impactRecoilAI: number; // 0-1, how far AI knight recoils backward
+  impactZoom: number; // 0-1, brief zoom-in toward impact point
+  impactSeverity: number; // 0=block, 1=hit, 2=strong, 3=unhorse — controls effect intensity
 }
 
 function _readBest(): number {
@@ -449,6 +454,7 @@ function createState(): JoustState {
     powerWindowActive: false, powerWindowTimer: 0, powerWindowHit: false,
     showOpponentZones: false, feintDodged: false,
     tiltRecoveryTimer: 0, lastTiltWinner: "draw",
+    impactRecoilPlayer: 0, impactRecoilAI: 0, impactZoom: 0, impactSeverity: 0,
   };
 }
 
@@ -848,8 +854,11 @@ export class JoustingGame {
       this._resolveImpact();
       joustingAudio.stopGallop();
       joustingAudio.stopMeterTone();
-      s.phase = Phase.IMPACT; s.timer = IMPACT_FREEZE; s.unhorseAnimTimer = 0;
-      s.impactFlash = 1.0;
+      // Impact freeze duration scales with severity (block=0.6s, hit=0.9s, strong=1.1s, unhorse=1.4s)
+      const freezeDurations = [0.6, 0.9, 1.1, 1.4];
+      s.phase = Phase.IMPACT; s.timer = freezeDurations[s.impactSeverity] ?? IMPACT_FREEZE;
+      s.unhorseAnimTimer = 0;
+      s.impactFlash = 0.6 + s.impactSeverity * 0.15; // stronger flash for bigger hits
     }
   }
 
@@ -887,11 +896,17 @@ export class JoustingGame {
 
   private _updateImpact(dt: number): void {
     const s = this._state; s.timer -= dt;
+    // Unhorse animation
     if (s.playerUnhorsed || s.aiUnhorsed) {
       s.unhorseAnimTimer += dt;
       if (s.playerUnhorsed) s.unhorsePlayerFallAngle = Math.min(Math.PI / 2, s.unhorseAnimTimer * 3);
       if (s.aiUnhorsed) s.unhorseAIFallAngle = Math.min(Math.PI / 2, s.unhorseAnimTimer * 3);
     }
+    // Recoil decay (knights slide back then settle)
+    s.impactRecoilPlayer = Math.max(0, s.impactRecoilPlayer - dt * 1.2);
+    s.impactRecoilAI = Math.max(0, s.impactRecoilAI - dt * 1.2);
+    // Zoom decay
+    s.impactZoom = Math.max(0, s.impactZoom - dt * 2.5);
     if (s.timer <= 0) { s.phase = Phase.TILT_RESULT; s.timer = RESULT_DISPLAY; }
   }
 
@@ -1234,28 +1249,63 @@ export class JoustingGame {
     const ix = this._sw / 2, iy = this._sh * 0.52;
 
     if (s.aiUnhorsed || s.playerUnhorsed) {
-      this._spawnSparks(ix, iy, 60); this._spawnSplinters(ix, iy, 12);
-      this._spawnConfetti(ix, iy - 50, 40);
-      s.crowdExcitement = 1.0; s.shakeTimer = 0.5; s.shakeMag = 12;
-      this._addFloating("UNHORSED!", ix, iy - 50, 0xff2200, 32);
+      // === UNHORSE — maximum impact ===
+      this._spawnSparks(ix, iy, 80); this._spawnSplinters(ix, iy, 18);
+      this._spawnConfetti(ix, iy - 50, 50);
+      s.crowdExcitement = 1.0; s.shakeTimer = 0.6; s.shakeMag = 14;
+      this._addFloating("UNHORSED!", ix, iy - 50, 0xff2200, 34);
       joustingAudio.unhorse();
       joustingAudio.crowdCheer(1.0);
-      // Dramatic slow-motion on unhorse
-      s.slowMo = 0.25; s.slowMoTimer = 0.5;
+      s.slowMo = 0.15; s.slowMoTimer = 0.7; // very dramatic slowmo
+      s.impactSeverity = 3;
+      s.impactRecoilPlayer = s.playerUnhorsed ? 1.0 : 0.3;
+      s.impactRecoilAI = s.aiUnhorsed ? 1.0 : 0.3;
+      s.impactZoom = 0.8;
     } else if (playerHit || aiHit) {
-      this._spawnSparks(ix, iy, 25); this._spawnSplinters(ix, iy, 6);
-      s.crowdExcitement = 0.6; s.shakeTimer = 0.25; s.shakeMag = 6;
-      if (s.powerRating === "perfect") {
+      const isPerfect = s.powerRating === "perfect";
+      const isStrong = isPerfect || (pp >= 2);
+      // === HIT — solid impact ===
+      this._spawnSparks(ix, iy, isStrong ? 40 : 25);
+      this._spawnSplinters(ix, iy, isStrong ? 10 : 5);
+      s.crowdExcitement = isStrong ? 0.8 : 0.5;
+      s.shakeTimer = isStrong ? 0.35 : 0.2;
+      s.shakeMag = isStrong ? 8 : 5;
+      if (isPerfect) {
         joustingAudio.strongHit();
-        s.slowMo = 0.5; s.slowMoTimer = 0.3; // brief slowmo on perfect
+        s.slowMo = 0.35; s.slowMoTimer = 0.4;
+        s.impactSeverity = 2;
+        s.impactZoom = 0.5;
       } else {
         joustingAudio.hit();
+        s.slowMo = 0.55; s.slowMoTimer = 0.25; // every hit gets brief slowmo
+        s.impactSeverity = 1;
+        s.impactZoom = 0.25;
       }
-      joustingAudio.crowdCheer(0.5);
+      joustingAudio.crowdCheer(isStrong ? 0.7 : 0.4);
+      // Recoil: hit knight pushes back
+      s.impactRecoilPlayer = aiHit ? (isStrong ? 0.6 : 0.3) : 0.1;
+      s.impactRecoilAI = playerHit ? (isStrong ? 0.6 : 0.3) : 0.1;
     } else {
-      this._spawnSparks(ix, iy, 8);
-      s.shakeTimer = 0.12; s.shakeMag = 2;
+      // === BLOCK — shields clash, still impactful ===
+      this._spawnSparks(ix, iy, 15);
+      // Shield sparks burst (blue-white)
+      for (let bs = 0; bs < 8; bs++) {
+        const ba = Math.random() * Math.PI * 2; const bsp = 60 + Math.random() * 120;
+        this._state.particles.push({
+          x: ix, y: iy, vx: Math.cos(ba) * bsp, vy: Math.sin(ba) * bsp - 60,
+          life: 0.15 + Math.random() * 0.2, maxLife: 0.35,
+          color: [0x88aaff, 0xaaccff, 0xffffff][Math.floor(Math.random() * 3)],
+          size: 1.5 + Math.random() * 2, type: "spark",
+        });
+      }
+      s.shakeTimer = 0.15; s.shakeMag = 3;
+      s.slowMo = 0.7; s.slowMoTimer = 0.15; // brief hitch even on block
+      s.impactSeverity = 0;
+      s.impactRecoilPlayer = 0.15;
+      s.impactRecoilAI = 0.15;
+      s.impactZoom = 0.1;
       joustingAudio.block();
+      s.crowdExcitement = Math.max(s.crowdExcitement, 0.2);
     }
 
     // Flawless tracking
@@ -1356,6 +1406,8 @@ export class JoustingGame {
     let shakeX = 0, shakeY = 0;
     if (s.shakeTimer > 0) { shakeX = (Math.random() - 0.5) * s.shakeMag * 2; shakeY = (Math.random() - 0.5) * s.shakeMag * 2; }
     this._container.x = shakeX; this._container.y = shakeY;
+    // Reset zoom (will be overridden by _renderArena if needed)
+    this._container.scale.set(1); this._container.pivot.set(0, 0);
 
     switch (s.phase) {
       case Phase.MAIN_MENU: this._renderMainMenu(g, sw, sh); break;
@@ -3172,10 +3224,25 @@ export class JoustingGame {
     this._renderArenaBackground(g, sw, sh);
     const s = this._state; const opp = TOURNAMENT_KNIGHTS[s.roundIndex]; const p = s.chargeProgress;
 
-    const playerX = sw * 0.15 + p * (sw * 0.35);
-    const aiX = sw * 0.85 - p * (sw * 0.35);
+    // Knight positions with impact recoil (push back after collision)
+    const recoilDist = 35; // max recoil distance in pixels
+    const playerRecoil = s.impactRecoilPlayer * recoilDist;
+    const aiRecoil = s.impactRecoilAI * recoilDist;
+    const playerX = sw * 0.15 + p * (sw * 0.35) - playerRecoil;
+    const aiX = sw * 0.85 - p * (sw * 0.35) + aiRecoil;
     const ky = sh * 0.52;
     const bob = Math.sin(p * Math.PI * 10) * 4 * (1 - p * 0.3);
+
+    // Impact zoom effect (brief scale toward center)
+    if (s.impactZoom > 0) {
+      const zoomScale = 1 + s.impactZoom * 0.08; // max 8% zoom
+      const zoomCx = sw / 2, zoomCy = sh * 0.52;
+      this._container.scale.set(zoomScale);
+      this._container.pivot.set(zoomCx - zoomCx / zoomScale, zoomCy - zoomCy / zoomScale);
+    } else {
+      this._container.scale.set(1);
+      this._container.pivot.set(0, 0);
+    }
 
     // Depth of field — fog overlay on distant elements during charge (focus on knights)
     if (s.phase === Phase.CHARGING && p > 0.2) {
@@ -3205,6 +3272,33 @@ export class JoustingGame {
 
     this._drawKnightFull(g, playerX, ky + bob, PLAYER_COLOR, PLAYER_COLOR2, PLAYER_HORSE, true, s.playerLance, p, s.unhorsePlayerFallAngle, s.playerStamina, PLAYER_HERALDRY);
     this._drawKnightFull(g, aiX, ky - bob, opp.color, opp.color2, opp.horseColor, false, s.aiLance, p, s.unhorseAIFallAngle, s.aiStamina, opp.heraldry);
+
+    // Impact phase extra effects
+    if (s.phase === Phase.IMPACT) {
+      const impactCx = sw / 2, impactCy = sh * 0.52;
+      // Continuing sparks during freeze
+      if (s.impactSeverity >= 1 && Math.random() < 0.3) {
+        this._spawnSparks(impactCx + (Math.random() - 0.5) * 30, impactCy + (Math.random() - 0.5) * 20, 2);
+      }
+      // Lance debris trail on strong+ hits
+      if (s.impactSeverity >= 2 && Math.random() < 0.4) {
+        this._spawnSplinters(impactCx + (Math.random() - 0.5) * 40, impactCy - 10, 1);
+      }
+      // Shield flash on blocks (blue-white glow at impact point)
+      if (s.impactSeverity === 0 && s.impactZoom > 0) {
+        const blockGlow = s.impactZoom * 2;
+        g.circle(impactCx, impactCy, 20 * blockGlow + 10);
+        g.fill({ color: 0x88aaff, alpha: blockGlow * 0.1 });
+        g.circle(impactCx, impactCy, 10 * blockGlow + 5);
+        g.fill({ color: 0xccddff, alpha: blockGlow * 0.15 });
+      }
+      // Hit flash (orange glow for hits)
+      if (s.impactSeverity >= 1 && s.impactZoom > 0) {
+        const hitGlow = s.impactZoom * 2;
+        g.circle(impactCx, impactCy, 25 * hitGlow + 15);
+        g.fill({ color: 0xff8844, alpha: hitGlow * 0.08 });
+      }
+    }
 
     // Dust from hooves
     if (s.phase === Phase.CHARGING) {
