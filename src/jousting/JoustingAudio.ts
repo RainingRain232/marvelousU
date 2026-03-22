@@ -14,6 +14,11 @@ export class JoustingAudio {
   private _gallopInterval: number | null = null;
   private _meterOsc: OscillatorNode | null = null;
   private _meterGain: GainNode | null = null;
+  private _music!: GainNode;
+  private _musicDrone: OscillatorNode | null = null;
+  private _musicArp: number | null = null;
+  private _musicDrum: number | null = null;
+  private _musicPhase: "idle" | "aiming" | "charge" | "none" = "none";
 
   init(): void {
     try {
