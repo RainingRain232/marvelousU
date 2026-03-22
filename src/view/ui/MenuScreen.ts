@@ -368,6 +368,18 @@ const GAME_MODES: GameModeEntry[] = [
     desc: "Escort & trade: protect your wagon, buy low sell high",
     skipSetup: true,
   },
+  {
+    mode: GameMode.COVEN,
+    label: "COVEN",
+    desc: "Dark magic: build your coven and unleash forbidden spells",
+    skipSetup: true,
+  },
+  {
+    mode: GameMode.WARBAND_CAMPAIGN,
+    label: "WARBAND CAMPAIGN",
+    desc: "Strategic campaign: lead your warband across the realm",
+    skipSetup: true,
+  },
 ];
 
 // ---------------------------------------------------------------------------
