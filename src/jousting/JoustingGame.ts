@@ -746,6 +746,10 @@ export class JoustingGame {
       s.playerLance = "mid"; s.playerShield = "mid";
       s.playerUnhorsed = false; s.aiUnhorsed = false;
       s.unhorseAnimTimer = 0; s.unhorsePlayerFallAngle = 0; s.unhorseAIFallAngle = 0;
+      s.impactRecoilPlayer = 0; s.impactRecoilAI = 0; s.impactZoom = 0; s.impactSeverity = 0;
+      s.impactFlash = 0;
+      // Start crowd ambient for match atmosphere
+      joustingAudio.startCrowd();
       this._decideAI();
     }
   }
@@ -755,16 +759,20 @@ export class JoustingGame {
     const speedMult = 1 + s.horseLevel * 0.1;
     // Iron Gauntlet: every 3rd tilt, meter speeds up 25%
     const igBoost = (s.challengeMode === "ironGauntlet" && s.tiltIndex % 3 === 2) ? 1.25 : 1;
-    s.chargeProgress += (dt / chargeDuration(s.roundIndex)) * speedMult;
+    s.chargeProgress += (dt / chargeDuration(s.roundIndex)) * speedMult * igBoost;
     if (s.chargeProgress > 0.5) s.crowdExcitement = Math.min(1, s.crowdExcitement + dt * 2);
 
-    // Power windows — periodic brief bonus windows during charge
-    s.powerWindowTimer -= dt;
-    if (s.powerWindowTimer <= 0 && s.chargeProgress < 0.85) {
-      s.powerWindowActive = true;
-      s.powerWindowTimer = 1.2 + Math.random() * 0.3; // next window in ~1.2-1.5s
-      setTimeout(() => { s.powerWindowActive = false; }, 300); // window lasts 0.3s
-      joustingAudio.zoneChange(); // audio cue
+    // Power windows — periodic brief bonus windows during charge (dt-based, no setTimeout)
+    if (s.powerWindowActive) {
+      s.powerWindowTimer -= dt;
+      if (s.powerWindowTimer <= 0) s.powerWindowActive = false; // window expired
+    } else {
+      s.powerWindowTimer -= dt;
+      if (s.powerWindowTimer <= 0 && s.chargeProgress < 0.85 && s.chargeProgress > 0.1) {
+        s.powerWindowActive = true;
+        s.powerWindowTimer = 0.3; // window lasts 0.3s (counted down above)
+        joustingAudio.zoneChange(); // audio cue
+      }
     }
 
     // Reveal opponent zones in last 35% of charge
@@ -872,7 +880,7 @@ export class JoustingGame {
       s.phase = Phase.CHARGING; s.chargeProgress = 0;
       s.powerMeterPos = 0; s.powerMeterLocked = false; s.powerRating = "none";
       s.playerFeinted = false; s.aiFeinted = false; s.feintDodged = false;
-      s.powerWindowActive = false; s.powerWindowTimer = 0.8; s.powerWindowHit = false;
+      s.powerWindowActive = false; s.powerWindowTimer = 0.6 + Math.random() * 0.4; s.powerWindowHit = false;
       s.showOpponentZones = false;
       s.playerLanceHistory.push(s.playerLance); s.playerShieldHistory.push(s.playerShield);
       s.phaseFlash = 0.5;
@@ -936,6 +944,9 @@ export class JoustingGame {
         s.playerLance = "mid"; s.playerShield = "mid";
         s.playerUnhorsed = false; s.aiUnhorsed = false;
         s.unhorseAnimTimer = 0; s.unhorsePlayerFallAngle = 0; s.unhorseAIFallAngle = 0;
+        // Reset impact visuals for clean next tilt
+        s.impactRecoilPlayer = 0; s.impactRecoilAI = 0; s.impactZoom = 0; s.impactSeverity = 0;
+        s.impactFlash = 0;
         this._decideAI();
       }
     }
@@ -964,15 +975,17 @@ export class JoustingGame {
           if (s.allPerfectThisMatch) s.mastery.knights[defeatedName].perfectWins++;
         }
         s.allPerfectThisMatch = true; // reset for next match
-        if (s.roundIndex >= TOURNAMENT_KNIGHTS.length) { s.phase = Phase.TOURNAMENT_END; }
+        if (s.roundIndex >= TOURNAMENT_KNIGHTS.length) { s.phase = Phase.TOURNAMENT_END; joustingAudio.stopCrowd(); }
         else {
           // Iron Gauntlet: skip shop entirely
           if (s.challengeMode === "ironGauntlet") {
             s.tiltIndex = 0; s.playerScore = 0; s.opponentScore = 0;
             s.playerStamina = Math.min(MAX_STAMINA, s.playerStamina + 20);
             s.aiStamina = MAX_STAMINA;
-            s.playerLanceHistory = []; s.playerShieldHistory = [];
+            s.playerLanceHistory = []; s.playerShieldHistory = []; s.aiLanceHistory = []; s.aiShieldHistory = [];
             s.crowdFavor = 0; s.crowdFavorUsed = false; s.hitsTaken = 0;
+            s.impactRecoilPlayer = 0; s.impactRecoilAI = 0; s.impactZoom = 0;
+            joustingAudio.startCrowd(); // keep crowd audio flowing
             s.phase = Phase.PRE_MATCH; s.timer = 2.0;
           }
           // Random event (40% chance after each win)
@@ -986,6 +999,8 @@ export class JoustingGame {
       } else {
         if (s.playerWins > s.bestRound) { s.bestRound = s.playerWins; _writeBest(s.playerWins); }
         joustingAudio.defeat();
+        joustingAudio.stopCrowd();
+        joustingAudio.stopGallop();
         s.phase = Phase.TOURNAMENT_END;
       }
     }
@@ -2623,60 +2638,118 @@ export class JoustingGame {
     g.rect(0, 0, sw, sh); g.fill({ color: 0x000000, alpha: 0.65 });
 
     const s = this._state;
-    const px = sw * 0.15, py = sh * 0.08, pw = sw * 0.7, ph = sh * 0.84;
+    const px = sw * 0.12, py = sh * 0.06, pw = sw * 0.76, ph = sh * 0.88;
     g.roundRect(px, py, pw, ph, 8); g.fill({ color: 0x0a0a18, alpha: 0.92 });
     g.roundRect(px, py, pw, ph, 8); g.stroke({ color: 0xffd700, width: 2 });
+    g.roundRect(px + 5, py + 5, pw - 10, ph - 10, 5); g.stroke({ color: 0x886622, width: 0.8 });
 
-    this._addText("CHOOSE YOUR ABILITY", S_TITLE, sw / 2, py + 30);
-    this._addText(`Difficulty: ${DIFFICULTY_MAP[s.difficulty].label}`, S_SUBTITLE, sw / 2, py + 60);
+    // Header icon — gauntlet/fist
+    const gx = sw / 2, gy = py + 14;
+    g.moveTo(gx - 6, gy + 4); g.lineTo(gx - 8, gy - 2); g.lineTo(gx - 4, gy - 6);
+    g.lineTo(gx + 4, gy - 6); g.lineTo(gx + 8, gy - 2); g.lineTo(gx + 6, gy + 4);
+    g.lineTo(gx + 4, gy + 6); g.lineTo(gx - 4, gy + 6); g.fill(0xffd700);
 
-    const itemH = 70;
-    const startY = py + 90;
+    this._addText("CHOOSE YOUR ABILITY", S_TITLE, sw / 2, py + 32);
+
+    // Difficulty badge
+    const diffDef = DIFFICULTY_MAP[s.difficulty];
+    const dbx = sw / 2, dby = py + 58;
+    g.roundRect(dbx - 50, dby - 8, 100, 18, 4); g.fill({ color: 0x000000, alpha: 0.3 });
+    g.roundRect(dbx - 50, dby - 8, 100, 18, 4); g.stroke({ color: 0x886622, width: 0.8 });
+    this._addText(`\u2694 ${diffDef.label}`, S_SUBTITLE, dbx, dby + 1);
+
+    // Scrollwork divider
+    const abDivY = py + 75;
+    g.moveTo(px + 40, abDivY);
+    g.quadraticCurveTo(sw / 2, abDivY - 4, px + pw - 40, abDivY);
+    g.stroke({ color: 0x886622, width: 0.8 });
+
+    const itemH = 68;
+    const startY = py + 85;
 
     for (let i = 0; i < SELECTABLE_ABILITIES.length; i++) {
       const ab = PLAYER_ABILITIES[SELECTABLE_ABILITIES[i]];
       const iy = startY + i * itemH;
       const selected = s.abilityCursor === i;
 
+      // Glow on selected
+      if (selected) {
+        g.roundRect(px + 18, iy - 2, pw - 36, itemH - 4, 7);
+        g.fill({ color: ab.color, alpha: 0.04 + Math.sin(this._elapsed * 3) * 0.02 });
+      }
       g.roundRect(px + 20, iy, pw - 40, itemH - 8, 6);
       g.fill({ color: selected ? 0x1a1a3a : 0x0a0a18, alpha: 0.85 });
       g.roundRect(px + 20, iy, pw - 40, itemH - 8, 6);
       g.stroke({ color: selected ? ab.color : 0x333344, width: selected ? 2 : 1 });
 
-      // Colored ability icon (diamond)
-      const iconX = px + 45;
-      const iconY = iy + (itemH - 8) / 2;
-      g.moveTo(iconX, iconY - 10); g.lineTo(iconX + 10, iconY); g.lineTo(iconX, iconY + 10); g.lineTo(iconX - 10, iconY);
-      g.fill(selected ? ab.color : 0x333344);
+      // Ability-specific polygon icon
+      const iconX = px + 44; const iconY = iy + (itemH - 8) / 2;
+      if (SELECTABLE_ABILITIES[i] === "ironWill") {
+        // Shield polygon
+        g.moveTo(iconX, iconY - 10); g.quadraticCurveTo(iconX + 9, iconY - 8, iconX + 9, iconY);
+        g.lineTo(iconX + 5, iconY + 8); g.lineTo(iconX, iconY + 11);
+        g.lineTo(iconX - 5, iconY + 8); g.lineTo(iconX - 9, iconY);
+        g.quadraticCurveTo(iconX - 9, iconY - 8, iconX, iconY - 10);
+        g.fill(selected ? ab.color : 0x333344);
+      } else if (SELECTABLE_ABILITIES[i] === "swiftStrike") {
+        // Lightning bolt polygon
+        g.moveTo(iconX - 2, iconY - 10); g.lineTo(iconX + 5, iconY - 10);
+        g.lineTo(iconX, iconY - 1); g.lineTo(iconX + 6, iconY - 2);
+        g.lineTo(iconX - 2, iconY + 11); g.lineTo(iconX + 1, iconY + 2);
+        g.lineTo(iconX - 5, iconY + 2); g.fill(selected ? ab.color : 0x333344);
+      } else if (SELECTABLE_ABILITIES[i] === "shieldMaster") {
+        // Double shield polygon
+        g.moveTo(iconX - 3, iconY - 8); g.quadraticCurveTo(iconX + 4, iconY - 7, iconX + 4, iconY);
+        g.lineTo(iconX, iconY + 8); g.lineTo(iconX - 6, iconY);
+        g.quadraticCurveTo(iconX - 6, iconY - 7, iconX - 3, iconY - 8); g.fill(selected ? ab.color : 0x333344);
+        g.moveTo(iconX + 1, iconY - 6); g.quadraticCurveTo(iconX + 8, iconY - 5, iconX + 8, iconY + 2);
+        g.lineTo(iconX + 4, iconY + 9); g.lineTo(iconX - 1, iconY + 2);
+        g.quadraticCurveTo(iconX - 1, iconY - 5, iconX + 1, iconY - 6);
+        g.fill({ color: selected ? ab.color : 0x333344, alpha: 0.6 });
+      } else {
+        // Crown polygon (crowd champion)
+        g.moveTo(iconX - 8, iconY + 4); g.lineTo(iconX + 8, iconY + 4);
+        g.lineTo(iconX + 8, iconY); g.lineTo(iconX + 6, iconY - 3);
+        g.lineTo(iconX + 8, iconY - 7); g.lineTo(iconX + 4, iconY - 5);
+        g.lineTo(iconX, iconY - 9); g.lineTo(iconX - 4, iconY - 5);
+        g.lineTo(iconX - 8, iconY - 7); g.lineTo(iconX - 6, iconY - 3);
+        g.lineTo(iconX - 8, iconY); g.fill(selected ? ab.color : 0x333344);
+      }
 
       const prefix = selected ? "\u25B6 " : "  ";
       const nameStyle = new TextStyle({ fontFamily: "monospace", fontSize: 15, fill: selected ? ab.color : 0x888888, fontWeight: "bold" });
       this._addText(`${prefix}${ab.name}`, nameStyle, px + 65, iy + 16, 0);
-      this._addText(ab.desc, selected ? S_BODY : S_AIM_INACTIVE, px + 65, iy + 36, 0);
+      this._addText(ab.desc, selected ? S_BODY : S_AIM_INACTIVE, px + 65, iy + 34, 0);
     }
 
     // Challenge mode selector (if unlocked)
     const unlocked = s.mastery.totalWins > 0 || s.bestRound >= 4;
     if (unlocked) {
-      const cmy = py + ph - 55;
-      this._addText("CHALLENGE MODE (A/D):", S_AIM_LABEL, sw / 2, cmy);
+      const cmy = py + ph - 60;
+      g.roundRect(px + 20, cmy - 10, pw - 40, 35, 4); g.fill({ color: 0x000000, alpha: 0.25 });
+      this._addText("CHALLENGE MODE (A/D):", S_AIM_LABEL, sw / 2, cmy - 2);
       const modes: ChallengeMode[] = ["normal", "ironGauntlet", "flawless", "handicap"];
       for (let ci = 0; ci < modes.length; ci++) {
         const cd = CHALLENGE_DEFS[modes[ci]];
         const sel = s.challengeCursor === ci;
+        // Challenge icon (small colored diamond)
+        const cdx = px + 35 + ci * (pw / 4);
+        if (sel) {
+          g.moveTo(cdx - 3, cmy + 14); g.lineTo(cdx, cmy + 11); g.lineTo(cdx + 3, cmy + 14); g.lineTo(cdx, cmy + 17);
+          g.fill(cd.color);
+        }
         const cStyle = new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: sel ? cd.color : 0x445566, fontWeight: sel ? "bold" : "normal" });
-        const clabel = sel ? `[\u25B6${cd.name}\u25C0]` : cd.name;
-        this._addText(clabel, cStyle, px + 30 + ci * (pw / 4), cmy + 16);
+        this._addText(sel ? `${cd.name}` : cd.name, cStyle, cdx + 8, cmy + 14, 0);
       }
     }
 
     // Mastery stats
     const runCount = s.mastery.totalRuns;
     if (runCount > 0) {
-      this._addText(`Runs: ${runCount} | Clears: ${s.mastery.totalWins}`, S_STAT_LABEL, sw / 2, py + ph - 35);
+      this._addText(`Runs: ${runCount} | Clears: ${s.mastery.totalWins}`, S_STAT_LABEL, sw / 2, py + ph - 30);
     }
 
-    this._addText("W/S: Ability  |  A/D: Challenge  |  SPACE: Start", S_AIM_INACTIVE, sw / 2, py + ph - 14);
+    this._addText("W/S: Ability  |  A/D: Challenge  |  SPACE: Start", S_AIM_INACTIVE, sw / 2, py + ph - 12);
   }
 
   // ---- Controls Screen ----------------------------------------------------
@@ -2685,57 +2758,114 @@ export class JoustingGame {
     this._renderArenaBackground(g, sw, sh);
     g.rect(0, 0, sw, sh); g.fill({ color: 0x000000, alpha: 0.7 });
 
-    const px = sw * 0.1, py = sh * 0.04, pw = sw * 0.8, ph = sh * 0.92;
+    const px = sw * 0.08, py = sh * 0.03, pw = sw * 0.84, ph = sh * 0.94;
     g.roundRect(px, py, pw, ph, 8); g.fill({ color: 0x0a0a18, alpha: 0.94 });
     g.roundRect(px, py, pw, ph, 8); g.stroke({ color: 0xffd700, width: 2 });
+    g.roundRect(px + 5, py + 5, pw - 10, ph - 10, 5); g.stroke({ color: 0x886622, width: 0.8 });
 
-    this._addText("CONTROLS & MECHANICS", S_TITLE, sw / 2, py + 28);
+    // Decorative crossed swords header icon
+    const hx = sw / 2, hy = py + 14;
+    g.moveTo(hx - 20, hy - 4); g.lineTo(hx + 8, hy + 6); g.stroke({ color: 0xffd700, width: 1.5 });
+    g.moveTo(hx + 20, hy - 4); g.lineTo(hx - 8, hy + 6); g.stroke({ color: 0xffd700, width: 1.5 });
+    // Sword pommels
+    g.circle(hx - 22, hy - 5, 2); g.fill(0xffd700);
+    g.circle(hx + 22, hy - 5, 2); g.fill(0xffd700);
 
-    const lx = px + 30; const rx2 = px + pw / 2 + 10;
-    let cy = py + 60;
-    const hdr = (text: string, x: number, y: number) => this._addText(text, S_AIM_LABEL, x, y);
-    const row = (text: string, x: number, y: number) => this._addText(text, S_AIM_INACTIVE, x, y, 0);
+    this._addText("CONTROLS & MECHANICS", S_TITLE, sw / 2, py + 30);
 
-    // Left column — Controls
-    hdr("AIMING PHASE", lx + 80, cy); cy += 18;
-    row("W / \u2191      Aim lance HIGH", lx, cy); cy += 14;
-    row("S / \u2193      Aim lance LOW", lx, cy); cy += 14;
-    row("A / \u2190      Shield HIGH", lx, cy); cy += 14;
-    row("D / \u2192      Shield LOW", lx, cy); cy += 14;
-    row("SPACE      Start charge", lx, cy); cy += 22;
+    // Scrollwork divider under title
+    const tdY = py + 46;
+    g.moveTo(px + 60, tdY);
+    for (let sc = 0; sc < 6; sc++) { g.quadraticCurveTo(px + 60 + sc * ((pw - 120) / 6) + (pw - 120) / 12, tdY + (sc % 2 === 0 ? -3 : 3), px + 60 + (sc + 1) * ((pw - 120) / 6), tdY); }
+    g.stroke({ color: 0x886622, width: 0.8 });
 
-    hdr("CHARGING PHASE", lx + 80, cy); cy += 18;
-    row("SPACE      Lock timing meter", lx, cy); cy += 14;
-    row("W/S/A/D    Feint (last 40%, -15 stamina)", lx, cy); cy += 22;
+    // Central vertical divider
+    g.moveTo(sw / 2, py + 55); g.lineTo(sw / 2, py + ph - 35);
+    g.stroke({ color: 0x333344, width: 1 });
 
-    hdr("GENERAL", lx + 80, cy); cy += 18;
-    row("ESC        Pause / Back", lx, cy); cy += 14;
-    row("SPACE      Skip / Confirm", lx, cy); cy += 22;
+    const lx = px + 25; const rx2 = sw / 2 + 15;
+    let cy = py + 58;
+    const hdr = (text: string, x: number, y: number, iconColor = 0xffcc44) => {
+      // Section header with small diamond icon
+      g.moveTo(x - 70, y); g.lineTo(x - 64, y - 4); g.lineTo(x - 58, y); g.lineTo(x - 64, y + 4); g.fill(iconColor);
+      this._addText(text, S_AIM_LABEL, x, y);
+      // Underline
+      g.moveTo(x - 55, y + 7); g.lineTo(x + 55, y + 7); g.stroke({ color: iconColor, width: 0.5, alpha: 0.3 } as any);
+    };
+    const row = (key: string, desc: string, x: number, y: number) => {
+      // Key in bright, desc in dim
+      const keyStyle = new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: 0xaabbcc, fontWeight: "bold" });
+      this._addText(key, keyStyle, x, y, 0);
+      this._addText(desc, S_AIM_INACTIVE, x + 75, y, 0);
+    };
 
-    // Right column — Mechanics
-    cy = py + 60;
-    hdr("SCORING", rx2 + 80, cy); cy += 18;
-    row("UNHORSE    3 points (lance far from shield)", rx2, cy); cy += 14;
-    row("STRONG HIT 2 points (perfect timing)", rx2, cy); cy += 14;
-    row("HIT        1 point", rx2, cy); cy += 14;
-    row("GLANCE     0 points (low stamina penalty)", rx2, cy); cy += 14;
-    row("BLOCK      0 points (lance = shield zone)", rx2, cy); cy += 22;
+    // Left column — Controls with section icons
+    hdr("AIMING PHASE", lx + 80, cy, 0x44aaff); cy += 16;
+    // Lance icon
+    g.moveTo(lx + 5, cy + 3); g.lineTo(lx + 15, cy); g.lineTo(lx + 5, cy - 3); g.fill(0x44aaff);
+    row("W / \u2191", "Aim lance HIGH", lx + 20, cy); cy += 13;
+    row("S / \u2193", "Aim lance LOW", lx + 20, cy); cy += 13;
+    // Shield icon
+    g.moveTo(lx + 8, cy - 4); g.quadraticCurveTo(lx + 13, cy - 5, lx + 13, cy);
+    g.lineTo(lx + 8, cy + 5); g.lineTo(lx + 3, cy); g.quadraticCurveTo(lx + 3, cy - 5, lx + 8, cy - 4);
+    g.fill(0x44aaff);
+    row("A / \u2190", "Shield HIGH", lx + 20, cy); cy += 13;
+    row("D / \u2192", "Shield LOW", lx + 20, cy); cy += 13;
+    row("SPACE", "Start charge", lx + 20, cy); cy += 20;
 
-    hdr("TIMING METER", rx2 + 80, cy); cy += 18;
-    row("GREEN zone  PERFECT \u2192 2x damage, +unhorse", rx2, cy); cy += 14;
-    row("YELLOW zone GOOD \u2192 normal damage", rx2, cy); cy += 14;
-    row("RED zone    WEAK \u2192 30% glance chance", rx2, cy); cy += 22;
+    hdr("CHARGING PHASE", lx + 80, cy, 0xff8844); cy += 16;
+    // Power meter icon
+    g.roundRect(lx + 3, cy - 3, 14, 6, 2); g.stroke({ color: 0xff8844, width: 1 });
+    g.rect(lx + 8, cy - 4, 2, 8); g.fill(0xff8844);
+    row("SPACE", "Lock timing meter", lx + 20, cy); cy += 13;
+    row("W/S/A/D", "Feint (last 40%, -15 stam)", lx + 20, cy); cy += 20;
 
-    hdr("STAMINA", rx2 + 80, cy); cy += 18;
-    row("Hit taken: -15    Unhorsed: -40", rx2, cy); cy += 14;
-    row("Feint: -15        Regen: +8/tilt", rx2, cy); cy += 14;
-    row("Below 20: EXHAUSTED (no feint, slow charge)", rx2, cy); cy += 22;
+    hdr("GENERAL", lx + 80, cy, 0x888888); cy += 16;
+    row("ESC", "Pause / Back", lx + 20, cy); cy += 13;
+    row("SPACE", "Skip / Confirm", lx + 20, cy); cy += 13;
 
-    hdr("CROWD FAVOR", rx2 + 80, cy); cy += 18;
-    row("Perfect: +25%  Hit: +10%  Unhorse: +50%", rx2, cy); cy += 14;
-    row("When full: next hit gets +1 bonus point!", rx2, cy); cy += 14;
+    // Right column — Mechanics with color-coded entries
+    cy = py + 58;
+    hdr("SCORING", rx2 + 80, cy, 0xff4444); cy += 16;
+    // Color-coded score entries
+    const scoreRow = (label: string, pts: string, color: number, x: number, y: number) => {
+      g.circle(x + 3, y, 3); g.fill(color);
+      const ls = new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: color, fontWeight: "bold" });
+      this._addText(label, ls, x + 12, y, 0);
+      this._addText(pts, S_AIM_INACTIVE, x + 90, y, 0);
+    };
+    scoreRow("UNHORSE", "3 pts (lance far from shield)", 0xff2200, rx2, cy); cy += 13;
+    scoreRow("STRONG HIT", "2 pts (perfect timing)", 0xff6644, rx2, cy); cy += 13;
+    scoreRow("HIT", "1 pt", 0xffaa44, rx2, cy); cy += 13;
+    scoreRow("GLANCE", "0 pts (low stamina)", 0xaaaa44, rx2, cy); cy += 13;
+    scoreRow("BLOCK", "0 pts (lance = shield)", 0x4488ff, rx2, cy); cy += 20;
 
-    this._addText("ESC or SPACE to return", S_BTN, sw / 2, py + ph - 18);
+    hdr("TIMING METER", rx2 + 80, cy, 0x44cc44); cy += 16;
+    // Mini meter diagram
+    const mDx = rx2 + 5, mDy = cy + 2;
+    g.roundRect(mDx, mDy - 4, 60, 8, 3); g.fill({ color: 0x663322, alpha: 0.6 });
+    g.rect(mDx + 12, mDy - 4, 36, 8); g.fill({ color: 0x666622, alpha: 0.5 });
+    g.rect(mDx + 22, mDy - 4, 16, 8); g.fill({ color: 0x226633, alpha: 0.7 });
+    g.roundRect(mDx, mDy - 4, 60, 8, 3); g.stroke({ color: 0x888888, width: 0.5 });
+    this._addText("PERFECT = 2x dmg, +unhorse", S_AIM_INACTIVE, rx2 + 75, cy, 0); cy += 13;
+    this._addText("GOOD = normal damage", S_AIM_INACTIVE, rx2 + 75, cy, 0); cy += 13;
+    this._addText("WEAK = 30% glance chance", S_AIM_INACTIVE, rx2 + 75, cy, 0); cy += 20;
+
+    hdr("STAMINA", rx2 + 80, cy, 0x44ddaa); cy += 16;
+    // Mini stamina bar
+    g.roundRect(rx2 + 5, cy - 3, 50, 6, 3); g.fill({ color: 0x44cc66, alpha: 0.5 });
+    g.roundRect(rx2 + 5, cy - 3, 50, 6, 3); g.stroke({ color: 0x666666, width: 0.5 });
+    this._addText("Hit: -15  Unhorsed: -40  Feint: -15", S_AIM_INACTIVE, rx2 + 65, cy, 0); cy += 13;
+    this._addText("Regen: +8/tilt  Below 20: EXHAUSTED", S_AIM_INACTIVE, rx2 + 65, cy, 0); cy += 20;
+
+    hdr("CROWD FAVOR", rx2 + 80, cy, 0xffd700); cy += 16;
+    // Mini crowd bar
+    g.roundRect(rx2 + 5, cy - 3, 50, 6, 3); g.fill({ color: 0xddaa44, alpha: 0.5 });
+    g.roundRect(rx2 + 5, cy - 3, 50, 6, 3); g.stroke({ color: 0x666666, width: 0.5 });
+    this._addText("Perfect: +25%  Hit: +10%  Unhorse: +50%", S_AIM_INACTIVE, rx2 + 65, cy, 0); cy += 13;
+    this._addText("When full: next hit gets +1 bonus!", S_AIM_INACTIVE, rx2 + 65, cy, 0);
+
+    this._addText("ESC or SPACE to return", S_BTN, sw / 2, py + ph - 16);
   }
 
   // ---- Stats/Records Screen -----------------------------------------------
@@ -2930,59 +3060,87 @@ export class JoustingGame {
   private _renderPause(g: Graphics, sw: number, sh: number): void {
     // Show arena behind (frozen)
     this._renderArenaBackground(g, sw, sh);
-    // Dark overlay
     g.rect(0, 0, sw, sh); g.fill({ color: 0x000000, alpha: 0.65 });
 
-    const px = sw * 0.25, py = sh * 0.15, pw = sw * 0.5, ph = sh * 0.7;
+    const px = sw * 0.22, py = sh * 0.12, pw = sw * 0.56, ph = sh * 0.76;
     g.roundRect(px, py, pw, ph, 10); g.fill({ color: 0x0a0a18, alpha: 0.94 });
     g.roundRect(px, py, pw, ph, 10); g.stroke({ color: 0xffd700, width: 2 });
+    g.roundRect(px + 4, py + 4, pw - 8, ph - 8, 7); g.stroke({ color: 0x886622, width: 0.8 });
 
-    this._addText("PAUSED", S_TITLE, sw / 2, py + 35);
+    // Pause icon (two vertical bars)
+    const pix = sw / 2, piy = py + 20;
+    g.roundRect(pix - 8, piy - 6, 5, 14, 1); g.fill(0xffd700);
+    g.roundRect(pix + 3, piy - 6, 5, 14, 1); g.fill(0xffd700);
 
-    // Horizontal divider
-    g.moveTo(px + 30, py + 60); g.lineTo(px + pw - 30, py + 60); g.stroke({ color: 0x886622, width: 1 });
+    this._addText("PAUSED", S_TITLE, sw / 2, py + 40);
 
-    let cy = py + 80;
+    // Ornate scrollwork divider
+    const pd1 = py + 58;
+    g.moveTo(px + 25, pd1);
+    g.quadraticCurveTo(sw / 2 - 20, pd1 - 4, sw / 2 - 8, pd1);
+    g.stroke({ color: 0x886622, width: 1 });
+    g.moveTo(sw / 2, pd1 - 3); g.lineTo(sw / 2 + 3, pd1); g.lineTo(sw / 2, pd1 + 3); g.lineTo(sw / 2 - 3, pd1); g.fill(0xffd700);
+    g.moveTo(sw / 2 + 8, pd1);
+    g.quadraticCurveTo(sw / 2 + 20, pd1 - 4, px + pw - 25, pd1);
+    g.stroke({ color: 0x886622, width: 1 });
+
+    let cy = py + 72;
     const s = this._state;
 
-    // Current match info
+    // Current match info panel
     if (s.roundIndex < TOURNAMENT_KNIGHTS.length) {
       const opp = TOURNAMENT_KNIGHTS[s.roundIndex];
-      this._addText(`Facing: ${opp.name} ${opp.title}`, S_BODY, sw / 2, cy); cy += 18;
-      this._addText(`Score: You ${s.playerScore} - ${s.opponentScore} ${opp.name.split(" ")[1]}`, S_SCORE, sw / 2, cy); cy += 18;
-      this._addText(`Tilt ${s.tiltIndex + 1} of ${tiltsForRound(s.roundIndex)}`, S_AIM_INACTIVE, sw / 2, cy); cy += 25;
+      g.roundRect(px + 15, cy - 6, pw - 30, 52, 4); g.fill({ color: 0x000000, alpha: 0.3 });
+      // Opponent color pip
+      g.circle(px + 28, cy + 8, 4); g.fill(opp.color);
+      this._addText(`Facing: ${opp.name} ${opp.title}`, S_BODY, sw / 2, cy + 6); cy += 18;
+      this._addText(`Score: You ${s.playerScore} - ${s.opponentScore} ${opp.name.split(" ")[1]}`, S_SCORE, sw / 2, cy + 4); cy += 16;
+      this._addText(`Tilt ${s.tiltIndex + 1} of ${tiltsForRound(s.roundIndex)}`, S_AIM_INACTIVE, sw / 2, cy + 4); cy += 26;
     }
 
-    // Divider
-    g.moveTo(px + 30, cy); g.lineTo(px + pw - 30, cy); g.stroke({ color: 0x333344, width: 1 });
-    cy += 15;
+    // Controls section with icons
+    g.roundRect(px + 15, cy - 2, pw - 30, 52, 4); g.fill({ color: 0x000000, alpha: 0.2 });
+    // Lance icon
+    g.moveTo(px + 25, cy + 10); g.lineTo(px + 35, cy + 7); g.lineTo(px + 25, cy + 4); g.fill(0x44aaff);
+    this._addText("CONTROLS", S_AIM_LABEL, sw / 2, cy + 4); cy += 16;
+    this._addText("W/S: Lance    A/D: Shield    SPACE: Charge/Lock", S_AIM_INACTIVE, sw / 2, cy + 2); cy += 13;
+    this._addText("W/S/A/D mid-charge: Feint    ESC: Resume", S_AIM_INACTIVE, sw / 2, cy + 2); cy += 24;
 
-    // Quick controls reference
-    this._addText("QUICK CONTROLS", S_AIM_LABEL, sw / 2, cy); cy += 18;
-    this._addText("W/S: Lance aim    A/D: Shield position", S_AIM_INACTIVE, sw / 2, cy); cy += 14;
-    this._addText("SPACE: Charge / Lock timing", S_AIM_INACTIVE, sw / 2, cy); cy += 14;
-    this._addText("W/S/A/D during charge: Feint (-15 stamina)", S_AIM_INACTIVE, sw / 2, cy); cy += 25;
-
-    // Divider
-    g.moveTo(px + 30, cy); g.lineTo(px + pw - 30, cy); g.stroke({ color: 0x333344, width: 1 });
-    cy += 15;
-
-    // Player status
-    this._addText("STATUS", S_AIM_LABEL, sw / 2, cy); cy += 18;
-    this._addText(`Stamina: ${Math.round(s.playerStamina)}/${MAX_STAMINA}`, S_BODY, sw / 2, cy); cy += 14;
-    this._addText(`Gold: ${s.gold}g`, S_GOLD, sw / 2, cy); cy += 14;
-    this._addText(`Streak: ${s.tiltStreak}x`, s.tiltStreak >= 2 ? S_STREAK : S_AIM_INACTIVE, sw / 2, cy); cy += 14;
+    // Status section with visual bars
+    g.roundRect(px + 15, cy - 2, pw - 30, 82, 4); g.fill({ color: 0x000000, alpha: 0.2 });
+    // Shield icon for status
+    g.moveTo(px + 28, cy + 6); g.quadraticCurveTo(px + 33, cy + 4, px + 33, cy + 10);
+    g.lineTo(px + 28, cy + 16); g.lineTo(px + 23, cy + 10);
+    g.quadraticCurveTo(px + 23, cy + 4, px + 28, cy + 6); g.fill(0x44ddaa);
+    this._addText("STATUS", S_AIM_LABEL, sw / 2, cy + 4); cy += 16;
+    // Stamina with bar
+    this._addText("Stamina", S_AIM_INACTIVE, px + 40, cy + 2, 0);
+    this._renderStaminaBar(g, px + 100, cy - 1, pw * 0.4, 7, s.playerStamina);
+    this._addText(`${Math.round(s.playerStamina)}`, S_STAT_VALUE, px + 100 + pw * 0.42, cy + 2, 0); cy += 14;
+    // Gold
+    g.moveTo(px + 40, cy); g.lineTo(px + 44, cy - 3); g.lineTo(px + 48, cy); g.lineTo(px + 44, cy + 3); g.fill(0xffd700);
+    this._addText(`Gold: ${s.gold}g`, S_GOLD, px + 55, cy, 0); cy += 14;
+    // Streak + Favor
+    this._addText(`Streak: ${s.tiltStreak}x`, s.tiltStreak >= 2 ? S_STREAK : S_AIM_INACTIVE, px + 40, cy, 0);
     const favorPct = Math.round(s.crowdFavor / CROWD_FAVOR_MAX * 100);
-    this._addText(`Crowd Favor: ${favorPct}%`, S_FAVOR, sw / 2, cy); cy += 14;
+    this._addText(`Crowd Favor: ${favorPct}%`, S_FAVOR, px + pw * 0.55, cy, 0); cy += 14;
     if (s.playerAbility !== "none") {
       const ab = PLAYER_ABILITIES[s.playerAbility];
-      const abStyle = new TextStyle({ fontFamily: "monospace", fontSize: 12, fill: ab.color, fontWeight: "bold" });
-      this._addText(`Ability: ${ab.name}`, abStyle, sw / 2, cy);
+      const abStyle = new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: ab.color, fontWeight: "bold" });
+      g.moveTo(px + 40, cy); g.lineTo(px + 44, cy - 3); g.lineTo(px + 48, cy); g.lineTo(px + 44, cy + 3); g.fill(ab.color);
+      this._addText(`${ab.name}`, abStyle, px + 55, cy, 0);
     }
 
-    // Bottom options
-    this._addText("[ESC] Resume", S_BTN, sw / 2, py + ph - 45);
-    this._addText("[Q] Quit to Menu", S_AIM_INACTIVE, sw / 2, py + ph - 25);
+    // Bottom options with styled buttons
+    const btnY = py + ph - 50;
+    // Resume button
+    g.roundRect(sw / 2 - 60, btnY - 6, 120, 22, 4); g.fill({ color: 0x224422, alpha: 0.6 });
+    g.roundRect(sw / 2 - 60, btnY - 6, 120, 22, 4); g.stroke({ color: 0x44ff44, width: 1 });
+    this._addText("[ESC] Resume", S_BTN, sw / 2, btnY + 4);
+    // Quit button
+    g.roundRect(sw / 2 - 50, btnY + 22, 100, 18, 3); g.fill({ color: 0x221111, alpha: 0.4 });
+    g.roundRect(sw / 2 - 50, btnY + 22, 100, 18, 3); g.stroke({ color: 0x553333, width: 0.8 });
+    this._addText("[Q] Quit", S_AIM_INACTIVE, sw / 2, btnY + 31);
   }
 
   // ---- Pre-Match ----------------------------------------------------------
@@ -3235,10 +3393,13 @@ export class JoustingGame {
 
     // Impact zoom effect (brief scale toward center)
     if (s.impactZoom > 0) {
-      const zoomScale = 1 + s.impactZoom * 0.08; // max 8% zoom
+      const zoomScale = 1 + s.impactZoom * 0.08;
       const zoomCx = sw / 2, zoomCy = sh * 0.52;
+      // Zoom toward impact center: pivot = center, then offset position to compensate
       this._container.scale.set(zoomScale);
-      this._container.pivot.set(zoomCx - zoomCx / zoomScale, zoomCy - zoomCy / zoomScale);
+      this._container.pivot.set(zoomCx, zoomCy);
+      this._container.x += zoomCx;
+      this._container.y += zoomCy;
     } else {
       this._container.scale.set(1);
       this._container.pivot.set(0, 0);
