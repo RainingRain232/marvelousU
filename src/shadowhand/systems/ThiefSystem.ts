@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Shadowhand mode — thief movement, actions & abilities
+// Shadowhand mode — thief movement, actions & abilities (improved)
 // ---------------------------------------------------------------------------
 
 import type { HeistState, ThiefUnit, HeistMap } from "../state/ShadowhandState";
@@ -7,12 +7,7 @@ import type { CrewMember } from "../config/CrewDefs";
 import { CREW_ARCHETYPES } from "../config/CrewDefs";
 import { ShadowhandConfig } from "../config/ShadowhandConfig";
 import { emitWalkNoise, emitActionNoise } from "./NoiseSystem";
-
-function isWalkable(map: HeistMap, x: number, y: number): boolean {
-  if (y < 0 || y >= map.height || x < 0 || x >= map.width) return false;
-  const t = map.tiles[y][x].type;
-  return t !== "wall" && t !== "locked_door";
-}
+import { findPath, getNextWaypoint } from "./Pathfinding";
 
 export function createThiefUnit(crew: CrewMember, x: number, y: number): ThiefUnit {
   const arch = CREW_ARCHETYPES[crew.role];
@@ -36,113 +31,125 @@ export function createThiefUnit(crew: CrewMember, x: number, y: number): ThiefUn
     maxHp: crew.maxHp,
     alive: true,
     captured: false,
+    escaped: false,
+    role: crew.role,
+    abilities: [...arch.abilities],
+    activePath: [],
   };
 }
 
 export function moveThiefTo(heist: HeistState, thiefId: string, tx: number, ty: number): void {
   const thief = heist.thieves.find(t => t.id === thiefId);
-  if (!thief || !thief.alive || thief.captured) return;
+  if (!thief || !thief.alive || thief.captured || thief.escaped) return;
+
+  // Calculate A* path to target
+  const path = findPath(heist.map, thief.x, thief.y, tx, ty, false, 400);
+  thief.activePath = path;
   thief.targetX = tx;
   thief.targetY = ty;
-  thief.moving = true;
+  thief.moving = path.length > 0;
 }
 
 export function updateThiefMovement(heist: HeistState, dt: number): void {
   for (const thief of heist.thieves) {
-    if (!thief.alive || thief.captured) continue;
+    if (!thief.alive || thief.captured || thief.escaped) continue;
 
     // Update disguise timer
     if (thief.disguiseTimer > 0) {
       thief.disguiseTimer -= dt;
-      if (thief.disguiseTimer <= 0) thief.disguised = false;
-    }
-
-    // Movement
-    const dx = thief.targetX - thief.x;
-    const dy = thief.targetY - thief.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-
-    if (dist < 0.15) {
-      thief.moving = false;
-      thief.noiseLevel = 0;
-      continue;
-    }
-
-    thief.moving = true;
-    let speed = thief.speed;
-    if (thief.crouching) speed *= ShadowhandConfig.CROUCHING_SPEED_MULT;
-
-    // Simple pathfinding: try direct movement, if blocked try adjacent
-    const step = Math.min(speed * dt, dist);
-    let nx = thief.x + (dx / dist) * step;
-    let ny = thief.y + (dy / dist) * step;
-
-    if (isWalkable(heist.map, Math.round(nx), Math.round(ny))) {
-      thief.x = nx;
-      thief.y = ny;
-    } else {
-      // Try sliding along walls
-      const nxOnly = thief.x + (dx / dist) * step;
-      const nyOnly = thief.y + (dy / dist) * step;
-      if (isWalkable(heist.map, Math.round(nxOnly), Math.round(thief.y))) {
-        thief.x = nxOnly;
-      } else if (isWalkable(heist.map, Math.round(thief.x), Math.round(nyOnly))) {
-        thief.y = nyOnly;
-      } else {
-        thief.moving = false;
+      if (thief.disguiseTimer <= 0) {
+        thief.disguised = false;
+        thief.disguiseTimer = 0;
       }
     }
 
-    // Emit noise
+    // Follow A* path
+    if (thief.activePath.length > 0) {
+      const wp = getNextWaypoint(thief.activePath, thief.x, thief.y, 0.4);
+      if (wp) {
+        const dx = wp.x - thief.x;
+        const dy = wp.y - thief.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist > 0.1) {
+          thief.moving = true;
+          let speed = thief.speed;
+          if (thief.crouching) speed *= ShadowhandConfig.CROUCHING_SPEED_MULT;
+
+          const step = Math.min(speed * dt, dist);
+          thief.x += (dx / dist) * step;
+          thief.y += (dy / dist) * step;
+        }
+      } else {
+        // Path complete
+        thief.activePath = [];
+        thief.moving = false;
+        thief.noiseLevel = 0;
+      }
+    } else {
+      thief.moving = false;
+      thief.noiseLevel = 0;
+    }
+
+    // Emit noise based on role
     if (thief.moving) {
-      const arch = CREW_ARCHETYPES[heist.thieves.find(t => t.id === thief.id)?.id as keyof typeof CREW_ARCHETYPES];
-      const noiseMult = arch?.noiseMultiplier ?? 1.0;
+      const arch = CREW_ARCHETYPES[thief.role];
+      const noiseMult = arch.noiseMultiplier;
       emitWalkNoise(heist, thief.id, thief.x, thief.y, noiseMult, false, thief.crouching);
     }
 
-    // Check for traps
+    // Check for traps (sapmaster can detect and disarm)
     const tx = Math.round(thief.x), ty = Math.round(thief.y);
     if (ty >= 0 && ty < heist.map.height && tx >= 0 && tx < heist.map.width) {
       const tile = heist.map.tiles[ty][tx];
       if (tile.type === "trap" && tile.trapArmed) {
-        tile.trapArmed = false;
-        thief.hp -= 20;
-        emitActionNoise(heist, tx, ty, ShadowhandConfig.NOISE_COMBAT, thief.id);
-        if (thief.hp <= 0) {
-          thief.alive = false;
+        if (thief.role === "sapmaster") {
+          // Sapmaster auto-disarms traps
+          tile.trapArmed = false;
+          tile.type = "floor";
+        } else {
+          tile.trapArmed = false;
+          thief.hp -= 20;
+          emitActionNoise(heist, tx, ty, ShadowhandConfig.NOISE_COMBAT, thief.id);
+          if (thief.hp <= 0) thief.alive = false;
         }
       }
     }
 
-    // Reveal tiles around thief
-    revealAround(heist, thief.x, thief.y, 4);
+    // Reveal tiles around thief (shade sees farther in dark)
+    const visionRange = thief.role === "shade" ? 6 : 4;
+    revealAround(heist, thief.x, thief.y, visionRange);
 
-    // Pick up loot automatically
+    // Pick up loot automatically (brawler can carry heavy items)
     if (ty >= 0 && ty < heist.map.height && tx >= 0 && tx < heist.map.width) {
       const tile = heist.map.tiles[ty][tx];
       if (tile.loot && (tile.type === "loot_spot" || tile.type === "primary_loot")) {
         const lootItem = tile.loot;
-        thief.carryingLoot.push(lootItem);
-        heist.lootCollected.push(lootItem);
-        if (tile.type === "primary_loot") heist.primaryLootTaken = true;
-        tile.loot = null;
-        tile.type = "floor";
+        // Heavy loot (weight 3) requires brawler
+        if (lootItem.weight >= 3 && thief.role !== "brawler") {
+          // Can't carry — skip
+        } else {
+          thief.carryingLoot.push(lootItem);
+          heist.lootCollected.push(lootItem);
+          if (tile.type === "primary_loot") heist.primaryLootTaken = true;
+          tile.loot = null;
+          tile.type = "floor";
+        }
       }
     }
 
-    // Check if at exit point while carrying loot
+    // Check if at exit point
     for (const exit of heist.map.exitPoints) {
       const edx = thief.x - exit.x, edy = thief.y - exit.y;
       if (edx * edx + edy * edy < 1.5) {
-        // Escaped!
-        thief.alive = false; // remove from map (escaped, not dead)
-        thief.captured = false;
+        thief.escaped = true;
+        thief.alive = false; // remove from active play
       }
     }
   }
 
-  // Check if all thieves have escaped or are dead/captured
-  const activeCrew = heist.thieves.filter(t => t.alive && !t.captured);
+  // Check if all active thieves have escaped or are dead/captured
+  const activeCrew = heist.thieves.filter(t => t.alive && !t.captured && !t.escaped);
   if (activeCrew.length === 0) {
     heist.allEscaped = true;
   }
@@ -162,7 +169,172 @@ function revealAround(heist: HeistState, cx: number, cy: number, radius: number)
 }
 
 // ---------------------------------------------------------------------------
-// Abilities
+// Role-specific abilities
+// ---------------------------------------------------------------------------
+
+/** Cutpurse: pickpocket keys from a sleeping/stunned guard */
+export function pickpocketGuard(heist: HeistState, thiefId: string): boolean {
+  const thief = heist.thieves.find(t => t.id === thiefId);
+  if (!thief || thief.role !== "cutpurse") return false;
+
+  for (const guard of heist.guards) {
+    if (guard.sleepTimer <= 0 && guard.stunTimer <= 0) continue;
+    const dx = guard.x - thief.x, dy = guard.y - thief.y;
+    if (dx * dx + dy * dy <= 2.25) {
+      // Unlock all locked doors in the guard's patrol area
+      for (const wp of guard.patrolPath) {
+        for (let dy2 = -2; dy2 <= 2; dy2++) {
+          for (let dx2 = -2; dx2 <= 2; dx2++) {
+            const nx = wp.x + dx2, ny = wp.y + dy2;
+            if (ny >= 0 && ny < heist.map.height && nx >= 0 && nx < heist.map.width) {
+              if (heist.map.tiles[ny][nx].type === "locked_door") {
+                heist.map.tiles[ny][nx].type = "door";
+              }
+            }
+          }
+        }
+      }
+      return true;
+    }
+  }
+  return false;
+}
+
+/** Cutpurse: throw a coin to distract guards */
+export function distractCoin(heist: HeistState, x: number, y: number): void {
+  emitActionNoise(heist, x, y, 4.0, "distract_coin");
+}
+
+/** Brawler: silent takedown on an adjacent guard */
+export function takedownGuard(heist: HeistState, thiefId: string): boolean {
+  const thief = heist.thieves.find(t => t.id === thiefId);
+  if (!thief || thief.role !== "brawler") return false;
+
+  let closest: { guard: typeof heist.guards[0]; dist: number } | null = null;
+  for (const guard of heist.guards) {
+    if (guard.stunTimer > 0 || guard.sleepTimer > 0) continue;
+    const dx = guard.x - thief.x, dy = guard.y - thief.y;
+    const d = Math.sqrt(dx * dx + dy * dy);
+    if (d <= ShadowhandConfig.TAKEDOWN_RANGE && (!closest || d < closest.dist)) {
+      closest = { guard, dist: d };
+    }
+  }
+
+  if (closest) {
+    // Must be behind the guard (angle check)
+    const dx = thief.x - closest.guard.x;
+    const dy = thief.y - closest.guard.y;
+    const angleFromGuard = Math.atan2(dy, dx);
+    let angleDiff = Math.abs(closest.guard.angle - angleFromGuard);
+    if (angleDiff > Math.PI) angleDiff = Math.PI * 2 - angleDiff;
+
+    // Within ~120 degrees of guard's back
+    if (angleDiff > Math.PI * 0.67) {
+      closest.guard.sleepTimer = 60; // Knocked out for a long time
+      closest.guard.alertLevel = 0;
+      closest.guard.alertTimer = 0;
+      closest.guard.canSeeThief = null;
+      closest.guard.chasePath = [];
+      emitActionNoise(heist, thief.x, thief.y, 1.5, thief.id); // Quiet but not silent
+      return true;
+    }
+  }
+  return false;
+}
+
+/** Shade: meld into shadows (become invisible in dark for duration) */
+export function shadowMeld(heist: HeistState, thiefId: string): boolean {
+  const thief = heist.thieves.find(t => t.id === thiefId);
+  if (!thief || thief.role !== "shade") return false;
+
+  const tx = Math.round(thief.x), ty = Math.round(thief.y);
+  if (ty >= 0 && ty < heist.map.height && tx >= 0 && tx < heist.map.width) {
+    if (!heist.map.tiles[ty][tx].lit) {
+      thief.shadowMeld = true;
+      // Shadow meld lasts 8 seconds or until entering light
+      setTimeout(() => { thief.shadowMeld = false; }, 8000);
+      return true;
+    }
+  }
+  return false;
+}
+
+/** Charlatan: apply disguise to blend in with lit areas */
+export function applyDisguise(heist: HeistState, thiefId: string): boolean {
+  const thief = heist.thieves.find(t => t.id === thiefId);
+  if (!thief || thief.role !== "charlatan") return false;
+
+  thief.disguised = true;
+  thief.disguiseTimer = 20; // 20 seconds
+  return true;
+}
+
+/** Charlatan: distract a guard by talking to them */
+export function distractTalk(heist: HeistState, thiefId: string): boolean {
+  const thief = heist.thieves.find(t => t.id === thiefId);
+  if (!thief || thief.role !== "charlatan" || !thief.disguised) return false;
+
+  // Stun nearest guard temporarily (confused conversation)
+  for (const guard of heist.guards) {
+    if (guard.stunTimer > 0 || guard.sleepTimer > 0 || guard.isElite) continue;
+    const dx = guard.x - thief.x, dy = guard.y - thief.y;
+    if (dx * dx + dy * dy <= 4) {
+      guard.stunTimer = 5;
+      guard.alertTimer = Math.max(0, guard.alertTimer - 20);
+      if (guard.alertTimer < ShadowhandConfig.ALERT_SUSPICIOUS_THRESHOLD) {
+        guard.alertLevel = 0;
+      }
+      return true;
+    }
+  }
+  return false;
+}
+
+/** Sapmaster: silently pick a locked door (faster than normal) */
+export function silentLockpick(heist: HeistState, thiefId: string): boolean {
+  const thief = heist.thieves.find(t => t.id === thiefId);
+  if (!thief || thief.role !== "sapmaster") return false;
+
+  const tx = Math.round(thief.x), ty = Math.round(thief.y);
+  const dirs = [[0, -1], [0, 1], [-1, 0], [1, 0]];
+  for (const [dx, dy] of dirs) {
+    const nx = tx + dx, ny = ty + dy;
+    if (ny >= 0 && ny < heist.map.height && nx >= 0 && nx < heist.map.width) {
+      if (heist.map.tiles[ny][nx].type === "locked_door") {
+        heist.map.tiles[ny][nx].type = "door";
+        emitActionNoise(heist, nx, ny, 0.5, thief.id); // Nearly silent
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+/** Sapmaster: find and reveal secret doors nearby */
+export function findSecretDoors(heist: HeistState, thiefId: string): number {
+  const thief = heist.thieves.find(t => t.id === thiefId);
+  if (!thief || thief.role !== "sapmaster") return 0;
+
+  let found = 0;
+  const tx = Math.round(thief.x), ty = Math.round(thief.y);
+  const range = 3;
+  for (let dy = -range; dy <= range; dy++) {
+    for (let dx = -range; dx <= range; dx++) {
+      const nx = tx + dx, ny = ty + dy;
+      if (ny >= 0 && ny < heist.map.height && nx >= 0 && nx < heist.map.width) {
+        if (heist.map.tiles[ny][nx].type === "secret_door") {
+          heist.map.tiles[ny][nx].type = "door";
+          heist.map.tiles[ny][nx].revealed = true;
+          found++;
+        }
+      }
+    }
+  }
+  return found;
+}
+
+// ---------------------------------------------------------------------------
+// Global abilities (from equipment)
 // ---------------------------------------------------------------------------
 
 export function useSmokeBomb(heist: HeistState, x: number, y: number, radius: number, duration: number): void {
@@ -193,6 +365,7 @@ export function useSleepDart(heist: HeistState, thiefX: number, thiefY: number, 
     closest.guard.sleepTimer = duration;
     closest.guard.alertLevel = 0;
     closest.guard.alertTimer = 0;
+    closest.guard.chasePath = [];
     return true;
   }
   return false;
@@ -203,6 +376,7 @@ export function useFlashPowder(heist: HeistState, x: number, y: number, radius: 
     const dx = guard.x - x, dy = guard.y - y;
     if (dx * dx + dy * dy <= radius * radius) {
       guard.stunTimer = stunDuration;
+      guard.chasePath = [];
     }
   }
   emitActionNoise(heist, x, y, 5.0, "flash_powder");
@@ -240,28 +414,23 @@ export function extinguishTorch(heist: HeistState, x: number, y: number): boolea
     const tile = heist.map.tiles[y][x];
     if (tile.torchSource) {
       tile.torchSource = false;
-      // Recalculate light nearby
       const radius = Math.ceil(ShadowhandConfig.TORCH_RADIUS);
       for (let dy = -radius; dy <= radius; dy++) {
         for (let dx = -radius; dx <= radius; dx++) {
           const ny = y + dy, nx = x + dx;
           if (ny >= 0 && ny < heist.map.height && nx >= 0 && nx < heist.map.width) {
-            // Only remove light if no other torch lights this tile
             let litByOther = false;
-            for (let sy = -radius; sy <= radius; sy++) {
-              for (let sx = -radius; sx <= radius; sx++) {
+            for (let sy = -radius; sy <= radius && !litByOther; sy++) {
+              for (let sx = -radius; sx <= radius && !litByOther; sx++) {
                 const ty2 = ny + sy, tx2 = nx + sx;
                 if (ty2 >= 0 && ty2 < heist.map.height && tx2 >= 0 && tx2 < heist.map.width) {
                   if (heist.map.tiles[ty2][tx2].torchSource) {
-                    const d2 = sy * sy + sx * sx;
-                    if (d2 <= ShadowhandConfig.TORCH_RADIUS * ShadowhandConfig.TORCH_RADIUS) {
+                    if (sy * sy + sx * sx <= ShadowhandConfig.TORCH_RADIUS * ShadowhandConfig.TORCH_RADIUS) {
                       litByOther = true;
-                      break;
                     }
                   }
                 }
               }
-              if (litByOther) break;
             }
             if (!litByOther) heist.map.tiles[ny][nx].lit = false;
           }
@@ -278,6 +447,19 @@ export function updateSmoke(heist: HeistState, dt: number): void {
     for (let x = 0; x < heist.map.width; x++) {
       if (heist.map.tiles[y][x].smoke > 0) {
         heist.map.tiles[y][x].smoke -= dt;
+      }
+    }
+  }
+}
+
+/** Update shadow meld status — cancel if thief enters lit area */
+export function updateShadowMeld(heist: HeistState): void {
+  for (const thief of heist.thieves) {
+    if (!thief.shadowMeld) continue;
+    const tx = Math.round(thief.x), ty = Math.round(thief.y);
+    if (ty >= 0 && ty < heist.map.height && tx >= 0 && tx < heist.map.width) {
+      if (heist.map.tiles[ty][tx].lit) {
+        thief.shadowMeld = false;
       }
     }
   }

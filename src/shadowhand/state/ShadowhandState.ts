@@ -65,6 +65,9 @@ export interface Guard {
   canSeeThief: string | null; // thief id being tracked
   isElite: boolean;
   isDog: boolean;
+  chasePath: { x: number; y: number }[];
+  lastKnownThiefPos: { x: number; y: number } | null;
+  waitTimer: number;
 }
 
 export interface ThiefUnit {
@@ -88,6 +91,10 @@ export interface ThiefUnit {
   maxHp: number;
   alive: boolean;
   captured: boolean;
+  escaped: boolean;
+  role: import("../config/CrewDefs").CrewRole;
+  abilities: string[];
+  activePath: { x: number; y: number }[];
 }
 
 export interface Room {

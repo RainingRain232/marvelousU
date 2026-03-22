@@ -69,7 +69,7 @@ export class ShadowhandResultsScreen {
     if (heist) {
       let lootVal = 0;
       for (const l of heist.lootCollected) lootVal += l.value;
-      const survived = heist.thieves.filter(t => !t.captured).length;
+      const survived = heist.thieves.filter(t => t.escaped).length;
       const total = heist.thieves.length;
       const mins = Math.floor(heist.elapsedTime / 60);
       const secs = Math.floor(heist.elapsedTime % 60);

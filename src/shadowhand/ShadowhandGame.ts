@@ -13,8 +13,13 @@ import { ShadowhandConfig } from "./config/ShadowhandConfig";
 import { createCrewMember, type CrewRole } from "./config/CrewDefs";
 import { getEquipmentById } from "./config/EquipmentDefs";
 
-import { initHeist, updateHeist, decayHeat } from "./systems/HeistSystem";
-import { moveThiefTo, useSmokeBomb, useSleepDart, useFlashPowder, placeCaltrops, unlockDoor, extinguishTorch } from "./systems/ThiefSystem";
+import { initHeist, updateHeist, decayHeat, consumeEquipment } from "./systems/HeistSystem";
+import {
+  moveThiefTo, useSmokeBomb, useSleepDart, useFlashPowder, placeCaltrops,
+  unlockDoor, extinguishTorch,
+  pickpocketGuard, distractCoin, takedownGuard, shadowMeld,
+  applyDisguise, distractTalk, silentLockpick, findSecretDoors,
+} from "./systems/ThiefSystem";
 
 import { ShadowhandRenderer } from "./view/ShadowhandRenderer";
 import { ShadowhandHUD } from "./view/ShadowhandHUD";
@@ -182,7 +187,7 @@ export class ShadowhandGame {
       updateHeist(this._state, dt);
 
       // Render
-      this._renderer.updateCamera(this._state.heist, this._sw, this._sh);
+      this._renderer.updateCamera(this._state.heist, this._sw, this._sh, dt);
       this._renderer.drawMap(this._state.heist);
       this._renderer.drawLightOverlay(this._state.heist);
       this._renderer.drawFog(this._state.heist);
@@ -263,11 +268,12 @@ export class ShadowhandGame {
     const heist = this._state.heist;
     if (!heist) return;
 
+    const sel = heist.thieves.find(t => t.selected && t.alive && !t.captured && !t.escaped);
+
     switch (e.key) {
       case "Tab": {
         e.preventDefault();
-        // Cycle through alive thieves
-        const alive = heist.thieves.filter(t => t.alive && !t.captured);
+        const alive = heist.thieves.filter(t => t.alive && !t.captured && !t.escaped);
         if (alive.length <= 1) return;
         const current = alive.findIndex(t => t.selected);
         for (const t of alive) t.selected = false;
@@ -277,90 +283,95 @@ export class ShadowhandGame {
       }
       case "c":
       case "C": {
-        const sel = heist.thieves.find(t => t.selected && t.alive);
-        if (sel) sel.crouching = !sel.crouching;
-        break;
-      }
-      case " ": {
-        // Try to unlock adjacent door
-        e.preventDefault();
-        const sel = heist.thieves.find(t => t.selected && t.alive);
-        if (!sel) return;
-        const tx = Math.round(sel.x), ty = Math.round(sel.y);
-        const dirs = [[0, -1], [0, 1], [-1, 0], [1, 0]];
-        for (const [dx, dy] of dirs) {
-          if (unlockDoor(heist, tx + dx, ty + dy, ShadowhandConfig.NOISE_LOCKPICK)) {
-            addLog(this._state, "Door unlocked.");
-            break;
-          }
+        if (sel) {
+          sel.crouching = !sel.crouching;
+          addLog(this._state, sel.crouching ? "Crouching..." : "Standing up.");
         }
         break;
       }
-      case "1": {
-        // Smoke bomb
-        const sel = heist.thieves.find(t => t.selected && t.alive);
+      case " ": {
+        // Unlock adjacent door — sapmaster does it silently
+        e.preventDefault();
         if (!sel) return;
-        const smoke = this._state.guild.inventory.find(i => i.id === "smoke_bomb" && i.uses > 0);
-        if (smoke) {
+        const tx = Math.round(sel.x), ty = Math.round(sel.y);
+        if (sel.role === "sapmaster") {
+          if (silentLockpick(heist, sel.id)) {
+            addLog(this._state, "Silently picked the lock.");
+          } else {
+            addLog(this._state, "No locked door nearby.");
+          }
+        } else {
+          const dirs = [[0, -1], [0, 1], [-1, 0], [1, 0]];
+          let opened = false;
+          for (const [dx, dy] of dirs) {
+            if (unlockDoor(heist, tx + dx, ty + dy, ShadowhandConfig.NOISE_LOCKPICK)) {
+              addLog(this._state, "Door unlocked (noisy).");
+              opened = true;
+              break;
+            }
+          }
+          if (!opened) addLog(this._state, "No locked door nearby.");
+        }
+        break;
+      }
+      // E = Role-specific ability
+      case "e":
+      case "E": {
+        if (!sel) return;
+        this._useRoleAbility(sel);
+        break;
+      }
+      // Q = Secondary role ability
+      case "q":
+      case "Q": {
+        if (!sel) return;
+        this._useSecondaryAbility(sel);
+        break;
+      }
+      // 1-4 = Equipment items
+      case "1": {
+        if (!sel) return;
+        if (consumeEquipment(this._state, "smoke_bomb")) {
           useSmokeBomb(heist, sel.x, sel.y, 3, 8);
-          smoke.uses--;
           addLog(this._state, "Smoke bomb deployed!");
+        } else {
+          addLog(this._state, "No smoke bombs left.");
         }
         break;
       }
       case "2": {
-        // Sleep dart
-        const sel = heist.thieves.find(t => t.selected && t.alive);
         if (!sel) return;
-        const dart = this._state.guild.inventory.find(i => i.id === "sleep_dart" && i.uses > 0);
-        if (dart) {
+        if (consumeEquipment(this._state, "sleep_dart")) {
           if (useSleepDart(heist, sel.x, sel.y, 6, 15)) {
-            dart.uses--;
             addLog(this._state, "Guard put to sleep.");
           } else {
             addLog(this._state, "No guard in range.");
+            // Refund
+            const item = this._state.guild.inventory.find(i => i.id === "sleep_dart");
+            if (item) item.uses++;
           }
+        } else {
+          addLog(this._state, "No sleep darts left.");
         }
         break;
       }
       case "3": {
-        // Flash powder
-        const sel = heist.thieves.find(t => t.selected && t.alive);
         if (!sel) return;
-        const flash = this._state.guild.inventory.find(i => i.id === "flash_powder" && i.uses > 0);
-        if (flash) {
+        if (consumeEquipment(this._state, "flash_powder")) {
           useFlashPowder(heist, sel.x, sel.y, 3, 5);
-          flash.uses--;
           addLog(this._state, "Flash! Guards stunned.");
+        } else {
+          addLog(this._state, "No flash powder left.");
         }
         break;
       }
       case "4": {
-        // Caltrops
-        const sel = heist.thieves.find(t => t.selected && t.alive);
         if (!sel) return;
-        const calt = this._state.guild.inventory.find(i => i.id === "caltrops" && i.uses > 0);
-        if (calt) {
+        if (consumeEquipment(this._state, "caltrops")) {
           placeCaltrops(heist, sel.x, sel.y, 2);
-          calt.uses--;
           addLog(this._state, "Caltrops scattered.");
-        }
-        break;
-      }
-      case "5": {
-        // Extinguish torch (shade ability)
-        const sel = heist.thieves.find(t => t.selected && t.alive);
-        if (!sel) return;
-        const tx = Math.round(sel.x), ty = Math.round(sel.y);
-        const radius = 3;
-        let extinguished = false;
-        for (let dy = -radius; dy <= radius && !extinguished; dy++) {
-          for (let dx = -radius; dx <= radius && !extinguished; dx++) {
-            if (extinguishTorch(heist, tx + dx, ty + dy)) {
-              extinguished = true;
-              addLog(this._state, "Torch extinguished.");
-            }
-          }
+        } else {
+          addLog(this._state, "No caltrops left.");
         }
         break;
       }
@@ -373,6 +384,102 @@ export class ShadowhandGame {
         heist.speedMult = Math.max(0.5, heist.speedMult - 0.5);
         break;
       }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Role abilities
+  // ---------------------------------------------------------------------------
+
+  private _useRoleAbility(sel: import("./state/ShadowhandState").ThiefUnit): void {
+    const heist = this._state.heist!;
+    switch (sel.role) {
+      case "cutpurse":
+        if (pickpocketGuard(heist, sel.id)) {
+          addLog(this._state, "Pickpocketed keys! Nearby doors unlocked.");
+        } else {
+          addLog(this._state, "No stunned/sleeping guard nearby to pickpocket.");
+        }
+        break;
+      case "brawler":
+        if (takedownGuard(heist, sel.id)) {
+          addLog(this._state, "Silent takedown! Guard neutralized.");
+        } else {
+          addLog(this._state, "No guard in range (must be behind them).");
+        }
+        break;
+      case "shade":
+        if (shadowMeld(heist, sel.id)) {
+          addLog(this._state, "Shadow meld! Invisible in darkness.");
+        } else {
+          addLog(this._state, "Must be in shadow to meld.");
+        }
+        break;
+      case "charlatan":
+        if (applyDisguise(heist, sel.id)) {
+          addLog(this._state, "Disguise applied! Blend in for 20s.");
+        }
+        break;
+      case "sapmaster": {
+        const found = findSecretDoors(heist, sel.id);
+        if (found > 0) {
+          addLog(this._state, `Found ${found} secret door(s)!`);
+        } else {
+          addLog(this._state, "No secret doors nearby.");
+        }
+        break;
+      }
+      case "alchemist": {
+        // Extinguish nearest torch
+        const tx = Math.round(sel.x), ty = Math.round(sel.y);
+        let ext = false;
+        for (let dy = -3; dy <= 3 && !ext; dy++) {
+          for (let dx = -3; dx <= 3 && !ext; dx++) {
+            if (extinguishTorch(heist, tx + dx, ty + dy)) {
+              ext = true;
+              addLog(this._state, "Torch extinguished with acid.");
+            }
+          }
+        }
+        if (!ext) addLog(this._state, "No torches in range.");
+        break;
+      }
+    }
+  }
+
+  private _useSecondaryAbility(sel: import("./state/ShadowhandState").ThiefUnit): void {
+    const heist = this._state.heist!;
+    switch (sel.role) {
+      case "cutpurse":
+        // Throw distracting coin
+        distractCoin(heist, sel.x + (Math.random() - 0.5) * 8, sel.y + (Math.random() - 0.5) * 8);
+        addLog(this._state, "Coin thrown! Guards will investigate.");
+        break;
+      case "charlatan":
+        if (distractTalk(heist, sel.id)) {
+          addLog(this._state, "Distracted a guard with conversation.");
+        } else {
+          addLog(this._state, "No guard nearby (or not disguised).");
+        }
+        break;
+      case "shade": {
+        // Extinguish nearest torch
+        const tx = Math.round(sel.x), ty = Math.round(sel.y);
+        let ext = false;
+        for (let dy = -4; dy <= 4 && !ext; dy++) {
+          for (let dx = -4; dx <= 4 && !ext; dx++) {
+            if (extinguishTorch(heist, tx + dx, ty + dy)) {
+              ext = true;
+              addLog(this._state, "Torch extinguished from shadows.");
+            }
+          }
+        }
+        if (!ext) addLog(this._state, "No torches in range.");
+        break;
+      }
+      default:
+        addLog(this._state, "No secondary ability for this role.");
+        break;
     }
   }
 

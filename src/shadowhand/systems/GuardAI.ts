@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Shadowhand mode — guard AI & patrol system
+// Shadowhand mode — guard AI & patrol system (with A* pathfinding)
 // ---------------------------------------------------------------------------
 
 import type { HeistState, Guard, HeistMap } from "../state/ShadowhandState";
@@ -8,6 +8,7 @@ import type { TargetDef } from "../config/TargetDefs";
 import { ShadowhandConfig } from "../config/ShadowhandConfig";
 import { getDifficulty, type ShadowhandDifficulty } from "../config/ShadowhandConfig";
 import { seedRng } from "../state/ShadowhandState";
+import { findPath, getNextWaypoint } from "./Pathfinding";
 
 function isWalkable(map: HeistMap, x: number, y: number): boolean {
   if (y < 0 || y >= map.height || x < 0 || x >= map.width) return false;
@@ -25,7 +26,6 @@ function generatePatrolPath(map: HeistMap, startX: number, startY: number, rng: 
       { dx: 0, dy: -1 }, { dx: 0, dy: 1 },
       { dx: -1, dy: 0 }, { dx: 1, dy: 0 },
     ];
-    // Try to walk in a random direction for a random distance
     const dir = dirs[Math.floor(rng() * dirs.length)];
     const dist = 2 + Math.floor(rng() * 6);
     let nx = cx, ny = cy;
@@ -43,6 +43,17 @@ function generatePatrolPath(map: HeistMap, startX: number, startY: number, rng: 
     }
   }
 
+  // Ensure at least 2 waypoints for patrol
+  if (path.length < 2) {
+    for (const dir of [{ dx: 3, dy: 0 }, { dx: 0, dy: 3 }, { dx: -3, dy: 0 }, { dx: 0, dy: -3 }]) {
+      const nx = startX + dir.dx, ny = startY + dir.dy;
+      if (isWalkable(map, nx, ny)) {
+        path.push({ x: nx, y: ny });
+        break;
+      }
+    }
+  }
+
   return path;
 }
 
@@ -53,7 +64,6 @@ export function spawnGuards(heist: HeistState, target: TargetDef, seed: number, 
   const maxGuards = Math.round(target.guardCount[1] * diff.guardCountMult);
   const guardCount = minGuards + Math.floor(rng() * (maxGuards - minGuards + 1));
 
-  // Collect valid floor positions (not entry points or loot spots)
   const floorPositions: { x: number; y: number }[] = [];
   for (let y = 0; y < heist.map.height; y++) {
     for (let x = 0; x < heist.map.width; x++) {
@@ -89,6 +99,9 @@ export function spawnGuards(heist: HeistState, target: TargetDef, seed: number, 
       canSeeThief: null,
       isElite,
       isDog,
+      chasePath: [],
+      lastKnownThiefPos: null,
+      waitTimer: 0,
     };
 
     heist.guards.push(guard);
@@ -101,75 +114,132 @@ export function updateGuardMovement(heist: HeistState, dt: number): void {
     if (guard.stunTimer > 0) { guard.stunTimer -= dt; continue; }
     if (guard.sleepTimer > 0) { guard.sleepTimer -= dt; continue; }
 
-    let targetX: number, targetY: number;
-    let speed = guard.speed;
+    // Wait timer (e.g., pausing at waypoints or investigation points)
+    if (guard.waitTimer > 0) { guard.waitTimer -= dt; continue; }
 
-    if (guard.alertLevel === AlertLevel.ALARMED && guard.canSeeThief) {
-      // Chase the thief directly
-      const thief = heist.thieves.find(t => t.id === guard.canSeeThief);
-      if (thief && thief.alive && !thief.captured) {
-        targetX = thief.x;
-        targetY = thief.y;
-        speed *= 1.5; // sprint when chasing
-      } else {
-        guard.canSeeThief = null;
-        targetX = guard.patrolPath[guard.patrolIndex]?.x ?? guard.x;
-        targetY = guard.patrolPath[guard.patrolIndex]?.y ?? guard.y;
+    let speed = guard.speed;
+    let moveTarget: { x: number; y: number } | null = null;
+
+    if (guard.alertLevel === AlertLevel.ALARMED) {
+      speed *= 1.5;
+
+      if (guard.canSeeThief) {
+        // Can see thief — chase with A* pathfinding
+        const thief = heist.thieves.find(t => t.id === guard.canSeeThief);
+        if (thief && thief.alive && !thief.captured) {
+          guard.lastKnownThiefPos = { x: thief.x, y: thief.y };
+          // Recalculate path periodically (every ~0.5s worth of movement)
+          if (guard.chasePath.length === 0 || Math.random() < dt * 2) {
+            guard.chasePath = findPath(heist.map, guard.x, guard.y, thief.x, thief.y, true, 300);
+          }
+          moveTarget = getNextWaypoint(guard.chasePath, guard.x, guard.y);
+          if (!moveTarget) {
+            // Direct approach if path fails
+            moveTarget = { x: thief.x, y: thief.y };
+          }
+        } else {
+          guard.canSeeThief = null;
+        }
       }
-    } else if (guard.investigating) {
-      // Move to investigation point
-      targetX = guard.investigating.x;
-      targetY = guard.investigating.y;
+
+      if (!moveTarget && guard.lastKnownThiefPos) {
+        // Lost sight — go to last known position
+        if (guard.chasePath.length === 0) {
+          guard.chasePath = findPath(heist.map, guard.x, guard.y,
+            guard.lastKnownThiefPos.x, guard.lastKnownThiefPos.y, true, 300);
+        }
+        moveTarget = getNextWaypoint(guard.chasePath, guard.x, guard.y);
+        if (!moveTarget) {
+          // Arrived at last known position — search nearby
+          guard.lastKnownThiefPos = null;
+          guard.chasePath = [];
+          guard.investigating = { x: guard.x + (Math.random() - 0.5) * 6, y: guard.y + (Math.random() - 0.5) * 6 };
+          guard.waitTimer = 1.5; // Pause to look around
+          continue;
+        }
+      }
+    }
+
+    if (!moveTarget && guard.investigating) {
+      // Move to investigation point using pathfinding
       speed *= 1.2;
-      // Check if arrived
-      const dx = targetX - guard.x, dy = targetY - guard.y;
-      if (dx * dx + dy * dy < 1) {
-        guard.investigating = null;
+      if (guard.chasePath.length === 0) {
+        guard.chasePath = findPath(heist.map, guard.x, guard.y,
+          guard.investigating.x, guard.investigating.y, true, 200);
       }
-    } else {
+      moveTarget = getNextWaypoint(guard.chasePath, guard.x, guard.y);
+      if (!moveTarget) {
+        // Arrived at investigation point — look around then return to patrol
+        guard.investigating = null;
+        guard.chasePath = [];
+        guard.waitTimer = 2.0; // Look around
+        continue;
+      }
+    }
+
+    if (!moveTarget) {
       // Normal patrol
       if (guard.patrolPath.length === 0) continue;
       const waypoint = guard.patrolPath[guard.patrolIndex];
-      targetX = waypoint.x;
-      targetY = waypoint.y;
+      if (!waypoint) continue;
 
-      // Check if reached waypoint
-      const dx = targetX - guard.x, dy = targetY - guard.y;
+      const dx = waypoint.x - guard.x, dy = waypoint.y - guard.y;
       if (dx * dx + dy * dy < 0.5) {
+        // Reached waypoint — advance
+        guard.waitTimer = 0.5 + Math.random() * 1.0; // Pause briefly at waypoint
         if (guard.patrolForward) {
           guard.patrolIndex++;
           if (guard.patrolIndex >= guard.patrolPath.length) {
             guard.patrolForward = false;
-            guard.patrolIndex = guard.patrolPath.length - 2;
+            guard.patrolIndex = Math.max(0, guard.patrolPath.length - 2);
           }
         } else {
           guard.patrolIndex--;
           if (guard.patrolIndex < 0) {
             guard.patrolForward = true;
-            guard.patrolIndex = 1;
+            guard.patrolIndex = Math.min(1, guard.patrolPath.length - 1);
           }
         }
-        guard.patrolIndex = Math.max(0, Math.min(guard.patrolIndex, guard.patrolPath.length - 1));
         continue;
       }
+
+      // Use A* if direct path is blocked
+      if (guard.chasePath.length === 0) {
+        guard.chasePath = findPath(heist.map, guard.x, guard.y, waypoint.x, waypoint.y, true, 150);
+      }
+      moveTarget = getNextWaypoint(guard.chasePath, guard.x, guard.y);
+      if (!moveTarget) moveTarget = waypoint; // Fallback to direct
     }
 
-    // Move toward target
-    const dx = targetX! - guard.x;
-    const dy = targetY! - guard.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist > 0.1) {
-      const step = Math.min(speed * dt, dist);
-      guard.x += (dx / dist) * step;
-      guard.y += (dy / dist) * step;
-      guard.angle = Math.atan2(dy, dx);
+    // Execute movement
+    if (moveTarget) {
+      const dx = moveTarget.x - guard.x;
+      const dy = moveTarget.y - guard.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist > 0.1) {
+        const step = Math.min(speed * dt, dist);
+        const nx = guard.x + (dx / dist) * step;
+        const ny = guard.y + (dy / dist) * step;
 
-      // Check for caltrops
-      const tx = Math.round(guard.x), ty = Math.round(guard.y);
-      if (ty >= 0 && ty < heist.map.height && tx >= 0 && tx < heist.map.width) {
-        if (heist.map.tiles[ty][tx].caltrops) {
-          guard.stunTimer = 3;
-          heist.map.tiles[ty][tx].caltrops = false;
+        // Only move if target position is walkable
+        const tileX = Math.round(nx), tileY = Math.round(ny);
+        if (tileY >= 0 && tileY < heist.map.height && tileX >= 0 && tileX < heist.map.width) {
+          const tile = heist.map.tiles[tileY][tileX];
+          if (tile.type !== "wall" && tile.type !== "locked_door") {
+            guard.x = nx;
+            guard.y = ny;
+            guard.angle = Math.atan2(dy, dx);
+          } else {
+            // Path is stale, recalculate
+            guard.chasePath = [];
+          }
+
+          // Check for caltrops
+          if (tile.caltrops) {
+            guard.stunTimer = 3;
+            tile.caltrops = false;
+            guard.chasePath = [];
+          }
         }
       }
     }
@@ -187,7 +257,6 @@ export function checkGuardCatchThief(heist: HeistState): string[] {
       const dx = thief.x - guard.x;
       const dy = thief.y - guard.y;
       if (dx * dx + dy * dy < 1.5) {
-        // Caught!
         thief.captured = true;
         thief.alive = false;
         caught.push(thief.id);
@@ -204,7 +273,6 @@ export function spawnReinforcements(heist: HeistState, seed: number): void {
   heist.reinforcementTimer = 0;
   heist.reinforcementsSpawned++;
 
-  // Spawn from entry points
   const entry = heist.map.entryPoints[heist.reinforcementsSpawned % heist.map.entryPoints.length];
   if (!entry) return;
 
@@ -229,6 +297,9 @@ export function spawnReinforcements(heist: HeistState, seed: number): void {
       canSeeThief: null,
       isElite: false,
       isDog: false,
+      chasePath: [],
+      lastKnownThiefPos: null,
+      waitTimer: 0,
     };
     heist.guards.push(guard);
   }

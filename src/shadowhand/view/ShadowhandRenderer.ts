@@ -260,9 +260,24 @@ export class ShadowhandRenderer {
     const bodyAlpha = thief.shadowMeld ? 0.4 : 1.0;
     g.circle(px, py, size).fill({ color: bodyColor, alpha: bodyAlpha });
 
+    // Disguise shimmer
+    if (thief.disguised) {
+      g.circle(px, py, size + 3).stroke({ color: 0xcc8844, width: 1, alpha: 0.4 + Math.sin(Date.now() / 300) * 0.2 });
+    }
+
+    // Shadow meld aura
+    if (thief.shadowMeld) {
+      g.circle(px, py, size + 4).stroke({ color: 0x3322aa, width: 1.5, alpha: 0.3 + Math.sin(Date.now() / 200) * 0.15 });
+    }
+
     // Carrying loot indicator
     if (thief.carryingLoot.length > 0) {
       g.circle(px + size, py - size, 3).fill({ color: 0xffd700, alpha: 0.8 });
+    }
+
+    // Crouching indicator
+    if (thief.crouching) {
+      g.moveTo(px - size - 2, py + size + 2).lineTo(px + size + 2, py + size + 2).stroke({ color: 0x6688aa, width: 1, alpha: 0.5 });
     }
 
     // HP bar
@@ -274,7 +289,7 @@ export class ShadowhandRenderer {
     }
   }
 
-  updateCamera(heist: HeistState, sw: number, sh: number): void {
+  updateCamera(heist: HeistState, sw: number, sh: number, dt: number): void {
     // Center camera on selected thief
     const selected = heist.thieves.find(t => t.selected && t.alive);
     if (!selected) return;
@@ -282,9 +297,16 @@ export class ShadowhandRenderer {
     const targetX = sw / 2 - selected.x * T;
     const targetY = sh / 2 - selected.y * T;
 
-    // Smooth lerp
-    this._offsetX += (targetX - this._offsetX) * 0.1;
-    this._offsetY += (targetY - this._offsetY) * 0.1;
+    // Frame-rate independent smooth lerp
+    const lerpSpeed = 1 - Math.pow(0.001, dt);
+    this._offsetX += (targetX - this._offsetX) * lerpSpeed;
+    this._offsetY += (targetY - this._offsetY) * lerpSpeed;
+
+    // Clamp to map bounds
+    const mapW = heist.map.width * T;
+    const mapH = heist.map.height * T;
+    this._offsetX = Math.min(0, Math.max(sw - mapW, this._offsetX));
+    this._offsetY = Math.min(60, Math.max(sh - mapH - 60, this._offsetY)); // Account for HUD
   }
 
   destroy(): void {

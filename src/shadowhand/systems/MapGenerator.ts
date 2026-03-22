@@ -254,6 +254,118 @@ function placeEntryPoints(map: MapTile[][], target: TargetDef, rng: () => number
   return entries;
 }
 
+function placeWindows(map: MapTile[][], rooms: Room[], rng: () => number): void {
+  // Place windows on room walls adjacent to the map exterior
+  for (const room of rooms) {
+    // Check each edge of the room
+    for (let x = room.x; x < room.x + room.w; x++) {
+      // Top edge
+      if (room.y > 0 && map[room.y - 1]?.[x]?.type === "wall" && rng() < 0.15) {
+        map[room.y - 1][x].type = "window";
+      }
+      // Bottom edge
+      if (room.y + room.h < map.length && map[room.y + room.h]?.[x]?.type === "wall" && rng() < 0.15) {
+        map[room.y + room.h][x].type = "window";
+      }
+    }
+    for (let y = room.y; y < room.y + room.h; y++) {
+      // Left edge
+      if (room.x > 0 && map[y]?.[room.x - 1]?.type === "wall" && rng() < 0.15) {
+        map[y][room.x - 1].type = "window";
+      }
+      // Right edge
+      if (room.x + room.w < map[0].length && map[y]?.[room.x + room.w]?.type === "wall" && rng() < 0.15) {
+        map[y][room.x + room.w].type = "window";
+      }
+    }
+  }
+  // Add light around windows
+  const wr = ShadowhandConfig.WINDOW_LIGHT_RADIUS;
+  for (let y = 0; y < map.length; y++) {
+    for (let x = 0; x < map[0].length; x++) {
+      if (map[y][x].type === "window") {
+        for (let dy = -Math.ceil(wr); dy <= Math.ceil(wr); dy++) {
+          for (let dx = -Math.ceil(wr); dx <= Math.ceil(wr); dx++) {
+            const ny = y + dy, nx = x + dx;
+            if (ny >= 0 && ny < map.length && nx >= 0 && nx < map[0].length) {
+              if (dx * dx + dy * dy <= wr * wr && map[ny][nx].type !== "wall") {
+                map[ny][nx].lit = true;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+function placeSecretDoors(map: MapTile[][], rooms: Room[], rng: () => number, tier: number): void {
+  // Higher tier = more secret doors
+  const count = Math.max(0, tier - 1);
+  let placed = 0;
+  for (let attempts = 0; attempts < 200 && placed < count; attempts++) {
+    const room = rooms[Math.floor(rng() * rooms.length)];
+    // Try to place a secret door on a wall that connects to another room or corridor
+    const edges: { x: number; y: number }[] = [];
+    for (let x = room.x - 1; x <= room.x + room.w; x++) {
+      if (room.y - 1 >= 0 && map[room.y - 1]?.[x]?.type === "wall") edges.push({ x, y: room.y - 1 });
+      if (room.y + room.h < map.length && map[room.y + room.h]?.[x]?.type === "wall") edges.push({ x, y: room.y + room.h });
+    }
+    for (let y = room.y - 1; y <= room.y + room.h; y++) {
+      if (room.x - 1 >= 0 && map[y]?.[room.x - 1]?.type === "wall") edges.push({ x: room.x - 1, y });
+      if (room.x + room.w < map[0].length && map[y]?.[room.x + room.w]?.type === "wall") edges.push({ x: room.x + room.w, y });
+    }
+    if (edges.length === 0) continue;
+    const edge = edges[Math.floor(rng() * edges.length)];
+    // Check if the other side of the wall has a floor tile
+    const dirs = [[0, -1], [0, 1], [-1, 0], [1, 0]];
+    for (const [dx, dy] of dirs) {
+      const nx = edge.x + dx, ny = edge.y + dy;
+      if (ny >= 0 && ny < map.length && nx >= 0 && nx < map[0].length) {
+        if (map[ny][nx].type === "floor" && map[ny][nx].roomId !== room.id) {
+          map[edge.y][edge.x].type = "secret_door";
+          placed++;
+          break;
+        }
+      }
+    }
+  }
+}
+
+function placeMagicWards(map: MapTile[][], rooms: Room[], target: TargetDef, rng: () => number): void {
+  // Place magic wards near high-value rooms (treasury, vault, primary loot)
+  const wardCount = 1 + Math.floor(target.tier / 2);
+  let placed = 0;
+  // Find rooms near primary loot
+  for (const room of rooms) {
+    if (placed >= wardCount) break;
+    if (room.type === "treasury" || room.type === "vault" || room.type === "throne") {
+      // Place wards at doorway tiles
+      for (let y = room.y - 1; y <= room.y + room.h; y++) {
+        for (let x = room.x - 1; x <= room.x + room.w; x++) {
+          if (y < 0 || y >= map.length || x < 0 || x >= map[0].length) continue;
+          if ((map[y][x].type === "door" || map[y][x].type === "locked_door") && rng() < 0.5) {
+            map[y][x].type = "locked_door"; // Magic wards lock doors
+            map[y][x].trapArmed = true; // Ward trap — triggers alert if forced
+            placed++;
+            if (placed >= wardCount) break;
+          }
+        }
+        if (placed >= wardCount) break;
+      }
+    }
+  }
+  // If not enough placed, add some near loot spots
+  for (let attempts = 0; attempts < 100 && placed < wardCount; attempts++) {
+    const x = 2 + Math.floor(rng() * (map[0].length - 4));
+    const y = 2 + Math.floor(rng() * (map.length - 4));
+    if (map[y][x].type === "floor" && !map[y][x].trapArmed && map[y][x].loot) {
+      map[y][x].trapArmed = true; // Ward near loot
+      placed++;
+    }
+  }
+}
+
 export function generateHeistMap(target: TargetDef, seed: number): HeistMap {
   const rng = seedRng(seed);
   const w = target.mapWidth;
@@ -330,8 +442,11 @@ export function generateHeistMap(target: TargetDef, seed: number): HeistMap {
 
   // Place features
   placeDoors(tiles, rooms, rng);
+  placeWindows(tiles, rooms, rng);
+  placeSecretDoors(tiles, rooms, rng, target.tier);
   placeTorches(tiles, rng);
   if (target.hasTraps) placeTraps(tiles, target, rng);
+  if (target.hasMagicWards) placeMagicWards(tiles, rooms, target, rng);
   const primaryLootPos = placeLoot(tiles, rooms, target, rng);
   const entryPoints = placeEntryPoints(tiles, target, rng);
 
