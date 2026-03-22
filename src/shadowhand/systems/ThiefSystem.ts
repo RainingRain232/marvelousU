@@ -36,6 +36,11 @@ export function createThiefUnit(crew: CrewMember, x: number, y: number): ThiefUn
     role: crew.role,
     abilities: [...arch.abilities],
     activePath: [],
+    detectionLevel: 0,
+    nearestGuardDist: 999,
+    inShadow: false,
+    injured: false,
+    injuryPenalty: 0,
   };
 }
 

@@ -163,5 +163,53 @@ export function updateGuardVision(heist: HeistState, difficulty: ShadowhandDiffi
     }
   }
 
+  // --- Stealth feedback: update detection levels on thieves ---
+  for (const thief of heist.thieves) {
+    if (!thief.alive || thief.captured || thief.escaped) continue;
+    let maxDetection = 0;
+    let closestGuardDist = 999;
+
+    for (const guard of heist.guards) {
+      if (guard.stunTimer > 0 || guard.sleepTimer > 0) continue;
+      const dx = thief.x - guard.x, dy = thief.y - guard.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < closestGuardDist) closestGuardDist = dist;
+
+      // Detection contribution from this guard
+      if (guard.canSeeThief === thief.id) {
+        maxDetection = Math.max(maxDetection, guard.alertTimer);
+      }
+    }
+
+    thief.detectionLevel = Math.min(100, maxDetection * 100 / ShadowhandConfig.ALERT_ALARMED_THRESHOLD);
+    thief.nearestGuardDist = closestGuardDist;
+
+    // Update shadow status
+    const tx = Math.round(thief.x), ty = Math.round(thief.y);
+    if (tx >= 0 && tx < heist.map.width && ty >= 0 && ty < heist.map.height) {
+      thief.inShadow = !heist.map.tiles[ty][tx].lit;
+    }
+  }
+
+  // --- Guard communication: alarmed guards alert nearby guards ---
+  for (const guard of heist.guards) {
+    if (guard.alertLevel !== AlertLevel.ALARMED || !guard.canSeeThief) continue;
+    const thief = heist.thieves.find(t => t.id === guard.canSeeThief);
+    if (!thief) continue;
+
+    for (const other of heist.guards) {
+      if (other === guard || other.stunTimer > 0 || other.sleepTimer > 0) continue;
+      const dx = other.x - guard.x, dy = other.y - guard.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      // Guards within 8 tiles hear the alert
+      if (dist < 8 && other.alertLevel < AlertLevel.SUSPICIOUS) {
+        other.alertTimer = Math.max(other.alertTimer, ShadowhandConfig.ALERT_SUSPICIOUS_THRESHOLD * 0.8);
+        other.alertLevel = AlertLevel.SUSPICIOUS;
+        other.investigating = { x: thief.x, y: thief.y };
+        other.chasePath = [];
+      }
+    }
+  }
+
   return allSightings;
 }

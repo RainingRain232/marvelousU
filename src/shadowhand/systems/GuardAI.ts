@@ -185,8 +185,14 @@ export function updateGuardMovement(heist: HeistState, dt: number): void {
 
       const dx = waypoint.x - guard.x, dy = waypoint.y - guard.y;
       if (dx * dx + dy * dy < 0.5) {
-        // Reached waypoint — advance
-        guard.waitTimer = 0.5 + Math.random() * 1.0; // Pause briefly at waypoint
+        // Reached waypoint — advance (with random deviation 15% of time)
+        guard.waitTimer = 0.5 + Math.random() * 1.0;
+        if (Math.random() < 0.15 && guard.alertLevel === AlertLevel.UNAWARE) {
+          // Random deviation: look around in a random direction
+          const devAngle = Math.random() * Math.PI * 2;
+          guard.angle = devAngle; // Turn to face random direction
+          guard.waitTimer += 1.0 + Math.random() * 1.5; // Linger longer
+        }
         if (guard.patrolForward) {
           guard.patrolIndex++;
           if (guard.patrolIndex >= guard.patrolPath.length) {

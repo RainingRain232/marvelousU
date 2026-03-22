@@ -14,6 +14,7 @@ import { updateThiefMovement, createThiefUnit, updateSmoke, updateShadowMeld } f
 import { updateGuardVision } from "./VisionSystem";
 import { updateNoiseEvents, guardsHearNoise, updateGlobalAlert } from "./NoiseSystem";
 import { selectModifiers, applyModifiers, generateHeistEvents, updateHeistEvents, spawnParticles, MODIFIER_DISPLAY } from "./HeistEventSystem";
+import { updateCrewBonds, getCrewBondBonus } from "./ContractSystem";
 
 export function initHeist(state: ShadowhandState): void {
   if (!state.currentTarget) return;
@@ -179,7 +180,10 @@ export function updateHeist(state: ShadowhandState, dt: number): void {
     if (crewMember) {
       crewMember.captured = true;
       crewMember.alive = false;
-      addLog(state, `${crewMember.name} has been captured!`);
+      if (!state.guild.capturedCrewIds.includes(id)) {
+        state.guild.capturedCrewIds.push(id);
+      }
+      addLog(state, `${crewMember.name} has been captured! A rescue contract may appear.`);
     }
   }
 
@@ -302,6 +306,28 @@ function completeHeist(state: ShadowhandState): void {
     const fenceBonus = Math.floor(goldEarned * 0.15);
     state.guild.gold += fenceBonus;
     addLog(state, `Master Fence bonus: +${fenceBonus}g`);
+  }
+
+  // Crew bond bonus
+  const escapedIds = escapedCrew.map(t => t.crewMemberId);
+  const bondBonus = getCrewBondBonus(state, escapedIds);
+  if (bondBonus > 0) {
+    const bondScore = Math.floor(score * bondBonus);
+    score += bondScore;
+    addLog(state, `Crew Bond bonus: +${bondScore} (${Math.round(bondBonus * 100)}%)`);
+  }
+  updateCrewBonds(state, escapedIds);
+
+  // Apply injuries to surviving crew (10% chance per crew member)
+  for (const thief of escapedCrew) {
+    if (thief.hp < thief.maxHp * 0.5 && Math.random() < 0.3) {
+      const cm = state.guild.roster.find(c => c.id === thief.crewMemberId);
+      if (cm) {
+        (cm as any).injured = true;
+        (cm as any).injuryPenalty = 0.1 + Math.random() * 0.15;
+        addLog(state, `${cm.name} was injured during the heist. Performance reduced until healed.`);
+      }
+    }
   }
 
   state.score += score;

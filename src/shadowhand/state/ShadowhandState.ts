@@ -96,6 +96,13 @@ export interface ThiefUnit {
   role: import("../config/CrewDefs").CrewRole;
   abilities: string[];
   activePath: { x: number; y: number }[];
+  // Stealth feedback
+  detectionLevel: number; // 0-100, how close to being spotted
+  nearestGuardDist: number; // distance to nearest aware guard
+  inShadow: boolean;
+  // Injury system
+  injured: boolean;
+  injuryPenalty: number; // 0-0.3, speed/ability penalty
 }
 
 export interface Room {
@@ -215,6 +222,19 @@ export type GuildUpgradeId =
   | "thieves_cant"      // crew share vision range bonus
   ;
 
+export interface Contract {
+  id: string;
+  name: string;
+  desc: string;
+  targetId: string;
+  objective: HeistObjective;
+  bonusGold: number;
+  bonusRep: number;
+  expiresDay: number;
+  isRescue: boolean;
+  rescueCrewId?: string;
+}
+
 export interface GuildState {
   gold: number;
   reputation: number;
@@ -233,6 +253,12 @@ export interface GuildState {
   longestStreak: number;
   currentStreak: number;
   guildName: string;
+  // Contracts & flavor
+  availableContracts: Contract[];
+  news: string[];
+  capturedCrewIds: string[]; // crew that can be rescued
+  bonds: Map<string, number>; // "crewId1_crewId2" -> bond strength
+  tutorialDone: boolean;
 }
 
 export interface ShadowhandState {
@@ -286,6 +312,11 @@ export function createShadowhandState(seed: number, difficulty: ShadowhandDiffic
       longestStreak: 0,
       currentStreak: 0,
       guildName: "The Shadowhand",
+      availableContracts: [],
+      news: ["The guild is open for business.", "Camelot sleeps. Your knives are sharp."],
+      capturedCrewIds: [],
+      bonds: new Map(),
+      tutorialDone: false,
     },
     currentTarget: null,
     selectedCrew: [],

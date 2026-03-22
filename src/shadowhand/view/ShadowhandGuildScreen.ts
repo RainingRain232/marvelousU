@@ -113,6 +113,37 @@ export class ShadowhandGuildScreen {
 
   private _drawMissionTab(state: ShadowhandState, sw: number, sh: number, startY: number): void {
     let y = startY;
+
+    // Guild news ticker
+    if (state.guild.news.length > 0) {
+      const newsG = new Graphics();
+      newsG.roundRect(20, y, sw - 40, 14 * Math.min(state.guild.news.length, 3) + 8, 4).fill({ color: 0x0a0c0a, alpha: 0.5 });
+      newsG.roundRect(20, y, sw - 40, 14 * Math.min(state.guild.news.length, 3) + 8, 4).stroke({ color: 0x334433, width: 0.5 });
+      this.container.addChild(newsG);
+      for (let ni = 0; ni < Math.min(state.guild.news.length, 3); ni++) {
+        this._text(`\u25B8 ${state.guild.news[ni]}`, 30, y + 4 + ni * 14, { fontSize: 9, fill: 0x889988, fontStyle: "italic" });
+      }
+      y += 14 * Math.min(state.guild.news.length, 3) + 16;
+    }
+
+    // Active contracts
+    if (state.guild.availableContracts.length > 0) {
+      this._text("\u2620 Contracts", sw / 2, y, { fontSize: 13, fill: 0xffaa44, fontWeight: "bold", letterSpacing: 1 }, true);
+      y += 20;
+      for (const contract of state.guild.availableContracts.slice(0, 3)) {
+        const cg = new Graphics();
+        const isRescue = contract.isRescue;
+        cg.roundRect(30, y, sw - 60, 38, 4).fill({ color: isRescue ? 0x0a0808 : 0x0a0a06, alpha: 0.6 });
+        cg.roundRect(30, y, sw - 60, 38, 4).stroke({ color: isRescue ? 0xaa4444 : 0xaa8844, width: 1, alpha: 0.4 });
+        this.container.addChild(cg);
+        this._text(contract.name, 42, y + 3, { fontSize: 10, fill: isRescue ? 0xff6644 : 0xccaa66, fontWeight: "bold" });
+        this._text(contract.desc, 42, y + 16, { fontSize: 8, fill: 0x889977, wordWrap: true, wordWrapWidth: sw - 120 });
+        this._text(`Day ${contract.expiresDay}`, sw - 80, y + 3, { fontSize: 8, fill: 0x888877 });
+        y += 42;
+      }
+      y += 8;
+    }
+
     this._text("Available Targets", sw / 2, y, { fontSize: 14, fill: 0xccaa88, fontWeight: "bold" }, true);
     y += 25;
 

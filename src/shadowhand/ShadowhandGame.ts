@@ -15,6 +15,7 @@ import { getEquipmentById } from "./config/EquipmentDefs";
 import { getUpgradeById as _getUpgradeById } from "./config/GuildUpgradeDefs";
 
 import { initHeist, updateHeist, decayHeat, consumeEquipment, checkInquisitionThreat, payInquisitionBribe, sufferInquisitionRaid } from "./systems/HeistSystem";
+import { generateContracts, generateNews, updateCrewBonds } from "./systems/ContractSystem";
 import {
   moveThiefTo, useSmokeBomb, useSleepDart, useFlashPowder, placeCaltrops,
   unlockDoor, extinguishTorch,
@@ -115,6 +116,10 @@ export class ShadowhandGame {
     // Check Inquisition threat before showing guild
     this._checkInquisition();
 
+    // Generate fresh contracts and news
+    generateContracts(this._state);
+    generateNews(this._state);
+
     this._guildScreen.setHeistCallback((target, crewIds, equipIds) => {
       viewManager.removeFromLayer("ui", this._guildScreen.container);
       this._guildScreen.hide();
@@ -201,6 +206,16 @@ export class ShadowhandGame {
   private _startHeist(): void {
     initHeist(this._state);
 
+    // Tutorial hints on first heist
+    if (!this._state.guild.tutorialDone) {
+      this._state.guild.tutorialDone = true;
+      addLog(this._state, "\u2139 TUTORIAL: Click to move your thief.");
+      addLog(this._state, "\u2139 Tab switches crew. C crouches. Space picks locks.");
+      addLog(this._state, "\u2139 E uses your role ability. Q uses secondary.");
+      addLog(this._state, "\u2139 Stay in shadows. Avoid guard vision cones.");
+      addLog(this._state, "\u2139 Reach an exit point (green arch) to escape!");
+    }
+
     this._renderer.init();
     viewManager.addToLayer("background", this._renderer.container);
 
@@ -239,6 +254,14 @@ export class ShadowhandGame {
   }
 
   private _showResults(): void {
+    // Audio cue for heist outcome
+    if (this._state.phase === ShadowhandPhase.VICTORY) {
+      audioManager.playJingle("victory");
+    } else if (this._state.phase === ShadowhandPhase.GAME_OVER) {
+      // No jingle for defeat (silence is powerful)
+    } else {
+      audioManager.playJingle("level_up"); // heist complete jingle
+    }
     this._cleanupHeistUI();
 
     this._resultsScreen.setContinueCallback(() => {

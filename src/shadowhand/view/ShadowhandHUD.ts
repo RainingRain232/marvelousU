@@ -116,6 +116,33 @@ export class ShadowhandHUD {
     const fillColor = alertFill < 0.4 ? 0x44aa44 : alertFill < 0.7 ? 0xddaa22 : 0xff3333;
     this._alertGfx.rect(barX, barY, barW * alertFill, barH).fill({ color: fillColor });
 
+    // Stealth detection meter for selected thief
+    const selThief = heist.thieves.find(t => t.selected && t.alive);
+    if (selThief) {
+      const dmX = 10, dmY = 54, dmW = 60, dmH = 6;
+      // Background label
+      const shadowLabel = new Text({ text: selThief.inShadow ? "\u{1F319} Shadow" : "\u2600 Exposed", style: new TextStyle({ fontFamily: FONT, fontSize: 8, fill: selThief.inShadow ? 0x4466aa : 0xccaa44 }) });
+      shadowLabel.position.set(dmX, dmY - 10);
+      this.container.addChild(shadowLabel);
+      this._crewTexts.push(shadowLabel);
+      // Detection bar
+      this._alertGfx.rect(dmX, dmY, dmW, dmH).fill({ color: 0x111111 });
+      const det = selThief.detectionLevel / 100;
+      const detColor = det < 0.3 ? 0x44aa44 : det < 0.6 ? 0xddaa22 : 0xff3333;
+      this._alertGfx.rect(dmX, dmY, dmW * det, dmH).fill({ color: detColor });
+      this._alertGfx.rect(dmX, dmY, dmW, dmH).stroke({ color: 0x333333, width: 0.5 });
+      // Proximity warning
+      if (selThief.nearestGuardDist < 4) {
+        const proxAlpha = Math.max(0, 1 - selThief.nearestGuardDist / 4);
+        const proxPulse = proxAlpha * (0.5 + Math.sin(Date.now() / 150) * 0.3);
+        const proxLabel = new Text({ text: "\u26A0 GUARD NEARBY", style: new TextStyle({ fontFamily: FONT, fontSize: 9, fill: 0xff4444, fontWeight: "bold" }) });
+        proxLabel.alpha = proxPulse;
+        proxLabel.position.set(dmX, dmY + 8);
+        this.container.addChild(proxLabel);
+        this._crewTexts.push(proxLabel);
+      }
+    }
+
     // Loot
     let totalVal = 0;
     for (const l of heist.lootCollected) totalVal += l.value;
