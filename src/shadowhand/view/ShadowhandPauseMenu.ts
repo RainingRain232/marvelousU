@@ -30,12 +30,27 @@ export class ShadowhandPauseMenu {
     const pw = 480, ph = 460, px = (sw - pw) / 2, py = (sh - ph) / 2;
     const panel = new Graphics();
     panel.roundRect(px, py, pw, ph, 10).fill({ color: 0x06080a, alpha: 0.97 });
+    // Stone texture (matching guild/results screens)
+    for (let row = 0; row < Math.ceil(ph / 18); row++) {
+      const ry = py + row * 18;
+      const offset = (row % 2) * 24;
+      panel.moveTo(px + 10, ry).lineTo(px + pw - 10, ry).stroke({ color: COL, width: 0.3, alpha: 0.025 });
+      for (let col = 0; col < Math.ceil(pw / 48) + 1; col++) {
+        const ccx = px + col * 48 + offset;
+        if (ccx > px + 8 && ccx < px + pw - 8) {
+          panel.moveTo(ccx, ry).lineTo(ccx, ry + 18).stroke({ color: COL, width: 0.2, alpha: 0.02 });
+        }
+      }
+    }
+    // Borders
     panel.roundRect(px, py, pw, ph, 10).stroke({ color: COL, width: 2, alpha: 0.5 });
     panel.roundRect(px + 3, py + 3, pw - 6, ph - 6, 9).stroke({ color: COL_DK, width: 0.5, alpha: 0.12 });
-    // Corners
+    // Corners with L-brackets
     for (const [cx, cy] of [[px + 10, py + 10], [px + pw - 10, py + 10], [px + 10, py + ph - 10], [px + pw - 10, py + ph - 10]]) {
       panel.circle(cx, cy, 3.5).fill({ color: COL, alpha: 0.35 });
       panel.circle(cx, cy, 1.5).fill({ color: COL, alpha: 0.6 });
+      const dx = cx < sw / 2 ? 1 : -1, dy = cy < sh / 2 ? 1 : -1;
+      panel.moveTo(cx, cy + dy * 8).lineTo(cx, cy).lineTo(cx + dx * 8, cy).stroke({ color: COL, width: 0.7, alpha: 0.2 });
     }
     this.container.addChild(panel);
 

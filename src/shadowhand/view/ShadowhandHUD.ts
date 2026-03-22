@@ -200,8 +200,15 @@ export class ShadowhandHUD {
 
     for (const thief of heist.thieves) {
       const color = thief.selected ? 0x44ff44 : thief.alive ? 0x88aacc : thief.escaped ? 0x448844 : 0x553333;
-      this._crewGfx.roundRect(5, cy, 140, 38, 3).fill({ color: COL_BG, alpha: 0.6 });
+      // Drop shadow
+      this._crewGfx.roundRect(7, cy + 2, 140, 38, 3).fill({ color: 0x000000, alpha: 0.2 });
+      // Card body
+      this._crewGfx.roundRect(5, cy, 140, 38, 3).fill({ color: COL_BG, alpha: 0.65 });
       this._crewGfx.roundRect(5, cy, 140, 38, 3).stroke({ color, width: thief.selected ? 1.5 : 0.5, alpha: 0.5 });
+      // Selected highlight bar
+      if (thief.selected) {
+        this._crewGfx.moveTo(10, cy + 1).lineTo(135, cy + 1).stroke({ color: 0x44ff44, width: 1.5, alpha: 0.3 });
+      }
 
       const crew = state.guild.roster.find(c => c.id === thief.crewMemberId);
       const arch = CREW_ARCHETYPES[thief.role];
@@ -319,9 +326,14 @@ export class ShadowhandHUD {
       this._crewTexts.push(annText); // reuse cleanup array
     }
 
-    // Active modifiers (top-right corner, small)
+    // Active modifiers (top-right corner, framed)
     if (heist.modifiers.length > 0) {
-      let my = 52;
+      const modH = heist.modifiers.length * 12 + 6;
+      const modBg = new Graphics();
+      modBg.roundRect(sw - 130, 53, 125, modH, 3).fill({ color: COL_BG, alpha: 0.5 });
+      modBg.roundRect(sw - 130, 53, 125, modH, 3).stroke({ color: 0xaa8844, width: 0.5, alpha: 0.2 });
+      this.container.addChild(modBg);
+      let my = 56;
       for (const mod of heist.modifiers) {
         const modText = new Text({ text: `\u26A0 ${mod.replace(/_/g, " ")}`, style: new TextStyle({ fontFamily: FONT, fontSize: 8, fill: 0xaa8844 }) });
         modText.anchor.set(1, 0);
@@ -334,12 +346,23 @@ export class ShadowhandHUD {
 
     // Minimap
     this._minimapGfx.clear();
+    // Remove old child texts from minimap
+    while (this._minimapGfx.children.length > 0) this._minimapGfx.removeChildAt(0);
     const mmW = 130, mmH = 110;
     const map = heist.map;
     const sx = mmW / map.width, sy = mmH / map.height;
+    // Drop shadow
+    this._minimapGfx.roundRect(-3, -3, mmW + 10, mmH + 10, 4).fill({ color: 0x000000, alpha: 0.3 });
     // Background
-    this._minimapGfx.roundRect(-4, -4, mmW + 8, mmH + 8, 3).fill({ color: 0x000000, alpha: 0.65 });
-    this._minimapGfx.roundRect(-4, -4, mmW + 8, mmH + 8, 3).stroke({ color: COL, width: 0.8, alpha: 0.25 });
+    this._minimapGfx.roundRect(-4, -4, mmW + 8, mmH + 8, 3).fill({ color: 0x040408, alpha: 0.75 });
+    // Double border
+    this._minimapGfx.roundRect(-4, -4, mmW + 8, mmH + 8, 3).stroke({ color: COL, width: 1, alpha: 0.3 });
+    this._minimapGfx.roundRect(-2, -2, mmW + 4, mmH + 4, 2).stroke({ color: COL, width: 0.5, alpha: 0.1 });
+    // Corner dots
+    this._minimapGfx.circle(-2, -2, 1.5).fill({ color: COL, alpha: 0.25 });
+    this._minimapGfx.circle(mmW + 2, -2, 1.5).fill({ color: COL, alpha: 0.25 });
+    this._minimapGfx.circle(-2, mmH + 2, 1.5).fill({ color: COL, alpha: 0.25 });
+    this._minimapGfx.circle(mmW + 2, mmH + 2, 1.5).fill({ color: COL, alpha: 0.25 });
     // Tiles
     for (let my = 0; my < map.height; my++) {
       for (let mx = 0; mx < map.width; mx++) {
@@ -387,9 +410,17 @@ export class ShadowhandHUD {
       const npx = heist.objective.npcX * sx, npy = heist.objective.npcY * sy;
       this._minimapGfx.circle(npx, npy, 2).fill({ color: 0xffff44, alpha: 0.7 });
     }
-    // Label
-    const mmLabel = new Text({ text: "MAP", style: new TextStyle({ fontFamily: FONT, fontSize: 7, fill: COL, letterSpacing: 1 }) });
-    mmLabel.position.set(mmW / 2 - 8, -12);
+    // Compass rose (top-right of minimap)
+    const crx = mmW + 1, cry = -1;
+    this._minimapGfx.moveTo(crx, cry - 5).lineTo(crx + 1, cry).lineTo(crx, cry + 5).lineTo(crx - 1, cry).closePath().fill({ color: COL, alpha: 0.3 }); // N-S diamond
+    this._minimapGfx.moveTo(crx - 5, cry).lineTo(crx, cry - 1).lineTo(crx + 5, cry).lineTo(crx, cry + 1).closePath().fill({ color: COL, alpha: 0.2 }); // E-W diamond
+    this._minimapGfx.circle(crx, cry, 1).fill({ color: COL, alpha: 0.4 }); // center
+    const nLabel = new Text({ text: "N", style: new TextStyle({ fontFamily: FONT, fontSize: 5, fill: COL }) });
+    nLabel.anchor.set(0.5, 1); nLabel.position.set(crx, cry - 6);
+    this._minimapGfx.addChild(nLabel);
+    // MAP label
+    const mmLabel = new Text({ text: "\u25C8 MAP", style: new TextStyle({ fontFamily: FONT, fontSize: 7, fill: COL, letterSpacing: 1 }) });
+    mmLabel.position.set(0, -13);
     this._minimapGfx.addChild(mmLabel);
 
     // Log
