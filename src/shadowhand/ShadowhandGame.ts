@@ -293,26 +293,50 @@ export class ShadowhandGame {
     this._keyHandler = (e: KeyboardEvent) => this._handleKey(e);
     window.addEventListener("keydown", this._keyHandler);
 
-    this._pointerHandler = (e: { global: { x: number; y: number } }) => {
+    // Left-click: move selected thief
+    this._pointerHandler = (e: { global: { x: number; y: number }; button?: number }) => {
       if (this._isPaused || !this._state.heist) return;
       const heist = this._state.heist;
-      // Convert screen position to tile position
       const tx = (e.global.x - this._renderer["_offsetX"]) / ShadowhandConfig.TILE_SIZE;
       const ty = (e.global.y - this._renderer["_offsetY"]) / ShadowhandConfig.TILE_SIZE;
 
-      const selected = heist.thieves.find(t => t.selected && t.alive && !t.captured);
+      const selected = heist.thieves.find(t => t.selected && t.alive && !t.captured && !t.escaped);
       if (selected) {
         moveThiefTo(heist, selected.id, tx, ty);
       }
     };
     viewManager.app.stage.eventMode = "static";
     viewManager.app.stage.on("pointerdown", this._pointerHandler);
+
+    // Right-click: cancel movement (stop thief in place)
+    const rightClickHandler = (e: MouseEvent) => {
+      if (e.button === 2) {
+        e.preventDefault();
+        if (!this._state.heist) return;
+        const sel = this._state.heist.thieves.find(t => t.selected && t.alive && !t.captured && !t.escaped);
+        if (sel) {
+          sel.activePath = [];
+          sel.moving = false;
+          sel.targetX = sel.x;
+          sel.targetY = sel.y;
+          addLog(this._state, "Movement cancelled.");
+        }
+      }
+    };
+    window.addEventListener("contextmenu", (e) => e.preventDefault());
+    window.addEventListener("mousedown", rightClickHandler);
+    // Store for cleanup
+    (this as any)._rightClickHandler = rightClickHandler;
   }
 
   private _removePointerHandler(): void {
     if (this._pointerHandler) {
       viewManager.app.stage.off("pointerdown", this._pointerHandler);
       this._pointerHandler = null;
+    }
+    if ((this as any)._rightClickHandler) {
+      window.removeEventListener("mousedown", (this as any)._rightClickHandler);
+      (this as any)._rightClickHandler = null;
     }
   }
 
@@ -444,6 +468,49 @@ export class ShadowhandGame {
       }
       case "-": {
         heist.speedMult = Math.max(0.5, heist.speedMult - 0.5);
+        break;
+      }
+      // Crew selection hotkeys (F1-F4)
+      case "F1": case "F2": case "F3": case "F4": {
+        e.preventDefault();
+        const crewIdx = parseInt(e.key[1]) - 1;
+        const alive = heist.thieves.filter(t => t.alive && !t.captured && !t.escaped);
+        if (crewIdx < alive.length) {
+          for (const t of heist.thieves) t.selected = false;
+          alive[crewIdx].selected = true;
+        }
+        break;
+      }
+      // Rally to exit (R key) — send ALL alive thieves to nearest exit
+      case "r":
+      case "R": {
+        const aliveCrew = heist.thieves.filter(t => t.alive && !t.captured && !t.escaped);
+        if (heist.map.exitPoints.length > 0 && aliveCrew.length > 0) {
+          for (const thief of aliveCrew) {
+            // Find nearest exit
+            let nearestExit = heist.map.exitPoints[0];
+            let nearestDist = Infinity;
+            for (const ep of heist.map.exitPoints) {
+              const dx = ep.x - thief.x, dy = ep.y - thief.y;
+              const d = dx * dx + dy * dy;
+              if (d < nearestDist) { nearestDist = d; nearestExit = ep; }
+            }
+            moveThiefTo(heist, thief.id, nearestExit.x, nearestExit.y);
+          }
+          addLog(this._state, "Rally! All crew heading for exit.");
+          heist.announcements.push({ text: "RALLY TO EXIT!", color: 0x44ff44, timer: 2 });
+        }
+        break;
+      }
+      // Stop all movement (S key)
+      case "s":
+      case "S": {
+        for (const thief of heist.thieves) {
+          if (!thief.alive || thief.captured || thief.escaped) continue;
+          thief.activePath = [];
+          thief.moving = false;
+        }
+        addLog(this._state, "All crew halted.");
         break;
       }
     }

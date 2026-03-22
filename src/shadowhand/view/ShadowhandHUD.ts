@@ -301,7 +301,7 @@ export class ShadowhandHUD {
     }
 
     // Dynamic hint text based on selected thief's role
-    let hints = "Click: move | Tab: switch | C: crouch | Space: pick lock | +/-: speed | Esc: pause";
+    let hints = "Click: move | RClick: stop | Tab/F1-4: crew | R: rally exit | S: stop all | C: crouch | Space: lock";
     if (selected) {
       const roleHints = ROLE_ABILITY_HINTS[selected.role];
       if (roleHints) {

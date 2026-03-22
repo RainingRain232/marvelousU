@@ -98,8 +98,16 @@ export function initHeist(state: ShadowhandState): void {
   heist.hasThievesCant = state.guild.upgrades.has("thieves_cant");
   heist.hasIntelNetwork = state.guild.upgrades.has("intel_network");
 
-  // Select alternate objective for variety (based on target + day)
-  heist.objective = selectObjective(state, heist);
+  // If a contract is active, use its objective; otherwise random
+  const activeContract = state.activeContractId
+    ? state.guild.availableContracts.find(c => c.id === state.activeContractId)
+    : null;
+  if (activeContract) {
+    heist.objective = activeContract.objective;
+    addLog(state, `Contract: "${activeContract.name}"`);
+  } else {
+    heist.objective = selectObjective(state, heist);
+  }
 
   state.heist = heist;
   state.phase = ShadowhandPhase.HEIST;

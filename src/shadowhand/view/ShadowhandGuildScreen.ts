@@ -348,6 +348,23 @@ export class ShadowhandGuildScreen {
 
     y += 15;
 
+    // Rest button — free healing (costs 1 day)
+    const injuredOrHurt = state.guild.roster.filter(c => c.alive && !c.captured && (c.hp < c.maxHp || (c as any).injured));
+    if (injuredOrHurt.length > 0) {
+      this._button("REST (heal crew, +1 day)", sw / 2 - 90, y, 180, 24, 0x4488aa, () => {
+        for (const cm of state.guild.roster) {
+          if (cm.alive && !cm.captured) {
+            cm.hp = Math.min(cm.maxHp, cm.hp + Math.floor(cm.maxHp * 0.5));
+            (cm as any).injured = false;
+            (cm as any).injuryPenalty = 0;
+          }
+        }
+        state.guild.day++;
+        this.show(state, sw, sh);
+      });
+      y += 30;
+    }
+
     // Recruit button
     if (state.guild.gold >= 100) {
       this._text("Recruit New Member (100g)", sw / 2, y, { fontSize: 11, fill: 0xccaa88 }, true);
