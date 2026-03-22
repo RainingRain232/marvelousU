@@ -41,6 +41,7 @@ export class ShadowhandGame {
   private _pauseMenu = new ShadowhandPauseMenu();
   private _guildScreen = new ShadowhandGuildScreen();
 
+  private _fadeOverlay: import("pixi.js").Graphics | null = null;
   private _keyHandler: ((e: KeyboardEvent) => void) | null = null;
   private _pointerHandler: ((e: { global: { x: number; y: number } }) => void) | null = null;
   private _isPaused = false;
@@ -121,12 +122,14 @@ export class ShadowhandGame {
     generateNews(this._state);
 
     this._guildScreen.setHeistCallback((target, crewIds, equipIds) => {
-      viewManager.removeFromLayer("ui", this._guildScreen.container);
-      this._guildScreen.hide();
-      this._state.currentTarget = target;
-      this._state.selectedCrew = crewIds;
-      this._state.selectedEquipment = equipIds;
-      this._startHeist();
+      this._fadeTransition(() => {
+        viewManager.removeFromLayer("ui", this._guildScreen.container);
+        this._guildScreen.hide();
+        this._state.currentTarget = target;
+        this._state.selectedCrew = crewIds;
+        this._state.selectedEquipment = equipIds;
+        this._startHeist();
+      }, 400);
     });
 
     this._guildScreen.setExitCallback(() => {
@@ -265,10 +268,12 @@ export class ShadowhandGame {
     this._cleanupHeistUI();
 
     this._resultsScreen.setContinueCallback(() => {
-      viewManager.removeFromLayer("ui", this._resultsScreen.container);
-      this._resultsScreen.hide();
-      decayHeat(this._state);
-      this._showGuildScreen();
+      this._fadeTransition(() => {
+        viewManager.removeFromLayer("ui", this._resultsScreen.container);
+        this._resultsScreen.hide();
+        decayHeat(this._state);
+        this._showGuildScreen();
+      });
     });
     this._resultsScreen.setMenuCallback(() => {
       viewManager.removeFromLayer("ui", this._resultsScreen.container);
@@ -583,5 +588,52 @@ export class ShadowhandGame {
     this._removePointerHandler();
     viewManager.removeFromLayer("background", this._renderer.container);
     viewManager.removeFromLayer("ui", this._hud.container);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Screen fade transition
+  // ---------------------------------------------------------------------------
+
+  private _fadeTransition(callback: () => void, duration = 300): void {
+    const { Graphics } = require("pixi.js") as typeof import("pixi.js");
+    if (this._fadeOverlay) {
+      viewManager.removeFromLayer("ui", this._fadeOverlay);
+      this._fadeOverlay.destroy();
+    }
+    const overlay = new Graphics();
+    overlay.rect(0, 0, this._sw, this._sh).fill({ color: 0x000000 });
+    overlay.alpha = 0;
+    this._fadeOverlay = overlay;
+    viewManager.addToLayer("ui", overlay);
+
+    // Fade in
+    const startTime = Date.now();
+    const fadeIn = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(1, elapsed / (duration / 2));
+      overlay.alpha = progress;
+      if (progress < 1) {
+        requestAnimationFrame(fadeIn);
+      } else {
+        // At peak darkness: perform the screen swap
+        callback();
+        // Fade out
+        const fadeOutStart = Date.now();
+        const fadeOut = () => {
+          const elapsed2 = Date.now() - fadeOutStart;
+          const progress2 = Math.min(1, elapsed2 / (duration / 2));
+          overlay.alpha = 1 - progress2;
+          if (progress2 < 1) {
+            requestAnimationFrame(fadeOut);
+          } else {
+            viewManager.removeFromLayer("ui", overlay);
+            overlay.destroy();
+            if (this._fadeOverlay === overlay) this._fadeOverlay = null;
+          }
+        };
+        requestAnimationFrame(fadeOut);
+      }
+    };
+    requestAnimationFrame(fadeIn);
   }
 }

@@ -119,10 +119,17 @@ export class ShadowhandRenderer {
           case "loot_spot": this._drawFloor(g, d, px, py, h, tile); this._drawLootSparkle(d, px, py); break;
           case "primary_loot": this._drawFloor(g, d, px, py, h, tile); this._drawPrimaryLoot(d, px, py); break;
           case "trap": this._drawFloor(g, d, px, py, h, tile); if (tile.trapArmed) this._drawTrap(d, px, py); break;
-          case "secret_door": this._drawWall(g, d, px, py, x, y, map, h); break; // looks like wall
+          case "secret_door": this._drawWall(g, d, px, py, x, y, map, h); this._drawSecretDoorHint(d, px, py, h); break;
           case "stairs_up": this._drawStairs(g, d, px, py, true); break;
           case "stairs_down": this._drawStairs(g, d, px, py, false); break;
-          default: g.rect(px, py, T, T).fill({ color: FLOOR_BASE }); break;
+          default: {
+            // Unknown tile fallback — warning checkerboard
+            g.rect(px, py, T, T).fill({ color: FLOOR_BASE });
+            for (let cy = 0; cy < 4; cy++) for (let cx = 0; cx < 4; cx++) {
+              if ((cx + cy) % 2 === 0) d.rect(px + cx * 8, py + cy * 8, 8, 8).fill({ color: 0x332233, alpha: 0.2 });
+            }
+            break;
+          }
         }
 
         // Caltrops overlay
@@ -300,20 +307,49 @@ export class ShadowhandRenderer {
 
     // Lock/handle
     if (locked) {
-      // Lock plate
-      d.roundRect(px + T - inset - 7, py + HT - 4, 6, 8, 1).fill({ color: 0x444444 });
-      d.roundRect(px + T - inset - 7, py + HT - 4, 6, 8, 1).stroke({ color: 0x333333, width: 0.5 });
-      // Keyhole
-      d.circle(px + T - inset - 4, py + HT - 1, 1.5).fill({ color: 0x111111 });
-      d.rect(px + T - inset - 5, py + HT, 2, 3).fill({ color: 0x111111 });
-      // Pulsing lock glow (magic ward)
+      // Reinforced iron bands across door
+      d.moveTo(px + inset + 1, py + inset + 4).lineTo(px + T - inset - 1, py + inset + 4).stroke({ color: 0x3a3a3a, width: 2 });
+      d.moveTo(px + inset + 1, py + T - inset - 4).lineTo(px + T - inset - 1, py + T - inset - 4).stroke({ color: 0x3a3a3a, width: 2 });
+      // Iron band rivets
+      for (const bx of [px + inset + 3, px + HT, px + T - inset - 3]) {
+        d.circle(bx, py + inset + 4, 1).fill({ color: 0x555555 });
+        d.circle(bx, py + T - inset - 4, 1).fill({ color: 0x555555 });
+      }
+      // Heavy lock plate
+      d.roundRect(px + T - inset - 8, py + HT - 5, 8, 10, 1.5).fill({ color: 0x3a3a3a });
+      d.roundRect(px + T - inset - 8, py + HT - 5, 8, 10, 1.5).stroke({ color: 0x4a4a4a, width: 0.8 });
+      // Keyhole (larger, more detailed)
+      d.circle(px + T - inset - 4, py + HT - 2, 2).fill({ color: 0x0a0a0a });
+      d.moveTo(px + T - inset - 5, py + HT).lineTo(px + T - inset - 5, py + HT + 3).lineTo(px + T - inset - 3, py + HT + 3).lineTo(px + T - inset - 3, py + HT).closePath().fill({ color: 0x0a0a0a });
+      // Pulsing magic ward glow
       const lockPulse = 0.1 + Math.sin(Date.now() / 600) * 0.06;
-      d.circle(px + T - inset - 4, py + HT, 6).fill({ color: 0xff3322, alpha: lockPulse });
-      d.circle(px + T - inset - 4, py + HT, 3).fill({ color: 0xff6644, alpha: lockPulse * 1.5 });
+      d.circle(px + T - inset - 4, py + HT, 8).fill({ color: 0xff3322, alpha: lockPulse * 0.7 });
+      d.circle(px + T - inset - 4, py + HT, 5).fill({ color: 0xff4433, alpha: lockPulse * 1.2 });
+      d.circle(px + T - inset - 4, py + HT, 2.5).fill({ color: 0xff6644, alpha: lockPulse * 2 });
+      // Ward rune circle
+      d.circle(px + HT, py + HT, 8).stroke({ color: 0xff3322, width: 0.5, alpha: lockPulse * 0.5 });
     } else {
-      // Simple handle ring
-      d.circle(px + T - inset - 4, py + HT, 2.5).stroke({ color: 0x555555, width: 1 });
-      d.circle(px + T - inset - 4, py + HT, 1).fill({ color: 0x444444 });
+      // Handle ring (ornate)
+      d.circle(px + T - inset - 4, py + HT, 3).stroke({ color: 0x555555, width: 1.2 });
+      d.circle(px + T - inset - 4, py + HT + 3, 1).fill({ color: 0x555555 }); // ring bottom weight
+      d.circle(px + T - inset - 4, py + HT - 3, 1.2).fill({ color: 0x666666 }); // mount
+    }
+  }
+
+  private _drawSecretDoorHint(d: Graphics, px: number, py: number, h: number): void {
+    // Subtle hints that this wall is different — only visible to observant players
+    // Hairline crack running vertically (door seam)
+    const seam = px + HT + (h - 0.5) * 2;
+    d.moveTo(seam, py + 3).bezierCurveTo(seam + 0.5, py + HT, seam - 0.5, py + HT + 4, seam, py + T - 3).stroke({ color: 0x1a1820, width: 0.6, alpha: 0.2 });
+    // Slightly different mortar color at one joint (discolored)
+    d.rect(px + 6, py + T / 3 - 1, HT - 2, 2).fill({ color: 0x2a2530, alpha: 0.12 });
+    // Worn floor patch in front (people walking through leaves marks)
+    d.ellipse(px + HT, py + T - 2, 6, 2).fill({ color: 0x2e2a26, alpha: 0.08 });
+    // Faint draft lines (air movement through crack)
+    if (h > 0.5) {
+      const t = Date.now() / 2000;
+      const dy = Math.sin(t + h * 10) * 2;
+      d.moveTo(seam - 1, py + HT + dy).bezierCurveTo(seam - 4, py + HT + dy - 2, seam - 6, py + HT + dy, seam - 8, py + HT + dy - 1).stroke({ color: 0x888888, width: 0.3, alpha: 0.06 });
     }
   }
 
@@ -886,31 +922,49 @@ export class ShadowhandRenderer {
     const cos = Math.cos(da), sin = Math.sin(da);
 
     if (guard.stunTimer > 0 || guard.sleepTimer > 0) {
-      // Collapsed body — sprawled figure polygon
-      g.moveTo(px - 7, py + 1).bezierCurveTo(px - 5, py - 3, px + 5, py - 3, px + 7, py + 1);
-      g.bezierCurveTo(px + 6, py + 4, px - 6, py + 4, px - 7, py + 1);
-      g.fill({ color: 0x444444, alpha: 0.5 });
-      // Head lolled to side
-      g.circle(px - 5, py - 2, 3).fill({ color: 0x555555, alpha: 0.45 });
-      // Legs sprawled
-      g.moveTo(px + 2, py + 2).lineTo(px + 7, py + 6).stroke({ color: 0x444444, width: 1.5, alpha: 0.4 });
-      g.moveTo(px + 1, py + 3).lineTo(px - 3, py + 7).stroke({ color: 0x444444, width: 1.5, alpha: 0.4 });
+      const isSleeping = guard.sleepTimer > 0;
 
-      if (guard.sleepTimer > 0) {
+      if (isSleeping) {
+        // SLEEPING — curled up on side, peaceful pose
+        // Body curled (C-shape)
+        g.moveTo(px - 6, py - 2).bezierCurveTo(px - 7, py + 3, px - 3, py + 6, px + 2, py + 5);
+        g.bezierCurveTo(px + 5, py + 4, px + 6, py + 1, px + 4, py - 2);
+        g.bezierCurveTo(px + 2, py - 4, px - 4, py - 4, px - 6, py - 2);
+        g.fill({ color: 0x444455, alpha: 0.5 });
+        // Head resting on arm
+        g.circle(px - 4, py - 3, 3.5).fill({ color: 0x555566, alpha: 0.5 });
+        // Arm under head
+        g.moveTo(px - 7, py - 1).lineTo(px - 4, py - 5).stroke({ color: 0x444455, width: 1.5, alpha: 0.4 });
+        // Knees drawn up
+        g.moveTo(px + 2, py + 5).bezierCurveTo(px + 5, py + 5, px + 6, py + 2, px + 4, py).stroke({ color: 0x444455, width: 2, alpha: 0.35 });
+        // Floating Z's (ascending, growing)
         const t = Date.now() / 600;
         for (let i = 0; i < 3; i++) {
-          const zy = py - 8 - i * 7 - Math.sin(t + i) * 2;
-          const za = 0.6 - i * 0.15;
-          const zs = 3.5 - i * 0.5;
-          // Z as polygon outline
-          g.moveTo(px - zs + i * 2, zy).lineTo(px + zs + i * 2, zy).lineTo(px - zs + i * 2, zy - zs * 1.3).lineTo(px + zs + i * 2, zy - zs * 1.3).stroke({ color: 0x8888ff, width: 1.2, alpha: za });
+          const zy = py - 10 - i * 7 - Math.sin(t + i) * 2;
+          const za = 0.55 - i * 0.12;
+          const zs = 3 + i * 0.8;
+          g.moveTo(px - zs + i * 2, zy).lineTo(px + zs + i * 2, zy).lineTo(px - zs + i * 2, zy - zs * 1.2).lineTo(px + zs + i * 2, zy - zs * 1.2).stroke({ color: 0x8888ff, width: 1.2, alpha: za });
         }
+        // Peaceful aura
+        g.circle(px, py, 10).fill({ color: 0x6666aa, alpha: 0.03 });
       } else {
-        // 5-pointed stars orbiting
-        for (let i = 0; i < 3; i++) {
-          const a = Date.now() / 400 + i * 2.1;
-          const sx = px + Math.cos(a) * 9, sy = py - 9 + Math.sin(a) * 4;
-          // 5-point star polygon
+        // STUNNED — face-down crumpled, impact pose
+        // Crumpled body (face-down)
+        g.moveTo(px - 6, py + 1).bezierCurveTo(px - 4, py - 4, px + 4, py - 3, px + 7, py);
+        g.bezierCurveTo(px + 6, py + 4, px - 5, py + 5, px - 6, py + 1);
+        g.fill({ color: 0x553333, alpha: 0.5 });
+        // Head face-down
+        g.ellipse(px + 3, py - 2, 3, 2.5).fill({ color: 0x664444, alpha: 0.45 });
+        // Arms splayed outward
+        g.moveTo(px - 3, py).lineTo(px - 8, py - 4).stroke({ color: 0x553333, width: 1.5, alpha: 0.4 });
+        g.moveTo(px + 4, py + 1).lineTo(px + 8, py - 2).stroke({ color: 0x553333, width: 1.5, alpha: 0.4 });
+        // Legs bent awkwardly
+        g.moveTo(px - 1, py + 3).lineTo(px - 4, py + 7).stroke({ color: 0x553333, width: 1.5, alpha: 0.35 });
+        g.moveTo(px + 2, py + 3).lineTo(px + 6, py + 6).stroke({ color: 0x553333, width: 1.5, alpha: 0.35 });
+        // Impact stars orbiting
+        for (let i = 0; i < 4; i++) {
+          const a = Date.now() / 350 + i * 1.57;
+          const sx = px + Math.cos(a) * 10, sy = py - 10 + Math.sin(a) * 4;
           for (let p = 0; p < 5; p++) {
             const pa = -Math.PI / 2 + p * Math.PI * 2 / 5;
             const pb = pa + Math.PI / 5;
@@ -919,8 +973,10 @@ export class ShadowhandRenderer {
             else g.lineTo(sx + Math.cos(pa) * or, sy + Math.sin(pa) * or);
             g.lineTo(sx + Math.cos(pb) * ir, sy + Math.sin(pb) * ir);
           }
-          g.closePath().fill({ color: 0xffff44, alpha: 0.5 });
+          g.closePath().fill({ color: 0xffff44, alpha: 0.45 });
         }
+        // Red stun haze
+        g.circle(px, py - 5, 8).fill({ color: 0xff4444, alpha: 0.04 });
       }
       return;
     }
