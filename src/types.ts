@@ -684,6 +684,7 @@ export enum GameMode {
   TERRARIA = "terraria",
   CIVILIZATION = "civilization",
   MORGAN = "morgan",
+  JOUSTING = "jousting",
 }
 
 // ---------------------------------------------------------------------------

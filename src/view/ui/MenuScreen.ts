@@ -336,6 +336,12 @@ const GAME_MODES: GameModeEntry[] = [
     desc: "3D stealth-sorcery — play as Morgan le Fay, infiltrate Mordred's castle with dark magic",
     skipSetup: true,
   },
+  {
+    mode: GameMode.JOUSTING,
+    label: "JOUSTING",
+    desc: "Medieval jousting tournament — aim your lance, raise your shield, unseat 8 knights",
+    skipSetup: true,
+  },
 ];
 
 // ---------------------------------------------------------------------------

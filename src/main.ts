@@ -144,6 +144,7 @@ import { TerrariaGame } from "./terraria/TerrariaGame";
 import { EagleFlightGame } from "./eagleflight/EagleFlightGame";
 import { CivGame } from "./civilization/CivGame";
 import { MorganGame } from "./morgan/MorganGame";
+import { JoustingGame } from "./jousting/JoustingGame";
 import { camelotHubScreen } from "@view/ui/CamelotHubScreen";
 
 // World mode imports
@@ -512,6 +513,11 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     if (menuScreen.selectedGameMode === GameMode.CIVILIZATION) {
       menuScreen.hide();
       _bootCivGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.JOUSTING) {
+      menuScreen.hide();
+      _bootJoustingGame();
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.WORLD) {
@@ -3279,6 +3285,30 @@ async function _bootMorganGame(): Promise<void> {
     menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
   window.addEventListener("morganExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Jousting tournament mode boot
+// ---------------------------------------------------------------------------
+
+let _joustingGame: JoustingGame | null = null;
+
+async function _bootJoustingGame(): Promise<void> {
+  if (_joustingGame) {
+    _joustingGame.destroy();
+    _joustingGame = null;
+  }
+  _joustingGame = new JoustingGame();
+  await _joustingGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("joustingExit", _onExit);
+    if (_joustingGame) {
+      _joustingGame.destroy();
+      _joustingGame = null;
+    }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("joustingExit", _onExit);
 }
 
 // ---------------------------------------------------------------------------
