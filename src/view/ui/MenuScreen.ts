@@ -162,6 +162,8 @@ interface GameModeEntry {
   skipSetup?: boolean;
   /** If true, hide player count / alliance section on setup screen. */
   hidePlayerSetup?: boolean;
+  /** Badge tag shown on tile (e.g. "3D", "FPS", "NEW") */
+  tag?: string;
 }
 
 const GAME_MODES: GameModeEntry[] = [
@@ -227,12 +229,14 @@ const GAME_MODES: GameModeEntry[] = [
     label: "WARBAND",
     desc: "Mount & Blade style 3D combat",
     skipSetup: true,
+    tag: "3D",
   },
   {
     mode: GameMode.TEKKEN,
     label: "FIGHTER",
     desc: "Tekken-style 3D fighting game",
     skipSetup: true,
+    tag: "3D",
   },
   {
     mode: GameMode.DRAGOON,
@@ -245,24 +249,28 @@ const GAME_MODES: GameModeEntry[] = [
     label: "3DRAGON",
     desc: "3D Panzer Dragoon: soar through stunning skies",
     skipSetup: true,
+    tag: "3D",
   },
   {
     mode: GameMode.MEDIEVAL_GTA_3D,
     label: "GTA 3D",
     desc: "3D Medieval GTA: steal horses in Camelot",
     skipSetup: true,
+    tag: "3D",
   },
   {
     mode: GameMode.DIABLO,
     label: "DIABLO",
     desc: "3D ARPG: loot, skills & glory in dark medieval lands",
     skipSetup: true,
+    tag: "3D",
   },
   {
     mode: GameMode.MAGE_WARS,
     label: "MAGE WARS",
     desc: "FPS: arcane warfare with wands, mounts & dragons",
     skipSetup: true,
+    tag: "FPS",
   },
   {
     mode: GameMode.GAME,
@@ -275,6 +283,7 @@ const GAME_MODES: GameModeEntry[] = [
     label: "GRAIL BALL",
     desc: "3D medieval fantasy sports — score with the holy orb",
     skipSetup: true,
+    tag: "3D",
   },
   {
     mode: GameMode.GRAIL_MANAGER,
@@ -287,6 +296,7 @@ const GAME_MODES: GameModeEntry[] = [
     label: "ARTHURIAN RPG",
     desc: "Skyrim-style 3D RPG — the Quest for the Holy Grail",
     skipSetup: true,
+    tag: "3D",
   },
   {
     mode: GameMode.RIFT_WIZARD,
@@ -299,6 +309,7 @@ const GAME_MODES: GameModeEntry[] = [
     label: "SETTLERS",
     desc: "3D Settlers II — roads, carriers & production chains",
     skipSetup: true,
+    tag: "3D",
   },
   {
     mode: GameMode.CAESAR,
@@ -311,6 +322,7 @@ const GAME_MODES: GameModeEntry[] = [
     label: "CAMELOT CRAFT",
     desc: "Minecraft-style voxel sandbox — build Camelot, seek the Grail",
     skipSetup: true,
+    tag: "3D",
   },
   {
     mode: GameMode.EAGLE_FLIGHT,
@@ -335,12 +347,14 @@ const GAME_MODES: GameModeEntry[] = [
     label: "MORGAN",
     desc: "3D stealth-sorcery — play as Morgan le Fay, infiltrate Mordred's castle with dark magic",
     skipSetup: true,
+    tag: "3D",
   },
   {
     mode: GameMode.JOUSTING,
     label: "JOUSTING",
     desc: "Medieval jousting tournament — aim your lance, raise your shield, unseat 8 knights",
     skipSetup: true,
+    tag: "3D",
   },
 ];
 
@@ -524,6 +538,26 @@ export class MenuScreen {
   private _buildingContainer!: Container;
   private _buildingPreviewGfx!: Graphics;
 
+  // ── Enhanced decorations ──
+  private _bgHexGrid!: Graphics;
+  private _hexCellCount = 0;
+  private _floatingPolys!: Container;
+  private _floatingPolyData: { gfx: Graphics; x: number; y: number; vx: number; vy: number; rot: number; rs: number }[] = [];
+  private _polyCountText!: Text;
+  private _scanContainer!: Container;
+  private _scanPhase = 0;
+  private _cornerMiniCircles: Graphics[] = [];
+  private _cornerMiniPhases = [0, 0, 0, 0];
+  private _vignetteGfx!: Graphics;
+  private _titleText!: Text;
+  private _titleGlowText!: Text;
+  private _titleGlowPhase = 0;
+  private _tickerContainer!: Container;
+  private _tickerText!: Text;
+  private _tickerX = 0;
+  private _sidePillarLeft!: Container;
+  private _sidePillarRight!: Container;
+
   // Callbacks
   onAIToggle: ((isAI: boolean) => void) | null = null;
   onContinue: (() => void) | null = null;
@@ -587,9 +621,22 @@ export class MenuScreen {
     this._bg = new Graphics();
     this.container.addChild(this._bg);
 
+    // Radial vignette overlay for depth
+    this._vignetteGfx = new Graphics();
+    this.container.addChild(this._vignetteGfx);
+
+    // Hexagonal grid background
+    this._bgHexGrid = new Graphics();
+    this.container.addChild(this._bgHexGrid);
+
     // Ambient floating particles
     this._particles = new AmbientParticles(160);
     this.container.addChild(this._particles.container);
+
+    // Floating polygon decorations
+    this._floatingPolys = new Container();
+    this.container.addChild(this._floatingPolys);
+    this._initFloatingPolygons();
 
     this._buildScreen1();
     this._buildScreen2();
@@ -616,6 +663,35 @@ export class MenuScreen {
         if (this._s1GlowGfx && this._screen1?.visible) {
           this._s1GlowPhase += dt;
           this._s1GlowGfx.alpha = 0.15 + Math.sin(this._s1GlowPhase * 1.5) * 0.1;
+        }
+        // Animate floating polygons
+        this._updateFloatingPolygons(dt);
+        // Animate scan line
+        if (this._scanContainer && this._screen1?.visible) {
+          this._scanPhase += dt * 0.08;
+          const scanY = ((this._scanPhase * this._screen1CardH) % (this._screen1CardH + 60)) - 30;
+          this._scanContainer.y = scanY;
+          this._scanContainer.alpha = (scanY > 10 && scanY < this._screen1CardH - 10) ? 0.04 : 0;
+        }
+        // Animate corner mini circles
+        for (let i = 0; i < 4; i++) {
+          this._cornerMiniPhases[i] += dt * (0.18 + i * 0.06);
+          if (this._cornerMiniCircles[i]) {
+            this._cornerMiniCircles[i].rotation = this._cornerMiniPhases[i];
+          }
+        }
+        // Title shimmer
+        this._titleGlowPhase += dt;
+        if (this._titleGlowText) {
+          this._titleGlowText.alpha = 0.25 + Math.sin(this._titleGlowPhase * 2.0) * 0.2;
+          this._titleGlowText.scale.set(1.0 + Math.sin(this._titleGlowPhase * 1.5) * 0.008);
+        }
+        // Scrolling ticker
+        if (this._tickerText && this._screen1?.visible) {
+          this._tickerX -= dt * 40;
+          const halfW = this._tickerText.width / 2;
+          if (this._tickerX < -halfW) this._tickerX += halfW;
+          this._tickerText.x = this._tickerX;
         }
       }
     });
@@ -791,6 +867,33 @@ export class MenuScreen {
     arcaneGfx.position.set(hcx, 52);
     card.addChild(arcaneGfx);
 
+    // ── SHIELD / CROWN CREST above title ─────────────────────
+    const crestGfx = new Graphics();
+    // Shield shape
+    const sx = hcx, sy = 18;
+    crestGfx.moveTo(sx, sy - 12).lineTo(sx + 14, sy - 6).lineTo(sx + 12, sy + 8)
+      .lineTo(sx, sy + 16).lineTo(sx - 12, sy + 8).lineTo(sx - 14, sy - 6).closePath()
+      .fill({ color: BORDER_COLOR, alpha: 0.06 })
+      .stroke({ color: BORDER_COLOR, alpha: 0.2, width: 1 });
+    // Inner shield
+    crestGfx.moveTo(sx, sy - 7).lineTo(sx + 9, sy - 3).lineTo(sx + 8, sy + 5)
+      .lineTo(sx, sy + 11).lineTo(sx - 8, sy + 5).lineTo(sx - 9, sy - 3).closePath()
+      .fill({ color: BORDER_COLOR, alpha: 0.08 })
+      .stroke({ color: BORDER_COLOR, alpha: 0.15, width: 0.5 });
+    // Crown points on top
+    for (const dx of [-8, 0, 8]) {
+      crestGfx.moveTo(sx + dx - 3, sy - 12).lineTo(sx + dx, sy - 18).lineTo(sx + dx + 3, sy - 12)
+        .fill({ color: BORDER_COLOR, alpha: 0.2 });
+    }
+    // Crown jewels (tiny dots)
+    for (const dx of [-8, 0, 8]) {
+      crestGfx.circle(sx + dx, sy - 16, 1.2).fill({ color: 0xfff8e0, alpha: 0.5 });
+    }
+    // Cross on shield center
+    crestGfx.moveTo(sx - 5, sy).lineTo(sx + 5, sy).stroke({ color: BORDER_COLOR, alpha: 0.15, width: 0.5 });
+    crestGfx.moveTo(sx, sy - 5).lineTo(sx, sy + 5).stroke({ color: BORDER_COLOR, alpha: 0.15, width: 0.5 });
+    card.addChild(crestGfx);
+
     // ── ORNATE HEADER ────────────────────────────────────────
     const headerGfx = new Graphics();
     // Left ornamental double-line
@@ -823,14 +926,23 @@ export class MenuScreen {
     headerGfx.circle(hcx, 30, 2).fill({ color: 0xffffff, alpha: 0.6 });
     card.addChild(headerGfx);
 
-    // Title
-    const title = new Text({ text: t("menu.select_mode"), style: new TextStyle({
+    // Title (with glow layer behind for shimmer)
+    this._titleGlowText = new Text({ text: t("menu.select_mode"), style: new TextStyle({
+      fontFamily: "monospace", fontSize: 26, fill: 0xffee88, fontWeight: "bold", letterSpacing: 6,
+      dropShadow: { color: 0xffd700, blur: 16, distance: 0, alpha: 0.4 },
+    }) });
+    this._titleGlowText.anchor.set(0.5, 0);
+    this._titleGlowText.position.set(hcx, 44);
+    this._titleGlowText.alpha = 0.4;
+    card.addChild(this._titleGlowText);
+
+    this._titleText = new Text({ text: t("menu.select_mode"), style: new TextStyle({
       fontFamily: "monospace", fontSize: 26, fill: 0xffd700, fontWeight: "bold", letterSpacing: 6,
       dropShadow: { color: 0x000000, blur: 8, distance: 0, alpha: 0.8 },
     }) });
-    title.anchor.set(0.5, 0);
-    title.position.set(hcx, 44);
-    card.addChild(title);
+    this._titleText.anchor.set(0.5, 0);
+    this._titleText.position.set(hcx, 44);
+    card.addChild(this._titleText);
 
     // Sub-flourish below title
     const subGfx = new Graphics();
@@ -866,11 +978,11 @@ export class MenuScreen {
     // also add its index here in the appropriate category. Otherwise it won't
     // appear on the menu. The index is the position in the MODE_BUTTONS array
     // (0-based). Modes not listed in any category below will be invisible.
-    const categories: { title: string; color: number; accent: number; indices: number[] }[] = [
-      { title: "STRATEGY & TACTICS", color: 0xffd700, accent: 0x332a00, indices: [0, 1, 2, 3, 4, 28, 5, 6] },
-      { title: "ADVENTURE & RPG", color: 0x44ddaa, accent: 0x0a2a1a, indices: [7, 21, 18, 22, 8, 9, 10] },
-      { title: "3D ACTION & COMBAT", color: 0xff7744, accent: 0x2a1408, indices: [11, 15, 12, 13, 14, 16, 17, 29] },
-      { title: "WORLDS & SPORTS", color: 0x6699ff, accent: 0x0a1a2a, indices: [19, 20, 23, 24, 25, 26, 27, 30] },
+    const categories: { title: string; icon: string; color: number; accent: number; indices: number[] }[] = [
+      { title: "STRATEGY & TACTICS", icon: "\u2694", color: 0xffd700, accent: 0x332a00, indices: [0, 1, 2, 3, 4, 28, 5, 6] },
+      { title: "ADVENTURE & RPG", icon: "\u{1F4DC}", color: 0x44ddaa, accent: 0x0a2a1a, indices: [7, 21, 18, 22, 8, 9, 10] },
+      { title: "3D ACTION & COMBAT", icon: "\u{1F6E1}", color: 0xff7744, accent: 0x2a1408, indices: [11, 15, 12, 13, 14, 16, 17, 29] },
+      { title: "WORLDS & SPORTS", icon: "\u{1F30D}", color: 0x6699ff, accent: 0x0a1a2a, indices: [19, 20, 23, 24, 25, 26, 27, 30] },
     ];
 
     const COLS = 3;
@@ -895,15 +1007,37 @@ export class MenuScreen {
         .stroke({ color: cat.color, alpha: 0.3, width: 0.5 });
       card.addChild(catGfx);
 
+      // Category icon
+      const catIcon = new Text({ text: cat.icon, style: new TextStyle({
+        fontFamily: "monospace", fontSize: 12, fill: cat.color,
+      }) });
+      catIcon.position.set(padX + 30, curY - 1);
+      card.addChild(catIcon);
+
       const catLabel = new Text({ text: cat.title, style: new TextStyle({
         fontFamily: "monospace", fontSize: 10, fill: cat.color, fontWeight: "bold", letterSpacing: 3,
         dropShadow: { color: 0x000000, blur: 4, distance: 0, alpha: 0.5 },
       }) });
-      catLabel.position.set(padX + 30, curY);
+      catLabel.position.set(padX + 46, curY);
       card.addChild(catLabel);
 
+      // Mode count badge
+      const countBadge = new Container();
+      const countBg = new Graphics();
+      countBg.roundRect(0, 0, 20, 14, 7).fill({ color: cat.color, alpha: 0.15 })
+        .roundRect(0, 0, 20, 14, 7).stroke({ color: cat.color, alpha: 0.3, width: 0.5 });
+      countBadge.addChild(countBg);
+      const countTxt = new Text({ text: `${cat.indices.length}`, style: new TextStyle({
+        fontFamily: "monospace", fontSize: 9, fill: cat.color, fontWeight: "bold",
+      }) });
+      countTxt.anchor.set(0.5, 0.5);
+      countTxt.position.set(10, 7);
+      countBadge.addChild(countTxt);
+      countBadge.position.set(padX + 46 + cat.title.length * 7.5 + 14, curY);
+      card.addChild(countBadge);
+
       // Right-side ornamental line extending from after the text
-      const rightLineStart = padX + 30 + cat.title.length * 7.5 + 12;
+      const rightLineStart = padX + 46 + cat.title.length * 7.5 + 42;
       const catLineRight = new Graphics();
       // Main line
       catLineRight.moveTo(rightLineStart, curY + 7).lineTo(CW - padX - 8, curY + 7)
@@ -987,6 +1121,26 @@ export class MenuScreen {
         }
         tile.addChild(cornerDots);
 
+        // Tag badge (e.g. "3D", "FPS")
+        if (entry.tag) {
+          const tagContainer = new Container();
+          const tagW = entry.tag.length * 7 + 8;
+          const tagBg = new Graphics();
+          tagBg.roundRect(0, 0, tagW, 12, 3)
+            .fill({ color: cat.color, alpha: 0.2 })
+            .roundRect(0, 0, tagW, 12, 3)
+            .stroke({ color: cat.color, alpha: 0.5, width: 0.5 });
+          tagContainer.addChild(tagBg);
+          const tagTxt = new Text({ text: entry.tag, style: new TextStyle({
+            fontFamily: "monospace", fontSize: 8, fill: cat.color, fontWeight: "bold", letterSpacing: 1,
+          }) });
+          tagTxt.anchor.set(0.5, 0.5);
+          tagTxt.position.set(tagW / 2, 6);
+          tagContainer.addChild(tagTxt);
+          tagContainer.position.set(tileW - tagW - 4, 4);
+          tile.addChild(tagContainer);
+        }
+
         // Draw tile background based on state
         const catColor = cat.color;
         const drawTileBg = (state: "normal" | "hover" | "disabled") => {
@@ -1035,8 +1189,17 @@ export class MenuScreen {
 
         if (!entry.disabled) {
           const idx = modeIdx;
-          tile.on("pointerover", () => drawTileBg("hover"));
-          tile.on("pointerout", () => drawTileBg("normal"));
+          // Set pivot for scale-from-center effect
+          tile.pivot.set(tileW / 2, tileH / 2);
+          tile.position.set(tx + tileW / 2, ty + tileH / 2);
+          tile.on("pointerover", () => {
+            drawTileBg("hover");
+            tile.scale.set(1.03);
+          });
+          tile.on("pointerout", () => {
+            drawTileBg("normal");
+            tile.scale.set(1.0);
+          });
           tile.on("pointerdown", () => {
             this._selectedModeIndex = idx;
             if (entry.skipSetup) {
@@ -1186,7 +1349,49 @@ export class MenuScreen {
       footGfx.circle(dx, curY + 3, 1.5).fill({ color: BORDER_COLOR, alpha: 0.15 });
     }
     card.addChild(footGfx);
+
+    // ── SCROLLING TIP TICKER ─────────────────────────────────
+    const tickerMask = new Graphics();
+    tickerMask.rect(padX, curY + 2, CW - padX * 2, 14).fill({ color: 0xffffff });
+    card.addChild(tickerMask);
+
+    this._tickerContainer = new Container();
+    this._tickerContainer.mask = tickerMask;
+    const allTips = GAME_MODES.map(m => m.label).join("  \u2022  ");
+    const tickerStr = `\u2605 ${allTips}  \u2022  ${GAME_MODES.length} GAME MODES AVAILABLE  \u2022  `;
+    this._tickerText = new Text({ text: tickerStr + tickerStr, style: new TextStyle({
+      fontFamily: "monospace", fontSize: 9, fill: 0x556677, letterSpacing: 1,
+    }) });
+    this._tickerText.position.set(padX, curY + 3);
+    this._tickerContainer.addChild(this._tickerText);
+    this._tickerX = padX;
+    card.addChild(this._tickerContainer);
     curY += 18;
+
+    // ── POLYGON COUNT + ENGINE TEXT ──────────────────────────
+    this._polyCountText = new Text({ text: "\u25B2 0 POLYGONS", style: new TextStyle({
+      fontFamily: "monospace", fontSize: 9, fill: 0x445566, letterSpacing: 2,
+    }) });
+    this._polyCountText.anchor.set(1, 0);
+    this._polyCountText.position.set(CW - padX, curY + 2);
+    card.addChild(this._polyCountText);
+
+    // Engine label on the left
+    const engineLabel = new Text({ text: "PIXI.JS ENGINE", style: new TextStyle({
+      fontFamily: "monospace", fontSize: 9, fill: 0x334455, letterSpacing: 2,
+    }) });
+    engineLabel.position.set(padX, curY + 2);
+    card.addChild(engineLabel);
+
+    // Game mode total count in center
+    const totalLabel = new Text({ text: `${GAME_MODES.length} MODES`, style: new TextStyle({
+      fontFamily: "monospace", fontSize: 9, fill: 0x445566, letterSpacing: 2,
+    }) });
+    totalLabel.anchor.set(0.5, 0);
+    totalLabel.position.set(hcx, curY + 2);
+    card.addChild(totalLabel);
+
+    curY += 20;
 
     this._screen1CardH = curY;
 
@@ -1225,6 +1430,57 @@ export class MenuScreen {
     this._runes1.build(CW, this._screen1CardH);
     card.addChild(this._runes1.container);
 
+    // ── SCAN LINE (pre-built, animated via y position) ──────
+    const scanC = new Container();
+    const scanMainLine = new Graphics();
+    scanMainLine.rect(20, 0, CW - 40, 1).fill({ color: BORDER_COLOR, alpha: 0.6 });
+    scanC.addChild(scanMainLine);
+    for (let i = 1; i < 6; i++) {
+      const trailLine = new Graphics();
+      trailLine.rect(30 + i * 5, -i * 3, CW - 60 - i * 10, 0.5)
+        .fill({ color: BORDER_COLOR, alpha: 0.4 / i });
+      scanC.addChild(trailLine);
+    }
+    scanC.alpha = 0;
+    card.addChild(scanC);
+    this._scanContainer = scanC;
+
+    // ── CORNER MINI ARCANE CIRCLES ──────────────────────────
+    this._cornerMiniCircles = [];
+    for (let i = 0; i < 4; i++) {
+      const mcg = new Graphics();
+      const mr = 20;
+      // Outer ring
+      mcg.circle(0, 0, mr).stroke({ color: BORDER_COLOR, alpha: 0.07, width: 0.5 });
+      // Inner ring
+      mcg.circle(0, 0, mr * 0.55).stroke({ color: BORDER_COLOR, alpha: 0.09, width: 0.5 });
+      // 8 radial spokes
+      for (let t = 0; t < 8; t++) {
+        const a = (t * Math.PI * 2) / 8;
+        mcg.moveTo(Math.cos(a) * mr * 0.25, Math.sin(a) * mr * 0.25)
+          .lineTo(Math.cos(a) * mr, Math.sin(a) * mr)
+          .stroke({ color: BORDER_COLOR, alpha: 0.05, width: 0.5 });
+      }
+      // Dots at cardinal points
+      for (let t = 0; t < 4; t++) {
+        const a = (t * Math.PI) / 2;
+        mcg.circle(Math.cos(a) * mr, Math.sin(a) * mr, 1.5)
+          .fill({ color: BORDER_COLOR, alpha: 0.12 });
+      }
+      // Inscribed square
+      const sq = mr * 0.7;
+      mcg.moveTo(-sq * 0.5, -sq * 0.5).lineTo(sq * 0.5, -sq * 0.5)
+        .lineTo(sq * 0.5, sq * 0.5).lineTo(-sq * 0.5, sq * 0.5).closePath()
+        .stroke({ color: BORDER_COLOR, alpha: 0.04, width: 0.5 });
+
+      // Position at card corners
+      const cx = i % 2 === 0 ? 28 : CW - 28;
+      const cy = i < 2 ? 28 : this._screen1CardH - 28;
+      mcg.position.set(cx, cy);
+      card.addChild(mcg);
+      this._cornerMiniCircles.push(mcg);
+    }
+
     // Animated castle renderer beside the card
     this._buildingContainer = new Container();
     this._screen1.addChild(this._buildingContainer);
@@ -1232,6 +1488,13 @@ export class MenuScreen {
     this._buildingContainer.addChild(this._buildingPreviewGfx);
     this._buildingRenderer = new House1Renderer(null);
     this._buildingContainer.addChild(this._buildingRenderer.container);
+
+    // ── SIDE DECORATIVE PILLARS ─────────────────────────────
+    this._sidePillarLeft = this._buildSidePillar(this._screen1CardH);
+    this._screen1.addChild(this._sidePillarLeft);
+    this._sidePillarRight = this._buildSidePillar(this._screen1CardH);
+    this._sidePillarRight.scale.x = -1; // Mirror
+    this._screen1.addChild(this._sidePillarRight);
 
     // Keyboard listener (supports grid: left/right + up/down)
     this._onKeydown = (e: KeyboardEvent) => {
@@ -2543,6 +2806,12 @@ export class MenuScreen {
     this._bg.clear();
     this._bg.rect(0, 0, sw, sh).fill({ color: BG_COLOR });
 
+    // Draw vignette
+    this._drawVignette(sw, sh);
+
+    // Draw hex grid background
+    this._drawHexGrid(sw, sh);
+
     this._particles.resize(sw, sh);
 
     if (this._screen1?.visible) {
@@ -2592,6 +2861,16 @@ export class MenuScreen {
 
         this._buildingContainer.visible = hasRoom;
       }
+
+      // Position side pillars
+      if (this._sidePillarLeft && this._sidePillarRight) {
+        const pillarH = Math.min(this._screen1CardH * 0.6, 400);
+        const py = cardY + Math.floor((this._screen1CardH - pillarH) / 2);
+        this._sidePillarLeft.position.set(cardX - 26, py);
+        this._sidePillarRight.position.set(cardX + this._screen1CardW + 26, py);
+        this._sidePillarLeft.visible = sw > this._screen1CardW + 80;
+        this._sidePillarRight.visible = sw > this._screen1CardW + 80;
+      }
     }
 
     if (this._screen2?.visible) {
@@ -2600,6 +2879,184 @@ export class MenuScreen {
         Math.floor((sh - this._screen2CardH) / 2),
       );
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Enhanced decoration helpers
+  // ---------------------------------------------------------------------------
+
+  private _drawHexGrid(sw: number, sh: number): void {
+    this._bgHexGrid.clear();
+    const hexSize = 36;
+    const hexH = hexSize * Math.sqrt(3);
+    let count = 0;
+
+    // Batch all hex edges into one path, then stroke once
+    for (let row = -1; row * hexH * 0.5 < sh + hexH; row++) {
+      for (let col = -1; col * hexSize * 1.5 < sw + hexSize * 2; col++) {
+        const cx = col * hexSize * 1.5;
+        const cy = row * hexH + (col % 2 === 0 ? 0 : hexH * 0.5);
+        for (let i = 0; i < 6; i++) {
+          const a1 = (i * Math.PI) / 3;
+          const a2 = ((i + 1) * Math.PI) / 3;
+          const r = hexSize * 0.48;
+          this._bgHexGrid
+            .moveTo(cx + Math.cos(a1) * r, cy + Math.sin(a1) * r)
+            .lineTo(cx + Math.cos(a2) * r, cy + Math.sin(a2) * r);
+        }
+        count++;
+      }
+    }
+    this._bgHexGrid.stroke({ color: 0x14142a, alpha: 0.6, width: 0.5 });
+    this._hexCellCount = count;
+
+    // Update polygon count text
+    this._updatePolyCount();
+  }
+
+  private _initFloatingPolygons(): void {
+    const count = 35;
+    const colors = [0xffd700, 0x44ddaa, 0xff7744, 0x6699ff, 0x9966ff];
+    for (let i = 0; i < count; i++) {
+      const gfx = new Graphics();
+      const sides = 3 + Math.floor(Math.random() * 4); // 3–6 sides
+      const size = 5 + Math.random() * 14;
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      const alpha = 0.03 + Math.random() * 0.06;
+
+      // Draw polygon outline
+      for (let s = 0; s < sides; s++) {
+        const a = (s * Math.PI * 2) / sides - Math.PI / 2;
+        const px = Math.cos(a) * size;
+        const py = Math.sin(a) * size;
+        if (s === 0) gfx.moveTo(px, py);
+        else gfx.lineTo(px, py);
+      }
+      gfx.closePath().stroke({ color, alpha: alpha * 3, width: 0.8 });
+
+      // Inner polygon fill (on larger shapes)
+      if (size > 10) {
+        const innerSize = size * 0.45;
+        for (let s = 0; s < sides; s++) {
+          const a = (s * Math.PI * 2) / sides;
+          const px = Math.cos(a) * innerSize;
+          const py = Math.sin(a) * innerSize;
+          if (s === 0) gfx.moveTo(px, py);
+          else gfx.lineTo(px, py);
+        }
+        gfx.closePath().fill({ color, alpha: alpha * 1.5 });
+      }
+
+      // Center dot
+      gfx.circle(0, 0, 1).fill({ color, alpha: alpha * 2 });
+
+      this._floatingPolys.addChild(gfx);
+      this._floatingPolyData.push({
+        gfx,
+        x: Math.random() * 2000,
+        y: Math.random() * 1200,
+        vx: (Math.random() - 0.5) * 12,
+        vy: (Math.random() - 0.5) * 12,
+        rot: Math.random() * Math.PI * 2,
+        rs: (Math.random() - 0.5) * 0.25,
+      });
+    }
+  }
+
+  private _updateFloatingPolygons(dt: number): void {
+    const sw = this._vm.screenWidth;
+    const sh = this._vm.screenHeight;
+    for (const p of this._floatingPolyData) {
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.rot += p.rs * dt;
+      if (p.x < -40) p.x = sw + 40;
+      if (p.x > sw + 40) p.x = -40;
+      if (p.y < -40) p.y = sh + 40;
+      if (p.y > sh + 40) p.y = -40;
+      p.gfx.position.set(p.x, p.y);
+      p.gfx.rotation = p.rot;
+    }
+  }
+
+  private _updatePolyCount(): void {
+    if (!this._polyCountText) return;
+    // Base decorations: arcane circle (~41), header (~8), sub-flourish (~15),
+    // inner frame (~20), categories (~60), tile corners (~120), dividers (~20),
+    // footer (~10), shield crest (~18), corner circles (4×12=48), runes (~16),
+    // badges (~40), pillars (~60), vignette (~8), ticker text (~2)
+    const basePolys = 486;
+    const floatingPolys = this._floatingPolyData.length * 5;
+    const particlePolys = 160;
+    const hexPolys = this._hexCellCount * 6;
+    const scanPolys = 6;
+    const total = basePolys + floatingPolys + particlePolys + hexPolys + scanPolys;
+    this._polyCountText.text = `\u25B2 ${total.toLocaleString()} POLYGONS`;
+  }
+
+  private _drawVignette(sw: number, sh: number): void {
+    this._vignetteGfx.clear();
+    // Dark edges vignette using concentric rectangles with increasing alpha
+    const steps = 8;
+    for (let i = 0; i < steps; i++) {
+      const inset = (steps - i) * Math.min(sw, sh) * 0.06;
+      const alpha = i * 0.012;
+      this._vignetteGfx.rect(0, 0, sw, inset).fill({ color: 0x000000, alpha }); // top
+      this._vignetteGfx.rect(0, sh - inset, sw, inset).fill({ color: 0x000000, alpha }); // bottom
+      this._vignetteGfx.rect(0, 0, inset, sh).fill({ color: 0x000000, alpha }); // left
+      this._vignetteGfx.rect(sw - inset, 0, inset, sh).fill({ color: 0x000000, alpha }); // right
+    }
+    // Subtle color accent at center (faint blue glow)
+    const cx = sw / 2, cy = sh / 2;
+    const gr = Math.max(sw, sh) * 0.25;
+    this._vignetteGfx.circle(cx, cy, gr).fill({ color: 0x1a2a4a, alpha: 0.08 });
+    this._vignetteGfx.circle(cx, cy, gr * 0.5).fill({ color: 0x2a3a5a, alpha: 0.04 });
+  }
+
+  private _buildSidePillar(cardH: number): Container {
+    const pillar = new Container();
+    const pw = 18;
+    const ph = Math.min(cardH * 0.6, 400);
+    const g = new Graphics();
+
+    // Main pillar bar
+    g.roundRect(0, 0, pw, ph, 4)
+      .fill({ color: 0x0c0c1e, alpha: 0.8 })
+      .roundRect(0, 0, pw, ph, 4)
+      .stroke({ color: BORDER_COLOR, alpha: 0.12, width: 1 });
+
+    // Inner line
+    g.roundRect(3, 8, pw - 6, ph - 16, 2)
+      .stroke({ color: BORDER_COLOR, alpha: 0.06, width: 0.5 });
+
+    // Diamond ornaments along the pillar
+    const diamondCount = Math.floor(ph / 50);
+    for (let i = 0; i < diamondCount; i++) {
+      const dy = 20 + (i * (ph - 40)) / Math.max(diamondCount - 1, 1);
+      const ds = 4;
+      g.moveTo(pw / 2, dy - ds).lineTo(pw / 2 + ds, dy).lineTo(pw / 2, dy + ds).lineTo(pw / 2 - ds, dy).closePath()
+        .fill({ color: BORDER_COLOR, alpha: 0.1 })
+        .stroke({ color: BORDER_COLOR, alpha: 0.15, width: 0.5 });
+      // Inner dot
+      g.circle(pw / 2, dy, 1).fill({ color: BORDER_COLOR, alpha: 0.2 });
+    }
+
+    // Horizontal tick marks
+    for (let i = 0; i < diamondCount * 2; i++) {
+      const ty = 12 + (i * (ph - 24)) / (diamondCount * 2 - 1);
+      g.moveTo(2, ty).lineTo(pw - 2, ty)
+        .stroke({ color: BORDER_COLOR, alpha: 0.03, width: 0.5 });
+    }
+
+    // Top cap ornament
+    g.moveTo(pw / 2, -6).lineTo(pw / 2 + 5, 2).lineTo(pw / 2 - 5, 2).closePath()
+      .fill({ color: BORDER_COLOR, alpha: 0.12 });
+    // Bottom cap ornament
+    g.moveTo(pw / 2, ph + 6).lineTo(pw / 2 + 5, ph - 2).lineTo(pw / 2 - 5, ph - 2).closePath()
+      .fill({ color: BORDER_COLOR, alpha: 0.12 });
+
+    pillar.addChild(g);
+    return pillar;
   }
 }
 
