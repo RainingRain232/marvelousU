@@ -52,8 +52,11 @@ export class AlchemistRenderer {
   draw(state: AlchemistState, sw: number, sh: number): void {
     this._gridGfx.clear();
     this._uiGfx.clear();
-    // Remove old child texts
-    while (this._uiGfx.children.length > 0) this._uiGfx.removeChildAt(0);
+    // Remove and destroy old child texts/graphics to prevent memory leaks
+    while (this._uiGfx.children.length > 0) {
+      const child = this._uiGfx.removeChildAt(0);
+      child.destroy();
+    }
 
     const gridW = AlchemistConfig.GRID_COLS * T;
     const gridH = AlchemistConfig.GRID_ROWS * T;
