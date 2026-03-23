@@ -31,78 +31,168 @@ export class NecroRenderer {
   private _drawBackground(sw: number, sh: number): void {
     const bg = new Graphics();
 
-    // Dark night sky gradient
-    for (let y = 0; y < sh; y += 2) {
-      const t = y / sh;
-      const r = Math.floor(8 + t * 10);
-      const g = Math.floor(6 + t * 12);
-      const b = Math.floor(18 + t * 8);
-      bg.rect(0, y, sw, 2).fill({ color: (r << 16) | (g << 8) | b });
+    // Night sky — deep indigo to dark purple gradient
+    for (let y = 0; y < sh * 0.16; y += 1) {
+      const t = y / (sh * 0.16);
+      const r = Math.floor(6 + t * 6);
+      const g = Math.floor(3 + t * 8);
+      const b = Math.floor(16 + t * 12);
+      bg.rect(0, y, sw, 1).fill({ color: (r << 16) | (g << 8) | b });
     }
 
-    // Moon
-    const mx = sw * 0.78, my = 45;
-    bg.circle(mx, my, 18).fill({ color: 0xeeeedd, alpha: 0.9 });
-    bg.circle(mx + 4, my - 2, 15).fill({ color: 0x0a0812 }); // Crescent shadow
-    // Moon glow
-    for (let r = 20; r < 60; r += 5) {
-      bg.circle(mx, my, r).fill({ color: 0xeeeedd, alpha: 0.01 });
+    // Nebula wisps — faint purple/blue clouds in the sky
+    for (let ni = 0; ni < 8; ni++) {
+      const nx = (ni * 7919 + 50) % sw;
+      const ny = 15 + (ni * 3413) % (sh * 0.12);
+      const nw = 60 + (ni % 4) * 35;
+      const nh = 10 + (ni % 3) * 5;
+      const ncol = ni % 2 === 0 ? 0x221144 : 0x112244;
+      bg.ellipse(nx, ny, nw, nh).fill({ color: ncol, alpha: 0.04 });
+      // Inner brighter core
+      bg.ellipse(nx + 5, ny - 2, nw * 0.4, nh * 0.5).fill({ color: ncol, alpha: 0.03 });
     }
 
-    // Stars
+    // Cloud wisps across the sky
+    for (let ci = 0; ci < 5; ci++) {
+      const cx = (ci * 6271 + 80) % sw;
+      const cy = 10 + (ci * 2131) % (sh * 0.1);
+      const cw = 80 + (ci % 3) * 40;
+      bg.ellipse(cx, cy, cw, 4 + (ci % 2) * 2).fill({ color: 0x222233, alpha: 0.05 });
+      bg.ellipse(cx + 15, cy + 1, cw * 0.6, 3).fill({ color: 0x222233, alpha: 0.03 });
+    }
+
+    // Moon — crescent with craters and halo
+    const mx = sw * 0.78, my = 42;
+    // Outer halo rings
+    for (let hr = 50; hr > 20; hr -= 3) {
+      bg.circle(mx, my, hr).fill({ color: 0xddeeff, alpha: 0.004 });
+    }
+    // Moon body
+    bg.circle(mx, my, 20).fill({ color: 0xeeeedd, alpha: 0.92 });
+    // Craters
+    bg.circle(mx - 5, my - 4, 3).fill({ color: 0xddddcc, alpha: 0.3 });
+    bg.circle(mx + 3, my + 5, 2).fill({ color: 0xddddcc, alpha: 0.25 });
+    bg.circle(mx - 2, my + 3, 1.5).fill({ color: 0xccccbb, alpha: 0.2 });
+    bg.circle(mx + 6, my - 2, 2.5).fill({ color: 0xddddcc, alpha: 0.2 });
+    // Crescent shadow
+    bg.circle(mx + 5, my - 2, 17).fill({ color: 0x060410 });
+    // Bright edge highlight
+    bg.circle(mx - 1, my, 20).stroke({ color: 0xffffff, width: 0.5, alpha: 0.08 });
+
+    // Stars — varied sizes with twinkling brightness, some colored
+    for (let i = 0; i < 100; i++) {
+      const sx = (i * 8737 + 23) % sw;
+      const sy = (i * 4219 + 11) % (sh * 0.15);
+      const sr = 0.3 + (i % 4) * 0.25;
+      const bright = 0.15 + (i % 7) * 0.07;
+      const starCol = i % 15 === 0 ? 0xaaccff : i % 23 === 0 ? 0xffccaa : 0xffffff;
+      bg.circle(sx, sy, sr).fill({ color: starCol, alpha: bright });
+      // Cross sparkle for brighter stars
+      if (sr > 0.7) {
+        bg.moveTo(sx - 2, sy).lineTo(sx + 2, sy).stroke({ color: starCol, width: 0.3, alpha: bright * 0.4 });
+        bg.moveTo(sx, sy - 2).lineTo(sx, sy + 2).stroke({ color: starCol, width: 0.3, alpha: bright * 0.4 });
+      }
+    }
+
+    // Treeline — individual pine tree silhouettes
+    const treeBaseY = sh * 0.155;
+    for (let ti = 0; ti < 35; ti++) {
+      const tx = (ti * 23.5) + (ti * 3571 % 8) - 4;
+      const treeH = 18 + (ti * 2713 % 20);
+      const treeW = 5 + (ti * 1931 % 4);
+      // Pine tree shape — triangle
+      bg.moveTo(tx, treeBaseY).lineTo(tx - treeW, treeBaseY).lineTo(tx, treeBaseY - treeH).lineTo(tx + treeW, treeBaseY).fill({ color: 0x060e06, alpha: 0.65 });
+      // Second layer (slightly offset for depth)
+      if (ti % 2 === 0) {
+        bg.moveTo(tx + 2, treeBaseY + 2).lineTo(tx - treeW + 1, treeBaseY + 2).lineTo(tx + 2, treeBaseY - treeH + 5).lineTo(tx + treeW + 1, treeBaseY + 2).fill({ color: 0x040a04, alpha: 0.4 });
+      }
+      // Trunk hint
+      bg.rect(tx - 0.5, treeBaseY - 3, 1, 3).fill({ color: 0x1a0e06, alpha: 0.3 });
+    }
+
+    // Ground — dark earth with subtle gradient
+    for (let gy = Math.floor(sh * 0.15); gy < sh; gy += 2) {
+      const gt = (gy - sh * 0.15) / (sh * 0.85);
+      const gr = Math.floor(12 + gt * 4);
+      const gg = Math.floor(12 + gt * 3);
+      const gb = Math.floor(6 + gt * 2);
+      bg.rect(0, gy, sw, 2).fill({ color: (gr << 16) | (gg << 8) | gb });
+    }
+
+    // Ground texture — dirt patches with varied tones
     for (let i = 0; i < 60; i++) {
-      const sx = (i * 8737) % sw;
-      const sy = (i * 4219) % (sh * 0.4);
-      const sr = 0.5 + (i % 3) * 0.3;
-      bg.circle(sx, sy, sr).fill({ color: 0xffffff, alpha: 0.2 + (i % 5) * 0.1 });
-    }
-
-    // Distant treeline silhouette
-    for (let x = 0; x < sw; x += 3) {
-      const h = 20 + Math.sin(x * 0.02) * 12 + Math.sin(x * 0.05) * 8 + Math.sin(x * 0.13) * 4;
-      bg.rect(x, sh * 0.15 - h, 3, h + 5).fill({ color: 0x0a120a, alpha: 0.6 });
-    }
-
-    // Ground — dark earth
-    bg.rect(0, sh * 0.15, sw, sh * 0.85).fill({ color: 0x0e0e08 });
-
-    // Ground texture patches
-    for (let i = 0; i < 50; i++) {
       const gx = (i * 6271 + 13) % sw;
-      const gy = sh * 0.15 + (i * 3413 + 7) % (sh * 0.82);
-      bg.circle(gx, gy, 8 + (i % 5) * 3).fill({ color: 0x111108, alpha: 0.3 });
+      const gy = sh * 0.16 + (i * 3413 + 7) % (sh * 0.81);
+      const gsize = 5 + (i % 6) * 3;
+      const gcol = i % 3 === 0 ? 0x100e06 : i % 3 === 1 ? 0x0e0c04 : 0x141008;
+      bg.circle(gx, gy, gsize).fill({ color: gcol, alpha: 0.25 });
     }
 
-    // Fog wisps at ground level
-    for (let i = 0; i < 12; i++) {
-      const fx = (i * 5431) % sw;
-      const fy = sh * 0.65 + (i * 2713) % (sh * 0.25);
-      const fw = 40 + (i % 4) * 25;
-      bg.ellipse(fx, fy, fw, 6).fill({ color: 0x334455, alpha: 0.06 });
+    // Root/crack lines in the earth
+    for (let i = 0; i < 15; i++) {
+      const rx = (i * 5431 + 30) % sw;
+      const ry = sh * 0.25 + (i * 2713) % (sh * 0.6);
+      const rlen = 15 + (i % 4) * 10;
+      const ra = (i * 1.3) % Math.PI;
+      bg.moveTo(rx, ry).bezierCurveTo(rx + Math.cos(ra) * rlen * 0.3, ry + 3, rx + Math.cos(ra) * rlen * 0.7, ry - 2, rx + Math.cos(ra) * rlen, ry + 1).stroke({ color: 0x0a0806, width: 0.5, alpha: 0.2 });
     }
 
-    // Dead grass patches
-    for (let i = 0; i < 30; i++) {
+    // Layered fog wisps at ground level
+    for (let layer = 0; layer < 3; layer++) {
+      const fogAlpha = 0.04 - layer * 0.008;
+      for (let i = 0; i < 6; i++) {
+        const fx = (i * 5431 + layer * 200) % sw;
+        const fy = sh * 0.6 + layer * 30 + (i * 2713 + layer * 100) % (sh * 0.25);
+        const fw = 50 + (i % 4) * 30 + layer * 20;
+        bg.ellipse(fx, fy, fw, 5 + layer * 2).fill({ color: layer === 0 ? 0x334455 : 0x2a3a44, alpha: fogAlpha });
+      }
+    }
+
+    // Dead grass patches — more varied
+    for (let i = 0; i < 40; i++) {
       const gx = (i * 7919) % sw;
       const gy = sh * 0.2 + (i * 4813) % (sh * 0.7);
-      bg.moveTo(gx, gy).bezierCurveTo(gx + 1, gy - 5, gx - 1, gy - 8, gx + 2, gy - 10).stroke({ color: 0x2a3a1a, width: 0.5, alpha: 0.15 });
-      bg.moveTo(gx + 3, gy).bezierCurveTo(gx + 4, gy - 4, gx + 2, gy - 7, gx + 5, gy - 9).stroke({ color: 0x283818, width: 0.5, alpha: 0.12 });
+      const gh = 6 + (i % 4) * 2;
+      const lean = (i % 2 === 0 ? 1 : -1) * (1 + i % 3);
+      bg.moveTo(gx, gy).bezierCurveTo(gx + lean, gy - gh * 0.4, gx + lean * 0.5, gy - gh * 0.7, gx + lean * 1.5, gy - gh).stroke({ color: 0x2a3a1a, width: 0.5, alpha: 0.12 });
     }
 
-    // Scattered bones
-    for (let i = 0; i < 10; i++) {
-      const bx = 50 + (i * 3571) % (sw - 100);
-      const by = sh * 0.3 + (i * 2131) % (sh * 0.55);
-      const angle = (i * 1.7) % Math.PI;
-      bg.moveTo(bx, by).lineTo(bx + Math.cos(angle) * 6, by + Math.sin(angle) * 3).stroke({ color: BONE_WHITE, width: 1, alpha: 0.08 });
+    // Scattered bones — femurs, ribs, skull fragments
+    for (let i = 0; i < 15; i++) {
+      const bx = 40 + (i * 3571) % (sw - 80);
+      const by = sh * 0.25 + (i * 2131) % (sh * 0.6);
+      const btype = i % 3;
+      if (btype === 0) {
+        // Femur bone
+        const angle = (i * 1.7) % Math.PI;
+        const len = 6 + (i % 3) * 2;
+        bg.moveTo(bx, by).lineTo(bx + Math.cos(angle) * len, by + Math.sin(angle) * len * 0.5).stroke({ color: BONE_WHITE, width: 1, alpha: 0.07 });
+        // Knobs
+        bg.circle(bx, by, 1).fill({ color: BONE_WHITE, alpha: 0.06 });
+        bg.circle(bx + Math.cos(angle) * len, by + Math.sin(angle) * len * 0.5, 1).fill({ color: BONE_WHITE, alpha: 0.06 });
+      } else if (btype === 1) {
+        // Rib curve
+        bg.moveTo(bx, by).bezierCurveTo(bx + 4, by - 3, bx + 6, by - 2, bx + 8, by + 1).stroke({ color: BONE_WHITE, width: 0.5, alpha: 0.06 });
+      } else {
+        // Small skull fragment
+        bg.circle(bx, by, 2).fill({ color: BONE_WHITE, alpha: 0.05 });
+        bg.circle(bx - 0.5, by - 0.5, 0.5).fill({ color: 0x0a0a06, alpha: 0.05 });
+      }
     }
 
-    // Vignette
-    for (let v = 0; v < 6; v++) {
-      const inset = v * 40;
-      bg.rect(0, 0, inset, sh).fill({ color: 0x000000, alpha: 0.04 });
-      bg.rect(sw - inset, 0, inset, sh).fill({ color: 0x000000, alpha: 0.04 });
-      bg.rect(0, 0, sw, inset * 0.3).fill({ color: 0x000000, alpha: 0.02 });
+    // Vignette — stronger, with bottom darkening
+    for (let v = 0; v < 8; v++) {
+      const inset = v * 35;
+      bg.rect(0, 0, inset, sh).fill({ color: 0x000000, alpha: 0.035 });
+      bg.rect(sw - inset, 0, inset, sh).fill({ color: 0x000000, alpha: 0.035 });
+    }
+    // Top darkening
+    for (let v = 0; v < 4; v++) {
+      bg.rect(0, 0, sw, v * 15).fill({ color: 0x000000, alpha: 0.02 });
+    }
+    // Bottom atmospheric haze
+    for (let v = 0; v < 5; v++) {
+      bg.rect(0, sh - v * 20, sw, v * 20).fill({ color: 0x060608, alpha: 0.02 });
     }
 
     this.container.addChild(bg);
@@ -591,21 +681,58 @@ export class NecroRenderer {
     for (const wall of state.boneWalls) {
       const wx = ox + wall.x, wy = oy + wall.y;
       const hpRatio = wall.hp / wall.maxHp;
-      // Wall base
-      g.roundRect(wx - 12, wy - 6, 24, 12, 2).fill({ color: 0x888877, alpha: 0.6 * hpRatio + 0.2 });
-      g.roundRect(wx - 12, wy - 6, 24, 12, 2).stroke({ color: BONE_WHITE, width: 1, alpha: 0.4 * hpRatio });
-      // Bone details
-      g.moveTo(wx - 8, wy - 4).lineTo(wx - 8, wy + 4).stroke({ color: BONE_WHITE, width: 1.5, alpha: 0.4 });
-      g.moveTo(wx, wy - 5).lineTo(wx, wy + 5).stroke({ color: BONE_WHITE, width: 1.5, alpha: 0.4 });
-      g.moveTo(wx + 8, wy - 4).lineTo(wx + 8, wy + 4).stroke({ color: BONE_WHITE, width: 1.5, alpha: 0.4 });
-      // Skull on top
-      g.circle(wx, wy - 8, 3).fill({ color: BONE_WHITE, alpha: 0.4 });
-      g.circle(wx - 1, wy - 9, 0.8).fill({ color: 0x0a0a06, alpha: 0.5 });
-      g.circle(wx + 1, wy - 9, 0.8).fill({ color: 0x0a0a06, alpha: 0.5 });
+      const wallAlpha = 0.3 + hpRatio * 0.5;
+
+      // Ground shadow
+      g.ellipse(wx, wy + 8, 16, 3).fill({ color: 0x000000, alpha: 0.2 });
+
+      // Base layer — stacked femur bones
+      for (let bi = -2; bi <= 2; bi++) {
+        const boneX = wx + bi * 5;
+        const boneLen = 8 + Math.abs(bi) * -1;
+        // Horizontal femur
+        g.moveTo(boneX - boneLen / 2, wy + 3).lineTo(boneX + boneLen / 2, wy + 3).stroke({ color: BONE_WHITE, width: 2, alpha: wallAlpha * 0.7 });
+        // Knobs
+        g.circle(boneX - boneLen / 2, wy + 3, 1.5).fill({ color: BONE_WHITE, alpha: wallAlpha * 0.6 });
+        g.circle(boneX + boneLen / 2, wy + 3, 1.5).fill({ color: BONE_WHITE, alpha: wallAlpha * 0.6 });
+      }
+
+      // Middle layer — rib bones arching
+      for (let ri = -1; ri <= 1; ri++) {
+        const ribX = wx + ri * 7;
+        g.moveTo(ribX - 4, wy).bezierCurveTo(ribX - 2, wy - 4, ribX + 2, wy - 4, ribX + 4, wy).stroke({ color: BONE_WHITE, width: 1.5, alpha: wallAlpha * 0.6 });
+      }
+
+      // Top — three skulls
+      for (let si = -1; si <= 1; si++) {
+        const skX = wx + si * 8, skY = wy - 6;
+        // Skull
+        g.circle(skX, skY, 3.5).fill({ color: BONE_WHITE, alpha: wallAlpha * 0.8 });
+        // Eye sockets
+        g.circle(skX - 1.2, skY - 0.5, 1).fill({ color: 0x0a0a06, alpha: wallAlpha * 0.7 });
+        g.circle(skX + 1.2, skY - 0.5, 1).fill({ color: 0x0a0a06, alpha: wallAlpha * 0.7 });
+        // Nose
+        g.moveTo(skX - 0.3, skY + 1).lineTo(skX, skY + 2).lineTo(skX + 0.3, skY + 1).stroke({ color: 0x0a0a06, width: 0.3, alpha: wallAlpha * 0.5 });
+        // Jaw hint
+        g.moveTo(skX - 2, skY + 2.5).bezierCurveTo(skX, skY + 3.5, skX, skY + 3.5, skX + 2, skY + 2.5).stroke({ color: BONE_WHITE, width: 0.5, alpha: wallAlpha * 0.3 });
+      }
+
+      // Green necromantic glow seeping through
+      g.ellipse(wx, wy, 14, 8).fill({ color: NECRO_GREEN, alpha: 0.03 * hpRatio });
+
       // HP bar
       if (hpRatio < 1) {
-        g.rect(wx - 12, wy + 8, 24, 2).fill({ color: 0x220000 });
-        g.rect(wx - 12, wy + 8, 24 * hpRatio, 2).fill({ color: BONE_WHITE });
+        g.roundRect(wx - 14, wy + 10, 28, 2.5, 1).fill({ color: 0x110000 });
+        g.roundRect(wx - 14, wy + 10, 28 * hpRatio, 2.5, 1).fill({ color: BONE_WHITE, alpha: 0.7 });
+      }
+
+      // Crumbling effect at low HP
+      if (hpRatio < 0.4) {
+        for (let ci = 0; ci < 3; ci++) {
+          const cx = wx + (Math.random() - 0.5) * 16;
+          const cy = wy + (Math.random() - 0.5) * 8;
+          g.circle(cx, cy, 0.8).fill({ color: BONE_WHITE, alpha: 0.15 + Math.random() * 0.1 });
+        }
       }
     }
 
@@ -621,15 +748,30 @@ export class NecroRenderer {
       this._drawCrusaderUnit(g, ox + c.x, oy + c.y, c, state);
     }
 
-    // Projectiles
+    // Projectiles — spiral trail with sparks
     for (const p of state.projectiles) {
       const angle = Math.atan2(p.vy, p.vx);
       const px = ox + p.x, py = oy + p.y;
-      // Trail
-      g.moveTo(px - Math.cos(angle) * 6, py - Math.sin(angle) * 6).lineTo(px, py).stroke({ color: p.color, width: 2, alpha: 0.6 });
-      // Head
-      g.circle(px, py, 2).fill({ color: p.color, alpha: 0.8 });
-      g.circle(px, py, 4).fill({ color: p.color, alpha: 0.15 });
+      const t = state.elapsed;
+
+      // Spiral trail segments
+      for (let ti = 1; ti <= 4; ti++) {
+        const trailDist = ti * 3;
+        const spiralAngle = t * 15 + ti * 1.2;
+        const spiralR = 1.5 + ti * 0.3;
+        const tx = px - Math.cos(angle) * trailDist + Math.cos(spiralAngle) * spiralR;
+        const ty = py - Math.sin(angle) * trailDist + Math.sin(spiralAngle) * spiralR;
+        g.circle(tx, ty, 1.2 - ti * 0.2).fill({ color: p.color, alpha: 0.4 - ti * 0.08 });
+      }
+
+      // Main trail line — glowing
+      g.moveTo(px - Math.cos(angle) * 10, py - Math.sin(angle) * 10).lineTo(px, py).stroke({ color: p.color, width: 2, alpha: 0.5 });
+      g.moveTo(px - Math.cos(angle) * 6, py - Math.sin(angle) * 6).lineTo(px, py).stroke({ color: 0xffffff, width: 0.8, alpha: 0.2 });
+
+      // Head — bright core with glow layers
+      g.circle(px, py, 5).fill({ color: p.color, alpha: 0.1 });
+      g.circle(px, py, 3).fill({ color: p.color, alpha: 0.4 });
+      g.circle(px, py, 1.5).fill({ color: 0xffffff, alpha: 0.5 });
     }
 
     // Floating damage numbers
@@ -920,82 +1062,206 @@ export class NecroRenderer {
   // ── Necromancer avatar ─────────────────────────────────────────────────
 
   private _drawNecromancer(g: Graphics, x: number, y: number, state: NecroState): void {
-    // Floating dark robe
-    const sway = Math.sin(state.elapsed * 1.5) * 2;
+    const t = state.elapsed;
+    const sway = Math.sin(t * 1.5) * 2;
+    const hover = Math.sin(t * 1.2) * 1.5; // Slight float
 
-    // Dark aura
-    const pulse = 0.08 + Math.sin(state.elapsed * 2) * 0.04;
-    g.circle(x, y, 20).fill({ color: DARK_PURPLE, alpha: pulse });
+    // Layered dark aura
+    const pulse = 0.06 + Math.sin(t * 2) * 0.03;
+    g.circle(x, y + hover, 28).fill({ color: DARK_PURPLE, alpha: pulse * 0.5 });
+    g.circle(x, y + hover, 22).fill({ color: DARK_PURPLE, alpha: pulse });
+    g.circle(x, y + hover, 16).fill({ color: 0x0a0418, alpha: pulse * 1.5 });
 
-    // Robe body — triangular
-    g.moveTo(x - 8, y + 15).lineTo(x, y - 5).lineTo(x + 8, y + 15).fill({ color: 0x1a0a2a });
-    g.moveTo(x - 8, y + 15).lineTo(x, y - 5).lineTo(x + 8, y + 15).stroke({ color: 0x2a1a3a, width: 0.5 });
+    // Soul fragments orbiting
+    for (let si = 0; si < 4; si++) {
+      const sa = t * 1.5 + (si / 4) * Math.PI * 2;
+      const sr = 20 + Math.sin(t * 0.7 + si) * 3;
+      const sx = x + Math.cos(sa) * sr;
+      const sy = y + hover + Math.sin(sa) * sr * 0.4;
+      g.circle(sx, sy, 1.2).fill({ color: NECRO_GREEN, alpha: 0.2 + Math.sin(t * 3 + si) * 0.1 });
+      // Trail
+      const trailX = x + Math.cos(sa - 0.3) * sr;
+      const trailY = y + hover + Math.sin(sa - 0.3) * sr * 0.4;
+      g.moveTo(trailX, trailY).lineTo(sx, sy).stroke({ color: NECRO_GREEN, width: 0.5, alpha: 0.08 });
+    }
 
-    // Hood
-    g.circle(x, y - 8, 7).fill({ color: 0x1a0a2a });
-    g.circle(x, y - 8, 7).stroke({ color: 0x2a1a3a, width: 0.5 });
+    // Robe body — flowing shape with wavy hem
+    const robeTop = y - 6 + hover;
+    const robeBot = y + 16 + hover;
+    g.moveTo(x - 10 + sway * 0.5, robeBot)
+      .bezierCurveTo(x - 11, robeBot - 5, x - 7, robeTop + 5, x, robeTop)
+      .bezierCurveTo(x + 7, robeTop + 5, x + 11, robeBot - 5, x + 10 - sway * 0.5, robeBot)
+      .fill({ color: 0x140820 });
+    // Robe edges / folds
+    g.moveTo(x - 10 + sway * 0.5, robeBot)
+      .bezierCurveTo(x - 11, robeBot - 5, x - 7, robeTop + 5, x, robeTop)
+      .bezierCurveTo(x + 7, robeTop + 5, x + 11, robeBot - 5, x + 10 - sway * 0.5, robeBot)
+      .stroke({ color: 0x2a1a3a, width: 0.5, alpha: 0.5 });
+    // Inner fold lines
+    g.moveTo(x - 3, robeTop + 8).bezierCurveTo(x - 4, robeTop + 14, x - 5, robeBot - 4, x - 6 + sway * 0.3, robeBot).stroke({ color: 0x1a0e28, width: 0.5, alpha: 0.3 });
+    g.moveTo(x + 2, robeTop + 10).bezierCurveTo(x + 3, robeTop + 16, x + 4, robeBot - 3, x + 5 - sway * 0.3, robeBot).stroke({ color: 0x1a0e28, width: 0.5, alpha: 0.25 });
+    // Wavy hem
+    for (let hi = -3; hi <= 3; hi++) {
+      const hx = x + hi * 3 + sway * (hi / 3) * 0.5;
+      const wave = Math.sin(t * 3 + hi * 0.8) * 1.5;
+      g.moveTo(hx - 1, robeBot).bezierCurveTo(hx, robeBot + 2 + wave, hx + 1, robeBot + 2 + wave, hx + 2, robeBot).stroke({ color: 0x140820, width: 1, alpha: 0.4 });
+    }
 
-    // Eyes — glowing green
-    g.circle(x - 2, y - 9, 1.5).fill({ color: NECRO_GREEN, alpha: 0.9 });
-    g.circle(x + 2, y - 9, 1.5).fill({ color: NECRO_GREEN, alpha: 0.9 });
+    // Shoulder pauldrons
+    g.ellipse(x - 7, robeTop + 3 + hover, 4, 2.5).fill({ color: 0x1a1030, alpha: 0.7 });
+    g.ellipse(x + 7, robeTop + 3 + hover, 4, 2.5).fill({ color: 0x1a1030, alpha: 0.7 });
+    g.ellipse(x - 7, robeTop + 3 + hover, 4, 2.5).stroke({ color: 0x2a1a3a, width: 0.5, alpha: 0.3 });
+    g.ellipse(x + 7, robeTop + 3 + hover, 4, 2.5).stroke({ color: 0x2a1a3a, width: 0.5, alpha: 0.3 });
 
-    // Staff
-    g.moveTo(x + 10 + sway, y + 15).lineTo(x + 12, y - 18).stroke({ color: 0x3a2a1a, width: 2 });
-    // Staff orb
-    const orbPulse = 0.5 + Math.sin(state.elapsed * 3) * 0.3;
-    g.circle(x + 12, y - 20, 4).fill({ color: NECRO_GREEN, alpha: orbPulse });
-    g.circle(x + 12, y - 20, 6).fill({ color: NECRO_GREEN, alpha: orbPulse * 0.15 });
+    // Hood — deeper, with shadow
+    const hoodY = y - 9 + hover;
+    g.moveTo(x - 8, robeTop + 2).bezierCurveTo(x - 9, hoodY - 2, x + 9, hoodY - 2, x + 8, robeTop + 2).fill({ color: 0x140820 });
+    g.moveTo(x - 8, robeTop + 2).bezierCurveTo(x - 9, hoodY - 2, x + 9, hoodY - 2, x + 8, robeTop + 2).stroke({ color: 0x2a1a3a, width: 0.5, alpha: 0.4 });
+    // Hood inner shadow
+    g.ellipse(x, hoodY + 2, 5, 4).fill({ color: 0x060208, alpha: 0.6 });
 
-    // Floating rune particles around staff
-    for (let i = 0; i < 3; i++) {
-      const angle = state.elapsed * 2 + (i / 3) * Math.PI * 2;
-      const rx = x + 12 + Math.cos(angle) * 8;
-      const ry = y - 20 + Math.sin(angle) * 8;
-      g.circle(rx, ry, 1).fill({ color: NECRO_GREEN, alpha: 0.3 });
+    // Eyes — glowing green with glow halo
+    g.circle(x - 2.5, hoodY + 1, 2.5).fill({ color: NECRO_GREEN, alpha: 0.12 });
+    g.circle(x + 2.5, hoodY + 1, 2.5).fill({ color: NECRO_GREEN, alpha: 0.12 });
+    g.circle(x - 2.5, hoodY + 1, 1.5).fill({ color: NECRO_GREEN, alpha: 0.9 });
+    g.circle(x + 2.5, hoodY + 1, 1.5).fill({ color: NECRO_GREEN, alpha: 0.9 });
+    // Eye gleam
+    g.circle(x - 2, hoodY + 0.5, 0.5).fill({ color: 0xffffff, alpha: 0.4 });
+    g.circle(x + 3, hoodY + 0.5, 0.5).fill({ color: 0xffffff, alpha: 0.4 });
+
+    // Skeletal hands — reaching out from sleeves
+    const lhx = x - 9 + sway * 0.3, lhy = y + 4 + hover;
+    const rhx = x + 9 - sway * 0.3, rhy = y + 2 + hover;
+    // Left hand (holding gesture)
+    g.moveTo(lhx, lhy).lineTo(lhx - 3, lhy - 2).stroke({ color: BONE_WHITE, width: 0.8, alpha: 0.4 });
+    g.moveTo(lhx, lhy).lineTo(lhx - 2, lhy - 4).stroke({ color: BONE_WHITE, width: 0.8, alpha: 0.4 });
+    g.moveTo(lhx, lhy).lineTo(lhx - 1, lhy - 4).stroke({ color: BONE_WHITE, width: 0.8, alpha: 0.35 });
+    g.circle(lhx, lhy, 1.5).fill({ color: BONE_WHITE, alpha: 0.3 });
+    // Right hand (gripping staff)
+    g.circle(rhx + 1, rhy, 1.5).fill({ color: BONE_WHITE, alpha: 0.3 });
+    g.moveTo(rhx, rhy).lineTo(rhx + 3, rhy - 1).stroke({ color: BONE_WHITE, width: 0.8, alpha: 0.35 });
+
+    // Staff — gnarled with knots
+    const staffBaseX = x + 12, staffBaseY = y + 16 + hover;
+    const staffTopX = x + 13, staffTopY = y - 20 + hover;
+    g.moveTo(staffBaseX + sway * 0.5, staffBaseY).bezierCurveTo(staffBaseX + 1, y + hover, staffTopX - 1, staffTopY + 15, staffTopX, staffTopY).stroke({ color: 0x3a2a1a, width: 2.5 });
+    // Knots
+    g.circle(staffTopX - 0.5, staffTopY + 10, 2).fill({ color: 0x2a1a10, alpha: 0.4 });
+    g.circle(staffTopX, staffTopY + 22, 1.5).fill({ color: 0x2a1a10, alpha: 0.3 });
+    // Staff top — skull grip
+    g.circle(staffTopX, staffTopY, 3.5).fill({ color: BONE_WHITE, alpha: 0.5 });
+    g.circle(staffTopX - 1, staffTopY - 1, 0.8).fill({ color: 0x060208, alpha: 0.4 });
+    g.circle(staffTopX + 1, staffTopY - 1, 0.8).fill({ color: 0x060208, alpha: 0.4 });
+
+    // Staff orb — hovering above skull
+    const orbY = staffTopY - 6;
+    const orbPulse = 0.5 + Math.sin(t * 3) * 0.3;
+    g.circle(staffTopX, orbY, 5).fill({ color: NECRO_GREEN, alpha: orbPulse * 0.8 });
+    g.circle(staffTopX, orbY, 8).fill({ color: NECRO_GREEN, alpha: orbPulse * 0.12 });
+    g.circle(staffTopX, orbY, 12).fill({ color: NECRO_GREEN, alpha: orbPulse * 0.04 });
+    // Orb inner sparkle
+    g.circle(staffTopX - 1, orbY - 1, 1.5).fill({ color: 0xffffff, alpha: orbPulse * 0.3 });
+
+    // Rune particles orbiting orb
+    for (let i = 0; i < 5; i++) {
+      const angle = t * 2.5 + (i / 5) * Math.PI * 2;
+      const dist = 8 + Math.sin(t * 1.5 + i) * 2;
+      const rx = staffTopX + Math.cos(angle) * dist;
+      const ry = orbY + Math.sin(angle) * dist * 0.5;
+      g.circle(rx, ry, 0.8).fill({ color: NECRO_GREEN, alpha: 0.25 + Math.sin(t * 4 + i) * 0.1 });
+    }
+
+    // Energy line from hand to orb (during ritual)
+    if (state.phase === "ritual" && state.isRaising) {
+      g.moveTo(lhx - 2, lhy - 3).bezierCurveTo(lhx - 5, lhy - 15, staffTopX - 5, orbY + 10, staffTopX, orbY).stroke({ color: NECRO_GREEN, width: 1, alpha: 0.3 + Math.sin(t * 6) * 0.15 });
     }
   }
 
   // ── HUD ────────────────────────────────────────────────────────────────
 
   private _drawHUD(g: Graphics, state: NecroState, sw: number, sh: number, ox: number, oy: number): void {
-    // Top bar
-    g.rect(0, 0, sw, 44).fill({ color: 0x06040a, alpha: 0.85 });
-    g.moveTo(0, 44).lineTo(sw, 44).stroke({ color: NECRO_GREEN, width: 1, alpha: 0.25 });
+    // Top bar — darker with subtle gradient
+    for (let by = 0; by < 46; by++) {
+      const ba = 0.85 - by * 0.003;
+      g.rect(0, by, sw, 1).fill({ color: 0x06040a, alpha: ba });
+    }
+    // Decorative bottom edge
+    g.moveTo(0, 44).lineTo(sw, 44).stroke({ color: NECRO_GREEN, width: 1, alpha: 0.2 });
+    g.moveTo(0, 45).lineTo(sw, 45).stroke({ color: NECRO_GREEN, width: 0.5, alpha: 0.06 });
+    // Corner ornaments
+    g.moveTo(0, 44).lineTo(8, 44).lineTo(8, 40).stroke({ color: NECRO_GREEN, width: 0.5, alpha: 0.15 });
+    g.moveTo(sw, 44).lineTo(sw - 8, 44).lineTo(sw - 8, 40).stroke({ color: NECRO_GREEN, width: 0.5, alpha: 0.15 });
 
     const addText = (str: string, x: number, y: number, opts: Partial<TextStyle>, center = false) => {
       const t = new Text({ text: str, style: new TextStyle({ fontFamily: FONT, ...opts } as any) });
       if (center) t.anchor.set(0.5, 0); t.position.set(x, y); this._ui.addChild(t);
     };
 
-    addText("\u2620 NECROMANCER", 12, 6, { fontSize: 14, fill: NECRO_GREEN, fontWeight: "bold", letterSpacing: 3 });
-    const waveStr = state.endless ? `Wave ${state.wave + 1} (Endless)` : `Wave ${state.wave + 1}/${state.totalWaves}`;
-    addText(waveStr, 200, 8, { fontSize: 11, fill: state.endless ? 0xaa44ff : 0x889988 });
-    addText(`Gold: ${state.gold}`, 300, 8, { fontSize: 12, fill: 0xffd700 });
-    addText(`Score: ${state.score}`, 400, 8, { fontSize: 12, fill: 0x44ccaa });
-    addText(`Army: ${state.undead.length}`, 510, 8, { fontSize: 11, fill: NECRO_GREEN });
+    // Title with skull icon drawn
+    g.circle(22, 14, 5).fill({ color: NECRO_GREEN, alpha: 0.15 });
+    g.circle(20, 13, 1).fill({ color: NECRO_GREEN, alpha: 0.3 });
+    g.circle(24, 13, 1).fill({ color: NECRO_GREEN, alpha: 0.3 });
+    addText("NECROMANCER", 34, 5, { fontSize: 14, fill: NECRO_GREEN, fontWeight: "bold", letterSpacing: 3 });
 
-    // Mana bar
-    const manaW = 120, manaH = 8, manaX = 200, manaY = 26;
-    g.roundRect(manaX, manaY, manaW, manaH, 3).fill({ color: 0x111122 });
-    g.roundRect(manaX, manaY, manaW * (state.mana / state.maxMana), manaH, 3).fill({ color: 0x4466cc, alpha: 0.8 });
-    addText(`Mana: ${Math.floor(state.mana)}/${state.maxMana}`, manaX + manaW + 6, manaY - 2, { fontSize: 9, fill: 0x6688cc });
+    const waveStr = state.endless ? `Wave ${state.wave + 1} \u221E` : `Wave ${state.wave + 1}/${state.totalWaves}`;
+    addText(waveStr, 195, 7, { fontSize: 11, fill: state.endless ? 0xaa44ff : 0x889988 });
+    addText(`Gold: ${state.gold}`, 295, 7, { fontSize: 12, fill: 0xffd700 });
+    addText(`Score: ${state.score}`, 395, 7, { fontSize: 12, fill: 0x44ccaa });
+    addText(`Army: ${state.undead.length}`, 505, 7, { fontSize: 11, fill: NECRO_GREEN });
 
-    // HP
-    const hpStr = "♥".repeat(Math.max(0, state.playerHp)) + "♡".repeat(Math.max(0, state.maxPlayerHp - state.playerHp));
-    addText(`HP: ${hpStr}`, 440, 26, { fontSize: 9, fill: state.playerHp <= 3 ? 0xff4444 : 0xff8888 });
+    // Mana bar — ornate frame
+    const manaW = 130, manaH = 9, manaX = 195, manaY = 26;
+    // Frame
+    g.roundRect(manaX - 1, manaY - 1, manaW + 2, manaH + 2, 4).stroke({ color: 0x334466, width: 0.8, alpha: 0.4 });
+    // Background
+    g.roundRect(manaX, manaY, manaW, manaH, 3).fill({ color: 0x0a0a1a });
+    // Fill — gradient effect via layered bars
+    const manaFill = manaW * (state.mana / state.maxMana);
+    g.roundRect(manaX, manaY, manaFill, manaH, 3).fill({ color: 0x3355aa, alpha: 0.7 });
+    g.roundRect(manaX, manaY, manaFill, manaH * 0.5, 3).fill({ color: 0x4477dd, alpha: 0.3 });
+    // Shimmer line
+    if (state.mana > state.maxMana * 0.8) {
+      g.roundRect(manaX + 2, manaY + 1, manaFill - 4, 2, 1).fill({ color: 0x88aaff, alpha: 0.15 + Math.sin(state.elapsed * 4) * 0.08 });
+    }
+    // Orb decorations at ends
+    g.circle(manaX, manaY + manaH / 2, 2).fill({ color: 0x334466, alpha: 0.4 });
+    g.circle(manaX + manaW, manaY + manaH / 2, 2).fill({ color: 0x334466, alpha: 0.4 });
+    addText(`${Math.floor(state.mana)}/${state.maxMana}`, manaX + manaW + 8, manaY - 2, { fontSize: 9, fill: 0x6688cc });
 
-    // Phase indicator
-    const phaseNames: Record<string, string> = { dig: "DIG PHASE", ritual: "RITUAL PHASE", battle: "BATTLE!", upgrade: "UPGRADE" };
-    addText(phaseNames[state.phase] ?? state.phase.toUpperCase(), sw / 2, 28, { fontSize: 9, fill: 0x667766, letterSpacing: 2 }, true);
+    // HP — drawn heart icons instead of text
+    const hpX = 435, hpY = 27;
+    addText("HP:", hpX, hpY, { fontSize: 9, fill: 0x886666 });
+    for (let hi = 0; hi < state.maxPlayerHp; hi++) {
+      const heartX = hpX + 22 + hi * 8;
+      const filled = hi < state.playerHp;
+      const col = filled ? (state.playerHp <= 3 ? 0xff3333 : 0xff6666) : 0x332222;
+      const a = filled ? 0.8 : 0.3;
+      // Heart shape — two bumps and a point
+      g.moveTo(heartX, hpY + 5).bezierCurveTo(heartX - 3, hpY + 1, heartX - 3, hpY - 2, heartX, hpY).bezierCurveTo(heartX + 3, hpY - 2, heartX + 3, hpY + 1, heartX, hpY + 5).fill({ color: col, alpha: a });
+      // Highlight
+      if (filled) g.circle(heartX - 1, hpY, 0.8).fill({ color: 0xffffff, alpha: 0.2 });
+    }
 
-    // Bottom bar
+    // Phase indicator — with icon
+    const phaseIcons: Record<string, string> = { dig: "\u26CF", ritual: "\u2721", battle: "\u2694", start: "\u23F3" };
+    const phaseNames: Record<string, string> = { dig: "DIG", ritual: "RITUAL", battle: "BATTLE", start: "..." };
+    const phaseIcon = phaseIcons[state.phase] ?? "";
+    const phaseName = phaseNames[state.phase] ?? state.phase.toUpperCase();
+    // Phase badge
+    g.roundRect(sw / 2 - 30, 28, 60, 12, 3).fill({ color: 0x0a0812, alpha: 0.6 });
+    g.roundRect(sw / 2 - 30, 28, 60, 12, 3).stroke({ color: 0x445544, width: 0.5, alpha: 0.3 });
+    addText(`${phaseIcon} ${phaseName}`, sw / 2, 29, { fontSize: 8, fill: 0x778877, letterSpacing: 1 }, true);
+
+    // Bottom bar — subtle with inner glow
+    g.rect(0, sh - 20, sw, 20).fill({ color: 0x06040a, alpha: 0.6 });
+    g.moveTo(0, sh - 20).lineTo(sw, sh - 20).stroke({ color: 0x445544, width: 0.5, alpha: 0.1 });
     const controls: Record<string, string> = {
-      dig: "Click graves to dig | D: dig all (15m) | SPACE: ritual | Esc: quit",
-      ritual: "Click corpses to place in slots | ENTER: raise undead | SPACE: battle | Esc: quit",
+      dig: "Click: dig grave | D: dig all (15m) | SPACE: ritual | Esc: quit",
+      ritual: "Click: place corpse | ENTER: raise | SPACE: battle | Esc: quit",
       battle: "LMB: Dark Nova | RMB/W: Bone Wall | Esc: quit",
-      upgrade: "Click to buy upgrades | SPACE: next wave",
+      upgrade: "Click: buy upgrades | SPACE: next wave",
     };
-    addText(controls[state.phase] ?? "Esc: quit", sw / 2, sh - 14, { fontSize: 8, fill: 0x445544 }, true);
+    addText(controls[state.phase] ?? "Esc: quit", sw / 2, sh - 16, { fontSize: 7, fill: 0x445544 }, true);
   }
 
   destroy(): void {
