@@ -12,6 +12,14 @@ import { OPPONENTS, TavernConfig, cardScore } from "./config/TavernConfig";
 import { placeBet, playerHit, playerStand, playerDoubleDown } from "./systems/CardSystem";
 import { TavernRenderer } from "./view/TavernRenderer";
 
+// Track unlocked opponents (persisted via localStorage)
+function getUnlockedLevel(): number {
+  try { return parseInt(localStorage.getItem("tavern_unlocked") ?? "0") || 0; } catch { return 0; }
+}
+function setUnlockedLevel(level: number): void {
+  try { localStorage.setItem("tavern_unlocked", `${level}`); } catch { /* ignore */ }
+}
+
 export class TavernGame {
   private _state!: TavernState;
   private _tickerCb: ((ticker: Ticker) => void) | null = null;
@@ -53,21 +61,31 @@ export class TavernGame {
     addText("A Medieval Card Game", this._sw / 2, 65, { fontSize: 12, fill: 0x887766, fontStyle: "italic" }, true);
     addText("Choose your opponent:", this._sw / 2, 100, { fontSize: 13, fill: 0xccaa88 }, true);
 
+    const unlocked = getUnlockedLevel();
     let y = 125;
     for (let i = 0; i < OPPONENTS.length; i++) {
       const opp = OPPONENTS[i];
+      const isLocked = i > unlocked;
       const g = new Graphics();
-      g.roundRect(this._sw / 2 - 130, y, 260, 40, 5).fill({ color: 0x0a0806, alpha: 0.7 });
-      g.roundRect(this._sw / 2 - 130, y, 260, 40, 5).stroke({ color: opp.color, width: 1, alpha: 0.4 });
-      g.eventMode = "static"; g.cursor = "pointer";
-      const idx = i;
-      g.on("pointerdown", () => {
-        viewManager.removeFromLayer("ui", c); c.destroy({ children: true });
-        this._startGame(idx);
+      g.roundRect(this._sw / 2 - 130, y, 260, 40, 5).fill({ color: isLocked ? 0x080808 : 0x0a0806, alpha: 0.7 });
+      g.roundRect(this._sw / 2 - 130, y, 260, 40, 5).stroke({ color: isLocked ? 0x333333 : opp.color, width: 1, alpha: isLocked ? 0.2 : 0.4 });
+      if (!isLocked) {
+        g.eventMode = "static"; g.cursor = "pointer";
+        const idx = i;
+        g.on("pointerdown", () => {
+          viewManager.removeFromLayer("ui", c); c.destroy({ children: true });
+          this._startGame(idx);
+        });
+      }
       });
       c.addChild(g);
-      addText(`${opp.name} ${opp.title}`, this._sw / 2, y + 5, { fontSize: 11, fill: opp.color, fontWeight: "bold" }, true);
-      addText(`Min bet: ${opp.minBet}g | Tier ${opp.tier + 1}`, this._sw / 2, y + 22, { fontSize: 9, fill: 0x888877 }, true);
+      if (isLocked) {
+        addText(`\u{1F512} ${opp.name} ${opp.title}`, this._sw / 2, y + 5, { fontSize: 11, fill: 0x555555 }, true);
+        addText(`Beat ${OPPONENTS[i - 1]?.name ?? "?"} to unlock`, this._sw / 2, y + 22, { fontSize: 9, fill: 0x554444 }, true);
+      } else {
+        addText(`${i <= unlocked - 1 ? "\u2713 " : ""}${opp.name} ${opp.title}`, this._sw / 2, y + 5, { fontSize: 11, fill: opp.color, fontWeight: "bold" }, true);
+        addText(`Min bet: ${opp.minBet}g | Tier ${opp.tier + 1}`, this._sw / 2, y + 22, { fontSize: 9, fill: 0x888877 }, true);
+      }
       y += 46;
     }
 
@@ -171,6 +189,15 @@ export class TavernGame {
 
     let y = py + 16;
     addText(won ? "\u{1F3BA} PROFITABLE NIGHT \u{1F3BA}" : "\u{1F3BA} TOUGH LUCK \u{1F3BA}", this._sw / 2, y, { fontSize: 20, fill: accent, fontWeight: "bold", letterSpacing: 3 }, true);
+
+    // Unlock next opponent if won
+    if (won && this._state.opponentIndex >= getUnlockedLevel()) {
+      setUnlockedLevel(this._state.opponentIndex + 1);
+      if (this._state.opponentIndex + 1 < OPPONENTS.length) {
+        const next = OPPONENTS[this._state.opponentIndex + 1];
+        addText(`\u{1F513} Unlocked: ${next.name} ${next.title}!`, this._sw / 2, y + 24, { fontSize: 11, fill: 0xffd700, fontWeight: "bold" }, true);
+      }
+    }
     y += 36;
 
     const stats: [string, string, number][] = [

@@ -142,7 +142,10 @@ export function collapseGrid(state: AlchemistState): boolean {
     // Fill empty spaces at top
     const rng = seedRng(Date.now() + col * 1000);
     for (let row = writeRow; row >= 0; row--) {
-      const types = rng() < 0.08 ? [...ALL_INGREDIENTS, ...RARE_INGREDIENTS] : ALL_INGREDIENTS;
+      // Boost rare ingredient spawn when customers need them
+      const needsRare = state.customers.some(c => !c.served && !c.left && c.recipe.ingredients.some(([t]) => RARE_INGREDIENTS.includes(t as any)));
+      const rareChance = needsRare ? 0.2 : 0.12;
+      const types = rng() < rareChance ? [...ALL_INGREDIENTS, ...RARE_INGREDIENTS] : ALL_INGREDIENTS;
       const type = types[Math.floor(rng() * types.length)];
       state.grid[row][col] = {
         type,

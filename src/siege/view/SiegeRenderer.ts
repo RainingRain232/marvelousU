@@ -345,11 +345,21 @@ export class SiegeRenderer {
         const ity = ty + 4;
         u.roundRect(panelX + 2, ity, panelW - 4, 65, 4).fill({ color: 0x1a1a08, alpha: 0.7 });
         u.roundRect(panelX + 2, ity, panelW - 4, 65, 4).stroke({ color: def.color, width: 1, alpha: 0.4 });
-        addText(`${def.name} Lv${tower.level}`, panelX + panelW / 2, ity + 3, { fontSize: 10, fill: def.color, fontWeight: "bold" }, true);
-        addText(`DMG: ${Math.floor(def.damage * levelMult)} | RNG: ${def.range} | Kills: ${tower.kills}`, panelX + 10, ity + 17, { fontSize: 8, fill: 0xccbbaa });
-        addText(`Sell value: ${Math.floor(def.cost * 0.6)}g`, panelX + 10, ity + 30, { fontSize: 8, fill: 0xffd700 });
-        addText("Press X to sell", panelX + panelW / 2, ity + 44, { fontSize: 8, fill: 0xff8844 }, true);
-        ty += 70;
+        addText(`${def.name} Lv${tower.level}${tower.level >= 5 ? " MAX" : ""}`, panelX + panelW / 2, ity + 3, { fontSize: 10, fill: def.color, fontWeight: "bold" }, true);
+        addText(`DMG: ${Math.floor(def.damage * levelMult)} (+${Math.round((levelMult - 1) * 100)}%)`, panelX + 10, ity + 17, { fontSize: 8, fill: 0xccbbaa });
+        addText(`RNG: ${def.range} | SPD: x${(1 + (tower.level - 1) * 0.1).toFixed(1)}`, panelX + 10, ity + 28, { fontSize: 8, fill: 0xaabb99 });
+        // Kill progress bar to next level
+        if (tower.level < 5) {
+          const killsNeeded = tower.level * 5;
+          const prog = tower.kills / killsNeeded;
+          const bx = panelX + 10, by = ity + 40, bw = panelW - 24;
+          u.rect(bx, by, bw, 4).fill({ color: 0x222200 });
+          u.rect(bx, by, bw * prog, 4).fill({ color: 0xffd700 });
+          u.rect(bx, by, bw, 4).stroke({ color: 0x444422, width: 0.5 });
+          addText(`${tower.kills}/${killsNeeded} kills to Lv${tower.level + 1}`, panelX + panelW / 2, ity + 46, { fontSize: 7, fill: 0x999977 }, true);
+        }
+        addText(`Sell: ${Math.floor(def.cost * 0.6)}g | X to sell`, panelX + panelW / 2, ity + 58, { fontSize: 8, fill: 0xff8844 }, true);
+        ty += 75;
       }
     }
 
