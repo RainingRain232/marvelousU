@@ -171,6 +171,26 @@ export class AlchemistRenderer {
           }
         }
 
+        // Cursed tile overlay
+        if (tile.cursed) {
+          g.rect(px + 2, py + 2, T - 4, T - 4).fill({ color: 0x440044, alpha: 0.25 });
+          // Curse chains (X pattern)
+          g.moveTo(px + 4, py + 4).lineTo(px + T - 4, py + T - 4).stroke({ color: 0xaa44ff, width: 1.5, alpha: 0.4 });
+          g.moveTo(px + T - 4, py + 4).lineTo(px + 4, py + T - 4).stroke({ color: 0xaa44ff, width: 1.5, alpha: 0.4 });
+          g.circle(cx, cy, orbR + 3).stroke({ color: 0xaa44ff, width: 1, alpha: 0.3 });
+        }
+        // Frozen tile overlay
+        if (tile.frozen > 0) {
+          g.rect(px + 1, py + 1, T - 2, T - 2).fill({ color: 0x4488cc, alpha: 0.2 });
+          g.rect(px + 1, py + 1, T - 2, T - 2).stroke({ color: 0x88ccff, width: 1.5, alpha: 0.4 });
+          // Ice crystal pattern
+          g.moveTo(cx, py + 3).lineTo(cx, py + T - 3).stroke({ color: 0x88ccff, width: 0.5, alpha: 0.3 });
+          g.moveTo(px + 3, cy).lineTo(px + T - 3, cy).stroke({ color: 0x88ccff, width: 0.5, alpha: 0.3 });
+          // Freeze count
+          const fText = new Text({ text: `${tile.frozen}`, style: new TextStyle({ fontFamily: FONT, fontSize: 8, fill: 0x88ccff, fontWeight: "bold" }) });
+          fText.anchor.set(0.5, 0.5); fText.position.set(cx, cy);
+          this._uiGfx.addChild(fText);
+        }
         // Special tile indicator overlay
         if (tile.special === "bomb") {
           g.circle(cx, cy, orbR + 2).stroke({ color: 0xff6622, width: 1.5, alpha: 0.5 });

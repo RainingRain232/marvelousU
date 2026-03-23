@@ -42,15 +42,18 @@ export function findMatches(state: AlchemistState): { x: number; y: number; type
   const { GRID_COLS, GRID_ROWS, MATCH_MIN } = AlchemistConfig;
   const matches: { x: number; y: number; type: IngredientType }[][] = [];
 
+  // Helper: can tile participate in matches?
+  const canMatch = (r: number, c: number) => !state.grid[r][c].cursed && state.grid[r][c].frozen <= 0;
+
   // Horizontal matches
   for (let row = 0; row < GRID_ROWS; row++) {
-    let run: { x: number; y: number; type: IngredientType }[] = [{ x: 0, y: row, type: state.grid[row][0].type }];
+    let run: { x: number; y: number; type: IngredientType }[] = canMatch(row, 0) ? [{ x: 0, y: row, type: state.grid[row][0].type }] : [];
     for (let col = 1; col < GRID_COLS; col++) {
-      if (state.grid[row][col].type === run[0].type) {
+      if (canMatch(row, col) && run.length > 0 && state.grid[row][col].type === run[0].type) {
         run.push({ x: col, y: row, type: state.grid[row][col].type });
       } else {
         if (run.length >= MATCH_MIN) matches.push([...run]);
-        run = [{ x: col, y: row, type: state.grid[row][col].type }];
+        run = canMatch(row, col) ? [{ x: col, y: row, type: state.grid[row][col].type }] : [];
       }
     }
     if (run.length >= MATCH_MIN) matches.push(run);
@@ -58,13 +61,13 @@ export function findMatches(state: AlchemistState): { x: number; y: number; type
 
   // Vertical matches
   for (let col = 0; col < GRID_COLS; col++) {
-    let run: { x: number; y: number; type: IngredientType }[] = [{ x: col, y: 0, type: state.grid[0][col].type }];
+    let run: { x: number; y: number; type: IngredientType }[] = canMatch(0, col) ? [{ x: col, y: 0, type: state.grid[0][col].type }] : [];
     for (let row = 1; row < GRID_ROWS; row++) {
-      if (state.grid[row][col].type === run[0].type) {
+      if (canMatch(row, col) && run.length > 0 && state.grid[row][col].type === run[0].type) {
         run.push({ x: col, y: row, type: state.grid[row][col].type });
       } else {
         if (run.length >= MATCH_MIN) matches.push([...run]);
-        run = [{ x: col, y: row, type: state.grid[row][col].type }];
+        run = canMatch(row, col) ? [{ x: col, y: row, type: state.grid[row][col].type }] : [];
       }
     }
     if (run.length >= MATCH_MIN) matches.push(run);
@@ -153,16 +156,39 @@ export function processMatches(state: AlchemistState): number {
     }
   }
 
-  // Score
+  // Thaw frozen tiles adjacent to matches, clear curses adjacent to matches
+  for (const match of matches) {
+    for (const cell of match) {
+      for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) {
+        const nx = cell.x + dx, ny = cell.y + dy;
+        if (nx >= 0 && nx < AlchemistConfig.GRID_COLS && ny >= 0 && ny < AlchemistConfig.GRID_ROWS) {
+          const adj = state.grid[ny][nx];
+          if (adj.frozen > 0) {
+            adj.frozen--;
+            if (adj.frozen <= 0) state.announcements.push({ text: "Thawed!", color: 0x88ccff, timer: 1 });
+          }
+          if (adj.cursed) {
+            adj.cursed = false;
+            state.announcements.push({ text: "Curse broken!", color: 0xaa44ff, timer: 1 });
+          }
+        }
+      }
+    }
+  }
+
+  // Score with escalating cascade multiplier
   state.cascadeCount++;
+  // Cascade multiplier: 1x, 1.5x, 2x, 3x, 5x
+  const cascadeMults = [1, 1.5, 2, 3, 5];
+  state.cascadeMultiplier = cascadeMults[Math.min(state.cascadeCount - 1, cascadeMults.length - 1)];
   const cascadeBonus = state.cascadeCount > 1 ? AlchemistConfig.SCORE_PER_CASCADE * (state.cascadeCount - 1) : 0;
-  const matchScore = totalCleared * AlchemistConfig.SCORE_PER_MATCH + cascadeBonus;
+  const matchScore = Math.floor((totalCleared * AlchemistConfig.SCORE_PER_MATCH + cascadeBonus) * state.cascadeMultiplier);
   state.score += matchScore;
   state.comboCount += matches.length;
   if (state.comboCount > state.bestCombo) state.bestCombo = state.comboCount;
 
   if (state.cascadeCount > 1) {
-    state.announcements.push({ text: `CASCADE x${state.cascadeCount}!`, color: 0xffaa44, timer: 1.5 });
+    state.announcements.push({ text: `CASCADE x${state.cascadeCount}! (${state.cascadeMultiplier}x)`, color: 0xffaa44, timer: 1.5 });
   }
   if (totalCleared >= 5) {
     state.announcements.push({ text: `${totalCleared} MATCH!`, color: 0x44ffaa, timer: 1.2 });
@@ -206,7 +232,7 @@ export function collapseGrid(state: AlchemistState): boolean {
         (state as any)._pendingSpecial = null;
       }
       state.grid[row][col] = {
-        type, special,
+        type, special, cursed: false, frozen: 0,
         x: col, y: row,
         px: col * AlchemistConfig.TILE_SIZE,
         py: (row - (writeRow - row + 1)) * AlchemistConfig.TILE_SIZE,
@@ -267,6 +293,15 @@ export function serveCustomer(state: AlchemistState, customerId: string): boolea
 
   customer.served = true;
   state.gold += customer.recipe.value;
+  // Serve streak bonus
+  state.serveStreak++;
+  if (state.serveStreak > state.bestServeStreak) state.bestServeStreak = state.serveStreak;
+  const streakBonus = state.serveStreak >= 3 ? Math.floor(customer.recipe.value * 0.5) : 0;
+  state.gold += streakBonus;
+  if (streakBonus > 0) {
+    state.announcements.push({ text: `Serve Streak x${state.serveStreak}! +${streakBonus}g`, color: 0xff8844, timer: 1.5 });
+  }
+
   state.score += AlchemistConfig.SCORE_PER_SERVE;
   state.reputation += AlchemistConfig.REPUTATION_PER_SERVE;
   state.potionsBrewed++;

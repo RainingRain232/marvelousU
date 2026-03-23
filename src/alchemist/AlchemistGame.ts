@@ -250,9 +250,33 @@ export class AlchemistGame {
         cust.left = true;
         this._state.customersLost++;
         this._state.reputation += AlchemistConfig.REPUTATION_PER_FAIL;
+        this._state.serveStreak = 0;
         this._state.log.push(`${cust.name} left unsatisfied!`);
         this._state.announcements.push({ text: `${cust.name} left!`, color: 0xff4444, timer: 2 });
       }
+    }
+
+    // Curse spawning (difficulty scaling — curse tiles appear over time)
+    this._state.curseTimer -= dt;
+    if (this._state.curseTimer <= 0 && this._state.tier >= 1) {
+      // Spawn 1-2 cursed or frozen tiles
+      const count = 1 + (this._state.tier >= 2 ? 1 : 0);
+      for (let ci = 0; ci < count; ci++) {
+        const cr = Math.floor(Math.random() * AlchemistConfig.GRID_ROWS);
+        const cc = Math.floor(Math.random() * AlchemistConfig.GRID_COLS);
+        const tile = this._state.grid[cr][cc];
+        if (!tile.matched && !tile.cursed && tile.frozen <= 0) {
+          if (Math.random() < 0.5) {
+            tile.cursed = true;
+            this._state.announcements.push({ text: "Curse tile spawned!", color: 0xaa44ff, timer: 1.5 });
+          } else {
+            tile.frozen = 2; // needs 2 adjacent matches to thaw
+            this._state.announcements.push({ text: "Frozen tile!", color: 0x88ccff, timer: 1.5 });
+          }
+          this._state.cursesSpawned++;
+        }
+      }
+      this._state.curseTimer = Math.max(15, 30 - this._state.tier * 5);
     }
 
     // Update announcements & particles

@@ -17,6 +17,8 @@ export type SpecialTile = "none" | "wildcard" | "bomb" | "column_clear";
 export interface GridTile {
   type: IngredientType;
   special: SpecialTile;
+  cursed: boolean; // can't be matched until adjacent match clears it
+  frozen: number; // matches needed to thaw (0 = normal)
   x: number;
   y: number;
   px: number;
@@ -75,7 +77,13 @@ export interface AlchemistState {
   // Power-ups (purchasable with gold during gameplay)
   shufflesRemaining: number;
   timeExtensions: number;
-  magnetsRemaining: number; // converts random tile to needed ingredient
+  magnetsRemaining: number;
+  // Difficulty scaling
+  curseTimer: number; // seconds until next curse spawns
+  cursesSpawned: number;
+  cascadeMultiplier: number; // current cascade bonus multiplier
+  serveStreak: number; // consecutive customers served
+  bestServeStreak: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -110,7 +118,7 @@ export function createGrid(seed: number): GridTile[][] {
         type,
         x: col, y: row,
         px: col * TILE_SIZE, py: row * TILE_SIZE,
-        special: "none", matched: false, falling: false, selected: false,
+        special: "none", cursed: false, frozen: 0, matched: false, falling: false, selected: false,
         scale: 1,
       };
     }
@@ -155,6 +163,11 @@ export function createAlchemistState(seed: number): AlchemistState {
     shufflesRemaining: 1,
     timeExtensions: 1,
     magnetsRemaining: 1,
+    curseTimer: 30,
+    cursesSpawned: 0,
+    cascadeMultiplier: 1,
+    serveStreak: 0,
+    bestServeStreak: 0,
   };
 }
 
