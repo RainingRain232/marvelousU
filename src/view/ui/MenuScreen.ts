@@ -529,6 +529,8 @@ export class MenuScreen {
   private _screen1Card!: Container;
   private _screen1CardW = 820;
   private _screen1CardH = 0; // computed
+  private _scrollY = 0;
+  private _onWheel: ((e: WheelEvent) => void) | null = null;
 
   // --- Screen 2: match setup ---
   private _screen2!: Container;
@@ -860,6 +862,7 @@ export class MenuScreen {
     this._screen1.visible = true;
     this._screen2.visible = false;
     this._s1FocusBorder.visible = false;
+    this._scrollY = 0;
     this._layout();
   }
 
@@ -1074,10 +1077,10 @@ export class MenuScreen {
     // appear on the menu. The index is the position in the MODE_BUTTONS array
     // (0-based). Modes not listed in any category below will be invisible.
     const categories: { title: string; icon: string; color: number; accent: number; indices: number[] }[] = [
-      { title: "STRATEGY & TACTICS", icon: "\u2694", color: 0xffd700, accent: 0x332a00, indices: [0, 1, 2, 3, 4, 28, 5, 6, 34] },
-      { title: "ADVENTURE & RPG", icon: "\u{1F4DC}", color: 0x44ddaa, accent: 0x0a2a1a, indices: [7, 21, 18, 22, 8, 9, 10, 32, 33, 31] },
+      { title: "STRATEGY & TACTICS", icon: "\u2694", color: 0xffd700, accent: 0x332a00, indices: [0, 1, 2, 3, 4, 28, 5, 6, 34, 37] },
+      { title: "ADVENTURE & RPG", icon: "\u{1F4DC}", color: 0x44ddaa, accent: 0x0a2a1a, indices: [7, 21, 18, 22, 8, 9, 10, 32, 33, 31, 35, 36, 38, 41, 42] },
       { title: "3D ACTION & COMBAT", icon: "\u{1F6E1}", color: 0xff7744, accent: 0x2a1408, indices: [11, 15, 12, 13, 14, 16, 17, 29] },
-      { title: "WORLDS & SPORTS", icon: "\u{1F30D}", color: 0x6699ff, accent: 0x0a1a2a, indices: [19, 20, 23, 24, 25, 26, 27, 30] },
+      { title: "WORLDS & SPORTS", icon: "\u{1F30D}", color: 0x6699ff, accent: 0x0a1a2a, indices: [19, 20, 23, 24, 25, 26, 27, 30, 39, 40, 43, 44, 45] },
     ];
 
     const COLS = 3;
@@ -1612,6 +1615,17 @@ export class MenuScreen {
       }
     };
     window.addEventListener("keydown", this._onKeydown);
+
+    // Scroll the menu card when it's taller than the viewport
+    this._onWheel = (e: WheelEvent) => {
+      if (!this.container.visible || !this._screen1?.visible) return;
+      const sh = this._vm.app.screen.height;
+      const maxScroll = Math.max(0, this._screen1CardH - sh + 16);
+      if (maxScroll <= 0) return;
+      this._scrollY = Math.min(maxScroll, Math.max(0, this._scrollY + e.deltaY));
+      this._onResize();
+    };
+    window.addEventListener("wheel", this._onWheel, { passive: true });
   }
 
   /** Draw the inner border frame with L-brackets and edge midpoint diamonds. */
@@ -2915,7 +2929,8 @@ export class MenuScreen {
       const cardX = hasRoom
         ? Math.floor((sw - this._screen1CardW) / 2) - 100
         : Math.floor((sw - this._screen1CardW) / 2);
-      const cardY = Math.max(8, Math.floor((sh - this._screen1CardH) / 2));
+      const naturalY = Math.max(8, Math.floor((sh - this._screen1CardH) / 2));
+      const cardY = naturalY - this._scrollY;
       this._screen1Card.position.set(cardX, cardY);
 
       // Position building renderer to the right of the card
