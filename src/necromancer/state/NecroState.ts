@@ -21,11 +21,15 @@ export interface Grave {
   digging: boolean;
 }
 
+export type CorpseQuality = "normal" | "blessed" | "cursed" | "ancient";
+
 export interface Corpse {
   id: number;
   type: CorpseType;
   /** Position in the ritual area */
   slotIndex: number;
+  /** Quality modifier */
+  quality: CorpseQuality;
 }
 
 export interface Undead {

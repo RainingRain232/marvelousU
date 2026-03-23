@@ -2,12 +2,13 @@
 // Necromancer mode — game logic (dig, ritual, battle)
 // ---------------------------------------------------------------------------
 
-import type { NecroState, Undead, Crusader, Corpse } from "../state/NecroState";
+import type { NecroState, Undead, Crusader, Corpse, CorpseQuality } from "../state/NecroState";
 import { findChimera } from "../state/NecroState";
 import { CORPSES, CRUSADERS, NecroConfig, WAVES, generateEndlessWave } from "../config/NecroConfig";
 import type { CorpseType, CrusaderType } from "../config/NecroConfig";
 
 const BONE_WHITE = 0xccccbb;
+const NECRO_GREEN_SYS = 0x44ff88;
 
 // ── Dig phase ──────────────────────────────────────────────────────────────
 
@@ -24,14 +25,23 @@ export function updateDig(state: NecroState, dt: number): void {
       grave.digging = false;
       grave.digProgress = 1;
       if (grave.corpseType) {
+        // Roll quality
+        const qRoll = Math.random();
+        let quality: CorpseQuality = "normal";
+        if (qRoll < 0.08) quality = "ancient";
+        else if (qRoll < 0.20) quality = "blessed";
+        else if (qRoll < 0.32) quality = "cursed";
         const corpse: Corpse = {
           id: state.corpseIdCounter++,
           type: grave.corpseType,
           slotIndex: state.corpses.length,
+          quality,
         };
         state.corpses.push(corpse);
         const def = CORPSES[grave.corpseType];
-        state.announcements.push({ text: `Unearthed: ${def.name}`, color: 0x88cc88, timer: 1.5 });
+        const qualLabel = quality === "normal" ? "" : ` (${quality.toUpperCase()})`;
+        const qualColor = quality === "ancient" ? 0xffd700 : quality === "blessed" ? 0x44aaff : quality === "cursed" ? 0xff4444 : 0x88cc88;
+        state.announcements.push({ text: `Unearthed: ${def.name}${qualLabel}`, color: qualColor, timer: 1.5 });
         // Particles — dirt burst
         for (let i = 0; i < 8; i++) {
           state.particles.push({
@@ -54,6 +64,24 @@ export function startDig(state: NecroState, graveId: number): void {
   const grave = state.graves.find(g => g.id === graveId);
   if (!grave || grave.dug || grave.digging) return;
   grave.digging = true;
+}
+
+/** Instantly dig all remaining graves — costs 15 mana */
+export function digAll(state: NecroState): boolean {
+  const remaining = state.graves.filter(g => !g.dug && !g.digging);
+  if (remaining.length === 0) return false;
+  const cost = 15;
+  if (state.mana < cost) {
+    state.announcements.push({ text: "Not enough mana to dig all! (15m)", color: 0xff4444, timer: 1.5 });
+    return false;
+  }
+  state.mana -= cost;
+  for (const grave of remaining) {
+    grave.digging = true;
+    grave.digProgress = 0.95; // Almost instant — will complete next frame
+  }
+  state.announcements.push({ text: "Mass excavation!", color: NECRO_GREEN_SYS, timer: 1.5 });
+  return true;
 }
 
 // ── Ritual phase ───────────────────────────────────────────────────────────
@@ -134,8 +162,21 @@ function raiseUndead(state: NecroState): void {
   const defA = CORPSES[a.type];
   let chimera = state.ritualSlotB ? findChimera(a.type, state.ritualSlotB.type) : null;
 
-  const hpBonus = (state.powerLevels["bone_armor"] ?? 0) * 2;
-  const dmgBonus = (state.powerLevels["death_grip"] ?? 0) * 1;
+  let hpBonus = (state.powerLevels["bone_armor"] ?? 0) * 2;
+  let dmgBonus = (state.powerLevels["death_grip"] ?? 0) * 1;
+  let speedMod = 0;
+
+  // Apply quality modifiers
+  const qA = a.quality ?? "normal";
+  if (qA === "blessed") { hpBonus += 3; dmgBonus += 1; }
+  else if (qA === "cursed") { hpBonus -= 1; dmgBonus += 2; speedMod += 8; }
+  else if (qA === "ancient") { hpBonus += 5; dmgBonus += 3; speedMod += 5; }
+  if (state.ritualSlotB) {
+    const qB = state.ritualSlotB.quality ?? "normal";
+    if (qB === "blessed") { hpBonus += 2; }
+    else if (qB === "cursed") { dmgBonus += 2; }
+    else if (qB === "ancient") { hpBonus += 3; dmgBonus += 2; }
+  }
 
   let undead: Undead;
   if (chimera && state.ritualSlotB) {
@@ -148,7 +189,7 @@ function raiseUndead(state: NecroState): void {
       hp: defA.hp + defB.hp + chimera.hpBonus + hpBonus,
       maxHp: defA.hp + defB.hp + chimera.hpBonus + hpBonus,
       damage: defA.damage + defB.damage + chimera.damageBonus + dmgBonus,
-      speed: Math.max(15, (defA.speed + defB.speed) / 2 + chimera.speedBonus),
+      speed: Math.max(15, (defA.speed + defB.speed) / 2 + chimera.speedBonus + speedMod),
       color: chimera.color,
       size: Math.max(defA.size, defB.size) + 2,
       x: 100 + Math.random() * 200,
@@ -171,7 +212,7 @@ function raiseUndead(state: NecroState): void {
       hp: defA.hp + hpBonus,
       maxHp: defA.hp + hpBonus,
       damage: defA.damage + dmgBonus,
-      speed: defA.speed,
+      speed: Math.max(15, defA.speed + speedMod),
       color: defA.color,
       size: defA.size,
       x: 100 + Math.random() * 200,

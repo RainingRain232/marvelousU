@@ -11,7 +11,7 @@ import type { NecroState } from "./state/NecroState";
 import { NecroConfig, DARK_POWERS, CORPSES, WAVES, CRUSADERS, generateEndlessWave } from "./config/NecroConfig";
 import type { WaveEntry } from "./config/NecroConfig";
 import {
-  updateDig, startDig,
+  updateDig, startDig, digAll,
   updateRitual, placeCorpseInSlot, startRaise,
   updateBattle, prepareBattleWave, castDarkNova, castBoneWall,
 } from "./systems/NecroSystem";
@@ -52,8 +52,87 @@ export class NecroGame {
 
   private _showStartScreen(): void {
     const c = new Container();
+    const sw = this._sw, sh = this._sh;
     const bg = new Graphics();
-    bg.rect(0, 0, this._sw, this._sh).fill({ color: 0x0a0812 });
+
+    // Night sky gradient
+    for (let y = 0; y < sh; y += 2) {
+      const t = y / sh;
+      const r = Math.floor(6 + t * 8);
+      const g = Math.floor(4 + t * 10);
+      const b = Math.floor(14 + t * 10);
+      bg.rect(0, y, sw, 2).fill({ color: (r << 16) | (g << 8) | b });
+    }
+
+    // Moon
+    bg.circle(sw * 0.75, 55, 22).fill({ color: 0xeeeedd, alpha: 0.8 });
+    bg.circle(sw * 0.75 + 5, 53, 18).fill({ color: 0x060410 });
+    for (let mr = 24; mr < 70; mr += 6) bg.circle(sw * 0.75, 55, mr).fill({ color: 0xeeeedd, alpha: 0.008 });
+
+    // Stars
+    for (let i = 0; i < 80; i++) {
+      const sx = (i * 8737 + 31) % sw, sy = (i * 4219 + 17) % (sh * 0.35);
+      bg.circle(sx, sy, 0.4 + (i % 4) * 0.25).fill({ color: 0xffffff, alpha: 0.15 + (i % 6) * 0.06 });
+    }
+
+    // Distant treeline
+    for (let x = 0; x < sw; x += 2) {
+      const h = 25 + Math.sin(x * 0.018) * 15 + Math.sin(x * 0.045) * 10 + Math.sin(x * 0.11) * 5;
+      bg.rect(x, sh * 0.42 - h, 2, h + 3).fill({ color: 0x060a06, alpha: 0.7 });
+    }
+
+    // Ground
+    bg.rect(0, sh * 0.42, sw, sh * 0.58).fill({ color: 0x0a0a06 });
+
+    // Graveyard scene — tombstones across the bottom
+    const tombstones = [
+      { x: sw * 0.12, h: 28, style: 0 }, { x: sw * 0.22, h: 22, style: 1 },
+      { x: sw * 0.35, h: 32, style: 2 }, { x: sw * 0.48, h: 26, style: 3 },
+      { x: sw * 0.62, h: 30, style: 0 }, { x: sw * 0.75, h: 24, style: 1 },
+      { x: sw * 0.88, h: 28, style: 2 },
+    ];
+    const groundY = sh * 0.82;
+    for (const ts of tombstones) {
+      const tx = ts.x, ty = groundY;
+      // Mound
+      bg.ellipse(tx, ty + 2, 18, 6).fill({ color: 0x121008, alpha: 0.6 });
+      if (ts.style === 0) {
+        bg.moveTo(tx - 7, ty).lineTo(tx - 7, ty - ts.h + 6).bezierCurveTo(tx - 7, ty - ts.h, tx + 7, ty - ts.h, tx + 7, ty - ts.h + 6).lineTo(tx + 7, ty).fill({ color: 0x333328, alpha: 0.6 });
+      } else if (ts.style === 1) {
+        bg.rect(tx - 2, ty - ts.h, 4, ts.h).fill({ color: 0x333328, alpha: 0.6 });
+        bg.rect(tx - 6, ty - ts.h + 6, 12, 3).fill({ color: 0x333328, alpha: 0.6 });
+      } else if (ts.style === 2) {
+        bg.moveTo(tx - 5, ty).lineTo(tx - 3, ty - ts.h).lineTo(tx + 3, ty - ts.h).lineTo(tx + 5, ty).fill({ color: 0x333328, alpha: 0.6 });
+      } else {
+        bg.roundRect(tx - 8, ty - ts.h + 4, 16, ts.h - 4, 1).fill({ color: 0x2a2a22, alpha: 0.6 });
+      }
+    }
+
+    // Fog wisps
+    for (let i = 0; i < 15; i++) {
+      const fx = (i * 5431 + 20) % sw, fy = sh * 0.7 + (i * 2713) % (sh * 0.15);
+      bg.ellipse(fx, fy, 50 + (i % 5) * 20, 5).fill({ color: 0x334455, alpha: 0.04 });
+    }
+
+    // Green glow from ground (necromantic energy)
+    bg.ellipse(sw / 2, groundY, 180, 20).fill({ color: 0x44ff88, alpha: 0.02 });
+    bg.ellipse(sw / 2, groundY, 100, 10).fill({ color: 0x44ff88, alpha: 0.03 });
+
+    // Floating spirits
+    for (let i = 0; i < 5; i++) {
+      const sx = sw * 0.15 + i * sw * 0.17;
+      const sy = sh * 0.55 + Math.sin(i * 1.7) * 30;
+      bg.circle(sx, sy, 3).fill({ color: 0x44ff88, alpha: 0.04 });
+      bg.moveTo(sx, sy + 3).bezierCurveTo(sx + 2, sy + 10, sx - 2, sy + 18, sx + 1, sy + 25).stroke({ color: 0x44ff88, width: 0.5, alpha: 0.03 });
+    }
+
+    // Vignette
+    for (let v = 0; v < 8; v++) {
+      const inset = v * 35;
+      bg.rect(0, 0, inset, sh).fill({ color: 0x000000, alpha: 0.04 });
+      bg.rect(sw - inset, 0, inset, sh).fill({ color: 0x000000, alpha: 0.04 });
+    }
+
     c.addChild(bg);
 
     const addText = (str: string, x: number, y: number, opts: Partial<TextStyle>, center = false) => {
@@ -61,43 +140,77 @@ export class NecroGame {
       if (center) t.anchor.set(0.5, 0); t.position.set(x, y); c.addChild(t);
     };
 
-    addText("\u2620 NECROMANCER \u2620", this._sw / 2, 40, { fontSize: 28, fill: 0x44ff88, fontWeight: "bold", letterSpacing: 5 }, true);
-    addText("Raise the Dead", this._sw / 2, 78, { fontSize: 14, fill: 0x2a6644, fontStyle: "italic" }, true);
+    // Title with glow
+    const titleG = new Graphics();
+    titleG.ellipse(sw / 2, 50, 140, 20).fill({ color: 0x44ff88, alpha: 0.03 });
+    c.addChild(titleG);
+    addText("\u2620 NECROMANCER \u2620", sw / 2, 36, { fontSize: 30, fill: 0x44ff88, fontWeight: "bold", letterSpacing: 6 }, true);
+    addText("Raise the Dead", sw / 2, 74, { fontSize: 14, fill: 0x2a6644, fontStyle: "italic" }, true);
+
+    // Instructions in a dark panel
+    const panelG = new Graphics();
+    panelG.roundRect(sw / 2 - 200, 96, 400, 110, 8).fill({ color: 0x0a0a08, alpha: 0.6 });
+    panelG.roundRect(sw / 2 - 200, 96, 400, 110, 8).stroke({ color: 0x44ff88, width: 0.5, alpha: 0.1 });
+    c.addChild(panelG);
     addText(
       "Dig up corpses from the graveyard.\nReanimate them with dark rituals.\nCombine body parts for chimera undead.\nSend your army against crusader waves.\n\nBeware: each resurrection drains your life force!",
-      this._sw / 2, 110, { fontSize: 11, fill: 0x668866, align: "center", wordWrap: true, wordWrapWidth: 380, lineHeight: 18 }, true,
+      sw / 2, 104, { fontSize: 11, fill: 0x668866, align: "center", wordWrap: true, wordWrapWidth: 370, lineHeight: 17 }, true,
     );
 
-    // Decorative skull
-    const skullX = this._sw / 2, skullY = this._sh * 0.47;
-    const sg = new Graphics();
-    sg.circle(skullX, skullY, 16).fill({ color: 0xccccbb, alpha: 0.12 });
-    sg.circle(skullX - 5, skullY - 3, 4).fill({ color: 0x0a0812, alpha: 0.2 });
-    sg.circle(skullX + 5, skullY - 3, 4).fill({ color: 0x0a0812, alpha: 0.2 });
-    sg.moveTo(skullX - 3, skullY + 5).lineTo(skullX + 3, skullY + 5).stroke({ color: 0x0a0812, width: 1, alpha: 0.15 });
-    c.addChild(sg);
+    // Detailed skull
+    const skX = sw / 2, skY = sh * 0.44;
+    const skull = new Graphics();
+    // Skull outline
+    skull.ellipse(skX, skY, 18, 22).fill({ color: 0xccccbb, alpha: 0.12 });
+    skull.ellipse(skX, skY + 2, 16, 18).fill({ color: 0xbbbbaa, alpha: 0.08 });
+    // Eye sockets
+    skull.ellipse(skX - 6, skY - 4, 5, 6).fill({ color: 0x0a0812, alpha: 0.2 });
+    skull.ellipse(skX + 6, skY - 4, 5, 6).fill({ color: 0x0a0812, alpha: 0.2 });
+    // Green eye glow
+    skull.circle(skX - 6, skY - 4, 3).fill({ color: 0x44ff88, alpha: 0.06 });
+    skull.circle(skX + 6, skY - 4, 3).fill({ color: 0x44ff88, alpha: 0.06 });
+    // Nose
+    skull.moveTo(skX - 2, skY + 3).lineTo(skX, skY + 6).lineTo(skX + 2, skY + 3).stroke({ color: 0x0a0812, width: 0.8, alpha: 0.15 });
+    // Teeth
+    for (let ti = -3; ti <= 3; ti++) {
+      skull.rect(skX + ti * 2.5 - 1, skY + 10, 2, 4).fill({ color: 0xccccbb, alpha: 0.07 });
+    }
+    // Jaw line
+    skull.moveTo(skX - 12, skY + 8).bezierCurveTo(skX - 8, skY + 16, skX + 8, skY + 16, skX + 12, skY + 8).stroke({ color: 0xccccbb, width: 0.8, alpha: 0.08 });
+    // Crossed bones behind
+    skull.moveTo(skX - 22, skY + 20).lineTo(skX + 22, skY - 16).stroke({ color: 0xccccbb, width: 2, alpha: 0.05 });
+    skull.moveTo(skX + 22, skY + 20).lineTo(skX - 22, skY - 16).stroke({ color: 0xccccbb, width: 2, alpha: 0.05 });
+    c.addChild(skull);
+
+    // High score
+    try {
+      const hs = parseInt(localStorage.getItem("necro_highscore") ?? "0") || 0;
+      if (hs > 0) addText(`High Score: ${hs}`, sw / 2, sh * 0.52, { fontSize: 9, fill: 0x667766 }, true);
+    } catch { /* */ }
 
     const btn = new Graphics();
-    btn.roundRect(this._sw / 2 - 80, this._sh * 0.58, 160, 40, 5).fill({ color: 0x0a0a0a, alpha: 0.8 });
-    btn.roundRect(this._sw / 2 - 80, this._sh * 0.58, 160, 40, 5).stroke({ color: 0x44ff88, width: 2, alpha: 0.6 });
+    btn.roundRect(sw / 2 - 85, sh * 0.58, 170, 42, 6).fill({ color: 0x0a0a0a, alpha: 0.85 });
+    btn.roundRect(sw / 2 - 85, sh * 0.58, 170, 42, 6).stroke({ color: 0x44ff88, width: 2, alpha: 0.6 });
+    // Inner glow
+    btn.roundRect(sw / 2 - 83, sh * 0.58 + 2, 166, 38, 5).stroke({ color: 0x44ff88, width: 0.5, alpha: 0.15 });
     btn.eventMode = "static"; btn.cursor = "pointer";
     btn.on("pointerdown", () => {
       viewManager.removeFromLayer("ui", c); c.destroy({ children: true });
       this._startGame();
     });
     c.addChild(btn);
-    addText("RAISE THE DEAD", this._sw / 2, this._sh * 0.58 + 12, { fontSize: 13, fill: 0x44ff88, fontWeight: "bold", letterSpacing: 2 }, true);
+    addText("RAISE THE DEAD", sw / 2, sh * 0.58 + 13, { fontSize: 14, fill: 0x44ff88, fontWeight: "bold", letterSpacing: 3 }, true);
 
     const backBtn = new Graphics();
-    backBtn.roundRect(this._sw / 2 - 45, this._sh * 0.68, 90, 26, 4).fill({ color: 0x0a0a0a, alpha: 0.6 });
-    backBtn.roundRect(this._sw / 2 - 45, this._sh * 0.68, 90, 26, 4).stroke({ color: 0x555555, width: 1 });
+    backBtn.roundRect(sw / 2 - 45, sh * 0.69, 90, 26, 4).fill({ color: 0x0a0a0a, alpha: 0.6 });
+    backBtn.roundRect(sw / 2 - 45, sh * 0.69, 90, 26, 4).stroke({ color: 0x555555, width: 1 });
     backBtn.eventMode = "static"; backBtn.cursor = "pointer";
     backBtn.on("pointerdown", () => {
       viewManager.removeFromLayer("ui", c); c.destroy({ children: true });
       this.destroy(); window.dispatchEvent(new Event("necromancerExit"));
     });
     c.addChild(backBtn);
-    addText("BACK", this._sw / 2, this._sh * 0.68 + 6, { fontSize: 9, fill: 0x888888 }, true);
+    addText("BACK", sw / 2, sh * 0.69 + 6, { fontSize: 9, fill: 0x888888 }, true);
 
     viewManager.addToLayer("ui", c);
   }
@@ -476,6 +589,9 @@ export class NecroGame {
         if (e.key === " ") {
           e.preventDefault();
           this._enterRitualPhase();
+        }
+        if (e.key === "d" || e.key === "D") {
+          digAll(this._state);
         }
       };
       window.addEventListener("keydown", this._keyHandler);

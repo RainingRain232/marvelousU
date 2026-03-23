@@ -291,25 +291,84 @@ export class NecroRenderer {
 
     // Ritual circle
     const circleR = 60;
-    // Outer ring
-    g.circle(ox + cx, oy + cy, circleR).stroke({ color: NECRO_GREEN, width: 2, alpha: 0.3 });
-    g.circle(ox + cx, oy + cy, circleR + 5).stroke({ color: DARK_PURPLE, width: 1, alpha: 0.15 });
 
-    // Rune marks around circle
+    // Ground glow beneath circle
+    g.ellipse(ox + cx, oy + cy + 5, circleR + 15, 8).fill({ color: NECRO_GREEN, alpha: 0.02 });
+
+    // Outer rings — double ring with rune inscriptions
+    g.circle(ox + cx, oy + cy, circleR + 8).stroke({ color: DARK_PURPLE, width: 0.5, alpha: 0.1 });
+    g.circle(ox + cx, oy + cy, circleR + 5).stroke({ color: DARK_PURPLE, width: 1, alpha: 0.15 });
+    g.circle(ox + cx, oy + cy, circleR).stroke({ color: NECRO_GREEN, width: 2, alpha: 0.3 });
+    g.circle(ox + cx, oy + cy, circleR - 3).stroke({ color: NECRO_GREEN, width: 0.5, alpha: 0.1 });
+
+    // Rune marks around circle — larger, pulsing, with connecting arcs
     for (let i = 0; i < 8; i++) {
       const angle = (i / 8) * Math.PI * 2 + state.elapsed * 0.3;
       const rx = ox + cx + Math.cos(angle) * circleR;
       const ry = oy + cy + Math.sin(angle) * circleR;
-      g.circle(rx, ry, 3).fill({ color: NECRO_GREEN, alpha: 0.2 + Math.sin(state.elapsed * 2 + i) * 0.15 });
+      const p = 0.2 + Math.sin(state.elapsed * 2 + i) * 0.15;
+      // Rune dot
+      g.circle(rx, ry, 4).fill({ color: NECRO_GREEN, alpha: p * 0.6 });
+      g.circle(rx, ry, 2).fill({ color: NECRO_GREEN, alpha: p });
+      // Rune "letter" — small cross/diamond shapes
+      if (i % 2 === 0) {
+        g.moveTo(rx - 2, ry).lineTo(rx, ry - 3).lineTo(rx + 2, ry).lineTo(rx, ry + 3).stroke({ color: NECRO_GREEN, width: 0.5, alpha: p * 0.5 });
+      } else {
+        g.rect(rx - 1, ry - 2, 2, 4).fill({ color: NECRO_GREEN, alpha: p * 0.3 });
+        g.rect(rx - 2, ry - 1, 4, 2).fill({ color: NECRO_GREEN, alpha: p * 0.3 });
+      }
     }
 
-    // Pentagram inside
+    // Pentagram inside — with inner circle
+    g.circle(ox + cx, oy + cy, circleR - 10).stroke({ color: DARK_PURPLE, width: 0.5, alpha: 0.1 });
     for (let i = 0; i < 5; i++) {
       const a1 = (i / 5) * Math.PI * 2 - Math.PI / 2;
       const a2 = ((i + 2) / 5) * Math.PI * 2 - Math.PI / 2;
       g.moveTo(ox + cx + Math.cos(a1) * (circleR - 10), oy + cy + Math.sin(a1) * (circleR - 10))
         .lineTo(ox + cx + Math.cos(a2) * (circleR - 10), oy + cy + Math.sin(a2) * (circleR - 10))
         .stroke({ color: DARK_PURPLE, width: 1, alpha: 0.2 });
+      // Vertices glow
+      const vx = ox + cx + Math.cos(a1) * (circleR - 10);
+      const vy = oy + cy + Math.sin(a1) * (circleR - 10);
+      g.circle(vx, vy, 2).fill({ color: DARK_PURPLE, alpha: 0.15 });
+    }
+
+    // Candles — 6 around the circle
+    for (let ci = 0; ci < 6; ci++) {
+      const ca = (ci / 6) * Math.PI * 2 - Math.PI / 2;
+      const candleX = ox + cx + Math.cos(ca) * (circleR + 18);
+      const candleY = oy + cy + Math.sin(ca) * (circleR + 18);
+      // Wax drip
+      g.rect(candleX - 1.5, candleY - 2, 3, 8).fill({ color: 0x443322, alpha: 0.5 });
+      g.circle(candleX - 2, candleY + 4, 1).fill({ color: 0x443322, alpha: 0.3 });
+      // Flame
+      const flicker = 0.5 + Math.sin(state.elapsed * 5 + ci * 1.3) * 0.2;
+      g.ellipse(candleX, candleY - 5, 2, 4).fill({ color: 0xffaa44, alpha: flicker * 0.6 });
+      g.circle(candleX, candleY - 5, 1).fill({ color: 0xffee88, alpha: flicker * 0.8 });
+      // Light pool
+      g.circle(candleX, candleY, 10).fill({ color: 0xffaa44, alpha: flicker * 0.02 });
+    }
+
+    // Smoke wisps rising from center
+    for (let si = 0; si < 4; si++) {
+      const smokeX = ox + cx + Math.sin(state.elapsed * 0.8 + si * 1.5) * 15;
+      const smokeY = oy + cy - 20 - si * 15 - (state.elapsed * 8 + si * 20) % 60;
+      const smokeAlpha = Math.max(0, 0.06 - si * 0.012);
+      g.ellipse(smokeX, smokeY, 8 + si * 3, 3 + si).fill({ color: 0x334444, alpha: smokeAlpha });
+    }
+
+    // Energy arc between slots when both filled
+    if (state.ritualSlotA && state.ritualSlotB) {
+      const slotAx2 = ox + cx - 35, slotBx2 = ox + cx + 35, slotY2 = oy + cy;
+      const arcMidY = slotY2 - 15 + Math.sin(state.elapsed * 3) * 5;
+      g.moveTo(slotAx2, slotY2).bezierCurveTo(slotAx2 + 20, arcMidY, slotBx2 - 20, arcMidY, slotBx2, slotY2).stroke({ color: 0xff44ff, width: 1.5, alpha: 0.3 + Math.sin(state.elapsed * 4) * 0.15 });
+      // Sparks along the arc
+      for (let sp = 0; sp < 3; sp++) {
+        const spT = (state.elapsed * 2 + sp * 0.33) % 1;
+        const spX = slotAx2 + (slotBx2 - slotAx2) * spT;
+        const spY = slotY2 + Math.sin(spT * Math.PI) * (arcMidY - slotY2);
+        g.circle(spX, spY, 1.5).fill({ color: 0xff88ff, alpha: 0.4 });
+      }
     }
 
     // Slot A (left)
@@ -380,14 +439,26 @@ export class NecroRenderer {
       // Card-like background
       g.roundRect(ox + 8, iy, 120, 32, 4).fill({ color: 0x0a0a06, alpha: 0.7 });
       g.roundRect(ox + 8, iy, 120, 32, 4).stroke({ color: def.color, width: 0.8, alpha: 0.4 });
+      // Quality border glow
+      const q = (corpse as any).quality ?? "normal";
+      const qualBorder = q === "ancient" ? 0xffd700 : q === "blessed" ? 0x44aaff : q === "cursed" ? 0xff4444 : def.color;
+      if (q !== "normal") {
+        g.roundRect(ox + 7, iy - 1, 122, 34, 5).stroke({ color: qualBorder, width: 1, alpha: 0.3 });
+      }
       // Color dot
       g.circle(ox + 20, iy + 10, 5).fill({ color: def.color, alpha: 0.8 });
       if (def.ranged) {
-        // Range indicator — small diamond
         g.moveTo(ox + 20, iy + 6).lineTo(ox + 23, iy + 10).lineTo(ox + 20, iy + 14).lineTo(ox + 17, iy + 10).stroke({ color: 0x9944ff, width: 0.5, alpha: 0.6 });
       }
+      // Quality badge
+      if (q !== "normal") {
+        const qLabel = q === "ancient" ? "A" : q === "blessed" ? "B" : "C";
+        const qBadge = new Text({ text: qLabel, style: new TextStyle({ fontFamily: FONT, fontSize: 6, fill: qualBorder, fontWeight: "bold" }) });
+        qBadge.position.set(ox + 118, iy + 2); this._ui.addChild(qBadge);
+      }
       // Name and cost
-      const ct = new Text({ text: `${def.name}`, style: new TextStyle({ fontFamily: FONT, fontSize: 8, fill: 0xcccccc, fontWeight: "bold" }) });
+      const qualSuffix = q === "ancient" ? " \u2605" : q === "blessed" ? " \u2606" : q === "cursed" ? " \u2620" : "";
+      const ct = new Text({ text: `${def.name}${qualSuffix}`, style: new TextStyle({ fontFamily: FONT, fontSize: 8, fill: q !== "normal" ? qualBorder : 0xcccccc, fontWeight: "bold" }) });
       ct.position.set(ox + 30, iy + 2); this._ui.addChild(ct);
       // Stats line
       const stats = `HP:${def.hp} DMG:${def.damage} SPD:${def.speed} ${def.ranged ? "RANGED" : ""} — ${def.manaCost}m`;
@@ -864,7 +935,7 @@ export class NecroRenderer {
 
     // Bottom bar
     const controls: Record<string, string> = {
-      dig: "Click graves to dig | SPACE: go to ritual | Esc: quit",
+      dig: "Click graves to dig | D: dig all (15m) | SPACE: ritual | Esc: quit",
       ritual: "Click corpses to place in slots | ENTER: raise undead | SPACE: battle | Esc: quit",
       battle: "LMB: Dark Nova | RMB/W: Bone Wall | Esc: quit",
       upgrade: "Click to buy upgrades | SPACE: next wave",
