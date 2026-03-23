@@ -449,6 +449,12 @@ const GAME_MODES: GameModeEntry[] = [
     label: "GRAIL BREAKER",
     desc: "Medieval Arkanoid — smash castle walls with a flaming orb, collect power-ups",
     skipSetup: true,
+  },
+  {
+    mode: GameMode.NECROMANCER,
+    label: "NECROMANCER",
+    desc: "Raise the dead! Dig corpses, reanimate chimera undead, fight holy crusaders",
+    skipSetup: true,
     tag: "NEW",
   },
 ];
