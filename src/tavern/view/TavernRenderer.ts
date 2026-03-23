@@ -98,6 +98,13 @@ export class TavernRenderer {
     this._addText(`Streak: ${state.streak}`, 620, 8, { fontSize: 11, fill: state.streak >= 3 ? 0xffd700 : 0xccddcc });
     this._addText(`Bet: ${state.currentBet}g`, cx, 24, { fontSize: 10, fill: 0xffaa44 }, true);
 
+    // Deck counter
+    const remaining = state.deck.length - state.deckIndex;
+    this._addText(`Deck: ${remaining}`, sw - 60, 24, { fontSize: 9, fill: 0x887766 });
+
+    // Suit power legend (small, bottom of table)
+    this._addText("\u2694+50%win  \u{1F6E1}-30%loss  \u{1F451}+25%win  \u{1F3C6}+5g", cx, sh * 0.73, { fontSize: 7, fill: 0x556655 }, true);
+
     // Announcements
     for (const ann of state.announcements) {
       const alpha = Math.min(1, ann.timer / 1.5);
