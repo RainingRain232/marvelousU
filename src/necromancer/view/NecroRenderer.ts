@@ -404,7 +404,7 @@ export class NecroRenderer {
     // Announcements
     for (const ann of state.announcements) {
       const a = Math.min(1, ann.timer / 1.5);
-      const t = new Text({ text: ann.text, style: new TextStyle({ fontFamily: FONT, fontSize: 18, fill: ann.color, fontWeight: "bold" }) });
+      const t = new Text({ text: ann.text, style: new TextStyle({ fontFamily: FONT, fontSize: 28, fill: ann.color, fontWeight: "bold" }) });
       t.alpha = a; t.anchor.set(0.5, 0.5);
       t.position.set(ox + NecroConfig.FIELD_WIDTH / 2, oy + NecroConfig.FIELD_HEIGHT / 2 - 30);
       this._ui.addChild(t);
@@ -511,7 +511,7 @@ export class NecroRenderer {
         g.moveTo(gx + 2, gy - 5).bezierCurveTo(gx - wisp * 0.8, gy - 12, gx + wisp * 0.8, gy - 22, gx - wisp * 0.3, gy - 32).stroke({ color: NECRO_GREEN, width: 0.5, alpha: 0.05 });
         // Corpse type label
         if (grave.corpseType) {
-          const label = new Text({ text: CORPSES[grave.corpseType].name, style: new TextStyle({ fontFamily: FONT, fontSize: 7, fill: 0x556644 }) });
+          const label = new Text({ text: CORPSES[grave.corpseType].name, style: new TextStyle({ fontFamily: FONT, fontSize: 11, fill: 0x556644 }) });
           label.anchor.set(0.5, 0); label.position.set(gx, gy + 14);
           this._ui.addChild(label);
         }
@@ -636,12 +636,12 @@ export class NecroRenderer {
         const weight = def.weight;
         const rarityHint = weight >= 5 ? "Common remains..." : weight >= 3 ? "Unusual aura..." : weight >= 2 ? "Strong presence!" : "Powerful soul!";
         const rarityCol = weight >= 5 ? 0x667766 : weight >= 3 ? 0x44aaff : weight >= 2 ? 0xccaa44 : 0xff44ff;
-        const hintT = new Text({ text: rarityHint, style: new TextStyle({ fontFamily: FONT, fontSize: 7, fill: rarityCol, fontStyle: "italic" }) });
+        const hintT = new Text({ text: rarityHint, style: new TextStyle({ fontFamily: FONT, fontSize: 11, fill: rarityCol, fontStyle: "italic" }) });
         hintT.anchor.set(0.5, 0); hintT.position.set(hx, hy - 5);
         this._ui.addChild(hintT);
         // Type hint — first letter only for mystery
         const typeHint = `${def.name[0]}${"?".repeat(def.name.length - 1)}`;
-        const ht2 = new Text({ text: typeHint, style: new TextStyle({ fontFamily: FONT, fontSize: 8, fill: def.color }) });
+        const ht2 = new Text({ text: typeHint, style: new TextStyle({ fontFamily: FONT, fontSize: 13, fill: def.color }) });
         ht2.anchor.set(0.5, 0); ht2.position.set(hx, hy + 7);
         this._ui.addChild(ht2);
         // Sparkle around hovered grave
@@ -790,7 +790,7 @@ export class NecroRenderer {
     if (state.ritualSlotA) {
       const def = CORPSES[state.ritualSlotA.type];
       this._drawCorpseIcon(g, slotAx, slotAy, def, state);
-      const label = new Text({ text: def.name, style: new TextStyle({ fontFamily: FONT, fontSize: 7, fill: def.color }) });
+      const label = new Text({ text: def.name, style: new TextStyle({ fontFamily: FONT, fontSize: 11, fill: def.color }) });
       label.anchor.set(0.5, 0); label.position.set(slotAx, slotAy + 19);
       this._ui.addChild(label);
     } else {
@@ -798,7 +798,7 @@ export class NecroRenderer {
       g.circle(slotAx, slotAy, 8).stroke({ color: 0x333322, width: 0.5, alpha: 0.25 });
       g.moveTo(slotAx, slotAy - 5).lineTo(slotAx, slotAy + 5).stroke({ color: 0x333322, width: 0.5, alpha: 0.15 });
       g.moveTo(slotAx - 5, slotAy).lineTo(slotAx + 5, slotAy).stroke({ color: 0x333322, width: 0.5, alpha: 0.15 });
-      const label = new Text({ text: "I", style: new TextStyle({ fontFamily: FONT, fontSize: 9, fill: 0x333322 }) });
+      const label = new Text({ text: "I", style: new TextStyle({ fontFamily: FONT, fontSize: 14, fill: 0x333322 }) });
       label.anchor.set(0.5, 0.5); label.position.set(slotAx, slotAy);
       this._ui.addChild(label);
     }
@@ -817,12 +817,12 @@ export class NecroRenderer {
     if (state.ritualSlotB) {
       const def = CORPSES[state.ritualSlotB.type];
       this._drawCorpseIcon(g, slotBx, slotBy, def, state);
-      const label = new Text({ text: def.name, style: new TextStyle({ fontFamily: FONT, fontSize: 7, fill: def.color }) });
+      const label = new Text({ text: def.name, style: new TextStyle({ fontFamily: FONT, fontSize: 11, fill: def.color }) });
       label.anchor.set(0.5, 0); label.position.set(slotBx, slotBy + 19);
       this._ui.addChild(label);
     } else {
       g.circle(slotBx, slotBy, 8).stroke({ color: 0x333322, width: 0.5, alpha: 0.25 });
-      const label = new Text({ text: "II\n(opt)", style: new TextStyle({ fontFamily: FONT, fontSize: 7, fill: 0x333322, align: "center" }) });
+      const label = new Text({ text: "II\n(opt)", style: new TextStyle({ fontFamily: FONT, fontSize: 11, fill: 0x333322, align: "center" }) });
       label.anchor.set(0.5, 0.5); label.position.set(slotBx, slotBy);
       this._ui.addChild(label);
     }
@@ -834,10 +834,10 @@ export class NecroRenderer {
         // Chimera name with glow
         g.roundRect(ox + cx - 70, oy + cy + 42, 140, 20, 4).fill({ color: 0x0a0812, alpha: 0.7 });
         g.roundRect(ox + cx - 70, oy + cy + 42, 140, 20, 4).stroke({ color: 0xff88ff, width: 0.5, alpha: 0.3 });
-        const label = new Text({ text: `\u2192 ${chimera.name}`, style: new TextStyle({ fontFamily: FONT, fontSize: 9, fill: 0xff88ff, fontWeight: "bold" }) });
+        const label = new Text({ text: `\u2192 ${chimera.name}`, style: new TextStyle({ fontFamily: FONT, fontSize: 14, fill: 0xff88ff, fontWeight: "bold" }) });
         label.anchor.set(0.5, 0); label.position.set(ox + cx, oy + cy + 43);
         this._ui.addChild(label);
-        const abilLabel = new Text({ text: `ability: ${chimera.ability} | +${chimera.hpBonus}HP +${chimera.damageBonus}DMG`, style: new TextStyle({ fontFamily: FONT, fontSize: 6, fill: 0xaa66cc }) });
+        const abilLabel = new Text({ text: `ability: ${chimera.ability} | +${chimera.hpBonus}HP +${chimera.damageBonus}DMG`, style: new TextStyle({ fontFamily: FONT, fontSize: 10, fill: 0xaa66cc }) });
         abilLabel.anchor.set(0.5, 0); abilLabel.position.set(ox + cx, oy + cy + 54);
         this._ui.addChild(abilLabel);
       }
@@ -977,7 +977,7 @@ export class NecroRenderer {
 
     // Corpse inventory on the left
     let iy = oy + 15;
-    const invLabel = new Text({ text: "CORPSES", style: new TextStyle({ fontFamily: FONT, fontSize: 9, fill: 0x889988, letterSpacing: 2 }) });
+    const invLabel = new Text({ text: "CORPSES", style: new TextStyle({ fontFamily: FONT, fontSize: 14, fill: 0x889988, letterSpacing: 2 }) });
     invLabel.position.set(ox + 10, iy); this._ui.addChild(invLabel);
     iy += 14;
     for (const corpse of state.corpses) {
@@ -1031,32 +1031,32 @@ export class NecroRenderer {
       // Quality badge
       if (q !== "normal") {
         const qLabel = q === "ancient" ? "A" : q === "blessed" ? "B" : "C";
-        const qBadge = new Text({ text: qLabel, style: new TextStyle({ fontFamily: FONT, fontSize: 6, fill: qualBorder, fontWeight: "bold" }) });
+        const qBadge = new Text({ text: qLabel, style: new TextStyle({ fontFamily: FONT, fontSize: 10, fill: qualBorder, fontWeight: "bold" }) });
         qBadge.position.set(ox + 118, iy + 2); this._ui.addChild(qBadge);
       }
       // Name and cost
       const qualSuffix = q === "ancient" ? " \u2605" : q === "blessed" ? " \u2606" : q === "cursed" ? " \u2620" : "";
-      const ct = new Text({ text: `${def.name}${qualSuffix}`, style: new TextStyle({ fontFamily: FONT, fontSize: 8, fill: q !== "normal" ? qualBorder : 0xcccccc, fontWeight: "bold" }) });
+      const ct = new Text({ text: `${def.name}${qualSuffix}`, style: new TextStyle({ fontFamily: FONT, fontSize: 13, fill: q !== "normal" ? qualBorder : 0xcccccc, fontWeight: "bold" }) });
       ct.position.set(ox + 30, iy + 2); this._ui.addChild(ct);
       // Stats line
       const stats = `HP:${def.hp} DMG:${def.damage} SPD:${def.speed} ${def.ranged ? "RANGED" : ""} — ${def.manaCost}m`;
-      const st = new Text({ text: stats, style: new TextStyle({ fontFamily: FONT, fontSize: 6, fill: 0x889977 }) });
+      const st = new Text({ text: stats, style: new TextStyle({ fontFamily: FONT, fontSize: 10, fill: 0x889977 }) });
       st.position.set(ox + 30, iy + 14); this._ui.addChild(st);
       // Description
-      const dt = new Text({ text: def.description, style: new TextStyle({ fontFamily: FONT, fontSize: 5.5, fill: 0x667755, fontStyle: "italic" }) });
+      const dt = new Text({ text: def.description, style: new TextStyle({ fontFamily: FONT, fontSize: 9, fill: 0x667755, fontStyle: "italic" }) });
       dt.position.set(ox + 30, iy + 23); this._ui.addChild(dt);
       iy += 36;
     }
 
     // Army preview on the right
     iy = oy + 20;
-    const armyLabel = new Text({ text: `Army: ${state.undead.length}/${NecroConfig.MAX_ARMY}`, style: new TextStyle({ fontFamily: FONT, fontSize: 10, fill: 0x889988 }) });
+    const armyLabel = new Text({ text: `Army: ${state.undead.length}/${NecroConfig.MAX_ARMY}`, style: new TextStyle({ fontFamily: FONT, fontSize: 16, fill: 0x889988 }) });
     armyLabel.anchor.set(1, 0); armyLabel.position.set(ox + NecroConfig.FIELD_WIDTH - 10, iy); this._ui.addChild(armyLabel);
     iy += 16;
     for (const u of state.undead) {
       g.roundRect(ox + NecroConfig.FIELD_WIDTH - 120, iy, 110, 16, 3).fill({ color: 0x0a0a06, alpha: 0.5 });
       g.circle(ox + NecroConfig.FIELD_WIDTH - 108, iy + 8, 3).fill({ color: u.color });
-      const ut = new Text({ text: `${u.name} HP:${u.hp}`, style: new TextStyle({ fontFamily: FONT, fontSize: 7, fill: 0x99aa99 }) });
+      const ut = new Text({ text: `${u.name} HP:${u.hp}`, style: new TextStyle({ fontFamily: FONT, fontSize: 11, fill: 0x99aa99 }) });
       ut.position.set(ox + NecroConfig.FIELD_WIDTH - 100, iy + 3); this._ui.addChild(ut);
       iy += 19;
     }
@@ -1305,7 +1305,7 @@ export class NecroRenderer {
     g.moveTo(lLabelX - 30, oy + 14).lineTo(lLabelX + 30, oy + 14).stroke({ color: NECRO_GREEN, width: 0.3, alpha: 0.08 });
     g.moveTo(lLabelX - 20, oy + 15).lineTo(lLabelX + 20, oy + 15).stroke({ color: NECRO_GREEN, width: 0.2, alpha: 0.04 });
 
-    const leftLabel = new Text({ text: "UNDEAD", style: new TextStyle({ fontFamily: FONT, fontSize: 8, fill: NECRO_GREEN, letterSpacing: 2 } as any) });
+    const leftLabel = new Text({ text: "UNDEAD", style: new TextStyle({ fontFamily: FONT, fontSize: 13, fill: NECRO_GREEN, letterSpacing: 2 } as any) });
     leftLabel.alpha = 0.25; leftLabel.anchor.set(0.5, 0); leftLabel.position.set(lLabelX, oy + 3);
     this._ui.addChild(leftLabel);
 
@@ -1318,7 +1318,7 @@ export class NecroRenderer {
     g.moveTo(rLabelX - 35, oy + 14).lineTo(rLabelX + 35, oy + 14).stroke({ color: 0xffd700, width: 0.3, alpha: 0.06 });
     g.moveTo(rLabelX - 25, oy + 15).lineTo(rLabelX + 25, oy + 15).stroke({ color: 0xffd700, width: 0.2, alpha: 0.03 });
 
-    const rightLabel = new Text({ text: "CRUSADERS", style: new TextStyle({ fontFamily: FONT, fontSize: 8, fill: 0xffd700, letterSpacing: 2 } as any) });
+    const rightLabel = new Text({ text: "CRUSADERS", style: new TextStyle({ fontFamily: FONT, fontSize: 13, fill: 0xffd700, letterSpacing: 2 } as any) });
     rightLabel.alpha = 0.25; rightLabel.anchor.set(0.5, 0); rightLabel.position.set(rLabelX, oy + 3);
     this._ui.addChild(rightLabel);
 
@@ -1433,7 +1433,7 @@ export class NecroRenderer {
       const life = dn.timer / dn.maxTimer;
       const scale = 0.8 + (1 - life) * 0.4; // Grows as it fades
       const isPurge = dn.text === "PURGE";
-      const fontSize = isPurge ? 11 : dn.text.startsWith("-") && parseInt(dn.text.substring(1)) >= 5 ? 12 : 10;
+      const fontSize = isPurge ? 18 : dn.text.startsWith("-") && parseInt(dn.text.substring(1)) >= 5 ? 19 : 16;
 
       // Shadow/outline
       const shadow = new Text({ text: dn.text, style: new TextStyle({ fontFamily: FONT, fontSize, fill: 0x000000, fontWeight: "bold" }) });
@@ -1470,7 +1470,7 @@ export class NecroRenderer {
       g.circle(iconX, iconY, 2).fill({ color: novaCol, alpha: novaReady ? 0.5 : 0.15 });
       const nt = new Text({
         text: novaReady ? "LMB: Nova" : `Nova ${Math.ceil(state.novaCooldown)}s`,
-        style: new TextStyle({ fontFamily: FONT, fontSize: 7, fill: novaReady ? 0xcc66ff : 0x554466 }),
+        style: new TextStyle({ fontFamily: FONT, fontSize: 11, fill: novaReady ? 0xcc66ff : 0x554466 }),
       });
       nt.position.set(spellX + 14, spellY - 4); this._ui.addChild(nt);
       // Ready glow
@@ -1493,7 +1493,7 @@ export class NecroRenderer {
     g.circle(wiX, wiY - 4, 2).fill({ color: wallCol, alpha: 0.3 });
     const wt = new Text({
       text: wallReady ? "RMB: Wall" : state.boneWallCooldown > 0 ? `Wall ${Math.ceil(state.boneWallCooldown)}s` : "Wall (10m)",
-      style: new TextStyle({ fontFamily: FONT, fontSize: 7, fill: wallReady ? 0xddddcc : 0x555544 }),
+      style: new TextStyle({ fontFamily: FONT, fontSize: 11, fill: wallReady ? 0xddddcc : 0x555544 }),
     });
     wt.position.set(spellX + 14, spellY - 4); this._ui.addChild(wt);
     if (wallReady) {
@@ -1515,7 +1515,7 @@ export class NecroRenderer {
       }
       const lt = new Text({
         text: leechReady ? "E: Leech" : `Leech ${Math.ceil(state.soulLeechCooldown)}s`,
-        style: new TextStyle({ fontFamily: FONT, fontSize: 7, fill: leechReady ? 0x66ff66 : 0x335533 }),
+        style: new TextStyle({ fontFamily: FONT, fontSize: 11, fill: leechReady ? 0x66ff66 : 0x335533 }),
       });
       lt.position.set(spellX + 14, spellY - 4); this._ui.addChild(lt);
     }
@@ -1534,7 +1534,7 @@ export class NecroRenderer {
       g.moveTo(wcX + Math.cos(sa3) * 1.5, wcY + Math.sin(sa3) * 1.5).lineTo(wcX + Math.cos(sa3) * 4, wcY + Math.sin(sa3) * 4).stroke({ color: cryCol, width: 0.6, alpha: cryActive ? 0.7 : cryReady ? 0.4 : 0.15 });
     }
     const cryLabel = cryActive ? `Cry! ${Math.ceil(state.warCryActive)}s` : cryReady ? "F: War Cry" : state.warCryCooldown > 0 ? `Cry ${Math.ceil(state.warCryCooldown)}s` : "F: War Cry";
-    const ct2 = new Text({ text: cryLabel, style: new TextStyle({ fontFamily: FONT, fontSize: 7, fill: cryActive ? 0xff8844 : cryReady ? 0xff6622 : 0x554433 }) });
+    const ct2 = new Text({ text: cryLabel, style: new TextStyle({ fontFamily: FONT, fontSize: 11, fill: cryActive ? 0xff8844 : cryReady ? 0xff6622 : 0x554433 }) });
     ct2.position.set(spellX + 14, spellY - 4); this._ui.addChild(ct2);
     if (cryActive) {
       g.roundRect(spellX - 1, spellY - 5, 78, 14, 3).fill({ color: 0xff6622, alpha: 0.06 + Math.sin(state.elapsed * 4) * 0.03 });
@@ -1550,7 +1550,7 @@ export class NecroRenderer {
 
     // Speed indicator
     if (state.battleSpeed > 1) {
-      const speedT = new Text({ text: `${state.battleSpeed}x`, style: new TextStyle({ fontFamily: FONT, fontSize: 10, fill: 0xffaa44, fontWeight: "bold" }) });
+      const speedT = new Text({ text: `${state.battleSpeed}x`, style: new TextStyle({ fontFamily: FONT, fontSize: 16, fill: 0xffaa44, fontWeight: "bold" }) });
       speedT.anchor.set(0.5, 0); speedT.position.set(ox + fw / 2, oy + 16);
       this._ui.addChild(speedT);
     }
@@ -1560,7 +1560,7 @@ export class NecroRenderer {
       const evtW = 160, evtH = 16;
       g.roundRect(ox + fw / 2 - evtW / 2, oy + fh - 34, evtW, evtH, 3).fill({ color: 0x0a0a08, alpha: 0.7 });
       g.roundRect(ox + fw / 2 - evtW / 2, oy + fh - 34, evtW, evtH, 3).stroke({ color: state.activeEvent.color, width: 0.8, alpha: 0.4 });
-      const evtT = new Text({ text: `\u26A1 ${state.activeEvent.name}`, style: new TextStyle({ fontFamily: FONT, fontSize: 7, fill: state.activeEvent.color, fontWeight: "bold" }) });
+      const evtT = new Text({ text: `\u26A1 ${state.activeEvent.name}`, style: new TextStyle({ fontFamily: FONT, fontSize: 11, fill: state.activeEvent.color, fontWeight: "bold" }) });
       evtT.anchor.set(0.5, 0.5); evtT.position.set(ox + fw / 2, oy + fh - 26);
       this._ui.addChild(evtT);
     }
@@ -1568,7 +1568,7 @@ export class NecroRenderer {
     // Combo counter
     if (state.comboCount >= 2) {
       const comboPulse = 1 + Math.sin(state.elapsed * 6) * 0.15;
-      const comboT = new Text({ text: `${state.comboCount}x COMBO`, style: new TextStyle({ fontFamily: FONT, fontSize: state.comboCount >= 5 ? 14 : 11, fill: state.comboCount >= 5 ? 0xffd700 : 0xff8844, fontWeight: "bold" }) });
+      const comboT = new Text({ text: `${state.comboCount}x COMBO`, style: new TextStyle({ fontFamily: FONT, fontSize: state.comboCount >= 5 ? 22 : 18, fill: state.comboCount >= 5 ? 0xffd700 : 0xff8844, fontWeight: "bold" }) });
       comboT.alpha = 0.7 + Math.sin(state.elapsed * 4) * 0.2;
       comboT.scale.set(comboPulse);
       comboT.anchor.set(0.5, 0); comboT.position.set(ox + 80, oy + fh - 45);
@@ -1591,7 +1591,7 @@ export class NecroRenderer {
       g.circle(rpx - 1, rpy - 0.5, 0.6).fill({ color: 0x0a0a06, alpha: rpFade * 0.5 });
       g.circle(rpx + 1, rpy - 0.5, 0.6).fill({ color: 0x0a0a06, alpha: rpFade * 0.5 });
       // Timer text
-      const rpT = new Text({ text: `${Math.ceil(state.rallyPoint.timer)}s`, style: new TextStyle({ fontFamily: FONT, fontSize: 6, fill: NECRO_GREEN }) });
+      const rpT = new Text({ text: `${Math.ceil(state.rallyPoint.timer)}s`, style: new TextStyle({ fontFamily: FONT, fontSize: 10, fill: NECRO_GREEN }) });
       rpT.alpha = rpFade * 0.5; rpT.anchor.set(0.5, 0); rpT.position.set(rpx, rpy + 20);
       this._ui.addChild(rpT);
     }
@@ -1605,7 +1605,7 @@ export class NecroRenderer {
       g.roundRect(bbx, bby, bossBarW, bossBarH, 2).fill({ color: 0x110000, alpha: 0.8 });
       g.roundRect(bbx, bby, bossBarW * (c.hp / c.maxHp), bossBarH, 2).fill({ color: c.shieldTimer && c.shieldTimer > 0 ? 0xffd700 : 0xcc2222, alpha: 0.8 });
       // Boss name
-      const bossNameT = new Text({ text: c.name, style: new TextStyle({ fontFamily: FONT, fontSize: 9, fill: 0xff6644, fontWeight: "bold" }) });
+      const bossNameT = new Text({ text: c.name, style: new TextStyle({ fontFamily: FONT, fontSize: 14, fill: 0xff6644, fontWeight: "bold" }) });
       bossNameT.anchor.set(0.5, 0); bossNameT.position.set(ox + fw / 2, bby - 12);
       this._ui.addChild(bossNameT);
       // Shield indicator
@@ -1654,7 +1654,7 @@ export class NecroRenderer {
     // Kill counter
     const kt = new Text({
       text: `Kills: ${state.waveKills}`,
-      style: new TextStyle({ fontFamily: FONT, fontSize: 9, fill: 0xcc6644 }),
+      style: new TextStyle({ fontFamily: FONT, fontSize: 14, fill: 0xcc6644 }),
     });
     kt.anchor.set(1, 0); kt.position.set(ox + fw - 5, oy + fh - 28);
     this._ui.addChild(kt);
@@ -1662,14 +1662,14 @@ export class NecroRenderer {
     // Battle timer
     const bt = new Text({
       text: `${Math.floor(state.battleTimer)}s`,
-      style: new TextStyle({ fontFamily: FONT, fontSize: 9, fill: 0x667766 }),
+      style: new TextStyle({ fontFamily: FONT, fontSize: 14, fill: 0x667766 }),
     });
     bt.anchor.set(1, 0); bt.position.set(ox + fw - 5, oy + fh - 14);
     this._ui.addChild(bt);
 
     // Remaining enemies
     const remText = `Enemies: ${state.crusaders.length + state.crusaderSpawnQueue.length}`;
-    const rt = new Text({ text: remText, style: new TextStyle({ fontFamily: FONT, fontSize: 8, fill: 0xddaa66 }) });
+    const rt = new Text({ text: remText, style: new TextStyle({ fontFamily: FONT, fontSize: 13, fill: 0xddaa66 }) });
     rt.anchor.set(1, 0); rt.position.set(ox + fw - 5, oy + 16);
     this._ui.addChild(rt);
   }
@@ -1834,7 +1834,7 @@ export class NecroRenderer {
     }
 
     // Name tag
-    const nameT = new Text({ text: u.name, style: new TextStyle({ fontFamily: FONT, fontSize: 6, fill: u.chimera ? 0xcc88ff : NECRO_GREEN }) });
+    const nameT = new Text({ text: u.name, style: new TextStyle({ fontFamily: FONT, fontSize: 10, fill: u.chimera ? 0xcc88ff : NECRO_GREEN }) });
     nameT.alpha = 0.6; nameT.anchor.set(0.5, 0); nameT.position.set(x, y + s + 5);
     this._ui.addChild(nameT);
 
@@ -2098,7 +2098,7 @@ export class NecroRenderer {
     }
 
     // Name tag
-    const nameT = new Text({ text: c.name, style: new TextStyle({ fontFamily: FONT, fontSize: 6, fill: 0xddddaa }) });
+    const nameT = new Text({ text: c.name, style: new TextStyle({ fontFamily: FONT, fontSize: 10, fill: 0xddddaa }) });
     nameT.alpha = 0.5; nameT.anchor.set(0.5, 0); nameT.position.set(x, y + s + 5);
     this._ui.addChild(nameT);
 
@@ -2302,10 +2302,10 @@ export class NecroRenderer {
     g.moveTo(sw - 8, 36).bezierCurveTo(sw - 6, 38, sw - 4, 40, sw, 40).stroke({ color: NECRO_GREEN, width: 0.5, alpha: 0.1 });
     g.moveTo(sw - 10, 42).bezierCurveTo(sw - 9, 40, sw - 7, 39, sw - 5, 40).stroke({ color: NECRO_GREEN, width: 0.3, alpha: 0.08 });
     // Center skull emblem between title and wave info
-    g.circle(180, 14, 6).fill({ color: NECRO_GREEN, alpha: 0.05 });
-    g.circle(180, 13, 3).fill({ color: BONE_WHITE, alpha: 0.06 });
-    g.circle(179, 12, 0.6).fill({ color: 0x0a0a06, alpha: 0.06 });
-    g.circle(181, 12, 0.6).fill({ color: 0x0a0a06, alpha: 0.06 });
+    g.circle(270, 21, 9).fill({ color: NECRO_GREEN, alpha: 0.05 });
+    g.circle(270, 20, 5).fill({ color: BONE_WHITE, alpha: 0.06 });
+    g.circle(269, 18, 0.9).fill({ color: 0x0a0a06, alpha: 0.06 });
+    g.circle(271, 18, 0.9).fill({ color: 0x0a0a06, alpha: 0.06 });
 
     const addText = (str: string, x: number, y: number, opts: Partial<TextStyle>, center = false) => {
       const t = new Text({ text: str, style: new TextStyle({ fontFamily: FONT, ...opts } as any) });
@@ -2313,19 +2313,19 @@ export class NecroRenderer {
     };
 
     // Title with skull icon drawn
-    g.circle(22, 14, 5).fill({ color: NECRO_GREEN, alpha: 0.15 });
-    g.circle(20, 13, 1).fill({ color: NECRO_GREEN, alpha: 0.3 });
-    g.circle(24, 13, 1).fill({ color: NECRO_GREEN, alpha: 0.3 });
-    addText("NECROMANCER", 34, 5, { fontSize: 14, fill: NECRO_GREEN, fontWeight: "bold", letterSpacing: 3 });
+    g.circle(33, 21, 8).fill({ color: NECRO_GREEN, alpha: 0.15 });
+    g.circle(30, 20, 1.5).fill({ color: NECRO_GREEN, alpha: 0.3 });
+    g.circle(36, 20, 1.5).fill({ color: NECRO_GREEN, alpha: 0.3 });
+    addText("NECROMANCER", 50, 8, { fontSize: 22, fill: NECRO_GREEN, fontWeight: "bold", letterSpacing: 3 });
 
     const waveStr = state.endless ? `Wave ${state.wave + 1} \u221E` : `Wave ${state.wave + 1}/${state.totalWaves}`;
-    addText(waveStr, 195, 7, { fontSize: 11, fill: state.endless ? 0xaa44ff : 0x889988 });
-    addText(`Gold: ${state.gold}`, 295, 7, { fontSize: 12, fill: 0xffd700 });
-    addText(`Score: ${state.score}`, 395, 7, { fontSize: 12, fill: 0x44ccaa });
-    addText(`Army: ${state.undead.length}`, 505, 7, { fontSize: 11, fill: NECRO_GREEN });
+    addText(waveStr, 290, 11, { fontSize: 18, fill: state.endless ? 0xaa44ff : 0x889988 });
+    addText(`Gold: ${state.gold}`, 440, 11, { fontSize: 19, fill: 0xffd700 });
+    addText(`Score: ${state.score}`, 590, 11, { fontSize: 19, fill: 0x44ccaa });
+    addText(`Army: ${state.undead.length}`, 750, 11, { fontSize: 18, fill: NECRO_GREEN });
 
     // Mana bar — ornate frame
-    const manaW = 130, manaH = 9, manaX = 195, manaY = 26;
+    const manaW = 195, manaH = 9, manaX = 290, manaY = 40;
     // Frame
     g.roundRect(manaX - 1, manaY - 1, manaW + 2, manaH + 2, 4).stroke({ color: 0x334466, width: 0.8, alpha: 0.4 });
     // Background
@@ -2348,13 +2348,13 @@ export class NecroRenderer {
       const tx = manaX + manaW * frac;
       g.moveTo(tx, manaY - 1).lineTo(tx, manaY + manaH + 1).stroke({ color: 0x334466, width: 0.3, alpha: 0.2 });
     }
-    addText(`${Math.floor(state.mana)}/${state.maxMana}`, manaX + manaW + 8, manaY - 2, { fontSize: 9, fill: 0x6688cc });
+    addText(`${Math.floor(state.mana)}/${state.maxMana}`, manaX + manaW + 8, manaY - 2, { fontSize: 14, fill: 0x6688cc });
 
     // HP — drawn heart icons instead of text
-    const hpX = 435, hpY = 27;
-    addText("HP:", hpX, hpY, { fontSize: 9, fill: 0x886666 });
+    const hpX = 650, hpY = 42;
+    addText("HP:", hpX, hpY, { fontSize: 14, fill: 0x886666 });
     for (let hi = 0; hi < state.maxPlayerHp; hi++) {
-      const heartX = hpX + 22 + hi * 8;
+      const heartX = hpX + 30 + hi * 12;
       const filled = hi < state.playerHp;
       const col = filled ? (state.playerHp <= 3 ? 0xff3333 : 0xff6666) : 0x332222;
       const a = filled ? 0.8 : 0.3;
@@ -2370,20 +2370,20 @@ export class NecroRenderer {
     const phaseIcon = phaseIcons[state.phase] ?? "";
     const phaseName = phaseNames[state.phase] ?? state.phase.toUpperCase();
     // Phase badge
-    g.roundRect(sw / 2 - 30, 28, 60, 12, 3).fill({ color: 0x0a0812, alpha: 0.6 });
-    g.roundRect(sw / 2 - 30, 28, 60, 12, 3).stroke({ color: 0x445544, width: 0.5, alpha: 0.3 });
-    addText(`${phaseIcon} ${phaseName}`, sw / 2, 29, { fontSize: 8, fill: 0x778877, letterSpacing: 1 }, true);
+    g.roundRect(sw / 2 - 45, 44, 90, 18, 3).fill({ color: 0x0a0812, alpha: 0.6 });
+    g.roundRect(sw / 2 - 45, 44, 90, 18, 3).stroke({ color: 0x445544, width: 0.5, alpha: 0.3 });
+    addText(`${phaseIcon} ${phaseName}`, sw / 2, 45, { fontSize: 13, fill: 0x778877, letterSpacing: 1 }, true);
 
     // Bottom bar — subtle with inner glow
-    g.rect(0, sh - 20, sw, 20).fill({ color: 0x06040a, alpha: 0.6 });
-    g.moveTo(0, sh - 20).lineTo(sw, sh - 20).stroke({ color: 0x445544, width: 0.5, alpha: 0.1 });
+    g.rect(0, sh - 30, sw, 30).fill({ color: 0x06040a, alpha: 0.6 });
+    g.moveTo(0, sh - 30).lineTo(sw, sh - 30).stroke({ color: 0x445544, width: 0.5, alpha: 0.1 });
     const controls: Record<string, string> = {
       dig: "Click: dig grave | D: dig all (15m) | SPACE: ritual | Esc: quit",
       ritual: "Click: place | ENTER: raise | C: clear | X: sacrifice | SPACE: battle",
       battle: "LMB: Nova | RMB/W: Wall | E: Leech | S: speed | Esc: quit",
       upgrade: "Click: buy upgrades | SPACE: next wave",
     };
-    addText(controls[state.phase] ?? "Esc: quit", sw / 2, sh - 16, { fontSize: 7, fill: 0x445544 }, true);
+    addText(controls[state.phase] ?? "Esc: quit", sw / 2, sh - 22, { fontSize: 12, fill: 0x445544 }, true);
   }
 
   // ── Corpse icon in ritual slots ──────────────────────────────────────
@@ -2646,7 +2646,7 @@ export class NecroRenderer {
     }
 
     // Boss name
-    const nameT = new Text({ text: c.name, style: new TextStyle({ fontFamily: FONT, fontSize: 8, fill: 0xff6644, fontWeight: "bold" }) });
+    const nameT = new Text({ text: c.name, style: new TextStyle({ fontFamily: FONT, fontSize: 13, fill: 0xff6644, fontWeight: "bold" }) });
     nameT.alpha = 0.7; nameT.anchor.set(0.5, 0); nameT.position.set(x, y + s + 6);
     this._ui.addChild(nameT);
   }

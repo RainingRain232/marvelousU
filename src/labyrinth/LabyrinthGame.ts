@@ -69,16 +69,16 @@ export class LabyrinthGame {
       if (center) t.anchor.set(0.5, 0); t.position.set(x, y); c.addChild(t);
     };
 
-    addText("\u{1F3DB}\uFE0F LABYRINTH \u{1F3DB}\uFE0F", this._sw / 2, 30, { fontSize: 30, fill: 0x9977cc, fontWeight: "bold", letterSpacing: 6 }, true);
-    addText("The Shifting Maze of the Minotaur", this._sw / 2, 68, { fontSize: 12, fill: 0x776699, fontStyle: "italic" }, true);
+    addText("\u{1F3DB}\uFE0F LABYRINTH \u{1F3DB}\uFE0F", this._sw / 2, 30, { fontSize: 48, fill: 0x9977cc, fontWeight: "bold", letterSpacing: 6 }, true);
+    addText("The Shifting Maze of the Minotaur", this._sw / 2, 68, { fontSize: 19, fill: 0x776699, fontStyle: "italic" }, true);
 
     // Floor descriptions
     let y = 100;
-    addText("3 FLOORS OF INCREASING PERIL", this._sw / 2, y, { fontSize: 10, fill: 0x998877, fontWeight: "bold", letterSpacing: 2 }, true);
+    addText("3 FLOORS OF INCREASING PERIL", this._sw / 2, y, { fontSize: 16, fill: 0x998877, fontWeight: "bold", letterSpacing: 2 }, true);
     y += 22;
     for (let fi = 0; fi < FLOORS.length; fi++) {
       const f = FLOORS[fi];
-      addText(`Floor ${fi + 1}: ${f.name}  (${f.cols}x${f.rows}, ${f.relicCount} relics)`, this._sw / 2, y, { fontSize: 9, fill: 0x778866 }, true);
+      addText(`Floor ${fi + 1}: ${f.name}  (${f.cols}x${f.rows}, ${f.relicCount} relics)`, this._sw / 2, y, { fontSize: 14, fill: 0x778866 }, true);
       y += 14;
     }
 
@@ -92,12 +92,12 @@ export class LabyrinthGame {
       "Floor 3: a second Minotaur — The Shadow — joins the hunt.",
     ];
     for (const line of rules) {
-      addText(line, this._sw / 2, y, { fontSize: 9, fill: 0x889977, align: "center", wordWrap: true, wordWrapWidth: 480, lineHeight: 15 }, true);
+      addText(line, this._sw / 2, y, { fontSize: 14, fill: 0x889977, align: "center", wordWrap: true, wordWrapWidth: 480, lineHeight: 15 }, true);
       y += 14;
     }
 
     y += 6;
-    addText("Items:", this._sw / 2, y, { fontSize: 9, fill: 0xaa9988, fontWeight: "bold" }, true);
+    addText("Items:", this._sw / 2, y, { fontSize: 14, fill: 0xaa9988, fontWeight: "bold" }, true);
     y += 14;
     const itemList = Object.values(ITEMS);
     for (let ii = 0; ii < itemList.length; ii += 2) {
@@ -105,12 +105,12 @@ export class LabyrinthGame {
       const right = itemList[ii + 1];
       let line = `${left.icon} ${left.name}: ${left.desc}`;
       if (right) line += `   |   ${right.icon} ${right.name}: ${right.desc}`;
-      addText(line, this._sw / 2, y, { fontSize: 8, fill: 0x778866 }, true);
+      addText(line, this._sw / 2, y, { fontSize: 13, fill: 0x778866 }, true);
       y += 12;
     }
 
     y += 6;
-    addText("WASD: move | Shift: sprint | 1/2/3: items | Tab: minimap | Esc: quit", this._sw / 2, y, { fontSize: 9, fill: 0x556655 }, true);
+    addText("WASD: move | Shift: sprint | 1/2/3: items | Tab: minimap | Esc: quit", this._sw / 2, y, { fontSize: 14, fill: 0x556655 }, true);
 
     // Best time
     try {
@@ -118,13 +118,13 @@ export class LabyrinthGame {
       if (best) {
         const t = parseFloat(best);
         const bm = Math.floor(t / 60), bs = Math.floor(t % 60);
-        addText(`Best time: ${bm}:${bs.toString().padStart(2, "0")}`, this._sw / 2, y + 16, { fontSize: 9, fill: 0xffd700 }, true);
+        addText(`Best time: ${bm}:${bs.toString().padStart(2, "0")}`, this._sw / 2, y + 16, { fontSize: 14, fill: 0xffd700 }, true);
       }
     } catch { /* */ }
 
     // Difficulty selection
     y += 10;
-    addText("DIFFICULTY:", this._sw / 2, y, { fontSize: 10, fill: 0x998877, fontWeight: "bold", letterSpacing: 1 }, true);
+    addText("DIFFICULTY:", this._sw / 2, y, { fontSize: 16, fill: 0x998877, fontWeight: "bold", letterSpacing: 1 }, true);
     y += 16;
     for (const diff of DIFFICULTIES) {
       const isSel = diff.id === this._difficulty;
@@ -140,10 +140,10 @@ export class LabyrinthGame {
         this._showStartScreen();
       });
       c.addChild(dbtn);
-      addText(`${diff.name}${isSel ? " \u25C0" : ""}`, this._sw / 2 - bw / 2 + 10, y + 5, { fontSize: 10, fill: diff.color, fontWeight: isSel ? "bold" : "normal" });
-      addText(diff.desc, this._sw / 2 + bw / 2 - 10, y + 7, { fontSize: 7, fill: 0x777766 });
+      addText(`${diff.name}${isSel ? " \u25C0" : ""}`, this._sw / 2 - bw / 2 + 10, y + 5, { fontSize: 16, fill: diff.color, fontWeight: isSel ? "bold" : "normal" });
+      addText(diff.desc, this._sw / 2 + bw / 2 - 10, y + 7, { fontSize: 11, fill: 0x777766 });
       // Right-align the desc
-      const descT = new Text({ text: diff.desc, style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 7, fill: 0x777766 } as any) });
+      const descT = new Text({ text: diff.desc, style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 11, fill: 0x777766 } as any) });
       descT.anchor.set(1, 0); descT.position.set(this._sw / 2 + bw / 2 - 8, y + 7); c.addChild(descT);
       y += 28;
     }
@@ -160,7 +160,7 @@ export class LabyrinthGame {
       this._startFloor(0);
     });
     c.addChild(btn);
-    addText("ENTER THE LABYRINTH", this._sw / 2, btnY + 13, { fontSize: 12, fill: 0x9977cc, fontWeight: "bold", letterSpacing: 2 }, true);
+    addText("ENTER THE LABYRINTH", this._sw / 2, btnY + 13, { fontSize: 19, fill: 0x9977cc, fontWeight: "bold", letterSpacing: 2 }, true);
 
     // Back button
     const backBtn = new Graphics();
@@ -172,7 +172,7 @@ export class LabyrinthGame {
       this.destroy(); window.dispatchEvent(new Event("labyrinthExit"));
     });
     c.addChild(backBtn);
-    addText("BACK", this._sw / 2, btnY + 58, { fontSize: 9, fill: 0x888888 }, true);
+    addText("BACK", this._sw / 2, btnY + 58, { fontSize: 14, fill: 0x888888 }, true);
 
     viewManager.addToLayer("ui", c);
   }
@@ -272,9 +272,9 @@ export class LabyrinthGame {
 
     const fc = FLOORS[Math.min(this._state.floor, FLOORS.length - 1)];
     let y = py + 16;
-    addText(`\u2705 Floor ${this._state.floor + 1} Cleared!`, this._sw / 2, y, { fontSize: 20, fill: 0x44ff88, fontWeight: "bold", letterSpacing: 2 }, true);
+    addText(`\u2705 Floor ${this._state.floor + 1} Cleared!`, this._sw / 2, y, { fontSize: 32, fill: 0x44ff88, fontWeight: "bold", letterSpacing: 2 }, true);
     y += 28;
-    addText(fc.name, this._sw / 2, y, { fontSize: 11, fill: 0x778866, fontStyle: "italic" }, true);
+    addText(fc.name, this._sw / 2, y, { fontSize: 18, fill: 0x778866, fontStyle: "italic" }, true);
     y += 24;
 
     const mins = Math.floor(this._state.floorElapsed / 60);
@@ -293,8 +293,8 @@ export class LabyrinthGame {
       ["Score", `${this._state.score}`, 0x44ccaa],
     ];
     for (const [label, value, color] of stats) {
-      addText(label, px + 40, y, { fontSize: 10, fill: 0x778866 });
-      const vt = new Text({ text: value, style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 10, fill: color, fontWeight: "bold" } as any) });
+      addText(label, px + 40, y, { fontSize: 16, fill: 0x778866 });
+      const vt = new Text({ text: value, style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 16, fill: color, fontWeight: "bold" } as any) });
       vt.anchor.set(1, 0); vt.position.set(px + pw - 40, y); c.addChild(vt);
       y += 17;
     }
@@ -302,18 +302,18 @@ export class LabyrinthGame {
     // Show inventory carrying forward
     y += 10;
     if (this._state.inventory.length > 0) {
-      addText("Carrying forward:", px + 40, y, { fontSize: 9, fill: 0x667766 });
+      addText("Carrying forward:", px + 40, y, { fontSize: 14, fill: 0x667766 });
       y += 14;
       for (const slot of this._state.inventory) {
         const def = ITEMS[slot.type];
-        addText(`  ${def.icon} ${def.name}`, px + 40, y, { fontSize: 9, fill: def.color });
+        addText(`  ${def.icon} ${def.name}`, px + 40, y, { fontSize: 14, fill: def.color });
         y += 13;
       }
     }
 
     // Torch refill notice
     y += 8;
-    addText("Torch refilled for next floor.", this._sw / 2, y, { fontSize: 9, fill: 0xffaa44, fontStyle: "italic" }, true);
+    addText("Torch refilled for next floor.", this._sw / 2, y, { fontSize: 14, fill: 0xffaa44, fontStyle: "italic" }, true);
 
     y += 22;
     const nextFloor = this._state.floor + 1;
@@ -327,7 +327,7 @@ export class LabyrinthGame {
       this._startFloor(nextFloor);
     });
     c.addChild(btn);
-    addText(`Descend to ${nfc.name}`, this._sw / 2, y + 10, { fontSize: 11, fill: 0x9977cc, fontWeight: "bold" }, true);
+    addText(`Descend to ${nfc.name}`, this._sw / 2, y + 10, { fontSize: 18, fill: 0x9977cc, fontWeight: "bold" }, true);
 
     viewManager.addToLayer("ui", c);
   }
@@ -359,7 +359,7 @@ export class LabyrinthGame {
     let y = py + 16;
     const title = this._state.won ? "\u{1F3DB}\uFE0F ESCAPED THE LABYRINTH! \u{1F3DB}\uFE0F" : "\u2620\uFE0F LOST IN THE DARK \u2620\uFE0F";
     const titleColor = this._state.won ? 0x44ff88 : 0xcc2222;
-    addText(title, this._sw / 2, y, { fontSize: 20, fill: titleColor, fontWeight: "bold", letterSpacing: 2 }, true);
+    addText(title, this._sw / 2, y, { fontSize: 32, fill: titleColor, fontWeight: "bold", letterSpacing: 2 }, true);
 
     // High score (per difficulty)
     const diffSuffix = `_${this._state.difficulty}`;
@@ -369,14 +369,14 @@ export class LabyrinthGame {
         const prev = parseFloat(localStorage.getItem(scoreKey) ?? "999999");
         if (this._state.elapsed < prev) {
           localStorage.setItem(scoreKey, `${this._state.elapsed}`);
-          addText("\u2605 NEW BEST TIME! \u2605", this._sw / 2, y + 24, { fontSize: 11, fill: 0xffd700, fontWeight: "bold" }, true);
+          addText("\u2605 NEW BEST TIME! \u2605", this._sw / 2, y + 24, { fontSize: 18, fill: 0xffd700, fontWeight: "bold" }, true);
         }
       }
       const hiKey = `labyrinth_highscore${diffSuffix}`;
       const prevHi = parseInt(localStorage.getItem(hiKey) ?? "0") || 0;
       if (this._state.score > prevHi) {
         localStorage.setItem(hiKey, `${this._state.score}`);
-        if (!this._state.won) addText("\u2605 NEW HIGH SCORE! \u2605", this._sw / 2, y + 24, { fontSize: 11, fill: 0xffd700, fontWeight: "bold" }, true);
+        if (!this._state.won) addText("\u2605 NEW HIGH SCORE! \u2605", this._sw / 2, y + 24, { fontSize: 18, fill: 0xffd700, fontWeight: "bold" }, true);
       }
     } catch { /* */ }
     y += 44;
@@ -384,7 +384,7 @@ export class LabyrinthGame {
     // Death context
     if (!this._state.won && this._state.deathCause) {
       const torchStr = this._state.deathTorchPct <= 0 ? "no torch" : `${Math.round(this._state.deathTorchPct * 100)}% torch`;
-      addText(`${this._state.deathCause} (${torchStr})`, this._sw / 2, y - 4, { fontSize: 9, fill: 0xaa6644, fontStyle: "italic" }, true);
+      addText(`${this._state.deathCause} (${torchStr})`, this._sw / 2, y - 4, { fontSize: 14, fill: 0xaa6644, fontStyle: "italic" }, true);
       y += 14;
     }
 
@@ -404,8 +404,8 @@ export class LabyrinthGame {
     ];
 
     for (const [label, value, color] of stats) {
-      addText(label, px + 35, y, { fontSize: 10, fill: 0x778866 });
-      const vt = new Text({ text: value, style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 10, fill: color, fontWeight: "bold" } as any) });
+      addText(label, px + 35, y, { fontSize: 16, fill: 0x778866 });
+      const vt = new Text({ text: value, style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 16, fill: color, fontWeight: "bold" } as any) });
       vt.anchor.set(1, 0); vt.position.set(px + pw - 35, y); c.addChild(vt);
       y += 16;
     }
@@ -423,7 +423,7 @@ export class LabyrinthGame {
           default: return a;
         }
       }).join("  ");
-      addText(achStr, this._sw / 2, y, { fontSize: 9, fill: 0xffd700, fontWeight: "bold" }, true);
+      addText(achStr, this._sw / 2, y, { fontSize: 14, fill: 0xffd700, fontWeight: "bold" }, true);
       y += 14;
     }
 
@@ -441,7 +441,7 @@ export class LabyrinthGame {
       this._startFloor(0);
     });
     c.addChild(retryBtn);
-    addText("TRY AGAIN [Enter]", this._sw / 2, y + 9, { fontSize: 11, fill: 0x9977cc, fontWeight: "bold" }, true);
+    addText("TRY AGAIN [Enter]", this._sw / 2, y + 9, { fontSize: 18, fill: 0x9977cc, fontWeight: "bold" }, true);
 
     // Endless mode button (only after winning)
     if (this._state.won) {
@@ -458,7 +458,7 @@ export class LabyrinthGame {
         this._startEndless();
       });
       c.addChild(endlessBtn);
-      addText("ENDLESS MODE", this._sw / 2, y + 8, { fontSize: 10, fill: 0xcc8844, fontWeight: "bold" }, true);
+      addText("ENDLESS MODE", this._sw / 2, y + 8, { fontSize: 16, fill: 0xcc8844, fontWeight: "bold" }, true);
       y += 36;
     } else {
       y += 40;
@@ -473,7 +473,7 @@ export class LabyrinthGame {
       this.destroy(); window.dispatchEvent(new Event("labyrinthExit"));
     });
     c.addChild(menuBtn);
-    addText("MENU", this._sw / 2, y + 5, { fontSize: 9, fill: 0x888888 }, true);
+    addText("MENU", this._sw / 2, y + 5, { fontSize: 14, fill: 0x888888 }, true);
 
     // Fast retry hotkey (Enter)
     const retryKey = (e: KeyboardEvent) => {

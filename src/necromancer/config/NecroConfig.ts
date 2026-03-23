@@ -264,8 +264,8 @@ export const RELIC_GRAVE_DROP_CHANCE = 0.10;
 export const RELIC_WAVE_REWARD_WAVES = [4, 9]; // 0-indexed — after boss waves
 
 export const NecroConfig = {
-  FIELD_WIDTH: 700,
-  FIELD_HEIGHT: 500,
+  FIELD_WIDTH: 1050,
+  FIELD_HEIGHT: 700,
   /** Number of graves in the graveyard */
   BASE_GRAVE_COUNT: 6,
   /** Max undead army size */

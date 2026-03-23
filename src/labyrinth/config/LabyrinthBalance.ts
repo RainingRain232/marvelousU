@@ -4,7 +4,7 @@
 
 export const LABYRINTH_BALANCE = {
   // ── Maze ──
-  CELL_SIZE: 40,
+  CELL_SIZE: 60,
   MAZE_BASE_W: 15,
   MAZE_BASE_H: 15,
   MAZE_GROW_PER_FLOOR: 2,
@@ -122,7 +122,7 @@ export const LABYRINTH_BALANCE = {
   SHAKE_DEATH: 10,
 
   // ── Minimap ──
-  MINIMAP_SIZE: 140,             // pixels
+  MINIMAP_SIZE: 210,             // pixels
   MINIMAP_MARGIN: 10,
   MINIMAP_ALPHA: 0.7,
 

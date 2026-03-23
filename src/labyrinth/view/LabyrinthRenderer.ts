@@ -730,7 +730,7 @@ export class LabyrinthRenderer {
           for (let zi = 0; zi < 3; zi++) {
             const zphase = (zt + zi * 0.5) % 2;
             const za = Math.max(0, 1 - zphase);
-            addText("z", mpx + 9 + zi * 4, mpy - 10 - zphase * 8, { fontSize: 6 + zi * 2, fill: 0x8888aa, fontStyle: "italic", alpha: za * alpha } as any);
+            addText("z", mpx + 9 + zi * 4, mpy - 10 - zphase * 8, { fontSize: 10 + zi * 3, fill: 0x8888aa, fontStyle: "italic", alpha: za * alpha } as any);
           }
         }
       }
@@ -853,7 +853,7 @@ export class LabyrinthRenderer {
     for (const sp of state.scorePopups) {
       const spLife = sp.life / sp.maxLife;
       const spx = ox + sp.x, spy = oy + sp.y - (1 - spLife) * 30;
-      const t = new Text({ text: sp.text, style: new TextStyle({ fontFamily: FONT, fontSize: 10 + spLife * 4, fill: sp.color, fontWeight: "bold" }) });
+      const t = new Text({ text: sp.text, style: new TextStyle({ fontFamily: FONT, fontSize: 16 + spLife * 6, fill: sp.color, fontWeight: "bold" }) });
       t.alpha = spLife; t.anchor.set(0.5, 0.5);
       t.position.set(spx, spy);
       this._ui.addChild(t);
@@ -946,7 +946,7 @@ export class LabyrinthRenderer {
       const insW = Math.min(320, sw - 40);
       g.roundRect(sw / 2 - insW / 2, insY - 2, insW, 22, 4).fill({ color: 0x0a0810, alpha: insAlpha * 0.7 });
       g.roundRect(sw / 2 - insW / 2, insY - 2, insW, 22, 4).stroke({ color: 0x443322, width: 0.5, alpha: insAlpha * 0.3 });
-      const t = new Text({ text: `"${state.activeInscription}"`, style: new TextStyle({ fontFamily: FONT, fontSize: 10, fill: 0xaa9977, fontStyle: "italic", align: "center", wordWrap: true, wordWrapWidth: insW - 16 }) });
+      const t = new Text({ text: `"${state.activeInscription}"`, style: new TextStyle({ fontFamily: FONT, fontSize: 16, fill: 0xaa9977, fontStyle: "italic", align: "center", wordWrap: true, wordWrapWidth: insW - 16 }) });
       t.alpha = insAlpha; t.anchor.set(0.5, 0);
       t.position.set(sw / 2, insY + 2);
       this._ui.addChild(t);
@@ -959,33 +959,33 @@ export class LabyrinthRenderer {
 
     const fc = FLOORS[Math.min(state.floor, FLOORS.length - 1)];
     const hudDiff = DIFFICULTIES.find(d => d.id === state.difficulty) ?? DIFFICULTIES[1];
-    addText(`\u{1F3DB}\uFE0F LABYRINTH`, 12, 4, { fontSize: 13, fill: 0x9977cc, fontWeight: "bold", letterSpacing: 2 });
-    addText(`Floor ${state.floor + 1}/${state.totalFloors}: ${fc.name}`, 12, 22, { fontSize: 7, fill: 0x667766 });
-    addText(hudDiff.name, 12, 32, { fontSize: 6, fill: hudDiff.color });
+    addText(`\u{1F3DB}\uFE0F LABYRINTH`, 12, 4, { fontSize: 21, fill: 0x9977cc, fontWeight: "bold", letterSpacing: 2 });
+    addText(`Floor ${state.floor + 1}/${state.totalFloors}: ${fc.name}`, 12, 22, { fontSize: 11, fill: 0x667766 });
+    addText(hudDiff.name, 12, 32, { fontSize: 10, fill: hudDiff.color });
 
     const stateColors: Record<string, number> = { sleep: 0x4466aa, patrol: 0x888866, hunt: 0xff8844, enrage: 0xff2222 };
     const stateLabels: Record<string, string> = { sleep: "Zzz", patrol: "Prowling", hunt: "HUNTING", enrage: "ENRAGED" };
-    addText(`Mino: ${stateLabels[state.minoState] ?? "?"}`, 12, 40, { fontSize: 6, fill: stateColors[state.minoState] ?? 0x888888 });
+    addText(`Mino: ${stateLabels[state.minoState] ?? "?"}`, 12, 40, { fontSize: 10, fill: stateColors[state.minoState] ?? 0x888888 });
 
     const relicStr = "\u25C6".repeat(state.relicsCollected) + "\u25C7".repeat(fc.relicCount - state.relicsCollected);
-    addText(`Relics ${relicStr}`, 170, 4, { fontSize: 12, fill: RELIC_COLOR });
+    addText(`Relics ${relicStr}`, 170, 4, { fontSize: 19, fill: RELIC_COLOR });
 
     // Torch bar
-    addText("Torch", 170, 22, { fontSize: 8, fill: 0x997744 });
+    addText("Torch", 170, 22, { fontSize: 13, fill: 0x997744 });
     const barX = 206, barY = 24, barW = 55, barH = 7;
     g.rect(barX, barY, barW, barH).fill({ color: 0x222222 });
     const torchW = barW * torchPct;
     const torchCol = torchPct > 0.5 ? 0xffaa44 : torchPct > 0.2 ? 0xcc6622 : torchPct > 0 ? 0xff2222 : 0x440000;
     g.rect(barX, barY, torchW, barH).fill({ color: torchCol });
     g.rect(barX, barY, barW, barH).stroke({ color: 0x444444, width: 1 });
-    if (torchPct <= 0) addText("OUT", barX + barW / 2, barY - 1, { fontSize: 7, fill: 0xff2222, fontWeight: "bold" }, true);
+    if (torchPct <= 0) addText("OUT", barX + barW / 2, barY - 1, { fontSize: 11, fill: 0xff2222, fontWeight: "bold" }, true);
     else if (torchPct <= 0.2) {
       const flashA = Math.sin(now / 300) * 0.3 + 0.3;
       g.rect(barX, barY, barW, barH).fill({ color: 0xff0000, alpha: flashA * 0.15 });
     }
 
     // Noise indicator
-    addText("Noise", 275, 22, { fontSize: 8, fill: 0x777766 });
+    addText("Noise", 275, 22, { fontSize: 13, fill: 0x777766 });
     const noiseBarX = 305, noiseBarW = 30;
     g.rect(noiseBarX, barY, noiseBarW, barH).fill({ color: 0x222222 });
     const noiseFill = noiseBarW * state.noiseLevel;
@@ -993,49 +993,49 @@ export class LabyrinthRenderer {
     g.rect(noiseBarX, barY, noiseFill, barH).fill({ color: noiseCol });
     g.rect(noiseBarX, barY, noiseBarW, barH).stroke({ color: 0x444444, width: 1 });
 
-    addText(`Score: ${state.score}`, 350, 4, { fontSize: 11, fill: 0x44ccaa });
+    addText(`Score: ${state.score}`, 350, 4, { fontSize: 18, fill: 0x44ccaa });
     const mins = Math.floor(state.floorElapsed / 60);
     const secs = Math.floor(state.floorElapsed % 60);
-    addText(`${mins}:${secs.toString().padStart(2, "0")}`, sw / 2, 4, { fontSize: 14, fill: 0xaaaaaa, fontWeight: "bold" }, true);
+    addText(`${mins}:${secs.toString().padStart(2, "0")}`, sw / 2, 4, { fontSize: 22, fill: 0xaaaaaa, fontWeight: "bold" }, true);
     const shiftRem = Math.ceil(state.shiftTimer);
-    addText(`Shift: ${shiftRem}s`, sw / 2, 22, { fontSize: 9, fill: state.shiftWarning ? 0xff4444 : 0x667766 }, true);
-    if (state.sprinting) addText("SPRINT", sw / 2 + 44, 22, { fontSize: 8, fill: 0xffaa44, fontWeight: "bold" });
+    addText(`Shift: ${shiftRem}s`, sw / 2, 22, { fontSize: 14, fill: state.shiftWarning ? 0xff4444 : 0x667766 }, true);
+    if (state.sprinting) addText("SPRINT", sw / 2 + 44, 22, { fontSize: 13, fill: 0xffaa44, fontWeight: "bold" });
     // No-hit streak
     if (state.noHitStreak >= 10) {
       const streakSecs = Math.floor(state.noHitStreak);
-      addText(`No-hit: ${streakSecs}s`, sw / 2 + 44, 32, { fontSize: 7, fill: streakSecs >= 60 ? 0xffd700 : 0x44cc88 });
+      addText(`No-hit: ${streakSecs}s`, sw / 2 + 44, 32, { fontSize: 11, fill: streakSecs >= 60 ? 0xffd700 : 0x44cc88 });
     }
 
     // Inventory
     const invStartX = sw - 160;
-    addText("[1][2][3]", invStartX + 10, 2, { fontSize: 8, fill: 0x667766 });
+    addText("[1][2][3]", invStartX + 10, 2, { fontSize: 13, fill: 0x667766 });
     for (let si = 0; si < LabyrinthConfig.MAX_INVENTORY; si++) {
       const slotX = invStartX + si * 48;
       const slotY = 14;
       const hasItem = si < state.inventory.length;
       g.roundRect(slotX, slotY, 42, 22, 3).fill({ color: hasItem ? 0x1a1428 : 0x0a0810, alpha: 0.8 });
       g.roundRect(slotX, slotY, 42, 22, 3).stroke({ color: hasItem ? 0x6644aa : 0x333333, width: 1, alpha: hasItem ? 0.6 : 0.3 });
-      addText(`${si + 1}`, slotX + 2, slotY + 2, { fontSize: 7, fill: 0x555555 });
+      addText(`${si + 1}`, slotX + 2, slotY + 2, { fontSize: 11, fill: 0x555555 });
       if (hasItem) {
         const item = state.inventory[si];
         const idef = ITEMS[item.type];
-        addText(idef.icon, slotX + 14, slotY + 2, { fontSize: 11, fill: idef.color });
-        addText(idef.name.split(" ")[0], slotX + 2, slotY + 13, { fontSize: 6, fill: idef.color });
+        addText(idef.icon, slotX + 14, slotY + 2, { fontSize: 18, fill: idef.color });
+        addText(idef.name.split(" ")[0], slotX + 2, slotY + 13, { fontSize: 10, fill: idef.color });
       }
     }
 
     // Active effects
     let effectX = 430;
     const effectY = 4;
-    if (state.speedTimer > 0) { addText(`\u26A1${Math.ceil(state.speedTimer)}s`, effectX, effectY, { fontSize: 9, fill: 0x44ccff }); effectX += 40; }
-    if (state.invisTimer > 0) { addText(`\u{1F47B}${Math.ceil(state.invisTimer)}s`, effectX, effectY, { fontSize: 9, fill: 0x8844cc }); effectX += 40; }
-    if (state.revealTimer > 0) { addText(`\u{1F4DC}${Math.ceil(state.revealTimer)}s`, effectX, effectY, { fontSize: 9, fill: 0xddddff }); effectX += 40; }
-    if (state.compassTimer > 0) { addText(`\u{1FA7C}${Math.ceil(state.compassTimer)}s`, effectX, effectY, { fontSize: 9, fill: 0xffdd44 }); effectX += 40; }
-    if (state.shieldActive) { addText("\u{1F6E1}\uFE0F", effectX, effectY, { fontSize: 9, fill: 0x44aaff }); effectX += 25; }
-    if (state.webTimer > 0) { addText(`WEB ${Math.ceil(state.webTimer)}s`, effectX, effectY, { fontSize: 9, fill: 0xff6644 }); effectX += 55; }
-    if (state.inWater) { addText("WATER", effectX, effectY, { fontSize: 9, fill: 0x4488cc, fontWeight: "bold" }); effectX += 45; }
-    if (state.inDarkness) { addText("DARK", effectX, effectY, { fontSize: 9, fill: 0x555566, fontWeight: "bold" }); effectX += 40; }
-    if (state.exitOpen) addText("EXIT OPEN!", 430, 22, { fontSize: 10, fill: EXIT_COLOR, fontWeight: "bold" });
+    if (state.speedTimer > 0) { addText(`\u26A1${Math.ceil(state.speedTimer)}s`, effectX, effectY, { fontSize: 14, fill: 0x44ccff }); effectX += 40; }
+    if (state.invisTimer > 0) { addText(`\u{1F47B}${Math.ceil(state.invisTimer)}s`, effectX, effectY, { fontSize: 14, fill: 0x8844cc }); effectX += 40; }
+    if (state.revealTimer > 0) { addText(`\u{1F4DC}${Math.ceil(state.revealTimer)}s`, effectX, effectY, { fontSize: 14, fill: 0xddddff }); effectX += 40; }
+    if (state.compassTimer > 0) { addText(`\u{1FA7C}${Math.ceil(state.compassTimer)}s`, effectX, effectY, { fontSize: 14, fill: 0xffdd44 }); effectX += 40; }
+    if (state.shieldActive) { addText("\u{1F6E1}\uFE0F", effectX, effectY, { fontSize: 14, fill: 0x44aaff }); effectX += 25; }
+    if (state.webTimer > 0) { addText(`WEB ${Math.ceil(state.webTimer)}s`, effectX, effectY, { fontSize: 14, fill: 0xff6644 }); effectX += 55; }
+    if (state.inWater) { addText("WATER", effectX, effectY, { fontSize: 14, fill: 0x4488cc, fontWeight: "bold" }); effectX += 45; }
+    if (state.inDarkness) { addText("DARK", effectX, effectY, { fontSize: 14, fill: 0x555566, fontWeight: "bold" }); effectX += 40; }
+    if (state.exitOpen) addText("EXIT OPEN!", 430, 22, { fontSize: 16, fill: EXIT_COLOR, fontWeight: "bold" });
 
     // ---- Announcements (with subtle bg panel) ----
     let annY = 0;
@@ -1044,7 +1044,7 @@ export class LabyrinthRenderer {
       const aY = oy + mazeH / 2 + annY;
       // Background panel
       g.roundRect(sw / 2 - 120, aY - 12, 240, 24, 6).fill({ color: 0x0a0810, alpha: a * 0.4 });
-      const t = new Text({ text: ann.text, style: new TextStyle({ fontFamily: FONT, fontSize: 15, fill: ann.color, fontWeight: "bold" }) });
+      const t = new Text({ text: ann.text, style: new TextStyle({ fontFamily: FONT, fontSize: 24, fill: ann.color, fontWeight: "bold" }) });
       t.alpha = a; t.anchor.set(0.5, 0.5);
       t.position.set(sw / 2, aY);
       this._ui.addChild(t);
@@ -1112,11 +1112,11 @@ export class LabyrinthRenderer {
 
       const pulse = 0.7 + Math.sin(now / 400) * 0.3;
       g.rect(mmX + state.pCol * mmCell, mmY + state.pRow * mmCell, mmCell, mmCell).fill({ color: PLAYER_COLOR, alpha: pulse });
-      addText("Tab: toggle", mmX, mmY + mmH + 2, { fontSize: 6, fill: 0x556655 });
+      addText("Tab: toggle", mmX, mmY + mmH + 2, { fontSize: 10, fill: 0x556655 });
     }
 
     const controlsY = oy + mazeH + 6;
-    addText("WASD: move | Shift: sprint | 1/2/3: use | Q: drop | Tab: map | Esc: quit", sw / 2, controlsY, { fontSize: 7, fill: 0x445544 }, true);
+    addText("WASD: move | Shift: sprint | 1/2/3: use | Q: drop | Tab: map | Esc: quit", sw / 2, controlsY, { fontSize: 11, fill: 0x445544 }, true);
   }
 
   destroy(): void {

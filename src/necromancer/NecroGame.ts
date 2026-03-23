@@ -150,8 +150,8 @@ export class NecroGame {
     const titleG = new Graphics();
     titleG.ellipse(sw / 2, 50, 140, 20).fill({ color: 0x44ff88, alpha: 0.03 });
     c.addChild(titleG);
-    addText("\u2620 NECROMANCER \u2620", sw / 2, 36, { fontSize: 30, fill: 0x44ff88, fontWeight: "bold", letterSpacing: 6 }, true);
-    addText("Raise the Dead", sw / 2, 74, { fontSize: 14, fill: 0x2a6644, fontStyle: "italic" }, true);
+    addText("\u2620 NECROMANCER \u2620", sw / 2, 36, { fontSize: 48, fill: 0x44ff88, fontWeight: "bold", letterSpacing: 6 }, true);
+    addText("Raise the Dead", sw / 2, 74, { fontSize: 22, fill: 0x2a6644, fontStyle: "italic" }, true);
 
     // Instructions in a dark panel
     const panelG = new Graphics();
@@ -160,7 +160,7 @@ export class NecroGame {
     c.addChild(panelG);
     addText(
       "Dig up corpses from the graveyard.\nReanimate them with dark rituals.\nCombine body parts for chimera undead.\nSend your army against crusader waves.\n\nBeware: each resurrection drains your life force!",
-      sw / 2, 104, { fontSize: 11, fill: 0x668866, align: "center", wordWrap: true, wordWrapWidth: 370, lineHeight: 17 }, true,
+      sw / 2, 104, { fontSize: 18, fill: 0x668866, align: "center", wordWrap: true, wordWrapWidth: 370, lineHeight: 17 }, true,
     );
 
     // Detailed skull
@@ -191,7 +191,7 @@ export class NecroGame {
     // High score
     try {
       const hs = parseInt(localStorage.getItem("necro_highscore") ?? "0") || 0;
-      if (hs > 0) addText(`High Score: ${hs}`, sw / 2, sh * 0.52, { fontSize: 9, fill: 0x667766 }, true);
+      if (hs > 0) addText(`High Score: ${hs}`, sw / 2, sh * 0.52, { fontSize: 14, fill: 0x667766 }, true);
     } catch { /* */ }
 
     const btn = new Graphics();
@@ -205,7 +205,7 @@ export class NecroGame {
       this._startGame();
     });
     c.addChild(btn);
-    addText("RAISE THE DEAD", sw / 2, sh * 0.58 + 13, { fontSize: 14, fill: 0x44ff88, fontWeight: "bold", letterSpacing: 3 }, true);
+    addText("RAISE THE DEAD", sw / 2, sh * 0.58 + 13, { fontSize: 22, fill: 0x44ff88, fontWeight: "bold", letterSpacing: 3 }, true);
 
     const backBtn = new Graphics();
     backBtn.roundRect(sw / 2 - 45, sh * 0.69, 90, 26, 4).fill({ color: 0x0a0a0a, alpha: 0.6 });
@@ -216,7 +216,7 @@ export class NecroGame {
       this.destroy(); window.dispatchEvent(new Event("necromancerExit"));
     });
     c.addChild(backBtn);
-    addText("BACK", sw / 2, sh * 0.69 + 6, { fontSize: 9, fill: 0x888888 }, true);
+    addText("BACK", sw / 2, sh * 0.69 + 6, { fontSize: 14, fill: 0x888888 }, true);
 
     viewManager.addToLayer("ui", c);
   }
@@ -319,35 +319,35 @@ export class NecroGame {
       if (center) t.anchor.set(0.5, 0); t.position.set(x, y); c.addChild(t);
     };
 
-    addText(`Wave ${this._state.wave + 1} Complete!`, this._sw / 2, 30, { fontSize: 20, fill: 0x44ff88, fontWeight: "bold" }, true);
-    addText(`Gold: ${this._state.gold}g | Army: ${this._state.undead.length} | Kills: ${this._state.waveKills} | HP: ${this._state.playerHp}/${this._state.maxPlayerHp}`, this._sw / 2, 55, { fontSize: 11, fill: 0xccddcc }, true);
+    addText(`Wave ${this._state.wave + 1} Complete!`, this._sw / 2, 30, { fontSize: 32, fill: 0x44ff88, fontWeight: "bold" }, true);
+    addText(`Gold: ${this._state.gold}g | Army: ${this._state.undead.length} | Kills: ${this._state.waveKills} | HP: ${this._state.playerHp}/${this._state.maxPlayerHp}`, this._sw / 2, 55, { fontSize: 18, fill: 0xccddcc }, true);
 
     // Wave bonuses
     if (this._waveBonuses.bonuses.length > 0) {
       let bx = this._sw / 2 - this._waveBonuses.bonuses.length * 55;
       for (const bonus of this._waveBonuses.bonuses) {
-        addText(`${bonus.label} +${bonus.gold}g`, bx, 70, { fontSize: 8, fill: bonus.color });
+        addText(`${bonus.label} +${bonus.gold}g`, bx, 70, { fontSize: 13, fill: bonus.color });
         bx += 110;
       }
     }
 
     // Army roster on the right side
     let armyY = 90;
-    addText("YOUR ARMY", this._sw - 95, armyY - 12, { fontSize: 8, fill: 0x889988, letterSpacing: 2 });
+    addText("YOUR ARMY", this._sw - 95, armyY - 12, { fontSize: 13, fill: 0x889988, letterSpacing: 2 });
     for (const u of this._state.undead) {
       const rosterBg = new Graphics();
       rosterBg.roundRect(this._sw - 145, armyY, 140, 14, 2).fill({ color: 0x0a0a06, alpha: 0.5 });
       rosterBg.circle(this._sw - 135, armyY + 7, 3).fill({ color: u.color });
       c.addChild(rosterBg);
-      addText(`${u.name}`, this._sw - 128, armyY + 1, { fontSize: 7, fill: u.chimera ? 0xcc88ff : 0x99aa99 });
+      addText(`${u.name}`, this._sw - 128, armyY + 1, { fontSize: 11, fill: u.chimera ? 0xcc88ff : 0x99aa99 });
       const statsStr = `HP:${u.hp}/${u.maxHp} DMG:${u.damage}${u.ranged ? " R" : ""}`;
-      const st = new Text({ text: statsStr, style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 6, fill: 0x667766 } as any) });
+      const st = new Text({ text: statsStr, style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 10, fill: 0x667766 } as any) });
       st.anchor.set(1, 0); st.position.set(this._sw - 8, armyY + 1); c.addChild(st);
       armyY += 17;
       if (armyY > this._sh - 60) break;
     }
 
-    addText("DARK POWERS", this._sw / 2 - 50, 85, { fontSize: 13, fill: 0x6622aa, letterSpacing: 3 }, true);
+    addText("DARK POWERS", this._sw / 2 - 50, 85, { fontSize: 21, fill: 0x6622aa, letterSpacing: 3 }, true);
 
     let y = 108;
     for (const power of DARK_POWERS) {
@@ -373,9 +373,9 @@ export class NecroGame {
       }
       c.addChild(btn);
 
-      addText(`${power.name} (Lv ${level}/${power.maxLevel})`, this._sw / 2 - 150, y + 4, { fontSize: 11, fill: maxed ? 0x44aa44 : canBuy ? 0xffd700 : 0x666666, fontWeight: "bold" });
-      addText(power.description, this._sw / 2 - 150, y + 18, { fontSize: 8, fill: 0x778877 });
-      if (!maxed) addText(`${power.cost}g`, this._sw / 2 + 130, y + 8, { fontSize: 11, fill: canBuy ? 0xffd700 : 0x554444, fontWeight: "bold" });
+      addText(`${power.name} (Lv ${level}/${power.maxLevel})`, this._sw / 2 - 150, y + 4, { fontSize: 18, fill: maxed ? 0x44aa44 : canBuy ? 0xffd700 : 0x666666, fontWeight: "bold" });
+      addText(power.description, this._sw / 2 - 150, y + 18, { fontSize: 13, fill: 0x778877 });
+      if (!maxed) addText(`${power.cost}g`, this._sw / 2 + 130, y + 8, { fontSize: 18, fill: canBuy ? 0xffd700 : 0x554444, fontWeight: "bold" });
 
       y += 42;
     }
@@ -395,13 +395,13 @@ export class NecroGame {
         this._showUpgradeScreen();
       });
       c.addChild(healBtn);
-      addText("Heal (20g)", this._sw / 2, y + 8, { fontSize: 10, fill: 0xff6644 }, true);
+      addText("Heal (20g)", this._sw / 2, y + 8, { fontSize: 16, fill: 0xff6644 }, true);
       y += 38;
     }
 
     // Consumable items
     y += 4;
-    addText("ITEMS", this._sw / 2 - 50, y, { fontSize: 9, fill: 0xccaa66, letterSpacing: 2 }, true);
+    addText("ITEMS", this._sw / 2 - 50, y, { fontSize: 14, fill: 0xccaa66, letterSpacing: 2 }, true);
     y += 14;
     for (const item of CONSUMABLES) {
       const canAfford = this._state.gold >= item.cost;
@@ -422,8 +422,8 @@ export class NecroGame {
         });
       }
       c.addChild(ibtn);
-      addText(`${item.name} — ${item.description}`, this._sw / 2 - 110, y + 4, { fontSize: 7, fill: canAfford ? 0xccccaa : 0x555544 });
-      addText(`${item.cost}g`, this._sw / 2 + 100, y + 4, { fontSize: 8, fill: canAfford ? 0xffd700 : 0x554433, fontWeight: "bold" });
+      addText(`${item.name} — ${item.description}`, this._sw / 2 - 110, y + 4, { fontSize: 11, fill: canAfford ? 0xccccaa : 0x555544 });
+      addText(`${item.cost}g`, this._sw / 2 + 100, y + 4, { fontSize: 13, fill: canAfford ? 0xffd700 : 0x554433, fontWeight: "bold" });
       y += 26;
     }
 
@@ -433,26 +433,26 @@ export class NecroGame {
     const isEndless = nextWave >= this._state.totalWaves;
     if (!isEndless || this._state.endless) {
       const preview: WaveEntry[] = nextWave < WAVES.length ? WAVES[nextWave] : generateEndlessWave(nextWave);
-      addText(`Next Wave ${nextWave + 1}:`, this._sw / 2, y, { fontSize: 10, fill: 0xcc8844, fontWeight: "bold" }, true);
+      addText(`Next Wave ${nextWave + 1}:`, this._sw / 2, y, { fontSize: 16, fill: 0xcc8844, fontWeight: "bold" }, true);
       y += 16;
       const previewStr = preview.map(e => `${CRUSADERS[e.type].name} x${e.count}`).join("  |  ");
-      addText(previewStr, this._sw / 2, y, { fontSize: 8, fill: 0x998866 }, true);
+      addText(previewStr, this._sw / 2, y, { fontSize: 13, fill: 0x998866 }, true);
       y += 16;
     }
 
     // Boss wave preview warning
     if (BOSS_WAVES[nextWave]) {
       y += 4;
-      addText(`\u2620 BOSS WAVE — ${BOSSES[BOSS_WAVES[nextWave]].name} \u2620`, this._sw / 2, y, { fontSize: 11, fill: 0xff4444, fontWeight: "bold" }, true);
+      addText(`\u2620 BOSS WAVE — ${BOSSES[BOSS_WAVES[nextWave]].name} \u2620`, this._sw / 2, y, { fontSize: 18, fill: 0xff4444, fontWeight: "bold" }, true);
       y += 14;
-      addText(BOSSES[BOSS_WAVES[nextWave]].description, this._sw / 2, y, { fontSize: 7, fill: 0xcc6644 }, true);
+      addText(BOSSES[BOSS_WAVES[nextWave]].description, this._sw / 2, y, { fontSize: 11, fill: 0xcc6644 }, true);
       y += 12;
     }
 
     // Relic choice (after boss waves)
     if (this._state.pendingRelicChoice && this._state.pendingRelicChoice.length > 0) {
       y += 4;
-      addText("Choose a Relic:", this._sw / 2, y, { fontSize: 11, fill: 0xffd700, fontWeight: "bold" }, true);
+      addText("Choose a Relic:", this._sw / 2, y, { fontSize: 18, fill: 0xffd700, fontWeight: "bold" }, true);
       y += 18;
       const choices = this._state.pendingRelicChoice;
       const cardW = 130, cardH = 50, gap = 10;
@@ -472,9 +472,9 @@ export class NecroGame {
         });
         c.addChild(card);
         const rarityLabel = relic.rarity === "legendary" ? "\u2605 " : relic.rarity === "rare" ? "\u25C6 " : "";
-        addText(`${rarityLabel}${relic.name}`, cx2 + cardW / 2, y + 6, { fontSize: 8, fill: relic.color, fontWeight: "bold" }, true);
-        addText(relic.description, cx2 + cardW / 2, y + 22, { fontSize: 6, fill: 0xccccaa }, true);
-        addText(`[${relic.rarity.toUpperCase()}]`, cx2 + cardW / 2, y + 36, { fontSize: 6, fill: borderCol }, true);
+        addText(`${rarityLabel}${relic.name}`, cx2 + cardW / 2, y + 6, { fontSize: 13, fill: relic.color, fontWeight: "bold" }, true);
+        addText(relic.description, cx2 + cardW / 2, y + 22, { fontSize: 10, fill: 0xccccaa }, true);
+        addText(`[${relic.rarity.toUpperCase()}]`, cx2 + cardW / 2, y + 36, { fontSize: 10, fill: borderCol }, true);
         cx2 += cardW + gap;
       }
       y += cardH + 8;
@@ -482,10 +482,10 @@ export class NecroGame {
 
     // Current relics display
     if (this._state.relics.length > 0) {
-      addText(`Relics (${this._state.relics.length}/4):`, this._sw / 2, y, { fontSize: 9, fill: 0xccaa88 }, true);
+      addText(`Relics (${this._state.relics.length}/4):`, this._sw / 2, y, { fontSize: 14, fill: 0xccaa88 }, true);
       y += 14;
       const relicStr = this._state.relics.map(r => r.name).join("  |  ");
-      addText(relicStr, this._sw / 2, y, { fontSize: 7, fill: 0xaa9977 }, true);
+      addText(relicStr, this._sw / 2, y, { fontSize: 11, fill: 0xaa9977 }, true);
       y += 14;
     }
 
@@ -506,7 +506,7 @@ export class NecroGame {
     });
     c.addChild(continueBtn);
     const btnLabel = isEndless && !this._state.endless ? "NEXT WAVE \u25B6" : `WAVE ${nextWave + 1} \u25B6`;
-    addText(btnLabel, this._sw / 2, y + 10, { fontSize: 12, fill: 0x44ff88, fontWeight: "bold", letterSpacing: 2 }, true);
+    addText(btnLabel, this._sw / 2, y + 10, { fontSize: 19, fill: 0x44ff88, fontWeight: "bold", letterSpacing: 2 }, true);
 
     viewManager.addToLayer("ui", c);
   }
@@ -573,14 +573,14 @@ export class NecroGame {
     panel.roundRect(px, py, pw, ph, 10).stroke({ color: 0xff4444, width: 2, alpha: 0.5 });
     c.addChild(panel);
 
-    addText("\u2620 DEFEATED \u2620", this._sw / 2, py + 16, { fontSize: 22, fill: 0xff4444, fontWeight: "bold", letterSpacing: 3 }, true);
-    addText("The crusaders have prevailed...", this._sw / 2, py + 46, { fontSize: 11, fill: 0x886666, fontStyle: "italic" }, true);
+    addText("\u2620 DEFEATED \u2620", this._sw / 2, py + 16, { fontSize: 35, fill: 0xff4444, fontWeight: "bold", letterSpacing: 3 }, true);
+    addText("The crusaders have prevailed...", this._sw / 2, py + 46, { fontSize: 18, fill: 0x886666, fontStyle: "italic" }, true);
 
     try {
       const prev = parseInt(localStorage.getItem("necro_highscore") ?? "0") || 0;
       if (this._state.score > prev) {
         localStorage.setItem("necro_highscore", `${this._state.score}`);
-        addText("\u2605 NEW HIGH SCORE! \u2605", this._sw / 2, py + 64, { fontSize: 11, fill: 0xffd700, fontWeight: "bold" }, true);
+        addText("\u2605 NEW HIGH SCORE! \u2605", this._sw / 2, py + 64, { fontSize: 18, fill: 0xffd700, fontWeight: "bold" }, true);
       }
     } catch { /* ignore */ }
 
@@ -593,8 +593,8 @@ export class NecroGame {
       ["Undead Raised", `${this._state.undeadIdCounter}`, 0x44ff88],
     ];
     for (const [label, value, color] of stats) {
-      addText(label, px + 30, y, { fontSize: 11, fill: 0x778866 });
-      const vt = new Text({ text: value, style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 11, fill: color, fontWeight: "bold" } as any) });
+      addText(label, px + 30, y, { fontSize: 18, fill: 0x778866 });
+      const vt = new Text({ text: value, style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 18, fill: color, fontWeight: "bold" } as any) });
       vt.anchor.set(1, 0); vt.position.set(px + pw - 30, y); c.addChild(vt);
       y += 20;
     }
@@ -628,14 +628,14 @@ export class NecroGame {
     panel.roundRect(px, py, pw, ph, 10).stroke({ color: 0x44ff88, width: 2, alpha: 0.5 });
     c.addChild(panel);
 
-    addText("\u2620 VICTORY \u2620", this._sw / 2, py + 16, { fontSize: 24, fill: 0x44ff88, fontWeight: "bold", letterSpacing: 5 }, true);
-    addText("The living shall serve the dead!", this._sw / 2, py + 48, { fontSize: 12, fill: 0x2a6644, fontStyle: "italic" }, true);
+    addText("\u2620 VICTORY \u2620", this._sw / 2, py + 16, { fontSize: 38, fill: 0x44ff88, fontWeight: "bold", letterSpacing: 5 }, true);
+    addText("The living shall serve the dead!", this._sw / 2, py + 48, { fontSize: 19, fill: 0x2a6644, fontStyle: "italic" }, true);
 
     try {
       const prev = parseInt(localStorage.getItem("necro_highscore") ?? "0") || 0;
       if (this._state.score > prev) {
         localStorage.setItem("necro_highscore", `${this._state.score}`);
-        addText("\u2605 NEW HIGH SCORE! \u2605", this._sw / 2, py + 66, { fontSize: 11, fill: 0xffd700, fontWeight: "bold" }, true);
+        addText("\u2605 NEW HIGH SCORE! \u2605", this._sw / 2, py + 66, { fontSize: 18, fill: 0xffd700, fontWeight: "bold" }, true);
       }
     } catch { /* ignore */ }
 
@@ -649,8 +649,8 @@ export class NecroGame {
       ["Remaining Army", `${this._state.undead.length}`, 0x889988],
     ];
     for (const [label, value, color] of stats) {
-      addText(label, px + 35, y, { fontSize: 11, fill: 0x778866 });
-      const vt = new Text({ text: value, style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 11, fill: color, fontWeight: "bold" } as any) });
+      addText(label, px + 35, y, { fontSize: 18, fill: 0x778866 });
+      const vt = new Text({ text: value, style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 18, fill: color, fontWeight: "bold" } as any) });
       vt.anchor.set(1, 0); vt.position.set(px + pw - 35, y); c.addChild(vt);
       y += 20;
     }
@@ -668,7 +668,7 @@ export class NecroGame {
       this._enterDigPhase();
     });
     c.addChild(endlessBtn);
-    addText("ENDLESS MODE \u221E", this._sw / 2, y + 9, { fontSize: 11, fill: 0xaa44ff, fontWeight: "bold", letterSpacing: 2 }, true);
+    addText("ENDLESS MODE \u221E", this._sw / 2, y + 9, { fontSize: 18, fill: 0xaa44ff, fontWeight: "bold", letterSpacing: 2 }, true);
 
     y += 44;
     this._addEndButtons(c, addText, y);
@@ -687,7 +687,7 @@ export class NecroGame {
       this._startGame();
     });
     c.addChild(retryBtn);
-    addText("PLAY AGAIN", this._sw / 2, y + 9, { fontSize: 11, fill: 0x44ff88, fontWeight: "bold" }, true);
+    addText("PLAY AGAIN", this._sw / 2, y + 9, { fontSize: 18, fill: 0x44ff88, fontWeight: "bold" }, true);
 
     y += 44;
     const menuBtn = new Graphics();
@@ -699,7 +699,7 @@ export class NecroGame {
       this.destroy(); window.dispatchEvent(new Event("necromancerExit"));
     });
     c.addChild(menuBtn);
-    addText("MENU", this._sw / 2, y + 5, { fontSize: 9, fill: 0x888888 }, true);
+    addText("MENU", this._sw / 2, y + 5, { fontSize: 14, fill: 0x888888 }, true);
   }
 
   // ── Input setup ────────────────────────────────────────────────────────

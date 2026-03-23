@@ -191,7 +191,7 @@ export const INSCRIPTIONS: string[] = [
 ];
 
 export const LabyrinthConfig = {
-  CELL_SIZE: 28,
+  CELL_SIZE: 42,
 
   // Player
   PLAYER_SPEED: 90,
@@ -275,8 +275,8 @@ export const LabyrinthConfig = {
   NEAR_MISS_DIST: 2,            // cells — counts as "close call"
 
   // Minimap
-  MINIMAP_SIZE: 110,
-  MINIMAP_CELL: 4,
+  MINIMAP_SIZE: 165,
+  MINIMAP_CELL: 6,
   MINIMAP_ALPHA: 0.7,
 
   // Escalation

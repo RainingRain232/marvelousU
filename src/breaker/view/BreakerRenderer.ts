@@ -136,12 +136,12 @@ export class BreakerRenderer {
     this.fxLayer.addChild(this.fxGfx);
 
     // UI texts
-    this.scoreText = new Text({ text: "", style: makeStyle(16) });
-    this.livesText = new Text({ text: "", style: makeStyle(16) });
-    this.levelText = new Text({ text: "", style: makeStyle(16) });
-    this.highScoreText = new Text({ text: "", style: makeStyle(12, "#cccccc") });
-    this.centerText = new Text({ text: "", style: makeStyle(32, "#ffd700") });
-    this.subText = new Text({ text: "", style: makeStyle(16, "#cccccc") });
+    this.scoreText = new Text({ text: "", style: makeStyle(26) });
+    this.livesText = new Text({ text: "", style: makeStyle(26) });
+    this.levelText = new Text({ text: "", style: makeStyle(26) });
+    this.highScoreText = new Text({ text: "", style: makeStyle(19, "#cccccc") });
+    this.centerText = new Text({ text: "", style: makeStyle(50, "#ffd700") });
+    this.subText = new Text({ text: "", style: makeStyle(26, "#cccccc") });
 
     this.uiLayer.addChild(this.uiGfx);
     this.uiLayer.addChild(this.scoreText);
@@ -828,7 +828,7 @@ export class BreakerRenderer {
         const hint = charging ? "RELEASE to launch" : (state.aimDir === 0 ? "HOLD SPACE  |  ←/→ aim" : "HOLD SPACE to launch");
         const hintTxt = new Text({
           text: hint,
-          style: new TextStyle({ fontFamily: "monospace", fontSize: 9, fill: charging ? 0xffdd44 : 0xaaaaaa }),
+          style: new TextStyle({ fontFamily: "monospace", fontSize: 14, fill: charging ? 0xffdd44 : 0xaaaaaa }),
         });
         hintTxt.anchor.set(0.5);
         hintTxt.position.set(bx, by - 24);
@@ -843,7 +843,7 @@ export class BreakerRenderer {
       const cc = Math.min(comboMult - 1, comboColors.length - 1);
       const comboTxt = new Text({
         text: `${comboMult}x COMBO (${state.combo} hits)`,
-        style: new TextStyle({ fontFamily: "monospace", fontSize: 12, fill: comboColors[cc], fontWeight: "bold",
+        style: new TextStyle({ fontFamily: "monospace", fontSize: 19, fill: comboColors[cc], fontWeight: "bold",
           dropShadow: { color: 0x000000, blur: 2, distance: 1, alpha: 0.7 } }),
       });
       comboTxt.anchor.set(0.5);
@@ -1131,7 +1131,7 @@ export class BreakerRenderer {
         // Label
         const labelTxt = new Text({
           text: bar.label,
-          style: new TextStyle({ fontFamily: "monospace", fontSize: 8, fill: bar.color, fontWeight: "bold" }),
+          style: new TextStyle({ fontFamily: "monospace", fontSize: 13, fill: bar.color, fontWeight: "bold" }),
         });
         labelTxt.anchor.set(0.5, 1);
         labelTxt.position.set(startX + barW / 2, barY - 1);
