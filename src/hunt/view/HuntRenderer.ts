@@ -58,6 +58,40 @@ export class HuntRenderer {
     // Field border
     g.roundRect(ox - 2, oy - 2, HuntConfig.FIELD_WIDTH + 4, HuntConfig.FIELD_HEIGHT + 4, 4).stroke({ color: COL, width: 1, alpha: 0.2 });
 
+    // Draw water zones
+    for (const water of state.waterZones) {
+      g.roundRect(ox + water.x, oy + water.y, water.w, water.h, 6).fill({ color: 0x2244aa, alpha: 0.25 });
+      g.roundRect(ox + water.x, oy + water.y, water.w, water.h, 6).stroke({ color: 0x4466cc, width: 0.8, alpha: 0.2 });
+      // Ripple lines
+      for (let ri = 0; ri < 3; ri++) {
+        const ry = water.y + 5 + ri * (water.h / 3);
+        g.moveTo(ox + water.x + 4, oy + ry).bezierCurveTo(ox + water.x + water.w * 0.3, oy + ry - 2, ox + water.x + water.w * 0.7, oy + ry + 2, ox + water.x + water.w - 4, oy + ry).stroke({ color: 0x5577cc, width: 0.4, alpha: 0.15 });
+      }
+    }
+
+    // Draw brush zones
+    for (const brush of state.brushZones) {
+      g.roundRect(ox + brush.x, oy + brush.y, brush.w, brush.h, 4).fill({ color: 0x2a4a1a, alpha: 0.3 });
+      // Grass blade detail
+      for (let bi = 0; bi < 8; bi++) {
+        const bx = ox + brush.x + 5 + Math.random() * (brush.w - 10);
+        const by = oy + brush.y + brush.h - 3;
+        g.moveTo(bx, by).bezierCurveTo(bx + 1, by - 6, bx - 1, by - 8, bx + 2, by - 10).stroke({ color: 0x3a5a2a, width: 0.5, alpha: 0.3 });
+      }
+    }
+
+    // Draw ammo pickups
+    for (const pickup of state.ammoPickups) {
+      if (pickup.collected) continue;
+      const apx = ox + pickup.x, apy = oy + pickup.y;
+      const pulse = 0.4 + Math.sin(Date.now() / 400) * 0.2;
+      g.circle(apx, apy, 6).fill({ color: 0xccaa66, alpha: pulse * 0.3 });
+      g.circle(apx, apy, 4).fill({ color: 0xccaa66, alpha: pulse * 0.6 });
+      // Arrow icon
+      g.moveTo(apx - 3, apy + 2).lineTo(apx + 3, apy - 2).stroke({ color: 0xeedd88, width: 1, alpha: 0.5 });
+      g.moveTo(apx + 2, apy - 2).lineTo(apx + 3, apy - 2).lineTo(apx + 3, apy - 1).stroke({ color: 0xeedd88, width: 0.8, alpha: 0.4 });
+    }
+
     // Draw trees (obstacles)
     for (const tree of state.trees) {
       const tx = ox + tree.x, ty = oy + tree.y;
@@ -176,6 +210,7 @@ export class HuntRenderer {
     addText(`Score: ${state.score}`, 270, 8, { fontSize: 12, fill: 0x44ccaa });
     addText(`Kills: ${state.kills}`, 390, 8, { fontSize: 12, fill: 0xcc6644 });
     addText(`Bow: ${state.bow.name}`, 500, 8, { fontSize: 11, fill: 0xccaa88 });
+    addText(`Arrows: ${state.arrowsLeft}/${state.maxArrows}`, 630, 8, { fontSize: 11, fill: state.arrowsLeft <= 3 ? 0xff4444 : 0xccaa66 });
     const rem = Math.max(0, state.timeLimit - state.elapsedTime);
     addText(`${Math.floor(rem / 60)}:${Math.floor(rem % 60).toString().padStart(2, "0")}`, sw / 2, 24, { fontSize: 14, fill: rem < 15 ? 0xff4444 : 0xccddcc, fontWeight: "bold" }, true);
     addText(`Round ${state.round + 1}/3`, 650, 8, { fontSize: 11, fill: 0x889988 });

@@ -37,7 +37,13 @@ export function spawnPrey(state: HuntState): void {
 }
 
 export function shootArrow(state: HuntState): void {
-  if (state.drawProgress < 0.3) return; // minimum draw
+  if (state.drawProgress < 0.3) return;
+  if (state.arrowsLeft <= 0) {
+    state.announcements.push({ text: "No arrows! Find ammo.", color: 0xff4444, timer: 1.5 });
+    state.drawProgress = 0; state.isDrawing = false;
+    return;
+  }
+  state.arrowsLeft--;
   const power = state.drawProgress;
   const speed = state.bow.arrowSpeed * power;
   state.arrows.push({
@@ -86,21 +92,58 @@ export function updateHunt(state: HuntState, dt: number): void {
     state.drawProgress = Math.min(1, state.drawProgress + dt / state.bow.drawTime);
   }
 
-  // Move prey
+  // Ammo pickups — player walks near to collect
+  for (const pickup of state.ammoPickups) {
+    if (pickup.collected) continue;
+    const pdx = state.playerX - pickup.x, pdy = state.playerY - pickup.y;
+    if (pdx * pdx + pdy * pdy < 25 * 25) {
+      pickup.collected = true;
+      state.arrowsLeft = Math.min(state.maxArrows, state.arrowsLeft + 5);
+      state.announcements.push({ text: "+5 Arrows!", color: 0xccaa66, timer: 1.5 });
+    }
+  }
+
+  // Move prey — with unique behaviors per type
   for (const prey of state.prey) {
     if (!prey.alive) continue;
     const def = PREY[prey.type];
     let speed = prey.startled ? def.fleeSpeed : prey.speed;
 
+    // Unique behaviors
+    if (prey.type === "rabbit" && !prey.startled) {
+      // Zigzag: rapid direction changes
+      prey.turnTimer -= dt;
+      if (prey.turnTimer <= 0) { prey.angle += (Math.random() - 0.5) * 2.5; prey.turnTimer = 0.3 + Math.random() * 0.5; }
+    } else if (prey.type === "deer" && !prey.startled) {
+      // Herding: move toward nearest other deer
+      const otherDeer = state.prey.find(p => p !== prey && p.alive && p.type === "deer");
+      if (otherDeer) {
+        const herdAngle = Math.atan2(otherDeer.y - prey.y, otherDeer.x - prey.x);
+        prey.angle += (herdAngle - prey.angle) * 0.02; // gentle pull toward herd
+      }
+      prey.turnTimer -= dt;
+      if (prey.turnTimer <= 0) { prey.angle += (Math.random() - 0.5) * 0.8; prey.turnTimer = 2 + Math.random() * 3; }
+    } else if (prey.type === "boar" && prey.startled) {
+      // Charging: when startled, boars charge IN a straight line (don't zigzag)
+      speed = def.fleeSpeed * 1.3;
+    } else {
+      // Default wander
+      prey.turnTimer -= dt;
+      if (prey.turnTimer <= 0 && !prey.startled) {
+        prey.angle += (Math.random() - 0.5) * 1.5;
+        prey.turnTimer = 1 + Math.random() * 3;
+      }
+    }
+
+    // Brush zones: prey in brush move slower but are harder to see
+    for (const brush of state.brushZones) {
+      if (prey.x > brush.x && prey.x < brush.x + brush.w && prey.y > brush.y && prey.y < brush.y + brush.h) {
+        speed *= 0.6;
+      }
+    }
+
     prey.x += Math.cos(prey.angle) * speed * dt;
     prey.y += Math.sin(prey.angle) * speed * dt;
-
-    // Random direction change
-    prey.turnTimer -= dt;
-    if (prey.turnTimer <= 0 && !prey.startled) {
-      prey.angle += (Math.random() - 0.5) * 1.5;
-      prey.turnTimer = 1 + Math.random() * 3;
-    }
 
     // Bounce off edges
     if (prey.x < -20 || prey.x > HuntConfig.FIELD_WIDTH + 20 || prey.y < -20 || prey.y > HuntConfig.FIELD_HEIGHT + 20) {

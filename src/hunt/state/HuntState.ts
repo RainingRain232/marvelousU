@@ -61,8 +61,15 @@ export interface HuntState {
   maxPlayerHp: number;
   // Environment
   trees: { x: number; y: number; r: number }[];
-  wind: number; // -1 to 1, affects arrow drift
+  wind: number;
   windTimer: number;
+  // Ammo
+  arrowsLeft: number;
+  maxArrows: number;
+  ammoPickups: { x: number; y: number; collected: boolean }[];
+  // Terrain zones
+  brushZones: { x: number; y: number; w: number; h: number }[];
+  waterZones: { x: number; y: number; w: number; h: number }[];
 }
 
 export function createHuntState(bowIndex = 0): HuntState {
@@ -96,6 +103,11 @@ export function createHuntState(bowIndex = 0): HuntState {
     trees: generateTrees(),
     wind: 0,
     windTimer: 5,
+    arrowsLeft: 15,
+    maxArrows: 15,
+    ammoPickups: generateAmmoPickups(),
+    brushZones: generateBrushZones(),
+    waterZones: generateWaterZones(),
   };
 }
 
@@ -109,4 +121,40 @@ function generateTrees(): { x: number; y: number; r: number }[] {
     });
   }
   return trees;
+}
+
+function generateAmmoPickups(): HuntState["ammoPickups"] {
+  const pickups: HuntState["ammoPickups"] = [];
+  for (let i = 0; i < 4; i++) {
+    pickups.push({
+      x: 40 + Math.random() * (HuntConfig.FIELD_WIDTH - 80),
+      y: 40 + Math.random() * (HuntConfig.FIELD_HEIGHT - 120),
+      collected: false,
+    });
+  }
+  return pickups;
+}
+
+function generateBrushZones(): HuntState["brushZones"] {
+  const zones: HuntState["brushZones"] = [];
+  for (let i = 0; i < 2; i++) {
+    zones.push({
+      x: 50 + Math.random() * (HuntConfig.FIELD_WIDTH - 200),
+      y: 30 + Math.random() * (HuntConfig.FIELD_HEIGHT - 150),
+      w: 60 + Math.random() * 40,
+      h: 40 + Math.random() * 30,
+    });
+  }
+  return zones;
+}
+
+function generateWaterZones(): HuntState["waterZones"] {
+  const zones: HuntState["waterZones"] = [];
+  zones.push({
+    x: 100 + Math.random() * (HuntConfig.FIELD_WIDTH - 300),
+    y: 80 + Math.random() * (HuntConfig.FIELD_HEIGHT - 200),
+    w: 80 + Math.random() * 60,
+    h: 25 + Math.random() * 20,
+  });
+  return zones;
 }
