@@ -221,9 +221,18 @@ export class TavernRenderer {
     // Center suit symbol (large)
     this._addText(SUIT_SYMBOLS[card.suit], x + CW / 2, y + CH / 2 - 10, { fontSize: 22, fill: sc }, true);
 
-    // Face card decoration
+    // Face card decoration (ornate frame for J/Q/K)
     if (card.value >= 11) {
-      g.roundRect(x + 10, y + 15, CW - 20, CH - 30, 3).stroke({ color: sc, width: 0.5, alpha: 0.15 });
+      // Outer frame
+      g.roundRect(x + 8, y + 13, CW - 16, CH - 26, 4).stroke({ color: sc, width: 1, alpha: 0.2 });
+      // Inner frame
+      g.roundRect(x + 11, y + 16, CW - 22, CH - 32, 3).stroke({ color: sc, width: 0.5, alpha: 0.1 });
+      // Corner flourishes (small diamonds)
+      for (const [fx, fy] of [[x + 12, y + 17], [x + CW - 12, y + 17], [x + 12, y + CH - 17], [x + CW - 12, y + CH - 17]]) {
+        g.moveTo(fx, fy - 2).lineTo(fx + 2, fy).lineTo(fx, fy + 2).lineTo(fx - 2, fy).closePath().fill({ color: sc, alpha: 0.2 });
+      }
+      // Decorative line across middle
+      g.moveTo(x + 14, y + CH / 2 + 8).lineTo(x + CW - 14, y + CH / 2 + 8).stroke({ color: sc, width: 0.5, alpha: 0.1 });
     }
   }
 

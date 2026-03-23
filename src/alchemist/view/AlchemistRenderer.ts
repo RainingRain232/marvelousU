@@ -326,8 +326,16 @@ export class AlchemistRenderer {
       if (pFill < 0.25) {
         u.rect(px + 8, iy + 41, pbW * pFill, pbH + 2).fill({ color: 0xff0000, alpha: 0.05 + Math.sin(Date.now() / 150) * 0.03 });
       }
-      // Segment lines
-      for (let si = 1; si < 4; si++) u.moveTo(px + 8 + si * pbW / 4, iy + 42).lineTo(px + 8 + si * pbW / 4, iy + 42 + pbH).stroke({ color: 0x000000, width: 0.3, alpha: 0.2 });
+      // Segment lines with tick marks
+      for (let si = 1; si < 4; si++) {
+        const sx = px + 8 + si * pbW / 4;
+        u.moveTo(sx, iy + 41).lineTo(sx, iy + 42 + pbH + 1).stroke({ color: 0x000000, width: 0.5, alpha: 0.25 });
+        // Tiny tick above bar
+        u.moveTo(sx, iy + 40).lineTo(sx, iy + 41).stroke({ color: 0x444433, width: 0.3, alpha: 0.2 });
+      }
+      // End caps (rounded edges on bar frame)
+      u.circle(px + 8, iy + 42 + pbH / 2, pbH / 2).fill({ color: 0x1a0a0a, alpha: 0.3 });
+      u.circle(px + 8 + pbW, iy + 42 + pbH / 2, pbH / 2).fill({ color: 0x1a0a0a, alpha: 0.3 });
 
       // Value badge
       u.roundRect(px + cw - 30, iy + 2, 26, 12, 2).fill({ color: 0x222200, alpha: 0.5 });

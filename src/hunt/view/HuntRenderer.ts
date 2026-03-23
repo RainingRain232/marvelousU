@@ -125,9 +125,25 @@ export class HuntRenderer {
       const sx = ppx + Math.cos(state.aimAngle) * stringBack;
       const sy = ppy + Math.sin(state.aimAngle) * stringBack;
       g.moveTo(bx + Math.cos(state.aimAngle + 1) * 6, by + Math.sin(state.aimAngle + 1) * 6).lineTo(sx, sy).lineTo(bx + Math.cos(state.aimAngle - 1) * 6, by + Math.sin(state.aimAngle - 1) * 6).stroke({ color: 0xccccaa, width: 0.8 });
-      // Power indicator
-      g.circle(ppx, ppy + 12, 8).stroke({ color: state.drawProgress > 0.8 ? 0x44ff44 : 0xffaa44, width: 1.5, alpha: 0.3 });
-      g.moveTo(ppx - 7, ppy + 12).lineTo(ppx - 7 + 14 * state.drawProgress, ppy + 12).stroke({ color: state.drawProgress > 0.8 ? 0x44ff44 : 0xffaa44, width: 2 });
+      // Power indicator — segmented arc meter
+      const powerCol = state.drawProgress > 0.8 ? 0x44ff44 : state.drawProgress > 0.5 ? 0xffaa44 : 0xff6644;
+      // Background arc
+      const arcR = 10, arcCx = ppx, arcCy = ppy + 14;
+      for (let ai = 0; ai < 8; ai++) {
+        const a = Math.PI * 0.3 + ai * Math.PI * 0.4 / 8;
+        const ax = arcCx + Math.cos(a) * arcR, ay = arcCy + Math.sin(a) * arcR;
+        g.circle(ax, ay, 1).fill({ color: 0x333333, alpha: 0.3 });
+      }
+      // Filled segments
+      const filledSegs = Math.floor(state.drawProgress * 8);
+      for (let ai = 0; ai < filledSegs; ai++) {
+        const a = Math.PI * 0.3 + ai * Math.PI * 0.4 / 8;
+        const ax = arcCx + Math.cos(a) * arcR, ay = arcCy + Math.sin(a) * arcR;
+        g.circle(ax, ay, 1.5).fill({ color: powerCol, alpha: 0.6 });
+      }
+      // Power percentage text
+      g.circle(arcCx, arcCy, arcR + 2).stroke({ color: powerCol, width: 0.5, alpha: 0.15 });
+      if (state.drawProgress > 0.8) g.circle(arcCx, arcCy, arcR + 3).fill({ color: powerCol, alpha: 0.04 });
     }
     // Aim line
     g.moveTo(ppx, ppy).lineTo(ppx + Math.cos(state.aimAngle) * 40, ppy + Math.sin(state.aimAngle) * 40).stroke({ color: 0xffffff, width: 0.5, alpha: 0.15 });

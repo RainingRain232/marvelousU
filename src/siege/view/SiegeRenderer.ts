@@ -315,9 +315,18 @@ export class SiegeRenderer {
       u.roundRect(panelX + 4, ty, panelW - 8, 54, 4).fill({ color: sel ? 0x1a1a08 : 0x080806, alpha: 0.6 });
       u.roundRect(panelX + 4, ty, panelW - 8, 54, 4).stroke({ color: sel ? def.color : canAfford ? 0x444433 : 0x222222, width: sel ? 2 : 0.5, alpha: 0.5 });
 
-      // Tower color dot
-      u.circle(panelX + 16, ty + 15, 6).fill({ color: def.color, alpha: canAfford ? 0.8 : 0.3 });
-      u.circle(panelX + 16, ty + 15, 3).fill({ color: def.color });
+      // Tower icon — octagonal shape with glow + highlight
+      const tix = panelX + 16, tiy = ty + 15, tir = 7;
+      u.circle(tix, tiy, tir + 2).fill({ color: def.color, alpha: canAfford ? 0.1 : 0.03 }); // glow
+      for (let oi = 0; oi < 8; oi++) {
+        const oa = oi * Math.PI / 4;
+        if (oi === 0) u.moveTo(tix + Math.cos(oa) * tir, tiy + Math.sin(oa) * tir);
+        else u.lineTo(tix + Math.cos(oa) * tir, tiy + Math.sin(oa) * tir);
+      }
+      u.closePath().fill({ color: def.color, alpha: canAfford ? 0.7 : 0.25 });
+      u.circle(tix, tiy, tir * 0.5).fill({ color: def.color, alpha: canAfford ? 0.9 : 0.4 }); // turret
+      u.circle(tix - 1, tiy - 1, tir * 0.3).fill({ color: 0xffffff, alpha: 0.1 }); // highlight
+      u.circle(tix, tiy, tir).stroke({ color: 0xffffff, width: 0.5, alpha: 0.1 }); // rim
 
       addText(def.name, panelX + 28, ty + 3, { fontSize: 9, fill: canAfford ? 0xccbbaa : 0x555544, fontWeight: "bold" });
       addText(def.desc, panelX + 28, ty + 15, { fontSize: 7, fill: 0x888877 });
