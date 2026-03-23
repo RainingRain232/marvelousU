@@ -638,6 +638,8 @@ export class BardGame {
   private _spellGlowColor = 0xcc88ff;
   private _transitionTimer = 0;
   private _isPaused = false;
+  private _pauseMenu: Container | null = null;
+  private _paused = false;
   private _beatPulse = 0;
   private _enemyHitFlash = 0;
   private _attackTimer = 0;
@@ -1046,7 +1048,7 @@ export class BardGame {
     this._mana = 0; this._maxMana = 100; this._shield = 0;
     this._enemyIdx = 0; this._time = 0;
     this._notes = []; this._attacks = []; this._particles = []; this._floatingTexts = [];
-    this._phase = "playing"; this._isPaused = false;
+    this._phase = "playing"; this._isPaused = false; this._paused = false;
     this._perfectStreak = 0; this._comboMilestone = 0;
     this._beatPulse = 0; this._enemyHitFlash = 0; this._dangerPulse = 0;
     this._abilityTimer = 0; this._abilityActive = 0; this._abilityType = null;
@@ -1092,8 +1094,8 @@ export class BardGame {
 
     this._keyDown = (e: KeyboardEvent) => {
       if (e.repeat) return;
-      if (e.key === "Escape") { this._togglePause(); return; }
-      if (this._isPaused) return;
+      if (e.key === "Escape") { if (this._pauseMenu) { this._hidePauseMenu(); } else { this._showPauseMenu(); } return; }
+      if (this._paused) return;
       if (this._phase === "victory" || this._phase === "defeat") return;
 
       // Upgrade selection (dynamic)
@@ -1139,7 +1141,7 @@ export class BardGame {
     window.addEventListener("keyup", this._keyUp);
 
     this._tickerCb = (ticker: Ticker) => {
-      if (this._isPaused) { this._draw(); return; }
+      if (this._paused) { this._draw(); return; }
       this._update(ticker.deltaMS / 1000);
       this._draw();
     };
@@ -1967,7 +1969,96 @@ export class BardGame {
     this._score += 200;
   }
 
-  private _togglePause(): void { this._isPaused = !this._isPaused; }
+  private _showPauseMenu(): void {
+    this._paused = true;
+    this._isPaused = true;
+    const sw = viewManager.screenWidth, sh = viewManager.screenHeight;
+    const c = new Container();
+    const bg = new Graphics();
+    bg.rect(0, 0, sw, sh).fill({ color: 0x000000, alpha: 0.82 });
+    bg.eventMode = "static";
+    c.addChild(bg);
+
+    const pw = 420, ph = 340, px = (sw - pw) / 2, py = (sh - ph) / 2;
+    const panel = new Graphics();
+    panel.roundRect(px, py, pw, ph, 10).fill({ color: 0x1a1408, alpha: 0.97 });
+    panel.roundRect(px, py, pw, ph, 10).stroke({ color: 0xddaa44, width: 2, alpha: 0.5 });
+    panel.roundRect(px + 4, py + 4, pw - 8, ph - 8, 8).stroke({ color: 0xddaa44, width: 0.5, alpha: 0.15 });
+    c.addChild(panel);
+
+    const addText = (str: string, x: number, y: number, opts: Partial<TextStyle>, center = false) => {
+      const t = new Text({ text: str, style: new TextStyle({ fontFamily: "Georgia, serif", ...opts } as any) });
+      if (center) t.anchor.set(0.5, 0);
+      t.position.set(x, y);
+      c.addChild(t);
+    };
+    addText("PAUSED", sw / 2, py + 16, { fontSize: 22, fill: 0xddaa44, fontWeight: "bold", letterSpacing: 4 }, true);
+
+    const contentContainer = new Container();
+    c.addChild(contentContainer);
+    const clearContent = () => { while (contentContainer.children.length > 0) { const ch = contentContainer.removeChildAt(0); ch.destroy(); } };
+
+    const showButtons = () => {
+      clearContent();
+      const makeBtn = (label: string, y: number, color: number, cb: () => void) => {
+        const btn = new Graphics();
+        btn.roundRect(sw / 2 - 100, y, 200, 36, 5).fill({ color: 0x0a0a0a, alpha: 0.8 });
+        btn.roundRect(sw / 2 - 100, y, 200, 36, 5).stroke({ color, width: 1.5, alpha: 0.6 });
+        btn.eventMode = "static"; btn.cursor = "pointer";
+        btn.on("pointerdown", cb);
+        contentContainer.addChild(btn);
+        const t = new Text({ text: label, style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 13, fill: color, fontWeight: "bold", letterSpacing: 1 } as any) });
+        t.anchor.set(0.5, 0.5); t.position.set(sw / 2, y + 18);
+        contentContainer.addChild(t);
+      };
+      makeBtn("RESUME", py + 70, 0x44cc66, () => this._hidePauseMenu());
+      makeBtn("CONTROLS", py + 120, 0xccaa44, () => {
+        clearContent();
+        const t = new Text({ text: "D F J K: Hit notes in each lane\nHold key: Hold notes for bonus\n1 2 3 4: Spells (Heal/Smite/Shield/Slow)\nSpace: Dodge enemy attacks (2s cooldown)\nRed/Purple notes: DON'T press!\nEsc: Pause", style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 13, fill: 0xccccaa, align: "center", lineHeight: 22 } as any) });
+        t.anchor.set(0.5, 0); t.position.set(sw / 2, py + 70);
+        contentContainer.addChild(t);
+        makeBackBtn();
+      });
+      makeBtn("INSTRUCTIONS", py + 170, 0xccaa44, () => {
+        clearContent();
+        const t = new Text({ text: "You are Taliesin, the legendary bard of Camelot.\nYour lute is enchanted \u2014 every note is a spell.\nHit notes as they reach the strike zone.\nMissing notes damages you, hitting notes damages enemies.\nBattle through 5 acts of rhythmic combat.", style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 12, fill: 0xccccaa, align: "center", wordWrap: true, wordWrapWidth: 380, lineHeight: 20 } as any) });
+        t.anchor.set(0.5, 0); t.position.set(sw / 2, py + 70);
+        contentContainer.addChild(t);
+        makeBackBtn();
+      });
+      makeBtn("MAIN MENU", py + 250, 0xcc4444, () => {
+        this._hidePauseMenu();
+        this.destroy();
+        window.dispatchEvent(new Event("bardExit"));
+      });
+    };
+
+    const makeBackBtn = () => {
+      const btn = new Graphics();
+      btn.roundRect(sw / 2 - 60, py + ph - 60, 120, 32, 4).fill({ color: 0x0a0a0a, alpha: 0.8 });
+      btn.roundRect(sw / 2 - 60, py + ph - 60, 120, 32, 4).stroke({ color: 0x888866, width: 1, alpha: 0.5 });
+      btn.eventMode = "static"; btn.cursor = "pointer";
+      btn.on("pointerdown", () => showButtons());
+      contentContainer.addChild(btn);
+      const t = new Text({ text: "BACK", style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 11, fill: 0x888888, fontWeight: "bold" } as any) });
+      t.anchor.set(0.5, 0.5); t.position.set(sw / 2, py + ph - 44);
+      contentContainer.addChild(t);
+    };
+
+    showButtons();
+    this._pauseMenu = c;
+    viewManager.addToLayer("ui", c);
+  }
+
+  private _hidePauseMenu(): void {
+    this._paused = false;
+    this._isPaused = false;
+    if (this._pauseMenu) {
+      viewManager.removeFromLayer("ui", this._pauseMenu);
+      this._pauseMenu.destroy({ children: true });
+      this._pauseMenu = null;
+    }
+  }
 
   // ── DRAW ──────────────────────────────────────────────────────────────────
 
@@ -2819,7 +2910,7 @@ export class BardGame {
     else if (this._phase === "upgrade") this._drawUpgrade(sw, sh);
     else if (this._phase === "victory") this._drawResults(sw, sh, true);
     else if (this._phase === "defeat") this._drawResults(sw, sh, false);
-    else if (this._isPaused) this._drawPause(sw, sh);
+    // Pause menu is now handled by _showPauseMenu/_hidePauseMenu overlay
   }
 
   // ── ENEMY DRAWING ──────────────────────────────────────────────────────

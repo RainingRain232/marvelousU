@@ -18,6 +18,8 @@ export class LabyrinthGame {
   private _renderer = new LabyrinthRenderer();
   private _keyDown: ((e: KeyboardEvent) => void) | null = null;
   private _keyUp: ((e: KeyboardEvent) => void) | null = null;
+  private _pauseMenu: Container | null = null;
+  private _paused = false;
   private _sw = 0;
   private _sh = 0;
   private _persistScore = 0;
@@ -110,7 +112,7 @@ export class LabyrinthGame {
     }
 
     y += 6;
-    addText("WASD: move | Shift: sprint | 1/2/3: items | Tab: minimap | Esc: quit", this._sw / 2, y, { fontSize: 14, fill: 0x556655 }, true);
+    addText("WASD: move | Shift: sprint | 1/2/3: items | Tab: minimap | Esc: pause", this._sw / 2, y, { fontSize: 14, fill: 0x556655 }, true);
 
     // Best time
     try {
@@ -197,7 +199,7 @@ export class LabyrinthGame {
     viewManager.addToLayer("ui", this._renderer.container);
 
     this._keyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { this.destroy(); window.dispatchEvent(new Event("labyrinthExit")); return; }
+      if (e.key === "Escape") { if (this._pauseMenu) { this._hidePauseMenu(); } else { this._showPauseMenu(); } return; }
       if (e.key === "w" || e.key === "W" || e.key === "ArrowUp") this._state.moveUp = true;
       if (e.key === "s" || e.key === "S" || e.key === "ArrowDown") this._state.moveDown = true;
       if (e.key === "a" || e.key === "A" || e.key === "ArrowLeft") this._state.moveLeft = true;
@@ -226,6 +228,7 @@ export class LabyrinthGame {
   // ---- Update ---------------------------------------------------------------
 
   private _update(dt: number): void {
+    if (this._paused) return;
     updateLabyrinth(this._state, dt);
     this._renderer.draw(this._state, this._sw, this._sh);
 
@@ -519,7 +522,7 @@ export class LabyrinthGame {
     viewManager.addToLayer("ui", this._renderer.container);
 
     this._keyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { this.destroy(); window.dispatchEvent(new Event("labyrinthExit")); return; }
+      if (e.key === "Escape") { if (this._pauseMenu) { this._hidePauseMenu(); } else { this._showPauseMenu(); } return; }
       if (e.key === "w" || e.key === "W" || e.key === "ArrowUp") this._state.moveUp = true;
       if (e.key === "s" || e.key === "S" || e.key === "ArrowDown") this._state.moveDown = true;
       if (e.key === "a" || e.key === "A" || e.key === "ArrowLeft") this._state.moveLeft = true;
@@ -559,5 +562,97 @@ export class LabyrinthGame {
       }
     };
     viewManager.app.ticker.add(this._tickerCb);
+  }
+
+  // ---- Pause menu -----------------------------------------------------------
+
+  private _showPauseMenu(): void {
+    this._paused = true;
+    const sw = this._sw, sh = this._sh;
+    const c = new Container();
+    const bg = new Graphics();
+    bg.rect(0, 0, sw, sh).fill({ color: 0x000000, alpha: 0.82 });
+    bg.eventMode = "static";
+    c.addChild(bg);
+
+    const pw = 440, ph = 360, px = (sw - pw) / 2, py = (sh - ph) / 2;
+    const panel = new Graphics();
+    panel.roundRect(px, py, pw, ph, 10).fill({ color: 0x0a0812, alpha: 0.97 });
+    panel.roundRect(px, py, pw, ph, 10).stroke({ color: 0x9977cc, width: 2, alpha: 0.5 });
+    panel.roundRect(px + 4, py + 4, pw - 8, ph - 8, 8).stroke({ color: 0x9977cc, width: 0.5, alpha: 0.15 });
+    c.addChild(panel);
+
+    const addText = (str: string, x: number, y: number, opts: Partial<TextStyle>, center = false) => {
+      const t = new Text({ text: str, style: new TextStyle({ fontFamily: "Georgia, serif", ...opts } as any) });
+      if (center) t.anchor.set(0.5, 0);
+      t.position.set(x, y);
+      c.addChild(t);
+    };
+    addText("PAUSED", sw / 2, py + 16, { fontSize: 22, fill: 0x9977cc, fontWeight: "bold", letterSpacing: 4 }, true);
+
+    const contentContainer = new Container();
+    c.addChild(contentContainer);
+    const clearContent = () => { while (contentContainer.children.length > 0) { const ch = contentContainer.removeChildAt(0); ch.destroy(); } };
+
+    const showButtons = () => {
+      clearContent();
+      const makeBtn = (label: string, y: number, color: number, cb: () => void) => {
+        const btn = new Graphics();
+        btn.roundRect(sw / 2 - 100, y, 200, 36, 5).fill({ color: 0x0a0812, alpha: 0.8 });
+        btn.roundRect(sw / 2 - 100, y, 200, 36, 5).stroke({ color, width: 1.5, alpha: 0.6 });
+        btn.eventMode = "static"; btn.cursor = "pointer";
+        btn.on("pointerdown", cb);
+        contentContainer.addChild(btn);
+        const t = new Text({ text: label, style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 13, fill: color, fontWeight: "bold", letterSpacing: 1 } as any) });
+        t.anchor.set(0.5, 0.5); t.position.set(sw / 2, y + 18);
+        contentContainer.addChild(t);
+      };
+
+      makeBtn("RESUME", py + 70, 0x44cc66, () => this._hidePauseMenu());
+      makeBtn("CONTROLS", py + 120, 0xccaa44, () => {
+        clearContent();
+        const t = new Text({ text: "WASD: move\nShift: sprint (louder!)\n1/2/3: use items\nQ: drop item\nTab: toggle minimap\nEsc: pause menu", style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 13, fill: 0xccccaa, align: "center", lineHeight: 22 } as any) });
+        t.anchor.set(0.5, 0); t.position.set(sw / 2, py + 70);
+        contentContainer.addChild(t);
+        makeBackBtn();
+      });
+      makeBtn("INSTRUCTIONS", py + 170, 0xccaa44, () => {
+        clearContent();
+        const t = new Text({ text: "Collect relics to open each floor's exit.\nEscape all 3 floors to win.\nA Minotaur hunts by sound and smell.\nSprinting is faster but LOUDER.\nBeware traps: spikes, alarms, webs.\nBump walls to find secret passages.\nFloor 3: The Shadow joins the hunt.", style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 12, fill: 0xccccaa, align: "center", wordWrap: true, wordWrapWidth: 380, lineHeight: 20 } as any) });
+        t.anchor.set(0.5, 0); t.position.set(sw / 2, py + 70);
+        contentContainer.addChild(t);
+        makeBackBtn();
+      });
+      makeBtn("MAIN MENU", py + 270, 0xcc4444, () => {
+        this._hidePauseMenu();
+        this.destroy();
+        window.dispatchEvent(new Event("labyrinthExit"));
+      });
+    };
+
+    const makeBackBtn = () => {
+      const btn = new Graphics();
+      btn.roundRect(sw / 2 - 60, py + ph - 60, 120, 32, 4).fill({ color: 0x0a0812, alpha: 0.8 });
+      btn.roundRect(sw / 2 - 60, py + ph - 60, 120, 32, 4).stroke({ color: 0x888866, width: 1, alpha: 0.5 });
+      btn.eventMode = "static"; btn.cursor = "pointer";
+      btn.on("pointerdown", () => showButtons());
+      contentContainer.addChild(btn);
+      const t = new Text({ text: "BACK", style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 11, fill: 0x888888, fontWeight: "bold" } as any) });
+      t.anchor.set(0.5, 0.5); t.position.set(sw / 2, py + ph - 44);
+      contentContainer.addChild(t);
+    };
+
+    showButtons();
+    this._pauseMenu = c;
+    viewManager.addToLayer("ui", c);
+  }
+
+  private _hidePauseMenu(): void {
+    this._paused = false;
+    if (this._pauseMenu) {
+      viewManager.removeFromLayer("ui", this._pauseMenu);
+      this._pauseMenu.destroy({ children: true });
+      this._pauseMenu = null;
+    }
   }
 }

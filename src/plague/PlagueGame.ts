@@ -27,6 +27,8 @@ export class PlagueGame {
   private _sh = 0;
   private _difficulty = 1;
   private _selectContainer: Container | null = null;
+  private _pauseMenu: Container | null = null;
+  private _paused = false;
 
   async boot(): Promise<void> {
     viewManager.clearWorld();
@@ -182,7 +184,10 @@ export class PlagueGame {
     viewManager.addToLayer("ui", this._renderer.container);
 
     this._keyHandler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { this._exitToSelect(); return; }
+      if (e.key === "Escape") {
+        if (this._paused) this._hidePauseMenu(); else this._showPauseMenu();
+        return;
+      }
 
       // Perk selection
       if (this._state.phase === PlaguePhase.PERK_SELECT) {
@@ -264,6 +269,7 @@ export class PlagueGame {
   }
 
   private _update(dt: number): void {
+    if (this._paused) return;
     const state = this._state;
     state.time += dt;
     if (state.turnFlashTimer > 0) state.turnFlashTimer -= dt;
@@ -295,6 +301,95 @@ export class PlagueGame {
           localStorage.setItem("plague_total_wins", `${totalWins + 1}`);
         }
       } catch { /* ignore */ }
+    }
+  }
+
+  private _showPauseMenu(): void {
+    this._paused = true;
+    const sw = this._sw, sh = this._sh;
+    const c = new Container();
+    const bg = new Graphics();
+    bg.rect(0, 0, sw, sh).fill({ color: 0x000000, alpha: 0.82 });
+    bg.eventMode = "static";
+    c.addChild(bg);
+
+    const pw = 420, ph = 340, px = (sw - pw) / 2, py = (sh - ph) / 2;
+    const panel = new Graphics();
+    panel.roundRect(px, py, pw, ph, 10).fill({ color: 0x0a0806, alpha: 0.97 });
+    panel.roundRect(px, py, pw, ph, 10).stroke({ color: 0x66aa44, width: 2, alpha: 0.5 });
+    panel.roundRect(px + 4, py + 4, pw - 8, ph - 8, 8).stroke({ color: 0x66aa44, width: 0.5, alpha: 0.15 });
+    c.addChild(panel);
+
+    const addText = (str: string, x: number, y: number, opts: Partial<TextStyle>, center = false) => {
+      const t = new Text({ text: str, style: new TextStyle({ fontFamily: "Georgia, serif", ...opts } as any) });
+      if (center) t.anchor.set(0.5, 0);
+      t.position.set(x, y);
+      c.addChild(t);
+    };
+    addText("PAUSED", sw / 2, py + 16, { fontSize: 22, fill: 0x66aa44, fontWeight: "bold", letterSpacing: 4 }, true);
+
+    const contentContainer = new Container();
+    c.addChild(contentContainer);
+    const clearContent = () => { while (contentContainer.children.length > 0) { const ch = contentContainer.removeChildAt(0); ch.destroy(); } };
+
+    const showButtons = () => {
+      clearContent();
+      const makeBtn = (label: string, y: number, color: number, cb: () => void) => {
+        const btn = new Graphics();
+        btn.roundRect(sw / 2 - 100, y, 200, 36, 5).fill({ color: 0x0a0a0a, alpha: 0.8 });
+        btn.roundRect(sw / 2 - 100, y, 200, 36, 5).stroke({ color, width: 1.5, alpha: 0.6 });
+        btn.eventMode = "static"; btn.cursor = "pointer";
+        btn.on("pointerdown", cb);
+        contentContainer.addChild(btn);
+        const t = new Text({ text: label, style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 13, fill: color, fontWeight: "bold", letterSpacing: 1 } as any) });
+        t.anchor.set(0.5, 0.5); t.position.set(sw / 2, y + 18);
+        contentContainer.addChild(t);
+      };
+      makeBtn("RESUME", py + 70, 0x44cc66, () => this._hidePauseMenu());
+      makeBtn("CONTROLS", py + 120, 0xccaa44, () => {
+        clearContent();
+        const t = new Text({ text: "WASD/Arrows: Move\nT: Treat house | H: Gather herbs\nC: Craft remedy | R: Rest at church\nQ: Quarantine | F: Fumigate\nK: Kill rat | B: Buy from market\nU: Undo turn | Esc: Pause", style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 13, fill: 0xccccaa, align: "center", lineHeight: 22 } as any) });
+        t.anchor.set(0.5, 0); t.position.set(sw / 2, py + 70);
+        contentContainer.addChild(t);
+        makeBackBtn();
+      });
+      makeBtn("INSTRUCTIONS", py + 170, 0xccaa44, () => {
+        clearContent();
+        const t = new Text({ text: "Navigate a plague-ravaged city as the lone doctor.\nTreat the sick, gather herbs, craft remedies.\nStop the plague from spreading to all houses.\nBeware of rats and plague mutations.\nEarn perks every 5 days. Survive the waves.", style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 12, fill: 0xccccaa, align: "center", wordWrap: true, wordWrapWidth: 380, lineHeight: 20 } as any) });
+        t.anchor.set(0.5, 0); t.position.set(sw / 2, py + 70);
+        contentContainer.addChild(t);
+        makeBackBtn();
+      });
+      makeBtn("MAIN MENU", py + 250, 0xcc4444, () => {
+        this._hidePauseMenu();
+        this.destroy();
+        window.dispatchEvent(new Event("plagueExit"));
+      });
+    };
+
+    const makeBackBtn = () => {
+      const btn = new Graphics();
+      btn.roundRect(sw / 2 - 60, py + ph - 60, 120, 32, 4).fill({ color: 0x0a0a0a, alpha: 0.8 });
+      btn.roundRect(sw / 2 - 60, py + ph - 60, 120, 32, 4).stroke({ color: 0x888866, width: 1, alpha: 0.5 });
+      btn.eventMode = "static"; btn.cursor = "pointer";
+      btn.on("pointerdown", () => showButtons());
+      contentContainer.addChild(btn);
+      const t = new Text({ text: "BACK", style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 11, fill: 0x888888, fontWeight: "bold" } as any) });
+      t.anchor.set(0.5, 0.5); t.position.set(sw / 2, py + ph - 44);
+      contentContainer.addChild(t);
+    };
+
+    showButtons();
+    this._pauseMenu = c;
+    viewManager.addToLayer("ui", c);
+  }
+
+  private _hidePauseMenu(): void {
+    this._paused = false;
+    if (this._pauseMenu) {
+      viewManager.removeFromLayer("ui", this._pauseMenu);
+      this._pauseMenu.destroy({ children: true });
+      this._pauseMenu = null;
     }
   }
 

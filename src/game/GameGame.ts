@@ -6,7 +6,7 @@
 // relics, and battling Arthurian villains. Permadeath with meta-progression.
 // ---------------------------------------------------------------------------
 
-import { Ticker } from "pixi.js";
+import { Ticker, Container, Graphics, Text, TextStyle } from "pixi.js";
 import { viewManager } from "@view/ViewManager";
 import { audioManager } from "@audio/AudioManager";
 
@@ -80,6 +80,8 @@ export class GameGame {
   private _floorTransitionTimer = 0;
   private _escConfirmTimer = 0;       // seconds remaining for ESC double-tap window
   private _showingHelp = false;       // controls help overlay visible
+  private _pauseMenu: Container | null = null;
+  private _paused = false;
 
   // -------------------------------------------------------------------------
   // Boot
@@ -166,6 +168,7 @@ export class GameGame {
   // Update
   // -------------------------------------------------------------------------
   private _update(dt: number): void {
+    if (this._paused) return;
     const state = this._state;
 
     switch (state.phase) {
@@ -751,10 +754,9 @@ export class GameGame {
       }
     }
 
-    // ESC opens the escape menu
+    // ESC opens the pause menu
     if (_justPressed("Escape")) {
-      this._state.prevPhase = this._state.phase;
-      this._state.phase = GamePhase.ESCAPE_MENU;
+      if (this._pauseMenu) { this._hidePauseMenu(); } else { this._showPauseMenu(); }
     }
 
     // Toggle help overlay (H key)
@@ -1178,6 +1180,95 @@ export class GameGame {
   // -------------------------------------------------------------------------
   // Cleanup
   // -------------------------------------------------------------------------
+  private _showPauseMenu(): void {
+    this._paused = true;
+    const sw = viewManager.screenWidth, sh = viewManager.screenHeight;
+    const c = new Container();
+    const bg = new Graphics();
+    bg.rect(0, 0, sw, sh).fill({ color: 0x000000, alpha: 0.82 });
+    bg.eventMode = "static";
+    c.addChild(bg);
+
+    const pw = 420, ph = 340, px = (sw - pw) / 2, py = (sh - ph) / 2;
+    const panel = new Graphics();
+    panel.roundRect(px, py, pw, ph, 10).fill({ color: 0x12100a, alpha: 0.97 });
+    panel.roundRect(px, py, pw, ph, 10).stroke({ color: 0xddbb44, width: 2, alpha: 0.5 });
+    panel.roundRect(px + 4, py + 4, pw - 8, ph - 8, 8).stroke({ color: 0xddbb44, width: 0.5, alpha: 0.15 });
+    c.addChild(panel);
+
+    const addText = (str: string, x: number, y: number, opts: Partial<TextStyle>, center = false) => {
+      const t = new Text({ text: str, style: new TextStyle({ fontFamily: "Georgia, serif", ...opts } as any) });
+      if (center) t.anchor.set(0.5, 0);
+      t.position.set(x, y);
+      c.addChild(t);
+    };
+    addText("PAUSED", sw / 2, py + 16, { fontSize: 22, fill: 0xddbb44, fontWeight: "bold", letterSpacing: 4 }, true);
+
+    const contentContainer = new Container();
+    c.addChild(contentContainer);
+    const clearContent = () => { while (contentContainer.children.length > 0) { const ch = contentContainer.removeChildAt(0); ch.destroy(); } };
+
+    const showButtons = () => {
+      clearContent();
+      const makeBtn = (label: string, y: number, color: number, cb: () => void) => {
+        const btn = new Graphics();
+        btn.roundRect(sw / 2 - 100, y, 200, 36, 5).fill({ color: 0x0a0a0a, alpha: 0.8 });
+        btn.roundRect(sw / 2 - 100, y, 200, 36, 5).stroke({ color, width: 1.5, alpha: 0.6 });
+        btn.eventMode = "static"; btn.cursor = "pointer";
+        btn.on("pointerdown", cb);
+        contentContainer.addChild(btn);
+        const t = new Text({ text: label, style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 13, fill: color, fontWeight: "bold", letterSpacing: 1 } as any) });
+        t.anchor.set(0.5, 0.5); t.position.set(sw / 2, y + 18);
+        contentContainer.addChild(t);
+      };
+      makeBtn("RESUME", py + 70, 0x44cc66, () => this._hidePauseMenu());
+      makeBtn("CONTROLS", py + 120, 0xccaa44, () => {
+        clearContent();
+        const t = new Text({ text: "WASD: Move\nSpace: Attack\nE: Interact / Shop\nI: Inventory\nQ: Use ability\nEsc: Pause", style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 13, fill: 0xccccaa, align: "center", lineHeight: 22 } as any) });
+        t.anchor.set(0.5, 0); t.position.set(sw / 2, py + 70);
+        contentContainer.addChild(t);
+        makeBackBtn();
+      });
+      makeBtn("INSTRUCTIONS", py + 170, 0xccaa44, () => {
+        clearContent();
+        const t = new Text({ text: "Quest for the Grail \u2014 Arthurian roguelike.\nDescend through dungeon floors fighting creatures.\nFind holy relics and defeat Arthurian villains.\nChoose your Knight and quest wisely.\nPermadeath with meta-progression.", style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 12, fill: 0xccccaa, align: "center", wordWrap: true, wordWrapWidth: 380, lineHeight: 20 } as any) });
+        t.anchor.set(0.5, 0); t.position.set(sw / 2, py + 70);
+        contentContainer.addChild(t);
+        makeBackBtn();
+      });
+      makeBtn("MAIN MENU", py + 250, 0xcc4444, () => {
+        this._hidePauseMenu();
+        this.destroy();
+        window.dispatchEvent(new Event("gameExit"));
+      });
+    };
+
+    const makeBackBtn = () => {
+      const btn = new Graphics();
+      btn.roundRect(sw / 2 - 60, py + ph - 60, 120, 32, 4).fill({ color: 0x0a0a0a, alpha: 0.8 });
+      btn.roundRect(sw / 2 - 60, py + ph - 60, 120, 32, 4).stroke({ color: 0x888866, width: 1, alpha: 0.5 });
+      btn.eventMode = "static"; btn.cursor = "pointer";
+      btn.on("pointerdown", () => showButtons());
+      contentContainer.addChild(btn);
+      const t = new Text({ text: "BACK", style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 11, fill: 0x888888, fontWeight: "bold" } as any) });
+      t.anchor.set(0.5, 0.5); t.position.set(sw / 2, py + ph - 44);
+      contentContainer.addChild(t);
+    };
+
+    showButtons();
+    this._pauseMenu = c;
+    viewManager.addToLayer("ui", c);
+  }
+
+  private _hidePauseMenu(): void {
+    this._paused = false;
+    if (this._pauseMenu) {
+      viewManager.removeFromLayer("ui", this._pauseMenu);
+      this._pauseMenu.destroy({ children: true });
+      this._pauseMenu = null;
+    }
+  }
+
   private _cleanup(): void {
     window.removeEventListener("keydown", _onKeyDown);
     window.removeEventListener("keyup", _onKeyUp);
