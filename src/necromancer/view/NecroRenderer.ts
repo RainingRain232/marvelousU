@@ -370,20 +370,33 @@ export class NecroRenderer {
     }
 
     // Corpse inventory on the left
-    let iy = oy + 20;
-    const invLabel = new Text({ text: "Corpses:", style: new TextStyle({ fontFamily: FONT, fontSize: 10, fill: 0x889988 }) });
+    let iy = oy + 15;
+    const invLabel = new Text({ text: "CORPSES", style: new TextStyle({ fontFamily: FONT, fontSize: 9, fill: 0x889988, letterSpacing: 2 }) });
     invLabel.position.set(ox + 10, iy); this._ui.addChild(invLabel);
-    iy += 16;
+    iy += 14;
     for (const corpse of state.corpses) {
-      // Skip if placed in a slot
       if (state.ritualSlotA?.id === corpse.id || state.ritualSlotB?.id === corpse.id) continue;
       const def = CORPSES[corpse.type];
-      g.roundRect(ox + 10, iy, 100, 18, 3).fill({ color: 0x0a0a06, alpha: 0.6 });
-      g.roundRect(ox + 10, iy, 100, 18, 3).stroke({ color: def.color, width: 0.5, alpha: 0.3 });
-      g.circle(ox + 22, iy + 9, 4).fill({ color: def.color });
-      const ct = new Text({ text: `${def.name} (${def.manaCost}m)`, style: new TextStyle({ fontFamily: FONT, fontSize: 7, fill: 0xaaaaaa }) });
-      ct.position.set(ox + 30, iy + 4); this._ui.addChild(ct);
-      iy += 22;
+      // Card-like background
+      g.roundRect(ox + 8, iy, 120, 32, 4).fill({ color: 0x0a0a06, alpha: 0.7 });
+      g.roundRect(ox + 8, iy, 120, 32, 4).stroke({ color: def.color, width: 0.8, alpha: 0.4 });
+      // Color dot
+      g.circle(ox + 20, iy + 10, 5).fill({ color: def.color, alpha: 0.8 });
+      if (def.ranged) {
+        // Range indicator — small diamond
+        g.moveTo(ox + 20, iy + 6).lineTo(ox + 23, iy + 10).lineTo(ox + 20, iy + 14).lineTo(ox + 17, iy + 10).stroke({ color: 0x9944ff, width: 0.5, alpha: 0.6 });
+      }
+      // Name and cost
+      const ct = new Text({ text: `${def.name}`, style: new TextStyle({ fontFamily: FONT, fontSize: 8, fill: 0xcccccc, fontWeight: "bold" }) });
+      ct.position.set(ox + 30, iy + 2); this._ui.addChild(ct);
+      // Stats line
+      const stats = `HP:${def.hp} DMG:${def.damage} SPD:${def.speed} ${def.ranged ? "RANGED" : ""} — ${def.manaCost}m`;
+      const st = new Text({ text: stats, style: new TextStyle({ fontFamily: FONT, fontSize: 6, fill: 0x889977 }) });
+      st.position.set(ox + 30, iy + 14); this._ui.addChild(st);
+      // Description
+      const dt = new Text({ text: def.description, style: new TextStyle({ fontFamily: FONT, fontSize: 5.5, fill: 0x667755, fontStyle: "italic" }) });
+      dt.position.set(ox + 30, iy + 23); this._ui.addChild(dt);
+      iy += 36;
     }
 
     // Army preview on the right
@@ -480,6 +493,17 @@ export class NecroRenderer {
     for (const c of state.crusaders) {
       if (!c.alive) continue;
       this._drawCrusaderUnit(g, ox + c.x, oy + c.y, c, state);
+    }
+
+    // Projectiles
+    for (const p of state.projectiles) {
+      const angle = Math.atan2(p.vy, p.vx);
+      const px = ox + p.x, py = oy + p.y;
+      // Trail
+      g.moveTo(px - Math.cos(angle) * 6, py - Math.sin(angle) * 6).lineTo(px, py).stroke({ color: p.color, width: 2, alpha: 0.6 });
+      // Head
+      g.circle(px, py, 2).fill({ color: p.color, alpha: 0.8 });
+      g.circle(px, py, 4).fill({ color: p.color, alpha: 0.15 });
     }
 
     // Floating damage numbers
@@ -625,6 +649,17 @@ export class NecroRenderer {
       g.moveTo(x - 0.5, headY + 1).lineTo(x, headY + 2.5).lineTo(x + 0.5, headY + 1).stroke({ color: 0x0a0a06, width: 0.5, alpha: 0.25 });
     }
 
+    // Ranged indicator — floating orbs for mage-type undead
+    if (u.ranged) {
+      for (let oi = 0; oi < 2; oi++) {
+        const oa = t * 3 + oi * 3.14;
+        const orbX = x + Math.cos(oa) * (s + 5);
+        const orbY = y - s * 0.5 + Math.sin(oa) * 3;
+        g.circle(orbX, orbY, 2).fill({ color: 0x9944ff, alpha: 0.5 + Math.sin(t * 4 + oi) * 0.2 });
+        g.circle(orbX, orbY, 4).fill({ color: 0x9944ff, alpha: 0.08 });
+      }
+    }
+
     // Shield ability — visible shield aura
     if (u.ability === "shield") {
       g.circle(x, y, s + 3).stroke({ color: 0x4488ff, width: 1, alpha: 0.15 + Math.sin(t * 2 + u.id) * 0.08 });
@@ -726,6 +761,19 @@ export class NecroRenderer {
       // Cross on flag
       g.rect(x + 3, headY - s * 1.35 + wave * 0.5, 1, 4).fill({ color: 0xffd700, alpha: 0.5 });
       g.rect(x + 2, headY - s * 1.2 + wave * 0.5, 3, 1).fill({ color: 0xffd700, alpha: 0.5 });
+    } else if (c.type === "inquisitor") {
+      // Dark red hood, burning torch, purge aura
+      g.circle(x, headY, s * 0.5).fill({ color: 0x661111, alpha: 0.7 });
+      // Burning eyes
+      g.circle(x - 2, headY - 1, 1.5).fill({ color: 0xff6600, alpha: 0.9 });
+      g.circle(x + 2, headY - 1, 1.5).fill({ color: 0xff6600, alpha: 0.9 });
+      // Torch
+      g.moveTo(x - s - 4, y).lineTo(x - s - 4, headY - s).stroke({ color: 0x886644, width: 2 });
+      const flicker = 0.6 + Math.sin(t * 6 + c.id) * 0.2;
+      g.circle(x - s - 4, headY - s - 3, 3).fill({ color: 0xff6622, alpha: flicker });
+      g.circle(x - s - 4, headY - s - 3, 5).fill({ color: 0xff4400, alpha: flicker * 0.15 });
+      // Purge aura ring
+      g.circle(x, y, s * 3).stroke({ color: 0xff6600, width: 0.8, alpha: 0.06 + Math.sin(t * 2) * 0.03 });
     } else if (c.type === "templar") {
       // Red cross on tabard (already colored)
       g.rect(x - 1, y - 3, 2, 7).fill({ color: 0xcc2222, alpha: 0.35 });
@@ -794,7 +842,8 @@ export class NecroRenderer {
     };
 
     addText("\u2620 NECROMANCER", 12, 6, { fontSize: 14, fill: NECRO_GREEN, fontWeight: "bold", letterSpacing: 3 });
-    addText(`Wave ${state.wave + 1}/${state.totalWaves}`, 200, 8, { fontSize: 11, fill: 0x889988 });
+    const waveStr = state.endless ? `Wave ${state.wave + 1} (Endless)` : `Wave ${state.wave + 1}/${state.totalWaves}`;
+    addText(waveStr, 200, 8, { fontSize: 11, fill: state.endless ? 0xaa44ff : 0x889988 });
     addText(`Gold: ${state.gold}`, 300, 8, { fontSize: 12, fill: 0xffd700 });
     addText(`Score: ${state.score}`, 400, 8, { fontSize: 12, fill: 0x44ccaa });
     addText(`Army: ${state.undead.length}`, 510, 8, { fontSize: 11, fill: NECRO_GREEN });

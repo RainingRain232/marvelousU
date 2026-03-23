@@ -4,7 +4,7 @@
 
 import type { NecroState, Undead, Crusader, Corpse } from "../state/NecroState";
 import { findChimera } from "../state/NecroState";
-import { CORPSES, CRUSADERS, NecroConfig, WAVES } from "../config/NecroConfig";
+import { CORPSES, CRUSADERS, NecroConfig, WAVES, generateEndlessWave } from "../config/NecroConfig";
 import type { CorpseType, CrusaderType } from "../config/NecroConfig";
 
 const BONE_WHITE = 0xccccbb;
@@ -158,6 +158,8 @@ function raiseUndead(state: NecroState): void {
       ability: chimera.ability,
       abilityCooldown: 5,
       alive: true,
+      ranged: defA.ranged || defB.ranged,
+      range: Math.max(defA.range, defB.range),
     };
     state.announcements.push({ text: `Raised: ${chimera.name}!`, color: 0xff88ff, timer: 2 });
   } else {
@@ -179,6 +181,8 @@ function raiseUndead(state: NecroState): void {
       ability: null,
       abilityCooldown: 5,
       alive: true,
+      ranged: defA.ranged,
+      range: defA.range,
     };
     state.announcements.push({ text: `Raised: Undead ${defA.name}`, color: 0x44ff88, timer: 1.5 });
   }
@@ -236,6 +240,29 @@ export function updateBattle(state: NecroState, dt: number): void {
     const dx = target.x - u.x, dy = target.y - u.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
 
+    // Ranged units stop at range and fire projectiles
+    if (u.ranged && u.range > 0) {
+      const stopDist = u.range * 0.8;
+      if (dist > stopDist) {
+        u.x += (dx / dist) * u.speed * dt;
+        u.y += (dy / dist) * u.speed * dt;
+      }
+      if (dist < u.range && u.attackCooldown <= 0) {
+        // Fire projectile
+        const angle = Math.atan2(dy, dx);
+        const speed = 200;
+        state.projectiles.push({
+          x: u.x, y: u.y,
+          vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+          damage: u.damage, life: 1.5, color: 0x9944ff, fromUndead: true,
+        });
+        u.attackCooldown = 1.8;
+        // Muzzle flash
+        state.particles.push({ x: u.x, y: u.y, vx: Math.cos(angle) * 20, vy: Math.sin(angle) * 20, life: 0.2, maxLife: 0.2, color: 0x9944ff, size: 3 });
+      }
+      continue;
+    }
+
     if (dist > u.size + target.size + 2) {
       u.x += (dx / dist) * u.speed * dt;
       u.y += (dy / dist) * u.speed * dt;
@@ -290,6 +317,15 @@ export function updateBattle(state: NecroState, dt: number): void {
         state.score += CRUSADERS[target.type].reward * 2;
         state.waveKills++;
         state.totalKills++;
+
+        // Soul harvest — mana recovery on kill
+        state.mana = Math.min(state.maxMana, state.mana + NecroConfig.SOUL_HARVEST_MANA);
+        state.particles.push({ x: target.x, y: target.y - 5, vx: 0, vy: -25, life: 0.5, maxLife: 0.5, color: 0x4466cc, size: 2 });
+        // HP recovery every N kills
+        if (state.waveKills % NecroConfig.SOUL_HARVEST_HP_INTERVAL === 0) {
+          state.playerHp = Math.min(state.maxPlayerHp, state.playerHp + 1);
+          state.announcements.push({ text: "+1 HP (Soul Harvest)", color: 0xff4488, timer: 1.5 });
+        }
 
         // Ability: explode — area damage on kill
         if (u.ability === "explode" && u.abilityCooldown <= 0) {
@@ -467,11 +503,62 @@ export function updateBattle(state: NecroState, dt: number): void {
   }
   if (state.boneWallCooldown > 0) state.boneWallCooldown -= dt;
 
+  // Update projectiles
+  for (let i = state.projectiles.length - 1; i >= 0; i--) {
+    const p = state.projectiles[i];
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.life -= dt;
+    if (p.life <= 0 || p.x < -10 || p.x > NecroConfig.FIELD_WIDTH + 10 || p.y < -10 || p.y > NecroConfig.FIELD_HEIGHT + 10) {
+      state.projectiles.splice(i, 1);
+      continue;
+    }
+    // Check collision
+    if (p.fromUndead) {
+      for (const c of state.crusaders) {
+        if (!c.alive) continue;
+        const pdx = p.x - c.x, pdy = p.y - c.y;
+        if (pdx * pdx + pdy * pdy < (c.size + 3) * (c.size + 3)) {
+          c.hp -= p.damage;
+          state.damageNumbers.push({ x: c.x, y: c.y - 10, text: `-${p.damage}`, color: 0x9944ff, timer: 0.8, maxTimer: 0.8 });
+          state.particles.push({ x: c.x, y: c.y, vx: (Math.random() - 0.5) * 20, vy: -15, life: 0.2, maxLife: 0.2, color: 0x9944ff, size: 2 });
+          if (c.hp <= 0) {
+            c.alive = false;
+            state.gold += CRUSADERS[c.type].reward;
+            state.score += CRUSADERS[c.type].reward * 2;
+            state.waveKills++;
+            state.totalKills++;
+            state.mana = Math.min(state.maxMana, state.mana + NecroConfig.SOUL_HARVEST_MANA);
+          }
+          state.projectiles.splice(i, 1);
+          break;
+        }
+      }
+    }
+  }
+
+  // Inquisitor purge — dispels chimera abilities temporarily
+  for (const c of state.crusaders) {
+    if (!c.alive || c.ability !== "purge" || c.abilityCooldown > 0) continue;
+    for (const u of state.undead) {
+      if (!u.alive || !u.chimera) continue;
+      const pdx = u.x - c.x, pdy = u.y - c.y;
+      if (pdx * pdx + pdy * pdy < 80 * 80) {
+        // Purge: deal bonus damage to chimeras
+        u.hp -= 3;
+        state.damageNumbers.push({ x: u.x, y: u.y - 12, text: "PURGE", color: 0xffaa00, timer: 1, maxTimer: 1 });
+        state.particles.push({ x: u.x, y: u.y, vx: 0, vy: -20, life: 0.4, maxLife: 0.4, color: 0xffaa00, size: 3 });
+        if (u.hp <= 0) u.alive = false;
+      }
+    }
+    c.abilityCooldown = 6;
+  }
+
   // Update damage numbers
   for (let i = state.damageNumbers.length - 1; i >= 0; i--) {
     const dn = state.damageNumbers[i];
     dn.timer -= dt;
-    dn.y -= 20 * dt; // Float upward
+    dn.y -= 20 * dt;
     if (dn.timer <= 0) state.damageNumbers.splice(i, 1);
   }
 
@@ -578,8 +665,7 @@ function spawnCrusader(state: NecroState, type: CrusaderType): void {
 }
 
 export function prepareBattleWave(state: NecroState): void {
-  const waveIdx = Math.min(state.wave, WAVES.length - 1);
-  const wave = WAVES[waveIdx];
+  const wave = state.wave < WAVES.length ? WAVES[state.wave] : generateEndlessWave(state.wave);
   state.crusaderSpawnQueue = [];
   let delay = 0;
   for (const entry of wave) {
@@ -596,6 +682,7 @@ export function prepareBattleWave(state: NecroState): void {
   state.boneWalls = [];
   state.boneWallCooldown = 0;
   state.damageNumbers = [];
+  state.projectiles = [];
 
   // Position undead on left side
   for (let i = 0; i < state.undead.length; i++) {

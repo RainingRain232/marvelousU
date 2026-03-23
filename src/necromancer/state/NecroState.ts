@@ -47,6 +47,8 @@ export interface Undead {
   ability: string | null;
   abilityCooldown: number;
   alive: boolean;
+  ranged: boolean;
+  range: number;
 }
 
 export interface Crusader {
@@ -134,6 +136,12 @@ export interface NecroState {
   boneWalls: { x: number; y: number; hp: number; maxHp: number; timer: number }[];
   boneWallCooldown: number;
 
+  // Ranged projectiles
+  projectiles: { x: number; y: number; vx: number; vy: number; damage: number; life: number; color: number; fromUndead: boolean }[];
+
+  // Endless mode
+  endless: boolean;
+
   // Kill stats per wave
   waveKills: number;
   totalKills: number;
@@ -143,7 +151,7 @@ export function createNecroState(): NecroState {
   return {
     phase: "start",
     wave: 0,
-    totalWaves: 8,
+    totalWaves: 10,
 
     playerHp: NecroConfig.PLAYER_HP,
     maxPlayerHp: NecroConfig.PLAYER_HP,
@@ -191,6 +199,8 @@ export function createNecroState(): NecroState {
     damageNumbers: [],
     boneWalls: [],
     boneWallCooldown: 0,
+    projectiles: [],
+    endless: false,
     waveKills: 0,
     totalKills: 0,
   };

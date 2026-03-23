@@ -8,7 +8,8 @@ import { audioManager } from "@audio/AudioManager";
 
 import { createNecroState, findChimera } from "./state/NecroState";
 import type { NecroState } from "./state/NecroState";
-import { NecroConfig, DARK_POWERS, CORPSES } from "./config/NecroConfig";
+import { NecroConfig, DARK_POWERS, CORPSES, WAVES, CRUSADERS, generateEndlessWave } from "./config/NecroConfig";
+import type { WaveEntry } from "./config/NecroConfig";
 import {
   updateDig, startDig,
   updateRitual, placeCorpseInSlot, startRaise,
@@ -250,8 +251,21 @@ export class NecroGame {
       y += 38;
     }
 
+    // Wave preview — show what's coming next
+    y += 8;
+    const nextWave = this._state.wave + 1;
+    const isEndless = nextWave >= this._state.totalWaves;
+    if (!isEndless || this._state.endless) {
+      const preview: WaveEntry[] = nextWave < WAVES.length ? WAVES[nextWave] : generateEndlessWave(nextWave);
+      addText(`Next Wave ${nextWave + 1}:`, this._sw / 2, y, { fontSize: 10, fill: 0xcc8844, fontWeight: "bold" }, true);
+      y += 16;
+      const previewStr = preview.map(e => `${CRUSADERS[e.type].name} x${e.count}`).join("  |  ");
+      addText(previewStr, this._sw / 2, y, { fontSize: 8, fill: 0x998866 }, true);
+      y += 16;
+    }
+
     // Continue button
-    y += 12;
+    y += 8;
     const continueBtn = new Graphics();
     continueBtn.roundRect(this._sw / 2 - 80, y, 160, 36, 5).fill({ color: 0x0a0a0a, alpha: 0.8 });
     continueBtn.roundRect(this._sw / 2 - 80, y, 160, 36, 5).stroke({ color: 0x44ff88, width: 2, alpha: 0.6 });
@@ -259,14 +273,15 @@ export class NecroGame {
     continueBtn.on("pointerdown", () => {
       viewManager.removeFromLayer("ui", c); c.destroy({ children: true });
       this._state.wave++;
-      if (this._state.wave >= this._state.totalWaves) {
+      if (this._state.wave >= this._state.totalWaves && !this._state.endless) {
         this._showVictoryScreen();
       } else {
         this._enterDigPhase();
       }
     });
     c.addChild(continueBtn);
-    addText("NEXT WAVE \u25B6", this._sw / 2, y + 10, { fontSize: 12, fill: 0x44ff88, fontWeight: "bold", letterSpacing: 2 }, true);
+    const btnLabel = isEndless && !this._state.endless ? "NEXT WAVE \u25B6" : `WAVE ${nextWave + 1} \u25B6`;
+    addText(btnLabel, this._sw / 2, y + 10, { fontSize: 12, fill: 0x44ff88, fontWeight: "bold", letterSpacing: 2 }, true);
 
     viewManager.addToLayer("ui", c);
   }
@@ -385,7 +400,22 @@ export class NecroGame {
       y += 20;
     }
 
-    y += 16;
+    // Endless mode button
+    y += 10;
+    const endlessBtn = new Graphics();
+    endlessBtn.roundRect(this._sw / 2 - 90, y, 180, 34, 5).fill({ color: 0x0a0a0a, alpha: 0.8 });
+    endlessBtn.roundRect(this._sw / 2 - 90, y, 180, 34, 5).stroke({ color: 0x6622aa, width: 2, alpha: 0.5 });
+    endlessBtn.eventMode = "static"; endlessBtn.cursor = "pointer";
+    endlessBtn.on("pointerdown", () => {
+      viewManager.removeFromLayer("ui", c); c.destroy({ children: true });
+      this._state.endless = true;
+      this._state.totalWaves = 999;
+      this._enterDigPhase();
+    });
+    c.addChild(endlessBtn);
+    addText("ENDLESS MODE \u221E", this._sw / 2, y + 9, { fontSize: 11, fill: 0xaa44ff, fontWeight: "bold", letterSpacing: 2 }, true);
+
+    y += 44;
     this._addEndButtons(c, addText, y);
 
     viewManager.addToLayer("ui", c);
