@@ -4,7 +4,7 @@
 
 import type { SiegeState, Enemy, Projectile } from "../state/SiegeState";
 import { SiegePhase, spawnEnemy } from "../state/SiegeState";
-import { SiegeConfig, TOWERS, ENEMIES, WAVES, type TowerType } from "../config/SiegeConfig";
+import { SiegeConfig, TOWERS, ENEMIES, WAVES, TOWER_EFFECTIVENESS, TOWER_ABILITIES, type TowerType, type WaveModifier, WAVE_MODIFIER_DEFS } from "../config/SiegeConfig";
 
 const T = SiegeConfig.TILE_SIZE;
 
@@ -36,16 +36,31 @@ export function startWave(state: SiegeState): void {
   if (state.wave >= WAVES.length) { state.phase = SiegePhase.VICTORY; return; }
   const wave = WAVES[state.wave];
   state.phase = SiegePhase.WAVE;
+
+  // Pick random wave modifier (30% chance after wave 2)
+  const modPool: WaveModifier[] = ["none", "none", "fast", "armored", "horde", "rich"];
+  if (state.wave >= 5) modPool.push("boss_rush");
+  state.waveModifier = state.wave >= 2 && Math.random() < 0.4 ? modPool[Math.floor(Math.random() * modPool.length)] : "none";
+
   state.spawnQueue = [];
   let delay = 0;
+  const hordeMultiplier = state.waveModifier === "horde" ? 1.5 : 1;
   for (const group of wave.enemies) {
-    for (let i = 0; i < group.count; i++) {
+    const count = Math.ceil(group.count * hordeMultiplier);
+    for (let i = 0; i < count; i++) {
       state.spawnQueue.push({ type: group.type, delay });
       delay += group.interval;
     }
   }
   state.spawnTimer = 0;
-  state.announcements.push({ text: `Wave ${state.wave + 1}`, color: 0xff6644, timer: 2 });
+
+  const modDef = WAVE_MODIFIER_DEFS[state.waveModifier];
+  if (state.waveModifier !== "none") {
+    state.announcements.push({ text: `Wave ${state.wave + 1}: ${modDef.name}`, color: modDef.color, timer: 3 });
+    state.announcements.push({ text: modDef.desc, color: modDef.color, timer: 2.5 });
+  } else {
+    state.announcements.push({ text: `Wave ${state.wave + 1}`, color: 0xff6644, timer: 2 });
+  }
 }
 
 export function useMeteor(state: SiegeState, x: number, y: number): void {
@@ -233,24 +248,61 @@ export function updateSiege(state: SiegeState, dt: number): void {
 }
 
 function applyDamage(state: SiegeState, enemy: Enemy, proj: Projectile, mult = 1): void {
-  const dmg = Math.max(1, proj.damage * mult - enemy.armor);
+  const tower = state.towers.find(t => t.id === proj.towerId);
+  const towerType = tower?.type;
+
+  // Tower-enemy effectiveness multiplier
+  let effectiveness = 1;
+  if (towerType) {
+    effectiveness = TOWER_EFFECTIVENESS[towerType]?.[enemy.type] ?? 1;
+  }
+
+  // Tower ability: piercing (lv5 arrow) ignores armor
+  let armor = enemy.armor;
+  if (towerType === "arrow" && tower && tower.level >= 5) armor = 0;
+
+  const dmg = Math.max(1, proj.damage * mult * effectiveness - armor);
   enemy.hp -= dmg;
-  if (proj.slowAmount > 0) { enemy.slowTimer = proj.slowDuration; enemy.slowAmount = proj.slowAmount; }
+
+  // Slow effects
+  let slowAmount = proj.slowAmount;
+  let slowDuration = proj.slowDuration;
+  // Frost lv3: double slow duration; lv5: 80% slow
+  if (towerType === "frost" && tower) {
+    if (tower.level >= 3) slowDuration *= 2;
+    if (tower.level >= 5) slowAmount = 0.8;
+  }
+  if (slowAmount > 0) { enemy.slowTimer = slowDuration; enemy.slowAmount = slowAmount; }
+
+  // Cannon lv5: stun hit enemies for 1s
+  if (towerType === "cannon" && tower && tower.level >= 5) {
+    enemy.slowTimer = Math.max(enemy.slowTimer, 1);
+    enemy.slowAmount = Math.max(enemy.slowAmount, 0.95);
+  }
+
   if (enemy.hp <= 0 && enemy.alive) {
     enemy.alive = false;
     const def = ENEMIES[enemy.type];
-    state.gold += def.reward;
-    state.score += def.reward;
+    // Wave modifier: rich wave doubles reward
+    const rewardMult = state.waveModifier === "rich" ? 2 : 1;
+    state.gold += def.reward * rewardMult;
+    state.score += def.reward * rewardMult;
     state.totalKills++;
+
+    // Holy lv5: heals 1 life on kill
+    if (towerType === "holy" && tower && tower.level >= 5 && state.lives < SiegeConfig.STARTING_LIVES) {
+      state.lives = Math.min(state.lives + 1, SiegeConfig.STARTING_LIVES);
+    }
+
     // Credit kill to tower and check for level-up
-    const tower = state.towers.find(t => t.id === proj.towerId);
     if (tower) {
       tower.kills++;
-      const killsNeeded = tower.level * 5; // 5, 10, 15... kills per level
+      const killsNeeded = tower.level * 5;
       if (tower.kills >= killsNeeded && tower.level < 5) {
         tower.level++;
         tower.kills = 0;
-        state.announcements.push({ text: `${TOWERS[tower.type].name} Lv${tower.level}!`, color: 0xffd700, timer: 1.5 });
+        const ability = tower.level === 3 ? TOWER_ABILITIES[tower.type].lv3Desc : tower.level === 5 ? TOWER_ABILITIES[tower.type].lv5Desc : "";
+        state.announcements.push({ text: `${TOWERS[tower.type].name} Lv${tower.level}!${ability ? " " + ability : ""}`, color: 0xffd700, timer: 2 });
       }
     }
     // Death particles

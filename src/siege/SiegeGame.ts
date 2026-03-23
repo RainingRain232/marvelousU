@@ -8,7 +8,7 @@ import { audioManager } from "@audio/AudioManager";
 
 import { createSiegeState, SiegePhase } from "./state/SiegeState";
 import type { SiegeState } from "./state/SiegeState";
-import { SiegeConfig, WAVES, type TowerType } from "./config/SiegeConfig";
+import { SiegeConfig, WAVES, DIFFICULTY_MULT, type TowerType, type Difficulty } from "./config/SiegeConfig";
 import { placeTower, sellTower, updateSiege, startWave, useFreeze, useMeteor } from "./systems/SiegeSystem";
 import { SiegeRenderer } from "./view/SiegeRenderer";
 
@@ -56,18 +56,27 @@ export class SiegeGame {
     desc.anchor.set(0.5, 0); desc.position.set(this._sw / 2, this._sh * 0.3);
     c.addChild(desc);
 
-    const btn = new Graphics();
-    btn.roundRect(this._sw / 2 - 80, this._sh * 0.55, 160, 42, 5).fill({ color: 0x0a0a0a, alpha: 0.8 });
-    btn.roundRect(this._sw / 2 - 80, this._sh * 0.55, 160, 42, 5).stroke({ color: 0xcc8844, width: 2, alpha: 0.6 });
-    btn.eventMode = "static"; btn.cursor = "pointer";
-    btn.on("pointerdown", () => {
-      viewManager.removeFromLayer("ui", c); c.destroy({ children: true });
-      this._startGame();
-    });
-    c.addChild(btn);
-    const btnLabel = new Text({ text: "DEFEND!", style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 14, fill: 0xcc8844, fontWeight: "bold", letterSpacing: 3 }) });
-    btnLabel.anchor.set(0.5, 0); btnLabel.position.set(this._sw / 2, this._sh * 0.55 + 12);
-    c.addChild(btnLabel);
+    // Difficulty selection
+    const diffs: Difficulty[] = ["easy", "normal", "hard"];
+    let dx = this._sw / 2 - (diffs.length * 75) / 2;
+    for (const diff of diffs) {
+      const dm = DIFFICULTY_MULT[diff];
+      const btn = new Graphics();
+      btn.roundRect(dx, this._sh * 0.52, 70, 50, 5).fill({ color: 0x0a0a0a, alpha: 0.8 });
+      btn.roundRect(dx, this._sh * 0.52, 70, 50, 5).stroke({ color: dm.color, width: 2, alpha: 0.6 });
+      btn.eventMode = "static"; btn.cursor = "pointer";
+      const d = diff;
+      btn.on("pointerdown", () => {
+        viewManager.removeFromLayer("ui", c); c.destroy({ children: true });
+        this._startGame(d);
+      });
+      c.addChild(btn);
+      const lbl = new Text({ text: dm.label, style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 11, fill: dm.color, fontWeight: "bold" }) });
+      lbl.anchor.set(0.5, 0); lbl.position.set(dx + 35, this._sh * 0.52 + 6); c.addChild(lbl);
+      const sub2 = new Text({ text: `HP x${dm.hp}\nSpd x${dm.speed}`, style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 7, fill: 0x887766, align: "center" }) });
+      sub2.anchor.set(0.5, 0); sub2.position.set(dx + 35, this._sh * 0.52 + 22); c.addChild(sub2);
+      dx += 75;
+    }
 
     const backBtn = new Graphics();
     backBtn.roundRect(this._sw / 2 - 50, this._sh * 0.65, 100, 30, 4).fill({ color: 0x0a0a0a, alpha: 0.6 });
@@ -85,8 +94,8 @@ export class SiegeGame {
     viewManager.addToLayer("ui", c);
   }
 
-  private _startGame(): void {
-    this._state = createSiegeState();
+  private _startGame(difficulty: Difficulty = "normal"): void {
+    this._state = createSiegeState(difficulty);
     this._resultShown = false;
 
     this._renderer.init(this._sw, this._sh);

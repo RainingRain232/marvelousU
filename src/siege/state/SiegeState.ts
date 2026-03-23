@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import type { TowerType, EnemyType } from "../config/SiegeConfig";
-import { SiegeConfig, ENEMIES } from "../config/SiegeConfig";
+import { SiegeConfig, ENEMIES, DIFFICULTY_MULT } from "../config/SiegeConfig";
 
 export enum SiegePhase {
   BUILDING = "building",  // between waves — place towers
@@ -60,6 +60,8 @@ export interface Projectile {
 
 export interface SiegeState {
   phase: SiegePhase;
+  difficulty: import("../config/SiegeConfig").Difficulty;
+  waveModifier: import("../config/SiegeConfig").WaveModifier;
   grid: MapCell[][];
   path: { x: number; y: number }[];
   towers: Tower[];
@@ -157,10 +159,12 @@ export function createSiegeMap(variant?: number): { grid: MapCell[][]; path: { x
   return { grid, path };
 }
 
-export function createSiegeState(): SiegeState {
+export function createSiegeState(difficulty: import("../config/SiegeConfig").Difficulty = "normal"): SiegeState {
   const { grid, path } = createSiegeMap();
   return {
     phase: SiegePhase.BUILDING,
+    difficulty,
+    waveModifier: "none",
     grid, path,
     towers: [],
     enemies: [],
@@ -190,9 +194,16 @@ export function spawnEnemy(state: SiegeState, type: EnemyType): void {
   const def = ENEMIES[type];
   const spawn = state.path[0];
   const T = SiegeConfig.TILE_SIZE;
+  // Apply difficulty + wave modifiers
+  const diff = DIFFICULTY_MULT[state.difficulty];
+  let hp = Math.round(def.hp * diff.hp);
+  let speed = def.speed * diff.speed;
+  let armor = def.armor;
+  if (state.waveModifier === "fast") speed *= 1.5;
+  if (state.waveModifier === "armored") armor += 5;
   state.enemies.push({
     id: `enemy_${state.enemyIdCounter++}`,
-    type, hp: def.hp, maxHp: def.hp, speed: def.speed, armor: def.armor,
+    type, hp, maxHp: hp, speed, armor,
     x: spawn.x * T + T / 2, y: spawn.y * T + T / 2,
     pathIndex: 0, slowTimer: 0, slowAmount: 0,
     alive: true, reachedEnd: false,
