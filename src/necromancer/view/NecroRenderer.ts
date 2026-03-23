@@ -469,58 +469,138 @@ export class NecroRenderer {
 
     // Slot A (left)
     const slotAx = ox + cx - 35, slotAy = oy + cy;
-    g.roundRect(slotAx - 15, slotAy - 15, 30, 30, 4).fill({ color: 0x0a0a06, alpha: 0.8 });
-    g.roundRect(slotAx - 15, slotAy - 15, 30, 30, 4).stroke({ color: state.ritualSlotA ? NECRO_GREEN : 0x333322, width: 1.5, alpha: 0.5 });
+    g.roundRect(slotAx - 16, slotAy - 16, 32, 32, 5).fill({ color: 0x080806, alpha: 0.85 });
+    g.roundRect(slotAx - 16, slotAy - 16, 32, 32, 5).stroke({ color: state.ritualSlotA ? NECRO_GREEN : 0x2a2a1a, width: 1.5, alpha: 0.5 });
+    // Corner rune dots
+    for (const [dx2, dy2] of [[-14, -14], [14, -14], [-14, 14], [14, 14]]) {
+      g.circle(slotAx + dx2, slotAy + dy2, 1.5).fill({ color: NECRO_GREEN, alpha: state.ritualSlotA ? 0.3 : 0.08 });
+    }
     if (state.ritualSlotA) {
       const def = CORPSES[state.ritualSlotA.type];
-      g.circle(slotAx, slotAy, 8).fill({ color: def.color });
+      this._drawCorpseIcon(g, slotAx, slotAy, def, state);
       const label = new Text({ text: def.name, style: new TextStyle({ fontFamily: FONT, fontSize: 7, fill: def.color }) });
-      label.anchor.set(0.5, 0); label.position.set(slotAx, slotAy + 18);
+      label.anchor.set(0.5, 0); label.position.set(slotAx, slotAy + 19);
       this._ui.addChild(label);
     } else {
-      const label = new Text({ text: "Slot A", style: new TextStyle({ fontFamily: FONT, fontSize: 7, fill: 0x444433 }) });
+      // Empty slot glyph
+      g.circle(slotAx, slotAy, 8).stroke({ color: 0x333322, width: 0.5, alpha: 0.25 });
+      g.moveTo(slotAx, slotAy - 5).lineTo(slotAx, slotAy + 5).stroke({ color: 0x333322, width: 0.5, alpha: 0.15 });
+      g.moveTo(slotAx - 5, slotAy).lineTo(slotAx + 5, slotAy).stroke({ color: 0x333322, width: 0.5, alpha: 0.15 });
+      const label = new Text({ text: "I", style: new TextStyle({ fontFamily: FONT, fontSize: 9, fill: 0x333322 }) });
       label.anchor.set(0.5, 0.5); label.position.set(slotAx, slotAy);
       this._ui.addChild(label);
     }
 
+    // "+" symbol between slots
+    g.moveTo(ox + cx - 8, oy + cy).lineTo(ox + cx + 8, oy + cy).stroke({ color: 0x555544, width: 1, alpha: 0.2 });
+    g.moveTo(ox + cx, oy + cy - 8).lineTo(ox + cx, oy + cy + 8).stroke({ color: 0x555544, width: 1, alpha: 0.2 });
+
     // Slot B (right)
     const slotBx = ox + cx + 35, slotBy = oy + cy;
-    g.roundRect(slotBx - 15, slotBy - 15, 30, 30, 4).fill({ color: 0x0a0a06, alpha: 0.8 });
-    g.roundRect(slotBx - 15, slotBy - 15, 30, 30, 4).stroke({ color: state.ritualSlotB ? 0xff88ff : 0x333322, width: 1.5, alpha: 0.5 });
+    g.roundRect(slotBx - 16, slotBy - 16, 32, 32, 5).fill({ color: 0x080806, alpha: 0.85 });
+    g.roundRect(slotBx - 16, slotBy - 16, 32, 32, 5).stroke({ color: state.ritualSlotB ? 0xff88ff : 0x2a2a1a, width: 1.5, alpha: 0.5 });
+    for (const [dx2, dy2] of [[-14, -14], [14, -14], [-14, 14], [14, 14]]) {
+      g.circle(slotBx + dx2, slotBy + dy2, 1.5).fill({ color: 0xff88ff, alpha: state.ritualSlotB ? 0.3 : 0.08 });
+    }
     if (state.ritualSlotB) {
       const def = CORPSES[state.ritualSlotB.type];
-      g.circle(slotBx, slotBy, 8).fill({ color: def.color });
+      this._drawCorpseIcon(g, slotBx, slotBy, def, state);
       const label = new Text({ text: def.name, style: new TextStyle({ fontFamily: FONT, fontSize: 7, fill: def.color }) });
-      label.anchor.set(0.5, 0); label.position.set(slotBx, slotBy + 18);
+      label.anchor.set(0.5, 0); label.position.set(slotBx, slotBy + 19);
       this._ui.addChild(label);
     } else {
-      const label = new Text({ text: "Slot B\n(optional)", style: new TextStyle({ fontFamily: FONT, fontSize: 7, fill: 0x444433, align: "center" }) });
+      g.circle(slotBx, slotBy, 8).stroke({ color: 0x333322, width: 0.5, alpha: 0.25 });
+      const label = new Text({ text: "II\n(opt)", style: new TextStyle({ fontFamily: FONT, fontSize: 7, fill: 0x333322, align: "center" }) });
       label.anchor.set(0.5, 0.5); label.position.set(slotBx, slotBy);
       this._ui.addChild(label);
     }
 
-    // Chimera preview
+    // Chimera preview — with stat preview
     if (state.ritualSlotA && state.ritualSlotB) {
       const chimera = findChimera(state.ritualSlotA.type, state.ritualSlotB.type);
       if (chimera) {
-        const label = new Text({ text: `= ${chimera.name} (${chimera.ability})`, style: new TextStyle({ fontFamily: FONT, fontSize: 9, fill: 0xff88ff, fontWeight: "bold" }) });
-        label.anchor.set(0.5, 0); label.position.set(ox + cx, oy + cy + 45);
+        // Chimera name with glow
+        g.roundRect(ox + cx - 70, oy + cy + 42, 140, 20, 4).fill({ color: 0x0a0812, alpha: 0.7 });
+        g.roundRect(ox + cx - 70, oy + cy + 42, 140, 20, 4).stroke({ color: 0xff88ff, width: 0.5, alpha: 0.3 });
+        const label = new Text({ text: `\u2192 ${chimera.name}`, style: new TextStyle({ fontFamily: FONT, fontSize: 9, fill: 0xff88ff, fontWeight: "bold" }) });
+        label.anchor.set(0.5, 0); label.position.set(ox + cx, oy + cy + 43);
         this._ui.addChild(label);
+        const abilLabel = new Text({ text: `ability: ${chimera.ability} | +${chimera.hpBonus}HP +${chimera.damageBonus}DMG`, style: new TextStyle({ fontFamily: FONT, fontSize: 6, fill: 0xaa66cc }) });
+        abilLabel.anchor.set(0.5, 0); abilLabel.position.set(ox + cx, oy + cy + 54);
+        this._ui.addChild(abilLabel);
       }
     }
 
-    // Raise progress bar
+    // Raise animation — dramatic
     if (state.isRaising) {
-      g.rect(ox + cx - 50, oy + cy + 65, 100, 6).fill({ color: 0x111108 });
-      g.rect(ox + cx - 50, oy + cy + 65, 100 * state.raisingProgress, 6).fill({ color: NECRO_GREEN, alpha: 0.8 });
+      const prog = state.raisingProgress;
+      // Ground cracks radiating from center
+      for (let ci = 0; ci < 6; ci++) {
+        const ca = (ci / 6) * Math.PI * 2;
+        const crackLen = 20 + prog * 30;
+        const cx2 = ox + cx + Math.cos(ca) * crackLen;
+        const cy2 = oy + cy + Math.sin(ca) * crackLen * 0.4;
+        g.moveTo(ox + cx, oy + cy).bezierCurveTo(
+          ox + cx + Math.cos(ca) * crackLen * 0.3, oy + cy + Math.sin(ca) * crackLen * 0.15 + 3,
+          ox + cx + Math.cos(ca) * crackLen * 0.6, oy + cy + Math.sin(ca) * crackLen * 0.3 - 2,
+          cx2, cy2
+        ).stroke({ color: NECRO_GREEN, width: 0.8, alpha: prog * 0.3 });
+      }
 
-      // Swirling energy
-      for (let i = 0; i < 6; i++) {
-        const angle = state.elapsed * 3 + (i / 6) * Math.PI * 2;
-        const dist = 30 + Math.sin(state.elapsed * 5 + i) * 10;
+      // Lightning bolts — jagged lines from sky
+      if (prog > 0.3) {
+        for (let li = 0; li < 2; li++) {
+          const lx = ox + cx + (li - 0.5) * 40 + Math.sin(state.elapsed * 8 + li) * 10;
+          let ly = oy - 10;
+          const targetY = oy + cy;
+          g.moveTo(lx, ly);
+          while (ly < targetY) {
+            const nextY = ly + 8 + Math.random() * 6;
+            const jitter = (Math.random() - 0.5) * 12;
+            g.lineTo(lx + jitter, nextY);
+            ly = nextY;
+          }
+          g.stroke({ color: NECRO_GREEN, width: 1.5, alpha: 0.2 + Math.random() * 0.2 });
+          // Branch
+          if (Math.random() < 0.5) {
+            const branchY = oy + (targetY - oy) * 0.4;
+            g.moveTo(lx + (Math.random() - 0.5) * 6, branchY).lineTo(lx + (Math.random() - 0.5) * 20, branchY + 15).stroke({ color: NECRO_GREEN, width: 0.5, alpha: 0.15 });
+          }
+        }
+      }
+
+      // Swirling energy — faster, more intense
+      for (let i = 0; i < 8; i++) {
+        const angle = state.elapsed * 4 + (i / 8) * Math.PI * 2;
+        const dist = 20 + prog * 20 + Math.sin(state.elapsed * 6 + i) * 8;
         const ex = ox + cx + Math.cos(angle) * dist;
-        const ey = oy + cy + Math.sin(angle) * dist;
-        g.circle(ex, ey, 2).fill({ color: NECRO_GREEN, alpha: 0.4 + Math.sin(state.elapsed * 4 + i) * 0.2 });
+        const ey = oy + cy + Math.sin(angle) * dist * 0.5;
+        const esize = 1.5 + prog * 1.5;
+        g.circle(ex, ey, esize).fill({ color: NECRO_GREEN, alpha: 0.3 + prog * 0.3 });
+        // Trail line back to center
+        g.moveTo(ex, ey).lineTo(ox + cx, oy + cy).stroke({ color: NECRO_GREEN, width: 0.3, alpha: prog * 0.08 });
+      }
+
+      // Soul rising from earth — grows with progress
+      if (prog > 0.5) {
+        const soulY = oy + cy + 20 - (prog - 0.5) * 60;
+        const soulAlpha = (prog - 0.5) * 0.6;
+        g.ellipse(ox + cx, soulY, 6, 10).fill({ color: NECRO_GREEN, alpha: soulAlpha * 0.3 });
+        g.circle(ox + cx, soulY - 6, 4).fill({ color: NECRO_GREEN, alpha: soulAlpha * 0.4 });
+        // Eye dots
+        g.circle(ox + cx - 1.5, soulY - 7, 1).fill({ color: 0xffffff, alpha: soulAlpha * 0.5 });
+        g.circle(ox + cx + 1.5, soulY - 7, 1).fill({ color: 0xffffff, alpha: soulAlpha * 0.5 });
+      }
+
+      // Progress bar — ornate
+      const barX = ox + cx - 55, barY = oy + cy + 70;
+      g.roundRect(barX, barY, 110, 7, 3).fill({ color: 0x0a0a06, alpha: 0.8 });
+      g.roundRect(barX, barY, 110 * prog, 7, 3).fill({ color: NECRO_GREEN, alpha: 0.7 });
+      g.roundRect(barX, barY, 110 * prog, 3, 3).fill({ color: 0x88ffaa, alpha: 0.2 });
+      g.roundRect(barX, barY, 110, 7, 3).stroke({ color: NECRO_GREEN, width: 0.5, alpha: 0.3 });
+      // Glow at fill edge
+      if (prog > 0.05) {
+        g.circle(barX + 110 * prog, barY + 3.5, 4).fill({ color: NECRO_GREEN, alpha: 0.1 });
       }
     }
 
@@ -589,29 +669,88 @@ export class NecroRenderer {
     const fw = NecroConfig.FIELD_WIDTH, fh = NecroConfig.FIELD_HEIGHT;
 
     // Battlefield terrain — broken ground, rubble
-    // Undead side: dark, corrupted earth with green cracks
+    // Undead side: dark, corrupted earth with branching vein network
     g.roundRect(ox, oy, midX, fh, 0).fill({ color: 0x0c0c06, alpha: 0.3 });
-    // Green corruption veins
-    for (let vi = 0; vi < 5; vi++) {
-      const vx = ox + 40 + (vi * 3571 % (midX - 80));
-      const vy = oy + 30 + (vi * 2713 % (fh - 60));
-      g.moveTo(vx, vy).bezierCurveTo(vx + 15, vy + 10, vx + 25, vy - 5, vx + 40, vy + 5).stroke({ color: NECRO_GREEN, width: 0.5, alpha: 0.06 });
+    // Branching corruption veins — pulsing
+    const veinPulse = 0.04 + Math.sin(state.elapsed * 1.5) * 0.02;
+    // Main trunk veins
+    for (let vi = 0; vi < 4; vi++) {
+      const vx = ox + 30 + vi * 70;
+      const vy = oy + 50 + (vi * 2713 % (fh - 100));
+      // Main vein
+      g.moveTo(vx, vy).bezierCurveTo(vx + 20, vy + 15, vx + 40, vy - 10, vx + 60, vy + 5).stroke({ color: NECRO_GREEN, width: 1, alpha: veinPulse });
+      // Branches
+      for (let bi = 0; bi < 3; bi++) {
+        const bt = 0.2 + bi * 0.3;
+        const bx = vx + bt * 60, by = vy + Math.sin(bt * 3) * 10;
+        const branchAngle = (bi % 2 === 0 ? -1 : 1) * (0.5 + bi * 0.3);
+        g.moveTo(bx, by).bezierCurveTo(bx + Math.cos(branchAngle) * 8, by + Math.sin(branchAngle) * 12, bx + Math.cos(branchAngle) * 15, by + Math.sin(branchAngle) * 18, bx + Math.cos(branchAngle) * 20, by + Math.sin(branchAngle) * 20).stroke({ color: NECRO_GREEN, width: 0.5, alpha: veinPulse * 0.7 });
+        // Sub-branches
+        if (bi < 2) {
+          const sbx = bx + Math.cos(branchAngle) * 10, sby = by + Math.sin(branchAngle) * 10;
+          g.moveTo(sbx, sby).lineTo(sbx + (Math.random() - 0.5) * 10, sby + 6).stroke({ color: NECRO_GREEN, width: 0.3, alpha: veinPulse * 0.4 });
+        }
+      }
+      // Pulsing nodes at intersections
+      g.circle(vx, vy, 2).fill({ color: NECRO_GREEN, alpha: veinPulse * 1.5 });
+      g.circle(vx + 60, vy + 5, 1.5).fill({ color: NECRO_GREEN, alpha: veinPulse });
+    }
+    // Ground glow circles
+    for (let gi = 0; gi < 3; gi++) {
+      const gx = ox + 60 + gi * 80, gy = oy + fh / 2 + (gi - 1) * 80;
+      g.circle(gx, gy, 15).fill({ color: NECRO_GREEN, alpha: 0.015 + Math.sin(state.elapsed * 2 + gi) * 0.005 });
     }
 
-    // Crusader side: lighter, holy ground
+    // Crusader side: holy ground with light pools
     g.roundRect(ox + midX, oy, midX, fh, 0).fill({ color: 0x0e0e0c, alpha: 0.2 });
-    // Holy light rays from right
-    for (let ri = 0; ri < 3; ri++) {
-      const ry = oy + 60 + ri * 140;
-      g.moveTo(ox + fw, ry).lineTo(ox + midX + 40, ry + 30).lineTo(ox + fw, ry + 15).fill({ color: 0xffd700, alpha: 0.015 });
+    // Holy light rays from right — volumetric cones
+    for (let ri = 0; ri < 4; ri++) {
+      const ry = oy + 40 + ri * 110;
+      const rayW = 30 + ri * 10;
+      g.moveTo(ox + fw + 5, ry - 5).lineTo(ox + midX + 50, ry + rayW * 0.3).lineTo(ox + midX + 50, ry + rayW * 0.7).lineTo(ox + fw + 5, ry + 10).fill({ color: 0xffd700, alpha: 0.012 });
+      // Light pool on ground
+      g.ellipse(ox + midX + 60 + ri * 30, ry + rayW * 0.5, 15, 4).fill({ color: 0xffd700, alpha: 0.015 });
+    }
+    // Holy rune circles on crusader ground
+    for (let hri = 0; hri < 2; hri++) {
+      const hrx = ox + midX + 80 + hri * 120, hry = oy + fh / 2 + (hri - 0.5) * 100;
+      g.circle(hrx, hry, 12).stroke({ color: 0xffd700, width: 0.5, alpha: 0.04 });
+      g.moveTo(hrx - 3, hry).lineTo(hrx + 3, hry).stroke({ color: 0xffd700, width: 0.3, alpha: 0.03 });
+      g.moveTo(hrx, hry - 3).lineTo(hrx, hry + 3).stroke({ color: 0xffd700, width: 0.3, alpha: 0.03 });
     }
 
-    // Divider — battle line with clash markers
-    g.moveTo(ox + midX, oy).lineTo(ox + midX, oy + fh).stroke({ color: 0x442222, width: 0.8, alpha: 0.2 });
-    // Crossed swords icon at center
+    // Divider — glowing battle line
+    // Gradient from green to gold
+    for (let dy = 0; dy < fh; dy += 4) {
+      const t2 = dy / fh;
+      const divCol = t2 < 0.5 ? NECRO_GREEN : 0xffd700;
+      g.moveTo(ox + midX, oy + dy).lineTo(ox + midX, oy + dy + 4).stroke({ color: divCol, width: 0.5, alpha: 0.08 + Math.sin(state.elapsed + dy * 0.05) * 0.03 });
+    }
+    // Clash sparks at center
     const cix = ox + midX, ciy = oy + fh / 2;
-    g.moveTo(cix - 8, ciy - 8).lineTo(cix + 8, ciy + 8).stroke({ color: 0x555544, width: 1, alpha: 0.15 });
-    g.moveTo(cix + 8, ciy - 8).lineTo(cix - 8, ciy + 8).stroke({ color: 0x555544, width: 1, alpha: 0.15 });
+    const sparkAngle = state.elapsed * 3;
+    for (let si = 0; si < 3; si++) {
+      const sa = sparkAngle + si * 2.1;
+      g.circle(cix + Math.cos(sa) * 6, ciy + Math.sin(sa) * 6, 1).fill({ color: 0xffaa44, alpha: 0.1 + Math.sin(state.elapsed * 5 + si) * 0.06 });
+    }
+
+    // Crusader spawn portal glow on right edge
+    if (state.crusaderSpawnQueue.length > 0) {
+      const portalX = ox + fw - 8;
+      const portalPulse = 0.15 + Math.sin(state.elapsed * 3) * 0.08;
+      // Vertical golden portal slit
+      g.moveTo(portalX, oy + 30).lineTo(portalX, oy + fh - 30).stroke({ color: 0xffd700, width: 3, alpha: portalPulse });
+      g.moveTo(portalX, oy + 30).lineTo(portalX, oy + fh - 30).stroke({ color: 0xffffff, width: 1, alpha: portalPulse * 0.4 });
+      // Glow halo
+      for (let pr = 5; pr < 20; pr += 3) {
+        g.moveTo(portalX - pr, oy + 30).lineTo(portalX - pr, oy + fh - 30).stroke({ color: 0xffd700, width: 1, alpha: portalPulse * 0.03 });
+      }
+      // "Incoming" shimmer particles
+      for (let pi = 0; pi < 4; pi++) {
+        const py = oy + 60 + (state.elapsed * 40 + pi * 100) % (fh - 120);
+        g.circle(portalX - 3 - Math.random() * 5, py, 1).fill({ color: 0xffd700, alpha: portalPulse * 0.5 });
+      }
+    }
 
     // Torch sconces on sides
     for (let ti = 0; ti < 4; ti++) {
@@ -774,11 +913,22 @@ export class NecroRenderer {
       g.circle(px, py, 1.5).fill({ color: 0xffffff, alpha: 0.5 });
     }
 
-    // Floating damage numbers
+    // Floating damage numbers — with outlines and scaling
     for (const dn of state.damageNumbers) {
-      const alpha = dn.timer / dn.maxTimer;
-      const t = new Text({ text: dn.text, style: new TextStyle({ fontFamily: FONT, fontSize: 10, fill: dn.color, fontWeight: "bold" }) });
-      t.alpha = alpha; t.anchor.set(0.5, 0.5);
+      const life = dn.timer / dn.maxTimer;
+      const scale = 0.8 + (1 - life) * 0.4; // Grows as it fades
+      const isPurge = dn.text === "PURGE";
+      const fontSize = isPurge ? 11 : dn.text.startsWith("-") && parseInt(dn.text.substring(1)) >= 5 ? 12 : 10;
+
+      // Shadow/outline
+      const shadow = new Text({ text: dn.text, style: new TextStyle({ fontFamily: FONT, fontSize, fill: 0x000000, fontWeight: "bold" }) });
+      shadow.alpha = life * 0.5; shadow.anchor.set(0.5, 0.5); shadow.scale.set(scale);
+      shadow.position.set(ox + dn.x + 1, oy + dn.y + 1);
+      this._ui.addChild(shadow);
+
+      // Main text
+      const t = new Text({ text: dn.text, style: new TextStyle({ fontFamily: FONT, fontSize, fill: dn.color, fontWeight: "bold" }) });
+      t.alpha = life; t.anchor.set(0.5, 0.5); t.scale.set(scale);
       t.position.set(ox + dn.x, oy + dn.y);
       this._ui.addChild(t);
     }
@@ -790,28 +940,50 @@ export class NecroRenderer {
     let spellX = ox + fw / 2 - 80;
     const spellY = oy + fh - 16;
 
-    // Nova
+    // Nova spell button
     if ((state.powerLevels["dark_nova"] ?? 0) > 0) {
       const novaReady = state.novaCooldown <= 0;
-      g.roundRect(spellX - 2, spellY - 4, 70, 14, 3).fill({ color: novaReady ? 0x220044 : 0x0a0a08, alpha: 0.6 });
-      g.roundRect(spellX - 2, spellY - 4, 70, 14, 3).stroke({ color: novaReady ? 0xaa44ff : 0x332244, width: 0.8, alpha: 0.4 });
+      const novaCol = novaReady ? 0xaa44ff : 0x332244;
+      g.roundRect(spellX - 2, spellY - 6, 75, 16, 4).fill({ color: novaReady ? 0x1a0033 : 0x0a0a08, alpha: 0.7 });
+      g.roundRect(spellX - 2, spellY - 6, 75, 16, 4).stroke({ color: novaCol, width: 1, alpha: novaReady ? 0.6 : 0.3 });
+      // Nova icon — starburst
+      const iconX = spellX + 6, iconY = spellY + 2;
+      for (let si = 0; si < 4; si++) {
+        const sa = si * Math.PI / 4;
+        g.moveTo(iconX + Math.cos(sa) * 2, iconY + Math.sin(sa) * 2).lineTo(iconX + Math.cos(sa) * 5, iconY + Math.sin(sa) * 5).stroke({ color: novaCol, width: 0.8, alpha: novaReady ? 0.6 : 0.2 });
+      }
+      g.circle(iconX, iconY, 2).fill({ color: novaCol, alpha: novaReady ? 0.5 : 0.15 });
       const nt = new Text({
         text: novaReady ? "LMB: Nova" : `Nova ${Math.ceil(state.novaCooldown)}s`,
-        style: new TextStyle({ fontFamily: FONT, fontSize: 7, fill: novaReady ? 0xaa44ff : 0x554466 }),
+        style: new TextStyle({ fontFamily: FONT, fontSize: 7, fill: novaReady ? 0xcc66ff : 0x554466 }),
       });
-      nt.position.set(spellX + 4, spellY - 2); this._ui.addChild(nt);
-      spellX += 78;
+      nt.position.set(spellX + 14, spellY - 4); this._ui.addChild(nt);
+      // Ready glow
+      if (novaReady) {
+        g.roundRect(spellX - 1, spellY - 5, 73, 14, 3).fill({ color: 0xaa44ff, alpha: 0.04 + Math.sin(state.elapsed * 3) * 0.02 });
+      }
+      spellX += 83;
     }
 
-    // Bone Wall
+    // Bone Wall spell button
     const wallReady = state.boneWallCooldown <= 0 && state.mana >= 10;
-    g.roundRect(spellX - 2, spellY - 4, 80, 14, 3).fill({ color: wallReady ? 0x1a1a14 : 0x0a0a08, alpha: 0.6 });
-    g.roundRect(spellX - 2, spellY - 4, 80, 14, 3).stroke({ color: wallReady ? BONE_WHITE : 0x333322, width: 0.8, alpha: 0.4 });
+    const wallCol = wallReady ? BONE_WHITE : 0x333322;
+    g.roundRect(spellX - 2, spellY - 6, 85, 16, 4).fill({ color: wallReady ? 0x14140e : 0x0a0a08, alpha: 0.7 });
+    g.roundRect(spellX - 2, spellY - 6, 85, 16, 4).stroke({ color: wallCol, width: 1, alpha: wallReady ? 0.5 : 0.3 });
+    // Wall icon — mini bone wall
+    const wiX = spellX + 6, wiY = spellY + 2;
+    g.moveTo(wiX - 3, wiY + 3).lineTo(wiX - 3, wiY - 3).stroke({ color: wallCol, width: 1.5, alpha: 0.5 });
+    g.moveTo(wiX, wiY + 3).lineTo(wiX, wiY - 3).stroke({ color: wallCol, width: 1.5, alpha: 0.5 });
+    g.moveTo(wiX + 3, wiY + 3).lineTo(wiX + 3, wiY - 3).stroke({ color: wallCol, width: 1.5, alpha: 0.5 });
+    g.circle(wiX, wiY - 4, 2).fill({ color: wallCol, alpha: 0.3 });
     const wt = new Text({
-      text: wallReady ? "RMB: Bone Wall" : state.boneWallCooldown > 0 ? `Wall ${Math.ceil(state.boneWallCooldown)}s` : "Wall (10m)",
-      style: new TextStyle({ fontFamily: FONT, fontSize: 7, fill: wallReady ? BONE_WHITE : 0x555544 }),
+      text: wallReady ? "RMB: Wall" : state.boneWallCooldown > 0 ? `Wall ${Math.ceil(state.boneWallCooldown)}s` : "Wall (10m)",
+      style: new TextStyle({ fontFamily: FONT, fontSize: 7, fill: wallReady ? 0xddddcc : 0x555544 }),
     });
-    wt.position.set(spellX + 4, spellY - 2); this._ui.addChild(wt);
+    wt.position.set(spellX + 14, spellY - 4); this._ui.addChild(wt);
+    if (wallReady) {
+      g.roundRect(spellX - 1, spellY - 5, 83, 14, 3).fill({ color: BONE_WHITE, alpha: 0.02 + Math.sin(state.elapsed * 2.5) * 0.01 });
+    }
 
     // Kill counter
     const kt = new Text({
@@ -1262,6 +1434,53 @@ export class NecroRenderer {
       upgrade: "Click: buy upgrades | SPACE: next wave",
     };
     addText(controls[state.phase] ?? "Esc: quit", sw / 2, sh - 16, { fontSize: 7, fill: 0x445544 }, true);
+  }
+
+  // ── Corpse icon in ritual slots ──────────────────────────────────────
+
+  private _drawCorpseIcon(g: Graphics, x: number, y: number, def: typeof CORPSES[keyof typeof CORPSES], state: NecroState): void {
+    const t = state.elapsed;
+    const pulse = 0.7 + Math.sin(t * 2) * 0.1;
+
+    if (def.id === "peasant") {
+      // Ragged figure
+      g.ellipse(x, y + 2, 5, 7).fill({ color: def.color, alpha: pulse });
+      g.circle(x, y - 6, 3.5).fill({ color: BONE_WHITE, alpha: pulse * 0.6 });
+      g.circle(x - 1, y - 7, 0.8).fill({ color: 0x0a0a06, alpha: 0.5 });
+      g.circle(x + 1, y - 7, 0.8).fill({ color: 0x0a0a06, alpha: 0.5 });
+    } else if (def.id === "soldier") {
+      // Armored body with sword
+      g.ellipse(x, y + 1, 5, 7).fill({ color: def.color, alpha: pulse });
+      g.circle(x, y - 6, 3.5).fill({ color: def.color, alpha: pulse * 0.8 });
+      // Helmet line
+      g.moveTo(x - 4, y - 6).lineTo(x + 4, y - 6).stroke({ color: 0x999999, width: 1, alpha: 0.4 });
+      // Sword
+      g.moveTo(x + 5, y - 2).lineTo(x + 9, y - 6).stroke({ color: 0xcccccc, width: 1, alpha: 0.5 });
+    } else if (def.id === "knight") {
+      // Heavy armored figure with shield
+      g.ellipse(x, y + 1, 6, 8).fill({ color: def.color, alpha: pulse });
+      g.circle(x, y - 7, 4).fill({ color: def.color, alpha: pulse * 0.8 });
+      // Shield
+      g.roundRect(x - 8, y - 3, 4, 6, 1).fill({ color: 0x888899, alpha: 0.5 });
+      g.rect(x - 7, y - 1, 2, 2).fill({ color: 0xcc2222, alpha: 0.3 });
+    } else if (def.id === "mage") {
+      // Robed figure with staff and orbs
+      g.moveTo(x - 5, y + 8).lineTo(x, y - 4).lineTo(x + 5, y + 8).fill({ color: def.color, alpha: pulse });
+      g.circle(x, y - 6, 3).fill({ color: def.color, alpha: pulse * 0.7 });
+      // Staff
+      g.moveTo(x + 6, y + 6).lineTo(x + 7, y - 8).stroke({ color: 0x553322, width: 1.5, alpha: 0.5 });
+      // Floating orb
+      g.circle(x + 7, y - 9, 2).fill({ color: 0x9944ff, alpha: 0.4 + Math.sin(t * 3) * 0.2 });
+    } else if (def.id === "noble") {
+      // Elegant figure with crown
+      g.ellipse(x, y + 2, 5, 7).fill({ color: def.color, alpha: pulse });
+      g.circle(x, y - 6, 3.5).fill({ color: def.color, alpha: pulse * 0.7 });
+      // Crown
+      g.moveTo(x - 3, y - 9).lineTo(x - 2, y - 12).lineTo(x, y - 10).lineTo(x + 2, y - 12).lineTo(x + 3, y - 9).stroke({ color: 0xffd700, width: 1, alpha: 0.5 });
+    }
+
+    // Green necro glow underneath
+    g.circle(x, y, 10).fill({ color: NECRO_GREEN, alpha: 0.04 });
   }
 
   destroy(): void {
