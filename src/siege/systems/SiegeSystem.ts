@@ -48,31 +48,63 @@ export function startWave(state: SiegeState): void {
   state.announcements.push({ text: `Wave ${state.wave + 1}`, color: 0xff6644, timer: 2 });
 }
 
+export function useMeteor(state: SiegeState, x: number, y: number): void {
+  if (state.meteorCooldown > 0 || state.gold < 30) return;
+  state.gold -= 30;
+  state.meteorCooldown = 20;
+  const radius = 3 * T;
+  for (const enemy of state.enemies) {
+    if (!enemy.alive) continue;
+    const dx = enemy.x - x, dy = enemy.y - y;
+    if (dx * dx + dy * dy <= radius * radius) {
+      enemy.hp -= 50;
+      if (enemy.hp <= 0) { enemy.alive = false; state.gold += ENEMIES[enemy.type].reward; state.score += ENEMIES[enemy.type].reward; state.totalKills++; }
+    }
+  }
+  for (let pi = 0; pi < 12; pi++) {
+    state.particles.push({ x, y, vx: (Math.random() - 0.5) * 120, vy: -60 - Math.random() * 60, life: 0.5 + Math.random() * 0.3, maxLife: 0.8, color: 0xff6622, size: 3 + Math.random() * 3 });
+  }
+  state.announcements.push({ text: "METEOR STRIKE!", color: 0xff4422, timer: 1.5 });
+}
+
+export function useFreeze(state: SiegeState): void {
+  if (state.freezeTimer > 0 || state.gold < 20) return;
+  state.gold -= 20;
+  state.freezeTimer = 5;
+  state.announcements.push({ text: "FREEZE!", color: 0x88ccff, timer: 1.5 });
+}
+
 export function updateSiege(state: SiegeState, dt: number): void {
-  state.elapsedTime += dt;
+  const effectiveDt = dt * state.speedMult;
+  state.elapsedTime += effectiveDt;
+
+  // Power-up timers
+  if (state.freezeTimer > 0) state.freezeTimer -= effectiveDt;
+  if (state.meteorCooldown > 0) state.meteorCooldown -= effectiveDt;
 
   if (state.phase === SiegePhase.BUILDING) {
-    state.waveTimer -= dt;
+    state.waveTimer -= effectiveDt;
     if (state.waveTimer <= 0) startWave(state);
-    updateParticles(state, dt);
+    updateParticles(state, effectiveDt);
     return;
   }
 
   if (state.phase !== SiegePhase.WAVE) return;
 
   // Spawn enemies from queue
-  state.spawnTimer += dt;
+  state.spawnTimer += effectiveDt;
   while (state.spawnQueue.length > 0 && state.spawnTimer >= state.spawnQueue[0].delay) {
     const next = state.spawnQueue.shift()!;
     spawnEnemy(state, next.type);
   }
 
-  // Move enemies along path
+  // Move enemies along path (frozen = skip movement)
   for (const enemy of state.enemies) {
     if (!enemy.alive || enemy.reachedEnd) continue;
+    if (state.freezeTimer > 0) continue; // global freeze
 
     let speed = enemy.speed;
-    if (enemy.slowTimer > 0) { speed *= (1 - enemy.slowAmount); enemy.slowTimer -= dt; }
+    if (enemy.slowTimer > 0) { speed *= (1 - enemy.slowAmount); enemy.slowTimer -= effectiveDt; }
 
     const target = state.path[enemy.pathIndex + 1];
     if (!target) { enemy.reachedEnd = true; state.lives--; continue; }
@@ -80,7 +112,7 @@ export function updateSiege(state: SiegeState, dt: number): void {
     const tx = target.x * T + T / 2, ty = target.y * T + T / 2;
     const dx = tx - enemy.x, dy = ty - enemy.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    const step = speed * T * dt;
+    const step = speed * T * effectiveDt;
 
     if (dist <= step) {
       enemy.x = tx; enemy.y = ty;
@@ -93,7 +125,7 @@ export function updateSiege(state: SiegeState, dt: number): void {
 
   // Tower targeting & firing
   for (const tower of state.towers) {
-    tower.cooldown -= dt;
+    tower.cooldown -= effectiveDt;
     if (tower.cooldown > 0) continue;
 
     const def = TOWERS[tower.type];
@@ -135,7 +167,7 @@ export function updateSiege(state: SiegeState, dt: number): void {
 
     const dx = target.x - proj.x, dy = target.y - proj.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    const step = proj.speed * dt;
+    const step = proj.speed * effectiveDt;
 
     if (dist <= step) {
       // Hit!

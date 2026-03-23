@@ -336,8 +336,42 @@ export class SiegeRenderer {
       ty += 58;
     }
 
+    // Tower inspection panel (when a tower is clicked)
+    if (state.inspectedTowerId) {
+      const tower = state.towers.find(t => t.id === state.inspectedTowerId);
+      if (tower) {
+        const def = TOWERS[tower.type];
+        const levelMult = 1 + (tower.level - 1) * 0.2;
+        const ity = ty + 4;
+        u.roundRect(panelX + 2, ity, panelW - 4, 65, 4).fill({ color: 0x1a1a08, alpha: 0.7 });
+        u.roundRect(panelX + 2, ity, panelW - 4, 65, 4).stroke({ color: def.color, width: 1, alpha: 0.4 });
+        addText(`${def.name} Lv${tower.level}`, panelX + panelW / 2, ity + 3, { fontSize: 10, fill: def.color, fontWeight: "bold" }, true);
+        addText(`DMG: ${Math.floor(def.damage * levelMult)} | RNG: ${def.range} | Kills: ${tower.kills}`, panelX + 10, ity + 17, { fontSize: 8, fill: 0xccbbaa });
+        addText(`Sell value: ${Math.floor(def.cost * 0.6)}g`, panelX + 10, ity + 30, { fontSize: 8, fill: 0xffd700 });
+        addText("Press X to sell", panelX + panelW / 2, ity + 44, { fontSize: 8, fill: 0xff8844 }, true);
+        ty += 70;
+      }
+    }
+
+    // Power-ups
+    ty = Math.max(ty + 4, oy + SiegeConfig.GRID_ROWS * T - 80);
+    u.moveTo(panelX + 10, ty).lineTo(panelX + panelW - 10, ty).stroke({ color: COL, width: 0.5, alpha: 0.15 });
+    ty += 6;
+    addText("Power-ups", panelX + panelW / 2, ty, { fontSize: 9, fill: 0xccaa88, fontWeight: "bold" }, true);
+    ty += 14;
+    const freezeReady = state.freezeTimer <= 0 && state.gold >= 20;
+    addText(`F: Freeze (20g)${state.freezeTimer > 0 ? ` [${Math.ceil(state.freezeTimer)}s]` : ""}`, panelX + 8, ty, { fontSize: 8, fill: freezeReady ? 0x88ccff : 0x555544 });
+    ty += 12;
+    const meteorReady = state.meteorCooldown <= 0 && state.gold >= 30;
+    addText(`M: Meteor (30g)${state.meteorCooldown > 0 ? ` [${Math.ceil(state.meteorCooldown)}s]` : ""}`, panelX + 8, ty, { fontSize: 8, fill: meteorReady ? 0xff6644 : 0x555544 });
+    ty += 14;
+
+    // Speed indicator
+    addText(`Speed: ${state.speedMult}x [1/2/3]`, panelX + panelW / 2, ty, { fontSize: 8, fill: state.speedMult > 1 ? 0xffaa44 : 0x667766 }, true);
+    ty += 12;
+
     // Controls hint
-    addText("Click grid: place tower | Esc: menu", panelX + panelW / 2, oy + SiegeConfig.GRID_ROWS * T - 16, { fontSize: 8, fill: 0x555544 }, true);
+    addText("Click: place/inspect | X: sell | Space: next wave", panelX + panelW / 2, oy + SiegeConfig.GRID_ROWS * T - 8, { fontSize: 7, fill: 0x555544 }, true);
   }
 
   getGridOffset(): { x: number; y: number } { return { x: 10, y: 50 }; }

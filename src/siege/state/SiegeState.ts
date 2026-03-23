@@ -75,17 +75,22 @@ export interface SiegeState {
   enemyIdCounter: number;
   towerIdCounter: number;
   selectedTower: TowerType | null;
+  inspectedTowerId: string | null; // clicked tower to inspect/sell
+  speedMult: number; // 1, 2, 3
   particles: { x: number; y: number; vx: number; vy: number; life: number; maxLife: number; color: number; size: number }[];
   announcements: { text: string; color: number; timer: number }[];
   totalKills: number;
   elapsedTime: number;
+  // Power-ups
+  freezeTimer: number; // seconds remaining of global freeze
+  meteorCooldown: number; // seconds until meteor available again
 }
 
 // ---------------------------------------------------------------------------
 // Map generation — S-shaped path with buildable areas
 // ---------------------------------------------------------------------------
 
-export function createSiegeMap(): { grid: MapCell[][]; path: { x: number; y: number }[] } {
+export function createSiegeMap(variant?: number): { grid: MapCell[][]; path: { x: number; y: number }[] } {
   const { GRID_COLS, GRID_ROWS } = SiegeConfig;
   const grid: MapCell[][] = [];
   for (let y = 0; y < GRID_ROWS; y++) {
@@ -95,31 +100,58 @@ export function createSiegeMap(): { grid: MapCell[][]; path: { x: number; y: num
     }
   }
 
-  // Create S-shaped path
+  const v = variant ?? Math.floor(Math.random() * 3);
   const path: { x: number; y: number }[] = [];
-  // Enter from left, row 2
-  let cx = 0, cy = 2;
-  // Right across
-  for (; cx < GRID_COLS - 4; cx++) { path.push({ x: cx, y: cy }); grid[cy][cx].type = "path"; }
-  // Down
-  for (; cy < GRID_ROWS - 3; cy++) { path.push({ x: cx, y: cy }); grid[cy][cx].type = "path"; }
-  // Left across
-  for (; cx > 3; cx--) { path.push({ x: cx, y: cy }); grid[cy][cx].type = "path"; }
-  // Down
-  for (; cy < GRID_ROWS - 1; cy++) { path.push({ x: cx, y: cy }); grid[cy][cx].type = "path"; }
-  // Right to castle
-  for (; cx < GRID_COLS; cx++) { path.push({ x: cx, y: cy }); grid[cy][cx].type = "path"; }
+
+  const carve = (x: number, y: number) => {
+    if (y >= 0 && y < GRID_ROWS && x >= 0 && x < GRID_COLS) {
+      path.push({ x, y }); grid[y][x].type = "path";
+    }
+  };
+
+  if (v === 0) {
+    // S-shape (classic)
+    let cx = 0, cy = 2;
+    for (; cx < GRID_COLS - 4; cx++) carve(cx, cy);
+    for (; cy < GRID_ROWS - 3; cy++) carve(cx, cy);
+    for (; cx > 3; cx--) carve(cx, cy);
+    for (; cy < GRID_ROWS - 1; cy++) carve(cx, cy);
+    for (; cx < GRID_COLS; cx++) carve(cx, cy);
+  } else if (v === 1) {
+    // Z-shape (top-right to bottom-left to bottom-right)
+    let cx = 0, cy = 1;
+    for (; cx < GRID_COLS - 3; cx++) carve(cx, cy);
+    for (; cy < GRID_ROWS - 4; cy++) { carve(cx, cy); cx = Math.max(3, cx - 1); }
+    for (; cx >= 2; cx--) carve(cx, cy);
+    for (; cy < GRID_ROWS - 1; cy++) carve(cx, cy);
+    for (; cx < GRID_COLS; cx++) carve(cx, cy);
+  } else {
+    // Spiral (inward clockwise)
+    let cx = 0, cy = 1;
+    // Right across top
+    for (; cx < GRID_COLS - 2; cx++) carve(cx, cy);
+    // Down right side
+    for (; cy < GRID_ROWS - 2; cy++) carve(cx, cy);
+    // Left across bottom
+    for (; cx > 4; cx--) carve(cx, cy);
+    // Up left-center
+    for (; cy > 4; cy--) carve(cx, cy);
+    // Right to center
+    for (; cx < GRID_COLS - 6; cx++) carve(cx, cy);
+    // Down to exit
+    for (; cy < GRID_ROWS - 1; cy++) carve(cx, cy);
+    for (; cx < GRID_COLS; cx++) carve(cx, cy);
+  }
 
   // Mark spawn and castle
-  grid[2][0].type = "spawn";
-  grid[GRID_ROWS - 1][GRID_COLS - 1].type = "castle";
+  if (path.length > 0) grid[path[0].y][path[0].x].type = "spawn";
+  if (path.length > 1) grid[path[path.length - 1].y][path[path.length - 1].x].type = "castle";
 
-  // Block some cells for variety
-  const blocked = [[1, 0], [1, 1], [0, 0], [0, 1], [GRID_COLS - 1, 0], [GRID_COLS - 2, 0]];
-  for (const [bx, by] of blocked) {
-    if (by < GRID_ROWS && bx < GRID_COLS && grid[by][bx].type === "buildable") {
-      grid[by][bx].type = "blocked";
-    }
+  // Random blocked cells
+  for (let bi = 0; bi < 6; bi++) {
+    const bx = Math.floor(Math.random() * GRID_COLS);
+    const by = Math.floor(Math.random() * GRID_ROWS);
+    if (grid[by][bx].type === "buildable") grid[by][bx].type = "blocked";
   }
 
   return { grid, path };
@@ -143,10 +175,14 @@ export function createSiegeState(): SiegeState {
     enemyIdCounter: 0,
     towerIdCounter: 0,
     selectedTower: null,
+    inspectedTowerId: null,
+    speedMult: 1,
     particles: [],
     announcements: [{ text: "Place towers to defend!", color: 0xffaa44, timer: 3 }],
     totalKills: 0,
     elapsedTime: 0,
+    freezeTimer: 0,
+    meteorCooldown: 0,
   };
 }
 

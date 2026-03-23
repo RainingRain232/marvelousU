@@ -9,7 +9,7 @@ import { audioManager } from "@audio/AudioManager";
 import { createSiegeState, SiegePhase } from "./state/SiegeState";
 import type { SiegeState } from "./state/SiegeState";
 import { SiegeConfig, WAVES, type TowerType } from "./config/SiegeConfig";
-import { placeTower, updateSiege, startWave } from "./systems/SiegeSystem";
+import { placeTower, sellTower, updateSiege, startWave, useFreeze, useMeteor } from "./systems/SiegeSystem";
 import { SiegeRenderer } from "./view/SiegeRenderer";
 
 export class SiegeGame {
@@ -93,15 +93,25 @@ export class SiegeGame {
     this._renderer.setTowerSelectCallback((type) => { this._state.selectedTower = type; });
     viewManager.addToLayer("ui", this._renderer.container);
 
-    // Click to place tower
+    // Click: place tower or inspect existing tower
     this._pointerHandler = (e: { global: { x: number; y: number } }) => {
       if (this._state.phase !== SiegePhase.BUILDING && this._state.phase !== SiegePhase.WAVE) return;
-      if (!this._state.selectedTower) return;
       const offset = this._renderer.getGridOffset();
       const col = Math.floor((e.global.x - offset.x) / SiegeConfig.TILE_SIZE);
       const row = Math.floor((e.global.y - offset.y) / SiegeConfig.TILE_SIZE);
-      if (placeTower(this._state, this._state.selectedTower, col, row)) {
-        this._state.announcements.push({ text: "Tower placed!", color: 0x44aa44, timer: 1 });
+      if (col < 0 || col >= SiegeConfig.GRID_COLS || row < 0 || row >= SiegeConfig.GRID_ROWS) return;
+
+      const cell = this._state.grid[row]?.[col];
+      if (cell?.towerId) {
+        // Click on existing tower — toggle inspect
+        this._state.inspectedTowerId = this._state.inspectedTowerId === cell.towerId ? null : cell.towerId;
+        this._state.selectedTower = null;
+      } else if (this._state.selectedTower) {
+        // Place new tower
+        if (placeTower(this._state, this._state.selectedTower, col, row)) {
+          this._state.announcements.push({ text: "Tower placed!", color: 0x44aa44, timer: 1 });
+        }
+        this._state.inspectedTowerId = null;
       }
     };
     viewManager.app.stage.eventMode = "static";
@@ -109,12 +119,30 @@ export class SiegeGame {
 
     this._keyHandler = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
+        if (this._state.inspectedTowerId) { this._state.inspectedTowerId = null; return; }
         this.destroy(); window.dispatchEvent(new Event("siegeExit"));
       }
       // Space to start wave early
       if (e.key === " " && this._state.phase === SiegePhase.BUILDING) {
-        e.preventDefault();
-        startWave(this._state);
+        e.preventDefault(); startWave(this._state);
+      }
+      // Speed control: 1/2/3
+      if (e.key === "1") this._state.speedMult = 1;
+      if (e.key === "2") this._state.speedMult = 2;
+      if (e.key === "3") this._state.speedMult = 3;
+      // Sell tower: X key while inspecting
+      if ((e.key === "x" || e.key === "X") && this._state.inspectedTowerId) {
+        sellTower(this._state, this._state.inspectedTowerId);
+        this._state.announcements.push({ text: "Tower sold!", color: 0xffaa44, timer: 1 });
+        this._state.inspectedTowerId = null;
+      }
+      // Power-ups: F = freeze, M = meteor
+      if (e.key === "f" || e.key === "F") useFreeze(this._state);
+      if (e.key === "m" || e.key === "M") {
+        // Meteor at center of screen (simple targeting)
+        const cx = SiegeConfig.GRID_COLS * SiegeConfig.TILE_SIZE / 2;
+        const cy = SiegeConfig.GRID_ROWS * SiegeConfig.TILE_SIZE / 2;
+        useMeteor(this._state, cx, cy);
       }
     };
     window.addEventListener("keydown", this._keyHandler);
