@@ -339,9 +339,28 @@ export class NecroRenderer {
           g.circle(gx + 1, gy - 14, 1).fill({ color: 0x2a2a20, alpha: 0.3 });
         }
 
-        // Moss/lichen on tombstones
-        g.circle(gx - 4, gy - 8, 2).fill({ color: 0x2a4a1a, alpha: 0.2 });
-        g.circle(gx + 3, gy - 14, 1.5).fill({ color: 0x2a4a1a, alpha: 0.15 });
+        // Moss/lichen on tombstones — irregular patches with tendrils
+        g.ellipse(gx - 4, gy - 8, 3, 1.5).fill({ color: 0x2a4a1a, alpha: 0.2 });
+        g.ellipse(gx + 3, gy - 14, 2, 1).fill({ color: 0x2a4a1a, alpha: 0.15 });
+        // Ivy tendrils crawling down
+        g.moveTo(gx - 5, gy - 10).bezierCurveTo(gx - 6, gy - 6, gx - 4, gy - 4, gx - 5, gy - 1).stroke({ color: 0x1a3a10, width: 0.4, alpha: 0.15 });
+        // Tiny ivy leaves along tendril
+        g.circle(gx - 5.5, gy - 7, 0.8).fill({ color: 0x2a4a1a, alpha: 0.12 });
+        g.circle(gx - 4.5, gy - 4, 0.7).fill({ color: 0x2a4a1a, alpha: 0.1 });
+
+        // Spider web on odd-numbered graves
+        if (grave.id % 3 === 0) {
+          const swx = gx + 6, swy = gy - 18;
+          // Radial threads
+          for (let si = 0; si < 5; si++) {
+            const sa = -Math.PI * 0.1 + si * Math.PI * 0.25;
+            g.moveTo(swx, swy).lineTo(swx + Math.cos(sa) * 6, swy + Math.sin(sa) * 6).stroke({ color: 0xaaaaaa, width: 0.2, alpha: 0.06 });
+          }
+          // Spiral threads
+          for (let sr = 2; sr <= 5; sr += 1.5) {
+            g.moveTo(swx + sr, swy).bezierCurveTo(swx + sr * 0.7, swy - sr * 0.7, swx - sr * 0.7, swy - sr * 0.3, swx - sr, swy + sr * 0.3).stroke({ color: 0xaaaaaa, width: 0.15, alpha: 0.04 });
+          }
+        }
 
         // Dig progress bar
         if (grave.digging) {
@@ -415,34 +434,70 @@ export class NecroRenderer {
       }
     }
 
-    // Pentagram inside — with inner circle
+    // Pentagram inside — with inner circle and geometric fill
     g.circle(ox + cx, oy + cy, circleR - 10).stroke({ color: DARK_PURPLE, width: 0.5, alpha: 0.1 });
+    // Inner smaller circle
+    g.circle(ox + cx, oy + cy, circleR * 0.35).stroke({ color: DARK_PURPLE, width: 0.5, alpha: 0.07 });
     for (let i = 0; i < 5; i++) {
       const a1 = (i / 5) * Math.PI * 2 - Math.PI / 2;
       const a2 = ((i + 2) / 5) * Math.PI * 2 - Math.PI / 2;
-      g.moveTo(ox + cx + Math.cos(a1) * (circleR - 10), oy + cy + Math.sin(a1) * (circleR - 10))
-        .lineTo(ox + cx + Math.cos(a2) * (circleR - 10), oy + cy + Math.sin(a2) * (circleR - 10))
+      const r = circleR - 10;
+      g.moveTo(ox + cx + Math.cos(a1) * r, oy + cy + Math.sin(a1) * r)
+        .lineTo(ox + cx + Math.cos(a2) * r, oy + cy + Math.sin(a2) * r)
         .stroke({ color: DARK_PURPLE, width: 1, alpha: 0.2 });
-      // Vertices glow
-      const vx = ox + cx + Math.cos(a1) * (circleR - 10);
-      const vy = oy + cy + Math.sin(a1) * (circleR - 10);
-      g.circle(vx, vy, 2).fill({ color: DARK_PURPLE, alpha: 0.15 });
+      // Vertices glow with rune circle
+      const vx = ox + cx + Math.cos(a1) * r;
+      const vy = oy + cy + Math.sin(a1) * r;
+      g.circle(vx, vy, 3).fill({ color: DARK_PURPLE, alpha: 0.15 });
+      g.circle(vx, vy, 5).stroke({ color: DARK_PURPLE, width: 0.3, alpha: 0.08 });
+      // Small arcane triangle at each vertex
+      const triR = 4;
+      const triA = a1 + Math.PI;
+      g.moveTo(vx + Math.cos(triA) * triR, vy + Math.sin(triA) * triR)
+        .lineTo(vx + Math.cos(triA + 2.1) * triR * 0.7, vy + Math.sin(triA + 2.1) * triR * 0.7)
+        .lineTo(vx + Math.cos(triA - 2.1) * triR * 0.7, vy + Math.sin(triA - 2.1) * triR * 0.7)
+        .stroke({ color: NECRO_GREEN, width: 0.4, alpha: 0.1 });
     }
+    // Inner hex pattern connecting alternate pentagram intersections
+    for (let i = 0; i < 5; i++) {
+      const a1 = (i / 5) * Math.PI * 2 - Math.PI / 2;
+      const a2 = ((i + 1) / 5) * Math.PI * 2 - Math.PI / 2;
+      const innerR = circleR * 0.35;
+      g.moveTo(ox + cx + Math.cos(a1) * innerR, oy + cy + Math.sin(a1) * innerR)
+        .lineTo(ox + cx + Math.cos(a2) * innerR, oy + cy + Math.sin(a2) * innerR)
+        .stroke({ color: DARK_PURPLE, width: 0.4, alpha: 0.06 });
+    }
+    // Center eye symbol
+    g.ellipse(ox + cx, oy + cy, 6, 3).stroke({ color: NECRO_GREEN, width: 0.5, alpha: 0.1 });
+    g.circle(ox + cx, oy + cy, 1.5).fill({ color: NECRO_GREEN, alpha: 0.15 });
 
     // Candles — 6 around the circle
     for (let ci = 0; ci < 6; ci++) {
       const ca = (ci / 6) * Math.PI * 2 - Math.PI / 2;
       const candleX = ox + cx + Math.cos(ca) * (circleR + 18);
       const candleY = oy + cy + Math.sin(ca) * (circleR + 18);
-      // Wax drip
+      // Wax pool at base — melted puddle
+      g.ellipse(candleX, candleY + 7, 4, 2).fill({ color: 0x332211, alpha: 0.25 });
+      g.ellipse(candleX + 1, candleY + 6.5, 2.5, 1.5).fill({ color: 0x3a2816, alpha: 0.2 });
+      // Candle body — tapered cylinder with wax drips
       g.rect(candleX - 1.5, candleY - 2, 3, 8).fill({ color: 0x443322, alpha: 0.5 });
-      g.circle(candleX - 2, candleY + 4, 1).fill({ color: 0x443322, alpha: 0.3 });
-      // Flame
+      // Wax drips running down sides
+      g.moveTo(candleX - 1.5, candleY).bezierCurveTo(candleX - 2, candleY + 2, candleX - 2.5, candleY + 3, candleX - 2, candleY + 5).stroke({ color: 0x443322, width: 0.8, alpha: 0.35 });
+      g.moveTo(candleX + 1.5, candleY + 1).bezierCurveTo(candleX + 2, candleY + 3, candleX + 2.5, candleY + 4, candleX + 2, candleY + 6).stroke({ color: 0x443322, width: 0.6, alpha: 0.3 });
+      g.circle(candleX - 2, candleY + 5, 1).fill({ color: 0x443322, alpha: 0.3 });
+      // Wick
+      g.moveTo(candleX, candleY - 2).lineTo(candleX, candleY - 4).stroke({ color: 0x111108, width: 0.5, alpha: 0.4 });
+      // Flame — layered with inner/outer
       const flicker = 0.5 + Math.sin(state.elapsed * 5 + ci * 1.3) * 0.2;
-      g.ellipse(candleX, candleY - 5, 2, 4).fill({ color: 0xffaa44, alpha: flicker * 0.6 });
-      g.circle(candleX, candleY - 5, 1).fill({ color: 0xffee88, alpha: flicker * 0.8 });
-      // Light pool
-      g.circle(candleX, candleY, 10).fill({ color: 0xffaa44, alpha: flicker * 0.02 });
+      // Outer flame
+      g.moveTo(candleX - 2.5, candleY - 4).bezierCurveTo(candleX - 3, candleY - 7, candleX + 3, candleY - 7, candleX + 2.5, candleY - 4).bezierCurveTo(candleX + 1, candleY - 10 - Math.sin(state.elapsed * 6 + ci) * 1.5, candleX - 1, candleY - 10 - Math.sin(state.elapsed * 6 + ci) * 1.5, candleX - 2.5, candleY - 4).fill({ color: 0xff8822, alpha: flicker * 0.5 });
+      // Inner flame
+      g.ellipse(candleX, candleY - 6, 1.2, 2.5).fill({ color: 0xffee88, alpha: flicker * 0.7 });
+      // Flame tip glow
+      g.circle(candleX, candleY - 8, 1).fill({ color: 0xffffff, alpha: flicker * 0.3 });
+      // Light pool — warm radial glow
+      g.circle(candleX, candleY, 12).fill({ color: 0xffaa44, alpha: flicker * 0.025 });
+      g.circle(candleX, candleY, 6).fill({ color: 0xffcc66, alpha: flicker * 0.015 });
     }
 
     // Smoke wisps rising from center
@@ -778,11 +833,39 @@ export class NecroRenderer {
       }
     }
 
-    // Scattered rubble/debris
+    // Scattered rubble — broken stone chunks with faceted shapes
     for (let ri = 0; ri < 12; ri++) {
       const rx = ox + 60 + (ri * 4217 % (fw - 120));
       const ry = oy + 40 + (ri * 3119 % (fh - 80));
-      g.circle(rx, ry, 1 + (ri % 3)).fill({ color: 0x222218, alpha: 0.2 });
+      const rSize = 1.5 + (ri % 3) * 1.2;
+      const rAngle = (ri * 1.7) % (Math.PI * 2);
+      // Faceted stone polygon (pentagon/hexagon)
+      const sides = 4 + (ri % 3);
+      g.moveTo(rx + Math.cos(rAngle) * rSize, ry + Math.sin(rAngle) * rSize * 0.6);
+      for (let si = 1; si <= sides; si++) {
+        const a = rAngle + (si / sides) * Math.PI * 2;
+        const r = rSize * (0.7 + ((si * ri) % 3) * 0.15);
+        g.lineTo(rx + Math.cos(a) * r, ry + Math.sin(a) * r * 0.6);
+      }
+      g.fill({ color: 0x222218, alpha: 0.25 });
+      // Crack line across stone
+      g.moveTo(rx - rSize * 0.5, ry).lineTo(rx + rSize * 0.3, ry + rSize * 0.2).stroke({ color: 0x0a0a06, width: 0.3, alpha: 0.15 });
+    }
+
+    // Broken pillar stumps on battlefield edges
+    for (let pi = 0; pi < 3; pi++) {
+      const px = ox + 15 + pi * (fw / 3);
+      const py = oy + fh - 15 - (pi * 1931 % 30);
+      const pH = 8 + (pi % 2) * 4;
+      // Pillar base
+      g.roundRect(px - 4, py - 2, 8, 4, 1).fill({ color: 0x333328, alpha: 0.3 });
+      // Broken column
+      g.rect(px - 3, py - pH, 6, pH - 2).fill({ color: 0x2a2a20, alpha: 0.25 });
+      // Jagged broken top
+      g.moveTo(px - 3, py - pH).lineTo(px - 1, py - pH - 3).lineTo(px + 1, py - pH - 1).lineTo(px + 3, py - pH - 2).lineTo(px + 3, py - pH).stroke({ color: 0x333328, width: 0.5, alpha: 0.2 });
+      // Column fluting lines
+      g.moveTo(px - 1, py - pH).lineTo(px - 1, py - 3).stroke({ color: 0x1a1a12, width: 0.3, alpha: 0.15 });
+      g.moveTo(px + 1, py - pH).lineTo(px + 1, py - 3).stroke({ color: 0x1a1a12, width: 0.3, alpha: 0.15 });
     }
 
     // Persistent battle marks (blood, debris)
@@ -855,6 +938,15 @@ export class NecroRenderer {
         // Jaw hint
         g.moveTo(skX - 2, skY + 2.5).bezierCurveTo(skX, skY + 3.5, skX, skY + 3.5, skX + 2, skY + 2.5).stroke({ color: BONE_WHITE, width: 0.5, alpha: wallAlpha * 0.3 });
       }
+
+      // Sinew/tissue connecting bones — organic webbing
+      for (let si = -1; si <= 1; si++) {
+        const sx1 = wx + si * 8, sy1 = wy - 5;
+        const sx2 = wx + (si + 0.5) * 6, sy2 = wy + 2;
+        g.moveTo(sx1, sy1).bezierCurveTo(sx1 + 2, sy1 + 3, sx2 - 2, sy2 - 2, sx2, sy2).stroke({ color: 0x661133, width: 0.6, alpha: wallAlpha * 0.2 });
+      }
+      // Muscle fiber strands between ribs
+      g.moveTo(wx - 10, wy - 1).bezierCurveTo(wx - 5, wy - 3, wx + 5, wy - 3, wx + 10, wy - 1).stroke({ color: 0x551122, width: 0.4, alpha: wallAlpha * 0.15 });
 
       // Green necromantic glow seeping through
       g.ellipse(wx, wy, 14, 8).fill({ color: NECRO_GREEN, alpha: 0.03 * hpRatio });
@@ -1069,36 +1161,98 @@ export class NecroRenderer {
     const pulse = 0.12 + Math.sin(t * 2 + u.id) * 0.06;
     g.circle(x, y, glowR).fill({ color: u.chimera ? 0xaa44ff : NECRO_GREEN, alpha: pulse * 0.15 });
 
-    // Legs — skeletal bone struts
+    // Legs — skeletal bone struts with knee joints
     const walkPhase = Math.sin(t * 5 + u.id * 1.3) * 2;
-    g.moveTo(x - 3, y + s * 0.5).lineTo(x - 4 - walkPhase, y + s + 3).stroke({ color: BONE_WHITE, width: 1, alpha: 0.5 });
-    g.moveTo(x + 3, y + s * 0.5).lineTo(x + 4 + walkPhase, y + s + 3).stroke({ color: BONE_WHITE, width: 1, alpha: 0.5 });
-    // Feet
-    g.circle(x - 4 - walkPhase, y + s + 3, 1).fill({ color: BONE_WHITE, alpha: 0.3 });
-    g.circle(x + 4 + walkPhase, y + s + 3, 1).fill({ color: BONE_WHITE, alpha: 0.3 });
+    const lKneeX = x - 3.5 - walkPhase * 0.4, lKneeY = y + s * 0.8;
+    const rKneeX = x + 3.5 + walkPhase * 0.4, rKneeY = y + s * 0.8;
+    const lFootX = x - 4 - walkPhase, lFootY = y + s + 3;
+    const rFootX = x + 4 + walkPhase, rFootY = y + s + 3;
+    // Femur (hip to knee)
+    g.moveTo(x - 3, y + s * 0.5).lineTo(lKneeX, lKneeY).stroke({ color: BONE_WHITE, width: 1.2, alpha: 0.5 });
+    g.moveTo(x + 3, y + s * 0.5).lineTo(rKneeX, rKneeY).stroke({ color: BONE_WHITE, width: 1.2, alpha: 0.5 });
+    // Knee joints — bony knobs
+    g.circle(lKneeX, lKneeY, 1.5).fill({ color: BONE_WHITE, alpha: 0.4 });
+    g.circle(rKneeX, rKneeY, 1.5).fill({ color: BONE_WHITE, alpha: 0.4 });
+    // Tibia (knee to foot)
+    g.moveTo(lKneeX, lKneeY).lineTo(lFootX, lFootY).stroke({ color: BONE_WHITE, width: 1, alpha: 0.45 });
+    g.moveTo(rKneeX, rKneeY).lineTo(rFootX, rFootY).stroke({ color: BONE_WHITE, width: 1, alpha: 0.45 });
+    // Skeletal feet — metatarsal fan
+    g.moveTo(lFootX, lFootY).lineTo(lFootX - 2, lFootY + 1.5).stroke({ color: BONE_WHITE, width: 0.6, alpha: 0.35 });
+    g.moveTo(lFootX, lFootY).lineTo(lFootX + 1.5, lFootY + 1.5).stroke({ color: BONE_WHITE, width: 0.6, alpha: 0.35 });
+    g.moveTo(lFootX, lFootY).lineTo(lFootX - 0.5, lFootY + 2).stroke({ color: BONE_WHITE, width: 0.6, alpha: 0.3 });
+    g.moveTo(rFootX, rFootY).lineTo(rFootX + 2, rFootY + 1.5).stroke({ color: BONE_WHITE, width: 0.6, alpha: 0.35 });
+    g.moveTo(rFootX, rFootY).lineTo(rFootX - 1.5, rFootY + 1.5).stroke({ color: BONE_WHITE, width: 0.6, alpha: 0.35 });
+    g.moveTo(rFootX, rFootY).lineTo(rFootX + 0.5, rFootY + 2).stroke({ color: BONE_WHITE, width: 0.6, alpha: 0.3 });
 
-    // Torso — ribcage shape
+    // Torso — ribcage shape with spine and proper ribs
     g.ellipse(x, y, s * 0.7, s * 0.9).fill({ color: u.color, alpha: 0.85 });
-    // Rib lines
-    for (let ri = -2; ri <= 2; ri++) {
-      const ry = y + ri * (s * 0.2);
-      g.moveTo(x - s * 0.5, ry).bezierCurveTo(x - s * 0.2, ry - 1, x + s * 0.2, ry - 1, x + s * 0.5, ry).stroke({ color: BONE_WHITE, width: 0.5, alpha: 0.15 });
+    // Spine — vertebrae column
+    for (let vi = -3; vi <= 3; vi++) {
+      const vy = y + vi * (s * 0.2);
+      g.circle(x, vy, 1).fill({ color: BONE_WHITE, alpha: 0.18 });
     }
+    // Rib pairs — curved bone arcs from spine outward
+    for (let ri = -2; ri <= 1; ri++) {
+      const ry = y + ri * (s * 0.25);
+      const ribW = s * 0.55 - Math.abs(ri) * s * 0.08;
+      // Left rib
+      g.moveTo(x, ry).bezierCurveTo(x - ribW * 0.5, ry - 1.5, x - ribW * 0.8, ry + 0.5, x - ribW, ry + 1).stroke({ color: BONE_WHITE, width: 0.8, alpha: 0.2 });
+      // Right rib
+      g.moveTo(x, ry).bezierCurveTo(x + ribW * 0.5, ry - 1.5, x + ribW * 0.8, ry + 0.5, x + ribW, ry + 1).stroke({ color: BONE_WHITE, width: 0.8, alpha: 0.2 });
+      // Rib bone knobs at tips
+      g.circle(x - ribW, ry + 1, 0.6).fill({ color: BONE_WHITE, alpha: 0.15 });
+      g.circle(x + ribW, ry + 1, 0.6).fill({ color: BONE_WHITE, alpha: 0.15 });
+    }
+    // Pelvis hint at bottom
+    g.moveTo(x - s * 0.4, y + s * 0.6).bezierCurveTo(x - s * 0.2, y + s * 0.8, x + s * 0.2, y + s * 0.8, x + s * 0.4, y + s * 0.6).stroke({ color: BONE_WHITE, width: 0.6, alpha: 0.12 });
 
-    // Arms — bone struts with weapons
+    // Arms — humerus + forearm with elbow joints
     const armSwing = Math.sin(t * 4 + u.id * 0.7) * 3;
-    // Left arm
-    g.moveTo(x - s * 0.6, y - s * 0.2).lineTo(x - s - 3, y + armSwing).stroke({ color: BONE_WHITE, width: 1, alpha: 0.5 });
-    // Right arm with weapon
-    g.moveTo(x + s * 0.6, y - s * 0.2).lineTo(x + s + 3, y - armSwing).stroke({ color: BONE_WHITE, width: 1, alpha: 0.5 });
-    // Weapon (claw/blade)
-    g.moveTo(x + s + 3, y - armSwing).lineTo(x + s + 7, y - armSwing - 3).stroke({ color: u.chimera ? 0xaa66cc : 0x667766, width: 1.5, alpha: 0.6 });
+    // Left arm — shoulder to elbow
+    const lElbX = x - s * 0.85, lElbY = y - s * 0.05 + armSwing * 0.4;
+    g.moveTo(x - s * 0.6, y - s * 0.2).lineTo(lElbX, lElbY).stroke({ color: BONE_WHITE, width: 1.2, alpha: 0.5 });
+    g.circle(lElbX, lElbY, 1.2).fill({ color: BONE_WHITE, alpha: 0.35 }); // Elbow joint
+    // Left forearm — elbow to hand
+    g.moveTo(lElbX, lElbY).lineTo(x - s - 3, y + armSwing).stroke({ color: BONE_WHITE, width: 1, alpha: 0.45 });
+    // Left hand — bony claw fingers
+    const lhx2 = x - s - 3, lhy2 = y + armSwing;
+    g.moveTo(lhx2, lhy2).lineTo(lhx2 - 2, lhy2 - 1.5).stroke({ color: BONE_WHITE, width: 0.5, alpha: 0.35 });
+    g.moveTo(lhx2, lhy2).lineTo(lhx2 - 2.5, lhy2 + 0.5).stroke({ color: BONE_WHITE, width: 0.5, alpha: 0.35 });
+    g.moveTo(lhx2, lhy2).lineTo(lhx2 - 1.5, lhy2 + 2).stroke({ color: BONE_WHITE, width: 0.5, alpha: 0.3 });
 
-    // Skull head
+    // Right arm — shoulder to elbow
+    const rElbX = x + s * 0.85, rElbY = y - s * 0.05 - armSwing * 0.4;
+    g.moveTo(x + s * 0.6, y - s * 0.2).lineTo(rElbX, rElbY).stroke({ color: BONE_WHITE, width: 1.2, alpha: 0.5 });
+    g.circle(rElbX, rElbY, 1.2).fill({ color: BONE_WHITE, alpha: 0.35 }); // Elbow joint
+    // Right forearm — elbow to hand
+    g.moveTo(rElbX, rElbY).lineTo(x + s + 3, y - armSwing).stroke({ color: BONE_WHITE, width: 1, alpha: 0.45 });
+    // Weapon — jagged blade with hilt
+    const wpX = x + s + 3, wpY = y - armSwing;
+    const wpCol = u.chimera ? 0xaa66cc : 0x667766;
+    g.moveTo(wpX, wpY).lineTo(wpX + 2, wpY - 1).lineTo(wpX + 5, wpY - 4).lineTo(wpX + 6, wpY - 3).lineTo(wpX + 3, wpY).stroke({ color: wpCol, width: 1.2, alpha: 0.6 });
+    // Blade edge serration
+    g.moveTo(wpX + 3, wpY - 2.5).lineTo(wpX + 3.5, wpY - 1.5).stroke({ color: wpCol, width: 0.5, alpha: 0.4 });
+    // Hilt crossguard
+    g.moveTo(wpX - 1, wpY - 1).lineTo(wpX + 1, wpY + 1).stroke({ color: 0x886644, width: 1, alpha: 0.5 });
+
+    // Skull head — cranium with suture lines
     const headY = y - s * 0.8;
     g.circle(x, headY, s * 0.45).fill({ color: BONE_WHITE, alpha: 0.7 });
-    // Jaw
-    g.moveTo(x - s * 0.3, headY + s * 0.3).bezierCurveTo(x - s * 0.1, headY + s * 0.45, x + s * 0.1, headY + s * 0.45, x + s * 0.3, headY + s * 0.3).stroke({ color: BONE_WHITE, width: 0.8, alpha: 0.4 });
+    // Cranial suture lines
+    g.moveTo(x, headY - s * 0.4).bezierCurveTo(x - 1, headY - s * 0.1, x + 1, headY + s * 0.1, x, headY + s * 0.3).stroke({ color: 0x999988, width: 0.3, alpha: 0.15 });
+    g.moveTo(x - s * 0.3, headY - s * 0.1).bezierCurveTo(x - s * 0.1, headY, x + s * 0.1, headY, x + s * 0.3, headY - s * 0.1).stroke({ color: 0x999988, width: 0.3, alpha: 0.12 });
+    // Zygomatic arches (cheekbones)
+    g.moveTo(x - s * 0.35, headY + s * 0.05).bezierCurveTo(x - s * 0.4, headY + s * 0.15, x - s * 0.35, headY + s * 0.2, x - s * 0.25, headY + s * 0.2).stroke({ color: BONE_WHITE, width: 0.5, alpha: 0.2 });
+    g.moveTo(x + s * 0.35, headY + s * 0.05).bezierCurveTo(x + s * 0.4, headY + s * 0.15, x + s * 0.35, headY + s * 0.2, x + s * 0.25, headY + s * 0.2).stroke({ color: BONE_WHITE, width: 0.5, alpha: 0.2 });
+    // Nasal bone — triangular opening
+    g.moveTo(x - s * 0.08, headY + s * 0.05).lineTo(x, headY + s * 0.18).lineTo(x + s * 0.08, headY + s * 0.05).stroke({ color: 0x0a0a06, width: 0.5, alpha: 0.25 });
+    // Jaw — separate mandible with teeth
+    g.moveTo(x - s * 0.3, headY + s * 0.25).bezierCurveTo(x - s * 0.15, headY + s * 0.42, x + s * 0.15, headY + s * 0.42, x + s * 0.3, headY + s * 0.25).stroke({ color: BONE_WHITE, width: 0.8, alpha: 0.4 });
+    // Teeth row — tiny rectangles
+    for (let ti = -2; ti <= 2; ti++) {
+      const tx = x + ti * (s * 0.08);
+      g.rect(tx - s * 0.03, headY + s * 0.22, s * 0.06, s * 0.08).fill({ color: BONE_WHITE, alpha: 0.25 });
+    }
 
     if (u.chimera) {
       // Chimera horns
@@ -1176,47 +1330,115 @@ export class NecroRenderer {
       g.circle(x, y, s + 6).fill({ color: 0xffd700, alpha: hpulse });
     }
 
-    // Legs — armored
+    // Legs — greaves with knee cops
     const walkPhase = Math.sin(t * 4.5 + c.id * 1.1) * 2;
-    g.moveTo(x - 3, y + s * 0.5).lineTo(x - 3 - walkPhase, y + s + 2).stroke({ color: 0x888888, width: 1.5, alpha: 0.5 });
-    g.moveTo(x + 3, y + s * 0.5).lineTo(x + 3 + walkPhase, y + s + 2).stroke({ color: 0x888888, width: 1.5, alpha: 0.5 });
-    // Boots
-    g.roundRect(x - 5 - walkPhase, y + s + 1, 4, 2, 0.5).fill({ color: 0x666655, alpha: 0.5 });
-    g.roundRect(x + 1 + walkPhase, y + s + 1, 4, 2, 0.5).fill({ color: 0x666655, alpha: 0.5 });
+    const clKneeX = x - 3.5 - walkPhase * 0.3, clKneeY = y + s * 0.7;
+    const crKneeX = x + 3.5 + walkPhase * 0.3, crKneeY = y + s * 0.7;
+    const clFootX = x - 3 - walkPhase, clFootY = y + s + 2;
+    const crFootX = x + 3 + walkPhase, crFootY = y + s + 2;
+    // Thigh armor
+    g.moveTo(x - 3, y + s * 0.5).lineTo(clKneeX, clKneeY).stroke({ color: 0x888888, width: 2, alpha: 0.5 });
+    g.moveTo(x + 3, y + s * 0.5).lineTo(crKneeX, crKneeY).stroke({ color: 0x888888, width: 2, alpha: 0.5 });
+    // Knee cops — diamond-shaped
+    g.moveTo(clKneeX, clKneeY - 2).lineTo(clKneeX + 1.5, clKneeY).lineTo(clKneeX, clKneeY + 2).lineTo(clKneeX - 1.5, clKneeY).fill({ color: 0x999999, alpha: 0.5 });
+    g.moveTo(crKneeX, crKneeY - 2).lineTo(crKneeX + 1.5, crKneeY).lineTo(crKneeX, crKneeY + 2).lineTo(crKneeX - 1.5, crKneeY).fill({ color: 0x999999, alpha: 0.5 });
+    // Shin guards
+    g.moveTo(clKneeX, clKneeY).lineTo(clFootX, clFootY).stroke({ color: 0x888888, width: 1.5, alpha: 0.5 });
+    g.moveTo(crKneeX, crKneeY).lineTo(crFootX, crFootY).stroke({ color: 0x888888, width: 1.5, alpha: 0.5 });
+    // Sabatons — armored boots
+    g.moveTo(clFootX - 3, clFootY + 2).lineTo(clFootX - 2, clFootY - 1).lineTo(clFootX + 2, clFootY - 1).lineTo(clFootX + 3, clFootY + 2).fill({ color: 0x777766, alpha: 0.55 });
+    g.moveTo(clFootX - 3, clFootY + 2).lineTo(clFootX - 2, clFootY - 1).lineTo(clFootX + 2, clFootY - 1).lineTo(clFootX + 3, clFootY + 2).stroke({ color: 0x999988, width: 0.4, alpha: 0.3 });
+    g.moveTo(crFootX - 3, crFootY + 2).lineTo(crFootX - 2, crFootY - 1).lineTo(crFootX + 2, crFootY - 1).lineTo(crFootX + 3, crFootY + 2).fill({ color: 0x777766, alpha: 0.55 });
+    g.moveTo(crFootX - 3, crFootY + 2).lineTo(crFootX - 2, crFootY - 1).lineTo(crFootX + 2, crFootY - 1).lineTo(crFootX + 3, crFootY + 2).stroke({ color: 0x999988, width: 0.4, alpha: 0.3 });
 
-    // Body — armored torso with tabard
-    g.ellipse(x, y, s * 0.7, s * 0.95).fill({ color: 0x888888, alpha: 0.8 }); // Chainmail base
+    // Body — chainmail with riveted detail
+    g.ellipse(x, y, s * 0.7, s * 0.95).fill({ color: 0x888888, alpha: 0.8 });
+    // Chainmail ring pattern hints
+    for (let my = -2; my <= 2; my++) {
+      for (let mx = -1; mx <= 1; mx++) {
+        const ringX = x + mx * (s * 0.18) + (my % 2) * (s * 0.09);
+        const ringY = y + my * (s * 0.15);
+        g.circle(ringX, ringY, s * 0.07).stroke({ color: 0x999999, width: 0.3, alpha: 0.12 });
+      }
+    }
     // Tabard / surcoat
     g.moveTo(x - s * 0.4, y - s * 0.3).lineTo(x - s * 0.5, y + s * 0.5).lineTo(x + s * 0.5, y + s * 0.5).lineTo(x + s * 0.4, y - s * 0.3).fill({ color: c.color, alpha: 0.6 });
+    // Belt with buckle
+    g.moveTo(x - s * 0.5, y + s * 0.15).lineTo(x + s * 0.5, y + s * 0.15).stroke({ color: 0x664422, width: 1.2, alpha: 0.4 });
+    g.roundRect(x - 1.5, y + s * 0.1, 3, 3, 0.5).fill({ color: 0xaa9944, alpha: 0.35 });
     // Armor highlight
     g.ellipse(x - 1, y - s * 0.2, s * 0.3, s * 0.4).fill({ color: 0xffffff, alpha: 0.05 });
 
-    // Arms
+    // Pauldrons — layered shoulder plates
+    g.moveTo(x - s * 0.55, y - s * 0.35).lineTo(x - s * 0.85, y - s * 0.15).lineTo(x - s * 0.8, y + s * 0.05).lineTo(x - s * 0.5, y - s * 0.1).fill({ color: 0x999999, alpha: 0.55 });
+    g.moveTo(x - s * 0.55, y - s * 0.35).lineTo(x - s * 0.85, y - s * 0.15).lineTo(x - s * 0.8, y + s * 0.05).lineTo(x - s * 0.5, y - s * 0.1).stroke({ color: 0xaaaaaa, width: 0.4, alpha: 0.3 });
+    g.moveTo(x + s * 0.55, y - s * 0.35).lineTo(x + s * 0.85, y - s * 0.15).lineTo(x + s * 0.8, y + s * 0.05).lineTo(x + s * 0.5, y - s * 0.1).fill({ color: 0x999999, alpha: 0.55 });
+    g.moveTo(x + s * 0.55, y - s * 0.35).lineTo(x + s * 0.85, y - s * 0.15).lineTo(x + s * 0.8, y + s * 0.05).lineTo(x + s * 0.5, y - s * 0.1).stroke({ color: 0xaaaaaa, width: 0.4, alpha: 0.3 });
+
+    // Arms with elbow cops
     const armSwing = Math.sin(t * 4 + c.id * 0.8) * 2;
-    // Shield arm (left)
-    g.moveTo(x - s * 0.6, y - s * 0.1).lineTo(x - s - 3, y + armSwing).stroke({ color: 0x888888, width: 1.5, alpha: 0.5 });
-    // Shield — kite/heater shape
-    const shX = x - s - 4, shY = y + armSwing;
-    g.moveTo(shX, shY - 4).lineTo(shX + 4, shY - 3).lineTo(shX + 4, shY + 2).lineTo(shX, shY + 5).lineTo(shX - 4, shY + 2).lineTo(shX - 4, shY - 3).fill({ color: 0x999988, alpha: 0.6 });
-    g.moveTo(shX, shY - 4).lineTo(shX + 4, shY - 3).lineTo(shX + 4, shY + 2).lineTo(shX, shY + 5).lineTo(shX - 4, shY + 2).lineTo(shX - 4, shY - 3).stroke({ color: 0xaaaaaa, width: 0.5, alpha: 0.4 });
+    // Shield arm (left) — upper arm, elbow, forearm
+    const cLElbX = x - s * 0.8, cLElbY = y + s * 0.05 + armSwing * 0.3;
+    g.moveTo(x - s * 0.6, y - s * 0.1).lineTo(cLElbX, cLElbY).stroke({ color: 0x888888, width: 1.5, alpha: 0.5 });
+    g.circle(cLElbX, cLElbY, 1.5).fill({ color: 0x999999, alpha: 0.4 }); // Elbow cop
+    g.moveTo(cLElbX, cLElbY).lineTo(x - s - 3, y + armSwing).stroke({ color: 0x888888, width: 1.5, alpha: 0.5 });
+    // Gauntlet
+    g.roundRect(x - s - 5, y + armSwing - 1.5, 4, 3, 0.5).fill({ color: 0x777766, alpha: 0.45 });
+
+    // Shield — kite shape with boss and rim rivets
+    const shX = x - s - 5, shY = y + armSwing;
+    g.moveTo(shX, shY - 5).lineTo(shX + 4, shY - 4).lineTo(shX + 4.5, shY + 2).lineTo(shX, shY + 6).lineTo(shX - 4.5, shY + 2).lineTo(shX - 4, shY - 4).fill({ color: 0x999988, alpha: 0.6 });
+    g.moveTo(shX, shY - 5).lineTo(shX + 4, shY - 4).lineTo(shX + 4.5, shY + 2).lineTo(shX, shY + 6).lineTo(shX - 4.5, shY + 2).lineTo(shX - 4, shY - 4).stroke({ color: 0xbbbbaa, width: 0.6, alpha: 0.4 });
+    // Shield boss (center dome)
+    g.circle(shX, shY, 2).fill({ color: 0xbbbb99, alpha: 0.35 });
+    g.circle(shX, shY, 2).stroke({ color: 0xccccaa, width: 0.4, alpha: 0.3 });
+    // Rim rivets
+    for (const [rx, ry] of [[shX, shY - 4.5], [shX + 3.5, shY - 3], [shX - 3.5, shY - 3], [shX + 4, shY + 1], [shX - 4, shY + 1], [shX, shY + 5.5]]) {
+      g.circle(rx, ry, 0.5).fill({ color: 0xccccaa, alpha: 0.3 });
+    }
     // Shield emblem (cross)
-    g.rect(shX - 0.5, shY - 2, 1, 5).fill({ color: 0xcc2222, alpha: 0.4 });
+    g.rect(shX - 0.5, shY - 2.5, 1, 5).fill({ color: 0xcc2222, alpha: 0.4 });
     g.rect(shX - 2, shY - 0.5, 4, 1).fill({ color: 0xcc2222, alpha: 0.4 });
 
-    // Weapon arm (right)
-    g.moveTo(x + s * 0.6, y - s * 0.1).lineTo(x + s + 2, y - armSwing).stroke({ color: 0x888888, width: 1.5, alpha: 0.5 });
-    // Sword
-    g.moveTo(x + s + 2, y - armSwing).lineTo(x + s + 8, y - armSwing - 5).stroke({ color: 0xddddcc, width: 1.5, alpha: 0.7 });
-    // Crossguard
-    g.moveTo(x + s + 1, y - armSwing - 0.5).lineTo(x + s + 3, y - armSwing + 1).stroke({ color: 0xaa9944, width: 1, alpha: 0.5 });
+    // Weapon arm (right) — with elbow cop
+    const cRElbX = x + s * 0.8, cRElbY = y + s * 0.05 - armSwing * 0.3;
+    g.moveTo(x + s * 0.6, y - s * 0.1).lineTo(cRElbX, cRElbY).stroke({ color: 0x888888, width: 1.5, alpha: 0.5 });
+    g.circle(cRElbX, cRElbY, 1.5).fill({ color: 0x999999, alpha: 0.4 }); // Elbow cop
+    g.moveTo(cRElbX, cRElbY).lineTo(x + s + 2, y - armSwing).stroke({ color: 0x888888, width: 1.5, alpha: 0.5 });
+    // Gauntlet
+    g.roundRect(x + s + 1, y - armSwing - 1.5, 4, 3, 0.5).fill({ color: 0x777766, alpha: 0.45 });
 
-    // Helmet
+    // Sword — fuller, pommel, crossguard detail
+    const swX = x + s + 3, swY = y - armSwing;
+    // Blade with fuller groove
+    g.moveTo(swX, swY).lineTo(swX + 6, swY - 5).lineTo(swX + 7, swY - 4.5).lineTo(swX + 1, swY + 0.5).fill({ color: 0xddddcc, alpha: 0.65 });
+    // Fuller (center groove)
+    g.moveTo(swX + 1, swY - 0.5).lineTo(swX + 5.5, swY - 4).stroke({ color: 0xbbbbaa, width: 0.4, alpha: 0.3 });
+    // Crossguard — wider with finials
+    g.moveTo(swX - 2, swY + 0.5).lineTo(swX + 2, swY - 1.5).stroke({ color: 0xaa9944, width: 1.2, alpha: 0.55 });
+    g.circle(swX - 2, swY + 0.5, 0.6).fill({ color: 0xaa9944, alpha: 0.4 });
+    g.circle(swX + 2, swY - 1.5, 0.6).fill({ color: 0xaa9944, alpha: 0.4 });
+    // Pommel
+    g.circle(swX - 0.5, swY + 1.5, 1).fill({ color: 0xaa9944, alpha: 0.4 });
+
+    // Helmet — great helm with nasal, visor, and crest
     const headY = y - s * 0.75;
-    g.circle(x, headY, s * 0.45).fill({ color: 0x999999, alpha: 0.8 });
+    g.circle(x, headY, s * 0.48).fill({ color: 0x999999, alpha: 0.8 });
+    // Faceplate rivets
+    g.circle(x - s * 0.25, headY + s * 0.1, 0.5).fill({ color: 0xbbbbbb, alpha: 0.3 });
+    g.circle(x + s * 0.25, headY + s * 0.1, 0.5).fill({ color: 0xbbbbbb, alpha: 0.3 });
+    // Nasal guard
+    g.rect(x - 0.8, headY - s * 0.15, 1.6, s * 0.4).fill({ color: 0xaaaaaa, alpha: 0.45 });
     // Visor slit
-    g.rect(x - s * 0.25, headY - 0.5, s * 0.5, 1.5).fill({ color: 0x222222, alpha: 0.5 });
-    // Helmet crest
-    g.moveTo(x, headY - s * 0.4).lineTo(x, headY - s * 0.65).stroke({ color: 0x888888, width: 1.5, alpha: 0.4 });
+    g.rect(x - s * 0.28, headY - 0.5, s * 0.56, 1.8).fill({ color: 0x222222, alpha: 0.55 });
+    // Breath holes
+    g.circle(x - s * 0.1, headY + s * 0.2, 0.5).fill({ color: 0x333333, alpha: 0.3 });
+    g.circle(x + s * 0.1, headY + s * 0.2, 0.5).fill({ color: 0x333333, alpha: 0.3 });
+    // Helmet rim
+    g.circle(x, headY, s * 0.48).stroke({ color: 0xaaaaaa, width: 0.5, alpha: 0.3 });
+    // Crest — horsehair plume
+    g.moveTo(x, headY - s * 0.45).bezierCurveTo(x - 1, headY - s * 0.55, x + 1, headY - s * 0.65, x, headY - s * 0.7).stroke({ color: 0xcc2222, width: 2, alpha: 0.45 });
+    g.moveTo(x - 0.5, headY - s * 0.5).bezierCurveTo(x - 2, headY - s * 0.55, x + 0.5, headY - s * 0.62, x - 0.5, headY - s * 0.68).stroke({ color: 0xaa1111, width: 1, alpha: 0.3 });
 
     // Type-specific details
     if (c.type === "paladin") {
@@ -1360,17 +1582,46 @@ export class NecroRenderer {
     g.circle(rhx + 1, rhy, 1.5).fill({ color: BONE_WHITE, alpha: 0.3 });
     g.moveTo(rhx, rhy).lineTo(rhx + 3, rhy - 1).stroke({ color: BONE_WHITE, width: 0.8, alpha: 0.35 });
 
-    // Staff — gnarled with knots
+    // Staff — gnarled with knots and vine wrapping
     const staffBaseX = x + 12, staffBaseY = y + 16 + hover;
     const staffTopX = x + 13, staffTopY = y - 20 + hover;
     g.moveTo(staffBaseX + sway * 0.5, staffBaseY).bezierCurveTo(staffBaseX + 1, y + hover, staffTopX - 1, staffTopY + 15, staffTopX, staffTopY).stroke({ color: 0x3a2a1a, width: 2.5 });
-    // Knots
-    g.circle(staffTopX - 0.5, staffTopY + 10, 2).fill({ color: 0x2a1a10, alpha: 0.4 });
-    g.circle(staffTopX, staffTopY + 22, 1.5).fill({ color: 0x2a1a10, alpha: 0.3 });
-    // Staff top — skull grip
-    g.circle(staffTopX, staffTopY, 3.5).fill({ color: BONE_WHITE, alpha: 0.5 });
-    g.circle(staffTopX - 1, staffTopY - 1, 0.8).fill({ color: 0x060208, alpha: 0.4 });
-    g.circle(staffTopX + 1, staffTopY - 1, 0.8).fill({ color: 0x060208, alpha: 0.4 });
+    // Vine wrapping — spiral around shaft
+    for (let vi = 0; vi < 6; vi++) {
+      const vt = vi / 6;
+      const vy2 = staffBaseY + (staffTopY - staffBaseY) * vt;
+      const vx2 = staffBaseX + (staffTopX - staffBaseX) * vt + Math.sin(vt * 12) * 2;
+      g.circle(vx2, vy2, 1).fill({ color: 0x1a3a10, alpha: 0.2 });
+      // Tiny leaf on vine
+      if (vi % 2 === 0) {
+        g.moveTo(vx2, vy2).bezierCurveTo(vx2 + 2, vy2 - 1, vx2 + 3, vy2, vx2 + 1, vy2 + 1).fill({ color: 0x2a4a1a, alpha: 0.15 });
+      }
+    }
+    // Bark texture lines
+    g.moveTo(staffTopX - 0.5, staffTopY + 5).lineTo(staffTopX, staffTopY + 12).stroke({ color: 0x2a1a10, width: 0.3, alpha: 0.2 });
+    g.moveTo(staffTopX + 0.5, staffTopY + 15).lineTo(staffTopX + 0.8, staffTopY + 25).stroke({ color: 0x2a1a10, width: 0.3, alpha: 0.18 });
+    // Knots — larger with rings
+    g.circle(staffTopX - 0.5, staffTopY + 10, 2.5).fill({ color: 0x2a1a10, alpha: 0.4 });
+    g.circle(staffTopX - 0.5, staffTopY + 10, 2.5).stroke({ color: 0x332211, width: 0.3, alpha: 0.2 });
+    g.circle(staffTopX, staffTopY + 22, 2).fill({ color: 0x2a1a10, alpha: 0.3 });
+    // Staff top — detailed skull grip with jaw and teeth
+    g.circle(staffTopX, staffTopY, 4).fill({ color: BONE_WHITE, alpha: 0.55 });
+    // Skull eye sockets
+    g.circle(staffTopX - 1.5, staffTopY - 0.5, 1).fill({ color: 0x060208, alpha: 0.5 });
+    g.circle(staffTopX + 1.5, staffTopY - 0.5, 1).fill({ color: 0x060208, alpha: 0.5 });
+    // Eye glow
+    g.circle(staffTopX - 1.5, staffTopY - 0.5, 0.5).fill({ color: NECRO_GREEN, alpha: 0.4 });
+    g.circle(staffTopX + 1.5, staffTopY - 0.5, 0.5).fill({ color: NECRO_GREEN, alpha: 0.4 });
+    // Nasal cavity
+    g.moveTo(staffTopX - 0.5, staffTopY + 1).lineTo(staffTopX, staffTopY + 2).lineTo(staffTopX + 0.5, staffTopY + 1).fill({ color: 0x060208, alpha: 0.35 });
+    // Jaw — hanging open
+    g.moveTo(staffTopX - 2.5, staffTopY + 2.5).bezierCurveTo(staffTopX - 1, staffTopY + 4, staffTopX + 1, staffTopY + 4, staffTopX + 2.5, staffTopY + 2.5).stroke({ color: BONE_WHITE, width: 0.6, alpha: 0.35 });
+    // Teeth
+    for (let ti = -1; ti <= 1; ti++) {
+      g.rect(staffTopX + ti * 1.2 - 0.3, staffTopY + 2.5, 0.6, 1).fill({ color: BONE_WHITE, alpha: 0.25 });
+    }
+    // Cranial cracks
+    g.moveTo(staffTopX - 1, staffTopY - 3).bezierCurveTo(staffTopX - 2, staffTopY - 1, staffTopX - 3, staffTopY + 1, staffTopX - 2.5, staffTopY + 2).stroke({ color: 0x999988, width: 0.2, alpha: 0.15 });
 
     // Staff orb — hovering above skull
     const orbY = staffTopY - 6;
