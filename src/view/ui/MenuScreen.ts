@@ -392,6 +392,12 @@ const GAME_MODES: GameModeEntry[] = [
     desc: "Potion puzzle: match ingredients, brew potions, serve customers",
     skipSetup: true,
   },
+  {
+    mode: GameMode.SIEGE,
+    label: "SIEGE",
+    desc: "Tower defense: build towers, defend your castle from 10 waves",
+    skipSetup: true,
+  },
 ];
 
 // ---------------------------------------------------------------------------

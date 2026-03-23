@@ -150,6 +150,7 @@ import { CovenGame } from "./coven/CovenGame";
 import { CaravanGame } from "./caravan/CaravanGame";
 import { ShadowhandGame } from "./shadowhand/ShadowhandGame";
 import { AlchemistGame } from "./alchemist/AlchemistGame";
+import { SiegeGame } from "./siege/SiegeGame";
 import { camelotHubScreen } from "@view/ui/CamelotHubScreen";
 
 // World mode imports
@@ -359,6 +360,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     [GameMode.CARAVAN]: 33,
     [GameMode.SHADOWHAND]: 34,
     [GameMode.ALCHEMIST]: 35,
+    [GameMode.SIEGE]: 36,
   };
   // Modes that need the setup screen (not skipSetup)
   const NEEDS_SETUP = new Set([GameMode.STANDARD, GameMode.DEATHMATCH, GameMode.BATTLEFIELD, GameMode.WAVE]);
@@ -553,6 +555,11 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     if (menuScreen.selectedGameMode === GameMode.ALCHEMIST) {
       menuScreen.hide();
       _bootAlchemistGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.SIEGE) {
+      menuScreen.hide();
+      _bootSiegeGame();
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.WORLD) {
@@ -3438,6 +3445,24 @@ async function _bootAlchemistGame(): Promise<void> {
     menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
   window.addEventListener("alchemistExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Siege mode boot
+// ---------------------------------------------------------------------------
+
+let _siegeGame: SiegeGame | null = null;
+
+async function _bootSiegeGame(): Promise<void> {
+  if (_siegeGame) { _siegeGame.destroy(); _siegeGame = null; }
+  _siegeGame = new SiegeGame();
+  await _siegeGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("siegeExit", _onExit);
+    if (_siegeGame) { _siegeGame.destroy(); _siegeGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("siegeExit", _onExit);
 }
 
 // ---------------------------------------------------------------------------
