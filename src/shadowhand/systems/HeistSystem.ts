@@ -2,7 +2,7 @@
 // Shadowhand mode — heist orchestration (tick loop, scoring, completion)
 // ---------------------------------------------------------------------------
 
-import type { ShadowhandState } from "../state/ShadowhandState";
+import type { ShadowhandState, HeistState } from "../state/ShadowhandState";
 import { ShadowhandPhase, AlertLevel, addLog, createHeistState, seedRng } from "../state/ShadowhandState";
 import { TARGET_DEFS, type TargetDef } from "../config/TargetDefs";
 import { ShadowhandConfig, getDifficulty } from "../config/ShadowhandConfig";
@@ -35,9 +35,9 @@ export function initHeist(state: ShadowhandState): void {
       const thief = createThiefUnit(crew[i], entry.x, entry.y);
 
       // Transfer injury from crew member to thief
-      if ((crew[i] as any).injured) {
+      if (crew[i].injured) {
         thief.injured = true;
-        thief.injuryPenalty = (crew[i] as any).injuryPenalty ?? 0.15;
+        thief.injuryPenalty = crew[i].injuryPenalty ?? 0.15;
       }
 
       // Apply equipment effects to thief
@@ -337,8 +337,8 @@ function completeHeist(state: ShadowhandState): void {
     if (thief.hp < thief.maxHp * 0.5 && Math.random() < 0.3) {
       const cm = state.guild.roster.find(c => c.id === thief.crewMemberId);
       if (cm) {
-        (cm as any).injured = true;
-        (cm as any).injuryPenalty = 0.1 + Math.random() * 0.15;
+        cm.injured = true;
+        cm.injuryPenalty = 0.1 + Math.random() * 0.15;
         addLog(state, `${cm.name} was injured during the heist. Performance reduced until healed.`);
       }
     }
@@ -464,8 +464,8 @@ export function decayHeat(state: ShadowhandState): void {
     for (const cm of state.guild.roster) {
       if (cm.alive && !cm.captured) {
         cm.hp = cm.maxHp;
-        (cm as any).injured = false;
-        (cm as any).injuryPenalty = 0;
+        cm.injured = false;
+        cm.injuryPenalty = 0;
       }
     }
   }

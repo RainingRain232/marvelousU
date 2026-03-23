@@ -107,6 +107,8 @@ export interface CrewMember {
   xp: number;
   alive: boolean;
   captured: boolean;
+  injured: boolean;
+  injuryPenalty: number;
   cooldowns: Map<string, number>;
 }
 
@@ -137,6 +139,8 @@ export function createCrewMember(role: CrewRole, id: string, nameSeed: number): 
     xp: 0,
     alive: true,
     captured: false,
+    injured: false,
+    injuryPenalty: 0,
     cooldowns: new Map(),
   };
 }

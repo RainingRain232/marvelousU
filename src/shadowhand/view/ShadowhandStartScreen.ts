@@ -45,10 +45,13 @@ function drawOrnament(g: Graphics, x1: number, x2: number, y: number, alpha: num
 export class ShadowhandStartScreen {
   readonly container = new Container();
   private _startCallback: ((difficulty: ShadowhandDifficulty) => void) | null = null;
+  private _continueCallback: (() => void) | null = null;
   private _backCallback: (() => void) | null = null;
   private _selectedDifficulty: ShadowhandDifficulty = "journeyman";
+  hasSave = false;
 
   setStartCallback(cb: (d: ShadowhandDifficulty) => void): void { this._startCallback = cb; }
+  setContinueCallback(cb: () => void): void { this._continueCallback = cb; }
   setBackCallback(cb: () => void): void { this._backCallback = cb; }
 
   show(sw: number, sh: number): void {
@@ -182,10 +185,21 @@ export class ShadowhandStartScreen {
     y += 4 * 16 + 18;
 
     // Buttons
-    this._fancyButton("BEGIN HEIST", sw / 2 - 100, y, 200, 42, COL, () => {
-      this._startCallback?.(this._selectedDifficulty);
-    });
-    y += 54;
+    if (this.hasSave) {
+      this._fancyButton("CONTINUE", sw / 2 - 100, y, 200, 42, 0xffd700, () => {
+        this._continueCallback?.();
+      });
+      y += 50;
+      this._fancyButton("NEW GAME", sw / 2 - 85, y, 170, 36, COL, () => {
+        this._startCallback?.(this._selectedDifficulty);
+      });
+      y += 44;
+    } else {
+      this._fancyButton("BEGIN HEIST", sw / 2 - 100, y, 200, 42, COL, () => {
+        this._startCallback?.(this._selectedDifficulty);
+      });
+      y += 54;
+    }
     this._fancyButton("BACK", sw / 2 - 65, y, 130, 32, 0x555555, () => {
       this._backCallback?.();
     });

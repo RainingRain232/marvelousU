@@ -2,7 +2,7 @@
 // Shadowhand mode — main orchestrator
 // ---------------------------------------------------------------------------
 
-import { Ticker } from "pixi.js";
+import { Ticker, Graphics } from "pixi.js";
 import { viewManager } from "@view/ViewManager";
 import { audioManager } from "@audio/AudioManager";
 
@@ -16,6 +16,7 @@ import { getUpgradeById as _getUpgradeById } from "./config/GuildUpgradeDefs";
 
 import { initHeist, updateHeist, decayHeat, consumeEquipment, checkInquisitionThreat, payInquisitionBribe, sufferInquisitionRaid } from "./systems/HeistSystem";
 import { generateContracts, generateNews, updateCrewBonds } from "./systems/ContractSystem";
+import { saveGame, loadGame, hasSaveGame } from "./systems/SaveSystem";
 import {
   moveThiefTo, useSmokeBomb, useSleepDart, useFlashPowder, placeCaltrops,
   unlockDoor, extinguishTorch,
@@ -81,10 +82,16 @@ export class ShadowhandGame {
   // ---------------------------------------------------------------------------
 
   private _showStartScreen(): void {
+    this._startScreen.hasSave = hasSaveGame();
     this._startScreen.setStartCallback((difficulty) => {
       viewManager.removeFromLayer("ui", this._startScreen.container);
       this._startScreen.hide();
       this._startGameWithDifficulty(difficulty);
+    });
+    this._startScreen.setContinueCallback(() => {
+      viewManager.removeFromLayer("ui", this._startScreen.container);
+      this._startScreen.hide();
+      this._continueGame();
     });
     this._startScreen.setBackCallback(() => {
       viewManager.removeFromLayer("ui", this._startScreen.container);
@@ -106,6 +113,19 @@ export class ShadowhandGame {
     this._showGuildScreen();
   }
 
+  private _continueGame(): void {
+    // Create a blank state and load saved data into it
+    const seed = Date.now() % 2147483647;
+    this._state = createShadowhandState(seed, "journeyman");
+    if (loadGame(this._state)) {
+      addLog(this._state, "Welcome back to the Shadowhand.");
+      this._showGuildScreen();
+    } else {
+      addLog(this._state, "No save found. Starting fresh.");
+      this._showGuildScreen();
+    }
+  }
+
   // ---------------------------------------------------------------------------
   // Guild hub
   // ---------------------------------------------------------------------------
@@ -120,6 +140,9 @@ export class ShadowhandGame {
     // Generate fresh contracts and news
     generateContracts(this._state);
     generateNews(this._state);
+
+    // Auto-save progress
+    saveGame(this._state);
 
     this._guildScreen.setHeistCallback((target, crewIds, equipIds) => {
       this._fadeTransition(() => {
@@ -662,7 +685,7 @@ export class ShadowhandGame {
   // ---------------------------------------------------------------------------
 
   private _fadeTransition(callback: () => void, duration = 300): void {
-    const { Graphics } = require("pixi.js") as typeof import("pixi.js");
+    // Graphics imported at top
     if (this._fadeOverlay) {
       viewManager.removeFromLayer("ui", this._fadeOverlay);
       this._fadeOverlay.destroy();

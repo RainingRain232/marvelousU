@@ -644,7 +644,6 @@ export class ShadowhandRenderer {
     // Jaw teeth (polygon spikes around edge)
     for (let i = 0; i < 8; i++) {
       const a = i * Math.PI / 4;
-      const ix = cx + Math.cos(a) * 4, iy = cy + Math.sin(a) * 4;
       const ox = cx + Math.cos(a) * 7, oy = cy + Math.sin(a) * 7;
       const la = a - 0.25, ra = a + 0.25;
       d.moveTo(cx + Math.cos(la) * 5, cy + Math.sin(la) * 5).lineTo(ox, oy).lineTo(cx + Math.cos(ra) * 5, cy + Math.sin(ra) * 5).stroke({ color: 0xff4444, width: 0.6, alpha: pulse * 0.6 });

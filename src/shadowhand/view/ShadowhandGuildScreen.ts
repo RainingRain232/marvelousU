@@ -333,7 +333,7 @@ export class ShadowhandGuildScreen {
       }
 
       // Injury indicator
-      if ((crew as any).injured) {
+      if (crew.injured) {
         this._text("\u26A0 INJURED", sw - 75, y + 36, { fontSize: 8, fill: 0xff8844, fontWeight: "bold" });
       }
 
@@ -349,14 +349,14 @@ export class ShadowhandGuildScreen {
     y += 15;
 
     // Rest button — free healing (costs 1 day)
-    const injuredOrHurt = state.guild.roster.filter(c => c.alive && !c.captured && (c.hp < c.maxHp || (c as any).injured));
+    const injuredOrHurt = state.guild.roster.filter(c => c.alive && !c.captured && (c.hp < c.maxHp || c.injured));
     if (injuredOrHurt.length > 0) {
       this._button("REST (heal crew, +1 day)", sw / 2 - 90, y, 180, 24, 0x4488aa, () => {
         for (const cm of state.guild.roster) {
           if (cm.alive && !cm.captured) {
             cm.hp = Math.min(cm.maxHp, cm.hp + Math.floor(cm.maxHp * 0.5));
-            (cm as any).injured = false;
-            (cm as any).injuryPenalty = 0;
+            cm.injured = false;
+            cm.injuryPenalty = 0;
           }
         }
         state.guild.day++;
@@ -494,6 +494,30 @@ export class ShadowhandGuildScreen {
 
     y += 15;
 
+    // Achievements list (with descriptions)
+    this._text("\u2605 Achievements", sw / 2, y, { fontSize: 12, fill: 0xffaa44, fontWeight: "bold" }, true);
+    y += 18;
+
+    const ACHIEVEMENT_DEFS: [string, string, number][] = [
+      ["first_heist", "First Blood — Complete your first heist", 0x44aa44],
+      ["ghost", "Ghost — Perfect escape with zero alerts", 0x88aaff],
+      ["phantom", "Phantom of Camelot — 5 ghost heists", 0x6644cc],
+      ["big_score", "Big Score — 1000+ points in one heist", 0xffd700],
+      ["unstoppable", "Unstoppable — 5 heists in a row", 0xff8844],
+      ["dragon_hoard", "Dragon's Hoard — 5000g total loot", 0xffaa44],
+      ["speed_demon", "Speed Demon — Heist in under 60s", 0x44ccff],
+      ["veteran", "Veteran — Crew reaches level 5", 0x88cc88],
+      ["grail_thief", "Grail Thief — Steal from the Grail Vault", 0xffd700],
+    ];
+
+    for (const [id, desc, color] of ACHIEVEMENT_DEFS) {
+      const earned = state.guild.achievements.has(id);
+      this._text(earned ? "\u2605" : "\u2606", 40, y, { fontSize: 10, fill: earned ? color : 0x333333 });
+      this._text(desc, 55, y, { fontSize: 8, fill: earned ? color : 0x444444 });
+      y += 14;
+    }
+    y += 10;
+
     // Stats summary
     this._text("Guild Stats", sw / 2, y, { fontSize: 12, fill: 0xccaa88, fontWeight: "bold" }, true);
     y += 18;
@@ -505,7 +529,6 @@ export class ShadowhandGuildScreen {
       ["Longest Streak", `${state.guild.longestStreak}`, 0xffd700],
       ["Total Loot", `${state.guild.totalLootValue}g`, 0xffd700],
       ["Perfect Heists", `${state.guild.perfectHeists}`, 0x44ff44],
-      ["Achievements", `${state.guild.achievements.size}`, 0xffaa44],
     ];
 
     for (const [label, value, color] of stats) {

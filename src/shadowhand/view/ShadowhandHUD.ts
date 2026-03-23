@@ -316,9 +316,8 @@ export class ShadowhandHUD {
       const alpha = Math.min(1, ann.timer / 1.5);
       const annText = new Text({ text: ann.text, style: new TextStyle({
         fontFamily: FONT, fontSize: 18, fill: ann.color, fontWeight: "bold",
-        letterSpacing: 2, dropShadow: true, dropShadowColor: 0x000000,
-        dropShadowDistance: 2, dropShadowAlpha: 0.8,
-      })});
+        letterSpacing: 2, dropShadow: { color: 0x000000, distance: 2, alpha: 0.8 },
+      } as any)});
       annText.alpha = alpha;
       annText.anchor.set(0.5, 0.5);
       annText.position.set(sw / 2, 80 + heist.announcements.indexOf(ann) * 28);
