@@ -52,9 +52,42 @@ export class ShadowhandResultsScreen {
     const isGameOver = state.phase === ShadowhandPhase.GAME_OVER;
     const accent = isVictory ? 0xffd700 : isGameOver ? 0xff4444 : 0x44aa88;
 
-    // Overlay
+    // Atmospheric overlay with thematic backdrop
     const ov = new Graphics();
-    ov.rect(0, 0, sw, sh).fill({ color: 0x000000, alpha: 0.92 });
+    ov.rect(0, 0, sw, sh).fill({ color: 0x000000, alpha: 0.88 });
+
+    if (isVictory) {
+      // Golden radiant backdrop — light rays from center
+      for (let ri = 0; ri < 12; ri++) {
+        const ra = ri * Math.PI / 6;
+        ov.moveTo(sw / 2, sh / 2 - 40).lineTo(sw / 2 + Math.cos(ra) * 400, sh / 2 - 40 + Math.sin(ra) * 400).stroke({ color: 0xffd700, width: 2, alpha: 0.02 });
+      }
+      // Golden glow
+      for (let gr = 1; gr <= 4; gr++) {
+        ov.circle(sw / 2, sh / 2 - 40, gr * 80).fill({ color: 0xffd700, alpha: 0.008 / gr });
+      }
+    } else if (isGameOver) {
+      // Dark red atmosphere — blood-like drip marks
+      for (let di = 0; di < 8; di++) {
+        const dx = sw * 0.1 + (di * sw * 0.1);
+        const dh = 40 + (di * 17 % 60);
+        ov.moveTo(dx, 0).bezierCurveTo(dx + 1, dh * 0.3, dx - 1, dh * 0.6, dx, dh).stroke({ color: 0x440000, width: 2 + (di % 3), alpha: 0.06 });
+      }
+      // Red fog at bottom
+      for (let fy = 0; fy < 3; fy++) {
+        ov.ellipse(sw / 2, sh - 40 + fy * 15, sw * 0.5, 20).fill({ color: 0x220000, alpha: 0.04 });
+      }
+    } else {
+      // Success — moonlit escape theme, subtle blue-silver
+      ov.circle(sw * 0.8, sh * 0.15, 15).fill({ color: 0xccccbb, alpha: 0.04 }); // moon
+      ov.circle(sw * 0.8, sh * 0.15, 8).fill({ color: 0xddddcc, alpha: 0.06 });
+      // Moon rays
+      for (let ri = 0; ri < 6; ri++) {
+        const ra = ri * Math.PI / 3;
+        ov.moveTo(sw * 0.8, sh * 0.15).lineTo(sw * 0.8 + Math.cos(ra) * 120, sh * 0.15 + Math.sin(ra) * 120).stroke({ color: 0xbbbbaa, width: 0.5, alpha: 0.01 });
+      }
+    }
+
     ov.eventMode = "static"; this.container.addChild(ov);
 
     // Panel

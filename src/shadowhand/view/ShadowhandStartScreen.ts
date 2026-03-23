@@ -57,16 +57,50 @@ export class ShadowhandStartScreen {
   show(sw: number, sh: number): void {
     this.container.removeChildren();
 
-    // Dark background with subtle gradient
+    // Atmospheric night sky background
     const bg = new Graphics();
-    bg.rect(0, 0, sw, sh).fill({ color: 0x030505 });
-    // Vignette effect
-    for (let i = 0; i < 6; i++) {
-      const inset = i * 40;
+    bg.rect(0, 0, sw, sh).fill({ color: 0x030508 });
+    // Sky gradient (darker at top, slightly lighter at horizon)
+    for (let gy = 0; gy < 6; gy++) {
+      bg.rect(0, gy * sh / 12, sw, sh / 12).fill({ color: 0x060810, alpha: gy * 0.015 });
+    }
+    // Stars
+    for (let si = 0; si < 40; si++) {
+      const sx = (si * 7919 % (sw - 40)) + 20;
+      const sy = (si * 4813 % (sh * 0.4));
+      const br = (si * 3571 % 100) / 100;
+      bg.circle(sx, sy, 0.5 + br * 0.8).fill({ color: 0xddeeff, alpha: 0.05 + br * 0.08 });
+    }
+    // Distant castle silhouette at horizon
+    const horizY = sh * 0.35;
+    // Mountains
+    bg.moveTo(0, horizY);
+    for (let mx = 0; mx <= sw; mx += 40) {
+      bg.lineTo(mx, horizY - 15 - Math.sin(mx * 0.01) * 20 - Math.sin(mx * 0.03) * 8);
+    }
+    bg.lineTo(sw, horizY).lineTo(0, horizY).closePath().fill({ color: 0x060810, alpha: 0.3 });
+    // Castle tower (center)
+    const cx = sw / 2;
+    bg.rect(cx - 20, horizY - 50, 40, 50).fill({ color: 0x080a12, alpha: 0.25 });
+    bg.moveTo(cx, horizY - 60).lineTo(cx - 12, horizY - 50).lineTo(cx + 12, horizY - 50).closePath().fill({ color: 0x0a0c16, alpha: 0.2 });
+    // Tower windows (faint orange)
+    bg.rect(cx - 3, horizY - 40, 2, 3).fill({ color: 0xff8833, alpha: 0.06 });
+    bg.rect(cx + 2, horizY - 35, 2, 3).fill({ color: 0xff8833, alpha: 0.05 });
+    // Wall extending from tower
+    bg.rect(cx - 80, horizY - 20, 160, 20).fill({ color: 0x080a12, alpha: 0.2 });
+    for (let bx = cx - 80; bx < cx + 80; bx += 8) bg.rect(bx, horizY - 24, 4, 4).fill({ color: 0x080a12, alpha: 0.18 });
+    // Ground fog
+    for (let fy = 0; fy < 5; fy++) {
+      const fogY = horizY + fy * 15 + 5;
+      bg.ellipse(sw / 2 + Math.sin(fy * 1.3) * 100, fogY, sw * 0.6, 12 + fy * 3).fill({ color: 0x080a12, alpha: 0.04 });
+    }
+    // Heavy vignette
+    for (let i = 0; i < 8; i++) {
+      const inset = i * 35;
       bg.rect(0, 0, inset, sh).fill({ color: 0x000000, alpha: 0.03 });
       bg.rect(sw - inset, 0, inset, sh).fill({ color: 0x000000, alpha: 0.03 });
-      bg.rect(0, 0, sw, inset).fill({ color: 0x000000, alpha: 0.02 });
-      bg.rect(0, sh - inset, sw, inset).fill({ color: 0x000000, alpha: 0.02 });
+      bg.rect(0, 0, sw, inset).fill({ color: 0x000000, alpha: 0.025 });
+      bg.rect(0, sh - inset, sw, inset).fill({ color: 0x000000, alpha: 0.025 });
     }
     this.container.addChild(bg);
 

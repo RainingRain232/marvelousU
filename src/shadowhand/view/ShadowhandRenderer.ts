@@ -52,25 +52,120 @@ export class ShadowhandRenderer {
 
   init(): void {
     this.container.removeChildren();
-    // Atmospheric background layer
-    const bgGfx = new Graphics();
-    bgGfx.rect(-2000, -2000, 6000, 6000).fill({ color: 0x050508 });
-    // Distant castle wall silhouette (static backdrop)
-    for (let bx = -500; bx < 3000; bx += 120 + Math.sin(bx * 0.01) * 40) {
-      const bh = 30 + Math.sin(bx * 0.03) * 15;
-      bgGfx.rect(bx, -200 - bh, 80 + Math.sin(bx * 0.02) * 20, bh).fill({ color: 0x0a0a10, alpha: 0.3 });
-      // Battlements
-      for (let mx = bx; mx < bx + 80; mx += 12) {
-        bgGfx.rect(mx, -200 - bh - 6, 6, 6).fill({ color: 0x0a0a10, alpha: 0.25 });
+    const bg = new Graphics();
+    const W = 6000, H = 6000;
+
+    // Night sky gradient (dark blue-black at top → dark grey-blue at horizon)
+    bg.rect(-2000, -2000, W, H).fill({ color: 0x040410 });
+    // Sky gradient bands
+    for (let sy = 0; sy < 8; sy++) {
+      const skyY = -2000 + sy * 200;
+      const alpha = 0.02 + sy * 0.005;
+      bg.rect(-2000, skyY, W, 200).fill({ color: 0x0a0a1a, alpha });
+    }
+
+    // Stars (scattered point lights)
+    for (let si = 0; si < 80; si++) {
+      const sx = -1500 + (si * 7919 % 5000);
+      const sy = -1800 + (si * 4813 % 1200);
+      const brightness = (si * 3571 % 100) / 100;
+      const size = 0.5 + brightness * 1.2;
+      bg.circle(sx, sy, size).fill({ color: 0xeeeeff, alpha: 0.1 + brightness * 0.15 });
+      // Larger stars get a subtle cross sparkle
+      if (brightness > 0.7) {
+        bg.moveTo(sx - 2, sy).lineTo(sx + 2, sy).stroke({ color: 0xeeeeff, width: 0.3, alpha: 0.06 });
+        bg.moveTo(sx, sy - 2).lineTo(sx, sy + 2).stroke({ color: 0xeeeeff, width: 0.3, alpha: 0.06 });
       }
     }
-    // Fog banks at edges
-    for (let fy = -100; fy < 2000; fy += 80) {
-      const fw = 200 + Math.sin(fy * 0.02) * 100;
-      bgGfx.ellipse(-100, fy, fw, 30).fill({ color: 0x0a0a14, alpha: 0.08 });
-      bgGfx.ellipse(2500, fy, fw, 30).fill({ color: 0x0a0a14, alpha: 0.08 });
+
+    // Crescent moon
+    const moonX = 800, moonY = -1500;
+    bg.circle(moonX, moonY, 18).fill({ color: 0xccccbb, alpha: 0.12 }); // outer glow
+    bg.circle(moonX, moonY, 12).fill({ color: 0xddddcc, alpha: 0.15 }); // mid glow
+    bg.circle(moonX, moonY, 8).fill({ color: 0xeeeedd, alpha: 0.2 }); // inner
+    // Crescent cutout (dark circle overlapping)
+    bg.circle(moonX + 5, moonY - 2, 7).fill({ color: 0x040410, alpha: 0.85 });
+    // Moonbeam rays (very faint, long)
+    for (let ri = 0; ri < 8; ri++) {
+      const ra = ri * Math.PI / 4;
+      bg.moveTo(moonX, moonY).lineTo(moonX + Math.cos(ra) * 80, moonY + Math.sin(ra) * 80).stroke({ color: 0xbbbbaa, width: 0.5, alpha: 0.015 });
     }
-    this.container.addChild(bgGfx);
+
+    // Distant mountain/hill silhouette (layer 1 — farthest)
+    bg.moveTo(-2000, -400);
+    for (let mx = -2000; mx < 4000; mx += 60) {
+      const mh = 40 + Math.sin(mx * 0.008) * 30 + Math.sin(mx * 0.023) * 15;
+      bg.lineTo(mx, -400 - mh);
+    }
+    bg.lineTo(4000, -400).lineTo(-2000, -400).closePath().fill({ color: 0x080810, alpha: 0.4 });
+
+    // Castle silhouette (layer 2 — mid distance, multiple structures)
+    const castleY = -250;
+    // Main keep
+    bg.rect(200, castleY - 80, 120, 80).fill({ color: 0x0a0a14, alpha: 0.35 });
+    bg.rect(190, castleY - 90, 14, 90).fill({ color: 0x0a0a14, alpha: 0.35 }); // left tower
+    bg.rect(316, castleY - 100, 14, 100).fill({ color: 0x0a0a14, alpha: 0.35 }); // right tower
+    // Tower crenellations
+    for (let cx = 190; cx < 204; cx += 5) bg.rect(cx, castleY - 95, 3, 5).fill({ color: 0x0a0a14, alpha: 0.3 });
+    for (let cx = 316; cx < 330; cx += 5) bg.rect(cx, castleY - 105, 3, 5).fill({ color: 0x0a0a14, alpha: 0.3 });
+    // Tower roofs (pointed polygon)
+    bg.moveTo(197, castleY - 95).lineTo(190, castleY - 90).lineTo(204, castleY - 90).closePath().fill({ color: 0x0c0c18, alpha: 0.3 });
+    bg.moveTo(323, castleY - 105).lineTo(316, castleY - 100).lineTo(330, castleY - 100).closePath().fill({ color: 0x0c0c18, alpha: 0.3 });
+    // Keep battlements
+    for (let cx = 200; cx < 320; cx += 10) bg.rect(cx, castleY - 85, 5, 5).fill({ color: 0x0a0a14, alpha: 0.3 });
+    // Distant lit windows (warm orange dots)
+    for (const [wx, wy] of [[220, castleY - 60], [260, castleY - 50], [290, castleY - 65], [198, castleY - 70], [322, castleY - 80]]) {
+      bg.rect(wx, wy, 3, 4).fill({ color: 0xff8833, alpha: 0.08 });
+      bg.circle(wx + 1.5, wy + 2, 5).fill({ color: 0xff8833, alpha: 0.015 }); // window glow
+    }
+
+    // Second castle structure (left, smaller)
+    bg.rect(-300, castleY - 50, 80, 50).fill({ color: 0x0a0a14, alpha: 0.25 });
+    bg.rect(-310, castleY - 60, 10, 60).fill({ color: 0x0a0a14, alpha: 0.25 });
+    for (let cx = -300; cx < -220; cx += 8) bg.rect(cx, castleY - 55, 4, 5).fill({ color: 0x0a0a14, alpha: 0.2 });
+
+    // Wall connecting structures (long low wall)
+    for (let wx = -200; wx < 200; wx += 100) {
+      const wh = 20 + Math.sin(wx * 0.02) * 8;
+      bg.rect(wx, castleY - wh, 90, wh).fill({ color: 0x0a0a14, alpha: 0.2 });
+      for (let cx = wx; cx < wx + 90; cx += 8) bg.rect(cx, castleY - wh - 4, 4, 4).fill({ color: 0x0a0a14, alpha: 0.18 });
+    }
+
+    // Foreground castle wall (layer 3 — closest, darker)
+    for (let bx = -500; bx < 3000; bx += 100 + Math.sin(bx * 0.01) * 30) {
+      const bh = 25 + Math.sin(bx * 0.03) * 12;
+      bg.rect(bx, -150 - bh, 70 + Math.sin(bx * 0.02) * 15, bh).fill({ color: 0x0c0c16, alpha: 0.35 });
+      for (let mx = bx; mx < bx + 70; mx += 10) {
+        bg.rect(mx, -150 - bh - 5, 5, 5).fill({ color: 0x0c0c16, alpha: 0.3 });
+      }
+    }
+
+    // Ground-level fog banks (dense at bottom, wispy above)
+    for (let fy = -100; fy < 2500; fy += 50) {
+      const fw = 250 + Math.sin(fy * 0.015) * 120;
+      // Left fog
+      bg.ellipse(-80, fy, fw, 25 + Math.sin(fy * 0.03) * 10).fill({ color: 0x0a0a14, alpha: 0.07 });
+      bg.ellipse(-120, fy + 15, fw * 0.7, 18).fill({ color: 0x080810, alpha: 0.04 });
+      // Right fog
+      bg.ellipse(2600, fy, fw, 25 + Math.cos(fy * 0.02) * 8).fill({ color: 0x0a0a14, alpha: 0.07 });
+      bg.ellipse(2550, fy - 10, fw * 0.6, 15).fill({ color: 0x080810, alpha: 0.04 });
+    }
+    // Bottom fog (thick ground mist)
+    for (let fy = 1500; fy < 3000; fy += 40) {
+      bg.ellipse(1200 + Math.sin(fy * 0.01) * 500, fy, 1500, 30).fill({ color: 0x0a0a14, alpha: 0.03 });
+    }
+
+    // Distant trees (fir silhouettes behind castle)
+    for (let tx = -600; tx < 3000; tx += 35 + Math.sin(tx * 0.05) * 15) {
+      const th = 20 + Math.sin(tx * 0.07) * 10;
+      const treeY = -150;
+      // Triangle tree
+      bg.moveTo(tx, treeY).lineTo(tx - 6 - th * 0.15, treeY + th).lineTo(tx + 6 + th * 0.15, treeY + th).closePath().fill({ color: 0x060810, alpha: 0.2 });
+      // Trunk
+      bg.rect(tx - 1.5, treeY + th, 3, 5).fill({ color: 0x060810, alpha: 0.15 });
+    }
+
+    this.container.addChild(bg);
 
     this._mapGfx = new Graphics();
     this._detailGfx = new Graphics();

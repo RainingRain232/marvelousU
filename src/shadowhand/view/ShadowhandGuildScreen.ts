@@ -42,36 +42,56 @@ export class ShadowhandGuildScreen {
 
     const bg = new Graphics();
     bg.rect(0, 0, sw, sh).fill({ color: 0x040606 });
-    // Stone wall texture (horizontal brick courses)
+
+    // Stone wall texture with weathering
     for (let row = 0; row < Math.ceil(sh / 18); row++) {
       const ry = row * 18;
       const offset = (row % 2) * 30;
       bg.moveTo(0, ry).lineTo(sw, ry).stroke({ color: 0x080a08, width: 0.5, alpha: 0.2 });
       for (let col = 0; col < Math.ceil(sw / 60) + 1; col++) {
-        const cx = col * 60 + offset;
-        bg.moveTo(cx, ry).lineTo(cx, ry + 18).stroke({ color: 0x080a08, width: 0.4, alpha: 0.15 });
+        const ccx = col * 60 + offset;
+        bg.moveTo(ccx, ry).lineTo(ccx, ry + 18).stroke({ color: 0x080a08, width: 0.4, alpha: 0.15 });
+        // Random brick shade variation
+        if ((row * 7 + col * 13) % 11 < 3) {
+          bg.rect(ccx + 1, ry + 1, 58, 16).fill({ color: 0x060806, alpha: 0.08 });
+        }
       }
     }
-    // Vignette
-    for (let v = 0; v < 5; v++) {
-      const inset = v * 50;
-      bg.rect(0, 0, inset, sh).fill({ color: 0x000000, alpha: 0.025 });
-      bg.rect(sw - inset, 0, inset, sh).fill({ color: 0x000000, alpha: 0.025 });
-      bg.rect(0, 0, sw, inset).fill({ color: 0x000000, alpha: 0.015 });
-      bg.rect(0, sh - inset, sw, inset).fill({ color: 0x000000, alpha: 0.015 });
+
+    // Tavern atmosphere — warm torch glow from corners
+    for (const [tlx, tly] of [[40, 80], [sw - 40, 80], [40, sh - 50], [sw - 40, sh - 50]]) {
+      for (let gr = 1; gr <= 5; gr++) {
+        bg.circle(tlx, tly, gr * 40).fill({ color: 0xff8833, alpha: 0.008 / gr });
+      }
+      // Torch bracket
+      bg.rect(tlx - 2, tly - 4, 4, 6).fill({ color: 0x3a2a1a, alpha: 0.12 });
+      // Flame
+      bg.ellipse(tlx, tly - 6, 2, 3).fill({ color: 0xff6622, alpha: 0.1 });
+      bg.ellipse(tlx, tly - 7, 1, 2).fill({ color: 0xffaa44, alpha: 0.08 });
     }
-    // Heraldic shield (guild crest — centered, faded)
-    const cx = sw / 2, cy = sh / 2;
+
+    // Timber beams (horizontal and vertical, faint)
+    bg.rect(0, sh * 0.33, sw, 4).fill({ color: 0x2a1a0a, alpha: 0.06 });
+    bg.rect(0, sh * 0.66, sw, 4).fill({ color: 0x2a1a0a, alpha: 0.06 });
+    bg.rect(sw * 0.25, 0, 3, sh).fill({ color: 0x2a1a0a, alpha: 0.04 });
+    bg.rect(sw * 0.75, 0, 3, sh).fill({ color: 0x2a1a0a, alpha: 0.04 });
+
+    // Heavy vignette
+    for (let v = 0; v < 6; v++) {
+      const inset = v * 45;
+      bg.rect(0, 0, inset, sh).fill({ color: 0x000000, alpha: 0.03 });
+      bg.rect(sw - inset, 0, inset, sh).fill({ color: 0x000000, alpha: 0.03 });
+      bg.rect(0, 0, sw, inset).fill({ color: 0x000000, alpha: 0.02 });
+      bg.rect(0, sh - inset, sw, inset).fill({ color: 0x000000, alpha: 0.02 });
+    }
+
+    // Guild crest (centered watermark)
+    const gcx = sw / 2, gcy = sh / 2;
     const crestA = 0.04;
-    // Shield outline
-    bg.moveTo(cx - 40, cy - 50).lineTo(cx + 40, cy - 50).lineTo(cx + 40, cy + 10).lineTo(cx, cy + 40).lineTo(cx - 40, cy + 10).closePath().stroke({ color: COL, width: 1.5, alpha: crestA });
-    // Inner shield
-    bg.moveTo(cx - 35, cy - 45).lineTo(cx + 35, cy - 45).lineTo(cx + 35, cy + 7).lineTo(cx, cy + 35).lineTo(cx - 35, cy + 7).closePath().fill({ color: COL, alpha: crestA * 0.3 });
-    // Crossed daggers
-    bg.moveTo(cx - 15, cy - 25).lineTo(cx + 15, cy + 15).stroke({ color: COL, width: 1, alpha: crestA * 2 });
-    bg.moveTo(cx + 15, cy - 25).lineTo(cx - 15, cy + 15).stroke({ color: COL, width: 1, alpha: crestA * 2 });
-    // Guild name arc
-    bg.circle(cx, cy - 15, 25).stroke({ color: COL, width: 0.5, alpha: crestA * 1.5 });
+    bg.moveTo(gcx - 40, gcy - 50).lineTo(gcx + 40, gcy - 50).lineTo(gcx + 40, gcy + 10).lineTo(gcx, gcy + 40).lineTo(gcx - 40, gcy + 10).closePath().stroke({ color: COL, width: 1.5, alpha: crestA });
+    bg.moveTo(gcx - 35, gcy - 45).lineTo(gcx + 35, gcy - 45).lineTo(gcx + 35, gcy + 7).lineTo(gcx, gcy + 35).lineTo(gcx - 35, gcy + 7).closePath().fill({ color: COL, alpha: crestA * 0.3 });
+    bg.moveTo(gcx - 15, gcy - 25).lineTo(gcx + 15, gcy + 15).stroke({ color: COL, width: 1, alpha: crestA * 2 });
+    bg.moveTo(gcx + 15, gcy - 25).lineTo(gcx - 15, gcy + 15).stroke({ color: COL, width: 1, alpha: crestA * 2 });
     this.container.addChild(bg);
 
     // Header
