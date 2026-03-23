@@ -1083,80 +1083,42 @@ export class MenuScreen {
       { title: "WORLDS & SPORTS", icon: "\u{1F30D}", color: 0x6699ff, accent: 0x0a1a2a, indices: [19, 20, 23, 24, 25, 26, 27, 30, 39, 40, 43, 44, 45] },
     ];
 
-    const COLS = 3;
-    const gapX = 10;
-    const gapY = 8;
+    const COLS = 4;
+    const gapX = 8;
+    const gapY = 5;
     const tileW = Math.floor((CW - padX * 2 - gapX * (COLS - 1)) / COLS);
-    const tileH = 56;
+    const tileH = 38;
 
-    let curY = 92;
+    let curY = 72;
     this._s1NavItems = [];
 
     for (const cat of categories) {
-      curY += 6;
-      // ── Category ornamental header ──
+      curY += 4;
+      // ── Category ornamental header (compact) ──
       const catGfx = new Graphics();
-      // Leading accent bar
-      catGfx.roundRect(padX, curY + 5, 16, 4, 2).fill({ color: cat.color, alpha: 0.5 });
-      // Diamond after bar
-      const dOff = padX + 22;
-      catGfx.moveTo(dOff, curY + 3).lineTo(dOff + 4, curY + 7).lineTo(dOff, curY + 11).lineTo(dOff - 4, curY + 7).closePath()
-        .fill({ color: cat.color, alpha: 0.55 })
-        .stroke({ color: cat.color, alpha: 0.3, width: 0.5 });
+      catGfx.roundRect(padX, curY + 4, 12, 3, 1.5).fill({ color: cat.color, alpha: 0.5 });
+      const dOff = padX + 18;
+      catGfx.moveTo(dOff, curY + 2).lineTo(dOff + 3, curY + 5.5).lineTo(dOff, curY + 9).lineTo(dOff - 3, curY + 5.5).closePath()
+        .fill({ color: cat.color, alpha: 0.55 });
       card.addChild(catGfx);
 
-      // Category icon
-      const catIcon = new Text({ text: cat.icon, style: new TextStyle({
-        fontFamily: "monospace", fontSize: 12, fill: cat.color,
+      const catLabel = new Text({ text: `${cat.icon} ${cat.title}`, style: new TextStyle({
+        fontFamily: "monospace", fontSize: 9, fill: cat.color, fontWeight: "bold", letterSpacing: 2,
       }) });
-      catIcon.position.set(padX + 30, curY - 1);
-      card.addChild(catIcon);
-
-      const catLabel = new Text({ text: cat.title, style: new TextStyle({
-        fontFamily: "monospace", fontSize: 10, fill: cat.color, fontWeight: "bold", letterSpacing: 3,
-        dropShadow: { color: 0x000000, blur: 4, distance: 0, alpha: 0.5 },
-      }) });
-      catLabel.position.set(padX + 46, curY);
+      catLabel.position.set(padX + 26, curY);
       card.addChild(catLabel);
 
-      // Mode count badge
-      const countBadge = new Container();
-      const countBg = new Graphics();
-      countBg.roundRect(0, 0, 20, 14, 7).fill({ color: cat.color, alpha: 0.15 })
-        .roundRect(0, 0, 20, 14, 7).stroke({ color: cat.color, alpha: 0.3, width: 0.5 });
-      countBadge.addChild(countBg);
-      const countTxt = new Text({ text: `${cat.indices.length}`, style: new TextStyle({
-        fontFamily: "monospace", fontSize: 9, fill: cat.color, fontWeight: "bold",
-      }) });
-      countTxt.anchor.set(0.5, 0.5);
-      countTxt.position.set(10, 7);
-      countBadge.addChild(countTxt);
-      countBadge.position.set(padX + 46 + cat.title.length * 7.5 + 14, curY);
-      card.addChild(countBadge);
-
-      // Right-side ornamental line extending from after the text
-      const rightLineStart = padX + 46 + cat.title.length * 7.5 + 42;
+      // Right-side ornamental line
+      const rightLineStart = padX + 26 + (cat.icon.length + 1 + cat.title.length) * 7 + 10;
       const catLineRight = new Graphics();
-      // Main line
-      catLineRight.moveTo(rightLineStart, curY + 7).lineTo(CW - padX - 8, curY + 7)
+      catLineRight.moveTo(rightLineStart, curY + 5.5).lineTo(CW - padX - 8, curY + 5.5)
         .stroke({ color: cat.color, alpha: 0.1, width: 1 });
-      // Secondary faint line below
-      catLineRight.moveTo(rightLineStart + 20, curY + 10).lineTo(CW - padX - 16, curY + 10)
-        .stroke({ color: cat.color, alpha: 0.05, width: 0.5 });
-      // End diamond on right
       const rex = CW - padX - 4;
-      catLineRight.moveTo(rex, curY + 3).lineTo(rex + 4, curY + 7).lineTo(rex, curY + 11).lineTo(rex - 4, curY + 7).closePath()
+      catLineRight.moveTo(rex, curY + 2).lineTo(rex + 3, curY + 5.5).lineTo(rex, curY + 9).lineTo(rex - 3, curY + 5.5).closePath()
         .fill({ color: cat.color, alpha: 0.18 });
-      // Evenly spaced tiny diamonds along the line
-      const lineLen = CW - padX - 8 - rightLineStart;
-      for (let d = 0; d < 3; d++) {
-        const lx = rightLineStart + lineLen * (0.25 + d * 0.25);
-        catLineRight.moveTo(lx, curY + 6).lineTo(lx + 2, curY + 7).lineTo(lx, curY + 8).lineTo(lx - 2, curY + 7).closePath()
-          .fill({ color: cat.color, alpha: 0.08 });
-      }
       card.addChild(catLineRight);
 
-      curY += 24;
+      curY += 18;
 
       // ── Tinted category section background ──
       const catRows = Math.ceil(cat.indices.length / COLS);
@@ -1197,45 +1159,45 @@ export class MenuScreen {
 
         // Mode name
         const nameText = new Text({ text: entry.label, style: new TextStyle({
-          fontFamily: "monospace", fontSize: 12, fill: 0xddddee, fontWeight: "bold", letterSpacing: 1,
+          fontFamily: "monospace", fontSize: 10, fill: 0xddddee, fontWeight: "bold", letterSpacing: 1,
         }) });
         nameText.anchor.set(0.5, 0);
-        nameText.position.set(tileW / 2, 8);
+        nameText.position.set(tileW / 2, 4);
         tile.addChild(nameText);
 
         // Description
         const descText = new Text({ text: entry.desc, style: new TextStyle({
-          fontFamily: "monospace", fontSize: 9, fill: 0x556677, letterSpacing: 0.5,
-          wordWrap: true, wordWrapWidth: tileW - 16,
+          fontFamily: "monospace", fontSize: 7, fill: 0x556677, letterSpacing: 0.3,
+          wordWrap: true, wordWrapWidth: tileW - 12,
         }) });
         descText.anchor.set(0.5, 0);
-        descText.position.set(tileW / 2, 26);
+        descText.position.set(tileW / 2, 18);
         tile.addChild(descText);
 
         // Corner dots (tiny ornamental dots at tile corners)
         const cornerDots = new Graphics();
-        for (const [cx, cy] of [[3, 3], [tileW - 3, 3], [3, tileH - 3], [tileW - 3, tileH - 3]]) {
-          cornerDots.circle(cx, cy, 1).fill({ color: cat.color, alpha: 0.2 });
+        for (const [cx, cy] of [[2, 2], [tileW - 2, 2], [2, tileH - 2], [tileW - 2, tileH - 2]]) {
+          cornerDots.circle(cx, cy, 0.8).fill({ color: cat.color, alpha: 0.2 });
         }
         tile.addChild(cornerDots);
 
         // Tag badge (e.g. "3D", "FPS")
         if (entry.tag) {
           const tagContainer = new Container();
-          const tagW = entry.tag.length * 7 + 8;
+          const tagW = entry.tag.length * 6 + 6;
           const tagBg = new Graphics();
-          tagBg.roundRect(0, 0, tagW, 12, 3)
+          tagBg.roundRect(0, 0, tagW, 10, 2)
             .fill({ color: cat.color, alpha: 0.2 })
-            .roundRect(0, 0, tagW, 12, 3)
+            .roundRect(0, 0, tagW, 10, 2)
             .stroke({ color: cat.color, alpha: 0.5, width: 0.5 });
           tagContainer.addChild(tagBg);
           const tagTxt = new Text({ text: entry.tag, style: new TextStyle({
-            fontFamily: "monospace", fontSize: 8, fill: cat.color, fontWeight: "bold", letterSpacing: 1,
+            fontFamily: "monospace", fontSize: 7, fill: cat.color, fontWeight: "bold", letterSpacing: 1,
           }) });
           tagTxt.anchor.set(0.5, 0.5);
-          tagTxt.position.set(tagW / 2, 6);
+          tagTxt.position.set(tagW / 2, 5);
           tagContainer.addChild(tagTxt);
-          tagContainer.position.set(tileW - tagW - 4, 4);
+          tagContainer.position.set(tileW - tagW - 3, 3);
           tile.addChild(tagContainer);
         }
 
@@ -1253,7 +1215,7 @@ export class MenuScreen {
               .stroke({ color: 0x1a1a2a, width: 1 });
             nameText.style.fill = 0x445566;
             descText.style.fill = 0x334455;
-            accentGfx.roundRect(6, 0, tileW - 12, 2, 1).fill({ color: 0x334455, alpha: 0.2 });
+            accentGfx.roundRect(4, 0, tileW - 8, 2, 1).fill({ color: 0x334455, alpha: 0.2 });
             cornerDots.alpha = 0.3;
           } else if (state === "hover") {
             // Outer glow rect
@@ -1269,7 +1231,7 @@ export class MenuScreen {
             nameText.style.fill = 0xffffff;
             descText.style.fill = 0x99aabb;
             accentGfx.roundRect(2, 0, tileW - 4, 2, 1).fill({ color: catColor, alpha: 0.9 });
-            bottomAccent.roundRect(8, tileH - 2, tileW - 16, 2, 1).fill({ color: catColor, alpha: 0.4 });
+            bottomAccent.roundRect(6, tileH - 1, tileW - 12, 1, 0.5).fill({ color: catColor, alpha: 0.4 });
             cornerDots.alpha = 1;
           } else {
             tileBg.roundRect(0, 0, tileW, tileH, 5)
@@ -1278,8 +1240,8 @@ export class MenuScreen {
               .stroke({ color: 0x2a2a3a, width: 1 });
             nameText.style.fill = 0xddddee;
             descText.style.fill = 0x556677;
-            accentGfx.roundRect(6, 0, tileW - 12, 2, 1).fill({ color: catColor, alpha: 0.4 });
-            bottomAccent.roundRect(12, tileH - 1, tileW - 24, 1, 0.5).fill({ color: catColor, alpha: 0.1 });
+            accentGfx.roundRect(4, 0, tileW - 8, 2, 1).fill({ color: catColor, alpha: 0.4 });
+            bottomAccent.roundRect(8, tileH - 1, tileW - 16, 1, 0.5).fill({ color: catColor, alpha: 0.1 });
           }
         };
 
@@ -1373,8 +1335,8 @@ export class MenuScreen {
     curY += 16;
 
     // ── UTILITY BUTTONS ──────────────────────────────────────
-    const utilBtnH = 34;
-    const utilGap = 6;
+    const utilBtnH = 28;
+    const utilGap = 4;
 
     // Row 1: Wiki | Quickplay | Multiplayer (3 across)
     const btn3W = Math.floor((CW - padX * 2 - utilGap * 2) / 3);
