@@ -236,14 +236,37 @@ export class ShadowhandGuildScreen {
       this.container.addChild(g);
 
       this._text(t.name, cx + cardW / 2, cy + 6, { fontSize: 12, fill: sel ? t.color : 0xaabbaa, fontWeight: "bold" }, true);
-      this._text(`Tier ${t.tier}`, cx + cardW / 2, cy + 22, { fontSize: 9, fill: 0x888877 }, true);
-      this._text(t.desc, cx + 8, cy + 36, { fontSize: 8, fill: 0x777766, wordWrap: true, wordWrapWidth: cardW - 16 });
+
+      // Difficulty stars (visual rating)
+      const starStr = "\u2605".repeat(t.tier) + "\u2606".repeat(5 - t.tier);
+      const tierColors = [0x555555, 0x44aa44, 0x44aacc, 0xcc8844, 0xff4444, 0xffd700];
+      this._text(starStr, cx + cardW / 2, cy + 20, { fontSize: 8, fill: tierColors[t.tier] ?? 0x888877, letterSpacing: 1 }, true);
+
+      this._text(t.desc, cx + 8, cy + 32, { fontSize: 7, fill: 0x777766, wordWrap: true, wordWrapWidth: cardW - 16 });
+
+      // Stat icons row
       const hasIntel = state.guild.upgrades.has("intel_network");
-      const guardStr = hasIntel ? `Guards: ~${Math.round((t.guardCount[0] + t.guardCount[1]) / 2)}` : `Guards: ???`;
-      this._text(guardStr, cx + 8, cy + cardH - 22, { fontSize: 8, fill: hasIntel ? 0xaaaa44 : 0x666655 });
-      this._text(`Prize: ${t.primaryLoot.name}`, cx + 8, cy + cardH - 10, { fontSize: 8, fill: 0xffd700 });
+      const sy = cy + cardH - 28;
+      // Guards
+      const guardStr = hasIntel ? `\u2694 ~${Math.round((t.guardCount[0] + t.guardCount[1]) / 2)}` : `\u2694 ???`;
+      this._text(guardStr, cx + 6, sy, { fontSize: 7, fill: hasIntel ? 0xaaaa44 : 0x666655 });
+      // Rooms
+      this._text(`\u25A3 ${t.roomCount[0]}-${t.roomCount[1]}`, cx + 50, sy, { fontSize: 7, fill: 0x8888aa });
+      // Hazards
+      const hazards: string[] = [];
+      if (t.hasTraps) hazards.push("\u26A0traps");
+      if (t.hasMagicWards) hazards.push("\u2728wards");
+      if (t.hasDogs) hazards.push("\u{1F43E}dogs");
+      if (hazards.length > 0) {
+        this._text(hazards.join(" "), cx + 6, sy + 10, { fontSize: 6, fill: 0xaa6644 });
+      }
+      // Prize
+      this._text(`\u2605 ${t.primaryLoot.name} (${t.primaryLoot.value}g)`, cx + 6, cy + cardH - 8, { fontSize: 7, fill: 0xffd700 });
+      // Entries
+      this._text(`\u{1F6AA}${t.entryPoints}`, cx + cardW - 30, sy, { fontSize: 7, fill: 0x668866 });
+
       if (completed) {
-        this._text("\u2713", cx + cardW - 18, cy + 6, { fontSize: 14, fill: 0x44aa44 });
+        this._text("\u2713 DONE", cx + cardW - 36, cy + 6, { fontSize: 9, fill: 0x44aa44 });
       }
     }
 

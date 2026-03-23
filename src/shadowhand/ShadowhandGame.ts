@@ -274,7 +274,27 @@ export class ShadowhandGame {
       if (phase === ShadowhandPhase.RESULTS ||
           phase === ShadowhandPhase.VICTORY ||
           phase === ShadowhandPhase.GAME_OVER) {
-        this._showResults();
+        // Victory moment: delay before showing results
+        if (!(this as any)._heistEndTimer) {
+          (this as any)._heistEndTimer = true;
+          const isSuccess = phase === ShadowhandPhase.RESULTS || phase === ShadowhandPhase.VICTORY;
+          if (this._state.heist) {
+            if (isSuccess) {
+              this._state.heist.announcements.push({ text: "\u2605 MISSION COMPLETE \u2605", color: 0x44ff44, timer: 3 });
+              this._state.heist.screenShake = 1.5;
+            } else {
+              this._state.heist.announcements.push({ text: "\u2620 MISSION FAILED \u2620", color: 0xff4444, timer: 3 });
+              this._state.heist.screenShake = 3;
+            }
+          }
+          // Delay transition by 1.5 seconds for celebration/mourning
+          setTimeout(() => {
+            this._fadeTransition(() => {
+              (this as any)._heistEndTimer = false;
+              this._showResults();
+            }, 400);
+          }, 1500);
+        }
       }
     }
   }
@@ -316,12 +336,24 @@ export class ShadowhandGame {
     this._keyHandler = (e: KeyboardEvent) => this._handleKey(e);
     window.addEventListener("keydown", this._keyHandler);
 
-    // Left-click: move selected thief
+    // Left-click: move selected thief (with HUD zone exclusion)
     this._pointerHandler = (e: { global: { x: number; y: number }; button?: number }) => {
       if (this._isPaused || !this._state.heist) return;
+      const ex = e.global.x, ey = e.global.y;
+
+      // Ignore clicks on HUD zones
+      if (ey < 56) return; // top bar
+      if (ex < 150 && ey > 56 && ey < 56 + this._state.heist.thieves.length * 44) return; // crew panel
+      if (ex > this._sw - 150 && ey > this._sh - 155) return; // minimap
+      if (ex < 315 && ey > this._sh - 130) return; // log panel
+      if (ey > this._sh - 28) return; // hint bar
+
       const heist = this._state.heist;
-      const tx = (e.global.x - this._renderer["_offsetX"]) / ShadowhandConfig.TILE_SIZE;
-      const ty = (e.global.y - this._renderer["_offsetY"]) / ShadowhandConfig.TILE_SIZE;
+      const tx = (ex - this._renderer["_offsetX"]) / ShadowhandConfig.TILE_SIZE;
+      const ty = (ey - this._renderer["_offsetY"]) / ShadowhandConfig.TILE_SIZE;
+
+      // Validate tile is within map bounds
+      if (tx < 0 || ty < 0 || tx >= heist.map.width || ty >= heist.map.height) return;
 
       const selected = heist.thieves.find(t => t.selected && t.alive && !t.captured && !t.escaped);
       if (selected) {
