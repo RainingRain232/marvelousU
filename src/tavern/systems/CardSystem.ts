@@ -132,8 +132,16 @@ export function placeBet(state: TavernState, amount: number): boolean {
   state.phase = TavernPhase.PLAYER_TURN;
   state.log.push(`Round ${state.round}: Bet ${amount}g.`);
 
+  // Reset round state
+  state.insuranceBet = 0;
+  state.splitHand = null;
+  state.splitBet = 0;
+
   // Check side bets on deal
   checkSideBets(state);
+
+  // Generate opponent tell
+  generateTell(state);
 
   // Check for blackjack
   if (cardScore(state.playerHand) === 21) {
@@ -179,6 +187,74 @@ export function playerDoubleDown(state: TavernState): void {
     resolveRound(state, "lose");
   } else {
     revealAndResolve(state);
+  }
+}
+
+/** Insurance: bet half your current bet that dealer has blackjack */
+export function playerInsurance(state: TavernState): void {
+  if (state.phase !== TavernPhase.PLAYER_TURN) return;
+  if (state.insuranceBet > 0) return; // already insured
+  if (state.playerHand.length !== 2) return; // only on initial deal
+  // Dealer's face-up card must be Ace (value 1) or 10+
+  const dealerUp = state.dealerHand[0];
+  if (dealerUp.value !== 1 && dealerUp.value < 10) return;
+  const cost = Math.floor(state.currentBet / 2);
+  if (state.gold < cost) return;
+  state.insuranceBet = cost;
+  state.gold -= cost;
+  state.announcements.push({ text: `Insurance: ${cost}g`, color: 0xffaa44, timer: 1.5 });
+  state.log.push(`Took insurance for ${cost}g.`);
+}
+
+/** Split: if both cards same value, split into two hands */
+export function playerSplit(state: TavernState): void {
+  if (state.phase !== TavernPhase.PLAYER_TURN) return;
+  if (state.playerHand.length !== 2) return;
+  if (state.splitHand) return; // already split
+  const v1 = state.playerHand[0].value >= 10 ? 10 : state.playerHand[0].value;
+  const v2 = state.playerHand[1].value >= 10 ? 10 : state.playerHand[1].value;
+  if (v1 !== v2) return; // must be same value
+  if (state.gold < state.currentBet) return; // need to match bet
+  state.splitBet = state.currentBet;
+  state.gold -= state.splitBet;
+  state.splitHand = [state.playerHand.pop()!];
+  // Deal one card to each hand
+  state.playerHand.push(drawCard(state));
+  state.splitHand.push(drawCard(state));
+  state.announcements.push({ text: "SPLIT!", color: 0x88aaff, timer: 1.5 });
+  state.log.push("Split hand!");
+}
+
+/** Generate opponent tell based on their hidden card */
+function generateTell(state: TavernState): void {
+  const hiddenCard = state.dealerHand[1]; // face-down card
+  if (!hiddenCard) { state.opponentTell = ""; return; }
+  const score = hiddenCard.value >= 10 ? 10 : hiddenCard.value;
+  // Aggressive opponents give fewer tells
+  if (Math.random() < state.opponent.aggression * 0.7) {
+    state.opponentTell = `${state.opponent.name} reveals nothing.`;
+    return;
+  }
+  if (score >= 8) {
+    const hints = [
+      `${state.opponent.name} looks confident.`,
+      `${state.opponent.name} drums fingers impatiently.`,
+      `${state.opponent.name} leans forward eagerly.`,
+    ];
+    state.opponentTell = hints[Math.floor(Math.random() * hints.length)];
+  } else if (score >= 5) {
+    const hints = [
+      `${state.opponent.name} seems calm.`,
+      `${state.opponent.name} sips their drink casually.`,
+    ];
+    state.opponentTell = hints[Math.floor(Math.random() * hints.length)];
+  } else {
+    const hints = [
+      `${state.opponent.name} shifts uncomfortably.`,
+      `${state.opponent.name} avoids eye contact.`,
+      `${state.opponent.name} fidgets with their coins.`,
+    ];
+    state.opponentTell = hints[Math.floor(Math.random() * hints.length)];
   }
 }
 
@@ -232,6 +308,33 @@ function resolveRound(state: TavernState, result: "win" | "lose" | "push" | "bla
     payout = 0;
     state.losses++; state.streak = 0;
     state.announcements.push({ text: `-${state.currentBet}g LOSS`, color: 0xff4444, timer: 2 });
+  }
+
+  // Insurance check: if dealer has blackjack and player insured, pay 2:1
+  if (state.insuranceBet > 0) {
+    const dealerBJ = state.dealerHand.length === 2 && cardScore(state.dealerHand) === 21;
+    if (dealerBJ) {
+      const insurancePayout = state.insuranceBet * 3; // 2:1 + return
+      payout += insurancePayout;
+      state.announcements.push({ text: `Insurance pays! +${insurancePayout}g`, color: 0x44ccaa, timer: 2 });
+    } else {
+      state.log.push("Insurance lost.");
+    }
+    state.insuranceBet = 0;
+  }
+
+  // Split hand resolution: if split hand exists, compare it separately
+  if (state.splitHand && state.splitHand.length > 0) {
+    const splitScore = cardScore(state.splitHand);
+    const dealerScore = cardScore(state.dealerHand);
+    if (splitScore <= 21 && (dealerScore > 21 || splitScore > dealerScore)) {
+      const splitPayout = Math.floor(state.splitBet * 2);
+      payout += splitPayout;
+      state.announcements.push({ text: `Split hand wins! +${splitPayout}g`, color: 0x88aaff, timer: 2 });
+    } else if (splitScore <= 21 && splitScore === dealerScore) {
+      payout += state.splitBet; // push
+    }
+    state.splitHand = null;
   }
 
   // Apply suit powers

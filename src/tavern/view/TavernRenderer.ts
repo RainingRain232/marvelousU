@@ -21,9 +21,12 @@ export class TavernRenderer {
   private _doubleCb: (() => void) | null = null;
   private _betCb: ((amount: number) => void) | null = null;
   private _nextCb: (() => void) | null = null;
+  private _insuranceCb: (() => void) | null = null;
+  private _splitCb: (() => void) | null = null;
 
-  setCallbacks(hit: () => void, stand: () => void, double: () => void, bet: (n: number) => void, next: () => void): void {
+  setCallbacks(hit: () => void, stand: () => void, double: () => void, bet: (n: number) => void, next: () => void, insurance?: () => void, split?: () => void): void {
     this._hitCb = hit; this._standCb = stand; this._doubleCb = double; this._betCb = bet; this._nextCb = next;
+    this._insuranceCb = insurance ?? null; this._splitCb = split ?? null;
   }
 
   init(sw: number, sh: number): void {
@@ -132,10 +135,38 @@ export class TavernRenderer {
         bx += 58;
       }
     } else if (state.phase === TavernPhase.PLAYER_TURN) {
-      this._button("HIT", cx - 110, btnY, 65, 34, 0x44cc44, () => this._hitCb?.());
-      this._button("STAND", cx - 35, btnY, 70, 34, 0xcc8844, () => this._standCb?.());
+      this._button("HIT", cx - 145, btnY, 55, 34, 0x44cc44, () => this._hitCb?.());
+      this._button("STAND", cx - 82, btnY, 60, 34, 0xcc8844, () => this._standCb?.());
       if (state.playerHand.length === 2 && state.gold >= state.currentBet * 2) {
-        this._button("DOUBLE", cx + 45, btnY, 75, 34, 0xcc4444, () => this._doubleCb?.());
+        this._button("DOUBLE", cx - 14, btnY, 65, 34, 0xcc4444, () => this._doubleCb?.());
+      }
+      // Insurance button (when dealer shows Ace or 10)
+      if (state.playerHand.length === 2 && state.insuranceBet === 0 && state.dealerHand[0]) {
+        const dv = state.dealerHand[0].value;
+        if ((dv === 1 || dv >= 10) && state.gold >= Math.floor(state.currentBet / 2)) {
+          this._button("INSURE", cx + 60, btnY, 60, 34, 0x44aacc, () => this._insuranceCb?.());
+        }
+      }
+      // Split button (when both cards same value)
+      if (state.playerHand.length === 2 && !state.splitHand && state.gold >= state.currentBet) {
+        const v1 = state.playerHand[0].value >= 10 ? 10 : state.playerHand[0].value;
+        const v2 = state.playerHand[1].value >= 10 ? 10 : state.playerHand[1].value;
+        if (v1 === v2) {
+          this._button("SPLIT", cx + 128, btnY, 55, 34, 0x8888ff, () => this._splitCb?.());
+        }
+      }
+      // Opponent tell
+      if (state.opponentTell) {
+        this._addText(state.opponentTell, cx, sh * 0.85, { fontSize: 9, fill: 0x998877, fontStyle: "italic" }, true);
+      }
+      // Split hand display
+      if (state.splitHand) {
+        this._addText(`Split hand: ${cardScore(state.splitHand)}`, cx + 150, sh * 0.52, { fontSize: 10, fill: 0x8888ff });
+        let sx = cx + 130;
+        for (const card of state.splitHand) {
+          this._drawCard(g, card, sx, sh * 0.58);
+          sx += 30;
+        }
       }
     } else if (state.phase === TavernPhase.RESULT) {
       this._button("NEXT ROUND", cx - 55, btnY, 110, 34, COL, () => this._nextCb?.());

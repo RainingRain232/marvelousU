@@ -31,6 +31,10 @@ export interface TavernState {
   totalWinnings: number;
   streak: number;
   bestStreak: number;
+  insuranceBet: number; // 0 = no insurance
+  splitHand: Card[] | null; // second hand if split
+  splitBet: number;
+  opponentTell: string; // hint about dealer's hidden card
   announcements: { text: string; color: number; timer: number }[];
   log: string[];
 }
@@ -50,6 +54,8 @@ export function createTavernState(opponentIndex: number): TavernState {
     opponentIndex,
     wins: 0, losses: 0, pushes: 0,
     totalWinnings: 0, streak: 0, bestStreak: 0,
+    insuranceBet: 0, splitHand: null, splitBet: 0,
+    opponentTell: "",
     announcements: [],
     log: [`You sit down at ${opp.name}'s table.`],
   };

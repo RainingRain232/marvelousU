@@ -9,7 +9,7 @@ import { audioManager } from "@audio/AudioManager";
 import { createTavernState, TavernPhase } from "./state/TavernState";
 import type { TavernState } from "./state/TavernState";
 import { OPPONENTS, TavernConfig, cardScore } from "./config/TavernConfig";
-import { placeBet, playerHit, playerStand, playerDoubleDown } from "./systems/CardSystem";
+import { placeBet, playerHit, playerStand, playerDoubleDown, playerInsurance, playerSplit } from "./systems/CardSystem";
 import { TavernRenderer } from "./view/TavernRenderer";
 
 // Track unlocked opponents (persisted via localStorage)
@@ -114,6 +114,8 @@ export class TavernGame {
       () => { playerDoubleDown(this._state); },
       (amount) => { placeBet(this._state, amount); },
       () => { this._nextRound(); },
+      () => { playerInsurance(this._state); },
+      () => { playerSplit(this._state); },
     );
     viewManager.addToLayer("ui", this._renderer.container);
 
@@ -123,6 +125,8 @@ export class TavernGame {
         if (e.key === "h" || e.key === "H") playerHit(this._state);
         if (e.key === "s" || e.key === "S") playerStand(this._state);
         if (e.key === "d" || e.key === "D") playerDoubleDown(this._state);
+        if (e.key === "i" || e.key === "I") playerInsurance(this._state);
+        if (e.key === "p" || e.key === "P") playerSplit(this._state);
       }
       if (this._state.phase === TavernPhase.BETTING && (e.key === "Enter" || e.key === " ")) {
         placeBet(this._state, this._state.opponent.minBet);
@@ -198,6 +202,14 @@ export class TavernGame {
         addText(`\u{1F513} Unlocked: ${next.name} ${next.title}!`, this._sw / 2, y + 24, { fontSize: 11, fill: 0xffd700, fontWeight: "bold" }, true);
       }
     }
+    // Save high score
+    try {
+      const prev = parseInt(localStorage.getItem("tavern_highscore") ?? "0") || 0;
+      if (this._state.gold > prev) {
+        localStorage.setItem("tavern_highscore", `${this._state.gold}`);
+        addText("\u2605 NEW HIGH SCORE! \u2605", this._sw / 2, y + 24, { fontSize: 11, fill: 0xffd700, fontWeight: "bold" }, true);
+      }
+    } catch { /* ignore */ }
     y += 36;
 
     const stats: [string, string, number][] = [
