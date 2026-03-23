@@ -404,6 +404,12 @@ const GAME_MODES: GameModeEntry[] = [
     desc: "Card game: play blackjack against medieval opponents for gold",
     skipSetup: true,
   },
+  {
+    mode: GameMode.HUNT,
+    label: "HUNT",
+    desc: "Archery: aim your bow, hunt prey in the medieval forest",
+    skipSetup: true,
+  },
 ];
 
 // ---------------------------------------------------------------------------

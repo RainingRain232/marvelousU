@@ -152,6 +152,7 @@ import { ShadowhandGame } from "./shadowhand/ShadowhandGame";
 import { AlchemistGame } from "./alchemist/AlchemistGame";
 import { SiegeGame } from "./siege/SiegeGame";
 import { TavernGame } from "./tavern/TavernGame";
+import { HuntGame } from "./hunt/HuntGame";
 import { camelotHubScreen } from "@view/ui/CamelotHubScreen";
 
 // World mode imports
@@ -363,6 +364,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     [GameMode.ALCHEMIST]: 35,
     [GameMode.SIEGE]: 36,
     [GameMode.TAVERN]: 37,
+    [GameMode.HUNT]: 38,
   };
   // Modes that need the setup screen (not skipSetup)
   const NEEDS_SETUP = new Set([GameMode.STANDARD, GameMode.DEATHMATCH, GameMode.BATTLEFIELD, GameMode.WAVE]);
@@ -567,6 +569,11 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     if (menuScreen.selectedGameMode === GameMode.TAVERN) {
       menuScreen.hide();
       _bootTavernGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.HUNT) {
+      menuScreen.hide();
+      _bootHuntGame();
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.WORLD) {
@@ -3488,6 +3495,24 @@ async function _bootTavernGame(): Promise<void> {
     menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
   window.addEventListener("tavernExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Hunt mode boot
+// ---------------------------------------------------------------------------
+
+let _huntGame: HuntGame | null = null;
+
+async function _bootHuntGame(): Promise<void> {
+  if (_huntGame) { _huntGame.destroy(); _huntGame = null; }
+  _huntGame = new HuntGame();
+  await _huntGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("huntExit", _onExit);
+    if (_huntGame) { _huntGame.destroy(); _huntGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("huntExit", _onExit);
 }
 
 // ---------------------------------------------------------------------------
