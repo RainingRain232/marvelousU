@@ -155,8 +155,12 @@ export class SiegeRenderer {
         // Humanoid — torso + head
         eg.ellipse(ex, ey + 1, r * 0.7, r).fill({ color: def.color });
         eg.circle(ex, ey - r * 0.7, r * 0.5).fill({ color: def.color });
-        // Shield (soldier) or staff (mage)
-        if (def.id === "soldier") eg.rect(ex + r * 0.5, ey - 2, 2, r).fill({ color: 0x666644, alpha: 0.5 });
+        // Shield (soldier) — detailed polygon with boss rivet
+        if (def.id === "soldier") {
+          eg.moveTo(ex + r * 0.4, ey - r * 0.4).lineTo(ex + r * 0.7, ey - r * 0.3).lineTo(ex + r * 0.7, ey + r * 0.3).lineTo(ex + r * 0.4, ey + r * 0.5).closePath().fill({ color: 0x666644, alpha: 0.6 });
+          eg.moveTo(ex + r * 0.45, ey - r * 0.35).lineTo(ex + r * 0.65, ey - r * 0.25).stroke({ color: 0x888866, width: 0.5, alpha: 0.3 }); // highlight
+          eg.circle(ex + r * 0.55, ey, 1).fill({ color: 0x888866, alpha: 0.4 }); // boss rivet
+        }
         if (def.id === "mage") { eg.moveTo(ex - r, ey - r).lineTo(ex - r + 1, ey + r * 0.5).stroke({ color: 0x886644, width: 1 }); eg.circle(ex - r, ey - r - 1, 2).fill({ color: 0xaa88ff, alpha: 0.4 }); }
         if (def.id === "assassin") { eg.moveTo(ex + r * 0.3, ey - r * 0.3).lineTo(ex + r, ey - r).stroke({ color: 0xaaaaaa, width: 0.8 }); }
       } else if (def.id === "knight") {
@@ -173,9 +177,19 @@ export class SiegeRenderer {
         // Rectangular siege equipment
         eg.rect(ex - r, ey - r * 0.5, r * 2, r).fill({ color: def.color });
         eg.rect(ex - r, ey - r * 0.5, r * 2, r).stroke({ color: 0x4a3a2a, width: 1 });
-        // Wheels
-        eg.circle(ex - r * 0.6, ey + r * 0.5, r * 0.2).fill({ color: 0x3a2a1a });
-        eg.circle(ex + r * 0.6, ey + r * 0.5, r * 0.2).fill({ color: 0x3a2a1a });
+        // Wheels — detailed with spokes and hub
+        for (const wx of [ex - r * 0.6, ex + r * 0.6]) {
+          const wy = ey + r * 0.5, wr = r * 0.22;
+          eg.circle(wx, wy, wr).fill({ color: 0x3a2a1a });
+          eg.circle(wx, wy, wr).stroke({ color: 0x4a3a2a, width: 0.8 });
+          // Spokes
+          for (let si = 0; si < 4; si++) {
+            const sa = si * Math.PI / 2;
+            eg.moveTo(wx, wy).lineTo(wx + Math.cos(sa) * wr * 0.9, wy + Math.sin(sa) * wr * 0.9).stroke({ color: 0x2a1a0a, width: 0.5, alpha: 0.4 });
+          }
+          // Hub
+          eg.circle(wx, wy, wr * 0.3).fill({ color: 0x4a3a2a });
+        }
         if (def.id === "battering_ram") eg.moveTo(ex + r, ey).lineTo(ex + r * 1.5, ey).stroke({ color: 0x4a3a2a, width: 2 }); // ram
       } else if (def.id === "giant") {
         // Massive polygon body

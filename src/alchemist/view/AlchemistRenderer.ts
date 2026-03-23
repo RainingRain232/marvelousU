@@ -117,28 +117,38 @@ export class AlchemistRenderer {
         // Shadow beneath orb
         g.ellipse(cx + 1, cy + orbR + 3, orbR * 0.7, 2.5).fill({ color: 0x000000, alpha: 0.2 });
 
-        // Outer glow (2 layers)
-        g.circle(cx, cy, orbR + 6).fill({ color: ing.color, alpha: 0.04 });
-        g.circle(cx, cy, orbR + 3).fill({ color: ing.color, alpha: 0.07 });
+        // Outer glow (3 graduated layers)
+        g.circle(cx, cy, orbR + 8).fill({ color: ing.color, alpha: 0.025 });
+        g.circle(cx, cy, orbR + 5).fill({ color: ing.color, alpha: 0.04 });
+        g.circle(cx, cy, orbR + 2.5).fill({ color: ing.color, alpha: 0.06 });
 
         // Main orb body
         g.circle(cx, cy, orbR).fill({ color: ing.color, alpha: 0.85 });
 
-        // Faceted shine — top-left quadrant lighter
+        // Faceted shine — top-left quadrant (bezier polygon)
         g.moveTo(cx, cy - orbR).bezierCurveTo(cx - orbR * 0.8, cy - orbR * 0.8, cx - orbR, cy, cx - orbR * 0.3, cy + orbR * 0.2);
         g.lineTo(cx, cy).closePath().fill({ color: 0xffffff, alpha: 0.1 });
+        // Secondary facet — top-right (smaller)
+        g.moveTo(cx + orbR * 0.1, cy - orbR * 0.9);
+        g.bezierCurveTo(cx + orbR * 0.5, cy - orbR * 0.7, cx + orbR * 0.7, cy - orbR * 0.2, cx + orbR * 0.3, cy);
+        g.lineTo(cx, cy).closePath().fill({ color: 0xffffff, alpha: 0.04 });
 
-        // Inner highlight arc (crescent)
+        // Multi-segment inner highlight arcs (3 arcs at different angles)
         g.moveTo(cx - orbR * 0.5, cy - orbR * 0.3);
-        g.bezierCurveTo(cx - orbR * 0.3, cy - orbR * 0.7, cx + orbR * 0.2, cy - orbR * 0.7, cx + orbR * 0.1, cy - orbR * 0.3);
+        g.bezierCurveTo(cx - orbR * 0.3, cy - orbR * 0.7, cx + orbR * 0.1, cy - orbR * 0.75, cx + orbR * 0.2, cy - orbR * 0.4);
         g.stroke({ color: 0xffffff, width: 1, alpha: 0.2 });
+        g.moveTo(cx - orbR * 0.4, cy - orbR * 0.15);
+        g.bezierCurveTo(cx - orbR * 0.2, cy - orbR * 0.5, cx + orbR * 0.05, cy - orbR * 0.5, cx + orbR * 0.1, cy - orbR * 0.2);
+        g.stroke({ color: 0xffffff, width: 0.6, alpha: 0.1 });
 
-        // Sparkle dot
-        g.circle(cx - orbR * 0.3, cy - orbR * 0.3, 1.5 * s).fill({ color: 0xffffff, alpha: 0.25 });
+        // Sparkle dots (2 at different positions)
+        g.circle(cx - orbR * 0.3, cy - orbR * 0.35, 1.5 * s).fill({ color: 0xffffff, alpha: 0.28 });
+        g.circle(cx + orbR * 0.15, cy - orbR * 0.45, 0.8 * s).fill({ color: 0xffffff, alpha: 0.15 });
 
-        // Border ring (double)
-        g.circle(cx, cy, orbR).stroke({ color: 0xffffff, width: 0.8, alpha: 0.12 });
-        g.circle(cx, cy, orbR - 1).stroke({ color: ing.color, width: 0.5, alpha: 0.2 });
+        // Border ring (triple)
+        g.circle(cx, cy, orbR + 0.5).stroke({ color: 0xffffff, width: 0.8, alpha: 0.1 });
+        g.circle(cx, cy, orbR).stroke({ color: 0xffffff, width: 0.5, alpha: 0.08 });
+        g.circle(cx, cy, orbR - 1.5).stroke({ color: ing.color, width: 0.4, alpha: 0.15 });
 
         // Element-specific inner detail
         if (tile.type === "fire") {
