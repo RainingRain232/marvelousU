@@ -623,6 +623,35 @@ export class NecroRenderer {
       }
     }
 
+    // Grave scouting tooltip — show hint on hover
+    if (state.hoveredGraveId >= 0) {
+      const hGrave = state.graves.find(g2 => g2.id === state.hoveredGraveId);
+      if (hGrave && !hGrave.dug && hGrave.corpseType) {
+        const hx = ox + hGrave.x, hy = oy + hGrave.y - 35;
+        const def = CORPSES[hGrave.corpseType];
+        // Tooltip background
+        g.roundRect(hx - 45, hy - 8, 90, 30, 4).fill({ color: 0x0a0a06, alpha: 0.85 });
+        g.roundRect(hx - 45, hy - 8, 90, 30, 4).stroke({ color: def.color, width: 0.8, alpha: 0.5 });
+        // Rarity hint — vague description
+        const weight = def.weight;
+        const rarityHint = weight >= 5 ? "Common remains..." : weight >= 3 ? "Unusual aura..." : weight >= 2 ? "Strong presence!" : "Powerful soul!";
+        const rarityCol = weight >= 5 ? 0x667766 : weight >= 3 ? 0x44aaff : weight >= 2 ? 0xccaa44 : 0xff44ff;
+        const hintT = new Text({ text: rarityHint, style: new TextStyle({ fontFamily: FONT, fontSize: 7, fill: rarityCol, fontStyle: "italic" }) });
+        hintT.anchor.set(0.5, 0); hintT.position.set(hx, hy - 5);
+        this._ui.addChild(hintT);
+        // Type hint — first letter only for mystery
+        const typeHint = `${def.name[0]}${"?".repeat(def.name.length - 1)}`;
+        const ht2 = new Text({ text: typeHint, style: new TextStyle({ fontFamily: FONT, fontSize: 8, fill: def.color }) });
+        ht2.anchor.set(0.5, 0); ht2.position.set(hx, hy + 7);
+        this._ui.addChild(ht2);
+        // Sparkle around hovered grave
+        for (let si = 0; si < 4; si++) {
+          const sa = state.elapsed * 2 + si * 1.57;
+          g.circle(ox + hGrave.x + Math.cos(sa) * 20, oy + hGrave.y + Math.sin(sa) * 14, 0.8).fill({ color: rarityCol, alpha: 0.3 });
+        }
+      }
+    }
+
     // Necromancer figure at bottom-left
     this._drawNecromancer(g, ox + 40, oy + NecroConfig.FIELD_HEIGHT - 50, state);
   }
@@ -1491,6 +1520,34 @@ export class NecroRenderer {
       lt.position.set(spellX + 14, spellY - 4); this._ui.addChild(lt);
     }
 
+    // War Cry spell button
+    spellX += 88;
+    const cryReady = state.warCryCooldown <= 0 && state.mana >= 25;
+    const cryActive = state.warCryActive > 0;
+    const cryCol = cryActive ? 0xff8844 : cryReady ? 0xff6622 : 0x332211;
+    g.roundRect(spellX - 2, spellY - 6, 80, 16, 4).fill({ color: cryActive ? 0x1a0a00 : cryReady ? 0x120800 : 0x0a0a08, alpha: 0.7 });
+    g.roundRect(spellX - 2, spellY - 6, 80, 16, 4).stroke({ color: cryCol, width: 1, alpha: cryActive ? 0.7 : cryReady ? 0.5 : 0.3 });
+    // War cry icon — starburst
+    const wcX = spellX + 6, wcY = spellY + 2;
+    for (let si3 = 0; si3 < 6; si3++) {
+      const sa3 = (si3 / 6) * Math.PI * 2;
+      g.moveTo(wcX + Math.cos(sa3) * 1.5, wcY + Math.sin(sa3) * 1.5).lineTo(wcX + Math.cos(sa3) * 4, wcY + Math.sin(sa3) * 4).stroke({ color: cryCol, width: 0.6, alpha: cryActive ? 0.7 : cryReady ? 0.4 : 0.15 });
+    }
+    const cryLabel = cryActive ? `Cry! ${Math.ceil(state.warCryActive)}s` : cryReady ? "F: War Cry" : state.warCryCooldown > 0 ? `Cry ${Math.ceil(state.warCryCooldown)}s` : "F: War Cry";
+    const ct2 = new Text({ text: cryLabel, style: new TextStyle({ fontFamily: FONT, fontSize: 7, fill: cryActive ? 0xff8844 : cryReady ? 0xff6622 : 0x554433 }) });
+    ct2.position.set(spellX + 14, spellY - 4); this._ui.addChild(ct2);
+    if (cryActive) {
+      g.roundRect(spellX - 1, spellY - 5, 78, 14, 3).fill({ color: 0xff6622, alpha: 0.06 + Math.sin(state.elapsed * 4) * 0.03 });
+    }
+
+    // War Cry active glow on all undead
+    if (state.warCryActive > 0) {
+      for (const u of state.undead) {
+        if (!u.alive) continue;
+        g.circle(ox + u.x, oy + u.y, u.size + 3).stroke({ color: 0xff6622, width: 1, alpha: 0.15 + Math.sin(state.elapsed * 4 + u.id) * 0.08 });
+      }
+    }
+
     // Speed indicator
     if (state.battleSpeed > 1) {
       const speedT = new Text({ text: `${state.battleSpeed}x`, style: new TextStyle({ fontFamily: FONT, fontSize: 10, fill: 0xffaa44, fontWeight: "bold" }) });
@@ -1790,6 +1847,12 @@ export class NecroRenderer {
   private _drawCrusaderUnit(g: Graphics, x: number, y: number, c: Crusader, state: NecroState): void {
     const s = c.size;
     const t = state.elapsed;
+
+    // Boss units get unique rendering
+    if (c.isBoss) {
+      this._drawBossUnit(g, x, y, c, state);
+      return;
+    }
 
     // Shadow
     g.ellipse(x + 1, y + s + 2, s * 0.8, 2.5).fill({ color: 0x000000, alpha: 0.2 });
@@ -2444,6 +2507,148 @@ export class NecroRenderer {
     // Green necro glow underneath — pulsing
     g.circle(x, y, 11).fill({ color: NECRO_GREEN, alpha: 0.03 + Math.sin(t * 2) * 0.01 });
     g.circle(x, y, 6).fill({ color: NECRO_GREEN, alpha: 0.02 });
+  }
+
+  // ── Boss unit rendering ──────────────────────────────────────────────────
+
+  private _drawBossUnit(g: Graphics, x: number, y: number, c: Crusader, state: NecroState): void {
+    const s = c.size;
+    const t = state.elapsed;
+
+    // Large shadow
+    g.ellipse(x + 2, y + s + 4, s * 1.2, 4).fill({ color: 0x000000, alpha: 0.3 });
+
+    if (c.bossType === "siege_golem") {
+      // ── SIEGE GOLEM — blocky stone construct ──
+      const breathe = Math.sin(t * 1.5) * 1;
+
+      // Legs — thick stone pillars
+      g.roundRect(x - s * 0.5, y + s * 0.3, s * 0.35, s * 0.8, 2).fill({ color: 0x665533, alpha: 0.8 });
+      g.roundRect(x + s * 0.15, y + s * 0.3, s * 0.35, s * 0.8, 2).fill({ color: 0x665533, alpha: 0.8 });
+      // Leg joints
+      g.circle(x - s * 0.33, y + s * 0.5, 2).fill({ color: 0x554422, alpha: 0.6 });
+      g.circle(x + s * 0.33, y + s * 0.5, 2).fill({ color: 0x554422, alpha: 0.6 });
+
+      // Body — massive rectangular torso with stone blocks
+      g.roundRect(x - s * 0.6, y - s * 0.5 + breathe, s * 1.2, s * 0.9, 3).fill({ color: 0x887755, alpha: 0.85 });
+      // Stone block lines
+      g.moveTo(x - s * 0.5, y - s * 0.1 + breathe).lineTo(x + s * 0.5, y - s * 0.1 + breathe).stroke({ color: 0x554433, width: 0.8, alpha: 0.3 });
+      g.moveTo(x - s * 0.5, y + s * 0.2 + breathe).lineTo(x + s * 0.5, y + s * 0.2 + breathe).stroke({ color: 0x554433, width: 0.8, alpha: 0.3 });
+      g.moveTo(x, y - s * 0.4 + breathe).lineTo(x, y - s * 0.1 + breathe).stroke({ color: 0x554433, width: 0.6, alpha: 0.2 });
+
+      // Armor plates (phase 1)
+      if (c.armorActive) {
+        g.roundRect(x - s * 0.65, y - s * 0.55 + breathe, s * 1.3, s * 1.0, 4).stroke({ color: 0xffd700, width: 2, alpha: 0.4 });
+        // Armor plate rivets
+        for (const [px2, py2] of [[-s*0.55, -s*0.4], [s*0.55, -s*0.4], [-s*0.55, s*0.3], [s*0.55, s*0.3]]) {
+          g.circle(x + px2, y + py2 + breathe, 1.5).fill({ color: 0xffd700, alpha: 0.3 });
+        }
+      } else {
+        // Cracked armor — jagged lines
+        g.moveTo(x - s * 0.4, y - s * 0.4 + breathe).lineTo(x - s * 0.2, y - s * 0.1 + breathe).lineTo(x - s * 0.35, y + s * 0.2 + breathe).stroke({ color: 0xff4444, width: 1, alpha: 0.4 });
+        g.moveTo(x + s * 0.3, y - s * 0.3 + breathe).lineTo(x + s * 0.1, y + breathe).lineTo(x + s * 0.25, y + s * 0.15 + breathe).stroke({ color: 0xff4444, width: 0.8, alpha: 0.3 });
+      }
+
+      // Glowing core in chest
+      const corePulse = 0.4 + Math.sin(t * 3) * 0.2;
+      g.circle(x, y + breathe, 4).fill({ color: c.armorActive ? 0xffd700 : 0xff4400, alpha: corePulse });
+      g.circle(x, y + breathe, 7).fill({ color: c.armorActive ? 0xffd700 : 0xff4400, alpha: corePulse * 0.1 });
+
+      // Arms — massive stone blocks
+      const armSwing = Math.sin(t * 2) * 3;
+      g.roundRect(x - s * 0.9, y - s * 0.3 + armSwing + breathe, s * 0.3, s * 0.7, 2).fill({ color: 0x776644, alpha: 0.8 });
+      g.roundRect(x + s * 0.6, y - s * 0.3 - armSwing + breathe, s * 0.3, s * 0.7, 2).fill({ color: 0x776644, alpha: 0.8 });
+      // Fists
+      g.roundRect(x - s * 0.95, y + s * 0.35 + armSwing + breathe, s * 0.4, s * 0.25, 3).fill({ color: 0x665533, alpha: 0.8 });
+      g.roundRect(x + s * 0.55, y + s * 0.35 - armSwing + breathe, s * 0.4, s * 0.25, 3).fill({ color: 0x665533, alpha: 0.8 });
+
+      // Head — flat topped stone block
+      const headY = y - s * 0.65 + breathe;
+      g.roundRect(x - s * 0.35, headY - s * 0.25, s * 0.7, s * 0.35, 2).fill({ color: 0x887755, alpha: 0.85 });
+      // Eyes — glowing slits
+      g.rect(x - s * 0.2, headY - s * 0.08, s * 0.15, s * 0.06).fill({ color: c.armorActive ? 0xffd700 : 0xff4400, alpha: 0.9 });
+      g.rect(x + s * 0.05, headY - s * 0.08, s * 0.15, s * 0.06).fill({ color: c.armorActive ? 0xffd700 : 0xff4400, alpha: 0.9 });
+
+    } else if (c.bossType === "archangel") {
+      // ── ARCHANGEL — radiant winged warrior ──
+      const hover = Math.sin(t * 1.8) * 2;
+      const wingFlap = Math.sin(t * 2.5) * 0.3;
+
+      // Wing shadows on ground
+      g.ellipse(x - 12, y + s + 4, 10, 2).fill({ color: 0x000000, alpha: 0.1 });
+      g.ellipse(x + 12, y + s + 4, 10, 2).fill({ color: 0x000000, alpha: 0.1 });
+
+      // Wings — feathered spread
+      for (let wi = 0; wi < 2; wi++) {
+        const side = wi === 0 ? -1 : 1;
+        const wingBase = x + side * s * 0.4;
+        const wingTip = x + side * (s * 2 + 8);
+        const wingTop = y - s * 1.2 + hover + wingFlap * side * 10;
+        const wingBot = y + s * 0.3 + hover;
+        // Main wing shape
+        g.moveTo(wingBase, y - s * 0.3 + hover)
+          .bezierCurveTo(wingBase + side * s * 0.3, wingTop, wingTip - side * 5, wingTop + 5, wingTip, y - s * 0.4 + hover)
+          .bezierCurveTo(wingTip + side * 2, wingBot - 5, wingBase + side * s * 0.5, wingBot, wingBase, y + s * 0.2 + hover)
+          .fill({ color: 0xffeedd, alpha: 0.35 });
+        // Feather lines
+        for (let fi = 0; fi < 5; fi++) {
+          const ft = (fi + 1) / 6;
+          const fx2 = wingBase + (wingTip - wingBase) * ft;
+          const fy1 = y - s * 0.3 + hover + (wingTop - y + s * 0.3) * ft * 0.6;
+          const fy2 = y + hover + (wingBot - y) * ft * 0.4;
+          g.moveTo(fx2, fy1).lineTo(fx2 - side * 3, fy2).stroke({ color: 0xffffff, width: 0.4, alpha: 0.15 });
+        }
+        // Wing edge glow
+        g.moveTo(wingBase, y - s * 0.3 + hover)
+          .bezierCurveTo(wingBase + side * s * 0.3, wingTop, wingTip - side * 5, wingTop + 5, wingTip, y - s * 0.4 + hover)
+          .stroke({ color: 0xffd700, width: 0.8, alpha: 0.2 });
+      }
+
+      // Body — golden armor
+      g.ellipse(x, y + hover, s * 0.55, s * 0.8).fill({ color: 0xffd700, alpha: 0.7 });
+      g.ellipse(x, y + hover, s * 0.55, s * 0.8).stroke({ color: 0xffee88, width: 0.5, alpha: 0.3 });
+      // Armor detail
+      g.rect(x - 0.5, y - s * 0.3 + hover, 1, s * 0.6).fill({ color: 0xffffff, alpha: 0.1 });
+
+      // Halo
+      const haloY = y - s * 0.9 + hover;
+      g.circle(x, haloY - 4, 8).stroke({ color: 0xffd700, width: 1.5, alpha: 0.4 + Math.sin(t * 2) * 0.15 });
+      g.circle(x, haloY - 4, 6).fill({ color: 0xffd700, alpha: 0.06 });
+
+      // Head
+      g.circle(x, haloY, s * 0.35).fill({ color: 0xffeedd, alpha: 0.8 });
+      // Serene eyes
+      g.circle(x - 2, haloY - 1, 1).fill({ color: 0x4488ff, alpha: 0.7 });
+      g.circle(x + 2, haloY - 1, 1).fill({ color: 0x4488ff, alpha: 0.7 });
+
+      // Sword of light
+      const swordAngle = Math.sin(t * 1.5) * 0.2;
+      const sx2 = x + s * 0.6, sy = y - s * 0.1 + hover;
+      g.moveTo(sx2, sy).lineTo(sx2 + Math.cos(swordAngle - 0.5) * 14, sy + Math.sin(swordAngle - 0.5) * 14 - 8).stroke({ color: 0xffffff, width: 2, alpha: 0.6 });
+      g.moveTo(sx2, sy).lineTo(sx2 + Math.cos(swordAngle - 0.5) * 14, sy + Math.sin(swordAngle - 0.5) * 14 - 8).stroke({ color: 0xffd700, width: 0.5, alpha: 0.3 });
+      // Sword glow
+      g.circle(sx2 + Math.cos(swordAngle - 0.5) * 14, sy + Math.sin(swordAngle - 0.5) * 14 - 8, 3).fill({ color: 0xffd700, alpha: 0.1 });
+
+      // Legs — greaves
+      g.moveTo(x - 3, y + s * 0.6 + hover).lineTo(x - 4, y + s + 2 + hover).stroke({ color: 0xffd700, width: 1.5, alpha: 0.5 });
+      g.moveTo(x + 3, y + s * 0.6 + hover).lineTo(x + 4, y + s + 2 + hover).stroke({ color: 0xffd700, width: 1.5, alpha: 0.5 });
+
+      // Divine radiance
+      if (c.shieldTimer && c.shieldTimer > 0) {
+        for (let ri = 0; ri < 8; ri++) {
+          const ra2 = (ri / 8) * Math.PI * 2 + t * 1.5;
+          const rLen = s + 10 + Math.sin(t * 3 + ri) * 3;
+          g.moveTo(x + Math.cos(ra2) * (s + 2), y + Math.sin(ra2) * (s + 2) + hover)
+            .lineTo(x + Math.cos(ra2) * rLen, y + Math.sin(ra2) * rLen + hover)
+            .stroke({ color: 0xffd700, width: 1, alpha: 0.2 });
+        }
+      }
+    }
+
+    // Boss name
+    const nameT = new Text({ text: c.name, style: new TextStyle({ fontFamily: FONT, fontSize: 8, fill: 0xff6644, fontWeight: "bold" }) });
+    nameT.alpha = 0.7; nameT.anchor.set(0.5, 0); nameT.position.set(x, y + s + 6);
+    this._ui.addChild(nameT);
   }
 
   destroy(): void {

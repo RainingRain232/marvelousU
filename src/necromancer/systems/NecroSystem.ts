@@ -70,6 +70,32 @@ export function pickRelic(state: NecroState, relicId: string): void {
 
 // ── Rally Point ───────────────────────────────────────────────────────────
 
+// ── War Cry spell ─────────────────────────────────────────────────────────
+
+export function castWarCry(state: NecroState): void {
+  if (state.warCryCooldown > 0) return;
+  if (state.mana < NecroConfig.WAR_CRY_COST) {
+    state.announcements.push({ text: "Not enough mana for War Cry!", color: 0xff4444, timer: 1 });
+    return;
+  }
+  const rb = getRelicBonuses(state);
+  state.mana -= NecroConfig.WAR_CRY_COST;
+  state.warCryCooldown = NecroConfig.WAR_CRY_COOLDOWN * rb.cdMult;
+  state.warCryActive = NecroConfig.WAR_CRY_DURATION;
+  state.announcements.push({ text: "WAR CRY! +50% damage!", color: 0xff8844, timer: 2 });
+  state.screenFlash = { color: 0xff4400, alpha: 0.15, timer: 0.3 };
+  // Green pulse particles from all undead
+  for (const u of state.undead) {
+    if (!u.alive) continue;
+    for (let i = 0; i < 3; i++) {
+      state.particles.push({
+        x: u.x, y: u.y, vx: (Math.random() - 0.5) * 40, vy: -30 - Math.random() * 20,
+        life: 0.6, maxLife: 0.6, color: 0xff6622, size: 2,
+      });
+    }
+  }
+}
+
 export function setRallyPoint(state: NecroState, x: number, y: number): void {
   state.rallyPoint = { x, y, timer: RALLY_CONFIG.DURATION };
 }
@@ -422,8 +448,13 @@ export function updateBattle(state: NecroState, dt: number): void {
   const manaRegenMult = (state.activeEvent?.id === "soul_storm" ? 3 : 1) * rb.manaRegenMult;
   state.mana = Math.min(state.maxMana, state.mana + state.manaRegen * manaRegenMult * dt);
 
-  // Event multipliers
-  const dmgMult = state.activeEvent?.id === "blood_moon" ? 1.5 : 1;
+  // War Cry decay
+  if (state.warCryCooldown > 0) state.warCryCooldown -= dt;
+  if (state.warCryActive > 0) state.warCryActive -= dt;
+
+  // Event multipliers + war cry
+  const warCryMult = state.warCryActive > 0 ? 1.5 : 1;
+  const dmgMult = (state.activeEvent?.id === "blood_moon" ? 1.5 : 1) * warCryMult;
   const goldMult = state.activeEvent?.id === "grave_bounty" ? 2 : 1;
   const speedMult = state.activeEvent?.id === "unholy_vigor" ? 1.5 : 1;
 
@@ -462,6 +493,18 @@ export function updateBattle(state: NecroState, dt: number): void {
     }
     u.x += sepX * dt * 15;
     u.y += sepY * dt * 15;
+
+    // Formation roles — ranged units stay behind melee line
+    if (u.ranged && state.undead.length > 2) {
+      let frontX = NecroConfig.FIELD_WIDTH;
+      for (const ally of state.undead) {
+        if (ally.id !== u.id && ally.alive && !ally.ranged && ally.x < frontX) frontX = ally.x;
+      }
+      const safeX = Math.max(frontX - 30, 20);
+      if (u.x > safeX + 10) {
+        u.x -= u.speed * dt * 0.3; // Gently drift back
+      }
+    }
 
     // Clamp to field
     u.x = Math.max(5, Math.min(NecroConfig.FIELD_WIDTH - 5, u.x));

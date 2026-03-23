@@ -203,6 +203,13 @@ export interface NecroState {
   bossActive: boolean;
   bossBeamFx: { x1: number; y1: number; x2: number; y2: number; timer: number } | null;
   bossPoundFx: { x: number; y: number; radius: number; timer: number } | null;
+
+  // War Cry buff
+  warCryCooldown: number;
+  warCryActive: number; // remaining duration, 0 = inactive
+
+  // Grave scouting — hovered grave id
+  hoveredGraveId: number;
 }
 
 export function createNecroState(): NecroState {
@@ -281,6 +288,9 @@ export function createNecroState(): NecroState {
     bossActive: false,
     bossBeamFx: null,
     bossPoundFx: null,
+    warCryCooldown: 0,
+    warCryActive: 0,
+    hoveredGraveId: -1,
   };
 }
 

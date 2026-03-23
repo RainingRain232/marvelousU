@@ -292,4 +292,10 @@ export const NecroConfig = {
   SOUL_HARVEST_MANA: 3,
   /** HP restored per 5 kills (soul harvest) */
   SOUL_HARVEST_HP_INTERVAL: 5,
+  /** War Cry buff duration */
+  WAR_CRY_DURATION: 6,
+  /** War Cry mana cost */
+  WAR_CRY_COST: 25,
+  /** War Cry cooldown */
+  WAR_CRY_COOLDOWN: 15,
 } as const;

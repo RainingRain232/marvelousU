@@ -15,7 +15,7 @@ import {
   updateRitual, placeCorpseInSlot, startRaise,
   updateBattle, prepareBattleWave, castDarkNova, castBoneWall, castSoulLeech,
   healUndeadBetweenWaves, sacrificeUndead, rollWaveEvent, calculateWaveBonuses,
-  setRallyPoint, pickRelic,
+  setRallyPoint, pickRelic, castWarCry,
 } from "./systems/NecroSystem";
 import { BOSS_WAVES, BOSSES, RELICS } from "./config/NecroConfig";
 import { NecroRenderer } from "./view/NecroRenderer";
@@ -26,6 +26,7 @@ export class NecroGame {
   private _renderer = new NecroRenderer();
   private _keyHandler: ((e: KeyboardEvent) => void) | null = null;
   private _pointerDown: ((e: { global: { x: number; y: number } }) => void) | null = null;
+  private _pointerMove: ((e: { global: { x: number; y: number } }) => void) | null = null;
   private _contextMenu: ((e: MouseEvent) => void) | null = null;
   private _sw = 0;
   private _sh = 0;
@@ -49,6 +50,7 @@ export class NecroGame {
 
   private _removePointer(): void {
     if (this._pointerDown) { viewManager.app.stage.off("pointerdown", this._pointerDown); this._pointerDown = null; }
+    if (this._pointerMove) { viewManager.app.stage.off("pointermove", this._pointerMove); this._pointerMove = null; }
     if (this._contextMenu) { window.removeEventListener("contextmenu", this._contextMenu); this._contextMenu = null; }
   }
 
@@ -724,6 +726,21 @@ export class NecroGame {
       };
       viewManager.app.stage.on("pointerdown", this._pointerDown);
 
+      // Grave scouting — hover to preview
+      this._pointerMove = (e: { global: { x: number; y: number } }) => {
+        const wx = e.global.x - ox, wy = e.global.y - oy;
+        this._state.hoveredGraveId = -1;
+        for (const grave of this._state.graves) {
+          if (grave.dug) continue;
+          const dx = wx - grave.x, dy = wy - grave.y;
+          if (dx * dx + dy * dy < 20 * 20) {
+            this._state.hoveredGraveId = grave.id;
+            break;
+          }
+        }
+      };
+      viewManager.app.stage.on("pointermove", this._pointerMove);
+
       this._keyHandler = (e: KeyboardEvent) => {
         if (e.key === "Escape") { this.destroy(); window.dispatchEvent(new Event("necromancerExit")); }
         if (e.key === " ") {
@@ -818,6 +835,9 @@ export class NecroGame {
         if (e.key === "r" || e.key === "R") {
           this._state.rallyPoint = null;
           this._state.announcements.push({ text: "Rally cleared", color: 0x889988, timer: 1 });
+        }
+        if (e.key === "f" || e.key === "F") {
+          castWarCry(this._state);
         }
         if (e.key === "s" || e.key === "S") {
           this._state.battleSpeed = this._state.battleSpeed === 1 ? 2 : 1;
