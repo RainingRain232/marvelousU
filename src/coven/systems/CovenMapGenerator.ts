@@ -4,7 +4,6 @@
 
 import { hexKey, hexNeighbors, hexDistance } from "@world/hex/HexCoord";
 import type { HexCoord } from "@world/hex/HexCoord";
-import { CovenConfig } from "../config/CovenConfig";
 import type { CovenState, CovenHex, CovenTerrain, RitualComponent } from "../state/CovenState";
 import { covenRng } from "../state/CovenState";
 import { INGREDIENTS } from "../config/CovenRecipes";
@@ -138,7 +137,7 @@ export function updateAdjacentHexes(state: CovenState): void {
 
 export function updateLighting(state: CovenState): void {
   const isNight = state.phase === CovenPhase.NIGHT || state.phase === CovenPhase.DUSK;
-  const playerKey = hexKey(state.playerPosition.q, state.playerPosition.r);
+  void hexKey(state.playerPosition.q, state.playerPosition.r);
 
   for (const [, hex] of state.hexes) {
     if (!hex.revealed) { hex.lightLevel = 0; continue; }

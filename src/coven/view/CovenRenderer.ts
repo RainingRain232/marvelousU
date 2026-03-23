@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import { Container, Graphics, Text, TextStyle } from "pixi.js";
-import { hexKey, hexDistance } from "@world/hex/HexCoord";
+import { hexKey } from "@world/hex/HexCoord";
 import type { HexCoord } from "@world/hex/HexCoord";
 import { CovenConfig } from "../config/CovenConfig";
 import type { CovenState, CovenHex, CovenTerrain } from "../state/CovenState";
@@ -758,7 +758,6 @@ function drawCreature(g: Graphics, x: number, y: number, type: string, time: num
     g.circle(x + 3, y - 2, 3).fill({ color: 0x3a2a1a, alpha: 0.5 }); // head
     // Legs (4 visible per side)
     for (let i = 0; i < 4; i++) {
-      const la = -0.6 + i * 0.4;
       const ll = 6 + i * 1.5;
       g.moveTo(x - 2, y + i - 1).bezierCurveTo(x - ll, y - 3 + i, x - ll - 1, y + i + 2, x - ll + 2, y + 5).stroke({ color: 0x3a2a1a, width: 0.8, alpha: 0.45 });
       g.moveTo(x + 2, y + i - 1).bezierCurveTo(x + ll, y - 3 + i, x + ll + 1, y + i + 2, x + ll - 2, y + 5).stroke({ color: 0x3a2a1a, width: 0.8, alpha: 0.45 });
@@ -996,7 +995,7 @@ export class CovenRenderer {
     this._spellFlashColor = color;
   }
 
-  private _drawHex(g: Graphics, hex: CovenHex, state: CovenState): void {
+  private _drawHex(g: Graphics, hex: CovenHex, _state: CovenState): void {
     const p = h2p(hex.coord);
     const t = TC[hex.terrain] ?? TC["water"] ?? { base: 0x333333, hi: 0x444444, lo: 0x222222 };
     const r2 = rng(hex.coord.q * 1000 + hex.coord.r * 37);

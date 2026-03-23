@@ -4,13 +4,14 @@
 
 import type { CovenState, PotionId, SpellId } from "../state/CovenState";
 import { addCovenLog, addPotion, hasIngredient, removeIngredient } from "../state/CovenState";
-import { POTION_RECIPES, SPELL_DEFS, type PotionRecipe, type SpellDef } from "../config/CovenRecipes";
+import { POTION_RECIPES, type PotionRecipe } from "../config/CovenRecipes";
 
 type BrewCallback = (potionId: PotionId, name: string) => void;
 type LearnCallback = (spellId: SpellId, name: string) => void;
 
 let _brewCallback: BrewCallback | null = null;
 let _learnCallback: LearnCallback | null = null;
+void _learnCallback; // Suppress unused — set by setLearnCallback, read by future learn logic
 
 export class CovenBrewSystem {
   static setBrewCallback(cb: BrewCallback | null): void { _brewCallback = cb; }

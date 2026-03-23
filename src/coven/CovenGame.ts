@@ -86,11 +86,7 @@ export class CovenGame {
     this._startGameInner();
   }
 
-  private _startGame(): void {
-    const seed = Date.now() % 2147483647;
-    this._state = createCovenState(seed, "normal");
-    this._startGameInner();
-  }
+
 
   private _startGameInner(): void {
     generateCovenMap(this._state);
@@ -222,7 +218,7 @@ export class CovenGame {
       this._redrawMap();
     });
 
-    CovenBrewSystem.setBrewCallback((id, name) => {
+    CovenBrewSystem.setBrewCallback((_id, name) => {
       this._hud.showNotification(`Brewed: ${name}!`, 0x88aaff);
     });
 

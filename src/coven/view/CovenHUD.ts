@@ -5,7 +5,6 @@
 import { Container, Graphics, Text, TextStyle } from "pixi.js";
 import type { CovenState } from "../state/CovenState";
 import { CovenPhase } from "../state/CovenState";
-import { CovenConfig } from "../config/CovenConfig";
 import { CovenRitualSystem } from "../systems/CovenRitualSystem";
 
 
@@ -91,7 +90,7 @@ export class CovenHUD {
     this.container.addChild(this._controlsHint);
   }
 
-  update(state: CovenState, sw: number, sh: number): void {
+  update(state: CovenState, _sw: number, _sh: number): void {
     this._dayText.text = `Night ${state.day}`;
     const phaseLabels: Record<string, string> = {
       [CovenPhase.DAWN]: "Dawn \u2014 a new day", [CovenPhase.FORAGE]: "Forage \u2014 gather ingredients",

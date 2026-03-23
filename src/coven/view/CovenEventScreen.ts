@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import { Container, Graphics, Text, TextStyle } from "pixi.js";
-import type { CovenEvent, CovenEventChoice } from "../config/CovenEvents";
+import type { CovenEvent } from "../config/CovenEvents";
 
 const FONT = "Georgia, serif";
 const COL = 0x8855cc;

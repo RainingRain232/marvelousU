@@ -6,7 +6,7 @@ import { CovenPhase } from "../state/CovenState";
 import type { CovenState, Creature } from "../state/CovenState";
 import { addCovenLog, covenRng } from "../state/CovenState";
 import { CovenConfig, getCovenDifficulty } from "../config/CovenConfig";
-import { getCreaturesForTerrain, type CreatureDef } from "../config/CovenCreatures";
+import { getCreaturesForTerrain } from "../config/CovenCreatures";
 import { hexKey, hexDistance, hexNeighbors } from "@world/hex/HexCoord";
 import { updateLighting } from "./CovenMapGenerator";
 

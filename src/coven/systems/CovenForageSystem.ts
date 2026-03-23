@@ -6,7 +6,7 @@ import { hexKey } from "@world/hex/HexCoord";
 import type { CovenState, IngredientId, RitualComponent, CovenTerrain } from "../state/CovenState";
 import { CovenPhase, addCovenLog, addIngredient, covenRng } from "../state/CovenState";
 import { INGREDIENTS, getIngredientDef } from "../config/CovenRecipes";
-import { COVEN_EVENTS, type CovenEvent, type CovenEventOutcome } from "../config/CovenEvents";
+import { COVEN_EVENTS, type CovenEvent } from "../config/CovenEvents";
 import { revealAround } from "./CovenMapGenerator";
 
 type ForageCallback = (total: number) => void;
