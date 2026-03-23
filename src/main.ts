@@ -2786,8 +2786,14 @@ async function _bootBreakerGame(): Promise<void> {
     _breakerGame.destroy();
     _breakerGame = null;
   }
-  _breakerGame = new BreakerGame();
-  await _breakerGame.boot();
+  _breakerGame = new BreakerGame(viewManager.app);
+  _breakerGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("breakerExit", _onExit);
+    if (_breakerGame) { _breakerGame.destroy(); _breakerGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("breakerExit", _onExit);
 }
 
 // ---------------------------------------------------------------------------

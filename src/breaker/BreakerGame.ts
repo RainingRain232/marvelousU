@@ -359,6 +359,9 @@ export class BreakerGame {
         this.state.phase = BreakerPhase.PAUSED;
       } else if (this.state.phase === BreakerPhase.PAUSED) {
         this.state.phase = BreakerPhase.PLAYING;
+      } else if (this.state.phase === BreakerPhase.MENU || this.state.phase === BreakerPhase.GAME_OVER) {
+        this.destroy();
+        window.dispatchEvent(new Event("breakerExit"));
       }
     }
   }
