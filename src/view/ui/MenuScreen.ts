@@ -1619,11 +1619,11 @@ export class MenuScreen {
     // Scroll the menu card when it's taller than the viewport
     this._onWheel = (e: WheelEvent) => {
       if (!this.container.visible || !this._screen1?.visible) return;
-      const sh = this._vm.app.screen.height;
+      const sh = this._vm.screenHeight;
       const maxScroll = Math.max(0, this._screen1CardH - sh + 16);
       if (maxScroll <= 0) return;
       this._scrollY = Math.min(maxScroll, Math.max(0, this._scrollY + e.deltaY));
-      this._onResize();
+      this._layout();
     };
     window.addEventListener("wheel", this._onWheel, { passive: true });
   }

@@ -72,7 +72,7 @@ export class RoundTableGame {
   private _currentEnemyIds: string[] = [];
 
   // Animation processing
-  impimpprivate _processingAnims = false;
+  private _processingAnims = false;
 
   // Combat ticker for idle animations
   private _combatTickerCb: ((ticker: any) => void) | null = null;
