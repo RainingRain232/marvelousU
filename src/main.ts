@@ -153,6 +153,7 @@ import { AlchemistGame } from "./alchemist/AlchemistGame";
 import { SiegeGame } from "./siege/SiegeGame";
 import { TavernGame } from "./tavern/TavernGame";
 import { HuntGame } from "./hunt/HuntGame";
+import { RaceGame } from "./race/RaceGame";
 import { camelotHubScreen } from "@view/ui/CamelotHubScreen";
 
 // World mode imports
@@ -365,6 +366,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     [GameMode.SIEGE]: 36,
     [GameMode.TAVERN]: 37,
     [GameMode.HUNT]: 38,
+    [GameMode.RACE]: 39,
   };
   // Modes that need the setup screen (not skipSetup)
   const NEEDS_SETUP = new Set([GameMode.STANDARD, GameMode.DEATHMATCH, GameMode.BATTLEFIELD, GameMode.WAVE]);
@@ -574,6 +576,11 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     if (menuScreen.selectedGameMode === GameMode.HUNT) {
       menuScreen.hide();
       _bootHuntGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.RACE) {
+      menuScreen.hide();
+      _bootRaceGame();
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.WORLD) {
@@ -3513,6 +3520,24 @@ async function _bootHuntGame(): Promise<void> {
     menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
   window.addEventListener("huntExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Race mode boot
+// ---------------------------------------------------------------------------
+
+let _raceGame: RaceGame | null = null;
+
+async function _bootRaceGame(): Promise<void> {
+  if (_raceGame) { _raceGame.destroy(); _raceGame = null; }
+  _raceGame = new RaceGame();
+  await _raceGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("raceExit", _onExit);
+    if (_raceGame) { _raceGame.destroy(); _raceGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("raceExit", _onExit);
 }
 
 // ---------------------------------------------------------------------------

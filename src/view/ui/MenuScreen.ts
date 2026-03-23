@@ -410,6 +410,12 @@ const GAME_MODES: GameModeEntry[] = [
     desc: "Archery: aim your bow, hunt prey in the medieval forest",
     skipSetup: true,
   },
+  {
+    mode: GameMode.RACE,
+    label: "RACE",
+    desc: "Horse racing: gallop, manage stamina, bet on victory",
+    skipSetup: true,
+  },
 ];
 
 // ---------------------------------------------------------------------------
