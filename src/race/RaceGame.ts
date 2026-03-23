@@ -154,11 +154,17 @@ export class RaceGame {
         const player = this._state.racers.find(r => r.isPlayer);
         if (player) player.galloping = true;
       }
+      // Steering
+      if (e.key === "a" || e.key === "A" || e.key === "ArrowLeft") this._state.playerSteerInput = -1;
+      if (e.key === "d" || e.key === "D" || e.key === "ArrowRight") this._state.playerSteerInput = 1;
     };
     this._keyUpHandler = (e: KeyboardEvent) => {
       if (e.key === " ") {
         const player = this._state.racers.find(r => r.isPlayer);
         if (player) player.galloping = false;
+      }
+      if (e.key === "a" || e.key === "A" || e.key === "ArrowLeft" || e.key === "d" || e.key === "D" || e.key === "ArrowRight") {
+        this._state.playerSteerInput = 0;
       }
     };
     window.addEventListener("keydown", this._keyHandler);

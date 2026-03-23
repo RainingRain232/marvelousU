@@ -29,6 +29,7 @@ export function updateRace(state: RaceState, dt: number): void {
 
   if (state.phase !== RacePhase.RACING) return;
   state.elapsedTime += dt;
+  if (state.playerShield > 0) state.playerShield -= dt;
 
   const track = state.track;
   const wpCount = track.waypoints.length;
@@ -50,7 +51,14 @@ export function updateRace(state: RaceState, dt: number): void {
 
     const turnRate = 3.0 * racer.horse.handling;
     if (racer.isPlayer) {
-      racer.angle += Math.sign(angleDiff) * Math.min(Math.abs(angleDiff), turnRate * dt);
+      // Player steering: auto-steer + manual override
+      if (state.playerSteerInput !== 0) {
+        // Manual steer overrides (but auto-steer still pulls toward waypoint)
+        racer.angle += state.playerSteerInput * turnRate * dt * 0.7;
+        racer.angle += Math.sign(angleDiff) * Math.min(Math.abs(angleDiff), turnRate * dt * 0.3);
+      } else {
+        racer.angle += Math.sign(angleDiff) * Math.min(Math.abs(angleDiff), turnRate * dt);
+      }
     } else {
       // AI steering with noise
       racer.angle += Math.sign(angleDiff + racer.aiSteerNoise) * Math.min(Math.abs(angleDiff), turnRate * dt * 0.9);
@@ -99,14 +107,63 @@ export function updateRace(state: RaceState, dt: number): void {
       });
     }
 
-    // Obstacle collision
+    // Obstacle collision (shield protects player)
     for (const obs of track.obstacles) {
       const odx = racer.x - obs.x, ody = racer.y - obs.y;
       if (odx * odx + ody * ody < obs.r * obs.r * 4) {
-        racer.speed *= RaceConfig.OBSTACLE_SLOWDOWN;
-        // Push away
+        if (racer.isPlayer && state.playerShield > 0) {
+          // Shield absorbs obstacle hit
+        } else {
+          racer.speed *= RaceConfig.OBSTACLE_SLOWDOWN;
+        }
         const dist = Math.sqrt(odx * odx + ody * ody);
         if (dist > 0) { racer.x += (odx / dist) * 3; racer.y += (ody / dist) * 3; }
+      }
+    }
+
+    // Racer-to-racer bumping
+    for (const other of state.racers) {
+      if (other === racer || other.finished || !other.isPlayer && !racer.isPlayer) continue;
+      const rdx = racer.x - other.x, rdy = racer.y - other.y;
+      const rdist = Math.sqrt(rdx * rdx + rdy * rdy);
+      if (rdist < 15 && rdist > 0) {
+        // Push apart
+        const push = (15 - rdist) * 0.5;
+        racer.x += (rdx / rdist) * push;
+        racer.y += (rdy / rdist) * push;
+        // Speed transfer (lighter horse bounces more)
+        racer.speed *= 0.9;
+      }
+    }
+
+    // Power-up collection (player only)
+    if (racer.isPlayer) {
+      for (const pup of state.powerUps) {
+        if (pup.collected) continue;
+        const pdx = racer.x - pup.x, pdy = racer.y - pup.y;
+        if (pdx * pdx + pdy * pdy < 20 * 20) {
+          pup.collected = true;
+          if (pup.type === "speed") {
+            racer.speed = racer.horse.maxSpeed * RaceConfig.SPRINT_SPEED_MULT * 1.2;
+            state.announcements.push({ text: "SPEED BOOST!", color: 0xff6644, timer: 1.5 });
+          } else if (pup.type === "stamina") {
+            racer.stamina = racer.horse.stamina;
+            state.announcements.push({ text: "STAMINA REFILL!", color: 0x44ccff, timer: 1.5 });
+          } else if (pup.type === "shield") {
+            state.playerShield = 5;
+            state.announcements.push({ text: "SHIELD! (5s)", color: 0xffd700, timer: 1.5 });
+          }
+          // Pickup particles
+          for (let pi = 0; pi < 5; pi++) {
+            state.particles.push({
+              x: pup.x, y: pup.y,
+              vx: (Math.random() - 0.5) * 40, vy: (Math.random() - 0.5) * 40,
+              life: 0.3, maxLife: 0.3,
+              color: pup.type === "speed" ? 0xff6644 : pup.type === "stamina" ? 0x44ccff : 0xffd700,
+              size: 2,
+            });
+          }
+        }
       }
     }
 

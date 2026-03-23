@@ -80,6 +80,22 @@ export class RaceRenderer {
       g.circle(ox + wp[i].x, oy + wp[i].y, 3).fill({ color: 0xffffff, alpha: 0.05 });
     }
 
+    // Power-ups on track
+    const pupColors = { speed: 0xff6644, stamina: 0x44ccff, shield: 0xffd700 };
+    const pupSymbols = { speed: "\u26A1", stamina: "\u2764", shield: "\u{1F6E1}" };
+    for (const pup of state.powerUps) {
+      if (pup.collected) continue;
+      const ppx = ox + pup.x, ppy = oy + pup.y;
+      const col = pupColors[pup.type];
+      const pulse = 0.5 + Math.sin(Date.now() / 300) * 0.2;
+      g.circle(ppx, ppy, 10).fill({ color: col, alpha: pulse * 0.15 });
+      g.circle(ppx, ppy, 7).fill({ color: col, alpha: pulse * 0.4 });
+      g.circle(ppx, ppy, 7).stroke({ color: 0xffffff, width: 0.5, alpha: 0.2 });
+      const sym = new Text({ text: pupSymbols[pup.type], style: new TextStyle({ fontFamily: FONT, fontSize: 8, fill: 0xffffff }) });
+      sym.anchor.set(0.5, 0.5); sym.position.set(ppx, ppy);
+      this._ui.addChild(sym);
+    }
+
     // Draw racers
     for (const racer of state.racers) {
       const rx = ox + racer.x, ry = oy + racer.y;
@@ -100,9 +116,14 @@ export class RaceRenderer {
       } else {
         g.circle(rx - cos * 2, ry - sin * 2 - 4, 3).fill({ color: 0x666666 });
       }
-      // Name tag
+      // Player indicator + shield
       if (racer.isPlayer) {
         g.circle(rx, ry, 12).stroke({ color: 0x44ff44, width: 1, alpha: 0.3 });
+        if (state.playerShield > 0) {
+          const shieldAlpha = Math.min(0.4, state.playerShield / 3);
+          g.circle(rx, ry, 14).fill({ color: 0xffd700, alpha: shieldAlpha * 0.2 });
+          g.circle(rx, ry, 14).stroke({ color: 0xffd700, width: 1.5, alpha: shieldAlpha });
+        }
       }
       // Speed lines when galloping
       if (racer.galloping && racer.speed > racer.horse.maxSpeed) {
@@ -169,7 +190,7 @@ export class RaceRenderer {
     }
 
     // Controls
-    addText("Hold SPACE: gallop (uses stamina) | Auto-steer follows track", sw / 2, sh - 12, { fontSize: 8, fill: 0x556655 }, true);
+    addText("SPACE: gallop | A/D: steer | Collect power-ups on track!", sw / 2, sh - 12, { fontSize: 8, fill: 0x556655 }, true);
   }
 
   destroy(): void { this.container.removeChildren(); this._gfx.destroy(); }

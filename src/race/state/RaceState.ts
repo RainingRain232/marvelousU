@@ -48,6 +48,14 @@ export interface RaceState {
   log: string[];
   totalRaces: number;
   totalWins: number;
+  // Player input
+  playerSteerInput: number; // -1 left, 0 auto, 1 right
+  // Track power-ups
+  powerUps: { x: number; y: number; type: "speed" | "stamina" | "shield"; collected: boolean }[];
+  playerShield: number; // seconds of shield remaining
+  // Championship
+  championshipRaces: number; // 0 = single race, 3 = championship
+  championshipResults: number[]; // place per race
 }
 
 const AI_NAMES = ["Sir Galahad", "Lady Morgana", "Baron Hector", "Dame Elspeth", "Lord Bors", "Squire Tam"];
@@ -95,5 +103,29 @@ export function createRaceState(trackIndex: number, horseIndex: number, gold: nu
     log: [`${track.name} — ${track.laps} laps`],
     totalRaces: 0,
     totalWins: 0,
+    playerSteerInput: 0,
+    powerUps: generatePowerUps(track),
+    playerShield: 0,
+    championshipRaces: 0,
+    championshipResults: [],
   };
+}
+
+function generatePowerUps(track: TrackDef): RaceState["powerUps"] {
+  const pups: RaceState["powerUps"] = [];
+  const types: ("speed" | "stamina" | "shield")[] = ["speed", "stamina", "shield"];
+  // Place 3-4 power-ups along the track
+  const wp = track.waypoints;
+  for (let i = 0; i < 3 + Math.floor(Math.random() * 2); i++) {
+    const wpIdx = Math.floor(Math.random() * wp.length);
+    const a = wp[wpIdx], b = wp[(wpIdx + 1) % wp.length];
+    const t = 0.3 + Math.random() * 0.4;
+    pups.push({
+      x: a.x + (b.x - a.x) * t + (Math.random() - 0.5) * 20,
+      y: a.y + (b.y - a.y) * t + (Math.random() - 0.5) * 20,
+      type: types[Math.floor(Math.random() * types.length)],
+      collected: false,
+    });
+  }
+  return pups;
 }
