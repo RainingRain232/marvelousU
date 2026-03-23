@@ -210,6 +210,10 @@ export class RaceGame {
 
     let y = py + 16;
     addText(won ? "\u{1F3C6} WINNER! \u{1F3C6}" : `\u{1F3C7} ${playerPlace}${playerPlace === 2 ? "nd" : playerPlace === 3 ? "rd" : "th"} Place`, this._sw / 2, y, { fontSize: 20, fill: accent, fontWeight: "bold", letterSpacing: 3 }, true);
+    try {
+      const prev = parseInt(localStorage.getItem("race_highgold") ?? "0") || 0;
+      if (this._gold > prev) { localStorage.setItem("race_highgold", `${this._gold}`); addText("\u2605 NEW GOLD RECORD! \u2605", this._sw / 2, y + 24, { fontSize: 11, fill: 0xffd700, fontWeight: "bold" }, true); }
+    } catch { /* ignore */ }
     y += 36;
 
     // Finish order

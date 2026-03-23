@@ -259,6 +259,11 @@ export class HuntGame {
 
     let y = py + 16;
     addText("\u{1F3F9} HUNT COMPLETE \u{1F3F9}", this._sw / 2, y, { fontSize: 20, fill: 0x88aa44, fontWeight: "bold", letterSpacing: 3 }, true);
+    // High score
+    try {
+      const prev = parseInt(localStorage.getItem("hunt_highscore") ?? "0") || 0;
+      if (this._state.score > prev) { localStorage.setItem("hunt_highscore", `${this._state.score}`); addText("\u2605 NEW HIGH SCORE! \u2605", this._sw / 2, y + 24, { fontSize: 11, fill: 0xffd700, fontWeight: "bold" }, true); }
+    } catch { /* ignore */ }
     y += 36;
 
     const accuracy = this._state.kills + this._state.misses > 0 ? Math.round(this._state.kills / (this._state.kills + this._state.misses) * 100) : 0;

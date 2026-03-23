@@ -345,6 +345,10 @@ export class AlchemistGame {
     };
 
     addText("\u2697 SHOP CLOSED \u2697", this._sw / 2, y, { fontSize: 22, fill: 0xaa8844, fontWeight: "bold", letterSpacing: 3 }, true);
+    try {
+      const prev = parseInt(localStorage.getItem("alchemist_highscore") ?? "0") || 0;
+      if (this._state.score > prev) { localStorage.setItem("alchemist_highscore", `${this._state.score}`); addText("\u2605 NEW HIGH SCORE! \u2605", this._sw / 2, y + 24, { fontSize: 11, fill: 0xffd700, fontWeight: "bold" }, true); }
+    } catch { /* ignore */ }
     y += 36;
 
     const stats: [string, string, number][] = [

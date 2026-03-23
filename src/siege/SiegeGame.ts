@@ -208,6 +208,10 @@ export class SiegeGame {
 
     let y = py + 16;
     addText(isVictory ? "\u2726 CASTLE DEFENDED! \u2726" : "\u2620 CASTLE FALLEN \u2620", this._sw / 2, y, { fontSize: 22, fill: accent, fontWeight: "bold", letterSpacing: 3 }, true);
+    try {
+      const prev = parseInt(localStorage.getItem("siege_highscore") ?? "0") || 0;
+      if (this._state.score > prev) { localStorage.setItem("siege_highscore", `${this._state.score}`); addText("\u2605 NEW HIGH SCORE! \u2605", this._sw / 2, y + 24, { fontSize: 11, fill: 0xffd700, fontWeight: "bold" }, true); }
+    } catch { /* ignore */ }
     y += 40;
 
     const stats: [string, string, number][] = [
