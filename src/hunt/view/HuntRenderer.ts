@@ -58,6 +58,17 @@ export class HuntRenderer {
     // Field border
     g.roundRect(ox - 2, oy - 2, HuntConfig.FIELD_WIDTH + 4, HuntConfig.FIELD_HEIGHT + 4, 4).stroke({ color: COL, width: 1, alpha: 0.2 });
 
+    // Draw trees (obstacles)
+    for (const tree of state.trees) {
+      const tx = ox + tree.x, ty = oy + tree.y;
+      // Trunk
+      g.rect(tx - 2, ty + tree.r * 0.3, 4, tree.r * 0.5).fill({ color: 0x3a2a1a, alpha: 0.6 });
+      // Canopy
+      g.circle(tx, ty, tree.r).fill({ color: 0x1a4a1a, alpha: 0.5 });
+      g.circle(tx - 2, ty - 2, tree.r * 0.7).fill({ color: 0x1e4e1e, alpha: 0.3 });
+      g.circle(tx, ty, tree.r).stroke({ color: 0x2a5a2a, width: 0.5, alpha: 0.2 });
+    }
+
     // Draw prey
     for (const prey of state.prey) {
       if (!prey.alive) continue;
@@ -152,6 +163,18 @@ export class HuntRenderer {
     const rem = Math.max(0, state.timeLimit - state.elapsedTime);
     addText(`${Math.floor(rem / 60)}:${Math.floor(rem % 60).toString().padStart(2, "0")}`, sw / 2, 24, { fontSize: 14, fill: rem < 15 ? 0xff4444 : 0xccddcc, fontWeight: "bold" }, true);
     addText(`Round ${state.round + 1}/3`, 650, 8, { fontSize: 11, fill: 0x889988 });
+
+    // HP
+    addText(`HP: ${"♥".repeat(state.playerHp)}${"♡".repeat(state.maxPlayerHp - state.playerHp)}`, 150, 24, { fontSize: 10, fill: state.playerHp <= 2 ? 0xff4444 : 0xff8888 });
+
+    // Streak
+    if (state.streak >= 2) {
+      addText(`Streak: ${state.streak}x`, 400, 24, { fontSize: 10, fill: state.streak >= 5 ? 0xffd700 : 0xffaa44, fontWeight: "bold" });
+    }
+
+    // Wind indicator
+    const windStr = state.wind > 0.3 ? "Wind: >>>" : state.wind < -0.3 ? "Wind: <<<" : "Wind: calm";
+    addText(windStr, 530, 24, { fontSize: 9, fill: Math.abs(state.wind) > 0.5 ? 0x88ccff : 0x667766 });
 
     // Controls
     addText("Click: aim | Hold: draw | Release: shoot | Esc: quit", sw / 2, sh - 14, { fontSize: 8, fill: 0x556655 }, true);

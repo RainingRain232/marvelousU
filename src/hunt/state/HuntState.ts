@@ -17,6 +17,8 @@ export interface Prey {
   startled: boolean;
   startledTimer: number;
   alive: boolean;
+  aggressive: boolean;
+  attackCooldown: number;
 }
 
 export interface Arrow {
@@ -51,6 +53,16 @@ export interface HuntState {
   announcements: { text: string; color: number; timer: number }[];
   log: string[];
   roundOver: boolean;
+  // Streak & combo
+  streak: number;
+  bestStreak: number;
+  // Player danger
+  playerHp: number;
+  maxPlayerHp: number;
+  // Environment
+  trees: { x: number; y: number; r: number }[];
+  wind: number; // -1 to 1, affects arrow drift
+  windTimer: number;
 }
 
 export function createHuntState(bowIndex = 0): HuntState {
@@ -77,5 +89,24 @@ export function createHuntState(bowIndex = 0): HuntState {
     announcements: [{ text: "The hunt begins!", color: 0x44aa44, timer: 2 }],
     log: ["Round 1 — Hunt begins."],
     roundOver: false,
+    streak: 0,
+    bestStreak: 0,
+    playerHp: 5,
+    maxPlayerHp: 5,
+    trees: generateTrees(),
+    wind: 0,
+    windTimer: 5,
   };
+}
+
+function generateTrees(): { x: number; y: number; r: number }[] {
+  const trees: { x: number; y: number; r: number }[] = [];
+  for (let i = 0; i < 8; i++) {
+    trees.push({
+      x: 30 + Math.random() * (HuntConfig.FIELD_WIDTH - 60),
+      y: 30 + Math.random() * (HuntConfig.FIELD_HEIGHT - 100),
+      r: 12 + Math.random() * 10,
+    });
+  }
+  return trees;
 }

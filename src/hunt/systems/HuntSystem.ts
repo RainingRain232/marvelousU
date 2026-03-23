@@ -31,6 +31,8 @@ export function spawnPrey(state: HuntState): void {
     turnTimer: 1 + Math.random() * 3,
     startled: false, startledTimer: 0,
     alive: true,
+    aggressive: (type === "wolf" || type === "bear") && state.round >= 1,
+    attackCooldown: 3 + Math.random() * 2,
   });
 }
 
@@ -64,6 +66,13 @@ export function shootArrow(state: HuntState): void {
 
 export function updateHunt(state: HuntState, dt: number): void {
   state.elapsedTime += dt;
+
+  // Wind changes
+  state.windTimer -= dt;
+  if (state.windTimer <= 0) {
+    state.wind = (Math.random() - 0.5) * 2;
+    state.windTimer = 4 + Math.random() * 4;
+  }
 
   // Spawn timer
   state.spawnTimer -= dt;
@@ -105,16 +114,59 @@ export function updateHunt(state: HuntState, dt: number): void {
     }
   }
 
-  // Move arrows + check collisions
+  // Aggressive prey attack player (wolves, bears)
+  for (const prey of state.prey) {
+    if (!prey.alive || !prey.aggressive) continue;
+    prey.attackCooldown -= dt;
+    const dx = state.playerX - prey.x, dy = state.playerY - prey.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    // Chase player instead of wandering
+    if (dist < 150) {
+      prey.angle = Math.atan2(dy, dx);
+      prey.startled = false;
+    }
+    // Attack when close
+    if (dist < 20 && prey.attackCooldown <= 0) {
+      state.playerHp--;
+      prey.attackCooldown = 2;
+      state.announcements.push({ text: `${PREY[prey.type].name} attacks! -1 HP`, color: 0xff4444, timer: 1.5 });
+      // Knockback prey
+      prey.angle = Math.atan2(-dy, -dx);
+      prey.startled = true;
+      prey.startledTimer = 1;
+      if (state.playerHp <= 0) {
+        state.roundOver = true;
+        state.announcements.push({ text: "KNOCKED OUT!", color: 0xff2222, timer: 3 });
+      }
+    }
+  }
+
+  // Move arrows + check collisions (with wind drift + tree blocking)
   for (let i = state.arrows.length - 1; i >= 0; i--) {
     const arrow = state.arrows[i];
     arrow.x += arrow.vx * dt;
     arrow.y += arrow.vy * dt;
+    // Wind drift
+    arrow.x += state.wind * 30 * dt;
     arrow.life -= dt;
+
+    // Tree collision check
+    let hitTree = false;
+    for (const tree of state.trees) {
+      const tdx = arrow.x - tree.x, tdy = arrow.y - tree.y;
+      if (tdx * tdx + tdy * tdy < tree.r * tree.r) {
+        hitTree = true;
+        // Arrow sticks in tree (particle)
+        state.particles.push({ x: arrow.x, y: arrow.y, vx: 0, vy: 0, life: 0.5, maxLife: 0.5, color: 0x6a4a2a, size: 2 });
+        break;
+      }
+    }
+    if (hitTree) { state.arrows.splice(i, 1); state.misses++; state.streak = 0; continue; }
 
     // Out of bounds or expired
     if (arrow.life <= 0 || arrow.x < -20 || arrow.x > HuntConfig.FIELD_WIDTH + 20 || arrow.y < -20 || arrow.y > HuntConfig.FIELD_HEIGHT + 20) {
       state.misses++;
+      state.streak = 0;
       state.score += HuntConfig.MISS_PENALTY;
       state.arrows.splice(i, 1);
       continue;
@@ -130,10 +182,16 @@ export function updateHunt(state: HuntState, dt: number): void {
         prey.hp -= arrow.damage;
         if (prey.hp <= 0) {
           prey.alive = false;
-          state.gold += def.value;
-          state.score += def.value;
+          state.streak++;
+          if (state.streak > state.bestStreak) state.bestStreak = state.streak;
+          // Streak bonus: +25% per consecutive hit (capped at 3x)
+          const streakMult = Math.min(3, 1 + (state.streak - 1) * 0.25);
+          const reward = Math.floor(def.value * streakMult);
+          state.gold += reward;
+          state.score += reward;
           state.kills++;
-          state.announcements.push({ text: `${def.name}! +${def.value}g`, color: 0xffd700, timer: 1.5 });
+          const streakStr = state.streak >= 3 ? ` x${state.streak} STREAK!` : "";
+          state.announcements.push({ text: `${def.name}! +${reward}g${streakStr}`, color: state.streak >= 3 ? 0xff8844 : 0xffd700, timer: 1.5 });
           // Death particles
           for (let pi = 0; pi < 6; pi++) {
             state.particles.push({ x: prey.x, y: prey.y, vx: (Math.random() - 0.5) * 60, vy: -30 - Math.random() * 30, life: 0.4, maxLife: 0.4, color: def.color, size: 2 + Math.random() * 2 });
