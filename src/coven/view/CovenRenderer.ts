@@ -888,8 +888,10 @@ export class CovenRenderer {
 
     for (const [, hex] of state.hexes) {
       const g = new Graphics();
-      if (hex.revealed) { this._drawHex(g, hex, state); if (hex.terrain === "ley_line") this._animHexes.push({ coord: hex.coord, terrain: hex.terrain }); }
-      else this._drawFog(g, hex);
+      try {
+        if (hex.revealed) { this._drawHex(g, hex, state); if (hex.terrain === "ley_line") this._animHexes.push({ coord: hex.coord, terrain: hex.terrain }); }
+        else this._drawFog(g, hex);
+      } catch { /* skip hex with rendering error */ }
       this._mapLayer.addChild(g);
     }
 
@@ -949,10 +951,12 @@ export class CovenRenderer {
     this._creatureAnimLayer.scale.set(this._zoom);
     this._creatureAnimLayer.position.set(this._offsetX, this._offsetY);
     for (const creature of state.creatures) {
-      const cp2 = h2p(creature.position);
-      const hex = state.hexes.get(hexKey(creature.position.q, creature.position.r));
-      if (!hex?.revealed || hex.lightLevel === 0) continue;
-      drawCreature(this._creatureAnimLayer, cp2.x, cp2.y, creature.type, this._time);
+      try {
+        const cp2 = h2p(creature.position);
+        const hex = state.hexes.get(hexKey(creature.position.q, creature.position.r));
+        if (!hex?.revealed || hex.lightLevel === 0) continue;
+        drawCreature(this._creatureAnimLayer, cp2.x, cp2.y, creature.type, this._time);
+      } catch { /* skip creature with rendering error */ }
     }
 
     // Spell cast effect (flash at player position when casting)
@@ -963,16 +967,17 @@ export class CovenRenderer {
       this._spellFlash -= dt;
       const pp = h2p(state.playerPosition);
       const intensity = Math.min(1, this._spellFlash / 0.15);
+      const flashCol = this._spellFlashColor ?? 0xaa88ff;
       // Expanding ring
       const ringR = HEX * 0.4 + (1 - intensity) * HEX * 0.8;
-      this._spellFxLayer.circle(pp.x, pp.y + bob, ringR).stroke({ color: this._spellFlashColor, width: 2 * intensity, alpha: intensity * 0.5 });
+      this._spellFxLayer.circle(pp.x, pp.y + bob, ringR).stroke({ color: flashCol, width: 2 * intensity, alpha: intensity * 0.5 });
       // Central flash
-      this._spellFxLayer.circle(pp.x, pp.y + bob, HEX * 0.2 * intensity).fill({ color: this._spellFlashColor, alpha: intensity * 0.3 });
+      this._spellFxLayer.circle(pp.x, pp.y + bob, HEX * 0.2 * intensity).fill({ color: flashCol, alpha: intensity * 0.3 });
       // Projectile particles flying outward
       for (let i = 0; i < 5; i++) {
         const a = TAU / 5 * i + this._time * 3;
         const pr = ringR * 0.8;
-        this._spellFxLayer.circle(pp.x + Math.cos(a) * pr, pp.y + bob + Math.sin(a) * pr * 0.6, 1.5 * intensity).fill({ color: this._spellFlashColor, alpha: intensity * 0.4 });
+        this._spellFxLayer.circle(pp.x + Math.cos(a) * pr, pp.y + bob + Math.sin(a) * pr * 0.6, 1.5 * intensity).fill({ color: flashCol, alpha: intensity * 0.4 });
       }
     }
 

@@ -199,14 +199,15 @@ export class CovenHUD {
       // Glowing notification box
       const bg = new Graphics();
       const bgW = Math.max(200, n.text.length * 8.5);
+      const nc = n.color ?? 0xaa88ff;
       bg.roundRect(-bgW / 2, yOff - 15, bgW, 30, 5).fill({ color: 0x000000, alpha: alpha * 0.5 });
-      bg.roundRect(-bgW / 2, yOff - 15, bgW, 30, 5).stroke({ color: n.color, width: 1, alpha: alpha * 0.35 });
+      bg.roundRect(-bgW / 2, yOff - 15, bgW, 30, 5).stroke({ color: nc, width: 1, alpha: alpha * 0.35 });
       // Corner sparkles
-      bg.circle(-bgW / 2 + 4, yOff - 11, 1.5).fill({ color: n.color, alpha: alpha * 0.3 });
-      bg.circle(bgW / 2 - 4, yOff - 11, 1.5).fill({ color: n.color, alpha: alpha * 0.3 });
+      bg.circle(-bgW / 2 + 4, yOff - 11, 1.5).fill({ color: nc, alpha: alpha * 0.3 });
+      bg.circle(bgW / 2 - 4, yOff - 11, 1.5).fill({ color: nc, alpha: alpha * 0.3 });
       this._notifContainer.addChild(bg);
 
-      const t = new Text({ text: n.text, style: { ...STYLE_NOTIF, fill: n.color } });
+      const t = new Text({ text: n.text, style: { ...STYLE_NOTIF, fill: nc } });
       t.anchor.set(0.5); t.alpha = alpha; t.scale.set(Math.min(1.12, scale));
       t.position.set(0, yOff); this._notifContainer.addChild(t);
       yOff -= 42;
