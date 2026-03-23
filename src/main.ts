@@ -149,6 +149,7 @@ import { ExodusGame } from "./exodus/ExodusGame";
 import { CovenGame } from "./coven/CovenGame";
 import { CaravanGame } from "./caravan/CaravanGame";
 import { ShadowhandGame } from "./shadowhand/ShadowhandGame";
+import { AlchemistGame } from "./alchemist/AlchemistGame";
 import { camelotHubScreen } from "@view/ui/CamelotHubScreen";
 
 // World mode imports
@@ -357,6 +358,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     [GameMode.COVEN]: 32,
     [GameMode.CARAVAN]: 33,
     [GameMode.SHADOWHAND]: 34,
+    [GameMode.ALCHEMIST]: 35,
   };
   // Modes that need the setup screen (not skipSetup)
   const NEEDS_SETUP = new Set([GameMode.STANDARD, GameMode.DEATHMATCH, GameMode.BATTLEFIELD, GameMode.WAVE]);
@@ -546,6 +548,11 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     if (menuScreen.selectedGameMode === GameMode.SHADOWHAND) {
       menuScreen.hide();
       _bootShadowhandGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.ALCHEMIST) {
+      menuScreen.hide();
+      _bootAlchemistGame();
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.WORLD) {
@@ -3413,6 +3420,24 @@ async function _bootShadowhandGame(): Promise<void> {
     menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
   window.addEventListener("shadowhandExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Alchemist mode boot
+// ---------------------------------------------------------------------------
+
+let _alchemistGame: AlchemistGame | null = null;
+
+async function _bootAlchemistGame(): Promise<void> {
+  if (_alchemistGame) { _alchemistGame.destroy(); _alchemistGame = null; }
+  _alchemistGame = new AlchemistGame();
+  await _alchemistGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("alchemistExit", _onExit);
+    if (_alchemistGame) { _alchemistGame.destroy(); _alchemistGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("alchemistExit", _onExit);
 }
 
 // ---------------------------------------------------------------------------

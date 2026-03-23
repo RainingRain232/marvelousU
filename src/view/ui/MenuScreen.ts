@@ -386,6 +386,12 @@ const GAME_MODES: GameModeEntry[] = [
     desc: "Stealth heist: plan the job, pick your crew, stick to the shadows",
     skipSetup: true,
   },
+  {
+    mode: GameMode.ALCHEMIST,
+    label: "ALCHEMIST",
+    desc: "Potion puzzle: match ingredients, brew potions, serve customers",
+    skipSetup: true,
+  },
 ];
 
 // ---------------------------------------------------------------------------
