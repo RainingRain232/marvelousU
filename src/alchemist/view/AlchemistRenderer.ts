@@ -60,12 +60,24 @@ export class AlchemistRenderer {
     const gx = 30, gy = (sh - gridH) / 2;
     const g = this._gridGfx;
 
-    // Grid background (cauldron view)
-    g.roundRect(gx - 6, gy - 6, gridW + 12, gridH + 12, 8).fill({ color: 0x1a1410, alpha: 0.8 });
-    g.roundRect(gx - 6, gy - 6, gridW + 12, gridH + 12, 8).stroke({ color: COL, width: 2, alpha: 0.3 });
-    g.roundRect(gx - 3, gy - 3, gridW + 6, gridH + 6, 6).stroke({ color: COL, width: 0.5, alpha: 0.1 });
+    // Grid frame — ornate cauldron border
+    // Drop shadow
+    g.roundRect(gx - 5, gy - 5, gridW + 14, gridH + 14, 9).fill({ color: 0x000000, alpha: 0.25 });
+    // Outer frame
+    g.roundRect(gx - 8, gy - 8, gridW + 16, gridH + 16, 10).fill({ color: 0x2a2018, alpha: 0.6 });
+    g.roundRect(gx - 8, gy - 8, gridW + 16, gridH + 16, 10).stroke({ color: COL, width: 2.5, alpha: 0.4 });
+    // Inner frame
+    g.roundRect(gx - 3, gy - 3, gridW + 6, gridH + 6, 6).fill({ color: 0x1a1410, alpha: 0.85 });
+    g.roundRect(gx - 3, gy - 3, gridW + 6, gridH + 6, 6).stroke({ color: COL, width: 0.8, alpha: 0.2 });
+    // Corner rivets
+    for (const [rvx, rvy] of [[gx - 4, gy - 4], [gx + gridW + 4, gy - 4], [gx - 4, gy + gridH + 4], [gx + gridW + 4, gy + gridH + 4]]) {
+      g.circle(rvx, rvy, 3).fill({ color: 0x554422, alpha: 0.5 });
+      g.circle(rvx, rvy, 3).stroke({ color: COL, width: 0.5, alpha: 0.3 });
+      g.circle(rvx - 0.5, rvy - 0.5, 1).fill({ color: 0x887744, alpha: 0.3 });
+    }
 
     // Draw grid tiles
+    const t = Date.now();
     for (let row = 0; row < state.grid.length; row++) {
       for (let col = 0; col < state.grid[row].length; col++) {
         const tile = state.grid[row][col];
@@ -76,37 +88,78 @@ export class AlchemistRenderer {
         const half = T / 2;
         const cx = px + half, cy = py + half;
 
-        // Tile background
-        const checkerShade = (row + col) % 2 === 0 ? 0x1a1612 : 0x181410;
+        // Tile background with stone texture
+        const checkerShade = (row + col) % 2 === 0 ? 0x1a1612 : 0x161210;
         g.rect(px, py, T, T).fill({ color: checkerShade, alpha: 0.5 });
+        // Tile bevel (top-left highlight, bottom-right shadow)
+        g.moveTo(px + 1, py + 1).lineTo(px + T - 1, py + 1).stroke({ color: 0x2a2620, width: 0.4, alpha: 0.15 });
+        g.moveTo(px + 1, py + 1).lineTo(px + 1, py + T - 1).stroke({ color: 0x2a2620, width: 0.4, alpha: 0.1 });
+        g.moveTo(px + 1, py + T - 1).lineTo(px + T - 1, py + T - 1).stroke({ color: 0x0a0806, width: 0.4, alpha: 0.15 });
+        g.moveTo(px + T - 1, py + 1).lineTo(px + T - 1, py + T - 1).stroke({ color: 0x0a0806, width: 0.4, alpha: 0.1 });
 
-        // Selection highlight
+        // Selection highlight — animated diamond frame
         if (tile.selected) {
-          g.rect(px + 1, py + 1, T - 2, T - 2).stroke({ color: 0xffffff, width: 2, alpha: 0.6 });
-          g.rect(px, py, T, T).fill({ color: 0xffffff, alpha: 0.08 });
+          const sp = 0.5 + Math.sin(t / 300) * 0.2;
+          g.moveTo(cx, py + 2).lineTo(px + T - 2, cy).lineTo(cx, py + T - 2).lineTo(px + 2, cy).closePath().stroke({ color: 0xffffff, width: 2, alpha: sp });
+          g.rect(px, py, T, T).fill({ color: 0xffffff, alpha: 0.06 });
         }
 
-        // Match flash
+        // Match flash with expanding ring
         if (tile.matched) {
           g.rect(px, py, T, T).fill({ color: 0xffffff, alpha: 0.3 });
+          g.circle(cx, cy, T * 0.4).fill({ color: ing.color, alpha: 0.2 });
           continue;
         }
 
-        // Ingredient orb — layered circle with glow
-        const orbR = (T * 0.35) * s;
-        // Outer glow
-        g.circle(cx, cy, orbR + 4).fill({ color: ing.color, alpha: 0.08 });
-        // Main orb
-        g.circle(cx, cy, orbR).fill({ color: ing.color, alpha: 0.85 });
-        // Inner highlight (top-left)
-        g.circle(cx - orbR * 0.25, cy - orbR * 0.25, orbR * 0.5).fill({ color: 0xffffff, alpha: 0.15 });
-        // Border
-        g.circle(cx, cy, orbR).stroke({ color: 0xffffff, width: 0.5, alpha: 0.15 });
-        // Bottom shadow
-        g.ellipse(cx, cy + orbR + 2, orbR * 0.6, 2).fill({ color: 0x000000, alpha: 0.15 });
+        // Ingredient orb — faceted gem with depth
+        const orbR = (T * 0.32) * s;
 
-        // Tile border
-        g.rect(px, py, T, T).stroke({ color: 0x2a2420, width: 0.5, alpha: 0.2 });
+        // Shadow beneath orb
+        g.ellipse(cx + 1, cy + orbR + 3, orbR * 0.7, 2.5).fill({ color: 0x000000, alpha: 0.2 });
+
+        // Outer glow (2 layers)
+        g.circle(cx, cy, orbR + 6).fill({ color: ing.color, alpha: 0.04 });
+        g.circle(cx, cy, orbR + 3).fill({ color: ing.color, alpha: 0.07 });
+
+        // Main orb body
+        g.circle(cx, cy, orbR).fill({ color: ing.color, alpha: 0.85 });
+
+        // Faceted shine — top-left quadrant lighter
+        g.moveTo(cx, cy - orbR).bezierCurveTo(cx - orbR * 0.8, cy - orbR * 0.8, cx - orbR, cy, cx - orbR * 0.3, cy + orbR * 0.2);
+        g.lineTo(cx, cy).closePath().fill({ color: 0xffffff, alpha: 0.1 });
+
+        // Inner highlight arc (crescent)
+        g.moveTo(cx - orbR * 0.5, cy - orbR * 0.3);
+        g.bezierCurveTo(cx - orbR * 0.3, cy - orbR * 0.7, cx + orbR * 0.2, cy - orbR * 0.7, cx + orbR * 0.1, cy - orbR * 0.3);
+        g.stroke({ color: 0xffffff, width: 1, alpha: 0.2 });
+
+        // Sparkle dot
+        g.circle(cx - orbR * 0.3, cy - orbR * 0.3, 1.5 * s).fill({ color: 0xffffff, alpha: 0.25 });
+
+        // Border ring (double)
+        g.circle(cx, cy, orbR).stroke({ color: 0xffffff, width: 0.8, alpha: 0.12 });
+        g.circle(cx, cy, orbR - 1).stroke({ color: ing.color, width: 0.5, alpha: 0.2 });
+
+        // Element-specific inner detail
+        if (tile.type === "fire") {
+          // Tiny flame inside
+          g.moveTo(cx - 2, cy + 2).bezierCurveTo(cx - 1, cy - 3, cx + 1, cy - 3, cx + 2, cy + 2).fill({ color: 0xffaa22, alpha: 0.3 });
+        } else if (tile.type === "water") {
+          // Droplet inside
+          g.moveTo(cx, cy - 3).bezierCurveTo(cx - 3, cy + 1, cx + 3, cy + 1, cx, cy - 3).fill({ color: 0x88ccff, alpha: 0.2 });
+        } else if (tile.type === "crystal") {
+          // Faceted diamond inside
+          g.moveTo(cx, cy - 3).lineTo(cx + 2.5, cy).lineTo(cx, cy + 2.5).lineTo(cx - 2.5, cy).closePath().stroke({ color: 0xffffff, width: 0.5, alpha: 0.25 });
+        } else if (tile.type === "shadow") {
+          // Swirl inside
+          g.moveTo(cx - 2, cy).bezierCurveTo(cx - 1, cy - 2, cx + 1, cy - 1, cx + 2, cy).bezierCurveTo(cx + 1, cy + 2, cx - 1, cy + 1, cx - 2, cy).stroke({ color: 0x000000, width: 0.5, alpha: 0.2 });
+        } else if (tile.type === "light") {
+          // Star burst
+          for (let si = 0; si < 4; si++) {
+            const sa = si * Math.PI / 2 + Math.PI / 4;
+            g.moveTo(cx, cy).lineTo(cx + Math.cos(sa) * 3, cy + Math.sin(sa) * 3).stroke({ color: 0xffffff, width: 0.3, alpha: 0.2 });
+          }
+        }
       }
     }
 
@@ -179,36 +232,66 @@ export class AlchemistRenderer {
     for (const cust of state.customers) {
       if (cust.served || cust.left) continue;
       const canServe = canServeCustomer(state, cust.id);
-      // Customer card
-      u.roundRect(px + 4, iy, pw - 8, 50, 4).fill({ color: 0x121008, alpha: 0.6 });
-      u.roundRect(px + 4, iy, pw - 8, 50, 4).stroke({ color: canServe ? 0x44aa44 : 0x444433, width: canServe ? 1.5 : 0.5, alpha: 0.4 });
+      const cw = pw - 8;
+
+      // Card drop shadow
+      u.roundRect(px + 6, iy + 2, cw, 54, 5).fill({ color: 0x000000, alpha: 0.2 });
+      // Card body
+      u.roundRect(px + 4, iy, cw, 54, 5).fill({ color: canServe ? 0x141a10 : 0x121008, alpha: 0.7 });
+      u.roundRect(px + 4, iy, cw, 54, 5).stroke({ color: canServe ? 0x44aa44 : 0x444433, width: canServe ? 1.5 : 0.5, alpha: 0.5 });
+      // Top accent bar
+      if (canServe) u.moveTo(px + 10, iy + 1).lineTo(px + cw - 6, iy + 1).stroke({ color: 0x44aa44, width: 1, alpha: 0.25 });
+      // Left color bar (recipe color)
+      u.rect(px + 4, iy + 4, 3, 46).fill({ color: cust.recipe.color, alpha: 0.4 });
+
       // Name
-      this._addText(cust.name, px + 10, iy + 3, { fontSize: 9, fill: 0xccbbaa, fontWeight: "bold" });
-      // Recipe
-      this._addText(cust.recipe.name, px + 10, iy + 14, { fontSize: 8, fill: cust.recipe.color });
-      // Ingredients needed
-      const ingStr = cust.recipe.ingredients.map(([t, c]) => `${INGREDIENTS[t].symbol}${c}`).join(" ");
-      this._addText(ingStr, px + 10, iy + 26, { fontSize: 9, fill: 0x999988 });
-      // Patience bar
-      const pbW = pw - 20, pbH = 3;
-      u.rect(px + 8, iy + 40, pbW, pbH).fill({ color: 0x220000 });
-      u.rect(px + 8, iy + 40, pbW * (cust.patience / cust.maxPatience), pbH).fill({ color: cust.patience > 20 ? 0x44aa44 : 0xff4444 });
-      // Value
-      this._addText(`${cust.recipe.value}g`, px + pw - 30, iy + 3, { fontSize: 9, fill: 0xffd700 });
-      // Serve button
+      this._addText(cust.name, px + 14, iy + 3, { fontSize: 9, fill: 0xccbbaa, fontWeight: "bold" });
+      // Recipe name + color dot
+      u.circle(px + 14, iy + 18, 3).fill({ color: cust.recipe.color, alpha: 0.6 });
+      this._addText(cust.recipe.name, px + 22, iy + 14, { fontSize: 8, fill: cust.recipe.color });
+      // Ingredients needed with orb icons
+      let ingX = px + 12;
+      for (const [itype, icount] of cust.recipe.ingredients) {
+        const ic = INGREDIENTS[itype];
+        u.circle(ingX + 4, iy + 30, 4).fill({ color: ic.color, alpha: 0.5 });
+        u.circle(ingX + 4, iy + 30, 4).stroke({ color: 0xffffff, width: 0.3, alpha: 0.15 });
+        this._addText(`${icount}`, ingX + 10, iy + 26, { fontSize: 8, fill: 0xbbaa88 });
+        ingX += 22;
+      }
+
+      // Patience bar — segmented with frame
+      const pbW = cw - 14, pbH = 4;
+      u.rect(px + 8, iy + 42, pbW, pbH).fill({ color: 0x1a0a0a });
+      u.rect(px + 8, iy + 42, pbW, pbH).stroke({ color: 0x333322, width: 0.5 });
+      const pFill = cust.patience / cust.maxPatience;
+      const pColor = pFill > 0.5 ? 0x44aa44 : pFill > 0.25 ? 0xccaa22 : 0xff4444;
+      u.rect(px + 8, iy + 42, pbW * pFill, pbH).fill({ color: pColor });
+      // Critical pulse
+      if (pFill < 0.25) {
+        u.rect(px + 8, iy + 41, pbW * pFill, pbH + 2).fill({ color: 0xff0000, alpha: 0.05 + Math.sin(Date.now() / 150) * 0.03 });
+      }
+      // Segment lines
+      for (let si = 1; si < 4; si++) u.moveTo(px + 8 + si * pbW / 4, iy + 42).lineTo(px + 8 + si * pbW / 4, iy + 42 + pbH).stroke({ color: 0x000000, width: 0.3, alpha: 0.2 });
+
+      // Value badge
+      u.roundRect(px + cw - 30, iy + 2, 26, 12, 2).fill({ color: 0x222200, alpha: 0.5 });
+      this._addText(`${cust.recipe.value}g`, px + cw - 17, iy + 3, { fontSize: 8, fill: 0xffd700, fontWeight: "bold" }, true);
+
+      // Serve button (richer)
       if (canServe) {
-        u.roundRect(px + pw - 50, iy + 18, 40, 18, 3).fill({ color: 0x224422, alpha: 0.6 });
-        u.roundRect(px + pw - 50, iy + 18, 40, 18, 3).stroke({ color: 0x44aa44, width: 1, alpha: 0.5 });
+        u.roundRect(px + cw - 48, iy + 20, 42, 18, 3).fill({ color: 0x1a2a1a, alpha: 0.7 });
+        u.roundRect(px + cw - 48, iy + 20, 42, 18, 3).stroke({ color: 0x44aa44, width: 1.2, alpha: 0.6 });
+        u.roundRect(px + cw - 47, iy + 21, 40, 8, 3).fill({ color: 0xffffff, alpha: 0.02 }); // button highlight
         const btn = new Graphics();
-        btn.roundRect(px + pw - 50, iy + 18, 40, 18, 3).fill({ color: 0x000000, alpha: 0.01 });
+        btn.roundRect(px + cw - 48, iy + 20, 42, 18, 3).fill({ color: 0x000000, alpha: 0.01 });
         btn.eventMode = "static"; btn.cursor = "pointer";
         const custId = cust.id;
         btn.on("pointerdown", () => this._serveCallback?.(custId));
         this._uiGfx.addChild(btn);
-        this._addText("BREW", px + pw - 30, iy + 21, { fontSize: 8, fill: 0x44ff44, fontWeight: "bold" }, true);
+        this._addText("\u2697 BREW", px + cw - 27, iy + 23, { fontSize: 7, fill: 0x44ff44, fontWeight: "bold" }, true);
       }
 
-      iy += 56;
+      iy += 60;
     }
 
     // Log (bottom)

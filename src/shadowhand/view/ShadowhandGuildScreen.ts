@@ -94,12 +94,28 @@ export class ShadowhandGuildScreen {
     bg.moveTo(gcx + 15, gcy - 25).lineTo(gcx - 15, gcy + 15).stroke({ color: COL, width: 1, alpha: crestA * 2 });
     this.container.addChild(bg);
 
-    // Header
+    // Header with ornamental border
     const header = new Graphics();
-    header.rect(0, 0, sw, 60).fill({ color: COL_BG, alpha: 0.8 });
-    header.moveTo(0, 60).lineTo(sw, 60).stroke({ color: COL, width: 1, alpha: 0.3 });
+    header.rect(0, 0, sw, 60).fill({ color: COL_BG, alpha: 0.85 });
+    // Double bottom border with accent dots
+    header.moveTo(0, 59).lineTo(sw, 59).stroke({ color: COL, width: 1.5, alpha: 0.35 });
+    header.moveTo(0, 61).lineTo(sw, 61).stroke({ color: COL, width: 0.5, alpha: 0.1 });
+    for (let dx = 30; dx < sw; dx += 50) header.circle(dx, 59, 1.5).fill({ color: COL, alpha: 0.2 });
+    // Corner accents
+    header.circle(6, 6, 3).fill({ color: COL, alpha: 0.2 });
+    header.circle(sw - 6, 6, 3).fill({ color: COL, alpha: 0.2 });
+    // Crossed daggers flanking title
+    for (const side of [-1, 1]) {
+      const dx = sw / 2 + side * 130;
+      // Blade
+      header.moveTo(dx, 10).lineTo(dx + side * 2, 26).stroke({ color: COL, width: 1.5, alpha: 0.15 });
+      // Guard
+      header.moveTo(dx - 4, 26).lineTo(dx + 4, 26).stroke({ color: COL, width: 1, alpha: 0.12 });
+    }
     this.container.addChild(header);
 
+    // Title with shadow
+    this._text("\u2620 THE SHADOWHAND GUILD \u2620", sw / 2, 10, { fontSize: 20, fill: 0x000000, fontWeight: "bold", letterSpacing: 4 }, true);
     this._text("\u2620 THE SHADOWHAND GUILD \u2620", sw / 2, 8, { fontSize: 20, fill: COL, fontWeight: "bold", letterSpacing: 4 }, true);
     this._text(`Day ${state.guild.day}  |  Gold: ${state.guild.gold}  |  Rep: ${state.guild.reputation}  |  Tier: ${state.guild.tier}`, sw / 2, 36, { fontSize: 11, fill: 0x889988 }, true);
 
