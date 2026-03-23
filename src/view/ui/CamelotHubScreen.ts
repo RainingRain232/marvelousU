@@ -168,6 +168,7 @@ const MAP_BUILDINGS: MapBuilding[] = [
   { id: "witch_hut", x: 80, y: 480, w: 80, h: 60, label: "Witch's Hut", mode: GameMode.MORGAN, type: "tower" },
   { id: "exodus_gate", x: 650, y: 750, w: 120, h: 70, label: "The Exodus Gate", mode: GameMode.EXODUS, type: "gate" },
   { id: "coven_cottage", x: 160, y: 160, w: 80, h: 70, label: "Morgan's Cottage", mode: GameMode.COVEN, type: "tower" },
+  { id: "wyrm_lair", x: 1000, y: 700, w: 100, h: 80, label: "The Wyrm's Lair", mode: GameMode.WYRM, type: "tower" },
 ];
 
 const CITY = { x: 250, y: 150, w: 700, h: 580 };
@@ -873,6 +874,7 @@ export class CamelotHubScreen {
       [GameMode.EAGLE_FLIGHT]: "Eagle Flight",
       [GameMode.MORGAN]: "Morgan",
       [GameMode.CARAVAN]: "Caravan",
+      [GameMode.WYRM]: "Wyrm",
     };
     return labels[mode] || mode;
   }

@@ -704,6 +704,7 @@ export enum GameMode {
   LABYRINTH = "labyrinth",
   PLAGUE = "plague",
   PLAGUE_RT = "plague_rt",
+  WYRM = "wyrm",
 }
 
 // ---------------------------------------------------------------------------

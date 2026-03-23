@@ -164,6 +164,7 @@ import { BardGame } from "./bard/BardGame";
 import { LabyrinthGame } from "./labyrinth/LabyrinthGame";
 import { PlagueGame } from "./plague/PlagueGame";
 import { PlagueRTGame } from "./plaguert/PlagueRTGame";
+import { WyrmGame } from "./wyrm/WyrmGame";
 import { camelotHubScreen } from "@view/ui/CamelotHubScreen";
 
 // World mode imports
@@ -384,6 +385,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     [GameMode.GRAIL_BREAKER]: 44,
     [GameMode.NECROMANCER]: 45,
     [GameMode.BARD]: 46,
+    [GameMode.WYRM]: 47,
   };
   // Modes that need the setup screen (not skipSetup)
   const NEEDS_SETUP = new Set([GameMode.STANDARD, GameMode.DEATHMATCH, GameMode.BATTLEFIELD, GameMode.WAVE]);
@@ -648,6 +650,11 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     if (menuScreen.selectedGameMode === GameMode.PLAGUE_RT) {
       menuScreen.hide();
       _bootPlagueRTGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.WYRM) {
+      menuScreen.hide();
+      _bootWyrmGame();
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.WORLD) {
@@ -2862,6 +2869,24 @@ async function _bootPlagueRTGame(): Promise<void> {
     menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
   window.addEventListener("plagueRTExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Wyrm mode boot
+// ---------------------------------------------------------------------------
+
+let _wyrmGame: WyrmGame | null = null;
+
+async function _bootWyrmGame(): Promise<void> {
+  if (_wyrmGame) { _wyrmGame.destroy(); _wyrmGame = null; }
+  _wyrmGame = new WyrmGame();
+  await _wyrmGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("wyrmExit", _onExit);
+    if (_wyrmGame) { _wyrmGame.destroy(); _wyrmGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("wyrmExit", _onExit);
 }
 
 // ---------------------------------------------------------------------------
