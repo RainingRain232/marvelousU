@@ -171,42 +171,104 @@ export class NecroRenderer {
       bg.rect(0, gy, sw, 2).fill({ color: (gr << 16) | (gg << 8) | gb });
     }
 
-    // Ground texture — dirt patches with varied tones
+    // Ground texture — irregular earth patches with pebbles and organic shapes
     for (let i = 0; i < 60; i++) {
       const gx = (i * 6271 + 13) % sw;
       const gy = sh * 0.16 + (i * 3413 + 7) % (sh * 0.81);
       const gsize = 5 + (i % 6) * 3;
       const gcol = i % 3 === 0 ? 0x100e06 : i % 3 === 1 ? 0x0e0c04 : 0x141008;
-      bg.circle(gx, gy, gsize).fill({ color: gcol, alpha: 0.25 });
+      // Irregular patch — wobbly ellipse via polygon
+      const sides = 5 + (i % 3);
+      bg.moveTo(gx + gsize, gy);
+      for (let si = 1; si <= sides; si++) {
+        const a = (si / sides) * Math.PI * 2;
+        const r = gsize * (0.7 + ((si * i) % 5) * 0.08);
+        bg.lineTo(gx + Math.cos(a) * r, gy + Math.sin(a) * r * 0.7);
+      }
+      bg.fill({ color: gcol, alpha: 0.22 });
+      // Embedded pebbles
+      if (i % 4 === 0) {
+        const px = gx + (i % 3 - 1) * 2, py2 = gy + (i % 2 - 0.5) * 2;
+        bg.ellipse(px, py2, 1.2, 0.8).fill({ color: 0x333328, alpha: 0.15 });
+        bg.ellipse(px, py2, 1.2, 0.8).stroke({ color: 0x444438, width: 0.2, alpha: 0.08 });
+      }
     }
 
-    // Root/crack lines in the earth
+    // Root/crack lines in the earth — with branching sub-cracks
     for (let i = 0; i < 15; i++) {
       const rx = (i * 5431 + 30) % sw;
       const ry = sh * 0.25 + (i * 2713) % (sh * 0.6);
       const rlen = 15 + (i % 4) * 10;
       const ra = (i * 1.3) % Math.PI;
+      // Main crack
       bg.moveTo(rx, ry).bezierCurveTo(rx + Math.cos(ra) * rlen * 0.3, ry + 3, rx + Math.cos(ra) * rlen * 0.7, ry - 2, rx + Math.cos(ra) * rlen, ry + 1).stroke({ color: 0x0a0806, width: 0.5, alpha: 0.2 });
+      // Branching sub-cracks
+      if (i % 3 === 0) {
+        const bx = rx + Math.cos(ra) * rlen * 0.4, by2 = ry + 1;
+        const ba = ra + (i % 2 === 0 ? 0.8 : -0.8);
+        bg.moveTo(bx, by2).bezierCurveTo(bx + Math.cos(ba) * 4, by2 + 2, bx + Math.cos(ba) * 6, by2 + 1, bx + Math.cos(ba) * 8, by2 + 2).stroke({ color: 0x0a0806, width: 0.3, alpha: 0.12 });
+      }
+      // Tiny rootlets at crack edges
+      if (i % 5 === 0) {
+        const rx2 = rx + Math.cos(ra) * rlen * 0.6, ry2 = ry - 1;
+        bg.moveTo(rx2, ry2).lineTo(rx2 + 2, ry2 + 3).stroke({ color: 0x1a2a10, width: 0.3, alpha: 0.08 });
+        bg.moveTo(rx2, ry2).lineTo(rx2 - 1.5, ry2 + 2.5).stroke({ color: 0x1a2a10, width: 0.3, alpha: 0.07 });
+      }
     }
 
-    // Layered fog wisps at ground level
+    // Layered fog wisps at ground level — with tendril edges
     for (let layer = 0; layer < 3; layer++) {
       const fogAlpha = 0.04 - layer * 0.008;
       for (let i = 0; i < 6; i++) {
         const fx = (i * 5431 + layer * 200) % sw;
         const fy = sh * 0.6 + layer * 30 + (i * 2713 + layer * 100) % (sh * 0.25);
-        const fw = 50 + (i % 4) * 30 + layer * 20;
-        bg.ellipse(fx, fy, fw, 5 + layer * 2).fill({ color: layer === 0 ? 0x334455 : 0x2a3a44, alpha: fogAlpha });
+        const fw2 = 50 + (i % 4) * 30 + layer * 20;
+        const fh2 = 5 + layer * 2;
+        const fogCol = layer === 0 ? 0x334455 : 0x2a3a44;
+        // Main body
+        bg.ellipse(fx, fy, fw2, fh2).fill({ color: fogCol, alpha: fogAlpha });
+        // Tendril wisps extending from edges
+        const tendrils = 3 + (i % 2);
+        for (let ti = 0; ti < tendrils; ti++) {
+          const tAngle = (ti / tendrils) * Math.PI - Math.PI * 0.5;
+          const tStartX = fx + Math.cos(tAngle) * fw2 * 0.8;
+          const tStartY = fy + Math.sin(tAngle) * fh2 * 0.5;
+          const tLen = 10 + (ti * 7) % 15;
+          const tDir = (ti % 2 === 0 ? 1 : -1);
+          bg.moveTo(tStartX, tStartY).bezierCurveTo(
+            tStartX + tLen * 0.3, tStartY + tDir * 3,
+            tStartX + tLen * 0.7, tStartY - tDir * 2,
+            tStartX + tLen, tStartY + tDir
+          ).stroke({ color: fogCol, width: fh2 * 0.5, alpha: fogAlpha * 0.5 });
+        }
+        // Denser core
+        bg.ellipse(fx + fw2 * 0.1, fy, fw2 * 0.5, fh2 * 0.6).fill({ color: fogCol, alpha: fogAlpha * 0.4 });
       }
     }
 
-    // Dead grass patches — more varied
+    // Dead grass clumps — multi-blade tufts with seed heads
     for (let i = 0; i < 40; i++) {
       const gx = (i * 7919) % sw;
       const gy = sh * 0.2 + (i * 4813) % (sh * 0.7);
       const gh = 6 + (i % 4) * 2;
       const lean = (i % 2 === 0 ? 1 : -1) * (1 + i % 3);
-      bg.moveTo(gx, gy).bezierCurveTo(gx + lean, gy - gh * 0.4, gx + lean * 0.5, gy - gh * 0.7, gx + lean * 1.5, gy - gh).stroke({ color: 0x2a3a1a, width: 0.5, alpha: 0.12 });
+      const blades = 2 + (i % 3); // 2-4 blades per tuft
+      for (let b = 0; b < blades; b++) {
+        const bLean = lean + (b - blades / 2) * 1.2;
+        const bH = gh * (0.7 + b * 0.15);
+        const bAlpha = 0.12 - b * 0.02;
+        bg.moveTo(gx + b * 0.8, gy).bezierCurveTo(gx + bLean * 0.5, gy - bH * 0.4, gx + bLean * 0.8, gy - bH * 0.7, gx + bLean * 1.3, gy - bH).stroke({ color: 0x2a3a1a, width: 0.5, alpha: bAlpha });
+      }
+      // Seed head on tallest blade
+      if (i % 4 === 0) {
+        const tipX = gx + lean * 1.3, tipY = gy - gh;
+        bg.circle(tipX, tipY, 0.8).fill({ color: 0x3a4a2a, alpha: 0.1 });
+        // Tiny bristles
+        bg.moveTo(tipX - 1, tipY - 0.5).lineTo(tipX - 2, tipY - 1.5).stroke({ color: 0x3a4a2a, width: 0.2, alpha: 0.06 });
+        bg.moveTo(tipX + 0.5, tipY - 0.8).lineTo(tipX + 1.5, tipY - 2).stroke({ color: 0x3a4a2a, width: 0.2, alpha: 0.06 });
+      }
+      // Base soil mound
+      bg.ellipse(gx + 0.5, gy + 1, 2, 0.8).fill({ color: 0x141008, alpha: 0.08 });
     }
 
     // Scattered bones — anatomically varied: femurs, ribs, vertebrae, scapulae, skull fragments
@@ -1592,51 +1654,126 @@ export class NecroRenderer {
 
     // Type-specific details
     if (c.type === "paladin") {
-      // Golden helmet, larger, golden cross glow
-      g.circle(x, headY, s * 0.5).stroke({ color: 0xffd700, width: 1, alpha: 0.4 });
-      g.rect(x - 1, y - 3, 2, 6).fill({ color: 0xffd700, alpha: 0.5 });
+      // Golden great helm with wings and halo
+      g.circle(x, headY, s * 0.52).stroke({ color: 0xffd700, width: 1.2, alpha: 0.45 });
+      // Wing ornaments on helmet
+      g.moveTo(x - s * 0.45, headY - s * 0.15).bezierCurveTo(x - s * 0.7, headY - s * 0.5, x - s * 0.8, headY - s * 0.7, x - s * 0.5, headY - s * 0.6).stroke({ color: 0xffd700, width: 0.8, alpha: 0.4 });
+      g.moveTo(x + s * 0.45, headY - s * 0.15).bezierCurveTo(x + s * 0.7, headY - s * 0.5, x + s * 0.8, headY - s * 0.7, x + s * 0.5, headY - s * 0.6).stroke({ color: 0xffd700, width: 0.8, alpha: 0.4 });
+      // Feather detail on wings
+      g.moveTo(x - s * 0.6, headY - s * 0.45).lineTo(x - s * 0.75, headY - s * 0.65).stroke({ color: 0xeebb00, width: 0.4, alpha: 0.3 });
+      g.moveTo(x + s * 0.6, headY - s * 0.45).lineTo(x + s * 0.75, headY - s * 0.65).stroke({ color: 0xeebb00, width: 0.4, alpha: 0.3 });
+      // Golden cross on chest with radiating glow
+      g.rect(x - 1, y - 3, 2, 7).fill({ color: 0xffd700, alpha: 0.5 });
       g.rect(x - 3, y - 1, 6, 2).fill({ color: 0xffd700, alpha: 0.5 });
-      // Golden plume
-      g.moveTo(x, headY - s * 0.45).bezierCurveTo(x + 4, headY - s - 2, x + 6, headY - s, x + 3, headY - s * 0.5).stroke({ color: 0xffd700, width: 1.5, alpha: 0.5 });
+      g.circle(x, y, 5).fill({ color: 0xffd700, alpha: 0.04 + Math.sin(t * 2) * 0.02 });
+      // Holy halo above head
+      g.circle(x, headY - s * 0.55, 6).stroke({ color: 0xffd700, width: 0.8, alpha: 0.15 + Math.sin(t * 1.5) * 0.05 });
+      // Golden plume — flowing
+      g.moveTo(x, headY - s * 0.45).bezierCurveTo(x + 3, headY - s * 0.8, x + 5, headY - s - 1, x + 3, headY - s * 0.5).fill({ color: 0xffd700, alpha: 0.35 });
+      g.moveTo(x, headY - s * 0.45).bezierCurveTo(x + 3, headY - s * 0.8, x + 5, headY - s - 1, x + 3, headY - s * 0.5).stroke({ color: 0xffdd44, width: 0.4, alpha: 0.3 });
     } else if (c.type === "priest") {
-      // No helmet — hooded head, staff instead of sword
+      // Priest — white robes, censer, prayer book, no armor
       g.circle(x, headY, s * 0.45).fill({ color: 0xeeeeee, alpha: 0.6 });
-      // Hood
-      g.moveTo(x - s * 0.4, headY + s * 0.2).bezierCurveTo(x - s * 0.5, headY - s * 0.3, x + s * 0.5, headY - s * 0.3, x + s * 0.4, headY + s * 0.2).fill({ color: 0xffffff, alpha: 0.15 });
-      // Staff with holy orb
+      // Deep cowl hood with inner face shadow
+      g.moveTo(x - s * 0.45, headY + s * 0.25).bezierCurveTo(x - s * 0.55, headY - s * 0.35, x + s * 0.55, headY - s * 0.35, x + s * 0.45, headY + s * 0.25).fill({ color: 0xffffff, alpha: 0.18 });
+      g.ellipse(x, headY + s * 0.05, s * 0.25, s * 0.2).fill({ color: 0x333333, alpha: 0.2 }); // Face shadow
+      // Gentle eyes
+      g.circle(x - 1.5, headY - 0.5, 0.8).fill({ color: 0x4488cc, alpha: 0.4 });
+      g.circle(x + 1.5, headY - 0.5, 0.8).fill({ color: 0x4488cc, alpha: 0.4 });
+      // Ornate staff with holy orb and cross top
       g.moveTo(x + s + 2, y + s).lineTo(x + s + 2, headY - s * 0.5).stroke({ color: 0xddddaa, width: 1.5 });
-      g.circle(x + s + 2, headY - s * 0.6, 2.5).fill({ color: 0xffffaa, alpha: 0.5 + Math.sin(t * 3 + c.id) * 0.2 });
-      g.circle(x + s + 2, headY - s * 0.6, 5).fill({ color: 0xffffaa, alpha: 0.06 });
-      // Heal aura indicator
+      // Cross atop staff
+      g.rect(x + s + 1, headY - s * 0.65, 2, 0.8).fill({ color: 0xffd700, alpha: 0.4 });
+      g.rect(x + s + 1.5, headY - s * 0.75, 1, 2).fill({ color: 0xffd700, alpha: 0.4 });
+      // Holy orb with light rays
+      const orbP2 = 0.5 + Math.sin(t * 3 + c.id) * 0.2;
+      g.circle(x + s + 2, headY - s * 0.55, 2.5).fill({ color: 0xffffaa, alpha: orbP2 });
+      g.circle(x + s + 2, headY - s * 0.55, 5).fill({ color: 0xffffaa, alpha: 0.06 });
+      // Light rays from orb
+      for (let ri = 0; ri < 4; ri++) {
+        const ra2 = (ri / 4) * Math.PI * 2 + t * 0.5;
+        g.moveTo(x + s + 2 + Math.cos(ra2) * 3, headY - s * 0.55 + Math.sin(ra2) * 3)
+          .lineTo(x + s + 2 + Math.cos(ra2) * 6, headY - s * 0.55 + Math.sin(ra2) * 6)
+          .stroke({ color: 0xffffaa, width: 0.3, alpha: orbP2 * 0.2 });
+      }
+      // Prayer beads hanging from belt
+      for (let bi = 0; bi < 4; bi++) {
+        g.circle(x - s * 0.4 - bi * 1.5, y + s * 0.3 + bi * 1.5, 0.6).fill({ color: 0x886644, alpha: 0.3 });
+      }
+      // Heal aura — concentric rings
       if (c.ability === "heal_aura") {
         g.circle(x, y, s * 3).stroke({ color: 0xffffaa, width: 0.5, alpha: 0.06 + Math.sin(t * 2) * 0.03 });
+        g.circle(x, y, s * 2).stroke({ color: 0xffffaa, width: 0.3, alpha: 0.03 + Math.sin(t * 2 + 1) * 0.02 });
       }
     } else if (c.type === "banner") {
-      // Banner pole with flag
-      g.moveTo(x, headY - s * 0.4).lineTo(x, headY - s * 1.5).stroke({ color: 0x886644, width: 1.5 });
-      // Flag — waving
+      // Banner bearer — pole, waving flag with heraldry, horn
+      g.moveTo(x, headY - s * 0.4).lineTo(x, headY - s * 1.6).stroke({ color: 0x886644, width: 1.5 });
+      // Pole finial — spear tip
+      g.moveTo(x - 1, headY - s * 1.6).lineTo(x, headY - s * 1.8).lineTo(x + 1, headY - s * 1.6).fill({ color: 0xccccaa, alpha: 0.5 });
+      // Flag — waving with cloth physics ripples
       const wave = Math.sin(t * 3 + c.id) * 2;
-      g.moveTo(x, headY - s * 1.5).lineTo(x + 10, headY - s * 1.4 + wave).lineTo(x + 10, headY - s * 0.9 + wave).lineTo(x, headY - s * 1.0).fill({ color: 0xdd2222, alpha: 0.7 });
-      // Cross on flag
-      g.rect(x + 3, headY - s * 1.35 + wave * 0.5, 1, 4).fill({ color: 0xffd700, alpha: 0.5 });
-      g.rect(x + 2, headY - s * 1.2 + wave * 0.5, 3, 1).fill({ color: 0xffd700, alpha: 0.5 });
+      const w2 = Math.sin(t * 4.5 + c.id) * 1;
+      g.moveTo(x, headY - s * 1.55).lineTo(x + 10, headY - s * 1.45 + wave).lineTo(x + 11, headY - s * 1.15 + wave + w2).lineTo(x + 10, headY - s * 0.9 + wave).lineTo(x, headY - s * 1.0).fill({ color: 0xdd2222, alpha: 0.7 });
+      // Flag ripple folds
+      g.moveTo(x + 3, headY - s * 1.5 + wave * 0.3).bezierCurveTo(x + 5, headY - s * 1.35 + wave * 0.5, x + 7, headY - s * 1.3 + wave * 0.6, x + 9, headY - s * 1.2 + wave * 0.8).stroke({ color: 0xbb1111, width: 0.5, alpha: 0.3 });
+      g.moveTo(x + 2, headY - s * 1.15 + wave * 0.2).bezierCurveTo(x + 5, headY - s * 1.05 + wave * 0.4, x + 7, headY - s * 1.0 + wave * 0.5, x + 9, headY - s * 0.95 + wave * 0.7).stroke({ color: 0xbb1111, width: 0.4, alpha: 0.2 });
+      // Heraldic cross with border
+      g.rect(x + 3, headY - s * 1.35 + wave * 0.5, 1.5, 4).fill({ color: 0xffd700, alpha: 0.5 });
+      g.rect(x + 1.5, headY - s * 1.2 + wave * 0.5, 4, 1.5).fill({ color: 0xffd700, alpha: 0.5 });
+      // Flag fringe tassels at bottom
+      for (let fi = 0; fi < 3; fi++) {
+        const fx2 = x + 2 + fi * 3;
+        const fy2 = headY - s * 0.9 + wave + Math.sin(t * 5 + fi) * 1;
+        g.moveTo(fx2, fy2).lineTo(fx2, fy2 + 3).stroke({ color: 0xffd700, width: 0.5, alpha: 0.3 });
+      }
+      // War horn strapped to back
+      g.moveTo(x - s * 0.5, y + s * 0.2).bezierCurveTo(x - s - 2, y + s * 0.5, x - s - 3, y + s * 0.3, x - s - 1, y).stroke({ color: 0x886644, width: 1.5, alpha: 0.3 });
+      g.circle(x - s - 1, y, 1.5).fill({ color: 0xaa8844, alpha: 0.25 }); // Horn bell
     } else if (c.type === "inquisitor") {
-      // Dark red hood, burning torch, purge aura
-      g.circle(x, headY, s * 0.5).fill({ color: 0x661111, alpha: 0.7 });
-      // Burning eyes
-      g.circle(x - 2, headY - 1, 1.5).fill({ color: 0xff6600, alpha: 0.9 });
-      g.circle(x + 2, headY - 1, 1.5).fill({ color: 0xff6600, alpha: 0.9 });
-      // Torch
+      // Inquisitor — pointed hood, burning torch, censing chains, fearsome mask
+      g.moveTo(x - s * 0.35, headY + s * 0.15).bezierCurveTo(x - s * 0.4, headY - s * 0.2, x, headY - s * 0.8, x, headY - s * 0.8).bezierCurveTo(x, headY - s * 0.8, x + s * 0.4, headY - s * 0.2, x + s * 0.35, headY + s * 0.15).fill({ color: 0x661111, alpha: 0.7 });
+      // Eye holes cut in hood — glowing orange
+      g.circle(x - 2, headY - 0.5, 1.8).fill({ color: 0x0a0a06, alpha: 0.6 });
+      g.circle(x + 2, headY - 0.5, 1.8).fill({ color: 0x0a0a06, alpha: 0.6 });
+      g.circle(x - 2, headY - 0.5, 1.2).fill({ color: 0xff6600, alpha: 0.9 });
+      g.circle(x + 2, headY - 0.5, 1.2).fill({ color: 0xff6600, alpha: 0.9 });
+      // Eye glow emanation
+      g.circle(x - 2, headY - 0.5, 3).fill({ color: 0xff4400, alpha: 0.06 });
+      g.circle(x + 2, headY - 0.5, 3).fill({ color: 0xff4400, alpha: 0.06 });
+      // Torch — wrapped handle with rags, layered flame
       g.moveTo(x - s - 4, y).lineTo(x - s - 4, headY - s).stroke({ color: 0x886644, width: 2 });
+      // Cloth wrapping on torch handle
+      for (let wi = 0; wi < 3; wi++) {
+        const wy2 = y - wi * (s * 0.4);
+        g.moveTo(x - s - 5, wy2).lineTo(x - s - 3, wy2 + 2).stroke({ color: 0x554433, width: 0.6, alpha: 0.3 });
+      }
       const flicker = 0.6 + Math.sin(t * 6 + c.id) * 0.2;
-      g.circle(x - s - 4, headY - s - 3, 3).fill({ color: 0xff6622, alpha: flicker });
-      g.circle(x - s - 4, headY - s - 3, 5).fill({ color: 0xff4400, alpha: flicker * 0.15 });
-      // Purge aura ring
+      // Flame — teardrop with inner core
+      const fBaseX = x - s - 4, fBaseY = headY - s - 3;
+      g.moveTo(fBaseX - 3, fBaseY + 2).bezierCurveTo(fBaseX - 3.5, fBaseY - 2, fBaseX, fBaseY - 6 - Math.sin(t * 7) * 1.5, fBaseX + 3.5, fBaseY - 2).bezierCurveTo(fBaseX + 3, fBaseY + 2, fBaseX, fBaseY + 3, fBaseX - 3, fBaseY + 2).fill({ color: 0xff6622, alpha: flicker * 0.6 });
+      g.ellipse(fBaseX, fBaseY - 1, 1.5, 2.5).fill({ color: 0xffcc44, alpha: flicker * 0.7 });
+      g.circle(fBaseX, fBaseY - 2, 0.8).fill({ color: 0xffffff, alpha: flicker * 0.3 });
+      // Embers floating up
+      g.circle(fBaseX + 1, fBaseY - 7, 0.5).fill({ color: 0xff8844, alpha: flicker * 0.3 });
+      g.circle(fBaseX - 1.5, fBaseY - 8, 0.4).fill({ color: 0xff6622, alpha: flicker * 0.2 });
+      // Smoke wisps
+      g.moveTo(fBaseX, fBaseY - 6).bezierCurveTo(fBaseX + 2, fBaseY - 9, fBaseX - 1, fBaseY - 11, fBaseX + 1, fBaseY - 13).stroke({ color: 0x444444, width: 0.5, alpha: 0.06 });
+      // Purge aura — pulsing fire ring
       g.circle(x, y, s * 3).stroke({ color: 0xff6600, width: 0.8, alpha: 0.06 + Math.sin(t * 2) * 0.03 });
+      g.circle(x, y, s * 2.5).stroke({ color: 0xff4400, width: 0.4, alpha: 0.03 + Math.sin(t * 2.5) * 0.02 });
     } else if (c.type === "templar") {
-      // Red cross on tabard (already colored)
-      g.rect(x - 1, y - 3, 2, 7).fill({ color: 0xcc2222, alpha: 0.35 });
-      g.rect(x - 3, y - 1, 6, 2).fill({ color: 0xcc2222, alpha: 0.35 });
+      // Templar — bold red cross, chain coif, two-handed sword
+      // Chain coif under helm
+      g.circle(x, headY, s * 0.42).stroke({ color: 0x777777, width: 0.5, alpha: 0.2 });
+      // Large red cross on white tabard
+      g.rect(x - 1.5, y - 4, 3, 8).fill({ color: 0xcc2222, alpha: 0.4 });
+      g.rect(x - 4, y - 1.5, 8, 3).fill({ color: 0xcc2222, alpha: 0.4 });
+      // Cross border
+      g.rect(x - 1.5, y - 4, 3, 8).stroke({ color: 0xdd3333, width: 0.3, alpha: 0.2 });
+      g.rect(x - 4, y - 1.5, 8, 3).stroke({ color: 0xdd3333, width: 0.3, alpha: 0.2 });
+      // Spurs on boots
+      g.moveTo(crFootX + 2, crFootY).lineTo(crFootX + 4, crFootY + 1).stroke({ color: 0xccccaa, width: 0.5, alpha: 0.3 });
+      g.circle(crFootX + 4, crFootY + 1, 0.8).stroke({ color: 0xccccaa, width: 0.3, alpha: 0.25 }); // Rowel
     }
 
     // Name tag
@@ -1829,9 +1966,25 @@ export class NecroRenderer {
     // Decorative bottom edge
     g.moveTo(0, 44).lineTo(sw, 44).stroke({ color: NECRO_GREEN, width: 1, alpha: 0.2 });
     g.moveTo(0, 45).lineTo(sw, 45).stroke({ color: NECRO_GREEN, width: 0.5, alpha: 0.06 });
-    // Corner ornaments
-    g.moveTo(0, 44).lineTo(8, 44).lineTo(8, 40).stroke({ color: NECRO_GREEN, width: 0.5, alpha: 0.15 });
-    g.moveTo(sw, 44).lineTo(sw - 8, 44).lineTo(sw - 8, 40).stroke({ color: NECRO_GREEN, width: 0.5, alpha: 0.15 });
+    // Corner ornaments — gothic filigree brackets
+    // Left corner
+    g.moveTo(0, 44).lineTo(12, 44).stroke({ color: NECRO_GREEN, width: 0.5, alpha: 0.15 });
+    g.moveTo(12, 44).bezierCurveTo(12, 40, 10, 38, 8, 36).stroke({ color: NECRO_GREEN, width: 0.5, alpha: 0.12 });
+    g.moveTo(8, 36).bezierCurveTo(6, 38, 4, 40, 0, 40).stroke({ color: NECRO_GREEN, width: 0.5, alpha: 0.1 });
+    // Inner curl
+    g.moveTo(10, 42).bezierCurveTo(9, 40, 7, 39, 5, 40).stroke({ color: NECRO_GREEN, width: 0.3, alpha: 0.08 });
+    // Leaf motif
+    g.moveTo(6, 42).bezierCurveTo(4, 41, 3, 39, 4, 38).fill({ color: NECRO_GREEN, alpha: 0.04 });
+    // Right corner
+    g.moveTo(sw, 44).lineTo(sw - 12, 44).stroke({ color: NECRO_GREEN, width: 0.5, alpha: 0.15 });
+    g.moveTo(sw - 12, 44).bezierCurveTo(sw - 12, 40, sw - 10, 38, sw - 8, 36).stroke({ color: NECRO_GREEN, width: 0.5, alpha: 0.12 });
+    g.moveTo(sw - 8, 36).bezierCurveTo(sw - 6, 38, sw - 4, 40, sw, 40).stroke({ color: NECRO_GREEN, width: 0.5, alpha: 0.1 });
+    g.moveTo(sw - 10, 42).bezierCurveTo(sw - 9, 40, sw - 7, 39, sw - 5, 40).stroke({ color: NECRO_GREEN, width: 0.3, alpha: 0.08 });
+    // Center skull emblem between title and wave info
+    g.circle(180, 14, 6).fill({ color: NECRO_GREEN, alpha: 0.05 });
+    g.circle(180, 13, 3).fill({ color: BONE_WHITE, alpha: 0.06 });
+    g.circle(179, 12, 0.6).fill({ color: 0x0a0a06, alpha: 0.06 });
+    g.circle(181, 12, 0.6).fill({ color: 0x0a0a06, alpha: 0.06 });
 
     const addText = (str: string, x: number, y: number, opts: Partial<TextStyle>, center = false) => {
       const t = new Text({ text: str, style: new TextStyle({ fontFamily: FONT, ...opts } as any) });
@@ -1864,9 +2017,16 @@ export class NecroRenderer {
     if (state.mana > state.maxMana * 0.8) {
       g.roundRect(manaX + 2, manaY + 1, manaFill - 4, 2, 1).fill({ color: 0x88aaff, alpha: 0.15 + Math.sin(state.elapsed * 4) * 0.08 });
     }
-    // Orb decorations at ends
-    g.circle(manaX, manaY + manaH / 2, 2).fill({ color: 0x334466, alpha: 0.4 });
-    g.circle(manaX + manaW, manaY + manaH / 2, 2).fill({ color: 0x334466, alpha: 0.4 });
+    // Orb decorations at ends — faceted gems
+    g.moveTo(manaX, manaY + manaH / 2 - 2.5).lineTo(manaX + 2, manaY + manaH / 2).lineTo(manaX, manaY + manaH / 2 + 2.5).lineTo(manaX - 2, manaY + manaH / 2).fill({ color: 0x3355aa, alpha: 0.4 });
+    g.moveTo(manaX, manaY + manaH / 2 - 2.5).lineTo(manaX + 2, manaY + manaH / 2).lineTo(manaX, manaY + manaH / 2 + 2.5).lineTo(manaX - 2, manaY + manaH / 2).stroke({ color: 0x4477dd, width: 0.3, alpha: 0.3 });
+    g.moveTo(manaX + manaW, manaY + manaH / 2 - 2.5).lineTo(manaX + manaW + 2, manaY + manaH / 2).lineTo(manaX + manaW, manaY + manaH / 2 + 2.5).lineTo(manaX + manaW - 2, manaY + manaH / 2).fill({ color: 0x3355aa, alpha: 0.4 });
+    g.moveTo(manaX + manaW, manaY + manaH / 2 - 2.5).lineTo(manaX + manaW + 2, manaY + manaH / 2).lineTo(manaX + manaW, manaY + manaH / 2 + 2.5).lineTo(manaX + manaW - 2, manaY + manaH / 2).stroke({ color: 0x4477dd, width: 0.3, alpha: 0.3 });
+    // Rune tick marks along mana bar at 25%, 50%, 75%
+    for (const frac of [0.25, 0.5, 0.75]) {
+      const tx = manaX + manaW * frac;
+      g.moveTo(tx, manaY - 1).lineTo(tx, manaY + manaH + 1).stroke({ color: 0x334466, width: 0.3, alpha: 0.2 });
+    }
     addText(`${Math.floor(state.mana)}/${state.maxMana}`, manaX + manaW + 8, manaY - 2, { fontSize: 9, fill: 0x6688cc });
 
     // HP — drawn heart icons instead of text
