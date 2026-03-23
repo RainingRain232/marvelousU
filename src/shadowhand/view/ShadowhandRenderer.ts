@@ -584,28 +584,49 @@ export class ShadowhandRenderer {
   }
 
   private _drawStairs(g: Graphics, d: Graphics, px: number, py: number, up: boolean): void {
-    g.rect(px, py, T, T).fill({ color: 0x343040 });
-    const steps = 5;
+    // Stairwell recess
+    g.rect(px, py, T, T).fill({ color: 0x2a2836 });
+    // Side walls
+    d.rect(px, py, 2, T).fill({ color: 0x3a3846, alpha: 0.4 });
+    d.rect(px + T - 2, py, 2, T).fill({ color: 0x222030, alpha: 0.3 });
+
+    const steps = 6;
     for (let i = 0; i < steps; i++) {
       const sy = up ? py + T - (i + 1) * (T / steps) : py + i * (T / steps);
-      const sw = T - i * 3;
+      const sw = T - 4 - i * 2;
       const sx = px + (T - sw) / 2;
       const sh = T / steps - 1;
-      // Step face (top surface)
-      d.rect(sx, sy, sw, sh).fill({ color: 0x4a4a5a, alpha: 0.6 + i * 0.06 });
-      // Step edge highlight (front face visible)
-      d.moveTo(sx, sy + sh).lineTo(sx + sw, sy + sh).stroke({ color: 0x5a5a6a, width: 0.8, alpha: 0.3 });
-      // Step shadow (underneath)
-      d.moveTo(sx, sy).lineTo(sx + sw, sy).stroke({ color: 0x222230, width: 0.6, alpha: 0.3 });
-      // Worn edge — subtle irregular line
-      if (i > 0) {
-        d.moveTo(sx + 2, sy + sh - 0.5).bezierCurveTo(sx + sw * 0.3, sy + sh + 0.5, sx + sw * 0.7, sy + sh - 0.5, sx + sw - 2, sy + sh + 0.3).stroke({ color: 0x3a3a4a, width: 0.5, alpha: 0.2 });
+      // Step face (gradient: lighter as you go up)
+      const stepShade = 0.5 + i * 0.07;
+      d.rect(sx, sy, sw, sh).fill({ color: 0x4a4a5a, alpha: stepShade });
+      // Step front face (3D depth — darker band below top surface)
+      d.rect(sx, sy + sh - 1.5, sw, 1.5).fill({ color: 0x3a3a48, alpha: stepShade * 0.7 });
+      // Step top highlight
+      d.moveTo(sx + 1, sy + 0.5).lineTo(sx + sw - 1, sy + 0.5).stroke({ color: 0x5a5a6a, width: 0.6, alpha: 0.3 });
+      // Step bottom shadow
+      d.moveTo(sx, sy + sh).lineTo(sx + sw, sy + sh).stroke({ color: 0x1a1a28, width: 0.8, alpha: 0.35 });
+      // Left/right step edges
+      d.moveTo(sx, sy).lineTo(sx, sy + sh).stroke({ color: 0x5a5a6a, width: 0.4, alpha: 0.15 });
+      d.moveTo(sx + sw, sy).lineTo(sx + sw, sy + sh).stroke({ color: 0x222030, width: 0.4, alpha: 0.2 });
+      // Worn edge irregularity
+      if (i > 0 && i < steps - 1) {
+        d.moveTo(sx + 2, sy + sh - 0.5).bezierCurveTo(sx + sw * 0.3, sy + sh + 0.3, sx + sw * 0.6, sy + sh - 0.3, sx + sw - 2, sy + sh + 0.2).stroke({ color: 0x3a3a4a, width: 0.4, alpha: 0.15 });
       }
     }
-    // Direction arrow polygon
+
+    // Depth shadow at stairwell bottom/top
+    if (up) {
+      d.rect(px + 2, py + T - 3, T - 4, 3).fill({ color: 0x000000, alpha: 0.15 });
+    } else {
+      d.rect(px + 2, py, T - 4, 3).fill({ color: 0x000000, alpha: 0.15 });
+    }
+
+    // Direction arrow polygon (with glow)
     const ay = up ? py + 5 : py + T - 5;
     const dir = up ? -1 : 1;
+    d.circle(px + HT, ay + dir * 4, 5).fill({ color: 0x8888aa, alpha: 0.04 }); // arrow glow
     d.moveTo(px + HT, ay + dir * 8).lineTo(px + HT - 3, ay + dir * 3).lineTo(px + HT - 1, ay + dir * 3).lineTo(px + HT - 1, ay).lineTo(px + HT + 1, ay).lineTo(px + HT + 1, ay + dir * 3).lineTo(px + HT + 3, ay + dir * 3).closePath().fill({ color: 0x8888aa, alpha: 0.35 });
+    d.moveTo(px + HT, ay + dir * 8).lineTo(px + HT - 3, ay + dir * 3).lineTo(px + HT + 3, ay + dir * 3).closePath().fill({ color: 0x9999bb, alpha: 0.2 }); // arrow head highlight
   }
 
   private _drawTorch(d: Graphics, px: number, py: number, tx: number, ty: number, _map: HeistState["map"]): void {
@@ -667,27 +688,52 @@ export class ShadowhandRenderer {
   private _drawLootSparkle(d: Graphics, px: number, py: number): void {
     const cx = px + HT, cy = py + HT;
     const t = Date.now() / 400;
-    // Orbiting 4-pointed star sparkles
-    for (let i = 0; i < 4; i++) {
-      const angle = t + i * Math.PI / 2;
+
+    // Soft ground glow beneath loot
+    d.circle(cx, cy + 2, 6).fill({ color: 0xffcc22, alpha: 0.04 });
+    d.circle(cx, cy + 1, 4).fill({ color: 0xffdd44, alpha: 0.06 });
+
+    // Orbiting 6-pointed star sparkles (was 4)
+    for (let i = 0; i < 6; i++) {
+      const angle = t + i * Math.PI / 3;
       const dist = 5 + Math.sin(t * 2 + i) * 2;
       const sx = cx + Math.cos(angle) * dist;
       const sy = cy + Math.sin(angle) * dist;
       const sr = 1.5 + Math.sin(t * 3 + i * 1.5) * 0.5;
-      const sa = 0.4 + Math.sin(t + i) * 0.3;
+      const sa = 0.35 + Math.sin(t + i) * 0.25;
       // 4-pointed star polygon
       d.moveTo(sx, sy - sr * 1.5).lineTo(sx + sr * 0.4, sy - sr * 0.4).lineTo(sx + sr * 1.5, sy).lineTo(sx + sr * 0.4, sy + sr * 0.4);
       d.lineTo(sx, sy + sr * 1.5).lineTo(sx - sr * 0.4, sy + sr * 0.4).lineTo(sx - sr * 1.5, sy).lineTo(sx - sr * 0.4, sy - sr * 0.4);
-      d.closePath().fill({ color: 0xffdd44, alpha: sa });
+      d.closePath().fill({ color: i < 3 ? 0xffdd44 : 0xffcc22, alpha: sa });
+      // Sparkle trail (fading dot behind each star)
+      const trailA = angle - 0.3;
+      d.circle(cx + Math.cos(trailA) * (dist - 1), cy + Math.sin(trailA) * (dist - 1), sr * 0.4).fill({ color: 0xffee88, alpha: sa * 0.3 });
     }
-    // Center faceted gem (diamond shape)
-    d.moveTo(cx, cy - 4).lineTo(cx + 3, cy).lineTo(cx, cy + 3).lineTo(cx - 3, cy).closePath().fill({ color: 0xffdd44, alpha: 0.8 });
-    d.moveTo(cx, cy - 4).lineTo(cx + 3, cy).lineTo(cx, cy - 0.5).closePath().fill({ color: 0xffee88, alpha: 0.5 }); // top facet highlight
-    d.moveTo(cx, cy - 4).lineTo(cx - 3, cy).lineTo(cx, cy - 0.5).closePath().fill({ color: 0xccaa22, alpha: 0.3 }); // top facet shadow
-    // Sparkle cross
-    const sc = 0.3 + Math.sin(t * 4) * 0.2;
-    d.moveTo(cx, cy - 6).lineTo(cx, cy + 6).stroke({ color: 0xffffff, width: 0.5, alpha: sc });
-    d.moveTo(cx - 5, cy).lineTo(cx + 5, cy).stroke({ color: 0xffffff, width: 0.5, alpha: sc });
+
+    // Center gem — multi-faceted diamond with depth
+    // Shadow beneath
+    d.ellipse(cx + 0.5, cy + 3.5, 3, 1.5).fill({ color: 0x000000, alpha: 0.15 });
+    // Gem body (4-sided diamond)
+    d.moveTo(cx, cy - 4.5).lineTo(cx + 3.5, cy).lineTo(cx, cy + 3).lineTo(cx - 3.5, cy).closePath().fill({ color: 0xeebb22, alpha: 0.85 });
+    // Top-right facet (bright)
+    d.moveTo(cx, cy - 4.5).lineTo(cx + 3.5, cy).lineTo(cx + 0.5, cy - 0.5).closePath().fill({ color: 0xffee66, alpha: 0.5 });
+    // Top-left facet (medium)
+    d.moveTo(cx, cy - 4.5).lineTo(cx - 3.5, cy).lineTo(cx - 0.5, cy - 0.5).closePath().fill({ color: 0xddcc33, alpha: 0.35 });
+    // Bottom facets (darker)
+    d.moveTo(cx - 3.5, cy).lineTo(cx, cy + 3).lineTo(cx, cy).closePath().fill({ color: 0xcc9911, alpha: 0.3 });
+    d.moveTo(cx + 3.5, cy).lineTo(cx, cy + 3).lineTo(cx, cy).closePath().fill({ color: 0xddaa22, alpha: 0.25 });
+    // Edge highlights
+    d.moveTo(cx, cy - 4.5).lineTo(cx + 3.5, cy).stroke({ color: 0xffffff, width: 0.5, alpha: 0.3 });
+    d.moveTo(cx, cy - 4.5).lineTo(cx - 3.5, cy).stroke({ color: 0xffffff, width: 0.3, alpha: 0.15 });
+    // Sparkle highlight (animated)
+    const sc = 0.25 + Math.sin(t * 4) * 0.2;
+    d.circle(cx - 1, cy - 2, 1).fill({ color: 0xffffff, alpha: sc });
+    // Sparkle cross beams
+    d.moveTo(cx, cy - 7).lineTo(cx, cy + 7).stroke({ color: 0xffffff, width: 0.4, alpha: sc * 0.5 });
+    d.moveTo(cx - 6, cy).lineTo(cx + 6, cy).stroke({ color: 0xffffff, width: 0.4, alpha: sc * 0.5 });
+    // Diagonal sparkle beams (rotated 45 degrees)
+    d.moveTo(cx - 4, cy - 4).lineTo(cx + 4, cy + 4).stroke({ color: 0xffffff, width: 0.3, alpha: sc * 0.3 });
+    d.moveTo(cx + 4, cy - 4).lineTo(cx - 4, cy + 4).stroke({ color: 0xffffff, width: 0.3, alpha: sc * 0.3 });
   }
 
   private _drawPrimaryLoot(d: Graphics, px: number, py: number): void {
@@ -733,41 +779,70 @@ export class ShadowhandRenderer {
   private _drawTrap(d: Graphics, px: number, py: number): void {
     const cx = px + HT, cy = py + HT;
     const pulse = 0.25 + Math.sin(Date.now() / 500) * 0.1;
-    // Circular pressure plate with teeth
-    d.circle(cx, cy, 6).stroke({ color: 0xff4444, width: 0.8, alpha: pulse });
-    d.circle(cx, cy, 4).stroke({ color: 0xff4444, width: 0.5, alpha: pulse * 0.7 });
-    // Jaw teeth (polygon spikes around edge)
-    for (let i = 0; i < 8; i++) {
-      const a = i * Math.PI / 4;
-      const ox = cx + Math.cos(a) * 7, oy = cy + Math.sin(a) * 7;
-      const la = a - 0.25, ra = a + 0.25;
-      d.moveTo(cx + Math.cos(la) * 5, cy + Math.sin(la) * 5).lineTo(ox, oy).lineTo(cx + Math.cos(ra) * 5, cy + Math.sin(ra) * 5).stroke({ color: 0xff4444, width: 0.6, alpha: pulse * 0.6 });
+
+    // Outer warning glow
+    d.circle(cx, cy, 9).fill({ color: 0xff2222, alpha: pulse * 0.03 });
+    // Pressure plate base (dark recessed circle)
+    d.circle(cx, cy, 7).fill({ color: 0x1a1010, alpha: 0.3 });
+    d.circle(cx, cy, 7).stroke({ color: 0x442222, width: 0.8, alpha: 0.3 });
+    // Plate surface (lighter raised area)
+    d.circle(cx, cy, 5.5).fill({ color: 0x2a1a1a, alpha: 0.25 });
+    d.circle(cx, cy, 5.5).stroke({ color: 0xff4444, width: 0.6, alpha: pulse });
+    // Inner mechanism ring
+    d.circle(cx, cy, 3.5).stroke({ color: 0xff4444, width: 0.5, alpha: pulse * 0.7 });
+    // Jaw teeth — 10 barbed polygon spikes around circumference
+    for (let i = 0; i < 10; i++) {
+      const a = i * Math.PI / 5;
+      const ox = cx + Math.cos(a) * 8, oy = cy + Math.sin(a) * 8;
+      const la = a - 0.2, ra = a + 0.2;
+      // Tooth filled polygon
+      d.moveTo(cx + Math.cos(la) * 5.5, cy + Math.sin(la) * 5.5);
+      d.lineTo(ox, oy);
+      d.lineTo(cx + Math.cos(ra) * 5.5, cy + Math.sin(ra) * 5.5);
+      d.closePath().fill({ color: 0x553333, alpha: pulse * 0.4 });
+      // Tooth edge highlight
+      d.moveTo(cx + Math.cos(la) * 5.5, cy + Math.sin(la) * 5.5).lineTo(ox, oy).stroke({ color: 0xff4444, width: 0.5, alpha: pulse * 0.5 });
     }
-    // Center trigger pin
-    d.circle(cx, cy, 1.5).fill({ color: 0xff6644, alpha: pulse });
+    // Center trigger pin with spring coil
+    d.circle(cx, cy, 2).fill({ color: 0x553322, alpha: 0.5 });
+    d.circle(cx, cy, 2).stroke({ color: 0x664433, width: 0.5, alpha: 0.4 });
+    d.circle(cx, cy, 1).fill({ color: 0xff6644, alpha: pulse });
+    // Spring coil lines (tiny concentric arcs)
+    d.moveTo(cx - 1.5, cy - 0.5).bezierCurveTo(cx - 0.5, cy - 1.5, cx + 0.5, cy - 1.5, cx + 1.5, cy - 0.5).stroke({ color: 0x888888, width: 0.3, alpha: 0.3 });
+    d.moveTo(cx - 1.5, cy + 0.5).bezierCurveTo(cx - 0.5, cy + 1.5, cx + 0.5, cy + 1.5, cx + 1.5, cy + 0.5).stroke({ color: 0x888888, width: 0.3, alpha: 0.3 });
+    // Rust stains near plate
+    d.circle(cx + 4, cy + 5, 2).fill({ color: 0x3a2020, alpha: 0.1 });
+    d.circle(cx - 5, cy + 3, 1.5).fill({ color: 0x3a2020, alpha: 0.08 });
   }
 
   private _drawCaltrops(d: Graphics, px: number, py: number, h: number): void {
-    for (let i = 0; i < 6; i++) {
-      const cx = px + 4 + tileHash(i, Math.floor(h * 1000)) * (T - 8);
-      const cy = py + 4 + tileHash(Math.floor(h * 1000), i) * (T - 8);
+    for (let i = 0; i < 7; i++) {
+      const cx = px + 3 + tileHash(i, Math.floor(h * 1000)) * (T - 6);
+      const cy = py + 3 + tileHash(Math.floor(h * 1000), i) * (T - 6);
       const rot = tileHash(i * 3, Math.floor(h * 999)) * Math.PI;
       const s = 2.5 + tileHash(i + 7, Math.floor(h * 500)) * 1.5;
-      // 4-pointed barbed caltrop (rotated polygon)
+
+      // Shadow beneath caltrop
+      d.ellipse(cx + 0.5, cy + 1, s * 0.6, s * 0.3).fill({ color: 0x000000, alpha: 0.1 });
+
+      // 4-pointed barbed caltrop — filled polygon per spike
       for (let p = 0; p < 4; p++) {
         const a = rot + p * Math.PI / 2;
         const tipX = cx + Math.cos(a) * s, tipY = cy + Math.sin(a) * s;
-        const la = a - 0.3, ra = a + 0.3;
-        d.moveTo(cx + Math.cos(la) * s * 0.3, cy + Math.sin(la) * s * 0.3);
-        d.lineTo(tipX, tipY);
-        d.lineTo(cx + Math.cos(ra) * s * 0.3, cy + Math.sin(ra) * s * 0.3);
-        d.stroke({ color: 0xaaaaaa, width: 0.7, alpha: 0.5 });
+        const la = a - 0.25, ra = a + 0.25;
+        const baseL = cx + Math.cos(la) * s * 0.3, baseLY = cy + Math.sin(la) * s * 0.3;
+        const baseR = cx + Math.cos(ra) * s * 0.3, baseRY = cy + Math.sin(ra) * s * 0.3;
+        // Filled spike body
+        d.moveTo(baseL, baseLY).lineTo(tipX, tipY).lineTo(baseR, baseRY).closePath().fill({ color: 0x888888, alpha: 0.45 });
+        // Bright edge (left face highlight)
+        d.moveTo(baseL, baseLY).lineTo(tipX, tipY).stroke({ color: 0xbbbbbb, width: 0.5, alpha: 0.3 });
+        // Dark edge (right face shadow)
+        d.moveTo(tipX, tipY).lineTo(baseR, baseRY).stroke({ color: 0x555555, width: 0.4, alpha: 0.3 });
       }
-      // Center junction
-      d.circle(cx, cy, 0.8).fill({ color: 0x888888, alpha: 0.5 });
-      // Metallic highlight on one spike
-      const ha = rot;
-      d.moveTo(cx, cy).lineTo(cx + Math.cos(ha) * s * 0.7, cy + Math.sin(ha) * s * 0.7).stroke({ color: 0xcccccc, width: 0.3, alpha: 0.3 });
+      // Center junction (riveted hub)
+      d.circle(cx, cy, 1.2).fill({ color: 0x777777, alpha: 0.5 });
+      d.circle(cx, cy, 1.2).stroke({ color: 0x999999, width: 0.3, alpha: 0.3 });
+      d.circle(cx - 0.3, cy - 0.3, 0.4).fill({ color: 0xbbbbbb, alpha: 0.25 }); // rivet highlight
     }
   }
 
@@ -788,42 +863,61 @@ export class ShadowhandRenderer {
         const py = y * T + this._offsetY;
 
         if (!tile.lit) {
-          // Deep shadow with cool blue undertone
-          g.rect(px, py, T, T).fill({ color: 0x030308, alpha: 0.58 });
-          g.rect(px, py, T, T).fill({ color: 0x0a0a2a, alpha: 0.1 });
+          // Layered shadow: base + blue undertone + noise texture
+          g.rect(px, py, T, T).fill({ color: 0x030308, alpha: 0.55 });
+          g.rect(px, py, T, T).fill({ color: 0x080818, alpha: 0.08 });
+          // Cool blue noise grain (seeded per tile)
+          const h = tileHash(x, y);
+          if (h > 0.6) {
+            g.rect(px + h * 10, py + h * 8, T * 0.5, T * 0.3).fill({ color: 0x0a0a20, alpha: 0.04 });
+          }
 
-          // Check proximity to lit tiles for gradient edge
-          let nearLight = false;
+          // Check proximity to lit tiles for penumbra gradient
+          let nearLightCount = 0;
           for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) {
             const nx = x + dx, ny = y + dy;
             if (nx >= 0 && ny >= 0 && nx < heist.map.width && ny < heist.map.height) {
-              if (heist.map.tiles[ny][nx].lit && heist.map.tiles[ny][nx].type !== "wall") {
-                nearLight = true;
-                break;
-              }
+              if (heist.map.tiles[ny][nx].lit && heist.map.tiles[ny][nx].type !== "wall") nearLightCount++;
             }
           }
-          if (nearLight) {
-            // Penumbra — softer shadow at light/dark boundary
-            g.rect(px, py, T, T).fill({ color: 0xff8833, alpha: 0.03 });
+          if (nearLightCount > 0) {
+            // Penumbra — multi-layer gradient from warm to cool
+            const penAlpha = 0.02 + nearLightCount * 0.01;
+            g.rect(px, py, T, T).fill({ color: 0xff8833, alpha: penAlpha });
+            g.rect(px, py, T, T).fill({ color: 0xffaa44, alpha: penAlpha * 0.5 });
+            // Inner corner glow toward light source
+            if (nearLightCount >= 2) {
+              g.circle(px + HT, py + HT, T * 0.4).fill({ color: 0xff8833, alpha: 0.015 });
+            }
           }
         } else {
-          // Warm torch glow — intensity based on torch proximity
-          let torchNearby = tile.torchSource;
-          if (!torchNearby) {
-            for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0], [-1, -1], [1, -1], [-1, 1], [1, 1]]) {
-              const nx = x + dx, ny = y + dy;
+          // Warm torch glow — 4-tier proximity system
+          let torchDist = 99; // tiles to nearest torch
+          for (let dy2 = -3; dy2 <= 3; dy2++) {
+            for (let dx2 = -3; dx2 <= 3; dx2++) {
+              const nx = x + dx2, ny = y + dy2;
               if (nx >= 0 && ny >= 0 && nx < heist.map.width && ny < heist.map.height) {
-                if (heist.map.tiles[ny][nx].torchSource) { torchNearby = true; break; }
+                if (heist.map.tiles[ny][nx].torchSource) {
+                  const d = Math.abs(dx2) + Math.abs(dy2);
+                  if (d < torchDist) torchDist = d;
+                }
               }
             }
           }
-          if (tile.torchSource) {
-            g.rect(px, py, T, T).fill({ color: 0xffaa44, alpha: 0.1 });
-          } else if (torchNearby) {
-            g.rect(px, py, T, T).fill({ color: 0xffaa44, alpha: 0.06 });
+          if (torchDist === 0) {
+            // Direct torch: warmest, brightest
+            g.rect(px, py, T, T).fill({ color: 0xffaa44, alpha: 0.12 });
+            g.rect(px, py, T, T).fill({ color: 0xff8833, alpha: 0.03 });
+          } else if (torchDist <= 1) {
+            g.rect(px, py, T, T).fill({ color: 0xffaa44, alpha: 0.08 });
+            g.rect(px, py, T, T).fill({ color: 0xff9944, alpha: 0.02 });
+          } else if (torchDist <= 2) {
+            g.rect(px, py, T, T).fill({ color: 0xffaa44, alpha: 0.05 });
+          } else if (torchDist <= 3) {
+            g.rect(px, py, T, T).fill({ color: 0xffaa44, alpha: 0.025 });
           } else {
-            g.rect(px, py, T, T).fill({ color: 0xffaa44, alpha: 0.03 });
+            // Ambient lit (far from torch)
+            g.rect(px, py, T, T).fill({ color: 0xffaa44, alpha: 0.015 });
           }
         }
       }
@@ -844,7 +938,15 @@ export class ShadowhandRenderer {
         const py = y * T + this._offsetY;
 
         if (!heist.map.tiles[y][x].revealed) {
-          g.rect(px, py, T, T).fill({ color: 0x08080c, alpha: 0.95 });
+          // Layered fog: base + noise texture + subtle color variation
+          const fh = tileHash(x, y);
+          g.rect(px, py, T, T).fill({ color: 0x08080c, alpha: 0.93 });
+          // Noise grain (subtle shade patches per tile)
+          g.rect(px + fh * 8, py + fh * 6, T * 0.6, T * 0.4).fill({ color: fh < 0.5 ? 0x0a0a10 : 0x060608, alpha: 0.04 });
+          // Occasional dark swirl (suggests depth behind fog)
+          if (fh > 0.85) {
+            g.circle(px + HT, py + HT, 5 + fh * 4).fill({ color: 0x050508, alpha: 0.03 });
+          }
         } else {
           // Detect adjacent fog directions
           const fogTop = (y <= 0 || !heist.map.tiles[y - 1][x].revealed);
