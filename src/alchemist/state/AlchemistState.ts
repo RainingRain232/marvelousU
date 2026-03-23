@@ -12,16 +12,19 @@ export enum AlchemistPhase {
   RESULTS = "results",
 }
 
+export type SpecialTile = "none" | "wildcard" | "bomb" | "column_clear";
+
 export interface GridTile {
   type: IngredientType;
-  x: number; // grid col
-  y: number; // grid row
-  px: number; // pixel x (for animation)
-  py: number; // pixel y
+  special: SpecialTile;
+  x: number;
+  y: number;
+  px: number;
+  py: number;
   matched: boolean;
   falling: boolean;
   selected: boolean;
-  scale: number; // for pop animation
+  scale: number;
 }
 
 export interface Customer {
@@ -69,6 +72,10 @@ export interface AlchemistState {
   announcements: { text: string; color: number; timer: number }[];
   particles: { x: number; y: number; vx: number; vy: number; life: number; maxLife: number; color: number; size: number }[];
   log: string[];
+  // Power-ups (purchasable with gold during gameplay)
+  shufflesRemaining: number;
+  timeExtensions: number;
+  magnetsRemaining: number; // converts random tile to needed ingredient
 }
 
 // ---------------------------------------------------------------------------
@@ -103,7 +110,7 @@ export function createGrid(seed: number): GridTile[][] {
         type,
         x: col, y: row,
         px: col * TILE_SIZE, py: row * TILE_SIZE,
-        matched: false, falling: false, selected: false,
+        special: "none", matched: false, falling: false, selected: false,
         scale: 1,
       };
     }
@@ -145,6 +152,9 @@ export function createAlchemistState(seed: number): AlchemistState {
     announcements: [],
     particles: [],
     log: ["The alchemy shop is open!"],
+    shufflesRemaining: 1,
+    timeExtensions: 1,
+    magnetsRemaining: 1,
   };
 }
 

@@ -170,6 +170,17 @@ export class AlchemistRenderer {
             g.moveTo(cx, cy).lineTo(cx + Math.cos(sa) * 3, cy + Math.sin(sa) * 3).stroke({ color: 0xffffff, width: 0.3, alpha: 0.2 });
           }
         }
+
+        // Special tile indicator overlay
+        if (tile.special === "bomb") {
+          g.circle(cx, cy, orbR + 2).stroke({ color: 0xff6622, width: 1.5, alpha: 0.5 });
+          g.moveTo(cx - 3, cy - 3).lineTo(cx + 3, cy + 3).stroke({ color: 0xff6622, width: 1, alpha: 0.4 });
+          g.moveTo(cx + 3, cy - 3).lineTo(cx - 3, cy + 3).stroke({ color: 0xff6622, width: 1, alpha: 0.4 });
+        } else if (tile.special === "column_clear") {
+          g.moveTo(cx, cy - orbR - 4).lineTo(cx, cy + orbR + 4).stroke({ color: 0x44ccff, width: 1.5, alpha: 0.5 });
+          g.circle(cx, cy - orbR - 3, 2).fill({ color: 0x44ccff, alpha: 0.4 });
+          g.circle(cx, cy + orbR + 3, 2).fill({ color: 0x44ccff, alpha: 0.4 });
+        }
       }
     }
 
@@ -319,8 +330,16 @@ export class AlchemistRenderer {
       iy += 60;
     }
 
+    // Power-ups display
+    const puY = py + ph - 100;
+    u.moveTo(px + 10, puY).lineTo(px + pw - 10, puY).stroke({ color: COL, width: 0.5, alpha: 0.15 });
+    this._addText("Power-ups", px + pw / 2, puY + 3, { fontSize: 9, fill: 0xccaa88, fontWeight: "bold" }, true);
+    this._addText(`Q: Shuffle (${state.shufflesRemaining})`, px + 8, puY + 16, { fontSize: 8, fill: state.shufflesRemaining > 0 ? 0xffaa44 : 0x555544 });
+    this._addText(`W: +30s (${state.timeExtensions})`, px + 8, puY + 28, { fontSize: 8, fill: state.timeExtensions > 0 ? 0x44ccff : 0x555544 });
+    this._addText(`E: Magnet (${state.magnetsRemaining})`, px + 8, puY + 40, { fontSize: 8, fill: state.magnetsRemaining > 0 ? 0xaa44ff : 0x555544 });
+
     // Log (bottom)
-    const logY = py + ph - 60;
+    const logY = py + ph - 50;
     u.moveTo(px + 10, logY).lineTo(px + pw - 10, logY).stroke({ color: COL, width: 0.5, alpha: 0.15 });
     this._addText("Log", px + pw / 2, logY + 3, { fontSize: 8, fill: COL }, true);
     const last3 = state.log.slice(-3);

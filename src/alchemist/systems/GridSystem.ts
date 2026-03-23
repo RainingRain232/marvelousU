@@ -102,6 +102,57 @@ export function processMatches(state: AlchemistState): number {
     }
   }
 
+  // Handle special tiles that were matched
+  for (const match of matches) {
+    for (const cell of match) {
+      const tile = state.grid[cell.y][cell.x];
+      if (tile.special === "bomb") {
+        // Bomb: clear 3x3 area around it
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const ny = cell.y + dy, nx = cell.x + dx;
+            if (ny >= 0 && ny < AlchemistConfig.GRID_ROWS && nx >= 0 && nx < AlchemistConfig.GRID_COLS) {
+              const adj = state.grid[ny][nx];
+              if (!adj.matched) {
+                adj.matched = true;
+                totalCleared++;
+                const cur = state.collected.get(adj.type) ?? 0;
+                state.collected.set(adj.type, cur + 1);
+              }
+            }
+          }
+        }
+        state.announcements.push({ text: "BOMB!", color: 0xff6622, timer: 1.5 });
+      } else if (tile.special === "column_clear") {
+        // Clear entire column
+        for (let r = 0; r < AlchemistConfig.GRID_ROWS; r++) {
+          const colTile = state.grid[r][cell.x];
+          if (!colTile.matched) {
+            colTile.matched = true;
+            totalCleared++;
+            const cur = state.collected.get(colTile.type) ?? 0;
+            state.collected.set(colTile.type, cur + 1);
+          }
+        }
+        state.announcements.push({ text: "COLUMN CLEAR!", color: 0x44ccff, timer: 1.5 });
+      }
+    }
+  }
+
+  // Generate special tiles for big matches (4+ = bomb, 5+ = column clear)
+  for (const match of matches) {
+    if (match.length >= 5) {
+      // Mark the center tile position for a column_clear on next fill
+      const center = match[Math.floor(match.length / 2)];
+      (state as any)._pendingSpecial = { x: center.x, y: center.y, type: "column_clear" };
+      state.announcements.push({ text: "5+ MATCH! Column Clear earned!", color: 0x44ccff, timer: 2 });
+    } else if (match.length >= 4) {
+      const center = match[Math.floor(match.length / 2)];
+      (state as any)._pendingSpecial = { x: center.x, y: center.y, type: "bomb" };
+      state.announcements.push({ text: "4 MATCH! Bomb earned!", color: 0xff6622, timer: 2 });
+    }
+  }
+
   // Score
   state.cascadeCount++;
   const cascadeBonus = state.cascadeCount > 1 ? AlchemistConfig.SCORE_PER_CASCADE * (state.cascadeCount - 1) : 0;
@@ -147,13 +198,20 @@ export function collapseGrid(state: AlchemistState): boolean {
       const rareChance = needsRare ? 0.2 : 0.12;
       const types = rng() < rareChance ? [...ALL_INGREDIENTS, ...RARE_INGREDIENTS] : ALL_INGREDIENTS;
       const type = types[Math.floor(rng() * types.length)];
+      // Check if a special tile should spawn here
+      const pending = (state as any)._pendingSpecial;
+      let special: import("../state/AlchemistState").SpecialTile = "none";
+      if (pending && pending.x === col && row === writeRow) {
+        special = pending.type;
+        (state as any)._pendingSpecial = null;
+      }
       state.grid[row][col] = {
-        type,
+        type, special,
         x: col, y: row,
         px: col * AlchemistConfig.TILE_SIZE,
-        py: (row - (writeRow - row + 1)) * AlchemistConfig.TILE_SIZE, // start above grid
+        py: (row - (writeRow - row + 1)) * AlchemistConfig.TILE_SIZE,
         matched: false, falling: true, selected: false,
-        scale: 0.5, // pop-in animation
+        scale: 0.5,
       };
       anyFell = true;
     }
@@ -224,5 +282,88 @@ export function serveCustomer(state: AlchemistState, customerId: string): boolea
 
   state.announcements.push({ text: `${customer.recipe.name} brewed! +${customer.recipe.value}g`, color: 0xffd700, timer: 2 });
   state.log.push(`Served ${customer.name} a ${customer.recipe.name}!`);
+  return true;
+}
+
+// ---------------------------------------------------------------------------
+// Power-ups
+// ---------------------------------------------------------------------------
+
+/** Shuffle the entire board randomly */
+export function useShuffle(state: AlchemistState): boolean {
+  if (state.shufflesRemaining <= 0) return false;
+  state.shufflesRemaining--;
+  const rng = seedRng(Date.now());
+  // Collect all types
+  const types: import("../config/AlchemistConfig").IngredientType[] = [];
+  for (let r = 0; r < state.grid.length; r++) {
+    for (let c = 0; c < state.grid[r].length; c++) {
+      types.push(state.grid[r][c].type);
+    }
+  }
+  // Shuffle
+  for (let i = types.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [types[i], types[j]] = [types[j], types[i]];
+  }
+  // Reassign
+  let idx = 0;
+  for (let r = 0; r < state.grid.length; r++) {
+    for (let c = 0; c < state.grid[r].length; c++) {
+      state.grid[r][c].type = types[idx++];
+      state.grid[r][c].scale = 0.5; // pop animation
+    }
+  }
+  state.announcements.push({ text: "BOARD SHUFFLED!", color: 0xffaa44, timer: 1.5 });
+  state.log.push("Used shuffle power-up.");
+  return true;
+}
+
+/** Add 30 seconds to the timer */
+export function useTimeExtension(state: AlchemistState): boolean {
+  if (state.timeExtensions <= 0) return false;
+  state.timeExtensions--;
+  state.timeLimit += 30;
+  state.announcements.push({ text: "+30 SECONDS!", color: 0x44ccff, timer: 1.5 });
+  state.log.push("Used time extension.");
+  return true;
+}
+
+/** Convert a random tile to the most-needed ingredient */
+export function useMagnet(state: AlchemistState): boolean {
+  if (state.magnetsRemaining <= 0) return false;
+  state.magnetsRemaining--;
+  // Find most-needed ingredient across all customers
+  const needs: Map<string, number> = new Map();
+  for (const cust of state.customers) {
+    if (cust.served || cust.left) continue;
+    for (const [type, count] of cust.recipe.ingredients) {
+      const have = state.collected.get(type) ?? 0;
+      const deficit = count - have;
+      if (deficit > 0) needs.set(type, (needs.get(type) ?? 0) + deficit);
+    }
+  }
+  if (needs.size === 0) return false;
+  // Find ingredient with biggest deficit
+  let bestType = "";
+  let bestDeficit = 0;
+  for (const [t, d] of needs) { if (d > bestDeficit) { bestType = t; bestDeficit = d; } }
+  if (!bestType) return false;
+  // Convert 3 random tiles to that ingredient
+  const candidates: { r: number; c: number }[] = [];
+  for (let r = 0; r < state.grid.length; r++) {
+    for (let c = 0; c < state.grid[r].length; c++) {
+      if (state.grid[r][c].type !== bestType) candidates.push({ r, c });
+    }
+  }
+  const rng = seedRng(Date.now());
+  for (let i = 0; i < 3 && candidates.length > 0; i++) {
+    const idx = Math.floor(rng() * candidates.length);
+    const { r, c } = candidates.splice(idx, 1)[0];
+    state.grid[r][c].type = bestType as import("../config/AlchemistConfig").IngredientType;
+    state.grid[r][c].scale = 0.3;
+  }
+  state.announcements.push({ text: `MAGNET: 3 ${bestType} tiles!`, color: 0xaa44ff, timer: 1.5 });
+  state.log.push(`Used magnet: converted 3 tiles to ${bestType}.`);
   return true;
 }

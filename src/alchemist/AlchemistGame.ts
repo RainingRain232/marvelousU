@@ -9,7 +9,7 @@ import { audioManager } from "@audio/AudioManager";
 import { createAlchemistState, AlchemistPhase, spawnCustomer } from "./state/AlchemistState";
 import type { AlchemistState } from "./state/AlchemistState";
 import { AlchemistConfig, RECIPES } from "./config/AlchemistConfig";
-import { trySwap, processMatches, collapseGrid, updateFalling, serveCustomer } from "./systems/GridSystem";
+import { trySwap, processMatches, collapseGrid, updateFalling, serveCustomer, useShuffle, useTimeExtension, useMagnet } from "./systems/GridSystem";
 import { AlchemistRenderer } from "./view/AlchemistRenderer";
 
 export class AlchemistGame {
@@ -181,6 +181,11 @@ export class AlchemistGame {
         this.destroy();
         window.dispatchEvent(new Event("alchemistExit"));
       }
+      if (this._state.phase !== AlchemistPhase.PLAYING) return;
+      // Power-up keys
+      if (e.key === "q" || e.key === "Q") useShuffle(this._state);
+      if (e.key === "w" || e.key === "W") useTimeExtension(this._state);
+      if (e.key === "e" || e.key === "E") useMagnet(this._state);
     };
     window.addEventListener("keydown", this._keyHandler);
 
