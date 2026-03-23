@@ -398,6 +398,12 @@ const GAME_MODES: GameModeEntry[] = [
     desc: "Tower defense: build towers, defend your castle from 10 waves",
     skipSetup: true,
   },
+  {
+    mode: GameMode.TAVERN,
+    label: "TAVERN",
+    desc: "Card game: play blackjack against medieval opponents for gold",
+    skipSetup: true,
+  },
 ];
 
 // ---------------------------------------------------------------------------
