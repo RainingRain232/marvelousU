@@ -255,7 +255,6 @@ export class ShadowhandGuildScreen {
 
       // Difficulty stars (visual rating)
       const starStr = "\u2605".repeat(t.tier) + "\u2606".repeat(5 - t.tier);
-      const tierColors = [0x555555, 0x44aa44, 0x44aacc, 0xcc8844, 0xff4444, 0xffd700];
       this._text(starStr, cx + cardW / 2, cy + 20, { fontSize: 8, fill: tierColors[t.tier] ?? 0x888877, letterSpacing: 1 }, true);
 
       this._text(t.desc, cx + 8, cy + 32, { fontSize: 7, fill: 0x777766, wordWrap: true, wordWrapWidth: cardW - 16 });

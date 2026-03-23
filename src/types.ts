@@ -694,6 +694,11 @@ export enum GameMode {
   TAVERN = "tavern",
   HUNT = "hunt",
   RACE = "race",
+  ROUND_TABLE = "round_table",
+  CAMELOT_ASCENT = "camelot_ascent",
+  GRAIL_BLOCKS = "grail_blocks",
+  GRAIL_DERBY = "grail_derby",
+  GRAIL_BREAKER = "grail_breaker",
 }
 
 // ---------------------------------------------------------------------------

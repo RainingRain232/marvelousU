@@ -154,6 +154,11 @@ import { SiegeGame } from "./siege/SiegeGame";
 import { TavernGame } from "./tavern/TavernGame";
 import { HuntGame } from "./hunt/HuntGame";
 import { RaceGame } from "./race/RaceGame";
+import { RoundTableGame } from "./roundtable/RoundTableGame";
+import { AscentGame } from "./ascent/AscentGame";
+import { GrailBlocksGame } from "./grailblocks/GrailBlocksGame";
+import { DerbyGame } from "./derby/DerbyGame";
+import { BreakerGame } from "./breaker/BreakerGame";
 import { camelotHubScreen } from "@view/ui/CamelotHubScreen";
 
 // World mode imports
@@ -367,6 +372,11 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     [GameMode.TAVERN]: 37,
     [GameMode.HUNT]: 38,
     [GameMode.RACE]: 39,
+    [GameMode.ROUND_TABLE]: 40,
+    [GameMode.CAMELOT_ASCENT]: 41,
+    [GameMode.GRAIL_BLOCKS]: 42,
+    [GameMode.GRAIL_DERBY]: 43,
+    [GameMode.GRAIL_BREAKER]: 44,
   };
   // Modes that need the setup screen (not skipSetup)
   const NEEDS_SETUP = new Set([GameMode.STANDARD, GameMode.DEATHMATCH, GameMode.BATTLEFIELD, GameMode.WAVE]);
@@ -581,6 +591,31 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     if (menuScreen.selectedGameMode === GameMode.RACE) {
       menuScreen.hide();
       _bootRaceGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.ROUND_TABLE) {
+      menuScreen.hide();
+      _bootRoundTableGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.CAMELOT_ASCENT) {
+      menuScreen.hide();
+      _bootAscentGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.GRAIL_BLOCKS) {
+      menuScreen.hide();
+      _bootGrailBlocksGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.GRAIL_DERBY) {
+      menuScreen.hide();
+      _bootDerbyGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.GRAIL_BREAKER) {
+      menuScreen.hide();
+      _bootBreakerGame();
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.WORLD) {
@@ -2644,6 +2679,83 @@ async function _bootCaravanGame(): Promise<void> {
 
   _caravanGame = new CaravanGame();
   await _caravanGame.boot();
+}
+
+// ---------------------------------------------------------------------------
+// Round Table (Deckbuilder) mode boot
+// ---------------------------------------------------------------------------
+
+let _roundTableGame: RoundTableGame | null = null;
+
+async function _bootRoundTableGame(): Promise<void> {
+  if (_roundTableGame) {
+    _roundTableGame.destroy();
+    _roundTableGame = null;
+  }
+
+  _roundTableGame = new RoundTableGame();
+  await _roundTableGame.boot();
+}
+
+// ---------------------------------------------------------------------------
+// Camelot Ascent (platformer) mode boot
+// ---------------------------------------------------------------------------
+
+let _ascentGame: AscentGame | null = null;
+
+async function _bootAscentGame(): Promise<void> {
+  if (_ascentGame) {
+    _ascentGame.destroy();
+    _ascentGame = null;
+  }
+
+  _ascentGame = new AscentGame();
+  await _ascentGame.boot();
+}
+
+// ---------------------------------------------------------------------------
+// Grail Blocks (puzzle) mode boot
+// ---------------------------------------------------------------------------
+
+let _grailBlocksGame: GrailBlocksGame | null = null;
+
+async function _bootGrailBlocksGame(): Promise<void> {
+  if (_grailBlocksGame) {
+    _grailBlocksGame.destroy();
+    _grailBlocksGame = null;
+  }
+  _grailBlocksGame = new GrailBlocksGame();
+  await _grailBlocksGame.boot();
+}
+
+// ---------------------------------------------------------------------------
+// Grail Derby (racing) mode boot
+// ---------------------------------------------------------------------------
+
+let _derbyGame: DerbyGame | null = null;
+
+async function _bootDerbyGame(): Promise<void> {
+  if (_derbyGame) {
+    _derbyGame.destroy();
+    _derbyGame = null;
+  }
+  _derbyGame = new DerbyGame();
+  await _derbyGame.boot();
+}
+
+// ---------------------------------------------------------------------------
+// Grail Breaker (brick-breaker) mode boot
+// ---------------------------------------------------------------------------
+
+let _breakerGame: BreakerGame | null = null;
+
+async function _bootBreakerGame(): Promise<void> {
+  if (_breakerGame) {
+    _breakerGame.destroy();
+    _breakerGame = null;
+  }
+  _breakerGame = new BreakerGame();
+  await _breakerGame.boot();
 }
 
 // ---------------------------------------------------------------------------

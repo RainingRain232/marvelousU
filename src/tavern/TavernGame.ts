@@ -77,7 +77,6 @@ export class TavernGame {
           this._startGame(idx);
         });
       }
-      });
       c.addChild(g);
       if (isLocked) {
         addText(`\u{1F512} ${opp.name} ${opp.title}`, this._sw / 2, y + 5, { fontSize: 11, fill: 0x555555 }, true);

@@ -416,6 +416,41 @@ const GAME_MODES: GameModeEntry[] = [
     desc: "Horse racing: gallop, manage stamina, bet on victory",
     skipSetup: true,
   },
+  {
+    mode: GameMode.ROUND_TABLE,
+    label: "ROUND TABLE",
+    desc: "Slay the Spire-style roguelike deckbuilder — quest for the Holy Grail",
+    skipSetup: true,
+    tag: "NEW",
+  },
+  {
+    mode: GameMode.CAMELOT_ASCENT,
+    label: "CAMELOT ASCENT",
+    desc: "Vertical platformer — climb the infinite tower, fight enemies, reach the Grail",
+    skipSetup: true,
+    tag: "NEW",
+  },
+  {
+    mode: GameMode.GRAIL_BLOCKS,
+    label: "GRAIL BLOCKS",
+    desc: "Medieval Tetris — build the walls of Camelot, charge the Grail Power",
+    skipSetup: true,
+    tag: "NEW",
+  },
+  {
+    mode: GameMode.GRAIL_DERBY,
+    label: "GRAIL DERBY",
+    desc: "Medieval horse racing — dodge obstacles, joust rivals, ride for the Grail",
+    skipSetup: true,
+    tag: "NEW",
+  },
+  {
+    mode: GameMode.GRAIL_BREAKER,
+    label: "GRAIL BREAKER",
+    desc: "Medieval Arkanoid — smash castle walls with a flaming orb, collect power-ups",
+    skipSetup: true,
+    tag: "NEW",
+  },
 ];
 
 // ---------------------------------------------------------------------------
