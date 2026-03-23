@@ -700,6 +700,7 @@ export enum GameMode {
   GRAIL_DERBY = "grail_derby",
   GRAIL_BREAKER = "grail_breaker",
   NECROMANCER = "necromancer",
+  BARD = "bard",
 }
 
 // ---------------------------------------------------------------------------

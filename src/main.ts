@@ -160,6 +160,7 @@ import { AscentGame } from "./ascent/AscentGame";
 import { GrailBlocksGame } from "./grailblocks/GrailBlocksGame";
 import { DerbyGame } from "./derby/DerbyGame";
 import { BreakerGame } from "./breaker/BreakerGame";
+import { BardGame } from "./bard/BardGame";
 import { camelotHubScreen } from "@view/ui/CamelotHubScreen";
 
 // World mode imports
@@ -379,6 +380,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     [GameMode.GRAIL_DERBY]: 43,
     [GameMode.GRAIL_BREAKER]: 44,
     [GameMode.NECROMANCER]: 45,
+    [GameMode.BARD]: 46,
   };
   // Modes that need the setup screen (not skipSetup)
   const NEEDS_SETUP = new Set([GameMode.STANDARD, GameMode.DEATHMATCH, GameMode.BATTLEFIELD, GameMode.WAVE]);
@@ -623,6 +625,11 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     if (menuScreen.selectedGameMode === GameMode.NECROMANCER) {
       menuScreen.hide();
       _bootNecroGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.BARD) {
+      menuScreen.hide();
+      _bootBardGame();
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.WORLD) {
@@ -2763,6 +2770,24 @@ async function _bootBreakerGame(): Promise<void> {
   }
   _breakerGame = new BreakerGame();
   await _breakerGame.boot();
+}
+
+// ---------------------------------------------------------------------------
+// Bard mode boot
+// ---------------------------------------------------------------------------
+
+let _bardGame: BardGame | null = null;
+
+async function _bootBardGame(): Promise<void> {
+  if (_bardGame) { _bardGame.destroy(); _bardGame = null; }
+  _bardGame = new BardGame();
+  await _bardGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("bardExit", _onExit);
+    if (_bardGame) { _bardGame.destroy(); _bardGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("bardExit", _onExit);
 }
 
 // ---------------------------------------------------------------------------
