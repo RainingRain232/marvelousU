@@ -154,6 +154,7 @@ import { SiegeGame } from "./siege/SiegeGame";
 import { TavernGame } from "./tavern/TavernGame";
 import { HuntGame } from "./hunt/HuntGame";
 import { RaceGame } from "./race/RaceGame";
+import { NecroGame } from "./necromancer/NecroGame";
 import { RoundTableGame } from "./roundtable/RoundTableGame";
 import { AscentGame } from "./ascent/AscentGame";
 import { GrailBlocksGame } from "./grailblocks/GrailBlocksGame";
@@ -377,6 +378,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     [GameMode.GRAIL_BLOCKS]: 42,
     [GameMode.GRAIL_DERBY]: 43,
     [GameMode.GRAIL_BREAKER]: 44,
+    [GameMode.NECROMANCER]: 45,
   };
   // Modes that need the setup screen (not skipSetup)
   const NEEDS_SETUP = new Set([GameMode.STANDARD, GameMode.DEATHMATCH, GameMode.BATTLEFIELD, GameMode.WAVE]);
@@ -616,6 +618,11 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     if (menuScreen.selectedGameMode === GameMode.GRAIL_BREAKER) {
       menuScreen.hide();
       _bootBreakerGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.NECROMANCER) {
+      menuScreen.hide();
+      _bootNecroGame();
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.WORLD) {
@@ -3650,6 +3657,24 @@ async function _bootRaceGame(): Promise<void> {
     menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
   window.addEventListener("raceExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Necromancer mode boot
+// ---------------------------------------------------------------------------
+
+let _necroGame: NecroGame | null = null;
+
+async function _bootNecroGame(): Promise<void> {
+  if (_necroGame) { _necroGame.destroy(); _necroGame = null; }
+  _necroGame = new NecroGame();
+  await _necroGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("necromancerExit", _onExit);
+    if (_necroGame) { _necroGame.destroy(); _necroGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("necromancerExit", _onExit);
 }
 
 // ---------------------------------------------------------------------------
