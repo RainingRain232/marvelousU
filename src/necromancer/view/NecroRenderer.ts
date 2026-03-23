@@ -1518,6 +1518,82 @@ export class NecroRenderer {
       this._ui.addChild(comboT);
     }
 
+    // Rally point marker
+    if (state.rallyPoint) {
+      const rpx = ox + state.rallyPoint.x, rpy = oy + state.rallyPoint.y;
+      const rpPulse = 0.4 + Math.sin(state.elapsed * 4) * 0.2;
+      const rpFade = Math.min(1, state.rallyPoint.timer / 2);
+      // Outer ring
+      g.circle(rpx, rpy, 18).stroke({ color: NECRO_GREEN, width: 1.5, alpha: rpPulse * 0.3 * rpFade });
+      g.circle(rpx, rpy, 12).stroke({ color: NECRO_GREEN, width: 1, alpha: rpPulse * 0.5 * rpFade });
+      // Crosshair
+      g.moveTo(rpx - 8, rpy).lineTo(rpx + 8, rpy).stroke({ color: NECRO_GREEN, width: 0.8, alpha: rpPulse * rpFade });
+      g.moveTo(rpx, rpy - 8).lineTo(rpx, rpy + 8).stroke({ color: NECRO_GREEN, width: 0.8, alpha: rpPulse * rpFade });
+      // Center skull
+      g.circle(rpx, rpy, 3).fill({ color: NECRO_GREEN, alpha: rpPulse * 0.4 * rpFade });
+      g.circle(rpx - 1, rpy - 0.5, 0.6).fill({ color: 0x0a0a06, alpha: rpFade * 0.5 });
+      g.circle(rpx + 1, rpy - 0.5, 0.6).fill({ color: 0x0a0a06, alpha: rpFade * 0.5 });
+      // Timer text
+      const rpT = new Text({ text: `${Math.ceil(state.rallyPoint.timer)}s`, style: new TextStyle({ fontFamily: FONT, fontSize: 6, fill: NECRO_GREEN }) });
+      rpT.alpha = rpFade * 0.5; rpT.anchor.set(0.5, 0); rpT.position.set(rpx, rpy + 20);
+      this._ui.addChild(rpT);
+    }
+
+    // Boss HP bar (top of field, centered)
+    for (const c of state.crusaders) {
+      if (!c.alive || !c.isBoss) continue;
+      const bossBarW = 200, bossBarH = 8;
+      const bbx = ox + fw / 2 - bossBarW / 2, bby = oy + 24;
+      g.roundRect(bbx - 1, bby - 1, bossBarW + 2, bossBarH + 2, 3).stroke({ color: 0xff4444, width: 1, alpha: 0.5 });
+      g.roundRect(bbx, bby, bossBarW, bossBarH, 2).fill({ color: 0x110000, alpha: 0.8 });
+      g.roundRect(bbx, bby, bossBarW * (c.hp / c.maxHp), bossBarH, 2).fill({ color: c.shieldTimer && c.shieldTimer > 0 ? 0xffd700 : 0xcc2222, alpha: 0.8 });
+      // Boss name
+      const bossNameT = new Text({ text: c.name, style: new TextStyle({ fontFamily: FONT, fontSize: 9, fill: 0xff6644, fontWeight: "bold" }) });
+      bossNameT.anchor.set(0.5, 0); bossNameT.position.set(ox + fw / 2, bby - 12);
+      this._ui.addChild(bossNameT);
+      // Shield indicator
+      if (c.shieldTimer && c.shieldTimer > 0) {
+        const shPulse = 0.3 + Math.sin(state.elapsed * 5) * 0.15;
+        g.circle(ox + c.x, oy + c.y, c.size + 8).stroke({ color: 0xffd700, width: 2, alpha: shPulse });
+        g.circle(ox + c.x, oy + c.y, c.size + 12).fill({ color: 0xffd700, alpha: shPulse * 0.05 });
+      }
+      // Armor plates indicator
+      if (c.armorActive) {
+        g.circle(ox + c.x, oy + c.y, c.size + 4).stroke({ color: 0xaa8844, width: 1.5, alpha: 0.3 });
+      }
+    }
+
+    // Boss Ground Pound FX
+    if (state.bossPoundFx) {
+      const pf = state.bossPoundFx;
+      const pRadius = 70 * (1 - pf.timer / 0.5);
+      const pAlpha = pf.timer / 0.5 * 0.4;
+      g.circle(ox + pf.x, oy + pf.y, pRadius).stroke({ color: 0xff8844, width: 3, alpha: pAlpha });
+      g.circle(ox + pf.x, oy + pf.y, pRadius * 0.6).stroke({ color: 0xffaa44, width: 1.5, alpha: pAlpha * 0.5 });
+    }
+
+    // Boss Holy Beam FX
+    if (state.bossBeamFx) {
+      const bf = state.bossBeamFx;
+      const bAlpha = bf.timer / 0.4 * 0.5;
+      g.moveTo(ox + bf.x1, oy + bf.y1).lineTo(ox + bf.x2, oy + bf.y2).stroke({ color: 0xffd700, width: 4, alpha: bAlpha });
+      g.moveTo(ox + bf.x1, oy + bf.y1).lineTo(ox + bf.x2, oy + bf.y2).stroke({ color: 0xffffff, width: 1.5, alpha: bAlpha * 0.5 });
+    }
+
+    // Relic icons in HUD area
+    if (state.relics.length > 0) {
+      let relicX = ox + 5;
+      const relicY2 = oy + fh + 8;
+      for (const r of state.relics) {
+        const borderCol = r.rarity === "legendary" ? 0xffd700 : r.rarity === "rare" ? 0x4488ff : 0x44aa44;
+        g.roundRect(relicX, relicY2, 14, 14, 2).fill({ color: 0x0a0a06, alpha: 0.7 });
+        g.roundRect(relicX, relicY2, 14, 14, 2).stroke({ color: borderCol, width: 0.8, alpha: 0.5 });
+        // Relic gem
+        g.moveTo(relicX + 7, relicY2 + 3).lineTo(relicX + 11, relicY2 + 7).lineTo(relicX + 7, relicY2 + 11).lineTo(relicX + 3, relicY2 + 7).fill({ color: r.color, alpha: 0.6 });
+        relicX += 18;
+      }
+    }
+
     // Kill counter
     const kt = new Text({
       text: `Kills: ${state.waveKills}`,

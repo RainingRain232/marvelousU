@@ -2,7 +2,7 @@
 // Necromancer mode — game state
 // ---------------------------------------------------------------------------
 
-import type { CorpseType, CrusaderType, ChimeraDef } from "../config/NecroConfig";
+import type { CorpseType, CrusaderType, ChimeraDef, RelicRarity } from "../config/NecroConfig";
 import { CORPSES, CRUSADERS, NecroConfig, CHIMERAS } from "../config/NecroConfig";
 
 export type NecroPhase = "start" | "dig" | "ritual" | "battle" | "upgrade" | "results";
@@ -72,6 +72,14 @@ export interface Crusader {
   alive: boolean;
   ability: string | null;
   abilityCooldown: number;
+  // Boss fields (optional)
+  isBoss?: boolean;
+  bossType?: string;
+  bossPhase?: number;
+  bossAbilityCooldowns?: Record<string, number>;
+  shieldTimer?: number;
+  armorActive?: boolean;
+  hasResurrected?: boolean;
 }
 
 export interface NecroState {
@@ -183,6 +191,18 @@ export interface NecroState {
 
   // Battle log
   battleLog: { text: string; color: number; time: number }[];
+
+  // Rally point
+  rallyPoint: { x: number; y: number; timer: number } | null;
+
+  // Relics
+  relics: { id: string; name: string; rarity: RelicRarity; color: number; description: string }[];
+  pendingRelicChoice: { id: string; name: string; rarity: RelicRarity; color: number; description: string }[] | null;
+
+  // Boss tracking
+  bossActive: boolean;
+  bossBeamFx: { x1: number; y1: number; x2: number; y2: number; timer: number } | null;
+  bossPoundFx: { x: number; y: number; radius: number; timer: number } | null;
 }
 
 export function createNecroState(): NecroState {
@@ -255,6 +275,12 @@ export function createNecroState(): NecroState {
     waveStartTime: 0,
     activeEvent: null,
     battleLog: [],
+    rallyPoint: null,
+    relics: [],
+    pendingRelicChoice: null,
+    bossActive: false,
+    bossBeamFx: null,
+    bossPoundFx: null,
   };
 }
 

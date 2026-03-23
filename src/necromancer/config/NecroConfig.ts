@@ -197,6 +197,72 @@ export const WAVE_BONUSES = {
   COMBO_BONUS_PER: 2,    // gold per combo hit beyond 3
 } as const;
 
+// ── Rally Point ───────────────────────────────────────────────────────────
+export const RALLY_CONFIG = {
+  DURATION: 8,        // seconds before auto-decay
+  RADIUS: 120,        // influence radius in pixels
+} as const;
+
+// ── Boss Enemies ──────────────────────────────────────────────────────────
+export type BossType = "siege_golem" | "archangel";
+
+export interface BossDef {
+  id: BossType;
+  name: string;
+  hp: number;
+  damage: number;
+  speed: number;
+  color: number;
+  size: number;
+  reward: number;
+  description: string;
+}
+
+export const BOSSES: Record<BossType, BossDef> = {
+  siege_golem: {
+    id: "siege_golem", name: "Siege Golem", hp: 60, damage: 5, speed: 15,
+    color: 0xaa8844, size: 14, reward: 50,
+    description: "Armored construct. Ground Pound every 8s. Armor cracks at 50% HP.",
+  },
+  archangel: {
+    id: "archangel", name: "Archangel", hp: 100, damage: 8, speed: 22,
+    color: 0xffeedd, size: 16, reward: 100,
+    description: "Divine warrior. Holy Shield, Holy Beam, resurrects fallen crusaders at 30% HP.",
+  },
+};
+
+/** 0-indexed wave numbers that spawn bosses */
+export const BOSS_WAVES: Record<number, BossType> = { 4: "siege_golem", 9: "archangel" };
+
+// ── Relic / Artifact System ───────────────────────────────────────────────
+export type RelicRarity = "common" | "rare" | "legendary";
+
+export interface RelicDef {
+  id: string;
+  name: string;
+  description: string;
+  rarity: RelicRarity;
+  color: number;
+}
+
+export const RELICS: RelicDef[] = [
+  { id: "skull_dominion",    name: "Skull of Dominion",    description: "+1 damage to all undead",          rarity: "common",    color: 0x88aa88 },
+  { id: "bone_fetish",       name: "Bone Fetish",          description: "+5 HP to all undead",              rarity: "common",    color: 0xccccbb },
+  { id: "blood_chalice",     name: "Blood Chalice",        description: "+50% gold from kills",             rarity: "common",    color: 0xcc4444 },
+  { id: "grave_lantern",     name: "Gravedigger's Lantern", description: "+15% ancient corpse chance",      rarity: "common",    color: 0xffaa44 },
+  { id: "phylactery",        name: "Phylactery",           description: "+30 max mana",                     rarity: "rare",      color: 0x4488ff },
+  { id: "soul_gem",          name: "Soul Gem",             description: "+3 mana per kill",                 rarity: "rare",      color: 0x44ccaa },
+  { id: "tome_dark_arts",    name: "Tome of Dark Arts",    description: "Spell damage +40%",                rarity: "rare",      color: 0x9944ff },
+  { id: "deaths_hourglass",  name: "Death's Hourglass",    description: "All cooldowns reduced by 25%",     rarity: "rare",      color: 0x66aacc },
+  { id: "cursed_mirror",     name: "Cursed Mirror",        description: "15% chance to raise killed enemy", rarity: "rare",      color: 0xaa44aa },
+  { id: "lich_crown",        name: "Crown of the Lich King", description: "Chimeras get +3 HP, +2 damage", rarity: "legendary", color: 0xffd700 },
+  { id: "necro_staff",       name: "Necromancer's Staff",  description: "Mana regen +75%",                  rarity: "legendary", color: 0x44ff88 },
+];
+
+export const MAX_RELICS = 4;
+export const RELIC_GRAVE_DROP_CHANCE = 0.10;
+export const RELIC_WAVE_REWARD_WAVES = [4, 9]; // 0-indexed — after boss waves
+
 export const NecroConfig = {
   FIELD_WIDTH: 700,
   FIELD_HEIGHT: 500,

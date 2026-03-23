@@ -15,7 +15,9 @@ import {
   updateRitual, placeCorpseInSlot, startRaise,
   updateBattle, prepareBattleWave, castDarkNova, castBoneWall, castSoulLeech,
   healUndeadBetweenWaves, sacrificeUndead, rollWaveEvent, calculateWaveBonuses,
+  setRallyPoint, pickRelic,
 } from "./systems/NecroSystem";
+import { BOSS_WAVES, BOSSES, RELICS } from "./config/NecroConfig";
 import { NecroRenderer } from "./view/NecroRenderer";
 
 export class NecroGame {
@@ -436,6 +438,55 @@ export class NecroGame {
       y += 16;
     }
 
+    // Boss wave preview warning
+    if (BOSS_WAVES[nextWave]) {
+      y += 4;
+      addText(`\u2620 BOSS WAVE — ${BOSSES[BOSS_WAVES[nextWave]].name} \u2620`, this._sw / 2, y, { fontSize: 11, fill: 0xff4444, fontWeight: "bold" }, true);
+      y += 14;
+      addText(BOSSES[BOSS_WAVES[nextWave]].description, this._sw / 2, y, { fontSize: 7, fill: 0xcc6644 }, true);
+      y += 12;
+    }
+
+    // Relic choice (after boss waves)
+    if (this._state.pendingRelicChoice && this._state.pendingRelicChoice.length > 0) {
+      y += 4;
+      addText("Choose a Relic:", this._sw / 2, y, { fontSize: 11, fill: 0xffd700, fontWeight: "bold" }, true);
+      y += 18;
+      const choices = this._state.pendingRelicChoice;
+      const cardW = 130, cardH = 50, gap = 10;
+      const totalW = choices.length * cardW + (choices.length - 1) * gap;
+      let cx2 = this._sw / 2 - totalW / 2;
+      for (const relic of choices) {
+        const borderCol = relic.rarity === "legendary" ? 0xffd700 : relic.rarity === "rare" ? 0x4488ff : 0x44aa44;
+        const card = new Graphics();
+        card.roundRect(cx2, y, cardW, cardH, 4).fill({ color: 0x0a0a0a, alpha: 0.85 });
+        card.roundRect(cx2, y, cardW, cardH, 4).stroke({ color: borderCol, width: 1.5, alpha: 0.7 });
+        card.eventMode = "static"; card.cursor = "pointer";
+        const relicId = relic.id;
+        card.on("pointerdown", () => {
+          pickRelic(this._state, relicId);
+          viewManager.removeFromLayer("ui", c); c.destroy({ children: true });
+          this._showUpgradeScreen(); // Re-show without relic choice
+        });
+        c.addChild(card);
+        const rarityLabel = relic.rarity === "legendary" ? "\u2605 " : relic.rarity === "rare" ? "\u25C6 " : "";
+        addText(`${rarityLabel}${relic.name}`, cx2 + cardW / 2, y + 6, { fontSize: 8, fill: relic.color, fontWeight: "bold" }, true);
+        addText(relic.description, cx2 + cardW / 2, y + 22, { fontSize: 6, fill: 0xccccaa }, true);
+        addText(`[${relic.rarity.toUpperCase()}]`, cx2 + cardW / 2, y + 36, { fontSize: 6, fill: borderCol }, true);
+        cx2 += cardW + gap;
+      }
+      y += cardH + 8;
+    }
+
+    // Current relics display
+    if (this._state.relics.length > 0) {
+      addText(`Relics (${this._state.relics.length}/4):`, this._sw / 2, y, { fontSize: 9, fill: 0xccaa88 }, true);
+      y += 14;
+      const relicStr = this._state.relics.map(r => r.name).join("  |  ");
+      addText(relicStr, this._sw / 2, y, { fontSize: 7, fill: 0xaa9977 }, true);
+      y += 14;
+    }
+
     // Continue button
     y += 8;
     const continueBtn = new Graphics();
@@ -726,9 +777,18 @@ export class NecroGame {
       };
       window.addEventListener("keydown", this._keyHandler);
     } else if (phase === "battle") {
-      this._pointerDown = (e: { global: { x: number; y: number } }) => {
+      // Left-click = rally point (shift+click = Dark Nova)
+      this._pointerDown = (e: any) => {
         const wx = e.global.x - ox, wy = e.global.y - oy;
-        castDarkNova(this._state, wx, wy);
+        const shiftHeld = (e as any).originalEvent?.shiftKey || (e as any).nativeEvent?.shiftKey;
+        if (shiftHeld) {
+          castDarkNova(this._state, wx, wy);
+        } else {
+          // Set rally point
+          if (wx > 0 && wx < NecroConfig.FIELD_WIDTH && wy > 0 && wy < NecroConfig.FIELD_HEIGHT) {
+            setRallyPoint(this._state, wx, wy);
+          }
+        }
       };
       viewManager.app.stage.on("pointerdown", this._pointerDown);
 
@@ -743,11 +803,21 @@ export class NecroGame {
 
       this._keyHandler = (e: KeyboardEvent) => {
         if (e.key === "Escape") { this.destroy(); window.dispatchEvent(new Event("necromancerExit")); }
+        if (e.key === "q" || e.key === "Q") {
+          // Dark Nova at center/rally point
+          const rp = this._state.rallyPoint;
+          castDarkNova(this._state, rp ? rp.x : NecroConfig.FIELD_WIDTH / 2, rp ? rp.y : NecroConfig.FIELD_HEIGHT / 2);
+        }
         if (e.key === "w" || e.key === "W") {
           castBoneWall(this._state, NecroConfig.FIELD_WIDTH / 2, NecroConfig.FIELD_HEIGHT / 2);
         }
         if (e.key === "e" || e.key === "E") {
-          castSoulLeech(this._state, NecroConfig.FIELD_WIDTH / 2, NecroConfig.FIELD_HEIGHT / 2);
+          const rp = this._state.rallyPoint;
+          castSoulLeech(this._state, rp ? rp.x : NecroConfig.FIELD_WIDTH / 2, rp ? rp.y : NecroConfig.FIELD_HEIGHT / 2);
+        }
+        if (e.key === "r" || e.key === "R") {
+          this._state.rallyPoint = null;
+          this._state.announcements.push({ text: "Rally cleared", color: 0x889988, timer: 1 });
         }
         if (e.key === "s" || e.key === "S") {
           this._state.battleSpeed = this._state.battleSpeed === 1 ? 2 : 1;

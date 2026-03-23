@@ -4,11 +4,127 @@
 
 import type { NecroState, Undead, Crusader, Corpse, CorpseQuality } from "../state/NecroState";
 import { findChimera } from "../state/NecroState";
-import { CORPSES, CRUSADERS, NecroConfig, WAVES, generateEndlessWave, BATTLE_EVENTS, COMBO_WINDOW, WAVE_BONUSES } from "../config/NecroConfig";
-import type { CorpseType, CrusaderType } from "../config/NecroConfig";
+import { CORPSES, CRUSADERS, NecroConfig, WAVES, generateEndlessWave, BATTLE_EVENTS, COMBO_WINDOW, WAVE_BONUSES, RALLY_CONFIG, BOSSES, BOSS_WAVES, RELICS, RELIC_GRAVE_DROP_CHANCE, RELIC_WAVE_REWARD_WAVES, MAX_RELICS } from "../config/NecroConfig";
+import type { CorpseType, CrusaderType, BossType } from "../config/NecroConfig";
 
 const BONE_WHITE = 0xccccbb;
 const NECRO_GREEN_SYS = 0x44ff88;
+
+// ── Relic helpers ─────────────────────────────────────────────────────────
+
+export function hasRelic(state: NecroState, id: string): boolean {
+  return state.relics.some(r => r.id === id);
+}
+
+export function getRelicBonuses(state: NecroState) {
+  let dmgBonus = 0, hpBonus = 0, goldMult = 1, manaCostMult = 1;
+  let soulManaBonus = 0, spellPowerMult = 1, manaRegenMult = 1, cdMult = 1;
+  let chimeraDmg = 0, chimeraHp = 0, ancientChanceBonus = 0, raiseOnKillChance = 0;
+  for (const r of state.relics) {
+    switch (r.id) {
+      case "skull_dominion":    dmgBonus += 1; break;
+      case "bone_fetish":       hpBonus += 5; break;
+      case "blood_chalice":     goldMult += 0.5; break;
+      case "grave_lantern":     ancientChanceBonus += 0.15; break;
+      case "phylactery":        break; // applied directly to max mana
+      case "soul_gem":          soulManaBonus += 3; break;
+      case "tome_dark_arts":    spellPowerMult += 0.4; break;
+      case "deaths_hourglass":  cdMult *= 0.75; break;
+      case "cursed_mirror":     raiseOnKillChance += 0.15; break;
+      case "lich_crown":        chimeraDmg += 2; chimeraHp += 3; break;
+      case "necro_staff":       manaRegenMult += 0.75; break;
+    }
+  }
+  return { dmgBonus, hpBonus, goldMult, manaCostMult, soulManaBonus, spellPowerMult, manaRegenMult, cdMult, chimeraDmg, chimeraHp, ancientChanceBonus, raiseOnKillChance };
+}
+
+/** Roll a relic reward — 3 random unowned relics */
+export function rollRelicChoice(state: NecroState): void {
+  const owned = new Set(state.relics.map(r => r.id));
+  const available = RELICS.filter(r => !owned.has(r.id));
+  if (available.length === 0) return;
+  // Pick up to 3
+  const shuffled = available.sort(() => Math.random() - 0.5);
+  state.pendingRelicChoice = shuffled.slice(0, Math.min(3, shuffled.length)).map(r => ({
+    id: r.id, name: r.name, rarity: r.rarity, color: r.color, description: r.description,
+  }));
+}
+
+/** Player picks a relic from the pending choice */
+export function pickRelic(state: NecroState, relicId: string): void {
+  if (!state.pendingRelicChoice) return;
+  const choice = state.pendingRelicChoice.find(r => r.id === relicId);
+  if (!choice) return;
+  if (state.relics.length >= MAX_RELICS) {
+    // Replace oldest
+    state.relics.shift();
+  }
+  state.relics.push(choice);
+  state.pendingRelicChoice = null;
+  state.announcements.push({ text: `Relic: ${choice.name}`, color: choice.color, timer: 2.5 });
+  // Apply phylactery immediately
+  if (choice.id === "phylactery") {
+    state.maxMana += 30;
+  }
+}
+
+// ── Rally Point ───────────────────────────────────────────────────────────
+
+export function setRallyPoint(state: NecroState, x: number, y: number): void {
+  state.rallyPoint = { x, y, timer: RALLY_CONFIG.DURATION };
+}
+
+function findBestTarget(state: NecroState, ux: number, uy: number): Crusader | null {
+  if (!state.rallyPoint) return findNearestCrusader(state, ux, uy);
+  // Find nearest crusader to rally point
+  const rp = state.rallyPoint;
+  let bestRally: Crusader | null = null, bestRallyDist = Infinity;
+  for (const c of state.crusaders) {
+    if (!c.alive) continue;
+    const dx = c.x - rp.x, dy = c.y - rp.y;
+    const d = dx * dx + dy * dy;
+    if (d < bestRallyDist && d < RALLY_CONFIG.RADIUS * RALLY_CONFIG.RADIUS) {
+      bestRallyDist = d; bestRally = c;
+    }
+  }
+  // If there's a nearby enemy at rally, prefer it; else fallback to nearest
+  return bestRally || findNearestCrusader(state, ux, uy);
+}
+
+// ── Boss spawning ─────────────────────────────────────────────────────────
+
+export function spawnBoss(state: NecroState, bossType: BossType): void {
+  const def = BOSSES[bossType];
+  const boss: Crusader = {
+    id: state.crusaderIdCounter++,
+    type: "paladin" as CrusaderType, // base type for compatibility
+    name: def.name,
+    hp: def.hp,
+    maxHp: def.hp,
+    damage: def.damage,
+    speed: def.speed,
+    color: def.color,
+    size: def.size,
+    x: NecroConfig.FIELD_WIDTH - 30,
+    y: NecroConfig.FIELD_HEIGHT / 2,
+    targetId: -1,
+    attackCooldown: 0,
+    alive: true,
+    ability: null,
+    abilityCooldown: 0,
+    isBoss: true,
+    bossType: bossType,
+    bossPhase: 1,
+    bossAbilityCooldowns: { ground_pound: 3, holy_beam: 5, divine_shield: 10 },
+    shieldTimer: 0,
+    armorActive: bossType === "siege_golem",
+    hasResurrected: false,
+  };
+  state.crusaders.push(boss);
+  state.bossActive = true;
+  state.announcements.push({ text: `BOSS: ${def.name}!`, color: 0xff4444, timer: 3 });
+  state.screenFlash = { color: 0xff4400, alpha: 0.3, timer: 0.5 };
+}
 
 // ── Dig phase ──────────────────────────────────────────────────────────────
 
@@ -42,6 +158,20 @@ export function updateDig(state: NecroState, dt: number): void {
         const qualLabel = quality === "normal" ? "" : ` (${quality.toUpperCase()})`;
         const qualColor = quality === "ancient" ? 0xffd700 : quality === "blessed" ? 0x44aaff : quality === "cursed" ? 0xff4444 : 0x88cc88;
         state.announcements.push({ text: `Unearthed: ${def.name}${qualLabel}`, color: qualColor, timer: 1.5 });
+
+        // Relic drop chance
+        const relicDropChance = RELIC_GRAVE_DROP_CHANCE + getRelicBonuses(state).ancientChanceBonus * 0.3;
+        if (Math.random() < relicDropChance && state.relics.length < MAX_RELICS) {
+          const owned = new Set(state.relics.map(r => r.id));
+          const available = RELICS.filter(r => !owned.has(r.id));
+          if (available.length > 0) {
+            const relic = available[Math.floor(Math.random() * available.length)];
+            state.relics.push({ id: relic.id, name: relic.name, rarity: relic.rarity, color: relic.color, description: relic.description });
+            state.announcements.push({ text: `RELIC: ${relic.name}!`, color: relic.color, timer: 2.5 });
+            if (relic.id === "phylactery") state.maxMana += 30;
+          }
+        }
+
         // Particles — dirt burst
         for (let i = 0; i < 8; i++) {
           state.particles.push({
@@ -162,8 +292,9 @@ function raiseUndead(state: NecroState): void {
   const defA = CORPSES[a.type];
   let chimera = state.ritualSlotB ? findChimera(a.type, state.ritualSlotB.type) : null;
 
-  let hpBonus = (state.powerLevels["bone_armor"] ?? 0) * 2;
-  let dmgBonus = (state.powerLevels["death_grip"] ?? 0) * 1;
+  const rb = getRelicBonuses(state);
+  let hpBonus = (state.powerLevels["bone_armor"] ?? 0) * 2 + rb.hpBonus;
+  let dmgBonus = (state.powerLevels["death_grip"] ?? 0) * 1 + rb.dmgBonus;
   let speedMod = 0;
 
   // Apply quality modifiers
@@ -186,9 +317,9 @@ function raiseUndead(state: NecroState): void {
       name: chimera.name,
       type: a.type,
       chimera,
-      hp: defA.hp + defB.hp + chimera.hpBonus + hpBonus,
-      maxHp: defA.hp + defB.hp + chimera.hpBonus + hpBonus,
-      damage: defA.damage + defB.damage + chimera.damageBonus + dmgBonus,
+      hp: defA.hp + defB.hp + chimera.hpBonus + hpBonus + rb.chimeraHp,
+      maxHp: defA.hp + defB.hp + chimera.hpBonus + hpBonus + rb.chimeraHp,
+      damage: defA.damage + defB.damage + chimera.damageBonus + dmgBonus + rb.chimeraDmg,
       speed: Math.max(15, (defA.speed + defB.speed) / 2 + chimera.speedBonus + speedMod),
       color: chimera.color,
       size: Math.max(defA.size, defB.size) + 2,
@@ -274,8 +405,21 @@ export function updateBattle(state: NecroState, dt: number): void {
     }
   }
 
+  // Rally point decay
+  if (state.rallyPoint) {
+    state.rallyPoint.timer -= dt;
+    if (state.rallyPoint.timer <= 0) state.rallyPoint = null;
+  }
+
+  // Boss FX decay
+  if (state.bossBeamFx) { state.bossBeamFx.timer -= dt; if (state.bossBeamFx.timer <= 0) state.bossBeamFx = null; }
+  if (state.bossPoundFx) { state.bossPoundFx.timer -= dt; if (state.bossPoundFx.timer <= 0) state.bossPoundFx = null; }
+
+  // Relic bonuses for this frame
+  const rb = getRelicBonuses(state);
+
   // Event: soul_storm — triple mana regen
-  const manaRegenMult = state.activeEvent?.id === "soul_storm" ? 3 : 1;
+  const manaRegenMult = (state.activeEvent?.id === "soul_storm" ? 3 : 1) * rb.manaRegenMult;
   state.mana = Math.min(state.maxMana, state.mana + state.manaRegen * manaRegenMult * dt);
 
   // Event multipliers
@@ -323,7 +467,7 @@ export function updateBattle(state: NecroState, dt: number): void {
     u.x = Math.max(5, Math.min(NecroConfig.FIELD_WIDTH - 5, u.x));
     u.y = Math.max(5, Math.min(NecroConfig.FIELD_HEIGHT - 5, u.y));
 
-    const target = findNearestCrusader(state, u.x, u.y);
+    const target = findBestTarget(state, u.x, u.y);
     if (!target) continue;
 
     const dx = target.x - u.x, dy = target.y - u.y;
@@ -357,13 +501,16 @@ export function updateBattle(state: NecroState, dt: number): void {
       u.y += (dy / dist) * u.speed * speedMult * dt;
     } else if (u.attackCooldown <= 0) {
       // Attack
-      let dmg = Math.ceil(u.damage * dmgMult);
+      let dmg = Math.ceil((u.damage + rb.dmgBonus) * dmgMult);
 
       // Ability: frenzy — double damage at low HP
       if (u.ability === "frenzy" && u.hp < u.maxHp * 0.4) dmg *= 2;
 
       // Paladin shield_wall — 50% damage reduction
       if (target.ability === "shield_wall") dmg = Math.max(1, Math.ceil(dmg * 0.5));
+      // Boss armor/shield
+      if (target.shieldTimer && target.shieldTimer > 0) { dmg = 0; }
+      if (target.armorActive) { dmg = Math.max(1, Math.ceil(dmg * 0.5)); }
 
       target.hp -= dmg;
       u.attackCooldown = 1.2;
@@ -415,16 +562,42 @@ export function updateBattle(state: NecroState, dt: number): void {
         state.comboTimer = COMBO_WINDOW;
         if (state.comboCount > state.bestCombo) state.bestCombo = state.comboCount;
 
-        // Gold with multiplier
-        state.gold += Math.floor(CRUSADERS[target.type].reward * (goldMult - 1)); // Extra gold from event
+        // Gold with event + relic multiplier
+        const killGold = Math.floor(CRUSADERS[target.type].reward * (goldMult * rb.goldMult - 1));
+        state.gold += killGold;
+
+        // Boss kill bonus
+        if (target.isBoss && target.bossType) {
+          const bossDef = BOSSES[target.bossType as BossType];
+          if (bossDef) {
+            state.gold += bossDef.reward;
+            state.score += bossDef.reward;
+            state.announcements.push({ text: `${bossDef.name} SLAIN! +${bossDef.reward}g`, color: 0xffd700, timer: 3 });
+            state.screenFlash = { color: 0xffd700, alpha: 0.4, timer: 0.5 };
+            state.bossActive = false;
+          }
+        }
 
         // Event: blessed_rain — heal 3 HP on kill
         if (state.activeEvent?.id === "blessed_rain") {
           u.hp = Math.min(u.maxHp, u.hp + 3);
         }
 
-        // Soul harvest — mana recovery on kill
-        state.mana = Math.min(state.maxMana, state.mana + NecroConfig.SOUL_HARVEST_MANA);
+        // Soul harvest — mana recovery on kill (+ relic bonus)
+        state.mana = Math.min(state.maxMana, state.mana + NecroConfig.SOUL_HARVEST_MANA + rb.soulManaBonus);
+
+        // Cursed Mirror relic — chance to raise killed enemy as temp undead
+        if (rb.raiseOnKillChance > 0 && Math.random() < rb.raiseOnKillChance && state.undead.filter(u2 => u2.alive).length < NecroConfig.MAX_ARMY) {
+          const raised: Undead = {
+            id: state.undeadIdCounter++, name: "Thrall", type: "peasant",
+            chimera: null, hp: 4, maxHp: 4, damage: 1, speed: 35,
+            color: 0x557755, size: 6, x: target.x, y: target.y,
+            targetId: -1, attackCooldown: 0, ability: null, abilityCooldown: 0,
+            alive: true, ranged: false, range: 0,
+          };
+          state.undead.push(raised);
+          state.announcements.push({ text: "Thrall rises!", color: 0x44ff88, timer: 1.5 });
+        }
         state.particles.push({ x: target.x, y: target.y - 5, vx: 0, vy: -25, life: 0.5, maxLife: 0.5, color: 0x4466cc, size: 2 });
         // HP recovery every N kills
         if (state.waveKills % NecroConfig.SOUL_HARVEST_HP_INTERVAL === 0) {
@@ -481,6 +654,94 @@ export function updateBattle(state: NecroState, dt: number): void {
     if (!c.alive) continue;
     c.attackCooldown -= dt;
     if (c.abilityCooldown > 0) c.abilityCooldown -= dt;
+
+    // Boss AI
+    if (c.isBoss && c.bossAbilityCooldowns) {
+      // Tick boss cooldowns
+      for (const key of Object.keys(c.bossAbilityCooldowns)) {
+        if (c.bossAbilityCooldowns[key] > 0) c.bossAbilityCooldowns[key] -= dt;
+      }
+      if (c.shieldTimer && c.shieldTimer > 0) c.shieldTimer -= dt;
+
+      if (c.bossType === "siege_golem") {
+        // Phase transition at 50% HP
+        if (c.bossPhase === 1 && c.hp <= c.maxHp * 0.5) {
+          c.bossPhase = 2;
+          c.armorActive = false;
+          c.speed = Math.floor(c.speed * 1.5);
+          c.damage = Math.floor(c.damage * 1.3);
+          state.announcements.push({ text: "Golem armor CRACKED!", color: 0xff6644, timer: 2 });
+          state.screenFlash = { color: 0xff8844, alpha: 0.2, timer: 0.3 };
+        }
+        // Ground Pound — AoE damage + knockback
+        if (c.bossAbilityCooldowns["ground_pound"] <= 0) {
+          c.bossAbilityCooldowns["ground_pound"] = 8;
+          state.bossPoundFx = { x: c.x, y: c.y, radius: 0, timer: 0.5 };
+          for (const u of state.undead) {
+            if (!u.alive) continue;
+            const pdx = u.x - c.x, pdy = u.y - c.y;
+            const pd = Math.sqrt(pdx * pdx + pdy * pdy);
+            if (pd < 70) {
+              u.hp -= 3;
+              // Knockback
+              if (pd > 0.1) { u.x += (pdx / pd) * 25; u.y += (pdy / pd) * 25; }
+              state.damageNumbers.push({ x: u.x, y: u.y - 10, text: "-3", color: 0xff8844, timer: 0.8, maxTimer: 0.8 });
+              if (u.hp <= 0) { u.alive = false; state.waveCasualties++; }
+            }
+          }
+          state.announcements.push({ text: "GROUND POUND!", color: 0xff6644, timer: 1.5 });
+        }
+      } else if (c.bossType === "archangel") {
+        // Divine Shield — invulnerability every 20s for 3s
+        if (c.bossAbilityCooldowns["divine_shield"] <= 0 && (!c.shieldTimer || c.shieldTimer <= 0)) {
+          c.bossAbilityCooldowns["divine_shield"] = 20;
+          c.shieldTimer = 3;
+          state.announcements.push({ text: "Divine Shield!", color: 0xffd700, timer: 1.5 });
+        }
+        // Holy Beam — line damage every 10s
+        if (c.bossAbilityCooldowns["holy_beam"] <= 0) {
+          c.bossAbilityCooldowns["holy_beam"] = 10;
+          const nearest = findNearestUndead(state, c.x, c.y);
+          if (nearest) {
+            const bdx = nearest.x - c.x, bdy = nearest.y - c.y;
+            const bd = Math.sqrt(bdx * bdx + bdy * bdy);
+            const bNx = bd > 0 ? bdx / bd : 1, bNy = bd > 0 ? bdy / bd : 0;
+            state.bossBeamFx = { x1: c.x, y1: c.y, x2: c.x + bNx * 300, y2: c.y + bNy * 300, timer: 0.4 };
+            // Hit all undead near the beam line
+            for (const u of state.undead) {
+              if (!u.alive) continue;
+              // Point-to-line distance
+              const ux = u.x - c.x, uy = u.y - c.y;
+              const proj = ux * bNx + uy * bNy;
+              if (proj < 0 || proj > 300) continue;
+              const perpDist = Math.abs(ux * bNy - uy * bNx);
+              if (perpDist < 15) {
+                u.hp -= 6;
+                state.damageNumbers.push({ x: u.x, y: u.y - 10, text: "-6", color: 0xffd700, timer: 0.8, maxTimer: 0.8 });
+                if (u.hp <= 0) { u.alive = false; state.waveCasualties++; }
+              }
+            }
+            state.announcements.push({ text: "Holy Beam!", color: 0xffd700, timer: 1.5 });
+          }
+        }
+        // Resurrection — revive 2 dead crusaders once at 30% HP
+        if (!c.hasResurrected && c.hp <= c.maxHp * 0.3) {
+          c.hasResurrected = true;
+          const dead = state.crusaders.filter(cr => !cr.alive && !cr.isBoss);
+          let revived = 0;
+          for (const d of dead) {
+            if (revived >= 2) break;
+            d.alive = true;
+            d.hp = Math.ceil(d.maxHp * 0.5);
+            revived++;
+          }
+          if (revived > 0) {
+            state.announcements.push({ text: `Archangel revives ${revived} crusader${revived > 1 ? "s" : ""}!`, color: 0xffffff, timer: 2 });
+            state.screenFlash = { color: 0xffffff, alpha: 0.3, timer: 0.4 };
+          }
+        }
+      }
+    }
 
     // Separation from other crusaders
     let csepX = 0, csepY = 0;
@@ -739,16 +1000,18 @@ export function castDarkNova(state: NecroState, wx: number, wy: number): void {
   }
 
   state.mana -= 15;
-  state.novaCooldown = 8;
+  const rb = getRelicBonuses(state);
+  state.novaCooldown = 8 * rb.cdMult;
   state.novaActive = true;
 
   // Damage all crusaders in radius
   const radius = 80;
+  const novaDmg = Math.ceil(8 * rb.spellPowerMult);
   for (const c of state.crusaders) {
     if (!c.alive) continue;
     const dx = c.x - wx, dy = c.y - wy;
     if (dx * dx + dy * dy < radius * radius) {
-      c.hp -= 8;
+      c.hp -= novaDmg;
       if (c.hp <= 0) {
         c.alive = false;
         state.gold += CRUSADERS[c.type].reward;
@@ -779,7 +1042,8 @@ export function castSoulLeech(state: NecroState, wx: number, wy: number): void {
     return;
   }
   state.mana -= 20;
-  state.soulLeechCooldown = 10;
+  const rbL = getRelicBonuses(state);
+  state.soulLeechCooldown = 10 * rbL.cdMult;
 
   const radius = 90;
   let totalDrain = 0;
@@ -787,7 +1051,7 @@ export function castSoulLeech(state: NecroState, wx: number, wy: number): void {
     if (!c.alive) continue;
     const dx = c.x - wx, dy = c.y - wy;
     if (dx * dx + dy * dy < radius * radius) {
-      const dmg = 4;
+      const dmg = Math.ceil(4 * rbL.spellPowerMult);
       c.hp -= dmg;
       totalDrain += dmg;
       if (c.hp <= 0) {
@@ -911,6 +1175,12 @@ export function calculateWaveBonuses(state: NecroState): { bonuses: { label: str
   const total = bonuses.reduce((s, b) => s + b.gold, 0);
   state.gold += total;
   state.score += total;
+
+  // Roll relic reward for boss waves
+  if (RELIC_WAVE_REWARD_WAVES.includes(state.wave) && state.relics.length < MAX_RELICS) {
+    rollRelicChoice(state);
+  }
+
   return { bonuses, total };
 }
 
@@ -970,6 +1240,16 @@ export function prepareBattleWave(state: NecroState): void {
   state.battleMarks = [];
   state.screenFlash = null;
   state.battleLog = [];
+  state.rallyPoint = null;
+  state.bossActive = false;
+  state.bossBeamFx = null;
+  state.bossPoundFx = null;
+
+  // Spawn boss if this is a boss wave
+  const bossType = BOSS_WAVES[state.wave];
+  if (bossType) {
+    spawnBoss(state, bossType);
+  }
 
   // Apply temp buffs and position undead
   state.fallenUndead = [];
