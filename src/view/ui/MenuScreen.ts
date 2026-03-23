@@ -474,7 +474,14 @@ const GAME_MODES: GameModeEntry[] = [
   {
     mode: GameMode.PLAGUE,
     label: "PLAGUE DOCTOR",
-    desc: "Navigate a plague-ravaged city: treat the sick, gather herbs, craft remedies, stop the spread",
+    desc: "Turn-based strategy: navigate a plague-ravaged city with perks, abilities, and mutations",
+    skipSetup: true,
+    tag: "NEW",
+  },
+  {
+    mode: GameMode.PLAGUE_RT,
+    label: "PLAGUE DOCTOR RT",
+    desc: "Real-time action: treat houses, gather herbs, fight rats, survive the Black Death",
     skipSetup: true,
     tag: "NEW",
   },

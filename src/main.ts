@@ -163,6 +163,7 @@ import { BreakerGame } from "./breaker/BreakerGame";
 import { BardGame } from "./bard/BardGame";
 import { LabyrinthGame } from "./labyrinth/LabyrinthGame";
 import { PlagueGame } from "./plague/PlagueGame";
+import { PlagueRTGame } from "./plaguert/PlagueRTGame";
 import { camelotHubScreen } from "@view/ui/CamelotHubScreen";
 
 // World mode imports
@@ -642,6 +643,11 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     if (menuScreen.selectedGameMode === GameMode.PLAGUE) {
       menuScreen.hide();
       _bootPlagueGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.PLAGUE_RT) {
+      menuScreen.hide();
+      _bootPlagueRTGame();
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.WORLD) {
@@ -2832,6 +2838,24 @@ async function _bootPlagueGame(): Promise<void> {
     menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
   window.addEventListener("plagueExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Plague Doctor RT (real-time) mode boot
+// ---------------------------------------------------------------------------
+
+let _plagueRTGame: PlagueRTGame | null = null;
+
+async function _bootPlagueRTGame(): Promise<void> {
+  if (_plagueRTGame) { _plagueRTGame.destroy(); _plagueRTGame = null; }
+  _plagueRTGame = new PlagueRTGame();
+  await _plagueRTGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("plagueRTExit", _onExit);
+    if (_plagueRTGame) { _plagueRTGame.destroy(); _plagueRTGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("plagueRTExit", _onExit);
 }
 
 // ---------------------------------------------------------------------------
