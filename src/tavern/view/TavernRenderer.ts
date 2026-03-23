@@ -110,13 +110,19 @@ export class TavernRenderer {
     // Action buttons
     const btnY = sh * 0.78;
     if (state.phase === TavernPhase.BETTING) {
-      const bets = [state.opponent.minBet, state.opponent.minBet * 2, state.opponent.minBet * 4, Math.min(state.gold, state.opponent.minBet * 8)];
-      let bx = cx - (bets.length * 55) / 2;
+      // Dynamic bet options including all-in
+      const minB = Math.min(state.opponent.minBet, state.gold);
+      const betOptions = new Set<number>();
+      betOptions.add(minB);
+      if (minB * 2 <= state.gold) betOptions.add(minB * 2);
+      if (minB * 4 <= state.gold) betOptions.add(minB * 4);
+      if (state.gold > minB * 4) betOptions.add(state.gold); // ALL IN
+      const bets = [...betOptions].filter(b => b > 0 && b <= state.gold);
+      let bx = cx - (bets.length * 58) / 2;
       for (const bet of bets) {
-        if (bet <= state.gold && bet > 0) {
-          this._button(`${bet}g`, bx, btnY, 50, 30, 0xffd700, () => this._betCb?.(bet));
-          bx += 55;
-        }
+        const isAllIn = bet === state.gold && bet > minB * 2;
+        this._button(isAllIn ? `ALL IN\n${bet}g` : `${bet}g`, bx, btnY, 54, 32, isAllIn ? 0xff4444 : 0xffd700, () => this._betCb?.(bet));
+        bx += 58;
       }
     } else if (state.phase === TavernPhase.PLAYER_TURN) {
       this._button("HIT", cx - 110, btnY, 65, 34, 0x44cc44, () => this._hitCb?.());

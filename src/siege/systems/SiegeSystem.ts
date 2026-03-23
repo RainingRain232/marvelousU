@@ -110,16 +110,19 @@ export function updateSiege(state: SiegeState, dt: number): void {
     }
 
     if (closest) {
-      tower.cooldown = 1 / def.fireRate;
+      // Level-up bonus: +20% damage per level
+      const levelMult = 1 + (tower.level - 1) * 0.2;
+      tower.cooldown = 1 / (def.fireRate * (1 + (tower.level - 1) * 0.1)); // faster at higher levels
       state.projectiles.push({
         x: tcx, y: tcy,
         targetId: closest.id,
-        damage: def.damage,
+        damage: Math.floor(def.damage * levelMult),
         speed: def.projectileSpeed * T,
         color: def.projectileColor,
         splashRadius: def.splashRadius * T,
         slowAmount: def.slowAmount,
         slowDuration: def.slowDuration,
+        towerId: tower.id,
       });
     }
   }
@@ -207,6 +210,17 @@ function applyDamage(state: SiegeState, enemy: Enemy, proj: Projectile, mult = 1
     state.gold += def.reward;
     state.score += def.reward;
     state.totalKills++;
+    // Credit kill to tower and check for level-up
+    const tower = state.towers.find(t => t.id === proj.towerId);
+    if (tower) {
+      tower.kills++;
+      const killsNeeded = tower.level * 5; // 5, 10, 15... kills per level
+      if (tower.kills >= killsNeeded && tower.level < 5) {
+        tower.level++;
+        tower.kills = 0;
+        state.announcements.push({ text: `${TOWERS[tower.type].name} Lv${tower.level}!`, color: 0xffd700, timer: 1.5 });
+      }
+    }
     // Death particles
     for (let i = 0; i < 6; i++) {
       state.particles.push({

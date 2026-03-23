@@ -55,6 +55,7 @@ export interface Projectile {
   splashRadius: number;
   slowAmount: number;
   slowDuration: number;
+  towerId: string;
 }
 
 export interface SiegeState {

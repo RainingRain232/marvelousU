@@ -7,7 +7,9 @@ import { TavernPhase, drawCard } from "../state/TavernState";
 import { cardScore, TavernConfig } from "../config/TavernConfig";
 
 export function placeBet(state: TavernState, amount: number): boolean {
-  if (amount < state.opponent.minBet || amount > state.gold) return false;
+  // Allow betting below minBet if it's all the player has (last chance)
+  const effectiveMin = Math.min(state.opponent.minBet, state.gold);
+  if (amount < effectiveMin || amount > state.gold) return false;
   state.currentBet = amount;
   state.round++;
 
@@ -128,10 +130,10 @@ function resolveRound(state: TavernState, result: "win" | "lose" | "push" | "bla
 
   state.log.push(`${result.toUpperCase()}: ${payout > state.currentBet ? "+" : ""}${payout - state.currentBet}g`);
 
-  // Check game over
-  if (state.gold < state.opponent.minBet || state.round >= state.maxRounds) {
+  // Check game over — only when truly broke (0 gold) or rounds complete
+  if (state.gold <= 0 || state.round >= state.maxRounds) {
     state.phase = TavernPhase.GAME_OVER;
-    if (state.gold < state.opponent.minBet) state.log.push("Out of gold!");
+    if (state.gold <= 0) state.log.push("Out of gold!");
     else state.log.push("Session complete.");
   }
 }

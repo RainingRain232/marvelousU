@@ -136,6 +136,17 @@ export class SiegeRenderer {
       mg.circle(px, py, tr).stroke({ color: 0xffffff, width: 0.5, alpha: 0.12 });
       // Center dot (weapon port)
       mg.circle(px, py, 2).fill({ color: 0x000000, alpha: 0.3 });
+      // Level indicator (stars/rings around tower)
+      if (tower.level > 1) {
+        for (let li = 0; li < tower.level - 1; li++) {
+          const la = li * Math.PI * 2 / (tower.level - 1);
+          mg.circle(px + Math.cos(la) * (br + 3), py + Math.sin(la) * (br + 3), 1.5).fill({ color: 0xffd700, alpha: 0.5 });
+        }
+        // Level text
+        const lvText = new Text({ text: `${tower.level}`, style: new TextStyle({ fontFamily: FONT, fontSize: 7, fill: 0xffd700, fontWeight: "bold" }) });
+        lvText.anchor.set(0.5, 0.5); lvText.position.set(px, py);
+        this._uiGfx.addChild(lvText);
+      }
       // Range indicator
       if (state.phase === SiegePhase.BUILDING) {
         mg.circle(px, py, def.range * T).stroke({ color: def.color, width: 0.5, alpha: 0.08 });

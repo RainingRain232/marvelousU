@@ -270,14 +270,18 @@ export class AlchemistRenderer {
       // Recipe name + color dot
       u.circle(px + 14, iy + 18, 3).fill({ color: cust.recipe.color, alpha: 0.6 });
       this._addText(cust.recipe.name, px + 22, iy + 14, { fontSize: 8, fill: cust.recipe.color });
-      // Ingredients needed with orb icons
+      // Ingredients needed with have/need indicators
       let ingX = px + 12;
       for (const [itype, icount] of cust.recipe.ingredients) {
         const ic = INGREDIENTS[itype];
-        u.circle(ingX + 4, iy + 30, 4).fill({ color: ic.color, alpha: 0.5 });
-        u.circle(ingX + 4, iy + 30, 4).stroke({ color: 0xffffff, width: 0.3, alpha: 0.15 });
-        this._addText(`${icount}`, ingX + 10, iy + 26, { fontSize: 8, fill: 0xbbaa88 });
-        ingX += 22;
+        const have = state.collected.get(itype) ?? 0;
+        const enough = have >= icount;
+        // Orb with checkmark/cross indicator
+        u.circle(ingX + 4, iy + 30, 4).fill({ color: ic.color, alpha: enough ? 0.7 : 0.3 });
+        u.circle(ingX + 4, iy + 30, 4).stroke({ color: enough ? 0x44ff44 : 0xff4444, width: 0.8, alpha: 0.4 });
+        // Have / Need text
+        this._addText(`${have}/${icount}`, ingX + 10, iy + 26, { fontSize: 8, fill: enough ? 0x44cc44 : 0xcc6644, fontWeight: enough ? "bold" : "normal" });
+        ingX += 28;
       }
 
       // Patience bar — segmented with frame
