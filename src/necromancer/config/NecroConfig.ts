@@ -169,6 +169,34 @@ export function generateEndlessWave(waveNum: number): WaveEntry[] {
   ].filter(e => e.count > 0);
 }
 
+/** Random events that can occur between waves */
+export interface BattleEvent {
+  id: string;
+  name: string;
+  description: string;
+  color: number;
+}
+
+export const BATTLE_EVENTS: BattleEvent[] = [
+  { id: "blood_moon",    name: "Blood Moon",      description: "All units deal 50% more damage!", color: 0xff4444 },
+  { id: "blessed_rain",  name: "Blessed Rain",     description: "All undead heal 3 HP per kill",   color: 0x44aaff },
+  { id: "grave_bounty",  name: "Grave Bounty",     description: "Double gold from kills this wave", color: 0xffd700 },
+  { id: "soul_storm",    name: "Soul Storm",       description: "Mana regen tripled this wave",    color: 0x4466cc },
+  { id: "unholy_vigor",  name: "Unholy Vigor",     description: "Undead speed +50% this wave",     color: 0x44ff88 },
+];
+
+/** Combo time window in seconds */
+export const COMBO_WINDOW = 2.5;
+
+/** Wave bonus gold thresholds */
+export const WAVE_BONUSES = {
+  FAST_CLEAR_TIME: 30,   // seconds — bonus if cleared before this
+  FAST_CLEAR_GOLD: 15,
+  NO_CASUALTIES_GOLD: 20,
+  FULL_ARMY_GOLD: 10,    // bonus if all undead survived
+  COMBO_BONUS_PER: 2,    // gold per combo hit beyond 3
+} as const;
+
 export const NecroConfig = {
   FIELD_WIDTH: 700,
   FIELD_HEIGHT: 500,

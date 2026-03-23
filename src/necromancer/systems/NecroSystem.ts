@@ -4,7 +4,7 @@
 
 import type { NecroState, Undead, Crusader, Corpse, CorpseQuality } from "../state/NecroState";
 import { findChimera } from "../state/NecroState";
-import { CORPSES, CRUSADERS, NecroConfig, WAVES, generateEndlessWave } from "../config/NecroConfig";
+import { CORPSES, CRUSADERS, NecroConfig, WAVES, generateEndlessWave, BATTLE_EVENTS, COMBO_WINDOW, WAVE_BONUSES } from "../config/NecroConfig";
 import type { CorpseType, CrusaderType } from "../config/NecroConfig";
 
 const BONE_WHITE = 0xccccbb;
@@ -256,11 +256,32 @@ function raiseUndead(state: NecroState): void {
 export function updateBattle(state: NecroState, dt: number): void {
   state.elapsed += dt;
   state.battleTimer += dt;
-  state.mana = Math.min(state.maxMana, state.mana + state.manaRegen * dt);
 
   // Spell cooldowns
   if (state.novaCooldown > 0) state.novaCooldown -= dt;
   if (state.soulLeechCooldown > 0) state.soulLeechCooldown -= dt;
+
+  // Combo timer decay
+  if (state.comboTimer > 0) {
+    state.comboTimer -= dt;
+    if (state.comboTimer <= 0) {
+      if (state.comboCount >= 3) {
+        const bonus = (state.comboCount - 2) * WAVE_BONUSES.COMBO_BONUS_PER;
+        state.gold += bonus;
+        state.announcements.push({ text: `${state.comboCount}x COMBO! +${bonus}g`, color: 0xff8844, timer: 1.5 });
+      }
+      state.comboCount = 0;
+    }
+  }
+
+  // Event: soul_storm — triple mana regen
+  const manaRegenMult = state.activeEvent?.id === "soul_storm" ? 3 : 1;
+  state.mana = Math.min(state.maxMana, state.mana + state.manaRegen * manaRegenMult * dt);
+
+  // Event multipliers
+  const dmgMult = state.activeEvent?.id === "blood_moon" ? 1.5 : 1;
+  const goldMult = state.activeEvent?.id === "grave_bounty" ? 2 : 1;
+  const speedMult = state.activeEvent?.id === "unholy_vigor" ? 1.5 : 1;
 
   // Spawn crusaders from queue
   state.crusaderSpawnTimer -= dt;
@@ -312,8 +333,8 @@ export function updateBattle(state: NecroState, dt: number): void {
     if (u.ranged && u.range > 0) {
       const stopDist = u.range * 0.8;
       if (dist > stopDist) {
-        u.x += (dx / dist) * u.speed * dt;
-        u.y += (dy / dist) * u.speed * dt;
+        u.x += (dx / dist) * u.speed * speedMult * dt;
+        u.y += (dy / dist) * u.speed * speedMult * dt;
       }
       if (dist < u.range && u.attackCooldown <= 0) {
         // Fire projectile
@@ -332,11 +353,11 @@ export function updateBattle(state: NecroState, dt: number): void {
     }
 
     if (dist > u.size + target.size + 2) {
-      u.x += (dx / dist) * u.speed * dt;
-      u.y += (dy / dist) * u.speed * dt;
+      u.x += (dx / dist) * u.speed * speedMult * dt;
+      u.y += (dy / dist) * u.speed * speedMult * dt;
     } else if (u.attackCooldown <= 0) {
       // Attack
-      let dmg = u.damage;
+      let dmg = Math.ceil(u.damage * dmgMult);
 
       // Ability: frenzy — double damage at low HP
       if (u.ability === "frenzy" && u.hp < u.maxHp * 0.4) dmg *= 2;
@@ -388,6 +409,19 @@ export function updateBattle(state: NecroState, dt: number): void {
         state.score += CRUSADERS[target.type].reward * 2;
         state.waveKills++;
         state.totalKills++;
+
+        // Combo tracking
+        state.comboCount++;
+        state.comboTimer = COMBO_WINDOW;
+        if (state.comboCount > state.bestCombo) state.bestCombo = state.comboCount;
+
+        // Gold with multiplier
+        state.gold += Math.floor(CRUSADERS[target.type].reward * (goldMult - 1)); // Extra gold from event
+
+        // Event: blessed_rain — heal 3 HP on kill
+        if (state.activeEvent?.id === "blessed_rain") {
+          u.hp = Math.min(u.maxHp, u.hp + 3);
+        }
 
         // Soul harvest — mana recovery on kill
         state.mana = Math.min(state.maxMana, state.mana + NecroConfig.SOUL_HARVEST_MANA);
@@ -492,10 +526,26 @@ export function updateBattle(state: NecroState, dt: number): void {
       c.abilityCooldown = 8;
     }
 
+    // Smart AI: priests and banners stay behind frontline
+    if ((c.ability === "heal_aura" || c.ability === "rally") && state.crusaders.length > 2) {
+      // Find average ally x position (frontline)
+      let avgX = 0, count = 0;
+      for (const ally of state.crusaders) {
+        if (ally.alive && ally.id !== c.id && ally.ability !== "heal_aura" && ally.ability !== "rally") { avgX += ally.x; count++; }
+      }
+      if (count > 0) {
+        avgX /= count;
+        // Stay behind the frontline by at least 30px
+        const safeX = Math.max(avgX + 30, NecroConfig.FIELD_WIDTH * 0.6);
+        if (c.x < safeX) {
+          c.x += c.speed * dt * 0.5; // Retreat gently
+        }
+      }
+    }
+
     const target = findNearestUndead(state, c.x, c.y);
     if (!target) {
       // No undead left — attack the necromancer (player)
-      // Crusaders march toward center-left
       const nx = 60, ny = NecroConfig.FIELD_HEIGHT / 2;
       const dx = nx - c.x, dy = ny - c.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
@@ -563,6 +613,7 @@ export function updateBattle(state: NecroState, dt: number): void {
         state.battleMarks.push({ x: target.x, y: target.y, type: "blood", size: 5 + Math.random() * 3, alpha: 0.1 });
         // Track for resurrect scroll
         state.fallenUndead.push({ ...target, alive: false });
+        state.waveCasualties++;
       }
     }
   }
@@ -819,6 +870,50 @@ function spawnCrusader(state: NecroState, type: CrusaderType): void {
   });
 }
 
+/** Roll a random event for the next wave (30% chance) */
+export function rollWaveEvent(state: NecroState): void {
+  state.activeEvent = null;
+  if (state.wave < 2) return; // No events in first 2 waves
+  if (Math.random() < 0.35) {
+    const evt = BATTLE_EVENTS[Math.floor(Math.random() * BATTLE_EVENTS.length)];
+    state.activeEvent = { ...evt };
+    state.announcements.push({ text: `EVENT: ${evt.name}!`, color: evt.color, timer: 3 });
+    state.announcements.push({ text: evt.description, color: evt.color, timer: 3 });
+  }
+}
+
+/** Calculate and award wave completion bonuses */
+export function calculateWaveBonuses(state: NecroState): { bonuses: { label: string; gold: number; color: number }[]; total: number } {
+  const bonuses: { label: string; gold: number; color: number }[] = [];
+
+  // Fast clear bonus
+  const clearTime = state.battleTimer;
+  if (clearTime < WAVE_BONUSES.FAST_CLEAR_TIME) {
+    bonuses.push({ label: `Fast Clear (${Math.floor(clearTime)}s)`, gold: WAVE_BONUSES.FAST_CLEAR_GOLD, color: 0xffaa44 });
+  }
+
+  // No casualties bonus
+  if (state.waveCasualties === 0) {
+    bonuses.push({ label: "No Casualties!", gold: WAVE_BONUSES.NO_CASUALTIES_GOLD, color: 0x44ff88 });
+  }
+
+  // Full army survived
+  if (state.undead.length === state.undead.filter(u => u.alive).length && state.undead.length > 0 && state.waveCasualties === 0) {
+    bonuses.push({ label: "Full Army Intact", gold: WAVE_BONUSES.FULL_ARMY_GOLD, color: 0x44ccaa });
+  }
+
+  // Best combo bonus
+  if (state.bestCombo >= 4) {
+    const comboGold = (state.bestCombo - 3) * WAVE_BONUSES.COMBO_BONUS_PER * 2;
+    bonuses.push({ label: `Best Combo: ${state.bestCombo}x`, gold: comboGold, color: 0xff8844 });
+  }
+
+  const total = bonuses.reduce((s, b) => s + b.gold, 0);
+  state.gold += total;
+  state.score += total;
+  return { bonuses, total };
+}
+
 /** Heal all undead by 30% between waves */
 export function healUndeadBetweenWaves(state: NecroState): void {
   for (const u of state.undead) {
@@ -863,12 +958,18 @@ export function prepareBattleWave(state: NecroState): void {
   state.battleLost = false;
   state.crusaderSpawnTimer = 1;
   state.waveKills = 0;
+  state.waveCasualties = 0;
+  state.comboCount = 0;
+  state.comboTimer = 0;
+  state.bestCombo = 0;
   state.boneWalls = [];
   state.boneWallCooldown = 0;
+  state.soulLeechCooldown = 0;
   state.damageNumbers = [];
   state.projectiles = [];
   state.battleMarks = [];
   state.screenFlash = null;
+  state.battleLog = [];
 
   // Apply temp buffs and position undead
   state.fallenUndead = [];

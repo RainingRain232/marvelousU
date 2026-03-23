@@ -14,7 +14,7 @@ import {
   updateDig, startDig, digAll,
   updateRitual, placeCorpseInSlot, startRaise,
   updateBattle, prepareBattleWave, castDarkNova, castBoneWall, castSoulLeech,
-  healUndeadBetweenWaves, sacrificeUndead,
+  healUndeadBetweenWaves, sacrificeUndead, rollWaveEvent, calculateWaveBonuses,
 } from "./systems/NecroSystem";
 import { NecroRenderer } from "./view/NecroRenderer";
 
@@ -27,6 +27,7 @@ export class NecroGame {
   private _contextMenu: ((e: MouseEvent) => void) | null = null;
   private _sw = 0;
   private _sh = 0;
+  private _waveBonuses: { bonuses: { label: string; gold: number; color: number }[]; total: number } = { bonuses: [], total: 0 };
 
   async boot(): Promise<void> {
     viewManager.clearWorld();
@@ -287,6 +288,7 @@ export class NecroGame {
       return;
     }
     this._state.phase = "battle";
+    rollWaveEvent(this._state);
     prepareBattleWave(this._state);
     this._state.announcements.push({ text: `Wave ${this._state.wave + 1} — FIGHT!`, color: 0xff4444, timer: 2 });
 
@@ -314,7 +316,16 @@ export class NecroGame {
     };
 
     addText(`Wave ${this._state.wave + 1} Complete!`, this._sw / 2, 30, { fontSize: 20, fill: 0x44ff88, fontWeight: "bold" }, true);
-    addText(`Gold: ${this._state.gold}g | Army: ${this._state.undead.length} | Kills: ${this._state.waveKills} | HP: ${this._state.playerHp}/${this._state.maxPlayerHp}`, this._sw / 2, 58, { fontSize: 11, fill: 0xccddcc }, true);
+    addText(`Gold: ${this._state.gold}g | Army: ${this._state.undead.length} | Kills: ${this._state.waveKills} | HP: ${this._state.playerHp}/${this._state.maxPlayerHp}`, this._sw / 2, 55, { fontSize: 11, fill: 0xccddcc }, true);
+
+    // Wave bonuses
+    if (this._waveBonuses.bonuses.length > 0) {
+      let bx = this._sw / 2 - this._waveBonuses.bonuses.length * 55;
+      for (const bonus of this._waveBonuses.bonuses) {
+        addText(`${bonus.label} +${bonus.gold}g`, bx, 70, { fontSize: 8, fill: bonus.color });
+        bx += 110;
+      }
+    }
 
     // Army roster on the right side
     let armyY = 90;
@@ -772,10 +783,14 @@ export class NecroGame {
 
       if (this._state.battleWon) {
         this._state.battleWon = false;
+        // Calculate wave bonuses
+        this._waveBonuses = calculateWaveBonuses(this._state);
         this._state.announcements.push({ text: "WAVE CLEARED!", color: 0x44ff88, timer: 2 });
-        // Short delay then upgrade screen
+        if (this._waveBonuses.total > 0) {
+          this._state.announcements.push({ text: `+${this._waveBonuses.total}g bonus!`, color: 0xffd700, timer: 2 });
+        }
         setTimeout(() => this._showUpgradeScreen(), 1500);
-        this._state.phase = "start"; // Prevent re-trigger
+        this._state.phase = "start";
       }
       if (this._state.battleLost) {
         this._state.battleLost = false;

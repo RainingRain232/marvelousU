@@ -1012,6 +1012,26 @@ export class NecroRenderer {
       this._ui.addChild(speedT);
     }
 
+    // Active event banner
+    if (state.activeEvent) {
+      const evtW = 160, evtH = 16;
+      g.roundRect(ox + fw / 2 - evtW / 2, oy + fh - 34, evtW, evtH, 3).fill({ color: 0x0a0a08, alpha: 0.7 });
+      g.roundRect(ox + fw / 2 - evtW / 2, oy + fh - 34, evtW, evtH, 3).stroke({ color: state.activeEvent.color, width: 0.8, alpha: 0.4 });
+      const evtT = new Text({ text: `\u26A1 ${state.activeEvent.name}`, style: new TextStyle({ fontFamily: FONT, fontSize: 7, fill: state.activeEvent.color, fontWeight: "bold" }) });
+      evtT.anchor.set(0.5, 0.5); evtT.position.set(ox + fw / 2, oy + fh - 26);
+      this._ui.addChild(evtT);
+    }
+
+    // Combo counter
+    if (state.comboCount >= 2) {
+      const comboPulse = 1 + Math.sin(state.elapsed * 6) * 0.15;
+      const comboT = new Text({ text: `${state.comboCount}x COMBO`, style: new TextStyle({ fontFamily: FONT, fontSize: state.comboCount >= 5 ? 14 : 11, fill: state.comboCount >= 5 ? 0xffd700 : 0xff8844, fontWeight: "bold" }) });
+      comboT.alpha = 0.7 + Math.sin(state.elapsed * 4) * 0.2;
+      comboT.scale.set(comboPulse);
+      comboT.anchor.set(0.5, 0); comboT.position.set(ox + 80, oy + fh - 45);
+      this._ui.addChild(comboT);
+    }
+
     // Kill counter
     const kt = new Text({
       text: `Kills: ${state.waveKills}`,

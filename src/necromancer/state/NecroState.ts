@@ -168,6 +168,21 @@ export interface NecroState {
   // Kill stats per wave
   waveKills: number;
   totalKills: number;
+
+  // Combo system
+  comboCount: number;
+  comboTimer: number;
+  bestCombo: number;
+
+  // Wave bonus tracking
+  waveCasualties: number;
+  waveStartTime: number;
+
+  // Random events
+  activeEvent: { id: string; name: string; description: string; color: number } | null;
+
+  // Battle log
+  battleLog: { text: string; color: number; time: number }[];
 }
 
 export function createNecroState(): NecroState {
@@ -233,6 +248,13 @@ export function createNecroState(): NecroState {
     screenFlash: null,
     waveKills: 0,
     totalKills: 0,
+    comboCount: 0,
+    comboTimer: 0,
+    bestCombo: 0,
+    waveCasualties: 0,
+    waveStartTime: 0,
+    activeEvent: null,
+    battleLog: [],
   };
 }
 
