@@ -516,11 +516,27 @@ export class NecroRenderer {
           this._ui.addChild(label);
         }
       } else {
-        // Undug grave — earth mound
+        // Undug grave — layered earth mound with grass and worms
+        // Base shadow
+        g.ellipse(gx, gy + 6, 20, 7).fill({ color: 0x0a0806, alpha: 0.3 });
+        // Main mound — layered for depth
         g.ellipse(gx, gy + 4, 18, 9).fill({ color: 0x161208, alpha: 0.7 });
         g.ellipse(gx, gy + 2, 16, 8).fill({ color: 0x1e180e, alpha: 0.6 });
-        // Subtle cracks in dirt
+        g.ellipse(gx - 1, gy + 1, 12, 6).fill({ color: 0x221a0e, alpha: 0.3 }); // Highlight mound
+        // Dirt texture — tiny pebbles and earth clumps
+        g.circle(gx - 5, gy + 3, 1).fill({ color: 0x2a2216, alpha: 0.25 });
+        g.circle(gx + 4, gy + 1, 0.8).fill({ color: 0x332a1a, alpha: 0.2 });
+        g.circle(gx + 7, gy + 4, 0.6).fill({ color: 0x2a2216, alpha: 0.15 });
+        // Cracks in compacted earth
         g.moveTo(gx - 6, gy + 1).bezierCurveTo(gx - 2, gy - 1, gx + 2, gy + 2, gx + 7, gy).stroke({ color: 0x0a0806, width: 0.5, alpha: 0.3 });
+        g.moveTo(gx - 3, gy + 3).bezierCurveTo(gx, gy + 2, gx + 3, gy + 4, gx + 5, gy + 3).stroke({ color: 0x0a0806, width: 0.3, alpha: 0.2 });
+        // Sparse dead grass on mound
+        g.moveTo(gx - 8, gy + 1).bezierCurveTo(gx - 9, gy - 2, gx - 8, gy - 4, gx - 9, gy - 5).stroke({ color: 0x2a3a1a, width: 0.4, alpha: 0.1 });
+        g.moveTo(gx + 6, gy + 2).bezierCurveTo(gx + 7, gy - 1, gx + 8, gy - 3, gx + 7, gy - 4).stroke({ color: 0x2a3a1a, width: 0.4, alpha: 0.08 });
+        // Earthworm poking out
+        if (grave.id % 5 === 0) {
+          g.moveTo(gx + 3, gy + 2).bezierCurveTo(gx + 4, gy + 1, gx + 5, gy + 2, gx + 4.5, gy + 3).stroke({ color: 0x664444, width: 0.5, alpha: 0.12 });
+        }
 
         // Varied tombstone styles
         if (style === 0) {
@@ -836,27 +852,86 @@ export class NecroRenderer {
         }
       }
 
-      // Swirling energy — faster, more intense
+      // Swirling energy — rune-shaped particles with comet trails
       for (let i = 0; i < 8; i++) {
         const angle = state.elapsed * 4 + (i / 8) * Math.PI * 2;
         const dist = 20 + prog * 20 + Math.sin(state.elapsed * 6 + i) * 8;
         const ex = ox + cx + Math.cos(angle) * dist;
         const ey = oy + cy + Math.sin(angle) * dist * 0.5;
         const esize = 1.5 + prog * 1.5;
-        g.circle(ex, ey, esize).fill({ color: NECRO_GREEN, alpha: 0.3 + prog * 0.3 });
-        // Trail line back to center
-        g.moveTo(ex, ey).lineTo(ox + cx, oy + cy).stroke({ color: NECRO_GREEN, width: 0.3, alpha: prog * 0.08 });
+        const eAlpha = 0.3 + prog * 0.3;
+
+        // Comet trail — multiple fading segments
+        for (let tr = 1; tr <= 4; tr++) {
+          const trAngle = angle - tr * 0.15;
+          const trDist = dist + tr * 2;
+          const trx = ox + cx + Math.cos(trAngle) * trDist;
+          const try2 = oy + cy + Math.sin(trAngle) * trDist * 0.5;
+          g.circle(trx, try2, esize * (1 - tr * 0.2)).fill({ color: NECRO_GREEN, alpha: eAlpha * (1 - tr * 0.22) });
+        }
+
+        // Main particle — diamond rune shape
+        g.moveTo(ex, ey - esize).lineTo(ex + esize * 0.6, ey).lineTo(ex, ey + esize).lineTo(ex - esize * 0.6, ey).fill({ color: NECRO_GREEN, alpha: eAlpha });
+        // Bright core
+        g.circle(ex, ey, esize * 0.3).fill({ color: 0xffffff, alpha: eAlpha * 0.3 });
+
+        // Trail line back to center — curved arc
+        g.moveTo(ex, ey).bezierCurveTo(
+          ex - Math.cos(angle + 0.5) * dist * 0.3, ey - Math.sin(angle + 0.5) * dist * 0.15,
+          ox + cx + Math.cos(angle) * dist * 0.3, oy + cy + Math.sin(angle) * dist * 0.15,
+          ox + cx, oy + cy
+        ).stroke({ color: NECRO_GREEN, width: 0.4, alpha: prog * 0.06 });
       }
 
-      // Soul rising from earth — grows with progress
+      // Soul rising from earth — spectral figure with trailing ectoplasm
       if (prog > 0.5) {
         const soulY = oy + cy + 20 - (prog - 0.5) * 60;
         const soulAlpha = (prog - 0.5) * 0.6;
-        g.ellipse(ox + cx, soulY, 6, 10).fill({ color: NECRO_GREEN, alpha: soulAlpha * 0.3 });
-        g.circle(ox + cx, soulY - 6, 4).fill({ color: NECRO_GREEN, alpha: soulAlpha * 0.4 });
-        // Eye dots
-        g.circle(ox + cx - 1.5, soulY - 7, 1).fill({ color: 0xffffff, alpha: soulAlpha * 0.5 });
-        g.circle(ox + cx + 1.5, soulY - 7, 1).fill({ color: 0xffffff, alpha: soulAlpha * 0.5 });
+        const soulSway = Math.sin(state.elapsed * 3) * 2;
+
+        // Ectoplasmic trail — flowing tendrils back to ground
+        for (let ei = 0; ei < 3; ei++) {
+          const ex = ox + cx + (ei - 1) * 4 + soulSway * (ei - 1) * 0.3;
+          g.moveTo(ex, soulY + 10).bezierCurveTo(
+            ex + soulSway * 0.5, soulY + 20,
+            ex - soulSway * 0.3, oy + cy + 10,
+            ox + cx + (ei - 1) * 2, oy + cy + 20
+          ).stroke({ color: NECRO_GREEN, width: 1.5 - ei * 0.3, alpha: soulAlpha * 0.12 });
+        }
+
+        // Spectral body — flowing robed form
+        g.moveTo(ox + cx - 6 + soulSway * 0.5, soulY + 10)
+          .bezierCurveTo(ox + cx - 7, soulY + 5, ox + cx - 5, soulY - 3, ox + cx, soulY - 5)
+          .bezierCurveTo(ox + cx + 5, soulY - 3, ox + cx + 7, soulY + 5, ox + cx + 6 - soulSway * 0.5, soulY + 10)
+          .fill({ color: NECRO_GREEN, alpha: soulAlpha * 0.2 });
+        // Inner glow core
+        g.ellipse(ox + cx, soulY, 4, 8).fill({ color: NECRO_GREEN, alpha: soulAlpha * 0.15 });
+
+        // Skull head — emerging from spectral form
+        g.circle(ox + cx, soulY - 6, 4.5).fill({ color: NECRO_GREEN, alpha: soulAlpha * 0.35 });
+        // Cranium top
+        g.circle(ox + cx, soulY - 7, 3.5).fill({ color: NECRO_GREEN, alpha: soulAlpha * 0.15 });
+        // Eye sockets — glowing voids
+        g.circle(ox + cx - 1.8, soulY - 7, 1.5).fill({ color: 0x0a0a06, alpha: soulAlpha * 0.3 });
+        g.circle(ox + cx + 1.8, soulY - 7, 1.5).fill({ color: 0x0a0a06, alpha: soulAlpha * 0.3 });
+        g.circle(ox + cx - 1.8, soulY - 7, 0.8).fill({ color: 0xffffff, alpha: soulAlpha * 0.6 });
+        g.circle(ox + cx + 1.8, soulY - 7, 0.8).fill({ color: 0xffffff, alpha: soulAlpha * 0.6 });
+        // Nasal cavity
+        g.moveTo(ox + cx - 0.5, soulY - 5.5).lineTo(ox + cx, soulY - 4.5).lineTo(ox + cx + 0.5, soulY - 5.5).stroke({ color: 0x0a0a06, width: 0.3, alpha: soulAlpha * 0.3 });
+        // Jaw opening — screaming
+        g.moveTo(ox + cx - 2.5, soulY - 3.5).bezierCurveTo(ox + cx - 1, soulY - 2, ox + cx + 1, soulY - 2, ox + cx + 2.5, soulY - 3.5).stroke({ color: NECRO_GREEN, width: 0.5, alpha: soulAlpha * 0.25 });
+
+        // Spectral arms reaching upward
+        g.moveTo(ox + cx - 5, soulY - 2).bezierCurveTo(ox + cx - 8 + soulSway, soulY - 8, ox + cx - 7, soulY - 12, ox + cx - 6 + soulSway * 0.5, soulY - 14).stroke({ color: NECRO_GREEN, width: 1, alpha: soulAlpha * 0.2 });
+        g.moveTo(ox + cx + 5, soulY - 2).bezierCurveTo(ox + cx + 8 - soulSway, soulY - 8, ox + cx + 7, soulY - 12, ox + cx + 6 - soulSway * 0.5, soulY - 14).stroke({ color: NECRO_GREEN, width: 1, alpha: soulAlpha * 0.2 });
+        // Bony finger tips
+        for (let fi = 0; fi < 3; fi++) {
+          const fx = ox + cx - 6 + soulSway * 0.5 + fi * 1.2 - 1.2;
+          g.moveTo(fx, soulY - 14).lineTo(fx - 0.5, soulY - 16).stroke({ color: NECRO_GREEN, width: 0.4, alpha: soulAlpha * 0.15 });
+        }
+
+        // Outer aura shimmer
+        g.ellipse(ox + cx, soulY, 10, 14).stroke({ color: NECRO_GREEN, width: 0.5, alpha: soulAlpha * 0.1 + Math.sin(state.elapsed * 4) * 0.03 });
       }
 
       // Progress bar — ornate
@@ -888,10 +963,41 @@ export class NecroRenderer {
       if (q !== "normal") {
         g.roundRect(ox + 7, iy - 1, 122, 34, 5).stroke({ color: qualBorder, width: 1, alpha: 0.3 });
       }
-      // Color dot
-      g.circle(ox + 20, iy + 10, 5).fill({ color: def.color, alpha: 0.8 });
+      // Corpse type mini-icon
+      const iconX = ox + 20, iconY = iy + 10;
+      if (def.id === "peasant") {
+        // Ragged skull
+        g.circle(iconX, iconY, 4).fill({ color: BONE_WHITE, alpha: 0.5 });
+        g.circle(iconX - 1, iconY - 1, 0.8).fill({ color: 0x0a0a06, alpha: 0.4 });
+        g.circle(iconX + 1, iconY - 1, 0.8).fill({ color: 0x0a0a06, alpha: 0.4 });
+        g.moveTo(iconX - 1.5, iconY + 1.5).lineTo(iconX + 1.5, iconY + 1.5).stroke({ color: 0x0a0a06, width: 0.3, alpha: 0.3 });
+      } else if (def.id === "soldier") {
+        // Helmeted skull with sword
+        g.circle(iconX, iconY, 4).fill({ color: def.color, alpha: 0.7 });
+        g.rect(iconX - 3.5, iconY - 0.5, 7, 1).fill({ color: 0x222222, alpha: 0.3 });
+        g.moveTo(iconX + 3, iconY - 2).lineTo(iconX + 6, iconY - 5).stroke({ color: 0xcccccc, width: 0.8, alpha: 0.5 });
+      } else if (def.id === "knight") {
+        // Heavy helm with shield
+        g.circle(iconX, iconY, 4.5).fill({ color: def.color, alpha: 0.7 });
+        g.circle(iconX, iconY, 4.5).stroke({ color: 0xaaaaaa, width: 0.4, alpha: 0.3 });
+        g.moveTo(iconX - 5, iconY - 1).lineTo(iconX - 6, iconY + 3).lineTo(iconX - 4, iconY + 4).fill({ color: 0x888899, alpha: 0.4 });
+      } else if (def.id === "mage") {
+        // Hooded figure with orb
+        g.moveTo(iconX - 3, iconY + 4).lineTo(iconX, iconY - 4).lineTo(iconX + 3, iconY + 4).fill({ color: def.color, alpha: 0.6 });
+        g.circle(iconX + 4, iconY - 2, 1.5).fill({ color: 0x9944ff, alpha: 0.5 });
+        g.circle(iconX + 4, iconY - 2, 3).fill({ color: 0x9944ff, alpha: 0.08 });
+      } else if (def.id === "noble") {
+        // Crown with gem
+        g.circle(iconX, iconY, 4).fill({ color: def.color, alpha: 0.6 });
+        g.moveTo(iconX - 3, iconY - 3).lineTo(iconX - 2, iconY - 5).lineTo(iconX, iconY - 4).lineTo(iconX + 2, iconY - 5).lineTo(iconX + 3, iconY - 3).stroke({ color: 0xffd700, width: 0.8, alpha: 0.5 });
+        g.circle(iconX, iconY - 4.5, 0.5).fill({ color: 0xff2244, alpha: 0.4 });
+      } else {
+        g.circle(iconX, iconY, 5).fill({ color: def.color, alpha: 0.8 });
+      }
       if (def.ranged) {
-        g.moveTo(ox + 20, iy + 6).lineTo(ox + 23, iy + 10).lineTo(ox + 20, iy + 14).lineTo(ox + 17, iy + 10).stroke({ color: 0x9944ff, width: 0.5, alpha: 0.6 });
+        // Arcane diamond indicator
+        g.moveTo(iconX, iconY - 6).lineTo(iconX + 3, iconY).lineTo(iconX, iconY + 6).lineTo(iconX - 3, iconY).stroke({ color: 0x9944ff, width: 0.5, alpha: 0.5 });
+        g.circle(iconX, iconY, 6).fill({ color: 0x9944ff, alpha: 0.04 });
       }
       // Quality badge
       if (q !== "normal") {
@@ -1084,31 +1190,107 @@ export class NecroRenderer {
     for (const mark of state.battleMarks) {
       const mx = ox + mark.x, my = oy + mark.y;
       if (mark.type === "blood") {
-        g.circle(mx, my, mark.size).fill({ color: 0x881122, alpha: mark.alpha });
-        // Splatter dots
-        g.circle(mx + mark.size * 0.7, my - mark.size * 0.3, mark.size * 0.3).fill({ color: 0x881122, alpha: mark.alpha * 0.6 });
-        g.circle(mx - mark.size * 0.5, my + mark.size * 0.5, mark.size * 0.25).fill({ color: 0x881122, alpha: mark.alpha * 0.5 });
+        // Blood pool — irregular splat shape
+        const bAngle = (mark.x * 2.3 + mark.y * 1.7) % (Math.PI * 2);
+        g.moveTo(mx + mark.size, my);
+        for (let bs = 1; bs <= 7; bs++) {
+          const ba = bAngle + (bs / 7) * Math.PI * 2;
+          const br = mark.size * (0.6 + ((bs * 3 + Math.floor(mark.x)) % 5) * 0.1);
+          g.lineTo(mx + Math.cos(ba) * br, my + Math.sin(ba) * br * 0.7);
+        }
+        g.fill({ color: 0x881122, alpha: mark.alpha });
+        // Dark congealed center
+        g.circle(mx, my, mark.size * 0.35).fill({ color: 0x440811, alpha: mark.alpha * 0.5 });
+        // Splatter tendrils radiating out
+        for (let si = 0; si < 3; si++) {
+          const sa = bAngle + si * 2.1;
+          const sLen = mark.size * (0.8 + si * 0.3);
+          g.moveTo(mx + Math.cos(sa) * mark.size * 0.5, my + Math.sin(sa) * mark.size * 0.3)
+            .bezierCurveTo(
+              mx + Math.cos(sa) * sLen * 0.6, my + Math.sin(sa) * sLen * 0.4 + 1,
+              mx + Math.cos(sa) * sLen * 0.8, my + Math.sin(sa) * sLen * 0.5 - 1,
+              mx + Math.cos(sa) * sLen, my + Math.sin(sa) * sLen * 0.5
+            ).stroke({ color: 0x881122, width: 0.6, alpha: mark.alpha * 0.5 });
+          // Droplet at tendril end
+          g.circle(mx + Math.cos(sa) * sLen, my + Math.sin(sa) * sLen * 0.5, mark.size * 0.15).fill({ color: 0x881122, alpha: mark.alpha * 0.4 });
+        }
       } else {
-        // Debris — broken weapon shard
+        // Debris — broken weapon fragment with edge detail
         const angle = (mark.x * 1.7) % Math.PI;
-        g.moveTo(mx, my).lineTo(mx + Math.cos(angle) * mark.size, my + Math.sin(angle) * mark.size * 0.5).stroke({ color: 0x888877, width: 1, alpha: mark.alpha });
+        const sz = mark.size;
+        // Blade shard — irregular polygon
+        g.moveTo(mx, my)
+          .lineTo(mx + Math.cos(angle) * sz * 0.7, my + Math.sin(angle) * sz * 0.3 - sz * 0.15)
+          .lineTo(mx + Math.cos(angle) * sz, my + Math.sin(angle) * sz * 0.5)
+          .lineTo(mx + Math.cos(angle) * sz * 0.6, my + Math.sin(angle) * sz * 0.4 + sz * 0.1)
+          .fill({ color: 0x888877, alpha: mark.alpha * 0.6 });
+        // Edge highlight
+        g.moveTo(mx, my).lineTo(mx + Math.cos(angle) * sz * 0.7, my + Math.sin(angle) * sz * 0.3 - sz * 0.15).stroke({ color: 0xaaaaaa, width: 0.3, alpha: mark.alpha * 0.3 });
+        // Wood splinter nearby
+        g.moveTo(mx + 2, my + 1).lineTo(mx + 2 + Math.cos(angle + 0.5) * sz * 0.4, my + 1 + Math.sin(angle + 0.5) * sz * 0.3).stroke({ color: 0x664422, width: 0.5, alpha: mark.alpha * 0.3 });
       }
     }
 
-    // Animated fog layer — drifting wisps
+    // Animated fog layer — drifting wisps with curling tendrils
     for (let fi = 0; fi < 6; fi++) {
       const fogX = ((state.elapsed * 15 + fi * 130) % (fw + 100)) - 50 + ox;
       const fogY = oy + 60 + (fi * 2713 % (fh - 120));
       const fogW = 50 + (fi % 3) * 30;
-      g.ellipse(fogX, fogY, fogW, 6 + (fi % 2) * 3).fill({ color: 0x334455, alpha: 0.035 + Math.sin(state.elapsed + fi) * 0.01 });
+      const fogH2 = 6 + (fi % 2) * 3;
+      const fogA = 0.035 + Math.sin(state.elapsed + fi) * 0.01;
+      // Main body
+      g.ellipse(fogX, fogY, fogW, fogH2).fill({ color: 0x334455, alpha: fogA });
+      // Leading tendril curl
+      g.moveTo(fogX + fogW * 0.8, fogY).bezierCurveTo(
+        fogX + fogW + 10, fogY - 3,
+        fogX + fogW + 15, fogY + 2,
+        fogX + fogW + 20, fogY - 1
+      ).stroke({ color: 0x334455, width: fogH2 * 0.4, alpha: fogA * 0.5 });
+      // Trailing wisp
+      g.moveTo(fogX - fogW * 0.7, fogY).bezierCurveTo(
+        fogX - fogW - 5, fogY + 2,
+        fogX - fogW - 10, fogY - 1,
+        fogX - fogW - 12, fogY + 3
+      ).stroke({ color: 0x334455, width: fogH2 * 0.3, alpha: fogA * 0.35 });
+      // Vertical curl rising
+      if (fi % 2 === 0) {
+        g.moveTo(fogX + fogW * 0.3, fogY - fogH2 * 0.3).bezierCurveTo(
+          fogX + fogW * 0.35, fogY - fogH2 - 5,
+          fogX + fogW * 0.2, fogY - fogH2 - 8,
+          fogX + fogW * 0.4, fogY - fogH2 - 10
+        ).stroke({ color: 0x334455, width: 1.5, alpha: fogA * 0.3 });
+      }
+      // Denser core patches
+      g.ellipse(fogX - fogW * 0.2, fogY, fogW * 0.3, fogH2 * 0.5).fill({ color: 0x2a3a44, alpha: fogA * 0.4 });
     }
 
-    // Side labels
+    // Side labels with decorative flourishes
+    const lLabelX = ox + midX / 2, rLabelX = ox + midX + midX / 2;
+    // Left banner background
+    g.roundRect(lLabelX - 30, oy + 2, 60, 12, 2).fill({ color: 0x0a0a06, alpha: 0.3 });
+    // Skull icon left of "UNDEAD"
+    g.circle(lLabelX - 25, oy + 8, 3).fill({ color: NECRO_GREEN, alpha: 0.1 });
+    g.circle(lLabelX - 25.5, oy + 7.5, 0.5).fill({ color: NECRO_GREEN, alpha: 0.15 });
+    g.circle(lLabelX - 24.5, oy + 7.5, 0.5).fill({ color: NECRO_GREEN, alpha: 0.15 });
+    // Decorative lines flanking
+    g.moveTo(lLabelX - 30, oy + 14).lineTo(lLabelX + 30, oy + 14).stroke({ color: NECRO_GREEN, width: 0.3, alpha: 0.08 });
+    g.moveTo(lLabelX - 20, oy + 15).lineTo(lLabelX + 20, oy + 15).stroke({ color: NECRO_GREEN, width: 0.2, alpha: 0.04 });
+
     const leftLabel = new Text({ text: "UNDEAD", style: new TextStyle({ fontFamily: FONT, fontSize: 8, fill: NECRO_GREEN, letterSpacing: 2 } as any) });
-    leftLabel.alpha = 0.25; leftLabel.anchor.set(0.5, 0); leftLabel.position.set(ox + midX / 2, oy + 4);
+    leftLabel.alpha = 0.25; leftLabel.anchor.set(0.5, 0); leftLabel.position.set(lLabelX, oy + 3);
     this._ui.addChild(leftLabel);
+
+    // Right banner background
+    g.roundRect(rLabelX - 35, oy + 2, 70, 12, 2).fill({ color: 0x0e0e0c, alpha: 0.3 });
+    // Cross icon left of "CRUSADERS"
+    g.rect(rLabelX - 30, oy + 6, 1, 4).fill({ color: 0xffd700, alpha: 0.12 });
+    g.rect(rLabelX - 31, oy + 7, 3, 1).fill({ color: 0xffd700, alpha: 0.12 });
+    // Decorative lines flanking
+    g.moveTo(rLabelX - 35, oy + 14).lineTo(rLabelX + 35, oy + 14).stroke({ color: 0xffd700, width: 0.3, alpha: 0.06 });
+    g.moveTo(rLabelX - 25, oy + 15).lineTo(rLabelX + 25, oy + 15).stroke({ color: 0xffd700, width: 0.2, alpha: 0.03 });
+
     const rightLabel = new Text({ text: "CRUSADERS", style: new TextStyle({ fontFamily: FONT, fontSize: 8, fill: 0xffd700, letterSpacing: 2 } as any) });
-    rightLabel.alpha = 0.25; rightLabel.anchor.set(0.5, 0); rightLabel.position.set(ox + midX + midX / 2, oy + 4);
+    rightLabel.alpha = 0.25; rightLabel.anchor.set(0.5, 0); rightLabel.position.set(rLabelX, oy + 3);
     this._ui.addChild(rightLabel);
 
     // Draw bone walls
