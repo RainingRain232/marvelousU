@@ -18,7 +18,7 @@ export function placeTower(state: SiegeState, type: TowerType, col: number, row:
   state.gold -= def.cost;
   const id = `tower_${state.towerIdCounter++}`;
   cell.towerId = id;
-  state.towers.push({ id, type, x: col, y: row, cooldown: 0, kills: 0, level: 1 });
+  state.towers.push({ id, type, x: col, y: row, cooldown: 0, kills: 0, level: 1, targetPriority: "closest" });
   return true;
 }
 
@@ -147,30 +147,54 @@ export function updateSiege(state: SiegeState, dt: number): void {
     const tcx = tower.x * T + T / 2, tcy = tower.y * T + T / 2;
     const range = def.range * T;
 
-    // Find closest alive enemy in range
-    let closest: Enemy | null = null, closestDist = Infinity;
-    for (const enemy of state.enemies) {
-      if (!enemy.alive || enemy.reachedEnd) continue;
-      const dx = enemy.x - tcx, dy = enemy.y - tcy;
-      const d = Math.sqrt(dx * dx + dy * dy);
-      if (d <= range && d < closestDist) { closest = enemy; closestDist = d; }
+    // Find target based on priority
+    const inRange = state.enemies.filter(e => {
+      if (!e.alive || e.reachedEnd) return false;
+      const edx = e.x - tcx, edy = e.y - tcy;
+      return edx * edx + edy * edy <= range * range;
+    });
+    if (inRange.length === 0) continue;
+
+    let closest: Enemy;
+    if (tower.targetPriority === "strongest") {
+      closest = inRange.reduce((a, b) => a.maxHp > b.maxHp ? a : b);
+    } else if (tower.targetPriority === "furthest") {
+      closest = inRange.reduce((a, b) => a.waypointIndex + a.lap * 100 > b.waypointIndex + b.lap * 100 ? a : b);
+    } else {
+      let best = inRange[0], bestD = Infinity;
+      for (const e of inRange) { const d = Math.sqrt((e.x - tcx) ** 2 + (e.y - tcy) ** 2); if (d < bestD) { bestD = d; best = e; } }
+      closest = best;
     }
 
-    if (closest) {
-      // Level-up bonus: +20% damage per level
+    {
       const levelMult = 1 + (tower.level - 1) * 0.2;
-      tower.cooldown = 1 / (def.fireRate * (1 + (tower.level - 1) * 0.1)); // faster at higher levels
+      tower.cooldown = 1 / (def.fireRate * (1 + (tower.level - 1) * 0.1));
+      const projDmg = Math.floor(def.damage * levelMult);
+      // Cannon lv3: +50% splash radius
+      const splashR = def.splashRadius * T * (tower.type === "cannon" && tower.level >= 3 ? 1.5 : 1);
       state.projectiles.push({
         x: tcx, y: tcy,
         targetId: closest.id,
-        damage: Math.floor(def.damage * levelMult),
+        damage: projDmg,
         speed: def.projectileSpeed * T,
         color: def.projectileColor,
-        splashRadius: def.splashRadius * T,
+        splashRadius: splashR,
         slowAmount: def.slowAmount,
         slowDuration: def.slowDuration,
         towerId: tower.id,
       });
+      // Arrow lv3: multishot — fire at a second target
+      if (tower.type === "arrow" && tower.level >= 3 && inRange.length > 1) {
+        const second = inRange.find(e => e.id !== closest.id);
+        if (second) {
+          state.projectiles.push({
+            x: tcx, y: tcy, targetId: second.id,
+            damage: Math.floor(projDmg * 0.7), speed: def.projectileSpeed * T,
+            color: def.projectileColor, splashRadius: 0,
+            slowAmount: 0, slowDuration: 0, towerId: tower.id,
+          });
+        }
+      }
     }
   }
 
@@ -210,6 +234,50 @@ export function updateSiege(state: SiegeState, dt: number): void {
     } else {
       proj.x += (dx / dist) * step;
       proj.y += (dy / dist) * step;
+    }
+  }
+
+  // DoT tick (burn and poison)
+  for (const enemy of state.enemies) {
+    if (!enemy.alive) continue;
+    // Burn tick
+    if (enemy.burnTimer > 0) {
+      enemy.hp -= enemy.burnDamage * effectiveDt;
+      enemy.burnTimer -= effectiveDt;
+      // Fire lv5 (wildfire): spread to nearby enemies
+      if (enemy.burnDamage > 0) {
+        for (const other of state.enemies) {
+          if (other === enemy || !other.alive || other.burnTimer > 0) continue;
+          const sdx = other.x - enemy.x, sdy = other.y - enemy.y;
+          if (sdx * sdx + sdy * sdy < 30 * 30) {
+            // Check if any fire tower is lv5
+            const hasWildfire = state.towers.some(t => t.type === "fire" && t.level >= 5);
+            if (hasWildfire) { other.burnTimer = 2; other.burnDamage = 2; }
+          }
+        }
+      }
+      if (enemy.hp <= 0 && enemy.alive) {
+        enemy.alive = false;
+        state.gold += ENEMIES[enemy.type].reward; state.score += ENEMIES[enemy.type].reward; state.totalKills++;
+      }
+    }
+    // Poison tick
+    if (enemy.poisonTimer > 0) {
+      enemy.hp -= enemy.poisonDamage * effectiveDt;
+      enemy.poisonTimer -= effectiveDt;
+      // Poison lv5 (plague): spread to nearby
+      for (const other of state.enemies) {
+        if (other === enemy || !other.alive || other.poisonTimer > 0) continue;
+        const sdx = other.x - enemy.x, sdy = other.y - enemy.y;
+        if (sdx * sdx + sdy * sdy < 25 * 25) {
+          const hasPlague = state.towers.some(t => t.type === "poison" && t.level >= 5);
+          if (hasPlague) { other.poisonTimer = 2; other.poisonDamage = 1; }
+        }
+      }
+      if (enemy.hp <= 0 && enemy.alive) {
+        enemy.alive = false;
+        state.gold += ENEMIES[enemy.type].reward; state.score += ENEMIES[enemy.type].reward; state.totalKills++;
+      }
     }
   }
 
@@ -278,6 +346,21 @@ function applyDamage(state: SiegeState, enemy: Enemy, proj: Projectile, mult = 1
   if (towerType === "cannon" && tower && tower.level >= 5) {
     enemy.slowTimer = Math.max(enemy.slowTimer, 1);
     enemy.slowAmount = Math.max(enemy.slowAmount, 0.95);
+  }
+
+  // Fire lv3: apply burn DoT (3 damage/sec for 3s)
+  if (towerType === "fire" && tower && tower.level >= 3) {
+    enemy.burnTimer = 3;
+    enemy.burnDamage = 3;
+  }
+
+  // Poison lv3: poison stacks (add to existing)
+  if (towerType === "poison" && tower && tower.level >= 3) {
+    enemy.poisonTimer = Math.max(enemy.poisonTimer, 4);
+    enemy.poisonDamage += 1; // stacks!
+  } else if (towerType === "poison") {
+    enemy.poisonTimer = Math.max(enemy.poisonTimer, 3);
+    enemy.poisonDamage = Math.max(enemy.poisonDamage, 2);
   }
 
   if (enemy.hp <= 0 && enemy.alive) {

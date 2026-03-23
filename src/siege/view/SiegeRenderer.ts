@@ -229,11 +229,21 @@ export class SiegeRenderer {
       // Slow indicator
       if (enemy.slowTimer > 0) {
         eg.circle(ex, ey, r + 2).stroke({ color: 0x88ccff, width: 1, alpha: 0.3 });
-        // Frost crystals
         for (let fi = 0; fi < 3; fi++) {
           const fa = fi * Math.PI * 2 / 3 + Date.now() / 1000;
           eg.circle(ex + Math.cos(fa) * (r + 3), ey + Math.sin(fa) * (r + 3), 1).fill({ color: 0xaaddff, alpha: 0.3 });
         }
+      }
+      // Burn indicator (orange flicker)
+      if (enemy.burnTimer > 0) {
+        const flicker = 0.3 + Math.sin(Date.now() / 100) * 0.15;
+        eg.circle(ex, ey, r + 1).fill({ color: 0xff6622, alpha: flicker * 0.15 });
+        eg.circle(ex + (Math.random() - 0.5) * 4, ey - r - 2, 2).fill({ color: 0xff4400, alpha: flicker * 0.4 });
+      }
+      // Poison indicator (green drip)
+      if (enemy.poisonTimer > 0) {
+        eg.circle(ex, ey, r + 1).stroke({ color: 0x44cc44, width: 0.8, alpha: 0.25 });
+        eg.circle(ex + 2, ey + r, 1.5).fill({ color: 0x44cc44, alpha: 0.3 });
       }
     }
 
@@ -367,8 +377,9 @@ export class SiegeRenderer {
           u.rect(bx, by, bw, 4).stroke({ color: 0x444422, width: 0.5 });
           addText(`${tower.kills}/${killsNeeded} kills to Lv${tower.level + 1}`, panelX + panelW / 2, ity + 46, { fontSize: 7, fill: 0x999977 }, true);
         }
-        addText(`Sell: ${Math.floor(def.cost * 0.6)}g | X to sell`, panelX + panelW / 2, ity + 58, { fontSize: 8, fill: 0xff8844 }, true);
-        ty += 75;
+        addText(`Target: ${tower.targetPriority} [T]`, panelX + panelW / 2, ity + 56, { fontSize: 7, fill: 0x88aacc }, true);
+        addText(`Sell: ${Math.floor(def.cost * 0.6)}g [X]`, panelX + panelW / 2, ity + 66, { fontSize: 7, fill: 0xff8844 }, true);
+        ty += 82;
       }
     }
 

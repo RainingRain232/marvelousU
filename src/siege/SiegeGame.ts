@@ -145,6 +145,16 @@ export class SiegeGame {
         this._state.announcements.push({ text: "Tower sold!", color: 0xffaa44, timer: 1 });
         this._state.inspectedTowerId = null;
       }
+      // Target priority cycle: T key while inspecting
+      if ((e.key === "t" || e.key === "T") && this._state.inspectedTowerId) {
+        const tower = this._state.towers.find(t => t.id === this._state.inspectedTowerId);
+        if (tower) {
+          const priorities: typeof tower.targetPriority[] = ["closest", "strongest", "furthest"];
+          const idx = priorities.indexOf(tower.targetPriority);
+          tower.targetPriority = priorities[(idx + 1) % priorities.length];
+          this._state.announcements.push({ text: `Target: ${tower.targetPriority}`, color: 0x88aacc, timer: 1 });
+        }
+      }
       // Power-ups: F = freeze, M = meteor
       if (e.key === "f" || e.key === "F") useFreeze(this._state);
       if (e.key === "m" || e.key === "M") {

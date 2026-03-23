@@ -27,6 +27,7 @@ export interface Tower {
   cooldown: number;
   kills: number;
   level: number;
+  targetPriority: "closest" | "strongest" | "furthest";
 }
 
 export interface Enemy {
@@ -43,6 +44,10 @@ export interface Enemy {
   slowAmount: number;
   alive: boolean;
   reachedEnd: boolean;
+  burnTimer: number;
+  burnDamage: number;
+  poisonTimer: number;
+  poisonDamage: number;
 }
 
 export interface Projectile {
@@ -207,5 +212,6 @@ export function spawnEnemy(state: SiegeState, type: EnemyType): void {
     x: spawn.x * T + T / 2, y: spawn.y * T + T / 2,
     pathIndex: 0, slowTimer: 0, slowAmount: 0,
     alive: true, reachedEnd: false,
+    burnTimer: 0, burnDamage: 0, poisonTimer: 0, poisonDamage: 0,
   });
 }
