@@ -984,6 +984,33 @@ export class NecroRenderer {
     if (wallReady) {
       g.roundRect(spellX - 1, spellY - 5, 83, 14, 3).fill({ color: BONE_WHITE, alpha: 0.02 + Math.sin(state.elapsed * 2.5) * 0.01 });
     }
+    spellX += 93;
+
+    // Soul Leech
+    if ((state.powerLevels["soul_leech"] ?? 0) > 0) {
+      const leechReady = state.soulLeechCooldown <= 0 && state.mana >= 20;
+      g.roundRect(spellX - 2, spellY - 6, 80, 16, 4).fill({ color: leechReady ? 0x0a1a0a : 0x0a0a08, alpha: 0.7 });
+      g.roundRect(spellX - 2, spellY - 6, 80, 16, 4).stroke({ color: leechReady ? 0x44ff44 : 0x223322, width: 1, alpha: leechReady ? 0.5 : 0.3 });
+      // Leech icon — spiral
+      const liX = spellX + 6, liY = spellY + 2;
+      for (let si2 = 0; si2 < 6; si2++) {
+        const sa2 = si2 * 1.05;
+        const sr2 = 1 + si2 * 0.5;
+        g.circle(liX + Math.cos(sa2) * sr2, liY + Math.sin(sa2) * sr2, 0.5).fill({ color: 0x44ff44, alpha: leechReady ? 0.4 : 0.15 });
+      }
+      const lt = new Text({
+        text: leechReady ? "E: Leech" : `Leech ${Math.ceil(state.soulLeechCooldown)}s`,
+        style: new TextStyle({ fontFamily: FONT, fontSize: 7, fill: leechReady ? 0x66ff66 : 0x335533 }),
+      });
+      lt.position.set(spellX + 14, spellY - 4); this._ui.addChild(lt);
+    }
+
+    // Speed indicator
+    if (state.battleSpeed > 1) {
+      const speedT = new Text({ text: `${state.battleSpeed}x`, style: new TextStyle({ fontFamily: FONT, fontSize: 10, fill: 0xffaa44, fontWeight: "bold" }) });
+      speedT.anchor.set(0.5, 0); speedT.position.set(ox + fw / 2, oy + 16);
+      this._ui.addChild(speedT);
+    }
 
     // Kill counter
     const kt = new Text({
@@ -1429,8 +1456,8 @@ export class NecroRenderer {
     g.moveTo(0, sh - 20).lineTo(sw, sh - 20).stroke({ color: 0x445544, width: 0.5, alpha: 0.1 });
     const controls: Record<string, string> = {
       dig: "Click: dig grave | D: dig all (15m) | SPACE: ritual | Esc: quit",
-      ritual: "Click: place corpse | ENTER: raise | SPACE: battle | Esc: quit",
-      battle: "LMB: Dark Nova | RMB/W: Bone Wall | Esc: quit",
+      ritual: "Click: place | ENTER: raise | C: clear | X: sacrifice | SPACE: battle",
+      battle: "LMB: Nova | RMB/W: Wall | E: Leech | S: speed | Esc: quit",
       upgrade: "Click: buy upgrades | SPACE: next wave",
     };
     addText(controls[state.phase] ?? "Esc: quit", sw / 2, sh - 16, { fontSize: 7, fill: 0x445544 }, true);

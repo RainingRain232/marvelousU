@@ -8,12 +8,13 @@ import { audioManager } from "@audio/AudioManager";
 
 import { createNecroState, findChimera } from "./state/NecroState";
 import type { NecroState } from "./state/NecroState";
-import { NecroConfig, DARK_POWERS, CORPSES, WAVES, CRUSADERS, generateEndlessWave } from "./config/NecroConfig";
+import { NecroConfig, DARK_POWERS, CORPSES, WAVES, CRUSADERS, CONSUMABLES, generateEndlessWave } from "./config/NecroConfig";
 import type { WaveEntry } from "./config/NecroConfig";
 import {
   updateDig, startDig, digAll,
   updateRitual, placeCorpseInSlot, startRaise,
-  updateBattle, prepareBattleWave, castDarkNova, castBoneWall,
+  updateBattle, prepareBattleWave, castDarkNova, castBoneWall, castSoulLeech,
+  healUndeadBetweenWaves, sacrificeUndead,
 } from "./systems/NecroSystem";
 import { NecroRenderer } from "./view/NecroRenderer";
 
@@ -299,6 +300,9 @@ export class NecroGame {
     this._removePointer();
     if (this._keyHandler) { window.removeEventListener("keydown", this._keyHandler); this._keyHandler = null; }
 
+    // Heal undead between waves (30%)
+    healUndeadBetweenWaves(this._state);
+
     const c = new Container();
     const ov = new Graphics();
     ov.rect(0, 0, this._sw, this._sh).fill({ color: 0x000000, alpha: 0.88 });
@@ -380,6 +384,34 @@ export class NecroGame {
       y += 38;
     }
 
+    // Consumable items
+    y += 4;
+    addText("ITEMS", this._sw / 2 - 50, y, { fontSize: 9, fill: 0xccaa66, letterSpacing: 2 }, true);
+    y += 14;
+    for (const item of CONSUMABLES) {
+      const canAfford = this._state.gold >= item.cost;
+      // Skip resurrect if no fallen
+      if (item.id === "resurrect_scroll" && this._state.fallenUndead.length === 0) continue;
+
+      const ibtn = new Graphics();
+      ibtn.roundRect(this._sw / 2 - 120, y, 240, 22, 4).fill({ color: 0x0a0a06, alpha: 0.7 });
+      ibtn.roundRect(this._sw / 2 - 120, y, 240, 22, 4).stroke({ color: canAfford ? 0xccaa66 : 0x333322, width: 0.5, alpha: 0.4 });
+      if (canAfford) {
+        ibtn.eventMode = "static"; ibtn.cursor = "pointer";
+        const iid = item.id, icost = item.cost;
+        ibtn.on("pointerdown", () => {
+          this._state.gold -= icost;
+          this._applyConsumable(iid);
+          viewManager.removeFromLayer("ui", c); c.destroy({ children: true });
+          this._showUpgradeScreen();
+        });
+      }
+      c.addChild(ibtn);
+      addText(`${item.name} — ${item.description}`, this._sw / 2 - 110, y + 4, { fontSize: 7, fill: canAfford ? 0xccccaa : 0x555544 });
+      addText(`${item.cost}g`, this._sw / 2 + 100, y + 4, { fontSize: 8, fill: canAfford ? 0xffd700 : 0x554433, fontWeight: "bold" });
+      y += 26;
+    }
+
     // Wave preview — show what's coming next
     y += 8;
     const nextWave = this._state.wave + 1;
@@ -413,6 +445,36 @@ export class NecroGame {
     addText(btnLabel, this._sw / 2, y + 10, { fontSize: 12, fill: 0x44ff88, fontWeight: "bold", letterSpacing: 2 }, true);
 
     viewManager.addToLayer("ui", c);
+  }
+
+  private _applyConsumable(id: string): void {
+    switch (id) {
+      case "heal_draught":
+        this._state.playerHp = Math.min(this._state.maxPlayerHp, this._state.playerHp + 5);
+        this._state.announcements.push({ text: "+5 HP!", color: 0xff4488, timer: 1.5 });
+        break;
+      case "mana_potion":
+        this._state.mana = Math.min(this._state.maxMana, this._state.mana + 30);
+        this._state.announcements.push({ text: "+30 Mana!", color: 0x4466cc, timer: 1.5 });
+        break;
+      case "resurrect_scroll":
+        if (this._state.fallenUndead.length > 0) {
+          const fallen = this._state.fallenUndead.pop()!;
+          fallen.alive = true;
+          fallen.hp = fallen.maxHp;
+          this._state.undead.push(fallen);
+          this._state.announcements.push({ text: `Resurrected: ${fallen.name}!`, color: 0x44ff88, timer: 2 });
+        }
+        break;
+      case "war_drum":
+        this._state.tempDamageBonus += 3;
+        this._state.announcements.push({ text: "War Drums! +3 DMG next wave", color: 0xff8844, timer: 2 });
+        break;
+      case "bone_shield":
+        this._state.tempHpBonus += 5;
+        this._state.announcements.push({ text: "Bone Shield! +5 HP next wave", color: 0xccccbb, timer: 2 });
+        break;
+    }
   }
 
   private _applyPowerUpgrade(id: string): void {
@@ -639,6 +701,17 @@ export class NecroGame {
           e.preventDefault();
           this._enterBattlePhase();
         }
+        if (e.key === "c" || e.key === "C") {
+          // Clear ritual slots
+          this._state.ritualSlotA = null;
+          this._state.ritualSlotB = null;
+        }
+        if (e.key === "x" || e.key === "X") {
+          // Sacrifice last undead for mana
+          if (this._state.undead.length > 0) {
+            sacrificeUndead(this._state, this._state.undead[this._state.undead.length - 1].id);
+          }
+        }
       };
       window.addEventListener("keydown", this._keyHandler);
     } else if (phase === "battle") {
@@ -659,9 +732,15 @@ export class NecroGame {
 
       this._keyHandler = (e: KeyboardEvent) => {
         if (e.key === "Escape") { this.destroy(); window.dispatchEvent(new Event("necromancerExit")); }
-        // W key for bone wall at center
         if (e.key === "w" || e.key === "W") {
           castBoneWall(this._state, NecroConfig.FIELD_WIDTH / 2, NecroConfig.FIELD_HEIGHT / 2);
+        }
+        if (e.key === "e" || e.key === "E") {
+          castSoulLeech(this._state, NecroConfig.FIELD_WIDTH / 2, NecroConfig.FIELD_HEIGHT / 2);
+        }
+        if (e.key === "s" || e.key === "S") {
+          this._state.battleSpeed = this._state.battleSpeed === 1 ? 2 : 1;
+          this._state.announcements.push({ text: `Speed: ${this._state.battleSpeed}x`, color: 0xccccaa, timer: 1 });
         }
       };
       window.addEventListener("keydown", this._keyHandler);
@@ -688,7 +767,8 @@ export class NecroGame {
     } else if (this._state.phase === "ritual") {
       updateRitual(this._state, clampDt);
     } else if (this._state.phase === "battle") {
-      updateBattle(this._state, clampDt);
+      const speedDt = clampDt * this._state.battleSpeed;
+      updateBattle(this._state, speedDt);
 
       if (this._state.battleWon) {
         this._state.battleWon = false;

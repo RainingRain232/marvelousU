@@ -258,8 +258,9 @@ export function updateBattle(state: NecroState, dt: number): void {
   state.battleTimer += dt;
   state.mana = Math.min(state.maxMana, state.mana + state.manaRegen * dt);
 
-  // Nova cooldown
+  // Spell cooldowns
   if (state.novaCooldown > 0) state.novaCooldown -= dt;
+  if (state.soulLeechCooldown > 0) state.soulLeechCooldown -= dt;
 
   // Spawn crusaders from queue
   state.crusaderSpawnTimer -= dt;
@@ -339,6 +340,9 @@ export function updateBattle(state: NecroState, dt: number): void {
 
       // Ability: frenzy — double damage at low HP
       if (u.ability === "frenzy" && u.hp < u.maxHp * 0.4) dmg *= 2;
+
+      // Paladin shield_wall — 50% damage reduction
+      if (target.ability === "shield_wall") dmg = Math.max(1, Math.ceil(dmg * 0.5));
 
       target.hp -= dmg;
       u.attackCooldown = 1.2;
@@ -557,6 +561,8 @@ export function updateBattle(state: NecroState, dt: number): void {
         }
         // Green ectoplasm mark
         state.battleMarks.push({ x: target.x, y: target.y, type: "blood", size: 5 + Math.random() * 3, alpha: 0.1 });
+        // Track for resurrect scroll
+        state.fallenUndead.push({ ...target, alive: false });
       }
     }
   }
@@ -714,6 +720,58 @@ export function castDarkNova(state: NecroState, wx: number, wy: number): void {
   state.screenFlash = { color: 0xaa44ff, alpha: 0.25, timer: 0.3 };
 }
 
+export function castSoulLeech(state: NecroState, wx: number, wy: number): void {
+  if ((state.powerLevels["soul_leech"] ?? 0) < 1) return;
+  if (state.soulLeechCooldown > 0) return;
+  if (state.mana < 20) {
+    state.announcements.push({ text: "Not enough mana for Leech!", color: 0xff4444, timer: 1 });
+    return;
+  }
+  state.mana -= 20;
+  state.soulLeechCooldown = 10;
+
+  const radius = 90;
+  let totalDrain = 0;
+  for (const c of state.crusaders) {
+    if (!c.alive) continue;
+    const dx = c.x - wx, dy = c.y - wy;
+    if (dx * dx + dy * dy < radius * radius) {
+      const dmg = 4;
+      c.hp -= dmg;
+      totalDrain += dmg;
+      if (c.hp <= 0) {
+        c.alive = false;
+        state.gold += CRUSADERS[c.type].reward;
+        state.score += CRUSADERS[c.type].reward;
+        state.waveKills++;
+        state.totalKills++;
+      }
+    }
+  }
+
+  // Heal all undead proportionally
+  if (totalDrain > 0) {
+    const healPerUnit = Math.max(1, Math.floor(totalDrain / Math.max(1, state.undead.length)));
+    for (const u of state.undead) {
+      if (!u.alive) continue;
+      u.hp = Math.min(u.maxHp, u.hp + healPerUnit);
+    }
+  }
+
+  // Green drain vortex particles
+  for (let i = 0; i < 20; i++) {
+    const angle = (i / 20) * Math.PI * 2;
+    const dist = 10 + Math.random() * radius * 0.8;
+    state.particles.push({
+      x: wx + Math.cos(angle) * dist, y: wy + Math.sin(angle) * dist,
+      vx: -Math.cos(angle) * 40, vy: -Math.sin(angle) * 40,
+      life: 0.6, maxLife: 0.6, color: 0x44ff44, size: 2 + Math.random(),
+    });
+  }
+  state.announcements.push({ text: `SOUL LEECH! Healed +${Math.max(1, Math.floor(totalDrain / Math.max(1, state.undead.length)))} HP`, color: 0x44ff44, timer: 1.5 });
+  state.screenFlash = { color: 0x44ff44, alpha: 0.15, timer: 0.25 };
+}
+
 export function castBoneWall(state: NecroState, wx: number, wy: number): void {
   if (state.boneWallCooldown > 0) return;
   if (state.mana < 10) {
@@ -761,6 +819,35 @@ function spawnCrusader(state: NecroState, type: CrusaderType): void {
   });
 }
 
+/** Heal all undead by 30% between waves */
+export function healUndeadBetweenWaves(state: NecroState): void {
+  for (const u of state.undead) {
+    if (!u.alive) continue;
+    const heal = Math.ceil(u.maxHp * 0.3);
+    u.hp = Math.min(u.maxHp, u.hp + heal);
+  }
+}
+
+/** Sacrifice an undead to recover mana */
+export function sacrificeUndead(state: NecroState, undeadId: number): boolean {
+  const idx = state.undead.findIndex(u => u.id === undeadId);
+  if (idx < 0) return false;
+  const u = state.undead[idx];
+  const manaRefund = Math.floor((u.maxHp + u.damage * 2) * 1.5);
+  state.mana = Math.min(state.maxMana, state.mana + manaRefund);
+  state.undead.splice(idx, 1);
+  state.announcements.push({ text: `Sacrificed ${u.name} (+${manaRefund} mana)`, color: 0xff6644, timer: 1.5 });
+  // Dark particles
+  for (let i = 0; i < 8; i++) {
+    state.particles.push({
+      x: NecroConfig.FIELD_WIDTH / 2, y: NecroConfig.FIELD_HEIGHT / 2,
+      vx: (Math.random() - 0.5) * 50, vy: -20 - Math.random() * 30,
+      life: 0.5, maxLife: 0.5, color: 0xff4444, size: 2,
+    });
+  }
+  return true;
+}
+
 export function prepareBattleWave(state: NecroState): void {
   const wave = state.wave < WAVES.length ? WAVES[state.wave] : generateEndlessWave(state.wave);
   state.crusaderSpawnQueue = [];
@@ -783,13 +870,21 @@ export function prepareBattleWave(state: NecroState): void {
   state.battleMarks = [];
   state.screenFlash = null;
 
-  // Position undead on left side
+  // Apply temp buffs and position undead
+  state.fallenUndead = [];
   for (let i = 0; i < state.undead.length; i++) {
-    state.undead[i].x = 80 + Math.random() * 120;
-    state.undead[i].y = 60 + (i / state.undead.length) * (NecroConfig.FIELD_HEIGHT - 120);
-    state.undead[i].alive = true;
-    state.undead[i].attackCooldown = 0;
+    const u = state.undead[i];
+    u.x = 80 + Math.random() * 120;
+    u.y = 60 + (i / state.undead.length) * (NecroConfig.FIELD_HEIGHT - 120);
+    u.alive = true;
+    u.attackCooldown = 0;
+    // Apply temp buffs
+    if (state.tempDamageBonus > 0) u.damage += state.tempDamageBonus;
+    if (state.tempHpBonus > 0) { u.maxHp += state.tempHpBonus; u.hp += state.tempHpBonus; }
   }
+  // Clear temp buffs (one-time use)
+  state.tempDamageBonus = 0;
+  state.tempHpBonus = 0;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────

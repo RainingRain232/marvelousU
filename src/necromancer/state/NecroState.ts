@@ -140,6 +140,19 @@ export interface NecroState {
   boneWalls: { x: number; y: number; hp: number; maxHp: number; timer: number }[];
   boneWallCooldown: number;
 
+  // Soul Leech spell
+  soulLeechCooldown: number;
+
+  // Battle speed
+  battleSpeed: number; // 1 or 2
+
+  // Temporary wave buffs from consumables
+  tempDamageBonus: number;
+  tempHpBonus: number;
+
+  // Fallen undead (for resurrect scroll)
+  fallenUndead: Undead[];
+
   // Ranged projectiles
   projectiles: { x: number; y: number; vx: number; vy: number; damage: number; life: number; color: number; fromUndead: boolean }[];
 
@@ -209,6 +222,11 @@ export function createNecroState(): NecroState {
     damageNumbers: [],
     boneWalls: [],
     boneWallCooldown: 0,
+    soulLeechCooldown: 0,
+    battleSpeed: 1,
+    tempDamageBonus: 0,
+    tempHpBonus: 0,
+    fallenUndead: [],
     projectiles: [],
     endless: false,
     battleMarks: [],

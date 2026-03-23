@@ -56,6 +56,14 @@ export const CHIMERAS: ChimeraDef[] = [
   { a: "noble",   b: "soldier", name: "Wight",           hpBonus: 4,  damageBonus: 2, speedBonus: 5,  color: 0xbbaa77, ability: "drain" },
   { a: "noble",   b: "knight",  name: "Dread Lord",      hpBonus: 6,  damageBonus: 3, speedBonus: 0,  color: 0x997744, ability: "shield" },
   { a: "peasant", b: "noble",   name: "Shambling Horror", hpBonus: 8, damageBonus: 0, speedBonus: -10, color: 0x887766, ability: "frenzy" },
+  // Same-type combos — double down on the type's strengths
+  { a: "soldier", b: "soldier", name: "Revenant Guard",  hpBonus: 6,  damageBonus: 2, speedBonus: 0,  color: 0x668899, ability: "shield" },
+  { a: "knight",  b: "knight",  name: "Bone Colossus",   hpBonus: 12, damageBonus: 4, speedBonus: -15, color: 0x7788aa, ability: "cleave" },
+  { a: "mage",    b: "mage",    name: "Arch-Lich",       hpBonus: 2,  damageBonus: 8, speedBonus: -5, color: 0xaa55ee, ability: "drain" },
+  { a: "peasant", b: "peasant", name: "Zombie Horde",    hpBonus: 4,  damageBonus: 0, speedBonus: 20, color: 0x557744, ability: "frenzy" },
+  { a: "noble",   b: "noble",   name: "Phantom Lord",    hpBonus: 6,  damageBonus: 2, speedBonus: 10, color: 0xddbb55, ability: "drain" },
+  // Remaining missing combos
+  { a: "mage",    b: "soldier", name: "Spell Blade",     hpBonus: 3,  damageBonus: 4, speedBonus: 5,  color: 0x7788bb, ability: "explode" },
 ];
 
 /** Crusader wave enemy types */
@@ -103,6 +111,23 @@ export const DARK_POWERS: DarkPower[] = [
   { id: "grave_expand", name: "Unhallowed Ground", description: "+2 grave slots",      cost: 50,  maxLevel: 2, effect: "grave_slots" },
   { id: "life_drain",   name: "Life Drain",     description: "Undead heal on kill",     cost: 60,  maxLevel: 2, effect: "life_drain" },
   { id: "dark_nova",    name: "Dark Nova",      description: "AoE blast spell (click)", cost: 80, maxLevel: 1, effect: "dark_nova" },
+  { id: "soul_leech",  name: "Soul Leech",     description: "AoE drain: hurt enemies, heal undead", cost: 70, maxLevel: 1, effect: "soul_leech" as any },
+];
+
+/** Consumable items available in the upgrade shop */
+export interface Consumable {
+  id: string;
+  name: string;
+  description: string;
+  cost: number;
+}
+
+export const CONSUMABLES: Consumable[] = [
+  { id: "heal_draught",   name: "Healing Draught",   description: "Restore 5 HP",                  cost: 25 },
+  { id: "mana_potion",    name: "Mana Potion",       description: "Instantly restore 30 mana",     cost: 15 },
+  { id: "resurrect_scroll", name: "Resurrection Scroll", description: "Revive 1 fallen undead at full HP", cost: 40 },
+  { id: "war_drum",       name: "War Drum",          description: "+3 damage to all undead for next wave", cost: 35 },
+  { id: "bone_shield",    name: "Bone Shield Scroll", description: "+5 HP to all undead for next wave", cost: 30 },
 ];
 
 /** Wave definitions — what crusaders spawn per wave */
