@@ -310,9 +310,25 @@ export class NecroGame {
     };
 
     addText(`Wave ${this._state.wave + 1} Complete!`, this._sw / 2, 30, { fontSize: 20, fill: 0x44ff88, fontWeight: "bold" }, true);
-    addText(`Gold: ${this._state.gold}g | Army: ${this._state.undead.length} | HP: ${this._state.playerHp}/${this._state.maxPlayerHp}`, this._sw / 2, 58, { fontSize: 11, fill: 0xccddcc }, true);
+    addText(`Gold: ${this._state.gold}g | Army: ${this._state.undead.length} | Kills: ${this._state.waveKills} | HP: ${this._state.playerHp}/${this._state.maxPlayerHp}`, this._sw / 2, 58, { fontSize: 11, fill: 0xccddcc }, true);
 
-    addText("DARK POWERS", this._sw / 2, 85, { fontSize: 13, fill: 0x6622aa, letterSpacing: 3 }, true);
+    // Army roster on the right side
+    let armyY = 90;
+    addText("YOUR ARMY", this._sw - 95, armyY - 12, { fontSize: 8, fill: 0x889988, letterSpacing: 2 });
+    for (const u of this._state.undead) {
+      const rosterBg = new Graphics();
+      rosterBg.roundRect(this._sw - 145, armyY, 140, 14, 2).fill({ color: 0x0a0a06, alpha: 0.5 });
+      rosterBg.circle(this._sw - 135, armyY + 7, 3).fill({ color: u.color });
+      c.addChild(rosterBg);
+      addText(`${u.name}`, this._sw - 128, armyY + 1, { fontSize: 7, fill: u.chimera ? 0xcc88ff : 0x99aa99 });
+      const statsStr = `HP:${u.hp}/${u.maxHp} DMG:${u.damage}${u.ranged ? " R" : ""}`;
+      const st = new Text({ text: statsStr, style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 6, fill: 0x667766 } as any) });
+      st.anchor.set(1, 0); st.position.set(this._sw - 8, armyY + 1); c.addChild(st);
+      armyY += 17;
+      if (armyY > this._sh - 60) break;
+    }
+
+    addText("DARK POWERS", this._sw / 2 - 50, 85, { fontSize: 13, fill: 0x6622aa, letterSpacing: 3 }, true);
 
     let y = 108;
     for (const power of DARK_POWERS) {

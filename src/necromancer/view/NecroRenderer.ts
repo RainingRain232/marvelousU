@@ -137,6 +137,12 @@ export class NecroRenderer {
       this._ui.addChild(t);
     }
 
+    // Screen flash
+    if (state.screenFlash) {
+      const fa = state.screenFlash.alpha * (state.screenFlash.timer / 0.3);
+      g.rect(0, 0, sw, sh).fill({ color: state.screenFlash.color, alpha: fa });
+    }
+
     // HUD
     this._drawHUD(g, state, sw, sh, ox, oy);
   }
@@ -517,11 +523,60 @@ export class NecroRenderer {
     g.moveTo(cix - 8, ciy - 8).lineTo(cix + 8, ciy + 8).stroke({ color: 0x555544, width: 1, alpha: 0.15 });
     g.moveTo(cix + 8, ciy - 8).lineTo(cix - 8, ciy + 8).stroke({ color: 0x555544, width: 1, alpha: 0.15 });
 
+    // Torch sconces on sides
+    for (let ti = 0; ti < 4; ti++) {
+      const ty = oy + 40 + ti * (fh / 4);
+      // Left sconce
+      g.rect(ox - 4, ty - 3, 4, 6).fill({ color: 0x3a2a1a, alpha: 0.5 });
+      const lFlicker = 0.4 + Math.sin(state.elapsed * 5 + ti * 1.7) * 0.2;
+      g.circle(ox - 2, ty - 5, 3).fill({ color: 0xff8822, alpha: lFlicker * 0.3 });
+      g.circle(ox - 2, ty - 5, 6).fill({ color: 0xff6600, alpha: lFlicker * 0.03 });
+      // Right sconce
+      g.rect(ox + fw, ty - 3, 4, 6).fill({ color: 0x3a2a1a, alpha: 0.5 });
+      const rFlicker = 0.4 + Math.sin(state.elapsed * 5 + ti * 2.3 + 1) * 0.2;
+      g.circle(ox + fw + 2, ty - 5, 3).fill({ color: 0xff8822, alpha: rFlicker * 0.3 });
+      g.circle(ox + fw + 2, ty - 5, 6).fill({ color: 0xff6600, alpha: rFlicker * 0.03 });
+    }
+
+    // Skull piles (undead side decoration)
+    for (let si = 0; si < 3; si++) {
+      const spx = ox + 20 + si * 80, spy = oy + fh - 30 - si * 15;
+      for (let sk = 0; sk < 3; sk++) {
+        const skx = spx + (sk - 1) * 6, sky = spy - sk * 4;
+        g.circle(skx, sky, 3.5).fill({ color: BONE_WHITE, alpha: 0.08 });
+        g.circle(skx - 1, sky - 1, 0.8).fill({ color: 0x0a0a06, alpha: 0.1 });
+        g.circle(skx + 1, sky - 1, 0.8).fill({ color: 0x0a0a06, alpha: 0.1 });
+      }
+    }
+
     // Scattered rubble/debris
-    for (let ri = 0; ri < 8; ri++) {
+    for (let ri = 0; ri < 12; ri++) {
       const rx = ox + 60 + (ri * 4217 % (fw - 120));
       const ry = oy + 40 + (ri * 3119 % (fh - 80));
-      g.circle(rx, ry, 1.5 + (ri % 3)).fill({ color: 0x222218, alpha: 0.25 });
+      g.circle(rx, ry, 1 + (ri % 3)).fill({ color: 0x222218, alpha: 0.2 });
+    }
+
+    // Persistent battle marks (blood, debris)
+    for (const mark of state.battleMarks) {
+      const mx = ox + mark.x, my = oy + mark.y;
+      if (mark.type === "blood") {
+        g.circle(mx, my, mark.size).fill({ color: 0x881122, alpha: mark.alpha });
+        // Splatter dots
+        g.circle(mx + mark.size * 0.7, my - mark.size * 0.3, mark.size * 0.3).fill({ color: 0x881122, alpha: mark.alpha * 0.6 });
+        g.circle(mx - mark.size * 0.5, my + mark.size * 0.5, mark.size * 0.25).fill({ color: 0x881122, alpha: mark.alpha * 0.5 });
+      } else {
+        // Debris — broken weapon shard
+        const angle = (mark.x * 1.7) % Math.PI;
+        g.moveTo(mx, my).lineTo(mx + Math.cos(angle) * mark.size, my + Math.sin(angle) * mark.size * 0.5).stroke({ color: 0x888877, width: 1, alpha: mark.alpha });
+      }
+    }
+
+    // Animated fog layer — drifting wisps
+    for (let fi = 0; fi < 6; fi++) {
+      const fogX = ((state.elapsed * 15 + fi * 130) % (fw + 100)) - 50 + ox;
+      const fogY = oy + 60 + (fi * 2713 % (fh - 120));
+      const fogW = 50 + (fi % 3) * 30;
+      g.ellipse(fogX, fogY, fogW, 6 + (fi % 2) * 3).fill({ color: 0x334455, alpha: 0.035 + Math.sin(state.elapsed + fi) * 0.01 });
     }
 
     // Side labels

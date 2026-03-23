@@ -146,6 +146,12 @@ export interface NecroState {
   // Endless mode
   endless: boolean;
 
+  // Persistent battle marks (blood, debris)
+  battleMarks: { x: number; y: number; type: "blood" | "debris"; size: number; alpha: number }[];
+
+  // Screen flash
+  screenFlash: { color: number; alpha: number; timer: number } | null;
+
   // Kill stats per wave
   waveKills: number;
   totalKills: number;
@@ -205,6 +211,8 @@ export function createNecroState(): NecroState {
     boneWallCooldown: 0,
     projectiles: [],
     endless: false,
+    battleMarks: [],
+    screenFlash: null,
     waveKills: 0,
     totalKills: 0,
   };

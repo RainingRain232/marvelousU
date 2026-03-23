@@ -269,11 +269,37 @@ export function updateBattle(state: NecroState, dt: number): void {
     state.crusaderSpawnTimer = NecroConfig.CRUSADER_SPAWN_INTERVAL;
   }
 
-  // Move undead toward nearest enemy
+  // Screen flash decay
+  if (state.screenFlash) {
+    state.screenFlash.timer -= dt;
+    if (state.screenFlash.timer <= 0) state.screenFlash = null;
+  }
+
+  // Move undead toward nearest enemy (with separation)
   for (const u of state.undead) {
     if (!u.alive) continue;
     u.attackCooldown -= dt;
     if (u.abilityCooldown > 0) u.abilityCooldown -= dt;
+
+    // Separation steering — push away from nearby allies
+    let sepX = 0, sepY = 0;
+    for (const other of state.undead) {
+      if (other.id === u.id || !other.alive) continue;
+      const sdx = u.x - other.x, sdy = u.y - other.y;
+      const sd2 = sdx * sdx + sdy * sdy;
+      const minDist = (u.size + other.size) * 1.8;
+      if (sd2 < minDist * minDist && sd2 > 0.1) {
+        const sd = Math.sqrt(sd2);
+        sepX += (sdx / sd) * 2;
+        sepY += (sdy / sd) * 2;
+      }
+    }
+    u.x += sepX * dt * 15;
+    u.y += sepY * dt * 15;
+
+    // Clamp to field
+    u.x = Math.max(5, Math.min(NecroConfig.FIELD_WIDTH - 5, u.x));
+    u.y = Math.max(5, Math.min(NecroConfig.FIELD_HEIGHT - 5, u.y));
 
     const target = findNearestCrusader(state, u.x, u.y);
     if (!target) continue;
@@ -395,22 +421,46 @@ export function updateBattle(state: NecroState, dt: number): void {
         }
 
         // Death particles
-        for (let i = 0; i < 6; i++) {
+        for (let i = 0; i < 8; i++) {
           state.particles.push({
             x: target.x, y: target.y,
-            vx: (Math.random() - 0.5) * 50, vy: -30 - Math.random() * 20,
-            life: 0.5, maxLife: 0.5, color: 0xffd700, size: 2,
+            vx: (Math.random() - 0.5) * 60, vy: -30 - Math.random() * 25,
+            life: 0.6, maxLife: 0.6, color: 0xffd700, size: 2 + Math.random(),
           });
+        }
+        // Persistent blood splatter
+        state.battleMarks.push({ x: target.x, y: target.y, type: "blood", size: 4 + Math.random() * 4, alpha: 0.15 });
+        // Weapon debris
+        if (Math.random() < 0.4) {
+          state.battleMarks.push({ x: target.x + (Math.random() - 0.5) * 10, y: target.y + Math.random() * 5, type: "debris", size: 3, alpha: 0.12 });
         }
       }
     }
   }
 
-  // Move crusaders toward nearest undead
+  // Move crusaders toward nearest undead (with separation)
   for (const c of state.crusaders) {
     if (!c.alive) continue;
     c.attackCooldown -= dt;
     if (c.abilityCooldown > 0) c.abilityCooldown -= dt;
+
+    // Separation from other crusaders
+    let csepX = 0, csepY = 0;
+    for (const other of state.crusaders) {
+      if (other.id === c.id || !other.alive) continue;
+      const sdx = c.x - other.x, sdy = c.y - other.y;
+      const sd2 = sdx * sdx + sdy * sdy;
+      const minD = (c.size + other.size) * 1.5;
+      if (sd2 < minD * minD && sd2 > 0.1) {
+        const sd = Math.sqrt(sd2);
+        csepX += (sdx / sd) * 1.5;
+        csepY += (sdy / sd) * 1.5;
+      }
+    }
+    c.x += csepX * dt * 12;
+    c.y += csepY * dt * 12;
+    c.x = Math.max(5, Math.min(NecroConfig.FIELD_WIDTH - 5, c.x));
+    c.y = Math.max(5, Math.min(NecroConfig.FIELD_HEIGHT - 5, c.y));
 
     // Priest heal aura
     if (c.ability === "heal_aura" && c.abilityCooldown <= 0) {
@@ -497,14 +547,16 @@ export function updateBattle(state: NecroState, dt: number): void {
       if (target.hp <= 0) {
         target.alive = false;
         // Death burst — green soul wisps
-        for (let i = 0; i < 8; i++) {
-          const da = (i / 8) * Math.PI * 2;
+        for (let i = 0; i < 10; i++) {
+          const da = (i / 10) * Math.PI * 2;
           state.particles.push({
             x: target.x, y: target.y,
-            vx: Math.cos(da) * 35, vy: Math.sin(da) * 35 - 15,
-            life: 0.5, maxLife: 0.5, color: 0x44ff44, size: 2,
+            vx: Math.cos(da) * 40, vy: Math.sin(da) * 40 - 15,
+            life: 0.6, maxLife: 0.6, color: 0x44ff44, size: 2,
           });
         }
+        // Green ectoplasm mark
+        state.battleMarks.push({ x: target.x, y: target.y, type: "blood", size: 5 + Math.random() * 3, alpha: 0.1 });
       }
     }
   }
@@ -659,6 +711,7 @@ export function castDarkNova(state: NecroState, wx: number, wy: number): void {
     });
   }
   state.announcements.push({ text: "DARK NOVA!", color: 0xaa44ff, timer: 1.5 });
+  state.screenFlash = { color: 0xaa44ff, alpha: 0.25, timer: 0.3 };
 }
 
 export function castBoneWall(state: NecroState, wx: number, wy: number): void {
@@ -683,8 +736,11 @@ export function castBoneWall(state: NecroState, wx: number, wy: number): void {
 
 function spawnCrusader(state: NecroState, type: CrusaderType): void {
   const def = CRUSADERS[type];
-  // Spawn from right side
-  const y = 80 + Math.random() * (NecroConfig.FIELD_HEIGHT - 160);
+  // Spawn from right side in formation rows — spread across vertical space
+  const existingCount = state.crusaders.filter(c => c.alive).length;
+  const row = existingCount % 4;
+  const rowSpacing = (NecroConfig.FIELD_HEIGHT - 120) / 4;
+  const y = 60 + row * rowSpacing + (Math.random() - 0.5) * (rowSpacing * 0.4);
   state.crusaders.push({
     id: state.crusaderIdCounter++,
     type,
@@ -724,6 +780,8 @@ export function prepareBattleWave(state: NecroState): void {
   state.boneWallCooldown = 0;
   state.damageNumbers = [];
   state.projectiles = [];
+  state.battleMarks = [];
+  state.screenFlash = null;
 
   // Position undead on left side
   for (let i = 0; i < state.undead.length; i++) {
