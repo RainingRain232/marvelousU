@@ -188,9 +188,20 @@ export class AlchemistRenderer {
   private _drawPanel(state: AlchemistState, px: number, py: number, pw: number, ph: number): void {
     const u = this._uiGfx;
 
-    // Panel background
-    u.roundRect(px - 4, py - 4, pw + 8, ph + 8, 6).fill({ color: 0x0a0806, alpha: 0.7 });
-    u.roundRect(px - 4, py - 4, pw + 8, ph + 8, 6).stroke({ color: COL, width: 1, alpha: 0.25 });
+    // Panel background with texture
+    u.roundRect(px - 5, py - 5, pw + 10, ph + 10, 7).fill({ color: 0x000000, alpha: 0.2 }); // shadow
+    u.roundRect(px - 4, py - 4, pw + 8, ph + 8, 6).fill({ color: 0x0a0806, alpha: 0.75 });
+    // Stone texture
+    for (let row = 0; row < Math.ceil(ph / 14); row++) {
+      u.moveTo(px, py + row * 14).lineTo(px + pw, py + row * 14).stroke({ color: COL, width: 0.2, alpha: 0.03 });
+    }
+    // Double border
+    u.roundRect(px - 4, py - 4, pw + 8, ph + 8, 6).stroke({ color: COL, width: 1.5, alpha: 0.3 });
+    u.roundRect(px - 2, py - 2, pw + 4, ph + 4, 5).stroke({ color: COL, width: 0.5, alpha: 0.1 });
+    // Corner dots
+    for (const [cx, cy] of [[px, py], [px + pw, py], [px, py + ph], [px + pw, py + ph]]) {
+      u.circle(cx, cy, 2).fill({ color: COL, alpha: 0.2 });
+    }
 
     // Title
     this._addText("\u2697 ALCHEMY SHOP", px + pw / 2, py + 4, { fontSize: 14, fill: COL, fontWeight: "bold", letterSpacing: 2 }, true);

@@ -47,6 +47,34 @@ export class AlchemistGame {
     const c = new Container();
     const bg = new Graphics();
     bg.rect(0, 0, this._sw, this._sh).fill({ color: 0x0a0806 });
+    // Stone wall texture
+    for (let row = 0; row < Math.ceil(this._sh / 16); row++) {
+      const ry = row * 16;
+      bg.moveTo(0, ry).lineTo(this._sw, ry).stroke({ color: 0x120e0a, width: 0.3, alpha: 0.12 });
+    }
+    // Torch glow from corners
+    for (const [tx, ty] of [[40, this._sh * 0.3], [this._sw - 40, this._sh * 0.3]]) {
+      for (let r = 1; r <= 4; r++) bg.circle(tx, ty, r * 50).fill({ color: 0xff8833, alpha: 0.006 / r });
+      bg.ellipse(tx, ty - 5, 2, 3).fill({ color: 0xff6622, alpha: 0.06 });
+    }
+    // Cauldron silhouette (center)
+    const cx = this._sw / 2, cy = this._sh * 0.7;
+    bg.moveTo(cx - 40, cy - 20).bezierCurveTo(cx - 50, cy + 20, cx + 50, cy + 20, cx + 40, cy - 20).closePath().fill({ color: 0x0e0a08, alpha: 0.3 });
+    bg.ellipse(cx, cy - 20, 42, 8).fill({ color: 0x120e0a, alpha: 0.2 });
+    // Bubbles
+    for (let bi = 0; bi < 5; bi++) {
+      const bx = cx - 20 + bi * 10, by = cy - 10 - bi * 8;
+      bg.circle(bx, by, 2 + bi * 0.5).stroke({ color: 0xaa8844, width: 0.3, alpha: 0.06 });
+    }
+    // Vignette
+    for (let v = 0; v < 6; v++) {
+      const inset = v * 40;
+      bg.rect(0, 0, inset, this._sh).fill({ color: 0x000000, alpha: 0.025 });
+      bg.rect(this._sw - inset, 0, inset, this._sh).fill({ color: 0x000000, alpha: 0.025 });
+    }
+    // Border
+    bg.rect(14, 14, this._sw - 28, this._sh - 28).stroke({ color: 0xaa8844, width: 1.5, alpha: 0.2 });
+    bg.rect(18, 18, this._sw - 36, this._sh - 36).stroke({ color: 0xaa8844, width: 0.5, alpha: 0.08 });
     c.addChild(bg);
 
     const title = new Text({ text: "\u2697 ALCHEMIST \u2697", style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 32, fill: 0xaa8844, fontWeight: "bold", letterSpacing: 6 }) });
@@ -265,7 +293,19 @@ export class AlchemistGame {
     const pw = 450, ph = 380, px = (this._sw - pw) / 2, py = (this._sh - ph) / 2;
     const panel = new Graphics();
     panel.roundRect(px, py, pw, ph, 10).fill({ color: 0x0a0806, alpha: 0.97 });
+    // Stone texture inside panel
+    for (let row = 0; row < Math.ceil(ph / 18); row++) {
+      const ry = py + row * 18;
+      panel.moveTo(px + 8, ry).lineTo(px + pw - 8, ry).stroke({ color: 0xaa8844, width: 0.2, alpha: 0.025 });
+    }
+    // Triple border
     panel.roundRect(px, py, pw, ph, 10).stroke({ color: 0xaa8844, width: 2, alpha: 0.5 });
+    panel.roundRect(px + 3, py + 3, pw - 6, ph - 6, 8).stroke({ color: 0xaa8844, width: 0.5, alpha: 0.12 });
+    // Corner ornaments
+    for (const [ccx, ccy] of [[px + 10, py + 10], [px + pw - 10, py + 10], [px + 10, py + ph - 10], [px + pw - 10, py + ph - 10]]) {
+      panel.circle(ccx, ccy, 3).fill({ color: 0xaa8844, alpha: 0.3 });
+      panel.circle(ccx, ccy, 1.5).fill({ color: 0xccaa66, alpha: 0.4 });
+    }
     c.addChild(panel);
 
     let y = py + 16;
