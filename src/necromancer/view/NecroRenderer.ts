@@ -144,51 +144,137 @@ export class NecroRenderer {
   // ── Dig phase ──────────────────────────────────────────────────────────
 
   private _drawDigPhase(g: Graphics, state: NecroState, ox: number, oy: number): void {
-    // Draw graves
+    // Iron graveyard fence around the perimeter
+    const fenceY1 = oy + 60, fenceY2 = oy + NecroConfig.FIELD_HEIGHT - 30;
+    const fenceX1 = ox + 30, fenceX2 = ox + NecroConfig.FIELD_WIDTH - 30;
+    // Horizontal rails
+    g.moveTo(fenceX1, fenceY1).lineTo(fenceX2, fenceY1).stroke({ color: 0x333330, width: 1.5, alpha: 0.4 });
+    g.moveTo(fenceX1, fenceY1 + 6).lineTo(fenceX2, fenceY1 + 6).stroke({ color: 0x2a2a28, width: 1, alpha: 0.3 });
+    // Vertical posts with pointed tops
+    for (let fx = fenceX1; fx <= fenceX2; fx += 28) {
+      g.moveTo(fx, fenceY1 + 8).lineTo(fx, fenceY1 - 6).stroke({ color: 0x3a3a38, width: 1.5, alpha: 0.5 });
+      // Pointed tip
+      g.moveTo(fx - 2, fenceY1 - 6).lineTo(fx, fenceY1 - 10).lineTo(fx + 2, fenceY1 - 6).fill({ color: 0x3a3a38, alpha: 0.5 });
+    }
+
+    // Lanterns on fence posts (every 4th post)
+    for (let fx = fenceX1; fx <= fenceX2; fx += 112) {
+      const ly = fenceY1 - 12;
+      const flicker = 0.3 + Math.sin(state.elapsed * 4 + fx) * 0.15;
+      g.circle(fx, ly, 6).fill({ color: 0xffaa44, alpha: flicker * 0.08 }); // glow
+      g.circle(fx, ly, 3).fill({ color: 0xffaa44, alpha: flicker * 0.2 });
+      g.roundRect(fx - 2, ly - 2, 4, 4, 1).stroke({ color: 0x554422, width: 0.5, alpha: 0.4 });
+    }
+
+    // Crows perched on random fence posts
+    for (let ci = 0; ci < 3; ci++) {
+      const crowX = fenceX1 + 50 + ci * 180 + Math.sin(ci * 2.7) * 30;
+      const crowY = fenceY1 - 12;
+      const bob = Math.sin(state.elapsed * 1.5 + ci * 1.3) * 1;
+      // Body
+      g.ellipse(crowX, crowY + bob, 4, 3).fill({ color: 0x111111, alpha: 0.7 });
+      // Head
+      g.circle(crowX + 3, crowY - 2 + bob, 2).fill({ color: 0x111111, alpha: 0.7 });
+      // Beak
+      g.moveTo(crowX + 5, crowY - 2 + bob).lineTo(crowX + 7, crowY - 1.5 + bob).stroke({ color: 0x444400, width: 0.8, alpha: 0.5 });
+      // Wing
+      g.moveTo(crowX - 2, crowY - 1 + bob).bezierCurveTo(crowX - 5, crowY - 4 + bob, crowX - 3, crowY - 5 + bob, crowX - 1, crowY - 3 + bob).stroke({ color: 0x111111, width: 0.8, alpha: 0.5 });
+    }
+
+    // Draw graves with varied tombstone styles
     for (const grave of state.graves) {
       const gx = ox + grave.x, gy = oy + grave.y;
+      const style = grave.id % 4; // Vary tombstone shape
 
       if (grave.dug) {
-        // Open grave — dark hole
-        g.roundRect(gx - 14, gy - 8, 28, 16, 3).fill({ color: 0x0a0a06, alpha: 0.9 });
-        g.roundRect(gx - 14, gy - 8, 28, 16, 3).stroke({ color: 0x332211, width: 1, alpha: 0.4 });
-        // Dirt piles
-        g.ellipse(gx - 18, gy + 4, 6, 3).fill({ color: 0x332211, alpha: 0.4 });
-        g.ellipse(gx + 18, gy + 4, 5, 3).fill({ color: 0x332211, alpha: 0.3 });
+        // Open grave — dark rectangular hole with depth
+        g.roundRect(gx - 16, gy - 10, 32, 20, 3).fill({ color: 0x050503, alpha: 0.95 });
+        // Depth lines
+        g.moveTo(gx - 14, gy - 8).lineTo(gx - 12, gy - 4).stroke({ color: 0x1a1408, width: 0.5, alpha: 0.3 });
+        g.moveTo(gx + 14, gy - 8).lineTo(gx + 12, gy - 4).stroke({ color: 0x1a1408, width: 0.5, alpha: 0.3 });
+        g.roundRect(gx - 16, gy - 10, 32, 20, 3).stroke({ color: 0x332211, width: 1, alpha: 0.5 });
+        // Dirt piles with scattered clumps
+        g.ellipse(gx - 20, gy + 6, 8, 4).fill({ color: 0x2a1a0e, alpha: 0.5 });
+        g.ellipse(gx + 20, gy + 5, 7, 3).fill({ color: 0x2a1a0e, alpha: 0.4 });
+        g.ellipse(gx - 22, gy + 3, 3, 2).fill({ color: 0x332211, alpha: 0.3 });
+        g.ellipse(gx + 23, gy + 3, 2.5, 1.5).fill({ color: 0x332211, alpha: 0.25 });
+        // Ghostly wisp rising
+        const wisp = Math.sin(state.elapsed * 2 + grave.id) * 4;
+        g.moveTo(gx, gy - 5).bezierCurveTo(gx + wisp, gy - 15, gx - wisp, gy - 25, gx + wisp * 0.5, gy - 35).stroke({ color: NECRO_GREEN, width: 0.8, alpha: 0.08 });
         // Corpse type label
         if (grave.corpseType) {
-          const label = new Text({ text: CORPSES[grave.corpseType].name, style: new TextStyle({ fontFamily: FONT, fontSize: 7, fill: 0x555544 }) });
-          label.anchor.set(0.5, 0); label.position.set(gx, gy + 12);
+          const label = new Text({ text: CORPSES[grave.corpseType].name, style: new TextStyle({ fontFamily: FONT, fontSize: 7, fill: 0x556644 }) });
+          label.anchor.set(0.5, 0); label.position.set(gx, gy + 14);
           this._ui.addChild(label);
         }
       } else {
-        // Undug grave — mound with cross
-        // Mound
-        g.ellipse(gx, gy + 2, 16, 8).fill({ color: 0x1a1a10, alpha: 0.8 });
-        g.ellipse(gx, gy, 14, 7).fill({ color: 0x221a0e, alpha: 0.7 });
+        // Undug grave — earth mound
+        g.ellipse(gx, gy + 4, 18, 9).fill({ color: 0x161208, alpha: 0.7 });
+        g.ellipse(gx, gy + 2, 16, 8).fill({ color: 0x1e180e, alpha: 0.6 });
+        // Subtle cracks in dirt
+        g.moveTo(gx - 6, gy + 1).bezierCurveTo(gx - 2, gy - 1, gx + 2, gy + 2, gx + 7, gy).stroke({ color: 0x0a0806, width: 0.5, alpha: 0.3 });
 
-        // Cross / tombstone
-        g.roundRect(gx - 6, gy - 20, 12, 18, 2).fill({ color: 0x444438, alpha: 0.8 });
-        g.roundRect(gx - 6, gy - 20, 12, 18, 2).stroke({ color: 0x555548, width: 0.5, alpha: 0.4 });
-        // Cross detail
-        g.rect(gx - 1, gy - 18, 2, 12).fill({ color: 0x666658, alpha: 0.4 });
-        g.rect(gx - 4, gy - 15, 8, 2).fill({ color: 0x666658, alpha: 0.4 });
+        // Varied tombstone styles
+        if (style === 0) {
+          // Classic rounded tombstone
+          g.moveTo(gx - 7, gy - 4).lineTo(gx - 7, gy - 18).bezierCurveTo(gx - 7, gy - 26, gx + 7, gy - 26, gx + 7, gy - 18).lineTo(gx + 7, gy - 4).fill({ color: 0x444438, alpha: 0.85 });
+          g.moveTo(gx - 7, gy - 4).lineTo(gx - 7, gy - 18).bezierCurveTo(gx - 7, gy - 26, gx + 7, gy - 26, gx + 7, gy - 18).lineTo(gx + 7, gy - 4).stroke({ color: 0x555548, width: 0.5, alpha: 0.4 });
+          // R.I.P. text
+          g.rect(gx - 4, gy - 16, 8, 1).fill({ color: 0x555548, alpha: 0.3 });
+          g.rect(gx - 3, gy - 12, 6, 1).fill({ color: 0x555548, alpha: 0.2 });
+        } else if (style === 1) {
+          // Celtic cross
+          g.rect(gx - 2, gy - 24, 4, 22).fill({ color: 0x444438, alpha: 0.85 });
+          g.rect(gx - 6, gy - 18, 12, 3).fill({ color: 0x444438, alpha: 0.85 });
+          g.circle(gx, gy - 18, 5).stroke({ color: 0x555548, width: 1, alpha: 0.4 });
+          g.rect(gx - 2, gy - 24, 4, 22).stroke({ color: 0x555548, width: 0.5, alpha: 0.3 });
+        } else if (style === 2) {
+          // Obelisk
+          g.moveTo(gx - 5, gy - 4).lineTo(gx - 3, gy - 26).lineTo(gx + 3, gy - 26).lineTo(gx + 5, gy - 4).fill({ color: 0x444438, alpha: 0.85 });
+          g.moveTo(gx - 3, gy - 26).lineTo(gx, gy - 30).lineTo(gx + 3, gy - 26).fill({ color: 0x555548, alpha: 0.7 });
+          g.moveTo(gx - 5, gy - 4).lineTo(gx - 3, gy - 26).lineTo(gx, gy - 30).lineTo(gx + 3, gy - 26).lineTo(gx + 5, gy - 4).stroke({ color: 0x555548, width: 0.5, alpha: 0.3 });
+        } else {
+          // Simple slab
+          g.roundRect(gx - 8, gy - 20, 16, 18, 1).fill({ color: 0x3a3a30, alpha: 0.85 });
+          g.roundRect(gx - 8, gy - 20, 16, 18, 1).stroke({ color: 0x4a4a40, width: 0.5, alpha: 0.4 });
+          // Skull carving
+          g.circle(gx, gy - 13, 3).stroke({ color: 0x555548, width: 0.5, alpha: 0.25 });
+          g.circle(gx - 1, gy - 14, 1).fill({ color: 0x2a2a20, alpha: 0.3 });
+          g.circle(gx + 1, gy - 14, 1).fill({ color: 0x2a2a20, alpha: 0.3 });
+        }
+
+        // Moss/lichen on tombstones
+        g.circle(gx - 4, gy - 8, 2).fill({ color: 0x2a4a1a, alpha: 0.2 });
+        g.circle(gx + 3, gy - 14, 1.5).fill({ color: 0x2a4a1a, alpha: 0.15 });
 
         // Dig progress bar
         if (grave.digging) {
-          g.rect(gx - 14, gy + 12, 28, 3).fill({ color: 0x111108, alpha: 0.8 });
-          g.rect(gx - 14, gy + 12, 28 * grave.digProgress, 3).fill({ color: NECRO_GREEN, alpha: 0.7 });
-          // Digging particles
-          const pulse = Math.sin(state.elapsed * 8) * 0.3;
-          g.circle(gx + (Math.random() - 0.5) * 10, gy + (Math.random() - 0.5) * 5, 1.5).fill({ color: 0x554433, alpha: 0.3 + pulse });
+          g.roundRect(gx - 16, gy + 14, 32, 4, 2).fill({ color: 0x111108, alpha: 0.8 });
+          g.roundRect(gx - 16, gy + 14, 32 * grave.digProgress, 4, 2).fill({ color: NECRO_GREEN, alpha: 0.7 });
+          // Animated dirt flying up
+          for (let di = 0; di < 2; di++) {
+            const dx = gx + (Math.random() - 0.5) * 16;
+            const dy = gy + (Math.random() - 0.5) * 8;
+            g.circle(dx, dy, 1 + Math.random()).fill({ color: 0x554433, alpha: 0.2 + Math.sin(state.elapsed * 10 + di) * 0.15 });
+          }
+          // Shovel motion hint
+          const sAngle = Math.sin(state.elapsed * 6) * 0.3;
+          g.moveTo(gx + 20, gy + 5).lineTo(gx + 20 + Math.cos(sAngle) * 8, gy - 5 + Math.sin(sAngle) * 3).stroke({ color: 0x6a5a3a, width: 1.5, alpha: 0.4 });
         }
 
-        // Mystery indicator — faint glow for rarer corpses
+        // Mystery rarity glow
         if (grave.corpseType) {
           const rarity = CORPSES[grave.corpseType].weight;
           if (rarity <= 2) {
-            const pulse = 0.1 + Math.sin(state.elapsed * 2 + grave.id) * 0.05;
-            g.circle(gx, gy, 20).fill({ color: rarity === 1 ? 0x9966cc : 0xccaa44, alpha: pulse });
+            const pulse = 0.08 + Math.sin(state.elapsed * 2 + grave.id) * 0.04;
+            const glowCol = rarity === 1 ? 0x9966cc : 0xccaa44;
+            g.circle(gx, gy - 10, 22).fill({ color: glowCol, alpha: pulse });
+            // Sparkle dots
+            for (let si = 0; si < 3; si++) {
+              const sa = state.elapsed * 1.5 + si * 2.1 + grave.id;
+              const sx = gx + Math.cos(sa) * 15, sy = gy - 10 + Math.sin(sa) * 10;
+              g.circle(sx, sy, 0.8).fill({ color: glowCol, alpha: pulse * 2 });
+            }
           }
         }
       }
@@ -319,17 +405,70 @@ export class NecroRenderer {
   // ── Battle phase ───────────────────────────────────────────────────────
 
   private _drawBattlePhase(g: Graphics, state: NecroState, ox: number, oy: number): void {
-    // Battlefield divider line
     const midX = NecroConfig.FIELD_WIDTH / 2;
-    g.moveTo(ox + midX, oy).lineTo(ox + midX, oy + NecroConfig.FIELD_HEIGHT).stroke({ color: 0x333322, width: 0.5, alpha: 0.15 });
+    const fw = NecroConfig.FIELD_WIDTH, fh = NecroConfig.FIELD_HEIGHT;
 
-    // "Undead" and "Crusaders" labels
-    const leftLabel = new Text({ text: "UNDEAD", style: new TextStyle({ fontFamily: FONT, fontSize: 8, fill: NECRO_GREEN, letterSpacing: 2, alpha: 0.3 } as any) });
-    leftLabel.anchor.set(0.5, 0); leftLabel.position.set(ox + midX / 2, oy + 4);
+    // Battlefield terrain — broken ground, rubble
+    // Undead side: dark, corrupted earth with green cracks
+    g.roundRect(ox, oy, midX, fh, 0).fill({ color: 0x0c0c06, alpha: 0.3 });
+    // Green corruption veins
+    for (let vi = 0; vi < 5; vi++) {
+      const vx = ox + 40 + (vi * 3571 % (midX - 80));
+      const vy = oy + 30 + (vi * 2713 % (fh - 60));
+      g.moveTo(vx, vy).bezierCurveTo(vx + 15, vy + 10, vx + 25, vy - 5, vx + 40, vy + 5).stroke({ color: NECRO_GREEN, width: 0.5, alpha: 0.06 });
+    }
+
+    // Crusader side: lighter, holy ground
+    g.roundRect(ox + midX, oy, midX, fh, 0).fill({ color: 0x0e0e0c, alpha: 0.2 });
+    // Holy light rays from right
+    for (let ri = 0; ri < 3; ri++) {
+      const ry = oy + 60 + ri * 140;
+      g.moveTo(ox + fw, ry).lineTo(ox + midX + 40, ry + 30).lineTo(ox + fw, ry + 15).fill({ color: 0xffd700, alpha: 0.015 });
+    }
+
+    // Divider — battle line with clash markers
+    g.moveTo(ox + midX, oy).lineTo(ox + midX, oy + fh).stroke({ color: 0x442222, width: 0.8, alpha: 0.2 });
+    // Crossed swords icon at center
+    const cix = ox + midX, ciy = oy + fh / 2;
+    g.moveTo(cix - 8, ciy - 8).lineTo(cix + 8, ciy + 8).stroke({ color: 0x555544, width: 1, alpha: 0.15 });
+    g.moveTo(cix + 8, ciy - 8).lineTo(cix - 8, ciy + 8).stroke({ color: 0x555544, width: 1, alpha: 0.15 });
+
+    // Scattered rubble/debris
+    for (let ri = 0; ri < 8; ri++) {
+      const rx = ox + 60 + (ri * 4217 % (fw - 120));
+      const ry = oy + 40 + (ri * 3119 % (fh - 80));
+      g.circle(rx, ry, 1.5 + (ri % 3)).fill({ color: 0x222218, alpha: 0.25 });
+    }
+
+    // Side labels
+    const leftLabel = new Text({ text: "UNDEAD", style: new TextStyle({ fontFamily: FONT, fontSize: 8, fill: NECRO_GREEN, letterSpacing: 2 } as any) });
+    leftLabel.alpha = 0.25; leftLabel.anchor.set(0.5, 0); leftLabel.position.set(ox + midX / 2, oy + 4);
     this._ui.addChild(leftLabel);
-    const rightLabel = new Text({ text: "CRUSADERS", style: new TextStyle({ fontFamily: FONT, fontSize: 8, fill: 0xffd700, letterSpacing: 2, alpha: 0.3 } as any) });
-    rightLabel.anchor.set(0.5, 0); rightLabel.position.set(ox + midX + midX / 2, oy + 4);
+    const rightLabel = new Text({ text: "CRUSADERS", style: new TextStyle({ fontFamily: FONT, fontSize: 8, fill: 0xffd700, letterSpacing: 2 } as any) });
+    rightLabel.alpha = 0.25; rightLabel.anchor.set(0.5, 0); rightLabel.position.set(ox + midX + midX / 2, oy + 4);
     this._ui.addChild(rightLabel);
+
+    // Draw bone walls
+    for (const wall of state.boneWalls) {
+      const wx = ox + wall.x, wy = oy + wall.y;
+      const hpRatio = wall.hp / wall.maxHp;
+      // Wall base
+      g.roundRect(wx - 12, wy - 6, 24, 12, 2).fill({ color: 0x888877, alpha: 0.6 * hpRatio + 0.2 });
+      g.roundRect(wx - 12, wy - 6, 24, 12, 2).stroke({ color: BONE_WHITE, width: 1, alpha: 0.4 * hpRatio });
+      // Bone details
+      g.moveTo(wx - 8, wy - 4).lineTo(wx - 8, wy + 4).stroke({ color: BONE_WHITE, width: 1.5, alpha: 0.4 });
+      g.moveTo(wx, wy - 5).lineTo(wx, wy + 5).stroke({ color: BONE_WHITE, width: 1.5, alpha: 0.4 });
+      g.moveTo(wx + 8, wy - 4).lineTo(wx + 8, wy + 4).stroke({ color: BONE_WHITE, width: 1.5, alpha: 0.4 });
+      // Skull on top
+      g.circle(wx, wy - 8, 3).fill({ color: BONE_WHITE, alpha: 0.4 });
+      g.circle(wx - 1, wy - 9, 0.8).fill({ color: 0x0a0a06, alpha: 0.5 });
+      g.circle(wx + 1, wy - 9, 0.8).fill({ color: 0x0a0a06, alpha: 0.5 });
+      // HP bar
+      if (hpRatio < 1) {
+        g.rect(wx - 12, wy + 8, 24, 2).fill({ color: 0x220000 });
+        g.rect(wx - 12, wy + 8, 24 * hpRatio, 2).fill({ color: BONE_WHITE });
+      }
+    }
 
     // Draw undead
     for (const u of state.undead) {
@@ -343,111 +482,265 @@ export class NecroRenderer {
       this._drawCrusaderUnit(g, ox + c.x, oy + c.y, c, state);
     }
 
+    // Floating damage numbers
+    for (const dn of state.damageNumbers) {
+      const alpha = dn.timer / dn.maxTimer;
+      const t = new Text({ text: dn.text, style: new TextStyle({ fontFamily: FONT, fontSize: 10, fill: dn.color, fontWeight: "bold" }) });
+      t.alpha = alpha; t.anchor.set(0.5, 0.5);
+      t.position.set(ox + dn.x, oy + dn.y);
+      this._ui.addChild(t);
+    }
+
     // Necromancer in corner
     this._drawNecromancer(g, ox + 30, oy + NecroConfig.FIELD_HEIGHT / 2, state);
 
-    // Nova indicator
+    // Spell indicators at bottom
+    let spellX = ox + fw / 2 - 80;
+    const spellY = oy + fh - 16;
+
+    // Nova
     if ((state.powerLevels["dark_nova"] ?? 0) > 0) {
       const novaReady = state.novaCooldown <= 0;
+      g.roundRect(spellX - 2, spellY - 4, 70, 14, 3).fill({ color: novaReady ? 0x220044 : 0x0a0a08, alpha: 0.6 });
+      g.roundRect(spellX - 2, spellY - 4, 70, 14, 3).stroke({ color: novaReady ? 0xaa44ff : 0x332244, width: 0.8, alpha: 0.4 });
       const nt = new Text({
-        text: novaReady ? "NOVA READY (click)" : `Nova: ${Math.ceil(state.novaCooldown)}s`,
-        style: new TextStyle({ fontFamily: FONT, fontSize: 8, fill: novaReady ? 0xaa44ff : 0x554466 }),
+        text: novaReady ? "LMB: Nova" : `Nova ${Math.ceil(state.novaCooldown)}s`,
+        style: new TextStyle({ fontFamily: FONT, fontSize: 7, fill: novaReady ? 0xaa44ff : 0x554466 }),
       });
-      nt.anchor.set(0.5, 0); nt.position.set(ox + NecroConfig.FIELD_WIDTH / 2, oy + NecroConfig.FIELD_HEIGHT - 16);
-      this._ui.addChild(nt);
+      nt.position.set(spellX + 4, spellY - 2); this._ui.addChild(nt);
+      spellX += 78;
     }
+
+    // Bone Wall
+    const wallReady = state.boneWallCooldown <= 0 && state.mana >= 10;
+    g.roundRect(spellX - 2, spellY - 4, 80, 14, 3).fill({ color: wallReady ? 0x1a1a14 : 0x0a0a08, alpha: 0.6 });
+    g.roundRect(spellX - 2, spellY - 4, 80, 14, 3).stroke({ color: wallReady ? BONE_WHITE : 0x333322, width: 0.8, alpha: 0.4 });
+    const wt = new Text({
+      text: wallReady ? "RMB: Bone Wall" : state.boneWallCooldown > 0 ? `Wall ${Math.ceil(state.boneWallCooldown)}s` : "Wall (10m)",
+      style: new TextStyle({ fontFamily: FONT, fontSize: 7, fill: wallReady ? BONE_WHITE : 0x555544 }),
+    });
+    wt.position.set(spellX + 4, spellY - 2); this._ui.addChild(wt);
+
+    // Kill counter
+    const kt = new Text({
+      text: `Kills: ${state.waveKills}`,
+      style: new TextStyle({ fontFamily: FONT, fontSize: 9, fill: 0xcc6644 }),
+    });
+    kt.anchor.set(1, 0); kt.position.set(ox + fw - 5, oy + fh - 28);
+    this._ui.addChild(kt);
 
     // Battle timer
     const bt = new Text({
       text: `${Math.floor(state.battleTimer)}s`,
       style: new TextStyle({ fontFamily: FONT, fontSize: 9, fill: 0x667766 }),
     });
-    bt.anchor.set(1, 0); bt.position.set(ox + NecroConfig.FIELD_WIDTH - 5, oy + NecroConfig.FIELD_HEIGHT - 14);
+    bt.anchor.set(1, 0); bt.position.set(ox + fw - 5, oy + fh - 14);
     this._ui.addChild(bt);
+
+    // Remaining enemies
+    const remText = `Enemies: ${state.crusaders.length + state.crusaderSpawnQueue.length}`;
+    const rt = new Text({ text: remText, style: new TextStyle({ fontFamily: FONT, fontSize: 8, fill: 0xddaa66 }) });
+    rt.anchor.set(1, 0); rt.position.set(ox + fw - 5, oy + 16);
+    this._ui.addChild(rt);
   }
 
   // ── Unit drawing ───────────────────────────────────────────────────────
 
   private _drawUndeadUnit(g: Graphics, x: number, y: number, u: Undead, state: NecroState): void {
     const s = u.size;
+    const t = state.elapsed;
+
     // Shadow
-    g.ellipse(x + 1, y + s, s * 0.7, 2).fill({ color: 0x000000, alpha: 0.2 });
+    g.ellipse(x + 1, y + s + 2, s * 0.8, 2.5).fill({ color: 0x000000, alpha: 0.25 });
 
-    // Ghostly glow
-    const pulse = 0.15 + Math.sin(state.elapsed * 2 + u.id) * 0.08;
-    g.circle(x, y, s + 4).fill({ color: NECRO_GREEN, alpha: pulse * 0.15 });
+    // Ghostly glow — larger for chimeras
+    const glowR = u.chimera ? s + 6 : s + 4;
+    const pulse = 0.12 + Math.sin(t * 2 + u.id) * 0.06;
+    g.circle(x, y, glowR).fill({ color: u.chimera ? 0xaa44ff : NECRO_GREEN, alpha: pulse * 0.15 });
 
-    // Body — skull-like shape
-    g.ellipse(x, y, s * 0.9, s * 1.1).fill({ color: u.color });
+    // Legs — skeletal bone struts
+    const walkPhase = Math.sin(t * 5 + u.id * 1.3) * 2;
+    g.moveTo(x - 3, y + s * 0.5).lineTo(x - 4 - walkPhase, y + s + 3).stroke({ color: BONE_WHITE, width: 1, alpha: 0.5 });
+    g.moveTo(x + 3, y + s * 0.5).lineTo(x + 4 + walkPhase, y + s + 3).stroke({ color: BONE_WHITE, width: 1, alpha: 0.5 });
+    // Feet
+    g.circle(x - 4 - walkPhase, y + s + 3, 1).fill({ color: BONE_WHITE, alpha: 0.3 });
+    g.circle(x + 4 + walkPhase, y + s + 3, 1).fill({ color: BONE_WHITE, alpha: 0.3 });
 
-    // Chimera extras
+    // Torso — ribcage shape
+    g.ellipse(x, y, s * 0.7, s * 0.9).fill({ color: u.color, alpha: 0.85 });
+    // Rib lines
+    for (let ri = -2; ri <= 2; ri++) {
+      const ry = y + ri * (s * 0.2);
+      g.moveTo(x - s * 0.5, ry).bezierCurveTo(x - s * 0.2, ry - 1, x + s * 0.2, ry - 1, x + s * 0.5, ry).stroke({ color: BONE_WHITE, width: 0.5, alpha: 0.15 });
+    }
+
+    // Arms — bone struts with weapons
+    const armSwing = Math.sin(t * 4 + u.id * 0.7) * 3;
+    // Left arm
+    g.moveTo(x - s * 0.6, y - s * 0.2).lineTo(x - s - 3, y + armSwing).stroke({ color: BONE_WHITE, width: 1, alpha: 0.5 });
+    // Right arm with weapon
+    g.moveTo(x + s * 0.6, y - s * 0.2).lineTo(x + s + 3, y - armSwing).stroke({ color: BONE_WHITE, width: 1, alpha: 0.5 });
+    // Weapon (claw/blade)
+    g.moveTo(x + s + 3, y - armSwing).lineTo(x + s + 7, y - armSwing - 3).stroke({ color: u.chimera ? 0xaa66cc : 0x667766, width: 1.5, alpha: 0.6 });
+
+    // Skull head
+    const headY = y - s * 0.8;
+    g.circle(x, headY, s * 0.45).fill({ color: BONE_WHITE, alpha: 0.7 });
+    // Jaw
+    g.moveTo(x - s * 0.3, headY + s * 0.3).bezierCurveTo(x - s * 0.1, headY + s * 0.45, x + s * 0.1, headY + s * 0.45, x + s * 0.3, headY + s * 0.3).stroke({ color: BONE_WHITE, width: 0.8, alpha: 0.4 });
+
     if (u.chimera) {
-      // Extra limbs/horns
-      g.moveTo(x - s, y - s * 0.5).lineTo(x - s - 4, y - s - 3).stroke({ color: u.color, width: 1.5, alpha: 0.6 });
-      g.moveTo(x + s, y - s * 0.5).lineTo(x + s + 4, y - s - 3).stroke({ color: u.color, width: 1.5, alpha: 0.6 });
-      // Glowing eyes
-      g.circle(x - 2, y - 2, 1.5).fill({ color: 0xff44ff, alpha: 0.8 });
-      g.circle(x + 2, y - 2, 1.5).fill({ color: 0xff44ff, alpha: 0.8 });
-      // Ability icon
+      // Chimera horns
+      g.moveTo(x - s * 0.3, headY - s * 0.2).lineTo(x - s * 0.5, headY - s * 0.7).stroke({ color: u.color, width: 1.5, alpha: 0.7 });
+      g.moveTo(x + s * 0.3, headY - s * 0.2).lineTo(x + s * 0.5, headY - s * 0.7).stroke({ color: u.color, width: 1.5, alpha: 0.7 });
+      // Glowing purple eyes
+      g.circle(x - 2, headY - 1, 1.5).fill({ color: 0xff44ff, alpha: 0.9 });
+      g.circle(x + 2, headY - 1, 1.5).fill({ color: 0xff44ff, alpha: 0.9 });
+      // Eye glow trails
+      g.circle(x - 2, headY - 1, 3).fill({ color: 0xff44ff, alpha: 0.1 });
+      g.circle(x + 2, headY - 1, 3).fill({ color: 0xff44ff, alpha: 0.1 });
+      // Ability icon with ring
       if (u.ability) {
         const abilCol = u.ability === "cleave" ? 0xff4444 : u.ability === "drain" ? 0x44ff44 :
           u.ability === "explode" ? 0xff6622 : u.ability === "shield" ? 0x4488ff : 0xffaa00;
-        g.circle(x, y - s - 6, 2).fill({ color: abilCol, alpha: 0.5 + Math.sin(state.elapsed * 3) * 0.2 });
+        const ap = 0.4 + Math.sin(t * 3) * 0.2;
+        g.circle(x, headY - s * 0.7 - 4, 3).fill({ color: abilCol, alpha: ap });
+        g.circle(x, headY - s * 0.7 - 4, 5).stroke({ color: abilCol, width: 0.5, alpha: ap * 0.5 });
+      }
+      // Soul wisps trailing behind chimera
+      for (let wi = 0; wi < 2; wi++) {
+        const wa = t * 2 + wi * 3.14;
+        const wx = x + Math.cos(wa) * (s + 2);
+        const wy = y + Math.sin(wa) * s * 0.5;
+        g.circle(wx, wy, 1.5).fill({ color: 0xaa44ff, alpha: 0.15 + Math.sin(t * 3 + wi) * 0.08 });
       }
     } else {
-      // Normal undead eyes
-      g.circle(x - 2, y - 1, 1).fill({ color: NECRO_GREEN, alpha: 0.7 });
-      g.circle(x + 2, y - 1, 1).fill({ color: NECRO_GREEN, alpha: 0.7 });
+      // Normal green eyes
+      g.circle(x - 2, headY - 1, 1.2).fill({ color: NECRO_GREEN, alpha: 0.8 });
+      g.circle(x + 2, headY - 1, 1.2).fill({ color: NECRO_GREEN, alpha: 0.8 });
+      // Eye sockets (dark)
+      g.circle(x - 2, headY - 1, 2).fill({ color: 0x0a0a06, alpha: 0.3 });
+      g.circle(x + 2, headY - 1, 2).fill({ color: 0x0a0a06, alpha: 0.3 });
+      // Nose hole
+      g.moveTo(x - 0.5, headY + 1).lineTo(x, headY + 2.5).lineTo(x + 0.5, headY + 1).stroke({ color: 0x0a0a06, width: 0.5, alpha: 0.25 });
     }
 
-    // HP bar
-    if (u.hp < u.maxHp) {
-      g.rect(x - s, y - s - 4, s * 2, 2).fill({ color: 0x220000 });
-      g.rect(x - s, y - s - 4, s * 2 * (u.hp / u.maxHp), 2).fill({ color: NECRO_GREEN });
+    // Shield ability — visible shield aura
+    if (u.ability === "shield") {
+      g.circle(x, y, s + 3).stroke({ color: 0x4488ff, width: 1, alpha: 0.15 + Math.sin(t * 2 + u.id) * 0.08 });
     }
+
+    // Name tag
+    const nameT = new Text({ text: u.name, style: new TextStyle({ fontFamily: FONT, fontSize: 6, fill: u.chimera ? 0xcc88ff : NECRO_GREEN }) });
+    nameT.alpha = 0.6; nameT.anchor.set(0.5, 0); nameT.position.set(x, y + s + 5);
+    this._ui.addChild(nameT);
+
+    // HP bar
+    const barW = s * 2.5;
+    g.roundRect(x - barW / 2, headY - s * 0.6 - 4, barW, 3, 1).fill({ color: 0x111108, alpha: 0.7 });
+    g.roundRect(x - barW / 2, headY - s * 0.6 - 4, barW * (u.hp / u.maxHp), 3, 1).fill({ color: u.hp / u.maxHp > 0.5 ? NECRO_GREEN : u.hp / u.maxHp > 0.25 ? 0xffaa44 : 0xff4444 });
   }
 
   private _drawCrusaderUnit(g: Graphics, x: number, y: number, c: Crusader, state: NecroState): void {
     const s = c.size;
+    const t = state.elapsed;
+
     // Shadow
-    g.ellipse(x + 1, y + s, s * 0.7, 2).fill({ color: 0x000000, alpha: 0.15 });
+    g.ellipse(x + 1, y + s + 2, s * 0.8, 2.5).fill({ color: 0x000000, alpha: 0.2 });
 
     // Holy glow for special units
     if (c.ability) {
-      const hpulse = 0.1 + Math.sin(state.elapsed * 2 + c.id * 0.7) * 0.06;
-      g.circle(x, y, s + 5).fill({ color: 0xffd700, alpha: hpulse });
+      const hpulse = 0.08 + Math.sin(t * 2 + c.id * 0.7) * 0.05;
+      g.circle(x, y, s + 6).fill({ color: 0xffd700, alpha: hpulse });
     }
 
-    // Body — armored shape
-    g.ellipse(x, y, s * 0.8, s * 1.1).fill({ color: c.color });
-    // Helmet/head
-    g.circle(x, y - s * 0.7, s * 0.5).fill({ color: c.color });
-    // Shield (left side)
-    g.roundRect(x - s - 2, y - s * 0.3, 4, s, 1).fill({ color: 0xaaaaaa, alpha: 0.5 });
-    // Sword (right side)
-    g.moveTo(x + s, y).lineTo(x + s + 6, y - 4).stroke({ color: 0xcccccc, width: 1.5, alpha: 0.6 });
+    // Legs — armored
+    const walkPhase = Math.sin(t * 4.5 + c.id * 1.1) * 2;
+    g.moveTo(x - 3, y + s * 0.5).lineTo(x - 3 - walkPhase, y + s + 2).stroke({ color: 0x888888, width: 1.5, alpha: 0.5 });
+    g.moveTo(x + 3, y + s * 0.5).lineTo(x + 3 + walkPhase, y + s + 2).stroke({ color: 0x888888, width: 1.5, alpha: 0.5 });
+    // Boots
+    g.roundRect(x - 5 - walkPhase, y + s + 1, 4, 2, 0.5).fill({ color: 0x666655, alpha: 0.5 });
+    g.roundRect(x + 1 + walkPhase, y + s + 1, 4, 2, 0.5).fill({ color: 0x666655, alpha: 0.5 });
+
+    // Body — armored torso with tabard
+    g.ellipse(x, y, s * 0.7, s * 0.95).fill({ color: 0x888888, alpha: 0.8 }); // Chainmail base
+    // Tabard / surcoat
+    g.moveTo(x - s * 0.4, y - s * 0.3).lineTo(x - s * 0.5, y + s * 0.5).lineTo(x + s * 0.5, y + s * 0.5).lineTo(x + s * 0.4, y - s * 0.3).fill({ color: c.color, alpha: 0.6 });
+    // Armor highlight
+    g.ellipse(x - 1, y - s * 0.2, s * 0.3, s * 0.4).fill({ color: 0xffffff, alpha: 0.05 });
+
+    // Arms
+    const armSwing = Math.sin(t * 4 + c.id * 0.8) * 2;
+    // Shield arm (left)
+    g.moveTo(x - s * 0.6, y - s * 0.1).lineTo(x - s - 3, y + armSwing).stroke({ color: 0x888888, width: 1.5, alpha: 0.5 });
+    // Shield — kite/heater shape
+    const shX = x - s - 4, shY = y + armSwing;
+    g.moveTo(shX, shY - 4).lineTo(shX + 4, shY - 3).lineTo(shX + 4, shY + 2).lineTo(shX, shY + 5).lineTo(shX - 4, shY + 2).lineTo(shX - 4, shY - 3).fill({ color: 0x999988, alpha: 0.6 });
+    g.moveTo(shX, shY - 4).lineTo(shX + 4, shY - 3).lineTo(shX + 4, shY + 2).lineTo(shX, shY + 5).lineTo(shX - 4, shY + 2).lineTo(shX - 4, shY - 3).stroke({ color: 0xaaaaaa, width: 0.5, alpha: 0.4 });
+    // Shield emblem (cross)
+    g.rect(shX - 0.5, shY - 2, 1, 5).fill({ color: 0xcc2222, alpha: 0.4 });
+    g.rect(shX - 2, shY - 0.5, 4, 1).fill({ color: 0xcc2222, alpha: 0.4 });
+
+    // Weapon arm (right)
+    g.moveTo(x + s * 0.6, y - s * 0.1).lineTo(x + s + 2, y - armSwing).stroke({ color: 0x888888, width: 1.5, alpha: 0.5 });
+    // Sword
+    g.moveTo(x + s + 2, y - armSwing).lineTo(x + s + 8, y - armSwing - 5).stroke({ color: 0xddddcc, width: 1.5, alpha: 0.7 });
+    // Crossguard
+    g.moveTo(x + s + 1, y - armSwing - 0.5).lineTo(x + s + 3, y - armSwing + 1).stroke({ color: 0xaa9944, width: 1, alpha: 0.5 });
+
+    // Helmet
+    const headY = y - s * 0.75;
+    g.circle(x, headY, s * 0.45).fill({ color: 0x999999, alpha: 0.8 });
+    // Visor slit
+    g.rect(x - s * 0.25, headY - 0.5, s * 0.5, 1.5).fill({ color: 0x222222, alpha: 0.5 });
+    // Helmet crest
+    g.moveTo(x, headY - s * 0.4).lineTo(x, headY - s * 0.65).stroke({ color: 0x888888, width: 1.5, alpha: 0.4 });
 
     // Type-specific details
     if (c.type === "paladin") {
-      // Golden cross on chest
+      // Golden helmet, larger, golden cross glow
+      g.circle(x, headY, s * 0.5).stroke({ color: 0xffd700, width: 1, alpha: 0.4 });
       g.rect(x - 1, y - 3, 2, 6).fill({ color: 0xffd700, alpha: 0.5 });
       g.rect(x - 3, y - 1, 6, 2).fill({ color: 0xffd700, alpha: 0.5 });
+      // Golden plume
+      g.moveTo(x, headY - s * 0.45).bezierCurveTo(x + 4, headY - s - 2, x + 6, headY - s, x + 3, headY - s * 0.5).stroke({ color: 0xffd700, width: 1.5, alpha: 0.5 });
     } else if (c.type === "priest") {
-      // Staff
-      g.moveTo(x + s + 2, y + s).lineTo(x + s + 2, y - s - 4).stroke({ color: 0xddddaa, width: 1.5 });
-      g.circle(x + s + 2, y - s - 5, 2).fill({ color: 0xffffaa, alpha: 0.6 });
+      // No helmet — hooded head, staff instead of sword
+      g.circle(x, headY, s * 0.45).fill({ color: 0xeeeeee, alpha: 0.6 });
+      // Hood
+      g.moveTo(x - s * 0.4, headY + s * 0.2).bezierCurveTo(x - s * 0.5, headY - s * 0.3, x + s * 0.5, headY - s * 0.3, x + s * 0.4, headY + s * 0.2).fill({ color: 0xffffff, alpha: 0.15 });
+      // Staff with holy orb
+      g.moveTo(x + s + 2, y + s).lineTo(x + s + 2, headY - s * 0.5).stroke({ color: 0xddddaa, width: 1.5 });
+      g.circle(x + s + 2, headY - s * 0.6, 2.5).fill({ color: 0xffffaa, alpha: 0.5 + Math.sin(t * 3 + c.id) * 0.2 });
+      g.circle(x + s + 2, headY - s * 0.6, 5).fill({ color: 0xffffaa, alpha: 0.06 });
+      // Heal aura indicator
+      if (c.ability === "heal_aura") {
+        g.circle(x, y, s * 3).stroke({ color: 0xffffaa, width: 0.5, alpha: 0.06 + Math.sin(t * 2) * 0.03 });
+      }
     } else if (c.type === "banner") {
-      // Banner flag
-      g.moveTo(x, y - s - 2).lineTo(x, y - s - 14).stroke({ color: 0x886644, width: 1 });
-      g.rect(x, y - s - 14, 8, 6).fill({ color: 0xff2222, alpha: 0.7 });
-      g.moveTo(x + 1, y - s - 12).lineTo(x + 6, y - s - 12).stroke({ color: 0xffd700, width: 0.8 });
+      // Banner pole with flag
+      g.moveTo(x, headY - s * 0.4).lineTo(x, headY - s * 1.5).stroke({ color: 0x886644, width: 1.5 });
+      // Flag — waving
+      const wave = Math.sin(t * 3 + c.id) * 2;
+      g.moveTo(x, headY - s * 1.5).lineTo(x + 10, headY - s * 1.4 + wave).lineTo(x + 10, headY - s * 0.9 + wave).lineTo(x, headY - s * 1.0).fill({ color: 0xdd2222, alpha: 0.7 });
+      // Cross on flag
+      g.rect(x + 3, headY - s * 1.35 + wave * 0.5, 1, 4).fill({ color: 0xffd700, alpha: 0.5 });
+      g.rect(x + 2, headY - s * 1.2 + wave * 0.5, 3, 1).fill({ color: 0xffd700, alpha: 0.5 });
+    } else if (c.type === "templar") {
+      // Red cross on tabard (already colored)
+      g.rect(x - 1, y - 3, 2, 7).fill({ color: 0xcc2222, alpha: 0.35 });
+      g.rect(x - 3, y - 1, 6, 2).fill({ color: 0xcc2222, alpha: 0.35 });
     }
 
+    // Name tag
+    const nameT = new Text({ text: c.name, style: new TextStyle({ fontFamily: FONT, fontSize: 6, fill: 0xddddaa }) });
+    nameT.alpha = 0.5; nameT.anchor.set(0.5, 0); nameT.position.set(x, y + s + 5);
+    this._ui.addChild(nameT);
+
     // HP bar
-    if (c.hp < c.maxHp) {
-      g.rect(x - s, y - s - 4, s * 2, 2).fill({ color: 0x220000 });
-      g.rect(x - s, y - s - 4, s * 2 * (c.hp / c.maxHp), 2).fill({ color: 0xff4444 });
-    }
+    const barW = s * 2.5;
+    g.roundRect(x - barW / 2, headY - s * 0.6 - 4, barW, 3, 1).fill({ color: 0x111108, alpha: 0.7 });
+    g.roundRect(x - barW / 2, headY - s * 0.6 - 4, barW * (c.hp / c.maxHp), 3, 1).fill({ color: c.hp / c.maxHp > 0.5 ? 0xffdd44 : c.hp / c.maxHp > 0.25 ? 0xff8844 : 0xff4444 });
   }
 
   // ── Necromancer avatar ─────────────────────────────────────────────────
@@ -524,7 +817,7 @@ export class NecroRenderer {
     const controls: Record<string, string> = {
       dig: "Click graves to dig | SPACE: go to ritual | Esc: quit",
       ritual: "Click corpses to place in slots | ENTER: raise undead | SPACE: battle | Esc: quit",
-      battle: "Watch your army fight! | Click: Dark Nova (if unlocked) | Esc: quit",
+      battle: "LMB: Dark Nova | RMB/W: Bone Wall | Esc: quit",
       upgrade: "Click to buy upgrades | SPACE: next wave",
     };
     addText(controls[state.phase] ?? "Esc: quit", sw / 2, sh - 14, { fontSize: 8, fill: 0x445544 }, true);

@@ -126,6 +126,17 @@ export interface NecroState {
 
   // Elapsed time for animations
   elapsed: number;
+
+  // Floating damage numbers
+  damageNumbers: { x: number; y: number; text: string; color: number; timer: number; maxTimer: number }[];
+
+  // Bone Wall spell
+  boneWalls: { x: number; y: number; hp: number; maxHp: number; timer: number }[];
+  boneWallCooldown: number;
+
+  // Kill stats per wave
+  waveKills: number;
+  totalKills: number;
 }
 
 export function createNecroState(): NecroState {
@@ -176,6 +187,12 @@ export function createNecroState(): NecroState {
     novaActive: false,
 
     elapsed: 0,
+
+    damageNumbers: [],
+    boneWalls: [],
+    boneWallCooldown: 0,
+    waveKills: 0,
+    totalKills: 0,
   };
 }
 

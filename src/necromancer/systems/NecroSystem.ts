@@ -7,6 +7,8 @@ import { findChimera } from "../state/NecroState";
 import { CORPSES, CRUSADERS, NecroConfig, WAVES } from "../config/NecroConfig";
 import type { CorpseType, CrusaderType } from "../config/NecroConfig";
 
+const BONE_WHITE = 0xccccbb;
+
 // ── Dig phase ──────────────────────────────────────────────────────────────
 
 export function updateDig(state: NecroState, dt: number): void {
@@ -264,13 +266,30 @@ export function updateBattle(state: NecroState, dt: number): void {
         u.abilityCooldown = 4;
       }
 
-      // Hit particles
-      state.particles.push({ x: target.x, y: target.y, vx: (Math.random() - 0.5) * 30, vy: -20, life: 0.3, maxLife: 0.3, color: 0xff4444, size: 2 });
+      // Hit particles — slash line
+      const slashAngle = Math.atan2(target.y - u.y, target.x - u.x);
+      for (let si = 0; si < 3; si++) {
+        state.particles.push({
+          x: target.x + (Math.random() - 0.5) * 6, y: target.y + (Math.random() - 0.5) * 6,
+          vx: Math.cos(slashAngle + (Math.random() - 0.5)) * 40, vy: -20 - Math.random() * 15,
+          life: 0.25, maxLife: 0.25, color: 0xff4444, size: 1.5 + Math.random(),
+        });
+      }
+
+      // Floating damage number
+      state.damageNumbers.push({ x: target.x, y: target.y - 10, text: `-${dmg}`, color: 0xff4444, timer: 0.8, maxTimer: 0.8 });
+
+      // Knockback
+      const kbDist = 3;
+      target.x += Math.cos(slashAngle) * kbDist;
+      target.y += Math.sin(slashAngle) * kbDist;
 
       if (target.hp <= 0) {
         target.alive = false;
         state.gold += CRUSADERS[target.type].reward;
         state.score += CRUSADERS[target.type].reward * 2;
+        state.waveKills++;
+        state.totalKills++;
 
         // Ability: explode — area damage on kill
         if (u.ability === "explode" && u.abilityCooldown <= 0) {
@@ -375,23 +394,85 @@ export function updateBattle(state: NecroState, dt: number): void {
       // Holy smite — bonus damage to chimeras
       if (c.ability === "holy_smite" && target.chimera) dmg += 3;
 
-      // Shield wall — take less damage (applied to defense, but we reduce outgoing dmg of undead attacking this one)
+      // Shield ability — reduce incoming damage by 40%
+      if (target.ability === "shield") dmg = Math.max(1, Math.ceil(dmg * 0.6));
+
       target.hp -= dmg;
       c.attackCooldown = 1.5;
 
-      state.particles.push({ x: target.x, y: target.y, vx: (Math.random() - 0.5) * 20, vy: -15, life: 0.3, maxLife: 0.3, color: 0x44ff44, size: 2 });
+      // Damage number
+      state.damageNumbers.push({ x: target.x, y: target.y - 10, text: `-${dmg}`, color: 0x44ff88, timer: 0.8, maxTimer: 0.8 });
+
+      // Hit particles with direction
+      const cSlashAngle = Math.atan2(target.y - c.y, target.x - c.x);
+      for (let si = 0; si < 3; si++) {
+        state.particles.push({
+          x: target.x + (Math.random() - 0.5) * 5, y: target.y + (Math.random() - 0.5) * 5,
+          vx: Math.cos(cSlashAngle + (Math.random() - 0.5)) * 30, vy: -15 - Math.random() * 10,
+          life: 0.2, maxLife: 0.2, color: 0x44ff44, size: 1.5,
+        });
+      }
+
+      // Knockback
+      target.x += Math.cos(cSlashAngle) * 2;
+      target.y += Math.sin(cSlashAngle) * 2;
 
       if (target.hp <= 0) {
         target.alive = false;
-        for (let i = 0; i < 5; i++) {
+        // Death burst — green soul wisps
+        for (let i = 0; i < 8; i++) {
+          const da = (i / 8) * Math.PI * 2;
           state.particles.push({
             x: target.x, y: target.y,
-            vx: (Math.random() - 0.5) * 40, vy: -20 - Math.random() * 20,
-            life: 0.4, maxLife: 0.4, color: 0x44ff44, size: 2,
+            vx: Math.cos(da) * 35, vy: Math.sin(da) * 35 - 15,
+            life: 0.5, maxLife: 0.5, color: 0x44ff44, size: 2,
           });
         }
       }
     }
+  }
+
+  // Update bone walls
+  for (let i = state.boneWalls.length - 1; i >= 0; i--) {
+    const wall = state.boneWalls[i];
+    wall.timer -= dt;
+    if (wall.timer <= 0 || wall.hp <= 0) {
+      // Wall crumble particles
+      for (let pi = 0; pi < 6; pi++) {
+        state.particles.push({
+          x: wall.x + (Math.random() - 0.5) * 20, y: wall.y,
+          vx: (Math.random() - 0.5) * 40, vy: -20 - Math.random() * 15,
+          life: 0.4, maxLife: 0.4, color: BONE_WHITE, size: 2,
+        });
+      }
+      state.boneWalls.splice(i, 1);
+      continue;
+    }
+    // Crusaders collide with walls — stop and attack them
+    for (const c of state.crusaders) {
+      if (!c.alive) continue;
+      const wdx = wall.x - c.x, wdy = wall.y - c.y;
+      if (wdx * wdx + wdy * wdy < 25 * 25) {
+        // Push crusader back
+        const pushAngle = Math.atan2(c.y - wall.y, c.x - wall.x);
+        c.x = wall.x + Math.cos(pushAngle) * 26;
+        c.y = wall.y + Math.sin(pushAngle) * 26;
+        // Crusader attacks wall
+        if (c.attackCooldown <= 0) {
+          wall.hp -= c.damage;
+          c.attackCooldown = 1.5;
+        }
+      }
+    }
+  }
+  if (state.boneWallCooldown > 0) state.boneWallCooldown -= dt;
+
+  // Update damage numbers
+  for (let i = state.damageNumbers.length - 1; i >= 0; i--) {
+    const dn = state.damageNumbers[i];
+    dn.timer -= dt;
+    dn.y -= 20 * dt; // Float upward
+    if (dn.timer <= 0) state.damageNumbers.splice(i, 1);
   }
 
   // Clean dead
@@ -452,6 +533,26 @@ export function castDarkNova(state: NecroState, wx: number, wy: number): void {
   state.announcements.push({ text: "DARK NOVA!", color: 0xaa44ff, timer: 1.5 });
 }
 
+export function castBoneWall(state: NecroState, wx: number, wy: number): void {
+  if (state.boneWallCooldown > 0) return;
+  if (state.mana < 10) {
+    state.announcements.push({ text: "Not enough mana!", color: 0xff4444, timer: 1 });
+    return;
+  }
+  state.mana -= 10;
+  state.boneWallCooldown = 6;
+  state.boneWalls.push({ x: wx, y: wy, hp: 12, maxHp: 12, timer: 15 });
+  // Bone wall rise particles
+  for (let i = 0; i < 10; i++) {
+    state.particles.push({
+      x: wx + (Math.random() - 0.5) * 20, y: wy + 10,
+      vx: (Math.random() - 0.5) * 15, vy: -30 - Math.random() * 20,
+      life: 0.5, maxLife: 0.5, color: BONE_WHITE, size: 2,
+    });
+  }
+  state.announcements.push({ text: "BONE WALL!", color: 0xccccbb, timer: 1 });
+}
+
 function spawnCrusader(state: NecroState, type: CrusaderType): void {
   const def = CRUSADERS[type];
   // Spawn from right side
@@ -490,7 +591,11 @@ export function prepareBattleWave(state: NecroState): void {
   state.battleTimer = 0;
   state.battleWon = false;
   state.battleLost = false;
-  state.crusaderSpawnTimer = 1; // First spawn after 1s
+  state.crusaderSpawnTimer = 1;
+  state.waveKills = 0;
+  state.boneWalls = [];
+  state.boneWallCooldown = 0;
+  state.damageNumbers = [];
 
   // Position undead on left side
   for (let i = 0; i < state.undead.length; i++) {

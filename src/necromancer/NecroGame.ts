@@ -12,7 +12,7 @@ import { NecroConfig, DARK_POWERS, CORPSES } from "./config/NecroConfig";
 import {
   updateDig, startDig,
   updateRitual, placeCorpseInSlot, startRaise,
-  updateBattle, prepareBattleWave, castDarkNova,
+  updateBattle, prepareBattleWave, castDarkNova, castBoneWall,
 } from "./systems/NecroSystem";
 import { NecroRenderer } from "./view/NecroRenderer";
 
@@ -22,6 +22,7 @@ export class NecroGame {
   private _renderer = new NecroRenderer();
   private _keyHandler: ((e: KeyboardEvent) => void) | null = null;
   private _pointerDown: ((e: { global: { x: number; y: number } }) => void) | null = null;
+  private _contextMenu: ((e: MouseEvent) => void) | null = null;
   private _sw = 0;
   private _sh = 0;
 
@@ -43,6 +44,7 @@ export class NecroGame {
 
   private _removePointer(): void {
     if (this._pointerDown) { viewManager.app.stage.off("pointerdown", this._pointerDown); this._pointerDown = null; }
+    if (this._contextMenu) { window.removeEventListener("contextmenu", this._contextMenu); this._contextMenu = null; }
   }
 
   // ── Start screen ───────────────────────────────────────────────────────
@@ -316,6 +318,7 @@ export class NecroGame {
     const stats: [string, string, number][] = [
       ["Wave Reached", `${this._state.wave + 1}/${this._state.totalWaves}`, 0xccaa88],
       ["Score", `${this._state.score}`, 0x44ccaa],
+      ["Total Kills", `${this._state.totalKills}`, 0xcc6644],
       ["Gold Earned", `${this._state.gold}g`, 0xffd700],
       ["Undead Raised", `${this._state.undeadIdCounter}`, 0x44ff88],
     ];
@@ -370,6 +373,7 @@ export class NecroGame {
     const stats: [string, string, number][] = [
       ["Waves Survived", `${this._state.totalWaves}/${this._state.totalWaves}`, 0x44ff88],
       ["Final Score", `${this._state.score}`, 0x44ccaa],
+      ["Total Kills", `${this._state.totalKills}`, 0xcc6644],
       ["Gold Earned", `${this._state.gold}g`, 0xffd700],
       ["Undead Raised", `${this._state.undeadIdCounter}`, 0x44ff88],
       ["Remaining Army", `${this._state.undead.length}`, 0x889988],
@@ -482,8 +486,21 @@ export class NecroGame {
       };
       viewManager.app.stage.on("pointerdown", this._pointerDown);
 
+      // Right-click for bone wall
+      this._contextMenu = (e: MouseEvent) => {
+        e.preventDefault();
+        const rect = viewManager.app.canvas.getBoundingClientRect();
+        const wx = e.clientX - rect.left - ox, wy = e.clientY - rect.top - oy;
+        castBoneWall(this._state, wx, wy);
+      };
+      window.addEventListener("contextmenu", this._contextMenu);
+
       this._keyHandler = (e: KeyboardEvent) => {
         if (e.key === "Escape") { this.destroy(); window.dispatchEvent(new Event("necromancerExit")); }
+        // W key for bone wall at center
+        if (e.key === "w" || e.key === "W") {
+          castBoneWall(this._state, NecroConfig.FIELD_WIDTH / 2, NecroConfig.FIELD_HEIGHT / 2);
+        }
       };
       window.addEventListener("keydown", this._keyHandler);
     }
