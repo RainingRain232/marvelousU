@@ -998,14 +998,14 @@ export class CovenRenderer {
 
   private _drawHex(g: Graphics, hex: CovenHex, state: CovenState): void {
     const p = h2p(hex.coord);
-    const t = TC[hex.terrain] ?? TC["water"];
+    const t = TC[hex.terrain] ?? TC["water"] ?? { base: 0x333333, hi: 0x444444, lo: 0x222222 };
     const r2 = rng(hex.coord.q * 1000 + hex.coord.r * 37);
     const lightAlpha = hex.lightLevel === 2 ? 0.92 : hex.lightLevel === 1 ? 0.55 : 0.28;
 
     const outer = corners(p.x, p.y, 0.95);
-    hexPoly(g, outer); g.fill({ color: t.base, alpha: lightAlpha });
-    hexPoly(g, corners(p.x, p.y + 2, 0.7)); g.fill({ color: t.lo, alpha: 0.1 });
-    hexPoly(g, corners(p.x, p.y - 1, 0.72)); g.fill({ color: t.hi, alpha: 0.12 });
+    hexPoly(g, outer); g.fill({ color: t.base ?? 0x333333, alpha: lightAlpha });
+    hexPoly(g, corners(p.x, p.y + 2, 0.7)); g.fill({ color: t.lo ?? 0x222222, alpha: 0.1 });
+    hexPoly(g, corners(p.x, p.y - 1, 0.72)); g.fill({ color: t.hi ?? 0x444444, alpha: 0.12 });
     hexPoly(g, outer); g.stroke({ color: 0x000000, width: 1, alpha: 0.4 });
 
     if (hex.lightLevel >= 1) {
