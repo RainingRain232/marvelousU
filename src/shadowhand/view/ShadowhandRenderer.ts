@@ -244,33 +244,51 @@ export class ShadowhandRenderer {
     g.rect(px, py, T, T).fill({ color: shade });
 
     // Stone tile edges with bevel effect
-    d.moveTo(px + 1, py + 1).lineTo(px + T - 1, py + 1).stroke({ color: 0x454038, width: 0.6, alpha: 0.2 }); // top highlight
-    d.moveTo(px + 1, py + 1).lineTo(px + 1, py + T - 1).stroke({ color: 0x454038, width: 0.6, alpha: 0.15 }); // left highlight
-    d.moveTo(px + 1, py + T - 1).lineTo(px + T - 1, py + T - 1).stroke({ color: 0x1a1816, width: 0.6, alpha: 0.2 }); // bottom shadow
-    d.moveTo(px + T - 1, py + 1).lineTo(px + T - 1, py + T - 1).stroke({ color: 0x1a1816, width: 0.6, alpha: 0.15 }); // right shadow
+    d.moveTo(px + 1, py + 1).lineTo(px + T - 1, py + 1).stroke({ color: 0x454038, width: 0.6, alpha: 0.2 });
+    d.moveTo(px + 1, py + 1).lineTo(px + 1, py + T - 1).stroke({ color: 0x454038, width: 0.6, alpha: 0.15 });
+    d.moveTo(px + 1, py + T - 1).lineTo(px + T - 1, py + T - 1).stroke({ color: 0x1a1816, width: 0.6, alpha: 0.2 });
+    d.moveTo(px + T - 1, py + 1).lineTo(px + T - 1, py + T - 1).stroke({ color: 0x1a1816, width: 0.6, alpha: 0.15 });
 
-    // Bezier crack (organic, not straight)
-    if (h > 0.85) {
+    // Inner stone texture — faint diagonal grain
+    d.moveTo(px + 3, py + T - 2).lineTo(px + T - 2, py + 3).stroke({ color: FLOOR_LO, width: 0.3, alpha: 0.08 });
+    d.moveTo(px + 8, py + T - 2).lineTo(px + T - 2, py + 8).stroke({ color: FLOOR_LO, width: 0.3, alpha: 0.06 });
+
+    // Bezier crack with branching
+    if (h > 0.82) {
       const cx1 = px + 3 + h * 6, cy1 = py + 2;
       const cx2 = px + T * 0.4 + h * 4, cy2 = py + T * 0.5;
       d.moveTo(cx1, cy1).bezierCurveTo(cx1 + 3, cy1 + 5, cx2 - 2, cy2 - 3, cx2, cy2).stroke({ color: FLOOR_LO, width: 0.7, alpha: 0.25 });
-      // Crack widens slightly at end
       d.moveTo(cx2, cy2).bezierCurveTo(cx2 + 2, cy2 + 4, cx2 + 5, cy2 + 7, cx2 + 3, py + T - 3).stroke({ color: FLOOR_LO, width: 0.5, alpha: 0.18 });
+      // Branch crack
+      d.moveTo(cx2 - 1, cy2 + 1).bezierCurveTo(cx2 - 4, cy2 + 2, cx2 - 6, cy2 + 5, cx2 - 5, cy2 + 8).stroke({ color: FLOOR_LO, width: 0.4, alpha: 0.15 });
     }
 
-    // Scattered pebbles (2-3 per tile based on hash)
-    if (h > 0.6 && h < 0.7) {
-      for (let pi = 0; pi < 2; pi++) {
+    // Scattered pebbles (3-4 per tile)
+    if (h > 0.55 && h < 0.72) {
+      for (let pi = 0; pi < 3; pi++) {
         const ph2 = tileHash(Math.floor(px) + pi, Math.floor(py) + pi);
         const pbx = px + 4 + ph2 * (T - 8);
         const pby = py + 4 + tileHash(Math.floor(py) + pi, Math.floor(px) + pi) * (T - 8);
         d.ellipse(pbx, pby, 1.5 + ph2, 1 + ph2 * 0.5).fill({ color: FLOOR_LO, alpha: 0.25 });
+        // Pebble highlight
+        d.circle(pbx - 0.3, pby - 0.3, 0.5).fill({ color: 0x4a4640, alpha: 0.15 });
       }
     }
 
-    // Subtle dust spots
-    if (h > 0.3 && h < 0.35) {
+    // Worn area (lighter patch where foot traffic scuffs stone)
+    if (h > 0.15 && h < 0.22) {
+      d.ellipse(px + HT, py + HT, T * 0.35, T * 0.25).fill({ color: 0x3e3a36, alpha: 0.12 });
+    }
+
+    // Dust spots
+    if (h > 0.3 && h < 0.38) {
       d.circle(px + HT + h * 6, py + HT - 2, 3 + h * 3).fill({ color: 0x2e2a26, alpha: 0.1 });
+      d.circle(px + 5 + h * 10, py + T - 6, 2).fill({ color: 0x2e2a26, alpha: 0.07 });
+    }
+
+    // Occasional stain mark (darker irregular blob)
+    if (h > 0.92) {
+      d.moveTo(px + 8, py + 10).bezierCurveTo(px + 12, py + 8, px + 18, py + 12, px + 16, py + 16).bezierCurveTo(px + 14, py + 18, px + 8, py + 15, px + 8, py + 10).fill({ color: 0x22201e, alpha: 0.12 });
     }
   }
 
@@ -337,19 +355,36 @@ export class ShadowhandRenderer {
   }
 
   private _drawSecretDoorHint(d: Graphics, px: number, py: number, h: number): void {
-    // Subtle hints that this wall is different — only visible to observant players
-    // Hairline crack running vertically (door seam)
     const seam = px + HT + (h - 0.5) * 2;
-    d.moveTo(seam, py + 3).bezierCurveTo(seam + 0.5, py + HT, seam - 0.5, py + HT + 4, seam, py + T - 3).stroke({ color: 0x1a1820, width: 0.6, alpha: 0.2 });
-    // Slightly different mortar color at one joint (discolored)
-    d.rect(px + 6, py + T / 3 - 1, HT - 2, 2).fill({ color: 0x2a2530, alpha: 0.12 });
-    // Worn floor patch in front (people walking through leaves marks)
-    d.ellipse(px + HT, py + T - 2, 6, 2).fill({ color: 0x2e2a26, alpha: 0.08 });
-    // Faint draft lines (air movement through crack)
-    if (h > 0.5) {
-      const t = Date.now() / 2000;
-      const dy = Math.sin(t + h * 10) * 2;
-      d.moveTo(seam - 1, py + HT + dy).bezierCurveTo(seam - 4, py + HT + dy - 2, seam - 6, py + HT + dy, seam - 8, py + HT + dy - 1).stroke({ color: 0x888888, width: 0.3, alpha: 0.06 });
+    const t = Date.now() / 2000;
+
+    // Primary seam crack (vertical bezier with wobble)
+    d.moveTo(seam, py + 2).bezierCurveTo(seam + 0.5, py + 8, seam - 0.8, py + HT - 2, seam - 0.3, py + HT).stroke({ color: 0x1a1820, width: 0.7, alpha: 0.22 });
+    d.moveTo(seam - 0.3, py + HT).bezierCurveTo(seam + 0.3, py + HT + 3, seam - 0.5, py + T - 8, seam, py + T - 2).stroke({ color: 0x1a1820, width: 0.6, alpha: 0.18 });
+
+    // Secondary micro-cracks branching from seam
+    d.moveTo(seam - 0.5, py + 10).bezierCurveTo(seam - 3, py + 11, seam - 5, py + 10, seam - 6, py + 9).stroke({ color: 0x1a1820, width: 0.4, alpha: 0.12 });
+    d.moveTo(seam + 0.3, py + T - 10).bezierCurveTo(seam + 2, py + T - 9, seam + 4, py + T - 10, seam + 5, py + T - 12).stroke({ color: 0x1a1820, width: 0.3, alpha: 0.1 });
+
+    // Discolored mortar strip (different color from normal wall)
+    d.rect(px + 4, py + T / 3 - 1, HT - 1, 2).fill({ color: 0x2a2530, alpha: 0.12 });
+    d.rect(px + HT + 2, py + T * 2 / 3 - 1, HT - 4, 2).fill({ color: 0x282430, alpha: 0.1 });
+
+    // Worn floor patch (larger, more noticeable)
+    d.ellipse(px + HT, py + T - 1, 8, 2.5).fill({ color: 0x2e2a26, alpha: 0.1 });
+    d.ellipse(px + HT - 2, py + T, 5, 1.5).fill({ color: 0x302c28, alpha: 0.06 });
+
+    // Faint draft wisps (animated air movement, 2 streams)
+    const dy1 = Math.sin(t + h * 10) * 2;
+    const dy2 = Math.cos(t * 0.7 + h * 5) * 1.5;
+    d.moveTo(seam - 1, py + HT - 3 + dy1).bezierCurveTo(seam - 4, py + HT - 5 + dy1, seam - 7, py + HT - 3 + dy1, seam - 10, py + HT - 4 + dy1).stroke({ color: 0x888888, width: 0.3, alpha: 0.06 });
+    d.moveTo(seam + 0.5, py + HT + 4 + dy2).bezierCurveTo(seam - 2, py + HT + 2 + dy2, seam - 5, py + HT + 4 + dy2, seam - 8, py + HT + 3 + dy2).stroke({ color: 0x888888, width: 0.3, alpha: 0.05 });
+
+    // Dust motes near crack (2 tiny animated dots)
+    for (let mi = 0; mi < 2; mi++) {
+      const mx = seam + Math.sin(t * 1.5 + mi * 3) * 4;
+      const my = py + HT + Math.cos(t * 1.2 + mi * 2) * 6;
+      d.circle(mx, my, 0.5).fill({ color: 0xaaaaaa, alpha: 0.04 + Math.sin(t * 2 + mi) * 0.02 });
     }
   }
 
@@ -725,23 +760,47 @@ export class ShadowhandRenderer {
           const adjFog = fogTop || fogBot || fogLeft || fogRight;
 
           if (adjFog) {
-            // Base fog tint
-            g.rect(px, py, T, T).fill({ color: 0x08080c, alpha: 0.2 });
-            // Directional fog wisps extending from unrevealed edges
             const h = tileHash(x, y);
+            const h2 = tileHash(x + 99, y + 77);
+            // Base fog tint
+            g.rect(px, py, T, T).fill({ color: 0x08080c, alpha: 0.22 });
+            // Secondary darker tint closer to fog edge
+            g.rect(px, py, T, T).fill({ color: 0x040408, alpha: 0.06 });
+
+            // Directional fog wisps — 2 layers per edge for density
             if (fogTop) {
-              const wx = px + h * T * 0.6 + 4;
-              g.moveTo(px, py).bezierCurveTo(wx, py + 4, px + T * 0.5, py + 6, px + T, py).lineTo(px + T, py).lineTo(px, py).fill({ color: 0x08080c, alpha: 0.15 });
+              g.moveTo(px, py).bezierCurveTo(px + h * T * 0.6 + 4, py + 5, px + T * 0.5, py + 7, px + T, py).lineTo(px + T, py).lineTo(px, py).fill({ color: 0x08080c, alpha: 0.16 });
+              g.moveTo(px + 4, py).bezierCurveTo(px + h2 * T * 0.4 + 6, py + 3, px + T * 0.3, py + 4, px + T - 4, py).lineTo(px + T - 4, py).lineTo(px + 4, py).fill({ color: 0x0a0a10, alpha: 0.08 });
+              // Wispy tendril
+              g.moveTo(px + h * T, py).bezierCurveTo(px + h * T + 3, py + 6, px + h * T - 2, py + 10, px + h * T + 1, py + 12).stroke({ color: 0x0c0c14, width: 2, alpha: 0.06 });
             }
             if (fogBot) {
-              const wx = px + h * T * 0.4 + 2;
-              g.moveTo(px, py + T).bezierCurveTo(wx, py + T - 5, px + T * 0.6, py + T - 7, px + T, py + T).lineTo(px + T, py + T).lineTo(px, py + T).fill({ color: 0x08080c, alpha: 0.15 });
+              g.moveTo(px, py + T).bezierCurveTo(px + h * T * 0.4 + 2, py + T - 6, px + T * 0.6, py + T - 8, px + T, py + T).lineTo(px + T, py + T).lineTo(px, py + T).fill({ color: 0x08080c, alpha: 0.16 });
+              g.moveTo(px + 5, py + T).bezierCurveTo(px + h2 * T * 0.5 + 3, py + T - 4, px + T * 0.4, py + T - 5, px + T - 5, py + T).fill({ color: 0x0a0a10, alpha: 0.08 });
             }
             if (fogLeft) {
-              g.moveTo(px, py).bezierCurveTo(px + 5, py + T * h * 0.5, px + 7, py + T * 0.6, px, py + T).lineTo(px, py).fill({ color: 0x08080c, alpha: 0.12 });
+              g.moveTo(px, py).bezierCurveTo(px + 6, py + T * h * 0.5, px + 8, py + T * 0.6, px, py + T).lineTo(px, py).fill({ color: 0x08080c, alpha: 0.14 });
+              g.moveTo(px, py + 4).bezierCurveTo(px + 4, py + T * h2 * 0.4, px + 5, py + T * 0.5, px, py + T - 4).fill({ color: 0x0a0a10, alpha: 0.07 });
+              // Tendril
+              g.moveTo(px, py + h * T).bezierCurveTo(px + 5, py + h * T - 2, px + 8, py + h * T + 1, px + 10, py + h * T - 1).stroke({ color: 0x0c0c14, width: 1.5, alpha: 0.05 });
             }
             if (fogRight) {
-              g.moveTo(px + T, py).bezierCurveTo(px + T - 5, py + T * h * 0.4, px + T - 7, py + T * 0.5, px + T, py + T).lineTo(px + T, py + T).fill({ color: 0x08080c, alpha: 0.12 });
+              g.moveTo(px + T, py).bezierCurveTo(px + T - 6, py + T * h * 0.4, px + T - 8, py + T * 0.5, px + T, py + T).lineTo(px + T, py + T).fill({ color: 0x08080c, alpha: 0.14 });
+              g.moveTo(px + T, py + 5).bezierCurveTo(px + T - 4, py + T * h2 * 0.5, px + T - 6, py + T * 0.4, px + T, py + T - 5).fill({ color: 0x0a0a10, alpha: 0.07 });
+            }
+
+            // Diagonal corner fog (if two adjacent edges have fog)
+            if (fogTop && fogLeft) {
+              g.moveTo(px, py).bezierCurveTo(px + 4, py + 2, px + 2, py + 4, px, py + 6).lineTo(px, py).fill({ color: 0x06060a, alpha: 0.1 });
+            }
+            if (fogTop && fogRight) {
+              g.moveTo(px + T, py).bezierCurveTo(px + T - 4, py + 2, px + T - 2, py + 4, px + T, py + 6).lineTo(px + T, py).fill({ color: 0x06060a, alpha: 0.1 });
+            }
+            if (fogBot && fogLeft) {
+              g.moveTo(px, py + T).bezierCurveTo(px + 4, py + T - 2, px + 2, py + T - 4, px, py + T - 6).lineTo(px, py + T).fill({ color: 0x06060a, alpha: 0.1 });
+            }
+            if (fogBot && fogRight) {
+              g.moveTo(px + T, py + T).bezierCurveTo(px + T - 4, py + T - 2, px + T - 2, py + T - 4, px + T, py + T - 6).lineTo(px + T, py + T).fill({ color: 0x06060a, alpha: 0.1 });
             }
           }
         }
@@ -894,24 +953,46 @@ export class ShadowhandRenderer {
     const range = ShadowhandConfig.GUARD_VISION_RANGE * T;
     const halfAngle = ShadowhandConfig.GUARD_VISION_ANGLE;
     const color = ALERT_COLORS[guard.alertLevel];
+    const steps = 20;
 
-    g.moveTo(px, py);
-    const steps = 16;
-    for (let i = 0; i <= steps; i++) {
-      const a = guard.angle - halfAngle + (2 * halfAngle * i / steps);
-      const fadeR = range * (1 - 0.15 * Math.abs(i - steps / 2) / (steps / 2));
-      g.lineTo(px + Math.cos(a) * fadeR, py + Math.sin(a) * fadeR);
+    // Layered gradient cone (3 layers: outer faint, mid, inner bright)
+    for (let layer = 0; layer < 3; layer++) {
+      const layerR = range * (1 - layer * 0.25);
+      const layerAlpha = 0.03 + layer * 0.025;
+      g.moveTo(px, py);
+      for (let i = 0; i <= steps; i++) {
+        const a = guard.angle - halfAngle + (2 * halfAngle * i / steps);
+        // Slight jagged edge variation per segment
+        const jag = 1 + Math.sin(i * 2.7 + guard.angle * 3) * 0.06;
+        const fadeR = layerR * (1 - 0.12 * Math.abs(i - steps / 2) / (steps / 2)) * jag;
+        g.lineTo(px + Math.cos(a) * fadeR, py + Math.sin(a) * fadeR);
+      }
+      g.closePath();
+      g.fill({ color, alpha: layerAlpha });
     }
-    g.closePath();
-    g.fill({ color, alpha: 0.07 });
-    // Outer edge of cone
+
+    // Outer edge — dashed polygon segments
     for (let i = 0; i < steps; i++) {
-      const a1 = guard.angle - halfAngle + (2 * halfAngle * i / steps);
-      const a2 = guard.angle - halfAngle + (2 * halfAngle * (i + 1) / steps);
-      g.moveTo(px + Math.cos(a1) * range, py + Math.sin(a1) * range);
-      g.lineTo(px + Math.cos(a2) * range, py + Math.sin(a2) * range);
+      if (i % 2 === 0) { // dashed effect
+        const a1 = guard.angle - halfAngle + (2 * halfAngle * i / steps);
+        const a2 = guard.angle - halfAngle + (2 * halfAngle * (i + 1) / steps);
+        const jag1 = 1 + Math.sin(i * 2.7 + guard.angle * 3) * 0.06;
+        const jag2 = 1 + Math.sin((i + 1) * 2.7 + guard.angle * 3) * 0.06;
+        g.moveTo(px + Math.cos(a1) * range * jag1, py + Math.sin(a1) * range * jag1);
+        g.lineTo(px + Math.cos(a2) * range * jag2, py + Math.sin(a2) * range * jag2);
+        g.stroke({ color, width: 0.6, alpha: 0.15 });
+      }
     }
-    g.stroke({ color, width: 0.7, alpha: 0.12 });
+
+    // Center line (facing direction emphasis)
+    g.moveTo(px, py).lineTo(px + Math.cos(guard.angle) * range * 0.3, py + Math.sin(guard.angle) * range * 0.3).stroke({ color, width: 0.8, alpha: 0.08 });
+
+    // Peripheral vision arcs (wider, fainter)
+    const periAngle = halfAngle * 1.4;
+    for (const side of [-1, 1]) {
+      const a = guard.angle + side * periAngle;
+      g.moveTo(px, py).lineTo(px + Math.cos(a) * range * 0.4, py + Math.sin(a) * range * 0.4).stroke({ color, width: 0.4, alpha: 0.05 });
+    }
   }
 
   private _drawGuard(g: Graphics, guard: Guard): void {
@@ -1082,23 +1163,48 @@ export class ShadowhandRenderer {
       g.moveTo(tipX, tipY).lineTo(wx - cos * 1, wy - sin * 1).stroke({ color: 0xcccccc, width: 0.5, alpha: 0.5 }); // edge highlight
     }
 
-    // Alert indicators
+    // Alert indicators — rich polygon symbols with animated effects
     if (guard.alertLevel === AlertLevel.SUSPICIOUS) {
-      // "?" — bold polygon-rendered
       const qx = px, qy = py - 18;
-      g.moveTo(qx - 2, qy + 4).bezierCurveTo(qx - 3, qy - 2, qx + 3, qy - 4, qx + 2, qy).bezierCurveTo(qx + 1, qy + 2, qx, qy + 3, qx, qy + 5).stroke({ color: 0xffff00, width: 2.5 });
-      g.circle(qx, qy + 8, 1.5).fill({ color: 0xffff00 });
-      // Glow
-      g.circle(qx, qy + 3, 6).fill({ color: 0xffff00, alpha: 0.06 });
+      const qPulse = 0.7 + Math.sin(Date.now() / 400) * 0.2;
+
+      // Backdrop glow (diamond shape)
+      g.moveTo(qx, qy - 4).lineTo(qx + 6, qy + 4).lineTo(qx, qy + 12).lineTo(qx - 6, qy + 4).closePath().fill({ color: 0xffff00, alpha: 0.04 });
+
+      // "?" — bold bezier with outline
+      g.moveTo(qx - 2.5, qy + 3).bezierCurveTo(qx - 3.5, qy - 3, qx + 3.5, qy - 5, qx + 2.5, qy - 1).bezierCurveTo(qx + 1.5, qy + 1.5, qx + 0.5, qy + 2.5, qx, qy + 5).stroke({ color: 0x222200, width: 3.5 }); // shadow
+      g.moveTo(qx - 2.5, qy + 3).bezierCurveTo(qx - 3.5, qy - 3, qx + 3.5, qy - 5, qx + 2.5, qy - 1).bezierCurveTo(qx + 1.5, qy + 1.5, qx + 0.5, qy + 2.5, qx, qy + 5).stroke({ color: 0xffff00, width: 2.5 });
+
+      // Period dot (filled circle with highlight)
+      g.circle(qx, qy + 8, 2).fill({ color: 0xffff00, alpha: qPulse });
+      g.circle(qx - 0.5, qy + 7.5, 0.8).fill({ color: 0xffffff, alpha: 0.3 }); // highlight
+
+      // Expanding awareness ring
+      const ringR = 8 + Math.sin(Date.now() / 300) * 2;
+      g.circle(qx, qy + 4, ringR).stroke({ color: 0xffff00, width: 0.5, alpha: 0.08 });
     } else if (guard.alertLevel === AlertLevel.ALARMED) {
-      // "!" — thick polygon with glow
       const ex = px, ey = py - 20;
-      g.roundRect(ex - 1.5, ey, 3, 8, 1).fill({ color: 0xff0000 });
-      g.circle(ex, ey + 11, 2).fill({ color: 0xff0000 });
-      // Pulsing danger aura
-      const pulse = 0.2 + Math.sin(Date.now() / 120) * 0.15;
-      g.circle(ex, ey + 5, 10).fill({ color: 0xff0000, alpha: pulse * 0.08 });
-      g.circle(ex, ey + 5, 6).fill({ color: 0xff0000, alpha: pulse * 0.12 });
+      const pulse = 0.3 + Math.sin(Date.now() / 100) * 0.2;
+
+      // Danger backdrop (hexagonal burst)
+      for (let bi = 0; bi < 6; bi++) {
+        const ba = bi * Math.PI / 3;
+        const br = 8 + Math.sin(Date.now() / 150 + bi) * 2;
+        g.moveTo(ex, ey + 5).lineTo(ex + Math.cos(ba) * br, ey + 5 + Math.sin(ba) * br).stroke({ color: 0xff0000, width: 0.5, alpha: pulse * 0.1 });
+      }
+
+      // "!" — thick with shadow and outline
+      g.roundRect(ex - 2, ey + 0.5, 4, 9, 1).fill({ color: 0x440000 }); // shadow
+      g.roundRect(ex - 1.8, ey, 3.6, 8.5, 1).fill({ color: 0xff0000 });
+      g.roundRect(ex - 1.8, ey, 3.6, 8.5, 1).stroke({ color: 0xff4444, width: 0.5, alpha: 0.4 }); // highlight
+      // Period (larger, pulsing)
+      g.circle(ex, ey + 12, 2.5).fill({ color: 0xff0000, alpha: pulse + 0.3 });
+      g.circle(ex - 0.5, ey + 11.5, 1).fill({ color: 0xff6666, alpha: 0.3 });
+
+      // Pulsing danger aura rings (3 concentric)
+      g.circle(ex, ey + 5, 12).fill({ color: 0xff0000, alpha: pulse * 0.06 });
+      g.circle(ex, ey + 5, 8).fill({ color: 0xff0000, alpha: pulse * 0.09 });
+      g.circle(ex, ey + 5, 5).fill({ color: 0xff0000, alpha: pulse * 0.12 });
     }
   }
 
@@ -1108,19 +1214,43 @@ export class ShadowhandRenderer {
     const crouching = thief.crouching;
     const t = Date.now();
 
-    // Selection — diamond-cornered polygon frame
+    // Selection — rotating diamond frame with sparkle particles
     if (thief.selected) {
       const pulse = 0.5 + Math.sin(t / 400) * 0.2;
       const sr = 13;
-      // Diamond-cornered selection frame
+      const rotOff = t / 8000; // slow rotation
+
+      // Outer glow ring
+      g.circle(px, py, sr + 2).fill({ color: 0x44ff44, alpha: pulse * 0.03 });
+
+      // Diamond-cornered polygon frame
       g.moveTo(px, py - sr).lineTo(px + sr * 0.7, py - sr * 0.7).lineTo(px + sr, py).lineTo(px + sr * 0.7, py + sr * 0.7);
       g.lineTo(px, py + sr).lineTo(px - sr * 0.7, py + sr * 0.7).lineTo(px - sr, py).lineTo(px - sr * 0.7, py - sr * 0.7).closePath();
       g.stroke({ color: 0x44ff44, width: 1.5, alpha: pulse });
-      // Corner diamonds
+
+      // Inner thinner frame
+      const ir = sr * 0.85;
+      g.moveTo(px, py - ir).lineTo(px + ir * 0.7, py - ir * 0.7).lineTo(px + ir, py).lineTo(px + ir * 0.7, py + ir * 0.7);
+      g.lineTo(px, py + ir).lineTo(px - ir * 0.7, py + ir * 0.7).lineTo(px - ir, py).lineTo(px - ir * 0.7, py - ir * 0.7).closePath();
+      g.stroke({ color: 0x44ff44, width: 0.5, alpha: pulse * 0.3 });
+
+      // Corner diamonds (4 cardinal)
       for (let ci = 0; ci < 4; ci++) {
         const ca = -Math.PI / 2 + ci * Math.PI / 2;
         const cdx = px + Math.cos(ca) * sr, cdy = py + Math.sin(ca) * sr;
-        g.moveTo(cdx, cdy - 2).lineTo(cdx + 2, cdy).lineTo(cdx, cdy + 2).lineTo(cdx - 2, cdy).closePath().fill({ color: 0x44ff44, alpha: pulse * 0.6 });
+        g.moveTo(cdx, cdy - 2.5).lineTo(cdx + 2.5, cdy).lineTo(cdx, cdy + 2.5).lineTo(cdx - 2.5, cdy).closePath().fill({ color: 0x44ff44, alpha: pulse * 0.6 });
+        g.moveTo(cdx, cdy - 1.5).lineTo(cdx + 1.5, cdy).lineTo(cdx, cdy + 1.5).lineTo(cdx - 1.5, cdy).closePath().fill({ color: 0xaaffaa, alpha: pulse * 0.3 });
+      }
+
+      // Orbiting sparkle particles (6 tiny stars rotating around)
+      for (let si = 0; si < 6; si++) {
+        const sa = rotOff + si * Math.PI / 3;
+        const sdist = sr + 1 + Math.sin(t / 300 + si * 1.5) * 2;
+        const spx = px + Math.cos(sa) * sdist;
+        const spy = py + Math.sin(sa) * sdist;
+        const sAlpha = 0.3 + Math.sin(t / 200 + si * 2) * 0.2;
+        // 4-point micro star
+        g.moveTo(spx, spy - 1.5).lineTo(spx + 0.5, spy).lineTo(spx, spy + 1.5).lineTo(spx - 0.5, spy).closePath().fill({ color: 0x88ffaa, alpha: sAlpha });
       }
     }
 
@@ -1182,15 +1312,32 @@ export class ShadowhandRenderer {
       g.moveTo(px + 3, ey).bezierCurveTo(px + 2, ey - 1, px + 0.5, ey - 1, px + 0.5, ey).bezierCurveTo(px + 0.5, ey + 0.5, px + 2, ey + 0.5, px + 3, ey).fill({ color: 0xddeeff, alpha: bodyAlpha * 0.8 });
     }
 
-    // Disguise — noble clothing overlay polygons
+    // Disguise — noble clothing overlay with ornate detail
     if (thief.disguised) {
       const shimmer = 0.3 + Math.sin(t / 300) * 0.15;
-      // Noble collar
-      g.moveTo(px - 4, py - 5).bezierCurveTo(px - 5, py - 7, px + 5, py - 7, px + 4, py - 5).stroke({ color: 0xcc8844, width: 1.5, alpha: shimmer });
-      // Sash across chest
-      g.moveTo(px - 4, py - 3).lineTo(px + 3, py + 3).stroke({ color: 0xcc4444, width: 1.5, alpha: shimmer * 0.8 });
-      // Medallion
-      g.circle(px, py - 1, 2).fill({ color: 0xffd700, alpha: shimmer });
+      // Ruffled collar (scalloped bezier)
+      g.moveTo(px - 5, py - 5);
+      g.bezierCurveTo(px - 4, py - 8, px - 2, py - 7, px - 1, py - 8);
+      g.bezierCurveTo(px, py - 7, px + 1, py - 8, px + 2, py - 7);
+      g.bezierCurveTo(px + 3, py - 8, px + 5, py - 7, px + 5, py - 5);
+      g.stroke({ color: 0xddbb66, width: 1.2, alpha: shimmer });
+      // Collar fill
+      g.moveTo(px - 4, py - 6).bezierCurveTo(px - 2, py - 8, px + 2, py - 8, px + 4, py - 6).lineTo(px + 3, py - 4).lineTo(px - 3, py - 4).closePath().fill({ color: 0xddbb66, alpha: shimmer * 0.3 });
+      // Sash with fabric folds
+      g.moveTo(px - 4, py - 3).lineTo(px + 3, py + 4).stroke({ color: 0xcc3333, width: 2, alpha: shimmer * 0.7 });
+      g.moveTo(px - 3.5, py - 2.5).lineTo(px + 3.5, py + 4.5).stroke({ color: 0xdd5555, width: 0.5, alpha: shimmer * 0.3 }); // highlight
+      // Belt buckle (ornate rectangle)
+      g.rect(px - 1.5, py + 1, 3, 2).fill({ color: 0xffd700, alpha: shimmer });
+      g.rect(px - 1.5, py + 1, 3, 2).stroke({ color: 0xeebb00, width: 0.5, alpha: shimmer * 0.5 });
+      // Medallion with faceted gem
+      g.circle(px, py - 1, 2.5).fill({ color: 0xffd700, alpha: shimmer });
+      g.circle(px, py - 1, 2.5).stroke({ color: 0xeebb00, width: 0.5, alpha: shimmer * 0.5 });
+      // Gem facets
+      g.moveTo(px - 1, py - 2).lineTo(px, py - 1).lineTo(px + 1, py - 2).closePath().fill({ color: 0xff4444, alpha: shimmer * 0.6 }); // ruby
+      g.circle(px - 0.5, py - 1.5, 0.5).fill({ color: 0xffffff, alpha: shimmer * 0.3 }); // gem sparkle
+      // Outer shimmer rings (2 layers)
+      g.circle(px, py, 10).stroke({ color: 0xcc8844, width: 1, alpha: shimmer * 0.3 });
+      g.circle(px, py, 12).stroke({ color: 0xcc8844, width: 0.5, alpha: shimmer * 0.15 });
     }
 
     // Shadow meld — 6 dark tendrils
