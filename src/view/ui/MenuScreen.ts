@@ -464,6 +464,20 @@ const GAME_MODES: GameModeEntry[] = [
     skipSetup: true,
     tag: "NEW",
   },
+  {
+    mode: GameMode.LABYRINTH,
+    label: "LABYRINTH",
+    desc: "Shifting maze: collect relics, evade the Minotaur, escape before your torch dies",
+    skipSetup: true,
+    tag: "NEW",
+  },
+  {
+    mode: GameMode.PLAGUE,
+    label: "PLAGUE DOCTOR",
+    desc: "Navigate a plague-ravaged city: treat the sick, gather herbs, craft remedies, stop the spread",
+    skipSetup: true,
+    tag: "NEW",
+  },
 ];
 
 // ---------------------------------------------------------------------------

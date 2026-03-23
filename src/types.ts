@@ -701,6 +701,8 @@ export enum GameMode {
   GRAIL_BREAKER = "grail_breaker",
   NECROMANCER = "necromancer",
   BARD = "bard",
+  LABYRINTH = "labyrinth",
+  PLAGUE = "plague",
 }
 
 // ---------------------------------------------------------------------------

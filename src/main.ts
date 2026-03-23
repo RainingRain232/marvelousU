@@ -161,6 +161,8 @@ import { GrailBlocksGame } from "./grailblocks/GrailBlocksGame";
 import { DerbyGame } from "./derby/DerbyGame";
 import { BreakerGame } from "./breaker/BreakerGame";
 import { BardGame } from "./bard/BardGame";
+import { LabyrinthGame } from "./labyrinth/LabyrinthGame";
+import { PlagueGame } from "./plague/PlagueGame";
 import { camelotHubScreen } from "@view/ui/CamelotHubScreen";
 
 // World mode imports
@@ -630,6 +632,16 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     if (menuScreen.selectedGameMode === GameMode.BARD) {
       menuScreen.hide();
       _bootBardGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.LABYRINTH) {
+      menuScreen.hide();
+      _bootLabyrinthGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.PLAGUE) {
+      menuScreen.hide();
+      _bootPlagueGame();
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.WORLD) {
@@ -2788,6 +2800,38 @@ async function _bootBardGame(): Promise<void> {
     menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
   window.addEventListener("bardExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Labyrinth mode boot
+// ---------------------------------------------------------------------------
+
+let _labyrinthGame: LabyrinthGame | null = null;
+
+async function _bootLabyrinthGame(): Promise<void> {
+  if (_labyrinthGame) { _labyrinthGame.destroy(); _labyrinthGame = null; }
+  _labyrinthGame = new LabyrinthGame();
+  await _labyrinthGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("labyrinthExit", _onExit);
+    if (_labyrinthGame) { _labyrinthGame.destroy(); _labyrinthGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("labyrinthExit", _onExit);
+}
+
+let _plagueGame: PlagueGame | null = null;
+
+async function _bootPlagueGame(): Promise<void> {
+  if (_plagueGame) { _plagueGame.destroy(); _plagueGame = null; }
+  _plagueGame = new PlagueGame();
+  await _plagueGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("plagueExit", _onExit);
+    if (_plagueGame) { _plagueGame.destroy(); _plagueGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("plagueExit", _onExit);
 }
 
 // ---------------------------------------------------------------------------
