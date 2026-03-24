@@ -128,7 +128,7 @@ export class ExodusEventScreen {
 
   // -------------------------------------------------------------------------
 
-  private _drawChoice(choice: ExodusChoice, index: number, px: number, y: number, maxW: number, sw: number): number {
+  private _drawChoice(choice: ExodusChoice, index: number, px: number, y: number, maxW: number, _sw: number): number {
     const h = 52;
     const bg = new Graphics();
     bg.roundRect(px, y, maxW, h, 5).fill({ color: 0x15130e, alpha: 0.9 });

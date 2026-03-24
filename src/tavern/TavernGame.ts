@@ -8,7 +8,7 @@ import { audioManager } from "@audio/AudioManager";
 
 import { createTavernState, TavernPhase } from "./state/TavernState";
 import type { TavernState } from "./state/TavernState";
-import { OPPONENTS, TavernConfig, cardScore } from "./config/TavernConfig";
+import { OPPONENTS } from "./config/TavernConfig";
 import { placeBet, playerHit, playerStand, playerDoubleDown, playerInsurance, playerSplit } from "./systems/CardSystem";
 import { TavernRenderer } from "./view/TavernRenderer";
 

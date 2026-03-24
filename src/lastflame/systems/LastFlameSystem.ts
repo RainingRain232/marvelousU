@@ -3,7 +3,7 @@
 // Damage system, shadow variants, sprint, wave events, contested oil
 // ---------------------------------------------------------------------------
 
-import type { LFState, LFShadow, ShadowVariant, LFMeta, LFRunSummary } from "../types";
+import type { LFState, ShadowVariant, LFMeta, LFRunSummary } from "../types";
 import { generateRoom, generatePillars } from "../state/LastFlameState";
 import { LF } from "../config/LastFlameBalance";
 
@@ -386,7 +386,7 @@ function spawnShadow(state: LFState, variant: ShadowVariant): void {
   else if (side === 2) { sx = Math.random() * state.arenaW; sy = state.arenaH; }
   else { sx = 0; sy = Math.random() * state.arenaH; }
 
-  let hp = 1, radius = LF.SHADOW_RADIUS, fuelDamage = LF.SHADOW_HIT_FUEL_COST;
+  let hp: number = 1, radius: number = LF.SHADOW_RADIUS, fuelDamage: number = LF.SHADOW_HIT_FUEL_COST;
   if (variant === "brute") { hp = LF.BRUTE_HP; radius = LF.BRUTE_RADIUS; fuelDamage = LF.BRUTE_FUEL_DAMAGE; }
   else if (variant === "swarm") { radius = LF.SWARM_RADIUS; fuelDamage = LF.SHADOW_HIT_FUEL_COST * 0.5; }
   else if (variant === "stalker") { radius = LF.SHADOW_RADIUS + 2; fuelDamage = LF.SHADOW_HIT_FUEL_COST * 0.7; }
@@ -726,7 +726,7 @@ export function transitionRoom(state: LFState): void {
 }
 
 /** Apply kindling trail damage (called from game loop when moving) */
-export function applyKindlingTrail(state: LFState, dt: number): void {
+export function applyKindlingTrail(state: LFState, _dt: number): void {
   // Kindling trail works with mutator OR in oil_floor rooms
   const hasTrail = state.activeMutators.includes("kindling_trail") || state.roomConfig.hazard === "oil_floor";
   if (!hasTrail) return;

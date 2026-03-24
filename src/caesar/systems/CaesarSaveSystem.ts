@@ -3,12 +3,9 @@
 // ---------------------------------------------------------------------------
 
 import { CaesarResourceType } from "../config/CaesarResourceDefs";
-import type { CaesarServiceType } from "../config/CaesarBuildingDefs";
 import { CB } from "../config/CaesarBalance";
 import type { CaesarState } from "../state/CaesarState";
-import type { CaesarBuilding } from "../state/CaesarBuilding";
-import type { CaesarWalker } from "../state/CaesarWalker";
-import { createMap, type CaesarMapData, type CaesarTile } from "../state/CaesarMap";
+import { createMap } from "../state/CaesarMap";
 
 const SAVE_KEY = "caesar_save_v1";
 

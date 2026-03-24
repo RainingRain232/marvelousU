@@ -4,7 +4,6 @@
 
 import { UnitType } from "@/types";
 import type { HexCoord } from "@world/hex/HexCoord";
-import { hexKey } from "@world/hex/HexCoord";
 import { ExodusConfig, type ExodusDifficulty } from "../config/ExodusConfig";
 
 // ---------------------------------------------------------------------------

@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import { CB } from "../config/CaesarBalance";
-import { CaesarBuildingType, HOUSING_REQUIREMENTS, CAESAR_BUILDING_DEFS, type CaesarServiceType } from "../config/CaesarBuildingDefs";
+import { CaesarBuildingType, HOUSING_REQUIREMENTS, type CaesarServiceType } from "../config/CaesarBuildingDefs";
 import { CaesarResourceType } from "../config/CaesarResourceDefs";
 import type { CaesarState } from "../state/CaesarState";
 import type { CaesarBuilding } from "../state/CaesarBuilding";

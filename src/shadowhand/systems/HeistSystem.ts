@@ -13,7 +13,7 @@ import { spawnGuards, updateGuardMovement, checkGuardCatchThief, spawnReinforcem
 import { updateThiefMovement, createThiefUnit, updateSmoke, updateShadowMeld } from "./ThiefSystem";
 import { updateGuardVision } from "./VisionSystem";
 import { updateNoiseEvents, guardsHearNoise, updateGlobalAlert } from "./NoiseSystem";
-import { selectModifiers, applyModifiers, generateHeistEvents, updateHeistEvents, spawnParticles, MODIFIER_DISPLAY } from "./HeistEventSystem";
+import { selectModifiers, applyModifiers, generateHeistEvents, updateHeistEvents, MODIFIER_DISPLAY } from "./HeistEventSystem";
 import { updateCrewBonds, getCrewBondBonus, completeContract } from "./ContractSystem";
 
 export function initHeist(state: ShadowhandState): void {

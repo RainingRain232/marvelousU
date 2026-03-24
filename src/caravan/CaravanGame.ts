@@ -6,6 +6,7 @@
 import { Ticker } from "pixi.js";
 import { viewManager } from "@view/ViewManager";
 import { gridRenderer } from "@view/GridRenderer";
+import type { BattlefieldState } from "@sim/state/BattlefieldState";
 import { audioManager } from "@audio/AudioManager";
 import { CaravanBalance } from "./config/CaravanBalanceConfig";
 import { createCaravanState } from "./state/CaravanState";
@@ -276,7 +277,7 @@ export class CaravanGame {
     // Draw grid terrain
     const grid = this._buildSimpleGrid(s.mapWidth, s.mapHeight);
     gridRenderer.init(viewManager);
-    gridRenderer.draw({ grid, width: s.mapWidth, height: s.mapHeight }, biome.mapType);
+    gridRenderer.draw({ grid, width: s.mapWidth, height: s.mapHeight } as unknown as BattlefieldState, biome.mapType);
   }
 
   // ---------------------------------------------------------------------------

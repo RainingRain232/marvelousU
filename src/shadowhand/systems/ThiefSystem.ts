@@ -2,7 +2,7 @@
 // Shadowhand mode — thief movement, actions & abilities (improved)
 // ---------------------------------------------------------------------------
 
-import type { HeistState, ThiefUnit, HeistMap } from "../state/ShadowhandState";
+import type { HeistState, ThiefUnit } from "../state/ShadowhandState";
 import type { CrewMember } from "../config/CrewDefs";
 import { CREW_ARCHETYPES } from "../config/CrewDefs";
 import { ShadowhandConfig } from "../config/ShadowhandConfig";

@@ -63,7 +63,7 @@ export class ExodusStartScreen {
     y += 42;
 
     // Subtitle
-    const sub = this._text("Camelot has fallen. Lead the survivors westward to the shores of Avalon.", sw / 2, y,
+    const _sub = this._text("Camelot has fallen. Lead the survivors westward to the shores of Avalon.", sw / 2, y,
       new TextStyle({ fontFamily: FONT, fontSize: 13, fill: 0x998877, fontStyle: "italic", wordWrap: true, wordWrapWidth: 480, align: "center" }), 0.5);
     y += 40;
 

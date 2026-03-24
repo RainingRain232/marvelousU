@@ -3,9 +3,9 @@
 // ---------------------------------------------------------------------------
 
 import { Container, Graphics, Text, TextStyle } from "pixi.js";
-import type { NecroState, Grave, Undead, Crusader } from "../state/NecroState";
+import type { NecroState, Undead, Crusader } from "../state/NecroState";
 import { findChimera } from "../state/NecroState";
-import { CORPSES, NecroConfig, CRUSADERS } from "../config/NecroConfig";
+import { CORPSES, NecroConfig } from "../config/NecroConfig";
 
 const FONT = "Georgia, serif";
 const NECRO_GREEN = 0x44ff88;
@@ -16,8 +16,6 @@ export class NecroRenderer {
   readonly container = new Container();
   private _gfx = new Graphics();
   private _ui = new Container();
-  private _bgDrawn = false;
-
   init(sw: number, sh: number): void {
     this.container.removeChildren();
     this._drawBackground(sw, sh);
@@ -25,7 +23,6 @@ export class NecroRenderer {
     this._ui = new Container();
     this.container.addChild(this._gfx);
     this.container.addChild(this._ui);
-    this._bgDrawn = true;
   }
 
   private _drawBackground(sw: number, sh: number): void {
@@ -383,7 +380,6 @@ export class NecroRenderer {
         g.circle(px, py, sz * 0.4).fill({ color: 0xffffff, alpha: lr * 0.15 });
       } else if (p.color === BONE_WHITE || p.color === 0xccccbb) {
         // Bone fragment — angular shard
-        const fa = state.elapsed * 5 + p.life * 10;
         g.moveTo(px, py - sz).lineTo(px + sz * 0.6, py).lineTo(px + sz * 0.2, py + sz * 0.8).lineTo(px - sz * 0.5, py + sz * 0.3)
           .fill({ color: p.color, alpha: lr * 0.6 });
       } else if (p.color === 0x881122 || p.color === 0xff4444) {
@@ -424,7 +420,7 @@ export class NecroRenderer {
 
   private _drawDigPhase(g: Graphics, state: NecroState, ox: number, oy: number): void {
     // Iron graveyard fence around the perimeter
-    const fenceY1 = oy + 60, fenceY2 = oy + NecroConfig.FIELD_HEIGHT - 30;
+    const fenceY1 = oy + 60;
     const fenceX1 = ox + 30, fenceX2 = ox + NecroConfig.FIELD_WIDTH - 30;
     // Horizontal rails
     g.moveTo(fenceX1, fenceY1).lineTo(fenceX2, fenceY1).stroke({ color: 0x333330, width: 1.5, alpha: 0.4 });
@@ -658,7 +654,7 @@ export class NecroRenderer {
 
   // ── Ritual phase ───────────────────────────────────────────────────────
 
-  private _drawRitualPhase(g: Graphics, state: NecroState, ox: number, oy: number, sw: number, sh: number): void {
+  private _drawRitualPhase(g: Graphics, state: NecroState, ox: number, oy: number, _sw: number, _sh: number): void {
     const cx = NecroConfig.FIELD_WIDTH / 2, cy = NecroConfig.FIELD_HEIGHT / 2;
 
     // Ritual circle
@@ -2278,7 +2274,7 @@ export class NecroRenderer {
 
   // ── HUD ────────────────────────────────────────────────────────────────
 
-  private _drawHUD(g: Graphics, state: NecroState, sw: number, sh: number, ox: number, oy: number): void {
+  private _drawHUD(g: Graphics, state: NecroState, sw: number, sh: number, _ox: number, _oy: number): void {
     // Top bar — darker with subtle gradient
     for (let by = 0; by < 46; by++) {
       const ba = 0.85 - by * 0.003;

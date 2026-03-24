@@ -6,8 +6,8 @@ import { CB } from "../config/CaesarBalance";
 import { CaesarBuildingType, CAESAR_BUILDING_DEFS } from "../config/CaesarBuildingDefs";
 import type { CaesarState } from "../state/CaesarState";
 import { nextEntityId } from "../state/CaesarState";
-import { createServiceWalker, type CaesarWalker } from "../state/CaesarWalker";
-import { tileAt, inBounds } from "../state/CaesarMap";
+import { createServiceWalker } from "../state/CaesarWalker";
+import { inBounds } from "../state/CaesarMap";
 import { applyServiceCoverage } from "./CaesarHousingSystem";
 import { isBuildingRoadConnected } from "./CaesarBuildingSystem";
 

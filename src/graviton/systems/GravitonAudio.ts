@@ -78,7 +78,7 @@ export function startGDrone(): void {
 }
 
 /** Update audio based on game state */
-export function updateGAudio(pulling: boolean, orbitCount: number, wave: number, threatLevel: number, hp: number, maxHp: number): void {
+export function updateGAudio(pulling: boolean, orbitCount: number, wave: number, threatLevel: number, hp: number, _maxHp: number): void {
   if (!_droneGain || !_pullGain || !_droneOsc || !_pullOsc) return;
   const c = ctx(); const t = c.currentTime;
 

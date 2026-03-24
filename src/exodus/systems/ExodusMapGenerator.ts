@@ -28,7 +28,7 @@ function hexesInRadius(center: HexCoord, radius: number): HexCoord[] {
 // Determine region for a hex based on distance from start
 // ---------------------------------------------------------------------------
 
-function assignRegion(hex: HexCoord, start: HexCoord, goal: HexCoord, mapRadius: number): number {
+function assignRegion(hex: HexCoord, start: HexCoord, goal: HexCoord, _mapRadius: number): number {
   const dist = hexDistance(hex, start);
   const maxDist = hexDistance(start, goal);
   const ratio = dist / Math.max(maxDist, 1);
@@ -99,7 +99,7 @@ function addWaterBarriers(
   mapRadius: number,
   rng: () => number,
 ): void {
-  for (const [key, hex] of hexes) {
+  for (const [_key, hex] of hexes) {
     const dist = hexDistance(hex.coord, { q: 0, r: 0 });
     // Edge hexes become water
     if (dist >= mapRadius) {

@@ -4,7 +4,7 @@
 
 import { Container, Graphics, Text, TextStyle } from "pixi.js";
 import type { HuntState } from "../state/HuntState";
-import { PREY, HuntConfig, BOWS } from "../config/HuntConfig";
+import { PREY, HuntConfig } from "../config/HuntConfig";
 
 const FONT = "Georgia, serif";
 const COL = 0x88aa44;

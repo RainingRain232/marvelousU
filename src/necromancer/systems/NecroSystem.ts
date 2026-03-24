@@ -5,7 +5,7 @@
 import type { NecroState, Undead, Crusader, Corpse, CorpseQuality } from "../state/NecroState";
 import { findChimera } from "../state/NecroState";
 import { CORPSES, CRUSADERS, NecroConfig, WAVES, generateEndlessWave, BATTLE_EVENTS, COMBO_WINDOW, WAVE_BONUSES, RALLY_CONFIG, BOSSES, BOSS_WAVES, RELICS, RELIC_GRAVE_DROP_CHANCE, RELIC_WAVE_REWARD_WAVES, MAX_RELICS } from "../config/NecroConfig";
-import type { CorpseType, CrusaderType, BossType } from "../config/NecroConfig";
+import type { CrusaderType, BossType } from "../config/NecroConfig";
 
 const BONE_WHITE = 0xccccbb;
 const NECRO_GREEN_SYS = 0x44ff88;
@@ -496,7 +496,7 @@ export function updateBattle(state: NecroState, dt: number): void {
 
     // Formation roles — ranged units stay behind melee line
     if (u.ranged && state.undead.length > 2) {
-      let frontX = NecroConfig.FIELD_WIDTH;
+      let frontX: number = NecroConfig.FIELD_WIDTH;
       for (const ally of state.undead) {
         if (ally.id !== u.id && ally.alive && !ally.ranged && ally.x < frontX) frontX = ally.x;
       }

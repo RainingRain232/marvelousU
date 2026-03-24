@@ -2,7 +2,7 @@
 // Hunt mode — prey movement, arrow physics, collision
 // ---------------------------------------------------------------------------
 
-import type { HuntState, Prey, Arrow } from "../state/HuntState";
+import type { HuntState } from "../state/HuntState";
 import { PREY, HuntConfig, SPAWN_TABLE, type PreyType } from "../config/HuntConfig";
 
 export function spawnPrey(state: HuntState): void {
@@ -216,7 +216,6 @@ export function updateHunt(state: HuntState, dt: number): void {
     }
 
     // Check hit on prey
-    let hit = false;
     for (const prey of state.prey) {
       if (!prey.alive) continue;
       const def = PREY[prey.type];
@@ -244,7 +243,6 @@ export function updateHunt(state: HuntState, dt: number): void {
           prey.startledTimer = HuntConfig.STARTLED_DURATION;
           prey.angle = Math.atan2(prey.y - state.playerY, prey.x - state.playerX);
         }
-        hit = true;
         state.arrows.splice(i, 1);
         break;
       }

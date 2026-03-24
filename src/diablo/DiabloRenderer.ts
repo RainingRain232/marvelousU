@@ -51595,7 +51595,7 @@ export class DiabloRenderer {
     return group;
   }
 
-  private _syncPets(state: DiabloState, dt: number): void {
+  private _syncPets(state: DiabloState, _dt: number): void {
     const activePets = state.player.pets.filter(p => p.isSummoned);
     const currentIds = new Set(activePets.map(p => p.id));
 

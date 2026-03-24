@@ -4,7 +4,7 @@
 
 import { Container, Graphics, Text, TextStyle } from "pixi.js";
 import type { ExodusState } from "../state/ExodusState";
-import { ExodusPhase, scoutCount, combatCapableMembers } from "../state/ExodusState";
+import { ExodusPhase, combatCapableMembers } from "../state/ExodusState";
 import { ExodusPursuerSystem } from "../systems/ExodusPursuerSystem";
 import { ExodusResourceSystem } from "../systems/ExodusResourceSystem";
 import { ExodusConfig } from "../config/ExodusConfig";
@@ -15,7 +15,6 @@ const FONT = "Georgia, serif";
 const COL_GOLD = 0xdaa520;
 const COL_GOLD_LIGHT = 0xffd700;
 const COL_PANEL = 0x0a0805;
-const COL_PANEL_BORDER = 0x3a2a1a;
 
 const STYLE_TITLE = new TextStyle({ fontFamily: FONT, fontSize: 13, fill: COL_GOLD, fontWeight: "bold", letterSpacing: 3 });
 const STYLE_DAY = new TextStyle({ fontFamily: FONT, fontSize: 20, fill: COL_GOLD_LIGHT, fontWeight: "bold" });
@@ -131,7 +130,7 @@ export class ExodusHUD {
     this.container.addChild(this._controlsHint);
   }
 
-  update(state: ExodusState, sw: number, sh: number): void {
+  update(state: ExodusState, _sw: number, _sh: number): void {
     this._dayText.text = `Day ${state.day}`;
     this._phaseText.text = this._phaseLabel(state.phase);
 

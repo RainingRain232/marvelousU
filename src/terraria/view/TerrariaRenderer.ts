@@ -1953,7 +1953,7 @@ export class TerrariaRenderer {
   // Screen-space FX
   // ---------------------------------------------------------------------------
 
-  private _drawScreenFX(state: TerrariaState, camera: TerrariaCamera, sw: number, sh: number): void {
+  private _drawScreenFX(state: TerrariaState, _camera: TerrariaCamera, sw: number, sh: number): void {
     this._screenFx.clear();
 
     // Track HP changes for damage/heal flash
@@ -2121,12 +2121,6 @@ export class TerrariaRenderer {
 // Color helpers
 // ---------------------------------------------------------------------------
 
-function _darkenColor(color: number, factor: number): number {
-  const r = Math.floor(((color >> 16) & 0xFF) * factor);
-  const g = Math.floor(((color >> 8) & 0xFF) * factor);
-  const b = Math.floor((color & 0xFF) * factor);
-  return (r << 16) | (g << 8) | b;
-}
 
 function _lerp(a: number, b: number, t: number): number { return a + (b - a) * t; }
 

@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import type { PreyType, BowDef } from "../config/HuntConfig";
-import { PREY, BOWS, HuntConfig } from "../config/HuntConfig";
+import { BOWS, HuntConfig } from "../config/HuntConfig";
 
 export interface Prey {
   id: string;

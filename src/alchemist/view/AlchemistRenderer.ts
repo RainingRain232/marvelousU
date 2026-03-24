@@ -3,8 +3,8 @@
 // ---------------------------------------------------------------------------
 
 import { Container, Graphics, Text, TextStyle } from "pixi.js";
-import type { AlchemistState, Customer } from "../state/AlchemistState";
-import { AlchemistConfig, INGREDIENTS, RECIPES, type IngredientType } from "../config/AlchemistConfig";
+import type { AlchemistState } from "../state/AlchemistState";
+import { AlchemistConfig, INGREDIENTS } from "../config/AlchemistConfig";
 import { canServeCustomer } from "../systems/GridSystem";
 
 const T = AlchemistConfig.TILE_SIZE;
@@ -379,7 +379,7 @@ export class AlchemistRenderer {
     }
   }
 
-  getGridOffset(sw: number, sh: number): { x: number; y: number } {
+  getGridOffset(_sw: number, sh: number): { x: number; y: number } {
     const gridH = AlchemistConfig.GRID_ROWS * T;
     return { x: 30, y: (sh - gridH) / 2 };
   }

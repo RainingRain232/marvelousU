@@ -4,7 +4,7 @@
 
 import { Container, Graphics, Text, TextStyle } from "pixi.js";
 import type { ExodusState } from "../state/ExodusState";
-import { combatReadyMembers, scoutCount } from "../state/ExodusState";
+import { scoutCount } from "../state/ExodusState";
 import { ExodusConfig } from "../config/ExodusConfig";
 import { ExodusPursuerSystem } from "../systems/ExodusPursuerSystem";
 import { ExodusResourceSystem } from "../systems/ExodusResourceSystem";
@@ -18,7 +18,6 @@ const STYLE_TITLE = new TextStyle({ fontFamily: FONT, fontSize: 20, fill: 0xffd7
 const STYLE_SUBTITLE = new TextStyle({ fontFamily: FONT, fontSize: 12, fill: 0xcccccc, fontStyle: "italic" });
 const STYLE_SECTION = new TextStyle({ fontFamily: FONT, fontSize: 13, fill: 0xddaa44, fontWeight: "bold" });
 const STYLE_INFO = new TextStyle({ fontFamily: FONT, fontSize: 11, fill: 0xbbbbbb });
-const STYLE_WARN = new TextStyle({ fontFamily: FONT, fontSize: 10, fill: 0xff8844 });
 const STYLE_GOOD = new TextStyle({ fontFamily: FONT, fontSize: 10, fill: 0x44ff44 });
 
 // ---------------------------------------------------------------------------

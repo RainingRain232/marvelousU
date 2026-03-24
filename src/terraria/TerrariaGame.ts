@@ -67,8 +67,6 @@ export class TerrariaGame {
   private _hasDoubleJumped = false;
   private _wallSlideDir = 0;
   private _coyoteTimer = 0;
-  private _respawnX = 0;
-  private _respawnY = 0;
   private _lastInput: import("./systems/TerrariaInputSystem").InputState | null = null;
 
   // -----------------------------------------------------------------------
@@ -429,8 +427,6 @@ export class TerrariaGame {
 
         // Bed: set respawn point on interact
         if (bt === _BT_BED && (this._lastInput?.interact)) {
-          this._respawnX = wx + 0.5;
-          this._respawnY = wy + 1;
           addMessage(this._state, "Respawn point set!", 0x88CCFF);
         }
 

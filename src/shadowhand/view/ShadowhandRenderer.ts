@@ -31,7 +31,6 @@ const DOOR_FRAME = 0x4a3a2a;
 const DOOR_WOOD = 0x6a5a3a;
 const DOOR_LOCK = 0x8a4a2a;
 const WINDOW_FRAME = 0x3a4a5a;
-const WINDOW_GLASS = 0x5a7a9a;
 
 const ALERT_COLORS: Record<AlertLevel, number> = {
   [AlertLevel.UNAWARE]: 0x44aa44,
@@ -48,7 +47,6 @@ export class ShadowhandRenderer {
   private _lightGfx = new Graphics();
   private _offsetX = 0;
   private _offsetY = 0;
-  private _mapDrawn = false;
 
   init(): void {
     this.container.removeChildren();
@@ -177,7 +175,6 @@ export class ShadowhandRenderer {
     this.container.addChild(this._lightGfx);
     this.container.addChild(this._fogGfx);
     this.container.addChild(this._entityGfx);
-    this._mapDrawn = false;
   }
 
   setOffset(x: number, y: number): void {

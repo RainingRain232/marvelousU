@@ -5,11 +5,10 @@
 import { CB, DIFFICULTY_MODS, type CaesarDifficulty } from "./config/CaesarBalance";
 import { CaesarBuildingType, CAESAR_BUILDING_DEFS } from "./config/CaesarBuildingDefs";
 import { CaesarResourceType } from "./config/CaesarResourceDefs";
-import { createCaesarState, nextEntityId, SCENARIOS, type CaesarState } from "./state/CaesarState";
+import { createCaesarState, nextEntityId, type CaesarState } from "./state/CaesarState";
 import { createBuilding } from "./state/CaesarBuilding";
 import { generateTerrain, findStartPosition } from "./systems/CaesarTerrainSystem";
 import {
-  canPlace,
   placeBuilding,
   demolishBuilding,
   updateConstruction,
@@ -30,7 +29,7 @@ import { updateFires } from "./systems/CaesarFireSystem";
 import { updateMorale } from "./systems/CaesarMoraleSystem";
 import { updateUpgrades, startUpgrade, canUpgrade } from "./systems/CaesarUpgradeSystem";
 import { updateCaravans, executeBuyFromCaravan, executeSellToCaravan } from "./systems/CaesarTradeSystem";
-import { saveToLocalStorage, loadFromLocalStorage, hasSave } from "./systems/CaesarSaveSystem";
+import { saveToLocalStorage, loadFromLocalStorage, hasSave as _hasSave } from "./systems/CaesarSaveSystem";
 import { CaesarRenderer } from "./view/CaesarRenderer";
 import { CaesarHUD } from "./view/CaesarHUD";
 

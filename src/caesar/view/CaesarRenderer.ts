@@ -4,11 +4,10 @@
 
 import * as PIXI from "pixi.js";
 import { CB } from "../config/CaesarBalance";
-import { CaesarBuildingType, CAESAR_BUILDING_DEFS, HOUSING_TIER_NAMES } from "../config/CaesarBuildingDefs";
+import { CaesarBuildingType, CAESAR_BUILDING_DEFS } from "../config/CaesarBuildingDefs";
 import type { CaesarState } from "../state/CaesarState";
 import type { CaesarBuilding } from "../state/CaesarBuilding";
-import type { CaesarWalker } from "../state/CaesarWalker";
-import { tileAt, inBounds, type CaesarTerrain, type CaesarMapData } from "../state/CaesarMap";
+import { tileAt, type CaesarTerrain } from "../state/CaesarMap";
 import { canPlaceBuilding } from "../systems/CaesarBuildingSystem";
 
 // ---- Seeded RNG ----
@@ -91,7 +90,6 @@ export class CaesarRenderer {
   private _terrainDirty = true;
   private _highlightGfx = new PIXI.Graphics();
   private _minimapCanvas: HTMLCanvasElement | null = null;
-  private _minimapDirty = true;
   private _time = 0;
   private _smoke: { x: number; y: number; age: number; life: number; vx: number; vy: number; sz: number }[] = [];
   private _sparks: { x: number; y: number; age: number; life: number; vx: number; vy: number; c: number }[] = [];
@@ -154,7 +152,7 @@ export class CaesarRenderer {
     this._cameraX = Math.max(0, Math.min(maxX, this._cameraX));
     this._cameraY = Math.max(0, Math.min(maxY, this._cameraY));
   }
-  markTerrainDirty() { this._terrainDirty = true; this._minimapDirty = true; }
+  markTerrainDirty() { this._terrainDirty = true; }
 
   render(state: CaesarState, dt: number): void {
     if (!this._app) return;
@@ -328,7 +326,7 @@ export class CaesarRenderer {
             const lx = px + 3 + rng() * (ts - 10);
             const ly = py + ts * 0.6 + rng() * (ts * 0.3);
             const ll = 5 + rng() * 6;
-            const la = rng() * 0.4 - 0.2;
+            rng();
             d.roundRect(lx, ly, ll, 2.5, 1);
             d.fill(0x5d4037);
             // Bark texture
@@ -583,7 +581,7 @@ export class CaesarRenderer {
   // ==================================================================
   // BUILDINGS
   // ==================================================================
-  private _renderBuildings(state: CaesarState, dt: number): void {
+  private _renderBuildings(state: CaesarState, _dt: number): void {
     for (const c of this._buildingLayer.removeChildren()) c.destroy();
     for (const c of this._shadowLayer.removeChildren()) c.destroy();
     const ts = CB.TILE_SIZE;
@@ -728,7 +726,7 @@ export class CaesarRenderer {
 
   // ---- Building draw methods ----
 
-  private _drawConstruction(g: PIXI.Graphics, b: CaesarBuilding, px: number, py: number, pw: number, ph: number, ts: number): void {
+  private _drawConstruction(g: PIXI.Graphics, b: CaesarBuilding, px: number, py: number, pw: number, ph: number, _ts: number): void {
     const p = b.constructionProgress;
     g.rect(px + 1, py + 1, pw - 2, ph - 2); g.fill({ color: 0x8b7355, alpha: 0.35 });
     const bH = (ph - 4) * p;
@@ -799,7 +797,7 @@ export class CaesarRenderer {
     return false;
   }
 
-  private _drawHousing(g: PIXI.Graphics, b: CaesarBuilding, px: number, py: number, pw: number, ph: number, ts: number, rng: () => number): void {
+  private _drawHousing(g: PIXI.Graphics, b: CaesarBuilding, px: number, py: number, pw: number, ph: number, _ts: number, _rng: () => number): void {
     const t = b.housingTier;
     const wc = H_WALLS[t], rc = H_ROOFS[t], rh = H_ROOF_HI[t];
     const m = 2, roofH = ph * 0.38;
@@ -888,7 +886,7 @@ export class CaesarRenderer {
     g.moveTo(x, y + h / 2); g.lineTo(x + w, y + h / 2); g.stroke({ color: 0x5d4037, width: 0.4 });
   }
 
-  private _drawWall(g: PIXI.Graphics, b: CaesarBuilding, px: number, py: number, ts: number, rng: () => number): void {
+  private _drawWall(g: PIXI.Graphics, _b: CaesarBuilding, px: number, py: number, ts: number, _rng: () => number): void {
     const pw = ts, ph = ts;
     const m = 1;
     // Main wall body with stone texture
@@ -930,7 +928,7 @@ export class CaesarRenderer {
     for (let i = 1; i < 4; i++) { g.moveTo(gx + 2, py + ts - ah + ah * i / 4); g.lineTo(gx + aw - 2, py + ts - ah + ah * i / 4); g.stroke({ width: 0.8, color: 0x555555, alpha: 0.6 }); }
   }
 
-  private _drawTower(g: PIXI.Graphics, px: number, py: number, pw: number, ph: number, ts: number, rng: () => number): void {
+  private _drawTower(g: PIXI.Graphics, px: number, py: number, pw: number, ph: number, _ts: number, _rng: () => number): void {
     // Base
     g.roundRect(px + 2, py + ph * 0.28, pw - 4, ph * 0.72 - 2, 2); g.fill(0x757575);
     // Stone pattern
@@ -976,7 +974,7 @@ export class CaesarRenderer {
     g.roundRect(cx - 1.5, cy - ts * 0.12, 3, 3, 0.5); g.fill(0x795548);
   }
 
-  private _drawFarm(g: PIXI.Graphics, px: number, py: number, pw: number, ph: number, ts: number, rng: () => number): void {
+  private _drawFarm(g: PIXI.Graphics, px: number, py: number, pw: number, ph: number, _ts: number, rng: () => number): void {
     g.roundRect(px + 1, py + 1, pw - 2, ph - 2, 2); g.fill(0x8b7d4a);
     // Plowed rows with individual wheat stalks
     const rows = Math.floor(ph / 3.5);
@@ -1004,7 +1002,7 @@ export class CaesarRenderer {
     g.circle(scx, scy - 3, 1.5); g.fill(0xddc888);
   }
 
-  private _drawMill(g: PIXI.Graphics, px: number, py: number, pw: number, ph: number, ts: number): void {
+  private _drawMill(g: PIXI.Graphics, px: number, py: number, pw: number, ph: number, _ts: number): void {
     // Body
     g.roundRect(px + 3, py + ph * 0.3, pw - 6, ph * 0.7 - 2, 2); g.fill(0xf0e0c0);
     g.roundRect(px + 2, py + ph * 0.25, pw - 4, ph * 0.1, 1); g.fill(shadeColor(0xf0e0c0, 0.85));
@@ -1027,7 +1025,7 @@ export class CaesarRenderer {
     g.roundRect(px + pw / 2 - 2, py + ph - 3 - 5, 4, 5, 1); g.fill(0x5d4037);
   }
 
-  private _drawBakery(g: PIXI.Graphics, px: number, py: number, pw: number, ph: number, ts: number): void {
+  private _drawBakery(g: PIXI.Graphics, px: number, py: number, pw: number, ph: number, _ts: number): void {
     const m = 2, roofH = ph * 0.28;
     g.roundRect(px + m, py + roofH, pw - m * 2, ph - roofH - m, 2); g.fill(0xd4a057);
     g.roundRect(px + m - 1, py + m, pw - m * 2 + 2, roofH, 2); g.fill(0xa05828);
@@ -1046,7 +1044,7 @@ export class CaesarRenderer {
     t.position.set(px + pw / 2 - t.width / 2, py + ph / 2 - t.height / 2); g.addChild(t);
   }
 
-  private _drawButcher(g: PIXI.Graphics, px: number, py: number, pw: number, ph: number, ts: number): void {
+  private _drawButcher(g: PIXI.Graphics, px: number, py: number, pw: number, ph: number, _ts: number): void {
     const m = 2, roofH = ph * 0.28;
     g.roundRect(px + m, py + roofH, pw - m * 2, ph - roofH - m, 2); g.fill(0xc04040);
     // Darker half for depth
@@ -1069,7 +1067,7 @@ export class CaesarRenderer {
     t.position.set(px + pw / 2 - t.width / 2, py + ph * 0.45); g.addChild(t);
   }
 
-  private _drawMarket(g: PIXI.Graphics, px: number, py: number, pw: number, ph: number, ts: number, rng: () => number): void {
+  private _drawMarket(g: PIXI.Graphics, px: number, py: number, pw: number, ph: number, _ts: number, rng: () => number): void {
     // Open-air stalls with canopy
     g.roundRect(px + 1, py + ph * 0.4, pw - 2, ph * 0.6 - 1, 1); g.fill(0xe08830);
     // Striped canopy
@@ -1096,7 +1094,7 @@ export class CaesarRenderer {
     g.rect(px + pw - 3.5, py + 2, 1.5, ph - 3); g.fill(0x5d4037);
   }
 
-  private _drawGranary(g: PIXI.Graphics, px: number, py: number, pw: number, ph: number, ts: number, rng: () => number): void {
+  private _drawGranary(g: PIXI.Graphics, px: number, py: number, pw: number, ph: number, _ts: number, rng: () => number): void {
     g.roundRect(px + 2, py + ph * 0.2, pw - 4, ph * 0.8 - 2, 2); g.fill(0xa08060);
     // Lit face
     g.roundRect(px + 2, py + ph * 0.2, (pw - 4) * 0.5, ph * 0.8 - 2, 2); g.fill({ color: 0xb09070, alpha: 0.3 });
@@ -1123,7 +1121,7 @@ export class CaesarRenderer {
     t.position.set(px + pw / 2 - t.width / 2, py + ph * 0.28); g.addChild(t);
   }
 
-  private _drawWarehouse(g: PIXI.Graphics, px: number, py: number, pw: number, ph: number, ts: number, rng: () => number): void {
+  private _drawWarehouse(g: PIXI.Graphics, px: number, py: number, pw: number, ph: number, _ts: number, rng: () => number): void {
     g.roundRect(px + 2, py + ph * 0.2, pw - 4, ph * 0.8 - 2, 2); g.fill(0x604030);
     g.roundRect(px + 1, py + 2, pw - 2, ph * 0.22, 2); g.fill(0x4a3020);
     // Large door
@@ -1138,7 +1136,7 @@ export class CaesarRenderer {
     t.position.set(px + pw / 2 - t.width / 2, py + ph * 0.28); g.addChild(t);
   }
 
-  private _drawLumber(g: PIXI.Graphics, px: number, py: number, pw: number, ph: number, ts: number, rng: () => number): void {
+  private _drawLumber(g: PIXI.Graphics, px: number, py: number, pw: number, ph: number, _ts: number, _rng: () => number): void {
     g.roundRect(px + 2, py + ph * 0.35, pw - 4, ph * 0.65 - 2, 2); g.fill(0x7a5a40);
     // Shed roof
     g.poly([px + 1, py + ph * 0.35, px + pw / 2, py + 2, px + pw - 1, py + ph * 0.35]); g.fill(0x5d4037);
@@ -1154,7 +1152,7 @@ export class CaesarRenderer {
     g.stroke({ color: 0xaaaaaa, width: 1 });
   }
 
-  private _drawQuarry(g: PIXI.Graphics, px: number, py: number, pw: number, ph: number, ts: number, rng: () => number): void {
+  private _drawQuarry(g: PIXI.Graphics, px: number, py: number, pw: number, ph: number, _ts: number, rng: () => number): void {
     g.roundRect(px + 1, py + 1, pw - 2, ph - 2, 2); g.fill(0x777777);
     // Excavated pit
     g.roundRect(px + 4, py + 4, pw - 8, ph - 8, 3); g.fill(0x666666);
@@ -1168,7 +1166,7 @@ export class CaesarRenderer {
     t.position.set(px + pw / 2 - t.width / 2, py + ph / 2 - t.height / 2); g.addChild(t);
   }
 
-  private _drawIronMine(g: PIXI.Graphics, px: number, py: number, pw: number, ph: number, ts: number, rng: () => number): void {
+  private _drawIronMine(g: PIXI.Graphics, px: number, py: number, pw: number, ph: number, _ts: number, rng: () => number): void {
     g.roundRect(px + 1, py + 1, pw - 2, ph - 2, 2); g.fill(0x506070);
     // Mine entrance
     g.roundRect(px + pw * 0.3, py + ph * 0.5, pw * 0.4, ph * 0.45, pw * 0.08); g.fill(0x333333);
@@ -1186,7 +1184,7 @@ export class CaesarRenderer {
     t.position.set(px + pw / 2 - t.width / 2, py + ph * 0.25); g.addChild(t);
   }
 
-  private _drawBlacksmith(g: PIXI.Graphics, px: number, py: number, pw: number, ph: number, ts: number): void {
+  private _drawBlacksmith(g: PIXI.Graphics, px: number, py: number, pw: number, ph: number, _ts: number): void {
     const m = 2, roofH = ph * 0.28;
     g.roundRect(px + m, py + roofH, pw - m * 2, ph - roofH - m, 2); g.fill(0x404850);
     g.roundRect(px + m - 1, py + m, pw - m * 2 + 2, roofH, 2); g.fill(0x333840);
@@ -1205,7 +1203,7 @@ export class CaesarRenderer {
     t.position.set(px + pw / 2 - t.width / 2, py + ph * 0.35); g.addChild(t);
   }
 
-  private _drawWeaver(g: PIXI.Graphics, px: number, py: number, pw: number, ph: number, ts: number): void {
+  private _drawWeaver(g: PIXI.Graphics, px: number, py: number, pw: number, ph: number, _ts: number): void {
     const m = 2, roofH = ph * 0.28;
     g.roundRect(px + m, py + roofH, pw - m * 2, ph - roofH - m, 2); g.fill(0xc090d0);
     g.roundRect(px + m - 1, py + m, pw - m * 2 + 2, roofH, 2); g.fill(0x9060a0);
@@ -1230,7 +1228,7 @@ export class CaesarRenderer {
     g.stroke({ color: 0x888888, width: 0.8 });
   }
 
-  private _drawReligion(g: PIXI.Graphics, b: CaesarBuilding, px: number, py: number, pw: number, ph: number, ts: number, rng: () => number): void {
+  private _drawReligion(g: PIXI.Graphics, b: CaesarBuilding, px: number, py: number, pw: number, ph: number, _ts: number, _rng: () => number): void {
     const isCath = b.type === CaesarBuildingType.CATHEDRAL;
     const isChurch = b.type === CaesarBuildingType.CHURCH;
     const wallCol = isCath ? 0xfff0c0 : isChurch ? 0xfff5e0 : 0xfafafa;
@@ -1272,7 +1270,7 @@ export class CaesarRenderer {
     g.rect(px + pw / 2 - dw / 2 - 1, py + ph - 2, dw + 2, 2); g.fill(0x9e9e9e);
   }
 
-  private _drawWatchpost(g: PIXI.Graphics, px: number, py: number, pw: number, ph: number, ts: number): void {
+  private _drawWatchpost(g: PIXI.Graphics, px: number, py: number, pw: number, ph: number, _ts: number): void {
     const m = 2, towerW = pw * 0.5, towerH = ph * 0.8;
     const tx2 = px + (pw - towerW) / 2;
     // Tower base (wider)
@@ -1300,7 +1298,7 @@ export class CaesarRenderer {
     t.position.set(px + pw / 2 - t.width / 2, py + ph * 0.65); g.addChild(t);
   }
 
-  private _drawBarracks(g: PIXI.Graphics, px: number, py: number, pw: number, ph: number, ts: number, rng: () => number): void {
+  private _drawBarracks(g: PIXI.Graphics, px: number, py: number, pw: number, ph: number, _ts: number, _rng: () => number): void {
     g.roundRect(px + 2, py + ph * 0.25, pw - 4, ph * 0.75 - 2, 2); g.fill(0x903030);
     // Flat military roof
     g.roundRect(px + 1, py + 2, pw - 2, ph * 0.25, 2); g.fill(0x7a2020);
@@ -1323,7 +1321,7 @@ export class CaesarRenderer {
     g.poly([px + pw * 0.5, py - 6, px + pw * 0.5 + 6, py - 3.5, px + pw * 0.5, py - 1]); g.fill(0xd32f2f);
   }
 
-  private _drawTavern(g: PIXI.Graphics, px: number, py: number, pw: number, ph: number, ts: number): void {
+  private _drawTavern(g: PIXI.Graphics, px: number, py: number, pw: number, ph: number, _ts: number): void {
     const m = 2, roofH = ph * 0.3;
     // Main body
     g.roundRect(px + m, py + roofH, pw - m * 2, ph - roofH - m, 2); g.fill(0xa07848);
@@ -1356,7 +1354,7 @@ export class CaesarRenderer {
     t.position.set(px + pw / 2 - t.width / 2, py + ph * 0.45); g.addChild(t);
   }
 
-  private _drawFestival(g: PIXI.Graphics, px: number, py: number, pw: number, ph: number, ts: number, rng: () => number): void {
+  private _drawFestival(g: PIXI.Graphics, px: number, py: number, pw: number, ph: number, _ts: number, rng: () => number): void {
     const m = 2;
     // Open arena / fairground
     g.roundRect(px + m, py + m, pw - m * 2, ph - m * 2, 3); g.fill(0xc8a870);
@@ -1393,7 +1391,7 @@ export class CaesarRenderer {
     t.position.set(px + pw / 2 - t.width / 2, py + ph * 0.42); g.addChild(t);
   }
 
-  private _drawJousting(g: PIXI.Graphics, px: number, py: number, pw: number, ph: number, ts: number, rng: () => number): void {
+  private _drawJousting(g: PIXI.Graphics, px: number, py: number, pw: number, ph: number, _ts: number, _rng: () => number): void {
     const m = 2;
     // Arena ground
     g.roundRect(px + m, py + m, pw - m * 2, ph - m * 2, 3); g.fill(0xa08050);
@@ -1422,7 +1420,7 @@ export class CaesarRenderer {
     t.position.set(px + pw / 2 - t.width / 2, py + ph * 0.78); g.addChild(t);
   }
 
-  private _drawGuild(g: PIXI.Graphics, px: number, py: number, pw: number, ph: number, ts: number): void {
+  private _drawGuild(g: PIXI.Graphics, px: number, py: number, pw: number, ph: number, _ts: number): void {
     const m = 2, roofH = ph * 0.3;
     g.roundRect(px + m, py + roofH, pw - m * 2, ph - roofH - m, 2); g.fill(0x8b6914);
     g.roundRect(px + m - 1, py + m, pw - m * 2 + 2, roofH, 2); g.fill(0x6b4a0a);
@@ -1564,7 +1562,7 @@ export class CaesarRenderer {
         // Carrying basket/satchel
         g.roundRect(wx - 1.5 * sc, wy - bodyBob, 3 * sc, 2 * sc, 0.5); g.fill(0x8b7355);
         // Service icon above head
-        const ic = { food: 0x8bc34a, religion: 0xffd700, safety: 0xf44336, entertainment: 0xff9800, commerce: 0x2196f3, water: 0x42a5f5 }[w.service ?? ""] ?? 0xffffff;
+        const ic = ({ food: 0x8bc34a, religion: 0xffd700, safety: 0xf44336, entertainment: 0xff9800, commerce: 0x2196f3, water: 0x42a5f5 } as Record<string, number>)[w.service ?? ""] ?? 0xffffff;
         g.circle(wx, wy - 7 * sc - bodyBob, 2); g.fill(ic);
         g.circle(wx, wy - 7 * sc - bodyBob, 2); g.stroke({ color: shadeColor(ic, 0.7), width: 0.5 });
       }

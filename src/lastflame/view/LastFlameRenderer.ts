@@ -176,7 +176,7 @@ export class LastFlameRenderer {
       } else {
         // Hide shop texts when not choosing
         for (const st of this._shopTexts) {
-          if (state.phase !== LFPhase.DEAD) st.visible = false;
+          if ((state.phase as string) !== LFPhase.DEAD) st.visible = false;
         }
       }
 
@@ -883,7 +883,6 @@ export class LastFlameRenderer {
     ug.circle(bx - 10, by + barH / 2 - 4, 1.5).fill({ color: 0xffffff, alpha: 0.3 });
 
     // Fuel percentage (right of bar)
-    const pctAlpha = state.fuel < 0.3 ? 0.7 : 0.3;
     ug.circle(bx + barW + 10, by + barH / 2, 8).fill({ color: 0x000000, alpha: 0.25 });
 
     // Score + wave text
@@ -1027,7 +1026,7 @@ export class LastFlameRenderer {
     for (let i = 0; i < shopItems.length; i++) {
       const item = shopItems[i];
       const costs = costTable[item.key] || [];
-      const level = (ups as Record<string, number>)[item.key] || 0;
+      const level = (ups as unknown as Record<string, number>)[item.key] || 0;
       const maxed = level >= costs.length;
       const cost = maxed ? 0 : costs[level];
       const canBuy = !maxed && meta.embers >= cost;

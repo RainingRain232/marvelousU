@@ -279,7 +279,7 @@ export class SiegeRenderer {
     this._drawHUD(state, sw, sh, ox, oy, gridW);
   }
 
-  private _drawHUD(state: SiegeState, sw: number, sh: number, ox: number, oy: number, gridW: number): void {
+  private _drawHUD(state: SiegeState, sw: number, _sh: number, ox: number, oy: number, gridW: number): void {
     const T = TILE_SZ;
     const u = this._uiGfx;
     // Top bar

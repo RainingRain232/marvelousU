@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import { Container, Graphics, Text, TextStyle } from "pixi.js";
-import { hexKey, hexDistance } from "@world/hex/HexCoord";
+import { hexKey } from "@world/hex/HexCoord";
 import type { HexCoord } from "@world/hex/HexCoord";
 import { ExodusConfig } from "../config/ExodusConfig";
 import type { ExodusState, ExodusHex, ExodusTerrainType } from "../state/ExodusState";

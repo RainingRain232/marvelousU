@@ -15,7 +15,7 @@ import { getEquipmentById } from "./config/EquipmentDefs";
 import { getUpgradeById as _getUpgradeById } from "./config/GuildUpgradeDefs";
 
 import { initHeist, updateHeist, decayHeat, consumeEquipment, checkInquisitionThreat, payInquisitionBribe, sufferInquisitionRaid } from "./systems/HeistSystem";
-import { generateContracts, generateNews, updateCrewBonds } from "./systems/ContractSystem";
+import { generateContracts, generateNews } from "./systems/ContractSystem";
 import { saveGame, loadGame, hasSaveGame } from "./systems/SaveSystem";
 import {
   moveThiefTo, useSmokeBomb, useSleepDart, useFlashPowder, placeCaltrops,

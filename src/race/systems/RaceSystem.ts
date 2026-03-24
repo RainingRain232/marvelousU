@@ -2,7 +2,7 @@
 // Race mode — movement, AI, collision, lap tracking
 // ---------------------------------------------------------------------------
 
-import type { RaceState, Racer } from "../state/RaceState";
+import type { RaceState } from "../state/RaceState";
 import { RacePhase } from "../state/RaceState";
 import { RaceConfig } from "../config/RaceConfig";
 

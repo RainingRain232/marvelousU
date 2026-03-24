@@ -387,7 +387,7 @@ function spawnEnemy(state: GState): void {
   const y = state.arenaCY + Math.sin(angle) * r;
 
   const roll = Math.random();
-  let kind: GEnemy["kind"] = "scout"; let hp = G.SCOUT_HP; let radius = G.SCOUT_RADIUS;
+  let kind: GEnemy["kind"] = "scout"; let hp: number = G.SCOUT_HP; let radius: number = G.SCOUT_RADIUS;
   let armor = false;
   if (state.wave >= 3 && roll < 0.15) { kind = "tank"; hp = G.TANK_HP; radius = G.TANK_RADIUS; armor = true; }
   else if (state.wave >= 2 && roll < 0.4) { kind = "fighter"; hp = G.FIGHTER_HP; radius = G.FIGHTER_RADIUS; }

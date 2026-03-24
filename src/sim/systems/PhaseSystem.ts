@@ -31,12 +31,10 @@ import { isAlly } from "@sim/state/GameState";
 import {
   GamePhase,
   GameMode,
-  BuildingType,
   CampaignAchievementCondition,
 } from "@/types";
 import { BuildingState, UnitState } from "@/types";
 import { BalanceConfig } from "@sim/config/BalanceConfig";
-import { BUILDING_DEFINITIONS } from "@sim/config/BuildingDefs";
 import { EventBus } from "@sim/core/EventBus";
 import { getRace } from "@sim/config/RaceDefs";
 import { getCampaignDifficultyModifiers } from "@sim/config/DifficultyConfig";

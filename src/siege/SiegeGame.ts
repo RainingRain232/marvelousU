@@ -8,7 +8,7 @@ import { audioManager } from "@audio/AudioManager";
 
 import { createSiegeState, SiegePhase } from "./state/SiegeState";
 import type { SiegeState } from "./state/SiegeState";
-import { SiegeConfig, WAVES, DIFFICULTY_MULT, type TowerType, type Difficulty, TILE_SZ } from "./config/SiegeConfig";
+import { SiegeConfig, WAVES, DIFFICULTY_MULT, type Difficulty, TILE_SZ } from "./config/SiegeConfig";
 import { placeTower, sellTower, updateSiege, startWave, useFreeze, useMeteor } from "./systems/SiegeSystem";
 import { SiegeRenderer } from "./view/SiegeRenderer";
 

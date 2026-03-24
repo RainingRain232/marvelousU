@@ -2,7 +2,7 @@
 // Alchemist mode — grid matching, swapping, cascading
 // ---------------------------------------------------------------------------
 
-import type { AlchemistState, GridTile } from "../state/AlchemistState";
+import type { AlchemistState } from "../state/AlchemistState";
 import { seedRng } from "../state/AlchemistState";
 import { ALL_INGREDIENTS, RARE_INGREDIENTS, AlchemistConfig, type IngredientType } from "../config/AlchemistConfig";
 

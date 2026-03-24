@@ -7,7 +7,6 @@ import { CaesarBuildingType, CAESAR_BUILDING_DEFS } from "../config/CaesarBuildi
 import type { CaesarState } from "../state/CaesarState";
 import { nextEntityId } from "../state/CaesarState";
 import { createBandit, createMilitia, type CaesarWalker } from "../state/CaesarWalker";
-import { inBounds } from "../state/CaesarMap";
 
 /**
  * Check if a tile is blocked by a wall (not gate).
@@ -111,8 +110,6 @@ function generatePathToCenter(
   }
 
   // Walk step by step toward center, avoiding water/walls
-  let px = startX;
-  let py = startY;
   const steps = 40;
 
   for (let i = 1; i <= steps; i++) {
@@ -150,8 +147,6 @@ function generatePathToCenter(
     }
 
     path.push({ x: nx + 0.5, y: ny + 0.5 });
-    px = nx;
-    py = ny;
   }
 
   return path;

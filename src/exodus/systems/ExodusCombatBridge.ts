@@ -8,7 +8,7 @@
 
 import { ExodusConfig, getDifficultyConfig } from "../config/ExodusConfig";
 import type { ExodusState } from "../state/ExodusState";
-import { addLogEntry, exodusRng, combatReadyMembers, combatCapableMembers } from "../state/ExodusState";
+import { addLogEntry, exodusRng, combatCapableMembers } from "../state/ExodusState";
 import { ExodusResourceSystem } from "./ExodusResourceSystem";
 
 // ---------------------------------------------------------------------------

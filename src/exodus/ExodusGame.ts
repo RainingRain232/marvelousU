@@ -202,7 +202,7 @@ export class ExodusGame {
     });
 
     // Pursuer
-    ExodusPursuerSystem.setPursuerCallback((pos, dist) => {
+    ExodusPursuerSystem.setPursuerCallback((_pos, dist) => {
       if (dist <= 3 && dist > 1) {
         this._hud.showNotification(`Mordred's host: ${dist} hexes away!`, 0xff2222);
       } else if (dist === 1) {
@@ -548,7 +548,7 @@ export class ExodusGame {
       this._state.formationBonus = { atkMult: formation.atkMult, defMult: formation.defMult };
     }
 
-    const result = ExodusCombatBridge.resolveCombat(this._state, this._state.combatDanger);
+    const _result = ExodusCombatBridge.resolveCombat(this._state, this._state.combatDanger);
     // Result screen shown via callback
   }
 

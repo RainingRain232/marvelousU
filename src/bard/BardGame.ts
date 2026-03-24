@@ -29,7 +29,7 @@ class BardAudio {
     [392, 494, 587],  // G4, B4, D5
   ];
   // Bass drone frequencies per enemy
-  private readonly DRONE_FREQS = [82, 73, 98, 110, 65]; // C2, D2, G2, A2, C2
+  private readonly _DRONE_FREQS = [82, 73, 98, 110, 65]; // C2, D2, G2, A2, C2
 
   init(): void {
     if (this._ctx) return;
@@ -2275,7 +2275,7 @@ export class BardGame {
     for (const mn of this._musicNotes) {
       const alpha = (mn.life / mn.maxLife) * 0.09;
       if (alpha < 0.005) continue;
-      const rot = Math.sin(this._time * 0.8 + mn.x * 0.005) * 0.3;
+      const _rot = Math.sin(this._time * 0.8 + mn.x * 0.005) * 0.3;
       const sc = mn.size / 14; // scale based on original font size
       const nx = mn.x, ny = mn.y;
       // Draw polygon musical note shape

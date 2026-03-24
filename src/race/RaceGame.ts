@@ -181,7 +181,7 @@ export class RaceGame {
       this._renderer.draw(this._state, this._sw, this._sh);
       if (this._state.phase === RacePhase.FINISHED && !this._resultShown) {
         this._resultShown = true;
-        this._gold = this._state.gold;
+        this._gold = this._state.gold as number;
         audioManager.playJingle("level_up");
         setTimeout(() => this._showResults(), 2500);
       }

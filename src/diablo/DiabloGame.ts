@@ -20,7 +20,6 @@ import {
   ItemSlot, ItemType, DiabloItemStats,
   MultiplayerState,
   GRLeaderboardEntry, KeyBindings, DEFAULT_KEYBINDINGS,
-  Bounty,
   createDefaultPlayer, createDefaultState
 } from "./DiabloTypes";
 import {
@@ -4173,7 +4172,7 @@ export class DiabloGame {
       </div>`;
 
     // Section 2: Base Stats (2x grid)
-    const tt = (tip: string) => `cursor:help;border-bottom:1px dotted #666;`;
+    const tt = (_tip: string) => `cursor:help;border-bottom:1px dotted #666;`;
     const sec2 = `
       ${sectionHeader("BASE STATS")}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;font-size:14px;">
@@ -8987,7 +8986,7 @@ export class DiabloGame {
           level: lootLevel,
           isBoss: true,
           lootTable: [],
-        } as DiabloEnemy);
+        } as unknown as DiabloEnemy);
         for (const item of lootItems) {
           const loot: DiabloLoot = {
             id: this._genId(),
@@ -9006,7 +9005,7 @@ export class DiabloGame {
   // ──────────────────────────────────────────────────────────────
   //  WEATHER VISUAL EFFECTS
   // ──────────────────────────────────────────────────────────────
-  private _updateWeatherEffects(dt: number): void {
+  private _updateWeatherEffects(_dt: number): void {
     if (this._state.weather === Weather.NORMAL || this._state.weather === Weather.CLEAR) return;
 
     const p = this._state.player;

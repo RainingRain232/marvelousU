@@ -2,7 +2,6 @@
 // Caesar – Tile map
 // ---------------------------------------------------------------------------
 
-import { CB } from "../config/CaesarBalance";
 
 export type CaesarTerrain =
   | "grass"

@@ -6,7 +6,7 @@ import { Ticker, Graphics, Container, Text, TextStyle } from "pixi.js";
 import { viewManager } from "@view/ViewManager";
 import { audioManager } from "@audio/AudioManager";
 
-import { createNecroState, findChimera } from "./state/NecroState";
+import { createNecroState } from "./state/NecroState";
 import type { NecroState } from "./state/NecroState";
 import { NecroConfig, DARK_POWERS, CORPSES, WAVES, CRUSADERS, CONSUMABLES, generateEndlessWave } from "./config/NecroConfig";
 import type { WaveEntry } from "./config/NecroConfig";
@@ -17,7 +17,7 @@ import {
   healUndeadBetweenWaves, sacrificeUndead, rollWaveEvent, calculateWaveBonuses,
   setRallyPoint, pickRelic, castWarCry,
 } from "./systems/NecroSystem";
-import { BOSS_WAVES, BOSSES, RELICS } from "./config/NecroConfig";
+import { BOSS_WAVES, BOSSES } from "./config/NecroConfig";
 import { NecroRenderer } from "./view/NecroRenderer";
 
 export class NecroGame {

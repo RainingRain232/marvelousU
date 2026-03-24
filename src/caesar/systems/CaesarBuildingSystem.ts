@@ -8,7 +8,7 @@ import { CaesarResourceType } from "../config/CaesarResourceDefs";
 import type { CaesarState } from "../state/CaesarState";
 import { nextEntityId } from "../state/CaesarState";
 import { createBuilding, type CaesarBuilding } from "../state/CaesarBuilding";
-import { tileAt, inBounds, tileIdx, type CaesarMapData } from "../state/CaesarMap";
+import { tileAt, inBounds, tileIdx } from "../state/CaesarMap";
 import { getProductionMultiplier } from "./CaesarEventSystem";
 import { getMoraleProductionMult } from "./CaesarMoraleSystem";
 import { getLevelSpeedMult, getLevelOutputMult } from "./CaesarUpgradeSystem";

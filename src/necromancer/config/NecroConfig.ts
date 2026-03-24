@@ -166,7 +166,7 @@ export function generateEndlessWave(waveNum: number): WaveEntry[] {
     { type: "priest", count: 1 + Math.floor(scale / 3) },
     { type: "inquisitor", count: Math.floor(scale / 2) },
     { type: "banner", count: 1 + Math.floor(scale / 3) },
-  ].filter(e => e.count > 0);
+  ].filter(e => e.count > 0) as WaveEntry[];
 }
 
 /** Random events that can occur between waves */

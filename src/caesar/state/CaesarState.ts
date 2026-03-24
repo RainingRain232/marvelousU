@@ -4,7 +4,7 @@
 
 import { CB, type CaesarDifficulty } from "../config/CaesarBalance";
 import { CaesarResourceType } from "../config/CaesarResourceDefs";
-import { CaesarBuildingType, type CaesarBuildingCategory } from "../config/CaesarBuildingDefs";
+import { CaesarBuildingType } from "../config/CaesarBuildingDefs";
 import { createMap, type CaesarMapData } from "./CaesarMap";
 import type { CaesarBuilding } from "./CaesarBuilding";
 import type { CaesarWalker } from "./CaesarWalker";

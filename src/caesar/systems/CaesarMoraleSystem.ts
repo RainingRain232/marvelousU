@@ -14,7 +14,7 @@ import type { CaesarState } from "../state/CaesarState";
 export function updateMorale(state: CaesarState, dt: number): void {
   if (state.population === 0) { state.morale = CB.MORALE_BASE; return; }
 
-  let target = CB.MORALE_BASE;
+  let target = CB.MORALE_BASE as number;
 
   // Food situation
   const food = state.resources.get(CaesarResourceType.FOOD) ?? 0;

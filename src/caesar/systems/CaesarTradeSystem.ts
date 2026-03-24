@@ -2,8 +2,7 @@
 // Caesar – Trade caravan system: merchants offer buy/sell deals
 // ---------------------------------------------------------------------------
 
-import { CB } from "../config/CaesarBalance";
-import { CaesarResourceType, RESOURCE_META } from "../config/CaesarResourceDefs";
+import { CaesarResourceType } from "../config/CaesarResourceDefs";
 import type { CaesarState, CaesarCaravanOffer } from "../state/CaesarState";
 
 const CARAVAN_INTERVAL_MIN = 80;   // seconds

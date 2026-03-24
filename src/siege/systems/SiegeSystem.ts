@@ -157,7 +157,7 @@ export function updateSiege(state: SiegeState, dt: number): void {
     if (tower.targetPriority === "strongest") {
       closest = inRange.reduce((a, b) => a.maxHp > b.maxHp ? a : b);
     } else if (tower.targetPriority === "furthest") {
-      closest = inRange.reduce((a, b) => a.waypointIndex + a.lap * 100 > b.waypointIndex + b.lap * 100 ? a : b);
+      closest = inRange.reduce((a, b) => (a as any).waypointIndex + (a as any).lap * 100 > (b as any).waypointIndex + (b as any).lap * 100 ? a : b);
     } else {
       let best = inRange[0], bestD = Infinity;
       for (const e of inRange) { const d = Math.sqrt((e.x - tcx) ** 2 + (e.y - tcy) ** 2); if (d < bestD) { bestD = d; best = e; } }

@@ -78,7 +78,6 @@ export class GameGame {
   private _camOffsetX = 0;
   private _camOffsetY = 0;
   private _floorTransitionTimer = 0;
-  private _escConfirmTimer = 0;       // seconds remaining for ESC double-tap window
   private _showingHelp = false;       // controls help overlay visible
   private _pauseMenu: Container | null = null;
   private _paused = false;

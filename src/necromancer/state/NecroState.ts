@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import type { CorpseType, CrusaderType, ChimeraDef, RelicRarity } from "../config/NecroConfig";
-import { CORPSES, CRUSADERS, NecroConfig, CHIMERAS } from "../config/NecroConfig";
+import { CORPSES, NecroConfig, CHIMERAS } from "../config/NecroConfig";
 
 export type NecroPhase = "start" | "dig" | "ritual" | "battle" | "upgrade" | "results";
 

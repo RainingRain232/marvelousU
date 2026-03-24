@@ -15,7 +15,7 @@ import {
   checkMilestones, recordRun, spawnFloatText,
 } from "./systems/LastFlameSystem";
 import {
-  playLFFlare, playLFCollect, playLFHit, playLFDeath, playLFWave,
+  playLFFlare, playLFCollect, playLFDeath, playLFWave,
   startLFDrone, stopLFDrone, updateLFAudio,
 } from "./systems/LastFlameAudio";
 import { LastFlameRenderer } from "./view/LastFlameRenderer";
@@ -32,7 +32,6 @@ export class LastFlameGame {
 
   private _prevOil = 0;
   private _prevWave = 0;
-  private _prevShadows = 0;
 
   async boot(): Promise<void> {
     viewManager.clearWorld();
@@ -116,7 +115,7 @@ export class LastFlameGame {
     if (s.phase === LFPhase.PLAYING) {
       this._prevOil = s.oilCollected;
       this._prevWave = s.wave;
-      this._prevShadows = s.shadowsBurned;
+
 
       updatePlayer(s, dt, this._keys);
       const fuelDead = updateFuel(s, dt, this._keys);
@@ -201,7 +200,7 @@ export class LastFlameGame {
     this._meta = loadLFMeta();
     this._state = createLFState(sw, sh, this._meta);
     this._state.phase = LFPhase.PLAYING;
-    this._prevOil = 0; this._prevWave = 0; this._prevShadows = 0;
+    this._prevOil = 0; this._prevWave = 0;
     // startingMutator upgrade: begin with a random mutator
     if ((this._meta.upgrades?.startingMutator ?? 0) > 0) {
       generateMutatorChoices(this._state);

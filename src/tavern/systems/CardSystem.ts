@@ -4,7 +4,7 @@
 
 import type { TavernState } from "../state/TavernState";
 import { TavernPhase, drawCard } from "../state/TavernState";
-import { cardScore, TavernConfig, type Card } from "../config/TavernConfig";
+import { cardScore, TavernConfig } from "../config/TavernConfig";
 
 // ---------------------------------------------------------------------------
 // Suit powers (checked at end of round)

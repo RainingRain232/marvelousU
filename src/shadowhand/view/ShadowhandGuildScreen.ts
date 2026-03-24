@@ -8,7 +8,7 @@ import { CREW_ARCHETYPES, ALL_CREW_ROLES, type CrewRole } from "../config/CrewDe
 import { TARGET_DEFS, type TargetDef } from "../config/TargetDefs";
 import { getEquipmentForTier } from "../config/EquipmentDefs";
 import { ShadowhandConfig } from "../config/ShadowhandConfig";
-import { getAvailableUpgrades, type GuildUpgradeDef } from "../config/GuildUpgradeDefs";
+import { getAvailableUpgrades } from "../config/GuildUpgradeDefs";
 import type { GuildUpgradeId } from "../state/ShadowhandState";
 
 const FONT = "Georgia, serif";
@@ -441,7 +441,7 @@ export class ShadowhandGuildScreen {
     }
   }
 
-  private _drawShopTab(state: ShadowhandState, sw: number, sh: number, startY: number): void {
+  private _drawShopTab(state: ShadowhandState, sw: number, _sh: number, startY: number): void {
     let y = startY;
     this._text("Equipment Shop", sw / 2, y, { fontSize: 14, fill: 0xccaa88, fontWeight: "bold" }, true);
     y += 25;
