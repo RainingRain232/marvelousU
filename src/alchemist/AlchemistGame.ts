@@ -440,8 +440,8 @@ export class AlchemistGame {
     addText("PAUSED", sw / 2, py + 16, { fontSize: 22, fill: 0xaa8844, fontWeight: "bold", letterSpacing: 4 }, true);
 
     // State: controls or instructions
-    let showingControls = false;
-    let showingInstructions = false;
+    let _showingControls = false;
+    let _showingInstructions = false;
     const contentContainer = new Container();
     c.addChild(contentContainer);
 

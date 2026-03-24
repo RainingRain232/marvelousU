@@ -82,6 +82,16 @@ export const SiegeConfig = {
   SELL_REFUND: 0.6,
 } as const;
 
+/** Mutable tile size — recomputed each game boot to fill the screen. */
+export let TILE_SZ: number = SiegeConfig.TILE_SIZE;
+export function setTileSize(sw: number, sh: number): void {
+  const panelW = 380;
+  const topBar = 70;
+  const maxW = Math.floor((sw - panelW - 30) / SiegeConfig.GRID_COLS);
+  const maxH = Math.floor((sh - topBar - 20) / SiegeConfig.GRID_ROWS);
+  TILE_SZ = Math.max(36, Math.min(maxW, maxH));
+}
+
 export const ALL_TOWER_TYPES: TowerType[] = ["arrow", "cannon", "frost", "fire", "holy", "poison"];
 
 // Damage multiplier matrix: TOWER_EFFECTIVENESS[towerType][enemyType]

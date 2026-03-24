@@ -4,9 +4,7 @@
 
 import type { SiegeState, Enemy, Projectile } from "../state/SiegeState";
 import { SiegePhase, spawnEnemy } from "../state/SiegeState";
-import { SiegeConfig, TOWERS, ENEMIES, WAVES, TOWER_EFFECTIVENESS, TOWER_ABILITIES, type TowerType, type WaveModifier, WAVE_MODIFIER_DEFS } from "../config/SiegeConfig";
-
-const T = SiegeConfig.TILE_SIZE;
+import { SiegeConfig, TOWERS, ENEMIES, WAVES, TOWER_EFFECTIVENESS, TOWER_ABILITIES, type TowerType, type WaveModifier, WAVE_MODIFIER_DEFS, TILE_SZ } from "../config/SiegeConfig";
 
 export function placeTower(state: SiegeState, type: TowerType, col: number, row: number): boolean {
   if (col < 0 || col >= SiegeConfig.GRID_COLS || row < 0 || row >= SiegeConfig.GRID_ROWS) return false;
@@ -67,7 +65,7 @@ export function useMeteor(state: SiegeState, x: number, y: number): void {
   if (state.meteorCooldown > 0 || state.gold < 30) return;
   state.gold -= 30;
   state.meteorCooldown = 20;
-  const radius = 3 * T;
+  const radius = 3 * TILE_SZ;
   for (const enemy of state.enemies) {
     if (!enemy.alive) continue;
     const dx = enemy.x - x, dy = enemy.y - y;
@@ -124,10 +122,10 @@ export function updateSiege(state: SiegeState, dt: number): void {
     const target = state.path[enemy.pathIndex + 1];
     if (!target) { enemy.reachedEnd = true; state.lives--; continue; }
 
-    const tx = target.x * T + T / 2, ty = target.y * T + T / 2;
+    const tx = target.x * TILE_SZ + TILE_SZ / 2, ty = target.y * TILE_SZ + TILE_SZ / 2;
     const dx = tx - enemy.x, dy = ty - enemy.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    const step = speed * T * effectiveDt;
+    const step = speed * TILE_SZ * effectiveDt;
 
     if (dist <= step) {
       enemy.x = tx; enemy.y = ty;
@@ -144,8 +142,8 @@ export function updateSiege(state: SiegeState, dt: number): void {
     if (tower.cooldown > 0) continue;
 
     const def = TOWERS[tower.type];
-    const tcx = tower.x * T + T / 2, tcy = tower.y * T + T / 2;
-    const range = def.range * T;
+    const tcx = tower.x * TILE_SZ + TILE_SZ / 2, tcy = tower.y * TILE_SZ + TILE_SZ / 2;
+    const range = def.range * TILE_SZ;
 
     // Find target based on priority
     const inRange = state.enemies.filter(e => {
@@ -171,12 +169,12 @@ export function updateSiege(state: SiegeState, dt: number): void {
       tower.cooldown = 1 / (def.fireRate * (1 + (tower.level - 1) * 0.1));
       const projDmg = Math.floor(def.damage * levelMult);
       // Cannon lv3: +50% splash radius
-      const splashR = def.splashRadius * T * (tower.type === "cannon" && tower.level >= 3 ? 1.5 : 1);
+      const splashR = def.splashRadius * TILE_SZ * (tower.type === "cannon" && tower.level >= 3 ? 1.5 : 1);
       state.projectiles.push({
         x: tcx, y: tcy,
         targetId: closest.id,
         damage: projDmg,
-        speed: def.projectileSpeed * T,
+        speed: def.projectileSpeed * TILE_SZ,
         color: def.projectileColor,
         splashRadius: splashR,
         slowAmount: def.slowAmount,
@@ -189,7 +187,7 @@ export function updateSiege(state: SiegeState, dt: number): void {
         if (second) {
           state.projectiles.push({
             x: tcx, y: tcy, targetId: second.id,
-            damage: Math.floor(projDmg * 0.7), speed: def.projectileSpeed * T,
+            damage: Math.floor(projDmg * 0.7), speed: def.projectileSpeed * TILE_SZ,
             color: def.projectileColor, splashRadius: 0,
             slowAmount: 0, slowDuration: 0, towerId: tower.id,
           });

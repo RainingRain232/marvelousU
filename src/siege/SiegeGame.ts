@@ -8,7 +8,7 @@ import { audioManager } from "@audio/AudioManager";
 
 import { createSiegeState, SiegePhase } from "./state/SiegeState";
 import type { SiegeState } from "./state/SiegeState";
-import { SiegeConfig, WAVES, DIFFICULTY_MULT, type TowerType, type Difficulty } from "./config/SiegeConfig";
+import { SiegeConfig, WAVES, DIFFICULTY_MULT, type TowerType, type Difficulty, TILE_SZ } from "./config/SiegeConfig";
 import { placeTower, sellTower, updateSiege, startWave, useFreeze, useMeteor } from "./systems/SiegeSystem";
 import { SiegeRenderer } from "./view/SiegeRenderer";
 
@@ -44,26 +44,26 @@ export class SiegeGame {
     bg.rect(0, 0, this._sw, this._sh).fill({ color: 0x0a0806 });
     c.addChild(bg);
 
-    const title = new Text({ text: "\u{1F3F0} SIEGE \u{1F3F0}", style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 32, fill: 0xcc8844, fontWeight: "bold", letterSpacing: 6 }) });
-    title.anchor.set(0.5, 0); title.position.set(this._sw / 2, this._sh * 0.15);
+    const title = new Text({ text: "\u{1F3F0} SIEGE \u{1F3F0}", style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 52, fill: 0xcc8844, fontWeight: "bold", letterSpacing: 8 }) });
+    title.anchor.set(0.5, 0); title.position.set(this._sw / 2, this._sh * 0.12);
     c.addChild(title);
 
-    const sub = new Text({ text: "A Medieval Tower Defense Game", style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 13, fill: 0x887766, fontStyle: "italic" }) });
-    sub.anchor.set(0.5, 0); sub.position.set(this._sw / 2, this._sh * 0.15 + 42);
+    const sub = new Text({ text: "A Medieval Tower Defense Game", style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 22, fill: 0x887766, fontStyle: "italic" }) });
+    sub.anchor.set(0.5, 0); sub.position.set(this._sw / 2, this._sh * 0.12 + 62);
     c.addChild(sub);
 
-    const desc = new Text({ text: `Defend your castle against ${WAVES.length} waves of enemies!\nPlace towers on the green tiles to block their advance.\nEarn gold from kills to build more defenses.\nDon't let enemies reach your castle!`, style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 11, fill: 0x998877, wordWrap: true, wordWrapWidth: 400, align: "center", lineHeight: 18 }) });
-    desc.anchor.set(0.5, 0); desc.position.set(this._sw / 2, this._sh * 0.3);
+    const desc = new Text({ text: `Defend your castle against ${WAVES.length} waves of enemies!\nPlace towers on the green tiles to block their advance.\nEarn gold from kills to build more defenses.\nDon't let enemies reach your castle!`, style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 18, fill: 0x998877, wordWrap: true, wordWrapWidth: 600, align: "center", lineHeight: 28 }) });
+    desc.anchor.set(0.5, 0); desc.position.set(this._sw / 2, this._sh * 0.28);
     c.addChild(desc);
 
     // Difficulty selection
     const diffs: Difficulty[] = ["easy", "normal", "hard"];
-    let dx = this._sw / 2 - (diffs.length * 75) / 2;
+    let dx = this._sw / 2 - (diffs.length * 130) / 2;
     for (const diff of diffs) {
       const dm = DIFFICULTY_MULT[diff];
       const btn = new Graphics();
-      btn.roundRect(dx, this._sh * 0.52, 70, 50, 5).fill({ color: 0x0a0a0a, alpha: 0.8 });
-      btn.roundRect(dx, this._sh * 0.52, 70, 50, 5).stroke({ color: dm.color, width: 2, alpha: 0.6 });
+      btn.roundRect(dx, this._sh * 0.52, 120, 70, 6).fill({ color: 0x0a0a0a, alpha: 0.8 });
+      btn.roundRect(dx, this._sh * 0.52, 120, 70, 6).stroke({ color: dm.color, width: 2, alpha: 0.6 });
       btn.eventMode = "static"; btn.cursor = "pointer";
       const d = diff;
       btn.on("pointerdown", () => {
@@ -71,24 +71,24 @@ export class SiegeGame {
         this._startGame(d);
       });
       c.addChild(btn);
-      const lbl = new Text({ text: dm.label, style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 11, fill: dm.color, fontWeight: "bold" }) });
-      lbl.anchor.set(0.5, 0); lbl.position.set(dx + 35, this._sh * 0.52 + 6); c.addChild(lbl);
-      const sub2 = new Text({ text: `HP x${dm.hp}\nSpd x${dm.speed}`, style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 7, fill: 0x887766, align: "center" }) });
-      sub2.anchor.set(0.5, 0); sub2.position.set(dx + 35, this._sh * 0.52 + 22); c.addChild(sub2);
-      dx += 75;
+      const lbl = new Text({ text: dm.label, style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 18, fill: dm.color, fontWeight: "bold" }) });
+      lbl.anchor.set(0.5, 0); lbl.position.set(dx + 60, this._sh * 0.52 + 10); c.addChild(lbl);
+      const sub2 = new Text({ text: `HP x${dm.hp}\nSpd x${dm.speed}`, style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 13, fill: 0x887766, align: "center" }) });
+      sub2.anchor.set(0.5, 0); sub2.position.set(dx + 60, this._sh * 0.52 + 34); c.addChild(sub2);
+      dx += 130;
     }
 
     const backBtn = new Graphics();
-    backBtn.roundRect(this._sw / 2 - 50, this._sh * 0.65, 100, 30, 4).fill({ color: 0x0a0a0a, alpha: 0.6 });
-    backBtn.roundRect(this._sw / 2 - 50, this._sh * 0.65, 100, 30, 4).stroke({ color: 0x555555, width: 1 });
+    backBtn.roundRect(this._sw / 2 - 70, this._sh * 0.7, 140, 40, 5).fill({ color: 0x0a0a0a, alpha: 0.6 });
+    backBtn.roundRect(this._sw / 2 - 70, this._sh * 0.7, 140, 40, 5).stroke({ color: 0x555555, width: 1 });
     backBtn.eventMode = "static"; backBtn.cursor = "pointer";
     backBtn.on("pointerdown", () => {
       viewManager.removeFromLayer("ui", c); c.destroy({ children: true });
       this.destroy(); window.dispatchEvent(new Event("siegeExit"));
     });
     c.addChild(backBtn);
-    const backLabel = new Text({ text: "BACK", style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 10, fill: 0x888888 }) });
-    backLabel.anchor.set(0.5, 0); backLabel.position.set(this._sw / 2, this._sh * 0.65 + 8);
+    const backLabel = new Text({ text: "BACK", style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 16, fill: 0x888888 }) });
+    backLabel.anchor.set(0.5, 0); backLabel.position.set(this._sw / 2, this._sh * 0.7 + 10);
     c.addChild(backLabel);
 
     viewManager.addToLayer("ui", c);
@@ -106,8 +106,8 @@ export class SiegeGame {
     this._pointerHandler = (e: { global: { x: number; y: number } }) => {
       if (this._state.phase !== SiegePhase.BUILDING && this._state.phase !== SiegePhase.WAVE) return;
       const offset = this._renderer.getGridOffset();
-      const col = Math.floor((e.global.x - offset.x) / SiegeConfig.TILE_SIZE);
-      const row = Math.floor((e.global.y - offset.y) / SiegeConfig.TILE_SIZE);
+      const col = Math.floor((e.global.x - offset.x) / TILE_SZ);
+      const row = Math.floor((e.global.y - offset.y) / TILE_SZ);
       if (col < 0 || col >= SiegeConfig.GRID_COLS || row < 0 || row >= SiegeConfig.GRID_ROWS) return;
 
       const cell = this._state.grid[row]?.[col];
@@ -159,8 +159,8 @@ export class SiegeGame {
       if (e.key === "f" || e.key === "F") useFreeze(this._state);
       if (e.key === "m" || e.key === "M") {
         // Meteor at center of screen (simple targeting)
-        const cx = SiegeConfig.GRID_COLS * SiegeConfig.TILE_SIZE / 2;
-        const cy = SiegeConfig.GRID_ROWS * SiegeConfig.TILE_SIZE / 2;
+        const cx = SiegeConfig.GRID_COLS * TILE_SZ / 2;
+        const cy = SiegeConfig.GRID_ROWS * TILE_SZ / 2;
         useMeteor(this._state, cx, cy);
       }
     };
@@ -194,7 +194,7 @@ export class SiegeGame {
     const isVictory = this._state.phase === SiegePhase.VICTORY;
     const accent = isVictory ? 0xffd700 : 0xff4444;
 
-    const pw = 420, ph = 340, px = (this._sw - pw) / 2, py = (this._sh - ph) / 2;
+    const pw = 560, ph = 460, px = (this._sw - pw) / 2, py = (this._sh - ph) / 2;
     const panel = new Graphics();
     panel.roundRect(px, py, pw, ph, 10).fill({ color: 0x0a0a06, alpha: 0.97 });
     panel.roundRect(px, py, pw, ph, 10).stroke({ color: accent, width: 2, alpha: 0.5 });
@@ -206,13 +206,13 @@ export class SiegeGame {
       t.position.set(x, y); c.addChild(t);
     };
 
-    let y = py + 16;
-    addText(isVictory ? "\u2726 CASTLE DEFENDED! \u2726" : "\u2620 CASTLE FALLEN \u2620", this._sw / 2, y, { fontSize: 22, fill: accent, fontWeight: "bold", letterSpacing: 3 }, true);
+    let y = py + 22;
+    addText(isVictory ? "\u2726 CASTLE DEFENDED! \u2726" : "\u2620 CASTLE FALLEN \u2620", this._sw / 2, y, { fontSize: 34, fill: accent, fontWeight: "bold", letterSpacing: 4 }, true);
     try {
       const prev = parseInt(localStorage.getItem("siege_highscore") ?? "0") || 0;
-      if (this._state.score > prev) { localStorage.setItem("siege_highscore", `${this._state.score}`); addText("\u2605 NEW HIGH SCORE! \u2605", this._sw / 2, y + 24, { fontSize: 11, fill: 0xffd700, fontWeight: "bold" }, true); }
+      if (this._state.score > prev) { localStorage.setItem("siege_highscore", `${this._state.score}`); addText("\u2605 NEW HIGH SCORE! \u2605", this._sw / 2, y + 40, { fontSize: 18, fill: 0xffd700, fontWeight: "bold" }, true); }
     } catch { /* ignore */ }
-    y += 40;
+    y += 60;
 
     const stats: [string, string, number][] = [
       ["Waves Survived", `${this._state.wave}/${WAVES.length}`, 0xccddcc],
@@ -225,16 +225,16 @@ export class SiegeGame {
     ];
 
     for (const [label, value, color] of stats) {
-      addText(label, px + 40, y, { fontSize: 11, fill: 0x887766 });
-      const vt = new Text({ text: value, style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 11, fill: color, fontWeight: "bold" } as any) });
-      vt.anchor.set(1, 0); vt.position.set(px + pw - 40, y); c.addChild(vt);
-      y += 18;
+      addText(label, px + 50, y, { fontSize: 18, fill: 0x887766 });
+      const vt = new Text({ text: value, style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 18, fill: color, fontWeight: "bold" } as any) });
+      vt.anchor.set(1, 0); vt.position.set(px + pw - 50, y); c.addChild(vt);
+      y += 28;
     }
 
-    y += 15;
+    y += 20;
     const retryBtn = new Graphics();
-    retryBtn.roundRect(this._sw / 2 - 70, y, 140, 36, 5).fill({ color: 0x0a0a0a, alpha: 0.8 });
-    retryBtn.roundRect(this._sw / 2 - 70, y, 140, 36, 5).stroke({ color: accent, width: 2, alpha: 0.5 });
+    retryBtn.roundRect(this._sw / 2 - 90, y, 180, 44, 6).fill({ color: 0x0a0a0a, alpha: 0.8 });
+    retryBtn.roundRect(this._sw / 2 - 90, y, 180, 44, 6).stroke({ color: accent, width: 2, alpha: 0.5 });
     retryBtn.eventMode = "static"; retryBtn.cursor = "pointer";
     retryBtn.on("pointerdown", () => {
       viewManager.removeFromLayer("ui", c); viewManager.removeFromLayer("ui", this._renderer.container);
@@ -242,19 +242,19 @@ export class SiegeGame {
       this._startGame();
     });
     c.addChild(retryBtn);
-    addText("DEFEND AGAIN", this._sw / 2, y + 10, { fontSize: 12, fill: accent, fontWeight: "bold", letterSpacing: 2 }, true);
+    addText("DEFEND AGAIN", this._sw / 2, y + 12, { fontSize: 18, fill: accent, fontWeight: "bold", letterSpacing: 2 }, true);
 
-    y += 46;
+    y += 56;
     const menuBtn = new Graphics();
-    menuBtn.roundRect(this._sw / 2 - 50, y, 100, 28, 4).fill({ color: 0x0a0a0a, alpha: 0.6 });
-    menuBtn.roundRect(this._sw / 2 - 50, y, 100, 28, 4).stroke({ color: 0x666655, width: 1 });
+    menuBtn.roundRect(this._sw / 2 - 70, y, 140, 36, 5).fill({ color: 0x0a0a0a, alpha: 0.6 });
+    menuBtn.roundRect(this._sw / 2 - 70, y, 140, 36, 5).stroke({ color: 0x666655, width: 1 });
     menuBtn.eventMode = "static"; menuBtn.cursor = "pointer";
     menuBtn.on("pointerdown", () => {
       viewManager.removeFromLayer("ui", c); c.destroy({ children: true });
       this.destroy(); window.dispatchEvent(new Event("siegeExit"));
     });
     c.addChild(menuBtn);
-    addText("MENU", this._sw / 2, y + 7, { fontSize: 10, fill: 0x888888 }, true);
+    addText("MENU", this._sw / 2, y + 8, { fontSize: 16, fill: 0x888888 }, true);
 
     viewManager.addToLayer("ui", c);
   }

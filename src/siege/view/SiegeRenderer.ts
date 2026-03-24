@@ -5,10 +5,7 @@
 import { Container, Graphics, Text, TextStyle } from "pixi.js";
 import type { SiegeState } from "../state/SiegeState";
 import { SiegePhase } from "../state/SiegeState";
-import { SiegeConfig, TOWERS, ENEMIES, WAVES, ALL_TOWER_TYPES, type TowerType } from "../config/SiegeConfig";
-
-const T = SiegeConfig.TILE_SIZE;
-const HT = T / 2;
+import { SiegeConfig, TOWERS, ENEMIES, WAVES, ALL_TOWER_TYPES, type TowerType, TILE_SZ, setTileSize } from "../config/SiegeConfig";
 const FONT = "Georgia, serif";
 const COL = 0xcc8844;
 
@@ -22,6 +19,7 @@ export class SiegeRenderer {
   setTowerSelectCallback(cb: (type: TowerType) => void): void { this._towerSelectCallback = cb; }
 
   init(sw: number, sh: number): void {
+    setTileSize(sw, sh);
     this.container.removeChildren();
     const bg = new Graphics();
     bg.rect(0, 0, sw, sh).fill({ color: 0x1a2a1a });
@@ -40,9 +38,11 @@ export class SiegeRenderer {
     this._uiGfx.clear();
     while (this._uiGfx.children.length > 0) this._uiGfx.removeChildAt(0);
 
+    const T = TILE_SZ;
+    const HT = T / 2;
     const gridW = SiegeConfig.GRID_COLS * T;
     const gridH = SiegeConfig.GRID_ROWS * T;
-    const ox = 10, oy = 50;
+    const ox = 10, oy = 60;
     const mg = this._mapGfx;
     const eg = this._entityGfx;
 
@@ -143,7 +143,7 @@ export class SiegeRenderer {
           mg.circle(px + Math.cos(la) * (br + 3), py + Math.sin(la) * (br + 3), 1.5).fill({ color: 0xffd700, alpha: 0.5 });
         }
         // Level text
-        const lvText = new Text({ text: `${tower.level}`, style: new TextStyle({ fontFamily: FONT, fontSize: 7, fill: 0xffd700, fontWeight: "bold" }) });
+        const lvText = new Text({ text: `${tower.level}`, style: new TextStyle({ fontFamily: FONT, fontSize: 12, fill: 0xffd700, fontWeight: "bold" }) });
         lvText.anchor.set(0.5, 0.5); lvText.position.set(px, py);
         this._uiGfx.addChild(lvText);
       }
@@ -269,7 +269,7 @@ export class SiegeRenderer {
     // Announcements
     for (const ann of state.announcements) {
       const alpha = Math.min(1, ann.timer / 1.5);
-      const t = new Text({ text: ann.text, style: new TextStyle({ fontFamily: FONT, fontSize: 20, fill: ann.color, fontWeight: "bold", letterSpacing: 2 }) });
+      const t = new Text({ text: ann.text, style: new TextStyle({ fontFamily: FONT, fontSize: 32, fill: ann.color, fontWeight: "bold", letterSpacing: 3 }) });
       t.alpha = alpha; t.anchor.set(0.5, 0.5);
       t.position.set(ox + gridW / 2, oy + gridH / 2);
       this._uiGfx.addChild(t);
@@ -280,10 +280,11 @@ export class SiegeRenderer {
   }
 
   private _drawHUD(state: SiegeState, sw: number, sh: number, ox: number, oy: number, gridW: number): void {
+    const T = TILE_SZ;
     const u = this._uiGfx;
     // Top bar
-    u.rect(0, 0, sw, 44).fill({ color: 0x0a0a06, alpha: 0.8 });
-    u.moveTo(0, 44).lineTo(sw, 44).stroke({ color: COL, width: 1, alpha: 0.3 });
+    u.rect(0, 0, sw, 54).fill({ color: 0x0a0a06, alpha: 0.8 });
+    u.moveTo(0, 54).lineTo(sw, 54).stroke({ color: COL, width: 1, alpha: 0.3 });
 
     const addText = (str: string, x: number, y: number, opts: Partial<TextStyle>, center = false) => {
       const t = new Text({ text: str, style: new TextStyle({ fontFamily: FONT, ...opts } as any) });
@@ -291,30 +292,31 @@ export class SiegeRenderer {
       t.position.set(x, y); this._uiGfx.addChild(t);
     };
 
-    addText("\u{1F3F0} SIEGE", 10, 4, { fontSize: 16, fill: COL, fontWeight: "bold", letterSpacing: 3 });
-    addText(`Wave: ${state.wave + 1}/${WAVES.length}`, 160, 4, { fontSize: 12, fill: 0xccddcc });
-    addText(`Gold: ${state.gold}`, 300, 4, { fontSize: 12, fill: 0xffd700 });
-    addText(`Lives: ${state.lives}`, 420, 4, { fontSize: 12, fill: state.lives <= 5 ? 0xff4444 : 0x44cc44 });
-    addText(`Score: ${state.score}`, 540, 4, { fontSize: 12, fill: 0x88aaff });
-    addText(`Kills: ${state.totalKills}`, 660, 4, { fontSize: 12, fill: 0xccaaaa });
+    addText("\u{1F3F0} SIEGE", 14, 6, { fontSize: 26, fill: COL, fontWeight: "bold", letterSpacing: 4 });
+    addText(`Wave: ${state.wave + 1}/${WAVES.length}`, 220, 8, { fontSize: 20, fill: 0xccddcc });
+    addText(`Gold: ${state.gold}`, 400, 8, { fontSize: 20, fill: 0xffd700 });
+    addText(`Lives: ${state.lives}`, 560, 8, { fontSize: 20, fill: state.lives <= 5 ? 0xff4444 : 0x44cc44 });
+    addText(`Score: ${state.score}`, 720, 8, { fontSize: 20, fill: 0x88aaff });
+    addText(`Kills: ${state.totalKills}`, 880, 8, { fontSize: 20, fill: 0xccaaaa });
 
     // Phase indicator
     if (state.phase === SiegePhase.BUILDING) {
       const rem = Math.ceil(state.waveTimer);
-      addText(`Next wave in ${rem}s — BUILD!`, sw / 2, 24, { fontSize: 11, fill: 0xffaa44 }, true);
+      addText(`Next wave in ${rem}s — BUILD!`, sw / 2, 32, { fontSize: 18, fill: 0xffaa44 }, true);
     } else if (state.phase === SiegePhase.WAVE) {
       const remaining = state.enemies.filter(e => e.alive && !e.reachedEnd).length + state.spawnQueue.length;
-      addText(`Enemies remaining: ${remaining}`, sw / 2, 24, { fontSize: 11, fill: 0xff6644 }, true);
+      addText(`Enemies remaining: ${remaining}`, sw / 2, 32, { fontSize: 18, fill: 0xff6644 }, true);
     }
 
     // Tower selection panel (right side)
     const panelX = ox + gridW + 15;
     const panelW = sw - panelX - 10;
-    u.roundRect(panelX, oy, panelW, SiegeConfig.GRID_ROWS * T, 6).fill({ color: 0x0a0a06, alpha: 0.7 });
-    u.roundRect(panelX, oy, panelW, SiegeConfig.GRID_ROWS * T, 6).stroke({ color: COL, width: 1, alpha: 0.2 });
+    const gridH = SiegeConfig.GRID_ROWS * T;
+    u.roundRect(panelX, oy, panelW, gridH, 6).fill({ color: 0x0a0a06, alpha: 0.7 });
+    u.roundRect(panelX, oy, panelW, gridH, 6).stroke({ color: COL, width: 1, alpha: 0.2 });
 
-    addText("Towers", panelX + panelW / 2, oy + 4, { fontSize: 12, fill: COL, fontWeight: "bold" }, true);
-    let ty = oy + 22;
+    addText("Towers", panelX + panelW / 2, oy + 6, { fontSize: 20, fill: COL, fontWeight: "bold" }, true);
+    let ty = oy + 32;
 
     for (const tType of ALL_TOWER_TYPES) {
       const def = TOWERS[tType];
@@ -322,37 +324,38 @@ export class SiegeRenderer {
       const sel = state.selectedTower === tType;
 
       // Card
-      u.roundRect(panelX + 4, ty, panelW - 8, 54, 4).fill({ color: sel ? 0x1a1a08 : 0x080806, alpha: 0.6 });
-      u.roundRect(panelX + 4, ty, panelW - 8, 54, 4).stroke({ color: sel ? def.color : canAfford ? 0x444433 : 0x222222, width: sel ? 2 : 0.5, alpha: 0.5 });
+      const cardH = 72;
+      u.roundRect(panelX + 4, ty, panelW - 8, cardH, 4).fill({ color: sel ? 0x1a1a08 : 0x080806, alpha: 0.6 });
+      u.roundRect(panelX + 4, ty, panelW - 8, cardH, 4).stroke({ color: sel ? def.color : canAfford ? 0x444433 : 0x222222, width: sel ? 2 : 0.5, alpha: 0.5 });
 
       // Tower icon — octagonal shape with glow + highlight
-      const tix = panelX + 16, tiy = ty + 15, tir = 7;
-      u.circle(tix, tiy, tir + 2).fill({ color: def.color, alpha: canAfford ? 0.1 : 0.03 }); // glow
+      const tix = panelX + 22, tiy = ty + 22, tir = 10;
+      u.circle(tix, tiy, tir + 2).fill({ color: def.color, alpha: canAfford ? 0.1 : 0.03 });
       for (let oi = 0; oi < 8; oi++) {
         const oa = oi * Math.PI / 4;
         if (oi === 0) u.moveTo(tix + Math.cos(oa) * tir, tiy + Math.sin(oa) * tir);
         else u.lineTo(tix + Math.cos(oa) * tir, tiy + Math.sin(oa) * tir);
       }
       u.closePath().fill({ color: def.color, alpha: canAfford ? 0.7 : 0.25 });
-      u.circle(tix, tiy, tir * 0.5).fill({ color: def.color, alpha: canAfford ? 0.9 : 0.4 }); // turret
-      u.circle(tix - 1, tiy - 1, tir * 0.3).fill({ color: 0xffffff, alpha: 0.1 }); // highlight
-      u.circle(tix, tiy, tir).stroke({ color: 0xffffff, width: 0.5, alpha: 0.1 }); // rim
+      u.circle(tix, tiy, tir * 0.5).fill({ color: def.color, alpha: canAfford ? 0.9 : 0.4 });
+      u.circle(tix - 1, tiy - 1, tir * 0.3).fill({ color: 0xffffff, alpha: 0.1 });
+      u.circle(tix, tiy, tir).stroke({ color: 0xffffff, width: 0.5, alpha: 0.1 });
 
-      addText(def.name, panelX + 28, ty + 3, { fontSize: 9, fill: canAfford ? 0xccbbaa : 0x555544, fontWeight: "bold" });
-      addText(def.desc, panelX + 28, ty + 15, { fontSize: 7, fill: 0x888877 });
-      addText(`DMG:${def.damage} RNG:${def.range} SPD:${def.fireRate}`, panelX + 28, ty + 27, { fontSize: 7, fill: 0x778877 });
-      addText(`${def.cost}g`, panelX + panelW - 34, ty + 3, { fontSize: 10, fill: canAfford ? 0xffd700 : 0x555544, fontWeight: "bold" });
+      addText(def.name, panelX + 38, ty + 4, { fontSize: 15, fill: canAfford ? 0xccbbaa : 0x555544, fontWeight: "bold" });
+      addText(def.desc, panelX + 38, ty + 22, { fontSize: 12, fill: 0x888877 });
+      addText(`DMG:${def.damage} RNG:${def.range} SPD:${def.fireRate}`, panelX + 38, ty + 38, { fontSize: 12, fill: 0x778877 });
+      addText(`${def.cost}g`, panelX + panelW - 44, ty + 4, { fontSize: 16, fill: canAfford ? 0xffd700 : 0x555544, fontWeight: "bold" });
 
       if (canAfford) {
         const btn = new Graphics();
-        btn.roundRect(panelX + 4, ty, panelW - 8, 54, 4).fill({ color: 0x000000, alpha: 0.01 });
+        btn.roundRect(panelX + 4, ty, panelW - 8, cardH, 4).fill({ color: 0x000000, alpha: 0.01 });
         btn.eventMode = "static"; btn.cursor = "pointer";
         const tt = tType;
         btn.on("pointerdown", () => this._towerSelectCallback?.(tt));
         this._uiGfx.addChild(btn);
       }
 
-      ty += 58;
+      ty += cardH + 6;
     }
 
     // Tower inspection panel (when a tower is clicked)
@@ -361,50 +364,49 @@ export class SiegeRenderer {
       if (tower) {
         const def = TOWERS[tower.type];
         const levelMult = 1 + (tower.level - 1) * 0.2;
-        const ity = ty + 4;
-        u.roundRect(panelX + 2, ity, panelW - 4, 65, 4).fill({ color: 0x1a1a08, alpha: 0.7 });
-        u.roundRect(panelX + 2, ity, panelW - 4, 65, 4).stroke({ color: def.color, width: 1, alpha: 0.4 });
-        addText(`${def.name} Lv${tower.level}${tower.level >= 5 ? " MAX" : ""}`, panelX + panelW / 2, ity + 3, { fontSize: 10, fill: def.color, fontWeight: "bold" }, true);
-        addText(`DMG: ${Math.floor(def.damage * levelMult)} (+${Math.round((levelMult - 1) * 100)}%)`, panelX + 10, ity + 17, { fontSize: 8, fill: 0xccbbaa });
-        addText(`RNG: ${def.range} | SPD: x${(1 + (tower.level - 1) * 0.1).toFixed(1)}`, panelX + 10, ity + 28, { fontSize: 8, fill: 0xaabb99 });
-        // Kill progress bar to next level
+        const ity = ty + 6;
+        u.roundRect(panelX + 2, ity, panelW - 4, 90, 4).fill({ color: 0x1a1a08, alpha: 0.7 });
+        u.roundRect(panelX + 2, ity, panelW - 4, 90, 4).stroke({ color: def.color, width: 1, alpha: 0.4 });
+        addText(`${def.name} Lv${tower.level}${tower.level >= 5 ? " MAX" : ""}`, panelX + panelW / 2, ity + 4, { fontSize: 16, fill: def.color, fontWeight: "bold" }, true);
+        addText(`DMG: ${Math.floor(def.damage * levelMult)} (+${Math.round((levelMult - 1) * 100)}%)`, panelX + 12, ity + 24, { fontSize: 14, fill: 0xccbbaa });
+        addText(`RNG: ${def.range} | SPD: x${(1 + (tower.level - 1) * 0.1).toFixed(1)}`, panelX + 12, ity + 42, { fontSize: 14, fill: 0xaabb99 });
         if (tower.level < 5) {
           const killsNeeded = tower.level * 5;
           const prog = tower.kills / killsNeeded;
-          const bx = panelX + 10, by = ity + 40, bw = panelW - 24;
-          u.rect(bx, by, bw, 4).fill({ color: 0x222200 });
-          u.rect(bx, by, bw * prog, 4).fill({ color: 0xffd700 });
-          u.rect(bx, by, bw, 4).stroke({ color: 0x444422, width: 0.5 });
-          addText(`${tower.kills}/${killsNeeded} kills to Lv${tower.level + 1}`, panelX + panelW / 2, ity + 46, { fontSize: 7, fill: 0x999977 }, true);
+          const bx = panelX + 12, by = ity + 60, bw = panelW - 28;
+          u.rect(bx, by, bw, 6).fill({ color: 0x222200 });
+          u.rect(bx, by, bw * prog, 6).fill({ color: 0xffd700 });
+          u.rect(bx, by, bw, 6).stroke({ color: 0x444422, width: 0.5 });
+          addText(`${tower.kills}/${killsNeeded} kills to Lv${tower.level + 1}`, panelX + panelW / 2, ity + 68, { fontSize: 12, fill: 0x999977 }, true);
         }
-        addText(`Target: ${tower.targetPriority} [T]`, panelX + panelW / 2, ity + 56, { fontSize: 7, fill: 0x88aacc }, true);
-        addText(`Sell: ${Math.floor(def.cost * 0.6)}g [X]`, panelX + panelW / 2, ity + 66, { fontSize: 7, fill: 0xff8844 }, true);
-        ty += 82;
+        addText(`Target: ${tower.targetPriority} [T]`, panelX + panelW / 2, ity + 78, { fontSize: 12, fill: 0x88aacc }, true);
+        addText(`Sell: ${Math.floor(def.cost * 0.6)}g [X]`, panelX + panelW / 2, ity + 90, { fontSize: 12, fill: 0xff8844 }, true);
+        ty += 108;
       }
     }
 
     // Power-ups
-    ty = Math.max(ty + 4, oy + SiegeConfig.GRID_ROWS * T - 80);
+    ty = Math.max(ty + 6, oy + gridH - 100);
     u.moveTo(panelX + 10, ty).lineTo(panelX + panelW - 10, ty).stroke({ color: COL, width: 0.5, alpha: 0.15 });
-    ty += 6;
-    addText("Power-ups", panelX + panelW / 2, ty, { fontSize: 9, fill: 0xccaa88, fontWeight: "bold" }, true);
-    ty += 14;
+    ty += 8;
+    addText("Power-ups", panelX + panelW / 2, ty, { fontSize: 16, fill: 0xccaa88, fontWeight: "bold" }, true);
+    ty += 22;
     const freezeReady = state.freezeTimer <= 0 && state.gold >= 20;
-    addText(`F: Freeze (20g)${state.freezeTimer > 0 ? ` [${Math.ceil(state.freezeTimer)}s]` : ""}`, panelX + 8, ty, { fontSize: 8, fill: freezeReady ? 0x88ccff : 0x555544 });
-    ty += 12;
+    addText(`F: Freeze (20g)${state.freezeTimer > 0 ? ` [${Math.ceil(state.freezeTimer)}s]` : ""}`, panelX + 10, ty, { fontSize: 14, fill: freezeReady ? 0x88ccff : 0x555544 });
+    ty += 18;
     const meteorReady = state.meteorCooldown <= 0 && state.gold >= 30;
-    addText(`M: Meteor (30g)${state.meteorCooldown > 0 ? ` [${Math.ceil(state.meteorCooldown)}s]` : ""}`, panelX + 8, ty, { fontSize: 8, fill: meteorReady ? 0xff6644 : 0x555544 });
-    ty += 14;
+    addText(`M: Meteor (30g)${state.meteorCooldown > 0 ? ` [${Math.ceil(state.meteorCooldown)}s]` : ""}`, panelX + 10, ty, { fontSize: 14, fill: meteorReady ? 0xff6644 : 0x555544 });
+    ty += 20;
 
     // Speed indicator
-    addText(`Speed: ${state.speedMult}x [1/2/3]`, panelX + panelW / 2, ty, { fontSize: 8, fill: state.speedMult > 1 ? 0xffaa44 : 0x667766 }, true);
-    ty += 12;
+    addText(`Speed: ${state.speedMult}x [1/2/3]`, panelX + panelW / 2, ty, { fontSize: 14, fill: state.speedMult > 1 ? 0xffaa44 : 0x667766 }, true);
+    ty += 18;
 
     // Controls hint
-    addText("Click: place/inspect | X: sell | Space: next wave", panelX + panelW / 2, oy + SiegeConfig.GRID_ROWS * T - 8, { fontSize: 7, fill: 0x555544 }, true);
+    addText("Click: place/inspect | X: sell | Space: next wave", panelX + panelW / 2, oy + gridH - 12, { fontSize: 12, fill: 0x555544 }, true);
   }
 
-  getGridOffset(): { x: number; y: number } { return { x: 10, y: 50 }; }
+  getGridOffset(): { x: number; y: number } { return { x: 10, y: 60 }; }
 
   destroy(): void {
     this.container.removeChildren();

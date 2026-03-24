@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import type { TowerType, EnemyType } from "../config/SiegeConfig";
-import { SiegeConfig, ENEMIES, DIFFICULTY_MULT } from "../config/SiegeConfig";
+import { SiegeConfig, ENEMIES, DIFFICULTY_MULT, TILE_SZ } from "../config/SiegeConfig";
 
 export enum SiegePhase {
   BUILDING = "building",  // between waves — place towers
@@ -198,7 +198,7 @@ export function createSiegeState(difficulty: import("../config/SiegeConfig").Dif
 export function spawnEnemy(state: SiegeState, type: EnemyType): void {
   const def = ENEMIES[type];
   const spawn = state.path[0];
-  const T = SiegeConfig.TILE_SIZE;
+  const T = TILE_SZ;
   // Apply difficulty + wave modifiers
   const diff = DIFFICULTY_MULT[state.difficulty];
   let hp = Math.round(def.hp * diff.hp);
