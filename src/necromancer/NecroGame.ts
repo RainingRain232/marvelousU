@@ -8,7 +8,7 @@ import { audioManager } from "@audio/AudioManager";
 
 import { createNecroState } from "./state/NecroState";
 import type { NecroState } from "./state/NecroState";
-import { NecroConfig, DARK_POWERS, CORPSES, WAVES, CRUSADERS, CONSUMABLES, generateEndlessWave } from "./config/NecroConfig";
+import { NecroConfig, DARK_POWERS, CORPSES, WAVES, CRUSADERS, CONSUMABLES, generateEndlessWave, NECRO_FW, NECRO_FH, setNecroFieldSize } from "./config/NecroConfig";
 import type { WaveEntry } from "./config/NecroConfig";
 import {
   updateDig, startDig, digAll,
@@ -39,6 +39,7 @@ export class NecroGame {
     audioManager.playGameMusic();
     this._sw = viewManager.screenWidth;
     this._sh = viewManager.screenHeight;
+    setNecroFieldSize(this._sw, this._sh);
     this._showStartScreen();
   }
 
@@ -193,7 +194,7 @@ export class NecroGame {
     // High score
     try {
       const hs = parseInt(localStorage.getItem("necro_highscore") ?? "0") || 0;
-      if (hs > 0) addText(`High Score: ${hs}`, sw / 2, sh * 0.52, { fontSize: 14, fill: 0x667766 }, true);
+      if (hs > 0) addText(`High Score: ${hs}`, sw / 2, sh * 0.52, { fontSize: 18, fill: 0x667766 }, true);
     } catch { /* */ }
 
     const btn = new Graphics();
@@ -218,7 +219,7 @@ export class NecroGame {
       this.destroy(); window.dispatchEvent(new Event("necromancerExit"));
     });
     c.addChild(backBtn);
-    addText("BACK", sw / 2, sh * 0.69 + 6, { fontSize: 14, fill: 0x888888 }, true);
+    addText("BACK", sw / 2, sh * 0.69 + 6, { fontSize: 18, fill: 0x888888 }, true);
 
     viewManager.addToLayer("ui", c);
   }
@@ -328,22 +329,22 @@ export class NecroGame {
     if (this._waveBonuses.bonuses.length > 0) {
       let bx = this._sw / 2 - this._waveBonuses.bonuses.length * 55;
       for (const bonus of this._waveBonuses.bonuses) {
-        addText(`${bonus.label} +${bonus.gold}g`, bx, 70, { fontSize: 13, fill: bonus.color });
+        addText(`${bonus.label} +${bonus.gold}g`, bx, 70, { fontSize: 17, fill: bonus.color });
         bx += 110;
       }
     }
 
     // Army roster on the right side
     let armyY = 90;
-    addText("YOUR ARMY", this._sw - 95, armyY - 12, { fontSize: 13, fill: 0x889988, letterSpacing: 2 });
+    addText("YOUR ARMY", this._sw - 95, armyY - 12, { fontSize: 17, fill: 0x889988, letterSpacing: 2 });
     for (const u of this._state.undead) {
       const rosterBg = new Graphics();
       rosterBg.roundRect(this._sw - 145, armyY, 140, 14, 2).fill({ color: 0x0a0a06, alpha: 0.5 });
       rosterBg.circle(this._sw - 135, armyY + 7, 3).fill({ color: u.color });
       c.addChild(rosterBg);
-      addText(`${u.name}`, this._sw - 128, armyY + 1, { fontSize: 11, fill: u.chimera ? 0xcc88ff : 0x99aa99 });
+      addText(`${u.name}`, this._sw - 128, armyY + 1, { fontSize: 15, fill: u.chimera ? 0xcc88ff : 0x99aa99 });
       const statsStr = `HP:${u.hp}/${u.maxHp} DMG:${u.damage}${u.ranged ? " R" : ""}`;
-      const st = new Text({ text: statsStr, style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 10, fill: 0x667766 } as any) });
+      const st = new Text({ text: statsStr, style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 14, fill: 0x667766 } as any) });
       st.anchor.set(1, 0); st.position.set(this._sw - 8, armyY + 1); c.addChild(st);
       armyY += 17;
       if (armyY > this._sh - 60) break;
@@ -376,7 +377,7 @@ export class NecroGame {
       c.addChild(btn);
 
       addText(`${power.name} (Lv ${level}/${power.maxLevel})`, this._sw / 2 - 150, y + 4, { fontSize: 18, fill: maxed ? 0x44aa44 : canBuy ? 0xffd700 : 0x666666, fontWeight: "bold" });
-      addText(power.description, this._sw / 2 - 150, y + 18, { fontSize: 13, fill: 0x778877 });
+      addText(power.description, this._sw / 2 - 150, y + 18, { fontSize: 17, fill: 0x778877 });
       if (!maxed) addText(`${power.cost}g`, this._sw / 2 + 130, y + 8, { fontSize: 18, fill: canBuy ? 0xffd700 : 0x554444, fontWeight: "bold" });
 
       y += 42;
@@ -403,7 +404,7 @@ export class NecroGame {
 
     // Consumable items
     y += 4;
-    addText("ITEMS", this._sw / 2 - 50, y, { fontSize: 14, fill: 0xccaa66, letterSpacing: 2 }, true);
+    addText("ITEMS", this._sw / 2 - 50, y, { fontSize: 18, fill: 0xccaa66, letterSpacing: 2 }, true);
     y += 14;
     for (const item of CONSUMABLES) {
       const canAfford = this._state.gold >= item.cost;
@@ -424,8 +425,8 @@ export class NecroGame {
         });
       }
       c.addChild(ibtn);
-      addText(`${item.name} — ${item.description}`, this._sw / 2 - 110, y + 4, { fontSize: 11, fill: canAfford ? 0xccccaa : 0x555544 });
-      addText(`${item.cost}g`, this._sw / 2 + 100, y + 4, { fontSize: 13, fill: canAfford ? 0xffd700 : 0x554433, fontWeight: "bold" });
+      addText(`${item.name} — ${item.description}`, this._sw / 2 - 110, y + 4, { fontSize: 15, fill: canAfford ? 0xccccaa : 0x555544 });
+      addText(`${item.cost}g`, this._sw / 2 + 100, y + 4, { fontSize: 17, fill: canAfford ? 0xffd700 : 0x554433, fontWeight: "bold" });
       y += 26;
     }
 
@@ -438,7 +439,7 @@ export class NecroGame {
       addText(`Next Wave ${nextWave + 1}:`, this._sw / 2, y, { fontSize: 16, fill: 0xcc8844, fontWeight: "bold" }, true);
       y += 16;
       const previewStr = preview.map(e => `${CRUSADERS[e.type].name} x${e.count}`).join("  |  ");
-      addText(previewStr, this._sw / 2, y, { fontSize: 13, fill: 0x998866 }, true);
+      addText(previewStr, this._sw / 2, y, { fontSize: 17, fill: 0x998866 }, true);
       y += 16;
     }
 
@@ -447,7 +448,7 @@ export class NecroGame {
       y += 4;
       addText(`\u2620 BOSS WAVE — ${BOSSES[BOSS_WAVES[nextWave]].name} \u2620`, this._sw / 2, y, { fontSize: 18, fill: 0xff4444, fontWeight: "bold" }, true);
       y += 14;
-      addText(BOSSES[BOSS_WAVES[nextWave]].description, this._sw / 2, y, { fontSize: 11, fill: 0xcc6644 }, true);
+      addText(BOSSES[BOSS_WAVES[nextWave]].description, this._sw / 2, y, { fontSize: 15, fill: 0xcc6644 }, true);
       y += 12;
     }
 
@@ -474,9 +475,9 @@ export class NecroGame {
         });
         c.addChild(card);
         const rarityLabel = relic.rarity === "legendary" ? "\u2605 " : relic.rarity === "rare" ? "\u25C6 " : "";
-        addText(`${rarityLabel}${relic.name}`, cx2 + cardW / 2, y + 6, { fontSize: 13, fill: relic.color, fontWeight: "bold" }, true);
-        addText(relic.description, cx2 + cardW / 2, y + 22, { fontSize: 10, fill: 0xccccaa }, true);
-        addText(`[${relic.rarity.toUpperCase()}]`, cx2 + cardW / 2, y + 36, { fontSize: 10, fill: borderCol }, true);
+        addText(`${rarityLabel}${relic.name}`, cx2 + cardW / 2, y + 6, { fontSize: 17, fill: relic.color, fontWeight: "bold" }, true);
+        addText(relic.description, cx2 + cardW / 2, y + 22, { fontSize: 14, fill: 0xccccaa }, true);
+        addText(`[${relic.rarity.toUpperCase()}]`, cx2 + cardW / 2, y + 36, { fontSize: 14, fill: borderCol }, true);
         cx2 += cardW + gap;
       }
       y += cardH + 8;
@@ -484,10 +485,10 @@ export class NecroGame {
 
     // Current relics display
     if (this._state.relics.length > 0) {
-      addText(`Relics (${this._state.relics.length}/4):`, this._sw / 2, y, { fontSize: 14, fill: 0xccaa88 }, true);
+      addText(`Relics (${this._state.relics.length}/4):`, this._sw / 2, y, { fontSize: 18, fill: 0xccaa88 }, true);
       y += 14;
       const relicStr = this._state.relics.map(r => r.name).join("  |  ");
-      addText(relicStr, this._sw / 2, y, { fontSize: 11, fill: 0xaa9977 }, true);
+      addText(relicStr, this._sw / 2, y, { fontSize: 15, fill: 0xaa9977 }, true);
       y += 14;
     }
 
@@ -701,7 +702,7 @@ export class NecroGame {
       this.destroy(); window.dispatchEvent(new Event("necromancerExit"));
     });
     c.addChild(menuBtn);
-    addText("MENU", this._sw / 2, y + 5, { fontSize: 14, fill: 0x888888 }, true);
+    addText("MENU", this._sw / 2, y + 5, { fontSize: 18, fill: 0x888888 }, true);
   }
 
   // ── Input setup ────────────────────────────────────────────────────────
@@ -711,7 +712,7 @@ export class NecroGame {
     this._removePointer();
     if (this._keyHandler) { window.removeEventListener("keydown", this._keyHandler); this._keyHandler = null; }
 
-    const ox = (this._sw - NecroConfig.FIELD_WIDTH) / 2, oy = 50;
+    const ox = (this._sw - NECRO_FW) / 2, oy = 50;
 
     if (phase === "dig") {
       this._pointerDown = (e: { global: { x: number; y: number } }) => {
@@ -804,7 +805,7 @@ export class NecroGame {
           castDarkNova(this._state, wx, wy);
         } else {
           // Set rally point
-          if (wx > 0 && wx < NecroConfig.FIELD_WIDTH && wy > 0 && wy < NecroConfig.FIELD_HEIGHT) {
+          if (wx > 0 && wx < NECRO_FW && wy > 0 && wy < NECRO_FH) {
             setRallyPoint(this._state, wx, wy);
           }
         }
@@ -825,14 +826,14 @@ export class NecroGame {
         if (e.key === "q" || e.key === "Q") {
           // Dark Nova at center/rally point
           const rp = this._state.rallyPoint;
-          castDarkNova(this._state, rp ? rp.x : NecroConfig.FIELD_WIDTH / 2, rp ? rp.y : NecroConfig.FIELD_HEIGHT / 2);
+          castDarkNova(this._state, rp ? rp.x : NECRO_FW / 2, rp ? rp.y : NECRO_FH / 2);
         }
         if (e.key === "w" || e.key === "W") {
-          castBoneWall(this._state, NecroConfig.FIELD_WIDTH / 2, NecroConfig.FIELD_HEIGHT / 2);
+          castBoneWall(this._state, NECRO_FW / 2, NECRO_FH / 2);
         }
         if (e.key === "e" || e.key === "E") {
           const rp = this._state.rallyPoint;
-          castSoulLeech(this._state, rp ? rp.x : NecroConfig.FIELD_WIDTH / 2, rp ? rp.y : NecroConfig.FIELD_HEIGHT / 2);
+          castSoulLeech(this._state, rp ? rp.x : NECRO_FW / 2, rp ? rp.y : NECRO_FH / 2);
         }
         if (e.key === "r" || e.key === "R") {
           this._state.rallyPoint = null;
@@ -934,7 +935,7 @@ export class NecroGame {
         btn.eventMode = "static"; btn.cursor = "pointer";
         btn.on("pointerdown", cb);
         contentContainer.addChild(btn);
-        const t = new Text({ text: label, style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 13, fill: color, fontWeight: "bold", letterSpacing: 1 } as any) });
+        const t = new Text({ text: label, style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 17, fill: color, fontWeight: "bold", letterSpacing: 1 } as any) });
         t.anchor.set(0.5, 0.5); t.position.set(sw / 2, y + 18);
         contentContainer.addChild(t);
       };
@@ -948,7 +949,7 @@ export class NecroGame {
           t.position.set(x, y);
           contentContainer.addChild(t);
         };
-        addCText("DIG: Click grave to dig | D: dig all\nRITUAL: Click corpse to place | Enter: raise\n  C: clear slots | X: sacrifice | Space: battle\nBATTLE: LMB: rally | Shift+LMB: Dark Nova\n  RMB/W: Bone Wall | E: Soul Leech\n  R: clear rally | F: War Cry | S: speed\nSpace: next phase | Esc: pause", sw / 2, py + 70, { fontSize: 12, fill: 0xccccaa, align: "center", lineHeight: 21 }, true);
+        addCText("DIG: Click grave to dig | D: dig all\nRITUAL: Click corpse to place | Enter: raise\n  C: clear slots | X: sacrifice | Space: battle\nBATTLE: LMB: rally | Shift+LMB: Dark Nova\n  RMB/W: Bone Wall | E: Soul Leech\n  R: clear rally | F: War Cry | S: speed\nSpace: next phase | Esc: pause", sw / 2, py + 70, { fontSize: 16, fill: 0xccccaa, align: "center", lineHeight: 21 }, true);
         makeBackBtn();
       });
       makeBtn("INSTRUCTIONS", py + 170, 0xccaa44, () => {
@@ -959,7 +960,7 @@ export class NecroGame {
           t.position.set(x, y);
           contentContainer.addChild(t);
         };
-        addCText("Dig up corpses from the graveyard.\nReanimate them with dark rituals.\nCombine two corpses for chimera undead.\nSend your army against crusader waves.\nEach resurrection drains your life force!\nSurvive 10 waves to win.", sw / 2, py + 70, { fontSize: 12, fill: 0xccccaa, align: "center", wordWrap: true, wordWrapWidth: 380, lineHeight: 20 }, true);
+        addCText("Dig up corpses from the graveyard.\nReanimate them with dark rituals.\nCombine two corpses for chimera undead.\nSend your army against crusader waves.\nEach resurrection drains your life force!\nSurvive 10 waves to win.", sw / 2, py + 70, { fontSize: 16, fill: 0xccccaa, align: "center", wordWrap: true, wordWrapWidth: 380, lineHeight: 20 }, true);
         makeBackBtn();
       });
       makeBtn("MAIN MENU", py + 270, 0xcc4444, () => {
@@ -976,7 +977,7 @@ export class NecroGame {
       btn.eventMode = "static"; btn.cursor = "pointer";
       btn.on("pointerdown", () => showButtons());
       contentContainer.addChild(btn);
-      const t = new Text({ text: "BACK", style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 11, fill: 0x888888, fontWeight: "bold" } as any) });
+      const t = new Text({ text: "BACK", style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 15, fill: 0x888888, fontWeight: "bold" } as any) });
       t.anchor.set(0.5, 0.5); t.position.set(sw / 2, py + ph - 44);
       contentContainer.addChild(t);
     };

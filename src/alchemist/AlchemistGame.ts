@@ -439,9 +439,6 @@ export class AlchemistGame {
 
     addText("PAUSED", sw / 2, py + 16, { fontSize: 22, fill: 0xaa8844, fontWeight: "bold", letterSpacing: 4 }, true);
 
-    // State: controls or instructions
-    let _showingControls = false;
-    let _showingInstructions = false;
     const contentContainer = new Container();
     c.addChild(contentContainer);
 
@@ -449,8 +446,6 @@ export class AlchemistGame {
 
     const showButtons = () => {
       clearContent();
-      showingControls = false;
-      showingInstructions = false;
 
       const makeBtn = (label: string, y: number, color: number, cb: () => void) => {
         const btn = new Graphics();
@@ -467,13 +462,11 @@ export class AlchemistGame {
       makeBtn("RESUME", py + 70, 0x44cc66, () => this._hidePauseMenu());
       makeBtn("CONTROLS", py + 120, 0xccaa44, () => {
         clearContent();
-        showingControls = true;
         addContentText("Click: select tile\nClick adjacent: swap\nClick BREW: serve customer\nQ: Shuffle\nW: +30s time extension\nE: Magnet\nEsc: Pause menu", sw / 2, py + 70, { fontSize: 13, fill: 0xccccaa, align: "center", lineHeight: 22 }, true);
         makeBackBtn();
       });
       makeBtn("INSTRUCTIONS", py + 170, 0xccaa44, () => {
         clearContent();
-        showingInstructions = true;
         addContentText("Match ingredients on the grid to collect them.\nFulfill customer potion orders before they leave.\nBrew as many potions as you can in 5 minutes!\n\nMatch 3+ of the same ingredient in a row or column.\nCollect enough ingredients to brew customer orders.\nClick BREW when you have the right ingredients.", sw / 2, py + 70, { fontSize: 12, fill: 0xccccaa, align: "center", wordWrap: true, wordWrapWidth: 360, lineHeight: 20 }, true);
         makeBackBtn();
       });

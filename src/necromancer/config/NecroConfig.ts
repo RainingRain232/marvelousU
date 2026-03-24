@@ -263,6 +263,14 @@ export const MAX_RELICS = 4;
 export const RELIC_GRAVE_DROP_CHANCE = 0.10;
 export const RELIC_WAVE_REWARD_WAVES = [4, 9]; // 0-indexed — after boss waves
 
+/** Mutable field dimensions — recomputed each boot to fill the screen. */
+export let NECRO_FW = 1050;
+export let NECRO_FH = 700;
+export function setNecroFieldSize(sw: number, sh: number): void {
+  NECRO_FW = Math.max(800, sw - 40);
+  NECRO_FH = Math.max(500, sh - 100);
+}
+
 export const NecroConfig = {
   FIELD_WIDTH: 1050,
   FIELD_HEIGHT: 700,

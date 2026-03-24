@@ -65,8 +65,8 @@ export class GravitonRenderer {
 
   private _initStars(): void {
     if (this._starsInit) return; this._starsInit = true;
-    for (let i = 0; i < 80; i++) {
-      this._stars.push({ x: Math.random() * this._sw, y: Math.random() * this._sh, s: Math.random() * 1.3 + 0.3, p: Math.random() * Math.PI * 2, b: Math.random() * 0.15 + 0.02 });
+    for (let i = 0; i < 200; i++) {
+      this._stars.push({ x: Math.random() * this._sw, y: Math.random() * this._sh, s: Math.random() * 1.8 + 0.3, p: Math.random() * Math.PI * 2, b: Math.random() * 0.25 + 0.04 });
     }
   }
 
@@ -89,31 +89,62 @@ export class GravitonRenderer {
       g.rect(0, 0, thickness, sh).fill({ color: 0x000000, alpha: vigAlpha });
       g.rect(sw - thickness, 0, thickness, sh).fill({ color: 0x000000, alpha: vigAlpha });
     }
-    // Nebula clouds (atmospheric depth)
-    const ncx = sw / 2, ncy = sh / 2;
-    g.circle(ncx * 0.6, ncy * 0.7, 160).fill({ color: 0x0a0420, alpha: 0.12 + Math.sin(state.time * 0.2) * 0.03 });
-    g.circle(ncx * 1.4, ncy * 0.4, 120).fill({ color: 0x041020, alpha: 0.1 + Math.sin(state.time * 0.3 + 1) * 0.02 });
-    g.circle(ncx * 0.3, ncy * 1.3, 100).fill({ color: 0x100418, alpha: 0.08 });
+    // Nebula clouds (atmospheric depth) — layered for richer look
+    const ncx = sw / 2, ncy = sh / 2, nt = state.time;
+    g.circle(ncx * 0.6, ncy * 0.7, 220).fill({ color: 0x0a0420, alpha: 0.14 + Math.sin(nt * 0.2) * 0.04 });
+    g.circle(ncx * 0.6, ncy * 0.7, 140).fill({ color: 0x140630, alpha: 0.08 + Math.sin(nt * 0.25) * 0.03 });
+    g.circle(ncx * 1.4, ncy * 0.4, 180).fill({ color: 0x041020, alpha: 0.12 + Math.sin(nt * 0.3 + 1) * 0.03 });
+    g.circle(ncx * 1.4, ncy * 0.4, 100).fill({ color: 0x081830, alpha: 0.06 });
+    g.circle(ncx * 0.3, ncy * 1.3, 160).fill({ color: 0x100418, alpha: 0.10 + Math.sin(nt * 0.15 + 2) * 0.03 });
+    g.circle(ncx * 1.1, ncy * 1.2, 130).fill({ color: 0x080620, alpha: 0.08 + Math.sin(nt * 0.18 + 3) * 0.02 });
+    g.circle(ncx * 0.8, ncy * 0.3, 100).fill({ color: 0x0c0828, alpha: 0.06 });
+    // Dust band across center
+    g.ellipse(ncx, ncy * 0.9, sw * 0.4, 40).fill({ color: 0x0c0820, alpha: 0.06 + Math.sin(nt * 0.1) * 0.02 });
 
-    // Stars with color variety
+    // Stars with parallax drift based on player position
     this._initStars();
-    const starColors = [0x8888aa, 0xaaaacc, 0x88aacc, 0xccaa88, 0xaa88cc];
+    const starColors = [0x8888aa, 0xaaaacc, 0x88aacc, 0xccaa88, 0xaa88cc, 0xcc88aa, 0x88ccaa];
+    const pcx = (state.phase === GPhase.PLAYING || state.phase === GPhase.PAUSED) ? state.playerX : sw / 2;
+    const pcy = (state.phase === GPhase.PLAYING || state.phase === GPhase.PAUSED) ? state.playerY : sh / 2;
     for (let i = 0; i < this._stars.length; i++) {
       const s = this._stars[i];
       const tw = s.b * (0.5 + Math.sin(state.time * 1.2 + s.p) * 0.5);
       if (tw > 0.01) {
         const sc = starColors[i % starColors.length];
-        g.circle(s.x, s.y, s.s).fill({ color: sc, alpha: tw });
-        if (s.s > 1.2 && tw > 0.07) {
-          g.setStrokeStyle({ width: 0.5, color: sc, alpha: tw * 0.3 });
-          g.moveTo(s.x - s.s * 1.5, s.y).lineTo(s.x + s.s * 1.5, s.y).stroke();
-          g.moveTo(s.x, s.y - s.s * 1.5).lineTo(s.x, s.y + s.s * 1.5).stroke();
+        // Parallax: stars drift slightly opposite to player movement
+        const parallax = (i % 3 + 1) * 0.015;
+        const sx = s.x - (pcx - sw / 2) * parallax;
+        const sy = s.y - (pcy - sh / 2) * parallax;
+        g.circle(sx, sy, s.s).fill({ color: sc, alpha: tw });
+        if (s.s > 1.0 && tw > 0.05) {
+          // Cross sparkle for brighter stars
+          const sparkLen = s.s * 2;
+          g.moveTo(sx - sparkLen, sy).lineTo(sx + sparkLen, sy).stroke({ color: sc, width: 0.5, alpha: tw * 0.35 });
+          g.moveTo(sx, sy - sparkLen).lineTo(sx, sy + sparkLen).stroke({ color: sc, width: 0.5, alpha: tw * 0.35 });
+          // Diagonal sparkle for the biggest stars
+          if (s.s > 1.5 && tw > 0.08) {
+            g.moveTo(sx - sparkLen * 0.6, sy - sparkLen * 0.6).lineTo(sx + sparkLen * 0.6, sy + sparkLen * 0.6)
+              .stroke({ color: sc, width: 0.3, alpha: tw * 0.2 });
+            g.moveTo(sx + sparkLen * 0.6, sy - sparkLen * 0.6).lineTo(sx - sparkLen * 0.6, sy + sparkLen * 0.6)
+              .stroke({ color: sc, width: 0.3, alpha: tw * 0.2 });
+          }
         }
       }
     }
 
     if (state.phase === GPhase.PLAYING || state.phase === GPhase.PAUSED) {
       this._drawArena(g, state);
+      // Ambient drifting motes inside arena
+      const cx = state.arenaCX, cy = state.arenaCY, ar = state.arenaRadius;
+      for (let m = 0; m < 20; m++) {
+        const mSeed = m * 137.5;
+        const mAngle = state.time * 0.1 + mSeed;
+        const mDist = (mSeed * 7.3) % ar * 0.85;
+        const mx = cx + Math.cos(mAngle) * mDist;
+        const my = cy + Math.sin(mAngle * 0.7 + mSeed * 0.3) * mDist;
+        const mAlpha = 0.03 + Math.sin(state.time * 0.8 + mSeed) * 0.015;
+        g.circle(mx, my, 1).fill({ color: G.COLOR_ARENA, alpha: mAlpha });
+      }
       this._drawPullField(g, state);
       this._drawBodies(g, state);
       this._drawEnemies(g, state);
@@ -133,48 +164,64 @@ export class GravitonRenderer {
   private _drawArena(g: Graphics, state: GState): void {
     const cx = state.arenaCX, cy = state.arenaCY, r = state.arenaRadius, t = state.time;
 
-    // Radial gradient floor
-    g.circle(cx, cy, r).fill({ color: G.COLOR_ARENA, alpha: 0.06 });
-    g.circle(cx, cy, r * 0.7).fill({ color: 0x0a1830, alpha: 0.04 });
-    g.circle(cx, cy, r * 0.4).fill({ color: 0x0c1a38, alpha: 0.03 });
+    // Radial gradient floor — richer layering
+    g.circle(cx, cy, r).fill({ color: G.COLOR_ARENA, alpha: 0.10 });
+    g.circle(cx, cy, r * 0.8).fill({ color: 0x0a1830, alpha: 0.07 });
+    g.circle(cx, cy, r * 0.55).fill({ color: 0x0c1a38, alpha: 0.05 });
+    g.circle(cx, cy, r * 0.3).fill({ color: 0x0e1c40, alpha: 0.04 });
 
-    // Concentric energy rings (heartbeat-like)
-    for (let ring = 1; ring <= 4; ring++) {
-      const rr = r * ring / 4;
-      g.setStrokeStyle({ width: 0.8, color: G.COLOR_ARENA, alpha: 0.03 + Math.sin(t * 0.6 + ring) * 0.015 });
-      g.circle(cx, cy, rr).stroke();
+    // Grid overlay for depth
+    const gridStep = 50;
+    for (let gx = cx - r; gx <= cx + r; gx += gridStep) {
+      const dx = gx - cx, maxY = Math.sqrt(Math.max(0, r * r - dx * dx));
+      if (maxY > 0) { g.moveTo(gx, cy - maxY).lineTo(gx, cy + maxY).stroke({ color: G.COLOR_ARENA, width: 0.3, alpha: 0.03 }); }
+    }
+    for (let gy = cy - r; gy <= cy + r; gy += gridStep) {
+      const dy = gy - cy, maxX = Math.sqrt(Math.max(0, r * r - dy * dy));
+      if (maxX > 0) { g.moveTo(cx - maxX, gy).lineTo(cx + maxX, gy).stroke({ color: G.COLOR_ARENA, width: 0.3, alpha: 0.03 }); }
     }
 
-    // Radial energy lines
-    for (let v = 0; v < 6; v++) {
-      const va = v * Math.PI / 3 + t * 0.04;
-      g.setStrokeStyle({ width: 0.8, color: G.COLOR_ARENA, alpha: 0.025 + Math.sin(t * 0.5 + v * 1.5) * 0.01 });
-      g.moveTo(cx, cy).lineTo(cx + Math.cos(va) * r * 0.85, cy + Math.sin(va) * r * 0.85).stroke();
+    // Concentric energy rings (heartbeat-like) — more visible
+    for (let ring = 1; ring <= 6; ring++) {
+      const rr = r * ring / 6;
+      const ra = 0.05 + Math.sin(t * 0.6 + ring) * 0.025;
+      g.circle(cx, cy, rr).stroke({ color: G.COLOR_ARENA, width: 1, alpha: ra });
     }
 
-    // Outer glow layers
-    g.circle(cx, cy, r + 18).fill({ color: G.COLOR_ARENA, alpha: 0.015 });
-    g.circle(cx, cy, r + 10).fill({ color: G.COLOR_ARENA, alpha: 0.03 });
+    // Radial energy lines — more of them
+    for (let v = 0; v < 12; v++) {
+      const va = v * Math.PI / 6 + t * 0.04;
+      const la = 0.04 + Math.sin(t * 0.5 + v * 1.5) * 0.015;
+      g.moveTo(cx, cy).lineTo(cx + Math.cos(va) * r * 0.9, cy + Math.sin(va) * r * 0.9).stroke({ color: G.COLOR_ARENA, width: 0.8, alpha: la });
+    }
 
-    // Animated border with threat-reactive color
+    // Outer glow layers — more dramatic
+    g.circle(cx, cy, r + 25).fill({ color: G.COLOR_ARENA, alpha: 0.02 });
+    g.circle(cx, cy, r + 15).fill({ color: G.COLOR_ARENA, alpha: 0.04 });
+    g.circle(cx, cy, r + 8).fill({ color: G.COLOR_ARENA, alpha: 0.06 });
+
+    // Animated border with threat-reactive color — brighter, more dynamic
     const borderColor = state.threatLevel > 0.4 ? lerpColor(G.COLOR_ARENA, G.COLOR_DANGER, (state.threatLevel - 0.4) * 1.5) : G.COLOR_ARENA;
-    const segments = 20;
+    const segments = 24;
     for (let i = 0; i < segments; i += 2) {
       const a1 = (i / segments) * Math.PI * 2 + t * 0.25;
       const a2 = ((i + 1) / segments) * Math.PI * 2 + t * 0.25;
-      const pulse = 0.25 + Math.sin(t * 2.5 + i) * 0.1;
-      g.setStrokeStyle({ width: 2.5, color: borderColor, alpha: pulse });
+      const pulse = 0.35 + Math.sin(t * 2.5 + i) * 0.15;
+      g.setStrokeStyle({ width: 3, color: borderColor, alpha: pulse });
       g.moveTo(cx + Math.cos(a1) * r, cy + Math.sin(a1) * r);
       for (let s = 1; s <= 5; s++) { const a = a1 + (a2 - a1) * (s / 5); g.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); }
       g.stroke();
     }
+    // Soft outer border glow
+    g.circle(cx, cy, r).stroke({ color: borderColor, width: 1, alpha: 0.12 + Math.sin(t * 1.5) * 0.04 });
 
-    // Energy discharge sparks at boundary
-    for (let s = 0; s < 4; s++) {
-      const sa = t * 0.8 + s * Math.PI / 2;
-      const sparkR = r + 5 + Math.sin(t * 4 + s * 2) * 3;
-      g.circle(cx + Math.cos(sa) * sparkR, cy + Math.sin(sa) * sparkR, 1.5)
-        .fill({ color: borderColor, alpha: 0.2 + Math.sin(t * 6 + s) * 0.1 });
+    // Energy discharge sparks at boundary — more sparks, brighter
+    for (let s = 0; s < 8; s++) {
+      const sa = t * 0.8 + s * Math.PI / 4;
+      const sparkR = r + 5 + Math.sin(t * 4 + s * 2) * 4;
+      const sx = cx + Math.cos(sa) * sparkR, sy = cy + Math.sin(sa) * sparkR;
+      g.circle(sx, sy, 3).fill({ color: borderColor, alpha: 0.08 });
+      g.circle(sx, sy, 1.8).fill({ color: borderColor, alpha: 0.3 + Math.sin(t * 6 + s) * 0.15 });
     }
 
     // Center marker
@@ -187,34 +234,43 @@ export class GravitonRenderer {
     if (!state.pulling) return;
     const px = state.playerX, py = state.playerY, r = state.pullRadius, t = state.time;
 
-    // Outer field glow (large, soft)
-    g.circle(px, py, r * 1.05).fill({ color: G.COLOR_PULL, alpha: 0.04 });
-    g.circle(px, py, r).fill({ color: G.COLOR_PULL, alpha: 0.06 });
-    g.circle(px, py, r * 0.7).fill({ color: G.COLOR_PULL, alpha: 0.04 });
+    // Outer field glow (large, soft) — brighter, more layers
+    g.circle(px, py, r * 1.15).fill({ color: G.COLOR_PULL, alpha: 0.03 });
+    g.circle(px, py, r * 1.05).fill({ color: G.COLOR_PULL, alpha: 0.06 });
+    g.circle(px, py, r * 0.85).fill({ color: G.COLOR_PULL, alpha: 0.08 });
+    g.circle(px, py, r * 0.5).fill({ color: G.COLOR_PULL, alpha: 0.05 });
 
-    // Converging rings (move inward to show pull direction)
-    for (let ring = 0; ring < 6; ring++) {
-      const phase = (t * 3 + ring * 0.3) % 1;
-      const rr = r * (1 - phase); // ring moves from outside to center
-      const alpha = (1 - phase) * 0.15;
-      g.setStrokeStyle({ width: 1.5, color: G.COLOR_PULL, alpha });
-      g.circle(px, py, rr).stroke();
+    // Converging rings (move inward to show pull direction) — more rings, brighter
+    for (let ring = 0; ring < 8; ring++) {
+      const phase = (t * 3 + ring * 0.25) % 1;
+      const rr = r * (1 - phase);
+      const alpha = (1 - phase) * 0.20;
+      g.circle(rr > 3 ? px : px, py, Math.max(2, rr)).stroke({ color: G.COLOR_PULL, width: 1.8, alpha });
     }
 
-    // Radial tendrils (lines pointing inward showing attraction)
-    for (let i = 0; i < 8; i++) {
-      const ta = t * 0.5 + i * Math.PI / 4;
-      const outerR = r * 0.9;
-      const innerR = r * 0.3;
-      const tendrilAlpha = 0.08 + Math.sin(t * 3 + i * 2) * 0.04;
-      g.setStrokeStyle({ width: 1, color: G.COLOR_PULL, alpha: tendrilAlpha });
+    // Radial tendrils — more, with curves
+    for (let i = 0; i < 12; i++) {
+      const ta = t * 0.5 + i * Math.PI / 6;
+      const outerR = r * 0.92;
+      const innerR = r * 0.2;
+      const tendrilAlpha = 0.10 + Math.sin(t * 3 + i * 2) * 0.05;
+      g.setStrokeStyle({ width: 1.2, color: G.COLOR_PULL, alpha: tendrilAlpha });
       g.moveTo(px + Math.cos(ta) * outerR, py + Math.sin(ta) * outerR)
-        .lineTo(px + Math.cos(ta + 0.15) * innerR, py + Math.sin(ta + 0.15) * innerR).stroke();
+        .lineTo(px + Math.cos(ta + 0.2) * innerR, py + Math.sin(ta + 0.2) * innerR).stroke();
     }
 
-    // Boundary pulse ring
-    g.setStrokeStyle({ width: 2, color: G.COLOR_PULL, alpha: 0.12 + Math.sin(t * 5) * 0.06 });
-    g.circle(px, py, r).stroke();
+    // Gravity distortion sparkles at pull edge
+    for (let sp = 0; sp < 6; sp++) {
+      const sa = t * 2 + sp * Math.PI / 3;
+      const sr = r * (0.85 + Math.sin(t * 4 + sp * 3) * 0.1);
+      g.circle(px + Math.cos(sa) * sr, py + Math.sin(sa) * sr, 1.5)
+        .fill({ color: G.COLOR_PULL, alpha: 0.25 + Math.sin(t * 8 + sp) * 0.1 });
+    }
+
+    // Boundary pulse ring — double ring
+    const boundPulse = 0.15 + Math.sin(t * 5) * 0.08;
+    g.circle(px, py, r).stroke({ color: G.COLOR_PULL, width: 2.5, alpha: boundPulse });
+    g.circle(px, py, r + 4).stroke({ color: G.COLOR_PULL, width: 1, alpha: boundPulse * 0.4 });
   }
 
   private _drawBodies(g: Graphics, state: GState): void {
@@ -285,13 +341,26 @@ export class GravitonRenderer {
           g.circle(b.x, b.y, b.radius * 1.3).fill({ color: G.COLOR_FLUNG, alpha: 0.15 });
           g.circle(b.x, b.y, b.radius).fill({ color: G.COLOR_FLUNG, alpha: 0.85 });
           g.circle(b.x, b.y, b.radius * 0.4).fill({ color: 0xffffff, alpha: 0.25 });
-          // Motion trail (multiple fading copies)
+          // Motion trail — longer with energy streaks
           const vLen = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
           if (vLen > 0) {
             const ndx = -b.vx / vLen, ndy = -b.vy / vLen;
-            for (let tr = 1; tr <= 3; tr++) {
-              g.circle(b.x + ndx * b.radius * tr * 1.5, b.y + ndy * b.radius * tr * 1.5, b.radius * (1 - tr * 0.2))
-                .fill({ color: G.COLOR_FLUNG, alpha: 0.12 - tr * 0.03 });
+            // Soft glow trail
+            g.moveTo(b.x, b.y).lineTo(b.x + ndx * b.radius * 6, b.y + ndy * b.radius * 6)
+              .stroke({ color: G.COLOR_FLUNG, width: b.radius * 1.2, alpha: 0.06 });
+            g.moveTo(b.x, b.y).lineTo(b.x + ndx * b.radius * 4, b.y + ndy * b.radius * 4)
+              .stroke({ color: G.COLOR_FLUNG, width: b.radius * 0.7, alpha: 0.12 });
+            // Fading copies
+            for (let tr = 1; tr <= 4; tr++) {
+              g.circle(b.x + ndx * b.radius * tr * 1.5, b.y + ndy * b.radius * tr * 1.5, b.radius * (1 - tr * 0.18))
+                .fill({ color: G.COLOR_FLUNG, alpha: 0.15 - tr * 0.03 });
+            }
+            // Side energy streaks
+            const perpX2 = -ndy, perpY2 = ndx;
+            for (const side of [-1, 1]) {
+              g.moveTo(b.x + perpX2 * b.radius * 0.3 * side, b.y + perpY2 * b.radius * 0.3 * side)
+                .lineTo(b.x + ndx * b.radius * 3 + perpX2 * b.radius * 0.8 * side, b.y + ndy * b.radius * 3 + perpY2 * b.radius * 0.8 * side)
+                .stroke({ color: G.COLOR_FLUNG, width: 0.8, alpha: 0.08 });
             }
           }
         } else {
@@ -306,10 +375,13 @@ export class GravitonRenderer {
             .fill({ color: 0xaaaabb, alpha: 0.15 });
         }
       }
-      // Orbit indicator
+      // Orbit indicator — glowing ring + energy tether to player
       if (b.orbiting) {
-        g.setStrokeStyle({ width: 0.5, color: G.COLOR_PLAYER, alpha: 0.15 });
-        g.circle(b.x, b.y, b.radius * 1.3).stroke();
+        g.circle(b.x, b.y, b.radius * 1.6).fill({ color: G.COLOR_PLAYER, alpha: 0.04 });
+        g.circle(b.x, b.y, b.radius * 1.3).stroke({ color: G.COLOR_PLAYER, width: 1, alpha: 0.2 });
+        // Energy tether line to player (faint)
+        g.moveTo(b.x, b.y).lineTo(state.playerX, state.playerY)
+          .stroke({ color: G.COLOR_PLAYER, width: 0.5, alpha: 0.04 });
       }
     }
   }
@@ -335,7 +407,8 @@ export class GravitonRenderer {
       if (e.kind === "scout") {
         // Scout: pointed triangle with engine glow
         const color = flash ? 0xffffff : G.COLOR_ENEMY_SCOUT;
-        g.circle(e.x, e.y, e.radius * 1.6).fill({ color, alpha: 0.07 });
+        g.circle(e.x, e.y, e.radius * 2.2).fill({ color, alpha: 0.04 });
+        g.circle(e.x, e.y, e.radius * 1.6).fill({ color, alpha: 0.09 });
         g.moveTo(e.x + nx * e.radius, e.y + ny * e.radius)
           .lineTo(e.x + px * e.radius * 0.5, e.y + py * e.radius * 0.5)
           .lineTo(e.x - nx * e.radius * 0.6, e.y - ny * e.radius * 0.6)
@@ -355,7 +428,8 @@ export class GravitonRenderer {
       } else if (e.kind === "fighter") {
         // Fighter: diamond/star shape (orange)
         const color = flash ? 0xffffff : 0xff8844; // orange instead of dark red
-        g.circle(e.x, e.y, e.radius * 1.6).fill({ color, alpha: 0.06 });
+        g.circle(e.x, e.y, e.radius * 2.2).fill({ color, alpha: 0.04 });
+        g.circle(e.x, e.y, e.radius * 1.6).fill({ color, alpha: 0.08 });
         // Diamond shape
         g.moveTo(e.x + nx * e.radius, e.y + ny * e.radius) // front
           .lineTo(e.x + px * e.radius * 0.7, e.y + py * e.radius * 0.7) // right
@@ -383,7 +457,8 @@ export class GravitonRenderer {
       } else {
         // Tank: hexagonal chunky shape (purple/magenta)
         const color = flash ? 0xffffff : 0xaa44aa; // purple instead of maroon
-        g.circle(e.x, e.y, e.radius * 2).fill({ color, alpha: 0.05 });
+        g.circle(e.x, e.y, e.radius * 2.8).fill({ color, alpha: 0.03 });
+        g.circle(e.x, e.y, e.radius * 2).fill({ color, alpha: 0.07 });
         // Hexagon
         const sides = 6, rot = t * 0.3;
         g.moveTo(e.x + Math.cos(rot) * e.radius, e.y + Math.sin(rot) * e.radius);
@@ -451,29 +526,50 @@ export class GravitonRenderer {
         g.circle(px, py, G.ORBIT_DIST_MAX + 10).fill({ color: G.COLOR_PLAYER, alpha: fullPulse * 0.3 });
       }
     }
-    // Player glow — gravity vortex feel
-    g.circle(px, py, pr * 4).fill({ color: G.COLOR_PLAYER, alpha: 0.025 });
-    g.circle(px, py, pr * 2.8).fill({ color: G.COLOR_PLAYER, alpha: 0.05 });
-    g.circle(px, py, pr * 1.8).fill({ color: G.COLOR_PLAYER, alpha: 0.08 });
+    // Player glow — gravity vortex feel with pulsing
+    const vortexPulse = 0.5 + Math.sin(t * 2) * 0.15;
+    g.circle(px, py, pr * 5).fill({ color: G.COLOR_PLAYER, alpha: 0.02 * vortexPulse });
+    g.circle(px, py, pr * 4).fill({ color: G.COLOR_PLAYER, alpha: 0.035 * vortexPulse });
+    g.circle(px, py, pr * 2.8).fill({ color: G.COLOR_PLAYER, alpha: 0.06 * vortexPulse });
+    g.circle(px, py, pr * 1.8).fill({ color: G.COLOR_PLAYER, alpha: 0.10 * vortexPulse });
 
-    // Rotating gravitational field lines (spiral effect)
-    for (let fl = 0; fl < 4; fl++) {
-      const fa = t * 1.5 + fl * Math.PI / 2;
-      const spiralR1 = pr * 2.5;
+    // Rotating gravitational field lines — more lines, spiral arcs
+    for (let fl = 0; fl < 6; fl++) {
+      const fa = t * 1.5 + fl * Math.PI / 3;
+      const spiralR1 = pr * 3;
       const spiralR2 = pr * 1.2;
-      g.setStrokeStyle({ width: 1, color: G.COLOR_PLAYER, alpha: 0.08 });
-      g.moveTo(px + Math.cos(fa) * spiralR1, py + Math.sin(fa) * spiralR1)
-        .lineTo(px + Math.cos(fa + 0.4) * spiralR2, py + Math.sin(fa + 0.4) * spiralR2).stroke();
+      const lineAlpha = 0.06 + Math.sin(t * 2 + fl * 1.5) * 0.03;
+      g.setStrokeStyle({ width: 1.2, color: G.COLOR_PLAYER, alpha: lineAlpha });
+      // Draw curved spiral with multiple segments
+      const segs = 6;
+      g.moveTo(px + Math.cos(fa) * spiralR1, py + Math.sin(fa) * spiralR1);
+      for (let s = 1; s <= segs; s++) {
+        const frac = s / segs;
+        const segR = spiralR1 + (spiralR2 - spiralR1) * frac;
+        const segA = fa + frac * 0.8;
+        g.lineTo(px + Math.cos(segA) * segR, py + Math.sin(segA) * segR);
+      }
+      g.stroke();
     }
 
-    // Body — gravity singularity
-    g.circle(px, py, pr * 1.1).fill({ color: 0x1a3366, alpha: 0.5 });
+    // Gravity distortion rings (ripple outward)
+    for (let rip = 0; rip < 3; rip++) {
+      const ripPhase = (t * 0.8 + rip * 0.33) % 1;
+      const ripR = pr * 1.5 + ripPhase * pr * 3;
+      const ripAlpha = (1 - ripPhase) * 0.06;
+      g.circle(px, py, ripR).stroke({ color: G.COLOR_PLAYER, width: 0.8, alpha: ripAlpha });
+    }
+
+    // Body — gravity singularity with depth
+    g.circle(px, py, pr * 1.3).fill({ color: 0x0a1a44, alpha: 0.4 });
+    g.circle(px, py, pr * 1.1).fill({ color: 0x1a3366, alpha: 0.6 });
     g.circle(px, py, pr).fill(G.COLOR_PLAYER);
-    g.circle(px, py, pr * 0.6).fill({ color: G.COLOR_PLAYER_CORE, alpha: 0.7 });
-    // Core bright point
-    g.circle(px, py, pr * 0.25).fill({ color: 0xffffff, alpha: 0.4 });
+    g.circle(px, py, pr * 0.7).fill({ color: G.COLOR_PLAYER_CORE, alpha: 0.7 });
+    // Core bright point — pulsing
+    g.circle(px, py, pr * 0.35).fill({ color: 0xffffff, alpha: 0.3 + Math.sin(t * 4) * 0.1 });
+    g.circle(px, py, pr * 0.15).fill({ color: 0xffffff, alpha: 0.6 });
     // Highlight
-    g.circle(px - pr * 0.2, py - pr * 0.25, pr * 0.3).fill({ color: 0xffffff, alpha: 0.15 });
+    g.circle(px - pr * 0.2, py - pr * 0.25, pr * 0.3).fill({ color: 0xffffff, alpha: 0.18 });
     // HP indicator
     for (let h = 0; h < state.maxHp; h++) {
       const ha = (h / state.maxHp) * Math.PI * 2 - Math.PI / 2;
@@ -501,15 +597,18 @@ export class GravitonRenderer {
     for (const p of state.particles) {
       const a = p.life / p.maxLife;
       const sz = p.size * a;
-      // Motion trail
+      // Motion trail — longer, more visible
       const spd = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
-      if (spd > 10) {
+      if (spd > 8) {
         const ndx = -p.vx / spd, ndy = -p.vy / spd;
-        g.setStrokeStyle({ width: sz * 0.5, color: p.color, alpha: a * 0.1 });
-        g.moveTo(p.x, p.y).lineTo(p.x + ndx * sz * 2, p.y + ndy * sz * 2).stroke();
+        g.setStrokeStyle({ width: sz * 0.7, color: p.color, alpha: a * 0.15 });
+        g.moveTo(p.x, p.y).lineTo(p.x + ndx * sz * 3, p.y + ndy * sz * 3).stroke();
+        g.setStrokeStyle({ width: sz * 0.3, color: p.color, alpha: a * 0.06 });
+        g.moveTo(p.x, p.y).lineTo(p.x + ndx * sz * 5, p.y + ndy * sz * 5).stroke();
       }
-      // Outer glow
-      g.circle(p.x, p.y, sz * 1.5).fill({ color: p.color, alpha: a * 0.1 });
+      // Outer glow — bigger, softer
+      g.circle(p.x, p.y, sz * 2.2).fill({ color: p.color, alpha: a * 0.06 });
+      g.circle(p.x, p.y, sz * 1.5).fill({ color: p.color, alpha: a * 0.12 });
       // Core — diamond for large
       if (p.size > 3) {
         g.moveTo(p.x, p.y - sz).lineTo(p.x + sz * 0.5, p.y).lineTo(p.x, p.y + sz).lineTo(p.x - sz * 0.5, p.y)

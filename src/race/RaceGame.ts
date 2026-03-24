@@ -20,7 +20,7 @@ export class RaceGame {
   private _keyUpHandler: ((e: KeyboardEvent) => void) | null = null;
   private _sw = 0;
   private _sh = 0;
-  private _gold = RaceConfig.STARTING_GOLD;
+  private _gold: number = RaceConfig.STARTING_GOLD;
   private _horseIndex = 0;
   private _resultShown = false;
   private _pauseMenu: Container | null = null;

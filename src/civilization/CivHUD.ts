@@ -188,7 +188,6 @@ export class CivHUD {
   private notificationQueue: string[] = [];
 
   // Scroll offsets for panels
-  private _techScrollOffset = 0;
   private buildScrollOffset = 0;
   private diploScrollOffset = 0;
 

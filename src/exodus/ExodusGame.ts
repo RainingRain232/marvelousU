@@ -548,7 +548,7 @@ export class ExodusGame {
       this._state.formationBonus = { atkMult: formation.atkMult, defMult: formation.defMult };
     }
 
-    const _result = ExodusCombatBridge.resolveCombat(this._state, this._state.combatDanger);
+    ExodusCombatBridge.resolveCombat(this._state, this._state.combatDanger);
     // Result screen shown via callback
   }
 

@@ -17,14 +17,12 @@ export class ExodusPauseMenu {
 
   private _resumeCallback: (() => void) | null = null;
   private _quitCallback: (() => void) | null = null;
-  private _showingControls = false;
 
   setResumeCallback(cb: () => void): void { this._resumeCallback = cb; }
   setQuitCallback(cb: () => void): void { this._quitCallback = cb; }
 
   show(state: ExodusState, sw: number, sh: number): void {
     this.container.removeChildren();
-    this._showingControls = false;
 
     // Overlay
     const ov = new Graphics();

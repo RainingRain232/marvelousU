@@ -42,6 +42,8 @@ export class VoidKnightGame {
   async boot(): Promise<void> {
     viewManager.clearWorld();
     viewManager.camera.zoom = 1;
+    viewManager.camera.keyboardEnabled = false;
+    viewManager.camera.manualControlMode = true;
     const sw = viewManager.screenWidth, sh = viewManager.screenHeight;
     this._meta = loadVKMeta();
     this._state = createVKState(sw, sh, this._meta);
@@ -57,6 +59,8 @@ export class VoidKnightGame {
     this._destroyInput();
     this._renderer.destroy();
     viewManager.removeFromLayer("background", this._renderer.container);
+    viewManager.camera.keyboardEnabled = true;
+    viewManager.camera.manualControlMode = false;
     viewManager.clearWorld();
   }
 

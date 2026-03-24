@@ -33,6 +33,8 @@ export class GravitonGame {
 
   async boot(): Promise<void> {
     viewManager.clearWorld(); viewManager.camera.zoom = 1;
+    viewManager.camera.keyboardEnabled = false;
+    viewManager.camera.manualControlMode = true;
     const sw = viewManager.screenWidth, sh = viewManager.screenHeight;
     this._meta = loadGMeta();
     this._state = createGState(sw, sh, this._meta);
@@ -47,6 +49,8 @@ export class GravitonGame {
     if (this._tickerCb) { viewManager.app.ticker.remove(this._tickerCb); this._tickerCb = null; }
     this._destroyInput(); this._renderer.destroy();
     viewManager.removeFromLayer("background", this._renderer.container);
+    viewManager.camera.keyboardEnabled = true;
+    viewManager.camera.manualControlMode = false;
     viewManager.clearWorld();
   }
 

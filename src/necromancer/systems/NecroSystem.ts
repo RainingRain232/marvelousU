@@ -4,7 +4,7 @@
 
 import type { NecroState, Undead, Crusader, Corpse, CorpseQuality } from "../state/NecroState";
 import { findChimera } from "../state/NecroState";
-import { CORPSES, CRUSADERS, NecroConfig, WAVES, generateEndlessWave, BATTLE_EVENTS, COMBO_WINDOW, WAVE_BONUSES, RALLY_CONFIG, BOSSES, BOSS_WAVES, RELICS, RELIC_GRAVE_DROP_CHANCE, RELIC_WAVE_REWARD_WAVES, MAX_RELICS } from "../config/NecroConfig";
+import { CORPSES, CRUSADERS, NecroConfig, NECRO_FW, NECRO_FH, WAVES, generateEndlessWave, BATTLE_EVENTS, COMBO_WINDOW, WAVE_BONUSES, RALLY_CONFIG, BOSSES, BOSS_WAVES, RELICS, RELIC_GRAVE_DROP_CHANCE, RELIC_WAVE_REWARD_WAVES, MAX_RELICS } from "../config/NecroConfig";
 import type { CrusaderType, BossType } from "../config/NecroConfig";
 
 const BONE_WHITE = 0xccccbb;
@@ -131,8 +131,8 @@ export function spawnBoss(state: NecroState, bossType: BossType): void {
     speed: def.speed,
     color: def.color,
     size: def.size,
-    x: NecroConfig.FIELD_WIDTH - 30,
-    y: NecroConfig.FIELD_HEIGHT / 2,
+    x: NECRO_FW - 30,
+    y: NECRO_FH / 2,
     targetId: -1,
     attackCooldown: 0,
     alive: true,
@@ -302,7 +302,7 @@ export function startRaise(state: NecroState): boolean {
   // Green energy particles
   for (let i = 0; i < 12; i++) {
     state.particles.push({
-      x: NecroConfig.FIELD_WIDTH / 2, y: NecroConfig.FIELD_HEIGHT / 2 + 40,
+      x: NECRO_FW / 2, y: NECRO_FH / 2 + 40,
       vx: (Math.random() - 0.5) * 60,
       vy: -20 - Math.random() * 40,
       life: 1, maxLife: 1,
@@ -496,7 +496,7 @@ export function updateBattle(state: NecroState, dt: number): void {
 
     // Formation roles — ranged units stay behind melee line
     if (u.ranged && state.undead.length > 2) {
-      let frontX: number = NecroConfig.FIELD_WIDTH;
+      let frontX: number = NECRO_FW;
       for (const ally of state.undead) {
         if (ally.id !== u.id && ally.alive && !ally.ranged && ally.x < frontX) frontX = ally.x;
       }
@@ -507,8 +507,8 @@ export function updateBattle(state: NecroState, dt: number): void {
     }
 
     // Clamp to field
-    u.x = Math.max(5, Math.min(NecroConfig.FIELD_WIDTH - 5, u.x));
-    u.y = Math.max(5, Math.min(NecroConfig.FIELD_HEIGHT - 5, u.y));
+    u.x = Math.max(5, Math.min(NECRO_FW - 5, u.x));
+    u.y = Math.max(5, Math.min(NECRO_FH - 5, u.y));
 
     const target = findBestTarget(state, u.x, u.y);
     if (!target) continue;
@@ -801,8 +801,8 @@ export function updateBattle(state: NecroState, dt: number): void {
     }
     c.x += csepX * dt * 12;
     c.y += csepY * dt * 12;
-    c.x = Math.max(5, Math.min(NecroConfig.FIELD_WIDTH - 5, c.x));
-    c.y = Math.max(5, Math.min(NecroConfig.FIELD_HEIGHT - 5, c.y));
+    c.x = Math.max(5, Math.min(NECRO_FW - 5, c.x));
+    c.y = Math.max(5, Math.min(NECRO_FH - 5, c.y));
 
     // Priest heal aura
     if (c.ability === "heal_aura" && c.abilityCooldown <= 0) {
@@ -840,7 +840,7 @@ export function updateBattle(state: NecroState, dt: number): void {
       if (count > 0) {
         avgX /= count;
         // Stay behind the frontline by at least 30px
-        const safeX = Math.max(avgX + 30, NecroConfig.FIELD_WIDTH * 0.6);
+        const safeX = Math.max(avgX + 30, NECRO_FW * 0.6);
         if (c.x < safeX) {
           c.x += c.speed * dt * 0.5; // Retreat gently
         }
@@ -850,7 +850,7 @@ export function updateBattle(state: NecroState, dt: number): void {
     const target = findNearestUndead(state, c.x, c.y);
     if (!target) {
       // No undead left — attack the necromancer (player)
-      const nx = 60, ny = NecroConfig.FIELD_HEIGHT / 2;
+      const nx = 60, ny = NECRO_FH / 2;
       const dx = nx - c.x, dy = ny - c.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
       if (dist > 15) {
@@ -963,7 +963,7 @@ export function updateBattle(state: NecroState, dt: number): void {
     p.x += p.vx * dt;
     p.y += p.vy * dt;
     p.life -= dt;
-    if (p.life <= 0 || p.x < -10 || p.x > NecroConfig.FIELD_WIDTH + 10 || p.y < -10 || p.y > NecroConfig.FIELD_HEIGHT + 10) {
+    if (p.life <= 0 || p.x < -10 || p.x > NECRO_FW + 10 || p.y < -10 || p.y > NECRO_FH + 10) {
       state.projectiles.splice(i, 1);
       continue;
     }
@@ -1155,7 +1155,7 @@ function spawnCrusader(state: NecroState, type: CrusaderType): void {
   // Spawn from right side in formation rows — spread across vertical space
   const existingCount = state.crusaders.filter(c => c.alive).length;
   const row = existingCount % 4;
-  const rowSpacing = (NecroConfig.FIELD_HEIGHT - 120) / 4;
+  const rowSpacing = (NECRO_FH - 120) / 4;
   const y = 60 + row * rowSpacing + (Math.random() - 0.5) * (rowSpacing * 0.4);
   state.crusaders.push({
     id: state.crusaderIdCounter++,
@@ -1167,7 +1167,7 @@ function spawnCrusader(state: NecroState, type: CrusaderType): void {
     speed: def.speed,
     color: def.color,
     size: def.size,
-    x: NecroConfig.FIELD_WIDTH - 20,
+    x: NECRO_FW - 20,
     y,
     targetId: -1,
     attackCooldown: 1,
@@ -1248,7 +1248,7 @@ export function sacrificeUndead(state: NecroState, undeadId: number): boolean {
   // Dark particles
   for (let i = 0; i < 8; i++) {
     state.particles.push({
-      x: NecroConfig.FIELD_WIDTH / 2, y: NecroConfig.FIELD_HEIGHT / 2,
+      x: NECRO_FW / 2, y: NECRO_FH / 2,
       vx: (Math.random() - 0.5) * 50, vy: -20 - Math.random() * 30,
       life: 0.5, maxLife: 0.5, color: 0xff4444, size: 2,
     });
@@ -1299,7 +1299,7 @@ export function prepareBattleWave(state: NecroState): void {
   for (let i = 0; i < state.undead.length; i++) {
     const u = state.undead[i];
     u.x = 80 + Math.random() * 120;
-    u.y = 60 + (i / state.undead.length) * (NecroConfig.FIELD_HEIGHT - 120);
+    u.y = 60 + (i / state.undead.length) * (NECRO_FH - 120);
     u.alive = true;
     u.attackCooldown = 0;
     // Apply temp buffs

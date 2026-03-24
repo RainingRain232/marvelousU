@@ -46,6 +46,8 @@ export class WyrmGame {
   async boot(): Promise<void> {
     viewManager.clearWorld();
     viewManager.camera.zoom = 1;
+    viewManager.camera.keyboardEnabled = false;
+    viewManager.camera.manualControlMode = true;
     const sw = viewManager.screenWidth, sh = viewManager.screenHeight;
     const { cols, rows } = this._gridSize(sw, sh);
     this._meta = loadWyrmMeta();
@@ -62,6 +64,8 @@ export class WyrmGame {
     this._destroyInput();
     this._renderer.destroy();
     viewManager.removeFromLayer("background", this._renderer.container);
+    viewManager.camera.keyboardEnabled = true;
+    viewManager.camera.manualControlMode = false;
     viewManager.clearWorld();
   }
 

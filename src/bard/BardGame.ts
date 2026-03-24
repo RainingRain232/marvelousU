@@ -19,7 +19,6 @@ class BardAudio {
   private _master: GainNode | null = null;
   private _bgGain: GainNode | null = null;
   private _bgOscs: OscillatorNode[] = [];
-  private _bgPlaying = false;
 
   // Pentatonic scale frequencies per lane (medieval feel)
   private readonly LANE_FREQS = [
@@ -28,9 +27,6 @@ class BardAudio {
     [330, 392, 494],  // E4, G4, B4
     [392, 494, 587],  // G4, B4, D5
   ];
-  // Bass drone frequencies per enemy
-  private readonly _DRONE_FREQS = [82, 73, 98, 110, 65]; // C2, D2, G2, A2, C2
-
   init(): void {
     if (this._ctx) return;
     this._ctx = new AudioContext();
@@ -121,14 +117,12 @@ class BardAudio {
       this._bgBeatCount++;
     }, beatMs);
 
-    this._bgPlaying = true;
   }
 
   stopBg(): void {
     for (const o of this._bgOscs) { try { o.stop(); } catch { /* ok */ } }
     this._bgOscs = [];
     if (this._bgInterval) { clearInterval(this._bgInterval); this._bgInterval = null; }
-    this._bgPlaying = false;
   }
 
   /** Continuous sustain tone for hold notes */
@@ -637,7 +631,6 @@ export class BardGame {
   private _spellGlow = 0;
   private _spellGlowColor = 0xcc88ff;
   private _transitionTimer = 0;
-  private _isPaused = false;
   private _pauseMenu: Container | null = null;
   private _paused = false;
   private _beatPulse = 0;
@@ -713,8 +706,6 @@ export class BardGame {
   private _hasArcaneFocus = false;
   // Current upgrade choices (stored so keyboard can reference them)
   private _upgradeChoices: { apply: () => void }[] = [];
-  // Run history
-  private _runHistory: { score: number; rank: string; difficulty: string; date: string }[] = [];
   // Starfield
   private _stars: { x: number; y: number; size: number; twinkleSpeed: number; brightness: number }[] = [];
   // Lane sparkles (ambient particles drifting up inside lanes)
@@ -1048,7 +1039,7 @@ export class BardGame {
     this._mana = 0; this._maxMana = 100; this._shield = 0;
     this._enemyIdx = 0; this._time = 0;
     this._notes = []; this._attacks = []; this._particles = []; this._floatingTexts = [];
-    this._phase = "playing"; this._isPaused = false; this._paused = false;
+    this._phase = "playing"; this._paused = false;
     this._perfectStreak = 0; this._comboMilestone = 0;
     this._beatPulse = 0; this._enemyHitFlash = 0; this._dangerPulse = 0;
     this._abilityTimer = 0; this._abilityActive = 0; this._abilityType = null;
@@ -1971,7 +1962,6 @@ export class BardGame {
 
   private _showPauseMenu(): void {
     this._paused = true;
-    this._isPaused = true;
     const sw = viewManager.screenWidth, sh = viewManager.screenHeight;
     const c = new Container();
     const bg = new Graphics();
@@ -2052,7 +2042,6 @@ export class BardGame {
 
   private _hidePauseMenu(): void {
     this._paused = false;
-    this._isPaused = false;
     if (this._pauseMenu) {
       viewManager.removeFromLayer("ui", this._pauseMenu);
       this._pauseMenu.destroy({ children: true });
@@ -2275,7 +2264,6 @@ export class BardGame {
     for (const mn of this._musicNotes) {
       const alpha = (mn.life / mn.maxLife) * 0.09;
       if (alpha < 0.005) continue;
-      const _rot = Math.sin(this._time * 0.8 + mn.x * 0.005) * 0.3;
       const sc = mn.size / 14; // scale based on original font size
       const nx = mn.x, ny = mn.y;
       // Draw polygon musical note shape
@@ -3964,35 +3952,6 @@ export class BardGame {
       descT.anchor.set(0.5, 0); descT.position.set(ux + cardW / 2, cardsY + 50);
       this._textContainer.addChild(descT);
     }
-  }
-
-  private _drawPause(sw: number, sh: number): void {
-    this._effectGfx.rect(0, 0, sw, sh).fill({ color: 0x000000, alpha: 0.7 });
-    // Decorative diamond frame
-    const pw2 = 260, ph2 = 120, px2 = (sw - pw2) / 2, py2 = (sh - ph2) / 2;
-    this._effectGfx.roundRect(px2, py2, pw2, ph2, 8).fill({ color: 0x0a0a1a, alpha: 0.9 });
-    this._effectGfx.roundRect(px2, py2, pw2, ph2, 8).stroke({ color: COL_GOLD, width: 1.5, alpha: 0.4 });
-    this._effectGfx.roundRect(px2 + 3, py2 + 3, pw2 - 6, ph2 - 6, 6).stroke({ color: COL_GOLD, width: 0.4, alpha: 0.1 });
-    // Corner diamonds
-    for (const [cx3, cy3] of [[px2 + 8, py2 + 8], [px2 + pw2 - 8, py2 + 8], [px2 + 8, py2 + ph2 - 8], [px2 + pw2 - 8, py2 + ph2 - 8]]) {
-      this._effectGfx.moveTo(cx3, cy3 - 4).lineTo(cx3 + 4, cy3).lineTo(cx3, cy3 + 4).lineTo(cx3 - 4, cy3).closePath()
-        .fill({ color: COL_GOLD, alpha: 0.2 });
-    }
-    // Top ornament
-    this._effectGfx.moveTo(sw / 2, py2 - 2).lineTo(sw / 2 + 8, py2 + 4).lineTo(sw / 2, py2 + 2).lineTo(sw / 2 - 8, py2 + 4).closePath()
-      .fill({ color: COL_GOLD, alpha: 0.15 });
-    // Musical note polygons flanking title
-    for (const dir of [-1, 1]) {
-      const nx = sw / 2 + dir * 80, ny = sh / 2 - 20;
-      this._effectGfx.ellipse(nx, ny + 2, 4, 3).fill({ color: COL_GOLD, alpha: 0.12 });
-      this._effectGfx.moveTo(nx + 4, ny + 2).lineTo(nx + 4, ny - 8).stroke({ color: COL_GOLD, width: 0.8, alpha: 0.1 });
-    }
-    const t = new Text({ text: "PAUSED", style: new TextStyle({ fontFamily: FONT, fontSize: 28, fill: COL_GOLD, fontWeight: "bold", letterSpacing: 6 }) });
-    t.anchor.set(0.5, 0.5); t.position.set(sw / 2, sh / 2 - 20);
-    this._textContainer.addChild(t);
-    const t2 = new Text({ text: "Press ESC to resume", style: new TextStyle({ fontFamily: FONT, fontSize: 12, fill: 0x887799 }) });
-    t2.anchor.set(0.5, 0.5); t2.position.set(sw / 2, sh / 2 + 15);
-    this._textContainer.addChild(t2);
   }
 
   // ── BACKGROUND SCENES ──────────────────────────────────────────────────

@@ -18,8 +18,6 @@ export class DiabloNetwork {
   private _pingTimer: number = 0;
   private _lastPingTime: number = 0;
   private _ping: number = 0;
-  private _messageQueue: NetworkMessage[] = []; // reserved for future batching
-
   // Reconnection state
   private _shouldReconnect: boolean = true;
   private _reconnectAttempts: number = 0;

@@ -91,6 +91,24 @@ export class LastFlameRenderer {
         this._drawFlame(g, state);
       }
       this._drawParticles(g, state);
+      // Light rays emanating from flame — god-ray effect
+      if (state.fuel > 0.15) {
+        const flOx = this._ox + state.playerX, flOy = this._oy + state.playerY;
+        const rayCount = 8;
+        for (let ri = 0; ri < rayCount; ri++) {
+          const rayAngle = state.time * 0.12 + ri * Math.PI * 2 / rayCount;
+          const rayLen = state.lightRadius * (0.6 + Math.sin(state.time * 1.5 + ri * 2.3) * 0.2) * state.fuel;
+          const rayWidth = 8 + Math.sin(state.time * 2 + ri * 1.7) * 3;
+          const rayAlpha = 0.02 * state.fuel + Math.sin(state.time * 3 + ri * 1.1) * 0.008;
+          // Each ray as a tapered triangle
+          const rx = Math.cos(rayAngle), ry = Math.sin(rayAngle);
+          const prx = -ry, pry = rx;
+          g.moveTo(flOx + prx * 2, flOy + pry * 2)
+            .lineTo(flOx + rx * rayLen + prx * rayWidth, flOy + ry * rayLen + pry * rayWidth)
+            .lineTo(flOx + rx * rayLen - prx * rayWidth, flOy + ry * rayLen - pry * rayWidth)
+            .closePath().fill({ color: 0xffcc66, alpha: rayAlpha });
+        }
+      }
       this._drawBoundary(g, state);
       this._drawDarkness(g, state);
       if (state.phase !== LFPhase.DYING) {
@@ -242,12 +260,14 @@ export class LastFlameRenderer {
         const shade = ((tx + ty) % 2 === 0) ? state.roomConfig.floorDark : state.roomConfig.floorLight;
         const tileX = ox + tx * tileSize, tileY = oy + ty * tileSize;
 
-        // Base tile with variation
-        g.rect(tileX, tileY, tileSize, tileSize).fill({ color: shade, alpha: visibility * (0.55 + shadeVar) });
+        // Base tile with variation — brighter for better visibility
+        g.rect(tileX, tileY, tileSize, tileSize).fill({ color: shade, alpha: visibility * (0.75 + shadeVar) });
 
-        // Scorch marks near flame center (warm glow on nearby tiles)
-        if (dist < lr * 0.3) {
-          g.rect(tileX, tileY, tileSize, tileSize).fill({ color: LF.COLOR_LIGHT_EDGE, alpha: visibility * 0.04 });
+        // Warm glow near flame center (scorch marks + light pooling)
+        if (dist < lr * 0.4) {
+          const warmth = (1 - dist / (lr * 0.4)) * visibility;
+          g.rect(tileX, tileY, tileSize, tileSize).fill({ color: LF.COLOR_LIGHT_EDGE, alpha: warmth * 0.08 });
+          g.rect(tileX, tileY, tileSize, tileSize).fill({ color: 0xffcc66, alpha: warmth * 0.03 });
         }
 
         if (visibility > 0.15) {
@@ -348,35 +368,38 @@ export class LastFlameRenderer {
         despawnAlpha = 0.3 + Math.sin(t * 4 + o.pulse) * 0.35;
       }
 
-      // Large outer beacon glow (visible from far in darkness)
-      g.circle(ocx, ocy, LF.OIL_RADIUS * 4).fill({ color: LF.COLOR_OIL_GLOW, alpha: glowPulse * 0.25 * despawnAlpha });
-      g.circle(ocx, ocy, LF.OIL_RADIUS * 2.5).fill({ color: LF.COLOR_OIL_GLOW, alpha: glowPulse * 0.5 * despawnAlpha });
+      // Large outer beacon glow — brighter, more layers for visibility in darkness
+      g.circle(ocx, ocy, LF.OIL_RADIUS * 6).fill({ color: LF.COLOR_OIL_GLOW, alpha: glowPulse * 0.12 * despawnAlpha });
+      g.circle(ocx, ocy, LF.OIL_RADIUS * 4).fill({ color: LF.COLOR_OIL_GLOW, alpha: glowPulse * 0.30 * despawnAlpha });
+      g.circle(ocx, ocy, LF.OIL_RADIUS * 2.5).fill({ color: LF.COLOR_OIL_GLOW, alpha: glowPulse * 0.55 * despawnAlpha });
 
-      // Swirling sparkle ring
-      for (let s = 0; s < 3; s++) {
-        const sa = t * 2.5 + o.pulse + s * Math.PI * 2 / 3;
-        const sr = LF.OIL_RADIUS * 1.5;
-        g.circle(ocx + Math.cos(sa) * sr, ocy + Math.sin(sa) * sr, 1.2)
-          .fill({ color: 0xffffff, alpha: 0.3 * despawnAlpha + Math.sin(t * 5 + s) * 0.15 });
+      // Swirling sparkle ring — more sparkles
+      for (let s = 0; s < 5; s++) {
+        const sa = t * 2.5 + o.pulse + s * Math.PI * 2 / 5;
+        const sr = LF.OIL_RADIUS * 1.8;
+        const sparkAlpha = (0.35 + Math.sin(t * 5 + s) * 0.15) * despawnAlpha;
+        g.circle(ocx + Math.cos(sa) * sr, ocy + Math.sin(sa) * sr, 1.5).fill({ color: 0xffffff, alpha: sparkAlpha });
+        g.circle(ocx + Math.cos(sa) * sr, ocy + Math.sin(sa) * sr, 3).fill({ color: LF.COLOR_OIL_GLOW, alpha: sparkAlpha * 0.3 });
       }
 
-      // Inner glow
-      g.circle(ocx, ocy, LF.OIL_RADIUS * 1.3).fill({ color: LF.COLOR_OIL_GLOW, alpha: glowPulse * despawnAlpha });
+      // Pulsing inner glow
+      g.circle(ocx, ocy, LF.OIL_RADIUS * 1.5).fill({ color: LF.COLOR_OIL_GLOW, alpha: glowPulse * 1.2 * despawnAlpha });
 
-      // Drop body (golden)
-      g.circle(ocx, ocy, LF.OIL_RADIUS).fill({ color: LF.COLOR_OIL, alpha: 0.85 * despawnAlpha });
+      // Drop body (golden) with shimmer
+      g.circle(ocx, ocy, LF.OIL_RADIUS + 1).fill({ color: LF.COLOR_OIL, alpha: 0.9 * despawnAlpha });
+      g.circle(ocx, ocy, LF.OIL_RADIUS).fill({ color: 0xffdd66, alpha: 0.5 * despawnAlpha });
 
       // Droplet shape highlight (teardrop hint)
-      g.circle(ocx - 1, ocy - LF.OIL_RADIUS * 0.4, LF.OIL_RADIUS * 0.35).fill({ color: 0xffffff, alpha: 0.35 * despawnAlpha });
+      g.circle(ocx - 1, ocy - LF.OIL_RADIUS * 0.4, LF.OIL_RADIUS * 0.4).fill({ color: 0xffffff, alpha: 0.4 * despawnAlpha });
 
-      // Size indicator for large oil drops
+      // Size indicator for large oil drops — more visible
       if (o.amount > 0.25) {
-        g.setStrokeStyle({ width: 1, color: LF.COLOR_OIL, alpha: 0.25 * despawnAlpha });
-        g.circle(ocx, ocy, LF.OIL_RADIUS * 2).stroke();
+        g.circle(ocx, ocy, LF.OIL_RADIUS * 2.2).stroke({ color: LF.COLOR_OIL, width: 1.5, alpha: 0.35 * despawnAlpha });
       }
 
-      // Ground light pool beneath oil
-      g.circle(ocx, ocy + LF.OIL_RADIUS + 2, LF.OIL_RADIUS * 1.5).fill({ color: LF.COLOR_OIL_GLOW, alpha: 0.03 * despawnAlpha });
+      // Ground light pool beneath oil — warmer, bigger
+      g.circle(ocx, ocy + LF.OIL_RADIUS + 2, LF.OIL_RADIUS * 2.5).fill({ color: LF.COLOR_OIL_GLOW, alpha: 0.05 * despawnAlpha });
+      g.circle(ocx, ocy + LF.OIL_RADIUS + 2, LF.OIL_RADIUS * 1.5).fill({ color: 0xffcc44, alpha: 0.03 * despawnAlpha });
     }
   }
 
@@ -446,21 +469,36 @@ export class LastFlameRenderer {
         }
       }
 
-      // Glowing eyes — always slightly visible (creepy!)
-      const eyeAlpha = inLight ? 0.5 : 0.2 + Math.sin(t * 2 + s.eyePhase) * 0.1;
-      const eyeSpread = s.radius * 0.3;
+      // Glowing eyes — always slightly visible (creepy!) — brighter with glow halo
+      const eyeAlpha = inLight ? 0.65 : 0.3 + Math.sin(t * 2 + s.eyePhase) * 0.12;
+      const eyeSpread = s.radius * 0.35;
       // Face toward player
       const toPx = px - s.x, toPy = py - s.y;
       const toLen = Math.sqrt(toPx * toPx + toPy * toPy) || 1;
       const faceDx = toPx / toLen, faceDy = toPy / toLen;
       const perpX = -faceDy, perpY = faceDx;
-      g.circle(ox + s.x + faceDx * s.radius * 0.3 + perpX * eyeSpread, oy + s.y + faceDy * s.radius * 0.3 + perpY * eyeSpread, 2)
-        .fill({ color: LF.COLOR_SHADOW_EYE, alpha: eyeAlpha });
-      g.circle(ox + s.x + faceDx * s.radius * 0.3 - perpX * eyeSpread, oy + s.y + faceDy * s.radius * 0.3 - perpY * eyeSpread, 2)
-        .fill({ color: LF.COLOR_SHADOW_EYE, alpha: eyeAlpha });
-      // Eye glint
-      g.circle(ox + s.x + faceDx * s.radius * 0.3 + perpX * eyeSpread, oy + s.y + faceDy * s.radius * 0.3 + perpY * eyeSpread, 0.8)
-        .fill({ color: 0xffffff, alpha: eyeAlpha * 0.4 });
+      const eye1x = ox + s.x + faceDx * s.radius * 0.3 + perpX * eyeSpread;
+      const eye1y = oy + s.y + faceDy * s.radius * 0.3 + perpY * eyeSpread;
+      const eye2x = ox + s.x + faceDx * s.radius * 0.3 - perpX * eyeSpread;
+      const eye2y = oy + s.y + faceDy * s.radius * 0.3 - perpY * eyeSpread;
+      // Eye glow halos
+      g.circle(eye1x, eye1y, 5).fill({ color: LF.COLOR_SHADOW_EYE, alpha: eyeAlpha * 0.15 });
+      g.circle(eye2x, eye2y, 5).fill({ color: LF.COLOR_SHADOW_EYE, alpha: eyeAlpha * 0.15 });
+      // Eyes
+      g.circle(eye1x, eye1y, 2.5).fill({ color: LF.COLOR_SHADOW_EYE, alpha: eyeAlpha });
+      g.circle(eye2x, eye2y, 2.5).fill({ color: LF.COLOR_SHADOW_EYE, alpha: eyeAlpha });
+      // Eye glints
+      g.circle(eye1x + 0.5, eye1y - 0.5, 1).fill({ color: 0xffffff, alpha: eyeAlpha * 0.5 });
+      g.circle(eye2x + 0.5, eye2y - 0.5, 1).fill({ color: 0xffffff, alpha: eyeAlpha * 0.4 });
+      // Connecting sinister mouth line (subtle)
+      if (visibility > 0.2) {
+        const mouthY = oy + s.y + faceDy * s.radius * 0.55;
+        const mouthX = ox + s.x + faceDx * s.radius * 0.55;
+        g.moveTo(mouthX + perpX * eyeSpread * 0.6, mouthY + perpY * eyeSpread * 0.6)
+          .bezierCurveTo(mouthX, mouthY + 2, mouthX, mouthY + 2,
+            mouthX - perpX * eyeSpread * 0.6, mouthY - perpY * eyeSpread * 0.6)
+          .stroke({ color: LF.COLOR_SHADOW_EYE, width: 0.8, alpha: visibility * 0.3 });
+      }
     }
   }
 
@@ -474,35 +512,41 @@ export class LastFlameRenderer {
     const t = state.time;
     const flicker = Math.sin(t * 10) * 2 + Math.sin(t * 7) * 1.5;
 
-    // Light pool on ground (warm glow)
+    // Light pool on ground (warm glow) — more visible radiant pool
     const lr = state.lightRadius;
-    g.circle(px, py, lr * 0.2).fill({ color: LF.COLOR_LIGHT, alpha: 0.05 });
-    g.circle(px, py, lr * 0.1).fill({ color: LF.COLOR_LIGHT, alpha: 0.08 });
+    g.circle(px, py, lr * 0.3).fill({ color: LF.COLOR_LIGHT, alpha: 0.06 });
+    g.circle(px, py, lr * 0.18).fill({ color: LF.COLOR_LIGHT, alpha: 0.10 });
+    g.circle(px, py, lr * 0.08).fill({ color: 0xffcc66, alpha: 0.12 });
 
-    // Candle base with dripping wax
-    g.rect(px - 2, py + 2, 4, 7).fill({ color: 0x8a7a6a, alpha: 0.7 });
-    g.rect(px - 3, py + 8, 6, 2).fill({ color: 0x6a5a4a, alpha: 0.6 });
-    // Wax drip
-    g.circle(px + 2, py + 5, 1.5).fill({ color: 0x9a8a7a, alpha: 0.4 });
+    // Candle base with dripping wax — bigger and more detailed
+    g.rect(px - 3, py + 3, 6, 10).fill({ color: 0x8a7a6a, alpha: 0.7 });
+    g.rect(px - 4, py + 12, 8, 3).fill({ color: 0x6a5a4a, alpha: 0.6 });
+    // Wax drips
+    g.circle(px + 3, py + 7, 2).fill({ color: 0x9a8a7a, alpha: 0.4 });
+    g.circle(px - 2, py + 9, 1.5).fill({ color: 0x8a7a6a, alpha: 0.3 });
 
-    // Flame layers (bottom to top) — 6 layers for richer fire
-    g.circle(px + flicker * 0.4, py - 1, 7).fill({ color: 0xcc3300, alpha: 0.25 }); // deep red base
-    g.circle(px + flicker * 0.3, py - 3, 6).fill({ color: LF.COLOR_FLAME_OUTER, alpha: 0.5 });
-    g.circle(px, py - 5 + flicker * 0.3, 5).fill({ color: LF.COLOR_FLAME, alpha: 0.75 });
-    g.circle(px - flicker * 0.15, py - 7 + flicker * 0.4, 3.8).fill({ color: LF.COLOR_FLAME_CORE, alpha: 0.85 });
-    g.circle(px, py - 9 + flicker * 0.6, 2.5).fill({ color: LF.COLOR_FLAME_CORE, alpha: 0.7 });
-    // Top tip
-    g.circle(px + flicker * 0.5, py - 11 + flicker, 1.5).fill({ color: 0xffffff, alpha: 0.5 });
+    // Flame layers (bottom to top) — bigger, 8 layers for richer fire
+    g.circle(px + flicker * 0.5, py + 1, 10).fill({ color: 0xcc3300, alpha: 0.18 }); // wide red base
+    g.circle(px + flicker * 0.4, py - 1, 9).fill({ color: 0xcc3300, alpha: 0.28 }); // deep red
+    g.circle(px + flicker * 0.3, py - 4, 8).fill({ color: LF.COLOR_FLAME_OUTER, alpha: 0.5 });
+    g.circle(px, py - 7 + flicker * 0.3, 7).fill({ color: LF.COLOR_FLAME, alpha: 0.75 });
+    g.circle(px - flicker * 0.15, py - 10 + flicker * 0.4, 5.5).fill({ color: LF.COLOR_FLAME_CORE, alpha: 0.85 });
+    g.circle(px, py - 13 + flicker * 0.6, 4).fill({ color: LF.COLOR_FLAME_CORE, alpha: 0.7 });
+    g.circle(px + flicker * 0.3, py - 15 + flicker * 0.8, 2.5).fill({ color: 0xfffae0, alpha: 0.6 });
+    // Top tip — bright spark
+    g.circle(px + flicker * 0.5, py - 17 + flicker, 1.8).fill({ color: 0xffffff, alpha: 0.6 });
 
-    // Ember particles drifting upward from flame
-    for (let e = 0; e < 3; e++) {
-      const ep = t * (2 + e * 0.7) + e * 2.3;
-      const eLife = (ep % 1.5) / 1.5; // 0-1
-      const ex = px + Math.sin(ep * 3 + e) * (3 + eLife * 8);
-      const ey = py - 12 - eLife * 25;
-      const eAlpha = (1 - eLife) * 0.4 * state.fuel;
+    // Ember particles drifting upward from flame — more embers, brighter
+    for (let e = 0; e < 7; e++) {
+      const ep = t * (2 + e * 0.5) + e * 1.7;
+      const eLife = (ep % 1.8) / 1.8;
+      const ex = px + Math.sin(ep * 3 + e) * (4 + eLife * 12);
+      const ey = py - 16 - eLife * 35;
+      const eAlpha = (1 - eLife) * 0.5 * state.fuel;
       if (eAlpha > 0.02) {
-        g.circle(ex, ey, 1.2 - eLife * 0.6).fill({ color: LF.COLOR_FLAME, alpha: eAlpha });
+        const eColor = eLife < 0.3 ? LF.COLOR_FLAME_CORE : eLife < 0.6 ? LF.COLOR_FLAME : 0xcc6633;
+        g.circle(ex, ey, 1.5 - eLife * 0.7).fill({ color: eColor, alpha: eAlpha });
+        if (eAlpha > 0.15) g.circle(ex, ey, 3).fill({ color: eColor, alpha: eAlpha * 0.15 }); // glow
       }
     }
 
@@ -518,10 +562,11 @@ export class LastFlameRenderer {
       }
     }
 
-    // Fuel-dependent glow intensity
-    const glowAlpha = state.fuel * 0.1;
-    g.circle(px, py - 5, 14).fill({ color: LF.COLOR_FLAME, alpha: glowAlpha * 0.5 });
-    g.circle(px, py - 4, 10).fill({ color: LF.COLOR_FLAME, alpha: glowAlpha });
+    // Fuel-dependent glow intensity — bigger, richer glow
+    const glowAlpha = state.fuel * 0.12;
+    g.circle(px, py - 6, 22).fill({ color: LF.COLOR_FLAME, alpha: glowAlpha * 0.3 });
+    g.circle(px, py - 5, 16).fill({ color: LF.COLOR_FLAME, alpha: glowAlpha * 0.6 });
+    g.circle(px, py - 4, 10).fill({ color: LF.COLOR_FLAME_CORE, alpha: glowAlpha });
 
     // Flare cooldown indicator
     if (state.flareCooldown > 0) {
@@ -557,35 +602,70 @@ export class LastFlameRenderer {
     const lr = state.lightRadius;
     const sw = this._sw, sh = this._sh;
 
+    // Warm inner glow — golden light pool from flame
+    g.circle(px, py, lr * 0.5).fill({ color: 0xff9933, alpha: 0.03 + Math.sin(state.time * 3) * 0.01 });
+    g.circle(px, py, lr * 0.25).fill({ color: 0xffcc66, alpha: 0.04 });
+
     // Smooth gradient darkness with atmospheric color transition
     // Inner rings: warm darkness (lit by flame), outer rings: cold darkness
-    for (let layer = 0; layer < 12; layer++) {
-      const layerR = lr + layer * 11;
-      const layerAlpha = Math.min(0.93, 0.06 + layer * 0.08);
+    for (let layer = 0; layer < 16; layer++) {
+      const layerR = lr + layer * 10;
+      const layerAlpha = Math.min(0.95, 0.05 + layer * 0.06);
       // Color transitions from warm dark-brown to cold dark-blue
-      const warmth = Math.max(0, 1 - layer / 6);
-      const ringColor = warmth > 0.3 ? 0x080406 : LF.COLOR_DARKNESS; // warm near light, cold far
-      g.setStrokeStyle({ width: 13, color: ringColor, alpha: layerAlpha });
+      const warmth = Math.max(0, 1 - layer / 8);
+      const ringColor = warmth > 0.5 ? 0x0a0604 : warmth > 0.2 ? 0x080406 : LF.COLOR_DARKNESS;
+      g.setStrokeStyle({ width: 12, color: ringColor, alpha: layerAlpha });
       g.circle(px, py, layerR).stroke();
     }
 
-    // Atmospheric haze at the transition zone (subtle purple mist at light edge)
-    const hazePulse = 0.015 + Math.sin(state.time * 0.8) * 0.005;
-    g.setStrokeStyle({ width: 25, color: 0x1a0e2e, alpha: hazePulse });
+    // Atmospheric haze at the transition zone (purple mist at light edge)
+    const hazePulse = 0.025 + Math.sin(state.time * 0.8) * 0.008;
+    g.setStrokeStyle({ width: 30, color: 0x1a0e2e, alpha: hazePulse });
     g.circle(px, py, lr + 5).stroke();
+    // Secondary haze ring
+    g.setStrokeStyle({ width: 18, color: 0x120a22, alpha: hazePulse * 0.6 });
+    g.circle(px, py, lr - 10).stroke();
+
+    // Ambient dust particles floating in the light — more, varied sizes
+    for (let d = 0; d < 12; d++) {
+      const da = state.time * 0.3 + d * 0.524;
+      const dr = lr * (0.15 + (d * 0.065));
+      const dx = px + Math.cos(da) * dr;
+      const dy = py + Math.sin(da * 0.7 + d) * dr * 0.6;
+      const dAlpha = 0.05 + Math.sin(state.time * 1.5 + d * 2) * 0.025;
+      const dSize = 0.5 + (d % 3) * 0.4;
+      g.circle(dx, dy, dSize).fill({ color: 0xffddaa, alpha: dAlpha });
+    }
+
+    // Creeping shadow tendrils reaching toward the light edge
+    for (let tn = 0; tn < 10; tn++) {
+      const tnAngle = tn * Math.PI * 2 / 10 + Math.sin(state.time * 0.4 + tn * 1.3) * 0.3;
+      const tnBaseR = lr + 15;
+      const tnReach = 15 + Math.sin(state.time * 1.2 + tn * 2.7) * 10;
+      const tnTipR = tnBaseR - tnReach;
+      const tnAlpha = 0.08 + Math.sin(state.time * 0.8 + tn * 1.9) * 0.04;
+      const tnBx = px + Math.cos(tnAngle) * tnBaseR;
+      const tnBy = py + Math.sin(tnAngle) * tnBaseR;
+      const tnTx = px + Math.cos(tnAngle + Math.sin(state.time + tn) * 0.15) * tnTipR;
+      const tnTy = py + Math.sin(tnAngle + Math.sin(state.time + tn) * 0.15) * tnTipR;
+      // Tendril as a tapered stroke
+      g.moveTo(tnBx, tnBy).lineTo(tnTx, tnTy).stroke({ color: LF.COLOR_SHADOW_BODY, width: 3, alpha: tnAlpha });
+      g.moveTo(tnBx, tnBy).lineTo(tnTx, tnTy).stroke({ color: LF.COLOR_SHADOW_EYE, width: 0.5, alpha: tnAlpha * 0.5 });
+    }
 
     // Solid darkness beyond gradient — overlap-safe coverage
-    const solidR = lr + 130;
+    const solidR = lr + 160;
     g.rect(-10, -10, sw + 20, Math.max(0, py - solidR + 10)).fill({ color: LF.COLOR_DARKNESS, alpha: 0.96 });
     g.rect(-10, py + solidR, sw + 20, Math.max(0, sh - py - solidR + 20)).fill({ color: LF.COLOR_DARKNESS, alpha: 0.96 });
     g.rect(-10, Math.max(-10, py - solidR), Math.max(0, px - solidR + 10), solidR * 2).fill({ color: LF.COLOR_DARKNESS, alpha: 0.96 });
     g.rect(Math.min(sw + 10, px + solidR), Math.max(-10, py - solidR), Math.max(0, sw - px - solidR + 20), solidR * 2).fill({ color: LF.COLOR_DARKNESS, alpha: 0.96 });
 
-    // Light edge glow with warm color
-    g.setStrokeStyle({ width: 3, color: LF.COLOR_LIGHT_EDGE, alpha: 0.12 });
-    g.circle(px, py, lr).stroke();
-    g.setStrokeStyle({ width: 1, color: LF.COLOR_LIGHT, alpha: 0.06 });
-    g.circle(px, py, lr * 0.95).stroke();
+    // Light edge glow — warmer, more visible flickering edge
+    const edgeFlicker = 0.15 + Math.sin(state.time * 4.5) * 0.04;
+    g.circle(px, py, lr + 2).stroke({ color: LF.COLOR_LIGHT_EDGE, width: 5, alpha: edgeFlicker * 0.4 });
+    g.circle(px, py, lr).stroke({ color: LF.COLOR_LIGHT_EDGE, width: 3, alpha: edgeFlicker });
+    g.circle(px, py, lr * 0.96).stroke({ color: LF.COLOR_LIGHT, width: 1.5, alpha: edgeFlicker * 0.5 });
+    g.circle(px, py, lr * 0.92).stroke({ color: 0xffcc66, width: 1, alpha: edgeFlicker * 0.2 });
 
     // Invulnerability flash — dramatic pulsing ring at light boundary
     if (state.invulnTimer > 0) {
@@ -758,36 +838,48 @@ export class LastFlameRenderer {
     const r = state.flareRadius;
     const t = state.time;
 
-    // Outer glow burst
-    g.circle(px, py, r * 1.1).fill({ color: LF.COLOR_FLARE, alpha: ratio * 0.06 });
-    g.circle(px, py, r).fill({ color: LF.COLOR_FLARE, alpha: ratio * 0.1 });
-    g.circle(px, py, r * 0.6).fill({ color: LF.COLOR_FLAME, alpha: ratio * 0.12 });
-    g.circle(px, py, r * 0.3).fill({ color: LF.COLOR_FLAME_CORE, alpha: ratio * 0.08 });
+    // Outer glow burst — much bigger, more layers
+    g.circle(px, py, r * 1.3).fill({ color: LF.COLOR_FLARE, alpha: ratio * 0.04 });
+    g.circle(px, py, r * 1.1).fill({ color: LF.COLOR_FLARE, alpha: ratio * 0.08 });
+    g.circle(px, py, r).fill({ color: LF.COLOR_FLARE, alpha: ratio * 0.14 });
+    g.circle(px, py, r * 0.7).fill({ color: LF.COLOR_FLAME, alpha: ratio * 0.16 });
+    g.circle(px, py, r * 0.4).fill({ color: LF.COLOR_FLAME_CORE, alpha: ratio * 0.12 });
+    g.circle(px, py, r * 0.2).fill({ color: 0xffffee, alpha: ratio * 0.10 });
 
-    // Multiple expanding shockwave rings
-    for (let ring = 0; ring < 3; ring++) {
-      const ringPhase = ratio - ring * 0.15;
+    // Multiple expanding shockwave rings — more rings
+    for (let ring = 0; ring < 5; ring++) {
+      const ringPhase = ratio - ring * 0.1;
       if (ringPhase <= 0 || ringPhase > 1) continue;
-      const ringR = r * (1 - ringPhase) * 1.2;
-      g.setStrokeStyle({ width: 3 - ring, color: LF.COLOR_FLARE, alpha: ringPhase * 0.3 });
-      g.circle(px, py, ringR).stroke();
+      const ringR = r * (1 - ringPhase) * 1.3;
+      const ringAlpha = ringPhase * (0.35 - ring * 0.05);
+      g.circle(px, py, ringR).stroke({ width: 3.5 - ring * 0.5, color: LF.COLOR_FLARE, alpha: ringAlpha });
     }
 
-    // Light spikes (radial lines outward)
-    if (ratio > 0.3) {
-      const spikeAlpha = (ratio - 0.3) * 0.2;
-      for (let s = 0; s < 8; s++) {
-        const sa = s * Math.PI / 4 + t * 2;
-        const innerR = r * 0.15;
-        const outerR = r * ratio * 0.8;
-        g.setStrokeStyle({ width: 2, color: LF.COLOR_FLARE, alpha: spikeAlpha });
+    // Light spikes (radial lines outward) — 16 spikes, brighter
+    if (ratio > 0.2) {
+      const spikeAlpha = (ratio - 0.2) * 0.25;
+      for (let s = 0; s < 16; s++) {
+        const sa = s * Math.PI / 8 + t * 2;
+        const innerR = r * 0.1;
+        const outerR = r * ratio * (s % 2 === 0 ? 0.9 : 0.6);
         g.moveTo(px + Math.cos(sa) * innerR, py + Math.sin(sa) * innerR)
-          .lineTo(px + Math.cos(sa) * outerR, py + Math.sin(sa) * outerR).stroke();
+          .lineTo(px + Math.cos(sa) * outerR, py + Math.sin(sa) * outerR)
+          .stroke({ width: s % 2 === 0 ? 2.5 : 1.5, color: LF.COLOR_FLARE, alpha: spikeAlpha });
       }
     }
 
-    // Central white flash
-    g.circle(px, py, 15 * ratio).fill({ color: 0xffffff, alpha: ratio * 0.15 });
+    // Ember scatter during flare
+    for (let fe = 0; fe < 8; fe++) {
+      const feAngle = fe * Math.PI / 4 + t * 3;
+      const feDist = r * (1 - ratio) * 0.8;
+      const feAlpha = ratio * 0.4;
+      g.circle(px + Math.cos(feAngle) * feDist, py + Math.sin(feAngle) * feDist, 2)
+        .fill({ color: LF.COLOR_FLAME, alpha: feAlpha });
+    }
+
+    // Central white flash — bigger
+    g.circle(px, py, 25 * ratio).fill({ color: 0xffffff, alpha: ratio * 0.20 });
+    g.circle(px, py, 12 * ratio).fill({ color: 0xffffff, alpha: ratio * 0.30 });
   }
 
   // ---------------------------------------------------------------------------
