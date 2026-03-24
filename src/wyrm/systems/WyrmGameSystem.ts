@@ -1,11 +1,11 @@
 // ---------------------------------------------------------------------------
-// Wyrm — Core game systems (v5)
-// Lunge, poison tiles, knight-body collision, evolution announcements,
-// upgraded shield (multi-hit), dragon coins
+// Wyrm — Core game systems (v7)
+// Hitstop, breakable walls, archers+projectiles, synergies, wave events,
+// combo keeper upgrade, boss scaling & loot, etc.
 // ---------------------------------------------------------------------------
 
-import { Direction, PickupKind } from "../types";
-import type { WyrmState, Cell } from "../types";
+import { Direction, PickupKind, WyrmPhase } from "../types";
+import type { WyrmState, Cell, SynergyKind, Blessing } from "../types";
 import { WYRM_BALANCE as B, getWyrmTierIndex, WYRM_COLOR_TIERS } from "../config/WyrmBalance";
 
 export const DIR_DX = [0, 1, 0, -1];
@@ -25,26 +25,79 @@ export function enqueueDirection(state: WyrmState, dir: Direction): void {
 }
 
 // ---------------------------------------------------------------------------
-// Lunge — dash forward N cells, eating everything in path
+// Hitstop
+// ---------------------------------------------------------------------------
+
+export function triggerHitstop(state: WyrmState, duration: number): void {
+  state.hitstopTimer = Math.max(state.hitstopTimer, duration);
+}
+
+// ---------------------------------------------------------------------------
+// Lunge — dash forward N cells, eating everything in path.
+// Can break breakable walls.
 // ---------------------------------------------------------------------------
 
 export function tryLunge(state: WyrmState, upgrades: { fasterLunge: number }): boolean {
   if (state.lungeCooldown > 0) return false;
-  const cd = B.LUNGE_COOLDOWN - upgrades.fasterLunge;
-  state.lungeCooldown = cd;
+  const berserker = state.blessings.includes("berserker");
+  const cd = B.LUNGE_COOLDOWN - upgrades.fasterLunge - (berserker ? 1 : 0);
+  state.lungeCooldown = Math.max(0.5, cd);
   state.lungeFlash = B.LUNGE_FLASH;
 
   const head = state.body[0];
   const dx = DIR_DX[state.direction], dy = DIR_DY[state.direction];
 
-  for (let step = 1; step <= B.LUNGE_DISTANCE; step++) {
+  const lungeDist = B.LUNGE_DISTANCE + (berserker ? 1 : 0);
+  for (let step = 1; step <= lungeDist; step++) {
     const nx = head.x + dx * step, ny = head.y + dy * step;
+
+    // Breakable wall check — lunge smashes through
+    const wallKey = `${nx},${ny}`;
+    if (state.breakableWalls.has(wallKey)) {
+      state.breakableWalls.delete(wallKey);
+      const wi = state.walls.findIndex(w => w.x === nx && w.y === ny);
+      if (wi !== -1) state.walls.splice(wi, 1);
+      state.score += B.SCORE_BREAK_WALL;
+      spawnParticles(state, nx, ny, 6, B.COLOR_WALL);
+      spawnFloatingText(state, nx, ny, "SMASH!", B.COLOR_WALL_HIGHLIGHT, 1.0);
+      // Don't break — continue lunging through
+      continue;
+    }
+
     if (isWall(state, nx, ny)) break;
     if (isSelf(state, nx, ny)) break;
 
-    // Eat pickups in path
-    const pi = state.pickups.findIndex(p => p.x === nx && p.y === ny);
-    if (pi !== -1) {
+    // Destroy projectiles in path
+    const projIdx = state.projectiles.findIndex(p => p.alive && p.x === nx && p.y === ny);
+    if (projIdx !== -1) {
+      state.projectiles[projIdx].alive = false;
+      state.projectilesDeflected++;
+      state.score += B.SCORE_PROJECTILE_DEFLECT;
+      spawnParticles(state, nx, ny, 4, B.COLOR_PROJECTILE);
+      spawnFloatingText(state, nx, ny, "DEFLECT!", B.COLOR_PROJECTILE, 1.0);
+    }
+
+    // Lunge magnet pull — pull nearby pickups to the lunge path
+    const pullRange = B.LUNGE_MAGNET_RANGE + (state.blessings.includes("magnet_soul") ? 1 : 0);
+    for (let pd = -pullRange; pd <= pullRange; pd++) {
+      if (pd === 0) continue;
+      // Check perpendicular cells
+      const pullX = nx + (dy !== 0 ? pd : 0);
+      const pullY = ny + (dx !== 0 ? pd : 0);
+      const pulled = state.pickups.findIndex(p => p.x === pullX && p.y === pullY);
+      if (pulled !== -1) {
+        // Move pickup to lunge path
+        state.pickups[pulled].x = nx;
+        state.pickups[pulled].y = ny;
+        spawnParticles(state, pullX, pullY, 3, B.COLOR_MAGNET);
+      }
+    }
+
+    // Eat pickups in path (including pulled ones)
+    // Collect ALL pickups at this position (multiple can land here from pull)
+    while (true) {
+      const pi = state.pickups.findIndex(p => p.x === nx && p.y === ny);
+      if (pi === -1) break;
       const pk = state.pickups[pi];
       state.pickups.splice(pi, 1);
       if (pk.kind === PickupKind.SHEEP || pk.kind === PickupKind.GOLDEN_SHEEP) {
@@ -68,6 +121,21 @@ export function tryLunge(state: WyrmState, upgrades: { fasterLunge: number }): b
       spawnParticles(state, nx, ny, B.PARTICLE_COUNT_EAT, B.COLOR_KNIGHT_ROAM);
       spawnFloatingText(state, nx, ny, `+${Math.floor(pts)}`, B.COLOR_KNIGHT_ROAM, 1.0);
       state.body.push({ ...state.body[state.body.length - 1] });
+      triggerHitstop(state, B.HITSTOP_EAT_KNIGHT);
+      addWrath(state, B.WRATH_GAIN_LUNGE_KILL);
+    }
+
+    // Kill archers in path
+    const ai = state.archerKnights.findIndex(a => a.alive && a.x === nx && a.y === ny);
+    if (ai !== -1) {
+      state.archerKnights[ai].alive = false;
+      const pts = B.SCORE_ARCHER_KILL * state.comboMultiplier;
+      state.score += pts; state.archersKilled++; advanceCombo(state);
+      spawnParticles(state, nx, ny, B.PARTICLE_COUNT_EAT, B.COLOR_ARCHER);
+      spawnFloatingText(state, nx, ny, `+${Math.floor(pts)}`, B.COLOR_ARCHER, 1.2);
+      state.body.push({ ...state.body[state.body.length - 1] });
+      triggerHitstop(state, B.HITSTOP_EAT_KNIGHT);
+      addWrath(state, B.WRATH_GAIN_LUNGE_KILL);
     }
 
     // Hit boss
@@ -77,7 +145,7 @@ export function tryLunge(state: WyrmState, upgrades: { fasterLunge: number }): b
 
     // Move head to this cell
     state.body.unshift({ x: nx, y: ny });
-    state.body.pop(); // lunge doesn't grow, just moves fast
+    state.body.pop();
   }
 
   spawnParticles(state, head.x, head.y, B.PARTICLE_COUNT_LUNGE, B.COLOR_LUNGE);
@@ -120,12 +188,32 @@ export function updateMovement(state: WyrmState, dt: number): boolean {
     }
   }
 
+  const invuln = state.gracePeriod > 0 || state.comboInvulnTimer > 0;
+
+  // Juggernaut synergy: destroy interior walls on contact
+  if (state.activeSynergy === "juggernaut" && isWall(state, nx, ny)) {
+    // Check if interior wall
+    if (nx > 0 && nx < state.cols - 1 && ny > 0 && ny < state.rows - 1) {
+      const wi = state.walls.findIndex(w => w.x === nx && w.y === ny);
+      if (wi !== -1) {
+        state.walls.splice(wi, 1);
+        state.breakableWalls.delete(`${nx},${ny}`);
+        spawnParticles(state, nx, ny, 8, B.COLOR_WALL);
+        state.score += B.SCORE_BREAK_WALL * 2;
+        state.screenShake = B.SHAKE_DURATION * 0.2;
+        // Don't collide, fall through to normal movement
+      }
+    }
+  }
+
   // Wall collision
   if (isWall(state, nx, ny)) {
+    if (invuln) return false;
     if (state.shieldHits > 0) { shieldSave(state, head.x, head.y); return false; }
     return true;
   }
   if (isSelf(state, nx, ny)) {
+    if (invuln) return false;
     if (state.shieldHits > 0) { shieldSave(state, head.x, head.y); return false; }
     return true;
   }
@@ -137,27 +225,67 @@ export function updateMovement(state: WyrmState, dt: number): boolean {
   const knightHit = state.knights.findIndex(k => k.alive && k.x === nx && k.y === ny);
   if (knightHit !== -1) {
     state.knights[knightHit].alive = false;
-    const pts = B.SCORE_KNIGHT * state.comboMultiplier;
+    const knightMult = state.blessings.includes("predator_instinct") ? 2 : 1;
+    const pts = B.SCORE_KNIGHT * state.comboMultiplier * knightMult;
     state.score += pts; state.knightsEaten++; advanceCombo(state);
     spawnParticles(state, nx, ny, B.PARTICLE_COUNT_EAT, state.knights[knightHit].chasing ? B.COLOR_KNIGHT_CHASE : B.COLOR_KNIGHT_ROAM);
     spawnFloatingText(state, nx, ny, `+${Math.floor(pts)}`, B.COLOR_KNIGHT_ROAM, 1.0);
     state.body.push({ ...state.body[state.body.length - 1] });
+    triggerHitstop(state, B.HITSTOP_EAT_KNIGHT);
+    addWrath(state, B.WRATH_GAIN_KNIGHT);
+  }
+
+  // Archer collision (head-on)
+  const archerHit = state.archerKnights.findIndex(a => a.alive && a.x === nx && a.y === ny);
+  if (archerHit !== -1) {
+    state.archerKnights[archerHit].alive = false;
+    const pts = B.SCORE_ARCHER_KILL * state.comboMultiplier;
+    state.score += pts; state.archersKilled++; advanceCombo(state);
+    spawnParticles(state, nx, ny, B.PARTICLE_COUNT_EAT, B.COLOR_ARCHER);
+    spawnFloatingText(state, nx, ny, `+${Math.floor(pts)}`, B.COLOR_ARCHER, 1.2);
+    state.body.push({ ...state.body[state.body.length - 1] });
+    triggerHitstop(state, B.HITSTOP_EAT_KNIGHT);
+    addWrath(state, B.WRATH_GAIN_ARCHER);
   }
 
   state.body.unshift({ x: nx, y: ny });
   const eaten = checkPickups(state, nx, ny);
-  if (!eaten && knightHit === -1) state.body.pop();
+  if (!eaten && knightHit === -1 && archerHit === -1) state.body.pop();
 
   // Poison tile check
   const poisonIdx = state.poisonTiles.findIndex(p => p.x === nx && p.y === ny);
   if (poisonIdx !== -1) {
     state.poisonTiles.splice(poisonIdx, 1);
-    if (state.body.length > 2) {
-      for (let i = 0; i < B.POISON_SHRINK && state.body.length > 2; i++) state.body.pop();
+    const shrinkAmount = Math.max(0, B.POISON_SHRINK - state.poisonResistUpgrade);
+    if (shrinkAmount > 0 && state.body.length > 2) {
+      for (let i = 0; i < shrinkAmount && state.body.length > 2; i++) state.body.pop();
       spawnParticles(state, nx, ny, 8, B.COLOR_POISON);
       spawnFloatingText(state, nx, ny, "POISON!", B.COLOR_POISON, 1.3);
       state.screenFlashColor = B.COLOR_POISON;
       state.screenFlashTimer = B.FLASH_DURATION;
+    } else if (shrinkAmount <= 0) {
+      spawnParticles(state, nx, ny, 4, B.COLOR_POISON);
+      spawnFloatingText(state, nx, ny, "RESISTED!", 0x44ff44, 1.0);
+    }
+  }
+
+  // Projectile collision with head
+  const projHit = state.projectiles.findIndex(p => p.alive && p.x === nx && p.y === ny);
+  if (projHit !== -1) {
+    state.projectiles[projHit].alive = false;
+    const arrowImmune = state.blessings.includes("iron_scales");
+    if (!invuln && !arrowImmune && state.shieldHits <= 0) {
+      // Lose 1 segment
+      if (state.body.length > 2) {
+        state.body.pop();
+        spawnFloatingText(state, nx, ny, "ARROW HIT!", 0xff4444, 1.3);
+        state.screenFlashColor = 0xff4444; state.screenFlashTimer = B.FLASH_DURATION;
+        state.screenShake = B.SHAKE_DURATION * 0.5;
+      }
+    } else if (state.shieldHits > 0) {
+      shieldSave(state, nx, ny);
+    } else {
+      spawnFloatingText(state, nx, ny, arrowImmune ? "DEFLECTED!" : "BLOCKED!", B.COLOR_GRACE, 1.0);
     }
   }
 
@@ -172,6 +300,8 @@ function shieldSave(state: WyrmState, hx: number, hy: number): void {
   state.screenShake = B.SHAKE_DURATION;
   state.screenFlashColor = B.COLOR_SHIELD;
   state.screenFlashTimer = B.FLASH_DURATION;
+  state.gracePeriod = B.GRACE_PERIOD;
+  triggerHitstop(state, B.HITSTOP_SHIELD_BREAK);
 }
 
 // Collision helpers
@@ -185,7 +315,7 @@ export function distanceToObstacle(state: WyrmState): number {
 }
 
 // ---------------------------------------------------------------------------
-// Knight-body collision — knights that walk into the wyrm body die
+// Knight-body collision
 // ---------------------------------------------------------------------------
 
 export function checkKnightBodyCollisions(state: WyrmState): void {
@@ -196,7 +326,7 @@ export function checkKnightBodyCollisions(state: WyrmState): void {
     if (!k.alive) continue;
     if (bodySet.has(`${k.x},${k.y}`)) {
       k.alive = false;
-      const pts = B.SCORE_KNIGHT * 0.5; // half points for passive kill
+      const pts = B.SCORE_KNIGHT * 0.5;
       state.score += pts; state.knightsEaten++;
       spawnParticles(state, k.x, k.y, 6, B.COLOR_KNIGHT_ROAM);
       spawnFloatingText(state, k.x, k.y, `+${Math.floor(pts)}`, B.COLOR_KNIGHT_ROAM, 0.8);
@@ -213,12 +343,22 @@ function checkPickups(state: WyrmState, hx: number, hy: number): boolean {
   if (idx === -1) return false;
   const pk = state.pickups[idx]; state.pickups.splice(idx, 1);
 
+  // Fortress synergy bonus: pickups grant +5 bonus score
+  if (state.activeSynergy === "fortress") {
+    state.score += 5;
+  }
+
   switch (pk.kind) {
     case PickupKind.SHEEP: {
-      const pts = B.SCORE_SHEEP * state.comboMultiplier;
+      const scoreMult = state.blessings.includes("golden_touch") ? 1.25 : 1.0;
+      const pts = B.SCORE_SHEEP * state.comboMultiplier * scoreMult;
       state.score += pts; state.sheepEaten++; advanceCombo(state);
       spawnParticles(state, hx, hy, B.PARTICLE_COUNT_EAT, B.COLOR_SHEEP);
       spawnFloatingText(state, hx, hy, `+${Math.floor(pts)}`, B.COLOR_SHEEP, 1.0);
+      // Serpent's Appetite: +1 extra length from sheep
+      if (state.blessings.includes("serpent_appetite")) {
+        state.body.push({ ...state.body[state.body.length - 1] });
+      }
       return true;
     }
     case PickupKind.GOLDEN_SHEEP: {
@@ -235,6 +375,7 @@ function checkPickups(state: WyrmState, hx: number, hy: number): boolean {
       spawnParticles(state, hx, hy, B.PARTICLE_COUNT_EAT, B.COLOR_KNIGHT);
       spawnFloatingText(state, hx, hy, `+${Math.floor(pts)}`, B.COLOR_KNIGHT, 1.0);
       state.body.push({ ...state.body[state.body.length - 1] });
+      triggerHitstop(state, B.HITSTOP_EAT_KNIGHT);
       return true;
     }
     case PickupKind.TREASURE: {
@@ -278,47 +419,97 @@ function checkPickups(state: WyrmState, hx: number, hy: number): boolean {
       }
       return false;
     }
+    case PickupKind.MAGNET:
+      state.magnetBoostTimer = B.MAGNET_BOOST_DURATION;
+      state.magnetRadius = state.baseMagnetRadius * B.MAGNET_BOOST_MULT;
+      spawnParticles(state, hx, hy, B.PARTICLE_COUNT_EAT, B.COLOR_MAGNET);
+      spawnFloatingText(state, hx, hy, "MAGNET!", B.COLOR_MAGNET, 1.3);
+      state.screenFlashColor = B.COLOR_MAGNET; state.screenFlashTimer = B.FLASH_DURATION;
+      return false;
   }
   return false;
 }
 
 // Combo
 function advanceCombo(state: WyrmState): void {
-  state.comboCount++; state.comboTimer = B.COMBO_WINDOW;
+  state.comboCount++;
+  const comboWindow = B.COMBO_WINDOW + state.comboKeeperUpgrade * 0.5;
+  state.comboTimer = comboWindow;
   state.comboMultiplier = Math.min(state.comboCount, B.COMBO_MULT_CAP);
   if (state.comboCount > state.bestCombo) state.bestCombo = state.comboCount;
   if (state.comboCount >= 3) spawnFloatingText(state, state.body[0].x, state.body[0].y - 1, `${state.comboCount}x COMBO!`, B.COLOR_COMBO, 1.0 + state.comboCount * 0.1);
+
+  if (state.comboCount === B.COMBO_MULT_CAP && state.comboInvulnTimer <= 0) {
+    state.comboInvulnTimer = B.COMBO_INVULN_DURATION;
+    state.score += B.COMBO_INVULN_BONUS;
+    spawnFloatingText(state, state.body[0].x, state.body[0].y - 2, `MAX COMBO! +${B.COMBO_INVULN_BONUS}`, B.COLOR_COMBO_INVULN, 2.0);
+    state.screenFlashColor = B.COLOR_COMBO_INVULN; state.screenFlashTimer = B.FLASH_DURATION * 2;
+    state.screenShake = B.SHAKE_DURATION * 0.5;
+    triggerHitstop(state, B.HITSTOP_SYNERGY);
+  }
 }
 
 export function updateCombo(state: WyrmState, dt: number): void {
   if (state.comboTimer > 0) { state.comboTimer -= dt; if (state.comboTimer <= 0) { state.comboCount = 0; state.comboMultiplier = 1; } }
 }
 
-// Fire breath
+// ---------------------------------------------------------------------------
+// Fire breath — with synergy awareness
+// ---------------------------------------------------------------------------
+
 export function updateFireBreath(state: WyrmState, dt: number): void {
   if (state.fireBreathTimer <= 0) return;
   state.fireBreathTimer -= dt;
   const head = state.body[0], dx = DIR_DX[state.direction], dy = DIR_DY[state.direction];
-  for (let r = 1; r <= B.FIRE_BREATH_RANGE; r++) {
+  const range = state.activeSynergy === "blaze" ? B.FIRE_BREATH_RANGE * 2 : B.FIRE_BREATH_RANGE;
+
+  for (let r = 1; r <= range; r++) {
     const fx = head.x + dx * r, fy = head.y + dy * r;
     const pi = state.pickups.findIndex(p => p.x === fx && p.y === fy);
-    if (pi !== -1) { state.score += B.SCORE_FIRE_KILL; spawnParticles(state, fx, fy, B.PARTICLE_COUNT_FIRE, B.COLOR_WYRM_FIRE); state.pickups.splice(pi, 1); }
+    if (pi !== -1) {
+      state.score += B.SCORE_FIRE_KILL;
+      spawnParticles(state, fx, fy, B.PARTICLE_COUNT_FIRE, B.COLOR_WYRM_FIRE);
+      // Inferno pull synergy: fire kills pull nearby pickups closer
+      if (state.activeSynergy === "inferno_pull") {
+        for (const pk of state.pickups) {
+          const dist = Math.abs(pk.x - fx) + Math.abs(pk.y - fy);
+          if (dist > 0 && dist <= 3) {
+            // Move pickup 1 cell toward wyrm head
+            if (pk.x < head.x) pk.x++;
+            else if (pk.x > head.x) pk.x--;
+            if (pk.y < head.y) pk.y++;
+            else if (pk.y > head.y) pk.y--;
+          }
+        }
+      }
+      state.pickups.splice(pi, 1);
+    }
     for (const k of state.knights) { if (k.alive && k.x === fx && k.y === fy) { k.alive = false; state.score += B.SCORE_FIRE_KILL * 2; state.knightsEaten++; spawnParticles(state, fx, fy, B.PARTICLE_COUNT_FIRE, B.COLOR_KNIGHT_ROAM); spawnFloatingText(state, fx, fy, "BURN!", B.COLOR_WYRM_FIRE, 1.2); } }
+    // Burn archers
+    for (const a of state.archerKnights) { if (a.alive && a.x === fx && a.y === fy) { a.alive = false; state.score += B.SCORE_ARCHER_KILL; state.archersKilled++; spawnParticles(state, fx, fy, B.PARTICLE_COUNT_FIRE, B.COLOR_ARCHER); spawnFloatingText(state, fx, fy, "BURN!", B.COLOR_WYRM_FIRE, 1.2); } }
+    // Destroy projectiles in fire
+    for (const p of state.projectiles) { if (p.alive && p.x === fx && p.y === fy) { p.alive = false; state.projectilesDeflected++; spawnParticles(state, fx, fy, 3, B.COLOR_PROJECTILE); } }
     if (state.boss && state.boss.alive && state.boss.x === fx && state.boss.y === fy) hitBoss(state);
     const wi = state.walls.findIndex(w => w.x === fx && w.y === fy && w.x > 0 && w.x < state.cols - 1 && w.y > 0 && w.y < state.rows - 1);
-    if (wi !== -1) { spawnParticles(state, fx, fy, B.PARTICLE_COUNT_FIRE, B.COLOR_WALL); state.walls.splice(wi, 1); }
-    // Destroy poison tiles in fire path
+    if (wi !== -1) { spawnParticles(state, fx, fy, B.PARTICLE_COUNT_FIRE, B.COLOR_WALL); state.walls.splice(wi, 1); state.breakableWalls.delete(`${fx},${fy}`); }
     const pti = state.poisonTiles.findIndex(p => p.x === fx && p.y === fy);
     if (pti !== -1) { spawnParticles(state, fx, fy, B.PARTICLE_COUNT_FIRE, B.COLOR_POISON); state.poisonTiles.splice(pti, 1); }
   }
 }
 
+// ---------------------------------------------------------------------------
 // Boss
+// ---------------------------------------------------------------------------
+
 function hitBoss(state: WyrmState): void {
   if (!state.boss || !state.boss.alive) return;
   state.boss.hp--; state.boss.flashTimer = B.BOSS_FLASH_DURATION;
+  state.boss.charging = false;
   spawnParticles(state, state.boss.x, state.boss.y, B.PARTICLE_COUNT_BOSS_HIT, B.COLOR_BOSS);
   state.screenShake = B.SHAKE_DURATION * 0.3;
+  triggerHitstop(state, B.HITSTOP_BOSS_HIT);
+  addWrath(state, B.WRATH_GAIN_BOSS_HIT);
+
   if (state.boss.hp <= 0) {
     state.boss.alive = false; state.bossesKilled++;
     const pts = B.SCORE_BOSS_KILL * state.comboMultiplier;
@@ -326,6 +517,19 @@ function hitBoss(state: WyrmState): void {
     spawnParticles(state, state.boss.x, state.boss.y, B.PARTICLE_COUNT_BOSS_KILL, B.COLOR_BOSS);
     spawnFloatingText(state, state.boss.x, state.boss.y, `BOSS SLAIN! +${Math.floor(pts)}`, B.COLOR_BOSS, 2.0);
     state.screenShake = B.SHAKE_DURATION * 1.5; state.screenFlashColor = B.COLOR_BOSS; state.screenFlashTimer = B.FLASH_DURATION * 2;
+    triggerHitstop(state, B.HITSTOP_BOSS_KILL);
+
+    // Boss loot drops
+    const bx = state.boss.x, by = state.boss.y;
+    const lootKinds = [PickupKind.SHEEP, PickupKind.TREASURE, PickupKind.POTION, PickupKind.FIRE_SCROLL, PickupKind.SHIELD, PickupKind.GOLDEN_SHEEP];
+    for (let i = 0; i < B.BOSS_LOOT_COUNT; i++) {
+      const kind = lootKinds[Math.floor(Math.random() * lootKinds.length)];
+      const pos = findFreeCellNear(state, bx, by, 4);
+      if (pos) {
+        state.pickups.push({ x: pos.x, y: pos.y, kind, age: 0 });
+        spawnParticles(state, pos.x, pos.y, 3, B.COLOR_TREASURE);
+      }
+    }
     state.boss = null;
   } else {
     spawnFloatingText(state, state.boss.x, state.boss.y, `${state.boss.hp}/${state.boss.maxHp}`, B.COLOR_BOSS, 1.0);
@@ -336,8 +540,50 @@ export function updateBoss(state: WyrmState, dt: number): void {
   if (!state.boss || !state.boss.alive) return;
   const boss = state.boss;
   if (boss.flashTimer > 0) boss.flashTimer -= dt;
+
+  boss.chargeTimer -= dt;
+  if (boss.chargeTimer <= 0 && !boss.charging) {
+    boss.charging = true;
+    boss.chargeDir = dirToward(boss.x, boss.y, state.body[0].x, state.body[0].y);
+    boss.chargeTimer = B.BOSS_CHARGE_INTERVAL;
+    spawnFloatingText(state, boss.x, boss.y, "CHARGE!", 0xff4444, 1.5);
+  }
+
   boss.moveTimer -= dt;
   if (boss.moveTimer > 0) return;
+
+  if (boss.charging) {
+    boss.moveTimer = B.BOSS_MOVE_INTERVAL * 0.4;
+    const cdx = DIR_DX[boss.chargeDir], cdy = DIR_DY[boss.chargeDir];
+    const nx = boss.x + cdx, ny = boss.y + cdy;
+    if (!isWall(state, nx, ny)) {
+      boss.x = nx; boss.y = ny;
+      spawnParticles(state, nx, ny, 2, B.COLOR_BOSS);
+      if (state.body[0].x === nx && state.body[0].y === ny) {
+        if (state.gracePeriod <= 0 && state.comboInvulnTimer <= 0) {
+          if (state.shieldHits > 0) {
+            shieldSave(state, state.body[0].x, state.body[0].y);
+          } else {
+            for (let i = 0; i < 2 && state.body.length > 2; i++) {
+              const removed = state.body.pop()!;
+              spawnParticles(state, removed.x, removed.y, 3, B.COLOR_WYRM_BODY);
+            }
+            state.length = state.body.length;
+            spawnFloatingText(state, nx, ny, "HIT!", 0xff2222, 1.5);
+            state.screenShake = B.SHAKE_DURATION;
+            state.screenFlashColor = 0xff2222; state.screenFlashTimer = B.FLASH_DURATION;
+          }
+        }
+      }
+    } else {
+      boss.charging = false;
+      state.screenShake = B.SHAKE_DURATION * 0.3;
+    }
+    const chargeDist = Math.abs(boss.x - state.body[0].x) + Math.abs(boss.y - state.body[0].y);
+    if (chargeDist > B.BOSS_CHARGE_DISTANCE + 2) boss.charging = false;
+    return;
+  }
+
   boss.moveTimer = B.BOSS_MOVE_INTERVAL;
   const head = state.body[0];
   const bestDir = dirToward(boss.x, boss.y, head.x, head.y);
@@ -352,7 +598,123 @@ function dirToward(fx: number, fy: number, tx: number, ty: number): Direction {
   return Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? Direction.RIGHT : Direction.LEFT) : (dy > 0 ? Direction.DOWN : Direction.UP);
 }
 
-// Knights
+// ---------------------------------------------------------------------------
+// Archer knights & projectiles
+// ---------------------------------------------------------------------------
+
+export function updateArchers(state: WyrmState, dt: number): void {
+  if (state.wave < B.ARCHER_START_WAVE) return;
+
+  // Spawn archers
+  state.archerSpawnTimer -= dt;
+  const maxArchers = Math.min(B.MAX_ARCHERS, 1 + Math.floor((state.wave - B.ARCHER_START_WAVE) / 3));
+  const aliveArchers = state.archerKnights.filter(a => a.alive).length;
+  if (state.archerSpawnTimer <= 0 && aliveArchers < maxArchers) {
+    state.archerSpawnTimer = B.KNIGHT_SPAWN_INTERVAL * 1.5;
+    // Spawn at wall edge
+    const pos = findWallAdjacentCell(state);
+    if (pos) {
+      const dir = dirToward(pos.x, pos.y, state.body[0].x, state.body[0].y);
+      state.archerKnights.push({ x: pos.x, y: pos.y, dir, fireTimer: B.ARCHER_FIRE_INTERVAL, alive: true, warnTimer: 0 });
+      spawnFloatingText(state, pos.x, pos.y, "ARCHER!", B.COLOR_ARCHER, 1.2);
+    }
+  }
+
+  const head = state.body[0];
+  for (const a of state.archerKnights) {
+    if (!a.alive) continue;
+    // Face toward wyrm
+    a.dir = dirToward(a.x, a.y, head.x, head.y);
+
+    a.fireTimer -= dt;
+    if (a.warnTimer > 0) {
+      a.warnTimer -= dt;
+      if (a.warnTimer <= 0) {
+        // Fire!
+        state.projectiles.push({ x: a.x + DIR_DX[a.dir], y: a.y + DIR_DY[a.dir], dir: a.dir, moveTimer: 0, alive: true });
+        a.fireTimer = B.ARCHER_FIRE_INTERVAL;
+      }
+    } else if (a.fireTimer <= 0) {
+      // Check if aligned with wyrm (same row or column)
+      const aligned = (a.dir === Direction.UP || a.dir === Direction.DOWN) ? a.x === head.x :
+                       a.y === head.y;
+      if (aligned) {
+        a.warnTimer = B.ARCHER_WARN_DURATION; // start telegraph
+      } else {
+        a.fireTimer = 0.5; // retry soon
+      }
+    }
+  }
+  state.archerKnights = state.archerKnights.filter(a => a.alive);
+}
+
+export function updateProjectiles(state: WyrmState, dt: number): void {
+  for (const p of state.projectiles) {
+    if (!p.alive) continue;
+    p.moveTimer += dt;
+    if (p.moveTimer < B.PROJECTILE_SPEED) continue;
+    p.moveTimer -= B.PROJECTILE_SPEED;
+    const nx = p.x + DIR_DX[p.dir], ny = p.y + DIR_DY[p.dir];
+    if (isWall(state, nx, ny)) { p.alive = false; spawnParticles(state, p.x, p.y, 3, B.COLOR_PROJECTILE); continue; }
+    p.x = nx; p.y = ny;
+
+    // Hit wyrm body (not head — head is checked in movement)
+    for (let i = 1; i < state.body.length; i++) {
+      if (state.body[i].x === nx && state.body[i].y === ny) {
+        p.alive = false;
+        if (state.body.length > 2) {
+          state.body.pop();
+          state.length = state.body.length;
+          spawnParticles(state, nx, ny, 4, B.COLOR_PROJECTILE);
+          spawnFloatingText(state, nx, ny, "ARROW!", 0xff4444, 1.0);
+        }
+        break;
+      }
+    }
+  }
+  state.projectiles = state.projectiles.filter(p => p.alive);
+}
+
+// ---------------------------------------------------------------------------
+// Synergies
+// ---------------------------------------------------------------------------
+
+export function updateSynergies(state: WyrmState): void {
+  const buf = B.SYNERGY_DURATION_BUFFER;
+  let newSynergy: SynergyKind = null;
+
+  if (state.fireBreathTimer > buf && state.speedBoostTimer > buf) {
+    newSynergy = "blaze";
+  } else if (state.shieldHits > 0 && state.magnetBoostTimer > buf) {
+    newSynergy = "fortress";
+  } else if (state.fireBreathTimer > buf && state.magnetBoostTimer > buf) {
+    newSynergy = "inferno_pull";
+  } else if (state.speedBoostTimer > buf && state.shieldHits > 0) {
+    newSynergy = "juggernaut";
+  }
+
+  if (newSynergy !== state.activeSynergy) {
+    state.activeSynergy = newSynergy;
+    if (newSynergy) {
+      state.synergyAnnouncedThisFrame = true;
+      const names: Record<string, string> = { blaze: "BLAZE MODE!", juggernaut: "JUGGERNAUT!", inferno_pull: "INFERNO PULL!", fortress: "FORTRESS!" };
+      const colors: Record<string, number> = { blaze: B.COLOR_SYNERGY_BLAZE, juggernaut: B.COLOR_SYNERGY_JUGGERNAUT, inferno_pull: B.COLOR_SYNERGY_INFERNO, fortress: B.COLOR_SYNERGY_FORTRESS };
+      spawnFloatingText(state, state.body[0].x, state.body[0].y - 2, names[newSynergy] || "SYNERGY!", colors[newSynergy] || 0xffffff, 2.0);
+      state.screenShake = B.SHAKE_DURATION * 0.5;
+      triggerHitstop(state, B.HITSTOP_SYNERGY);
+    }
+  }
+
+  // Fortress synergy: triple magnet radius
+  if (state.activeSynergy === "fortress") {
+    state.magnetRadius = Math.max(state.magnetRadius, state.baseMagnetRadius * 3);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Knights — with fire avoidance
+// ---------------------------------------------------------------------------
+
 export function updateKnights(state: WyrmState, dt: number): void {
   const wb = Math.min(state.wave, 8);
   const si = Math.max(5, B.KNIGHT_SPAWN_INTERVAL - wb);
@@ -369,13 +731,34 @@ export function updateKnights(state: WyrmState, dt: number): void {
     }
   }
 
+  const fireCells = new Set<string>();
+  if (state.fireBreathTimer > 0) {
+    const head = state.body[0];
+    const fdx = DIR_DX[state.direction], fdy = DIR_DY[state.direction];
+    const range = state.activeSynergy === "blaze" ? B.FIRE_BREATH_RANGE * 2 : B.FIRE_BREATH_RANGE;
+    for (let r = 1; r <= range + 1; r++) fireCells.add(`${head.x + fdx * r},${head.y + fdy * r}`);
+  }
+
   const head = state.body[0];
   for (const k of state.knights) {
     if (!k.alive) continue;
     k.moveTimer -= dt;
     if (k.moveTimer > 0) continue;
-    k.moveTimer = k.chasing ? mi * 0.7 : mi;
-    const dirs = k.chasing ? [dirToward(k.x, k.y, head.x, head.y), ...shuffleOthers(dirToward(k.x, k.y, head.x, head.y))] : shuffleDirs(k.dir);
+    const predatorSpeed = state.blessings.includes("predator_instinct") ? 0.8 : 1.0;
+    k.moveTimer = (k.chasing ? mi * 0.7 : mi) * predatorSpeed;
+
+    let dirs: Direction[];
+    if (k.chasing) {
+      dirs = [dirToward(k.x, k.y, head.x, head.y), ...shuffleOthers(dirToward(k.x, k.y, head.x, head.y))];
+    } else {
+      dirs = shuffleDirs(k.dir);
+    }
+
+    if (fireCells.size > 0) {
+      const safeDirs = dirs.filter(d => !fireCells.has(`${k.x + DIR_DX[d]},${k.y + DIR_DY[d]}`));
+      if (safeDirs.length > 0) dirs = safeDirs;
+    }
+
     for (const d of dirs) {
       const nx = k.x + DIR_DX[d], ny = k.y + DIR_DY[d];
       if (isWall(state, nx, ny) || state.knights.some(o => o.alive && o !== k && o.x === nx && o.y === ny)) continue;
@@ -393,22 +776,8 @@ function shuffleOthers(pref: Direction): Direction[] {
   return o;
 }
 
-// Pickup magnet — pickups gently drift toward wyrm head when within magnetRadius
-export function updatePickupMagnet(state: WyrmState, _dt: number): void {
-  if (state.magnetRadius <= 0) return;
-  const head = state.body[0];
-  const r2 = state.magnetRadius * state.magnetRadius;
-  for (const p of state.pickups) {
-    const dx = head.x - p.x, dy = head.y - p.y;
-    const dist2 = dx * dx + dy * dy;
-    if (dist2 > 0 && dist2 <= r2) {
-      // Don't actually move grid position — just mark for visual drift in renderer
-      // The actual eating happens on exact grid collision, so magnet is purely visual guidance
-      // We'll adjust pickup x/y fractionally toward head (capped at 0.3 cells per second)
-      // No — pickups are grid-aligned integers. Instead we'll add a visual-only drift.
-      // Skip — this is handled as visual-only in the renderer via state.body[0] proximity.
-    }
-  }
+export function updatePickupMagnet(_state: WyrmState, _dt: number): void {
+  // Visual-only drift handled in renderer
 }
 
 // Pickups
@@ -433,32 +802,63 @@ export function updatePoisonTiles(state: WyrmState, dt: number): void {
   for (let i = state.poisonTiles.length - 1; i >= 0; i--) { state.poisonTiles[i].life -= dt; if (state.poisonTiles[i].life <= 0) state.poisonTiles.splice(i, 1); }
 }
 
-// Waves
+// ---------------------------------------------------------------------------
+// Waves — with events and breakable walls
+// ---------------------------------------------------------------------------
+
 export function updateWaves(state: WyrmState, dt: number): void {
   state.waveTimer -= dt;
   if (state.waveTimer > 0) return;
   state.wave++; state.waveTimer = B.WAVE_INTERVAL;
 
-  // Boss
+  // Wave events every N waves
+  const isEventWave = state.wave > 1 && state.wave % B.WAVE_EVENT_INTERVAL === 0;
+  if (isEventWave) {
+    triggerWaveEvent(state);
+  }
+
+  // Boss — scaling HP
   if (state.wave % B.BOSS_WAVE_INTERVAL === 0 && (!state.boss || !state.boss.alive)) {
+    const bossTier = Math.floor(state.wave / B.BOSS_WAVE_INTERVAL);
+    const bossHp = B.BOSS_HP + (bossTier - 1) * B.BOSS_HP_PER_TIER;
     const pos = findFreeCell(state);
     if (pos) {
-      state.boss = { x: pos.x, y: pos.y, dir: Direction.DOWN, moveTimer: B.BOSS_MOVE_INTERVAL, hp: B.BOSS_HP, maxHp: B.BOSS_HP, alive: true, flashTimer: 0 };
-      spawnFloatingText(state, pos.x, pos.y, "BOSS!", B.COLOR_BOSS, 2.0);
+      state.boss = {
+        x: pos.x, y: pos.y, dir: Direction.DOWN,
+        moveTimer: B.BOSS_MOVE_INTERVAL,
+        hp: bossHp, maxHp: bossHp, alive: true, flashTimer: 0,
+        chargeTimer: B.BOSS_CHARGE_INTERVAL, charging: false, chargeDir: Direction.DOWN,
+      };
+      const tierName = bossTier <= 1 ? "BOSS!" : bossTier <= 2 ? "BOSS II!" : bossTier <= 3 ? "BOSS III!" : `BOSS ${bossTier}!`;
+      spawnFloatingText(state, pos.x, pos.y, tierName, B.COLOR_BOSS, 2.0);
       state.screenShake = B.SHAKE_DURATION; state.screenFlashColor = B.COLOR_BOSS; state.screenFlashTimer = B.FLASH_DURATION * 2;
     }
   }
 
-  // Walls
-  const pCount = 2 * state.cols + 2 * (state.rows - 2);
-  if (state.walls.length < B.MAX_WALLS + pCount) {
-    const placed: Cell[] = [];
-    const pat = state.wave % 4;
-    if (pat === 0) { for (let i = 0; i < B.WALLS_PER_WAVE; i++) { const p = findFreeCell(state); if (p) placed.push(p); } }
-    else if (pat === 1) { const p = findFreeCell(state); if (p) for (let d = -2; d <= 2; d++) { const wx = p.x + d; if (wx > 0 && wx < state.cols - 1 && !isWall(state, wx, p.y)) placed.push({ x: wx, y: p.y }); } }
-    else if (pat === 2) { const p = findFreeCell(state); if (p) for (let d = -2; d <= 2; d++) { const wy = p.y + d; if (wy > 0 && wy < state.rows - 1 && !isWall(state, p.x, wy)) placed.push({ x: p.x, y: wy }); } }
-    else { const p = findFreeCell(state); if (p) for (const [dx, dy] of [[0,0],[1,0],[2,0],[0,1],[0,2]]) { const wx = p.x+dx, wy = p.y+dy; if (wx > 0 && wx < state.cols-1 && wy > 0 && wy < state.rows-1 && !isWall(state,wx,wy)) placed.push({x:wx,y:wy}); } }
-    for (const p of placed) { state.walls.push(p); spawnParticles(state, p.x, p.y, 3, B.COLOR_WALL); }
+  // Walls — varied patterns (skip if event wave handled walls already)
+  if (!isEventWave) {
+    const pCount = 2 * state.cols + 2 * (state.rows - 2);
+    if (state.walls.length < B.MAX_WALLS + pCount) {
+      const placed: Cell[] = [];
+      const pat = state.wave % 7;
+      switch (pat) {
+        case 0: for (let i = 0; i < B.WALLS_PER_WAVE; i++) { const p = findFreeCell(state); if (p) placed.push(p); } break;
+        case 1: { const p = findFreeCell(state); if (p) for (let d = -2; d <= 2; d++) { const wx = p.x + d; if (wx > 0 && wx < state.cols - 1 && !isWall(state, wx, p.y)) placed.push({ x: wx, y: p.y }); } break; }
+        case 2: { const p = findFreeCell(state); if (p) for (let d = -2; d <= 2; d++) { const wy = p.y + d; if (wy > 0 && wy < state.rows - 1 && !isWall(state, p.x, wy)) placed.push({ x: p.x, y: wy }); } break; }
+        case 3: { const p = findFreeCell(state); if (p) for (const [dx, dy] of [[0,0],[1,0],[2,0],[0,1],[0,2]]) { const wx = p.x+dx, wy = p.y+dy; if (wx > 0 && wx < state.cols-1 && wy > 0 && wy < state.rows-1 && !isWall(state,wx,wy)) placed.push({x:wx,y:wy}); } break; }
+        case 4: { const p = findFreeCell(state); if (p) for (let d = -2; d <= 2; d++) { const wx = p.x + d, wy = p.y + d; if (wx > 0 && wx < state.cols-1 && wy > 0 && wy < state.rows-1 && !isWall(state,wx,wy)) placed.push({x:wx,y:wy}); } break; }
+        case 5: { const p = findFreeCell(state); if (p) { for (const [dx, dy] of [[-1,-1],[0,-1],[1,-1],[-1,0],[1,0],[-1,1],[0,1],[1,1]]) { const wx = p.x+dx, wy = p.y+dy; if (wx > 0 && wx < state.cols-1 && wy > 0 && wy < state.rows-1 && !isWall(state,wx,wy)) placed.push({x:wx,y:wy}); } } break; }
+        case 6: { const p = findFreeCell(state); if (p) { for (const [dx, dy] of [[0,0],[1,0],[-1,0],[0,1],[0,-1]]) { const wx = p.x+dx, wy = p.y+dy; if (wx > 0 && wx < state.cols-1 && wy > 0 && wy < state.rows-1 && !isWall(state,wx,wy)) placed.push({x:wx,y:wy}); } } break; }
+      }
+      for (const p of placed) {
+        state.walls.push(p);
+        // Some walls are breakable
+        if (Math.random() < B.BREAKABLE_WALL_CHANCE) {
+          state.breakableWalls.add(`${p.x},${p.y}`);
+        }
+        spawnParticles(state, p.x, p.y, 3, B.COLOR_WALL);
+      }
+    }
   }
 
   // Poison tiles from wave 4+
@@ -473,6 +873,102 @@ export function updateWaves(state: WyrmState, dt: number): void {
   state.screenShake = B.SHAKE_DURATION * 0.5;
 }
 
+// ---------------------------------------------------------------------------
+// Wave events
+// ---------------------------------------------------------------------------
+
+function triggerWaveEvent(state: WyrmState): void {
+  const events = ["stampede", "knight_rally", "treasure_vault", "poison_fog", "dragons_hoard"];
+  const event = events[Math.floor(Math.random() * events.length)];
+  state.lastWaveEvent = event;
+
+  switch (event) {
+    case "stampede": {
+      // 8-12 sheep spawn in a cluster
+      const center = findFreeCell(state);
+      if (center) {
+        const count = 8 + Math.floor(Math.random() * 5);
+        for (let i = 0; i < count; i++) {
+          const pos = findFreeCellNear(state, center.x, center.y, 4);
+          if (pos) state.pickups.push({ x: pos.x, y: pos.y, kind: PickupKind.SHEEP, age: 0 });
+        }
+      }
+      spawnFloatingText(state, state.body[0].x, state.body[0].y - 3, "STAMPEDE!", 0xf5f5dc, 2.0);
+      state.screenFlashColor = 0xf5f5dc; state.screenFlashTimer = B.FLASH_DURATION * 2;
+      break;
+    }
+    case "knight_rally": {
+      // All knights become chasers, spawn 3 extra
+      for (const k of state.knights) if (k.alive) k.chasing = true;
+      for (let i = 0; i < 3; i++) {
+        const pos = findFreeCell(state);
+        if (pos) state.knights.push({ x: pos.x, y: pos.y, dir: Math.floor(Math.random() * 4) as Direction, moveTimer: 0.3, alive: true, chasing: true });
+      }
+      spawnFloatingText(state, state.body[0].x, state.body[0].y - 3, "KNIGHT RALLY!", B.COLOR_KNIGHT_CHASE, 2.0);
+      state.screenFlashColor = B.COLOR_KNIGHT_CHASE; state.screenFlashTimer = B.FLASH_DURATION * 2;
+      break;
+    }
+    case "treasure_vault": {
+      // 4-5 treasure surrounded by breakable walls
+      const center = findFreeCell(state);
+      if (center) {
+        // Place breakable walls around
+        const wallOffs = [[-1,-1],[0,-1],[1,-1],[-1,0],[1,0],[-1,1],[0,1],[1,1]];
+        for (const [dx, dy] of wallOffs) {
+          const wx = center.x + dx, wy = center.y + dy;
+          if (wx > 0 && wx < state.cols-1 && wy > 0 && wy < state.rows-1 && !isWall(state, wx, wy)) {
+            state.walls.push({ x: wx, y: wy });
+            state.breakableWalls.add(`${wx},${wy}`);
+          }
+        }
+        // Place treasure inside
+        for (let i = 0; i < 4; i++) {
+          const pos = findFreeCellNear(state, center.x, center.y, 1);
+          if (pos) state.pickups.push({ x: pos.x, y: pos.y, kind: PickupKind.TREASURE, age: 0 });
+        }
+      }
+      spawnFloatingText(state, state.body[0].x, state.body[0].y - 3, "TREASURE VAULT!", B.COLOR_TREASURE, 2.0);
+      state.screenFlashColor = B.COLOR_TREASURE; state.screenFlashTimer = B.FLASH_DURATION * 2;
+      break;
+    }
+    case "poison_fog": {
+      // Double poison + 2 potions
+      for (let i = 0; i < B.POISON_PER_WAVE * 2; i++) {
+        const pos = findFreeCell(state);
+        if (pos) state.poisonTiles.push({ x: pos.x, y: pos.y, life: B.POISON_LIFETIME });
+      }
+      for (let i = 0; i < 2; i++) {
+        const pos = findFreeCell(state);
+        if (pos) state.pickups.push({ x: pos.x, y: pos.y, kind: PickupKind.POTION, age: 0 });
+      }
+      spawnFloatingText(state, state.body[0].x, state.body[0].y - 3, "POISON FOG!", B.COLOR_POISON, 2.0);
+      state.screenFlashColor = B.COLOR_POISON; state.screenFlashTimer = B.FLASH_DURATION * 2;
+      break;
+    }
+    case "dragons_hoard": {
+      // 1 golden sheep + 3 treasure, but also extra walls
+      const pos1 = findFreeCell(state);
+      if (pos1) state.pickups.push({ x: pos1.x, y: pos1.y, kind: PickupKind.GOLDEN_SHEEP, age: 0 });
+      for (let i = 0; i < 3; i++) {
+        const pos = findFreeCell(state);
+        if (pos) state.pickups.push({ x: pos.x, y: pos.y, kind: PickupKind.TREASURE, age: 0 });
+      }
+      // Extra walls
+      for (let i = 0; i < B.WALLS_PER_WAVE + 3; i++) {
+        const pos = findFreeCell(state);
+        if (pos) {
+          state.walls.push(pos);
+          if (Math.random() < 0.5) state.breakableWalls.add(`${pos.x},${pos.y}`);
+          spawnParticles(state, pos.x, pos.y, 2, B.COLOR_WALL);
+        }
+      }
+      spawnFloatingText(state, state.body[0].x, state.body[0].y - 3, "DRAGON'S HOARD!", B.COLOR_GOLDEN_SHEEP, 2.0);
+      state.screenFlashColor = B.COLOR_GOLDEN_SHEEP; state.screenFlashTimer = B.FLASH_DURATION * 2;
+      break;
+    }
+  }
+}
+
 // Milestones
 export function checkMilestones(state: WyrmState): string | null {
   const score = Math.floor(state.score);
@@ -485,7 +981,6 @@ export function checkMilestones(state: WyrmState): string | null {
   return null;
 }
 
-// Evolution tier check
 export function checkEvolution(state: WyrmState): string | null {
   const tier = getWyrmTierIndex(state.length);
   if (tier > state.lastColorTier) {
@@ -495,12 +990,10 @@ export function checkEvolution(state: WyrmState): string | null {
   return null;
 }
 
-// Dragon coins earned from a run
 export function calcDragonCoins(score: number): number {
   return Math.floor(score / 100) * B.COINS_PER_100_SCORE;
 }
 
-// Speed, timers
 export function updateSpeed(state: WyrmState): void {
   state.moveInterval = Math.max(B.MIN_MOVE_INTERVAL, B.START_MOVE_INTERVAL - state.body.length * B.SPEED_PER_LENGTH);
 }
@@ -513,9 +1006,22 @@ export function updateTimers(state: WyrmState, dt: number): void {
   if (state.slowMoTimer > 0) state.slowMoTimer -= dt;
   if (state.lungeCooldown > 0) state.lungeCooldown -= dt;
   if (state.lungeFlash > 0) state.lungeFlash -= dt;
+  if (state.gracePeriod > 0) state.gracePeriod -= dt;
+  if (state.comboInvulnTimer > 0) state.comboInvulnTimer -= dt;
+  if (state.hitstopTimer > 0) state.hitstopTimer -= dt;
+  if (state.tailWhipCooldown > 0) state.tailWhipCooldown -= dt;
+  if (state.tailWhipFlash > 0) state.tailWhipFlash -= dt;
+  if (state.magnetBoostTimer > 0) {
+    state.magnetBoostTimer -= dt;
+    if (state.magnetBoostTimer <= 0) state.magnetRadius = state.baseMagnetRadius;
+  }
+
+  // Apply golden_touch blessing: +25% score already earned gets bonus (via multiplier on SCORE_PER_SECOND)
+  if (state.blessings.includes("golden_touch")) {
+    state.score += B.SCORE_PER_SECOND * dt * 0.25; // extra 25%
+  }
 }
 
-// Trail, death, particles, floating text (unchanged logic, compact)
 export function updateTrail(s: WyrmState, dt: number): void { for (let i = s.trail.length - 1; i >= 0; i--) { s.trail[i].life -= dt; if (s.trail[i].life <= 0) s.trail.splice(i, 1); } }
 
 export function spawnDeathScatter(s: WyrmState): void {
@@ -546,16 +1052,217 @@ export function updateFloatingTexts(s: WyrmState, dt: number): void {
   for (let i = s.floatingTexts.length - 1; i >= 0; i--) { const ft = s.floatingTexts[i]; ft.y -= dt * 1.5; ft.life -= dt; if (ft.life <= 0) s.floatingTexts.splice(i, 1); }
 }
 
+// ---------------------------------------------------------------------------
+// Free cell helpers
+// ---------------------------------------------------------------------------
+
 function findFreeCell(state: WyrmState): Cell | null {
   const occ = new Set<string>();
   for (const c of state.body) occ.add(`${c.x},${c.y}`);
   for (const w of state.walls) occ.add(`${w.x},${w.y}`);
   for (const p of state.pickups) occ.add(`${p.x},${p.y}`);
   for (const k of state.knights) if (k.alive) occ.add(`${k.x},${k.y}`);
+  for (const a of state.archerKnights) if (a.alive) occ.add(`${a.x},${a.y}`);
   if (state.boss && state.boss.alive) occ.add(`${state.boss.x},${state.boss.y}`);
   for (const p of state.poisonTiles) occ.add(`${p.x},${p.y}`);
   const head = state.body[0];
   for (let dx = -2; dx <= 2; dx++) for (let dy = -2; dy <= 2; dy++) occ.add(`${head.x + dx},${head.y + dy}`);
   for (let a = 0; a < 100; a++) { const x = 1 + Math.floor(Math.random() * (state.cols - 2)), y = 1 + Math.floor(Math.random() * (state.rows - 2)); if (!occ.has(`${x},${y}`)) return { x, y }; }
   return null;
+}
+
+function findFreeCellNear(state: WyrmState, cx: number, cy: number, radius: number): Cell | null {
+  const occ = new Set<string>();
+  for (const c of state.body) occ.add(`${c.x},${c.y}`);
+  for (const w of state.walls) occ.add(`${w.x},${w.y}`);
+  for (const p of state.pickups) occ.add(`${p.x},${p.y}`);
+  for (const k of state.knights) if (k.alive) occ.add(`${k.x},${k.y}`);
+  for (const p of state.poisonTiles) occ.add(`${p.x},${p.y}`);
+  for (let a = 0; a < 50; a++) {
+    const x = cx + Math.floor((Math.random() - 0.5) * radius * 2);
+    const y = cy + Math.floor((Math.random() - 0.5) * radius * 2);
+    if (x > 0 && x < state.cols - 1 && y > 0 && y < state.rows - 1 && !occ.has(`${x},${y}`)) return { x, y };
+  }
+  return findFreeCell(state);
+}
+
+/** Find a free cell adjacent to a wall (for archer spawning) */
+function findWallAdjacentCell(state: WyrmState): Cell | null {
+  const occ = new Set<string>();
+  for (const c of state.body) occ.add(`${c.x},${c.y}`);
+  for (const p of state.pickups) occ.add(`${p.x},${p.y}`);
+  for (const k of state.knights) if (k.alive) occ.add(`${k.x},${k.y}`);
+  for (const a of state.archerKnights) if (a.alive) occ.add(`${a.x},${a.y}`);
+
+  // Try to place near a border wall but inside the playfield
+  for (let a = 0; a < 50; a++) {
+    const side = Math.floor(Math.random() * 4);
+    let x: number, y: number;
+    if (side === 0) { x = 1; y = 1 + Math.floor(Math.random() * (state.rows - 2)); }
+    else if (side === 1) { x = state.cols - 2; y = 1 + Math.floor(Math.random() * (state.rows - 2)); }
+    else if (side === 2) { x = 1 + Math.floor(Math.random() * (state.cols - 2)); y = 1; }
+    else { x = 1 + Math.floor(Math.random() * (state.cols - 2)); y = state.rows - 2; }
+    if (!occ.has(`${x},${y}`) && !isWall(state, x, y)) return { x, y };
+  }
+  return findFreeCell(state);
+}
+
+// ---------------------------------------------------------------------------
+// Wrath meter — fills on combat actions, activates wrath mode when full
+// ---------------------------------------------------------------------------
+
+function addWrath(state: WyrmState, amount: number): void {
+  if (state.wrathTimer > 0) return; // already in wrath mode
+  const mult = state.blessings.includes("wrath_born") ? 1.5 : 1.0;
+  state.wrathMeter = Math.min(B.WRATH_MAX, state.wrathMeter + amount * mult);
+  if (state.wrathMeter >= B.WRATH_MAX) {
+    state.wrathMeter = 0;
+    state.wrathTimer = B.WRATH_DURATION;
+    state.wrathAnnouncedThisFrame = true;
+    if (state.fireBreathTimer <= 0) {
+      state.fireBreathTimer = B.WRATH_DURATION;
+    }
+    spawnFloatingText(state, state.body[0].x, state.body[0].y - 2, "WRATH MODE!", B.COLOR_WRATH, 2.5);
+    state.screenShake = B.SHAKE_DURATION;
+    state.screenFlashColor = B.COLOR_WRATH; state.screenFlashTimer = B.FLASH_DURATION * 2;
+    triggerHitstop(state, B.HITSTOP_SYNERGY);
+  }
+}
+
+export function updateWrath(state: WyrmState, dt: number): void {
+  if (state.wrathTimer <= 0 && state.wrathMeter > 0) {
+    state.wrathMeter = Math.max(0, state.wrathMeter - B.WRATH_DRAIN_PER_SEC * dt);
+  }
+  if (state.wrathTimer > 0) {
+    state.wrathTimer -= dt;
+    state.score += B.SCORE_PER_SECOND * dt; // doubled score
+    if (state.lungeCooldown > 0) state.lungeCooldown -= dt * 0.5; // faster lunge recharge
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Tail whip — damages enemies adjacent to tail segments
+// ---------------------------------------------------------------------------
+
+export function tryTailWhip(state: WyrmState): boolean {
+  if (state.tailWhipCooldown > 0) return false;
+  if (state.body.length < 4) return false;
+
+  const cd = state.blessings.includes("swift_tail") ? B.TAIL_WHIP_COOLDOWN / 2 : B.TAIL_WHIP_COOLDOWN;
+  state.tailWhipCooldown = cd;
+  state.tailWhipFlash = B.TAIL_WHIP_FLASH;
+
+  const range = Math.min(B.TAIL_WHIP_RANGE, state.body.length - 1);
+  let kills = 0;
+
+  for (let i = state.body.length - range; i < state.body.length; i++) {
+    const seg = state.body[i];
+    for (const [adx, ady] of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,1],[1,-1],[-1,-1]]) {
+      const tx = seg.x + adx, ty = seg.y + ady;
+      const ki = state.knights.findIndex(k => k.alive && k.x === tx && k.y === ty);
+      if (ki !== -1) {
+        state.knights[ki].alive = false;
+        const pts = B.SCORE_TAIL_WHIP_KILL * state.comboMultiplier;
+        state.score += pts; state.knightsEaten++; advanceCombo(state);
+        spawnParticles(state, tx, ty, 6, B.COLOR_TAIL_WHIP);
+        spawnFloatingText(state, tx, ty, `WHIP! +${Math.floor(pts)}`, B.COLOR_TAIL_WHIP, 1.2);
+        addWrath(state, B.WRATH_GAIN_KNIGHT);
+        kills++;
+      }
+      const ai = state.archerKnights.findIndex(a => a.alive && a.x === tx && a.y === ty);
+      if (ai !== -1) {
+        state.archerKnights[ai].alive = false;
+        const pts = B.SCORE_ARCHER_KILL * state.comboMultiplier;
+        state.score += pts; state.archersKilled++; advanceCombo(state);
+        spawnParticles(state, tx, ty, 6, B.COLOR_TAIL_WHIP);
+        spawnFloatingText(state, tx, ty, `WHIP! +${Math.floor(pts)}`, B.COLOR_TAIL_WHIP, 1.2);
+        addWrath(state, B.WRATH_GAIN_ARCHER);
+        kills++;
+      }
+      const pi = state.projectiles.findIndex(p => p.alive && p.x === tx && p.y === ty);
+      if (pi !== -1) {
+        state.projectiles[pi].alive = false; state.projectilesDeflected++;
+        spawnParticles(state, tx, ty, 4, B.COLOR_PROJECTILE);
+        addWrath(state, B.WRATH_GAIN_DEFLECT);
+        kills++;
+      }
+      if (state.boss && state.boss.alive && state.boss.x === tx && state.boss.y === ty) {
+        hitBoss(state); kills++;
+      }
+    }
+  }
+
+  for (let i = state.body.length - range; i < state.body.length; i++) {
+    spawnParticles(state, state.body[i].x, state.body[i].y, 2, B.COLOR_TAIL_WHIP);
+  }
+
+  if (kills > 0) {
+    state.screenShake = B.SHAKE_DURATION * 0.4;
+    triggerHitstop(state, B.HITSTOP_EAT_KNIGHT);
+  }
+  return true;
+}
+
+// ---------------------------------------------------------------------------
+// Blessings — presented at evolution tiers
+// ---------------------------------------------------------------------------
+
+const ALL_BLESSINGS: Blessing[] = [
+  { id: "serpent_appetite", name: "Serpent's Appetite", desc: "Sheep grant +1 extra length", color: 0xf5f5dc },
+  { id: "firestarter", name: "Firestarter", desc: "Fire range +1, fire scrolls appear more", color: 0xff6600 },
+  { id: "iron_scales", name: "Iron Scales", desc: "Arrows deal no damage", color: 0xcccccc },
+  { id: "combo_frenzy", name: "Combo Frenzy", desc: "Combo window +1.5s, cap to 12x", color: 0xff44ff },
+  { id: "predator_instinct", name: "Predator's Instinct", desc: "Knight score 2x but they're faster", color: 0xcc4444 },
+  { id: "magnet_soul", name: "Magnet Soul", desc: "Permanent +2 magnet radius", color: 0xff66aa },
+  { id: "thick_hide", name: "Thick Hide", desc: "Poison deals no damage", color: 0x44aa44 },
+  { id: "wrath_born", name: "Wrath Born", desc: "Wrath fills 50% faster", color: 0xff3300 },
+  { id: "golden_touch", name: "Golden Touch", desc: "All score gains +25%", color: 0xffd700 },
+  { id: "swift_tail", name: "Swift Tail", desc: "Tail whip cooldown halved", color: 0xddaa44 },
+  { id: "dragon_heart", name: "Dragon Heart", desc: "+1 shield hit permanently", color: 0x44aaff },
+  { id: "berserker", name: "Berserker", desc: "Lunge distance +1, cooldown -1s", color: 0xffaa00 },
+];
+
+export function generateBlessingChoices(state: WyrmState): Blessing[] {
+  const available = ALL_BLESSINGS.filter(b => !state.blessings.includes(b.id));
+  for (let i = available.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [available[i], available[j]] = [available[j], available[i]];
+  }
+  return available.slice(0, Math.min(3, available.length));
+}
+
+export function applyBlessing(state: WyrmState, blessingId: string): void {
+  state.blessings.push(blessingId);
+  switch (blessingId) {
+    case "magnet_soul":
+      state.baseMagnetRadius += 2;
+      if (state.magnetBoostTimer <= 0) state.magnetRadius = state.baseMagnetRadius;
+      break;
+    case "dragon_heart":
+      state.shieldHits = Math.max(state.shieldHits, 1);
+      break;
+    case "thick_hide":
+      state.poisonResistUpgrade = 99;
+      break;
+    case "combo_frenzy":
+      state.comboKeeperUpgrade += 3; // +1.5s window
+      break;
+  }
+}
+
+export function prepareBlessingChoice(state: WyrmState): void {
+  state.blessingChoices = generateBlessingChoices(state);
+  if (state.blessingChoices.length > 0) {
+    state.phase = WyrmPhase.BLESSING;
+  }
+}
+
+export function selectBlessing(state: WyrmState, index: number): void {
+  if (index < 0 || index >= state.blessingChoices.length) return;
+  const chosen = state.blessingChoices[index];
+  applyBlessing(state, chosen.id);
+  spawnFloatingText(state, state.body[0].x, state.body[0].y - 2, chosen.name + "!", chosen.color, 2.0);
+  state.blessingChoices = [];
+  state.phase = WyrmPhase.PLAYING;
+  state.screenFlashColor = B.COLOR_BLESSING; state.screenFlashTimer = B.FLASH_DURATION * 2;
 }

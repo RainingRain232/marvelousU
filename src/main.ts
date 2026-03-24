@@ -170,6 +170,9 @@ import { PhantomGame } from "./phantom/PhantomGame";
 import { ConjurerGame } from "./conjurer/ConjurerGame";
 import { FluxGame } from "./flux/FluxGame";
 import { EchoGame } from "./echo/EchoGame";
+import { VoidKnightGame } from "./voidknight/VoidKnightGame";
+import { LastFlameGame } from "./lastflame/LastFlameGame";
+import { GravitonGame } from "./graviton/GravitonGame";
 import { camelotHubScreen } from "@view/ui/CamelotHubScreen";
 
 // World mode imports
@@ -392,6 +395,9 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     [GameMode.BARD]: 46,
     [GameMode.WYRM]: 47,
     [GameMode.PRINCE_CAMELOT]: 48,
+    [GameMode.VOID_KNIGHT]: 49,
+    [GameMode.LAST_FLAME]: 50,
+    [GameMode.GRAVITON]: 51,
   };
   // Modes that need the setup screen (not skipSetup)
   const NEEDS_SETUP = new Set([GameMode.STANDARD, GameMode.DEATHMATCH, GameMode.BATTLEFIELD, GameMode.WAVE]);
@@ -686,6 +692,21 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     if (menuScreen.selectedGameMode === GameMode.ECHO) {
       menuScreen.hide();
       _bootEchoGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.VOID_KNIGHT) {
+      menuScreen.hide();
+      _bootVoidKnightGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.LAST_FLAME) {
+      menuScreen.hide();
+      _bootLastFlameGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.GRAVITON) {
+      menuScreen.hide();
+      _bootGravitonGame();
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.WORLD) {
@@ -3008,6 +3029,60 @@ async function _bootCamelotGame(): Promise<void> {
     menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
   window.addEventListener("camelotExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Void Knight mode boot
+// ---------------------------------------------------------------------------
+
+let _voidKnightGame: VoidKnightGame | null = null;
+
+async function _bootVoidKnightGame(): Promise<void> {
+  if (_voidKnightGame) { _voidKnightGame.destroy(); _voidKnightGame = null; }
+  _voidKnightGame = new VoidKnightGame();
+  await _voidKnightGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("voidknightExit", _onExit);
+    if (_voidKnightGame) { _voidKnightGame.destroy(); _voidKnightGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("voidknightExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Last Flame mode boot
+// ---------------------------------------------------------------------------
+
+let _lastFlameGame: LastFlameGame | null = null;
+
+async function _bootLastFlameGame(): Promise<void> {
+  if (_lastFlameGame) { _lastFlameGame.destroy(); _lastFlameGame = null; }
+  _lastFlameGame = new LastFlameGame();
+  await _lastFlameGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("lastflameExit", _onExit);
+    if (_lastFlameGame) { _lastFlameGame.destroy(); _lastFlameGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("lastflameExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Graviton mode boot
+// ---------------------------------------------------------------------------
+
+let _gravitonGame: GravitonGame | null = null;
+
+async function _bootGravitonGame(): Promise<void> {
+  if (_gravitonGame) { _gravitonGame.destroy(); _gravitonGame = null; }
+  _gravitonGame = new GravitonGame();
+  await _gravitonGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("gravitonExit", _onExit);
+    if (_gravitonGame) { _gravitonGame.destroy(); _gravitonGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("gravitonExit", _onExit);
 }
 
 // ---------------------------------------------------------------------------

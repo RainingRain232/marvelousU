@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Wyrm — State factory & persistence (v5)
+// Wyrm — State factory & persistence (v7)
 // ---------------------------------------------------------------------------
 
 import { WyrmPhase, Direction } from "../types";
@@ -8,7 +8,7 @@ import { WYRM_BALANCE as B } from "../config/WyrmBalance";
 
 const META_KEY = "wyrm_meta";
 
-const DEFAULT_UPGRADES: WyrmUpgrades = { extraStartLength: 0, longerFire: 0, fasterLunge: 0, thickerShield: 0 };
+const DEFAULT_UPGRADES: WyrmUpgrades = { extraStartLength: 0, longerFire: 0, fasterLunge: 0, thickerShield: 0, poisonResist: 0, comboKeeper: 0 };
 
 export function loadWyrmMeta(): WyrmMeta {
   try {
@@ -17,6 +17,9 @@ export function loadWyrmMeta(): WyrmMeta {
       const m = JSON.parse(raw) as WyrmMeta;
       if (!m.upgrades) m.upgrades = { ...DEFAULT_UPGRADES };
       if (m.dragonCoins === undefined) m.dragonCoins = 0;
+      // Migrate new upgrade fields
+      if (m.upgrades.poisonResist === undefined) m.upgrades.poisonResist = 0;
+      if (m.upgrades.comboKeeper === undefined) m.upgrades.comboKeeper = 0;
       return m;
     }
   } catch { /* ignore */ }
@@ -57,11 +60,22 @@ export function createWyrmState(cols: number, rows: number, meta?: WyrmMeta): Wy
     pickups: [], pickupTimer: 1.0,
     knights: [], knightSpawnTimer: B.KNIGHT_INITIAL_DELAY,
     boss: null, poisonTiles: [],
+    archerKnights: [], projectiles: [], archerSpawnTimer: B.KNIGHT_INITIAL_DELAY + 5,
     score: 0, highScore: m.highScore, length: startLen,
     comboCount: 0, comboTimer: 0, comboMultiplier: 1, bestCombo: 0,
     fireBreathTimer: 0, speedBoostTimer: 0, shieldHits: 0,
     lungeCooldown: 0, lungeFlash: 0,
+    gracePeriod: 0, magnetBoostTimer: 0, baseMagnetRadius: 4,
+    comboInvulnTimer: 0,
+    hitstopTimer: 0,
+    activeSynergy: null, synergyAnnouncedThisFrame: false,
+    breakableWalls: new Set(),
+    lastWaveEvent: "",
+    blessings: [], blessingChoices: [],
+    wrathMeter: 0, wrathTimer: 0, wrathAnnouncedThisFrame: false,
+    tailWhipCooldown: 0, tailWhipFlash: 0,
     sheepEaten: 0, knightsEaten: 0, treasureCollected: 0, bossesKilled: 0,
+    archersKilled: 0, projectilesDeflected: 0,
     time: 0,
     particles: [], floatingTexts: [], deathSegments: [], trail: [],
     screenShake: 0, screenFlashColor: 0xffffff, screenFlashTimer: 0,
@@ -70,6 +84,8 @@ export function createWyrmState(cols: number, rows: number, meta?: WyrmMeta): Wy
     slowMoTimer: 0, lastMilestone: 0, lastColorTier: 0,
     fireUpgrade: m.upgrades?.longerFire ?? 0,
     shieldUpgrade: m.upgrades?.thickerShield ?? 0,
+    poisonResistUpgrade: m.upgrades?.poisonResist ?? 0,
+    comboKeeperUpgrade: m.upgrades?.comboKeeper ?? 0,
     magnetRadius: 4,
     portalUsedThisFrame: false,
   };

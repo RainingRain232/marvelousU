@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Wyrm — Main Game Orchestrator (v5)
+// Wyrm — Main Game Orchestrator (v7)
 // ---------------------------------------------------------------------------
 
 import { Ticker } from "pixi.js";
@@ -12,8 +12,11 @@ import {
   updateWaves, updateSpeed, updateTimers, updateParticles, updateFloatingTexts,
   updateCombo, updateKnights, updateBoss, updateTrail, updateDeathSegments,
   updatePoisonTiles, checkKnightBodyCollisions,
+  updateArchers, updateProjectiles, updateSynergies,
+  updateWrath, tryTailWhip,
+  prepareBlessingChoice, selectBlessing,
   spawnDeathScatter, spawnParticles, spawnFloatingText, enqueueDirection,
-  checkMilestones, checkEvolution, calcDragonCoins, tryLunge,
+  checkMilestones, checkEvolution, calcDragonCoins, tryLunge, triggerHitstop,
 } from "./systems/WyrmGameSystem";
 import {
   playEat, playCombo, playPowerup, playFire,
@@ -47,8 +50,6 @@ export class WyrmGame {
     const { cols, rows } = this._gridSize(sw, sh);
     this._meta = loadWyrmMeta();
     this._state = createWyrmState(cols, rows, this._meta);
-    // Pass upgrade info to state for pickup handlers
-    // Upgrade values are set in createWyrmState from meta
     this._renderer.build(sw, sh);
     viewManager.addToLayer("background", this._renderer.container);
     this._initInput();
@@ -79,14 +80,20 @@ export class WyrmGame {
         return;
       }
       if (s.phase === WyrmPhase.DEAD) {
-        // Number keys for upgrade shop
-        if (e.code >= "Digit1" && e.code <= "Digit4") {
+        if (e.code >= "Digit1" && e.code <= "Digit6") {
           this._tryUpgrade(parseInt(e.code.charAt(5)) - 1);
           e.preventDefault();
           return;
         }
-        if (e.code === "Space" || e.code === "Enter") { this._start(); e.preventDefault(); }
+        if (e.code === "KeyR" || e.code === "Space" || e.code === "Enter") { this._start(); e.preventDefault(); }
         else if (e.code === "Escape") { this._exit(); e.preventDefault(); }
+        return;
+      }
+      // Blessing selection
+      if (s.phase === WyrmPhase.BLESSING) {
+        if (e.code === "Digit1") { selectBlessing(s, 0); playPowerup(); e.preventDefault(); }
+        else if (e.code === "Digit2") { selectBlessing(s, 1); playPowerup(); e.preventDefault(); }
+        else if (e.code === "Digit3") { selectBlessing(s, 2); playPowerup(); e.preventDefault(); }
         return;
       }
       if (e.code === "Escape") {
@@ -99,6 +106,14 @@ export class WyrmGame {
       if (e.code === "Space") {
         const lunged = tryLunge(s, this._meta.upgrades || { fasterLunge: 0 });
         if (lunged) playEat();
+        e.preventDefault();
+        return;
+      }
+
+      // Tail whip on Shift or E
+      if (e.code === "ShiftLeft" || e.code === "ShiftRight" || e.code === "KeyE") {
+        const whipped = tryTailWhip(s);
+        if (whipped) playShieldBreak(); // metallic sound fits
         e.preventDefault();
         return;
       }
@@ -126,6 +141,17 @@ export class WyrmGame {
     const s = this._state;
 
     if (s.phase === WyrmPhase.PLAYING) {
+      // Hitstop: skip gameplay update but still render
+      if (s.hitstopTimer > 0) {
+        s.hitstopTimer -= dt;
+        // Still update visual-only stuff
+        updateParticles(s, dt);
+        updateFloatingTexts(s, dt);
+        updateDeathSegments(s, dt);
+        this._renderer.render(s, sw, sh, this._meta);
+        return;
+      }
+
       this._prevCombo = s.comboCount;
       this._prevFire = s.fireBreathTimer;
       this._prevShieldHits = s.shieldHits;
@@ -143,6 +169,8 @@ export class WyrmGame {
         agePickups(s, dt);
         updateKnights(s, dt);
         updateBoss(s, dt);
+        updateArchers(s, dt);
+        updateProjectiles(s, dt);
         updatePoisonTiles(s, dt);
         checkKnightBodyCollisions(s);
         updateWaves(s, dt);
@@ -150,6 +178,8 @@ export class WyrmGame {
         updateSpeed(s);
         updateTimers(s, dt);
         updateTrail(s, dt);
+        updateSynergies(s);
+        updateWrath(s, dt);
 
         // Score milestones
         const milestone = checkMilestones(s);
@@ -159,13 +189,15 @@ export class WyrmGame {
           playMilestone();
         }
 
-        // Evolution tier announcement
+        // Evolution tier announcement + blessing offer
         const evo = checkEvolution(s);
         if (evo) {
           spawnFloatingText(s, s.body[0].x, s.body[0].y - 3, `EVOLVED: ${evo}!`, B.COLOR_MILESTONE, 2.2);
           s.screenFlashColor = B.COLOR_MILESTONE; s.screenFlashTimer = B.FLASH_DURATION * 3;
           s.screenShake = B.SHAKE_DURATION;
           playMilestone();
+          // Offer blessing choice
+          prepareBlessingChoice(s);
         }
 
         this._audio(s);
@@ -188,12 +220,12 @@ export class WyrmGame {
     if (s.shieldHits > 0 && this._prevShieldHits === 0) playPowerup();
     if (s.speedBoostTimer > 0 && this._prevSpeed <= 0) playPowerup();
     if (s.wave > this._prevWave) playWave();
-    // Portal used
     if (s.portalUsedThisFrame) { playPortal(); s.portalUsedThisFrame = false; }
-    // Boss took damage
     if (s.boss && s.boss.alive && s.boss.hp < this._prevBossHp) playBossHit();
-    // Boss defeated
     if (this._prevBossAlive && (!s.boss || !s.boss.alive)) playMilestone();
+    // Synergy activation
+    if (s.synergyAnnouncedThisFrame) { playPowerup(); s.synergyAnnouncedThisFrame = false; }
+    if (s.wrathAnnouncedThisFrame) { playFire(); playPowerup(); s.wrathAnnouncedThisFrame = false; }
   }
 
   private _start(): void {
@@ -202,7 +234,6 @@ export class WyrmGame {
     this._meta = loadWyrmMeta();
     this._state = createWyrmState(cols, rows, this._meta);
     this._state.phase = WyrmPhase.PLAYING;
-    // Upgrade values are set in createWyrmState from meta
     this._prevCombo = 0; this._prevFire = 0; this._prevShieldHits = 0;
     this._prevWave = 0; this._prevLength = this._state.length; this._prevSpeed = 0;
     this._prevBossAlive = false; this._prevBossHp = 0;
@@ -217,6 +248,7 @@ export class WyrmGame {
     spawnParticles(s, s.body[0].x, s.body[0].y, B.PARTICLE_COUNT_DEATH, B.COLOR_WYRM_HEAD);
     s.screenShake = B.SHAKE_DURATION * 2;
     s.screenFlashColor = 0xff0000; s.screenFlashTimer = B.FLASH_DURATION * 2.5;
+    triggerHitstop(s, B.HITSTOP_DEATH);
     playDeath();
     stopDrone();
 
@@ -239,7 +271,7 @@ export class WyrmGame {
   private _tryUpgrade(index: number): void {
     const meta = this._meta;
     if (!meta.upgrades) return;
-    const keys = ["extraStartLength", "longerFire", "fasterLunge", "thickerShield"] as const;
+    const keys = ["extraStartLength", "longerFire", "fasterLunge", "thickerShield", "poisonResist", "comboKeeper"] as const;
     type UpKey = typeof keys[number];
     const key: UpKey | undefined = keys[index];
     if (!key) return;

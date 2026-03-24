@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Wyrm — Balance constants (v5)
+// Wyrm — Balance constants (v7)
 // ---------------------------------------------------------------------------
 
 import type { WyrmColors } from "../types";
@@ -12,10 +12,11 @@ export const WYRM_BALANCE = {
   SPEED_PER_LENGTH: 0.001,
 
   PICKUP_SPAWN_INTERVAL: 1.8, MAX_PICKUPS: 14, PICKUP_DESPAWN_TIME: 14,
-  PICKUP_WEIGHTS: { sheep: 40, golden_sheep: 3, treasure: 14, potion: 12, fire_scroll: 6, shield: 4, portal: 3 } as Record<string, number>,
+  PICKUP_WEIGHTS: { sheep: 40, golden_sheep: 3, treasure: 14, potion: 12, fire_scroll: 6, shield: 4, portal: 3, magnet: 4 } as Record<string, number>,
 
   SCORE_SHEEP: 10, SCORE_GOLDEN_SHEEP: 50, SCORE_KNIGHT: 40, SCORE_TREASURE: 50,
   SCORE_FIRE_KILL: 15, SCORE_BOSS_KILL: 200, SCORE_PER_SECOND: 1,
+  SCORE_ARCHER_KILL: 60, SCORE_PROJECTILE_DEFLECT: 25,
 
   COMBO_WINDOW: 3.0, COMBO_MULT_CAP: 8,
 
@@ -32,14 +33,64 @@ export const WYRM_BALANCE = {
   KNIGHT_MIN_MOVE_INTERVAL: 0.18, MAX_KNIGHTS: 5, KNIGHT_INITIAL_DELAY: 8,
   KNIGHT_CHASE_WAVE: 3, KNIGHT_CHASE_CHANCE: 0.4,
 
+  // Archer knights
+  ARCHER_START_WAVE: 5, MAX_ARCHERS: 2,
+  ARCHER_FIRE_INTERVAL: 3.5, ARCHER_WARN_DURATION: 0.5,
+  PROJECTILE_SPEED: 0.1, // seconds per cell
+
   // Boss
   BOSS_WAVE_INTERVAL: 5, BOSS_HP: 3, BOSS_MOVE_INTERVAL: 0.3, BOSS_FLASH_DURATION: 0.2,
+  BOSS_HP_PER_TIER: 1,
+  BOSS_CHARGE_INTERVAL: 4, BOSS_CHARGE_DISTANCE: 3,
+  BOSS_LOOT_COUNT: 4,
+
+  // Grace period after shield break
+  GRACE_PERIOD: 0.4,
+
+  // Magnet powerup
+  MAGNET_BOOST_DURATION: 8, MAGNET_BOOST_MULT: 2.5,
+
+  // Max combo invulnerability
+  COMBO_INVULN_DURATION: 1.5, COMBO_INVULN_BONUS: 100,
+
+  // Hitstop durations (seconds)
+  HITSTOP_EAT_KNIGHT: 0.03, HITSTOP_BOSS_HIT: 0.05,
+  HITSTOP_BOSS_KILL: 0.08, HITSTOP_SHIELD_BREAK: 0.04,
+  HITSTOP_DEATH: 0.1, HITSTOP_SYNERGY: 0.06,
+
+  // Breakable walls
+  BREAKABLE_WALL_CHANCE: 0.3, SCORE_BREAK_WALL: 5,
+
+  // Wave events
+  WAVE_EVENT_INTERVAL: 3,
+
+  // Synergy names for display
+  SYNERGY_DURATION_BUFFER: 0.5, // minimum remaining time to trigger synergy
+
+  // Wrath meter
+  WRATH_MAX: 100,
+  WRATH_DRAIN_PER_SEC: 5,      // passive drain
+  WRATH_GAIN_KNIGHT: 15,
+  WRATH_GAIN_ARCHER: 20,
+  WRATH_GAIN_BOSS_HIT: 25,
+  WRATH_GAIN_LUNGE_KILL: 10,
+  WRATH_GAIN_DEFLECT: 12,
+  WRATH_DURATION: 8,            // seconds in wrath mode
+
+  // Tail whip
+  TAIL_WHIP_COOLDOWN: 6,
+  TAIL_WHIP_RANGE: 5,           // segments from end to check
+  TAIL_WHIP_FLASH: 0.2,
+  SCORE_TAIL_WHIP_KILL: 30,
+
+  // Lunge magnet pull
+  LUNGE_MAGNET_RANGE: 2,        // cells perpendicular to lunge path
 
   // Poison
   POISON_START_WAVE: 4,
   POISON_PER_WAVE: 3,
   POISON_LIFETIME: 20,
-  POISON_SHRINK: 1, // segments lost
+  POISON_SHRINK: 1,
   COLOR_POISON: 0x44aa44,
 
   // Waves
@@ -61,6 +112,8 @@ export const WYRM_BALANCE = {
     longerFire: [80, 160],
     fasterLunge: [60, 120],
     thickerShield: [150],
+    poisonResist: [70, 140],
+    comboKeeper: [100, 200],
   } as Record<string, number[]>,
 
   // Letter grades
@@ -78,15 +131,20 @@ export const WYRM_BALANCE = {
   COLOR_GRID: 0x16213e,
   COLOR_WYRM_HEAD: 0xc9a227, COLOR_WYRM_BODY: 0x6b8e23, COLOR_WYRM_BODY_ALT: 0x556b2f,
   COLOR_WYRM_FIRE: 0xff6600,
-  COLOR_WALL: 0x4a3728, COLOR_WALL_HIGHLIGHT: 0x5a4838,
+  COLOR_WALL: 0x4a3728, COLOR_WALL_HIGHLIGHT: 0x5a4838, COLOR_WALL_BREAKABLE: 0x5e4e3a,
   COLOR_SHEEP: 0xf5f5dc, COLOR_GOLDEN_SHEEP: 0xffd700,
   COLOR_KNIGHT: 0xc0c0c0, COLOR_KNIGHT_ROAM: 0x8888cc, COLOR_KNIGHT_CHASE: 0xcc4444,
+  COLOR_ARCHER: 0x88aa44, COLOR_PROJECTILE: 0xddaa22,
   COLOR_BOSS: 0xaa2266, COLOR_TREASURE: 0xffd700,
   COLOR_POTION: 0x00ccff, COLOR_FIRE_SCROLL: 0xff4400,
   COLOR_SHIELD: 0x44aaff, COLOR_PORTAL: 0xaa44ff,
   COLOR_COMBO: 0xff44ff, COLOR_DANGER: 0xff2222,
   COLOR_TRAIL: 0x3a5a1a, COLOR_MILESTONE: 0xffdd44,
-  COLOR_LUNGE: 0xffaa00, COLOR_COIN: 0xeebb33,
+  COLOR_LUNGE: 0xffaa00, COLOR_COIN: 0xeebb33, COLOR_MAGNET: 0xff66aa,
+  COLOR_GRACE: 0xffffff, COLOR_COMBO_INVULN: 0xffdd44,
+  COLOR_SYNERGY_BLAZE: 0xff8800, COLOR_SYNERGY_JUGGERNAUT: 0x44ddff,
+  COLOR_SYNERGY_INFERNO: 0xff4400, COLOR_SYNERGY_FORTRESS: 0x88aaff,
+  COLOR_WRATH: 0xff3300, COLOR_TAIL_WHIP: 0xddaa44, COLOR_BLESSING: 0xcc88ff,
 
   PARTICLE_COUNT_EAT: 10, PARTICLE_COUNT_FIRE: 5, PARTICLE_COUNT_DEATH: 24,
   PARTICLE_COUNT_SHIELD_BREAK: 16, PARTICLE_COUNT_PORTAL: 14,

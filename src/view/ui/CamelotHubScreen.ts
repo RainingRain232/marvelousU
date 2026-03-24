@@ -174,6 +174,9 @@ const MAP_BUILDINGS: MapBuilding[] = [
   { id: "conjurer_arena", x: 900, y: 150, w: 100, h: 80, label: "The Arcane Arena", mode: GameMode.CONJURER, type: "tower" },
   { id: "flux_void", x: 750, y: 700, w: 100, h: 80, label: "The Gravity Void", mode: GameMode.FLUX, type: "tower" },
   { id: "echo_tower", x: 350, y: 700, w: 90, h: 80, label: "The Echo Chamber", mode: GameMode.ECHO, type: "tower" },
+  { id: "void_arena", x: 850, y: 50, w: 100, h: 80, label: "The Void Arena", mode: GameMode.VOID_KNIGHT, type: "tower" },
+  { id: "dark_crypt", x: 300, y: 650, w: 100, h: 80, label: "The Dark Crypt", mode: GameMode.LAST_FLAME, type: "tower" },
+  { id: "gravity_well", x: 650, y: 30, w: 100, h: 80, label: "The Gravity Well", mode: GameMode.GRAVITON, type: "tower" },
 ];
 
 const CITY = { x: 250, y: 150, w: 700, h: 580 };
@@ -885,6 +888,9 @@ export class CamelotHubScreen {
       [GameMode.CONJURER]: "Conjurer",
       [GameMode.FLUX]: "Flux",
       [GameMode.ECHO]: "Echo",
+      [GameMode.VOID_KNIGHT]: "Void Knight",
+      [GameMode.LAST_FLAME]: "Last Flame",
+      [GameMode.GRAVITON]: "Graviton",
     };
     return labels[mode] || mode;
   }
