@@ -705,6 +705,11 @@ export enum GameMode {
   PLAGUE = "plague",
   PLAGUE_RT = "plague_rt",
   WYRM = "wyrm",
+  PRINCE_CAMELOT = "prince_camelot",
+  PHANTOM = "phantom",
+  CONJURER = "conjurer",
+  FLUX = "flux",
+  ECHO = "echo",
 }
 
 // ---------------------------------------------------------------------------

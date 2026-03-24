@@ -165,6 +165,11 @@ import { LabyrinthGame } from "./labyrinth/LabyrinthGame";
 import { PlagueGame } from "./plague/PlagueGame";
 import { PlagueRTGame } from "./plaguert/PlagueRTGame";
 import { WyrmGame } from "./wyrm/WyrmGame";
+import { CamelotGame } from "./camelot/CamelotGame";
+import { PhantomGame } from "./phantom/PhantomGame";
+import { ConjurerGame } from "./conjurer/ConjurerGame";
+import { FluxGame } from "./flux/FluxGame";
+import { EchoGame } from "./echo/EchoGame";
 import { camelotHubScreen } from "@view/ui/CamelotHubScreen";
 
 // World mode imports
@@ -386,6 +391,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     [GameMode.NECROMANCER]: 45,
     [GameMode.BARD]: 46,
     [GameMode.WYRM]: 47,
+    [GameMode.PRINCE_CAMELOT]: 48,
   };
   // Modes that need the setup screen (not skipSetup)
   const NEEDS_SETUP = new Set([GameMode.STANDARD, GameMode.DEATHMATCH, GameMode.BATTLEFIELD, GameMode.WAVE]);
@@ -655,6 +661,31 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     if (menuScreen.selectedGameMode === GameMode.WYRM) {
       menuScreen.hide();
       _bootWyrmGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.PRINCE_CAMELOT) {
+      menuScreen.hide();
+      _bootCamelotGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.PHANTOM) {
+      menuScreen.hide();
+      _bootPhantomGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.CONJURER) {
+      menuScreen.hide();
+      _bootConjurerGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.FLUX) {
+      menuScreen.hide();
+      _bootFluxGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.ECHO) {
+      menuScreen.hide();
+      _bootEchoGame();
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.WORLD) {
@@ -2887,6 +2918,96 @@ async function _bootWyrmGame(): Promise<void> {
     menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
   window.addEventListener("wyrmExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Phantom mode boot
+// ---------------------------------------------------------------------------
+
+let _phantomGame: PhantomGame | null = null;
+
+async function _bootPhantomGame(): Promise<void> {
+  if (_phantomGame) { _phantomGame.destroy(); _phantomGame = null; }
+  _phantomGame = new PhantomGame();
+  await _phantomGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("phantomExit", _onExit);
+    if (_phantomGame) { _phantomGame.destroy(); _phantomGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("phantomExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Conjurer mode boot
+// ---------------------------------------------------------------------------
+
+let _conjurerGame: ConjurerGame | null = null;
+
+async function _bootConjurerGame(): Promise<void> {
+  if (_conjurerGame) { _conjurerGame.destroy(); _conjurerGame = null; }
+  _conjurerGame = new ConjurerGame();
+  await _conjurerGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("conjurerExit", _onExit);
+    if (_conjurerGame) { _conjurerGame.destroy(); _conjurerGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("conjurerExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Flux mode boot
+// ---------------------------------------------------------------------------
+
+let _fluxGame: FluxGame | null = null;
+
+async function _bootFluxGame(): Promise<void> {
+  if (_fluxGame) { _fluxGame.destroy(); _fluxGame = null; }
+  _fluxGame = new FluxGame();
+  await _fluxGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("fluxExit", _onExit);
+    if (_fluxGame) { _fluxGame.destroy(); _fluxGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("fluxExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Echo mode boot
+// ---------------------------------------------------------------------------
+
+let _echoGame: EchoGame | null = null;
+
+async function _bootEchoGame(): Promise<void> {
+  if (_echoGame) { _echoGame.destroy(); _echoGame = null; }
+  _echoGame = new EchoGame();
+  await _echoGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("echoExit", _onExit);
+    if (_echoGame) { _echoGame.destroy(); _echoGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("echoExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Prince of Camelot mode boot
+// ---------------------------------------------------------------------------
+
+let _camelotGame: CamelotGame | null = null;
+
+async function _bootCamelotGame(): Promise<void> {
+  if (_camelotGame) { _camelotGame.destroy(); _camelotGame = null; }
+  _camelotGame = new CamelotGame();
+  await _camelotGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("camelotExit", _onExit);
+    if (_camelotGame) { _camelotGame.destroy(); _camelotGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("camelotExit", _onExit);
 }
 
 // ---------------------------------------------------------------------------

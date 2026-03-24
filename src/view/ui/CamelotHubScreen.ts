@@ -169,6 +169,11 @@ const MAP_BUILDINGS: MapBuilding[] = [
   { id: "exodus_gate", x: 650, y: 750, w: 120, h: 70, label: "The Exodus Gate", mode: GameMode.EXODUS, type: "gate" },
   { id: "coven_cottage", x: 160, y: 160, w: 80, h: 70, label: "Morgan's Cottage", mode: GameMode.COVEN, type: "tower" },
   { id: "wyrm_lair", x: 1000, y: 700, w: 100, h: 80, label: "The Wyrm's Lair", mode: GameMode.WYRM, type: "tower" },
+  { id: "prince_tower", x: 1100, y: 300, w: 110, h: 90, label: "Prince's Tower", mode: GameMode.PRINCE_CAMELOT, type: "castle" },
+  { id: "phantom_crypt", x: 1050, y: 520, w: 90, h: 70, label: "The Phantom's Crypt", mode: GameMode.PHANTOM, type: "tower" },
+  { id: "conjurer_arena", x: 900, y: 150, w: 100, h: 80, label: "The Arcane Arena", mode: GameMode.CONJURER, type: "tower" },
+  { id: "flux_void", x: 750, y: 700, w: 100, h: 80, label: "The Gravity Void", mode: GameMode.FLUX, type: "tower" },
+  { id: "echo_tower", x: 350, y: 700, w: 90, h: 80, label: "The Echo Chamber", mode: GameMode.ECHO, type: "tower" },
 ];
 
 const CITY = { x: 250, y: 150, w: 700, h: 580 };
@@ -875,6 +880,11 @@ export class CamelotHubScreen {
       [GameMode.MORGAN]: "Morgan",
       [GameMode.CARAVAN]: "Caravan",
       [GameMode.WYRM]: "Wyrm",
+      [GameMode.PRINCE_CAMELOT]: "Prince of Camelot",
+      [GameMode.PHANTOM]: "Phantom",
+      [GameMode.CONJURER]: "Conjurer",
+      [GameMode.FLUX]: "Flux",
+      [GameMode.ECHO]: "Echo",
     };
     return labels[mode] || mode;
   }

@@ -485,6 +485,41 @@ const GAME_MODES: GameModeEntry[] = [
     skipSetup: true,
     tag: "NEW",
   },
+  {
+    mode: GameMode.PRINCE_CAMELOT,
+    label: "PRINCE OF CAMELOT",
+    desc: "Prince of Persia-style 2D platformer: fight through the castle to defeat Mordrath",
+    skipSetup: true,
+    tag: "NEW",
+  },
+  {
+    mode: GameMode.PHANTOM,
+    label: "PHANTOM",
+    desc: "Stealth infiltration: sneak through procedural castle floors, avoid guards, collect relics, escape",
+    skipSetup: true,
+    tag: "NEW",
+  },
+  {
+    mode: GameMode.CONJURER,
+    label: "CONJURER",
+    desc: "Bullet-hell spell arena: master 4 elements, survive 30 waves, chain combos, slay bosses",
+    skipSetup: true,
+    tag: "NEW",
+  },
+  {
+    mode: GameMode.FLUX,
+    label: "FLUX",
+    desc: "Gravity arena: no weapons — place gravity wells to crash enemies together, redirect their shots",
+    skipSetup: true,
+    tag: "NEW",
+  },
+  {
+    mode: GameMode.ECHO,
+    label: "ECHO",
+    desc: "Time-loop arena: record 12-second loops that replay as ghosts fighting alongside you",
+    skipSetup: true,
+    tag: "NEW",
+  },
 ];
 
 // ---------------------------------------------------------------------------

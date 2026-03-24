@@ -1,0 +1,203 @@
+// ---------------------------------------------------------------------------
+// Phantom — Balance constants (v3)
+// ---------------------------------------------------------------------------
+
+export const PHANTOM_BALANCE = {
+  CELL_SIZE: 28,
+  MIN_COLS: 24,
+  MIN_ROWS: 18,
+
+  // Player
+  PLAYER_MOVE_INTERVAL: 0.12,
+  HELD_KEY_FIRST_DELAY: 0.18,   // delay before continuous movement starts
+  HELD_KEY_REPEAT: 0.10,        // interval for held-key repeats
+  START_LIVES: 3,
+  START_STONES: 3,
+  START_SMOKE_BOMBS: 1,
+  MAX_SMOKE_BOMBS: 3,
+  INVINCIBLE_DURATION: 2.0,
+  DETECTION_RATE: 1.8,
+  DETECTION_DECAY: 1.2,
+  DETECTION_CAUGHT: 1.0,
+  BASE_VISIBILITY_RANGE: 7,
+
+  // Peek
+  PEEK_EXTRA_RANGE: 5,
+
+  // Abilities
+  SHADOW_DASH_COOLDOWN: 6.0,
+  SHADOW_DASH_RANGE: 8,
+  DASH_TRAIL_DURATION: 0.4,
+  SMOKE_BOMB_COOLDOWN: 10.0,
+  SMOKE_BOMB_RADIUS: 2,
+  SMOKE_DURATION: 6.0,
+
+  // Backstab
+  BACKSTAB_STUN_DURATION: 15.0,
+  BACKSTAB_SCORE: 75,
+
+  // Quick throw
+  DEFAULT_THROW_DISTANCE: 4,
+  MIN_THROW_DISTANCE: 1,
+  MAX_THROW_DISTANCE: 8,
+
+  // Relic combo
+  RELIC_COMBO_WINDOW: 8.0,       // seconds to collect another relic
+  RELIC_COMBO_MULTIPLIER: 0.25,  // +25% per combo level
+  RELIC_COMBO_MAX: 4,            // max combo level
+
+  // Sleeping guards
+  SLEEPING_GUARD_START_FLOOR: 5,
+  SLEEPING_GUARD_CHANCE: 0.15,    // chance a patrol guard becomes sleeping
+  SLEEPING_WAKE_RADIUS: 2,       // noise within this range wakes them
+  SLEEPING_WAKE_TO_CHASE: true,   // wake directly into chase
+
+  // Floor transition
+  FLOOR_TRANSITION_DURATION: 0.6,
+
+  // Floor generation
+  ROOM_MIN: 4,
+  ROOM_MAX: 8,
+  ROOMS_BASE: 5,
+  ROOMS_PER_FLOOR: 1,
+  RELICS_BASE: 2,
+  RELICS_PER_3_FLOORS: 1,
+  SHADOW_CHANCE: 0.10,
+  TRAP_CHANCE: 0.04,
+  STONE_PICKUP_CHANCE: 0.05,
+  MAX_STONES: 5,
+  TORCH_CHANCE: 0.06,
+  TORCH_RADIUS: 3.5,
+  LOCKED_DOOR_START_FLOOR: 3,
+  KEY_PER_DOOR: 1,
+
+  // Guards
+  GUARDS_BASE: 2,
+  GUARDS_PER_FLOOR: 0.7,
+  MAX_GUARDS: 12,
+  GUARD_MOVE_INTERVAL: 0.35,
+  GUARD_ALERT_MOVE_INTERVAL: 0.25,
+  GUARD_CHASE_MOVE_INTERVAL: 0.18,
+  GUARD_VISION_RANGE: 5,
+  GUARD_VISION_ANGLE: Math.PI / 3,
+  GUARD_ALERT_DURATION: 5.0,
+  GUARD_STUN_DURATION: 3.0,
+  GUARD_CHASE_LOSE_TIMER: 3.0,
+
+  SENTRY_VISION_RANGE: 7,
+  SENTRY_VISION_ANGLE: Math.PI / 2.5,
+  SENTRY_START_FLOOR: 2,
+
+  HOUND_PROXIMITY_RANGE: 3,
+  HOUND_SPEED: 0.22,
+  HOUND_START_FLOOR: 4,
+
+  // Footstep noise
+  FOOTSTEP_NOISE_RANGE: 3,
+  FOOTSTEP_NOISE_CHANCE: 0.35,
+
+  // Thrown stones
+  STONE_FLY_TIME: 0.3,
+  STONE_NOISE_DURATION: 3.0,
+  STONE_NOISE_RADIUS: 6,
+
+  // Scoring
+  SCORE_RELIC: 100,
+  SCORE_FLOOR: 250,
+  SCORE_KEY: 25,
+  SCORE_STEALTH_BONUS: 50,
+  SCORE_PER_SECOND: 1,
+  SCORE_GHOST_MULTIPLIER: 2.0,
+  SCORE_SHADOW_MULTIPLIER: 1.5,
+  SCORE_SPEED_BONUS_THRESHOLD: 30,
+  SCORE_SPEED_BONUS: 150,
+
+  // Shadow coins
+  COINS_PER_FLOOR: 3,
+  COINS_PER_GHOST: 2,        // bonus coins for ghost rating
+  COINS_PER_RELIC: 1,
+
+  // Upgrade costs [level0→1, level1→2, ...]
+  UPGRADE_COSTS: {
+    extraLife:   [30, 80],
+    quickDash:   [15, 40],
+    keenEyes:    [20, 50],
+    lightFeet:   [20, 50],
+    extraSmoke:  [40],
+  } as Record<string, number[]>,
+
+  // Floor modifiers
+  MODIFIER_START_FLOOR: 3,      // modifiers appear from this floor
+  DARKNESS_VISIBILITY: 4,       // reduced visibility range
+  SWIFT_GUARD_SPEED_MULT: 0.7,  // guards are 30% faster
+  SWIFT_EXTRA_SHADOWS: 0.08,    // extra shadow chance
+  REINFORCED_GUARD_MULT: 1.5,
+  TREASURY_EXTRA_RELICS: 2,
+  TREASURY_EXTRA_GUARDS: 2,
+  CURSED_TRAP_MULT: 2.5,
+
+  // Visual
+  SHAKE_DURATION: 0.3,
+  SHAKE_INTENSITY: 5,
+  FLASH_DURATION: 0.25,
+  PARTICLE_LIFETIME: 0.8,
+  PARTICLE_COUNT_CATCH: 16,
+  PARTICLE_COUNT_RELIC: 12,
+  PARTICLE_COUNT_EXIT: 20,
+  PARTICLE_COUNT_DASH: 10,
+  PARTICLE_COUNT_SMOKE: 14,
+  PARTICLE_COUNT_BACKSTAB: 8,
+  AMBIENT_PARTICLE_COUNT: 20,
+
+  // Colors
+  COLOR_BG: 0x0a0a14,
+  COLOR_FLOOR: 0x1a1a2e,
+  COLOR_FLOOR_ALT: 0x181828,
+  COLOR_WALL: 0x2a2a3e,
+  COLOR_WALL_TOP: 0x3a3a4e,
+  COLOR_SHADOW: 0x08081a,
+  COLOR_SHADOW_GLOW: 0x1a1a3e,
+  COLOR_EXIT_CLOSED: 0x333344,
+  COLOR_EXIT_OPEN: 0x44dd88,
+  COLOR_RELIC: 0xffd700,
+  COLOR_RELIC_GLOW: 0xffaa00,
+  COLOR_TRAP: 0x883322,
+  COLOR_TRAP_ACTIVE: 0xff4422,
+  COLOR_STONE_PICKUP: 0x8888aa,
+  COLOR_KEY: 0xffcc44,
+  COLOR_LOCKED_DOOR: 0x886633,
+  COLOR_LOCKED_DOOR_FRAME: 0xaa8844,
+  COLOR_TORCH: 0xff9933,
+  COLOR_TORCH_GLOW: 0xff661a,
+  COLOR_SMOKE: 0x556688,
+  COLOR_PLAYER: 0x6644cc,
+  COLOR_PLAYER_HIDDEN: 0x4422aa,
+  COLOR_PLAYER_DASH: 0x9966ff,
+  COLOR_PLAYER_PEEK: 0x8855dd,
+  COLOR_GUARD: 0xcc4444,
+  COLOR_GUARD_ALERT: 0xff8844,
+  COLOR_GUARD_CHASE: 0xff2222,
+  COLOR_GUARD_STUNNED: 0x666688,
+  COLOR_GUARD_KO: 0x444466,
+  COLOR_SENTRY: 0xcc6644,
+  COLOR_HOUND: 0x88aa44,
+  COLOR_HOUND_RANGE: 0x88aa4418,
+  COLOR_VISION: 0xffff4420,
+  COLOR_VISION_ALERT: 0xff884430,
+  COLOR_DETECTION: 0xff2222,
+  COLOR_STONE_THROWN: 0xaaaacc,
+  COLOR_NOISE: 0xffaa44,
+  COLOR_BACKSTAB: 0xcc44ff,
+  COLOR_TEXT: 0xccccdd,
+  COLOR_GOLD: 0xffd700,
+  COLOR_COIN: 0xccaa33,
+  COLOR_SUCCESS: 0x44dd88,
+  COLOR_DANGER: 0xff4444,
+  COLOR_GHOST: 0x44ffcc,
+  COLOR_SHADOW_RATING: 0x8866cc,
+  COLOR_AMBIENT: 0x334466,
+  COLOR_MODIFIER: 0xcc88ff,
+  COLOR_DARKNESS: 0x222244,
+  COLOR_SLEEPING: 0x4466aa,
+  COLOR_COMBO: 0xff88ff,
+} as const;
