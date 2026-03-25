@@ -555,6 +555,13 @@ const GAME_MODES: GameModeEntry[] = [
     skipSetup: true,
     tag: "NEW",
   },
+  {
+    mode: GameMode.MERLIN_DUEL,
+    label: "MERLIN'S DUEL",
+    desc: "Duel rival wizards in magical combat",
+    skipSetup: true,
+    tag: "NEW",
+  },
 ];
 
 // ---------------------------------------------------------------------------

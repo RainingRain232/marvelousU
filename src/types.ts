@@ -714,6 +714,7 @@ export enum GameMode {
   LAST_FLAME = "last_flame",
   GRAVITON = "graviton",
   GRAIL_QUEST = "grail_quest",
+  MERLIN_DUEL = "merlin_duel",
 }
 
 // ---------------------------------------------------------------------------

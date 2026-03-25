@@ -178,6 +178,7 @@ const MAP_BUILDINGS: MapBuilding[] = [
   { id: "dark_crypt", x: 300, y: 650, w: 100, h: 80, label: "The Dark Crypt", mode: GameMode.LAST_FLAME, type: "tower" },
   { id: "gravity_well", x: 650, y: 30, w: 100, h: 80, label: "The Gravity Well", mode: GameMode.GRAVITON, type: "tower" },
   { id: "grail_crypt", x: 150, y: 50, w: 100, h: 80, label: "The Grail Crypt", mode: GameMode.GRAIL_QUEST, type: "tower" },
+  { id: "arcane_dueling", x: 500, y: 50, w: 100, h: 80, label: "The Arcane Arena", mode: GameMode.MERLIN_DUEL, type: "tower" },
 ];
 
 const CITY = { x: 250, y: 150, w: 700, h: 580 };
@@ -893,6 +894,7 @@ export class CamelotHubScreen {
       [GameMode.LAST_FLAME]: "Last Flame",
       [GameMode.GRAVITON]: "Graviton",
       [GameMode.GRAIL_QUEST]: "Grail Quest",
+      [GameMode.MERLIN_DUEL]: "Merlin's Duel",
     };
     return labels[mode] || mode;
   }
