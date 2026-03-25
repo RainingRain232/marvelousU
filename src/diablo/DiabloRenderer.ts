@@ -11569,6 +11569,7 @@ export class DiabloRenderer {
     // Remove old vendor meshes
     for (const [id, mesh] of this._vendorMeshes) {
       if (!currentIds.has(id)) {
+        this._disposeObject3D(mesh);
         this._scene.remove(mesh);
         this._vendorMeshes.delete(id);
       }
@@ -11828,6 +11829,7 @@ export class DiabloRenderer {
     // Remove old meshes
     for (const [id, mesh] of this._townfolkMeshes) {
       if (!currentIds.has(id)) {
+        this._disposeObject3D(mesh);
         this._scene.remove(mesh);
         this._townfolkMeshes.delete(id);
       }
@@ -27180,6 +27182,7 @@ export class DiabloRenderer {
       // Remove meshes for disconnected players
       for (const [id, mesh] of this._remotePlayerMeshes) {
         if (!activeIds.has(id)) {
+          this._disposeObject3D(mesh);
           this._scene.remove(mesh);
           this._remotePlayerMeshes.delete(id);
         }
@@ -27653,6 +27656,7 @@ export class DiabloRenderer {
           }
         });
         if (!anyVisible) {
+          this._disposeObject3D(mesh);
           this._scene.remove(mesh);
           this._enemyMeshes.delete(id);
         }
@@ -27910,6 +27914,7 @@ export class DiabloRenderer {
       } else {
         const existing = this._healBeams.get(enemy.id);
         if (existing) {
+          this._disposeObject3D(existing);
           this._scene.remove(existing);
           this._healBeams.delete(enemy.id);
         }
@@ -28049,12 +28054,14 @@ export class DiabloRenderer {
     for (const [key, mesh] of this._shieldMeshes) {
       const eid = key.split("_")[0];
       if (!currentIds.has(eid)) {
+        this._disposeObject3D(mesh);
         this._scene.remove(mesh);
         this._shieldMeshes.delete(key);
       }
     }
     for (const [key, beam] of this._healBeams) {
       if (!currentIds.has(key)) {
+        this._disposeObject3D(beam);
         this._scene.remove(beam);
         this._healBeams.delete(key);
       }
@@ -29629,6 +29636,7 @@ export class DiabloRenderer {
 
     for (const [id, mesh] of this._lootMeshes) {
       if (!currentIds.has(id)) {
+        this._disposeObject3D(mesh);
         this._scene.remove(mesh);
         this._lootMeshes.delete(id);
         this._lootSpawnTimes.delete(id);
@@ -29674,6 +29682,7 @@ export class DiabloRenderer {
 
     for (const [id, mesh] of this._chestMeshes) {
       if (!currentIds.has(id)) {
+        this._disposeObject3D(mesh);
         this._scene.remove(mesh);
         this._chestMeshes.delete(id);
       }
@@ -29706,6 +29715,7 @@ export class DiabloRenderer {
 
     for (const [id, grp] of this._aoeMeshes) {
       if (!currentIds.has(id)) {
+        this._disposeObject3D(grp);
         this._scene.remove(grp);
         this._aoeMeshes.delete(id);
       }
@@ -52211,6 +52221,7 @@ export class DiabloRenderer {
       const enemyId = key.split('-').slice(1).join('-');
       const enemy = state.enemies.find(e => e.id === enemyId);
       if (!enemy || enemy.state === EnemyState.DEAD) {
+        this._disposeObject3D(mesh);
         this._scene.remove(mesh);
         this._bossEffectMeshes.delete(key);
       }
@@ -52365,17 +52376,30 @@ export class DiabloRenderer {
       this._weaponMesh.geometry.dispose();
     }
     this._weaponMesh = null;
+    for (const [, mesh] of this._enemyMeshes) {
+      this._disposeObject3D(mesh);
+      this._scene.remove(mesh);
+    }
     this._enemyMeshes.clear();
     for (const [, mesh] of this._projectileMeshes) {
+      this._disposeObject3D(mesh);
       this._scene.remove(mesh);
-      mesh.traverse((child: THREE.Object3D) => {
-        if ((child as THREE.Mesh).geometry) (child as THREE.Mesh).geometry.dispose();
-        if ((child as THREE.Mesh).material) ((child as THREE.Mesh).material as THREE.Material).dispose();
-      });
     }
     this._projectileMeshes.clear();
+    for (const [, mesh] of this._lootMeshes) {
+      this._disposeObject3D(mesh);
+      this._scene.remove(mesh);
+    }
     this._lootMeshes.clear();
+    for (const [, mesh] of this._chestMeshes) {
+      this._disposeObject3D(mesh);
+      this._scene.remove(mesh);
+    }
     this._chestMeshes.clear();
+    for (const [, grp] of this._aoeMeshes) {
+      this._disposeObject3D(grp);
+      this._scene.remove(grp);
+    }
     this._aoeMeshes.clear();
     for (const [, sprite] of this._floatTextSprites) {
       if (sprite.material instanceof THREE.SpriteMaterial) {
@@ -52385,14 +52409,40 @@ export class DiabloRenderer {
     }
     this._floatTextSprites.clear();
     for (const [, mesh] of this._vendorMeshes) {
+      this._disposeObject3D(mesh);
       this._scene.remove(mesh);
     }
     this._vendorMeshes.clear();
 
     for (const [, mesh] of this._townfolkMeshes) {
+      this._disposeObject3D(mesh);
       this._scene.remove(mesh);
     }
     this._townfolkMeshes.clear();
+
+    for (const [, mesh] of this._shieldMeshes) {
+      this._disposeObject3D(mesh);
+      this._scene.remove(mesh);
+    }
+    this._shieldMeshes.clear();
+
+    for (const [, beam] of this._healBeams) {
+      this._disposeObject3D(beam);
+      this._scene.remove(beam);
+    }
+    this._healBeams.clear();
+
+    for (const [, mesh] of this._bossEffectMeshes) {
+      this._disposeObject3D(mesh);
+      this._scene.remove(mesh);
+    }
+    this._bossEffectMeshes.clear();
+
+    for (const [, mesh] of this._remotePlayerMeshes) {
+      this._disposeObject3D(mesh);
+      this._scene.remove(mesh);
+    }
+    this._remotePlayerMeshes.clear();
 
     for (const [, mesh] of this._petMeshes) {
       this._scene.remove(mesh);
@@ -52426,12 +52476,14 @@ export class DiabloRenderer {
     this._playerActiveEffects.clear();
 
     for (const [, grp] of this._bossWarningRings) {
+      this._disposeObject3D(grp);
       this._scene.remove(grp);
     }
     this._bossWarningRings.clear();
 
     for (const mesh of this._particleMeshPool) {
       this._scene.remove(mesh);
+      mesh.geometry.dispose();
       (mesh.material as THREE.MeshStandardMaterial).dispose();
     }
     this._particleMeshPool = [];

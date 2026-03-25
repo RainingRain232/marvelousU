@@ -14,7 +14,6 @@ import {
   MapModifier, LootFilterLevel, GreaterRiftState,
   PetType, PetSpecies, PetAIState, DiabloPet,
   CraftingStationType, MaterialType, AdvancedCraftingRecipe,
-  DungeonRoom, DungeonCorridor, DungeonLayout,
   RuneType, SkillRuneEffect,
   LegendaryEffectDef,
   ItemSlot, ItemType, DiabloItemStats,
@@ -505,6 +504,7 @@ export class DiabloGame {
   private _boundMouseUp!: (e: MouseEvent) => void;
   private _boundContextMenu!: (e: MouseEvent) => void;
   private _boundResize!: () => void;
+  private _boundPointerLockChange!: () => void;
 
   // HUD element references
   private _hpBar!: HTMLDivElement;
@@ -893,13 +893,14 @@ export class DiabloGame {
     window.addEventListener("mouseup", this._boundMouseUp);
     window.addEventListener("contextmenu", this._boundContextMenu);
     window.addEventListener("resize", this._boundResize);
-    document.addEventListener("pointerlockchange", () => {
+    this._boundPointerLockChange = () => {
       this._pointerLocked = document.pointerLockElement === this._renderer.canvas;
       if (!this._pointerLocked && this._firstPerson) {
         this._firstPerson = false;
         this._renderer.firstPerson = false;
       }
-    });
+    };
+    document.addEventListener("pointerlockchange", this._boundPointerLockChange);
 
     this._buildHUD();
     this._showClassSelect();
@@ -919,6 +920,7 @@ export class DiabloGame {
     window.removeEventListener("mouseup", this._boundMouseUp);
     window.removeEventListener("contextmenu", this._boundContextMenu);
     window.removeEventListener("resize", this._boundResize);
+    document.removeEventListener("pointerlockchange", this._boundPointerLockChange);
     if (this._hud && this._hud.parentElement) {
       this._hud.parentElement.removeChild(this._hud);
     }
@@ -2436,19 +2438,7 @@ export class DiabloGame {
       this._portalZ = gridD / 2;
       this._portalActive = true;
 
-      // Generate procedural dungeon for non-town maps
-      const mapDepth = (mapCfg as any).depth || (mapCfg as any).height || mapCfg.width;
-      const dungeon = this._generateDungeon(mapCfg.width, mapDepth);
-      this._state.dungeonLayout = dungeon;
-
-      // Place player in spawn room
-      if (dungeon.rooms.length > 0) {
-        const spawnRoom = dungeon.rooms[dungeon.spawnRoom];
-        this._state.player.x = spawnRoom.x + spawnRoom.width / 2;
-        this._state.player.z = spawnRoom.z + spawnRoom.height / 2;
-        this._safeZoneX = this._state.player.x;
-        this._safeZoneZ = this._state.player.z;
-      }
+      this._state.dungeonLayout = null;
 
       this._spawnInitialEnemies();
       this._spawnInitialChests();
@@ -2456,9 +2446,7 @@ export class DiabloGame {
       this._spawnBountyTargets();
     }
 
-    if (this._state.dungeonLayout) {
-      this._renderer.renderDungeonLayout(this._state.dungeonLayout);
-    }
+    this._renderer.renderDungeonLayout(null);
 
     this._state.phase = DiabloPhase.PLAYING;
     this._menuEl.innerHTML = "";
@@ -6618,8 +6606,6 @@ export class DiabloGame {
   // ──────────────────────────────────────────────────────────────
   private _processInput(dt: number): void {
     const p = this._state.player;
-    const prevX = p.x;
-    const prevZ = p.z;
 
     if (this._firstPerson && this._pointerLocked) {
       // FPS mouse look
@@ -6710,12 +6696,6 @@ export class DiabloGame {
       }
     }
 
-    // Dungeon boundary check - revert if moved outside walkable area
-    if (this._state.dungeonLayout && !this._isInDungeon(p.x, p.z)) {
-      p.x = prevX;
-      p.z = prevZ;
-    }
-
     // Clamp to map bounds
     const mapCfg = MAP_CONFIGS[this._state.currentMap];
     const halfW = mapCfg.width / 2;
@@ -6788,51 +6768,6 @@ export class DiabloGame {
         p.dodgeVz = 0;
       }
       return; // Skip other updates during dodge
-    }
-
-    // Environmental hazard damage
-    if (this._state.dungeonLayout) {
-      for (const hazard of this._state.dungeonLayout.hazards) {
-        const hDist = Math.sqrt((p.x - hazard.x) ** 2 + (p.z - hazard.z) ** 2);
-        if (hDist < hazard.radius) {
-          let hazardDmg = 0;
-          let effect: StatusEffect | null = null;
-          switch (hazard.type) {
-            case 'lava': hazardDmg = 15 * dt; effect = StatusEffect.BURNING; break;
-            case 'spikes': hazardDmg = 25 * dt; effect = StatusEffect.BLEEDING; break;
-            case 'poison': hazardDmg = 10 * dt; effect = StatusEffect.POISONED; break;
-            case 'ice': hazardDmg = 8 * dt; effect = StatusEffect.FROZEN; break;
-          }
-          p.hp -= hazardDmg;
-          if (effect && Math.random() < 0.05) { // 5% chance per frame to apply status
-            if (!p.statusEffects.some(e => e.effect === effect)) {
-              p.statusEffects.push({ effect, duration: 3, source: 'hazard' });
-            }
-          }
-        }
-      }
-    }
-
-    // Check room entry for dungeon spawning
-    if (this._state.dungeonLayout) {
-      for (const room of this._state.dungeonLayout.rooms) {
-        if (room.cleared) continue;
-        const inRoom = p.x >= room.x && p.x <= room.x + room.width &&
-                       p.z >= room.z && p.z <= room.z + room.height;
-        if (inRoom && room.enemies > 0) {
-          const count = room.enemies;
-          for (let i = 0; i < count; i++) {
-            this._spawnEnemyInRoom(room);
-          }
-          room.enemies = 0; // Prevent re-spawning
-
-          if (room.type === 'boss') {
-            this._addFloatingText(p.x, p.y + 3, p.z, 'BOSS ROOM!', '#ff4444');
-          } else if (room.type === 'treasure') {
-            this._addFloatingText(p.x, p.y + 3, p.z, 'Treasure Room!', '#ffd700');
-          }
-        }
-      }
     }
 
     // Process queued skill
@@ -9055,26 +8990,6 @@ export class DiabloGame {
     if (this._state.phase !== DiabloPhase.PLAYING) return;
     if (this._state.currentMap === DiabloMapId.CAMELOT) return;
 
-    // Check room clearing
-    if (this._state.dungeonLayout) {
-      for (const room of this._state.dungeonLayout.rooms) {
-        if (room.cleared || room.enemies > 0) continue;
-        // Check if any alive enemies are still in this room
-        const enemiesInRoom = this._state.enemies.filter(e =>
-          e.state !== EnemyState.DEAD && e.state !== EnemyState.DYING &&
-          e.x >= room.x && e.x <= room.x + room.width &&
-          e.z >= room.z && e.z <= room.z + room.height
-        );
-        if (enemiesInRoom.length === 0) {
-          room.cleared = true;
-          this._addFloatingText(
-            room.x + room.width / 2, 2, room.z + room.height / 2,
-            'Room Cleared!', '#44ff44'
-          );
-        }
-      }
-    }
-
     const target = MAP_KILL_TARGET[this._state.currentMap] || 50;
     if (this._state.killCount >= target) {
       const aliveEnemies = this._state.enemies.filter(
@@ -9173,29 +9088,6 @@ export class DiabloGame {
     // Day boss re-spawn check (once per 15 kills when not night)
     if (this._state.timeOfDay !== TimeOfDay.NIGHT && this._state.killCount > 0 && this._state.killCount % 15 === 0) {
       this._spawnDayBoss();
-    }
-
-    // Room-based spawning in dungeons
-    if (this._state.dungeonLayout) {
-      const layout = this._state.dungeonLayout;
-      for (const room of layout.rooms) {
-        if (room.cleared || room.type === 'start') continue;
-        const playerInRoom = p.x >= room.x - 2 && p.x <= room.x + room.width + 2 &&
-                             p.z >= room.z - 2 && p.z <= room.z + room.height + 2;
-        if (playerInRoom && room.enemies > 0) {
-          const count = room.enemies;
-          for (let i = 0; i < count; i++) {
-            this._spawnEnemyInRoom(room);
-          }
-          room.enemies = 0;
-          if (room.type === 'boss') {
-            this._addFloatingText(p.x, p.y + 3, p.z, 'BOSS ROOM!', '#ff4444');
-          } else if (room.type === 'treasure') {
-            this._addFloatingText(p.x, p.y + 3, p.z, 'Treasure Room!', '#ffd700');
-          }
-        }
-      }
-      return;
     }
 
     // Random position 40-60 units from player, within map bounds
@@ -9310,12 +9202,6 @@ export class DiabloGame {
 
     this._state.enemies.push(enemy);
     this._state.totalEnemiesSpawned++;
-  }
-
-  private _spawnEnemyInRoom(room: DungeonRoom): void {
-    const x = room.x + 1 + Math.random() * (room.width - 2);
-    const z = room.z + 1 + Math.random() * (room.height - 2);
-    this._spawnEnemyAt(x, z);
   }
 
   // ──────────────────────────────────────────────────────────────
@@ -10762,187 +10648,6 @@ export class DiabloGame {
   }
 
   // ──────────────────────────────────────────────────────────────
-  //  PROCEDURAL DUNGEON GENERATION (BSP)
-  // ──────────────────────────────────────────────────────────────
-  private _generateDungeon(mapWidth: number, mapDepth: number): DungeonLayout {
-    const rooms: DungeonRoom[] = [];
-    const corridors: DungeonCorridor[] = [];
-    const walls: { x: number; z: number; w: number; h: number }[] = [];
-    const hazards: { x: number; z: number; radius: number; type: 'lava' | 'spikes' | 'poison' | 'ice' }[] = [];
-
-    // BSP tree node
-    interface BSPNode {
-      x: number;
-      z: number;
-      w: number;
-      h: number;
-      left?: BSPNode;
-      right?: BSPNode;
-      room?: DungeonRoom;
-    }
-
-    const MIN_ROOM_SIZE = 8;
-    const MAX_ROOM_SIZE = 18;
-    const PADDING = 2;
-
-    // Recursive BSP split
-    const split = (node: BSPNode, depth: number): void => {
-      if (depth <= 0 || (node.w < MIN_ROOM_SIZE * 2.5 && node.h < MIN_ROOM_SIZE * 2.5)) {
-        // Create a room in this leaf
-        const rw = MIN_ROOM_SIZE + Math.floor(Math.random() * Math.min(MAX_ROOM_SIZE - MIN_ROOM_SIZE, node.w - PADDING * 2 - MIN_ROOM_SIZE));
-        const rh = MIN_ROOM_SIZE + Math.floor(Math.random() * Math.min(MAX_ROOM_SIZE - MIN_ROOM_SIZE, node.h - PADDING * 2 - MIN_ROOM_SIZE));
-        const rx = node.x + PADDING + Math.floor(Math.random() * Math.max(1, node.w - rw - PADDING * 2));
-        const rz = node.z + PADDING + Math.floor(Math.random() * Math.max(1, node.h - rh - PADDING * 2));
-
-        node.room = {
-          x: rx, z: rz, width: rw, height: rh,
-          type: 'normal', connected: [], enemies: 3 + Math.floor(Math.random() * 5),
-          cleared: false,
-        };
-        rooms.push(node.room);
-        return;
-      }
-
-      // Split horizontally or vertically
-      const splitH = node.w < node.h ? true : node.h < node.w ? false : Math.random() > 0.5;
-
-      if (splitH) {
-        const splitAt = Math.floor(node.h * (0.35 + Math.random() * 0.3));
-        node.left = { x: node.x, z: node.z, w: node.w, h: splitAt };
-        node.right = { x: node.x, z: node.z + splitAt, w: node.w, h: node.h - splitAt };
-      } else {
-        const splitAt = Math.floor(node.w * (0.35 + Math.random() * 0.3));
-        node.left = { x: node.x, z: node.z, w: splitAt, h: node.h };
-        node.right = { x: node.x + splitAt, z: node.z, w: node.w - splitAt, h: node.h };
-      }
-
-      split(node.left, depth - 1);
-      split(node.right, depth - 1);
-
-      // Connect rooms from left and right subtrees with a corridor
-      const getRoom = (n: BSPNode): DungeonRoom | undefined => {
-        if (n.room) return n.room;
-        if (n.left) return getRoom(n.left);
-        if (n.right) return getRoom(n.right);
-        return undefined;
-      };
-
-      const leftRoom = getRoom(node.left);
-      const rightRoom = node.right ? getRoom(node.right) : undefined;
-
-      if (leftRoom && rightRoom) {
-        const cx1 = leftRoom.x + leftRoom.width / 2;
-        const cz1 = leftRoom.z + leftRoom.height / 2;
-        const cx2 = rightRoom.x + rightRoom.width / 2;
-        const cz2 = rightRoom.z + rightRoom.height / 2;
-
-        const li = rooms.indexOf(leftRoom);
-        const ri = rooms.indexOf(rightRoom);
-        leftRoom.connected.push(ri);
-        rightRoom.connected.push(li);
-
-        // L-shaped corridor
-        if (Math.random() > 0.5) {
-          corridors.push({ x1: cx1, z1: cz1, x2: cx2, z2: cz1, width: 3 });
-          corridors.push({ x1: cx2, z1: cz1, x2: cx2, z2: cz2, width: 3 });
-        } else {
-          corridors.push({ x1: cx1, z1: cz1, x2: cx1, z2: cz2, width: 3 });
-          corridors.push({ x1: cx1, z1: cz2, x2: cx2, z2: cz2, width: 3 });
-        }
-      }
-    };
-
-    const halfW = mapWidth / 2;
-    const halfD = mapDepth / 2;
-    const root: BSPNode = { x: -halfW + 2, z: -halfD + 2, w: mapWidth - 4, h: mapDepth - 4 };
-    split(root, 4);
-
-    // Assign special room types
-    if (rooms.length > 0) {
-      rooms[0].type = 'start';
-      rooms[0].enemies = 0;
-      rooms[rooms.length - 1].type = 'boss';
-      rooms[rooms.length - 1].enemies = 1; // boss handled separately
-
-      // Random treasure room
-      if (rooms.length > 3) {
-        const treasureIdx = 1 + Math.floor(Math.random() * (rooms.length - 2));
-        rooms[treasureIdx].type = 'treasure';
-        rooms[treasureIdx].enemies = 2;
-      }
-
-      // Random secret room (10% chance per room)
-      for (let i = 1; i < rooms.length - 1; i++) {
-        if (rooms[i].type === 'normal' && Math.random() < 0.1) {
-          rooms[i].type = 'secret';
-          rooms[i].enemies = 1;
-        }
-      }
-    }
-
-    // Generate wall segments around rooms and corridors (for colliders)
-    // Walls are the areas NOT covered by rooms or corridors
-    for (const room of rooms) {
-      // Add walls around room perimeter (as thin colliders)
-      const wallThickness = 0.5;
-      // Top wall
-      walls.push({ x: room.x + room.width / 2, z: room.z - wallThickness / 2, w: room.width + wallThickness, h: wallThickness });
-      // Bottom wall
-      walls.push({ x: room.x + room.width / 2, z: room.z + room.height + wallThickness / 2, w: room.width + wallThickness, h: wallThickness });
-      // Left wall
-      walls.push({ x: room.x - wallThickness / 2, z: room.z + room.height / 2, w: wallThickness, h: room.height + wallThickness });
-      // Right wall
-      walls.push({ x: room.x + room.width + wallThickness / 2, z: room.z + room.height / 2, w: wallThickness, h: room.height + wallThickness });
-    }
-
-    // Add environmental hazards in some rooms
-    const hazardTypes: ('lava' | 'spikes' | 'poison' | 'ice')[] = ['lava', 'spikes', 'poison', 'ice'];
-    for (const room of rooms) {
-      if (room.type === 'normal' && Math.random() < 0.25) {
-        const hx = room.x + room.width * (0.3 + Math.random() * 0.4);
-        const hz = room.z + room.height * (0.3 + Math.random() * 0.4);
-        hazards.push({
-          x: hx, z: hz,
-          radius: 1.5 + Math.random() * 2,
-          type: hazardTypes[Math.floor(Math.random() * hazardTypes.length)],
-        });
-      }
-    }
-
-    return {
-      rooms, corridors, walls, hazards,
-      spawnRoom: 0,
-      bossRoom: rooms.length - 1,
-    };
-  }
-
-  // Check if a point is inside the walkable dungeon area
-  private _isInDungeon(x: number, z: number): boolean {
-    const layout = this._state.dungeonLayout;
-    if (!layout) return true; // No dungeon = open map
-
-    // Check rooms
-    for (const room of layout.rooms) {
-      if (x >= room.x && x <= room.x + room.width && z >= room.z && z <= room.z + room.height) {
-        return true;
-      }
-    }
-
-    // Check corridors
-    for (const corridor of layout.corridors) {
-      const minX = Math.min(corridor.x1, corridor.x2) - corridor.width / 2;
-      const maxX = Math.max(corridor.x1, corridor.x2) + corridor.width / 2;
-      const minZ = Math.min(corridor.z1, corridor.z2) - corridor.width / 2;
-      const maxZ = Math.max(corridor.z1, corridor.z2) + corridor.width / 2;
-      if (x >= minX && x <= maxX && z >= minZ && z <= maxZ) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
-  // ──────────────────────────────────────────────────────────────
   //  HELPER: Spawn initial enemies (extracted from _startMap)
   // ──────────────────────────────────────────────────────────────
   private _spawnInitialEnemies(): void {
@@ -12019,53 +11724,6 @@ export class DiabloGame {
     ctx.lineWidth = 1.5;
     ctx.strokeRect(toMx(-halfW), toMy(-halfD), mapW * scale, mapD * scale);
 
-    // Draw dungeon rooms on minimap
-    if (this._state.dungeonLayout) {
-      const layout = this._state.dungeonLayout;
-
-      // Draw rooms
-      for (const room of layout.rooms) {
-        let color = 'rgba(100,100,100,0.4)';
-        if (room.type === 'start') color = 'rgba(100,200,100,0.4)';
-        else if (room.type === 'boss') color = 'rgba(200,100,100,0.4)';
-        else if (room.type === 'treasure') color = 'rgba(200,200,100,0.4)';
-        else if (room.type === 'secret') color = 'rgba(100,100,200,0.4)';
-
-        ctx.fillStyle = color;
-        const rx = toMx(room.x);
-        const rz = toMy(room.z);
-        ctx.fillRect(rx, rz, room.width * scale, room.height * scale);
-
-        // Room border
-        ctx.strokeStyle = 'rgba(150,150,150,0.6)';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(rx, rz, room.width * scale, room.height * scale);
-      }
-
-      // Draw corridors
-      ctx.fillStyle = 'rgba(80,80,80,0.3)';
-      for (const corridor of layout.corridors) {
-        const x1 = toMx(Math.min(corridor.x1, corridor.x2) - corridor.width / 2);
-        const z1 = toMy(Math.min(corridor.z1, corridor.z2) - corridor.width / 2);
-        const w = (Math.abs(corridor.x2 - corridor.x1) + corridor.width) * scale;
-        const h = (Math.abs(corridor.z2 - corridor.z1) + corridor.width) * scale;
-        ctx.fillRect(x1, z1, w, h);
-      }
-
-      // Draw hazards
-      for (const hazard of layout.hazards) {
-        let hColor = 'rgba(255,68,0,0.4)';
-        if (hazard.type === 'poison') hColor = 'rgba(68,255,0,0.4)';
-        else if (hazard.type === 'ice') hColor = 'rgba(68,136,255,0.4)';
-        else if (hazard.type === 'spikes') hColor = 'rgba(136,136,136,0.4)';
-
-        ctx.fillStyle = hColor;
-        ctx.beginPath();
-        ctx.arc(toMx(hazard.x), toMy(hazard.z), hazard.radius * scale, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-
     // Fog of war overlay for combat maps
     const useFogOfWar = mapId !== DiabloMapId.CAMELOT && this._state.exploredGrid.length > 0;
 
@@ -12226,18 +11884,6 @@ export class DiabloGame {
             ctx.font = '10px serif';
             ctx.fillText('\u{1F480}', bx - 5, bz + 4);
           }
-        }
-      }
-
-      // Boss room marker (if dungeon)
-      if (this._state.dungeonLayout) {
-        const bossRoom = this._state.dungeonLayout.rooms[this._state.dungeonLayout.bossRoom];
-        if (bossRoom && !bossRoom.cleared) {
-          const brx = toMx(bossRoom.x + bossRoom.width / 2);
-          const brz = toMy(bossRoom.z + bossRoom.height / 2);
-          ctx.fillStyle = '#ff4444';
-          ctx.font = '12px serif';
-          ctx.fillText('\u{1F451}', brx - 6, brz + 5);
         }
       }
 
@@ -12413,12 +12059,7 @@ export class DiabloGame {
       this._isDead = false;
       this._deathOverlay.style.display = "none";
       const p = this._state.player;
-      // Respawn at dungeon entrance if available, otherwise map corner
-      if (this._state.dungeonLayout && this._state.dungeonLayout.rooms.length > 0) {
-        const startRoom = this._state.dungeonLayout.rooms[this._state.dungeonLayout.spawnRoom];
-        p.x = startRoom.x + startRoom.width / 2;
-        p.z = startRoom.z + startRoom.height / 2;
-      } else if (this._state.currentMap === DiabloMapId.CAMELOT) {
+      if (this._state.currentMap === DiabloMapId.CAMELOT) {
         p.x = 0;
         p.z = 0;
       } else {
