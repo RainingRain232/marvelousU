@@ -2450,6 +2450,7 @@ export class DiabloGame {
     this._renderer.renderDungeonLayout(null);
 
     this._state.phase = DiabloPhase.PLAYING;
+    this._state.player.invulnTimer = Math.max(this._state.player.invulnTimer, 3.0); // spawn protection
     setTimeout(() => this._renderer.fadeOverlay(0), 100); // fade back in
     this._menuEl.innerHTML = "";
     this._hud.style.display = "block";
@@ -10669,10 +10670,10 @@ export class DiabloGame {
       const dx = e.x - p.x;
       const dz = e.z - p.z;
       const dist = Math.sqrt(dx * dx + dz * dz);
-      if (dist < 40) {
+      if (dist < 60) {
         const angle = Math.atan2(dz, dx);
-        e.x = p.x + Math.cos(angle) * (40 + Math.random() * 15);
-        e.z = p.z + Math.sin(angle) * (40 + Math.random() * 15);
+        e.x = p.x + Math.cos(angle) * (60 + Math.random() * 20);
+        e.z = p.z + Math.sin(angle) * (60 + Math.random() * 20);
         e.y = getTerrainHeight(e.x, e.z);
       }
     }
