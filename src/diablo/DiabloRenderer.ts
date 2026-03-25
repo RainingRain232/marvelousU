@@ -45,6 +45,7 @@ export class DiabloRenderer {
   private _weaponMesh: THREE.Mesh | null = null;
   private _enemyMeshes: Map<string, THREE.Group> = new Map();
   private _enemyHpBars: Map<string, THREE.Sprite> = new Map();
+  private _enemyFlashTimers: Map<string, number> = new Map();
   private _projectileMeshes: Map<string, THREE.Object3D> = new Map();
   private _lootMeshes: Map<string, THREE.Group> = new Map();
   private _chestMeshes: Map<string, THREE.Group> = new Map();
@@ -55,6 +56,7 @@ export class DiabloRenderer {
   private _envGroup!: THREE.Group;
   private _currentMap: DiabloMapId | null = null;
   private _time: number = 0;
+  private _dt: number = 0;
   private _groundPlane!: THREE.Mesh;
   private _sphereGeo!: THREE.SphereGeometry;
   private _boxGeo!: THREE.BoxGeometry;
@@ -26920,6 +26922,10 @@ export class DiabloRenderer {
     this._shakeTimer = 0;
   }
 
+  flashEnemy(enemyId: string): void {
+    this._enemyFlashTimers.set(enemyId, 0.12); // 120ms flash
+  }
+
   /** Trigger a brief time-freeze effect for impactful hits */
   triggerHitFreeze(_duration: number): void {
     // This is tracked by the game logic; renderer just needs to know
@@ -27005,6 +27011,7 @@ export class DiabloRenderer {
     }
 
     this._time += dt;
+    this._dt = dt;
 
     this._updateShake(dt);
     this._updateWeather(dt);
@@ -27668,6 +27675,7 @@ export class DiabloRenderer {
           this._disposeObject3D(mesh);
           this._scene.remove(mesh);
           this._enemyMeshes.delete(id);
+          this._enemyFlashTimers.delete(id);
           const hpBar = this._enemyHpBars.get(id);
           if (hpBar) {
             if (hpBar.material instanceof THREE.SpriteMaterial && hpBar.material.map) {
@@ -27825,6 +27833,18 @@ export class DiabloRenderer {
           if (child instanceof THREE.Mesh && child.material instanceof THREE.MeshStandardMaterial) {
             child.material.emissive.setHex(0xff2200);
             child.material.emissiveIntensity = telegraphIntensity * 1.5;
+          }
+        });
+      }
+
+      // Hit flash effect
+      const flashTimer = this._enemyFlashTimers.get(enemy.id) || 0;
+      if (flashTimer > 0) {
+        this._enemyFlashTimers.set(enemy.id, flashTimer - this._dt);
+        mesh.traverse((child: THREE.Object3D) => {
+          if (child instanceof THREE.Mesh && child.material instanceof THREE.MeshStandardMaterial) {
+            child.material.emissive.setHex(0xffffff);
+            child.material.emissiveIntensity = flashTimer * 15; // bright flash that fades
           }
         });
       }
@@ -52459,6 +52479,7 @@ export class DiabloRenderer {
       this._scene.remove(mesh);
     }
     this._enemyMeshes.clear();
+    this._enemyFlashTimers.clear();
     for (const [, sprite] of this._enemyHpBars) {
       if (sprite.material instanceof THREE.SpriteMaterial && sprite.material.map) {
         sprite.material.map.dispose();

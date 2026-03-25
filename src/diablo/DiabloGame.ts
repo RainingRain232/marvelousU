@@ -1349,6 +1349,7 @@ export class DiabloGame {
     };
     const maxStat = 30;
     let cardsHtml = "";
+    let classCardIndex = 0;
     for (const c of classes) {
       const cc = classColors[c.name] || "#c8a84e";
       const statBar = (label: string, val: number, color: string) => {
@@ -1367,7 +1368,11 @@ export class DiabloGame {
           border:3px solid #5a4a2a;border-top-color:#8a7a4a;border-left-color:#7a6a3a;
           border-right-color:#3a2a1a;border-bottom-color:#2a1a0a;
           border-radius:12px;padding:28px 24px;cursor:pointer;text-align:center;
-          transition:border-color 0.3s,box-shadow 0.3s;position:relative;
+          transition:all 0.3s ease;position:relative;
+          backdrop-filter:blur(4px);
+          transform:translateY(0) scale(1);
+          animation:cs-card-enter 0.4s ease-out backwards;
+          animation-delay:${classCardIndex * 0.1}s;
           background-image:repeating-linear-gradient(45deg,transparent,transparent 8px,rgba(200,168,78,0.015) 8px,rgba(200,168,78,0.015) 16px);
         ">
           <!-- Corner rivets -->
@@ -1389,6 +1394,7 @@ export class DiabloGame {
             ${statBar("VIT", c.vit, "#ee8")}
           </div>
         </div>`;
+      classCardIndex++;
     }
 
     // Build difficulty selector
@@ -1617,14 +1623,22 @@ export class DiabloGame {
           0%, 100% { text-shadow: 0 0 20px rgba(200,168,78,0.5), 0 2px 4px rgba(0,0,0,0.8); }
           50% { text-shadow: 0 0 30px rgba(200,168,78,0.7), 0 0 60px rgba(200,168,78,0.2), 0 2px 4px rgba(0,0,0,0.8); }
         }
+        @keyframes cs-card-enter {
+          0% { opacity:0; transform:translateY(20px) scale(0.95); }
+          100% { opacity:1; transform:translateY(0) scale(1); }
+        }
+        @keyframes cs-bg-shimmer {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
+        }
       </style>
       <div style="
         width:100%;height:100%;background:rgba(0,0,0,0.92);display:flex;flex-direction:column;
         align-items:center;justify-content:center;color:#fff;position:relative;overflow:hidden;
       ">
         <!-- Ornate gothic page border -->
-        <div style="position:absolute;inset:8px;border:2px solid #5a4a2a;border-radius:4px;pointer-events:none;
-          box-shadow:inset 0 0 30px rgba(0,0,0,0.5),0 0 1px #3a2a1a;"></div>
+        <div style="position:absolute;inset:8px;border:2px solid rgba(200,168,78,0.3);border-radius:4px;pointer-events:none;
+          box-shadow:0 0 40px rgba(200,168,78,0.15), inset 0 0 60px rgba(0,0,0,0.3);"></div>
         <div style="position:absolute;inset:12px;border:1px solid #3a2a1a;border-radius:2px;pointer-events:none;"></div>
         <!-- Corner ornaments -->
         <div style="position:absolute;top:14px;left:14px;color:#5a4a2a;font-size:20px;">&#9670;</div>
@@ -1681,11 +1695,13 @@ export class DiabloGame {
     cards.forEach((card) => {
       card.addEventListener("mouseenter", () => {
         card.style.borderColor = "#c8a84e";
-        card.style.boxShadow = "0 0 20px rgba(200,168,78,0.3)";
+        card.style.boxShadow = "0 0 25px rgba(200,168,78,0.4), 0 8px 32px rgba(0,0,0,0.5), inset 0 0 30px rgba(200,168,78,0.08)";
+        card.style.transform = "translateY(-4px) scale(1.02)";
       });
       card.addEventListener("mouseleave", () => {
         card.style.borderColor = "#5a4a2a";
         card.style.boxShadow = "none";
+        card.style.transform = "translateY(0) scale(1)";
       });
       card.addEventListener("click", () => {
         const cls = card.getAttribute("data-class") as DiabloClass;
@@ -2044,6 +2060,7 @@ export class DiabloGame {
     const totalMaps = maps.filter(m => !m.isSafe).length;
 
     let cardsHtml = "";
+    let mapCardIndex = 0;
     for (const m of maps) {
       // Check if any difficulty variant of this map has been completed
       const isCompleted = Object.keys(this._state.completedMaps).some(k => k.startsWith(m.id) && this._state.completedMaps[k]);
@@ -2052,13 +2069,18 @@ export class DiabloGame {
         <div class="diablo-map-card" data-map="${m.id}" style="
           width:220px;background:rgba(20,15,10,0.95);border:2px solid ${isCompleted ? '#44ff44' : '#5a4a2a'};
           border-radius:12px;padding:30px;cursor:pointer;text-align:center;
-          transition:border-color 0.3s,box-shadow 0.3s;
+          transition:all 0.3s ease;
+          backdrop-filter:blur(4px);
+          transform:translateY(0) scale(1);
+          animation:cs-card-enter 0.4s ease-out backwards;
+          animation-delay:${mapCardIndex * 0.1}s;
         ">
           <div style="font-size:64px;margin-bottom:12px;">${m.icon}</div>
           <div style="font-size:22px;color:#c8a84e;font-weight:bold;letter-spacing:2px;margin-bottom:12px;">${m.name}${completionBadge}</div>
           <p style="color:#aaa;font-size:14px;line-height:1.5;margin-bottom:16px;">${m.desc}</p>
           <div style="font-size:20px;color:${m.isSafe ? '#44ff44' : '#ff8'};">Difficulty: ${m.difficulty}</div>
         </div>`;
+      mapCardIndex++;
     }
 
     const todOptions: { value: TimeOfDay; label: string; icon: string }[] = [
@@ -2117,6 +2139,14 @@ export class DiabloGame {
           0%, 100% { text-shadow: 0 0 20px rgba(200,168,78,0.5), 0 2px 4px rgba(0,0,0,0.8); }
           50% { text-shadow: 0 0 30px rgba(200,168,78,0.7), 0 0 60px rgba(200,168,78,0.2), 0 2px 4px rgba(0,0,0,0.8); }
         }
+        @keyframes cs-card-enter {
+          0% { opacity:0; transform:translateY(20px) scale(0.95); }
+          100% { opacity:1; transform:translateY(0) scale(1); }
+        }
+        @keyframes cs-bg-shimmer {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
+        }
       </style>
       <div style="
         width:100%;height:100%;
@@ -2127,8 +2157,8 @@ export class DiabloGame {
         position:relative;overflow:hidden;
       ">
         <!-- Ornate gothic page border -->
-        <div style="position:absolute;inset:8px;border:2px solid #5a4a2a;border-radius:4px;pointer-events:none;
-          box-shadow:inset 0 0 30px rgba(0,0,0,0.5),0 0 1px #3a2a1a;"></div>
+        <div style="position:absolute;inset:8px;border:2px solid rgba(200,168,78,0.3);border-radius:4px;pointer-events:none;
+          box-shadow:0 0 40px rgba(200,168,78,0.15), inset 0 0 60px rgba(0,0,0,0.3);"></div>
         <div style="position:absolute;inset:12px;border:1px solid #3a2a1a;border-radius:2px;pointer-events:none;"></div>
         <!-- Corner diamond ornaments -->
         <div style="position:absolute;top:14px;left:14px;color:#5a4a2a;font-size:20px;">&#9670;</div>
@@ -2316,11 +2346,13 @@ export class DiabloGame {
     cards.forEach((card) => {
       card.addEventListener("mouseenter", () => {
         card.style.borderColor = "#c8a84e";
-        card.style.boxShadow = "0 0 20px rgba(200,168,78,0.3)";
+        card.style.boxShadow = "0 0 25px rgba(200,168,78,0.4), 0 8px 32px rgba(0,0,0,0.5), inset 0 0 30px rgba(200,168,78,0.08)";
+        card.style.transform = "translateY(-4px) scale(1.02)";
       });
       card.addEventListener("mouseleave", () => {
         card.style.borderColor = "#5a4a2a";
         card.style.boxShadow = "none";
+        card.style.transform = "translateY(0) scale(1)";
       });
       card.addEventListener("click", () => {
         const mapId = card.getAttribute("data-map") as DiabloMapId;
@@ -4851,6 +4883,10 @@ export class DiabloGame {
         0%, 100% { box-shadow:0 0 10px rgba(255,215,0,0.5), inset 0 1px 0 rgba(255,255,255,0.2); }
         50% { box-shadow:0 0 20px rgba(255,215,0,0.9), 0 0 40px rgba(255,215,0,0.4), inset 0 1px 0 rgba(255,255,255,0.3); }
       }
+      @keyframes hud-xp-shimmer {
+        0% { background-position: -200% 0; }
+        100% { background-position: 200% 0; }
+      }
       @keyframes hud-torch-flicker {
         0%, 100% { opacity:0.85; transform:scaleX(1) scaleY(1); }
         25% { opacity:1; transform:scaleX(1.05) scaleY(1.1); }
@@ -5177,8 +5213,9 @@ export class DiabloGame {
       padding:10px 18px;display:flex;gap:8px;
       background:linear-gradient(180deg, rgba(45,38,25,0.95), rgba(25,20,10,0.97), rgba(35,28,18,0.95));
       border:2px solid #8b7a4a;border-radius:8px;
-      box-shadow:0 4px 16px rgba(0,0,0,0.6), inset 0 1px 0 rgba(200,168,78,0.2),
-        inset 0 -1px 0 rgba(0,0,0,0.4), 0 0 1px rgba(200,168,78,0.3);
+      box-shadow:0 4px 20px rgba(0,0,0,0.7), inset 0 1px 0 rgba(200,168,78,0.25),
+        inset 0 -1px 0 rgba(0,0,0,0.5), 0 0 1px rgba(200,168,78,0.3),
+        0 -2px 15px rgba(200,168,78,0.08);
     `;
     // Left end-cap ornament
     const skillCapL = document.createElement("div");
@@ -5232,6 +5269,14 @@ export class DiabloGame {
     runicStrip.textContent = "\u16A0 \u16B1 \u16C1 \u16A2 \u16B3 \u16C7 \u16A8 \u16B7 \u16C9 \u16AA";
     skillBarBg.appendChild(runicStrip);
 
+    const skillBarGlow = document.createElement("div");
+    skillBarGlow.style.cssText = `
+      position:absolute;bottom:-8px;left:10%;right:10%;height:8px;pointer-events:none;
+      background:radial-gradient(ellipse at center, rgba(200,168,78,0.15), transparent);
+      filter:blur(4px);z-index:-1;
+    `;
+    skillBarBg.appendChild(skillBarGlow);
+
     this._skillSlots = [];
     this._skillCooldownOverlays = [];
     for (let i = 0; i < 6; i++) {
@@ -5242,16 +5287,17 @@ export class DiabloGame {
       const slot = document.createElement("div");
       slot.style.cssText = `
         width:78px;height:78px;background:linear-gradient(180deg, rgba(30,25,15,0.95), rgba(12,8,3,0.97));
-        border:2px solid #9a8a4a;border-radius:6px;display:flex;flex-direction:column;
+        border:2px solid #9a8a4a;border-radius:8px;display:flex;flex-direction:column;
         align-items:center;justify-content:center;position:relative;overflow:hidden;
-        box-shadow:inset 0 1px 0 rgba(200,168,78,0.2), inset 0 -1px 0 rgba(0,0,0,0.3),
-          0 2px 8px rgba(0,0,0,0.5), inset 0 0 20px rgba(200,168,78,0.03);
+        box-shadow:inset 0 1px 0 rgba(200,168,78,0.25), inset 0 -1px 0 rgba(0,0,0,0.4),
+          0 2px 8px rgba(0,0,0,0.6), inset 0 0 25px rgba(200,168,78,0.05),
+          inset 0 0 8px rgba(0,0,0,0.3);
       `;
       // Ornate frame corners on each slot
       const cornerDeco = document.createElement("div");
       cornerDeco.style.cssText = `
         position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:4;
-        border-radius:6px;
+        border-radius:8px;
         box-shadow:inset 2px 2px 0 rgba(200,168,78,0.15), inset -2px -2px 0 rgba(200,168,78,0.1);
       `;
 
@@ -5365,9 +5411,11 @@ export class DiabloGame {
     this._xpBar = document.createElement("div");
     this._xpBar.style.cssText = `
       height:100%;width:0%;
-      background:linear-gradient(90deg,#6b5500,#ffd700,#fff4aa,#ffd700);
+      background:linear-gradient(90deg,#6b5500,#ffd700,#fff4aa,#ffd700,#6b5500);
+      background-size:200% 100%;
+      animation:hud-xp-shimmer 3s linear infinite;
       transition:width 0.3s;
-      box-shadow:0 0 10px rgba(255,215,0,0.5), inset 0 1px 0 rgba(255,255,255,0.2);
+      box-shadow:0 0 10px rgba(255,215,0,0.5), inset 0 1px 0 rgba(255,255,255,0.3);
     `;
     xpContainer.appendChild(this._xpBar);
     // Level indicator text embedded in bar
@@ -5634,10 +5682,10 @@ export class DiabloGame {
     const potionBarBg = document.createElement("div");
     potionBarBg.style.cssText = `
       position:absolute;bottom:22px;left:50%;transform:translateX(280px);display:flex;gap:6px;
-      background:linear-gradient(180deg, rgba(20,30,15,0.9), rgba(10,18,8,0.92));
-      border:2px solid #5a7a3a;border-radius:8px;padding:8px 12px;
-      box-shadow:0 3px 10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(100,180,78,0.12),
-        0 0 1px rgba(100,180,78,0.2);
+      background:linear-gradient(180deg, rgba(35,28,18,0.95), rgba(18,14,8,0.97), rgba(28,22,14,0.95));
+      border:2px solid #7a6a3a;border-radius:8px;padding:8px 12px;
+      box-shadow:0 3px 12px rgba(0,0,0,0.6), inset 0 1px 0 rgba(200,168,78,0.15),
+        0 0 1px rgba(200,168,78,0.2), 0 -2px 10px rgba(200,168,78,0.05);
     `;
 
     // Wooden rack background (horizontal wood grain lines)
@@ -5662,8 +5710,8 @@ export class DiabloGame {
       const slot = document.createElement("div");
       slot.style.cssText = `
         width:58px;height:70px;background:linear-gradient(180deg, rgba(20,28,15,0.95), rgba(8,14,4,0.97));
-        border:2px solid #6a8a4a;display:flex;flex-direction:column;
-        align-items:center;justify-content:center;position:relative;overflow:hidden;
+        border:2px solid #8a7a4a;display:flex;flex-direction:column;
+        align-items:center;justify-content:center;position:relative;overflow:hidden;border-radius:4px;
         box-shadow:inset 0 1px 0 rgba(100,180,78,0.2), inset 0 -1px 0 rgba(0,0,0,0.3),
           0 2px 6px rgba(0,0,0,0.4), inset 0 0 15px rgba(80,160,60,0.03);
         clip-path:polygon(25% 0%, 75% 0%, 80% 8%, 80% 12%, 100% 20%, 100% 100%, 0% 100%, 0% 20%, 20% 12%, 20% 8%);
@@ -5893,8 +5941,8 @@ export class DiabloGame {
       const flame = document.createElement("div");
       flame.style.cssText = `
         position:absolute;bottom:38px;left:50%;transform:translateX(-50%);
-        width:14px;height:20px;
-        background:radial-gradient(ellipse at 50% 70%, #ffdd44, #ff8800, #ff4400, transparent);
+        width:16px;height:24px;
+        background:radial-gradient(ellipse at 50% 65%, #ffee66, #ffaa00, #ff5500, transparent);
         border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;
         animation:hud-torch-flicker 0.4s ease-in-out infinite alternate;
         filter:blur(0.5px);
@@ -5904,7 +5952,7 @@ export class DiabloGame {
       const flameCore = document.createElement("div");
       flameCore.style.cssText = `
         position:absolute;bottom:40px;left:50%;transform:translateX(-50%);
-        width:6px;height:10px;
+        width:8px;height:12px;
         background:radial-gradient(ellipse at 50% 60%, #ffffcc, #ffee66, transparent);
         border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;
         pointer-events:none;
@@ -7283,6 +7331,13 @@ export class DiabloGame {
     }
 
     this._spawnHitParticles(target, DamageType.PHYSICAL);
+    this._renderer.flashEnemy(target.id);
+
+    // Hit knockback — push enemy away from player on impact
+    const hkAngle = Math.atan2(target.z - p.z, target.x - p.x);
+    const hkDist = isCrit ? 0.8 : 0.3;
+    target.x += Math.cos(hkAngle) * hkDist;
+    target.z += Math.sin(hkAngle) * hkDist;
 
     // Stat tracking: damage dealt
     p.stats.totalDamageDealt += finalDamage;
@@ -8347,6 +8402,12 @@ export class DiabloGame {
             this._addFloatingText(enemy.x, enemy.y + 2, enemy.z, `${Math.round(finalDmg)}`, "#ffff44");
 
             this._spawnHitParticles(enemy, proj.damageType);
+            this._renderer.flashEnemy(enemy.id);
+            // Projectile hit knockback
+            const projAngle = Math.atan2(proj.vz, proj.vx);
+            const projKb = 0.4;
+            enemy.x += Math.cos(projAngle) * projKb;
+            enemy.z += Math.sin(projAngle) * projKb;
             this._renderer.shakeCamera(0.08, 0.1);
 
             // Apply status effect if applicable
@@ -8454,6 +8515,12 @@ export class DiabloGame {
           this._addFloatingText(enemy.x, enemy.y + 2, enemy.z, `${Math.round(finalDmg)}`, this._damageTypeColor(aoe.damageType));
 
           this._spawnHitParticles(enemy, aoe.damageType);
+          this._renderer.flashEnemy(enemy.id);
+          // AOE hit knockback — push enemy away from impact center
+          const aoHkAngle = Math.atan2(enemy.z - aoe.z, enemy.x - aoe.x);
+          const aoHkDist = 0.5;
+          enemy.x += Math.cos(aoHkAngle) * aoHkDist;
+          enemy.z += Math.sin(aoHkAngle) * aoHkDist;
           // Spawn extra AoE impact particles based on damage type
           switch (aoe.damageType) {
             case DamageType.FIRE:
