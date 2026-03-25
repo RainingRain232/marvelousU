@@ -13013,7 +13013,7 @@ export class DiabloGame {
       vx: Math.sin(angle) * speed, vy: 0, vz: Math.cos(angle) * speed,
       speed,
       damage: enemy.damage * 0.8,
-      damageType: DamageType.PHYSICAL,
+      damageType: enemy.damageType || DamageType.PHYSICAL,
       radius: 0.3,
       ownerId: enemy.id,
       isPlayerOwned: false,

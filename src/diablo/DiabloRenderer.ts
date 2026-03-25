@@ -28862,11 +28862,10 @@ export class DiabloRenderer {
         const group = new THREE.Group();
 
         if (!proj.isPlayerOwned) {
-          // Enemy projectile: varied visuals based on damage type and randomization
-          const enemySeed = parseInt(proj.id.replace(/\D/g, '').slice(-4) || '0') % 6;
+          // Enemy projectile: visuals based on damage type
           const dt = proj.damageType;
 
-          if (dt === DamageType.FIRE || enemySeed === 0) {
+          if (dt === DamageType.FIRE) {
             // Fire variant: blazing orb with flame wisps
             const fireCore = new THREE.Mesh(
               new THREE.SphereGeometry(r * 0.5, 30, 27),
@@ -28890,7 +28889,7 @@ export class DiabloRenderer {
               group.add(wisp);
             }
             group.userData.skillType = 'ENEMY_FIRE';
-          } else if (dt === DamageType.ICE || enemySeed === 1) {
+          } else if (dt === DamageType.ICE) {
             // Ice variant: frozen shard cluster
             const iceCrystal = new THREE.Mesh(
               new THREE.OctahedronGeometry(r * 0.5, 2),
@@ -28915,7 +28914,7 @@ export class DiabloRenderer {
               group.add(shard);
             }
             group.userData.skillType = 'ENEMY_ICE';
-          } else if (dt === DamageType.LIGHTNING || enemySeed === 2) {
+          } else if (dt === DamageType.LIGHTNING) {
             // Lightning variant: crackling electric orb
             const lCore = new THREE.Mesh(
               new THREE.SphereGeometry(r * 0.35, 27, 23),
@@ -28938,7 +28937,7 @@ export class DiabloRenderer {
               group.add(spark);
             }
             group.userData.skillType = 'ENEMY_LIGHTNING';
-          } else if (dt === DamageType.POISON || enemySeed === 3) {
+          } else if (dt === DamageType.POISON) {
             // Poison variant: toxic glob with dripping trails
             const pCore = new THREE.Mesh(
               new THREE.SphereGeometry(r * 0.55, 27, 23),
@@ -28960,7 +28959,7 @@ export class DiabloRenderer {
               group.add(blob);
             }
             group.userData.skillType = 'ENEMY_POISON';
-          } else if (dt === DamageType.SHADOW || dt === DamageType.ARCANE || enemySeed === 4) {
+          } else if (dt === DamageType.SHADOW || dt === DamageType.ARCANE) {
             // Shadow/arcane variant: dark swirling vortex
             const sCore = new THREE.Mesh(
               new THREE.SphereGeometry(r * 0.4, 27, 23),
