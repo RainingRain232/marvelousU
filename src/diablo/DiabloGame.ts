@@ -1007,9 +1007,11 @@ export class DiabloGame {
         this._state.player.lootFilter = this._lootFilterLevel;
         // Also cycle custom loot filter
         const pf = this._state.player;
-        pf.activeFilterIndex = (pf.activeFilterIndex + 1) % pf.customLootFilters.length;
-        const filter = pf.customLootFilters[pf.activeFilterIndex];
-        this._addFloatingText(pf.x, pf.y + 3, pf.z, `Filter: ${filter.name}`, '#ffdd00');
+        if (pf.customLootFilters.length > 0) {
+          pf.activeFilterIndex = (pf.activeFilterIndex + 1) % pf.customLootFilters.length;
+          const filter = pf.customLootFilters[pf.activeFilterIndex];
+          this._addFloatingText(pf.x, pf.y + 3, pf.z, `Filter: ${filter.name}`, '#ffdd00');
+        }
       }
       else if ((e.code === "KeyH" && !e.shiftKey) || (e.code === "Slash" && e.shiftKey)) {
         this._showHelpOverlay();
@@ -6516,6 +6518,7 @@ export class DiabloGame {
     // Hit freeze: skip simulation frames
     if (this._hitFreezeTimer > 0) {
       this._hitFreezeTimer -= dt;
+      this._lastTime = ts;
       this._renderer.update(this._state, 0);
       this._rafId = requestAnimationFrame(this._gameLoop);
       return;
@@ -7334,6 +7337,15 @@ export class DiabloGame {
       case DiabloClass.RANGER:
         baseDamage = p.dexterity * 1.3 + weaponBonus;
         break;
+      case DiabloClass.PALADIN:
+        baseDamage = p.strength * 1.3 + p.vitality * 0.5 + weaponBonus;
+        break;
+      case DiabloClass.NECROMANCER:
+        baseDamage = p.intelligence * 1.1 + p.vitality * 0.4 + weaponBonus;
+        break;
+      case DiabloClass.ASSASSIN:
+        baseDamage = p.dexterity * 1.4 + p.strength * 0.3 + weaponBonus;
+        break;
     }
 
     // Check for buff
@@ -7372,6 +7384,7 @@ export class DiabloGame {
       const thornsDmg = finalDamage * 0.15;
       p.hp -= thornsDmg;
       this._addFloatingText(p.x, p.y + 2, p.z, `${Math.round(thornsDmg)} thorns`, '#ff4488');
+      if (p.hp <= 0) { p.hp = 0; this._triggerDeath(); return; }
     }
 
     this._combatLog.push({ time: performance.now(), damage: finalDamage });
@@ -7653,8 +7666,8 @@ export class DiabloGame {
 
       // Speed boost
       if (eff.speedBoost && eff.speedBoostDuration) {
-        if (!p.statusEffects.some(e => e.source === legendaryEffect.id)) {
-          p.statusEffects.push({ effect: StatusEffect.SLOWED, duration: eff.speedBoostDuration, source: legendaryEffect.id });
+        if (!p.activePotionBuffs.some(b => b.type === PotionType.SPEED && (b as any).source === legendaryEffect.id)) {
+          p.activePotionBuffs.push({ type: PotionType.SPEED, value: 50, remaining: eff.speedBoostDuration, source: legendaryEffect.id } as any);
           this._addFloatingText(p.x, p.y + 2, p.z, 'SPEED BOOST!', '#44ffff');
         }
       }
@@ -8434,9 +8447,9 @@ export class DiabloGame {
         const extraProj: DiabloProjectile = {
           id: this._genId(),
           x: p.x, y: p.y + 1, z: p.z,
-          vx: Math.sin(spreadAngle),
+          vx: Math.sin(spreadAngle) * 15,
           vy: 0,
-          vz: Math.cos(spreadAngle),
+          vz: Math.cos(spreadAngle) * 15,
           speed: 15,
           damage: modDmg * 0.6,
           damageType: def.damageType,
@@ -9454,6 +9467,7 @@ export class DiabloGame {
       if (distToPlayer < explodeRadius && p.invulnTimer <= 0) {
         p.hp -= explodeDmg;
         this._addFloatingText(p.x, p.y + 2, p.z, `${Math.round(explodeDmg)} EXPLOSION`, '#ff8800');
+        if (p.hp <= 0) { p.hp = 0; this._triggerDeath(); return; }
       }
       this._renderer.spawnParticles(ParticleType.FIRE, enemy.x, enemy.y + 1, enemy.z, 20, this._state.particles);
       this._renderer.shakeCamera(0.3, 0.3);
@@ -12397,13 +12411,15 @@ export class DiabloGame {
         p.z = 0;
       } else {
         const rMapCfg = MAP_CONFIGS[this._state.currentMap];
+        const rHalfW = rMapCfg.width / 2;
+        const rHalfD = rMapCfg.depth / 2;
         const rPadX = rMapCfg.width * 0.12;
         const rPadZ = rMapCfg.depth * 0.12;
         const rCorners = [
-          { x: rPadX, z: rPadZ },
-          { x: rMapCfg.width - rPadX, z: rPadZ },
-          { x: rPadX, z: rMapCfg.depth - rPadZ },
-          { x: rMapCfg.width - rPadX, z: rMapCfg.depth - rPadZ },
+          { x: -rHalfW + rPadX, z: -rHalfD + rPadZ },
+          { x: rHalfW - rPadX, z: -rHalfD + rPadZ },
+          { x: -rHalfW + rPadX, z: rHalfD - rPadZ },
+          { x: rHalfW - rPadX, z: rHalfD - rPadZ },
         ];
         const rCorner = rCorners[Math.floor(Math.random() * rCorners.length)];
         p.x = rCorner.x + (Math.random() * 2 - 1);

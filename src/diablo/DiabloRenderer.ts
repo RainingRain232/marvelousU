@@ -97,6 +97,7 @@ export class DiabloRenderer {
   private _particleMeshPool: THREE.Mesh[] = [];
   private _particlePoolSize: number = 500;
   private _particleMat!: THREE.MeshStandardMaterial;
+  private _sharedParticleGeo: THREE.SphereGeometry | null = null;
 
   /** Axis-aligned collision boxes for buildings: [centerX, centerZ, halfWidth, halfDepth] */
   buildingColliders: [number, number, number, number][] = [];
@@ -260,6 +261,7 @@ export class DiabloRenderer {
     this._scene.add(this._groundPlane);
 
     const particleGeo = new THREE.SphereGeometry(1, 17, 16);
+    this._sharedParticleGeo = particleGeo;
     this._particleMat = new THREE.MeshStandardMaterial({
       color: 0xffffff,
       emissive: 0xffffff,
@@ -26997,6 +26999,7 @@ export class DiabloRenderer {
   }
 
   showDodgeGhost(playerX: number, playerY: number, playerZ: number): void {
+    if (this._dodgeGhosts.length >= 5) return;
     // Clone the player group as a translucent ghost
     const ghost = this._playerGroup.clone(true);
     ghost.position.set(playerX, playerY, playerZ);
@@ -27714,6 +27717,7 @@ export class DiabloRenderer {
       this._syncTownfolk(state.townfolk, dt);
     } else if (this._townfolkMeshes.size > 0) {
       for (const [, mesh] of this._townfolkMeshes) {
+        this._disposeObject3D(mesh);
         this._scene.remove(mesh);
       }
       this._townfolkMeshes.clear();
@@ -28110,6 +28114,7 @@ export class DiabloRenderer {
       } else {
         const existing = this._shieldMeshes.get(enemy.id + "_boss");
         if (existing) {
+          this._disposeObject3D(existing);
           this._scene.remove(existing);
           this._shieldMeshes.delete(enemy.id + "_boss");
         }
@@ -28136,6 +28141,7 @@ export class DiabloRenderer {
       } else {
         const existing = this._shieldMeshes.get(enemy.id + "_shield");
         if (existing) {
+          this._disposeObject3D(existing);
           this._scene.remove(existing);
           this._shieldMeshes.delete(enemy.id + "_shield");
         }
@@ -28814,11 +28820,8 @@ export class DiabloRenderer {
     // Remove old
     for (const [id, mesh] of this._projectileMeshes) {
       if (!currentIds.has(id)) {
+        this._disposeObject3D(mesh);
         this._scene.remove(mesh);
-        mesh.traverse((child: THREE.Object3D) => {
-          if ((child as THREE.Mesh).geometry) (child as THREE.Mesh).geometry.dispose();
-          if ((child as THREE.Mesh).material) ((child as THREE.Mesh).material as THREE.Material).dispose();
-        });
         this._projectileMeshes.delete(id);
       }
     }
@@ -52599,6 +52602,10 @@ export class DiabloRenderer {
       this._skillFlashEl.parentElement.removeChild(this._skillFlashEl);
       this._skillFlashEl = null;
     }
+    if (this._castOverlay) {
+      this._castOverlay.remove();
+      this._castOverlay = null;
+    }
 
     if (this.canvas && this.canvas.parentElement) {
       this.canvas.parentElement.removeChild(this.canvas);
@@ -52636,8 +52643,20 @@ export class DiabloRenderer {
 
     if (this._weaponMesh) {
       this._weaponMesh.geometry.dispose();
+      if (this._weaponMesh.material) {
+        if (Array.isArray(this._weaponMesh.material)) {
+          for (const mat of this._weaponMesh.material) mat.dispose();
+        } else {
+          (this._weaponMesh.material as THREE.Material).dispose();
+        }
+      }
     }
     this._weaponMesh = null;
+    if (this._fpWeapon) {
+      this._disposeObject3D(this._fpWeapon);
+      this._camera.remove(this._fpWeapon);
+      this._fpWeapon = null;
+    }
     for (const [, mesh] of this._enemyMeshes) {
       this._disposeObject3D(mesh);
       this._scene.remove(mesh);
@@ -52673,6 +52692,7 @@ export class DiabloRenderer {
     }
     this._aoeMeshes.clear();
     for (const [, sprite] of this._floatTextSprites) {
+      this._scene.remove(sprite);
       if (sprite.material instanceof THREE.SpriteMaterial) {
         if (sprite.material.map) sprite.material.map.dispose();
         sprite.material.dispose();
@@ -52726,6 +52746,7 @@ export class DiabloRenderer {
     this._waterMeshes = [];
     this._waterOriginalY.clear();
     if (this._waterMesh) {
+      this._disposeObject3D(this._waterMesh);
       this._scene.remove(this._waterMesh);
       this._waterMesh = null;
     }
@@ -52754,10 +52775,34 @@ export class DiabloRenderer {
 
     for (const mesh of this._particleMeshPool) {
       this._scene.remove(mesh);
-      mesh.geometry.dispose();
       (mesh.material as THREE.MeshStandardMaterial).dispose();
     }
+    if (this._sharedParticleGeo) {
+      this._sharedParticleGeo.dispose();
+      this._sharedParticleGeo = null;
+    }
     this._particleMeshPool = [];
+
+    for (const fp of this._footprints) {
+      this._scene.remove(fp);
+      if (fp.material) (fp.material as THREE.Material).dispose();
+    }
+    this._footprints = [];
+    this._footprintTimers = [];
+    if (this._footprintGeo) {
+      this._footprintGeo.dispose();
+      this._footprintGeo = null;
+    }
+    if (this._footprintMat) {
+      this._footprintMat.dispose();
+      this._footprintMat = null;
+    }
+
+    for (const g of this._dodgeGhosts) {
+      this._disposeObject3D(g.mesh);
+      this._scene.remove(g.mesh);
+    }
+    this._dodgeGhosts = [];
 
     if (this._bloomComposer) {
       this._bloomComposer.renderTarget1.dispose();
@@ -52805,8 +52850,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.6;
           this._hemiLight.color.setHex(0x88aa66);
           this._hemiLight.groundColor.setHex(0x443322);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x2a4a2a);
-          (this._scene.fog as THREE.FogExp2).density = 0.018;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x2a4a2a);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.018;
           this._renderer.toneMappingExposure = 1.0;
           break;
         case TimeOfDay.DAWN:
@@ -52816,8 +52861,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.6;
           this._hemiLight.color.setHex(0xcc8866);
           this._hemiLight.groundColor.setHex(0x332211);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x443322);
-          (this._scene.fog as THREE.FogExp2).density = 0.015;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x443322);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.015;
           groundMat.color.setHex(0x4a5a30);
           this._renderer.toneMappingExposure = 0.95;
           break;
@@ -52828,8 +52873,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.6;
           this._hemiLight.color.setHex(0x995533);
           this._hemiLight.groundColor.setHex(0x221111);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x331a15);
-          (this._scene.fog as THREE.FogExp2).density = 0.022;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x331a15);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.022;
           groundMat.color.setHex(0x3a4a25);
           this._renderer.toneMappingExposure = 0.85;
           break;
@@ -52840,8 +52885,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.6;
           this._hemiLight.color.setHex(0x223355);
           this._hemiLight.groundColor.setHex(0x111108);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x0a1a0a);
-          (this._scene.fog as THREE.FogExp2).density = 0.025;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x0a1a0a);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.025;
           groundMat.color.setHex(0x1a2a15);
           this._renderer.toneMappingExposure = 0.6;
           break;
@@ -52855,8 +52900,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.6;
           this._hemiLight.color.setHex(0x6688bb);
           this._hemiLight.groundColor.setHex(0x223322);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x334466);
-          (this._scene.fog as THREE.FogExp2).density = 0.012;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x334466);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.012;
           this._renderer.toneMappingExposure = 1.0;
           break;
         case TimeOfDay.DAWN:
@@ -52866,8 +52911,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.6;
           this._hemiLight.color.setHex(0xaa7766);
           this._hemiLight.groundColor.setHex(0x332222);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x443333);
-          (this._scene.fog as THREE.FogExp2).density = 0.014;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x443333);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.014;
           groundMat.color.setHex(0x556644);
           this._renderer.toneMappingExposure = 0.9;
           break;
@@ -52878,8 +52923,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.6;
           this._hemiLight.color.setHex(0x774433);
           this._hemiLight.groundColor.setHex(0x1a1122);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x2a1a2a);
-          (this._scene.fog as THREE.FogExp2).density = 0.018;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x2a1a2a);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.018;
           groundMat.color.setHex(0x3a5a3a);
           this._renderer.toneMappingExposure = 0.8;
           break;
@@ -52890,8 +52935,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.6;
           this._hemiLight.color.setHex(0x223366);
           this._hemiLight.groundColor.setHex(0x0a0a10);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x0a1022);
-          (this._scene.fog as THREE.FogExp2).density = 0.02;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x0a1022);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.02;
           groundMat.color.setHex(0x2a3a2a);
           this._renderer.toneMappingExposure = 0.6;
           break;
@@ -52905,8 +52950,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.7;
           this._hemiLight.color.setHex(0x667799);
           this._hemiLight.groundColor.setHex(0x332233);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x332244);
-          (this._scene.fog as THREE.FogExp2).density = 0.015;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x332244);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.015;
           this._renderer.toneMappingExposure = 1.1;
           break;
         case TimeOfDay.DAWN:
@@ -52916,8 +52961,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.35;
           this._hemiLight.color.setHex(0x332222);
           this._hemiLight.groundColor.setHex(0x110808);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x150a10);
-          (this._scene.fog as THREE.FogExp2).density = 0.028;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x150a10);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.028;
           this._renderer.toneMappingExposure = 0.8;
           break;
         case TimeOfDay.DUSK:
@@ -52927,8 +52972,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.25;
           this._hemiLight.color.setHex(0x221122);
           this._hemiLight.groundColor.setHex(0x0a0505);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x0d060a);
-          (this._scene.fog as THREE.FogExp2).density = 0.032;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x0d060a);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.032;
           this._renderer.toneMappingExposure = 0.7;
           break;
         case TimeOfDay.NIGHT:
@@ -52938,8 +52983,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.15;
           this._hemiLight.color.setHex(0x110818);
           this._hemiLight.groundColor.setHex(0x050303);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x080410);
-          (this._scene.fog as THREE.FogExp2).density = 0.035;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x080410);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.035;
           groundMat.color.setHex(0x0e0e16);
           this._renderer.toneMappingExposure = 0.5;
           break;
@@ -52951,8 +52996,8 @@ export class DiabloRenderer {
           this._dirLight.intensity = 1.4;
           this._ambientLight.color.setHex(0x663322);
           this._ambientLight.intensity = 0.7;
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x553322);
-          (this._scene.fog as THREE.FogExp2).density = 0.012;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x553322);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.012;
           this._renderer.toneMappingExposure = 1.15;
           break;
         case TimeOfDay.DAWN:
@@ -52960,8 +53005,8 @@ export class DiabloRenderer {
           this._dirLight.intensity = 0.8;
           this._ambientLight.color.setHex(0x331100);
           this._ambientLight.intensity = 0.45;
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x441500);
-          (this._scene.fog as THREE.FogExp2).density = 0.018;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x441500);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.018;
           this._renderer.toneMappingExposure = 0.9;
           break;
         case TimeOfDay.DUSK:
@@ -52969,8 +53014,8 @@ export class DiabloRenderer {
           this._dirLight.intensity = 0.6;
           this._ambientLight.color.setHex(0x220800);
           this._ambientLight.intensity = 0.4;
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x220800);
-          (this._scene.fog as THREE.FogExp2).density = 0.025;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x220800);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.025;
           this._renderer.toneMappingExposure = 0.8;
           break;
         case TimeOfDay.NIGHT:
@@ -52978,8 +53023,8 @@ export class DiabloRenderer {
           this._dirLight.intensity = 0.3;
           this._ambientLight.color.setHex(0x110400);
           this._ambientLight.intensity = 0.3;
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x110400);
-          (this._scene.fog as THREE.FogExp2).density = 0.03;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x110400);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.03;
           this._renderer.toneMappingExposure = 0.6;
           break;
       }
@@ -52990,8 +53035,8 @@ export class DiabloRenderer {
           this._dirLight.intensity = 1.0;
           this._ambientLight.color.setHex(0x332266);
           this._ambientLight.intensity = 0.65;
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x1a1040);
-          (this._scene.fog as THREE.FogExp2).density = 0.02;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x1a1040);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.02;
           this._renderer.toneMappingExposure = 1.15;
           break;
         case TimeOfDay.DAWN:
@@ -52999,8 +53044,8 @@ export class DiabloRenderer {
           this._dirLight.intensity = 0.5;
           this._ambientLight.color.setHex(0x0d0022);
           this._ambientLight.intensity = 0.35;
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x0d0025);
-          (this._scene.fog as THREE.FogExp2).density = 0.032;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x0d0025);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.032;
           this._renderer.toneMappingExposure = 0.85;
           break;
         case TimeOfDay.DUSK:
@@ -53008,8 +53053,8 @@ export class DiabloRenderer {
           this._dirLight.intensity = 0.35;
           this._ambientLight.color.setHex(0x080015);
           this._ambientLight.intensity = 0.25;
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x060012);
-          (this._scene.fog as THREE.FogExp2).density = 0.04;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x060012);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.04;
           this._renderer.toneMappingExposure = 0.7;
           break;
         case TimeOfDay.NIGHT:
@@ -53017,8 +53062,8 @@ export class DiabloRenderer {
           this._dirLight.intensity = 0.2;
           this._ambientLight.color.setHex(0x04000a);
           this._ambientLight.intensity = 0.15;
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x030008);
-          (this._scene.fog as THREE.FogExp2).density = 0.045;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x030008);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.045;
           this._renderer.toneMappingExposure = 0.5;
           break;
       }
@@ -53029,8 +53074,8 @@ export class DiabloRenderer {
           this._dirLight.intensity = 1.5;
           this._ambientLight.color.setHex(0x554422);
           this._ambientLight.intensity = 0.7;
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x443322);
-          (this._scene.fog as THREE.FogExp2).density = 0.01;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x443322);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.01;
           this._renderer.toneMappingExposure = 1.15;
           break;
         case TimeOfDay.DAWN:
@@ -53038,8 +53083,8 @@ export class DiabloRenderer {
           this._dirLight.intensity = 0.9;
           this._ambientLight.color.setHex(0x221800);
           this._ambientLight.intensity = 0.45;
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x2a1500);
-          (this._scene.fog as THREE.FogExp2).density = 0.013;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x2a1500);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.013;
           this._renderer.toneMappingExposure = 0.9;
           break;
         case TimeOfDay.DUSK:
@@ -53047,8 +53092,8 @@ export class DiabloRenderer {
           this._dirLight.intensity = 0.6;
           this._ambientLight.color.setHex(0x1a0c00);
           this._ambientLight.intensity = 0.35;
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x150a00);
-          (this._scene.fog as THREE.FogExp2).density = 0.02;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x150a00);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.02;
           this._renderer.toneMappingExposure = 0.8;
           break;
         case TimeOfDay.NIGHT:
@@ -53056,8 +53101,8 @@ export class DiabloRenderer {
           this._dirLight.intensity = 0.3;
           this._ambientLight.color.setHex(0x0a0500);
           this._ambientLight.intensity = 0.2;
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x080400);
-          (this._scene.fog as THREE.FogExp2).density = 0.025;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x080400);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.025;
           this._renderer.toneMappingExposure = 0.6;
           break;
       }
@@ -53070,8 +53115,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.7;
           this._hemiLight.color.setHex(0xeedd99);
           this._hemiLight.groundColor.setHex(0x886644);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0xddcc99);
-          (this._scene.fog as THREE.FogExp2).density = 0.008;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0xddcc99);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.008;
           this._renderer.toneMappingExposure = 1.1;
           break;
         case TimeOfDay.DAWN:
@@ -53081,8 +53126,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.55;
           this._hemiLight.color.setHex(0xcc9966);
           this._hemiLight.groundColor.setHex(0x553322);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0xbb9966);
-          (this._scene.fog as THREE.FogExp2).density = 0.01;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0xbb9966);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.01;
           groundMat.color.setHex(0xb89960);
           this._renderer.toneMappingExposure = 0.95;
           break;
@@ -53093,8 +53138,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.45;
           this._hemiLight.color.setHex(0x995533);
           this._hemiLight.groundColor.setHex(0x331a10);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x885533);
-          (this._scene.fog as THREE.FogExp2).density = 0.012;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x885533);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.012;
           groundMat.color.setHex(0xa08850);
           this._renderer.toneMappingExposure = 0.85;
           break;
@@ -53105,8 +53150,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.3;
           this._hemiLight.color.setHex(0x223355);
           this._hemiLight.groundColor.setHex(0x111108);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x151525);
-          (this._scene.fog as THREE.FogExp2).density = 0.015;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x151525);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.015;
           groundMat.color.setHex(0x665540);
           this._renderer.toneMappingExposure = 0.6;
           break;
@@ -53120,8 +53165,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.7;
           this._hemiLight.color.setHex(0xbbdd88);
           this._hemiLight.groundColor.setHex(0x445522);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0xaaccaa);
-          (this._scene.fog as THREE.FogExp2).density = 0.006;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0xaaccaa);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.006;
           this._renderer.toneMappingExposure = 1.1;
           break;
         case TimeOfDay.DAWN:
@@ -53131,8 +53176,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.55;
           this._hemiLight.color.setHex(0xcc9966);
           this._hemiLight.groundColor.setHex(0x332211);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x889966);
-          (this._scene.fog as THREE.FogExp2).density = 0.008;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x889966);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.008;
           groundMat.color.setHex(0x4a8a2a);
           this._renderer.toneMappingExposure = 0.95;
           break;
@@ -53143,8 +53188,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.4;
           this._hemiLight.color.setHex(0x996633);
           this._hemiLight.groundColor.setHex(0x221a10);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x554433);
-          (this._scene.fog as THREE.FogExp2).density = 0.01;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x554433);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.01;
           groundMat.color.setHex(0x3a7a2a);
           this._renderer.toneMappingExposure = 0.85;
           break;
@@ -53155,8 +53200,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.25;
           this._hemiLight.color.setHex(0x223355);
           this._hemiLight.groundColor.setHex(0x0a0a08);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x0a1a0a);
-          (this._scene.fog as THREE.FogExp2).density = 0.012;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x0a1a0a);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.012;
           groundMat.color.setHex(0x1a3a15);
           this._renderer.toneMappingExposure = 0.6;
           break;
@@ -53170,8 +53215,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.5;
           this._hemiLight.color.setHex(0x667744);
           this._hemiLight.groundColor.setHex(0x332211);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x556644);
-          (this._scene.fog as THREE.FogExp2).density = 0.025;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x556644);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.025;
           this._renderer.toneMappingExposure = 0.9;
           break;
         case TimeOfDay.DAWN:
@@ -53181,8 +53226,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.4;
           this._hemiLight.color.setHex(0x886644);
           this._hemiLight.groundColor.setHex(0x221a08);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x443322);
-          (this._scene.fog as THREE.FogExp2).density = 0.022;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x443322);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.022;
           groundMat.color.setHex(0x443322);
           this._renderer.toneMappingExposure = 0.8;
           break;
@@ -53193,8 +53238,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.3;
           this._hemiLight.color.setHex(0x664422);
           this._hemiLight.groundColor.setHex(0x110a08);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x332211);
-          (this._scene.fog as THREE.FogExp2).density = 0.03;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x332211);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.03;
           groundMat.color.setHex(0x332211);
           this._renderer.toneMappingExposure = 0.7;
           break;
@@ -53205,8 +53250,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.15;
           this._hemiLight.color.setHex(0x223311);
           this._hemiLight.groundColor.setHex(0x0a0a05);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x111108);
-          (this._scene.fog as THREE.FogExp2).density = 0.035;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x111108);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.035;
           groundMat.color.setHex(0x111108);
           this._renderer.toneMappingExposure = 0.45;
           break;
@@ -53220,8 +53265,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.5;
           this._hemiLight.color.setHex(0x5566aa);
           this._hemiLight.groundColor.setHex(0x222233);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x334466);
-          (this._scene.fog as THREE.FogExp2).density = 0.02;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x334466);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.02;
           this._renderer.toneMappingExposure = 0.9;
           break;
         case TimeOfDay.DAWN:
@@ -53231,8 +53276,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.4;
           this._hemiLight.color.setHex(0x445588);
           this._hemiLight.groundColor.setHex(0x1a1a22);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x2a3355);
-          (this._scene.fog as THREE.FogExp2).density = 0.022;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x2a3355);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.022;
           groundMat.color.setHex(0x2a3355);
           this._renderer.toneMappingExposure = 0.85;
           break;
@@ -53243,8 +53288,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.35;
           this._hemiLight.color.setHex(0x334477);
           this._hemiLight.groundColor.setHex(0x111122);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x222244);
-          (this._scene.fog as THREE.FogExp2).density = 0.025;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x222244);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.025;
           groundMat.color.setHex(0x222244);
           this._renderer.toneMappingExposure = 0.8;
           break;
@@ -53255,8 +53300,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.25;
           this._hemiLight.color.setHex(0x223355);
           this._hemiLight.groundColor.setHex(0x0a0a11);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x1a1a33);
-          (this._scene.fog as THREE.FogExp2).density = 0.028;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x1a1a33);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.028;
           groundMat.color.setHex(0x1a1a33);
           this._renderer.toneMappingExposure = 0.7;
           break;
@@ -53270,8 +53315,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.7;
           this._hemiLight.color.setHex(0xaaccee);
           this._hemiLight.groundColor.setHex(0x445566);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0xbbccdd);
-          (this._scene.fog as THREE.FogExp2).density = 0.018;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0xbbccdd);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.018;
           this._renderer.toneMappingExposure = 1.1;
           break;
         case TimeOfDay.DAWN:
@@ -53281,8 +53326,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.5;
           this._hemiLight.color.setHex(0xcc8866);
           this._hemiLight.groundColor.setHex(0x334455);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x998877);
-          (this._scene.fog as THREE.FogExp2).density = 0.015;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x998877);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.015;
           groundMat.color.setHex(0x998877);
           this._renderer.toneMappingExposure = 0.95;
           break;
@@ -53293,8 +53338,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.4;
           this._hemiLight.color.setHex(0x886644);
           this._hemiLight.groundColor.setHex(0x223344);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x665566);
-          (this._scene.fog as THREE.FogExp2).density = 0.02;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x665566);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.02;
           groundMat.color.setHex(0x665566);
           this._renderer.toneMappingExposure = 0.8;
           break;
@@ -53305,8 +53350,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.2;
           this._hemiLight.color.setHex(0x223366);
           this._hemiLight.groundColor.setHex(0x0a0a11);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x112244);
-          (this._scene.fog as THREE.FogExp2).density = 0.025;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x112244);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.025;
           groundMat.color.setHex(0x112244);
           this._renderer.toneMappingExposure = 0.55;
           break;
@@ -53320,8 +53365,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.5;
           this._hemiLight.color.setHex(0x665577);
           this._hemiLight.groundColor.setHex(0x221122);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x443355);
-          (this._scene.fog as THREE.FogExp2).density = 0.03;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x443355);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.03;
           this._renderer.toneMappingExposure = 0.85;
           break;
         case TimeOfDay.DAWN:
@@ -53331,8 +53376,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.35;
           this._hemiLight.color.setHex(0x554466);
           this._hemiLight.groundColor.setHex(0x1a0a1a);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x332244);
-          (this._scene.fog as THREE.FogExp2).density = 0.032;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x332244);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.032;
           groundMat.color.setHex(0x332244);
           this._renderer.toneMappingExposure = 0.75;
           break;
@@ -53343,8 +53388,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.25;
           this._hemiLight.color.setHex(0x332244);
           this._hemiLight.groundColor.setHex(0x0a0510);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x221133);
-          (this._scene.fog as THREE.FogExp2).density = 0.035;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x221133);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.035;
           groundMat.color.setHex(0x221133);
           this._renderer.toneMappingExposure = 0.65;
           break;
@@ -53355,8 +53400,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.15;
           this._hemiLight.color.setHex(0x110a22);
           this._hemiLight.groundColor.setHex(0x050305);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x110a1a);
-          (this._scene.fog as THREE.FogExp2).density = 0.04;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x110a1a);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.04;
           groundMat.color.setHex(0x110a1a);
           this._renderer.toneMappingExposure = 0.45;
           break;
@@ -53370,8 +53415,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.5;
           this._hemiLight.color.setHex(0x889944);
           this._hemiLight.groundColor.setHex(0x332211);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x554433);
-          (this._scene.fog as THREE.FogExp2).density = 0.022;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x554433);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.022;
           this._renderer.toneMappingExposure = 0.9;
           break;
         case TimeOfDay.DAWN:
@@ -53381,8 +53426,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.4;
           this._hemiLight.color.setHex(0x886644);
           this._hemiLight.groundColor.setHex(0x221108);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x443322);
-          (this._scene.fog as THREE.FogExp2).density = 0.025;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x443322);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.025;
           groundMat.color.setHex(0x443322);
           this._renderer.toneMappingExposure = 0.8;
           break;
@@ -53393,8 +53438,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.3;
           this._hemiLight.color.setHex(0x553322);
           this._hemiLight.groundColor.setHex(0x110808);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x332211);
-          (this._scene.fog as THREE.FogExp2).density = 0.028;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x332211);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.028;
           groundMat.color.setHex(0x332211);
           this._renderer.toneMappingExposure = 0.7;
           break;
@@ -53405,8 +53450,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.15;
           this._hemiLight.color.setHex(0x221a08);
           this._hemiLight.groundColor.setHex(0x080505);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x1a1108);
-          (this._scene.fog as THREE.FogExp2).density = 0.032;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x1a1108);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.032;
           groundMat.color.setHex(0x1a1108);
           this._renderer.toneMappingExposure = 0.5;
           break;
@@ -53420,8 +53465,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.6;
           this._hemiLight.color.setHex(0xaa8855);
           this._hemiLight.groundColor.setHex(0x332211);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x665544);
-          (this._scene.fog as THREE.FogExp2).density = 0.015;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x665544);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.015;
           this._renderer.toneMappingExposure = 1.0;
           break;
         case TimeOfDay.DAWN:
@@ -53431,8 +53476,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.5;
           this._hemiLight.color.setHex(0x886633);
           this._hemiLight.groundColor.setHex(0x221108);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x554433);
-          (this._scene.fog as THREE.FogExp2).density = 0.017;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x554433);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.017;
           groundMat.color.setHex(0x554433);
           this._renderer.toneMappingExposure = 0.9;
           break;
@@ -53443,8 +53488,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.4;
           this._hemiLight.color.setHex(0x664422);
           this._hemiLight.groundColor.setHex(0x1a0a05);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x443322);
-          (this._scene.fog as THREE.FogExp2).density = 0.02;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x443322);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.02;
           groundMat.color.setHex(0x443322);
           this._renderer.toneMappingExposure = 0.8;
           break;
@@ -53455,8 +53500,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.25;
           this._hemiLight.color.setHex(0x332211);
           this._hemiLight.groundColor.setHex(0x0a0505);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x221108);
-          (this._scene.fog as THREE.FogExp2).density = 0.022;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x221108);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.022;
           groundMat.color.setHex(0x221108);
           this._renderer.toneMappingExposure = 0.6;
           break;
@@ -53470,8 +53515,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.5;
           this._hemiLight.color.setHex(0x885544);
           this._hemiLight.groundColor.setHex(0x221111);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x552233);
-          (this._scene.fog as THREE.FogExp2).density = 0.02;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x552233);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.02;
           this._renderer.toneMappingExposure = 0.85;
           break;
         case TimeOfDay.DAWN:
@@ -53481,8 +53526,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.4;
           this._hemiLight.color.setHex(0x664433);
           this._hemiLight.groundColor.setHex(0x1a0808);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x441122);
-          (this._scene.fog as THREE.FogExp2).density = 0.022;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x441122);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.022;
           groundMat.color.setHex(0x441122);
           this._renderer.toneMappingExposure = 0.75;
           break;
@@ -53493,8 +53538,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.3;
           this._hemiLight.color.setHex(0x442211);
           this._hemiLight.groundColor.setHex(0x100505);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x330a1a);
-          (this._scene.fog as THREE.FogExp2).density = 0.025;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x330a1a);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.025;
           groundMat.color.setHex(0x330a1a);
           this._renderer.toneMappingExposure = 0.65;
           break;
@@ -53505,8 +53550,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.15;
           this._hemiLight.color.setHex(0x220a11);
           this._hemiLight.groundColor.setHex(0x050203);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x1a0510);
-          (this._scene.fog as THREE.FogExp2).density = 0.03;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x1a0510);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.03;
           groundMat.color.setHex(0x1a0510);
           this._renderer.toneMappingExposure = 0.45;
           break;
@@ -53520,8 +53565,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.6;
           this._hemiLight.color.setHex(0x99aabb);
           this._hemiLight.groundColor.setHex(0x445566);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x778899);
-          (this._scene.fog as THREE.FogExp2).density = 0.012;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x778899);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.012;
           this._renderer.toneMappingExposure = 1.0;
           break;
         case TimeOfDay.DAWN:
@@ -53531,8 +53576,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.5;
           this._hemiLight.color.setHex(0xaa8866);
           this._hemiLight.groundColor.setHex(0x334455);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x667788);
-          (this._scene.fog as THREE.FogExp2).density = 0.014;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x667788);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.014;
           groundMat.color.setHex(0x667788);
           this._renderer.toneMappingExposure = 0.9;
           break;
@@ -53543,8 +53588,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.4;
           this._hemiLight.color.setHex(0x775544);
           this._hemiLight.groundColor.setHex(0x223344);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x556677);
-          (this._scene.fog as THREE.FogExp2).density = 0.016;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x556677);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.016;
           groundMat.color.setHex(0x556677);
           this._renderer.toneMappingExposure = 0.8;
           break;
@@ -53555,8 +53600,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.2;
           this._hemiLight.color.setHex(0x223366);
           this._hemiLight.groundColor.setHex(0x0a0a15);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x223355);
-          (this._scene.fog as THREE.FogExp2).density = 0.018;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x223355);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.018;
           groundMat.color.setHex(0x223355);
           this._renderer.toneMappingExposure = 0.55;
           break;
@@ -53570,8 +53615,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.3;
           this._hemiLight.color.setHex(0x442266);
           this._hemiLight.groundColor.setHex(0x0a000a);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x220022);
-          (this._scene.fog as THREE.FogExp2).density = 0.035;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x220022);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.035;
           this._renderer.toneMappingExposure = 0.65;
           break;
         case TimeOfDay.DAWN:
@@ -53581,8 +53626,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.2;
           this._hemiLight.color.setHex(0x331155);
           this._hemiLight.groundColor.setHex(0x080008);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x1a001a);
-          (this._scene.fog as THREE.FogExp2).density = 0.038;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x1a001a);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.038;
           groundMat.color.setHex(0x1a001a);
           this._renderer.toneMappingExposure = 0.55;
           break;
@@ -53593,8 +53638,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.15;
           this._hemiLight.color.setHex(0x220a44);
           this._hemiLight.groundColor.setHex(0x050005);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x110011);
-          (this._scene.fog as THREE.FogExp2).density = 0.04;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x110011);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.04;
           groundMat.color.setHex(0x110011);
           this._renderer.toneMappingExposure = 0.45;
           break;
@@ -53605,8 +53650,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.1;
           this._hemiLight.color.setHex(0x110a22);
           this._hemiLight.groundColor.setHex(0x030003);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x0a000a);
-          (this._scene.fog as THREE.FogExp2).density = 0.045;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x0a000a);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.045;
           groundMat.color.setHex(0x0a000a);
           this._renderer.toneMappingExposure = 0.3;
           break;
@@ -53620,8 +53665,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.2;
           this._hemiLight.color.setHex(0x332255);
           this._hemiLight.groundColor.setHex(0x050008);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x1a0022);
-          (this._scene.fog as THREE.FogExp2).density = 0.04;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x1a0022);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.04;
           this._renderer.toneMappingExposure = 0.55;
           break;
         case TimeOfDay.DAWN:
@@ -53631,8 +53676,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.15;
           this._hemiLight.color.setHex(0x220a44);
           this._hemiLight.groundColor.setHex(0x030005);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x110018);
-          (this._scene.fog as THREE.FogExp2).density = 0.042;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x110018);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.042;
           groundMat.color.setHex(0x110018);
           this._renderer.toneMappingExposure = 0.45;
           break;
@@ -53643,8 +53688,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.1;
           this._hemiLight.color.setHex(0x110833);
           this._hemiLight.groundColor.setHex(0x020003);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x0a0011);
-          (this._scene.fog as THREE.FogExp2).density = 0.045;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x0a0011);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.045;
           groundMat.color.setHex(0x0a0011);
           this._renderer.toneMappingExposure = 0.35;
           break;
@@ -53655,8 +53700,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.08;
           this._hemiLight.color.setHex(0x0a0518);
           this._hemiLight.groundColor.setHex(0x010002);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x050008);
-          (this._scene.fog as THREE.FogExp2).density = 0.05;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x050008);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.05;
           groundMat.color.setHex(0x050008);
           this._renderer.toneMappingExposure = 0.2;
           break;
@@ -53670,8 +53715,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.5;
           this._hemiLight.color.setHex(0x887766);
           this._hemiLight.groundColor.setHex(0x332a22);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x6a6560);
-          (this._scene.fog as THREE.FogExp2).density = 0.014;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x6a6560);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.014;
           this._renderer.toneMappingExposure = 0.9;
           break;
         case TimeOfDay.DAWN:
@@ -53681,8 +53726,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.4;
           this._hemiLight.color.setHex(0xaa7755);
           this._hemiLight.groundColor.setHex(0x221a12);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x5a4a3a);
-          (this._scene.fog as THREE.FogExp2).density = 0.016;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x5a4a3a);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.016;
           groundMat.color.setHex(0x4a4035);
           this._renderer.toneMappingExposure = 0.8;
           break;
@@ -53693,8 +53738,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.35;
           this._hemiLight.color.setHex(0x774433);
           this._hemiLight.groundColor.setHex(0x110a08);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x2a1a15);
-          (this._scene.fog as THREE.FogExp2).density = 0.02;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x2a1a15);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.02;
           groundMat.color.setHex(0x3a3028);
           this._renderer.toneMappingExposure = 0.6;
           break;
@@ -53705,8 +53750,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.15;
           this._hemiLight.color.setHex(0x1a2233);
           this._hemiLight.groundColor.setHex(0x050505);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x0a0a10);
-          (this._scene.fog as THREE.FogExp2).density = 0.025;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x0a0a10);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.025;
           groundMat.color.setHex(0x1a1a20);
           this._renderer.toneMappingExposure = 0.4;
           break;
@@ -53720,8 +53765,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.55;
           this._hemiLight.color.setHex(0x8899aa);
           this._hemiLight.groundColor.setHex(0x3a3530);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x6e7280);
-          (this._scene.fog as THREE.FogExp2).density = 0.01;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x6e7280);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.01;
           this._renderer.toneMappingExposure = 1.0;
           break;
         case TimeOfDay.DAWN:
@@ -53731,8 +53776,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.45;
           this._hemiLight.color.setHex(0xbb8866);
           this._hemiLight.groundColor.setHex(0x221a12);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x5a4a40);
-          (this._scene.fog as THREE.FogExp2).density = 0.012;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x5a4a40);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.012;
           groundMat.color.setHex(0x4a4850);
           this._renderer.toneMappingExposure = 0.85;
           break;
@@ -53743,8 +53788,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.35;
           this._hemiLight.color.setHex(0x885544);
           this._hemiLight.groundColor.setHex(0x110a0a);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x2a1a18);
-          (this._scene.fog as THREE.FogExp2).density = 0.016;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x2a1a18);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.016;
           groundMat.color.setHex(0x3a3840);
           this._renderer.toneMappingExposure = 0.65;
           break;
@@ -53755,8 +53800,8 @@ export class DiabloRenderer {
           this._ambientLight.intensity = 0.15;
           this._hemiLight.color.setHex(0x1a2244);
           this._hemiLight.groundColor.setHex(0x050508);
-          (this._scene.fog as THREE.FogExp2).color.setHex(0x08080f);
-          (this._scene.fog as THREE.FogExp2).density = 0.02;
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).color.setHex(0x08080f);
+          if (this._scene.fog) (this._scene.fog as THREE.FogExp2).density = 0.02;
           groundMat.color.setHex(0x1a1a25);
           this._renderer.toneMappingExposure = 0.45;
           break;
