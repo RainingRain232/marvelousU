@@ -600,7 +600,7 @@ export class DiabloGame {
   private _riftHud: HTMLDivElement | null = null;
   private _lastRiftProgress: number = -1;
   private _lastRiftTime: number = -1;
-  private _lastRiftState: number = -1;
+  private _lastRiftState: GreaterRiftState | null = null;
 
   // Excalibur quest HUD
   private _excaliburHud: HTMLDivElement | null = null;
