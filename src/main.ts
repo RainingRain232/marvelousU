@@ -175,6 +175,7 @@ import { LastFlameGame } from "./lastflame/LastFlameGame";
 import { GravitonGame } from "./graviton/GravitonGame";
 import { GrailQuestGame } from "./grailquest/GrailQuestGame";
 import { MerlinDuelGame } from "./merlinduel/MerlinDuelGame";
+import { KothGame } from "./koth/KothGame";
 import { camelotHubScreen } from "@view/ui/CamelotHubScreen";
 
 // World mode imports
@@ -402,6 +403,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     [GameMode.GRAVITON]: 51,
     [GameMode.GRAIL_QUEST]: 52,
     [GameMode.MERLIN_DUEL]: 53,
+    [GameMode.KOTH]: 54,
   };
   // Modes that need the setup screen (not skipSetup)
   const NEEDS_SETUP = new Set([GameMode.STANDARD, GameMode.DEATHMATCH, GameMode.BATTLEFIELD, GameMode.WAVE]);
@@ -721,6 +723,11 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     if (menuScreen.selectedGameMode === GameMode.MERLIN_DUEL) {
       menuScreen.hide();
       _bootMerlinDuelGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.KOTH) {
+      menuScreen.hide();
+      _bootKothGame();
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.WORLD) {
@@ -3133,6 +3140,24 @@ async function _bootMerlinDuelGame(): Promise<void> {
     menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
   window.addEventListener("merlinduelExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// King of the Hill mode boot
+// ---------------------------------------------------------------------------
+
+let _kothGame: KothGame | null = null;
+
+async function _bootKothGame(): Promise<void> {
+  if (_kothGame) { _kothGame.destroy(); _kothGame = null; }
+  _kothGame = new KothGame();
+  await _kothGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("kothExit", _onExit);
+    if (_kothGame) { _kothGame.destroy(); _kothGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("kothExit", _onExit);
 }
 
 // ---------------------------------------------------------------------------

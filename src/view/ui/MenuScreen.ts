@@ -553,6 +553,12 @@ const GAME_MODES: GameModeEntry[] = [
     label: "GRAIL QUEST",
     desc: "Roguelike dungeon crawler: descend 10 floors, fight monsters, find the Holy Grail",
     skipSetup: true,
+  },
+  {
+    mode: GameMode.KOTH,
+    label: "KING OF THE HILL",
+    desc: "Seize the sacred hill! Hold it to score points, fight guardians, survive cataclysms",
+    skipSetup: true,
     tag: "NEW",
   },
   {
