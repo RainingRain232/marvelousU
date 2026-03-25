@@ -75,6 +75,8 @@ export class DiabloRenderer {
   private _prevPlayerX: number = 0;
   private _prevPlayerZ: number = 0;
   private _aimLine: THREE.Line | null = null;
+  private _swingArc: THREE.Mesh | null = null;
+  private _swingArcTimer: number = 0;
 
   // First-person mode
   public firstPerson: boolean = false;
@@ -88,6 +90,9 @@ export class DiabloRenderer {
   private _invulnMesh: THREE.Mesh | null = null;
   private _fadeEl: HTMLDivElement | null = null;
   private _vignetteEl: HTMLDivElement | null = null;
+  private _skillFlashEl: HTMLDivElement | null = null;
+  private _skillFlashTimer: number = 0;
+  private _dodgeGhosts: { mesh: THREE.Group; timer: number }[] = [];
 
   private _particleMeshPool: THREE.Mesh[] = [];
   private _particlePoolSize: number = 500;
@@ -152,6 +157,14 @@ export class DiabloRenderer {
 
   // Dungeon layout rendering
   private _dungeonGroup: THREE.Group | null = null;
+
+  private _skyDome: THREE.Mesh | null = null;
+
+  private _footprints: THREE.Mesh[] = [];
+  private _footprintTimers: number[] = [];
+  private _footprintCooldown: number = 0;
+  private _footprintGeo: THREE.CircleGeometry | null = null;
+  private _footprintMat: THREE.MeshBasicMaterial | null = null;
 
   // Post-processing
   private _bloomComposer: EffectComposer | null = null;
@@ -263,6 +276,16 @@ export class DiabloRenderer {
     this._bloomComposer = new EffectComposer(this._renderer);
     this._bloomComposer.addPass(renderPass);
     this._bloomComposer.addPass(bloomPass);
+
+    // Sky dome
+    const skyGeo = new THREE.SphereGeometry(150, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2);
+    const skyMat = new THREE.MeshBasicMaterial({
+      color: 0x4488cc, side: THREE.BackSide,
+      fog: false,
+    });
+    this._skyDome = new THREE.Mesh(skyGeo, skyMat);
+    this._skyDome.position.y = -5;
+    this._scene.add(this._skyDome);
   }
 
   /** Re-color the terrain mesh with height-based blending between two colors.
@@ -536,6 +559,15 @@ export class DiabloRenderer {
       case DiabloMapId.CITY:
         this._buildCity(cfg.width, cfg.depth);
         break;
+    }
+
+    // Tint sky dome to match map atmosphere
+    if (this._skyDome) {
+      const skyMat = this._skyDome.material as THREE.MeshBasicMaterial;
+      if (this._scene.fog) {
+        skyMat.color.copy((this._scene.fog as THREE.FogExp2).color);
+        skyMat.color.multiplyScalar(1.3); // Slightly brighter than fog
+      }
     }
 
     // Match scene background to fog color for seamless sky
@@ -26926,6 +26958,51 @@ export class DiabloRenderer {
     this._enemyFlashTimers.set(enemyId, 0.12); // 120ms flash
   }
 
+  showSwingArc(playerX: number, playerY: number, playerZ: number, angle: number, color: number = 0xffffff): void {
+    if (!this._swingArc) {
+      const geo = new THREE.RingGeometry(0.8, 2.5, 16, 1, 0, Math.PI * 0.6);
+      const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false });
+      this._swingArc = new THREE.Mesh(geo, mat);
+      this._scene.add(this._swingArc);
+    }
+    const mat = this._swingArc.material as THREE.MeshBasicMaterial;
+    mat.color.setHex(color);
+    mat.opacity = 0.5;
+    this._swingArc.position.set(playerX, playerY + 1.0, playerZ);
+    this._swingArc.rotation.set(-Math.PI / 2, 0, angle - Math.PI * 0.3);
+    this._swingArc.visible = true;
+    this._swingArcTimer = 0.2;
+  }
+
+  showSkillFlash(color: string): void {
+    if (!this._skillFlashEl) {
+      this._skillFlashEl = document.createElement('div');
+      this._skillFlashEl.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9997;opacity:0;transition:opacity 0.05s ease;';
+      document.body.appendChild(this._skillFlashEl);
+    }
+    this._skillFlashEl.style.background = `radial-gradient(ellipse at center, transparent 60%, ${color} 100%)`;
+    this._skillFlashEl.style.opacity = '0.4';
+    this._skillFlashTimer = 0.15;
+  }
+
+  showDodgeGhost(playerX: number, playerY: number, playerZ: number): void {
+    // Clone the player group as a translucent ghost
+    const ghost = this._playerGroup.clone(true);
+    ghost.position.set(playerX, playerY, playerZ);
+    ghost.traverse((child: THREE.Object3D) => {
+      if (child instanceof THREE.Mesh && child.material) {
+        const mat = (child.material as THREE.MeshStandardMaterial).clone();
+        mat.transparent = true;
+        mat.opacity = 0.4;
+        mat.emissive.setHex(0x4488ff);
+        mat.emissiveIntensity = 0.5;
+        child.material = mat;
+      }
+    });
+    this._scene.add(ghost);
+    this._dodgeGhosts.push({ mesh: ghost, timer: 0.4 });
+  }
+
   /** Trigger a brief time-freeze effect for impactful hits */
   triggerHitFreeze(_duration: number): void {
     // This is tracked by the game logic; renderer just needs to know
@@ -27274,6 +27351,43 @@ export class DiabloRenderer {
     const pdx = state.player.x - this._prevPlayerX;
     const pdz = state.player.z - this._prevPlayerZ;
     const playerSpeed = Math.sqrt(pdx * pdx + pdz * pdz) / Math.max(dt, 0.001);
+
+    // Footprint trails
+    const playerMoved = Math.abs(state.player.x - this._prevPlayerX) + Math.abs(state.player.z - this._prevPlayerZ) > 0.05;
+    this._footprintCooldown -= dt;
+    if (playerMoved && this._footprintCooldown <= 0) {
+      if (!this._footprintGeo) {
+        this._footprintGeo = new THREE.CircleGeometry(0.15, 6);
+        this._footprintMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.15, depthWrite: false });
+      }
+      const fp = new THREE.Mesh(this._footprintGeo, this._footprintMat!.clone());
+      fp.rotation.x = -Math.PI / 2;
+      fp.position.set(state.player.x, 0.02, state.player.z);
+      this._scene.add(fp);
+      this._footprints.push(fp);
+      this._footprintTimers.push(4.0);
+      this._footprintCooldown = 0.25;
+    }
+    // Fade and remove old footprints
+    for (let i = this._footprints.length - 1; i >= 0; i--) {
+      this._footprintTimers[i] -= dt;
+      const mat = this._footprints[i].material as THREE.MeshBasicMaterial;
+      mat.opacity = Math.max(0, this._footprintTimers[i] / 4.0) * 0.15;
+      if (this._footprintTimers[i] <= 0) {
+        this._scene.remove(this._footprints[i]);
+        mat.dispose();
+        this._footprints.splice(i, 1);
+        this._footprintTimers.splice(i, 1);
+      }
+    }
+    // Cap footprint count
+    while (this._footprints.length > 80) {
+      const old = this._footprints.shift()!;
+      this._footprintTimers.shift();
+      this._scene.remove(old);
+      (old.material as THREE.MeshBasicMaterial).dispose();
+    }
+
     this._prevPlayerX = state.player.x;
     this._prevPlayerZ = state.player.z;
 
@@ -27642,6 +27756,38 @@ export class DiabloRenderer {
       if (this._renderer.toneMappingExposure !== 1.0) this._renderer.toneMappingExposure = 1.0;
     }
 
+    // Skill flash fade
+    if (this._skillFlashEl && this._skillFlashTimer > 0) {
+      this._skillFlashTimer -= dt;
+      this._skillFlashEl.style.opacity = String(Math.max(0, this._skillFlashTimer / 0.15) * 0.4);
+    }
+
+    // Dodge ghost fade
+    for (let i = this._dodgeGhosts.length - 1; i >= 0; i--) {
+      const g = this._dodgeGhosts[i];
+      g.timer -= dt;
+      const opacity = Math.max(0, g.timer / 0.4) * 0.4;
+      g.mesh.traverse((child: THREE.Object3D) => {
+        if (child instanceof THREE.Mesh && child.material instanceof THREE.MeshStandardMaterial) {
+          child.material.opacity = opacity;
+        }
+      });
+      if (g.timer <= 0) {
+        this._disposeObject3D(g.mesh);
+        this._scene.remove(g.mesh);
+        this._dodgeGhosts.splice(i, 1);
+      }
+    }
+
+    // Swing arc fade
+    if (this._swingArc && this._swingArcTimer > 0) {
+      this._swingArcTimer -= dt;
+      const mat = this._swingArc.material as THREE.MeshBasicMaterial;
+      mat.opacity = Math.max(0, this._swingArcTimer / 0.2) * 0.5;
+      this._swingArc.scale.setScalar(1 + (0.2 - this._swingArcTimer) * 3);
+      if (this._swingArcTimer <= 0) this._swingArc.visible = false;
+    }
+
     // Render with bloom post-processing
     if (this._bloomComposer) {
       this._bloomComposer.render();
@@ -27696,6 +27842,8 @@ export class DiabloRenderer {
         mesh = this._createEnemyMesh(enemy.type, enemy.scale);
         this._scene.add(mesh);
         this._enemyMeshes.set(enemy.id, mesh);
+        // Spawn smoke effect for new enemies
+        this.spawnParticles(ParticleType.DUST, enemy.x, enemy.y + 0.5, enemy.z, 8, state.particles);
       }
 
       mesh.position.set(enemy.x, enemy.y, enemy.z);
@@ -52435,6 +52583,10 @@ export class DiabloRenderer {
       this._vignetteEl.parentElement.removeChild(this._vignetteEl);
       this._vignetteEl = null;
     }
+    if (this._skillFlashEl && this._skillFlashEl.parentElement) {
+      this._skillFlashEl.parentElement.removeChild(this._skillFlashEl);
+      this._skillFlashEl = null;
+    }
 
     if (this.canvas && this.canvas.parentElement) {
       this.canvas.parentElement.removeChild(this.canvas);
@@ -53595,6 +53747,25 @@ export class DiabloRenderer {
           (this._scene.fog as THREE.FogExp2).density = 0.02;
           groundMat.color.setHex(0x1a1a25);
           this._renderer.toneMappingExposure = 0.45;
+          break;
+      }
+    }
+
+    // Update sky dome color
+    if (this._skyDome) {
+      const skyMat = this._skyDome.material as THREE.MeshBasicMaterial;
+      switch (tod) {
+        case TimeOfDay.DAY:
+          skyMat.color.setHex(0x5599dd);
+          break;
+        case TimeOfDay.DAWN:
+          skyMat.color.setHex(0xdd8855);
+          break;
+        case TimeOfDay.DUSK:
+          skyMat.color.setHex(0x994433);
+          break;
+        case TimeOfDay.NIGHT:
+          skyMat.color.setHex(0x111133);
           break;
       }
     }

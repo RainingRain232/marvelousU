@@ -1333,6 +1333,7 @@ export interface DiabloEnemy {
   shieldActive?: boolean;
   healTarget?: string | null;
   flankerAngle?: number;
+  staggerTimer?: number;
 }
 
 export interface DiabloProjectile {

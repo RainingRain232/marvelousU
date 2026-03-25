@@ -521,6 +521,7 @@ export class DiabloGame {
   private _skillCooldownOverlays: HTMLDivElement[] = [];
   private _fpsCrosshair!: HTMLDivElement;
   private _viewModeLabel!: HTMLDivElement;
+  private _dpsMeter!: HTMLDivElement;
 
   // HP/Mana change tracking for visual effects
   private _prevHp: number = -1;
@@ -601,12 +602,18 @@ export class DiabloGame {
 
   // Death tracking
   private _lastDeathCause: string = '';
+  private _recentDamage: { source: string; amount: number; type: string; time: number }[] = [];
   private _deathLocationX: number = 0;
   private _deathLocationZ: number = 0;
   private _deathGoldDrop: number = 0;
 
   // Hit freeze & slow motion
   private _hitFreezeTimer: number = 0;
+
+  // Combo kill system
+  private _comboCount: number = 0;
+  private _comboTimer: number = 0;
+  private _comboMultiplier: number = 1.0;
   private _slowMotionTimer: number = 0;
   private _slowMotionScale: number = 1;
 
@@ -5642,6 +5649,16 @@ export class DiabloGame {
     minimapWrap.appendChild(this._minimapCanvas);
     this._hud.appendChild(minimapWrap);
 
+    // DPS meter
+    this._dpsMeter = document.createElement("div");
+    this._dpsMeter.style.cssText = `
+      position:absolute;top:270px;left:16px;
+      font-size:12px;color:#ffcc44;font-family:'Georgia',serif;
+      text-shadow:0 0 4px rgba(0,0,0,0.8), 0 1px 2px rgba(0,0,0,0.9);
+      pointer-events:none;letter-spacing:1px;opacity:0.8;
+    `;
+    this._hud.appendChild(this._dpsMeter);
+
     // Dedicated map name label below minimap
     this._mapNameLabel = document.createElement("div");
     this._mapNameLabel.style.cssText = `
@@ -6040,6 +6057,15 @@ export class DiabloGame {
     this._combatLog = this._combatLog.filter(e => now - e.time < 5000);
     const totalDmg = this._combatLog.reduce((s, e) => s + e.damage, 0);
     this._currentDps = this._combatLog.length > 0 ? totalDmg / 5 : 0;
+
+    if (this._dpsMeter) {
+      if (this._currentDps > 0) {
+        this._dpsMeter.textContent = `⚔ ${Math.round(this._currentDps)} DPS`;
+        this._dpsMeter.style.display = 'block';
+      } else {
+        this._dpsMeter.style.display = 'none';
+      }
+    }
 
     // FPS crosshair + view mode label
     if (this._fpsCrosshair) this._fpsCrosshair.style.display = this._firstPerson ? "block" : "none";
@@ -6487,6 +6513,19 @@ export class DiabloGame {
       this._rafId = requestAnimationFrame(this._gameLoop);
       return;
     }
+    // Combo timer decay
+    if (this._comboTimer > 0) {
+      this._comboTimer -= dt;
+      if (this._comboTimer <= 0) {
+        if (this._comboCount >= 5) {
+          this._addFloatingText(this._state.player.x, this._state.player.y + 3, this._state.player.z,
+            `${this._comboCount}x COMBO ENDED`, '#888888');
+        }
+        this._comboCount = 0;
+        this._comboMultiplier = 1.0;
+      }
+    }
+
     // Slow motion scaling
     const timeScale = this._slowMotionTimer > 0 ? this._slowMotionScale : 1;
     if (this._slowMotionTimer > 0) this._slowMotionTimer -= dt;
@@ -6816,6 +6855,7 @@ export class DiabloGame {
       p.dodgeVx = dx * p.moveSpeed * 3; // 3x speed during roll
       p.dodgeVz = dz * p.moveSpeed * 3;
       this._renderer.spawnParticles(ParticleType.DUST, p.x, p.y, p.z, 8, this._state.particles);
+      this._renderer.showDodgeGhost(p.x, p.y, p.z);
     }
   }
 
@@ -6989,6 +7029,12 @@ export class DiabloGame {
     const toRemove: string[] = [];
 
     for (const enemy of this._state.enemies) {
+      // Stagger freeze
+      if (enemy.staggerTimer && enemy.staggerTimer > 0) {
+        enemy.staggerTimer -= dt;
+        continue;
+      }
+
       const dist = this._dist(enemy.x, enemy.z, p.x, p.z);
       const effectiveSpeed = this._getEnemyEffectiveSpeed(enemy);
 
@@ -7166,6 +7212,13 @@ export class DiabloGame {
                 const mitigated = this._applyPlayerDefenses(rawDmg, enemy.damageType);
                 p.hp -= mitigated;
                 p.stats.totalDamageTaken += mitigated;
+                this._recentDamage.push({
+                  source: enemy.bossName || (enemy.type as string).replace(/_/g, ' '),
+                  amount: mitigated,
+                  type: enemy.damageType || 'PHYSICAL',
+                  time: performance.now()
+                });
+                if (this._recentDamage.length > 10) this._recentDamage.shift();
                 this._addFloatingText(p.x, p.y + 2, p.z, `-${Math.round(mitigated)}`, "#ff4444");
 
                 if (enemy.isBoss) {
@@ -7339,6 +7392,9 @@ export class DiabloGame {
     target.x += Math.cos(hkAngle) * hkDist;
     target.z += Math.sin(hkAngle) * hkDist;
 
+    // Hit stagger — brief freeze on impact
+    target.staggerTimer = isCrit ? 0.2 : 0.1;
+
     // Stat tracking: damage dealt
     p.stats.totalDamageDealt += finalDamage;
     p.stats.highestCrit = Math.max(p.stats.highestCrit, isCrit ? finalDamage : 0);
@@ -7363,6 +7419,8 @@ export class DiabloGame {
     // Reset attack timer
     p.attackTimer = 1.0 / p.attackSpeed;
     p.isAttacking = true;
+    const swingAngle = Math.atan2(target.x - p.x, target.z - p.z);
+    this._renderer.showSwingArc(p.x, p.y, p.z, swingAngle, 0xffeedd);
 
     // Check enemy death
     if (target.hp <= 0) {
@@ -7379,15 +7437,23 @@ export class DiabloGame {
         this._slowMotionScale = 0.3;
         this._renderer.shakeCamera(0.8, 1.2);
       }
+      // Combo system
+      this._comboCount++;
+      this._comboTimer = 3.0; // 3 second window
+      this._comboMultiplier = 1.0 + Math.min(this._comboCount * 0.05, 1.0); // up to 2x at 20 combo
+      if (this._comboCount >= 3) {
+        this._addFloatingText(p.x, p.y + 3.5, p.z, `${this._comboCount}x COMBO`, '#ffaa00');
+      }
+
       const meleeXpMult = this._state.weather === Weather.CLEAR ? 1.1 : 1.0;
-      let meleeXpAmount = Math.floor(target.xpReward * meleeXpMult);
+      let meleeXpAmount = Math.floor(target.xpReward * meleeXpMult * this._comboMultiplier);
       // Prestige XP bonus
       if (p.prestigeBonuses.xpPercent > 0) {
         meleeXpAmount = Math.floor(meleeXpAmount * (1 + p.prestigeBonuses.xpPercent / 100));
       }
       p.xp += meleeXpAmount;
       this._addFloatingText(target.x, target.y + 1.5, target.z, `+${meleeXpAmount} XP`, '#aaccff');
-      let goldFromKill = Math.floor(5 + Math.random() * 10 * target.level);
+      let goldFromKill = Math.floor((5 + Math.random() * 10 * target.level) * this._comboMultiplier);
       // Prestige gold bonus
       if (p.prestigeBonuses.goldPercent > 0) {
         goldFromKill = Math.floor(goldFromKill * (1 + p.prestigeBonuses.goldPercent / 100));
@@ -7769,6 +7835,21 @@ export class DiabloGame {
 
     p.mana -= Math.ceil(def.manaCost * branchMods.manaCostMult);
     this._playSound('skill');
+
+    // Skill screen flash by damage type
+    const flashColors: Record<string, string> = {
+      [DamageType.FIRE]: 'rgba(255,100,0,0.5)',
+      [DamageType.ICE]: 'rgba(100,200,255,0.5)',
+      [DamageType.LIGHTNING]: 'rgba(255,255,100,0.5)',
+      [DamageType.POISON]: 'rgba(100,255,100,0.5)',
+      [DamageType.ARCANE]: 'rgba(180,80,255,0.5)',
+      [DamageType.SHADOW]: 'rgba(120,80,180,0.5)',
+      [DamageType.HOLY]: 'rgba(255,255,200,0.5)',
+      [DamageType.PHYSICAL]: 'rgba(255,230,200,0.3)',
+    };
+    const skillFlashColor = flashColors[def.damageType] || flashColors[DamageType.PHYSICAL];
+    this._renderer.showSkillFlash(skillFlashColor);
+
     const talentBonusesCd = this._getTalentBonuses();
     const cdReduction = talentBonusesCd[TalentEffectType.SKILL_COOLDOWN_REDUCTION] || 0;
     const effectiveCooldown = def.cooldown * branchMods.cooldownMult * (1 - cdReduction / 100);
@@ -11656,6 +11737,12 @@ export class DiabloGame {
                 <div style="display:grid;grid-template-columns:repeat(8,55px);grid-template-rows:repeat(5,55px);gap:3px;">
                   ${invHtml}
                 </div>
+                <button id="quick-sell-btn" style="
+                  padding:8px 16px;background:rgba(60,40,20,0.9);border:2px solid #8a6a3a;
+                  border-radius:6px;color:#ffd700;font-family:'Georgia',serif;font-size:14px;
+                  cursor:pointer;letter-spacing:1px;margin:8px auto;display:block;
+                  transition:all 0.2s;pointer-events:auto;
+                ">⚡ Quick Sell Common &amp; Uncommon</button>
               </div>
             </div>
 
@@ -11975,8 +12062,16 @@ export class DiabloGame {
       for (const loot of this._state.loot) {
         if (useFogOfWar && !this._isExplored(loot.x, loot.z)) continue;
         ctx.fillStyle = RARITY_CSS[loot.item.rarity] || "#ffff00";
+        // Pulse effect for rare+ loot
+        const rarityOrder = [ItemRarity.COMMON, ItemRarity.UNCOMMON, ItemRarity.RARE, ItemRarity.EPIC, ItemRarity.LEGENDARY, ItemRarity.MYTHIC, ItemRarity.DIVINE];
+        const rarityIdx = rarityOrder.indexOf(loot.item.rarity);
+        let lootRadius = 1.5;
+        if (rarityIdx >= 2) { // RARE+
+          const pulse = 1 + Math.sin(Date.now() * 0.005) * 0.5;
+          lootRadius = 2.0 + pulse;
+        }
         ctx.beginPath();
-        ctx.arc(toMx(loot.x), toMy(loot.z), 1.5, 0, Math.PI * 2);
+        ctx.arc(toMx(loot.x), toMy(loot.z), lootRadius, 0, Math.PI * 2);
         ctx.fill();
       }
 
@@ -12143,6 +12238,9 @@ export class DiabloGame {
   private _triggerDeath(): void {
     if (this._isDead) return;
     this._isDead = true;
+    this._comboCount = 0;
+    this._comboTimer = 0;
+    this._comboMultiplier = 1.0;
     this._state.deathCount++;
     this._mapDeathCount++;
     const p = this._state.player;
@@ -12203,7 +12301,19 @@ export class DiabloGame {
     if (goldEl) goldEl.textContent = goldLoss > 0 ? `Lost ${goldLoss} gold` : "";
     // Death recap
     const recapEl = this._deathOverlay.querySelector("#diablo-death-recap") as HTMLDivElement;
-    if (recapEl) recapEl.textContent = this._lastDeathCause ? `Slain by: ${this._lastDeathCause}` : 'You have been slain.';
+    if (recapEl) {
+      let recapHtml = this._lastDeathCause ? `<div>Slain by: ${this._lastDeathCause}</div>` : '<div>You have been slain.</div>';
+      const now = performance.now();
+      const recent = this._recentDamage.filter(d => now - d.time < 5000);
+      if (recent.length > 0) {
+        recapHtml += '<div style="margin-top:8px;font-size:13px;color:#aaa;">Last hits:</div>';
+        for (const d of recent.slice(-5)) {
+          const timeAgo = ((now - d.time) / 1000).toFixed(1);
+          recapHtml += `<div style="font-size:12px;color:#cc8888;margin-top:2px;">${d.source}: ${Math.round(d.amount)} ${d.type} (${timeAgo}s ago)</div>`;
+        }
+      }
+      recapEl.innerHTML = recapHtml;
+    }
   }
 
   private _updateDeathRespawn(dt: number): void {
