@@ -83,6 +83,7 @@ export class DiabloRenderer {
   private _shieldMeshes: Map<string, THREE.Mesh> = new Map();
   private _healBeams: Map<string, THREE.Line> = new Map();
   private _invulnMesh: THREE.Mesh | null = null;
+  private _fadeEl: HTMLDivElement | null = null;
 
   private _particleMeshPool: THREE.Mesh[] = [];
   private _particlePoolSize: number = 500;
@@ -531,6 +532,12 @@ export class DiabloRenderer {
       case DiabloMapId.CITY:
         this._buildCity(cfg.width, cfg.depth);
         break;
+    }
+
+    // Match scene background to fog color for seamless sky
+    const fog = this._scene.fog as THREE.FogExp2 | null;
+    if (fog) {
+      this._scene.background = fog.color.clone();
     }
 
     // Auto-detect water surfaces after map is built
@@ -27760,6 +27767,18 @@ export class DiabloRenderer {
         }
       }
 
+      // Attack telegraph: glow red when about to strike
+      const isAttackTelegraph = enemy.state === EnemyState.ATTACK && enemy.attackTimer < 0.4 && enemy.attackTimer > 0;
+      if (isAttackTelegraph) {
+        const telegraphIntensity = (0.4 - enemy.attackTimer) / 0.4;
+        mesh.traverse((child: THREE.Object3D) => {
+          if (child instanceof THREE.Mesh && child.material instanceof THREE.MeshStandardMaterial) {
+            child.material.emissive.setHex(0xff2200);
+            child.material.emissiveIntensity = telegraphIntensity * 1.5;
+          }
+        });
+      }
+
       // Enhanced dying animation: collapse + sink + dissolve
       if (enemy.state === EnemyState.DYING) {
         let dyingAnim = this._dyingAnims.get(enemy.id);
@@ -52338,6 +52357,11 @@ export class DiabloRenderer {
   }
 
   dispose(): void {
+    if (this._fadeEl && this._fadeEl.parentElement) {
+      this._fadeEl.parentElement.removeChild(this._fadeEl);
+      this._fadeEl = null;
+    }
+
     if (this.canvas && this.canvas.parentElement) {
       this.canvas.parentElement.removeChild(this.canvas);
     }
@@ -53492,6 +53516,11 @@ export class DiabloRenderer {
       }
     }
 
+    // Keep background in sync with fog
+    const todFog = this._scene.fog as THREE.FogExp2 | null;
+    if (todFog) {
+      this._scene.background = todFog.color.clone();
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -56366,5 +56395,14 @@ export class DiabloRenderer {
         }, duration * 1000);
       }
     }, 50);
+  }
+
+  fadeOverlay(opacity: number): void {
+    if (!this._fadeEl) {
+      this._fadeEl = document.createElement('div');
+      this._fadeEl.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:#000;pointer-events:none;transition:opacity 0.3s ease;z-index:9999;opacity:0;';
+      document.body.appendChild(this._fadeEl);
+    }
+    this._fadeEl.style.opacity = String(opacity);
   }
 }

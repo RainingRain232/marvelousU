@@ -2333,6 +2333,7 @@ export class DiabloGame {
   //  START MAP
   // ──────────────────────────────────────────────────────────────
   private _startMap(mapId: DiabloMapId): void {
+    this._renderer.fadeOverlay(1); // fade to black
     this._state.currentMap = mapId;
     this._state.enemies = [];
     this._state.projectiles = [];
@@ -2449,6 +2450,7 @@ export class DiabloGame {
     this._renderer.renderDungeonLayout(null);
 
     this._state.phase = DiabloPhase.PLAYING;
+    setTimeout(() => this._renderer.fadeOverlay(0), 100); // fade back in
     this._menuEl.innerHTML = "";
     this._hud.style.display = "block";
     this._recalculatePlayerStats();
@@ -6846,6 +6848,8 @@ export class DiabloGame {
       this._playSound('levelup');
       this._renderer.spawnParticles(ParticleType.LEVEL_UP, p.x, p.y + 0.5, p.z, 20 + Math.floor(Math.random() * 11), this._state.particles);
       this._renderer.shakeCamera(0.2, 0.3);
+      this._slowMotionTimer = 0.5;
+      this._slowMotionScale = 0.5;
       this._recalculatePlayerStats();
 
       // Unlock base class skills progressively at levels 2-5
@@ -7255,6 +7259,8 @@ export class DiabloGame {
     } else {
       this._addFloatingText(target.x, target.y + 2, target.z, `${Math.round(finalDamage)}`, "#ffff44");
       this._playSound('hit');
+      this._renderer.shakeCamera(0.08, 0.1); // subtle hit feedback
+      this._hitFreezeTimer = 0.02; // 20ms micro-freeze on normal hits
     }
 
     this._spawnHitParticles(target, DamageType.PHYSICAL);
@@ -7301,6 +7307,7 @@ export class DiabloGame {
         meleeXpAmount = Math.floor(meleeXpAmount * (1 + p.prestigeBonuses.xpPercent / 100));
       }
       p.xp += meleeXpAmount;
+      this._addFloatingText(target.x, target.y + 1.5, target.z, `+${meleeXpAmount} XP`, '#aaccff');
       let goldFromKill = Math.floor(5 + Math.random() * 10 * target.level);
       // Prestige gold bonus
       if (p.prestigeBonuses.goldPercent > 0) {
@@ -7353,6 +7360,7 @@ export class DiabloGame {
         };
         this._state.loot.push(loot);
       }
+      this._renderer.spawnParticles(ParticleType.GOLD, target.x, target.y + 0.5, target.z, 5, this._state.particles);
 
       // Guaranteed extra boss loot
       if (target.isBoss) {
@@ -10791,6 +10799,11 @@ export class DiabloGame {
     const py = this._state.player.y;
     const pz = this._state.player.z;
     this._addFloatingText(px, py + 4, pz, `${def.name} roams this land!`, "#ffaa44");
+    // Boss entrance effects
+    this._renderer.shakeCamera(0.5, 0.8);
+    this._addFloatingText(enemy.x, enemy.y + 4, enemy.z, `${enemy.bossName || 'BOSS'} APPEARS!`, '#ff4444');
+    this._slowMotionTimer = 1.0;
+    this._slowMotionScale = 0.4;
   }
 
   // ──────────────────────────────────────────────────────────────
