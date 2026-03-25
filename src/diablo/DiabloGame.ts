@@ -517,6 +517,7 @@ export class DiabloGame {
   private _hpText!: HTMLDivElement;
   private _mpText!: HTMLDivElement;
   private _skillSlots: HTMLDivElement[] = [];
+  private _prevSkillCooldowns: number[] = [0, 0, 0, 0, 0, 0];
   private _skillCooldownOverlays: HTMLDivElement[] = [];
   private _fpsCrosshair!: HTMLDivElement;
   private _viewModeLabel!: HTMLDivElement;
@@ -6000,6 +6001,7 @@ export class DiabloGame {
     const hpPct = Math.max(0, p.hp / p.maxHp);
     this._hpBar.style.height = (hpPct * 100) + "%";
     this._hpText.textContent = `${Math.ceil(p.hp)}/${p.maxHp}`;
+    this._renderer.updateVignette(p.hp / p.maxHp);
 
     // Detect HP change and trigger flash (threshold high enough to ignore minor regen ticks)
     const hpDelta = p.hp - this._prevHp;
@@ -6051,6 +6053,22 @@ export class DiabloGame {
       const cd = p.skillCooldowns.get(skillId) || 0;
       const maxCd = def.cooldown;
       const cdTextEl = this._skillSlots[i].querySelector(".skill-cd-text") as HTMLDivElement | null;
+      // Detect cooldown just finished → flash ready
+      const prevCd = this._prevSkillCooldowns[i] || 0;
+      if (prevCd > 0.1 && cd <= 0) {
+        // Cooldown just ended — flash the slot
+        this._skillSlots[i].style.transition = 'box-shadow 0.1s ease';
+        this._skillSlots[i].style.boxShadow = '0 0 20px rgba(255,215,0,0.9), 0 0 40px rgba(255,180,0,0.6), inset 0 0 15px rgba(255,215,0,0.4)';
+        this._skillSlots[i].style.borderColor = '#ffd700';
+        setTimeout(() => {
+          if (this._skillSlots[i]) {
+            this._skillSlots[i].style.transition = 'box-shadow 0.5s ease';
+            this._skillSlots[i].style.boxShadow = 'inset 0 1px 0 rgba(200,168,78,0.2), inset 0 -1px 0 rgba(0,0,0,0.3), 0 2px 8px rgba(0,0,0,0.5), inset 0 0 20px rgba(200,168,78,0.03)';
+            this._skillSlots[i].style.borderColor = '#9a8a4a';
+          }
+        }, 500);
+      }
+      this._prevSkillCooldowns[i] = cd;
       if (cd > 0) {
         const pct = Math.min(100, (cd / maxCd) * 100);
         this._skillCooldownOverlays[i].style.height = pct + "%";
@@ -7296,6 +7314,11 @@ export class DiabloGame {
       target.hp = 0;
       target.state = EnemyState.DYING;
       target.deathTimer = 0;
+      // Death knockback — push enemy away from player
+      const kbAngle = Math.atan2(target.z - p.z, target.x - p.x);
+      const kbDist = target.isBoss ? 1.0 : 2.0 + Math.random() * 1.5;
+      target.x += Math.cos(kbAngle) * kbDist;
+      target.z += Math.sin(kbAngle) * kbDist;
       if (target.isBoss) {
         this._slowMotionTimer = 1.5;
         this._slowMotionScale = 0.3;
@@ -7335,6 +7358,23 @@ export class DiabloGame {
       // Stat tracking (melee kill)
       p.stats.totalKills++;
       p.stats.currentKillStreak++;
+      // Kill streak announcements
+      const streak = p.stats.currentKillStreak;
+      if (streak === 5) {
+        this._addFloatingText(p.x, p.y + 4, p.z, 'KILLING SPREE!', '#ff8800');
+        this._renderer.shakeCamera(0.2, 0.3);
+      } else if (streak === 10) {
+        this._addFloatingText(p.x, p.y + 4, p.z, 'RAMPAGE!', '#ff4400');
+        this._renderer.shakeCamera(0.3, 0.4);
+      } else if (streak === 20) {
+        this._addFloatingText(p.x, p.y + 4, p.z, 'MASSACRE!', '#ff0000');
+        this._renderer.shakeCamera(0.5, 0.6);
+      } else if (streak === 50) {
+        this._addFloatingText(p.x, p.y + 4, p.z, 'LEGENDARY SLAYER!', '#ffd700');
+        this._renderer.shakeCamera(0.6, 0.8);
+        this._slowMotionTimer = 0.5;
+        this._slowMotionScale = 0.3;
+      }
       p.stats.longestKillStreak = Math.max(p.stats.longestKillStreak, p.stats.currentKillStreak);
       p.stats.totalGoldEarned += goldFromKill;
       if (target.isBoss) p.stats.totalBossKills++;
@@ -8411,7 +8451,7 @@ export class DiabloGame {
         if (dist <= aoe.radius) {
           const finalDmg = Math.max(1, aoe.damage - enemy.armor * 0.15);
           enemy.hp -= finalDmg;
-          this._addFloatingText(enemy.x, enemy.y + 2, enemy.z, `${Math.round(finalDmg)}`, "#ff8844");
+          this._addFloatingText(enemy.x, enemy.y + 2, enemy.z, `${Math.round(finalDmg)}`, this._damageTypeColor(aoe.damageType));
 
           this._spawnHitParticles(enemy, aoe.damageType);
           // Spawn extra AoE impact particles based on damage type
@@ -8448,6 +8488,11 @@ export class DiabloGame {
 
           if (enemy.hp <= 0) {
             this._killEnemy(enemy);
+          // Death knockback from AOE center
+          const aoKbAngle = Math.atan2(enemy.z - aoe.z, enemy.x - aoe.x);
+          const aoKbDist = 1.5 + Math.random() * 1.5;
+          enemy.x += Math.cos(aoKbAngle) * aoKbDist;
+          enemy.z += Math.sin(aoKbAngle) * aoKbDist;
           }
         }
       }
@@ -8485,9 +8530,9 @@ export class DiabloGame {
       // Custom loot filter check
       if (!this._shouldShowLoot(loot.item)) continue;
 
-      // Auto-pickup within 2 units
+      // Auto-pickup within 3 units
       const dist = this._dist(p.x, p.z, loot.x, loot.z);
-      if (dist < 2) {
+      if (dist < 3) {
         // Auto-salvage check
         if (this._shouldAutoSalvage(loot.item)) {
           const salvageYields: Record<string, number> = {
@@ -8514,7 +8559,7 @@ export class DiabloGame {
       }
 
       // Extended auto-pickup radius for gold and low-tier items
-      if (dist >= 2 && dist <= 2.5) {
+      if (dist >= 3 && dist <= 5) {
         const isGold = loot.item.name.includes('Gold') || loot.item.icon === '\uD83D\uDCB0';
         const isLowTier = loot.item.rarity === ItemRarity.COMMON || loot.item.rarity === ItemRarity.UNCOMMON;
         if (isGold || isLowTier) {
@@ -9278,6 +9323,23 @@ export class DiabloGame {
     // Stat tracking
     p.stats.totalKills++;
     p.stats.currentKillStreak++;
+      // Kill streak announcements
+      const streak = p.stats.currentKillStreak;
+      if (streak === 5) {
+        this._addFloatingText(p.x, p.y + 4, p.z, 'KILLING SPREE!', '#ff8800');
+        this._renderer.shakeCamera(0.2, 0.3);
+      } else if (streak === 10) {
+        this._addFloatingText(p.x, p.y + 4, p.z, 'RAMPAGE!', '#ff4400');
+        this._renderer.shakeCamera(0.3, 0.4);
+      } else if (streak === 20) {
+        this._addFloatingText(p.x, p.y + 4, p.z, 'MASSACRE!', '#ff0000');
+        this._renderer.shakeCamera(0.5, 0.6);
+      } else if (streak === 50) {
+        this._addFloatingText(p.x, p.y + 4, p.z, 'LEGENDARY SLAYER!', '#ffd700');
+        this._renderer.shakeCamera(0.6, 0.8);
+        this._slowMotionTimer = 0.5;
+        this._slowMotionScale = 0.3;
+      }
     p.stats.longestKillStreak = Math.max(p.stats.longestKillStreak, p.stats.currentKillStreak);
     p.stats.totalGoldEarned += goldEarned;
     if (enemy.isBoss) p.stats.totalBossKills++;
@@ -10240,6 +10302,19 @@ export class DiabloGame {
   // ──────────────────────────────────────────────────────────────
   //  HELPER: Add floating text
   // ──────────────────────────────────────────────────────────────
+  private _damageTypeColor(type: DamageType): string {
+    switch (type) {
+      case DamageType.FIRE: return '#ff6622';
+      case DamageType.ICE: return '#44ddff';
+      case DamageType.LIGHTNING: return '#ffff44';
+      case DamageType.POISON: return '#44ff44';
+      case DamageType.ARCANE: return '#cc44ff';
+      case DamageType.SHADOW: return '#aa66cc';
+      case DamageType.HOLY: return '#ffffaa';
+      default: return '#ffff44'; // physical = yellow
+    }
+  }
+
   private _addFloatingText(x: number, y: number, z: number, text: string, color: string): void {
     // Cap floating texts to prevent GPU memory pressure from mass AOE hits
     if (this._state.floatingTexts.length >= 40) {

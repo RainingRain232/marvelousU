@@ -44,6 +44,7 @@ export class DiabloRenderer {
   private _playerGroup!: THREE.Group;
   private _weaponMesh: THREE.Mesh | null = null;
   private _enemyMeshes: Map<string, THREE.Group> = new Map();
+  private _enemyHpBars: Map<string, THREE.Sprite> = new Map();
   private _projectileMeshes: Map<string, THREE.Object3D> = new Map();
   private _lootMeshes: Map<string, THREE.Group> = new Map();
   private _chestMeshes: Map<string, THREE.Group> = new Map();
@@ -84,6 +85,7 @@ export class DiabloRenderer {
   private _healBeams: Map<string, THREE.Line> = new Map();
   private _invulnMesh: THREE.Mesh | null = null;
   private _fadeEl: HTMLDivElement | null = null;
+  private _vignetteEl: HTMLDivElement | null = null;
 
   private _particleMeshPool: THREE.Mesh[] = [];
   private _particlePoolSize: number = 500;
@@ -26636,22 +26638,22 @@ export class DiabloRenderer {
     oct.castShadow = true;
     group.add(oct);
 
-    // Legendary+ get light beam
-    if (
-      rarity === ItemRarity.LEGENDARY ||
-      rarity === ItemRarity.MYTHIC ||
-      rarity === ItemRarity.DIVINE
-    ) {
-      const beamGeo = new THREE.CylinderGeometry(0.05, 0.05, 8, 36);
+    // Rarity-based light beam
+    const beamCfg = rarity === ItemRarity.RARE ? { h: 4, op: 0.2, ei: 1.0 }
+      : rarity === ItemRarity.EPIC ? { h: 6, op: 0.3, ei: 1.5 }
+      : (rarity === ItemRarity.LEGENDARY || rarity === ItemRarity.MYTHIC || rarity === ItemRarity.DIVINE) ? { h: 8, op: 0.4, ei: 2.0 }
+      : null;
+    if (beamCfg) {
+      const beamGeo = new THREE.CylinderGeometry(0.05, 0.05, beamCfg.h, 36);
       const beamMat = new THREE.MeshStandardMaterial({
         color: color,
         emissive: color,
-        emissiveIntensity: 2.0,
+        emissiveIntensity: beamCfg.ei,
         transparent: true,
-        opacity: 0.4,
+        opacity: beamCfg.op,
       });
       const beam = new THREE.Mesh(beamGeo, beamMat);
-      beam.position.y = 4.5;
+      beam.position.y = beamCfg.h / 2 + 0.5;
       group.add(beam);
     }
 
@@ -27666,6 +27668,15 @@ export class DiabloRenderer {
           this._disposeObject3D(mesh);
           this._scene.remove(mesh);
           this._enemyMeshes.delete(id);
+          const hpBar = this._enemyHpBars.get(id);
+          if (hpBar) {
+            if (hpBar.material instanceof THREE.SpriteMaterial && hpBar.material.map) {
+              hpBar.material.map.dispose();
+            }
+            hpBar.material.dispose();
+            this._scene.remove(hpBar);
+            this._enemyHpBars.delete(id);
+          }
         }
       }
     }
@@ -27680,6 +27691,45 @@ export class DiabloRenderer {
       }
 
       mesh.position.set(enemy.x, enemy.y, enemy.z);
+
+      // Enemy health bar
+      if (enemy.hp < enemy.maxHp && enemy.state !== EnemyState.DYING && enemy.state !== EnemyState.DEAD) {
+        let hpSprite = this._enemyHpBars.get(enemy.id);
+        if (!hpSprite) {
+          const canvas = document.createElement('canvas');
+          canvas.width = 64;
+          canvas.height = 8;
+          const tex = new THREE.CanvasTexture(canvas);
+          const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
+          hpSprite = new THREE.Sprite(mat);
+          hpSprite.scale.set(enemy.isBoss ? 3.0 : 1.5, enemy.isBoss ? 0.3 : 0.15, 1);
+          this._scene.add(hpSprite);
+          this._enemyHpBars.set(enemy.id, hpSprite);
+        }
+        // Position above enemy
+        hpSprite.position.set(enemy.x, enemy.y + enemy.scale * 2 + 0.5, enemy.z);
+        hpSprite.visible = true;
+        // Redraw HP bar
+        const mat = hpSprite.material as THREE.SpriteMaterial;
+        const tex = mat.map as THREE.CanvasTexture;
+        const ctx = tex.image.getContext('2d') as CanvasRenderingContext2D;
+        ctx.clearRect(0, 0, 64, 8);
+        // Background
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fillRect(0, 0, 64, 8);
+        // HP fill
+        const pct = Math.max(0, enemy.hp / enemy.maxHp);
+        const hpColor = pct > 0.5 ? '#44ff44' : pct > 0.25 ? '#ffaa00' : '#ff3333';
+        ctx.fillStyle = hpColor;
+        ctx.fillRect(1, 1, Math.floor(62 * pct), 6);
+        // Border
+        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+        ctx.strokeRect(0, 0, 64, 8);
+        tex.needsUpdate = true;
+      } else {
+        const hpSprite = this._enemyHpBars.get(enemy.id);
+        if (hpSprite) hpSprite.visible = false;
+      }
 
       // Face toward player when chasing/attacking
       if (enemy.state === EnemyState.CHASE || enemy.state === EnemyState.ATTACK) {
@@ -52361,6 +52411,10 @@ export class DiabloRenderer {
       this._fadeEl.parentElement.removeChild(this._fadeEl);
       this._fadeEl = null;
     }
+    if (this._vignetteEl && this._vignetteEl.parentElement) {
+      this._vignetteEl.parentElement.removeChild(this._vignetteEl);
+      this._vignetteEl = null;
+    }
 
     if (this.canvas && this.canvas.parentElement) {
       this.canvas.parentElement.removeChild(this.canvas);
@@ -52405,6 +52459,14 @@ export class DiabloRenderer {
       this._scene.remove(mesh);
     }
     this._enemyMeshes.clear();
+    for (const [, sprite] of this._enemyHpBars) {
+      if (sprite.material instanceof THREE.SpriteMaterial && sprite.material.map) {
+        sprite.material.map.dispose();
+      }
+      sprite.material.dispose();
+      this._scene.remove(sprite);
+    }
+    this._enemyHpBars.clear();
     for (const [, mesh] of this._projectileMeshes) {
       this._disposeObject3D(mesh);
       this._scene.remove(mesh);
@@ -56404,5 +56466,21 @@ export class DiabloRenderer {
       document.body.appendChild(this._fadeEl);
     }
     this._fadeEl.style.opacity = String(opacity);
+  }
+
+  updateVignette(hpPercent: number): void {
+    if (!this._vignetteEl) {
+      this._vignetteEl = document.createElement('div');
+      this._vignetteEl.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9998;opacity:0;transition:opacity 0.3s ease;';
+      this._vignetteEl.style.background = 'radial-gradient(ellipse at center, transparent 50%, rgba(180,0,0,0.6) 100%)';
+      document.body.appendChild(this._vignetteEl);
+    }
+    if (hpPercent < 0.3) {
+      const intensity = (0.3 - hpPercent) / 0.3; // 0 at 30%, 1 at 0%
+      const pulse = 0.7 + Math.sin(Date.now() * 0.006 * (1 + intensity * 2)) * 0.3;
+      this._vignetteEl.style.opacity = String(intensity * pulse);
+    } else {
+      this._vignetteEl.style.opacity = '0';
+    }
   }
 }
