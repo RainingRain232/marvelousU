@@ -457,6 +457,30 @@ const DAY_BOSS_MAP: Partial<Record<DiabloMapId, EnemyType>> = {
 };
 
 // ────────────────────────────────────────────────────────────────────────────
+// Hoisted constant arrays/maps (avoid re-creating per frame)
+// ────────────────────────────────────────────────────────────────────────────
+const RARITY_ORDER = [ItemRarity.COMMON, ItemRarity.UNCOMMON, ItemRarity.RARE, ItemRarity.EPIC, ItemRarity.LEGENDARY, ItemRarity.MYTHIC, ItemRarity.DIVINE] as const;
+
+const MAP_NAME_MAP: Record<string, string> = {
+  [DiabloMapId.FOREST]: "Darkwood Forest",
+  [DiabloMapId.ELVEN_VILLAGE]: "Aelindor",
+  [DiabloMapId.NECROPOLIS_DUNGEON]: "Necropolis Depths",
+  [DiabloMapId.VOLCANIC_WASTES]: "Volcanic Wastes",
+  [DiabloMapId.ABYSSAL_RIFT]: "Abyssal Rift",
+  [DiabloMapId.DRAGONS_SANCTUM]: "Dragon's Sanctum",
+  [DiabloMapId.SUNSCORCH_DESERT]: "Sunscorch Desert",
+  [DiabloMapId.EMERALD_GRASSLANDS]: "Emerald Grasslands",
+  [DiabloMapId.CAMELOT]: "Camelot",
+};
+
+const WEATHER_LABELS: Record<Weather, string> = {
+  [Weather.NORMAL]: "",
+  [Weather.FOGGY]: "\uD83C\uDF2B\uFE0F Foggy",
+  [Weather.CLEAR]: "\u2600\uFE0F Clear Skies",
+  [Weather.STORMY]: "\u26C8\uFE0F Stormy",
+};
+
+// ────────────────────────────────────────────────────────────────────────────
 // DiabloGame
 // ────────────────────────────────────────────────────────────────────────────
 export class DiabloGame {
@@ -569,15 +593,38 @@ export class DiabloGame {
   private _chestsOpened: number = 0;
   private _goldEarnedTotal: number = 0;
   private _totalKills: number = 0;
+  private _questTrackerDirty: boolean = true;
+  private _questTrackerDirtyTimer: number = 0;
 
   // Greater Rift HUD
   private _riftHud: HTMLDivElement | null = null;
+  private _lastRiftProgress: number = -1;
+  private _lastRiftTime: number = -1;
+  private _lastRiftState: number = -1;
 
   // Excalibur quest HUD
   private _excaliburHud: HTMLDivElement | null = null;
 
   // Crafting queue HUD
   private _craftingQueueHud: HTMLDivElement | null = null;
+  private _lastCraftingPct: number = -1;
+  private _lastCraftingQueueLen: number = -1;
+
+  // Multiplayer HUD tracking
+  private _lastMpMessageCount: number = -1;
+
+  // Gold/Level/Kill text tracking
+  private _lastGoldValue: number = -1;
+  private _lastLevelValue: number = -1;
+  private _lastKillValue: number = -1;
+  private _lastDeathValue: number = -1;
+
+  // HP/MP bar tracking (rounded integer percentages)
+  private _lastHpPctInt: number = -1;
+  private _lastMpPctInt: number = -1;
+
+  // Minimap frame throttle
+  private _minimapFrameCounter: number = 0;
 
   // Safe zone (enemy-free spawn area)
   // @ts-ignore assigned but value never read (reserved for future use)
@@ -655,6 +702,20 @@ export class DiabloGame {
   // Keyboard rebinding
   private _keyBindings: KeyBindings = { ...DEFAULT_KEYBINDINGS };
 
+  // Performance: dirty flags for cached computations
+  private _statsDirty: boolean = true;
+  private _talentsDirty: boolean = true;
+  private _equipDirty: boolean = true;
+  private _cachedTalentBonuses: Partial<Record<TalentEffectType, number>> = {};
+  private _cachedLegendaryEffects: LegendaryEffectDef[] = [];
+
+  // Performance: fog-of-war reveal position cache
+  private _lastRevealX: number = -9999;
+  private _lastRevealZ: number = -9999;
+
+  // Performance: cached HUD element references
+  private _dpsValueEl: Element | null = null;
+  private _lootFilterLabelEl: HTMLDivElement | null = null;
 
   // ──────────────────────────────────────────────────────────────
   //  LEADERBOARD
@@ -749,8 +810,7 @@ export class DiabloGame {
     items.sort((a, b) => {
       switch (sortBy) {
         case 'rarity': {
-          const rarityOrder = [ItemRarity.COMMON, ItemRarity.UNCOMMON, ItemRarity.RARE, ItemRarity.EPIC, ItemRarity.LEGENDARY, ItemRarity.MYTHIC, ItemRarity.DIVINE];
-          return rarityOrder.indexOf(b.rarity) - rarityOrder.indexOf(a.rarity);
+          return RARITY_ORDER.indexOf(b.rarity) - RARITY_ORDER.indexOf(a.rarity);
         }
         case 'type':
           return a.type.localeCompare(b.type) || b.level - a.level;
@@ -2783,6 +2843,7 @@ export class DiabloGame {
           p.lanternOn = false;
           this._renderer.setPlayerLantern(false);
         }
+        this._statsDirty = true; this._equipDirty = true;
         this._recalculatePlayerStats();
         this._showInventory();
       });
@@ -2806,6 +2867,7 @@ export class DiabloGame {
           const cfg = LANTERN_CONFIGS[item.name];
           if (cfg) this._renderer.setPlayerLantern(true, cfg.intensity, cfg.distance, cfg.color);
         }
+        this._statsDirty = true; this._equipDirty = true;
         this._recalculatePlayerStats();
         this._checkRunewords();
         this._showInventory();
@@ -5909,6 +5971,7 @@ export class DiabloGame {
     `;
     this._dpsDisplay.innerHTML = `<div style="font-size:10px;color:#888;margin-bottom:2px;">DPS METER</div><div id="dps-value">0</div>`;
     this._hud.appendChild(this._dpsDisplay);
+    this._dpsValueEl = this._dpsDisplay.querySelector("#dps-value");
 
     // Loot filter label
     const lootFilterLabel = document.createElement("div");
@@ -5919,6 +5982,7 @@ export class DiabloGame {
     `;
     lootFilterLabel.textContent = "Filter: Show All (Tab)";
     this._hud.appendChild(lootFilterLabel);
+    this._lootFilterLabelEl = lootFilterLabel;
 
     // === Animated torches flanking the skill bar ===
     const torchPositions = [
@@ -6063,7 +6127,10 @@ export class DiabloGame {
 
     // DPS calculation
     const now = performance.now();
-    this._combatLog = this._combatLog.filter(e => now - e.time < 5000);
+    // In-place prune expired combat log entries (avoids allocating new array each frame)
+    for (let i = this._combatLog.length - 1; i >= 0; i--) {
+      if (now - this._combatLog[i].time >= 5000) this._combatLog.splice(i, 1);
+    }
     const totalDmg = this._combatLog.reduce((s, e) => s + e.damage, 0);
     this._currentDps = this._combatLog.length > 0 ? totalDmg / 5 : 0;
 
@@ -6082,7 +6149,11 @@ export class DiabloGame {
 
     // Health orb
     const hpPct = Math.max(0, p.hp / p.maxHp);
-    this._hpBar.style.height = (hpPct * 100) + "%";
+    const hpPctInt = Math.round(hpPct * 100);
+    if (hpPctInt !== this._lastHpPctInt) {
+      this._lastHpPctInt = hpPctInt;
+      this._hpBar.style.height = hpPctInt + "%";
+    }
     this._hpText.textContent = `${Math.ceil(p.hp)}/${p.maxHp}`;
     this._renderer.updateVignette(p.hp / p.maxHp);
 
@@ -6106,7 +6177,11 @@ export class DiabloGame {
 
     // Mana orb
     const mpPct = Math.max(0, p.mana / p.maxMana);
-    this._mpBar.style.height = (mpPct * 100) + "%";
+    const mpPctInt = Math.round(mpPct * 100);
+    if (mpPctInt !== this._lastMpPctInt) {
+      this._lastMpPctInt = mpPctInt;
+      this._mpBar.style.height = mpPctInt + "%";
+    }
     this._mpText.textContent = `${Math.ceil(p.mana)}/${p.maxMana}`;
 
     // Detect Mana change and trigger flash (only on significant changes like skill use)
@@ -6196,10 +6271,20 @@ export class DiabloGame {
     }
 
     // Top right
-    this._goldText.innerHTML = `<span style="filter:drop-shadow(0 0 3px rgba(255,215,0,0.4))">\uD83E\uDE99</span> ${p.gold.toLocaleString()}`;
-    this._levelText.innerHTML = `\u2694 Level ${p.level}`;
-    this._killText.innerHTML = `\u2620 ${this._state.killCount} Kills` +
-      (this._state.deathCount > 0 ? `  &nbsp;\u2620 ${this._state.deathCount} Deaths` : "");
+    if (p.gold !== this._lastGoldValue) {
+      this._lastGoldValue = p.gold;
+      this._goldText.innerHTML = `<span style="filter:drop-shadow(0 0 3px rgba(255,215,0,0.4))">\uD83E\uDE99</span> ${p.gold.toLocaleString()}`;
+    }
+    if (p.level !== this._lastLevelValue) {
+      this._lastLevelValue = p.level;
+      this._levelText.innerHTML = `\u2694 Level ${p.level}`;
+    }
+    if (this._state.killCount !== this._lastKillValue || this._state.deathCount !== this._lastDeathValue) {
+      this._lastKillValue = this._state.killCount;
+      this._lastDeathValue = this._state.deathCount;
+      this._killText.innerHTML = `\u2620 ${this._state.killCount} Kills` +
+        (this._state.deathCount > 0 ? `  &nbsp;\u2620 ${this._state.deathCount} Deaths` : "");
+    }
 
     // Glow border when talent points are available
     if (p.talentPoints > 0) {
@@ -6220,36 +6305,23 @@ export class DiabloGame {
       this._potionHudSlots[i].style.opacity = onCd ? "0.5" : "1";
     }
 
-    // Minimap
-    this._updateMinimap();
+    // Minimap (throttled to every 3rd frame)
+    this._minimapFrameCounter++;
+    if (this._minimapFrameCounter >= 3) {
+      this._minimapFrameCounter = 0;
+      this._updateMinimap();
+    }
     if (this._fullmapVisible) {
       this._updateFullmap();
     }
 
     // Map name label
     if (this._mapNameLabel) {
-      const mapNameMap: Record<string, string> = {
-        [DiabloMapId.FOREST]: "Darkwood Forest",
-        [DiabloMapId.ELVEN_VILLAGE]: "Aelindor",
-        [DiabloMapId.NECROPOLIS_DUNGEON]: "Necropolis Depths",
-        [DiabloMapId.VOLCANIC_WASTES]: "Volcanic Wastes",
-        [DiabloMapId.ABYSSAL_RIFT]: "Abyssal Rift",
-        [DiabloMapId.DRAGONS_SANCTUM]: "Dragon's Sanctum",
-        [DiabloMapId.SUNSCORCH_DESERT]: "Sunscorch Desert",
-        [DiabloMapId.EMERALD_GRASSLANDS]: "Emerald Grasslands",
-        [DiabloMapId.CAMELOT]: "Camelot",
-      };
-      this._mapNameLabel.textContent = mapNameMap[this._state.currentMap] || this._state.currentMap.replace(/_/g, ' ');
+      this._mapNameLabel.textContent = MAP_NAME_MAP[this._state.currentMap] || this._state.currentMap.replace(/_/g, ' ');
     }
 
     // Weather text (aece2d8c) - with icons
-    const weatherLabels: Record<Weather, string> = {
-      [Weather.NORMAL]: "",
-      [Weather.FOGGY]: "\uD83C\uDF2B\uFE0F Foggy",
-      [Weather.CLEAR]: "\u2600\uFE0F Clear Skies",
-      [Weather.STORMY]: "\u26C8\uFE0F Stormy",
-    };
-    this._weatherText.textContent = weatherLabels[this._state.weather] || "";
+    this._weatherText.textContent = WEATHER_LABELS[this._state.weather] || "";
 
     // Quest tracker (a270b216)
     this._updateQuestTracker();
@@ -6311,14 +6383,14 @@ export class DiabloGame {
     // DPS meter update
     if (this._state.player.dpsDisplayVisible && this._dpsDisplay) {
       this._dpsDisplay.style.display = "block";
-      const dpsVal = this._dpsDisplay.querySelector("#dps-value");
+      const dpsVal = this._dpsValueEl;
       if (dpsVal) dpsVal.textContent = `${Math.round(this._currentDps).toLocaleString()} DPS`;
     } else if (this._dpsDisplay) {
       this._dpsDisplay.style.display = "none";
     }
 
     // Loot filter label update
-    const filterLabel = this._hud.querySelector("#loot-filter-label") as HTMLDivElement;
+    const filterLabel = this._lootFilterLabelEl;
     if (filterLabel) {
       const customFilter = p.customLootFilters[p.activeFilterIndex];
       const filterName = customFilter ? customFilter.name : 'Show All';
@@ -6333,14 +6405,21 @@ export class DiabloGame {
         this._riftHud.style.cssText = 'position:absolute;top:10px;left:50%;transform:translateX(-50%);color:#fff;font-size:14px;font-family:monospace;text-align:center;background:rgba(0,0,0,0.7);padding:8px 16px;border:1px solid #ff8800;border-radius:4px;pointer-events:none;z-index:20;';
         this._hud.appendChild(this._riftHud);
       }
-      const mins = Math.floor(rift.timeRemaining / 60);
-      const secs = Math.floor(rift.timeRemaining % 60);
-      const timeStr = `${mins}:${secs.toString().padStart(2, '0')}`;
-      const barWidth = Math.floor(rift.progressBar * 2);
-      const barFill = '\u2588'.repeat(Math.floor(barWidth / 10));
-      const barEmpty = '\u2591'.repeat(20 - Math.floor(barWidth / 10));
-      const stateLabel = rift.state === GreaterRiftState.BOSS_SPAWNED ? ' \u26A0 GUARDIAN!' : '';
-      this._riftHud.innerHTML = `<span style="color:#ff8800">GR ${rift.level}</span> | ${timeStr} | [${barFill}${barEmpty}] ${Math.floor(rift.progressBar)}%${stateLabel}`;
+      const riftProgressInt = Math.floor(rift.progressBar);
+      const riftTimeInt = Math.floor(rift.timeRemaining);
+      if (riftProgressInt !== this._lastRiftProgress || riftTimeInt !== this._lastRiftTime || rift.state !== this._lastRiftState) {
+        this._lastRiftProgress = riftProgressInt;
+        this._lastRiftTime = riftTimeInt;
+        this._lastRiftState = rift.state;
+        const mins = Math.floor(rift.timeRemaining / 60);
+        const secs = Math.floor(rift.timeRemaining % 60);
+        const timeStr = `${mins}:${secs.toString().padStart(2, '0')}`;
+        const barWidth = Math.floor(rift.progressBar * 2);
+        const barFill = '\u2588'.repeat(Math.floor(barWidth / 10));
+        const barEmpty = '\u2591'.repeat(20 - Math.floor(barWidth / 10));
+        const stateLabel = rift.state === GreaterRiftState.BOSS_SPAWNED ? ' \u26A0 GUARDIAN!' : '';
+        this._riftHud.innerHTML = `<span style="color:#ff8800">GR ${rift.level}</span> | ${timeStr} | [${barFill}${barEmpty}] ${riftProgressInt}%${stateLabel}`;
+      }
       this._riftHud.style.display = 'block';
       if (rift.timeRemaining < 30) this._riftHud.style.borderColor = '#ff2222';
       else this._riftHud.style.borderColor = '#ff8800';
@@ -6356,12 +6435,16 @@ export class DiabloGame {
         this._hud.appendChild(this._multiplayerHud);
       }
       const mp = this._state.multiplayer;
-      const playerCount = mp.remotePlayers.length + 1;
-      const recentChat = mp.chatMessages.slice(-5).map(m => `<span style="color:#aaa">${m.name}:</span> ${m.message}`).join('<br>');
-      if (this._state.multiplayer.state === MultiplayerState.CONNECTING) {
-        this._multiplayerHud.innerHTML = `<span style="color:#ffaa00">RECONNECTING...</span>`;
-      } else {
-        this._multiplayerHud.innerHTML = `<span style="color:#44ff44">ONLINE</span> ${playerCount} players | ${mp.ping}ms${recentChat ? '<br>' + recentChat : ''}`;
+      const msgCount = mp.chatMessages.length;
+      if (msgCount !== this._lastMpMessageCount) {
+        this._lastMpMessageCount = msgCount;
+        const playerCount = mp.remotePlayers.length + 1;
+        const recentChat = mp.chatMessages.slice(-5).map(m => `<span style="color:#aaa">${m.name}:</span> ${m.message}`).join('<br>');
+        if (this._state.multiplayer.state === MultiplayerState.CONNECTING) {
+          this._multiplayerHud.innerHTML = `<span style="color:#ffaa00">RECONNECTING...</span>`;
+        } else {
+          this._multiplayerHud.innerHTML = `<span style="color:#44ff44">ONLINE</span> ${playerCount} players | ${mp.ping}ms${recentChat ? '<br>' + recentChat : ''}`;
+        }
       }
       this._multiplayerHud.style.display = 'block';
     } else if (this._multiplayerHud) {
@@ -6392,17 +6475,21 @@ export class DiabloGame {
         this._hud.appendChild(this._craftingQueueHud);
       }
       const current = cq[0];
-      const recipe = ADVANCED_CRAFTING_RECIPES.find(r => r.id === current.recipeId);
       const pct = Math.floor((current.progress / current.duration) * 100);
-      const recipeName = recipe ? recipe.name : current.recipeId;
-      const barWidth = 120;
-      const filledWidth = Math.floor(barWidth * pct / 100);
-      this._craftingQueueHud.innerHTML =
-        `<div style="margin-bottom:4px;">Crafting: ${recipeName}</div>` +
-        `<div style="background:#333;border-radius:3px;height:8px;width:${barWidth}px;overflow:hidden;">` +
-        `<div style="background:linear-gradient(90deg,#c8a84e,#ffd700);height:100%;width:${filledWidth}px;transition:width 0.2s;"></div>` +
-        `</div>` +
-        `<div style="font-size:10px;color:#c8a84e;margin-top:2px;">${pct}%${cq.length > 1 ? ` (+${cq.length - 1} queued)` : ''}</div>`;
+      if (pct !== this._lastCraftingPct || cq.length !== this._lastCraftingQueueLen) {
+        this._lastCraftingPct = pct;
+        this._lastCraftingQueueLen = cq.length;
+        const recipe = ADVANCED_CRAFTING_RECIPES.find(r => r.id === current.recipeId);
+        const recipeName = recipe ? recipe.name : current.recipeId;
+        const barWidth = 120;
+        const filledWidth = Math.floor(barWidth * pct / 100);
+        this._craftingQueueHud.innerHTML =
+          `<div style="margin-bottom:4px;">Crafting: ${recipeName}</div>` +
+          `<div style="background:#333;border-radius:3px;height:8px;width:${barWidth}px;overflow:hidden;">` +
+          `<div style="background:linear-gradient(90deg,#c8a84e,#ffd700);height:100%;width:${filledWidth}px;transition:width 0.2s;"></div>` +
+          `</div>` +
+          `<div style="font-size:10px;color:#c8a84e;margin-top:2px;">${pct}%${cq.length > 1 ? ` (+${cq.length - 1} queued)` : ''}</div>`;
+      }
       this._craftingQueueHud.style.display = 'block';
     } else if (this._craftingQueueHud) {
       this._craftingQueueHud.style.display = 'none';
@@ -6934,6 +7021,7 @@ export class DiabloGame {
       p.activePotionBuffs[i].remaining -= dt;
       if (p.activePotionBuffs[i].remaining <= 0) {
         p.activePotionBuffs.splice(i, 1);
+        this._statsDirty = true;
         this._recalculatePlayerStats();
       }
     }
@@ -6967,6 +7055,7 @@ export class DiabloGame {
       this._renderer.shakeCamera(0.2, 0.3);
       this._slowMotionTimer = 0.5;
       this._slowMotionScale = 0.5;
+      this._statsDirty = true;
       this._recalculatePlayerStats();
 
       // Unlock base class skills progressively at levels 2-5
@@ -7036,7 +7125,7 @@ export class DiabloGame {
   // ──────────────────────────────────────────────────────────────
   private _updateEnemies(dt: number): void {
     const p = this._state.player;
-    const toRemove: string[] = [];
+    const toRemove = new Set<string>();
 
     for (const enemy of this._state.enemies) {
       // Stagger freeze
@@ -7274,7 +7363,7 @@ export class DiabloGame {
         case EnemyState.DEAD: {
           enemy.deathTimer += dt;
           if (enemy.deathTimer >= 3.0) {
-            toRemove.push(enemy.id);
+            toRemove.add(enemy.id);
           }
           break;
         }
@@ -7290,7 +7379,7 @@ export class DiabloGame {
       enemy.y = getTerrainHeight(enemy.x, enemy.z);
     }
 
-    this._state.enemies = this._state.enemies.filter((e) => !toRemove.includes(e.id));
+    this._state.enemies = this._state.enemies.filter((e) => !toRemove.has(e.id));
   }
 
   // ──────────────────────────────────────────────────────────────
@@ -7596,6 +7685,7 @@ export class DiabloGame {
   //  LEGENDARY EFFECT PROCESSING
   // ──────────────────────────────────────────────────────────────
   private _getEquippedLegendaryEffects(): LegendaryEffectDef[] {
+    if (!this._equipDirty) return this._cachedLegendaryEffects;
     const effects: LegendaryEffectDef[] = [];
     const equipment = this._state.player.equipment;
     const slots = ['helmet', 'body', 'gauntlets', 'legs', 'feet', 'accessory1', 'accessory2', 'weapon', 'lantern'] as const;
@@ -7605,6 +7695,8 @@ export class DiabloGame {
         effects.push(LEGENDARY_EFFECTS[item.legendaryAbility]);
       }
     }
+    this._cachedLegendaryEffects = effects;
+    this._equipDirty = false;
     return effects;
   }
 
@@ -8483,7 +8575,7 @@ export class DiabloGame {
   //  UPDATE PROJECTILES
   // ──────────────────────────────────────────────────────────────
   private _updateProjectiles(dt: number): void {
-    const toRemove: string[] = [];
+    const toRemove = new Set<string>();
 
     for (const proj of this._state.projectiles) {
       proj.x += proj.vx * dt;
@@ -8492,7 +8584,7 @@ export class DiabloGame {
       proj.lifetime += dt;
 
       if (proj.lifetime > proj.maxLifetime) {
-        toRemove.push(proj.id);
+        toRemove.add(proj.id);
         continue;
       }
 
@@ -8500,7 +8592,7 @@ export class DiabloGame {
       const mapCfg = MAP_CONFIGS[this._state.currentMap];
       const halfW = mapCfg.width / 2 + 10;
       if (Math.abs(proj.x) > halfW || Math.abs(proj.z) > halfW) {
-        toRemove.push(proj.id);
+        toRemove.add(proj.id);
         continue;
       }
 
@@ -8553,11 +8645,11 @@ export class DiabloGame {
             // Piercing shot can hit up to 5
             if (proj.skillId === SkillId.PIERCING_SHOT) {
               if (hitCount >= 5) {
-                toRemove.push(proj.id);
+                toRemove.add(proj.id);
                 break;
               }
             } else {
-              toRemove.push(proj.id);
+              toRemove.add(proj.id);
               break;
             }
           }
@@ -8570,7 +8662,7 @@ export class DiabloGame {
             const mitigated = Math.max(1, proj.damage - pp.armor * 0.3);
             pp.hp -= mitigated;
             this._addFloatingText(pp.x, pp.y + 2, pp.z, `-${Math.round(mitigated)}`, "#ff4444");
-            toRemove.push(proj.id);
+            toRemove.add(proj.id);
             if (pp.hp <= 0) {
               pp.hp = 0;
               this._triggerDeath();
@@ -8581,14 +8673,14 @@ export class DiabloGame {
       }
     }
 
-    this._state.projectiles = this._state.projectiles.filter((p) => !toRemove.includes(p.id));
+    this._state.projectiles = this._state.projectiles.filter((p) => !toRemove.has(p.id));
   }
 
   // ──────────────────────────────────────────────────────────────
   //  UPDATE AOE
   // ──────────────────────────────────────────────────────────────
   private _updateAOE(dt: number): void {
-    const toRemove: string[] = [];
+    const toRemove = new Set<string>();
 
     for (const aoe of this._state.aoeEffects) {
       aoe.timer += dt;
@@ -8613,11 +8705,11 @@ export class DiabloGame {
       }
 
       if (aoe.timer >= aoe.duration) {
-        toRemove.push(aoe.id);
+        toRemove.add(aoe.id);
       }
     }
 
-    this._state.aoeEffects = this._state.aoeEffects.filter((a) => !toRemove.includes(a.id));
+    this._state.aoeEffects = this._state.aoeEffects.filter((a) => !toRemove.has(a.id));
   }
 
   private _tickAOEDamage(aoe: DiabloAOE): void {
@@ -8699,17 +8791,16 @@ export class DiabloGame {
   // ──────────────────────────────────────────────────────────────
   private _updateLoot(dt: number): void {
     const p = this._state.player;
-    const toRemove: string[] = [];
+    const toRemove = new Set<string>();
 
     for (const loot of this._state.loot) {
       loot.timer += dt;
 
       // Loot filter: hide filtered items (legacy filter)
-      const rarityOrder = [ItemRarity.COMMON, ItemRarity.UNCOMMON, ItemRarity.RARE, ItemRarity.EPIC, ItemRarity.LEGENDARY, ItemRarity.MYTHIC, ItemRarity.DIVINE];
       const minRarityIdx = this._lootFilterLevel === LootFilterLevel.HIDE_COMMON ? 1 :
         this._lootFilterLevel === LootFilterLevel.RARE_PLUS ? 2 :
         this._lootFilterLevel === LootFilterLevel.EPIC_PLUS ? 3 : 0;
-      if (rarityOrder.indexOf(loot.item.rarity) < minRarityIdx) continue;
+      if (RARITY_ORDER.indexOf(loot.item.rarity) < minRarityIdx) continue;
 
       // Custom loot filter check
       if (!this._shouldShowLoot(loot.item)) continue;
@@ -8726,7 +8817,7 @@ export class DiabloGame {
           const salvageMats = salvageYields[loot.item.rarity] || 1;
           p.salvageMaterials += salvageMats;
           this._addFloatingText(p.x, p.y + 2, p.z, `Auto-salvage: +${salvageMats}`, '#888888');
-          toRemove.push(loot.id);
+          toRemove.add(loot.id);
           continue;
         }
 
@@ -8738,7 +8829,7 @@ export class DiabloGame {
           if (loot.item.rarity === ItemRarity.LEGENDARY || loot.item.rarity === ItemRarity.MYTHIC || loot.item.rarity === ItemRarity.DIVINE) {
             this._incrementAchievement('legendary_hunter');
           }
-          toRemove.push(loot.id);
+          toRemove.add(loot.id);
         }
       }
 
@@ -8754,13 +8845,13 @@ export class DiabloGame {
             const salvageMats = salvageYields[loot.item.rarity] || 1;
             p.salvageMaterials += salvageMats;
             this._addFloatingText(p.x, p.y + 2, p.z, `Auto-salvage: +${salvageMats}`, '#888888');
-            toRemove.push(loot.id);
+            toRemove.add(loot.id);
           } else {
             const emptyIdx = p.inventory.findIndex((s) => s.item === null);
             if (emptyIdx >= 0) {
               p.inventory[emptyIdx].item = { ...loot.item, id: this._genId() };
               this._addFloatingText(p.x, p.y + 2.5, p.z, `+${loot.item.name}`, RARITY_CSS[loot.item.rarity]);
-              toRemove.push(loot.id);
+              toRemove.add(loot.id);
             }
           }
         }
@@ -8768,11 +8859,11 @@ export class DiabloGame {
 
       // Expire after 60 seconds
       if (loot.timer > 60) {
-        toRemove.push(loot.id);
+        toRemove.add(loot.id);
       }
     }
 
-    this._state.loot = this._state.loot.filter((l) => !toRemove.includes(l.id));
+    this._state.loot = this._state.loot.filter((l) => !toRemove.has(l.id));
   }
 
   // ──────────────────────────────────────────────────────────────
@@ -8831,7 +8922,7 @@ export class DiabloGame {
 
     // Restore speed if no longer frozen
     if (!p.statusEffects.some((e) => e.effect === StatusEffect.FROZEN)) {
-      this._recalculatePlayerStats();
+      if (this._statsDirty) { this._recalculatePlayerStats(); this._statsDirty = false; }
     }
 
     // Enemy effects
@@ -9591,6 +9682,7 @@ export class DiabloGame {
     for (const bounty of this._state.activeBounties) {
       if (!bounty.isComplete && enemy.id === `bounty-enemy-${bounty.id}`) {
         bounty.isComplete = true;
+        this._questTrackerDirty = true;
         this._state.completedBountyIds.push(bounty.id);
         p.gold += bounty.reward.gold;
         p.xp += bounty.reward.xp;
@@ -9840,6 +9932,7 @@ export class DiabloGame {
       challenge.progress += amount;
       if (challenge.progress >= challenge.target) {
         challenge.completed = true;
+        this._questTrackerDirty = true;
         const p = this._state.player;
         p.gold += challenge.reward.gold;
         p.xp += challenge.reward.xp;
@@ -9987,6 +10080,7 @@ export class DiabloGame {
 
       this._addFloatingText(p.x, p.y + 4, p.z, 'EXCALIBUR REFORGED!', '#ffd700');
       this._playSound('levelup');
+      this._statsDirty = true; this._equipDirty = true;
       this._recalculatePlayerStats();
 
       this._menuEl.innerHTML = '';
@@ -10638,6 +10732,7 @@ export class DiabloGame {
           }
           item.description = `${rw.specialEffect}\n${item.description || ''}`;
           this._addFloatingText(p.x, p.y + 3, p.z, `RUNEWORD: ${rw.name}!`, '#ffd700');
+          this._statsDirty = true; this._equipDirty = true;
           this._recalculatePlayerStats();
           break; // Only one runeword per item
         }
@@ -12144,8 +12239,7 @@ export class DiabloGame {
         if (useFogOfWar && !this._isExplored(loot.x, loot.z)) continue;
         ctx.fillStyle = RARITY_CSS[loot.item.rarity] || "#ffff00";
         // Pulse effect for rare+ loot
-        const rarityOrder = [ItemRarity.COMMON, ItemRarity.UNCOMMON, ItemRarity.RARE, ItemRarity.EPIC, ItemRarity.LEGENDARY, ItemRarity.MYTHIC, ItemRarity.DIVINE];
-        const rarityIdx = rarityOrder.indexOf(loot.item.rarity);
+        const rarityIdx = RARITY_ORDER.indexOf(loot.item.rarity);
         let lootRadius = 1.5;
         if (rarityIdx >= 2) { // RARE+
           const pulse = 1 + Math.sin(Date.now() * 0.005) * 0.5;
@@ -12933,6 +13027,7 @@ export class DiabloGame {
   //  TALENT TREE
   // ──────────────────────────────────────────────────────────────
   private _getTalentBonuses(): Partial<Record<TalentEffectType, number>> {
+    if (!this._talentsDirty) return this._cachedTalentBonuses;
     const p = this._state.player;
     const tree = TALENT_TREES[p.class];
     const result: Partial<Record<TalentEffectType, number>> = {};
@@ -12944,6 +13039,8 @@ export class DiabloGame {
         }
       }
     }
+    this._cachedTalentBonuses = result;
+    this._talentsDirty = false;
     return result;
   }
 
@@ -13360,6 +13457,7 @@ export class DiabloGame {
           el.addEventListener("click", () => {
             p.talents[node.id] = (p.talents[node.id] || 0) + 1;
             p.talentPoints--;
+            this._statsDirty = true; this._talentsDirty = true;
             this._recalculatePlayerStats();
             renderTree();
           });
@@ -13467,6 +13565,7 @@ export class DiabloGame {
       case PotionType.SPEED:
         p.activePotionBuffs.push({ type: PotionType.SPEED, value: pot.value, remaining: pot.duration || 20 });
         this._addFloatingText(p.x, p.y + 2.5, p.z, `+${pot.value}% Speed!`, "#44ffff");
+        this._statsDirty = true;
         this._recalculatePlayerStats();
         break;
     }
@@ -13535,6 +13634,15 @@ export class DiabloGame {
   //  QUEST SYSTEM
   // ──────────────────────────────────────────────────────────────
   private _updateQuestTracker(): void {
+    // Dirty timer: force refresh every ~1s for time-sensitive displays
+    this._questTrackerDirtyTimer += 0.016;
+    if (this._questTrackerDirtyTimer >= 1.0) {
+      this._questTrackerDirtyTimer = 0;
+      this._questTrackerDirty = true;
+    }
+    if (!this._questTrackerDirty) return;
+    this._questTrackerDirty = false;
+
     const active = this._state.activeQuests.filter(q => q.isActive && !q.isComplete);
     const dailies = this._state.player.dailyChallenges.filter(d => !d.completed);
     const bounties = this._state.activeBounties.filter(b => !b.isComplete && b.isActive);
@@ -13597,6 +13705,7 @@ export class DiabloGame {
   }
 
   private _updateQuestProgress(type: QuestType, context: string | undefined): void {
+    this._questTrackerDirty = true;
     for (const quest of this._state.activeQuests) {
       if (quest.isComplete || !quest.isActive) continue;
       if (quest.type !== type) continue;
@@ -13644,6 +13753,7 @@ export class DiabloGame {
   }
 
   private _completeQuest(quest: DiabloQuest): void {
+    this._questTrackerDirty = true;
     quest.isComplete = true;
     quest.isActive = false;
     this._state.completedQuestIds.push(quest.id);
@@ -14043,6 +14153,11 @@ export class DiabloGame {
   //  FOG OF WAR / EXPLORATION
   // ──────────────────────────────────────────────────────────────
   private _revealAroundPlayer(px: number, pz: number): void {
+    const dx = px - this._lastRevealX;
+    const dz = pz - this._lastRevealZ;
+    if (dx * dx + dz * dz < 0.25) return; // skip if moved less than 0.5 units
+    this._lastRevealX = px;
+    this._lastRevealZ = pz;
     const mapCfg = MAP_CONFIGS[this._state.currentMap];
     const halfW = mapCfg.width / 2;
     const halfD = mapCfg.depth / 2;
@@ -14995,9 +15110,8 @@ export class DiabloGame {
     const filter = p.customLootFilters[p.activeFilterIndex];
     if (!filter || !filter.autoSalvageBelow) return false;
 
-    const rarityOrder = [ItemRarity.COMMON, ItemRarity.UNCOMMON, ItemRarity.RARE, ItemRarity.EPIC, ItemRarity.LEGENDARY, ItemRarity.MYTHIC, ItemRarity.DIVINE];
-    const itemIdx = rarityOrder.indexOf(item.rarity);
-    const thresholdIdx = rarityOrder.indexOf(filter.autoSalvageBelow);
+    const itemIdx = RARITY_ORDER.indexOf(item.rarity);
+    const thresholdIdx = RARITY_ORDER.indexOf(filter.autoSalvageBelow);
 
     return itemIdx <= thresholdIdx;
   }
