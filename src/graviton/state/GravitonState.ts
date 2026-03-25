@@ -38,6 +38,8 @@ export function createGState(sw: number, sh: number, meta?: GMeta): GState {
     comboCount: 0, comboTimer: 0, hitstopFrames: 0, threatLevel: 0,
     activeMutation: "", flingDamageMult: 1, pullDrainMult: 1, bombChanceOverride: -1,
     wave: 0, waveTimer: G.WAVE_INTERVAL, waveEvent: "",
+    waveDamageTaken: false,
+    powerups: [], activeEffects: { shield: 0, magnet: 0, rapid: 0 },
     particles: [], floatTexts: [],
     screenShake: 0, screenFlashColor: 0xffffff, screenFlashTimer: 0,
     time: 0,

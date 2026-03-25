@@ -10,7 +10,7 @@ import type { GState } from "./types";
 import { createGState, loadGMeta, saveGMeta } from "./state/GravitonState";
 import {
   updatePlayer, updateBodies, tryFling, tryFlingPartial, updateEnemies,
-  updateWave, updateTimers, updateParticles, updateFloatTexts,
+  updateWave, updateTimers, updateParticles, updateFloatTexts, updatePowerups,
   spawnDeathEffect, checkUnlocks, spawnFloatText, applyMutation, getMutationNames,
 } from "./systems/GravitonSystem";
 import { G } from "./config/GravitonBalance";
@@ -137,6 +137,7 @@ export class GravitonGame {
 
       updatePlayer(s, dt, this._keys);
       updateBodies(s, dt);
+      updatePowerups(s, dt);
       const died = updateEnemies(s, dt);
 
       if (died) { this._die(); }

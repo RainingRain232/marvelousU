@@ -3,7 +3,7 @@
 // Aimed fling, pull energy, enemy AI, bomb fuse, orbital capture
 // ---------------------------------------------------------------------------
 
-import type { GState, GBody, GEnemy } from "../types";
+import type { GState, GBody, GEnemy, GPowerup } from "../types";
 import { G } from "../config/GravitonBalance";
 
 // ---------------------------------------------------------------------------
@@ -72,6 +72,7 @@ export function updateBodies(state: GState, dt: number): void {
           // BOOM — damages player AND nearby enemies (sacrifice detonation)
           b.life = 0; b.orbiting = false;
           state.hp--;
+          state.waveDamageTaken = true;
           // AoE damage to nearby enemies
           let sacrificeKills = 0;
           for (const e2 of state.enemies) {
@@ -147,8 +148,9 @@ export function updateBodies(state: GState, dt: number): void {
     if (state.pulling && state.pullEnergy > 0) {
       const gdx = px - b.x, gdy = py - b.y;
       const gDist = Math.sqrt(gdx * gdx + gdy * gdy);
-      if (gDist < state.pullRadius && gDist > 0) {
-        const pullForce = G.PULL_STRENGTH * (1 - gDist / state.pullRadius) * dt;
+      const effectivePullRadius = state.activeEffects.magnet > 0 ? state.pullRadius * G.MAGNET_MULT : state.pullRadius;
+      if (gDist < effectivePullRadius && gDist > 0) {
+        const pullForce = G.PULL_STRENGTH * (1 - gDist / effectivePullRadius) * dt;
         b.vx += (gdx / gDist) * pullForce;
         b.vy += (gdy / gDist) * pullForce;
       }
@@ -223,7 +225,7 @@ export function tryFling(state: GState): boolean {
   const orbiting = state.bodies.filter(b => b.orbiting);
   if (orbiting.length === 0) return false;
 
-  state.flingCooldown = G.FLING_COOLDOWN;
+  state.flingCooldown = state.activeEffects.rapid > 0 ? G.FLING_COOLDOWN * 0.5 : G.FLING_COOLDOWN;
   state.asteroidsLaunched += orbiting.length;
 
   const baseAngle = state.aimAngle;
@@ -253,7 +255,7 @@ export function tryFlingPartial(state: GState): boolean {
   const orbiting = state.bodies.filter(b => b.orbiting);
   if (orbiting.length === 0) return false;
 
-  state.flingCooldown = G.FLING_PARTIAL_COOLDOWN;
+  state.flingCooldown = state.activeEffects.rapid > 0 ? G.FLING_PARTIAL_COOLDOWN * 0.5 : G.FLING_PARTIAL_COOLDOWN;
   const count = Math.min(G.FLING_PARTIAL_COUNT, orbiting.length);
   state.asteroidsLaunched += count;
 
@@ -281,10 +283,14 @@ export function tryFlingPartial(state: GState): boolean {
 export function updateEnemies(state: GState, dt: number): boolean {
   let playerHit = false;
 
+  const blitzActive = state.waveEvent === "BLITZ" && state.waveTimer > G.WAVE_INTERVAL - G.BLITZ_DURATION;
   state.enemySpawnTimer -= dt;
-  const maxE = Math.min(G.ENEMY_MAX, 2 + state.wave);
+  const maxE = Math.min(G.ENEMY_MAX + (blitzActive ? 4 : 0), 2 + state.wave + (blitzActive ? 4 : 0));
   if (state.enemySpawnTimer <= 0 && state.enemies.filter(e => e.alive).length < maxE) {
-    state.enemySpawnTimer = Math.max(1.0, G.ENEMY_SPAWN_INTERVAL - state.wave * 0.15);
+    let spawnInterval = Math.max(1.0, G.ENEMY_SPAWN_INTERVAL - state.wave * 0.15);
+    // Difficulty scaling: 20% faster spawns after wave 12
+    if (state.wave > 12) spawnInterval *= 0.8;
+    state.enemySpawnTimer = blitzActive ? spawnInterval * 0.5 : spawnInterval;
     spawnEnemy(state);
   }
 
@@ -297,6 +303,7 @@ export function updateEnemies(state: GState, dt: number): boolean {
     const dx = px - e.x, dy = py - e.y;
     const dist = Math.sqrt(dx * dx + dy * dy) || 1;
     const nx = dx / dist, ny = dy / dist;
+    const eDt = blitzActive ? dt * G.BLITZ_SPEED_MULT : dt; // blitz makes enemies faster
 
     switch (e.kind) {
       case "scout": {
@@ -310,7 +317,7 @@ export function updateEnemies(state: GState, dt: number): boolean {
           if (e.stateTimer <= 0) { e.state = "charge"; e.stateTimer = 0.3; }
         } else {
           const speed = e.state === "charge" ? G.SCOUT_CHARGE_SPEED : G.SCOUT_SPEED;
-          e.x += nx * speed * dt; e.y += ny * speed * dt;
+          e.x += nx * speed * eDt; e.y += ny * speed * eDt;
         }
         if (e.state === "charge") {
           e.stateTimer -= dt;
@@ -327,8 +334,8 @@ export function updateEnemies(state: GState, dt: number): boolean {
           // Orbit tangentially
           const tangX = -ny, tangY = nx;
           const distCorrect = (G.FIGHTER_ORBIT_DIST - dist) * 0.03;
-          e.x += (tangX * G.FIGHTER_SPEED + nx * distCorrect * G.FIGHTER_SPEED) * dt;
-          e.y += (tangY * G.FIGHTER_SPEED + ny * distCorrect * G.FIGHTER_SPEED) * dt;
+          e.x += (tangX * G.FIGHTER_SPEED + nx * distCorrect * G.FIGHTER_SPEED) * eDt;
+          e.y += (tangY * G.FIGHTER_SPEED + ny * distCorrect * G.FIGHTER_SPEED) * eDt;
           e.stateTimer -= dt;
           if (e.stateTimer <= 0) { e.state = "windup"; e.stateTimer = 0.4; } // telegraph before dash
         } else if (e.state === "windup") {
@@ -336,17 +343,69 @@ export function updateEnemies(state: GState, dt: number): boolean {
           e.stateTimer -= dt;
           if (e.stateTimer <= 0) { e.state = "dash"; e.stateTimer = 0.5; }
         } else if (e.state === "dash") {
-          e.x += nx * G.SCOUT_CHARGE_SPEED * dt; e.y += ny * G.SCOUT_CHARGE_SPEED * dt;
+          e.x += nx * G.SCOUT_CHARGE_SPEED * eDt; e.y += ny * G.SCOUT_CHARGE_SPEED * eDt;
           e.stateTimer -= dt;
           if (e.stateTimer <= 0) { e.state = "orbit"; e.stateTimer = G.FIGHTER_DASH_INTERVAL; }
         } else {
-          e.x += nx * G.FIGHTER_SPEED * dt; e.y += ny * G.FIGHTER_SPEED * dt;
+          e.x += nx * G.FIGHTER_SPEED * eDt; e.y += ny * G.FIGHTER_SPEED * eDt;
         }
         break;
       }
       case "tank": {
         // Tanks: slow approach, armor deflects first hit
-        e.x += nx * G.TANK_SPEED * dt; e.y += ny * G.TANK_SPEED * dt;
+        e.x += nx * G.TANK_SPEED * eDt; e.y += ny * G.TANK_SPEED * eDt;
+        break;
+      }
+      case "splitter": {
+        // Splitter: approaches like scout, splits on death (handled in damageEnemy)
+        if (e.state === "approach" && dist < G.SCOUT_CHARGE_DIST) {
+          e.state = "windup"; e.stateTimer = 0.3;
+        }
+        if (e.state === "windup") {
+          e.stateTimer -= dt;
+          if (e.stateTimer <= 0) { e.state = "charge"; e.stateTimer = 0.3; }
+        } else {
+          const speed = e.state === "charge" ? G.SCOUT_CHARGE_SPEED : G.SPLITTER_SPEED;
+          e.x += nx * speed * eDt; e.y += ny * speed * eDt;
+        }
+        if (e.state === "charge") {
+          e.stateTimer -= dt;
+          if (e.stateTimer <= 0) e.state = "approach";
+        }
+        break;
+      }
+      case "phaser": {
+        // Phaser: teleports near player every 3s, then charges
+        e.phaseTimer -= dt;
+        if (e.phaseTimer <= 0) {
+          // Teleport to random position near player
+          const teleAngle = Math.random() * Math.PI * 2;
+          const teleDist = G.PHASER_TELEPORT_RANGE + Math.random() * 30;
+          e.x = px + Math.cos(teleAngle) * teleDist;
+          e.y = py + Math.sin(teleAngle) * teleDist;
+          // Clamp inside arena
+          const adx = e.x - state.arenaCX, ady = e.y - state.arenaCY;
+          const aDist = Math.sqrt(adx * adx + ady * ady);
+          if (aDist > state.arenaRadius - e.radius) {
+            e.x = state.arenaCX + (adx / aDist) * (state.arenaRadius - e.radius - 2);
+            e.y = state.arenaCY + (ady / aDist) * (state.arenaRadius - e.radius - 2);
+          }
+          e.phaseTimer = G.PHASER_TELEPORT_INTERVAL;
+          e.state = "charge"; e.stateTimer = 0.6;
+          spawnParticles(state, e.x, e.y, 6, G.COLOR_ENEMY_PHASER);
+        }
+        if (e.state === "charge") {
+          e.x += nx * G.SCOUT_CHARGE_SPEED * eDt; e.y += ny * G.SCOUT_CHARGE_SPEED * eDt;
+          e.stateTimer -= dt;
+          if (e.stateTimer <= 0) e.state = "approach";
+        } else {
+          e.x += nx * G.PHASER_SPEED * eDt; e.y += ny * G.PHASER_SPEED * eDt;
+        }
+        break;
+      }
+      case "mini": {
+        // Mini-scout: just charge straight at player
+        e.x += nx * G.MINI_SPEED * eDt; e.y += ny * G.MINI_SPEED * eDt;
         break;
       }
     }
@@ -365,14 +424,25 @@ export function updateEnemies(state: GState, dt: number): boolean {
 
     // Hit player
     if (dist < state.playerRadius + e.radius) {
-      state.hp--;
-      e.alive = false;
-      spawnParticles(state, px, py, 8, G.COLOR_DANGER);
-      spawnFloatText(state, px, py - 15, "-1 HP", G.COLOR_DANGER, 1.3);
-      state.screenShake = G.SHAKE_DURATION;
-      state.screenFlashColor = G.COLOR_DANGER;
-      state.screenFlashTimer = G.FLASH_DURATION * 2;
-      if (state.hp <= 0) playerHit = true;
+      // Shield effect: absorb hit instead of taking damage
+      if (state.activeEffects.shield > 0) {
+        state.activeEffects.shield = 0; // consume shield
+        e.alive = false;
+        spawnParticles(state, px, py, 10, G.COLOR_POWERUP_SHIELD);
+        spawnFloatText(state, px, py - 15, "SHIELDED!", G.COLOR_POWERUP_SHIELD, 1.5);
+        state.screenFlashColor = G.COLOR_POWERUP_SHIELD;
+        state.screenFlashTimer = G.FLASH_DURATION;
+      } else {
+        state.hp--;
+        state.waveDamageTaken = true;
+        e.alive = false;
+        spawnParticles(state, px, py, 8, G.COLOR_DANGER);
+        spawnFloatText(state, px, py - 15, "-1 HP", G.COLOR_DANGER, 1.3);
+        state.screenShake = G.SHAKE_DURATION;
+        state.screenFlashColor = G.COLOR_DANGER;
+        state.screenFlashTimer = G.FLASH_DURATION * 2;
+        if (state.hp <= 0) playerHit = true;
+      }
     }
   }
 
@@ -389,11 +459,19 @@ function spawnEnemy(state: GState): void {
   const roll = Math.random();
   let kind: GEnemy["kind"] = "scout"; let hp: number = G.SCOUT_HP; let radius: number = G.SCOUT_RADIUS;
   let armor = false;
-  if (state.wave >= 3 && roll < 0.15) { kind = "tank"; hp = G.TANK_HP; radius = G.TANK_RADIUS; armor = true; }
-  else if (state.wave >= 2 && roll < 0.4) { kind = "fighter"; hp = G.FIGHTER_HP; radius = G.FIGHTER_RADIUS; }
+  if (state.wave >= 7 && roll < 0.08) { kind = "phaser"; hp = G.PHASER_HP; radius = G.PHASER_RADIUS; }
+  else if (state.wave >= 5 && roll < 0.18) { kind = "splitter"; hp = G.SPLITTER_HP; radius = G.SPLITTER_RADIUS; }
+  else if (state.wave >= 3 && roll < 0.33) { kind = "tank"; hp = G.TANK_HP; radius = G.TANK_RADIUS; armor = true; }
+  else if (state.wave >= 2 && roll < 0.58) { kind = "fighter"; hp = G.FIGHTER_HP; radius = G.FIGHTER_RADIUS; }
+
+  // Difficulty scaling: enemy HP scales after wave 10
+  if (state.wave > 10) {
+    const hpBonus = Math.floor((state.wave - 10) / 5);
+    hp += hpBonus;
+  }
 
   state.enemies.push({ x, y, vx: 0, vy: 0, radius, hp, maxHp: hp, kind, alive: true, flashTimer: 0,
-    state: "approach", stateTimer: 0, armor });
+    state: "approach", stateTimer: 0, armor, phaseTimer: kind === "phaser" ? G.PHASER_TELEPORT_INTERVAL : 0 });
 }
 
 function damageEnemy(state: GState, e: GEnemy, dmg: number): void {
@@ -407,14 +485,32 @@ function damageEnemy(state: GState, e: GEnemy, dmg: number): void {
   }
 
   e.hp -= dmg; e.flashTimer = 0.1;
-  spawnParticles(state, e.x, e.y, 4, e.kind === "scout" ? G.COLOR_ENEMY_SCOUT : e.kind === "fighter" ? G.COLOR_ENEMY_FIGHTER : G.COLOR_ENEMY_TANK);
+  const enemyColor = e.kind === "scout" ? G.COLOR_ENEMY_SCOUT : e.kind === "fighter" ? G.COLOR_ENEMY_FIGHTER
+    : e.kind === "splitter" ? G.COLOR_ENEMY_SPLITTER : e.kind === "phaser" ? G.COLOR_ENEMY_PHASER
+    : e.kind === "mini" ? G.COLOR_ENEMY_MINI : G.COLOR_ENEMY_TANK;
+  spawnParticles(state, e.x, e.y, 4, enemyColor);
   if (e.hp <= 0) {
     e.alive = false; state.enemiesKilled++;
+    // Splitter: spawn mini-scouts on death
+    if (e.kind === "splitter") {
+      for (let i = 0; i < G.SPLITTER_SPLIT_COUNT; i++) {
+        const splitAngle = Math.random() * Math.PI * 2;
+        const offsetDist = e.radius * 1.5;
+        state.enemies.push({
+          x: e.x + Math.cos(splitAngle) * offsetDist, y: e.y + Math.sin(splitAngle) * offsetDist,
+          vx: 0, vy: 0, radius: G.MINI_RADIUS, hp: G.MINI_HP, maxHp: G.MINI_HP,
+          kind: "mini", alive: true, flashTimer: 0, state: "approach", stateTimer: 0, armor: false, phaseTimer: 0,
+        });
+      }
+      spawnFloatText(state, e.x, e.y - 15, "SPLIT!", G.COLOR_ENEMY_SPLITTER, 1.2);
+    }
     // Combo system
     state.comboCount++;
     state.comboTimer = 2.0; // 2 seconds to keep combo alive
     const comboMult = 1 + state.comboCount * 0.5;
-    const basePts = e.kind === "scout" ? G.SCORE_KILL_SCOUT : e.kind === "fighter" ? G.SCORE_KILL_FIGHTER : G.SCORE_KILL_TANK;
+    const basePts = e.kind === "scout" ? G.SCORE_KILL_SCOUT : e.kind === "fighter" ? G.SCORE_KILL_FIGHTER
+      : e.kind === "splitter" ? G.SCORE_KILL_SPLITTER : e.kind === "phaser" ? G.SCORE_KILL_PHASER
+      : e.kind === "mini" ? G.SCORE_KILL_MINI : G.SCORE_KILL_TANK;
     const pts = Math.floor(basePts * comboMult);
     state.score += pts;
     const comboStr = state.comboCount >= 2 ? ` x${state.comboCount}` : "";
@@ -425,7 +521,58 @@ function damageEnemy(state: GState, e: GEnemy, dmg: number): void {
     if (state.comboCount >= 2) {
       state.hitstopFrames = Math.min(4, state.comboCount);
     }
+    // Power-up drop chance on kill
+    if (Math.random() < G.POWERUP_DROP_CHANCE) {
+      const kinds: GPowerup["kind"][] = ["shield", "magnet", "rapid"];
+      const kind = kinds[Math.floor(Math.random() * kinds.length)];
+      state.powerups.push({ x: e.x, y: e.y, kind, life: G.POWERUP_LIFETIME });
+      const pColor = kind === "shield" ? G.COLOR_POWERUP_SHIELD
+        : kind === "magnet" ? G.COLOR_POWERUP_MAGNET : G.COLOR_POWERUP_RAPID;
+      spawnParticles(state, e.x, e.y, 6, pColor);
+    }
   }
+}
+
+// ---------------------------------------------------------------------------
+// Power-ups
+// ---------------------------------------------------------------------------
+
+export function updatePowerups(state: GState, dt: number): void {
+  // Tick active effect timers
+  if (state.activeEffects.shield > 0) state.activeEffects.shield -= dt;
+  if (state.activeEffects.magnet > 0) state.activeEffects.magnet -= dt;
+  if (state.activeEffects.rapid > 0) state.activeEffects.rapid -= dt;
+
+  // Apply magnet effect to pull radius
+  // (pullRadius is reset each frame from base, so we apply multiplier here)
+
+  const px = state.playerX, py = state.playerY;
+  for (const p of state.powerups) {
+    p.life -= dt;
+    // Collect check
+    const pdx = px - p.x, pdy = py - p.y;
+    if (Math.sqrt(pdx * pdx + pdy * pdy) < G.POWERUP_COLLECT_RADIUS) {
+      p.life = 0; // consume
+      const pColor = p.kind === "shield" ? G.COLOR_POWERUP_SHIELD
+        : p.kind === "magnet" ? G.COLOR_POWERUP_MAGNET : G.COLOR_POWERUP_RAPID;
+      spawnParticles(state, p.x, p.y, 8, pColor);
+      switch (p.kind) {
+        case "shield":
+          state.activeEffects.shield = G.SHIELD_DURATION;
+          spawnFloatText(state, px, py - 20, "SHIELD!", G.COLOR_POWERUP_SHIELD, 1.5);
+          break;
+        case "magnet":
+          state.activeEffects.magnet = G.MAGNET_DURATION;
+          spawnFloatText(state, px, py - 20, "MAGNET!", G.COLOR_POWERUP_MAGNET, 1.5);
+          break;
+        case "rapid":
+          state.activeEffects.rapid = G.RAPID_DURATION;
+          spawnFloatText(state, px, py - 20, "RAPID FIRE!", G.COLOR_POWERUP_RAPID, 1.5);
+          break;
+      }
+    }
+  }
+  state.powerups = state.powerups.filter(p => p.life > 0);
 }
 
 // ---------------------------------------------------------------------------
@@ -435,12 +582,53 @@ function damageEnemy(state: GState, e: GEnemy, dmg: number): void {
 export function updateWave(state: GState, dt: number): void {
   state.waveTimer -= dt;
   if (state.waveTimer <= 0) {
+    // Perfect wave check (previous wave had no damage)
+    if (state.wave > 0 && !state.waveDamageTaken) {
+      state.score += G.PERFECT_WAVE_BONUS;
+      spawnFloatText(state, state.arenaCX, state.arenaCY - 55, "PERFECT WAVE! +50", 0xffd700, 2.0);
+      spawnParticles(state, state.arenaCX, state.arenaCY, 12, 0xffd700);
+    }
+    state.waveDamageTaken = false; // reset for new wave
+
     state.wave++; state.waveTimer = G.WAVE_INTERVAL;
     state.waveEvent = "";
 
+    // Difficulty scaling: arena shrinks after wave 8
+    if (state.wave > 8) {
+      state.arenaRadius = Math.max(200, G.ARENA_RADIUS - (state.wave - 8) * 2);
+    }
+
+    const isEclipse = state.wave % 9 === 4;
+    const isBlitz = state.wave % 9 === 7;
     const isEvent = state.wave % G.WAVE_EVENT_INTERVAL === 0;
 
-    if (isEvent) {
+    if (isEclipse) {
+      // ECLIPSE: spawn 3 phasers + dim the background
+      state.waveEvent = "ECLIPSE";
+      for (let i = 0; i < 3; i++) {
+        const a = (i / 3) * Math.PI * 2 + Math.random() * 0.3;
+        const r = state.arenaRadius + 10;
+        state.enemies.push({
+          x: state.arenaCX + Math.cos(a) * r, y: state.arenaCY + Math.sin(a) * r,
+          vx: 0, vy: 0, radius: G.PHASER_RADIUS, hp: G.PHASER_HP, maxHp: G.PHASER_HP,
+          kind: "phaser", alive: true, flashTimer: 0, state: "approach", stateTimer: 0,
+          armor: false, phaseTimer: G.PHASER_TELEPORT_INTERVAL,
+        });
+      }
+      spawnFloatText(state, state.arenaCX, state.arenaCY - 40, "ECLIPSE!", G.COLOR_ENEMY_PHASER, 2.0);
+      state.screenShake = G.SHAKE_DURATION * 1.5;
+      state.screenFlashColor = 0x002233; state.screenFlashTimer = G.FLASH_DURATION * 3;
+    } else if (isBlitz) {
+      // BLITZ: double spawn rate for 10 seconds, all enemies faster
+      state.waveEvent = "BLITZ";
+      state.enemySpawnTimer = Math.max(0.5, state.enemySpawnTimer * 0.5); // halve spawn timer immediately
+      // Spawn a burst of faster enemies
+      const burst = 4 + Math.floor(state.wave / 2);
+      for (let i = 0; i < burst; i++) spawnEnemy(state);
+      // Speed up all existing enemies briefly (handled via waveEvent check in updateEnemies)
+      spawnFloatText(state, state.arenaCX, state.arenaCY - 40, "BLITZ!", 0xff8844, 2.0);
+      state.screenShake = G.SHAKE_DURATION * 2;
+    } else if (isEvent) {
       // Wave events cycle: SWARM → ARMOR COLUMN → BOMBARDMENT → repeat
       const eventIdx = Math.floor(state.wave / G.WAVE_EVENT_INTERVAL) % 3;
       switch (eventIdx) {
@@ -453,7 +641,7 @@ export function updateWave(state: GState, dt: number): void {
             const r = state.arenaRadius + 10;
             state.enemies.push({ x: state.arenaCX + Math.cos(a) * r, y: state.arenaCY + Math.sin(a) * r,
               vx: 0, vy: 0, radius: G.SCOUT_RADIUS, hp: G.SCOUT_HP, maxHp: G.SCOUT_HP,
-              kind: "scout", alive: true, flashTimer: 0, state: "approach", stateTimer: 0, armor: false });
+              kind: "scout", alive: true, flashTimer: 0, state: "approach", stateTimer: 0, armor: false, phaseTimer: 0 });
           }
           spawnFloatText(state, state.arenaCX, state.arenaCY - 40, "SWARM INCOMING!", G.COLOR_ENEMY_SCOUT, 2.0);
           break;
@@ -467,7 +655,7 @@ export function updateWave(state: GState, dt: number): void {
             const r = state.arenaRadius + 10;
             state.enemies.push({ x: state.arenaCX + Math.cos(a) * r, y: state.arenaCY + Math.sin(a) * r,
               vx: 0, vy: 0, radius: G.TANK_RADIUS, hp: G.TANK_HP, maxHp: G.TANK_HP,
-              kind: "tank", alive: true, flashTimer: 0, state: "approach", stateTimer: 0, armor: true });
+              kind: "tank", alive: true, flashTimer: 0, state: "approach", stateTimer: 0, armor: true, phaseTimer: 0 });
           }
           spawnFloatText(state, state.arenaCX, state.arenaCY - 40, "ARMOR COLUMN!", G.COLOR_ENEMY_TANK, 2.0);
           break;

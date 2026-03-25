@@ -179,6 +179,7 @@ const MAP_BUILDINGS: MapBuilding[] = [
   { id: "gravity_well", x: 650, y: 30, w: 100, h: 80, label: "The Gravity Well", mode: GameMode.GRAVITON, type: "tower" },
   { id: "grail_crypt", x: 150, y: 50, w: 100, h: 80, label: "The Grail Crypt", mode: GameMode.GRAIL_QUEST, type: "tower" },
   { id: "arcane_dueling", x: 500, y: 50, w: 100, h: 80, label: "The Arcane Arena", mode: GameMode.MERLIN_DUEL, type: "tower" },
+  { id: "runeblade_forge", x: 150, y: 700, w: 100, h: 80, label: "The Runeblade Forge", mode: GameMode.RUNEBLADE, type: "forge" },
 ];
 
 const CITY = { x: 250, y: 150, w: 700, h: 580 };
@@ -895,6 +896,7 @@ export class CamelotHubScreen {
       [GameMode.GRAVITON]: "Graviton",
       [GameMode.GRAIL_QUEST]: "Grail Quest",
       [GameMode.MERLIN_DUEL]: "Merlin's Duel",
+      [GameMode.RUNEBLADE]: "Runeblade",
     };
     return labels[mode] || mode;
   }

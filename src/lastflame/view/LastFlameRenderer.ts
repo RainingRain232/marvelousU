@@ -84,6 +84,8 @@ export class LastFlameRenderer {
 
     if (state.phase === LFPhase.PLAYING || state.phase === LFPhase.PAUSED || state.phase === LFPhase.DYING) {
       this._drawFloor(g, state);
+      // Room-specific ambient effects
+      this._drawRoomAmbience(g, state);
       this._drawPillars(g, state);
       if (state.phase !== LFPhase.DYING) this._drawOil(g, state);
       this._drawShadows(g, state);
@@ -109,6 +111,23 @@ export class LastFlameRenderer {
             .closePath().fill({ color: 0xffcc66, alpha: rayAlpha });
         }
       }
+      // Wind hazard visual: streaking lines across screen
+      if (state.roomConfig.hazard === "wind") {
+        const windCos = Math.cos(state.windAngle);
+        const windSin = Math.sin(state.windAngle);
+        const windAlpha = 0.06 + Math.sin(state.time * 2) * 0.02;
+        for (let wi = 0; wi < 12; wi++) {
+          const wPhase = (state.time * 80 + wi * 67) % (sw + sh);
+          // Perpendicular offset for line distribution
+          const perpOff = (wi / 12) * (sw + sh) - (sw + sh) / 2;
+          const perpCos = -windSin, perpSin = windCos;
+          const wx = sw / 2 + perpCos * perpOff + windCos * (wPhase - (sw + sh) / 2);
+          const wy = sh / 2 + perpSin * perpOff + windSin * (wPhase - (sw + sh) / 2);
+          const lineLen = 30 + Math.sin(state.time * 3 + wi * 1.7) * 15;
+          g.moveTo(wx, wy).lineTo(wx + windCos * lineLen, wy + windSin * lineLen)
+            .stroke({ color: 0x8899bb, width: 1, alpha: windAlpha });
+        }
+      }
       this._drawBoundary(g, state);
       this._drawDarkness(g, state);
       if (state.phase !== LFPhase.DYING) {
@@ -120,35 +139,68 @@ export class LastFlameRenderer {
         const ratio = state.dyingTimer / LF.DYING_DURATION; // 1 at start, 0 at end
         const deathProgress = 1 - ratio;
 
-        // Darkness swallowing the screen from edges
-        const darkAlpha = deathProgress * 0.8;
-        const thickness = deathProgress * 80;
-        g.rect(0, 0, sw, thickness).fill({ color: LF.COLOR_DARKNESS, alpha: darkAlpha });
-        g.rect(0, sh - thickness, sw, thickness).fill({ color: LF.COLOR_DARKNESS, alpha: darkAlpha });
-        g.rect(0, 0, thickness, sh).fill({ color: LF.COLOR_DARKNESS, alpha: darkAlpha });
-        g.rect(sw - thickness, 0, thickness, sh).fill({ color: LF.COLOR_DARKNESS, alpha: darkAlpha });
-
-        // Central darkness closing in
-        g.rect(0, 0, sw, sh).fill({ color: LF.COLOR_DARKNESS, alpha: deathProgress * 0.5 });
-
-        // Final ember sparks scattering outward from flame
-        if (ratio > 0.3) {
-          const sparkCount = 6;
-          const sparkPhase = state.time * 4;
-          for (let s = 0; s < sparkCount; s++) {
-            const sa = sparkPhase + s * Math.PI * 2 / sparkCount;
-            const sLife = deathProgress * 0.7;
-            const sr = sLife * 60 + 5;
-            const sx = this._ox + state.playerX + Math.cos(sa) * sr;
-            const sy = this._oy + state.playerY + Math.sin(sa) * sr;
-            const sAlpha = ratio * 0.3;
-            g.circle(sx, sy, 2 - sLife).fill({ color: LF.COLOR_FLAME, alpha: sAlpha });
+        // Darkness swallowing the screen from edges — more dramatic with purple tint
+        const darkAlpha = deathProgress * 0.85;
+        const thickness = deathProgress * 120;
+        for (let di = 0; di < 3; di++) {
+          const dt = thickness - di * 20;
+          const da = darkAlpha * (1 - di * 0.25);
+          const dc = di === 0 ? LF.COLOR_DARKNESS : 0x0a0618;
+          if (dt > 0) {
+            g.rect(0, 0, sw, dt).fill({ color: dc, alpha: da });
+            g.rect(0, sh - dt, sw, dt).fill({ color: dc, alpha: da });
+            g.rect(0, 0, dt, sh).fill({ color: dc, alpha: da });
+            g.rect(sw - dt, 0, dt, sh).fill({ color: dc, alpha: da });
           }
         }
 
-        // Red danger pulse growing
-        if (deathProgress > 0.5) {
-          const dangerAlpha = (deathProgress - 0.5) * 0.08;
+        // Central darkness closing in with vortex effect
+        g.rect(0, 0, sw, sh).fill({ color: LF.COLOR_DARKNESS, alpha: deathProgress * 0.55 });
+        // Closing darkness rings converging on flame
+        const flamePx = this._ox + state.playerX, flamePy = this._oy + state.playerY;
+        for (let cr = 0; cr < 4; cr++) {
+          const crR = Math.max(sw, sh) * (ratio * 0.5 + cr * 0.1);
+          g.circle(flamePx, flamePy, crR).stroke({ color: LF.COLOR_SHADOW_BODY, width: 8, alpha: deathProgress * 0.08 });
+        }
+
+        // Final ember sparks scattering outward — more, with trails
+        if (ratio > 0.2) {
+          const sparkCount = 12;
+          const sparkPhase = state.time * 4;
+          for (let s = 0; s < sparkCount; s++) {
+            const sa = sparkPhase + s * Math.PI * 2 / sparkCount;
+            const sLife = deathProgress * 0.8;
+            const sr = sLife * 80 + 5;
+            const sx = flamePx + Math.cos(sa) * sr;
+            const sy = flamePy + Math.sin(sa) * sr;
+            const sAlpha = ratio * 0.4;
+            const sColor = s % 3 === 0 ? LF.COLOR_FLAME_CORE : s % 3 === 1 ? LF.COLOR_FLAME : 0xcc6633;
+            // Spark trail
+            g.moveTo(flamePx, flamePy).lineTo(sx, sy)
+              .stroke({ color: sColor, width: 0.5, alpha: sAlpha * 0.15 });
+            g.circle(sx, sy, 2.5 - sLife).fill({ color: sColor, alpha: sAlpha });
+            g.circle(sx, sy, 4 - sLife * 2).fill({ color: sColor, alpha: sAlpha * 0.2 });
+          }
+        }
+
+        // Shadow eyes appearing in the darkness
+        if (deathProgress > 0.3) {
+          const eyeCount = Math.floor(deathProgress * 10);
+          for (let ei = 0; ei < eyeCount; ei++) {
+            const eSeed = ei * 137.5;
+            const eAngle = eSeed + state.time * 0.2;
+            const eDist = 100 + (eSeed % 200);
+            const ex = flamePx + Math.cos(eAngle) * eDist;
+            const ey = flamePy + Math.sin(eAngle * 0.7) * eDist;
+            const eAlpha = (deathProgress - 0.3) * 0.4 + Math.sin(state.time * 2 + eSeed) * 0.1;
+            g.circle(ex - 3, ey, 2).fill({ color: LF.COLOR_SHADOW_EYE, alpha: eAlpha });
+            g.circle(ex + 3, ey, 2).fill({ color: LF.COLOR_SHADOW_EYE, alpha: eAlpha });
+          }
+        }
+
+        // Red danger pulse growing — with pulsing
+        if (deathProgress > 0.4) {
+          const dangerAlpha = (deathProgress - 0.4) * 0.10 + Math.sin(state.time * 6) * 0.02;
           g.rect(0, 0, sw, sh).fill({ color: LF.COLOR_DANGER, alpha: dangerAlpha });
         }
       }
@@ -236,6 +288,67 @@ export class LastFlameRenderer {
   // ---------------------------------------------------------------------------
   // Floor — stone tiles visible in light
   // ---------------------------------------------------------------------------
+
+  private _drawRoomAmbience(g: Graphics, state: LFState): void {
+    const ox = this._ox, oy = this._oy;
+    const px = state.playerX, py = state.playerY;
+    const lr = state.lightRadius;
+    const t = state.time;
+
+    if (state.roomConfig.hazard === "damp") {
+      // Dripping water effects — droplets falling near pillars
+      for (let di = 0; di < 6; di++) {
+        const dSeed = di * 73.7;
+        const dPhase = (t * 0.8 + dSeed) % 2.0;
+        const dLife = dPhase / 2.0;
+        const dx = ((dSeed * 3.7) % state.arenaW);
+        const dy = ((dSeed * 5.3) % state.arenaH);
+        const dist = Math.sqrt((dx - px) ** 2 + (dy - py) ** 2);
+        if (dist > lr) continue;
+        const vis = Math.max(0, 1 - dist / lr) * 0.4;
+        // Falling droplet
+        const dropY = oy + dy + dLife * 20;
+        g.circle(ox + dx, dropY, 1).fill({ color: 0x4466aa, alpha: vis * (1 - dLife) });
+        // Splash ring at bottom
+        if (dLife > 0.8) {
+          const splashR = (dLife - 0.8) * 5 * 15;
+          g.circle(ox + dx, oy + dy + 20, splashR).stroke({ color: 0x4466aa, width: 0.5, alpha: vis * (1 - (dLife - 0.8) * 5) });
+        }
+      }
+      // Puddle reflections on floor
+      for (let pi = 0; pi < 3; pi++) {
+        const pSeed = pi * 197.3;
+        const pxP = (pSeed * 2.3) % state.arenaW;
+        const pyP = (pSeed * 4.1) % state.arenaH;
+        const dist = Math.sqrt((pxP - px) ** 2 + (pyP - py) ** 2);
+        if (dist > lr) continue;
+        const vis = Math.max(0, 1 - dist / lr) * 0.06;
+        g.ellipse(ox + pxP, oy + pyP, 12, 6).fill({ color: 0x334466, alpha: vis + Math.sin(t * 0.5 + pi) * vis * 0.3 });
+      }
+    } else if (state.roomConfig.hazard === "oil_floor") {
+      // Oil sheen — iridescent patches on floor
+      for (let oi = 0; oi < 5; oi++) {
+        const oSeed = oi * 131.7;
+        const oxP = (oSeed * 3.1) % state.arenaW;
+        const oyP = (oSeed * 5.7) % state.arenaH;
+        const dist = Math.sqrt((oxP - px) ** 2 + (oyP - py) ** 2);
+        if (dist > lr) continue;
+        const vis = Math.max(0, 1 - dist / lr) * 0.05;
+        const shimmerColor = oi % 2 === 0 ? 0xaa8833 : 0x886622;
+        g.ellipse(ox + oxP, oy + oyP, 15 + Math.sin(t * 0.3 + oi) * 3, 8).fill({ color: shimmerColor, alpha: vis });
+      }
+    }
+
+    // Atmospheric fog wisps (all rooms) — drift through lit area
+    for (let fw = 0; fw < 4; fw++) {
+      const fwAngle = t * 0.08 + fw * 1.57;
+      const fwDist = lr * (0.3 + fw * 0.15);
+      const fwX = ox + px + Math.cos(fwAngle) * fwDist;
+      const fwY = oy + py + Math.sin(fwAngle * 0.6 + fw) * fwDist * 0.5;
+      const fwAlpha = 0.015 + Math.sin(t * 0.4 + fw * 2) * 0.008;
+      g.ellipse(fwX, fwY, 25 + Math.sin(t * 0.3 + fw) * 8, 10).fill({ color: 0x222244, alpha: fwAlpha });
+    }
+  }
 
   private _drawFloor(g: Graphics, state: LFState): void {
     const ox = this._ox, oy = this._oy;
@@ -336,16 +449,38 @@ export class LastFlameRenderer {
       g.setStrokeStyle({ width: 1.5, color: LF.COLOR_PILLAR_EDGE, alpha: visibility * 0.25 });
       g.circle(pcx, pcy, p.radius).stroke();
 
-      // Crack detail on some pillars (deterministic)
+      // Crack detail on pillars (deterministic) — more cracks
       const seed = Math.floor(p.x * 7 + p.y * 13);
       if (seed % 3 === 0 && visibility > 0.3) {
-        g.setStrokeStyle({ width: 0.5, color: 0x0a0816, alpha: visibility * 0.2 });
         g.moveTo(pcx - p.radius * 0.3, pcy - p.radius * 0.2)
-          .lineTo(pcx + p.radius * 0.1, pcy + p.radius * 0.3).stroke();
+          .lineTo(pcx + p.radius * 0.1, pcy + p.radius * 0.3)
+          .stroke({ color: 0x0a0816, width: 0.7, alpha: visibility * 0.25 });
+      }
+      if (seed % 5 === 0 && visibility > 0.3) {
+        g.moveTo(pcx + p.radius * 0.2, pcy - p.radius * 0.4)
+          .lineTo(pcx - p.radius * 0.15, pcy + p.radius * 0.1)
+          .stroke({ color: 0x0a0816, width: 0.5, alpha: visibility * 0.2 });
       }
 
-      // Top cap (lighter circle suggesting height)
-      g.circle(pcx, pcy, p.radius * 0.6).fill({ color: LF.COLOR_PILLAR_EDGE, alpha: visibility * 0.12 });
+      // Stone block lines on pillar surface
+      if (visibility > 0.25) {
+        for (let bl = -2; bl <= 2; bl++) {
+          const blY = pcy + bl * p.radius * 0.35;
+          const blW = p.radius * (0.85 - Math.abs(bl) * 0.15);
+          g.moveTo(pcx - blW, blY).lineTo(pcx + blW, blY)
+            .stroke({ color: 0x0a0816, width: 0.4, alpha: visibility * 0.1 });
+        }
+      }
+
+      // Top cap with rim highlight
+      g.circle(pcx, pcy, p.radius * 0.65).fill({ color: LF.COLOR_PILLAR_EDGE, alpha: visibility * 0.15 });
+      g.circle(pcx, pcy, p.radius * 0.65).stroke({ color: LF.COLOR_PILLAR_EDGE, width: 0.5, alpha: visibility * 0.1 });
+
+      // Warm light reflection on light-facing side
+      if (visibility > 0.4) {
+        g.circle(pcx - nx * p.radius * 0.4, pcy - ny * p.radius * 0.4, p.radius * 0.2)
+          .fill({ color: 0xffcc88, alpha: visibility * 0.06 });
+      }
     }
   }
 
@@ -426,27 +561,89 @@ export class LastFlameRenderer {
       const sx = ox + s.x, sy = oy + s.y;
 
       if (s.variant === "brute") {
-        // Brute: larger, more solid, angular shape
+        // Brute: massive, armored, menacing — darker and bulkier
+        g.circle(sx + wobble * 0.3, sy, s.radius * 1.8).fill({ color: LF.COLOR_SHADOW_BODY, alpha: visibility * 0.5 });
         g.circle(sx + wobble * 0.5, sy, s.radius * 1.4).fill({ color: LF.COLOR_SHADOW_BODY, alpha: visibility });
         g.circle(sx, sy + wobble * 0.3, s.radius * 1.1).fill({ color: 0x120a22, alpha: visibility * 0.9 });
-        // Armor-like edge
-        g.setStrokeStyle({ width: 2, color: 0x2a1e3e, alpha: visibility * 0.5 });
-        g.circle(sx, sy, s.radius).stroke();
+        // Armor plates — angular highlights
+        g.circle(sx - s.radius * 0.3, sy - s.radius * 0.2, s.radius * 0.35).fill({ color: 0x1a1230, alpha: visibility * 0.4 });
+        g.circle(sx + s.radius * 0.2, sy - s.radius * 0.3, s.radius * 0.25).fill({ color: 0x1a1230, alpha: visibility * 0.3 });
+        // Armor-like edge with double ring
+        g.circle(sx, sy, s.radius).stroke({ color: 0x2a1e3e, width: 2.5, alpha: visibility * 0.55 });
+        g.circle(sx, sy, s.radius * 1.2).stroke({ color: 0x1a1030, width: 1, alpha: visibility * 0.2 });
       } else if (s.variant === "swarm") {
-        // Swarm: tiny, twitchy
-        g.circle(sx + wobble * 1.5, sy + wobble, s.radius * 1.2).fill({ color: LF.COLOR_SHADOW_BODY, alpha: visibility * 0.7 });
+        // Swarm: tiny, twitchy, flickering
+        const sFlicker = Math.sin(t * 15 + s.eyePhase) * 0.2;
+        g.circle(sx + wobble * 1.5, sy + wobble, s.radius * 1.3).fill({ color: LF.COLOR_SHADOW_BODY, alpha: (visibility * 0.6 + sFlicker) });
         g.circle(sx, sy, s.radius).fill({ color: LF.COLOR_SHADOW_BODY, alpha: visibility * 0.9 });
+        // Twitchy afterimage
+        g.circle(sx - wobble * 0.8, sy - wobble * 0.5, s.radius * 0.7).fill({ color: LF.COLOR_SHADOW_BODY, alpha: visibility * 0.25 });
       } else if (s.variant === "stalker") {
-        // Stalker: ethereal, shimmering outline
-        g.circle(sx + wobble, sy, s.radius * 1.5).fill({ color: LF.COLOR_SHADOW_BODY, alpha: visibility * 0.5 });
-        g.circle(sx, sy + wobble * 0.5, s.radius).fill({ color: 0x1a0e3a, alpha: visibility * 0.8 });
-        // Eerie aura that shows light-draining
-        const drainPulse = 0.06 + Math.sin(t * 3 + s.eyePhase) * 0.03;
+        // Stalker: ethereal, rippling, light-draining aura
+        const drainPulse = 0.08 + Math.sin(t * 3 + s.eyePhase) * 0.04;
+        g.circle(sx, sy, s.radius * 3).fill({ color: LF.COLOR_SHADOW_EYE, alpha: drainPulse * 0.5 });
         g.circle(sx, sy, s.radius * 2.5).fill({ color: LF.COLOR_SHADOW_EYE, alpha: drainPulse });
+        // Shimmering outline rings
+        g.circle(sx + wobble * 0.5, sy, s.radius * 1.6).fill({ color: LF.COLOR_SHADOW_BODY, alpha: visibility * 0.4 });
+        g.circle(sx + wobble, sy, s.radius * 1.2).fill({ color: LF.COLOR_SHADOW_BODY, alpha: visibility * 0.6 });
+        g.circle(sx, sy + wobble * 0.5, s.radius).fill({ color: 0x1a0e3a, alpha: visibility * 0.85 });
+        // Ripple rings (like disturbed water)
+        for (let rr = 0; rr < 3; rr++) {
+          const rrPhase = (t * 1.5 + rr * 0.33 + s.eyePhase) % 1;
+          const rrR = s.radius * (1 + rrPhase * 1.5);
+          g.circle(sx, sy, rrR).stroke({ color: LF.COLOR_SHADOW_EYE, width: 0.8, alpha: (1 - rrPhase) * visibility * 0.15 });
+        }
+      } else if (s.variant === "phantom") {
+        // Phantom: almost invisible — faint shimmer outline, only eyes glow
+        const closeness = Math.max(0, 1 - dist / (lr * 1.2)); // more visible near flame
+        const dartFlash = (s.state === "telegraph" || s.state === "dart") ? 0.35 : 0;
+        const phantomAlpha = Math.max(0.02, closeness * 0.15 + dartFlash);
+        // Faint shimmer outline rings
+        const shimmer1 = Math.sin(t * 8 + s.eyePhase) * 0.03;
+        const shimmer2 = Math.sin(t * 11 + s.eyePhase * 1.5) * 0.02;
+        g.circle(sx, sy, s.radius * 1.6).stroke({ color: 0x6644aa, width: 0.8, alpha: phantomAlpha + shimmer1 });
+        g.circle(sx, sy, s.radius * 1.2).stroke({ color: 0x8866cc, width: 0.5, alpha: phantomAlpha * 0.7 + shimmer2 });
+        // Body barely there
+        g.circle(sx + wobble * 0.3, sy, s.radius).fill({ color: LF.COLOR_SHADOW_BODY, alpha: phantomAlpha * 0.5 });
+      } else if (s.variant === "nest") {
+        // Nest: large dark blob with pulsing core, cracks when damaged
+        const corePulse = 0.5 + Math.sin(t * 3 + s.eyePhase) * 0.2;
+        // Large dark body
+        g.circle(sx + wobble * 0.2, sy, s.radius * 1.6).fill({ color: LF.COLOR_SHADOW_BODY, alpha: visibility * 0.5 });
+        g.circle(sx, sy, s.radius * 1.3).fill({ color: 0x120a22, alpha: visibility * 0.8 });
+        g.circle(sx, sy, s.radius).fill({ color: LF.COLOR_SHADOW_BODY, alpha: visibility });
+        // Pulsing core
+        g.circle(sx, sy, s.radius * 0.5 * corePulse).fill({ color: LF.COLOR_SHADOW_EYE, alpha: visibility * 0.2 });
+        g.circle(sx, sy, s.radius * 0.3).fill({ color: 0x442266, alpha: visibility * corePulse * 0.4 });
+        // Thick armored edge
+        g.circle(sx, sy, s.radius).stroke({ color: 0x2a1e3e, width: 2, alpha: visibility * 0.5 });
+        // Cracks with light when damaged (hp < max)
+        if (s.hp < LF.NEST_HP) {
+          const crackAlpha = visibility * 0.6;
+          for (let cr = 0; cr < 4; cr++) {
+            const crAngle = cr * Math.PI / 2 + s.eyePhase + Math.sin(t * 2) * 0.1;
+            const crLen = s.radius * (0.6 + Math.sin(t * 4 + cr) * 0.2);
+            const crX = sx + Math.cos(crAngle) * crLen;
+            const crY = sy + Math.sin(crAngle) * crLen;
+            g.moveTo(sx, sy).lineTo(crX, crY)
+              .stroke({ color: LF.COLOR_FLAME, width: 1.5, alpha: crackAlpha });
+            g.circle(crX, crY, 2).fill({ color: LF.COLOR_FLAME, alpha: crackAlpha * 0.7 });
+          }
+          // Inner glow from cracks
+          g.circle(sx, sy, s.radius * 0.7).fill({ color: LF.COLOR_FLAME, alpha: visibility * 0.08 });
+        }
       } else {
-        // Normal
-        g.circle(sx + wobble, sy, s.radius * 1.3).fill({ color: LF.COLOR_SHADOW_BODY, alpha: visibility * 0.8 });
+        // Normal — slightly amorphous shape
+        g.circle(sx + wobble, sy, s.radius * 1.5).fill({ color: LF.COLOR_SHADOW_BODY, alpha: visibility * 0.4 });
+        g.circle(sx + wobble * 0.5, sy, s.radius * 1.3).fill({ color: LF.COLOR_SHADOW_BODY, alpha: visibility * 0.7 });
         g.circle(sx, sy + wobble * 0.5, s.radius).fill({ color: LF.COLOR_SHADOW_BODY, alpha: visibility });
+        // Wispy tendrils reaching outward
+        for (let wt = 0; wt < 3; wt++) {
+          const wtAngle = t * 0.5 + wt * Math.PI * 2 / 3 + s.eyePhase;
+          const wtLen = s.radius * (0.8 + Math.sin(t * 2 + wt) * 0.3);
+          g.moveTo(sx, sy).lineTo(sx + Math.cos(wtAngle) * wtLen, sy + Math.sin(wtAngle) * wtLen)
+            .stroke({ color: LF.COLOR_SHADOW_BODY, width: 1.5, alpha: visibility * 0.2 });
+        }
       }
 
       // Brute wind-up telegraph — growing glow warning
@@ -458,19 +655,31 @@ export class LastFlameRenderer {
         g.circle(sx, sy, s.radius * (1.2 + windProgress * 1.0)).stroke();
       }
 
-      // Darting glow + trail (all variants)
+      // Darting glow + trail (all variants) — more dramatic
       if (s.state === "dart") {
         const dartColor = s.variant === "brute" ? 0x661144 : LF.COLOR_SHADOW_DART;
-        g.circle(sx, sy, s.radius * 1.8).fill({ color: dartColor, alpha: 0.15 });
+        g.circle(sx, sy, s.radius * 2.5).fill({ color: dartColor, alpha: 0.08 });
+        g.circle(sx, sy, s.radius * 1.8).fill({ color: dartColor, alpha: 0.18 });
         const vLen = Math.sqrt(s.vx * s.vx + s.vy * s.vy);
         if (vLen > 0) {
-          g.setStrokeStyle({ width: s.radius * 0.8, color: dartColor, alpha: 0.1 });
-          g.moveTo(sx, sy).lineTo(sx - s.vx * 0.05, sy - s.vy * 0.05).stroke();
+          // Long shadow trail
+          g.moveTo(sx, sy).lineTo(sx - s.vx * 0.12, sy - s.vy * 0.12)
+            .stroke({ width: s.radius * 1.2, color: dartColor, alpha: 0.06 });
+          g.moveTo(sx, sy).lineTo(sx - s.vx * 0.07, sy - s.vy * 0.07)
+            .stroke({ width: s.radius * 0.7, color: dartColor, alpha: 0.15 });
+          // Afterimages
+          for (let di = 1; di <= 3; di++) {
+            g.circle(sx - s.vx * 0.02 * di, sy - s.vy * 0.02 * di, s.radius * (0.8 - di * 0.15))
+              .fill({ color: dartColor, alpha: 0.08 });
+          }
         }
       }
 
       // Glowing eyes — always slightly visible (creepy!) — brighter with glow halo
-      const eyeAlpha = inLight ? 0.65 : 0.3 + Math.sin(t * 2 + s.eyePhase) * 0.12;
+      // Phantom eyes: brighter glow in darkness (main visual cue), larger halo
+      const eyeAlpha = s.variant === "phantom"
+        ? (inLight ? 0.7 : 0.5 + Math.sin(t * 3 + s.eyePhase) * 0.15)
+        : (inLight ? 0.65 : 0.3 + Math.sin(t * 2 + s.eyePhase) * 0.12);
       const eyeSpread = s.radius * 0.35;
       // Face toward player
       const toPx = px - s.x, toPy = py - s.y;
@@ -944,42 +1153,89 @@ export class LastFlameRenderer {
     const t = state.time;
     const cx = this._sw / 2;
 
-    // HUD panel background
-    ug.roundRect(cx - 85, 4, 170, 22, 6).fill({ color: 0x000000, alpha: 0.4 });
-    ug.setStrokeStyle({ width: 1, color: LF.COLOR_FLAME, alpha: 0.08 });
-    ug.roundRect(cx - 85, 4, 170, 22, 6).stroke();
-
-    // Fuel bar with ornamental frame
-    const barW = 140, barH = 8;
-    const bx = cx - barW / 2, by = 10;
-    // Outer frame
-    ug.roundRect(bx - 2, by - 2, barW + 4, barH + 4, 4).fill({ color: 0x000000, alpha: 0.35 });
-    // Background
-    ug.rect(bx, by, barW, barH).fill({ color: 0x1a1a1a, alpha: 0.6 });
-    // Fuel fill
-    const fuelColor = state.fuel > 0.3 ? LF.COLOR_FLAME : state.fuel > 0.15 ? 0xff6600 : LF.COLOR_DANGER;
-    const fillW = barW * state.fuel;
-    ug.rect(bx, by, fillW, barH).fill({ color: fuelColor, alpha: 0.8 });
-    // Shine highlight
-    ug.rect(bx, by, fillW, 2).fill({ color: 0xffffff, alpha: 0.15 });
-
-    // Low fuel danger pulse on bar edge
-    if (state.fuel < 0.3 && state.fuel > 0) {
-      const dangerPulse = Math.sin(t * 8) > 0 ? 0.25 : 0.1;
-      ug.rect(bx + fillW - 3, by, 3, barH).fill({ color: LF.COLOR_DANGER, alpha: dangerPulse });
+    // HUD panel background — wider with ornamental ends
+    ug.roundRect(cx - 120, 3, 240, 28, 8).fill({ color: 0x000000, alpha: 0.45 });
+    ug.roundRect(cx - 120, 3, 240, 28, 8).stroke({ color: LF.COLOR_FLAME, width: 1, alpha: 0.1 });
+    // Corner ornaments
+    for (const ox2 of [-120, 120]) {
+      ug.circle(cx + ox2, 17, 3).fill({ color: LF.COLOR_FLAME, alpha: 0.12 });
+      ug.circle(cx + ox2, 17, 1.5).fill({ color: LF.COLOR_FLAME_CORE, alpha: 0.25 });
     }
 
-    // Flame icon (left of bar)
-    ug.circle(bx - 10, by + barH / 2, 4).fill({ color: LF.COLOR_FLAME, alpha: 0.4 });
-    ug.circle(bx - 10, by + barH / 2 - 2, 2.5).fill({ color: LF.COLOR_FLAME_CORE, alpha: 0.5 });
-    ug.circle(bx - 10, by + barH / 2 - 4, 1.5).fill({ color: 0xffffff, alpha: 0.3 });
+    // Fuel bar with ornamental frame — bigger
+    const barW = 180, barH = 10;
+    const bx = cx - barW / 2, by = 10;
+    // Ornate outer frame
+    ug.roundRect(bx - 3, by - 3, barW + 6, barH + 6, 5).fill({ color: 0x0a0806, alpha: 0.5 });
+    ug.roundRect(bx - 3, by - 3, barW + 6, barH + 6, 5).stroke({ color: 0x443322, width: 0.8, alpha: 0.3 });
+    // Background
+    ug.roundRect(bx, by, barW, barH, 3).fill({ color: 0x1a1a1a, alpha: 0.7 });
+    // Fuel fill with gradient effect
+    const fuelColor = state.fuel > 0.3 ? LF.COLOR_FLAME : state.fuel > 0.15 ? 0xff6600 : LF.COLOR_DANGER;
+    const fillW = barW * state.fuel;
+    ug.roundRect(bx, by, fillW, barH, 3).fill({ color: fuelColor, alpha: 0.85 });
+    // Shine highlight
+    ug.roundRect(bx, by, fillW, barH * 0.35, 3).fill({ color: 0xffffff, alpha: 0.18 });
+    // Shimmer pulse along fill
+    if (state.fuel > 0.5) {
+      const shimmerX = bx + ((t * 50) % fillW);
+      ug.rect(shimmerX, by, 8, barH).fill({ color: 0xffffff, alpha: 0.06 });
+    }
 
-    // Fuel percentage (right of bar)
-    ug.circle(bx + barW + 10, by + barH / 2, 8).fill({ color: 0x000000, alpha: 0.25 });
+    // Low fuel danger pulse — screen edge tint + bar pulse
+    if (state.fuel < 0.3 && state.fuel > 0) {
+      const dangerPulse = 0.15 + Math.sin(t * 8) * 0.12;
+      ug.rect(bx + fillW - 4, by, 4, barH).fill({ color: LF.COLOR_DANGER, alpha: dangerPulse });
+      // Screen edge danger tint
+      const edgeDanger = (0.3 - state.fuel) * 0.15;
+      ug.rect(0, 0, this._sw, 3).fill({ color: LF.COLOR_DANGER, alpha: edgeDanger + Math.sin(t * 6) * edgeDanger * 0.5 });
+      ug.rect(0, this._sh - 3, this._sw, 3).fill({ color: LF.COLOR_DANGER, alpha: edgeDanger + Math.sin(t * 6) * edgeDanger * 0.5 });
+    }
+
+    // Flame icon (left of bar) — more detailed
+    const fiX = bx - 14, fiY = by + barH / 2;
+    ug.circle(fiX, fiY, 5).fill({ color: LF.COLOR_FLAME, alpha: 0.3 });
+    ug.circle(fiX, fiY - 1, 4).fill({ color: LF.COLOR_FLAME, alpha: 0.5 });
+    ug.circle(fiX, fiY - 3, 3).fill({ color: LF.COLOR_FLAME_CORE, alpha: 0.6 });
+    ug.circle(fiX, fiY - 5, 2).fill({ color: 0xffffff, alpha: 0.35 });
+
+    // Fuel percentage circle (right of bar)
+    ug.circle(bx + barW + 14, by + barH / 2, 9).fill({ color: 0x000000, alpha: 0.3 });
+    ug.circle(bx + barW + 14, by + barH / 2, 9).stroke({ color: fuelColor, width: 0.8, alpha: 0.3 });
 
     // Score + wave text
     const roomLabel = state.roomDepth > 0 ? `  |  Depth: ${state.roomDepth + 1}` : "";
     this._hudText.text = `Score: ${Math.floor(state.score)}  |  Wave: ${state.wave}${roomLabel}  |  ${Math.floor(state.time)}s`;
+
+    // Kill combo display (bottom-left)
+    if (state.comboCount >= 2) {
+      const comboAlpha = 0.6 + Math.sin(t * 6) * 0.2;
+      const comboColor = state.comboCount >= 5 ? 0xffd700 : state.comboCount >= 3 ? 0xff8844 : LF.COLOR_FLAME;
+      ug.roundRect(8, this._sh - 50, 80, 22, 4).fill({ color: 0x000000, alpha: 0.4 });
+      ug.roundRect(8, this._sh - 50, 80, 22, 4).stroke({ color: comboColor, width: 1, alpha: comboAlpha * 0.3 });
+      // Combo pips
+      const pipCount = Math.min(state.comboCount, 8);
+      for (let cp = 0; cp < pipCount; cp++) {
+        ug.circle(16 + cp * 9, this._sh - 39, 3).fill({ color: comboColor, alpha: comboAlpha });
+      }
+    }
+
+    // Active mutator indicators (top-right)
+    if (state.activeMutators.length > 0) {
+      for (let mi = 0; mi < state.activeMutators.length; mi++) {
+        const mx2 = this._sw - 15, my2 = 8 + mi * 14;
+        ug.roundRect(mx2 - 8, my2, 16, 10, 3).fill({ color: LF.COLOR_FLAME, alpha: 0.08 });
+        ug.circle(mx2, my2 + 5, 3).fill({ color: LF.COLOR_FLAME, alpha: 0.25 });
+      }
+    }
+
+    // Dodge streak indicator (top-left)
+    if (state.dodgeTimer > 10) {
+      const dodgeProgress = state.dodgeTimer / 15;
+      const dodgeAlpha = 0.15 + Math.sin(t * 4) * 0.05;
+      ug.roundRect(8, 32, 60, 6, 3).fill({ color: 0x111111, alpha: 0.3 });
+      ug.roundRect(8, 32, 60 * Math.min(1, dodgeProgress), 6, 3).fill({ color: 0x44ccff, alpha: dodgeAlpha });
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -995,20 +1251,49 @@ export class LastFlameRenderer {
     const g = this._gfx;
     const t = state.time;
 
-    // Animated candle flame demo in background
+    // Animated candle flame demo in background — more dramatic with darkness
     const flicker = Math.sin(t * 8) * 3;
-    g.circle(cx, cy + 30, 80).fill({ color: LF.COLOR_FLAME_OUTER, alpha: 0.03 });
-    g.circle(cx, cy + 25, 50).fill({ color: LF.COLOR_FLAME, alpha: 0.05 });
-    g.circle(cx, cy + 20 + flicker, 20).fill({ color: LF.COLOR_FLAME, alpha: 0.08 });
-    g.circle(cx, cy + 15 + flicker, 10).fill({ color: LF.COLOR_FLAME_CORE, alpha: 0.1 });
+    // Large light pool
+    g.circle(cx, cy + 20, 200).fill({ color: LF.COLOR_FLAME_OUTER, alpha: 0.015 });
+    g.circle(cx, cy + 20, 130).fill({ color: LF.COLOR_FLAME, alpha: 0.025 });
+    g.circle(cx, cy + 20, 80).fill({ color: LF.COLOR_FLAME, alpha: 0.04 });
+    // Flame layers
+    g.circle(cx + flicker * 0.3, cy + 25, 50).fill({ color: LF.COLOR_FLAME, alpha: 0.06 });
+    g.circle(cx, cy + 18 + flicker, 25).fill({ color: LF.COLOR_FLAME, alpha: 0.10 });
+    g.circle(cx, cy + 12 + flicker, 14).fill({ color: LF.COLOR_FLAME_CORE, alpha: 0.14 });
+    g.circle(cx + flicker * 0.5, cy + 6 + flicker, 8).fill({ color: 0xffffff, alpha: 0.08 });
+    // Demo embers drifting up
+    for (let de = 0; de < 5; de++) {
+      const dep = t * (1.5 + de * 0.4) + de * 2;
+      const deLife = (dep % 2) / 2;
+      const dex = cx + Math.sin(dep * 2 + de) * (10 + deLife * 30);
+      const dey = cy + 10 - deLife * 80;
+      g.circle(dex, dey, 1.5 - deLife * 0.8).fill({ color: LF.COLOR_FLAME, alpha: (1 - deLife) * 0.12 });
+    }
+    // Lurking shadow eyes in the darkness
+    for (let se = 0; se < 4; se++) {
+      const seAngle = se * Math.PI / 2 + t * 0.1;
+      const seDist = 220 + Math.sin(t * 0.5 + se * 2) * 30;
+      const sex = cx + Math.cos(seAngle) * seDist;
+      const sey = cy + Math.sin(seAngle) * seDist * 0.6;
+      const seAlpha = 0.08 + Math.sin(t * 2 + se * 1.5) * 0.04;
+      g.circle(sex - 3, sey, 2).fill({ color: LF.COLOR_SHADOW_EYE, alpha: seAlpha });
+      g.circle(sex + 3, sey, 2).fill({ color: LF.COLOR_SHADOW_EYE, alpha: seAlpha });
+    }
 
     g.rect(0, 0, this._sw, this._sh).fill({ color: 0x000000, alpha: 0.6 });
 
-    // Frame
+    // Frame with ornamental corners
     const fw = Math.min(480, this._sw - 60), fh = 340;
     const fx = cx - fw / 2, fy = cy - fh / 2;
-    g.setStrokeStyle({ width: 1.5, color: LF.COLOR_FLAME, alpha: 0.2 });
-    g.roundRect(fx, fy, fw, fh, 6).stroke();
+    g.roundRect(fx - 2, fy - 2, fw + 4, fh + 4, 8).fill({ color: LF.COLOR_FLAME, alpha: 0.02 });
+    g.roundRect(fx, fy, fw, fh, 6).stroke({ color: LF.COLOR_FLAME, width: 1.5, alpha: 0.2 });
+    g.roundRect(fx + 4, fy + 4, fw - 8, fh - 8, 4).stroke({ color: LF.COLOR_FLAME, width: 0.5, alpha: 0.08 });
+    // Corner dots
+    for (const [ocx, ocy] of [[fx, fy], [fx + fw, fy], [fx, fy + fh], [fx + fw, fy + fh]]) {
+      g.circle(ocx, ocy, 4).fill({ color: LF.COLOR_FLAME, alpha: 0.1 });
+      g.circle(ocx, ocy, 2).fill({ color: LF.COLOR_FLAME_CORE, alpha: 0.2 });
+    }
 
     this._titleText.anchor.set(0.5); this._titleText.position.set(cx, cy - 110);
     this._subtitleText.anchor.set(0.5); this._subtitleText.position.set(cx, cy - 65);
@@ -1061,23 +1346,67 @@ export class LastFlameRenderer {
     const isNew = score >= meta.highScore && score > 0;
     const t = state.time;
 
-    // "The flame has died" visual — dying ember
-    const emberPulse = 0.03 + Math.sin(t * 1.5) * 0.02;
-    ug.circle(cx, cy - 120, 30).fill({ color: LF.COLOR_FLAME_OUTER, alpha: emberPulse });
-    ug.circle(cx, cy - 120, 15).fill({ color: LF.COLOR_FLAME, alpha: emberPulse * 2 });
+    // "The flame has died" visual — dramatic dying ember with smoke
+    const emberPulse = 0.04 + Math.sin(t * 1.5) * 0.025;
+    ug.circle(cx, cy - 120, 50).fill({ color: LF.COLOR_FLAME_OUTER, alpha: emberPulse * 0.4 });
+    ug.circle(cx, cy - 120, 35).fill({ color: LF.COLOR_FLAME_OUTER, alpha: emberPulse * 0.8 });
+    ug.circle(cx, cy - 120, 20).fill({ color: LF.COLOR_FLAME, alpha: emberPulse * 2 });
+    ug.circle(cx, cy - 120, 8).fill({ color: LF.COLOR_FLAME_CORE, alpha: emberPulse * 3 });
+    // Rising smoke wisps
+    for (let sw2 = 0; sw2 < 3; sw2++) {
+      const swP = t * 0.8 + sw2 * 1.5;
+      const swLife = (swP % 2) / 2;
+      const swX = cx + Math.sin(swP * 1.5) * (5 + swLife * 15);
+      const swY = cy - 125 - swLife * 50;
+      ug.circle(swX, swY, 3 + swLife * 5).fill({ color: 0x444444, alpha: (1 - swLife) * 0.05 });
+    }
+    // Scattered dying embers
+    for (let de = 0; de < 4; de++) {
+      const deA = t * 0.3 + de * 1.57;
+      const deR = 25 + Math.sin(t * 0.5 + de) * 10;
+      ug.circle(cx + Math.cos(deA) * deR, cy - 120 + Math.sin(deA) * deR * 0.5, 1.5)
+        .fill({ color: LF.COLOR_FLAME, alpha: emberPulse * 2 });
+    }
 
-    // Grade
+    // Grade — more ornate with radiating lines
     const breathe = 1.0 + Math.sin(t * 2) * 0.05;
-    ug.circle(cx, cy - 80, 32 * breathe).fill({ color: grade.color, alpha: 0.1 });
-    ug.setStrokeStyle({ width: 2, color: grade.color, alpha: 0.4 });
-    ug.circle(cx, cy - 80, 26 * breathe).stroke();
+    const gcy = cy - 75;
+    ug.circle(cx, gcy, 45 * breathe).fill({ color: grade.color, alpha: 0.03 });
+    ug.circle(cx, gcy, 36 * breathe).fill({ color: grade.color, alpha: 0.07 });
+    ug.circle(cx, gcy, 28 * breathe).fill({ color: grade.color, alpha: 0.12 });
+    // Rotating segments
+    for (let gs = 0; gs < 10; gs += 2) {
+      const a1 = (gs / 10) * Math.PI * 2 + t * 0.3;
+      const a2 = ((gs + 1) / 10) * Math.PI * 2 + t * 0.3;
+      ug.moveTo(cx + Math.cos(a1) * 34 * breathe, gcy + Math.sin(a1) * 34 * breathe);
+      for (let ss = 1; ss <= 3; ss++) {
+        const a = a1 + (a2 - a1) * (ss / 3);
+        ug.lineTo(cx + Math.cos(a) * 34 * breathe, gcy + Math.sin(a) * 34 * breathe);
+      }
+      ug.stroke({ color: grade.color, width: 1.5, alpha: 0.25 });
+    }
+    ug.circle(cx, gcy, 28 * breathe).stroke({ color: grade.color, width: 2.5, alpha: 0.45 });
+    // Radiating lines
+    for (let rl = 0; rl < 6; rl++) {
+      const rla = rl * Math.PI / 3 + t * 0.1;
+      ug.moveTo(cx + Math.cos(rla) * 30 * breathe, gcy + Math.sin(rla) * 30 * breathe)
+        .lineTo(cx + Math.cos(rla) * 42 * breathe, gcy + Math.sin(rla) * 42 * breathe)
+        .stroke({ color: grade.color, width: 0.7, alpha: 0.12 });
+    }
 
-    this._gradeText.anchor.set(0.5); this._gradeText.position.set(cx, cy - 80);
+    this._gradeText.anchor.set(0.5); this._gradeText.position.set(cx, gcy);
     this._gradeText.text = grade.grade; this._gradeText.style.fill = grade.color;
     this._gradeText.scale.set(breathe);
 
     if (isNew) {
-      ug.roundRect(cx - 70, cy - 48, 140, 18, 3).fill({ color: 0xffd700, alpha: 0.1 });
+      ug.roundRect(cx - 80, gcy + 30, 160, 20, 4).fill({ color: 0xffd700, alpha: 0.12 });
+      ug.roundRect(cx - 80, gcy + 30, 160, 20, 4).stroke({ color: 0xffd700, width: 1, alpha: 0.2 });
+      // Sparkle border
+      for (let ns = 0; ns < 4; ns++) {
+        const nsa = t * 2.5 + ns * 1.57;
+        ug.circle(cx - 85 + Math.cos(nsa) * 5, gcy + 40 + Math.sin(nsa) * 5, 1.5)
+          .fill({ color: 0xffd700, alpha: 0.35 + Math.sin(t * 5 + ns) * 0.15 });
+      }
     }
 
     const embersEarned = Math.floor(score / 10);

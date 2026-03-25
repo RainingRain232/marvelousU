@@ -176,6 +176,10 @@ import { GravitonGame } from "./graviton/GravitonGame";
 import { GrailQuestGame } from "./grailquest/GrailQuestGame";
 import { MerlinDuelGame } from "./merlinduel/MerlinDuelGame";
 import { KothGame } from "./koth/KothGame";
+import { RunebladeGame } from "./runeblade/RunebladeGame";
+import { ChronomancerGame } from "./chronomancer/ChronomancerGame";
+import { ShapeshifterGame } from "./shapeshifter/ShapeshifterGame";
+import { VoidwalkerGame } from "./voidwalker/VoidwalkerGame";
 import { camelotHubScreen } from "@view/ui/CamelotHubScreen";
 
 // World mode imports
@@ -404,6 +408,10 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     [GameMode.GRAIL_QUEST]: 52,
     [GameMode.MERLIN_DUEL]: 53,
     [GameMode.KOTH]: 54,
+    [GameMode.RUNEBLADE]: 55,
+    [GameMode.CHRONOMANCER]: 56,
+    [GameMode.SHAPESHIFTER]: 57,
+    [GameMode.VOIDWALKER]: 58,
   };
   // Modes that need the setup screen (not skipSetup)
   const NEEDS_SETUP = new Set([GameMode.STANDARD, GameMode.DEATHMATCH, GameMode.BATTLEFIELD, GameMode.WAVE]);
@@ -728,6 +736,26 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     if (menuScreen.selectedGameMode === GameMode.KOTH) {
       menuScreen.hide();
       _bootKothGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.RUNEBLADE) {
+      menuScreen.hide();
+      _bootRunebladeGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.CHRONOMANCER) {
+      menuScreen.hide();
+      _bootChronomancerGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.SHAPESHIFTER) {
+      menuScreen.hide();
+      _bootShapeshifterGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.VOIDWALKER) {
+      menuScreen.hide();
+      _bootVoidwalkerGame();
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.WORLD) {
@@ -3158,6 +3186,78 @@ async function _bootKothGame(): Promise<void> {
     menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
   window.addEventListener("kothExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Runeblade mode boot
+// ---------------------------------------------------------------------------
+
+let _runebladeGame: RunebladeGame | null = null;
+
+async function _bootRunebladeGame(): Promise<void> {
+  if (_runebladeGame) { _runebladeGame.destroy(); _runebladeGame = null; }
+  _runebladeGame = new RunebladeGame();
+  await _runebladeGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("runebladeExit", _onExit);
+    if (_runebladeGame) { _runebladeGame.destroy(); _runebladeGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("runebladeExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Chronomancer mode boot
+// ---------------------------------------------------------------------------
+
+let _chronomancerGame: ChronomancerGame | null = null;
+
+async function _bootChronomancerGame(): Promise<void> {
+  if (_chronomancerGame) { _chronomancerGame.destroy(); _chronomancerGame = null; }
+  _chronomancerGame = new ChronomancerGame();
+  await _chronomancerGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("chronomancerExit", _onExit);
+    if (_chronomancerGame) { _chronomancerGame.destroy(); _chronomancerGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("chronomancerExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Shapeshifter mode boot
+// ---------------------------------------------------------------------------
+
+let _shapeshifterGame: ShapeshifterGame | null = null;
+
+async function _bootShapeshifterGame(): Promise<void> {
+  if (_shapeshifterGame) { _shapeshifterGame.destroy(); _shapeshifterGame = null; }
+  _shapeshifterGame = new ShapeshifterGame();
+  await _shapeshifterGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("shapeshifterExit", _onExit);
+    if (_shapeshifterGame) { _shapeshifterGame.destroy(); _shapeshifterGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("shapeshifterExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Voidwalker mode boot
+// ---------------------------------------------------------------------------
+
+let _voidwalkerGame: VoidwalkerGame | null = null;
+
+async function _bootVoidwalkerGame(): Promise<void> {
+  if (_voidwalkerGame) { _voidwalkerGame.destroy(); _voidwalkerGame = null; }
+  _voidwalkerGame = new VoidwalkerGame();
+  await _voidwalkerGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("voidwalkerExit", _onExit);
+    if (_voidwalkerGame) { _voidwalkerGame.destroy(); _voidwalkerGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("voidwalkerExit", _onExit);
 }
 
 // ---------------------------------------------------------------------------

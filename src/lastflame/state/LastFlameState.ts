@@ -114,6 +114,10 @@ export function createLFState(sw: number, sh: number, meta?: LFMeta): LFState {
     particles: [], floatTexts: [],
     screenShake: 0, screenFlashColor: 0xffffff, screenFlashTimer: 0,
     wave: 0, waveTimer: LF.WAVE_INTERVAL,
+    comboCount: 0, comboTimer: 0,
+    windAngle: Math.random() * Math.PI * 2, windChangeTimer: LF.WIND_CHANGE_INTERVAL,
+    dodgeTimer: 0,
+    waveShadowsRemaining: 0,
     time: 0,
   };
 }

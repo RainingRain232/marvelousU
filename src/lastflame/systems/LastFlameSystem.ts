@@ -55,6 +55,12 @@ export function updatePlayer(state: LFState, dt: number, keys: Set<string>): voi
     }
   }
 
+  // Wind hazard: push player in a constant direction (shadows unaffected)
+  if (state.roomConfig.hazard === "wind") {
+    nx += Math.cos(state.windAngle) * LF.WIND_FORCE * dt;
+    ny += Math.sin(state.windAngle) * LF.WIND_FORCE * dt;
+  }
+
   nx = Math.max(LF.PLAYER_RADIUS, Math.min(state.arenaW - LF.PLAYER_RADIUS, nx));
   ny = Math.max(LF.PLAYER_RADIUS, Math.min(state.arenaH - LF.PLAYER_RADIUS, ny));
   state.playerX = nx;
@@ -82,7 +88,9 @@ export function updateFuel(state: LFState, dt: number, keys: Set<string>): boole
   else drainMult = dampMult; // standing still in damp room still gets the penalty
   if (state.flareTimer > 0) drainMult = 0; // flare cost paid upfront
 
-  state.fuel = Math.max(0, state.fuel - LF.FUEL_DRAIN_PER_SEC * dt * drainMult);
+  // Difficulty scaling: after wave 10, fuel drain increases by 5% per wave
+  const fuelDrainScale = state.wave > 10 ? 1 + (state.wave - 10) * 0.05 : 1.0;
+  state.fuel = Math.max(0, state.fuel - LF.FUEL_DRAIN_PER_SEC * dt * drainMult * fuelDrainScale);
 
   // Stalker effect: reduce max light radius
   const stalkerCount = state.shadows.filter(s => s.alive && s.variant === "stalker").length;
@@ -149,6 +157,9 @@ export function tryFlare(state: LFState): boolean {
         s.alive = false;
         burned++;
         state.shadowsBurned++;
+        trackCombo(state);
+        if (s.variant === "nest") handleNestDeath(state, s.x, s.y);
+        applyPyromaniac(state, s.x, s.y);
         spawnParticles(state, s.x, s.y, 8, LF.COLOR_SHADOW_DART);
       } else {
         // Brute survived — flee
@@ -171,6 +182,13 @@ export function tryFlare(state: LFState): boolean {
     applyShadowFeast(state, burned);
   }
 
+  // Flare chain mechanic: 3+ kills refunds 25% flare fuel cost
+  if (burned >= 3) {
+    const refund = LF.FLARE_COST * flareCostMult * 0.25;
+    state.fuel = Math.min(1, state.fuel + refund);
+    spawnFloatText(state, state.playerX, state.playerY - 35, "CHAIN FLARE!", LF.COLOR_FLAME_CORE, 1.6);
+  }
+
   spawnParticles(state, state.playerX, state.playerY, 15, LF.COLOR_FLAME);
   state.screenShake = LF.SHAKE_DURATION;
   state.screenFlashColor = LF.COLOR_FLARE;
@@ -186,7 +204,9 @@ export function updateShadows(state: LFState, dt: number): boolean {
   let playerHit = false;
 
   state.shadowSpawnTimer -= dt;
-  const maxShadows = Math.min(LF.SHADOW_MAX, 3 + state.wave);
+  // Difficulty scaling: after wave 15, max shadows alive increases
+  const maxShadowBonus = state.wave > 15 ? state.wave - 15 : 0;
+  const maxShadows = Math.min(LF.SHADOW_MAX + maxShadowBonus, 3 + state.wave);
   if (state.shadowSpawnTimer <= 0 && state.shadows.filter(s => s.alive).length < maxShadows) {
     state.shadowSpawnTimer = Math.max(1.5, LF.SHADOW_SPAWN_INTERVAL - state.wave * 0.2);
     spawnShadow(state, "normal");
@@ -202,7 +222,8 @@ export function updateShadows(state: LFState, dt: number): boolean {
 
     // Shadow AI
     const mothBoost = state.activeMutators.includes("moth_light") ? 1.3 : 1.0; // shadows 30% faster with moth_light
-    const speedMult = (s.variant === "brute" ? LF.BRUTE_SPEED_MULT : 1.0) * mothBoost;
+    const beaconBoost = state.activeMutators.includes("beacon") ? LF.BEACON_SHADOW_SPEED_MULT : 1.0; // shadows 20% faster with beacon
+    const speedMult = (s.variant === "brute" ? LF.BRUTE_SPEED_MULT : s.variant === "nest" ? LF.NEST_SPEED_MULT : 1.0) * mothBoost * beaconBoost;
 
     switch (s.state) {
       case "lurk": {
@@ -218,6 +239,15 @@ export function updateShadows(state: LFState, dt: number): boolean {
           s.vy = tangentY * LF.SHADOW_SPEED_LURK * 0.6 + toPlayerDy * distCorrection * LF.SHADOW_SPEED_LURK * 0.5;
           // Stalkers don't dart — they just orbit and drain light
           break;
+        } else if (s.variant === "phantom") {
+          // Phantoms: faster lurk speed (55 px/s), mostly invisible, same orbit pattern
+          const phantomSpeed = LF.PHANTOM_SPEED / LF.SHADOW_SPEED_LURK; // speed ratio
+          s.vx = (tangentX * LF.SHADOW_SPEED_LURK * phantomSpeed + toPlayerDx * distCorrection * LF.SHADOW_SPEED_LURK) * speedMult;
+          s.vy = (tangentY * LF.SHADOW_SPEED_LURK * phantomSpeed + toPlayerDy * distCorrection * LF.SHADOW_SPEED_LURK) * speedMult;
+        } else if (s.variant === "nest") {
+          // Nests: slow, steady approach — less orbital, more direct
+          s.vx = (tangentX * LF.SHADOW_SPEED_LURK * 0.4 + toPlayerDx * distCorrection * LF.SHADOW_SPEED_LURK * 1.2) * speedMult;
+          s.vy = (tangentY * LF.SHADOW_SPEED_LURK * 0.4 + toPlayerDy * distCorrection * LF.SHADOW_SPEED_LURK * 1.2) * speedMult;
         } else if (s.variant === "swarm") {
           // Swarms: erratic twitchy movement with high-frequency direction changes
           const twitch = Math.sin(state.time * 15 + s.eyePhase * 7) * LF.SHADOW_SPEED_LURK * 0.8;
@@ -236,8 +266,13 @@ export function updateShadows(state: LFState, dt: number): boolean {
               s.state = "wind";
               s.dartDuration = LF.BRUTE_WIND_DURATION;
               s.vx = 0; s.vy = 0;
+            } else if (s.variant === "phantom") {
+              // Phantom: shorter telegraph (barely visible warning)
+              s.state = "telegraph";
+              s.dartDuration = LF.PHANTOM_TELEGRAPH_DURATION;
+              s.vx = 0; s.vy = 0;
             } else {
-              // Normal + swarm: enter telegraph before dart
+              // Normal + swarm + nest: enter telegraph before dart
               s.state = "telegraph";
               s.dartDuration = LF.TELEGRAPH_DURATION;
               s.vx = 0; s.vy = 0; // freeze during telegraph
@@ -257,7 +292,9 @@ export function updateShadows(state: LFState, dt: number): boolean {
         if (s.dartDuration <= 0) {
           s.state = "dart";
           s.dartDuration = LF.SHADOW_DART_DURATION;
-          const dartSpeed = (LF.SHADOW_SPEED_DART + state.wave * 10) * speedMult;
+          // Difficulty scaling: after wave 12, dart speed increases by 10% per wave
+          const dartSpeedScale = state.wave > 12 ? 1 + (state.wave - 12) * 0.10 : 1.0;
+          const dartSpeed = (LF.SHADOW_SPEED_DART + state.wave * 10) * speedMult * dartSpeedScale;
           s.vx = (dx / dist) * dartSpeed;
           s.vy = (dy / dist) * dartSpeed;
         }
@@ -270,7 +307,8 @@ export function updateShadows(state: LFState, dt: number): boolean {
         if (s.dartDuration <= 0) {
           s.state = "dart";
           s.dartDuration = LF.SHADOW_DART_DURATION * 1.5;
-          const dartSpeed = (LF.SHADOW_SPEED_DART + state.wave * 10) * speedMult;
+          const dartSpeedScale = state.wave > 12 ? 1 + (state.wave - 12) * 0.10 : 1.0;
+          const dartSpeed = (LF.SHADOW_SPEED_DART + state.wave * 10) * speedMult * dartSpeedScale;
           s.vx = (dx / dist) * dartSpeed;
           s.vy = (dy / dist) * dartSpeed;
         }
@@ -281,6 +319,7 @@ export function updateShadows(state: LFState, dt: number): boolean {
         if (s.dartDuration <= 0) {
           s.state = "lurk";
           const interval = s.variant === "swarm" ? LF.SWARM_DART_INTERVAL :
+            s.variant === "phantom" ? LF.PHANTOM_DART_INTERVAL :
             LF.SHADOW_DART_INTERVAL_MIN + Math.random() * (LF.SHADOW_DART_INTERVAL_MAX - LF.SHADOW_DART_INTERVAL_MIN);
           s.dartTimer = interval;
         }
@@ -323,6 +362,7 @@ export function updateShadows(state: LFState, dt: number): boolean {
         tryFlare(state);
       }
       state.invulnTimer = LF.INVULN_DURATION;
+      state.dodgeTimer = 0; // reset dodge bonus timer on hit
       state.hitsAbsorbed++;
       if (!state.tutFirstHit) { state.tutFirstHit = true; spawnFloatText(state, state.playerX, state.playerY - 35, "Hits drain fuel! Use pillars for cover!", 0xffffff, 1.0); }
       s.state = "flee";
@@ -390,8 +430,11 @@ function spawnShadow(state: LFState, variant: ShadowVariant): void {
   if (variant === "brute") { hp = LF.BRUTE_HP; radius = LF.BRUTE_RADIUS; fuelDamage = LF.BRUTE_FUEL_DAMAGE; }
   else if (variant === "swarm") { radius = LF.SWARM_RADIUS; fuelDamage = LF.SHADOW_HIT_FUEL_COST * 0.5; }
   else if (variant === "stalker") { radius = LF.SHADOW_RADIUS + 2; fuelDamage = LF.SHADOW_HIT_FUEL_COST * 0.7; }
+  else if (variant === "phantom") { hp = 1; radius = LF.PHANTOM_RADIUS; fuelDamage = LF.SHADOW_HIT_FUEL_COST * 0.6; }
+  else if (variant === "nest") { hp = LF.NEST_HP; radius = LF.NEST_RADIUS; fuelDamage = LF.SHADOW_HIT_FUEL_COST * 0.8; }
 
   const dartInterval = variant === "swarm" ? LF.SWARM_DART_INTERVAL :
+    variant === "phantom" ? LF.PHANTOM_DART_INTERVAL :
     LF.SHADOW_DART_INTERVAL_MIN + Math.random() * (LF.SHADOW_DART_INTERVAL_MAX - LF.SHADOW_DART_INTERVAL_MIN);
 
   state.shadows.push({
@@ -402,6 +445,41 @@ function spawnShadow(state: LFState, variant: ShadowVariant): void {
     hp, radius, eyePhase: Math.random() * Math.PI * 2,
     alive: true, variant, fuelDamage,
   });
+}
+
+/** Handle nest death: spawn swarm children at the nest's position */
+function handleNestDeath(state: LFState, nx: number, ny: number): void {
+  for (let i = 0; i < LF.NEST_SPAWN_COUNT; i++) {
+    const offset = 8;
+    const angle = Math.random() * Math.PI * 2;
+    state.shadows.push({
+      x: nx + Math.cos(angle) * offset, y: ny + Math.sin(angle) * offset,
+      vx: 0, vy: 0, state: "lurk",
+      dartTimer: LF.SWARM_DART_INTERVAL + Math.random() * 0.5,
+      dartDuration: 0, hp: 1, radius: LF.SWARM_RADIUS,
+      eyePhase: Math.random() * Math.PI * 2,
+      alive: true, variant: "swarm",
+      fuelDamage: LF.SHADOW_HIT_FUEL_COST * 0.5,
+    });
+  }
+  spawnFloatText(state, nx, ny - 15, "NEST BURST!", LF.COLOR_SHADOW_EYE, 1.2);
+  spawnParticles(state, nx, ny, 6, LF.COLOR_SHADOW_BODY);
+}
+
+/** Track kill combo: increment combo, award bonus points */
+function trackCombo(state: LFState): void {
+  if (state.comboTimer > 0) {
+    state.comboCount++;
+    const bonus = LF.COMBO_BONUS * state.comboCount;
+    state.score += bonus;
+    if (state.comboCount >= 2) {
+      spawnFloatText(state, state.playerX, state.playerY - 40,
+        `COMBO x${state.comboCount}! +${bonus}`, 0xffaa00, 1.0 + state.comboCount * 0.2);
+    }
+  } else {
+    state.comboCount = 1;
+  }
+  state.comboTimer = LF.COMBO_WINDOW;
 }
 
 // ---------------------------------------------------------------------------
@@ -455,12 +533,18 @@ export function updateOil(state: LFState, dt: number): void {
     }
   }
 
-  if (state.oilMagnetRadius > 0) {
+  // Beacon mutator: oil attracts from 3x distance
+  const beaconActive = state.activeMutators.includes("beacon");
+  const effectiveMagnetRadius = beaconActive
+    ? Math.max(state.oilMagnetRadius, 40) * LF.BEACON_ATTRACT_MULT
+    : state.oilMagnetRadius;
+
+  if (effectiveMagnetRadius > 0) {
     for (const o of state.oilDrops) {
       const mdx = state.playerX - o.x, mdy = state.playerY - o.y;
       const mDist = Math.sqrt(mdx * mdx + mdy * mdy);
-      if (mDist > 0 && mDist < state.oilMagnetRadius) {
-        const pull = (1.0 - mDist / state.oilMagnetRadius) * 60 * dt;
+      if (mDist > 0 && mDist < effectiveMagnetRadius) {
+        const pull = (1.0 - mDist / effectiveMagnetRadius) * 60 * dt;
         o.x += (mdx / mDist) * pull;
         o.y += (mdy / mDist) * pull;
       }
@@ -497,7 +581,17 @@ export function updateWave(state: LFState, dt: number): void {
   }
 
   state.waveTimer -= dt;
+  // Track remaining wave shadows for wave clear bonus
+  if (state.waveShadowsRemaining > 0) {
+    const alive = state.shadows.filter(s => s.alive).length;
+    state.waveShadowsRemaining = alive;
+  }
   if (state.waveTimer <= 0) {
+    // Wave clear bonus: if all shadows from previous wave are dead before next wave spawns
+    if (state.wave > 0 && state.waveShadowsRemaining === 0 && state.shadows.filter(s => s.alive).length === 0) {
+      state.score += LF.SCORE_WAVE_CLEAR;
+      spawnFloatText(state, state.playerX, state.playerY - 45, `WAVE CLEAR! +${LF.SCORE_WAVE_CLEAR}`, LF.COLOR_OIL, 1.8);
+    }
     state.wave++;
     state.waveTimer = LF.WAVE_INTERVAL;
 
@@ -569,6 +663,18 @@ export function updateWave(state: LFState, dt: number): void {
       spawnFloatText(state, state.playerX, state.playerY - 45, "STALKER APPROACHES...", LF.COLOR_SHADOW_EYE, 1.5);
     }
 
+    // Phantom spawn (wave 6+, ~15% chance on non-calm waves)
+    if (state.wave >= LF.PHANTOM_START_WAVE && !isCalm && Math.random() < 0.15) {
+      spawnShadow(state, "phantom");
+      spawnFloatText(state, state.playerX, state.playerY - 50, "SOMETHING UNSEEN...", 0x664488, 1.3);
+    }
+
+    // Nest spawn (wave 8+, ~10% chance on non-calm waves)
+    if (state.wave >= LF.NEST_START_WAVE && !isCalm && Math.random() < 0.10) {
+      spawnShadow(state, "nest");
+      spawnFloatText(state, state.playerX, state.playerY - 55, "NEST APPROACHES!", 0x442266, 1.5);
+    }
+
     // Random secondary event on non-calm waves
     if (!isCalm && !isEclipse && state.wave >= 3 && Math.random() < 0.3) {
       state.fuel = Math.max(0.1, state.fuel - 0.1);
@@ -577,6 +683,8 @@ export function updateWave(state: LFState, dt: number): void {
     }
 
     state.screenShake = Math.max(state.screenShake, LF.SHAKE_DURATION * 0.5);
+    // Track shadows alive at wave start for wave clear bonus
+    state.waveShadowsRemaining = state.shadows.filter(s => s.alive).length;
     // Wave announcement pause
     state.waveAnnounceTimer = LF.WAVE_ANNOUNCE_DURATION;
   }
@@ -597,6 +705,26 @@ export function updateTimers(state: LFState, dt: number): void {
   if (state.invulnTimer > 0) state.invulnTimer -= dt;
   if (state.screenShake > 0) state.screenShake -= dt;
   if (state.screenFlashTimer > 0) state.screenFlashTimer -= dt;
+  // Combo timer
+  if (state.comboTimer > 0) {
+    state.comboTimer -= dt;
+    if (state.comboTimer <= 0) state.comboCount = 0;
+  }
+  // Dodge bonus: every 15s without taking a hit
+  state.dodgeTimer += dt;
+  if (state.dodgeTimer >= LF.DODGE_BONUS_INTERVAL) {
+    state.dodgeTimer -= LF.DODGE_BONUS_INTERVAL;
+    state.score += LF.SCORE_DODGE_BONUS;
+    spawnFloatText(state, state.playerX, state.playerY - 40, `DODGE MASTER +${LF.SCORE_DODGE_BONUS}`, LF.COLOR_FLAME, 1.5);
+  }
+  // Wind hazard: change direction periodically
+  if (state.roomConfig.hazard === "wind") {
+    state.windChangeTimer -= dt;
+    if (state.windChangeTimer <= 0) {
+      state.windAngle = Math.random() * Math.PI * 2;
+      state.windChangeTimer = LF.WIND_CHANGE_INTERVAL;
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -646,6 +774,8 @@ const ALL_MUTATORS = [
   { id: "iron_wick", name: "Iron Wick", desc: "Fuel drains 25% slower, move 15% slower" },
   { id: "shadow_feast", name: "Shadow Feast", desc: "Burning shadows restores 5% fuel each" },
   { id: "glass_flame", name: "Glass Flame", desc: "Light radius +30%, hits do 50% more damage" },
+  { id: "pyromaniac", name: "Pyromaniac", desc: "Shadow kills create chain explosions" },
+  { id: "beacon", name: "Beacon", desc: "Oil visible from afar, shadows faster" },
 ];
 
 export function generateMutatorChoices(state: LFState): void {
@@ -743,12 +873,39 @@ export function applyKindlingTrail(state: LFState, _dt: number): void {
       if (s.hp <= 0) {
         s.alive = false;
         state.shadowsBurned++;
+        trackCombo(state);
+        if (s.variant === "nest") handleNestDeath(state, s.x, s.y);
+        applyPyromaniac(state, s.x, s.y);
         spawnParticles(state, s.x, s.y, 4, LF.COLOR_FLAME);
         spawnFloatText(state, s.x, s.y - 10, "BURNED!", LF.COLOR_FLAME, 0.8);
         applyShadowFeast(state, 1);
       }
     }
   }
+}
+
+/** Apply pyromaniac chain explosion at a kill location */
+function applyPyromaniac(state: LFState, killX: number, killY: number): void {
+  if (!state.activeMutators.includes("pyromaniac")) return;
+  for (const s of state.shadows) {
+    if (!s.alive) continue;
+    const dx = s.x - killX, dy = s.y - killY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < LF.PYROMANIAC_RADIUS) {
+      s.hp--;
+      if (s.hp <= 0) {
+        s.alive = false;
+        state.shadowsBurned++;
+        trackCombo(state);
+        if (s.variant === "nest") handleNestDeath(state, s.x, s.y);
+        spawnParticles(state, s.x, s.y, 6, LF.COLOR_FLAME_OUTER);
+        spawnFloatText(state, s.x, s.y - 10, "CHAIN!", LF.COLOR_FLAME_OUTER, 1.0);
+        applyShadowFeast(state, 1);
+        // Note: no recursive pyromaniac to avoid infinite chains
+      }
+    }
+  }
+  spawnParticles(state, killX, killY, 4, LF.COLOR_FLAME_OUTER);
 }
 
 /** Apply shadow feast (restore fuel on shadow burn) */

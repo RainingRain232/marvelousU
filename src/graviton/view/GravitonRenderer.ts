@@ -134,25 +134,64 @@ export class GravitonRenderer {
 
     if (state.phase === GPhase.PLAYING || state.phase === GPhase.PAUSED) {
       this._drawArena(g, state);
-      // Ambient drifting motes inside arena
+      // Ambient drifting motes inside arena — varied sizes and colors
       const cx = state.arenaCX, cy = state.arenaCY, ar = state.arenaRadius;
-      for (let m = 0; m < 20; m++) {
+      const moteColors = [G.COLOR_ARENA, G.COLOR_PLAYER, 0x4466aa, 0x224488];
+      for (let m = 0; m < 35; m++) {
         const mSeed = m * 137.5;
-        const mAngle = state.time * 0.1 + mSeed;
-        const mDist = (mSeed * 7.3) % ar * 0.85;
+        const mAngle = state.time * (0.05 + (m % 3) * 0.03) + mSeed;
+        const mDist = ((mSeed * 7.3) % (ar * 0.85));
         const mx = cx + Math.cos(mAngle) * mDist;
         const my = cy + Math.sin(mAngle * 0.7 + mSeed * 0.3) * mDist;
-        const mAlpha = 0.03 + Math.sin(state.time * 0.8 + mSeed) * 0.015;
-        g.circle(mx, my, 1).fill({ color: G.COLOR_ARENA, alpha: mAlpha });
+        const mAlpha = 0.035 + Math.sin(state.time * 0.8 + mSeed) * 0.02;
+        const mSize = 0.6 + (m % 4) * 0.3;
+        const mColor = moteColors[m % moteColors.length];
+        g.circle(mx, my, mSize).fill({ color: mColor, alpha: mAlpha });
+        // Tiny glow for larger motes
+        if (mSize > 1) {
+          g.circle(mx, my, mSize * 2.5).fill({ color: mColor, alpha: mAlpha * 0.2 });
+        }
+      }
+      // Gravity-pulled motes near player (swirl toward player)
+      for (let gm = 0; gm < 8; gm++) {
+        const gmAngle = state.time * 1.5 + gm * Math.PI / 4;
+        const gmDist = 30 + Math.sin(state.time * 2 + gm * 1.7) * 12;
+        const gmx = state.playerX + Math.cos(gmAngle) * gmDist;
+        const gmy = state.playerY + Math.sin(gmAngle) * gmDist;
+        g.circle(gmx, gmy, 0.8).fill({ color: G.COLOR_PLAYER, alpha: 0.06 + Math.sin(state.time * 3 + gm) * 0.03 });
       }
       this._drawPullField(g, state);
       this._drawBodies(g, state);
+      this._drawPowerups(g, state);
       this._drawEnemies(g, state);
       this._drawPlayer(g, state);
+      this._drawActiveEffects(g, state);
       this._drawParticles(g, state);
     }
 
-    if (state.screenFlashTimer > 0) g.rect(0, 0, sw, sh).fill({ color: state.screenFlashColor, alpha: 0.2 * (state.screenFlashTimer / G.FLASH_DURATION) });
+    // Screen flash with radial burst
+    if (state.screenFlashTimer > 0) {
+      const flashRatio = state.screenFlashTimer / G.FLASH_DURATION;
+      g.rect(0, 0, sw, sh).fill({ color: state.screenFlashColor, alpha: 0.2 * flashRatio });
+      // Flash burst from center
+      g.circle(sw / 2, sh / 2, Math.max(sw, sh) * (1 - flashRatio) * 0.5)
+        .stroke({ color: state.screenFlashColor, width: 3, alpha: flashRatio * 0.15 });
+    }
+
+    // Screen-edge threat glow (pulsing red edges at high threat)
+    if ((state.phase === GPhase.PLAYING || state.phase === GPhase.PAUSED) && state.threatLevel > 0.3) {
+      const edgeAlpha = (state.threatLevel - 0.3) * 0.12 + Math.sin(state.time * 3) * 0.03;
+      const edgeW = 40 + state.threatLevel * 30;
+      // Gradient edge glow
+      for (let ei = 0; ei < 3; ei++) {
+        const ew = edgeW - ei * 12;
+        const ea = edgeAlpha * (1 - ei * 0.3);
+        g.rect(0, 0, ew, sh).fill({ color: 0xff2222, alpha: ea });
+        g.rect(sw - ew, 0, ew, sh).fill({ color: 0xff2222, alpha: ea });
+        g.rect(0, 0, sw, ew).fill({ color: 0xff2222, alpha: ea * 0.7 });
+        g.rect(0, sh - ew, sw, ew).fill({ color: 0xff2222, alpha: ea * 0.7 });
+      }
+    }
 
     this._drawFloatTexts(state);
     this._drawHUD(state);
@@ -170,15 +209,65 @@ export class GravitonRenderer {
     g.circle(cx, cy, r * 0.55).fill({ color: 0x0c1a38, alpha: 0.05 });
     g.circle(cx, cy, r * 0.3).fill({ color: 0x0e1c40, alpha: 0.04 });
 
-    // Grid overlay for depth
+    // Grid overlay for depth — warps near player for gravity distortion
     const gridStep = 50;
+    const gpx = state.playerX, gpy = state.playerY;
     for (let gx = cx - r; gx <= cx + r; gx += gridStep) {
-      const dx = gx - cx, maxY = Math.sqrt(Math.max(0, r * r - dx * dx));
-      if (maxY > 0) { g.moveTo(gx, cy - maxY).lineTo(gx, cy + maxY).stroke({ color: G.COLOR_ARENA, width: 0.3, alpha: 0.03 }); }
+      const dx2 = gx - cx, maxY = Math.sqrt(Math.max(0, r * r - dx2 * dx2));
+      if (maxY <= 0) continue;
+      // Draw grid line with warp near player
+      const segs = 12;
+      for (let si = 0; si < segs; si++) {
+        const y1 = cy - maxY + (2 * maxY * si / segs);
+        const y2 = cy - maxY + (2 * maxY * (si + 1) / segs);
+        // Warp displacement
+        const wdx1 = gx - gpx, wdy1 = y1 - gpy;
+        const wd1 = Math.sqrt(wdx1 * wdx1 + wdy1 * wdy1) || 1;
+        const warp1 = wd1 < 80 ? (80 - wd1) * 0.08 : 0;
+        const wdx2 = gx - gpx, wdy2 = y2 - gpy;
+        const wd2 = Math.sqrt(wdx2 * wdx2 + wdy2 * wdy2) || 1;
+        const warp2 = wd2 < 80 ? (80 - wd2) * 0.08 : 0;
+        g.moveTo(gx + (wdx1 / wd1) * warp1, y1 + (wdy1 / wd1) * warp1)
+          .lineTo(gx + (wdx2 / wd2) * warp2, y2 + (wdy2 / wd2) * warp2)
+          .stroke({ color: G.COLOR_ARENA, width: 0.4, alpha: 0.035 });
+      }
     }
     for (let gy = cy - r; gy <= cy + r; gy += gridStep) {
-      const dy = gy - cy, maxX = Math.sqrt(Math.max(0, r * r - dy * dy));
-      if (maxX > 0) { g.moveTo(cx - maxX, gy).lineTo(cx + maxX, gy).stroke({ color: G.COLOR_ARENA, width: 0.3, alpha: 0.03 }); }
+      const dy2 = gy - cy, maxX = Math.sqrt(Math.max(0, r * r - dy2 * dy2));
+      if (maxX <= 0) continue;
+      const segs = 12;
+      for (let si = 0; si < segs; si++) {
+        const x1 = cx - maxX + (2 * maxX * si / segs);
+        const x2 = cx - maxX + (2 * maxX * (si + 1) / segs);
+        const wdx1 = x1 - gpx, wdy1 = gy - gpy;
+        const wd1 = Math.sqrt(wdx1 * wdx1 + wdy1 * wdy1) || 1;
+        const warp1 = wd1 < 80 ? (80 - wd1) * 0.08 : 0;
+        const wdx2 = x2 - gpx, wdy2 = gy - gpy;
+        const wd2 = Math.sqrt(wdx2 * wdx2 + wdy2 * wdy2) || 1;
+        const warp2 = wd2 < 80 ? (80 - wd2) * 0.08 : 0;
+        g.moveTo(x1 + (wdx1 / wd1) * warp1, gy + (wdy1 / wd1) * warp1)
+          .lineTo(x2 + (wdx2 / wd2) * warp2, gy + (wdy2 / wd2) * warp2)
+          .stroke({ color: G.COLOR_ARENA, width: 0.4, alpha: 0.035 });
+      }
+    }
+
+    // Rotating rune symbols on arena floor
+    for (let rn = 0; rn < 6; rn++) {
+      const rnAngle = rn * Math.PI / 3 + t * 0.05;
+      const rnDist = r * 0.5;
+      const rnx = cx + Math.cos(rnAngle) * rnDist;
+      const rny = cy + Math.sin(rnAngle) * rnDist;
+      const rnRot = t * 0.2 + rn;
+      const rnSize = 8;
+      // Draw a small rotating glyph (triangle inscribed in circle)
+      for (let rv = 0; rv < 3; rv++) {
+        const a1 = rnRot + rv * Math.PI * 2 / 3;
+        const a2 = rnRot + ((rv + 1) % 3) * Math.PI * 2 / 3;
+        g.moveTo(rnx + Math.cos(a1) * rnSize, rny + Math.sin(a1) * rnSize)
+          .lineTo(rnx + Math.cos(a2) * rnSize, rny + Math.sin(a2) * rnSize)
+          .stroke({ color: G.COLOR_ARENA, width: 0.5, alpha: 0.04 + Math.sin(t * 0.5 + rn) * 0.02 });
+      }
+      g.circle(rnx, rny, rnSize * 0.3).fill({ color: G.COLOR_ARENA, alpha: 0.03 });
     }
 
     // Concentric energy rings (heartbeat-like) — more visible
@@ -281,11 +370,19 @@ export class GravitonRenderer {
           ? 0.15 + Math.sin(t * (10 + (1 - b.fuseTimer / G.BOMB_FUSE_DURATION) * 20)) * 0.12
           : 0.1 + Math.sin(t * 6) * 0.06;
 
-        // Danger glow layers
-        g.circle(b.x, b.y, b.radius * 2.5).fill({ color: G.COLOR_BOMB, alpha: bombPulse * 0.4 });
+        // Danger glow layers — more dramatic
+        g.circle(b.x, b.y, b.radius * 3.5).fill({ color: G.COLOR_BOMB, alpha: bombPulse * 0.2 });
+        g.circle(b.x, b.y, b.radius * 2.5).fill({ color: G.COLOR_BOMB, alpha: bombPulse * 0.45 });
         g.circle(b.x, b.y, b.radius * 1.8).fill({ color: G.COLOR_BOMB, alpha: bombPulse * 0.7 });
+        // Danger sparks flying off
+        for (let ds = 0; ds < 4; ds++) {
+          const dsa = t * 5 + ds * Math.PI / 2;
+          const dsr = b.radius * (1.5 + Math.sin(t * 8 + ds * 3) * 0.5);
+          g.circle(b.x + Math.cos(dsa) * dsr, b.y + Math.sin(dsa) * dsr, 1.2)
+            .fill({ color: 0xffaa22, alpha: bombPulse });
+        }
 
-        // Angular spiked body (pentagon for menacing look)
+        // Angular spiked body — star shape with spikes
         const sides = 5;
         const rot = t * 2;
         g.moveTo(b.x + Math.cos(rot) * b.radius, b.y + Math.sin(rot) * b.radius);
@@ -321,17 +418,34 @@ export class GravitonRenderer {
             .fill({ color: 0xffee44, alpha: 0.5 + Math.sin(t * 15) * 0.3 });
         }
       } else if (b.kind === "gold_asteroid") {
-        // Gold: rich glow + sparkle + faceted shape
-        g.circle(b.x, b.y, b.radius * 2.2).fill({ color: G.COLOR_GOLD, alpha: 0.06 + Math.sin(t * 4) * 0.03 });
-        g.circle(b.x, b.y, b.radius * 1.4).fill({ color: G.COLOR_GOLD, alpha: 0.12 });
-        g.circle(b.x, b.y, b.radius).fill({ color: G.COLOR_GOLD, alpha: 0.85 });
-        // Facet detail
-        g.circle(b.x - b.radius * 0.2, b.y - b.radius * 0.2, b.radius * 0.45).fill({ color: 0xffffff, alpha: 0.2 });
-        g.circle(b.x + b.radius * 0.3, b.y + b.radius * 0.15, b.radius * 0.25).fill({ color: 0xaa8800, alpha: 0.3 });
-        // Orbiting sparkle
-        const ga = t * 4 + b.x * 0.1;
-        g.circle(b.x + Math.cos(ga) * b.radius * 1.2, b.y + Math.sin(ga) * b.radius * 1.2, 1.2)
-          .fill({ color: 0xffffff, alpha: 0.4 });
+        // Gold: rich glow + sparkle + faceted shape — treasure-like
+        g.circle(b.x, b.y, b.radius * 3).fill({ color: G.COLOR_GOLD, alpha: 0.04 + Math.sin(t * 4) * 0.02 });
+        g.circle(b.x, b.y, b.radius * 2.2).fill({ color: G.COLOR_GOLD, alpha: 0.08 + Math.sin(t * 4) * 0.03 });
+        g.circle(b.x, b.y, b.radius * 1.4).fill({ color: G.COLOR_GOLD, alpha: 0.14 });
+        // Irregular polygon body for gem-like look
+        const goldSides = 7, goldRot = t * 0.5;
+        g.moveTo(b.x + Math.cos(goldRot) * b.radius, b.y + Math.sin(goldRot) * b.radius);
+        for (let gv = 1; gv <= goldSides; gv++) {
+          const ga2 = goldRot + (gv / goldSides) * Math.PI * 2;
+          const wobR = b.radius * (0.9 + ((gv * 37) % 7) * 0.02);
+          g.lineTo(b.x + Math.cos(ga2) * wobR, b.y + Math.sin(ga2) * wobR);
+        }
+        g.closePath().fill({ color: G.COLOR_GOLD, alpha: 0.9 });
+        // Facet highlights — multiple facets
+        g.circle(b.x - b.radius * 0.25, b.y - b.radius * 0.25, b.radius * 0.4).fill({ color: 0xffffff, alpha: 0.25 });
+        g.circle(b.x + b.radius * 0.2, b.y - b.radius * 0.1, b.radius * 0.2).fill({ color: 0xffeeaa, alpha: 0.2 });
+        g.circle(b.x + b.radius * 0.3, b.y + b.radius * 0.2, b.radius * 0.25).fill({ color: 0xaa8800, alpha: 0.3 });
+        // Inner dark facet
+        g.circle(b.x + b.radius * 0.1, b.y + b.radius * 0.15, b.radius * 0.15).fill({ color: 0x886600, alpha: 0.2 });
+        // Edge rim
+        g.circle(b.x, b.y, b.radius).stroke({ color: 0xffcc44, width: 1, alpha: 0.3 });
+        // Multiple orbiting sparkles
+        for (let gs = 0; gs < 3; gs++) {
+          const ga = t * (3 + gs) + b.x * 0.1 + gs * 2.1;
+          const gr = b.radius * (1.2 + gs * 0.2);
+          g.circle(b.x + Math.cos(ga) * gr, b.y + Math.sin(ga) * gr, 1.5 - gs * 0.3)
+            .fill({ color: 0xffffff, alpha: 0.45 - gs * 0.1 });
+        }
       } else {
         // Regular asteroid: cratered surface detail
         const rColor = b.flung ? G.COLOR_FLUNG : G.COLOR_ASTEROID;
@@ -364,15 +478,31 @@ export class GravitonRenderer {
             }
           }
         } else {
-          // Drifting asteroid with surface detail
-          g.circle(b.x, b.y, b.radius).fill({ color: rColor, alpha: 0.8 });
-          // Crater marks (deterministic per asteroid position)
+          // Drifting asteroid — rocky irregular polygon shape
           const seed = Math.floor(b.x * 7 + b.y * 13);
-          g.circle(b.x + (seed % 3 - 1) * b.radius * 0.3, b.y + (seed % 5 - 2) * b.radius * 0.2, b.radius * 0.3)
-            .fill({ color: 0x555566, alpha: 0.3 });
-          // Edge highlight
-          g.circle(b.x - b.radius * 0.15, b.y - b.radius * 0.2, b.radius * 0.35)
-            .fill({ color: 0xaaaabb, alpha: 0.15 });
+          const aSides = 8;
+          const aRot = seed * 0.3;
+          g.circle(b.x, b.y, b.radius * 1.4).fill({ color: rColor, alpha: 0.05 }); // subtle glow
+          g.moveTo(b.x + Math.cos(aRot) * b.radius, b.y + Math.sin(aRot) * b.radius);
+          for (let av = 1; av <= aSides; av++) {
+            const aa = aRot + (av / aSides) * Math.PI * 2;
+            const wobR = b.radius * (0.8 + ((seed + av * 17) % 5) * 0.06);
+            g.lineTo(b.x + Math.cos(aa) * wobR, b.y + Math.sin(aa) * wobR);
+          }
+          g.closePath().fill({ color: rColor, alpha: 0.85 });
+          // Multiple craters
+          g.circle(b.x + (seed % 3 - 1) * b.radius * 0.3, b.y + (seed % 5 - 2) * b.radius * 0.2, b.radius * 0.25)
+            .fill({ color: 0x444455, alpha: 0.3 });
+          g.circle(b.x - (seed % 4 - 2) * b.radius * 0.2, b.y + (seed % 7 - 3) * b.radius * 0.15, b.radius * 0.15)
+            .fill({ color: 0x3a3a4a, alpha: 0.25 });
+          // Edge highlight (light source from top-left)
+          g.circle(b.x - b.radius * 0.2, b.y - b.radius * 0.25, b.radius * 0.35)
+            .fill({ color: 0xbbbbcc, alpha: 0.18 });
+          // Shadow on bottom-right
+          g.circle(b.x + b.radius * 0.15, b.y + b.radius * 0.2, b.radius * 0.3)
+            .fill({ color: 0x222233, alpha: 0.15 });
+          // Rim stroke
+          g.circle(b.x, b.y, b.radius).stroke({ color: 0x666677, width: 0.5, alpha: 0.2 });
         }
       }
       // Orbit indicator — glowing ring + energy tether to player
@@ -395,13 +525,28 @@ export class GravitonRenderer {
       const len = Math.sqrt(dx * dx + dy * dy) || 1;
       const nx = dx / len, ny = dy / len, px = -ny, py = nx;
 
-      // Windup telegraph — pulsing glow + danger line
+      // Windup telegraph — dramatic with expanding rings + danger line
       if (e.state === "windup") {
-        const wPulse = 0.2 + Math.sin(t * 20) * 0.15;
-        g.circle(e.x, e.y, e.radius * 2.5).fill({ color: 0xff4444, alpha: wPulse });
-        // Aim line toward player
-        g.setStrokeStyle({ width: 1.5, color: 0xff4444, alpha: wPulse });
-        g.moveTo(e.x, e.y).lineTo(e.x + nx * e.radius * 4, e.y + ny * e.radius * 4).stroke();
+        const wPulse = 0.25 + Math.sin(t * 20) * 0.18;
+        // Expanding warning rings
+        for (let wr = 0; wr < 3; wr++) {
+          const wrPhase = (t * 4 + wr * 0.33) % 1;
+          const wrR = e.radius * (1 + wrPhase * 2.5);
+          g.circle(e.x, e.y, wrR).stroke({ color: 0xff4444, width: 1.5, alpha: (1 - wrPhase) * wPulse * 0.5 });
+        }
+        g.circle(e.x, e.y, e.radius * 3).fill({ color: 0xff4444, alpha: wPulse * 0.5 });
+        g.circle(e.x, e.y, e.radius * 2).fill({ color: 0xff4444, alpha: wPulse });
+        // Aim line toward player — dashed with danger markers
+        for (let dl = 0; dl < 4; dl++) {
+          const dlStart = e.radius * (1 + dl * 1.2);
+          const dlEnd = e.radius * (1.8 + dl * 1.2);
+          g.moveTo(e.x + nx * dlStart, e.y + ny * dlStart)
+            .lineTo(e.x + nx * dlEnd, e.y + ny * dlEnd)
+            .stroke({ width: 2, color: 0xff4444, alpha: wPulse * (1 - dl * 0.2) });
+        }
+        // Danger exclamation at tip
+        g.circle(e.x + nx * e.radius * 5, e.y + ny * e.radius * 5, 3)
+          .fill({ color: 0xff4444, alpha: wPulse });
       }
 
       if (e.kind === "scout") {
@@ -414,16 +559,36 @@ export class GravitonRenderer {
           .lineTo(e.x - nx * e.radius * 0.6, e.y - ny * e.radius * 0.6)
           .lineTo(e.x - px * e.radius * 0.5, e.y - py * e.radius * 0.5)
           .closePath().fill({ color, alpha: 0.85 });
+        // Cockpit eye — menacing red dot
+        g.circle(e.x + nx * e.radius * 0.35, e.y + ny * e.radius * 0.35, e.radius * 0.18)
+          .fill({ color: 0xff2222, alpha: 0.7 + Math.sin(t * 8 + e.x) * 0.2 });
+        g.circle(e.x + nx * e.radius * 0.35, e.y + ny * e.radius * 0.35, e.radius * 0.35)
+          .fill({ color: 0xff2222, alpha: 0.12 });
         // Interior highlight
         g.circle(e.x + nx * e.radius * 0.1, e.y + ny * e.radius * 0.1, e.radius * 0.25)
           .fill({ color: 0xffffff, alpha: 0.1 });
-        // Engine glow at rear
-        g.circle(e.x - nx * e.radius * 0.5, e.y - ny * e.radius * 0.5, e.radius * 0.25)
-          .fill({ color: 0xff8844, alpha: 0.4 });
-        // Charge trail
+        // Engine glow at rear — with exhaust flame
+        g.circle(e.x - nx * e.radius * 0.5, e.y - ny * e.radius * 0.5, e.radius * 0.35)
+          .fill({ color: 0xff6622, alpha: 0.25 });
+        g.circle(e.x - nx * e.radius * 0.5, e.y - ny * e.radius * 0.5, e.radius * 0.2)
+          .fill({ color: 0xff8844, alpha: 0.5 });
+        g.circle(e.x - nx * e.radius * 0.5, e.y - ny * e.radius * 0.5, e.radius * 0.1)
+          .fill({ color: 0xffcc88, alpha: 0.6 });
+        // Exhaust trail
+        g.moveTo(e.x - nx * e.radius * 0.5, e.y - ny * e.radius * 0.5)
+          .lineTo(e.x - nx * e.radius * 1.8, e.y - ny * e.radius * 1.8)
+          .stroke({ color: 0xff6622, width: e.radius * 0.3, alpha: 0.08 });
+        // Charge trail — with afterimage
         if (e.state === "charge") {
-          g.setStrokeStyle({ width: e.radius * 0.6, color, alpha: 0.15 });
-          g.moveTo(e.x, e.y).lineTo(e.x - nx * e.radius * 3, e.y - ny * e.radius * 3).stroke();
+          g.moveTo(e.x, e.y).lineTo(e.x - nx * e.radius * 5, e.y - ny * e.radius * 5)
+            .stroke({ width: e.radius * 0.8, color, alpha: 0.08 });
+          g.moveTo(e.x, e.y).lineTo(e.x - nx * e.radius * 3, e.y - ny * e.radius * 3)
+            .stroke({ width: e.radius * 0.5, color, alpha: 0.2 });
+          // Afterimage copies
+          for (let ai = 1; ai <= 2; ai++) {
+            g.circle(e.x - nx * e.radius * ai * 1.5, e.y - ny * e.radius * ai * 1.5, e.radius * (0.7 - ai * 0.15))
+              .fill({ color, alpha: 0.08 });
+          }
         }
       } else if (e.kind === "fighter") {
         // Fighter: diamond/star shape (orange)
@@ -436,10 +601,12 @@ export class GravitonRenderer {
           .lineTo(e.x - nx * e.radius * 0.8, e.y - ny * e.radius * 0.8) // back
           .lineTo(e.x - px * e.radius * 0.7, e.y - py * e.radius * 0.7) // left
           .closePath().fill({ color, alpha: 0.85 });
-        // Inner core glow
-        g.circle(e.x, e.y, e.radius * 0.3).fill({ color: 0xffffff, alpha: 0.12 });
-        g.circle(e.x + nx * e.radius * 0.15, e.y + ny * e.radius * 0.15, e.radius * 0.2)
-          .fill({ color: 0xffcc66, alpha: 0.25 });
+        // Inner core glow with pulsing eye
+        g.circle(e.x, e.y, e.radius * 0.35).fill({ color: 0xffffff, alpha: 0.12 });
+        g.circle(e.x + nx * e.radius * 0.2, e.y + ny * e.radius * 0.2, e.radius * 0.22)
+          .fill({ color: 0xff6622, alpha: 0.6 + Math.sin(t * 6 + e.y) * 0.2 });
+        g.circle(e.x + nx * e.radius * 0.2, e.y + ny * e.radius * 0.2, e.radius * 0.4)
+          .fill({ color: 0xff6622, alpha: 0.1 });
         // Side fins
         g.moveTo(e.x + px * e.radius * 0.7, e.y + py * e.radius * 0.7)
           .lineTo(e.x + px * e.radius * 1.1 - nx * e.radius * 0.3, e.y + py * e.radius * 1.1 - ny * e.radius * 0.3)
@@ -450,10 +617,71 @@ export class GravitonRenderer {
           .lineTo(e.x - px * e.radius * 1.1 - nx * e.radius * 0.3, e.y - py * e.radius * 1.1 - ny * e.radius * 0.3)
           .lineTo(e.x - nx * e.radius * 0.4, e.y - ny * e.radius * 0.4)
           .closePath().fill({ color, alpha: 0.5 });
-        // Dash glow
+        // Dash glow — with energy burst
         if (e.state === "dash") {
-          g.circle(e.x, e.y, e.radius * 2).fill({ color, alpha: 0.12 });
+          g.circle(e.x, e.y, e.radius * 3).fill({ color, alpha: 0.06 });
+          g.circle(e.x, e.y, e.radius * 2).fill({ color, alpha: 0.15 });
+          // Speed lines
+          const dvLen = Math.sqrt(dx * dx + dy * dy) || 1;
+          const dnx2 = dx / dvLen, dny2 = dy / dvLen;
+          for (const dside of [-1, 1]) {
+            g.moveTo(e.x - dny2 * e.radius * 0.5 * dside, e.y + dnx2 * e.radius * 0.5 * dside)
+              .lineTo(e.x - dnx2 * e.radius * 2.5 - dny2 * e.radius * 0.8 * dside,
+                      e.y - dny2 * e.radius * 2.5 + dnx2 * e.radius * 0.8 * dside)
+              .stroke({ color, width: 0.8, alpha: 0.12 });
+          }
         }
+      } else if (e.kind === "splitter") {
+        // Splitter: green diamond shape with inner fracture lines
+        const color = flash ? 0xffffff : G.COLOR_ENEMY_SPLITTER;
+        g.circle(e.x, e.y, e.radius * 2.2).fill({ color, alpha: 0.04 });
+        g.circle(e.x, e.y, e.radius * 1.6).fill({ color, alpha: 0.08 });
+        // Diamond shape (rotated square)
+        const sr = e.radius;
+        g.moveTo(e.x, e.y - sr)
+          .lineTo(e.x + sr, e.y)
+          .lineTo(e.x, e.y + sr)
+          .lineTo(e.x - sr, e.y)
+          .closePath().fill({ color, alpha: 0.85 });
+        // Inner fracture lines
+        g.moveTo(e.x, e.y - sr * 0.6).lineTo(e.x + sr * 0.3, e.y + sr * 0.2)
+          .stroke({ color: 0x225522, width: 1.2, alpha: 0.6 });
+        g.moveTo(e.x, e.y - sr * 0.6).lineTo(e.x - sr * 0.3, e.y + sr * 0.3)
+          .stroke({ color: 0x225522, width: 1.2, alpha: 0.6 });
+        g.moveTo(e.x - sr * 0.2, e.y).lineTo(e.x + sr * 0.2, e.y + sr * 0.4)
+          .stroke({ color: 0x225522, width: 1, alpha: 0.4 });
+        // Pulsing core
+        const splitPulse = 0.5 + Math.sin(t * 5 + e.x) * 0.3;
+        g.circle(e.x, e.y, e.radius * 0.25).fill({ color: 0x88ff88, alpha: splitPulse });
+      } else if (e.kind === "phaser") {
+        // Phaser: cyan flickering triangle that fades in/out
+        const flickerAlpha = 0.4 + Math.sin(t * 12 + e.y * 0.3) * 0.35 + Math.sin(t * 7.3 + e.x * 0.2) * 0.15;
+        const color = flash ? 0xffffff : G.COLOR_ENEMY_PHASER;
+        // Outer glow (flickers)
+        g.circle(e.x, e.y, e.radius * 2.5).fill({ color, alpha: 0.03 * flickerAlpha });
+        g.circle(e.x, e.y, e.radius * 1.8).fill({ color, alpha: 0.06 * flickerAlpha });
+        // Triangle pointing toward player
+        const pr2 = e.radius;
+        g.moveTo(e.x + nx * pr2 * 1.1, e.y + ny * pr2 * 1.1) // tip toward player
+          .lineTo(e.x + px * pr2 * 0.7 - nx * pr2 * 0.7, e.y + py * pr2 * 0.7 - ny * pr2 * 0.7)
+          .lineTo(e.x - px * pr2 * 0.7 - nx * pr2 * 0.7, e.y - py * pr2 * 0.7 - ny * pr2 * 0.7)
+          .closePath().fill({ color, alpha: 0.8 * flickerAlpha });
+        // Inner glow
+        g.circle(e.x, e.y, e.radius * 0.3).fill({ color: 0xffffff, alpha: 0.3 * flickerAlpha });
+        // Teleport after-image rings
+        if (e.state === "charge") {
+          for (let ri = 0; ri < 2; ri++) {
+            const ringPhase = (t * 3 + ri * 0.5) % 1;
+            g.circle(e.x, e.y, e.radius * (1 + ringPhase * 2))
+              .stroke({ color, width: 1, alpha: (1 - ringPhase) * 0.3 });
+          }
+        }
+      } else if (e.kind === "mini") {
+        // Mini-scout: small red dot with faint glow
+        const color = flash ? 0xffffff : G.COLOR_ENEMY_MINI;
+        g.circle(e.x, e.y, e.radius * 1.8).fill({ color, alpha: 0.05 });
+        g.circle(e.x, e.y, e.radius).fill({ color, alpha: 0.85 });
+        g.circle(e.x, e.y, e.radius * 0.5).fill({ color: 0xffffff, alpha: 0.3 });
       } else {
         // Tank: hexagonal chunky shape (purple/magenta)
         const color = flash ? 0xffffff : 0xaa44aa; // purple instead of maroon
@@ -467,13 +695,18 @@ export class GravitonRenderer {
           g.lineTo(e.x + Math.cos(va) * e.radius, e.y + Math.sin(va) * e.radius);
         }
         g.closePath().fill({ color, alpha: 0.85 });
-        // Inner hex
+        // Inner hex with glowing core
         g.moveTo(e.x + Math.cos(rot) * e.radius * 0.6, e.y + Math.sin(rot) * e.radius * 0.6);
         for (let v = 1; v <= sides; v++) {
           const va = rot + (v / sides) * Math.PI * 2;
           g.lineTo(e.x + Math.cos(va) * e.radius * 0.6, e.y + Math.sin(va) * e.radius * 0.6);
         }
-        g.closePath().fill({ color: 0x000000, alpha: 0.15 });
+        g.closePath().fill({ color: 0x220033, alpha: 0.3 });
+        // Pulsing core eye
+        const tankPulse = 0.5 + Math.sin(t * 3 + e.x * 0.1) * 0.3;
+        g.circle(e.x, e.y, e.radius * 0.3).fill({ color: 0xee44ee, alpha: tankPulse });
+        g.circle(e.x, e.y, e.radius * 0.15).fill({ color: 0xffffff, alpha: tankPulse * 0.5 });
+        g.circle(e.x, e.y, e.radius * 0.5).fill({ color: 0xee44ee, alpha: tankPulse * 0.1 });
         // Armor ring
         if (e.armor) {
           g.setStrokeStyle({ width: 2.5, color: 0xcccccc, alpha: 0.5 });
@@ -486,11 +719,132 @@ export class GravitonRenderer {
       // HP bar for multi-hp enemies
       if (e.maxHp > 1) {
         const barW = e.radius * 2.5, barH = 3;
-        const eColor = e.kind === "scout" ? G.COLOR_ENEMY_SCOUT : e.kind === "fighter" ? 0xff8844 : 0xaa44aa;
+        const eColor = e.kind === "scout" ? G.COLOR_ENEMY_SCOUT : e.kind === "fighter" ? 0xff8844
+          : e.kind === "splitter" ? G.COLOR_ENEMY_SPLITTER : e.kind === "phaser" ? G.COLOR_ENEMY_PHASER
+          : e.kind === "mini" ? G.COLOR_ENEMY_MINI : 0xaa44aa;
         g.roundRect(e.x - barW / 2 - 1, e.y - e.radius - 7, barW + 2, barH + 2, 1).fill({ color: 0x000000, alpha: 0.4 });
         g.rect(e.x - barW / 2, e.y - e.radius - 6, barW, barH).fill({ color: 0x222222, alpha: 0.5 });
         g.rect(e.x - barW / 2, e.y - e.radius - 6, barW * (e.hp / e.maxHp), barH).fill({ color: eColor, alpha: 0.7 });
       }
+    }
+  }
+
+  private _drawPowerups(g: Graphics, state: GState): void {
+    const t = state.time;
+    for (const p of state.powerups) {
+      const fadeAlpha = Math.min(1, p.life / 2); // fade out in last 2 seconds
+      const spin = t * 3;
+      const bob = Math.sin(t * 4 + p.x * 0.1) * 3;
+      const py = p.y + bob;
+
+      if (p.kind === "shield") {
+        // Cyan diamond
+        const color = G.COLOR_POWERUP_SHIELD;
+        const sz = 7;
+        // Glow
+        g.circle(p.x, py, sz * 3).fill({ color, alpha: 0.06 * fadeAlpha });
+        g.circle(p.x, py, sz * 2).fill({ color, alpha: 0.12 * fadeAlpha });
+        // Diamond shape (rotated square)
+        g.moveTo(p.x, py - sz).lineTo(p.x + sz, py).lineTo(p.x, py + sz).lineTo(p.x - sz, py)
+          .closePath().fill({ color, alpha: 0.85 * fadeAlpha });
+        // Inner highlight
+        g.circle(p.x, py, sz * 0.4).fill({ color: 0xffffff, alpha: 0.4 * fadeAlpha });
+        // Spinning ring
+        g.circle(p.x, py, sz + 3).stroke({ color, width: 1, alpha: (0.3 + Math.sin(t * 6) * 0.15) * fadeAlpha });
+      } else if (p.kind === "magnet") {
+        // Purple circle
+        const color = G.COLOR_POWERUP_MAGNET;
+        const sz = 6;
+        // Glow
+        g.circle(p.x, py, sz * 3).fill({ color, alpha: 0.06 * fadeAlpha });
+        g.circle(p.x, py, sz * 2).fill({ color, alpha: 0.12 * fadeAlpha });
+        // Circle body
+        g.circle(p.x, py, sz).fill({ color, alpha: 0.85 * fadeAlpha });
+        // Inner core
+        g.circle(p.x, py, sz * 0.5).fill({ color: 0xffffff, alpha: 0.3 * fadeAlpha });
+        // Orbiting sparkles
+        for (let s = 0; s < 3; s++) {
+          const sa = spin + s * Math.PI * 2 / 3;
+          const sr = sz + 4;
+          g.circle(p.x + Math.cos(sa) * sr, py + Math.sin(sa) * sr, 1.5)
+            .fill({ color, alpha: 0.5 * fadeAlpha });
+        }
+      } else {
+        // Orange triangle (rapid)
+        const color = G.COLOR_POWERUP_RAPID;
+        const sz = 7;
+        // Glow
+        g.circle(p.x, py, sz * 3).fill({ color, alpha: 0.06 * fadeAlpha });
+        g.circle(p.x, py, sz * 2).fill({ color, alpha: 0.12 * fadeAlpha });
+        // Triangle pointing up with spin
+        const a0 = -Math.PI / 2 + spin * 0.3;
+        g.moveTo(p.x + Math.cos(a0) * sz, py + Math.sin(a0) * sz)
+          .lineTo(p.x + Math.cos(a0 + Math.PI * 2 / 3) * sz, py + Math.sin(a0 + Math.PI * 2 / 3) * sz)
+          .lineTo(p.x + Math.cos(a0 + Math.PI * 4 / 3) * sz, py + Math.sin(a0 + Math.PI * 4 / 3) * sz)
+          .closePath().fill({ color, alpha: 0.85 * fadeAlpha });
+        // Inner highlight
+        g.circle(p.x, py, sz * 0.35).fill({ color: 0xffffff, alpha: 0.35 * fadeAlpha });
+      }
+    }
+  }
+
+  private _drawActiveEffects(g: Graphics, state: GState): void {
+    const px = state.playerX, py = state.playerY, t = state.time;
+    let iconIndex = 0;
+
+    const drawIcon = (color: number, remaining: number, duration: number, kind: "shield" | "magnet" | "rapid") => {
+      const angle = -Math.PI / 2 + iconIndex * Math.PI * 0.3 + Math.PI * 0.8;
+      const dist = state.playerRadius + 22;
+      const ix = px + Math.cos(angle) * dist;
+      const iy = py + Math.sin(angle) * dist;
+      const pulse = 0.6 + Math.sin(t * 5 + iconIndex) * 0.3;
+      const sz = 4;
+
+      // Glow
+      g.circle(ix, iy, sz * 2.5).fill({ color, alpha: 0.08 * pulse });
+      g.circle(ix, iy, sz * 1.5).fill({ color, alpha: 0.15 * pulse });
+
+      if (kind === "shield") {
+        // Small diamond
+        g.moveTo(ix, iy - sz).lineTo(ix + sz * 0.7, iy).lineTo(ix, iy + sz).lineTo(ix - sz * 0.7, iy)
+          .closePath().fill({ color, alpha: 0.8 * pulse });
+      } else if (kind === "magnet") {
+        // Small circle
+        g.circle(ix, iy, sz * 0.7).fill({ color, alpha: 0.8 * pulse });
+      } else {
+        // Small triangle
+        g.moveTo(ix, iy - sz).lineTo(ix + sz * 0.7, iy + sz * 0.5).lineTo(ix - sz * 0.7, iy + sz * 0.5)
+          .closePath().fill({ color, alpha: 0.8 * pulse });
+      }
+
+      // Timer arc
+      const ratio = remaining / duration;
+      const arcEnd = ratio * Math.PI * 2;
+      if (arcEnd > 0.05) {
+        g.setStrokeStyle({ width: 1.2, color, alpha: 0.5 * pulse });
+        g.moveTo(ix + Math.cos(-Math.PI / 2) * (sz + 2), iy + Math.sin(-Math.PI / 2) * (sz + 2));
+        const steps = Math.max(3, Math.floor(arcEnd * 4));
+        for (let s = 1; s <= steps; s++) {
+          const a = -Math.PI / 2 + arcEnd * (s / steps);
+          g.lineTo(ix + Math.cos(a) * (sz + 2), iy + Math.sin(a) * (sz + 2));
+        }
+        g.stroke();
+      }
+
+      iconIndex++;
+    };
+
+    if (state.activeEffects.shield > 0) {
+      drawIcon(G.COLOR_POWERUP_SHIELD, state.activeEffects.shield, G.SHIELD_DURATION, "shield");
+      // Shield aura around player
+      const shieldPulse = 0.08 + Math.sin(t * 4) * 0.04;
+      g.circle(px, py, state.playerRadius + 5).stroke({ color: G.COLOR_POWERUP_SHIELD, width: 1.5, alpha: shieldPulse });
+    }
+    if (state.activeEffects.magnet > 0) {
+      drawIcon(G.COLOR_POWERUP_MAGNET, state.activeEffects.magnet, G.MAGNET_DURATION, "magnet");
+    }
+    if (state.activeEffects.rapid > 0) {
+      drawIcon(G.COLOR_POWERUP_RAPID, state.activeEffects.rapid, G.RAPID_DURATION, "rapid");
     }
   }
 
@@ -570,12 +924,25 @@ export class GravitonRenderer {
     g.circle(px, py, pr * 0.15).fill({ color: 0xffffff, alpha: 0.6 });
     // Highlight
     g.circle(px - pr * 0.2, py - pr * 0.25, pr * 0.3).fill({ color: 0xffffff, alpha: 0.18 });
-    // HP indicator
+    // HP indicator — bigger with glow
     for (let h = 0; h < state.maxHp; h++) {
-      const ha = (h / state.maxHp) * Math.PI * 2 - Math.PI / 2;
-      const hx = px + Math.cos(ha) * (pr + 6);
-      const hy = py + Math.sin(ha) * (pr + 6);
-      g.circle(hx, hy, 2).fill({ color: h < state.hp ? G.COLOR_PLAYER : 0x333344, alpha: 0.7 });
+      const ha = (h / state.maxHp) * Math.PI * 2 - Math.PI / 2 + t * 0.15;
+      const hx = px + Math.cos(ha) * (pr + 8);
+      const hy = py + Math.sin(ha) * (pr + 8);
+      const hFilled = h < state.hp;
+      if (hFilled) {
+        g.circle(hx, hy, 4).fill({ color: G.COLOR_PLAYER, alpha: 0.12 });
+        g.circle(hx, hy, 2.5).fill({ color: G.COLOR_PLAYER, alpha: 0.8 });
+        g.circle(hx, hy, 1).fill({ color: 0xffffff, alpha: 0.4 });
+      } else {
+        g.circle(hx, hy, 2.5).fill({ color: 0x333344, alpha: 0.4 });
+        g.circle(hx, hy, 2.5).stroke({ color: 0x444455, width: 0.5, alpha: 0.3 });
+      }
+    }
+    // Low HP warning ring
+    if (state.hp <= 2 && state.hp > 0) {
+      const warnPulse = 0.06 + Math.sin(t * 6) * 0.04;
+      g.circle(px, py, pr + 12).stroke({ color: G.COLOR_DANGER, width: 1.5, alpha: warnPulse });
     }
     // Fling cooldown arc
     if (state.flingCooldown > 0) {
@@ -697,16 +1064,27 @@ export class GravitonRenderer {
       }
     }
 
-    // Combo display (top-right) — visible counter
+    // Combo display (top-right) — dramatic with scaling
     if (state.comboCount >= 2) {
-      const comboAlpha = 0.6 + Math.sin(state.time * 8) * 0.3;
-      const comboColor = state.comboCount >= 5 ? 0xffd700 : state.comboCount >= 3 ? 0xffdd44 : 0x44ff44;
-      ug.roundRect(this._sw - 85, 32, 75, 18, 4).fill({ color: 0x000000, alpha: 0.35 });
-      ug.roundRect(this._sw - 83, 34, 71, 14, 3).fill({ color: comboColor, alpha: comboAlpha * 0.1 });
-      // Combo pips (visual dots showing count)
-      const pipCount = Math.min(state.comboCount, 10);
+      const comboAlpha = 0.7 + Math.sin(state.time * 8) * 0.25;
+      const comboColor = state.comboCount >= 8 ? 0xff44ff : state.comboCount >= 5 ? 0xffd700 : state.comboCount >= 3 ? 0xffdd44 : 0x44ff44;
+      const cw = 90 + Math.min(state.comboCount, 10) * 4;
+      const cx2 = this._sw - cw - 10;
+      // Background with glow
+      ug.roundRect(cx2 - 3, 29, cw + 6, 24, 6).fill({ color: comboColor, alpha: comboAlpha * 0.05 });
+      ug.roundRect(cx2, 32, cw, 18, 4).fill({ color: 0x000000, alpha: 0.45 });
+      ug.roundRect(cx2, 32, cw, 18, 4).stroke({ color: comboColor, width: 1, alpha: comboAlpha * 0.3 });
+      // Combo pips with glows
+      const pipCount = Math.min(state.comboCount, 12);
       for (let p = 0; p < pipCount; p++) {
-        ug.circle(this._sw - 78 + p * 7, 41, 2.5).fill({ color: comboColor, alpha: comboAlpha });
+        const pipX = cx2 + 8 + p * 7;
+        ug.circle(pipX, 41, 3.5).fill({ color: comboColor, alpha: comboAlpha * 0.15 });
+        ug.circle(pipX, 41, 2.5).fill({ color: comboColor, alpha: comboAlpha });
+      }
+      // "COMBO" flash for high combos
+      if (state.comboCount >= 5) {
+        const flashA = 0.3 + Math.sin(state.time * 12) * 0.15;
+        ug.roundRect(cx2, 32, cw, 18, 4).fill({ color: comboColor, alpha: flashA * 0.05 });
       }
     }
 
@@ -727,16 +1105,39 @@ export class GravitonRenderer {
     const cx = this._sw/2, cy = this._sh/2, g = this._gfx;
     const t = state.time;
 
-    // Demo orbital ring behind overlay
-    for (let d = 0; d < 6; d++) {
-      const da = t * 0.6 + d * Math.PI / 3;
-      const dr = 100 + d * 15;
-      g.circle(cx + Math.cos(da) * dr, cy + Math.sin(da) * dr, 3).fill({ color: G.COLOR_ASTEROID, alpha: 0.08 });
+    // Demo scene behind overlay — animated gravity well with orbiting objects
+    // Central gravity well
+    g.circle(cx, cy, 50).fill({ color: G.COLOR_PLAYER, alpha: 0.04 });
+    g.circle(cx, cy, 30).fill({ color: G.COLOR_PLAYER, alpha: 0.06 });
+    g.circle(cx, cy, 8).fill({ color: G.COLOR_PLAYER, alpha: 0.15 });
+    // Spiral field lines
+    for (let sf = 0; sf < 4; sf++) {
+      const sfa = t * 0.8 + sf * Math.PI / 2;
+      g.moveTo(cx + Math.cos(sfa) * 40, cy + Math.sin(sfa) * 40)
+        .lineTo(cx + Math.cos(sfa + 0.5) * 15, cy + Math.sin(sfa + 0.5) * 15)
+        .stroke({ color: G.COLOR_PLAYER, width: 1, alpha: 0.06 });
     }
-    // Demo pull field
-    g.setStrokeStyle({ width: 1, color: G.COLOR_PULL, alpha: 0.04 });
-    g.circle(cx, cy, 80).stroke();
-    g.circle(cx, cy, 50).stroke();
+    // Orbiting demo asteroids
+    for (let d = 0; d < 8; d++) {
+      const da = t * 0.6 + d * Math.PI / 4;
+      const dr = 80 + d * 20 + Math.sin(t * 0.5 + d) * 10;
+      const dx = cx + Math.cos(da) * dr, dy = cy + Math.sin(da) * dr;
+      const isGold = d === 3;
+      g.circle(dx, dy, 4 + d * 0.3).fill({ color: isGold ? G.COLOR_GOLD : G.COLOR_ASTEROID, alpha: 0.12 });
+      g.circle(dx, dy, 2.5).fill({ color: isGold ? G.COLOR_GOLD : G.COLOR_ASTEROID, alpha: 0.25 });
+      // Tether
+      g.moveTo(cx, cy).lineTo(dx, dy).stroke({ color: G.COLOR_PLAYER, width: 0.3, alpha: 0.03 });
+    }
+    // Demo pull field rings
+    for (let pr2 = 0; pr2 < 3; pr2++) {
+      const prPhase = (t * 2 + pr2 * 0.33) % 1;
+      g.circle(cx, cy, 80 * (1 - prPhase)).stroke({ color: G.COLOR_PULL, width: 1, alpha: (1 - prPhase) * 0.06 });
+    }
+    // Demo enemy
+    const dea = t * 0.3;
+    const dex = cx + Math.cos(dea) * 200, dey = cy + Math.sin(dea) * 150;
+    g.circle(dex, dey, 6).fill({ color: G.COLOR_ENEMY_SCOUT, alpha: 0.1 });
+    g.circle(dex, dey, 3).fill({ color: G.COLOR_ENEMY_SCOUT, alpha: 0.15 });
 
     g.rect(0, 0, this._sw, this._sh).fill({ color: 0x000000, alpha: 0.55 });
 
@@ -821,21 +1222,37 @@ export class GravitonRenderer {
     const t = state.time;
     const breathe = 1 + Math.sin(t * 2) * 0.04;
 
-    // Multi-layer grade glow
-    ug.circle(cx, cy - 95, 45 * breathe).fill({ color: grade.color, alpha: 0.04 });
-    ug.circle(cx, cy - 95, 35 * breathe).fill({ color: grade.color, alpha: 0.08 });
-    ug.circle(cx, cy - 95, 28 * breathe).fill({ color: grade.color, alpha: 0.12 });
-    // Rotating dashed ring
-    for (let seg = 0; seg < 8; seg += 2) {
-      const a1 = (seg/8)*Math.PI*2 + t*0.4, a2 = ((seg+1)/8)*Math.PI*2 + t*0.4;
-      ug.setStrokeStyle({ width: 1.5, color: grade.color, alpha: 0.2 });
-      ug.moveTo(cx + Math.cos(a1)*38*breathe, cy-95+Math.sin(a1)*38*breathe);
-      for (let s = 1; s <= 3; s++) { const a = a1+(a2-a1)*(s/3); ug.lineTo(cx+Math.cos(a)*38*breathe, cy-95+Math.sin(a)*38*breathe); }
-      ug.stroke();
+    // Multi-layer grade glow — more dramatic with outer halo
+    const gy = cy - 95;
+    ug.circle(cx, gy, 60 * breathe).fill({ color: grade.color, alpha: 0.02 });
+    ug.circle(cx, gy, 50 * breathe).fill({ color: grade.color, alpha: 0.04 });
+    ug.circle(cx, gy, 40 * breathe).fill({ color: grade.color, alpha: 0.08 });
+    ug.circle(cx, gy, 32 * breathe).fill({ color: grade.color, alpha: 0.14 });
+    // Rotating dashed ring — double ring
+    for (let seg = 0; seg < 12; seg += 2) {
+      const a1 = (seg / 12) * Math.PI * 2 + t * 0.4;
+      const a2 = ((seg + 1) / 12) * Math.PI * 2 + t * 0.4;
+      ug.moveTo(cx + Math.cos(a1) * 42 * breathe, gy + Math.sin(a1) * 42 * breathe);
+      for (let s = 1; s <= 3; s++) { const a = a1 + (a2 - a1) * (s / 3); ug.lineTo(cx + Math.cos(a) * 42 * breathe, gy + Math.sin(a) * 42 * breathe); }
+      ug.stroke({ color: grade.color, width: 1.5, alpha: 0.2 });
+    }
+    // Outer decorative ring (counter-rotating)
+    for (let seg = 1; seg < 12; seg += 2) {
+      const a1 = (seg / 12) * Math.PI * 2 - t * 0.25;
+      const a2 = ((seg + 1) / 12) * Math.PI * 2 - t * 0.25;
+      ug.moveTo(cx + Math.cos(a1) * 52 * breathe, gy + Math.sin(a1) * 52 * breathe);
+      for (let s = 1; s <= 3; s++) { const a = a1 + (a2 - a1) * (s / 3); ug.lineTo(cx + Math.cos(a) * 52 * breathe, gy + Math.sin(a) * 52 * breathe); }
+      ug.stroke({ color: grade.color, width: 1, alpha: 0.1 });
     }
     // Inner solid ring
-    ug.setStrokeStyle({ width: 2.5, color: grade.color, alpha: 0.45 });
-    ug.circle(cx, cy - 95, 28 * breathe).stroke();
+    ug.circle(cx, gy, 30 * breathe).stroke({ color: grade.color, width: 2.5, alpha: 0.5 });
+    // Radiating lines from grade
+    for (let rl = 0; rl < 8; rl++) {
+      const rla = rl * Math.PI / 4 + t * 0.15;
+      ug.moveTo(cx + Math.cos(rla) * 32 * breathe, gy + Math.sin(rla) * 32 * breathe)
+        .lineTo(cx + Math.cos(rla) * 48 * breathe, gy + Math.sin(rla) * 48 * breathe)
+        .stroke({ color: grade.color, width: 0.8, alpha: 0.1 });
+    }
 
     this._gradeText.anchor.set(0.5); this._gradeText.position.set(cx, cy - 95);
     this._gradeText.text = grade.grade; this._gradeText.style.fill = grade.color;

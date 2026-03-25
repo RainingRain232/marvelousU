@@ -1,0 +1,54 @@
+export const VW = {
+  PLAYER_SPEED: 165, PLAYER_RADIUS: 8, PLAYER_HP: 7,
+  // Shadow Bolt
+  BOLT_COOLDOWN: 0.3, BOLT_SPEED: 340, BOLT_DAMAGE: 1, BOLT_RADIUS: 4, BOLT_LIFE: 2.0,
+  BOLT_PORTAL_BONUS: 0.5, // extra damage to enemies near portals
+  // Portal
+  PORTAL_DURATION: 20.0, PORTAL_RADIUS: 30, PORTAL_MAX: 2,
+  PORTAL_PASSIVE_DAMAGE: 0.3, // damage per second to enemies inside portal radius
+  PORTAL_TELEPORT_COOLDOWN: 1.0,
+  // Void Dash
+  DASH_SPEED: 500, DASH_DURATION: 0.12, DASH_COOLDOWN: 3.0,
+  DASH_SHADOW_DAMAGE: 1.5, DASH_SHADOW_RADIUS: 25,
+  // Void Pulse
+  PULSE_COOLDOWN: 6.0, PULSE_RADIUS: 80, PULSE_DAMAGE: 2,
+  // Shadow Storm (ultimate)
+  STORM_COOLDOWN: 16.0, STORM_DURATION: 4.0, STORM_BOLT_INTERVAL: 0.25,
+  STORM_BOLT_DAMAGE: 1, STORM_BOLT_SPEED: 200,
+  // Enemies
+  CULTIST_HP: 2, CULTIST_SPEED: 85, CULTIST_RADIUS: 6, CULTIST_DAMAGE: 1, CULTIST_ATTACK_RANGE: 16,
+  DARK_ARCHER_HP: 2, DARK_ARCHER_SPEED: 40, DARK_ARCHER_RADIUS: 7, DARK_ARCHER_FIRE_INTERVAL: 2.5, DARK_ARCHER_KEEP_DIST: 125,
+  VOID_GOLEM_HP: 7, VOID_GOLEM_SPEED: 30, VOID_GOLEM_RADIUS: 13, VOID_GOLEM_DAMAGE: 2, VOID_GOLEM_ATTACK_RANGE: 22,
+  PHASE_STALKER_HP: 2, PHASE_STALKER_SPEED: 120, PHASE_STALKER_RADIUS: 6, PHASE_STALKER_DAMAGE: 1, PHASE_STALKER_TELEPORT_INTERVAL: 3.0,
+  WARLOCK_HP: 3, WARLOCK_SPEED: 30, WARLOCK_RADIUS: 7, WARLOCK_SUMMON_INTERVAL: 5.0, WARLOCK_KEEP_DIST: 140,
+  // Waves
+  WAVE_INTERVAL: 25.0, ENEMY_SPAWN_INTERVAL: 2.0, ENEMY_MAX: 25,
+  // Scoring
+  CULTIST_SCORE: 10, DARK_ARCHER_SCORE: 15, VOID_GOLEM_SCORE: 40,
+  PHASE_STALKER_SCORE: 20, WARLOCK_SCORE: 35,
+  SCORE_PER_SECOND: 1, SHARDS_PER_SCORE: 50,
+  // Effects
+  SHAKE_INTENSITY: 4, SHAKE_DURATION: 0.2, FLASH_DURATION: 0.3, INVULN_DURATION: 0.5,
+  // Colors
+  COLOR_VOID: 0x6622cc, COLOR_VOID_BRIGHT: 0x8844ff,
+  COLOR_VOID_DARK: 0x330066, COLOR_PORTAL: 0x9944ff,
+  COLOR_SHADOW: 0x442288, COLOR_BOLT: 0x7733ee,
+  COLOR_DANGER: 0xff2244, COLOR_GOLD: 0xffd700,
+  // Grades
+  GRADE_S: 2000, GRADE_A: 1200, GRADE_B: 700, GRADE_C: 300, GRADE_D: 100,
+  // Upgrades
+  UPGRADE_COSTS: {
+    maxHP: [5, 10, 20], boltPower: [5, 10, 20],
+    dashPower: [8, 15, 25], portalPower: [8, 15, 25],
+    stormPower: [15, 30],
+  } as Record<string, number[]>,
+};
+
+export function getVWGrade(score: number): { grade: string; color: number } {
+  if (score >= VW.GRADE_S) return { grade: "S", color: 0xffdd44 };
+  if (score >= VW.GRADE_A) return { grade: "A", color: 0xff6622 };
+  if (score >= VW.GRADE_B) return { grade: "B", color: 0x44aaff };
+  if (score >= VW.GRADE_C) return { grade: "C", color: 0x44cc44 };
+  if (score >= VW.GRADE_D) return { grade: "D", color: 0xaaaaaa };
+  return { grade: "F", color: 0x666666 };
+}

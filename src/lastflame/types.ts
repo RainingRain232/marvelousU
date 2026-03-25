@@ -11,7 +11,7 @@ export enum LFPhase {
   DEAD = "dead",
 }
 
-export type ShadowVariant = "normal" | "brute" | "swarm" | "stalker";
+export type ShadowVariant = "normal" | "brute" | "swarm" | "stalker" | "phantom" | "nest";
 
 export interface LFShadow {
   x: number; y: number;
@@ -123,6 +123,16 @@ export interface LFState {
   tutFirstHit: boolean;
   tutFirstSprint: boolean;
   tutFirstLowFuel: boolean;
+  // Combo scoring
+  comboCount: number;
+  comboTimer: number;
+  // Wind hazard
+  windAngle: number;
+  windChangeTimer: number;
+  // Dodge bonus
+  dodgeTimer: number;
+  // Wave clear tracking
+  waveShadowsRemaining: number;
   // Timing
   time: number;
 }

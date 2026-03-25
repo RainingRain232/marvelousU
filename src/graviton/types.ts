@@ -29,12 +29,13 @@ export interface GEnemy {
   radius: number;
   hp: number;
   maxHp: number;
-  kind: "scout" | "fighter" | "tank";
+  kind: "scout" | "fighter" | "tank" | "splitter" | "phaser" | "mini";
   alive: boolean;
   flashTimer: number;
   state: "approach" | "orbit" | "dash" | "charge" | "windup"; // AI state
   stateTimer: number;
   armor: boolean;       // tank armor (deflects first hit)
+  phaseTimer: number;   // phaser teleport cooldown
 }
 
 export interface GParticle {
@@ -49,6 +50,12 @@ export interface GFloatText {
   text: string; color: number;
   life: number; maxLife: number;
   scale: number;
+}
+
+export interface GPowerup {
+  x: number; y: number;
+  kind: "shield" | "magnet" | "rapid";
+  life: number;
 }
 
 export interface GState {
@@ -98,6 +105,11 @@ export interface GState {
   flingDamageMult: number;
   pullDrainMult: number;
   bombChanceOverride: number; // -1 = use default
+  // Perfect wave tracking
+  waveDamageTaken: boolean;
+  // Power-ups
+  powerups: GPowerup[];
+  activeEffects: { shield: number; magnet: number; rapid: number };
   // Effects
   particles: GParticle[];
   floatTexts: GFloatText[];

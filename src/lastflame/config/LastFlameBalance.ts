@@ -53,6 +53,24 @@ export const LF = {
   SWARM_DART_INTERVAL: 1.5,
   STALKER_LIGHT_DRAIN: 5, // reduce maxLightRadius per second while alive
   STALKER_START_WAVE: 3,
+  // Phantom variant
+  PHANTOM_RADIUS: 6,
+  PHANTOM_SPEED: 55,
+  PHANTOM_DART_INTERVAL: 2.5,
+  PHANTOM_TELEGRAPH_DURATION: 0.2,
+  PHANTOM_START_WAVE: 6,
+  // Nest variant
+  NEST_RADIUS: 10,
+  NEST_HP: 2,
+  NEST_SPEED_MULT: 0.7,  // 35 / 50 ≈ 0.7 of lurk speed
+  NEST_START_WAVE: 8,
+  NEST_SPAWN_COUNT: 2,  // swarms spawned on death
+  // Combo scoring
+  COMBO_WINDOW: 2.0,    // seconds to chain kills
+  COMBO_BONUS: 5,       // bonus points per combo level
+  // Wind hazard
+  WIND_FORCE: 30,       // pixels per second push
+  WIND_CHANGE_INTERVAL: 10, // seconds between direction changes
 
   // Oil
   OIL_SPAWN_INTERVAL: 5.0,
@@ -107,6 +125,12 @@ export const LF = {
   SCORE_SHADOW_BURN: 15,
   SCORE_OIL: 5,
   SCORE_FLARE_MULTI: 10, // bonus per shadow burned in one flare
+  SCORE_DODGE_BONUS: 20,       // bonus for 15s without a hit
+  DODGE_BONUS_INTERVAL: 15,    // seconds without taking a hit
+  SCORE_WAVE_CLEAR: 30,        // bonus for clearing all wave shadows before next wave
+  PYROMANIAC_RADIUS: 20,       // chain explosion radius
+  BEACON_ATTRACT_MULT: 3.0,    // oil attract distance multiplier
+  BEACON_SHADOW_SPEED_MULT: 1.2, // shadow speed multiplier with beacon
 
   // Effects
   SHAKE_DURATION: 0.2,
