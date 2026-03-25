@@ -56210,28 +56210,6 @@ export class DiabloRenderer {
       floor.rotation.x = -Math.PI / 2;
       floor.position.set(room.x + room.width / 2, 0.05, room.z + room.height / 2);
       this._dungeonGroup.add(floor);
-
-      // Room walls (thin box geometry)
-      const wallHeight = 3;
-      const wallThickness = 0.3;
-      const wallMat = new THREE.MeshLambertMaterial({ color: 0x555555 });
-
-      // Top wall
-      const topWall = new THREE.Mesh(new THREE.BoxGeometry(room.width + wallThickness, wallHeight, wallThickness), wallMat);
-      topWall.position.set(room.x + room.width / 2, wallHeight / 2, room.z);
-      this._dungeonGroup.add(topWall);
-      // Bottom wall
-      const botWall = new THREE.Mesh(new THREE.BoxGeometry(room.width + wallThickness, wallHeight, wallThickness), wallMat);
-      botWall.position.set(room.x + room.width / 2, wallHeight / 2, room.z + room.height);
-      this._dungeonGroup.add(botWall);
-      // Left wall
-      const leftWall = new THREE.Mesh(new THREE.BoxGeometry(wallThickness, wallHeight, room.height + wallThickness), wallMat);
-      leftWall.position.set(room.x, wallHeight / 2, room.z + room.height / 2);
-      this._dungeonGroup.add(leftWall);
-      // Right wall
-      const rightWall = new THREE.Mesh(new THREE.BoxGeometry(wallThickness, wallHeight, room.height + wallThickness), wallMat);
-      rightWall.position.set(room.x + room.width, wallHeight / 2, room.z + room.height / 2);
-      this._dungeonGroup.add(rightWall);
     }
 
     // Render corridors as floor strips
