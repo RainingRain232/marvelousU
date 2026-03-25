@@ -173,6 +173,7 @@ import { EchoGame } from "./echo/EchoGame";
 import { VoidKnightGame } from "./voidknight/VoidKnightGame";
 import { LastFlameGame } from "./lastflame/LastFlameGame";
 import { GravitonGame } from "./graviton/GravitonGame";
+import { GrailQuestGame } from "./grailquest/GrailQuestGame";
 import { camelotHubScreen } from "@view/ui/CamelotHubScreen";
 
 // World mode imports
@@ -398,6 +399,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     [GameMode.VOID_KNIGHT]: 49,
     [GameMode.LAST_FLAME]: 50,
     [GameMode.GRAVITON]: 51,
+    [GameMode.GRAIL_QUEST]: 52,
   };
   // Modes that need the setup screen (not skipSetup)
   const NEEDS_SETUP = new Set([GameMode.STANDARD, GameMode.DEATHMATCH, GameMode.BATTLEFIELD, GameMode.WAVE]);
@@ -707,6 +709,11 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     if (menuScreen.selectedGameMode === GameMode.GRAVITON) {
       menuScreen.hide();
       _bootGravitonGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.GRAIL_QUEST) {
+      menuScreen.hide();
+      _bootGrailQuestGame();
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.WORLD) {
@@ -3083,6 +3090,24 @@ async function _bootGravitonGame(): Promise<void> {
     menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
   window.addEventListener("gravitonExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Grail Quest mode boot
+// ---------------------------------------------------------------------------
+
+let _grailQuestGame: GrailQuestGame | null = null;
+
+async function _bootGrailQuestGame(): Promise<void> {
+  if (_grailQuestGame) { _grailQuestGame.destroy(); _grailQuestGame = null; }
+  _grailQuestGame = new GrailQuestGame();
+  await _grailQuestGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("grailquestExit", _onExit);
+    if (_grailQuestGame) { _grailQuestGame.destroy(); _grailQuestGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("grailquestExit", _onExit);
 }
 
 // ---------------------------------------------------------------------------

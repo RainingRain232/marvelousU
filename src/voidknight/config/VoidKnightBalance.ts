@@ -38,7 +38,9 @@ export const VK = {
   ORB_SPAWN_INTERVAL: 3.5,
   ORB_RADIUS: 8,
   ORB_LIFETIME: 10,
-  ORB_WEIGHTS: { score: 40, shield: 12, slow: 16, magnet: 12, reflect: 10, bomb: 10 } as Record<string, number>,
+  ORB_WEIGHTS: { score: 40, shield: 12, slow: 16, magnet: 12, reflect: 10, bomb: 10, blink: 8, haste: 10 } as Record<string, number>,
+  HASTE_DURATION: 4,
+  HASTE_SPEED_MULT: 1.4,
   SLOW_DURATION: 3,
   SLOW_FACTOR: 0.35,
   MAGNET_DURATION: 5,
@@ -76,6 +78,13 @@ export const VK = {
   DASH_DESTROY_RADIUS: 20, // radius around player during dash that destroys projectiles
   DASH_SPAWNER_DAMAGE: 1,  // damage to spawner per dash-through
 
+  // Elite spawner (every 3 waves)
+  ELITE_WAVE_INTERVAL: 3,
+  ELITE_HP: 5,
+  ELITE_FIRE_INTERVAL: 0.8,
+  ELITE_SIZE_MULT: 1.4,
+  SCORE_ELITE_KILL: 75,
+
   // Boss spawner
   BOSS_WAVE_INTERVAL: 5,
   BOSS_HP: 8,
@@ -109,6 +118,28 @@ export const VK = {
   SHOCKWAVE_SPEED: 200,
   SHOCKWAVE_MAX_RADIUS: 120,
   SHOCKWAVE_LIFE: 0.5,
+
+  // Arena hazard zones
+  HAZARD_START_WAVE: 4,
+  HAZARD_SPAWN_INTERVAL: 5,
+  HAZARD_WARNING_TIME: 1.5,
+  HAZARD_ACTIVE_TIME: 1.0,
+  HAZARD_RADIUS: 40,
+
+  // Wave survival bonus (at death)
+  SCORE_WAVE_SURVIVAL_MULT: 25,
+
+  // Gravity Well perk
+  GRAVITY_WELL_DURATION: 2.0,
+  GRAVITY_WELL_RADIUS: 60,
+  GRAVITY_WELL_FORCE: 120,
+
+  // Afterimage perk
+  AFTERIMAGE_DURATION: 1.5,
+  AFTERIMAGE_ATTRACT_RADIUS: 80,
+
+  // Vampiric Dash perk
+  VAMPIRIC_DASH_THRESHOLD: 3,
 
   // Near-miss streak announcer
   STREAK_TIMEOUT: 1.5,
@@ -175,6 +206,13 @@ export const VK = {
   COLOR_GRAZE: 0xddccff,
   COLOR_MULTIPLIER: 0xffdd44,
   COLOR_BOSS_SPAWNER: 0xff2288,
+  COLOR_ELITE_SPAWNER: 0xff6644,
+  COLOR_PROJ_HELIX: 0xaa66ff,
+  COLOR_PROJ_SHOTGUN: 0xff8844,
+  COLOR_ORB_BLINK: 0xcc44ff,
+  COLOR_ORB_HASTE: 0x44ffcc,
+  COLOR_HAZARD_WARNING: 0xff2244,
+  COLOR_HAZARD_ACTIVE: 0xff0000,
 } as const;
 
 export function getVKGrade(score: number): { grade: string; color: number } {

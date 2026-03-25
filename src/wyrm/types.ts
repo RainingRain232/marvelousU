@@ -22,6 +22,8 @@ export enum PickupKind {
   PORTAL = "portal",
   GOLDEN_SHEEP = "golden_sheep",
   MAGNET = "magnet",
+  LIGHTNING_SCROLL = "lightning_scroll",
+  TIME_WARP = "time_warp",
 }
 
 export interface Cell { x: number; y: number; }
@@ -32,11 +34,14 @@ export interface RoamingKnight {
   moveTimer: number; alive: boolean; chasing: boolean;
 }
 
+export type BossType = "charger" | "summoner" | "berserker";
+
 export interface BossKnight {
   x: number; y: number; dir: Direction;
   moveTimer: number; hp: number; maxHp: number;
   alive: boolean; flashTimer: number;
   chargeTimer: number; charging: boolean; chargeDir: Direction;
+  bossType: BossType;
 }
 
 /** Archer knight — sits at wall edges and fires projectiles */
@@ -77,6 +82,12 @@ export interface PoisonTile {
   life: number; // seconds remaining before despawn
 }
 
+/** Lava tile — damages wyrm (shrink by 1 segment) on contact */
+export interface LavaTile {
+  x: number; y: number;
+  life: number; // seconds remaining before despawn
+}
+
 export interface WyrmColors { head: number; body: number; bodyAlt: number; name: string; }
 
 /** Persistent upgrades bought with dragon coins */
@@ -87,9 +98,12 @@ export interface WyrmUpgrades {
   thickerShield: number;      // 0-1, shield absorbs 2 hits instead of 1
   poisonResist: number;       // 0-2, each reduces poison shrink by 1
   comboKeeper: number;        // 0-2, each adds +0.5s combo window
+  wrathBoost: number;         // 0-2, each adds +15% wrath gain
+  lightningRange: number;     // 0-1, +2 cell range for lightning scroll
+  bossLoot: number;           // 0-2, each adds +2 boss loot drops
 }
 
-export type SynergyKind = "blaze" | "juggernaut" | "inferno_pull" | "fortress" | null;
+export type SynergyKind = "blaze" | "juggernaut" | "inferno_pull" | "fortress" | "frostbite" | null;
 
 /** Blessing — permanent in-run perk chosen at evolution */
 export interface Blessing {
@@ -111,6 +125,7 @@ export interface WyrmState {
   knightSpawnTimer: number;
   boss: BossKnight | null;
   poisonTiles: PoisonTile[];
+  lavaTiles: LavaTile[];
   // Archers & projectiles
   archerKnights: ArcherKnight[];
   projectiles: Projectile[];
@@ -168,6 +183,16 @@ export interface WyrmState {
   // Tail whip
   tailWhipCooldown: number;
   tailWhipFlash: number;
+  // Time warp (slows all enemies)
+  timeWarpTimer: number;
+  // Combo decay pause (extra pause after eating)
+  comboDecayPause: number;
+  // Regeneration blessing timer
+  regenTimer: number;
+  // Upgrade-derived values for new upgrades
+  wrathBoostUpgrade: number;    // extra wrath gain tiers
+  lightningRangeUpgrade: number; // extra lightning range tiers
+  bossLootUpgrade: number;      // extra boss loot tiers
   // Event flags (set by systems, cleared by orchestrator after audio)
   portalUsedThisFrame: boolean;
 }

@@ -17,6 +17,8 @@ export enum ProjectilePattern {
   AIMED = "aimed",
   WAVE = "wave",
   CROSS = "cross",
+  HELIX = "helix",
+  SHOTGUN = "shotgun",
 }
 
 export interface VKProjectile {
@@ -31,7 +33,7 @@ export interface VKProjectile {
 
 export interface VKOrb {
   x: number; y: number;
-  kind: "score" | "shield" | "slow" | "magnet" | "reflect" | "bomb";
+  kind: "score" | "shield" | "slow" | "magnet" | "reflect" | "bomb" | "blink" | "haste";
   age: number;
   pulse: number;
 }
@@ -62,10 +64,20 @@ export interface VKSpawner {
   maxHp: number;
   flashTimer: number;
   isBoss: boolean;
+  isElite: boolean;
   telegraphTimer: number;
   damagedThisDash: boolean;
   movement: "orbit" | "oscillate" | "stationary";
   phase: number; // boss phase (0, 1, 2) — changes at HP thresholds
+}
+
+/** Arena hazard zone — damages player after warning delay */
+export interface VKHazard {
+  x: number; y: number;
+  radius: number;
+  warningTime: number;   // seconds remaining in warning phase
+  activeTime: number;    // seconds remaining in damage phase
+  damaged: boolean;      // already hit player this activation
 }
 
 /** Expanding shockwave ring on spawner death */
@@ -140,6 +152,15 @@ export interface VKState {
   nearMissFlash: number;
   // Shockwaves
   shockwaves: VKShockwave[];
+  // Hazard zones
+  hazards: VKHazard[];
+  hazardTimer: number;
+  // Haste orb effect
+  hasteTimer: number;
+  // Gravity Well perk (dash leaves gravity field)
+  gravityWells: Array<{ x: number; y: number; life: number }>;
+  // Afterimage perk (decoy after dash)
+  afterimages: Array<{ x: number; y: number; life: number }>;
   // Wave mutators
   waveMutators: string[];
   // Upgrade perks
@@ -175,7 +196,7 @@ export interface VKState {
 /** Curated wave template */
 export interface VKWaveTemplate {
   name: string;
-  spawners: Array<{ pattern: ProjectilePattern; movement: "orbit" | "oscillate" | "stationary"; isBoss?: boolean }>;
+  spawners: Array<{ pattern: ProjectilePattern; movement: "orbit" | "oscillate" | "stationary"; isBoss?: boolean; isElite?: boolean }>;
   mutator?: string;
 }
 

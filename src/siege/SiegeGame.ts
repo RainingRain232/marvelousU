@@ -9,7 +9,7 @@ import { audioManager } from "@audio/AudioManager";
 import { createSiegeState, SiegePhase } from "./state/SiegeState";
 import type { SiegeState } from "./state/SiegeState";
 import { SiegeConfig, WAVES, DIFFICULTY_MULT, type Difficulty, TILE_SZ } from "./config/SiegeConfig";
-import { placeTower, sellTower, updateSiege, startWave, useFreeze, useMeteor } from "./systems/SiegeSystem";
+import { placeTower, sellTower, updateSiege, startWave, useFreeze, useMeteor, useRally } from "./systems/SiegeSystem";
 import { SiegeRenderer } from "./view/SiegeRenderer";
 
 export class SiegeGame {
@@ -100,6 +100,7 @@ export class SiegeGame {
 
     this._renderer.init(this._sw, this._sh);
     this._renderer.setTowerSelectCallback((type) => { this._state.selectedTower = type; });
+    this._renderer.setRallyCallback(() => useRally(this._state));
     viewManager.addToLayer("ui", this._renderer.container);
 
     // Click: place tower or inspect existing tower
@@ -155,7 +156,7 @@ export class SiegeGame {
           this._state.announcements.push({ text: `Target: ${tower.targetPriority}`, color: 0x88aacc, timer: 1 });
         }
       }
-      // Power-ups: F = freeze, M = meteor
+      // Power-ups: F = freeze, M = meteor, R = rally
       if (e.key === "f" || e.key === "F") useFreeze(this._state);
       if (e.key === "m" || e.key === "M") {
         // Meteor at center of screen (simple targeting)
@@ -163,6 +164,7 @@ export class SiegeGame {
         const cy = SiegeConfig.GRID_ROWS * TILE_SZ / 2;
         useMeteor(this._state, cx, cy);
       }
+      if (e.key === "r" || e.key === "R") useRally(this._state);
     };
     window.addEventListener("keydown", this._keyHandler);
 

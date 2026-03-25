@@ -20,7 +20,8 @@ export function updatePlayer(state: VKState, dt: number, keys: Set<string>): voi
   const len = Math.sqrt(mx * mx + my * my);
   if (len > 0) { mx /= len; my /= len; }
 
-  const speed = state.dashTimer > 0 ? state.playerSpeed * VK.DASH_SPEED_MULT : state.playerSpeed;
+  const hasteBonus = state.hasteTimer > 0 ? VK.HASTE_SPEED_MULT : 1.0;
+  const speed = state.dashTimer > 0 ? state.playerSpeed * VK.DASH_SPEED_MULT : state.playerSpeed * hasteBonus;
   state.playerVX = mx * speed;
   state.playerVY = my * speed;
 
@@ -77,6 +78,17 @@ export function tryDash(state: VKState, keys: Set<string>): boolean {
       (Math.random() - 0.5) * 60 - mx * 80, (Math.random() - 0.5) * 60 - my * 80,
       VK.COLOR_PLAYER_DASH, 3 + Math.random() * 3);
   }
+
+  // Gravity Well perk: leave a gravity field at dash origin
+  if (state.selectedPerks.includes("gravity_well")) {
+    state.gravityWells.push({ x: state.playerX, y: state.playerY, life: VK.GRAVITY_WELL_DURATION });
+  }
+
+  // Afterimage perk: leave a decoy at dash origin
+  if (state.selectedPerks.includes("afterimage")) {
+    state.afterimages.push({ x: state.playerX, y: state.playerY, life: VK.AFTERIMAGE_DURATION });
+  }
+
   return true;
 }
 
@@ -212,16 +224,17 @@ export function spawnWave(state: VKState): void {
     const ts = template.spawners[i];
     const angle = (i / template.spawners.length) * Math.PI * 2 + (state.wave * 0.7);
     const isBoss = ts.isBoss || false;
-    const burstMap: Record<string, number> = { ring: 8, cross: 4, wave: 5 };
-    const burstCount = isBoss ? 12 : (burstMap[ts.pattern] || 3);
-    const baseHp = isBoss ? VK.BOSS_HP + Math.floor(state.wave / 5) : VK.SPAWNER_HP + Math.floor(state.wave / 4);
-    const hp = fragile && !isBoss ? Math.max(1, Math.floor(baseHp / 2)) : baseHp;
+    const isElite = ts.isElite || false;
+    const burstMap: Record<string, number> = { ring: 8, cross: 4, wave: 5, shotgun: 6 };
+    const burstCount = isBoss ? 12 : isElite ? 5 : (burstMap[ts.pattern] || 3);
+    const baseHp = isBoss ? VK.BOSS_HP + Math.floor(state.wave / 5) : isElite ? VK.ELITE_HP + Math.floor(state.wave / 5) : VK.SPAWNER_HP + Math.floor(state.wave / 4);
+    const hp = fragile && !isBoss && !isElite ? Math.max(1, Math.floor(baseHp / 2)) : baseHp;
 
     state.spawners.push({
-      angle, fireTimer: isBoss ? 0.5 : (fragile ? 0.5 + Math.random() * 0.3 : 1.0 + Math.random() * 0.5),
+      angle, fireTimer: isBoss ? 0.5 : isElite ? 0.3 : (fragile ? 0.5 + Math.random() * 0.3 : 1.0 + Math.random() * 0.5),
       pattern: ts.pattern, burstCount, burstIndex: 0, burstDelay: 0,
       alive: true, hp, maxHp: hp,
-      flashTimer: 0, isBoss,
+      flashTimer: 0, isBoss, isElite,
       telegraphTimer: 0, damagedThisDash: false,
       movement: ts.movement, phase: 0,
     });
@@ -229,10 +242,27 @@ export function spawnWave(state: VKState): void {
     if (isBoss) hasBoss = true;
   }
 
+  // Elite spawner every 3 waves (not boss waves)
+  if (state.wave % VK.ELITE_WAVE_INTERVAL === 0 && state.wave % VK.BOSS_WAVE_INTERVAL !== 0) {
+    const eliteAngle = Math.random() * Math.PI * 2;
+    const elitePatterns = [ProjectilePattern.HELIX, ProjectilePattern.SHOTGUN, ProjectilePattern.SPIRAL, ProjectilePattern.AIMED];
+    const elitePat = elitePatterns[state.wave % elitePatterns.length];
+    const eliteHp = VK.ELITE_HP + Math.floor(state.wave / 5);
+    state.spawners.push({
+      angle: eliteAngle, fireTimer: 0.3,
+      pattern: elitePat, burstCount: 5, burstIndex: 0, burstDelay: 0,
+      alive: true, hp: eliteHp, maxHp: eliteHp,
+      flashTimer: 0, isBoss: false, isElite: true,
+      telegraphTimer: 0, damagedThisDash: false,
+      movement: "oscillate", phase: 0,
+    });
+    spawnFloatText(state, state.arenaCenterX, state.arenaCenterY - 50, "ELITE SPAWNER!", VK.COLOR_ELITE_SPAWNER, 2.0);
+  }
+
   // Extra spawners for later waves (scale beyond templates)
   if (state.wave > 10) {
     const extra = Math.floor((state.wave - 10) / 3);
-    const extraPatterns = [ProjectilePattern.STRAIGHT, ProjectilePattern.SPIRAL, ProjectilePattern.AIMED, ProjectilePattern.WAVE];
+    const extraPatterns = [ProjectilePattern.STRAIGHT, ProjectilePattern.SPIRAL, ProjectilePattern.AIMED, ProjectilePattern.WAVE, ProjectilePattern.HELIX, ProjectilePattern.SHOTGUN];
     const extraMovements: Array<"orbit" | "oscillate" | "stationary"> = ["orbit", "oscillate", "stationary"];
     for (let i = 0; i < extra; i++) {
       const angle = Math.random() * Math.PI * 2;
@@ -242,7 +272,7 @@ export function spawnWave(state: VKState): void {
         angle, fireTimer: 0.8 + Math.random() * 0.5,
         pattern: pat, burstCount: 3, burstIndex: 0, burstDelay: 0,
         alive: true, hp, maxHp: hp,
-        flashTimer: 0, isBoss: false,
+        flashTimer: 0, isBoss: false, isElite: false,
         telegraphTimer: 0, damagedThisDash: false,
         movement: extraMovements[i % extraMovements.length], phase: 0,
       });
@@ -278,17 +308,20 @@ function damageSpawner(state: VKState, s: VKSpawner): void {
   const cx = state.arenaCenterX, cy = state.arenaCenterY, r = state.arenaRadius;
   const sx = cx + Math.cos(s.angle) * r;
   const sy = cy + Math.sin(s.angle) * r;
-  spawnParticles(state, sx, sy, VK.PARTICLE_COUNT_SPAWNER, s.isBoss ? VK.COLOR_BOSS_SPAWNER : VK.COLOR_SPAWNER);
+  const spawnerColor = s.isBoss ? VK.COLOR_BOSS_SPAWNER : s.isElite ? VK.COLOR_ELITE_SPAWNER : VK.COLOR_SPAWNER;
+  spawnParticles(state, sx, sy, VK.PARTICLE_COUNT_SPAWNER, spawnerColor);
 
   if (s.hp <= 0) {
     s.alive = false;
     state.spawnersDestroyed++;
-    const pts = VK.SCORE_SPAWNER_KILL * state.multiplier * (s.isBoss ? 3 : 1);
+    const scoreMult = s.isBoss ? 3 : s.isElite ? 1.5 : 1;
+    const pts = (s.isElite ? VK.SCORE_ELITE_KILL : VK.SCORE_SPAWNER_KILL) * state.multiplier * scoreMult;
     state.score += pts;
-    spawnFloatText(state, sx, sy, `${s.isBoss ? "SENTINEL " : ""}DESTROYED! +${Math.floor(pts)}`, s.isBoss ? VK.COLOR_BOSS_SPAWNER : VK.COLOR_SPAWNER, s.isBoss ? 2.0 : 1.5);
-    spawnParticles(state, sx, sy, s.isBoss ? 25 : 12, s.isBoss ? VK.COLOR_BOSS_SPAWNER : VK.COLOR_SPAWNER);
-    state.shockwaves.push({ x: sx, y: sy, radius: 0, maxRadius: s.isBoss ? VK.SHOCKWAVE_MAX_RADIUS * 1.5 : VK.SHOCKWAVE_MAX_RADIUS, life: VK.SHOCKWAVE_LIFE, color: s.isBoss ? VK.COLOR_BOSS_SPAWNER : VK.COLOR_SPAWNER });
-    state.screenShake = VK.SHAKE_DURATION * (s.isBoss ? 2 : 1);
+    const label = s.isBoss ? "SENTINEL " : s.isElite ? "ELITE " : "";
+    spawnFloatText(state, sx, sy, `${label}DESTROYED! +${Math.floor(pts)}`, spawnerColor, s.isBoss ? 2.0 : s.isElite ? 1.7 : 1.5);
+    spawnParticles(state, sx, sy, s.isBoss ? 25 : s.isElite ? 18 : 12, spawnerColor);
+    state.shockwaves.push({ x: sx, y: sy, radius: 0, maxRadius: s.isBoss ? VK.SHOCKWAVE_MAX_RADIUS * 1.5 : s.isElite ? VK.SHOCKWAVE_MAX_RADIUS * 1.2 : VK.SHOCKWAVE_MAX_RADIUS, life: VK.SHOCKWAVE_LIFE, color: spawnerColor });
+    state.screenShake = VK.SHAKE_DURATION * (s.isBoss ? 2 : s.isElite ? 1.5 : 1);
     state.hitstopTimer = Math.max(state.hitstopTimer, VK.HITSTOP_SPAWNER_KILL);
     addMultiplier(state, VK.MULT_GAIN_DASH_KILL * 3);
 
@@ -302,7 +335,7 @@ function damageSpawner(state: VKState, s: VKSpawner): void {
       }
     }
   } else {
-    spawnFloatText(state, sx, sy, `${s.hp}/${s.maxHp}`, s.isBoss ? VK.COLOR_BOSS_SPAWNER : VK.COLOR_SPAWNER, 0.8);
+    spawnFloatText(state, sx, sy, `${s.hp}/${s.maxHp}`, spawnerColor, 0.8);
   }
 }
 
@@ -364,7 +397,7 @@ export function updateSpawners(state: VKState, dt: number): void {
         s.burstDelay = VK.SPAWNER_BURST_DELAY * bossSpeedMult;
         if (s.burstIndex >= s.burstCount) {
           s.burstIndex = 0;
-          const speedUp = Math.max(0.4, VK.SPAWNER_FIRE_INTERVAL - state.wave * 0.05);
+          const speedUp = s.isElite ? Math.max(0.3, VK.ELITE_FIRE_INTERVAL - state.wave * 0.03) : Math.max(0.4, VK.SPAWNER_FIRE_INTERVAL - state.wave * 0.05);
           s.fireTimer = (s.isBoss ? speedUp * bossSpeedMult : speedUp) + Math.random() * 0.3;
         }
       }
@@ -436,6 +469,38 @@ function fireProjectile(state: VKState, sx: number, sy: number, spawner: VKSpawn
         const a = baseA + d * Math.PI / 2;
         state.projectiles.push({ x: sx, y: sy, vx: Math.cos(a)*baseSpeed*0.9, vy: Math.sin(a)*baseSpeed*0.9,
           radius: VK.PROJ_RADIUS*0.85, color: VK.COLOR_BOSS_SPAWNER, life: VK.PROJ_LIFETIME, pattern: spawner.pattern, grazed: false });
+      }
+      break;
+    }
+    case ProjectilePattern.HELIX: {
+      // Two intertwined spiral streams rotating around each other
+      const t = state.time * 3 + spawner.burstIndex * 0.8;
+      for (let s = 0; s < 2; s++) {
+        const offset = s * Math.PI; // 180 degrees apart
+        const a = t + offset;
+        const dx = cx - sx, dy = cy - sy;
+        const len = Math.sqrt(dx * dx + dy * dy) || 1;
+        const baseVX = (dx / len) * baseSpeed * 0.75;
+        const baseVY = (dy / len) * baseSpeed * 0.75;
+        // Add perpendicular spiral component
+        const perpX = Math.cos(a) * baseSpeed * 0.3;
+        const perpY = Math.sin(a) * baseSpeed * 0.3;
+        state.projectiles.push({ x: sx, y: sy, vx: baseVX + perpX, vy: baseVY + perpY,
+          radius: VK.PROJ_RADIUS * 0.7, color: VK.COLOR_PROJ_HELIX, life: VK.PROJ_LIFETIME, pattern: spawner.pattern, grazed: false });
+      }
+      break;
+    }
+    case ProjectilePattern.SHOTGUN: {
+      // Burst of 5-7 projectiles in a narrow cone toward the player
+      const dx = state.playerX - sx, dy = state.playerY - sy;
+      const baseAngle = Math.atan2(dy, dx);
+      const count = 5 + Math.floor(Math.random() * 3); // 5-7
+      const spread = 0.35; // narrow cone ~20 degrees each side
+      for (let i = 0; i < count; i++) {
+        const a = baseAngle + (i / (count - 1) - 0.5) * spread * 2;
+        const speedVar = 0.85 + Math.random() * 0.3; // slight speed variation
+        state.projectiles.push({ x: sx, y: sy, vx: Math.cos(a) * baseSpeed * speedVar, vy: Math.sin(a) * baseSpeed * speedVar,
+          radius: VK.PROJ_RADIUS * 0.9, color: VK.COLOR_PROJ_SHOTGUN, life: VK.PROJ_LIFETIME * 0.6, pattern: spawner.pattern, grazed: false });
       }
       break;
     }
@@ -570,10 +635,12 @@ export function updateProjectiles(state: VKState, dt: number): boolean {
 
         // Escalating combo announcer
         const streak = state.nearMissStreak;
-        if (streak === 3) spawnFloatText(state, state.playerX, state.playerY - 15, "CLOSE!", VK.COLOR_NEAR_MISS, 1.0);
-        else if (streak === 7) { spawnFloatText(state, state.playerX, state.playerY - 15, "FEARLESS!", VK.COLOR_NEAR_MISS, 1.3); state.hitstopTimer = Math.max(state.hitstopTimer, VK.HITSTOP_NEAR_MISS_STREAK); }
-        else if (streak === 12) { spawnFloatText(state, state.playerX, state.playerY - 20, "UNTOUCHABLE!", 0xffaa00, 1.6); state.hitstopTimer = Math.max(state.hitstopTimer, VK.HITSTOP_NEAR_MISS_STREAK * 2); }
-        else if (streak === 20) { spawnFloatText(state, state.playerX, state.playerY - 20, "VOID WALKER!", 0xff44ff, 2.0); state.hitstopTimer = Math.max(state.hitstopTimer, VK.HITSTOP_NEAR_MISS_STREAK * 3); state.score += 50 * state.multiplier; }
+        if (streak === 3) spawnFloatText(state, state.playerX, state.playerY - 15, "Close Call!", VK.COLOR_NEAR_MISS, 1.0);
+        else if (streak === 5) { spawnFloatText(state, state.playerX, state.playerY - 15, "Daredevil!", VK.COLOR_NEAR_MISS, 1.2); state.hitstopTimer = Math.max(state.hitstopTimer, VK.HITSTOP_NEAR_MISS_STREAK); }
+        else if (streak === 8) { spawnFloatText(state, state.playerX, state.playerY - 15, "Death Wish!", 0xffaa00, 1.4); state.hitstopTimer = Math.max(state.hitstopTimer, VK.HITSTOP_NEAR_MISS_STREAK * 1.5); }
+        else if (streak === 12) { spawnFloatText(state, state.playerX, state.playerY - 20, "Untouchable!", 0xffaa00, 1.6); state.hitstopTimer = Math.max(state.hitstopTimer, VK.HITSTOP_NEAR_MISS_STREAK * 2); }
+        else if (streak === 15) { spawnFloatText(state, state.playerX, state.playerY - 20, "GODLIKE!", 0xff44ff, 2.0); state.hitstopTimer = Math.max(state.hitstopTimer, VK.HITSTOP_NEAR_MISS_STREAK * 2.5); state.score += 30 * state.multiplier; }
+        else if (streak === 20) { spawnFloatText(state, state.playerX, state.playerY - 20, "VOID WALKER!", 0xff44ff, 2.2); state.hitstopTimer = Math.max(state.hitstopTimer, VK.HITSTOP_NEAR_MISS_STREAK * 3); state.score += 50 * state.multiplier; }
         else if (streak % 10 === 0 && streak > 20) { spawnFloatText(state, state.playerX, state.playerY - 20, `${streak}x NEAR!`, 0xff44ff, 1.5); }
       }
     } else if (pDist < VK.GRAZE_DISTANCE * (state.selectedPerks.includes("wider_graze") ? 1.3 : 1.0)) {
@@ -595,6 +662,11 @@ export function updateProjectiles(state: VKState, dt: number): boolean {
 
   // Dash end bonus
   if (state.dashTimer <= 0 && state.dashKills > 0) {
+    // Vampiric Dash perk: heal shield when dash-killing 3+ projectiles
+    if (state.dashKills >= VK.VAMPIRIC_DASH_THRESHOLD && state.selectedPerks.includes("vampiric_dash")) {
+      state.shieldHits = Math.min(state.shieldHits + 1, 3);
+      spawnFloatText(state, state.playerX, state.playerY - 30, "VAMPIRIC!", VK.COLOR_SHIELD, 1.3);
+    }
     if (state.dashKills >= 3) {
       spawnFloatText(state, state.playerX, state.playerY - 20, `DASH x${state.dashKills}!`, VK.COLOR_PLAYER, 1.5);
       state.hitstopTimer = Math.max(state.hitstopTimer, VK.HITSTOP_DASH_MULTI);
@@ -727,6 +799,37 @@ function collectOrb(state: VKState, orb: VKOrb): void {
       state.screenFlashColor = VK.COLOR_ORB_BOMB; state.screenFlashTimer = VK.FLASH_DURATION * 2;
       break;
     }
+    case "blink": {
+      // Teleport to a random safe position in the arena
+      let bestX = state.arenaCenterX, bestY = state.arenaCenterY;
+      let bestMinDist = 0;
+      // Try 10 random positions, pick the one farthest from all projectiles
+      for (let attempt = 0; attempt < 10; attempt++) {
+        const angle = Math.random() * Math.PI * 2;
+        const dist = Math.random() * (state.arenaRadius * 0.7);
+        const tx = state.arenaCenterX + Math.cos(angle) * dist;
+        const ty = state.arenaCenterY + Math.sin(angle) * dist;
+        let minDist = Infinity;
+        for (const p of state.projectiles) {
+          const pdx = p.x - tx, pdy = p.y - ty;
+          const pd = Math.sqrt(pdx * pdx + pdy * pdy);
+          if (pd < minDist) minDist = pd;
+        }
+        if (minDist > bestMinDist) { bestMinDist = minDist; bestX = tx; bestY = ty; }
+      }
+      spawnParticles(state, state.playerX, state.playerY, 10, VK.COLOR_ORB_BLINK);
+      state.playerX = bestX; state.playerY = bestY;
+      spawnParticles(state, state.playerX, state.playerY, 10, VK.COLOR_ORB_BLINK);
+      spawnFloatText(state, orb.x, orb.y - 10, "BLINK!", VK.COLOR_ORB_BLINK, 1.5);
+      state.screenFlashColor = VK.COLOR_ORB_BLINK; state.screenFlashTimer = VK.FLASH_DURATION;
+      break;
+    }
+    case "haste": {
+      state.hasteTimer = VK.HASTE_DURATION;
+      spawnFloatText(state, orb.x, orb.y - 10, "HASTE!", VK.COLOR_ORB_HASTE, 1.3);
+      state.screenFlashColor = VK.COLOR_ORB_HASTE; state.screenFlashTimer = VK.FLASH_DURATION;
+      break;
+    }
   }
 }
 
@@ -738,6 +841,8 @@ function orbColor(kind: VKOrb["kind"]): number {
     case "magnet": return VK.COLOR_ORB_MAGNET;
     case "reflect": return VK.COLOR_ORB_REFLECT;
     case "bomb": return VK.COLOR_ORB_BOMB;
+    case "blink": return VK.COLOR_ORB_BLINK;
+    case "haste": return VK.COLOR_ORB_HASTE;
   }
 }
 
@@ -777,6 +882,7 @@ export function updateTimers(state: VKState, dt: number): void {
   if (state.slowTimer > 0) state.slowTimer -= dt;
   if (state.magnetTimer > 0) state.magnetTimer -= dt;
   if (state.reflectTimer > 0) state.reflectTimer -= dt;
+  if (state.hasteTimer > 0) state.hasteTimer -= dt;
   if (state.screenShake > 0) state.screenShake -= dt;
   if (state.screenFlashTimer > 0) state.screenFlashTimer -= dt;
   if (state.nearMissFlash > 0) state.nearMissFlash -= dt;
@@ -837,6 +943,111 @@ export function updateShockwaves(state: VKState, dt: number): void {
 }
 
 // ---------------------------------------------------------------------------
+// Arena hazard zones
+// ---------------------------------------------------------------------------
+
+export function updateHazards(state: VKState, dt: number): void {
+  if (state.wave < VK.HAZARD_START_WAVE) return;
+
+  // Spawn new hazards periodically
+  state.hazardTimer -= dt;
+  if (state.hazardTimer <= 0) {
+    state.hazardTimer = VK.HAZARD_SPAWN_INTERVAL;
+    const angle = Math.random() * Math.PI * 2;
+    const dist = Math.random() * (state.arenaRadius * 0.7);
+    state.hazards.push({
+      x: state.arenaCenterX + Math.cos(angle) * dist,
+      y: state.arenaCenterY + Math.sin(angle) * dist,
+      radius: VK.HAZARD_RADIUS,
+      warningTime: VK.HAZARD_WARNING_TIME,
+      activeTime: VK.HAZARD_ACTIVE_TIME,
+      damaged: false,
+    });
+  }
+
+  // Update existing hazards
+  for (const h of state.hazards) {
+    if (h.warningTime > 0) {
+      h.warningTime -= dt;
+    } else {
+      h.activeTime -= dt;
+      // Damage player if in zone during active phase
+      if (!h.damaged) {
+        const dx = state.playerX - h.x, dy = state.playerY - h.y;
+        if (Math.sqrt(dx * dx + dy * dy) < h.radius + state.playerRadius) {
+          h.damaged = true;
+          if (state.shieldHits > 0) {
+            state.shieldHits--;
+            spawnParticles(state, state.playerX, state.playerY, 6, VK.COLOR_SHIELD);
+            spawnFloatText(state, state.playerX, state.playerY - 10, "SHIELD!", VK.COLOR_SHIELD, 1.2);
+          } else {
+            // Kill the player
+            triggerDeathReplay(state, h.x, h.y, VK.COLOR_HAZARD_ACTIVE);
+          }
+          state.screenShake = VK.SHAKE_DURATION;
+        }
+      }
+    }
+  }
+
+  state.hazards = state.hazards.filter(h => h.warningTime > 0 || h.activeTime > 0);
+}
+
+// ---------------------------------------------------------------------------
+// Gravity Well perk update
+// ---------------------------------------------------------------------------
+
+export function updateGravityWells(state: VKState, dt: number): void {
+  for (const gw of state.gravityWells) {
+    gw.life -= dt;
+    // Pull nearby projectiles toward the well center
+    for (const p of state.projectiles) {
+      const dx = gw.x - p.x, dy = gw.y - p.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < VK.GRAVITY_WELL_RADIUS && dist > 0) {
+        const force = VK.GRAVITY_WELL_FORCE * (1.0 - dist / VK.GRAVITY_WELL_RADIUS) * dt;
+        p.vx += (dx / dist) * force;
+        p.vy += (dy / dist) * force;
+      }
+    }
+    // Visual feedback
+    if (Math.random() < 0.3) {
+      spawnParticle(state, gw.x + (Math.random() - 0.5) * 30, gw.y + (Math.random() - 0.5) * 30,
+        (gw.x - (gw.x + (Math.random() - 0.5) * 30)) * 2, (gw.y - (gw.y + (Math.random() - 0.5) * 30)) * 2,
+        VK.COLOR_PROJ_HELIX, 2);
+    }
+  }
+  state.gravityWells = state.gravityWells.filter(gw => gw.life > 0);
+}
+
+// ---------------------------------------------------------------------------
+// Afterimage perk update
+// ---------------------------------------------------------------------------
+
+export function updateAfterimages(state: VKState, dt: number): void {
+  for (const ai of state.afterimages) {
+    ai.life -= dt;
+    // Attract aimed projectiles toward the decoy
+    for (const p of state.projectiles) {
+      if (p.pattern !== ProjectilePattern.AIMED) continue;
+      const dx = ai.x - p.x, dy = ai.y - p.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < VK.AFTERIMAGE_ATTRACT_RADIUS && dist > 0) {
+        const force = 80 * (1.0 - dist / VK.AFTERIMAGE_ATTRACT_RADIUS) * dt;
+        p.vx += (dx / dist) * force;
+        p.vy += (dy / dist) * force;
+      }
+    }
+    // Visual pulse
+    if (Math.random() < 0.2) {
+      spawnParticle(state, ai.x + (Math.random() - 0.5) * 10, ai.y + (Math.random() - 0.5) * 10,
+        (Math.random() - 0.5) * 20, -20 - Math.random() * 20, VK.COLOR_PLAYER, 2);
+    }
+  }
+  state.afterimages = state.afterimages.filter(ai => ai.life > 0);
+}
+
+// ---------------------------------------------------------------------------
 // Near-miss streak timer
 // ---------------------------------------------------------------------------
 
@@ -862,6 +1073,9 @@ const ALL_PERKS: VKPerk[] = [
   { id: "swift_feet", name: "Swift Feet", desc: "Move speed +15%", color: 0x88ff88 },
   { id: "graze_regen", name: "Graze Regen", desc: "Graze meter fills 50% faster", color: VK.COLOR_GRAZE },
   { id: "near_bonus", name: "Near-Miss Bonus", desc: "Near-miss score doubled", color: VK.COLOR_NEAR_MISS },
+  { id: "vampiric_dash", name: "Vampiric Dash", desc: "Heal shield on dash-killing 3+ projectiles", color: 0xff4488 },
+  { id: "gravity_well", name: "Gravity Well", desc: "Dash leaves a 2s gravity field pulling projectiles", color: VK.COLOR_PROJ_HELIX },
+  { id: "afterimage", name: "Afterimage", desc: "Dash leaves a decoy attracting aimed projectiles for 1.5s", color: VK.COLOR_PLAYER },
 ];
 
 export function generatePerkChoices(state: VKState): VKPerk[] {
@@ -1008,7 +1222,7 @@ export function updateTutorial(state: VKState, dt: number): void {
           angle: 0, fireTimer: 2.0,
           pattern: ProjectilePattern.STRAIGHT, burstCount: 2, burstIndex: 0, burstDelay: 0,
           alive: true, hp: 1, maxHp: 1,
-          flashTimer: 0, isBoss: false,
+          flashTimer: 0, isBoss: false, isElite: false,
           telegraphTimer: 0, damagedThisDash: false,
           movement: "stationary", phase: 0,
         });
@@ -1041,6 +1255,13 @@ export const TUTORIAL_PROMPTS = [
 // ---------------------------------------------------------------------------
 
 export function triggerDeathReplay(state: VKState, killerX: number, killerY: number, killerColor: number): void {
+  // Wave survival bonus added at death
+  const survivalBonus = state.wave * VK.SCORE_WAVE_SURVIVAL_MULT;
+  if (survivalBonus > 0) {
+    state.score += survivalBonus;
+    spawnFloatText(state, state.arenaCenterX, state.arenaCenterY + 20, `SURVIVAL BONUS +${survivalBonus}`, 0x44ff44, 1.5);
+  }
+
   state.deathSlowTimer = VK.DEATH_SLOW_DURATION;
   state.deathX = state.playerX;
   state.deathY = state.playerY;

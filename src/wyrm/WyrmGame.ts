@@ -11,7 +11,7 @@ import {
   updateMovement, updateFireBreath, updatePickupSpawning, agePickups,
   updateWaves, updateSpeed, updateTimers, updateParticles, updateFloatingTexts,
   updateCombo, updateKnights, updateBoss, updateTrail, updateDeathSegments,
-  updatePoisonTiles, checkKnightBodyCollisions,
+  updatePoisonTiles, updateLavaTiles, checkKnightBodyCollisions,
   updateArchers, updateProjectiles, updateSynergies,
   updateWrath, tryTailWhip,
   prepareBlessingChoice, selectBlessing,
@@ -176,6 +176,7 @@ export class WyrmGame {
         updateArchers(s, dt);
         updateProjectiles(s, dt);
         updatePoisonTiles(s, dt);
+        updateLavaTiles(s, dt);
         checkKnightBodyCollisions(s);
         updateWaves(s, dt);
         updateCombo(s, dt);

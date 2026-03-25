@@ -12,11 +12,11 @@ export const WYRM_BALANCE = {
   SPEED_PER_LENGTH: 0.001,
 
   PICKUP_SPAWN_INTERVAL: 1.8, MAX_PICKUPS: 14, PICKUP_DESPAWN_TIME: 14,
-  PICKUP_WEIGHTS: { sheep: 40, golden_sheep: 3, treasure: 14, potion: 12, fire_scroll: 6, shield: 4, portal: 3, magnet: 4 } as Record<string, number>,
+  PICKUP_WEIGHTS: { sheep: 40, golden_sheep: 3, treasure: 14, potion: 12, fire_scroll: 6, shield: 4, portal: 3, magnet: 4, lightning_scroll: 4, time_warp: 3 } as Record<string, number>,
 
   SCORE_SHEEP: 10, SCORE_GOLDEN_SHEEP: 50, SCORE_KNIGHT: 40, SCORE_TREASURE: 50,
   SCORE_FIRE_KILL: 15, SCORE_BOSS_KILL: 200, SCORE_PER_SECOND: 1,
-  SCORE_ARCHER_KILL: 60, SCORE_PROJECTILE_DEFLECT: 25,
+  SCORE_ARCHER_KILL: 60, SCORE_PROJECTILE_DEFLECT: 25, SCORE_LIGHTNING_KILL: 30,
 
   COMBO_WINDOW: 3.0, COMBO_MULT_CAP: 8,
 
@@ -86,6 +86,37 @@ export const WYRM_BALANCE = {
   // Lunge magnet pull
   LUNGE_MAGNET_RANGE: 2,        // cells perpendicular to lunge path
 
+  // Lightning scroll
+  LIGHTNING_RANGE: 4,            // cells from wyrm head
+  // Time warp
+  TIME_WARP_DURATION: 5,         // seconds
+  TIME_WARP_SLOW: 0.5,           // enemy speed multiplier
+
+  // Boss variety
+  BOSS_SUMMONER_HP: 2,
+  BOSS_SUMMONER_MOVE_MULT: 1.3,  // slower (higher interval mult)
+  BOSS_SUMMONER_SPAWN_COUNT: 2,
+  BOSS_BERSERKER_HP: 5,
+  BOSS_BERSERKER_SPEED_MULT: 0.7, // gets faster as HP drops
+
+  // Lava hazards
+  LAVA_START_WAVE: 6,
+  LAVA_PER_WAVE_MIN: 2,
+  LAVA_PER_WAVE_MAX: 3,
+  LAVA_LIFETIME: 25,
+  LAVA_SHRINK: 1,
+  COLOR_LAVA: 0xff4400,
+
+  // Frostbite blessing
+  FROSTBITE_SLOW: 0.3,            // 30% slow for enemies near tail
+  FROSTBITE_RANGE: 3,             // cells from tail
+
+  // Regeneration blessing
+  REGEN_INTERVAL: 30,             // seconds between regen ticks
+
+  // Combo decay pause
+  COMBO_DECAY_PAUSE: 1.0,         // extra seconds pause after eating
+
   // Poison
   POISON_START_WAVE: 4,
   POISON_PER_WAVE: 3,
@@ -114,6 +145,9 @@ export const WYRM_BALANCE = {
     thickerShield: [150],
     poisonResist: [70, 140],
     comboKeeper: [100, 200],
+    wrathBoost: [80, 160],
+    lightningRange: [100],
+    bossLoot: [120, 240],
   } as Record<string, number[]>,
 
   // Letter grades
@@ -145,6 +179,7 @@ export const WYRM_BALANCE = {
   COLOR_SYNERGY_BLAZE: 0xff8800, COLOR_SYNERGY_JUGGERNAUT: 0x44ddff,
   COLOR_SYNERGY_INFERNO: 0xff4400, COLOR_SYNERGY_FORTRESS: 0x88aaff,
   COLOR_WRATH: 0xff3300, COLOR_TAIL_WHIP: 0xddaa44, COLOR_BLESSING: 0xcc88ff,
+  COLOR_LIGHTNING: 0x88ddff, COLOR_TIME_WARP: 0xaa88ff, COLOR_FROSTBITE: 0x66ccff, COLOR_REGEN: 0x44ff88,
 
   PARTICLE_COUNT_EAT: 10, PARTICLE_COUNT_FIRE: 5, PARTICLE_COUNT_DEATH: 24,
   PARTICLE_COUNT_SHIELD_BREAK: 16, PARTICLE_COUNT_PORTAL: 14,
@@ -161,6 +196,8 @@ export const WYRM_COLOR_TIERS: { minLength: number; colors: WyrmColors }[] = [
   { minLength: 50,  colors: { head: 0xcc44ff, body: 0x8833cc, bodyAlt: 0x6622aa, name: "Elder Wyrm" } },
   { minLength: 75,  colors: { head: 0xffd700, body: 0xdaa520, bodyAlt: 0xb8860b, name: "Ancient Wyrm" } },
   { minLength: 100, colors: { head: 0xff2244, body: 0xcc1133, bodyAlt: 0xaa0022, name: "Wyrm Lord" } },
+  { minLength: 125, colors: { head: 0x44ddff, body: 0x2288cc, bodyAlt: 0x1166aa, name: "Frost Wyrm" } },
+  { minLength: 150, colors: { head: 0xffffff, body: 0xddddff, bodyAlt: 0xbbbbee, name: "Celestial Wyrm" } },
 ];
 
 export function getWyrmColors(length: number): WyrmColors {

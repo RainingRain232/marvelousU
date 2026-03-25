@@ -2,7 +2,7 @@
 // Siege mode — tower defense configuration
 // ---------------------------------------------------------------------------
 
-export type TowerType = "arrow" | "cannon" | "frost" | "fire" | "holy" | "poison";
+export type TowerType = "arrow" | "cannon" | "frost" | "fire" | "holy" | "poison" | "lightning" | "ballista";
 export type EnemyType = "soldier" | "knight" | "cavalry" | "battering_ram" | "siege_tower" | "mage" | "assassin" | "giant";
 
 export interface TowerDef {
@@ -46,6 +46,8 @@ export const TOWERS: Record<TowerType, TowerDef> = {
   fire: { id: "fire", name: "Fire Tower", desc: "Burns over time.", cost: 90, damage: 15, range: 2.5, fireRate: 0.8, color: 0xcc4422, projectileColor: 0xff6633, projectileSpeed: 7, splashRadius: 0.6, slowAmount: 0, slowDuration: 0 },
   holy: { id: "holy", name: "Holy Tower", desc: "Bonus vs undead.", cost: 120, damage: 20, range: 4, fireRate: 0.6, color: 0xffdd44, projectileColor: 0xffffff, projectileSpeed: 10, splashRadius: 0, slowAmount: 0, slowDuration: 0 },
   poison: { id: "poison", name: "Poison Tower", desc: "Damage over time.", cost: 80, damage: 3, range: 2.5, fireRate: 1.2, color: 0x44aa44, projectileColor: 0x66cc44, projectileSpeed: 6, splashRadius: 0.8, slowAmount: 0.2, slowDuration: 3 },
+  lightning: { id: "lightning", name: "Lightning Tower", desc: "Chain damage jumps between enemies.", cost: 110, damage: 12, range: 3.5, fireRate: 1.0, color: 0x44aaff, projectileColor: 0x88ddff, projectileSpeed: 12, splashRadius: 0, slowAmount: 0, slowDuration: 0 },
+  ballista: { id: "ballista", name: "Ballista Tower", desc: "Extreme single-target, piercing.", cost: 150, damage: 45, range: 5, fireRate: 0.3, color: 0x996633, projectileColor: 0x664422, projectileSpeed: 14, splashRadius: 0, slowAmount: 0, slowDuration: 0 },
 };
 
 export const ENEMIES: Record<EnemyType, EnemyDef> = {
@@ -70,6 +72,16 @@ export const WAVES: WaveDef[] = [
   { enemies: [{ type: "siege_tower", count: 2, interval: 4 }, { type: "knight", count: 8, interval: 1 }], bonusGold: 60 },
   { enemies: [{ type: "battering_ram", count: 3, interval: 2.5 }, { type: "cavalry", count: 10, interval: 0.5 }, { type: "mage", count: 4, interval: 2 }], bonusGold: 70 },
   { enemies: [{ type: "giant", count: 1, interval: 0 }, { type: "knight", count: 10, interval: 0.8 }, { type: "assassin", count: 6, interval: 0.6 }], bonusGold: 100 },
+  // Wave 11: Mixed cavalry + assassin swarm
+  { enemies: [{ type: "cavalry", count: 14, interval: 0.4 }, { type: "assassin", count: 12, interval: 0.3 }], bonusGold: 110 },
+  // Wave 12: Multiple siege towers with mage support
+  { enemies: [{ type: "siege_tower", count: 4, interval: 3 }, { type: "mage", count: 10, interval: 1.0 }], bonusGold: 130 },
+  // Wave 13: Mass knights with battering rams
+  { enemies: [{ type: "knight", count: 20, interval: 0.6 }, { type: "battering_ram", count: 5, interval: 2.0 }], bonusGold: 150 },
+  // Wave 14: Everything mixed, fast spawns
+  { enemies: [{ type: "soldier", count: 15, interval: 0.3 }, { type: "knight", count: 10, interval: 0.4 }, { type: "cavalry", count: 8, interval: 0.3 }, { type: "mage", count: 6, interval: 0.5 }, { type: "assassin", count: 8, interval: 0.3 }], bonusGold: 180 },
+  // Wave 15: Double giant boss + elite escorts
+  { enemies: [{ type: "giant", count: 2, interval: 5 }, { type: "knight", count: 15, interval: 0.5 }, { type: "siege_tower", count: 3, interval: 3 }, { type: "mage", count: 8, interval: 0.8 }], bonusGold: 250 },
 ];
 
 export const SiegeConfig = {
@@ -92,7 +104,7 @@ export function setTileSize(sw: number, sh: number): void {
   TILE_SZ = Math.max(36, Math.min(maxW, maxH));
 }
 
-export const ALL_TOWER_TYPES: TowerType[] = ["arrow", "cannon", "frost", "fire", "holy", "poison"];
+export const ALL_TOWER_TYPES: TowerType[] = ["arrow", "cannon", "frost", "fire", "holy", "poison", "lightning", "ballista"];
 
 // Damage multiplier matrix: TOWER_EFFECTIVENESS[towerType][enemyType]
 // Values > 1 = strong against, < 1 = weak against, 1 = neutral
@@ -103,6 +115,8 @@ export const TOWER_EFFECTIVENESS: Partial<Record<TowerType, Partial<Record<Enemy
   fire:   { soldier: 1.3, mage: 1.5, knight: 0.7 },
   holy:   { mage: 2.0, giant: 1.5, soldier: 0.8 },
   poison: { knight: 1.4, giant: 1.3, mage: 0.7 },
+  lightning: { cavalry: 1.4, soldier: 1.3, giant: 0.6, siege_tower: 0.7 },
+  ballista: { giant: 1.8, siege_tower: 1.6, battering_ram: 1.5, assassin: 0.5, soldier: 0.7 },
 };
 
 // Tower special abilities unlocked at levels 3 and 5
@@ -112,11 +126,13 @@ export const TOWER_ABILITIES: Record<TowerType, { lv3: string; lv5: string; lv3D
   frost:  { lv3: "blizzard",   lv5: "permafrost",   lv3Desc: "+100% slow duration", lv5Desc: "80% slow (was 50%)" },
   fire:   { lv3: "inferno",    lv5: "wildfire",     lv3Desc: "Burns for 3s after",  lv5Desc: "Fire spreads to nearby" },
   holy:   { lv3: "smite",      lv5: "divine_wrath", lv3Desc: "+100% vs bosses",     lv5Desc: "Heals 1 life on kill" },
-  poison: { lv3: "virulence",  lv5: "plague",       lv3Desc: "Poison stacks",       lv5Desc: "Spreads to nearby" },
+  poison:    { lv3: "virulence",  lv5: "plague",       lv3Desc: "Poison stacks",       lv5Desc: "Spreads to nearby" },
+  lightning: { lv3: "arc",       lv5: "storm",        lv3Desc: "Chains to 3 targets", lv5Desc: "Chains to 4, +30% dmg" },
+  ballista:  { lv3: "heavy_bolt", lv5: "siege_bolt",  lv3Desc: "Pierces 3 enemies",  lv5Desc: "Pierces all, +50% dmg" },
 };
 
 // Wave modifiers (random per wave)
-export type WaveModifier = "none" | "fast" | "armored" | "horde" | "rich" | "boss_rush";
+export type WaveModifier = "none" | "fast" | "armored" | "horde" | "rich" | "boss_rush" | "regen" | "shielded";
 export const WAVE_MODIFIER_DEFS: Record<WaveModifier, { name: string; desc: string; color: number }> = {
   none:      { name: "",             desc: "",                          color: 0x888888 },
   fast:      { name: "Swift Wave",   desc: "Enemies +50% speed",       color: 0x44ccff },
@@ -124,6 +140,8 @@ export const WAVE_MODIFIER_DEFS: Record<WaveModifier, { name: string; desc: stri
   horde:     { name: "Horde Wave",   desc: "+50% enemy count",         color: 0xff8844 },
   rich:      { name: "Golden Wave",  desc: "Double gold rewards",      color: 0xffd700 },
   boss_rush: { name: "Boss Rush",    desc: "Extra boss spawns",        color: 0xff4444 },
+  regen:     { name: "Regen Wave",   desc: "Enemies regen 1% HP/sec",  color: 0x44ff88 },
+  shielded:  { name: "Shielded Wave", desc: "Enemies absorb first 20 dmg", color: 0x8888ff },
 };
 
 export type Difficulty = "easy" | "normal" | "hard";

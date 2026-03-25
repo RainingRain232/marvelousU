@@ -5,7 +5,7 @@
 // ---------------------------------------------------------------------------
 
 import { Direction, PickupKind, WyrmPhase } from "../types";
-import type { WyrmState, Cell, SynergyKind, Blessing } from "../types";
+import type { WyrmState, Cell, SynergyKind, Blessing, BossType } from "../types";
 import { WYRM_BALANCE as B, getWyrmTierIndex, WYRM_COLOR_TIERS } from "../config/WyrmBalance";
 
 export const DIR_DX = [0, 1, 0, -1];
@@ -269,6 +269,20 @@ export function updateMovement(state: WyrmState, dt: number): boolean {
     }
   }
 
+  // Lava tile check
+  const lavaIdx = state.lavaTiles.findIndex(l => l.x === nx && l.y === ny);
+  if (lavaIdx !== -1) {
+    state.lavaTiles.splice(lavaIdx, 1);
+    if (state.body.length > 2) {
+      for (let i = 0; i < B.LAVA_SHRINK && state.body.length > 2; i++) state.body.pop();
+      spawnParticles(state, nx, ny, 10, B.COLOR_LAVA);
+      spawnFloatingText(state, nx, ny, "LAVA!", B.COLOR_LAVA, 1.3);
+      state.screenFlashColor = B.COLOR_LAVA;
+      state.screenFlashTimer = B.FLASH_DURATION;
+      state.screenShake = B.SHAKE_DURATION * 0.3;
+    }
+  }
+
   // Projectile collision with head
   const projHit = state.projectiles.findIndex(p => p.alive && p.x === nx && p.y === ny);
   if (projHit !== -1) {
@@ -426,6 +440,48 @@ function checkPickups(state: WyrmState, hx: number, hy: number): boolean {
       spawnFloatingText(state, hx, hy, "MAGNET!", B.COLOR_MAGNET, 1.3);
       state.screenFlashColor = B.COLOR_MAGNET; state.screenFlashTimer = B.FLASH_DURATION;
       return false;
+    case PickupKind.LIGHTNING_SCROLL: {
+      const range = B.LIGHTNING_RANGE + state.lightningRangeUpgrade * 2;
+      let kills = 0;
+      for (const k of state.knights) {
+        if (!k.alive) continue;
+        const dist = Math.abs(k.x - hx) + Math.abs(k.y - hy);
+        if (dist <= range) {
+          k.alive = false; kills++;
+          state.score += B.SCORE_LIGHTNING_KILL * state.comboMultiplier;
+          state.knightsEaten++; advanceCombo(state);
+          spawnParticles(state, k.x, k.y, 8, B.COLOR_LIGHTNING);
+          spawnFloatingText(state, k.x, k.y, "ZAP!", B.COLOR_LIGHTNING, 1.2);
+        }
+      }
+      for (const a of state.archerKnights) {
+        if (!a.alive) continue;
+        const dist = Math.abs(a.x - hx) + Math.abs(a.y - hy);
+        if (dist <= range) {
+          a.alive = false; kills++;
+          state.score += B.SCORE_LIGHTNING_KILL * state.comboMultiplier;
+          state.archersKilled++; advanceCombo(state);
+          spawnParticles(state, a.x, a.y, 8, B.COLOR_LIGHTNING);
+          spawnFloatingText(state, a.x, a.y, "ZAP!", B.COLOR_LIGHTNING, 1.2);
+        }
+      }
+      if (state.boss && state.boss.alive) {
+        const dist = Math.abs(state.boss.x - hx) + Math.abs(state.boss.y - hy);
+        if (dist <= range) { hitBoss(state); kills++; }
+      }
+      spawnParticles(state, hx, hy, B.PARTICLE_COUNT_EAT + 8, B.COLOR_LIGHTNING);
+      spawnFloatingText(state, hx, hy, kills > 0 ? `LIGHTNING! x${kills}` : "LIGHTNING!", B.COLOR_LIGHTNING, 1.5);
+      state.screenFlashColor = B.COLOR_LIGHTNING; state.screenFlashTimer = B.FLASH_DURATION * 1.5;
+      state.screenShake = B.SHAKE_DURATION * 0.5;
+      if (kills > 0) triggerHitstop(state, B.HITSTOP_SYNERGY);
+      return false;
+    }
+    case PickupKind.TIME_WARP:
+      state.timeWarpTimer = B.TIME_WARP_DURATION;
+      spawnParticles(state, hx, hy, B.PARTICLE_COUNT_EAT, B.COLOR_TIME_WARP);
+      spawnFloatingText(state, hx, hy, "TIME WARP!", B.COLOR_TIME_WARP, 1.5);
+      state.screenFlashColor = B.COLOR_TIME_WARP; state.screenFlashTimer = B.FLASH_DURATION * 1.5;
+      return false;
   }
   return false;
 }
@@ -435,6 +491,7 @@ function advanceCombo(state: WyrmState): void {
   state.comboCount++;
   const comboWindow = B.COMBO_WINDOW + state.comboKeeperUpgrade * 0.5;
   state.comboTimer = comboWindow;
+  state.comboDecayPause = B.COMBO_DECAY_PAUSE; // pause combo decay for 1 extra second
   state.comboMultiplier = Math.min(state.comboCount, B.COMBO_MULT_CAP);
   if (state.comboCount > state.bestCombo) state.bestCombo = state.comboCount;
   if (state.comboCount >= 3) spawnFloatingText(state, state.body[0].x, state.body[0].y - 1, `${state.comboCount}x COMBO!`, B.COLOR_COMBO, 1.0 + state.comboCount * 0.1);
@@ -450,6 +507,10 @@ function advanceCombo(state: WyrmState): void {
 }
 
 export function updateCombo(state: WyrmState, dt: number): void {
+  if (state.comboDecayPause > 0) {
+    state.comboDecayPause -= dt;
+    return; // pause combo decay
+  }
   if (state.comboTimer > 0) { state.comboTimer -= dt; if (state.comboTimer <= 0) { state.comboCount = 0; state.comboMultiplier = 1; } }
 }
 
@@ -510,6 +571,18 @@ function hitBoss(state: WyrmState): void {
   triggerHitstop(state, B.HITSTOP_BOSS_HIT);
   addWrath(state, B.WRATH_GAIN_BOSS_HIT);
 
+  // Summoner: spawns knights on each hit
+  if (state.boss.bossType === "summoner" && state.boss.hp > 0) {
+    for (let i = 0; i < B.BOSS_SUMMONER_SPAWN_COUNT; i++) {
+      const pos = findFreeCellNear(state, state.boss.x, state.boss.y, 4);
+      if (pos) {
+        state.knights.push({ x: pos.x, y: pos.y, dir: Math.floor(Math.random() * 4) as Direction, moveTimer: 0.3, alive: true, chasing: true });
+        spawnParticles(state, pos.x, pos.y, 4, B.COLOR_KNIGHT_CHASE);
+        spawnFloatingText(state, pos.x, pos.y, "SUMMONED!", B.COLOR_KNIGHT_CHASE, 1.0);
+      }
+    }
+  }
+
   if (state.boss.hp <= 0) {
     state.boss.alive = false; state.bossesKilled++;
     const pts = B.SCORE_BOSS_KILL * state.comboMultiplier;
@@ -519,10 +592,11 @@ function hitBoss(state: WyrmState): void {
     state.screenShake = B.SHAKE_DURATION * 1.5; state.screenFlashColor = B.COLOR_BOSS; state.screenFlashTimer = B.FLASH_DURATION * 2;
     triggerHitstop(state, B.HITSTOP_BOSS_KILL);
 
-    // Boss loot drops
+    // Boss loot drops (with bossLoot upgrade bonus)
     const bx = state.boss.x, by = state.boss.y;
     const lootKinds = [PickupKind.SHEEP, PickupKind.TREASURE, PickupKind.POTION, PickupKind.FIRE_SCROLL, PickupKind.SHIELD, PickupKind.GOLDEN_SHEEP];
-    for (let i = 0; i < B.BOSS_LOOT_COUNT; i++) {
+    const totalLoot = B.BOSS_LOOT_COUNT + state.bossLootUpgrade * 2;
+    for (let i = 0; i < totalLoot; i++) {
       const kind = lootKinds[Math.floor(Math.random() * lootKinds.length)];
       const pos = findFreeCellNear(state, bx, by, 4);
       if (pos) {
@@ -541,19 +615,28 @@ export function updateBoss(state: WyrmState, dt: number): void {
   const boss = state.boss;
   if (boss.flashTimer > 0) boss.flashTimer -= dt;
 
-  boss.chargeTimer -= dt;
-  if (boss.chargeTimer <= 0 && !boss.charging) {
+  // Time warp slows boss
+  const timeWarpMult = state.timeWarpTimer > 0 ? B.TIME_WARP_SLOW : 1.0;
+
+  // Berserker: gets faster as HP drops
+  const berserkerSpeedMult = boss.bossType === "berserker"
+    ? B.BOSS_BERSERKER_SPEED_MULT + (1 - B.BOSS_BERSERKER_SPEED_MULT) * (boss.hp / boss.maxHp)
+    : 1.0;
+
+  boss.chargeTimer -= dt * timeWarpMult;
+  // Summoner doesn't charge, it just chases slowly
+  if (boss.bossType !== "summoner" && boss.chargeTimer <= 0 && !boss.charging) {
     boss.charging = true;
     boss.chargeDir = dirToward(boss.x, boss.y, state.body[0].x, state.body[0].y);
-    boss.chargeTimer = B.BOSS_CHARGE_INTERVAL;
-    spawnFloatingText(state, boss.x, boss.y, "CHARGE!", 0xff4444, 1.5);
+    boss.chargeTimer = B.BOSS_CHARGE_INTERVAL * (boss.bossType === "berserker" ? berserkerSpeedMult : 1.0);
+    spawnFloatingText(state, boss.x, boss.y, boss.bossType === "berserker" ? "RAGE!" : "CHARGE!", 0xff4444, 1.5);
   }
 
-  boss.moveTimer -= dt;
+  boss.moveTimer -= dt * timeWarpMult;
   if (boss.moveTimer > 0) return;
 
   if (boss.charging) {
-    boss.moveTimer = B.BOSS_MOVE_INTERVAL * 0.4;
+    boss.moveTimer = B.BOSS_MOVE_INTERVAL * 0.4 * berserkerSpeedMult;
     const cdx = DIR_DX[boss.chargeDir], cdy = DIR_DY[boss.chargeDir];
     const nx = boss.x + cdx, ny = boss.y + cdy;
     if (!isWall(state, nx, ny)) {
@@ -584,7 +667,7 @@ export function updateBoss(state: WyrmState, dt: number): void {
     return;
   }
 
-  boss.moveTimer = B.BOSS_MOVE_INTERVAL;
+  boss.moveTimer = B.BOSS_MOVE_INTERVAL * berserkerSpeedMult * (boss.bossType === "summoner" ? B.BOSS_SUMMONER_MOVE_MULT : 1.0);
   const head = state.body[0];
   const bestDir = dirToward(boss.x, boss.y, head.x, head.y);
   for (const d of [bestDir, ...([0,1,2,3] as Direction[]).filter(x => x !== bestDir)]) {
@@ -740,12 +823,20 @@ export function updateKnights(state: WyrmState, dt: number): void {
   }
 
   const head = state.body[0];
+  // Frostbite blessing: enemies near wyrm tail slow down 30%
+  const tail = state.body[state.body.length - 1];
+  const hasFrostbite = state.blessings.includes("frostbite");
+
   for (const k of state.knights) {
     if (!k.alive) continue;
-    k.moveTimer -= dt;
+    // Time warp slow
+    const twMult = state.timeWarpTimer > 0 ? B.TIME_WARP_SLOW : 1.0;
+    k.moveTimer -= dt * twMult;
     if (k.moveTimer > 0) continue;
     const predatorSpeed = state.blessings.includes("predator_instinct") ? 0.8 : 1.0;
-    k.moveTimer = (k.chasing ? mi * 0.7 : mi) * predatorSpeed;
+    // Frostbite slow for enemies near tail
+    const frostSlow = hasFrostbite && (Math.abs(k.x - tail.x) + Math.abs(k.y - tail.y) <= B.FROSTBITE_RANGE) ? (1 + B.FROSTBITE_SLOW) : 1.0;
+    k.moveTimer = (k.chasing ? mi * 0.7 : mi) * predatorSpeed * frostSlow;
 
     let dirs: Direction[];
     if (k.chasing) {
@@ -802,6 +893,11 @@ export function updatePoisonTiles(state: WyrmState, dt: number): void {
   for (let i = state.poisonTiles.length - 1; i >= 0; i--) { state.poisonTiles[i].life -= dt; if (state.poisonTiles[i].life <= 0) state.poisonTiles.splice(i, 1); }
 }
 
+// Lava tiles
+export function updateLavaTiles(state: WyrmState, dt: number): void {
+  for (let i = state.lavaTiles.length - 1; i >= 0; i--) { state.lavaTiles[i].life -= dt; if (state.lavaTiles[i].life <= 0) state.lavaTiles.splice(i, 1); }
+}
+
 // ---------------------------------------------------------------------------
 // Waves — with events and breakable walls
 // ---------------------------------------------------------------------------
@@ -820,16 +916,24 @@ export function updateWaves(state: WyrmState, dt: number): void {
   // Boss — scaling HP
   if (state.wave % B.BOSS_WAVE_INTERVAL === 0 && (!state.boss || !state.boss.alive)) {
     const bossTier = Math.floor(state.wave / B.BOSS_WAVE_INTERVAL);
-    const bossHp = B.BOSS_HP + (bossTier - 1) * B.BOSS_HP_PER_TIER;
+    // Choose boss type based on tier
+    const bossTypes: BossType[] = ["charger", "summoner", "berserker"];
+    const bossType = bossTypes[(bossTier - 1) % bossTypes.length];
+    let bossHp: number;
+    if (bossType === "summoner") bossHp = B.BOSS_SUMMONER_HP + Math.floor((bossTier - 1) / 3) * B.BOSS_HP_PER_TIER;
+    else if (bossType === "berserker") bossHp = B.BOSS_BERSERKER_HP + Math.floor((bossTier - 1) / 3) * B.BOSS_HP_PER_TIER;
+    else bossHp = B.BOSS_HP + (bossTier - 1) * B.BOSS_HP_PER_TIER;
     const pos = findFreeCell(state);
     if (pos) {
       state.boss = {
         x: pos.x, y: pos.y, dir: Direction.DOWN,
-        moveTimer: B.BOSS_MOVE_INTERVAL,
+        moveTimer: B.BOSS_MOVE_INTERVAL * (bossType === "summoner" ? B.BOSS_SUMMONER_MOVE_MULT : 1),
         hp: bossHp, maxHp: bossHp, alive: true, flashTimer: 0,
         chargeTimer: B.BOSS_CHARGE_INTERVAL, charging: false, chargeDir: Direction.DOWN,
+        bossType,
       };
-      const tierName = bossTier <= 1 ? "BOSS!" : bossTier <= 2 ? "BOSS II!" : bossTier <= 3 ? "BOSS III!" : `BOSS ${bossTier}!`;
+      const typeLabel = bossType === "summoner" ? "SUMMONER" : bossType === "berserker" ? "BERSERKER" : "BOSS";
+      const tierName = bossTier <= 1 ? `${typeLabel}!` : `${typeLabel} ${bossTier <= 3 ? ["I","II","III"][bossTier-1] : bossTier}!`;
       spawnFloatingText(state, pos.x, pos.y, tierName, B.COLOR_BOSS, 2.0);
       state.screenShake = B.SHAKE_DURATION; state.screenFlashColor = B.COLOR_BOSS; state.screenFlashTimer = B.FLASH_DURATION * 2;
     }
@@ -866,6 +970,18 @@ export function updateWaves(state: WyrmState, dt: number): void {
     for (let i = 0; i < B.POISON_PER_WAVE; i++) {
       const pos = findFreeCell(state);
       if (pos) state.poisonTiles.push({ x: pos.x, y: pos.y, life: B.POISON_LIFETIME });
+    }
+  }
+
+  // Lava tiles from wave 6+
+  if (state.wave >= B.LAVA_START_WAVE) {
+    const lavaCount = B.LAVA_PER_WAVE_MIN + Math.floor(Math.random() * (B.LAVA_PER_WAVE_MAX - B.LAVA_PER_WAVE_MIN + 1));
+    for (let i = 0; i < lavaCount; i++) {
+      const pos = findFreeCell(state);
+      if (pos) {
+        state.lavaTiles.push({ x: pos.x, y: pos.y, life: B.LAVA_LIFETIME });
+        spawnParticles(state, pos.x, pos.y, 3, B.COLOR_LAVA);
+      }
     }
   }
 
@@ -1015,10 +1131,23 @@ export function updateTimers(state: WyrmState, dt: number): void {
     state.magnetBoostTimer -= dt;
     if (state.magnetBoostTimer <= 0) state.magnetRadius = state.baseMagnetRadius;
   }
+  if (state.timeWarpTimer > 0) state.timeWarpTimer -= dt;
 
   // Apply golden_touch blessing: +25% score already earned gets bonus (via multiplier on SCORE_PER_SECOND)
   if (state.blessings.includes("golden_touch")) {
     state.score += B.SCORE_PER_SECOND * dt * 0.25; // extra 25%
+  }
+
+  // Regeneration blessing: regain 1 segment every 30 seconds
+  if (state.blessings.includes("regeneration")) {
+    state.regenTimer += dt;
+    if (state.regenTimer >= B.REGEN_INTERVAL) {
+      state.regenTimer -= B.REGEN_INTERVAL;
+      state.body.push({ ...state.body[state.body.length - 1] });
+      state.length = state.body.length;
+      spawnFloatingText(state, state.body[state.body.length - 1].x, state.body[state.body.length - 1].y, "REGEN!", B.COLOR_REGEN, 1.0);
+      spawnParticles(state, state.body[state.body.length - 1].x, state.body[state.body.length - 1].y, 4, B.COLOR_REGEN);
+    }
   }
 }
 
@@ -1065,6 +1194,7 @@ function findFreeCell(state: WyrmState): Cell | null {
   for (const a of state.archerKnights) if (a.alive) occ.add(`${a.x},${a.y}`);
   if (state.boss && state.boss.alive) occ.add(`${state.boss.x},${state.boss.y}`);
   for (const p of state.poisonTiles) occ.add(`${p.x},${p.y}`);
+  for (const l of state.lavaTiles) occ.add(`${l.x},${l.y}`);
   const head = state.body[0];
   for (let dx = -2; dx <= 2; dx++) for (let dy = -2; dy <= 2; dy++) occ.add(`${head.x + dx},${head.y + dy}`);
   for (let a = 0; a < 100; a++) { const x = 1 + Math.floor(Math.random() * (state.cols - 2)), y = 1 + Math.floor(Math.random() * (state.rows - 2)); if (!occ.has(`${x},${y}`)) return { x, y }; }
@@ -1078,6 +1208,7 @@ function findFreeCellNear(state: WyrmState, cx: number, cy: number, radius: numb
   for (const p of state.pickups) occ.add(`${p.x},${p.y}`);
   for (const k of state.knights) if (k.alive) occ.add(`${k.x},${k.y}`);
   for (const p of state.poisonTiles) occ.add(`${p.x},${p.y}`);
+  for (const l of state.lavaTiles) occ.add(`${l.x},${l.y}`);
   for (let a = 0; a < 50; a++) {
     const x = cx + Math.floor((Math.random() - 0.5) * radius * 2);
     const y = cy + Math.floor((Math.random() - 0.5) * radius * 2);
@@ -1113,7 +1244,9 @@ function findWallAdjacentCell(state: WyrmState): Cell | null {
 
 function addWrath(state: WyrmState, amount: number): void {
   if (state.wrathTimer > 0) return; // already in wrath mode
-  const mult = state.blessings.includes("wrath_born") ? 1.5 : 1.0;
+  const blessingMult = state.blessings.includes("wrath_born") ? 1.5 : 1.0;
+  const upgradeMult = 1 + state.wrathBoostUpgrade * 0.15; // +15% per upgrade level
+  const mult = blessingMult * upgradeMult;
   state.wrathMeter = Math.min(B.WRATH_MAX, state.wrathMeter + amount * mult);
   if (state.wrathMeter >= B.WRATH_MAX) {
     state.wrathMeter = 0;
@@ -1220,6 +1353,8 @@ const ALL_BLESSINGS: Blessing[] = [
   { id: "swift_tail", name: "Swift Tail", desc: "Tail whip cooldown halved", color: 0xddaa44 },
   { id: "dragon_heart", name: "Dragon Heart", desc: "+1 shield hit permanently", color: 0x44aaff },
   { id: "berserker", name: "Berserker", desc: "Lunge distance +1, cooldown -1s", color: 0xffaa00 },
+  { id: "frostbite", name: "Frostbite", desc: "Enemies near wyrm tail slow 30%", color: 0x66ccff },
+  { id: "regeneration", name: "Regeneration", desc: "Regain 1 segment every 30 seconds", color: 0x44ff88 },
 ];
 
 export function generateBlessingChoices(state: WyrmState): Blessing[] {

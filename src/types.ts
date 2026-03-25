@@ -713,6 +713,7 @@ export enum GameMode {
   VOID_KNIGHT = "void_knight",
   LAST_FLAME = "last_flame",
   GRAVITON = "graviton",
+  GRAIL_QUEST = "grail_quest",
 }
 
 // ---------------------------------------------------------------------------

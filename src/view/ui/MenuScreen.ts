@@ -548,6 +548,13 @@ const GAME_MODES: GameModeEntry[] = [
     skipSetup: true,
     tag: "NEW",
   },
+  {
+    mode: GameMode.GRAIL_QUEST,
+    label: "GRAIL QUEST",
+    desc: "Roguelike dungeon crawler: descend 10 floors, fight monsters, find the Holy Grail",
+    skipSetup: true,
+    tag: "NEW",
+  },
 ];
 
 // ---------------------------------------------------------------------------

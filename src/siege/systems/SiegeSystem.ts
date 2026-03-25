@@ -16,7 +16,7 @@ export function placeTower(state: SiegeState, type: TowerType, col: number, row:
   state.gold -= def.cost;
   const id = `tower_${state.towerIdCounter++}`;
   cell.towerId = id;
-  state.towers.push({ id, type, x: col, y: row, cooldown: 0, kills: 0, level: 1, targetPriority: "closest" });
+  state.towers.push({ id, type, x: col, y: row, cooldown: 0, kills: 0, level: 1, targetPriority: "closest", totalInvested: def.cost });
   return true;
 }
 
@@ -24,8 +24,7 @@ export function sellTower(state: SiegeState, towerId: string): void {
   const idx = state.towers.findIndex(t => t.id === towerId);
   if (idx < 0) return;
   const tower = state.towers[idx];
-  const def = TOWERS[tower.type];
-  state.gold += Math.floor(def.cost * SiegeConfig.SELL_REFUND);
+  state.gold += Math.floor(tower.totalInvested * SiegeConfig.SELL_REFUND);
   state.grid[tower.y][tower.x].towerId = null;
   state.towers.splice(idx, 1);
 }
@@ -36,7 +35,7 @@ export function startWave(state: SiegeState): void {
   state.phase = SiegePhase.WAVE;
 
   // Pick random wave modifier (30% chance after wave 2)
-  const modPool: WaveModifier[] = ["none", "none", "fast", "armored", "horde", "rich"];
+  const modPool: WaveModifier[] = ["none", "none", "fast", "armored", "horde", "rich", "regen", "shielded"];
   if (state.wave >= 5) modPool.push("boss_rush");
   state.waveModifier = state.wave >= 2 && Math.random() < 0.4 ? modPool[Math.floor(Math.random() * modPool.length)] : "none";
 
@@ -87,6 +86,14 @@ export function useFreeze(state: SiegeState): void {
   state.announcements.push({ text: "FREEZE!", color: 0x88ccff, timer: 1.5 });
 }
 
+export function useRally(state: SiegeState): void {
+  if (state.rallyTimer > 0 || state.rallyCooldown > 0 || state.gold < 40) return;
+  state.gold -= 40;
+  state.rallyTimer = 8;
+  state.rallyCooldown = 25;
+  state.announcements.push({ text: "RALLY! +50% Fire Rate!", color: 0xff8800, timer: 2 });
+}
+
 export function updateSiege(state: SiegeState, dt: number): void {
   const effectiveDt = dt * state.speedMult;
   state.elapsedTime += effectiveDt;
@@ -94,8 +101,19 @@ export function updateSiege(state: SiegeState, dt: number): void {
   // Power-up timers
   if (state.freezeTimer > 0) state.freezeTimer -= effectiveDt;
   if (state.meteorCooldown > 0) state.meteorCooldown -= effectiveDt;
+  if (state.rallyTimer > 0) state.rallyTimer -= effectiveDt;
+  if (state.rallyCooldown > 0) state.rallyCooldown -= effectiveDt;
 
   if (state.phase === SiegePhase.BUILDING) {
+    // Interest mechanic: earn 1% of current gold per second, capped at 10 gold/sec
+    const interest = Math.min(state.gold * 0.01 * effectiveDt, 10 * effectiveDt);
+    state.interestAccumulator += interest;
+    if (state.interestAccumulator >= 1) {
+      const earned = Math.floor(state.interestAccumulator);
+      state.gold += earned;
+      state.interestAccumulator -= earned;
+    }
+
     state.waveTimer -= effectiveDt;
     if (state.waveTimer <= 0) startWave(state);
     updateParticles(state, effectiveDt);
@@ -136,6 +154,44 @@ export function updateSiege(state: SiegeState, dt: number): void {
     }
   }
 
+  // Enemy abilities
+  for (const enemy of state.enemies) {
+    if (!enemy.alive || enemy.reachedEnd) continue;
+
+    // Mage ability: periodically heal nearby enemies
+    if (enemy.type === "mage") {
+      enemy.healCooldown -= effectiveDt;
+      if (enemy.healCooldown <= 0) {
+        enemy.healCooldown = 3; // heal every 3 seconds
+        for (const other of state.enemies) {
+          if (other === enemy || !other.alive || other.reachedEnd) continue;
+          const dx = other.x - enemy.x, dy = other.y - enemy.y;
+          if (dx * dx + dy * dy <= (2 * TILE_SZ) * (2 * TILE_SZ)) {
+            other.hp = Math.min(other.maxHp, other.hp + other.maxHp * 0.05);
+          }
+        }
+      }
+    }
+
+    // Assassin ability: toggle invisibility periodically
+    if (enemy.type === "assassin") {
+      // Invisible for 2s every 5s cycle
+      const cycle = state.elapsedTime % 5;
+      enemy.invisible = cycle >= 3; // invisible during seconds 3-5 of cycle
+    }
+
+    // Cavalry ability: speed burst when below 50% hp
+    if (enemy.type === "cavalry" && !enemy.cavalryBursted && enemy.hp < enemy.maxHp * 0.5) {
+      enemy.cavalryBursted = true;
+      enemy.speed *= 1.5;
+    }
+
+    // Regen wave modifier: enemies regenerate 1% HP per second
+    if (state.waveModifier === "regen") {
+      enemy.hp = Math.min(enemy.maxHp, enemy.hp + enemy.maxHp * 0.01 * effectiveDt);
+    }
+  }
+
   // Tower targeting & firing
   for (const tower of state.towers) {
     tower.cooldown -= effectiveDt;
@@ -145,9 +201,9 @@ export function updateSiege(state: SiegeState, dt: number): void {
     const tcx = tower.x * TILE_SZ + TILE_SZ / 2, tcy = tower.y * TILE_SZ + TILE_SZ / 2;
     const range = def.range * TILE_SZ;
 
-    // Find target based on priority
+    // Find target based on priority (skip invisible enemies)
     const inRange = state.enemies.filter(e => {
-      if (!e.alive || e.reachedEnd) return false;
+      if (!e.alive || e.reachedEnd || e.invisible) return false;
       const edx = e.x - tcx, edy = e.y - tcy;
       return edx * edx + edy * edy <= range * range;
     });
@@ -166,7 +222,8 @@ export function updateSiege(state: SiegeState, dt: number): void {
 
     {
       const levelMult = 1 + (tower.level - 1) * 0.2;
-      tower.cooldown = 1 / (def.fireRate * (1 + (tower.level - 1) * 0.1));
+      const rallyMult = state.rallyTimer > 0 ? 1.5 : 1;
+      tower.cooldown = 1 / (def.fireRate * (1 + (tower.level - 1) * 0.1) * rallyMult);
       const projDmg = Math.floor(def.damage * levelMult);
       // Cannon lv3: +50% splash radius
       const splashR = def.splashRadius * TILE_SZ * (tower.type === "cannon" && tower.level >= 3 ? 1.5 : 1);
@@ -191,6 +248,60 @@ export function updateSiege(state: SiegeState, dt: number): void {
             color: def.projectileColor, splashRadius: 0,
             slowAmount: 0, slowDuration: 0, towerId: tower.id,
           });
+        }
+      }
+      // Lightning: chain damage to nearby enemies
+      if (tower.type === "lightning" && inRange.length > 1) {
+        const chainCount = tower.level >= 5 ? 4 : tower.level >= 3 ? 3 : 2;
+        const chainDmgMult = tower.level >= 5 ? 0.78 : 0.6; // 60% base, 78% at lv5
+        const chainedIds: string[] = [closest.id];
+        let chainSource = closest;
+        for (let ci = 0; ci < chainCount; ci++) {
+          let bestChain: Enemy | null = null, bestDist = Infinity;
+          for (const e of inRange) {
+            if (chainedIds.indexOf(e.id) >= 0) continue;
+            const cdx = e.x - chainSource.x, cdy = e.y - chainSource.y;
+            const cd = cdx * cdx + cdy * cdy;
+            if (cd < bestDist) { bestDist = cd; bestChain = e; }
+          }
+          if (!bestChain) break;
+          chainedIds.push(bestChain.id);
+          state.projectiles.push({
+            x: chainSource.x, y: chainSource.y, targetId: bestChain.id,
+            damage: Math.floor(projDmg * chainDmgMult), speed: def.projectileSpeed * TILE_SZ * 1.5,
+            color: def.projectileColor, splashRadius: 0,
+            slowAmount: 0, slowDuration: 0, towerId: tower.id,
+          });
+          chainSource = bestChain;
+        }
+      }
+      // Ballista: pierce — hit enemies in a line behind the target
+      if (tower.type === "ballista") {
+        const pierceCount = tower.level >= 5 ? inRange.length : tower.level >= 3 ? 3 : 1;
+        const pierceDmgMult = tower.level >= 5 ? 1.5 : 1;
+        // Find enemies roughly in the same direction as the primary target
+        const dirX = closest.x - tcx, dirY = closest.y - tcy;
+        const dirLen = Math.sqrt(dirX * dirX + dirY * dirY);
+        if (dirLen > 0 && pierceCount > 0) {
+          const ndx = dirX / dirLen, ndy = dirY / dirLen;
+          let pierced = 0;
+          for (const e of inRange) {
+            if (e.id === closest.id || pierced >= pierceCount) continue;
+            // Check if enemy is roughly in the same direction (dot product > 0.7)
+            const edx = e.x - tcx, edy = e.y - tcy;
+            const elen = Math.sqrt(edx * edx + edy * edy);
+            if (elen === 0) continue;
+            const dot = (edx / elen) * ndx + (edy / elen) * ndy;
+            if (dot > 0.7) {
+              state.projectiles.push({
+                x: tcx, y: tcy, targetId: e.id,
+                damage: Math.floor(projDmg * pierceDmgMult * 0.8), speed: def.projectileSpeed * TILE_SZ,
+                color: def.projectileColor, splashRadius: 0,
+                slowAmount: 0, slowDuration: 0, towerId: tower.id,
+              });
+              pierced++;
+            }
+          }
         }
       }
     }
@@ -327,7 +438,19 @@ function applyDamage(state: SiegeState, enemy: Enemy, proj: Projectile, mult = 1
   let armor = enemy.armor;
   if (towerType === "arrow" && tower && tower.level >= 5) armor = 0;
 
-  const dmg = Math.max(1, proj.damage * mult * effectiveness - armor);
+  let dmg = Math.max(1, proj.damage * mult * effectiveness - armor);
+
+  // Shielded wave modifier: shield absorbs damage first
+  if (enemy.shieldHp > 0) {
+    if (dmg <= enemy.shieldHp) {
+      enemy.shieldHp -= dmg;
+      dmg = 0;
+    } else {
+      dmg -= enemy.shieldHp;
+      enemy.shieldHp = 0;
+    }
+  }
+
   enemy.hp -= dmg;
 
   // Slow effects

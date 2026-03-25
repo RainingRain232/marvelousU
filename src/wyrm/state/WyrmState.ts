@@ -8,7 +8,7 @@ import { WYRM_BALANCE as B } from "../config/WyrmBalance";
 
 const META_KEY = "wyrm_meta";
 
-const DEFAULT_UPGRADES: WyrmUpgrades = { extraStartLength: 0, longerFire: 0, fasterLunge: 0, thickerShield: 0, poisonResist: 0, comboKeeper: 0 };
+const DEFAULT_UPGRADES: WyrmUpgrades = { extraStartLength: 0, longerFire: 0, fasterLunge: 0, thickerShield: 0, poisonResist: 0, comboKeeper: 0, wrathBoost: 0, lightningRange: 0, bossLoot: 0 };
 
 export function loadWyrmMeta(): WyrmMeta {
   try {
@@ -20,6 +20,9 @@ export function loadWyrmMeta(): WyrmMeta {
       // Migrate new upgrade fields
       if (m.upgrades.poisonResist === undefined) m.upgrades.poisonResist = 0;
       if (m.upgrades.comboKeeper === undefined) m.upgrades.comboKeeper = 0;
+      if (m.upgrades.wrathBoost === undefined) m.upgrades.wrathBoost = 0;
+      if (m.upgrades.lightningRange === undefined) m.upgrades.lightningRange = 0;
+      if (m.upgrades.bossLoot === undefined) m.upgrades.bossLoot = 0;
       return m;
     }
   } catch { /* ignore */ }
@@ -59,7 +62,7 @@ export function createWyrmState(cols: number, rows: number, meta?: WyrmMeta): Wy
     moveTimer: 0, moveInterval: B.START_MOVE_INTERVAL, moveFraction: 0,
     pickups: [], pickupTimer: 1.0,
     knights: [], knightSpawnTimer: B.KNIGHT_INITIAL_DELAY,
-    boss: null, poisonTiles: [],
+    boss: null, poisonTiles: [], lavaTiles: [],
     archerKnights: [], projectiles: [], archerSpawnTimer: B.KNIGHT_INITIAL_DELAY + 5,
     score: 0, highScore: m.highScore, length: startLen,
     comboCount: 0, comboTimer: 0, comboMultiplier: 1, bestCombo: 0,
@@ -87,6 +90,12 @@ export function createWyrmState(cols: number, rows: number, meta?: WyrmMeta): Wy
     poisonResistUpgrade: m.upgrades?.poisonResist ?? 0,
     comboKeeperUpgrade: m.upgrades?.comboKeeper ?? 0,
     magnetRadius: 4,
+    timeWarpTimer: 0,
+    comboDecayPause: 0,
+    regenTimer: 0,
+    wrathBoostUpgrade: m.upgrades?.wrathBoost ?? 0,
+    lightningRangeUpgrade: m.upgrades?.lightningRange ?? 0,
+    bossLootUpgrade: m.upgrades?.bossLoot ?? 0,
     portalUsedThisFrame: false,
   };
 }

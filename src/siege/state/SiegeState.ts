@@ -28,6 +28,7 @@ export interface Tower {
   kills: number;
   level: number;
   targetPriority: "closest" | "strongest" | "furthest";
+  totalInvested: number; // total gold spent on this tower (purchase + upgrades)
 }
 
 export interface Enemy {
@@ -48,6 +49,10 @@ export interface Enemy {
   burnDamage: number;
   poisonTimer: number;
   poisonDamage: number;
+  invisible: boolean; // assassin stealth
+  healCooldown: number; // mage heal cooldown
+  shieldHp: number; // absorb shield from "shielded" wave modifier
+  cavalryBursted: boolean; // whether cavalry speed burst has triggered
 }
 
 export interface Projectile {
@@ -91,6 +96,9 @@ export interface SiegeState {
   // Power-ups
   freezeTimer: number; // seconds remaining of global freeze
   meteorCooldown: number; // seconds until meteor available again
+  rallyTimer: number; // seconds remaining of rally buff (+50% fire rate)
+  rallyCooldown: number; // seconds until rally available again
+  interestAccumulator: number; // fractional gold from interest mechanic
 }
 
 // ---------------------------------------------------------------------------
@@ -192,6 +200,9 @@ export function createSiegeState(difficulty: import("../config/SiegeConfig").Dif
     elapsedTime: 0,
     freezeTimer: 0,
     meteorCooldown: 0,
+    rallyTimer: 0,
+    rallyCooldown: 0,
+    interestAccumulator: 0,
   };
 }
 
@@ -206,6 +217,7 @@ export function spawnEnemy(state: SiegeState, type: EnemyType): void {
   let armor = def.armor;
   if (state.waveModifier === "fast") speed *= 1.5;
   if (state.waveModifier === "armored") armor += 5;
+  const shieldHp = state.waveModifier === "shielded" ? 20 : 0;
   state.enemies.push({
     id: `enemy_${state.enemyIdCounter++}`,
     type, hp, maxHp: hp, speed, armor,
@@ -213,5 +225,6 @@ export function spawnEnemy(state: SiegeState, type: EnemyType): void {
     pathIndex: 0, slowTimer: 0, slowAmount: 0,
     alive: true, reachedEnd: false,
     burnTimer: 0, burnDamage: 0, poisonTimer: 0, poisonDamage: 0,
+    invisible: false, healCooldown: 0, shieldHp, cavalryBursted: false,
   });
 }
