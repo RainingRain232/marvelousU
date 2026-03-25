@@ -166,6 +166,17 @@ export class DiabloRenderer {
   private _footprintGeo: THREE.CircleGeometry | null = null;
   private _footprintMat: THREE.MeshBasicMaterial | null = null;
 
+  // Environmental destruction animation tracking
+  private _destroyingProps: {
+    obj: THREE.Object3D;
+    timer: number;
+    duration: number;
+    knockX: number;
+    knockZ: number;
+    knockSpeed: number;
+    originalScale: THREE.Vector3;
+  }[] = [];
+
   // Post-processing
   private _bloomComposer: EffectComposer | null = null;
 
@@ -27092,6 +27103,7 @@ export class DiabloRenderer {
 
     this._updateShake(dt);
     this._updateWeather(dt);
+    this._updateDestroyingProps(dt);
     this._updateParticles(state.particles, dt);
     this._renderParticles(state.particles);
 
@@ -56658,6 +56670,114 @@ export class DiabloRenderer {
       document.body.appendChild(this._fadeEl);
     }
     this._fadeEl.style.opacity = String(opacity);
+  }
+
+  /**
+   * Destroy small environmental props near an AOE impact point.
+   * Targets flowers, barrels, crates, bushes, mushrooms, and other small objects.
+   * Leaves trees, buildings, and large structures intact.
+   */
+  destroyNearbyProps(x: number, z: number, radius: number): void {
+    if (!this._envGroup) return;
+
+    const maxBoundingSize = 1.2; // Only destroy objects with bounding sphere radius below this
+    const duration = 0.5;
+    const knockDistance = 0.8;
+
+    const toRemove: THREE.Object3D[] = [];
+
+    for (const child of this._envGroup.children) {
+      // Skip if already being destroyed
+      if (this._destroyingProps.some(d => d.obj === child)) continue;
+
+      // Check distance from AOE center (xz plane)
+      const dx = child.position.x - x;
+      const dz = child.position.z - z;
+      const dist = Math.sqrt(dx * dx + dz * dz);
+      if (dist > radius) continue;
+
+      // Compute bounding sphere to filter by size - only destroy small props
+      const box = new THREE.Box3().setFromObject(child);
+      const size = new THREE.Vector3();
+      box.getSize(size);
+      const maxDim = Math.max(size.x, size.y, size.z);
+
+      // Skip large objects (trees, buildings, large rocks, carts, bridges, etc.)
+      if (maxDim > maxBoundingSize) continue;
+
+      // Skip ground plane, water, or very flat objects that are likely terrain
+      if (size.y < 0.02) continue;
+
+      // Compute knockback direction (away from AOE center)
+      const len = dist > 0.01 ? dist : 0.01;
+      const knockX = dx / len;
+      const knockZ = dz / len;
+
+      toRemove.push(child);
+      this._destroyingProps.push({
+        obj: child,
+        timer: 0,
+        duration,
+        knockX,
+        knockZ,
+        knockSpeed: knockDistance * (1 - dist / radius + 0.3),
+        originalScale: child.scale.clone(),
+      });
+    }
+  }
+
+  /** Tick destruction animations: knockback + shrink + fade, then remove from scene. */
+  private _updateDestroyingProps(dt: number): void {
+    if (this._destroyingProps.length === 0) return;
+
+    for (let i = this._destroyingProps.length - 1; i >= 0; i--) {
+      const d = this._destroyingProps[i];
+      d.timer += dt;
+      const t = Math.min(d.timer / d.duration, 1);
+
+      // Knockback (decelerating)
+      const knockFactor = (1 - t) * dt;
+      d.obj.position.x += d.knockX * d.knockSpeed * knockFactor * 4;
+      d.obj.position.z += d.knockZ * d.knockSpeed * knockFactor * 4;
+
+      // Shrink
+      const scale = 1 - t;
+      d.obj.scale.set(
+        d.originalScale.x * scale,
+        d.originalScale.y * scale,
+        d.originalScale.z * scale,
+      );
+
+      // Fade out all materials in the object
+      d.obj.traverse((node) => {
+        if ((node as THREE.Mesh).isMesh) {
+          const mat = (node as THREE.Mesh).material;
+          if (mat && !Array.isArray(mat)) {
+            const m = mat as THREE.MeshStandardMaterial;
+            if (!m.transparent) {
+              m.transparent = true;
+              m.needsUpdate = true;
+            }
+            m.opacity = Math.max(0, scale);
+          }
+        }
+      });
+
+      // Remove when done
+      if (t >= 1) {
+        d.obj.traverse((node) => {
+          if ((node as THREE.Mesh).isMesh) {
+            const mesh = node as THREE.Mesh;
+            mesh.geometry?.dispose();
+            const mat = mesh.material;
+            if (Array.isArray(mat)) mat.forEach(m => m.dispose());
+            else if (mat) (mat as THREE.Material).dispose();
+          }
+        });
+        if (d.obj.parent) d.obj.parent.remove(d.obj);
+        this._destroyingProps.splice(i, 1);
+      }
+    }
   }
 
   updateVignette(hpPercent: number): void {

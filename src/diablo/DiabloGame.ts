@@ -600,6 +600,12 @@ export class DiabloGame {
   // @ts-ignore assigned but value never read (reserved for future use)
   private _currentBgmMap: string = '';
 
+  // Skill mastery XP tracking (feature: mastery per skill)
+  private _skillMasteryXp: Map<SkillId, number> = new Map();
+
+  // Map completion reward tracking
+  private _mapClearRewardGiven: boolean = false;
+
   // Death tracking
   private _lastDeathCause: string = '';
   private _recentDamage: { source: string; amount: number; type: string; time: number }[] = [];
@@ -2385,6 +2391,7 @@ export class DiabloGame {
     this._state.killCount = 0;
     this._state.totalEnemiesSpawned = 0;
     this._state.spawnTimer = 0;
+    this._mapClearRewardGiven = false;
     this._targetEnemyId = null;
     this._fullmapVisible = false;
     if (this._fullmapCanvas) this._fullmapCanvas.style.display = "none";
@@ -7857,6 +7864,21 @@ export class DiabloGame {
     p.activeSkillId = skillId;
     p.activeSkillAnimTimer = 0.5;
 
+    // Mastery XP: increment and check thresholds
+    {
+      const prevXp = this._skillMasteryXp.get(skillId) || 0;
+      const newXp = prevXp + 1;
+      this._skillMasteryXp.set(skillId, newXp);
+      const skillName = baseDef.name.toUpperCase();
+      if (prevXp < 100 && newXp >= 100) {
+        this._addFloatingText(p.x, p.y + 4, p.z, `${skillName} MASTERED!`, '#ffd700');
+      } else if (prevXp < 500 && newXp >= 500) {
+        this._addFloatingText(p.x, p.y + 4, p.z, `${skillName} LEVEL 2!`, '#ff8800');
+      } else if (prevXp < 2000 && newXp >= 2000) {
+        this._addFloatingText(p.x, p.y + 4, p.z, `${skillName} LEVEL 3!`, '#ff4400');
+      }
+    }
+
     const worldMouse = this._getMouseWorldPos();
     const angle = Math.atan2(worldMouse.x - p.x, worldMouse.z - p.z);
     const baseDmg = this._getSkillDamage(def);
@@ -8587,6 +8609,7 @@ export class DiabloGame {
 
   private _tickAOEDamage(aoe: DiabloAOE): void {
     if (aoe.ownerId === "player") {
+      this._renderer.destroyNearbyProps(aoe.x, aoe.z, aoe.radius);
       for (const enemy of this._state.enemies) {
         if (enemy.state === EnemyState.DYING || enemy.state === EnemyState.DEAD) continue;
         const dist = this._dist(aoe.x, aoe.z, enemy.x, enemy.z);
@@ -9491,6 +9514,20 @@ export class DiabloGame {
     p.stats.longestKillStreak = Math.max(p.stats.longestKillStreak, p.stats.currentKillStreak);
     p.stats.totalGoldEarned += goldEarned;
     if (enemy.isBoss) p.stats.totalBossKills++;
+
+    // Map completion reward check
+    if (!this._mapClearRewardGiven) {
+      const killTarget = MAP_KILL_TARGET[this._state.currentMap] || 0;
+      if (killTarget > 0 && this._state.killCount >= Math.floor(killTarget * 0.9)) {
+        this._mapClearRewardGiven = true;
+        const bonus = 500;
+        p.gold += bonus;
+        this._goldEarnedTotal += bonus;
+        this._addFloatingText(p.x, p.y + 5, p.z, 'MAP CLEARED!', '#ffd700');
+        this._addFloatingText(p.x, p.y + 4, p.z, `+${bonus} Gold Bonus`, '#ffd700');
+        this._playSound('levelup');
+      }
+    }
 
     // Trigger legendary on_kill effects
     this._triggerLegendaryEffects('on_kill', {
@@ -11907,6 +11944,36 @@ export class DiabloGame {
         talkBtn.addEventListener("mouseleave", () => {
           talkBtn.style.borderColor = "#5a4a2a";
           talkBtn.style.background = "rgba(40,35,20,0.9)";
+        });
+      }
+
+      // Quick-sell button: sell all COMMON and UNCOMMON items
+      const quickSellBtn = this._menuEl.querySelector("#quick-sell-btn") as HTMLButtonElement | null;
+      if (quickSellBtn) {
+        quickSellBtn.addEventListener("click", () => {
+          let totalGold = 0;
+          let soldCount = 0;
+          for (let i = p.inventory.length - 1; i >= 0; i--) {
+            const slot = p.inventory[i];
+            if (!slot) continue;
+            const item = slot.item;
+            if (!item) continue;
+            if (item.rarity === ItemRarity.COMMON || item.rarity === ItemRarity.UNCOMMON) {
+              const sellValue = Math.max(1, Math.floor(item.value * 0.5));
+              totalGold += sellValue;
+              soldCount++;
+              p.inventory.splice(i, 1);
+            }
+          }
+          if (soldCount > 0) {
+            p.gold += totalGold;
+            this._goldEarnedTotal += totalGold;
+            this._addFloatingText(p.x, p.y + 3, p.z, `Quick Sold ${soldCount} items: +${totalGold} Gold`, '#ffd700');
+            showStatus(`Sold ${soldCount} items for ${totalGold} gold`, "#ffd700");
+          } else {
+            showStatus("No common or uncommon items to sell", "#aaaaaa");
+          }
+          renderShop();
         });
       }
     };
