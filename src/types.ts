@@ -720,6 +720,12 @@ export enum GameMode {
   CHRONOMANCER = "chronomancer",
   SHAPESHIFTER = "shapeshifter",
   VOIDWALKER = "voidwalker",
+  AGE_OF_WONDERS = "age_of_wonders",
+  LANCELOT = "lancelot",
+  SEWER_SPLASH = "sewer_splash",
+  LAKE_OF_AVALON = "lake_of_avalon",
+  TREBUCHET = "trebuchet",
+  GRAIL_KEEPER = "grail_keeper",
 }
 
 // ---------------------------------------------------------------------------

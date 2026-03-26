@@ -590,6 +590,12 @@ const GAME_MODES: GameModeEntry[] = [
     tag: "NEW",
   },
   { mode: GameMode.VOIDWALKER, label: "VOIDWALKER", desc: "Place void portals to teleport, control space & devastate enemies with shadow magic", skipSetup: true, tag: "NEW" },
+  { mode: GameMode.AGE_OF_WONDERS, label: "AGE OF WONDERS", desc: "3D hex strategy: lead heroes, recruit armies, cast spells, conquer the realm or find the Holy Grail", skipSetup: true, tag: "NEW" },
+  { mode: GameMode.LANCELOT, label: "LANCELOT", desc: "3D souls-like sword combat: duel 8 deadly knights in a torch-lit arena with parries, dodges & ripostes", skipSetup: true, tag: "NEW" },
+  { mode: GameMode.SEWER_SPLASH, label: "SEWER SPLASH", desc: "3D endless sewer surfer: ride the sewers beneath Camelot as a rat king — dodge, collect, fight bosses", skipSetup: true, tag: "NEW" },
+  { mode: GameMode.LAKE_OF_AVALON, label: "LAKE OF AVALON", desc: "3D mystical lake combat: pilot an enchanted skiff, cast spells at rising horrors, collect runes, seek Excalibur", skipSetup: true, tag: "NEW" },
+  { mode: GameMode.TREBUCHET, label: "TREBUCHET", desc: "3D siege defense: man the trebuchet atop Camelot's walls, rain boulders & fire on invading armies, upgrade between waves", skipSetup: true, tag: "NEW" },
+  { mode: GameMode.GRAIL_KEEPER, label: "GRAIL KEEPER", desc: "3D orbital arena: orbit the Holy Grail as a spectral guardian, fire holy bolts at converging demons from every direction", skipSetup: true, tag: "NEW" },
 ];
 
 // ---------------------------------------------------------------------------

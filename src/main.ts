@@ -180,6 +180,12 @@ import { RunebladeGame } from "./runeblade/RunebladeGame";
 import { ChronomancerGame } from "./chronomancer/ChronomancerGame";
 import { ShapeshifterGame } from "./shapeshifter/ShapeshifterGame";
 import { VoidwalkerGame } from "./voidwalker/VoidwalkerGame";
+import { AoWGame } from "./aow/AoWGame";
+import { LancelotGame } from "./lancelot/LancelotGame";
+import { SewerSplashGame } from "./sewersplash/SewerSplashGame";
+import { LakeOfAvalonGame } from "./avalon/LakeOfAvalonGame";
+import { TrebuchetGame } from "./trebuchet/TrebuchetGame";
+import { GrailKeeperGame } from "./grailkeeper/GrailKeeperGame";
 import { camelotHubScreen } from "@view/ui/CamelotHubScreen";
 
 // World mode imports
@@ -756,6 +762,36 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     if (menuScreen.selectedGameMode === GameMode.VOIDWALKER) {
       menuScreen.hide();
       _bootVoidwalkerGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.AGE_OF_WONDERS) {
+      menuScreen.hide();
+      _bootAoWGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.LANCELOT) {
+      menuScreen.hide();
+      _bootLancelotGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.SEWER_SPLASH) {
+      menuScreen.hide();
+      _bootSewerSplashGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.LAKE_OF_AVALON) {
+      menuScreen.hide();
+      _bootLakeOfAvalonGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.TREBUCHET) {
+      menuScreen.hide();
+      _bootTrebuchetGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.GRAIL_KEEPER) {
+      menuScreen.hide();
+      _bootGrailKeeperGame();
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.WORLD) {
@@ -3258,6 +3294,114 @@ async function _bootVoidwalkerGame(): Promise<void> {
     menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
   window.addEventListener("voidwalkerExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Age of Wonders mode boot
+// ---------------------------------------------------------------------------
+
+let _aowGame: AoWGame | null = null;
+
+async function _bootAoWGame(): Promise<void> {
+  if (_aowGame) { _aowGame.destroy(); _aowGame = null; }
+  _aowGame = new AoWGame();
+  await _aowGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("aowExit", _onExit);
+    if (_aowGame) { _aowGame.destroy(); _aowGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("aowExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Lancelot combat arena boot
+// ---------------------------------------------------------------------------
+
+let _lancelotGame: LancelotGame | null = null;
+
+async function _bootLancelotGame(): Promise<void> {
+  if (_lancelotGame) { _lancelotGame.destroy(); _lancelotGame = null; }
+  _lancelotGame = new LancelotGame();
+  await _lancelotGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("lancelotExit", _onExit);
+    if (_lancelotGame) { _lancelotGame.destroy(); _lancelotGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("lancelotExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Sewer Splash mode boot
+// ---------------------------------------------------------------------------
+
+let _sewerSplashGame: SewerSplashGame | null = null;
+
+async function _bootSewerSplashGame(): Promise<void> {
+  if (_sewerSplashGame) { _sewerSplashGame.destroy(); _sewerSplashGame = null; }
+  _sewerSplashGame = new SewerSplashGame();
+  await _sewerSplashGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("sewerSplashExit", _onExit);
+    if (_sewerSplashGame) { _sewerSplashGame.destroy(); _sewerSplashGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("sewerSplashExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Lake of Avalon mode boot
+// ---------------------------------------------------------------------------
+
+let _lakeOfAvalonGame: LakeOfAvalonGame | null = null;
+
+async function _bootLakeOfAvalonGame(): Promise<void> {
+  if (_lakeOfAvalonGame) { _lakeOfAvalonGame.destroy(); _lakeOfAvalonGame = null; }
+  _lakeOfAvalonGame = new LakeOfAvalonGame();
+  await _lakeOfAvalonGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("lakeOfAvalonExit", _onExit);
+    if (_lakeOfAvalonGame) { _lakeOfAvalonGame.destroy(); _lakeOfAvalonGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("lakeOfAvalonExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Trebuchet siege defense boot
+// ---------------------------------------------------------------------------
+
+let _trebuchetGame: TrebuchetGame | null = null;
+
+async function _bootTrebuchetGame(): Promise<void> {
+  if (_trebuchetGame) { _trebuchetGame.destroy(); _trebuchetGame = null; }
+  _trebuchetGame = new TrebuchetGame();
+  await _trebuchetGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("trebuchetExit", _onExit);
+    if (_trebuchetGame) { _trebuchetGame.destroy(); _trebuchetGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("trebuchetExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Grail Keeper mode boot
+// ---------------------------------------------------------------------------
+
+let _grailKeeperGame: GrailKeeperGame | null = null;
+
+async function _bootGrailKeeperGame(): Promise<void> {
+  if (_grailKeeperGame) { _grailKeeperGame.destroy(); _grailKeeperGame = null; }
+  _grailKeeperGame = new GrailKeeperGame();
+  await _grailKeeperGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("grailkeeperExit", _onExit);
+    if (_grailKeeperGame) { _grailKeeperGame.destroy(); _grailKeeperGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("grailkeeperExit", _onExit);
 }
 
 // ---------------------------------------------------------------------------
