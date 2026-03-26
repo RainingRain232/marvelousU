@@ -661,7 +661,7 @@ interface Fighter {
   vulnerable: boolean;
 }
 
-type Phase = "title" | "intro" | "playing" | "shop" | "game_over" | "victory" | "tournament_end" | "training" | "vs_setup" | "vs_playing" | "vs_result";
+type Phase = "title" | "intro" | "playing" | "shop" | "game_over" | "victory" | "tournament_end" | "training" | "vs_setup" | "vs_playing" | "vs_result" | "survival" | "replay";
 
 const ARMOR_PRESETS = [
   { name: "Steel", primary: "#777", accent: "#886622", skin: "#c4a080" },
@@ -898,6 +898,50 @@ export class SwordOfAvalonGame {
   // Gamepad support
   private _gamepadConnected = false;
 
+  // ── Survival / Endless Mode ──
+  private _survivalMode = false;
+  private _survivalWave = 0;
+  private _survivalKills = 0;
+  private _survivalHighScore = 0;
+  private _survivalPauseTimer = 0;
+  private _survivalShopItem: ShopItem | null = null;
+  private _survivalShopPrice = 0;
+  private _survivalShopActive = false;
+
+  // ── Story Lore Scrolls ──
+  private _loreScrolls: string[] = [
+    "The tournament of Avalon has been called. Knights from across the realm gather to prove their worth. Only the strongest shall claim the Sword.",
+    "Sir Galeth learned the art of the duel in the courts of Brittany. His technique is precise, his footwork legendary. But technique alone cannot win a war.",
+    "Sir Hector's armor was forged in dragon-fire. They say no blade has ever pierced it. But every armor has its weakness.",
+    "Lady Isolde wandered the poison marshes for seven years. The thorns taught her patience. The venom taught her cruelty.",
+    "Sir Agravain sold his soul to the shadows. He moves between moments, striking where eyes cannot follow. Light is his only enemy.",
+    "The Crimson Knight drinks the blood of the fallen. Each wound he inflicts feeds his cursed immortality. End him quickly, or not at all.",
+    "Lady Morgana was once Arthur's closest ally. Now her magic twists reality itself. Trust nothing you see when facing her.",
+    "The Black Knight guards the final gate. He has stood there for a thousand years, bound by oath and darkness. None have ever passed.",
+  ];
+  private _showingLore = false;
+  private _loreAlpha = 0;
+
+  // ── Combo Tutorial in Training ──
+  private _combosTrained = new Set<string>();
+
+  // ── Environmental Destruction (Pillars) ──
+  private _pillars: {x: number, hp: number, maxHp: number, broken: boolean, debrisTimer: number}[] = [];
+
+  // ── Dynamic Difficulty Adjustment ──
+  private _dynamicDifficulty = 0;
+  private _consecutivePlayerDeaths = 0;
+  private _consecutivePlayerWins = 0;
+  private _difficultyAdjustedNotify = 0;
+
+  // ── Kill Replay System ──
+  private _replayBuffer: {px: number, py: number, pvx: number, ax: number, ay: number, avx: number, pPose: Float64Array, aPose: Float64Array, particles: number}[] = [];
+  private _replayIndex = 0;
+  private _replayAvailable = false;
+  private _replayPlayback = false;
+  private _replayFrame = 0;
+  private _replayFrozenBuffer: {px: number, py: number, pvx: number, ax: number, ay: number, avx: number, pPose: Float64Array, aPose: Float64Array, particles: number}[] = [];
+
   private _onKeyDown = (e: KeyboardEvent) => this._handleKeyDown(e);
   private _onKeyUp = (e: KeyboardEvent) => this._handleKeyUp(e);
   private _onResize = () => this._resizeCanvas();
@@ -969,6 +1013,17 @@ export class SwordOfAvalonGame {
       if (this._phase === "training") {
         this._phase = "title";
         this._showTitle();
+        return;
+      }
+      if (this._phase === "survival" as Phase) {
+        this._survivalMode = false;
+        this._phase = "title";
+        this._showTitle();
+        return;
+      }
+      if (this._phase === "replay" as Phase) {
+        this._replayPlayback = false;
+        this._phase = "playing";
         return;
       }
       if (this._phase === "vs_playing" as Phase || this._phase === "vs_result" as Phase) {
@@ -2648,7 +2703,7 @@ export class SwordOfAvalonGame {
   }
 
   private _updateAI(ai: Fighter, player: Fighter): void {
-    if (ai.dead || this._phase !== "playing") return;
+    if (ai.dead || (this._phase !== "playing" && this._phase !== ("survival" as Phase))) return;
 
     const dx = player.x - ai.x;
     const distance = Math.abs(dx);
@@ -2666,9 +2721,10 @@ export class SwordOfAvalonGame {
     } : ENEMIES[this._currentEnemyIdx];
     const ngAgg = this._ngPlus * 0.1;
     const ngParry = this._ngPlus * 0.1;
-    const reactionFrames = Math.max(3, Math.floor(18 - (enemyDef.aggression + ngAgg) * 10 * diffMul));
-    const aggressiveness = (enemyDef.aggression + ngAgg) * diffMul + ai.whiffPunishAggBoost;
-    const parryChance = (enemyDef.parrySkill + ngParry) * diffMul;
+    const dd = this._dynamicDifficulty;
+    const reactionFrames = Math.max(3, Math.floor(18 - (enemyDef.aggression + ngAgg) * 10 * diffMul) + dd * 2);
+    const aggressiveness = Math.max(0.05, (enemyDef.aggression + ngAgg) * diffMul + ai.whiffPunishAggBoost - dd * 0.05);
+    const parryChance = Math.max(0, (enemyDef.parrySkill + ngParry) * diffMul - dd * 0.03);
     const speedMul = enemyDef.speed;
 
     // ExcaliburWielder ability: use excalibur every 200 frames
@@ -3442,31 +3498,97 @@ export class SwordOfAvalonGame {
     this._drawJoint(J.L_FOOT, 5, armorDark, sk, f);
     this._drawJoint(J.R_FOOT, 5, armorDark, sk, f);
 
+    // Boot detail — pointed toe caps
+    const lFoot = sk.bones[J.L_FOOT];
+    const rFoot = sk.bones[J.R_FOOT];
+    c.fillStyle = armorDark;
+    // Left foot toe cap
+    c.beginPath();
+    c.moveTo(lFoot.worldX * f, lFoot.worldY);
+    c.lineTo(lFoot.worldX * f + 8 * f, lFoot.worldY + 2);
+    c.lineTo(lFoot.worldX * f + 3 * f, lFoot.worldY - 3);
+    c.closePath(); c.fill();
+    // Right foot toe cap
+    c.beginPath();
+    c.moveTo(rFoot.worldX * f, rFoot.worldY);
+    c.lineTo(rFoot.worldX * f + 8 * f, rFoot.worldY + 2);
+    c.lineTo(rFoot.worldX * f + 3 * f, rFoot.worldY - 3);
+    c.closePath(); c.fill();
+
     // Torso
     this._drawLimb(J.PELVIS, J.SPINE, 10, 12, armorDark, sk, f);
     this._drawLimb(J.SPINE, J.CHEST, 12, 14, armorLight, sk, f);
     this._drawLimb(J.CHEST, J.NECK, 12, 6, armorLight, sk, f);
 
-    // Chest plate detail
+    // Armor plate segments — 3 horizontal bands across chest area
     const spine = sk.bones[J.SPINE];
+    const spX = spine.worldX * f; const spY = spine.worldY;
+    const chX = chest.worldX * f; const chY = chest.worldY;
+    c.save();
+    for (let band = 0; band < 3; band++) {
+      const t0 = (band + 0.5) / 4;
+      const t1 = (band + 1.5) / 4;
+      const bx0 = lerp(spX, chX, t0);
+      const by0 = lerp(spY, chY, t0);
+      const bx1 = lerp(spX, chX, t1);
+      const by1 = lerp(spY, chY, t1);
+      const w0 = lerp(10, 12, t0);
+      const w1 = lerp(10, 12, t1);
+      // Alternating light/dark
+      c.fillStyle = band % 2 === 0 ? armorLight : armorDark;
+      c.beginPath();
+      c.moveTo(bx0 - w0 / 2, by0);
+      c.lineTo(bx0 + w0 / 2, by0);
+      c.lineTo(bx1 + w1 / 2, by1);
+      c.lineTo(bx1 - w1 / 2, by1);
+      c.closePath();
+      c.fill();
+      // Highlight line on top edge
+      c.strokeStyle = "rgba(255,255,255,0.15)";
+      c.lineWidth = 0.5;
+      c.beginPath();
+      c.moveTo(bx0 - w0 / 2 + 1, by0);
+      c.lineTo(bx0 + w0 / 2 - 1, by0);
+      c.stroke();
+    }
+    c.restore();
+
+    // Chest plate detail
     c.strokeStyle = armorAccent; c.lineWidth = 2; c.beginPath();
     c.moveTo(spine.worldX * f - 8 * f, spine.worldY);
     c.lineTo(chest.worldX * f, chest.worldY - 4);
     c.lineTo(spine.worldX * f + 8 * f, spine.worldY); c.stroke();
 
-    // Chainmail texture on torso — subtle dots grid
+    // Chainmail texture on torso — denser diamond/cross-hatch pattern
     c.save();
     c.globalAlpha = 0.15;
     c.fillStyle = armorAccent;
-    const spX = spine.worldX * f; const spY = spine.worldY;
-    const chX = chest.worldX * f; const chY = chest.worldY;
-    for (let row = 0; row < 5; row++) {
-      const t = (row + 1) / 6;
+    for (let row = 0; row < 8; row++) {
+      const t = (row + 1) / 9;
       const rowX = lerp(spX, chX, t);
       const rowY = lerp(spY, chY, t);
-      for (let col = -2; col <= 2; col++) {
-        c.fillRect(rowX + col * 4, rowY, 1.5, 1.5);
+      for (let col = -3; col <= 3; col++) {
+        c.fillRect(rowX + col * 3.5, rowY, 1.2, 1.2);
       }
+    }
+    // Diagonal cross-hatch lines at very low alpha
+    c.globalAlpha = 0.05;
+    c.strokeStyle = armorAccent;
+    c.lineWidth = 0.5;
+    for (let i = 0; i < 6; i++) {
+      const t = (i + 1) / 7;
+      const lx = lerp(spX, chX, t);
+      const ly = lerp(spY, chY, t);
+      // Diagonal left
+      c.beginPath();
+      c.moveTo(lx - 8, ly - 4);
+      c.lineTo(lx + 8, ly + 4);
+      c.stroke();
+      // Diagonal right
+      c.beginPath();
+      c.moveTo(lx - 8, ly + 4);
+      c.lineTo(lx + 8, ly - 4);
+      c.stroke();
     }
     c.restore();
 
@@ -3522,6 +3644,25 @@ export class SwordOfAvalonGame {
     this._drawJoint(J.R_UPPER_ARM, 3, armorAccent, sk, f);
     this._drawJoint(J.L_HAND, 4, armorDark, sk, f);
     this._drawJoint(J.R_HAND, 4, armorDark, sk, f);
+
+    // Gauntlet articulation — finger plate lines on hands
+    const lHandB = sk.bones[J.L_HAND];
+    const rHandB = sk.bones[J.R_HAND];
+    c.strokeStyle = "rgba(0,0,0,0.2)";
+    c.lineWidth = 0.5;
+    for (let gi = 0; gi < 3; gi++) {
+      const offset = (gi - 1) * 2;
+      // Left hand
+      c.beginPath();
+      c.moveTo(lHandB.worldX * f - 3, lHandB.worldY + offset);
+      c.lineTo(lHandB.worldX * f + 3, lHandB.worldY + offset);
+      c.stroke();
+      // Right hand
+      c.beginPath();
+      c.moveTo(rHandB.worldX * f - 3, rHandB.worldY + offset);
+      c.lineTo(rHandB.worldX * f + 3, rHandB.worldY + offset);
+      c.stroke();
+    }
 
     // Battle scars
     if (fighter.scars.length > 0) {
@@ -3579,6 +3720,14 @@ export class SwordOfAvalonGame {
     }
     c.strokeStyle = bladeColor; c.lineWidth = 3.5;
     c.beginPath(); c.moveTo(hx, hy); c.lineTo(tipX, tipY); c.stroke();
+    // Sword fuller — thin darker line along blade center
+    c.strokeStyle = "rgba(0,0,0,0.25)"; c.lineWidth = 1;
+    const fullerStartX = hx + Math.cos(swordAngle * f) * 8 * f;
+    const fullerStartY = hy + Math.sin(swordAngle * f) * 8;
+    const fullerEndX = hx + Math.cos(swordAngle * f) * (swordLen - 6) * f;
+    const fullerEndY = hy + Math.sin(swordAngle * f) * (swordLen - 6);
+    c.beginPath(); c.moveTo(fullerStartX, fullerStartY); c.lineTo(fullerEndX, fullerEndY); c.stroke();
+    // Edge highlight
     c.strokeStyle = "#fff"; c.lineWidth = 1; c.globalAlpha = fighter.disarmedTimer > 0 ? 0.3 : 0.6;
     c.beginPath(); c.moveTo(hx, hy); c.lineTo(tipX, tipY); c.stroke();
     c.globalAlpha = 1; c.restore();
@@ -3597,7 +3746,22 @@ export class SwordOfAvalonGame {
     const head = sk.bones[J.HEAD];
     const headX = head.worldX * f, headY = head.worldY;
     c.fillStyle = armorLight; c.beginPath(); c.arc(headX, headY - 2, 10, 0, Math.PI * 2); c.fill();
-    c.fillStyle = "#111"; c.beginPath(); c.arc(headX + 3 * f, headY, 5, -0.3, 0.8); c.fill();
+
+    // Visor detail — horizontal slit (eye opening)
+    c.fillStyle = "#111";
+    c.fillRect(headX + 1 * f, headY - 2, 8 * Math.abs(f), 2.5);
+    // Vertical nose guard
+    c.strokeStyle = armorDark;
+    c.lineWidth = 1.2;
+    c.beginPath();
+    c.moveTo(headX + 4 * f, headY - 7);
+    c.lineTo(headX + 4 * f, headY + 3);
+    c.stroke();
+    // Small rivets around helmet edge (3 tiny circles)
+    c.fillStyle = armorAccent;
+    c.beginPath(); c.arc(headX - 6 * f, headY - 6, 1.2, 0, Math.PI * 2); c.fill();
+    c.beginPath(); c.arc(headX, headY - 11, 1.2, 0, Math.PI * 2); c.fill();
+    c.beginPath(); c.arc(headX + 6 * f, headY - 6, 1.2, 0, Math.PI * 2); c.fill();
 
     // Helmet plume
     c.strokeStyle = fighter.plumeColor; c.lineWidth = 3;
@@ -3606,10 +3770,10 @@ export class SwordOfAvalonGame {
     c.quadraticCurveTo(headX - 8 * f + plumeWave, headY - 22, headX - 15 * f + plumeWave, headY - 18);
     c.stroke();
 
-    // Eyes
+    // Eyes (glowing through visor slit)
     c.fillStyle = fighter.isAI ? "#c04040" : "#ddd";
-    c.fillRect(headX + 2 * f, headY - 2, 2, 1.5);
-    c.fillRect(headX + 5 * f, headY - 2, 2, 1.5);
+    c.fillRect(headX + 2 * f, headY - 1.5, 2, 1.5);
+    c.fillRect(headX + 5 * f, headY - 1.5, 2, 1.5);
 
     // Bleed indicator
     if (fighter.bleedTimer > 0) {
@@ -4495,6 +4659,9 @@ export class SwordOfAvalonGame {
         <button id="soa-training" style="padding:12px 28px;font-size:16px;font-family:Georgia,serif;
           background:rgba(212,168,67,0.12);color:#d4a843;border:1px solid rgba(212,168,67,0.4);
           border-radius:4px;cursor:pointer;letter-spacing:2px;text-transform:uppercase">TRAINING</button>
+        <button id="soa-survival" style="padding:12px 28px;font-size:16px;font-family:Georgia,serif;
+          background:linear-gradient(180deg,rgba(180,40,40,0.3) 0%,rgba(100,20,20,0.3) 100%);color:#cc4444;border:1px solid rgba(200,60,60,0.5);
+          border-radius:4px;cursor:pointer;letter-spacing:2px;text-transform:uppercase">SURVIVAL</button>
         <button id="soa-achievements" style="padding:12px 28px;font-size:16px;font-family:Georgia,serif;
           background:rgba(212,168,67,0.12);color:#d4a843;border:1px solid rgba(212,168,67,0.4);
           border-radius:4px;cursor:pointer;letter-spacing:2px;text-transform:uppercase">\u{1F3C6} ACHIEVEMENTS</button>
@@ -4615,6 +4782,13 @@ export class SwordOfAvalonGame {
       this._audioCtx?.resume();
       this._titleOverlay?.parentNode?.removeChild(this._titleOverlay); this._titleOverlay = null;
       this._startTrainingMode();
+    });
+
+    // Survival mode button
+    this._titleOverlay.querySelector("#soa-survival")!.addEventListener("click", () => {
+      this._audioCtx?.resume();
+      this._titleOverlay?.parentNode?.removeChild(this._titleOverlay); this._titleOverlay = null;
+      this._startSurvivalMode();
     });
 
     this._titleOverlay.querySelector("#soa-start")!.addEventListener("click", () => {
@@ -4741,11 +4915,29 @@ export class SwordOfAvalonGame {
     this._aiHalfHpBarked = false;
     this._dialogueTimer = 0;
 
+    // Initialize pillars
+    this._initPillars();
+
+    // Reset replay buffer
+    this._replayBuffer = [];
+    this._replayIndex = 0;
+    this._replayAvailable = false;
+    this._replayPlayback = false;
+
     // Show intro
     this._introText = `${enemy.name}`;
     this._introSubtext = `"${enemy.taunt}"`;
     this._introTimer = 120;
     this._phase = "intro";
+
+    // Show lore scroll if available for this round
+    if (!isArthurBoss && this._currentEnemyIdx < this._loreScrolls.length) {
+      this._showingLore = true;
+      this._loreAlpha = 0;
+    } else {
+      this._showingLore = false;
+    }
+
     const roundLabel = isArthurBoss ? "BONUS BOSS!" : `ROUND ${this._currentEnemyIdx + 1}!`;
     this._announce(roundLabel);
     // Fade in transition
@@ -4925,6 +5117,553 @@ export class SwordOfAvalonGame {
       this._shopOverlay?.parentNode?.removeChild(this._shopOverlay); this._shopOverlay = null;
       this._startRound();
     });
+  }
+
+  // ── Survival Mode ────────────────────────────────────────────────────────
+
+  private _startSurvivalMode(): void {
+    this._survivalMode = true;
+    this._survivalWave = 1;
+    this._survivalKills = 0;
+    this._survivalPauseTimer = 0;
+    this._survivalShopItem = null;
+    this._survivalShopActive = false;
+    this._gold = 0;
+    this._bonusStaminaRegen = 0; this._bonusDamage = 0; this._bonusDefense = 0; this._allCanBleed = false;
+    this._startingSuperMeter = 0; this._bonusPerfectWindow = 0;
+    this._playerEnchantment = "none"; this._weaponEnchant = "none";
+    this._purchasedOneTime.clear();
+    this._stats = { hitsLanded: 0, hitsTaken: 0, parries: 0, combos: 0, maxCombo: 0, ripostes: 0, goldEarned: 0 };
+    this._bloodDecals = [];
+    this._particles = [];
+    this._damageNumbers = [];
+    this._comboDisplayTimer = 0;
+    this._hitstopTimer = 0; this._shakeIntensity = 0;
+    this._slowmoTimer = 0; this._timeScale = 1;
+    this._crowdExcitement = 0;
+    this._guardBreakFlash = 0;
+    this._perfectParryRing = null;
+    this._crowdItems = [];
+    this._deathZoom = {active: false, x: 0, y: 0, scale: 1.0, targetScale: 1.3, flashAlpha: 0};
+    this._dashing = false;
+    this._dashTimer = 0;
+    this._arenaStyle = 1;
+    this._rainActive = false;
+    this._raindrops = [];
+    this._firePits = [];
+    this._firstBloodTriggered = false;
+    this._nearDeathTriggered = false;
+    this._roundDamageTaken = 0;
+    this._announceTimer = 0;
+    this._emberParticles = [];
+    this._chargeTimer = 0;
+    this._charging = false;
+    this._chargeSparks = [];
+    this._roundTimer = 99999;
+    this._pillars = [];
+
+    const armorPreset = ARMOR_PRESETS[this._selectedArmor];
+    this._player = this._createFighter(this._W * 0.3, 1, {
+      color: armorPreset.accent, armorColor: armorPreset.primary, swordColor: this._currentWeapon.color, plumeColor: armorPreset.accent,
+      name: "SIR GALAHAD", isAI: false,
+    });
+    this._player.hp = HEALTH_MAX; this._player.maxHp = HEALTH_MAX;
+
+    this._currentEnemyIdx = 0;
+    const enemy = this._generateSurvivalEnemy();
+    this._ai = this._createFighter(this._W * 0.7, -1, {
+      color: enemy.color, armorColor: enemy.armorColor, swordColor: enemy.swordColor,
+      plumeColor: enemy.plumeColor, name: enemy.name, isAI: true,
+    }, enemy);
+
+    this._phase = "survival" as Phase;
+    this._announce("SURVIVAL MODE — WAVE 1");
+  }
+
+  private _generateSurvivalEnemy(): EnemyDef {
+    const wave = this._survivalWave;
+    const hp = Math.min(200, 60 + wave * 8);
+    const damage = Math.min(1.8, 0.7 + wave * 0.06);
+    const aggression = Math.min(0.8, 0.25 + wave * 0.04);
+    const parrySkill = Math.min(0.5, wave * 0.03);
+    const speed = Math.min(1.2, 0.8 + wave * 0.02);
+
+    const palette = [
+      { color: "#664433", armorColor: "#443322" },
+      { color: "#446644", armorColor: "#334433" },
+      { color: "#554466", armorColor: "#443355" },
+      { color: "#665544", armorColor: "#554433" },
+      { color: "#884444", armorColor: "#663333" },
+      { color: "#445566", armorColor: "#334455" },
+      { color: "#666633", armorColor: "#555522" },
+      { color: "#663355", armorColor: "#552244" },
+    ];
+    const pick = palette[Math.floor(Math.random() * palette.length)];
+
+    const names = ["SIR NOBODY", "A WANDERING KNIGHT", "THE CHALLENGER", "A DARK SQUIRE", "SER BRIGAND", "THE PRETENDER", "A MERCENARY", "THE NAMELESS", "A ZEALOT", "THE DRIFTER"];
+    const name = names[Math.floor(Math.random() * names.length)];
+
+    // Abilities weighted toward "none" early, more common later
+    const abilities = ["none","none","none","ironSkin","poison","counterStrike","rage"];
+    let ability = "none";
+    if (wave >= 3) {
+      const abilityRoll = Math.random();
+      const threshold = Math.min(0.6, wave * 0.06);
+      if (abilityRoll < threshold) {
+        ability = abilities[3 + Math.floor(Math.random() * 4)];
+      }
+    }
+
+    return {
+      name, title: "",
+      color: pick.color, armorColor: pick.armorColor, swordColor: "#999", plumeColor: pick.color,
+      hp, damage, aggression, parrySkill, speed,
+      taunt: "...", defeated: "...",
+      ability, abilityDesc: "",
+    };
+  }
+
+  private _startSurvivalWave(): void {
+    this._survivalPauseTimer = 0;
+    this._survivalShopActive = false;
+    this._survivalShopItem = null;
+    this._bloodDecals = [];
+    this._particles = [];
+    this._damageNumbers = [];
+    this._comboDisplayTimer = 0;
+    this._deathZoom = {active: false, x: 0, y: 0, scale: 1.0, targetScale: 1.3, flashAlpha: 0};
+
+    // Arena gets harder looking
+    if (this._survivalWave >= 10) this._arenaStyle = 2;
+    if (this._survivalWave >= 20) this._arenaStyle = 3;
+    if (this._survivalWave >= 5) { this._rainActive = true; this._initRaindrops(); } else { this._rainActive = false; this._raindrops = []; }
+
+    const enemy = this._generateSurvivalEnemy();
+    this._ai = this._createFighter(this._W * 0.7, -1, {
+      color: enemy.color, armorColor: enemy.armorColor, swordColor: enemy.swordColor,
+      plumeColor: enemy.plumeColor, name: enemy.name, isAI: true,
+    }, enemy);
+
+    this._announce(`WAVE ${this._survivalWave}`);
+  }
+
+  private _showSurvivalResult(): void {
+    this._resultOverlay = document.createElement("div");
+    this._resultOverlay.style.cssText = `position:fixed;top:0;left:0;width:100%;height:100%;z-index:60;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      background:rgba(10,5,2,0.9);font-family:Georgia,serif;`;
+    if (this._survivalWave > this._survivalHighScore) this._survivalHighScore = this._survivalWave;
+    this._resultOverlay.innerHTML = `
+      <div style="font-size:56px;color:#cc4444;text-shadow:0 0 20px rgba(200,60,60,0.4);margin-bottom:20px;letter-spacing:6px">SURVIVAL OVER</div>
+      <div style="font-size:22px;color:#8b6914;margin-bottom:30px">You have fallen in the endless gauntlet.</div>
+      <div style="background:rgba(212,168,67,0.06);border:1px solid rgba(212,168,67,0.15);border-radius:8px;padding:20px 32px;margin-bottom:30px;text-align:left">
+        <p style="color:#a08040;font-size:17px;line-height:2">Wave Reached: <span style="color:#cc4444;font-weight:bold">${this._survivalWave}</span></p>
+        <p style="color:#a08040;font-size:17px;line-height:2">Kills: <span style="color:#d4a843">${this._survivalKills}</span></p>
+        <p style="color:#a08040;font-size:17px;line-height:2">Gold Earned: <span style="color:#ffd700">${this._gold}</span></p>
+        <p style="color:#a08040;font-size:17px;line-height:2">High Score: <span style="color:#ffd700">Wave ${this._survivalHighScore}</span></p>
+      </div>
+      <button id="soa-surv-retry" style="padding:16px 48px;font-size:22px;font-family:Georgia,serif;
+        background:linear-gradient(180deg,#cc4444 0%,#882222 100%);color:#fff;border:2px solid #cc4444;
+        border-radius:4px;cursor:pointer;letter-spacing:3px;text-transform:uppercase">TRY AGAIN</button>
+      <button id="soa-surv-quit" style="padding:16px 36px;font-size:16px;font-family:Georgia,serif;
+        background:rgba(212,168,67,0.12);color:#d4a843;border:1px solid rgba(212,168,67,0.4);
+        border-radius:4px;cursor:pointer;letter-spacing:2px;text-transform:uppercase;margin-top:12px">BACK TO TITLE</button>`;
+    document.body.appendChild(this._resultOverlay);
+    this._resultOverlay.querySelector("#soa-surv-retry")!.addEventListener("click", () => {
+      this._resultOverlay?.parentNode?.removeChild(this._resultOverlay); this._resultOverlay = null;
+      this._startSurvivalMode();
+    });
+    this._resultOverlay.querySelector("#soa-surv-quit")!.addEventListener("click", () => {
+      this._resultOverlay?.parentNode?.removeChild(this._resultOverlay); this._resultOverlay = null;
+      this._survivalMode = false;
+      this._phase = "title";
+      this._showTitle();
+    });
+  }
+
+  private _drawSurvivalHUD(): void {
+    const c = this._ctx;
+    const W = this._W;
+    // Wave and kills
+    c.save();
+    c.fillStyle = "#cc4444"; c.font = "bold 18px Georgia"; c.textAlign = "center";
+    c.fillText(`WAVE ${this._survivalWave}`, W / 2, 20);
+    c.fillStyle = "#a08040"; c.font = "14px Georgia";
+    c.fillText(`Kills: ${this._survivalKills}  |  Gold: ${this._gold}`, W / 2, 42);
+    c.restore();
+  }
+
+  // ── Lore Scrolls ──────────────────────────────────────────────────────────
+
+  private _drawLoreScroll(): void {
+    if (!this._showingLore) return;
+    const c = this._ctx;
+    const W = this._W, H = this._H;
+    // Fade in
+    this._loreAlpha = Math.min(1, this._loreAlpha + 0.03);
+    const alpha = this._loreAlpha;
+
+    c.save();
+    c.globalAlpha = alpha;
+
+    // Parchment box
+    const boxW = Math.min(600, W * 0.6);
+    const boxH = 200;
+    const bx = (W - boxW) / 2;
+    const by = (H - boxH) / 2;
+
+    c.fillStyle = "rgba(180,160,120,0.9)";
+    c.fillRect(bx, by, boxW, boxH);
+    c.strokeStyle = "#5a4020";
+    c.lineWidth = 3;
+    c.strokeRect(bx, by, boxW, boxH);
+
+    // Inner border
+    c.strokeStyle = "rgba(90,64,32,0.4)";
+    c.lineWidth = 1;
+    c.strokeRect(bx + 8, by + 8, boxW - 16, boxH - 16);
+
+    // Lore text
+    const loreIdx = Math.min(this._currentEnemyIdx, this._loreScrolls.length - 1);
+    const text = this._loreScrolls[loreIdx];
+    c.fillStyle = "#3a2810";
+    c.font = "italic 16px Georgia";
+    c.textAlign = "center";
+
+    // Word wrap
+    const maxLineW = boxW - 60;
+    const words = text.split(" ");
+    const lines: string[] = [];
+    let curLine = "";
+    for (const word of words) {
+      const test = curLine ? curLine + " " + word : word;
+      if (c.measureText(test).width > maxLineW) {
+        lines.push(curLine);
+        curLine = word;
+      } else {
+        curLine = test;
+      }
+    }
+    if (curLine) lines.push(curLine);
+
+    const lineH = 24;
+    const textStartY = by + boxH / 2 - (lines.length * lineH) / 2 + 8;
+    for (let i = 0; i < lines.length; i++) {
+      c.fillText(lines[i], W / 2, textStartY + i * lineH);
+    }
+
+    // Press any key
+    const pulse = 0.4 + Math.sin(this._frameCount * 0.06) * 0.3;
+    c.fillStyle = `rgba(58,40,16,${pulse})`;
+    c.font = "13px Georgia";
+    c.fillText("Press any key to continue", W / 2, by + boxH - 18);
+
+    c.restore();
+  }
+
+  // ── Environmental Destruction (Pillars) ────────────────────────────────
+
+  private _initPillars(): void {
+    this._pillars = [
+      { x: this._W * 0.3, hp: 40, maxHp: 40, broken: false, debrisTimer: 0 },
+      { x: this._W * 0.7, hp: 40, maxHp: 40, broken: false, debrisTimer: 0 },
+    ];
+  }
+
+  private _drawPillars(): void {
+    const c = this._ctx;
+    const groundY = this._groundY;
+    for (const pillar of this._pillars) {
+      if (pillar.broken) {
+        // Rubble
+        c.fillStyle = "#665544";
+        c.fillRect(pillar.x - 12, groundY - 8, 24, 8);
+        c.fillStyle = "#776655";
+        c.fillRect(pillar.x - 8, groundY - 12, 6, 6);
+        c.fillRect(pillar.x + 3, groundY - 10, 5, 5);
+        continue;
+      }
+      const px = pillar.x;
+      const py = groundY;
+      const w = 20;
+      const h = 80;
+
+      // Stone gradient fill
+      const grad = c.createLinearGradient(px - w / 2, py - h, px + w / 2, py);
+      grad.addColorStop(0, "#888");
+      grad.addColorStop(0.5, "#777");
+      grad.addColorStop(1, "#666");
+      c.fillStyle = grad;
+      c.fillRect(px - w / 2, py - h, w, h);
+
+      // Border
+      c.strokeStyle = "#555";
+      c.lineWidth = 1;
+      c.strokeRect(px - w / 2, py - h, w, h);
+
+      // Top cap
+      c.fillStyle = "#999";
+      c.fillRect(px - w / 2 - 2, py - h - 4, w + 4, 6);
+
+      // Crack lines based on damage
+      const dmgRatio = 1 - pillar.hp / pillar.maxHp;
+      if (dmgRatio > 0.1) {
+        c.save();
+        c.strokeStyle = `rgba(0,0,0,${dmgRatio * 0.5})`;
+        c.lineWidth = 1;
+        // Cracks
+        const numCracks = Math.floor(dmgRatio * 5) + 1;
+        for (let i = 0; i < numCracks; i++) {
+          const cy = py - h * 0.2 - i * (h * 0.15);
+          c.beginPath();
+          c.moveTo(px - w / 3, cy);
+          c.lineTo(px + (i % 2 === 0 ? 1 : -1) * w / 6, cy - 8);
+          c.lineTo(px + w / 3, cy - 3);
+          c.stroke();
+        }
+        c.restore();
+      }
+
+      // HP bar above pillar
+      if (pillar.hp < pillar.maxHp) {
+        const barW = 24;
+        const barH = 3;
+        const bx = px - barW / 2;
+        const by2 = py - h - 10;
+        c.fillStyle = "#333";
+        c.fillRect(bx, by2, barW, barH);
+        c.fillStyle = "#888";
+        c.fillRect(bx, by2, barW * (pillar.hp / pillar.maxHp), barH);
+      }
+    }
+  }
+
+  private _checkPillarCollisions(f: Fighter): void {
+    for (const pillar of this._pillars) {
+      if (pillar.broken) continue;
+      const dx = Math.abs(f.x - pillar.x);
+      if (dx < 18 && Math.abs(f.vx) > 3) {
+        // Knocked into pillar
+        pillar.hp -= 10;
+        f.hp -= 5; // Bonus damage
+        f.vx *= -0.5;
+        this._spawnDamageNumber(pillar.x, this._groundY - 60, 5, "#888");
+        this._triggerShake(6);
+        if (pillar.hp <= 0) {
+          this._shatterPillar(pillar);
+        }
+      }
+    }
+  }
+
+  private _checkPillarAttackHit(attacker: Fighter): void {
+    if (attacker.attackPhase !== "active") return;
+    for (const pillar of this._pillars) {
+      if (pillar.broken) continue;
+      const dx = Math.abs(attacker.swordTipX - pillar.x);
+      const dy = Math.abs(attacker.swordTipY - (this._groundY - 40));
+      if (dx < 20 && dy < 50) {
+        const dmg = attacker.currentAttack ? attacker.currentAttack.damage * 0.5 : 5;
+        pillar.hp -= dmg;
+        if (pillar.hp <= 0) {
+          this._shatterPillar(pillar);
+        }
+      }
+    }
+  }
+
+  private _shatterPillar(pillar: {x: number, hp: number, maxHp: number, broken: boolean, debrisTimer: number}): void {
+    pillar.broken = true;
+    pillar.hp = 0;
+    pillar.debrisTimer = 60;
+    this._announce("DESTROYED!");
+    this._triggerShake(10);
+    // Spawn stone debris particles
+    for (let i = 0; i < 18; i++) {
+      this._particles.push({
+        x: pillar.x + rand(-10, 10),
+        y: this._groundY - rand(10, 70),
+        vx: rand(-4, 4),
+        vy: rand(-6, -1),
+        life: 40 + Math.floor(rand(0, 20)),
+        maxLife: 60,
+        size: rand(2, 5),
+        color: Math.random() > 0.5 ? "#888" : "#665544",
+        type: "default",
+        grav: 0.3,
+        rot: rand(0, Math.PI * 2),
+        rotSpd: rand(-0.2, 0.2),
+      });
+    }
+  }
+
+  // ── Kill Replay System ────────────────────────────────────────────────────
+
+  private _recordReplayFrame(): void {
+    if (!this._player || !this._ai) return;
+    const entry = {
+      px: this._player.x, py: this._player.y, pvx: this._player.vx,
+      ax: this._ai.x, ay: this._ai.y, avx: this._ai.vx,
+      pPose: new Float64Array(this._player.skeleton.bones.map(b => b.angle)),
+      aPose: new Float64Array(this._ai.skeleton.bones.map(b => b.angle)),
+      particles: this._particles.length,
+    };
+    if (this._replayBuffer.length < 180) {
+      this._replayBuffer.push(entry);
+    } else {
+      this._replayBuffer[this._replayIndex] = entry;
+    }
+    this._replayIndex = (this._replayIndex + 1) % 180;
+  }
+
+  private _freezeReplayBuffer(): void {
+    // Reorder the circular buffer so it plays back in order
+    const len = this._replayBuffer.length;
+    if (len === 0) return;
+    const ordered: typeof this._replayBuffer = [];
+    for (let i = 0; i < len; i++) {
+      ordered.push(this._replayBuffer[(this._replayIndex + i) % len]);
+    }
+    this._replayFrozenBuffer = ordered;
+    this._replayAvailable = true;
+    this._replayFrame = 0;
+  }
+
+  private _drawReplay(): void {
+    const c = this._ctx;
+    const W = this._W, H = this._H;
+    const buf = this._replayFrozenBuffer;
+    if (buf.length === 0) return;
+
+    // Advance at 0.5x speed
+    const idx = Math.min(Math.floor(this._replayFrame / 2), buf.length - 1);
+    const frame = buf[idx];
+    this._replayFrame++;
+
+    // Draw background
+    this._drawBackground();
+
+    // Draw fighters at recorded positions using simple shapes
+    const drawReplayFighter = (x: number, y: number, color: string, facing: number) => {
+      const gy = y === 0 ? this._groundY : y;
+      c.save();
+      c.translate(x, gy);
+      // Simple body shape
+      c.fillStyle = color;
+      c.fillRect(-5, -70, 10, 40); // torso
+      c.beginPath(); c.arc(0, -78, 10, 0, Math.PI * 2); c.fill(); // head
+      c.fillRect(-8, -30, 6, 30); // left leg
+      c.fillRect(2, -30, 6, 30); // right leg
+      c.strokeStyle = "#ccc"; c.lineWidth = 2;
+      c.beginPath(); c.moveTo(5 * facing, -60); c.lineTo(5 * facing + 30 * facing, -55); c.stroke(); // sword
+      c.restore();
+    };
+
+    drawReplayFighter(frame.px, frame.py, "#d4a843", 1);
+    drawReplayFighter(frame.ax, frame.ay, "#cc4444", -1);
+
+    // Replay watermark
+    c.save();
+    c.fillStyle = "rgba(255,255,255,0.15)";
+    c.font = "bold 48px Georgia";
+    c.textAlign = "center";
+    c.fillText("REPLAY", W / 2, H / 2);
+    c.restore();
+
+    // Progress bar
+    const progress = idx / Math.max(1, buf.length - 1);
+    c.fillStyle = "rgba(0,0,0,0.5)";
+    c.fillRect(W * 0.2, H - 30, W * 0.6, 6);
+    c.fillStyle = "#ffd700";
+    c.fillRect(W * 0.2, H - 30, W * 0.6 * progress, 6);
+
+    // End of replay
+    if (idx >= buf.length - 1) {
+      this._replayPlayback = false;
+      // Return to previous flow
+    }
+  }
+
+  // ── Combo Tutorial Drawing ──────────────────────────────────────────────
+
+  private _drawComboTutorial(): void {
+    const c = this._ctx;
+    const W = this._W;
+
+    const comboEntries = Object.entries(COMBOS);
+    const startY = 440;
+    const panelX = W - 220;
+
+    c.save();
+    c.fillStyle = "rgba(0,0,0,0.5)";
+    c.fillRect(panelX, startY, 210, 260);
+    c.strokeStyle = "rgba(212,168,67,0.3)";
+    c.lineWidth = 1;
+    c.strokeRect(panelX, startY, 210, 260);
+
+    c.fillStyle = "#d4a843";
+    c.font = "bold 13px Georgia";
+    c.textAlign = "left";
+    c.fillText("COMBO GUIDE", panelX + 10, startY + 18);
+
+    // Completion counter
+    c.fillStyle = "#887";
+    c.font = "10px Georgia";
+    c.textAlign = "right";
+    c.fillText(`${this._combosTrained.size}/${comboEntries.length} mastered`, panelX + 200, startY + 18);
+
+    const keyMap: Record<string, string> = {
+      slash: "J", thrust: "K", overhead: "U", sweep: "I", kick: "F", feint: "SPC",
+    };
+
+    let yOff = startY + 36;
+    c.textAlign = "left";
+    for (const [seq, combo] of comboEntries) {
+      const trained = this._combosTrained.has(seq);
+      const keys = seq.split(",").map(k => keyMap[k] || k);
+
+      // Checkmark or empty box
+      c.fillStyle = trained ? "#44cc44" : "#555";
+      c.font = "11px Georgia";
+      c.fillText(trained ? "\u2713" : "\u2610", panelX + 8, yOff);
+
+      // Combo name
+      c.fillStyle = trained ? "#d4a843" : "#887";
+      c.font = "bold 10px Georgia";
+      c.fillText(combo.name, panelX + 22, yOff);
+
+      // Key sequence
+      c.fillStyle = "#a08040";
+      c.font = "9px Georgia";
+      const keyStr = keys.join(" \u2192 ");
+      c.fillText(keyStr, panelX + 22, yOff + 11);
+
+      yOff += 22;
+    }
+
+    // Highlight current combo progress
+    if (this._player && this._player.comboSequence.length > 0) {
+      const seqStr = this._player.comboSequence.join(",");
+      for (const [seq] of comboEntries) {
+        if (seq.startsWith(seqStr) && seqStr !== seq) {
+          c.fillStyle = "rgba(255,215,0,0.3)";
+          c.font = "10px Georgia";
+          c.textAlign = "center";
+          c.fillText("Building combo...", panelX + 105, startY + 252);
+          break;
+        }
+      }
+    }
+
+    c.restore();
+  }
+
+  private _checkComboTraining(): void {
+    if (this._phase !== "training" || !this._player) return;
+    const seq = this._player.comboSequence.join(",");
+    if (COMBOS[seq]) {
+      this._combosTrained.add(seq);
+    }
   }
 
   private _showResult(type: "game_over" | "tournament_end"): void {
@@ -5109,10 +5848,22 @@ export class SwordOfAvalonGame {
     // Intro phase
     if (this._phase === "intro") {
       this._frameCount++;
-      this._introTimer--;
-      if (this._introTimer <= 0) {
-        this._phase = "playing";
-        this._startTransition("fadeIn", 20, () => {});
+      this._updateInput();
+      if (this._showingLore) {
+        // Wait for any keypress to dismiss lore
+        for (const k in this._justPressed) {
+          if (this._justPressed[k]) {
+            this._showingLore = false;
+            this._loreAlpha = 0;
+            break;
+          }
+        }
+      } else {
+        this._introTimer--;
+        if (this._introTimer <= 0) {
+          this._phase = "playing";
+          this._startTransition("fadeIn", 20, () => {});
+        }
       }
     }
 
@@ -5138,6 +5889,139 @@ export class SwordOfAvalonGame {
         // Reset dummy if nearly dead
         if (this._ai.hp <= 50) { this._ai.hp = 999; this._ai.dead = false; this._ai.deathTimer = 0; this._ai.staggered = false; this._ai.knockedDown = false; }
         // ESC returns to title (handled by _handleKeyDown)
+        // Check combo training
+        this._checkComboTraining();
+      }
+    }
+
+    // Survival mode tick
+    if (this._phase === ("survival" as Phase)) {
+      if (this._survivalPauseTimer > 0) {
+        this._survivalPauseTimer--;
+        this._frameCount++;
+        this._updateInput();
+        // During pause, check for survival shop
+        if (this._survivalShopActive) {
+          if (this._justPressed["y"] || this._justPressed["j"]) {
+            // Accept shop item
+            if (this._survivalShopItem && this._gold >= this._survivalShopPrice) {
+              this._gold -= this._survivalShopPrice;
+              this._survivalShopItem.apply(this);
+              if (this._survivalShopItem.oneTime) this._purchasedOneTime.add(this._survivalShopItem.id);
+            }
+            this._survivalShopActive = false;
+            this._survivalShopItem = null;
+            this._survivalPauseTimer = 0;
+            this._startSurvivalWave();
+          } else if (this._justPressed["n"] || this._justPressed["k"]) {
+            // Decline shop item
+            this._survivalShopActive = false;
+            this._survivalShopItem = null;
+            this._survivalPauseTimer = 0;
+            this._startSurvivalWave();
+          }
+        } else if (this._survivalPauseTimer <= 0) {
+          // Check if shop offer for every 5 waves
+          if (this._survivalWave > 1 && (this._survivalWave - 1) % 5 === 0) {
+            // Offer a random shop item at half price
+            const available = SHOP_ITEMS.filter(i => !i.oneTime || !this._purchasedOneTime.has(i.id));
+            if (available.length > 0) {
+              this._survivalShopItem = available[Math.floor(Math.random() * available.length)];
+              this._survivalShopPrice = Math.floor(this._survivalShopItem.cost / 2);
+              this._survivalShopActive = true;
+              this._survivalPauseTimer = 999; // Wait for input
+            } else {
+              this._startSurvivalWave();
+            }
+          } else {
+            this._startSurvivalWave();
+          }
+        }
+      } else if (this._hitstopTimer > 0) {
+        this._hitstopTimer--;
+      } else {
+        this._frameCount++;
+        this._updateInput();
+        this._updatePlayerController(this._player);
+        this._updateAI(this._ai, this._player);
+        this._updateFighter(this._player);
+        this._updateFighter(this._ai);
+        this._checkSwordClash();
+        this._resolveCombat(this._player, this._ai);
+        this._resolveCombat(this._ai, this._player);
+        this._updateParticles();
+        this._updateShake();
+        this._updateRain();
+        this._updateEmbers();
+        this._updateGrab(this._player);
+        this._updateGrab(this._ai);
+        // Record replay buffer
+        this._recordReplayFrame();
+
+        // Check pillar collisions
+        this._checkPillarCollisions(this._player);
+        this._checkPillarCollisions(this._ai);
+        this._checkPillarAttackHit(this._player);
+        this._checkPillarAttackHit(this._ai);
+
+        // Charge sparks
+        for (let i = this._chargeSparks.length - 1; i >= 0; i--) {
+          const s = this._chargeSparks[i];
+          s.x += s.vx; s.y += s.vy; s.life--;
+          if (s.life <= 0) this._chargeSparks.splice(i, 1);
+        }
+
+        this._crowdExcitement *= 0.998;
+
+        // Death zoom
+        if (this._deathZoom.active) {
+          const dying = this._player.dead ? this._player : (this._ai.dead ? this._ai : null);
+          if (dying) {
+            if (dying.deathTimer < 40) this._deathZoom.scale = lerp(this._deathZoom.scale, this._deathZoom.targetScale, 0.05);
+            if (dying.deathTimer < 10) this._deathZoom.flashAlpha = Math.max(0, 1.0 - dying.deathTimer / 10);
+            else this._deathZoom.flashAlpha = Math.max(0, this._deathZoom.flashAlpha - 0.05);
+            if (dying.deathTimer > 50) {
+              this._deathZoom.scale = lerp(this._deathZoom.scale, 1.0, 0.05);
+              if (Math.abs(this._deathZoom.scale - 1.0) < 0.01) { this._deathZoom.active = false; this._deathZoom.scale = 1.0; }
+            }
+          }
+        }
+
+        // AI dead — next wave
+        if (this._ai.dead && this._ai.deathTimer > 80) {
+          this._survivalKills++;
+          this._survivalWave++;
+          // Heal player 20 HP
+          this._player.hp = Math.min(this._player.maxHp, this._player.hp + 20);
+          // Gold reward
+          const goldReward = 10 + this._survivalWave * 2;
+          this._gold += goldReward;
+          this._stats.goldEarned += goldReward;
+          // Short pause
+          this._survivalPauseTimer = 60;
+          this._announce(`WAVE ${this._survivalWave - 1} COMPLETE`);
+          // Freeze replay buffer
+          this._freezeReplayBuffer();
+        }
+
+        // Player dead
+        if (this._player.dead && this._player.deathTimer > 80) {
+          this._freezeReplayBuffer();
+          this._showSurvivalResult();
+          this._phase = "game_over";
+        }
+      }
+    }
+
+    // Replay mode tick
+    if (this._phase === ("replay" as Phase)) {
+      this._frameCount++;
+      this._updateInput();
+      // Check if replay finished or user pressed P/ESC
+      if (this._justPressed["escape"] || this._justPressed["p"] || !this._replayPlayback) {
+        this._replayPlayback = false;
+        // Return to previous phase (playing, which will then transition to shop/result)
+        this._phase = this._survivalMode ? "survival" as Phase : "playing";
       }
     }
 
@@ -5161,6 +6045,15 @@ export class SwordOfAvalonGame {
         this._updateFirePits();
         this._updateGrab(this._player);
         this._updateGrab(this._ai);
+
+        // Record replay buffer
+        this._recordReplayFrame();
+
+        // Pillar collisions
+        this._checkPillarCollisions(this._player);
+        this._checkPillarCollisions(this._ai);
+        this._checkPillarAttackHit(this._player);
+        this._checkPillarAttackHit(this._ai);
 
         // Update charge sparks
         for (let i = this._chargeSparks.length - 1; i >= 0; i--) {
@@ -5225,6 +6118,16 @@ export class SwordOfAvalonGame {
           }
         }
 
+        // Handle replay request (P key during death animation)
+        if (this._replayAvailable && this._justPressed["p"]) {
+          const dying = this._ai.dead ? this._ai : (this._player.dead ? this._player : null);
+          if (dying && dying.deathTimer > 60) {
+            this._replayPlayback = true;
+            this._replayFrame = 0;
+            this._phase = "replay" as Phase;
+          }
+        }
+
         // Unlock enemy weapon on defeat
         if (this._ai.dead && this._ai.deathTimer === 1) {
           const isArthurDefeated = this._ngPlus >= 1 && this._currentEnemyIdx >= ENEMIES.length;
@@ -5237,6 +6140,18 @@ export class SwordOfAvalonGame {
 
         // AI dead — advance tournament (with fade)
         if (this._ai.dead && this._ai.deathTimer > 80) {
+          // Dynamic difficulty: player wins
+          this._consecutivePlayerWins++;
+          this._consecutivePlayerDeaths = 0;
+          if (this._consecutivePlayerWins >= 3) {
+            const oldDd = this._dynamicDifficulty;
+            this._dynamicDifficulty = Math.min(3, this._dynamicDifficulty + 1);
+            if (this._dynamicDifficulty !== oldDd) this._difficultyAdjustedNotify = 120;
+            this._consecutivePlayerWins = 0;
+          }
+          // Freeze replay buffer
+          this._freezeReplayBuffer();
+
           this._currentEnemyIdx++;
           const isArthurBoss = this._ngPlus >= 1 && this._currentEnemyIdx > ENEMIES.length;
           if (isArthurBoss) {
@@ -5261,6 +6176,18 @@ export class SwordOfAvalonGame {
         }
         // Player dead
         if (this._player.dead && this._player.deathTimer > 80) {
+          // Dynamic difficulty: player loses
+          this._consecutivePlayerDeaths++;
+          this._consecutivePlayerWins = 0;
+          if (this._consecutivePlayerDeaths >= 2) {
+            const oldDd = this._dynamicDifficulty;
+            this._dynamicDifficulty = Math.max(-3, this._dynamicDifficulty - 1);
+            if (this._dynamicDifficulty !== oldDd) this._difficultyAdjustedNotify = 120;
+            this._consecutivePlayerDeaths = 0;
+          }
+          // Freeze replay buffer
+          this._freezeReplayBuffer();
+
           this._phase = "game_over";
           this._showResult("game_over");
         }
@@ -5284,12 +6211,21 @@ export class SwordOfAvalonGame {
 
     this._drawBackground();
 
+    // Replay mode rendering
+    if (this._phase === ("replay" as Phase)) {
+      this._drawReplay();
+    }
+
     if (this._phase === "playing" || this._phase === "game_over" || this._phase === "victory"
         || this._phase === "tournament_end" || this._phase === "intro" || this._phase === "training"
-        || this._phase === ("vs_playing" as Phase) || this._phase === ("vs_result" as Phase)) {
+        || this._phase === ("vs_playing" as Phase) || this._phase === ("vs_result" as Phase)
+        || this._phase === ("survival" as Phase)) {
       // Floor reflections (before fighters)
       if (this._player) this._drawFighterReflection(this._player);
       if (this._ai) this._drawFighterReflection(this._ai);
+
+      // Draw pillars (before fighters)
+      this._drawPillars();
 
       const fighters = [this._player, this._ai].filter(Boolean).sort((a, b) => a.y - b.y);
       for (const f of fighters) { this._drawSwordTrail(f.swordTrail); this._drawFighter(f); }
@@ -5373,7 +6309,79 @@ export class SwordOfAvalonGame {
       }
 
       if (this._phase !== "intro") this._drawUI();
-      if (this._phase === "training") this._drawTrainingUI();
+      if (this._phase === "training") { this._drawTrainingUI(); this._drawComboTutorial(); }
+      if (this._phase === ("survival" as Phase)) this._drawSurvivalHUD();
+
+      // Survival shop offer overlay
+      if (this._phase === ("survival" as Phase) && this._survivalShopActive && this._survivalShopItem) {
+        const sc = this._ctx;
+        const sW = this._W, sH = this._H;
+        sc.save();
+        sc.fillStyle = "rgba(0,0,0,0.6)";
+        sc.fillRect(sW / 2 - 180, sH / 2 - 80, 360, 160);
+        sc.strokeStyle = "#d4a843";
+        sc.lineWidth = 2;
+        sc.strokeRect(sW / 2 - 180, sH / 2 - 80, 360, 160);
+        sc.fillStyle = "#d4a843";
+        sc.font = "bold 18px Georgia";
+        sc.textAlign = "center";
+        sc.fillText("TRAVELING MERCHANT", sW / 2, sH / 2 - 50);
+        sc.fillStyle = "#a08040";
+        sc.font = "16px Georgia";
+        sc.fillText(this._survivalShopItem.name, sW / 2, sH / 2 - 20);
+        sc.fillStyle = "#887";
+        sc.font = "13px Georgia";
+        sc.fillText(this._survivalShopItem.desc, sW / 2, sH / 2 + 5);
+        sc.fillStyle = "#ffd700";
+        sc.font = "bold 16px Georgia";
+        sc.fillText(`${this._survivalShopPrice} Gold (You: ${this._gold})`, sW / 2, sH / 2 + 35);
+        sc.fillStyle = this._gold >= this._survivalShopPrice ? "#44cc44" : "#cc4444";
+        sc.font = "14px Georgia";
+        sc.fillText(this._gold >= this._survivalShopPrice ? "[J] Buy  [K] Decline" : "[K] Decline (not enough gold)", sW / 2, sH / 2 + 60);
+        sc.restore();
+      }
+
+      // Survival wave complete overlay
+      if (this._phase === ("survival" as Phase) && this._survivalPauseTimer > 0 && !this._survivalShopActive) {
+        const sc = this._ctx;
+        sc.save();
+        sc.fillStyle = "#d4a843";
+        sc.font = "bold 28px Georgia";
+        sc.textAlign = "center";
+        sc.fillText(`WAVE ${this._survivalWave - 1} COMPLETE`, this._W / 2, this._H / 2);
+        sc.restore();
+      }
+
+      // Replay prompt
+      if (this._replayAvailable && this._phase === "playing" && this._ai.dead && this._ai.deathTimer > 80) {
+        // Don't show in playing after death (handled by shop/result transition)
+      }
+      if (this._replayAvailable && !this._replayPlayback) {
+        const dying = this._ai.dead ? this._ai : (this._player.dead ? this._player : null);
+        if (dying && dying.deathTimer > 60 && dying.deathTimer < 80) {
+          const sc = this._ctx;
+          sc.save();
+          sc.fillStyle = "rgba(255,215,0,0.6)";
+          sc.font = "14px Georgia";
+          sc.textAlign = "center";
+          sc.fillText("PRESS P FOR REPLAY", this._W / 2, this._H - 50);
+          sc.restore();
+        }
+      }
+
+      // Dynamic difficulty adjusted notification
+      if (this._difficultyAdjustedNotify > 0) {
+        this._difficultyAdjustedNotify--;
+        const dalpha = this._difficultyAdjustedNotify > 30 ? 1 : this._difficultyAdjustedNotify / 30;
+        const sc = this._ctx;
+        sc.save();
+        sc.globalAlpha = dalpha * 0.7;
+        sc.fillStyle = "#887";
+        sc.font = "13px Georgia";
+        sc.textAlign = "center";
+        sc.fillText("DIFFICULTY ADJUSTED", this._W / 2, this._H - 35);
+        sc.restore();
+      }
     }
 
     // Intro text
@@ -5397,6 +6405,11 @@ export class SwordOfAvalonGame {
       const roundText = isArthurIntro ? "BONUS BOSS" : `Round ${this._currentEnemyIdx + 1} of ${ENEMIES.length}`;
       c.fillText(roundText, this._W / 2, this._H * 0.3 + 100);
       c.restore();
+
+      // Lore scroll overlay
+      if (this._showingLore) {
+        this._drawLoreScroll();
+      }
     }
 
     c.restore();
