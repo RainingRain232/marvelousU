@@ -86,14 +86,15 @@ interface WeaponDef {
   bleedChance: number;
   color: string;
   length: number;
+  specialAbility: { name: string; desc: string; superCost: number; };
 }
 
 const WEAPONS: WeaponDef[] = [
-  { id: "longsword", name: "Longsword", desc: "Balanced blade. Jack of all trades.", damageMul: 1.0, speedMul: 1.0, reachMul: 1.0, staminaMul: 1.0, bleedChance: 0, color: "#c8c8d0", length: 1.0 },
-  { id: "greatsword", name: "Greatsword", desc: "Massive two-hander. Slow but devastating.", damageMul: 1.4, speedMul: 1.35, reachMul: 1.2, staminaMul: 1.3, bleedChance: 0.1, color: "#aaaabc", length: 1.3 },
-  { id: "rapier", name: "Rapier", desc: "Lightning-fast thrusts. Low damage per hit.", damageMul: 0.7, speedMul: 0.65, reachMul: 1.1, staminaMul: 0.7, bleedChance: 0, color: "#d0d0e8", length: 1.1 },
-  { id: "scimitar", name: "Scimitar", desc: "Curved blade. Fast slashes that bleed.", damageMul: 0.9, speedMul: 0.8, reachMul: 0.95, staminaMul: 0.85, bleedChance: 0.25, color: "#d4b870", length: 0.95 },
-  { id: "flamberge", name: "Flamberge", desc: "Wavy blade. Disrupts blocks, high bleed.", damageMul: 1.15, speedMul: 1.1, reachMul: 1.05, staminaMul: 1.1, bleedChance: 0.35, color: "#cc6644", length: 1.05 },
+  { id: "longsword", name: "Longsword", desc: "Balanced blade. Jack of all trades.", damageMul: 1.0, speedMul: 1.0, reachMul: 1.0, staminaMul: 1.0, bleedChance: 0, color: "#c8c8d0", length: 1.0, specialAbility: { name: "JUDGEMENT CUT", desc: "Instant-range slash wave projectile", superCost: 50 } },
+  { id: "greatsword", name: "Greatsword", desc: "Massive two-hander. Slow but devastating.", damageMul: 1.4, speedMul: 1.35, reachMul: 1.2, staminaMul: 1.3, bleedChance: 0.1, color: "#aaaabc", length: 1.3, specialAbility: { name: "EARTHQUAKE", desc: "Slam ground, stagger all nearby enemies", superCost: 50 } },
+  { id: "rapier", name: "Rapier", desc: "Lightning-fast thrusts. Low damage per hit.", damageMul: 0.7, speedMul: 0.65, reachMul: 1.1, staminaMul: 0.7, bleedChance: 0, color: "#d0d0e8", length: 1.1, specialAbility: { name: "FLURRY", desc: "Rapid 5-hit thrust combo", superCost: 50 } },
+  { id: "scimitar", name: "Scimitar", desc: "Curved blade. Fast slashes that bleed.", damageMul: 0.9, speedMul: 0.8, reachMul: 0.95, staminaMul: 0.85, bleedChance: 0.25, color: "#d4b870", length: 0.95, specialAbility: { name: "WHIRLWIND", desc: "360-degree spin attack with bleed", superCost: 50 } },
+  { id: "flamberge", name: "Flamberge", desc: "Wavy blade. Disrupts blocks, high bleed.", damageMul: 1.15, speedMul: 1.1, reachMul: 1.05, staminaMul: 1.1, bleedChance: 0.35, color: "#cc6644", length: 1.05, specialAbility: { name: "SUNDER", desc: "Powerful overhead that ignores defense", superCost: 50 } },
 ];
 
 interface ComboDef {
@@ -114,6 +115,9 @@ const COMBOS: Record<string, ComboDef> = {
   "slash,kick,thrust":    { name: "GALAHAD RUSH",    dmgBonus: 1.5, effect: "stagger" },
   "feint,slash":          { name: "DECEPTIVE EDGE",  dmgBonus: 1.4, effect: "stagger" },
   "feint,thrust":         { name: "PHANTOM LUNGE",   dmgBonus: 1.5, effect: "stagger" },
+  "fury_shift":           { name: "FURY SHIFT",       dmgBonus: 1.3, effect: "none" },
+  "iron_shift":           { name: "IRON SHIFT",       dmgBonus: 1.0, effect: "none" },
+  "flow_shift":           { name: "FLOW SHIFT",       dmgBonus: 1.0, effect: "none" },
 };
 
 // ── Enemy Definitions (Tournament) ──────────────────────────────────────────
@@ -496,6 +500,12 @@ const POSES: Record<string, Float64Array> = {
     [J.R_UPPER_ARM]: 0.3, [J.R_FOREARM]: -0.1,
     [J.L_UPPER_ARM]: 0.3, [J.L_FOREARM]: -0.1,
   }),
+  taunt_pose: makePose({
+    [J.SPINE]: 0.15, [J.CHEST]: 0.2, [J.HEAD]: -0.1,
+    [J.R_UPPER_ARM]: -1.5, [J.R_FOREARM]: -0.6, [J.R_HAND]: -0.3,
+    [J.L_UPPER_ARM]: -1.5, [J.L_FOREARM]: -0.6, [J.L_HAND]: -0.3,
+    [J.L_THIGH]: 0.1, [J.R_THIGH]: -0.1,
+  }),
   excalibur_recovery: makePose({
     [J.CHEST]: 0.3, [J.SPINE]: 0.2,
     [J.R_UPPER_ARM]: 1.1, [J.R_FOREARM]: 0.3,
@@ -659,9 +669,19 @@ interface Fighter {
   disarmedTimer: number;
   // Execution finisher
   vulnerable: boolean;
+  // Momentum system
+  momentum: number;
+  momentumDecayTimer: number;
+  momentumUnstoppableAnnounced: boolean;
+  // Taunt system
+  taunting: boolean;
+  tauntTimer: number;
+  tauntSuperGained: number;
+  // Boss flag
+  isBoss: boolean;
 }
 
-type Phase = "title" | "intro" | "playing" | "shop" | "game_over" | "victory" | "tournament_end" | "training" | "vs_setup" | "vs_playing" | "vs_result" | "survival" | "replay";
+type Phase = "title" | "intro" | "playing" | "shop" | "game_over" | "victory" | "tournament_end" | "training" | "vs_setup" | "vs_playing" | "vs_result" | "survival" | "replay" | "boss_rush" | "stats";
 
 const ARMOR_PRESETS = [
   { name: "Steel", primary: "#777", accent: "#886622", skin: "#c4a080" },
@@ -954,6 +974,62 @@ export class SwordOfAvalonGame {
   private _replayFrame = 0;
   private _replayFrozenBuffer: {px: number, py: number, pvx: number, ax: number, ay: number, avx: number, pPose: Float64Array, aPose: Float64Array, particles: number}[] = [];
 
+  // ── Weapon Special Ability System ──
+  private _weaponSpecialActive = false;
+  private _weaponSpecialTimer = 0;
+  private _weaponSpecialType = "";
+  private _weaponSpecialFlashText = "";
+  private _weaponSpecialFlashTimer = 0;
+  private _projectiles: {x:number, y:number, vx:number, vy:number, damage:number, type:string, life:number, owner:string}[] = [];
+  private _poisonZones: {x: number, life: number, maxLife: number}[] = [];
+  private _vanishTimer = 0;
+  private _vanishStealth = false;
+  private _fortifyTimer = 0;
+  private _fortifyDamageReduction = 0;
+  private _voidRifts: {x: number, y: number, life: number, maxLife: number}[] = [];
+  private _flurryHitsRemaining = 0;
+  private _flurryFrameCounter = 0;
+
+  // ── Stance-Switch Combo Bonuses ──
+  private _stanceSwitchBonus: string = "none";
+  private _stanceSwitchTimer = 0;
+  private _stanceSwitchShieldActive = false;
+  private _stanceSwitchFlash = 0;
+  private _stanceSwitchFlashColor = "";
+  /* previous stance tracked inline */
+
+  // ── Boss Rush Mode ──
+  private _bossRushMode = false;
+  private _bossRushTimer = 0;
+  private _bossRushBestTime = 0;
+  private _bossRushEnemiesDefeated = 0;
+  private _bossRushOverlay: HTMLDivElement | null = null;
+
+  // ── Persistent Stats Screen ──
+  private _lifetimeStats = {
+    totalKills: 0,
+    totalDeaths: 0,
+    totalDamageDealt: 0,
+    totalDamageReceived: 0,
+    totalParries: 0,
+    totalPerfectParries: 0,
+    totalRipostes: 0,
+    totalCombos: 0,
+    highestCombo: 0,
+    totalBackstabs: 0,
+    totalExecutions: 0,
+    totalExcaliburKills: 0,
+    tournamentWins: 0,
+    survivalHighWave: 0,
+    bossRushBestTime: 0,
+    vsWins: 0,
+    totalGoldEarned: 0,
+    favoriteWeapon: "",
+    weaponKills: {} as Record<string, number>,
+    totalPlayTime: 0,
+  };
+  private _statsOverlay: HTMLDivElement | null = null;
+
   private _onKeyDown = (e: KeyboardEvent) => this._handleKeyDown(e);
   private _onKeyUp = (e: KeyboardEvent) => this._handleKeyUp(e);
   private _onResize = () => this._resizeCanvas();
@@ -1007,6 +1083,8 @@ export class SwordOfAvalonGame {
     this._shopOverlay?.parentNode?.removeChild(this._shopOverlay);
     this._vsSetupOverlay?.parentNode?.removeChild(this._vsSetupOverlay);
     this._achievementsOverlay?.parentNode?.removeChild(this._achievementsOverlay);
+    this._bossRushOverlay?.parentNode?.removeChild(this._bossRushOverlay);
+    this._statsOverlay?.parentNode?.removeChild(this._statsOverlay);
     this._canvas?.parentNode?.removeChild(this._canvas);
     this._stopMusic();
     this._audioCtx?.close().catch(() => {});
@@ -1036,6 +1114,14 @@ export class SwordOfAvalonGame {
       if (this._phase === "replay" as Phase) {
         this._replayPlayback = false;
         this._phase = "playing";
+        return;
+      }
+      if (this._bossRushMode) {
+        this._bossRushMode = false;
+        this._bossRushOverlay?.parentNode?.removeChild(this._bossRushOverlay);
+        this._bossRushOverlay = null;
+        this._phase = "title";
+        this._showTitle();
         return;
       }
       if (this._phase === "vs_playing" as Phase || this._phase === "vs_result" as Phase) {
@@ -1769,6 +1855,590 @@ export class SwordOfAvalonGame {
     if (this._crowdItems.length > 60) this._crowdItems.splice(0, 20);
   }
 
+  // ── Weapon Special Abilities ──────────────────────────────────────────
+  private _activateWeaponSpecial(): void {
+    const p = this._player;
+    const wep = this._currentWeapon;
+    if (!wep.specialAbility || p.superMeter < wep.specialAbility.superCost) return;
+    if (p.dead || p.staggered || p.knockedDown || p.dodging || p.attackPhase) return;
+    if (this._weaponSpecialActive) return;
+
+    p.superMeter -= wep.specialAbility.superCost;
+    this._weaponSpecialFlashText = wep.specialAbility.name + "!";
+    this._weaponSpecialFlashTimer = 60;
+    this._playSound("excalibur", 0.35);
+    this._triggerShake(10);
+
+    const weapId = wep.id;
+    const target = this._vsMode ? this._player2 : this._ai;
+
+    if (weapId === "longsword") {
+      // Judgement Cut: slash wave projectile
+      this._projectiles.push({ x: p.x + p.facing * 30, y: p.y - 40, vx: p.facing * 8, vy: 0, damage: 18, type: "judgementCut", life: 30, owner: "player" });
+      this._spawnSparks(p.x + p.facing * 30, p.y - 40, 10, 1.5);
+    } else if (weapId === "greatsword") {
+      // Earthquake: stagger all in 150px radius
+      this._weaponSpecialActive = true;
+      this._weaponSpecialTimer = 15;
+      this._weaponSpecialType = "earthquake";
+      this._triggerShake(20);
+      this._spawnDust(p.x, this._groundY, 20);
+      if (target && !target.dead && Math.abs(target.x - p.x) < 150) {
+        target.hp -= 12;
+        target.staggered = true;
+        target.staggerTimer = 25;
+        this._spawnDamageNumber(target.x, target.y - 30, 12, "#ff8844");
+      }
+    } else if (weapId === "rapier" || weapId === "duelistRapier") {
+      // Flurry: 5-hit rapid thrust
+      this._flurryHitsRemaining = 5;
+      this._flurryFrameCounter = 0;
+      this._weaponSpecialActive = true;
+      this._weaponSpecialTimer = 15;
+      this._weaponSpecialType = "flurry";
+    } else if (weapId === "scimitar") {
+      // Whirlwind: 360 spin attack
+      this._weaponSpecialActive = true;
+      this._weaponSpecialTimer = 10;
+      this._weaponSpecialType = "whirlwind";
+      if (target && !target.dead && Math.abs(target.x - p.x) < 80) {
+        target.hp -= 16;
+        target.bleedTimer = BLEED_DURATION;
+        this._spawnDamageNumber(target.x, target.y - 30, 16, "#d4b870");
+        this._spawnBlood(target.x, target.y - 30, 8, p.facing === 1 ? 0 : Math.PI);
+      }
+      // Spinning particle trail
+      for (let i = 0; i < 20; i++) {
+        const a = (Math.PI * 2 / 20) * i;
+        this._spawnParticle(p.x + Math.cos(a) * 40, p.y - 30 + Math.sin(a) * 20, Math.cos(a) * 3, Math.sin(a) * 3, 15, 2, "#d4b870", "spark", 0);
+      }
+    } else if (weapId === "flamberge") {
+      // Sunder: ignores defense, 30 flat damage, breaks guard
+      if (target && !target.dead && Math.abs(target.x - p.x) < 90) {
+        target.hp -= 30;
+        target.blocking = false;
+        target.stamina = 0;
+        target.staggered = true;
+        target.staggerTimer = 30;
+        this._spawnDamageNumber(target.x, target.y - 30, 30, "#cc6644");
+        this._spawnSparks(target.x, target.y - 30, 15, 2.0);
+        this._triggerShake(15);
+        this._announce("SUNDERED!");
+      }
+    } else if (weapId === "verdantBlade") {
+      // Nature's Grasp: root enemy for 40 frames
+      if (target && !target.dead && Math.abs(target.x - p.x) < 120) {
+        target.staggered = true;
+        target.staggerTimer = 40;
+        target.vx = 0;
+        this._spawnParticle(target.x, target.y, 0, 0, 40, 15, "#44aa44", "dust", 0);
+        for (let i = 0; i < 10; i++) {
+          this._spawnParticle(target.x + rand(-20, 20), this._groundY, rand(-0.5, 0.5), rand(-2, -0.5), 40, rand(3, 6), "#228822", "dust", 0);
+        }
+      }
+    } else if (weapId === "ironCleaver") {
+      // Fortify: 50% damage reduction for 120 frames
+      this._fortifyTimer = 120;
+      this._fortifyDamageReduction = 0.5;
+      this._spawnGoldenParticles(p.x, p.y - 30, 15);
+    } else if (weapId === "thornwhip") {
+      // Poison Cloud: 60px zone lasting 180 frames
+      this._poisonZones.push({ x: p.x + p.facing * 50, life: 180, maxLife: 180 });
+    } else if (weapId === "shadowDirk") {
+      // Vanish: invisible for 60 frames, next attack 2x
+      this._vanishTimer = 60;
+      this._vanishStealth = true;
+    } else if (weapId === "bloodletter") {
+      // Blood Price: sacrifice 15 HP, fill super to 100%
+      p.hp = Math.max(1, p.hp - 15);
+      p.superMeter = SUPER_METER_MAX;
+      this._spawnBlood(p.x, p.y - 30, 15, Math.PI);
+      this._spawnDamageNumber(p.x, p.y - 40, 15, "#cc4444");
+    } else if (weapId === "arcaneEdge") {
+      // Arcane Blast: purple orb projectile
+      this._projectiles.push({ x: p.x + p.facing * 30, y: p.y - 40, vx: p.facing * 8, vy: 0, damage: 22, type: "arcaneBlast", life: 30, owner: "player" });
+      this._spawnParticle(p.x + p.facing * 30, p.y - 40, 0, 0, 5, 8, "#aa66ff", "spark", 0);
+    } else if (weapId === "abyssalGreatsword") {
+      // Void Rift: gravity well at enemy position
+      if (target && !target.dead) {
+        this._voidRifts.push({ x: target.x, y: target.y - 30, life: 40, maxLife: 40 });
+      }
+    } else if (weapId === "trueExcalibur") {
+      // Divine Light: heal 30 HP, stagger all enemies
+      p.hp = Math.min(p.maxHp, p.hp + 30);
+      this._spawnGoldenParticles(p.x, p.y - 40, 25);
+      // Full screen flash
+      this._deathZoom.flashAlpha = 0.8;
+      if (target && !target.dead) {
+        target.staggered = true;
+        target.staggerTimer = 30;
+      }
+      this._announce("DIVINE LIGHT!");
+    }
+  }
+
+  private _updateProjectiles(): void {
+    const target = this._vsMode ? this._player2 : this._ai;
+    for (let i = this._projectiles.length - 1; i >= 0; i--) {
+      const proj = this._projectiles[i];
+      proj.x += proj.vx * this._timeScale;
+      proj.y += proj.vy * this._timeScale;
+      proj.life -= this._timeScale;
+      if (proj.life <= 0) { this._projectiles.splice(i, 1); continue; }
+      // Hit detection
+      if (target && !target.dead && !target.invulnerable) {
+        if (Math.abs(proj.x - target.x) < 30 && Math.abs(proj.y - (target.y - 30)) < 40) {
+          target.hp -= proj.damage;
+          target.staggered = true;
+          target.staggerTimer = 15;
+          target.vx += Math.sign(proj.vx) * 3;
+          this._spawnDamageNumber(target.x, target.y - 40, proj.damage, proj.type === "arcaneBlast" ? "#aa66ff" : "#fff");
+          this._spawnSparks(target.x, target.y - 30, 8, 1.5);
+          this._triggerShake(8);
+          this._playSound("hit", 0.3);
+          if (target.hp <= 0) {
+            target.hp = 0; target.dead = true; target.deathTimer = 0;
+            this._playSound("death", 0.4); this._triggerShake(20);
+            this._slowmoTimer = SLOWMO_DURATION; this._timeScale = SLOWMO_SCALE;
+          }
+          this._projectiles.splice(i, 1);
+          continue;
+        }
+      }
+    }
+    // Flurry hits
+    if (this._flurryHitsRemaining > 0) {
+      this._flurryFrameCounter += this._timeScale;
+      if (this._flurryFrameCounter >= 3) {
+        this._flurryFrameCounter = 0;
+        this._flurryHitsRemaining--;
+        if (target && !target.dead && Math.abs(target.x - this._player.x) < 90) {
+          target.hp -= 6;
+          target.staggered = true;
+          target.staggerTimer = 5;
+          this._spawnDamageNumber(target.x + rand(-10, 10), target.y - 30 + rand(-10, 10), 6, "#d0d0e8");
+          this._spawnSparks(target.x, target.y - 30, 3, 1.0);
+          this._playSound("hit_thrust", 0.2);
+          if (target.hp <= 0) {
+            target.hp = 0; target.dead = true; target.deathTimer = 0;
+            this._playSound("death", 0.4); this._triggerShake(20);
+          }
+        }
+        if (this._flurryHitsRemaining <= 0) {
+          this._weaponSpecialActive = false;
+        }
+      }
+    }
+    // Weapon special timer
+    if (this._weaponSpecialActive) {
+      this._weaponSpecialTimer -= this._timeScale;
+      if (this._weaponSpecialTimer <= 0 && this._weaponSpecialType !== "flurry") {
+        this._weaponSpecialActive = false;
+      }
+    }
+    // Weapon special flash text timer
+    if (this._weaponSpecialFlashTimer > 0) this._weaponSpecialFlashTimer -= this._timeScale;
+  }
+
+  private _drawProjectiles(): void {
+    const c = this._ctx;
+    for (const proj of this._projectiles) {
+      c.save();
+      if (proj.type === "judgementCut") {
+        // White crescent arc
+        const alpha = clamp(proj.life / 10, 0, 1);
+        c.globalAlpha = alpha;
+        c.strokeStyle = "#fff";
+        c.lineWidth = 3;
+        c.shadowColor = "#fff";
+        c.shadowBlur = 15;
+        c.beginPath();
+        c.arc(proj.x, proj.y, 20, -Math.PI * 0.4, Math.PI * 0.4);
+        c.stroke();
+        c.shadowBlur = 0;
+      } else if (proj.type === "arcaneBlast") {
+        // Purple orb
+        const alpha = clamp(proj.life / 10, 0, 1);
+        c.globalAlpha = alpha;
+        const grad = c.createRadialGradient(proj.x, proj.y, 2, proj.x, proj.y, 12);
+        grad.addColorStop(0, "#ee88ff");
+        grad.addColorStop(0.5, "#aa66ff");
+        grad.addColorStop(1, "rgba(100,50,200,0)");
+        c.fillStyle = grad;
+        c.beginPath();
+        c.arc(proj.x, proj.y, 12, 0, Math.PI * 2);
+        c.fill();
+      }
+      c.restore();
+    }
+  }
+
+  private _updatePoisonZones(): void {
+    const target = this._vsMode ? this._player2 : this._ai;
+    for (let i = this._poisonZones.length - 1; i >= 0; i--) {
+      const zone = this._poisonZones[i];
+      zone.life -= this._timeScale;
+      if (zone.life <= 0) { this._poisonZones.splice(i, 1); continue; }
+      // Damage anything inside
+      if (target && !target.dead && Math.abs(target.x - zone.x) < 60) {
+        target.hp -= 0.3 * this._timeScale;
+        if (this._frameCount % 15 === 0) {
+          this._spawnParticle(target.x + rand(-10, 10), target.y - rand(10, 40), rand(-0.5, 0.5), rand(-1, -0.3), 15, rand(3, 6), "#44cc44", "dust", -0.03);
+        }
+        if (target.hp <= 0) { target.hp = 0; target.dead = true; target.deathTimer = 0; this._playSound("death", 0.4); this._triggerShake(15); }
+      }
+      // Spawn poison particles
+      if (this._frameCount % 6 === 0) {
+        this._spawnParticle(zone.x + rand(-30, 30), this._groundY - rand(0, 30), rand(-0.3, 0.3), rand(-0.5, -0.2), 20, rand(4, 8), "rgba(68,204,68,0.4)", "dust", -0.02);
+      }
+    }
+  }
+
+  private _drawPoisonZones(): void {
+    const c = this._ctx;
+    for (const zone of this._poisonZones) {
+      const alpha = clamp(zone.life / zone.maxLife, 0, 0.4);
+      const grad = c.createRadialGradient(zone.x, this._groundY - 15, 5, zone.x, this._groundY - 15, 60);
+      grad.addColorStop(0, `rgba(68,204,68,${alpha})`);
+      grad.addColorStop(1, `rgba(68,204,68,0)`);
+      c.fillStyle = grad;
+      c.fillRect(zone.x - 65, this._groundY - 50, 130, 55);
+    }
+  }
+
+  private _updateVoidRifts(): void {
+    const target = this._vsMode ? this._player2 : this._ai;
+    for (let i = this._voidRifts.length - 1; i >= 0; i--) {
+      const rift = this._voidRifts[i];
+      rift.life -= this._timeScale;
+      if (rift.life <= 0) { this._voidRifts.splice(i, 1); continue; }
+      // Pull enemy toward rift and deal damage
+      if (target && !target.dead) {
+        const dx = rift.x - target.x;
+        const pullForce = 2 * (rift.life / rift.maxLife);
+        target.vx += Math.sign(dx) * pullForce * 0.1;
+        target.hp -= 5 * this._timeScale / 60;
+        if (this._frameCount % 20 === 0) {
+          this._spawnDamageNumber(target.x, target.y - 40, 5, "#4444aa");
+        }
+        if (target.hp <= 0) { target.hp = 0; target.dead = true; target.deathTimer = 0; this._playSound("death", 0.4); this._triggerShake(15); }
+      }
+    }
+  }
+
+  private _drawVoidRifts(): void {
+    const c = this._ctx;
+    for (const rift of this._voidRifts) {
+      const alpha = clamp(rift.life / rift.maxLife, 0, 0.7);
+      const pulse = Math.sin(this._frameCount * 0.2) * 5;
+      const grad = c.createRadialGradient(rift.x, rift.y, 2, rift.x, rift.y, 40 + pulse);
+      grad.addColorStop(0, `rgba(20,20,80,${alpha})`);
+      grad.addColorStop(0.5, `rgba(60,40,120,${alpha * 0.5})`);
+      grad.addColorStop(1, `rgba(0,0,0,0)`);
+      c.fillStyle = grad;
+      c.beginPath();
+      c.arc(rift.x, rift.y, 40 + pulse, 0, Math.PI * 2);
+      c.fill();
+    }
+  }
+
+  private _updateVanish(): void {
+    if (this._vanishTimer > 0) {
+      this._vanishTimer -= this._timeScale;
+      if (this._vanishTimer <= 0) {
+        this._vanishStealth = false;
+      }
+    }
+  }
+
+  private _updateFortify(): void {
+    if (this._fortifyTimer > 0) {
+      this._fortifyTimer -= this._timeScale;
+      if (this._fortifyTimer <= 0) {
+        this._fortifyDamageReduction = 0;
+      }
+    }
+  }
+
+  // ── Taunt System ────────────────────────────────────────────────────────
+  private _startTaunt(f: Fighter): void {
+    if (f.dead || f.staggered || f.knockedDown || f.dodging || f.attackPhase || f.taunting) return;
+    f.taunting = true;
+    f.tauntTimer = 40;
+    f.tauntSuperGained = 0;
+    this._announce("TAUNT!");
+    this._crowdExcitement = Math.min(1, this._crowdExcitement + 0.2);
+    this._spawnCrowdItems(2, "coin");
+  }
+
+  private _updateTaunt(f: Fighter): void {
+    if (!f.taunting) return;
+    f.tauntTimer -= this._timeScale;
+    f.targetPose = POSES.taunt_pose;
+    // Gain super over duration
+    const superPerFrame = 25 / 40;
+    f.superMeter = Math.min(SUPER_METER_MAX, f.superMeter + superPerFrame * this._timeScale);
+    f.tauntSuperGained += superPerFrame * this._timeScale;
+    if (f.tauntTimer <= 0) {
+      f.taunting = false;
+      // Taunt completed successfully: bonus super + crowd excitement
+      f.superMeter = Math.min(SUPER_METER_MAX, f.superMeter + 10);
+      this._crowdExcitement = Math.min(1, this._crowdExcitement + 0.3);
+      this._playSound("crowd", 0.2);
+    }
+  }
+
+  // ── Momentum System ─────────────────────────────────────────────────────
+  private _addMomentum(f: Fighter, amount: number): void {
+    f.momentum = Math.min(5, f.momentum + amount);
+    f.momentumDecayTimer = 90;
+    if (f.momentum >= 5 && !f.momentumUnstoppableAnnounced) {
+      f.momentumUnstoppableAnnounced = true;
+      this._announce("UNSTOPPABLE!");
+    }
+  }
+
+  private _resetMomentum(f: Fighter): void {
+    f.momentum = 0;
+    f.momentumDecayTimer = 0;
+    f.momentumUnstoppableAnnounced = false;
+  }
+
+  private _updateMomentumDecay(f: Fighter): void {
+    if (f.momentum <= 0) return;
+    if (f.attackPhase) { f.momentumDecayTimer = 90; return; }
+    f.momentumDecayTimer -= this._timeScale;
+    if (f.momentumDecayTimer <= 0) {
+      f.momentum = Math.max(0, f.momentum - 1);
+      f.momentumDecayTimer = 30;
+      if (f.momentum <= 0) f.momentumUnstoppableAnnounced = false;
+    }
+  }
+
+  private _getMomentumDamageMul(f: Fighter): number { return 1 + f.momentum * 0.05; }
+  private _getMomentumStaminaMul(f: Fighter): number { return 1 - f.momentum * 0.02; }
+  /** Momentum makes attack phases resolve faster (lower timer = faster) */
+  private _getMomentumSpeedBonus(f: Fighter): number { return f.momentum * 0.03; }
+
+  // ── Boss Rush Mode ──────────────────────────────────────────────────────
+  private _startBossRush(): void {
+    this._bossRushMode = true;
+    this._bossRushTimer = 0;
+    this._bossRushEnemiesDefeated = 0;
+    this._currentEnemyIdx = 0;
+    this._gold = 0;
+    this._purchasedOneTime.clear();
+    this._bonusStaminaRegen = 0; this._bonusDamage = 0; this._bonusDefense = 0; this._allCanBleed = false;
+    this._startingSuperMeter = 0; this._bonusPerfectWindow = 0; this._ngPlus = 0;
+    this._playerEnchantment = "none"; this._weaponEnchant = "none";
+    this._vsMode = false;
+    this._survivalMode = false;
+    this._stats = { hitsLanded: 0, hitsTaken: 0, parries: 0, combos: 0, maxCombo: 0, ripostes: 0, goldEarned: 0 };
+    this._aiMemory = {
+      playerAttackFreq: { slash: 0, thrust: 0, overhead: 0, sweep: 0, kick: 0 },
+      playerBlockRate: 0, playerDodgeRate: 0, playerParryRate: 0,
+      totalAttacksObserved: 0, totalDefensesObserved: 0,
+    };
+    this._startBossRushRound();
+  }
+
+  private _startBossRushRound(): void {
+    const enemy = ENEMIES[this._currentEnemyIdx];
+    this._bloodDecals = [];
+    this._particles = [];
+    this._damageNumbers = [];
+    this._comboDisplayTimer = 0;
+    this._hitstopTimer = 0; this._shakeIntensity = 0;
+    this._slowmoTimer = 0; this._timeScale = 1;
+    this._crowdExcitement = 0;
+    this._guardBreakFlash = 0;
+    this._perfectParryRing = null;
+    this._crowdItems = [];
+    this._deathZoom = {active: false, x: 0, y: 0, scale: 1.0, targetScale: 1.3, flashAlpha: 0};
+    this._dashing = false; this._dashTimer = 0;
+    this._chargeTimer = 0; this._charging = false; this._chargeSparks = [];
+    this._firstBloodTriggered = false;
+    this._nearDeathTriggered = false;
+    this._roundDamageTaken = 0;
+    this._announceTimer = 0;
+    this._roundPerfectParries = 0;
+    this._roundClashes = 0;
+    this._roundHitsTaken = 0;
+    this._roundStartFrame = this._frameCount;
+
+    // Arena style based on round
+    if (this._currentEnemyIdx <= 1) this._arenaStyle = 0;
+    else if (this._currentEnemyIdx <= 3) this._arenaStyle = 1;
+    else if (this._currentEnemyIdx <= 5) this._arenaStyle = 2;
+    else this._arenaStyle = 3;
+    this._rainActive = this._currentEnemyIdx >= 3;
+    if (this._rainActive) this._initRaindrops();
+    else this._raindrops = [];
+    this._firePits = this._arenaStyle >= 2 ? [{ x: this._W * 0.25, active: true }, { x: this._W * 0.75, active: true }] : [];
+    this._emberParticles = [];
+    this._lightningTimer = 0;
+
+    // Round timer: 45 seconds
+    this._roundTimer = 45 * 60;
+
+    // Keep player HP (no healing between rounds)
+    const prevHp = this._player ? this._player.hp : HEALTH_MAX;
+    const armorPreset = ARMOR_PRESETS[this._selectedArmor];
+    this._player = this._createFighter(this._W * 0.3, 1, {
+      color: armorPreset.accent, armorColor: armorPreset.primary, swordColor: this._currentWeapon.color, plumeColor: armorPreset.accent,
+      name: "SIR GALAHAD", isAI: false,
+    });
+    this._player.hp = prevHp; this._player.maxHp = HEALTH_MAX;
+
+    // Enemy with +20% HP and +10% damage
+    this._ai = this._createFighter(this._W * 0.7, -1, {
+      color: enemy.color, armorColor: enemy.armorColor, swordColor: enemy.swordColor,
+      plumeColor: enemy.plumeColor, name: enemy.name, isAI: true,
+    }, enemy);
+    this._ai.maxHp = Math.round(this._ai.maxHp * 1.2);
+    this._ai.hp = this._ai.maxHp;
+    this._ai.damageMul *= 1.1;
+
+    this._initPillars();
+    this._replayBuffer = [];
+    this._replayIndex = 0;
+    this._replayAvailable = false;
+
+    this._introText = `${enemy.name}`;
+    this._introSubtext = `"${enemy.taunt}"`;
+    this._introTimer = 80;
+    this._phase = "intro";
+    this._announce(`BOSS RUSH ${this._currentEnemyIdx + 1}/${ENEMIES.length}`);
+  }
+
+  private _showBossRushResult(victory: boolean): void {
+    this._bossRushOverlay = document.createElement("div");
+    this._bossRushOverlay.style.cssText = `position:fixed;top:0;left:0;width:100%;height:100%;z-index:60;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      background:rgba(10,5,2,0.92);font-family:Georgia,serif;`;
+    const totalSecs = Math.floor(this._bossRushTimer / 60);
+    const mins = Math.floor(totalSecs / 60);
+    const secs = totalSecs % 60;
+    const timeStr = `${mins}:${secs.toString().padStart(2, "0")}`;
+    if (victory) {
+      if (this._bossRushBestTime === 0 || this._bossRushTimer < this._bossRushBestTime) {
+        this._bossRushBestTime = this._bossRushTimer;
+        this._lifetimeStats.bossRushBestTime = this._bossRushTimer;
+      }
+    }
+    const bestSecs = Math.floor(this._bossRushBestTime / 60);
+    const bestMins = Math.floor(bestSecs / 60);
+    const bestSecsR = bestSecs % 60;
+    const bestStr = this._bossRushBestTime > 0 ? `${bestMins}:${bestSecsR.toString().padStart(2, "0")}` : "N/A";
+    this._bossRushOverlay.innerHTML = `
+      <div style="font-size:48px;color:${victory ? "#ffd700" : "#cc4444"};text-shadow:0 0 20px rgba(212,168,67,0.4);margin-bottom:20px;letter-spacing:6px">
+        ${victory ? "BOSS RUSH COMPLETE!" : "BOSS RUSH FAILED"}</div>
+      <div style="background:rgba(212,168,67,0.06);border:1px solid rgba(212,168,67,0.15);border-radius:8px;padding:20px 32px;margin-bottom:30px;text-align:left">
+        <p style="color:#a08040;font-size:17px;line-height:2">Enemies Defeated: <span style="color:#d4a843;font-weight:bold">${this._bossRushEnemiesDefeated} / ${ENEMIES.length}</span></p>
+        <p style="color:#a08040;font-size:17px;line-height:2">Total Time: <span style="color:#ffd700">${timeStr}</span></p>
+        <p style="color:#a08040;font-size:17px;line-height:2">Best Time: <span style="color:#ffd700">${bestStr}</span></p>
+      </div>
+      <div style="display:flex;gap:12px">
+        <button id="soa-br-retry" style="padding:16px 48px;font-size:22px;font-family:Georgia,serif;
+          background:linear-gradient(180deg,#d4a843 0%,#8b6914 100%);color:#1a0e05;border:2px solid #d4a843;
+          border-radius:4px;cursor:pointer;letter-spacing:3px;text-transform:uppercase">RETRY</button>
+        <button id="soa-br-quit" style="padding:16px 36px;font-size:16px;font-family:Georgia,serif;
+          background:rgba(212,168,67,0.12);color:#d4a843;border:1px solid rgba(212,168,67,0.4);
+          border-radius:4px;cursor:pointer;letter-spacing:2px;text-transform:uppercase;margin-top:0px">BACK TO TITLE</button>
+      </div>`;
+    document.body.appendChild(this._bossRushOverlay);
+    this._bossRushOverlay.querySelector("#soa-br-retry")!.addEventListener("click", () => {
+      this._bossRushOverlay?.parentNode?.removeChild(this._bossRushOverlay); this._bossRushOverlay = null;
+      this._startBossRush();
+    });
+    this._bossRushOverlay.querySelector("#soa-br-quit")!.addEventListener("click", () => {
+      this._bossRushOverlay?.parentNode?.removeChild(this._bossRushOverlay); this._bossRushOverlay = null;
+      this._bossRushMode = false;
+      this._phase = "title";
+      this._showTitle();
+    });
+  }
+
+  // ── Stats Screen ────────────────────────────────────────────────────────
+  private _showStats(): void {
+    this._statsOverlay = document.createElement("div");
+    this._statsOverlay.style.cssText = `position:fixed;top:0;left:0;width:100%;height:100%;z-index:65;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      background:rgba(10,5,2,0.95);font-family:Georgia,serif;`;
+    const s = this._lifetimeStats;
+    // Determine favorite weapon
+    let maxKills = 0;
+    let favWeapon = "None";
+    for (const [wId, kills] of Object.entries(s.weaponKills)) {
+      if (kills > maxKills) { maxKills = kills; favWeapon = wId; }
+    }
+    // Format play time
+    const totalSecs = Math.floor(s.totalPlayTime / 60);
+    const hrs = Math.floor(totalSecs / 3600);
+    const mins = Math.floor((totalSecs % 3600) / 60);
+    const secs = totalSecs % 60;
+    const timeStr = `${hrs.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+    const bestBrSecs = Math.floor(s.bossRushBestTime / 60);
+    const brMins = Math.floor(bestBrSecs / 60);
+    const brSecs = bestBrSecs % 60;
+    const brTimeStr = s.bossRushBestTime > 0 ? `${brMins}:${brSecs.toString().padStart(2, "0")}` : "N/A";
+    const section = (title: string, items: [string, string | number][]) => {
+      let h = `<div style="color:#d4a843;font-size:16px;font-weight:bold;margin:14px 0 6px 0;letter-spacing:2px">${title}</div>`;
+      for (const [label, val] of items) {
+        h += `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(100,100,80,0.15)">
+          <span style="color:#a08040;font-size:14px">${label}</span>
+          <span style="color:#fff;font-size:14px;font-weight:bold">${val}</span>
+        </div>`;
+      }
+      return h;
+    };
+    this._statsOverlay.innerHTML = `
+      <div style="font-size:36px;color:#d4a843;letter-spacing:4px;margin-bottom:20px">LIFETIME STATS</div>
+      <div style="max-height:60vh;overflow-y:auto;padding:10px 20px;width:450px;background:rgba(0,0,0,0.3);border:1px solid rgba(212,168,67,0.2);border-radius:8px">
+        ${section("COMBAT", [
+          ["Total Kills", s.totalKills],
+          ["Total Deaths", s.totalDeaths],
+          ["Total Damage Dealt", Math.round(s.totalDamageDealt)],
+          ["Total Damage Received", Math.round(s.totalDamageReceived)],
+          ["Total Backstabs", s.totalBackstabs],
+          ["Total Executions", s.totalExecutions],
+          ["Excalibur Kills", s.totalExcaliburKills],
+          ["Highest Combo", s.highestCombo],
+          ["Total Combos", s.totalCombos],
+        ])}
+        ${section("DEFENSE", [
+          ["Total Parries", s.totalParries],
+          ["Perfect Parries", s.totalPerfectParries],
+          ["Total Ripostes", s.totalRipostes],
+        ])}
+        ${section("TOURNAMENT", [
+          ["Tournament Wins", s.tournamentWins],
+          ["Total Gold Earned", s.totalGoldEarned],
+        ])}
+        ${section("SURVIVAL", [
+          ["Survival High Wave", s.survivalHighWave],
+        ])}
+        ${section("VERSUS", [
+          ["VS Wins", s.vsWins],
+        ])}
+        ${section("BOSS RUSH", [
+          ["Best Time", brTimeStr],
+        ])}
+        <div style="color:#d4a843;font-size:14px;margin-top:14px;text-align:center">
+          BEST WEAPON: <span style="color:#ffd700">${favWeapon}</span> (${maxKills} kills)
+        </div>
+        <div style="color:#887;font-size:13px;margin-top:8px;text-align:center">Play Time: ${timeStr}</div>
+      </div>
+      <button id="soa-stats-close" style="margin-top:20px;padding:12px 36px;font-size:18px;font-family:Georgia,serif;
+        background:rgba(212,168,67,0.12);color:#d4a843;border:1px solid rgba(212,168,67,0.4);
+        border-radius:4px;cursor:pointer;letter-spacing:2px">CLOSE</button>`;
+    document.body.appendChild(this._statsOverlay);
+    this._statsOverlay.querySelector("#soa-stats-close")!.addEventListener("click", () => {
+      this._statsOverlay?.parentNode?.removeChild(this._statsOverlay);
+      this._statsOverlay = null;
+    });
+  }
+
   private _updateParticles(): void {
     for (let i = this._particles.length - 1; i >= 0; i--) {
       const p = this._particles[i];
@@ -1891,6 +2561,16 @@ export class SwordOfAvalonGame {
       disarmedTimer: 0,
       // Execution
       vulnerable: false,
+      // Momentum
+      momentum: 0,
+      momentumDecayTimer: 0,
+      momentumUnstoppableAnnounced: false,
+      // Taunt
+      taunting: false,
+      tauntTimer: 0,
+      tauntSuperGained: 0,
+      // Boss
+      isBoss: false,
     };
   }
 
@@ -1909,7 +2589,16 @@ export class SwordOfAvalonGame {
 
     if (f.attackPhase === "recovery") f.comboTimer = COMBO_WINDOW;
 
-    f.stamina -= atk.stamina * (!f.isAI ? this._currentWeapon.staminaMul : 1);
+    let staminaCostMul = (!f.isAI ? this._currentWeapon.staminaMul : 1);
+    // Momentum stamina reduction
+    staminaCostMul *= this._getMomentumStaminaMul(f);
+    // Flow shift: next attack has 0 stamina cost
+    if (!f.isAI && this._stanceSwitchBonus === "flow" && this._stanceSwitchTimer > 0) {
+      staminaCostMul = 0;
+      this._stanceSwitchBonus = "none";
+      this._stanceSwitchTimer = 0;
+    }
+    f.stamina -= atk.stamina * staminaCostMul;
     // Clone the attack def to apply weapon modifiers for the player
     let modAtk = atk;
     if (!f.isAI) {
@@ -2055,6 +2744,12 @@ export class SwordOfAvalonGame {
     // Leg hit slow timer
     if (f.legHitSlowTimer > 0) f.legHitSlowTimer -= ts;
 
+    // Momentum decay
+    this._updateMomentumDecay(f);
+
+    // Taunt update
+    this._updateTaunt(f);
+
     // Vulnerable state (execution finisher)
     if (!f.vulnerable && f.hp > 0 && f.hp < f.maxHp * 0.05 && f.isAI) {
       f.vulnerable = true;
@@ -2089,7 +2784,7 @@ export class SwordOfAvalonGame {
       f.attackTimer -= ts;
       const poseKey = f.attackType + "_" + f.attackPhase;
       if (POSES[poseKey]) f.targetPose = POSES[poseKey];
-      if (f.attackPhase === "windup" && f.attackTimer <= 0) { f.attackPhase = "active"; f.attackTimer = f.currentAttack!.active * (!f.isAI ? this._currentWeapon.speedMul : 1); f.attackHit = false; }
+      if (f.attackPhase === "windup" && f.attackTimer <= 0) { f.attackPhase = "active"; f.attackTimer = f.currentAttack!.active * (!f.isAI ? this._currentWeapon.speedMul : 1) * (1 - this._getMomentumSpeedBonus(f)); f.attackHit = false; }
       else if (f.attackPhase === "active" && f.attackTimer <= 0) {
         // Track if attack missed (whiff) for AI whiff-punish
         if (!f.attackHit && !f.isAI) {
@@ -2112,7 +2807,7 @@ export class SwordOfAvalonGame {
     if (f.comboTimer > 0) { f.comboTimer -= ts; if (f.comboTimer <= 0) { f.comboCount = 0; f.comboSequence = []; } }
     if (f.blocking && !f.attackPhase && !f.staggered && !f.knockedDown && !f.dodging) f.targetPose = POSES.block;
 
-    if (!f.attackPhase && !f.blocking && !f.staggered && !f.knockedDown && !f.dodging) {
+    if (!f.attackPhase && !f.blocking && !f.staggered && !f.knockedDown && !f.dodging && !f.taunting) {
       if (f.crouching) f.targetPose = POSES.crouch;
       else if (!f.grounded) f.targetPose = POSES.jump;
       else if (Math.abs(f.vx) > 0.5) {
@@ -2260,6 +2955,10 @@ export class SwordOfAvalonGame {
         this._perfectParryRing = { x: hitX, y: hitY, r: 10, alpha: 0.9 };
         // Extra super meter
         defender.superMeter = Math.min(SUPER_METER_MAX, defender.superMeter + 25); // 15 base + 10 bonus
+        // Momentum: perfect parry gives +1
+        this._addMomentum(defender, 1);
+        // Lifetime stats
+        if (!defender.isAI) this._lifetimeStats.totalPerfectParries++;
         // Crowd throws a rose after perfect parry
         this._spawnCrowdItems(1, "rose");
       } else {
@@ -2280,6 +2979,7 @@ export class SwordOfAvalonGame {
       defender.riposteReady = true; defender.riposteTimer = RIPOSTE_WINDOW;
       if (!defender.isAI) {
         this._stats.parries++;
+        this._lifetimeStats.totalParries++;
         if (!isPerfectParry) this._spawnDamageNumber(hitX, hitY - 20, 0, "#4af");
         // Adaptive AI: track player parry
         this._aiMemory.playerParryRate++;
@@ -2362,6 +3062,7 @@ export class SwordOfAvalonGame {
       this._crowdExcitement = Math.min(1, this._crowdExcitement + 0.4);
       if (!attacker.isAI) {
         this._stats.ripostes++;
+        this._lifetimeStats.totalRipostes++;
         attacker.superMeter = Math.min(SUPER_METER_MAX, attacker.superMeter + 20);
       }
     }
@@ -2398,11 +3099,51 @@ export class SwordOfAvalonGame {
     // Player bonuses
     if (!attacker.isAI) damage *= (1 + this._bonusDamage);
 
+    // Momentum damage bonus
+    damage *= this._getMomentumDamageMul(attacker);
+
+    // Vanish stealth 2x damage bonus
+    if (!attacker.isAI && this._vanishStealth) {
+      damage *= 2;
+      this._vanishStealth = false;
+      this._vanishTimer = 0;
+      this._spawnDamageText(hitX, hitY - 50, "STEALTH STRIKE!", "#334");
+    }
+
+    // Fury Shift bonus: +30% damage on next hit
+    if (!attacker.isAI && this._stanceSwitchBonus === "fury" && this._stanceSwitchTimer > 0) {
+      damage *= 1.3;
+      this._stanceSwitchBonus = "none";
+      this._stanceSwitchTimer = 0;
+    }
+
     // Enemy ability: ironSkin
     if (defender.ability === "ironSkin") damage *= 0.7;
 
     // Player defense bonus
     if (!defender.isAI) damage /= (1 + this._bonusDefense);
+
+    // Fortify damage reduction
+    if (!defender.isAI && this._fortifyTimer > 0) {
+      damage *= (1 - this._fortifyDamageReduction);
+    }
+
+    // Taunt vulnerability: defender takes 1.5x damage while taunting
+    if (defender.taunting) {
+      damage *= 1.5;
+      defender.taunting = false;
+      defender.tauntTimer = 0;
+    }
+
+    // Iron Shift shield: absorb one hit for 0 damage
+    if (!defender.isAI && this._stanceSwitchShieldActive && this._stanceSwitchTimer > 0) {
+      damage = 0;
+      this._stanceSwitchShieldActive = false;
+      this._stanceSwitchBonus = "none";
+      this._stanceSwitchTimer = 0;
+      this._spawnDamageText(hitX, hitY - 30, "SHIELDED!", "#4488cc");
+      this._spawnSparks(hitX, hitY, 15, 1.5);
+    }
 
     // Combo check
     const seq = attacker.comboSequence.join(",");
@@ -2418,6 +3159,8 @@ export class SwordOfAvalonGame {
       this._playSound("combo", 0.4);
       if (!attacker.isAI) {
         this._stats.combos++;
+        this._lifetimeStats.totalCombos++;
+        if (attacker.comboCount > this._lifetimeStats.highestCombo) this._lifetimeStats.highestCombo = attacker.comboCount;
         attacker.superMeter = Math.min(SUPER_METER_MAX, attacker.superMeter + 12);
       }
       if (comboTriggered.effect === "knockback") defender.vx = attacker.facing * 8;
@@ -2456,6 +3199,16 @@ export class SwordOfAvalonGame {
         });
       }
     }
+
+    // Momentum: attacker gains on hit, defender resets on taking hit
+    this._addMomentum(attacker, 1);
+    if (comboTriggered) this._addMomentum(attacker, 1);
+    if (isBackstab) this._addMomentum(attacker, 1);
+    this._resetMomentum(defender);
+
+    // Lifetime stats: damage tracking
+    if (!attacker.isAI) this._lifetimeStats.totalDamageDealt += damage;
+    if (!defender.isAI) this._lifetimeStats.totalDamageReceived += damage;
 
     // Super meter: attacker gains for landing hit, defender gains for taking hit
     let attackerSuperRate = attacker.ability === "excaliburWielder" ? 1.5 : 1;
@@ -2668,7 +3421,17 @@ export class SwordOfAvalonGame {
       this._crowdExcitement = 1;
       this._playSound("crowd", 0.3);
       // Bonus gold for kill
-      if (!attacker.isAI) { this._gold += 50; this._stats.goldEarned += 50; }
+      if (!attacker.isAI) {
+        this._gold += 50; this._stats.goldEarned += 50;
+        this._lifetimeStats.totalKills++;
+        this._lifetimeStats.totalGoldEarned += 50;
+        // Track weapon kills
+        const wepId = this._currentWeapon.id;
+        this._lifetimeStats.weaponKills[wepId] = (this._lifetimeStats.weaponKills[wepId] || 0) + 1;
+        if (isExcalibur) this._lifetimeStats.totalExcaliburKills++;
+        if (isBackstab) this._lifetimeStats.totalBackstabs++;
+      }
+      if (!defender.isAI) this._lifetimeStats.totalDeaths++;
       // Kill announcement
       if (!attacker.isAI && this._roundDamageTaken === 0) {
         this._announce("FLAWLESS!");
@@ -2874,13 +3637,36 @@ export class SwordOfAvalonGame {
       else if (ai.stamina > 70 && ai.hp > ai.maxHp * 0.5) ai.stance = "aggressive";
       else ai.stance = "balanced";
     }
+
+    // AI taunt: 5% chance when far from player and low on super
+    if (distance > 150 && ai.superMeter < 30 && !ai.attackPhase && !ai.staggered && !ai.knockedDown && !ai.taunting && Math.random() < 0.0008) {
+      this._startTaunt(ai);
+    }
   }
 
   // ── Player Controller ────────────────────────────────────────────────────
 
   private _updatePlayerController(p: Fighter): void {
     if (p.dead) return;
+    if (p.taunting) {
+      // Can't do anything while taunting — if hit during taunt, handled in _resolveCombat
+      return;
+    }
     const st = STANCES[p.stance];
+
+    // Weapon Special: R+K simultaneous press when super >= 50
+    if (((this._keys["r"] && this._justPressed["k"]) || (this._keys["k"] && this._justPressed["r"])) &&
+        p.superMeter >= (this._currentWeapon.specialAbility?.superCost || 50) &&
+        !p.attackPhase && !p.staggered && !p.knockedDown && !p.dodging) {
+      this._activateWeaponSpecial();
+      return;
+    }
+
+    // Taunt: press T
+    if (this._justPressed["t"] && !p.attackPhase && !p.staggered && !p.knockedDown && !p.dodging) {
+      this._startTaunt(p);
+      return;
+    }
 
     // Input buffer: execute buffered action if window is still valid (8 frames)
     if (this._inputBuffer && this._frameCount - this._inputBuffer.time < 8) {
@@ -2924,6 +3710,8 @@ export class SwordOfAvalonGame {
         this._playSound("death", 0.5);
         this._gold += 100; this._stats.goldEarned += 100;
         this._unlockAchievement("executioner");
+        this._lifetimeStats.totalExecutions++;
+        this._lifetimeStats.totalKills++;
         this._crowdExcitement = 1;
         this._playSound("crowd", 0.3);
         this._playSound("crowd", 0.2);
@@ -3105,9 +3893,31 @@ export class SwordOfAvalonGame {
       }
     }
 
+    // Stance switching with mid-combo bonus detection
+    const oldStance = p.stance;
     if (this._justPressed["1"]) p.stance = "aggressive";
     if (this._justPressed["2"]) p.stance = "balanced";
     if (this._justPressed["3"]) p.stance = "defensive";
+    if (p.stance !== oldStance && p.comboTimer > 0) {
+      // Stance switched mid-combo!
+      if (p.stance === "aggressive") {
+        this._stanceSwitchBonus = "fury";
+        this._stanceSwitchFlashColor = "#cc4444";
+        this._announce("FURY SHIFT!");
+      } else if (p.stance === "defensive") {
+        this._stanceSwitchBonus = "iron";
+        this._stanceSwitchShieldActive = true;
+        this._stanceSwitchFlashColor = "#4488cc";
+        this._announce("IRON SHIFT!");
+      } else if (p.stance === "balanced") {
+        this._stanceSwitchBonus = "flow";
+        this._stanceSwitchFlashColor = "#d4a843";
+        this._announce("FLOW SHIFT!");
+      }
+      this._stanceSwitchTimer = 60;
+      this._stanceSwitchFlash = 8;
+    }
+    // stance tracked for next frame
   }
 
   // ── Drawing ──────────────────────────────────────────────────────────────
@@ -3536,6 +4346,48 @@ export class SwordOfAvalonGame {
         c.beginPath(); c.arc(dripX, dripY, 2, 0, Math.PI * 2); c.fill();
         c.beginPath(); c.arc(dripX, dripY + 4, 1.5, 0, Math.PI * 2); c.fill();
       }
+      c.restore();
+    }
+
+    // Boss aura glow
+    if (fighter.isBoss) {
+      c.save();
+      const bossAlpha = 0.15 + Math.sin(this._frameCount * 0.08) * 0.08;
+      const grad = c.createRadialGradient(0, -40, 5, 0, -40, 60);
+      grad.addColorStop(0, `rgba(255,100,20,${bossAlpha})`);
+      grad.addColorStop(0.5, `rgba(200,60,10,${bossAlpha * 0.5})`);
+      grad.addColorStop(1, `rgba(150,30,0,0)`);
+      c.fillStyle = grad;
+      c.beginPath();
+      c.arc(0, -40, 60, 0, Math.PI * 2);
+      c.fill();
+      c.restore();
+    }
+
+    // Momentum glow (golden glow at momentum 5)
+    if (fighter.momentum >= 5) {
+      c.save();
+      c.globalCompositeOperation = "lighter";
+      const momAlpha = 0.1 + Math.sin(this._frameCount * 0.12) * 0.05;
+      c.shadowColor = "#ffd700";
+      c.shadowBlur = 20;
+      c.fillStyle = `rgba(255,215,0,${momAlpha})`;
+      c.fillRect(-30, -80, 60, 90);
+      c.shadowBlur = 0;
+      c.restore();
+    }
+
+    // Vanish stealth visual
+    if (fighter === this._player && this._vanishStealth) {
+      c.globalAlpha = 0.1;
+    }
+
+    // Fortify visual
+    if (fighter === this._player && this._fortifyTimer > 0) {
+      c.save();
+      c.globalAlpha = 0.15;
+      c.fillStyle = "#888899";
+      c.fillRect(-30, -80, 60, 90);
       c.restore();
     }
 
@@ -4522,6 +5374,24 @@ export class SwordOfAvalonGame {
     this._drawSuperBar(margin, margin + barH + staminaH + 8, superW, superH, this._player.superMeter / SUPER_METER_MAX);
     c.fillStyle = STANCES[this._player.stance].color; c.font = "12px Georgia"; c.textAlign = "left";
     c.fillText(this._player.stance.toUpperCase(), margin, margin + barH + staminaH + superH + 22);
+    // Momentum diamonds
+    for (let mi = 0; mi < 5; mi++) {
+      const mx = margin + mi * 14;
+      const my = margin + barH + staminaH + superH + 30;
+      c.save();
+      c.translate(mx + 5, my);
+      c.rotate(Math.PI / 4);
+      if (mi < this._player.momentum) {
+        c.fillStyle = this._player.momentum >= 5 ? "#ffd700" : "#d4a843";
+        c.shadowColor = this._player.momentum >= 5 ? "#ffd700" : "transparent";
+        c.shadowBlur = this._player.momentum >= 5 ? 6 : 0;
+      } else {
+        c.fillStyle = "rgba(100,80,40,0.3)";
+      }
+      c.fillRect(-4, -4, 8, 8);
+      c.shadowBlur = 0;
+      c.restore();
+    }
 
     // Gold (not in VS mode)
     if (!this._vsMode) {
@@ -4621,7 +5491,7 @@ export class SwordOfAvalonGame {
     if (this._vsMode) {
       c.fillText("P1: WASD+J/K/U/I/F/G/L/SPACE/R  |  P2: Arrows+Numpad(1=Slash 2=Thrust 3=OH 4=Sweep 5=Kick 0=Block Enter=Dodge 7=Super 8=Grab)  ESC-Quit", W / 2, H - 12);
     } else {
-      c.fillText("J-Slash(hold=Charge)  K-Thrust  U-Overhead  I-Sweep  F-Kick  G-Grab  L-Block/Parry  SPACE-Dodge  R-Super  1/2/3-Stance  ESC-Quit", W / 2, H - 12);
+      c.fillText("J-Slash(hold=Charge)  K-Thrust  U-Overhead  I-Sweep  F-Kick  G-Grab  L-Block/Parry  SPACE-Dodge  R-Super  R+K-Special  T-Taunt  1/2/3-Stance  ESC-Quit", W / 2, H - 12);
     }
   }
 
@@ -4663,31 +5533,31 @@ export class SwordOfAvalonGame {
   private _getUnlockedWeaponDefs(): WeaponDef[] {
     const unlocked: WeaponDef[] = [];
     if (this._unlockedWeapons.has("verdantBlade")) {
-      unlocked.push({ id: "verdantBlade", name: "Verdant Blade", desc: "Cedric's blade. Slight speed bonus.", damageMul: 0.95, speedMul: 0.85, reachMul: 0.95, staminaMul: 0.85, bleedChance: 0.1, color: "#44aa44", length: 0.95 });
+      unlocked.push({ id: "verdantBlade", name: "Verdant Blade", desc: "Cedric's blade. Slight speed bonus.", damageMul: 0.95, speedMul: 0.85, reachMul: 0.95, staminaMul: 0.85, bleedChance: 0.1, color: "#44aa44", length: 0.95, specialAbility: { name: "NATURE'S GRASP", desc: "Root enemy in place for 40 frames", superCost: 50 } });
     }
     if (this._unlockedWeapons.has("duelistRapier")) {
-      unlocked.push({ id: "duelistRapier", name: "Duelist's Rapier", desc: "Galeth's precise rapier.", damageMul: 0.8, speedMul: 0.7, reachMul: 1.1, staminaMul: 0.75, bleedChance: 0, color: "#8899cc", length: 1.1 });
+      unlocked.push({ id: "duelistRapier", name: "Duelist's Rapier", desc: "Galeth's precise rapier.", damageMul: 0.8, speedMul: 0.7, reachMul: 1.1, staminaMul: 0.75, bleedChance: 0, color: "#8899cc", length: 1.1, specialAbility: { name: "FLURRY", desc: "Rapid 5-hit thrust combo", superCost: 50 } });
     }
     if (this._unlockedWeapons.has("ironCleaver")) {
-      unlocked.push({ id: "ironCleaver", name: "Iron Cleaver", desc: "Hector's iron cleaver. High damage, slow.", damageMul: 1.45, speedMul: 1.4, reachMul: 1.2, staminaMul: 1.35, bleedChance: 0.1, color: "#888899", length: 1.3 });
+      unlocked.push({ id: "ironCleaver", name: "Iron Cleaver", desc: "Hector's iron cleaver. High damage, slow.", damageMul: 1.45, speedMul: 1.4, reachMul: 1.2, staminaMul: 1.35, bleedChance: 0.1, color: "#888899", length: 1.3, specialAbility: { name: "FORTIFY", desc: "Gain 50% damage reduction for 120 frames", superCost: 50 } });
     }
     if (this._unlockedWeapons.has("thornwhip")) {
-      unlocked.push({ id: "thornwhip", name: "Thornwhip", desc: "Isolde's thorn blade. Max bleed.", damageMul: 1.0, speedMul: 1.0, reachMul: 1.05, staminaMul: 1.0, bleedChance: 0.45, color: "#dd5588", length: 1.05 });
+      unlocked.push({ id: "thornwhip", name: "Thornwhip", desc: "Isolde's thorn blade. Max bleed.", damageMul: 1.0, speedMul: 1.0, reachMul: 1.05, staminaMul: 1.0, bleedChance: 0.45, color: "#dd5588", length: 1.05, specialAbility: { name: "POISON CLOUD", desc: "Create a poison zone for 180 frames", superCost: 50 } });
     }
     if (this._unlockedWeapons.has("shadowDirk")) {
-      unlocked.push({ id: "shadowDirk", name: "Shadow Dirk", desc: "Agravain's dirk. Fastest, low reach.", damageMul: 0.7, speedMul: 0.55, reachMul: 0.8, staminaMul: 0.6, bleedChance: 0, color: "#334", length: 0.85 });
+      unlocked.push({ id: "shadowDirk", name: "Shadow Dirk", desc: "Agravain's dirk. Fastest, low reach.", damageMul: 0.7, speedMul: 0.55, reachMul: 0.8, staminaMul: 0.6, bleedChance: 0, color: "#334", length: 0.85, specialAbility: { name: "VANISH", desc: "Become invisible, next attack does 2x", superCost: 50 } });
     }
     if (this._unlockedWeapons.has("bloodletter")) {
-      unlocked.push({ id: "bloodletter", name: "Bloodletter", desc: "Crimson's blade. Lifesteal effect.", damageMul: 1.1, speedMul: 1.0, reachMul: 1.0, staminaMul: 1.0, bleedChance: 0.2, color: "#cc4444", length: 1.0 });
+      unlocked.push({ id: "bloodletter", name: "Bloodletter", desc: "Crimson's blade. Lifesteal effect.", damageMul: 1.1, speedMul: 1.0, reachMul: 1.0, staminaMul: 1.0, bleedChance: 0.2, color: "#cc4444", length: 1.0, specialAbility: { name: "BLOOD PRICE", desc: "Sacrifice 15 HP to fill super to 100%", superCost: 50 } });
     }
     if (this._unlockedWeapons.has("arcaneEdge")) {
-      unlocked.push({ id: "arcaneEdge", name: "Arcane Edge", desc: "Morgana's blade. Super charges faster.", damageMul: 0.95, speedMul: 0.9, reachMul: 1.0, staminaMul: 0.9, bleedChance: 0, color: "#aa66ff", length: 1.0 });
+      unlocked.push({ id: "arcaneEdge", name: "Arcane Edge", desc: "Morgana's blade. Super charges faster.", damageMul: 0.95, speedMul: 0.9, reachMul: 1.0, staminaMul: 0.9, bleedChance: 0, color: "#aa66ff", length: 1.0, specialAbility: { name: "ARCANE BLAST", desc: "Ranged magic projectile (22 damage)", superCost: 50 } });
     }
     if (this._unlockedWeapons.has("abyssalGreatsword")) {
-      unlocked.push({ id: "abyssalGreatsword", name: "Abyssal Greatsword", desc: "Black Knight's cursed sword. Highest damage.", damageMul: 1.5, speedMul: 1.4, reachMul: 1.25, staminaMul: 1.35, bleedChance: 0.15, color: "#4444aa", length: 1.35 });
+      unlocked.push({ id: "abyssalGreatsword", name: "Abyssal Greatsword", desc: "Black Knight's cursed sword. Highest damage.", damageMul: 1.5, speedMul: 1.4, reachMul: 1.25, staminaMul: 1.35, bleedChance: 0.15, color: "#4444aa", length: 1.35, specialAbility: { name: "VOID RIFT", desc: "Gravity well pulling enemy in, dealing damage", superCost: 50 } });
     }
     if (this._unlockedWeapons.has("trueExcalibur")) {
-      unlocked.push({ id: "trueExcalibur", name: "True Excalibur", desc: "Arthur's blade. Balanced perfection.", damageMul: 1.2, speedMul: 0.9, reachMul: 1.1, staminaMul: 0.85, bleedChance: 0.15, color: "#ffd700", length: 1.15 });
+      unlocked.push({ id: "trueExcalibur", name: "True Excalibur", desc: "Arthur's blade. Balanced perfection.", damageMul: 1.2, speedMul: 0.9, reachMul: 1.1, staminaMul: 0.85, bleedChance: 0.15, color: "#ffd700", length: 1.15, specialAbility: { name: "DIVINE LIGHT", desc: "Heal 30 HP, stagger all enemies", superCost: 50 } });
     }
     return unlocked;
   }
@@ -5131,7 +6001,9 @@ export class SwordOfAvalonGame {
           <span style="color:#d4a843;font-weight:bold">F</span> Kick &nbsp;
           <span style="color:#d4a843;font-weight:bold">L</span> Block/Parry &nbsp;
           <span style="color:#d4a843;font-weight:bold">SPACE</span> Dodge (during windup: Feint) &nbsp;
-          <span style="color:#d4a843;font-weight:bold">R</span> Super Attack<br>
+          <span style="color:#d4a843;font-weight:bold">R</span> Super Attack &nbsp;
+          <span style="color:#d4a843;font-weight:bold">R+K</span> Weapon Special &nbsp;
+          <span style="color:#d4a843;font-weight:bold">T</span> Taunt<br>
           <span style="color:#d4a843;font-weight:bold">1/2/3</span> Stance &nbsp;
           <span style="color:#88a">Parry then attack = <span style="color:#ffd700">RIPOSTE</span> (bonus damage!)</span>
         </div>
@@ -5159,6 +6031,12 @@ export class SwordOfAvalonGame {
         <button id="soa-achievements" style="padding:12px 28px;font-size:16px;font-family:Georgia,serif;
           background:rgba(212,168,67,0.12);color:#d4a843;border:1px solid rgba(212,168,67,0.4);
           border-radius:4px;cursor:pointer;letter-spacing:2px;text-transform:uppercase">\u{1F3C6} ACHIEVEMENTS</button>
+        <button id="soa-bossrush" style="padding:12px 28px;font-size:16px;font-family:Georgia,serif;
+          background:linear-gradient(180deg,rgba(200,150,40,0.3) 0%,rgba(120,80,20,0.3) 100%);color:#d4a843;border:1px solid rgba(212,168,67,0.5);
+          border-radius:4px;cursor:pointer;letter-spacing:2px;text-transform:uppercase">BOSS RUSH</button>
+        <button id="soa-stats" style="padding:12px 28px;font-size:16px;font-family:Georgia,serif;
+          background:rgba(212,168,67,0.12);color:#d4a843;border:1px solid rgba(212,168,67,0.4);
+          border-radius:4px;cursor:pointer;letter-spacing:2px;text-transform:uppercase">STATS</button>
       </div>`;
     document.body.appendChild(this._titleOverlay);
 
@@ -5269,6 +6147,18 @@ export class SwordOfAvalonGame {
     // Achievements button
     this._titleOverlay.querySelector("#soa-achievements")!.addEventListener("click", () => {
       this._showAchievements();
+    });
+
+    // Boss Rush button
+    this._titleOverlay.querySelector("#soa-bossrush")!.addEventListener("click", () => {
+      this._audioCtx?.resume();
+      this._titleOverlay?.parentNode?.removeChild(this._titleOverlay); this._titleOverlay = null;
+      this._startBossRush();
+    });
+
+    // Stats button
+    this._titleOverlay.querySelector("#soa-stats")!.addEventListener("click", () => {
+      this._showStats();
     });
 
     // Training mode button
@@ -5708,12 +6598,20 @@ export class SwordOfAvalonGame {
       }
     }
 
+    // Mini-boss every 10th wave
+    const isBossWave = wave % 10 === 0 && wave > 0;
+    const finalName = isBossWave ? `CHAMPION ${name}` : name;
+    const finalHp = isBossWave ? hp * 2 : hp;
+    const bossAbilities = ["ironSkin", "poison", "counterStrike", "rage", "lifesteal", "shadowStep"];
+    const finalAbility = isBossWave ? bossAbilities[Math.floor(Math.random() * bossAbilities.length)] : ability;
+
     return {
-      name, title: "",
+      name: finalName, title: "",
       color: pick.color, armorColor: pick.armorColor, swordColor: "#999", plumeColor: pick.color,
-      hp, damage, aggression, parrySkill, speed,
-      taunt: "...", defeated: "...",
-      ability, abilityDesc: "",
+      hp: finalHp, damage, aggression, parrySkill, speed,
+      taunt: isBossWave ? "Face the champion!" : "...",
+      defeated: isBossWave ? "The champion falls..." : "...",
+      ability: finalAbility, abilityDesc: "",
     };
   }
 
@@ -5733,12 +6631,18 @@ export class SwordOfAvalonGame {
     if (this._survivalWave >= 5) { this._rainActive = true; this._initRaindrops(); } else { this._rainActive = false; this._raindrops = []; }
 
     const enemy = this._generateSurvivalEnemy();
+    const isBossWave = this._survivalWave % 10 === 0 && this._survivalWave > 0;
     this._ai = this._createFighter(this._W * 0.7, -1, {
       color: enemy.color, armorColor: enemy.armorColor, swordColor: enemy.swordColor,
       plumeColor: enemy.plumeColor, name: enemy.name, isAI: true,
     }, enemy);
-
-    this._announce(`WAVE ${this._survivalWave}`);
+    if (isBossWave) {
+      this._ai.isBoss = true;
+      this._ai.skeleton.scale = 1.5;
+      this._announce("MINI-BOSS!");
+    } else {
+      this._announce(`WAVE ${this._survivalWave}`);
+    }
   }
 
   private _showSurvivalResult(): void {
@@ -6286,7 +7190,7 @@ export class SwordOfAvalonGame {
           if (this._vsRoundWins[0] >= 2 || this._vsRoundWins[1] >= 2) {
             // Match over
             const winner = this._vsRoundWins[0] >= 2 ? 1 : 2;
-            if (winner === 1) this._unlockAchievement("vs_victor");
+            if (winner === 1) { this._unlockAchievement("vs_victor"); this._lifetimeStats.vsWins++; }
             this._phase = "vs_result" as Phase;
             this._vsResultTimer = 0;
             this._playSound("victory", 0.4);
@@ -6449,6 +7353,17 @@ export class SwordOfAvalonGame {
         this._updateEmbers();
         this._updateGrab(this._player);
         this._updateGrab(this._ai);
+        this._updateProjectiles();
+        this._updatePoisonZones();
+        this._updateVoidRifts();
+        this._updateVanish();
+        this._updateFortify();
+        if (this._stanceSwitchTimer > 0) {
+          this._stanceSwitchTimer -= this._timeScale;
+          if (this._stanceSwitchTimer <= 0) { this._stanceSwitchBonus = "none"; this._stanceSwitchShieldActive = false; }
+        }
+        if (this._stanceSwitchFlash > 0) this._stanceSwitchFlash -= this._timeScale;
+        this._lifetimeStats.totalPlayTime++;
         // Record replay buffer
         this._recordReplayFrame();
 
@@ -6484,18 +7399,34 @@ export class SwordOfAvalonGame {
         // AI dead — next wave
         if (this._ai.dead && this._ai.deathTimer > 80) {
           this._survivalKills++;
+          const wasBoss = this._ai.isBoss;
           this._survivalWave++;
-          // Heal player 20 HP
-          this._player.hp = Math.min(this._player.maxHp, this._player.hp + 20);
-          // Gold reward
-          const goldReward = 10 + this._survivalWave * 2;
+          // Heal: 40 HP for boss kill, 20 for normal
+          this._player.hp = Math.min(this._player.maxHp, this._player.hp + (wasBoss ? 40 : 20));
+          // Gold reward (double for boss)
+          const goldReward = (10 + this._survivalWave * 2) * (wasBoss ? 2 : 1);
           this._gold += goldReward;
           this._stats.goldEarned += goldReward;
-          // Short pause
-          this._survivalPauseTimer = 60;
+          this._lifetimeStats.totalGoldEarned += goldReward;
+          // Short pause (longer for boss to show shop)
+          this._survivalPauseTimer = wasBoss ? 120 : 60;
           this._announce(`WAVE ${this._survivalWave - 1} COMPLETE`);
+          // Boss kill: offer a shop item
+          if (wasBoss) {
+            const available = SHOP_ITEMS.filter(i => !i.oneTime || !this._purchasedOneTime.has(i.id));
+            if (available.length > 0) {
+              this._survivalShopItem = available[Math.floor(Math.random() * available.length)];
+              this._survivalShopPrice = Math.floor(this._survivalShopItem.cost / 2);
+              this._survivalShopActive = true;
+              this._survivalPauseTimer = 999;
+            }
+          }
           // Freeze replay buffer
           this._freezeReplayBuffer();
+          // Update lifetime stats
+          if (this._survivalWave > this._lifetimeStats.survivalHighWave) {
+            this._lifetimeStats.survivalHighWave = this._survivalWave;
+          }
         }
 
         // Player dead
@@ -6504,6 +7435,34 @@ export class SwordOfAvalonGame {
           this._showSurvivalResult();
           this._phase = "game_over";
         }
+      }
+    }
+
+    // Boss Rush mode tick
+    if (this._bossRushMode && this._phase === "playing") {
+      this._bossRushTimer++;
+      // Check for round end
+      if (this._ai.dead && this._ai.deathTimer > 80) {
+        this._bossRushEnemiesDefeated++;
+        this._currentEnemyIdx++;
+        if (this._currentEnemyIdx >= ENEMIES.length) {
+          // Boss Rush Complete!
+          this._bossRushMode = false;
+          this._playSound("victory", 0.4);
+          this._lifetimeStats.tournamentWins++;
+          this._showBossRushResult(true);
+          this._phase = "game_over";
+          return;
+        } else {
+          this._startBossRushRound();
+          return;
+        }
+      }
+      if (this._player.dead && this._player.deathTimer > 80) {
+        this._bossRushMode = false;
+        this._showBossRushResult(false);
+        this._phase = "game_over";
+        return;
       }
     }
 
@@ -6539,6 +7498,19 @@ export class SwordOfAvalonGame {
         this._updateFirePits();
         this._updateGrab(this._player);
         this._updateGrab(this._ai);
+        this._updateProjectiles();
+        this._updatePoisonZones();
+        this._updateVoidRifts();
+        this._updateVanish();
+        this._updateFortify();
+        // Stance-switch timer decay
+        if (this._stanceSwitchTimer > 0) {
+          this._stanceSwitchTimer -= this._timeScale;
+          if (this._stanceSwitchTimer <= 0) { this._stanceSwitchBonus = "none"; this._stanceSwitchShieldActive = false; }
+        }
+        if (this._stanceSwitchFlash > 0) this._stanceSwitchFlash -= this._timeScale;
+        // Lifetime play time
+        this._lifetimeStats.totalPlayTime++;
 
         // Record replay buffer
         this._recordReplayFrame();
@@ -6653,6 +7625,7 @@ export class SwordOfAvalonGame {
             this._phase = "tournament_end";
             this._playSound("victory", 0.4);
             this._showResult("tournament_end");
+            this._lifetimeStats.tournamentWins++;
           } else if (this._currentEnemyIdx >= ENEMIES.length) {
             if (this._ngPlus >= 1) {
               // In NG+, after beating all 8, spawn Arthur
@@ -6662,6 +7635,7 @@ export class SwordOfAvalonGame {
               this._phase = "tournament_end";
               this._playSound("victory", 0.4);
               this._showResult("tournament_end");
+              this._lifetimeStats.tournamentWins++;
             }
           } else {
             this._phase = "shop";
@@ -6728,6 +7702,48 @@ export class SwordOfAvalonGame {
       // Embers (volcanic arena)
       if (this._arenaStyle === 3) this._drawEmbers();
       this._drawParticles();
+
+      // Draw projectiles, poison zones, void rifts
+      this._drawProjectiles();
+      this._drawPoisonZones();
+      this._drawVoidRifts();
+
+      // Weapon special flash text
+      if (this._weaponSpecialFlashTimer > 0) {
+        const wsAlpha = clamp(this._weaponSpecialFlashTimer / 20, 0, 1);
+        c.save();
+        c.globalAlpha = wsAlpha;
+        c.fillStyle = "#ffd700";
+        c.font = "bold 32px Georgia";
+        c.textAlign = "center";
+        c.shadowColor = "#ffd700";
+        c.shadowBlur = 20;
+        c.fillText(this._weaponSpecialFlashText, this._W / 2, this._H * 0.22);
+        c.shadowBlur = 0;
+        c.restore();
+      }
+
+      // Stance-switch flash
+      if (this._stanceSwitchFlash > 0) {
+        c.save();
+        c.globalAlpha = this._stanceSwitchFlash / 8 * 0.3;
+        c.fillStyle = this._stanceSwitchFlashColor;
+        c.fillRect(this._player.x - 30, this._player.y - 80, 60, 90);
+        c.restore();
+      }
+
+      // Boss Rush elapsed time HUD
+      if (this._bossRushMode && (this._phase === "playing" || this._phase === "intro")) {
+        const brSecs = Math.floor(this._bossRushTimer / 60);
+        const brMins = Math.floor(brSecs / 60);
+        const brSecR = brSecs % 60;
+        c.save();
+        c.fillStyle = "#d4a843";
+        c.font = "bold 16px Georgia";
+        c.textAlign = "center";
+        c.fillText(`BOSS RUSH ${this._bossRushEnemiesDefeated}/${ENEMIES.length}  |  ${brMins}:${brSecR.toString().padStart(2, "0")}`, this._W / 2, 22);
+        c.restore();
+      }
 
       // Charge bar and charge sparks
       if (this._charging && this._chargeTimer > 0) {
