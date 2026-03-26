@@ -56,6 +56,8 @@ const ATTACKS: Record<string, AttackDef> = {
   kick:     { damage: KICK_DAMAGE, stamina: KICK_STAMINA, windup: 6, active: 4, recovery: 10, reach: KICK_RANGE, arc: 0.5 },
   airSlash: { damage: 14, stamina: 14, windup: 6,  active: 6, recovery: 8, reach: 75, arc: 1.3 },
   excalibur:{ damage: 40, stamina: 0,  windup: 12, active: 8, recovery: 14, reach: 90, arc: 1.8 },
+  chargedSlash: { damage: 24, stamina: 25, windup: 3, active: 6, recovery: 14, reach: 75, arc: 1.4, canBleed: true },
+  grab:     { damage: 15, stamina: 18, windup: 8, active: 6, recovery: 12, reach: 40, arc: 0.5 },
 };
 
 interface StanceDef {
@@ -395,6 +397,39 @@ const POSES: Record<string, Float64Array> = {
     [J.R_UPPER_ARM]: 1.6, [J.R_FOREARM]: 0.6, [J.R_HAND]: 0.4,
     [J.L_UPPER_ARM]: -0.5, [J.L_FOREARM]: 0.3,
   }),
+  // Charged slash poses (reuse overhead)
+  chargedSlash_windup: makePose({
+    [J.CHEST]: -0.4, [J.SPINE]: -0.2,
+    [J.R_UPPER_ARM]: -1.8, [J.R_FOREARM]: -1.0, [J.R_HAND]: -0.5,
+    [J.L_UPPER_ARM]: -0.5, [J.L_FOREARM]: 0.3,
+    [J.L_THIGH]: 0.2, [J.R_THIGH]: -0.2,
+  }),
+  chargedSlash_active: makePose({
+    [J.CHEST]: 0.5, [J.SPINE]: 0.3,
+    [J.R_UPPER_ARM]: 1.4, [J.R_FOREARM]: 0.5, [J.R_HAND]: 0.3,
+    [J.L_UPPER_ARM]: -0.4, [J.L_FOREARM]: 0.2,
+  }),
+  chargedSlash_recovery: makePose({
+    [J.CHEST]: 0.3, [J.SPINE]: 0.15,
+    [J.R_UPPER_ARM]: 1.0, [J.R_FOREARM]: 0.2,
+  }),
+  // Grab poses
+  grab_windup: makePose({
+    [J.CHEST]: 0.2, [J.SPINE]: 0.15,
+    [J.R_UPPER_ARM]: 0.3, [J.R_FOREARM]: -0.2, [J.R_HAND]: 0.1,
+    [J.L_UPPER_ARM]: 0.3, [J.L_FOREARM]: -0.2, [J.L_HAND]: 0.1,
+    [J.L_THIGH]: 0.2, [J.R_THIGH]: -0.1,
+  }),
+  grab_active: makePose({
+    [J.CHEST]: 0.35, [J.SPINE]: 0.25,
+    [J.R_UPPER_ARM]: 0.6, [J.R_FOREARM]: 0.2, [J.R_HAND]: 0.2,
+    [J.L_UPPER_ARM]: 0.6, [J.L_FOREARM]: 0.2, [J.L_HAND]: 0.2,
+  }),
+  grab_recovery: makePose({
+    [J.CHEST]: 0.15, [J.SPINE]: 0.1,
+    [J.R_UPPER_ARM]: 0.3, [J.R_FOREARM]: -0.1,
+    [J.L_UPPER_ARM]: 0.3, [J.L_FOREARM]: -0.1,
+  }),
   excalibur_recovery: makePose({
     [J.CHEST]: 0.3, [J.SPINE]: 0.2,
     [J.R_UPPER_ARM]: 1.1, [J.R_FOREARM]: 0.3,
@@ -525,6 +560,9 @@ interface Fighter {
   whiffPunishTimer: number;
   whiffPunishAggBoost: number;
   mirrorImageTimer: number;
+  grabbing: boolean;
+  grabTimer: number;
+  grabTarget: Fighter | null;
 }
 
 type Phase = "title" | "intro" | "playing" | "shop" | "game_over" | "victory" | "tournament_end";
@@ -594,6 +632,36 @@ export class SwordOfAvalonGame {
   private _allCanBleed = false;
   private _startingSuperMeter = 0;
   private _bonusPerfectWindow = 0;
+
+  // Rain & Weather System
+  private _raindrops: {x:number, y:number, vy:number, length:number}[] = [];
+  private _rainActive = false;
+
+  // Arena variety
+  private _arenaStyle = 0;
+  private _lightningTimer = 0;
+  private _lightningFlash = 0;
+  private _lightningBolt: {x1:number,y1:number,x2:number,y2:number}[] = [];
+  private _emberParticles: {x:number, y:number, vx:number, vy:number, life:number, size:number}[] = [];
+
+  // Announcer/Commentary
+  private _announceText = "";
+  private _announceTimer = 0;
+  private _announceScale = 2;
+  private _firstBloodTriggered = false;
+  private _nearDeathTriggered = false;
+  private _roundDamageTaken = 0;
+
+  // Charged Heavy Attack
+  private _chargeTimer = 0;
+  private _charging = false;
+  private _chargeSparks: {x:number, y:number, life:number, vx:number, vy:number}[] = [];
+
+  // Round Timer
+  private _roundTimer = 60 * 60;
+
+  // Fire Pits
+  private _firePits: {x:number, active:boolean}[] = [];
 
   // Crowd excitement
   private _crowdExcitement = 0;
@@ -1025,6 +1093,234 @@ export class SwordOfAvalonGame {
     this._damageNumbers.push({ x, y, text, life: 60, color });
   }
 
+  // ── Announcer ─────────────────────────────────────────────────────────────
+  private _announce(text: string): void {
+    this._announceText = text;
+    this._announceTimer = 80;
+    this._announceScale = 2;
+  }
+
+  private _drawAnnouncement(): void {
+    if (this._announceTimer <= 0) return;
+    const c = this._ctx;
+    const W = this._W, H = this._H;
+    this._announceTimer--;
+    if (this._announceTimer > 65) {
+      this._announceScale = lerp(this._announceScale, 1, 0.15);
+    }
+    const alpha = this._announceTimer > 20 ? 1 : this._announceTimer / 20;
+    const scale = this._announceScale;
+    c.save();
+    c.globalAlpha = alpha;
+    c.textAlign = "center";
+    c.font = `bold ${Math.floor(44 * scale)}px Georgia`;
+    // Golden glow
+    c.shadowColor = "#ffd700";
+    c.shadowBlur = 25;
+    c.fillStyle = "#ffd700";
+    c.fillText(this._announceText, W / 2, H * 0.28);
+    c.shadowBlur = 0;
+    c.restore();
+  }
+
+  // ── Rain System ──────────────────────────────────────────────────────────
+  private _initRaindrops(): void {
+    this._raindrops = [];
+    for (let i = 0; i < 200; i++) {
+      this._raindrops.push({
+        x: Math.random() * this._W,
+        y: Math.random() * this._groundY,
+        vy: rand(8, 14),
+        length: rand(10, 22),
+      });
+    }
+  }
+
+  private _updateRain(): void {
+    if (!this._rainActive) return;
+    for (const r of this._raindrops) {
+      r.y += r.vy * this._timeScale;
+      r.x += 1.5 * this._timeScale; // slight wind
+      if (r.y > this._groundY) {
+        r.y = rand(-20, -5);
+        r.x = Math.random() * this._W;
+        r.vy = rand(8, 14);
+        r.length = rand(10, 22);
+      }
+    }
+  }
+
+  private _drawRain(): void {
+    if (!this._rainActive) return;
+    const c = this._ctx;
+    c.save();
+    for (const r of this._raindrops) {
+      const alpha = 0.15 + Math.random() * 0.1;
+      c.strokeStyle = `rgba(180,200,255,${alpha})`;
+      c.lineWidth = 1;
+      c.beginPath();
+      c.moveTo(r.x, r.y);
+      c.lineTo(r.x + 1.5, r.y + r.length);
+      c.stroke();
+    }
+    c.restore();
+  }
+
+  private _drawPuddles(): void {
+    if (!this._rainActive) return;
+    const c = this._ctx;
+    const gY = this._groundY;
+    c.save();
+    for (let i = 0; i < 9; i++) {
+      const px = this._W * (0.1 + i * 0.1);
+      const sinVal = Math.sin(this._frameCount * 0.03 + i * 1.7);
+      const alpha = 0.06 + sinVal * 0.03;
+      c.fillStyle = `rgba(140,170,220,${alpha})`;
+      c.beginPath();
+      c.ellipse(px, gY + 4, 18 + sinVal * 4, 3 + sinVal * 1, 0, 0, Math.PI * 2);
+      c.fill();
+    }
+    c.restore();
+  }
+
+  // ── Ember Particles (Volcanic arena) ──────────────────────────────────
+  private _updateEmbers(): void {
+    for (let i = this._emberParticles.length - 1; i >= 0; i--) {
+      const e = this._emberParticles[i];
+      e.x += e.vx * this._timeScale;
+      e.y += e.vy * this._timeScale;
+      e.life -= this._timeScale;
+      if (e.life <= 0) this._emberParticles.splice(i, 1);
+    }
+    // Spawn new embers for style 3
+    if (this._arenaStyle === 3 && this._frameCount % 3 === 0) {
+      this._emberParticles.push({
+        x: rand(0, this._W),
+        y: this._groundY + rand(0, 20),
+        vx: rand(-0.5, 0.5),
+        vy: rand(-1.5, -0.5),
+        life: rand(60, 120),
+        size: rand(1, 3),
+      });
+    }
+    if (this._emberParticles.length > 150) this._emberParticles.splice(0, 20);
+  }
+
+  private _drawEmbers(): void {
+    const c = this._ctx;
+    for (const e of this._emberParticles) {
+      const alpha = clamp(e.life / 40, 0, 1);
+      const colors = ["#ff6600", "#ff4400", "#ff8800", "#ffaa00"];
+      c.fillStyle = colors[Math.floor(Math.random() * 4)];
+      c.globalAlpha = alpha;
+      c.beginPath();
+      c.arc(e.x, e.y, e.size, 0, Math.PI * 2);
+      c.fill();
+    }
+    c.globalAlpha = 1;
+  }
+
+  // ── Fire Pits ─────────────────────────────────────────────────────────
+  private _updateFirePits(): void {
+    for (const pit of this._firePits) {
+      if (!pit.active) continue;
+      // Damage fighters standing on pits
+      for (const f of [this._player, this._ai]) {
+        if (f && !f.dead && Math.abs(f.x - pit.x) < 30 && f.grounded) {
+          f.hp -= 0.3 * this._timeScale;
+          if (this._frameCount % 10 === 0) {
+            this._spawnParticle(f.x + rand(-5, 5), f.y - rand(0, 20), rand(-0.5, 0.5), rand(-2, -0.5), rand(10, 20), rand(2, 4), "#ff4400", "spark", -0.05);
+          }
+          if (f.hp <= 0) {
+            f.hp = 0; f.dead = true; f.deathTimer = 0;
+            this._playSound("death", 0.4); this._triggerShake(15);
+          }
+        }
+      }
+      // Spawn flame particles
+      if (this._frameCount % 4 === 0) {
+        this._spawnParticle(pit.x + rand(-15, 15), this._groundY - rand(0, 8), rand(-0.5, 0.5), rand(-2, -0.8), rand(15, 30), rand(2, 5), "#ff6600", "spark", -0.05);
+      }
+    }
+  }
+
+  private _drawFirePits(): void {
+    const c = this._ctx;
+    const gY = this._groundY;
+    for (const pit of this._firePits) {
+      if (!pit.active) continue;
+      // Radial gradient on ground
+      const grad = c.createRadialGradient(pit.x, gY, 2, pit.x, gY, 35);
+      grad.addColorStop(0, "rgba(255,100,0,0.4)");
+      grad.addColorStop(0.5, "rgba(255,60,0,0.2)");
+      grad.addColorStop(1, "rgba(255,30,0,0)");
+      c.fillStyle = grad;
+      c.fillRect(pit.x - 40, gY - 15, 80, 30);
+      // Core glow
+      c.fillStyle = "rgba(255,200,50,0.3)";
+      c.beginPath();
+      c.ellipse(pit.x, gY, 15, 5, 0, 0, Math.PI * 2);
+      c.fill();
+    }
+  }
+
+  // ── Grab Mechanic ──────────────────────────────────────────────────────
+  private _startGrab(attacker: Fighter, defender: Fighter): void {
+    if (attacker.dead || attacker.staggered || attacker.knockedDown || attacker.dodging) return;
+    if (attacker.attackPhase) return;
+    if (attacker.stamina < 18) return;
+    const distance = Math.abs(defender.x - attacker.x);
+    if (distance > 40) return;
+    if (defender.dodging || defender.invulnerable) return;
+
+    attacker.stamina -= 18;
+    attacker.grabbing = true;
+    attacker.grabTimer = 20;
+    attacker.grabTarget = defender;
+    // Lock both in place
+    attacker.vx = 0;
+    defender.vx = 0;
+    defender.staggered = true;
+    defender.staggerTimer = 20;
+    this._playSound("hit", 0.25);
+  }
+
+  private _updateGrab(f: Fighter): void {
+    if (!f.grabbing) return;
+    f.grabTimer -= this._timeScale;
+    // Use grab_active pose
+    f.targetPose = POSES.grab_active;
+    if (f.grabTarget) {
+      f.grabTarget.x = f.x + f.facing * 25;
+    }
+    if (f.grabTimer <= 0) {
+      // Throw!
+      if (f.grabTarget && !f.grabTarget.dead) {
+        f.grabTarget.vx = f.facing * 10;
+        f.grabTarget.vy = -6;
+        f.grabTarget.hp -= 15;
+        f.grabTarget.staggered = true;
+        f.grabTarget.staggerTimer = 25;
+        this._spawnDamageNumber(f.grabTarget.x, f.grabTarget.y - 30, 15, "#ff8844");
+        this._triggerShake(8);
+        this._playSound("kick", 0.3);
+        this._announce("THROWN!");
+        if (!f.isAI) {
+          this._gold += 7;
+          this._stats.hitsLanded++;
+        }
+        if (f.grabTarget.hp <= 0) {
+          f.grabTarget.hp = 0; f.grabTarget.dead = true; f.grabTarget.deathTimer = 0;
+          this._playSound("death", 0.4); this._triggerShake(15);
+          this._slowmoTimer = SLOWMO_DURATION; this._timeScale = SLOWMO_SCALE;
+          if (!f.isAI) { this._gold += 50; this._stats.goldEarned += 50; }
+        }
+      }
+      f.grabbing = false;
+      f.grabTarget = null;
+    }
+  }
+
   private _updateParticles(): void {
     for (let i = this._particles.length - 1; i >= 0; i--) {
       const p = this._particles[i];
@@ -1116,6 +1412,9 @@ export class SwordOfAvalonGame {
       whiffPunishTimer: 0,
       whiffPunishAggBoost: 0,
       mirrorImageTimer: 0,
+      grabbing: false,
+      grabTimer: 0,
+      grabTarget: null,
     };
   }
 
@@ -1344,11 +1643,12 @@ export class SwordOfAvalonGame {
     // Crowd excitement
     this._crowdExcitement = Math.min(1, this._crowdExcitement + 0.15);
 
-    // Excalibur strike is unblockable
+    // Excalibur strike and charged slash are unblockable
     const isExcalibur = attacker.attackType === "excalibur";
+    const isChargedSlash = attacker.attackType === "chargedSlash";
 
     // Parry (not for excalibur)
-    if (defender.parrying && attacker.attackType !== "kick" && !isExcalibur) {
+    if (defender.parrying && attacker.attackType !== "kick" && !isExcalibur && !isChargedSlash) {
       // Check for perfect parry: parried within first 3 frames (+ bonus window)
       const perfectWindow = 3 + (defender.isAI ? 0 : this._bonusPerfectWindow);
       const isPerfectParry = defender.parryTimer > PARRY_WINDOW - perfectWindow;
@@ -1360,6 +1660,7 @@ export class SwordOfAvalonGame {
         this._triggerShake(15);
         this._hitstopTimer = HITSTOP_FRAMES + 4;
         this._spawnDamageText(hitX, hitY - 30, "PERFECT!", "#ffd700");
+        this._announce("MASTERFUL!");
         // Radial ring effect
         this._perfectParryRing = { x: hitX, y: hitY, r: 10, alpha: 0.9 };
         // Extra super meter
@@ -1388,7 +1689,7 @@ export class SwordOfAvalonGame {
     }
 
     // Block (not for excalibur or kick)
-    if (defender.blocking && attacker.attackType !== "kick" && !isExcalibur) {
+    if (defender.blocking && attacker.attackType !== "kick" && !isExcalibur && !isChargedSlash) {
       const blockCost = attacker.currentAttack!.damage * 0.8 / STANCES[defender.stance].defMul;
       defender.stamina -= blockCost;
       if (defender.stamina < 0) {
@@ -1400,6 +1701,7 @@ export class SwordOfAvalonGame {
         this._spawnCrackParticles(hitX, hitY, 15);
         this._guardBreakFlash = 3;
         this._playSound("guardbreak", 0.35);
+        this._announce("GUARD BROKEN!");
       }
       this._playSound("clash", 0.35); this._spawnSparks(hitX, hitY, 12);
       this._triggerShake(6); this._hitstopTimer = HITSTOP_FRAMES;
@@ -1490,7 +1792,29 @@ export class SwordOfAvalonGame {
     }
 
     if (!attacker.isAI) this._stats.hitsLanded++;
-    if (!defender.isAI) this._stats.hitsTaken++;
+    if (!defender.isAI) { this._stats.hitsTaken++; this._roundDamageTaken += damage; }
+
+    // Announcer: first blood
+    if (!this._firstBloodTriggered) {
+      this._firstBloodTriggered = true;
+      this._announce("FIRST BLOOD!");
+    }
+
+    // Announcer: excalibur
+    if (isExcalibur) {
+      this._announce("EXCALIBUR!");
+    }
+
+    // Announcer: combo 3+
+    if (attacker.comboCount >= 3) {
+      this._announce("DEVASTATING COMBO!");
+    }
+
+    // Announcer: near death
+    if (!this._nearDeathTriggered && defender.hp > 0 && defender.hp < defender.maxHp * 0.2) {
+      this._nearDeathTriggered = true;
+      this._announce("NEAR DEATH!");
+    }
 
     if (!defender.knockedDown && !comboTriggered) { defender.staggered = true; defender.staggerTimer = 12; }
 
@@ -1527,6 +1851,12 @@ export class SwordOfAvalonGame {
       this._playSound("crowd", 0.3);
       // Bonus gold for kill
       if (!attacker.isAI) { this._gold += 50; this._stats.goldEarned += 50; }
+      // Kill announcement
+      if (!attacker.isAI && this._roundDamageTaken === 0) {
+        this._announce("FLAWLESS!");
+      } else {
+        this._announce("VANQUISHED!");
+      }
     }
   }
 
@@ -1600,6 +1930,13 @@ export class SwordOfAvalonGame {
     }
 
     if (ai.blocking && !player.attackPhase) { if (Math.random() < 0.1) this._stopBlock(ai); }
+
+    // AI grab at very close range
+    if (distance < 40 && !ai.attackPhase && !ai.grabbing && Math.random() < 0.1 * diffMul && ai.stamina >= 18) {
+      this._startGrab(ai, player);
+      ai.aiTimer = 0;
+      return;
+    }
 
     // Movement
     if (distance > 110) {
@@ -1688,10 +2025,56 @@ export class SwordOfAvalonGame {
       }
     }
 
-    // Air slash: press J while airborne
-    if (this._justPressed["j"] && !p.grounded) {
-      this._startAttack(p, "airSlash");
-    } else if (this._justPressed["j"]) this._startAttack(p, "slash");
+    // Grab: press G at close range
+    if (this._justPressed["g"] && !p.attackPhase && !p.grabbing) {
+      this._startGrab(p, this._ai);
+    }
+
+    // Charged Heavy Attack: hold J to charge
+    if (this._keys["j"] && !p.attackPhase && !p.grabbing && p.grounded && !this._charging) {
+      // Start charging on first frame of holding J
+      if (this._justPressed["j"]) {
+        this._charging = true;
+        this._chargeTimer = 0;
+      }
+    }
+    if (this._charging) {
+      this._chargeTimer++;
+      // Spawn golden sparks while charging every 4 frames
+      if (this._chargeTimer % 4 === 0) {
+        const hand = p.skeleton.bones[J.R_HAND];
+        const sx = p.x + hand.worldX * p.facing;
+        const sy = p.y + hand.worldY;
+        this._chargeSparks.push({ x: sx + rand(-5, 5), y: sy + rand(-5, 5), life: 12, vx: rand(-1, 1), vy: rand(-2, -0.5) });
+      }
+      // Release or timer exceeds threshold
+      if (!this._keys["j"]) {
+        if (this._chargeTimer >= 25) {
+          // Execute charged slash
+          this._charging = false;
+          this._chargeTimer = 0;
+          this._startAttack(p, "chargedSlash");
+          this._spawnSparks(p.x + p.facing * 30, p.y - 40, 12, 1.5);
+          this._announce("CHARGED STRIKE!");
+        } else {
+          // Released too early — do normal slash
+          this._charging = false;
+          this._chargeTimer = 0;
+          if (!p.grounded) this._startAttack(p, "airSlash");
+          else this._startAttack(p, "slash");
+        }
+      }
+      // If charging but gets staggered/etc, cancel
+      if (p.staggered || p.knockedDown || p.dodging || p.attackPhase) {
+        this._charging = false;
+        this._chargeTimer = 0;
+      }
+    } else {
+      // Air slash: press J while airborne (only when not charging)
+      if (this._justPressed["j"] && !p.grounded) {
+        this._startAttack(p, "airSlash");
+      }
+    }
     if (this._justPressed["k"]) this._startAttack(p, "thrust");
     if (this._justPressed["u"]) this._startAttack(p, "overhead");
     if (this._justPressed["i"]) this._startAttack(p, "sweep");
@@ -1720,36 +2103,100 @@ export class SwordOfAvalonGame {
   private _drawBackground(): void {
     const c = this._ctx; const W = this._W, H = this._H, gY = this._groundY;
 
-    // Sky
+    // Sky — varies by arena style
     const skyGrad = c.createLinearGradient(0, 0, 0, gY);
-    skyGrad.addColorStop(0, "#0a0515"); skyGrad.addColorStop(0.4, "#1a0e25");
-    skyGrad.addColorStop(0.7, "#2a1535"); skyGrad.addColorStop(1, "#3a2040");
+    if (this._arenaStyle === 0) {
+      // Nighttime castle
+      skyGrad.addColorStop(0, "#0a0515"); skyGrad.addColorStop(0.4, "#1a0e25");
+      skyGrad.addColorStop(0.7, "#2a1535"); skyGrad.addColorStop(1, "#3a2040");
+    } else if (this._arenaStyle === 1) {
+      // Twilight courtyard — orange/purple
+      skyGrad.addColorStop(0, "#1a0830"); skyGrad.addColorStop(0.3, "#4a1545");
+      skyGrad.addColorStop(0.6, "#8a3030"); skyGrad.addColorStop(1, "#c06020");
+    } else if (this._arenaStyle === 2) {
+      // Stormy fortress — dark grey
+      skyGrad.addColorStop(0, "#0a0a10"); skyGrad.addColorStop(0.4, "#1a1a25");
+      skyGrad.addColorStop(0.7, "#2a2a35"); skyGrad.addColorStop(1, "#353540");
+    } else {
+      // Volcanic/hellish — red/black
+      skyGrad.addColorStop(0, "#0a0000"); skyGrad.addColorStop(0.3, "#1a0505");
+      skyGrad.addColorStop(0.6, "#3a0a0a"); skyGrad.addColorStop(1, "#5a1510");
+    }
     c.fillStyle = skyGrad; c.fillRect(0, 0, W, gY);
 
-    // Stars
-    for (let i = 0; i < 80; i++) {
-      const sx = ((42 * (i + 1) * 7919) % W);
-      const sy = ((42 * (i + 1) * 6271) % (gY * 0.6));
-      const twinkle = Math.sin(this._frameCount * 0.02 + i) * 0.15;
-      c.fillStyle = `rgba(255,255,220,${0.3 + (i % 3) * 0.2 + twinkle})`;
-      c.fillRect(sx, sy, 1.5, 1.5);
+    // Stars (not for stormy/volcanic)
+    if (this._arenaStyle <= 1) {
+      for (let i = 0; i < 80; i++) {
+        const sx = ((42 * (i + 1) * 7919) % W);
+        const sy = ((42 * (i + 1) * 6271) % (gY * 0.6));
+        const twinkle = Math.sin(this._frameCount * 0.02 + i) * 0.15;
+        c.fillStyle = `rgba(255,255,220,${0.3 + (i % 3) * 0.2 + twinkle})`;
+        c.fillRect(sx, sy, 1.5, 1.5);
+      }
     }
 
-    // Moon
-    c.fillStyle = "rgba(255,250,220,0.12)"; c.beginPath(); c.arc(W * 0.8, H * 0.12, 45, 0, Math.PI * 2); c.fill();
-    c.fillStyle = "rgba(255,250,220,0.25)"; c.beginPath(); c.arc(W * 0.8, H * 0.12, 32, 0, Math.PI * 2); c.fill();
-    c.fillStyle = "rgba(255,250,220,0.5)"; c.beginPath(); c.arc(W * 0.8, H * 0.12, 22, 0, Math.PI * 2); c.fill();
+    // Moon (not for stormy/volcanic)
+    if (this._arenaStyle <= 1) {
+      const moonAlpha = this._arenaStyle === 1 ? 0.08 : 0.12;
+      c.fillStyle = `rgba(255,250,220,${moonAlpha})`; c.beginPath(); c.arc(W * 0.8, H * 0.12, 45, 0, Math.PI * 2); c.fill();
+      c.fillStyle = `rgba(255,250,220,${moonAlpha * 2})`; c.beginPath(); c.arc(W * 0.8, H * 0.12, 32, 0, Math.PI * 2); c.fill();
+      c.fillStyle = `rgba(255,250,220,${moonAlpha * 4})`; c.beginPath(); c.arc(W * 0.8, H * 0.12, 22, 0, Math.PI * 2); c.fill();
+    }
 
-    // Castle silhouette
-    c.fillStyle = "#0d0818"; c.fillRect(0, gY - 200, W, 200);
+    // Lightning for stormy arena (style 2)
+    if (this._arenaStyle === 2) {
+      this._lightningTimer++;
+      if (this._lightningTimer >= 180 && Math.random() < 0.003) {
+        this._lightningFlash = 2;
+        this._lightningTimer = 0;
+        // Generate zigzag bolt
+        this._lightningBolt = [];
+        let lx = rand(W * 0.2, W * 0.8);
+        let ly = 0;
+        while (ly < gY - 200) {
+          const nx = lx + rand(-40, 40);
+          const ny = ly + rand(20, 50);
+          this._lightningBolt.push({ x1: lx, y1: ly, x2: nx, y2: ny });
+          lx = nx; ly = ny;
+        }
+        this._triggerShake(5);
+      }
+      if (this._lightningFlash > 0) {
+        c.fillStyle = `rgba(255,255,255,${this._lightningFlash * 0.15})`;
+        c.fillRect(0, 0, W, H);
+        // Draw bolt
+        c.strokeStyle = "rgba(255,255,255,0.9)"; c.lineWidth = 2;
+        for (const seg of this._lightningBolt) {
+          c.beginPath(); c.moveTo(seg.x1, seg.y1); c.lineTo(seg.x2, seg.y2); c.stroke();
+        }
+        c.strokeStyle = "rgba(200,200,255,0.4)"; c.lineWidth = 6;
+        for (const seg of this._lightningBolt) {
+          c.beginPath(); c.moveTo(seg.x1, seg.y1); c.lineTo(seg.x2, seg.y2); c.stroke();
+        }
+        this._lightningFlash--;
+      }
+    }
+
+    // Volcanic lava glow at ground for style 3
+    if (this._arenaStyle === 3) {
+      const lavaGlow = c.createLinearGradient(0, gY - 60, 0, gY);
+      lavaGlow.addColorStop(0, "rgba(255,60,0,0)");
+      lavaGlow.addColorStop(1, `rgba(255,80,10,${0.12 + Math.sin(this._frameCount * 0.02) * 0.04})`);
+      c.fillStyle = lavaGlow; c.fillRect(0, gY - 60, W, 60);
+    }
+
+    // Castle silhouette — varies by arena style
+    const castleColor = this._arenaStyle === 0 ? "#0d0818" : this._arenaStyle === 1 ? "#1a0820" : this._arenaStyle === 2 ? "#0a0a12" : "#0a0000";
+    c.fillStyle = castleColor; c.fillRect(0, gY - 200, W, 200);
     for (let i = 0; i < 7; i++) {
       const tx = W * (0.07 + i * 0.14);
-      const th = 50 + (i % 3) * 35 + (i === 3 ? 30 : 0);
+      const th = 50 + (i % 3) * 35 + (i === 3 ? 30 : 0) + (this._arenaStyle === 2 ? 15 : 0);
       c.fillRect(tx - 22, gY - 200 - th, 44, th);
       for (let ci = -2; ci <= 2; ci++) c.fillRect(tx + ci * 9 - 3, gY - 200 - th - 10, 6, 10);
     }
+    const windowColor = this._arenaStyle === 3 ? "rgba(255,80,20," : "rgba(255,180,50,";
     for (let i = 0; i < 12; i++) {
-      c.fillStyle = `rgba(255,180,50,${0.08 + Math.sin(this._frameCount * 0.03 + i) * 0.04})`;
+      c.fillStyle = `${windowColor}${0.08 + Math.sin(this._frameCount * 0.03 + i) * 0.04})`;
       c.fillRect(W * (0.06 + i * 0.08) - 2, gY - 140 + (i % 3) * 18, 4, 8);
     }
 
@@ -1770,6 +2217,12 @@ export class SwordOfAvalonGame {
     groundGrad.addColorStop(0, "#3a2a1a"); groundGrad.addColorStop(0.3, "#2a1c10"); groundGrad.addColorStop(1, "#1a0e05");
     c.fillStyle = groundGrad; c.fillRect(0, gY, W, H - gY);
     c.strokeStyle = "#5a4a30"; c.lineWidth = 2; c.beginPath(); c.moveTo(0, gY); c.lineTo(W, gY); c.stroke();
+
+    // Puddles (rain)
+    this._drawPuddles();
+
+    // Fire pits
+    this._drawFirePits();
 
     // Blood decals on ground
     for (const bd of this._bloodDecals) {
@@ -1951,6 +2404,38 @@ export class SwordOfAvalonGame {
     c.lineTo(chest.worldX * f, chest.worldY - 4);
     c.lineTo(spine.worldX * f + 8 * f, spine.worldY); c.stroke();
 
+    // Chainmail texture on torso — subtle dots grid
+    c.save();
+    c.globalAlpha = 0.15;
+    c.fillStyle = armorAccent;
+    const spX = spine.worldX * f; const spY = spine.worldY;
+    const chX = chest.worldX * f; const chY = chest.worldY;
+    for (let row = 0; row < 5; row++) {
+      const t = (row + 1) / 6;
+      const rowX = lerp(spX, chX, t);
+      const rowY = lerp(spY, chY, t);
+      for (let col = -2; col <= 2; col++) {
+        c.fillRect(rowX + col * 4, rowY, 1.5, 1.5);
+      }
+    }
+    c.restore();
+
+    // Gorget (neck guard) — small trapezoid at neck
+    const neckB = sk.bones[J.NECK];
+    c.fillStyle = armorAccent; c.beginPath();
+    const nX = neckB.worldX * f;
+    const nY = neckB.worldY;
+    c.moveTo(nX - 7, nY + 2); c.lineTo(nX + 7, nY + 2);
+    c.lineTo(nX + 5, nY - 4); c.lineTo(nX - 5, nY - 4);
+    c.closePath(); c.fill();
+
+    // Knee guards — small circles at thigh ends
+    const lThigh = sk.bones[J.L_THIGH];
+    const rThigh = sk.bones[J.R_THIGH];
+    c.fillStyle = armorAccent;
+    c.beginPath(); c.arc(lThigh.worldX * f, lThigh.worldY, 4, 0, Math.PI * 2); c.fill();
+    c.beginPath(); c.arc(rThigh.worldX * f, rThigh.worldY, 4, 0, Math.PI * 2); c.fill();
+
     // Belt
     const pelvis = sk.bones[J.PELVIS];
     c.fillStyle = armorAccent; c.fillRect(pelvis.worldX * f - 10, pelvis.worldY - 2, 20, 4);
@@ -1975,10 +2460,14 @@ export class SwordOfAvalonGame {
     // Arms
     this._drawLimb(J.L_SHOULDER, J.L_UPPER_ARM, 4, 5, skinColor, sk, f);
     this._drawLimb(J.L_UPPER_ARM, J.L_FOREARM, 5, 4, skinColor, sk, f);
+    // Vambraces (forearm armor) — slightly thicker with accent border
+    this._drawLimb(J.L_FOREARM, J.L_HAND, 5, 4, armorDark, sk, f);
     this._drawLimb(J.L_FOREARM, J.L_HAND, 4, 3, skinColor, sk, f);
     this._drawJoint(J.L_UPPER_ARM, 3, armorAccent, sk, f);
     this._drawLimb(J.R_SHOULDER, J.R_UPPER_ARM, 4, 5, skinColor, sk, f);
     this._drawLimb(J.R_UPPER_ARM, J.R_FOREARM, 5, 4, skinColor, sk, f);
+    // Vambraces (forearm armor)
+    this._drawLimb(J.R_FOREARM, J.R_HAND, 5, 4, armorDark, sk, f);
     this._drawLimb(J.R_FOREARM, J.R_HAND, 4, 3, skinColor, sk, f);
     this._drawJoint(J.R_UPPER_ARM, 3, armorAccent, sk, f);
     this._drawJoint(J.L_HAND, 4, armorDark, sk, f);
@@ -2245,7 +2734,7 @@ export class SwordOfAvalonGame {
     }
 
     c.fillStyle = "rgba(160,128,64,0.3)"; c.font = "11px Georgia"; c.textAlign = "center";
-    c.fillText("J-Slash  K-Thrust  U-Overhead  I-Sweep  F-Kick  L-Block/Parry  SPACE-Dodge  R-Super  1/2/3-Stance  ESC-Quit", W / 2, H - 12);
+    c.fillText("J-Slash(hold=Charge)  K-Thrust  U-Overhead  I-Sweep  F-Kick  G-Grab  L-Block/Parry  SPACE-Dodge  R-Super  1/2/3-Stance  ESC-Quit", W / 2, H - 12);
   }
 
   // ── Overlays ─────────────────────────────────────────────────────────────
@@ -2326,6 +2815,43 @@ export class SwordOfAvalonGame {
     this._guardBreakFlash = 0;
     this._perfectParryRing = null;
 
+    // Arena style based on round
+    if (this._currentEnemyIdx <= 1) this._arenaStyle = 0;
+    else if (this._currentEnemyIdx <= 3) this._arenaStyle = 1;
+    else if (this._currentEnemyIdx <= 5) this._arenaStyle = 2;
+    else this._arenaStyle = 3;
+
+    // Rain activates on rounds 4+ (tougher enemies)
+    this._rainActive = this._currentEnemyIdx >= 3;
+    if (this._rainActive) this._initRaindrops();
+    else this._raindrops = [];
+
+    // Fire pits on rounds 5+ (arenaStyle 2 and 3)
+    if (this._arenaStyle >= 2) {
+      this._firePits = [
+        { x: this._W * 0.25, active: true },
+        { x: this._W * 0.75, active: true },
+      ];
+    } else {
+      this._firePits = [];
+    }
+
+    // Round timer: 60 seconds at 60fps
+    this._roundTimer = 60 * 60;
+
+    // Reset announcer state
+    this._firstBloodTriggered = false;
+    this._nearDeathTriggered = false;
+    this._roundDamageTaken = 0;
+    this._announceTimer = 0;
+    this._lightningTimer = 0;
+    this._lightningFlash = 0;
+    this._lightningBolt = [];
+    this._emberParticles = [];
+    this._chargeTimer = 0;
+    this._charging = false;
+    this._chargeSparks = [];
+
     // Keep player HP between rounds
     const prevHp = this._player ? this._player.hp : HEALTH_MAX;
     this._player = this._createFighter(this._W * 0.3, 1, {
@@ -2346,6 +2872,7 @@ export class SwordOfAvalonGame {
     this._introSubtext = `"${enemy.taunt}"`;
     this._introTimer = 120;
     this._phase = "intro";
+    this._announce(`ROUND ${this._currentEnemyIdx + 1}!`);
   }
 
   private _showShop(): void {
@@ -2469,6 +2996,36 @@ export class SwordOfAvalonGame {
         this._resolveCombat(this._ai, this._player);
         this._updateParticles();
         this._updateShake();
+        this._updateRain();
+        this._updateEmbers();
+        this._updateFirePits();
+        this._updateGrab(this._player);
+        this._updateGrab(this._ai);
+
+        // Update charge sparks
+        for (let i = this._chargeSparks.length - 1; i >= 0; i--) {
+          const s = this._chargeSparks[i];
+          s.x += s.vx; s.y += s.vy; s.life--;
+          if (s.life <= 0) this._chargeSparks.splice(i, 1);
+        }
+
+        // Round timer
+        this._roundTimer -= this._timeScale;
+        if (this._roundTimer <= 0 && !this._player.dead && !this._ai.dead) {
+          this._roundTimer = 0;
+          this._announce("TIME!");
+          const playerPct = this._player.hp / this._player.maxHp;
+          const aiPct = this._ai.hp / this._ai.maxHp;
+          if (playerPct >= aiPct) {
+            // Player wins on HP
+            this._ai.hp = 0; this._ai.dead = true; this._ai.deathTimer = 0;
+            this._playSound("death", 0.4); this._triggerShake(15);
+          } else {
+            // AI wins
+            this._player.hp = 0; this._player.dead = true; this._player.deathTimer = 0;
+            this._playSound("death", 0.4); this._triggerShake(15);
+          }
+        }
 
         // Crowd decay
         this._crowdExcitement *= 0.998;
@@ -2509,7 +3066,55 @@ export class SwordOfAvalonGame {
         || this._phase === "tournament_end" || this._phase === "intro") {
       const fighters = [this._player, this._ai].filter(Boolean).sort((a, b) => a.y - b.y);
       for (const f of fighters) { this._drawSwordTrail(f.swordTrail); this._drawFighter(f); }
+      // Rain drawn after fighters
+      this._drawRain();
+      // Embers (volcanic arena)
+      if (this._arenaStyle === 3) this._drawEmbers();
       this._drawParticles();
+
+      // Charge bar and charge sparks
+      if (this._charging && this._chargeTimer > 0) {
+        const p = this._player;
+        const barW = 30;
+        const barH = 4;
+        const ratio = clamp(this._chargeTimer / 25, 0, 1);
+        const bx = p.x - barW / 2;
+        const by = p.y - 105;
+        c.fillStyle = "#333"; c.fillRect(bx, by, barW, barH);
+        const chargeGrad = c.createLinearGradient(bx, by, bx + barW * ratio, by);
+        chargeGrad.addColorStop(0, "#ffd700"); chargeGrad.addColorStop(1, "#ff8c00");
+        c.fillStyle = chargeGrad; c.fillRect(bx, by, barW * ratio, barH);
+        if (ratio >= 1) {
+          c.strokeStyle = "#ffd700"; c.lineWidth = 1;
+          c.shadowColor = "#ffd700"; c.shadowBlur = 8;
+          c.strokeRect(bx, by, barW, barH);
+          c.shadowBlur = 0;
+        }
+      }
+      // Draw charge sparks
+      for (const s of this._chargeSparks) {
+        const alpha = clamp(s.life / 12, 0, 1);
+        c.fillStyle = `rgba(255,215,0,${alpha})`;
+        c.beginPath(); c.arc(s.x, s.y, 2, 0, Math.PI * 2); c.fill();
+      }
+
+      // Announcements
+      this._drawAnnouncement();
+
+      // Round timer
+      if (this._phase === "playing" || this._phase === "intro") {
+        const totalSeconds = Math.max(0, Math.ceil(this._roundTimer / 60));
+        const mins = Math.floor(totalSeconds / 60);
+        const secs = totalSeconds % 60;
+        const timerStr = `${mins}:${secs.toString().padStart(2, "0")}`;
+        const isLow = totalSeconds <= 10;
+        const pulse = isLow ? 0.5 + Math.sin(this._frameCount * 0.15) * 0.5 : 1;
+        c.fillStyle = isLow ? `rgba(255,50,50,${pulse})` : "rgba(212,168,67,0.8)";
+        c.font = `bold ${isLow ? 22 : 18}px Georgia`;
+        c.textAlign = "center";
+        c.fillText(timerStr, this._W / 2, 52);
+      }
+
       if (this._phase !== "intro") this._drawUI();
     }
 
