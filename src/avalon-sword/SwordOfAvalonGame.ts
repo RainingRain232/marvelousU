@@ -1,9 +1,11 @@
 // ---------------------------------------------------------------------------
-// SWORD OF AVALON — 2D Swordfighting Game  (v2 — Tournament Edition)
+// SWORD OF AVALON — 2D Swordfighting Game  (v3 — Ultimate Tournament Edition)
 // Deep skeletal-animation combat: parries, ripostes, combos, stances, dodge
 // rolls, kicks, bleed DOT, stamina, shields, slow-mo kill-cam, tournament of
-// 5 unique knights with between-round shop, blood decals, damage numbers,
-// crowd reactions, capes, plumes, and smarter AI.
+// 8 unique knights with between-round shop, blood decals, damage numbers,
+// crowd reactions, capes, plumes, super meter, wall splats, aerial combat,
+// dynamic torchlight, procedural music, guard break VFX, perfect parries,
+// hit flashes, feints, whiff punish AI, and smarter AI.
 // ---------------------------------------------------------------------------
 
 import { viewManager } from "../view/ViewManager";
@@ -30,6 +32,9 @@ const BLEED_DPS = 0.15; // per frame
 const BLEED_DURATION = 120; // frames
 const SLOWMO_DURATION = 60; // frames
 const SLOWMO_SCALE = 0.2;
+const SUPER_METER_MAX = 100;
+const WALL_LEFT = 80;
+const WALL_RIGHT_OFFSET = 80;
 
 interface AttackDef {
   damage: number;
@@ -49,6 +54,8 @@ const ATTACKS: Record<string, AttackDef> = {
   sweep:    { damage: 10, stamina: 10, windup: 8,  active: 8, recovery: 10, reach: 75, arc: 1.0 },
   riposte:  { damage: 28, stamina: 5,  windup: 4,  active: 5, recovery: 10, reach: 75, arc: 1.0 },
   kick:     { damage: KICK_DAMAGE, stamina: KICK_STAMINA, windup: 6, active: 4, recovery: 10, reach: KICK_RANGE, arc: 0.5 },
+  airSlash: { damage: 14, stamina: 14, windup: 6,  active: 6, recovery: 8, reach: 75, arc: 1.3 },
+  excalibur:{ damage: 40, stamina: 0,  windup: 12, active: 8, recovery: 14, reach: 90, arc: 1.8 },
 };
 
 interface StanceDef {
@@ -81,6 +88,8 @@ const COMBOS: Record<string, ComboDef> = {
   "overhead,sweep":       { name: "CRUSHING TIDE",   dmgBonus: 1.6, effect: "knockback" },
   "kick,overhead":        { name: "BOOT & BLADE",    dmgBonus: 1.7, effect: "knockdown" },
   "slash,kick,thrust":    { name: "GALAHAD RUSH",    dmgBonus: 1.5, effect: "stagger" },
+  "feint,slash":          { name: "DECEPTIVE EDGE",  dmgBonus: 1.4, effect: "stagger" },
+  "feint,thrust":         { name: "PHANTOM LUNGE",   dmgBonus: 1.5, effect: "stagger" },
 };
 
 // ── Enemy Definitions (Tournament) ──────────────────────────────────────────
@@ -99,7 +108,7 @@ interface EnemyDef {
   speed: number;
   taunt: string;
   defeated: string;
-  ability: string; // "none"|"ironSkin"|"rage"|"poison"|"shadowStep"|"tankGuard"
+  ability: string;
   abilityDesc: string;
 }
 
@@ -113,12 +122,20 @@ const ENEMIES: EnemyDef[] = [
     ability: "none", abilityDesc: "",
   },
   {
+    name: "SIR GALETH", title: "the Duelist",
+    color: "#4466aa", armorColor: "#334488", swordColor: "#8899cc", plumeColor: "#5577bb",
+    hp: 85, damage: 0.85, aggression: 0.45, parrySkill: 0.15, speed: 0.95,
+    taunt: "En garde! Show me your technique.",
+    defeated: "A true duelist acknowledges defeat.",
+    ability: "counterStrike", abilityDesc: "COUNTER STRIKE \u2014 attacks faster after being hit",
+  },
+  {
     name: "SIR HECTOR", title: "Ironside",
     color: "#556", armorColor: "#445", swordColor: "#aab", plumeColor: "#667",
     hp: 120, damage: 0.9, aggression: 0.4, parrySkill: 0.1, speed: 0.75,
     taunt: "My armor is forged from mountain ore. Strike all you wish.",
     defeated: "Iron bends before the Lake Knight...",
-    ability: "ironSkin", abilityDesc: "IRON SKIN — takes 30% reduced damage",
+    ability: "ironSkin", abilityDesc: "IRON SKIN \u2014 takes 30% reduced damage",
   },
   {
     name: "LADY ISOLDE", title: "Thornblade",
@@ -126,7 +143,7 @@ const ENEMIES: EnemyDef[] = [
     hp: 90, damage: 1.1, aggression: 0.6, parrySkill: 0.2, speed: 1.1,
     taunt: "My blade carries poison and grace in equal measure.",
     defeated: "Graceful... you have bested the Thorn.",
-    ability: "poison", abilityDesc: "VENOM EDGE — hits inflict bleeding",
+    ability: "poison", abilityDesc: "VENOM EDGE \u2014 hits inflict bleeding",
   },
   {
     name: "SIR AGRAVAIN", title: "the Shadow",
@@ -134,7 +151,23 @@ const ENEMIES: EnemyDef[] = [
     hp: 95, damage: 1.2, aggression: 0.7, parrySkill: 0.3, speed: 1.15,
     taunt: "You cannot strike what you cannot see.",
     defeated: "The shadows... recede.",
-    ability: "shadowStep", abilityDesc: "SHADOW STEP — teleports behind you after dodging",
+    ability: "shadowStep", abilityDesc: "SHADOW STEP \u2014 teleports behind you after dodging",
+  },
+  {
+    name: "THE CRIMSON KNIGHT", title: "of the Blood Order",
+    color: "#881111", armorColor: "#550808", swordColor: "#cc4444", plumeColor: "#aa2222",
+    hp: 110, damage: 1.15, aggression: 0.55, parrySkill: 0.25, speed: 0.9,
+    taunt: "Your blood will sustain me.",
+    defeated: "The blood... runs cold.",
+    ability: "lifesteal", abilityDesc: "BLOOD OATH \u2014 heals from damage dealt",
+  },
+  {
+    name: "LADY MORGANA", title: "the Enchantress",
+    color: "#6622aa", armorColor: "#441188", swordColor: "#aa66ff", plumeColor: "#8844cc",
+    hp: 100, damage: 1.25, aggression: 0.6, parrySkill: 0.35, speed: 1.05,
+    taunt: "Reality bends to my will.",
+    defeated: "The illusion... shatters.",
+    ability: "mirrorImage", abilityDesc: "MIRROR IMAGE \u2014 creates illusory doubles",
   },
   {
     name: "THE BLACK KNIGHT", title: "of the Abyss",
@@ -142,7 +175,7 @@ const ENEMIES: EnemyDef[] = [
     hp: 130, damage: 1.3, aggression: 0.65, parrySkill: 0.4, speed: 1.0,
     taunt: "None shall pass. None have ever passed.",
     defeated: "At last... I am freed from this curse.",
-    ability: "rage", abilityDesc: "DARK FURY — faster and harder hitting below 40% HP",
+    ability: "rage", abilityDesc: "DARK FURY \u2014 faster and harder hitting below 40% HP",
   },
 ];
 
@@ -170,6 +203,10 @@ const SHOP_ITEMS: ShopItem[] = [
     apply: (g) => { g["_bonusDefense"] += 0.15; } },
   { id: "bleedChance", name: "Serrated Edge", desc: "All attacks can bleed (permanent)", cost: 120, oneTime: true,
     apply: (g) => { g["_allCanBleed"] = true; } },
+  { id: "superCharge", name: "Chalice of Valor", desc: "Start each round with 30% super meter", cost: 100, oneTime: true,
+    apply: (g) => { g["_startingSuperMeter"] = 30; } },
+  { id: "perfectParry", name: "Templar's Blessing", desc: "Perfect parry window +50% wider", cost: 110, oneTime: true,
+    apply: (g) => { g["_bonusPerfectWindow"] = 2; } },
 ];
 
 // ── Skeleton ─────────────────────────────────────────────────────────────────
@@ -327,6 +364,41 @@ const POSES: Record<string, Float64Array> = {
   kick_recovery: makePose({
     [J.R_THIGH]: 0.1, [J.R_SHIN]: 0.1,
   }),
+  // Air slash poses — legs tucked up
+  airSlash_windup: makePose({
+    [J.CHEST]: -0.3, [J.SPINE]: -0.15,
+    [J.R_UPPER_ARM]: -1.2, [J.R_FOREARM]: -0.4, [J.R_HAND]: -0.3,
+    [J.L_UPPER_ARM]: 0.3, [J.L_FOREARM]: 0.8,
+    [J.L_THIGH]: -0.5, [J.L_SHIN]: 0.6, [J.R_THIGH]: -0.4, [J.R_SHIN]: 0.5,
+  }),
+  airSlash_active: makePose({
+    [J.CHEST]: 0.4, [J.SPINE]: 0.2,
+    [J.R_UPPER_ARM]: 1.0, [J.R_FOREARM]: 0.2, [J.R_HAND]: 0.1,
+    [J.L_UPPER_ARM]: -0.3, [J.L_FOREARM]: 0.3,
+    [J.L_THIGH]: -0.5, [J.L_SHIN]: 0.6, [J.R_THIGH]: -0.4, [J.R_SHIN]: 0.5,
+  }),
+  airSlash_recovery: makePose({
+    [J.CHEST]: 0.2, [J.SPINE]: 0.1,
+    [J.R_UPPER_ARM]: 0.8, [J.R_FOREARM]: -0.2,
+    [J.L_UPPER_ARM]: -0.1, [J.L_FOREARM]: 0.3,
+    [J.L_THIGH]: -0.4, [J.L_SHIN]: 0.4, [J.R_THIGH]: -0.3, [J.R_SHIN]: 0.3,
+  }),
+  // Excalibur strike poses
+  excalibur_windup: makePose({
+    [J.CHEST]: -0.5, [J.SPINE]: -0.3,
+    [J.R_UPPER_ARM]: -2.0, [J.R_FOREARM]: -1.2, [J.R_HAND]: -0.6,
+    [J.L_UPPER_ARM]: -0.6, [J.L_FOREARM]: 0.4,
+    [J.L_THIGH]: 0.3, [J.R_THIGH]: -0.3,
+  }),
+  excalibur_active: makePose({
+    [J.CHEST]: 0.6, [J.SPINE]: 0.4,
+    [J.R_UPPER_ARM]: 1.6, [J.R_FOREARM]: 0.6, [J.R_HAND]: 0.4,
+    [J.L_UPPER_ARM]: -0.5, [J.L_FOREARM]: 0.3,
+  }),
+  excalibur_recovery: makePose({
+    [J.CHEST]: 0.3, [J.SPINE]: 0.2,
+    [J.R_UPPER_ARM]: 1.1, [J.R_FOREARM]: 0.3,
+  }),
   block: makePose({
     [J.SPINE]: -0.15, [J.CHEST]: -0.1,
     [J.R_UPPER_ARM]: -0.8, [J.R_FOREARM]: -1.4, [J.R_HAND]: 0.2,
@@ -441,9 +513,18 @@ interface Fighter {
   name: string; isAI: boolean;
   aiTimer: number; aiAction: string | null; aiReactionDelay: number; stepTimer: number;
   bleedTimer: number;
-  damageMul: number; // enemy damage multiplier
+  damageMul: number;
   ability: string;
-  capeSegments: number[]; // cape wave offsets
+  capeSegments: number[];
+  // New fields
+  superMeter: number;
+  hitFlash: number;
+  counterStrikeReady: boolean;
+  counterStrikeWindupMul: number;
+  wallSplatTimer: number;
+  whiffPunishTimer: number;
+  whiffPunishAggBoost: number;
+  mirrorImageTimer: number;
 }
 
 type Phase = "title" | "intro" | "playing" | "shop" | "game_over" | "victory" | "tournament_end";
@@ -511,10 +592,23 @@ export class SwordOfAvalonGame {
   private _bonusDamage = 0;
   private _bonusDefense = 0;
   private _allCanBleed = false;
+  private _startingSuperMeter = 0;
+  private _bonusPerfectWindow = 0;
 
   // Crowd excitement
   private _crowdExcitement = 0;
   private _crowdTimer = 0;
+
+  // Guard break / perfect parry VFX
+  private _guardBreakFlash = 0;
+  private _perfectParryRing: { x: number; y: number; r: number; alpha: number } | null = null;
+
+  // Procedural music
+  private _musicDrone: OscillatorNode | null = null;
+  private _musicDrone2: OscillatorNode | null = null;
+  private _musicGain: GainNode | null = null;
+  private _musicGain2: GainNode | null = null;
+  private _musicNoteTimer = 0;
 
   private _stats = { hitsLanded: 0, hitsTaken: 0, parries: 0, combos: 0, maxCombo: 0, ripostes: 0, goldEarned: 0 };
 
@@ -551,6 +645,7 @@ export class SwordOfAvalonGame {
 
     this._phase = "title";
     this._showTitle();
+    this._startMusic();
 
     const loop = () => {
       if (this._destroyed) return;
@@ -570,6 +665,7 @@ export class SwordOfAvalonGame {
     this._resultOverlay?.parentNode?.removeChild(this._resultOverlay);
     this._shopOverlay?.parentNode?.removeChild(this._shopOverlay);
     this._canvas?.parentNode?.removeChild(this._canvas);
+    this._stopMusic();
     this._audioCtx?.close().catch(() => {});
     this._audioCtx = null;
   }
@@ -694,8 +790,136 @@ export class SwordOfAvalonGame {
         o.frequency.setValueAtTime(180, now); o.frequency.exponentialRampToValueAtTime(100, now + 0.15);
         g.gain.setValueAtTime(vol * 0.15, now); g.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
         o.connect(g); o.start(now); o.stop(now + 0.15);
+      } else if (type === "excalibur") {
+        // Epic multi-layered sound for super attack
+        for (let i = 0; i < 5; i++) {
+          const o = ac.createOscillator(); o.type = i < 2 ? "sawtooth" : "sine";
+          o.frequency.setValueAtTime(200 + i * 150, now);
+          o.frequency.exponentialRampToValueAtTime(800 + i * 200, now + 0.15);
+          o.frequency.exponentialRampToValueAtTime(100 + i * 50, now + 0.5);
+          const g2 = ac.createGain(); g2.gain.setValueAtTime(vol * 0.3, now);
+          g2.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+          o.connect(g2); g2.connect(ac.destination); o.start(now); o.stop(now + 0.5);
+        }
+      } else if (type === "wallsplat") {
+        const buf = ac.createBuffer(1, ac.sampleRate * 0.15, ac.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * 0.7 * Math.exp(-i / (data.length * 0.15));
+        const src = ac.createBufferSource(); src.buffer = buf;
+        const bq = ac.createBiquadFilter(); bq.type = "lowpass"; bq.frequency.value = 500;
+        src.connect(bq); bq.connect(g); g.gain.exponentialRampToValueAtTime(0.001, now + 0.15); src.start(now);
+      } else if (type === "guardbreak") {
+        // Cracking / shattering sound
+        for (let i = 0; i < 3; i++) {
+          const o = ac.createOscillator(); o.type = "square";
+          o.frequency.setValueAtTime(1200 + i * 300, now + i * 0.03);
+          o.frequency.exponentialRampToValueAtTime(100, now + i * 0.03 + 0.2);
+          const g2 = ac.createGain(); g2.gain.setValueAtTime(vol * 0.35, now + i * 0.03);
+          g2.gain.exponentialRampToValueAtTime(0.001, now + i * 0.03 + 0.2);
+          o.connect(g2); g2.connect(ac.destination); o.start(now + i * 0.03); o.stop(now + i * 0.03 + 0.2);
+        }
+      } else if (type === "perfectparry") {
+        // Bright, resonant parry sound
+        const o = ac.createOscillator(); o.type = "sine";
+        o.frequency.setValueAtTime(1800, now); o.frequency.exponentialRampToValueAtTime(2400, now + 0.08);
+        o.frequency.exponentialRampToValueAtTime(1000, now + 0.4);
+        g.gain.setValueAtTime(vol * 0.6, now); g.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+        o.connect(g); o.start(now); o.stop(now + 0.4);
+        // Harmonic overtone
+        const o2 = ac.createOscillator(); o2.type = "triangle";
+        o2.frequency.setValueAtTime(3600, now);
+        o2.frequency.exponentialRampToValueAtTime(1200, now + 0.3);
+        const g3 = ac.createGain(); g3.gain.setValueAtTime(vol * 0.2, now);
+        g3.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+        o2.connect(g3); g3.connect(ac.destination); o2.start(now); o2.stop(now + 0.3);
       }
     } catch (_) { /* ignore audio errors */ }
+  }
+
+  // ── Procedural Ambient Music ──────────────────────────────────────────────
+
+  private _startMusic(): void {
+    const ac = this._audioCtx;
+    if (!ac) return;
+    try {
+      // Main drone at C2 (65Hz)
+      this._musicGain = ac.createGain();
+      this._musicGain.gain.setValueAtTime(0.04, ac.currentTime);
+      this._musicGain.connect(ac.destination);
+      this._musicDrone = ac.createOscillator();
+      this._musicDrone.type = "sine";
+      this._musicDrone.frequency.setValueAtTime(65, ac.currentTime);
+      this._musicDrone.connect(this._musicGain);
+      this._musicDrone.start();
+
+      // Second drone gain (starts silent, activates when excitement is high)
+      this._musicGain2 = ac.createGain();
+      this._musicGain2.gain.setValueAtTime(0, ac.currentTime);
+      this._musicGain2.connect(ac.destination);
+      this._musicDrone2 = ac.createOscillator();
+      this._musicDrone2.type = "sine";
+      this._musicDrone2.frequency.setValueAtTime(98, ac.currentTime);
+      this._musicDrone2.connect(this._musicGain2);
+      this._musicDrone2.start();
+    } catch (_) { /* ignore */ }
+  }
+
+  private _stopMusic(): void {
+    try {
+      this._musicDrone?.stop();
+      this._musicDrone2?.stop();
+    } catch (_) { /* ignore */ }
+    this._musicDrone = null;
+    this._musicDrone2 = null;
+    this._musicGain = null;
+    this._musicGain2 = null;
+  }
+
+  private _updateMusic(): void {
+    const ac = this._audioCtx;
+    if (!ac || !this._musicGain || !this._musicGain2) return;
+    try {
+      const now = ac.currentTime;
+      // Toggle second drone based on excitement
+      const targetGain2 = this._crowdExcitement > 0.5 ? 0.03 : 0;
+      this._musicGain2.gain.setTargetAtTime(targetGain2, now, 0.3);
+
+      // Play melodic notes
+      this._musicNoteTimer++;
+      const noteInterval = this._crowdExcitement > 0.5 ? 60 : 120;
+      if (this._musicNoteTimer >= noteInterval) {
+        this._musicNoteTimer = 0;
+        // Minor pentatonic: C, Eb, F, G, Bb
+        const notes = [130.81, 155.56, 174.61, 196.00, 233.08]; // octave 3
+        const octaveMul = Math.random() < 0.5 ? 1 : 2; // octave 3 or 4
+        const freq = notes[randInt(0, 4)] * octaveMul;
+
+        const noteGain = ac.createGain();
+        noteGain.gain.setValueAtTime(0.035, now);
+        noteGain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+        noteGain.connect(ac.destination);
+        const noteOsc = ac.createOscillator();
+        noteOsc.type = "triangle";
+        noteOsc.frequency.setValueAtTime(freq, now);
+        noteOsc.connect(noteGain);
+        noteOsc.start(now);
+        noteOsc.stop(now + 0.8);
+
+        // Reverb-like delay during slow-mo or intro
+        if (this._slowmoTimer > 0 || this._phase === "intro") {
+          const delayGain = ac.createGain();
+          delayGain.gain.setValueAtTime(0.017, now + 0.2);
+          delayGain.gain.exponentialRampToValueAtTime(0.001, now + 1.0);
+          delayGain.connect(ac.destination);
+          const delayOsc = ac.createOscillator();
+          delayOsc.type = "triangle";
+          delayOsc.frequency.setValueAtTime(freq, now + 0.2);
+          delayOsc.connect(delayGain);
+          delayOsc.start(now + 0.2);
+          delayOsc.stop(now + 1.0);
+        }
+      }
+    } catch (_) { /* ignore */ }
   }
 
   // ── Skeleton ─────────────────────────────────────────────────────────────
@@ -769,8 +993,36 @@ export class SwordOfAvalonGame {
     }
   }
 
+  private _spawnGoldenParticles(x: number, y: number, count: number): void {
+    for (let i = 0; i < count; i++) {
+      const a = rand(-Math.PI, Math.PI); const s = rand(4, 10);
+      const colors = ["#ffd700", "#ffec8b", "#fff68f", "#fffacd"];
+      this._spawnParticle(x, y, Math.cos(a) * s, Math.sin(a) * s, rand(15, 35), rand(2, 4), colors[randInt(0, 3)], "spark", 0.1);
+    }
+  }
+
+  private _spawnCrackParticles(x: number, y: number, count: number): void {
+    for (let i = 0; i < count; i++) {
+      const a = rand(-Math.PI, Math.PI); const s = rand(5, 12);
+      this._spawnParticle(x, y, Math.cos(a) * s, Math.sin(a) * s, rand(8, 18), rand(1, 2), "#fff", "crack", 0.05);
+    }
+  }
+
+  private _spawnMirrorGhostParticles(x: number, y: number): void {
+    for (let i = 0; i < 8; i++) {
+      const a = rand(-Math.PI, Math.PI); const s = rand(1, 3);
+      const colors = ["#aa66ff", "#8844cc", "#6622aa", "#bb88ee"];
+      this._spawnParticle(x + rand(-30, 30), y + rand(-50, 10), Math.cos(a) * s, Math.sin(a) * s,
+        rand(20, 40), rand(4, 10), colors[randInt(0, 3)], "dust", -0.05);
+    }
+  }
+
   private _spawnDamageNumber(x: number, y: number, damage: number, color = "#fff"): void {
     this._damageNumbers.push({ x, y, text: Math.round(damage).toString(), life: 50, color });
+  }
+
+  private _spawnDamageText(x: number, y: number, text: string, color = "#fff"): void {
+    this._damageNumbers.push({ x, y, text, life: 60, color });
   }
 
   private _updateParticles(): void {
@@ -791,6 +1043,14 @@ export class SwordOfAvalonGame {
       this._bloodDecals[i].alpha -= 0.0005;
       if (this._bloodDecals[i].alpha <= 0) this._bloodDecals.splice(i, 1);
     }
+    // Perfect parry ring expansion
+    if (this._perfectParryRing) {
+      this._perfectParryRing.r += 6;
+      this._perfectParryRing.alpha -= 0.04;
+      if (this._perfectParryRing.alpha <= 0) this._perfectParryRing = null;
+    }
+    // Guard break flash decay
+    if (this._guardBreakFlash > 0) this._guardBreakFlash--;
   }
 
   private _triggerShake(intensity: number): void { this._shakeIntensity = Math.max(this._shakeIntensity, intensity); }
@@ -800,6 +1060,29 @@ export class SwordOfAvalonGame {
       this._shakeY = (Math.random() - 0.5) * this._shakeIntensity;
       this._shakeIntensity *= 0.85;
     } else { this._shakeX = this._shakeY = this._shakeIntensity = 0; }
+  }
+
+  // ── Wall Splat ──────────────────────────────────────────────────────────
+
+  private _checkWallSplat(f: Fighter): void {
+    if (f.dead || f.wallSplatTimer > 0) return;
+    const wallRight = this._W - WALL_RIGHT_OFFSET;
+    if ((f.x <= WALL_LEFT || f.x >= wallRight) && Math.abs(f.vx) > 2) {
+      f.wallSplatTimer = 30;
+      f.staggered = true;
+      f.staggerTimer = 30;
+      f.hp -= 5;
+      f.vx = 0;
+      const wallX = f.x <= WALL_LEFT ? WALL_LEFT : wallRight;
+      this._spawnDust(wallX, this._groundY, 12);
+      this._triggerShake(10);
+      this._playSound("wallsplat", 0.35);
+      this._spawnDamageNumber(f.x, f.y - 40, 5, "#ff8844");
+      if (f.hp <= 0) {
+        f.hp = 0; f.dead = true; f.deathTimer = 0;
+        this._playSound("death", 0.4); this._triggerShake(15);
+      }
+    }
   }
 
   // ── Fighter ──────────────────────────────────────────────────────────────
@@ -824,6 +1107,15 @@ export class SwordOfAvalonGame {
       bleedTimer: 0, damageMul: enemyDef ? enemyDef.damage : 1,
       ability: enemyDef ? enemyDef.ability : "none",
       capeSegments: [0, 0, 0, 0, 0],
+      // New fields
+      superMeter: 0,
+      hitFlash: 0,
+      counterStrikeReady: false,
+      counterStrikeWindupMul: 1.0,
+      wallSplatTimer: 0,
+      whiffPunishTimer: 0,
+      whiffPunishAggBoost: 0,
+      mirrorImageTimer: 0,
     };
   }
 
@@ -844,7 +1136,15 @@ export class SwordOfAvalonGame {
 
     f.stamina -= atk.stamina;
     f.currentAttack = atk; f.attackType = type;
-    f.attackPhase = "windup"; f.attackTimer = atk.windup;
+    f.attackPhase = "windup";
+    // Counter strike ability: reduce windup by 30% if ready
+    let windupFrames = atk.windup;
+    if (f.counterStrikeReady && f.counterStrikeWindupMul < 1.0) {
+      windupFrames = Math.floor(windupFrames * f.counterStrikeWindupMul);
+      f.counterStrikeReady = false;
+      f.counterStrikeWindupMul = 1.0;
+    }
+    f.attackTimer = windupFrames;
     f.attackHit = false; f.blocking = false; f.parrying = false;
     f.riposteReady = false;
 
@@ -854,6 +1154,7 @@ export class SwordOfAvalonGame {
 
     if (type === "kick") this._playSound("kick", 0.2);
     else if (type === "riposte") this._playSound("riposte", 0.3);
+    else if (type === "excalibur") this._playSound("excalibur", 0.4);
     else this._playSound("slash", 0.15);
   }
 
@@ -865,10 +1166,10 @@ export class SwordOfAvalonGame {
 
   private _stopBlock(f: Fighter): void { f.blocking = false; f.blockHeld = false; f.parrying = false; }
 
-  private _startDodge(f: Fighter, dir: number): void {
+  private _startDodge(f: Fighter, dir: number, staminaCost = 20): void {
     if (f.dead || f.staggered || f.knockedDown || f.dodging) return;
-    if (f.stamina < 20) return;
-    f.stamina -= 20;
+    if (f.stamina < staminaCost) return;
+    f.stamina -= staminaCost;
     f.dodging = true; f.dodgeTimer = DODGE_FRAMES; f.dodgeDir = dir || -f.facing; f.invulnerable = true;
     f.blocking = false; f.parrying = false; f.attackPhase = null; f.currentAttack = null;
     this._playSound("dodge", 0.2);
@@ -886,6 +1187,21 @@ export class SwordOfAvalonGame {
       f.y = Math.min(f.y, this._groundY + 20);
       this._solveFK(f.skeleton); return;
     }
+
+    // Hit flash decay
+    if (f.hitFlash > 0) f.hitFlash -= ts;
+
+    // Wall splat timer decay
+    if (f.wallSplatTimer > 0) f.wallSplatTimer -= ts;
+
+    // Whiff punish timer decay
+    if (f.whiffPunishTimer > 0) {
+      f.whiffPunishTimer -= ts;
+      if (f.whiffPunishTimer <= 0) f.whiffPunishAggBoost = 0;
+    }
+
+    // Mirror image timer
+    if (f.mirrorImageTimer > 0) f.mirrorImageTimer -= ts;
 
     // Bleed
     if (f.bleedTimer > 0) {
@@ -922,7 +1238,21 @@ export class SwordOfAvalonGame {
       const poseKey = f.attackType + "_" + f.attackPhase;
       if (POSES[poseKey]) f.targetPose = POSES[poseKey];
       if (f.attackPhase === "windup" && f.attackTimer <= 0) { f.attackPhase = "active"; f.attackTimer = f.currentAttack!.active; f.attackHit = false; }
-      else if (f.attackPhase === "active" && f.attackTimer <= 0) { f.attackPhase = "recovery"; f.attackTimer = f.currentAttack!.recovery; }
+      else if (f.attackPhase === "active" && f.attackTimer <= 0) {
+        // Track if attack missed (whiff) for AI whiff-punish
+        if (!f.attackHit && !f.isAI) {
+          // Player whiffed — AI gets reaction bonus
+          if (this._ai && !this._ai.dead) {
+            const enemyDef = ENEMIES[this._currentEnemyIdx];
+            const diffMul = [0.6, 1.0, 1.5][this._difficulty];
+            const reactionFrames = Math.max(3, Math.floor(18 - enemyDef.aggression * 10 * diffMul));
+            this._ai.aiTimer = reactionFrames;
+            this._ai.whiffPunishTimer = 30;
+            this._ai.whiffPunishAggBoost = 0.3;
+          }
+        }
+        f.attackPhase = "recovery"; f.attackTimer = f.currentAttack!.recovery;
+      }
       else if (f.attackPhase === "recovery" && f.attackTimer <= 0) { f.attackPhase = null; f.currentAttack = null; f.attackType = null; }
     }
 
@@ -951,6 +1281,9 @@ export class SwordOfAvalonGame {
     if (f.y >= this._groundY) { f.y = this._groundY; f.vy = 0; f.grounded = true; } else f.grounded = false;
     f.x += f.vx * ts; f.vx *= 0.85;
     f.x = clamp(f.x, 60, this._W - 60);
+
+    // Wall splat check
+    this._checkWallSplat(f);
 
     // Stamina regen
     if (!f.attackPhase && !f.blocking && !f.dodging) {
@@ -1011,31 +1344,62 @@ export class SwordOfAvalonGame {
     // Crowd excitement
     this._crowdExcitement = Math.min(1, this._crowdExcitement + 0.15);
 
-    // Parry
-    if (defender.parrying && attacker.attackType !== "kick") {
-      this._playSound("parry", 0.4);
-      this._spawnSparks(hitX, hitY, 25, 1.5);
-      this._triggerShake(12);
-      this._hitstopTimer = HITSTOP_FRAMES + 2;
+    // Excalibur strike is unblockable
+    const isExcalibur = attacker.attackType === "excalibur";
+
+    // Parry (not for excalibur)
+    if (defender.parrying && attacker.attackType !== "kick" && !isExcalibur) {
+      // Check for perfect parry: parried within first 3 frames (+ bonus window)
+      const perfectWindow = 3 + (defender.isAI ? 0 : this._bonusPerfectWindow);
+      const isPerfectParry = defender.parryTimer > PARRY_WINDOW - perfectWindow;
+
+      if (isPerfectParry) {
+        // Perfect parry!
+        this._playSound("perfectparry", 0.45);
+        this._spawnSparks(hitX, hitY, 30, 2.0);
+        this._triggerShake(15);
+        this._hitstopTimer = HITSTOP_FRAMES + 4;
+        this._spawnDamageText(hitX, hitY - 30, "PERFECT!", "#ffd700");
+        // Radial ring effect
+        this._perfectParryRing = { x: hitX, y: hitY, r: 10, alpha: 0.9 };
+        // Extra super meter
+        defender.superMeter = Math.min(SUPER_METER_MAX, defender.superMeter + 25); // 15 base + 10 bonus
+      } else {
+        this._playSound("parry", 0.4);
+        this._spawnSparks(hitX, hitY, 25, 1.5);
+        this._triggerShake(12);
+        this._hitstopTimer = HITSTOP_FRAMES + 2;
+        // Normal parry super meter
+        defender.superMeter = Math.min(SUPER_METER_MAX, defender.superMeter + 15);
+      }
+
       attacker.staggered = true; attacker.staggerTimer = 25;
       attacker.attackPhase = null; attacker.currentAttack = null;
       defender.parrying = false; defender.blocking = false;
       // Riposte window!
       defender.riposteReady = true; defender.riposteTimer = RIPOSTE_WINDOW;
-      if (!defender.isAI) { this._stats.parries++; this._spawnDamageNumber(hitX, hitY - 20, 0, "#4af"); }
+      if (!defender.isAI) {
+        this._stats.parries++;
+        if (!isPerfectParry) this._spawnDamageNumber(hitX, hitY - 20, 0, "#4af");
+      }
       this._crowdExcitement = Math.min(1, this._crowdExcitement + 0.3);
       if (this._crowdExcitement > 0.5) this._playSound("crowd", 0.15);
       return;
     }
 
-    // Block
-    if (defender.blocking && attacker.attackType !== "kick") {
+    // Block (not for excalibur or kick)
+    if (defender.blocking && attacker.attackType !== "kick" && !isExcalibur) {
       const blockCost = attacker.currentAttack!.damage * 0.8 / STANCES[defender.stance].defMul;
       defender.stamina -= blockCost;
       if (defender.stamina < 0) {
+        // Guard break!
         defender.stamina = 0; defender.staggered = true; defender.staggerTimer = 30;
         defender.blocking = false; this._triggerShake(10);
         this._spawnDamageNumber(hitX, hitY - 20, 0, "#f84");
+        // Guard break VFX
+        this._spawnCrackParticles(hitX, hitY, 15);
+        this._guardBreakFlash = 3;
+        this._playSound("guardbreak", 0.35);
       }
       this._playSound("clash", 0.35); this._spawnSparks(hitX, hitY, 12);
       this._triggerShake(6); this._hitstopTimer = HITSTOP_FRAMES;
@@ -1049,7 +1413,10 @@ export class SwordOfAvalonGame {
     if (attacker.attackType === "riposte") {
       damage *= 1.8;
       this._crowdExcitement = Math.min(1, this._crowdExcitement + 0.4);
-      if (!attacker.isAI) this._stats.ripostes++;
+      if (!attacker.isAI) {
+        this._stats.ripostes++;
+        attacker.superMeter = Math.min(SUPER_METER_MAX, attacker.superMeter + 20);
+      }
     }
 
     // Player bonuses
@@ -1073,7 +1440,10 @@ export class SwordOfAvalonGame {
       this._comboDisplayName = comboTriggered.name;
       this._comboDisplayTimer = 90; this._comboDisplayCount = attacker.comboCount;
       this._playSound("combo", 0.4);
-      if (!attacker.isAI) this._stats.combos++;
+      if (!attacker.isAI) {
+        this._stats.combos++;
+        attacker.superMeter = Math.min(SUPER_METER_MAX, attacker.superMeter + 12);
+      }
       if (comboTriggered.effect === "knockback") defender.vx = attacker.facing * 8;
       else if (comboTriggered.effect === "knockdown") {
         defender.knockedDown = true; defender.knockdownTimer = 45;
@@ -1082,7 +1452,34 @@ export class SwordOfAvalonGame {
     }
 
     damage /= STANCES[defender.stance].defMul;
+
+    // Air attack ground bounce
+    if (attacker.attackType === "airSlash" && !attacker.grounded) {
+      defender.vy = -6;
+      defender.staggerTimer = Math.max(defender.staggerTimer, 18);
+      defender.staggered = true;
+    }
+
     defender.hp -= damage; defender.vx += attacker.facing * 3;
+
+    // Hit flash on defender
+    defender.hitFlash = 4;
+
+    // Super meter: attacker gains for landing hit, defender gains for taking hit
+    attacker.superMeter = Math.min(SUPER_METER_MAX, attacker.superMeter + 8);
+    defender.superMeter = Math.min(SUPER_METER_MAX, defender.superMeter + 5);
+
+    // Counter strike ability: after being hit, next attack is 30% faster
+    if (defender.ability === "counterStrike") {
+      defender.counterStrikeReady = true;
+      defender.counterStrikeWindupMul = 0.7;
+    }
+
+    // Lifesteal ability
+    if (attacker.ability === "lifesteal") {
+      const healAmount = damage * 0.2;
+      attacker.hp = Math.min(attacker.maxHp, attacker.hp + healAmount);
+    }
 
     // Bleed
     const canBleed = attacker.attackType === "kick" ? false :
@@ -1101,7 +1498,15 @@ export class SwordOfAvalonGame {
     const bloodDir = attacker.facing === 1 ? 0 : Math.PI;
     this._spawnBlood(hitX, hitY, 8, bloodDir);
     this._spawnSparks(hitX, hitY, 4);
-    this._spawnDamageNumber(hitX, hitY - 15, damage, attacker.attackType === "riposte" ? "#ffd700" : "#ff4444");
+
+    // Excalibur: golden particles and extra shake
+    if (isExcalibur) {
+      this._spawnGoldenParticles(hitX, hitY, 25);
+      this._triggerShake(25);
+    }
+
+    this._spawnDamageNumber(hitX, hitY - 15, damage,
+      isExcalibur ? "#ffd700" : attacker.attackType === "riposte" ? "#ffd700" : "#ff4444");
     this._triggerShake(8 + damage * 0.3);
     this._hitstopTimer = HITSTOP_FRAMES;
 
@@ -1137,9 +1542,30 @@ export class SwordOfAvalonGame {
     const diffMul = [0.6, 1.0, 1.5][this._difficulty];
     const enemyDef = ENEMIES[this._currentEnemyIdx];
     const reactionFrames = Math.max(3, Math.floor(18 - enemyDef.aggression * 10 * diffMul));
-    const aggressiveness = enemyDef.aggression * diffMul;
+    const aggressiveness = enemyDef.aggression * diffMul + ai.whiffPunishAggBoost;
     const parryChance = enemyDef.parrySkill * diffMul;
     const speedMul = enemyDef.speed;
+
+    // Mirror image ability: spawn ghost particles every 300 frames
+    if (ai.ability === "mirrorImage") {
+      ai.mirrorImageTimer++;
+      if (ai.mirrorImageTimer >= 300) {
+        ai.mirrorImageTimer = 0;
+        this._spawnMirrorGhostParticles(ai.x, ai.y);
+      }
+    }
+
+    // AI super meter usage
+    if (ai.superMeter >= SUPER_METER_MAX && distance < 120 && distance > 40 && !ai.attackPhase && !ai.staggered && !ai.knockedDown) {
+      const useChance = [0.2, 0.4, 0.7][this._difficulty];
+      if (Math.random() < useChance * 0.02) { // checked every frame so low chance per frame
+        ai.superMeter = 0;
+        this._startAttack(ai, "excalibur");
+        this._spawnGoldenParticles(ai.x, ai.y - 40, 15);
+        ai.aiTimer = 0;
+        return;
+      }
+    }
 
     ai.aiTimer++;
     if (ai.aiTimer < reactionFrames && !ai.aiAction) return;
@@ -1232,6 +1658,27 @@ export class SwordOfAvalonGame {
     const dx = this._ai.x - p.x;
     if (Math.abs(dx) > 10) p.facing = dx > 0 ? 1 : -1;
 
+    // Feint: during windup, press SPACE to cancel into a dodge
+    if (p.attackPhase === "windup" && this._justPressed[" "]) {
+      p.attackPhase = null; p.currentAttack = null; p.attackType = null;
+      // Add "feint" to combo sequence
+      if (p.comboTimer > 0) { p.comboSequence.push("feint"); }
+      else { p.comboSequence = ["feint"]; }
+      p.comboTimer = COMBO_WINDOW;
+      const dir = this._keys["a"] ? -1 : this._keys["d"] ? 1 : -p.facing;
+      this._startDodge(p, dir, 10); // feint dodge costs only 10 stamina
+      return;
+    }
+
+    // Super meter: press R to activate Excalibur Strike
+    if (this._justPressed["r"] && p.superMeter >= SUPER_METER_MAX && !p.attackPhase && !p.staggered && !p.knockedDown && !p.dodging) {
+      p.superMeter = 0;
+      this._startAttack(p, "excalibur");
+      this._spawnGoldenParticles(p.x, p.y - 40, 20);
+      this._triggerShake(12);
+      return;
+    }
+
     // Riposte: if riposte ready and attack pressed, do riposte
     if (p.riposteReady && p.riposteTimer > 0) {
       if (this._justPressed["j"] || this._justPressed["k"] || this._justPressed["u"] || this._justPressed["i"]) {
@@ -1241,7 +1688,10 @@ export class SwordOfAvalonGame {
       }
     }
 
-    if (this._justPressed["j"]) this._startAttack(p, "slash");
+    // Air slash: press J while airborne
+    if (this._justPressed["j"] && !p.grounded) {
+      this._startAttack(p, "airSlash");
+    } else if (this._justPressed["j"]) this._startAttack(p, "slash");
     if (this._justPressed["k"]) this._startAttack(p, "thrust");
     if (this._justPressed["u"]) this._startAttack(p, "overhead");
     if (this._justPressed["i"]) this._startAttack(p, "sweep");
@@ -1250,7 +1700,7 @@ export class SwordOfAvalonGame {
     if (this._keys["l"]) this._startBlock(p);
     else if (p.blocking) this._stopBlock(p);
 
-    if (this._justPressed[" "]) {
+    if (this._justPressed[" "] && !p.attackPhase) {
       const dir = this._keys["a"] ? -1 : this._keys["d"] ? 1 : -p.facing;
       this._startDodge(p, dir);
     }
@@ -1261,6 +1711,11 @@ export class SwordOfAvalonGame {
   }
 
   // ── Drawing ──────────────────────────────────────────────────────────────
+
+  private _getTorchPositions(): number[] {
+    const W = this._W;
+    return [W * 0.12, W * 0.88, W * 0.35, W * 0.65];
+  }
 
   private _drawBackground(): void {
     const c = this._ctx; const W = this._W, H = this._H, gY = this._groundY;
@@ -1328,7 +1783,8 @@ export class SwordOfAvalonGame {
     for (let j = gY + 30; j < H; j += 30) { c.beginPath(); c.moveTo(0, j); c.lineTo(W, j); c.stroke(); }
 
     // Torches
-    for (const tx of [W * 0.12, W * 0.88, W * 0.35, W * 0.65]) {
+    const torchPositions = this._getTorchPositions();
+    for (const tx of torchPositions) {
       c.fillStyle = "#2a1c10"; c.fillRect(tx - 6, gY - 130, 12, 130);
       c.fillStyle = "#3a2a1a"; c.fillRect(tx - 10, gY - 135, 20, 8);
       const ff = Math.sin(this._frameCount * 0.15 + tx) * 3;
@@ -1339,6 +1795,15 @@ export class SwordOfAvalonGame {
       c.fillStyle = "#ff8020"; c.beginPath(); c.ellipse(tx, gY - 140 - ff, 3, 7 + ff * 0.4, 0, 0, Math.PI * 2); c.fill();
       c.fillStyle = "#ffcc44"; c.beginPath(); c.ellipse(tx, gY - 139, 1.5, 3, 0, 0, Math.PI * 2); c.fill();
       if (this._frameCount % 5 === 0) this._spawnParticle(tx + rand(-2, 2), gY - 142, rand(-0.2, 0.2), rand(-1.2, -0.4), rand(12, 25), rand(1, 2.5), "rgba(255,150,30,0.5)", "spark", -0.03);
+
+      // Dynamic torchlight — warm radial gradient overlay extending to arena floor
+      const floorGlowRad = 180;
+      const floorGlow = c.createRadialGradient(tx, gY - 100, 5, tx, gY, floorGlowRad);
+      floorGlow.addColorStop(0, "rgba(255,140,40,0.06)");
+      floorGlow.addColorStop(0.5, "rgba(255,100,20,0.03)");
+      floorGlow.addColorStop(1, "rgba(255,60,10,0)");
+      c.fillStyle = floorGlow;
+      c.fillRect(tx - floorGlowRad, gY - 100 - floorGlowRad, floorGlowRad * 2, floorGlowRad * 2 + 100);
     }
 
     // Banners
@@ -1352,6 +1817,21 @@ export class SwordOfAvalonGame {
       c.fillText("\u2694", bx + wave * 0.5, gY - 120);
       c.fillStyle = "#5a4a30"; c.fillRect(bx - 2, gY - 168, 4, 12);
     }
+  }
+
+  private _computeLightLevel(fighterX: number): number {
+    // Compute brightness modifier based on distance to nearest torch
+    const torchPositions = this._getTorchPositions();
+    let minDist = Infinity;
+    for (const tx of torchPositions) {
+      const dist = Math.abs(fighterX - tx);
+      if (dist < minDist) minDist = dist;
+    }
+    // Close to torch: bright. Far: dark. Range ~0-250 pixels
+    const maxDist = 250;
+    const normalized = clamp(minDist / maxDist, 0, 1);
+    // Light level: 1.0 near torch, 0.5 far away
+    return lerp(1.0, 0.5, normalized);
   }
 
   private _drawLimb(j1: number, j2: number, w1: number, w2: number, color: string, sk: Skeleton, f: number): void {
@@ -1371,6 +1851,16 @@ export class SwordOfAvalonGame {
     c.fillStyle = color; c.beginPath(); c.arc(b.worldX * f, b.worldY, r, 0, Math.PI * 2); c.fill();
   }
 
+  private _applyLightToColor(color: string, lightLevel: number): string {
+    // Parse color and apply brightness modifier
+    const num = parseInt(color.replace("#", "").replace(/^rgb\(/,"").replace(/\)/,""), 16);
+    if (isNaN(num)) return color;
+    const r = clamp(Math.round(((num >> 16) & 0xff) * lightLevel), 0, 255);
+    const g = clamp(Math.round(((num >> 8) & 0xff) * lightLevel), 0, 255);
+    const b = clamp(Math.round((num & 0xff) * lightLevel), 0, 255);
+    return `rgb(${r},${g},${b})`;
+  }
+
   private _drawFighter(fighter: Fighter): void {
     const c = this._ctx;
     c.save(); c.translate(fighter.x, fighter.y);
@@ -1382,15 +1872,36 @@ export class SwordOfAvalonGame {
       c.globalAlpha = 1;
     }
     this._drawFighterBody(fighter);
+
+    // Hit flash overlay
+    if (fighter.hitFlash > 0) {
+      c.save();
+      c.globalCompositeOperation = "lighter";
+      c.globalAlpha = 0.3;
+      this._drawFighterBody(fighter);
+      c.restore();
+    }
+
     c.restore();
   }
 
   private _drawFighterBody(fighter: Fighter): void {
     const c = this._ctx; const sk = fighter.skeleton; const f = fighter.facing;
-    const skinColor = fighter.isAI ? "#4a3a2a" : "#c4a080";
-    const armorDark = fighter.isAI ? fighter.armorColor : "#555";
-    const armorLight = fighter.isAI ? shadeColor(fighter.armorColor, 25) : "#777";
-    const armorAccent = fighter.isAI ? fighter.color : "#886622";
+
+    // Compute dynamic torchlight level
+    const lightLevel = this._computeLightLevel(fighter.x);
+
+    const skinColorBase = fighter.isAI ? "#4a3a2a" : "#c4a080";
+    const armorDarkBase = fighter.isAI ? fighter.armorColor : "#555";
+    const armorLightBase = fighter.isAI ? shadeColor(fighter.armorColor, 25) : "#777";
+    const armorAccentBase = fighter.isAI ? fighter.color : "#886622";
+
+    // Apply light level to colors
+    const skinColor = this._applyLightToColor(skinColorBase, lightLevel);
+    const armorDark = this._applyLightToColor(armorDarkBase, lightLevel);
+    const armorLight = this._applyLightToColor(armorLightBase, lightLevel);
+    const armorAccent = this._applyLightToColor(armorAccentBase, lightLevel);
+
     const stanceColor = STANCES[fighter.stance].color;
 
     // Cape (drawn behind)
@@ -1483,10 +1994,21 @@ export class SwordOfAvalonGame {
     c.shadowColor = stanceColor;
     c.shadowBlur = fighter.attackPhase === "active" ? 18 : (fighter.riposteReady ? 12 : 5);
     if (fighter.riposteReady) c.shadowColor = "#ffd700";
+    // Excalibur golden glow
+    if (fighter.attackType === "excalibur" && fighter.attackPhase) {
+      c.shadowColor = "#ffd700";
+      c.shadowBlur = 30;
+    }
+    // Super meter full glow
+    if (fighter.superMeter >= SUPER_METER_MAX && !fighter.attackPhase) {
+      c.shadowColor = "#ffd700";
+      c.shadowBlur = 10 + Math.sin(this._frameCount * 0.1) * 5;
+    }
     const tipX = hx + Math.cos(swordAngle * f) * swordLen * f;
     const tipY = hy + Math.sin(swordAngle * f) * swordLen;
     // Blade
-    c.strokeStyle = fighter.swordColor; c.lineWidth = 3.5;
+    const bladeColor = (fighter.attackType === "excalibur" && fighter.attackPhase) ? "#ffd700" : fighter.swordColor;
+    c.strokeStyle = bladeColor; c.lineWidth = 3.5;
     c.beginPath(); c.moveTo(hx, hy); c.lineTo(tipX, tipY); c.stroke();
     c.strokeStyle = "#fff"; c.lineWidth = 1; c.globalAlpha = 0.6;
     c.beginPath(); c.moveTo(hx, hy); c.lineTo(tipX, tipY); c.stroke();
@@ -1535,6 +2057,13 @@ export class SwordOfAvalonGame {
       c.fillText("RIPOSTE!", 0, -80);
     }
 
+    // Super meter full indicator
+    if (fighter.superMeter >= SUPER_METER_MAX && !fighter.isAI) {
+      c.fillStyle = `rgba(255,215,0,${0.6 + Math.sin(this._frameCount * 0.12) * 0.3})`;
+      c.font = "bold 14px Georgia"; c.textAlign = "center";
+      c.fillText("R - EXCALIBUR!", 0, -95);
+    }
+
     // Stance glow
     if (!fighter.dead) {
       c.fillStyle = stanceColor;
@@ -1566,6 +2095,10 @@ export class SwordOfAvalonGame {
         c.globalAlpha = alpha * 0.5; c.fillRect(-p.size, -p.size, p.size * 2, p.size * 2);
       } else if (p.type === "blood") {
         c.fillStyle = p.color; c.beginPath(); c.arc(0, 0, p.size * alpha, 0, Math.PI * 2); c.fill();
+      } else if (p.type === "crack") {
+        // Thin angular white crack particles
+        c.strokeStyle = p.color; c.lineWidth = p.size * 0.8; c.globalAlpha = alpha;
+        c.beginPath(); c.moveTo(-p.size * 2, 0); c.lineTo(p.size * 2, 0); c.stroke();
       } else {
         c.fillStyle = p.color; c.beginPath(); c.arc(0, 0, p.size, 0, Math.PI * 2); c.fill();
       }
@@ -1575,9 +2108,36 @@ export class SwordOfAvalonGame {
     for (const d of this._damageNumbers) {
       const alpha = clamp(d.life / 30, 0, 1);
       c.save(); c.globalAlpha = alpha;
-      c.fillStyle = d.color; c.font = `bold ${d.text === "0" ? 14 : 18}px Georgia`; c.textAlign = "center";
+      c.fillStyle = d.color;
+      // Check if it's a text label (non-numeric)
+      const isText = isNaN(parseFloat(d.text));
+      c.font = `bold ${isText ? 20 : (d.text === "0" ? 14 : 18)}px Georgia`; c.textAlign = "center";
       if (d.text === "0") c.fillText("PARRY!", d.x, d.y);
       else c.fillText(d.text, d.x, d.y);
+      // Add glow for special text
+      if (d.color === "#ffd700") {
+        c.shadowColor = "#ffd700"; c.shadowBlur = 10;
+        c.fillText(d.text === "0" ? "PARRY!" : d.text, d.x, d.y);
+        c.shadowBlur = 0;
+      }
+      c.restore();
+    }
+    // Perfect parry ring
+    if (this._perfectParryRing) {
+      const ring = this._perfectParryRing;
+      c.save();
+      c.globalAlpha = ring.alpha;
+      c.strokeStyle = "#fff";
+      c.lineWidth = 3;
+      c.beginPath();
+      c.arc(ring.x, ring.y, ring.r, 0, Math.PI * 2);
+      c.stroke();
+      // Inner glow
+      c.strokeStyle = "#ffd700";
+      c.lineWidth = 1.5;
+      c.beginPath();
+      c.arc(ring.x, ring.y, ring.r * 0.8, 0, Math.PI * 2);
+      c.stroke();
       c.restore();
     }
   }
@@ -1591,22 +2151,43 @@ export class SwordOfAvalonGame {
     c.strokeStyle = "rgba(212,168,67,0.4)"; c.lineWidth = 1; c.strokeRect(x, y, w, h);
   }
 
+  private _drawSuperBar(x: number, y: number, w: number, h: number, ratio: number): void {
+    const c = this._ctx; ratio = clamp(ratio, 0, 1);
+    c.fillStyle = "#1a1200"; c.fillRect(x, y, w, h);
+    const grad = c.createLinearGradient(x, y, x + w * ratio, y);
+    grad.addColorStop(0, "#b8860b"); grad.addColorStop(0.5, "#ffd700"); grad.addColorStop(1, "#b8860b");
+    c.fillStyle = grad; c.fillRect(x, y, w * ratio, h);
+    c.strokeStyle = "rgba(212,168,67,0.5)"; c.lineWidth = 1; c.strokeRect(x, y, w, h);
+    // Glow effect when full
+    if (ratio >= 1) {
+      c.save();
+      c.shadowColor = "#ffd700";
+      c.shadowBlur = 8 + Math.sin(this._frameCount * 0.1) * 4;
+      c.strokeStyle = "#ffd700"; c.lineWidth = 1.5;
+      c.strokeRect(x, y, w, h);
+      c.restore();
+    }
+  }
+
   private _drawUI(): void {
     const c = this._ctx; const W = this._W, H = this._H;
     const barW = Math.min(300, W * 0.22); const barH = 20;
     const staminaW = barW * 0.85; const staminaH = 12; const margin = 20;
+    const superW = barW * 0.75; const superH = 8;
 
     // Player
     c.fillStyle = "#d4a843"; c.font = "16px Georgia"; c.textAlign = "left";
     c.fillText(this._player.name, margin, margin - 4);
     this._drawBar(margin, margin, barW, barH, this._player.hp / this._player.maxHp, "#a03030", "#301010");
     this._drawBar(margin, margin + barH + 4, staminaW, staminaH, this._player.stamina / STAMINA_MAX, "#30803a", "#102a10");
+    // Player super meter
+    this._drawSuperBar(margin, margin + barH + staminaH + 8, superW, superH, this._player.superMeter / SUPER_METER_MAX);
     c.fillStyle = STANCES[this._player.stance].color; c.font = "12px Georgia"; c.textAlign = "left";
-    c.fillText(this._player.stance.toUpperCase(), margin, margin + barH + staminaH + 18);
+    c.fillText(this._player.stance.toUpperCase(), margin, margin + barH + staminaH + superH + 22);
 
     // Gold
     c.fillStyle = "#ffd700"; c.font = "14px Georgia"; c.textAlign = "left";
-    c.fillText(`\u2726 ${this._gold} gold`, margin, margin + barH + staminaH + 36);
+    c.fillText(`\u2726 ${this._gold} gold`, margin, margin + barH + staminaH + superH + 40);
 
     // Round indicator
     c.fillStyle = "#d4a843"; c.font = "13px Georgia"; c.textAlign = "center";
@@ -1618,13 +2199,15 @@ export class SwordOfAvalonGame {
     c.fillText(this._ai.name, W - margin, margin - 4);
     this._drawBar(W - margin - barW, margin, barW, barH, this._ai.hp / this._ai.maxHp, "#a03030", "#301010");
     this._drawBar(W - margin - staminaW, margin + barH + 4, staminaW, staminaH, this._ai.stamina / STAMINA_MAX, "#30803a", "#102a10");
+    // AI super meter
+    this._drawSuperBar(W - margin - superW, margin + barH + staminaH + 8, superW, superH, this._ai.superMeter / SUPER_METER_MAX);
     c.fillStyle = STANCES[this._ai.stance].color; c.font = "12px Georgia"; c.textAlign = "right";
-    c.fillText(this._ai.stance.toUpperCase(), W - margin, margin + barH + staminaH + 18);
+    c.fillText(this._ai.stance.toUpperCase(), W - margin, margin + barH + staminaH + superH + 22);
 
     // Enemy ability
     if (enemy.abilityDesc) {
       c.fillStyle = "#886"; c.font = "11px Georgia"; c.textAlign = "right";
-      c.fillText(enemy.abilityDesc, W - margin, margin + barH + staminaH + 34);
+      c.fillText(enemy.abilityDesc, W - margin, margin + barH + staminaH + superH + 38);
     }
 
     // Combo display
@@ -1643,7 +2226,7 @@ export class SwordOfAvalonGame {
     if (this._player.comboCount > 1 && this._player.comboTimer > 0) {
       c.fillStyle = "#ffd700"; c.font = "bold 20px Georgia"; c.textAlign = "left";
       c.globalAlpha = clamp(this._player.comboTimer / 10, 0, 1);
-      c.fillText(`${this._player.comboCount}x`, margin, margin + barH + staminaH + 54); c.globalAlpha = 1;
+      c.fillText(`${this._player.comboCount}x`, margin, margin + barH + staminaH + superH + 58); c.globalAlpha = 1;
     }
 
     // Slow-mo indicator
@@ -1653,8 +2236,16 @@ export class SwordOfAvalonGame {
       c.fillText("FINISHING BLOW", W / 2, H * 0.35);
     }
 
+    // Guard break flash overlay
+    if (this._guardBreakFlash > 0) {
+      c.save();
+      c.fillStyle = `rgba(255,255,255,${this._guardBreakFlash * 0.1})`;
+      c.fillRect(0, 0, W, H);
+      c.restore();
+    }
+
     c.fillStyle = "rgba(160,128,64,0.3)"; c.font = "11px Georgia"; c.textAlign = "center";
-    c.fillText("J-Slash  K-Thrust  U-Overhead  I-Sweep  F-Kick  L-Block/Parry  SPACE-Dodge  1/2/3-Stance  ESC-Quit", W / 2, H - 12);
+    c.fillText("J-Slash  K-Thrust  U-Overhead  I-Sweep  F-Kick  L-Block/Parry  SPACE-Dodge  R-Super  1/2/3-Stance  ESC-Quit", W / 2, H - 12);
   }
 
   // ── Overlays ─────────────────────────────────────────────────────────────
@@ -1667,21 +2258,22 @@ export class SwordOfAvalonGame {
     this._titleOverlay.innerHTML = `
       <div style="font-size:72px;color:#d4a843;text-shadow:0 0 30px rgba(212,168,67,0.5),0 4px 8px rgba(0,0,0,0.8);letter-spacing:8px;margin-bottom:10px;text-align:center">SWORD OF AVALON</div>
       <div style="font-size:22px;color:#8b6914;letter-spacing:4px;margin-bottom:15px;text-align:center">A TALE OF STEEL AND HONOR</div>
-      <div style="font-size:14px;color:#665;letter-spacing:2px;margin-bottom:40px;text-align:center">TOURNAMENT OF 5 KNIGHTS &mdash; SHOP BETWEEN ROUNDS</div>
-      <div style="background:rgba(212,168,67,0.08);border:1px solid rgba(212,168,67,0.2);border-radius:8px;padding:24px 36px;margin-bottom:40px;max-width:650px">
+      <div style="font-size:14px;color:#665;letter-spacing:2px;margin-bottom:40px;text-align:center">TOURNAMENT OF 8 KNIGHTS &mdash; SHOP BETWEEN ROUNDS</div>
+      <div style="background:rgba(212,168,67,0.08);border:1px solid rgba(212,168,67,0.2);border-radius:8px;padding:24px 36px;margin-bottom:40px;max-width:700px">
         <div style="color:#d4a843;margin-bottom:12px;font-size:18px;letter-spacing:2px">CONTROLS</div>
         <div style="color:#a08040;font-size:14px;line-height:1.8">
           <span style="color:#d4a843;font-weight:bold">A/D</span> Move &nbsp;
           <span style="color:#d4a843;font-weight:bold">W</span> Jump &nbsp;
           <span style="color:#d4a843;font-weight:bold">S</span> Crouch &nbsp;
-          <span style="color:#d4a843;font-weight:bold">J</span> Slash &nbsp;
+          <span style="color:#d4a843;font-weight:bold">J</span> Slash (air: Air Slash) &nbsp;
           <span style="color:#d4a843;font-weight:bold">K</span> Thrust &nbsp;
           <span style="color:#d4a843;font-weight:bold">U</span> Overhead<br>
           <span style="color:#d4a843;font-weight:bold">I</span> Sweep &nbsp;
           <span style="color:#d4a843;font-weight:bold">F</span> Kick &nbsp;
           <span style="color:#d4a843;font-weight:bold">L</span> Block/Parry &nbsp;
-          <span style="color:#d4a843;font-weight:bold">SPACE</span> Dodge &nbsp;
-          <span style="color:#d4a843;font-weight:bold">1/2/3</span> Stance<br>
+          <span style="color:#d4a843;font-weight:bold">SPACE</span> Dodge (during windup: Feint) &nbsp;
+          <span style="color:#d4a843;font-weight:bold">R</span> Super Attack<br>
+          <span style="color:#d4a843;font-weight:bold">1/2/3</span> Stance &nbsp;
           <span style="color:#88a">Parry then attack = <span style="color:#ffd700">RIPOSTE</span> (bonus damage!)</span>
         </div>
       </div>
@@ -1716,6 +2308,7 @@ export class SwordOfAvalonGame {
       this._titleOverlay?.parentNode?.removeChild(this._titleOverlay); this._titleOverlay = null;
       this._currentEnemyIdx = 0; this._gold = 0; this._purchasedOneTime.clear();
       this._bonusStaminaRegen = 0; this._bonusDamage = 0; this._bonusDefense = 0; this._allCanBleed = false;
+      this._startingSuperMeter = 0; this._bonusPerfectWindow = 0;
       this._stats = { hitsLanded: 0, hitsTaken: 0, parries: 0, combos: 0, maxCombo: 0, ripostes: 0, goldEarned: 0 };
       this._startRound();
     });
@@ -1730,6 +2323,8 @@ export class SwordOfAvalonGame {
     this._hitstopTimer = 0; this._shakeIntensity = 0;
     this._slowmoTimer = 0; this._timeScale = 1;
     this._crowdExcitement = 0;
+    this._guardBreakFlash = 0;
+    this._perfectParryRing = null;
 
     // Keep player HP between rounds
     const prevHp = this._player ? this._player.hp : HEALTH_MAX;
@@ -1738,6 +2333,8 @@ export class SwordOfAvalonGame {
       name: "SIR GALAHAD", isAI: false,
     });
     this._player.hp = prevHp; this._player.maxHp = HEALTH_MAX;
+    // Apply starting super meter from shop upgrade
+    this._player.superMeter = this._startingSuperMeter;
 
     this._ai = this._createFighter(this._W * 0.7, -1, {
       color: enemy.color, armorColor: enemy.armorColor, swordColor: enemy.swordColor,
@@ -1763,7 +2360,7 @@ export class SwordOfAvalonGame {
       <div style="font-size:16px;color:#665;margin-bottom:20px;font-style:italic">"${enemy.defeated}"</div>
       <div style="font-size:20px;color:#ffd700;margin-bottom:30px">\u2726 ${this._gold} Gold</div>
       <div style="font-size:22px;color:#d4a843;letter-spacing:3px;margin-bottom:20px">ARMORER'S SHOP</div>
-      <div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-bottom:30px;max-width:700px">`;
+      <div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-bottom:30px;max-width:800px">`;
 
     for (const item of SHOP_ITEMS) {
       const bought = item.oneTime && this._purchasedOneTime.has(item.id);
@@ -1847,6 +2444,9 @@ export class SwordOfAvalonGame {
       if (this._slowmoTimer <= 0) this._timeScale = 1;
       else this._timeScale = lerp(SLOWMO_SCALE, 1, 1 - this._slowmoTimer / SLOWMO_DURATION);
     }
+
+    // Procedural music update
+    this._updateMusic();
 
     // Intro phase
     if (this._phase === "intro") {
