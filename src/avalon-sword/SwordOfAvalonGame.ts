@@ -134,6 +134,10 @@ interface EnemyDef {
   defeated: string;
   ability: string;
   abilityDesc: string;
+  taunts?: string[];
+  lowHpLine?: string;
+  playerLowHpLine?: string;
+  barks?: string[];
 }
 
 const ENEMIES: EnemyDef[] = [
@@ -144,6 +148,10 @@ const ENEMIES: EnemyDef[] = [
     taunt: "A practice bout, nothing more!",
     defeated: "I yield... you are swift indeed.",
     ability: "none", abilityDesc: "",
+    taunts: ["Not bad, for a beginner!", "Hold still!"],
+    lowHpLine: "You... are better than I thought...",
+    playerLowHpLine: "Give up now, save yourself!",
+    barks: ["Not bad...", "Ha! Got you!", "Decent form!"],
   },
   {
     name: "SIR GALETH", title: "the Duelist",
@@ -152,6 +160,10 @@ const ENEMIES: EnemyDef[] = [
     taunt: "En garde! Show me your technique.",
     defeated: "A true duelist acknowledges defeat.",
     ability: "counterStrike", abilityDesc: "COUNTER STRIKE \u2014 attacks faster after being hit",
+    taunts: ["Predictable.", "Too slow!"],
+    lowHpLine: "A worthy opponent... at last.",
+    playerLowHpLine: "Your form falters!",
+    barks: ["You're wide open!", "Textbook!", "Impressive parry..."],
   },
   {
     name: "SIR HECTOR", title: "Ironside",
@@ -160,6 +172,10 @@ const ENEMIES: EnemyDef[] = [
     taunt: "My armor is forged from mountain ore. Strike all you wish.",
     defeated: "Iron bends before the Lake Knight...",
     ability: "ironSkin", abilityDesc: "IRON SKIN \u2014 takes 30% reduced damage",
+    taunts: ["Your blade cannot pierce me.", "Futile."],
+    lowHpLine: "Impossible... my armor...",
+    playerLowHpLine: "Crumble before iron!",
+    barks: ["Is that all?", "Feel the weight of iron!", "Hmph."],
   },
   {
     name: "LADY ISOLDE", title: "Thornblade",
@@ -168,6 +184,10 @@ const ENEMIES: EnemyDef[] = [
     taunt: "My blade carries poison and grace in equal measure.",
     defeated: "Graceful... you have bested the Thorn.",
     ability: "poison", abilityDesc: "VENOM EDGE \u2014 hits inflict bleeding",
+    taunts: ["Feel the sting?", "Graceful, aren't I?"],
+    lowHpLine: "The thorn... wilts...",
+    playerLowHpLine: "The venom takes hold!",
+    barks: ["The thorn pricks deep!", "Taste my venom!", "Quick hands..."],
   },
   {
     name: "SIR AGRAVAIN", title: "the Shadow",
@@ -176,6 +196,10 @@ const ENEMIES: EnemyDef[] = [
     taunt: "You cannot strike what you cannot see.",
     defeated: "The shadows... recede.",
     ability: "shadowStep", abilityDesc: "SHADOW STEP \u2014 teleports behind you after dodging",
+    taunts: ["Where am I now?", "You cannot follow."],
+    lowHpLine: "The shadows... betray me...",
+    playerLowHpLine: "You cannot escape the dark!",
+    barks: ["Behind you.", "From the shadows!", "You saw that?"],
   },
   {
     name: "THE CRIMSON KNIGHT", title: "of the Blood Order",
@@ -184,6 +208,10 @@ const ENEMIES: EnemyDef[] = [
     taunt: "Your blood will sustain me.",
     defeated: "The blood... runs cold.",
     ability: "lifesteal", abilityDesc: "BLOOD OATH \u2014 heals from damage dealt",
+    taunts: ["Your pain feeds me.", "Bleed for me."],
+    lowHpLine: "I need... more blood...",
+    playerLowHpLine: "Your life force fades!",
+    barks: ["Your blood feeds me!", "Delicious!", "Unwise."],
   },
   {
     name: "LADY MORGANA", title: "the Enchantress",
@@ -192,6 +220,10 @@ const ENEMIES: EnemyDef[] = [
     taunt: "Reality bends to my will.",
     defeated: "The illusion... shatters.",
     ability: "mirrorImage", abilityDesc: "MIRROR IMAGE \u2014 creates illusory doubles",
+    taunts: ["Which is real?", "Illusion or blade?"],
+    lowHpLine: "The enchantment... fades...",
+    playerLowHpLine: "You see only what I allow!",
+    barks: ["Which one is real?", "Magic stings!", "Clever..."],
   },
   {
     name: "THE BLACK KNIGHT", title: "of the Abyss",
@@ -200,6 +232,10 @@ const ENEMIES: EnemyDef[] = [
     taunt: "None shall pass. None have ever passed.",
     defeated: "At last... I am freed from this curse.",
     ability: "rage", abilityDesc: "DARK FURY \u2014 faster and harder hitting below 40% HP",
+    taunts: ["Kneel.", "You are nothing."],
+    lowHpLine: "The abyss... calls me back...",
+    playerLowHpLine: "Submit to the void!",
+    barks: ["Kneel.", "DARKNESS!", "...impossible."],
   },
 ];
 
@@ -231,6 +267,14 @@ const SHOP_ITEMS: ShopItem[] = [
     apply: (g) => { g["_startingSuperMeter"] = 30; } },
   { id: "perfectParry", name: "Templar's Blessing", desc: "Perfect parry window +50% wider", cost: 110, oneTime: true,
     apply: (g) => { g["_bonusPerfectWindow"] = 2; } },
+  { id: "enchantFire", name: "Flame Enchant", desc: "Attacks ignite enemies (fire DOT)", cost: 150, oneTime: true,
+    apply: (g) => { g["_weaponEnchant"] = "fire"; } },
+  { id: "enchantIce", name: "Frost Enchant", desc: "Attacks slow enemy movement 30%", cost: 140, oneTime: true,
+    apply: (g) => { g["_weaponEnchant"] = "ice"; } },
+  { id: "enchantPoison", name: "Venom Enchant", desc: "Attacks apply poison (stacking DOT)", cost: 130, oneTime: true,
+    apply: (g) => { g["_weaponEnchant"] = "poison"; } },
+  { id: "enchantHoly", name: "Holy Enchant", desc: "Attacks deal +25% to undead/dark enemies", cost: 120, oneTime: true,
+    apply: (g) => { g["_weaponEnchant"] = "holy"; } },
 ];
 
 // ── Skeleton ─────────────────────────────────────────────────────────────────
@@ -602,6 +646,19 @@ interface Fighter {
   grabTimer: number;
   grabTarget: Fighter | null;
   scars: {x: number; y: number; angle: number; size: number}[];
+  // Enchantment / status effect timers
+  enchantment: string;
+  fireTimer: number;
+  iceTimer: number;
+  poisonTimer: number;
+  burnTimer: number;
+  slowTimer: number;
+  poisonStacks: number;
+  // Hit zone
+  legHitSlowTimer: number;
+  disarmedTimer: number;
+  // Execution finisher
+  vulnerable: boolean;
 }
 
 type Phase = "title" | "intro" | "playing" | "shop" | "game_over" | "victory" | "tournament_end" | "training";
@@ -744,9 +801,45 @@ export class SwordOfAvalonGame {
   // Death zoom
   private _deathZoom: {active: boolean; x: number; y: number; scale: number; targetScale: number; flashAlpha: number} = {active: false, x: 0, y: 0, scale: 1.0, targetScale: 1.3, flashAlpha: 0};
 
+  // New Game+ mode
+  private _ngPlus = 0;
+
+  // Player enchantment
+  private _playerEnchantment = "none";
+
+  // Weapon enchantment (new system — replaces _playerEnchantment)
+  private _weaponEnchant: string = "none";
+
+  // Weapon unlock notification
+  private _weaponUnlockNotify = "";
+  private _weaponUnlockTimer = 0;
+
+  // Dialogue system (AI taunts)
+  private _dialogueText = "";
+  private _dialogueTimer = 0;
+  private _dialogueSpeaker = "";
+  private _aiLowHpTaunted = false;
+  private _playerLowHpTaunted = false;
+  private _aiHalfHpBarked = false;
+
+  // Input buffer system
+  private _inputBuffer: {action: string, time: number} | null = null;
+
+  // Unlockable enemy weapons
+  private _unlockedWeapons = new Set<string>();
+
   private _onKeyDown = (e: KeyboardEvent) => this._handleKeyDown(e);
   private _onKeyUp = (e: KeyboardEvent) => this._handleKeyUp(e);
   private _onResize = () => this._resizeCanvas();
+
+  private get _currentWeapon(): WeaponDef {
+    const allWeapons = [...WEAPONS, ...this._getUnlockedWeaponDefs()];
+    return allWeapons[this._selectedWeapon] || WEAPONS[0];
+  }
+
+  private get _activeEnchant(): string {
+    return this._weaponEnchant !== "none" ? this._weaponEnchant : this._playerEnchantment;
+  }
 
   // ── Boot & Destroy ───────────────────────────────────────────────────────
 
@@ -1506,6 +1599,19 @@ export class SwordOfAvalonGame {
       grabTimer: 0,
       grabTarget: null,
       scars: [],
+      // Enchantment / status
+      enchantment: "none",
+      fireTimer: 0,
+      iceTimer: 0,
+      poisonTimer: 0,
+      burnTimer: 0,
+      slowTimer: 0,
+      poisonStacks: 0,
+      // Hit zone
+      legHitSlowTimer: 0,
+      disarmedTimer: 0,
+      // Execution
+      vulnerable: false,
     };
   }
 
@@ -1524,17 +1630,21 @@ export class SwordOfAvalonGame {
 
     if (f.attackPhase === "recovery") f.comboTimer = COMBO_WINDOW;
 
-    f.stamina -= atk.stamina * (!f.isAI ? WEAPONS[this._selectedWeapon].staminaMul : 1);
+    f.stamina -= atk.stamina * (!f.isAI ? this._currentWeapon.staminaMul : 1);
     // Clone the attack def to apply weapon modifiers for the player
     let modAtk = atk;
     if (!f.isAI) {
-      const wep = WEAPONS[this._selectedWeapon];
+      const wep = this._currentWeapon;
       modAtk = { ...atk, damage: atk.damage * wep.damageMul, reach: atk.reach * wep.reachMul };
+    }
+    // Disarmed: attacks do 50% damage
+    if (f.disarmedTimer > 0) {
+      modAtk = { ...modAtk, damage: modAtk.damage * 0.5 };
     }
     f.currentAttack = modAtk; f.attackType = type;
     f.attackPhase = "windup";
     // Counter strike ability: reduce windup by 30% if ready
-    let windupFrames = modAtk.windup * (!f.isAI ? WEAPONS[this._selectedWeapon].speedMul : 1);
+    let windupFrames = modAtk.windup * (!f.isAI ? this._currentWeapon.speedMul : 1);
     if (f.counterStrikeReady && f.counterStrikeWindupMul < 1.0) {
       windupFrames = Math.floor(windupFrames * f.counterStrikeWindupMul);
       f.counterStrikeReady = false;
@@ -1612,9 +1722,71 @@ export class SwordOfAvalonGame {
       }
     }
 
+    // Fire DOT (legacy fireTimer)
+    if (f.fireTimer > 0) {
+      f.fireTimer -= ts;
+      f.hp -= 0.2 * ts;
+      if (this._frameCount % 8 === 0) {
+        this._spawnParticle(f.x + rand(-10, 10), f.y - rand(10, 50), rand(-0.5, 0.5), rand(-1.5, -0.5), rand(10, 20), rand(2, 4), "#ff8c00", "spark", -0.05);
+      }
+      if (f.hp <= 0) { f.hp = 0; f.dead = true; f.deathTimer = 0; this._playSound("death", 0.4); this._triggerShake(15); }
+    }
+    // Burn DOT (new enchantment system)
+    if (f.burnTimer > 0) {
+      f.burnTimer -= ts;
+      f.hp -= 0.2 * ts;
+      if (this._frameCount % 6 === 0) {
+        this._spawnParticle(f.x + rand(-10, 10), f.y - rand(10, 50), rand(-0.5, 0.5), rand(-1.5, -0.5), rand(10, 20), rand(2, 4), "#ff8c00", "spark", -0.05);
+      }
+      if (f.hp <= 0) { f.hp = 0; f.dead = true; f.deathTimer = 0; this._playSound("death", 0.4); this._triggerShake(15); }
+    }
+    // Ice slow (legacy iceTimer)
+    if (f.iceTimer > 0) {
+      f.iceTimer -= ts;
+      if (this._frameCount % 12 === 0) {
+        this._spawnParticle(f.x + rand(-10, 10), f.y - rand(10, 40), rand(-0.3, 0.3), rand(-0.8, -0.2), rand(12, 22), rand(2, 5), "#88ccff", "dust", -0.02);
+      }
+    }
+    // Slow timer (new enchantment system)
+    if (f.slowTimer > 0) {
+      f.slowTimer -= ts;
+      if (this._frameCount % 12 === 0) {
+        this._spawnParticle(f.x + rand(-10, 10), f.y - rand(10, 40), rand(-0.3, 0.3), rand(-0.8, -0.2), rand(12, 22), rand(2, 5), "#88ccff", "dust", -0.02);
+      }
+    }
+    // Poison DOT + stamina debuff (legacy)
+    if (f.poisonTimer > 0) {
+      f.poisonTimer -= ts;
+      const stackDmg = 0.1 * Math.max(1, f.poisonStacks);
+      f.hp -= stackDmg * ts;
+      if (this._frameCount % 10 === 0) {
+        this._spawnParticle(f.x + rand(-10, 10), f.y - rand(10, 50), rand(-0.5, 0.5), rand(-1.0, -0.3), rand(12, 25), rand(3, 6), "#44cc44", "dust", -0.03);
+      }
+      if (f.hp <= 0) { f.hp = 0; f.dead = true; f.deathTimer = 0; this._playSound("death", 0.4); this._triggerShake(15); }
+      if (f.poisonTimer <= 0) f.poisonStacks = 0;
+    }
+    // Disarmed timer
+    if (f.disarmedTimer > 0) f.disarmedTimer -= ts;
+
+    // Leg hit slow timer
+    if (f.legHitSlowTimer > 0) f.legHitSlowTimer -= ts;
+
+    // Vulnerable state (execution finisher)
+    if (!f.vulnerable && f.hp > 0 && f.hp < f.maxHp * 0.05 && f.isAI) {
+      f.vulnerable = true;
+    }
+    if (f.vulnerable) {
+      // Pulsing red, can't attack, half speed
+      f.attackPhase = null; f.currentAttack = null; f.attackType = null;
+    }
+
     // Exhaustion penalty
     if (f.exhausted && f.attackPhase) {
       f.attackTimer += 0.3 * ts; // attacks are slower
+    }
+    // Slow timer makes attacks slower (attack speed * 1.3 = slower)
+    if (f.slowTimer > 0 && f.attackPhase) {
+      f.attackTimer += 0.3 * ts;
     }
 
     if (f.dodging) {
@@ -1633,21 +1805,21 @@ export class SwordOfAvalonGame {
       f.attackTimer -= ts;
       const poseKey = f.attackType + "_" + f.attackPhase;
       if (POSES[poseKey]) f.targetPose = POSES[poseKey];
-      if (f.attackPhase === "windup" && f.attackTimer <= 0) { f.attackPhase = "active"; f.attackTimer = f.currentAttack!.active * (!f.isAI ? WEAPONS[this._selectedWeapon].speedMul : 1); f.attackHit = false; }
+      if (f.attackPhase === "windup" && f.attackTimer <= 0) { f.attackPhase = "active"; f.attackTimer = f.currentAttack!.active * (!f.isAI ? this._currentWeapon.speedMul : 1); f.attackHit = false; }
       else if (f.attackPhase === "active" && f.attackTimer <= 0) {
         // Track if attack missed (whiff) for AI whiff-punish
         if (!f.attackHit && !f.isAI) {
           // Player whiffed — AI gets reaction bonus
           if (this._ai && !this._ai.dead) {
-            const enemyDef = ENEMIES[this._currentEnemyIdx];
+            const whiffEnemyDef = this._currentEnemyIdx < ENEMIES.length ? ENEMIES[this._currentEnemyIdx] : { aggression: 0.8 };
             const diffMul = [0.6, 1.0, 1.5][this._difficulty];
-            const reactionFrames = Math.max(3, Math.floor(18 - enemyDef.aggression * 10 * diffMul));
+            const reactionFrames = Math.max(3, Math.floor(18 - whiffEnemyDef.aggression * 10 * diffMul));
             this._ai.aiTimer = reactionFrames;
             this._ai.whiffPunishTimer = 30;
             this._ai.whiffPunishAggBoost = 0.3;
           }
         }
-        f.attackPhase = "recovery"; f.attackTimer = f.currentAttack!.recovery * (!f.isAI ? WEAPONS[this._selectedWeapon].speedMul : 1);
+        f.attackPhase = "recovery"; f.attackTimer = f.currentAttack!.recovery * (!f.isAI ? this._currentWeapon.speedMul : 1);
       }
       else if (f.attackPhase === "recovery" && f.attackTimer <= 0) { f.attackPhase = null; f.currentAttack = null; f.attackType = null; }
     }
@@ -1675,7 +1847,12 @@ export class SwordOfAvalonGame {
     // Physics
     f.vy += GRAVITY * ts; f.y += f.vy * ts;
     if (f.y >= this._groundY) { f.y = this._groundY; f.vy = 0; f.grounded = true; } else f.grounded = false;
-    f.x += f.vx * ts; f.vx *= 0.85;
+    let speedMod = 1.0;
+    if (f.iceTimer > 0) speedMod *= 0.6;
+    if (f.slowTimer > 0) speedMod *= 0.7;
+    if (f.legHitSlowTimer > 0) speedMod *= 0.7;
+    if (f.vulnerable) speedMod *= 0.5;
+    f.x += f.vx * ts * speedMod; f.vx *= 0.85;
     f.x = clamp(f.x, 60, this._W - 60);
 
     // Wall splat check
@@ -1683,7 +1860,8 @@ export class SwordOfAvalonGame {
 
     // Stamina regen
     if (!f.attackPhase && !f.blocking && !f.dodging) {
-      const regen = st.staminaRegen + (f.isAI ? 0 : this._bonusStaminaRegen);
+      let regen = st.staminaRegen + (f.isAI ? 0 : this._bonusStaminaRegen);
+      if (f.poisonTimer > 0) regen *= 0.5;
       f.stamina = Math.min(STAMINA_MAX, f.stamina + regen * ts);
     }
     if (f.stamina <= 0) f.exhausted = true;
@@ -1691,7 +1869,8 @@ export class SwordOfAvalonGame {
 
     // Rage ability
     if (f.ability === "rage" && f.hp < f.maxHp * 0.4) {
-      f.damageMul = ENEMIES[this._currentEnemyIdx].damage * 1.5;
+      const rageBaseDmg = this._currentEnemyIdx < ENEMIES.length ? ENEMIES[this._currentEnemyIdx].damage : 1.5;
+      f.damageMul = rageBaseDmg * 1.5;
     }
 
     // Pose + FK
@@ -1702,7 +1881,7 @@ export class SwordOfAvalonGame {
 
     // Sword tip
     const hand = f.skeleton.bones[J.R_HAND];
-    const swordLen = 55 * f.skeleton.scale * (!f.isAI ? WEAPONS[this._selectedWeapon].length : 1);
+    const swordLen = 55 * f.skeleton.scale * (!f.isAI ? this._currentWeapon.length : 1);
     f.swordTipX = f.x + hand.worldX * f.facing + Math.cos(hand.worldAngle * f.facing) * swordLen * f.facing;
     f.swordTipY = f.y + hand.worldY + Math.sin(hand.worldAngle * f.facing) * swordLen;
 
@@ -1812,6 +1991,18 @@ export class SwordOfAvalonGame {
       }
       this._crowdExcitement = Math.min(1, this._crowdExcitement + 0.3);
       if (this._crowdExcitement > 0.5) this._playSound("crowd", 0.15);
+      // Bark trigger: enemy parries player
+      if (defender.isAI) {
+        const enemyIdxParry = this._currentEnemyIdx < ENEMIES.length ? this._currentEnemyIdx : -1;
+        const enemyDefParry = enemyIdxParry >= 0 ? ENEMIES[enemyIdxParry] : null;
+        if (enemyDefParry?.barks && enemyDefParry.barks.length > 2) {
+          this._showDialogue(enemyDefParry.barks[2], "ai");
+        }
+      }
+      // Player bark on perfect parry (20% chance)
+      if (!defender.isAI && isPerfectParry && Math.random() < 0.2) {
+        this._showDialogue("Too slow!", "player");
+      }
       return;
     }
 
@@ -1838,6 +2029,19 @@ export class SwordOfAvalonGame {
     // Hit connects
     let damage = attacker.currentAttack!.damage * st.dmgMul * attacker.damageMul;
 
+    // Hit zone determination
+    let hitZone = "body";
+    const atkType = attacker.attackType || "slash";
+    if (atkType === "overhead" || atkType === "airSlash") {
+      hitZone = Math.random() < 0.3 ? "head" : "body";
+    } else if (atkType === "sweep" || atkType === "kick") {
+      hitZone = Math.random() < 0.4 ? "legs" : "body";
+    } else if (atkType === "thrust") {
+      hitZone = Math.random() < 0.5 ? "torso" : "body";
+    } else if (atkType === "slash" || atkType === "chargedSlash" || atkType === "dashAttack") {
+      hitZone = Math.random() < 0.15 ? "arms" : "body";
+    }
+
     // Backstab bonus: attacker is behind defender
     const isBackstab = (attacker.x - defender.x) * defender.facing > 0;
     if (isBackstab) {
@@ -1854,6 +2058,35 @@ export class SwordOfAvalonGame {
         this._stats.ripostes++;
         attacker.superMeter = Math.min(SUPER_METER_MAX, attacker.superMeter + 20);
       }
+    }
+
+    // Enchantment damage bonuses
+    const attackerEnchant = !attacker.isAI ? this._activeEnchant : "none";
+    // Holy: +25% to undead/dark enemies
+    if (attackerEnchant === "holy") {
+      const enemyName = defender.name || "";
+      if (enemyName.indexOf("BLACK") >= 0 || enemyName.indexOf("CRIMSON") >= 0 || enemyName.indexOf("MORGANA") >= 0 || enemyName.indexOf("SHADOW") >= 0) {
+        damage *= 1.25;
+        this._spawnGoldenParticles(hitX, hitY, 10);
+      }
+    }
+
+    // Hit zone effects
+    if (hitZone === "head") {
+      damage *= 1.5;
+      this._spawnDamageText(hitX, hitY - 50, "CRITICAL!", "#ffd700");
+      this._spawnSparks(hitX, hitY, 12, 1.5);
+      this._triggerShake(15);
+      this._hitstopTimer += 3;
+      if (damage > 20) this._announce("HEADSHOT!");
+    } else if (hitZone === "legs") {
+      defender.legHitSlowTimer = 40;
+    } else if (hitZone === "torso") {
+      defender.staggerTimer = Math.max(defender.staggerTimer, (defender.staggered ? defender.staggerTimer : 0) + 8);
+      defender.staggered = true;
+    } else if (hitZone === "arms") {
+      defender.disarmedTimer = 30;
+      this._spawnDamageText(hitX, hitY - 50, "DISARMED!", "#ff8844");
     }
 
     // Player bonuses
@@ -1919,8 +2152,13 @@ export class SwordOfAvalonGame {
     }
 
     // Super meter: attacker gains for landing hit, defender gains for taking hit
-    attacker.superMeter = Math.min(SUPER_METER_MAX, attacker.superMeter + 8);
-    defender.superMeter = Math.min(SUPER_METER_MAX, defender.superMeter + 5);
+    let attackerSuperRate = attacker.ability === "excaliburWielder" ? 1.5 : 1;
+    let defenderSuperRate = defender.ability === "excaliburWielder" ? 1.5 : 1;
+    // Arcane Edge weapon gives player faster super charge
+    if (!attacker.isAI && this._currentWeapon.id === "arcaneEdge") attackerSuperRate *= 1.4;
+    if (!defender.isAI && this._currentWeapon.id === "arcaneEdge") defenderSuperRate *= 1.4;
+    attacker.superMeter = Math.min(SUPER_METER_MAX, attacker.superMeter + 8 * attackerSuperRate);
+    defender.superMeter = Math.min(SUPER_METER_MAX, defender.superMeter + 5 * defenderSuperRate);
 
     // Counter strike ability: after being hit, next attack is 30% faster
     if (defender.ability === "counterStrike") {
@@ -1933,14 +2171,31 @@ export class SwordOfAvalonGame {
       const healAmount = damage * 0.2;
       attacker.hp = Math.min(attacker.maxHp, attacker.hp + healAmount);
     }
+    // Bloodletter weapon lifesteal for player
+    if (!attacker.isAI && this._currentWeapon.id === "bloodletter") {
+      const healAmount = damage * 0.1;
+      attacker.hp = Math.min(attacker.maxHp, attacker.hp + healAmount);
+    }
 
     // Bleed
     const canBleed = attacker.attackType === "kick" ? false :
       (attacker.currentAttack?.canBleed || (!attacker.isAI && this._allCanBleed) || attacker.ability === "poison");
-    const weaponBleedBonus = !attacker.isAI ? WEAPONS[this._selectedWeapon].bleedChance : 0;
+    const weaponBleedBonus = !attacker.isAI ? this._currentWeapon.bleedChance : 0;
     if (canBleed && Math.random() < 0.35 + weaponBleedBonus) {
       defender.bleedTimer = BLEED_DURATION;
       this._playSound("bleed", 0.15);
+    }
+
+    // Enchantment effects on hit
+    if (attackerEnchant === "fire") {
+      defender.burnTimer = 90;
+    }
+    if (attackerEnchant === "ice") {
+      defender.slowTimer = 60;
+    }
+    if (attackerEnchant === "poison") {
+      defender.poisonStacks = Math.min(3, defender.poisonStacks + 1);
+      defender.poisonTimer = 120;
     }
 
     if (!attacker.isAI) this._stats.hitsLanded++;
@@ -1987,15 +2242,66 @@ export class SwordOfAvalonGame {
       this._spawnCrowdItems(randInt(8, 10), "coin");
     }
 
-    this._spawnDamageNumber(hitX, hitY - 15, damage,
-      isExcalibur ? "#ffd700" : attacker.attackType === "riposte" ? "#ffd700" : "#ff4444");
+    // Damage number with zone label
+    const zoneSuffix = hitZone === "head" ? " (HEAD)" : hitZone === "legs" ? " (LEGS)" : hitZone === "arms" ? " (ARMS)" : hitZone === "torso" ? " (TORSO)" : "";
+    const dmgText = Math.round(damage).toString() + zoneSuffix;
+    this._damageNumbers.push({ x: hitX, y: hitY - 15, text: dmgText, life: 50,
+      color: isExcalibur ? "#ffd700" : attacker.attackType === "riposte" ? "#ffd700" : hitZone === "head" ? "#ffd700" : "#ff4444" });
     this._triggerShake(8 + damage * 0.3);
     this._hitstopTimer = HITSTOP_FRAMES;
 
     // Gold for player hits
     if (!attacker.isAI) {
-      const goldGain = Math.floor(damage * 0.5);
+      let goldGain = Math.floor(damage * 0.5);
+      if (this._ngPlus > 0) goldGain = Math.floor(goldGain * (1 + 0.5 * this._ngPlus));
       this._gold += goldGain; this._stats.goldEarned += goldGain;
+    }
+
+    // AI taunts on hit landing (3% chance)
+    if (attacker.isAI && Math.random() < 0.03) {
+      const enemyIdx = this._currentEnemyIdx < ENEMIES.length ? this._currentEnemyIdx : 7;
+      const enemyDef = ENEMIES[enemyIdx];
+      if (enemyDef.taunts && enemyDef.taunts.length > 0) {
+        this._showDialogue(enemyDef.taunts[randInt(0, enemyDef.taunts.length - 1)], "ai");
+      }
+    }
+
+    // Bark trigger: enemy drops below 50% HP
+    if (defender.isAI && defender.hp > 0 && defender.hp < defender.maxHp * 0.5 && !this._aiHalfHpBarked) {
+      this._aiHalfHpBarked = true;
+      const enemyIdxBark = this._currentEnemyIdx < ENEMIES.length ? this._currentEnemyIdx : -1;
+      const enemyDefBark = enemyIdxBark >= 0 ? ENEMIES[enemyIdxBark] : null;
+      if (enemyDefBark?.barks && enemyDefBark.barks.length > 0) {
+        this._showDialogue(enemyDefBark.barks[0], "ai");
+      }
+    }
+    // Bark trigger: AI lands big hit (>15 damage)
+    if (attacker.isAI && damage > 15) {
+      const enemyIdxBark2 = this._currentEnemyIdx < ENEMIES.length ? this._currentEnemyIdx : -1;
+      const enemyDefBark2 = enemyIdxBark2 >= 0 ? ENEMIES[enemyIdxBark2] : null;
+      if (enemyDefBark2?.barks && enemyDefBark2.barks.length > 1) {
+        this._showDialogue(enemyDefBark2.barks[1], "ai");
+      }
+    }
+    // Player barks (20% chance)
+    if (!attacker.isAI && Math.random() < 0.2) {
+      if (attacker.comboCount >= 3) this._showDialogue("For Avalon!", "player");
+      else if (isBackstab) this._showDialogue("Behind you.", "player");
+      else if (isExcalibur) this._showDialogue("EXCALIBUR!", "player");
+    }
+
+    // Low HP dialogue triggers
+    if (defender.isAI && defender.hp > 0 && defender.hp < defender.maxHp * 0.3 && !this._aiLowHpTaunted) {
+      this._aiLowHpTaunted = true;
+      const enemyIdx = this._currentEnemyIdx < ENEMIES.length ? this._currentEnemyIdx : 7;
+      const enemyDef = ENEMIES[enemyIdx];
+      if (enemyDef.lowHpLine) this._showDialogue(enemyDef.lowHpLine, "ai");
+    }
+    if (!defender.isAI && defender.hp > 0 && defender.hp < defender.maxHp * 0.3 && !this._playerLowHpTaunted) {
+      this._playerLowHpTaunted = true;
+      const enemyIdx = this._currentEnemyIdx < ENEMIES.length ? this._currentEnemyIdx : 7;
+      const enemyDef = ENEMIES[enemyIdx];
+      if (enemyDef.playerLowHpLine) this._showDialogue(enemyDef.playerLowHpLine, "ai");
     }
 
     if (defender.hp <= 0) {
@@ -2031,11 +2337,29 @@ export class SwordOfAvalonGame {
     ai.facing = dx > 0 ? 1 : -1;
 
     const diffMul = [0.6, 1.0, 1.5][this._difficulty];
-    const enemyDef = ENEMIES[this._currentEnemyIdx];
-    const reactionFrames = Math.max(3, Math.floor(18 - enemyDef.aggression * 10 * diffMul));
-    const aggressiveness = enemyDef.aggression * diffMul + ai.whiffPunishAggBoost;
-    const parryChance = enemyDef.parrySkill * diffMul;
+    const isArthurBoss = this._ngPlus >= 1 && this._currentEnemyIdx >= ENEMIES.length;
+    const enemyDef: EnemyDef = isArthurBoss ? {
+      name: "KING ARTHUR", title: "the Once and Future King",
+      color: "#d4a843", armorColor: "#886622", swordColor: "#ffd700", plumeColor: "#fff",
+      hp: 200, damage: 1.5, aggression: 0.75, parrySkill: 0.5, speed: 1.1,
+      taunt: "", defeated: "", ability: "excaliburWielder",
+      abilityDesc: "EXCALIBUR WIELDER \u2014 wields the true Excalibur",
+      barks: ["For Camelot!", "The crown commands it!", "Worthy..."],
+    } : ENEMIES[this._currentEnemyIdx];
+    const ngAgg = this._ngPlus * 0.1;
+    const ngParry = this._ngPlus * 0.1;
+    const reactionFrames = Math.max(3, Math.floor(18 - (enemyDef.aggression + ngAgg) * 10 * diffMul));
+    const aggressiveness = (enemyDef.aggression + ngAgg) * diffMul + ai.whiffPunishAggBoost;
+    const parryChance = (enemyDef.parrySkill + ngParry) * diffMul;
     const speedMul = enemyDef.speed;
+
+    // ExcaliburWielder ability: use excalibur every 200 frames
+    if (ai.ability === "excaliburWielder" && this._frameCount % 200 === 0 && !ai.attackPhase && !ai.staggered && !ai.knockedDown && distance < 120 && distance > 30) {
+      this._startAttack(ai, "excalibur");
+      this._spawnGoldenParticles(ai.x, ai.y - 40, 15);
+      ai.aiTimer = 0;
+      return;
+    }
 
     // Mirror image ability: spawn ghost particles every 300 frames
     if (ai.ability === "mirrorImage") {
@@ -2155,6 +2479,55 @@ export class SwordOfAvalonGame {
     if (p.dead) return;
     const st = STANCES[p.stance];
 
+    // Input buffer: execute buffered action if window is still valid (8 frames)
+    if (this._inputBuffer && this._frameCount - this._inputBuffer.time < 8) {
+      if (!p.staggered && !p.knockedDown && !p.dead && (!p.attackPhase || p.attackPhase === "recovery")) {
+        const bufferedAction = this._inputBuffer.action;
+        this._inputBuffer = null;
+        if (bufferedAction === "block") {
+          this._startBlock(p);
+        } else if (bufferedAction === "dodge") {
+          const dir = this._keys["a"] ? -1 : this._keys["d"] ? 1 : -p.facing;
+          this._startDodge(p, dir);
+        } else if (bufferedAction === "grab") {
+          this._startGrab(p, this._ai);
+        } else {
+          this._startAttack(p, bufferedAction);
+        }
+        return;
+      }
+    } else {
+      this._inputBuffer = null;
+    }
+
+    // Execution finisher: R+J simultaneous press near vulnerable enemy
+    if (((this._keys["r"] && this._justPressed["j"]) || (this._keys["j"] && this._justPressed["r"])) && this._ai && this._ai.vulnerable && !p.attackPhase && !p.staggered && !p.knockedDown && !p.dodging) {
+      const dist = Math.abs(this._ai.x - p.x);
+      if (dist < 100) {
+        // Trigger execution — slow-mo, rapid 3-slash animation
+        this._slowmoTimer = 40; this._timeScale = 0.15;
+        // Multi-hit: 3 rapid slashes with trail + sparks
+        for (let hitIdx = 0; hitIdx < 3; hitIdx++) {
+          const ox = rand(-10, 10);
+          const oy = rand(-40, -10);
+          this._spawnSparks(this._ai.x + ox, this._ai.y + oy, 10, 1.5);
+          this._spawnBlood(this._ai.x + ox, this._ai.y + oy, 10, p.facing === 1 ? 0 : Math.PI);
+        }
+        p.targetPose = POSES.riposte_active;
+        this._ai.hp = 0; this._ai.dead = true; this._ai.deathTimer = 0; this._ai.vulnerable = false;
+        this._spawnBlood(this._ai.x, this._ai.y - 30, 30, p.facing === 1 ? 0 : Math.PI);
+        this._triggerShake(25);
+        this._announce("EXECUTION!");
+        this._playSound("death", 0.5);
+        this._gold += 100; this._stats.goldEarned += 100;
+        this._crowdExcitement = 1;
+        this._playSound("crowd", 0.3);
+        this._playSound("crowd", 0.2);
+        this._deathZoom = {active: true, x: this._ai.x, y: this._ai.y - 40, scale: 1.0, targetScale: 1.3, flashAlpha: 1.0};
+        return;
+      }
+    }
+
     // Dash attack: double-tap direction detection
     if (this._justPressed["a"] || this._justPressed["arrowleft"]) {
       if (this._lastDirPress.dir === -1 && this._frameCount - this._lastDirPress.time <= 10 && !this._dashing) {
@@ -2220,8 +2593,9 @@ export class SwordOfAvalonGame {
       return;
     }
 
-    // Super meter: press R to activate Excalibur Strike
-    if (this._justPressed["r"] && p.superMeter >= SUPER_METER_MAX && !p.attackPhase && !p.staggered && !p.knockedDown && !p.dodging) {
+    // Super meter: press R to activate Excalibur Strike (not when there's a vulnerable enemy nearby)
+    const nearVulnerable = this._ai && this._ai.vulnerable && Math.abs(this._ai.x - p.x) < 100;
+    if (this._justPressed["r"] && !nearVulnerable && p.superMeter >= SUPER_METER_MAX && !p.attackPhase && !p.staggered && !p.knockedDown && !p.dodging) {
       p.superMeter = 0;
       this._startAttack(p, "excalibur");
       this._spawnGoldenParticles(p.x, p.y - 40, 20);
@@ -2238,9 +2612,13 @@ export class SwordOfAvalonGame {
       }
     }
 
-    // Grab: press G at close range
-    if (this._justPressed["g"] && !p.attackPhase && !p.grabbing) {
-      this._startGrab(p, this._ai);
+    // Grab: press G at close range (with buffering)
+    if (this._justPressed["g"]) {
+      if (p.attackPhase || p.staggered || p.knockedDown) {
+        this._inputBuffer = { action: "grab", time: this._frameCount };
+      } else if (!p.grabbing) {
+        this._startGrab(p, this._ai);
+      }
     }
 
     // Charged Heavy Attack: hold J to charge
@@ -2288,17 +2666,36 @@ export class SwordOfAvalonGame {
         this._startAttack(p, "airSlash");
       }
     }
-    if (this._justPressed["k"]) this._startAttack(p, "thrust");
-    if (this._justPressed["u"]) this._startAttack(p, "overhead");
-    if (this._justPressed["i"]) this._startAttack(p, "sweep");
-    if (this._justPressed["f"]) this._startAttack(p, "kick");
+    // Attack inputs with buffering
+    const tryAttack = (key: string, type: string) => {
+      if (this._justPressed[key]) {
+        if (p.attackPhase || p.staggered || p.knockedDown) {
+          this._inputBuffer = { action: type, time: this._frameCount };
+        } else {
+          this._startAttack(p, type);
+        }
+      }
+    };
+    tryAttack("k", "thrust");
+    tryAttack("u", "overhead");
+    tryAttack("i", "sweep");
+    tryAttack("f", "kick");
 
-    if (this._keys["l"]) this._startBlock(p);
-    else if (p.blocking) this._stopBlock(p);
+    if (this._keys["l"]) {
+      if (p.attackPhase || p.staggered || p.knockedDown) {
+        if (this._justPressed["l"]) this._inputBuffer = { action: "block", time: this._frameCount };
+      } else {
+        this._startBlock(p);
+      }
+    } else if (p.blocking) this._stopBlock(p);
 
-    if (this._justPressed[" "] && !p.attackPhase) {
-      const dir = this._keys["a"] ? -1 : this._keys["d"] ? 1 : -p.facing;
-      this._startDodge(p, dir);
+    if (this._justPressed[" "]) {
+      if (p.attackPhase || p.staggered || p.knockedDown) {
+        this._inputBuffer = { action: "dodge", time: this._frameCount };
+      } else {
+        const dir = this._keys["a"] ? -1 : this._keys["d"] ? 1 : -p.facing;
+        this._startDodge(p, dir);
+      }
     }
 
     if (this._justPressed["1"]) p.stance = "aggressive";
@@ -2548,6 +2945,57 @@ export class SwordOfAvalonGame {
       c.restore();
     }
 
+    // Burning: orange glow outline
+    if (fighter.burnTimer > 0) {
+      c.save();
+      c.globalCompositeOperation = "lighter";
+      c.globalAlpha = 0.2 + Math.sin(this._frameCount * 0.15) * 0.1;
+      c.shadowColor = "#ff8c00";
+      c.shadowBlur = 15;
+      c.fillStyle = "#ff8c00";
+      c.fillRect(-25, -75, 50, 80);
+      c.restore();
+    }
+
+    // Ice/slow tint overlay
+    if (fighter.iceTimer > 0 || fighter.slowTimer > 0) {
+      c.save();
+      c.globalCompositeOperation = "multiply";
+      c.globalAlpha = 0.3;
+      c.fillStyle = "#88ccff";
+      c.fillRect(-30, -80, 60, 90);
+      c.restore();
+    }
+
+    // Poisoned: green drip particles
+    if (fighter.poisonTimer > 0 || fighter.poisonStacks > 0) {
+      c.save();
+      c.globalAlpha = 0.4;
+      c.fillStyle = "#44cc44";
+      for (let pi = 0; pi < fighter.poisonStacks; pi++) {
+        const dripY = -60 + Math.sin(this._frameCount * 0.1 + pi * 2.0) * 15;
+        const dripX = -8 + pi * 8;
+        c.beginPath(); c.arc(dripX, dripY, 2, 0, Math.PI * 2); c.fill();
+        c.beginPath(); c.arc(dripX, dripY + 4, 1.5, 0, Math.PI * 2); c.fill();
+      }
+      c.restore();
+    }
+
+    // Vulnerable pulsing red overlay
+    if (fighter.vulnerable) {
+      c.save();
+      c.globalCompositeOperation = "lighter";
+      c.globalAlpha = 0.15 + Math.sin(this._frameCount * 0.2) * 0.1;
+      c.fillStyle = "#ff0000";
+      c.fillRect(-30, -80, 60, 90);
+      c.restore();
+      // Flashing "EXECUTE [R+J]" text
+      const execAlpha = 0.6 + Math.sin(this._frameCount * 0.2) * 0.4;
+      c.fillStyle = `rgba(255,50,50,${execAlpha})`;
+      c.font = "bold 14px Georgia"; c.textAlign = "center";
+      c.fillText("EXECUTE [R+J]", 0, -95);
+    }
+
     c.restore();
   }
 
@@ -2707,12 +3155,19 @@ export class SwordOfAvalonGame {
     const hand = sk.bones[J.R_HAND];
     const swordAngle = hand.worldAngle;
     const hx = hand.worldX * f, hy = hand.worldY;
-    const swordLen = 55 * sk.scale * (!fighter.isAI ? WEAPONS[this._selectedWeapon].length : 1);
+    const swordLen = 55 * sk.scale * (!fighter.isAI ? this._currentWeapon.length : 1);
 
     c.save();
     c.shadowColor = stanceColor;
     c.shadowBlur = fighter.attackPhase === "active" ? 18 : (fighter.riposteReady ? 12 : 5);
     if (fighter.riposteReady) c.shadowColor = "#ffd700";
+    // Enchantment sword glow
+    if (!fighter.isAI && this._activeEnchant !== "none") {
+      const enchGlowColors: Record<string, string> = { fire: "#ff8c00", ice: "#88ccff", holy: "#fffacd", poison: "#44cc44" };
+      c.shadowColor = enchGlowColors[this._activeEnchant] || stanceColor;
+      if (!fighter.attackPhase) c.shadowBlur = 8 + Math.sin(this._frameCount * 0.08) * 3;
+      else c.shadowBlur = 15;
+    }
     // Excalibur golden glow
     if (fighter.attackType === "excalibur" && fighter.attackPhase) {
       c.shadowColor = "#ffd700";
@@ -2726,10 +3181,14 @@ export class SwordOfAvalonGame {
     const tipX = hx + Math.cos(swordAngle * f) * swordLen * f;
     const tipY = hy + Math.sin(swordAngle * f) * swordLen;
     // Blade
-    const bladeColor = (fighter.attackType === "excalibur" && fighter.attackPhase) ? "#ffd700" : (!fighter.isAI ? WEAPONS[this._selectedWeapon].color : fighter.swordColor);
+    const bladeColor = (fighter.attackType === "excalibur" && fighter.attackPhase) ? "#ffd700" : (!fighter.isAI ? this._currentWeapon.color : fighter.swordColor);
+    // Disarmed: sword flickers at 50% alpha alternating frames
+    if (fighter.disarmedTimer > 0) {
+      c.globalAlpha = this._frameCount % 2 === 0 ? 0.5 : 0.2;
+    }
     c.strokeStyle = bladeColor; c.lineWidth = 3.5;
     c.beginPath(); c.moveTo(hx, hy); c.lineTo(tipX, tipY); c.stroke();
-    c.strokeStyle = "#fff"; c.lineWidth = 1; c.globalAlpha = 0.6;
+    c.strokeStyle = "#fff"; c.lineWidth = 1; c.globalAlpha = fighter.disarmedTimer > 0 ? 0.3 : 0.6;
     c.beginPath(); c.moveTo(hx, hy); c.lineTo(tipX, tipY); c.stroke();
     c.globalAlpha = 1; c.restore();
 
@@ -2913,6 +3372,95 @@ export class SwordOfAvalonGame {
     }
   }
 
+  // ── Dialogue System ──────────────────────────────────────────────────
+  private _showDialogue(text: string, speaker: string): void {
+    this._dialogueText = text;
+    this._dialogueTimer = 90;
+    this._dialogueSpeaker = speaker;
+  }
+
+  private _drawDialogue(): void {
+    if (this._dialogueTimer <= 0) return;
+    this._dialogueTimer--;
+    const c = this._ctx;
+    const alpha = this._dialogueTimer > 20 ? 1 : this._dialogueTimer / 20;
+    const speaker = this._dialogueSpeaker === "ai" ? this._ai : this._player;
+    if (!speaker) return;
+    const bx = speaker.x;
+    const by = speaker.y - 90;
+    c.save();
+    c.globalAlpha = alpha;
+    c.font = "13px Georgia";
+    const tw = c.measureText(this._dialogueText).width + 16;
+    const bh = 24;
+    // Speech bubble
+    c.fillStyle = "rgba(255,255,255,0.9)";
+    c.beginPath();
+    const rx = bx - tw / 2;
+    const ry = by - bh / 2;
+    const r = 6;
+    c.moveTo(rx + r, ry); c.lineTo(rx + tw - r, ry);
+    c.arcTo(rx + tw, ry, rx + tw, ry + r, r);
+    c.lineTo(rx + tw, ry + bh - r);
+    c.arcTo(rx + tw, ry + bh, rx + tw - r, ry + bh, r);
+    c.lineTo(rx + r, ry + bh);
+    c.arcTo(rx, ry + bh, rx, ry + bh - r, r);
+    c.lineTo(rx, ry + r);
+    c.arcTo(rx, ry, rx + r, ry, r);
+    c.closePath();
+    c.fill();
+    // Triangle pointer
+    c.beginPath();
+    c.moveTo(bx - 5, by + bh / 2);
+    c.lineTo(bx, by + bh / 2 + 8);
+    c.lineTo(bx + 5, by + bh / 2);
+    c.closePath();
+    c.fill();
+    // Text
+    c.fillStyle = "#222";
+    c.textAlign = "center";
+    c.fillText(this._dialogueText, bx, by + 5);
+    c.restore();
+  }
+
+  // ── Floor Reflections ────────────────────────────────────────────────
+  private _drawFighterReflection(fighter: Fighter): void {
+    if (!fighter || fighter.dead) return;
+    const c = this._ctx;
+    const gY = this._groundY;
+    c.save();
+    c.translate(fighter.x, gY);
+    c.scale(1, -0.3);
+    c.globalAlpha = 0.08;
+    // Draw simplified dark silhouette
+    const sk = fighter.skeleton;
+    const f = fighter.facing;
+    const drawSilLimb = (j1: number, j2: number, w: number) => {
+      const b1 = sk.bones[j1], b2 = sk.bones[j2];
+      const x1 = b1.worldX * f, y1 = b1.worldY, x2 = b2.worldX * f, y2 = b2.worldY;
+      c.beginPath();
+      c.moveTo(x1, y1); c.lineTo(x2, y2);
+      c.lineWidth = w; c.stroke();
+    };
+    c.strokeStyle = "#000";
+    drawSilLimb(J.PELVIS, J.SPINE, 10);
+    drawSilLimb(J.SPINE, J.CHEST, 12);
+    drawSilLimb(J.CHEST, J.NECK, 8);
+    drawSilLimb(J.L_HIP, J.L_THIGH, 6);
+    drawSilLimb(J.L_THIGH, J.L_SHIN, 5);
+    drawSilLimb(J.R_HIP, J.R_THIGH, 6);
+    drawSilLimb(J.R_THIGH, J.R_SHIN, 5);
+    drawSilLimb(J.L_SHOULDER, J.L_UPPER_ARM, 4);
+    drawSilLimb(J.L_UPPER_ARM, J.L_FOREARM, 4);
+    drawSilLimb(J.R_SHOULDER, J.R_UPPER_ARM, 4);
+    drawSilLimb(J.R_UPPER_ARM, J.R_FOREARM, 4);
+    // Head
+    const head = sk.bones[J.HEAD];
+    c.fillStyle = "#000";
+    c.beginPath(); c.arc(head.worldX * f, head.worldY, 8, 0, Math.PI * 2); c.fill();
+    c.restore();
+  }
+
   private _drawUI(): void {
     const c = this._ctx; const W = this._W, H = this._H;
     const barW = Math.min(300, W * 0.22); const barH = 20;
@@ -2933,12 +3481,37 @@ export class SwordOfAvalonGame {
     c.fillStyle = "#ffd700"; c.font = "14px Georgia"; c.textAlign = "left";
     c.fillText(`\u2726 ${this._gold} gold`, margin, margin + barH + staminaH + superH + 40);
 
+    // Enchantment indicator
+    if (this._activeEnchant !== "none") {
+      const enchColors: Record<string, string> = { fire: "#ff8c00", ice: "#88ccff", holy: "#ffd700", poison: "#44cc44" };
+      c.fillStyle = enchColors[this._activeEnchant] || "#fff";
+      c.font = "11px Georgia"; c.textAlign = "left";
+      c.fillText(`[${this._activeEnchant.toUpperCase()}]`, margin + 100, margin + barH + staminaH + superH + 40);
+    }
+
+    // Fire/Ice/Poison/Burn/Slow/Disarm status icons next to HP bars
+    { let statusY = margin + 14;
+      const drawStatus = (f: Fighter, x: number, align: string) => {
+        let sy = statusY;
+        c.font = "10px Georgia";
+        c.textAlign = align as CanvasTextAlign;
+        if (f.fireTimer > 0 || f.burnTimer > 0) { c.fillStyle = "#ff6600"; c.fillText("BURN", x, sy); sy += 12; }
+        if (f.iceTimer > 0 || f.slowTimer > 0) { c.fillStyle = "#88ccff"; c.fillText("SLOW", x, sy); sy += 12; }
+        if (f.poisonTimer > 0) { c.fillStyle = "#44cc44"; c.fillText(`POISON x${f.poisonStacks}`, x, sy); sy += 12; }
+        if (f.disarmedTimer > 0) { c.fillStyle = "#ff8844"; c.fillText("DISARMED", x, sy); }
+      };
+      drawStatus(this._player, margin + barW + 4, "left");
+      drawStatus(this._ai, W - margin - barW - 4, "right");
+    }
+
     // Round indicator
+    const totalRounds = this._ngPlus >= 1 ? ENEMIES.length + 1 : ENEMIES.length;
+    const ngLabel = this._ngPlus > 0 ? ` | NG+ LEVEL ${this._ngPlus}` : "";
     c.fillStyle = "#d4a843"; c.font = "13px Georgia"; c.textAlign = "center";
-    c.fillText(`ROUND ${this._currentEnemyIdx + 1} / ${ENEMIES.length}`, W / 2, margin);
+    c.fillText(`ROUND ${this._currentEnemyIdx + 1} / ${totalRounds}${ngLabel}`, W / 2, margin);
 
     // AI
-    const enemy = ENEMIES[this._currentEnemyIdx];
+    const enemy = this._currentEnemyIdx < ENEMIES.length ? ENEMIES[this._currentEnemyIdx] : null;
     c.textAlign = "right"; c.fillStyle = "#c04040"; c.font = "16px Georgia";
     c.fillText(this._ai.name, W - margin, margin - 4);
     this._drawBar(W - margin - barW, margin, barW, barH, this._ai.hp / this._ai.maxHp, "#a03030", "#301010");
@@ -2949,9 +3522,10 @@ export class SwordOfAvalonGame {
     c.fillText(this._ai.stance.toUpperCase(), W - margin, margin + barH + staminaH + superH + 22);
 
     // Enemy ability
-    if (enemy.abilityDesc) {
+    const abilityDescText = enemy?.abilityDesc || (this._ai.ability === "excaliburWielder" ? "EXCALIBUR WIELDER \u2014 commands the true Excalibur" : "");
+    if (abilityDescText) {
       c.fillStyle = "#886"; c.font = "11px Georgia"; c.textAlign = "right";
-      c.fillText(enemy.abilityDesc, W - margin, margin + barH + staminaH + superH + 38);
+      c.fillText(abilityDescText, W - margin, margin + barH + staminaH + superH + 38);
     }
 
     // Combo display
@@ -2990,6 +3564,71 @@ export class SwordOfAvalonGame {
 
     c.fillStyle = "rgba(160,128,64,0.3)"; c.font = "11px Georgia"; c.textAlign = "center";
     c.fillText("J-Slash(hold=Charge)  K-Thrust  U-Overhead  I-Sweep  F-Kick  G-Grab  L-Block/Parry  SPACE-Dodge  R-Super  1/2/3-Stance  ESC-Quit", W / 2, H - 12);
+  }
+
+  // ── Weapon Unlocking ────────────────────────────────────────────────────
+  private _unlockWeaponForEnemy(enemyIdx: number): void {
+    const unlockMap: Record<number, string> = {
+      0: "verdantBlade",    // Sir Cedric — Verdant Blade
+      1: "duelistRapier",   // Sir Galeth
+      2: "ironCleaver",     // Sir Hector — Iron Cleaver
+      3: "thornwhip",       // Lady Isolde — Thornwhip
+      4: "shadowDirk",      // Sir Agravain — Shadow Dirk
+      5: "bloodletter",     // Crimson Knight — Bloodletter
+      6: "arcaneEdge",      // Lady Morgana — Arcane Edge
+      7: "abyssalGreatsword", // Black Knight — Abyssal Greatsword
+    };
+    const weapId = unlockMap[enemyIdx];
+    if (weapId && !this._unlockedWeapons.has(weapId)) {
+      this._unlockedWeapons.add(weapId);
+      const weapDefs = this._getUnlockedWeaponDefs();
+      const unlocked = weapDefs.find(w => w.id === weapId);
+      if (unlocked) {
+        this._weaponUnlockNotify = unlocked.name;
+        this._weaponUnlockTimer = 120;
+      }
+    }
+  }
+
+  // Unlock Arthur's weapon (called when Arthur defeated in NG+)
+  private _unlockArthurWeapon(): void {
+    if (!this._unlockedWeapons.has("trueExcalibur")) {
+      this._unlockedWeapons.add("trueExcalibur");
+      this._weaponUnlockNotify = "True Excalibur";
+      this._weaponUnlockTimer = 120;
+    }
+  }
+
+  private _getUnlockedWeaponDefs(): WeaponDef[] {
+    const unlocked: WeaponDef[] = [];
+    if (this._unlockedWeapons.has("verdantBlade")) {
+      unlocked.push({ id: "verdantBlade", name: "Verdant Blade", desc: "Cedric's blade. Slight speed bonus.", damageMul: 0.95, speedMul: 0.85, reachMul: 0.95, staminaMul: 0.85, bleedChance: 0.1, color: "#44aa44", length: 0.95 });
+    }
+    if (this._unlockedWeapons.has("duelistRapier")) {
+      unlocked.push({ id: "duelistRapier", name: "Duelist's Rapier", desc: "Galeth's precise rapier.", damageMul: 0.8, speedMul: 0.7, reachMul: 1.1, staminaMul: 0.75, bleedChance: 0, color: "#8899cc", length: 1.1 });
+    }
+    if (this._unlockedWeapons.has("ironCleaver")) {
+      unlocked.push({ id: "ironCleaver", name: "Iron Cleaver", desc: "Hector's iron cleaver. High damage, slow.", damageMul: 1.45, speedMul: 1.4, reachMul: 1.2, staminaMul: 1.35, bleedChance: 0.1, color: "#888899", length: 1.3 });
+    }
+    if (this._unlockedWeapons.has("thornwhip")) {
+      unlocked.push({ id: "thornwhip", name: "Thornwhip", desc: "Isolde's thorn blade. Max bleed.", damageMul: 1.0, speedMul: 1.0, reachMul: 1.05, staminaMul: 1.0, bleedChance: 0.45, color: "#dd5588", length: 1.05 });
+    }
+    if (this._unlockedWeapons.has("shadowDirk")) {
+      unlocked.push({ id: "shadowDirk", name: "Shadow Dirk", desc: "Agravain's dirk. Fastest, low reach.", damageMul: 0.7, speedMul: 0.55, reachMul: 0.8, staminaMul: 0.6, bleedChance: 0, color: "#334", length: 0.85 });
+    }
+    if (this._unlockedWeapons.has("bloodletter")) {
+      unlocked.push({ id: "bloodletter", name: "Bloodletter", desc: "Crimson's blade. Lifesteal effect.", damageMul: 1.1, speedMul: 1.0, reachMul: 1.0, staminaMul: 1.0, bleedChance: 0.2, color: "#cc4444", length: 1.0 });
+    }
+    if (this._unlockedWeapons.has("arcaneEdge")) {
+      unlocked.push({ id: "arcaneEdge", name: "Arcane Edge", desc: "Morgana's blade. Super charges faster.", damageMul: 0.95, speedMul: 0.9, reachMul: 1.0, staminaMul: 0.9, bleedChance: 0, color: "#aa66ff", length: 1.0 });
+    }
+    if (this._unlockedWeapons.has("abyssalGreatsword")) {
+      unlocked.push({ id: "abyssalGreatsword", name: "Abyssal Greatsword", desc: "Black Knight's cursed sword. Highest damage.", damageMul: 1.5, speedMul: 1.4, reachMul: 1.25, staminaMul: 1.35, bleedChance: 0.15, color: "#4444aa", length: 1.35 });
+    }
+    if (this._unlockedWeapons.has("trueExcalibur")) {
+      unlocked.push({ id: "trueExcalibur", name: "True Excalibur", desc: "Arthur's blade. Balanced perfection.", damageMul: 1.2, speedMul: 0.9, reachMul: 1.1, staminaMul: 0.85, bleedChance: 0.15, color: "#ffd700", length: 1.15 });
+    }
+    return unlocked;
   }
 
   // ── Overlays ─────────────────────────────────────────────────────────────
@@ -3054,17 +3693,27 @@ export class SwordOfAvalonGame {
       diffDiv.appendChild(btn);
     });
 
-    // Weapon selection buttons
+    // Weapon selection buttons (base + unlocked)
     const weapDiv = this._titleOverlay.querySelector("#soa-weapons") as HTMLDivElement;
+    // All possible enemy weapon IDs for display
+    const allPossibleEnemyWeaponIds = [
+      "verdantBlade", "duelistRapier", "ironCleaver", "thornwhip",
+      "shadowDirk", "bloodletter", "arcaneEdge", "abyssalGreatsword", "trueExcalibur",
+    ];
     const renderWeapons = () => {
       weapDiv.innerHTML = "";
-      WEAPONS.forEach((wep, idx) => {
+      const unlockedWeapDefs = this._getUnlockedWeaponDefs();
+      const allWeapons = [...WEAPONS, ...unlockedWeapDefs];
+      allWeapons.forEach((wep, idx) => {
         const btn = document.createElement("div");
         const isSelected = idx === this._selectedWeapon;
+        const isUnlocked = idx >= WEAPONS.length;
+        const borderColor = isSelected ? "#ffd700" : isUnlocked ? "rgba(255,140,0,0.4)" : "rgba(212,168,67,0.2)";
         btn.style.cssText = `background:rgba(212,168,67,${isSelected ? 0.15 : 0.05});
-          border:2px solid ${isSelected ? "#ffd700" : "rgba(212,168,67,0.2)"};border-radius:6px;
+          border:2px solid ${borderColor};border-radius:6px;
           padding:10px 14px;cursor:pointer;width:120px;text-align:center;transition:border-color 0.2s`;
         btn.innerHTML = `
+          ${isUnlocked ? '<div style="color:#ff8c00;font-size:9px;font-weight:bold;margin-bottom:2px">UNLOCKED</div>' : ""}
           <div style="color:${wep.color};font-size:14px;font-weight:bold;margin-bottom:4px">${wep.name}</div>
           <div style="color:#887;font-size:10px;margin-bottom:6px">${wep.desc}</div>
           <div style="color:#665;font-size:9px;line-height:1.4">
@@ -3077,6 +3726,20 @@ export class SwordOfAvalonGame {
         });
         weapDiv.appendChild(btn);
       });
+      // Show locked weapon slots
+      const unlockedIds = new Set(unlockedWeapDefs.map(w => w.id));
+      for (const weapId of allPossibleEnemyWeaponIds) {
+        if (!unlockedIds.has(weapId)) {
+          const lockedBtn = document.createElement("div");
+          lockedBtn.style.cssText = `background:rgba(50,50,50,0.3);border:2px solid rgba(100,100,100,0.2);
+            border-radius:6px;padding:10px 14px;width:120px;text-align:center;opacity:0.5`;
+          lockedBtn.innerHTML = `
+            <div style="font-size:24px;margin-bottom:4px">\u{1F512}</div>
+            <div style="color:#665;font-size:11px">LOCKED</div>
+            <div style="color:#554;font-size:9px">Defeat enemy to unlock</div>`;
+          weapDiv.appendChild(lockedBtn);
+        }
+      }
     };
     renderWeapons();
 
@@ -3092,14 +3755,29 @@ export class SwordOfAvalonGame {
       this._titleOverlay?.parentNode?.removeChild(this._titleOverlay); this._titleOverlay = null;
       this._currentEnemyIdx = 0; this._gold = 0; this._purchasedOneTime.clear();
       this._bonusStaminaRegen = 0; this._bonusDamage = 0; this._bonusDefense = 0; this._allCanBleed = false;
-      this._startingSuperMeter = 0; this._bonusPerfectWindow = 0;
+      this._startingSuperMeter = 0; this._bonusPerfectWindow = 0; this._ngPlus = 0;
+      this._playerEnchantment = "none"; this._weaponEnchant = "none";
       this._stats = { hitsLanded: 0, hitsTaken: 0, parries: 0, combos: 0, maxCombo: 0, ripostes: 0, goldEarned: 0 };
       this._startRound();
     });
   }
 
   private _startRound(): void {
-    const enemy = ENEMIES[this._currentEnemyIdx];
+    // Check for King Arthur bonus boss in NG+
+    const isArthurBoss = this._ngPlus >= 1 && this._currentEnemyIdx >= ENEMIES.length;
+    const enemy: EnemyDef = isArthurBoss ? {
+      name: "KING ARTHUR", title: "the Once and Future King",
+      color: "#d4a843", armorColor: "#886622", swordColor: "#ffd700", plumeColor: "#fff",
+      hp: 200, damage: 1.5, aggression: 0.75, parrySkill: 0.5, speed: 1.1,
+      taunt: "You have proven worthy. Now face the King.",
+      defeated: "The sword... chooses you. You are Avalon's champion.",
+      ability: "excaliburWielder",
+      abilityDesc: "EXCALIBUR WIELDER \u2014 wields the true Excalibur",
+      taunts: ["For Camelot!", "The crown commands it!"],
+      lowHpLine: "A worthy successor...",
+      playerLowHpLine: "The throne shall not fall!",
+      barks: ["For Camelot!", "The crown commands it!", "Worthy..."],
+    } : ENEMIES[this._currentEnemyIdx];
     this._bloodDecals = [];
     this._particles = [];
     this._damageNumbers = [];
@@ -3154,7 +3832,7 @@ export class SwordOfAvalonGame {
     // Keep player HP between rounds
     const prevHp = this._player ? this._player.hp : HEALTH_MAX;
     this._player = this._createFighter(this._W * 0.3, 1, {
-      color: "#d4a843", armorColor: "#666", swordColor: WEAPONS[this._selectedWeapon].color, plumeColor: "#880",
+      color: "#d4a843", armorColor: "#666", swordColor: this._currentWeapon.color, plumeColor: "#880",
       name: "SIR GALAHAD", isAI: false,
     });
     this._player.hp = prevHp; this._player.maxHp = HEALTH_MAX;
@@ -3166,12 +3844,26 @@ export class SwordOfAvalonGame {
       plumeColor: enemy.plumeColor, name: enemy.name, isAI: true,
     }, enemy);
 
+    // Apply NG+ scaling to enemy
+    if (this._ngPlus > 0) {
+      this._ai.maxHp = Math.round(this._ai.maxHp * (1 + 0.3 * this._ngPlus));
+      this._ai.hp = this._ai.maxHp;
+      this._ai.damageMul *= (1 + 0.2 * this._ngPlus);
+    }
+
+    // Reset dialogue state
+    this._aiLowHpTaunted = false;
+    this._playerLowHpTaunted = false;
+    this._aiHalfHpBarked = false;
+    this._dialogueTimer = 0;
+
     // Show intro
     this._introText = `${enemy.name}`;
     this._introSubtext = `"${enemy.taunt}"`;
     this._introTimer = 120;
     this._phase = "intro";
-    this._announce(`ROUND ${this._currentEnemyIdx + 1}!`);
+    const roundLabel = isArthurBoss ? "BONUS BOSS!" : `ROUND ${this._currentEnemyIdx + 1}!`;
+    this._announce(roundLabel);
   }
 
   private _startTrainingMode(): void {
@@ -3202,7 +3894,7 @@ export class SwordOfAvalonGame {
     this._dashTimer = 0;
 
     this._player = this._createFighter(this._W * 0.3, 1, {
-      color: "#d4a843", armorColor: "#666", swordColor: WEAPONS[this._selectedWeapon].color, plumeColor: "#880",
+      color: "#d4a843", armorColor: "#666", swordColor: this._currentWeapon.color, plumeColor: "#880",
       name: "SIR GALAHAD", isAI: false,
     });
     this._player.hp = HEALTH_MAX; this._player.maxHp = HEALTH_MAX;
@@ -3293,23 +3985,29 @@ export class SwordOfAvalonGame {
       display:flex;flex-direction:column;align-items:center;justify-content:center;
       background:rgba(10,5,2,0.92);font-family:Georgia,serif;`;
 
-    const enemy = ENEMIES[this._currentEnemyIdx - 1];
+    const prevIdx = this._currentEnemyIdx - 1;
+    const enemy = prevIdx < ENEMIES.length ? ENEMIES[prevIdx] : null;
+    const defeatedName = enemy ? enemy.name : "KING ARTHUR";
+    const defeatedQuote = enemy ? enemy.defeated : "The crown... passes to you.";
     let html = `
-      <div style="font-size:36px;color:#d4a843;letter-spacing:4px;margin-bottom:8px">${enemy.name} DEFEATED</div>
-      <div style="font-size:16px;color:#665;margin-bottom:20px;font-style:italic">"${enemy.defeated}"</div>
+      <div style="font-size:36px;color:#d4a843;letter-spacing:4px;margin-bottom:8px">${defeatedName} DEFEATED</div>
+      <div style="font-size:16px;color:#665;margin-bottom:20px;font-style:italic">"${defeatedQuote}"</div>
       <div style="font-size:20px;color:#ffd700;margin-bottom:30px">\u2726 ${this._gold} Gold</div>
       <div style="font-size:22px;color:#d4a843;letter-spacing:3px;margin-bottom:20px">ARMORER'S SHOP</div>
       <div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-bottom:30px;max-width:800px">`;
 
     for (const item of SHOP_ITEMS) {
-      const bought = item.oneTime && this._purchasedOneTime.has(item.id);
+      const isEnchant = item.id.startsWith("enchant");
+      const enchantType = isEnchant ? item.id.replace("enchant", "").charAt(0).toLowerCase() + item.id.replace("enchant", "").slice(1) : "";
+      const isActiveEnchant = isEnchant && (this._weaponEnchant === enchantType.toLowerCase() || this._playerEnchantment === enchantType.toLowerCase());
+      const bought = item.oneTime && this._purchasedOneTime.has(item.id) && !isEnchant;
       const canAfford = this._gold >= item.cost && !bought;
       html += `<div data-item="${item.id}" style="background:rgba(212,168,67,${canAfford ? 0.1 : 0.03});
-        border:1px solid rgba(212,168,67,${canAfford ? 0.3 : 0.1});border-radius:6px;padding:14px 18px;
+        border:1px solid ${isActiveEnchant ? "#ff8c00" : `rgba(212,168,67,${canAfford ? 0.3 : 0.1})`};border-radius:6px;padding:14px 18px;
         cursor:${canAfford ? "pointer" : "default"};width:180px;opacity:${bought ? 0.4 : 1}">
         <div style="color:#d4a843;font-size:15px;margin-bottom:4px">${item.name}</div>
         <div style="color:#887;font-size:12px;margin-bottom:6px">${item.desc}</div>
-        <div style="color:#ffd700;font-size:13px">${bought ? "PURCHASED" : `${item.cost} gold`}</div>
+        <div style="color:#ffd700;font-size:13px">${isActiveEnchant ? "ACTIVE" : bought ? "PURCHASED" : `${item.cost} gold`}</div>
       </div>`;
     }
 
@@ -3325,11 +4023,12 @@ export class SwordOfAvalonGame {
       el.addEventListener("click", () => {
         const id = (el as HTMLElement).dataset.item!;
         const item = SHOP_ITEMS.find(i => i.id === id)!;
-        if (item.oneTime && this._purchasedOneTime.has(item.id)) return;
+        const isEnchant = item.id.startsWith("enchant");
+        if (item.oneTime && this._purchasedOneTime.has(item.id) && !isEnchant) return;
         if (this._gold < item.cost) return;
         this._gold -= item.cost;
         item.apply(this);
-        if (item.oneTime) this._purchasedOneTime.add(item.id);
+        if (item.oneTime && !isEnchant) this._purchasedOneTime.add(item.id);
         // Refresh shop
         this._shopOverlay?.parentNode?.removeChild(this._shopOverlay);
         this._showShop();
@@ -3352,7 +4051,7 @@ export class SwordOfAvalonGame {
       <div style="font-size:56px;color:#d4a843;text-shadow:0 0 20px rgba(212,168,67,0.4);margin-bottom:20px;letter-spacing:6px">
         ${isWin ? "CHAMPION OF AVALON" : "DEFEATED"}</div>
       <div style="font-size:20px;color:#8b6914;margin-bottom:30px">
-        ${isWin ? "All challengers have fallen before your blade!" : `Fell to ${ENEMIES[this._currentEnemyIdx].name}...`}</div>
+        ${isWin ? "All challengers have fallen before your blade!" : `Fell to ${this._currentEnemyIdx < ENEMIES.length ? ENEMIES[this._currentEnemyIdx].name : "KING ARTHUR"}...`}</div>
       <div style="background:rgba(212,168,67,0.06);border:1px solid rgba(212,168,67,0.15);border-radius:8px;padding:20px 32px;margin-bottom:30px;text-align:left">
         <p style="color:#a08040;font-size:15px;line-height:2">Hits Landed: <span style="color:#d4a843">${this._stats.hitsLanded}</span></p>
         <p style="color:#a08040;font-size:15px;line-height:2">Hits Taken: <span style="color:#d4a843">${this._stats.hitsTaken}</span></p>
@@ -3362,15 +4061,33 @@ export class SwordOfAvalonGame {
         <p style="color:#a08040;font-size:15px;line-height:2">Gold Earned: <span style="color:#ffd700">${this._stats.goldEarned}</span></p>
         <p style="color:#a08040;font-size:15px;line-height:2">Knights Defeated: <span style="color:#d4a843">${this._currentEnemyIdx}/${ENEMIES.length}</span></p>
       </div>
+      <div style="display:flex;gap:12px">
       <button id="soa-retry" style="padding:16px 48px;font-size:22px;font-family:Georgia,serif;
         background:linear-gradient(180deg,#d4a843 0%,#8b6914 100%);color:#1a0e05;border:2px solid #d4a843;
-        border-radius:4px;cursor:pointer;letter-spacing:3px;text-transform:uppercase">NEW TOURNAMENT</button>`;
+        border-radius:4px;cursor:pointer;letter-spacing:3px;text-transform:uppercase">NEW TOURNAMENT</button>
+      ${isWin ? `<button id="soa-ngplus" style="padding:16px 48px;font-size:22px;font-family:Georgia,serif;
+        background:linear-gradient(180deg,#ff8c00 0%,#cc6600 100%);color:#1a0e05;border:2px solid #ff8c00;
+        border-radius:4px;cursor:pointer;letter-spacing:3px;text-transform:uppercase">NEW GAME+ (NG+${this._ngPlus + 1})</button>` : ""}
+      </div>`;
     document.body.appendChild(this._resultOverlay);
 
     this._resultOverlay.querySelector("#soa-retry")!.addEventListener("click", () => {
       this._resultOverlay?.parentNode?.removeChild(this._resultOverlay); this._resultOverlay = null;
+      this._ngPlus = 0;
       this._showTitle();
     });
+
+    if (isWin) {
+      this._resultOverlay.querySelector("#soa-ngplus")?.addEventListener("click", () => {
+        this._resultOverlay?.parentNode?.removeChild(this._resultOverlay); this._resultOverlay = null;
+        this._ngPlus++;
+        // Keep purchased upgrades, reset round
+        this._currentEnemyIdx = 0;
+        this._player.hp = HEALTH_MAX;
+        this._stats = { hitsLanded: 0, hitsTaken: 0, parries: 0, combos: 0, maxCombo: 0, ripostes: 0, goldEarned: 0 };
+        this._startRound();
+      });
+    }
   }
 
 
@@ -3503,13 +4220,35 @@ export class SwordOfAvalonGame {
           }
         }
 
+        // Unlock enemy weapon on defeat
+        if (this._ai.dead && this._ai.deathTimer === 1) {
+          const isArthurDefeated = this._ngPlus >= 1 && this._currentEnemyIdx >= ENEMIES.length;
+          if (isArthurDefeated) {
+            this._unlockArthurWeapon();
+          } else {
+            this._unlockWeaponForEnemy(this._currentEnemyIdx);
+          }
+        }
+
         // AI dead — advance tournament
         if (this._ai.dead && this._ai.deathTimer > 80) {
           this._currentEnemyIdx++;
-          if (this._currentEnemyIdx >= ENEMIES.length) {
+          const isArthurBoss = this._ngPlus >= 1 && this._currentEnemyIdx > ENEMIES.length;
+          if (isArthurBoss) {
+            // Beat Arthur — tournament end
             this._phase = "tournament_end";
             this._playSound("victory", 0.4);
             this._showResult("tournament_end");
+          } else if (this._currentEnemyIdx >= ENEMIES.length) {
+            if (this._ngPlus >= 1) {
+              // In NG+, after beating all 8, spawn Arthur
+              this._phase = "shop";
+              this._showShop();
+            } else {
+              this._phase = "tournament_end";
+              this._playSound("victory", 0.4);
+              this._showResult("tournament_end");
+            }
           } else {
             this._phase = "shop";
             this._showShop();
@@ -3542,6 +4281,10 @@ export class SwordOfAvalonGame {
 
     if (this._phase === "playing" || this._phase === "game_over" || this._phase === "victory"
         || this._phase === "tournament_end" || this._phase === "intro" || this._phase === "training") {
+      // Floor reflections (before fighters)
+      if (this._player) this._drawFighterReflection(this._player);
+      if (this._ai) this._drawFighterReflection(this._ai);
+
       const fighters = [this._player, this._ai].filter(Boolean).sort((a, b) => a.y - b.y);
       for (const f of fighters) { this._drawSwordTrail(f.swordTrail); this._drawFighter(f); }
       // Rain drawn after fighters
@@ -3576,6 +4319,30 @@ export class SwordOfAvalonGame {
         c.beginPath(); c.arc(s.x, s.y, 2, 0, Math.PI * 2); c.fill();
       }
 
+      // Weapon unlock notification
+      if (this._weaponUnlockTimer > 0) {
+        this._weaponUnlockTimer--;
+        const unlockAlpha = this._weaponUnlockTimer > 20 ? 1 : this._weaponUnlockTimer / 20;
+        c.save();
+        c.globalAlpha = unlockAlpha;
+        // Gold banner at top center
+        c.fillStyle = "rgba(40,30,10,0.8)";
+        const bannerW = 340;
+        const bannerH = 36;
+        c.fillRect(this._W / 2 - bannerW / 2, 70, bannerW, bannerH);
+        c.strokeStyle = "#ffd700";
+        c.lineWidth = 2;
+        c.strokeRect(this._W / 2 - bannerW / 2, 70, bannerW, bannerH);
+        c.fillStyle = "#ffd700";
+        c.font = "bold 16px Georgia";
+        c.textAlign = "center";
+        c.fillText(`WEAPON UNLOCKED: ${this._weaponUnlockNotify}`, this._W / 2, 93);
+        c.restore();
+      }
+
+      // Dialogue bubbles
+      this._drawDialogue();
+
       // Announcements
       this._drawAnnouncement();
 
@@ -3607,13 +4374,16 @@ export class SwordOfAvalonGame {
       c.shadowBlur = 0;
       c.fillStyle = "#887"; c.font = "italic 20px Georgia";
       c.fillText(this._introSubtext, this._W / 2, this._H * 0.3 + 40);
-      const enemy = ENEMIES[this._currentEnemyIdx];
-      if (enemy.abilityDesc) {
+      const isArthurIntro = this._ngPlus >= 1 && this._currentEnemyIdx >= ENEMIES.length;
+      const introEnemy = isArthurIntro ? null : ENEMIES[this._currentEnemyIdx];
+      const introAbilityDesc = isArthurIntro ? "EXCALIBUR WIELDER \u2014 commands the true Excalibur" : (introEnemy?.abilityDesc || "");
+      if (introAbilityDesc) {
         c.fillStyle = "#a66"; c.font = "15px Georgia";
-        c.fillText(enemy.abilityDesc, this._W / 2, this._H * 0.3 + 70);
+        c.fillText(introAbilityDesc, this._W / 2, this._H * 0.3 + 70);
       }
       c.fillStyle = "#665"; c.font = "16px Georgia";
-      c.fillText(`Round ${this._currentEnemyIdx + 1} of ${ENEMIES.length}`, this._W / 2, this._H * 0.3 + 100);
+      const roundText = isArthurIntro ? "BONUS BOSS" : `Round ${this._currentEnemyIdx + 1} of ${ENEMIES.length}`;
+      c.fillText(roundText, this._W / 2, this._H * 0.3 + 100);
       c.restore();
     }
 
