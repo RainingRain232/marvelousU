@@ -661,7 +661,16 @@ interface Fighter {
   vulnerable: boolean;
 }
 
-type Phase = "title" | "intro" | "playing" | "shop" | "game_over" | "victory" | "tournament_end" | "training";
+type Phase = "title" | "intro" | "playing" | "shop" | "game_over" | "victory" | "tournament_end" | "training" | "vs_setup" | "vs_playing" | "vs_result";
+
+const ARMOR_PRESETS = [
+  { name: "Steel", primary: "#777", accent: "#886622", skin: "#c4a080" },
+  { name: "Gold", primary: "#998833", accent: "#d4a843", skin: "#c4a080" },
+  { name: "Crimson", primary: "#883333", accent: "#aa4444", skin: "#c4a080" },
+  { name: "Azure", primary: "#445588", accent: "#5577aa", skin: "#c4a080" },
+  { name: "Emerald", primary: "#446644", accent: "#558855", skin: "#c4a080" },
+  { name: "Shadow", primary: "#333", accent: "#555", skin: "#9a8070" },
+];
 
 // ── Utilities ────────────────────────────────────────────────────────────────
 
@@ -828,6 +837,67 @@ export class SwordOfAvalonGame {
   // Unlockable enemy weapons
   private _unlockedWeapons = new Set<string>();
 
+  // VS Mode fields
+  private _vsMode = false;
+  private _player2: Fighter | null = null;
+  private _vsRoundWins: [number, number] = [0, 0];
+  private _vsRound = 0;
+  private _vsResultTimer = 0;
+  private _vsWeapon1 = 0;
+  private _vsWeapon2 = 0;
+  private _p2Keys: Record<string, boolean> = {};
+  private _p2JustPressed: Record<string, boolean> = {};
+  private _p2PrevKeys: Record<string, boolean> = {};
+  private _vsSetupOverlay: HTMLDivElement | null = null;
+  private _selectedArmor = 0;
+  private _selectedArmor2 = 1;
+
+  // Adaptive AI memory
+  private _aiMemory = {
+    playerAttackFreq: { slash: 0, thrust: 0, overhead: 0, sweep: 0, kick: 0 } as Record<string, number>,
+    playerBlockRate: 0,
+    playerDodgeRate: 0,
+    playerParryRate: 0,
+    totalAttacksObserved: 0,
+    totalDefensesObserved: 0,
+  };
+
+  // Achievement system
+  private _achievements = new Map<string, {name: string, desc: string, unlocked: boolean}>([
+    ["first_blood", {name: "First Blood", desc: "Land the first hit of a round", unlocked: false}],
+    ["perfect_round", {name: "Flawless", desc: "Win a round without taking damage", unlocked: false}],
+    ["combo_master", {name: "Combo Master", desc: "Land a 5+ hit combo", unlocked: false}],
+    ["parry_king", {name: "Parry King", desc: "Land 3 perfect parries in one round", unlocked: false}],
+    ["executioner", {name: "Executioner", desc: "Perform an execution finisher", unlocked: false}],
+    ["all_weapons", {name: "Arsenal", desc: "Unlock all enemy weapons", unlocked: false}],
+    ["ng_plus", {name: "Eternal Champion", desc: "Complete New Game+", unlocked: false}],
+    ["backstab_artist", {name: "Backstab Artist", desc: "Land 5 backstabs in a tournament", unlocked: false}],
+    ["no_hit_round", {name: "Untouchable", desc: "Win a round without being hit once", unlocked: false}],
+    ["speed_kill", {name: "Lightning Blade", desc: "Win a round in under 15 seconds", unlocked: false}],
+    ["excalibur_kill", {name: "Holy Strike", desc: "Kill an enemy with Excalibur Strike", unlocked: false}],
+    ["clash_master", {name: "Blade Dancer", desc: "Trigger 3 sword clashes in one round", unlocked: false}],
+    ["all_combos", {name: "Combo Encyclopedia", desc: "Trigger every named combo at least once", unlocked: false}],
+    ["fire_ice", {name: "Elemental Master", desc: "Win rounds with fire and ice enchants", unlocked: false}],
+    ["vs_victor", {name: "Versus Champion", desc: "Win a VS mode best-of-3", unlocked: false}],
+  ]);
+  private _achievementNotify = "";
+  private _achievementNotifyTimer = 0;
+  private _roundPerfectParries = 0;
+  private _roundClashes = 0;
+  private _tournamentBackstabs = 0;
+  private _roundHitsTaken = 0;
+  private _roundStartFrame = 0;
+  private _triggeredCombos = new Set<string>();
+  private _wonWithFire = false;
+  private _wonWithIce = false;
+  private _achievementsOverlay: HTMLDivElement | null = null;
+
+  // Screen transitions
+  private _transition: {active: boolean, type: string, progress: number, duration: number, callback: (() => void) | null} = {active: false, type: "fadeOut", progress: 0, duration: 30, callback: null};
+
+  // Gamepad support
+  private _gamepadConnected = false;
+
   private _onKeyDown = (e: KeyboardEvent) => this._handleKeyDown(e);
   private _onKeyUp = (e: KeyboardEvent) => this._handleKeyUp(e);
   private _onResize = () => this._resizeCanvas();
@@ -879,6 +949,8 @@ export class SwordOfAvalonGame {
     this._titleOverlay?.parentNode?.removeChild(this._titleOverlay);
     this._resultOverlay?.parentNode?.removeChild(this._resultOverlay);
     this._shopOverlay?.parentNode?.removeChild(this._shopOverlay);
+    this._vsSetupOverlay?.parentNode?.removeChild(this._vsSetupOverlay);
+    this._achievementsOverlay?.parentNode?.removeChild(this._achievementsOverlay);
     this._canvas?.parentNode?.removeChild(this._canvas);
     this._stopMusic();
     this._audioCtx?.close().catch(() => {});
@@ -899,12 +971,73 @@ export class SwordOfAvalonGame {
         this._showTitle();
         return;
       }
+      if (this._phase === "vs_playing" as Phase || this._phase === "vs_result" as Phase) {
+        this._vsMode = false;
+        this._player2 = null;
+        this._phase = "title";
+        this._showTitle();
+        return;
+      }
       this._cleanup(); return;
     }
-    this._keys[e.key.toLowerCase()] = true;
+    const key = e.key.toLowerCase();
+    this._keys[key] = true;
+    // P2 keys for VS mode (arrow keys + numpad)
+    if (this._vsMode) {
+      if (e.code.startsWith("Numpad")) {
+        const mapped = e.code.toLowerCase().replace("numpad", "numpad");
+        // Use e.code to distinguish numpad
+        const codeMap: Record<string, string> = {
+          "numpad1": "numpad1", "numpad2": "numpad2", "numpad3": "numpad3",
+          "numpad4": "numpad4", "numpad5": "numpad5", "numpad0": "numpad0",
+          "numpad7": "numpad7", "numpad8": "numpad8",
+          "numpadadd": "numpadadd", "numpadsubtract": "numpadsubtract",
+          "numpadenter": "numpadenter",
+        };
+        const p2Key = codeMap[mapped];
+        if (p2Key) this._p2Keys[p2Key] = true;
+      }
+      if (e.key === "Enter" && e.code !== "NumpadEnter") {
+        // Regular enter for P2 dodge
+        this._p2Keys["enter"] = true;
+      }
+      if (e.code === "NumpadEnter") {
+        this._p2Keys["numpadenter"] = true;
+      }
+      // Arrow keys for P2
+      if (key === "arrowleft") this._p2Keys["arrowleft"] = true;
+      if (key === "arrowright") this._p2Keys["arrowright"] = true;
+      if (key === "arrowup") this._p2Keys["arrowup"] = true;
+      if (key === "arrowdown") this._p2Keys["arrowdown"] = true;
+    }
     e.preventDefault();
   }
-  private _handleKeyUp(e: KeyboardEvent): void { this._keys[e.key.toLowerCase()] = false; e.preventDefault(); }
+  private _handleKeyUp(e: KeyboardEvent): void {
+    const key = e.key.toLowerCase();
+    this._keys[key] = false;
+    // P2 key up
+    if (this._vsMode) {
+      if (e.code.startsWith("Numpad")) {
+        const mapped = e.code.toLowerCase().replace("numpad", "numpad");
+        const codeMap: Record<string, string> = {
+          "numpad1": "numpad1", "numpad2": "numpad2", "numpad3": "numpad3",
+          "numpad4": "numpad4", "numpad5": "numpad5", "numpad0": "numpad0",
+          "numpad7": "numpad7", "numpad8": "numpad8",
+          "numpadadd": "numpadadd", "numpadsubtract": "numpadsubtract",
+          "numpadenter": "numpadenter",
+        };
+        const p2Key = codeMap[mapped];
+        if (p2Key) this._p2Keys[p2Key] = false;
+      }
+      if (e.key === "Enter" && e.code !== "NumpadEnter") this._p2Keys["enter"] = false;
+      if (e.code === "NumpadEnter") this._p2Keys["numpadenter"] = false;
+      if (key === "arrowleft") this._p2Keys["arrowleft"] = false;
+      if (key === "arrowright") this._p2Keys["arrowright"] = false;
+      if (key === "arrowup") this._p2Keys["arrowup"] = false;
+      if (key === "arrowdown") this._p2Keys["arrowdown"] = false;
+    }
+    e.preventDefault();
+  }
   private _updateInput(): void {
     for (const k in this._keys) { this._justPressed[k] = this._keys[k] && !this._prevKeys[k]; this._prevKeys[k] = this._keys[k]; }
   }
@@ -1054,6 +1187,85 @@ export class SwordOfAvalonGame {
         const g3 = ac.createGain(); g3.gain.setValueAtTime(vol * 0.2, now);
         g3.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
         o2.connect(g3); g3.connect(ac.destination); o2.start(now); o2.stop(now + 0.3);
+      } else if (type === "hit_slash") {
+        const o = ac.createOscillator(); o.type = "sawtooth";
+        o.frequency.setValueAtTime(300, now); o.frequency.exponentialRampToValueAtTime(100, now + 0.08);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+        o.connect(g); o.start(now); o.stop(now + 0.08);
+      } else if (type === "hit_thrust") {
+        const o = ac.createOscillator(); o.type = "sine";
+        o.frequency.setValueAtTime(200, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+        o.connect(g); o.start(now); o.stop(now + 0.06);
+        const buf = ac.createBuffer(1, ac.sampleRate * 0.03, ac.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (data.length * 0.15));
+        const src = ac.createBufferSource(); src.buffer = buf;
+        const g2 = ac.createGain(); g2.gain.setValueAtTime(vol * 0.5, now); g2.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+        src.connect(g2); g2.connect(ac.destination); src.start(now);
+      } else if (type === "hit_overhead") {
+        const o = ac.createOscillator(); o.type = "triangle";
+        o.frequency.setValueAtTime(100, now); o.frequency.exponentialRampToValueAtTime(40, now + 0.15);
+        g.gain.setValueAtTime(vol * 1.2, now); g.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+        o.connect(g); o.start(now); o.stop(now + 0.15);
+      } else if (type === "hit_sweep") {
+        const buf = ac.createBuffer(1, ac.sampleRate * 0.1, ac.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (data.length * 0.3));
+        const src = ac.createBufferSource(); src.buffer = buf;
+        const bq = ac.createBiquadFilter(); bq.type = "bandpass"; bq.frequency.value = 800; bq.Q.value = 2;
+        src.connect(bq); bq.connect(g); g.gain.exponentialRampToValueAtTime(0.001, now + 0.1); src.start(now);
+      } else if (type === "hit_crit") {
+        const buf = ac.createBuffer(1, ac.sampleRate * 0.1, ac.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (data.length * 0.2));
+        const src = ac.createBufferSource(); src.buffer = buf;
+        const bq = ac.createBiquadFilter(); bq.type = "lowpass"; bq.frequency.value = 600;
+        src.connect(bq); bq.connect(g); g.gain.exponentialRampToValueAtTime(0.001, now + 0.12); src.start(now);
+        const o2 = ac.createOscillator(); o2.type = "sine";
+        o2.frequency.setValueAtTime(500, now);
+        const g2 = ac.createGain(); g2.gain.setValueAtTime(vol * 0.3, now); g2.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+        o2.connect(g2); g2.connect(ac.destination); o2.start(now); o2.stop(now + 0.2);
+      } else if (type === "hit_backstab") {
+        const o = ac.createOscillator(); o.type = "sawtooth";
+        o.frequency.setValueAtTime(400, now); o.frequency.exponentialRampToValueAtTime(150, now + 0.12);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+        o.connect(g); o.start(now); o.stop(now + 0.12);
+        const buf = ac.createBuffer(1, ac.sampleRate * 0.06, ac.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * 0.4 * Math.exp(-i / (data.length * 0.2));
+        const src = ac.createBufferSource(); src.buffer = buf;
+        const g2 = ac.createGain(); g2.gain.setValueAtTime(vol * 0.4, now); g2.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+        src.connect(g2); g2.connect(ac.destination); src.start(now);
+      } else if (type === "hit_fire") {
+        const buf = ac.createBuffer(1, ac.sampleRate * 0.08, ac.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (data.length * 0.15));
+        const src = ac.createBufferSource(); src.buffer = buf;
+        src.connect(g); g.gain.exponentialRampToValueAtTime(0.001, now + 0.08); src.start(now);
+        const o2 = ac.createOscillator(); o2.type = "sine";
+        o2.frequency.setValueAtTime(1200, now); o2.frequency.exponentialRampToValueAtTime(600, now + 0.1);
+        const g2 = ac.createGain(); g2.gain.setValueAtTime(vol * 0.3, now); g2.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+        o2.connect(g2); g2.connect(ac.destination); o2.start(now); o2.stop(now + 0.1);
+      } else if (type === "hit_ice") {
+        const o = ac.createOscillator(); o.type = "triangle";
+        o.frequency.setValueAtTime(2000, now); o.frequency.exponentialRampToValueAtTime(800, now + 0.1);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+        o.connect(g); o.start(now); o.stop(now + 0.1);
+        const buf = ac.createBuffer(1, ac.sampleRate * 0.05, ac.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * 0.2 * Math.exp(-i / (data.length * 0.2));
+        const src = ac.createBufferSource(); src.buffer = buf;
+        const g2 = ac.createGain(); g2.gain.setValueAtTime(vol * 0.3, now); g2.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+        src.connect(g2); g2.connect(ac.destination); src.start(now);
+      } else if (type === "achievement") {
+        [660, 880, 1100, 1320].forEach((f, i) => {
+          const o = ac.createOscillator(); o.type = "sine";
+          o.frequency.setValueAtTime(f, now + i * 0.08);
+          const g2 = ac.createGain(); g2.gain.setValueAtTime(vol * 0.3, now + i * 0.08);
+          g2.gain.exponentialRampToValueAtTime(0.001, now + i * 0.08 + 0.3);
+          o.connect(g2); g2.connect(ac.destination); o.start(now + i * 0.08); o.stop(now + i * 0.08 + 0.3);
+        });
       }
     } catch (_) { /* ignore audio errors */ }
   }
@@ -1379,7 +1591,7 @@ export class SwordOfAvalonGame {
     for (const pit of this._firePits) {
       if (!pit.active) continue;
       // Damage fighters standing on pits
-      for (const f of [this._player, this._ai]) {
+      for (const f of [this._player, this._vsMode ? this._player2 : this._ai].filter(Boolean) as Fighter[]) {
         if (f && !f.dead && Math.abs(f.x - pit.x) < 30 && f.grounded) {
           f.hp -= 0.3 * this._timeScale;
           if (this._frameCount % 10 === 0) {
@@ -1680,6 +1892,11 @@ export class SwordOfAvalonGame {
     f.blocking = false; f.parrying = false; f.attackPhase = null; f.currentAttack = null;
     this._playSound("dodge", 0.2);
     this._spawnDust(f.x, this._groundY, 5);
+    // Adaptive AI: track player dodge
+    if (!f.isAI) {
+      this._aiMemory.playerDodgeRate++;
+      this._aiMemory.totalDefensesObserved++;
+    }
   }
 
   private _updateFighter(f: Fighter): void {
@@ -1881,7 +2098,9 @@ export class SwordOfAvalonGame {
 
     // Sword tip
     const hand = f.skeleton.bones[J.R_HAND];
-    const swordLen = 55 * f.skeleton.scale * (!f.isAI ? this._currentWeapon.length : 1);
+    const isP1Fighter = f === this._player;
+    const p2WepLen = this._vsMode ? ([...WEAPONS, ...this._getUnlockedWeaponDefs()][this._vsWeapon2]?.length || 1) : 1;
+    const swordLen = 55 * f.skeleton.scale * (isP1Fighter ? this._currentWeapon.length : (f === this._player2 ? p2WepLen : 1));
     f.swordTipX = f.x + hand.worldX * f.facing + Math.cos(hand.worldAngle * f.facing) * swordLen * f.facing;
     f.swordTipY = f.y + hand.worldY + Math.sin(hand.worldAngle * f.facing) * swordLen;
 
@@ -1924,6 +2143,9 @@ export class SwordOfAvalonGame {
     p.stamina = Math.max(0, p.stamina - 10);
     ai.stamina = Math.max(0, ai.stamina - 10);
     this._announce("CLASH!");
+    // Achievement: clash tracking
+    this._roundClashes++;
+    if (this._roundClashes >= 3) this._unlockAchievement("clash_master");
   }
 
   // ── Combat Resolution ────────────────────────────────────────────────────
@@ -1988,6 +2210,14 @@ export class SwordOfAvalonGame {
       if (!defender.isAI) {
         this._stats.parries++;
         if (!isPerfectParry) this._spawnDamageNumber(hitX, hitY - 20, 0, "#4af");
+        // Adaptive AI: track player parry
+        this._aiMemory.playerParryRate++;
+        this._aiMemory.totalDefensesObserved++;
+        // Achievement: perfect parry tracking
+        if (isPerfectParry) {
+          this._roundPerfectParries++;
+          if (this._roundPerfectParries >= 3) this._unlockAchievement("parry_king");
+        }
       }
       this._crowdExcitement = Math.min(1, this._crowdExcitement + 0.3);
       if (this._crowdExcitement > 0.5) this._playSound("crowd", 0.15);
@@ -2023,6 +2253,11 @@ export class SwordOfAvalonGame {
       }
       this._playSound("clash", 0.35); this._spawnSparks(hitX, hitY, 12);
       this._triggerShake(6); this._hitstopTimer = HITSTOP_FRAMES;
+      // Adaptive AI: track player block
+      if (!defender.isAI) {
+        this._aiMemory.playerBlockRate++;
+        this._aiMemory.totalDefensesObserved++;
+      }
       return;
     }
 
@@ -2229,7 +2464,49 @@ export class SwordOfAvalonGame {
 
     if (!defender.knockedDown && !comboTriggered) { defender.staggered = true; defender.staggerTimer = 12; }
 
-    this._playSound("hit", 0.35);
+    // Adaptive AI: track player attacks and defense
+    if (!attacker.isAI) {
+      const atkName = attacker.attackType || "slash";
+      if (this._aiMemory.playerAttackFreq[atkName] !== undefined) this._aiMemory.playerAttackFreq[atkName]++;
+      this._aiMemory.totalAttacksObserved++;
+    }
+
+    // Achievement: first blood
+    if (!this._firstBloodTriggered && !attacker.isAI) {
+      this._unlockAchievement("first_blood");
+    }
+    // Achievement: combo master (5+ hit combo)
+    if (!attacker.isAI && attacker.comboCount >= 5) {
+      this._unlockAchievement("combo_master");
+    }
+    // Achievement: backstab tracking
+    if (!attacker.isAI && isBackstab) {
+      this._tournamentBackstabs++;
+      if (this._tournamentBackstabs >= 5) this._unlockAchievement("backstab_artist");
+    }
+    // Achievement: track triggered combos
+    if (comboTriggered && !attacker.isAI) {
+      this._triggeredCombos.add(comboTriggered.name);
+      if (this._triggeredCombos.size >= Object.keys(COMBOS).length) {
+        this._unlockAchievement("all_combos");
+      }
+    }
+    // Track hits taken for no_hit_round achievement
+    if (!defender.isAI) {
+      this._roundHitsTaken++;
+    }
+
+    // Varied hit sounds based on attack type and context
+    let hitSound = "hit";
+    if (isBackstab) hitSound = "hit_backstab";
+    else if (hitZone === "head") hitSound = "hit_crit";
+    else if (attackerEnchant === "fire") hitSound = "hit_fire";
+    else if (attackerEnchant === "ice") hitSound = "hit_ice";
+    else if (atkType === "slash" || atkType === "chargedSlash" || atkType === "dashAttack") hitSound = "hit_slash";
+    else if (atkType === "thrust") hitSound = "hit_thrust";
+    else if (atkType === "overhead") hitSound = "hit_overhead";
+    else if (atkType === "sweep") hitSound = "hit_sweep";
+    this._playSound(hitSound, 0.35);
     const bloodDir = attacker.facing === 1 ? 0 : Math.PI;
     this._spawnBlood(hitX, hitY, 8, bloodDir);
     this._spawnSparks(hitX, hitY, 4);
@@ -2321,13 +2598,54 @@ export class SwordOfAvalonGame {
       if (!attacker.isAI && this._roundDamageTaken === 0) {
         this._announce("FLAWLESS!");
         this._spawnCrowdItems(15, "coin");
+        this._unlockAchievement("perfect_round");
       } else {
         this._announce("VANQUISHED!");
+      }
+      // Achievement: excalibur kill
+      if (!attacker.isAI && isExcalibur) {
+        this._unlockAchievement("excalibur_kill");
+      }
+      // Achievement: speed kill (under 15 seconds = 900 frames)
+      if (!attacker.isAI && (this._frameCount - this._roundStartFrame) < 900) {
+        this._unlockAchievement("speed_kill");
+      }
+      // Achievement: no hit round
+      if (!attacker.isAI && this._roundHitsTaken === 0) {
+        this._unlockAchievement("no_hit_round");
+      }
+      // Achievement: fire/ice elemental tracking
+      if (!attacker.isAI) {
+        if (this._activeEnchant === "fire") this._wonWithFire = true;
+        if (this._activeEnchant === "ice") this._wonWithIce = true;
+        if (this._wonWithFire && this._wonWithIce) this._unlockAchievement("fire_ice");
       }
     }
   }
 
   // ── AI ───────────────────────────────────────────────────────────────────
+
+  private _getAICounterStrategy(): {attackWeights: Record<string, number>, blockBias: number, kickGrabBias: number, aggressionMod: number} {
+    const mem = this._aiMemory;
+    const result = {attackWeights: {slash: 3, thrust: 2, overhead: 1, sweep: 2} as Record<string, number>, blockBias: 0, kickGrabBias: 0, aggressionMod: 0};
+    if (mem.totalAttacksObserved < 5) return result;
+    // If player uses slash > 40%, AI blocks more when seeing windup
+    const slashPct = mem.playerAttackFreq.slash / mem.totalAttacksObserved;
+    if (slashPct > 0.4) result.blockBias += 0.2;
+    // If player rarely blocks (< 20% of defenses), AI attacks more
+    const totalDef = mem.totalDefensesObserved || 1;
+    const blockPct = mem.playerBlockRate / totalDef;
+    if (blockPct < 0.2) result.aggressionMod += 0.15;
+    // If player parries a lot (>30%), AI uses more kicks and grabs
+    const parryPct = mem.playerParryRate / totalDef;
+    if (parryPct > 0.3) result.kickGrabBias += 0.2;
+    // AI counter-attacks based on what player does least
+    for (const atkType of ["slash", "thrust", "overhead", "sweep"]) {
+      const freq = mem.playerAttackFreq[atkType] / mem.totalAttacksObserved;
+      if (freq < 0.1) result.attackWeights[atkType] += 1;
+    }
+    return result;
+  }
 
   private _updateAI(ai: Fighter, player: Fighter): void {
     if (ai.dead || this._phase !== "playing") return;
@@ -2394,10 +2712,14 @@ export class SwordOfAvalonGame {
       return;
     }
 
+    // Get adaptive counter strategy
+    const counterStrategy = this._getAICounterStrategy();
+
     // React to player attacks
     if (player.attackPhase === "windup" || player.attackPhase === "active") {
       if (distance < 100) {
-        if (Math.random() < parryChance && !ai.blocking) {
+        const adaptiveBlockBonus = counterStrategy.blockBias;
+        if (Math.random() < parryChance + adaptiveBlockBonus && !ai.blocking) {
           this._startBlock(ai); ai.parrying = true; ai.parryTimer = PARRY_WINDOW;
           ai.aiTimer = 0; return;
         } else if (Math.random() < 0.25 * diffMul) {
@@ -2416,8 +2738,8 @@ export class SwordOfAvalonGame {
 
     if (ai.blocking && !player.attackPhase) { if (Math.random() < 0.1) this._stopBlock(ai); }
 
-    // AI grab at very close range
-    if (distance < 40 && !ai.attackPhase && !ai.grabbing && Math.random() < 0.1 * diffMul && ai.stamina >= 18) {
+    // AI grab at very close range (increased if player parries a lot)
+    if (distance < 40 && !ai.attackPhase && !ai.grabbing && Math.random() < (0.1 + counterStrategy.kickGrabBias) * diffMul && ai.stamina >= 18) {
       this._startGrab(ai, player);
       ai.aiTimer = 0;
       return;
@@ -2443,18 +2765,23 @@ export class SwordOfAvalonGame {
 
     // Attack
     if (distance > 45 && distance < 100 && ai.aiTimer > reactionFrames) {
-      if (Math.random() < aggressiveness * 0.7) {
+      if (Math.random() < (aggressiveness + counterStrategy.aggressionMod) * 0.7) {
         this._stopBlock(ai);
         // AI combo chains: sometimes do planned sequences
         const comboRoll = Math.random();
         if (comboRoll < 0.15 * diffMul && ai.stamina > 40) {
           // Plan a 2-hit combo
           this._startAttack(ai, "slash");
-        } else if (comboRoll < 0.1 * diffMul && ai.stamina > KICK_STAMINA) {
+        } else if (comboRoll < (0.1 + counterStrategy.kickGrabBias) * diffMul && ai.stamina > KICK_STAMINA) {
           this._startAttack(ai, "kick");
         } else {
           const attacks = ["slash", "thrust", "overhead", "sweep"];
-          const weights = [3, 2, 1, 2];
+          const weights = [
+            counterStrategy.attackWeights.slash,
+            counterStrategy.attackWeights.thrust,
+            counterStrategy.attackWeights.overhead,
+            counterStrategy.attackWeights.sweep,
+          ];
           if (ai.stamina < 30) { weights[2] = 0; weights[0] = 4; }
           const total = weights.reduce((a, b) => a + b, 0);
           let r = Math.random() * total; let chosen = "slash";
@@ -2520,6 +2847,7 @@ export class SwordOfAvalonGame {
         this._announce("EXECUTION!");
         this._playSound("death", 0.5);
         this._gold += 100; this._stats.goldEarned += 100;
+        this._unlockAchievement("executioner");
         this._crowdExcitement = 1;
         this._playSound("crowd", 0.3);
         this._playSound("crowd", 0.2);
@@ -2578,8 +2906,11 @@ export class SwordOfAvalonGame {
       p.crouching = !!(this._keys["s"] || this._keys["arrowdown"]) && p.grounded && !p.attackPhase;
     }
 
-    const dx = this._ai.x - p.x;
-    if (Math.abs(dx) > 10) p.facing = dx > 0 ? 1 : -1;
+    const opponent = this._vsMode ? this._player2 : this._ai;
+    if (opponent) {
+      const dx = opponent.x - p.x;
+      if (Math.abs(dx) > 10) p.facing = dx > 0 ? 1 : -1;
+    }
 
     // Feint: during windup, press SPACE to cancel into a dodge
     if (p.attackPhase === "windup" && this._justPressed[" "]) {
@@ -2734,6 +3065,38 @@ export class SwordOfAvalonGame {
     }
     c.fillStyle = skyGrad; c.fillRect(0, 0, W, gY);
 
+    // Parallax background layers
+    const pOpponent = this._ai || this._player2;
+    const parallaxBase = pOpponent ? ((this._player.x + pOpponent.x) / 2 - W / 2) * -1 : 0;
+
+    // Far layer (0.05x): distant mountains silhouette
+    c.save();
+    c.fillStyle = this._arenaStyle === 3 ? "#1a0505" : this._arenaStyle === 2 ? "#0a0a15" : "#151030";
+    c.beginPath();
+    c.moveTo(0, gY - 180);
+    const farOffset = parallaxBase * 0.05;
+    for (let mx = 0; mx <= W; mx += 60) {
+      const mh = 40 + Math.sin(mx * 0.008 + 1.5) * 50 + Math.sin(mx * 0.015 + 3.0) * 25;
+      c.lineTo(mx + farOffset, gY - 180 - mh);
+    }
+    c.lineTo(W, gY - 180); c.lineTo(W, gY); c.lineTo(0, gY);
+    c.closePath(); c.fill();
+    c.restore();
+
+    // Mid layer (0.15x): forest treeline silhouette
+    c.save();
+    c.fillStyle = this._arenaStyle === 3 ? "#120303" : this._arenaStyle === 2 ? "#080810" : "#0d1020";
+    c.beginPath();
+    c.moveTo(0, gY - 120);
+    const midOffset = parallaxBase * 0.15;
+    for (let tx = 0; tx <= W; tx += 30) {
+      const th = 30 + Math.sin(tx * 0.012 + 0.7) * 40 + Math.sin(tx * 0.025 + 2.1) * 20 + Math.sin(tx * 0.06) * 10;
+      c.lineTo(tx + midOffset, gY - 120 - th);
+    }
+    c.lineTo(W, gY - 120); c.lineTo(W, gY); c.lineTo(0, gY);
+    c.closePath(); c.fill();
+    c.restore();
+
     // Stars (not for stormy/volcanic)
     if (this._arenaStyle <= 1) {
       for (let i = 0; i < 80; i++) {
@@ -2844,6 +3207,31 @@ export class SwordOfAvalonGame {
     c.strokeStyle = "rgba(90,74,48,0.15)"; c.lineWidth = 1;
     for (let i = 0; i < W; i += 60) { c.beginPath(); c.moveTo(i, gY); c.lineTo(i, H); c.stroke(); }
     for (let j = gY + 30; j < H; j += 30) { c.beginPath(); c.moveTo(0, j); c.lineTo(W, j); c.stroke(); }
+
+    // Atmospheric fog
+    {
+      const fogBaseAlpha = this._arenaStyle === 2 ? 0.06 : this._arenaStyle === 3 ? 0.08 : 0.03;
+      const fogOscillate = Math.sin(this._frameCount * 0.01) * 0.02;
+      const fogBands = [
+        { y: gY - 40, h: 30, alpha: fogBaseAlpha + fogOscillate },
+        { y: gY - 20, h: 25, alpha: (fogBaseAlpha + 0.02) + fogOscillate * 0.8 },
+        { y: gY - 5,  h: 20, alpha: (fogBaseAlpha + 0.04) + fogOscillate * 0.5 },
+        { y: gY + 5,  h: 15, alpha: (fogBaseAlpha + 0.01) + fogOscillate * 1.2 },
+      ];
+      c.save();
+      for (const band of fogBands) {
+        const waveY = Math.sin(this._frameCount * 0.008 + band.y * 0.1) * 3;
+        const fogGrad = c.createLinearGradient(0, band.y + waveY, W, band.y + waveY);
+        const fogColor = this._arenaStyle === 3 ? "200,100,50" : this._arenaStyle === 2 ? "150,160,180" : "180,180,200";
+        fogGrad.addColorStop(0, `rgba(${fogColor},0)`);
+        fogGrad.addColorStop(0.3, `rgba(${fogColor},${band.alpha})`);
+        fogGrad.addColorStop(0.7, `rgba(${fogColor},${band.alpha})`);
+        fogGrad.addColorStop(1, `rgba(${fogColor},0)`);
+        c.fillStyle = fogGrad;
+        c.fillRect(0, band.y + waveY, W, band.h);
+      }
+      c.restore();
+    }
 
     // Torches
     const torchPositions = this._getTorchPositions();
@@ -3005,10 +3393,11 @@ export class SwordOfAvalonGame {
     // Compute dynamic torchlight level
     const lightLevel = this._computeLightLevel(fighter.x);
 
-    const skinColorBase = fighter.isAI ? "#4a3a2a" : "#c4a080";
-    const armorDarkBase = fighter.isAI ? fighter.armorColor : "#555";
-    const armorLightBase = fighter.isAI ? shadeColor(fighter.armorColor, 25) : "#777";
-    const armorAccentBase = fighter.isAI ? fighter.color : "#886622";
+    const isOpponent = fighter.isAI || fighter === this._player2;
+    const skinColorBase = isOpponent && fighter.isAI ? "#4a3a2a" : (fighter === this._player2 ? ARMOR_PRESETS[this._selectedArmor2].skin : ARMOR_PRESETS[this._selectedArmor].skin);
+    const armorDarkBase = isOpponent ? fighter.armorColor : fighter.armorColor;
+    const armorLightBase = isOpponent ? shadeColor(fighter.armorColor, 25) : shadeColor(fighter.armorColor, 25);
+    const armorAccentBase = fighter.color;
 
     // Apply light level to colors
     const skinColor = this._applyLightToColor(skinColorBase, lightLevel);
@@ -3155,14 +3544,16 @@ export class SwordOfAvalonGame {
     const hand = sk.bones[J.R_HAND];
     const swordAngle = hand.worldAngle;
     const hx = hand.worldX * f, hy = hand.worldY;
-    const swordLen = 55 * sk.scale * (!fighter.isAI ? this._currentWeapon.length : 1);
+    const isP1 = fighter === this._player;
+    const p2WeaponLen = this._vsMode ? ([...WEAPONS, ...this._getUnlockedWeaponDefs()][this._vsWeapon2]?.length || 1) : 1;
+    const swordLen = 55 * sk.scale * (isP1 ? this._currentWeapon.length : (fighter === this._player2 ? p2WeaponLen : 1));
 
     c.save();
     c.shadowColor = stanceColor;
     c.shadowBlur = fighter.attackPhase === "active" ? 18 : (fighter.riposteReady ? 12 : 5);
     if (fighter.riposteReady) c.shadowColor = "#ffd700";
     // Enchantment sword glow
-    if (!fighter.isAI && this._activeEnchant !== "none") {
+    if (isP1 && this._activeEnchant !== "none") {
       const enchGlowColors: Record<string, string> = { fire: "#ff8c00", ice: "#88ccff", holy: "#fffacd", poison: "#44cc44" };
       c.shadowColor = enchGlowColors[this._activeEnchant] || stanceColor;
       if (!fighter.attackPhase) c.shadowBlur = 8 + Math.sin(this._frameCount * 0.08) * 3;
@@ -3181,7 +3572,7 @@ export class SwordOfAvalonGame {
     const tipX = hx + Math.cos(swordAngle * f) * swordLen * f;
     const tipY = hy + Math.sin(swordAngle * f) * swordLen;
     // Blade
-    const bladeColor = (fighter.attackType === "excalibur" && fighter.attackPhase) ? "#ffd700" : (!fighter.isAI ? this._currentWeapon.color : fighter.swordColor);
+    const bladeColor = (fighter.attackType === "excalibur" && fighter.attackPhase) ? "#ffd700" : (isP1 ? this._currentWeapon.color : fighter.swordColor);
     // Disarmed: sword flickers at 50% alpha alternating frames
     if (fighter.disarmedTimer > 0) {
       c.globalAlpha = this._frameCount % 2 === 0 ? 0.5 : 0.2;
@@ -3477,16 +3868,18 @@ export class SwordOfAvalonGame {
     c.fillStyle = STANCES[this._player.stance].color; c.font = "12px Georgia"; c.textAlign = "left";
     c.fillText(this._player.stance.toUpperCase(), margin, margin + barH + staminaH + superH + 22);
 
-    // Gold
-    c.fillStyle = "#ffd700"; c.font = "14px Georgia"; c.textAlign = "left";
-    c.fillText(`\u2726 ${this._gold} gold`, margin, margin + barH + staminaH + superH + 40);
+    // Gold (not in VS mode)
+    if (!this._vsMode) {
+      c.fillStyle = "#ffd700"; c.font = "14px Georgia"; c.textAlign = "left";
+      c.fillText(`\u2726 ${this._gold} gold`, margin, margin + barH + staminaH + superH + 40);
 
-    // Enchantment indicator
-    if (this._activeEnchant !== "none") {
-      const enchColors: Record<string, string> = { fire: "#ff8c00", ice: "#88ccff", holy: "#ffd700", poison: "#44cc44" };
-      c.fillStyle = enchColors[this._activeEnchant] || "#fff";
-      c.font = "11px Georgia"; c.textAlign = "left";
-      c.fillText(`[${this._activeEnchant.toUpperCase()}]`, margin + 100, margin + barH + staminaH + superH + 40);
+      // Enchantment indicator
+      if (this._activeEnchant !== "none") {
+        const enchColors: Record<string, string> = { fire: "#ff8c00", ice: "#88ccff", holy: "#ffd700", poison: "#44cc44" };
+        c.fillStyle = enchColors[this._activeEnchant] || "#fff";
+        c.font = "11px Georgia"; c.textAlign = "left";
+        c.fillText(`[${this._activeEnchant.toUpperCase()}]`, margin + 100, margin + barH + staminaH + superH + 40);
+      }
     }
 
     // Fire/Ice/Poison/Burn/Slow/Disarm status icons next to HP bars
@@ -3504,15 +3897,17 @@ export class SwordOfAvalonGame {
       drawStatus(this._ai, W - margin - barW - 4, "right");
     }
 
-    // Round indicator
-    const totalRounds = this._ngPlus >= 1 ? ENEMIES.length + 1 : ENEMIES.length;
-    const ngLabel = this._ngPlus > 0 ? ` | NG+ LEVEL ${this._ngPlus}` : "";
-    c.fillStyle = "#d4a843"; c.font = "13px Georgia"; c.textAlign = "center";
-    c.fillText(`ROUND ${this._currentEnemyIdx + 1} / ${totalRounds}${ngLabel}`, W / 2, margin);
+    // Round indicator (not in VS mode - VS mode draws its own score)
+    if (!this._vsMode) {
+      const totalRounds = this._ngPlus >= 1 ? ENEMIES.length + 1 : ENEMIES.length;
+      const ngLabel = this._ngPlus > 0 ? ` | NG+ LEVEL ${this._ngPlus}` : "";
+      c.fillStyle = "#d4a843"; c.font = "13px Georgia"; c.textAlign = "center";
+      c.fillText(`ROUND ${this._currentEnemyIdx + 1} / ${totalRounds}${ngLabel}`, W / 2, margin);
+    }
 
-    // AI
-    const enemy = this._currentEnemyIdx < ENEMIES.length ? ENEMIES[this._currentEnemyIdx] : null;
-    c.textAlign = "right"; c.fillStyle = "#c04040"; c.font = "16px Georgia";
+    // AI / P2
+    const enemy = !this._vsMode && this._currentEnemyIdx < ENEMIES.length ? ENEMIES[this._currentEnemyIdx] : null;
+    c.textAlign = "right"; c.fillStyle = this._vsMode ? "#cc4444" : "#c04040"; c.font = "16px Georgia";
     c.fillText(this._ai.name, W - margin, margin - 4);
     this._drawBar(W - margin - barW, margin, barW, barH, this._ai.hp / this._ai.maxHp, "#a03030", "#301010");
     this._drawBar(W - margin - staminaW, margin + barH + 4, staminaW, staminaH, this._ai.stamina / STAMINA_MAX, "#30803a", "#102a10");
@@ -3521,11 +3916,13 @@ export class SwordOfAvalonGame {
     c.fillStyle = STANCES[this._ai.stance].color; c.font = "12px Georgia"; c.textAlign = "right";
     c.fillText(this._ai.stance.toUpperCase(), W - margin, margin + barH + staminaH + superH + 22);
 
-    // Enemy ability
-    const abilityDescText = enemy?.abilityDesc || (this._ai.ability === "excaliburWielder" ? "EXCALIBUR WIELDER \u2014 commands the true Excalibur" : "");
-    if (abilityDescText) {
-      c.fillStyle = "#886"; c.font = "11px Georgia"; c.textAlign = "right";
-      c.fillText(abilityDescText, W - margin, margin + barH + staminaH + superH + 38);
+    // Enemy ability (not in VS mode)
+    if (!this._vsMode) {
+      const abilityDescText = enemy?.abilityDesc || (this._ai.ability === "excaliburWielder" ? "EXCALIBUR WIELDER \u2014 commands the true Excalibur" : "");
+      if (abilityDescText) {
+        c.fillStyle = "#886"; c.font = "11px Georgia"; c.textAlign = "right";
+        c.fillText(abilityDescText, W - margin, margin + barH + staminaH + superH + 38);
+      }
     }
 
     // Combo display
@@ -3563,7 +3960,11 @@ export class SwordOfAvalonGame {
     }
 
     c.fillStyle = "rgba(160,128,64,0.3)"; c.font = "11px Georgia"; c.textAlign = "center";
-    c.fillText("J-Slash(hold=Charge)  K-Thrust  U-Overhead  I-Sweep  F-Kick  G-Grab  L-Block/Parry  SPACE-Dodge  R-Super  1/2/3-Stance  ESC-Quit", W / 2, H - 12);
+    if (this._vsMode) {
+      c.fillText("P1: WASD+J/K/U/I/F/G/L/SPACE/R  |  P2: Arrows+Numpad(1=Slash 2=Thrust 3=OH 4=Sweep 5=Kick 0=Block Enter=Dodge 7=Super 8=Grab)  ESC-Quit", W / 2, H - 12);
+    } else {
+      c.fillText("J-Slash(hold=Charge)  K-Thrust  U-Overhead  I-Sweep  F-Kick  G-Grab  L-Block/Parry  SPACE-Dodge  R-Super  1/2/3-Stance  ESC-Quit", W / 2, H - 12);
+    }
   }
 
   // ── Weapon Unlocking ────────────────────────────────────────────────────
@@ -3587,6 +3988,8 @@ export class SwordOfAvalonGame {
         this._weaponUnlockNotify = unlocked.name;
         this._weaponUnlockTimer = 120;
       }
+      // Achievement: all weapons unlocked
+      if (this._unlockedWeapons.size >= 8) this._unlockAchievement("all_weapons");
     }
   }
 
@@ -3631,6 +4034,421 @@ export class SwordOfAvalonGame {
     return unlocked;
   }
 
+  // ── Achievement System ──────────────────────────────────────────────────
+
+  private _unlockAchievement(id: string): void {
+    const ach = this._achievements.get(id);
+    if (!ach || ach.unlocked) return;
+    ach.unlocked = true;
+    this._achievementNotify = ach.name;
+    this._achievementNotifyTimer = 150;
+    this._playSound("achievement", 0.3);
+  }
+
+  private _drawAchievementNotification(): void {
+    if (this._achievementNotifyTimer <= 0) return;
+    this._achievementNotifyTimer--;
+    const c = this._ctx;
+    const W = this._W;
+    const alpha = this._achievementNotifyTimer > 30 ? 1 : this._achievementNotifyTimer / 30;
+    c.save();
+    c.globalAlpha = alpha;
+    const bannerW = 320;
+    const bannerH = 40;
+    const bx = W - bannerW - 20;
+    const by = 20;
+    c.fillStyle = "rgba(40,30,10,0.85)";
+    c.fillRect(bx, by, bannerW, bannerH);
+    c.strokeStyle = "#ffd700";
+    c.lineWidth = 2;
+    c.strokeRect(bx, by, bannerW, bannerH);
+    c.fillStyle = "#ffd700";
+    c.font = "bold 14px Georgia";
+    c.textAlign = "left";
+    c.fillText(`\u{1F3C6} ACHIEVEMENT UNLOCKED: ${this._achievementNotify}`, bx + 10, by + 26);
+    c.restore();
+  }
+
+  private _showAchievements(): void {
+    this._achievementsOverlay = document.createElement("div");
+    this._achievementsOverlay.style.cssText = `position:fixed;top:0;left:0;width:100%;height:100%;z-index:65;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      background:rgba(10,5,2,0.95);font-family:Georgia,serif;`;
+    let html = `<div style="font-size:36px;color:#d4a843;letter-spacing:4px;margin-bottom:20px">\u{1F3C6} ACHIEVEMENTS</div>
+      <div style="max-height:60vh;overflow-y:auto;padding:10px;width:500px">`;
+    for (const [, ach] of this._achievements) {
+      const unlocked = ach.unlocked;
+      html += `<div style="display:flex;align-items:center;padding:10px;margin-bottom:8px;
+        background:rgba(212,168,67,${unlocked ? 0.1 : 0.03});
+        border:1px solid ${unlocked ? "rgba(255,215,0,0.4)" : "rgba(100,100,100,0.2)"};border-radius:6px">
+        <div style="font-size:24px;margin-right:12px">${unlocked ? "\u{1F3C6}" : "\u{1F512}"}</div>
+        <div>
+          <div style="color:${unlocked ? "#ffd700" : "#665"};font-size:15px;font-weight:bold">${ach.name}</div>
+          <div style="color:${unlocked ? "#a08040" : "#444"};font-size:12px">${ach.desc}</div>
+        </div>
+      </div>`;
+    }
+    html += `</div><button id="soa-ach-close" style="margin-top:20px;padding:12px 36px;font-size:18px;font-family:Georgia,serif;
+      background:rgba(212,168,67,0.12);color:#d4a843;border:1px solid rgba(212,168,67,0.4);
+      border-radius:4px;cursor:pointer;letter-spacing:2px">CLOSE</button>`;
+    this._achievementsOverlay.innerHTML = html;
+    document.body.appendChild(this._achievementsOverlay);
+    this._achievementsOverlay.querySelector("#soa-ach-close")!.addEventListener("click", () => {
+      this._achievementsOverlay?.parentNode?.removeChild(this._achievementsOverlay);
+      this._achievementsOverlay = null;
+    });
+  }
+
+  // ── Screen Transitions ────────────────────────────────────────────────
+
+  private _startTransition(type: string, duration: number, callback: () => void): void {
+    this._transition = {active: true, type, progress: 0, duration, callback};
+  }
+
+  private _updateTransition(): void {
+    if (!this._transition.active) return;
+    this._transition.progress++;
+    if (this._transition.type === "fadeOut") {
+      if (this._transition.progress >= this._transition.duration) {
+        if (this._transition.callback) this._transition.callback();
+        this._transition.callback = null;
+        // Auto start fade in
+        this._transition = {active: true, type: "fadeIn", progress: 0, duration: this._transition.duration, callback: null};
+      }
+    } else if (this._transition.type === "fadeIn") {
+      if (this._transition.progress >= this._transition.duration) {
+        this._transition.active = false;
+      }
+    } else if (this._transition.type === "wipe") {
+      const halfDur = this._transition.duration / 2;
+      if (this._transition.progress >= halfDur && this._transition.callback) {
+        this._transition.callback();
+        this._transition.callback = null;
+      }
+      if (this._transition.progress >= this._transition.duration) {
+        this._transition.active = false;
+      }
+    }
+  }
+
+  private _drawTransition(): void {
+    if (!this._transition.active) return;
+    const c = this._ctx;
+    const W = this._W, H = this._H;
+    c.save();
+    if (this._transition.type === "fadeOut") {
+      const alpha = clamp(this._transition.progress / this._transition.duration, 0, 1);
+      c.fillStyle = `rgba(0,0,0,${alpha})`;
+      c.fillRect(0, 0, W, H);
+    } else if (this._transition.type === "fadeIn") {
+      const alpha = clamp(1 - this._transition.progress / this._transition.duration, 0, 1);
+      c.fillStyle = `rgba(0,0,0,${alpha})`;
+      c.fillRect(0, 0, W, H);
+    } else if (this._transition.type === "wipe") {
+      const halfDur = this._transition.duration / 2;
+      const maxR = Math.sqrt(W * W + H * H) / 2;
+      let radius: number;
+      if (this._transition.progress < halfDur) {
+        radius = maxR * (1 - this._transition.progress / halfDur);
+      } else {
+        radius = maxR * ((this._transition.progress - halfDur) / halfDur);
+      }
+      c.fillStyle = "#000";
+      c.fillRect(0, 0, W, H);
+      c.globalCompositeOperation = "destination-out";
+      c.beginPath();
+      c.arc(W / 2, H / 2, radius, 0, Math.PI * 2);
+      c.fill();
+      c.globalCompositeOperation = "source-over";
+    }
+    c.restore();
+  }
+
+  // ── Gamepad Support ───────────────────────────────────────────────────
+
+  private _pollGamepad(): void {
+    const gamepads = navigator.getGamepads();
+    const gp = gamepads[0];
+    this._gamepadConnected = !!gp;
+    if (!gp) return;
+    // Left stick / D-pad for movement
+    const lx = gp.axes[0]; const ly = gp.axes[1];
+    if (lx < -0.3) this._keys["a"] = true; else if (!this._keys["arrowleft"]) this._keys["a"] = false;
+    if (lx > 0.3) this._keys["d"] = true; else if (!this._keys["arrowright"]) this._keys["d"] = false;
+    if (ly < -0.3 || gp.buttons[12]?.pressed) this._keys["w"] = true;
+    if (ly > 0.3 || gp.buttons[13]?.pressed) this._keys["s"] = true;
+    // Face buttons: A=slash, B=thrust, X=overhead, Y=sweep
+    if (gp.buttons[0]?.pressed) this._keys["j"] = true;
+    if (gp.buttons[1]?.pressed) this._keys["k"] = true;
+    if (gp.buttons[2]?.pressed) this._keys["u"] = true;
+    if (gp.buttons[3]?.pressed) this._keys["i"] = true;
+    // Triggers/bumpers: LB=block, RB=dodge, LT=kick, RT=grab
+    if (gp.buttons[4]?.pressed) this._keys["l"] = true;
+    if (gp.buttons[5]?.pressed) this._keys[" "] = true;
+    if (gp.buttons[6]?.pressed) this._keys["f"] = true;
+    if (gp.buttons[7]?.pressed) this._keys["g"] = true;
+    // Start=super, Select=stance cycle
+    if (gp.buttons[9]?.pressed) this._keys["r"] = true;
+
+    // Poll gamepad[1] for player 2 in VS mode
+    if (this._vsMode) {
+      const gp2 = gamepads[1];
+      if (gp2) {
+        const lx2 = gp2.axes[0]; const ly2 = gp2.axes[1];
+        if (lx2 < -0.3) this._p2Keys["arrowleft"] = true; else this._p2Keys["arrowleft"] = false;
+        if (lx2 > 0.3) this._p2Keys["arrowright"] = true; else this._p2Keys["arrowright"] = false;
+        if (ly2 < -0.3 || gp2.buttons[12]?.pressed) this._p2Keys["arrowup"] = true;
+        if (ly2 > 0.3 || gp2.buttons[13]?.pressed) this._p2Keys["arrowdown"] = true;
+        if (gp2.buttons[0]?.pressed) this._p2Keys["numpad1"] = true;
+        if (gp2.buttons[1]?.pressed) this._p2Keys["numpad2"] = true;
+        if (gp2.buttons[2]?.pressed) this._p2Keys["numpad3"] = true;
+        if (gp2.buttons[3]?.pressed) this._p2Keys["numpad4"] = true;
+        if (gp2.buttons[4]?.pressed) this._p2Keys["numpad0"] = true;
+        if (gp2.buttons[5]?.pressed) this._p2Keys["enter"] = true;
+        if (gp2.buttons[6]?.pressed) this._p2Keys["numpad5"] = true;
+        if (gp2.buttons[7]?.pressed) this._p2Keys["numpad8"] = true;
+        if (gp2.buttons[9]?.pressed) this._p2Keys["numpad7"] = true;
+      }
+    }
+  }
+
+  // ── VS Mode ───────────────────────────────────────────────────────────
+
+  private _showVSSetup(): void {
+    this._vsSetupOverlay = document.createElement("div");
+    this._vsSetupOverlay.style.cssText = `position:fixed;top:0;left:0;width:100%;height:100%;z-index:60;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      background:radial-gradient(ellipse at center, rgba(30,15,5,0.92) 0%, rgba(10,5,2,0.98) 100%);font-family:Georgia,serif;`;
+    const allWeapons = [...WEAPONS, ...this._getUnlockedWeaponDefs()];
+    const makeWeaponList = (selectedIdx: number, player: number) => {
+      let html = "";
+      allWeapons.forEach((wep, idx) => {
+        const isSelected = idx === selectedIdx;
+        html += `<div data-weapon="${idx}" data-player="${player}" style="background:rgba(212,168,67,${isSelected ? 0.15 : 0.05});
+          border:2px solid ${isSelected ? "#ffd700" : "rgba(212,168,67,0.2)"};border-radius:4px;
+          padding:6px 10px;cursor:pointer;width:100px;text-align:center;margin:3px">
+          <div style="color:${wep.color};font-size:12px;font-weight:bold">${wep.name}</div>
+          <div style="color:#665;font-size:9px">DMG ${(wep.damageMul * 100).toFixed(0)}% SPD ${(100 / wep.speedMul).toFixed(0)}%</div>
+        </div>`;
+      });
+      return html;
+    };
+    const makeColorSwatches = (selectedIdx: number, player: number) => {
+      let html = "";
+      ARMOR_PRESETS.forEach((preset, idx) => {
+        const isSelected = idx === selectedIdx;
+        html += `<div data-color="${idx}" data-player="${player}" style="width:30px;height:30px;background:${preset.primary};
+          border:2px solid ${isSelected ? "#ffd700" : "rgba(100,100,100,0.3)"};border-radius:4px;cursor:pointer;margin:2px;
+          display:inline-block" title="${preset.name}"></div>`;
+      });
+      return html;
+    };
+    this._vsSetupOverlay.innerHTML = `
+      <div style="font-size:42px;color:#d4a843;letter-spacing:6px;margin-bottom:20px">VS MODE</div>
+      <div style="display:flex;gap:60px;margin-bottom:30px">
+        <div style="text-align:center;min-width:300px">
+          <div style="font-size:22px;color:#4488cc;margin-bottom:10px">PLAYER 1</div>
+          <div style="color:#887;font-size:11px;margin-bottom:6px">WASD + J/K/U/I/F/L/SPACE/R/G</div>
+          <div style="font-size:13px;color:#a08040;margin-bottom:8px">Armor Color:</div>
+          <div id="soa-vs-colors1" style="display:flex;justify-content:center;margin-bottom:10px">${makeColorSwatches(this._selectedArmor, 1)}</div>
+          <div style="font-size:13px;color:#a08040;margin-bottom:6px">Weapon:</div>
+          <div id="soa-vs-weapons1" style="display:flex;flex-wrap:wrap;justify-content:center">${makeWeaponList(this._vsWeapon1, 1)}</div>
+        </div>
+        <div style="font-size:36px;color:#d4a843;align-self:center">VS</div>
+        <div style="text-align:center;min-width:300px">
+          <div style="font-size:22px;color:#cc4444;margin-bottom:10px">PLAYER 2</div>
+          <div style="color:#887;font-size:11px;margin-bottom:6px">Arrows + Numpad 1-5,0,Enter,7,8</div>
+          <div style="font-size:13px;color:#a08040;margin-bottom:8px">Armor Color:</div>
+          <div id="soa-vs-colors2" style="display:flex;justify-content:center;margin-bottom:10px">${makeColorSwatches(this._selectedArmor2, 2)}</div>
+          <div style="font-size:13px;color:#a08040;margin-bottom:6px">Weapon:</div>
+          <div id="soa-vs-weapons2" style="display:flex;flex-wrap:wrap;justify-content:center">${makeWeaponList(this._vsWeapon2, 2)}</div>
+        </div>
+      </div>
+      <button id="soa-vs-fight" style="padding:18px 60px;font-size:26px;font-family:Georgia,serif;
+        background:linear-gradient(180deg,#cc3333 0%,#882222 50%,#3355aa 100%);color:#fff;border:2px solid #d4a843;
+        border-radius:4px;cursor:pointer;letter-spacing:4px;text-transform:uppercase">FIGHT!</button>
+      <button id="soa-vs-back" style="margin-top:12px;padding:10px 30px;font-size:14px;font-family:Georgia,serif;
+        background:rgba(212,168,67,0.12);color:#d4a843;border:1px solid rgba(212,168,67,0.4);
+        border-radius:4px;cursor:pointer;letter-spacing:2px">BACK</button>`;
+    document.body.appendChild(this._vsSetupOverlay);
+
+    // Wire up weapon selection
+    const refreshSetup = () => {
+      this._vsSetupOverlay?.parentNode?.removeChild(this._vsSetupOverlay);
+      this._showVSSetup();
+    };
+    this._vsSetupOverlay.querySelectorAll("[data-weapon]").forEach(el => {
+      el.addEventListener("click", () => {
+        const idx = parseInt((el as HTMLElement).dataset.weapon!);
+        const player = parseInt((el as HTMLElement).dataset.player!);
+        if (player === 1) this._vsWeapon1 = idx;
+        else this._vsWeapon2 = idx;
+        refreshSetup();
+      });
+    });
+    this._vsSetupOverlay.querySelectorAll("[data-color]").forEach(el => {
+      el.addEventListener("click", () => {
+        const idx = parseInt((el as HTMLElement).dataset.color!);
+        const player = parseInt((el as HTMLElement).dataset.player!);
+        if (player === 1) this._selectedArmor = idx;
+        else this._selectedArmor2 = idx;
+        refreshSetup();
+      });
+    });
+    this._vsSetupOverlay.querySelector("#soa-vs-fight")!.addEventListener("click", () => {
+      this._audioCtx?.resume();
+      this._vsSetupOverlay?.parentNode?.removeChild(this._vsSetupOverlay); this._vsSetupOverlay = null;
+      this._startVSRound();
+    });
+    this._vsSetupOverlay.querySelector("#soa-vs-back")!.addEventListener("click", () => {
+      this._vsSetupOverlay?.parentNode?.removeChild(this._vsSetupOverlay); this._vsSetupOverlay = null;
+      this._vsMode = false;
+      this._showTitle();
+    });
+  }
+
+  private _startVSRound(): void {
+    this._bloodDecals = [];
+    this._particles = [];
+    this._damageNumbers = [];
+    this._comboDisplayTimer = 0;
+    this._hitstopTimer = 0; this._shakeIntensity = 0;
+    this._slowmoTimer = 0; this._timeScale = 1;
+    this._crowdExcitement = 0;
+    this._guardBreakFlash = 0;
+    this._perfectParryRing = null;
+    this._crowdItems = [];
+    this._deathZoom = {active: false, x: 0, y: 0, scale: 1.0, targetScale: 1.3, flashAlpha: 0};
+    this._dashing = false;
+    this._dashTimer = 0;
+    this._arenaStyle = this._vsRound % 4;
+    this._rainActive = this._arenaStyle >= 2;
+    if (this._rainActive) this._initRaindrops(); else this._raindrops = [];
+    this._firePits = this._arenaStyle >= 2 ? [{ x: this._W * 0.25, active: true }, { x: this._W * 0.75, active: true }] : [];
+    this._firstBloodTriggered = false;
+    this._nearDeathTriggered = false;
+    this._roundDamageTaken = 0;
+    this._announceTimer = 0;
+    this._lightningTimer = 0; this._lightningFlash = 0; this._lightningBolt = [];
+    this._emberParticles = [];
+    this._chargeTimer = 0; this._charging = false; this._chargeSparks = [];
+    this._roundPerfectParries = 0; this._roundClashes = 0;
+    this._roundHitsTaken = 0;
+    this._roundStartFrame = this._frameCount;
+
+    const allWeapons = [...WEAPONS, ...this._getUnlockedWeaponDefs()];
+    const wep1 = allWeapons[this._vsWeapon1] || WEAPONS[0];
+    const wep2 = allWeapons[this._vsWeapon2] || WEAPONS[0];
+    const armor1 = ARMOR_PRESETS[this._selectedArmor];
+    const armor2 = ARMOR_PRESETS[this._selectedArmor2];
+
+    this._player = this._createFighter(this._W * 0.3, 1, {
+      color: armor1.accent, armorColor: armor1.primary, swordColor: wep1.color,
+      plumeColor: armor1.accent, name: "PLAYER 1", isAI: false,
+    });
+    this._player.hp = HEALTH_MAX; this._player.maxHp = HEALTH_MAX;
+
+    this._player2 = this._createFighter(this._W * 0.7, -1, {
+      color: armor2.accent, armorColor: armor2.primary, swordColor: wep2.color,
+      plumeColor: armor2.accent, name: "PLAYER 2", isAI: false,
+    });
+    this._player2.hp = HEALTH_MAX; this._player2.maxHp = HEALTH_MAX;
+
+    // Use _ai slot for compatibility with rendering and combat
+    this._ai = this._player2;
+
+    this._currentEnemyIdx = 0;
+    this._roundTimer = 99999; // No timer in VS mode
+
+    this._dialogueTimer = 0;
+    this._aiLowHpTaunted = false;
+    this._playerLowHpTaunted = false;
+    this._aiHalfHpBarked = false;
+
+    this._phase = "vs_playing" as Phase;
+    this._announce(`ROUND ${this._vsRound + 1}!`);
+  }
+
+  private _updatePlayer2Controller(p: Fighter): void {
+    if (p.dead) return;
+    const st = STANCES[p.stance];
+
+    // Movement
+    if (!p.staggered && !p.knockedDown && !p.dodging) {
+      if (this._p2Keys["arrowleft"]) p.vx -= MOVE_SPEED * 0.4 * st.spdMul;
+      if (this._p2Keys["arrowright"]) p.vx += MOVE_SPEED * 0.4 * st.spdMul;
+      if (this._p2JustPressed["arrowup"] && p.grounded && !p.blocking) { p.vy = JUMP_FORCE; p.grounded = false; }
+      p.crouching = !!this._p2Keys["arrowdown"] && p.grounded && !p.attackPhase;
+    }
+
+    // Face opponent
+    const dx = this._player.x - p.x;
+    if (Math.abs(dx) > 10) p.facing = dx > 0 ? 1 : -1;
+
+    // Attacks: Numpad1=slash, Numpad2=thrust, Numpad3=overhead, Numpad4=sweep, Numpad5=kick
+    const tryP2Attack = (key: string, type: string) => {
+      if (this._p2JustPressed[key]) {
+        if (!p.attackPhase && !p.staggered && !p.knockedDown) {
+          this._startAttack(p, type);
+        }
+      }
+    };
+    tryP2Attack("numpad1", "slash");
+    tryP2Attack("numpad2", "thrust");
+    tryP2Attack("numpad3", "overhead");
+    tryP2Attack("numpad4", "sweep");
+    tryP2Attack("numpad5", "kick");
+
+    // Numpad0=block
+    if (this._p2Keys["numpad0"]) {
+      if (!p.attackPhase && !p.staggered && !p.knockedDown) this._startBlock(p);
+    } else if (p.blocking) this._stopBlock(p);
+
+    // Enter=dodge
+    if (this._p2JustPressed["enter"]) {
+      if (!p.attackPhase && !p.staggered && !p.knockedDown) {
+        const dir = this._p2Keys["arrowleft"] ? -1 : this._p2Keys["arrowright"] ? 1 : -p.facing;
+        this._startDodge(p, dir);
+      }
+    }
+
+    // Numpad7=super
+    if (this._p2JustPressed["numpad7"] && p.superMeter >= SUPER_METER_MAX && !p.attackPhase && !p.staggered && !p.knockedDown && !p.dodging) {
+      p.superMeter = 0;
+      this._startAttack(p, "excalibur");
+      this._spawnGoldenParticles(p.x, p.y - 40, 20);
+      this._triggerShake(12);
+    }
+
+    // Numpad8=grab
+    if (this._p2JustPressed["numpad8"]) {
+      if (!p.grabbing && !p.attackPhase && !p.staggered && !p.knockedDown) {
+        this._startGrab(p, this._player);
+      }
+    }
+
+    // Riposte: any attack during riposte window
+    if (p.riposteReady && p.riposteTimer > 0) {
+      if (this._p2JustPressed["numpad1"] || this._p2JustPressed["numpad2"] || this._p2JustPressed["numpad3"] || this._p2JustPressed["numpad4"]) {
+        this._startAttack(p, "riposte");
+        p.riposteReady = false;
+        return;
+      }
+    }
+
+    // Stances: Numpad+ = aggressive, Numpad- = defensive, NumpadEnter = balanced
+    if (this._p2JustPressed["numpadadd"] || this._p2JustPressed["+"])  p.stance = "aggressive";
+    if (this._p2JustPressed["numpadsubtract"] || this._p2JustPressed["-"])  p.stance = "defensive";
+    if (this._p2JustPressed["numpadenter"]) p.stance = "balanced";
+  }
+
+  private _updateP2Input(): void {
+    for (const k in this._p2Keys) {
+      this._p2JustPressed[k] = this._p2Keys[k] && !this._p2PrevKeys[k];
+      this._p2PrevKeys[k] = this._p2Keys[k];
+    }
+  }
+
   // ── Overlays ─────────────────────────────────────────────────────────────
 
   private _showTitle(): void {
@@ -3663,13 +4481,23 @@ export class SwordOfAvalonGame {
       <div id="soa-diff" style="display:flex;gap:12px;margin-bottom:20px"></div>
       <div style="color:#d4a843;font-size:16px;letter-spacing:2px;margin-bottom:10px">CHOOSE YOUR WEAPON</div>
       <div id="soa-weapons" style="display:flex;gap:8px;margin-bottom:25px;flex-wrap:wrap;justify-content:center"></div>
-      <div style="display:flex;gap:12px;margin-bottom:20px">
+      <div style="color:#d4a843;font-size:14px;letter-spacing:2px;margin-bottom:8px">ARMOR COLOR</div>
+      <div id="soa-colors" style="display:flex;gap:6px;margin-bottom:20px;justify-content:center"></div>
+      <div style="display:flex;gap:12px;margin-bottom:12px">
         <button id="soa-start" style="padding:16px 48px;font-size:22px;font-family:Georgia,serif;
           background:linear-gradient(180deg,#d4a843 0%,#8b6914 100%);color:#1a0e05;border:2px solid #d4a843;
           border-radius:4px;cursor:pointer;letter-spacing:3px;text-transform:uppercase">ENTER THE TOURNAMENT</button>
-        <button id="soa-training" style="padding:16px 32px;font-size:18px;font-family:Georgia,serif;
+        <button id="soa-vs" style="padding:16px 36px;font-size:22px;font-family:Georgia,serif;
+          background:linear-gradient(180deg,#cc3333 0%,#882222 50%,#3355aa 100%);color:#fff;border:2px solid #d4a843;
+          border-radius:4px;cursor:pointer;letter-spacing:3px;text-transform:uppercase">VS MODE</button>
+      </div>
+      <div style="display:flex;gap:12px;margin-bottom:20px">
+        <button id="soa-training" style="padding:12px 28px;font-size:16px;font-family:Georgia,serif;
           background:rgba(212,168,67,0.12);color:#d4a843;border:1px solid rgba(212,168,67,0.4);
           border-radius:4px;cursor:pointer;letter-spacing:2px;text-transform:uppercase">TRAINING</button>
+        <button id="soa-achievements" style="padding:12px 28px;font-size:16px;font-family:Georgia,serif;
+          background:rgba(212,168,67,0.12);color:#d4a843;border:1px solid rgba(212,168,67,0.4);
+          border-radius:4px;cursor:pointer;letter-spacing:2px;text-transform:uppercase">\u{1F3C6} ACHIEVEMENTS</button>
       </div>`;
     document.body.appendChild(this._titleOverlay);
 
@@ -3743,6 +4571,45 @@ export class SwordOfAvalonGame {
     };
     renderWeapons();
 
+    // Armor color swatches
+    const colorDiv = this._titleOverlay.querySelector("#soa-colors") as HTMLDivElement;
+    ARMOR_PRESETS.forEach((preset, idx) => {
+      const swatch = document.createElement("div");
+      const isSelected = idx === this._selectedArmor;
+      swatch.style.cssText = `width:36px;height:36px;background:${preset.primary};
+        border:2px solid ${isSelected ? "#ffd700" : "rgba(100,100,100,0.3)"};
+        border-radius:4px;cursor:pointer`;
+      swatch.title = preset.name;
+      swatch.addEventListener("click", () => {
+        this._selectedArmor = idx;
+        colorDiv.querySelectorAll("div").forEach((s, si) => {
+          (s as HTMLElement).style.borderColor = si === idx ? "#ffd700" : "rgba(100,100,100,0.3)";
+        });
+      });
+      colorDiv.appendChild(swatch);
+    });
+
+    // Gamepad indicator
+    const gpIndicator = document.createElement("div");
+    gpIndicator.style.cssText = "position:fixed;bottom:10px;right:10px;color:#665;font-size:11px;font-family:Georgia,serif";
+    gpIndicator.textContent = `Controller: ${this._gamepadConnected ? "Connected" : "None"}`;
+    this._titleOverlay.appendChild(gpIndicator);
+
+    // VS mode button
+    this._titleOverlay.querySelector("#soa-vs")!.addEventListener("click", () => {
+      this._audioCtx?.resume();
+      this._titleOverlay?.parentNode?.removeChild(this._titleOverlay); this._titleOverlay = null;
+      this._vsMode = true;
+      this._vsRoundWins = [0, 0];
+      this._vsRound = 0;
+      this._showVSSetup();
+    });
+
+    // Achievements button
+    this._titleOverlay.querySelector("#soa-achievements")!.addEventListener("click", () => {
+      this._showAchievements();
+    });
+
     // Training mode button
     this._titleOverlay.querySelector("#soa-training")!.addEventListener("click", () => {
       this._audioCtx?.resume();
@@ -3757,7 +4624,17 @@ export class SwordOfAvalonGame {
       this._bonusStaminaRegen = 0; this._bonusDamage = 0; this._bonusDefense = 0; this._allCanBleed = false;
       this._startingSuperMeter = 0; this._bonusPerfectWindow = 0; this._ngPlus = 0;
       this._playerEnchantment = "none"; this._weaponEnchant = "none";
+      this._vsMode = false;
       this._stats = { hitsLanded: 0, hitsTaken: 0, parries: 0, combos: 0, maxCombo: 0, ripostes: 0, goldEarned: 0 };
+      // Reset adaptive AI memory at tournament start
+      this._aiMemory = {
+        playerAttackFreq: { slash: 0, thrust: 0, overhead: 0, sweep: 0, kick: 0 },
+        playerBlockRate: 0, playerDodgeRate: 0, playerParryRate: 0,
+        totalAttacksObserved: 0, totalDefensesObserved: 0,
+      };
+      this._tournamentBackstabs = 0;
+      this._wonWithFire = false;
+      this._wonWithIce = false;
       this._startRound();
     });
   }
@@ -3829,10 +4706,17 @@ export class SwordOfAvalonGame {
     this._charging = false;
     this._chargeSparks = [];
 
+    // Reset round-specific achievement counters
+    this._roundPerfectParries = 0;
+    this._roundClashes = 0;
+    this._roundHitsTaken = 0;
+    this._roundStartFrame = this._frameCount;
+
     // Keep player HP between rounds
     const prevHp = this._player ? this._player.hp : HEALTH_MAX;
+    const armorPreset = ARMOR_PRESETS[this._selectedArmor];
     this._player = this._createFighter(this._W * 0.3, 1, {
-      color: "#d4a843", armorColor: "#666", swordColor: this._currentWeapon.color, plumeColor: "#880",
+      color: armorPreset.accent, armorColor: armorPreset.primary, swordColor: this._currentWeapon.color, plumeColor: armorPreset.accent,
       name: "SIR GALAHAD", isAI: false,
     });
     this._player.hp = prevHp; this._player.maxHp = HEALTH_MAX;
@@ -3864,6 +4748,8 @@ export class SwordOfAvalonGame {
     this._phase = "intro";
     const roundLabel = isArthurBoss ? "BONUS BOSS!" : `ROUND ${this._currentEnemyIdx + 1}!`;
     this._announce(roundLabel);
+    // Fade in transition
+    this._transition = {active: true, type: "fadeIn", progress: 0, duration: 30, callback: null};
   }
 
   private _startTrainingMode(): void {
@@ -4080,6 +4966,7 @@ export class SwordOfAvalonGame {
     if (isWin) {
       this._resultOverlay.querySelector("#soa-ngplus")?.addEventListener("click", () => {
         this._resultOverlay?.parentNode?.removeChild(this._resultOverlay); this._resultOverlay = null;
+        this._unlockAchievement("ng_plus");
         this._ngPlus++;
         // Keep purchased upgrades, reset round
         this._currentEnemyIdx = 0;
@@ -4094,6 +4981,12 @@ export class SwordOfAvalonGame {
   // ── Main Tick ────────────────────────────────────────────────────────────
 
   private _tick(): void {
+    // Gamepad polling
+    this._pollGamepad();
+
+    // Update transitions
+    this._updateTransition();
+
     // Slow-mo management
     if (this._slowmoTimer > 0) {
       this._slowmoTimer--;
@@ -4104,11 +4997,123 @@ export class SwordOfAvalonGame {
     // Procedural music update
     this._updateMusic();
 
+    // VS mode tick
+    if (this._phase === ("vs_playing" as Phase)) {
+      if (this._hitstopTimer > 0) {
+        this._hitstopTimer--;
+      } else {
+        this._frameCount++;
+        this._updateInput();
+        this._updateP2Input();
+        this._updatePlayerController(this._player);
+        if (this._player2) this._updatePlayer2Controller(this._player2);
+        this._updateFighter(this._player);
+        if (this._player2) this._updateFighter(this._player2);
+        this._checkSwordClash();
+        this._resolveCombat(this._player, this._ai);
+        this._resolveCombat(this._ai, this._player);
+        this._updateParticles();
+        this._updateShake();
+        this._updateRain();
+        this._updateEmbers();
+        this._updateFirePits();
+        this._updateGrab(this._player);
+        if (this._player2) this._updateGrab(this._player2);
+
+        // Charge sparks
+        for (let i = this._chargeSparks.length - 1; i >= 0; i--) {
+          const s = this._chargeSparks[i];
+          s.x += s.vx; s.y += s.vy; s.life--;
+          if (s.life <= 0) this._chargeSparks.splice(i, 1);
+        }
+
+        this._crowdExcitement *= 0.998;
+
+        // Death zoom
+        if (this._deathZoom.active) {
+          const dying = this._player.dead ? this._player : (this._ai.dead ? this._ai : null);
+          if (dying) {
+            if (dying.deathTimer < 40) this._deathZoom.scale = lerp(this._deathZoom.scale, this._deathZoom.targetScale, 0.05);
+            if (dying.deathTimer < 10) this._deathZoom.flashAlpha = Math.max(0, 1.0 - dying.deathTimer / 10);
+            else this._deathZoom.flashAlpha = Math.max(0, this._deathZoom.flashAlpha - 0.05);
+            if (dying.deathTimer > 50) {
+              this._deathZoom.scale = lerp(this._deathZoom.scale, 1.0, 0.05);
+              if (Math.abs(this._deathZoom.scale - 1.0) < 0.01) { this._deathZoom.active = false; this._deathZoom.scale = 1.0; }
+            }
+          }
+        }
+
+        // VS Mode: check for round end
+        if ((this._player.dead && this._player.deathTimer > 80) || (this._ai.dead && this._ai.deathTimer > 80)) {
+          const p1Won = this._ai.dead;
+          if (p1Won) this._vsRoundWins[0]++;
+          else this._vsRoundWins[1]++;
+          this._vsRound++;
+
+          if (this._vsRoundWins[0] >= 2 || this._vsRoundWins[1] >= 2) {
+            // Match over
+            const winner = this._vsRoundWins[0] >= 2 ? 1 : 2;
+            if (winner === 1) this._unlockAchievement("vs_victor");
+            this._phase = "vs_result" as Phase;
+            this._vsResultTimer = 0;
+            this._playSound("victory", 0.4);
+            // Show VS result overlay
+            this._resultOverlay = document.createElement("div");
+            this._resultOverlay.style.cssText = `position:fixed;top:0;left:0;width:100%;height:100%;z-index:60;
+              display:flex;flex-direction:column;align-items:center;justify-content:center;
+              background:rgba(10,5,2,0.9);font-family:Georgia,serif;`;
+            this._resultOverlay.innerHTML = `
+              <div style="font-size:56px;color:#d4a843;text-shadow:0 0 20px rgba(212,168,67,0.4);margin-bottom:20px;letter-spacing:6px">
+                PLAYER ${winner} WINS!</div>
+              <div style="font-size:22px;color:#8b6914;margin-bottom:30px">
+                Score: ${this._vsRoundWins[0]} - ${this._vsRoundWins[1]}</div>
+              <div style="display:flex;gap:12px">
+                <button id="soa-vs-rematch" style="padding:16px 48px;font-size:22px;font-family:Georgia,serif;
+                  background:linear-gradient(180deg,#cc3333 0%,#882222 50%,#3355aa 100%);color:#fff;border:2px solid #d4a843;
+                  border-radius:4px;cursor:pointer;letter-spacing:3px;text-transform:uppercase">REMATCH</button>
+                <button id="soa-vs-quit" style="padding:16px 48px;font-size:22px;font-family:Georgia,serif;
+                  background:rgba(212,168,67,0.12);color:#d4a843;border:1px solid rgba(212,168,67,0.4);
+                  border-radius:4px;cursor:pointer;letter-spacing:3px;text-transform:uppercase">QUIT</button>
+              </div>`;
+            document.body.appendChild(this._resultOverlay);
+            this._resultOverlay.querySelector("#soa-vs-rematch")!.addEventListener("click", () => {
+              this._resultOverlay?.parentNode?.removeChild(this._resultOverlay); this._resultOverlay = null;
+              this._vsRoundWins = [0, 0]; this._vsRound = 0;
+              this._showVSSetup();
+            });
+            this._resultOverlay.querySelector("#soa-vs-quit")!.addEventListener("click", () => {
+              this._resultOverlay?.parentNode?.removeChild(this._resultOverlay); this._resultOverlay = null;
+              this._vsMode = false; this._player2 = null;
+              this._phase = "title";
+              this._showTitle();
+            });
+          } else {
+            // Between rounds pause
+            this._vsResultTimer = 120;
+            this._announce(`ROUND ${this._vsRound} \u2014 PLAYER ${p1Won ? 1 : 2} WINS`);
+            this._phase = "vs_result" as Phase;
+          }
+        }
+      }
+    }
+
+    // VS result timer (between rounds, not match end)
+    if (this._phase === ("vs_result" as Phase) && this._vsResultTimer > 0) {
+      this._frameCount++;
+      this._vsResultTimer--;
+      if (this._vsResultTimer <= 0 && this._vsRoundWins[0] < 2 && this._vsRoundWins[1] < 2) {
+        this._startVSRound();
+      }
+    }
+
     // Intro phase
     if (this._phase === "intro") {
       this._frameCount++;
       this._introTimer--;
-      if (this._introTimer <= 0) this._phase = "playing";
+      if (this._introTimer <= 0) {
+        this._phase = "playing";
+        this._startTransition("fadeIn", 20, () => {});
+      }
     }
 
     // Training mode
@@ -4230,7 +5235,7 @@ export class SwordOfAvalonGame {
           }
         }
 
-        // AI dead — advance tournament
+        // AI dead — advance tournament (with fade)
         if (this._ai.dead && this._ai.deathTimer > 80) {
           this._currentEnemyIdx++;
           const isArthurBoss = this._ngPlus >= 1 && this._currentEnemyIdx > ENEMIES.length;
@@ -4280,7 +5285,8 @@ export class SwordOfAvalonGame {
     this._drawBackground();
 
     if (this._phase === "playing" || this._phase === "game_over" || this._phase === "victory"
-        || this._phase === "tournament_end" || this._phase === "intro" || this._phase === "training") {
+        || this._phase === "tournament_end" || this._phase === "intro" || this._phase === "training"
+        || this._phase === ("vs_playing" as Phase) || this._phase === ("vs_result" as Phase)) {
       // Floor reflections (before fighters)
       if (this._player) this._drawFighterReflection(this._player);
       if (this._ai) this._drawFighterReflection(this._ai);
@@ -4346,6 +5352,12 @@ export class SwordOfAvalonGame {
       // Announcements
       this._drawAnnouncement();
 
+      // VS mode round score
+      if (this._vsMode && (this._phase === ("vs_playing" as Phase) || this._phase === ("vs_result" as Phase))) {
+        c.fillStyle = "#d4a843"; c.font = "bold 18px Georgia"; c.textAlign = "center";
+        c.fillText(`P1: ${this._vsRoundWins[0]}  -  P2: ${this._vsRoundWins[1]}   (Best of 3)`, this._W / 2, 20);
+      }
+
       // Round timer
       if (this._phase === "playing" || this._phase === "intro") {
         const totalSeconds = Math.max(0, Math.ceil(this._roundTimer / 60));
@@ -4408,5 +5420,11 @@ export class SwordOfAvalonGame {
       c.fillStyle = `rgba(255,200,50,${0.04 * (this._slowmoTimer / SLOWMO_DURATION)})`;
       c.fillRect(0, 0, this._W, this._H);
     }
+
+    // Achievement notification
+    this._drawAchievementNotification();
+
+    // Screen transition overlay (drawn on top of everything)
+    this._drawTransition();
   }
 }
