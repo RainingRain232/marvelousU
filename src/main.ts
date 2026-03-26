@@ -193,6 +193,7 @@ import { ForestGame } from "./forest/ForestGame";
 import { PendulumGame } from "./pendulum/PendulumGame";
 import { LeviathanGame } from "./leviathan/LeviathanGame";
 import { SwordOfAvalonGame } from "./avalon-sword/SwordOfAvalonGame";
+import { DepthsGame } from "./depths/DepthsGame";
 import { camelotHubScreen } from "@view/ui/CamelotHubScreen";
 
 // World mode imports
@@ -429,6 +430,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     [GameMode.LOT]: 60,
     [GameMode.GUINEVERE]: 61,
     [GameMode.SWORD_OF_AVALON]: 62,
+    [GameMode.DEPTHS]: 63,
   };
   // Modes that need the setup screen (not skipSetup)
   const NEEDS_SETUP = new Set([GameMode.STANDARD, GameMode.DEATHMATCH, GameMode.BATTLEFIELD, GameMode.WAVE]);
@@ -833,6 +835,11 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     if (menuScreen.selectedGameMode === GameMode.SWORD_OF_AVALON) {
       menuScreen.hide();
       _bootSwordOfAvalonGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.DEPTHS) {
+      menuScreen.hide();
+      _bootDepthsGame();
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.LOT) {
@@ -3574,6 +3581,24 @@ async function _bootSwordOfAvalonGame(): Promise<void> {
     menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
   window.addEventListener("swordOfAvalonExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Depths of Avalon boot
+// ---------------------------------------------------------------------------
+
+let _depthsGame: DepthsGame | null = null;
+
+async function _bootDepthsGame(): Promise<void> {
+  if (_depthsGame) { _depthsGame.destroy(); _depthsGame = null; }
+  _depthsGame = new DepthsGame();
+  await _depthsGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("depthsExit", _onExit);
+    if (_depthsGame) { _depthsGame.destroy(); _depthsGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("depthsExit", _onExit);
 }
 
 // ---------------------------------------------------------------------------
