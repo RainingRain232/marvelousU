@@ -898,6 +898,18 @@ export class SwordOfAvalonGame {
   // Gamepad support
   private _gamepadConnected = false;
 
+  // Visual enhancement fields
+  private _shootingStars: {x: number; y: number; vx: number; vy: number; life: number}[] = [];
+  private _clouds: {x: number; y: number; w: number; h: number; speed: number; alpha: number}[] = [];
+  private _cloudsInitialized = false;
+  private _impactRings: {x: number; y: number; r: number; maxR: number; alpha: number}[] = [];
+  private _parryFlashes: {x: number; y: number; alpha: number; life: number}[] = [];
+  private _deathBursts: {x: number; y: number; life: number; maxLife: number; color1: string; color2: string}[] = [];
+  private _playerPrevHp = HEALTH_MAX;
+  private _aiPrevHp = HEALTH_MAX;
+  private _hpTrailTimer = 0;
+  private _letterboxAlpha = 0;
+
   // ── Survival / Endless Mode ──
   private _survivalMode = false;
   private _survivalWave = 0;
@@ -2242,6 +2254,8 @@ export class SwordOfAvalonGame {
         this._hitstopTimer = HITSTOP_FRAMES + 4;
         this._spawnDamageText(hitX, hitY - 30, "PERFECT!", "#ffd700");
         this._announce("MASTERFUL!");
+        // Parry flash VFX - bright star burst for perfect parry
+        this._parryFlashes.push({ x: hitX, y: hitY, alpha: 1.0, life: 8 });
         // Radial ring effect
         this._perfectParryRing = { x: hitX, y: hitY, r: 10, alpha: 0.9 };
         // Extra super meter
@@ -2255,6 +2269,8 @@ export class SwordOfAvalonGame {
         this._hitstopTimer = HITSTOP_FRAMES + 2;
         // Normal parry super meter
         defender.superMeter = Math.min(SUPER_METER_MAX, defender.superMeter + 15);
+        // Parry flash VFX - diamond star burst
+        this._parryFlashes.push({ x: hitX, y: hitY, alpha: 0.8, life: 8 });
       }
 
       attacker.staggered = true; attacker.staggerTimer = 25;
@@ -2565,6 +2581,8 @@ export class SwordOfAvalonGame {
     const bloodDir = attacker.facing === 1 ? 0 : Math.PI;
     this._spawnBlood(hitX, hitY, 8, bloodDir);
     this._spawnSparks(hitX, hitY, 4);
+    // Impact ring VFX
+    this._impactRings.push({ x: hitX, y: hitY, r: 5, maxR: 30, alpha: 0.6 });
 
     // Excalibur: golden particles and extra shake
     if (isExcalibur) {
@@ -2640,7 +2658,9 @@ export class SwordOfAvalonGame {
       defender.hp = 0; defender.dead = true; defender.deathTimer = 0;
       defender.vx = attacker.facing * 6; defender.vy = -5;
       this._playSound("death", 0.4); this._triggerShake(20);
-      this._spawnBlood(hitX, hitY, 25, bloodDir);
+      this._spawnBlood(hitX, hitY, 30, bloodDir);
+      // Death burst VFX - radial lines
+      this._deathBursts.push({ x: hitX, y: hitY, life: 20, maxLife: 20, color1: "#cc3300", color2: "#ff8800" });
       // Dramatic death: zoom + flash
       this._deathZoom = {active: true, x: defender.x, y: defender.y - 40, scale: 1.0, targetScale: 1.3, flashAlpha: 1.0};
       // Slow-mo kill cam!
@@ -3164,12 +3184,65 @@ export class SwordOfAvalonGame {
       }
     }
 
+    // Shooting stars
+    if (this._arenaStyle <= 1 && this._frameCount % 300 === 0 && Math.random() < 0.2) {
+      this._shootingStars.push({
+        x: rand(0, W * 0.5), y: rand(0, gY * 0.3),
+        vx: rand(12, 20), vy: rand(4, 8), life: 15
+      });
+    }
+    for (let i = this._shootingStars.length - 1; i >= 0; i--) {
+      const ss = this._shootingStars[i];
+      const ssAlpha = ss.life / 15;
+      // Draw tail
+      c.save();
+      c.strokeStyle = `rgba(255,255,255,${ssAlpha * 0.8})`;
+      c.lineWidth = 1.5;
+      c.beginPath();
+      c.moveTo(ss.x, ss.y);
+      c.lineTo(ss.x - ss.vx * 2, ss.y - ss.vy * 2);
+      c.stroke();
+      // Bright head
+      c.fillStyle = `rgba(255,255,255,${ssAlpha})`;
+      c.beginPath(); c.arc(ss.x, ss.y, 1.5, 0, Math.PI * 2); c.fill();
+      c.restore();
+      ss.x += ss.vx; ss.y += ss.vy; ss.life--;
+      if (ss.life <= 0) this._shootingStars.splice(i, 1);
+    }
+
     // Moon (not for stormy/volcanic)
     if (this._arenaStyle <= 1) {
       const moonAlpha = this._arenaStyle === 1 ? 0.08 : 0.12;
       c.fillStyle = `rgba(255,250,220,${moonAlpha})`; c.beginPath(); c.arc(W * 0.8, H * 0.12, 45, 0, Math.PI * 2); c.fill();
       c.fillStyle = `rgba(255,250,220,${moonAlpha * 2})`; c.beginPath(); c.arc(W * 0.8, H * 0.12, 32, 0, Math.PI * 2); c.fill();
       c.fillStyle = `rgba(255,250,220,${moonAlpha * 4})`; c.beginPath(); c.arc(W * 0.8, H * 0.12, 22, 0, Math.PI * 2); c.fill();
+    }
+
+    // Cloud layer
+    if (!this._cloudsInitialized) {
+      this._cloudsInitialized = true;
+      for (let i = 0; i < 6; i++) {
+        this._clouds.push({
+          x: rand(0, W), y: gY - 250 + rand(-40, 40),
+          w: rand(80, 180), h: rand(20, 40),
+          speed: rand(0.1, 0.3), alpha: rand(0.03, 0.06)
+        });
+      }
+    }
+    for (const cloud of this._clouds) {
+      c.save();
+      c.globalAlpha = cloud.alpha;
+      const cloudGrad = c.createRadialGradient(cloud.x, cloud.y, 0, cloud.x, cloud.y, cloud.w * 0.5);
+      const cloudColor = this._arenaStyle === 3 ? "150,80,40" : this._arenaStyle === 2 ? "120,125,140" : "180,170,200";
+      cloudGrad.addColorStop(0, `rgba(${cloudColor},${cloud.alpha})`);
+      cloudGrad.addColorStop(1, `rgba(${cloudColor},0)`);
+      c.fillStyle = cloudGrad;
+      c.beginPath();
+      c.ellipse(cloud.x, cloud.y, cloud.w * 0.5, cloud.h * 0.5, 0, 0, Math.PI * 2);
+      c.fill();
+      c.restore();
+      cloud.x += cloud.speed;
+      if (cloud.x > W + cloud.w) cloud.x = -cloud.w;
     }
 
     // Lightning for stormy arena (style 2)
@@ -3264,6 +3337,21 @@ export class SwordOfAvalonGame {
     for (let i = 0; i < W; i += 60) { c.beginPath(); c.moveTo(i, gY); c.lineTo(i, H); c.stroke(); }
     for (let j = gY + 30; j < H; j += 30) { c.beginPath(); c.moveTo(0, j); c.lineTo(W, j); c.stroke(); }
 
+    // Perspective depth grid - converging lines toward vanishing point
+    const vpX = W / 2;
+    const vpY = gY + 5;
+    c.save();
+    c.strokeStyle = "rgba(90,74,48,0.04)";
+    c.lineWidth = 0.8;
+    for (let i = 0; i < 10; i++) {
+      const bx = (i / 9) * W;
+      c.beginPath();
+      c.moveTo(bx, H);
+      c.lineTo(vpX, vpY);
+      c.stroke();
+    }
+    c.restore();
+
     // Atmospheric fog
     {
       const fogBaseAlpha = this._arenaStyle === 2 ? 0.06 : this._arenaStyle === 3 ? 0.08 : 0.03;
@@ -3299,9 +3387,35 @@ export class SwordOfAvalonGame {
       const glow = c.createRadialGradient(tx, gY - 138, 2, tx, gY - 138, glowRad);
       glow.addColorStop(0, "rgba(255,150,30,0.35)"); glow.addColorStop(0.5, "rgba(255,100,20,0.08)"); glow.addColorStop(1, "rgba(255,50,10,0)");
       c.fillStyle = glow; c.fillRect(tx - glowRad, gY - 138 - glowRad, glowRad * 2, glowRad * 2);
-      c.fillStyle = "#ff8020"; c.beginPath(); c.ellipse(tx, gY - 140 - ff, 3, 7 + ff * 0.4, 0, 0, Math.PI * 2); c.fill();
-      c.fillStyle = "#ffcc44"; c.beginPath(); c.ellipse(tx, gY - 139, 1.5, 3, 0, 0, Math.PI * 2); c.fill();
+      // Multi-layered flame: outer red
+      const ff2 = Math.sin(this._frameCount * 0.12 + tx * 1.3) * 2.5;
+      const ff3 = Math.sin(this._frameCount * 0.19 + tx * 0.7) * 2;
+      c.fillStyle = "rgba(200,40,10,0.6)"; c.beginPath();
+      c.moveTo(tx - 5, gY - 136);
+      c.quadraticCurveTo(tx - 3 + ff2, gY - 152 - ff, tx, gY - 155 - ff);
+      c.quadraticCurveTo(tx + 3 + ff3, gY - 152 - ff, tx + 5, gY - 136);
+      c.closePath(); c.fill();
+      // Mid orange
+      c.fillStyle = "rgba(255,130,20,0.7)"; c.beginPath();
+      c.moveTo(tx - 3.5, gY - 137);
+      c.quadraticCurveTo(tx - 2 + ff3, gY - 148 - ff * 0.8, tx, gY - 150 - ff * 0.8);
+      c.quadraticCurveTo(tx + 2 + ff2, gY - 148 - ff * 0.8, tx + 3.5, gY - 137);
+      c.closePath(); c.fill();
+      // Inner white-yellow
+      c.fillStyle = "rgba(255,240,150,0.9)"; c.beginPath();
+      c.moveTo(tx - 1.5, gY - 138);
+      c.quadraticCurveTo(tx - 0.5 + ff, gY - 145 - ff * 0.5, tx, gY - 146 - ff * 0.5);
+      c.quadraticCurveTo(tx + 0.5 + ff3, gY - 145 - ff * 0.5, tx + 1.5, gY - 138);
+      c.closePath(); c.fill();
+      // Brighter ground light pool
+      const poolGrad = c.createRadialGradient(tx, gY, 5, tx, gY, 60);
+      poolGrad.addColorStop(0, "rgba(255,150,40,0.08)");
+      poolGrad.addColorStop(1, "rgba(255,100,20,0)");
+      c.fillStyle = poolGrad;
+      c.fillRect(tx - 60, gY - 5, 120, 10);
+      // Occasional spark from flame
       if (this._frameCount % 5 === 0) this._spawnParticle(tx + rand(-2, 2), gY - 142, rand(-0.2, 0.2), rand(-1.2, -0.4), rand(12, 25), rand(1, 2.5), "rgba(255,150,30,0.5)", "spark", -0.03);
+      if (this._frameCount % 12 === 0) this._spawnParticle(tx + rand(-1, 1), gY - 150, rand(-0.5, 0.5), rand(-2, -1), rand(8, 15), rand(0.8, 1.5), "rgba(255,200,50,0.6)", "spark", -0.05);
 
       // Dynamic torchlight — warm radial gradient overlay extending to arena floor
       const floorGlowRad = 180;
@@ -3463,28 +3577,69 @@ export class SwordOfAvalonGame {
 
     const stanceColor = STANCES[fighter.stance].color;
 
-    // Cape (drawn behind)
+    // Cape (drawn behind) — wider with gradient and wind effects
     const chest = sk.bones[J.CHEST]; const neck = sk.bones[J.NECK];
     const capeX = neck.worldX * f; const capeY = neck.worldY;
-    c.strokeStyle = fighter.isAI ? fighter.color : "#602020"; c.lineWidth = 3;
-    c.beginPath(); c.moveTo(capeX, capeY);
-    for (let i = 0; i < fighter.capeSegments.length; i++) {
-      const segLen = 10;
-      const cx = capeX - f * (i + 1) * 6 + fighter.capeSegments[i] * 15 * -f;
-      const cy = capeY + (i + 1) * segLen;
-      c.lineTo(cx, cy);
+    const capeBaseColor = fighter.isAI ? fighter.color : "#602020";
+    const capeWidth = 8; // wider cape (was 4)
+    const capeSegCount = fighter.capeSegments.length;
+    // Wind effect: more flutter when moving fast or stormy arena
+    const speedFactor = Math.abs(fighter.vx) * 0.15 + (this._arenaStyle === 2 ? 0.3 : 0);
+    const capeFactor = 15 + speedFactor * 10;
+
+    // Cape fill with gradient
+    const leftEdge: {x: number; y: number}[] = [];
+    const rightEdge: {x: number; y: number}[] = [];
+    leftEdge.push({ x: capeX - capeWidth * f, y: capeY });
+    rightEdge.push({ x: capeX + capeWidth * f, y: capeY });
+    for (let i = 0; i < capeSegCount; i++) {
+      const segX = capeX - f * (i + 1) * 6 + fighter.capeSegments[i] * capeFactor * -f;
+      const segY = capeY + (i + 1) * 10;
+      const w = capeWidth + i * 0.8; // cape gets slightly wider at bottom
+      // Cape tears at bottom when low HP
+      let jaggedOffset = 0;
+      if (fighter.hp < fighter.maxHp * 0.3 && i >= capeSegCount - 2) {
+        jaggedOffset = Math.sin(i * 7 + fighter.x) * 3;
+      }
+      leftEdge.push({ x: segX - w * f, y: segY + jaggedOffset });
+      rightEdge.push({ x: segX + w * f, y: segY - jaggedOffset });
     }
+
+    // Gradient fill from character color at top to darker at bottom
+    c.save();
+    const capeGrad = c.createLinearGradient(capeX, capeY, capeX, capeY + capeSegCount * 10);
+    if (fighter.isAI) {
+      capeGrad.addColorStop(0, `${fighter.color}66`);
+      capeGrad.addColorStop(1, `${shadeColor(fighter.color, -40)}44`);
+    } else {
+      capeGrad.addColorStop(0, "rgba(96,32,32,0.4)");
+      capeGrad.addColorStop(1, "rgba(40,10,10,0.3)");
+    }
+    c.fillStyle = capeGrad;
+    c.beginPath();
+    c.moveTo(leftEdge[0].x, leftEdge[0].y);
+    for (let i = 1; i < leftEdge.length; i++) c.lineTo(leftEdge[i].x, leftEdge[i].y);
+    for (let i = rightEdge.length - 1; i >= 0; i--) c.lineTo(rightEdge[i].x, rightEdge[i].y);
+    c.closePath(); c.fill();
+
+    // Cape outer stroke
+    c.strokeStyle = capeBaseColor; c.lineWidth = 2;
+    c.beginPath();
+    c.moveTo(leftEdge[0].x, leftEdge[0].y);
+    for (let i = 1; i < leftEdge.length; i++) c.lineTo(leftEdge[i].x, leftEdge[i].y);
     c.stroke();
-    // Cape fill
-    c.fillStyle = fighter.isAI ? `${fighter.color}44` : "rgba(96,32,32,0.3)";
-    c.beginPath(); c.moveTo(capeX - 5 * f, capeY);
-    for (let i = 0; i < fighter.capeSegments.length; i++) {
-      c.lineTo(capeX - f * (i + 1) * 6 + fighter.capeSegments[i] * 15 * -f - 4 * f, capeY + (i + 1) * 10);
-    }
-    for (let i = fighter.capeSegments.length - 1; i >= 0; i--) {
-      c.lineTo(capeX - f * (i + 1) * 6 + fighter.capeSegments[i] * 15 * -f + 4 * f, capeY + (i + 1) * 10);
-    }
-    c.lineTo(capeX + 5 * f, capeY); c.closePath(); c.fill();
+    c.beginPath();
+    c.moveTo(rightEdge[0].x, rightEdge[0].y);
+    for (let i = 1; i < rightEdge.length; i++) c.lineTo(rightEdge[i].x, rightEdge[i].y);
+    c.stroke();
+
+    // Cape inner edge highlight
+    c.strokeStyle = "rgba(255,255,255,0.08)"; c.lineWidth = 1;
+    c.beginPath();
+    c.moveTo(rightEdge[0].x, rightEdge[0].y);
+    for (let i = 1; i < rightEdge.length; i++) c.lineTo(rightEdge[i].x, rightEdge[i].y);
+    c.stroke();
+    c.restore();
 
     // Legs
     this._drawLimb(J.L_HIP, J.L_THIGH, 5, 7, armorDark, sk, f);
@@ -3625,8 +3780,18 @@ export class SwordOfAvalonGame {
     c.fillStyle = armorDark;
     c.beginPath(); c.moveTo(-8, -12); c.lineTo(8, -12); c.lineTo(6, 12); c.lineTo(0, 16); c.lineTo(-6, 12); c.closePath(); c.fill();
     c.strokeStyle = armorAccent; c.lineWidth = 1.5; c.stroke();
-    // Shield emblem
-    c.fillStyle = armorAccent; c.beginPath(); c.arc(0, 0, 4, 0, Math.PI * 2); c.fill();
+    // Shield heraldry
+    if (!isOpponent) {
+      // Player: small cross emblem
+      c.strokeStyle = armorAccent; c.lineWidth = 1.5;
+      c.beginPath(); c.moveTo(0, -5); c.lineTo(0, 5); c.stroke();
+      c.beginPath(); c.moveTo(-4, 0); c.lineTo(4, 0); c.stroke();
+    } else {
+      // AI: chevron stripe pattern
+      c.strokeStyle = armorAccent; c.lineWidth = 1.2;
+      c.beginPath(); c.moveTo(-5, -3); c.lineTo(0, -7); c.lineTo(5, -3); c.stroke();
+      c.beginPath(); c.moveTo(-5, 2); c.lineTo(0, -2); c.lineTo(5, 2); c.stroke();
+    }
     c.restore();
 
     // Arms
@@ -3742,10 +3907,16 @@ export class SwordOfAvalonGame {
     c.fillStyle = "#d4a843"; c.beginPath();
     c.arc(hx - Math.cos(swordAngle * f) * 7 * f, hy - Math.sin(swordAngle * f) * 7, 3.5, 0, Math.PI * 2); c.fill();
 
-    // Head / Helmet
+    // Head / Helmet with gradient shading
     const head = sk.bones[J.HEAD];
     const headX = head.worldX * f, headY = head.worldY;
-    c.fillStyle = armorLight; c.beginPath(); c.arc(headX, headY - 2, 10, 0, Math.PI * 2); c.fill();
+    const helmetGrad = c.createRadialGradient(headX - 3, headY - 5, 2, headX + 2, headY + 2, 12);
+    helmetGrad.addColorStop(0, shadeColor(armorLightBase, 30));
+    helmetGrad.addColorStop(1, armorLight);
+    c.fillStyle = helmetGrad; c.beginPath(); c.arc(headX, headY - 2, 10, 0, Math.PI * 2); c.fill();
+    // Highlight arc on top edge
+    c.strokeStyle = "rgba(255,255,255,0.15)"; c.lineWidth = 1;
+    c.beginPath(); c.arc(headX, headY - 2, 10, -Math.PI * 0.8, -Math.PI * 0.2); c.stroke();
 
     // Visor detail — horizontal slit (eye opening)
     c.fillStyle = "#111";
@@ -3797,6 +3968,50 @@ export class SwordOfAvalonGame {
       c.fillText("R - EXCALIBUR!", 0, -95);
     }
 
+    // Body outline pass - thin dark edges around limb segments
+    c.save();
+    c.strokeStyle = "rgba(0,0,0,0.3)";
+    c.lineWidth = 0.8;
+    const outlineLimbs: [number, number][] = [
+      [J.L_HIP, J.L_THIGH], [J.L_THIGH, J.L_SHIN], [J.L_SHIN, J.L_FOOT],
+      [J.R_HIP, J.R_THIGH], [J.R_THIGH, J.R_SHIN], [J.R_SHIN, J.R_FOOT],
+      [J.PELVIS, J.SPINE], [J.SPINE, J.CHEST], [J.CHEST, J.NECK],
+      [J.L_SHOULDER, J.L_UPPER_ARM], [J.L_UPPER_ARM, J.L_FOREARM], [J.L_FOREARM, J.L_HAND],
+      [J.R_SHOULDER, J.R_UPPER_ARM], [J.R_UPPER_ARM, J.R_FOREARM], [J.R_FOREARM, J.R_HAND],
+    ];
+    for (const [j1, j2] of outlineLimbs) {
+      const b1 = sk.bones[j1], b2 = sk.bones[j2];
+      c.beginPath();
+      c.moveTo(b1.worldX * f, b1.worldY);
+      c.lineTo(b2.worldX * f, b2.worldY);
+      c.stroke();
+    }
+    c.restore();
+
+    // Limb bottom-edge shading for 3D cylindrical appearance
+    c.save();
+    c.globalAlpha = 0.15;
+    const shadeLimbs: [number, number, number, number][] = [
+      [J.L_THIGH, J.L_SHIN, 6, 4], [J.R_THIGH, J.R_SHIN, 6, 4],
+      [J.PELVIS, J.SPINE, 8, 10], [J.SPINE, J.CHEST, 10, 12],
+      [J.L_UPPER_ARM, J.L_FOREARM, 4, 3], [J.R_UPPER_ARM, J.R_FOREARM, 4, 3],
+    ];
+    for (const [j1, j2, w1, w2] of shadeLimbs) {
+      const b1 = sk.bones[j1], b2 = sk.bones[j2];
+      const x1 = b1.worldX * f, y1 = b1.worldY + 1;
+      const x2 = b2.worldX * f, y2 = b2.worldY + 1;
+      const angle = Math.atan2(y2 - y1, x2 - x1);
+      const px = Math.sin(angle), py = -Math.cos(angle);
+      c.fillStyle = "#000";
+      c.beginPath();
+      c.moveTo(x1 - px * w1 * 0.5, y1 - py * w1 * 0.5);
+      c.lineTo(x2 - px * w2 * 0.5, y2 - py * w2 * 0.5);
+      c.lineTo(x2 + px * w2 * 0.5, y2 + py * w2 * 0.5);
+      c.lineTo(x1 + px * w1 * 0.5, y1 + py * w1 * 0.5);
+      c.closePath(); c.fill();
+    }
+    c.restore();
+
     // Stance glow
     if (!fighter.dead) {
       c.fillStyle = stanceColor;
@@ -3807,35 +4022,257 @@ export class SwordOfAvalonGame {
   }
 
   private _drawSwordTrail(trail: TrailPoint[]): void {
-    if (trail.length < 2) return;
+    if (trail.length < 3) return;
     const c = this._ctx;
-    for (let i = 1; i < trail.length; i++) {
-      const alpha = (i / trail.length) * 0.5; const width = (i / trail.length) * 5;
-      c.strokeStyle = `rgba(200,220,255,${alpha})`; c.lineWidth = width;
-      c.beginPath(); c.moveTo(trail[i - 1].x, trail[i - 1].y); c.lineTo(trail[i].x, trail[i].y); c.stroke();
-      c.strokeStyle = `rgba(150,180,255,${alpha * 0.3})`; c.lineWidth = width * 3;
-      c.beginPath(); c.moveTo(trail[i - 1].x, trail[i - 1].y); c.lineTo(trail[i].x, trail[i].y); c.stroke();
+    const len = trail.length;
+
+    // Determine trail colors based on fighter state
+    const fighters = [this._player, this._ai].filter(Boolean);
+    let isExcalibur = false;
+    let isActive = false;
+    let stanceColor = "#6688cc";
+    for (const f of fighters) {
+      if (f.swordTrail === trail) {
+        isExcalibur = f.attackType === "excalibur" && !!f.attackPhase;
+        isActive = !!f.attackPhase;
+        stanceColor = STANCES[f.stance].color;
+        break;
+      }
     }
+
+    // Compute perpendicular offsets for ribbon
+    const upperPoints: {x: number; y: number}[] = [];
+    const lowerPoints: {x: number; y: number}[] = [];
+
+    for (let i = 0; i < len; i++) {
+      const t = i / (len - 1); // 0 = tail, 1 = tip
+      const width = t * (isActive ? 8 : 5); // tapers from 0 at tail to max at tip
+
+      let nx: number, ny: number;
+      if (i < len - 1) {
+        const dx = trail[i + 1].x - trail[i].x;
+        const dy = trail[i + 1].y - trail[i].y;
+        const l = Math.sqrt(dx * dx + dy * dy) || 1;
+        nx = -dy / l;
+        ny = dx / l;
+      } else {
+        const dx = trail[i].x - trail[i - 1].x;
+        const dy = trail[i].y - trail[i - 1].y;
+        const l = Math.sqrt(dx * dx + dy * dy) || 1;
+        nx = -dy / l;
+        ny = dx / l;
+      }
+
+      upperPoints.push({ x: trail[i].x + nx * width, y: trail[i].y + ny * width });
+      lowerPoints.push({ x: trail[i].x - nx * width, y: trail[i].y - ny * width });
+    }
+
+    // Outer glow layer (wider, more transparent)
+    c.save();
+    c.globalAlpha = isActive ? 0.25 : 0.12;
+    c.shadowBlur = isExcalibur ? 20 : (isActive ? 12 : 6);
+    c.shadowColor = isExcalibur ? "#ffd700" : (isActive ? stanceColor : "#88aaff");
+    c.beginPath();
+    c.moveTo(upperPoints[0].x, upperPoints[0].y);
+    for (let i = 1; i < len; i++) c.lineTo(upperPoints[i].x, upperPoints[i].y);
+    for (let i = len - 1; i >= 0; i--) c.lineTo(lowerPoints[i].x, lowerPoints[i].y);
+    c.closePath();
+    c.fillStyle = isExcalibur ? "rgba(255,215,0,0.15)" : (isActive ? stanceColor : "rgba(150,180,255,0.15)");
+    c.fill();
+    c.restore();
+
+    // Main ribbon with gradient
+    c.save();
+    if (len >= 2) {
+      const tailPt = trail[0];
+      const tipPt = trail[len - 1];
+      const grad = c.createLinearGradient(tailPt.x, tailPt.y, tipPt.x, tipPt.y);
+      if (isExcalibur) {
+        grad.addColorStop(0, "rgba(255,200,50,0)");
+        grad.addColorStop(0.5, "rgba(255,215,0,0.5)");
+        grad.addColorStop(1, "rgba(255,255,200,0.9)");
+      } else if (isActive) {
+        grad.addColorStop(0, "rgba(200,220,255,0)");
+        grad.addColorStop(0.4, "rgba(200,220,255,0.2)");
+        grad.addColorStop(1, "rgba(255,255,255,0.7)");
+      } else {
+        grad.addColorStop(0, "rgba(200,220,255,0)");
+        grad.addColorStop(0.5, "rgba(200,220,255,0.15)");
+        grad.addColorStop(1, "rgba(255,255,255,0.4)");
+      }
+
+      c.beginPath();
+      c.moveTo(upperPoints[0].x, upperPoints[0].y);
+      for (let i = 1; i < len; i++) c.lineTo(upperPoints[i].x, upperPoints[i].y);
+      for (let i = len - 1; i >= 0; i--) c.lineTo(lowerPoints[i].x, lowerPoints[i].y);
+      c.closePath();
+      c.fillStyle = grad;
+      c.fill();
+
+      // Bright center line at tip
+      if (isActive || isExcalibur) {
+        const tipAlpha = isExcalibur ? 0.9 : 0.6;
+        c.strokeStyle = isExcalibur ? `rgba(255,255,200,${tipAlpha})` : `rgba(255,255,255,${tipAlpha})`;
+        c.lineWidth = 1.5;
+        c.beginPath();
+        for (let i = Math.floor(len * 0.5); i < len; i++) {
+          if (i === Math.floor(len * 0.5)) c.moveTo(trail[i].x, trail[i].y);
+          else c.lineTo(trail[i].x, trail[i].y);
+        }
+        c.stroke();
+      }
+    }
+    c.restore();
   }
 
   private _drawParticles(): void {
     const c = this._ctx;
+    const gY = this._groundY;
     for (const p of this._particles) {
       const alpha = clamp(p.life / p.maxLife, 0, 1);
       c.save(); c.globalAlpha = alpha; c.translate(p.x, p.y); c.rotate(p.rot);
       if (p.type === "spark") {
-        c.fillStyle = p.color; c.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
-        c.globalAlpha = alpha * 0.5; c.fillRect(-p.size, -p.size, p.size * 2, p.size * 2);
+        // Bright core with glow
+        c.shadowColor = p.color;
+        c.shadowBlur = 6;
+        c.fillStyle = "#fff";
+        c.beginPath(); c.arc(0, 0, p.size * 0.4, 0, Math.PI * 2); c.fill();
+        c.shadowBlur = 0;
+        // Directional streak in velocity direction
+        const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+        if (speed > 0.5) {
+          const streakLen = Math.min(speed * 2, p.size * 3);
+          const nx = -p.vx / speed;
+          const ny = -p.vy / speed;
+          c.save();
+          c.rotate(0); // reset rotation for directional streak
+          c.restore();
+          c.save();
+          c.globalAlpha = alpha * 0.6;
+          c.strokeStyle = p.color;
+          c.lineWidth = p.size * 0.5;
+          c.beginPath();
+          c.moveTo(0, 0);
+          c.lineTo(nx * streakLen, ny * streakLen);
+          c.stroke();
+          c.restore();
+        }
+        // Outer glow
+        c.globalAlpha = alpha * 0.3;
+        c.fillStyle = p.color;
+        c.beginPath(); c.arc(0, 0, p.size * 1.2, 0, Math.PI * 2); c.fill();
       } else if (p.type === "blood") {
-        c.fillStyle = p.color; c.beginPath(); c.arc(0, 0, p.size * alpha, 0, Math.PI * 2); c.fill();
+        // Check if blood is on ground
+        if (p.y >= gY - 2) {
+          // Flat ellipse splat on ground
+          c.globalAlpha = alpha * 0.8;
+          c.fillStyle = p.color;
+          c.beginPath();
+          c.ellipse(0, 0, p.size * 1.5, p.size * 0.4, 0, 0, Math.PI * 2);
+          c.fill();
+          // Darker outline
+          c.strokeStyle = "#400000";
+          c.lineWidth = 0.5;
+          c.stroke();
+        } else {
+          // Irregular splat polygon
+          c.fillStyle = p.color;
+          const s = p.size * alpha;
+          const seed = Math.floor(p.maxLife * 10);
+          c.beginPath();
+          c.moveTo(s * 0.8, s * 0.3);
+          c.lineTo(s * 0.1, s * 0.9 + (seed % 3));
+          c.lineTo(-s * 0.7, s * 0.2 - (seed % 2));
+          c.lineTo(-s * 0.3, -s * 0.8);
+          c.lineTo(s * 0.5, -s * 0.5 + (seed % 2));
+          c.closePath();
+          c.fill();
+          // Darker outline
+          c.strokeStyle = "#300000";
+          c.lineWidth = 0.6;
+          c.globalAlpha = alpha * 0.5;
+          c.stroke();
+        }
       } else if (p.type === "crack") {
         // Thin angular white crack particles
         c.strokeStyle = p.color; c.lineWidth = p.size * 0.8; c.globalAlpha = alpha;
         c.beginPath(); c.moveTo(-p.size * 2, 0); c.lineTo(p.size * 2, 0); c.stroke();
       } else {
-        c.fillStyle = p.color; c.beginPath(); c.arc(0, 0, p.size, 0, Math.PI * 2); c.fill();
+        // Dust: radial gradient fill
+        const dustGrad = c.createRadialGradient(0, 0, 0, 0, 0, p.size);
+        dustGrad.addColorStop(0, p.color);
+        dustGrad.addColorStop(0.6, p.color);
+        dustGrad.addColorStop(1, "rgba(150,130,100,0)");
+        c.fillStyle = dustGrad;
+        c.beginPath(); c.arc(0, 0, p.size, 0, Math.PI * 2); c.fill();
       }
       c.restore();
+    }
+
+    // Impact rings
+    for (let i = this._impactRings.length - 1; i >= 0; i--) {
+      const ring = this._impactRings[i];
+      c.save();
+      c.globalAlpha = ring.alpha;
+      c.strokeStyle = "#fff";
+      c.lineWidth = 2;
+      c.shadowColor = "#fff";
+      c.shadowBlur = 8;
+      c.beginPath();
+      c.arc(ring.x, ring.y, ring.r, 0, Math.PI * 2);
+      c.stroke();
+      c.restore();
+      ring.r += (ring.maxR - 5) / 10;
+      ring.alpha -= 0.06;
+      if (ring.alpha <= 0) this._impactRings.splice(i, 1);
+    }
+
+    // Parry flashes (star burst)
+    for (let i = this._parryFlashes.length - 1; i >= 0; i--) {
+      const pf = this._parryFlashes[i];
+      c.save();
+      c.globalAlpha = pf.alpha;
+      c.strokeStyle = "#fff";
+      c.lineWidth = 2;
+      c.shadowColor = "#fff";
+      c.shadowBlur = 6;
+      const lineLen = 15;
+      for (let a = 0; a < 4; a++) {
+        const angle = a * (Math.PI / 4) + Math.PI / 8;
+        c.beginPath();
+        c.moveTo(pf.x, pf.y);
+        c.lineTo(pf.x + Math.cos(angle) * lineLen, pf.y + Math.sin(angle) * lineLen);
+        c.stroke();
+      }
+      c.restore();
+      pf.life--;
+      pf.alpha -= 1 / 8;
+      if (pf.life <= 0) this._parryFlashes.splice(i, 1);
+    }
+
+    // Death bursts (radial lines)
+    for (let i = this._deathBursts.length - 1; i >= 0; i--) {
+      const db = this._deathBursts[i];
+      const progress = 1 - db.life / db.maxLife;
+      const lineLen = progress * 60;
+      const alpha = clamp(db.life / db.maxLife, 0, 1);
+      c.save();
+      c.globalAlpha = alpha;
+      for (let a = 0; a < 12; a++) {
+        const angle = (a / 12) * Math.PI * 2;
+        const grad = c.createLinearGradient(db.x, db.y, db.x + Math.cos(angle) * lineLen, db.y + Math.sin(angle) * lineLen);
+        grad.addColorStop(0, db.color1);
+        grad.addColorStop(1, db.color2);
+        c.strokeStyle = grad;
+        c.lineWidth = 1.5;
+        c.beginPath();
+        c.moveTo(db.x + Math.cos(angle) * (lineLen * 0.2), db.y + Math.sin(angle) * (lineLen * 0.2));
+        c.lineTo(db.x + Math.cos(angle) * lineLen, db.y + Math.sin(angle) * lineLen);
+        c.stroke();
+      }
+      c.restore();
+      db.life--;
+      if (db.life <= 0) this._deathBursts.splice(i, 1);
     }
     // Damage numbers
     for (const d of this._damageNumbers) {
@@ -3900,13 +4337,50 @@ export class SwordOfAvalonGame {
     }
   }
 
-  private _drawBar(x: number, y: number, w: number, h: number, ratio: number, color: string, bgColor: string): void {
+  private _drawBar(x: number, y: number, w: number, h: number, ratio: number, color: string, bgColor: string, prevRatio = -1, isHpBar = false): void {
     const c = this._ctx; ratio = clamp(ratio, 0, 1);
     c.fillStyle = bgColor; c.fillRect(x, y, w, h);
+    // Trailing health bar (damage preview)
+    if (prevRatio >= 0 && prevRatio > ratio) {
+      c.fillStyle = "rgba(200,80,80,0.5)";
+      c.fillRect(x + w * ratio, y, w * (prevRatio - ratio), h);
+    }
     const grad = c.createLinearGradient(x, y, x, y + h);
     grad.addColorStop(0, color); grad.addColorStop(1, shadeColor(color, -30));
     c.fillStyle = grad; c.fillRect(x, y, w * ratio, h);
+
+    // Segmented notch marks every 10% (HP bars only)
+    if (isHpBar) {
+      c.strokeStyle = "rgba(0,0,0,0.2)"; c.lineWidth = 0.5;
+      for (let n = 1; n < 10; n++) {
+        const nx = x + w * (n / 10);
+        c.beginPath(); c.moveTo(nx, y); c.lineTo(nx, y + h); c.stroke();
+      }
+    }
+
+    // Low HP pulse (< 25%)
+    if (isHpBar && ratio < 0.25 && ratio > 0) {
+      const pulse = 0.3 + Math.sin(this._frameCount * 0.15) * 0.3;
+      c.strokeStyle = `rgba(255,40,40,${pulse})`; c.lineWidth = 2;
+      c.strokeRect(x - 1, y - 1, w + 2, h + 2);
+    }
+
+    // Border
     c.strokeStyle = "rgba(212,168,67,0.4)"; c.lineWidth = 1; c.strokeRect(x, y, w, h);
+
+    // Ornate corner pieces (tiny triangles)
+    if (isHpBar) {
+      c.fillStyle = "rgba(212,168,67,0.5)";
+      const cs = 4;
+      // Top-left
+      c.beginPath(); c.moveTo(x, y); c.lineTo(x + cs, y); c.lineTo(x, y + cs); c.closePath(); c.fill();
+      // Top-right
+      c.beginPath(); c.moveTo(x + w, y); c.lineTo(x + w - cs, y); c.lineTo(x + w, y + cs); c.closePath(); c.fill();
+      // Bottom-left
+      c.beginPath(); c.moveTo(x, y + h); c.lineTo(x + cs, y + h); c.lineTo(x, y + h - cs); c.closePath(); c.fill();
+      // Bottom-right
+      c.beginPath(); c.moveTo(x + w, y + h); c.lineTo(x + w - cs, y + h); c.lineTo(x + w, y + h - cs); c.closePath(); c.fill();
+    }
   }
 
   private _drawSuperBar(x: number, y: number, w: number, h: number, ratio: number): void {
@@ -4022,10 +4496,27 @@ export class SwordOfAvalonGame {
     const staminaW = barW * 0.85; const staminaH = 12; const margin = 20;
     const superW = barW * 0.75; const superH = 8;
 
+    // HP trail timer update
+    this._hpTrailTimer = Math.max(0, this._hpTrailTimer - 1);
+    const playerHpRatio = this._player.hp / this._player.maxHp;
+    const aiHpRatio = this._ai.hp / this._ai.maxHp;
+    if (playerHpRatio < this._playerPrevHp / this._player.maxHp - 0.001) this._hpTrailTimer = 30;
+    if (aiHpRatio < this._aiPrevHp / this._ai.maxHp - 0.001) this._hpTrailTimer = 30;
+    const playerTrailRatio = this._hpTrailTimer > 0 ? this._playerPrevHp / this._player.maxHp : -1;
+    const aiTrailRatio = this._hpTrailTimer > 0 ? this._aiPrevHp / this._ai.maxHp : -1;
+    if (this._hpTrailTimer <= 0) {
+      this._playerPrevHp = this._player.hp;
+      this._aiPrevHp = this._ai.hp;
+    }
+
     // Player
+    // Name plate background
+    const playerNameWidth = 120;
+    c.fillStyle = "rgba(20,10,5,0.6)";
+    c.fillRect(margin - 2, margin - 16, playerNameWidth, 14);
     c.fillStyle = "#d4a843"; c.font = "16px Georgia"; c.textAlign = "left";
     c.fillText(this._player.name, margin, margin - 4);
-    this._drawBar(margin, margin, barW, barH, this._player.hp / this._player.maxHp, "#a03030", "#301010");
+    this._drawBar(margin, margin, barW, barH, playerHpRatio, "#a03030", "#301010", playerTrailRatio, true);
     this._drawBar(margin, margin + barH + 4, staminaW, staminaH, this._player.stamina / STAMINA_MAX, "#30803a", "#102a10");
     // Player super meter
     this._drawSuperBar(margin, margin + barH + staminaH + 8, superW, superH, this._player.superMeter / SUPER_METER_MAX);
@@ -4071,9 +4562,12 @@ export class SwordOfAvalonGame {
 
     // AI / P2
     const enemy = !this._vsMode && this._currentEnemyIdx < ENEMIES.length ? ENEMIES[this._currentEnemyIdx] : null;
+    // AI name plate background
+    c.fillStyle = "rgba(20,10,5,0.6)";
+    c.fillRect(W - margin - 120, margin - 16, 122, 14);
     c.textAlign = "right"; c.fillStyle = this._vsMode ? "#cc4444" : "#c04040"; c.font = "16px Georgia";
     c.fillText(this._ai.name, W - margin, margin - 4);
-    this._drawBar(W - margin - barW, margin, barW, barH, this._ai.hp / this._ai.maxHp, "#a03030", "#301010");
+    this._drawBar(W - margin - barW, margin, barW, barH, aiHpRatio, "#a03030", "#301010", aiTrailRatio, true);
     this._drawBar(W - margin - staminaW, margin + barH + 4, staminaW, staminaH, this._ai.stamina / STAMINA_MAX, "#30803a", "#102a10");
     // AI super meter
     this._drawSuperBar(W - margin - superW, margin + barH + staminaH + 8, superW, superH, this._ai.superMeter / SUPER_METER_MAX);
@@ -6422,16 +6916,61 @@ export class SwordOfAvalonGame {
       c.restore();
     }
 
-    // Vignette + slow-mo tint
-    const vg = c.createRadialGradient(this._W / 2, this._H / 2, this._H * 0.3, this._W / 2, this._H / 2, this._H * 0.9);
+    // Color grade tint overlay
+    if (this._arenaStyle === 3) {
+      c.fillStyle = "rgba(30,5,0,0.05)";
+    } else if (this._arenaStyle === 2) {
+      c.fillStyle = "rgba(0,5,15,0.04)";
+    } else {
+      c.fillStyle = "rgba(20,10,0,0.03)";
+    }
+    c.fillRect(0, 0, this._W, this._H);
+
+    // Motion lines during dash/dodge
+    const dashFighters = [this._player, this._ai].filter(Boolean);
+    for (const df of dashFighters) {
+      if (df && (df.dodging || (df === this._player && this._dashing))) {
+        c.save();
+        c.globalAlpha = 0.15;
+        c.strokeStyle = "#fff";
+        c.lineWidth = 1;
+        const dir = df.dodging ? df.dodgeDir : (df.facing);
+        for (let ml = 0; ml < 5; ml++) {
+          const ly = df.y - 60 + ml * 25 + rand(-5, 5);
+          const lx = df.x - dir * 30;
+          c.beginPath();
+          c.moveTo(lx, ly);
+          c.lineTo(lx - dir * rand(40, 80), ly);
+          c.stroke();
+        }
+        c.restore();
+      }
+    }
+
+    // Vignette — warm amber tint, more dramatic at corners
+    const vg = c.createRadialGradient(this._W / 2, this._H / 2, this._H * 0.25, this._W / 2, this._H / 2, this._H * 0.85);
+    const vignetteStrength = this._slowmoTimer > 0 ? 0.75 : 0.55;
     vg.addColorStop(0, "rgba(0,0,0,0)");
-    vg.addColorStop(1, `rgba(0,0,0,${this._slowmoTimer > 0 ? 0.65 : 0.5})`);
+    vg.addColorStop(0.7, "rgba(10,5,0,0.1)");
+    vg.addColorStop(1, `rgba(15,8,0,${vignetteStrength})`);
     c.fillStyle = vg; c.fillRect(0, 0, this._W, this._H);
 
     // Slow-mo golden tint
     if (this._slowmoTimer > 0) {
       c.fillStyle = `rgba(255,200,50,${0.04 * (this._slowmoTimer / SLOWMO_DURATION)})`;
       c.fillRect(0, 0, this._W, this._H);
+    }
+
+    // Letterbox during slow-mo (cinematic black bars)
+    if (this._slowmoTimer > 0) {
+      this._letterboxAlpha = Math.min(1, this._letterboxAlpha + 0.1);
+    } else {
+      this._letterboxAlpha = Math.max(0, this._letterboxAlpha - 0.1);
+    }
+    if (this._letterboxAlpha > 0) {
+      c.fillStyle = `rgba(0,0,0,${this._letterboxAlpha})`;
+      c.fillRect(0, 0, this._W, 40);
+      c.fillRect(0, this._H - 40, this._W, 40);
     }
 
     // Achievement notification
