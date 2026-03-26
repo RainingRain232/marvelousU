@@ -180,6 +180,7 @@ const MAP_BUILDINGS: MapBuilding[] = [
   { id: "grail_crypt", x: 150, y: 50, w: 100, h: 80, label: "The Grail Crypt", mode: GameMode.GRAIL_QUEST, type: "tower" },
   { id: "arcane_dueling", x: 500, y: 50, w: 100, h: 80, label: "The Arcane Arena", mode: GameMode.MERLIN_DUEL, type: "tower" },
   { id: "runeblade_forge", x: 150, y: 700, w: 100, h: 80, label: "The Runeblade Forge", mode: GameMode.RUNEBLADE, type: "forge" },
+  { id: "sword_arena", x: 1050, y: 150, w: 110, h: 90, label: "Sword of Avalon Arena", mode: GameMode.SWORD_OF_AVALON, type: "colosseum" },
 ];
 
 const CITY = { x: 250, y: 150, w: 700, h: 580 };

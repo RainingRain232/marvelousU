@@ -192,6 +192,7 @@ import { GuinevereGame } from "./guinevere/GuinevereGame";
 import { ForestGame } from "./forest/ForestGame";
 import { PendulumGame } from "./pendulum/PendulumGame";
 import { LeviathanGame } from "./leviathan/LeviathanGame";
+import { SwordOfAvalonGame } from "./avalon-sword/SwordOfAvalonGame";
 import { camelotHubScreen } from "@view/ui/CamelotHubScreen";
 
 // World mode imports
@@ -427,6 +428,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     [GameMode.GARGOYLE]: 59,
     [GameMode.LOT]: 60,
     [GameMode.GUINEVERE]: 61,
+    [GameMode.SWORD_OF_AVALON]: 62,
   };
   // Modes that need the setup screen (not skipSetup)
   const NEEDS_SETUP = new Set([GameMode.STANDARD, GameMode.DEATHMATCH, GameMode.BATTLEFIELD, GameMode.WAVE]);
@@ -826,6 +828,11 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     if (menuScreen.selectedGameMode === GameMode.LEVIATHAN) {
       menuScreen.hide();
       _bootLeviathanGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.SWORD_OF_AVALON) {
+      menuScreen.hide();
+      _bootSwordOfAvalonGame();
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.LOT) {
@@ -3549,6 +3556,24 @@ async function _bootLeviathanGame(): Promise<void> {
     menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
   window.addEventListener("leviathanExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Sword of Avalon boot
+// ---------------------------------------------------------------------------
+
+let _swordOfAvalonGame: SwordOfAvalonGame | null = null;
+
+async function _bootSwordOfAvalonGame(): Promise<void> {
+  if (_swordOfAvalonGame) { _swordOfAvalonGame.destroy(); _swordOfAvalonGame = null; }
+  _swordOfAvalonGame = new SwordOfAvalonGame();
+  await _swordOfAvalonGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("swordOfAvalonExit", _onExit);
+    if (_swordOfAvalonGame) { _swordOfAvalonGame.destroy(); _swordOfAvalonGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("swordOfAvalonExit", _onExit);
 }
 
 // ---------------------------------------------------------------------------
