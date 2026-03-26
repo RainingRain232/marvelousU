@@ -596,6 +596,11 @@ const GAME_MODES: GameModeEntry[] = [
   { mode: GameMode.LAKE_OF_AVALON, label: "LAKE OF AVALON", desc: "3D mystical lake combat: pilot an enchanted skiff, cast spells at rising horrors, collect runes, seek Excalibur", skipSetup: true, tag: "NEW" },
   { mode: GameMode.TREBUCHET, label: "TREBUCHET", desc: "3D siege defense: man the trebuchet atop Camelot's walls, rain boulders & fire on invading armies, upgrade between waves", skipSetup: true, tag: "NEW" },
   { mode: GameMode.GRAIL_KEEPER, label: "GRAIL KEEPER", desc: "3D orbital arena: orbit the Holy Grail as a spectral guardian, fire holy bolts at converging demons from every direction", skipSetup: true, tag: "NEW" },
+  { mode: GameMode.LOT, label: "LOT", desc: "Draw lots to face random 3D arena challenges — monster waves, boss fights, obstacle gauntlets & treasure hunts", skipSetup: true, tag: "NEW" },
+  { mode: GameMode.GUINEVERE, label: "GUINEVERE", desc: "Tend an astral garden in the starlit void — plant magical flora, defend from void creatures, harvest starlight essence", skipSetup: true, tag: "3D" },
+  { mode: GameMode.FOREST, label: "FOREST OF CAMELOT", desc: "Defend the Great Oak as the Green Knight — wield nature magic, command the seasons, fight the Blight across sacred groves", skipSetup: true, tag: "NEW" },
+  { mode: GameMode.PENDULUM, label: "PENDULUM", desc: "Guard the Clock Tower as the Clockwork Knight — wield chrono-magic, ride the pendulum's rhythm, freeze time itself against automaton hordes", skipSetup: true, tag: "NEW" },
+  { mode: GameMode.LEVIATHAN, label: "LEVIATHAN", desc: "Descend into a sunken cathedral beneath the ocean — recover Excalibur fragments, fight bioluminescent horrors, manage oxygen in the crushing deep", skipSetup: true, tag: "3D" },
 ];
 
 // ---------------------------------------------------------------------------

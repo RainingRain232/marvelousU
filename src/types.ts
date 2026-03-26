@@ -726,6 +726,12 @@ export enum GameMode {
   LAKE_OF_AVALON = "lake_of_avalon",
   TREBUCHET = "trebuchet",
   GRAIL_KEEPER = "grail_keeper",
+  GARGOYLE = "gargoyle",
+  LOT = "lot",
+  GUINEVERE = "guinevere",
+  FOREST = "forest",
+  PENDULUM = "pendulum",
+  LEVIATHAN = "leviathan",
 }
 
 // ---------------------------------------------------------------------------

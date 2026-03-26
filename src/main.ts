@@ -186,6 +186,12 @@ import { SewerSplashGame } from "./sewersplash/SewerSplashGame";
 import { LakeOfAvalonGame } from "./avalon/LakeOfAvalonGame";
 import { TrebuchetGame } from "./trebuchet/TrebuchetGame";
 import { GrailKeeperGame } from "./grailkeeper/GrailKeeperGame";
+import { GargoyleGame } from "./gargoyle/GargoyleGame";
+import { LotGame } from "./lot/LotGame";
+import { GuinevereGame } from "./guinevere/GuinevereGame";
+import { ForestGame } from "./forest/ForestGame";
+import { PendulumGame } from "./pendulum/PendulumGame";
+import { LeviathanGame } from "./leviathan/LeviathanGame";
 import { camelotHubScreen } from "@view/ui/CamelotHubScreen";
 
 // World mode imports
@@ -418,6 +424,9 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     [GameMode.CHRONOMANCER]: 56,
     [GameMode.SHAPESHIFTER]: 57,
     [GameMode.VOIDWALKER]: 58,
+    [GameMode.GARGOYLE]: 59,
+    [GameMode.LOT]: 60,
+    [GameMode.GUINEVERE]: 61,
   };
   // Modes that need the setup screen (not skipSetup)
   const NEEDS_SETUP = new Set([GameMode.STANDARD, GameMode.DEATHMATCH, GameMode.BATTLEFIELD, GameMode.WAVE]);
@@ -792,6 +801,36 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     if (menuScreen.selectedGameMode === GameMode.GRAIL_KEEPER) {
       menuScreen.hide();
       _bootGrailKeeperGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.GARGOYLE) {
+      menuScreen.hide();
+      _bootGargoyleGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.GUINEVERE) {
+      menuScreen.hide();
+      _bootGuinevereGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.FOREST) {
+      menuScreen.hide();
+      _bootForestGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.PENDULUM) {
+      menuScreen.hide();
+      _bootPendulumGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.LEVIATHAN) {
+      menuScreen.hide();
+      _bootLeviathanGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.LOT) {
+      menuScreen.hide();
+      _bootLotGame();
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.WORLD) {
@@ -3402,6 +3441,114 @@ async function _bootGrailKeeperGame(): Promise<void> {
     menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
   window.addEventListener("grailkeeperExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Gargoyle: Cathedral Guardian boot
+// ---------------------------------------------------------------------------
+
+let _gargoyleGame: GargoyleGame | null = null;
+
+async function _bootGargoyleGame(): Promise<void> {
+  if (_gargoyleGame) { _gargoyleGame.destroy(); _gargoyleGame = null; }
+  _gargoyleGame = new GargoyleGame();
+  await _gargoyleGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("gargoyleExit", _onExit);
+    if (_gargoyleGame) { _gargoyleGame.destroy(); _gargoyleGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("gargoyleExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// LOT: Fate's Gambit boot
+// ---------------------------------------------------------------------------
+
+let _lotGame: LotGame | null = null;
+
+async function _bootLotGame(): Promise<void> {
+  if (_lotGame) { _lotGame.destroy(); _lotGame = null; }
+  _lotGame = new LotGame();
+  await _lotGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("lotExit", _onExit);
+    if (_lotGame) { _lotGame.destroy(); _lotGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("lotExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Guinevere: The Astral Garden boot
+// ---------------------------------------------------------------------------
+
+let _guinevereGame: GuinevereGame | null = null;
+
+async function _bootGuinevereGame(): Promise<void> {
+  if (_guinevereGame) { _guinevereGame.destroy(); _guinevereGame = null; }
+  _guinevereGame = new GuinevereGame();
+  await _guinevereGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("guinevereExit", _onExit);
+    if (_guinevereGame) { _guinevereGame.destroy(); _guinevereGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("guinevereExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Forest of Camelot boot
+// ---------------------------------------------------------------------------
+
+let _forestGame: ForestGame | null = null;
+
+async function _bootForestGame(): Promise<void> {
+  if (_forestGame) { _forestGame.destroy(); _forestGame = null; }
+  _forestGame = new ForestGame();
+  await _forestGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("forestExit", _onExit);
+    if (_forestGame) { _forestGame.destroy(); _forestGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("forestExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Pendulum boot
+// ---------------------------------------------------------------------------
+
+let _pendulumGame: PendulumGame | null = null;
+
+async function _bootPendulumGame(): Promise<void> {
+  if (_pendulumGame) { _pendulumGame.destroy(); _pendulumGame = null; }
+  _pendulumGame = new PendulumGame();
+  await _pendulumGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("pendulumExit", _onExit);
+    if (_pendulumGame) { _pendulumGame.destroy(); _pendulumGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("pendulumExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Leviathan boot
+// ---------------------------------------------------------------------------
+
+let _leviathanGame: LeviathanGame | null = null;
+
+async function _bootLeviathanGame(): Promise<void> {
+  if (_leviathanGame) { _leviathanGame.destroy(); _leviathanGame = null; }
+  _leviathanGame = new LeviathanGame();
+  await _leviathanGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("leviathanExit", _onExit);
+    if (_leviathanGame) { _leviathanGame.destroy(); _leviathanGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("leviathanExit", _onExit);
 }
 
 // ---------------------------------------------------------------------------
