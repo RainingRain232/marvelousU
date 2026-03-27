@@ -436,6 +436,81 @@ export class DiabloRenderer {
     (geo.attributes.color as THREE.BufferAttribute).needsUpdate = true;
   }
 
+  /** Build a visual border of stones and posts around the playable map area. */
+  private _buildMapBorder(w: number, d: number): void {
+    const hw = w / 2;
+    const hd = d / 2;
+    const stoneMat = new THREE.MeshStandardMaterial({ color: 0x555550, roughness: 0.9, metalness: 0.05 });
+    const stoneDarkMat = new THREE.MeshStandardMaterial({ color: 0x3a3a38, roughness: 0.95 });
+    const postMat = new THREE.MeshStandardMaterial({ color: 0x4a3a28, roughness: 0.85 });
+    const stoneGeo = new THREE.DodecahedronGeometry(1, 1);
+    const postGeo = new THREE.CylinderGeometry(0.15, 0.2, 2.0, 6);
+
+    // Place stones along each edge
+    const spacing = 4;
+    const edges: { x: number; z: number }[] = [];
+
+    // Top and bottom edges
+    for (let x = -hw; x <= hw; x += spacing) {
+      edges.push({ x, z: -hd });
+      edges.push({ x, z: hd });
+    }
+    // Left and right edges
+    for (let z = -hd + spacing; z < hd; z += spacing) {
+      edges.push({ x: -hw, z });
+      edges.push({ x: hw, z });
+    }
+
+    for (const pos of edges) {
+      const ty = getTerrainHeight(pos.x, pos.z);
+
+      // Main boulder
+      const stone = new THREE.Mesh(stoneGeo, Math.random() > 0.4 ? stoneMat : stoneDarkMat);
+      const sx = 0.6 + Math.random() * 0.8;
+      const sy = 0.3 + Math.random() * 0.4;
+      const sz = 0.6 + Math.random() * 0.8;
+      stone.scale.set(sx, sy, sz);
+      stone.position.set(
+        pos.x + (Math.random() - 0.5) * 1.5,
+        ty + sy * 0.3,
+        pos.z + (Math.random() - 0.5) * 1.5,
+      );
+      stone.rotation.set(Math.random() * 0.3, Math.random() * Math.PI, Math.random() * 0.3);
+      this._scene.add(stone);
+
+      // Smaller companion stone
+      if (Math.random() > 0.4) {
+        const small = new THREE.Mesh(stoneGeo, stoneDarkMat);
+        const sr = 0.2 + Math.random() * 0.4;
+        small.scale.set(sr, sr * 0.6, sr);
+        small.position.set(
+          pos.x + (Math.random() - 0.5) * 2.5,
+          ty + sr * 0.2,
+          pos.z + (Math.random() - 0.5) * 2.5,
+        );
+        small.rotation.y = Math.random() * Math.PI;
+        this._scene.add(small);
+      }
+    }
+
+    // Corner posts (larger markers at the 4 corners)
+    const corners = [
+      { x: -hw, z: -hd }, { x: hw, z: -hd },
+      { x: -hw, z: hd }, { x: hw, z: hd },
+    ];
+    for (const c of corners) {
+      const ty = getTerrainHeight(c.x, c.z);
+      const post = new THREE.Mesh(postGeo, postMat);
+      post.position.set(c.x, ty + 1.0, c.z);
+      this._scene.add(post);
+      // Stone base
+      const base = new THREE.Mesh(stoneGeo, stoneMat);
+      base.scale.set(1.2, 0.5, 1.2);
+      base.position.set(c.x, ty + 0.3, c.z);
+      this._scene.add(base);
+    }
+  }
+
   /** Scatter small ground details (pebbles, dirt discs, tiny plants) across the terrain.
    *  Skipped for indoor/dungeon maps. These are very low-poly and share geometry. */
   private _scatterGroundDetail(w: number, d: number, mapId: DiabloMapId): void {
@@ -1027,6 +1102,9 @@ export class DiabloRenderer {
     if (fog) {
       this._scene.background = fog.color.clone();
     }
+
+    // Map border stones (visual boundary indicator)
+    this._buildMapBorder(cfg.width, cfg.depth || cfg.width);
 
     // Scatter ground detail (small pebbles, dirt patches, micro-plants) on outdoor maps
     this._scatterGroundDetail(cfg.width, cfg.depth || cfg.width, mapId);
