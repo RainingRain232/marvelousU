@@ -11,13 +11,13 @@ import {
   DiabloState, DiabloClass, DiabloMapId, DiabloPhase, ItemRarity,
   DiabloDifficulty, SkillId, TimeOfDay, DiabloItem, DiabloEquipment,
   DiabloLoot, TalentEffectType, Weather, MapModifier,
-  DiabloVendor, VendorType, DiabloPotion, PotionType, DiabloPortalNpc, MAX_POTION_STACK,
+  DiabloVendor, VendorType, DiabloPotion, PotionType, DiabloPortalNpc, MAX_POTION_STACK, EnemyType,
   CraftType, CraftingStationType, MaterialType, AdvancedCraftingRecipe,
   DiabloQuest, QuestType,
   createDefaultPlayer,
 } from "./DiabloTypes";
 import {
-  SKILL_DEFS, DIFFICULTY_CONFIGS, MAP_CONFIGS, ITEM_DATABASE,
+  SKILL_DEFS, DIFFICULTY_CONFIGS, MAP_CONFIGS, ITEM_DATABASE, ENEMY_DEFS,
   SET_BONUSES, LANTERN_CONFIGS, UNLOCKABLE_SKILLS, MAP_SPECIFIC_ITEMS,
   RARITY_NAMES, VENDOR_DEFS, POTION_DATABASE,
   TALENT_TREES, TALENT_BRANCH_NAMES, TALENT_SYNERGIES,
@@ -29,7 +29,7 @@ import {
 import {
   RARITY_CSS, RARITY_GLOW, RARITY_BORDER, RARITY_BG, RARITY_BADGE,
   RARITY_TIER, rarityNeedsAnim, resolveEquipKey,
-  VENDOR_DIALOGUE,
+  VENDOR_DIALOGUE, DAY_BOSS_MAP, NIGHT_BOSS_MAP,
   PORTAL_NPC_RUMORS, PORTAL_NPC_GENERIC_RUMORS, PORTAL_NPC_GREETING,
   PORTAL_NPC_NAME,
 } from "./DiabloConstants";
@@ -2923,6 +2923,7 @@ export function showPauseMenu(ctx: ScreenContext): void {
               <button id="diablo-skillswap-btn" style="${btnBase}">&#8644; SWAP SKILLS</button>
               <button id="diablo-stash-btn" style="${btnBase}">&#9878; STASH</button>
               <button id="diablo-collection-btn" style="${btnBase}">&#10070; COLLECTION</button>
+              <button id="diablo-bestiary-btn" style="${btnBase}">&#128026; BESTIARY</button>
             </div>
             <!-- Right column: System -->
             <div style="display:flex;flex-direction:column;align-items:center;">
@@ -2944,7 +2945,7 @@ export function showPauseMenu(ctx: ScreenContext): void {
       </div>`;
 
     // Hover effects for standard buttons
-    const stdBtns = ctx.menuEl.querySelectorAll("#diablo-resume-btn,#diablo-controls-btn,#diablo-inventory-btn,#diablo-character-btn,#diablo-skilltree-btn,#diablo-skillswap-btn,#diablo-stash-btn,#diablo-collection-btn,#diablo-dailies-btn,#diablo-charselect-btn") as NodeListOf<HTMLButtonElement>;
+    const stdBtns = ctx.menuEl.querySelectorAll("#diablo-resume-btn,#diablo-controls-btn,#diablo-inventory-btn,#diablo-character-btn,#diablo-skilltree-btn,#diablo-skillswap-btn,#diablo-stash-btn,#diablo-collection-btn,#diablo-bestiary-btn,#diablo-dailies-btn,#diablo-charselect-btn") as NodeListOf<HTMLButtonElement>;
     stdBtns.forEach((btn) => {
       btn.addEventListener("mouseenter", () => {
         btn.style.borderColor = "#c8a84e";
@@ -3039,6 +3040,11 @@ export function showPauseMenu(ctx: ScreenContext): void {
       ctx.setPhaseBeforeOverlay(DiabloPhase.PAUSED);
       ctx.state.phase = DiabloPhase.INVENTORY;
       showCollection(ctx);
+    });
+    ctx.menuEl.querySelector("#diablo-bestiary-btn")!.addEventListener("click", () => {
+      ctx.setPhaseBeforeOverlay(DiabloPhase.PAUSED);
+      ctx.state.phase = DiabloPhase.INVENTORY;
+      showBestiary(ctx);
     });
     ctx.menuEl.querySelector("#diablo-dailies-btn")!.addEventListener("click", () => {
       ctx.showQuestTracker();
@@ -5667,6 +5673,163 @@ export function showQuestBoard(ctx: ScreenContext): void {
     });
 
     const closeBtn = ctx.menuEl.querySelector("#quest-close-btn") as HTMLButtonElement;
+    closeBtn.addEventListener("mouseenter", () => {
+      closeBtn.style.borderColor = "#c8a84e";
+      closeBtn.style.boxShadow = "0 0 15px rgba(200,168,78,0.3)";
+      closeBtn.style.background = "rgba(50,40,20,0.95)";
+    });
+    closeBtn.addEventListener("mouseleave", () => {
+      closeBtn.style.borderColor = "#5a4a2a";
+      closeBtn.style.boxShadow = "none";
+      closeBtn.style.background = "rgba(40,30,15,0.9)";
+    });
+    closeBtn.addEventListener("click", () => { ctx.closeOverlay(); });
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  20. showBestiary — Monster compendium organized by map
+// ════════════════════════════════════════════════════════════════════════════
+
+export function showBestiary(ctx: ScreenContext): void {
+    // Build map data with enemies
+    const mapList = Object.values(MAP_CONFIGS).filter(m => m.enemyTypes && m.enemyTypes.length > 0);
+
+    let contentHtml = "";
+    for (const map of mapList) {
+      const dayBoss = DAY_BOSS_MAP[map.id as DiabloMapId];
+      const nightBoss = NIGHT_BOSS_MAP[map.id as DiabloMapId];
+
+      let enemiesHtml = "";
+      for (const etype of map.enemyTypes) {
+        const def = ENEMY_DEFS[etype];
+        if (!def) continue;
+        const isBoss = def.isBoss;
+        const borderColor = isBoss ? '#ff8800' : '#5a4a2a';
+        const nameColor = isBoss ? '#ffd700' : '#c8a84e';
+        const badge = isBoss ? '<span style="color:#ff4400;font-size:9px;font-weight:bold;margin-left:4px;">BOSS</span>' : '';
+        const behaviorText = def.behavior ? `<span style="color:#888;font-size:10px;">${(def.behavior as string).replace(/_/g, ' ')}</span>` : '';
+
+        enemiesHtml += `
+          <div style="
+            background:rgba(15,10,5,0.9);border:1px solid ${borderColor};border-radius:6px;
+            padding:10px 14px;display:flex;gap:12px;align-items:center;
+            ${isBoss ? 'box-shadow:0 0 8px rgba(255,136,0,0.15);' : ''}
+          ">
+            <div style="min-width:36px;text-align:center;">
+              <div style="font-size:10px;color:#888;font-family:'Georgia',serif;">Lv ${def.level}</div>
+              <div style="font-size:${isBoss ? '10' : '9'}px;color:${isBoss ? '#ff8800' : '#666'};margin-top:2px;">${isBoss ? '\u2B50' : '\u2022'}</div>
+            </div>
+            <div style="flex:1;min-width:0;">
+              <div style="color:${nameColor};font-size:14px;font-weight:bold;font-family:'Georgia',serif;">${def.name}${badge}</div>
+              <div style="display:flex;gap:12px;margin-top:4px;flex-wrap:wrap;">
+                <span style="color:#e88;font-size:11px;">\u2764 ${def.hp}</span>
+                <span style="color:#f88;font-size:11px;">\u2694 ${def.damage}</span>
+                <span style="color:#8ae;font-size:11px;">\uD83D\uDEE1 ${def.armor}</span>
+                <span style="color:#8e8;font-size:11px;">\u26A1 ${def.speed.toFixed(1)}</span>
+                <span style="color:#ee8;font-size:11px;">XP ${def.xpReward}</span>
+              </div>
+              <div style="display:flex;gap:12px;margin-top:3px;flex-wrap:wrap;">
+                <span style="color:#777;font-size:10px;">Range: ${def.attackRange}</span>
+                <span style="color:#777;font-size:10px;">Aggro: ${def.aggroRange}</span>
+                ${behaviorText}
+              </div>
+            </div>
+          </div>`;
+      }
+
+      // Add day/night bosses if not already in enemyTypes
+      for (const [label, bossType] of [['Day Boss', dayBoss], ['Night Boss', nightBoss]] as [string, EnemyType | undefined][]) {
+        if (!bossType) continue;
+        if (map.enemyTypes.includes(bossType)) continue;
+        const def = ENEMY_DEFS[bossType];
+        if (!def) continue;
+        enemiesHtml += `
+          <div style="
+            background:rgba(20,10,5,0.9);border:1px solid #cc4400;border-radius:6px;
+            padding:10px 14px;display:flex;gap:12px;align-items:center;
+            box-shadow:0 0 10px rgba(200,68,0,0.2);
+          ">
+            <div style="min-width:36px;text-align:center;">
+              <div style="font-size:10px;color:#ff8800;font-family:'Georgia',serif;">Lv ${def.level}</div>
+              <div style="font-size:10px;color:#ff4400;margin-top:2px;">\u2B50</div>
+            </div>
+            <div style="flex:1;min-width:0;">
+              <div style="color:#ff8800;font-size:14px;font-weight:bold;font-family:'Georgia',serif;">${def.name} <span style="color:#cc4400;font-size:9px;">${label.toUpperCase()}</span></div>
+              <div style="display:flex;gap:12px;margin-top:4px;flex-wrap:wrap;">
+                <span style="color:#e88;font-size:11px;">\u2764 ${def.hp}</span>
+                <span style="color:#f88;font-size:11px;">\u2694 ${def.damage}</span>
+                <span style="color:#8ae;font-size:11px;">\uD83D\uDEE1 ${def.armor}</span>
+                <span style="color:#8e8;font-size:11px;">\u26A1 ${def.speed.toFixed(1)}</span>
+                <span style="color:#ee8;font-size:11px;">XP ${def.xpReward}</span>
+              </div>
+            </div>
+          </div>`;
+      }
+
+      contentHtml += `
+        <div style="margin-bottom:20px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <div style="flex:1;height:1px;background:linear-gradient(to right,transparent,#5a4a2a);"></div>
+            <span style="color:#c8a84e;font-size:16px;font-weight:bold;letter-spacing:2px;font-family:'Georgia',serif;">${map.name}</span>
+            <span style="color:#887766;font-size:11px;">Lv ${map.enemyTypes.map(e => ENEMY_DEFS[e]?.level || 0).filter(Boolean).sort((a,b) => a-b)[0] || '?'}-${Math.max(...map.enemyTypes.map(e => ENEMY_DEFS[e]?.level || 0))}</span>
+            <div style="flex:1;height:1px;background:linear-gradient(to left,transparent,#5a4a2a);"></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            ${enemiesHtml}
+          </div>
+        </div>`;
+    }
+
+    ctx.menuEl.innerHTML = `
+      <div style="
+        width:100%;height:100%;${SCREEN_BG}
+        display:flex;flex-direction:column;align-items:center;justify-content:center;
+        color:#fff;pointer-events:auto;position:relative;
+      ">
+        <div style="position:absolute;inset:8px;border:2px solid rgba(200,168,78,0.25);border-radius:4px;pointer-events:none;
+          box-shadow:0 0 30px rgba(200,168,78,0.1), inset 0 0 50px rgba(0,0,0,0.3);"></div>
+
+        <div style="
+          max-width:900px;width:92%;
+          background:linear-gradient(180deg,rgba(30,24,14,0.95) 0%,rgba(20,16,8,0.98) 100%);
+          border:2px solid #5a4a2a;border-top-color:#8a7a4a;border-bottom-color:#2a1a0a;
+          border-radius:12px;padding:28px 34px;max-height:88vh;overflow-y:auto;
+          box-shadow:inset 0 0 50px rgba(0,0,0,0.3), 0 0 20px rgba(0,0,0,0.5);
+          position:relative;
+        ">
+          <div style="position:absolute;inset:4px;border:1px solid rgba(200,168,78,0.1);border-radius:10px;pointer-events:none;"></div>
+          <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:6px;">
+            <div style="width:60px;height:1px;background:linear-gradient(to right,transparent,#5a4a2a);"></div>
+            <span style="color:#5a4a2a;font-size:14px;">&#9884;</span>
+            <h2 style="color:#c8a84e;font-size:32px;letter-spacing:5px;margin:0;font-family:'Georgia',serif;
+              text-shadow:0 0 16px rgba(200,168,78,0.35), 0 2px 4px rgba(0,0,0,0.6);">BESTIARY</h2>
+            <span style="color:#5a4a2a;font-size:14px;">&#9884;</span>
+            <div style="width:60px;height:1px;background:linear-gradient(to left,transparent,#5a4a2a);"></div>
+          </div>
+          <div style="color:#887766;font-size:12px;text-align:center;margin-bottom:16px;letter-spacing:2px;font-family:'Georgia',serif;">
+            Creatures of the Realm &#9830; ${mapList.reduce((s, m) => s + m.enemyTypes.length, 0)} species catalogued
+          </div>
+          ${contentHtml}
+          <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin:12px 0 10px;">
+            <div style="width:80px;height:1px;background:linear-gradient(to right,transparent,#5a4a2a);"></div>
+            <span style="color:#5a4a2a;font-size:10px;">&#9830;</span>
+            <div style="width:80px;height:1px;background:linear-gradient(to left,transparent,#5a4a2a);"></div>
+          </div>
+          <div style="text-align:center;">
+            <button id="bestiary-close-btn" style="
+              padding:12px 40px;font-size:18px;letter-spacing:3px;font-weight:bold;
+              background:linear-gradient(180deg,rgba(40,30,15,0.9),rgba(25,18,8,0.95));
+              border:2px solid #5a4a2a;border-top-color:#8a7a4a;border-bottom-color:#2a1a0a;
+              border-radius:8px;color:#c8a84e;
+              cursor:pointer;transition:all 0.2s;font-family:'Georgia',serif;pointer-events:auto;
+              box-shadow:0 3px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(200,168,78,0.15);
+            ">CLOSE</button>
+          </div>
+          <div style="text-align:center;margin-top:8px;color:#665533;font-size:11px;font-family:'Georgia',serif;">Press Escape to close</div>
+        </div>
+      </div>`;
+
+    const closeBtn = ctx.menuEl.querySelector("#bestiary-close-btn") as HTMLButtonElement;
     closeBtn.addEventListener("mouseenter", () => {
       closeBtn.style.borderColor = "#c8a84e";
       closeBtn.style.boxShadow = "0 0 15px rgba(200,168,78,0.3)";
