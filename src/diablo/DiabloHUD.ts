@@ -1213,7 +1213,7 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
     position:absolute;top:16px;right:20px;margin-top:100px;width:240px;
     background:linear-gradient(180deg, rgba(30,24,12,0.9), rgba(15,12,6,0.92), rgba(25,20,10,0.9));
     border:2px solid #6a5a2a;border-radius:8px;
-    padding:12px 14px;font-size:13px;color:#ccc;display:none;
+    padding:12px 36px 12px 14px;font-size:13px;color:#ccc;display:none;
     box-shadow:0 4px 14px rgba(0,0,0,0.5), inset 0 1px 0 rgba(200,168,78,0.15),
       inset 0 -1px 0 rgba(0,0,0,0.3), 0 0 1px rgba(200,168,78,0.2);
     font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
@@ -1221,20 +1221,26 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
   // Close button (X) in top-right corner
   const questCloseBtn = document.createElement("div");
   questCloseBtn.style.cssText = `
-    position:absolute;top:4px;right:6px;width:20px;height:20px;
+    position:absolute;top:6px;right:8px;width:24px;height:24px;
     cursor:pointer;pointer-events:auto;z-index:10;
     display:flex;align-items:center;justify-content:center;
-    font-size:14px;color:#886644;line-height:1;
-    border-radius:3px;transition:all 0.15s;
+    font-size:16px;font-weight:bold;color:#cc9955;line-height:1;
+    border:1px solid #8a6a3a;border-radius:4px;
+    background:rgba(40,30,15,0.8);transition:all 0.15s;
+    text-shadow:0 0 4px rgba(200,168,78,0.3);
   `;
   questCloseBtn.textContent = "\u2715";
   questCloseBtn.addEventListener("mouseenter", () => {
-    questCloseBtn.style.color = "#ffcc88";
-    questCloseBtn.style.background = "rgba(200,168,78,0.15)";
+    questCloseBtn.style.color = "#ffdd99";
+    questCloseBtn.style.background = "rgba(200,168,78,0.25)";
+    questCloseBtn.style.borderColor = "#c8a84e";
+    questCloseBtn.style.boxShadow = "0 0 6px rgba(200,168,78,0.3)";
   });
   questCloseBtn.addEventListener("mouseleave", () => {
-    questCloseBtn.style.color = "#886644";
-    questCloseBtn.style.background = "none";
+    questCloseBtn.style.color = "#cc9955";
+    questCloseBtn.style.background = "rgba(40,30,15,0.8)";
+    questCloseBtn.style.borderColor = "#8a6a3a";
+    questCloseBtn.style.boxShadow = "none";
   });
   questCloseBtn.addEventListener("click", () => {
     questTracker.style.display = "none";

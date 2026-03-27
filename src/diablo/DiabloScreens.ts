@@ -1401,15 +1401,56 @@ export function showInventory(ctx: ScreenContext): void {
           </div>
         </div>
         <div style="display:flex;gap:40px;align-items:flex-start;">
-          <!-- Equipment -->
+          <!-- Equipment with Vitruvian Man background -->
           <div>
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;justify-content:center;">
               <div style="width:30px;height:1px;background:linear-gradient(to right,transparent,#5a4a2a);"></div>
               <span style="color:#a08850;font-size:13px;letter-spacing:2px;text-transform:uppercase;">Equipment</span>
               <div style="width:30px;height:1px;background:linear-gradient(to left,transparent,#5a4a2a);"></div>
             </div>
-            <div style="display:grid;grid-template-columns:74px 74px 74px;grid-template-rows:74px 74px 74px 74px;gap:6px;">
-              ${equipHtml}
+            <div style="position:relative;">
+              <!-- Vitruvian Man SVG background -->
+              <svg viewBox="0 0 234 314" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;opacity:0.12;z-index:0;" xmlns="http://www.w3.org/2000/svg">
+                <!-- Outer circle -->
+                <ellipse cx="117" cy="152" rx="110" ry="148" fill="none" stroke="#c8a84e" stroke-width="1.2"/>
+                <!-- Inner square -->
+                <rect x="27" y="32" width="180" height="250" fill="none" stroke="#c8a84e" stroke-width="0.8" rx="2"/>
+                <!-- Head -->
+                <circle cx="117" cy="52" r="18" fill="none" stroke="#c8a84e" stroke-width="1.0"/>
+                <!-- Neck -->
+                <line x1="117" y1="70" x2="117" y2="82" stroke="#c8a84e" stroke-width="1.0"/>
+                <!-- Torso -->
+                <path d="M 97 82 L 137 82 L 133 180 L 101 180 Z" fill="none" stroke="#c8a84e" stroke-width="1.0"/>
+                <!-- Chest line -->
+                <line x1="104" y1="100" x2="130" y2="100" stroke="#c8a84e" stroke-width="0.5"/>
+                <!-- Navel -->
+                <circle cx="117" cy="165" r="2" fill="#c8a84e" opacity="0.5"/>
+                <!-- Arms (outstretched) -->
+                <path d="M 97 88 L 55 100 L 18 92" fill="none" stroke="#c8a84e" stroke-width="1.0" stroke-linecap="round"/>
+                <path d="M 137 88 L 179 100 L 216 92" fill="none" stroke="#c8a84e" stroke-width="1.0" stroke-linecap="round"/>
+                <!-- Arms (angled up — second pose) -->
+                <path d="M 97 88 L 48 68 L 14 42" fill="none" stroke="#c8a84e" stroke-width="0.6" stroke-linecap="round" opacity="0.5"/>
+                <path d="M 137 88 L 186 68 L 220 42" fill="none" stroke="#c8a84e" stroke-width="0.6" stroke-linecap="round" opacity="0.5"/>
+                <!-- Hands -->
+                <circle cx="18" cy="92" r="4" fill="none" stroke="#c8a84e" stroke-width="0.6"/>
+                <circle cx="216" cy="92" r="4" fill="none" stroke="#c8a84e" stroke-width="0.6"/>
+                <!-- Left leg -->
+                <path d="M 107 180 L 95 240 L 88 290" fill="none" stroke="#c8a84e" stroke-width="1.0" stroke-linecap="round"/>
+                <!-- Right leg -->
+                <path d="M 127 180 L 139 240 L 146 290" fill="none" stroke="#c8a84e" stroke-width="1.0" stroke-linecap="round"/>
+                <!-- Legs (spread — second pose) -->
+                <path d="M 107 180 L 72 248 L 48 296" fill="none" stroke="#c8a84e" stroke-width="0.6" stroke-linecap="round" opacity="0.5"/>
+                <path d="M 127 180 L 162 248 L 186 296" fill="none" stroke="#c8a84e" stroke-width="0.6" stroke-linecap="round" opacity="0.5"/>
+                <!-- Feet -->
+                <line x1="82" y1="290" x2="94" y2="290" stroke="#c8a84e" stroke-width="0.8"/>
+                <line x1="140" y1="290" x2="152" y2="290" stroke="#c8a84e" stroke-width="0.8"/>
+                <!-- Proportion lines -->
+                <line x1="117" y1="32" x2="117" y2="282" stroke="#c8a84e" stroke-width="0.3" stroke-dasharray="4,4" opacity="0.3"/>
+                <line x1="27" y1="157" x2="207" y2="157" stroke="#c8a84e" stroke-width="0.3" stroke-dasharray="4,4" opacity="0.3"/>
+              </svg>
+              <div style="display:grid;grid-template-columns:74px 74px 74px;grid-template-rows:74px 74px 74px 74px;gap:6px;position:relative;z-index:1;">
+                ${equipHtml}
+              </div>
             </div>
             <!-- Gold filigree connection line -->
             <div style="width:100%;height:1px;background:linear-gradient(to right,transparent,#5a4a2a40,transparent);margin-top:8px;"></div>

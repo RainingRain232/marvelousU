@@ -249,8 +249,9 @@ export class DiabloRenderer {
     this.canvas.style.left = '0';
 
     this._scene = new THREE.Scene();
+    this._scene.background = new THREE.Color(0x2a4a2a); // default green, overridden per-map by fog color
 
-    this._camera = new THREE.PerspectiveCamera(50, w / h, 0.1, 500);
+    this._camera = new THREE.PerspectiveCamera(50, w / h, 0.1, 600);
     this._camera.position.set(12, 18, 12);
     this._camera.lookAt(0, 0, 0);
 
