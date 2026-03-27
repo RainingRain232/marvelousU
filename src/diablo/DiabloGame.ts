@@ -956,6 +956,7 @@ export class DiabloGame {
           if (p.attackTimer <= 0) {
             const worldPos = this._getMouseWorldPos();
             const swingAngle = Math.atan2(worldPos.x - p.x, worldPos.z - p.z);
+            p.angle = swingAngle; // Face toward cursor
             p.attackTimer = 0.4;
             p.isAttacking = true;
             p.activeSkillAnimTimer = 0.3;

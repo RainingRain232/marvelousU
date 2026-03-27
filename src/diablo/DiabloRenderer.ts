@@ -2561,7 +2561,7 @@ export class DiabloRenderer {
     mat.color.setHex(color);
     mat.opacity = 0.5;
     this._swingArc.position.set(playerX, playerY + 1.0, playerZ);
-    this._swingArc.rotation.set(-Math.PI / 2, 0, angle - Math.PI * 0.3);
+    this._swingArc.rotation.set(-Math.PI / 2, 0, -angle - Math.PI * 0.3 + Math.PI / 2);
     this._swingArc.visible = true;
     this._swingArcTimer = 0.2;
   }

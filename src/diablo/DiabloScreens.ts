@@ -167,7 +167,7 @@ export function showClassSelect(ctx: ScreenContext): void {
     WARRIOR: "#e85030", MAGE: "#5080ff", RANGER: "#40cc40",
     PALADIN: "#ffd740", NECROMANCER: "#b050e0", ASSASSIN: "#cc40cc",
   };
-  const maxStat = 30;
+  const maxStat = 100;
   let cardsHtml = "";
   let classCardIndex = 0;
   for (const c of classes) {
@@ -2912,18 +2912,29 @@ export function showPauseMenu(ctx: ScreenContext): void {
           </div>
 
           <button id="diablo-resume-btn" style="${btnBase}">&#9876; RESUME</button>
-          <button id="diablo-controls-btn" style="${btnBase}">&#9881; CONTROLS</button>
-          <button id="diablo-inventory-btn" style="${btnBase}">&#9878; INVENTORY</button>
-          <button id="diablo-character-btn" style="${btnBase}">&#10022; CHARACTER</button>
-          <button id="diablo-skilltree-btn" style="${btnBase}">&#10040; SKILL TREE</button>
-          <button id="diablo-skillswap-btn" style="${btnBase}">&#8644; SWAP SKILLS</button>
-          <button id="diablo-stash-btn" style="${btnBase}">&#9878; STASH</button>
-          <button id="diablo-collection-btn" style="${btnBase}">&#10070; COLLECTION</button>
-          <button id="diablo-dailies-btn" style="${btnBase}">&#9733; DAILY CHALLENGES</button>
-          <button id="diablo-save-btn" style="${saveBtn}">&#10004; SAVE GAME</button>
-          ${loadBtnHtml}
-          <button id="diablo-charselect-btn" style="${btnBase}">&#9733; CHARACTER SELECT</button>
-          <button id="diablo-exit-btn" style="${exitBtn}">&#10008; EXIT</button>
+
+          <div style="display:flex;gap:16px;margin-top:4px;">
+            <!-- Left column: Gameplay -->
+            <div style="display:flex;flex-direction:column;align-items:center;">
+              <div style="color:#665533;font-size:10px;letter-spacing:2px;margin-bottom:6px;font-family:'Georgia',serif;">GAMEPLAY</div>
+              <button id="diablo-inventory-btn" style="${btnBase}">&#9878; INVENTORY</button>
+              <button id="diablo-character-btn" style="${btnBase}">&#10022; CHARACTER</button>
+              <button id="diablo-skilltree-btn" style="${btnBase}">&#10040; SKILL TREE</button>
+              <button id="diablo-skillswap-btn" style="${btnBase}">&#8644; SWAP SKILLS</button>
+              <button id="diablo-stash-btn" style="${btnBase}">&#9878; STASH</button>
+              <button id="diablo-collection-btn" style="${btnBase}">&#10070; COLLECTION</button>
+            </div>
+            <!-- Right column: System -->
+            <div style="display:flex;flex-direction:column;align-items:center;">
+              <div style="color:#665533;font-size:10px;letter-spacing:2px;margin-bottom:6px;font-family:'Georgia',serif;">SYSTEM</div>
+              <button id="diablo-controls-btn" style="${btnBase}">&#9881; CONTROLS</button>
+              <button id="diablo-dailies-btn" style="${btnBase}">&#9733; CHALLENGES</button>
+              <button id="diablo-save-btn" style="${saveBtn}">&#10004; SAVE GAME</button>
+              ${loadBtnHtml}
+              <button id="diablo-charselect-btn" style="${btnBase}">&#9733; CHAR SELECT</button>
+              <button id="diablo-exit-btn" style="${exitBtn}">&#10008; EXIT</button>
+            </div>
+          </div>
           <div style="margin-top:24px;color:#888;font-size:12px;letter-spacing:1px;
             font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
             text-shadow:0 1px 3px rgba(0,0,0,0.6);">
