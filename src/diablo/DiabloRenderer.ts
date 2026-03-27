@@ -6280,7 +6280,6 @@ export class DiabloRenderer {
 
   /** Show a glowing rune circle at the town portal location. */
   showPortalRune(x: number, z: number): void {
-    // Remove old portal rune if any
     if (this._portalRuneGroup) {
       this._disposeObject3D(this._portalRuneGroup);
       this._scene.remove(this._portalRuneGroup);
@@ -6292,75 +6291,58 @@ export class DiabloRenderer {
     group.position.set(x, y, z);
 
     const runeMat = new THREE.MeshStandardMaterial({
-      color: 0x2244cc,
-      emissive: 0x2244cc,
-      emissiveIntensity: 1.5,
-      transparent: true,
-      opacity: 0.7,
-      side: THREE.DoubleSide,
-      depthWrite: false,
+      color: 0x2244cc, emissive: 0x2244cc, emissiveIntensity: 1.5,
+      transparent: true, opacity: 0.7, side: THREE.DoubleSide, depthWrite: false,
     });
     const runeGlowMat = new THREE.MeshStandardMaterial({
-      color: 0x4488ff,
-      emissive: 0x4488ff,
-      emissiveIntensity: 2.0,
-      transparent: true,
-      opacity: 0.4,
-      side: THREE.DoubleSide,
-      depthWrite: false,
+      color: 0x4488ff, emissive: 0x4488ff, emissiveIntensity: 2.0,
+      transparent: true, opacity: 0.4, side: THREE.DoubleSide, depthWrite: false,
     });
+    const stoneMat = new THREE.MeshStandardMaterial({ color: 0x444450, roughness: 0.9, metalness: 0.05 });
+    const stoneDarkMat = new THREE.MeshStandardMaterial({ color: 0x2a2a35, roughness: 0.95 });
 
-    // Outer circle
-    const outerRing = new THREE.Mesh(new THREE.TorusGeometry(4.0, 0.08, 8, 48), runeMat);
+    // Ground rune circle (outer)
+    const outerRing = new THREE.Mesh(new THREE.TorusGeometry(3.5, 0.12, 12, 48), runeMat);
     outerRing.rotation.x = -Math.PI / 2;
     outerRing.name = 'portal-outer';
     group.add(outerRing);
 
-    // Inner circle
-    const innerRing = new THREE.Mesh(new THREE.TorusGeometry(2.8, 0.06, 8, 48), runeMat);
+    // Middle ring
+    const midRing = new THREE.Mesh(new THREE.TorusGeometry(2.6, 0.08, 10, 48), runeMat);
+    midRing.rotation.x = -Math.PI / 2;
+    midRing.name = 'portal-inner';
+    group.add(midRing);
+
+    // Inner ring
+    const innerRing = new THREE.Mesh(new THREE.TorusGeometry(1.6, 0.06, 8, 36), runeGlowMat);
     innerRing.rotation.x = -Math.PI / 2;
-    innerRing.name = 'portal-inner';
+    innerRing.name = 'portal-inner2';
     group.add(innerRing);
 
-    // Rune symbols (6 evenly spaced around the circle, using flat planes with text)
-    const runeChars = ['\u16A0', '\u16B1', '\u16C1', '\u16D2', '\u16A8', '\u16BE'];
-    for (let i = 0; i < 6; i++) {
-      const angle = (i / 6) * Math.PI * 2;
-      const rx = Math.cos(angle) * 3.4;
-      const rz = Math.sin(angle) * 3.4;
-
-      // Small glowing disc for each rune position
-      const disc = new THREE.Mesh(
-        new THREE.CircleGeometry(0.25, 12),
-        runeGlowMat.clone(),
-      );
+    // Rune symbol discs (8 around the circle)
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2;
+      const disc = new THREE.Mesh(new THREE.CircleGeometry(0.2, 10), runeGlowMat.clone());
       disc.rotation.x = -Math.PI / 2;
-      disc.position.set(rx, 0.02, rz);
+      disc.position.set(Math.cos(angle) * 3.0, 0.03, Math.sin(angle) * 3.0);
       group.add(disc);
     }
 
-    // Cross lines (4 lines connecting through center)
-    for (let i = 0; i < 4; i++) {
-      const angle = (i / 4) * Math.PI;
-      const lineGeo = new THREE.PlaneGeometry(7.6, 0.04);
-      const line = new THREE.Mesh(lineGeo, runeMat);
+    // Star pattern lines (6 lines through center)
+    for (let i = 0; i < 6; i++) {
+      const line = new THREE.Mesh(new THREE.PlaneGeometry(6.5, 0.03), runeMat);
       line.rotation.x = -Math.PI / 2;
-      line.rotation.z = angle;
+      line.rotation.z = (i / 6) * Math.PI;
       line.position.y = 0.01;
       group.add(line);
     }
 
-    // Center glow disc
+    // Center glow disc (pulsing)
     const centerGlow = new THREE.Mesh(
-      new THREE.CircleGeometry(1.2, 24),
+      new THREE.CircleGeometry(1.0, 24),
       new THREE.MeshStandardMaterial({
-        color: 0x2266ff,
-        emissive: 0x2266ff,
-        emissiveIntensity: 2.5,
-        transparent: true,
-        opacity: 0.3,
-        side: THREE.DoubleSide,
-        depthWrite: false,
+        color: 0x3366ff, emissive: 0x3366ff, emissiveIntensity: 3.0,
+        transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false,
       }),
     );
     centerGlow.rotation.x = -Math.PI / 2;
@@ -6368,31 +6350,119 @@ export class DiabloRenderer {
     centerGlow.name = 'portal-center';
     group.add(centerGlow);
 
-    // Point light for ambient blue glow
-    const light = new THREE.PointLight(0x4488ff, 1.5, 10, 1.5);
-    light.position.y = 1.0;
+    // Vertical portal swirl (standing disc of energy)
+    const portalDisc = new THREE.Mesh(
+      new THREE.TorusGeometry(1.8, 0.15, 12, 32),
+      new THREE.MeshStandardMaterial({
+        color: 0x3355cc, emissive: 0x2244aa, emissiveIntensity: 2.0,
+        transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false,
+      }),
+    );
+    portalDisc.position.y = 2.0;
+    portalDisc.name = 'portal-disc';
+    group.add(portalDisc);
+
+    // Inner portal swirl (smaller, brighter)
+    const portalInner = new THREE.Mesh(
+      new THREE.CircleGeometry(1.4, 24),
+      new THREE.MeshStandardMaterial({
+        color: 0x4488ff, emissive: 0x4488ff, emissiveIntensity: 2.5,
+        transparent: true, opacity: 0.3, side: THREE.DoubleSide, depthWrite: false,
+      }),
+    );
+    portalInner.position.y = 2.0;
+    portalInner.name = 'portal-swirl';
+    group.add(portalInner);
+
+    // 4 stone pillars around the portal
+    for (let i = 0; i < 4; i++) {
+      const angle = (i / 4) * Math.PI * 2 + Math.PI / 4;
+      const px = Math.cos(angle) * 3.2;
+      const pz = Math.sin(angle) * 3.2;
+      const pillar = new THREE.Group();
+
+      // Pillar base
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.5, 0.3, 8), stoneMat);
+      base.position.y = 0.15;
+      pillar.add(base);
+
+      // Pillar shaft
+      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.35, 2.5, 8), stoneDarkMat);
+      shaft.position.y = 1.55;
+      pillar.add(shaft);
+
+      // Pillar top
+      const top = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.25, 0.25, 8), stoneMat);
+      top.position.y = 2.9;
+      pillar.add(top);
+
+      // Glowing rune on top
+      const runeLight = new THREE.PointLight(0x4488ff, 0.6, 4, 1.5);
+      runeLight.position.y = 3.1;
+      pillar.add(runeLight);
+
+      const runeOrb = new THREE.Mesh(
+        new THREE.SphereGeometry(0.12, 8, 6),
+        new THREE.MeshStandardMaterial({
+          color: 0x4488ff, emissive: 0x4488ff, emissiveIntensity: 3,
+          transparent: true, opacity: 0.8,
+        }),
+      );
+      runeOrb.position.y = 3.1;
+      pillar.add(runeOrb);
+
+      pillar.position.set(px, 0, pz);
+      group.add(pillar);
+    }
+
+    // Central column of light
+    const lightBeam = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.3, 0.8, 5, 12),
+      new THREE.MeshStandardMaterial({
+        color: 0x2244aa, emissive: 0x2244aa, emissiveIntensity: 1.5,
+        transparent: true, opacity: 0.12, side: THREE.DoubleSide, depthWrite: false,
+      }),
+    );
+    lightBeam.position.y = 2.5;
+    lightBeam.name = 'portal-beam';
+    group.add(lightBeam);
+
+    // Main point light
+    const light = new THREE.PointLight(0x4488ff, 2.0, 12, 1.5);
+    light.position.y = 2.0;
     group.add(light);
 
     this._scene.add(group);
     this._portalRuneGroup = group;
   }
 
-  /** Animate the portal rune (called per frame from update). */
   private _updatePortalRune(): void {
     if (!this._portalRuneGroup) return;
     const g = this._portalRuneGroup;
-    // Rotate outer ring slowly
+    const t = this._time;
+    // Rotate ground rings
     const outer = g.getObjectByName('portal-outer');
-    if (outer) outer.rotation.z = this._time * 0.3;
-    // Rotate inner ring opposite direction
+    if (outer) outer.rotation.z = t * 0.3;
     const inner = g.getObjectByName('portal-inner');
-    if (inner) inner.rotation.z = -this._time * 0.5;
+    if (inner) inner.rotation.z = -t * 0.5;
+    const inner2 = g.getObjectByName('portal-inner2');
+    if (inner2) inner2.rotation.z = t * 0.8;
     // Pulse center glow
     const center = g.getObjectByName('portal-center') as THREE.Mesh | undefined;
     if (center) {
-      const pulse = 0.25 + Math.sin(this._time * 2) * 0.1;
-      (center.material as THREE.MeshStandardMaterial).opacity = pulse;
-      center.scale.setScalar(1.0 + Math.sin(this._time * 1.5) * 0.1);
+      (center.material as THREE.MeshStandardMaterial).opacity = 0.25 + Math.sin(t * 2) * 0.12;
+      center.scale.setScalar(1.0 + Math.sin(t * 1.5) * 0.1);
+    }
+    // Rotate vertical portal disc
+    const disc = g.getObjectByName('portal-disc');
+    if (disc) disc.rotation.y = t * 1.2;
+    // Rotate inner swirl opposite
+    const swirl = g.getObjectByName('portal-swirl');
+    if (swirl) swirl.rotation.y = -t * 2.0;
+    // Pulse light beam
+    const beam = g.getObjectByName('portal-beam') as THREE.Mesh | undefined;
+    if (beam) {
+      (beam.material as THREE.MeshStandardMaterial).opacity = 0.08 + Math.sin(t * 1.5) * 0.04;
     }
   }
 
