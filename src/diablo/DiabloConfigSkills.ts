@@ -53,7 +53,7 @@ export const SKILL_DEFS: Record<SkillId, DiabloSkillDef> = {
     damageMultiplier: 2.0,
     range: 1,
     aoeRadius: 4,
-    icon: '🌀',
+    icon: '🩸',
     class: DiabloClass.WARRIOR,
   },
   [SkillId.BATTLE_CRY]: {
@@ -66,7 +66,7 @@ export const SKILL_DEFS: Record<SkillId, DiabloSkillDef> = {
     damageMultiplier: 0,
     range: 0,
     duration: 10,
-    icon: '📯',
+    icon: '👹',
     class: DiabloClass.WARRIOR,
   },
   [SkillId.GROUND_SLAM]: {
@@ -79,7 +79,7 @@ export const SKILL_DEFS: Record<SkillId, DiabloSkillDef> = {
     damageMultiplier: 2.5,
     range: 6,
     aoeRadius: 3,
-    icon: '💥',
+    icon: '⚒️',
     class: DiabloClass.WARRIOR,
   },
   [SkillId.BLADE_FURY]: {
@@ -202,7 +202,7 @@ export const SKILL_DEFS: Record<SkillId, DiabloSkillDef> = {
     damageMultiplier: 2.0,
     range: 15,
     aoeRadius: 6,
-    icon: '🌧️',
+    icon: '⚜️',
     class: DiabloClass.RANGER,
   },
   [SkillId.POISON_ARROW]: {
@@ -270,7 +270,7 @@ export const SKILL_DEFS: Record<SkillId, DiabloSkillDef> = {
     aoeRadius: 4,
     statusEffect: StatusEffect.STUNNED,
     duration: 1,
-    icon: '🦅',
+    icon: '🦇',
     class: DiabloClass.WARRIOR,
   },
   [SkillId.IRON_SKIN]: {
@@ -297,7 +297,7 @@ export const SKILL_DEFS: Record<SkillId, DiabloSkillDef> = {
     range: 0,
     aoeRadius: 8,
     duration: 5,
-    icon: '😤',
+    icon: '👺',
     class: DiabloClass.WARRIOR,
   },
   [SkillId.CRUSHING_BLOW]: {
@@ -339,7 +339,7 @@ export const SKILL_DEFS: Record<SkillId, DiabloSkillDef> = {
     aoeRadius: 10,
     statusEffect: StatusEffect.STUNNED,
     duration: 2,
-    icon: '🌍',
+    icon: '🌋',
     class: DiabloClass.WARRIOR,
   },
 
@@ -367,7 +367,7 @@ export const SKILL_DEFS: Record<SkillId, DiabloSkillDef> = {
     damageMultiplier: 0.8,
     range: 15,
     aoeRadius: 2,
-    icon: '✨',
+    icon: '🌀',
     class: DiabloClass.MAGE,
   },
   [SkillId.FROST_BARRIER]: {
@@ -599,7 +599,7 @@ export const SKILL_DEFS: Record<SkillId, DiabloSkillDef> = {
     damageMultiplier: 0,
     range: 0,
     duration: 12,
-    icon: '👼',
+    icon: '🕯️',
     class: DiabloClass.PALADIN,
   },
   [SkillId.LAY_ON_HANDS]: {
@@ -611,7 +611,7 @@ export const SKILL_DEFS: Record<SkillId, DiabloSkillDef> = {
     damageType: DamageType.HOLY,
     damageMultiplier: 0,
     range: 0,
-    icon: '🙌',
+    icon: '✋',
     class: DiabloClass.PALADIN,
   },
   [SkillId.HOLY_BOLT]: {
@@ -786,7 +786,7 @@ export const SKILL_DEFS: Record<SkillId, DiabloSkillDef> = {
     damageMultiplier: 1.5,
     range: 0,
     aoeRadius: 5,
-    icon: '❤️',
+    icon: '💉',
     class: DiabloClass.NECROMANCER,
   },
   [SkillId.SPIRIT_BARRAGE]: {
@@ -946,7 +946,7 @@ export const SKILL_DEFS: Record<SkillId, DiabloSkillDef> = {
     damageMultiplier: 2.0,
     range: 8,
     aoeRadius: 8,
-    icon: '💃',
+    icon: '🔱',
     class: DiabloClass.ASSASSIN,
   },
   [SkillId.VANISH]: {

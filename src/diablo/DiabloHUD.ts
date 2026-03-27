@@ -214,13 +214,36 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
   `;
   hud.appendChild(hudStyleEl);
 
-  // Health orb - bottom left (ornate)
+  // Health orb - bottom left (ornate) with gargoyle holder
   const hpOrbWrap = document.createElement("div");
   hpOrbWrap.style.cssText = `
     position:absolute;bottom:22px;left:22px;width:150px;height:150px;
     display:flex;align-items:center;justify-content:center;
     filter:drop-shadow(0 0 12px rgba(180,20,20,0.35));
   `;
+  // Gargoyle holder SVG (demon crouching behind the orb)
+  const hpGargoyle = document.createElement("div");
+  hpGargoyle.style.cssText = "position:absolute;width:190px;height:190px;top:-20px;left:-20px;pointer-events:none;z-index:-3;";
+  hpGargoyle.innerHTML = `<svg viewBox="0 0 200 200" style="width:100%;height:100%;opacity:0.55;">
+    <path d="M 28 72 Q 8 38 3 15 Q 14 32 38 48 Q 18 54 28 72" fill="#2a2218" stroke="#3a3228" stroke-width="0.8"/>
+    <path d="M 172 72 Q 192 38 197 15 Q 186 32 162 48 Q 182 54 172 72" fill="#2a2218" stroke="#3a3228" stroke-width="0.8"/>
+    <path d="M 33 67 Q 16 44 10 25" fill="none" stroke="#3a3228" stroke-width="0.6"/>
+    <path d="M 167 67 Q 184 44 190 25" fill="none" stroke="#3a3228" stroke-width="0.6"/>
+    <path d="M 76 40 Q 66 16 54 4" fill="none" stroke="#3a3228" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M 124 40 Q 134 16 146 4" fill="none" stroke="#3a3228" stroke-width="2.5" stroke-linecap="round"/>
+    <ellipse cx="100" cy="46" rx="19" ry="15" fill="#2a2218" stroke="#3a3228" stroke-width="1"/>
+    <circle cx="93" cy="44" r="3.5" fill="#661111" opacity="0.9"/>
+    <circle cx="107" cy="44" r="3.5" fill="#661111" opacity="0.9"/>
+    <circle cx="93" cy="44" r="1.5" fill="#cc3333"/>
+    <circle cx="107" cy="44" r="1.5" fill="#cc3333"/>
+    <path d="M 96 52 L 100 56 L 104 52" fill="none" stroke="#3a3228" stroke-width="0.8"/>
+    <path d="M 56 62 Q 38 78 28 98" fill="none" stroke="#2a2218" stroke-width="5" stroke-linecap="round"/>
+    <path d="M 144 62 Q 162 78 172 98" fill="none" stroke="#2a2218" stroke-width="5" stroke-linecap="round"/>
+    <path d="M 28 98 L 36 90 L 30 84 L 38 92 L 32 86 L 40 96" fill="#2a2218" stroke="#3a3228" stroke-width="0.6"/>
+    <path d="M 172 98 L 164 90 L 170 84 L 162 92 L 168 86 L 160 96" fill="#2a2218" stroke="#3a3228" stroke-width="0.6"/>
+    <path d="M 100 178 Q 112 188 132 190 Q 142 188 146 182 Q 140 186 130 184" fill="none" stroke="#3a3228" stroke-width="1.8" stroke-linecap="round"/>
+  </svg>`;
+  hpOrbWrap.appendChild(hpGargoyle);
   // Outer decorative ring
   const hpRingOuter = document.createElement("div");
   hpRingOuter.style.cssText = `
@@ -419,6 +442,29 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
     display:flex;align-items:center;justify-content:center;
     filter:drop-shadow(0 0 12px rgba(30,30,200,0.35));
   `;
+  // Gargoyle holder SVG (blue-eyed demon for mana)
+  const mpGargoyle = document.createElement("div");
+  mpGargoyle.style.cssText = "position:absolute;width:190px;height:190px;top:-20px;left:-20px;pointer-events:none;z-index:-3;";
+  mpGargoyle.innerHTML = `<svg viewBox="0 0 200 200" style="width:100%;height:100%;opacity:0.55;">
+    <path d="M 28 72 Q 8 38 3 15 Q 14 32 38 48 Q 18 54 28 72" fill="#181828" stroke="#282838" stroke-width="0.8"/>
+    <path d="M 172 72 Q 192 38 197 15 Q 186 32 162 48 Q 182 54 172 72" fill="#181828" stroke="#282838" stroke-width="0.8"/>
+    <path d="M 33 67 Q 16 44 10 25" fill="none" stroke="#282838" stroke-width="0.6"/>
+    <path d="M 167 67 Q 184 44 190 25" fill="none" stroke="#282838" stroke-width="0.6"/>
+    <path d="M 76 40 Q 66 16 54 4" fill="none" stroke="#282838" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M 124 40 Q 134 16 146 4" fill="none" stroke="#282838" stroke-width="2.5" stroke-linecap="round"/>
+    <ellipse cx="100" cy="46" rx="19" ry="15" fill="#181828" stroke="#282838" stroke-width="1"/>
+    <circle cx="93" cy="44" r="3.5" fill="#112266" opacity="0.9"/>
+    <circle cx="107" cy="44" r="3.5" fill="#112266" opacity="0.9"/>
+    <circle cx="93" cy="44" r="1.5" fill="#4466cc"/>
+    <circle cx="107" cy="44" r="1.5" fill="#4466cc"/>
+    <path d="M 96 52 L 100 56 L 104 52" fill="none" stroke="#282838" stroke-width="0.8"/>
+    <path d="M 56 62 Q 38 78 28 98" fill="none" stroke="#181828" stroke-width="5" stroke-linecap="round"/>
+    <path d="M 144 62 Q 162 78 172 98" fill="none" stroke="#181828" stroke-width="5" stroke-linecap="round"/>
+    <path d="M 28 98 L 36 90 L 30 84 L 38 92 L 32 86 L 40 96" fill="#181828" stroke="#282838" stroke-width="0.6"/>
+    <path d="M 172 98 L 164 90 L 170 84 L 162 92 L 168 86 L 160 96" fill="#181828" stroke="#282838" stroke-width="0.6"/>
+    <path d="M 100 178 Q 88 188 68 190 Q 58 188 54 182 Q 60 186 70 184" fill="none" stroke="#282838" stroke-width="1.8" stroke-linecap="round"/>
+  </svg>`;
+  mpOrbWrap.appendChild(mpGargoyle);
   // Outer decorative ring (silver/blue)
   const mpRingOuter = document.createElement("div");
   mpRingOuter.style.cssText = `
@@ -690,15 +736,16 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
     const slot = document.createElement("div");
     slot.style.cssText = `
       width:66px;height:66px;
-      background:linear-gradient(145deg, rgba(40,32,18,0.97), rgba(18,12,5,0.98), rgba(30,24,12,0.96));
-      border:2px solid #9a8a4a;border-radius:8px;display:flex;flex-direction:column;
+      background:linear-gradient(145deg, rgba(45,36,20,0.97), rgba(15,10,4,0.99), rgba(25,18,8,0.97));
+      border:3px solid #8a7a3a;border-radius:6px;display:flex;flex-direction:column;
       align-items:center;justify-content:center;position:relative;overflow:hidden;
-      box-shadow:inset 0 1px 0 rgba(200,168,78,0.3), inset 0 -1px 0 rgba(0,0,0,0.5),
-        0 2px 10px rgba(0,0,0,0.7), inset 0 0 20px rgba(200,168,78,0.06),
-        inset 0 0 8px rgba(0,0,0,0.4);
+      box-shadow:inset 0 2px 0 rgba(200,168,78,0.35), inset 0 -2px 0 rgba(0,0,0,0.6),
+        inset 2px 0 0 rgba(200,168,78,0.15), inset -2px 0 0 rgba(0,0,0,0.4),
+        0 3px 12px rgba(0,0,0,0.8), 0 0 1px rgba(200,168,78,0.3),
+        inset 0 0 20px rgba(0,0,0,0.5);
       background-image:
-        radial-gradient(ellipse at 30% 20%, rgba(200,168,78,0.06) 0%, transparent 60%),
-        repeating-conic-gradient(from 0deg, rgba(200,168,78,0.02) 0deg 15deg, transparent 15deg 30deg);
+        radial-gradient(ellipse at 30% 20%, rgba(200,168,78,0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at 70% 80%, rgba(200,168,78,0.04) 0%, transparent 50%);
     `;
     // Ornate frame corners on each slot
     const cornerDeco = document.createElement("div");
@@ -851,15 +898,38 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
       inset 0 0 0 1px rgba(200,168,78,0.08), 0 0 0 1px rgba(0,0,0,0.3);
     transition:border-color 0.3s, box-shadow 0.3s;
   `;
+  // Inner border
+  const panelInner = document.createElement("div");
+  panelInner.style.cssText = `
+    position:absolute;inset:3px;border:1px solid rgba(200,168,78,0.15);border-radius:6px;pointer-events:none;
+  `;
+  topRight.appendChild(panelInner);
+  // Corner decorations
+  for (const [t, l] of [["2px","2px"],["2px","auto"],["auto","2px"],["auto","auto"]]) {
+    const corner = document.createElement("div");
+    const r = t === "auto" ? "bottom:2px;" : "top:2px;";
+    const c = l === "auto" ? "right:2px;" : "left:2px;";
+    corner.style.cssText = `position:absolute;${r}${c}color:#5a4a2a;font-size:8px;pointer-events:none;opacity:0.6;`;
+    corner.textContent = "\u25C6";
+    topRight.appendChild(corner);
+  }
   // Top ornament for the panel
   const panelOrnament = document.createElement("div");
   panelOrnament.style.cssText = `
     position:absolute;top:-8px;left:50%;transform:translateX(-50%);
     font-size:14px;color:#c8a84e;filter:drop-shadow(0 0 3px rgba(200,168,78,0.3));
-    pointer-events:none;
+    pointer-events:none;letter-spacing:6px;
   `;
-  panelOrnament.textContent = "\u2736";
+  panelOrnament.textContent = "\u2E31 \u2736 \u2E31";
   topRight.appendChild(panelOrnament);
+  // Bottom ornament
+  const panelBotOrn = document.createElement("div");
+  panelBotOrn.style.cssText = `
+    position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);
+    font-size:10px;color:#5a4a2a;pointer-events:none;letter-spacing:4px;
+  `;
+  panelBotOrn.textContent = "\u25C6 \u25C6";
+  topRight.appendChild(panelBotOrn);
   const goldText = document.createElement("div");
   goldText.style.cssText = `
     font-size:20px;color:#ffd700;margin-bottom:6px;
@@ -1099,7 +1169,7 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
   // Potion bar - ornate, enhanced with flask shapes
   const potionBarBg = document.createElement("div");
   potionBarBg.style.cssText = `
-    position:absolute;bottom:22px;left:50%;transform:translateX(280px);display:flex;gap:6px;
+    position:absolute;bottom:22px;left:50%;transform:translateX(320px);display:flex;gap:6px;
     background:linear-gradient(180deg, rgba(35,28,18,0.95), rgba(18,14,8,0.97), rgba(28,22,14,0.95));
     border:2px solid #7a6a3a;border-radius:8px;padding:8px 12px;
     box-shadow:0 3px 12px rgba(0,0,0,0.6), inset 0 1px 0 rgba(200,168,78,0.15),
@@ -1212,10 +1282,11 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
   questTracker.style.cssText = `
     position:absolute;top:16px;right:20px;margin-top:100px;width:240px;
     background:linear-gradient(180deg, rgba(30,24,12,0.9), rgba(15,12,6,0.92), rgba(25,20,10,0.9));
-    border:2px solid #6a5a2a;border-radius:8px;
+    border:2px solid #7a6a3a;border-radius:8px;
     padding:12px 36px 12px 14px;font-size:13px;color:#ccc;display:none;
     box-shadow:0 4px 14px rgba(0,0,0,0.5), inset 0 1px 0 rgba(200,168,78,0.15),
-      inset 0 -1px 0 rgba(0,0,0,0.3), 0 0 1px rgba(200,168,78,0.2);
+      inset 0 -1px 0 rgba(0,0,0,0.3), 0 0 1px rgba(200,168,78,0.25),
+      inset 0 0 0 1px rgba(200,168,78,0.06), 0 0 0 1px rgba(0,0,0,0.3);
     font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
   `;
   // Close button (X) in top-right corner
@@ -1373,8 +1444,8 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
 
   // === Animated torches flanking the skill bar ===
   const torchPositions = [
-    { side: "left", xOffset: "-340px" },
-    { side: "right", xOffset: "340px" },
+    { side: "left", xOffset: "-280px" },
+    { side: "right", xOffset: "280px" },
   ];
   for (const tp of torchPositions) {
     const torchWrap = document.createElement("div");
