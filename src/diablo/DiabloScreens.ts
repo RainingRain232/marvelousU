@@ -6,15 +6,25 @@ import {
   DiabloState, DiabloClass, DiabloMapId, DiabloPhase, ItemRarity,
   DiabloDifficulty, SkillId, TimeOfDay, DiabloItem, DiabloEquipment,
   DiabloLoot, TalentEffectType, Weather, MapModifier,
+  DiabloVendor, VendorType, DiabloPotion, PotionType,
+  CraftType, CraftingStationType, MaterialType, AdvancedCraftingRecipe,
+  DiabloQuest, QuestType,
   createDefaultPlayer,
 } from "./DiabloTypes";
 import {
   SKILL_DEFS, DIFFICULTY_CONFIGS, MAP_CONFIGS, ITEM_DATABASE,
   SET_BONUSES, LANTERN_CONFIGS, UNLOCKABLE_SKILLS, MAP_SPECIFIC_ITEMS,
+  RARITY_NAMES, VENDOR_DEFS, POTION_DATABASE,
+  TALENT_TREES, TALENT_BRANCH_NAMES, TALENT_SYNERGIES,
+  CRAFTING_RECIPES, SALVAGE_MATERIAL_YIELDS,
+  ADVANCED_CRAFTING_RECIPES, CRAFTING_MATERIALS,
+  QUEST_DATABASE, SKILL_BRANCHES, LEGENDARY_EFFECTS,
+  MAP_COMPLETION_REWARDS,
 } from "./DiabloConfig";
 import {
   RARITY_CSS, RARITY_GLOW, RARITY_BORDER, RARITY_BG, RARITY_BADGE,
-  rarityNeedsAnim, resolveEquipKey,
+  RARITY_TIER, rarityNeedsAnim, resolveEquipKey,
+  VENDOR_DIALOGUE,
 } from "./DiabloConstants";
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -69,6 +79,21 @@ export interface ScreenContext {
   setStatsDirty(): void;
   setEquipDirty(): void;
   setPhaseBeforeOverlay(phase: DiabloPhase): void;
+
+  // New fields for extracted screens
+  sortStash(sortBy: "rarity" | "type" | "level"): void;
+  countEquippedSetPieces(setName: string): number;
+  getTalentPointsInBranch(branch: number): number;
+  setTalentsDirty(): void;
+  pickRandomItemOfRarity(rarity: ItemRarity): DiabloItem | null;
+  canAffordRecipe(recipe: AdvancedCraftingRecipe): boolean;
+  payRecipeCost(recipe: AdvancedCraftingRecipe): void;
+  craftingUIOpen: boolean;
+  setCraftingUIOpen(v: boolean): void;
+  chestsOpened: number;
+  goldEarnedTotal: number;
+  setGoldEarnedTotal(v: number): void;
+  vendorDialogueIdx: Record<string, number>;
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -2539,4 +2564,2491 @@ export function showCharacterOverview(ctx: ScreenContext): void {
   stBtn.addEventListener("click", () => {
     ctx.showSkillTreeScreen();
   });
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  7. showItemTooltip
+// ════════════════════════════════════════════════════════════════════════════
+
+export function showItemTooltip(ctx: ScreenContext, ev: MouseEvent, item: DiabloItem | null): void {
+    if (!item) return;
+    const tooltip = ctx.menuEl.querySelector("#inv-tooltip") as HTMLDivElement;
+    if (!tooltip) return;
+
+    const rarityColor = RARITY_CSS[item.rarity];
+    const rarityName = RARITY_NAMES[item.rarity];
+    const stats = item.stats as any;
+    let statsLines = "";
+    const statLabels: Record<string, string> = {
+      strength: "Strength", dexterity: "Dexterity", intelligence: "Intelligence",
+      vitality: "Vitality", armor: "Armor", critChance: "Crit Chance",
+      critDamage: "Crit Damage", attackSpeed: "Attack Speed", moveSpeed: "Move Speed",
+      fireResist: "Fire Resist", iceResist: "Ice Resist", lightningResist: "Lightning Resist",
+      poisonResist: "Poison Resist", lifeSteal: "Life Steal", manaRegen: "Mana Regen",
+      bonusDamage: "Bonus Damage", bonusHealth: "Bonus Health", bonusMana: "Bonus Mana",
+      damage: "Damage", speed: "Speed", lifeRegen: "Life Regen",
+    };
+    for (const k of Object.keys(stats)) {
+      if (stats[k] && stats[k] !== 0) {
+        const label = statLabels[k] || k;
+        const val = stats[k];
+        const clr = val > 0 ? "#8f8" : "#f88";
+        const sgn = val > 0 ? "+" : "";
+        statsLines += `<div style="color:${clr};font-size:12px;padding:1px 0;">${sgn}${val} ${label}</div>`;
+      }
+    }
+
+    // Item comparison with currently equipped
+    let comparisonLines = "";
+    const equipKey = resolveEquipKey(item.slot as string);
+    if (equipKey) {
+      const equipped = ctx.state.player.equipment[equipKey];
+      if (equipped && equipped.id !== item.id) {
+        comparisonLines += `<div style="border-top:1px solid rgba(90,74,42,0.3);margin:6px 0;padding-top:6px;">`;
+        comparisonLines += `<div style="color:#c8a84e;font-size:11px;font-weight:bold;margin-bottom:4px;">vs. ${equipped.name}</div>`;
+        const eqStats = equipped.stats as any;
+        for (const k of Object.keys(statLabels)) {
+          const newVal = (stats[k] || 0) as number;
+          const oldVal = (eqStats[k] || 0) as number;
+          const diff = newVal - oldVal;
+          if (diff !== 0) {
+            const clr = diff > 0 ? "#44ff44" : "#ff4444";
+            const arrow = diff > 0 ? "\u25B2" : "\u25BC";
+            comparisonLines += `<div style="color:${clr};font-size:11px;padding:1px 0;">${arrow} ${diff > 0 ? '+' : ''}${diff} ${statLabels[k] || k}</div>`;
+          }
+        }
+        comparisonLines += `</div>`;
+      }
+    }
+
+    // Lantern light properties
+    let lanternLines = "";
+    if (item.type === "LANTERN") {
+      const lcfg = LANTERN_CONFIGS[item.name];
+      if (lcfg) {
+        const colorHex = '#' + lcfg.color.toString(16).padStart(6, '0');
+        lanternLines = `
+          <div style="border-top:1px solid rgba(90,74,42,0.3);margin:6px 0;padding-top:6px;">
+            <div style="color:#c8a84e;font-size:12px;font-weight:bold;margin-bottom:4px;">Light Properties</div>
+            <div style="color:#ffcc66;font-size:12px;padding:1px 0;">Intensity: ${lcfg.intensity.toFixed(1)}</div>
+            <div style="color:#ffcc66;font-size:12px;padding:1px 0;">Range: ${lcfg.distance} units</div>
+            <div style="display:flex;align-items:center;gap:6px;font-size:12px;padding:1px 0;">
+              <span style="color:#ffcc66;">Color:</span>
+              <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${colorHex};border:1px solid #555;box-shadow:0 0 6px ${colorHex};"></span>
+            </div>
+          </div>`;
+      }
+    }
+
+    let legendaryLine = "";
+    if (item.legendaryAbility) {
+      const effect = LEGENDARY_EFFECTS[item.legendaryAbility];
+      if (effect) {
+        legendaryLine = `<div style="color:#ff8800;margin-top:6px;font-style:italic;border-left:2px solid #ff880060;padding-left:6px;">${effect.description}</div>`;
+      } else {
+        legendaryLine = `<div style="color:#ff8800;margin-top:6px;font-style:italic;border-left:2px solid #ff880060;padding-left:6px;">${item.legendaryAbility}</div>`;
+      }
+    }
+    let setLine = "";
+    if ((item as any).setName) {
+      const sn = (item as any).setName as string;
+      const equippedSetCount = ctx.countEquippedSetPieces(sn);
+      const setBonuses = SET_BONUSES.filter(sb => sb.setName === sn);
+      setLine = `<div style="color:#44ff44;margin-top:4px;font-size:12px;">Set: ${sn} (${equippedSetCount} equipped)</div>`;
+      for (const sb of setBonuses) {
+        const active = equippedSetCount >= sb.pieces;
+        setLine += `<div style="color:${active ? '#44ff44' : '#666'};font-size:11px;padding:1px 0;margin-left:8px;">(${sb.pieces}) ${sb.bonusDescription || ''}</div>`;
+      }
+    }
+    // Socket display
+    let socketLine = "";
+    if (item.sockets && item.sockets.length > 0) {
+      let socketIcons = "";
+      for (const socket of item.sockets) {
+        if (socket.gemType) {
+          const gemLabel = socket.gemType + ' T' + socket.gemTier;
+          socketIcons += `<span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:#aa44ff;border:1px solid #cc66ff;margin:1px;font-size:10px;text-align:center;line-height:16px;" title="${gemLabel}">${String(socket.gemType).charAt(0)}</span>`;
+        } else {
+          socketIcons += `<span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:#222;border:1px solid #555;margin:1px;"></span>`;
+        }
+      }
+      socketLine = `<div style="margin-top:4px;font-size:12px;color:#aaa;">Sockets: ${socketIcons}</div>`;
+    }
+    // DPS calculation for weapons
+    let dpsLine = "";
+    if (stats.damage && stats.speed) {
+      const dps = (stats.damage * stats.speed).toFixed(1);
+      dpsLine = `<div style="color:#ffdd44;font-size:12px;margin-top:2px;font-weight:bold;">${dps} DPS</div>`;
+    } else if (stats.damage && stats.attackSpeed) {
+      const dps = (stats.damage * (1 + stats.attackSpeed)).toFixed(1);
+      dpsLine = `<div style="color:#ffdd44;font-size:12px;margin-top:2px;font-weight:bold;">${dps} DPS</div>`;
+    }
+
+    const stars = "\u2605".repeat(RARITY_TIER[item.rarity]);
+
+    tooltip.innerHTML = `
+      <!-- Ornate border with rarity glow -->
+      <div style="position:absolute;inset:-1px;border:2px solid ${rarityColor}60;border-radius:9px;pointer-events:none;
+        box-shadow:0 0 12px ${rarityColor}30,inset 0 0 12px ${rarityColor}10;"></div>
+      <!-- Corner decorations -->
+      <div style="position:absolute;top:2px;left:2px;color:${rarityColor};font-size:7px;opacity:0.6;">&#9670;</div>
+      <div style="position:absolute;top:2px;right:2px;color:${rarityColor};font-size:7px;opacity:0.6;">&#9670;</div>
+      <div style="position:absolute;bottom:2px;left:2px;color:${rarityColor};font-size:7px;opacity:0.6;">&#9670;</div>
+      <div style="position:absolute;bottom:2px;right:2px;color:${rarityColor};font-size:7px;opacity:0.6;">&#9670;</div>
+      <!-- Rarity color top bar -->
+      <div style="height:4px;background:linear-gradient(90deg,transparent,${rarityColor},transparent);"></div>
+      <!-- Content area with subtle rarity gradient background -->
+      <div style="padding:14px 16px;background:linear-gradient(180deg, ${RARITY_BG[item.rarity]} 0%, rgba(8,4,2,0) 40%);position:relative;">
+        <!-- Item name & rarity header -->
+        <div style="border-bottom:1px solid rgba(90,74,42,0.5);padding-bottom:8px;margin-bottom:8px;">
+          <div style="color:${rarityColor};font-size:16px;font-weight:bold;text-shadow:0 0 8px ${rarityColor}40;">${item.icon} ${item.name}</div>
+          <div style="color:${rarityColor};font-size:11px;margin-top:3px;letter-spacing:1px;">
+            <span style="font-size:10px;">${stars}</span> ${rarityName}
+          </div>
+        </div>
+        <!-- Slot/type -->
+        <div style="color:#888;font-size:11px;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">${item.slot || item.type}</div>
+        <!-- Separator with diamond ornaments -->
+        <div style="display:flex;align-items:center;gap:6px;margin:4px 0 6px;">
+          <div style="flex:1;height:1px;background:linear-gradient(to right,transparent,#5a4a2a60);"></div>
+          <span style="color:#5a4a2a;font-size:6px;">&#9670;</span>
+          <div style="flex:1;height:1px;background:linear-gradient(to left,transparent,#5a4a2a60);"></div>
+        </div>
+        <!-- Stats -->
+        ${statsLines}
+        ${comparisonLines}
+        ${lanternLines}
+        ${dpsLine}
+        ${legendaryLine}
+        ${setLine}
+        ${socketLine}
+        <!-- Separator with diamond ornaments before description -->
+        <div style="display:flex;align-items:center;gap:6px;margin:8px 0 6px;">
+          <div style="flex:1;height:1px;background:linear-gradient(to right,transparent,#5a4a2a60);"></div>
+          <span style="color:#5a4a2a;font-size:6px;">&#9670;</span>
+          <div style="flex:1;height:1px;background:linear-gradient(to left,transparent,#5a4a2a60);"></div>
+        </div>
+        <div style="color:#777;font-size:11px;font-style:italic;line-height:1.4;">${item.description}</div>
+      </div>
+      <!-- Rarity color bottom bar -->
+      <div style="height:2px;background:linear-gradient(90deg,transparent,${rarityColor}40,transparent);"></div>
+    `;
+    tooltip.style.display = "block";
+    tooltip.style.left = Math.min(ev.clientX + 16, window.innerWidth - 320) + "px";
+    tooltip.style.top = Math.min(ev.clientY + 16, window.innerHeight - 250) + "px";
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  8. showPauseMenu
+// ════════════════════════════════════════════════════════════════════════════
+
+export function showPauseMenu(ctx: ScreenContext): void {
+    const btnBase =
+      "width:280px;padding:14px 0;margin:8px 0;font-size:18px;letter-spacing:3px;font-weight:bold;" +
+      "background:rgba(40,30,15,0.9);border:2px solid #5a4a2a;border-radius:8px;color:#c8a84e;" +
+      "cursor:pointer;transition:all 0.2s;font-family:'Georgia',serif;pointer-events:auto;";
+    const exitBtn =
+      "width:280px;padding:14px 0;margin:8px 0;font-size:18px;letter-spacing:3px;font-weight:bold;" +
+      "background:rgba(40,30,15,0.9);border:2px solid #a44;border-radius:8px;color:#e66;" +
+      "cursor:pointer;transition:all 0.2s;font-family:'Georgia',serif;pointer-events:auto;";
+
+    const saveBtn =
+      "width:280px;padding:14px 0;margin:8px 0;font-size:18px;letter-spacing:3px;font-weight:bold;" +
+      "background:rgba(40,30,15,0.9);border:2px solid #4a4;border-radius:8px;color:#6c6;" +
+      "cursor:pointer;transition:all 0.2s;font-family:'Georgia',serif;pointer-events:auto;";
+    const loadBtn =
+      "width:280px;padding:14px 0;margin:8px 0;font-size:18px;letter-spacing:3px;font-weight:bold;" +
+      "background:rgba(40,30,15,0.9);border:2px solid #44a;border-radius:8px;color:#68f;" +
+      "cursor:pointer;transition:all 0.2s;font-family:'Georgia',serif;pointer-events:auto;";
+
+    const loadBtnHtml = ctx.hasSave()
+      ? `<button id="diablo-load-btn" style="${loadBtn}">LOAD GAME</button>`
+      : "";
+
+    ctx.menuEl.innerHTML = `
+      <style>
+        @keyframes pause-candle {
+          0%, 100% { opacity:0.7; text-shadow: 0 0 6px #ff8800, 0 -3px 8px #ff6600; }
+          33% { opacity:1; text-shadow: 0 0 10px #ffaa00, 0 -5px 12px #ff8800; }
+          66% { opacity:0.85; text-shadow: 0 0 8px #ff6600, 0 -4px 10px #ff4400; }
+        }
+        @keyframes pause-glow-spread {
+          0% { box-shadow: 0 0 0px rgba(200,168,78,0); }
+          100% { box-shadow: 0 0 20px rgba(200,168,78,0.4); }
+        }
+      </style>
+      <div style="
+        width:100%;height:100%;background:rgba(0,0,0,0.8);display:flex;flex-direction:column;
+        align-items:center;justify-content:center;color:#fff;position:relative;
+      ">
+        <!-- Decorative stone frame around button column -->
+        <div style="position:relative;display:flex;flex-direction:column;align-items:center;
+          padding:30px 60px 24px;border:2px solid #5a4a2a;border-radius:8px;
+          background:rgba(10,8,4,0.6);
+          box-shadow:inset 0 0 40px rgba(0,0,0,0.4),0 0 2px #3a2a1a;">
+          <!-- Inner border -->
+          <div style="position:absolute;inset:4px;border:1px solid #3a2a1a;border-radius:6px;pointer-events:none;"></div>
+
+          <!-- Vertical chain decorations -->
+          <div style="position:absolute;left:-20px;top:40px;bottom:40px;width:12px;display:flex;flex-direction:column;align-items:center;gap:2px;overflow:hidden;">
+            ${Array.from({length:20}).map(() => '<div style="width:8px;height:12px;border:2px solid #5a4a2a;border-radius:3px;"></div>').join("")}
+          </div>
+          <div style="position:absolute;right:-20px;top:40px;bottom:40px;width:12px;display:flex;flex-direction:column;align-items:center;gap:2px;overflow:hidden;">
+            ${Array.from({length:20}).map(() => '<div style="width:8px;height:12px;border:2px solid #5a4a2a;border-radius:3px;"></div>').join("")}
+          </div>
+
+          <!-- Flickering candles on sides -->
+          <div style="position:absolute;left:-36px;top:20px;font-size:20px;animation:pause-candle 0.8s ease-in-out infinite;">&#x1F56F;</div>
+          <div style="position:absolute;right:-36px;top:20px;font-size:20px;animation:pause-candle 0.8s ease-in-out infinite 0.4s;">&#x1F56F;</div>
+
+          <!-- Skull decoration above title -->
+          <div style="font-size:28px;margin-bottom:4px;filter:drop-shadow(0 0 6px rgba(200,168,78,0.3));">&#9760;</div>
+
+          <h1 style="color:#c8a84e;font-size:48px;letter-spacing:6px;margin-bottom:6px;
+            font-family:'Georgia',serif;text-shadow:0 0 20px rgba(200,168,78,0.4);">PAUSED</h1>
+
+          <!-- Decorative divider under title -->
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px;">
+            <div style="width:60px;height:1px;background:linear-gradient(to right,transparent,#5a4a2a);"></div>
+            <span style="color:#5a4a2a;font-size:12px;">&#9884;</span>
+            <span style="color:#c8a84e;font-size:8px;">&#9830;</span>
+            <span style="color:#5a4a2a;font-size:12px;">&#9884;</span>
+            <div style="width:60px;height:1px;background:linear-gradient(to left,transparent,#5a4a2a);"></div>
+          </div>
+
+          <button id="diablo-resume-btn" style="${btnBase}">&#9876; RESUME</button>
+          <button id="diablo-controls-btn" style="${btnBase}">&#9881; CONTROLS</button>
+          <button id="diablo-inventory-btn" style="${btnBase}">&#9878; INVENTORY</button>
+          <button id="diablo-character-btn" style="${btnBase}">&#10022; CHARACTER</button>
+          <button id="diablo-skilltree-btn" style="${btnBase}">&#10040; SKILL TREE</button>
+          <button id="diablo-skillswap-btn" style="${btnBase}">&#8644; SWAP SKILLS</button>
+          <button id="diablo-stash-btn" style="${btnBase}">&#9878; STASH</button>
+          <button id="diablo-collection-btn" style="${btnBase}">&#10070; COLLECTION</button>
+          <button id="diablo-save-btn" style="${saveBtn}">&#10004; SAVE GAME</button>
+          ${loadBtnHtml}
+          <button id="diablo-charselect-btn" style="${btnBase}">&#9733; CHARACTER SELECT</button>
+          <button id="diablo-exit-btn" style="${exitBtn}">&#10008; EXIT</button>
+          <div style="margin-top:24px;color:#888;font-size:12px;letter-spacing:1px;
+            font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
+            text-shadow:0 1px 3px rgba(0,0,0,0.6);">
+            Press <span style="color:#c8a84e;">V</span> to toggle First Person view
+          </div>
+        </div>
+      </div>`;
+
+    // Hover effects for standard buttons
+    const stdBtns = ctx.menuEl.querySelectorAll("#diablo-resume-btn,#diablo-controls-btn,#diablo-inventory-btn,#diablo-character-btn,#diablo-skilltree-btn,#diablo-skillswap-btn,#diablo-stash-btn,#diablo-collection-btn,#diablo-charselect-btn") as NodeListOf<HTMLButtonElement>;
+    stdBtns.forEach((btn) => {
+      btn.addEventListener("mouseenter", () => {
+        btn.style.borderColor = "#c8a84e";
+        btn.style.boxShadow = "0 0 15px rgba(200,168,78,0.3)";
+        btn.style.background = "rgba(50,40,20,0.95)";
+      });
+      btn.addEventListener("mouseleave", () => {
+        btn.style.borderColor = "#5a4a2a";
+        btn.style.boxShadow = "none";
+        btn.style.background = "rgba(40,30,15,0.9)";
+      });
+    });
+
+    // Hover for save button
+    const saveBtnEl = ctx.menuEl.querySelector("#diablo-save-btn") as HTMLButtonElement;
+    saveBtnEl.addEventListener("mouseenter", () => {
+      saveBtnEl.style.borderColor = "#6c6";
+      saveBtnEl.style.boxShadow = "0 0 15px rgba(100,200,100,0.3)";
+      saveBtnEl.style.background = "rgba(30,50,30,0.95)";
+    });
+    saveBtnEl.addEventListener("mouseleave", () => {
+      saveBtnEl.style.borderColor = "#4a4";
+      saveBtnEl.style.boxShadow = "none";
+      saveBtnEl.style.background = "rgba(40,30,15,0.9)";
+    });
+
+    // Hover for load button
+    const loadBtnEl = ctx.menuEl.querySelector("#diablo-load-btn") as HTMLButtonElement | null;
+    if (loadBtnEl) {
+      loadBtnEl.addEventListener("mouseenter", () => {
+        loadBtnEl.style.borderColor = "#68f";
+        loadBtnEl.style.boxShadow = "0 0 15px rgba(100,100,255,0.3)";
+        loadBtnEl.style.background = "rgba(30,30,50,0.95)";
+      });
+      loadBtnEl.addEventListener("mouseleave", () => {
+        loadBtnEl.style.borderColor = "#44a";
+        loadBtnEl.style.boxShadow = "none";
+        loadBtnEl.style.background = "rgba(40,30,15,0.9)";
+      });
+      loadBtnEl.addEventListener("click", () => {
+        ctx.loadGame();
+      });
+    }
+
+    // Hover effects for exit button
+    const exitBtnEl = ctx.menuEl.querySelector("#diablo-exit-btn") as HTMLButtonElement;
+    exitBtnEl.addEventListener("mouseenter", () => {
+      exitBtnEl.style.borderColor = "#e44";
+      exitBtnEl.style.boxShadow = "0 0 15px rgba(200,168,78,0.3)";
+      exitBtnEl.style.background = "rgba(50,40,20,0.95)";
+    });
+    exitBtnEl.addEventListener("mouseleave", () => {
+      exitBtnEl.style.borderColor = "#a44";
+      exitBtnEl.style.boxShadow = "none";
+      exitBtnEl.style.background = "rgba(40,30,15,0.9)";
+    });
+
+    ctx.menuEl.querySelector("#diablo-resume-btn")!.addEventListener("click", () => {
+      ctx.state.phase = DiabloPhase.PLAYING;
+      ctx.menuEl.innerHTML = "";
+    });
+    ctx.menuEl.querySelector("#diablo-controls-btn")!.addEventListener("click", () => {
+      ctx.setPhaseBeforeOverlay(DiabloPhase.PAUSED);
+      showControls(ctx);
+    });
+    ctx.menuEl.querySelector("#diablo-inventory-btn")!.addEventListener("click", () => {
+      ctx.setPhaseBeforeOverlay(DiabloPhase.PAUSED);
+      ctx.showInventory();
+    });
+    ctx.menuEl.querySelector("#diablo-character-btn")!.addEventListener("click", () => {
+      ctx.setPhaseBeforeOverlay(DiabloPhase.PAUSED);
+      showCharacterOverview(ctx);
+    });
+    ctx.menuEl.querySelector("#diablo-skilltree-btn")!.addEventListener("click", () => {
+      ctx.setPhaseBeforeOverlay(DiabloPhase.PAUSED);
+      ctx.state.phase = DiabloPhase.INVENTORY;
+      showSkillTreeScreen(ctx);
+    });
+    ctx.menuEl.querySelector("#diablo-skillswap-btn")!.addEventListener("click", () => {
+      ctx.setPhaseBeforeOverlay(DiabloPhase.PAUSED);
+      ctx.state.phase = DiabloPhase.INVENTORY;
+      showSkillSwapMenu(ctx);
+    });
+    ctx.menuEl.querySelector("#diablo-stash-btn")!.addEventListener("click", () => {
+      ctx.setPhaseBeforeOverlay(DiabloPhase.PAUSED);
+      showStash(ctx);
+    });
+    ctx.menuEl.querySelector("#diablo-collection-btn")!.addEventListener("click", () => {
+      ctx.setPhaseBeforeOverlay(DiabloPhase.PAUSED);
+      ctx.state.phase = DiabloPhase.INVENTORY;
+      showCollection(ctx);
+    });
+    ctx.menuEl.querySelector("#diablo-charselect-btn")!.addEventListener("click", () => {
+      ctx.state.phase = DiabloPhase.CLASS_SELECT;
+      showClassSelect(ctx);
+    });
+    ctx.menuEl.querySelector("#diablo-save-btn")!.addEventListener("click", () => {
+      ctx.saveGame();
+    });
+    ctx.menuEl.querySelector("#diablo-exit-btn")!.addEventListener("click", () => {
+      window.dispatchEvent(new CustomEvent("diabloExit"));
+    });
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  9. showControls
+// ════════════════════════════════════════════════════════════════════════════
+
+export function showControls(ctx: ScreenContext): void {
+    const p = ctx.state.player;
+
+    const keyCap = (key: string): string =>
+      `<span style="display:inline-block;background:rgba(60,50,30,0.8);border:1px solid #888;border-radius:4px;padding:2px 10px;font-family:monospace;min-width:40px;text-align:center;color:#fff;">${key}</span>`;
+
+    const row = (key: string, desc: string): string =>
+      `<div style="display:flex;align-items:center;gap:15px;margin:6px 0;">${keyCap(key)}<span style="color:#ccc;">${desc}</span></div>`;
+
+    const sectionHeader = (title: string): string =>
+      `<div style="font-size:20px;color:#c8a84e;border-bottom:1px solid #5a4a2a;padding-bottom:4px;margin-bottom:10px;margin-top:20px;font-weight:bold;">${title}</div>`;
+
+    // Build skills section
+    let skillsHtml = "";
+    for (let i = 0; i < p.skills.length; i++) {
+      const def = SKILL_DEFS[p.skills[i]];
+      if (!def) continue;
+      skillsHtml += `<div style="display:flex;align-items:center;gap:15px;margin:6px 0;">
+        ${keyCap(String(i + 1))}
+        <span style="font-size:18px;">${def.icon}</span>
+        <span style="color:#c8a84e;font-weight:bold;">${def.name}</span>
+        <span style="color:#999;font-size:13px;"> — ${def.description}</span>
+      </div>`;
+    }
+
+    ctx.menuEl.innerHTML = `
+      <style>
+        .diablo-controls-scroll::-webkit-scrollbar { width: 8px; }
+        .diablo-controls-scroll::-webkit-scrollbar-track { background: rgba(10,8,4,0.6); border-radius: 4px; }
+        .diablo-controls-scroll::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #5a4a2a, #3a2a1a); border-radius: 4px; border: 1px solid #6b5a3a; }
+        .diablo-controls-scroll::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, #7a6a4a, #5a4a2a); }
+      </style>
+      <div style="
+        width:100%;height:100%;background:rgba(0,0,0,0.88);display:flex;flex-direction:column;
+        align-items:center;justify-content:center;color:#fff;pointer-events:auto;position:relative;overflow:hidden;
+        background-image:radial-gradient(ellipse at center,rgba(40,30,15,0.15) 0%,transparent 70%);
+      ">
+        <!-- Ornate gothic page border -->
+        <div style="position:absolute;inset:8px;border:2px solid #5a4a2a;border-radius:4px;pointer-events:none;
+          box-shadow:inset 0 0 30px rgba(0,0,0,0.5),0 0 1px #3a2a1a;"></div>
+        <div style="position:absolute;inset:12px;border:1px solid #3a2a1a;border-radius:2px;pointer-events:none;"></div>
+        <!-- Corner diamond ornaments -->
+        <div style="position:absolute;top:14px;left:14px;color:#5a4a2a;font-size:20px;">&#9670;</div>
+        <div style="position:absolute;top:14px;right:14px;color:#5a4a2a;font-size:20px;">&#9670;</div>
+        <div style="position:absolute;bottom:14px;left:14px;color:#5a4a2a;font-size:20px;">&#9670;</div>
+        <div style="position:absolute;bottom:14px;right:14px;color:#5a4a2a;font-size:20px;">&#9670;</div>
+
+        <!-- Scroll icon -->
+        <div style="font-size:36px;margin-bottom:4px;text-shadow:0 0 12px rgba(200,168,78,0.3);">&#x1F4DC;</div>
+
+        <!-- Title with decorative dividers -->
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px;">
+          <div style="width:80px;height:1px;background:linear-gradient(to right,transparent,#5a4a2a);"></div>
+          <div style="color:#5a4a2a;font-size:14px;">&#10038;</div>
+          <h1 style="color:#c8a84e;font-size:36px;letter-spacing:4px;margin:0;text-align:center;
+            font-family:'Georgia',serif;text-shadow:0 0 15px rgba(200,168,78,0.4);">CONTROLS</h1>
+          <div style="color:#5a4a2a;font-size:14px;">&#10038;</div>
+          <div style="width:80px;height:1px;background:linear-gradient(to left,transparent,#5a4a2a);"></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+          <div style="width:120px;height:1px;background:linear-gradient(to right,transparent,#3a2a1a);"></div>
+          <div style="color:#8a7a4a;font-size:12px;letter-spacing:4px;font-family:'Georgia',serif;">KEYBINDINGS &amp; COMMANDS</div>
+          <div style="width:120px;height:1px;background:linear-gradient(to left,transparent,#3a2a1a);"></div>
+        </div>
+
+        <!-- Beveled panel frame with corner rivets -->
+        <div style="
+          max-width:700px;width:90%;background:rgba(15,10,5,0.95);
+          border:3px solid #5a4a2a;border-top-color:#8a7a4a;border-left-color:#7a6a3a;
+          border-right-color:#3a2a1a;border-bottom-color:#2a1a0a;
+          border-radius:12px;padding:30px 40px;max-height:70vh;overflow-y:auto;position:relative;
+          background-image:repeating-linear-gradient(45deg,transparent,transparent 8px,rgba(200,168,78,0.015) 8px,rgba(200,168,78,0.015) 16px);
+        " class="diablo-controls-scroll">
+          <!-- Corner rivets -->
+          <div style="position:absolute;top:6px;left:6px;width:8px;height:8px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#ffd740,#8a6a20);box-shadow:0 1px 2px rgba(0,0,0,0.6);"></div>
+          <div style="position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#ffd740,#8a6a20);box-shadow:0 1px 2px rgba(0,0,0,0.6);"></div>
+          <div style="position:absolute;bottom:6px;left:6px;width:8px;height:8px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#ffd740,#8a6a20);box-shadow:0 1px 2px rgba(0,0,0,0.6);"></div>
+          <div style="position:absolute;bottom:6px;right:6px;width:8px;height:8px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#ffd740,#8a6a20);box-shadow:0 1px 2px rgba(0,0,0,0.6);"></div>
+
+          ${sectionHeader("MOVEMENT")}
+          ${row("W / \u2191", "Move Forward")}
+          ${row("S / \u2193", "Move Backward")}
+          ${row("A / \u2190", "Move Left")}
+          ${row("D / \u2192", "Move Right")}
+          ${row("SPACE", "Dodge Roll (brief invulnerability)")}
+
+          ${sectionHeader("COMBAT")}
+          ${row("Left Click", "Attack / Select Target")}
+          ${row("Right Click", "Block (Warrior/Ranger)")}
+          ${row("1-6", "Activate Skills")}
+
+          ${sectionHeader("SKILLS")}
+          ${skillsHtml}
+
+          ${sectionHeader("POTIONS")}
+          ${row("Q", "Quick-use Health Potion")}
+          ${row("E", "Quick-use Mana Potion (outside Camelot)")}
+          ${row("F1-F4", "Use Potion from Quick Slots")}
+
+          ${sectionHeader("INTERACTION")}
+          ${row("F", "Open nearby Chest")}
+          ${row("E", "Interact (Vendors / Crafting in Camelot)")}
+          ${row("E", "Use Town Portal (near portal on combat maps)")}
+
+          ${sectionHeader("INTERFACE")}
+          ${row("I", "Open Inventory")}
+          ${row("T", "Open Talent Tree")}
+          ${row("K", "Swap Skills Menu")}
+          ${row("J", "Quest Journal")}
+          ${row("G", "Pet Management")}
+          ${row("B", "Advanced Crafting")}
+          ${row("L / P", "Toggle Lantern")}
+          ${row("M", "Toggle Fullscreen Map")}
+          ${row("ESC", "Pause Menu")}
+
+          <div style="text-align:center;margin-top:30px;">
+            <button id="diablo-controls-back" style="
+              width:200px;padding:12px 0;font-size:18px;letter-spacing:3px;font-weight:bold;
+              background:rgba(40,30,15,0.9);border:2px solid #5a4a2a;border-radius:8px;color:#c8a84e;
+              cursor:pointer;transition:all 0.2s;font-family:'Georgia',serif;pointer-events:auto;
+            ">BACK</button>
+          </div>
+        </div>
+      </div>`;
+
+    const backBtn = ctx.menuEl.querySelector("#diablo-controls-back") as HTMLButtonElement;
+    backBtn.addEventListener("mouseenter", () => {
+      backBtn.style.borderColor = "#c8a84e";
+      backBtn.style.boxShadow = "0 0 15px rgba(200,168,78,0.3)";
+      backBtn.style.background = "rgba(50,40,20,0.95)";
+    });
+    backBtn.addEventListener("mouseleave", () => {
+      backBtn.style.borderColor = "#5a4a2a";
+      backBtn.style.boxShadow = "none";
+      backBtn.style.background = "rgba(40,30,15,0.9)";
+    });
+    backBtn.addEventListener("click", () => {
+      ctx.backToMenu();
+    });
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  10. showGameOver
+// ════════════════════════════════════════════════════════════════════════════
+
+export function showGameOver(ctx: ScreenContext): void {
+    ctx.state.phase = DiabloPhase.GAME_OVER;
+    const p = ctx.state.player;
+    ctx.menuEl.innerHTML = `
+      <style>
+        @keyframes go-blood-pulse {
+          0%   { text-shadow: 0 0 20px rgba(200,30,30,0.4), 0 0 60px rgba(150,0,0,0.2); }
+          50%  { text-shadow: 0 0 40px rgba(255,40,40,0.8), 0 0 80px rgba(200,0,0,0.4), 0 4px 12px rgba(120,0,0,0.6); }
+          100% { text-shadow: 0 0 20px rgba(200,30,30,0.4), 0 0 60px rgba(150,0,0,0.2); }
+        }
+        @keyframes go-skull-float {
+          0%   { transform: translateY(0px); }
+          50%  { transform: translateY(-6px); }
+          100% { transform: translateY(0px); }
+        }
+        @keyframes go-chain-sway {
+          0%   { transform: translateX(0px); }
+          25%  { transform: translateX(2px); }
+          75%  { transform: translateX(-2px); }
+          100% { transform: translateX(0px); }
+        }
+        @keyframes go-fade-in {
+          0%   { opacity: 0; transform: scale(0.95); }
+          100% { opacity: 1; transform: scale(1); }
+        }
+        #go-return-btn:hover {
+          background: rgba(60,25,25,0.95) !important;
+          border-color: #ffd740 !important;
+          color: #ffd740 !important;
+          box-shadow: 0 0 20px rgba(255,215,64,0.3), inset 0 0 20px rgba(255,215,64,0.05) !important;
+        }
+        #go-exit-btn:hover {
+          background: rgba(50,20,20,0.95) !important;
+          border-color: #ffd740 !important;
+          color: #ffd740 !important;
+          box-shadow: 0 0 20px rgba(255,215,64,0.3), inset 0 0 20px rgba(255,215,64,0.05) !important;
+        }
+      </style>
+      <div style="
+        width:100%;height:100%;background:rgba(0,0,0,0.92);display:flex;flex-direction:column;
+        align-items:center;justify-content:center;color:#fff;font-family:'Georgia',serif;
+        animation: go-fade-in 0.6s ease-out;
+      ">
+        <!-- Outer stone frame -->
+        <div style="
+          position:relative;
+          background:rgba(15,8,8,0.95);
+          border:2px solid #5a4a2a;
+          border-top-color:#8a7a4a;border-left-color:#7a6a3a;
+          border-right-color:#3a2a1a;border-bottom-color:#2a1a0a;
+          border-radius:4px;
+          padding:6px;
+          min-width:420px;max-width:500px;
+          box-shadow: 0 0 40px rgba(150,0,0,0.3), inset 0 0 60px rgba(0,0,0,0.5);
+        ">
+          <!-- Corner rivets -->
+          <div style="position:absolute;top:-5px;left:-5px;width:10px;height:10px;border-radius:50%;
+            background:radial-gradient(circle at 35% 35%,#ffd740,#8a6a20);box-shadow:0 1px 3px rgba(0,0,0,0.6);"></div>
+          <div style="position:absolute;top:-5px;right:-5px;width:10px;height:10px;border-radius:50%;
+            background:radial-gradient(circle at 35% 35%,#ffd740,#8a6a20);box-shadow:0 1px 3px rgba(0,0,0,0.6);"></div>
+          <div style="position:absolute;bottom:-5px;left:-5px;width:10px;height:10px;border-radius:50%;
+            background:radial-gradient(circle at 35% 35%,#ffd740,#8a6a20);box-shadow:0 1px 3px rgba(0,0,0,0.6);"></div>
+          <div style="position:absolute;bottom:-5px;right:-5px;width:10px;height:10px;border-radius:50%;
+            background:radial-gradient(circle at 35% 35%,#ffd740,#8a6a20);box-shadow:0 1px 3px rgba(0,0,0,0.6);"></div>
+
+          <!-- Left chain -->
+          <div style="position:absolute;left:-18px;top:40px;bottom:40px;width:12px;display:flex;
+            flex-direction:column;align-items:center;gap:2px;animation:go-chain-sway 3s ease-in-out infinite;">
+            ${Array.from({length:10},()=>`<div style="width:8px;height:14px;border:2px solid #5a4a2a;border-radius:50%;
+              background:transparent;"></div>`).join("")}
+          </div>
+          <!-- Right chain -->
+          <div style="position:absolute;right:-18px;top:40px;bottom:40px;width:12px;display:flex;
+            flex-direction:column;align-items:center;gap:2px;animation:go-chain-sway 3s ease-in-out infinite reverse;">
+            ${Array.from({length:10},()=>`<div style="width:8px;height:14px;border:2px solid #5a4a2a;border-radius:50%;
+              background:transparent;"></div>`).join("")}
+          </div>
+
+          <!-- Inner decorative border -->
+          <div style="
+            border:1px solid #3a2a1a;
+            border-top-color:#5a4a2a;border-left-color:#4a3a2a;
+            border-right-color:#2a1a0a;border-bottom-color:#1a0a00;
+            padding:30px 36px;
+            display:flex;flex-direction:column;align-items:center;
+          ">
+            <!-- Skull icon -->
+            <div style="
+              font-size:64px;line-height:1;margin-bottom:8px;
+              filter:drop-shadow(0 0 12px rgba(200,30,30,0.5));
+              animation: go-skull-float 3s ease-in-out infinite;
+            ">&#9760;</div>
+
+            <!-- Title -->
+            <h1 style="
+              color:#cc2222;font-size:48px;letter-spacing:6px;margin:0 0 6px 0;
+              font-family:'Georgia',serif;
+              animation: go-blood-pulse 2.5s ease-in-out infinite;
+            ">YOU HAVE FALLEN</h1>
+
+            <!-- Decorative divider -->
+            <div style="display:flex;align-items:center;gap:10px;margin:12px 0 20px 0;width:100%;">
+              <div style="flex:1;height:1px;background:linear-gradient(to right,transparent,#5a4a2a);"></div>
+              <div style="width:8px;height:8px;background:#c8a84e;transform:rotate(45deg);box-shadow:0 0 6px rgba(200,168,78,0.4);"></div>
+              <div style="width:6px;height:6px;background:#8a6a20;transform:rotate(45deg);"></div>
+              <div style="width:8px;height:8px;background:#c8a84e;transform:rotate(45deg);box-shadow:0 0 6px rgba(200,168,78,0.4);"></div>
+              <div style="flex:1;height:1px;background:linear-gradient(to left,transparent,#5a4a2a);"></div>
+            </div>
+
+            <!-- Subtitle -->
+            <div style="color:#8a6a6a;font-size:14px;letter-spacing:3px;margin-bottom:24px;
+              font-style:italic;">THE DARKNESS CLAIMS ANOTHER SOUL</div>
+
+            <!-- Stats panel -->
+            <div style="
+              background:rgba(20,10,10,0.9);
+              border:1px solid #5a2a2a;
+              border-top-color:#6a3a3a;border-left-color:#5a3030;
+              border-right-color:#3a1a1a;border-bottom-color:#2a0a0a;
+              border-radius:4px;
+              padding:20px 28px;margin-bottom:24px;width:100%;
+              box-shadow:inset 0 0 30px rgba(0,0,0,0.4);
+            ">
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;text-align:center;">
+                <!-- Kills -->
+                <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+                  <div style="font-size:22px;filter:drop-shadow(0 0 4px rgba(255,100,100,0.4));">&#9876;</div>
+                  <div style="font-size:11px;color:#8a7a6a;letter-spacing:2px;text-transform:uppercase;">Kills</div>
+                  <div style="font-size:22px;color:#ff8;font-weight:bold;
+                    text-shadow:0 0 8px rgba(255,255,136,0.3);">${ctx.state.killCount}</div>
+                </div>
+                <!-- Gold -->
+                <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+                  <div style="font-size:22px;filter:drop-shadow(0 0 4px rgba(255,215,0,0.4));">&#9672;</div>
+                  <div style="font-size:11px;color:#8a7a6a;letter-spacing:2px;text-transform:uppercase;">Gold</div>
+                  <div style="font-size:22px;color:#ffd700;font-weight:bold;
+                    text-shadow:0 0 8px rgba(255,215,0,0.3);">${p.gold}</div>
+                </div>
+                <!-- Level -->
+                <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+                  <div style="font-size:22px;filter:drop-shadow(0 0 4px rgba(136,170,255,0.4));">&#9733;</div>
+                  <div style="font-size:11px;color:#8a7a6a;letter-spacing:2px;text-transform:uppercase;">Level</div>
+                  <div style="font-size:22px;color:#8af;font-weight:bold;
+                    text-shadow:0 0 8px rgba(136,170,255,0.3);">${p.level}</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Bottom decorative divider -->
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:24px;width:100%;">
+              <div style="flex:1;height:1px;background:linear-gradient(to right,transparent,#5a4a2a);"></div>
+              <div style="width:6px;height:6px;background:#c8a84e;transform:rotate(45deg);"></div>
+              <div style="flex:1;height:1px;background:linear-gradient(to left,transparent,#5a4a2a);"></div>
+            </div>
+
+            <!-- Buttons -->
+            <div style="display:flex;gap:16px;width:100%;justify-content:center;">
+              <button id="go-return-btn" style="
+                background:rgba(40,15,15,0.9);
+                border:2px solid #c8a84e;border-top-color:#dab85e;border-left-color:#b8984e;
+                border-right-color:#8a6a20;border-bottom-color:#6a4a10;
+                color:#c8a84e;font-size:16px;
+                padding:12px 28px;cursor:pointer;border-radius:4px;
+                font-family:'Georgia',serif;letter-spacing:2px;pointer-events:auto;
+                box-shadow:0 2px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,215,64,0.1);
+                transition: all 0.2s ease;
+              ">RETURN TO CHARACTER SELECT</button>
+              <button id="go-exit-btn" style="
+                background:rgba(30,12,12,0.9);
+                border:2px solid #5a4a2a;border-top-color:#7a6a3a;border-left-color:#6a5a2a;
+                border-right-color:#3a2a1a;border-bottom-color:#2a1a0a;
+                color:#8a7a6a;font-size:16px;
+                padding:12px 28px;cursor:pointer;border-radius:4px;
+                font-family:'Georgia',serif;letter-spacing:2px;pointer-events:auto;
+                box-shadow:0 2px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,215,64,0.05);
+                transition: all 0.2s ease;
+              ">EXIT</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+
+    ctx.menuEl.querySelector("#go-return-btn")!.addEventListener("click", () => {
+      ctx.state.phase = DiabloPhase.CLASS_SELECT;
+      showClassSelect(ctx);
+    });
+    ctx.menuEl.querySelector("#go-exit-btn")!.addEventListener("click", () => {
+      window.dispatchEvent(new CustomEvent("diabloExit"));
+    });
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  11. showVictory
+// ════════════════════════════════════════════════════════════════════════════
+
+export function showVictory(ctx: ScreenContext): void {
+    ctx.state.phase = DiabloPhase.VICTORY;
+    const p = ctx.state.player;
+
+    // Transfer inventory to persistent stash
+    ctx.state.persistentGold += p.gold;
+    ctx.state.persistentLevel = Math.max(ctx.state.persistentLevel, p.level);
+    ctx.state.persistentXp = Math.max(ctx.state.persistentXp, p.xp);
+    for (let i = 0; i < p.inventory.length; i++) {
+      if (p.inventory[i].item && i < ctx.state.persistentInventory.length) {
+        if (ctx.state.persistentInventory[i].item === null) {
+          ctx.state.persistentInventory[i].item = p.inventory[i].item;
+        }
+      }
+    }
+
+    const reward = MAP_COMPLETION_REWARDS[ctx.state.currentMap];
+    const rewardHtml = reward ? `
+      <div style="font-size:14px;color:#c8a84e;margin-top:8px;font-style:italic;">${reward.bonusMessage}</div>
+    ` : "";
+    const clearedCount = Object.keys(ctx.state.completedMaps).length;
+    const totalMaps = 8;
+
+    ctx.menuEl.innerHTML = `
+      <style>
+        @keyframes victory-golden-pulse {
+          0%, 100% { text-shadow:0 0 20px rgba(255,215,0,0.4), 0 0 40px rgba(255,215,0,0.2); }
+          50% { text-shadow:0 0 35px rgba(255,215,0,0.8), 0 0 70px rgba(255,215,0,0.4), 0 0 100px rgba(255,215,0,0.2); }
+        }
+        @keyframes victory-trophy-shimmer {
+          0%, 100% { filter:drop-shadow(0 0 8px rgba(255,215,0,0.5)); transform:scale(1); }
+          50% { filter:drop-shadow(0 0 22px rgba(255,215,0,0.9)) drop-shadow(0 0 44px rgba(200,168,78,0.4)); transform:scale(1.06); }
+        }
+        @keyframes victory-rivet-gleam {
+          0%, 100% { box-shadow:0 0 4px rgba(255,215,0,0.3); }
+          50% { box-shadow:0 0 10px rgba(255,215,0,0.7), 0 0 20px rgba(255,215,0,0.3); }
+        }
+        @keyframes victory-fade-in {
+          0% { opacity:0; transform:scale(0.95); }
+          100% { opacity:1; transform:scale(1); }
+        }
+        #diablo-nextmap-btn:hover {
+          background:rgba(30,50,30,0.95) !important;
+          border-color:#ffd700 !important;
+          color:#ffd700 !important;
+          box-shadow:0 0 20px rgba(255,215,0,0.4), inset 0 0 20px rgba(255,215,0,0.1) !important;
+          transform:translateY(-2px) !important;
+        }
+        #diablo-exit-btn:hover {
+          background:rgba(60,20,20,0.95) !important;
+          border-color:#ff4444 !important;
+          color:#ff6666 !important;
+          box-shadow:0 0 20px rgba(255,50,50,0.4), inset 0 0 20px rgba(255,50,50,0.1) !important;
+          transform:translateY(-2px) !important;
+        }
+        #diablo-nextmap-btn, #diablo-exit-btn {
+          transition:all 0.25s ease !important;
+        }
+      </style>
+      <div style="
+        width:100%;height:100%;
+        background:radial-gradient(ellipse at 50% 40%, rgba(80,65,10,0.35) 0%, rgba(0,0,0,0.95) 65%);
+        display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;
+        font-family:'Georgia',serif;
+        animation:victory-fade-in 0.6s ease-out;
+      ">
+        <!-- Trophy/Crown Icon -->
+        <div style="
+          font-size:74px;line-height:1;margin-bottom:6px;
+          animation:victory-trophy-shimmer 2.5s ease-in-out infinite;
+        ">&#128081;</div>
+
+        <!-- Title -->
+        <h1 style="
+          color:#ffd700;font-size:54px;letter-spacing:8px;margin:0 0 6px 0;
+          font-family:'Georgia',serif;
+          animation:victory-golden-pulse 2s ease-in-out infinite;
+          text-transform:uppercase;
+        ">MAP CLEARED!</h1>
+
+        <!-- Top decorative divider -->
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
+          <div style="width:80px;height:1px;background:linear-gradient(to right,transparent,#c8a84e);"></div>
+          <div style="width:8px;height:8px;background:#c8a84e;transform:rotate(45deg);box-shadow:0 0 6px rgba(200,168,78,0.4);"></div>
+          <span style="color:#ffd700;font-size:14px;">&#9884;</span>
+          <div style="width:8px;height:8px;background:#c8a84e;transform:rotate(45deg);box-shadow:0 0 6px rgba(200,168,78,0.4);"></div>
+          <div style="width:80px;height:1px;background:linear-gradient(to left,transparent,#c8a84e);"></div>
+        </div>
+
+        <!-- Main Panel: stone frame -->
+        <div style="
+          position:relative;
+          background:linear-gradient(180deg, rgba(30,25,15,0.95) 0%, rgba(12,10,5,0.98) 100%);
+          border:2px solid #5a4a2a;
+          border-top-color:#8a7a4a;border-left-color:#7a6a3a;
+          border-right-color:#3a2a1a;border-bottom-color:#2a1a0a;
+          border-radius:4px;
+          padding:32px 40px;margin-bottom:24px;min-width:400px;
+          box-shadow:0 0 50px rgba(0,0,0,0.8), inset 0 1px 0 rgba(200,168,78,0.15), 0 0 90px rgba(200,168,78,0.06);
+        ">
+          <!-- Inner decorative border -->
+          <div style="position:absolute;inset:4px;border:1px solid #3a2a1a;border-top-color:#5a4a2a;border-left-color:#4a3a2a;
+            border-right-color:#2a1a0a;border-bottom-color:#1a0a00;border-radius:3px;pointer-events:none;"></div>
+
+          <!-- Corner rivets -->
+          <div style="position:absolute;top:6px;left:6px;width:10px;height:10px;border-radius:50%;
+            background:radial-gradient(circle at 35% 35%,#ffd740,#8a6a20);
+            animation:victory-rivet-gleam 3s ease-in-out infinite;"></div>
+          <div style="position:absolute;top:6px;right:6px;width:10px;height:10px;border-radius:50%;
+            background:radial-gradient(circle at 35% 35%,#ffd740,#8a6a20);
+            animation:victory-rivet-gleam 3s ease-in-out 0.5s infinite;"></div>
+          <div style="position:absolute;bottom:6px;left:6px;width:10px;height:10px;border-radius:50%;
+            background:radial-gradient(circle at 35% 35%,#ffd740,#8a6a20);
+            animation:victory-rivet-gleam 3s ease-in-out 1s infinite;"></div>
+          <div style="position:absolute;bottom:6px;right:6px;width:10px;height:10px;border-radius:50%;
+            background:radial-gradient(circle at 35% 35%,#ffd740,#8a6a20);
+            animation:victory-rivet-gleam 3s ease-in-out 1.5s infinite;"></div>
+
+          <!-- Stats Grid -->
+          <div style="
+            display:grid;grid-template-columns:1fr 1fr;gap:18px 36px;
+            padding:8px 12px;
+          ">
+            <!-- Kills -->
+            <div style="display:flex;align-items:center;gap:12px;">
+              <div style="font-size:24px;filter:drop-shadow(0 0 5px rgba(255,100,100,0.4));">&#128128;</div>
+              <div>
+                <div style="font-size:10px;color:#8a7a6a;text-transform:uppercase;letter-spacing:2px;">Kills</div>
+                <div style="font-size:24px;color:#ff8;font-weight:bold;text-shadow:0 0 10px rgba(255,255,136,0.3);">${ctx.state.killCount}</div>
+              </div>
+            </div>
+            <!-- Gold -->
+            <div style="display:flex;align-items:center;gap:12px;">
+              <div style="font-size:24px;filter:drop-shadow(0 0 5px rgba(255,215,0,0.4));">&#129689;</div>
+              <div>
+                <div style="font-size:10px;color:#8a7a6a;text-transform:uppercase;letter-spacing:2px;">Gold</div>
+                <div style="font-size:24px;color:#ffd700;font-weight:bold;text-shadow:0 0 10px rgba(255,215,0,0.3);">${p.gold}</div>
+              </div>
+            </div>
+            <!-- Level -->
+            <div style="display:flex;align-items:center;gap:12px;">
+              <div style="font-size:24px;filter:drop-shadow(0 0 5px rgba(136,170,255,0.4));">&#11088;</div>
+              <div>
+                <div style="font-size:10px;color:#8a7a6a;text-transform:uppercase;letter-spacing:2px;">Level</div>
+                <div style="font-size:24px;color:#8af;font-weight:bold;text-shadow:0 0 10px rgba(136,170,255,0.3);">${p.level}</div>
+              </div>
+            </div>
+            <!-- Maps Cleared -->
+            <div style="display:flex;align-items:center;gap:12px;">
+              <div style="font-size:24px;filter:drop-shadow(0 0 5px rgba(174,213,129,0.4));">&#128506;</div>
+              <div>
+                <div style="font-size:10px;color:#8a7a6a;text-transform:uppercase;letter-spacing:2px;">Maps Cleared</div>
+                <div style="font-size:24px;color:#aed581;font-weight:bold;text-shadow:0 0 10px rgba(174,213,129,0.3);">${clearedCount}<span style="font-size:14px;color:#666;">/${totalMaps}</span></div>
+              </div>
+            </div>
+          </div>
+
+          ${rewardHtml ? `
+          <!-- Reward divider -->
+          <div style="display:flex;align-items:center;gap:10px;margin:20px 0 16px 0;">
+            <div style="flex:1;height:1px;background:linear-gradient(to right,transparent,#5a4a2a);"></div>
+            <div style="width:6px;height:6px;background:#c8a84e;transform:rotate(45deg);"></div>
+            <span style="color:#c8a84e;font-size:12px;">&#9830;</span>
+            <div style="width:6px;height:6px;background:#c8a84e;transform:rotate(45deg);"></div>
+            <div style="flex:1;height:1px;background:linear-gradient(to left,transparent,#5a4a2a);"></div>
+          </div>
+          <!-- Reward message -->
+          <div style="
+            text-align:center;padding:12px 18px;
+            background:linear-gradient(90deg, transparent, rgba(200,168,78,0.1), transparent);
+            border-left:2px solid #c8a84e;border-right:2px solid #c8a84e;border-radius:2px;
+          ">
+            <div style="font-size:10px;color:#8a7a6a;text-transform:uppercase;letter-spacing:3px;margin-bottom:6px;">&#9733; Reward &#9733;</div>
+            <div style="font-size:15px;color:#ffd700;font-style:italic;text-shadow:0 0 12px rgba(255,215,0,0.3);">${rewardHtml}</div>
+          </div>
+          ` : ''}
+        </div>
+
+        <!-- Bottom decorative divider -->
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
+          <div style="width:50px;height:1px;background:linear-gradient(to right,transparent,#5a4a2a);"></div>
+          <div style="width:5px;height:5px;background:#5a4a2a;transform:rotate(45deg);"></div>
+          <div style="width:50px;height:1px;background:linear-gradient(to left,transparent,#5a4a2a);"></div>
+        </div>
+
+        <!-- Buttons -->
+        <div style="display:flex;gap:20px;">
+          <button id="diablo-nextmap-btn" style="
+            background:rgba(15,30,15,0.9);
+            border:2px solid #c8a84e;border-top-color:#dab85e;border-left-color:#b8984e;
+            border-right-color:#8a6a20;border-bottom-color:#6a4a10;
+            color:#c8a84e;font-size:17px;
+            padding:14px 36px;cursor:pointer;border-radius:4px;
+            font-family:'Georgia',serif;letter-spacing:2px;pointer-events:auto;
+            box-shadow:0 2px 10px rgba(0,0,0,0.4), inset 0 1px 0 rgba(200,168,78,0.12);
+            text-shadow:0 0 8px rgba(200,168,78,0.3);
+          ">&#9876; SELECT ANOTHER MAP</button>
+          <button id="diablo-exit-btn" style="
+            background:rgba(40,15,15,0.9);
+            border:2px solid #a44;border-top-color:#c55;border-left-color:#b44;
+            border-right-color:#833;border-bottom-color:#622;
+            color:#e66;font-size:17px;
+            padding:14px 36px;cursor:pointer;border-radius:4px;
+            font-family:'Georgia',serif;letter-spacing:2px;pointer-events:auto;
+            box-shadow:0 2px 10px rgba(0,0,0,0.4), inset 0 1px 0 rgba(170,68,68,0.12);
+            text-shadow:0 0 8px rgba(230,100,100,0.3);
+          ">&#10006; EXIT</button>
+        </div>
+      </div>`;
+
+    ctx.menuEl.querySelector("#diablo-nextmap-btn")!.addEventListener("click", () => {
+      ctx.showMapSelect();
+    });
+    ctx.menuEl.querySelector("#diablo-exit-btn")!.addEventListener("click", () => {
+      window.dispatchEvent(new CustomEvent("diabloExit"));
+    });
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  12. showStash
+// ════════════════════════════════════════════════════════════════════════════
+
+export function showStash(ctx: ScreenContext): void {
+    const p = ctx.state.player;
+    const stash = ctx.state.persistentStash;
+
+    // Build inventory grid (8x5 = 40 slots)
+    let invHtml = "";
+    for (let i = 0; i < p.inventory.length; i++) {
+      const slot = p.inventory[i];
+      const item = slot.item;
+      const borderColor = item ? RARITY_CSS[item.rarity] : "#3a3a3a";
+      const content = item
+        ? `<div style="font-size:22px;">${item.icon}</div>`
+        : "";
+      invHtml += `
+        <div class="stash-inv-slot" data-inv-idx="${i}" style="
+          width:55px;height:55px;background:rgba(15,10,5,0.85);border:1px solid ${borderColor};
+          border-radius:4px;display:flex;align-items:center;justify-content:center;
+          cursor:pointer;pointer-events:auto;position:relative;
+        ">${content}</div>`;
+    }
+
+    // Build stash grid (10x15 = 150 slots)
+    let stashHtml = "";
+    for (let i = 0; i < stash.length; i++) {
+      const slot = stash[i];
+      const item = slot.item;
+      const borderColor = item ? RARITY_CSS[item.rarity] : "#3a3a3a";
+      const content = item
+        ? `<div style="font-size:22px;">${item.icon}</div>`
+        : "";
+      stashHtml += `
+        <div class="stash-slot" data-stash-idx="${i}" style="
+          width:55px;height:55px;background:rgba(15,10,5,0.85);border:1px solid ${borderColor};
+          border-radius:4px;display:flex;align-items:center;justify-content:center;
+          cursor:pointer;pointer-events:auto;position:relative;
+        ">${content}</div>`;
+    }
+
+    ctx.menuEl.innerHTML = `
+      <div style="
+        width:100%;height:100%;background:rgba(0,0,0,0.90);display:flex;flex-direction:column;
+        align-items:center;justify-content:center;color:#fff;pointer-events:auto;
+      ">
+        <h2 style="color:#ffd700;font-size:32px;letter-spacing:3px;margin-bottom:16px;font-family:'Georgia',serif;
+          text-shadow:0 0 15px rgba(255,215,0,0.4);">
+          SHARED STASH
+        </h2>
+        <div id="stash-sort-bar" style="display:flex;gap:8px;margin-bottom:10px;justify-content:center;">
+          <button class="stash-sort-btn" data-sort="rarity" style="padding:4px 12px;background:#555;color:#fff;border:1px solid #888;border-radius:4px;cursor:pointer;font-family:Georgia,serif;font-size:12px;">Sort: Rarity</button>
+          <button class="stash-sort-btn" data-sort="type" style="padding:4px 12px;background:#555;color:#fff;border:1px solid #888;border-radius:4px;cursor:pointer;font-family:Georgia,serif;font-size:12px;">Sort: Type</button>
+          <button class="stash-sort-btn" data-sort="level" style="padding:4px 12px;background:#555;color:#fff;border:1px solid #888;border-radius:4px;cursor:pointer;font-family:Georgia,serif;font-size:12px;">Sort: Level</button>
+        </div>
+        <div style="display:flex;gap:30px;align-items:flex-start;">
+          <!-- Inventory Panel -->
+          <div>
+            <div style="color:#c8a84e;font-size:14px;margin-bottom:8px;text-align:center;font-weight:bold;">INVENTORY</div>
+            <div style="display:grid;grid-template-columns:repeat(8,55px);grid-template-rows:repeat(5,55px);gap:3px;">
+              ${invHtml}
+            </div>
+          </div>
+          <!-- Stash Panel -->
+          <div>
+            <div style="color:#c8a84e;font-size:14px;margin-bottom:8px;text-align:center;font-weight:bold;">STASH</div>
+            <div style="display:grid;grid-template-columns:repeat(10,55px);gap:3px;max-height:700px;overflow-y:auto;">
+              ${stashHtml}
+            </div>
+          </div>
+        </div>
+        <!-- Bottom bar -->
+        <div style="margin-top:16px;display:flex;gap:30px;align-items:center;">
+          <div style="font-size:16px;color:#ffd700;">\uD83E\uDE99 ${p.gold}</div>
+          <button id="stash-back-btn" style="
+            padding:12px 40px;font-size:18px;letter-spacing:3px;font-weight:bold;
+            background:rgba(40,30,15,0.9);border:2px solid #5a4a2a;border-radius:8px;color:#c8a84e;
+            cursor:pointer;transition:all 0.2s;font-family:'Georgia',serif;pointer-events:auto;
+          ">BACK</button>
+        </div>
+        <div id="stash-status" style="margin-top:10px;color:#ff4444;font-size:14px;min-height:20px;"></div>
+        <!-- Tooltip container -->
+        <div id="inv-tooltip" style="
+          display:none;position:fixed;z-index:100;background:rgba(10,5,2,0.96);border:2px solid #5a4a2a;
+          border-radius:8px;padding:14px;max-width:280px;pointer-events:none;color:#ccc;font-size:13px;
+        "></div>
+      </div>`;
+
+    const statusEl = ctx.menuEl.querySelector("#stash-status") as HTMLDivElement;
+    const showStatus = (msg: string, color: string) => {
+      statusEl.textContent = msg;
+      statusEl.style.color = color;
+      setTimeout(() => { statusEl.textContent = ""; }, 1500);
+    };
+
+    // Wire up inventory slots (click to transfer to stash)
+    const invSlots = ctx.menuEl.querySelectorAll(".stash-inv-slot") as NodeListOf<HTMLDivElement>;
+    invSlots.forEach((el) => {
+      const idx = parseInt(el.getAttribute("data-inv-idx")!, 10);
+      el.addEventListener("click", () => {
+        const item = p.inventory[idx].item;
+        if (!item) return;
+        const emptyStashIdx = stash.findIndex((s) => s.item === null);
+        if (emptyStashIdx < 0) {
+          showStatus("No space in stash!", "#ff4444");
+          return;
+        }
+        stash[emptyStashIdx].item = item;
+        p.inventory[idx].item = null;
+        showStash(ctx); // Re-render
+      });
+      el.addEventListener("mouseenter", (ev) => showItemTooltip(ctx, ev, p.inventory[idx].item));
+      el.addEventListener("mouseleave", () => ctx.hideItemTooltip());
+    });
+
+    // Wire up stash slots (click to transfer to inventory)
+    const stashSlots = ctx.menuEl.querySelectorAll(".stash-slot") as NodeListOf<HTMLDivElement>;
+    stashSlots.forEach((el) => {
+      const idx = parseInt(el.getAttribute("data-stash-idx")!, 10);
+      el.addEventListener("click", () => {
+        const item = stash[idx].item;
+        if (!item) return;
+        const emptyInvIdx = p.inventory.findIndex((s) => s.item === null);
+        if (emptyInvIdx < 0) {
+          showStatus("No space in inventory!", "#ff4444");
+          return;
+        }
+        p.inventory[emptyInvIdx].item = item;
+        stash[idx].item = null;
+        showStash(ctx); // Re-render
+      });
+      el.addEventListener("mouseenter", (ev) => showItemTooltip(ctx, ev, stash[idx].item));
+      el.addEventListener("mouseleave", () => ctx.hideItemTooltip());
+    });
+
+    // Sort buttons
+    const sortBtns = ctx.menuEl.querySelectorAll(".stash-sort-btn") as NodeListOf<HTMLButtonElement>;
+    sortBtns.forEach((btn) => {
+      btn.addEventListener("mouseenter", () => {
+        btn.style.borderColor = "#c8a84e";
+        btn.style.background = "#666";
+      });
+      btn.addEventListener("mouseleave", () => {
+        btn.style.borderColor = "#888";
+        btn.style.background = "#555";
+      });
+      btn.addEventListener("click", () => {
+        const sortType = btn.getAttribute("data-sort") as 'rarity' | 'type' | 'level';
+        ctx.sortStash(sortType);
+        showStash(ctx);
+      });
+    });
+
+    // Back button
+    const backBtn = ctx.menuEl.querySelector("#stash-back-btn") as HTMLButtonElement;
+    backBtn.addEventListener("mouseenter", () => {
+      backBtn.style.borderColor = "#c8a84e";
+      backBtn.style.boxShadow = "0 0 15px rgba(200,168,78,0.3)";
+      backBtn.style.background = "rgba(50,40,20,0.95)";
+    });
+    backBtn.addEventListener("mouseleave", () => {
+      backBtn.style.borderColor = "#5a4a2a";
+      backBtn.style.boxShadow = "none";
+      backBtn.style.background = "rgba(40,30,15,0.9)";
+    });
+    backBtn.addEventListener("click", () => {
+      ctx.backToMenu();
+    });
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  13. showSkillTreeScreen
+// ════════════════════════════════════════════════════════════════════════════
+
+export function showSkillTreeScreen(ctx: ScreenContext): void {
+    const p = ctx.state.player;
+
+    // All skills for the player's class, ordered by unlock level
+    const SKILL_UNLOCK_LEVELS: Partial<Record<SkillId, number>> = {
+      // Warrior
+      [SkillId.CLEAVE]: 1, [SkillId.SHIELD_BASH]: 3, [SkillId.WHIRLWIND]: 6,
+      [SkillId.BATTLE_CRY]: 10, [SkillId.GROUND_SLAM]: 15, [SkillId.BLADE_FURY]: 20,
+      [SkillId.LEAP]: 3, [SkillId.IRON_SKIN]: 6, [SkillId.TAUNT]: 9,
+      [SkillId.CRUSHING_BLOW]: 12, [SkillId.INTIMIDATING_ROAR]: 15, [SkillId.EARTHQUAKE]: 18,
+      // Mage
+      [SkillId.FIREBALL]: 1, [SkillId.LIGHTNING_BOLT]: 3, [SkillId.ICE_NOVA]: 6,
+      [SkillId.ARCANE_SHIELD]: 10, [SkillId.METEOR]: 15, [SkillId.CHAIN_LIGHTNING]: 20,
+      [SkillId.SUMMON_ELEMENTAL]: 3, [SkillId.BLINK]: 6, [SkillId.FROST_BARRIER]: 9,
+      [SkillId.ARCANE_MISSILES]: 12, [SkillId.MANA_SIPHON]: 15, [SkillId.TIME_WARP]: 18,
+      // Ranger
+      [SkillId.MULTI_SHOT]: 1, [SkillId.POISON_ARROW]: 3, [SkillId.EVASIVE_ROLL]: 6,
+      [SkillId.EXPLOSIVE_TRAP]: 10, [SkillId.RAIN_OF_ARROWS]: 15, [SkillId.PIERCING_SHOT]: 20,
+      [SkillId.GRAPPLING_HOOK]: 3, [SkillId.CAMOUFLAGE]: 6, [SkillId.NET_TRAP]: 9,
+      [SkillId.FIRE_VOLLEY]: 12, [SkillId.WIND_WALK]: 15, [SkillId.SHADOW_STRIKE]: 18,
+    };
+
+    // Skill upgrade descriptions per level tier
+    const SKILL_UPGRADES: Record<number, string> = {
+      5: "+10% damage",
+      10: "+15% damage, -1s cooldown",
+      15: "+20% damage, -10% mana cost",
+      20: "+25% damage, -2s cooldown",
+      25: "+30% damage, +1 range",
+      30: "+40% damage, -15% mana cost",
+      35: "+50% damage, +AOE radius",
+      40: "+60% damage, -3s cooldown",
+    };
+
+    // Get all skills for current class
+    const classSkills = Object.values(SKILL_DEFS).filter((s) => s.class === p.class);
+    classSkills.sort((a, b) => (SKILL_UNLOCK_LEVELS[a.id] || 99) - (SKILL_UNLOCK_LEVELS[b.id] || 99));
+
+    let skillsHtml = "";
+    for (const def of classSkills) {
+      const unlockLvl = SKILL_UNLOCK_LEVELS[def.id] || 1;
+      const unlocked = p.level >= unlockLvl;
+      const isActive = p.skills.includes(def.id);
+      const borderColor = isActive ? "#c8a84e" : unlocked ? "#5a8a2a" : "#3a3a3a";
+      const opacity = unlocked ? "1" : "0.5";
+
+      const statusText = isActive
+        ? `<span style="color:#ffd700;font-weight:bold;">EQUIPPED</span>`
+        : unlocked
+          ? `<span style="color:#5a5;">UNLOCKED</span>`
+          : `<span style="color:#888;">Unlocks at Level ${unlockLvl}</span>`;
+
+      // Status effect info
+      let statusEffHtml = "";
+      if (def.statusEffect) {
+        statusEffHtml = `<span style="color:#f84;">Applies: ${def.statusEffect}</span>`;
+      }
+
+      // AOE info
+      let aoeHtml = "";
+      if (def.aoeRadius) {
+        aoeHtml = `<span style="color:#8af;">AOE: ${def.aoeRadius} radius</span>`;
+      }
+
+      // Build upgrade progression
+      let upgradeHtml = "";
+      const upgradeLevels = [5, 10, 15, 20, 25, 30, 35, 40];
+      for (const uLvl of upgradeLevels) {
+        if (uLvl <= unlockLvl) continue; // skip upgrades below unlock level
+        const reached = p.level >= uLvl;
+        const color = reached ? "#6c6" : "#555";
+        const check = reached ? "+" : "-";
+        upgradeHtml += `<div style="color:${color};font-size:11px;margin-left:8px;">${check} Lv.${uLvl}: ${SKILL_UPGRADES[uLvl]}</div>`;
+      }
+
+      // Build specialization / branch choices
+      const skillBranches = SKILL_BRANCHES.filter((b) => b.skillId === def.id);
+      const totalTalentSpent = Object.values(p.talents).reduce((sum, v) => sum + v, 0);
+      let branchHtml = "";
+      for (const bd of skillBranches) {
+        const key = `${bd.skillId}_b${bd.tier}`;
+        const choice = p.skillBranches[key] || 0;
+        const meetsReq = totalTalentSpent >= bd.talentReq;
+
+        const renderOption = (opt: typeof bd.optionA, optIdx: 1 | 2) => {
+          const isChosen = choice === optIdx;
+          const isOther = choice > 0 && !isChosen;
+          let modifiers = "";
+          if (opt.damageMult && opt.damageMult !== 1) modifiers += `<span style="color:#fa8;">Dmg x${opt.damageMult}</span> `;
+          if (opt.cooldownMult && opt.cooldownMult !== 1) modifiers += `<span style="color:#8af;">CD x${opt.cooldownMult}</span> `;
+          if (opt.manaCostMult && opt.manaCostMult !== 1) modifiers += `<span style="color:#48f;">Mana x${opt.manaCostMult}</span> `;
+          if (opt.aoeRadiusMult && opt.aoeRadiusMult !== 1) modifiers += `<span style="color:#8af;">AoE x${opt.aoeRadiusMult}</span> `;
+          if (opt.extraProjectiles) modifiers += `<span style="color:#ff8;">+${opt.extraProjectiles} proj</span> `;
+          if (opt.statusOverride) modifiers += `<span style="color:#f84;">${opt.statusOverride}</span> `;
+
+          const borderCol = isChosen ? "#ffd700" : isOther ? "#2a2a2a" : meetsReq ? "#5a8a2a" : "#3a3a3a";
+          const opac = isOther ? "0.4" : (!meetsReq && !isChosen) ? "0.5" : "1";
+          const canChoose = !choice && meetsReq;
+
+          return `<div class="branch-opt" data-branch-key="${key}" data-branch-choice="${optIdx}" style="
+            flex:1;background:rgba(10,8,4,0.9);border:2px solid ${borderCol};border-radius:6px;
+            padding:8px;opacity:${opac};cursor:${canChoose ? "pointer" : "default"};
+            pointer-events:auto;transition:border-color 0.2s;min-width:0;
+          ">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+              <span style="font-size:18px;">${opt.icon}</span>
+              <span style="color:${isChosen ? "#ffd700" : "#c8a84e"};font-weight:bold;font-size:12px;">${opt.name}</span>
+            </div>
+            <div style="color:#aaa;font-size:10px;margin-bottom:4px;">${opt.description}</div>
+            <div style="display:flex;flex-wrap:wrap;gap:4px;font-size:10px;">${modifiers}</div>
+            ${isChosen ? '<div style="color:#ffd700;font-size:10px;margin-top:4px;font-weight:bold;">CHOSEN</div>' : ""}
+            ${canChoose ? '<div style="color:#5a5;font-size:10px;margin-top:4px;font-weight:bold;">CHOOSE</div>' : ""}
+          </div>`;
+        };
+
+        const reqText = meetsReq
+          ? ""
+          : `<div style="color:#888;font-size:10px;margin-bottom:4px;">Requires ${bd.talentReq} talent points invested (${totalTalentSpent} / ${bd.talentReq})</div>`;
+
+        branchHtml += `
+          <div style="margin-top:6px;">
+            <div style="font-size:11px;color:#c8a84e;margin-bottom:4px;">Tier ${bd.tier} Specialization</div>
+            ${reqText}
+            <div style="display:flex;gap:8px;">
+              ${renderOption(bd.optionA, 1)}
+              ${renderOption(bd.optionB, 2)}
+            </div>
+          </div>`;
+      }
+
+      skillsHtml += `
+        <div style="
+          background:rgba(15,10,5,0.9);border:2px solid ${borderColor};border-radius:8px;
+          padding:14px;opacity:${opacity};transition:border-color 0.2s;margin-bottom:10px;
+        ">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+            <span style="font-size:28px;">${def.icon}</span>
+            <div style="flex:1;">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <span style="color:#c8a84e;font-weight:bold;font-size:16px;">${def.name}</span>
+                ${statusText}
+              </div>
+              <div style="color:#aaa;font-size:12px;margin-top:2px;">${def.description}</div>
+            </div>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:#999;margin-bottom:6px;">
+            <span>Cooldown: ${def.cooldown}s</span>
+            <span style="color:#48f;">Mana: ${def.manaCost}</span>
+            <span style="color:#fa8;">Type: ${def.damageType}</span>
+            <span>Dmg: x${def.damageMultiplier}</span>
+            ${statusEffHtml}
+            ${aoeHtml}
+          </div>
+          ${upgradeHtml ? `<div style="border-top:1px solid #333;padding-top:4px;margin-top:4px;">
+            <div style="font-size:11px;color:#888;margin-bottom:2px;">Level Upgrades:</div>
+            ${upgradeHtml}
+          </div>` : ""}
+          ${branchHtml ? `<div style="border-top:1px solid #444;padding-top:6px;margin-top:6px;">
+            <div style="font-size:12px;color:#c8a84e;font-weight:bold;margin-bottom:4px;">Specializations</div>
+            ${branchHtml}
+          </div>` : ""}
+        </div>`;
+    }
+
+    // Talent summary
+    const talentBonuses = ctx.getTalentBonuses();
+    const cdr = talentBonuses[TalentEffectType.SKILL_COOLDOWN_REDUCTION] || 0;
+    const bonusDmg = talentBonuses[TalentEffectType.BONUS_DAMAGE_PERCENT] || 0;
+    let talentSummary = "";
+    if (cdr > 0) talentSummary += `<span style="color:#8af;margin-right:12px;">CDR: ${cdr}%</span>`;
+    if (bonusDmg > 0) talentSummary += `<span style="color:#fa8;margin-right:12px;">+${bonusDmg}% Damage</span>`;
+    if (!talentSummary) talentSummary = `<span style="color:#555;">No talent bonuses yet</span>`;
+
+    ctx.menuEl.innerHTML = `
+      <div style="
+        width:100%;height:100%;background:rgba(0,0,0,0.90);display:flex;flex-direction:column;
+        align-items:center;justify-content:center;color:#fff;pointer-events:auto;
+      ">
+        <h2 style="color:#c8a84e;font-size:32px;letter-spacing:3px;margin-bottom:4px;font-family:'Georgia',serif;
+          text-shadow:0 0 15px rgba(200,168,78,0.4);">SKILL TREE</h2>
+        <div style="font-size:14px;color:#888;margin-bottom:12px;">Level ${p.level} ${p.class.charAt(0).toUpperCase() + p.class.slice(1).toLowerCase()} — Talent Points: <span style="color:#ffd700;">${p.talentPoints}</span></div>
+        <div style="display:flex;gap:12px;margin-bottom:16px;">
+          <button id="st-tab-skills" style="
+            padding:8px 24px;font-size:14px;letter-spacing:2px;font-weight:bold;
+            background:rgba(60,50,20,0.9);border:2px solid #c8a84e;border-radius:6px;color:#ffd700;
+            cursor:pointer;font-family:'Georgia',serif;pointer-events:auto;
+          ">SKILLS</button>
+          <button id="st-tab-talents" style="
+            padding:8px 24px;font-size:14px;letter-spacing:2px;font-weight:bold;
+            background:rgba(30,20,10,0.7);border:2px solid #3a3a2a;border-radius:6px;color:#888;
+            cursor:pointer;font-family:'Georgia',serif;pointer-events:auto;
+          ">TALENTS</button>
+        </div>
+        <div style="max-width:600px;width:90%;max-height:60vh;overflow-y:auto;padding:4px;">
+          ${skillsHtml}
+        </div>
+        <div style="margin-top:12px;padding:8px 16px;background:rgba(20,15,10,0.9);border:1px solid #5a4a2a;border-radius:8px;font-size:13px;">
+          Talent Bonuses: ${talentSummary}
+        </div>
+        <div style="margin-top:10px;color:#888;font-size:12px;">Press Escape to close</div>
+      </div>`;
+
+    // Tab switching
+    ctx.menuEl.querySelector("#st-tab-talents")!.addEventListener("click", () => {
+      showTalentTree(ctx);
+    });
+    ctx.menuEl.querySelector("#st-tab-skills")!.addEventListener("mouseenter", (ev) => {
+      (ev.target as HTMLElement).style.boxShadow = "0 0 12px rgba(200,168,78,0.3)";
+    });
+    ctx.menuEl.querySelector("#st-tab-skills")!.addEventListener("mouseleave", (ev) => {
+      (ev.target as HTMLElement).style.boxShadow = "none";
+    });
+    ctx.menuEl.querySelector("#st-tab-talents")!.addEventListener("mouseenter", (ev) => {
+      (ev.target as HTMLElement).style.borderColor = "#c8a84e";
+      (ev.target as HTMLElement).style.boxShadow = "0 0 12px rgba(200,168,78,0.3)";
+    });
+    ctx.menuEl.querySelector("#st-tab-talents")!.addEventListener("mouseleave", (ev) => {
+      (ev.target as HTMLElement).style.borderColor = "#3a3a2a";
+      (ev.target as HTMLElement).style.boxShadow = "none";
+    });
+
+    // Wire up branch specialization choice buttons
+    const branchOpts = ctx.menuEl.querySelectorAll(".branch-opt") as NodeListOf<HTMLDivElement>;
+    branchOpts.forEach((el) => {
+      const key = el.getAttribute("data-branch-key")!;
+      const choiceVal = parseInt(el.getAttribute("data-branch-choice")!, 10);
+      const currentChoice = p.skillBranches[key] || 0;
+      const bd = SKILL_BRANCHES.find((b) => `${b.skillId}_b${b.tier}` === key);
+      if (!bd) return;
+      const totalSpent = Object.values(p.talents).reduce((sum, v) => sum + v, 0);
+      const canChoose = !currentChoice && totalSpent >= bd.talentReq;
+
+      if (canChoose) {
+        el.addEventListener("mouseenter", () => {
+          el.style.borderColor = "#c8a84e";
+          el.style.boxShadow = "0 0 12px rgba(200,168,78,0.3)";
+        });
+        el.addEventListener("mouseleave", () => {
+          el.style.borderColor = "#5a8a2a";
+          el.style.boxShadow = "none";
+        });
+        el.addEventListener("click", () => {
+          p.skillBranches[key] = choiceVal;
+          showSkillTreeScreen(ctx); // refresh to show chosen state
+        });
+      }
+    });
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  14. showTalentTree
+// ════════════════════════════════════════════════════════════════════════════
+
+export function showTalentTree(ctx: ScreenContext): void {
+    const p = ctx.state.player;
+    const tree = TALENT_TREES[p.class];
+    const branchNames = TALENT_BRANCH_NAMES[p.class];
+
+    const renderTree = () => {
+      let branchesHtml = "";
+      for (let b = 0; b < 3; b++) {
+        const branchNodes = tree.filter((n) => n.branch === b);
+        const pointsInBranch = ctx.getTalentPointsInBranch(b);
+
+        let nodesHtml = "";
+        for (const node of branchNodes.sort((a, c) => a.tier - c.tier)) {
+          const rank = p.talents[node.id] || 0;
+          const isMaxed = rank >= node.maxRank;
+          const tierReq = node.tier * 3;
+          const hasPrereq = !node.requires || (p.talents[node.requires] || 0) > 0;
+          const hasTierReq = pointsInBranch >= tierReq;
+          const canInvest = p.talentPoints > 0 && !isMaxed && hasPrereq && hasTierReq;
+          const borderColor = isMaxed ? "#ffd700" : canInvest ? "#5a8a2a" : "#3a3a3a";
+          const opacity = (rank > 0 || canInvest) ? "1" : "0.5";
+
+          let effectsText = "";
+          for (const eff of node.effects) {
+            effectsText += `<div style="font-size:10px;color:#8f8;">+${eff.value * Math.max(1, rank)} total</div>`;
+          }
+
+          nodesHtml += `
+            <div class="talent-node" data-talent-id="${node.id}" style="
+              width:148px;background:rgba(15,10,5,0.9);
+              border:2px solid ${borderColor};
+              border-radius:8px;padding:10px;cursor:${canInvest ? "pointer" : "default"};
+              pointer-events:auto;opacity:${opacity};transition:border-color 0.2s,box-shadow 0.3s;
+              position:relative;
+              ${isMaxed ? "box-shadow:0 0 10px rgba(255,215,0,0.2),inset 0 0 10px rgba(255,215,0,0.05);" : rank > 0 ? "box-shadow:0 0 8px rgba(90,138,42,0.2);" : ""}
+            ">
+              ${isMaxed ? '<div style="position:absolute;top:3px;right:3px;color:#ffd700;font-size:8px;">\u2605</div>' : ""}
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                <div style="position:relative;display:inline-block;">
+                  ${rank > 0 ? '<div style="position:absolute;inset:-3px;border-radius:50%;background:radial-gradient(circle,' + (isMaxed ? 'rgba(255,215,0,0.15)' : 'rgba(90,138,42,0.1)') + ',transparent 70%);"></div>' : ""}
+                  <span style="font-size:20px;position:relative;z-index:1;">${node.icon}</span>
+                </div>
+                <span style="color:#c8a84e;font-size:13px;font-weight:bold;">${node.name}</span>
+              </div>
+              <div style="font-size:11px;color:#aaa;margin-bottom:4px;">${node.description}</div>
+              <div style="font-size:12px;color:${isMaxed ? "#ffd700" : "#ccc"};">${rank}/${node.maxRank}</div>
+              ${effectsText}
+            </div>`;
+        }
+
+        branchesHtml += `
+          <div style="display:flex;flex-direction:column;gap:8px;align-items:center;
+            background:rgba(10,8,4,0.4);border:1px solid #3a2a1a;border-radius:8px;padding:12px 10px;">
+            <div style="color:#c8a84e;font-size:16px;font-weight:bold;letter-spacing:1px;padding-bottom:4px;width:100%;text-align:center;
+              border-bottom:1px solid #5a4a2a;text-shadow:0 0 8px rgba(200,168,78,0.2);">${branchNames[b]}</div>
+            <div style="font-size:11px;color:#888;">${pointsInBranch} points invested</div>
+            ${nodesHtml}
+          </div>`;
+      }
+
+      // Summary of active bonuses
+      const bonuses = ctx.getTalentBonuses();
+      let summaryHtml = "";
+      const effectLabels: Record<string, string> = {
+        [TalentEffectType.BONUS_DAMAGE_PERCENT]: "Damage",
+        [TalentEffectType.BONUS_HP_PERCENT]: "HP",
+        [TalentEffectType.BONUS_MANA_PERCENT]: "Mana",
+        [TalentEffectType.BONUS_ARMOR]: "Armor",
+        [TalentEffectType.BONUS_CRIT_CHANCE]: "Crit Chance",
+        [TalentEffectType.BONUS_CRIT_DAMAGE]: "Crit Damage",
+        [TalentEffectType.BONUS_ATTACK_SPEED]: "Atk Speed",
+        [TalentEffectType.BONUS_MOVE_SPEED]: "Move Speed",
+        [TalentEffectType.SKILL_COOLDOWN_REDUCTION]: "CDR",
+        [TalentEffectType.LIFE_STEAL_PERCENT]: "Life Steal",
+        [TalentEffectType.MANA_REGEN]: "Mana Regen",
+        [TalentEffectType.BONUS_AOE_RADIUS]: "AoE Radius",
+        [TalentEffectType.RESISTANCE_ALL]: "All Resist",
+      };
+      for (const [key, val] of Object.entries(bonuses)) {
+        if (val && val > 0) {
+          const label = effectLabels[key] || key;
+          const isPercent = key.includes("PERCENT") || key.includes("COOLDOWN") || key.includes("CRIT") || key.includes("DAMAGE_PERCENT") || key.includes("HP_PERCENT") || key.includes("MANA_PERCENT") || key.includes("ATTACK_SPEED");
+          summaryHtml += `<span style="color:#8f8;font-size:12px;margin-right:12px;">+${val}${isPercent ? "%" : ""} ${label}</span>`;
+        }
+      }
+      if (!summaryHtml) summaryHtml = `<span style="color:#666;font-size:12px;">No talents invested</span>`;
+
+      ctx.menuEl.innerHTML = `
+        <div style="
+          width:100%;height:100%;background:rgba(0,0,0,0.90);display:flex;flex-direction:column;
+          align-items:center;justify-content:center;color:#fff;pointer-events:auto;position:relative;
+        ">
+          <!-- Stone tablet background -->
+          <div style="position:relative;padding:24px 30px;
+            background:linear-gradient(180deg,rgba(25,20,12,0.98),rgba(18,14,8,0.98));
+            border:2px solid #5a4a2a;border-radius:8px;
+            box-shadow:inset 0 0 50px rgba(0,0,0,0.3),0 0 20px rgba(0,0,0,0.5);
+            background-image:repeating-linear-gradient(90deg,transparent,transparent 30px,rgba(90,74,42,0.02) 30px,rgba(90,74,42,0.02) 31px);">
+            <!-- Inner border -->
+            <div style="position:absolute;inset:4px;border:1px solid #3a2a1a;border-radius:6px;pointer-events:none;"></div>
+
+            <!-- Title with flourishes -->
+            <div style="text-align:center;margin-bottom:4px;">
+              <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:4px;">
+                <div style="width:50px;height:1px;background:linear-gradient(to right,transparent,#c8a84e);"></div>
+                <span style="color:#c8a84e;font-size:10px;">\u2726</span>
+                <div style="width:50px;height:1px;background:linear-gradient(to left,transparent,#c8a84e);"></div>
+              </div>
+              <h2 style="color:#c8a84e;font-size:32px;letter-spacing:3px;margin:0 0 4px;font-family:'Georgia',serif;
+                text-shadow:0 0 15px rgba(200,168,78,0.4);">TALENT TREE</h2>
+              <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:8px;">
+                <div style="width:50px;height:1px;background:linear-gradient(to right,transparent,#c8a84e);"></div>
+                <span style="color:#c8a84e;font-size:10px;">\u2726</span>
+                <div style="width:50px;height:1px;background:linear-gradient(to left,transparent,#c8a84e);"></div>
+              </div>
+            </div>
+            <div style="font-size:16px;color:#ffd700;margin-bottom:16px;text-align:center;text-shadow:0 0 8px rgba(255,215,0,0.2);">Available Points: ${p.talentPoints}</div>
+            <div style="display:flex;gap:24px;align-items:flex-start;">${branchesHtml}</div>
+            <!-- Summary with ornate frame -->
+            <div style="margin-top:16px;padding:10px 16px;background:rgba(20,15,10,0.9);border:1px solid #5a4a2a;border-radius:8px;
+              box-shadow:inset 0 0 20px rgba(0,0,0,0.2);text-align:center;">
+              ${summaryHtml}
+            </div>
+            <div style="margin-top:12px;color:#888;font-size:12px;text-align:center;">Press T or Escape to close</div>
+          </div>
+        </div>`;
+
+      // Wire up talent node clicks
+      const nodes = ctx.menuEl.querySelectorAll(".talent-node") as NodeListOf<HTMLDivElement>;
+      nodes.forEach((el) => {
+        const talentId = el.getAttribute("data-talent-id")!;
+        const node = tree.find((n) => n.id === talentId)!;
+        const rank = p.talents[node.id] || 0;
+        const isMaxed = rank >= node.maxRank;
+        const pointsInBranch = ctx.getTalentPointsInBranch(node.branch);
+        const tierReq = node.tier * 3;
+        const hasPrereq = !node.requires || (p.talents[node.requires] || 0) > 0;
+        const hasTierReq = pointsInBranch >= tierReq;
+        const canInvest = p.talentPoints > 0 && !isMaxed && hasPrereq && hasTierReq;
+
+        if (canInvest) {
+          el.addEventListener("mouseenter", () => {
+            el.style.borderColor = "#c8a84e";
+            el.style.boxShadow = "0 0 12px rgba(200,168,78,0.3)";
+          });
+          el.addEventListener("mouseleave", () => {
+            el.style.borderColor = "#5a8a2a";
+            el.style.boxShadow = "none";
+          });
+          el.addEventListener("click", () => {
+            p.talents[node.id] = (p.talents[node.id] || 0) + 1;
+            p.talentPoints--;
+            ctx.setStatsDirty(); ctx.setTalentsDirty();
+            ctx.recalculatePlayerStats();
+            renderTree();
+          });
+        }
+      });
+    };
+
+    renderTree();
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  15. showVendorShop
+// ════════════════════════════════════════════════════════════════════════════
+
+export function showVendorShop(ctx: ScreenContext, vendor: DiabloVendor): void {
+    // Vendor dialogue — show a floating speech line from this vendor
+    const vendorLines = VENDOR_DIALOGUE[vendor.type] || VENDOR_DIALOGUE[VendorType.GENERAL_MERCHANT];
+    const vLine = vendorLines[Math.floor(Math.random() * vendorLines.length)];
+    ctx.addFloatingText(vendor.x, 3, vendor.z, `"${vLine}"`, '#ffd700');
+
+    const p = ctx.state.player;
+    ctx.setPhaseBeforeOverlay(DiabloPhase.PLAYING);
+    ctx.state.phase = DiabloPhase.INVENTORY;
+
+    const renderShop = () => {
+      // Vendor wares grid
+      let waresHtml = "";
+      for (let i = 0; i < vendor.inventory.length; i++) {
+        const item = vendor.inventory[i];
+        const rarityColor = RARITY_CSS[item.rarity];
+        const canAfford = p.gold >= item.value;
+        const priceColor = canAfford ? "#ffd700" : "#ff4444";
+        waresHtml += `
+          <div class="vendor-ware" data-ware-idx="${i}" style="
+            width:120px;height:120px;background:rgba(15,10,5,0.9);border:2px solid ${rarityColor};
+            border-radius:6px;display:flex;flex-direction:column;align-items:center;
+            justify-content:center;cursor:pointer;pointer-events:auto;position:relative;
+            transition:border-color 0.2s,box-shadow 0.2s;
+          ">
+            <div style="font-size:32px;">${item.icon}</div>
+            <div style="font-size:11px;color:${rarityColor};margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px;text-align:center;">${item.name}</div>
+            <div style="font-size:12px;color:${priceColor};margin-top:2px;">\uD83E\uDE99 ${item.value}</div>
+          </div>`;
+      }
+      if (vendor.inventory.length === 0 && vendor.type !== VendorType.ALCHEMIST) {
+        waresHtml = `<div style="color:#888;font-size:14px;grid-column:1/-1;text-align:center;padding:30px;">Sold out!</div>`;
+      }
+
+      // Potion wares for Alchemist
+      let potionWaresHtml = "";
+      if (vendor.type === VendorType.ALCHEMIST) {
+        for (let i = 0; i < POTION_DATABASE.length; i++) {
+          const pot = POTION_DATABASE[i];
+          const canAfford = p.gold >= pot.cost;
+          const priceColor = canAfford ? "#ffd700" : "#ff4444";
+          potionWaresHtml += `
+            <div class="vendor-potion" data-potion-idx="${i}" style="
+              width:120px;height:120px;background:rgba(15,10,5,0.9);border:2px solid #3a5a2a;
+              border-radius:6px;display:flex;flex-direction:column;align-items:center;
+              justify-content:center;cursor:pointer;pointer-events:auto;position:relative;
+              transition:border-color 0.2s,box-shadow 0.2s;
+            ">
+              <div style="font-size:32px;">${pot.icon}</div>
+              <div style="font-size:11px;color:#8f8;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px;text-align:center;">${pot.name}</div>
+              <div style="font-size:10px;color:#aaa;margin-top:2px;">${pot.type === 'HEALTH' ? `Heal ${pot.value}` : pot.type === 'MANA' ? `Restore ${pot.value}` : pot.type === 'REJUVENATION' ? `Heal ${pot.value}+Mana` : pot.duration ? `${pot.duration}s buff` : ''}</div>
+              <div style="font-size:12px;color:${priceColor};margin-top:2px;">\u{1FA99} ${pot.cost}</div>
+            </div>`;
+        }
+      }
+
+      // Player inventory grid for selling
+      let invHtml = "";
+      for (let i = 0; i < p.inventory.length; i++) {
+        const slot = p.inventory[i];
+        const item = slot.item;
+        const borderColor = item ? RARITY_CSS[item.rarity] : "#3a3a3a";
+        const content = item
+          ? `<div style="font-size:20px;">${item.icon}</div>`
+          : "";
+        invHtml += `
+          <div class="vendor-inv-slot" data-inv-idx="${i}" style="
+            width:55px;height:55px;background:rgba(15,10,5,0.85);border:1px solid ${borderColor};
+            border-radius:4px;display:flex;align-items:center;justify-content:center;
+            cursor:pointer;pointer-events:auto;position:relative;
+          ">${content}</div>`;
+      }
+
+      ctx.menuEl.innerHTML = `
+        <div style="
+          width:100%;height:100%;background:rgba(0,0,0,0.88);display:flex;flex-direction:column;
+          align-items:center;justify-content:center;color:#fff;pointer-events:auto;
+        ">
+          <div style="
+            max-width:920px;width:92%;position:relative;
+            background:linear-gradient(180deg,rgba(28,20,10,0.98),rgba(15,10,5,0.95));
+            border:2px solid #5a4a2a;
+            border-radius:12px;padding:24px 30px;max-height:88vh;overflow-y:auto;
+            box-shadow:inset 0 0 40px rgba(0,0,0,0.3),0 0 20px rgba(0,0,0,0.5);
+            background-image:repeating-linear-gradient(0deg,transparent,transparent 20px,rgba(90,74,42,0.03) 20px,rgba(90,74,42,0.03) 21px);
+          ">
+            <!-- Inner decorative border -->
+            <div style="position:absolute;inset:4px;border:1px solid #3a2a1a;border-radius:10px;pointer-events:none;"></div>
+
+            <!-- Hanging sign decoration -->
+            <div style="text-align:center;margin-bottom:4px;">
+              <div style="display:inline-block;position:relative;">
+                <div style="display:flex;justify-content:center;gap:120px;margin-bottom:-2px;">
+                  <div style="width:2px;height:12px;background:#5a4a2a;"></div>
+                  <div style="width:2px;height:12px;background:#5a4a2a;"></div>
+                </div>
+                <div style="display:inline-block;background:linear-gradient(180deg,rgba(60,45,20,0.9),rgba(40,28,12,0.9));border:2px solid #5a4a2a;border-radius:6px;padding:8px 24px;
+                  box-shadow:0 4px 12px rgba(0,0,0,0.4);">
+                  <div style="font-size:32px;color:#c8a84e;font-weight:bold;letter-spacing:2px;font-family:'Georgia',serif;">
+                    ${vendor.icon} ${vendor.name}
+                  </div>
+                </div>
+              </div>
+              <div style="font-size:14px;color:#888;margin-top:6px;">${(VENDOR_DEFS.find(vd => vd.type === vendor.type) || { description: "" }).description}</div>
+            </div>
+
+            <!-- Dialogue box -->
+            <div style="margin-bottom:14px;background:rgba(30,25,15,0.9);border:1px solid #3a3a2a;border-radius:8px;padding:12px 18px;display:flex;align-items:center;gap:14px;">
+              <div style="font-size:36px;flex-shrink:0;">${vendor.icon}</div>
+              <div style="flex:1;">
+                <div id="vendor-dialogue-text" style="font-size:13px;color:#ccbb99;font-style:italic;line-height:1.5;font-family:'Georgia',serif;min-height:36px;">
+                  "${(VENDOR_DIALOGUE[vendor.type] || ["..."])[ctx.vendorDialogueIdx[vendor.type] || 0]}"
+                </div>
+              </div>
+              <button id="vendor-talk-btn" style="
+                padding:8px 16px;font-size:12px;background:rgba(40,35,20,0.9);border:1px solid #5a4a2a;
+                border-radius:6px;color:#c8a84e;cursor:pointer;font-family:'Georgia',serif;
+                pointer-events:auto;white-space:nowrap;transition:border-color 0.2s;
+              ">Talk</button>
+            </div>
+
+            <!-- Two panels side by side -->
+            <div style="display:flex;gap:24px;align-items:flex-start;">
+              <!-- Left: Vendor's Wares -->
+              <div style="flex:1;min-width:0;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;justify-content:center;">
+                  <div style="width:40px;height:1px;background:linear-gradient(to right,transparent,#5a4a2a);"></div>
+                  <span style="color:#c8a84e;font-size:14px;font-weight:bold;">VENDOR'S WARES</span>
+                  <div style="width:40px;height:1px;background:linear-gradient(to left,transparent,#5a4a2a);"></div>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(4,120px);gap:6px;max-height:420px;overflow-y:auto;justify-content:center;">
+                  ${waresHtml}
+                </div>
+              </div>
+
+              ${vendor.type === VendorType.ALCHEMIST ? `
+              <!-- Potions -->
+              <div style="flex:1;min-width:0;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;justify-content:center;">
+                  <div style="width:40px;height:1px;background:linear-gradient(to right,transparent,#3a8a2a);"></div>
+                  <span style="color:#3a8a2a;font-size:14px;font-weight:bold;">POTIONS</span>
+                  <div style="width:40px;height:1px;background:linear-gradient(to left,transparent,#3a8a2a);"></div>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(3,120px);gap:6px;max-height:420px;overflow-y:auto;justify-content:center;">
+                  ${potionWaresHtml}
+                </div>
+              </div>` : ""}
+
+              <!-- Right: Player's Items to Sell -->
+              <div style="flex:0 0 auto;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;justify-content:center;">
+                  <div style="width:40px;height:1px;background:linear-gradient(to right,transparent,#5a4a2a);"></div>
+                  <span style="color:#c8a84e;font-size:14px;font-weight:bold;">YOUR ITEMS (click to sell)</span>
+                  <div style="width:40px;height:1px;background:linear-gradient(to left,transparent,#5a4a2a);"></div>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(8,55px);grid-template-rows:repeat(5,55px);gap:3px;">
+                  ${invHtml}
+                </div>
+                <button id="quick-sell-btn" style="
+                  padding:8px 16px;background:rgba(60,40,20,0.9);border:2px solid #8a6a3a;
+                  border-radius:6px;color:#ffd700;font-family:'Georgia',serif;font-size:14px;
+                  cursor:pointer;letter-spacing:1px;margin:8px auto;display:block;
+                  transition:all 0.2s;pointer-events:auto;
+                ">⚡ Quick Sell Common &amp; Uncommon</button>
+              </div>
+            </div>
+
+            <!-- Bottom bar with coin pile decoration -->
+            <div style="display:flex;align-items:center;gap:8px;margin:16px auto 0;justify-content:center;">
+              <div style="flex:1;height:1px;background:linear-gradient(to right,transparent,#5a4a2a);"></div>
+              <span style="color:#5a4a2a;font-size:8px;">\u25C6</span>
+              <div style="flex:1;height:1px;background:linear-gradient(to left,transparent,#5a4a2a);"></div>
+            </div>
+            <div style="margin-top:10px;display:flex;justify-content:center;align-items:center;gap:30px;">
+              <div style="display:flex;align-items:center;gap:6px;background:rgba(50,40,10,0.5);border:1px solid #5a4a2a;border-radius:6px;padding:8px 16px;position:relative;">
+                <span style="font-size:14px;position:absolute;left:-10px;top:-6px;opacity:0.4;">\uD83E\uDE99</span>
+                <span style="font-size:18px;">\uD83E\uDE99</span>
+                <span style="font-size:18px;color:#ffd700;font-weight:bold;">${p.gold} gold</span>
+                <span style="font-size:12px;position:absolute;right:-8px;bottom:-4px;opacity:0.3;">\uD83E\uDE99</span>
+              </div>
+              <button id="vendor-close-btn" style="
+                padding:12px 40px;font-size:18px;letter-spacing:3px;font-weight:bold;
+                background:linear-gradient(180deg,rgba(50,40,20,0.95),rgba(30,22,10,0.95));
+                border:2px solid #5a4a2a;border-radius:8px;color:#c8a84e;
+                cursor:pointer;transition:all 0.2s;font-family:'Georgia',serif;pointer-events:auto;
+                text-shadow:0 1px 3px rgba(0,0,0,0.5);
+              ">CLOSE</button>
+            </div>
+            <div id="vendor-status" style="margin-top:8px;text-align:center;color:#ff4444;font-size:14px;min-height:20px;"></div>
+            <!-- Tooltip container -->
+            <div id="inv-tooltip" style="
+              display:none;position:fixed;z-index:100;background:rgba(10,5,2,0.96);border:2px solid #5a4a2a;
+              border-radius:8px;padding:14px;max-width:280px;pointer-events:none;color:#ccc;font-size:13px;
+            "></div>
+          </div>
+        </div>`;
+
+      const statusEl = ctx.menuEl.querySelector("#vendor-status") as HTMLDivElement;
+      const showStatus = (msg: string, color: string) => {
+        statusEl.textContent = msg;
+        statusEl.style.color = color;
+        setTimeout(() => { statusEl.textContent = ""; }, 1500);
+      };
+
+      // Wire up vendor ware clicks (buy)
+      const wareSlots = ctx.menuEl.querySelectorAll(".vendor-ware") as NodeListOf<HTMLDivElement>;
+      wareSlots.forEach((el) => {
+        const idx = parseInt(el.getAttribute("data-ware-idx")!, 10);
+        el.addEventListener("mouseenter", (ev) => {
+          el.style.boxShadow = "0 0 12px rgba(200,168,78,0.3)";
+          showItemTooltip(ctx, ev, vendor.inventory[idx]);
+        });
+        el.addEventListener("mouseleave", () => {
+          el.style.boxShadow = "none";
+          ctx.hideItemTooltip();
+        });
+        el.addEventListener("click", () => {
+          const item = vendor.inventory[idx];
+          if (!item) return;
+          if (p.gold < item.value) {
+            showStatus("Not enough gold!", "#ff4444");
+            return;
+          }
+          const emptyIdx = p.inventory.findIndex((s) => s.item === null);
+          if (emptyIdx < 0) {
+            showStatus("Inventory Full!", "#ff4444");
+            return;
+          }
+          p.gold -= item.value;
+          p.stats.totalGoldSpent += item.value;
+          p.inventory[emptyIdx].item = { ...item, id: ctx.genId() };
+          vendor.inventory.splice(idx, 1);
+          showStatus(`Purchased ${item.name}!`, "#44ff44");
+          renderShop();
+        });
+      });
+
+      // Wire up potion buy clicks
+      const potionSlots = ctx.menuEl.querySelectorAll(".vendor-potion") as NodeListOf<HTMLDivElement>;
+      potionSlots.forEach((el) => {
+        const idx = parseInt(el.getAttribute("data-potion-idx")!, 10);
+        el.addEventListener("mouseenter", () => {
+          el.style.boxShadow = "0 0 12px rgba(60,180,60,0.3)";
+          el.style.borderColor = "#5a8a2a";
+        });
+        el.addEventListener("mouseleave", () => {
+          el.style.boxShadow = "none";
+          el.style.borderColor = "#3a5a2a";
+        });
+        el.addEventListener("click", () => {
+          const pot = POTION_DATABASE[idx];
+          if (!pot) return;
+          if (p.gold < pot.cost) {
+            showStatus("Not enough gold!", "#ff4444");
+            return;
+          }
+          p.gold -= pot.cost;
+          p.stats.totalGoldSpent += pot.cost;
+          const newPot: DiabloPotion = { ...pot, id: ctx.genId() };
+          // Try to assign to an empty potion slot first
+          let assigned = false;
+          for (let s = 0; s < 4; s++) {
+            if (!p.potionSlots[s]) {
+              p.potionSlots[s] = newPot;
+              assigned = true;
+              break;
+            }
+          }
+          if (!assigned) {
+            p.potions.push(newPot);
+          }
+          showStatus(`Purchased ${pot.name}!`, "#44ff44");
+          renderShop();
+        });
+      });
+
+      // Wire up player inventory slots (sell)
+      const invSlots = ctx.menuEl.querySelectorAll(".vendor-inv-slot") as NodeListOf<HTMLDivElement>;
+      invSlots.forEach((el) => {
+        const idx = parseInt(el.getAttribute("data-inv-idx")!, 10);
+        el.addEventListener("mouseenter", (ev) => showItemTooltip(ctx, ev, p.inventory[idx].item));
+        el.addEventListener("mouseleave", () => ctx.hideItemTooltip());
+        el.addEventListener("click", () => {
+          const item = p.inventory[idx].item;
+          if (!item) return;
+          const sellValue = Math.max(1, Math.floor(item.value * 0.5));
+          p.gold += sellValue;
+          p.inventory[idx].item = null;
+          showStatus(`Sold ${item.name} for ${sellValue} gold`, "#ffd700");
+          renderShop();
+        });
+      });
+
+      // Close button
+      const closeBtn = ctx.menuEl.querySelector("#vendor-close-btn") as HTMLButtonElement;
+      closeBtn.addEventListener("mouseenter", () => {
+        closeBtn.style.borderColor = "#c8a84e";
+        closeBtn.style.boxShadow = "0 0 15px rgba(200,168,78,0.3)";
+        closeBtn.style.background = "rgba(50,40,20,0.95)";
+      });
+      closeBtn.addEventListener("mouseleave", () => {
+        closeBtn.style.borderColor = "#5a4a2a";
+        closeBtn.style.boxShadow = "none";
+        closeBtn.style.background = "rgba(40,30,15,0.9)";
+      });
+      closeBtn.addEventListener("click", () => {
+        ctx.state.phase = DiabloPhase.PLAYING;
+        ctx.menuEl.innerHTML = "";
+      });
+
+      // Talk button — cycle dialogue
+      const talkBtn = ctx.menuEl.querySelector("#vendor-talk-btn") as HTMLButtonElement | null;
+      if (talkBtn) {
+        talkBtn.addEventListener("click", () => {
+          const lines = VENDOR_DIALOGUE[vendor.type] || [];
+          if (lines.length === 0) return;
+          const idx = ((ctx.vendorDialogueIdx[vendor.type] || 0) + 1) % lines.length;
+          ctx.vendorDialogueIdx[vendor.type] = idx;
+          const textEl = ctx.menuEl.querySelector("#vendor-dialogue-text") as HTMLDivElement | null;
+          if (textEl) textEl.textContent = `"${lines[idx]}"`;
+        });
+        talkBtn.addEventListener("mouseenter", () => {
+          talkBtn.style.borderColor = "#c8a84e";
+          talkBtn.style.background = "rgba(50,40,20,0.95)";
+        });
+        talkBtn.addEventListener("mouseleave", () => {
+          talkBtn.style.borderColor = "#5a4a2a";
+          talkBtn.style.background = "rgba(40,35,20,0.9)";
+        });
+      }
+
+      // Quick-sell button: sell all COMMON and UNCOMMON items
+      const quickSellBtn = ctx.menuEl.querySelector("#quick-sell-btn") as HTMLButtonElement | null;
+      if (quickSellBtn) {
+        quickSellBtn.addEventListener("click", () => {
+          let totalGold = 0;
+          let soldCount = 0;
+          for (let i = p.inventory.length - 1; i >= 0; i--) {
+            const slot = p.inventory[i];
+            if (!slot) continue;
+            const item = slot.item;
+            if (!item) continue;
+            if (item.rarity === ItemRarity.COMMON || item.rarity === ItemRarity.UNCOMMON) {
+              const sellValue = Math.max(1, Math.floor(item.value * 0.5));
+              totalGold += sellValue;
+              soldCount++;
+              p.inventory.splice(i, 1);
+            }
+          }
+          if (soldCount > 0) {
+            p.gold += totalGold;
+            ctx.setGoldEarnedTotal(ctx.goldEarnedTotal + totalGold);
+            ctx.addFloatingText(p.x, p.y + 3, p.z, `Quick Sold ${soldCount} items: +${totalGold} Gold`, '#ffd700');
+            showStatus(`Sold ${soldCount} items for ${totalGold} gold`, "#ffd700");
+          } else {
+            showStatus("No common or uncommon items to sell", "#aaaaaa");
+          }
+          renderShop();
+        });
+      }
+    };
+
+    renderShop();
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  16. showCraftingUI
+// ════════════════════════════════════════════════════════════════════════════
+
+export function showCraftingUI(ctx: ScreenContext, vendor: DiabloVendor, mode: 'blacksmith' | 'jeweler'): void {
+    const p = ctx.state.player;
+    ctx.setPhaseBeforeOverlay(DiabloPhase.PLAYING);
+    ctx.state.phase = DiabloPhase.INVENTORY;
+
+    const renderCrafting = () => {
+      const isBlacksmith = mode === 'blacksmith';
+      const title = isBlacksmith ? `${vendor.icon} ${vendor.name} -- Forge & Salvage` : `${vendor.icon} ${vendor.name} -- Reroll Stats`;
+
+      const recipes = isBlacksmith
+        ? CRAFTING_RECIPES.filter(r => r.type === CraftType.UPGRADE_RARITY)
+        : CRAFTING_RECIPES.filter(r => r.type === CraftType.REROLL_STATS);
+
+      let recipesHtml = "";
+      for (const r of recipes) {
+        const canAfford = p.gold >= r.cost && p.salvageMaterials >= (r.materialCost || 0);
+        const costColor = canAfford ? "#ffd700" : "#ff4444";
+        const inputColor = r.inputRarity ? RARITY_CSS[r.inputRarity] : "#ccc";
+        const outputColor = r.outputRarity ? RARITY_CSS[r.outputRarity] : inputColor;
+        const successPct = Math.round(r.successChance * 100);
+        recipesHtml += `
+          <div class="craft-recipe" data-recipe-id="${r.id}" style="
+            background:rgba(20,15,8,0.9);border:1px solid #5a4a2a;border-radius:6px;padding:12px;
+            cursor:pointer;transition:border-color 0.2s;pointer-events:auto;
+          ">
+            <div style="color:${outputColor};font-weight:bold;font-size:14px;">${r.name}</div>
+            <div style="color:#aaa;font-size:12px;margin:4px 0;">${r.description}</div>
+            <div style="font-size:11px;color:${costColor};">Cost: ${r.cost}g + ${r.materialCost || 0} materials</div>
+            <div style="font-size:11px;color:${successPct === 100 ? '#44ff44' : '#ff8800'};">Success: ${successPct}%</div>
+          </div>`;
+      }
+
+      let invHtml = "";
+      for (let i = 0; i < p.inventory.length; i++) {
+        const slot = p.inventory[i];
+        const item = slot.item;
+        const borderColor = item ? RARITY_CSS[item.rarity] : "#3a3a3a";
+        const content = item ? `<div style="font-size:20px;">${item.icon}</div>` : "";
+        invHtml += `
+          <div class="craft-inv-slot" data-inv-idx="${i}" style="
+            width:55px;height:55px;background:rgba(15,10,5,0.85);border:1px solid ${borderColor};
+            border-radius:4px;display:flex;align-items:center;justify-content:center;
+            cursor:pointer;pointer-events:auto;position:relative;
+          ">${content}</div>`;
+      }
+
+      ctx.menuEl.innerHTML = `
+        <div style="
+          width:100%;height:100%;background:rgba(0,0,0,0.88);display:flex;flex-direction:column;
+          align-items:center;justify-content:center;color:#fff;pointer-events:auto;
+        ">
+          <div style="
+            max-width:950px;width:92%;background:rgba(15,10,5,0.95);border:2px solid #5a4a2a;
+            border-radius:12px;padding:24px 30px;max-height:88vh;overflow-y:auto;
+          ">
+            <div style="text-align:center;margin-bottom:16px;">
+              <div style="font-size:28px;color:#c8a84e;font-weight:bold;letter-spacing:2px;font-family:'Georgia',serif;">${title}</div>
+            </div>
+            <div style="display:flex;gap:20px;align-items:flex-start;">
+              <div style="flex:0 0 250px;">
+                <div style="color:#c8a84e;font-size:14px;font-weight:bold;margin-bottom:8px;">RECIPES</div>
+                <div style="display:flex;flex-direction:column;gap:8px;max-height:350px;overflow-y:auto;">
+                  ${recipesHtml}
+                </div>
+                ${isBlacksmith ? `
+                <div style="margin-top:16px;">
+                  <div style="color:#c8a84e;font-size:14px;font-weight:bold;margin-bottom:8px;">SALVAGE</div>
+                  <div style="color:#aaa;font-size:12px;margin-bottom:8px;">Right-click an item below to salvage it for materials.</div>
+                </div>` : ""}
+              </div>
+              <div style="flex:1;min-width:0;">
+                <div style="color:#c8a84e;font-size:14px;font-weight:bold;margin-bottom:8px;">YOUR ITEMS</div>
+                <div style="display:grid;grid-template-columns:repeat(8,55px);grid-template-rows:repeat(5,55px);gap:3px;">
+                  ${invHtml}
+                </div>
+              </div>
+            </div>
+            <div style="margin-top:16px;display:flex;justify-content:center;align-items:center;gap:20px;">
+              <div style="font-size:16px;color:#ffd700;">Gold: ${p.gold}</div>
+              <div style="font-size:16px;color:#88ccff;">Materials: ${p.salvageMaterials}</div>
+              <button id="craft-shop-btn" style="
+                padding:10px 24px;font-size:14px;letter-spacing:2px;font-weight:bold;
+                background:rgba(40,30,15,0.9);border:2px solid #5a4a2a;border-radius:8px;color:#c8a84e;
+                cursor:pointer;transition:all 0.2s;font-family:'Georgia',serif;pointer-events:auto;
+              ">SHOP</button>
+              <button id="craft-close-btn" style="
+                padding:10px 24px;font-size:14px;letter-spacing:2px;font-weight:bold;
+                background:rgba(40,30,15,0.9);border:2px solid #5a4a2a;border-radius:8px;color:#c8a84e;
+                cursor:pointer;transition:all 0.2s;font-family:'Georgia',serif;pointer-events:auto;
+              ">CLOSE</button>
+            </div>
+            <div id="craft-status" style="margin-top:10px;text-align:center;color:#ff4444;font-size:14px;min-height:20px;"></div>
+            <div id="inv-tooltip" style="
+              display:none;position:fixed;z-index:100;background:rgba(10,5,2,0.96);border:2px solid #5a4a2a;
+              border-radius:8px;padding:14px;max-width:280px;pointer-events:none;color:#ccc;font-size:13px;
+            "></div>
+          </div>
+        </div>`;
+
+      const statusEl = ctx.menuEl.querySelector("#craft-status") as HTMLDivElement;
+      const showStatus = (msg: string, color: string) => {
+        statusEl.textContent = msg;
+        statusEl.style.color = color;
+        setTimeout(() => { statusEl.textContent = ""; }, 2500);
+      };
+
+      // Recipe click
+      const recipeSlots = ctx.menuEl.querySelectorAll(".craft-recipe") as NodeListOf<HTMLDivElement>;
+      recipeSlots.forEach(el => {
+        el.addEventListener("mouseenter", () => { el.style.borderColor = "#c8a84e"; });
+        el.addEventListener("mouseleave", () => { el.style.borderColor = "#5a4a2a"; });
+        el.addEventListener("click", () => {
+          const rId = el.getAttribute("data-recipe-id")!;
+          const recipe = CRAFTING_RECIPES.find(r => r.id === rId);
+          if (!recipe) return;
+
+          if (p.gold < recipe.cost) { showStatus("Not enough gold!", "#ff4444"); return; }
+          if (p.salvageMaterials < (recipe.materialCost || 0)) { showStatus("Not enough materials!", "#ff4444"); return; }
+
+          if (recipe.type === CraftType.UPGRADE_RARITY) {
+            const inputItems: number[] = [];
+            for (let i = 0; i < p.inventory.length; i++) {
+              if (p.inventory[i].item && p.inventory[i].item!.rarity === recipe.inputRarity) {
+                inputItems.push(i);
+                if (inputItems.length >= (recipe.inputCount || 3)) break;
+              }
+            }
+            if (inputItems.length < (recipe.inputCount || 3)) {
+              showStatus(`Need ${recipe.inputCount || 3} ${RARITY_NAMES[recipe.inputRarity!]} items!`, "#ff4444");
+              return;
+            }
+
+            p.gold -= recipe.cost;
+            p.salvageMaterials -= recipe.materialCost || 0;
+
+            if (Math.random() < recipe.successChance) {
+              for (const idx of inputItems) p.inventory[idx].item = null;
+              const outputItem = ctx.pickRandomItemOfRarity(recipe.outputRarity!);
+              if (outputItem) {
+                const emptyIdx = p.inventory.findIndex(s => s.item === null);
+                if (emptyIdx >= 0) p.inventory[emptyIdx].item = { ...outputItem, id: ctx.genId() };
+              }
+              showStatus(`Forged a ${RARITY_NAMES[recipe.outputRarity!]} item!`, "#ffd700");
+            } else {
+              for (const idx of inputItems) p.inventory[idx].item = null;
+              const returned = Math.floor((recipe.materialCost || 0) * 0.5);
+              p.salvageMaterials += returned;
+              showStatus(`Forge failed! Items destroyed. ${returned} materials returned.`, "#ff4444");
+            }
+            renderCrafting();
+          } else if (recipe.type === CraftType.REROLL_STATS) {
+            const itemIdx = p.inventory.findIndex(s => s.item && s.item.rarity === recipe.inputRarity);
+            if (itemIdx < 0) {
+              showStatus(`Need a ${RARITY_NAMES[recipe.inputRarity!]} item!`, "#ff4444");
+              return;
+            }
+            p.gold -= recipe.cost;
+            p.salvageMaterials -= recipe.materialCost || 0;
+
+            const item = p.inventory[itemIdx].item!;
+            const pool = ITEM_DATABASE.filter(it => it.rarity === item.rarity && it.slot === item.slot);
+            if (pool.length > 0) {
+              const donor = pool[Math.floor(Math.random() * pool.length)];
+              item.stats = { ...donor.stats };
+            }
+            showStatus(`Rerolled stats on ${item.name}!`, "#44ff44");
+            renderCrafting();
+          }
+        });
+      });
+
+      // Inventory slots with tooltips and salvage on right-click
+      const invSlots = ctx.menuEl.querySelectorAll(".craft-inv-slot") as NodeListOf<HTMLDivElement>;
+      invSlots.forEach(el => {
+        const idx = parseInt(el.getAttribute("data-inv-idx")!, 10);
+        el.addEventListener("mouseenter", (ev) => showItemTooltip(ctx, ev, p.inventory[idx].item));
+        el.addEventListener("mouseleave", () => ctx.hideItemTooltip());
+        if (isBlacksmith) {
+          el.addEventListener("contextmenu", (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            const item = p.inventory[idx].item;
+            if (!item) return;
+            if (item.isLocked) {
+              showStatus("Item is locked!", "#ff4444");
+              return;
+            }
+            const materials = SALVAGE_MATERIAL_YIELDS[item.rarity] || 1;
+            p.salvageMaterials += materials;
+            p.inventory[idx].item = null;
+            showStatus(`Salvaged ${item.name} for ${materials} materials.`, "#88ccff");
+            renderCrafting();
+          });
+        }
+      });
+
+      // Shop button
+      const shopBtn = ctx.menuEl.querySelector("#craft-shop-btn") as HTMLButtonElement;
+      shopBtn.addEventListener("mouseenter", () => { shopBtn.style.borderColor = "#c8a84e"; shopBtn.style.boxShadow = "0 0 15px rgba(200,168,78,0.3)"; });
+      shopBtn.addEventListener("mouseleave", () => { shopBtn.style.borderColor = "#5a4a2a"; shopBtn.style.boxShadow = "none"; });
+      shopBtn.addEventListener("click", () => { showVendorShop(ctx, vendor); });
+
+      // Close button
+      const closeBtn = ctx.menuEl.querySelector("#craft-close-btn") as HTMLButtonElement;
+      closeBtn.addEventListener("mouseenter", () => { closeBtn.style.borderColor = "#c8a84e"; closeBtn.style.boxShadow = "0 0 15px rgba(200,168,78,0.3)"; });
+      closeBtn.addEventListener("mouseleave", () => { closeBtn.style.borderColor = "#5a4a2a"; closeBtn.style.boxShadow = "none"; });
+      closeBtn.addEventListener("click", () => {
+        ctx.state.phase = DiabloPhase.PLAYING;
+        ctx.menuEl.innerHTML = "";
+      });
+    };
+
+    renderCrafting();
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  17. showAdvancedCraftingUI
+// ════════════════════════════════════════════════════════════════════════════
+
+export function showAdvancedCraftingUI(ctx: ScreenContext): void {
+    const p = ctx.state.player;
+    const cs = p.crafting;
+    ctx.setPhaseBeforeOverlay(DiabloPhase.PLAYING);
+    ctx.state.phase = DiabloPhase.INVENTORY;
+    ctx.setCraftingUIOpen(true);
+
+    let selectedStation: CraftingStationType = CraftingStationType.BLACKSMITH_FORGE;
+
+    const renderCraftUI = () => {
+      const stations = [
+        { type: CraftingStationType.BLACKSMITH_FORGE, name: 'Blacksmith', icon: '\u2694\uFE0F' },
+        { type: CraftingStationType.JEWELER_BENCH, name: 'Jeweler', icon: '\uD83D\uDC8E' },
+        { type: CraftingStationType.ALCHEMIST_TABLE, name: 'Alchemist', icon: '\u2697\uFE0F' },
+        { type: CraftingStationType.ENCHANTER_ALTAR, name: 'Enchanter', icon: '\uD83D\uDD2E' },
+      ];
+
+      let stationTabsHtml = "";
+      for (const st of stations) {
+        const isActive = st.type === selectedStation;
+        stationTabsHtml += `
+          <button class="craft-station-tab" data-station="${st.type}" style="
+            flex:1;padding:10px;font-size:13px;font-weight:bold;
+            background:${isActive ? "rgba(60,45,20,0.95)" : "rgba(30,22,10,0.9)"};
+            border:1px solid ${isActive ? "#c8a84e" : "#5a4a2a"};border-radius:6px 6px 0 0;
+            color:${isActive ? "#ffd700" : "#887755"};cursor:pointer;pointer-events:auto;
+            border-bottom:${isActive ? "2px solid #c8a84e" : "none"};
+          ">${st.icon} ${st.name}</button>`;
+      }
+
+      // Filter recipes by station and discovered
+      const recipes = ADVANCED_CRAFTING_RECIPES.filter(
+        r => r.station === selectedStation && cs.discoveredRecipes.includes(r.id)
+      );
+
+      let recipesHtml = "";
+      if (recipes.length === 0) {
+        recipesHtml = `<div style="color:#887755;font-style:italic;padding:20px;text-align:center;">
+          No recipes discovered for this station yet. Level up crafting to discover more!</div>`;
+      }
+      for (const recipe of recipes) {
+        const canAfford = ctx.canAffordRecipe(recipe);
+        const meetsLevel = cs.craftingLevel >= recipe.levelRequired;
+        const borderColor = canAfford && meetsLevel ? "#5a4a2a" : "#3a2a1a";
+        const outputColor = recipe.outputRarity ? RARITY_CSS[recipe.outputRarity] : "#cccccc";
+        const successPct = Math.round(recipe.successChance * 100);
+
+        let matsHtml = "";
+        for (const mat of recipe.materials) {
+          const matDef = CRAFTING_MATERIALS[mat.type];
+          const have = cs.materials[mat.type] || 0;
+          const enough = have >= mat.count;
+          matsHtml += `<span style="color:${enough ? "#44ff44" : "#ff4444"};font-size:11px;">
+            ${matDef.icon} ${mat.count} ${matDef.name} (${have})</span> `;
+        }
+
+        // Check if it's being crafted
+        const inQueue = cs.craftingQueue.find(q => q.recipeId === recipe.id);
+        let progressHtml = "";
+        if (inQueue) {
+          const pct = Math.round((inQueue.progress / inQueue.duration) * 100);
+          progressHtml = `<div style="margin-top:6px;background:#333;border-radius:3px;height:6px;overflow:hidden;">
+            <div style="background:#ffd700;height:100%;width:${pct}%;transition:width 0.3s;"></div>
+          </div><div style="font-size:10px;color:#ffd700;margin-top:2px;">Crafting... ${pct}%</div>`;
+        }
+
+        recipesHtml += `
+          <div class="adv-craft-recipe" data-recipe-id="${recipe.id}" style="
+            background:rgba(20,15,8,0.9);border:1px solid ${borderColor};border-radius:6px;padding:12px;
+            cursor:${canAfford && meetsLevel ? "pointer" : "not-allowed"};
+            opacity:${canAfford && meetsLevel ? "1" : "0.6"};
+            transition:border-color 0.2s;pointer-events:auto;
+          ">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-size:22px;">${recipe.icon}</span>
+              <div>
+                <div style="color:${outputColor};font-weight:bold;font-size:14px;">${recipe.name}</div>
+                <div style="color:#aaa;font-size:11px;">${recipe.description}</div>
+              </div>
+            </div>
+            <div style="margin-top:6px;">${matsHtml}</div>
+            <div style="display:flex;gap:12px;margin-top:4px;font-size:11px;">
+              <span style="color:${p.gold >= recipe.goldCost ? "#ffd700" : "#ff4444"};">Gold: ${recipe.goldCost}</span>
+              ${recipe.salvageCost > 0 ? `<span style="color:${p.salvageMaterials >= recipe.salvageCost ? "#88ccff" : "#ff4444"};">Materials: ${recipe.salvageCost}</span>` : ""}
+              <span style="color:${successPct >= 80 ? "#44ff44" : successPct >= 50 ? "#ffdd00" : "#ff4444"};">Success: ${successPct}%</span>
+              ${!meetsLevel ? `<span style="color:#ff4444;">Requires Lv.${recipe.levelRequired}</span>` : ""}
+            </div>
+            ${progressHtml}
+          </div>`;
+      }
+
+      // Materials inventory
+      let matsInvHtml = "";
+      for (const [matType, count] of Object.entries(cs.materials) as [MaterialType, number][]) {
+        if (count <= 0) continue;
+        const matDef = CRAFTING_MATERIALS[matType];
+        if (!matDef) continue;
+        matsInvHtml += `
+          <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#ccc;">
+            <span style="font-size:16px;">${matDef.icon}</span>
+            <span>${matDef.name}:</span>
+            <span style="color:#ffd700;font-weight:bold;">${count}</span>
+          </div>`;
+      }
+      if (!matsInvHtml) {
+        matsInvHtml = `<div style="color:#665533;font-style:italic;font-size:12px;">No materials yet.</div>`;
+      }
+
+      ctx.menuEl.innerHTML = `
+        <div style="
+          width:100%;height:100%;background:rgba(0,0,0,0.88);display:flex;flex-direction:column;
+          align-items:center;justify-content:center;color:#fff;pointer-events:auto;
+        ">
+          <div style="
+            max-width:950px;width:92%;background:rgba(15,10,5,0.95);border:2px solid #5a4a2a;
+            border-radius:12px;padding:24px 30px;max-height:88vh;overflow-y:auto;
+          ">
+            <div style="text-align:center;margin-bottom:12px;">
+              <div style="font-size:28px;color:#c8a84e;font-weight:bold;letter-spacing:2px;font-family:'Georgia',serif;">
+                CRAFTING WORKSHOP
+              </div>
+              <div style="font-size:12px;color:#887755;margin-top:4px;">
+                Crafting Level: ${cs.craftingLevel} | XP: ${cs.craftingXp}/${cs.craftingXpToNext}
+              </div>
+            </div>
+            <div style="display:flex;gap:2px;margin-bottom:2px;">
+              ${stationTabsHtml}
+            </div>
+            <div style="display:flex;gap:20px;align-items:flex-start;">
+              <div style="flex:1;min-width:0;">
+                <div style="display:flex;flex-direction:column;gap:8px;max-height:400px;overflow-y:auto;padding:8px 0;">
+                  ${recipesHtml}
+                </div>
+              </div>
+              <div style="flex:0 0 200px;">
+                <div style="color:#c8a84e;font-size:13px;font-weight:bold;margin-bottom:8px;">MATERIALS</div>
+                <div style="display:flex;flex-direction:column;gap:6px;max-height:300px;overflow-y:auto;">
+                  ${matsInvHtml}
+                </div>
+                <div style="margin-top:12px;font-size:12px;">
+                  <div style="color:#ffd700;">Gold: ${p.gold}</div>
+                  <div style="color:#88ccff;">Salvage: ${p.salvageMaterials}</div>
+                </div>
+              </div>
+            </div>
+            <div style="margin-top:16px;display:flex;justify-content:center;gap:20px;">
+              <button id="adv-craft-close-btn" style="
+                padding:10px 30px;font-size:14px;letter-spacing:2px;font-weight:bold;
+                background:rgba(40,30,15,0.9);border:2px solid #5a4a2a;border-radius:8px;color:#c8a84e;
+                cursor:pointer;pointer-events:auto;font-family:'Georgia',serif;
+              ">CLOSE</button>
+            </div>
+            <div id="adv-craft-status" style="margin-top:8px;text-align:center;color:#ff4444;font-size:14px;min-height:20px;"></div>
+          </div>
+        </div>`;
+
+      // Status helper
+      const statusEl = ctx.menuEl.querySelector("#adv-craft-status") as HTMLDivElement;
+      const showStatus = (msg: string, color: string) => {
+        statusEl.textContent = msg;
+        statusEl.style.color = color;
+        setTimeout(() => { if (statusEl) statusEl.textContent = ""; }, 2500);
+      };
+
+      // Station tab clicks
+      const tabBtns = ctx.menuEl.querySelectorAll(".craft-station-tab") as NodeListOf<HTMLButtonElement>;
+      tabBtns.forEach(btn => {
+        btn.addEventListener("click", () => {
+          selectedStation = btn.getAttribute("data-station") as CraftingStationType;
+          renderCraftUI();
+        });
+      });
+
+      // Recipe clicks
+      const recipeEls = ctx.menuEl.querySelectorAll(".adv-craft-recipe") as NodeListOf<HTMLDivElement>;
+      recipeEls.forEach(el => {
+        el.addEventListener("mouseenter", () => { el.style.borderColor = "#c8a84e"; });
+        el.addEventListener("mouseleave", () => { el.style.borderColor = "#5a4a2a"; });
+        el.addEventListener("click", () => {
+          const recipeId = el.getAttribute("data-recipe-id")!;
+          const recipe = ADVANCED_CRAFTING_RECIPES.find(r => r.id === recipeId);
+          if (!recipe) return;
+
+          if (cs.craftingLevel < recipe.levelRequired) {
+            showStatus(`Requires crafting level ${recipe.levelRequired}!`, "#ff4444");
+            return;
+          }
+          if (!ctx.canAffordRecipe(recipe)) {
+            showStatus("Not enough resources!", "#ff4444");
+            return;
+          }
+          if (cs.craftingQueue.some(q => q.recipeId === recipeId)) {
+            showStatus("Already crafting this recipe!", "#ff8800");
+            return;
+          }
+
+          ctx.payRecipeCost(recipe);
+          // Crafting duration based on recipe complexity
+          const duration = 1.0 + recipe.levelRequired * 0.2;
+          cs.craftingQueue.push({ recipeId: recipe.id, progress: 0, duration });
+          showStatus(`Started crafting ${recipe.name}...`, "#ffd700");
+          renderCraftUI();
+        });
+      });
+
+      // Close
+      const closeBtn = ctx.menuEl.querySelector("#adv-craft-close-btn") as HTMLButtonElement;
+      closeBtn.addEventListener("mouseenter", () => { closeBtn.style.borderColor = "#c8a84e"; });
+      closeBtn.addEventListener("mouseleave", () => { closeBtn.style.borderColor = "#5a4a2a"; });
+      closeBtn.addEventListener("click", () => {
+        ctx.setCraftingUIOpen(false);
+        ctx.state.phase = DiabloPhase.PLAYING;
+        ctx.menuEl.innerHTML = "";
+      });
+    };
+
+    renderCraftUI();
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  18. showQuestBoard
+// ════════════════════════════════════════════════════════════════════════════
+
+export function showQuestBoard(ctx: ScreenContext): void {
+    const available = QUEST_DATABASE.filter(
+      q => !ctx.state.completedQuestIds.includes(q.id) &&
+           !ctx.state.activeQuests.some(aq => aq.id === q.id)
+    );
+    const active = ctx.state.activeQuests.filter(q => q.isActive);
+    const completed = ctx.state.completedQuestIds;
+
+    let availHtml = "";
+    for (const q of available) {
+      const rewardText = `${q.rewards.gold}g + ${q.rewards.xp}xp${q.rewards.itemRarity ? ` + ${RARITY_NAMES[q.rewards.itemRarity]} item` : ""}`;
+      const rewardColor = q.rewards.itemRarity ? RARITY_CSS[q.rewards.itemRarity] : "#ffd700";
+      availHtml += `
+        <div class="quest-available" data-quest-id="${q.id}" style="
+          background:rgba(20,15,8,0.9);border:1px solid #5a4a2a;border-radius:6px;padding:12px;
+          cursor:pointer;transition:border-color 0.2s;pointer-events:auto;
+        ">
+          <div style="color:#c8a84e;font-weight:bold;font-size:14px;">${q.name}</div>
+          <div style="color:#aaa;font-size:12px;margin:4px 0;">${q.description}</div>
+          <div style="color:${rewardColor};font-size:11px;">Reward: ${rewardText}</div>
+          <div style="color:#888;font-size:11px;">Goal: ${q.required}</div>
+        </div>`;
+    }
+
+    let activeHtml = "";
+    for (const q of active) {
+      const pct = Math.min(100, (q.progress / q.required) * 100);
+      activeHtml += `
+        <div class="quest-active" data-quest-id="${q.id}" style="
+          background:rgba(20,15,8,0.9);border:1px solid #c8a84e;border-radius:6px;padding:12px;
+          pointer-events:auto;
+        ">
+          <div style="color:#ffd700;font-weight:bold;font-size:14px;">${q.name}</div>
+          <div style="color:#aaa;font-size:12px;margin:4px 0;">${q.description}</div>
+          <div style="width:100%;height:8px;background:rgba(30,25,15,0.9);border-radius:4px;overflow:hidden;margin:6px 0;">
+            <div style="width:${pct}%;height:100%;background:linear-gradient(90deg,#c8a84e,#ffd700);border-radius:4px;"></div>
+          </div>
+          <div style="color:#888;font-size:11px;">${q.progress}/${q.required}</div>
+          <button class="quest-abandon" data-quest-id="${q.id}" style="
+            margin-top:6px;padding:4px 12px;font-size:11px;background:rgba(60,20,20,0.8);
+            border:1px solid #a44;border-radius:4px;color:#e66;cursor:pointer;pointer-events:auto;
+          ">Abandon</button>
+        </div>`;
+    }
+
+    const canAccept = active.length < 5;
+
+    ctx.menuEl.innerHTML = `
+      <div style="
+        width:100%;height:100%;background:rgba(0,0,0,0.88);display:flex;flex-direction:column;
+        align-items:center;justify-content:center;color:#fff;pointer-events:auto;
+      ">
+        <div style="
+          max-width:900px;width:92%;background:rgba(15,10,5,0.95);border:2px solid #5a4a2a;
+          border-radius:12px;padding:24px 30px;max-height:88vh;overflow-y:auto;
+        ">
+          <h2 style="color:#c8a84e;font-size:32px;letter-spacing:3px;margin:0 0 16px;text-align:center;font-family:'Georgia',serif;
+            text-shadow:0 0 15px rgba(200,168,78,0.4);">QUEST BOARD</h2>
+          <div style="color:#888;font-size:12px;text-align:center;margin-bottom:16px;">${completed.length} quests completed | ${active.length}/5 active</div>
+          <div style="display:flex;gap:20px;">
+            <div style="flex:1;min-width:0;">
+              <div style="color:#c8a84e;font-size:14px;font-weight:bold;margin-bottom:8px;">AVAILABLE QUESTS</div>
+              <div style="display:flex;flex-direction:column;gap:8px;max-height:400px;overflow-y:auto;">
+                ${availHtml || '<div style="color:#666;font-size:13px;">No quests available.</div>'}
+              </div>
+            </div>
+            <div style="flex:1;min-width:0;">
+              <div style="color:#ffd700;font-size:14px;font-weight:bold;margin-bottom:8px;">ACTIVE QUESTS</div>
+              <div style="display:flex;flex-direction:column;gap:8px;max-height:400px;overflow-y:auto;">
+                ${activeHtml || '<div style="color:#666;font-size:13px;">No active quests.</div>'}
+              </div>
+            </div>
+          </div>
+          <div id="quest-status" style="margin-top:10px;text-align:center;color:#ff4444;font-size:14px;min-height:20px;"></div>
+          <div style="text-align:center;margin-top:16px;">
+            <button id="quest-close-btn" style="
+              padding:12px 40px;font-size:18px;letter-spacing:3px;font-weight:bold;
+              background:rgba(40,30,15,0.9);border:2px solid #5a4a2a;border-radius:8px;color:#c8a84e;
+              cursor:pointer;transition:all 0.2s;font-family:'Georgia',serif;pointer-events:auto;
+            ">CLOSE</button>
+          </div>
+          <div style="text-align:center;margin-top:8px;color:#888;font-size:12px;">Press J or Escape to close</div>
+        </div>
+      </div>`;
+
+    const statusEl = ctx.menuEl.querySelector("#quest-status") as HTMLDivElement;
+    const showStatus = (msg: string, color: string) => {
+      statusEl.textContent = msg;
+      statusEl.style.color = color;
+      setTimeout(() => { statusEl.textContent = ""; }, 2000);
+    };
+
+    const availSlots = ctx.menuEl.querySelectorAll(".quest-available") as NodeListOf<HTMLDivElement>;
+    availSlots.forEach(el => {
+      el.addEventListener("mouseenter", () => { el.style.borderColor = "#c8a84e"; });
+      el.addEventListener("mouseleave", () => { el.style.borderColor = "#5a4a2a"; });
+      el.addEventListener("click", () => {
+        if (!canAccept) {
+          showStatus("Max 5 active quests!", "#ff4444");
+          return;
+        }
+        const qId = el.getAttribute("data-quest-id")!;
+        const qDef = QUEST_DATABASE.find(q => q.id === qId);
+        if (!qDef) return;
+        const quest: DiabloQuest = {
+          ...qDef,
+          progress: 0,
+          isComplete: false,
+          isActive: true,
+        };
+        if (quest.type === QuestType.COLLECT_GOLD) quest.progress = ctx.state.player.gold;
+        if (quest.type === QuestType.TREASURE_HUNT) quest.progress = ctx.chestsOpened;
+        ctx.state.activeQuests.push(quest);
+        showStatus(`Accepted: ${quest.name}`, "#44ff44");
+        showQuestBoard(ctx);
+      });
+    });
+
+    const abandonBtns = ctx.menuEl.querySelectorAll(".quest-abandon") as NodeListOf<HTMLButtonElement>;
+    abandonBtns.forEach(btn => {
+      btn.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        const qId = btn.getAttribute("data-quest-id")!;
+        ctx.state.activeQuests = ctx.state.activeQuests.filter(q => q.id !== qId);
+        showStatus("Quest abandoned.", "#ff8800");
+        showQuestBoard(ctx);
+      });
+    });
+
+    const closeBtn = ctx.menuEl.querySelector("#quest-close-btn") as HTMLButtonElement;
+    closeBtn.addEventListener("mouseenter", () => {
+      closeBtn.style.borderColor = "#c8a84e";
+      closeBtn.style.boxShadow = "0 0 15px rgba(200,168,78,0.3)";
+      closeBtn.style.background = "rgba(50,40,20,0.95)";
+    });
+    closeBtn.addEventListener("mouseleave", () => {
+      closeBtn.style.borderColor = "#5a4a2a";
+      closeBtn.style.boxShadow = "none";
+      closeBtn.style.background = "rgba(40,30,15,0.9)";
+    });
+    closeBtn.addEventListener("click", () => { ctx.closeOverlay(); });
 }
