@@ -4064,29 +4064,32 @@ export class DiabloRenderer {
         mesh.scale.setScalar(enemy.scale || 1);
       }
 
-      // Boss ring animation (spin rings, bob runes, flicker flames)
+      // Boss ring animation — counter-rotate to stay horizontal (cancel parent rotation)
       if (enemy.isBoss) {
+        const parentRotY = mesh.rotation.y;
         const outerRing = mesh.getObjectByName('boss-ring-outer');
-        if (outerRing) outerRing.rotation.z = this._time * 0.3;
+        if (outerRing) {
+          outerRing.rotation.set(-Math.PI / 2, 0, this._time * 0.3 - parentRotY);
+        }
         const innerRing = mesh.getObjectByName('boss-ring-inner');
-        if (innerRing) innerRing.rotation.z = -this._time * 0.5;
+        if (innerRing) {
+          innerRing.rotation.set(-Math.PI / 2, 0, -this._time * 0.5 - parentRotY);
+        }
         for (let ri = 0; ri < 8; ri++) {
           const rune = mesh.getObjectByName(`boss-rune-${ri}`);
           if (rune) {
-            const runeAngle = (ri / 8) * Math.PI * 2 + this._time * 0.4;
+            const runeAngle = (ri / 8) * Math.PI * 2 + this._time * 0.4 - parentRotY;
             const runeR = (enemy.scale || 1) * 1.2 * 0.9;
             rune.position.set(Math.cos(runeAngle) * runeR, 0.07 + Math.sin(this._time * 2 + ri) * 0.03, Math.sin(runeAngle) * runeR);
-            rune.rotation.z = -runeAngle;
+            rune.rotation.set(-Math.PI / 2, 0, -runeAngle);
           }
         }
         for (let fi = 0; fi < 4; fi++) {
           const flame = mesh.getObjectByName(`boss-flame-${fi}`);
           if (flame) {
-            const fAngle = (fi / 4) * Math.PI * 2 + Math.PI / 4;
+            const fAngle = (fi / 4) * Math.PI * 2 + Math.PI / 4 - parentRotY;
             const fR = (enemy.scale || 1) * 1.2;
-            flame.position.y = 0.15 + Math.sin(this._time * 3 + fi * 1.5) * 0.1;
-            flame.position.x = Math.cos(fAngle) * fR;
-            flame.position.z = Math.sin(fAngle) * fR;
+            flame.position.set(Math.cos(fAngle) * fR, 0.15 + Math.sin(this._time * 3 + fi * 1.5) * 0.1, Math.sin(fAngle) * fR);
           }
         }
       }

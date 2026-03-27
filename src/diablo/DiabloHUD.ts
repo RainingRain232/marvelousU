@@ -1135,6 +1135,76 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
   }
   hud.appendChild(skillBarBg);
 
+  // === Skeleton figurehead on left side of skill bar ===
+  const figurehead = document.createElement("div");
+  figurehead.style.cssText = `
+    position:absolute;bottom:8px;left:50%;
+    transform:translateX(calc(-50% - 260px)) rotate(-12deg);
+    width:80px;height:120px;pointer-events:none;z-index:11;
+    filter:drop-shadow(2px 2px 4px rgba(0,0,0,0.7));
+  `;
+  figurehead.innerHTML = `<svg viewBox="0 0 80 120" style="width:100%;height:100%;" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="fhBone" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#d4c8a8"/><stop offset="100%" stop-color="#a89870"/></linearGradient>
+      <linearGradient id="fhDark" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#8a7a60"/><stop offset="100%" stop-color="#5a4a30"/></linearGradient>
+    </defs>
+    <!-- Mounting bracket (attaches to skill bar) -->
+    <rect x="58" y="30" width="18" height="50" rx="3" fill="#3a2a1a" stroke="#5a4a2a" stroke-width="1"/>
+    <rect x="60" y="35" width="4" height="8" rx="1" fill="#8b6914" opacity="0.6"/>
+    <rect x="60" y="50" width="4" height="8" rx="1" fill="#8b6914" opacity="0.6"/>
+    <rect x="60" y="65" width="4" height="8" rx="1" fill="#8b6914" opacity="0.6"/>
+    <!-- Arm bone (horizontal spar) -->
+    <path d="M 22 52 Q 40 50 58 48 Q 62 48 62 52 Q 62 56 58 56 Q 40 56 22 54 Z" fill="url(#fhBone)" stroke="#8a7a60" stroke-width="0.8"/>
+    <!-- Shoulder joint -->
+    <circle cx="22" cy="53" r="4" fill="#c4b898" stroke="#8a7a60" stroke-width="0.8"/>
+    <!-- Ribcage (torso hanging down) -->
+    <path d="M 14 56 Q 10 58 8 65 Q 6 72 8 80 Q 10 86 16 88 Q 22 90 28 88 Q 34 86 36 80 Q 38 72 36 65 Q 34 58 30 56 Z" fill="url(#fhBone)" stroke="#8a7a60" stroke-width="0.8"/>
+    <!-- Rib lines -->
+    <path d="M 12 62 Q 20 60 32 62" fill="none" stroke="#a89870" stroke-width="0.8" opacity="0.5"/>
+    <path d="M 10 68 Q 20 66 34 68" fill="none" stroke="#a89870" stroke-width="0.8" opacity="0.5"/>
+    <path d="M 9 74 Q 20 72 35 74" fill="none" stroke="#a89870" stroke-width="0.8" opacity="0.5"/>
+    <path d="M 10 80 Q 20 78 34 80" fill="none" stroke="#a89870" stroke-width="0.8" opacity="0.5"/>
+    <!-- Spine -->
+    <path d="M 22 56 L 22 88" fill="none" stroke="#9a8a68" stroke-width="1.5" opacity="0.4"/>
+    <!-- Skull -->
+    <ellipse cx="22" cy="40" rx="12" ry="14" fill="url(#fhBone)" stroke="#8a7a60" stroke-width="1"/>
+    <!-- Skull top (cranium) -->
+    <ellipse cx="22" cy="35" rx="11" ry="10" fill="#d4c8a8" stroke="#a89870" stroke-width="0.5"/>
+    <!-- Brow ridge -->
+    <path d="M 12 38 Q 17 35 22 37 Q 27 35 32 38" fill="none" stroke="#8a7a60" stroke-width="1.5" stroke-linecap="round"/>
+    <!-- Eye sockets (deep, dark) -->
+    <ellipse cx="17" cy="40" rx="4" ry="3.5" fill="#1a1208"/>
+    <ellipse cx="27" cy="40" rx="4" ry="3.5" fill="#1a1208"/>
+    <!-- Eye glow (faint red) -->
+    <ellipse cx="17" cy="40" rx="2" ry="1.5" fill="#661111" opacity="0.6"/>
+    <ellipse cx="27" cy="40" rx="2" ry="1.5" fill="#661111" opacity="0.6"/>
+    <ellipse cx="17" cy="40" rx="0.8" ry="0.6" fill="#cc3333" opacity="0.4"/>
+    <ellipse cx="27" cy="40" rx="0.8" ry="0.6" fill="#cc3333" opacity="0.4"/>
+    <!-- Nasal cavity -->
+    <path d="M 20 44 Q 22 47 24 44" fill="#2a1a0a" stroke="#5a4a30" stroke-width="0.5"/>
+    <!-- Jaw -->
+    <path d="M 12 48 Q 14 52 22 53 Q 30 52 32 48" fill="url(#fhDark)" stroke="#8a7a60" stroke-width="0.8"/>
+    <!-- Teeth (upper) -->
+    <path d="M 15 48 L 15 50 M 17 48 L 17 50.5 M 19 48 L 19 50.5 M 21 48 L 21 50 M 23 48 L 23 50.5 M 25 48 L 25 50.5 M 27 48 L 27 50 M 29 48 L 29 50" fill="none" stroke="#d4c8a8" stroke-width="0.8"/>
+    <!-- Cheekbones -->
+    <path d="M 10 42 Q 12 44 14 44" fill="none" stroke="#a89870" stroke-width="0.8" opacity="0.5"/>
+    <path d="M 34 42 Q 32 44 30 44" fill="none" stroke="#a89870" stroke-width="0.8" opacity="0.5"/>
+    <!-- Pelvis / hip bones (bottom) -->
+    <path d="M 14 88 Q 10 92 8 98 Q 6 102 10 104 Q 14 102 18 96 Z" fill="url(#fhBone)" stroke="#8a7a60" stroke-width="0.6"/>
+    <path d="M 30 88 Q 34 92 36 98 Q 38 102 34 104 Q 30 102 26 96 Z" fill="url(#fhBone)" stroke="#8a7a60" stroke-width="0.6"/>
+    <!-- Dangling leg bones -->
+    <path d="M 12 102 Q 10 108 8 116" fill="none" stroke="url(#fhBone)" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M 32 102 Q 34 108 36 116" fill="none" stroke="url(#fhBone)" stroke-width="2.5" stroke-linecap="round"/>
+    <!-- Free arm (left, dangling down) -->
+    <path d="M 14 56 Q 6 64 4 76 Q 2 86 6 90" fill="none" stroke="url(#fhBone)" stroke-width="2.5" stroke-linecap="round"/>
+    <!-- Hanging hand bones -->
+    <path d="M 6 90 L 4 94 M 6 90 L 6 95 M 6 90 L 8 94" fill="none" stroke="#c4b898" stroke-width="1" stroke-linecap="round"/>
+    <!-- Tattered cloth hanging from ribs -->
+    <path d="M 10 65 Q 4 75 6 88 Q 2 92 4 96" fill="none" stroke="#3a3020" stroke-width="1.5" opacity="0.4"/>
+    <path d="M 34 65 Q 38 78 36 90" fill="none" stroke="#3a3020" stroke-width="1.2" opacity="0.35"/>
+  </svg>`;
+  hud.appendChild(figurehead);
+
   // XP bar - very bottom (ornate, enhanced)
   const xpContainer = document.createElement("div");
   xpContainer.style.cssText = `
