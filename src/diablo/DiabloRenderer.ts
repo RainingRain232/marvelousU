@@ -3296,56 +3296,82 @@ export class DiabloRenderer {
         }
       }
 
-      // Enhanced dying animation: collapse + sink + dissolve
+      // Death animation: quick fade + soul ascending
       if (enemy.state === EnemyState.DYING) {
         let dyingAnim = this._dyingAnims.get(enemy.id);
         if (!dyingAnim) {
           dyingAnim = { timer: 0, sinkY: 0, initialY: enemy.y, scattered: false };
           this._dyingAnims.set(enemy.id, dyingAnim);
-          // One-time setup: mark all materials as transparent for fading
+          // Mark materials transparent + spawn soul orb
           const cachedMats = this._enemyMaterials.get(enemy.id);
-          if (cachedMats) {
-            for (const m of cachedMats) m.transparent = true;
+          if (cachedMats) for (const m of cachedMats) m.transparent = true;
+          // Create ascending soul
+          const soulGroup = new THREE.Group();
+          const soulCore = new THREE.Mesh(
+            new THREE.SphereGeometry(0.3, 12, 8),
+            new THREE.MeshStandardMaterial({ color: 0xaaddff, emissive: 0x6699cc, emissiveIntensity: 3, transparent: true, opacity: 0.9 }),
+          );
+          soulGroup.add(soulCore);
+          const soulGlow = new THREE.Mesh(
+            new THREE.SphereGeometry(0.6, 8, 6),
+            new THREE.MeshStandardMaterial({ color: 0x88bbee, emissive: 0x4488cc, emissiveIntensity: 2, transparent: true, opacity: 0.3, side: THREE.DoubleSide }),
+          );
+          soulGroup.add(soulGlow);
+          // Wispy trail particles (3 small trailing spheres)
+          for (let w = 0; w < 3; w++) {
+            const wisp = new THREE.Mesh(
+              new THREE.SphereGeometry(0.12, 6, 4),
+              new THREE.MeshStandardMaterial({ color: 0xaaccee, emissive: 0x6699bb, emissiveIntensity: 2, transparent: true, opacity: 0.5 }),
+            );
+            wisp.position.set((Math.random() - 0.5) * 0.3, -0.2 - w * 0.25, (Math.random() - 0.5) * 0.3);
+            wisp.name = 'wisp';
+            soulGroup.add(wisp);
           }
+          soulGroup.position.set(enemy.x, enemy.y + (enemy.scale || 1) * 1.0, enemy.z);
+          soulGroup.name = `soul-${enemy.id}`;
+          this._scene.add(soulGroup);
         }
-        const dt2 = enemy.deathTimer; // how far into death (increases)
-        const phase = Math.min(dt2 * 2, 1.0); // 0→1 over 0.5s
-        const prevPhase = dyingAnim.timer;
+        const dt2 = enemy.deathTimer;
+        const phase = Math.min(dt2, 1.0); // 0→1 over 1s
         dyingAnim.timer = phase;
 
-        // Phase 1: Collapse — tilt forward/sideways and shrink
-        const collapseT = Math.min(phase * 2, 1.0);
-        mesh.rotation.x = collapseT * 1.2;
-        mesh.rotation.z = collapseT * 0.4 * (enemy.id.charCodeAt(0) % 2 === 0 ? 1 : -1);
-        const baseScale = enemy.scale || 1;
-        const scaleY = baseScale * (1.0 - collapseT * 0.5);
-        mesh.scale.set(baseScale * (1.0 + collapseT * 0.15), scaleY, baseScale * (1.0 + collapseT * 0.15));
-
-        // Phase 2: Sink into ground
-        const sinkT = Math.max(0, (phase - 0.3) / 0.7);
-        mesh.position.y = enemy.y - sinkT * 0.8;
-
-        // Phase 3: Dissolve/fade — only traverse when opacity actually changes
-        const fadeT = Math.max(0, (phase - 0.2) / 0.8);
-        const fade = Math.max(0, 1.0 - fadeT);
-        const prevFadeT = Math.max(0, (prevPhase - 0.2) / 0.8);
-        // Only update materials when fade value has meaningfully changed (>0.02)
-        if (Math.abs(fadeT - prevFadeT) > 0.02 || phase < 0.2) {
-          const isFlash = phase < 0.2;
-          const flashIntensity = isFlash ? (1.0 - phase * 5) * 2.0 : 0;
+        // Quickly fade out the enemy mesh (over 0.3s)
+        const meshFade = Math.max(0, 1.0 - phase * 3.3);
+        if (meshFade > 0) {
           const cachedMats2 = this._enemyMaterials.get(enemy.id);
-          if (cachedMats2) {
-            for (const m of cachedMats2) {
-              m.opacity = fade;
-              if (isFlash) {
-                m.emissive.setHex(0xff2200);
-                m.emissiveIntensity = flashIntensity;
-              }
+          if (cachedMats2) for (const m of cachedMats2) m.opacity = meshFade;
+          mesh.scale.setScalar((enemy.scale || 1) * (0.8 + meshFade * 0.2));
+        } else {
+          mesh.visible = false;
+        }
+
+        // Animate ascending soul
+        const soul = this._scene.getObjectByName(`soul-${enemy.id}`) as THREE.Group | undefined;
+        if (soul) {
+          const rise = phase * 4.0; // rise 4 units over 1s
+          const sway = Math.sin(this._time * 6 + enemy.id.charCodeAt(0)) * 0.3 * (1 - phase);
+          soul.position.y = (dyingAnim.initialY || enemy.y) + (enemy.scale || 1) * 1.0 + rise;
+          soul.position.x = enemy.x + sway;
+          // Fade out soul in last 0.3s
+          const soulFade = phase > 0.7 ? (1.0 - phase) / 0.3 : 1.0;
+          soul.traverse((child) => {
+            if (child instanceof THREE.Mesh && child.material instanceof THREE.MeshStandardMaterial) {
+              const baseOp = child.name === 'wisp' ? 0.5 : (child.geometry.parameters as any)?.radius > 0.4 ? 0.3 : 0.9;
+              child.material.opacity = baseOp * soulFade;
             }
+          });
+          // Scale down slightly as it rises
+          soul.scale.setScalar(1.0 - phase * 0.3);
+          // Clean up when done
+          if (phase >= 0.99) {
+            this._disposeObject3D(soul);
+            this._scene.remove(soul);
           }
         }
       } else {
-        // Clean up dying anim tracking if enemy is no longer dying
+        // Clean up dying anim tracking
+        const oldSoul = this._scene.getObjectByName(`soul-${enemy.id}`);
+        if (oldSoul) { this._disposeObject3D(oldSoul); this._scene.remove(oldSoul); }
         this._dyingAnims.delete(enemy.id);
       }
 
