@@ -2124,7 +2124,7 @@ export function showSkillSwapMenu(ctx: ScreenContext): void {
       </style>
       <div style="
         width:100%;height:100%;
-        background:radial-gradient(ellipse at center, rgba(40,25,10,0.92) 0%, rgba(0,0,0,0.94) 70%);
+        ${SCREEN_BG}
         display:flex;flex-direction:column;
         align-items:center;justify-content:center;color:#fff;pointer-events:auto;
       ">
@@ -2568,7 +2568,7 @@ export function showCharacterOverview(ctx: ScreenContext): void {
     </style>
     <div style="
       width:100%;height:100%;
-      background:radial-gradient(ellipse at center, rgba(40,30,10,0.4) 0%, rgba(0,0,0,0.92) 70%);
+      ${SCREEN_BG}
       display:flex;flex-direction:column;
       align-items:center;justify-content:center;color:#fff;pointer-events:auto;
     ">
@@ -3653,8 +3653,7 @@ export function showStash(ctx: ScreenContext): void {
     ctx.menuEl.innerHTML = `
       <div style="
         width:100%;height:100%;
-        background:rgba(0,0,0,0.90);
-        background-image:radial-gradient(ellipse at center,rgba(40,30,15,0.15) 0%,transparent 70%);
+        ${SCREEN_BG}
         display:flex;flex-direction:column;
         align-items:center;justify-content:center;color:#fff;pointer-events:auto;
         position:relative;
@@ -5540,8 +5539,7 @@ export function showQuestBoard(ctx: ScreenContext): void {
     ctx.menuEl.innerHTML = `
       <div style="
         width:100%;height:100%;
-        background:rgba(0,0,0,0.90);
-        background-image:radial-gradient(ellipse at center,rgba(40,30,15,0.15) 0%,transparent 70%);
+        ${SCREEN_BG}
         display:flex;flex-direction:column;
         align-items:center;justify-content:center;color:#fff;pointer-events:auto;
         position:relative;

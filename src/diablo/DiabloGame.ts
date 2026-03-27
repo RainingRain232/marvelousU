@@ -1238,6 +1238,7 @@ export class DiabloGame {
       this._showClassSelect();
     } else if (this._phaseBeforeOverlay === DiabloPhase.PAUSED) {
       this._state.phase = DiabloPhase.PAUSED;
+      this._phaseBeforeOverlay = DiabloPhase.PLAYING; // Reset so Escape from pause menu resumes play
       this._showPauseMenu();
     } else {
       this._state.phase = DiabloPhase.PLAYING;
