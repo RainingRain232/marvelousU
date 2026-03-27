@@ -3623,27 +3623,55 @@ export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: numb
 
     // ── Wooden cart and barrel near farmstead ──
     const cartGroup = new THREE.Group();
+    const wheelR = 0.3;
+    const cartBedY = wheelR + 0.05; // bed sits on top of wheels
     const cartBed = new THREE.Mesh(new THREE.BoxGeometry(2, 0.1, 1.2), woodMat);
-    cartBed.position.y = 0.6;
+    cartBed.position.y = cartBedY;
     cartGroup.add(cartBed);
     // Cart sides
     const cSide1 = new THREE.Mesh(new THREE.BoxGeometry(2, 0.5, 0.08), woodMat);
-    cSide1.position.set(0, 0.9, -0.6);
+    cSide1.position.set(0, cartBedY + 0.3, -0.6);
     cartGroup.add(cSide1);
     const cSide2 = new THREE.Mesh(new THREE.BoxGeometry(2, 0.5, 0.08), woodMat);
-    cSide2.position.set(0, 0.9, 0.6);
+    cSide2.position.set(0, cartBedY + 0.3, 0.6);
     cartGroup.add(cSide2);
-    // Wheels
-    for (let w2 = 0; w2 < 2; w2++) {
-      const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.04, 20, 27), new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.6, metalness: 0.5 }));
-      wheel.position.set(w2 === 0 ? -0.8 : 0.8, 0.3, 0.7);
-      wheel.rotation.x = Math.PI / 2;
-      cartGroup.add(wheel);
+    // Back panel
+    const cBack = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.5, 1.2), woodMat);
+    cBack.position.set(-1.0, cartBedY + 0.3, 0);
+    cartGroup.add(cBack);
+    // Wheels (4 wheels, properly positioned under the cart)
+    const wheelMat = new THREE.MeshStandardMaterial({ color: 0x5a4a30, roughness: 0.7, metalness: 0.1 });
+    const wheelAxleMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.5, metalness: 0.6 });
+    for (const wx of [-0.7, 0.7]) {
+      for (const wz of [-0.55, 0.55]) {
+        const wheel = new THREE.Mesh(new THREE.TorusGeometry(wheelR, 0.04, 12, 20), wheelMat);
+        wheel.position.set(wx, wheelR, wz);
+        wheel.rotation.y = Math.PI / 2;
+        cartGroup.add(wheel);
+        // Wheel spokes (cross pattern)
+        for (let sp = 0; sp < 4; sp++) {
+          const spoke = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, wheelR * 1.8, 4), wheelMat);
+          spoke.position.set(wx, wheelR, wz);
+          spoke.rotation.set(0, 0, (sp / 4) * Math.PI);
+          spoke.rotation.y = Math.PI / 2;
+          cartGroup.add(spoke);
+        }
+        // Axle hub
+        const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.06, 8), wheelAxleMat);
+        hub.position.set(wx, wheelR, wz);
+        hub.rotation.x = Math.PI / 2;
+        cartGroup.add(hub);
+      }
     }
+    // Handle (pull bar)
+    const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.5, 6), woodMat);
+    handle.position.set(1.7, cartBedY - 0.1, 0);
+    handle.rotation.z = Math.PI / 2 + 0.2;
+    cartGroup.add(handle);
     // Barrels in cart
     for (let b = 0; b < 2; b++) {
-      const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.5, 27), woodMat);
-      barrel.position.set(-0.4 + b * 0.8, 0.95, 0);
+      const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.5, 12), woodMat);
+      barrel.position.set(-0.4 + b * 0.8, cartBedY + 0.3, 0);
       cartGroup.add(barrel);
     }
     cartGroup.position.set(farmX + 5, getTerrainHeight(farmX + 5, farmZ + 3, 1.4), farmZ + 3);
@@ -3686,6 +3714,7 @@ export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: numb
     }
 
     // ── Stone fence/wall segments between fields ──
+    const wallStoneColors = [0x777766, 0x888877, 0x6a6a5f, 0x7a7a6e, 0x696960, 0x8a8878];
     for (let i = 0; i < 8; i++) {
       const stoneWall = new THREE.Group();
       const wallLen = 6 + Math.floor(Math.random() * 8);
@@ -3694,7 +3723,7 @@ export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: numb
         const stoneW = 0.4 + Math.random() * 0.3;
         const stone = new THREE.Mesh(
           new THREE.BoxGeometry(stoneW, stoneH, 0.4),
-          new THREE.MeshStandardMaterial({ color: 0x777766 + Math.floor(Math.random() * 0x111111), roughness: 0.85 }),
+          new THREE.MeshStandardMaterial({ color: wallStoneColors[Math.floor(Math.random() * wallStoneColors.length)], roughness: 0.85 }),
         );
         stone.position.set(s * 0.45, stoneH / 2, 0);
         stone.rotation.y = (Math.random() - 0.5) * 0.1;
