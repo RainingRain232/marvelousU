@@ -1929,7 +1929,7 @@ export function showCollection(ctx: ScreenContext): void {
 
   ctx.menuEl.innerHTML = `
     <div style="
-      position:absolute;inset:0;background:rgba(0,0,0,0.85);display:flex;
+      position:absolute;inset:0;${SCREEN_BG}display:flex;
       align-items:center;justify-content:center;z-index:100;pointer-events:auto;
     ">
       <div class="codex-panel-anim" style="
