@@ -266,7 +266,7 @@ export class DiabloRenderer {
     this._playerGroup = new THREE.Group();
     this._scene.add(this._playerGroup);
 
-    const groundGeo = new THREE.PlaneGeometry(200, 200, 128, 128);
+    const groundGeo = new THREE.PlaneGeometry(200, 200, 200, 200);
     groundGeo.rotateX(-Math.PI / 2);
     const posAttr = groundGeo.attributes.position;
     const defaultColors: number[] = [];
@@ -380,6 +380,8 @@ export class DiabloRenderer {
     const posAttr = geo.attributes.position;
     const c1 = new THREE.Color(baseColor);
     const c2 = new THREE.Color(secondaryColor);
+    // Derive a darker accent from the base for natural variation
+    const c3 = new THREE.Color(baseColor).multiplyScalar(0.65);
     const colors: number[] = [];
     for (let i = 0; i < posAttr.count; i++) {
       const gx = posAttr.getX(i);
@@ -388,12 +390,114 @@ export class DiabloRenderer {
       posAttr.setY(i, h);
       const t = THREE.MathUtils.clamp((h / (amplitude * 1.15)) * 0.5 + 0.5, 0, 1);
       const col = new THREE.Color().lerpColors(c1, c2, t);
+      // Multi-frequency noise for patchy natural ground (dirt spots, worn paths)
+      const n1 = Math.sin(gx * 1.7) * Math.cos(gz * 2.3) * 0.5
+        + Math.sin(gx * 4.1 + gz * 3.7) * 0.25
+        + Math.sin(gx * 8.3 - gz * 6.1) * 0.12;
+      const darkPatch = Math.max(0, n1) * 0.2;
+      col.lerp(c3, darkPatch);
+      // High-frequency brightness dither (breaks up banding)
+      const dither = (Math.sin(gx * 12.7 + gz * 9.3) * 0.015)
+        + (Math.cos(gx * 7.1 - gz * 11.9) * 0.01);
+      col.r = Math.max(0, Math.min(1, col.r + dither));
+      col.g = Math.max(0, Math.min(1, col.g + dither));
+      col.b = Math.max(0, Math.min(1, col.b + dither * 0.5));
       colors.push(col.r, col.g, col.b);
     }
     geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(colors), 3));
     geo.computeVertexNormals();
     (geo.attributes.position as THREE.BufferAttribute).needsUpdate = true;
     (geo.attributes.color as THREE.BufferAttribute).needsUpdate = true;
+  }
+
+  /** Scatter small ground details (pebbles, dirt discs, tiny plants) across the terrain.
+   *  Skipped for indoor/dungeon maps. These are very low-poly and share geometry. */
+  private _scatterGroundDetail(w: number, d: number, mapId: DiabloMapId): void {
+    // Skip indoor/dungeon maps
+    const indoorMaps = new Set([
+      DiabloMapId.NECROPOLIS_DUNGEON, DiabloMapId.HAUNTED_CATHEDRAL,
+      DiabloMapId.CLOCKWORK_FOUNDRY, DiabloMapId.ANCIENT_LIBRARY,
+      DiabloMapId.OBSIDIAN_FORTRESS, DiabloMapId.JADE_TEMPLE,
+      DiabloMapId.PLAGUEROT_SEWERS, DiabloMapId.CHRONO_LABYRINTH,
+      DiabloMapId.ELDRITCH_NEXUS, DiabloMapId.IRON_WASTES,
+      DiabloMapId.ASTRAL_VOID, DiabloMapId.SHADOW_REALM,
+      DiabloMapId.PRIMORDIAL_ABYSS, DiabloMapId.INFERNAL_THRONE,
+    ]);
+    if (indoorMaps.has(mapId)) return;
+
+    // Determine color palette from the ground plane vertex colors
+    const geo = this._groundPlane.geometry as THREE.BufferGeometry;
+    const colorAttr = geo.attributes.color;
+    // Sample a few vertex colors to get the average ground color
+    const avgColor = new THREE.Color(0, 0, 0);
+    const sampleCount = Math.min(20, colorAttr.count);
+    for (let i = 0; i < sampleCount; i++) {
+      const idx = Math.floor(Math.random() * colorAttr.count);
+      avgColor.r += colorAttr.getX(idx);
+      avgColor.g += colorAttr.getY(idx);
+      avgColor.b += colorAttr.getZ(idx);
+    }
+    avgColor.multiplyScalar(1 / sampleCount);
+    const darkGround = avgColor.clone().multiplyScalar(0.5);
+    const lightGround = avgColor.clone().multiplyScalar(1.3);
+
+    // Shared geometries (very low poly)
+    const pebbleGeo = new THREE.DodecahedronGeometry(1, 0);
+    const discGeo = new THREE.CircleGeometry(1, 6);
+    discGeo.rotateX(-Math.PI / 2);
+
+    const pebbleMat = new THREE.MeshStandardMaterial({ color: darkGround, roughness: 1.0, metalness: 0 });
+    const dirtMat = new THREE.MeshBasicMaterial({ color: darkGround, transparent: true, opacity: 0.15, side: THREE.DoubleSide });
+
+    // Scatter pebbles (80)
+    for (let i = 0; i < 80; i++) {
+      const px = (Math.random() - 0.5) * w * 0.9;
+      const pz = (Math.random() - 0.5) * d * 0.9;
+      const size = 0.03 + Math.random() * 0.06;
+      const pebble = new THREE.Mesh(pebbleGeo, pebbleMat);
+      pebble.scale.set(size, size * (0.3 + Math.random() * 0.4), size);
+      pebble.position.set(px, getTerrainHeight(px, pz) + size * 0.2, pz);
+      pebble.rotation.y = Math.random() * Math.PI * 2;
+      this._envGroup.add(pebble);
+    }
+
+    // Scatter dirt/shadow patches (50) — flat dark circles that break up the ground
+    for (let i = 0; i < 50; i++) {
+      const dx = (Math.random() - 0.5) * w * 0.85;
+      const dz = (Math.random() - 0.5) * d * 0.85;
+      const size = 0.3 + Math.random() * 0.8;
+      const disc = new THREE.Mesh(discGeo, dirtMat);
+      disc.scale.set(size, 1, size);
+      disc.position.set(dx, getTerrainHeight(dx, dz) + 0.01, dz);
+      disc.rotation.y = Math.random() * Math.PI * 2;
+      this._envGroup.add(disc);
+    }
+
+    // Scatter tiny ground plants/weeds (40) — small cone clusters
+    const plantColors = [
+      lightGround.clone().multiplyScalar(1.1),
+      avgColor.clone(),
+      darkGround.clone().lerp(new THREE.Color(0x228822), 0.3),
+    ];
+    const plantGeo = new THREE.ConeGeometry(1, 1, 3);
+    for (let i = 0; i < 40; i++) {
+      const px = (Math.random() - 0.5) * w * 0.8;
+      const pz = (Math.random() - 0.5) * d * 0.8;
+      const tuft = new THREE.Group();
+      const bladeCount = 2 + Math.floor(Math.random() * 3);
+      const pColor = plantColors[i % plantColors.length];
+      const pMat = new THREE.MeshStandardMaterial({ color: pColor, roughness: 0.95 });
+      for (let j = 0; j < bladeCount; j++) {
+        const h = 0.08 + Math.random() * 0.12;
+        const blade = new THREE.Mesh(plantGeo, pMat);
+        blade.scale.set(0.02 + Math.random() * 0.02, h, 0.02 + Math.random() * 0.02);
+        blade.position.set((Math.random() - 0.5) * 0.1, h * 0.5, (Math.random() - 0.5) * 0.1);
+        blade.rotation.z = (Math.random() - 0.5) * 0.6;
+        tuft.add(blade);
+      }
+      tuft.position.set(px, getTerrainHeight(px, pz), pz);
+      this._envGroup.add(tuft);
+    }
   }
 
   /** Recursively dispose all geometries and materials on an Object3D and its descendants. */
@@ -660,6 +764,9 @@ export class DiabloRenderer {
     if (fog) {
       this._scene.background = fog.color.clone();
     }
+
+    // Scatter ground detail (small pebbles, dirt patches, micro-plants) on outdoor maps
+    this._scatterGroundDetail(cfg.width, cfg.depth || cfg.width, mapId);
 
     // Auto-detect water surfaces after map is built
     this._detectWaterMeshes();
@@ -27246,28 +27353,28 @@ export class DiabloRenderer {
     const pz = state.player.z;
 
     // Spawn new motes periodically
-    if (this._ambientMotes.length < 25 && Math.random() < dt * 3) {
-      const moteGeo = new THREE.SphereGeometry(0.04, 4, 4);
-      const isFirefly = Math.random() > 0.5;
+    if (this._ambientMotes.length < 20 && Math.random() < dt * 2) {
+      const isFirefly = Math.random() > 0.6;
+      const moteGeo = new THREE.SphereGeometry(isFirefly ? 0.02 : 0.012, 3, 3);
       const moteMat = new THREE.MeshBasicMaterial({
-        color: isFirefly ? 0xaaff66 : 0xddddcc,
+        color: isFirefly ? 0xccff88 : 0xccccaa,
         transparent: true,
-        opacity: isFirefly ? 0.7 : 0.3,
+        opacity: isFirefly ? 0.5 : 0.15,
       });
       const mesh = new THREE.Mesh(moteGeo, moteMat);
       mesh.position.set(
-        px + (Math.random() - 0.5) * 30,
-        1 + Math.random() * 4,
-        pz + (Math.random() - 0.5) * 30,
+        px + (Math.random() - 0.5) * 25,
+        0.3 + Math.random() * 2.5,
+        pz + (Math.random() - 0.5) * 25,
       );
       this._ambientParticleGroup.add(mesh);
       this._ambientMotes.push({
         mesh,
-        vx: (Math.random() - 0.5) * 0.5,
-        vy: (Math.random() - 0.3) * 0.3,
-        vz: (Math.random() - 0.5) * 0.5,
-        life: 4 + Math.random() * 6,
-        maxLife: 4 + Math.random() * 6,
+        vx: (Math.random() - 0.5) * 0.2,
+        vy: (Math.random() - 0.3) * 0.15,
+        vz: (Math.random() - 0.5) * 0.2,
+        life: 5 + Math.random() * 8,
+        maxLife: 5 + Math.random() * 8,
       });
     }
 
@@ -27279,8 +27386,8 @@ export class DiabloRenderer {
       m.mesh.position.y += m.vy * dt + Math.sin(this._time * 2 + i) * 0.003;
       m.mesh.position.z += m.vz * dt;
       // Fade in/out
-      const alpha = m.life < 1 ? m.life : (m.maxLife - m.life < 1 ? m.maxLife - m.life : 1);
-      (m.mesh.material as THREE.MeshBasicMaterial).opacity = alpha * 0.5;
+      const alpha = m.life < 1.5 ? m.life / 1.5 : (m.maxLife - m.life < 1.5 ? (m.maxLife - m.life) / 1.5 : 1);
+      (m.mesh.material as THREE.MeshBasicMaterial).opacity = alpha * 0.25;
 
       if (m.life <= 0) {
         this._ambientParticleGroup.remove(m.mesh);
