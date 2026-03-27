@@ -504,30 +504,7 @@ export function showClassSelect(ctx: ScreenContext): void {
         ${diffHtml}
       </div>
 
-      <!-- Weather selector -->
-      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;justify-content:center;align-items:center;">
-        <span style="color:#888;font-size:14px;margin-right:8px;font-family:'Georgia',serif;">WEATHER:</span>
-        <button class="weather-btn" data-weather="RANDOM" style="
-          cursor:pointer;padding:8px 14px;font-size:13px;border-radius:6px;transition:0.2s;
-          background:rgba(60,50,20,0.9);border:2px solid #c8a84e;color:#c8a84e;
-          font-family:'Georgia',serif;font-weight:bold;
-        ">\uD83C\uDFB2 Random</button>
-        <button class="weather-btn" data-weather="NORMAL" style="
-          cursor:pointer;padding:8px 14px;font-size:13px;border-radius:6px;transition:0.2s;
-          background:rgba(30,20,10,0.7);border:2px solid #3a3a2a;color:#666;
-          font-family:'Georgia',serif;font-weight:bold;
-        ">\u2601\uFE0F Normal</button>
-        <button class="weather-btn" data-weather="CLEAR" style="
-          cursor:pointer;padding:8px 14px;font-size:13px;border-radius:6px;transition:0.2s;
-          background:rgba(30,20,10,0.7);border:2px solid #3a3a2a;color:#666;
-          font-family:'Georgia',serif;font-weight:bold;
-        ">\u2600\uFE0F Clear</button>
-        <button class="weather-btn" data-weather="STORMY" style="
-          cursor:pointer;padding:8px 14px;font-size:13px;border-radius:6px;transition:0.2s;
-          background:rgba(30,20,10,0.7);border:2px solid #3a3a2a;color:#666;
-          font-family:'Georgia',serif;font-weight:bold;
-        ">\u26C8\uFE0F Stormy</button>
-      </div>
+      <!-- Weather moved to map select screen -->
 
       <!-- Decorative sub-divider -->
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:18px;">
@@ -612,25 +589,6 @@ export function showClassSelect(ctx: ScreenContext): void {
   });
 
   // Wire up weather buttons
-  const weatherBtns = ctx.menuEl.querySelectorAll(".weather-btn") as NodeListOf<HTMLButtonElement>;
-  const weatherColors: Record<string, string> = {
-    RANDOM: "#c8a84e", NORMAL: "#9999aa", CLEAR: "#ffcc44", STORMY: "#6688cc",
-  };
-  weatherBtns.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const w = btn.getAttribute("data-weather") as Weather | 'RANDOM';
-      ctx.state.preferredWeather = w;
-      weatherBtns.forEach((b) => {
-        const bw = b.getAttribute("data-weather")!;
-        const isNowActive = bw === w;
-        const color = weatherColors[bw] || "#c8a84e";
-        b.style.background = isNowActive ? "rgba(60,50,20,0.9)" : "rgba(30,20,10,0.7)";
-        b.style.borderColor = isNowActive ? color : "#3a3a2a";
-        b.style.color = isNowActive ? color : "#666";
-      });
-    });
-  });
-
   // Hover helper for class-select menu buttons
   const csHover = (id: string, hBorder: string, hShadow: string, hBg: string, rBorder: string, rBg: string) => {
     const el = ctx.menuEl.querySelector(id) as HTMLButtonElement | null;
@@ -997,6 +955,25 @@ export function showMapSelect(ctx: ScreenContext): void {
     ">${t.icon} ${t.label}</button>`;
   }
 
+  // Weather selector options
+  const weatherOptions = [
+    { value: 'RANDOM', label: 'Random', icon: '\uD83C\uDFB2', color: '#c8a84e' },
+    { value: 'NORMAL', label: 'Normal', icon: '\u2601\uFE0F', color: '#9999aa' },
+    { value: 'CLEAR', label: 'Clear', icon: '\u2600\uFE0F', color: '#ffcc44' },
+    { value: 'STORMY', label: 'Stormy', icon: '\u26C8\uFE0F', color: '#6688cc' },
+  ];
+  let weatherHtml = "";
+  for (const wOpt of weatherOptions) {
+    const isActive = ctx.state.preferredWeather === wOpt.value;
+    weatherHtml += `<button class="weather-btn" data-weather="${wOpt.value}" style="
+      cursor:pointer;padding:8px 14px;font-size:13px;border-radius:6px;transition:0.2s;
+      background:${isActive ? "rgba(60,50,20,0.9)" : "rgba(30,20,10,0.7)"};
+      border:2px solid ${isActive ? wOpt.color : "#3a3a2a"};
+      color:${isActive ? wOpt.color : "#666"};
+      font-family:'Georgia',serif;font-weight:bold;
+    ">${wOpt.icon} ${wOpt.label}</button>`;
+  }
+
   // Map modifier toggles
   const modifiers = [
     { id: 'ENEMY_SPEED', name: 'Swift', icon: '\uD83D\uDCA8', desc: 'Enemies 40% faster', color: '#44ccff', dropBonus: 15 },
@@ -1092,9 +1069,13 @@ export function showMapSelect(ctx: ScreenContext): void {
       <div style="font-size:16px;color:${DIFFICULTY_CONFIGS[ctx.state.difficulty].color};margin-bottom:12px;font-family:'Georgia',serif;">
         ${DIFFICULTY_CONFIGS[ctx.state.difficulty].icon} ${DIFFICULTY_CONFIGS[ctx.state.difficulty].label} Difficulty
       </div>
-      <div style="display:flex;gap:8px;margin-bottom:14px;">${todHtml}</div>
+      <div style="display:flex;gap:8px;margin-bottom:10px;">${todHtml}</div>
+      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;justify-content:center;align-items:center;">
+        <span style="color:#888;font-size:13px;margin-right:4px;font-family:'Georgia',serif;">WEATHER:</span>
+        ${weatherHtml}
+      </div>
 
-      <!-- Divider between time-of-day and modifiers -->
+      <!-- Divider between weather and modifiers -->
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
         <div style="width:60px;height:1px;background:linear-gradient(to right,transparent,#3a2a1a);"></div>
         <span style="color:#5a4a2a;font-size:10px;">&#9670;</span>
@@ -1202,6 +1183,26 @@ export function showMapSelect(ctx: ScreenContext): void {
         b.style.background = isNowActive ? "rgba(60,50,20,0.9)" : "rgba(30,20,10,0.7)";
         b.style.borderColor = isNowActive ? "#c8a84e" : "#3a3a2a";
         b.style.color = isNowActive ? "#ffd700" : "#888";
+      });
+    });
+  });
+
+  // Wire up weather buttons
+  const weatherBtns = ctx.menuEl.querySelectorAll(".weather-btn") as NodeListOf<HTMLButtonElement>;
+  const weatherColorMap: Record<string, string> = {
+    RANDOM: "#c8a84e", NORMAL: "#9999aa", CLEAR: "#ffcc44", STORMY: "#6688cc",
+  };
+  weatherBtns.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const w = btn.getAttribute("data-weather") as string;
+      ctx.state.preferredWeather = w;
+      weatherBtns.forEach((b) => {
+        const bw = b.getAttribute("data-weather")!;
+        const isNowActive = bw === w;
+        const color = weatherColorMap[bw] || "#c8a84e";
+        b.style.background = isNowActive ? "rgba(60,50,20,0.9)" : "rgba(30,20,10,0.7)";
+        b.style.borderColor = isNowActive ? color : "#3a3a2a";
+        b.style.color = isNowActive ? color : "#666";
       });
     });
   });
