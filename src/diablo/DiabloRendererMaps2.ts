@@ -7,7 +7,7 @@ import { MapBuildContext } from './DiabloRendererMaps';
 export function buildCamelot(mctx: MapBuildContext, w: number, d: number): void {
     // ── Lighting / Atmosphere ──
     mctx.scene.fog = new THREE.FogExp2(0x8899aa, 0.008);
-    mctx.applyTerrainColors(0x887766, 0xaa9988, 0.8);
+    mctx.applyTerrainColors(0x887766, 0xaa9988, 0.0);
     mctx.dirLight.color.setHex(0xffeedd);
     mctx.dirLight.intensity = 1.3;
     mctx.ambientLight.color.setHex(0x556677);
@@ -174,21 +174,44 @@ export function buildCamelot(mctx: MapBuildContext, w: number, d: number): void 
         castleGroup.add(arrowSlit2);
       }
     }
-    // Stone block lines on keep walls (horizontal thin boxes at intervals)
+    // Stone block / brick mortar lines on keep walls
     const stoneLineMat = new THREE.MeshStandardMaterial({ color: 0x777777, roughness: 0.9 });
-    for (let sli = 0; sli < 5; sli++) {
-      const slY = 2 + sli * 3;
+    const mortarMat = new THREE.MeshStandardMaterial({ color: 0x666660, roughness: 0.95 });
+    // Horizontal mortar lines
+    for (let sli = 0; sli < 10; sli++) {
+      const slY = 1 + sli * 1.4;
       // Front and back
       for (const slZ of [5.03, -5.03]) {
-        const stoneLine = new THREE.Mesh(new THREE.BoxGeometry(11.8, 0.04, 0.06), stoneLineMat);
+        const stoneLine = new THREE.Mesh(new THREE.BoxGeometry(11.8, 0.03, 0.06), stoneLineMat);
         stoneLine.position.set(0, slY, slZ);
         castleGroup.add(stoneLine);
       }
       // Sides
       for (const slX of [6.03, -6.03]) {
-        const stoneLine2 = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.04, 9.8), stoneLineMat);
+        const stoneLine2 = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.03, 9.8), stoneLineMat);
         stoneLine2.position.set(slX, slY, 0);
         castleGroup.add(stoneLine2);
+      }
+    }
+    // Vertical brick joints (offset per row) on front/back walls
+    for (let row = 0; row < 9; row++) {
+      const jY = 1.7 + row * 1.4;
+      const offset = row % 2 === 0 ? 0 : 0.8;
+      // Front and back
+      for (const slZ of [5.04, -5.04]) {
+        for (let jx = -5.5 + offset; jx <= 5.5; jx += 1.6) {
+          const joint = new THREE.Mesh(new THREE.BoxGeometry(0.03, 1.3, 0.04), mortarMat);
+          joint.position.set(jx, jY, slZ);
+          castleGroup.add(joint);
+        }
+      }
+      // Side walls
+      for (const slX of [6.04, -6.04]) {
+        for (let jz = -4.5 + offset; jz <= 4.5; jz += 1.6) {
+          const joint = new THREE.Mesh(new THREE.BoxGeometry(0.04, 1.3, 0.03), mortarMat);
+          joint.position.set(slX, jY, jz);
+          castleGroup.add(joint);
+        }
       }
     }
 
@@ -3789,7 +3812,30 @@ export function buildCamelot(mctx: MapBuildContext, w: number, d: number): void 
     }
 
     // Register building colliders for Camelot
-    mctx.buildingColliders = buildingPositions.map(([x, z, bw, bd]) => [x, z, bw / 2 + 0.5, bd / 2 + 0.5] as [number, number, number, number]);
+    // Building colliders from town houses
+    const colliders: [number, number, number, number][] = buildingPositions.map(([x, z, bw, bd]) => [x, z, bw / 2 + 0.5, bd / 2 + 0.5] as [number, number, number, number]);
+
+    // Castle keep collider (at 0, -30, 12 wide x 10 deep)
+    colliders.push([0, -30, 7, 6]);
+    // Castle corner towers
+    colliders.push([-6, -25, 2.5, 2.5]);
+    colliders.push([6, -25, 2.5, 2.5]);
+    colliders.push([-6, -35, 2.5, 2.5]);
+    colliders.push([6, -35, 2.5, 2.5]);
+
+    // Town walls (thick enough to block)
+    // North wall (full width at z = -hd)
+    colliders.push([0, -hd, hw + 1, 1]);
+    // South wall left (z = hd, from -hw to -3)
+    colliders.push([-(hw - 3) / 2 - 3, hd, (hw - 3) / 2 + 1, 1]);
+    // South wall right (z = hd, from +3 to +hw)
+    colliders.push([(hw - 3) / 2 + 3, hd, (hw - 3) / 2 + 1, 1]);
+    // East wall (x = hw)
+    colliders.push([hw, 0, 1, hd + 1]);
+    // West wall (x = -hw)
+    colliders.push([-hw, 0, 1, hd + 1]);
+
+    mctx.buildingColliders = colliders;
 }
 
 export function buildVolcanicWastes(mctx: MapBuildContext, w: number, d: number): void {

@@ -2997,14 +2997,17 @@ export function showPauseMenu(ctx: ScreenContext): void {
     });
     ctx.menuEl.querySelector("#diablo-controls-btn")!.addEventListener("click", () => {
       ctx.setPhaseBeforeOverlay(DiabloPhase.PAUSED);
+      ctx.state.phase = DiabloPhase.INVENTORY;
       showControls(ctx);
     });
     ctx.menuEl.querySelector("#diablo-inventory-btn")!.addEventListener("click", () => {
       ctx.setPhaseBeforeOverlay(DiabloPhase.PAUSED);
+      ctx.state.phase = DiabloPhase.INVENTORY;
       ctx.showInventory();
     });
     ctx.menuEl.querySelector("#diablo-character-btn")!.addEventListener("click", () => {
       ctx.setPhaseBeforeOverlay(DiabloPhase.PAUSED);
+      ctx.state.phase = DiabloPhase.INVENTORY;
       showCharacterOverview(ctx);
     });
     ctx.menuEl.querySelector("#diablo-skilltree-btn")!.addEventListener("click", () => {

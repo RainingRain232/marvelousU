@@ -871,16 +871,20 @@ export function buildAncientLibrary(mctx: MapBuildContext, w: number, d: number)
 
     const woodMat = new THREE.MeshStandardMaterial({ color: 0x5c3a1e, roughness: 0.8 });
     const bookColors = [0x882222, 0x224488, 0x228844, 0x884422, 0x442288, 0x886622, 0x228888, 0x664422];
+    // Pre-create book materials (reused across all shelves)
+    const bookMats = bookColors.map(c => new THREE.MeshStandardMaterial({ color: c }));
     const parchmentMat = new THREE.MeshStandardMaterial({ color: 0xddcc99, roughness: 0.7 });
     const stonePillarMat = new THREE.MeshStandardMaterial({ color: 0x666655, roughness: 0.8 });
     const inkMat = new THREE.MeshStandardMaterial({ color: 0x111133, roughness: 0.3 });
     const magicMat = new THREE.MeshStandardMaterial({ color: 0x4466ff, emissive: 0x2244cc, emissiveIntensity: 0.8, transparent: true, opacity: 0.6 });
     const candleMat = new THREE.MeshStandardMaterial({ color: 0xeeddaa });
     const ironMat = new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.5, roughness: 0.6 });
+    const dustMat = new THREE.MeshStandardMaterial({ color: 0xddccaa, transparent: true, opacity: 0.3, depthWrite: false });
     // Towering bookshelves arranged in rows
-    for (let i = 0; i < 28; i++) {
+    const bookGeo = new THREE.BoxGeometry(0.12, 0.3, 0.22);
+    for (let i = 0; i < 18; i++) {
       const shelf = new THREE.Group();
-      const shelfH = 3 + Math.random() * 4;
+      const shelfH = 3 + Math.random() * 3;
       const frame = new THREE.Mesh(new THREE.BoxGeometry(2.2, shelfH, 0.45), woodMat);
       frame.position.y = shelfH / 2; frame.castShadow = true; shelf.add(frame);
       // Side panels
@@ -892,12 +896,10 @@ export function buildAncientLibrary(mctx: MapBuildContext, w: number, d: number)
       for (let r = 0; r < Math.floor(shelfH / 0.5); r++) {
         const divider = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.03, 0.45), woodMat);
         divider.position.y = r * 0.5 + 0.1; shelf.add(divider);
-        for (let b = 0; b < 5+Math.floor(Math.random()*3); b++) {
-          const bookH = 0.25+Math.random()*0.15;
-          const book = new THREE.Mesh(new THREE.BoxGeometry(0.08+Math.random()*0.1, bookH, 0.2+Math.random()*0.08),
-            new THREE.MeshStandardMaterial({ color: bookColors[Math.floor(Math.random()*bookColors.length)] }));
-          book.position.set(-0.8+b*0.28+(Math.random()-0.5)*0.08, r*0.5+0.1+bookH/2+0.02, 0);
-          if (Math.random() > 0.85) book.rotation.z = 0.3; // Some leaning
+        for (let b = 0; b < 4+Math.floor(Math.random()*2); b++) {
+          const book = new THREE.Mesh(bookGeo, bookMats[Math.floor(Math.random()*bookMats.length)]);
+          book.position.set(-0.7+b*0.3, r*0.5+0.27, 0);
+          if (Math.random() > 0.85) book.rotation.z = 0.3;
           shelf.add(book);
         }
       }
@@ -924,16 +926,15 @@ export function buildAncientLibrary(mctx: MapBuildContext, w: number, d: number)
       candle.position.set(0.35, 0.87, 0.2); desk.add(candle);
       const flame = new THREE.PointLight(0xff8833, 0.5, 5);
       flame.position.set(0.35, 0.98, 0.2); desk.add(flame); mctx.torchLights.push(flame);
-      const flameVis = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.04, 17),
-        new THREE.MeshStandardMaterial({ color: 0xffaa33, emissive: 0xff8800, emissiveIntensity: 2.0 }));
+      const flameVis = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.04, 8), candleMat);
       flameVis.position.set(0.35, 0.96, 0.2); desk.add(flameVis);
       // Open book on desk
-      const openBook = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.02, 0.25), new THREE.MeshStandardMaterial({ color: bookColors[i%bookColors.length] }));
+      const openBook = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.02, 0.25), bookMats[i%bookMats.length]);
       openBook.position.set(-0.1, 0.79, 0); desk.add(openBook);
       const pages = new THREE.Mesh(new THREE.PlaneGeometry(0.25, 0.22), parchmentMat);
       pages.rotation.x = -Math.PI/2; pages.position.set(-0.1, 0.8, 0); desk.add(pages);
       // Quill pen
-      const quill = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.005, 0.2, 16), new THREE.MeshStandardMaterial({ color: 0x443322 }));
+      const quill = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.005, 0.2, 8), woodMat);
       quill.position.set(0.15, 0.8, -0.1); quill.rotation.z = 0.3; desk.add(quill);
       // Chair
       const chair = new THREE.Group();
@@ -953,11 +954,10 @@ export function buildAncientLibrary(mctx: MapBuildContext, w: number, d: number)
     // Floating magical tomes
     for (let i = 0; i < 8; i++) {
       const tome = new THREE.Group();
-      const tomeBody = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.04, 0.15),
-        new THREE.MeshStandardMaterial({ color: [0x882244, 0x224488, 0x448822][i%3], emissive: 0x222244, emissiveIntensity: 0.3 }));
+      const tomeBody = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.04, 0.15), bookMats[i%bookMats.length]);
       tome.add(tomeBody);
       // Glow aura around tome
-      const aura = new THREE.Mesh(new THREE.SphereGeometry(0.2, 23, 20), magicMat);
+      const aura = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 8), magicMat);
       aura.scale.y = 0.3; tome.add(aura);
       const sparkle = new THREE.PointLight([0x4466ff, 0xff6644, 0x44ff66][i%3], 0.3, 4);
       sparkle.position.y = 0.1; tome.add(sparkle); mctx.torchLights.push(sparkle);
@@ -1054,10 +1054,11 @@ export function buildAncientLibrary(mctx: MapBuildContext, w: number, d: number)
       const px = (Math.random()-0.5)*w*0.75, pz = (Math.random()-0.5)*d*0.75;
       pillar.position.set(px, getTerrainHeight(px, pz, 0.4), pz); mctx.scene.add(pillar);
     }
-    // Dust particles (tiny floating specks)
+    // Dust particles (tiny floating specks — shared geometry and material)
+    const dustGlowMat = new THREE.MeshStandardMaterial({ color: 0xddccaa, emissive: 0x886644, emissiveIntensity: 0.3 });
+    const dustGeo = new THREE.SphereGeometry(0.01, 6, 4);
     for (let i = 0; i < 40; i++) {
-      const dust = new THREE.Mesh(new THREE.SphereGeometry(0.008+Math.random()*0.008, 16, 8),
-        new THREE.MeshStandardMaterial({ color: 0xddccaa, emissive: 0x886644, emissiveIntensity: 0.3 }));
+      const dust = new THREE.Mesh(dustGeo, dustGlowMat);
       dust.position.set((Math.random()-0.5)*w*0.6, 0.5+Math.random()*4, (Math.random()-0.5)*d*0.6);
       mctx.scene.add(dust);
     }

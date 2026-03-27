@@ -1236,6 +1236,9 @@ export class DiabloGame {
     if (this._phaseBeforeOverlay === DiabloPhase.CLASS_SELECT) {
       this._state.phase = DiabloPhase.CLASS_SELECT;
       this._showClassSelect();
+    } else if (this._phaseBeforeOverlay === DiabloPhase.PAUSED) {
+      this._state.phase = DiabloPhase.PAUSED;
+      this._showPauseMenu();
     } else {
       this._state.phase = DiabloPhase.PLAYING;
       this._menuEl.innerHTML = "";
